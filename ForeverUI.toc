@@ -28,6 +28,7 @@ Core/Widgets.lua
 Core/Options.lua
 Core/Slash.lua
 Modules/UnitFrames.lua
+Modules/RaidFrames.lua
 Modules/ActionBars.lua
 Modules/Minimap.lua
 Modules/Chat.lua
