@@ -107,7 +107,6 @@ end
 -- bottom center, resurrection bottom left, leader beside the role letter.
 local function setup(b)
   b.raidIcon = mark(b, 12, "TOP", 0, 3)
-  b.raidIcon:SetTexture(ICONS)
   b.ready = mark(b, 14, "BOTTOM", 0, 2)
   b.rez = mark(b, 14, "BOTTOMLEFT", 3, 3)
   b.rez:SetTexture(RS.REZ)
@@ -122,13 +121,18 @@ local function showTexture(t, on, texture)
   if on and texture then t:SetTexture(texture) end
 end
 
--- The raid target icon: one cell of the icon sheet (4 x 2).
-local function updateRaidIcon(b, unit)
-  local index = RS.settings.raidIcons and RS.RaidIcon(unit)
-  b.raidIcon:SetShown(index ~= nil and index ~= false)
+-- Shows raid target icon `index` (1-8, a cell of the 4 x 4 icon sheet) on a texture, or hides it for nil.
+function RS.PaintIcon(t, index)
+  t:SetShown(index ~= nil and index ~= false)
   if not index then return end
   local col, row = (index - 1) % 4, math.floor((index - 1) / 4)
-  b.raidIcon:SetTexCoord(col / 4, (col + 1) / 4, row / 4, (row + 1) / 4)
+  t:SetTexture(ICONS)
+  t:SetTexCoord(col / 4, (col + 1) / 4, row / 4, (row + 1) / 4)
+end
+
+-- The raid target icon on a raid button.
+local function updateRaidIcon(b, unit)
+  RS.PaintIcon(b.raidIcon, RS.settings.raidIcons and RS.RaidIcon(unit))
 end
 
 -- Every mark on one button (RF update hook).

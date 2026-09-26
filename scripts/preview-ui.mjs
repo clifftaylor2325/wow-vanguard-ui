@@ -231,10 +231,39 @@ const RAID = `
   ns.GetModule("RaidStatus").UpdateAll()
 `;
 
+// TEST-ONLY nameplates: your target (a boar with your debuff, casting), a wolf with aggro on you, a
+// marked wolf, and a friendly player; plates placed where the client might put them.
+const PLATES = `
+  __units.nameplate1 = __units.target
+  __units.nameplate2 = { name = "TEST-ONLY Wolf", hp = 9000, maxhp = 20000, power = 0, maxpower = 0, ptype = "RAGE", reaction = 2 }
+  __units.nameplate3 = { name = "TEST-ONLY Wolf", hp = 20000, maxhp = 20000, power = 0, maxpower = 0, ptype = "RAGE", reaction = 4 }
+  __units.nameplate4 = __units.party1
+  local spots = { nameplate1 = { 960, 520 }, nameplate2 = { 760, 470 }, nameplate3 = { 1170, 450 }, nameplate4 = { 880, 360 } }
+  local plates = {}
+  for unit, xy in pairs(spots) do
+    local p = CreateFrame("Frame", nil, UIParent)
+    p:SetSize(150, 40) p:SetPoint("CENTER", UIParent, "BOTTOMLEFT", xy[1], xy[2])
+    p.UnitFrame = CreateFrame("Frame", nil, p)
+    plates[unit] = p
+  end
+  C_NamePlate = { GetNamePlateForUnit = function(unit) return plates[unit] end }
+  UnitIsUnit = function(a, b) return __units[a] ~= nil and __units[a] == __units[b] end
+  UnitThreatSituation = function(_, unit) return unit == "nameplate2" and 3 or 0 end
+  GetRaidTargetIndex = function(unit) return unit == "nameplate3" and 8 or nil end
+  local getAura = C_UnitAuras.GetAuraDataByIndex
+  C_UnitAuras.GetAuraDataByIndex = function(unit, i, filter)
+    if unit == "nameplate1" and filter == "HARMFUL|PLAYER" and i <= 2 then return { icon = "TEST-ONLY-DOT", expirationTime = 0, duration = 0 } end
+    return getAura(unit, i, filter)
+  end
+  UnitCastingInfo = function(unit) if unit == "nameplate1" then return "TEST-ONLY Charge", "", "TEST-ONLY-ICON", GetTime() * 1000 - 600, GetTime() * 1000 + 1400, false, nil, false end end
+  for unit in pairs(spots) do __wfgStub.fire("NAME_PLATE_UNIT_ADDED", unit) end
+`;
+
 // Scenes: the default layout (party on the raid frames), a 20-player raid, then the options window.
 const SCENES = [
   { name: "foreverui-default", caption: "ForeverUI defaults (blue accent)", lua: '__group({ "player", "party1", "party2" })' },
   { name: "foreverui-raid", caption: "Raid frames, 20 players: heals, shields, aggro, missing buffs, dispel borders, HoTs, raid icons, ready check, leader, range fade (TEST-ONLY raid)", lua: RAID },
+  { name: "foreverui-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a friendly player (TEST-ONLY units)", lua: PLATES },
   { name: "foreverui-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)
     GameTooltip.unit = "target" __tipHooks.GameTooltip_SetDefaultAnchor(GameTooltip, UIParent) GameTooltip:Show() __tipPost(GameTooltip)` },

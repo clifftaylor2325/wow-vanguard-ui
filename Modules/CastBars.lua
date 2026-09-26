@@ -80,10 +80,9 @@ local function startTiming(bar, unit, cast)
   bar:SetScript("OnUpdate", onUpdate)
 end
 
--- Shows the unit's cast, or hides the bar when it isn't casting.
-function CB.Update(unit)
-  local bar, cast = CB.bars[unit], CB.Cast(unit)
-  if not bar then return end
+-- Shows the unit's cast on a bar made by CB.Build, or hides the bar when it isn't casting.
+function CB.Show(bar, unit)
+  local cast = CB.Cast(unit)
   bar:SetShown(cast ~= nil)
   if not cast then return bar:SetScript("OnUpdate", nil) end
   local c = isTrue(cast.shielded) and COLORS.shielded or cast.channel and COLORS.channel or COLORS.cast
@@ -91,6 +90,11 @@ function CB.Update(unit)
   bar.icon:SetTexture(cast.icon)
   bar.text:SetText(cast.name)
   startTiming(bar, unit, cast)
+end
+
+-- Shows the unit's cast on its own bar (player, target, focus), if it has one.
+function CB.Update(unit)
+  if CB.bars[unit] then CB.Show(CB.bars[unit], unit) end
 end
 
 -- Building ---------------------------------------------------------------------------
@@ -105,15 +109,20 @@ local function addParts(bar, h)
   bar.text:SetTextColor(1, 1, 1)
 end
 
+-- Makes a status bar a themed cast bar (w x h), hidden until CB.Show finds a cast.
+function CB.Build(bar, w, h)
+  bar:SetSize(w, h)
+  bar:SetStatusBarTexture(T.WHITE)
+  T.Panel(bar, { inset = true })
+  addParts(bar, h)
+  bar:Hide()
+  return bar
+end
+
 -- A themed cast bar for a unit, hidden until it casts; movable.
 local function createBar(unit)
   local def = LAYOUT[unit]
-  local bar = CreateFrame("StatusBar", "ForeverUI_CastBar_" .. unit, UIParent)
-  bar:SetSize(def.w, def.h)
-  bar:SetStatusBarTexture(T.WHITE)
-  T.Panel(bar, { inset = true })
-  addParts(bar, def.h)
-  bar:Hide()
+  local bar = CB.Build(CreateFrame("StatusBar", "ForeverUI_CastBar_" .. unit, UIParent), def.w, def.h)
   ns.Mover(bar, "cast_" .. unit, unit:sub(1, 1):upper() .. unit:sub(2) .. " cast bar", def.point)
   return bar
 end
@@ -132,15 +141,17 @@ end
 
 -- Events ------------------------------------------------------------------------------
 
+-- Every event that can start, change or end a cast.
 local CAST_EVENTS = {
   "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED",
   "UNIT_SPELLCAST_DELAYED", "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_UPDATE",
   "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_INTERRUPTIBLE", "UNIT_SPELLCAST_NOT_INTERRUPTIBLE",
 }
+CB.EVENTS = CAST_EVENTS
 
 -- A cast event for one of our units.
 local function onCast(_, unit)
-  if CB.bars[unit] then CB.Update(unit) end
+  CB.Update(unit)
 end
 
 -- Module entry point (Core/Modules.lua).
