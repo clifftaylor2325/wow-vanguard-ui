@@ -193,6 +193,7 @@ return {
     SecureActionButtonTemplate = {},
     SecureHandlerStateTemplate = {},
     SecureGroupHeaderTemplate = { kind = "Frame" },
+    SecureHandlerBaseTemplate = {},
     CooldownFrameTemplate = { kind = "Cooldown" },
   },
 }

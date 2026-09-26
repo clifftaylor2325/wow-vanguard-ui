@@ -21,6 +21,7 @@ Copy the `ForeverUI` folder from a release zip into `World of Warcraft/_retail_/
 /fui profile [name]              switch (or create); profile new|copy|delete <name>, profile reset
 /fui export [module] | import    profile strings (whole profile or one module's settings)
 /fui spec [profile|off]          use a profile whenever you're in this specialization
+/fui binds                       this spec's click-casting and hover-key bindings
 /fui status
 ```
 

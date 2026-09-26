@@ -105,3 +105,78 @@ function W.Swatch(parent, rgb, onClick)
   s:SetScript("OnClick", onClick)
   return s
 end
+
+-- Key capture ------------------------------------------------------------------------------
+
+local MODIFIER_KEYS = { LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, LALT = true, RALT = true, LMETA = true, RMETA = true }
+local MOUSE_BUTTONS = { LeftButton = 1, RightButton = 2, MiddleButton = 3, Button4 = 4, Button5 = 5 }
+
+-- True when a modifier-key query (IsShiftKeyDown...) exists and says held.
+local function held(fn)
+  return type(fn) == "function" and fn() == true
+end
+
+-- The held modifiers, in binding order: "ALT-CTRL-SHIFT-" (only those held).
+function W.Modifiers()
+  return (held(IsAltKeyDown) and "ALT-" or "") .. (held(IsControlKeyDown) and "CTRL-" or "") .. (held(IsShiftKeyDown) and "SHIFT-" or "")
+end
+
+-- Ends capturing: keyboard off, caption back.
+local function stopCapture(b)
+  b.capturing = false
+  b:EnableKeyboard(false)
+  b.text:SetText(b.caption)
+end
+
+-- Captured one binding: hand it over and stop.
+local function captured(b, key)
+  stopCapture(b)
+  b.onKey(key)
+end
+
+-- A key while capturing: Escape cancels, lone modifiers wait, anything else is the key.
+local function onKeyDown(b, key)
+  if not b.capturing then return end
+  if key == "ESCAPE" then return stopCapture(b) end
+  if not MODIFIER_KEYS[key] then captured(b, W.Modifiers() .. key) end
+end
+
+-- A mouse button while capturing: "ctrl-BUTTON2" (mouse bindings use lower-case modifiers).
+local function onMouseDown(b, button)
+  if b.capturing and MOUSE_BUTTONS[button] then
+    captured(b, W.Modifiers():lower() .. "BUTTON" .. MOUSE_BUTTONS[button])
+  end
+end
+
+-- The wheel while capturing: "SHIFT-MOUSEWHEELUP".
+local function onWheel(b, delta)
+  if b.capturing then captured(b, W.Modifiers() .. (delta > 0 and "MOUSEWHEELUP" or "MOUSEWHEELDOWN")) end
+end
+
+-- A button that, once clicked, takes the next key, mouse click or wheel turn
+-- (with Shift/Ctrl/Alt) and passes it to onKey. Escape cancels.
+function W.KeyCapture(parent, caption, onKey)
+  local b = ns.DialogButton(parent, caption, 220)
+  b.caption, b.onKey = caption, onKey
+  b:SetScript("OnClick", function(self) self.capturing = true; self:EnableKeyboard(true); self.text:SetText("Press a key, click or scroll...") end)
+  b:SetScript("OnKeyDown", onKeyDown)
+  b:SetScript("OnMouseDown", onMouseDown)
+  b:EnableMouseWheel(true)
+  b:SetScript("OnMouseWheel", onWheel)
+  return b
+end
+
+-- Text input -------------------------------------------------------------------------------
+
+-- A one-line themed text input.
+function W.Input(parent, width)
+  local e = T.EditBox(CreateFrame("EditBox", nil, parent))
+  e:SetSize(width or 220, 24)
+  e:SetAutoFocus(false)
+  e:SetTextInsets(6, 6, 0, 0)
+  local path, outline = T.Font()
+  e:SetFont(path, 12, outline)
+  e:SetScript("OnEscapePressed", e.ClearFocus)
+  e:SetScript("OnEnterPressed", e.ClearFocus)
+  return e
+end
