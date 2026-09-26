@@ -26,7 +26,7 @@ globals = {
 read_globals = {
   "AbbreviateNumbers", "C_ActionBar", "C_AddOns", "C_CVar", "C_Reputation", "C_SpecializationInfo", "GetSpecialization", "ReloadUI", "GetXPExhaustion", "IsPlayerAtEffectiveMaxLevel", "IsXPUserDisabled", "UnitLevel", "UnitXP", "UnitXPMax", "C_Map", "FCF_OpenTemporaryWindow", "FCF_Tab_OnClick", "GetMinimapZoneText", "GetZonePVPInfo", "Minimap", "NUM_CHAT_WINDOWS", "SELECTED_CHAT_FRAME", "SetCVar", "UISpecialFrames", "hooksecurefunc", "ClearOverrideBindings", "GetBindingKey", "CreateFrame", "DEFAULT_CHAT_FRAME",
   "GetAddOnMetadata", "InCombatLockdown", "IsShiftKeyDown", "PowerBarColor", "RAID_CLASS_COLORS",
-  "RegisterStateDriver", "RegisterUnitWatch", "SetOverrideBindingClick", "STANDARD_TEXT_FONT", "UIParent", "UnitClass",
+  "RegisterAttributeDriver", "RegisterStateDriver", "UnitGroupRolesAssigned", "UnitIsUnit", "RegisterUnitWatch", "SetOverrideBindingClick", "STANDARD_TEXT_FONT", "UIParent", "UnitClass",
   "UnitExists", "UnitHealth", "UnitHealthMax", "UnitIsConnected",
   "UnitIsDeadOrGhost", "UnitIsPlayer", "UnitName", "UnitPower", "UnitPowerMax",
   "UnitPowerType", "UnitReaction", "issecretvalue",
