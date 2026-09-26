@@ -1,9 +1,23 @@
 # ForeverUI
 
-A from-scratch UI suite for WoW Forever (Midnight-era client, Interface 12xxxx):
-one theme, movable frames and profiles now; unit frames, action bars,
-minimap, chat and bags next. Written from scratch. It contains no code, art or
-fonts from other UI addons.
+A from-scratch UI suite for WoW Forever (Midnight-era client, Interface 12xxxx).
+Written from scratch. It contains no code, art or fonts from other UI addons.
+
+## What's in it
+
+- **Look and layout**: one flat theme with accent presets. Every frame can be moved in unlock mode (`/fui unlock`), with a grid, snapping and arrow-key nudging. Profiles can be exported and imported, and can switch with your spec.
+- **Unit frames**: player, target, target of target, focus and party frames. Cast bars for you, your target and your focus. Buff and debuff rows on target and focus.
+- **Raid frames** (VuhDo-style):
+  - Healing: click casting and hover keybindings, incoming heals and shields, aggro strip, missing-buff marker, dispellable-debuff border, your HoTs.
+  - Status: range fade, raid target icons, ready check, resurrection marker, and leader and assistant marks.
+- **Action bars**: range and power tint, plus restyled pet, stance and extra action buttons and a vehicle exit button.
+- **Nameplates**: class/reaction/threat colors, your debuffs, casts, raid icon, target border.
+- **Everything else**: XP and reputation bars, square minimap, chat skin, combined bag, and themed tooltips with class colors and a Target line.
+- **Options**: `/fui` or the addons button. Turn any module off under Modules to keep the default one.
+
+Every client call is checked before use, and values the Midnight client hides
+from addons go to the bars unread. None of this has been checked in game yet:
+please report what breaks.
 
 ## Install
 
