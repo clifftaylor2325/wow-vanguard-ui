@@ -17,7 +17,9 @@ Copy the `ForeverUI` folder from a release zip into `World of Warcraft/_retail_/
 /fui accent <rrggbb> | reset      /fui theme reset
 /fui modules       enable|disable <module>, then /reload
 /fui skins         addons skinned through the API; skins <addon> on|off
-/fui profile [name]
+/fui profile [name]              switch (or create); profile new|copy|delete <name>, profile reset
+/fui export [module] | import    profile strings (whole profile or one module's settings)
+/fui spec [profile|off]          use a profile whenever you're in this specialization
 /fui status
 ```
 
