@@ -15,7 +15,11 @@ local HELP = {
   "theme reset          every theme setting back to default",
   "modules              list modules; enable|disable <module> (then /reload)",
   "skins                addons skinned through ForeverUI.RegisterSkin; skins <addon> on|off",
-  "profile [name]       show profiles, or switch this character to one (then /reload)",
+  "profile [name]       show profiles, or switch this character to one",
+  "profile new|copy|delete <name>, profile reset   manage profiles",
+  "export [module]      copy the profile (or one module's settings) as a string",
+  "import               paste a string from /fui export",
+  "spec [profile|off]   use a profile whenever you're in this specialization",
   "status               version, profile, modules, skins, work waiting on combat",
 }
 
@@ -157,13 +161,68 @@ local function skinsCommand(rest)
   chat(string.format("Skin for %s %s. /reload to apply.", name, state == "on" and "on" or "off"))
 end
 
--- /fui profile [name]
+-- /fui profile <name>: switch, creating it if new, and offer the reload.
+local function useProfile(name)
+  if not ns.ValidProfileName(name) then
+    return chat("Profile names are 1-32 letters, digits, spaces, - or _.")
+  end
+  ns.UseProfile(name)
+  ns.OfferReload("This character now uses profile " .. name .. ".")
+end
+
+-- profile subcommands: new, copy, delete, reset.
+local PROFILE_ACTIONS = {
+  -- /fui profile new <name>
+  new = function(name) chat(ns.NewProfile(name) and ("Created profile " .. name .. ".") or "That name is taken or not allowed.") end,
+  -- /fui profile copy <from>
+  copy = function(name)
+    if not ns.CopyProfile(name) then return chat("No other profile called " .. name .. ".") end
+    ns.OfferReload("Copied " .. name .. " into " .. ns.ProfileName() .. ".")
+  end,
+  -- /fui profile delete <name>
+  delete = function(name) chat(ns.DeleteProfile(name) and ("Deleted profile " .. name .. ".") or "Can't delete that one (missing, or in use).") end,
+  -- /fui profile reset
+  reset = function() ns.ResetProfile(); ns.OfferReload("Profile " .. ns.ProfileName() .. " is back to defaults.") end,
+}
+
+-- /fui profile [new|copy|delete <name> | reset | <name>]
 local function profileCommand(rest)
   if rest == "" then
     return chat("Profile: " .. ns.ProfileName() .. "   (all: " .. table.concat(ns.ProfileNames(), ", ") .. ")")
   end
-  ns.UseProfile(rest)
-  chat("This character now uses profile " .. rest .. ". /reload to apply.")
+  local action, name = rest:match("^(%S+)%s*(.-)$")
+  local handler = PROFILE_ACTIONS[action:lower()]
+  if handler then return handler(name) end
+  useProfile(rest)
+end
+
+-- /fui export [module]
+local function exportCommand(rest)
+  local text, err = ns.ExportProfile(rest ~= "" and rest or nil)
+  if not text then return chat("Nothing to export: " .. err .. ".") end
+  ns.ShowText("ForeverUI export (" .. (rest ~= "" and rest or "profile " .. ns.ProfileName()) .. ")  Ctrl+C to copy", text)
+end
+
+-- /fui import: a box to paste into.
+local function importCommand()
+  ns.AskText("Paste a ForeverUI string, then Import", function(text)
+    local done, err = ns.ImportProfile(text)
+    if not done then return chat("Import failed: " .. err .. ".") end
+    ns.HideText()
+    ns.OfferReload(done)
+  end)
+end
+
+-- /fui spec [profile|off]
+local function specCommand(rest)
+  local spec = ns.SpecIndex()
+  if not spec then return chat("No specialization on this character yet.") end
+  if rest == "" then
+    return chat(string.format("Spec %d uses %s.", spec, ns.SpecProfile(spec) or "the character's profile (no spec profile set)"))
+  end
+  if rest ~= "off" and not ForeverUIDB.profiles[rest] then return chat("No profile called " .. rest .. ". /fui profile new " .. rest .. " first.") end
+  ns.SetSpecProfile(rest ~= "off" and rest or nil, spec)
+  chat(rest == "off" and "This spec no longer switches profiles." or ("Spec " .. spec .. " now uses profile " .. rest .. "."))
 end
 
 -- The addon version from the TOC.
@@ -200,6 +259,9 @@ local COMMANDS = {
   disable = setModule(false),
   skins = skinsCommand,
   profile = profileCommand,
+  export = exportCommand,
+  import = importCommand,
+  spec = specCommand,
   status = statusCommand,
 }
 
