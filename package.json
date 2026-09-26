@@ -7,7 +7,8 @@
     "verify": "node scripts/verify-lua.mjs && node scripts/verify-code-quality.mjs",
     "quality": "node scripts/check-code-quality.mjs",
     "lint": "luacheck .",
-    "package": "node scripts/package.mjs"
+    "package": "node scripts/package.mjs",
+    "preview": "node scripts/preview-ui.mjs"
   },
   "devDependencies": {
     "acorn": "^8.18.0",

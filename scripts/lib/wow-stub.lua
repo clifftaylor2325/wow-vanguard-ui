@@ -175,6 +175,9 @@ function methods:GetFont() local f = self.__font or {} return f[1], f[2], f[3] e
 -- The minimap mask texture (square or round).
 function methods:SetMaskTexture(t) self.__maskTexture = t end
 
+-- Chat windows: the lines added, for the preview.
+function methods:AddMessage(text) self.__messages = self.__messages or {}; self.__messages[#self.__messages + 1] = text end
+
 -- Minimap zoom: the level, and how many levels there are (6 unless a test sets __zoomLevels).
 function methods:SetZoom(z) self.__zoom = z end
 function methods:GetZoom() return self.__zoom or 0 end
