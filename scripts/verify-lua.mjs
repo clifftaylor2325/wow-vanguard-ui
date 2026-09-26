@@ -880,6 +880,67 @@ attempt("special bars", () => {
   assert(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.vehicleexit") === true, "it is movable");
 });
 
+// TEST-ONLY casts: __casts[unit] = { kind = "cast"|"channel", start, finish, shielded }.
+const CAST_ENV = `
+  __casts = {}
+  UnitExists = function() return false end
+  local function info(unit, kind)
+    local c = __casts[unit]
+    if not c or c.kind ~= kind then return nil end
+    return "TEST-ONLY Spell", "", "TEST-ONLY-ICON", c.start, c.finish, false, c.shielded, c.shielded
+  end
+  UnitCastingInfo = function(unit) return info(unit, "cast") end
+  UnitChannelInfo = function(unit) return info(unit, "channel") end
+  PlayerCastingBarFrame = CreateFrame("StatusBar", "PlayerCastingBarFrame", UIParent)
+  PlayerCastingBarFrame:RegisterEvent("UNIT_SPELLCAST_START")
+`;
+
+// A cast bar's state.
+const castBar = (addon, unit) => addon.eval(`local b = ForeverUI_CastBar_${unit}
+  return { shown = b:IsShown(), value = b.__value, color = b.__barColor, text = b.text:GetText(), icon = b.icon.__texture }`);
+
+attempt("cast bars", () => {
+  const addon = loggedIn(CAST_ENV);
+  assert(castBar(addon, "player").shown === false, "no cast, no bar");
+  addon.eval('__casts.player = { kind = "cast", start = 999000, finish = 1002000, shielded = false }');
+  addon.fire("UNIT_SPELLCAST_START", "player");
+  addon.update(0.01);
+  let b = castBar(addon, "player");
+  assert(b.shown && b.text === "TEST-ONLY Spell" && b.icon === "TEST-ONLY-ICON", "a cast shows its name and icon");
+  assert(Math.abs(b.value - 1010 / 3000) < 1e-6 && b.color[0] === 1 && b.color[1] === 0.7, "the bar fills with the cast, in the cast color");
+  addon.update(1.49);
+  assert(Math.abs(castBar(addon, "player").value - 2500 / 3000) < 1e-6, "and keeps filling");
+  addon.eval('__casts.target = { kind = "channel", start = 1000000, finish = 1004000, shielded = true }');
+  addon.fire("UNIT_SPELLCAST_CHANNEL_START", "target");
+  addon.update(0.01);
+  b = castBar(addon, "target");
+  assert(b.color[0] === 0.6 && b.value > 0.5 && b.value < 0.7, "a channel empties; an uninterruptible cast is gray");
+  addon.eval('__casts.focus = { kind = "cast", start = { __secret = true }, finish = { __secret = true } }');
+  addon.fire("UNIT_SPELLCAST_START", "focus");
+  addon.update(0.1);
+  assert(castBar(addon, "focus").value === 1, "hidden timings show a full bar (name and icon still shown)");
+  addon.eval("__casts.player = nil");
+  addon.fire("UNIT_SPELLCAST_STOP", "player");
+  assert(castBar(addon, "player").shown === false, "the bar hides when the cast ends");
+  assert(addon.eval("return PlayerCastingBarFrame:IsEventRegistered('UNIT_SPELLCAST_START')") === false, "the default cast bar is silenced");
+  assert(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.cast_player and out.cast_target and out.cast_focus") === true, "all three are movable");
+});
+
+attempt("target and focus auras", () => {
+  const addon = loggedIn(UNITS_ENV + `
+    __units.focus = { name = "TEST-ONLY Focus", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA", reaction = 5 }
+    __frameAuras = { ["HARMFUL|PLAYER"] = { { icon = "MY-DOT", applications = 3 } }, HARMFUL = { { icon = "ANY-DEBUFF" }, { icon = "MY-DOT" } }, HELPFUL = { { icon = "BUFF-A" }, { icon = "BUFF-B" } } }
+    C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) return (__frameAuras[filter] or {})[i] end }`, NO_RAID);
+  addon.fire("PLAYER_TARGET_CHANGED");
+  const t = addon.eval(`local f = ForeverUI_target return { d1 = f.debuffs[1]:IsShown() and f.debuffs[1].icon.__texture, d2 = f.debuffs[2]:IsShown(),
+    count = f.debuffs[1].count:GetText(), b = { f.buffs[1].icon.__texture, f.buffs[2].icon.__texture }, b3 = f.buffs[3]:IsShown() }`);
+  assert(t.d1 === "MY-DOT" && t.d2 === false && t.count === "3", "your debuffs show above the target, with stacks");
+  assert(t.b[0] === "BUFF-A" && t.b[1] === "BUFF-B" && t.b3 === false, "buffs show above them");
+  addon.eval("ForeverUIDB.profiles.Default.FrameAuras.onlyMine = false");
+  addon.fire("UNIT_AURA", "focus");
+  assert(addon.eval("return ForeverUI_focus.debuffs[2]:IsShown()") === true, "with onlyMine off, everyone's debuffs show (focus refreshed on UNIT_AURA)");
+});
+
 console.log("ForeverUI — Lua harness (fengari)");
 console.log("  core     saved variables, profiles, modules, combat queue");
 console.log("  theme    panels, widgets, live accent, reset");
@@ -897,6 +958,7 @@ console.log("  profiles strings round-trip, refuse bad/cut/code pastes, export/i
 console.log("  range    red when out of range, by range events or asked; secrets never red");
 console.log("  data     XP with rested, watched reputation, hover text, hides when empty");
 console.log("  more     minimap (square, zone, coords, zoom), chat skin and tabs, combined bags");
+console.log("  casts    cast/channel bars, timing, uninterruptible, hidden timings, default bar silenced; target/focus auras");
 console.log("  units    secure buttons, bars, colors, secret values, events, ToT timer, Blizzard frames hidden, combat wait");
 if (failures.length) {
   console.error(`FAILED (${failures.length})`);
