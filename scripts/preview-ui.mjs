@@ -126,16 +126,26 @@ const { chromium } = await loadPlaywright();
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
 
-const addon = createAddon();
-addon.eval(UNITS + ACTIONS + WORLD);
-addon.login();
-addon.update(0.25);
-const file = path.join(out, "foreverui-default.png");
-await renderScene(page, addon, {
-  file,
-  caption: "Preview · ForeverUI defaults (blue accent) · layout from the addon's Lua; TEST-ONLY units, icons and chat; map, icons and font approximated, not a game screenshot",
-  // Nothing depends on measured text height, so there is nothing to redo.
-  relayout: () => {},
-});
-console.log(`wrote ${path.relative(process.cwd(), file)}`);
+// Scenes: the default layout, then the options window on two pages.
+const SCENES = [
+  { name: "foreverui-default", caption: "ForeverUI defaults (blue accent)" },
+  { name: "foreverui-options", caption: "Options window: General (/fui)", lua: 'ns.Options.Show("general")' },
+  { name: "foreverui-options-bars", caption: "Options window: Action bars", lua: 'ns.Options.Show("actionbars")' },
+];
+
+for (const scene of SCENES) {
+  const addon = createAddon();
+  addon.eval(UNITS + ACTIONS + WORLD + "GetSpecialization = function() return 1 end");
+  addon.login();
+  if (scene.lua) addon.eval(scene.lua);
+  addon.update(0.25);
+  const file = path.join(out, `${scene.name}.png`);
+  await renderScene(page, addon, {
+    file,
+    caption: `Preview · ${scene.caption} · layout from the addon's Lua; TEST-ONLY units, icons and chat; map, icons and font approximated, not a game screenshot`,
+    // Nothing depends on measured text height, so there is nothing to redo.
+    relayout: () => {},
+  });
+  console.log(`wrote ${path.relative(process.cwd(), file)}`);
+}
 await browser.close();

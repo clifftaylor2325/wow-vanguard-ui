@@ -607,6 +607,49 @@ attempt("spec profiles", () => {
   assert(addon.eval("return ForeverUICharDB.specProfiles[2]") === null, "/fui spec off stops switching");
 });
 
+// TEST-ONLY lookup: the shown control whose label or caption starts with a text, clicked.
+const CLICK_LUA = `
+  function __click(text)
+    for _, w in ipairs(__wfgStub.frames) do
+      local fs = w.label or w.text
+      local shown, f = true, w
+      while f do if not f.__shown then shown = false end f = f.__parent end
+      if shown and type(fs) == "table" and type(fs.__text) == "string" and fs.__text:sub(1, #text) == text and w.__scripts.OnClick then
+        w.__scripts.OnClick(w, "LeftButton")
+        return true
+      end
+    end
+    return false
+  end
+`;
+
+attempt("options window", () => {
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  addon.slash("");
+  assert(addon.eval("return ForeverUI_Options:IsShown()") === true, "/fui opens the options window");
+  assert(addon.eval("return ForeverUI_Options.reload:IsShown()") === false, "no reload button until something needs one");
+  addon.eval("for _, w in ipairs(__wfgStub.frames) do if w.fill and w.__scripts.OnClick then __swatches = (__swatches or 0) + 1 if __swatches == 2 then w.__scripts.OnClick(w) end end end");
+  assert(addon.eval("return select(1, ns.Theme.Accent())") === 0.8, "the bronze swatch sets the accent at once");
+  assert(addon.eval('return __click("Snap to other frames")') && addon.eval("return ns.MoverOptions().snap") === false, "the snap check box turns snapping off");
+  assert(addon.eval('return __click("Action bars")'), "the nav switches pages");
+  assert(addon.eval('return __click("Bar 6")') && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.bars[6].enabled") === true, "check boxes change settings");
+  assert(addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "a change that needs a reload shows the Reload button");
+  assert(addon.eval('return __click("Button size")') && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.size") === 40, "cycle buttons step through choices");
+  addon.eval('__click("Modules")');
+  assert(addon.eval('return __click("UnitFrames")') && addon.eval("return ns.ModuleEnabled('UnitFrames')") === false, "modules can be turned off");
+  addon.eval('__click("Profiles")');
+  assert(addon.eval('return __click("Export profile")') && addon.eval("return ForeverUI_TextEdit:GetText():sub(1, 5)") === "FUI1:", "Export profile shows the string");
+  assert(addon.eval('return __click("Use this profile for this spec")') && addon.eval("return ForeverUICharDB.specProfiles[1]") === "Default", "the spec button maps this spec");
+  addon.eval('ReloadUI = function() __reloaded = true end; ForeverUI_Options.reload:GetScript("OnClick")(ForeverUI_Options.reload)');
+  assert(addon.eval("return __reloaded") === true, "Reload UI reloads");
+  addon.slash("options");
+  assert(addon.eval("return ForeverUI_Options:IsShown()") === false, "/fui options toggles it closed");
+  addon.eval('ForeverUI_OnAddonCompartmentClick("ForeverUI", "RightButton")');
+  assert(addon.eval("return ns.Unlocked()") === true, "right-clicking the addons button toggles moving frames");
+  addon.eval('ForeverUI_OnAddonCompartmentClick("ForeverUI", "LeftButton")');
+  assert(addon.eval("return ForeverUI_Options:IsShown()") === true, "left-clicking it opens the options");
+});
+
 console.log("ForeverUI — Lua harness (fengari)");
 console.log("  core     saved variables, profiles, modules, combat queue");
 console.log("  theme    panels, widgets, live accent, reset");
@@ -614,6 +657,7 @@ console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-a
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");
 console.log("  bars     secure buttons, bindings, hotkeys, paging snippet, usable, secrets, drag, events, combat wait");
+console.log("  options  window, pages, swatches, check boxes, cycles, reload button, export, spec, addons button");
 console.log("  profiles strings round-trip, refuse bad/cut/code pastes, export/import, new/copy/delete/reset, spec switching");
 console.log("  range    red when out of range, by range events or asked; secrets never red");
 console.log("  data     XP with rested, watched reputation, hover text, hides when empty");

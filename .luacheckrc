@@ -17,12 +17,14 @@ globals = {
   "SLASH_FOREVERUI2",
   -- Minimap shape for addons that place icons around it (Modules/Minimap.lua)
   "GetMinimapShape",
+  -- Addon compartment click handler named in the TOC (Core/Options.lua)
+  "ForeverUI_OnAddonCompartmentClick",
   SlashCmdList = { other_fields = true },
 }
 
 -- WoW API the addon reads. Add a name only when the addon starts using it.
 read_globals = {
-  "AbbreviateNumbers", "C_ActionBar", "C_AddOns", "C_CVar", "C_Reputation", "C_SpecializationInfo", "GetSpecialization", "ReloadUI", "GetXPExhaustion", "IsPlayerAtEffectiveMaxLevel", "IsXPUserDisabled", "UnitLevel", "UnitXP", "UnitXPMax", "C_Map", "FCF_OpenTemporaryWindow", "FCF_Tab_OnClick", "GetMinimapZoneText", "GetZonePVPInfo", "Minimap", "NUM_CHAT_WINDOWS", "SELECTED_CHAT_FRAME", "SetCVar", "hooksecurefunc", "ClearOverrideBindings", "GetBindingKey", "CreateFrame", "DEFAULT_CHAT_FRAME",
+  "AbbreviateNumbers", "C_ActionBar", "C_AddOns", "C_CVar", "C_Reputation", "C_SpecializationInfo", "GetSpecialization", "ReloadUI", "GetXPExhaustion", "IsPlayerAtEffectiveMaxLevel", "IsXPUserDisabled", "UnitLevel", "UnitXP", "UnitXPMax", "C_Map", "FCF_OpenTemporaryWindow", "FCF_Tab_OnClick", "GetMinimapZoneText", "GetZonePVPInfo", "Minimap", "NUM_CHAT_WINDOWS", "SELECTED_CHAT_FRAME", "SetCVar", "UISpecialFrames", "hooksecurefunc", "ClearOverrideBindings", "GetBindingKey", "CreateFrame", "DEFAULT_CHAT_FRAME",
   "GetAddOnMetadata", "InCombatLockdown", "IsShiftKeyDown", "PowerBarColor", "RAID_CLASS_COLORS",
   "RegisterStateDriver", "RegisterUnitWatch", "SetOverrideBindingClick", "STANDARD_TEXT_FONT", "UIParent", "UnitClass",
   "UnitExists", "UnitHealth", "UnitHealthMax", "UnitIsConnected",
