@@ -153,6 +153,17 @@ local function moreRows()
   }
 end
 
+-- Tooltips: where they sit and what they add.
+local function tooltipRows()
+  return {
+    { "header", "Tooltips" },
+    { "cycle", "Tooltip position", { { "corner", "corner (movable)" }, { "cursor", "at the cursor" }, { "default", "client default" } }, setting("Tooltips", "anchor") },
+    check("Border in the unit's class color", setting("Tooltips", "classBorder")),
+    check("Show who the unit is targeting", setting("Tooltips", "targetLine")),
+    check("Hide unit tooltips in combat", setting("Tooltips", "hideInCombat")),
+  }
+end
+
 -- "Spec 2 uses Healer." or why there's no spec profile.
 local function specText()
   local spec = ns.SpecIndex()
@@ -232,7 +243,7 @@ local PAGES = {
   { key = "unitframes", title = "Unit frames", rows = function() return append(unitFrameRows(), castRows()) end },
   { key = "raid", title = "Raid frames", rows = raidPageRows },
   { key = "actionbars", title = "Action bars", rows = actionBarPageRows },
-  { key = "more", title = "Bars, map, chat", rows = moreRows },
+  { key = "more", title = "Bars, map, chat", rows = function() return append(moreRows(), tooltipRows()) end },
   { key = "profiles", title = "Profiles", rows = profileRows },
 }
 O.PAGES = PAGES
