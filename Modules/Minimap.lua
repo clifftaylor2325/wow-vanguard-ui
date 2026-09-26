@@ -120,12 +120,16 @@ local function adoptMinimap(holder, size)
 end
 
 -- Zone text along the map's top edge and coordinates along its bottom edge
--- (inside, so a map in a screen corner never pushes them off screen).
+-- (inside, so a map in a screen corner never pushes them off screen). They
+-- live on an overlay frame above the map; on the holder the map would cover them.
 local function addTexts(holder)
-  MM.zone = T.SetFont(holder:CreateFontString(nil, "OVERLAY"), 12)
-  MM.zone:SetPoint("TOP", holder, "TOP", 0, -6)
-  MM.coords = T.SetFont(holder:CreateFontString(nil, "OVERLAY"), 11)
-  MM.coords:SetPoint("BOTTOM", holder, "BOTTOM", 0, 4)
+  local overlay = CreateFrame("Frame", nil, holder)
+  overlay:SetAllPoints()
+  overlay:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 2)
+  MM.zone = T.SetFont(overlay:CreateFontString(nil, "OVERLAY"), 12)
+  MM.zone:SetPoint("TOP", overlay, "TOP", 0, -6)
+  MM.coords = T.SetFont(overlay:CreateFontString(nil, "OVERLAY"), 11)
+  MM.coords:SetPoint("BOTTOM", overlay, "BOTTOM", 0, 4)
   MM.coords:SetTextColor(1, 1, 1)
 end
 

@@ -26,3 +26,4 @@ Modules/ActionBars.lua
 Modules/Minimap.lua
 Modules/Chat.lua
 Modules/Bags.lua
+Modules/DataBars.lua
