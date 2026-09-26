@@ -263,8 +263,11 @@ const ufState = (addon, key) => addon.eval(`
     power = f.power.__value, powerColor = f.power.__barColor,
     name = f.name:GetText(), text = f.healthText:GetText() }`);
 
+// Saved variables with the raid frames module off (so UnitFrames builds its own party frames).
+const NO_RAID = { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { RaidFrames = false } } } }" };
+
 attempt("unit frames", () => {
-  const addon = loggedIn(UNITS_ENV);
+  const addon = loggedIn(UNITS_ENV, NO_RAID);
   const player = ufState(addon, "player");
   assert(player.unit === "player" && player.type1 === "target" && player.type2 === "togglemenu", "player frame is a secure unit button");
   assert(player.hp === 900 && player.max === 1000 && player.text === "900", "player health bar and text");
@@ -650,6 +653,54 @@ attempt("options window", () => {
   assert(addon.eval("return ForeverUI_Options:IsShown()") === true, "left-clicking it opens the options");
 });
 
+// TEST-ONLY raid: three members; raid2 is you. The stub has no secure
+// header, so tests create buttons the way the header would and call its setup.
+const RAID_ENV = `
+  __units.raid1 = { name = "TEST-ONLY Tank", hp = 300, maxhp = 1000, power = 0, maxpower = 0, ptype = "RAGE", player = true, class = "WARRIOR", role = "TANK" }
+  __units.raid2 = __units.player
+  __units.raid3 = { name = "TEST-ONLY Gone", hp = 0, maxhp = 800, power = 0, maxpower = 0, ptype = "MANA", player = true, class = "MAGE", offline = true }
+  RAID_CLASS_COLORS.WARRIOR = { r = 0.78, g = 0.61, b = 0.43 }
+  UnitGroupRolesAssigned = function(unit) return (__units[unit] or {}).role or "NONE" end
+  UnitIsUnit = function(a, b) return __units[a] ~= nil and __units[a] == __units[b] end
+  UnitIsConnected = function(unit) return not (__units[unit] or {}).offline end
+  RegisterAttributeDriver = function(frame, attr, driver) frame.__drivers = frame.__drivers or {}; frame.__drivers[attr] = driver end
+  CompactRaidFrameContainer = CreateFrame("Frame", "CompactRaidFrameContainer", UIParent)
+  function __spawn(i, unit)
+    local b = CreateFrame("Button", "ForeverUI_RaidUnitButton" .. i, ForeverUI_Raid, "SecureUnitButtonTemplate")
+    ForeverUI_Raid.initialConfigFunction(ForeverUI_Raid, b:GetName())
+    b:SetAttribute("unit", unit)
+    return b
+  end
+`;
+
+// One raid button's state.
+const raidButton = (addon, i) => addon.eval(`local b = ForeverUI_RaidUnitButton${i}
+  return { hp = b.health.__value, max = b.health.__max, color = b.health.__barColor, name = b.name:GetText(), role = b.role:GetText(), status = b.status:GetText() }`);
+
+attempt("raid frames", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  const h = addon.eval(`local h = ForeverUI_Raid return { template = h:GetAttribute("template"), groupBy = h:GetAttribute("groupBy"),
+    party = h:GetAttribute("showParty"), start = h:GetAttribute("startingIndex"), vis = h.__drivers["state-visibility"],
+    init = h:GetAttribute("initialConfigFunction"), w = h:GetAttribute("fui-width") }`);
+  assert(h.template === "SecureUnitButtonTemplate" && h.groupBy === "GROUP" && h.party === true && h.w === 90, "a secure group header, grouped by group, covering the party");
+  assert(h.start === 1 && /\[group:raid\] show; \[group:party\] show; hide/.test(h.vis), "buttons are precreated, then the header shows in groups only");
+  assert(/CallMethod\("initialConfigFunction"/.test(h.init) && /\*type2", "togglemenu"/.test(h.init), "each new button is sized, gets target/menu clicks, and is set up");
+  addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
+  const tank = raidButton(addon, 1);
+  assert(tank.hp === 300 && tank.max === 1000 && tank.name === "TEST-ONLY Tank" && tank.role === "T", "health, name and role letter");
+  assert(tank.color[0] === 0.78, "class colors");
+  assert(raidButton(addon, 3).status === "Offline", "offline players say so");
+  addon.eval("__units.raid1.hp = 900");
+  addon.fire("UNIT_HEALTH", "raid1");
+  assert(raidButton(addon, 1).hp === 900, "UNIT_HEALTH refreshes that member");
+  addon.eval("__units.player.hp = 100");
+  addon.fire("UNIT_HEALTH", "player");
+  assert(raidButton(addon, 2).hp === 100, "an event for you updates your raid button too");
+  assert(addon.eval("return CompactRaidFrameContainer:GetParent():IsShown()") === false, "the default raid frames are hidden");
+  assert(addon.eval("return ForeverUI_party1") === null, "UnitFrames doesn't build party frames the raid frames cover");
+  assert(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.raid") === true, "the raid frames are movable");
+});
+
 console.log("ForeverUI — Lua harness (fengari)");
 console.log("  core     saved variables, profiles, modules, combat queue");
 console.log("  theme    panels, widgets, live accent, reset");
@@ -657,6 +708,7 @@ console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-a
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");
 console.log("  bars     secure buttons, bindings, hotkeys, paging snippet, usable, secrets, drag, events, combat wait");
+console.log("  raid     secure header, precreated buttons, health/name/role/offline, events, party coverage, default frames hidden");
 console.log("  options  window, pages, swatches, check boxes, cycles, reload button, export, spec, addons button");
 console.log("  profiles strings round-trip, refuse bad/cut/code pastes, export/import, new/copy/delete/reset, spec switching");
 console.log("  range    red when out of range, by range events or asked; secrets never red");

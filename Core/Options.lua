@@ -171,10 +171,24 @@ local function profileRows()
   return rows
 end
 
+-- Raid frames: party coverage, sorting, size.
+local function raidRows()
+  return {
+    { "header", "Raid frames" },
+    check("Use them for your party too", setting("RaidFrames", "showInParty", true)),
+    check("Include yourself", setting("RaidFrames", "showPlayer", true)),
+    check("Sort by role (tanks, healers, damage)", setting("RaidFrames", "sortByRole", true)),
+    check("Hide the default raid frames", setting("RaidFrames", "hideBlizzard", true)),
+    { "cycle", "Width", { { 72, "72" }, { 90, "90" }, { 110, "110" } }, setting("RaidFrames", "width", true) },
+    { "cycle", "Height", { { 32, "32" }, { 40, "40" }, { 48, "48" } }, setting("RaidFrames", "height", true) },
+  }
+end
+
 local PAGES = {
   { key = "general", title = "General", rows = generalRows },
   { key = "modules", title = "Modules", rows = moduleRows },
   { key = "unitframes", title = "Unit frames", rows = unitFrameRows },
+  { key = "raid", title = "Raid frames", rows = raidRows },
   { key = "actionbars", title = "Action bars", rows = actionBarRows },
   { key = "more", title = "Bars, map, chat", rows = moreRows },
   { key = "profiles", title = "Profiles", rows = profileRows },

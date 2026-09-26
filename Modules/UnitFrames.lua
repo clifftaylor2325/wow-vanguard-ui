@@ -277,6 +277,12 @@ local function addFrame(key, unit, w, h, label, point)
   return f
 end
 
+-- True when the raid frames module also shows the party, so these party frames aren't built.
+function UF.RaidCoversParty()
+  local raid = ns.GetModule("RaidFrames")
+  return raid ~= nil and ns.ModuleEnabled("RaidFrames") and ns.Settings("RaidFrames", raid.defaults).showInParty == true
+end
+
 -- Party 1-4: the first is movable, the rest stack below it.
 local function addParty()
   local first = addFrame("party1", "party1", PARTY.w, PARTY.h, PARTY.label, PARTY.point)
@@ -308,7 +314,7 @@ local function build(settings)
   for _, def in ipairs(LAYOUT) do
     addFrame(def.key, def.unit, def.w, def.h, def.label, def.point)
   end
-  addParty()
+  if not UF.RaidCoversParty() then addParty() end
   pollTargetOfTarget(UF.frames.targettarget)
   if settings.hideBlizzard then
     for _, name in ipairs(BLIZZARD_FRAMES) do hideBlizzard(name) end

@@ -126,16 +126,56 @@ const { chromium } = await loadPlaywright();
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
 
-// Scenes: the default layout, then the options window on two pages.
+// TEST-ONLY group layout: the stub has no secure header, so this makes the
+// buttons the header would (columns of five, one per group) and gives them units.
+const GROUP = `
+  UnitGroupRolesAssigned = function(unit) return (__units[unit] or {}).role or "NONE" end
+  UnitIsUnit = function(a, b) return __units[a] ~= nil and __units[a] == __units[b] end
+  RegisterAttributeDriver = function() end
+  function __group(units)
+    local s = ns.GetModule("RaidFrames").settings
+    for i, unit in ipairs(units) do
+      local b = CreateFrame("Button", "ForeverUI_RaidUnitButton" .. i, ForeverUI_Raid, "SecureUnitButtonTemplate")
+      b:SetSize(s.width, s.height)
+      ForeverUI_Raid.initialConfigFunction(ForeverUI_Raid, b:GetName())
+      local col, row = math.floor((i - 1) / 5), (i - 1) % 5
+      b:SetPoint("TOPLEFT", ForeverUI_Raid, "TOPLEFT", col * (s.width + s.spacing), -row * (s.height + s.spacing))
+      b:SetAttribute("unit", unit)
+    end
+  end
+`;
+
+// TEST-ONLY 20-player raid: four groups with a tank and a healer each, one dead, one offline.
+const RAID = `
+  local classes = { "WARRIOR", "PRIEST", "MAGE", "ROGUE", "HUNTER", "PALADIN", "DRUID", "SHAMAN", "WARLOCK", "MONK" }
+  RAID_CLASS_COLORS.WARRIOR = { r = 0.78, g = 0.61, b = 0.43 } RAID_CLASS_COLORS.HUNTER = { r = 0.67, g = 0.83, b = 0.45 }
+  RAID_CLASS_COLORS.PALADIN = { r = 0.96, g = 0.55, b = 0.73 } RAID_CLASS_COLORS.DRUID = { r = 1, g = 0.49, b = 0.04 }
+  RAID_CLASS_COLORS.SHAMAN = { r = 0, g = 0.44, b = 0.87 } RAID_CLASS_COLORS.WARLOCK = { r = 0.53, g = 0.53, b = 0.93 }
+  RAID_CLASS_COLORS.MONK = { r = 0, g = 1, b = 0.6 }
+  local units = {}
+  for i = 1, 20 do
+    local max = 40000 + (i * 1373) % 9000
+    __units["raid" .. i] = { name = "TEST-ONLY " .. i, hp = max * ((i * 37) % 100) / 100, maxhp = max, power = 0, maxpower = 0, ptype = "MANA",
+      player = true, class = classes[(i - 1) % #classes + 1], role = (i % 5 == 1) and "TANK" or (i % 5 == 2) and "HEALER" or "DAMAGER",
+      dead = i == 7, offline = i == 13 }
+    units[i] = "raid" .. i
+  end
+  UnitIsDeadOrGhost = function(unit) return (__units[unit] or {}).dead == true end
+  UnitIsConnected = function(unit) return not (__units[unit] or {}).offline end
+  __group(units)
+`;
+
+// Scenes: the default layout (party on the raid frames), a 20-player raid, then the options window.
 const SCENES = [
-  { name: "foreverui-default", caption: "ForeverUI defaults (blue accent)" },
+  { name: "foreverui-default", caption: "ForeverUI defaults (blue accent)", lua: '__group({ "player", "party1", "party2" })' },
+  { name: "foreverui-raid", caption: "Raid frames, 20 players (TEST-ONLY raid)", lua: RAID },
   { name: "foreverui-options", caption: "Options window: General (/fui)", lua: 'ns.Options.Show("general")' },
   { name: "foreverui-options-bars", caption: "Options window: Action bars", lua: 'ns.Options.Show("actionbars")' },
 ];
 
 for (const scene of SCENES) {
   const addon = createAddon();
-  addon.eval(UNITS + ACTIONS + WORLD + "GetSpecialization = function() return 1 end");
+  addon.eval(UNITS + ACTIONS + WORLD + GROUP + "GetSpecialization = function() return 1 end");
   addon.login();
   if (scene.lua) addon.eval(scene.lua);
   addon.update(0.25);
