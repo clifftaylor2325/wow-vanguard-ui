@@ -121,12 +121,21 @@ function anchoredRect(ctx, f) {
   return { left, top, width: w, height: h };
 }
 
+// A status bar's fill texture: the bar's rect cut to the value's share (from the left).
+function fillRect(ctx, f) {
+  const bar = ctx.byId.get(f.parent);
+  const r = rectOf(ctx, bar);
+  const range = (bar.max ?? 1) - (bar.min ?? 0);
+  const share = range > 0 ? Math.max(0, Math.min(1, ((bar.value ?? 0) - (bar.min ?? 0)) / range)) : 0;
+  return { left: r.left, top: r.top, width: r.width * share, height: r.height };
+}
+
 // A frame's screen rect, cached. nil and UIParent are the whole screen.
 function rectOf(ctx, f) {
   if (!f || f.name === "UIParent") return { left: 0, top: 0, width: ctx.screen.width, height: ctx.screen.height };
   if (ctx.rects.has(f.id)) return ctx.rects.get(f.id);
   ctx.rects.set(f.id, { left: 0, top: 0, width: 0, height: 0 }); // breaks anchor cycles
-  const r = anchoredRect(ctx, f);
+  const r = f.barFill ? fillRect(ctx, f) : anchoredRect(ctx, f);
   ctx.rects.set(f.id, r);
   return r;
 }
@@ -254,7 +263,7 @@ function draw(ctx, f) {
 // Hover highlights and unchecked "checked" textures only show in game on interaction.
 const drawable = (ctx, f) =>
   f.name !== "UIParent" && shown(ctx, f) && !(f.kind === "FontString" && !f.text) &&
-  f.layer !== "HIGHLIGHT" && !(f.checkedTexture && !ctx.byId.get(f.parent)?.checked);
+  f.layer !== "HIGHLIGHT" && !(f.checkedTexture && !ctx.byId.get(f.parent)?.checked) && !f.barFill;
 
 // Measures every font string, then draws every drawable widget. Returns the measured heights.
 window.wfgLayoutAndDraw = function layoutAndDraw({ frames, screen }) {
