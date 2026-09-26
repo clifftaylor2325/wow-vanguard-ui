@@ -86,6 +86,29 @@ const ACTIONS = `
   RegisterStateDriver = function() end
 `;
 
+// TEST-ONLY default tooltip: a plain frame with the tooltip calls the addon uses; lines stack down from the top.
+const TOOLTIP = `
+  __tipHooks = {}
+  hooksecurefunc = function(name, fn) __tipHooks[name] = fn end
+  GameTooltip_SetDefaultAnchor = function() end
+  Enum = { TooltipDataType = { Unit = 2 } }
+  TooltipDataProcessor = { AddTooltipPostCall = function(_, fn) __tipPost = fn end }
+  local tt = CreateFrame("Frame", "GameTooltip", UIParent)
+  tt:SetFrameStrata("TOOLTIP")
+  tt.NineSlice = CreateFrame("Frame", nil, tt)
+  tt.GetUnit = function(self) return "TEST-ONLY", self.unit end
+  tt.SetOwner = function() end
+  tt.lines = 0
+  tt.AddLine = function(self, text, r, g, b)
+    self.lines = self.lines + 1
+    local fs = self:CreateFontString("GameTooltipTextLeft" .. self.lines, "ARTWORK")
+    fs:SetFontObject(self.lines == 1 and "GameFontNormalLarge" or "GameFontNormal")
+    fs:SetText(text) fs:SetTextColor(r or 1, g or 1, b or 1) fs:SetPoint("TOPLEFT", 10, -10 - (self.lines - 1) * 18)
+    self:SetSize(200, 20 + self.lines * 18)
+  end
+  tt:Hide()
+`;
+
 // TEST-ONLY minimap, one chat window with a few lines, XP, a watched faction, one out-of-range
 // action, casts on you and your target, and auras on the target.
 const WORLD = `
@@ -212,6 +235,9 @@ const RAID = `
 const SCENES = [
   { name: "foreverui-default", caption: "ForeverUI defaults (blue accent)", lua: '__group({ "player", "party1", "party2" })' },
   { name: "foreverui-raid", caption: "Raid frames, 20 players: heals, shields, aggro, missing buffs, dispel borders, HoTs, raid icons, ready check, leader, range fade (TEST-ONLY raid)", lua: RAID },
+  { name: "foreverui-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
+    GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)
+    GameTooltip.unit = "target" __tipHooks.GameTooltip_SetDefaultAnchor(GameTooltip, UIParent) GameTooltip:Show() __tipPost(GameTooltip)` },
   { name: "foreverui-options", caption: "Options window: General (/fui)", lua: 'ns.Options.Show("general")' },
   { name: "foreverui-options-bars", caption: "Options window: Action bars", lua: 'ns.Options.Show("actionbars")' },
   { name: "foreverui-healing", caption: "Options window: Healing", lua: 'ns.Options.Show("healing")' },
@@ -224,7 +250,7 @@ const SCENES = [
 
 for (const scene of SCENES) {
   const addon = createAddon();
-  addon.eval(UNITS + ACTIONS + WORLD + GROUP + "GetSpecialization = function() return 1 end");
+  addon.eval(UNITS + ACTIONS + WORLD + TOOLTIP + GROUP + "GetSpecialization = function() return 1 end");
   addon.login();
   addon.fire("PLAYER_ENTERING_WORLD");
   // In game the client hides the vehicle exit until you can leave; the stub has no state drivers.

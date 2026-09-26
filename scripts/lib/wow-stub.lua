@@ -258,8 +258,15 @@ function methods:Show()
   if not was and onShow then onShow(self) end
 end
 
--- Hiding and the shown state.
-function methods:Hide() self.__shown = false end
+-- Hiding a shown widget runs its OnHide, as the client does.
+function methods:Hide()
+  local was = self.__shown
+  self.__shown = false
+  local onHide = self.__scripts.OnHide
+  if was and onHide then onHide(self) end
+end
+
+-- The shown state.
 function methods:IsShown() return self.__shown end
 function methods:IsVisible() return self.__shown end
 function methods:SetShown(shown) self.__shown = not not shown end

@@ -907,6 +907,59 @@ attempt("raid status marks", () => {
   assert(marks(addon, 1).leader === false, "each mark can be turned off");
 });
 
+// TEST-ONLY tooltip: GameTooltip as a plain frame with the tooltip calls the module uses.
+const TOOLTIP_ENV = `
+  __hooks, __post = {}, {}
+  hooksecurefunc = function(name, fn) __hooks[name] = fn end
+  GameTooltip_SetDefaultAnchor = function() end
+  Enum = { TooltipDataType = { Unit = 2 } }
+  TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) __post[kind] = fn end }
+  local tt = CreateFrame("Frame", "GameTooltip", UIParent)
+  tt.NineSlice = CreateFrame("Frame", nil, tt)
+  tt:CreateFontString("GameTooltipTextLeft1", "ARTWORK")
+  tt.__lines = {}
+  tt.GetUnit = function(self) return "TEST-ONLY", self.__unit end
+  tt.AddLine = function(self, text, r, g, b) self.__lines[#self.__lines + 1] = { text = text, r = r } end
+  tt.SetOwner = function(self, owner, anchor) self.__owner, self.__anchor = owner, anchor end
+  GameTooltipStatusBar = CreateFrame("StatusBar", "GameTooltipStatusBar", tt)
+  __units.targettarget = __units.player
+  function __showUnit(unit) tt.__unit, tt.__lines = unit, {} tt:Show() __post[2](tt) end
+`;
+
+// The default tooltip's state.
+const tooltip = (addon) => addon.eval(`local tt = GameTooltip
+  return { shown = tt:IsShown(), nine = tt.NineSlice.__alpha, name = GameTooltipTextLeft1.__textColor,
+    lines = tt.__lines, count = #tt.__lines, anchor = tt.__anchor, point = select(2, tt:GetPoint(1)) == ForeverUI_TooltipAnchor }`);
+
+attempt("tooltips", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV);
+  let t = tooltip(addon);
+  assert(t.nine === 0 && addon.eval("return GameTooltip.fuiSkinned") === true, "the default art is hidden under a flat panel");
+  assert(addon.eval("return GameTooltipStatusBar.__barTexture ~= nil"), "the health bar gets a flat texture");
+  addon.eval("__showUnit('target')");
+  t = tooltip(addon);
+  assert(t.name && t.name[0] === 0.78 && t.name[1] === 0.25, "the name line takes the unit's reaction color");
+  // The tooltip border's color (one of its edge textures).
+  const edge = () => addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.__parent == GameTooltip and w.__layer == "BORDER" then return w.__vertexColor end end');
+  assert(edge()[0] === 0.78, "and so does the border");
+  addon.eval("GameTooltip:Hide()");
+  assert(edge()[0] !== 0.78, "which goes back to the theme's when it hides");
+  assert(t.count === 1 && t.lines[0].text === "Target: <name>" && t.lines[0].r === 0.25, "a Target line in the target's class color");
+  addon.eval("__showUnit('target')");
+  addon.eval("__showUnit(nil)");
+  assert(tooltip(addon).count === 0, "tooltips without a unit are left alone");
+  addon.eval("__showUnit({ __secret = true })");
+  assert(tooltip(addon).count === 0, "a hidden unit is left alone");
+  addon.eval("__hooks.GameTooltip_SetDefaultAnchor(GameTooltip, UIParent)");
+  t = tooltip(addon);
+  assert(t.anchor === "ANCHOR_NONE" && t.point === true, "the default tooltip goes to the movable corner");
+  addon.eval('ForeverUIDB.profiles.Default.Tooltips.anchor = "cursor"; __hooks.GameTooltip_SetDefaultAnchor(GameTooltip, UIParent)');
+  assert(tooltip(addon).anchor === "ANCHOR_CURSOR", "or follows the cursor");
+  addon.eval("ForeverUIDB.profiles.Default.Tooltips.hideInCombat = true; __wfgStub.inCombat = true; __showUnit('target')");
+  assert(tooltip(addon).shown === false, "unit tooltips can hide in combat");
+  assert(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.tooltip") === true, "the tooltip corner is movable");
+});
+
 attempt("special bars", () => {
   const addon = createAddon();
   addon.eval(ACTIONS_ENV + `
@@ -998,6 +1051,7 @@ console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent pr
 console.log("  special  pet/stance/extra buttons restyled, vehicle exit button");
 console.log("  bars     secure buttons, bindings, hotkeys, paging snippet, usable, secrets, drag, events, combat wait");
 console.log("  status   range fade (hidden range safe), raid icons, ready check, resurrection, leader/assist");
+console.log("  tooltip  flat skin, class/reaction colors, target line, hidden units left alone, corner/cursor anchor, combat hide");
 console.log("  healing  calculator and fallback heal/shield bars, hidden values, aggro strip, buff watch by name, options");
 console.log("  auras    dispel border by type (hidden -> highlight), HoT icons, stacks, timers, combat filter");
 console.log("  clicks   click casting and hover keys: attributes, enter/leave snippets, remove, combat wait, per spec, options editor");

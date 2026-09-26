@@ -95,11 +95,12 @@ end
 
 -- Painting -------------------------------------------------------------------------
 
--- The border color for a painted entry: accent when asked for, else the theme border.
+-- The border color for a painted entry: a color set with T.SetBorder, the
+-- accent when asked for, else the theme border.
 local function borderColor(entry)
-  if entry.opts.accent then
-    return T.Accent()
-  end
+  local own = entry.opts.border
+  if own then return own[1], own[2], own[3], 1 end
+  if entry.opts.accent then return T.Accent() end
   local c = T.Settings().border
   return c[1], c[2], c[3], c[4]
 end
@@ -145,6 +146,14 @@ function T.Panel(frame, opts)
   local entry = base(frame, "panel", opts)
   repaint(entry)
   return frame
+end
+
+-- Sets a painted frame's border to { r, g, b }, or back to the theme's with nil.
+function T.SetBorder(frame, rgb)
+  local entry = painted[frame]
+  if not entry then return end
+  entry.opts.border = rgb
+  repaint(entry)
 end
 
 -- A flat button: inset panel, template art faded, a faint white hover.
