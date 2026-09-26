@@ -960,6 +960,71 @@ attempt("tooltips", () => {
   assert(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.tooltip") === true, "the tooltip corner is movable");
 });
 
+// TEST-ONLY nameplates: nameplate1 is the hostile target (hidden health), nameplate2 a friend,
+// nameplate3 a plate the client keeps from addons.
+const PLATE_ENV = `
+  __plates, __threat, __cast = {}, {}, {}
+  C_NamePlate = { GetNamePlateForUnit = function(unit) return __plates[unit] end }
+  UnitIsUnit = function(a, b) return __units[a] ~= nil and __units[a] == __units[b] end
+  UnitThreatSituation = function(_, unit) return __threat[unit] end
+  UnitCastingInfo = function(unit) if __cast[unit] then return "TEST-ONLY Spell", "", "TEST-ONLY-ICON", 1000, 3000, false, nil, false end end
+  C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
+    if unit == "nameplate1" and filter == "HARMFUL|PLAYER" and i == 1 then return { icon = "TEST-ONLY-DOT", expirationTime = 1010, duration = 12 } end
+  end }
+  local function plate(unit, forbidden)
+    local p = CreateFrame("Frame", nil, UIParent)
+    p.UnitFrame = CreateFrame("Frame", nil, p)
+    p.IsForbidden = function() return forbidden end
+    __plates[unit] = p
+  end
+  __units.nameplate1 = __units.target
+  __units.nameplate2 = __units.party1
+  __units.nameplate3 = __units.party1
+  plate("nameplate1") plate("nameplate2") plate("nameplate3", true)
+`;
+
+// One nameplate's state.
+const plate = (addon, unit) => addon.eval(`local p = __plates.${unit} local f = p.fui
+  if not f then return { drawn = false, default = p.UnitFrame:IsShown() } end
+  local edge for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "BORDER" then edge = w.__vertexColor break end end
+  return { drawn = f:IsShown(), default = p.UnitFrame:IsShown(), hp = f.__value, color = f.__barColor, name = f.name:GetText(),
+    dot = f.debuffs[1]:IsShown() and f.debuffs[1].icon.__texture, cast = f.cast:IsShown() and f.cast.text:GetText(), edge = edge }`);
+
+attempt("nameplates", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV);
+  const accent = addon.eval("return { ns.Theme.Accent() }");
+  // Whether two colors have the same r, g, b.
+  const same = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate3");
+  let one = plate(addon, "nameplate1");
+  assert(one.drawn && one.default === false, "our frame is drawn and the default one hidden");
+  assert(one.hp?.__secret, "hidden health goes to the bar untouched");
+  assert(one.color[0] === 0.78 && one.name === "TEST-ONLY Boar", "reaction color and name");
+  assert(one.dot === "TEST-ONLY-DOT", "your debuffs show over the name");
+  assert(same(one.edge, accent), "your target gets an accent border");
+  assert(plate(addon, "nameplate3").drawn === false && plate(addon, "nameplate3").default === true, "a plate kept from addons is left alone");
+  addon.eval("__plates.nameplate1.UnitFrame:Show()");
+  assert(plate(addon, "nameplate1").default === false, "the default frame stays hidden");
+  addon.eval("__threat.nameplate1 = 3");
+  addon.fire("UNIT_THREAT_LIST_UPDATE", "nameplate1");
+  assert(plate(addon, "nameplate1").color[0] === 1 && plate(addon, "nameplate1").color[1] === 0, "red while you have aggro");
+  addon.eval("__threat.nameplate1 = { __secret = true }");
+  addon.fire("UNIT_THREAT_LIST_UPDATE", "nameplate1");
+  assert(plate(addon, "nameplate1").color[0] === 0.78, "hidden threat: back to the reaction color");
+  addon.eval("__cast.nameplate1 = true");
+  addon.fire("UNIT_SPELLCAST_START", "nameplate1");
+  assert(plate(addon, "nameplate1").cast === "TEST-ONLY Spell", "casts show under the plate");
+  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate1");
+  assert(plate(addon, "nameplate1").drawn === false, "a removed plate is hidden until reused");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  const two = plate(addon, "nameplate2");
+  assert(two.drawn && two.color[0] === 1 && two.color[1] === 0.96, "after a reload, plates on screen are picked up (class color)");
+  assert(!same(two.edge, accent), "only your target has the accent border");
+  addon.eval('ns.Options.Show("nameplates")');
+  assert(addon.eval('return __click("Threat colors while you have aggro")') && addon.eval("return ForeverUIDB.profiles.Default.Nameplates.threat") === false, "the options page works");
+});
+
 attempt("special bars", () => {
   const addon = createAddon();
   addon.eval(ACTIONS_ENV + `
@@ -1052,6 +1117,7 @@ console.log("  special  pet/stance/extra buttons restyled, vehicle exit button")
 console.log("  bars     secure buttons, bindings, hotkeys, paging snippet, usable, secrets, drag, events, combat wait");
 console.log("  status   range fade (hidden range safe), raid icons, ready check, resurrection, leader/assist");
 console.log("  tooltip  flat skin, class/reaction colors, target line, hidden units left alone, corner/cursor anchor, combat hide");
+console.log("  plates   own frame on each plate, default hidden, forbidden left alone, colors/threat, debuffs, casts, target border, reload");
 console.log("  healing  calculator and fallback heal/shield bars, hidden values, aggro strip, buff watch by name, options");
 console.log("  auras    dispel border by type (hidden -> highlight), HoT icons, stacks, timers, combat filter");
 console.log("  clicks   click casting and hover keys: attributes, enter/leave snippets, remove, combat wait, per spec, options editor");

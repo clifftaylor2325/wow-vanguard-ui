@@ -42,5 +42,6 @@ Modules/Chat.lua
 Modules/Bags.lua
 Modules/DataBars.lua
 Modules/Tooltips.lua
+Modules/Nameplates.lua
 Modules/ClickCast.lua
 Modules/ClickCastOptions.lua
