@@ -78,7 +78,7 @@ function RF.UpdateAll()
 end
 
 -- True when the button shows this unit (by token, or the same player under another token).
-local function shows(b, unit)
+function RF.Shows(b, unit)
   local own = b:GetAttribute("unit")
   if own == unit then return true end
   local same = own and type(UnitIsUnit) == "function" and UnitIsUnit(own, unit)
@@ -88,7 +88,7 @@ end
 -- A unit event: refresh the buttons showing that unit.
 local function onUnitEvent(_, unit)
   for _, b in ipairs(RF.buttons) do
-    if b:IsShown() and shows(b, unit) then RF.Update(b) end
+    if b:IsShown() and RF.Shows(b, unit) then RF.Update(b) end
   end
 end
 

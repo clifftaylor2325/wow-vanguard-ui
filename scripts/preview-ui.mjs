@@ -146,7 +146,8 @@ const GROUP = `
 `;
 
 // TEST-ONLY 20-player raid: four groups with a tank and a healer each, one dead, one offline,
-// three dispellable debuffs (Magic, Poison, Curse) and some of your HoTs.
+// three dispellable debuffs (Magic, Poison, Curse), some of your HoTs, incoming heals,
+// shields, aggro on the tanks, and four players missing your buff.
 const RAID = `
   local classes = { "WARRIOR", "PRIEST", "MAGE", "ROGUE", "HUNTER", "PALADIN", "DRUID", "SHAMAN", "WARLOCK", "MONK" }
   RAID_CLASS_COLORS.WARRIOR = { r = 0.78, g = 0.61, b = 0.43 } RAID_CLASS_COLORS.HUNTER = { r = 0.67, g = 0.83, b = 0.45 }
@@ -169,15 +170,31 @@ const RAID = `
     if filter == "HARMFUL|RAID" then return i == 1 and debuffs[unit] and { dispelName = debuffs[unit] } or nil end
     if i <= (hots[unit] or 0) then return { icon = "TEST-ONLY-HOT", expirationTime = 0, duration = 0 } end
   end }
+  local heals, shields = { raid2 = 9000, raid5 = 12000, raid12 = 6000 }, { raid1 = 8000, raid6 = 5000, raid11 = 7000 }
+  CreateUnitHealPredictionCalculator = function()
+    local c = {}
+    function c:SetIncomingHealClampMode() end
+    function c:SetIncomingHealOverflowPercent() end
+    function c:GetMaximumHealth() return __units[self.unit].maxhp end
+    function c:GetIncomingHeals() return heals[self.unit] or 0 end
+    function c:GetTotalDamageAbsorbs() return shields[self.unit] or 0 end
+    return c
+  end
+  UnitGetDetailedHealPrediction = function(unit, _, c) c.unit = unit end
+  UnitThreatSituation = function(unit) return ({ raid1 = 3, raid6 = 2, raid11 = 1 })[unit] or 0 end
+  C_Spell = { GetSpellInfo = function() return {} end, GetSpellTexture = function() return "TEST-ONLY-BUFF" end }
+  local missing = { raid3 = true, raid8 = true, raid14 = true, raid19 = true }
+  C_UnitAuras.GetAuraDataBySpellName = function(unit) if not missing[unit] then return {} end end
   __group(units)
 `;
 
 // Scenes: the default layout (party on the raid frames), a 20-player raid, then the options window.
 const SCENES = [
   { name: "foreverui-default", caption: "ForeverUI defaults (blue accent)", lua: '__group({ "player", "party1", "party2" })' },
-  { name: "foreverui-raid", caption: "Raid frames, 20 players, with dispel borders and HoT icons (TEST-ONLY raid)", lua: RAID },
+  { name: "foreverui-raid", caption: "Raid frames, 20 players: heals, shields, aggro, missing buffs, dispel borders, HoTs (TEST-ONLY raid)", lua: RAID },
   { name: "foreverui-options", caption: "Options window: General (/fui)", lua: 'ns.Options.Show("general")' },
   { name: "foreverui-options-bars", caption: "Options window: Action bars", lua: 'ns.Options.Show("actionbars")' },
+  { name: "foreverui-healing", caption: "Options window: Healing", lua: 'ns.Options.Show("healing")' },
   { name: "foreverui-clickcast", caption: "Options window: Click casting (TEST-ONLY bindings)", lua: `
     local CC = ns.GetModule("ClickCast")
     CC.Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew") CC.Add("shift-BUTTON1", "spell", "TEST-ONLY Shield")

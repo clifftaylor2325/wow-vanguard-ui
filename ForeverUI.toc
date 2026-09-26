@@ -30,6 +30,7 @@ Core/Slash.lua
 Modules/UnitFrames.lua
 Modules/RaidFrames.lua
 Modules/RaidAuras.lua
+Modules/RaidHealing.lua
 Modules/ActionBars.lua
 Modules/Minimap.lua
 Modules/Chat.lua

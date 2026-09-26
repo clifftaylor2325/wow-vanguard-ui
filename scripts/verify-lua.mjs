@@ -797,6 +797,68 @@ attempt("raid indicators", () => {
   assert(indicators(addon).dispel === false, "the border goes when the debuff does");
 });
 
+// TEST-ONLY healing data: a prediction calculator, threat, known spells and buffs.
+const HEALING_ENV = `
+  __pred = { raid1 = { max = 1000, heals = 200, shields = 150 }, raid2 = { max = 900, heals = { __secret = true }, shields = 0 }, raid3 = { max = 800, heals = 0, shields = 0 } }
+  CreateUnitHealPredictionCalculator = function()
+    local c = {}
+    function c:SetIncomingHealClampMode(m) self.clamp = m end
+    function c:SetIncomingHealOverflowPercent() end
+    function c:GetMaximumHealth() return __pred[self.unit].max end
+    function c:GetIncomingHeals() return __pred[self.unit].heals end
+    function c:GetTotalDamageAbsorbs() return __pred[self.unit].shields end
+    __calc = c
+    return c
+  end
+  UnitGetDetailedHealPrediction = function(unit, _, c) c.unit = unit end
+  __threat = { raid1 = 3, raid2 = { __secret = true } }
+  UnitThreatSituation = function(unit) return __threat[unit] end
+  __known = { ["Arcane Brilliance"] = true, ["Arcane Intellect"] = true }
+  C_Spell = { GetSpellInfo = function(name) return __known[name] and {} or nil end, GetSpellTexture = function(name) return "TEST-ONLY-ICON-" .. name end }
+  __buffs = { raid2 = { ["Arcane Brilliance"] = true } }
+  C_UnitAuras = { GetAuraDataBySpellName = function(unit, name) return (__buffs[unit] or {})[name] and {} or nil end }
+`;
+
+// Raid button i's healer extras.
+const healing = (addon, i) => addon.eval(`local b = ForeverUI_RaidUnitButton${i}
+  return { heal = b.heal:IsShown() and b.heal.__value, healMax = b.heal.__max, shield = b.shield.__value,
+    threat = b.threat:IsShown() and b.threat.__vertexColor, missing = b.missing:IsShown() and b.missing.__texture }`);
+
+attempt("heal prediction, aggro, buff watch", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV);
+  addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
+  const one = healing(addon, 1);
+  assert(one.heal === 200 && one.healMax === 1000 && one.shield === 150, "incoming heals and shields from the client's calculator");
+  assert(addon.eval("return __calc.clamp") === 0, "incoming heals are clamped to missing health");
+  assert(healing(addon, 2).heal?.__secret, "hidden incoming heals go to the bar untouched");
+  assert(one.threat && one.threat[0] === 1 && one.threat[1] === 0, "full aggro shows a red strip");
+  assert(healing(addon, 2).threat === false, "hidden threat shows no strip");
+  assert(one.missing === "TEST-ONLY-ICON-Arcane Intellect", "a player missing your buff is marked with its icon");
+  assert(healing(addon, 2).missing === false, "the group version of the buff counts");
+  assert(healing(addon, 3).missing === false, "offline players aren't marked");
+  addon.eval("__buffs.raid1 = { ['Arcane Intellect'] = true }");
+  addon.fire("UNIT_AURA", "raid1");
+  assert(healing(addon, 1).missing === false, "the mark goes once they have it");
+  addon.eval("__threat.raid1 = 0");
+  addon.fire("UNIT_THREAT_SITUATION_UPDATE", "raid1");
+  assert(healing(addon, 1).threat === false, "the strip goes with the aggro");
+  addon.eval("__pred.raid1.heals = 50");
+  addon.fire("UNIT_HEAL_PREDICTION", "raid1");
+  assert(healing(addon, 1).heal === 50, "UNIT_HEAL_PREDICTION refreshes the heal bar");
+});
+
+attempt("healing fallbacks and options", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV + `CreateUnitHealPredictionCalculator = nil
+    UnitGetIncomingHeals = function() return 120 end`);
+  addon.eval('__spawn(1, "raid1")');
+  assert(healing(addon, 1).heal === 120 && healing(addon, 1).shield == null, "without the calculator: the older incoming-heals call; no shields");
+  addon.eval('ns.Options.Show("healing")');
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.save and w.input then w.input:SetText("TEST-ONLY Aura, Arcane Brilliance") w.save:GetScript("OnClick")(w.save) end end`);
+  assert(addon.eval("return ForeverUIDB.profiles.Default.RaidHealing.buffs") === "TEST-ONLY Aura, Arcane Brilliance", "the buff list saves");
+  assert(healing(addon, 1).missing === "TEST-ONLY-ICON-Arcane Brilliance", "and the frames watch the saved names");
+  assert(addon.eval('return __click("Aggro strip")') && addon.eval("return ForeverUIDB.profiles.Default.RaidHealing.aggro") === false, "the page's switches work");
+});
+
 console.log("ForeverUI — Lua harness (fengari)");
 console.log("  core     saved variables, profiles, modules, combat queue");
 console.log("  theme    panels, widgets, live accent, reset");
@@ -804,6 +866,7 @@ console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-a
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");
 console.log("  bars     secure buttons, bindings, hotkeys, paging snippet, usable, secrets, drag, events, combat wait");
+console.log("  healing  calculator and fallback heal/shield bars, hidden values, aggro strip, buff watch by name, options");
 console.log("  auras    dispel border by type (hidden -> highlight), HoT icons, stacks, timers, combat filter");
 console.log("  clicks   click casting and hover keys: attributes, enter/leave snippets, remove, combat wait, per spec, options editor");
 console.log("  raid     secure header, precreated buttons, health/name/role/offline, events, party coverage, default frames hidden");

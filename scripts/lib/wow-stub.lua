@@ -187,6 +187,15 @@ function methods:GetZoomLevels() return self.__zoomLevels or 6 end
 function methods:GetLeft() return self.__left end
 function methods:GetBottom() return self.__bottom end
 
+-- The status bar's fill texture: made on first SetStatusBarTexture, returned after.
+function methods:SetStatusBarTexture(t)
+  self.__barTexture = self.__barTexture or newWidget("Texture", nil, self, nil, "ARTWORK")
+  self.__barTexture:SetTexture(t)
+end
+
+-- The fill texture, if set.
+function methods:GetStatusBarTexture() return self.__barTexture end
+
 -- Status bars: range, value and color, recorded as given (secrets included).
 function methods:SetMinMaxValues(lo, hi) self.__min, self.__max = lo, hi end
 function methods:GetMinMaxValues() return self.__min or 0, self.__max or 0 end
