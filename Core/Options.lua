@@ -218,6 +218,11 @@ local function raidPageRows()
   return append(raidRows(), {
     check("Highlight debuffs you can dispel", setting("RaidAuras", "dispel")),
     check("Show your HoTs", setting("RaidAuras", "hots")),
+    check("Fade players out of range", setting("RaidStatus", "rangeFade")),
+    check("Raid target icons", setting("RaidStatus", "raidIcons")),
+    check("Ready check answers", setting("RaidStatus", "readyCheck")),
+    check("Mark players being resurrected", setting("RaidStatus", "resurrect")),
+    check("Leader and assistant marks", setting("RaidStatus", "leader")),
   })
 end
 

@@ -859,6 +859,54 @@ attempt("healing fallbacks and options", () => {
   assert(addon.eval('return __click("Aggro strip")') && addon.eval("return ForeverUIDB.profiles.Default.RaidHealing.aggro") === false, "the page's switches work");
 });
 
+// TEST-ONLY group status: raid icons, ready check, resurrection, leader, range.
+const STATUS_ENV = `
+  __status = { icon = { raid1 = 8 }, ready = {}, rez = {}, range = { raid1 = true, raid3 = false } }
+  GetRaidTargetIndex = function(unit) return __status.icon[unit] end
+  GetReadyCheckStatus = function(unit) return __status.ready[unit] end
+  UnitHasIncomingResurrection = function(unit) return __status.rez[unit] == true end
+  UnitIsGroupLeader = function(unit) return unit == "raid1" end
+  UnitIsGroupAssistant = function(unit) return unit == "raid3" end
+  UnitInRange = function(unit) return __status.range[unit], true end
+`;
+
+// Raid button i's status marks.
+const marks = (addon, i) => addon.eval(`local b = ForeverUI_RaidUnitButton${i}
+  local function tex(t) return t:IsShown() and t.__texture end
+  return { icon = b.raidIcon:IsShown() and b.raidIcon.__texCoord, ready = tex(b.ready), rez = b.rez:IsShown(), leader = tex(b.leader), alpha = b.__alpha }`);
+
+attempt("raid status marks", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + STATUS_ENV);
+  addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
+  const one = marks(addon, 1);
+  assert(one.icon && one.icon[0] === 0.75 && one.icon[2] === 0.25, "the skull shows from the icon sheet's eighth cell");
+  assert(one.leader === "Interface\\GroupFrame\\UI-Group-LeaderIcon" && /Assistant/.test(marks(addon, 3).leader), "leader crown and assistant mark");
+  assert(marks(addon, 2).leader === false && marks(addon, 2).icon === false, "others get neither");
+  assert(one.alpha === 1 && marks(addon, 3).alpha === 0.4 && marks(addon, 2).alpha === 1, "out of range fades; you never fade");
+  addon.eval("__status.range.raid3 = true");
+  addon.eval("__wfgStub.advance(0.25)");
+  assert(marks(addon, 3).alpha === 1, "range is re-checked on a timer");
+  addon.eval("__status.range.raid3 = { __secret = true }");
+  addon.eval("__wfgStub.advance(0.25)");
+  assert(marks(addon, 3).alpha === 1, "a hidden range never fades on a client without alpha-from-boolean");
+  addon.eval('__status.ready = { raid1 = "ready", raid3 = "waiting" }');
+  addon.fire("READY_CHECK");
+  assert(/ReadyCheck-Ready/.test(marks(addon, 1).ready) && /Waiting/.test(marks(addon, 3).ready), "ready check answers show");
+  addon.eval('__status.ready.raid3 = "notready"');
+  addon.fire("READY_CHECK_CONFIRM", "raid3");
+  assert(/NotReady/.test(marks(addon, 3).ready), "answers update");
+  addon.fire("READY_CHECK_FINISHED");
+  assert(marks(addon, 1).ready === false, "and clear when the check ends (no timer on this client)");
+  addon.eval("__status.rez.raid3 = true");
+  addon.fire("INCOMING_RESURRECT_CHANGED", "raid3");
+  assert(marks(addon, 3).rez === true && marks(addon, 1).rez === false, "a resurrection on the way is marked");
+  addon.eval("__status.icon.raid1 = { __secret = true }");
+  addon.fire("RAID_TARGET_UPDATE");
+  assert(marks(addon, 1).icon === false, "a hidden raid icon shows nothing");
+  addon.eval('ForeverUIDB.profiles.Default.RaidStatus.leader = false; ns.GetModule("RaidStatus").UpdateAll()');
+  assert(marks(addon, 1).leader === false, "each mark can be turned off");
+});
+
 attempt("special bars", () => {
   const addon = createAddon();
   addon.eval(ACTIONS_ENV + `
@@ -949,6 +997,7 @@ console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");
 console.log("  special  pet/stance/extra buttons restyled, vehicle exit button");
 console.log("  bars     secure buttons, bindings, hotkeys, paging snippet, usable, secrets, drag, events, combat wait");
+console.log("  status   range fade (hidden range safe), raid icons, ready check, resurrection, leader/assist");
 console.log("  healing  calculator and fallback heal/shield bars, hidden values, aggro strip, buff watch by name, options");
 console.log("  auras    dispel border by type (hidden -> highlight), HoT icons, stacks, timers, combat filter");
 console.log("  clicks   click casting and hover keys: attributes, enter/leave snippets, remove, combat wait, per spec, options editor");

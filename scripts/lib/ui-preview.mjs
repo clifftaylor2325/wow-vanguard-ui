@@ -24,7 +24,7 @@ for i, w in ipairs(__wfgStub.frames) do
     text = w.__text, textColor = w.__textColor, justifyH = w.__justifyH,
     backdrop = w.__backdrop and true or false, backdropColor = w.__backdropColor,
     borderColor = w.__borderColor, texture = w.__texture, color = w.__color,
-    vertexColor = w.__vertexColor, alpha = w.__alpha, rotation = w.__rotation,
+    vertexColor = w.__vertexColor, alpha = w.__alpha, rotation = w.__rotation, texCoord = w.__texCoord,
     strata = w.__strata, scrollChild = ref(w.__scrollChild),
     fontSize = w.__font and w.__font[2], value = w.__value, min = w.__min, max = w.__max,
     barColor = w.__barColor, messages = w.__messages, checked = w.__checked,
@@ -62,6 +62,7 @@ const PAGE_CSS = `
   .arrow{--arrow:#3cd65a;background:var(--arrow);clip-path:polygon(50% 4%,88% 88%,50% 70%,12% 88%);
     filter:drop-shadow(0 0 2px #000)}
   .tex{outline:1px dashed rgba(255,255,255,.35)}
+  .glyph{display:flex;align-items:center;justify-content:center;font-weight:bold;text-shadow:0 0 2px #000,0 0 2px #000}
   .map{background:radial-gradient(circle at 45% 40%,#4d6b3c 0%,#35502c 35%,#2a3f28 60%,#223322 100%)}
   .map::after{content:"";position:absolute;left:50%;top:50%;width:0;height:0;margin:-7px 0 0 -5px;
     border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:12px solid #f5f5f5}
