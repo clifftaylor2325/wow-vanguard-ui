@@ -171,6 +171,11 @@ const SCENES = [
   { name: "foreverui-raid", caption: "Raid frames, 20 players (TEST-ONLY raid)", lua: RAID },
   { name: "foreverui-options", caption: "Options window: General (/fui)", lua: 'ns.Options.Show("general")' },
   { name: "foreverui-options-bars", caption: "Options window: Action bars", lua: 'ns.Options.Show("actionbars")' },
+  { name: "foreverui-clickcast", caption: "Options window: Click casting (TEST-ONLY bindings)", lua: `
+    local CC = ns.GetModule("ClickCast")
+    CC.Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew") CC.Add("shift-BUTTON1", "spell", "TEST-ONLY Shield")
+    CC.Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") CC.Add("MOUSEWHEELUP", "macro", "/cast [@mouseover] TEST-ONLY Heal")
+    ns.Options.Show("clickcast")` },
 ];
 
 for (const scene of SCENES) {

@@ -20,6 +20,7 @@ local HELP = {
   "export [module]      copy the profile (or one module's settings) as a string",
   "import               paste a string from /fui export",
   "spec [profile|off]   use a profile whenever you're in this specialization",
+  "binds                this spec's click-casting and hover-key bindings (set them in /fui > Click casting)",
   "status               version, profile, modules, skins, work waiting on combat",
 }
 
@@ -215,6 +216,16 @@ end
 
 ns.ImportDialog = importCommand
 
+-- /fui binds: this spec's click-casting bindings, one per line.
+local function bindsCommand()
+  local CC = ns.GetModule("ClickCast")
+  local list = CC and CC.Bindings() or {}
+  chat(#list == 0 and "No click-casting bindings for this spec. /fui > Click casting to add some." or "Click casting (this spec):")
+  for _, b in ipairs(list) do
+    chat("  " .. CC.KeyText(b.key) .. "  ->  " .. CC.ActionText(b))
+  end
+end
+
 -- /fui spec [profile|off]
 local function specCommand(rest)
   local spec = ns.SpecIndex()
@@ -267,6 +278,7 @@ local COMMANDS = {
   export = exportCommand,
   import = importCommand,
   spec = specCommand,
+  binds = bindsCommand,
   status = statusCommand,
 }
 

@@ -310,6 +310,17 @@ function CreateFrame(kind, name, parent, template)
   return w
 end
 
+-- Secure script wrappers (FrameXML): recorded per frame and script, never run.
+function SecureHandlerWrapScript(frame, script, _, preBody)
+  frame.__wraps = frame.__wraps or {}
+  frame.__wraps[script] = preBody
+end
+
+-- Removes a recorded wrapper.
+function SecureHandlerUnwrapScript(frame, script)
+  if frame.__wraps then frame.__wraps[script] = nil end
+end
+
 UIParent = newWidget("Frame", "UIParent")
 SlashCmdList = {}
 DEFAULT_CHAT_FRAME = {

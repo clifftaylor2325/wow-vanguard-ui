@@ -9,7 +9,7 @@ local T, W = ns.Theme, ns.Widgets
 local O = {}
 ns.Options = O
 
-local WIDTH, HEIGHT, NAV_WIDTH = 700, 500, 160
+local WIDTH, HEIGHT, NAV_WIDTH = 700, 560, 160
 local ROW_HEIGHT = { header = 30, check = 26, button = 32, cycle = 32, swatches = 38, text = 20 }
 
 local window
@@ -220,6 +220,17 @@ local BUILDERS = {
   cycle = function(c, r) return W.Cycle(c, r[2], r[3], r[4], r[5]) end,
   swatches = function(c) return swatches(c) end,
 }
+
+-- Adds a page from another file (e.g. a module's own options), shown in the nav.
+function O.AddPage(page)
+  PAGES[#PAGES + 1] = page
+end
+
+-- Adds a row kind: builder(content, row) returns the widget; height is its row height.
+function O.AddRowKind(kind, builder, height)
+  BUILDERS[kind] = builder
+  ROW_HEIGHT[kind] = height
+end
 
 -- Builds rows top to bottom on content.
 local function placeRows(content, rows)
