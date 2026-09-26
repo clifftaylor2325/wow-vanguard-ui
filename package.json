@@ -1,0 +1,16 @@
+{
+  "name": "wow-forever-ui",
+  "private": true,
+  "type": "module",
+  "description": "ForeverUI: a from-scratch UI suite for WoW Forever.",
+  "scripts": {
+    "verify": "node scripts/verify-lua.mjs && node scripts/verify-code-quality.mjs",
+    "quality": "node scripts/check-code-quality.mjs",
+    "lint": "luacheck .",
+    "package": "node scripts/package.mjs"
+  },
+  "devDependencies": {
+    "acorn": "^8.18.0",
+    "fengari": "^0.1.5"
+  }
+}

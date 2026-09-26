@@ -1,0 +1,23 @@
+## Interface: 120007
+## Title: ForeverUI
+## Notes: A from-scratch UI suite for WoW Forever: theme, movers, unit frames, action bars, minimap, chat, bags.
+## Author: clifftaylor2325
+## Version: 0.1.0
+## SavedVariables: ForeverUIDB
+## SavedVariablesPerCharacter: ForeverUICharDB
+## DefaultState: enabled
+## IconTexture: Interface/Icons/INV_Misc_EngGizmos_20
+## X-Flavor: forever
+## X-License: MIT
+## X-Website: https://github.com/clifftaylor2325/wow-forever-ui
+
+Core/Events.lua
+Core/DB.lua
+Core/Combat.lua
+Core/Modules.lua
+Core/Theme.lua
+Core/Skin.lua
+Core/Layout.lua
+Core/Grid.lua
+Core/Movers.lua
+Core/Slash.lua
