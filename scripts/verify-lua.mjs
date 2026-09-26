@@ -151,6 +151,65 @@ attempt("movers", () => {
   assert(chatHas(addon, /Not in combat/), "unlock is refused in combat");
 });
 
+attempt("layout", () => {
+  const addon = loggedIn();
+  // ns.Layout.Anchor on a 1920x1080 screen.
+  const anchor = (l, b, w, h) => addon.eval(`return { ns.Layout.Anchor(${l}, ${b}, ${w}, ${h}, 1920, 1080) }`);
+  assert(JSON.stringify(anchor(20, 900, 200, 40)) === JSON.stringify(["TOPLEFT", 20, -140]), "top-left third anchors TOPLEFT with edge offsets");
+  assert(JSON.stringify(anchor(1700, 20, 200, 40)) === JSON.stringify(["BOTTOMRIGHT", -20, 20]), "bottom-right third anchors BOTTOMRIGHT");
+  assert(JSON.stringify(anchor(860, 520, 200, 40)) === JSON.stringify(["CENTER", 0, 0]), "the middle anchors CENTER");
+  assert(JSON.stringify(anchor(860, 20, 200, 40)) === JSON.stringify(["BOTTOM", 0, 20]), "bottom middle anchors BOTTOM");
+  // ns.Layout.Snap of a 100x20 rect next to one at (500, 300).
+  const snap = (l, b) => addon.eval(`return { ns.Layout.Snap(${l}, ${b}, 100, 20, { { left = 500, bottom = 300, w = 100, h = 20 } }, 1920, 1080) }`);
+  assert(JSON.stringify(snap(605, 250)) === JSON.stringify([600, 250]), "a left edge within 8 px snaps to another frame's right edge");
+  assert(JSON.stringify(snap(700, 250)) === JSON.stringify([700, 250]), "nothing close, no snap");
+  assert(JSON.stringify(snap(1000, 527)) === JSON.stringify([1000, 530]), "a center within 8 px snaps to the screen center");
+});
+
+attempt("unlock mode", () => {
+  const addon = loggedIn(`
+    UIParent:SetSize(1920, 1080)
+    __a = CreateFrame("Frame", nil, UIParent); __a:SetSize(100, 20)
+    __b = CreateFrame("Frame", nil, UIParent); __b:SetSize(100, 20)
+    ns.Mover(__a, "a", "A", { "CENTER", "CENTER", 0, 0 })
+    ns.Mover(__b, "b", "B", { "CENTER", "CENTER", 0, -100 })
+  `);
+  addon.slash("unlock");
+  assert(addon.eval("return ns.GridLineCount()") === 94, "unlock shows a 32 px grid (61 + 33 lines on 1920x1080)");
+  // Drops handle `key` with its bottom-left at (left, bottom).
+  const drop = (key, left, bottom) =>
+    addon.eval(`local h = ns.MoverHandleForTest("${key}"); h.__left, h.__bottom = ${left}, ${bottom}; h:GetScript("OnDragStop")(h)`);
+  addon.eval(`function ns.MoverHandleForTest(k) for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == k then return w end end end`);
+  addon.eval(`local h = ns.MoverHandleForTest("b"); h.__left, h.__bottom = 500, 300`);
+  drop("a", 603, 900);
+  // Mover a's saved [point, x, y].
+  const saved = () => addon.eval("local p = ForeverUIDB.profiles.Default.positions.a; return { p.point, p.x, p.y }");
+  assert(JSON.stringify(saved()) === JSON.stringify(["TOP", -310, -160]), `a drop snaps to the other handle and anchors to the nearest edge (got ${JSON.stringify(saved())})`);
+  addon.eval(`local h = ns.MoverHandleForTest("a"); h:GetScript("OnMouseDown")(h)`);
+  addon.eval(`local h = ns.MoverHandleForTest("a"); h:GetScript("OnKeyDown")(h, "LEFT")`);
+  assert(JSON.stringify(saved()) === JSON.stringify(["TOP", -311, -160]), "the arrow keys nudge the selected handle 1 px");
+  addon.eval(`IsShiftKeyDown = function() return true end; local h = ns.MoverHandleForTest("a"); h:GetScript("OnKeyDown")(h, "UP")`);
+  assert(JSON.stringify(saved()) === JSON.stringify(["TOP", -311, -150]), "Shift nudges 10 px");
+  assert(/TOP -311, -150/.test(addon.eval(`return ns.MoverHandleForTest("a").label:GetText()`)), "the selected handle shows its point and offsets");
+  addon.slash("grid 64");
+  assert(addon.eval("return ns.GridLineCount()") === 48, "/fui grid 64 redraws the grid (31 + 17)");
+  addon.slash("grid off");
+  assert(addon.eval("return ns.GridLineCount()") === 0, "/fui grid off hides it");
+  addon.slash("snap off");
+  drop("a", 603, 900);
+  assert(saved()[0] === "TOP" && saved()[1] === -307, `with snapping off, the drop stays where it was (got ${JSON.stringify(saved())})`);
+  addon.slash("lock");
+  assert(addon.eval(`return ns.MoverHandleForTest("a"):IsShown()`) === false, "/fui lock hides the handles");
+});
+
+attempt("accent presets", () => {
+  const addon = loggedIn();
+  addon.slash("accent bronze");
+  assert(addon.eval("return select(1, ns.Theme.Accent())") === 0.8, "/fui accent bronze sets the bronze preset");
+  addon.slash("accent #3D9EFF");
+  assert(Math.abs(addon.eval("return select(3, ns.Theme.Accent())") - 1) < 1e-9, "hex accents still work");
+});
+
 attempt("slash", () => {
   const addon = loggedIn();
   addon.slash("help");
@@ -169,6 +228,7 @@ console.log("  core     saved variables, profiles, modules, combat queue");
 console.log("  theme    panels, widgets, live accent, reset");
 console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-addon off");
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
+console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");
 if (failures.length) {
   console.error(`FAILED (${failures.length})`);
   for (const f of failures) console.error(` - ${f}`);

@@ -17,5 +17,7 @@ Core/Combat.lua
 Core/Modules.lua
 Core/Theme.lua
 Core/Skin.lua
+Core/Layout.lua
+Core/Grid.lua
 Core/Movers.lua
 Core/Slash.lua

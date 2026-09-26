@@ -143,6 +143,10 @@ function methods:GetPoint(i)
   end
 end
 
+-- Screen edges: only what a test sets (__left, __bottom); nil like an unlaid-out frame.
+function methods:GetLeft() return self.__left end
+function methods:GetBottom() return self.__bottom end
+
 -- Strata and scroll child.
 function methods:SetFrameStrata(s) self.__strata = s end
 function methods:SetScrollChild(child) self.__scrollChild = child end

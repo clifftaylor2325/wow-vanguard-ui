@@ -1,13 +1,25 @@
 -- Movers: every ForeverUI frame that can be placed registers here. /fui
--- unlock shows a labeled handle over each; drag one and the frame follows
--- (protected frames after combat). Positions are saved per profile.
+-- unlock shows a labeled handle over each, plus a grid. Drag a handle and
+-- it snaps to nearby frame edges and the screen center; click one and the
+-- arrow keys nudge it (Shift: 10 px). Positions are saved per profile
+-- against the nearest screen edge, so they hold across resolutions.
 
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.Layout
+
+local DEFAULTS = { grid = true, gridSize = 32, snap = true }
+local NUDGE = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 0 } }
 
 local movers, order = {}, {}
 local unlocked = false
+local selected
+
+-- Unlock-mode options (grid, gridSize, snap) in the active profile.
+function ns.MoverOptions()
+  return ns.Settings("movers", DEFAULTS)
+end
 
 -- Saved positions in the active profile: key -> { point, relPoint, x, y }.
 local function saved()
@@ -46,46 +58,134 @@ function ns.Mover(frame, key, label, default)
   return m
 end
 
--- Handles ------------------------------------------------------------------------
+-- Saving ------------------------------------------------------------------------------
 
--- Saves where a handle was dropped and moves its frame there.
-local function onDragStop(handle)
-  handle:StopMovingOrSizing()
-  local point, _, relPoint, x, y = handle:GetPoint(1)
-  if point then
-    saved()[handle.mover.key] = { point = point, relPoint = relPoint, x = x, y = y }
-    place(handle.mover)
+-- Saves a position for a mover, moves its frame, and keeps its handle on it.
+local function savePosition(m, point, relPoint, x, y)
+  saved()[m.key] = { point = point, relPoint = relPoint, x = x, y = y }
+  place(m)
+  if m.handle then
+    anchor(m.handle, m)
+    ns.ShowCoords(m)
   end
 end
 
--- Builds the draggable handle for a mover: accent-bordered panel with its label.
-local function createHandle(m)
-  local h = CreateFrame("Frame", nil, UIParent)
-  h.mover = m
-  h:SetFrameStrata("DIALOG")
+-- A frame's rect as { left, bottom, w, h } in its own scale, or nil if the
+-- client can't say (not laid out yet).
+local function rectOf(f)
+  local left, bottom = f:GetLeft(), f:GetBottom()
+  if not left or not bottom then
+    return nil
+  end
+  return { left = left, bottom = bottom, w = f:GetWidth() or 0, h = f:GetHeight() or 0 }
+end
+
+-- Rects of every other showing handle, for snapping.
+local function otherRects(m)
+  local out = {}
+  for _, other in pairs(movers) do
+    local r = other ~= m and other.handle and other.handle:IsShown() and rectOf(other.handle)
+    if r then out[#out + 1] = r end
+  end
+  return out
+end
+
+-- The screen size in a handle's scale.
+local function screenSize(h)
+  local s = h:GetScale() or 1
+  return (UIParent:GetWidth() or 0) / s, (UIParent:GetHeight() or 0) / s
+end
+
+-- Where a dropped handle goes: snapped (if on), anchored to the nearest edge.
+local function dropPosition(h, r)
+  local sw, sh = screenSize(h)
+  local left, bottom = r.left, r.bottom
+  if ns.MoverOptions().snap then
+    left, bottom = L.Snap(left, bottom, r.w, r.h, otherRects(h.mover), sw, sh)
+  end
+  local point, x, y = L.Anchor(left, bottom, r.w, r.h, sw, sh)
+  return point, point, x, y
+end
+
+-- Drag stop: saves where the handle was dropped. Without geometry (frame not
+-- laid out) it keeps the point the client reports.
+local function onDragStop(h)
+  h:StopMovingOrSizing()
+  local r = rectOf(h)
+  if r then
+    return savePosition(h.mover, dropPosition(h, r))
+  end
+  local point, _, relPoint, x, y = h:GetPoint(1)
+  if point then savePosition(h.mover, point, relPoint, x, y) end
+end
+
+-- Nudges a mover by dx, dy pixels from where it is saved.
+function ns.Nudge(key, dx, dy)
+  local m = movers[key]
+  local point, relPoint, x, y = pointFor(m)
+  savePosition(m, point, relPoint, x + dx, y + dy)
+end
+
+-- Selection and keys ------------------------------------------------------------------
+
+-- Shows the selected handle's point and offsets on it; others show their label.
+function ns.ShowCoords(m)
+  if not m.handle then
+    return
+  end
+  local point, _, x, y = pointFor(m)
+  m.handle.label:SetText(m == selected and string.format("%s\n%s %d, %d", m.label, point, x, y) or m.label)
+end
+
+-- Selects a handle for arrow-key nudging (and deselects the previous one).
+local function selectMover(m)
+  local previous = selected
+  selected = m
+  if previous then ns.ShowCoords(previous) end
+  if m then ns.ShowCoords(m) end
+end
+
+-- Arrow keys nudge the selected handle (Shift: 10 px); other keys pass through.
+local function onKeyDown(h, key)
+  local dir = NUDGE[key]
+  h:SetPropagateKeyboardInput(not (dir and selected == h.mover))
+  if dir and selected == h.mover then
+    local step = IsShiftKeyDown and IsShiftKeyDown() and 10 or 1
+    ns.Nudge(h.mover.key, dir[1] * step, dir[2] * step)
+  end
+end
+
+-- Handles ------------------------------------------------------------------------
+
+-- Wires a handle for dragging, selecting and nudging.
+local function wire(h)
   h:SetMovable(true)
   h:SetClampedToScreen(true)
   h:EnableMouse(true)
   h:RegisterForDrag("LeftButton")
   h:SetScript("OnDragStart", h.StartMoving)
   h:SetScript("OnDragStop", onDragStop)
-  return h
+  h:SetScript("OnMouseDown", function(self) selectMover(self.mover) end)
+  h:EnableKeyboard(true)
+  h:SetScript("OnKeyDown", onKeyDown)
 end
 
--- Adds the handle's label in the theme font.
-local function addLabel(h, text)
+-- Builds the handle for a mover: accent-bordered panel with its label.
+local function createHandle(m)
+  local h = T.Panel(CreateFrame("Frame", nil, UIParent), { accent = true })
+  h.mover = m
+  h:SetFrameStrata("DIALOG")
+  wire(h)
   h.label = h:CreateFontString(nil, "OVERLAY")
   h.label:SetPoint("CENTER")
   T.SetFont(h.label, 11)
-  h.label:SetText(text)
+  h.label:SetText(m.label)
+  return h
 end
 
 -- The handle for a mover, created on first use; sized and placed over its frame.
 local function handleFor(m)
-  if not m.handle then
-    m.handle = T.Panel(createHandle(m), { accent = true })
-    addLabel(m.handle, m.label)
-  end
+  m.handle = m.handle or createHandle(m)
   local f = m.frame
   m.handle:SetScale(f:GetScale() or 1)
   m.handle:SetSize(math.max(f:GetWidth() or 0, 40), math.max(f:GetHeight() or 0, 20))
@@ -95,7 +195,7 @@ end
 
 -- Lock / unlock -----------------------------------------------------------------------
 
--- Shows every handle. Refused in combat (frames can't follow until it ends).
+-- Shows every handle and the grid. Refused in combat.
 function ns.Unlock()
   if ns.InCombat() then
     return false
@@ -104,17 +204,19 @@ function ns.Unlock()
   for _, key in ipairs(order) do
     handleFor(movers[key]):Show()
   end
+  local options = ns.MoverOptions()
+  if options.grid then ns.ShowGrid(options.gridSize) end
   return true
 end
 
--- Hides every handle.
+-- Hides every handle and the grid.
 function ns.Lock()
   unlocked = false
+  selectMover(nil)
   for _, m in pairs(movers) do
-    if m.handle then
-      m.handle:Hide()
-    end
+    if m.handle then m.handle:Hide() end
   end
+  ns.HideGrid()
 end
 
 -- True while the handles are showing.

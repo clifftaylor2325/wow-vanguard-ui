@@ -7,10 +7,11 @@ local chat = ns.Chat
 
 local HELP = {
   "A from-scratch UI suite. /fui <command>:",
-  "unlock | lock        show / hide drag handles for every ForeverUI frame",
+  "unlock | lock        drag handles on every ForeverUI frame; click one, then arrow keys nudge (Shift: 10 px)",
   "reset <frame|all>    put a frame (or every frame) back at its default spot",
   "frames               list the movable frames",
-  "accent <rrggbb>      set the accent color; accent reset for the default",
+  "grid [size|on|off]   the unlock-mode grid; snap on|off   snapping while dragging",
+  "accent <rrggbb|name> set the accent color (blue, bronze, green, purple, red); accent reset",
   "theme reset          every theme setting back to default",
   "modules              list modules; enable|disable <module> (then /reload)",
   "skins                addons skinned through ForeverUI.RegisterSkin; skins <addon> on|off",
@@ -73,12 +74,39 @@ local function accentCommand(rest)
   if rest == "reset" then
     return resetAccent()
   end
-  local r, g, b = T.ParseHex(rest)
+  local r, g, b = T.ParseColor(rest:lower())
   if not r then
-    return chat("Usage: /fui accent rrggbb   (e.g. 3d9eff)")
+    return chat("Usage: /fui accent rrggbb | blue | bronze | green | purple | red")
   end
   T.SetAccent(r, g, b)
-  chat("Accent set to #" .. rest:gsub("^#", ""):lower() .. ".")
+  chat("Accent set to " .. rest:lower() .. ".")
+end
+
+-- Re-shows the grid with the current options while unlocked.
+local function refreshGrid()
+  local o = ns.MoverOptions()
+  if ns.Unlocked() and o.grid then ns.ShowGrid(o.gridSize) else ns.HideGrid() end
+end
+
+-- /fui grid [size|on|off]
+local function gridCommand(rest)
+  local o, size = ns.MoverOptions(), tonumber(rest)
+  if size and size >= 8 and size <= 256 then
+    o.grid, o.gridSize = true, math.floor(size)
+  elseif rest == "on" or rest == "off" or rest == "" then
+    o.grid = rest == "on" or (rest == "" and not o.grid)
+  else
+    return chat("Usage: /fui grid [8-256 | on | off]")
+  end
+  refreshGrid()
+  chat(o.grid and string.format("Grid on, every %d px.", o.gridSize) or "Grid off.")
+end
+
+-- /fui snap on|off
+local function snapCommand(rest)
+  local o = ns.MoverOptions()
+  o.snap = rest == "on" or (rest == "" and not o.snap)
+  chat(o.snap and "Snapping on." or "Snapping off.")
 end
 
 -- /fui theme reset
@@ -164,6 +192,8 @@ local COMMANDS = {
   reset = resetCommand,
   frames = framesCommand,
   accent = accentCommand,
+  grid = gridCommand,
+  snap = snapCommand,
   theme = themeCommand,
   modules = modulesCommand,
   enable = setModule(true),

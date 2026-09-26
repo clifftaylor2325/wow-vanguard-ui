@@ -20,6 +20,15 @@ local DEFAULTS = {
   outline = "",
 }
 
+-- Named accent colors for /fui accent <name>.
+T.PRESETS = {
+  blue = { 0.24, 0.62, 1 },
+  bronze = { 0.8, 0.62, 0.4 },
+  green = { 0.36, 0.8, 0.45 },
+  purple = { 0.64, 0.46, 0.95 },
+  red = { 0.9, 0.3, 0.3 },
+}
+
 -- Painted frames: frame -> { kind, opts, parts }. Weak, so hidden frames
 -- that get collected don't stay here.
 local painted = setmetatable({}, { __mode = "k" })
@@ -222,6 +231,15 @@ end
 function T.Reset()
   ns.Profile().theme = nil
   T.Refresh()
+end
+
+-- r, g, b (0-1) from a preset name, "rrggbb" or "#rrggbb"; nil otherwise.
+function T.ParseColor(text)
+  local preset = T.PRESETS[text]
+  if preset then
+    return preset[1], preset[2], preset[3]
+  end
+  return T.ParseHex(text)
 end
 
 -- r, g, b (0-1) from "rrggbb" or "#rrggbb"; nil if it isn't a hex color.

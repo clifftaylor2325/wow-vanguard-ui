@@ -21,5 +21,5 @@ globals = {
 -- WoW API the addon reads. Add a name only when the addon starts using it.
 read_globals = {
   "C_AddOns", "CreateFrame", "DEFAULT_CHAT_FRAME", "GetAddOnMetadata",
-  "InCombatLockdown", "STANDARD_TEXT_FONT", "UIParent",
+  "InCombatLockdown", "IsShiftKeyDown", "STANDARD_TEXT_FONT", "UIParent",
 }
