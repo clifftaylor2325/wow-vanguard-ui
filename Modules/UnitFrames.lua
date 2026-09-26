@@ -40,15 +40,7 @@ UF.frames = {}
 
 -- Values ---------------------------------------------------------------------------------
 
--- True for a value Midnight hides from addons (see the file header).
-local function isSecret(value)
-  if type(issecretvalue) ~= "function" then
-    return false
-  end
-  local ok, secret = pcall(issecretvalue, value)
-  return ok and secret == true
-end
-UF.isSecret = isSecret
+local isSecret = ns.IsSecret
 
 -- A plain boolean from an API that may return a secret: secrets count as false.
 local function flag(value)

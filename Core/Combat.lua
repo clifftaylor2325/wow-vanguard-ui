@@ -1,5 +1,7 @@
--- Combat lockdown. Protected (secure) frames can't be moved, shown, hidden or
--- re-attributed in combat; work that touches them waits until combat ends.
+-- Combat lockdown and secret values. Protected (secure) frames can't be
+-- moved, shown, hidden or re-attributed in combat; work that touches them
+-- waits until combat ends. Midnight also hides some values from addons
+-- ("secrets"): they can be handed to widgets but not compared or computed with.
 
 local ADDON, ns = ...
 
@@ -19,15 +21,38 @@ function ns.OutOfCombat(fn)
   end
 end
 
+-- True for a value Midnight hides from addons.
+function ns.IsSecret(value)
+  if type(issecretvalue) ~= "function" then
+    return false
+  end
+  local ok, secret = pcall(issecretvalue, value)
+  return ok and secret == true
+end
+
+-- The value if it's a plain (non-secret) number; nil otherwise.
+function ns.PlainNumber(value)
+  if ns.IsSecret(value) or type(value) ~= "number" then
+    return nil
+  end
+  return value
+end
+
 -- How many functions are waiting for combat to end.
 function ns.QueuedCount()
   return #queue
 end
 
-ns.On("PLAYER_REGEN_ENABLED", function()
+-- Runs queued work; one failing function is reported and the rest still run.
+local function flush()
   local pending = queue
   queue = {}
   for _, fn in ipairs(pending) do
-    fn()
+    local ok, err = pcall(fn)
+    if not ok then
+      ns.Chat("after-combat update failed: " .. tostring(err))
+    end
   end
-end)
+end
+
+ns.On("PLAYER_REGEN_ENABLED", flush)

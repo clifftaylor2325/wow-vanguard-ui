@@ -307,12 +307,108 @@ attempt("unit frames wait for combat", () => {
   assert(addon.eval("return ForeverUI_player ~= nil") === true, "they are built when combat ends");
 });
 
+// TEST-ONLY action slots and bindings. Slot 3's cooldown is secret.
+const ACTIONS_ENV = `
+  __actions = {
+    [1] = { tex = "TEST-ONLY-A", count = 0, usable = true, current = true },
+    [2] = { tex = "TEST-ONLY-B", count = 5, usable = false, noPower = true },
+    [3] = { tex = "TEST-ONLY-C", count = 0, usable = false, cd = { { __secret = true }, { __secret = true } } },
+    [73] = { tex = "TEST-ONLY-PAGE7", count = 0, usable = true },
+  }
+  local function a(slot) return __actions[slot] or {} end
+  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  GetActionTexture = function(slot) return a(slot).tex end
+  GetActionCount = function(slot) return a(slot).count or 0 end
+  IsUsableAction = function(slot) return a(slot).usable == true, a(slot).noPower == true end
+  IsCurrentAction = function(slot) return a(slot).current == true end
+  IsAutoRepeatAction = function() return false end
+  GetActionCooldown = function(slot) local cd = a(slot).cd or { 0, 0 } return cd[1], cd[2] end
+  PickupAction = function(slot) __picked = slot end
+  PlaceAction = function(slot) __placed = slot end
+  __binds = { ACTIONBUTTON1 = { "1" }, ACTIONBUTTON2 = { "SHIFT-2" }, MULTIACTIONBAR1BUTTON1 = { "CTRL-BUTTON4" } }
+  GetBindingKey = function(cmd) return unpack(__binds[cmd] or {}) end
+  __overrides = {}
+  ClearOverrideBindings = function() __overrides = {} end
+  SetOverrideBindingClick = function(_, _, key, name, button) __overrides[key] = name .. ":" .. button end
+  RegisterStateDriver = function(frame, state, driver) frame.__driver = { state, driver } end
+  MainMenuBar = CreateFrame("Frame", "MainMenuBar", UIParent)
+`;
+
+// One action button's state.
+const button = (addon, bar, i) => addon.eval(`
+  local b = ForeverUI_Bar${bar}Button${i}
+  return { action = b:GetAttribute("action"), type = b:GetAttribute("type"), icon = b.icon.__texture,
+    shown = b.icon:IsShown(), count = b.count:GetText(), hotkey = b.hotkey:GetText(),
+    color = b.icon.__vertexColor, checked = b:GetChecked(), cooldown = b.cooldown.__cooldown }`);
+
+attempt("action bars", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  const bars = addon.eval("local out = {} for n = 1, 8 do out[n] = _G['ForeverUI_Bar' .. n] ~= nil end return out");
+  assert(JSON.stringify(bars) === JSON.stringify([true, true, true, true, true, false, false, false]), "bars 1-5 on by default, 6-8 off");
+  const b1 = button(addon, 1, 1);
+  assert(b1.type === "action" && b1.action === 1 && b1.icon === "TEST-ONLY-A", "bar 1 button 1 is secure action slot 1 with its icon");
+  assert(b1.hotkey === "1" && b1.checked === true, "hotkey text; the current action is checked");
+  const b2 = button(addon, 1, 2);
+  assert(b2.hotkey === "S2" && b2.count === "5", "SHIFT-2 shows as S2; counts above 1 show");
+  assert(b2.color[2] === 1 && b2.color[0] === 0.4, "out of power tints blue");
+  const b3 = button(addon, 1, 3);
+  assert(b3.color[0] === 0.4 && b3.color[2] === 0.4, "unusable dims gray");
+  assert(b3.cooldown[0]?.__secret && b3.cooldown[1]?.__secret, "a secret cooldown goes to the widget untouched");
+  assert(button(addon, 1, 4).shown === false, "an empty slot hides its icon");
+  assert(button(addon, 2, 1).action === 61 && button(addon, 2, 1).hotkey === "CM4", "bar 2 is slots 61-72 on MULTIACTIONBAR1; CTRL-BUTTON4 shows CM4");
+  const o = addon.eval("return __overrides");
+  assert(o["1"] === "ForeverUI_Bar1Button1:LeftButton" && o["SHIFT-2"] === "ForeverUI_Bar1Button2:LeftButton", "default bindings click the ForeverUI buttons");
+  assert(o["CTRL-BUTTON4"] === "ForeverUI_Bar2Button1:LeftButton", "bar 2 bindings too");
+  assert(addon.eval("return ForeverUI_Bar1.__driver[1]") === "page" && /\[vehicleui\]/.test(addon.eval("return ForeverUI_Bar1.__driver[2]")), "bar 1 has a secure page driver");
+  assert(addon.eval("return ForeverUI_Bar2.__driver") === null, "other bars don't page");
+  assert(addon.eval("return MainMenuBar:GetParent():IsShown()") === false, "the default main bar is hidden");
+  const movers = addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key end return out");
+  assert(["bar1", "bar2", "bar3", "bar4", "bar5"].every((k) => movers.includes(k)), "every bar is movable");
+});
+
+attempt("action bar paging and events", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  // Run the secure page snippet the way the client would, with a minimal restricted env.
+  addon.eval(`
+    local bar = ForeverUI_Bar1
+    local snippet = assert(loadstring and loadstring(ns.GetModule("ActionBars").ON_PAGE) or load(ns.GetModule("ActionBars").ON_PAGE, "page", "t", setmetatable({}, { __index = _G })))
+    local kids = {}
+    for _, w in ipairs(__wfgStub.frames) do if w.__parent == bar then kids[#kids + 1] = w end end
+    local env = { self = { SetAttribute = function() end, GetChildren = function() return unpack(kids) end }, newstate = 7, ipairs = ipairs, newtable = function(...) return { ... } end }
+    if setfenv then setfenv(snippet, env) else snippet = load(ns.GetModule("ActionBars").ON_PAGE, "page", "t", env) end
+    snippet()`);
+  const paged = button(addon, 1, 1);
+  assert(paged.action === 73 && paged.icon === "TEST-ONLY-PAGE7", "page 7 re-points button 1 to slot 73 and it refreshes");
+  addon.eval('__actions[61] = { tex = "TEST-ONLY-NEW", count = 0, usable = true }');
+  addon.fire("ACTIONBAR_SLOT_CHANGED", 61);
+  assert(button(addon, 2, 1).icon === "TEST-ONLY-NEW", "ACTIONBAR_SLOT_CHANGED refreshes that slot");
+  addon.eval('__binds.ACTIONBUTTON3 = { "Q" }');
+  addon.eval("__wfgStub.inCombat = true");
+  addon.fire("UPDATE_BINDINGS");
+  assert(addon.eval("return __overrides.Q") === null, "binding changes wait for combat to end");
+  addon.eval("__wfgStub.inCombat = false");
+  addon.fire("PLAYER_REGEN_ENABLED");
+  assert(addon.eval("return __overrides.Q") === "ForeverUI_Bar1Button3:LeftButton" && button(addon, 1, 3).hotkey === "Q", "then they apply");
+});
+
+attempt("action bar dragging", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  // Starts a drag on bar 1 button 2; returns the slot picked up, if any.
+  const drag = () => addon.eval("local b = ForeverUI_Bar1Button2; b:GetScript('OnDragStart')(b); return __picked");
+  assert(drag() === null, "locked buttons don't drag without Shift");
+  addon.eval("IsShiftKeyDown = function() return true end");
+  assert(drag() === 2, "Shift-drag picks the action up");
+  addon.eval("local b = ForeverUI_Bar2Button5; b:GetScript('OnReceiveDrag')(b)");
+  assert(addon.eval("return __placed") === 65, "dropping onto a button places the action in its slot");
+});
+
 console.log("ForeverUI — Lua harness (fengari)");
 console.log("  core     saved variables, profiles, modules, combat queue");
 console.log("  theme    panels, widgets, live accent, reset");
 console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-addon off");
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");
+console.log("  bars     secure buttons, bindings, hotkeys, paging snippet, usable, secrets, drag, events, combat wait");
 console.log("  units    secure buttons, bars, colors, secret values, events, ToT timer, Blizzard frames hidden, combat wait");
 if (failures.length) {
   console.error(`FAILED (${failures.length})`);
