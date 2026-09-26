@@ -12,7 +12,8 @@ Copy the `ForeverUI` folder from a release zip into `World of Warcraft/_retail_/
 ## Commands
 
 ```
-/fui               unlock / lock (drag handles on every ForeverUI frame)
+/fui               the options window (also: left-click the addons button by the minimap)
+/fui unlock | lock drag handles on every ForeverUI frame (also: right-click the addons button)
 /fui reset <frame|all>
 /fui accent <rrggbb> | reset      /fui theme reset
 /fui modules       enable|disable <module>, then /reload
@@ -49,7 +50,7 @@ npm install
 npm run verify    # real addon Lua under a strict TEST-ONLY WoW stub, then the code-quality check
 npm run lint      # luacheck
 npm run package   # dist/ForeverUI-<version>.zip from committed files
-npm run preview   # preview/foreverui-default.png: the default layout (needs Playwright)
+npm run preview   # preview/*.png: the default layout and the options window (needs Playwright)
 ```
 
 **Code quality:** every function has a comment on the line above it and at most 10 lines of body code; `npm run verify` and CI enforce it.

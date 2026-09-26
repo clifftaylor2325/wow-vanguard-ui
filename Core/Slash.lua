@@ -6,7 +6,7 @@ local T = ns.Theme
 local chat = ns.Chat
 
 local HELP = {
-  "A from-scratch UI suite. /fui <command>:",
+  "A from-scratch UI suite. /fui opens the options window; /fui <command>:",
   "unlock | lock        drag handles on every ForeverUI frame; click one, then arrow keys nudge (Shift: 10 px)",
   "reset <frame|all>    put a frame (or every frame) back at its default spot",
   "frames               list the movable frames",
@@ -213,6 +213,8 @@ local function importCommand()
   end)
 end
 
+ns.ImportDialog = importCommand
+
 -- /fui spec [profile|off]
 local function specCommand(rest)
   local spec = ns.SpecIndex()
@@ -245,6 +247,9 @@ end
 local COMMANDS = {
   -- /fui help
   help = function() printLines(HELP) end,
+  -- /fui options (also /fui with nothing after it)
+  options = function() ns.Options.Toggle() end,
+  config = function() ns.Options.Toggle() end,
   unlock = unlockCommand,
   move = unlockCommand,
   lock = lockCommand,
@@ -265,11 +270,11 @@ local COMMANDS = {
   status = statusCommand,
 }
 
--- /fui entry point: no arguments toggles unlock.
+-- /fui entry point: no arguments opens the options window.
 local function handleSlash(msg)
   local cmd, rest = (msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
   if cmd == "" then
-    return (ns.Unlocked() and lockCommand or unlockCommand)()
+    return ns.Options.Toggle()
   end
   local handler = COMMANDS[cmd:lower()] or function() chat("Unknown command. /fui help") end
   handler(rest)

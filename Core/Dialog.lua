@@ -15,13 +15,14 @@ local function button(parent, label, width)
   b.text = T.SetFont(b:CreateFontString(nil, "OVERLAY"), 12)
   b.text:SetPoint("CENTER")
   b.text:SetText(label)
+  b.text:SetTextColor(0.9, 0.9, 0.9)
   return b
 end
 ns.DialogButton = button
 
 -- A centered, movable, themed dialog frame with a title.
 local function dialog(name, w, h)
-  local f = T.Panel(CreateFrame("Frame", name, UIParent), { accent = true })
+  local f = T.Panel(CreateFrame("Frame", name, UIParent), { accent = true, alpha = 0.98 })
   f:SetSize(w, h)
   f:SetPoint("CENTER")
   f:SetFrameStrata("DIALOG")
