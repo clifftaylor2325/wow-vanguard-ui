@@ -17,7 +17,8 @@ const FONTS = {
 };
 const STRATA = { BACKGROUND: 0, LOW: 1, MEDIUM: 2, HIGH: 3, DIALOG: 4, FULLSCREEN: 5, TOOLTIP: 6 };
 const LAYER = { BACKGROUND: 0, BORDER: 1, ARTWORK: 2, OVERLAY: 3, HIGHLIGHT: 4 };
-const CONTAINERS = new Set(["Frame", "Button", "ScrollFrame"]);
+// Regions draw in their frame's layers; everything else is a frame.
+const REGIONS = new Set(["Texture", "FontString", "Line"]);
 
 // A WoW color { r, g, b, a } as CSS rgba, alpha scaled by a.
 const rgba = (c, a = 1) => `rgba(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)},${(c[3] ?? 1) * a})`;
@@ -220,10 +221,14 @@ function nodeFor(f, r) {
   return el;
 }
 
-// Stacking order: strata, then nesting depth, then draw layer (frames below their regions).
+// Stacking order: strata, then frame depth, then draw layer. A frame sits
+// below its own regions; a child frame sits above its parent's regions.
 function zIndexOf(ctx, f) {
-  const layer = CONTAINERS.has(f.kind) ? 0 : (LAYER[f.layer] ?? 2) + 1;
-  return strataOf(ctx, f) * 1000 + ancestors(ctx, f).length * 10 + layer;
+  const region = REGIONS.has(f.kind);
+  // A status bar's node is its fill, which the client draws in the ARTWORK layer.
+  const layer = f.kind === "StatusBar" ? LAYER.ARTWORK + 1 : region ? (LAYER[f.layer] ?? 2) + 1 : 0;
+  const depth = ancestors(ctx, f).length - (region ? 1 : 0);
+  return strataOf(ctx, f) * 1000 + depth * 10 + layer;
 }
 
 // Clips a node to its scroll frame's rect.
