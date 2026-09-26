@@ -757,6 +757,46 @@ attempt("click casting options", () => {
   assert(addon.eval('return __click("Remove")') && addon.eval('return #ns.GetModule("ClickCast").Bindings()') === 0, "Remove removes it");
 });
 
+// TEST-ONLY auras by unit and filter. raid1: a Magic debuff and two of your HoTs.
+const AURA_ENV = `
+  __auras = {
+    raid1 = {
+      ["HARMFUL|RAID"] = { { dispelName = "Magic" } },
+      ["HELPFUL|PLAYER|RAID"] = { { icon = "TEST-ONLY-HOT-A", expirationTime = 1030, duration = 12, applications = 2 },
+        { icon = "TEST-ONLY-HOT-B", expirationTime = { __secret = true }, duration = { __secret = true } } },
+      ["HELPFUL|PLAYER|RAID_IN_COMBAT"] = { { icon = "TEST-ONLY-HOT-COMBAT", expirationTime = 1020, duration = 6 } },
+    },
+  }
+  C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) return ((__auras[unit] or {})[filter] or {})[i] end }
+`;
+
+// Raid button 1's indicators.
+const indicators = (addon) => addon.eval(`local b = ForeverUI_RaidUnitButton1
+  local out = { dispel = b.dispel:IsShown(), edge = b.dispel.edges[1].__vertexColor, hots = {} }
+  for i, f in ipairs(b.hots) do out.hots[i] = { shown = f:IsShown(), icon = f.icon.__texture, count = f.count:GetText(), cd = f.cooldown.__cooldown } end
+  return out`);
+
+attempt("raid indicators", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  const i = indicators(addon);
+  assert(i.dispel === true && i.edge[2] === 1 && i.edge[0] === 0.2, "a Magic debuff you can dispel gets a blue border");
+  assert(i.hots[0].shown && i.hots[0].icon === "TEST-ONLY-HOT-A" && i.hots[0].count === "2", "your HoTs show as icons with stacks");
+  assert(i.hots[0].cd[0] === 1018 && i.hots[0].cd[1] === 12, "with a timer from plain numbers");
+  assert(i.hots[1].shown && i.hots[1].icon === "TEST-ONLY-HOT-B" && i.hots[1].cd == null, `a HoT with hidden timings still shows, without a sweep (got ${JSON.stringify(i.hots[1])})`);
+  assert(i.hots[2].shown === false, "unused icons stay hidden");
+  addon.eval('__auras.raid1["HARMFUL|RAID"][1].dispelName = { __secret = true }');
+  addon.fire("UNIT_AURA", "raid1");
+  assert(indicators(addon).edge[0] === 0.8, "a hidden dispel type gets a plain highlight");
+  addon.eval("__wfgStub.inCombat = true");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  const combat = indicators(addon);
+  assert(combat.hots[0].icon === "TEST-ONLY-HOT-COMBAT" && combat.hots[1].shown === false, "in combat the client's combat filter decides which buffs show");
+  addon.eval('__auras.raid1["HARMFUL|RAID"] = {}');
+  addon.fire("UNIT_AURA", "raid1");
+  assert(indicators(addon).dispel === false, "the border goes when the debuff does");
+});
+
 console.log("ForeverUI — Lua harness (fengari)");
 console.log("  core     saved variables, profiles, modules, combat queue");
 console.log("  theme    panels, widgets, live accent, reset");
@@ -764,6 +804,7 @@ console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-a
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");
 console.log("  bars     secure buttons, bindings, hotkeys, paging snippet, usable, secrets, drag, events, combat wait");
+console.log("  auras    dispel border by type (hidden -> highlight), HoT icons, stacks, timers, combat filter");
 console.log("  clicks   click casting and hover keys: attributes, enter/leave snippets, remove, combat wait, per spec, options editor");
 console.log("  raid     secure header, precreated buttons, health/name/role/offline, events, party coverage, default frames hidden");
 console.log("  options  window, pages, swatches, check boxes, cycles, reload button, export, spec, addons button");

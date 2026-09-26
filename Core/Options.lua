@@ -184,11 +184,19 @@ local function raidRows()
   }
 end
 
+-- Raid frames plus their indicators.
+local function raidPageRows()
+  return append(raidRows(), {
+    check("Highlight debuffs you can dispel", setting("RaidAuras", "dispel")),
+    check("Show your HoTs", setting("RaidAuras", "hots")),
+  })
+end
+
 local PAGES = {
   { key = "general", title = "General", rows = generalRows },
   { key = "modules", title = "Modules", rows = moduleRows },
   { key = "unitframes", title = "Unit frames", rows = unitFrameRows },
-  { key = "raid", title = "Raid frames", rows = raidRows },
+  { key = "raid", title = "Raid frames", rows = raidPageRows },
   { key = "actionbars", title = "Action bars", rows = actionBarRows },
   { key = "more", title = "Bars, map, chat", rows = moreRows },
   { key = "profiles", title = "Profiles", rows = profileRows },
