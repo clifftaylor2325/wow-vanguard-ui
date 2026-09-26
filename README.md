@@ -47,6 +47,7 @@ npm install
 npm run verify    # real addon Lua under a strict TEST-ONLY WoW stub, then the code-quality check
 npm run lint      # luacheck
 npm run package   # dist/ForeverUI-<version>.zip from committed files
+npm run preview   # preview/foreverui-default.png: the default layout (needs Playwright)
 ```
 
 **Code quality:** every function has a comment on the line above it and at most 10 lines of body code; `npm run verify` and CI enforce it.

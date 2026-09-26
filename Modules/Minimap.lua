@@ -1,5 +1,5 @@
 -- Minimap: square, in a themed frame you can move in unlock mode, with the
--- zone name on top (colored by PvP status), player coordinates underneath
+-- zone name along its top edge (colored by PvP status), coordinates along the bottom
 -- and mouse-wheel zoom. The round border art and zoom buttons are faded
 -- out (alpha only; nothing Blizzard owns is hidden or unregistered).
 
@@ -119,10 +119,11 @@ local function adoptMinimap(holder, size)
   Minimap:SetScript("OnMouseWheel", onWheel)
 end
 
--- Zone text above the map and coordinates along its bottom edge.
+-- Zone text along the map's top edge and coordinates along its bottom edge
+-- (inside, so a map in a screen corner never pushes them off screen).
 local function addTexts(holder)
   MM.zone = T.SetFont(holder:CreateFontString(nil, "OVERLAY"), 12)
-  MM.zone:SetPoint("BOTTOM", holder, "TOP", 0, 4)
+  MM.zone:SetPoint("TOP", holder, "TOP", 0, -6)
   MM.coords = T.SetFont(holder:CreateFontString(nil, "OVERLAY"), 11)
   MM.coords:SetPoint("BOTTOM", holder, "BOTTOM", 0, 4)
   MM.coords:SetTextColor(1, 1, 1)

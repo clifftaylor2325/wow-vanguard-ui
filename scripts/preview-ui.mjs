@@ -1,0 +1,133 @@
+#!/usr/bin/env node
+// Screenshot ForeverUI without the game client.
+//
+//   node scripts/preview-ui.mjs [--out dir]
+//
+// Runs the real addon Lua (same harness as verify-lua) against a TEST-ONLY
+// world (units, action slots, chat lines) and lays out the frames it built
+// in headless Chromium. Layout, sizes, colors and bar values are the
+// addon's own; spell icons, the map and the game font are approximated.
+// Needs Playwright (a global install is fine).
+
+import fs from "node:fs";
+import path from "node:path";
+import { createRequire } from "node:module";
+import { execSync } from "node:child_process";
+import { createAddon, root } from "./lib/lua-harness.mjs";
+import { renderScene } from "./lib/ui-preview.mjs";
+
+// The value after --name, or the fallback.
+function arg(name, fallback) {
+  const idx = process.argv.indexOf(`--${name}`);
+  return idx >= 0 && process.argv[idx + 1] ? process.argv[idx + 1] : fallback;
+}
+
+// Playwright from the project, else from the global npm root.
+async function loadPlaywright() {
+  try {
+    return await import("playwright");
+  } catch {
+    const globalRoot = execSync("npm root -g", { encoding: "utf8" }).trim();
+    return createRequire(path.join(globalRoot, "noop.js"))("playwright");
+  }
+}
+
+// TEST-ONLY units: you (a mage), a hostile target, two party members.
+const UNITS = `
+  __units = {
+    player = { name = "<name>", hp = 42800, maxhp = 48000, power = 31000, maxpower = 40000, ptype = "MANA", player = true, class = "MAGE" },
+    target = { name = "TEST-ONLY Boar", hp = 23400, maxhp = 36000, power = 60, maxpower = 100, ptype = "RAGE", reaction = 2 },
+    party1 = { name = "TEST-ONLY Rogue", hp = 39000, maxhp = 45000, power = 80, maxpower = 100, ptype = "ENERGY", player = true, class = "ROGUE" },
+    party2 = { name = "TEST-ONLY Priest", hp = 44000, maxhp = 44000, power = 52000, maxpower = 60000, ptype = "MANA", player = true, class = "PRIEST" },
+  }
+  __units.targettarget = __units.player
+  local function u(unit) return __units[unit] end
+  UnitExists = function(unit) return u(unit) ~= nil end
+  UnitName = function(unit) return u(unit) and u(unit).name end
+  UnitHealth = function(unit) return u(unit).hp end
+  UnitHealthMax = function(unit) return u(unit).maxhp end
+  UnitPower = function(unit) return u(unit).power end
+  UnitPowerMax = function(unit) return u(unit).maxpower end
+  UnitPowerType = function(unit) return 0, u(unit).ptype end
+  UnitIsPlayer = function(unit) return u(unit) and u(unit).player == true end
+  UnitClass = function(unit) return "Class", u(unit).class end
+  UnitReaction = function(unit) return u(unit).reaction or 5 end
+  UnitIsDeadOrGhost = function() return false end
+  UnitIsConnected = function() return true end
+  AbbreviateNumbers = function(v) return v >= 1000 and string.format("%.1fK", v / 1000) or tostring(v) end
+  RegisterUnitWatch = function(f) if not UnitExists(f.unit) then f:Hide() end end
+  RAID_CLASS_COLORS = { MAGE = { r = 0.25, g = 0.78, b = 0.92 }, ROGUE = { r = 1, g = 0.96, b = 0.41 }, PRIEST = { r = 1, g = 1, b = 1 } }
+  PowerBarColor = { MANA = { r = 0, g = 0.44, b = 0.87 }, RAGE = { r = 0.78, g = 0.25, b = 0.25 }, ENERGY = { r = 1, g = 0.96, b = 0.41 } }
+`;
+
+// TEST-ONLY action slots (icons are placeholders) and bindings.
+const ACTIONS = `
+  __actions = {}
+  for slot = 1, 10 do __actions[slot] = { tex = "TEST-ONLY-ICON" } end
+  for slot = 61, 66 do __actions[slot] = { tex = "TEST-ONLY-ICON" } end
+  for slot = 49, 52 do __actions[slot] = { tex = "TEST-ONLY-ICON" } end
+  __actions[4].noPower = true
+  local function a(slot) return __actions[slot] or {} end
+  GetActionTexture = function(slot) return a(slot).tex end
+  GetActionCount = function() return 0 end
+  IsUsableAction = function(slot) return a(slot).noPower ~= true, a(slot).noPower == true end
+  IsCurrentAction = function(slot) return slot == 2 end
+  IsAutoRepeatAction = function() return false end
+  GetActionCooldown = function() return 0, 0 end
+  local keys = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=" }
+  GetBindingKey = function(cmd)
+    local n = tonumber(cmd:match("^ACTIONBUTTON(%d+)$") or "")
+    if n then return keys[n] end
+    n = tonumber(cmd:match("^MULTIACTIONBAR1BUTTON(%d+)$") or "")
+    if n and n <= 6 then return "SHIFT-" .. n end
+  end
+  ClearOverrideBindings = function() end
+  SetOverrideBindingClick = function() end
+  RegisterStateDriver = function() end
+`;
+
+// TEST-ONLY minimap and one chat window with a few lines.
+const WORLD = `
+  UIParent:SetSize(1920, 1080)
+  Minimap = CreateFrame("Minimap", "Minimap", UIParent)
+  GetMinimapZoneText = function() return "TEST-ONLY Zone" end
+  GetZonePVPInfo = function() return "sanctuary" end
+  C_Map = { GetBestMapForUnit = function() return 1 end,
+    GetPlayerMapPosition = function() return { GetXY = function() return 0.4231, 0.6178 end } end }
+  NUM_CHAT_WINDOWS = 1
+  local chat = CreateFrame("ScrollingMessageFrame", "ChatFrame1", UIParent)
+  chat:SetSize(440, 190)
+  chat:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 20, 40)
+  chat:SetFont("Fonts\\\\FRIZQT__.TTF", 14, "")
+  local tab = CreateFrame("Button", "ChatFrame1Tab", UIParent)
+  tab:SetSize(70, 22)
+  tab:SetPoint("BOTTOMLEFT", chat, "TOPLEFT", 0, 6)
+  tab.Text = tab:CreateFontString(nil, "OVERLAY")
+  tab.Text:SetPoint("CENTER")
+  tab.Text:SetText("General")
+  SELECTED_CHAT_FRAME = chat
+  chat:AddMessage("|cffffff00TEST-ONLY chat line: [General] welcome to the preview.|r")
+  chat:AddMessage("|cffff80ffTEST-ONLY whisper: this is not a real message.|r")
+  chat:AddMessage("|cff3d9effForeverUI:|r TEST-ONLY /fui status line.")
+`;
+
+const out = path.resolve(arg("out", path.join(root, "preview")));
+fs.mkdirSync(out, { recursive: true });
+
+const { chromium } = await loadPlaywright();
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+
+const addon = createAddon();
+addon.eval(UNITS + ACTIONS + WORLD);
+addon.login();
+addon.update(0.25);
+const file = path.join(out, "foreverui-default.png");
+await renderScene(page, addon, {
+  file,
+  caption: "Preview · ForeverUI defaults (blue accent) · layout from the addon's Lua; TEST-ONLY units, icons and chat; map, icons and font approximated, not a game screenshot",
+  // Nothing depends on measured text height, so there is nothing to redo.
+  relayout: () => {},
+});
+console.log(`wrote ${path.relative(process.cwd(), file)}`);
+await browser.close();

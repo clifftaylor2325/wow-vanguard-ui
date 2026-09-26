@@ -213,13 +213,20 @@ local function addIcon(b)
   b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 end
 
+-- The count (bottom right, white) and hotkey (top right, light gray) texts.
+local function addTexts(b)
+  b.count = T.SetFont(b:CreateFontString(nil, "OVERLAY"), 11)
+  b.count:SetPoint("BOTTOMRIGHT", -2, 2)
+  b.count:SetTextColor(1, 1, 1)
+  b.hotkey = T.SetFont(b:CreateFontString(nil, "OVERLAY"), 10)
+  b.hotkey:SetPoint("TOPRIGHT", -2, -2)
+  b.hotkey:SetTextColor(0.85, 0.85, 0.85)
+end
+
 -- The icon, count, hotkey, cooldown and checked highlight on a button.
 local function addRegions(b)
   addIcon(b)
-  b.count = T.SetFont(b:CreateFontString(nil, "OVERLAY"), 11)
-  b.count:SetPoint("BOTTOMRIGHT", -2, 2)
-  b.hotkey = T.SetFont(b:CreateFontString(nil, "OVERLAY"), 10)
-  b.hotkey:SetPoint("TOPRIGHT", -2, -2)
+  addTexts(b)
   b.cooldown = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
   b.cooldown:SetAllPoints(b.icon)
   b:SetCheckedTexture(T.WHITE)
