@@ -30,6 +30,7 @@ for i, w in ipairs(__wfgStub.frames) do
     barColor = w.__barColor, messages = w.__messages, checked = w.__checked,
     checkedTexture = w.__parent ~= nil and w.__parent.__checkedTexture == w or nil,
     barFill = w.__parent ~= nil and w.__parent.__barTexture == w or nil,
+    noWrap = w.__noWrap,
   }
 end
 return out`;

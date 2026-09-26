@@ -183,6 +183,9 @@ function methods:SetZoom(z) self.__zoom = z end
 function methods:GetZoom() return self.__zoom or 0 end
 function methods:GetZoomLevels() return self.__zoomLevels or 6 end
 
+-- Word wrap on a font string (the preview reads it).
+function methods:SetWordWrap(on) self.__noWrap = not on end
+
 -- A frame's regions: its textures and font strings, in creation order.
 function methods:GetRegions()
   local out = {}

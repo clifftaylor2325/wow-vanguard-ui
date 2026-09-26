@@ -23,13 +23,8 @@ local DISPEL_COLORS = { Magic = { 0.2, 0.6, 1 }, Curse = { 0.6, 0, 1 }, Disease 
 
 -- Aura reads ----------------------------------------------------------------------------
 
--- The i-th aura on a unit through a client filter, or nil (no API, none, or an error).
-function RA.Aura(unit, i, filter)
-  local get = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
-  if type(get) ~= "function" then return nil end
-  local ok, aura = pcall(get, unit, i, filter)
-  return ok and type(aura) == "table" and aura or nil
-end
+-- The i-th aura on a unit through a client filter (Core/Auras.lua).
+RA.Aura = ns.Auras.Get
 
 -- The border color for a dispellable debuff: its type's color, or a plain highlight when hidden.
 function RA.DispelColor(aura)
@@ -70,24 +65,10 @@ local function addBorder(b)
   b.dispel:Hide()
 end
 
--- An icon's texture, timer sweep and stack count.
-local function addIconParts(f)
-  f.icon = f:CreateTexture(nil, "ARTWORK")
-  f.icon:SetAllPoints()
-  f.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-  f.cooldown = CreateFrame("Cooldown", nil, f, "CooldownFrameTemplate")
-  f.cooldown:SetAllPoints()
-  f.count = T.SetFont(f:CreateFontString(nil, "OVERLAY"), 9)
-  f.count:SetPoint("BOTTOMRIGHT", 1, -1)
-end
-
 -- One HoT icon, placed right to left along the bottom edge; hidden until used.
 local function hotIcon(b, i)
-  local f = CreateFrame("Frame", nil, b)
-  f:SetSize(ICON_SIZE, ICON_SIZE)
+  local f = ns.Auras.Icon(b, ICON_SIZE)
   f:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -2 - (i - 1) * (ICON_SIZE + 1), 2)
-  addIconParts(f)
-  f:Hide()
   return f
 end
 
@@ -110,33 +91,11 @@ local function updateDispel(b, unit)
   for _, t in ipairs(b.dispel.edges) do t:SetVertexColor(c[1], c[2], c[3]) end
 end
 
--- The timer sweep: a duration object where the client offers one, plain
--- numbers otherwise, no sweep when the values are hidden.
-local function sweep(cd, unit, aura)
-  local getDuration = C_UnitAuras and C_UnitAuras.GetAuraDuration
-  if type(getDuration) == "function" and cd.SetCooldownFromDurationObject and aura.auraInstanceID then
-    local ok, duration = pcall(getDuration, unit, aura.auraInstanceID)
-    if ok and duration then return pcall(cd.SetCooldownFromDurationObject, cd, duration) end
-  end
-  local exp, dur = ns.PlainNumber(aura.expirationTime), ns.PlainNumber(aura.duration)
-  if exp and dur and dur > 0 then cd:SetCooldown(exp - dur, dur) else cd:Clear() end
-end
-
--- Fills one HoT icon from an aura (or hides it).
-local function showHot(f, unit, aura)
-  f:SetShown(aura ~= nil)
-  if not aura then return end
-  f.icon:SetTexture(aura.icon)
-  sweep(f.cooldown, unit, aura)
-  local stacks = ns.PlainNumber(aura.applications)
-  f.count:SetText(stacks and stacks > 1 and tostring(stacks) or "")
-end
-
 -- Your HoTs on the unit, up to maxHots icons.
 local function updateHots(b, unit)
   local filter = hotFilter()
   for i, f in ipairs(b.hots) do
-    showHot(f, unit, RA.settings.hots and RA.Aura(unit, i, filter) or nil)
+    ns.Auras.Show(f, unit, RA.settings.hots and RA.Aura(unit, i, filter) or nil)
   end
 end
 

@@ -192,6 +192,12 @@ function T.CloseButton(button)
   return button
 end
 
+-- Crops the baked-in bevel off an icon texture.
+function T.Crop(texture)
+  texture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+  return texture
+end
+
 -- Re-fonts a font string to the theme font, with a 1 px drop shadow so it
 -- reads on bright bars. size defaults to its current size (else 12).
 function T.SetFont(fs, size)

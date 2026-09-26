@@ -86,7 +86,8 @@ const ACTIONS = `
   RegisterStateDriver = function() end
 `;
 
-// TEST-ONLY minimap, one chat window with a few lines, XP, a watched faction and one out-of-range action.
+// TEST-ONLY minimap, one chat window with a few lines, XP, a watched faction, one out-of-range
+// action, casts on you and your target, and auras on the target.
 const WORLD = `
   UIParent:SetSize(1920, 1080)
   Minimap = CreateFrame("Minimap", "Minimap", UIParent)
@@ -117,6 +118,15 @@ const WORLD = `
     return { name = "TEST-ONLY Faction", reaction = 6, currentReactionThreshold = 9000, nextReactionThreshold = 21000, currentStanding = 15000 }
   end }
   IsActionInRange = function(slot) return slot ~= 3 end
+  UnitCastingInfo = function(unit)
+    if unit == "player" then return "TEST-ONLY Flash Heal", "", "TEST-ONLY-ICON", 999000, 1001500, false, 1, false end
+    if unit == "target" then return "TEST-ONLY Enrage", "", "TEST-ONLY-ICON", 999500, 1002000, false, 2, true end
+  end
+  C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
+    if unit ~= "target" then return nil end
+    if filter == "HARMFUL|PLAYER" and i <= 2 then return { icon = "TEST-ONLY-DOT", applications = i } end
+    if filter == "HELPFUL" and i <= 3 then return { icon = "TEST-ONLY-BUFF" } end
+  end }
 `;
 
 const out = path.resolve(arg("out", path.join(root, "preview")));
@@ -206,6 +216,9 @@ for (const scene of SCENES) {
   const addon = createAddon();
   addon.eval(UNITS + ACTIONS + WORLD + GROUP + "GetSpecialization = function() return 1 end");
   addon.login();
+  addon.fire("PLAYER_ENTERING_WORLD");
+  // In game the client hides the vehicle exit until you can leave; the stub has no state drivers.
+  addon.eval("if ForeverUI_VehicleExit then ForeverUI_VehicleExit:Hide() end");
   if (scene.lua) addon.eval(scene.lua);
   addon.update(0.25);
   const file = path.join(out, `${scene.name}.png`);

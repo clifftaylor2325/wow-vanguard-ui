@@ -99,6 +99,18 @@ local function unitFrameRows()
   }
 end
 
+-- Cast bars and the target/focus aura rows.
+local function castRows()
+  return {
+    { "header", "Cast bars" },
+    check("Your cast bar", setting("CastBars", "player", true)),
+    check("Target cast bar", setting("CastBars", "target", true)),
+    check("Focus cast bar", setting("CastBars", "focus", true)),
+    { "header", "Target and focus auras" },
+    check("Only your debuffs", setting("FrameAuras", "onlyMine")),
+  }
+end
+
 -- Action bars: which bars, locking, range tint, button size.
 local function actionBarRows()
   local rows = { { "header", "Action bars" } }
@@ -212,7 +224,7 @@ end
 local PAGES = {
   { key = "general", title = "General", rows = generalRows },
   { key = "modules", title = "Modules", rows = moduleRows },
-  { key = "unitframes", title = "Unit frames", rows = unitFrameRows },
+  { key = "unitframes", title = "Unit frames", rows = function() return append(unitFrameRows(), castRows()) end },
   { key = "raid", title = "Raid frames", rows = raidPageRows },
   { key = "actionbars", title = "Action bars", rows = actionBarPageRows },
   { key = "more", title = "Bars, map, chat", rows = moreRows },
