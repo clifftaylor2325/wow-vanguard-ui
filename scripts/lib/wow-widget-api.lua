@@ -128,6 +128,17 @@ local COOLDOWN = {
   "SetSwipeColor", "SetSwipeTexture",
 }
 
+local MINIMAP = {
+  "GetPingPosition", "GetZoom", "GetZoomLevels", "PingLocation",
+  "SetArchBlobInsideTexture", "SetBlipTexture", "SetMaskTexture", "SetZoom",
+}
+
+local SCROLLING_MESSAGE_FRAME = {
+  "AddMessage", "Clear", "GetFading", "GetMaxLines", "GetNumMessages",
+  "ScrollDown", "ScrollToBottom", "ScrollUp", "SetFading", "SetMaxLines",
+  "SetTimeVisible",
+}
+
 -- BackdropTemplateMixin. Only frames created with "BackdropTemplate" (or a
 -- template that inherits it) have these since 9.0.
 local BACKDROP = {
@@ -149,6 +160,8 @@ return {
     ScrollFrame = set(REGION, FRAME, SCROLL_FRAME),
     StatusBar = set(REGION, FRAME, STATUS_BAR),
     CheckButton = set(REGION, FRAME, BUTTON, CHECK_BUTTON),
+    Minimap = set(REGION, FRAME, MINIMAP),
+    ScrollingMessageFrame = set(REGION, FRAME, FONT, SCROLLING_MESSAGE_FRAME),
     Cooldown = set(REGION, FRAME, COOLDOWN),
     EditBox = set(REGION, FRAME, FONT, EDIT_BOX),
     Texture = set(REGION, LAYERED, TEXTURE),
@@ -158,6 +171,8 @@ return {
     Frame = set(FRAME_SCRIPTS),
     Button = set(FRAME_SCRIPTS, { "OnClick", "OnDoubleClick", "PostClick", "PreClick" }),
     StatusBar = set(FRAME_SCRIPTS, { "OnMinMaxChanged", "OnValueChanged" }),
+    Minimap = set(FRAME_SCRIPTS),
+    ScrollingMessageFrame = set(FRAME_SCRIPTS, { "OnHyperlinkClick", "OnHyperlinkEnter", "OnHyperlinkLeave", "OnMessageScrollChanged" }),
     CheckButton = set(FRAME_SCRIPTS, { "OnClick", "OnDoubleClick", "PostClick", "PreClick" }),
     Cooldown = set(FRAME_SCRIPTS, { "OnCooldownDone" }),
     ScrollFrame = set(FRAME_SCRIPTS, { "OnHorizontalScroll", "OnScrollRangeChanged", "OnVerticalScroll" }),

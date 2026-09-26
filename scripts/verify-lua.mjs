@@ -402,6 +402,76 @@ attempt("action bar dragging", () => {
   assert(addon.eval("return __placed") === 65, "dropping onto a button places the action in its slot");
 });
 
+// TEST-ONLY minimap, chat windows and combined bag, as the client would have them.
+const UI_ENV = `
+  UnitExists = function() return false end
+  Minimap = CreateFrame("Minimap", "Minimap", UIParent)
+  Minimap.ZoomIn = CreateFrame("Button", nil, Minimap)
+  MinimapCluster = CreateFrame("Frame", "MinimapCluster", UIParent)
+  MinimapCluster.BorderTop = CreateFrame("Frame", nil, MinimapCluster)
+  GetMinimapZoneText = function() return "TEST-ONLY Vale" end
+  GetZonePVPInfo = function() return "contested" end
+  C_Map = { GetBestMapForUnit = function() return 1 end,
+    GetPlayerMapPosition = function() return { GetXY = function() return 0.4567, 0.123 end } end }
+  NUM_CHAT_WINDOWS = 2
+  for i = 1, 2 do
+    local f = CreateFrame("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
+    f:SetFont("TEST-ONLY-FONT", 15, "")
+    local tab = CreateFrame("Button", "ChatFrame" .. i .. "Tab", UIParent)
+    tab.Text = tab:CreateFontString(nil, "OVERLAY")
+    CreateFrame("EditBox", "ChatFrame" .. i .. "EditBox", UIParent)
+  end
+  SELECTED_CHAT_FRAME = ChatFrame2
+  C_CVar = { SetCVar = function(k, v) __cvars = __cvars or {}; __cvars[k] = v end }
+  ContainerFrameCombinedBags = CreateFrame("Frame", "ContainerFrameCombinedBags", UIParent)
+  ContainerFrameCombinedBags:Hide()
+  __item = CreateFrame("Button", nil, ContainerFrameCombinedBags)
+  __item.IconBorder = __item:CreateTexture(nil, "OVERLAY")
+  __item.icon = __item:CreateTexture(nil, "ARTWORK")
+  ContainerFrameCombinedBags.EnumerateValidItems = function() return ipairs({ __item }) end
+`;
+
+attempt("minimap", () => {
+  const addon = loggedIn(UI_ENV);
+  const mm = addon.eval(`return { parent = Minimap:GetParent():GetName(), mask = Minimap.__maskTexture,
+    size = Minimap.__width, zone = ns.GetModule("Minimap").zone:GetText(), zoneColor = ns.GetModule("Minimap").zone.__textColor,
+    border = MinimapCluster.BorderTop.__alpha, zoomIn = Minimap.ZoomIn.__alpha, shape = GetMinimapShape() }`);
+  assert(mm.parent === "ForeverUI_Minimap" && mm.size === 180, "the minimap moves into the themed holder at 180 px");
+  assert(mm.shape === "SQUARE", "GetMinimapShape tells other addons it is square");
+  assert(mm.zone === "TEST-ONLY Vale" && mm.zoneColor[1] === 0.7, "zone text on top, colored for contested");
+  assert(mm.border === 0 && mm.zoomIn === 0, "border art and zoom buttons are faded");
+  addon.update(0.25);
+  assert(addon.eval('return ns.GetModule("Minimap").coords:GetText()') === "45.7, 12.3", "coordinates under the map");
+  addon.eval("Minimap:GetScript('OnMouseWheel')(Minimap, 1)");
+  assert(addon.eval("return Minimap:GetZoom()") === 1, "the mouse wheel zooms in");
+  addon.eval("for _ = 1, 10 do Minimap:GetScript('OnMouseWheel')(Minimap, 1) end");
+  assert(addon.eval("return Minimap:GetZoom()") === 5, "and stops at the last zoom level");
+  addon.eval("C_Map.GetPlayerMapPosition = function() return { GetXY = function() return { __secret = true }, 0.5 end } end");
+  addon.update(0.25);
+  assert(addon.eval('return ns.GetModule("Minimap").coords:GetText()') === "", "secret or missing coordinates show nothing");
+  assert(addon.eval("return ns.MoverList()[1] ~= nil") === true, "the minimap is movable");
+});
+
+attempt("chat", () => {
+  const addon = loggedIn(UI_ENV);
+  const c = addon.eval(`return { font = { ChatFrame1:GetFont() }, box = ns.Theme.PaintedCount(),
+    tab1 = ChatFrame1Tab.Text.__textColor, tab2 = ChatFrame2Tab.Text.__textColor }`);
+  assert(c.font[0] === "Fonts\\FRIZQT__.TTF" && c.font[1] === 15, `chat windows get the theme font at their own size (got ${JSON.stringify(c.font)})`);
+  assert(c.tab2[0] === 0.24 && c.tab1[0] === 0.7, "the selected window's tab is accent, others gray");
+  addon.slash("accent red");
+  assert(addon.eval("return ChatFrame2Tab.Text.__textColor[1]") === 0.9, "tabs follow accent changes");
+});
+
+attempt("bags", () => {
+  const addon = loggedIn(UI_ENV);
+  assert(addon.eval("return __cvars.combinedBags") === "1", "combined bags are turned on");
+  addon.eval("ContainerFrameCombinedBags:Show()");
+  const b = addon.eval("return { border = __item.IconBorder.__alpha, painted = ns.Theme.PaintedCount() }");
+  assert(b.border === 0, "item slot art is faded when the bag opens");
+  addon.eval("ContainerFrameCombinedBags:Hide(); ContainerFrameCombinedBags:Show()");
+  assert(addon.eval("return ns.Theme.PaintedCount()") === b.painted, "reopening repaints, it doesn't pile up");
+});
+
 console.log("ForeverUI — Lua harness (fengari)");
 console.log("  core     saved variables, profiles, modules, combat queue");
 console.log("  theme    panels, widgets, live accent, reset");
@@ -409,6 +479,7 @@ console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-a
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");
 console.log("  bars     secure buttons, bindings, hotkeys, paging snippet, usable, secrets, drag, events, combat wait");
+console.log("  more     minimap (square, zone, coords, zoom), chat skin and tabs, combined bags");
 console.log("  units    secure buttons, bars, colors, secret values, events, ToT timer, Blizzard frames hidden, combat wait");
 if (failures.length) {
   console.error(`FAILED (${failures.length})`);

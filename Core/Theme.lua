@@ -104,11 +104,17 @@ local function borderColor(entry)
   return c[1], c[2], c[3], c[4]
 end
 
+-- Colors a painted background: panel (or inset) color, at opts.alpha if given.
+local function paintBg(bg, opts)
+  local r, g, b, a = T.PanelColor(opts.inset)
+  bg:SetVertexColor(r, g, b, opts.alpha or a)
+end
+
 -- Applies the current colors to one painted frame.
 local function repaint(entry)
   local p = entry.parts
   if p.bg then
-    p.bg:SetVertexColor(T.PanelColor(entry.opts.inset))
+    paintBg(p.bg, entry.opts)
   end
   if p.edges then
     colorEdges(p.edges, borderColor(entry))
@@ -134,7 +140,7 @@ end
 -- Primitives -----------------------------------------------------------------------
 
 -- A flat dark panel with a 1px border. opts: inset (darker), accent
--- (accent-colored border), noBorder, noBg.
+-- (accent-colored border), alpha (fill opacity), noBorder, noBg.
 function T.Panel(frame, opts)
   local entry = base(frame, "panel", opts)
   repaint(entry)

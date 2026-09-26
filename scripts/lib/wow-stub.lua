@@ -159,6 +159,27 @@ function methods:GetCheckedTexture() return self.__checkedTexture end
 -- Cooldowns: the last start and duration given.
 function methods:SetCooldown(start, duration) self.__cooldown = { start, duration } end
 
+-- Runs fn after a script's current handler, as HookScript does.
+function methods:HookScript(name, fn)
+  local old = self.__scripts[name]
+  self.__scripts[name] = function(...)
+    if old then old(...) end
+    return fn(...)
+  end
+end
+
+-- Fonts on font strings, edit boxes and chat frames: recorded and read back.
+function methods:SetFont(path, size, flags) self.__font = { path, size, flags } end
+function methods:GetFont() local f = self.__font or {} return f[1], f[2], f[3] end
+
+-- The minimap mask texture (square or round).
+function methods:SetMaskTexture(t) self.__maskTexture = t end
+
+-- Minimap zoom: the level, and how many levels there are (6 unless a test sets __zoomLevels).
+function methods:SetZoom(z) self.__zoom = z end
+function methods:GetZoom() return self.__zoom or 0 end
+function methods:GetZoomLevels() return self.__zoomLevels or 6 end
+
 -- Screen edges: only what a test sets (__left, __bottom); nil like an unlaid-out frame.
 function methods:GetLeft() return self.__left end
 function methods:GetBottom() return self.__bottom end
@@ -204,8 +225,15 @@ function methods:GetStringHeight()
   return text == "" and 0 or estimatedHeight(text, self.__width or 300)
 end
 
--- Visibility.
-function methods:Show() self.__shown = true end
+-- Showing a hidden widget runs its OnShow, as the client does.
+function methods:Show()
+  local was = self.__shown
+  self.__shown = true
+  local onShow = self.__scripts.OnShow
+  if not was and onShow then onShow(self) end
+end
+
+-- Hiding and the shown state.
 function methods:Hide() self.__shown = false end
 function methods:IsShown() return self.__shown end
 function methods:IsVisible() return self.__shown end
