@@ -859,12 +859,34 @@ attempt("healing fallbacks and options", () => {
   assert(addon.eval('return __click("Aggro strip")') && addon.eval("return ForeverUIDB.profiles.Default.RaidHealing.aggro") === false, "the page's switches work");
 });
 
+attempt("special bars", () => {
+  const addon = createAddon();
+  addon.eval(ACTIONS_ENV + `
+    for i = 1, 10 do
+      local b = CreateFrame("CheckButton", "PetActionButton" .. i, UIParent)
+      b.icon = b:CreateTexture(nil, "ARTWORK")
+      b.art = b:CreateTexture(nil, "BACKGROUND")
+    end
+    StanceButton1 = CreateFrame("CheckButton", "StanceButton1", UIParent)
+    StanceButton1.icon = StanceButton1:CreateTexture(nil, "ARTWORK")
+    ExtraActionButton1 = CreateFrame("CheckButton", "ExtraActionButton1", UIParent)`);
+  addon.login();
+  const pet = addon.eval("local b = PetActionButton3 return { skinned = b.fuiSkinned, art = b.art.__alpha, icon = b.icon.__alpha }");
+  assert(pet.skinned === true && pet.art === 0 && pet.icon === undefined, "pet buttons are restyled: art faded, icon kept");
+  assert(addon.eval("return StanceButton1.fuiSkinned and ExtraActionButton1.fuiSkinned") === true, "stance and extra action buttons too");
+  const exit = addon.eval("local b = ForeverUI_VehicleExit return { type = b:GetAttribute('type'), macro = b:GetAttribute('macrotext'), driver = b.__driver }");
+  assert(exit.type === "macro" && exit.macro === "/leavevehicle", "the vehicle exit button leaves the vehicle");
+  assert(exit.driver[0] === "visibility" && /canexitvehicle/.test(exit.driver[1]), "and only shows while you can leave");
+  assert(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.vehicleexit") === true, "it is movable");
+});
+
 console.log("ForeverUI — Lua harness (fengari)");
 console.log("  core     saved variables, profiles, modules, combat queue");
 console.log("  theme    panels, widgets, live accent, reset");
 console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-addon off");
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");
+console.log("  special  pet/stance/extra buttons restyled, vehicle exit button");
 console.log("  bars     secure buttons, bindings, hotkeys, paging snippet, usable, secrets, drag, events, combat wait");
 console.log("  healing  calculator and fallback heal/shield bars, hidden values, aggro strip, buff watch by name, options");
 console.log("  auras    dispel border by type (hidden -> highlight), HoT icons, stacks, timers, combat filter");

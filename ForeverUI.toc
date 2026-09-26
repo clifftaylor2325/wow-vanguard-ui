@@ -32,6 +32,7 @@ Modules/RaidFrames.lua
 Modules/RaidAuras.lua
 Modules/RaidHealing.lua
 Modules/ActionBars.lua
+Modules/SpecialBars.lua
 Modules/Minimap.lua
 Modules/Chat.lua
 Modules/Bags.lua
