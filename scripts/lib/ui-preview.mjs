@@ -29,6 +29,7 @@ for i, w in ipairs(__wfgStub.frames) do
     fontSize = w.__font and w.__font[2], value = w.__value, min = w.__min, max = w.__max,
     barColor = w.__barColor, messages = w.__messages, checked = w.__checked,
     checkedTexture = w.__parent ~= nil and w.__parent.__checkedTexture == w or nil,
+    barFill = w.__parent ~= nil and w.__parent.__barTexture == w or nil,
   }
 end
 return out`;

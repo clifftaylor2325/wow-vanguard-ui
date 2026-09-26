@@ -119,9 +119,11 @@ end
 
 -- Page ---------------------------------------------------------------------------------------
 
--- "Click casting (spec 2, this character)".
+-- Whose bindings these are: this spec's on this character, or (no specs) this character's.
 local function title()
-  return string.format("Bindings for spec %s on this character. Keys work while the pointer is over a raid frame.", tostring(ns.SpecIndex() or "-"))
+  local spec = ns.SpecIndex()
+  local whose = spec and ("spec " .. spec .. " on this character") or "this character"
+  return "Bindings for " .. whose .. ". Keys work while the pointer is over a raid frame."
 end
 
 -- Whether click casting also covers the unit frames.
