@@ -147,6 +147,23 @@ end
 function methods:GetLeft() return self.__left end
 function methods:GetBottom() return self.__bottom end
 
+-- Status bars: range, value and color, recorded as given (secrets included).
+function methods:SetMinMaxValues(lo, hi) self.__min, self.__max = lo, hi end
+function methods:GetMinMaxValues() return self.__min or 0, self.__max or 0 end
+function methods:SetValue(v) self.__value = v end
+function methods:GetValue() return self.__value or 0 end
+function methods:SetStatusBarColor(r, g, b, a) self.__barColor = { r, g, b, a or 1 } end
+
+-- Registers a unit event: delivered only when its first argument is one of the units.
+function methods:RegisterUnitEvent(event, ...)
+  self.__events[event] = true
+  self.__unitEvents = self.__unitEvents or {}
+  self.__unitEvents[event] = { ... }
+end
+
+-- Reparents a region (the preview and tests read __parent).
+function methods:SetParent(parent) self.__parent = parent end
+
 -- Strata and scroll child.
 function methods:SetFrameStrata(s) self.__strata = s end
 function methods:SetScrollChild(child) self.__scrollChild = child end
@@ -191,7 +208,7 @@ end
 function methods:GetScript(name) return self.__scripts[name] end
 function methods:RegisterEvent(event) self.__events[event] = true end
 function methods:UnregisterEvent(event) self.__events[event] = nil end
-function methods:UnregisterAllEvents() self.__events = {} end
+function methods:UnregisterAllEvents() self.__events = {}; self.__unitEvents = nil end
 function methods:IsEventRegistered(event) return self.__events[event] == true end
 function methods:SetText(text) self.__text = text end
 function methods:GetText() return self.__text end
@@ -247,11 +264,23 @@ DEFAULT_CHAT_FRAME = {
   end,
 }
 
+-- Whether a frame gets this event: registered, and for a unit event, for this unit.
+local function wants(frame, event, unit)
+  local units = frame.__unitEvents and frame.__unitEvents[event]
+  if not frame.__events[event] or not units then
+    return frame.__events[event] == true
+  end
+  for _, u in ipairs(units) do
+    if u == unit then return true end
+  end
+  return false
+end
+
 -- Fires an event at every frame registered for it.
 function stub.fire(event, ...)
   for _, frame in ipairs(stub.frames) do
     local onEvent = frame.__scripts.OnEvent
-    if frame.__events[event] and onEvent then
+    if onEvent and wants(frame, event, ...) then
       onEvent(frame, event, ...)
     end
   end

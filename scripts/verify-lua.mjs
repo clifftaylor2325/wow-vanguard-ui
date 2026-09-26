@@ -93,6 +93,7 @@ attempt("theme", () => {
 attempt("widgets", () => {
   const addon = loggedIn();
   const out = addon.eval(`
+    local before = ns.Theme.PaintedCount()
     local b = ns.Theme.Button(CreateFrame("Button", nil, UIParent, "UIPanelButtonTemplate"))
     local e = ns.Theme.EditBox(CreateFrame("EditBox", nil, UIParent))
     local c = ns.Theme.CloseButton(CreateFrame("Button", nil, UIParent, "UIPanelCloseButton"))
@@ -100,7 +101,7 @@ attempt("widgets", () => {
     for _, w in ipairs(__wfgStub.frames) do
       if w.__parent == c and w.__kind == "FontString" then glyph = w.__text end
     end
-    return { painted = ns.Theme.PaintedCount(), glyph = glyph }`);
+    return { painted = ns.Theme.PaintedCount() - before, glyph = glyph }`);
   assert(out.painted === 3, "button, edit box and close button are painted");
   assert(out.glyph === "x", "the close button draws an x");
 });
@@ -223,12 +224,96 @@ attempt("slash", () => {
   assert(chatHas(addon, /Unknown command/), "unknown commands say so");
 });
 
+// TEST-ONLY units. A secret is a table: Lua errors on arithmetic or
+// comparison with it, so any math the addon did on a secret would fail here.
+const UNITS_ENV = `
+  __units = {
+    player = { name = "<name>", hp = 900, maxhp = 1000, power = 50, maxpower = 100, ptype = "MANA", player = true, class = "MAGE" },
+    target = { name = "TEST-ONLY Boar", hp = { __secret = true }, maxhp = { __secret = true }, power = 0, maxpower = 0, ptype = "RAGE", reaction = 2 },
+    party1 = { name = "TEST-ONLY Friend", hp = 0, maxhp = 500, power = 0, maxpower = 0, ptype = "ENERGY", player = true, class = "ROGUE", dead = true },
+  }
+  local function u(unit) return __units[unit] end
+  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  UnitExists = function(unit) return u(unit) ~= nil end
+  UnitName = function(unit) return u(unit) and u(unit).name end
+  UnitHealth = function(unit) return u(unit).hp end
+  UnitHealthMax = function(unit) return u(unit).maxhp end
+  UnitPower = function(unit) return u(unit).power end
+  UnitPowerMax = function(unit) return u(unit).maxpower end
+  UnitPowerType = function(unit) return 0, u(unit).ptype end
+  UnitIsPlayer = function(unit) return u(unit) and u(unit).player == true end
+  UnitClass = function(unit) return "Class", u(unit).class end
+  UnitReaction = function(unit) return u(unit).reaction end
+  UnitIsDeadOrGhost = function(unit) return u(unit).dead == true end
+  UnitIsConnected = function() return true end
+  AbbreviateNumbers = function(v) if issecretvalue(v) then return { __secret = true, text = true } end return tostring(v) end
+  RegisterUnitWatch = function(f) f.__watched = true end
+  RAID_CLASS_COLORS = { MAGE = { r = 0.25, g = 0.78, b = 0.92 }, ROGUE = { r = 1, g = 0.96, b = 0.41 } }
+  PowerBarColor = { MANA = { r = 0, g = 0, b = 1 }, RAGE = { r = 1, g = 0, b = 0 } }
+  PlayerFrame = CreateFrame("Frame", "PlayerFrame", UIParent)
+  PlayerFrame:RegisterEvent("UNIT_HEALTH")
+`;
+
+// A frame's state for the unit-frame tests.
+const ufState = (addon, key) => addon.eval(`
+  local f = ForeverUI_${key}
+  return { shown = f:IsShown(), watched = f.__watched == true, unit = f:GetAttribute("unit"),
+    type1 = f:GetAttribute("*type1"), type2 = f:GetAttribute("*type2"),
+    hp = f.health.__value, max = f.health.__max, color = f.health.__barColor,
+    power = f.power.__value, powerColor = f.power.__barColor,
+    name = f.name:GetText(), text = f.healthText:GetText() }`);
+
+attempt("unit frames", () => {
+  const addon = loggedIn(UNITS_ENV);
+  const player = ufState(addon, "player");
+  assert(player.unit === "player" && player.type1 === "target" && player.type2 === "togglemenu", "player frame is a secure unit button");
+  assert(player.hp === 900 && player.max === 1000 && player.text === "900", "player health bar and text");
+  assert(player.color[0] === 0.25 && player.color[2] === 0.92, "players get their class color");
+  assert(player.power === 50 && player.powerColor[2] === 1, "power bar value and mana color");
+  assert(player.name === "<name>" && !player.watched, "player name; player frame is always shown");
+  const target = ufState(addon, "target");
+  assert(target.watched, "target frame shows and hides with its unit");
+  assert(target.hp?.__secret && target.max?.__secret, "secret health goes to the bar untouched");
+  assert(target.text?.__secret, "secret health text comes from the client's formatter");
+  assert(target.color[0] === 0.78, "hostile units are red");
+  assert(ufState(addon, "party1").text === "Dead", "dead units say Dead");
+  const hidden = addon.eval("return { parentShown = PlayerFrame:GetParent():IsShown(), events = PlayerFrame:IsEventRegistered('UNIT_HEALTH') }");
+  assert(hidden.parentShown === false && hidden.events === false, "the Blizzard player frame is hidden and silenced");
+  const movers = addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key end return out");
+  assert(["uf_player", "uf_target", "uf_targettarget", "uf_focus", "uf_pet", "uf_party1"].every((k) => movers.includes(k)), "every frame group is movable");
+});
+
+attempt("unit frame events", () => {
+  const addon = loggedIn(UNITS_ENV);
+  addon.eval("__units.player.hp = 400");
+  addon.fire("UNIT_HEALTH", "player");
+  assert(ufState(addon, "player").hp === 400, "UNIT_HEALTH updates the bar");
+  addon.eval('__units.focus = { name = "TEST-ONLY Focus", hp = 10, maxhp = 20, power = 0, maxpower = 0, ptype = "MANA", reaction = 5 }');
+  addon.fire("PLAYER_FOCUS_CHANGED");
+  const focus = ufState(addon, "focus");
+  assert(focus.name === "TEST-ONLY Focus" && focus.color[1] === 0.69, "focus change fills the focus frame; friendly is green");
+  addon.eval('__units.targettarget = { name = "TEST-ONLY ToT", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA" }');
+  addon.update(0.25);
+  assert(ufState(addon, "targettarget").name === "TEST-ONLY ToT", "target of target refreshes on a timer");
+});
+
+attempt("unit frames wait for combat", () => {
+  const addon = createAddon();
+  addon.eval(UNITS_ENV + "__wfgStub.inCombat = true");
+  addon.login();
+  assert(addon.eval("return ForeverUI_player") === null, "no secure frames are built in combat");
+  addon.eval("__wfgStub.inCombat = false");
+  addon.fire("PLAYER_REGEN_ENABLED");
+  assert(addon.eval("return ForeverUI_player ~= nil") === true, "they are built when combat ends");
+});
+
 console.log("ForeverUI — Lua harness (fengari)");
 console.log("  core     saved variables, profiles, modules, combat queue");
 console.log("  theme    panels, widgets, live accent, reset");
 console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-addon off");
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");
+console.log("  units    secure buttons, bars, colors, secret values, events, ToT timer, Blizzard frames hidden, combat wait");
 if (failures.length) {
   console.error(`FAILED (${failures.length})`);
   for (const f of failures) console.error(` - ${f}`);

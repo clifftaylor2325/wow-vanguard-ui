@@ -109,6 +109,13 @@ local EDIT_BOX = {
   "SetTextInsets",
 }
 
+local STATUS_BAR = {
+  "GetFillStyle", "GetMinMaxValues", "GetOrientation", "GetReverseFill",
+  "GetRotatesTexture", "GetStatusBarColor", "GetStatusBarTexture", "GetValue",
+  "SetFillStyle", "SetMinMaxValues", "SetOrientation", "SetReverseFill",
+  "SetRotatesTexture", "SetStatusBarColor", "SetStatusBarTexture", "SetValue",
+}
+
 -- BackdropTemplateMixin. Only frames created with "BackdropTemplate" (or a
 -- template that inherits it) have these since 9.0.
 local BACKDROP = {
@@ -128,6 +135,7 @@ return {
     Frame = set(REGION, FRAME),
     Button = set(REGION, FRAME, BUTTON),
     ScrollFrame = set(REGION, FRAME, SCROLL_FRAME),
+    StatusBar = set(REGION, FRAME, STATUS_BAR),
     EditBox = set(REGION, FRAME, FONT, EDIT_BOX),
     Texture = set(REGION, LAYERED, TEXTURE),
     FontString = set(REGION, LAYERED, FONT, FONT_STRING),
@@ -135,6 +143,7 @@ return {
   scripts = {
     Frame = set(FRAME_SCRIPTS),
     Button = set(FRAME_SCRIPTS, { "OnClick", "OnDoubleClick", "PostClick", "PreClick" }),
+    StatusBar = set(FRAME_SCRIPTS, { "OnMinMaxChanged", "OnValueChanged" }),
     ScrollFrame = set(FRAME_SCRIPTS, { "OnHorizontalScroll", "OnScrollRangeChanged", "OnVerticalScroll" }),
     EditBox = set(FRAME_SCRIPTS, {
       "OnChar", "OnCursorChanged", "OnEditFocusGained", "OnEditFocusLost",
@@ -149,5 +158,6 @@ return {
     UIPanelButtonTemplate = { kind = "Button" },
     UIPanelCloseButton = { kind = "Button" },
     UIPanelScrollFrameTemplate = { kind = "ScrollFrame" },
+    SecureUnitButtonTemplate = { kind = "Button" },
   },
 }
