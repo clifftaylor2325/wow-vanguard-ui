@@ -20,9 +20,9 @@ globals = {
 
 -- WoW API the addon reads. Add a name only when the addon starts using it.
 read_globals = {
-  "AbbreviateNumbers", "C_AddOns", "CreateFrame", "DEFAULT_CHAT_FRAME",
+  "AbbreviateNumbers", "C_ActionBar", "C_AddOns", "ClearOverrideBindings", "GetBindingKey", "CreateFrame", "DEFAULT_CHAT_FRAME",
   "GetAddOnMetadata", "InCombatLockdown", "IsShiftKeyDown", "PowerBarColor", "RAID_CLASS_COLORS",
-  "RegisterUnitWatch", "STANDARD_TEXT_FONT", "UIParent", "UnitClass",
+  "RegisterStateDriver", "RegisterUnitWatch", "SetOverrideBindingClick", "STANDARD_TEXT_FONT", "UIParent", "UnitClass",
   "UnitExists", "UnitHealth", "UnitHealthMax", "UnitIsConnected",
   "UnitIsDeadOrGhost", "UnitIsPlayer", "UnitName", "UnitPower", "UnitPowerMax",
   "UnitPowerType", "UnitReaction", "issecretvalue",

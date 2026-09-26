@@ -22,3 +22,4 @@ Core/Grid.lua
 Core/Movers.lua
 Core/Slash.lua
 Modules/UnitFrames.lua
+Modules/ActionBars.lua

@@ -143,6 +143,22 @@ function methods:GetPoint(i)
   end
 end
 
+-- Check buttons: checked state and the checked highlight texture.
+function methods:SetChecked(on) self.__checked = on == true end
+function methods:GetChecked() return self.__checked == true end
+
+-- The checked highlight: one texture, created on first use.
+function methods:SetCheckedTexture(t)
+  self.__checkedTexture = self.__checkedTexture or newWidget("Texture", nil, self, nil, "OVERLAY")
+  self.__checkedTexture:SetTexture(t)
+end
+
+-- The checked highlight texture, if set.
+function methods:GetCheckedTexture() return self.__checkedTexture end
+
+-- Cooldowns: the last start and duration given.
+function methods:SetCooldown(start, duration) self.__cooldown = { start, duration } end
+
 -- Screen edges: only what a test sets (__left, __bottom); nil like an unlaid-out frame.
 function methods:GetLeft() return self.__left end
 function methods:GetBottom() return self.__bottom end
@@ -214,7 +230,15 @@ function methods:SetText(text) self.__text = text end
 function methods:GetText() return self.__text end
 function methods:SetRotation(r) self.__rotation = r end
 function methods:GetRotation() return self.__rotation or 0 end
-function methods:SetAttribute(k, v) self.__attributes[k] = v end
+
+-- Sets an attribute and runs OnAttributeChanged, as the client does.
+function methods:SetAttribute(k, v)
+  self.__attributes[k] = v
+  local onChanged = self.__scripts.OnAttributeChanged
+  if onChanged then onChanged(self, k, v) end
+end
+
+-- Attributes and identity, read back.
 function methods:GetAttribute(k) return self.__attributes[k] end
 function methods:GetName() return self.__name end
 function methods:GetObjectType() return self.__kind end

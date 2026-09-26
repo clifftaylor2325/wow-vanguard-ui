@@ -116,6 +116,18 @@ local STATUS_BAR = {
   "SetRotatesTexture", "SetStatusBarColor", "SetStatusBarTexture", "SetValue",
 }
 
+local CHECK_BUTTON = {
+  "GetChecked", "GetCheckedTexture", "GetDisabledCheckedTexture",
+  "SetChecked", "SetCheckedTexture", "SetDisabledCheckedTexture",
+}
+
+local COOLDOWN = {
+  "Clear", "GetCooldownDuration", "GetCooldownTimes", "IsPaused", "Pause",
+  "Resume", "SetCooldown", "SetCooldownDuration", "SetDrawBling",
+  "SetDrawEdge", "SetDrawSwipe", "SetHideCountdownNumbers", "SetReverse",
+  "SetSwipeColor", "SetSwipeTexture",
+}
+
 -- BackdropTemplateMixin. Only frames created with "BackdropTemplate" (or a
 -- template that inherits it) have these since 9.0.
 local BACKDROP = {
@@ -127,7 +139,7 @@ local BACKDROP = {
 local FRAME_SCRIPTS = {
   "OnAttributeChanged", "OnDragStart", "OnDragStop", "OnEnter", "OnEvent",
   "OnHide", "OnKeyDown", "OnKeyUp", "OnLeave", "OnLoad", "OnMouseDown",
-  "OnMouseUp", "OnMouseWheel", "OnShow", "OnSizeChanged", "OnUpdate",
+  "OnMouseUp", "OnMouseWheel", "OnReceiveDrag", "OnShow", "OnSizeChanged", "OnUpdate",
 }
 
 return {
@@ -136,6 +148,8 @@ return {
     Button = set(REGION, FRAME, BUTTON),
     ScrollFrame = set(REGION, FRAME, SCROLL_FRAME),
     StatusBar = set(REGION, FRAME, STATUS_BAR),
+    CheckButton = set(REGION, FRAME, BUTTON, CHECK_BUTTON),
+    Cooldown = set(REGION, FRAME, COOLDOWN),
     EditBox = set(REGION, FRAME, FONT, EDIT_BOX),
     Texture = set(REGION, LAYERED, TEXTURE),
     FontString = set(REGION, LAYERED, FONT, FONT_STRING),
@@ -144,6 +158,8 @@ return {
     Frame = set(FRAME_SCRIPTS),
     Button = set(FRAME_SCRIPTS, { "OnClick", "OnDoubleClick", "PostClick", "PreClick" }),
     StatusBar = set(FRAME_SCRIPTS, { "OnMinMaxChanged", "OnValueChanged" }),
+    CheckButton = set(FRAME_SCRIPTS, { "OnClick", "OnDoubleClick", "PostClick", "PreClick" }),
+    Cooldown = set(FRAME_SCRIPTS, { "OnCooldownDone" }),
     ScrollFrame = set(FRAME_SCRIPTS, { "OnHorizontalScroll", "OnScrollRangeChanged", "OnVerticalScroll" }),
     EditBox = set(FRAME_SCRIPTS, {
       "OnChar", "OnCursorChanged", "OnEditFocusGained", "OnEditFocusLost",
@@ -159,5 +175,8 @@ return {
     UIPanelCloseButton = { kind = "Button" },
     UIPanelScrollFrameTemplate = { kind = "ScrollFrame" },
     SecureUnitButtonTemplate = { kind = "Button" },
+    SecureActionButtonTemplate = {},
+    SecureHandlerStateTemplate = {},
+    CooldownFrameTemplate = { kind = "Cooldown" },
   },
 }
