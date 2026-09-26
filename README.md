@@ -7,7 +7,7 @@ fonts from other UI addons.
 
 ## Install
 
-Copy the `ForeverUI` folder from a release zip into `World of Warcraft/_retail_/Interface/AddOns/` (your Forever client's AddOns folder).
+Download `ForeverUI-<version>.zip` from the [latest release](https://github.com/clifftaylor2325/wow-forever-ui/releases/latest) and unzip the `ForeverUI` folder into `World of Warcraft/_retail_/Interface/AddOns/` (your Forever client's AddOns folder).
 
 ## Commands
 
@@ -53,6 +53,8 @@ npm run lint      # luacheck
 npm run package   # dist/ForeverUI-<version>.zip from committed files
 npm run preview   # preview/*.png: the default layout and the options window (needs Playwright)
 ```
+
+**Release:** bump `## Version` in `ForeverUI.toc` and merge, then run the `release` workflow from the Actions tab on `main` (it tags `v<version>`), or push a matching tag. It re-runs the checks and publishes a GitHub release with the zip.
 
 **Code quality:** every function has a comment on the line above it and at most 10 lines of body code; `npm run verify` and CI enforce it.
 

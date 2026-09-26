@@ -183,6 +183,15 @@ function methods:SetZoom(z) self.__zoom = z end
 function methods:GetZoom() return self.__zoom or 0 end
 function methods:GetZoomLevels() return self.__zoomLevels or 6 end
 
+-- A frame's regions: its textures and font strings, in creation order.
+function methods:GetRegions()
+  local out = {}
+  for _, w in ipairs(stub.frames) do
+    if w.__parent == self and (w.__kind == "Texture" or w.__kind == "FontString") then out[#out + 1] = w end
+  end
+  return unpack(out)
+end
+
 -- Screen edges: only what a test sets (__left, __bottom); nil like an unlaid-out frame.
 function methods:GetLeft() return self.__left end
 function methods:GetBottom() return self.__bottom end

@@ -110,6 +110,23 @@ local function actionBarRows()
   return rows
 end
 
+-- get/set for restyling all three of the client's special bars at once (applies on reload).
+local function skinSpecial()
+  return function() return moduleSettings("SpecialBars").skinPet end, function(v)
+    local s = moduleSettings("SpecialBars")
+    s.skinPet, s.skinStance, s.skinExtra = v, v, v
+    O.NeedReload()
+  end
+end
+
+-- Action bars plus the client's special buttons and the vehicle exit.
+local function actionBarPageRows()
+  return append(actionBarRows(), {
+    check("Restyle the pet, stance and extra action buttons (reload)", skinSpecial()),
+    check("Vehicle exit button (reload)", setting("SpecialBars", "vehicleExit", true)),
+  })
+end
+
 -- XP and reputation bars, minimap, chat and bags.
 local function moreRows()
   return {
@@ -197,7 +214,7 @@ local PAGES = {
   { key = "modules", title = "Modules", rows = moduleRows },
   { key = "unitframes", title = "Unit frames", rows = unitFrameRows },
   { key = "raid", title = "Raid frames", rows = raidPageRows },
-  { key = "actionbars", title = "Action bars", rows = actionBarRows },
+  { key = "actionbars", title = "Action bars", rows = actionBarPageRows },
   { key = "more", title = "Bars, map, chat", rows = moreRows },
   { key = "profiles", title = "Profiles", rows = profileRows },
 }
