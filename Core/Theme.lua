@@ -192,11 +192,14 @@ function T.CloseButton(button)
   return button
 end
 
--- Re-fonts a font string to the theme font. size defaults to its current size (else 12).
+-- Re-fonts a font string to the theme font, with a 1 px drop shadow so it
+-- reads on bright bars. size defaults to its current size (else 12).
 function T.SetFont(fs, size)
   local path, outline = T.Font()
   local _, current = fs:GetFont()
   fs:SetFont(path, size or current or 12, outline)
+  fs:SetShadowOffset(1, -1)
+  fs:SetShadowColor(0, 0, 0, 1)
   return fs
 end
 

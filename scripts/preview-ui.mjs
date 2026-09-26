@@ -86,7 +86,7 @@ const ACTIONS = `
   RegisterStateDriver = function() end
 `;
 
-// TEST-ONLY minimap and one chat window with a few lines.
+// TEST-ONLY minimap, one chat window with a few lines, XP, a watched faction and one out-of-range action.
 const WORLD = `
   UIParent:SetSize(1920, 1080)
   Minimap = CreateFrame("Minimap", "Minimap", UIParent)
@@ -109,6 +109,14 @@ const WORLD = `
   chat:AddMessage("|cffffff00TEST-ONLY chat line: [General] welcome to the preview.|r")
   chat:AddMessage("|cffff80ffTEST-ONLY whisper: this is not a real message.|r")
   chat:AddMessage("|cff3d9effForeverUI:|r TEST-ONLY /fui status line.")
+  UnitXP = function() return 12300 end
+  UnitXPMax = function() return 40000 end
+  GetXPExhaustion = function() return 5000 end
+  UnitLevel = function() return 42 end
+  C_Reputation = { GetWatchedFactionData = function()
+    return { name = "TEST-ONLY Faction", reaction = 6, currentReactionThreshold = 9000, nextReactionThreshold = 21000, currentStanding = 15000 }
+  end }
+  IsActionInRange = function(slot) return slot ~= 3 end
 `;
 
 const out = path.resolve(arg("out", path.join(root, "preview")));

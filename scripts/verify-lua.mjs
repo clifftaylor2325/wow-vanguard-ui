@@ -472,6 +472,55 @@ attempt("bags", () => {
   assert(addon.eval("return ns.Theme.PaintedCount()") === b.painted, "reopening repaints, it doesn't pile up");
 });
 
+attempt("range tint", () => {
+  const polled = loggedIn(ACTIONS_ENV + "IsActionInRange = function(slot) if slot == 1 then return false end if slot == 3 then return { __secret = true } end return true end");
+  assert(button(polled, 1, 1).color[0] === 0.9, "out of range tints red (asked directly on clients without range events)");
+  assert(button(polled, 1, 3).color[0] === 0.4, "a secret range answer never tints red");
+  const evented = loggedIn(ACTIONS_ENV + "__rangeSlots = {} C_ActionBar = { EnableActionRangeCheck = function(slot, on) __rangeSlots[slot] = on end }");
+  assert(evented.eval("return __rangeSlots[1]") === true, "clients with range events are asked to watch each slot");
+  evented.fire("ACTION_RANGE_CHECK_UPDATE", 1, false, true);
+  assert(button(evented, 1, 1).color[0] === 0.9, "ACTION_RANGE_CHECK_UPDATE out of range tints red");
+  evented.fire("ACTION_RANGE_CHECK_UPDATE", 1, true, true);
+  assert(button(evented, 1, 1).color[0] === 1, "back in range, back to normal");
+  evented.fire("ACTION_RANGE_CHECK_UPDATE", 1, false, false);
+  assert(button(evented, 1, 1).color[0] === 1, "an action without a range is never red");
+});
+
+// TEST-ONLY experience and a watched faction.
+const DATA_ENV = `
+  UnitXP = function() return 12300 end
+  UnitXPMax = function() return 40000 end
+  GetXPExhaustion = function() return 5000 end
+  UnitLevel = function() return 42 end
+  IsPlayerAtEffectiveMaxLevel = function() return __maxLevel == true end
+  C_Reputation = { GetWatchedFactionData = function() return __faction end }
+  __faction = { name = "TEST-ONLY Faction", reaction = 5, currentReactionThreshold = 3000, nextReactionThreshold = 9000, currentStanding = 4200 }
+`;
+
+// The data bars' state.
+const bars = (addon) => addon.eval(`local x, r = ForeverUI_xpbar, ForeverUI_repbar
+  return { xpShown = x:IsShown(), xp = x.__value, xpMax = x.__max, rested = x.rested.__width, xpText = x.text:GetText(), xpTextShown = x.text:IsShown(),
+    repShown = r:IsShown(), rep = r.__value, repMax = r.__max, repColor = r.__barColor, repText = r.text:GetText() }`);
+
+attempt("data bars", () => {
+  const addon = loggedIn(DATA_ENV);
+  const b = bars(addon);
+  assert(b.xp === 12300 && b.xpMax === 40000 && Math.abs(b.rested - 476 * 17300 / 40000) < 1e-9, "XP bar with rested overlay out to XP + rested");
+  assert(b.xpText === "Level 42  12.3K / 40.0K (30%)  rested 5.0K", `XP text (got ${b.xpText})`);
+  assert(b.xpTextShown === false, "text shows on hover only by default");
+  addon.eval("ForeverUI_xpbar:GetScript('OnEnter')(ForeverUI_xpbar)");
+  assert(addon.eval("return ForeverUI_xpbar.text:IsShown()") === true, "hovering shows it");
+  assert(b.rep === 1200 && b.repMax === 6000 && b.repColor[1] === 0.6, "reputation within the current standing, friendly green");
+  assert(b.repText === "TEST-ONLY Faction  1.2K / 6.0K (20%)", `reputation text (got ${b.repText})`);
+  addon.eval("__maxLevel = true; __faction = nil");
+  addon.fire("PLAYER_XP_UPDATE");
+  addon.fire("UPDATE_FACTION");
+  const after = bars(addon);
+  assert(after.xpShown === false && after.repShown === false, "XP hides at max level; reputation hides with nothing watched");
+  const movers = addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key end return out");
+  assert(movers.includes("xpbar") && movers.includes("repbar"), "both bars are movable");
+});
+
 console.log("ForeverUI — Lua harness (fengari)");
 console.log("  core     saved variables, profiles, modules, combat queue");
 console.log("  theme    panels, widgets, live accent, reset");
@@ -479,6 +528,8 @@ console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-a
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");
 console.log("  bars     secure buttons, bindings, hotkeys, paging snippet, usable, secrets, drag, events, combat wait");
+console.log("  range    red when out of range, by range events or asked; secrets never red");
+console.log("  data     XP with rested, watched reputation, hover text, hides when empty");
 console.log("  more     minimap (square, zone, coords, zoom), chat skin and tabs, combined bags");
 console.log("  units    secure buttons, bars, colors, secret values, events, ToT timer, Blizzard frames hidden, combat wait");
 if (failures.length) {

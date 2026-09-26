@@ -15,6 +15,7 @@ local AB = ns.Module("ActionBars", {
   defaults = {
     hideBlizzard = true,
     lockButtons = true,
+    rangeTint = true,
     size = 36,
     spacing = 4,
     bars = {
@@ -136,16 +137,41 @@ local function updateCooldown(b)
   pcall(b.cooldown.SetCooldown, b.cooldown, start, length)
 end
 
+-- Icon tints, by state. Out of range wins over the others.
+local TINT = {
+  range = { 0.9, 0.3, 0.3 },
+  power = { 0.4, 0.5, 1 },
+  unusable = { 0.4, 0.4, 0.4 },
+  ok = { 1, 1, 1 },
+}
+
+-- Tints the icon for the button's range and usable state.
+local function paintIcon(b)
+  local tint = (b.outOfRange and AB.settings.rangeTint) and TINT.range or TINT[b.usable or "ok"]
+  b.icon:SetVertexColor(tint[1], tint[2], tint[3])
+end
+
+-- "ok", "power" (not enough power) or "unusable". Secret answers count as usable.
+local function usableState(slot)
+  local usable, noPower = call("IsUsableAction", slot)
+  if ns.IsSecret(usable) or usable then
+    return "ok"
+  end
+  return (noPower and not ns.IsSecret(noPower)) and "power" or "unusable"
+end
+
 -- Dims an action that can't be used now; blue when it's for lack of power.
 local function updateUsable(b)
-  local usable, noPower = call("IsUsableAction", b.action)
-  if ns.IsSecret(usable) or usable then
-    b.icon:SetVertexColor(1, 1, 1)
-  elseif noPower and not ns.IsSecret(noPower) then
-    b.icon:SetVertexColor(0.4, 0.5, 1)
-  else
-    b.icon:SetVertexColor(0.4, 0.4, 0.4)
-  end
+  b.usable = usableState(b.action)
+  paintIcon(b)
+end
+
+-- Range, from the client's range events where it has them (see the
+-- Range section below), else asked directly: red only for a plain "out of range".
+local function updateRange(b)
+  local inRange = call("IsActionInRange", b.action)
+  b.outOfRange = not ns.IsSecret(inRange) and inRange == false
+  paintIcon(b)
 end
 
 -- True for a plain true (a secret counts as false).
@@ -173,6 +199,7 @@ function AB.UpdateButton(b)
   updateUsable(b)
   updateChecked(b)
   updateHotkey(b)
+  AB.WatchRange(b)
 end
 
 -- Runs fn on every button.
@@ -336,6 +363,47 @@ local function onSlotChanged(_, slot)
   end
 end
 
+-- Range ------------------------------------------------------------------------------
+-- Clients with C_ActionBar.EnableActionRangeCheck push range changes as
+-- ACTION_RANGE_CHECK_UPDATE; older ones are asked five times a second.
+
+-- True when the client pushes range changes for action slots.
+local function rangeEvents()
+  return C_ActionBar and type(C_ActionBar.EnableActionRangeCheck) == "function"
+end
+
+-- Asks the client to report range changes for the button's slot (or checks range now).
+function AB.WatchRange(b)
+  if rangeEvents() then
+    pcall(C_ActionBar.EnableActionRangeCheck, b.action, true)
+  else
+    updateRange(b)
+  end
+end
+
+-- ACTION_RANGE_CHECK_UPDATE: red when the slot checks range and is out of it.
+local function onRangeUpdate(_, slot, inRange, checksRange)
+  for _, b in ipairs(AB.buttons) do
+    if b.action == slot then
+      b.outOfRange = not ns.IsSecret(checksRange) and checksRange == true and not ns.IsSecret(inRange) and inRange == false
+      paintIcon(b)
+    end
+  end
+end
+
+-- Without range events: re-check every button five times a second.
+local function pollRange()
+  local elapsed = 0
+  local ticker = CreateFrame("Frame")
+  ticker:SetScript("OnUpdate", function(_, dt)
+    elapsed = elapsed + dt
+    if elapsed >= 0.2 then
+      elapsed = 0
+      each(updateRange)
+    end
+  end)
+end
+
 -- Event -> what it refreshes.
 local EVENTS = {
   -- One handler per event; most refresh one part of every button.
@@ -347,6 +415,7 @@ local EVENTS = {
   SPELL_UPDATE_USABLE = function() each(updateUsable) end,
   ACTIONBAR_UPDATE_STATE = function() each(updateChecked) end,
   UPDATE_BINDINGS = function() ns.OutOfCombat(AB.ApplyBindings) end,
+  ACTION_RANGE_CHECK_UPDATE = onRangeUpdate,
 }
 
 -- Setup ---------------------------------------------------------------------------------
@@ -371,4 +440,5 @@ function AB.Enable(settings)
   for event, fn in pairs(EVENTS) do
     ns.On(event, fn)
   end
+  if settings.rangeTint and not rangeEvents() then pollRange() end
 end

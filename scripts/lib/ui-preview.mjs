@@ -65,7 +65,7 @@ const PAGE_CSS = `
     border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:12px solid #f5f5f5}
   .chat{box-sizing:border-box;padding:4px 6px;display:flex;flex-direction:column;justify-content:flex-end;
     font:13px/17px "DejaVu Sans",sans-serif;color:#fff;text-shadow:1px 1px 0 #000;overflow:hidden}
-  #caption{position:absolute;right:10px;bottom:8px;z-index:99999;font:11px "DejaVu Sans",sans-serif;
+  #caption{position:absolute;left:10px;top:8px;z-index:99999;font:11px "DejaVu Sans",sans-serif;
     color:rgba(255,255,255,.75);background:rgba(0,0,0,.55);padding:4px 8px;border-radius:4px}
   `;
 
