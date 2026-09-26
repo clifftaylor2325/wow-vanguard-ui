@@ -145,7 +145,8 @@ const GROUP = `
   end
 `;
 
-// TEST-ONLY 20-player raid: four groups with a tank and a healer each, one dead, one offline.
+// TEST-ONLY 20-player raid: four groups with a tank and a healer each, one dead, one offline,
+// three dispellable debuffs (Magic, Poison, Curse) and some of your HoTs.
 const RAID = `
   local classes = { "WARRIOR", "PRIEST", "MAGE", "ROGUE", "HUNTER", "PALADIN", "DRUID", "SHAMAN", "WARLOCK", "MONK" }
   RAID_CLASS_COLORS.WARRIOR = { r = 0.78, g = 0.61, b = 0.43 } RAID_CLASS_COLORS.HUNTER = { r = 0.67, g = 0.83, b = 0.45 }
@@ -162,13 +163,19 @@ const RAID = `
   end
   UnitIsDeadOrGhost = function(unit) return (__units[unit] or {}).dead == true end
   UnitIsConnected = function(unit) return not (__units[unit] or {}).offline end
+  local debuffs = { raid4 = "Magic", raid9 = "Poison", raid16 = "Curse" }
+  local hots = { raid1 = 3, raid3 = 1, raid6 = 2, raid11 = 2, raid17 = 1 }
+  C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
+    if filter == "HARMFUL|RAID" then return i == 1 and debuffs[unit] and { dispelName = debuffs[unit] } or nil end
+    if i <= (hots[unit] or 0) then return { icon = "TEST-ONLY-HOT", expirationTime = 0, duration = 0 } end
+  end }
   __group(units)
 `;
 
 // Scenes: the default layout (party on the raid frames), a 20-player raid, then the options window.
 const SCENES = [
   { name: "foreverui-default", caption: "ForeverUI defaults (blue accent)", lua: '__group({ "player", "party1", "party2" })' },
-  { name: "foreverui-raid", caption: "Raid frames, 20 players (TEST-ONLY raid)", lua: RAID },
+  { name: "foreverui-raid", caption: "Raid frames, 20 players, with dispel borders and HoT icons (TEST-ONLY raid)", lua: RAID },
   { name: "foreverui-options", caption: "Options window: General (/fui)", lua: 'ns.Options.Show("general")' },
   { name: "foreverui-options-bars", caption: "Options window: Action bars", lua: 'ns.Options.Show("actionbars")' },
   { name: "foreverui-clickcast", caption: "Options window: Click casting (TEST-ONLY bindings)", lua: `

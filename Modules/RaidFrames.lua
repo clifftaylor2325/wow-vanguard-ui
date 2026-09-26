@@ -31,6 +31,9 @@ RF.INIT = [[
 ]]
 
 RF.buttons = {}
+-- Other modules add to a raid button here: setupHooks(b) once per button,
+-- updateHooks(b, unit) on every refresh (Modules/RaidAuras.lua uses both).
+RF.setupHooks, RF.updateHooks = {}, {}
 
 -- Values ----------------------------------------------------------------------------------
 
@@ -47,6 +50,14 @@ end
 
 -- Updating ---------------------------------------------------------------------------------
 
+-- Name, role letter, and Dead / Offline.
+local function updateTexts(b, unit)
+  b.name:SetText(UnitName(unit))
+  b.role:SetText(RF.RoleLetter(unit))
+  local status = unitFrames().HealthText(unit)
+  b.status:SetText((status == "Dead" or status == "Offline") and status or "")
+end
+
 -- Health bar, colors, name, role and status for one button's unit.
 function RF.Update(b)
   local unit = b:GetAttribute("unit")
@@ -55,10 +66,8 @@ function RF.Update(b)
   b.health:SetMinMaxValues(0, UnitHealthMax(unit))
   b.health:SetValue(UnitHealth(unit))
   b.health:SetStatusBarColor(UF.HealthColor(unit))
-  b.name:SetText(UnitName(unit))
-  b.role:SetText(RF.RoleLetter(unit))
-  local status = UF.HealthText(unit)
-  b.status:SetText((status == "Dead" or status == "Offline") and status or "")
+  updateTexts(b, unit)
+  for _, hook in ipairs(RF.updateHooks) do hook(b, unit) end
 end
 
 -- Every button currently showing a unit.
@@ -125,6 +134,7 @@ function RF.Setup(b)
   b:HookScript("OnAttributeChanged", onAttributeChanged)
   b:HookScript("OnShow", RF.Update)
   RF.buttons[#RF.buttons + 1] = b
+  for _, hook in ipairs(RF.setupHooks) do hook(b) end
   if RF.OnButtonCreated then RF.OnButtonCreated(b) end
 end
 
