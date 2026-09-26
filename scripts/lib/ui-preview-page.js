@@ -57,6 +57,7 @@ function fontNode(f) {
   Object.assign(el.style, { fontSize: `${size}px`, lineHeight: `${Math.round(size * 1.2)}px`, color: rgba(f.textColor || color) });
   el.style.textAlign = { CENTER: "center", RIGHT: "right" }[f.justifyH] || "left";
   if (f.width) el.style.width = `${f.width}px`;
+  if (f.noWrap) Object.assign(el.style, { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" });
   el.innerHTML = wowText(f.text);
   return el;
 }
