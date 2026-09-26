@@ -14,8 +14,11 @@
 Core/Events.lua
 Core/DB.lua
 Core/Combat.lua
+Core/Serialize.lua
+Core/Profiles.lua
 Core/Modules.lua
 Core/Theme.lua
+Core/Dialog.lua
 Core/Skin.lua
 Core/Layout.lua
 Core/Grid.lua
