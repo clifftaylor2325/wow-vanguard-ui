@@ -154,6 +154,33 @@ function stylePlaceholder(el, f) {
   if (f.vertexColor) el.style.background = rgba(f.vertexColor, 0.35);
 }
 
+// Stand-ins for the client's raid marks (the preview has no game art): [text, color].
+const RAID_ICONS = [["★", "#ffe23a"], ["●", "#ff9a1f"], ["◆", "#d45cff"], ["▲", "#3ee03e"], ["☾", "#c8d8e8"], ["■", "#3a8cff"], ["✖", "#ff3a3a"], ["☠", "#f5f5f5"]];
+const GLYPHS = [
+  [/ReadyCheck-Ready/, ["✔", "#3ee03e"]], [/ReadyCheck-NotReady/, ["✖", "#ff3a3a"]], [/ReadyCheck-Waiting/, ["?", "#ffd23a"]],
+  [/Raid-Icon-Rez/, ["✚", "#8cf08c"]], [/LeaderIcon/, ["♛", "#ffd23a"]], [/AssistantIcon/, ["♦", "#e0e0e0"]],
+];
+
+// The stand-in glyph for a raid mark texture (raid icons by their sheet cell), or undefined.
+function glyphFor(f) {
+  if (/UI-RaidTargetingIcons/.test(f.texture) && f.texCoord) return RAID_ICONS[Math.round(f.texCoord[0] * 4) + Math.round(f.texCoord[2] * 4) * 4];
+  return GLYPHS.find(([re]) => re.test(f.texture))?.[1];
+}
+
+// Draws a raid mark as its glyph, sized to the texture.
+function styleGlyph(el, f, [text, color]) {
+  el.className = "glyph";
+  el.textContent = text;
+  Object.assign(el.style, { color, fontSize: `${Math.max(8, (f.height || 12) - 1)}px` });
+}
+
+// Game art: a raid mark's glyph, or a dashed placeholder.
+function styleArt(el, f) {
+  const glyph = glyphFor(f);
+  if (glyph) return styleGlyph(el, f, glyph);
+  stylePlaceholder(el, f);
+}
+
 // A texture node: flat color (a color texture, or tinted WHITE8X8), the arrow shape, or a dashed placeholder for game art.
 function textureNode(f) {
   const el = document.createElement("div");
@@ -163,7 +190,7 @@ function textureNode(f) {
   } else if (/MinimapArrow/.test(f.texture || "")) {
     styleArrow(el, f);
   } else if (f.texture) {
-    stylePlaceholder(el, f);
+    styleArt(el, f);
   }
   return el;
 }
@@ -248,12 +275,15 @@ function clipTo(ctx, el, r, clip) {
   el.style.clipPath = `inset(${inset.map((v) => `${Math.max(0, v)}px`).join(" ")})`;
 }
 
+// Its alpha times every ancestor's, as the client fades a frame's children with it.
+const alphaOf = (ctx, f) => [f, ...ancestors(ctx, f)].reduce((a, w) => a * (w.alpha ?? 1), 1);
+
 // Draws one widget at its rect.
 function draw(ctx, f) {
   const r = rectOf(ctx, f);
   const el = nodeFor(f, r);
   Object.assign(el.style, { position: "absolute", left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
-  if (f.alpha != null) el.style.opacity = f.alpha;
+  el.style.opacity = alphaOf(ctx, f);
   el.style.zIndex = zIndexOf(ctx, f);
   const clip = scrollParent(ctx, f);
   if (clip) clipTo(ctx, el, r, clip);

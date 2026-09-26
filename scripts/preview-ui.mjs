@@ -157,7 +157,8 @@ const GROUP = `
 
 // TEST-ONLY 20-player raid: four groups with a tank and a healer each, one dead, one offline,
 // three dispellable debuffs (Magic, Poison, Curse), some of your HoTs, incoming heals,
-// shields, aggro on the tanks, and four players missing your buff.
+// shields, aggro on the tanks, four players missing your buff, raid icons, a leader and
+// assistants, a ready check under way, a resurrection on the dead player and two out of range.
 const RAID = `
   local classes = { "WARRIOR", "PRIEST", "MAGE", "ROGUE", "HUNTER", "PALADIN", "DRUID", "SHAMAN", "WARLOCK", "MONK" }
   RAID_CLASS_COLORS.WARRIOR = { r = 0.78, g = 0.61, b = 0.43 } RAID_CLASS_COLORS.HUNTER = { r = 0.67, g = 0.83, b = 0.45 }
@@ -195,13 +196,22 @@ const RAID = `
   C_Spell = { GetSpellInfo = function() return {} end, GetSpellTexture = function() return "TEST-ONLY-BUFF" end }
   local missing = { raid3 = true, raid8 = true, raid14 = true, raid19 = true }
   C_UnitAuras.GetAuraDataBySpellName = function(unit) if not missing[unit] then return {} end end
+  local icons, answers = { raid1 = 8, raid6 = 7, raid11 = 1 }, { raid4 = "notready", raid9 = "waiting", raid15 = "waiting" }
+  GetRaidTargetIndex = function(unit) return icons[unit] end
+  GetReadyCheckStatus = function(unit) return answers[unit] or "ready" end
+  UnitHasIncomingResurrection = function(unit) return unit == "raid7" end
+  UnitIsGroupLeader = function(unit) return unit == "raid2" end
+  UnitIsGroupAssistant = function(unit) return unit == "raid6" or unit == "raid12" end
+  UnitInRange = function(unit) return unit ~= "raid18" and unit ~= "raid20", true end
   __group(units)
+  ns.GetModule("RaidStatus").readyRunning = true
+  ns.GetModule("RaidStatus").UpdateAll()
 `;
 
 // Scenes: the default layout (party on the raid frames), a 20-player raid, then the options window.
 const SCENES = [
   { name: "foreverui-default", caption: "ForeverUI defaults (blue accent)", lua: '__group({ "player", "party1", "party2" })' },
-  { name: "foreverui-raid", caption: "Raid frames, 20 players: heals, shields, aggro, missing buffs, dispel borders, HoTs (TEST-ONLY raid)", lua: RAID },
+  { name: "foreverui-raid", caption: "Raid frames, 20 players: heals, shields, aggro, missing buffs, dispel borders, HoTs, raid icons, ready check, leader, range fade (TEST-ONLY raid)", lua: RAID },
   { name: "foreverui-options", caption: "Options window: General (/fui)", lua: 'ns.Options.Show("general")' },
   { name: "foreverui-options-bars", caption: "Options window: Action bars", lua: 'ns.Options.Show("actionbars")' },
   { name: "foreverui-healing", caption: "Options window: Healing", lua: 'ns.Options.Show("healing")' },
