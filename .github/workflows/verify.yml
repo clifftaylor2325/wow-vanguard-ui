@@ -72,3 +72,23 @@ jobs:
           actual=$(unzip -Z1 "$zip" | wc -l)
           echo "files: $actual (expected $expected)"
           test "$actual" -eq "$expected"
+
+  preview:
+    # A screenshot of the default layout from the addon's real Lua (art
+    # approximated), so a UI change can be reviewed from the run's artifacts.
+    name: UI preview
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install -g playwright@1.56.1 && playwright install --with-deps chromium
+      - run: npm run preview
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-preview
+          path: preview/*.png
+          if-no-files-found: error
