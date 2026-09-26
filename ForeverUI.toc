@@ -7,6 +7,7 @@
 ## SavedVariablesPerCharacter: ForeverUICharDB
 ## DefaultState: enabled
 ## IconTexture: Interface/Icons/INV_Misc_EngGizmos_20
+## AddonCompartmentFunc: ForeverUI_OnAddonCompartmentClick
 ## X-Flavor: forever
 ## X-License: MIT
 ## X-Website: https://github.com/clifftaylor2325/wow-forever-ui
@@ -23,6 +24,8 @@ Core/Skin.lua
 Core/Layout.lua
 Core/Grid.lua
 Core/Movers.lua
+Core/Widgets.lua
+Core/Options.lua
 Core/Slash.lua
 Modules/UnitFrames.lua
 Modules/ActionBars.lua
