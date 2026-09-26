@@ -23,3 +23,6 @@ Core/Movers.lua
 Core/Slash.lua
 Modules/UnitFrames.lua
 Modules/ActionBars.lua
+Modules/Minimap.lua
+Modules/Chat.lua
+Modules/Bags.lua
