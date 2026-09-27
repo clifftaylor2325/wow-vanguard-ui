@@ -393,20 +393,29 @@ function T.EditBox(box)
   return box
 end
 
--- The painted close glyph: an accent-on-hover "x" in the theme font.
+-- The painted close glyph: the Close icon in the secondary text color.
 local function paintClose(entry)
-  T.SetFont(entry.parts.glyph, 14)
-  T.Color(entry.parts.glyph, "text2")
+  T.Tint(entry.parts.glyph, "text2")
 end
 
--- A close button drawn as an "x"; template art faded.
+-- The close icon and a hover wash on a button.
+local function closeParts(button)
+  local glyph = button:CreateTexture(nil, "OVERLAY")
+  glyph:SetTexture(T.Icon("Close"))
+  glyph:SetSize(12, 12)
+  glyph:SetPoint("CENTER")
+  local hover = solid(button, "HIGHLIGHT")
+  hover:SetAllPoints()
+  T.Tint(hover, "hover")
+  return { glyph = glyph, hover = hover }
+end
+
+-- A close button drawn with the Close icon; template art faded.
 function T.CloseButton(button)
   local entry = painted[button]
   if not entry then
     T.FadeRegions(button)
-    entry = { kind = "close", opts = {}, parts = { glyph = button:CreateFontString(nil, "OVERLAY") }, paint = paintClose }
-    entry.parts.glyph:SetPoint("CENTER")
-    entry.parts.glyph:SetText("x")
+    entry = { kind = "close", opts = {}, parts = closeParts(button), paint = paintClose }
     painted[button] = entry
   end
   repaint(button, entry)

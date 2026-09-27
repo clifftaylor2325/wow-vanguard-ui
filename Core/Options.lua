@@ -1,20 +1,15 @@
--- The options window (/fui, or the addons button by the minimap): a page
--- per area, built from the tables in PAGES. Most changes apply at once;
--- the ones that rebuild frames light up a Reload UI button.
+-- The options pages (/fui, or the addons button by the minimap): a page
+-- per area, as tables of rows. Core/OptionsWindow.lua builds the window
+-- from them. Most changes apply at once; the ones that rebuild frames
+-- light up the reload notice.
 
 local ADDON, ns = ...
 
-local T, W = ns.Theme, ns.Widgets
+local T = ns.Theme
 
 local O = {}
 ns.Options = O
 
-local WIDTH, HEIGHT, NAV_WIDTH = 700, 560, 160
-local ROW_HEIGHT = { header = 30, check = 26, button = 32, cycle = 32, swatches = 38, text = 20 }
-
-local window
-local pages, widgets = {}, {}
-local needsReload = false
 
 -- Settings accessors ------------------------------------------------------------------
 
@@ -60,16 +55,17 @@ local function themeSetting(key)
 end
 
 local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", "the game's font" } }
-local TEXT_SIZES = { { 0.9, "90%" }, { 1, "100%" }, { 1.1, "110%" }, { 1.25, "125%" } }
+-- Text size: 80% to 130% in steps of 5.
+local TEXT_SIZES = { min = 0.8, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
 -- General, part one: accent, font, text size, scale and theme reset.
 local function lookRows()
   return {
     { "header", "Look" },
-    { "text", "Accent color (live):" },
+    { "preview" },
     { "swatches" },
     { "cycle", "Font", FONT_CHOICES, themeSetting("font") },
-    { "cycle", "Text size", TEXT_SIZES, themeSetting("textScale") },
+    { "slider", "Text size", TEXT_SIZES, themeSetting("textScale") },
     check("Pixel-perfect UI scale (768 / screen height)", function() return T.Settings().pixelScale end,
       function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end),
     { "button", "Reset theme", function() T.Reset() end },
@@ -249,169 +245,21 @@ local function raidPageRows()
   })
 end
 
+-- Pages: key, title, nav icon (Media/Icons) and order in the nav (groups: under 30, under 90, the rest).
 local PAGES = {
-  { key = "general", title = "General", rows = generalRows },
-  { key = "modules", title = "Modules", rows = moduleRows },
-  { key = "unitframes", title = "Unit frames", rows = function() return append(unitFrameRows(), castRows()) end },
-  { key = "raid", title = "Raid frames", rows = raidPageRows },
-  { key = "actionbars", title = "Action bars", rows = actionBarPageRows },
-  { key = "more", title = "Bars, map, chat", rows = function() return append(moreRows(), tooltipRows()) end },
-  { key = "profiles", title = "Profiles", rows = profileRows },
+  { key = "general", title = "General", icon = "General", order = 10, rows = generalRows },
+  { key = "modules", title = "Modules", icon = "Modules", order = 20, rows = moduleRows },
+  { key = "unitframes", title = "Unit frames", icon = "UnitFrames", order = 30, rows = function() return append(unitFrameRows(), castRows()) end },
+  { key = "raid", title = "Raid frames", icon = "RaidFrames", order = 40, rows = raidPageRows },
+  { key = "actionbars", title = "Action bars", icon = "ActionBars", order = 60, rows = actionBarPageRows },
+  { key = "more", title = "Bars, map, chat", icon = "Map", order = 80, rows = function() return append(moreRows(), tooltipRows()) end },
+  { key = "profiles", title = "Profiles", icon = "Profiles", order = 90, rows = profileRows },
 }
 O.PAGES = PAGES
 
--- Building ------------------------------------------------------------------------------
-
--- The accent swatches: one per preset.
-local function swatches(content)
-  local row = CreateFrame("Frame", nil, content)
-  row:SetSize(200, 30)
-  local i = 0
-  for _, name in ipairs(T.PRESET_ORDER) do
-    local rgb = T.PRESETS[name]
-    W.Swatch(row, rgb, function() T.SetAccent(rgb[1], rgb[2], rgb[3]) end):SetPoint("LEFT", i * 34, 0)
-    i = i + 1
-  end
-  return row
-end
-
--- Row kind -> builder(content, row) returning the widget.
-local BUILDERS = {
-  -- One builder per row kind; each returns the widget it made.
-  header = function(c, r) return W.Header(c, r[2]) end,
-  text = function(c, r) return W.Text(c, r[2]) end,
-  check = function(c, r) return W.Check(c, r[2], r[3], r[4]) end,
-  button = function(c, r) return W.Button(c, r[2], r[3], 220) end,
-  cycle = function(c, r) return W.Cycle(c, r[2], r[3], r[4], r[5]) end,
-  swatches = function(c) return swatches(c) end,
-}
-
--- Adds a page from another file (e.g. a module's own options), shown in the nav.
+-- Adds a page from another file (e.g. a module's own options): key, title, icon, order, rows.
 function O.AddPage(page)
   PAGES[#PAGES + 1] = page
-end
-
--- Adds a row kind: builder(content, row) returns the widget; height is its row height.
-function O.AddRowKind(kind, builder, height)
-  BUILDERS[kind] = builder
-  ROW_HEIGHT[kind] = height
-end
-
--- Builds rows top to bottom on content.
-local function placeRows(content, rows)
-  local y = 0
-  for _, row in ipairs(rows) do
-    local w = BUILDERS[row[1]](content, row)
-    w:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-    widgets[#widgets + 1] = w
-    y = y + ROW_HEIGHT[row[1]]
-  end
-end
-
--- A page's content frame, right of the nav, with its rows.
-local function buildPage(page)
-  local content = CreateFrame("Frame", nil, window)
-  content:SetPoint("TOPLEFT", NAV_WIDTH + 24, -48)
-  content:SetPoint("BOTTOMRIGHT", -16, 52)
-  placeRows(content, page.rows())
-  return content
-end
-
--- The left-hand page buttons.
-local function addNav(f)
-  f.nav = {}
-  for i, page in ipairs(PAGES) do
-    local b = W.Button(f, page.title, function() O.Show(page.key) end, NAV_WIDTH)
-    b:SetPoint("TOPLEFT", 12, -48 - (i - 1) * 30)
-    f.nav[page.key] = b
-  end
-end
-
--- The logo and "ForeverUI" in the top left.
-local function addTitle(f)
-  f.logo = T.Logo(f, 22)
-  f.logo:SetPoint("TOPLEFT", 12, -10)
-  f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "title")
-  f.title:SetPoint("LEFT", f.logo, "RIGHT", 6, 0)
-  f.title:SetText("ForeverUI")
-end
-
--- Title, close and reload buttons.
-local function addChrome(f)
-  addTitle(f)
-  f.close = T.CloseButton(CreateFrame("Button", nil, f))
-  f.close:SetSize(24, 24)
-  f.close:SetPoint("TOPRIGHT", -6, -6)
-  f.close:SetScript("OnClick", function() O.Hide() end)
-  f.reload = W.Button(f, "Reload UI to apply", function() if ReloadUI then ReloadUI() end end, 200)
-  f.reload:SetPoint("BOTTOMRIGHT", -14, 14)
-end
-
--- Lets the window be dragged around by any empty spot.
-local function makeMovable(f)
-  f:EnableMouse(true)
-  f:SetMovable(true)
-  f:RegisterForDrag("LeftButton")
-  f:SetScript("OnDragStart", f.StartMoving)
-  f:SetScript("OnDragStop", f.StopMovingOrSizing)
-end
-
--- The window, built on first use: movable, closes with Escape.
-local function build()
-  window = T.Panel(CreateFrame("Frame", "ForeverUI_Options", UIParent), { alpha = 0.98, shadow = true })
-  window:SetSize(WIDTH, HEIGHT)
-  window:SetPoint("CENTER")
-  window:SetFrameStrata("DIALOG")
-  makeMovable(window)
-  addChrome(window)
-  addNav(window)
-  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "ForeverUI_Options") end
-end
-
--- Showing ---------------------------------------------------------------------------------
-
--- Marks a change that applies on reload, and shows the Reload button.
-function O.NeedReload()
-  needsReload = true
-  if window then window.reload:SetShown(true) end
-end
-
--- Re-reads every widget's value (after a change elsewhere, e.g. a profile switch).
-function O.Refresh()
-  for _, w in ipairs(widgets) do
-    if w.Refresh then w:Refresh() end
-  end
-end
-
--- Highlights the current page's nav button.
-local function markNav(key)
-  for k, b in pairs(window.nav) do
-    T.Color(b.text, k == key and "accent" or "text")
-  end
-end
-
--- Opens the window on a page (default: the last one shown, or General).
-function O.Show(key)
-  if not window then build() end
-  O.current = key or O.current or "general"
-  for _, page in ipairs(PAGES) do
-    if page.key == O.current and not pages[page.key] then pages[page.key] = buildPage(page) end
-    if pages[page.key] then pages[page.key]:SetShown(page.key == O.current) end
-  end
-  markNav(O.current)
-  window.reload:SetShown(needsReload)
-  O.Refresh()
-  window:Show()
-end
-
--- Closes the window.
-function O.Hide()
-  if window then window:Hide() end
-end
-
--- Opens or closes the window.
-function O.Toggle()
-  if window and window:IsShown() then O.Hide() else O.Show() end
 end
 
 -- The addons button by the minimap: left-click options, right-click move frames.

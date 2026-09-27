@@ -143,6 +143,8 @@ ns.Options.AddRowKind("bindlist", bindingList, MAX_LISTED * 26 + 24)
 ns.Options.AddPage({
   key = "clickcast",
   title = "Click casting",
+  icon = "ClickCasting",
+  order = 46,
   rows = function()
     return {
       { "header", "Click casting" },
