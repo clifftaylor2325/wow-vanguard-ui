@@ -323,7 +323,7 @@ const ACTIONS_ENV = `
   __actions = {
     [1] = { tex = "TEST-ONLY-A", count = 0, usable = true, current = true },
     [2] = { tex = "TEST-ONLY-B", count = 5, usable = false, noPower = true },
-    [3] = { tex = "TEST-ONLY-C", count = 0, usable = false, cd = { { __secret = true }, { __secret = true } } }, -- TEST-ONLY cooldown table
+    [3] = { tex = "TEST-ONLY-C", count = 0, usable = false, cd = { { __secret = true }, { __secret = true } } },
     [73] = { tex = "TEST-ONLY-PAGE7", count = 0, usable = true },
   }
   local function a(slot) return __actions[slot] or {} end
@@ -601,7 +601,7 @@ it("profile management", () => {
 });
 
 it("spec profiles", () => {
-  const env = "GetSpecialization = function() return __spec end __spec = 2"; // TEST-ONLY GetSpecialization stand-in
+  const env = "GetSpecialization = function() return __spec end __spec = 2";
   const addon = loggedIn(env);
   addon.slash("profile new Healer");
   addon.eval('ForeverUIDB.profiles.Healer.theme = { accent = { 0, 1, 0 } }');
@@ -635,7 +635,7 @@ const CLICK_LUA = `
 `;
 
 it("options window", () => {
-  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end -- TEST-ONLY GetSpecialization stand-in");
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
   addon.slash("");
   expect(addon.eval("return ForeverUI_Options:IsShown()") === true, "/fui opens the options window").toBeTruthy();
   expect(addon.eval("return ForeverUI_Options.reload:IsShown()") === false, "no reload button until something needs one").toBeTruthy();
@@ -710,7 +710,7 @@ it("raid frames", () => {
 });
 
 it("click casting", () => {
-  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + "GetSpecialization = function() return __spec end __spec = 1 -- TEST-ONLY GetSpecialization stand-in");
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + "GetSpecialization = function() return __spec end __spec = 1");
   const CC = 'ns.GetModule("ClickCast")';
   expect(addon.eval(`return ${CC}.KeyText("ctrl-shift-BUTTON2")`) === "Ctrl + Shift + Right click", "mouse keys read as Ctrl + Shift + Right click").toBeTruthy();
   expect(addon.eval(`return ${CC}.KeyText("SHIFT-MOUSEWHEELUP")`) === "Shift + Wheel up (hover)", "hover keys read as Shift + Wheel up (hover)").toBeTruthy();
@@ -744,7 +744,7 @@ it("click casting", () => {
 });
 
 it("click casting options", () => {
-  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + `GetSpecialization = function() return 1 end -- TEST-ONLY GetSpecialization stand-in
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + `GetSpecialization = function() return 1 end
     IsControlKeyDown = function() return __ctrl == true end
     C_Spell = { GetSpellName = function(id) return id == 139 and "TEST-ONLY Renew" or nil end }
     GetCursorInfo = function() return __cursor, 1, "spell", 139 end
@@ -1118,7 +1118,7 @@ it("text roles, sheen and shadows", () => {
 });
 
 it("options window: nav, search, controls, footer", () => {
-  const addon = loggedIn(CLICK_LUA + "GetAddOnMetadata = function(_, key) return key == 'Version' and 'TEST-ONLY-9.9' or nil end -- TEST-ONLY GetAddOnMetadata stand-in");
+  const addon = loggedIn(CLICK_LUA + "GetAddOnMetadata = function(_, key) return key == 'Version' and 'TEST-ONLY-9.9' or nil end");
   addon.eval('ns.Options.Show("general")');
   const nav = addon.eval(`local out = {}
     for k, b in pairs(ForeverUI_Options.nav) do out[k] = { icon = b.icon.__texture, rail = b.rail:IsShown(), text = b.text:GetText() } end
@@ -1360,6 +1360,7 @@ it("events unsubscribe and a delivered event with no listeners", () => {
   const out = addon.eval(`
     local n = 0
     local function fn() n = n + 1 end
+    -- TEST-ONLY event, not one the addon registers itself.
     ns.On("TEST_ONLY_EVENT", fn)
     ns.On("TEST_ONLY_EVENT", fn)
     local frame
@@ -1372,6 +1373,7 @@ it("events unsubscribe and a delivered event with no listeners", () => {
     __wfgStub.fire("TEST_ONLY_EVENT")
     frame:RegisterEvent("TEST_ONLY_EVENT")
     frame:GetScript("OnEvent")(frame, "TEST_ONLY_EVENT")
+    -- TEST-ONLY event nobody subscribed to.
     return { once = once, after = n, offMissing = ns.Off("NO_SUCH_EVENT", fn) == nil }
   `);
   expect(out.once === 1 && out.after === 1 && out.offMissing === true, "a listener is registered once, Off removes it, and Off of nothing is a no-op").toBeTruthy();
@@ -1385,6 +1387,7 @@ it("mover coordinates with no handle", () => {
 it("skin SetFont and a UI scale change", () => {
   const addon = loggedIn();
   const size = addon.eval(`
+    -- TEST-ONLY skin, only so SetFont runs.
     ForeverUI.RegisterSkin("TESTONLY", function(S)
       local fs = UIParent:CreateFontString()
       S.SetFont(fs)
@@ -1400,9 +1403,12 @@ it("skin SetFont and a UI scale change", () => {
 
 it("slash commands for frames, accent, grid, theme, modules, skins, profile and spec", () => {
   const addon = loggedIn(`
-    GetSpecialization = function() return 2 end -- TEST-ONLY GetSpecialization stand-in
-    C_AddOns = { GetAddOnMetadata = function() return "0.3.0" end } -- TEST-ONLY GetAddOnMetadata stand-in
+    -- TEST-ONLY spec index the slash command prints.
+    GetSpecialization = function() return 2 end
+    -- TEST-ONLY version from C_AddOns.GetAddOnMetadata.
+    C_AddOns = { GetAddOnMetadata = function() return "0.3.0" end }
   `);
+  // TEST-ONLY skin name. The slash assertion matches this exact string.
   addon.eval('ForeverUI.RegisterSkin("TESTONLY", function() end)');
   addon.slash("frames");
   expect(chatHas(addon, /Movable frames:/), "/fui frames lists movers").toBeTruthy();
@@ -1414,6 +1420,7 @@ it("slash commands for frames, accent, grid, theme, modules, skins, profile and 
   expect(chatHas(addon, /Usage: \/fui theme reset/), "/fui theme without reset is refused").toBeTruthy();
   addon.slash("modules");
   expect(chatHas(addon, /UnitFrames/), "/fui modules lists modules").toBeTruthy();
+  // TEST-ONLY module name that does not exist.
   addon.slash("enable NoSuch");
   expect(chatHas(addon, /No module called NoSuch/), "an unknown module is refused").toBeTruthy();
   addon.slash("skins TESTONLY on");
@@ -1426,13 +1433,16 @@ it("slash commands for frames, accent, grid, theme, modules, skins, profile and 
 
 it("profile copy, empty export and a taken import name", () => {
   const addon = loggedIn();
+  // TEST-ONLY profile name that was never created.
   expect(addon.eval('return ns.CopyProfile("Missing")') === false, "copying a profile that does not exist does nothing").toBeTruthy();
   expect(addon.eval("return ns.CopyProfile(ns.ProfileName())") === false, "copying a profile onto itself does nothing").toBeTruthy();
+  // TEST-ONLY module name with nothing saved.
   const empty = addon.eval('local text, err = ns.ExportProfile("NoSuchModule") return { missing = text == nil, err = err }');
   expect(empty.missing === true && /nothing saved for NoSuchModule/.test(empty.err), "exporting a module with no saved table says so").toBeTruthy();
   const imported = addon.eval(`
     local text = ns.ExportProfile()
-    ForeverUIDB.profiles.Imported = {} -- TEST-ONLY profiles.Imported stand-in
+    -- TEST-ONLY profile already named Imported, so the next import is "Imported 2".
+    ForeverUIDB.profiles.Imported = {}
     return ns.ImportProfile(text)
   `);
   expect(/Imported 2/.test(imported) && addon.eval("return ForeverUICharDB.profile") === "Imported 2", "a second whole-profile import takes the next free name").toBeTruthy();
@@ -1442,6 +1452,7 @@ it("a profile string with an unterminated quote", () => {
   const addon = loggedIn();
   const err = addon.eval(`
     local S = ns.Serialize
+    -- TEST-ONLY profile body whose string never closes.
     local body = S.Base64('{["a"]="unterminated')
     local text = "FUI1:profile:" .. S.Checksum(body) .. ":" .. body
     local _, why = S.Decode(text)
@@ -1461,8 +1472,9 @@ it("options slider, search, scroll, special bars and profile switch", () => {
     row.set(row.max)
     row:GetScript("OnClick")(row)
     local wrapped = row.get()
+    -- TEST-ONLY track geometry, and a cursor halfway along it.
     row.track.__left, row.track.__width = 0, 100
-    GetCursorPosition = function() return 50 end -- TEST-ONLY GetCursorPosition stand-in
+    GetCursorPosition = function() return 50 end
     row.track:GetScript("OnMouseDown")()
     __wfgStub.update(0.05)
     row.track:GetScript("OnMouseUp")()
@@ -1472,6 +1484,7 @@ it("options slider, search, scroll, special bars and profile switch", () => {
     local hint = ForeverUI_Options.search.hint:IsShown()
     for _, w in ipairs(__wfgStub.frames) do
       if w.__scrollChild and w.__scripts.OnMouseWheel then
+        -- TEST-ONLY page taller than its view, so the wheel can scroll.
         w.__height, w.__scrollChild.__height = 100, 800
         w:GetScript("OnMouseWheel")(w, -1)
       end
@@ -1487,7 +1500,10 @@ it("options slider, search, scroll, special bars and profile switch", () => {
 });
 
 it("choice fallback, key capture and the mouse wheel", () => {
-  const addon = loggedIn(CLICK_LUA + "GetSpecialization = function() return 1 end -- TEST-ONLY GetSpecialization stand-in");
+  const addon = loggedIn(CLICK_LUA + `
+    -- TEST-ONLY spec index so the click-cast page builds for spec 1.
+    GetSpecialization = function() return 1 end`);
+  // TEST-ONLY choice value that is not in the list.
   const fallback = addon.eval('return ns.Widgets.NextChoice({ { "a", "A" }, { "b", "B" } }, "missing")[1]');
   expect(fallback === "a", "a choice that is not in the list wraps to the first").toBeTruthy();
   addon.eval('ns.Options.Show("clickcast")');
@@ -1513,6 +1529,7 @@ it("choice fallback, key capture and the mouse wheel", () => {
     cycle:GetScript("OnClick")(cycle)
     local stepped = cycle.text:GetText()
     local calls = 0
+    -- TEST-ONLY getter: the first read is an unknown action, then "spell".
     cycle.get = function() calls = calls + 1; return calls == 1 and "missing" or "spell" end
     cycle:GetScript("OnClick")(cycle)
     return { key = key, cancelled = cancelled, wheel = wheel, stepped = stepped, back = cycle.text:GetText() }
@@ -1528,16 +1545,20 @@ it("aura duration objects and power colors the theme does not name", () => {
   const addon = loggedIn(UNITS_ENV);
   const swept = addon.eval(`
     C_UnitAuras = C_UnitAuras or {}
-    C_UnitAuras.GetAuraDuration = function() return { __duration = true } end -- TEST-ONLY duration table
+    -- TEST-ONLY duration object the client would return for this aura.
+    C_UnitAuras.GetAuraDuration = function() return { __duration = true } end
     local cd = CreateFrame("Cooldown", nil, UIParent)
+    -- TEST-ONLY cooldown that records a duration-object sweep.
     cd.SetCooldownFromDurationObject = function() __swept = true return true end
+    -- TEST-ONLY aura row: instance id, expiry and duration.
     ns.Auras.Sweep(cd, "player", { auraInstanceID = 7, expirationTime = 20, duration = 5 })
     return __swept == true
   `);
   expect(swept === true, "a duration object is handed to the cooldown when the client offers one").toBeTruthy();
   const runic = addon.eval(`
     __units.player.ptype = "RUNIC_POWER"
-    PowerBarColor.RUNIC_POWER = { r = 0.2, g = 0.3, b = 0.4 } -- TEST-ONLY PowerBarColor.RUNIC_POWER stand-in
+    -- TEST-ONLY client power color the theme does not name.
+    PowerBarColor.RUNIC_POWER = { r = 0.2, g = 0.3, b = 0.4 }
     return { ns.GetModule("UnitFrames").PowerColor("player") }
   `);
   expect(runic[0] === 0.2 && runic[1] === 0.3 && runic[2] === 0.4, "an unnamed power type uses the client's PowerBarColor").toBeTruthy();
@@ -1556,8 +1577,11 @@ it("aura duration objects and power colors the theme does not name", () => {
 it("cast timing from the client's duration object", () => {
   const addon = loggedIn(CAST_ENV);
   addon.eval(`
-    UnitCastingDuration = function() return { __duration = true } end -- TEST-ONLY duration table
+    -- TEST-ONLY duration object for the player's cast.
+    UnitCastingDuration = function() return { __duration = true } end
+    -- TEST-ONLY bar that accepts a duration object.
     ForeverUI_CastBar_player.SetTimerDuration = function() __timer = true return true end
+    -- TEST-ONLY cast the duration object is applied to.
     __casts.player = { kind = "cast", start = 1000, finish = 2000, shielded = false }
   `);
   addon.fire("UNIT_SPELLCAST_START", "player");
@@ -1566,7 +1590,9 @@ it("cast timing from the client's duration object", () => {
 });
 
 it("action button cooldowns, the C_ActionBar API and range polling", () => {
-  const addon = loggedIn(ACTIONS_ENV + "UnitExists = function() return false end");
+  const addon = loggedIn(ACTIONS_ENV + `
+    -- TEST-ONLY: no unit exists, so range polling does not mark buttons red.
+    UnitExists = function() return false end`);
   addon.update(0.25);
   expect(addon.eval("return ForeverUI_Bar1Button1.outOfRange") === false, "without range events, buttons are polled and an unknown range is not red").toBeTruthy();
   addon.eval(`
@@ -1575,14 +1601,17 @@ it("action button cooldowns, the C_ActionBar API and range polling", () => {
   `);
   expect(addon.eval("return ForeverUI_Bar1Button1.icon.__texture") === "TEST-ONLY-CAPI", "C_ActionBar is used when it has the call").toBeTruthy();
   addon.eval(`
-    GetActionCooldownDuration = function() return { __duration = true } end -- TEST-ONLY duration table
+    -- TEST-ONLY cooldown duration object.
+    GetActionCooldownDuration = function() return { __duration = true } end
+    -- TEST-ONLY sweep that records the duration object.
     ForeverUI_Bar1Button1.cooldown.SetCooldownFromDurationObject = function() __obj = true return true end
   `);
   addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
   expect(addon.eval("return __obj") === true, "a cooldown duration object is passed straight to the sweep").toBeTruthy();
   addon.eval(`
     GetActionCooldownDuration = nil
-    GetActionCooldown = function() return { startTime = 5, duration = 2 } end -- TEST-ONLY cooldown table
+    -- TEST-ONLY cooldown given as a table of start and duration.
+    GetActionCooldown = function() return { startTime = 5, duration = 2 } end
   `);
   addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
   const cd = addon.eval("return ForeverUI_Bar1Button1.cooldown.__cooldown");
@@ -1592,6 +1621,7 @@ it("action button cooldowns, the C_ActionBar API and range polling", () => {
 it("minimap with no position, chat window hooks, and short numbers", () => {
   const addon = loggedIn(`
     __hooks = {}
+    -- TEST-ONLY chat hooks: hooksecurefunc, FCF_OpenTemporaryWindow and FCF_Tab_OnClick.
     hooksecurefunc = function(name, fn) __hooks[name] = fn end
     function FCF_OpenTemporaryWindow() end
     function FCF_Tab_OnClick() end
@@ -1605,6 +1635,7 @@ it("minimap with no position, chat window hooks, and short numbers", () => {
 
 it("click-casting validation, labels and unit frames", () => {
   const addon = loggedIn("", {
+    // TEST-ONLY saved profile: unit-frame click casting starts on.
     savedVariables: "ForeverUIDB = { profiles = { Default = { ClickCast = { unitFrames = true } } } }",
   });
   const CC = 'ns.GetModule("ClickCast")';
@@ -1619,9 +1650,12 @@ it("click-casting validation, labels and unit frames", () => {
 
 it("a dropped spell named by GetSpellInfo", () => {
   const addon = loggedIn(`
+    -- TEST-ONLY: C_Spell is absent, so the name comes from GetSpellInfo.
     C_Spell = nil
+    -- TEST-ONLY spell id on the cursor.
     GetSpellInfo = function(id) return id == 90001 and "TEST-ONLY Spark" or nil end
     GetCursorInfo = function() return "spell", nil, nil, 90001 end
+    -- TEST-ONLY cursor clear, so the drop can finish.
     ClearCursor = function() __cleared = true end
   `);
   addon.eval('ns.Options.Show("clickcast")');
