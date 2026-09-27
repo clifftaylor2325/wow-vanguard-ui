@@ -121,12 +121,10 @@ local function createBar(parent)
   return bar
 end
 
--- A font string in the theme font on a unit frame's health bar.
-local function createText(f, size, point, x)
-  local fs = f.health:CreateFontString(nil, "OVERLAY")
-  T.SetFont(fs, size)
+-- A font string in a text role on a unit frame's health bar.
+local function createText(f, role, point, x)
+  local fs = T.Text(f.health:CreateFontString(nil, "OVERLAY"), role)
   fs:SetPoint(point, f.health, point, x, 0)
-  T.Color(fs, "text")
   return fs
 end
 
@@ -152,10 +150,10 @@ local function createUnitFrame(key, unit, w, h, settings)
   f.unit, f.key = unit, key
   f:SetSize(w, h)
   makeSecure(f, unit)
-  T.Panel(f)
+  T.Panel(f, { shadow = true })
   f.health, f.power = createBar(f), createBar(f)
   layoutBars(f, settings.powerHeight)
-  f.name, f.healthText = createText(f, 12, "LEFT", 4), createText(f, 11, "RIGHT", -4)
+  f.name, f.healthText = createText(f, "name", "LEFT", 4), createText(f, "number", "RIGHT", -4)
   return f
 end
 

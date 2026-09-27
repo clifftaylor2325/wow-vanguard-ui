@@ -59,7 +59,7 @@ end
 
 -- The name above the bar, and the raid icon to its left.
 local function addTexts(f)
-  f.name = T.SetFont(f:CreateFontString(nil, "OVERLAY"), 10)
+  f.name = T.Text(f:CreateFontString(nil, "OVERLAY"), "world")
   f.name:SetPoint("BOTTOM", f, "TOP", 0, 3)
   T.Color(f.name, "text")
   f.raidIcon = f:CreateTexture(nil, "OVERLAY")

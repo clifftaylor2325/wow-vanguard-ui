@@ -24,7 +24,7 @@ TT.NAMES = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingToolt
 local function skin(tt)
   if type(tt) ~= "table" or tt.fuiSkinned then return end
   tt.fuiSkinned = true
-  T.Panel(tt, { alpha = 0.92 })
+  T.Panel(tt, { alpha = 0.94, shadow = true })
   if tt.NineSlice then tt.NineSlice:SetAlpha(0) end
 end
 

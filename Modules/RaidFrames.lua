@@ -103,13 +103,13 @@ end
 
 -- Name centered, role top left, status along the bottom.
 local function addTexts(b)
-  b.name = T.SetFont(b.health:CreateFontString(nil, "OVERLAY"), 11)
+  b.name = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "cell")
   b.name:SetPoint("LEFT", 4, 4)
   b.name:SetPoint("RIGHT", -4, 4)
   b.name:SetWordWrap(false)
-  b.role = T.SetFont(b.health:CreateFontString(nil, "OVERLAY"), 9)
+  b.role = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "tiny")
   b.role:SetPoint("TOPLEFT", 2, -2)
-  b.status = T.SetFont(b.health:CreateFontString(nil, "OVERLAY"), 10)
+  b.status = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "small")
   b.status:SetPoint("BOTTOM", 0, 3)
   colorTexts(b)
 end

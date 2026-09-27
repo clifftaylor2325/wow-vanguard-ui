@@ -40,8 +40,7 @@ end
 local function colorTab(tab, selected)
   local text = tab.Text or (tab.GetFontString and tab:GetFontString())
   if text then
-    T.SetFont(text, 12)
-    T.Color(text, selected and "accent" or "text2")
+    T.Text(text, "label", selected and "accent" or "text2")
   end
 end
 
@@ -54,8 +53,7 @@ end
 -- The edit box as a themed input.
 local function skinEditBox(box)
   T.EditBox(box)
-  local path, outline = T.Font()
-  box:SetFont(path, 13, outline)
+  T.Text(box, "label")
 end
 
 -- Skins chat window i (and its tab and edit box) if this client has it.

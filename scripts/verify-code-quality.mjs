@@ -41,6 +41,9 @@ assert(problems("Modules/t.lua", "-- doc\nlocal function f(fs)\n  T.Color(fs, \"
 assert(problems("Modules/t.lua", "local P = { 20, 40, 60 }\n-- { 1, 1, 1 } in a comment\nlocal s = \"{ 0, 0, 1 }\"\n") === "", "colors: big numbers, comments and strings pass");
 assert(/color numbers/.test(problems("Core/t.lua", 'local P = "|cff3d9effHi|r"\n')), "colors: a |c escape with a written color fails");
 assert(problems("Core/Theme.lua", "local C = { 0.2, 0.6, 1 }\n") === "", "colors: the theme itself may write them");
+assert(/font size/.test(problems("Modules/t.lua", "-- doc\nlocal function f(fs)\n  T.SetFont(fs, 12)\nend\n")), "fonts: T.SetFont with a size fails");
+assert(/font size/.test(problems("Modules/t.lua", "-- doc\nlocal function f(fs, p)\n  fs:SetFont(p, 12, \"\")\nend\n")), "fonts: SetFont with a written size fails");
+assert(problems("Modules/t.lua", "-- doc\nlocal function f(fs, p)\n  fs:SetFont(p, size(fs), \"\")\n  T.Text(fs, \"label\")\nend\n") === "", "fonts: roles and computed sizes pass");
 assert(problems("scripts/lib/t.lua", "local C = { 0.2, 0.6, 1 }\n") === "", "colors: only addon Lua is checked");
 
 console.log("ForeverUI — code quality");
@@ -49,5 +52,5 @@ if (failures.length) {
   for (const f of failures) console.error(` - ${f}`);
   process.exit(1);
 }
-console.log("OK  checker self-test: length, nesting, docs, long strings, test cases, color numbers");
+console.log("OK  checker self-test: length, nesting, docs, long strings, test cases, color numbers, font sizes");
 execFileSync(process.execPath, ["scripts/check-code-quality.mjs"], { stdio: "inherit" });

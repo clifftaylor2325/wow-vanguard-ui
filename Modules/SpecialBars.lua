@@ -51,7 +51,7 @@ end
 
 -- A centered label in the theme font.
 local function addLabel(b, text)
-  b.label = T.SetFont(b:CreateFontString(nil, "OVERLAY"), 11)
+  b.label = T.Text(b:CreateFontString(nil, "OVERLAY"), "small")
   b.label:SetPoint("CENTER")
   b.label:SetText(text)
   T.Color(b.label, "text")

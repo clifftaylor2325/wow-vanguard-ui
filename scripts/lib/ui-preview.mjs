@@ -53,12 +53,19 @@ function fontFaces() {
   }).join("");
 }
 
-// ForeverUI's art as PNG data URIs, keyed like the game path ("Textures\\Bar", "Icons\\Close").
+// The color of an image's most opaque pixel (our art is one color plus alpha).
+function baseColor(img) {
+  let best = 0;
+  for (let i = 0; i < img.w * img.h; i++) if (img.px[i * 4 + 3] > img.px[best * 4 + 3]) best = i;
+  return [img.px[best * 4], img.px[best * 4 + 1], img.px[best * 4 + 2]];
+}
+
+// ForeverUI's art as { url (PNG data URI), rgb }, keyed like the game path ("Textures\\Bar").
 function mediaUris() {
-  return Object.fromEntries(Object.entries(MEDIA).map(([rel, make]) => [
-    rel.replace(/\.tga$/, "").replace("/", "\\"),
-    `data:image/png;base64,${png(make()).toString("base64")}`,
-  ]));
+  return Object.fromEntries(Object.entries(MEDIA).map(([rel, make]) => {
+    const img = make();
+    return [rel.replace(/\.tga$/, "").replace("/", "\\"), { url: `data:image/png;base64,${png(img).toString("base64")}`, rgb: baseColor(img) }];
+  }));
 }
 
 let media = null;

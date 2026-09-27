@@ -98,7 +98,7 @@ end
 local function createHolder(size)
   local holder = CreateFrame("Frame", "ForeverUI_Minimap", UIParent)
   holder:SetSize(size + 2, size + 2)
-  T.Panel(holder)
+  T.Panel(holder, { shadow = true })
   ns.Mover(holder, "minimap", "Minimap", { "TOPRIGHT", "TOPRIGHT", -12, -12 })
   return holder
 end
@@ -121,9 +121,9 @@ local function addTexts(holder)
   local overlay = CreateFrame("Frame", nil, holder)
   overlay:SetAllPoints()
   overlay:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 2)
-  MM.zone = T.SetFont(overlay:CreateFontString(nil, "OVERLAY"), 12)
+  MM.zone = T.Text(overlay:CreateFontString(nil, "OVERLAY"), "label", false)
   MM.zone:SetPoint("TOP", overlay, "TOP", 0, -6)
-  MM.coords = T.SetFont(overlay:CreateFontString(nil, "OVERLAY"), 11)
+  MM.coords = T.Text(overlay:CreateFontString(nil, "OVERLAY"), "small")
   MM.coords:SetPoint("BOTTOM", overlay, "BOTTOM", 0, 4)
   T.Color(MM.coords, "text")
 end
