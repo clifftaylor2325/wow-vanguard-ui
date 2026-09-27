@@ -2,9 +2,13 @@
 // wow-stub.lua) in a browser page. Layout (points, sizes, text, colors,
 // bar values, show/hide) comes from the addon. Blizzard art, spell icons,
 // the map and the game font are not available here, so they are approximations.
+// ForeverUI's own art and fonts (Media/) are real: drawn from their sources.
 
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { png } from "./media-art.mjs";
+import { MEDIA } from "./media-sources.mjs";
 
 export const SCREEN = { width: 1920, height: 1080 };
 
@@ -26,7 +30,7 @@ for i, w in ipairs(__wfgStub.frames) do
     borderColor = w.__borderColor, texture = w.__texture, color = w.__color,
     vertexColor = w.__vertexColor, alpha = w.__alpha, rotation = w.__rotation, texCoord = w.__texCoord,
     strata = w.__strata, scrollChild = ref(w.__scrollChild),
-    fontSize = w.__font and w.__font[2], value = w.__value, min = w.__min, max = w.__max,
+    fontSize = w.__font and w.__font[2], fontPath = w.__font and w.__font[1], value = w.__value, min = w.__min, max = w.__max,
     barColor = w.__barColor, messages = w.__messages, checked = w.__checked,
     checkedTexture = w.__parent ~= nil and w.__parent.__checkedTexture == w or nil,
     barFill = w.__parent ~= nil and w.__parent.__barTexture == w or nil,
@@ -40,10 +44,30 @@ export function dumpFrames(addon) {
   return addon.eval(DUMP_LUA) || [];
 }
 
+// ForeverUI's fonts as @font-face rules, so previews use the real typeface.
+function fontFaces() {
+  const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "Media", "Fonts");
+  return ["Medium", "SemiBold"].map((w) => {
+    const data = fs.readFileSync(path.join(dir, `FiraSansCondensed-${w}.ttf`)).toString("base64");
+    return `@font-face{font-family:"FUI-${w}";src:url(data:font/ttf;base64,${data})}`;
+  }).join("");
+}
+
+// ForeverUI's art as PNG data URIs, keyed like the game path ("Textures\\Bar", "Icons\\Close").
+function mediaUris() {
+  return Object.fromEntries(Object.entries(MEDIA).map(([rel, make]) => [
+    rel.replace(/\.tga$/, "").replace("/", "\\"),
+    `data:image/png;base64,${png(make()).toString("base64")}`,
+  ]));
+}
+
+let media = null;
+
 // Layout and drawing run in the page: ui-preview-page.js.
 const PAGE_SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), "ui-preview-page.js");
 
 const PAGE_CSS = `
+  ${fontFaces()}
   html,body{margin:0;background:#0b0d12}
   #stage{position:relative;width:${SCREEN.width}px;height:${SCREEN.height}px;overflow:hidden;
     font-family:"DejaVu Sans",sans-serif;
@@ -81,7 +105,9 @@ export function pageHtml(caption) {
 async function drawPage(page, addon, caption) {
   await page.setContent(pageHtml(caption));
   await page.addScriptTag({ path: PAGE_SCRIPT });
-  return page.evaluate((args) => window.wfgLayoutAndDraw(args), { frames: dumpFrames(addon), screen: SCREEN });
+  media = media || mediaUris();
+  await page.evaluate(() => document.fonts.ready);
+  return page.evaluate((args) => window.wfgLayoutAndDraw(args), { frames: dumpFrames(addon), screen: SCREEN, media });
 }
 
 // Two passes: the first measures text, the second lets the addon size its
