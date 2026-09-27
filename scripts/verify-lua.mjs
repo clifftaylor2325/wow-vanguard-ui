@@ -1201,6 +1201,64 @@ attempt("proc glow on action buttons", () => {
   assert(addon.eval("return ForeverUI_Bar1Button2.glow[1]:IsShown()") === false, "and goes out when the proc ends");
 });
 
+// TEST-ONLY animation group: records the fade and finishes only when __finishFades() runs.
+const FAKE_FADES = `
+  __fades = {}
+  function __fakeFader(frame)
+    frame.CreateAnimationGroup = function()
+      local g = { scripts = {} }
+      function g:SetToFinalAlpha() end
+      function g:Stop() self.playing = false end
+      function g:SetScript(k, fn) self.scripts[k] = fn end
+      function g:Play() self.playing = true table.insert(__fades, self) end
+      function g:CreateAnimation() local a = {} function a:SetFromAlpha(v) g.from = v end function a:SetToAlpha(v) g.to = v end function a:SetDuration(v) g.duration = v end return a end
+      return g
+    end
+  end
+  function __finishFades()
+    for _, g in ipairs(__fades) do if g.playing and g.scripts.OnFinished then g.playing = false g.scripts.OnFinished() end end
+    __fades = {}
+  end
+`;
+
+attempt("motion: fades, reduce motion, sounds", () => {
+  const addon = loggedIn(CLICK_LUA + FAKE_FADES + "SOUNDKIT = { IG_MAINMENU_OPTION_CHECKBOX_ON = 856, IG_MAINMENU_OPTION_CHECKBOX_OFF = 857, IG_MAINMENU_OPEN = 850, IG_MAINMENU_CLOSE = 851, IG_CHARACTER_INFO_TAB = 841 } __sounds = {} PlaySound = function(k) table.insert(__sounds, k) end");
+  addon.eval('local f = CreateFrame("Frame", "TEST_Fade", UIParent) __fakeFader(f) f:Hide() ns.Theme.FadeIn(f)');
+  assert(addon.eval("return TEST_Fade:IsShown() and __fades[1].from == 0 and __fades[1].to == 1 and __fades[1].duration == 0.12") === true, "FadeIn shows the frame and fades it from 0 to 1 in 0.12 s");
+  addon.eval("__finishFades() ns.Theme.FadeOut(TEST_Fade)");
+  assert(addon.eval("return TEST_Fade:IsShown()") === true, "FadeOut keeps the frame up while it fades");
+  addon.eval("__finishFades()");
+  assert(addon.eval("return TEST_Fade:IsShown()") === false, "and hides it when the fade ends");
+  addon.eval("ns.Theme.Settings().reduceMotion = true ns.Theme.FadeIn(TEST_Fade) ns.Theme.FadeOut(TEST_Fade)");
+  assert(addon.eval("return #__fades == 0 and not TEST_Fade:IsShown()") === true, "Reduce motion skips fades");
+  addon.eval("ns.Theme.Settings().reduceMotion = false");
+  addon.eval('ns.Options.Show("general")');
+  assert(addon.eval("return __sounds[#__sounds]") === 850, "opening the window plays the open sound");
+  addon.eval('__click("Snap to other frames")');
+  assert(addon.eval("return __sounds[#__sounds]") === 857, "switching something off plays the off click");
+  addon.eval('__click("Interface sounds") __sounds = {} __click("Snap to other frames")');
+  assert(addon.eval("return #__sounds") === 0, "Interface sounds can be turned off");
+});
+
+attempt("unlock popover: anchor, offsets, reset", () => {
+  const addon = loggedIn(UI_ENV);
+  addon.slash("unlock");
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "minimap" then __h = w end end __h:GetScript("OnMouseDown")(__h, "RightButton")');
+  assert(addon.eval("return ForeverUI_MoverPopover:IsShown()") === true, "right-clicking a handle opens its popover");
+  addon.eval('local p = ForeverUI_MoverPopover p.x:SetText("123") p.x:GetScript("OnEnterPressed")(p.x)');
+  assert(addon.eval('return select(3, ns.MoverPoint("minimap"))') === 123, "typing an X offset saves it");
+  addon.eval('local d = ForeverUI_MoverPopover.anchor d:GetScript("OnClick")(d) ForeverUI_Menu.items[5]:GetScript("OnClick")(ForeverUI_Menu.items[5])');
+  const p = addon.eval('return { ns.MoverPoint("minimap") }');
+  assert(p[0] === "CENTER" && p[2] === 0 && p[3] === 0, "picking an anchor moves the frame to that screen point with no offset");
+  assert(addon.eval("return ForeverUI_MoverPopover.x:GetText()") === "0", "the boxes follow");
+  addon.eval("ns.Nudge('minimap', 5, 0)");
+  assert(addon.eval("return ForeverUI_MoverPopover.x:GetText()") === "5", "arrow-key nudges update the popover");
+  addon.eval("ForeverUI_MoverPopover.reset:GetScript('OnClick')(ForeverUI_MoverPopover.reset)");
+  assert(addon.eval('return select(1, ns.MoverPoint("minimap"))') !== "CENTER", "Reset puts the frame back where it started");
+  addon.slash("lock");
+  assert(addon.eval("return ForeverUI_MoverPopover:IsShown()") === false, "locking closes the popover");
+});
+
 attempt("special bars", () => {
   const addon = createAddon();
   addon.eval(ACTIONS_ENV + `
@@ -1268,6 +1326,29 @@ attempt("cast bars", () => {
   assert(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.cast_player and out.cast_target and out.cast_focus") === true, "all three are movable");
 });
 
+attempt("cast bar flashes on finish and interrupt", () => {
+  const addon = loggedIn(CAST_ENV + FAKE_FADES);
+  addon.eval("__fakeFader(ForeverUI_CastBar_player)");
+  addon.eval('__casts.player = { kind = "cast", start = 1000, finish = 3000 }');
+  addon.fire("UNIT_SPELLCAST_START", "player");
+  addon.eval("__casts.player = nil");
+  addon.fire("UNIT_SPELLCAST_STOP", "player");
+  let b = castBar(addon, "player");
+  assert(b.shown && b.value === 1 && isTok(addon, b.color, "good"), "a finished cast flashes full and green");
+  addon.eval("__finishFades()");
+  assert(castBar(addon, "player").shown === false, "then fades away");
+  addon.eval('__casts.player = { kind = "cast", start = 1000, finish = 3000 }');
+  addon.fire("UNIT_SPELLCAST_START", "player");
+  addon.eval("__casts.player = nil");
+  addon.fire("UNIT_SPELLCAST_INTERRUPTED", "player");
+  addon.fire("UNIT_SPELLCAST_STOP", "player");
+  b = castBar(addon, "player");
+  assert(b.shown && isTok(addon, b.color, "bad") && b.text === "Interrupted", "an interrupted cast flashes red and says so (the STOP after it changes nothing)");
+  addon.eval('__casts.player = { kind = "cast", start = 1000, finish = 3000 }');
+  addon.fire("UNIT_SPELLCAST_START", "player");
+  assert(isTok(addon, castBar(addon, "player").color, "cast") && castBar(addon, "player").text === "TEST-ONLY Spell", "a new cast replaces the flash at once");
+});
+
 attempt("target and focus auras", () => {
   const addon = loggedIn(UNITS_ENV + `
     __units.focus = { name = "TEST-ONLY Focus", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA", reaction = 5 }
@@ -1290,6 +1371,7 @@ console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-a
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");
 console.log("  special  pet/stance/extra buttons restyled, vehicle exit button");
+console.log("  motion   fades, reduce motion, sounds, cast flashes, unlock popover");
 console.log("  frames   bar texture, smooth bars, dark raid style, striped shields, glows, proc glow");
 console.log("  bars     secure buttons, bindings, hotkeys, paging snippet, usable, secrets, drag, events, combat wait");
 console.log("  status   range fade (hidden range safe), raid icons, ready check, resurrection, leader/assist");

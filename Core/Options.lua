@@ -90,6 +90,7 @@ local function layoutRows()
     { "button", "Move frames", function() O.Hide(); ns.Unlock() end },
     check("Show a grid while moving", moverOption("grid")),
     check("Snap to other frames", moverOption("snap")),
+    { "text", "While moving frames, right-click one for its exact anchor and offsets." },
     { "button", "Reset all positions", function() ns.ResetMovers("all") end },
   }
 end
@@ -103,9 +104,18 @@ local function barRows()
   }
 end
 
--- General: look, bars and layout.
+-- General, motion and sound.
+local function motionRows()
+  return {
+    { "header", "Motion and sound" },
+    check("Reduce motion (no fades or flashes)", function() return T.Settings().reduceMotion end, function(v) T.Settings().reduceMotion = v end),
+    check("Interface sounds", function() return T.Settings().sounds end, function(v) T.Settings().sounds = v end),
+  }
+end
+
+-- General: look, bars, motion and layout.
 local function generalRows()
-  return append(append(lookRows(), barRows()), layoutRows())
+  return append(append(append(lookRows(), barRows()), motionRows()), layoutRows())
 end
 
 -- Modules: one check per module (applies on reload).
