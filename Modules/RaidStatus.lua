@@ -103,14 +103,15 @@ local function mark(b, size, ...)
   return t
 end
 
--- Adds the marks to a raid button (RF setup hook): icon on the top edge, ready check
--- bottom center, resurrection bottom left, leader beside the role letter.
+-- Adds the marks to a raid button (RF setup hook), each in its own place so
+-- none covers the texts: raid icon and leader crown on the top edge, ready
+-- check top right (where the name stops), resurrection bottom center.
 local function setup(b)
   b.raidIcon = mark(b, 12, "TOP", 0, 3)
-  b.ready = mark(b, 14, "BOTTOM", 0, 2)
-  b.rez = mark(b, 14, "BOTTOMLEFT", 3, 3)
+  b.ready = mark(b, 14, "TOPRIGHT", -2, -3)
+  b.rez = mark(b, 14, "BOTTOM", 0, 5)
   b.rez:SetTexture(RS.REZ)
-  b.leader = mark(b, 10, "TOPLEFT", 12, -3)
+  b.leader = mark(b, 10, "TOPLEFT", 2, 4)
 end
 
 -- Updating ---------------------------------------------------------------------------------

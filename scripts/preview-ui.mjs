@@ -259,10 +259,22 @@ const PLATES = `
   for unit in pairs(spots) do __wfgStub.fire("NAME_PLATE_UNIT_ADDED", unit) end
 `;
 
+// TEST-ONLY instanced combat: health comes back as secret values, which the
+// addon may hand to bars and the client's formatter but not do math with.
+// The preview draws a secret as the number it hides ({ __secret, n }).
+const SECRET = `
+  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  local health = UnitHealth
+  UnitHealth = function(unit) return { __secret = true, n = health(unit) } end
+  local format = AbbreviateNumbers
+  AbbreviateNumbers = function(v) return format(issecretvalue(v) and v.n or v) end
+`;
+
 // Scenes: the default layout (party on the raid frames), a 20-player raid, then the options window.
 const SCENES = [
   { name: "foreverui-default", caption: "ForeverUI defaults (brass accent)", lua: '__group({ "player", "party1", "party2" })' },
   { name: "foreverui-raid", caption: "Raid frames, 20 players: heals, shields, aggro, missing buffs, dispel borders, HoTs, raid icons, ready check, leader, range fade (TEST-ONLY raid)", lua: RAID },
+  { name: "foreverui-raid-secret", caption: "Raid frames in instanced combat: health is secret, so bars still draw but missing-health text hides (TEST-ONLY raid)", lua: SECRET + RAID },
   { name: "foreverui-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a friendly player (TEST-ONLY units)", lua: PLATES },
   { name: "foreverui-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)

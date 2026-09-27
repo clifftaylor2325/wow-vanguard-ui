@@ -510,10 +510,12 @@ function T.SetFont(fs, size)
 end
 
 -- Text roles: size at text scale 1, bold (the SemiBold weight), and an
--- outline instead of a shadow (only for world text, e.g. nameplates).
+-- outline instead of a shadow (world text such as nameplates, and text drawn
+-- over a bright bar, such as raid frame names).
 T.ROLES = {
   title = { 15, true }, heading = { 13, true }, name = { 13, true }, cell = { 11, true },
   label = { 12 }, number = { 12 }, small = { 10 }, tiny = { 9 }, world = { 10, true, "OUTLINE" },
+  barName = { 11, true, "OUTLINE" }, barSmall = { 10, false, "OUTLINE" },
 }
 
 -- A role's font size after the text scale setting.

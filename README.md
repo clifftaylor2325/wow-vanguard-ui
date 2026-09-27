@@ -8,6 +8,7 @@ Written from scratch. It contains no code, art or fonts from other UI addons.
 - **Look and layout**: the Slate & Brass theme: slate panels with soft shadows, a brass accent (or arcane, fel, void, ember), bundled Fira Sans Condensed, pixel-perfect borders, smooth bars, quiet fades and interface sounds (Reduce motion and Interface sounds switches turn them off). Every frame can be moved in unlock mode (`/fui unlock`), with a grid, snapping and arrow-key nudging; right-click a frame's handle to set its anchor and exact offsets. Profiles can be exported and imported, and can switch with your spec.
 - **Unit frames**: player, target, target of target, focus and party frames. Cast bars for you, your target and your focus. Buff and debuff rows on target and focus.
 - **Raid frames** (VuhDo-style):
+  - Readable at a glance: class colors softened into the panel color by default (or dark bars with class-colored names, or bright class colors), outlined names that end in "..." when too long, missing health (-16K) or Dead / Offline under the name, and a thin power bar. In instanced combat, where the game keeps health secret from addons, the bars still fill and the missing-health text hides.
   - Healing: click casting and hover keybindings, incoming heals and shields, aggro strip, missing-buff marker, dispellable-debuff border, your HoTs.
   - Status: range fade, raid target icons, ready check, resurrection marker, and leader and assistant marks.
 - **Action bars**: range and power tint, plus restyled pet, stance and extra action buttons and a vehicle exit button.
