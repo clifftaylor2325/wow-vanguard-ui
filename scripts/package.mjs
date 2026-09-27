@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Build the release zip: dist/ForeverUI-<version>.zip holding a
-// ForeverUI/ folder with the TOC, every file it loads, and LICENSE.
+// ForeverUI/ folder with the TOC, every file it loads, Media/ (art, fonts
+// and the font license) and LICENSE.
 //
 //   node scripts/package.mjs [--ref HEAD] [--out dist]
 //
@@ -38,7 +39,8 @@ const loaded = toc
   .split(/\r?\n/)
   .map((l) => l.trim())
   .filter((l) => l && !l.startsWith("#"));
-const files = [tocName, ...loaded, "LICENSE"];
+const media = git("ls-tree", "-r", "--name-only", ref, "Media").toString("utf8").split("\n").filter(Boolean);
+const files = [tocName, ...loaded, ...media, "LICENSE"];
 
 // Minimal ZIP writer (deflate, no extras). Timestamps are the commit time so
 // the same commit always builds the same bytes.

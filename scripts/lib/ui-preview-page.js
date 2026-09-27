@@ -48,13 +48,21 @@ const strataOf = (ctx, f) => STRATA[[f, ...ancestors(ctx, f)].find((w) => w.stra
 // The scroll frame that clips it, if any.
 const scrollParent = (ctx, f) => ancestors(ctx, f).find((w) => w.kind === "ScrollFrame") || null;
 
-// A DOM node for a font string: font size, color, alignment, width and text.
-function fontNode(f) {
+// The page font for a font file: ForeverUI's bundled weights, else the default.
+const fontFamily = (file) => (/SemiBold/.test(file || "") ? '"FUI-SemiBold"' : /FiraSans/.test(file || "") ? '"FUI-Medium"' : "");
+
+// A font string's size, line height, color and family.
+function fontStyle(f) {
   const [templateSize, color] = FONTS[f.template] || FONTS.GameFontNormal;
   const size = f.fontSize || templateSize;
+  return { fontSize: `${size}px`, lineHeight: `${Math.round(size * 1.2)}px`, color: rgba(f.textColor || color), fontFamily: fontFamily(f.fontPath) };
+}
+
+// A DOM node for a font string: font size, color, alignment, width and text.
+function fontNode(f) {
   const el = document.createElement("div");
   el.className = "fs";
-  Object.assign(el.style, { fontSize: `${size}px`, lineHeight: `${Math.round(size * 1.2)}px`, color: rgba(f.textColor || color) });
+  Object.assign(el.style, fontStyle(f));
   el.style.textAlign = { CENTER: "center", RIGHT: "right" }[f.justifyH] || "left";
   if (f.width) el.style.width = `${f.width}px`;
   if (f.noWrap) Object.assign(el.style, { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" });
@@ -181,6 +189,18 @@ function styleArt(el, f) {
   stylePlaceholder(el, f);
 }
 
+// ForeverUI's art by game path ("Textures\\Bar"), set for each draw.
+let MEDIA = {};
+
+// Our own white art: the image's alpha as a mask over the texture's vertex color.
+function styleMedia(el, f, url) {
+  const mask = { maskImage: `url(${url})`, maskSize: "100% 100%", webkitMaskImage: `url(${url})`, webkitMaskSize: "100% 100%" };
+  Object.assign(el.style, { backgroundColor: rgba(f.vertexColor || [1, 1, 1, 1]), ...mask });
+}
+
+// The preview image for one of ForeverUI's textures, if the path is one.
+const mediaUrl = (texture) => MEDIA[(/ForeverUI\\Media\\(.+)$/.exec(texture || "") || [])[1]];
+
 // A texture node: flat color (a color texture, or tinted WHITE8X8), the arrow shape, or a dashed placeholder for game art.
 function textureNode(f) {
   const el = document.createElement("div");
@@ -190,9 +210,16 @@ function textureNode(f) {
   } else if (/MinimapArrow/.test(f.texture || "")) {
     styleArrow(el, f);
   } else if (f.texture) {
-    styleArt(el, f);
+    styleImage(el, f);
   }
   return el;
+}
+
+// A file texture: ForeverUI's own art (tinted), or a stand-in for game art.
+function styleImage(el, f) {
+  const url = mediaUrl(f.texture);
+  if (url) styleMedia(el, f, url);
+  else styleArt(el, f);
 }
 
 // A status bar's fill: the recorded value as a share of its range, in its bar color.
@@ -297,7 +324,8 @@ const drawable = (ctx, f) =>
   f.layer !== "HIGHLIGHT" && !(f.checkedTexture && !ctx.byId.get(f.parent)?.checked) && !f.barFill;
 
 // Measures every font string, then draws every drawable widget. Returns the measured heights.
-window.wfgLayoutAndDraw = function layoutAndDraw({ frames, screen }) {
+window.wfgLayoutAndDraw = function layoutAndDraw({ frames, screen, media }) {
+  MEDIA = media || {};
   const ctx = { frames, screen, byId: new Map(frames.map((f) => [f.id, f])), stage: document.getElementById("stage"), rects: new Map(), natural: new Map() };
   const measured = {};
   frames.filter((f) => f.kind === "FontString").forEach((f) => measure(ctx, f, measured));

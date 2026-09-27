@@ -476,7 +476,7 @@ attempt("chat", () => {
   const addon = loggedIn(UI_ENV);
   const c = addon.eval(`return { font = { ChatFrame1:GetFont() }, box = ns.Theme.PaintedCount(),
     tab1 = ChatFrame1Tab.Text.__textColor, tab2 = ChatFrame2Tab.Text.__textColor }`);
-  assert(c.font[0] === "Fonts\\FRIZQT__.TTF" && c.font[1] === 15, `chat windows get the theme font at their own size (got ${JSON.stringify(c.font)})`);
+  assert(c.font[0] === "Interface\\AddOns\\ForeverUI\\Media\\Fonts\\FiraSansCondensed-Medium.ttf" && c.font[1] === 15, `chat windows get the theme font at their own size (got ${JSON.stringify(c.font)})`);
   assert(isTok(addon, c.tab2, "accent") && isTok(addon, c.tab1, "text2"), "the selected window's tab is accent, others gray");
   addon.slash("accent ember");
   assert(isTok(addon, addon.eval("return ChatFrame2Tab.Text.__textColor"), "accent"), "tabs follow accent changes");
@@ -1078,6 +1078,26 @@ attempt("theme tokens and pixel-perfect borders", () => {
   assert(addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "turning it off offers a reload (the client's scale comes back)");
 });
 
+attempt("bundled font and logo", () => {
+  const FIRA = "Interface\\AddOns\\ForeverUI\\Media\\Fonts\\FiraSansCondensed-";
+  const addon = loggedIn(CLICK_LUA);
+  assert(addon.eval("return (ns.Theme.Font())") === FIRA + "Medium.ttf", "the bundled Fira Sans Condensed is the default font");
+  assert(addon.eval("return (ns.Theme.Font(true))") === FIRA + "SemiBold.ttf", "bold asks for its SemiBold weight");
+  addon.eval('ns.Options.Show("general")');
+  assert(addon.eval('return __click("Font")') && addon.eval("return (ns.Theme.Font())") === "Fonts\\FRIZQT__.TTF", "the Font option switches to the game's font");
+  assert(addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "a font change offers a reload");
+  const korean = loggedIn('GetLocale = function() return "koKR" end');
+  assert(korean.eval("return (ns.Theme.Font())") === "Fonts\\FRIZQT__.TTF", "Korean and Chinese clients keep the game's font (Fira has no Hangul or Han)");
+  const logo = addon.eval(`local l = ForeverUI_Options.logo
+    local out = {}
+    for _, w in ipairs(__wfgStub.frames) do if w.__parent == l then out[#out + 1] = { tex = w.__texture, color = w.__vertexColor } end end
+    return out`);
+  assert(logo.length === 2 && logo.every((t) => /Media\\Textures\\Logo(Left|Right)$/.test(t.tex)), "the options title has the two-part logo");
+  addon.slash("accent fel");
+  const left = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__parent == ForeverUI_Options.logo and w.__texture:find("Left") then return w.__vertexColor end end`);
+  assert(isTok(addon, left, "accent"), "the logo's left diamond follows the accent live");
+});
+
 attempt("special bars", () => {
   const addon = createAddon();
   addon.eval(ACTIONS_ENV + `
@@ -1162,7 +1182,7 @@ attempt("target and focus auras", () => {
 
 console.log("ForeverUI — Lua harness (fengari)");
 console.log("  core     saved variables, profiles, modules, combat queue");
-console.log("  theme    panels, widgets, live accent, reset, color tokens, one-pixel borders at 3 scales, pixel-perfect scale");
+console.log("  theme    panels, widgets, live accent, reset, color tokens, one-pixel borders at 3 scales, pixel-perfect scale, bundled font, logo");
 console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-addon off");
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");

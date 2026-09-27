@@ -60,6 +60,8 @@ local function lookRows()
     { "header", "Look" },
     { "text", "Accent color (live):" },
     { "swatches" },
+    { "cycle", "Font", { { "", "Fira Sans Condensed" }, { "client", "the game's font" } },
+      function() return T.Settings().font end, function(v) T.Settings().font = v; O.NeedReload() end },
     check("Pixel-perfect UI scale (768 / screen height)", function() return T.Settings().pixelScale end,
       function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end),
     { "button", "Reset theme", function() T.Reset() end },
@@ -317,11 +319,18 @@ local function addNav(f)
   end
 end
 
+-- The logo and "ForeverUI" in the top left.
+local function addTitle(f)
+  f.logo = T.Logo(f, 22)
+  f.logo:SetPoint("TOPLEFT", 12, -10)
+  f.title = T.Color(T.SetFont(f:CreateFontString(nil, "OVERLAY"), 16), "text")
+  f.title:SetPoint("LEFT", f.logo, "RIGHT", 6, 0)
+  f.title:SetText("ForeverUI")
+end
+
 -- Title, close and reload buttons.
 local function addChrome(f)
-  f.title = T.Color(T.SetFont(f:CreateFontString(nil, "OVERLAY"), 16))
-  f.title:SetPoint("TOPLEFT", 14, -14)
-  f.title:SetText("ForeverUI")
+  addTitle(f)
   f.close = T.CloseButton(CreateFrame("Button", nil, f))
   f.close:SetSize(24, 24)
   f.close:SetPoint("TOPRIGHT", -6, -6)

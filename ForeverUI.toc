@@ -6,7 +6,7 @@
 ## SavedVariables: ForeverUIDB
 ## SavedVariablesPerCharacter: ForeverUICharDB
 ## DefaultState: enabled
-## IconTexture: Interface/Icons/INV_Misc_EngGizmos_20
+## IconTexture: Interface\AddOns\ForeverUI\Media\Textures\Icon
 ## AddonCompartmentFunc: ForeverUI_OnAddonCompartmentClick
 ## X-Flavor: forever
 ## X-License: MIT
