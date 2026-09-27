@@ -67,6 +67,7 @@ npm install
 npm test          # JS tests under Vitest, once (vitest run, no watch)
 npm run verify    # real addon Lua under a strict TEST-ONLY WoW stub, then the code-quality check
                   # (functions of 10 lines or fewer, all documented; colors only from Core/Theme.lua)
+npm run coverage  # line coverage of the addon Lua; fails below scripts/lua-coverage-floor.json
 npm run lint      # luacheck
 npm run media     # regenerate Media/Textures and Media/Icons from scripts/lib/media-sources.mjs
 npm run package   # dist/ForeverUI-<version>.zip from committed files
@@ -75,7 +76,7 @@ npm run preview   # preview/*.png: the default layout and the options window (ne
 
 **Play from your clone:** `npm run link:wow -- --wow "<Forever folder that has Interface/AddOns>"` links `Interface/AddOns/ForeverUI` to this clone (a directory junction on Windows, no admin needed), so an edit plus `/reload` shows in game. The folder is remembered in `~/.wow-forever/config.json`, so after the first time it's just `npm run link:wow`. An installed copy is only moved aside with `--replace` (it becomes `ForeverUI.backup-<date>`). `--status` shows what's there; `--unlink` removes the link and never deletes a real folder.
 
-**VS Code:** open the folder and accept the recommended extensions: **Lua** (sumneko) and **WoW API** (Ketho), which add Lua 5.1 checking plus autocomplete and docs for the game API. `.vscode/tasks.json` has verify, luacheck (problems show in the editor), package, preview and link:wow under *Run Task*.
+**VS Code:** open the folder and accept the recommended extensions: **Lua** (sumneko) and **WoW API** (Ketho), which add Lua 5.1 checking plus autocomplete and docs for the game API. `.vscode/tasks.json` has verify, luacheck (problems show in the editor), coverage, package, preview and link:wow under *Run Task*.
 
 **Windows tools:** `npm run verify` needs only Node. For `npm run lint`, put `luacheck.exe` from the [luacheck releases](https://github.com/lunarmodules/luacheck/releases) on your PATH. CI also runs a Lua 5.1 syntax check (`luac5.1 -p`); you don't need it locally.
 
