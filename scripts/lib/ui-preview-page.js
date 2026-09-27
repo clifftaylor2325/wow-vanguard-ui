@@ -234,12 +234,19 @@ function styleImage(el, f) {
   else styleArt(el, f);
 }
 
+// Our grayscale bar texture multiplied into a fill's color, as the game tints it.
+function shadeFill(fill, f) {
+  const art = /Textures\\Bar$/.test(f.barTexture || "") && mediaUrl(f.barTexture);
+  if (art) Object.assign(fill.style, { backgroundImage: `url(${art.url})`, backgroundSize: "100% 100%", backgroundBlendMode: "multiply" });
+}
+
 // A status bar's fill: the recorded value as a share of its range, in its bar color.
 function addFill(el, f) {
   const range = (f.max ?? 1) - (f.min ?? 0);
   const share = range > 0 ? Math.max(0, Math.min(1, ((f.value ?? 0) - (f.min ?? 0)) / range)) : 0;
   const fill = document.createElement("div");
   Object.assign(fill.style, { position: "absolute", left: 0, top: 0, bottom: 0, width: `${share * 100}%`, background: rgba(f.barColor || [0.5, 0.5, 0.5, 1]) });
+  shadeFill(fill, f);
   el.appendChild(fill);
 }
 

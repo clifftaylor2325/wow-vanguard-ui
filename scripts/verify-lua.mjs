@@ -1169,6 +1169,38 @@ attempt("options window: nav, search, controls, footer", () => {
   assert(profiles.texts.length === 2 && profiles.now === "TEST-ONLY Healer", "the header's profile dropdown lists profiles and switches (on reload)");
 });
 
+attempt("frames pass: bar texture, smoothing, raid style, shields, glows", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + CLICK_LUA + `
+    Enum = { StatusBarInterpolation = { ExponentialEaseOut = 1 } }
+    __setValueArgs = {}
+    local sv = __wfgStub.methods and __wfgStub.methods.SetValue`);
+  addon.eval('__spawn(1, "raid1")');
+  const tex = addon.eval("return ForeverUI_RaidUnitButton1.health.__barTexture.__texture");
+  assert(/Media\\Textures\\Bar$/.test(tex), "raid health uses the Forever bar texture");
+  assert(/Media\\Textures\\Stripes$/.test(addon.eval("return ForeverUI_RaidUnitButton1.shield.__barTexture.__texture")), "shields are striped");
+  assert(/Bar$/.test(addon.eval("return ForeverUI_player.health.__barTexture.__texture")), "unit frames use it too");
+  addon.eval('ns.Options.Show("raid")');
+  addon.eval('__click("Style")');
+  const dark = addon.eval("local b = ForeverUI_RaidUnitButton1 return { bar = b.health.__barColor, name = b.name.__textColor }");
+  assert(isTok(addon, dark.bar, "darkBar") && dark.name[0] === 0.78, "the dark raid style: dark bars, class-colored names (at once)");
+  addon.eval('ns.Options.Show("general")');
+  addon.eval('__click("Bar texture")');
+  assert(addon.eval("return ns.Theme.BarTexture()") === "Interface\\Buttons\\WHITE8X8" && addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "Flat bars are an option (on reload)");
+  const glow = addon.eval(`local f = CreateFrame("Frame", nil, UIParent) local g = ns.Theme.Glow(f, 6)
+    local hidden = not g[1]:IsShown() ns.Theme.ShowGlow(g, true) return { n = #g, hidden = hidden, shown = g[1]:IsShown(), tex = g[1].__texture, color = g[1].__vertexColor }`);
+  assert(glow.n === 8 && glow.hidden && glow.shown && /Glow$/.test(glow.tex) && isTok(addon, glow.color, "accent"), "a glow is eight hidden Glow pieces, shown in the accent");
+});
+
+attempt("proc glow on action buttons", () => {
+  const addon = loggedIn(ACTIONS_ENV + "GetActionInfo = function(slot) if slot == 2 then return 'spell', 424242 end end");
+  // Whether only button 2 (the one holding the spell) glows.
+  const glowShown = () => addon.eval("return ForeverUI_Bar1Button2.glow[1]:IsShown() and not ForeverUI_Bar1Button1.glow[1]:IsShown()");
+  addon.fire("SPELL_ACTIVATION_OVERLAY_GLOW_SHOW", 424242);
+  assert(glowShown() === true, "a proc lights the button holding that spell, and only it");
+  addon.fire("SPELL_ACTIVATION_OVERLAY_GLOW_HIDE", 424242);
+  assert(addon.eval("return ForeverUI_Bar1Button2.glow[1]:IsShown()") === false, "and goes out when the proc ends");
+});
+
 attempt("special bars", () => {
   const addon = createAddon();
   addon.eval(ACTIONS_ENV + `
@@ -1258,6 +1290,7 @@ console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-a
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");
 console.log("  special  pet/stance/extra buttons restyled, vehicle exit button");
+console.log("  frames   bar texture, smooth bars, dark raid style, striped shields, glows, proc glow");
 console.log("  bars     secure buttons, bindings, hotkeys, paging snippet, usable, secrets, drag, events, combat wait");
 console.log("  status   range fade (hidden range safe), raid icons, ready check, resurrection, leader/assist");
 console.log("  tooltip  flat skin, class/reaction colors, target line, hidden units left alone, corner/cursor anchor, combat hide");

@@ -93,7 +93,7 @@ end
 local function createBar(key, label, point, settings)
   local bar = CreateFrame("StatusBar", "ForeverUI_" .. key, UIParent)
   bar:SetSize(settings.width, settings.height)
-  bar:SetStatusBarTexture(T.WHITE)
+  T.StyleBar(bar)
   T.Panel(bar, { inset = true })
   bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "small")
   bar.text:SetPoint("CENTER")

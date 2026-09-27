@@ -40,7 +40,7 @@ local TOKENS = {
   -- Surfaces
   void = "0b0d11", panel = { "12151b", 0.94 }, raised = "1a1e26", inset = { "07080b", 0.95 },
   edge = "000000", sheen = { "ffffff", 0.06 }, divider = "242a34", shade = { "000000", 0.5 },
-  hover = { "ffffff", 0.08 }, checked = { "ffffff", 0.25 }, gridline = { "ffffff", 0.12 },
+  hover = { "ffffff", 0.08 }, darkBar = "2a3039", checked = { "ffffff", 0.25 }, gridline = { "ffffff", 0.12 },
   textShadow = { "000000", 0.9 },
   -- Text
   text = "e8eaee", text2 = "a6adb9", muted = "6b7280", white = "ffffff", gold = "ffd100",
@@ -91,6 +91,8 @@ local DEFAULTS = {
   outline = "",
   pixelScale = false,
   textScale = 1,
+  barTexture = "forever",
+  smoothBars = true,
 }
 
 -- Painted frames: frame -> { kind, opts, parts }. Weak, so hidden frames
@@ -261,22 +263,63 @@ local SHADOW_PIECES = {
   { tc = { 0.75, 1, 0.25, 0.75 }, at = { { "TOPLEFT", "TOPRIGHT" }, { "BOTTOMLEFT", "BOTTOMRIGHT" } }, w = true },
 }
 
--- One piece of a shadow, behind everything else on the frame.
-local function shadowPiece(frame, piece)
-  local t = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
-  t:SetTexture(T.Texture("Shadow"))
+-- One piece of a nine-slice ring around frame: look = { texture, size, drop, layer, sublevel }.
+local function ringPiece(frame, piece, look)
+  local t = frame:CreateTexture(nil, look.layer, nil, look.sublevel)
+  t:SetTexture(T.Texture(look.texture))
   t:SetTexCoord(unpack(piece.tc))
-  for _, a in ipairs(piece.at) do t:SetPoint(a[1], frame, a[2], 0, -SHADOW_DROP) end
-  if not piece.w then t:SetHeight(SHADOW_SIZE) end
-  if not piece.h then t:SetWidth(SHADOW_SIZE) end
+  for _, a in ipairs(piece.at) do t:SetPoint(a[1], frame, a[2], 0, -look.drop) end
+  if not piece.w then t:SetHeight(look.size) end
+  if not piece.h then t:SetWidth(look.size) end
   return t
 end
 
--- A soft drop shadow around frame, made of the eight pieces.
-local function shadow(frame)
+-- The eight pieces of a soft ring (shadow or glow) around frame.
+local function ring(frame, look)
   local pieces = {}
-  for i, piece in ipairs(SHADOW_PIECES) do pieces[i] = shadowPiece(frame, piece) end
+  for i, piece in ipairs(SHADOW_PIECES) do pieces[i] = ringPiece(frame, piece, look) end
   return pieces
+end
+
+-- A soft drop shadow around frame, behind everything else on it.
+local function shadow(frame)
+  return ring(frame, { texture = "Shadow", size = SHADOW_SIZE, drop = SHADOW_DROP, layer = "BACKGROUND", sublevel = -8 })
+end
+
+-- A glow ring around frame (hidden until T.ShowGlow), size units wide.
+function T.Glow(frame, size)
+  local pieces = ring(frame, { texture = "Glow", size = size or 8, drop = 0, layer = "BACKGROUND", sublevel = -7 })
+  for _, t in ipairs(pieces) do t:Hide() end
+  return pieces
+end
+
+-- Shows a glow in a named color (default the accent), or hides it.
+function T.ShowGlow(glow, on, color)
+  for _, t in ipairs(glow) do
+    t:SetShown(on == true)
+    if on then T.Tint(t, color or "accent") end
+  end
+end
+
+-- Bars ---------------------------------------------------------------------------------------
+
+-- The status bar texture: the bundled Bar texture, or flat when the setting says so.
+function T.BarTexture()
+  return T.Settings().barTexture == "flat" and T.WHITE or T.Texture("Bar")
+end
+
+-- Gives a status bar the theme's bar texture.
+function T.StyleBar(bar)
+  bar:SetStatusBarTexture(T.BarTexture())
+  return bar
+end
+
+-- Sets a bar's value, eased by the client when it can and smoothing is on.
+-- The client does the easing, so hidden values work the same way.
+function T.SetBarValue(bar, value)
+  local ease = Enum and Enum.StatusBarInterpolation
+  if T.Settings().smoothBars and ease and ease.ExponentialEaseOut then return bar:SetValue(value, ease.ExponentialEaseOut) end
+  bar:SetValue(value)
 end
 
 -- Sets the color of every edge.

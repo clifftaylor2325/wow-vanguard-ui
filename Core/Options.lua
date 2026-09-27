@@ -25,6 +25,16 @@ local function setting(module, key, reload)
     function(v) moduleSettings(module)[key] = v; if reload then O.NeedReload() end end
 end
 
+-- get/set for the raid frame style, repainting the raid frames at once.
+local function raidStyle()
+  local get, set = setting("RaidFrames", "style")
+  return get, function(v)
+    set(v)
+    local RF = ns.GetModule("RaidFrames")
+    if RF and RF.settings then RF.UpdateAll() end
+  end
+end
+
 -- get/set for whether action bar n is shown (applies on reload).
 local function barSetting(n)
   return function() local b = moduleSettings("ActionBars").bars[n] return b and b.enabled end,
@@ -55,6 +65,7 @@ local function themeSetting(key)
 end
 
 local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", "the game's font" } }
+local BAR_TEXTURES = { { "forever", "Forever" }, { "flat", "Flat" } }
 -- Text size: 80% to 130% in steps of 5.
 local TEXT_SIZES = { min = 0.8, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
@@ -83,9 +94,18 @@ local function layoutRows()
   }
 end
 
--- General: accent, theme reset, moving frames.
+-- General, bars: texture and smoothing.
+local function barRows()
+  return {
+    { "header", "Bars" },
+    { "cycle", "Bar texture", BAR_TEXTURES, themeSetting("barTexture") },
+    check("Smooth health and power bars", function() return T.Settings().smoothBars end, function(v) T.Settings().smoothBars = v end),
+  }
+end
+
+-- General: look, bars and layout.
 local function generalRows()
-  return append(lookRows(), layoutRows())
+  return append(append(lookRows(), barRows()), layoutRows())
 end
 
 -- Modules: one check per module (applies on reload).
@@ -227,6 +247,7 @@ local function raidRows()
     check("Include yourself", setting("RaidFrames", "showPlayer", true)),
     check("Sort by role (tanks, healers, damage)", setting("RaidFrames", "sortByRole", true)),
     check("Hide the default raid frames", setting("RaidFrames", "hideBlizzard", true)),
+    { "cycle", "Style", { { "class", "Class colors" }, { "dark", "Dark" } }, raidStyle() },
     { "cycle", "Width", { { 72, "72" }, { 90, "90" }, { 110, "110" } }, setting("RaidFrames", "width", true) },
     { "cycle", "Height", { { 32, "32" }, { 40, "40" }, { 48, "48" } }, setting("RaidFrames", "height", true) },
   }
