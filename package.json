@@ -4,12 +4,13 @@
   "type": "module",
   "description": "ForeverUI: a from-scratch UI suite for WoW Forever.",
   "scripts": {
-    "verify": "node scripts/verify-lua.mjs && node scripts/verify-media.mjs && node scripts/verify-code-quality.mjs",
+    "verify": "node scripts/verify-lua.mjs && node scripts/verify-media.mjs && node scripts/verify-link-wow.mjs && node scripts/verify-code-quality.mjs",
     "media": "node scripts/build-media.mjs",
     "quality": "node scripts/check-code-quality.mjs",
     "lint": "luacheck .",
     "package": "node scripts/package.mjs",
-    "preview": "node scripts/preview-ui.mjs"
+    "preview": "node scripts/preview-ui.mjs",
+    "link:wow": "node scripts/link-wow.mjs"
   },
   "devDependencies": {
     "acorn": "^8.18.0",

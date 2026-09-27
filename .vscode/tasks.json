@@ -1,0 +1,36 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "verify",
+      "detail": "Lua under the TEST-ONLY WoW stub, media, link:wow and code quality",
+      "type": "npm",
+      "script": "verify",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "lint (luacheck)",
+      "type": "shell",
+      "command": "luacheck . --formatter plain --codes",
+      "group": "build",
+      "problemMatcher": {
+        "owner": "luacheck",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(.+?):(\\d+):(\\d+): \\((W|E)(\\d+)\\) (.*)$",
+          "file": 1, "line": 2, "column": 3, "severity": 4, "code": 5, "message": 6
+        }
+      }
+    },
+    { "label": "package zip", "type": "npm", "script": "package", "problemMatcher": [] },
+    { "label": "preview screenshots", "type": "npm", "script": "preview", "problemMatcher": [] },
+    { "label": "link into WoW", "type": "npm", "script": "link:wow", "problemMatcher": [] },
+    {
+      "label": "link status",
+      "type": "shell",
+      "command": "npm run -s link:wow -- --status",
+      "problemMatcher": []
+    }
+  ]
+}

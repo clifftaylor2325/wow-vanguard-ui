@@ -1,0 +1,4 @@
+{
+  // Lua language server + the WoW API annotations (CreateFrame, C_*, events…).
+  "recommendations": ["sumneko.lua", "ketho.wow-api", "editorconfig.editorconfig"]
+}
