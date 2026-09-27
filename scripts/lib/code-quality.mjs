@@ -7,7 +7,8 @@
 //   3. Addon Lua (Core/, Modules/) writes no color numbers and no font
 //      sizes: colors come from the theme's named tokens and text from its
 //      roles, both in Core/Theme.lua.
-// Test cases (the callback passed to attempt(...)) are exempt from rule 1.
+// Test cases (the callback passed to it(...) or attempt(...)) are exempt from rule 1.
+// The attempt(...) exemption goes away when scripts/verify-lua.mjs moves to Vitest.
 
 import * as acorn from "acorn";
 
@@ -181,9 +182,11 @@ function jsFunctionName(node, parent) {
   return null;
 }
 
-// True for the test-case callback in attempt("label", () => { ... }).
+// True for the callback of it(...) or attempt(...).
+// The attempt(...) exemption goes away when scripts/verify-lua.mjs moves to Vitest.
 function isTestCase(parent) {
-  return parent?.type === "CallExpression" && parent.callee.name === "attempt";
+  const name = parent?.type === "CallExpression" ? parent.callee.name : "";
+  return name === "it" || name === "attempt";
 }
 
 const NAMED_HOLDER = new Set(["VariableDeclarator", "Property", "MethodDefinition"]);
