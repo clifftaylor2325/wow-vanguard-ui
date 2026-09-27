@@ -22,7 +22,6 @@ local LAYOUT = {
   target = { w = 220, h = 16, point = { "CENTER", "CENTER", 260, -205 } },
   focus = { w = 160, h = 14, point = { "CENTER", "CENTER", -260, -85 } },
 }
-local COLORS = { cast = { 1, 0.7, 0 }, channel = { 0.3, 0.8, 0.3 }, shielded = { 0.6, 0.6, 0.6 } }
 local BLIZZARD = { "PlayerCastingBarFrame", "CastingBarFrame", "PetCastingBarFrame" }
 
 CB.bars = {}
@@ -85,8 +84,7 @@ function CB.Show(bar, unit)
   local cast = CB.Cast(unit)
   bar:SetShown(cast ~= nil)
   if not cast then return bar:SetScript("OnUpdate", nil) end
-  local c = isTrue(cast.shielded) and COLORS.shielded or cast.channel and COLORS.channel or COLORS.cast
-  bar:SetStatusBarColor(c[1], c[2], c[3])
+  T.BarColor(bar, isTrue(cast.shielded) and "shielded" or cast.channel and "channel" or "cast")
   bar.icon:SetTexture(cast.icon)
   bar.text:SetText(cast.name)
   startTiming(bar, unit, cast)
@@ -106,7 +104,7 @@ local function addParts(bar, h)
   bar.icon:SetPoint("RIGHT", bar, "LEFT", -3, 0)
   bar.text = T.SetFont(bar:CreateFontString(nil, "OVERLAY"), math.max(10, h - 6))
   bar.text:SetPoint("LEFT", 4, 0)
-  bar.text:SetTextColor(1, 1, 1)
+  T.Color(bar.text, "text")
 end
 
 -- Makes a status bar a themed cast bar (w x h), hidden until CB.Show finds a cast.

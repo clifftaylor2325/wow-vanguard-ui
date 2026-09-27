@@ -19,6 +19,21 @@ function attempt(label, fn) {
   }
 }
 
+// r, g, b, a of a theme color token, read from the addon.
+const tok = (addon, name) => addon.eval(`return { ns.Theme.RGB("${name}") }`);
+
+// Whether color c matches the theme token `name` in r, g and b.
+const isTok = (addon, c, name) => {
+  const t = tok(addon, name);
+  return Array.isArray(c) && [0, 1, 2].every((i) => Math.abs(c[i] - t[i]) < 1e-6);
+};
+
+// Enters or leaves combat (leaving fires PLAYER_REGEN_ENABLED, which runs queued work).
+function setCombat(addon, on) {
+  addon.eval(`__wfgStub.inCombat = ${on}`);
+  if (!on) addon.fire("PLAYER_REGEN_ENABLED");
+}
+
 // A logged-in addon; extra Lua runs before login (e.g. a module or a skin).
 function loggedIn(extra = "", opts = {}) {
   const addon = createAddon(opts);
@@ -37,7 +52,7 @@ attempt("saved variables", () => {
   assert(sv.char.profile === "Default", "a new character uses the Default profile");
   const kept = loggedIn("", { savedVariables: 'ForeverUIDB = { profiles = { Main = { theme = { accent = { 1, 0, 0 } } } } }\nForeverUICharDB = { profile = "Main" }' });
   assert(kept.eval("return select(1, ns.Theme.Accent())") === 1, "the character's saved profile is used");
-  assert(kept.eval("return ns.Theme.Settings().panel[4]") === 0.92, "missing theme settings get defaults");
+  assert(kept.eval("return ns.Theme.Settings().panel[4]") === 0.94, "missing theme settings get defaults");
 });
 
 attempt("modules", () => {
@@ -77,7 +92,7 @@ attempt("theme", () => {
     end
     return out`);
   assert(colors.length === 5, `a panel is one background and four edges, painted once (got ${colors.length})`);
-  assert(colors.some((c) => c[0] === 0.24 && c[2] === 1), "an accent panel's border uses the accent");
+  assert(colors.some((c) => isTok(addon, c, "accent")), "an accent panel's border uses the accent");
   addon.slash("accent ff8000");
   const edge = addon.eval(`
     for _, w in ipairs(__wfgStub.frames) do
@@ -87,7 +102,7 @@ attempt("theme", () => {
   addon.slash("accent nope");
   assert(chatHas(addon, /Usage: \/fui accent/), "a bad accent shows usage");
   addon.slash("theme reset");
-  assert(addon.eval("return select(1, ns.Theme.Accent())") === 0.24, "/fui theme reset restores the default accent");
+  assert(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1]") === true, "/fui theme reset restores the default accent (brass)");
 });
 
 attempt("widgets", () => {
@@ -205,8 +220,10 @@ attempt("unlock mode", () => {
 
 attempt("accent presets", () => {
   const addon = loggedIn();
-  addon.slash("accent bronze");
-  assert(addon.eval("return select(1, ns.Theme.Accent())") === 0.8, "/fui accent bronze sets the bronze preset");
+  addon.slash("accent void");
+  assert(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.void[1]") === true, "/fui accent void sets the void preset");
+  addon.slash("accent blue");
+  assert(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]") === true, "the old preset names still work (blue is arcane)");
   addon.slash("accent #3D9EFF");
   assert(Math.abs(addon.eval("return select(3, ns.Theme.Accent())") - 1) < 1e-9, "hex accents still work");
 });
@@ -272,13 +289,13 @@ attempt("unit frames", () => {
   assert(player.unit === "player" && player.type1 === "target" && player.type2 === "togglemenu", "player frame is a secure unit button");
   assert(player.hp === 900 && player.max === 1000 && player.text === "900", "player health bar and text");
   assert(player.color[0] === 0.25 && player.color[2] === 0.92, "players get their class color");
-  assert(player.power === 50 && player.powerColor[2] === 1, "power bar value and mana color");
+  assert(player.power === 50 && isTok(addon, player.powerColor, "mana"), "power bar value and mana color");
   assert(player.name === "<name>" && !player.watched, "player name; player frame is always shown");
   const target = ufState(addon, "target");
   assert(target.watched, "target frame shows and hides with its unit");
   assert(target.hp?.__secret && target.max?.__secret, "secret health goes to the bar untouched");
   assert(target.text?.__secret, "secret health text comes from the client's formatter");
-  assert(target.color[0] === 0.78, "hostile units are red");
+  assert(isTok(addon, target.color, "hostile"), "hostile units are red");
   assert(ufState(addon, "party1").text === "Dead", "dead units say Dead");
   const hidden = addon.eval("return { parentShown = PlayerFrame:GetParent():IsShown(), events = PlayerFrame:IsEventRegistered('UNIT_HEALTH') }");
   assert(hidden.parentShown === false && hidden.events === false, "the Blizzard player frame is hidden and silenced");
@@ -294,7 +311,7 @@ attempt("unit frame events", () => {
   addon.eval('__units.focus = { name = "TEST-ONLY Focus", hp = 10, maxhp = 20, power = 0, maxpower = 0, ptype = "MANA", reaction = 5 }');
   addon.fire("PLAYER_FOCUS_CHANGED");
   const focus = ufState(addon, "focus");
-  assert(focus.name === "TEST-ONLY Focus" && focus.color[1] === 0.69, "focus change fills the focus frame; friendly is green");
+  assert(focus.name === "TEST-ONLY Focus" && isTok(addon, focus.color, "friendly"), "focus change fills the focus frame; friendly is green");
   addon.eval('__units.targettarget = { name = "TEST-ONLY ToT", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA" }');
   addon.update(0.25);
   assert(ufState(addon, "targettarget").name === "TEST-ONLY ToT", "target of target refreshes on a timer");
@@ -441,7 +458,7 @@ attempt("minimap", () => {
     border = MinimapCluster.BorderTop.__alpha, zoomIn = Minimap.ZoomIn.__alpha, shape = GetMinimapShape() }`);
   assert(mm.parent === "ForeverUI_Minimap" && mm.size === 180, "the minimap moves into the themed holder at 180 px");
   assert(mm.shape === "SQUARE", "GetMinimapShape tells other addons it is square");
-  assert(mm.zone === "TEST-ONLY Vale" && mm.zoneColor[1] === 0.7, "zone text on top, colored for contested");
+  assert(mm.zone === "TEST-ONLY Vale" && isTok(addon, mm.zoneColor, "zoneContested"), "zone text on top, colored for contested");
   assert(mm.border === 0 && mm.zoomIn === 0, "border art and zoom buttons are faded");
   addon.update(0.25);
   assert(addon.eval('return ns.GetModule("Minimap").coords:GetText()') === "45.7, 12.3", "coordinates under the map");
@@ -460,9 +477,9 @@ attempt("chat", () => {
   const c = addon.eval(`return { font = { ChatFrame1:GetFont() }, box = ns.Theme.PaintedCount(),
     tab1 = ChatFrame1Tab.Text.__textColor, tab2 = ChatFrame2Tab.Text.__textColor }`);
   assert(c.font[0] === "Fonts\\FRIZQT__.TTF" && c.font[1] === 15, `chat windows get the theme font at their own size (got ${JSON.stringify(c.font)})`);
-  assert(c.tab2[0] === 0.24 && c.tab1[0] === 0.7, "the selected window's tab is accent, others gray");
-  addon.slash("accent red");
-  assert(addon.eval("return ChatFrame2Tab.Text.__textColor[1]") === 0.9, "tabs follow accent changes");
+  assert(isTok(addon, c.tab2, "accent") && isTok(addon, c.tab1, "text2"), "the selected window's tab is accent, others gray");
+  addon.slash("accent ember");
+  assert(isTok(addon, addon.eval("return ChatFrame2Tab.Text.__textColor"), "accent"), "tabs follow accent changes");
 });
 
 attempt("bags", () => {
@@ -477,12 +494,12 @@ attempt("bags", () => {
 
 attempt("range tint", () => {
   const polled = loggedIn(ACTIONS_ENV + "IsActionInRange = function(slot) if slot == 1 then return false end if slot == 3 then return { __secret = true } end return true end");
-  assert(button(polled, 1, 1).color[0] === 0.9, "out of range tints red (asked directly on clients without range events)");
+  assert(isTok(polled, button(polled, 1, 1).color, "outOfRange"), "out of range tints red (asked directly on clients without range events)");
   assert(button(polled, 1, 3).color[0] === 0.4, "a secret range answer never tints red");
   const evented = loggedIn(ACTIONS_ENV + "__rangeSlots = {} C_ActionBar = { EnableActionRangeCheck = function(slot, on) __rangeSlots[slot] = on end }");
   assert(evented.eval("return __rangeSlots[1]") === true, "clients with range events are asked to watch each slot");
   evented.fire("ACTION_RANGE_CHECK_UPDATE", 1, false, true);
-  assert(button(evented, 1, 1).color[0] === 0.9, "ACTION_RANGE_CHECK_UPDATE out of range tints red");
+  assert(isTok(evented, button(evented, 1, 1).color, "outOfRange"), "ACTION_RANGE_CHECK_UPDATE out of range tints red");
   evented.fire("ACTION_RANGE_CHECK_UPDATE", 1, true, true);
   assert(button(evented, 1, 1).color[0] === 1, "back in range, back to normal");
   evented.fire("ACTION_RANGE_CHECK_UPDATE", 1, false, false);
@@ -632,7 +649,7 @@ attempt("options window", () => {
   assert(addon.eval("return ForeverUI_Options:IsShown()") === true, "/fui opens the options window");
   assert(addon.eval("return ForeverUI_Options.reload:IsShown()") === false, "no reload button until something needs one");
   addon.eval("for _, w in ipairs(__wfgStub.frames) do if w.fill and w.__scripts.OnClick then __swatches = (__swatches or 0) + 1 if __swatches == 2 then w.__scripts.OnClick(w) end end end");
-  assert(addon.eval("return select(1, ns.Theme.Accent())") === 0.8, "the bronze swatch sets the accent at once");
+  assert(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]") === true, "the second swatch (arcane) sets the accent at once");
   assert(addon.eval('return __click("Snap to other frames")') && addon.eval("return ns.MoverOptions().snap") === false, "the snap check box turns snapping off");
   assert(addon.eval('return __click("Action bars")'), "the nav switches pages");
   assert(addon.eval('return __click("Bar 6")') && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.bars[6].enabled") === true, "check boxes change settings");
@@ -780,7 +797,7 @@ attempt("raid indicators", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV);
   addon.eval('__spawn(1, "raid1")');
   const i = indicators(addon);
-  assert(i.dispel === true && i.edge[2] === 1 && i.edge[0] === 0.2, "a Magic debuff you can dispel gets a blue border");
+  assert(i.dispel === true && isTok(addon, i.edge, "magic"), "a Magic debuff you can dispel gets a blue border");
   assert(i.hots[0].shown && i.hots[0].icon === "TEST-ONLY-HOT-A" && i.hots[0].count === "2", "your HoTs show as icons with stacks");
   assert(i.hots[0].cd[0] === 1018 && i.hots[0].cd[1] === 12, "with a timer from plain numbers");
   assert(i.hots[1].shown && i.hots[1].icon === "TEST-ONLY-HOT-B" && i.hots[1].cd == null, `a HoT with hidden timings still shows, without a sweep (got ${JSON.stringify(i.hots[1])})`);
@@ -831,7 +848,7 @@ attempt("heal prediction, aggro, buff watch", () => {
   assert(one.heal === 200 && one.healMax === 1000 && one.shield === 150, "incoming heals and shields from the client's calculator");
   assert(addon.eval("return __calc.clamp") === 0, "incoming heals are clamped to missing health");
   assert(healing(addon, 2).heal?.__secret, "hidden incoming heals go to the bar untouched");
-  assert(one.threat && one.threat[0] === 1 && one.threat[1] === 0, "full aggro shows a red strip");
+  assert(isTok(addon, one.threat, "threat3"), "full aggro shows a red strip");
   assert(healing(addon, 2).threat === false, "hidden threat shows no strip");
   assert(one.missing === "TEST-ONLY-ICON-Arcane Intellect", "a player missing your buff is marked with its icon");
   assert(healing(addon, 2).missing === false, "the group version of the buff counts");
@@ -938,12 +955,12 @@ attempt("tooltips", () => {
   assert(addon.eval("return GameTooltipStatusBar.__barTexture ~= nil"), "the health bar gets a flat texture");
   addon.eval("__showUnit('target')");
   t = tooltip(addon);
-  assert(t.name && t.name[0] === 0.78 && t.name[1] === 0.25, "the name line takes the unit's reaction color");
+  assert(isTok(addon, t.name, "hostile"), "the name line takes the unit's reaction color");
   // The tooltip border's color (one of its edge textures).
   const edge = () => addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.__parent == GameTooltip and w.__layer == "BORDER" then return w.__vertexColor end end');
-  assert(edge()[0] === 0.78, "and so does the border");
+  assert(isTok(addon, edge(), "hostile"), "and so does the border");
   addon.eval("GameTooltip:Hide()");
-  assert(edge()[0] !== 0.78, "which goes back to the theme's when it hides");
+  assert(!isTok(addon, edge(), "hostile"), "which goes back to the theme's when it hides");
   assert(t.count === 1 && t.lines[0].text === "Target: <name>" && t.lines[0].r === 0.25, "a Target line in the target's class color");
   addon.eval("__showUnit('target')");
   addon.eval("__showUnit(nil)");
@@ -1000,7 +1017,7 @@ attempt("nameplates", () => {
   let one = plate(addon, "nameplate1");
   assert(one.drawn && one.default === false, "our frame is drawn and the default one hidden");
   assert(one.hp?.__secret, "hidden health goes to the bar untouched");
-  assert(one.color[0] === 0.78 && one.name === "TEST-ONLY Boar", "reaction color and name");
+  assert(isTok(addon, one.color, "hostile") && one.name === "TEST-ONLY Boar", "reaction color and name");
   assert(one.dot === "TEST-ONLY-DOT", "your debuffs show over the name");
   assert(same(one.edge, accent), "your target gets an accent border");
   assert(plate(addon, "nameplate3").drawn === false && plate(addon, "nameplate3").default === true, "a plate kept from addons is left alone");
@@ -1008,10 +1025,10 @@ attempt("nameplates", () => {
   assert(plate(addon, "nameplate1").default === false, "the default frame stays hidden");
   addon.eval("__threat.nameplate1 = 3");
   addon.fire("UNIT_THREAT_LIST_UPDATE", "nameplate1");
-  assert(plate(addon, "nameplate1").color[0] === 1 && plate(addon, "nameplate1").color[1] === 0, "red while you have aggro");
+  assert(isTok(addon, plate(addon, "nameplate1").color, "threat3"), "red while you have aggro");
   addon.eval("__threat.nameplate1 = { __secret = true }");
   addon.fire("UNIT_THREAT_LIST_UPDATE", "nameplate1");
-  assert(plate(addon, "nameplate1").color[0] === 0.78, "hidden threat: back to the reaction color");
+  assert(isTok(addon, plate(addon, "nameplate1").color, "hostile"), "hidden threat: back to the reaction color");
   addon.eval("__cast.nameplate1 = true");
   addon.fire("UNIT_SPELLCAST_START", "nameplate1");
   assert(plate(addon, "nameplate1").cast === "TEST-ONLY Spell", "casts show under the plate");
@@ -1023,6 +1040,42 @@ attempt("nameplates", () => {
   assert(!same(two.edge, accent), "only your target has the accent border");
   addon.eval('ns.Options.Show("nameplates")');
   assert(addon.eval('return __click("Threat colors while you have aggro")') && addon.eval("return ForeverUIDB.profiles.Default.Nameplates.threat") === false, "the options page works");
+});
+
+// The top border of a fresh panel at a UI scale on a screen `height` pixels tall
+// (optionally with a TEST-ONLY PixelUtil): { h, pixelUtil }.
+function borderAt(scale, height, pixelUtil = false) {
+  const pu = pixelUtil ? `PixelUtil = { GetNearestPixelSize = function(size, s) __pu = true return size * 768 / ${height} / s end }` : "";
+  const addon = loggedIn(`GetPhysicalScreenSize = function() return 1920, ${height} end ${pu}`);
+  return addon.eval(`UIParent:SetScale(${scale})
+    local f = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent))
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.__parent == f and w.__layer == "BORDER" and w.__height then return { h = w.__height, pixelUtil = __pu == true } end
+    end`);
+}
+
+attempt("theme tokens and pixel-perfect borders", () => {
+  for (const scale of [0.64, 0.71, 1]) {
+    const px = borderAt(scale, 1080).h * scale * 1080 / 768;
+    assert(Math.abs(px - 1) < 1e-9, `at UI scale ${scale} a border is one screen pixel (got ${px})`);
+  }
+  assert(borderAt(0.71, 1440, true).pixelUtil === true, "the client's PixelUtil sizes borders where it exists");
+  const addon = loggedIn(CLICK_LUA + "GetPhysicalScreenSize = function() return 2560, 1440 end");
+  assert(addon.eval('return (pcall(ns.Theme.RGB, "TEST-ONLY-nope"))') === false, "an unknown color name is an error, not a silent default");
+  assert(addon.eval("local fs = UIParent:CreateFontString() ns.Theme.Color(fs, 1, 0, 0) return fs.__textColor[1]") === 1, "Color still takes r, g, b (skin API)");
+  assert(isTok(addon, addon.eval("local t = UIParent:CreateTexture() ns.Theme.Tint(t, 'magic') return t.__vertexColor"), "magic"), "Tint colors a texture by name");
+  assert(addon.eval('return ns.Theme.Hex("white")') === "ffffffff", "Hex gives the escape-code form");
+  addon.eval('ns.Chat("TEST-ONLY line")');
+  const last = addon.chat().at(-1);
+  assert(last.startsWith("|c" + addon.eval('return ns.Theme.Hex("accent")') + "ForeverUI:|r"), `chat lines start with ForeverUI: in the accent (got ${last})`);
+  addon.eval('ns.Options.Show("general")');
+  setCombat(addon, true);
+  addon.eval('__click("Pixel-perfect UI scale")');
+  assert(addon.eval("return UIParent:GetScale()") === 1, "the pixel-perfect scale waits for combat to end");
+  setCombat(addon, false);
+  assert(Math.abs(addon.eval("return UIParent:GetScale()") - 768 / 1440) < 1e-9, "then UIParent gets 768 / screen height");
+  addon.eval('__click("Pixel-perfect UI scale")');
+  assert(addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "turning it off offers a reload (the client's scale comes back)");
 });
 
 attempt("special bars", () => {
@@ -1073,14 +1126,14 @@ attempt("cast bars", () => {
   addon.update(0.01);
   let b = castBar(addon, "player");
   assert(b.shown && b.text === "TEST-ONLY Spell" && b.icon === "TEST-ONLY-ICON", "a cast shows its name and icon");
-  assert(Math.abs(b.value - 1010 / 3000) < 1e-6 && b.color[0] === 1 && b.color[1] === 0.7, "the bar fills with the cast, in the cast color");
+  assert(Math.abs(b.value - 1010 / 3000) < 1e-6 && isTok(addon, b.color, "cast"), "the bar fills with the cast, in the cast color");
   addon.update(1.49);
   assert(Math.abs(castBar(addon, "player").value - 2500 / 3000) < 1e-6, "and keeps filling");
   addon.eval('__casts.target = { kind = "channel", start = 1000000, finish = 1004000, shielded = true }');
   addon.fire("UNIT_SPELLCAST_CHANNEL_START", "target");
   addon.update(0.01);
   b = castBar(addon, "target");
-  assert(b.color[0] === 0.6 && b.value > 0.5 && b.value < 0.7, "a channel empties; an uninterruptible cast is gray");
+  assert(isTok(addon, b.color, "shielded") && b.value > 0.5 && b.value < 0.7, "a channel empties; an uninterruptible cast is gray");
   addon.eval('__casts.focus = { kind = "cast", start = { __secret = true }, finish = { __secret = true } }');
   addon.fire("UNIT_SPELLCAST_START", "focus");
   addon.update(0.1);
@@ -1109,7 +1162,7 @@ attempt("target and focus auras", () => {
 
 console.log("ForeverUI — Lua harness (fengari)");
 console.log("  core     saved variables, profiles, modules, combat queue");
-console.log("  theme    panels, widgets, live accent, reset");
+console.log("  theme    panels, widgets, live accent, reset, color tokens, one-pixel borders at 3 scales, pixel-perfect scale");
 console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-addon off");
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");

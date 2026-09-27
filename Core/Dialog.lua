@@ -15,7 +15,7 @@ local function button(parent, label, width)
   b.text = T.SetFont(b:CreateFontString(nil, "OVERLAY"), 12)
   b.text:SetPoint("CENTER")
   b.text:SetText(label)
-  b.text:SetTextColor(0.9, 0.9, 0.9)
+  T.Color(b.text, "text")
   return b
 end
 ns.DialogButton = button

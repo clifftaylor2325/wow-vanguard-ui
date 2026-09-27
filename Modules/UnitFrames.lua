@@ -29,12 +29,6 @@ local PARTY = { w = 160, h = 32, gap = 10, label = "Party", point = { "TOPLEFT",
 -- Blizzard frames replaced when hideBlizzard is on (only those this client has).
 local BLIZZARD_FRAMES = { "PlayerFrame", "TargetFrame", "FocusFrame", "PetFrame", "PartyFrame" }
 
-local REACTION_COLORS = {
-  hostile = { 0.78, 0.25, 0.25 },
-  neutral = { 0.85, 0.77, 0.36 },
-  friendly = { 0.29, 0.69, 0.3 },
-}
-local FALLBACK_COLOR = { 0.5, 0.5, 0.5 }
 
 UF.frames = {}
 
@@ -51,9 +45,9 @@ end
 local function reactionColor(unit)
   local reaction = UnitReaction and UnitReaction(unit, "player")
   if isSecret(reaction) or type(reaction) ~= "number" then
-    return FALLBACK_COLOR
+    return T.TOKENS.unknown
   end
-  return reaction <= 3 and REACTION_COLORS.hostile or reaction == 4 and REACTION_COLORS.neutral or REACTION_COLORS.friendly
+  return T.TOKENS[reaction <= 3 and "hostile" or reaction == 4 and "neutral" or "friendly"]
 end
 
 -- r, g, b for a unit's health bar: class color for players, reaction otherwise.
@@ -69,14 +63,17 @@ function UF.HealthColor(unit)
   return c[1], c[2], c[3]
 end
 
+-- Power types with a ForeverUI color; others use the client's PowerBarColor.
+local POWER_TOKENS = { MANA = "mana", RAGE = "rage", ENERGY = "energy", FOCUS = "focus" }
+
 -- r, g, b for a unit's power bar (mana, rage, energy...).
 function UF.PowerColor(unit)
   local _, token = UnitPowerType(unit)
-  local c = not isSecret(token) and PowerBarColor and PowerBarColor[token]
-  if c then
-    return c.r, c.g, c.b
-  end
-  return 0.3, 0.5, 0.85
+  if isSecret(token) or type(token) ~= "string" then return T.RGB("mana") end
+  if POWER_TOKENS[token] then return T.RGB(POWER_TOKENS[token]) end
+  local c = PowerBarColor and PowerBarColor[token]
+  if c then return c.r, c.g, c.b end
+  return T.RGB("mana")
 end
 
 -- A number as short text (12.3K). Secret values go to the client's own
@@ -120,7 +117,7 @@ local function createBar(parent)
   bar:SetMinMaxValues(0, 1)
   bar.bg = bar:CreateTexture(nil, "BACKGROUND")
   bar.bg:SetAllPoints()
-  bar.bg:SetColorTexture(0, 0, 0, 0.5)
+  bar.bg:SetColorTexture(T.RGB("shade"))
   return bar
 end
 
@@ -129,7 +126,7 @@ local function createText(f, size, point, x)
   local fs = f.health:CreateFontString(nil, "OVERLAY")
   T.SetFont(fs, size)
   fs:SetPoint(point, f.health, point, x, 0)
-  fs:SetTextColor(1, 1, 1)
+  T.Color(fs, "text")
   return fs
 end
 

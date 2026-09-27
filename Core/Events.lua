@@ -3,12 +3,16 @@
 
 local ADDON, ns = ...
 
-local CHAT_PREFIX = "|cff3d9effForeverUI:|r "
+-- "ForeverUI:" in the accent color (plain until the theme has loaded).
+local function chatPrefix()
+  local T = ns.Theme
+  return T and T.Paint("ForeverUI:", "accent") .. " " or "ForeverUI: "
+end
 
 -- Prints one line to the default chat frame, prefixed with the addon name.
 function ns.Chat(msg)
   if DEFAULT_CHAT_FRAME then
-    DEFAULT_CHAT_FRAME:AddMessage(CHAT_PREFIX .. msg)
+    DEFAULT_CHAT_FRAME:AddMessage(chatPrefix() .. msg)
   end
 end
 

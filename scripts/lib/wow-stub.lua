@@ -128,6 +128,13 @@ function methods:SetAlpha(a) self.__alpha = a end
 function methods:SetTexCoord(...) self.__texCoord = { ... } end
 function methods:SetScale(s) self.__scale = s end
 function methods:GetScale() return self.__scale or 1 end
+
+-- Its scale times every parent's, as the client computes it.
+function methods:GetEffectiveScale()
+  local parent = self.__parent
+  return (self.__scale or 1) * (parent and parent:GetEffectiveScale() or 1)
+end
+-- Moving (recorded for the mover tests).
 function methods:StartMoving() self.__moving = true end
 function methods:StopMovingOrSizing() self.__moving = false end
 

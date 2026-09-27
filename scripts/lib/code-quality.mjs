@@ -4,6 +4,8 @@
 //      count; nested functions count toward the function that holds them.
 //   2. Every named function has a comment directly above it. A run of
 //      one-line functions (e.g. simple accessors) may share one comment.
+//   3. Addon Lua (Core/, Modules/) writes no color numbers: colors come from
+//      the theme's named tokens in Core/Theme.lua.
 // Test cases (the callback passed to attempt(...)) are exempt from rule 1.
 
 import * as acorn from "acorn";
@@ -239,11 +241,58 @@ function functionProblems(fn, kinds, documented) {
   return out;
 }
 
+// Colors -------------------------------------------------------------------------------
+
+// Addon Lua that must take its colors from the theme, and the theme itself.
+const COLOR_SCOPE = /^(Core|Modules)\/.+\.lua$/;
+const COLOR_HOME = "Core/Theme.lua";
+// A color setter called with a number as its first argument.
+const COLOR_SETTER = /\b(SetTextColor|SetVertexColor|SetStatusBarColor|SetColorTexture|SetBackdropColor|SetBackdropBorderColor|SetShadowColor)\s*\(\s*[-\d.]/g;
+// A table of three or four numbers (checked below to be 0-1: a color).
+const NUM = String.raw`\s*(\d*\.?\d+)\s*`;
+const COLOR_TABLE = new RegExp(String.raw`\{${NUM},${NUM},${NUM}(?:,${NUM})?\}`, "g");
+const COLOR_MESSAGE = "color numbers outside Core/Theme.lua: use a theme color (T.RGB, T.Color, T.Tint, T.BarColor, T.Paint)";
+
+// Lua source with comments and strings blanked out (newlines kept), so rules see only code.
+function luaCodeOnly(src) {
+  let out = "";
+  let last = 0;
+  for (const t of tokenizeLua(src)) {
+    if (t.kind !== "comment" && t.kind !== "string") continue;
+    out += src.slice(last, t.start) + src.slice(t.start, t.end).replace(/[^\n]/g, " ");
+    last = t.end;
+  }
+  return out + src.slice(last);
+}
+
+// Offsets of color tables: three or four numbers, all between 0 and 1.
+function colorTables(code) {
+  const hits = [];
+  for (const m of code.matchAll(COLOR_TABLE)) {
+    if (m.slice(1).filter(Boolean).every((v) => Number(v) <= 1)) hits.push(m.index);
+  }
+  return hits;
+}
+
+// A |c color escape with its color written out ("|cff3d9eff").
+const COLOR_ESCAPE = /\|c[0-9a-fA-F]{8}/g;
+
+// Color numbers written outside the theme: [{ line, message }].
+function colorProblems(file, src) {
+  if (!COLOR_SCOPE.test(file) || file === COLOR_HOME) return [];
+  const code = luaCodeOnly(src);
+  const line = lineIndex(src);
+  const hits = [...code.matchAll(COLOR_SETTER)].map((m) => m.index).concat(colorTables(code));
+  hits.push(...[...src.matchAll(COLOR_ESCAPE)].map((m) => m.index));
+  return hits.map((i) => ({ line: line(i), message: COLOR_MESSAGE }));
+}
+
 // Problems in one file: [{ line, message }].
 export function checkSource(file, src) {
   const lua = file.endsWith(".lua");
   const kinds = lua ? luaLineKinds(src) : jsLineKinds(src);
   const fns = lua ? luaFunctions(src) : jsFunctions(src);
   const documented = documentedSet(fns, kinds);
-  return fns.flatMap((fn) => functionProblems(fn, kinds, documented));
+  const out = fns.flatMap((fn) => functionProblems(fn, kinds, documented));
+  return lua ? out.concat(colorProblems(file, src)) : out;
 }

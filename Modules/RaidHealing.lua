@@ -26,7 +26,6 @@ RH.CLASS_BUFFS = {
   DRUID = { "Mark of the Wild", "Gift of the Wild" },
   WARRIOR = { "Battle Shout" },
 }
-local THREAT_COLORS = { { 1, 1, 0.47 }, { 1, 0.6, 0 }, { 1, 0, 0 } }
 
 -- Values -----------------------------------------------------------------------------------
 
@@ -63,8 +62,7 @@ end
 function RH.ThreatColor(unit)
   local status = type(UnitThreatSituation) == "function" and UnitThreatSituation(unit) or nil
   if ns.IsSecret(status) or type(status) ~= "number" or status < 1 then return nil end
-  if type(GetThreatStatusColor) == "function" then return { GetThreatStatusColor(status) } end
-  return THREAT_COLORS[status] or THREAT_COLORS[3]
+  return T.TOKENS["threat" .. math.min(status, 3)]
 end
 
 -- Buff watch -------------------------------------------------------------------------------
@@ -108,10 +106,10 @@ end
 -- Parts ------------------------------------------------------------------------------------
 
 -- An overlay bar that starts where `after` ends (the health fill, or the heal bar).
-local function overlay(b, after, r, g, bl, a)
+local function overlay(b, after, color)
   local bar = CreateFrame("StatusBar", nil, b.health)
   bar:SetStatusBarTexture(T.WHITE)
-  bar:SetStatusBarColor(r, g, bl, a)
+  T.BarColor(bar, color)
   bar:SetPoint("TOPLEFT", after:GetStatusBarTexture(), "TOPRIGHT")
   bar:SetPoint("BOTTOMLEFT", after:GetStatusBarTexture(), "BOTTOMRIGHT")
   bar:Hide()
@@ -140,8 +138,8 @@ end
 -- Adds the heal, shield, threat and buff parts to a raid button (RF setup hook).
 local function setup(b)
   b.health:SetClipsChildren(true)
-  b.heal = overlay(b, b.health, 0.3, 0.9, 0.3, 0.45)
-  b.shield = overlay(b, b.heal, 1, 1, 1, 0.35)
+  b.heal = overlay(b, b.health, "heal")
+  b.shield = overlay(b, b.heal, "shield")
   addThreat(b)
   addBuffMarker(b)
 end

@@ -41,7 +41,7 @@ local function colorTab(tab, selected)
   local text = tab.Text or (tab.GetFontString and tab:GetFontString())
   if text then
     T.SetFont(text, 12)
-    if selected then T.Color(text) else text:SetTextColor(0.7, 0.7, 0.7) end
+    T.Color(text, selected and "accent" or "text2")
   end
 end
 
