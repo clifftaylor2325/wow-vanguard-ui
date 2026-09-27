@@ -47,11 +47,11 @@ Download `ForeverUI-<version>.zip` from the [latest release](https://github.com/
 ```lua
 if ForeverUI and ForeverUI.RegisterSkin then
   ForeverUI.RegisterSkin("MyAddon", function(S)
-    S.Panel(MyFrame)                -- flat panel, 1px border ({ accent = true } for an accent border)
+    S.Panel(MyFrame, { shadow = true }) -- flat panel, 1px border, sheen; shadow for floating windows
     S.Button(MyFrame.OkButton)
     S.EditBox(MyFrame.Input)
     S.CloseButton(MyFrame.Close)
-    S.SetFont(MyFrame.Title, 14)
+    S.Text(MyFrame.Title, "title")  -- text roles: title, heading, name, cell, label, number, small, tiny, world
     S.Color(MyFrame.Hint, "text2")  -- theme colors by name: text, text2, muted, accent, good, bad...
     S.Tint(MyFrame.Glow, "accent")
   end)

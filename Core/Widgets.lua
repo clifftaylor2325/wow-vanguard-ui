@@ -9,26 +9,22 @@ local T = ns.Theme
 local W = {}
 ns.Widgets = W
 
--- A left-aligned label in the theme font.
-local function label(parent, text, size)
-  local fs = T.SetFont(parent:CreateFontString(nil, "OVERLAY"), size or 12)
+-- A left-aligned string in a text role and color.
+local function label(parent, text, role, color)
+  local fs = T.Text(parent:CreateFontString(nil, "OVERLAY"), role, color)
   fs:SetJustifyH("LEFT")
   fs:SetText(text)
-  T.Color(fs, "text")
   return fs
 end
 
 -- A section title in the accent color.
 function W.Header(parent, text)
-  local fs = label(parent, text, 14)
-  T.Color(fs)
-  return fs
+  return label(parent, text, "heading", "accent")
 end
 
 -- A line of gray text (help or status); :Refresh() re-reads it when text is a function.
 function W.Text(parent, text)
-  local fs = label(parent, type(text) == "function" and text() or text, 11)
-  T.Color(fs, "text2")
+  local fs = label(parent, type(text) == "function" and text() or text, "label", "text2")
   -- Re-reads a text given as a function.
   fs.Refresh = function(self) if type(text) == "function" then self:SetText(text()) end end
   return fs
@@ -61,7 +57,7 @@ function W.Check(parent, text, get, set)
   box:SetSize(18, 18)
   box.get, box.Refresh = get, refreshCheck
   addMark(box)
-  box.label = label(box, text)
+  box.label = label(box, text, "label")
   box.label:SetPoint("LEFT", box, "RIGHT", 8, 0)
   box:SetScript("OnClick", function(self) set(not self.get()); self:Refresh() end)
   box:Refresh()
@@ -174,8 +170,7 @@ function W.Input(parent, width)
   e:SetSize(width or 220, 24)
   e:SetAutoFocus(false)
   e:SetTextInsets(6, 6, 0, 0)
-  local path, outline = T.Font()
-  e:SetFont(path, 12, outline)
+  T.Text(e, "label")
   e:SetScript("OnEscapePressed", e.ClearFocus)
   e:SetScript("OnEnterPressed", e.ClearFocus)
   return e

@@ -36,5 +36,5 @@ function report(summary) {
 }
 
 const total = report(process.argv.includes("--summary"));
-console.log(total ? `\n${total} code-quality problem(s).` : "OK  every function is documented and at most 10 lines; colors come from the theme");
+console.log(total ? `\n${total} code-quality problem(s).` : "OK  every function is documented and at most 10 lines; colors and text sizes come from the theme");
 process.exit(total ? 1 : 0);

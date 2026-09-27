@@ -178,7 +178,7 @@ local function createHandle(m)
   wire(h)
   h.label = h:CreateFontString(nil, "OVERLAY")
   h.label:SetPoint("CENTER")
-  T.SetFont(h.label, 11)
+  T.Text(h.label, "small")
   h.label:SetText(m.label)
   return h
 end

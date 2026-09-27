@@ -102,7 +102,7 @@ local function addParts(bar, h)
   bar.icon = T.Crop(bar:CreateTexture(nil, "ARTWORK"))
   bar.icon:SetSize(h, h)
   bar.icon:SetPoint("RIGHT", bar, "LEFT", -3, 0)
-  bar.text = T.SetFont(bar:CreateFontString(nil, "OVERLAY"), math.max(10, h - 6))
+  bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), h >= 18 and "label" or "small")
   bar.text:SetPoint("LEFT", 4, 0)
   T.Color(bar.text, "text")
 end
@@ -111,7 +111,7 @@ end
 function CB.Build(bar, w, h)
   bar:SetSize(w, h)
   bar:SetStatusBarTexture(T.WHITE)
-  T.Panel(bar, { inset = true })
+  T.Panel(bar, { inset = true, shadow = true })
   addParts(bar, h)
   bar:Hide()
   return bar

@@ -54,14 +54,22 @@ local function append(a, b)
   return a
 end
 
--- General, part one: accent and theme reset.
+-- get/set for a theme setting; changes apply on reload.
+local function themeSetting(key)
+  return function() return T.Settings()[key] end, function(v) T.Settings()[key] = v; O.NeedReload() end
+end
+
+local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", "the game's font" } }
+local TEXT_SIZES = { { 0.9, "90%" }, { 1, "100%" }, { 1.1, "110%" }, { 1.25, "125%" } }
+
+-- General, part one: accent, font, text size, scale and theme reset.
 local function lookRows()
   return {
     { "header", "Look" },
     { "text", "Accent color (live):" },
     { "swatches" },
-    { "cycle", "Font", { { "", "Fira Sans Condensed" }, { "client", "the game's font" } },
-      function() return T.Settings().font end, function(v) T.Settings().font = v; O.NeedReload() end },
+    { "cycle", "Font", FONT_CHOICES, themeSetting("font") },
+    { "cycle", "Text size", TEXT_SIZES, themeSetting("textScale") },
     check("Pixel-perfect UI scale (768 / screen height)", function() return T.Settings().pixelScale end,
       function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end),
     { "button", "Reset theme", function() T.Reset() end },
@@ -323,7 +331,7 @@ end
 local function addTitle(f)
   f.logo = T.Logo(f, 22)
   f.logo:SetPoint("TOPLEFT", 12, -10)
-  f.title = T.Color(T.SetFont(f:CreateFontString(nil, "OVERLAY"), 16), "text")
+  f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "title")
   f.title:SetPoint("LEFT", f.logo, "RIGHT", 6, 0)
   f.title:SetText("ForeverUI")
 end
@@ -350,7 +358,7 @@ end
 
 -- The window, built on first use: movable, closes with Escape.
 local function build()
-  window = T.Panel(CreateFrame("Frame", "ForeverUI_Options", UIParent), { accent = true, alpha = 0.98 })
+  window = T.Panel(CreateFrame("Frame", "ForeverUI_Options", UIParent), { alpha = 0.98, shadow = true })
   window:SetSize(WIDTH, HEIGHT)
   window:SetPoint("CENTER")
   window:SetFrameStrata("DIALOG")

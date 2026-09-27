@@ -192,13 +192,25 @@ function styleArt(el, f) {
 // ForeverUI's art by game path ("Textures\\Bar"), set for each draw.
 let MEDIA = {};
 
-// Our own white art: the image's alpha as a mask over the texture's vertex color.
-function styleMedia(el, f, url) {
-  const mask = { maskImage: `url(${url})`, maskSize: "100% 100%", webkitMaskImage: `url(${url})`, webkitMaskSize: "100% 100%" };
-  Object.assign(el.style, { backgroundColor: rgba(f.vertexColor || [1, 1, 1, 1]), ...mask });
+// CSS mask size and position that show only texcoords [left, right, top, bottom] of an image.
+function maskCrop(tc) {
+  const [l, r, t, b] = tc || [0, 1, 0, 1];
+  // One axis: the offset as CSS wants it for a mask larger than the box.
+  const pos = (start, span) => (span >= 1 ? 0 : (start / (1 - span)) * 100);
+  return { size: `${100 / (r - l)}% ${100 / (b - t)}%`, position: `${pos(l, r - l)}% ${pos(t, b - t)}%` };
 }
 
-// The preview image for one of ForeverUI's textures, if the path is one.
+// Our own art: the image's alpha (cropped to its texcoords) as a mask over
+// its own color times the vertex color, as the game tints it.
+function styleMedia(el, f, art) {
+  const { size, position } = maskCrop(f.texCoord);
+  const v = f.vertexColor || [1, 1, 1, 1];
+  const color = [art.rgb[0] * v[0], art.rgb[1] * v[1], art.rgb[2] * v[2], v[3] ?? 1];
+  const mask = { maskImage: `url(${art.url})`, maskSize: size, maskPosition: position, maskRepeat: "no-repeat" };
+  Object.assign(el.style, { backgroundColor: rgba(color), ...mask, webkitMaskImage: mask.maskImage, webkitMaskSize: size, webkitMaskPosition: position });
+}
+
+// The preview art ({ url, rgb }) for one of ForeverUI's textures, if the path is one.
 const mediaUrl = (texture) => MEDIA[(/ForeverUI\\Media\\(.+)$/.exec(texture || "") || [])[1]];
 
 // A texture node: flat color (a color texture, or tinted WHITE8X8), the arrow shape, or a dashed placeholder for game art.
