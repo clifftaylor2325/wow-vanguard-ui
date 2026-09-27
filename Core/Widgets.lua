@@ -14,7 +14,7 @@ local function label(parent, text, size)
   local fs = T.SetFont(parent:CreateFontString(nil, "OVERLAY"), size or 12)
   fs:SetJustifyH("LEFT")
   fs:SetText(text)
-  fs:SetTextColor(0.9, 0.9, 0.9)
+  T.Color(fs, "text")
   return fs
 end
 
@@ -28,7 +28,7 @@ end
 -- A line of gray text (help or status); :Refresh() re-reads it when text is a function.
 function W.Text(parent, text)
   local fs = label(parent, type(text) == "function" and text() or text, 11)
-  fs:SetTextColor(0.7, 0.7, 0.7)
+  T.Color(fs, "text2")
   -- Re-reads a text given as a function.
   fs.Refresh = function(self) if type(text) == "function" then self:SetText(text()) end end
   return fs
@@ -52,7 +52,7 @@ local function addMark(box)
   box.mark:SetTexture(T.WHITE)
   box.mark:SetPoint("TOPLEFT", 4, -4)
   box.mark:SetPoint("BOTTOMRIGHT", -4, 4)
-  box.mark:SetVertexColor(T.Accent())
+  T.Tint(box.mark, "accent")
 end
 
 -- A check box with a label; set(on) runs on click, then the box re-reads get().

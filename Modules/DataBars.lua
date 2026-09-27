@@ -11,12 +11,11 @@ local DB = ns.Module("DataBars", {
   defaults = { width = 476, height = 10, xp = true, reputation = true, text = "hover" },
 })
 
--- Reputation bar colors by standing (1 hated .. 8 exalted).
+-- Reputation bar color tokens by standing (1 hated .. 8 exalted).
 local REACTION = {
-  { 0.8, 0.13, 0.13 }, { 0.8, 0.13, 0.13 }, { 0.75, 0.27, 0 }, { 0.9, 0.7, 0 },
-  { 0, 0.6, 0.1 }, { 0, 0.6, 0.1 }, { 0, 0.6, 0.1 }, { 0, 0.6, 0.1 },
+  "repHostile", "repHostile", "repUnfriendly", "repNeutral",
+  "repFriendly", "repFriendly", "repFriendly", "repFriendly",
 }
-local XP_COLOR, RESTED_COLOR = { 0.58, 0, 0.55 }, { 0, 0.39, 0.88 }
 
 -- A number as short text: 12.3K, 1.2M.
 function DB.Short(n)
@@ -108,7 +107,7 @@ end
 local function addRested(bar)
   bar.rested = bar:CreateTexture(nil, "BACKGROUND", nil, 2)
   bar.rested:SetTexture(T.WHITE)
-  bar.rested:SetVertexColor(RESTED_COLOR[1], RESTED_COLOR[2], RESTED_COLOR[3], 0.5)
+  T.Tint(bar.rested, "rested")
   bar.rested:SetPoint("TOPLEFT")
   bar.rested:SetPoint("BOTTOMLEFT")
 end
@@ -122,7 +121,7 @@ function DB.UpdateXP()
   if not xp then return end
   bar:SetMinMaxValues(0, xp.max)
   bar:SetValue(xp.cur)
-  bar:SetStatusBarColor(XP_COLOR[1], XP_COLOR[2], XP_COLOR[3])
+  T.BarColor(bar, "xp")
   bar.rested:SetWidth(math.max(1, bar:GetWidth() * math.min(1, (xp.cur + xp.rested) / xp.max)))
   bar.text:SetText(DB.XPText(xp))
 end
@@ -132,10 +131,9 @@ function DB.UpdateReputation()
   local bar, rep = DB.repBar, DB.Reputation()
   bar:SetShown(rep ~= nil)
   if not rep then return end
-  local c = REACTION[rep.standing] or REACTION[4]
   bar:SetMinMaxValues(0, rep.max)
   bar:SetValue(rep.cur)
-  bar:SetStatusBarColor(c[1], c[2], c[3])
+  T.BarColor(bar, REACTION[rep.standing] or REACTION[4])
   bar.text:SetText(DB.ReputationText(rep))
 end
 

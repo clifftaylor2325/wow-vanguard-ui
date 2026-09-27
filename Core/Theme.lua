@@ -1,8 +1,12 @@
--- The ForeverUI look: flat dark panels, 1px borders, one accent color and
--- one font. Primitives take a frame and paint it; each is idempotent (a
--- second call just repaints) and every painted frame follows live color
--- changes. Textures are solid colors (WHITE8X8), so nothing depends on
--- art from another addon.
+-- The ForeverUI look ("Slate & Brass"): flat dark panels, 1px borders,
+-- one accent color and one font. Primitives take a frame and paint it; each
+-- is idempotent (a second call just repaints) and every painted frame
+-- follows live color changes. Textures are solid colors (WHITE8X8), so
+-- nothing depends on art from another addon.
+--
+-- Every color the addon uses is a named token below. Modules ask for them
+-- by name (T.RGB, T.Color, T.Tint, T.BarColor) and never write color
+-- numbers themselves; scripts/lib/code-quality.mjs checks that.
 
 local ADDON, ns = ...
 
@@ -11,22 +15,66 @@ ns.Theme = T
 
 T.WHITE = "Interface\\Buttons\\WHITE8X8"
 
-local DEFAULTS = {
-  accent = { 0.24, 0.62, 1 },
-  panel = { 0.06, 0.07, 0.09, 0.92 },
-  inset = { 0.02, 0.02, 0.03, 0.95 },
-  border = { 0, 0, 0, 1 },
-  font = "",
-  outline = "",
+-- r, g, b, a (0-1) from "rrggbb" and an optional alpha.
+local function fromHex(hex, alpha)
+  local n = tonumber(hex, 16)
+  return { math.floor(n / 65536) / 255, math.floor(n / 256) % 256 / 255, n % 256 / 255, alpha or 1 }
+end
+
+-- Named colors: "rrggbb", or { "rrggbb", alpha }.
+local TOKENS = {
+  -- Surfaces
+  void = "0b0d11", panel = { "12151b", 0.94 }, raised = "1a1e26", inset = { "07080b", 0.95 },
+  edge = "000000", sheen = { "ffffff", 0.06 }, divider = "242a34", shade = { "000000", 0.5 },
+  hover = { "ffffff", 0.08 }, checked = { "ffffff", 0.25 }, gridline = { "ffffff", 0.12 },
+  -- Text
+  text = "e8eaee", text2 = "a6adb9", muted = "6b7280", white = "ffffff", gold = "ffd100",
+  -- State (kept apart from the accent)
+  good = "4fc27a", warn = "ee8b3a", bad = "e0565b", info = "5aa2f0", unknown = "808080",
+  -- Reaction to you
+  hostile = "cc4b45", neutral = "e0c24e", friendly = "4db86a",
+  -- Resources
+  mana = "3e7be0", rage = "cf4a3e", energy = "e6c24a", focus = "e0893c",
+  -- Threat: yellow, orange, red
+  threat1 = "e0c24e", threat2 = "ee8b3a", threat3 = "e0565b",
+  -- Dispel types, and the highlight when the type is hidden
+  magic = "3c8cf0", curse = "9a55e0", disease = "b08a3a", poison = "3fa34d", dispel = "cc4dff",
+  -- Casts
+  cast = "e6a93a", channel = "4fc27a", shielded = "8b9099",
+  -- Healing overlays
+  heal = { "4fc27a", 0.45 }, shield = { "ffffff", 0.35 },
+  -- Action button tints
+  outOfRange = "e64d4d", noPower = "6680ff", unusable = "666666",
+  -- Experience and reputation
+  xp = "940090", rested = { "0063e0", 0.5 },
+  repHostile = "cc2121", repUnfriendly = "bf4500", repNeutral = "e6b300", repFriendly = "00991a",
+  -- Zone text
+  zoneSanctuary = "69ccf0", zoneFriendly = "1aff1a", zoneHostile = "ff1a1a", zoneContested = "ffb300",
 }
 
--- Named accent colors for /fui accent <name>.
+-- Token name -> { r, g, b, a }.
+T.TOKENS = {}
+for name, v in pairs(TOKENS) do
+  T.TOKENS[name] = type(v) == "table" and fromHex(v[1], v[2]) or fromHex(v)
+end
+
+-- Accent presets for /fui accent and the options swatches, in display order.
+T.PRESET_ORDER = { "brass", "arcane", "fel", "void", "ember" }
 T.PRESETS = {
-  blue = { 0.24, 0.62, 1 },
-  bronze = { 0.8, 0.62, 0.4 },
-  green = { 0.36, 0.8, 0.45 },
-  purple = { 0.64, 0.46, 0.95 },
-  red = { 0.9, 0.3, 0.3 },
+  brass = fromHex("d9a441"), arcane = fromHex("5aa2f0"), fel = fromHex("5bcb7e"),
+  void = fromHex("a47bf0"), ember = fromHex("e0664b"),
+}
+-- Earlier preset names still work.
+local ALIASES = { blue = "arcane", bronze = "brass", green = "fel", purple = "void", red = "ember" }
+
+local DEFAULTS = {
+  accent = T.PRESETS.brass,
+  panel = T.TOKENS.panel,
+  inset = T.TOKENS.inset,
+  border = T.TOKENS.edge,
+  font = "",
+  outline = "",
+  pixelScale = false,
 }
 
 -- Painted frames: frame -> { kind, opts, parts }. Weak, so hidden frames
@@ -51,6 +99,41 @@ function T.PanelColor(inset)
   return c[1], c[2], c[3], c[4]
 end
 
+-- The user-adjustable tokens live in the theme settings (the rest are fixed).
+local SETTING_TOKENS = { accent = "accent", panel = "panel", inset = "inset", edge = "border" }
+
+-- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings).
+function T.RGB(name)
+  local key = SETTING_TOKENS[name]
+  local c = key and T.Settings()[key] or T.TOKENS[name]
+  if not c then error("ForeverUI: no color named " .. tostring(name), 2) end
+  return c[1], c[2], c[3], c[4] or 1
+end
+
+-- "ffrrggbb" for a named color, for |c escape codes in chat and tooltip text.
+function T.Hex(name)
+  local r, g, b = T.RGB(name)
+  return string.format("ff%02x%02x%02x", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
+end
+
+-- Text wrapped in a named color's escape code.
+function T.Paint(text, name)
+  return "|c" .. T.Hex(name) .. text .. "|r"
+end
+
+-- Colors a region with a named color (vertex color), at an optional alpha.
+function T.Tint(region, name, alpha)
+  local r, g, b, a = T.RGB(name)
+  region:SetVertexColor(r, g, b, alpha or a)
+  return region
+end
+
+-- Colors a status bar's fill with a named color.
+function T.BarColor(bar, name)
+  bar:SetStatusBarColor(T.RGB(name))
+  return bar
+end
+
 -- The UI font path and outline flag.
 function T.Font()
   local s = T.Settings()
@@ -67,14 +150,53 @@ local function solid(frame, layer)
   return t
 end
 
--- Four 1px edge textures around frame.
+-- Pixels ----------------------------------------------------------------------------
+
+-- The screen's height in physical pixels (768 when the client can't say).
+local function screenHeight()
+  local get = _G.GetPhysicalScreenSize
+  if type(get) ~= "function" then return 768 end
+  local _, h = get()
+  return type(h) == "number" and h > 0 and h or 768
+end
+
+-- A frame's effective scale (UIParent's, or 1, when it has none).
+local function scaleOf(frame)
+  local f = frame and frame.GetEffectiveScale and frame or UIParent
+  local s = f and f.GetEffectiveScale and f:GetEffectiveScale()
+  return type(s) == "number" and s > 0 and s or 1
+end
+
+-- How long one screen pixel is in a frame's units, so a border of this size
+-- is exactly one pixel at any UI scale. Uses the client's PixelUtil when present.
+function T.Pixel(frame)
+  local scale, util = scaleOf(frame), _G.PixelUtil
+  if type(util) == "table" and type(util.GetNearestPixelSize) == "function" then
+    return util.GetNearestPixelSize(1, scale, 1)
+  end
+  return 768 / screenHeight() / scale
+end
+
+-- The UI scale that makes one UI unit one screen pixel (768 / screen height).
+function T.PixelPerfectScale()
+  return 768 / screenHeight()
+end
+
+-- Four edge textures around frame (sized to one pixel when painted).
 local function edges(frame)
   local e = { top = solid(frame, "BORDER"), bottom = solid(frame, "BORDER"), left = solid(frame, "BORDER"), right = solid(frame, "BORDER") }
-  e.top:SetPoint("TOPLEFT"); e.top:SetPoint("TOPRIGHT"); e.top:SetHeight(1)
-  e.bottom:SetPoint("BOTTOMLEFT"); e.bottom:SetPoint("BOTTOMRIGHT"); e.bottom:SetHeight(1)
-  e.left:SetPoint("TOPLEFT"); e.left:SetPoint("BOTTOMLEFT"); e.left:SetWidth(1)
-  e.right:SetPoint("TOPRIGHT"); e.right:SetPoint("BOTTOMRIGHT"); e.right:SetWidth(1)
+  e.top:SetPoint("TOPLEFT"); e.top:SetPoint("TOPRIGHT")
+  e.bottom:SetPoint("BOTTOMLEFT"); e.bottom:SetPoint("BOTTOMRIGHT")
+  e.left:SetPoint("TOPLEFT"); e.left:SetPoint("BOTTOMLEFT")
+  e.right:SetPoint("TOPRIGHT"); e.right:SetPoint("BOTTOMRIGHT")
   return e
+end
+
+-- Sizes the edges to one screen pixel for frame.
+local function sizeEdges(e, frame)
+  local px = T.Pixel(frame)
+  e.top:SetHeight(px); e.bottom:SetHeight(px)
+  e.left:SetWidth(px); e.right:SetWidth(px)
 end
 
 -- Sets the color of every edge.
@@ -111,18 +233,15 @@ local function paintBg(bg, opts)
   bg:SetVertexColor(r, g, b, opts.alpha or a)
 end
 
--- Applies the current colors to one painted frame.
-local function repaint(entry)
+-- Applies the current colors (and pixel size) to one painted frame.
+local function repaint(frame, entry)
   local p = entry.parts
-  if p.bg then
-    paintBg(p.bg, entry.opts)
-  end
+  if p.bg then paintBg(p.bg, entry.opts) end
   if p.edges then
     colorEdges(p.edges, borderColor(entry))
+    sizeEdges(p.edges, frame)
   end
-  if entry.paint then
-    entry.paint(entry)
-  end
+  if entry.paint then entry.paint(entry) end
 end
 
 -- Creates (once) the background and edges for frame; returns its entry.
@@ -144,7 +263,7 @@ end
 -- (accent-colored border), alpha (fill opacity), noBorder, noBg.
 function T.Panel(frame, opts)
   local entry = base(frame, "panel", opts)
-  repaint(entry)
+  repaint(frame, entry)
   return frame
 end
 
@@ -153,7 +272,7 @@ function T.SetBorder(frame, rgb)
   local entry = painted[frame]
   if not entry then return end
   entry.opts.border = rgb
-  repaint(entry)
+  repaint(frame, entry)
 end
 
 -- A flat button: inset panel, template art faded, a faint white hover.
@@ -164,9 +283,9 @@ function T.Button(button)
     T.FadeRegions(button, { [entry.parts.bg] = true })
     entry.parts.hover = solid(button, "HIGHLIGHT")
     entry.parts.hover:SetAllPoints()
-    entry.parts.hover:SetVertexColor(1, 1, 1, 0.08)
+    T.Tint(entry.parts.hover, "hover")
   end
-  repaint(entry)
+  repaint(button, entry)
   return button
 end
 
@@ -177,14 +296,14 @@ function T.EditBox(box)
   if fresh then
     T.FadeRegions(box, { [entry.parts.bg] = true })
   end
-  repaint(entry)
+  repaint(box, entry)
   return box
 end
 
 -- The painted close glyph: an accent-on-hover "x" in the theme font.
 local function paintClose(entry)
   T.SetFont(entry.parts.glyph, 14)
-  entry.parts.glyph:SetTextColor(0.85, 0.85, 0.85)
+  T.Color(entry.parts.glyph, "text2")
 end
 
 -- A close button drawn as an "x"; template art faded.
@@ -197,7 +316,7 @@ function T.CloseButton(button)
     entry.parts.glyph:SetText("x")
     painted[button] = entry
   end
-  repaint(entry)
+  repaint(button, entry)
   return button
 end
 
@@ -218,12 +337,12 @@ function T.SetFont(fs, size)
   return fs
 end
 
--- Colors a font string with the accent (or the given color).
+-- Colors a font string: a named color, r, g, b (for other addons' skins), or the accent.
 function T.Color(fs, r, g, b)
-  if r then
+  if type(r) == "number" then
     fs:SetTextColor(r, g, b)
   else
-    fs:SetTextColor(T.Accent())
+    fs:SetTextColor(T.RGB(r or "accent"))
   end
   return fs
 end
@@ -237,8 +356,8 @@ end
 
 -- Repaints every painted frame and tells the listeners.
 function T.Refresh()
-  for _, entry in pairs(painted) do
-    repaint(entry)
+  for frame, entry in pairs(painted) do
+    repaint(frame, entry)
   end
   for _, fn in ipairs(listeners) do
     fn()
@@ -257,9 +376,38 @@ function T.Reset()
   T.Refresh()
 end
 
+-- Pixel-perfect scale ----------------------------------------------------------------
+
+-- Sets UIParent to the pixel-perfect scale when that setting is on, out of
+-- combat, then resizes every border.
+function T.ApplyScale()
+  if not T.Settings().pixelScale then return end
+  ns.OutOfCombat(function()
+    UIParent:SetScale(T.PixelPerfectScale())
+    T.Refresh()
+  end)
+end
+
+-- Turns the pixel-perfect scale on (applies now) or off (the client's own
+-- scale returns at the next reload).
+function T.SetPixelScale(on)
+  T.Settings().pixelScale = on == true
+  T.ApplyScale()
+end
+
+-- The screen size or the client's UI scale changed: re-apply ours and resize borders.
+local function onScaleChanged()
+  T.Refresh()
+  T.ApplyScale()
+end
+
+ns.On("PLAYER_LOGIN", T.ApplyScale)
+ns.On("UI_SCALE_CHANGED", onScaleChanged)
+ns.On("DISPLAY_SIZE_CHANGED", onScaleChanged)
+
 -- r, g, b (0-1) from a preset name, "rrggbb" or "#rrggbb"; nil otherwise.
 function T.ParseColor(text)
-  local preset = T.PRESETS[text]
+  local preset = T.PRESETS[ALIASES[text] or text]
   if preset then
     return preset[1], preset[2], preset[3]
   end

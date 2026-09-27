@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Fails if any function is over the length limit or undocumented
-// (rules in scripts/lib/code-quality.mjs).
+// Fails if any function is over the length limit or undocumented, or addon
+// Lua writes color numbers (rules in scripts/lib/code-quality.mjs).
 //
 //   node scripts/check-code-quality.mjs [--summary]
 //
@@ -36,5 +36,5 @@ function report(summary) {
 }
 
 const total = report(process.argv.includes("--summary"));
-console.log(total ? `\n${total} code-quality problem(s).` : "OK  every function is documented and at most 10 lines");
+console.log(total ? `\n${total} code-quality problem(s).` : "OK  every function is documented and at most 10 lines; colors come from the theme");
 process.exit(total ? 1 : 0);

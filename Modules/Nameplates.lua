@@ -21,7 +21,6 @@ local NP = ns.Module("Nameplates", {
   defaults = { width = 130, height = 10, threat = true, castBar = true, debuffs = 4, targetBorder = true },
 })
 
-local THREAT_COLORS = { { 1, 1, 0.47 }, { 1, 0.6, 0 }, { 1, 0, 0 } }
 local ICON = 18
 
 NP.plates = {}
@@ -40,8 +39,7 @@ end
 function NP.ThreatColor(unit)
   local status = type(UnitThreatSituation) == "function" and UnitThreatSituation("player", unit) or nil
   if ns.IsSecret(status) or type(status) ~= "number" or status < 1 then return nil end
-  if type(GetThreatStatusColor) == "function" then return { GetThreatStatusColor(status) } end
-  return THREAT_COLORS[status] or THREAT_COLORS[3]
+  return T.TOKENS["threat" .. math.min(status, 3)]
 end
 
 -- The bar color: threat while you have aggro (if on), else class or reaction.
@@ -63,7 +61,7 @@ end
 local function addTexts(f)
   f.name = T.SetFont(f:CreateFontString(nil, "OVERLAY"), 10)
   f.name:SetPoint("BOTTOM", f, "TOP", 0, 3)
-  f.name:SetTextColor(1, 1, 1)
+  T.Color(f.name, "text")
   f.raidIcon = f:CreateTexture(nil, "OVERLAY")
   f.raidIcon:SetSize(ICON, ICON)
   f.raidIcon:SetPoint("RIGHT", f, "LEFT", -4, 0)

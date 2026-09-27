@@ -137,18 +137,13 @@ local function updateCooldown(b)
   pcall(b.cooldown.SetCooldown, b.cooldown, start, length)
 end
 
--- Icon tints, by state. Out of range wins over the others.
-local TINT = {
-  range = { 0.9, 0.3, 0.3 },
-  power = { 0.4, 0.5, 1 },
-  unusable = { 0.4, 0.4, 0.4 },
-  ok = { 1, 1, 1 },
-}
+-- Icon tint tokens, by state. Out of range wins over the others.
+local TINT = { range = "outOfRange", power = "noPower", unusable = "unusable", ok = "white" }
 
 -- Tints the icon for the button's range and usable state.
 local function paintIcon(b)
   local tint = (b.outOfRange and AB.settings.rangeTint) and TINT.range or TINT[b.usable or "ok"]
-  b.icon:SetVertexColor(tint[1], tint[2], tint[3])
+  T.Tint(b.icon, tint)
 end
 
 -- "ok", "power" (not enough power) or "unusable". Secret answers count as usable.
@@ -244,10 +239,10 @@ end
 local function addTexts(b)
   b.count = T.SetFont(b:CreateFontString(nil, "OVERLAY"), 11)
   b.count:SetPoint("BOTTOMRIGHT", -2, 2)
-  b.count:SetTextColor(1, 1, 1)
+  T.Color(b.count, "white")
   b.hotkey = T.SetFont(b:CreateFontString(nil, "OVERLAY"), 10)
   b.hotkey:SetPoint("TOPRIGHT", -2, -2)
-  b.hotkey:SetTextColor(0.85, 0.85, 0.85)
+  T.Color(b.hotkey, "text2")
 end
 
 -- The icon, count, hotkey, cooldown and checked highlight on a button.
@@ -257,7 +252,7 @@ local function addRegions(b)
   b.cooldown = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
   b.cooldown:SetAllPoints(b.icon)
   b:SetCheckedTexture(T.WHITE)
-  b:GetCheckedTexture():SetVertexColor(1, 1, 1, 0.25)
+  T.Tint(b:GetCheckedTexture(), "checked")
 end
 
 -- Secure attributes and scripts: click to use, drag to move actions.

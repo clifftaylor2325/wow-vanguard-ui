@@ -96,9 +96,9 @@ end
 
 -- White name, light gray role and status.
 local function colorTexts(b)
-  b.name:SetTextColor(1, 1, 1)
-  b.role:SetTextColor(0.85, 0.85, 0.85)
-  b.status:SetTextColor(0.85, 0.85, 0.85)
+  T.Color(b.name, "text")
+  T.Color(b.role, "text2")
+  T.Color(b.status, "text2")
 end
 
 -- Name centered, role top left, status along the bottom.

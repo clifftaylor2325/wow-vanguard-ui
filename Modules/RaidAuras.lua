@@ -18,8 +18,8 @@ local RA = ns.Module("RaidAuras", {
 })
 
 local ICON_SIZE = 14
-local HIGHLIGHT = { 0.8, 0.3, 1 }
-local DISPEL_COLORS = { Magic = { 0.2, 0.6, 1 }, Curse = { 0.6, 0, 1 }, Disease = { 0.6, 0.4, 0 }, Poison = { 0, 0.6, 0 } }
+-- Dispel type -> color token.
+local DISPEL_TOKENS = { Magic = "magic", Curse = "curse", Disease = "disease", Poison = "poison" }
 
 -- Aura reads ----------------------------------------------------------------------------
 
@@ -29,8 +29,8 @@ RA.Aura = ns.Auras.Get
 -- The border color for a dispellable debuff: its type's color, or a plain highlight when hidden.
 function RA.DispelColor(aura)
   local kind = aura.dispelName
-  if ns.IsSecret(kind) or type(kind) ~= "string" then return HIGHLIGHT end
-  return DISPEL_COLORS[kind] or HIGHLIGHT
+  if ns.IsSecret(kind) or type(kind) ~= "string" then return T.TOKENS.dispel end
+  return T.TOKENS[DISPEL_TOKENS[kind] or "dispel"]
 end
 
 -- The filter for your HoTs: the combat one while in combat.

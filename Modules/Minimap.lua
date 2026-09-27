@@ -11,15 +11,11 @@ local MM = ns.Module("Minimap", {
   defaults = { size = 180, coords = true },
 })
 
--- Zone text colors by PvP type (GetZonePVPInfo).
+-- Zone text color tokens by PvP type (GetZonePVPInfo); gold otherwise.
 local ZONE_COLORS = {
-  sanctuary = { 0.41, 0.8, 0.94 },
-  friendly = { 0.1, 1, 0.1 },
-  hostile = { 1, 0.1, 0.1 },
-  contested = { 1, 0.7, 0 },
-  combat = { 1, 0.1, 0.1 },
+  sanctuary = "zoneSanctuary", friendly = "zoneFriendly", hostile = "zoneHostile",
+  contested = "zoneContested", combat = "zoneHostile",
 }
-local DEFAULT_ZONE_COLOR = { 1, 0.82, 0 }
 
 -- Minimap art this module fades out, by path under the global table.
 local FADE = {
@@ -62,9 +58,8 @@ end
 function MM.UpdateZone()
   local zone = GetMinimapZoneText and GetMinimapZoneText() or ""
   local pvp = GetZonePVPInfo and GetZonePVPInfo()
-  local c = ZONE_COLORS[pvp] or DEFAULT_ZONE_COLOR
   MM.zone:SetText(zone)
-  MM.zone:SetTextColor(c[1], c[2], c[3])
+  T.Color(MM.zone, ZONE_COLORS[pvp] or "gold")
 end
 
 -- "x, y" in map percent, or "" where the client won't say (instances, secrets).
@@ -130,7 +125,7 @@ local function addTexts(holder)
   MM.zone:SetPoint("TOP", overlay, "TOP", 0, -6)
   MM.coords = T.SetFont(overlay:CreateFontString(nil, "OVERLAY"), 11)
   MM.coords:SetPoint("BOTTOM", overlay, "BOTTOM", 0, 4)
-  MM.coords:SetTextColor(1, 1, 1)
+  T.Color(MM.coords, "text")
 end
 
 -- Builds the minimap frame. Out of combat, since it moves Blizzard frames.

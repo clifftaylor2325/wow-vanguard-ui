@@ -29,7 +29,7 @@ Download `ForeverUI-<version>.zip` from the [latest release](https://github.com/
 /fui               the options window (also: left-click the addons button by the minimap)
 /fui unlock | lock drag handles on every ForeverUI frame (also: right-click the addons button)
 /fui reset <frame|all>
-/fui accent <rrggbb> | reset      /fui theme reset
+/fui accent <rrggbb|brass|arcane|fel|void|ember> | reset      /fui theme reset
 /fui modules       enable|disable <module>, then /reload
 /fui skins         addons skinned through the API; skins <addon> on|off
 /fui profile [name]              switch (or create); profile new|copy|delete <name>, profile reset
@@ -52,17 +52,20 @@ if ForeverUI and ForeverUI.RegisterSkin then
     S.EditBox(MyFrame.Input)
     S.CloseButton(MyFrame.Close)
     S.SetFont(MyFrame.Title, 14)
+    S.Color(MyFrame.Hint, "text2")  -- theme colors by name: text, text2, muted, accent, good, bad...
+    S.Tint(MyFrame.Glow, "accent")
   end)
 end
 ```
 
-The callback runs once at login, or immediately if the addon registers after login. Errors in it are reported and don't break anything else. Painted frames follow `/fui accent` changes live. `S.apiVersion` is 1; the API only grows.
+The callback runs once at login, or immediately if the addon registers after login. Errors in it are reported and don't break anything else. Painted frames follow `/fui accent` changes live, and their borders stay one screen pixel at any UI scale (`S.Pixel(frame)` gives that size). `S.RGB(name)` returns any theme color; the names are in `Core/Theme.lua`. `S.apiVersion` is 1; the API only grows.
 
 ## Development
 
 ```bash
 npm install
 npm run verify    # real addon Lua under a strict TEST-ONLY WoW stub, then the code-quality check
+                  # (functions of 10 lines or fewer, all documented; colors only from Core/Theme.lua)
 npm run lint      # luacheck
 npm run package   # dist/ForeverUI-<version>.zip from committed files
 npm run preview   # preview/*.png: the default layout and the options window (needs Playwright)
