@@ -1,10 +1,8 @@
 name: verify
 
+# Pull requests only.
 on:
   pull_request:
-  push:
-    branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -29,6 +27,25 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify
+
+  coverage:
+    # Line coverage of the addon's own Lua under the test harness. Fails
+    # below the floor in scripts/lua-coverage-floor.json (only goes up; 100 is the goal).
+    name: Lua coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lua-coverage
+          path: coverage/lua-coverage.json
 
   lua51:
     # The game runs Lua 5.1; the test harness (fengari) is Lua 5.3.
