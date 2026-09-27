@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fengari from "fengari";
 import { luaString, luaValue } from "./lua-emit.mjs";
+import { attachCoverage } from "./lua-coverage.mjs";
 
 const { lua, lauxlib, lualib, to_luastring } = fengari;
 
@@ -180,6 +181,7 @@ function lifecycle(addon) {
 // ADDON_LOADED, which is when WoW restores SavedVariables.
 export function createAddon({ savedVariables = "" } = {}) {
   const L = newState();
+  if (process.env.LUA_COVERAGE) attachCoverage(L);
   loadStub(L);
   loadAddon(L, savedVariables);
   const addon = {
