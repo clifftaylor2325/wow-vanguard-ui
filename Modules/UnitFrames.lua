@@ -112,8 +112,7 @@ end
 
 -- A themed status bar filling part of a unit frame.
 local function createBar(parent)
-  local bar = CreateFrame("StatusBar", nil, parent)
-  bar:SetStatusBarTexture(T.WHITE)
+  local bar = T.StyleBar(CreateFrame("StatusBar", nil, parent))
   bar:SetMinMaxValues(0, 1)
   bar.bg = bar:CreateTexture(nil, "BACKGROUND")
   bar.bg:SetAllPoints()
@@ -163,7 +162,7 @@ end
 function UF.UpdateHealth(f)
   local unit = f.unit
   f.health:SetMinMaxValues(0, UnitHealthMax(unit))
-  f.health:SetValue(UnitHealth(unit))
+  T.SetBarValue(f.health, UnitHealth(unit))
   f.health:SetStatusBarColor(UF.HealthColor(unit))
   f.healthText:SetText(UF.settings.healthText and UF.HealthText(unit) or "")
 end
@@ -172,7 +171,7 @@ end
 function UF.UpdatePower(f)
   local unit = f.unit
   f.power:SetMinMaxValues(0, UnitPowerMax(unit))
-  f.power:SetValue(UnitPower(unit))
+  T.SetBarValue(f.power, UnitPower(unit))
   f.power:SetStatusBarColor(UF.PowerColor(unit))
 end
 

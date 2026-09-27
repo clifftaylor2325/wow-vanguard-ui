@@ -12,7 +12,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local RF = ns.Module("RaidFrames", {
-  defaults = { width = 90, height = 40, spacing = 4, showInParty = true, showPlayer = true, sortByRole = false, hideBlizzard = true },
+  defaults = { width = 90, height = 40, spacing = 4, showInParty = true, showPlayer = true, sortByRole = false, hideBlizzard = true, style = "class" },
 })
 
 local MAX_UNITS = 40
@@ -58,14 +58,24 @@ local function updateTexts(b, unit)
   b.status:SetText((status == "Dead" or status == "Offline") and status or "")
 end
 
+-- Colors by style: class-colored bars with light names, or dark bars with class-colored names.
+local function paintHealth(b, unit)
+  if RF.settings.style == "dark" then
+    T.BarColor(b.health, "darkBar")
+    b.name:SetTextColor(unitFrames().HealthColor(unit))
+  else
+    b.health:SetStatusBarColor(unitFrames().HealthColor(unit))
+    T.Color(b.name, "text")
+  end
+end
+
 -- Health bar, colors, name, role and status for one button's unit.
 function RF.Update(b)
   local unit = b:GetAttribute("unit")
   if not unit or not UnitExists(unit) then return end
-  local UF = unitFrames()
   b.health:SetMinMaxValues(0, UnitHealthMax(unit))
-  b.health:SetValue(UnitHealth(unit))
-  b.health:SetStatusBarColor(UF.HealthColor(unit))
+  T.SetBarValue(b.health, UnitHealth(unit))
+  paintHealth(b, unit)
   updateTexts(b, unit)
   for _, hook in ipairs(RF.updateHooks) do hook(b, unit) end
 end
@@ -116,8 +126,7 @@ end
 
 -- The health bar filling the button, with its texts.
 local function addParts(b)
-  b.health = CreateFrame("StatusBar", nil, b)
-  b.health:SetStatusBarTexture(T.WHITE)
+  b.health = T.StyleBar(CreateFrame("StatusBar", nil, b))
   b.health:SetPoint("TOPLEFT", 1, -1)
   b.health:SetPoint("BOTTOMRIGHT", -1, 1)
   addTexts(b)

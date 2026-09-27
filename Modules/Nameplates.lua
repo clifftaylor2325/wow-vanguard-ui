@@ -57,11 +57,11 @@ end
 
 -- Building ---------------------------------------------------------------------------------
 
--- The name above the bar, and the raid icon to its left.
+-- The name above the bar, the raid icon to its left, and the target glow around it.
 local function addTexts(f)
   f.name = T.Text(f:CreateFontString(nil, "OVERLAY"), "world")
   f.name:SetPoint("BOTTOM", f, "TOP", 0, 3)
-  T.Color(f.name, "text")
+  f.glow = T.Glow(f, 6)
   f.raidIcon = f:CreateTexture(nil, "OVERLAY")
   f.raidIcon:SetSize(ICON, ICON)
   f.raidIcon:SetPoint("RIGHT", f, "LEFT", -4, 0)
@@ -89,7 +89,7 @@ local function build(plate)
   local f = CreateFrame("StatusBar", nil, plate)
   f:SetSize(s.width, s.height)
   f:SetPoint("CENTER")
-  f:SetStatusBarTexture(T.WHITE)
+  T.StyleBar(f)
   T.Panel(f, { inset = true })
   addTexts(f)
   addDebuffs(f, s.debuffs)
@@ -113,11 +113,13 @@ end
 -- Health bar, color, name, raid icon and target border.
 function NP.Update(f, unit)
   f:SetMinMaxValues(0, UnitHealthMax(unit))
-  f:SetValue(UnitHealth(unit))
+  T.SetBarValue(f, UnitHealth(unit))
   f:SetStatusBarColor(NP.Color(unit))
   f.name:SetText(UnitName(unit))
   RS.PaintIcon(f.raidIcon, RS.RaidIcon(unit))
-  T.SetBorder(f, NP.settings.targetBorder and isTarget(unit) and { T.Accent() } or nil)
+  local target = NP.settings.targetBorder and isTarget(unit)
+  T.SetBorder(f, target and { T.Accent() } or nil)
+  T.ShowGlow(f.glow, target)
 end
 
 -- Your debuffs on the unit, one per icon.

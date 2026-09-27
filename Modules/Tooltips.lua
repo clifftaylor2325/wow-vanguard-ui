@@ -32,7 +32,7 @@ end
 local function skinHealthBar()
   local bar = _G.GameTooltipStatusBar
   if type(bar) ~= "table" or not bar.SetStatusBarTexture then return end
-  bar:SetStatusBarTexture(T.WHITE)
+  T.StyleBar(bar)
 end
 
 -- Skins every tooltip this client has.
