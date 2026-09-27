@@ -1,6 +1,7 @@
--- A small kit of themed controls for the options window: header, text,
--- check box, cycle button (steps through a list of choices), push button
--- and color swatch. Each control has :Refresh() to re-read its value.
+-- A small kit of themed controls for the options window: text, push button,
+-- cycle button, color swatch, key capture and text input. Switches, sliders
+-- and the other rows live in Core/Controls.lua. Each control has :Refresh()
+-- to re-read its value.
 
 local ADDON, ns = ...
 
@@ -17,11 +18,6 @@ local function label(parent, text, role, color)
   return fs
 end
 
--- A section title in the accent color.
-function W.Header(parent, text)
-  return label(parent, text, "heading", "accent")
-end
-
 -- A line of gray text (help or status); :Refresh() re-reads it when text is a function.
 function W.Text(parent, text)
   local fs = label(parent, type(text) == "function" and text() or text, "label", "text2")
@@ -35,33 +31,6 @@ function W.Button(parent, text, onClick, width)
   local b = ns.DialogButton(parent, text, width or 160)
   b:SetScript("OnClick", onClick)
   return b
-end
-
--- Shows the check mark when the value is on.
-local function refreshCheck(box)
-  box.mark:SetShown(box.get() == true)
-end
-
--- The check mark: an accent square inset in the box.
-local function addMark(box)
-  box.mark = box:CreateTexture(nil, "OVERLAY")
-  box.mark:SetTexture(T.WHITE)
-  box.mark:SetPoint("TOPLEFT", 4, -4)
-  box.mark:SetPoint("BOTTOMRIGHT", -4, 4)
-  T.Tint(box.mark, "accent")
-end
-
--- A check box with a label; set(on) runs on click, then the box re-reads get().
-function W.Check(parent, text, get, set)
-  local box = T.Button(CreateFrame("Button", nil, parent))
-  box:SetSize(18, 18)
-  box.get, box.Refresh = get, refreshCheck
-  addMark(box)
-  box.label = label(box, text, "label")
-  box.label:SetPoint("LEFT", box, "RIGHT", 8, 0)
-  box:SetScript("OnClick", function(self) set(not self.get()); self:Refresh() end)
-  box:Refresh()
-  return box
 end
 
 -- The choice after the current one (wrapping), from a list of { value, text }.

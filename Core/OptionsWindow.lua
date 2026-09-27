@@ -69,7 +69,7 @@ end
 -- Row kind -> builder(parent, row, width) returning the widget.
 local BUILDERS = {
   -- One builder per row kind; each returns the widget it made.
-  header = function(c, r) return W.Header(c, r[2]) end,
+  -- Header rows are card titles (groupRows), not widgets.
   text = function(c, r) return W.Text(c, r[2]) end,
   check = function(c, r, w) return W.Check(c, r[2], r[3], r[4], w) end,
   button = function(c, r) return W.Button(c, r[2], r[3], 220) end,
