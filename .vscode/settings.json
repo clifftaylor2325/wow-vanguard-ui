@@ -1,0 +1,19 @@
+{
+  // The game runs Lua 5.1. The WoW API extension (ketho.wow-api) adds the
+  // game's globals when it sees the .toc; these are the addon's own.
+  "Lua.runtime.version": "Lua 5.1",
+  "Lua.diagnostics.globals": [
+    "ForeverUIDB",
+    "ForeverUICharDB",
+    "ForeverUI",
+    "SLASH_FOREVERUI1",
+    "SLASH_FOREVERUI2",
+    "GetMinimapShape",
+    "ForeverUI_OnAddonCompartmentClick"
+  ],
+  "Lua.workspace.ignoreDir": ["node_modules", "dist", "preview", ".git"],
+  "Lua.workspace.checkThirdParty": false,
+  "[lua]": { "editor.tabSize": 2, "editor.insertSpaces": true },
+  "files.eol": "\n",
+  "search.exclude": { "dist": true, "preview": true, "Media/Fonts": true }
+}
