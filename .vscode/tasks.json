@@ -23,6 +23,13 @@
         }
       }
     },
+    {
+      "label": "Lua coverage",
+      "detail": "Line coverage of the addon Lua under the harness",
+      "type": "npm",
+      "script": "coverage",
+      "problemMatcher": []
+    },
     { "label": "package zip", "type": "npm", "script": "package", "problemMatcher": [] },
     { "label": "preview screenshots", "type": "npm", "script": "preview", "problemMatcher": [] },
     { "label": "link into WoW", "type": "npm", "script": "link:wow", "problemMatcher": [] },
