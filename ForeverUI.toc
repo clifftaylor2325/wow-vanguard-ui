@@ -26,7 +26,9 @@ Core/Layout.lua
 Core/Grid.lua
 Core/Movers.lua
 Core/Widgets.lua
+Core/Controls.lua
 Core/Options.lua
+Core/OptionsWindow.lua
 Core/Slash.lua
 Modules/UnitFrames.lua
 Modules/CastBars.lua
