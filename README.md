@@ -67,14 +67,17 @@ npm install
 npm run verify    # real addon Lua under a strict TEST-ONLY WoW stub, then the code-quality check
                   # (functions of 10 lines or fewer, all documented; colors only from Core/Theme.lua)
 npm run lint      # luacheck
+npm run media     # regenerate Media/Textures and Media/Icons from scripts/lib/media-sources.mjs
 npm run package   # dist/ForeverUI-<version>.zip from committed files
 npm run preview   # preview/*.png: the default layout and the options window (needs Playwright)
 ```
 
 **Release:** bump `## Version` in `ForeverUI.toc` and merge, then run the `release` workflow from the Actions tab on `main` (it tags `v<version>`), or push a matching tag. It re-runs the checks and publishes a GitHub release with the zip.
 
+**Art and fonts:** every texture and icon under `Media/` is drawn by code in `scripts/lib/media-sources.mjs` (plain math, no image editor), and `npm run verify` fails if a committed file doesn't match its source. The fonts are made from upstream Fira Sans Condensed by `scripts/fonts/make-fonts.py` (see that file).
+
 **Code quality:** every function has a comment on the line above it and at most 10 lines of body code; `npm run verify` and CI enforce it.
 
 ## License
 
-MIT
+MIT, except the fonts: `Media/Fonts/FiraSansCondensed-*.ttf` are Fira Sans Condensed (Copyright 2012-2015 The Mozilla Foundation and Telefonica S.A.) under the SIL Open Font License 1.1, in `Media/Fonts/OFL.txt`. ForeverUI ships them trimmed to Latin, Greek and Cyrillic, with the digits pointing at the font's tabular figures.

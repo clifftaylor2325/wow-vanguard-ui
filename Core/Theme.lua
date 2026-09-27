@@ -15,6 +15,20 @@ ns.Theme = T
 
 T.WHITE = "Interface\\Buttons\\WHITE8X8"
 
+-- ForeverUI's own art and fonts (made by scripts/build-media.mjs and scripts/fonts).
+T.MEDIA = "Interface\\AddOns\\ForeverUI\\Media\\"
+T.FONTS = {
+  regular = T.MEDIA .. "Fonts\\FiraSansCondensed-Medium.ttf",
+  bold = T.MEDIA .. "Fonts\\FiraSansCondensed-SemiBold.ttf",
+}
+-- Clients whose script the bundled font doesn't cover use the game's font.
+local CLIENT_FONT_LOCALES = { koKR = true, zhCN = true, zhTW = true }
+
+-- A texture from Media/Textures (Bar, Shadow, Glow, Stripes, LogoLeft, ...).
+function T.Texture(name) return T.MEDIA .. "Textures\\" .. name end
+-- An icon from Media/Icons (General, Close, Check, Down, ...).
+function T.Icon(name) return T.MEDIA .. "Icons\\" .. name end
+
 -- r, g, b, a (0-1) from "rrggbb" and an optional alpha.
 local function fromHex(hex, alpha)
   local n = tonumber(hex, 16)
@@ -134,11 +148,25 @@ function T.BarColor(bar, name)
   return bar
 end
 
--- The UI font path and outline flag.
-function T.Font()
+-- The game's own font.
+local function clientFont()
+  return STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
+end
+
+-- True when the game's font must be used: chosen, or a Korean or Chinese client.
+local function useClientFont(s)
+  local locale = type(GetLocale) == "function" and GetLocale() or ""
+  return s.font == "client" or CLIENT_FONT_LOCALES[locale] == true
+end
+
+-- The UI font path (bold: the SemiBold weight) and outline flag. Settings:
+-- font "" is the bundled Fira Sans Condensed, "client" the game's font,
+-- anything else a font path.
+function T.Font(bold)
   local s = T.Settings()
-  local path = s.font ~= "" and s.font or STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
-  return path, s.outline
+  if useClientFont(s) then return clientFont(), s.outline end
+  if s.font ~= "" then return s.font, s.outline end
+  return bold and T.FONTS.bold or T.FONTS.regular, s.outline
 end
 
 -- Parts --------------------------------------------------------------------------------
@@ -318,6 +346,31 @@ function T.CloseButton(button)
   end
   repaint(button, entry)
   return button
+end
+
+-- Tints the logo's halves: accent on the left diamond, text color on the right.
+local function paintLogo(entry)
+  T.Tint(entry.parts.left, "accent")
+  T.Tint(entry.parts.right, "text")
+end
+
+-- One half of the logo as a full-size texture on f, at an ARTWORK sublevel.
+local function logoHalf(f, half, sublevel)
+  local t = f:CreateTexture(nil, "ARTWORK", nil, sublevel)
+  t:SetTexture(T.Texture("Logo" .. half))
+  t:SetAllPoints()
+  return t
+end
+
+-- The ForeverUI mark (two linked diamonds) at size x size; follows the accent live.
+function T.Logo(parent, size)
+  local f = CreateFrame("Frame", nil, parent)
+  f:SetSize(size, size)
+  local parts = { right = logoHalf(f, "Right", 0), left = logoHalf(f, "Left", 1) }
+  local entry = { kind = "logo", opts = {}, parts = parts, paint = paintLogo }
+  painted[f] = entry
+  paintLogo(entry)
+  return f
 end
 
 -- Crops the baked-in bevel off an icon texture.
