@@ -247,6 +247,8 @@ ns.Options.AddRowKind("buffnames", buffEditor, 34)
 ns.Options.AddPage({
   key = "healing",
   title = "Healing",
+  icon = "Healing",
+  order = 45,
   rows = function()
     return {
       { "header", "On the raid frames" },

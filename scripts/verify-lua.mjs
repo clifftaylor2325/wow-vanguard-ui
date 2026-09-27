@@ -114,11 +114,11 @@ attempt("widgets", () => {
     local c = ns.Theme.CloseButton(CreateFrame("Button", nil, UIParent, "UIPanelCloseButton"))
     local glyph
     for _, w in ipairs(__wfgStub.frames) do
-      if w.__parent == c and w.__kind == "FontString" then glyph = w.__text end
+      if w.__parent == c and w.__kind == "Texture" and w.__layer == "OVERLAY" then glyph = w.__texture end
     end
     return { painted = ns.Theme.PaintedCount() - before, glyph = glyph }`);
   assert(out.painted === 3, "button, edit box and close button are painted");
-  assert(out.glyph === "x", "the close button draws an x");
+  assert(/Media\\Icons\\Close$/.test(out.glyph || ""), "the close button draws the Close icon");
 });
 
 attempt("skin API", () => {
@@ -648,7 +648,7 @@ attempt("options window", () => {
   addon.slash("");
   assert(addon.eval("return ForeverUI_Options:IsShown()") === true, "/fui opens the options window");
   assert(addon.eval("return ForeverUI_Options.reload:IsShown()") === false, "no reload button until something needs one");
-  addon.eval("for _, w in ipairs(__wfgStub.frames) do if w.fill and w.__scripts.OnClick then __swatches = (__swatches or 0) + 1 if __swatches == 2 then w.__scripts.OnClick(w) end end end");
+  addon.eval("for _, w in ipairs(__wfgStub.frames) do if w.fill and w.__parent and w.__parent.hex and w.__scripts.OnClick then __swatches = (__swatches or 0) + 1 if __swatches == 2 then w.__scripts.OnClick(w) end end end");
   assert(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]") === true, "the second swatch (arcane) sets the accent at once");
   assert(addon.eval('return __click("Snap to other frames")') && addon.eval("return ns.MoverOptions().snap") === false, "the snap check box turns snapping off");
   assert(addon.eval('return __click("Action bars")'), "the nav switches pages");
@@ -1126,6 +1126,49 @@ attempt("text roles, sheen and shadows", () => {
   assert(addon.eval("local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.__parent == ForeverUI_Options and w.__texture and w.__texture:find('Shadow') then n = n + 1 end end return n") === 8, "the options window casts a shadow");
 });
 
+attempt("options window: nav, search, controls, footer", () => {
+  const addon = loggedIn(CLICK_LUA + "GetAddOnMetadata = function(_, key) return key == 'Version' and 'TEST-ONLY-9.9' or nil end");
+  addon.eval('ns.Options.Show("general")');
+  const nav = addon.eval(`local out = {}
+    for k, b in pairs(ForeverUI_Options.nav) do out[k] = { icon = b.icon.__texture, rail = b.rail:IsShown(), text = b.text:GetText() } end
+    return out`);
+  assert(/Icons\\General$/.test(nav.general.icon) && /Icons\\Healing$/.test(nav.healing.icon), "every nav entry has its icon");
+  assert(nav.general.rail === true && nav.raid.rail === false, "the current page gets the accent rail");
+  assert(addon.eval("return ForeverUI_Options.notice:IsShown() or ForeverUI_Options.reload:IsShown()") === false, "no reload notice until something needs one");
+  assert(/TEST-ONLY-9\.9/.test(addon.eval("return ForeverUI_Options.version:GetText()")), "the footer shows the version");
+  addon.eval('ns.Options.Search("dispel")');
+  assert(addon.eval("return ForeverUI_Options.nav.raid:GetAlpha()") === 1 && addon.eval("return ForeverUI_Options.nav.general:GetAlpha()") === 0.35, "search dims pages without a match");
+  addon.eval('ForeverUI_Options.search:GetScript("OnEnterPressed")(ForeverUI_Options.search)');
+  assert(addon.eval("return ns.Options.current") === "raid", "Enter in the search opens the first match");
+  addon.eval('ns.Options.Search("")');
+  assert(addon.eval("return ForeverUI_Options.nav.general:GetAlpha()") === 1, "clearing the search brings every page back");
+  addon.eval('ns.Options.Show("more")');
+  const seg = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.segments and w.label:GetText() == "Numbers" then
+      w.segments[2]:GetScript("OnClick")(w.segments[2]) return { value = ForeverUIDB.profiles.Default.DataBars.text, on = w.segments[2].fill:IsShown(), off = w.segments[1].fill:IsShown() } end end`);
+  assert(seg.value === "always" && seg.on === true && seg.off === false, "clicking a segment picks it and lights it");
+  const dd = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.label:GetText() == "Tooltip position" then
+      w.dropdown:GetScript("OnClick")(w.dropdown)
+      local m = ForeverUI_Menu
+      local shown = m:IsShown()
+      m.items[2]:GetScript("OnClick")(m.items[2])
+      return { shown = shown, count = #m.items, value = ForeverUIDB.profiles.Default.Tooltips.anchor, closed = not m:IsShown(), text = w.dropdown.text:GetText() } end end`);
+  assert(dd.shown && dd.count === 3 && dd.value === "cursor" && dd.closed && dd.text === "at the cursor", "a dropdown opens a menu of its choices; picking one sets it and closes the menu");
+  addon.eval('ns.Options.Show("general")');
+  const slider = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.value and w.label:GetText() == "Text size" then
+      w:GetScript("OnMouseWheel")(w, -1)
+      return { v = ns.Theme.Settings().textScale, text = w.value:GetText() } end end`);
+  assert(Math.abs(slider.v - 0.95) < 1e-9 && slider.text === "95%", "the Text size slider steps by 5% with the wheel and shows the value");
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.hex then w.hex:SetText("#5aa2f0") w.hex:GetScript("OnEnterPressed")(w.hex) end end`);
+  assert(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]") === true, "typing a hex color in the accent box sets it");
+  assert(addon.eval("return ForeverUI_Options.notice:IsShown() and ForeverUI_Options.reload:IsShown()") === true, "a reload-only change shows the notice and the Reload now button");
+  const profiles = addon.eval(`ns.CreateProfile = ns.CreateProfile ForeverUIDB.profiles["TEST-ONLY Healer"] = {}
+    local d = ForeverUI_Options.profile d:GetScript("OnClick")(d)
+    local texts = {} for i, b in ipairs(ForeverUI_Menu.items) do if b:IsShown() then texts[#texts + 1] = b.text:GetText() end end
+    ForeverUI_Menu.items[2]:GetScript("OnClick")(ForeverUI_Menu.items[2])
+    return { texts = texts, now = ns.ProfileName() }`);
+  assert(profiles.texts.length === 2 && profiles.now === "TEST-ONLY Healer", "the header's profile dropdown lists profiles and switches (on reload)");
+});
+
 attempt("special bars", () => {
   const addon = createAddon();
   addon.eval(ACTIONS_ENV + `
@@ -1223,7 +1266,7 @@ console.log("  healing  calculator and fallback heal/shield bars, hidden values,
 console.log("  auras    dispel border by type (hidden -> highlight), HoT icons, stacks, timers, combat filter");
 console.log("  clicks   click casting and hover keys: attributes, enter/leave snippets, remove, combat wait, per spec, options editor");
 console.log("  raid     secure header, precreated buttons, health/name/role/offline, events, party coverage, default frames hidden");
-console.log("  options  window, pages, swatches, check boxes, cycles, reload button, export, spec, addons button");
+console.log("  options  window, pages, swatches, switches, segments, dropdowns, slider, search, nav icons, footer, export, spec, addons button");
 console.log("  profiles strings round-trip, refuse bad/cut/code pastes, export/import, new/copy/delete/reset, spec switching");
 console.log("  range    red when out of range, by range events or asked; secrets never red");
 console.log("  data     XP with rested, watched reputation, hover text, hides when empty");
