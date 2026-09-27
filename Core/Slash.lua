@@ -11,7 +11,7 @@ local HELP = {
   "reset <frame|all>    put a frame (or every frame) back at its default spot",
   "frames               list the movable frames",
   "grid [size|on|off]   the unlock-mode grid; snap on|off   snapping while dragging",
-  "accent <rrggbb|name> set the accent color (blue, bronze, green, purple, red); accent reset",
+  "accent <rrggbb|name> set the accent color (brass, arcane, fel, void, ember); accent reset",
   "theme reset          every theme setting back to default",
   "modules              list modules; enable|disable <module> (then /reload)",
   "skins                addons skinned through ForeverUI.RegisterSkin; skins <addon> on|off",
@@ -33,7 +33,7 @@ end
 
 -- "on" / "off" in green / gray.
 local function onOff(on)
-  return on and "|cff6fd67aon|r" or "|cff888888off|r"
+  return on and T.Paint("on", "good") or T.Paint("off", "muted")
 end
 
 -- /fui unlock
@@ -81,7 +81,7 @@ local function accentCommand(rest)
   end
   local r, g, b = T.ParseColor(rest:lower())
   if not r then
-    return chat("Usage: /fui accent rrggbb | blue | bronze | green | purple | red")
+    return chat("Usage: /fui accent rrggbb | brass | arcane | fel | void | ember")
   end
   T.SetAccent(r, g, b)
   chat("Accent set to " .. rest:lower() .. ".")

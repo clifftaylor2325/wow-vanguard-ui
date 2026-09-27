@@ -54,7 +54,7 @@ local function addLabel(b, text)
   b.label = T.SetFont(b:CreateFontString(nil, "OVERLAY"), 11)
   b.label:SetPoint("CENTER")
   b.label:SetText(text)
-  b.label:SetTextColor(1, 1, 1)
+  T.Color(b.label, "text")
 end
 
 -- The vehicle exit: a secure /leavevehicle button the client shows only while you can leave.

@@ -60,6 +60,8 @@ local function lookRows()
     { "header", "Look" },
     { "text", "Accent color (live):" },
     { "swatches" },
+    check("Pixel-perfect UI scale (768 / screen height)", function() return T.Settings().pixelScale end,
+      function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end),
     { "button", "Reset theme", function() T.Reset() end },
   }
 end
@@ -255,7 +257,7 @@ local function swatches(content)
   local row = CreateFrame("Frame", nil, content)
   row:SetSize(200, 30)
   local i = 0
-  for _, name in ipairs({ "blue", "bronze", "green", "purple", "red" }) do
+  for _, name in ipairs(T.PRESET_ORDER) do
     local rgb = T.PRESETS[name]
     W.Swatch(row, rgb, function() T.SetAccent(rgb[1], rgb[2], rgb[3]) end):SetPoint("LEFT", i * 34, 0)
     i = i + 1
@@ -367,7 +369,7 @@ end
 -- Highlights the current page's nav button.
 local function markNav(key)
   for k, b in pairs(window.nav) do
-    if k == key then T.Color(b.text) else b.text:SetTextColor(0.9, 0.9, 0.9) end
+    T.Color(b.text, k == key and "accent" or "text")
   end
 end
 

@@ -34,7 +34,7 @@ local function place(i, vertical, offset)
   t:ClearAllPoints()
   t:SetSize(vertical and 1 or UIParent:GetWidth(), vertical and UIParent:GetHeight() or 1)
   t:SetPoint("CENTER", grid, "CENTER", vertical and offset or 0, vertical and 0 or offset)
-  if offset == 0 then t:SetVertexColor(T.Accent()) else t:SetVertexColor(1, 1, 1, 0.12) end
+  T.Tint(t, offset == 0 and "accent" or "gridline")
   t:Show()
   return i + 1
 end
