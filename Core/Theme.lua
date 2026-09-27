@@ -93,6 +93,8 @@ local DEFAULTS = {
   textScale = 1,
   barTexture = "forever",
   smoothBars = true,
+  reduceMotion = false,
+  sounds = true,
 }
 
 -- Painted frames: frame -> { kind, opts, parts }. Weak, so hidden frames
@@ -569,6 +571,70 @@ end
 function T.Reset()
   ns.Profile().theme = nil
   T.Refresh()
+end
+
+-- Motion and sound --------------------------------------------------------------------
+
+-- A frame's alpha animation (made once), or false when the client can't animate it.
+local function fader(frame)
+  if frame.fuiFader ~= nil then return frame.fuiFader end
+  local group = frame.CreateAnimationGroup and frame:CreateAnimationGroup()
+  local alpha = group and group.CreateAnimation and group:CreateAnimation("Alpha")
+  if alpha then group:SetToFinalAlpha(true) end
+  frame.fuiFader = alpha and { group = group, alpha = alpha } or false
+  return frame.fuiFader
+end
+
+-- Plays an alpha change from -> to over seconds, then runs done.
+local function playFade(f, from, to, seconds, done)
+  f.group:Stop()
+  f.alpha:SetFromAlpha(from)
+  f.alpha:SetToAlpha(to)
+  f.alpha:SetDuration(seconds)
+  f.group:SetScript("OnFinished", done)
+  f.group:Play()
+end
+
+-- The fader to use, or nil when motion is off (Reduce motion, or no animation support).
+local function activeFader(frame)
+  return not T.Settings().reduceMotion and fader(frame) or nil
+end
+
+-- Shows a frame, fading it in (0.12 s by default) unless motion is off.
+-- Only for frames that aren't protected: animations never move secure frames.
+function T.FadeIn(frame, seconds)
+  local f = activeFader(frame)
+  frame:Show()
+  if not f then return frame:SetAlpha(1) end
+  playFade(f, 0, 1, seconds or 0.12, function() frame:SetAlpha(1) end)
+end
+
+-- Fades a frame out, then hides it (and runs done); at once when motion is off.
+function T.FadeOut(frame, seconds, done)
+  local f = activeFader(frame)
+  -- Hides the frame, restores its alpha for next time, and tells the caller.
+  local finish = function() frame:Hide() frame:SetAlpha(1) if done then done() end end
+  if not f or not frame:IsShown() then return finish() end
+  playFade(f, 1, 0, seconds or 0.12, finish)
+end
+
+-- Stops a fade in progress and leaves the frame fully visible.
+function T.StopFade(frame)
+  local f = frame.fuiFader
+  if f then f.group:SetScript("OnFinished", nil) f.group:Stop() end
+  frame:SetAlpha(1)
+end
+
+-- Interface sounds by use -> the client's SOUNDKIT name.
+local SOUNDS = {
+  on = "IG_MAINMENU_OPTION_CHECKBOX_ON", off = "IG_MAINMENU_OPTION_CHECKBOX_OFF",
+  page = "IG_CHARACTER_INFO_TAB", open = "IG_MAINMENU_OPEN", close = "IG_MAINMENU_CLOSE",
+}
+
+-- Plays one of the client's own interface sounds, unless sounds are off.
+function T.Sound(use)
+  local kit = type(SOUNDKIT) == "table" and SOUNDKIT[SOUNDS[use] or ""]
+  if T.Settings().sounds and kit and type(PlaySound) == "function" then PlaySound(kit) end
 end
 
 -- Pixel-perfect scale ----------------------------------------------------------------

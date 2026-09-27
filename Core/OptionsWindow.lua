@@ -380,17 +380,25 @@ local function showPage()
   end
 end
 
+-- Brings the window up (fading in, with a sound) or, when it was already
+-- open, plays the page sound for a new page.
+local function appear(previous)
+  if not previous then T.Sound("open") elseif previous ~= O.current then T.Sound("page") end
+  if previous then T.StopFade(window) else T.FadeIn(window) end
+  if pages[O.current] then updateThumb(pages[O.current]) end
+end
+
 -- Opens the window on a page (default: the last one shown, or General).
 function O.Show(key)
   if not window then build() end
+  local previous = window:IsShown() and O.current
   O.current = key or O.current or "general"
   showPage()
   markNav(O.current)
   window.reload:SetShown(needsReload)
   window.notice:SetShown(needsReload)
   O.Refresh()
-  window:Show()
-  if pages[O.current] then updateThumb(pages[O.current]) end
+  appear(previous)
 end
 
 -- Whether a page's title or any row's caption contains the (lower-case) text.
@@ -418,7 +426,9 @@ end
 -- Closes the window (and any open dropdown).
 function O.Hide()
   W.CloseMenu()
-  if window then window:Hide() end
+  if not window or not window:IsShown() then return end
+  T.Sound("close")
+  T.FadeOut(window)
 end
 
 -- Opens or closes the window.

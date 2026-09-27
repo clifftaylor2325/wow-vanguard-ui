@@ -82,12 +82,27 @@ end
 -- Shows the unit's cast on a bar made by CB.Build, or hides the bar when it isn't casting.
 function CB.Show(bar, unit)
   local cast = CB.Cast(unit)
+  if not cast and bar.fuiFinishing then return end
+  if cast then bar.fuiFinishing = nil T.StopFade(bar) end
   bar:SetShown(cast ~= nil)
   if not cast then return bar:SetScript("OnUpdate", nil) end
   T.BarColor(bar, isTrue(cast.shielded) and "shielded" or cast.channel and "channel" or "cast")
   bar.icon:SetTexture(cast.icon)
   bar.text:SetText(cast.name)
   startTiming(bar, unit, cast)
+end
+
+-- A cast ended on a showing bar: flash it full (good: green; otherwise red
+-- with the reason), then fade it out. A new cast cancels the flash.
+function CB.Finish(bar, reason)
+  if not bar:IsShown() or bar.fuiFinishing then return end
+  bar.fuiFinishing = true
+  bar:SetScript("OnUpdate", nil)
+  bar:SetMinMaxValues(0, 1)
+  bar:SetValue(1)
+  T.BarColor(bar, reason == "good" and "good" or "bad")
+  if reason ~= "good" then bar.text:SetText(reason) end
+  T.FadeOut(bar, 0.35, function() bar.fuiFinishing = nil end)
 end
 
 -- Shows the unit's cast on its own bar (player, target, focus), if it has one.
@@ -147,8 +162,16 @@ local CAST_EVENTS = {
 }
 CB.EVENTS = CAST_EVENTS
 
--- A cast event for one of our units.
-local function onCast(_, unit)
+-- Events that end a cast, and how the bar says so.
+local FINISH = {
+  UNIT_SPELLCAST_STOP = "good", UNIT_SPELLCAST_CHANNEL_STOP = "good",
+  UNIT_SPELLCAST_INTERRUPTED = "Interrupted", UNIT_SPELLCAST_FAILED = "Failed",
+}
+
+-- A cast event for one of our units: an end flashes the bar, anything else refreshes it.
+local function onCast(event, unit)
+  local bar = CB.bars[unit]
+  if bar and FINISH[event] and not CB.Cast(unit) then return CB.Finish(bar, FINISH[event]) end
   CB.Update(unit)
 end
 

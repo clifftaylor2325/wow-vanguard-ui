@@ -27,6 +27,7 @@ Core/Grid.lua
 Core/Movers.lua
 Core/Widgets.lua
 Core/Controls.lua
+Core/MoverPopover.lua
 Core/Options.lua
 Core/OptionsWindow.lua
 Core/Slash.lua

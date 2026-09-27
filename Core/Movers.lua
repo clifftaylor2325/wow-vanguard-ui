@@ -68,6 +68,18 @@ local function savePosition(m, point, relPoint, x, y)
     anchor(m.handle, m)
     ns.ShowCoords(m)
   end
+  if ns.OnMoverMoved then ns.OnMoverMoved(m.key) end
+end
+
+-- A mover's point, relative point and offsets (saved, or its default);
+-- nothing for an unknown key.
+function ns.MoverPoint(key)
+  if movers[key] then return pointFor(movers[key]) end
+end
+
+-- Places a mover at a point on UIParent with offsets, and saves it.
+function ns.SetMoverPoint(key, point, relPoint, x, y)
+  savePosition(movers[key], point, relPoint or point, x, y)
 end
 
 -- A frame's rect as { left, bottom, w, h } in its own scale, or nil if the
@@ -157,6 +169,12 @@ end
 
 -- Handles ------------------------------------------------------------------------
 
+-- A click on a handle selects it; a right-click also opens its popover.
+local function onMouseDown(h, button)
+  selectMover(h.mover)
+  if button == "RightButton" and ns.MoverPopover then ns.MoverPopover(h.mover) end
+end
+
 -- Wires a handle for dragging, selecting and nudging.
 local function wire(h)
   h:SetMovable(true)
@@ -165,7 +183,7 @@ local function wire(h)
   h:RegisterForDrag("LeftButton")
   h:SetScript("OnDragStart", h.StartMoving)
   h:SetScript("OnDragStop", onDragStop)
-  h:SetScript("OnMouseDown", function(self) selectMover(self.mover) end)
+  h:SetScript("OnMouseDown", onMouseDown)
   h:EnableKeyboard(true)
   h:SetScript("OnKeyDown", onKeyDown)
 end
@@ -213,6 +231,7 @@ end
 function ns.Lock()
   unlocked = false
   selectMover(nil)
+  if ns.CloseMoverPopover then ns.CloseMoverPopover() end
   for _, m in pairs(movers) do
     if m.handle then m.handle:Hide() end
   end
