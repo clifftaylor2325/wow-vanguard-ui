@@ -41,6 +41,7 @@ local TOKENS = {
   void = "0b0d11", panel = { "12151b", 0.94 }, raised = "1a1e26", inset = { "07080b", 0.95 },
   edge = "000000", sheen = { "ffffff", 0.06 }, divider = "242a34", shade = { "000000", 0.5 },
   hover = { "ffffff", 0.08 }, checked = { "ffffff", 0.25 }, gridline = { "ffffff", 0.12 },
+  textShadow = { "000000", 0.9 },
   -- Text
   text = "e8eaee", text2 = "a6adb9", muted = "6b7280", white = "ffffff", gold = "ffd100",
   -- State (kept apart from the accent)
@@ -89,6 +90,7 @@ local DEFAULTS = {
   font = "",
   outline = "",
   pixelScale = false,
+  textScale = 1,
 }
 
 -- Painted frames: frame -> { kind, opts, parts }. Weak, so hidden frames
@@ -227,6 +229,56 @@ local function sizeEdges(e, frame)
   e.left:SetWidth(px); e.right:SetWidth(px)
 end
 
+-- The sheen: a one-pixel light line just inside the top border (placed when painted).
+local function sheen(frame)
+  return solid(frame, "BORDER")
+end
+
+-- Places the sheen one pixel inside the top border, one pixel tall.
+local function placeSheen(t, frame)
+  local px = T.Pixel(frame)
+  t:ClearAllPoints()
+  t:SetPoint("TOPLEFT", px, -px)
+  t:SetPoint("TOPRIGHT", -px, -px)
+  t:SetHeight(px)
+  T.Tint(t, "sheen")
+end
+
+-- How far a shadow reaches past its frame, and how far it drops.
+local SHADOW_SIZE, SHADOW_DROP = 10, 2
+
+-- The eight pieces of a shadow: texcoords (left, right, top, bottom) in
+-- Media/Textures/Shadow, anchors { piece point, frame point }, and which
+-- side stretches (w: along the height, h: along the width; corners are square).
+local SHADOW_PIECES = {
+  { tc = { 0, 0.25, 0, 0.25 }, at = { { "BOTTOMRIGHT", "TOPLEFT" } } },
+  { tc = { 0.75, 1, 0, 0.25 }, at = { { "BOTTOMLEFT", "TOPRIGHT" } } },
+  { tc = { 0, 0.25, 0.75, 1 }, at = { { "TOPRIGHT", "BOTTOMLEFT" } } },
+  { tc = { 0.75, 1, 0.75, 1 }, at = { { "TOPLEFT", "BOTTOMRIGHT" } } },
+  { tc = { 0.25, 0.75, 0, 0.25 }, at = { { "BOTTOMLEFT", "TOPLEFT" }, { "BOTTOMRIGHT", "TOPRIGHT" } }, h = true },
+  { tc = { 0.25, 0.75, 0.75, 1 }, at = { { "TOPLEFT", "BOTTOMLEFT" }, { "TOPRIGHT", "BOTTOMRIGHT" } }, h = true },
+  { tc = { 0, 0.25, 0.25, 0.75 }, at = { { "TOPRIGHT", "TOPLEFT" }, { "BOTTOMRIGHT", "BOTTOMLEFT" } }, w = true },
+  { tc = { 0.75, 1, 0.25, 0.75 }, at = { { "TOPLEFT", "TOPRIGHT" }, { "BOTTOMLEFT", "BOTTOMRIGHT" } }, w = true },
+}
+
+-- One piece of a shadow, behind everything else on the frame.
+local function shadowPiece(frame, piece)
+  local t = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
+  t:SetTexture(T.Texture("Shadow"))
+  t:SetTexCoord(unpack(piece.tc))
+  for _, a in ipairs(piece.at) do t:SetPoint(a[1], frame, a[2], 0, -SHADOW_DROP) end
+  if not piece.w then t:SetHeight(SHADOW_SIZE) end
+  if not piece.h then t:SetWidth(SHADOW_SIZE) end
+  return t
+end
+
+-- A soft drop shadow around frame, made of the eight pieces.
+local function shadow(frame)
+  local pieces = {}
+  for i, piece in ipairs(SHADOW_PIECES) do pieces[i] = shadowPiece(frame, piece) end
+  return pieces
+end
+
 -- Sets the color of every edge.
 local function colorEdges(e, r, g, b, a)
   for _, t in pairs(e) do
@@ -255,9 +307,10 @@ local function borderColor(entry)
   return c[1], c[2], c[3], c[4]
 end
 
--- Colors a painted background: panel (or inset) color, at opts.alpha if given.
+-- Colors a painted background: panel, inset or raised color, at opts.alpha if given.
 local function paintBg(bg, opts)
   local r, g, b, a = T.PanelColor(opts.inset)
+  if opts.raised then r, g, b, a = T.RGB("raised") end
   bg:SetVertexColor(r, g, b, opts.alpha or a)
 end
 
@@ -269,17 +322,27 @@ local function repaint(frame, entry)
     colorEdges(p.edges, borderColor(entry))
     sizeEdges(p.edges, frame)
   end
+  if p.sheen then placeSheen(p.sheen, frame) end
   if entry.paint then entry.paint(entry) end
 end
 
--- Creates (once) the background and edges for frame; returns its entry.
+-- The parts opts ask for: background, edges, sheen (with a background) and shadow.
+local function makeParts(frame, opts)
+  local parts = {}
+  parts.bg = not opts.noBg and solid(frame, "BACKGROUND") or nil
+  if parts.bg then parts.bg:SetAllPoints() end
+  parts.edges = not opts.noBorder and edges(frame) or nil
+  parts.sheen = parts.bg and not opts.noSheen and sheen(frame) or nil
+  parts.shadow = opts.shadow and shadow(frame) or nil
+  return parts
+end
+
+-- Creates (once) the parts for frame; returns its entry.
 local function base(frame, kind, opts)
   local entry = painted[frame]
   if not entry then
-    entry = { kind = kind, opts = opts or {}, parts = {} }
-    entry.parts.bg = not entry.opts.noBg and solid(frame, "BACKGROUND") or nil
-    if entry.parts.bg then entry.parts.bg:SetAllPoints() end
-    entry.parts.edges = not entry.opts.noBorder and edges(frame) or nil
+    entry = { kind = kind, opts = opts or {} }
+    entry.parts = makeParts(frame, entry.opts)
     painted[frame] = entry
   end
   return entry
@@ -287,8 +350,10 @@ end
 
 -- Primitives -----------------------------------------------------------------------
 
--- A flat dark panel with a 1px border. opts: inset (darker), accent
--- (accent-colored border), alpha (fill opacity), noBorder, noBg.
+-- A flat dark panel with a one-pixel border and a faint sheen along the
+-- top. opts: inset (darker) or raised (lighter), accent (accent border),
+-- alpha (fill opacity), shadow (soft drop shadow, for floating windows),
+-- noBorder, noBg, noSheen.
 function T.Panel(frame, opts)
   local entry = base(frame, "panel", opts)
   repaint(frame, entry)
@@ -387,6 +452,31 @@ function T.SetFont(fs, size)
   fs:SetFont(path, size or current or 12, outline)
   fs:SetShadowOffset(1, -1)
   fs:SetShadowColor(0, 0, 0, 1)
+  return fs
+end
+
+-- Text roles: size at text scale 1, bold (the SemiBold weight), and an
+-- outline instead of a shadow (only for world text, e.g. nameplates).
+T.ROLES = {
+  title = { 15, true }, heading = { 13, true }, name = { 13, true }, cell = { 11, true },
+  label = { 12 }, number = { 12 }, small = { 10 }, tiny = { 9 }, world = { 10, true, "OUTLINE" },
+}
+
+-- A role's font size after the text scale setting.
+local function roleSize(r)
+  return math.floor(r[1] * (T.Settings().textScale or 1) + 0.5)
+end
+
+-- Styles a font string for a role: font, size, shadow (or outline) and a
+-- color (a name; "text" by default; false leaves the color alone).
+function T.Text(fs, role, color)
+  local r = T.ROLES[role]
+  if not r then error("ForeverUI: no text role named " .. tostring(role), 2) end
+  local path, outline = T.Font(r[2])
+  fs:SetFont(path, roleSize(r), r[3] or outline)
+  fs:SetShadowOffset(r[3] and 0 or 1, r[3] and 0 or -1)
+  fs:SetShadowColor(T.RGB("textShadow"))
+  if color ~= false then T.Color(fs, color or "text") end
   return fs
 end
 

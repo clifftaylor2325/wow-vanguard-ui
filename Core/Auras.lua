@@ -26,7 +26,7 @@ function A.Icon(parent, size)
   f.icon:SetAllPoints()
   f.cooldown = CreateFrame("Cooldown", nil, f, "CooldownFrameTemplate")
   f.cooldown:SetAllPoints()
-  f.count = T.SetFont(f:CreateFontString(nil, "OVERLAY"), math.max(9, math.floor(size / 2)))
+  f.count = T.Text(f:CreateFontString(nil, "OVERLAY"), size >= 20 and "small" or "tiny", "white")
   f.count:SetPoint("BOTTOMRIGHT", 1, -1)
   f:Hide()
   return f

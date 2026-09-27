@@ -53,7 +53,7 @@ end
 function BG.SkinWindow(frame)
   T.FadeRegions(frame)
   if frame.NineSlice then T.FadeRegions(frame.NineSlice) end
-  T.Panel(frame)
+  T.Panel(frame, { shadow = true })
   for _, button in ipairs(items(frame)) do
     skinItem(button)
   end

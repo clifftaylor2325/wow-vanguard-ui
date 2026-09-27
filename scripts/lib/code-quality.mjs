@@ -4,8 +4,9 @@
 //      count; nested functions count toward the function that holds them.
 //   2. Every named function has a comment directly above it. A run of
 //      one-line functions (e.g. simple accessors) may share one comment.
-//   3. Addon Lua (Core/, Modules/) writes no color numbers: colors come from
-//      the theme's named tokens in Core/Theme.lua.
+//   3. Addon Lua (Core/, Modules/) writes no color numbers and no font
+//      sizes: colors come from the theme's named tokens and text from its
+//      roles, both in Core/Theme.lua.
 // Test cases (the callback passed to attempt(...)) are exempt from rule 1.
 
 import * as acorn from "acorn";
@@ -287,6 +288,18 @@ function colorProblems(file, src) {
   return hits.map((i) => ({ line: line(i), message: COLOR_MESSAGE }));
 }
 
+// A font set with a written size: T.SetFont(...) or :SetFont(path, 12, ...).
+const FONT_SIZE = /\bT\.SetFont\s*\(|:SetFont\s*\([^,()]*,\s*\d/g;
+const FONT_MESSAGE = "font size outside Core/Theme.lua: use a text role (T.Text(fs, role))";
+
+// Fonts sized outside the theme's text roles: [{ line, message }].
+function fontProblems(file, src) {
+  if (!COLOR_SCOPE.test(file) || file === COLOR_HOME) return [];
+  const code = luaCodeOnly(src);
+  const line = lineIndex(code);
+  return [...code.matchAll(FONT_SIZE)].map((m) => ({ line: line(m.index), message: FONT_MESSAGE }));
+}
+
 // Problems in one file: [{ line, message }].
 export function checkSource(file, src) {
   const lua = file.endsWith(".lua");
@@ -294,5 +307,5 @@ export function checkSource(file, src) {
   const fns = lua ? luaFunctions(src) : jsFunctions(src);
   const documented = documentedSet(fns, kinds);
   const out = fns.flatMap((fn) => functionProblems(fn, kinds, documented));
-  return lua ? out.concat(colorProblems(file, src)) : out;
+  return lua ? out.concat(colorProblems(file, src), fontProblems(file, src)) : out;
 }

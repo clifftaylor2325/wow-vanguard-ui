@@ -91,7 +91,7 @@ attempt("theme", () => {
       if w.__parent == f and w.__kind == "Texture" then out[#out + 1] = w.__vertexColor end
     end
     return out`);
-  assert(colors.length === 5, `a panel is one background and four edges, painted once (got ${colors.length})`);
+  assert(colors.length === 6, `a panel is one background, four edges and a sheen, painted once (got ${colors.length})`);
   assert(colors.some((c) => isTok(addon, c, "accent")), "an accent panel's border uses the accent");
   addon.slash("accent ff8000");
   const edge = addon.eval(`
@@ -1098,6 +1098,34 @@ attempt("bundled font and logo", () => {
   assert(isTok(addon, left, "accent"), "the logo's left diamond follows the accent live");
 });
 
+attempt("text roles, sheen and shadows", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // A fresh font string styled for a role: its font, shadow offset and color.
+  const fs = (role, color) => addon.eval(`local fs = ns.Theme.Text(UIParent:CreateFontString(), "${role}"${color ? `, "${color}"` : ""})
+    return { font = { fs:GetFont() }, shadow = fs.__shadowOffset, color = fs.__textColor }`);
+  const title = fs("title");
+  assert(/SemiBold\.ttf$/.test(title.font[0]) && title.font[1] === 15, "the title role is SemiBold 15");
+  assert(/Medium\.ttf$/.test(fs("label").font[0]) && fs("label").font[1] === 12, "the label role is Medium 12");
+  assert(isTok(addon, fs("label").color, "text") && isTok(addon, fs("small", "muted").color, "muted"), "roles color text by name (text by default)");
+  const world = fs("world");
+  assert(world.font[2] === "OUTLINE" && world.shadow?.[0] === 0, "world text is outlined without a shadow");
+  assert(fs("label").shadow?.[0] === 1 && fs("label").shadow?.[1] === -1, "other text gets a one-pixel shadow");
+  assert(addon.eval('return (pcall(ns.Theme.Text, UIParent:CreateFontString(), "TEST-ONLY-nope"))') === false, "an unknown role is an error");
+  addon.eval('ns.Options.Show("general")');
+  addon.eval('__click("Text size")');
+  assert(fs("label").font[1] === 13 && addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "Text size scales every role (110%: 12 -> 13) and offers a reload");
+  const parts = addon.eval(`local f = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })
+    local out = { shadow = 0, sheen = 0 }
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.__parent == f and w.__texture and w.__texture:find("Shadow") then out.shadow = out.shadow + 1 out.tc = out.tc or w.__texCoord end
+      if w.__parent == f and w.__layer == "BORDER" and w.__points.TOPLEFT and w.__points.TOPLEFT.y ~= 0 then out.sheen = out.sheen + 1 out.sheenColor = w.__vertexColor end
+    end
+    return out`);
+  assert(parts.shadow === 8 && parts.tc?.length === 4, "a shadowed panel gets eight shadow pieces cut from Media/Textures/Shadow");
+  assert(parts.sheen === 1 && isTok(addon, parts.sheenColor, "sheen"), "and a sheen one pixel inside its top edge");
+  assert(addon.eval("local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.__parent == ForeverUI_Options and w.__texture and w.__texture:find('Shadow') then n = n + 1 end end return n") === 8, "the options window casts a shadow");
+});
+
 attempt("special bars", () => {
   const addon = createAddon();
   addon.eval(ACTIONS_ENV + `
@@ -1182,7 +1210,7 @@ attempt("target and focus auras", () => {
 
 console.log("ForeverUI — Lua harness (fengari)");
 console.log("  core     saved variables, profiles, modules, combat queue");
-console.log("  theme    panels, widgets, live accent, reset, color tokens, one-pixel borders at 3 scales, pixel-perfect scale, bundled font, logo");
+console.log("  theme    panels, widgets, live accent, reset, color tokens, one-pixel borders at 3 scales, pixel-perfect scale, bundled font, logo, text roles, sheen, shadows");
 console.log("  skins    ForeverUI.RegisterSkin before/after login, errors, per-addon off");
 console.log("  movers   default point, unlock, drag, save, reset, combat lock");
 console.log("  unlock   edge anchors, snapping, grid, arrow-key nudge, accent presets");

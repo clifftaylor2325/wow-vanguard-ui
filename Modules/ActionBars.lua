@@ -237,10 +237,10 @@ end
 
 -- The count (bottom right, white) and hotkey (top right, light gray) texts.
 local function addTexts(b)
-  b.count = T.SetFont(b:CreateFontString(nil, "OVERLAY"), 11)
+  b.count = T.Text(b:CreateFontString(nil, "OVERLAY"), "small")
   b.count:SetPoint("BOTTOMRIGHT", -2, 2)
   T.Color(b.count, "white")
-  b.hotkey = T.SetFont(b:CreateFontString(nil, "OVERLAY"), 10)
+  b.hotkey = T.Text(b:CreateFontString(nil, "OVERLAY"), "small")
   b.hotkey:SetPoint("TOPRIGHT", -2, -2)
   T.Color(b.hotkey, "text2")
 end

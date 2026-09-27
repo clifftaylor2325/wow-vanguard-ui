@@ -21,6 +21,7 @@ local S = {
   CloseButton = T.CloseButton,
   FadeRegions = T.FadeRegions,
   SetFont = T.SetFont,
+  Text = T.Text,
   Color = T.Color,
   RGB = T.RGB,
   Tint = T.Tint,

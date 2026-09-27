@@ -132,7 +132,7 @@ const WORLD = `
   SELECTED_CHAT_FRAME = chat
   chat:AddMessage("|cffffff00TEST-ONLY chat line: [General] welcome to the preview.|r")
   chat:AddMessage("|cffff80ffTEST-ONLY whisper: this is not a real message.|r")
-  chat:AddMessage("|cff3d9effForeverUI:|r TEST-ONLY /fui status line.")
+  chat:AddMessage(ns.Theme.Paint("ForeverUI:", "accent") .. " TEST-ONLY /fui status line.")
   UnitXP = function() return 12300 end
   UnitXPMax = function() return 40000 end
   GetXPExhaustion = function() return 5000 end
@@ -261,7 +261,7 @@ const PLATES = `
 
 // Scenes: the default layout (party on the raid frames), a 20-player raid, then the options window.
 const SCENES = [
-  { name: "foreverui-default", caption: "ForeverUI defaults (blue accent)", lua: '__group({ "player", "party1", "party2" })' },
+  { name: "foreverui-default", caption: "ForeverUI defaults (brass accent)", lua: '__group({ "player", "party1", "party2" })' },
   { name: "foreverui-raid", caption: "Raid frames, 20 players: heals, shields, aggro, missing buffs, dispel borders, HoTs, raid icons, ready check, leader, range fade (TEST-ONLY raid)", lua: RAID },
   { name: "foreverui-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a friendly player (TEST-ONLY units)", lua: PLATES },
   { name: "foreverui-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
