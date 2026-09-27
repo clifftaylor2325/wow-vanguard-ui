@@ -91,7 +91,7 @@ function W.Check(parent, text, get, set, width)
   local r = row(parent, text, width)
   r.get, r.Refresh = get, refreshSwitch
   addSwitch(r)
-  r:SetScript("OnClick", function(self) set(not self.get()); self:Refresh() end)
+  r:SetScript("OnClick", function(self) set(not self.get()); T.Sound(self.get() and "on" or "off"); self:Refresh() end)
   r:Refresh()
   return r
 end
