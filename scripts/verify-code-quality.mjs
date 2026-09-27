@@ -35,6 +35,9 @@ assert(problems("t.mjs", `// doc\nfunction f() {\n${body(10, true)}\n}\n`) === "
 assert(/is 11 lines/.test(problems("t.mjs", `// doc\nfunction f() {\n${body(11, true)}\n}\n`)), "JS: 11 lines fail");
 assert(/no comment above/.test(problems("t.mjs", "const f = () => {\n  return 1;\n};\n")), "JS: undocumented arrow fails");
 assert(problems("t.mjs", `attempt("case", () => {\n${body(20, true)}\n});\n`) === "", "JS: attempt() test cases are exempt");
+assert(problems("t.mjs", `it("case", () => {\n${body(20, true)}\n});\n`) === "", "JS: it() test cases are exempt");
+assert(/is 11 lines/.test(problems("t.mjs", `it("case", () => {\n  // doc\n  function inner() {\n${body(11, true)}\n  }\n  return inner;\n});\n`)), "JS: it() does not exempt a nested function");
+assert(/is 20 lines/.test(problems("t.mjs", `describe("case", () => {\n${body(20, true)}\n});\n`)), "JS: describe() callbacks are not exempt");
 assert(/color numbers/.test(problems("Modules/t.lua", "-- doc\nlocal function f(fs)\n  fs:SetTextColor(1, 1, 1)\nend\n")), "colors: a setter with numbers fails");
 assert(/color numbers/.test(problems("Core/t.lua", "local C = { 0.2, 0.6, 1 }\n")), "colors: a 0-1 number table fails");
 assert(problems("Modules/t.lua", "-- doc\nlocal function f(fs)\n  T.Color(fs, \"text\")\nend\n") === "", "colors: theme tokens pass");
@@ -52,5 +55,5 @@ if (failures.length) {
   for (const f of failures) console.error(` - ${f}`);
   process.exit(1);
 }
-console.log("OK  checker self-test: length, nesting, docs, long strings, test cases, color numbers, font sizes");
+console.log("OK  checker self-test: length, nesting, docs, long strings, attempt() and it() cases, color numbers, font sizes");
 execFileSync(process.execPath, ["scripts/check-code-quality.mjs"], { stdio: "inherit" });
