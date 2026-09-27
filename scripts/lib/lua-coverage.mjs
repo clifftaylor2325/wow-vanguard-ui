@@ -57,6 +57,22 @@ export function hitLines(chunkName) {
   return executed.get(chunkName) ?? new Set();
 }
 
+// Writes recorded hits so a parent process can apply the coverage floor.
+export function dumpHits(file) {
+  const out = {};
+  for (const [name, lines] of executed) out[name] = [...lines];
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${JSON.stringify(out)}\n`);
+}
+
+// Loads hits dumped by a worker. A missing file is a failure, not a pass.
+export function loadHits(file) {
+  if (!fs.existsSync(file)) throw new Error(`Lua coverage hits file is missing: ${file}`);
+  executed.clear();
+  const data = JSON.parse(fs.readFileSync(file, "utf8"));
+  for (const [name, lines] of Object.entries(data)) executed.set(name, new Set(lines));
+}
+
 // Starts recording executed lines in a Lua state.
 export function attachCoverage(L) {
   lua.lua_sethook(L, onLine, lua.LUA_MASKLINE, 0);

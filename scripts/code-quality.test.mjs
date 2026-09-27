@@ -68,9 +68,9 @@ function jsUndocumentedArrow() {
   expect(problems("t.mjs", "const f = () => {\n  return 1;\n};\n")).toMatch(/no comment above/);
 }
 
-// The callback passed to attempt() is exempt from the length limit.
-function attemptExempt() {
-  expect(problems("t.mjs", `attempt("case", () => {\n${body(20, true)}\n});\n`)).toBe("");
+// The callback passed to attempt() is not exempt from the length limit.
+function attemptNotExempt() {
+  expect(problems("t.mjs", `attempt("case", () => {\n${body(20, true)}\n});\n`)).toMatch(/is 20 lines/);
 }
 
 // The callback passed to it() is exempt from the length limit.
@@ -162,12 +162,12 @@ describe(
 
 describe(
   "code quality",
-  // JS length, doc comments, and the attempt() and it() exemptions.
+  // JS length, doc comments, and the it() exemption.
   () => {
     it("JS: 10 documented lines pass", jsTenLines);
     it("JS: 11 lines fail", jsElevenLines);
     it("JS: undocumented arrow fails", jsUndocumentedArrow);
-    it("JS: attempt() test cases are exempt", attemptExempt);
+    it("JS: attempt() test cases are not exempt", attemptNotExempt);
     it("JS: it() test cases are exempt", itExempt);
     it("JS: it() does not exempt a nested function", itNestedStillChecked);
     it("JS: describe() callbacks are not exempt", describeNotExempt);
