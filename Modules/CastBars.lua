@@ -110,7 +110,7 @@ end
 -- Makes a status bar a themed cast bar (w x h), hidden until CB.Show finds a cast.
 function CB.Build(bar, w, h)
   bar:SetSize(w, h)
-  bar:SetStatusBarTexture(T.WHITE)
+  T.StyleBar(bar)
   T.Panel(bar, { inset = true, shadow = true })
   addParts(bar, h)
   bar:Hide()

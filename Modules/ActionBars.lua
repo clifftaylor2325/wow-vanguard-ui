@@ -188,6 +188,7 @@ end
 -- Everything on a button, for its current action slot.
 function AB.UpdateButton(b)
   b.action = b:GetAttribute("action")
+  AB.UpdateGlow(b)
   updateIcon(b)
   updateCount(b)
   updateCooldown(b)
@@ -195,6 +196,38 @@ function AB.UpdateButton(b)
   updateChecked(b)
   updateHotkey(b)
   AB.WatchRange(b)
+end
+
+-- Proc glow ----------------------------------------------------------------------------
+
+-- The spell id on a button's action (nil for items, macros, empty or hidden).
+function AB.ActionSpell(b)
+  if type(GetActionInfo) ~= "function" or not b.action then return nil end
+  local kind, id = GetActionInfo(b.action)
+  if ns.IsSecret(kind) or ns.IsSecret(id) or kind ~= "spell" then return nil end
+  return id
+end
+
+-- Whether the client says a spell is lit (proc'd) right now.
+local function overlayed(spell)
+  local overlayApi = _G.C_SpellActivationOverlay
+  local check = type(overlayApi) == "table" and overlayApi.IsSpellOverlayed or _G.IsSpellOverlayed
+  local lit = spell and type(check) == "function" and check(spell)
+  return not ns.IsSecret(lit) and lit == true
+end
+
+-- Lights the accent glow while the button's spell is proc'd.
+function AB.UpdateGlow(b)
+  if b.glow then T.ShowGlow(b.glow, overlayed(AB.ActionSpell(b))) end
+end
+
+-- A proc started (on) or ended: light or clear every button with that spell.
+local function onOverlay(on)
+  return function(_, spell)
+    for _, b in ipairs(AB.buttons) do
+      if b.glow and not ns.IsSecret(spell) and AB.ActionSpell(b) == spell then T.ShowGlow(b.glow, on) end
+    end
+  end
 end
 
 -- Runs fn on every button.
@@ -251,6 +284,7 @@ local function addRegions(b)
   addTexts(b)
   b.cooldown = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
   b.cooldown:SetAllPoints(b.icon)
+  b.glow = T.Glow(b, 6)
   b:SetCheckedTexture(T.WHITE)
   T.Tint(b:GetCheckedTexture(), "checked")
 end
@@ -411,6 +445,8 @@ local EVENTS = {
   ACTIONBAR_UPDATE_STATE = function() each(updateChecked) end,
   UPDATE_BINDINGS = function() ns.OutOfCombat(AB.ApplyBindings) end,
   ACTION_RANGE_CHECK_UPDATE = onRangeUpdate,
+  SPELL_ACTIVATION_OVERLAY_GLOW_SHOW = onOverlay(true),
+  SPELL_ACTIVATION_OVERLAY_GLOW_HIDE = onOverlay(false),
 }
 
 -- Setup ---------------------------------------------------------------------------------
