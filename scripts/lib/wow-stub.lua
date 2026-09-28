@@ -135,6 +135,10 @@ function methods:GetEffectiveScale()
   local parent = self.__parent
   return (self.__scale or 1) * (parent and parent:GetEffectiveScale() or 1)
 end
+-- Mouse: whether the frame takes the mouse, and whether it is under it
+-- (only what a test sets in __mouseOver).
+function methods:EnableMouse(on) self.__mouse = on == true end
+function methods:IsMouseOver() return self.__mouseOver == true end
 -- Moving (recorded for the mover tests).
 function methods:StartMoving() self.__moving = true end
 function methods:StopMovingOrSizing() self.__moving = false end

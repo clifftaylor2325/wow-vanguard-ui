@@ -18,7 +18,7 @@ export const CATEGORIES = [
   ["special", ["special bars"]],
   ["motion", ["motion: fades, reduce motion, sounds"]],
   ["frames", ["frames pass: bar texture, smoothing, raid style, shields, glows", "proc glow on action buttons"]],
-  ["bars", ["action bars", "action bar paging and events", "action bar dragging", "action button cooldowns, the C_ActionBar API and range polling", "a dropped spell named by GetSpellInfo"]],
+  ["bars", ["action bars", "action bar paging and events", "action bar dragging", "action button cooldowns, the C_ActionBar API and range polling", "a dropped spell named by GetSpellInfo", "action bar visibility: each mode's state driver and mouseover alpha", "action bar empty slots hide until the grid shows", "the right-edge bars start off and show on mouseover when turned on", "action bar layout: per-bar buttons, rows and size, deferred in combat"]],
   ["status", ["raid status marks"]],
   ["tooltip", ["tooltips"]],
   ["plates", ["nameplates"]],

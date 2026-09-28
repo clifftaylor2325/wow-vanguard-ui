@@ -41,6 +41,25 @@ local function barSetting(n)
     function(v) moduleSettings("ActionBars").bars[n].enabled = v; O.NeedReload() end
 end
 
+-- Tells the action bars that bar n's `key` changed, if they are running.
+local function barChanged(n, key)
+  local AB = ns.GetModule("ActionBars")
+  if AB and AB.enabled then AB.SettingChanged(n, key) end
+end
+
+-- get/set for one of action bar n's settings (button count, per row,
+-- visibility); applies at once, or when combat ends.
+local function barOption(n, key)
+  return function() return moduleSettings("ActionBars").bars[n][key] end,
+    function(v) moduleSettings("ActionBars").bars[n][key] = v; barChanged(n, key) end
+end
+
+-- get/set for action bar n's button size (the shared size until the bar has its own).
+local function barSizeOption(n)
+  local _, set = barOption(n, "size")
+  return function() local s = moduleSettings("ActionBars") return s.bars[n].size or s.size end, set
+end
+
 -- get/set for an unlock-mode option (grid, snap), applied at once.
 local function moverOption(key)
   return function() return ns.MoverOptions()[key] end, function(v) ns.MoverOptions()[key] = v end
@@ -149,17 +168,6 @@ local function castRows()
   }
 end
 
--- Action bars: which bars, locking, range tint, button size.
-local function actionBarRows()
-  local rows = { { "header", "Action bars" } }
-  for n = 1, 8 do rows[#rows + 1] = check("Bar " .. n, barSetting(n)) end
-  rows[#rows + 1] = check("Lock buttons (Shift-drag to move actions)", setting("ActionBars", "lockButtons"))
-  rows[#rows + 1] = check("Red when out of range", setting("ActionBars", "rangeTint"))
-  rows[#rows + 1] = check("Hide the default bars", setting("ActionBars", "hideBlizzard", true))
-  rows[#rows + 1] = { "cycle", "Button size", { { 32, "32" }, { 36, "36" }, { 40, "40" }, { 44, "44" } }, setting("ActionBars", "size", true) }
-  return rows
-end
-
 -- get/set for restyling all three of the client's special bars at once (applies on reload).
 local function skinSpecial()
   return function() return moduleSettings("SpecialBars").skinPet end, function(v)
@@ -169,12 +177,49 @@ local function skinSpecial()
   end
 end
 
--- Action bars plus the client's special buttons and the vehicle exit.
-local function actionBarPageRows()
-  return append(actionBarRows(), {
+-- Action bars, shared: locking, range tint, the default bars, the client's special buttons.
+local function actionBarRows()
+  return {
+    { "header", "Action bars" },
+    check("Lock buttons (Shift-drag to move actions)", setting("ActionBars", "lockButtons")),
+    check("Red when out of range", setting("ActionBars", "rangeTint")),
+    check("Hide the default bars", setting("ActionBars", "hideBlizzard", true)),
     check("Restyle the pet, stance and extra action buttons (reload)", skinSpecial()),
     check("Vehicle exit button (reload)", setting("SpecialBars", "vehicleExit", true)),
-  })
+    { "text", "Empty slots stay hidden until you drag a spell or item onto the bars." },
+  }
+end
+
+-- When a bar is seen. "On mouseover" shows it only while the mouse is over it.
+local BAR_VISIBILITY = { { "always", "Always" }, { "mouseover", "On mouseover" }, { "combat", "In combat" }, { "hidden", "Hidden" } }
+-- Buttons on a bar, and per row: 1 to 12.
+local BAR_BUTTONS = { min = 1, max = 12, step = 1 }
+-- Button size: 24 to 48 px in steps of 2.
+local BAR_SIZES = { min = 24, max = 48, step = 2, format = function(v) return string.format("%d px", v) end }
+
+-- Bar n's card title ("Bar 4, right edge" for the bars on the right edge).
+local function barTitle(n)
+  local AB = ns.GetModule("ActionBars")
+  return (AB and AB.RightEdge(n)) and ("Bar " .. n .. ", right edge") or ("Bar " .. n)
+end
+
+-- One action bar's card: on/off, visibility, button count, per row and size.
+local function oneBarRows(n)
+  return {
+    { "header", barTitle(n) },
+    check("Show bar " .. n, barSetting(n)),
+    { "cycle", "Visibility", BAR_VISIBILITY, barOption(n, "visibility") },
+    { "slider", "Buttons", BAR_BUTTONS, barOption(n, "buttons") },
+    { "slider", "Buttons per row", BAR_BUTTONS, barOption(n, "perRow") },
+    { "slider", "Button size", BAR_SIZES, barSizeOption(n) },
+  }
+end
+
+-- The action bar page: the shared card, then one card per bar.
+local function actionBarPageRows()
+  local rows = actionBarRows()
+  for n = 1, 8 do append(rows, oneBarRows(n)) end
+  return rows
 end
 
 -- XP and reputation bars, minimap, chat and bags.

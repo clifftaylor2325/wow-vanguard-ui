@@ -6,6 +6,10 @@
 --
 -- Values the client may hide (Midnight secrets), like cooldown times, are
 -- handed straight to the widgets and never compared or computed with.
+--
+-- Each bar has its own button count, row length, button size and
+-- visibility; empty slots stay invisible unless you are dragging a spell
+-- or item (Modules/ActionBarLayout.lua). The right-edge bars start off.
 
 local ADDON, ns = ...
 
@@ -18,15 +22,19 @@ local AB = ns.Module("ActionBars", {
     rangeTint = true,
     size = 36,
     spacing = 4,
+    -- Per bar: on/off, buttons shown, buttons per row, and visibility
+    -- (always, mouseover, combat or hidden). A bar's own `size` wins over
+    -- the shared size above once the player sets one. The right-edge bars
+    -- (4 and 5) start off and show on mouseover when turned on.
     bars = {
-      { enabled = true, buttons = 12, perRow = 12 },
-      { enabled = true, buttons = 12, perRow = 12 },
-      { enabled = true, buttons = 12, perRow = 12 },
-      { enabled = true, buttons = 12, perRow = 1 },
-      { enabled = true, buttons = 12, perRow = 1 },
-      { enabled = false, buttons = 12, perRow = 12 },
-      { enabled = false, buttons = 12, perRow = 12 },
-      { enabled = false, buttons = 12, perRow = 12 },
+      { enabled = true, buttons = 12, perRow = 12, visibility = "always" },
+      { enabled = true, buttons = 12, perRow = 12, visibility = "always" },
+      { enabled = true, buttons = 12, perRow = 12, visibility = "always" },
+      { enabled = false, buttons = 12, perRow = 1, visibility = "mouseover" },
+      { enabled = false, buttons = 12, perRow = 1, visibility = "mouseover" },
+      { enabled = false, buttons = 12, perRow = 12, visibility = "always" },
+      { enabled = false, buttons = 12, perRow = 12, visibility = "always" },
+      { enabled = false, buttons = 12, perRow = 12, visibility = "always" },
     },
   },
 })
@@ -76,6 +84,11 @@ local KEY_SHORT = {
 AB.buttons = {}
 AB.bars = {}
 
+-- Whether bar n sits on the right edge of the screen (bars 4 and 5).
+function AB.RightEdge(n)
+  return BARS[n] ~= nil and BARS[n].point[1] == "RIGHT"
+end
+
 -- Client API ----------------------------------------------------------------------------
 
 -- The client's action function `name`: C_ActionBar's when it has one, else the global.
@@ -109,11 +122,13 @@ end
 
 -- Updating a button ----------------------------------------------------------------------
 
--- Icon, or an empty slot when there is no action.
+-- Icon, or an empty slot when there is no action (see AB.UpdateEmpty).
 local function updateIcon(b)
   local texture = call("GetActionTexture", b.action)
+  b.hasAction = ns.IsSecret(texture) or texture ~= nil
   b.icon:SetTexture(texture)
-  b.icon:SetShown(ns.IsSecret(texture) or texture ~= nil)
+  b.icon:SetShown(b.hasAction)
+  AB.UpdateEmpty(b)
 end
 
 -- Charges or item count, shown only when it is a plain number above 1.
@@ -301,33 +316,16 @@ local function wireButton(b, action, index)
   b:SetScript("OnAttributeChanged", onAttributeChanged)
 end
 
--- One secure action button on a bar.
+-- One secure action button on a bar (sized and placed by AB.LayoutBar).
 local function createButton(bar, n, index, def)
   local name = string.format("ForeverUI_Bar%dButton%d", n, index)
   local b = CreateFrame("CheckButton", name, bar, "SecureActionButtonTemplate")
-  b.binding = def.bind .. index
-  b:SetSize(AB.settings.size, AB.settings.size)
+  b.binding, b.fuiBar = def.bind .. index, bar
   T.Button(b)
   addRegions(b)
   wireButton(b, def.slot + index - 1, index)
   AB.buttons[#AB.buttons + 1] = b
   return b
-end
-
--- Places button i in a grid of perRow columns.
-local function layoutButton(b, i, perRow)
-  local step = AB.settings.size + AB.settings.spacing
-  local col, row = (i - 1) % perRow, math.floor((i - 1) / perRow)
-  b:ClearAllPoints()
-  b:SetPoint("TOPLEFT", col * step, -row * step)
-end
-
--- Sizes a bar to fit its buttons.
-local function sizeBar(bar, count, perRow)
-  local step = AB.settings.size + AB.settings.spacing
-  local cols = math.min(count, perRow)
-  local rows = math.ceil(count / perRow)
-  bar:SetSize(cols * step - AB.settings.spacing, rows * step - AB.settings.spacing)
 end
 
 -- Bar 1 pages through a secure state driver.
@@ -336,16 +334,18 @@ local function addPaging(bar)
   RegisterStateDriver(bar, "page", AB.PAGE_DRIVER)
 end
 
--- One bar: a secure header holding its buttons, movable in unlock mode.
-local function createBar(n, def, settings)
+-- One bar: a secure header holding all twelve buttons (the layout shows as
+-- many as the bar's settings ask for), movable in unlock mode.
+local function createBar(n, def)
   local bar = CreateFrame("Frame", "ForeverUI_Bar" .. n, UIParent, "SecureHandlerStateTemplate")
-  for i = 1, settings.buttons do
-    layoutButton(createButton(bar, n, i, def), i, settings.perRow)
-  end
-  sizeBar(bar, settings.buttons, settings.perRow)
-  if n == 1 then addPaging(bar) end
-  ns.Mover(bar, "bar" .. n, "Action bar " .. n, def.point)
+  bar.fuiIndex, bar.fuiButtons = n, {}
+  for i = 1, AB.MAX_BUTTONS do bar.fuiButtons[i] = createButton(bar, n, i, def) end
   AB.bars[n] = bar
+  AB.LayoutBar(n)
+  if n == 1 then addPaging(bar) end
+  AB.WatchHover(bar)
+  AB.ApplyVisibility(n)
+  ns.Mover(bar, "bar" .. n, "Action bar " .. n, def.point)
   return bar
 end
 
@@ -353,13 +353,14 @@ end
 
 local bindingOwner
 
--- Points every default action binding at the matching ForeverUI button.
--- Override bindings are cleared and rebuilt; protected, so out of combat.
+-- Points every default action binding at the matching ForeverUI button
+-- (only buttons the bar's layout shows). Override bindings are cleared and
+-- rebuilt; protected, so out of combat.
 function AB.ApplyBindings()
   bindingOwner = bindingOwner or CreateFrame("Frame")
   ClearOverrideBindings(bindingOwner)
   for _, b in ipairs(AB.buttons) do
-    for _, key in ipairs({ GetBindingKey(b.binding) }) do
+    for _, key in ipairs(b:IsShown() and { GetBindingKey(b.binding) } or {}) do
       SetOverrideBindingClick(bindingOwner, false, key, b:GetName(), "LeftButton")
     end
   end
@@ -447,6 +448,8 @@ local EVENTS = {
   ACTION_RANGE_CHECK_UPDATE = onRangeUpdate,
   SPELL_ACTIVATION_OVERLAY_GLOW_SHOW = onOverlay(true),
   SPELL_ACTIVATION_OVERLAY_GLOW_HIDE = onOverlay(false),
+  ACTIONBAR_SHOWGRID = function() AB.SetGrid(true) end,
+  ACTIONBAR_HIDEGRID = function() AB.SetGrid(false) end,
 }
 
 -- Setup ---------------------------------------------------------------------------------
@@ -455,7 +458,7 @@ local EVENTS = {
 local function build(settings)
   for n, def in ipairs(BARS) do
     local bar = settings.bars[n]
-    if bar and bar.enabled then createBar(n, def, bar) end
+    if bar and bar.enabled then createBar(n, def) end
   end
   if settings.hideBlizzard then
     for _, name in ipairs(BLIZZARD_BARS) do hideBlizzard(name) end
