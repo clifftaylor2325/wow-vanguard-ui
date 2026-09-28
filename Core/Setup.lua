@@ -16,12 +16,10 @@ local STEPS = { "Layout", "Look", "Move things" }
 -- Layout presets, in display order; the first is the default.
 S.LAYOUTS = {
   { key = "damage", text = "Damage and tanking" },
-  { key = "healing", text = "Healing", hint = "Raid frames under your character, click casting on." },
+  { key = "healing", text = "Healing", hint = "Raid frames centered just above your cast bar, click casting on." },
 }
 -- Raid frame styles: the Raid page's Style choices.
 S.STYLES = { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }
--- Healing: the raid frames' top edge centered on the screen, under the player frame.
-S.HEALING_RAID = { "TOP", "CENTER", 0, -200 }
 
 local frame
 local state = { step = 1, layout = S.LAYOUTS[1].key, paused = false, reload = false }
@@ -49,13 +47,21 @@ local function restoreDefaults()
   ns.ResetMovers("raid")
 end
 
+-- Healing's raid frame spot: centered, their bottom edge one layout gap above
+-- the top of the player cast bar's default spot (anchored by its bottom), so
+-- they grow upward from there. Groups sit side by side, as always.
+function S.HealingPoint()
+  local cast = ns.GetModule("CastBars").LAYOUT.player
+  return { "BOTTOM", cast.point[2], 0, cast.point[4] + cast.h + ns.Layout.GAP }
+end
+
 -- What each layout changes.
 local APPLY = {
   -- Damage and tanking: ForeverUI's defaults.
   damage = restoreDefaults,
-  -- Healing: raid frames centered under the player frame, click casting on.
+  -- Healing: raid frames centered above the cast bar, click casting on.
   healing = function()
-    placeRaid(S.HEALING_RAID)
+    placeRaid(S.HealingPoint())
     turnOn("RaidFrames")
     turnOn("ClickCast")
   end,
