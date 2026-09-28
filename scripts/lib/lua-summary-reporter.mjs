@@ -1,0 +1,80 @@
+// A Vitest reporter that ends a run with one line per Lua harness category
+// (scripts/verify-lua.test.mjs), like the summary the harness printed before
+// it moved onto Vitest. A case not listed in CATEGORIES is counted under
+// "other", and scripts/lua-summary.test.mjs fails until it gets a category.
+
+import path from "node:path";
+
+const HARNESS = "verify-lua.test.mjs";
+const OTHER = "other";
+
+// Category name -> the it() names in scripts/verify-lua.test.mjs it covers.
+export const CATEGORIES = [
+  ["core", ["saved variables", "modules", "combat queue", "slash", "events unsubscribe and a delivered event with no listeners", "slash commands for frames, accent, grid, theme, modules, skins, profile and spec"]],
+  ["theme", ["theme", "widgets", "theme tokens and pixel-perfect borders", "bundled font and logo", "text roles, sheen and shadows"]],
+  ["skins", ["skin API", "skin SetFont and a UI scale change"]],
+  ["movers", ["movers", "layout", "mover coordinates with no handle"]],
+  ["unlock", ["unlock mode", "accent presets", "unlock popover: anchor, offsets, reset"]],
+  ["special", ["special bars"]],
+  ["motion", ["motion: fades, reduce motion, sounds"]],
+  ["frames", ["frames pass: bar texture, smoothing, raid style, shields, glows", "proc glow on action buttons"]],
+  ["bars", ["action bars", "action bar paging and events", "action bar dragging", "action button cooldowns, the C_ActionBar API and range polling", "a dropped spell named by GetSpellInfo"]],
+  ["status", ["raid status marks"]],
+  ["tooltip", ["tooltips"]],
+  ["plates", ["nameplates"]],
+  ["healing", ["heal prediction, aggro, buff watch", "healing fallbacks and options"]],
+  ["auras", ["raid indicators", "target and focus auras", "aura duration objects and power colors the theme does not name"]],
+  ["clicks", ["click casting", "click casting options", "click-casting validation, labels and unit frames"]],
+  ["raid", ["raid frames", "raid frames: a dark style chosen before 'look' carries over"]],
+  ["options", ["options window", "options window: nav, search, controls, footer", "options slider, search, scroll, special bars and profile switch", "choice fallback, key capture and the mouse wheel"]],
+  ["profiles", ["profile strings", "export and import", "profile management", "spec profiles", "profile copy, empty export and a taken import name", "a profile string with an unterminated quote"]],
+  ["range", ["range tint"]],
+  ["data", ["data bars"]],
+  ["more", ["minimap", "chat", "bags", "minimap with no position, chat window hooks, and short numbers"]],
+  ["casts", ["cast bars", "cast bar flashes on finish and interrupt", "cast timing from the client's duration object"]],
+  ["units", ["unit frames", "unit frame events", "unit frames wait for combat"]],
+];
+
+// The category a Lua harness case belongs to ("other" when it is not listed).
+export function categoryOf(name) {
+  const hit = CATEGORIES.find(([, names]) => names.includes(name));
+  return hit ? hit[0] : OTHER;
+}
+
+// Tallies [{ name, state }] into Map(category -> { passed, total }), in CATEGORIES order.
+export function tally(cases) {
+  const counts = new Map([...CATEGORIES, [OTHER, []]].map(([c]) => [c, { passed: 0, total: 0 }]));
+  for (const { name, state } of cases) {
+    const c = counts.get(categoryOf(name));
+    c.total += 1;
+    if (state === "passed") c.passed += 1;
+  }
+  return counts;
+}
+
+// One "  name     passed/total passed" line per category that has cases.
+export function summaryLines(counts) {
+  const rows = [...counts].filter(([, c]) => c.total > 0);
+  return rows.map(([name, c]) => `  ${name.padEnd(9)}${c.passed}/${c.total} passed`);
+}
+
+// The harness's cases from a finished run as [{ name, state }]; [] when it did not run.
+function harnessCases(testModules) {
+  const mod = testModules.find((m) => path.basename(m.moduleId) === HARNESS);
+  if (!mod) return [];
+  return [...mod.children.allTests()].map((t) => ({ name: t.name, state: t.result().state }));
+}
+
+// A reporter object for vitest.config.mjs that prints the category lines after a run.
+export function luaSummaryReporter() {
+  return {
+    // Keeps Vitest's logger so the lines print with the rest of the run's output.
+    onInit(vitest) { this.logger = vitest.logger; },
+    // Prints the category lines when the Lua harness was part of the run.
+    onTestRunEnd(testModules) {
+      const cases = harnessCases(testModules);
+      if (cases.length === 0) return;
+      this.logger.log(["", "Lua harness by category", ...summaryLines(tally(cases))].join("\n"));
+    },
+  };
+}

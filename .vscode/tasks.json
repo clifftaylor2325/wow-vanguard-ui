@@ -3,7 +3,7 @@
   "tasks": [
     {
       "label": "verify",
-      "detail": "Lua under the TEST-ONLY WoW stub, media, link:wow and code quality",
+      "detail": "Every Vitest suite (Lua under the TEST-ONLY WoW stub, media, link:wow, coverage tool), then the code-quality scan",
       "type": "npm",
       "script": "verify",
       "group": { "kind": "test", "isDefault": true },
