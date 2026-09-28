@@ -1792,6 +1792,10 @@ it("/fui setup reopens setup; Back and the close button", () => {
   expect(setupState(addon).step, "Back returns to the previous step").toBe(1);
   setupClick(addon, "close");
   expect(setupState(addon), "the close button ends setup").toEqual({ step: 0, done: true, unlocked: false });
+  const upgraded = loggedIn("", { firstRun: true, savedVariables: 'ForeverUIDB = { version = 1, profiles = { Default = { theme = { reduceMotion = true } } } }' });
+  expect(setupState(upgraded).step, "an account from before setup existed sees it once").toBe(1);
+  upgraded.eval("ForeverUI_Setup:Hide()");
+  expect(setupState(upgraded), "Escape (the client hides the frame) ends setup too").toEqual({ step: 0, done: true, unlocked: false });
 });
 
 it("setup layouts: Healing puts the raid frames under the character and turns click casting on", () => {
