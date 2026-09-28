@@ -11,7 +11,7 @@ Written from scratch. It contains no code, art or fonts from other UI addons.
   - Readable at a glance: class colors softened into the panel color by default (or dark bars with class-colored names, or bright class colors), outlined names that end in "..." when too long, missing health (-16K) or Dead / Offline under the name, and a thin power bar. In instanced combat, where the game keeps health secret from addons, the bars still fill and the missing-health text hides.
   - Healing: click casting and hover keybindings, incoming heals and shields, aggro strip, missing-buff marker, dispellable-debuff border, your HoTs.
   - Status: range fade, raid target icons, ready check, resurrection marker, and leader and assistant marks.
-- **Action bars**: range and power tint, plus restyled pet, stance and extra action buttons and a vehicle exit button.
+- **Action bars**: range and power tint, plus restyled pet, stance and extra action buttons and a vehicle exit button. The bottom bars stack with bar 1 on top; turning on another bottom bar adds it underneath. A position you've dragged is kept; `/fui reset all` puts the bars back in this order.
 - **Nameplates**: class/reaction/threat colors, your debuffs, casts, raid icon, target border.
 - **Everything else**: XP and reputation bars, square minimap, chat skin, combined bag, and themed tooltips with class colors and a Target line.
 - **Options**: `/fui` or the addons button. Turn any module off under Modules to keep the default one.
