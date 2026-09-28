@@ -712,6 +712,14 @@ it("raid frames", () => {
   addon.eval("__units.raid1.hp = { __secret = true }");
   addon.fire("UNIT_HEALTH", "raid1");
   expect(raidButton(addon, 1).status === "", "no missing-health text when the client keeps health secret").toBeTruthy();
+  // In combat the client's shortened health text is a secret string, and comparing
+  // it errors. Raid frames must decide Dead/Offline without reading that text.
+  addon.eval(`__healthTextCalls = 0
+    local UF = ns.GetModule("UnitFrames") local text = UF.HealthText
+    UF.HealthText = function(...) __healthTextCalls = __healthTextCalls + 1 return text(...) end`);
+  addon.fire("UNIT_HEALTH", "raid1");
+  expect(addon.eval("return __healthTextCalls") === 0, "raid frames never compare the (possibly secret) health text").toBeTruthy();
+  expect(addon.eval("return ForeverUI_RaidUnitButton1.down") === false, "secret health is not Dead or Offline").toBeTruthy();
   addon.eval("__units.raid1.hp = 900; AbbreviateNumbers = nil");
   addon.fire("UNIT_HEALTH", "raid1");
   expect(raidButton(addon, 1).status === "-100", "plain numbers without the client's formatter").toBeTruthy();

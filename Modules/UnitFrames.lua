@@ -97,15 +97,19 @@ local function isOffline(unit)
   return not isSecret(connected) and connected == false
 end
 
--- The health text: Dead, Offline, or current health shortened.
-function UF.HealthText(unit)
+-- "Dead", "Offline", or nil when the unit is neither. Safe with secret
+-- values: they count as neither, and nothing secret is compared.
+function UF.DownState(unit)
   if flag(UnitIsDeadOrGhost(unit)) then
     return "Dead"
   end
-  if isOffline(unit) then
-    return "Offline"
-  end
-  return shortNumber(UnitHealth(unit))
+  return isOffline(unit) and "Offline" or nil
+end
+
+-- The health text: Dead, Offline, or current health shortened. The shortened
+-- health may itself be secret (in instanced combat): show it, never compare it.
+function UF.HealthText(unit)
+  return UF.DownState(unit) or shortNumber(UnitHealth(unit))
 end
 
 -- Building ------------------------------------------------------------------------------
