@@ -74,10 +74,12 @@ end
 local function updateTexts(b, unit)
   b.name:SetText(UnitName(unit))
   b.role:SetText(RF.RoleLetter(unit))
-  local status = unitFrames().HealthText(unit)
-  b.down = status == "Dead" or status == "Offline"
-  b.status:SetText(b.down and status or RF.Deficit(unit))
-  T.Color(b.status, status == "Dead" and "bad" or "text2")
+  -- DownState, not the health text: that text can be a secret string, and
+  -- comparing a secret errors ("attempt to compare ... a secret string value").
+  local down = unitFrames().DownState(unit)
+  b.down = down ~= nil
+  b.status:SetText(down or RF.Deficit(unit))
+  T.Color(b.status, down == "Dead" and "bad" or "text2")
 end
 
 -- Colors by look: softened class bars (default) or bright ones, both with light
