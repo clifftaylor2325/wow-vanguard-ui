@@ -65,8 +65,8 @@ The callback runs once at login, or immediately if the addon registers after log
 
 ```bash
 npm install
-npm test          # JS and Lua harness tests under Vitest, once (vitest run, no watch)
-npm run verify    # real addon Lua under a strict TEST-ONLY WoW stub, then the code-quality check
+npm test          # JS and Lua harness tests under Vitest, once (vitest run, no watch), then a per-category Lua harness summary
+npm run verify    # npm test (real addon Lua under a strict TEST-ONLY WoW stub, and the JS tests), then the code-quality scan; CI runs this
                   # (functions of 10 lines or fewer, all documented; colors only from Core/Theme.lua)
 npm run coverage  # line coverage of the addon Lua; fails below scripts/lua-coverage-floor.json
 npm run lint      # luacheck
