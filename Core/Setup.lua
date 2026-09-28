@@ -17,7 +17,6 @@ local STEPS = { "Layout", "Look", "Move things" }
 S.LAYOUTS = {
   { key = "damage", text = "Damage and tanking" },
   { key = "healing", text = "Healing", hint = "Raid frames under your character, click casting on." },
-  { key = "blizzard", text = "Close to Blizzard's" },
 }
 -- Raid frame styles: the Raid page's Style choices.
 S.STYLES = { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }
@@ -50,8 +49,7 @@ local function restoreDefaults()
   ns.ResetMovers("raid")
 end
 
--- What each layout changes. Close to Blizzard's is not specified yet and
--- leaves every setting as it is.
+-- What each layout changes.
 local APPLY = {
   -- Damage and tanking: ForeverUI's defaults.
   damage = restoreDefaults,
@@ -65,8 +63,7 @@ local APPLY = {
 
 -- Applies a layout preset by key.
 function S.ApplyLayout(key)
-  local apply = APPLY[key]
-  if apply then apply() end
+  APPLY[key]()
 end
 
 -- The raid frames' settings in the active profile, with their defaults.
