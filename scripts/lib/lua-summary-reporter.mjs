@@ -18,7 +18,7 @@ export const CATEGORIES = [
   ["special", ["special bars"]],
   ["motion", ["motion: fades, reduce motion, sounds"]],
   ["frames", ["frames pass: bar texture, smoothing, raid style, shields, glows", "proc glow on action buttons"]],
-  ["bars", ["action bars", "action bar paging and events", "action bar dragging", "action button cooldowns, the C_ActionBar API and range polling", "a dropped spell named by GetSpellInfo", "action bar visibility: each mode's state driver and mouseover alpha", "action bar empty slots hide until the grid shows", "the right-edge bars start off and show on mouseover when turned on", "action bar layout: per-bar buttons, rows and size, deferred in combat"]],
+  ["bars", ["action bars", "action bar paging and events", "action bar dragging", "action button cooldowns, the C_ActionBar API and range polling", "a dropped spell named by GetSpellInfo", "action bar visibility: each mode's state driver and mouseover alpha", "action bar empty slots hide until the grid shows", "the right-edge bars start off and show on mouseover when turned on", "action bar layout: per-bar buttons, rows and size, deferred in combat", "an old profile keeps its right-edge bar on Always; a fresh enable gets On mouseover", "In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone", "mouseover bars are revealed during a drag and restored after", "Hidden bar bindings stay intact"]],
   ["status", ["raid status marks"]],
   ["tooltip", ["tooltips"]],
   ["plates", ["nameplates"]],

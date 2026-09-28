@@ -25,7 +25,8 @@ local AB = ns.Module("ActionBars", {
     -- Per bar: on/off, buttons shown, buttons per row, and visibility
     -- (always, mouseover, combat or hidden). A bar's own `size` wins over
     -- the shared size above once the player sets one. The right-edge bars
-    -- (4 and 5) start off and show on mouseover when turned on.
+    -- (4 and 5) start off and show on mouseover when turned on (profiles
+-- that already had them on keep Always: see keepOldRightBars).
     bars = {
       { enabled = true, buttons = 12, perRow = 12, visibility = "always" },
       { enabled = true, buttons = 12, perRow = 12, visibility = "always" },
@@ -88,6 +89,19 @@ AB.bars = {}
 function AB.RightEdge(n)
   return BARS[n] ~= nil and BARS[n].point[1] == "RIGHT"
 end
+
+-- Profiles saved before bars had a visibility setting: a right-edge bar that
+-- was already on keeps showing always. It is told apart by having no saved
+-- visibility; a bar the player turns on later was saved with the default
+-- (On mouseover) filled in, so it keeps that.
+local function keepOldRightBars(saved)
+  for n, bar in pairs(type(saved.bars) == "table" and saved.bars or {}) do
+    if AB.RightEdge(n) and type(bar) == "table" and bar.enabled == true and bar.visibility == nil then
+      bar.visibility = "always"
+    end
+  end
+end
+ns.Migrate("ActionBars", keepOldRightBars)
 
 -- Client API ----------------------------------------------------------------------------
 

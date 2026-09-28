@@ -492,11 +492,87 @@ it("the right-edge bars start off and show on mouseover when turned on", () => {
   const titles = addon.eval('local out = {} for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then for _, r in ipairs(p.rows()) do if r[1] == "header" then out[#out + 1] = r[2] end end end end return out');
   expect(titles.includes("Bar 4, right edge") && titles.includes("Bar 5, right edge") && titles.includes("Bar 1"), `each bar has its own card; the right-edge ones say so (got ${titles})`).toBeTruthy();
   expect(setBarOption(addon, 4, "Show bar 4", "true") && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.bars[4].enabled") === true, "Show bar 4 turns it on (after a reload)").toBeTruthy();
-  const on = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [4] = { enabled = true } } } } } }" });
+  const saved4 = addon.eval("local b = ForeverUIDB.profiles.Default.ActionBars.bars[4] return { b.enabled, b.visibility, b.buttons, b.perRow }");
+  expect(JSON.stringify(saved4) === JSON.stringify([true, "mouseover", 12, 1]), `a fresh enable is saved with On mouseover (got ${JSON.stringify(saved4)})`).toBeTruthy();
+  const on = loggedIn(ACTIONS_ENV, { savedVariables: 'ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [4] = { enabled = true, visibility = "mouseover", buttons = 12, perRow = 1 } } } } } }' });
   const bar4 = barVis(on, 4);
   expect(bar4.driver === "show" && bar4.alpha === 0 && bar4.mouse === true, "turned on, bar 4 is faded out until the mouse is over it").toBeTruthy();
   const second = on.eval("local _, _, _, x, y = ForeverUI_Bar4Button2:GetPoint(1) return { x, y }");
   expect(second[0] === 0 && second[1] === -40, "one button per row, as before").toBeTruthy();
+});
+
+// TEST-ONLY profile saved before bars had a visibility setting: bar 4 was on
+// (the old default), bar 5 had been turned off.
+const OLD_BARS_PROFILE = `ForeverUIDB = { profiles = { Default = { ActionBars = { size = 36, spacing = 4, bars = {
+  { enabled = true, buttons = 12, perRow = 12 }, { enabled = true, buttons = 12, perRow = 12 }, { enabled = true, buttons = 12, perRow = 12 },
+  { enabled = true, buttons = 12, perRow = 1 }, { enabled = false, buttons = 12, perRow = 1 },
+  { enabled = false, buttons = 12, perRow = 12 }, { enabled = false, buttons = 12, perRow = 12 }, { enabled = false, buttons = 12, perRow = 12 } } } } } }`;
+
+it("an old profile keeps its right-edge bar on Always; a fresh enable gets On mouseover", () => {
+  const old = loggedIn(ACTIONS_ENV, { savedVariables: OLD_BARS_PROFILE });
+  const bar4 = barVis(old, 4);
+  expect(bar4.driver === "show" && bar4.alpha === 1 && bar4.mouse === false, "bar 4, already on in the old profile, still shows always").toBeTruthy();
+  expect(getBarOption(old, 4, "Visibility") === "always" && getBarOption(old, 2, "Visibility") === "always", "its Visibility reads Always; so do the other bars").toBeTruthy();
+  expect(getBarOption(old, 5, "Visibility") === "mouseover", "bar 5, off in the old profile, is set to On mouseover for when it is turned on").toBeTruthy();
+  setBarOption(old, 5, "Show bar 5", "true");
+  // Each read goes through ns.Settings, so the upgrade runs again on what is now saved.
+  const saved5 = old.eval("local b = ForeverUIDB.profiles.Default.ActionBars.bars[5] return { b.enabled, b.visibility }");
+  expect(saved5[0] === true && saved5[1] === "mouseover" && getBarOption(old, 5, "Visibility") === "mouseover", "turning bar 5 on fresh saves On mouseover, and the upgrade leaves it (it has a saved visibility)").toBeTruthy();
+  expect(getBarOption(old, 4, "Visibility") === "always", "bar 4 stays Always").toBeTruthy();
+  // A new profile's fresh enable is checked in "the right-edge bars start off and show on mouseover when turned on".
+});
+
+it("In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  setBarOption(addon, 2, "Visibility", '"combat"');
+  // TEST-ONLY: count every state driver registration from here on.
+  addon.eval("__regs = 0 local register = RegisterStateDriver RegisterStateDriver = function(...) __regs = __regs + 1 return register(...) end");
+  addon.fire("ACTIONBAR_SHOWGRID");
+  expect(barVis(addon).driver === "show" && barVis(addon, 3).driver === "show", "picking up a spell out of combat shows the In combat bar").toBeTruthy();
+  expect(addon.eval("return __regs") === 1, "only the In combat bar's driver changes").toBeTruthy();
+  addon.fire("ACTIONBAR_HIDEGRID");
+  expect(barVis(addon).driver === "[combat] show; hide", "dropping it restores the bar's own driver").toBeTruthy();
+  addon.eval("__regs = 0");
+  setCombat(addon, true);
+  addon.fire("ACTIONBAR_SHOWGRID");
+  addon.fire("ACTIONBAR_HIDEGRID");
+  expect(addon.eval("return __regs") === 0 && addon.eval("return ns.QueuedCount()") === 0, "a drag that starts in combat changes no driver and queues nothing").toBeTruthy();
+  setCombat(addon, false);
+  expect(addon.eval("return __regs") === 0 && barVis(addon).driver === "[combat] show; hide", "not even after combat ends").toBeTruthy();
+  addon.fire("ACTIONBAR_SHOWGRID");
+  setCombat(addon, true);
+  addon.fire("ACTIONBAR_HIDEGRID");
+  expect(barVis(addon).driver === "show" && addon.eval("return ns.QueuedCount()") === 1, "a drag that ends after combat starts restores the driver once combat ends").toBeTruthy();
+  setCombat(addon, false);
+  expect(barVis(addon).driver === "[combat] show; hide", "and then it does").toBeTruthy();
+});
+
+it("mouseover bars are revealed during a drag and restored after", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  setBarOption(addon, 2, "Visibility", '"mouseover"');
+  // TEST-ONLY: count every Show, Hide and SetShown on bar 2 from here on.
+  addon.eval("__shows = 0 local bar = ForeverUI_Bar2 bar.Show = function() __shows = __shows + 1 end bar.Hide = bar.Show bar.SetShown = bar.Show");
+  setCombat(addon, true);
+  addon.fire("ACTIONBAR_SHOWGRID");
+  expect(barVis(addon).alpha === 1, "picking up a spell reveals the mouseover bar, in combat too").toBeTruthy();
+  addon.fire("ACTIONBAR_HIDEGRID");
+  expect(barVis(addon).alpha === 0, "dropping it fades the bar out again").toBeTruthy();
+  addon.fire("ACTIONBAR_SHOWGRID");
+  addon.eval("ForeverUI_Bar2.__mouseOver = true");
+  addon.fire("ACTIONBAR_HIDEGRID");
+  expect(barVis(addon).alpha === 1, "unless the mouse is still over the bar").toBeTruthy();
+  expect(addon.eval("return __shows") === 0 && addon.eval("return ns.QueuedCount()") === 0 && barVis(addon).driver === "show", "alpha only: no Show or Hide, nothing queued, driver unchanged").toBeTruthy();
+});
+
+it("Hidden bar bindings stay intact", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  setBarOption(addon, 2, "Visibility", '"hidden"');
+  expect(barVis(addon).driver === "hide", "a Hidden bar isn't drawn").toBeTruthy();
+  expect(addon.eval("return __overrides['CTRL-BUTTON4']") === "ForeverUI_Bar2Button1:LeftButton", "but its key still clicks its button").toBeTruthy();
+  addon.fire("UPDATE_BINDINGS");
+  expect(addon.eval("return __overrides['CTRL-BUTTON4']") === "ForeverUI_Bar2Button1:LeftButton", "also after the bindings are rebuilt").toBeTruthy();
+  const help = addon.eval('local page for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then page = p end end local rows = page.rows() for i, r in ipairs(rows) do if r[2] == "Visibility" then return rows[i + 1] end end');
+  expect(help[0] === "text" && /keys.*still casts/.test(help[1]), `the Visibility row's help text says so (got ${JSON.stringify(help)})`).toBeTruthy();
 });
 
 it("action bar layout: per-bar buttons, rows and size, deferred in combat", () => {
