@@ -5,7 +5,7 @@
   "description": "ForeverUI: a from-scratch UI suite for WoW Forever.",
   "scripts": {
     "test": "vitest run",
-    "verify": "node scripts/verify-lua.mjs && node scripts/verify-media.mjs && node scripts/verify-link-wow.mjs && node scripts/verify-lua-coverage.mjs && node scripts/verify-code-quality.mjs",
+    "verify": "npm test && npm run quality",
     "coverage": "node scripts/coverage-lua.mjs",
     "media": "node scripts/build-media.mjs",
     "quality": "node scripts/check-code-quality.mjs",

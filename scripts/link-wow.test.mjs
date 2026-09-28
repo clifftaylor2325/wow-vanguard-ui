@@ -83,9 +83,10 @@ function emptySlot() {
 }
 
 // A link to another folder is replaced; a broken readlink is no target.
+// Windows gets a junction, like link:wow makes (no admin or Developer Mode needed).
 function linkElsewhere() {
   fs.unlinkSync(slot);
-  fs.symlinkSync(tmp, slot, "dir");
+  fs.symlinkSync(tmp, slot, process.platform === "win32" ? "junction" : "dir");
   expect(L.describe(L.status(io, wow, addon, repo), addon)).toMatch(/another folder/);
   expect(L.link(io, { wowDir: wow, addon, repo }).ok).toBe(true);
   expect(L.linkTarget(io, path.join(tmp, "nothing"))).toBe(null);

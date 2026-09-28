@@ -1,6 +1,6 @@
 // Self-test for the code-quality checker (scripts/lib/code-quality.mjs).
 // TEST-ONLY sources below are never loaded. The repo-wide scan stays in
-// scripts/check-code-quality.mjs and runs from scripts/verify-code-quality.mjs.
+// scripts/check-code-quality.mjs (npm run quality, part of npm run verify).
 
 import { describe, expect, it } from "vitest";
 import { checkSource } from "./lib/code-quality.mjs";
