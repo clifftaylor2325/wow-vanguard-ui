@@ -18,7 +18,7 @@ export const CATEGORIES = [
   ["special", ["special bars"]],
   ["motion", ["motion: fades, reduce motion, sounds"]],
   ["frames", ["frames pass: bar texture, smoothing, raid style, shields, glows", "proc glow on action buttons"]],
-  ["bars", ["action bars", "action bar paging and events", "action bar dragging", "action button cooldowns, the C_ActionBar API and range polling", "a dropped spell named by GetSpellInfo"]],
+  ["bars", ["action bars", "action bars stack with bar 1 on top", "action bar stack follows button size and rows", "a moved action bar keeps its spot until reset", "action bar paging and events", "action bar dragging", "action button cooldowns, the C_ActionBar API and range polling", "a dropped spell named by GetSpellInfo"]],
   ["status", ["raid status marks"]],
   ["tooltip", ["tooltips"]],
   ["plates", ["nameplates"]],
