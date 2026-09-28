@@ -15,6 +15,7 @@ Written from scratch. It contains no code, art or fonts from other UI addons.
 - **Nameplates**: class/reaction/threat colors, your debuffs, casts, raid icon, target border.
 - **Everything else**: XP and reputation bars, square minimap, chat skin, combined bag, and themed tooltips with class colors and a Target line.
 - **Options**: `/fui` or the addons button. Turn any module off under Modules to keep the default one.
+- **First-run setup**: the first time you log in on an account, a three-step wizard asks for a layout (Damage and tanking, Healing, or Close to Blizzard's), an accent and raid frame style, then unlocks your frames so you can move them. With the defaults it takes three clicks: Next, Next, Done. It waits until you're out of combat, and `/fui setup` opens it again. Healing puts the raid frames under your character and turns click casting on.
 
 Every client call is checked before use, and values the Midnight client hides
 from addons go to the bars unread. None of this has been checked in game yet:
@@ -28,6 +29,7 @@ Download `ForeverUI-<version>.zip` from the [latest release](https://github.com/
 
 ```
 /fui               the options window (also: left-click the addons button by the minimap)
+/fui setup         the first-run setup again: layout, look, then move things
 /fui unlock | lock drag handles on every ForeverUI frame (also: right-click the addons button)
 /fui reset <frame|all>
 /fui accent <rrggbb|brass|arcane|fel|void|ember> | reset      /fui theme reset
