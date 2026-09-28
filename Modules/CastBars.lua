@@ -22,6 +22,8 @@ local LAYOUT = {
   target = { w = 220, h = 16, point = { "CENTER", "CENTER", 260, -205 } },
   focus = { w = 160, h = 14, point = { "CENTER", "CENTER", -260, -85 } },
 }
+-- The default sizes and points, for layouts placed around them (Core/Setup.lua).
+CB.LAYOUT = LAYOUT
 local BLIZZARD = { "PlayerCastingBarFrame", "CastingBarFrame", "PetCastingBarFrame" }
 
 CB.bars = {}

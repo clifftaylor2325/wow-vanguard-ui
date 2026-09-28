@@ -1805,7 +1805,7 @@ it("setup layouts: Healing puts the raid frames under the character and turns cl
   expect(addon.eval('return __click("Healing")') && addon.eval("return ForeverUI_Setup.pages[1].hint:GetText()"), "picking Healing shows what it does").toMatch(/click casting on/);
   expect(borderOf(addon, "ForeverUI_Setup.pages[1].choices[2]"), "the chosen layout is outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
   setupClick(addon, "next");
-  expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing centers the raid frames under the player frame").toEqual(["TOP", "CENTER", 0, -200]);
+  expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing centers the raid frames just above the player cast bar").toEqual(["BOTTOM", "BOTTOM", 0, 224]);
   expect(addon.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "click casting and the raid frames are on").toBe(true);
   setupClick(addon, "next");
   setupClick(addon, "next");
@@ -1813,7 +1813,7 @@ it("setup layouts: Healing puts the raid frames under the character and turns cl
   const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { ClickCast = false, RaidFrames = false } } } }" });
   off.eval('__click("Healing")');
   setupClick(off, "next");
-  expect(off.eval("return ForeverUIDB.profiles.Default.positions.raid"), "without raid frames built, the spot is saved for next time").toEqual({ point: "TOP", relPoint: "CENTER", x: 0, y: -200 });
+  expect(off.eval("return ForeverUIDB.profiles.Default.positions.raid"), "without raid frames built, the spot is saved for next time").toEqual({ point: "BOTTOM", relPoint: "BOTTOM", x: 0, y: 224 });
   expect(off.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "Healing turns click casting and the raid frames on").toBe(true);
   setupClick(off, "next");
   setupClick(off, "next");
@@ -1833,6 +1833,68 @@ it("setup layouts: Damage and tanking restores ForeverUI's defaults, undoing Hea
   const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: 'ForeverUIDB = { profiles = { Default = { modules = { RaidFrames = false }, positions = { raid = { point = "TOP", relPoint = "CENTER", x = 0, y = -200 } } } } }' });
   setupClick(off, "next");
   expect(off.eval("return ForeverUIDB.profiles.Default.positions.raid == nil"), "without raid frames built, the saved spot is cleared for next time").toBe(true);
+});
+
+// Where a point name sits across and up a rect (0 = left or bottom, 1 = right or top).
+const ACROSS = (point) => (/LEFT/.test(point) ? 0 : /RIGHT/.test(point) ? 1 : 0.5);
+const UP = (point) => (/BOTTOM/.test(point) ? 0 : /TOP/.test(point) ? 1 : 0.5);
+
+// The rect { l, b, r, t } of a w x h frame anchored at [point, relPoint, x, y] on UIParent, on an sw x sh screen.
+function rectAt([point, relPoint, x, y], w, h, sw, sh) {
+  const l = ACROSS(relPoint) * sw + x - ACROSS(point) * w;
+  const b = UP(relPoint) * sh + y - UP(point) * h;
+  return { l, b, r: l + w, t: b + h };
+}
+
+// True when two rects overlap (touching edges don't count).
+const overlaps = (a, c) => a.l < c.r && c.l < a.r && a.b < c.t && c.b < a.t;
+
+// The frames Healing must stay clear of, as { key: [point, relPoint, x, y, w, h] } from the addon's movers and frames.
+const healingNeighbours = (addon) => addon.eval(`
+  local out = {}
+  local frames = { cast_player = ForeverUI_CastBar_player, uf_player = ForeverUI_player, uf_target = ForeverUI_target }
+  for n = 1, 8 do frames["bar" .. n] = _G["ForeverUI_Bar" .. n] end
+  for key, f in pairs(frames) do
+    local p, rp, x, y = ns.MoverPoint(key)
+    if p then out[key] = { p, rp, x, y, f:GetWidth(), f:GetHeight() } end
+  end
+  return out`);
+
+// The raid block for g side-by-side groups of five, sized from the raid header's own attributes.
+const raidBlock = (addon, groups) => addon.eval(`local h = ForeverUI_Raid
+  local w, ht, gap, dy = h:GetAttribute("fui-width"), h:GetAttribute("fui-height"), h:GetAttribute("columnSpacing"), -h:GetAttribute("yOffset")
+  local rows = h:GetAttribute("unitsPerColumn")
+  return { ${groups} * w + (${groups} - 1) * gap, rows * ht + (rows - 1) * dy }`);
+
+it("setup Healing layout: clear of the bars, the cast bar, and the player and target frames", () => {
+  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV, { firstRun: true });
+  const cast = addon.eval("return ns.GetModule('CastBars').LAYOUT.player");
+  expect(cast.point[0], "the cast bar is anchored by its bottom, so its top is y + height").toBe("BOTTOM");
+  expect(addon.eval("return ns.Setup.HealingPoint()"), "Healing: centered, one layout gap above the cast bar's top").toEqual(["BOTTOM", "BOTTOM", 0, cast.point[3] + cast.h + addon.eval("return ns.Layout.GAP")]);
+  addon.eval("ns.Setup.ApplyLayout('healing')");
+  const at = addon.eval("return { ns.MoverPoint('raid') }");
+  const near = healingNeighbours(addon);
+  expect(["bar1", "bar2", "bar3", "cast_player", "uf_player", "uf_target"].every((k) => near[k]), "the default layout has the bottom bars, the cast bar, and the player and target frames").toBe(true);
+  const bars = Object.keys(near).filter((k) => k.startsWith("bar"));
+  // 1366 x 768 is UI scale 1; 2133 x 1200 is 1080p at UI scale 0.64.
+  for (const [sw, sh] of [[1366, 768], [2133, 1200]]) {
+    // A neighbour's rect on this screen.
+    const rect = (key) => rectAt(near[key].slice(0, 4), near[key][4], near[key][5], sw, sh);
+    // Whether a raid of this many groups, at the Healing spot, overlaps none of these neighbours.
+    const clearOf = (groups, keys) => {
+      const [w, h] = raidBlock(addon, groups);
+      const r = rectAt(at, w, h, sw, sh);
+      return keys.every((k) => !overlaps(r, rect(k)));
+    };
+    const [w1, h1] = raidBlock(addon, 1);
+    expect(rectAt(at, w1, h1, sw, sh).b - rect("cast_player").t, `${sw}x${sh}: one layout gap above the cast bar`).toBe(6);
+    for (let g = 1; g <= 8; g += 1) expect(clearOf(g, [...bars, "cast_player"]), `${sw}x${sh}: ${g} group(s) clear every action bar and the cast bar`).toBe(true);
+    // N: the most groups (a party is one column, like one group) that fit between the player and target frames.
+    let n = 0;
+    while (n < 8 && clearOf(n + 1, ["uf_player", "uf_target"])) n += 1;
+    // Cutoff: 3 groups (278 px wide) fit the 300 px between the player and target frames; 4 groups (372 px) overlap them.
+    expect(n, `${sw}x${sh}: a party and raids of up to 3 groups clear the player and target frames; 4 or more overlap them`).toBe(3);
+  }
 });
 
 it("setup look: accent swatches and the raid frame style apply at once", () => {
