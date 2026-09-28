@@ -11,7 +11,12 @@ Written from scratch. It contains no code, art or fonts from other UI addons.
   - Readable at a glance: class colors softened into the panel color by default (or dark bars with class-colored names, or bright class colors), outlined names that end in "..." when too long, missing health (-16K) or Dead / Offline under the name, and a thin power bar. In instanced combat, where the game keeps health secret from addons, the bars still fill and the missing-health text hides.
   - Healing: click casting and hover keybindings, incoming heals and shields, aggro strip, missing-buff marker, dispellable-debuff border, your HoTs.
   - Status: range fade, raid target icons, ready check, resurrection marker, and leader and assistant marks.
-- **Action bars**: range and power tint, plus restyled pet, stance and extra action buttons and a vehicle exit button. The bottom bars stack with bar 1 on top; turning on another bottom bar adds it underneath. A position you've dragged is kept; `/fui reset all` puts the bars back in this order.
+- **Action bars**: range and power tint, plus restyled pet, stance and extra action buttons and a vehicle exit button.
+  - The bottom bars stack with bar 1 on top; turning on another bottom bar adds it underneath. Each row takes its bar's real height, so a bar with bigger buttons or more rows pushes the ones above it up, right away when you change it. A position you've dragged is kept; `/fui reset all` puts the bars back in this order.
+  - Empty slots stay hidden until you drag a spell or item, so a new character sees no empty squares.
+  - Each bar has its own number of buttons, buttons per row, button size, and visibility: Always, On mouseover (seen only while the mouse is over it), In combat, or Hidden. While you drag a spell or item, On mouseover and In combat bars show too (In combat bars only when the drag starts out of combat).
+  - Hidden bars keep their keys: the bar isn't drawn, but a bound key still casts, like a keybind-only bar. A Hidden bottom bar keeps its row in the stack (leaving a gap), because bars can't be re-stacked during combat.
+  - The right-edge bars (4 and 5) start off; turned on, they show on mouseover. Profiles that already had them on keep them on Always.
 - **Nameplates**: class/reaction/threat colors, your debuffs, casts, raid icon, target border.
 - **Everything else**: XP and reputation bars, square minimap, chat skin, combined bag, and themed tooltips with class colors and a Target line.
 - **Options**: `/fui` or the addons button. Turn any module off under Modules to keep the default one.
