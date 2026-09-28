@@ -45,8 +45,8 @@ function ancestors(ctx, f) {
 const shown = (ctx, f) => [f, ...ancestors(ctx, f)].every((w) => w.shown);
 // The nearest strata set on it or an ancestor (MEDIUM by default).
 const strataOf = (ctx, f) => STRATA[[f, ...ancestors(ctx, f)].find((w) => w.strata)?.strata] ?? 2;
-// The scroll frame that clips it, if any.
-const scrollParent = (ctx, f) => ancestors(ctx, f).find((w) => w.kind === "ScrollFrame") || null;
+// The nearest ancestor that clips it: a scroll frame, or a frame with SetClipsChildren(true).
+const scrollParent = (ctx, f) => ancestors(ctx, f).find((w) => w.kind === "ScrollFrame" || w.clips) || null;
 
 // The page font for a font file: ForeverUI's bundled weights, else the default.
 const fontFamily = (file) => (/SemiBold/.test(file || "") ? '"FUI-SemiBold"' : /FiraSans/.test(file || "") ? '"FUI-Medium"' : "");
@@ -130,13 +130,21 @@ function anchoredRect(ctx, f) {
   return { left, top, width: w, height: h };
 }
 
+// A recorded number. A preview "secret" ({ __secret, n }) draws as the number it hides,
+// as the client's own bars do; anything else unknown counts as the fallback.
+const num = (v, fallback) => (v && typeof v === "object" ? v.n ?? fallback : v ?? fallback);
+
+// How full a status bar is (0-1), from its recorded value and range.
+function shareOf(bar) {
+  const min = num(bar.min, 0), range = num(bar.max, 1) - min;
+  return range > 0 ? Math.max(0, Math.min(1, (num(bar.value, 0) - min) / range)) : 0;
+}
+
 // A status bar's fill texture: the bar's rect cut to the value's share (from the left).
 function fillRect(ctx, f) {
   const bar = ctx.byId.get(f.parent);
   const r = rectOf(ctx, bar);
-  const range = (bar.max ?? 1) - (bar.min ?? 0);
-  const share = range > 0 ? Math.max(0, Math.min(1, ((bar.value ?? 0) - (bar.min ?? 0)) / range)) : 0;
-  return { left: r.left, top: r.top, width: r.width * share, height: r.height };
+  return { left: r.left, top: r.top, width: r.width * shareOf(bar), height: r.height };
 }
 
 // A frame's screen rect, cached. nil and UIParent are the whole screen.
@@ -242,8 +250,7 @@ function shadeFill(fill, f) {
 
 // A status bar's fill: the recorded value as a share of its range, in its bar color.
 function addFill(el, f) {
-  const range = (f.max ?? 1) - (f.min ?? 0);
-  const share = range > 0 ? Math.max(0, Math.min(1, ((f.value ?? 0) - (f.min ?? 0)) / range)) : 0;
+  const share = shareOf(f);
   const fill = document.createElement("div");
   Object.assign(fill.style, { position: "absolute", left: 0, top: 0, bottom: 0, width: `${share * 100}%`, background: rgba(f.barColor || [0.5, 0.5, 0.5, 1]) });
   shadeFill(fill, f);
@@ -314,7 +321,7 @@ function zIndexOf(ctx, f) {
   return strataOf(ctx, f) * 1000 + depth * 10 + layer;
 }
 
-// Clips a node to its scroll frame's rect.
+// Clips a node to the rect of the frame that clips it.
 function clipTo(ctx, el, r, clip) {
   const c = rectOf(ctx, clip);
   const inset = [c.top - r.top, r.left + r.width - (c.left + c.width), r.top + r.height - (c.top + c.height), c.left - r.left];

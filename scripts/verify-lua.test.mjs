@@ -696,17 +696,40 @@ it("raid frames", () => {
   addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
   const tank = raidButton(addon, 1);
   expect(tank.hp === 300 && tank.max === 1000 && tank.name === "TEST-ONLY Tank" && tank.role === "T", "health, name and role letter").toBeTruthy();
-  expect(tank.color[0] === 0.78, "class colors").toBeTruthy();
+  const soft = 0.78 * 0.55 + (0x12 / 255) * 0.45;
+  expect(Math.abs(tank.color[0] - soft) < 1e-6, "class colors, softened into the panel color by default").toBeTruthy();
+  expect(tank.status === "-700", "the second row shows missing health").toBeTruthy();
+  expect(addon.eval("return ForeverUI_RaidUnitButton1.name.__font[3]") === "OUTLINE", "names over the bar are outlined").toBeTruthy();
+  expect(addon.eval("return ForeverUI_RaidUnitButton1.power:IsShown()") === true, "a thin power bar along the bottom").toBeTruthy();
   expect(raidButton(addon, 3).status === "Offline", "offline players say so").toBeTruthy();
+  expect(raidButton(addon, 2).status === "-100", "you, too, with your missing health").toBeTruthy();
   addon.eval("__units.raid1.hp = 900");
   addon.fire("UNIT_HEALTH", "raid1");
   expect(raidButton(addon, 1).hp === 900, "UNIT_HEALTH refreshes that member").toBeTruthy();
+  addon.eval("__units.raid1.hp = 1000");
+  addon.fire("UNIT_HEALTH", "raid1");
+  expect(raidButton(addon, 1).status === "", "no text at full health").toBeTruthy();
+  addon.eval("__units.raid1.hp = { __secret = true }");
+  addon.fire("UNIT_HEALTH", "raid1");
+  expect(raidButton(addon, 1).status === "", "no missing-health text when the client keeps health secret").toBeTruthy();
+  addon.eval("__units.raid1.hp = 900; AbbreviateNumbers = nil");
+  addon.fire("UNIT_HEALTH", "raid1");
+  expect(raidButton(addon, 1).status === "-100", "plain numbers without the client's formatter").toBeTruthy();
+  addon.eval('local s = ForeverUIDB.profiles.Default.RaidFrames s.look = "class" s.showPower = false ns.GetModule("RaidFrames").UpdateAll()');
+  expect(raidButton(addon, 1).color[0] === 0.78 && addon.eval("return ForeverUI_RaidUnitButton1.power:IsShown()") === false, "bright class colors and no power bar, by choice").toBeTruthy();
   addon.eval("__units.player.hp = 100");
   addon.fire("UNIT_HEALTH", "player");
   expect(raidButton(addon, 2).hp === 100, "an event for you updates your raid button too").toBeTruthy();
   expect(addon.eval("return CompactRaidFrameContainer:GetParent():IsShown()") === false, "the default raid frames are hidden").toBeTruthy();
   expect(addon.eval("return ForeverUI_party1") === null, "UnitFrames doesn't build party frames the raid frames cover").toBeTruthy();
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.raid") === true, "the raid frames are movable").toBeTruthy();
+});
+
+it("raid frames: a dark style chosen before 'look' carries over", () => {
+  const sv = 'ForeverUIDB = { profiles = { Default = { RaidFrames = { style = "dark" } } }, chars = {} }';
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: sv });
+  const s = addon.eval("return ForeverUIDB.profiles.Default.RaidFrames");
+  expect(s.look === "dark" && s.style == null, "style = dark becomes look = dark, and the old key goes").toBeTruthy();
 });
 
 it("click casting", () => {

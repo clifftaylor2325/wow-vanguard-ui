@@ -65,10 +65,11 @@ local function addBorder(b)
   b.dispel:Hide()
 end
 
--- One HoT icon, placed right to left along the bottom edge; hidden until used.
+-- One HoT icon, placed right to left along the bottom edge, just above the
+-- power bar; hidden until used.
 local function hotIcon(b, i)
   local f = ns.Auras.Icon(b, ICON_SIZE)
-  f:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -2 - (i - 1) * (ICON_SIZE + 1), 2)
+  f:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -2 - (i - 1) * (ICON_SIZE + 1), 5)
   return f
 end
 

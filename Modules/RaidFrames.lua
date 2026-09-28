@@ -1,8 +1,11 @@
 -- Raid frames: up to 40 players in a grid, one column per group (or sorted
 -- by role), built on the client's secure group header so the roster can
--- change in combat. Each button shows class-colored health, the name, a
--- role letter and Dead / Offline. With showInParty on, these frames also
--- cover your party (and the party frames in UnitFrames aren't built).
+-- change in combat. Each button shows class-colored health (softened into
+-- the panel color by default, so the outlined name stays readable), a role
+-- letter and the name on the top row, then Dead / Offline or the missing
+-- health on the second, and a thin power bar along the bottom. With
+-- showInParty on, these frames also cover your party (and the party frames
+-- in UnitFrames aren't built).
 --
 -- All 40 buttons are created up front, out of combat, so click casting and
 -- hover keys (Modules/ClickCast.lua) can be set on every one of them safely.
@@ -12,10 +15,12 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local RF = ns.Module("RaidFrames", {
-  defaults = { width = 90, height = 40, spacing = 4, showInParty = true, showPlayer = true, sortByRole = false, hideBlizzard = true, style = "class" },
+  defaults = { width = 90, height = 40, spacing = 4, showInParty = true, showPlayer = true, sortByRole = false, hideBlizzard = true, look = "soft", showPower = true },
 })
 
 local MAX_UNITS = 40
+-- The class color's share of a softened bar; the rest is the panel color.
+local SOFT = 0.55
 local ROLE_LETTER = { TANK = "T", HEALER = "H", DAMAGER = "", NONE = "" }
 local BLIZZARD_FRAMES = { "CompactRaidFrameManager", "CompactRaidFrameContainer", "CompactPartyFrame" }
 
@@ -48,28 +53,56 @@ function RF.RoleLetter(unit)
   return ns.IsSecret(role) and "" or (ROLE_LETTER[role] or "")
 end
 
+-- Missing health as short text ("-16K"); "" at full health, or when the client
+-- keeps the values secret (in instanced combat), since they can't be subtracted.
+function RF.Deficit(unit)
+  local health, max = ns.PlainNumber(UnitHealth(unit)), ns.PlainNumber(UnitHealthMax(unit))
+  if not health or not max or health >= max then return "" end
+  local missing = max - health
+  return "-" .. (type(AbbreviateNumbers) == "function" and AbbreviateNumbers(missing) or tostring(missing))
+end
+
+-- A class color mixed into the panel color (SOFT of the class color).
+function RF.Soften(r, g, b)
+  local pr, pg, pb = T.RGB("panel")
+  return r * SOFT + pr * (1 - SOFT), g * SOFT + pg * (1 - SOFT), b * SOFT + pb * (1 - SOFT)
+end
+
 -- Updating ---------------------------------------------------------------------------------
 
--- Name, role letter, and Dead / Offline.
+-- Role letter and name on the top row; Dead / Offline, else the missing health, below.
 local function updateTexts(b, unit)
   b.name:SetText(UnitName(unit))
   b.role:SetText(RF.RoleLetter(unit))
   local status = unitFrames().HealthText(unit)
-  b.status:SetText((status == "Dead" or status == "Offline") and status or "")
+  b.down = status == "Dead" or status == "Offline"
+  b.status:SetText(b.down and status or RF.Deficit(unit))
+  T.Color(b.status, status == "Dead" and "bad" or "text2")
 end
 
--- Colors by style: class-colored bars with light names, or dark bars with class-colored names.
+-- Colors by look: softened class bars (default) or bright ones, both with light
+-- names; or dark bars with class-colored names.
 local function paintHealth(b, unit)
-  if RF.settings.style == "dark" then
+  local r, g, bl = unitFrames().HealthColor(unit)
+  if RF.settings.look == "dark" then
     T.BarColor(b.health, "darkBar")
-    b.name:SetTextColor(unitFrames().HealthColor(unit))
-  else
-    b.health:SetStatusBarColor(unitFrames().HealthColor(unit))
-    T.Color(b.name, "text")
+    return b.name:SetTextColor(r, g, bl)
   end
+  if RF.settings.look == "soft" then r, g, bl = RF.Soften(r, g, bl) end
+  b.health:SetStatusBarColor(r, g, bl)
+  T.Color(b.name, "text")
 end
 
--- Health bar, colors, name, role and status for one button's unit.
+-- The thin power bar: value, maximum and power color, or hidden when turned off.
+local function updatePower(b, unit)
+  b.power:SetShown(RF.settings.showPower == true)
+  if not RF.settings.showPower then return end
+  b.power:SetMinMaxValues(0, UnitPowerMax(unit))
+  b.power:SetValue(UnitPower(unit))
+  b.power:SetStatusBarColor(unitFrames().PowerColor(unit))
+end
+
+-- Health bar, colors, texts and power for one button's unit.
 function RF.Update(b)
   local unit = b:GetAttribute("unit")
   if not unit or not UnitExists(unit) then return end
@@ -77,6 +110,7 @@ function RF.Update(b)
   T.SetBarValue(b.health, UnitHealth(unit))
   paintHealth(b, unit)
   updateTexts(b, unit)
+  updatePower(b, unit)
   for _, hook in ipairs(RF.updateHooks) do hook(b, unit) end
 end
 
@@ -104,32 +138,41 @@ end
 
 -- Building ---------------------------------------------------------------------------------
 
--- White name, light gray role and status.
-local function colorTexts(b)
-  T.Color(b.name, "text")
-  T.Color(b.role, "text2")
-  T.Color(b.status, "text2")
-end
-
--- Name centered, role top left, status along the bottom.
-local function addTexts(b)
-  b.name = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "cell")
-  b.name:SetPoint("LEFT", 4, 4)
-  b.name:SetPoint("RIGHT", -4, 4)
+-- Top row: the role letter, then the name, which stops short of the ready check
+-- (top right) and ends in "..." when it's too long. All outlined over the bar.
+local function addTopRow(b)
+  b.role = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "barName", "text2")
+  b.role:SetPoint("TOPLEFT", 4, -5)
+  b.name = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "barName")
+  b.name:SetPoint("TOPLEFT", b.role, "TOPRIGHT", 3, 0)
+  b.name:SetPoint("RIGHT", -18, 0)
+  b.name:SetJustifyH("LEFT")
   b.name:SetWordWrap(false)
-  b.role = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "tiny")
-  b.role:SetPoint("TOPLEFT", 2, -2)
-  b.status = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "small")
-  b.status:SetPoint("BOTTOM", 0, 3)
-  colorTexts(b)
 end
 
--- The health bar filling the button, with its texts.
+-- Second row, left: Dead / Offline or the missing health.
+local function addStatus(b)
+  b.status = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "barSmall", "text2")
+  b.status:SetPoint("TOPLEFT", 4, -19)
+  b.status:SetJustifyH("LEFT")
+end
+
+-- A 3 px power bar along the bottom edge.
+local function addPower(b)
+  b.power = T.StyleBar(CreateFrame("StatusBar", nil, b.health))
+  b.power:SetPoint("BOTTOMLEFT")
+  b.power:SetPoint("BOTTOMRIGHT")
+  b.power:SetHeight(3)
+end
+
+-- The health bar filling the button, with its texts and power bar.
 local function addParts(b)
   b.health = T.StyleBar(CreateFrame("StatusBar", nil, b))
   b.health:SetPoint("TOPLEFT", 1, -1)
   b.health:SetPoint("BOTTOMRIGHT", -1, 1)
-  addTexts(b)
+  addTopRow(b)
+  addStatus(b)
+  addPower(b)
 end
 
 -- A button's unit changed (roster change): refresh it.
@@ -191,6 +234,8 @@ local function createHeader(s)
 end
 
 local hiddenParent
+local UNIT_EVENTS = { "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_CONNECTION", "UNIT_NAME_UPDATE", "UNIT_FACTION",
+  "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER" }
 
 -- Hides a default raid/party frame by parenting it to a hidden frame.
 local function hideBlizzard(name)
@@ -212,10 +257,18 @@ local function build(s)
   end
 end
 
+-- Carries a dark style chosen before `look` existed over to `look`, then drops
+-- the old key (so this runs once per profile).
+local function migrateStyle(s)
+  if s.style == "dark" then s.look = "dark" end
+  s.style = nil
+end
+
 -- Module entry point (Core/Modules.lua): build out of combat, then listen.
 function RF.Enable(settings)
   RF.settings = settings
+  migrateStyle(settings)
   ns.OutOfCombat(function() build(settings) end)
-  for _, e in ipairs({ "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_CONNECTION", "UNIT_NAME_UPDATE", "UNIT_FACTION" }) do ns.On(e, onUnitEvent) end
+  for _, e in ipairs(UNIT_EVENTS) do ns.On(e, onUnitEvent) end
   for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "PLAYER_ENTERING_WORLD" }) do ns.On(e, RF.UpdateAll) end
 end
