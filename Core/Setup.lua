@@ -43,9 +43,18 @@ local function placeRaid(p)
   ns.Settings("positions").raid = { point = p[1], relPoint = p[2], x = p[3], y = p[4] }
 end
 
--- What each layout changes. Only Healing is specified so far; the other
--- two leave every setting as it is.
+-- Puts everything a preset moves (today only the raid frames) back at
+-- ForeverUI's defaults, so picking Damage and tanking undoes Healing.
+local function restoreDefaults()
+  ns.Settings("positions").raid = nil
+  ns.ResetMovers("raid")
+end
+
+-- What each layout changes. Close to Blizzard's is not specified yet and
+-- leaves every setting as it is.
 local APPLY = {
+  -- Damage and tanking: ForeverUI's defaults.
+  damage = restoreDefaults,
   -- Healing: raid frames centered under the player frame, click casting on.
   healing = function()
     placeRaid(S.HEALING_RAID)

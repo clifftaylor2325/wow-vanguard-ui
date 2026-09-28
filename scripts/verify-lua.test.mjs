@@ -1797,7 +1797,7 @@ it("/fui setup reopens setup; Back and the close button", () => {
 it("setup layouts: Healing puts the raid frames under the character and turns click casting on", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   const before = addon.eval("return ForeverUIDB.profiles.Default");
-  for (const layout of ["Close to Blizzard's", "Damage and tanking"]) {
+  for (const layout of ["Close to Blizzard's"]) {
     addon.slash("setup");
     addon.eval(`__click(${JSON.stringify(layout)})`);
     setupClick(addon, "next");
@@ -1820,6 +1820,21 @@ it("setup layouts: Healing puts the raid frames under the character and turns cl
   setupClick(off, "next");
   setupClick(off, "next");
   expect(off.eval("return ForeverUI_Confirm:IsShown() and ForeverUI_Confirm.title:GetText()"), "a module that was off offers a reload at the end").toMatch(/Setup turned on a module that was off/);
+});
+
+it("setup layouts: Damage and tanking restores ForeverUI's defaults, undoing Healing", () => {
+  const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
+  const home = addon.eval("return { ns.MoverPoint('raid') }");
+  addon.eval('__click("Healing")');
+  for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
+  expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing moved the raid frames").not.toEqual(home);
+  addon.slash("setup");
+  setupClick(addon, "next");
+  expect(addon.eval("return { ns.MoverPoint('raid') }"), "re-running setup with the default layout puts the raid frames back").toEqual(home);
+  expect(addon.eval("return ForeverUIDB.profiles.Default.positions.raid == nil"), "and forgets the saved spot").toBe(true);
+  const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: 'ForeverUIDB = { profiles = { Default = { modules = { RaidFrames = false }, positions = { raid = { point = "TOP", relPoint = "CENTER", x = 0, y = -200 } } } } }' });
+  setupClick(off, "next");
+  expect(off.eval("return ForeverUIDB.profiles.Default.positions.raid == nil"), "without raid frames built, the saved spot is cleared for next time").toBe(true);
 });
 
 it("setup look: accent swatches and the raid frame style apply at once", () => {
