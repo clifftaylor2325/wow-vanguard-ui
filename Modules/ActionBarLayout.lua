@@ -69,11 +69,13 @@ function AB.LayoutBar(n)
   sizeBar(bar, s.buttons, s.perRow, size)
 end
 
--- Lays bar n out again after a settings change (and re-points the key
--- bindings at the buttons it now shows): now, or when combat ends.
+-- Lays bar n out again after a settings change, re-stacks the bottom bars
+-- (bar 1 stays on top) and re-points the key bindings at the buttons it now
+-- shows: now, or when combat ends.
 function AB.Layout(n)
   ns.OutOfCombat(function()
     AB.LayoutBar(n)
+    AB.Restack()
     AB.ApplyBindings()
   end)
 end
