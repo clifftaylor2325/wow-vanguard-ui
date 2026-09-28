@@ -377,6 +377,53 @@ it("action bars", () => {
   expect(["bar1", "bar2", "bar3"].every((k) => movers.includes(k)), "every bar is movable").toBeTruthy();
 });
 
+// Each action bar's default y offset (bottom-center stack), bars 1-8; null when off or not stacked.
+const stackY = (addon) => addon.eval(`local out = {}
+  for n = 1, 8 do
+    local point, _, _, y = ns.MoverPoint("bar" .. n)
+    out[n] = point == "BOTTOM" and y or false
+  end
+  return out`);
+
+it("action bars stack with bar 1 on top", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  expect(JSON.stringify(stackY(addon)) === JSON.stringify([124, 82, 40, false, false, false, false, false]), `bar 3 at the bottom, bar 1 on top (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
+  const six = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [6] = { enabled = true } } } } } }" });
+  const y6 = stackY(six);
+  expect(y6[5] === 40 && y6[2] === 82 && y6[0] === 166, `turning on bar 6 puts it underneath; bar 1 stays on top (got ${JSON.stringify(y6)})`).toBeTruthy();
+});
+
+it("action bar stack follows button size and rows", () => {
+  const big = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { size = 44 } } } }" });
+  expect(JSON.stringify(stackY(big).slice(0, 3)) === JSON.stringify([140, 90, 40]), "bigger buttons stack without overlapping").toBeTruthy();
+  const two = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [3] = { perRow = 6 } } } } } }" });
+  expect(JSON.stringify(stackY(two).slice(0, 3)) === JSON.stringify([164, 122, 40]), "a two-row bar pushes the bars above it up by its height").toBeTruthy();
+});
+
+it("a moved action bar keeps its spot until reset", () => {
+  const moved = loggedIn(ACTIONS_ENV, { savedVariables: 'ForeverUIDB = { profiles = { Default = { positions = { bar1 = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 40 } } } } }' });
+  expect(stackY(moved)[0] === 40, "a position you saved wins").toBeTruthy();
+  moved.slash("reset all");
+  expect(stackY(moved)[0] === 124, "/fui reset all puts bar 1 back on top").toBeTruthy();
+});
+
+it("the bottom stack follows per-bar size and rows, live", () => {
+  const addon = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [2] = { size = 48 } } } } } }" });
+  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([136, 82, 40]), `a bar's own button size sets its row height (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
+  // Bar n's frame: its bottom offset on screen.
+  const frameY = (n) => addon.eval(`return ForeverUI_Bar${n}.__points.BOTTOM.y`);
+  addon.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 6 AB.SettingChanged(3, "perRow")');
+  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([176, 122, 40]) && frameY(1) === 176 && frameY(2) === 122, "changing a bar's buttons per row re-stacks at once: bar 1 stays on top, nothing overlaps").toBeTruthy();
+  setCombat(addon, true);
+  addon.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].size = 48 AB.SettingChanged(3, "size")');
+  expect(frameY(1) === 176, "in combat the stack waits (secure frames don't move)").toBeTruthy();
+  setCombat(addon, false);
+  expect(frameY(2) === 146 && frameY(1) === 200, "and re-stacks when combat ends").toBeTruthy();
+  addon.eval('ns.SetMoverPoint("bar1", "BOTTOM", "BOTTOM", 0, 300) ns.Unlock() local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 12 AB.SettingChanged(3, "perRow") ns.SetMoverDefault("TEST-ONLY missing", { "CENTER", "CENTER", 0, 0 })');
+  expect(frameY(1) === 300 && frameY(2) === 94, "a bar you dragged keeps its spot; the others re-stack (with unlock mode on)").toBeTruthy();
+  addon.eval("ns.Lock()");
+});
+
 it("action bar paging and events", () => {
   const addon = loggedIn(ACTIONS_ENV);
   // Run the secure page snippet the way the client would, with a minimal restricted env.
@@ -896,6 +943,14 @@ it("raid frames", () => {
   addon.eval("__units.raid1.hp = { __secret = true }");
   addon.fire("UNIT_HEALTH", "raid1");
   expect(raidButton(addon, 1).status === "", "no missing-health text when the client keeps health secret").toBeTruthy();
+  // In combat the client's shortened health text is a secret string, and comparing
+  // it errors. Raid frames must decide Dead/Offline without reading that text.
+  addon.eval(`__healthTextCalls = 0
+    local UF = ns.GetModule("UnitFrames") local text = UF.HealthText
+    UF.HealthText = function(...) __healthTextCalls = __healthTextCalls + 1 return text(...) end`);
+  addon.fire("UNIT_HEALTH", "raid1");
+  expect(addon.eval("return __healthTextCalls") === 0, "raid frames never compare the (possibly secret) health text").toBeTruthy();
+  expect(addon.eval("return ForeverUI_RaidUnitButton1.down") === false, "secret health is not Dead or Offline").toBeTruthy();
   addon.eval("__units.raid1.hp = 900; AbbreviateNumbers = nil");
   addon.fire("UNIT_HEALTH", "raid1");
   expect(raidButton(addon, 1).status === "-100", "plain numbers without the client's formatter").toBeTruthy();

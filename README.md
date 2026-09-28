@@ -12,6 +12,7 @@ Written from scratch. It contains no code, art or fonts from other UI addons.
   - Healing: click casting and hover keybindings, incoming heals and shields, aggro strip, missing-buff marker, dispellable-debuff border, your HoTs.
   - Status: range fade, raid target icons, ready check, resurrection marker, and leader and assistant marks.
 - **Action bars**: range and power tint, plus restyled pet, stance and extra action buttons and a vehicle exit button.
+  - The bottom bars stack with bar 1 on top; turning on another bottom bar adds it underneath. Each row takes its bar's real height, so a bar with bigger buttons or more rows pushes the ones above it up, right away when you change it. A position you've dragged is kept; `/fui reset all` puts the bars back in this order.
   - Empty slots stay hidden until you drag a spell or item, so a new character sees no empty squares.
   - Each bar has its own number of buttons, buttons per row, button size, and visibility: Always, On mouseover (seen only while the mouse is over it), In combat, or Hidden. While you drag a spell or item, On mouseover and In combat bars show too (In combat bars only when the drag starts out of combat).
   - Hidden bars keep their keys: the bar isn't drawn, but a bound key still casts, like a keybind-only bar.

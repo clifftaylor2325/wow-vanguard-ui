@@ -40,17 +40,21 @@ local AB = ns.Module("ActionBars", {
   },
 })
 
--- Per bar: first action slot (bar 1 is paged instead), key binding prefix, default point.
+-- Per bar: first action slot (bar 1 is paged instead), key binding prefix, and
+-- either a default point or `stack` (stacked at the bottom center; see StackPoint).
 local BARS = {
-  { slot = 1, bind = "ACTIONBUTTON", point = { "BOTTOM", "BOTTOM", 0, 40 } },
-  { slot = 61, bind = "MULTIACTIONBAR1BUTTON", point = { "BOTTOM", "BOTTOM", 0, 82 } },
-  { slot = 49, bind = "MULTIACTIONBAR2BUTTON", point = { "BOTTOM", "BOTTOM", 0, 124 } },
+  { slot = 1, bind = "ACTIONBUTTON", stack = true },
+  { slot = 61, bind = "MULTIACTIONBAR1BUTTON", stack = true },
+  { slot = 49, bind = "MULTIACTIONBAR2BUTTON", stack = true },
   { slot = 25, bind = "MULTIACTIONBAR3BUTTON", point = { "RIGHT", "RIGHT", -4, 0 } },
   { slot = 37, bind = "MULTIACTIONBAR4BUTTON", point = { "RIGHT", "RIGHT", -46, 0 } },
-  { slot = 145, bind = "MULTIACTIONBAR5BUTTON", point = { "BOTTOM", "BOTTOM", 0, 166 } },
-  { slot = 157, bind = "MULTIACTIONBAR6BUTTON", point = { "BOTTOM", "BOTTOM", 0, 208 } },
-  { slot = 169, bind = "MULTIACTIONBAR7BUTTON", point = { "BOTTOM", "BOTTOM", 0, 250 } },
+  { slot = 145, bind = "MULTIACTIONBAR5BUTTON", stack = true },
+  { slot = 157, bind = "MULTIACTIONBAR6BUTTON", stack = true },
+  { slot = 169, bind = "MULTIACTIONBAR7BUTTON", stack = true },
 }
+
+-- The bottom stack starts this far up, with this gap between bars.
+local STACK_BASE, STACK_GAP = 40, 6
 
 -- Bar 1's page for each state: vehicle/possess, override, shapeshift,
 -- dragonriding, class bonus bars (stances, stealth, forms), then Shift+number pages.
@@ -85,9 +89,11 @@ local KEY_SHORT = {
 AB.buttons = {}
 AB.bars = {}
 
--- Whether bar n sits on the right edge of the screen (bars 4 and 5).
+-- Whether bar n sits on the right edge of the screen (bars 4 and 5; the
+-- stacked bottom bars have no fixed point).
 function AB.RightEdge(n)
-  return BARS[n] ~= nil and BARS[n].point[1] == "RIGHT"
+  local def = BARS[n]
+  return def ~= nil and def.point ~= nil and def.point[1] == "RIGHT"
 end
 
 -- Profiles saved before bars had a visibility setting: a right-edge bar that
@@ -342,6 +348,33 @@ local function createButton(bar, n, index, def)
   return b
 end
 
+-- Height of a bar's button grid: its rows of its own button size (else the
+-- shared size), as AB.ButtonSize and AB.LayoutBar lay it out.
+local function barHeight(settings, bar)
+  local step = (bar.size or settings.size) + settings.spacing
+  return math.ceil(bar.buttons / bar.perRow) * step - settings.spacing
+end
+
+-- Default point for stacked bar n: every enabled stacked bar with a higher
+-- number sits below it, so bar 1 is always the top row.
+function AB.StackPoint(n, settings)
+  local y = STACK_BASE
+  for k = #BARS, n + 1, -1 do
+    local bar = settings.bars[k]
+    if BARS[k].stack and bar and bar.enabled then y = y + barHeight(settings, bar) + STACK_GAP end
+  end
+  return { "BOTTOM", "BOTTOM", 0, y }
+end
+
+-- Re-stacks the bottom bars after a bar's buttons, rows or size changed:
+-- each stacked bar gets its new default point, and moves there unless you
+-- dragged it somewhere (a saved position wins). Only call out of combat.
+function AB.Restack()
+  for n in pairs(AB.bars) do
+    if BARS[n].stack then ns.SetMoverDefault("bar" .. n, AB.StackPoint(n, AB.settings)) end
+  end
+end
+
 -- Bar 1 pages through a secure state driver.
 local function addPaging(bar)
   bar:SetAttribute("_onstate-page", AB.ON_PAGE)
@@ -349,8 +382,9 @@ local function addPaging(bar)
 end
 
 -- One bar: a secure header holding all twelve buttons (the layout shows as
--- many as the bar's settings ask for), movable in unlock mode.
-local function createBar(n, def)
+-- many as the bar's settings ask for), movable in unlock mode, starting at
+-- `point` (its place in the bottom stack, or its fixed default).
+local function createBar(n, def, point)
   local bar = CreateFrame("Frame", "ForeverUI_Bar" .. n, UIParent, "SecureHandlerStateTemplate")
   bar.fuiIndex, bar.fuiButtons = n, {}
   for i = 1, AB.MAX_BUTTONS do bar.fuiButtons[i] = createButton(bar, n, i, def) end
@@ -359,7 +393,7 @@ local function createBar(n, def)
   if n == 1 then addPaging(bar) end
   AB.WatchHover(bar)
   AB.ApplyVisibility(n)
-  ns.Mover(bar, "bar" .. n, "Action bar " .. n, def.point)
+  ns.Mover(bar, "bar" .. n, "Action bar " .. n, point)
   return bar
 end
 
@@ -472,7 +506,7 @@ local EVENTS = {
 local function build(settings)
   for n, def in ipairs(BARS) do
     local bar = settings.bars[n]
-    if bar and bar.enabled then createBar(n, def) end
+    if bar and bar.enabled then createBar(n, def, def.stack and AB.StackPoint(n, settings) or def.point) end
   end
   if settings.hideBlizzard then
     for _, name in ipairs(BLIZZARD_BARS) do hideBlizzard(name) end
