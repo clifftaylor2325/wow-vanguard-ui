@@ -9,6 +9,10 @@ local L = {}
 ns.Layout = L
 
 L.SNAP_DISTANCE = 8
+-- The gap between frames laid out next to each other by default: between
+-- the stacked bottom action bars, and above the player cast bar for the
+-- Healing layout (Core/Setup.lua).
+L.GAP = 6
 
 -- Rounds to the nearest whole pixel.
 local function round(v)
