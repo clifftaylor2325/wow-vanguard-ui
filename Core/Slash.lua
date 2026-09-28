@@ -7,6 +7,7 @@ local chat = ns.Chat
 
 local HELP = {
   "A from-scratch UI suite. /fui opens the options window; /fui <command>:",
+  "setup                first-run setup again: layout, look, then move things",
   "unlock | lock        drag handles on every ForeverUI frame; click one, then arrow keys nudge (Shift: 10 px)",
   "reset <frame|all>    put a frame (or every frame) back at its default spot",
   "frames               list the movable frames",
@@ -261,6 +262,8 @@ local COMMANDS = {
   -- /fui options (also /fui with nothing after it)
   options = function() ns.Options.Toggle() end,
   config = function() ns.Options.Toggle() end,
+  -- /fui setup: the first-run wizard again (after combat, if in it)
+  setup = function() ns.Setup.Open() end,
   unlock = unlockCommand,
   move = unlockCommand,
   lock = lockCommand,
