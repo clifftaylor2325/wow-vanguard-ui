@@ -377,6 +377,36 @@ it("action bars", () => {
   expect(["bar1", "bar2", "bar3", "bar4", "bar5"].every((k) => movers.includes(k)), "every bar is movable").toBeTruthy();
 });
 
+// Each action bar's default y offset (bottom-center stack), bars 1-8; null when off or not stacked.
+const stackY = (addon) => addon.eval(`local out = {}
+  for n = 1, 8 do
+    local point, _, _, y = ns.MoverPoint("bar" .. n)
+    out[n] = point == "BOTTOM" and y or false
+  end
+  return out`);
+
+it("action bars stack with bar 1 on top", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  expect(JSON.stringify(stackY(addon)) === JSON.stringify([124, 82, 40, false, false, false, false, false]), `bar 3 at the bottom, bar 1 on top (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
+  const six = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [6] = { enabled = true } } } } } }" });
+  const y6 = stackY(six);
+  expect(y6[5] === 40 && y6[2] === 82 && y6[0] === 166, `turning on bar 6 puts it underneath; bar 1 stays on top (got ${JSON.stringify(y6)})`).toBeTruthy();
+});
+
+it("action bar stack follows button size and rows", () => {
+  const big = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { size = 44 } } } }" });
+  expect(JSON.stringify(stackY(big).slice(0, 3)) === JSON.stringify([140, 90, 40]), "bigger buttons stack without overlapping").toBeTruthy();
+  const two = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [3] = { perRow = 6 } } } } } }" });
+  expect(JSON.stringify(stackY(two).slice(0, 3)) === JSON.stringify([164, 122, 40]), "a two-row bar pushes the bars above it up by its height").toBeTruthy();
+});
+
+it("a moved action bar keeps its spot until reset", () => {
+  const moved = loggedIn(ACTIONS_ENV, { savedVariables: 'ForeverUIDB = { profiles = { Default = { positions = { bar1 = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 40 } } } } }' });
+  expect(stackY(moved)[0] === 40, "a position you saved wins").toBeTruthy();
+  moved.slash("reset all");
+  expect(stackY(moved)[0] === 124, "/fui reset all puts bar 1 back on top").toBeTruthy();
+});
+
 it("action bar paging and events", () => {
   const addon = loggedIn(ACTIONS_ENV);
   // Run the secure page snippet the way the client would, with a minimal restricted env.
