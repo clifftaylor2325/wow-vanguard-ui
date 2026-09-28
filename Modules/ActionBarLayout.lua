@@ -2,6 +2,9 @@
 -- number of buttons, wraps them into rows, sizes them, and is seen always,
 -- on mouseover, only in combat, or never. Empty slots stay invisible unless
 -- you are dragging a spell or item, so a new character sees no empty squares.
+-- While you drag, On mouseover bars are revealed and In combat bars are shown
+-- (the latter only when the drag starts out of combat), so every bar you can
+-- drop onto is visible. A Hidden bar is not drawn but its keys still cast.
 --
 -- Secure frames: showing, hiding, sizing and placing bars and buttons happen
 -- out of combat only (ns.OutOfCombat), and visibility is a secure state
@@ -14,7 +17,10 @@ local ADDON, ns = ...
 local AB = ns.GetModule("ActionBars")
 
 AB.MAX_BUTTONS = 12
+-- True while you drag a spell or item (ACTIONBAR_SHOWGRID until HIDEGRID).
 AB.grid = false
+-- True while In combat bars are shown for a drag that started out of combat.
+AB.dragShown = false
 
 -- Visibility setting -> the bar's secure state driver. A mouseover bar is
 -- always shown and fades with alpha instead (see AB.UpdateAlpha).
@@ -80,23 +86,37 @@ function AB.Visibility(n)
   return AB.VISIBILITY[v] and v or "always"
 end
 
--- Alpha 0 for a mouseover bar the mouse isn't over, else 1. Alpha only, so
--- it is safe in combat.
+-- Alpha 0 for a mouseover bar the mouse isn't over (unless you are dragging
+-- a spell or item), else 1. Alpha only, so it is safe in combat.
 function AB.UpdateAlpha(n)
   local bar = AB.bars[n]
   if not bar then return end
-  local faded = AB.Visibility(n) == "mouseover" and not bar.fuiHover
+  local faded = AB.Visibility(n) == "mouseover" and not bar.fuiHover and not AB.grid
   bar:SetAlpha(faded and 0 or 1)
+end
+
+-- Bar n's state driver: its visibility's, or "show" for an In combat bar
+-- while a drag that started out of combat is under way.
+function AB.Driver(n)
+  local mode = AB.Visibility(n)
+  if mode == "combat" and AB.dragShown then return "show" end
+  return AB.VISIBILITY[mode]
 end
 
 -- Registers bar n's secure visibility driver and mouse watching right now.
 local function visibilityNow(n)
   local bar = AB.bars[n]
   if not bar then return end
-  local mode = AB.Visibility(n)
-  RegisterStateDriver(bar, "visibility", AB.VISIBILITY[mode])
-  bar:EnableMouse(mode == "mouseover")
+  RegisterStateDriver(bar, "visibility", AB.Driver(n))
+  bar:EnableMouse(AB.Visibility(n) == "mouseover")
   AB.UpdateAlpha(n)
+end
+
+-- Re-registers every In combat bar's driver right now (out of combat only).
+local function combatBarsNow()
+  for n in pairs(AB.bars) do
+    if AB.Visibility(n) == "combat" then visibilityNow(n) end
+  end
 end
 
 -- Applies bar n's visibility setting: now, or when combat ends.
@@ -139,13 +159,41 @@ function AB.UpdateEmpty(b)
   b:SetAlpha((b.hasAction or AB.grid) and 1 or 0)
 end
 
+-- A drag started: out of combat, In combat bars show (through the
+-- out-of-combat path). A drag that starts in combat leaves secure
+-- visibility alone.
+local function showCombatBars()
+  if ns.InCombat() then return end
+  AB.dragShown = true
+  ns.OutOfCombat(combatBarsNow)
+end
+
+-- The drag ended: In combat bars shown for it get their own driver back
+-- (after combat if it started meanwhile). Otherwise nothing secure changes.
+local function restoreCombatBars()
+  if not AB.dragShown then return end
+  AB.dragShown = false
+  ns.OutOfCombat(combatBarsNow)
+end
+
+-- Re-reads whether the mouse is over each bar and repaints its alpha, so a
+-- mouseover bar revealed for a drag stays shown only if the mouse is on it.
+local function refreshBarAlpha()
+  for n, bar in pairs(AB.bars) do
+    bar.fuiHover = bar:IsMouseOver() == true
+    AB.UpdateAlpha(n)
+  end
+end
+
 -- ACTIONBAR_SHOWGRID (on) and ACTIONBAR_HIDEGRID (off): shows or hides the
--- empty slots on every button.
+-- empty slots and reveals or restores the mouseover and In combat bars.
 function AB.SetGrid(on)
   AB.grid = on
   for _, b in ipairs(AB.buttons) do
     AB.UpdateEmpty(b)
   end
+  refreshBarAlpha()
+  if on then showCombatBars() else restoreCombatBars() end
 end
 
 -- Settings changes --------------------------------------------------------------------

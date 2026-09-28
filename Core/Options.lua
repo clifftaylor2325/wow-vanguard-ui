@@ -190,7 +190,9 @@ local function actionBarRows()
   }
 end
 
--- When a bar is seen. "On mouseover" shows it only while the mouse is over it.
+-- When a bar is seen. "On mouseover" shows it only while the mouse is over it;
+-- On mouseover and In combat bars also show while you drag a spell or item.
+-- "Hidden" doesn't draw the bar, but its keys still cast (a keybind-only bar).
 local BAR_VISIBILITY = { { "always", "Always" }, { "mouseover", "On mouseover" }, { "combat", "In combat" }, { "hidden", "Hidden" } }
 -- Buttons on a bar, and per row: 1 to 12.
 local BAR_BUTTONS = { min = 1, max = 12, step = 1 }
@@ -209,6 +211,7 @@ local function oneBarRows(n)
     { "header", barTitle(n) },
     check("Show bar " .. n, barSetting(n)),
     { "cycle", "Visibility", BAR_VISIBILITY, barOption(n, "visibility") },
+    { "text", "Hidden bars keep their keys: a bound key still casts." },
     { "slider", "Buttons", BAR_BUTTONS, barOption(n, "buttons") },
     { "slider", "Buttons per row", BAR_BUTTONS, barOption(n, "perRow") },
     { "slider", "Button size", BAR_SIZES, barSizeOption(n) },
