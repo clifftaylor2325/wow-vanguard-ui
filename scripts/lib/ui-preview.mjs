@@ -29,7 +29,7 @@ for i, w in ipairs(__wfgStub.frames) do
     backdrop = w.__backdrop and true or false, backdropColor = w.__backdropColor,
     borderColor = w.__borderColor, texture = w.__texture, color = w.__color,
     vertexColor = w.__vertexColor, alpha = w.__alpha, rotation = w.__rotation, texCoord = w.__texCoord,
-    strata = w.__strata, scrollChild = ref(w.__scrollChild),
+    strata = w.__strata, scrollChild = ref(w.__scrollChild), clips = w.__clips,
     fontSize = w.__font and w.__font[2], fontPath = w.__font and w.__font[1], value = w.__value, min = w.__min, max = w.__max,
     barColor = w.__barColor, barTexture = w.__barTexture and w.__barTexture.__texture, messages = w.__messages, checked = w.__checked,
     checkedTexture = w.__parent ~= nil and w.__parent.__checkedTexture == w or nil,

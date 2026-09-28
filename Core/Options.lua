@@ -25,9 +25,9 @@ local function setting(module, key, reload)
     function(v) moduleSettings(module)[key] = v; if reload then O.NeedReload() end end
 end
 
--- get/set for the raid frame style, repainting the raid frames at once.
-local function raidStyle()
-  local get, set = setting("RaidFrames", "style")
+-- get/set for a raid frame setting that repaints the raid frames at once (look, power bar).
+local function raidSetting(key)
+  local get, set = setting("RaidFrames", key)
   return get, function(v)
     set(v)
     local RF = ns.GetModule("RaidFrames")
@@ -257,7 +257,7 @@ local function raidRows()
     check("Include yourself", setting("RaidFrames", "showPlayer", true)),
     check("Sort by role (tanks, healers, damage)", setting("RaidFrames", "sortByRole", true)),
     check("Hide the default raid frames", setting("RaidFrames", "hideBlizzard", true)),
-    { "cycle", "Style", { { "class", "Class colors" }, { "dark", "Dark" } }, raidStyle() },
+    { "cycle", "Style", { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }, raidSetting("look") },
     { "cycle", "Width", { { 72, "72" }, { 90, "90" }, { 110, "110" } }, setting("RaidFrames", "width", true) },
     { "cycle", "Height", { { 32, "32" }, { 40, "40" }, { 48, "48" } }, setting("RaidFrames", "height", true) },
   }
@@ -266,6 +266,7 @@ end
 -- Raid frames plus their indicators.
 local function raidPageRows()
   return append(raidRows(), {
+    check("Power bar", raidSetting("showPower")),
     check("Highlight debuffs you can dispel", setting("RaidAuras", "dispel")),
     check("Show your HoTs", setting("RaidAuras", "hots")),
     check("Fade players out of range", setting("RaidStatus", "rangeFade")),

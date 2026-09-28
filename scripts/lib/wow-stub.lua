@@ -238,6 +238,7 @@ function methods:SetParent(parent) self.__parent = parent end
 -- Strata and scroll child.
 function methods:SetFrameStrata(s) self.__strata = s end
 function methods:SetScrollChild(child) self.__scrollChild = child end
+function methods:SetClipsChildren(on) self.__clips = on == true end
 
 -- A rough rendered height: 14 px per wrapped line at ~6 px per character.
 local function estimatedHeight(text, width)

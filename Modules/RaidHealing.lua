@@ -131,7 +131,7 @@ end
 local function addBuffMarker(b)
   b.missing = b.health:CreateTexture(nil, "OVERLAY")
   b.missing:SetSize(12, 12)
-  b.missing:SetPoint("TOPRIGHT", -2, -5)
+  b.missing:SetPoint("RIGHT", -2, 0)
   b.missing:SetTexCoord(0.08, 0.92, 0.08, 0.92)
   b.missing:Hide()
 end
@@ -175,8 +175,7 @@ end
 
 -- The missing-buff marker (not on the dead or offline).
 local function updateBuff(b, unit)
-  local status = b.status:GetText()
-  local missing = RH.settings.buffWatch and status == "" and RH.MissingBuff(unit)
+  local missing = RH.settings.buffWatch and not b.down and RH.MissingBuff(unit)
   b.missing:SetShown(missing ~= nil and missing ~= false)
   if missing and C_Spell and type(C_Spell.GetSpellTexture) == "function" then b.missing:SetTexture(C_Spell.GetSpellTexture(missing)) end
 end
