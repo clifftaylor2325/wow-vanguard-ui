@@ -280,6 +280,7 @@ const SCENES = [
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)
     GameTooltip.unit = "target" __tipHooks.GameTooltip_SetDefaultAnchor(GameTooltip, UIParent) GameTooltip:Show() __tipPost(GameTooltip)` },
   { name: "foreverui-options", caption: "Options window: General (/fui)", lua: 'ns.Options.Show("general")' },
+  { name: "foreverui-bars-drag", caption: "Action bars while you drag a spell or item: the empty slots show so there is somewhere to drop it; otherwise they stay hidden (TEST-ONLY icons)", lua: '__wfgStub.fire("ACTIONBAR_SHOWGRID")' },
   { name: "foreverui-options-bars", caption: "Options window: Action bars", lua: 'ns.Options.Show("actionbars")' },
   { name: "foreverui-healing", caption: "Options window: Healing", lua: 'ns.Options.Show("healing")' },
   { name: "foreverui-clickcast", caption: "Options window: Click casting (TEST-ONLY bindings)", lua: `

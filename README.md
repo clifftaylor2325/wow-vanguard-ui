@@ -12,6 +12,9 @@ Written from scratch. It contains no code, art or fonts from other UI addons.
   - Healing: click casting and hover keybindings, incoming heals and shields, aggro strip, missing-buff marker, dispellable-debuff border, your HoTs.
   - Status: range fade, raid target icons, ready check, resurrection marker, and leader and assistant marks.
 - **Action bars**: range and power tint, plus restyled pet, stance and extra action buttons and a vehicle exit button.
+  - Empty slots stay hidden until you drag a spell or item, so a new character sees no empty squares.
+  - Each bar has its own number of buttons, buttons per row, button size, and visibility: Always, On mouseover (seen only while the mouse is over it), In combat, or Hidden.
+  - The right-edge bars (4 and 5) start off; turned on, they show on mouseover.
 - **Nameplates**: class/reaction/threat colors, your debuffs, casts, raid icon, target border.
 - **Everything else**: XP and reputation bars, square minimap, chat skin, combined bag, and themed tooltips with class colors and a Target line.
 - **Options**: `/fui` or the addons button. Turn any module off under Modules to keep the default one.
