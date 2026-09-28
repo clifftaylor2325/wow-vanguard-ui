@@ -1796,14 +1796,8 @@ it("/fui setup reopens setup; Back and the close button", () => {
 
 it("setup layouts: Healing puts the raid frames under the character and turns click casting on", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
-  const before = addon.eval("return ForeverUIDB.profiles.Default");
-  for (const layout of ["Close to Blizzard's"]) {
-    addon.slash("setup");
-    addon.eval(`__click(${JSON.stringify(layout)})`);
-    setupClick(addon, "next");
-    expect(addon.eval("return ForeverUIDB.profiles.Default"), `${layout} changes no setting yet`).toEqual(before);
-  }
-  addon.slash("setup");
+  const layouts = addon.eval("local out = {} for i, b in ipairs(ForeverUI_Setup.pages[1].choices) do out[i] = b.text:GetText() end return out");
+  expect(layouts, "there are two layouts, Damage and tanking first").toEqual(["Damage and tanking", "Healing"]);
   expect(addon.eval('return __click("Healing")') && addon.eval("return ForeverUI_Setup.pages[1].hint:GetText()"), "picking Healing shows what it does").toMatch(/click casting on/);
   expect(borderOf(addon, "ForeverUI_Setup.pages[1].choices[2]"), "the chosen layout is outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
   setupClick(addon, "next");
