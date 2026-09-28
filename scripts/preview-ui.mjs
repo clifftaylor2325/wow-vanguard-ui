@@ -175,6 +175,9 @@ const GROUP = `
       b:SetPoint("TOPLEFT", ForeverUI_Raid, "TOPLEFT", col * (s.width + s.spacing), -row * (s.height + s.spacing))
       b:SetAttribute("unit", unit)
     end
+    -- The client's group header sizes itself to its buttons, so a header anchored by its bottom grows upward.
+    local cols, rows = math.ceil(#units / 5), math.min(#units, 5)
+    ForeverUI_Raid:SetSize(cols * (s.width + s.spacing) - s.spacing, rows * (s.height + s.spacing) - s.spacing)
   end
 `;
 
@@ -276,6 +279,7 @@ const SCENES = [
   { name: "foreverui-raid", caption: "Raid frames, 20 players: heals, shields, aggro, missing buffs, dispel borders, HoTs, raid icons, ready check, leader, range fade (TEST-ONLY raid)", lua: RAID },
   { name: "foreverui-raid-secret", caption: "Raid frames in instanced combat: health is secret, so bars still draw but missing-health text hides; first-run setup open on top (TEST-ONLY raid)", lua: SECRET + RAID + "ns.Setup.Open()" },
   { name: "foreverui-setup", caption: "First-run setup, step 2 of 3: accent and raid frame style (/fui setup)", lua: "ns.Setup.Open() ns.Setup.Next()" },
+  { name: "foreverui-setup-healing", caption: "The Healing layout: party on the raid frames, centered just above the cast bar (TEST-ONLY party)", lua: '__group({ "player", "party1", "party2" }) ns.Setup.ApplyLayout("healing")' },
   { name: "foreverui-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a friendly player (TEST-ONLY units)", lua: PLATES },
   { name: "foreverui-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)
