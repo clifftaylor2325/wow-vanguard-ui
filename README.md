@@ -15,7 +15,7 @@ Written from scratch. It contains no code, art or fonts from other UI addons.
 - **Nameplates**: class/reaction/threat colors, your debuffs, casts, raid icon, target border.
 - **Everything else**: XP and reputation bars, square minimap, chat skin, combined bag, and themed tooltips with class colors and a Target line.
 - **Options**: `/fui` or the addons button. Turn any module off under Modules to keep the default one.
-- **First-run setup**: the first time you log in on an account, a three-step wizard asks for a layout (Damage and tanking, or Healing), an accent and raid frame style, then unlocks your frames so you can move them. With the defaults it takes three clicks: Next, Next, Done. It waits until you're out of combat, and `/fui setup` opens it again. Damage and tanking is ForeverUI's defaults (picking it puts back anything Healing moved); Healing puts the raid frames under your character and turns click casting on.
+- **First-run setup**: the first time you log in on an account, a three-step wizard asks for a layout (Damage and tanking, or Healing), an accent and raid frame style, then unlocks your frames so you can move them. With the defaults it takes three clicks: Next, Next, Done. It waits until you're out of combat. Done, the close button and Escape all end it, and it doesn't come back on its own; `/fui setup` reopens it. Damage and tanking is ForeverUI's defaults (picking it puts back anything Healing moved); Healing puts the raid frames under your character and turns click casting on.
 
 Every client call is checked before use, and values the Midnight client hides
 from addons go to the bars unread. None of this has been checked in game yet:
