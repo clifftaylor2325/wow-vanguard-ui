@@ -41,6 +41,25 @@ local function barSetting(n)
     function(v) moduleSettings("ActionBars").bars[n].enabled = v; O.NeedReload() end
 end
 
+-- Tells the action bars that bar n's `key` changed, if they are running.
+local function barChanged(n, key)
+  local AB = ns.GetModule("ActionBars")
+  if AB and AB.enabled then AB.SettingChanged(n, key) end
+end
+
+-- get/set for one of action bar n's settings (button count, per row,
+-- visibility); applies at once, or when combat ends.
+local function barOption(n, key)
+  return function() return moduleSettings("ActionBars").bars[n][key] end,
+    function(v) moduleSettings("ActionBars").bars[n][key] = v; barChanged(n, key) end
+end
+
+-- get/set for action bar n's button size (the shared size until the bar has its own).
+local function barSizeOption(n)
+  local _, set = barOption(n, "size")
+  return function() local s = moduleSettings("ActionBars") return s.bars[n].size or s.size end, set
+end
+
 -- get/set for an unlock-mode option (grid, snap), applied at once.
 local function moverOption(key)
   return function() return ns.MoverOptions()[key] end, function(v) ns.MoverOptions()[key] = v end
@@ -134,6 +153,8 @@ local function unitFrameRows()
     { "header", "Unit frames" },
     check("Replace the default unit frames", setting("UnitFrames", "hideBlizzard", true)),
     check("Show health numbers", setting("UnitFrames", "healthText", true)),
+    { "cycle", "Health as", { { "value", "Value (42.8K)" }, { "percent", "Percent (84%)" } }, setting("UnitFrames", "healthFormat") },
+    check("Show levels (reload)", setting("UnitFrames", "showLevel", true)),
   }
 end
 
@@ -145,19 +166,9 @@ local function castRows()
     check("Target cast bar", setting("CastBars", "target", true)),
     check("Focus cast bar", setting("CastBars", "focus", true)),
     { "header", "Target and focus auras" },
-    check("Only your debuffs", setting("FrameAuras", "onlyMine")),
+    check("Only your debuffs (reload)", setting("FrameAuras", "onlyMine", true)),
+    check("Timer numbers on the icons (reload)", setting("FrameAuras", "timers", true)),
   }
-end
-
--- Action bars: which bars, locking, range tint, button size.
-local function actionBarRows()
-  local rows = { { "header", "Action bars" } }
-  for n = 1, 8 do rows[#rows + 1] = check("Bar " .. n, barSetting(n)) end
-  rows[#rows + 1] = check("Lock buttons (Shift-drag to move actions)", setting("ActionBars", "lockButtons"))
-  rows[#rows + 1] = check("Red when out of range", setting("ActionBars", "rangeTint"))
-  rows[#rows + 1] = check("Hide the default bars", setting("ActionBars", "hideBlizzard", true))
-  rows[#rows + 1] = { "cycle", "Button size", { { 32, "32" }, { 36, "36" }, { 40, "40" }, { 44, "44" } }, setting("ActionBars", "size", true) }
-  return rows
 end
 
 -- get/set for restyling all three of the client's special bars at once (applies on reload).
@@ -169,12 +180,52 @@ local function skinSpecial()
   end
 end
 
--- Action bars plus the client's special buttons and the vehicle exit.
-local function actionBarPageRows()
-  return append(actionBarRows(), {
+-- Action bars, shared: locking, range tint, the default bars, the client's special buttons.
+local function actionBarRows()
+  return {
+    { "header", "Action bars" },
+    check("Lock buttons (Shift-drag to move actions)", setting("ActionBars", "lockButtons")),
+    check("Red when out of range", setting("ActionBars", "rangeTint")),
+    check("Hide the default bars", setting("ActionBars", "hideBlizzard", true)),
     check("Restyle the pet, stance and extra action buttons (reload)", skinSpecial()),
     check("Vehicle exit button (reload)", setting("SpecialBars", "vehicleExit", true)),
-  })
+    { "text", "Empty slots stay hidden until you drag a spell or item onto the bars." },
+  }
+end
+
+-- When a bar is seen. "On mouseover" shows it only while the mouse is over it;
+-- On mouseover and In combat bars also show while you drag a spell or item.
+-- "Hidden" doesn't draw the bar, but its keys still cast (a keybind-only bar).
+local BAR_VISIBILITY = { { "always", "Always" }, { "mouseover", "On mouseover" }, { "combat", "In combat" }, { "hidden", "Hidden" } }
+-- Buttons on a bar, and per row: 1 to 12.
+local BAR_BUTTONS = { min = 1, max = 12, step = 1 }
+-- Button size: 24 to 48 px in steps of 2.
+local BAR_SIZES = { min = 24, max = 48, step = 2, format = function(v) return string.format("%d px", v) end }
+
+-- Bar n's card title ("Bar 4, right edge" for the bars on the right edge).
+local function barTitle(n)
+  local AB = ns.GetModule("ActionBars")
+  return (AB and AB.RightEdge(n)) and ("Bar " .. n .. ", right edge") or ("Bar " .. n)
+end
+
+-- One action bar's card: on/off, visibility, button count, per row and size.
+local function oneBarRows(n)
+  return {
+    { "header", barTitle(n) },
+    check("Show bar " .. n, barSetting(n)),
+    { "cycle", "Visibility", BAR_VISIBILITY, barOption(n, "visibility") },
+    { "text", "Hidden bars keep their keys: a bound key still casts." },
+    { "slider", "Buttons", BAR_BUTTONS, barOption(n, "buttons") },
+    { "slider", "Buttons per row", BAR_BUTTONS, barOption(n, "perRow") },
+    { "slider", "Button size", BAR_SIZES, barSizeOption(n) },
+  }
+end
+
+-- The action bar page: the shared card, then one card per bar.
+local function actionBarPageRows()
+  local rows = actionBarRows()
+  for n = 1, 8 do append(rows, oneBarRows(n)) end
+  return rows
 end
 
 -- XP and reputation bars, minimap, chat and bags.
@@ -231,8 +282,9 @@ local function currentProfileRows()
   }
 end
 
--- Profiles, part two: the spec profile.
+-- Profiles, part two: the spec profile (nothing on a client with no specializations).
 local function specRows()
+  if not ns.HasSpecs() then return {} end
   return {
     { "header", "Specialization" },
     { "text", specText },
@@ -258,17 +310,24 @@ local function raidRows()
     check("Sort by role (tanks, healers, damage)", setting("RaidFrames", "sortByRole", true)),
     check("Hide the default raid frames", setting("RaidFrames", "hideBlizzard", true)),
     { "cycle", "Style", { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }, raidSetting("look") },
-    { "cycle", "Width", { { 72, "72" }, { 90, "90" }, { 110, "110" } }, setting("RaidFrames", "width", true) },
-    { "cycle", "Height", { { 32, "32" }, { 40, "40" }, { 48, "48" } }, setting("RaidFrames", "height", true) },
+    { "cycle", "Width", { { 72, "72" }, { 90, "90" }, { 100, "100" }, { 120, "120" } }, setting("RaidFrames", "width", true) },
+    { "cycle", "Height", { { 36, "36" }, { 40, "40" }, { 48, "48" }, { 56, "56" } }, setting("RaidFrames", "height", true) },
+  }
+end
+
+-- The raid frames' auras: debuffs, the dispel highlight and your HoTs (after a reload).
+local function raidAuraRows()
+  return {
+    check("Highlight debuffs you can dispel (reload)", setting("RaidAuras", "dispel", true)),
+    { "cycle", "Debuff icons (reload)", { { 0, "none" }, { 2, "2" }, { 3, "3" } }, setting("RaidAuras", "debuffs", true) },
+    check("Show your HoTs (reload)", setting("RaidAuras", "hots", true)),
   }
 end
 
 -- Raid frames plus their indicators.
 local function raidPageRows()
-  return append(raidRows(), {
+  return append(append(raidRows(), raidAuraRows()), {
     check("Power bar", raidSetting("showPower")),
-    check("Highlight debuffs you can dispel", setting("RaidAuras", "dispel")),
-    check("Show your HoTs", setting("RaidAuras", "hots")),
     check("Fade players out of range", setting("RaidStatus", "rangeFade")),
     check("Raid target icons", setting("RaidStatus", "raidIcons")),
     check("Ready check answers", setting("RaidStatus", "readyCheck")),

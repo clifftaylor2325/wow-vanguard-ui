@@ -1,24 +1,36 @@
 # ForeverUI
 
-A from-scratch UI suite for WoW Forever (Midnight-era client, Interface 12xxxx).
+A from-scratch UI suite for WoW Forever (the 12.1 engine with vanilla content; the TOC declares Interface 16001 for Forever and 120007).
 Written from scratch. It contains no code, art or fonts from other UI addons.
 
 ## What's in it
 
-- **Look and layout**: the Slate & Brass theme: slate panels with soft shadows, a brass accent (or arcane, fel, void, ember), bundled Fira Sans Condensed, pixel-perfect borders, smooth bars, quiet fades and interface sounds (Reduce motion and Interface sounds switches turn them off). Every frame can be moved in unlock mode (`/fui unlock`), with a grid, snapping and arrow-key nudging; right-click a frame's handle to set its anchor and exact offsets. Profiles can be exported and imported, and can switch with your spec.
-- **Unit frames**: player, target, target of target, focus and party frames. Cast bars for you, your target and your focus. Buff and debuff rows on target and focus.
+- **Look and layout**: the Slate & Brass theme: slate panels with soft shadows, a brass accent (or arcane, fel, void, ember), bundled Fira Sans Condensed, pixel-perfect borders, smooth bars, quiet fades and interface sounds (Reduce motion and Interface sounds switches turn them off). Every frame can be moved in unlock mode (`/fui unlock`), with a grid, snapping and arrow-key nudging; right-click a frame's handle to set its anchor and exact offsets. Profiles can be exported and imported, and can switch with your spec (on clients that have specializations).
+- **Unit frames**: player, target, target of target, focus and party frames. On WoW Forever they show levels (colored by difficulty) and health as a percent, and a diamond marks elite, rare and boss targets. Combo points for rogues and druids above the player frame.
+  - Target and focus auras: debuffs under the frame (a crowd-control slot, then yours soonest-first, then others' dimmed if you turn "Only your debuffs" off), the target's buffs above it, each row wrapping at the frame's width. Timer numbers are off by default (the dark sweep shows time left) and can be turned on.
+  - Cast bars for you, your target and your focus, with a spark, the seconds left, your latency at the end of your own cast, and a gray edge on a cast you can't interrupt.
 - **Raid frames** (VuhDo-style):
-  - Readable at a glance: class colors softened into the panel color by default (or dark bars with class-colored names, or bright class colors), outlined names that end in "..." when too long, missing health (-16K) or Dead / Offline under the name, and a thin power bar. In instanced combat, where the game keeps health secret from addons, the bars still fill and the missing-health text hides.
-  - Healing: click casting and hover keybindings, incoming heals and shields, aggro strip, missing-buff marker, dispellable-debuff border, your HoTs.
+  - Laid out in zones that never overlap: name at the top, status (missing health, Dead, Offline) under it, the missing-buff mark in the top-right corner, debuffs bottom left, your HoTs bottom right, the power bar along the bottom, and the ready check and resurrection big in the center. Default tile 100 x 48.
+  - Readable at a glance: class colors softened into the panel color by default (or dark bars with class-colored names, or bright class colors), outlined names that end in "..." when too long, and a dark bar on the dead and offline. In instanced combat, where the game keeps health secret from addons, the bars still fill and the missing-health text hides.
+  - Auras: the first debuff you can dispel, then up to two others (boss debuffs included); your HoTs, lit while they're in their refresh window; no timer numbers on these small icons. A debuff you can dispel washes the tile in its type's color from the bottom and colors its edge.
+  - Healing: click casting and hover keybindings, incoming heals and shields, aggro strip, missing-buff marker (hidden while the game hides auras, so it never cries wolf), an accent edge on your target, a faint wash under the mouse.
   - Status: range fade, raid target icons, ready check, resurrection marker, and leader and assistant marks.
-- **Action bars**: range and power tint, plus restyled pet, stance and extra action buttons and a vehicle exit button. The bottom bars stack with bar 1 on top; turning on another bottom bar adds it underneath. A position you've dragged is kept; `/fui reset all` puts the bars back in this order.
-- **Nameplates**: class/reaction/threat colors, your debuffs, casts, raid icon, target border.
+- **Action bars**: range and power tint, plus restyled pet, stance and extra action buttons and a vehicle exit button.
+  - The bottom bars stack with bar 1 on top; turning on another bottom bar adds it underneath. Each row takes its bar's real height, so a bar with bigger buttons or more rows pushes the ones above it up, right away when you change it. A position you've dragged is kept; `/fui reset all` puts the bars back in this order.
+  - Empty slots stay hidden until you drag a spell or item, so a new character sees no empty squares.
+  - Each bar has its own number of buttons, buttons per row, button size, and visibility: Always, On mouseover (seen only while the mouse is over it), In combat, or Hidden. While you drag a spell or item, On mouseover and In combat bars show too (In combat bars only when the drag starts out of combat).
+  - Hidden bars keep their keys: the bar isn't drawn, but a bound key still casts, like a keybind-only bar. A Hidden bottom bar keeps its row in the stack (leaving a gap), because bars can't be re-stacked during combat.
+  - The right-edge bars (4 and 5) start off; turned on, they show on mouseover. Profiles that already had them on keep them on Always.
+- **Nameplates**: class/reaction/threat colors, your debuffs (soonest to expire first, with timers) and your crowd control, casts, raid icon, target border.
 - **Everything else**: XP and reputation bars, square minimap, chat skin, combined bag, and themed tooltips with class colors and a Target line.
 - **Options**: `/fui` or the addons button. Turn any module off under Modules to keep the default one.
-- **First-run setup**: the first time you log in on an account, a three-step wizard asks for a layout (Damage and tanking, or Healing), an accent and raid frame style, then unlocks your frames so you can move them (the same unlock mode as `/fui unlock`, or **Move frames** under General in `/fui`; `/fui lock` or Done locks them again). With the defaults it takes three clicks: Next, Next, Done. It waits until you're out of combat. Done, the close button and Escape all end it, and it doesn't come back on its own; `/fui setup` reopens it. Damage and tanking is ForeverUI's defaults (picking it puts back anything Healing moved); Healing puts the raid frames centered just above your cast bar, growing upward, and turns click casting on. With Healing, a party and raids of up to 3 groups fit between the player and target frames; raids of more than 3 groups overlap them, so drag the raid frames where you want them with `/fui unlock` (or **Move frames** under General in `/fui`).
+- **First-run setup**: the first time you log in on an account, a three-step wizard asks for a layout (Damage and tanking, or Healing), an accent and raid frame style, then unlocks your frames so you can move them (the same unlock mode as `/fui unlock`, or **Move frames** under General in `/fui`; `/fui lock` or Done locks them again). With the defaults it takes three clicks: Next, Next, Done. It waits until you're out of combat. Done, the close button and Escape all end it, and it doesn't come back on its own; `/fui setup` reopens it. Damage and tanking is ForeverUI's defaults (picking it puts back anything Healing moved); Healing puts the raid frames centered just above your cast bar, growing upward, and turns click casting on. With Healing, a party and raids of up to 2 groups fit between the player and target frames; raids of more than 2 groups overlap them, so drag the raid frames where you want them with `/fui unlock` (or **Move frames** under General in `/fui`).
 
-Every client call is checked before use, and values the Midnight client hides
-from addons go to the bars unread. None of this has been checked in game yet:
+Every client call is checked before use, and values the client hides from
+addons go to the bars unread. Auras use the client's own aura containers where
+it has them (12.1 and WoW Forever), so icons, stacks, timers and debuff colors
+keep working while it hides aura values in instanced combat; `/fui status`
+shows which aura backend is in use. None of this has been checked in game yet:
 please report what breaks.
 
 ## Install

@@ -347,7 +347,7 @@ const ACTIONS_ENV = `
   __overrides = {}
   ClearOverrideBindings = function() __overrides = {} end
   SetOverrideBindingClick = function(_, _, key, name, button) __overrides[key] = name .. ":" .. button end
-  RegisterStateDriver = function(frame, state, driver) frame.__driver = { state, driver } end
+  RegisterStateDriver = function(frame, state, driver) frame.__states = frame.__states or {}; frame.__states[state] = driver end
   MainMenuBar = CreateFrame("Frame", "MainMenuBar", UIParent)
 `;
 
@@ -361,7 +361,7 @@ const button = (addon, bar, i) => addon.eval(`
 it("action bars", () => {
   const addon = loggedIn(ACTIONS_ENV);
   const bars = addon.eval("local out = {} for n = 1, 8 do out[n] = _G['ForeverUI_Bar' .. n] ~= nil end return out");
-  expect(JSON.stringify(bars) === JSON.stringify([true, true, true, true, true, false, false, false]), "bars 1-5 on by default, 6-8 off").toBeTruthy();
+  expect(JSON.stringify(bars) === JSON.stringify([true, true, true, false, false, false, false, false]), "bars 1-3 on by default; the right-edge bars 4-5 and bars 6-8 off").toBeTruthy();
   const b1 = button(addon, 1, 1);
   expect(b1.type === "action" && b1.action === 1 && b1.icon === "TEST-ONLY-A", "bar 1 button 1 is secure action slot 1 with its icon").toBeTruthy();
   expect(b1.hotkey === "1" && b1.checked === true, "hotkey text; the current action is checked").toBeTruthy();
@@ -376,11 +376,11 @@ it("action bars", () => {
   const o = addon.eval("return __overrides");
   expect(o["1"] === "ForeverUI_Bar1Button1:LeftButton" && o["SHIFT-2"] === "ForeverUI_Bar1Button2:LeftButton", "default bindings click the ForeverUI buttons").toBeTruthy();
   expect(o["CTRL-BUTTON4"] === "ForeverUI_Bar2Button1:LeftButton", "bar 2 bindings too").toBeTruthy();
-  expect(addon.eval("return ForeverUI_Bar1.__driver[1]") === "page" && /\[vehicleui\]/.test(addon.eval("return ForeverUI_Bar1.__driver[2]")), "bar 1 has a secure page driver").toBeTruthy();
-  expect(addon.eval("return ForeverUI_Bar2.__driver") === null, "other bars don't page").toBeTruthy();
+  expect(/\[vehicleui\]/.test(addon.eval("return ForeverUI_Bar1.__states.page")), "bar 1 has a secure page driver").toBeTruthy();
+  expect(addon.eval("return ForeverUI_Bar2.__states.page") === null, "other bars don't page").toBeTruthy();
   expect(addon.eval("return MainMenuBar:GetParent():IsShown()") === false, "the default main bar is hidden").toBeTruthy();
   const movers = addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key end return out");
-  expect(["bar1", "bar2", "bar3", "bar4", "bar5"].every((k) => movers.includes(k)), "every bar is movable").toBeTruthy();
+  expect(["bar1", "bar2", "bar3"].every((k) => movers.includes(k)), "every bar is movable").toBeTruthy();
 });
 
 // Each action bar's default y offset (bottom-center stack), bars 1-8; null when off or not stacked.
@@ -411,6 +411,23 @@ it("a moved action bar keeps its spot until reset", () => {
   expect(stackY(moved)[0] === 40, "a position you saved wins").toBeTruthy();
   moved.slash("reset all");
   expect(stackY(moved)[0] === 124, "/fui reset all puts bar 1 back on top").toBeTruthy();
+});
+
+it("the bottom stack follows per-bar size and rows, live", () => {
+  const addon = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [2] = { size = 48 } } } } } }" });
+  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([136, 82, 40]), `a bar's own button size sets its row height (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
+  // Bar n's frame: its bottom offset on screen.
+  const frameY = (n) => addon.eval(`return ForeverUI_Bar${n}.__points.BOTTOM.y`);
+  addon.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 6 AB.SettingChanged(3, "perRow")');
+  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([176, 122, 40]) && frameY(1) === 176 && frameY(2) === 122, "changing a bar's buttons per row re-stacks at once: bar 1 stays on top, nothing overlaps").toBeTruthy();
+  setCombat(addon, true);
+  addon.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].size = 48 AB.SettingChanged(3, "size")');
+  expect(frameY(1) === 176, "in combat the stack waits (secure frames don't move)").toBeTruthy();
+  setCombat(addon, false);
+  expect(frameY(2) === 146 && frameY(1) === 200, "and re-stacks when combat ends").toBeTruthy();
+  addon.eval('ns.SetMoverPoint("bar1", "BOTTOM", "BOTTOM", 0, 300) ns.Unlock() local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 12 AB.SettingChanged(3, "perRow") ns.SetMoverDefault("TEST-ONLY missing", { "CENTER", "CENTER", 0, 0 })');
+  expect(frameY(1) === 300 && frameY(2) === 94, "a bar you dragged keeps its spot; the others re-stack (with unlock mode on)").toBeTruthy();
+  addon.eval("ns.Lock()");
 });
 
 it("action bar paging and events", () => {
@@ -447,6 +464,189 @@ it("action bar dragging", () => {
   expect(drag() === 2, "Shift-drag picks the action up").toBeTruthy();
   addon.eval("local b = ForeverUI_Bar2Button5; b:GetScript('OnReceiveDrag')(b)");
   expect(addon.eval("return __placed") === 65, "dropping onto a button places the action in its slot").toBeTruthy();
+});
+
+// TEST-ONLY: runs the setter of bar n's row `label` on the action bar options page,
+// as its control would, with a Lua value; false when there is no such row.
+const setBarOption = (addon, n, label, lua) => addon.eval(`
+  local page, card
+  for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then page = p end end
+  for _, row in ipairs(page.rows()) do
+    if row[1] == "header" then card = row[2] end
+    if card and card:match("^Bar ${n}") and row[2] == ${JSON.stringify(label)} then row[#row](${lua}) return true end
+  end
+  return false`);
+
+// TEST-ONLY: what the getter of bar n's row `label` on the action bar options page says.
+const getBarOption = (addon, n, label) => addon.eval(`
+  local page, card
+  for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then page = p end end
+  for _, row in ipairs(page.rows()) do
+    if row[1] == "header" then card = row[2] end
+    if card and card:match("^Bar ${n}") and row[2] == ${JSON.stringify(label)} then return row[#row - 1]() end
+  end`);
+
+// Bar 2's secure visibility driver, alpha, and whether it takes the mouse.
+const barVis = (addon, n = 2) => addon.eval(`local bar = ForeverUI_Bar${n}
+  return { driver = bar.__states.visibility, alpha = bar:GetAlpha(), mouse = bar.__mouse }`);
+
+it("action bar visibility: each mode's state driver and mouseover alpha", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  const start = barVis(addon);
+  expect(start.driver === "show" && start.alpha === 1 && start.mouse === false, "a bar shown always: driver show, full alpha, doesn't take the mouse").toBeTruthy();
+  const modes = { mouseover: "show", combat: "[combat] show; hide", hidden: "hide", always: "show" };
+  for (const [mode, driver] of Object.entries(modes)) {
+    expect(setBarOption(addon, 2, "Visibility", JSON.stringify(mode)), `the Visibility row sets ${mode}`).toBeTruthy();
+    expect(barVis(addon).driver === driver, `${mode} registers the secure state driver "${driver}" (got ${barVis(addon).driver})`).toBeTruthy();
+  }
+  setBarOption(addon, 2, "Visibility", '"mouseover"');
+  expect(barVis(addon).alpha === 0 && barVis(addon).mouse === true, "a mouseover bar starts faded out and takes the mouse").toBeTruthy();
+  // TEST-ONLY: count every Show, Hide and SetShown on bar 2 from here on.
+  addon.eval("__shows = 0 local bar = ForeverUI_Bar2 bar.Show = function() __shows = __shows + 1 end bar.Hide = bar.Show bar.SetShown = bar.Show");
+  setCombat(addon, true);
+  addon.eval("local b = ForeverUI_Bar2Button3 b:GetScript('OnEnter')(b)");
+  expect(barVis(addon).alpha === 1, "hovering a button fades the bar in, in combat too").toBeTruthy();
+  addon.eval("ForeverUI_Bar2.__mouseOver = true local b = ForeverUI_Bar2Button3 b:GetScript('OnLeave')(b)");
+  expect(barVis(addon).alpha === 1, "moving off a button while still over the bar keeps it shown").toBeTruthy();
+  addon.eval("ForeverUI_Bar2.__mouseOver = false local bar = ForeverUI_Bar2 bar:GetScript('OnLeave')(bar)");
+  expect(barVis(addon).alpha === 0, "leaving the bar fades it out").toBeTruthy();
+  addon.eval("local bar = ForeverUI_Bar2 bar:GetScript('OnEnter')(bar)");
+  expect(barVis(addon).alpha === 1 && addon.eval("return __shows") === 0, "mouseover only changes alpha: never Show, Hide or SetShown").toBeTruthy();
+  setBarOption(addon, 2, "Visibility", '"combat"');
+  expect(barVis(addon).driver === "show", "a visibility change made in combat waits").toBeTruthy();
+  setCombat(addon, false);
+  expect(barVis(addon).driver === "[combat] show; hide", "and applies when combat ends").toBeTruthy();
+  addon.eval('ForeverUIDB.profiles.Default.ActionBars.bars[2].visibility = "TEST-ONLY-unknown" ns.GetModule("ActionBars").ApplyVisibility(2)');
+  expect(barVis(addon).driver === "show" && barVis(addon).alpha === 1, "an unknown visibility counts as Always").toBeTruthy();
+});
+
+it("action bar empty slots hide until the grid shows", () => {
+  const addon = loggedIn(ACTIONS_ENV + '__actions[5] = { tex = { __secret = true }, count = 0, usable = true }');
+  // Button i of bar n's alpha.
+  const alpha = (n, i) => addon.eval(`return ForeverUI_Bar${n}Button${i}:GetAlpha()`);
+  expect(alpha(1, 1) === 1 && alpha(1, 4) === 0 && alpha(2, 2) === 0, "buttons with an action show; empty slots are invisible (no empty squares at level 1)").toBeTruthy();
+  expect(alpha(1, 5) === 1, "a secret icon counts as an action").toBeTruthy();
+  addon.fire("ACTIONBAR_SHOWGRID");
+  expect(alpha(1, 4) === 1 && alpha(2, 2) === 1, "picking up a spell or item (ACTIONBAR_SHOWGRID) shows the empty slots").toBeTruthy();
+  addon.eval('__actions[4] = { tex = "TEST-ONLY-DROPPED", count = 0, usable = true }');
+  addon.fire("ACTIONBAR_SLOT_CHANGED", 4);
+  addon.fire("ACTIONBAR_HIDEGRID");
+  expect(alpha(1, 4) === 1 && alpha(1, 6) === 0 && alpha(2, 2) === 0, "dropping it (ACTIONBAR_HIDEGRID) hides the empty slots again; the filled one stays").toBeTruthy();
+  setCombat(addon, true);
+  addon.eval("ForeverUI_Bar1Button2:SetAttribute('action', 74)");
+  expect(alpha(1, 2) === 0, "a slot that turns empty when bar 1 pages in combat hides at once (alpha, no waiting)").toBeTruthy();
+});
+
+it("the right-edge bars start off and show on mouseover when turned on", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  const s = addon.eval("local b = ForeverUIDB.profiles.Default.ActionBars.bars return { b[4].enabled, b[5].enabled, b[4].visibility, b[5].visibility }");
+  expect(s[0] === false && s[1] === false && addon.eval("return ForeverUI_Bar4 == nil and ForeverUI_Bar5 == nil") === true, "bars 4 and 5 start off; nothing is built for them").toBeTruthy();
+  expect(s[2] === "mouseover" && s[3] === "mouseover" && getBarOption(addon, 4, "Visibility") === "mouseover", "and are set to On mouseover for when they are turned on").toBeTruthy();
+  const titles = addon.eval('local out = {} for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then for _, r in ipairs(p.rows()) do if r[1] == "header" then out[#out + 1] = r[2] end end end end return out');
+  expect(titles.includes("Bar 4, right edge") && titles.includes("Bar 5, right edge") && titles.includes("Bar 1"), `each bar has its own card; the right-edge ones say so (got ${titles})`).toBeTruthy();
+  expect(setBarOption(addon, 4, "Show bar 4", "true") && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.bars[4].enabled") === true, "Show bar 4 turns it on (after a reload)").toBeTruthy();
+  const saved4 = addon.eval("local b = ForeverUIDB.profiles.Default.ActionBars.bars[4] return { b.enabled, b.visibility, b.buttons, b.perRow }");
+  expect(JSON.stringify(saved4) === JSON.stringify([true, "mouseover", 12, 1]), `a fresh enable is saved with On mouseover (got ${JSON.stringify(saved4)})`).toBeTruthy();
+  const on = loggedIn(ACTIONS_ENV, { savedVariables: 'ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [4] = { enabled = true, visibility = "mouseover", buttons = 12, perRow = 1 } } } } } }' });
+  const bar4 = barVis(on, 4);
+  expect(bar4.driver === "show" && bar4.alpha === 0 && bar4.mouse === true, "turned on, bar 4 is faded out until the mouse is over it").toBeTruthy();
+  const second = on.eval("local _, _, _, x, y = ForeverUI_Bar4Button2:GetPoint(1) return { x, y }");
+  expect(second[0] === 0 && second[1] === -40, "one button per row, as before").toBeTruthy();
+});
+
+// TEST-ONLY profile saved before bars had a visibility setting: bar 4 was on
+// (the old default), bar 5 had been turned off.
+const OLD_BARS_PROFILE = `ForeverUIDB = { profiles = { Default = { ActionBars = { size = 36, spacing = 4, bars = {
+  { enabled = true, buttons = 12, perRow = 12 }, { enabled = true, buttons = 12, perRow = 12 }, { enabled = true, buttons = 12, perRow = 12 },
+  { enabled = true, buttons = 12, perRow = 1 }, { enabled = false, buttons = 12, perRow = 1 },
+  { enabled = false, buttons = 12, perRow = 12 }, { enabled = false, buttons = 12, perRow = 12 }, { enabled = false, buttons = 12, perRow = 12 } } } } } }`;
+
+it("an old profile keeps its right-edge bar on Always; a fresh enable gets On mouseover", () => {
+  const old = loggedIn(ACTIONS_ENV, { savedVariables: OLD_BARS_PROFILE });
+  const bar4 = barVis(old, 4);
+  expect(bar4.driver === "show" && bar4.alpha === 1 && bar4.mouse === false, "bar 4, already on in the old profile, still shows always").toBeTruthy();
+  expect(getBarOption(old, 4, "Visibility") === "always" && getBarOption(old, 2, "Visibility") === "always", "its Visibility reads Always; so do the other bars").toBeTruthy();
+  expect(getBarOption(old, 5, "Visibility") === "mouseover", "bar 5, off in the old profile, is set to On mouseover for when it is turned on").toBeTruthy();
+  setBarOption(old, 5, "Show bar 5", "true");
+  // Each read goes through ns.Settings, so the upgrade runs again on what is now saved.
+  const saved5 = old.eval("local b = ForeverUIDB.profiles.Default.ActionBars.bars[5] return { b.enabled, b.visibility }");
+  expect(saved5[0] === true && saved5[1] === "mouseover" && getBarOption(old, 5, "Visibility") === "mouseover", "turning bar 5 on fresh saves On mouseover, and the upgrade leaves it (it has a saved visibility)").toBeTruthy();
+  expect(getBarOption(old, 4, "Visibility") === "always", "bar 4 stays Always").toBeTruthy();
+  // A new profile's fresh enable is checked in "the right-edge bars start off and show on mouseover when turned on".
+});
+
+it("In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  setBarOption(addon, 2, "Visibility", '"combat"');
+  // TEST-ONLY: count every state driver registration from here on.
+  addon.eval("__regs = 0 local register = RegisterStateDriver RegisterStateDriver = function(...) __regs = __regs + 1 return register(...) end");
+  addon.fire("ACTIONBAR_SHOWGRID");
+  expect(barVis(addon).driver === "show" && barVis(addon, 3).driver === "show", "picking up a spell out of combat shows the In combat bar").toBeTruthy();
+  expect(addon.eval("return __regs") === 1, "only the In combat bar's driver changes").toBeTruthy();
+  addon.fire("ACTIONBAR_HIDEGRID");
+  expect(barVis(addon).driver === "[combat] show; hide", "dropping it restores the bar's own driver").toBeTruthy();
+  addon.eval("__regs = 0");
+  setCombat(addon, true);
+  addon.fire("ACTIONBAR_SHOWGRID");
+  addon.fire("ACTIONBAR_HIDEGRID");
+  expect(addon.eval("return __regs") === 0 && addon.eval("return ns.QueuedCount()") === 0, "a drag that starts in combat changes no driver and queues nothing").toBeTruthy();
+  setCombat(addon, false);
+  expect(addon.eval("return __regs") === 0 && barVis(addon).driver === "[combat] show; hide", "not even after combat ends").toBeTruthy();
+  addon.fire("ACTIONBAR_SHOWGRID");
+  setCombat(addon, true);
+  addon.fire("ACTIONBAR_HIDEGRID");
+  expect(barVis(addon).driver === "show" && addon.eval("return ns.QueuedCount()") === 1, "a drag that ends after combat starts restores the driver once combat ends").toBeTruthy();
+  setCombat(addon, false);
+  expect(barVis(addon).driver === "[combat] show; hide", "and then it does").toBeTruthy();
+});
+
+it("mouseover bars are revealed during a drag and restored after", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  setBarOption(addon, 2, "Visibility", '"mouseover"');
+  // TEST-ONLY: count every Show, Hide and SetShown on bar 2 from here on.
+  addon.eval("__shows = 0 local bar = ForeverUI_Bar2 bar.Show = function() __shows = __shows + 1 end bar.Hide = bar.Show bar.SetShown = bar.Show");
+  setCombat(addon, true);
+  addon.fire("ACTIONBAR_SHOWGRID");
+  expect(barVis(addon).alpha === 1, "picking up a spell reveals the mouseover bar, in combat too").toBeTruthy();
+  addon.fire("ACTIONBAR_HIDEGRID");
+  expect(barVis(addon).alpha === 0, "dropping it fades the bar out again").toBeTruthy();
+  addon.fire("ACTIONBAR_SHOWGRID");
+  addon.eval("ForeverUI_Bar2.__mouseOver = true");
+  addon.fire("ACTIONBAR_HIDEGRID");
+  expect(barVis(addon).alpha === 1, "unless the mouse is still over the bar").toBeTruthy();
+  expect(addon.eval("return __shows") === 0 && addon.eval("return ns.QueuedCount()") === 0 && barVis(addon).driver === "show", "alpha only: no Show or Hide, nothing queued, driver unchanged").toBeTruthy();
+});
+
+it("Hidden bar bindings stay intact", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  setBarOption(addon, 2, "Visibility", '"hidden"');
+  expect(barVis(addon).driver === "hide", "a Hidden bar isn't drawn").toBeTruthy();
+  expect(addon.eval("return __overrides['CTRL-BUTTON4']") === "ForeverUI_Bar2Button1:LeftButton", "but its key still clicks its button").toBeTruthy();
+  addon.fire("UPDATE_BINDINGS");
+  expect(addon.eval("return __overrides['CTRL-BUTTON4']") === "ForeverUI_Bar2Button1:LeftButton", "also after the bindings are rebuilt").toBeTruthy();
+  const help = addon.eval('local page for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then page = p end end local rows = page.rows() for i, r in ipairs(rows) do if r[2] == "Visibility" then return rows[i + 1] end end');
+  expect(help[0] === "text" && /keys.*still casts/.test(help[1]), `the Visibility row's help text says so (got ${JSON.stringify(help)})`).toBeTruthy();
+});
+
+it("action bar layout: per-bar buttons, rows and size, deferred in combat", () => {
+  const addon = loggedIn(ACTIONS_ENV + '__binds.MULTIACTIONBAR1BUTTON12 = { "F12" }');
+  // Bar 2's size, button 7's offset and size, and whether button 12 shows.
+  const lay = () => addon.eval(`local bar, b7 = ForeverUI_Bar2, ForeverUI_Bar2Button7
+    local _, _, _, x, y = b7:GetPoint(1)
+    return { w = bar:GetWidth(), h = bar:GetHeight(), x7 = x, y7 = y, size = b7:GetWidth(), shown12 = ForeverUI_Bar2Button12:IsShown() }`);
+  const before = lay();
+  expect(JSON.stringify(before) === JSON.stringify({ w: 476, h: 36, x7: 240, y7: 0, size: 36, shown12: true }), `bar 2 starts as one row of 12 at the shared 36 px (got ${JSON.stringify(before)})`).toBeTruthy();
+  expect(getBarOption(addon, 2, "Button size") === 36 && addon.eval("return __overrides.F12") === "ForeverUI_Bar2Button12:LeftButton", "its size row reads the shared size; button 12 has its key").toBeTruthy();
+  setCombat(addon, true);
+  setBarOption(addon, 2, "Buttons per row", 6);
+  setBarOption(addon, 2, "Buttons", 10);
+  setBarOption(addon, 2, "Button size", 40);
+  expect(JSON.stringify(lay()) === JSON.stringify(before) && addon.eval("return ns.QueuedCount()") === 3, "layout changes made in combat wait for it to end (secure frames)").toBeTruthy();
+  setCombat(addon, false);
+  const after = lay();
+  expect(JSON.stringify(after) === JSON.stringify({ w: 260, h: 84, x7: 0, y7: -44, size: 40, shown12: false }), `then bar 2 is two rows of 6 at 40 px, showing 10 buttons (got ${JSON.stringify(after)})`).toBeTruthy();
+  expect(addon.eval("return __overrides.F12") === null && getBarOption(addon, 2, "Button size") === 40, "a hidden button gives up its key; the bar keeps its own size").toBeTruthy();
+  expect(addon.eval("return ForeverUI_Bar3Button1:GetWidth()") === 36, "other bars keep theirs").toBeTruthy();
 });
 
 // TEST-ONLY minimap, chat windows and combined bag, as the client would have them.
@@ -679,9 +879,10 @@ it("options window", () => {
   expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]") === true, "the second swatch (arcane) sets the accent at once").toBeTruthy();
   expect(addon.eval('return __click("Snap to other frames")') && addon.eval("return ns.MoverOptions().snap") === false, "the snap check box turns snapping off").toBeTruthy();
   expect(addon.eval('return __click("Action bars")'), "the nav switches pages").toBeTruthy();
-  expect(addon.eval('return __click("Bar 6")') && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.bars[6].enabled") === true, "check boxes change settings").toBeTruthy();
+  expect(addon.eval('return __click("Show bar 6")') && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.bars[6].enabled") === true, "check boxes change settings").toBeTruthy();
   expect(addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "a change that needs a reload shows the Reload button").toBeTruthy();
-  expect(addon.eval('return __click("Button size")') && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.size") === 40, "cycle buttons step through choices").toBeTruthy();
+  expect(addon.eval('return __click("Visibility")') && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.bars[1].visibility") === "mouseover", "cycle buttons step through choices").toBeTruthy();
+  expect(addon.eval('return __click("Button size")') && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.bars[1].size") === 38, "a bar's size slider starts at the shared size and steps by 2").toBeTruthy();
   addon.eval('__click("Modules")');
   expect(addon.eval('return __click("UnitFrames")') && addon.eval("return ns.ModuleEnabled('UnitFrames')") === false, "modules can be turned off").toBeTruthy();
   addon.eval('__click("Profiles")');
@@ -726,7 +927,7 @@ it("raid frames", () => {
   const h = addon.eval(`local h = ForeverUI_Raid return { template = h:GetAttribute("template"), groupBy = h:GetAttribute("groupBy"),
     party = h:GetAttribute("showParty"), start = h:GetAttribute("startingIndex"), vis = h.__drivers["state-visibility"],
     init = h:GetAttribute("initialConfigFunction"), w = h:GetAttribute("fui-width") }`);
-  expect(h.template === "SecureUnitButtonTemplate" && h.groupBy === "GROUP" && h.party === true && h.w === 90, "a secure group header, grouped by group, covering the party").toBeTruthy();
+  expect(h.template === "SecureUnitButtonTemplate" && h.groupBy === "GROUP" && h.party === true && h.w === 100, "a secure group header, grouped by group, covering the party").toBeTruthy();
   expect(h.start === 1 && /\[group:raid\] show; \[group:party\] show; hide/.test(h.vis), "buttons are precreated, then the header shows in groups only").toBeTruthy();
   expect(/CallMethod\("initialConfigFunction"/.test(h.init) && /\*type2", "togglemenu"/.test(h.init), "each new button is sized, gets target/menu clicks, and is set up").toBeTruthy();
   addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
@@ -836,40 +1037,113 @@ it("click casting options", () => {
 const AURA_ENV = `
   __auras = {
     raid1 = {
-      ["HARMFUL|RAID"] = { { dispelName = "Magic" } },
-      ["HELPFUL|PLAYER|RAID"] = { { icon = "TEST-ONLY-HOT-A", expirationTime = 1030, duration = 12, applications = 2 },
+      ["HARMFUL|RAID"] = { { icon = "TEST-ONLY-CURSE", dispelName = "Magic", auraInstanceID = 21 } },
+      ["HARMFUL|!RAID"] = { { icon = "TEST-ONLY-BOSS", auraInstanceID = 22 } },
+      HARMFUL = { { icon = "TEST-ONLY-CURSE", dispelName = "Magic", auraInstanceID = 21 }, { icon = "TEST-ONLY-BOSS", auraInstanceID = 22 } },
+      ["HELPFUL|PLAYER|RAID_IN_COMBAT"] = { { icon = "TEST-ONLY-HOT-A", expirationTime = 1030, duration = 12, applications = 2 },
         { icon = "TEST-ONLY-HOT-B", expirationTime = { __secret = true }, duration = { __secret = true } } },
-      ["HELPFUL|PLAYER|RAID_IN_COMBAT"] = { { icon = "TEST-ONLY-HOT-COMBAT", expirationTime = 1020, duration = 6 } },
     },
   }
   C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) return ((__auras[unit] or {})[filter] or {})[i] end }
 `;
 
-// Raid button 1's indicators.
+// Raid button 1's aura rows as the client's containers hold them.
 const indicators = (addon) => addon.eval(`local b = ForeverUI_RaidUnitButton1
-  local out = { dispel = b.dispel:IsShown(), edge = b.dispel.edges[1].__vertexColor, hots = {} }
-  for i, f in ipairs(b.hots) do out.hots[i] = { shown = f:IsShown(), icon = f.icon.__texture, count = f.count:GetText(), cd = f.cooldown.__cooldown } end
+  local d, h = b.debuffRow.frame, b.hotRow.frame
+  local first = d.__groups[1].buttons[1]
+  local out = { dispel = { filter = d.__groups[1].filter, max = d.__groups[1].opts.maxFrameCount, shown = first.__shown, icon = first.__icon.__texture,
+      regs = #first.__dispel, wash = first.__dispel[5].texture.__vertexColor, washShown = first.__dispel[5].texture.__shown, edge = first.__dispel[6].texture.__vertexColor },
+    others = { filter = d.__groups[2].filter, max = d.__groups[2].opts.maxFrameCount, icon = d.__groups[2].buttons[1].__shown and d.__groups[2].buttons[1].__icon.__texture },
+    hots = { filter = h.__groups[1].filter, max = h.__groups[1].opts.maxFrameCount, icon = h.__groups[1].buttons[1].__icon.__texture,
+      count = h.__groups[1].buttons[1].__count:GetText(), pandemic = #h.__groups[1].buttons[1].__pandemic, timer = h.__groups[1].buttons[1].__durationText },
+    mouse = first.__mouse, unit = d.__unit, rowsShown = d.__shown and h.__shown,
+    dPoint = { d.__points.BOTTOMLEFT.x, d.__points.BOTTOMLEFT.y }, hPoint = { h.__points.BOTTOMRIGHT.x, h.__points.BOTTOMRIGHT.y } }
   return out`);
 
 it("raid indicators", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
+  addon.eval('__spawn(1, "raid1"); __spawn(3, "raid3")');
+  const i = indicators(addon);
+  expect(i.dispel.filter === "HARMFUL|RAID" && i.dispel.max === 1 && i.dispel.icon === "TEST-ONLY-CURSE", "the first debuff shown is one you can dispel").toBeTruthy();
+  expect(i.others.filter === "HARMFUL|!RAID" && i.others.max === 2 && i.others.icon === "TEST-ONLY-BOSS", "then up to two others (a boss debuff shows too)").toBeTruthy();
+  expect(i.dispel.regs === 9 && i.dispel.washShown && isTok(addon, i.dispel.wash, "magic") && i.dispel.wash[3] === 0.35 && isTok(addon, i.dispel.edge, "magic"),
+    "the client washes the tile and colors its edge by the debuff's type").toBeTruthy();
+  expect(i.hots.filter === "HELPFUL|PLAYER|RAID_IN_COMBAT" && i.hots.max === 3 && i.hots.icon === "TEST-ONLY-HOT-A" && i.hots.count === "2", "your HoTs, with stacks").toBeTruthy();
+  expect(i.hots.pandemic === 1 && i.hots.timer == null, "HoTs light in their refresh window; no timer numbers on raid icons").toBeTruthy();
+  expect(i.mouse === false && i.unit === "raid1" && i.rowsShown, "icons let clicks through to the tile, and follow its unit").toBeTruthy();
+  expect(i.dPoint[0] === 2 && i.dPoint[1] === -43 && i.hPoint[0] === 98 && i.hPoint[1] === -43, "debuffs sit bottom left and HoTs bottom right, above the power bar").toBeTruthy();
+  expect(addon.eval("return ForeverUI_RaidUnitButton3.debuffRow.frame.__shown") === false, "the offline show no auras").toBeTruthy();
+  addon.eval('ForeverUI_RaidUnitButton1:SetAttribute("unit", "raid2")');
+  expect(addon.eval("return ForeverUI_RaidUnitButton1.debuffRow.frame.__unit") === "raid2", "a roster change points the rows at the new unit").toBeTruthy();
+  const b1 = "ForeverUI_RaidUnitButton1";
+  addon.eval(`${b1}:GetScript("OnEnter")(${b1})`);
+  const hover = addon.eval(`return ${b1}.hover:IsShown()`);
+  addon.eval(`${b1}:GetScript("OnLeave")(${b1})`);
+  expect(hover === true && addon.eval(`return ${b1}.hover:IsShown()`) === false, "a faint wash while the mouse is over a tile").toBeTruthy();
+  // Tile 1's own edge color.
+  const edgeOf = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__parent == ${b1} and w.__layer == "BORDER" then return w.__vertexColor end end`);
+  addon.eval("UnitIsUnit = function(a, b) return a == 'raid2' and b == 'target' end");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(isTok(addon, edgeOf(), "accent"), "your target's tile gets an accent edge").toBeTruthy();
+  addon.eval("UnitIsUnit = function() return false end");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(!isTok(addon, edgeOf(), "accent"), "and loses it when you target someone else").toBeTruthy();
+  expect(isTok(addon, addon.eval("return ForeverUI_RaidUnitButton3.health.__barColor"), "darkBar"), "the offline get a dark bar").toBeTruthy();
+});
+
+it("a client that won't drive the dispel highlight never shows it uncolored", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV);
   addon.eval('__spawn(1, "raid1")');
-  const i = indicators(addon);
-  expect(i.dispel === true && isTok(addon, i.edge, "magic"), "a Magic debuff you can dispel gets a blue border").toBeTruthy();
-  expect(i.hots[0].shown && i.hots[0].icon === "TEST-ONLY-HOT-A" && i.hots[0].count === "2", "your HoTs show as icons with stacks").toBeTruthy();
-  expect(i.hots[0].cd[0] === 1018 && i.hots[0].cd[1] === 12, "with a timer from plain numbers").toBeTruthy();
-  expect(i.hots[1].shown && i.hots[1].icon === "TEST-ONLY-HOT-B" && i.hots[1].cd == null, `a HoT with hidden timings still shows, without a sweep (got ${JSON.stringify(i.hots[1])})`).toBeTruthy();
-  expect(i.hots[2].shown === false, "unused icons stay hidden").toBeTruthy();
+  const out = addon.eval(`local first = ForeverUI_RaidUnitButton1.debuffRow.frame.__groups[1].buttons[1]
+    local shown = 0 for _, w in ipairs(__wfgStub.frames) do if w.__parent == first and w.__kind == "Texture" and w.__texture and w.__texture:find("Fade") and w.__shown then shown = shown + 1 end end
+    return { regs = #first.__dispel, icon = first.__shown, washes = shown }`);
+  expect(out.icon === true && out.regs === 0 && out.washes === 0, "the debuff icon still shows; the unregistered wash stays hidden").toBeTruthy();
+});
+
+it("raid indicators on the fallback", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + "__wfgStub.noAuraContainer = true");
+  addon.eval('__spawn(1, "raid1")');
+  // Button 1's fallback highlight and icons.
+  const state = () => addon.eval(`local b = ForeverUI_RaidUnitButton1 local g = b.debuffRow.groups
+    return { shown = b.dispel:IsShown(), wash = b.dispel.wash.__vertexColor, edge = b.dispel.edges[1].__vertexColor,
+      first = g[1].icons[1].icon.__texture, other = g[2].icons[1]:IsShown() and g[2].icons[1].icon.__texture, dup = g[2].icons[2]:IsShown(),
+      hot = b.hotRow.groups[1].icons[1].icon.__texture, hotCd = b.hotRow.groups[1].icons[1].cooldown.__cooldown, hidden = b.hotRow.groups[1].icons[2].cooldown.__cooldown }`);
+  let s1 = state();
+  expect(s1.shown && isTok(addon, s1.wash, "magic") && s1.wash[3] === 0.35 && isTok(addon, s1.edge, "magic"), "a debuff you can dispel washes the tile in its type's color").toBeTruthy();
+  expect(s1.first === "TEST-ONLY-CURSE" && s1.other === "TEST-ONLY-BOSS" && s1.dup === false, "the dispellable one first, the others after, none twice").toBeTruthy();
+  expect(s1.hot === "TEST-ONLY-HOT-A" && s1.hotCd[0] === 1018 && s1.hidden == null, "HoTs with a sweep from plain times, none from hidden ones").toBeTruthy();
   addon.eval('__auras.raid1["HARMFUL|RAID"][1].dispelName = { __secret = true }');
   addon.fire("UNIT_AURA", "raid1");
-  expect(indicators(addon).edge[0] === 0.8, "a hidden dispel type gets a plain highlight").toBeTruthy();
-  addon.eval("__wfgStub.inCombat = true");
-  addon.fire("PLAYER_REGEN_DISABLED");
-  const combat = indicators(addon);
-  expect(combat.hots[0].icon === "TEST-ONLY-HOT-COMBAT" && combat.hots[1].shown === false, "in combat the client's combat filter decides which buffs show").toBeTruthy();
+  expect(isTok(addon, state().edge, "bad"), "a hidden type the client can't color for us shows as a plain warning").toBeTruthy();
   addon.eval('__auras.raid1["HARMFUL|RAID"] = {}');
   addon.fire("UNIT_AURA", "raid1");
-  expect(indicators(addon).dispel === false, "the border goes when the debuff does").toBeTruthy();
+  expect(state().shown === false, "the highlight goes when the debuff does").toBeTruthy();
+});
+
+it("raid tile zones never overlap", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  const clashes = addon.eval(`local RF, out = ns.GetModule("RaidFrames"), {}
+    local names = { "name", "status", "missing", "debuffs", "hots", "power" }
+    local function hit(a, b) return a[1] < b[1] + b[3] and b[1] < a[1] + a[3] and a[2] < b[2] + b[4] and b[2] < a[2] + a[4] end
+    local function inside(r, w, h) return r[1] >= 0 and r[2] >= 0 and r[1] + r[3] <= w and r[2] + r[4] <= h end
+    for _, scale in ipairs({ 1, 1.2 }) do
+      ns.Theme.Settings().textScale = scale
+      for _, size in ipairs({ { 72, 36 }, { 90, 40 }, { 100, 48 }, { 125, 60 } }) do
+        local z = RF.Zones(size[1], size[2])
+        for i, a in ipairs(names) do
+          if not inside(z[a], size[1], size[2]) then out[#out + 1] = a .. " leaves the tile at " .. size[1] .. "x" .. size[2] end
+          for j = i + 1, #names do
+            if hit(z[a], z[names[j]]) then out[#out + 1] = a .. "/" .. names[j] .. " at " .. size[1] .. "x" .. size[2] .. " scale " .. scale end
+          end
+        end
+      end
+    end
+    ns.Theme.Settings().textScale = 1
+    return table.concat(out, "; ")`);
+  expect(clashes, "name, status, missing-buff mark, debuffs, HoTs and power bar each keep their own space").toBe("");
+  const z = addon.eval('local z = ns.GetModule("RaidFrames").Zones(100, 48) return { icon = z.icon, per = z.per, status = z.status[5] }');
+  expect(z.icon === 14 && z.per === 3 && z.status === "CENTER", "at the default 100x48: 14 px icons, three a side, status under the name").toBeTruthy();
+  expect(addon.eval('return ns.GetModule("RaidFrames").Zones(72, 36).status[5]') === "RIGHT", "a short tile puts the status at the name row's right").toBeTruthy();
 });
 
 // TEST-ONLY healing data: a prediction calculator, threat, known spells and buffs.
@@ -932,6 +1206,53 @@ it("healing fallbacks and options", () => {
   expect(addon.eval("return ForeverUIDB.profiles.Default.RaidHealing.buffs") === "TEST-ONLY Aura, Arcane Brilliance", "the buff list saves").toBeTruthy();
   expect(healing(addon, 1).missing === "TEST-ONLY-ICON-Arcane Brilliance", "and the frames watch the saved names").toBeTruthy();
   expect(addon.eval('return __click("Aggro strip")') && addon.eval("return ForeverUIDB.profiles.Default.RaidHealing.aggro") === false, "the page's switches work").toBeTruthy();
+});
+
+// TEST-ONLY WoW Forever client: a 1.x interface number, the aura restriction, no specializations.
+const FOREVER_ENV = `
+  GetBuildInfo = function() return "1.16.0", "TEST-ONLY", "Sep 1 2026", 16001 end
+  __secretAuras = false
+  C_Secrets = { ShouldAurasBeSecret = function() return __secretAuras end }
+`;
+
+// Whether any shown font string reads exactly `text`.
+const shownText = (addon, text) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+  local shown, f = true, w
+  while f do if not f.__shown then shown = false end f = f.__parent end
+  if shown and w.__kind == "FontString" and w.__text == "${text}" then return true end
+end return false`);
+
+it("WoW Forever client: interface, hidden auras, no specializations", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV + FOREVER_ENV);
+  expect(addon.eval("return ns.IsForever()") === true, "a 1.x interface number (16001) is WoW Forever").toBeTruthy();
+  addon.eval('__spawn(1, "raid1")');
+  expect(healing(addon, 1).missing === "TEST-ONLY-ICON-Arcane Intellect", "readable auras: a missing buff is marked").toBeTruthy();
+  addon.eval("__secretAuras = true");
+  addon.fire("UNIT_AURA", "raid1");
+  expect(healing(addon, 1).missing === false, "while auras are hidden, an unseen buff is unknown, not missing").toBeTruthy();
+  addon.eval("__secretAuras = { __secret = true }");
+  addon.fire("UNIT_AURA", "raid1");
+  expect(healing(addon, 1).missing === false, "a hidden answer to 'are auras hidden?' counts as hidden").toBeTruthy();
+  addon.eval("C_Secrets.ShouldAurasBeSecret = function() error('TEST-ONLY') end");
+  expect(addon.eval("return ns.AurasSecret()") === true, "an error counts as hidden").toBeTruthy();
+  addon.eval("C_Secrets.ShouldAurasBeSecret = function() return __secretAuras end __secretAuras = false");
+  setCombat(addon, false);
+  expect(healing(addon, 1).missing === "TEST-ONLY-ICON-Arcane Intellect", "leaving combat looks at every buff again").toBeTruthy();
+  addon.slash("status");
+  expect(chatHas(addon, /Client WoW Forever {2}· {2}auras on the engine {2}· {2}aura values readable/), "/fui status names the client and the aura state").toBeTruthy();
+  addon.slash("spec Default");
+  expect(chatHas(addon, /no specializations/), "/fui spec explains there are no specializations").toBeTruthy();
+  addon.eval('ns.Options.Show("profiles")');
+  expect(shownText(addon, "SWITCH PROFILE") && !shownText(addon, "SPECIALIZATION"), "the Profiles page has no spec section").toBeTruthy();
+  addon.eval('UnitClass = function() return "Paladin", "PALADIN" end');
+  expect(addon.eval('for _, n in ipairs(ns.GetModule("RaidHealing").BuffNames()) do if n == "Greater Blessing of Kings" then return true end end'), "any blessing counts for a paladin").toBeTruthy();
+});
+
+it("a retail client is not WoW Forever and keeps its aura state readable", () => {
+  const addon = loggedIn('GetBuildInfo = function() return "12.0.7", "TEST-ONLY", "Sep 1 2026", 120007 end');
+  expect(addon.eval("return ns.IsForever()") === false && addon.eval("return ns.AurasSecret()") === false, "120007 is retail; no C_Secrets means readable").toBeTruthy();
+  addon.slash("status");
+  expect(chatHas(addon, /Client Retail/), "/fui status says Retail").toBeTruthy();
 });
 
 // TEST-ONLY group status: raid icons, ready check, resurrection, leader, range.
@@ -1044,7 +1365,7 @@ const PLATE_ENV = `
   UnitThreatSituation = function(_, unit) return __threat[unit] end
   UnitCastingInfo = function(unit) if __cast[unit] then return "TEST-ONLY Spell", "", "TEST-ONLY-ICON", 1000, 3000, false, nil, false end end
   C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
-    if unit == "nameplate1" and filter == "HARMFUL|PLAYER" and i == 1 then return { icon = "TEST-ONLY-DOT", expirationTime = 1010, duration = 12 } end
+    if unit == "nameplate1" and filter == "HARMFUL|PLAYER|!CROWD_CONTROL" and i == 1 then return { icon = "TEST-ONLY-DOT", expirationTime = 1010, duration = 12 } end
   end }
   local function plate(unit, forbidden)
     local p = CreateFrame("Frame", nil, UIParent)
@@ -1063,7 +1384,7 @@ const plate = (addon, unit) => addon.eval(`local p = __plates.${unit} local f = 
   if not f then return { drawn = false, default = p.UnitFrame:IsShown() } end
   local edge for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "BORDER" then edge = w.__vertexColor break end end
   return { drawn = f:IsShown(), default = p.UnitFrame:IsShown(), hp = f.__value, color = f.__barColor, name = f.name:GetText(),
-    dot = f.debuffs[1]:IsShown() and f.debuffs[1].icon.__texture, cast = f.cast:IsShown() and f.cast.text:GetText(), edge = edge }`);
+    dot = f.debuffs.frame.__groups[1].buttons[1].__shown and f.debuffs.frame.__groups[1].buttons[1].__icon.__texture, cast = f.cast:IsShown() and f.cast.text:GetText(), edge = edge }`);
 
 it("nameplates", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV);
@@ -1077,6 +1398,9 @@ it("nameplates", () => {
   expect(one.hp?.__secret, "hidden health goes to the bar untouched").toBeTruthy();
   expect(isTok(addon, one.color, "hostile") && one.name === "TEST-ONLY Boar", "reaction color and name").toBeTruthy();
   expect(one.dot === "TEST-ONLY-DOT", "your debuffs show over the name").toBeTruthy();
+  const row = addon.eval(`local c = __plates.nameplate1.fui.debuffs.frame local b = c.__groups[1].buttons[1]
+    return { unit = c.__unit, timer = b.__durationText ~= nil, mouse = b.__mouse, sort = c.__groups[1].opts.sortMethod, point = c.__points.BOTTOMLEFT.relPoint }`);
+  expect(row.unit === "nameplate1" && row.timer && row.mouse === false && row.point === "TOPLEFT", "a row over the plate that follows its unit, with timers, letting clicks through").toBeTruthy();
   expect(same(one.edge, accent), "your target gets an accent border").toBeTruthy();
   expect(plate(addon, "nameplate3").drawn === false && plate(addon, "nameplate3").default === true, "a plate kept from addons is left alone").toBeTruthy();
   addon.eval("__plates.nameplate1.UnitFrame:Show()");
@@ -1332,9 +1656,9 @@ it("special bars", () => {
   const pet = addon.eval("local b = PetActionButton3 return { skinned = b.fuiSkinned, art = b.art.__alpha, icon = b.icon.__alpha }");
   expect(pet.skinned === true && pet.art === 0 && pet.icon === undefined, "pet buttons are restyled: art faded, icon kept").toBeTruthy();
   expect(addon.eval("return StanceButton1.fuiSkinned and ExtraActionButton1.fuiSkinned") === true, "stance and extra action buttons too").toBeTruthy();
-  const exit = addon.eval("local b = ForeverUI_VehicleExit return { type = b:GetAttribute('type'), macro = b:GetAttribute('macrotext'), driver = b.__driver }");
+  const exit = addon.eval("local b = ForeverUI_VehicleExit return { type = b:GetAttribute('type'), macro = b:GetAttribute('macrotext'), driver = b.__states.visibility }");
   expect(exit.type === "macro" && exit.macro === "/leavevehicle", "the vehicle exit button leaves the vehicle").toBeTruthy();
-  expect(exit.driver[0] === "visibility" && /canexitvehicle/.test(exit.driver[1]), "and only shows while you can leave").toBeTruthy();
+  expect(/canexitvehicle/.test(exit.driver), "and only shows while you can leave").toBeTruthy();
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.vehicleexit") === true, "it is movable").toBeTruthy();
 });
 
@@ -1407,19 +1731,43 @@ it("cast bar flashes on finish and interrupt", () => {
   expect(isTok(addon, castBar(addon, "player").color, "cast") && castBar(addon, "player").text === "TEST-ONLY Spell", "a new cast replaces the flash at once").toBeTruthy();
 });
 
+// TEST-ONLY auras on the target and focus: a sheep, your dot, someone else's debuff, two buffs.
+const FRAME_AURAS = `
+  __units.focus = { name = "TEST-ONLY Focus", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA", reaction = 5 }
+  __frameAuras = { ["HARMFUL|CROWD_CONTROL"] = { { icon = "SHEEP" } }, ["HARMFUL|PLAYER|!CROWD_CONTROL"] = { { icon = "MY-DOT", applications = 3 } },
+    ["HARMFUL|!PLAYER|!CROWD_CONTROL"] = { { icon = "ANY-DEBUFF" } }, HELPFUL = { { icon = "BUFF-A" }, { icon = "BUFF-B" } } }
+  C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) return (__frameAuras[filter] or {})[i] end }
+`;
+
+// A frame's aura rows, as the client's containers hold them.
+const frameRows = (addon, key) => addon.eval(`local f = ForeverUI_${key}
+  local function row(c) if not c then return nil end local p = c.frame.__points[c.frame.__flowAnchor] local out = { point = { point = p.point, relPoint = p.relPoint }, groups = {} }
+    for g, grp in ipairs(c.frame.__groups) do local b = grp.buttons[1]
+      out.groups[g] = { filter = grp.filter, max = grp.opts.maxFrameCount, icon = b and b.__shown and b.__icon.__texture or false,
+        count = b and b.__count:GetText(), dim = b and b.__icon.__desaturated, timer = b and b.__durationText ~= nil } end
+    return out end
+  return { debuffs = row(f.debuffs), buffs = row(f.buffs) }`);
+
 it("target and focus auras", () => {
-  const addon = loggedIn(UNITS_ENV + `
-    __units.focus = { name = "TEST-ONLY Focus", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA", reaction = 5 }
-    __frameAuras = { ["HARMFUL|PLAYER"] = { { icon = "MY-DOT", applications = 3 } }, HARMFUL = { { icon = "ANY-DEBUFF" }, { icon = "MY-DOT" } }, HELPFUL = { { icon = "BUFF-A" }, { icon = "BUFF-B" } } }
-    C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) return (__frameAuras[filter] or {})[i] end }`, NO_RAID);
+  const addon = loggedIn(UNITS_ENV + FRAME_AURAS, NO_RAID);
   addon.fire("PLAYER_TARGET_CHANGED");
-  const t = addon.eval(`local f = ForeverUI_target return { d1 = f.debuffs[1]:IsShown() and f.debuffs[1].icon.__texture, d2 = f.debuffs[2]:IsShown(),
-    count = f.debuffs[1].count:GetText(), b = { f.buffs[1].icon.__texture, f.buffs[2].icon.__texture }, b3 = f.buffs[3]:IsShown() }`);
-  expect(t.d1 === "MY-DOT" && t.d2 === false && t.count === "3", "your debuffs show above the target, with stacks").toBeTruthy();
-  expect(t.b[0] === "BUFF-A" && t.b[1] === "BUFF-B" && t.b3 === false, "buffs show above them").toBeTruthy();
-  addon.eval("ForeverUIDB.profiles.Default.FrameAuras.onlyMine = false");
-  addon.fire("UNIT_AURA", "focus");
-  expect(addon.eval("return ForeverUI_focus.debuffs[2]:IsShown()") === true, "with onlyMine off, everyone's debuffs show (focus refreshed on UNIT_AURA)").toBeTruthy();
+  const t = frameRows(addon, "target");
+  expect(t.debuffs.point.point === "TOPLEFT" && t.debuffs.point.relPoint === "BOTTOMLEFT", "debuffs sit under the target frame").toBeTruthy();
+  expect(t.buffs.point.point === "BOTTOMLEFT" && t.buffs.point.relPoint === "TOPLEFT", "buffs sit above it, so neither row floats").toBeTruthy();
+  expect(t.debuffs.groups[0].icon === "SHEEP" && t.debuffs.groups[1].icon === "MY-DOT" && t.debuffs.groups[1].count === "3", "crowd control first, then your debuffs, with stacks").toBeTruthy();
+  expect(t.debuffs.groups[2].max === 0, "only your debuffs by default").toBeTruthy();
+  expect(t.buffs.groups[0].icon === "BUFF-A" && t.debuffs.groups[1].timer === false, "buffs above; no timer numbers by default (the sweep shows time left)").toBeTruthy();
+  const f = frameRows(addon, "focus");
+  expect(f.buffs == null && f.debuffs.groups[1].icon === "MY-DOT", "the focus shows your debuffs only").toBeTruthy();
+  expect(addon.eval("return ForeverUI_target.debuffs.frame.__flowLine") === 220, "the row wraps at the frame's width").toBeTruthy();
+  addon.eval('__frameAuras.HELPFUL = {}');
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(frameRows(addon, "target").buffs.groups[0].icon === false, "a new target reads its auras again").toBeTruthy();
+  const all = loggedIn(UNITS_ENV + FRAME_AURAS, { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { RaidFrames = false }, FrameAuras = { onlyMine = false, timers = true } } } }" });
+  all.fire("PLAYER_FOCUS_CHANGED");
+  const others = frameRows(all, "focus").debuffs.groups[2];
+  expect(others.icon === "ANY-DEBUFF" && others.dim === true && others.max === 8, "with onlyMine off, others' debuffs show too, dimmed").toBeTruthy();
+  expect(frameRows(all, "focus").debuffs.groups[1].timer === true, "timer numbers can be turned on").toBeTruthy();
 });
 
 it("events unsubscribe and a delivered event with no listeners", () => {
@@ -1730,6 +2078,201 @@ it("a dropped spell named by GetSpellInfo", () => {
   expect(addon.eval("for _, w in ipairs(__wfgStub.frames) do if w.input and w.keyText then return w.input:GetText() end end") === "TEST-ONLY Spark", "without C_Spell.GetSpellName, the dropped spell's name comes from GetSpellInfo").toBeTruthy();
 });
 
+// TEST-ONLY client pieces the engine backend uses for its timer text and debuff edges.
+const ENGINE_ENV = `
+  Enum = Enum or {}
+  Enum.NumericRuleFormatRounding = { Up = 1, Down = 2 }
+  Enum.LuaCurveType = { Step = 1 }
+  Enum.DurationTextBindingProperty = { RemainingDuration = 0 }
+  Enum.CustomAuraButtonDispelTypeTextureStyle = { PreserveAsset = 3 }
+  AuraContainerSortMethod = { ExpirationOnly = 5 }
+  C_StringUtil = { CreateNumericRuleFormatter = function() local f = {} function f:SetBreakpoints(p) self.points = p end return f end }
+  C_CurveUtil = { CreateColorCurve = function() local c = { points = {} } function c:SetType(t) self.type = t end function c:AddPoint(x, color) self.points[#self.points + 1] = { x, color } end return c end }
+`;
+
+// TEST-ONLY auras on the target: two of yours, one of someone else's, one buff.
+const CONTAINER_AURAS = `
+  __ca = {
+    ["HARMFUL|PLAYER"] = { { icon = "MY-DOT", auraInstanceID = 1, dispelName = "Magic", applications = 3 }, { icon = "MY-CURSE", auraInstanceID = 2, dispelName = "Curse" } },
+    ["HARMFUL|!PLAYER"] = { { icon = "THEIR-DOT", auraInstanceID = 3 } },
+    HARMFUL = { { icon = "MY-DOT", auraInstanceID = 1, dispelName = "Magic", applications = 3 }, { icon = "THEIR-DOT", auraInstanceID = 3 }, { icon = "MY-CURSE", auraInstanceID = 2, dispelName = "Curse" } },
+  }
+  C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) return (__ca[filter] or {})[i] end }
+  __spec = { point = { "TOPLEFT", UIParent, "BOTTOMLEFT", 0, -3 }, grow = "RIGHT", growY = "DOWN", lineSize = 60, gap = 2, timer = true, mouse = false,
+    groups = { { filter = "HARMFUL|PLAYER", max = 3, size = 20, debuff = true, pandemic = true, sort = "ExpirationOnly" },
+      { filter = "HARMFUL|!PLAYER", max = 2, size = 16, debuff = true, dim = true, newLine = true } } }
+`;
+
+it("aura containers on the client's engine", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS);
+  const c = addon.eval(`__c = ns.Auras.Container(UIParent, __spec, "target")
+    local f = __c.frame local g1, g2 = f.__groups[1], f.__groups[2] local b = g1.buttons[1]
+    return { backend = ns.Auras.BackendName(), kind = f.__kind, anchor = f.__flowAnchor, grow = f.__flowGrow, line = f.__flowLine,
+      filters = { g1.filter, g2.filter }, max = g1.opts.maxFrameCount, sort = g1.opts.sortMethod, newLine = g2.opts.layout.forceNewLine,
+      icon = b.__icon.__texture, shown = b.__shown, count = b.__count:GetText(), cd = b.__durationCooldown ~= nil, mouse = b.__mouse,
+      dim = g2.buttons[1].__icon.__desaturated, mine = b.__icon.__desaturated, rings = #b.__dispel, ringStyle = b.__dispel[1].opts.style,
+      ringShown = b.__dispel[1].texture.__shown, ringColor = b.__dispel[1].texture.__vertexColor, pandemic = #b.__pandemic,
+      timer = b.__durationText.opts.textFormatter.points[3].format, color = b.__durationText.opts.textColor.curve.points[1][1],
+      swipe = b.__durationCooldown.__swipeColor, hideNumbers = b.__durationCooldown.__hideNumbers, third = g1.buttons[3].__shown,
+      second = g2.buttons[1].__points.TOPLEFT.y }`);
+  expect(c.backend === "engine" && c.kind === "AuraContainer", "the client's AuraContainer is used when it has one").toBeTruthy();
+  expect(c.anchor === "TOPLEFT" && c.grow[0] === 1 && c.grow[1] === -1 && c.line === 60, "it flows from the anchored corner, right and down, wrapping at the line size").toBeTruthy();
+  expect(c.filters[0] === "HARMFUL|PLAYER" && c.filters[1] === "HARMFUL|!PLAYER" && c.max === 3 && c.sort === 5, "the client gets the filters as written, with counts and sort").toBeTruthy();
+  expect(c.newLine === true && c.second < 0, "a group asked to start a new row does").toBeTruthy();
+  expect(c.icon === "MY-DOT" && c.shown && c.count === "3" && c.third === false, "the client fills the icons, stacks and all").toBeTruthy();
+  expect(c.cd && c.hideNumbers === true && c.swipe[3] === 0.65, "a dark sweep with no countdown numbers on it").toBeTruthy();
+  expect(c.mouse === false, "icons can let clicks through (raid frames)").toBeTruthy();
+  expect(c.dim === true && c.mine === false, "others' auras are dimmed, yours are not").toBeTruthy();
+  expect(c.rings === 4 && c.ringStyle === 3 && c.ringShown && isTok(addon, c.ringColor, "magic"), "a debuff's edge is handed to the client, colored by its type").toBeTruthy();
+  expect(c.pandemic === 1, "the refresh-window wash is handed to the client").toBeTruthy();
+  expect(c.timer === "%dm" && c.color === 0, "the timer text gets the theme's formatter and time-left colors").toBeTruthy();
+  addon.eval("__c:SetUnit(nil)");
+  expect(addon.eval("return __c.frame.__enabled == false and __c.frame.__groups[1].buttons[1].__shown == false"), "no unit: the container turns off").toBeTruthy();
+  expect(addon.eval("__wfgStub.inCombat = true local n = ns.Auras.BackendName() __wfgStub.inCombat = false return n") === "fallback", "a container needed in combat (a new nameplate) gets the fallback").toBeTruthy();
+  addon.eval('__c:SetUnit("target") __ca["HARMFUL|PLAYER"] = {} __c:Refresh()');
+  expect(addon.eval("return __c.frame.__groups[1].buttons[1].__shown") === false, "Refresh reads the auras again").toBeTruthy();
+});
+
+it("aura container timer options a client refuses, and the engine probe", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS);
+  // The timer options a fresh container's first icon got, with `refuse` refused by the client.
+  const opts = (refuse) => addon.eval(`__wfgStub.refuseDurationOptions = ${refuse}
+    local c = ns.Auras.Container(UIParent, __spec, "target") local o = c.frame.__groups[1].buttons[1].__durationText.opts
+    return { formatter = o.textFormatter ~= nil, color = o.textColor ~= nil }`);
+  const noColor = opts("{ textColor = true }");
+  expect(noColor.formatter && !noColor.color, "a refused color keeps the formatter").toBeTruthy();
+  const bare = opts("{ textColor = true, textFormatter = true }");
+  expect(!bare.formatter && !bare.color, "a refused formatter falls back to the client's own text").toBeTruthy();
+  const fresh = loggedIn(UNITS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { FrameAuras = false } } } }" });
+  expect(fresh.eval("__wfgStub.inCombat = true return ns.AuraEngine.Available()") === false, "the probe waits for the end of combat").toBeTruthy();
+  expect(fresh.eval("__wfgStub.inCombat = false return ns.AuraEngine.Available()") === true, "then asks once").toBeTruthy();
+  const bareClient = loggedIn(UNITS_ENV + CONTAINER_AURAS);
+  expect(bareClient.eval('local c = ns.Auras.Container(UIParent, __spec, "target") return c.frame.__groups[1].buttons[1].__durationText.opts.textFormatter') === null, "a client without formatters or curves still gets its timer text").toBeTruthy();
+});
+
+it("aura containers without the engine (the fallback)", () => {
+  const addon = loggedIn(UNITS_ENV + CONTAINER_AURAS + `__wfgStub.noAuraContainer = true
+    C_UnitAuras.GetAuraApplicationDisplayCount = function(unit, id) return id == 1 and "3*" or "" end`);
+  const c = addon.eval(`__c = ns.Auras.Container(UIParent, __spec, "target")
+    local g1, g2 = __c.groups[1], __c.groups[2]
+    local function pos(icon) local p = icon.__points.TOPLEFT return p and { p.x, p.y } end
+    return { backend = ns.Auras.BackendName(), filter = g2.filter, mine = { g1.icons[1].icon.__texture, g1.icons[2].icon.__texture },
+      theirs = g2.icons[1]:IsShown() and g2.icons[1].icon.__texture, dup = g2.icons[2]:IsShown(), count = g1.icons[1].count:GetText(),
+      ring = g1.icons[2].ring[1].__vertexColor, ringShown = g1.icons[2].ring[1].__shown, dim = g2.icons[1].icon.__desaturated,
+      numbers = g1.icons[1].cooldown.__hideNumbers, font = g1.icons[1].cooldown.__countdown.__font ~= nil,
+      p1 = pos(g1.icons[1]), p2 = pos(g1.icons[2]), p3 = pos(g2.icons[1]), events = __c.frame.__events.UNIT_AURA }`);
+  expect(c.backend === "fallback", "without AuraContainer, ForeverUI's own icons are used").toBeTruthy();
+  expect(c.filter === "HARMFUL", "'!' tokens are dropped for the older reads").toBeTruthy();
+  expect(c.mine[0] === "MY-DOT" && c.mine[1] === "MY-CURSE" && c.theirs === "THEIR-DOT" && c.dup === false, "an aura an earlier group shows isn't shown twice").toBeTruthy();
+  expect(c.count === "3*", "stacks use the client's display count (it formats hidden counts)").toBeTruthy();
+  expect(c.ringShown && isTok(addon, c.ring, "curse") && c.dim === true, "debuff edges in their type's color; others' auras dimmed").toBeTruthy();
+  expect(c.numbers === false && c.font, "timer icons show the client's countdown numbers in the theme's font").toBeTruthy();
+  expect(c.p1[0] === 0 && c.p2[0] === 22 && c.p3[0] === 0 && c.p3[1] === -22, "icons flow right, and the second group starts a new row below").toBeTruthy();
+  expect(c.events === true, "the container follows its unit's UNIT_AURA").toBeTruthy();
+  addon.eval('__ca["HARMFUL|PLAYER"] = { { icon = "A", auraInstanceID = 10 }, { icon = "B", auraInstanceID = 11 }, { icon = "C", auraInstanceID = 12 } }');
+  addon.fire("UNIT_AURA", "target");
+  const wrapped = addon.eval("local p = __c.groups[1].icons[3].__points.TOPLEFT return { p.x, p.y }");
+  expect(wrapped[0] === 0 && wrapped[1] === -22, "a row wraps at the line size").toBeTruthy();
+  addon.eval("__c:SetUnit(nil)");
+  expect(addon.eval("return __c.groups[1].icons[1]:IsShown()") === false, "no unit: nothing shows").toBeTruthy();
+});
+
+it("aura colors and stacks when the client hides the values", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + `
+    C_UnitAuras = { GetAuraDispelTypeColor = function(unit, id, curve) __curve = curve return CreateColor(0.1, 0.2, 0.3) end,
+      GetAuraApplicationDisplayCount = function() error("TEST-ONLY") end }`);
+  const out = addon.eval(`local A = ns.Auras
+    local r, g, b = A.DispelColor("target", { auraInstanceID = 5, dispelName = { __secret = true } })
+    return { color = { r, g, b }, points = #__curve.points, step = __curve.type, plain = { A.DispelColor("target", { dispelName = "Poison" }) },
+      typeless = A.DispelToken(nil), unknown = A.DispelToken("Enrage"), stacks = A.StackText("target", { auraInstanceID = 5, applications = 4 }),
+      one = A.StackText("target", { applications = 1 }), hidden = A.StackText("target", { applications = { __secret = true } }) }`);
+  expect(out.color[0] === 0.1 && out.points === 7 && out.step === 1, "a hidden type is colored by the client through the theme's curve").toBeTruthy();
+  expect(isTok(addon, out.plain, "poison") && out.typeless === "bad" && out.unknown === "bad", "plain types use their token; none or unknown is 'bad'").toBeTruthy();
+  expect(out.stacks === "4" && out.one === "" && out.hidden === "", "stacks: plain counts above 1 when the client's formatter fails; nothing when hidden").toBeTruthy();
+  const noCurve = loggedIn(UNITS_ENV + `C_UnitAuras = { GetAuraDispelTypeColor = function() return nil end }`);
+  expect(noCurve.eval('return ns.Auras.DispelToken("Magic")') === "magic" && isTok(noCurve, noCurve.eval('return { ns.Auras.DispelColor("target", { dispelName = { __secret = true } }) }'), "bad"), "no curve support: a hidden type shows as 'bad'").toBeTruthy();
+});
+
+it("cast bars: spark, seconds left, latency and the uninterruptible edge", () => {
+  const addon = loggedIn(CAST_ENV + 'GetNetStats = function() return 0, 0, 40, 150 end');
+  addon.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
+  addon.fire("UNIT_SPELLCAST_START", "player");
+  addon.eval("__wfgStub.update(1)");
+  const b = addon.eval(`local b = ForeverUI_CastBar_player
+    return { time = b.time:GetText(), lag = b.lag:IsShown() and b.lag.__width, width = b:GetWidth(), spark = b.spark.__points.TOP.relPoint }`);
+  expect(b.time === "2.0", "the seconds left, at the bar's right").toBeTruthy();
+  expect(b.lag === b.width * 150 / 3000, "your latency shaded at the end of your cast (world latency)").toBeTruthy();
+  expect(b.spark === "TOPRIGHT", "a spark rides the fill's edge").toBeTruthy();
+  addon.eval('__casts.target = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000, shielded = true }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  const t = addon.eval(`local b = ForeverUI_CastBar_target local edge
+    for _, w in ipairs(__wfgStub.frames) do if w.__parent == b and w.__layer == "BORDER" then edge = w.__vertexColor break end end
+    return { lag = b.lag:IsShown(), edge = edge }`);
+  expect(t.lag === false && isTok(addon, t.edge, "shielded"), "no latency on others' bars; a cast you can't interrupt gets a gray edge").toBeTruthy();
+  const noStats = loggedIn(CAST_ENV + "GetNetStats = nil");
+  noStats.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
+  noStats.fire("UNIT_SPELLCAST_START", "player");
+  expect(noStats.eval("return ForeverUI_CastBar_player.lag:IsShown()") === false, "no latency shade where the client can't say").toBeTruthy();
+  const homeOnly = loggedIn(CAST_ENV + "GetNetStats = function() return 0, 0, 60, { __secret = true } end");
+  homeOnly.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
+  homeOnly.fire("UNIT_SPELLCAST_START", "player");
+  expect(homeOnly.eval("return ForeverUI_CastBar_player.lag.__width") === homeOnly.eval("return ForeverUI_CastBar_player:GetWidth()") * 60 / 3000, "home latency when world latency is hidden").toBeTruthy();
+});
+
+it("unit frames on WoW Forever: levels, health percent, classification", () => {
+  const addon = loggedIn(UNITS_ENV + FOREVER_ENV + `
+    UnitLevel = function(unit) return ({ player = 60, target = -1, focus = { __secret = true } })[unit] or 12 end
+    GetCreatureDifficultyColor = function(level) return { r = 1, g = 0.1, b = 0.1 } end
+    UnitClassification = function(unit) return ({ target = "worldboss", focus = "rare" })[unit] or "normal" end
+    CurveConstants = { ScaleTo100 = { __curve = true } }
+    UnitHealthPercent = function(unit, predicted, curve) return 84 end
+    __units.focus = { name = "TEST-ONLY Focus", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA", reaction = 5 }`, NO_RAID);
+  addon.fire("PLAYER_TARGET_CHANGED");
+  addon.fire("PLAYER_FOCUS_CHANGED");
+  const f = addon.eval(`local p, t, fo = ForeverUI_player, ForeverUI_target, ForeverUI_focus
+    return { level = p.level:GetText(), color = p.level.__textColor, boss = t.level:GetText(), hidden = fo.level:GetText(), hiddenColor = fo.level.__textColor,
+      health = p.healthText:GetText(), mark = t.class:IsShown() and t.class.__vertexColor, rare = fo.class.__vertexColor, playerMark = p.class }`);
+  expect(f.level === "60" && f.color[1] === 0.1 && f.boss === "??" && f.hidden === "", "the level left of the name, colored by difficulty; ?? for a boss; nothing when hidden").toBeTruthy();
+  expect(isTok(addon, f.hiddenColor, "text2"), "a hidden level falls back to the plain text color").toBeTruthy();
+  expect(f.health === "84%", "health as a percent from the client's own percent").toBeTruthy();
+  expect(isTok(addon, f.mark, "bad") && isTok(addon, f.rare, "text2") && f.playerMark == null, "a diamond marks bosses, rares and elites on the target and focus").toBeTruthy();
+  addon.eval("UnitHealthPercent = function() error('TEST-ONLY') end");
+  addon.fire("UNIT_HEALTH", "player");
+  expect(addon.eval("return ForeverUI_player.healthText:GetText()") === "900", "if the client's percent fails, the value shows").toBeTruthy();
+  const retail = loggedIn(UNITS_ENV, NO_RAID);
+  expect(retail.eval("return ForeverUI_player.level") === null && retail.eval("return ForeverUI_player.healthText:GetText()") === "900", "elsewhere: no level, health as a value").toBeTruthy();
+});
+
+it("combo points for rogues and druids", () => {
+  const addon = loggedIn(UNITS_ENV + `__units.player.class = "ROGUE" __cp = 3
+    GetComboPoints = function(unit, target) return __cp end`, NO_RAID);
+  // The pips' state: shown, how many lit, how many in all.
+  const pips = () => addon.eval(`local CP = ns.GetModule("ComboPoints") local lit = 0
+    for _, p in ipairs(CP.pips) do if p.fill:IsShown() then lit = lit + 1 end end
+    return { shown = CP.bar:IsShown(), lit = lit, n = #CP.pips }`);
+  let p = pips();
+  expect(p.shown && p.lit === 3 && p.n === 5, "five pips above the player frame, one lit per point").toBeTruthy();
+  addon.eval("__cp = 0");
+  addon.fire("UNIT_POWER_UPDATE", "player", "COMBO_POINTS");
+  expect(pips().shown === false, "hidden while you have no points").toBeTruthy();
+  addon.eval("__cp = { __secret = true }");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(pips().shown === false, "a hidden count shows nothing").toBeTruthy();
+  const druid = loggedIn(UNITS_ENV + `__units.player.class = "DRUID"
+    Enum = Enum or {} Enum.PowerType = { ComboPoints = 4 } UnitPower = function(unit, kind) return kind == 4 and 2 or 0 end`, NO_RAID);
+  expect(druid.eval('local CP = ns.GetModule("ComboPoints") return CP.bar:IsShown() and CP.Count()') === 2, "without the older call, your combo-point power is read").toBeTruthy();
+  const mage = loggedIn(UNITS_ENV, NO_RAID);
+  expect(mage.eval('return ns.GetModule("ComboPoints").bar') === null, "other classes build nothing").toBeTruthy();
+  const noFrames = loggedIn(UNITS_ENV + '__units.player.class = "ROGUE"', { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { UnitFrames = false, RaidFrames = false } } } }" });
+  expect(noFrames.eval('local CP = ns.GetModule("ComboPoints") CP.Update() return CP.bar') === null, "no player frame, no pips").toBeTruthy();
+});
+
+it("action bar cooldown numbers in the theme's font", () => {
+  const addon = loggedIn(UNITS_ENV + ACTIONS_ENV);
+  const cd = addon.eval(`local cd = ForeverUI_Bar1Button1.cooldown local fs = cd:GetCountdownFontString() return { font = fs.__font, color = fs.__textColor }`);
+  expect(cd.font[0].includes("SemiBold") && cd.font[1] === 14, "the client's countdown numbers use the theme's bold font").toBeTruthy();
+});
+
 // Clicks one of the setup wizard's buttons (next, back or close) as the player would.
 const setupClick = (addon, which) => addon.eval(`local b = ForeverUI_Setup.${which} b:GetScript("OnClick")(b, "LeftButton")`);
 
@@ -1892,8 +2435,8 @@ it("setup Healing layout: clear of the bars, the cast bar, and the player and ta
     // N: the most groups (a party is one column, like one group) that fit between the player and target frames.
     let n = 0;
     while (n < 8 && clearOf(n + 1, ["uf_player", "uf_target"])) n += 1;
-    // Cutoff: 3 groups (278 px wide) fit the 300 px between the player and target frames; 4 groups (372 px) overlap them.
-    expect(n, `${sw}x${sh}: a party and raids of up to 3 groups clear the player and target frames; 4 or more overlap them`).toBe(3);
+    // Cutoff: with 100 px tiles, 2 groups (204 px wide) fit the 300 px between the player and target frames; 3 groups (308 px) overlap them.
+    expect(n, `${sw}x${sh}: a party and raids of up to 2 groups clear the player and target frames; 3 or more overlap them`).toBe(2);
   }
 });
 

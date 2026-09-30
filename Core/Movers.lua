@@ -58,6 +58,17 @@ function ns.Mover(frame, key, label, default)
   return m
 end
 
+-- Changes a mover's default point (a stacked bar whose neighbors changed
+-- size) and moves its frame, and its handle in unlock mode, there, unless a
+-- saved position wins.
+function ns.SetMoverDefault(key, default)
+  local m = movers[key]
+  if not m then return end
+  m.default = default
+  place(m)
+  if m.handle then anchor(m.handle, m) end
+end
+
 -- Saving ------------------------------------------------------------------------------
 
 -- Saves a position for a mover, moves its frame, and keeps its handle on it.
