@@ -79,11 +79,19 @@ frame:SetScript("OnEvent", function(_, event, ...)
   end
 end)
 
+-- Whether this client has the event (registering one it lacks is an error);
+-- yes when the client can't say.
+local function known(event)
+  local check = C_EventUtils and C_EventUtils.IsEventValid
+  return type(check) ~= "function" or check(event) ~= false
+end
+
 -- Calls fn(event, ...) whenever the event fires. Registering the same
--- function twice is a no-op.
+-- function twice is a no-op; an event this client lacks is skipped (and noted).
 function ns.On(event, fn)
   local list = handlers[event]
   if not list then
+    if not known(event) then return ns.CaughtError("event " .. event, "not on this client") end
     frame:RegisterEvent(event)
   end
   handlers[event] = with(list or {}, fn)

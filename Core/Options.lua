@@ -250,6 +250,22 @@ local function moreRows()
   }
 end
 
+-- get/set for the weapon enchant cells, which show or hide at once.
+local function enchantSetting()
+  local get, set = setting("PlayerAuras", "enchants")
+  return get, function(v) set(v); ns.GetModule("PlayerAuras").UpdateEnchants() end
+end
+
+-- Your own buffs and debuffs (by the minimap).
+local function playerAuraRows()
+  return {
+    { "header", "Your buffs and debuffs" },
+    check("Timer numbers on your buffs (reload)", setting("PlayerAuras", "timers", true)),
+    check("Weapon enchants in front of your buffs", enchantSetting()),
+    { "cycle", "Icon size (reload)", { { 26, "Small" }, { 30, "Medium" }, { 36, "Large" } }, setting("PlayerAuras", "size", true) },
+  }
+end
+
 -- Tooltips: where they sit and what they add.
 local function tooltipRows()
   return {
@@ -351,7 +367,7 @@ local PAGES = {
   { key = "unitframes", title = "Unit frames", icon = "UnitFrames", order = 30, rows = function() return append(unitFrameRows(), castRows()) end },
   { key = "raid", title = "Raid frames", icon = "RaidFrames", order = 40, rows = raidPageRows },
   { key = "actionbars", title = "Action bars", icon = "ActionBars", order = 60, rows = actionBarPageRows },
-  { key = "more", title = "Bars, map, chat", icon = "Map", order = 80, rows = function() return append(moreRows(), tooltipRows()) end },
+  { key = "more", title = "Bars, map, chat", icon = "Map", order = 80, rows = function() return append(append(playerAuraRows(), moreRows()), tooltipRows()) end },
   { key = "profiles", title = "Profiles", icon = "Profiles", order = 90, rows = profileRows },
 }
 O.PAGES = PAGES
