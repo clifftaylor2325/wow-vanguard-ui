@@ -23,7 +23,7 @@ export const CATEGORIES = [
   ["tooltip", ["tooltips"]],
   ["plates", ["nameplates"]],
   ["healing", ["heal prediction, aggro, buff watch", "healing fallbacks and options"]],
-  ["auras", ["raid indicators", "target and focus auras", "aura duration objects and power colors the theme does not name"]],
+  ["auras", ["raid indicators", "target and focus auras", "aura duration objects and power colors the theme does not name", "aura containers on the client's engine", "aura container timer options a client refuses, and the engine probe", "aura containers without the engine (the fallback)", "aura colors and stacks when the client hides the values"]],
   ["clicks", ["click casting", "click casting options", "click-casting validation, labels and unit frames"]],
   ["raid", ["raid frames", "raid frames: a dark style chosen before 'look' carries over"]],
   ["options", ["options window", "options window: nav, search, controls, footer", "options slider, search, scroll, special bars and profile switch", "choice fallback, key capture and the mouse wheel"]],

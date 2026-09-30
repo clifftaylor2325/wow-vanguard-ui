@@ -246,10 +246,11 @@ local function version()
   return ok and v or "?"
 end
 
--- The client line: which game, and whether aura values are hidden right now.
+-- The client line: which game, which aura backend, and whether aura values are hidden right now.
 local function clientLine()
   local client = ns.IsForever() and "WoW Forever" or "Retail"
-  return string.format("Client %s  ·  aura values %s", client, ns.AurasSecret() and "hidden right now" or "readable")
+  local hidden = ns.AurasSecret() and "hidden right now" or "readable"
+  return string.format("Client %s  ·  auras on the %s  ·  aura values %s", client, ns.Auras.BackendName(), hidden)
 end
 
 -- /fui status

@@ -21,6 +21,8 @@ Core/Modules.lua
 Core/Theme.lua
 Core/Dialog.lua
 Core/Auras.lua
+Core/AuraLegacy.lua
+Core/AuraEngine.lua
 Core/Skin.lua
 Core/Layout.lua
 Core/Grid.lua
