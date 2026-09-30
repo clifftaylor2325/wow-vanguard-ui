@@ -151,10 +151,22 @@ local function updateIcon(b)
   AB.UpdateEmpty(b)
 end
 
--- Charges or item count, shown only when it is a plain number above 1.
+-- Whether an action uses up something you carry (a reagent, a potion).
+local function usesUp(action)
+  for _, name in ipairs({ "IsConsumableAction", "IsStackableAction" }) do
+    local v = call(name, action)
+    if not ns.IsSecret(v) and v == true then return true end
+  end
+  return false
+end
+
+-- Charges or item count: always for something that gets used up (so running
+-- out shows 0, as the game's buttons do), otherwise only above 1. A hidden
+-- count shows nothing.
 local function updateCount(b)
   local count = ns.PlainNumber(call("GetActionCount", b.action))
-  b.count:SetText(count and count > 1 and tostring(count) or "")
+  local shown = count ~= nil and (count > 1 or usesUp(b.action))
+  b.count:SetText(shown and tostring(count) or "")
 end
 
 -- The cooldown sweep. A duration object (Midnight) goes to the widget as is;

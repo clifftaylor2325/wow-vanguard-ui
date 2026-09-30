@@ -391,6 +391,22 @@ const stackY = (addon) => addon.eval(`local out = {}
   end
   return out`);
 
+it("reagent and item counts show even at 0 and 1", () => {
+  const addon = loggedIn(ACTIONS_ENV + `
+    __actions[1].count = 0 __actions[1].reagent = true
+    __actions[2].count = 1 __actions[2].stack = true
+    __actions[3].count = 1
+    __actions[4] = { tex = "TEST-ONLY-D", count = 0, usable = true, reagent = { __secret = true } }
+    IsConsumableAction = function(slot) return (__actions[slot] or {}).reagent end
+    IsStackableAction = function(slot) return (__actions[slot] or {}).stack == true end`);
+  // The count text on bar 1's button n.
+  const count = (n) => addon.eval(`return ForeverUI_Bar1Button${n}.count:GetText()`);
+  expect(count(1), "a spell out of its reagent shows 0").toBe("0");
+  expect(count(2), "the last potion shows 1").toBe("1");
+  expect(count(3), "a plain action with one charge shows nothing").toBe("");
+  expect(count(4), "a hidden answer counts as not used up").toBe("");
+});
+
 it("action bars stack with bar 1 on top", () => {
   const addon = loggedIn(ACTIONS_ENV);
   expect(JSON.stringify(stackY(addon)) === JSON.stringify([124, 82, 40, false, false, false, false, false]), `bar 3 at the bottom, bar 1 on top (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
@@ -803,8 +819,8 @@ it("export and import", () => {
   dst.eval(`ForeverUI_TextEdit:SetText(${JSON.stringify(text)}); ForeverUI_TextDialog.primary:GetScript("OnClick")(ForeverUI_TextDialog.primary)`);
   expect(dst.eval("return ForeverUICharDB.profile") === "Imported", "a whole-profile import becomes a new profile this character uses").toBeTruthy();
   expect(dst.eval("return ForeverUIDB.profiles.Imported.positions.uf_player.x") === 1 && dst.eval("return ForeverUIDB.profiles.Imported.theme.accent[1]") === 1, "with every setting").toBeTruthy();
-  expect(dst.eval("return ForeverUI_Confirm:IsShown()") && /Reload/.test(dst.eval("return ForeverUI_Confirm.accept.text:GetText()")), "and a reload is offered").toBeTruthy();
-  dst.eval('ReloadUI = function() __reloaded = true end; ForeverUI_Confirm.accept:GetScript("OnClick")(ForeverUI_Confirm.accept)');
+  expect(dst.eval("return ForeverUI_Reload:IsShown()") && /Reload/.test(dst.eval("return ForeverUI_Reload.accept.text:GetText()")), "and a reload is offered").toBeTruthy();
+  dst.eval('ReloadUI = function() __reloaded = true end; ForeverUI_Reload.accept:GetScript("OnClick")(ForeverUI_Reload.accept)');
   expect(dst.eval("return __reloaded") === true, "Reload reloads the UI").toBeTruthy();
   const theme = src.eval('return ns.ExportProfile("theme")');
   dst.eval('ns.UseProfile("Default")');
@@ -849,7 +865,7 @@ it("spec profiles", () => {
   expect(relog.eval("return ForeverUICharDB.profile") === "Healer" && relog.eval("return select(2, ns.Theme.Accent())") === 1, "logging in as that spec uses its profile before modules load").toBeTruthy();
   relog.eval("__spec = 1; ForeverUICharDB.specProfiles[1] = 'Default'");
   relog.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
-  expect(relog.eval("return ForeverUICharDB.profile") === "Default" && relog.eval("return ForeverUI_Confirm:IsShown()") === true, "changing spec switches profile and offers a reload").toBeTruthy();
+  expect(relog.eval("return ForeverUICharDB.profile") === "Default" && relog.eval("return ForeverUI_Reload:IsShown()") === true, "changing spec switches profile and offers a reload").toBeTruthy();
   addon.slash("spec off");
   expect(addon.eval("return ForeverUICharDB.specProfiles[2]") === null, "/fui spec off stops switching").toBeTruthy();
 });
@@ -1271,6 +1287,99 @@ const marks = (addon, i) => addon.eval(`local b = ForeverUI_RaidUnitButton${i}
   local function tex(t) return t:IsShown() and t.__texture end
   return { icon = b.raidIcon:IsShown() and b.raidIcon.__texCoord, ready = tex(b.ready), rez = b.rez:IsShown(), leader = tex(b.leader), alpha = b.__alpha }`);
 
+// The reload overlay on a button as [type, macro, key-down, sits above the button], or false.
+const reloadOverlay = (addon, path) => addon.eval(`local b = ${path} local o = b.reloadOverlay
+  return o and { o:GetAttribute("type"), o:GetAttribute("macrotext"), o:GetAttribute("useOnKeyDown"), o:GetFrameLevel() > b:GetFrameLevel() } or false`);
+
+it("reload buttons: a /reload macro overlay, since the Forever client blocks ReloadUI()", () => {
+  const addon = loggedIn(FOREVER_ENV + "ReloadUI = function() __reloaded = true end");
+  addon.eval('ns.OfferReload("TEST-ONLY change.")');
+  expect(addon.eval("return ForeverUI_Reload:IsShown() and ForeverUI_Reload.title:GetText()"), "a reload is offered with its reason").toBe("TEST-ONLY change. Reload the UI now to apply it?");
+  expect(reloadOverlay(addon, "ForeverUI_Reload.accept"), "Reload carries a /reload macro overlay, on mouse-up, above the button").toEqual(["macro", "/reload", false, true]);
+  addon.eval('local a = ForeverUI_Reload.accept a:SetScript("OnEnter", function() __hover = "in" end) a:SetScript("OnLeave", function() __hover = "out" end)');
+  addon.eval("local o = ForeverUI_Reload.accept.reloadOverlay o:GetScript('OnEnter')(o)");
+  expect(addon.eval("return __hover"), "hovering the overlay lights the button under it").toBe("in");
+  addon.eval("local o = ForeverUI_Reload.accept.reloadOverlay o:GetScript('OnLeave')(o)");
+  expect(addon.eval("return __hover"), "and leaving it lets go").toBe("out");
+  addon.eval("local a = ForeverUI_Reload.accept a:SetScript('OnEnter', nil) a.reloadOverlay:GetScript('OnEnter')(a.reloadOverlay)");
+  addon.eval("ForeverUI_Reload.cancel:GetScript('OnClick')(ForeverUI_Reload.cancel)");
+  expect(addon.eval("return ForeverUI_Reload:IsShown()"), "Later closes it").toBe(false);
+  setCombat(addon, true);
+  addon.slash("");
+  expect(reloadOverlay(addon, "ForeverUI_Options.reload"), "a reload button built in combat has no overlay yet").toBe(false);
+  addon.eval("ForeverUI_Options.reload:GetScript('OnClick')(ForeverUI_Options.reload)");
+  expect(addon.eval("return __reloaded") === null && chatHas(addon, /Type \/reload in chat/), "clicked then, it says to type /reload (ReloadUI would be blocked)").toBe(true);
+  setCombat(addon, false);
+  expect(reloadOverlay(addon, "ForeverUI_Options.reload"), "the overlay arrives when combat ends").toEqual(["macro", "/reload", false, true]);
+});
+
+it("unit frame health text settings apply at once", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + "UnitHealthPercent = function() return 90 end CurveConstants = { ScaleTo100 = 1 }");
+  addon.slash("");
+  addon.eval('__click("Unit frames")');
+  expect(addon.eval('return __click("Show health numbers") and ForeverUI_player.healthText:GetText()'), "turning health numbers off clears them at once").toBe("");
+  expect(addon.eval("return ForeverUI_Options.reload:IsShown()"), "with no reload").toBe(false);
+  addon.eval('__click("Show health numbers")');
+  expect(addon.eval('return __click("Health as") and ForeverUI_player.healthText:GetText()'), "switching to percent shows it at once").toMatch(/%$/);
+  expect(addon.eval('return __click("Shaman totems") and ForeverUIDB.profiles.Default.ClassBars.totems'), "the totem switch is on the page (after a reload)").toBe(false);
+  expect(addon.eval('return __click("Druid mana") and ForeverUIDB.profiles.Default.ClassBars.druidMana'), "and the druid mana switch").toBe(false);
+});
+
+// TEST-ONLY totems: slot 1 has a totem down (plain values), the other slots are empty.
+const TOTEMS_ENV = `
+  __units.player.class = "SHAMAN"
+  __totems = { [1] = { true, "TEST-ONLY Totem", 100, 120, "TEST-ONLY-ICON-Totem" } }
+  GetTotemInfo = function(slot) local t = __totems[slot] if t then return t[1], t[2], t[3], t[4], t[5] end return false, "", 0, 0, nil end
+`;
+
+// One totem cell's state: alpha, icon, plain sweep, duration object, numbers shown, secure attributes.
+const totemCell = (addon, slot) => addon.eval(`local c = ns.GetModule("ClassBars").cells[${slot}]
+  return { alpha = c.__alpha, icon = c.icon.__texture, sweep = c.cooldown.__cooldown, object = c.cooldown.__durationObject,
+    numbers = c.cooldown.__hideNumbers == false, type2 = c:GetAttribute("type2"), slot = c:GetAttribute("totem-slot"), follows = c.__alphaFromBoolean }`);
+
+it("class bars: totems for shamans, mana in forms for druids", () => {
+  const addon = loggedIn(UNITS_ENV + TOTEMS_ENV);
+  expect(addon.eval('local CB = ns.GetModule("ClassBars") return { #CB.cells, select(2, CB.totems:GetPoint()) == ForeverUI_player }'), "a shaman gets four totem cells under the player frame").toEqual([4, true]);
+  expect(totemCell(addon, 1), "a totem that is down shows its icon, its sweep and the client's numbers").toMatchObject({ alpha: 1, icon: "TEST-ONLY-ICON-Totem", sweep: [100, 120], numbers: true, type2: "destroytotem", slot: 1 });
+  expect(totemCell(addon, 2).alpha, "an empty slot is see-through (cells are secure, so alpha, not Hide)").toBe(0);
+  addon.eval('GetTotemDuration = function(slot) return { __duration = slot } end __totems[2] = { true, "TEST-ONLY Totem 2", 200, 60, "TEST-ONLY-ICON-Two" }');
+  addon.fire("PLAYER_TOTEM_UPDATE");
+  expect(totemCell(addon, 2), "a new totem shows, timed by the client's duration object").toMatchObject({ alpha: 1, icon: "TEST-ONLY-ICON-Two", object: { __duration: 2 } });
+  addon.eval("__totems[1] = { { __secret = true }, 'x', { __secret = true }, { __secret = true }, 'TEST-ONLY-ICON-Totem' }");
+  addon.fire("PLAYER_TOTEM_UPDATE");
+  expect(totemCell(addon, 1), "a hidden answer goes to the client's alpha-from-boolean; the cell keeps its alpha").toMatchObject({ alpha: 1, follows: { __secret: true } });
+  const off = loggedIn(UNITS_ENV + TOTEMS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { ClassBars = { totems = false } } }" });
+  expect(off.eval('return ns.GetModule("ClassBars").cells == nil'), "totems can be turned off").toBe(true);
+  const noFrames = loggedIn(UNITS_ENV + TOTEMS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { UnitFrames = false } } }" });
+  expect(noFrames.eval('return ns.GetModule("ClassBars").cells == nil'), "no player frame (the game's own shows its totems), no row").toBe(true);
+  const early = loggedIn(UNITS_ENV + TOTEMS_ENV + "GetTotemInfo = nil");
+  expect(early.eval('ns.GetModule("ClassBars").UpdateTotems() return ns.GetModule("ClassBars").cells[1].__alpha'), "no totem call on this client: cells stay as built").toBe(null);
+});
+
+it("class bars: druid mana while a form shows rage or energy", () => {
+  const addon = loggedIn(UNITS_ENV + '__units.player.class = "DRUID" __form = 1 UnitPowerType = function() return __form end');
+  // The mana bar: shown, max and value.
+  const mana = () => addon.eval('local CB = ns.GetModule("ClassBars") return { CB.manaHolder:IsShown(), select(2, CB.mana:GetMinMaxValues()), CB.mana:GetValue() }');
+  expect(mana(), "in bear form the mana bar shows your mana").toEqual([true, 100, 50]);
+  addon.eval("__form = 0 __units.player.power = 70");
+  addon.fire("UNIT_POWER_UPDATE", "target");
+  expect(mana()[0], "another unit's power changes nothing").toBe(true);
+  addon.fire("UPDATE_SHAPESHIFT_FORM");
+  expect(mana(), "back in caster form it hides").toEqual([false, 100, 70]);
+  addon.eval("__form = { __secret = true }");
+  addon.fire("UNIT_DISPLAYPOWER", "player");
+  expect(mana()[0], "a hidden power type counts as no form").toBe(false);
+  const other = loggedIn(UNITS_ENV + 'UnitClass = function() return "x", { __secret = true } end');
+  expect(other.eval('local CB = ns.GetModule("ClassBars") return CB.cells == nil and CB.mana == nil'), "a hidden or other class builds nothing").toBe(true);
+  const combat = createAddon({ savedVariables: SETUP_DONE });
+  combat.eval(UNITS_ENV + '__units.player.class = "DRUID" UnitPowerType = function() return 3 end');
+  setCombat(combat, true);
+  combat.login();
+  expect(combat.eval('return ns.GetModule("ClassBars").mana == nil'), "logging in during combat waits").toBe(true);
+  setCombat(combat, false);
+  expect(combat.eval('return ns.GetModule("ClassBars").manaHolder:IsShown()'), "and builds the bar when combat ends").toBe(true);
+});
+
 it("raid status marks", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + STATUS_ENV);
   addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
@@ -1284,6 +1393,8 @@ it("raid status marks", () => {
   expect(marks(addon, 3).alpha === 1, "range is re-checked on a timer").toBeTruthy();
   addon.eval("__status.range.raid3 = { __secret = true }");
   addon.eval("__wfgStub.advance(0.25)");
+  expect(addon.eval("return ForeverUI_RaidUnitButton3.__alphaFromBoolean.__secret"), "a hidden range goes to the client's alpha-from-boolean").toBe(true);
+  addon.eval("ForeverUI_RaidUnitButton3.SetAlphaFromBoolean = false __wfgStub.advance(0.25)");
   expect(marks(addon, 3).alpha === 1, "a hidden range never fades on a client without alpha-from-boolean").toBeTruthy();
   addon.eval('__status.ready = { raid1 = "ready", raid3 = "waiting" }');
   addon.fire("READY_CHECK");
@@ -1385,6 +1496,24 @@ const plate = (addon, unit) => addon.eval(`local p = __plates.${unit} local f = 
   local edge for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "BORDER" then edge = w.__vertexColor break end end
   return { drawn = f:IsShown(), default = p.UnitFrame:IsShown(), hp = f.__value, color = f.__barColor, name = f.name:GetText(),
     dot = f.debuffs.frame.__groups[1].buttons[1].__shown and f.debuffs.frame.__groups[1].buttons[1].__icon.__texture, cast = f.cast:IsShown() and f.cast.text:GetText(), edge = edge }`);
+
+it("a nameplate first drawn in combat gets the client's aura container after the fight", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV);
+  setCombat(addon, true);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
+  // nameplate2's debuff row: on the engine, its frame kind, and its unit.
+  const row = () => addon.eval("local f = __plates.nameplate2.fui return { engine = f.debuffsOnEngine, kind = f.debuffs.frame.__kind, unit = f.debuffs.unit or f.debuffs.frame.__unit }");
+  expect(row(), "in combat a container can't be made, so the plate gets the fallback icons").toMatchObject({ engine: false, kind: "Frame", unit: "nameplate2" });
+  addon.eval("__old = __plates.nameplate2.fui.debuffs.frame");
+  setCombat(addon, false);
+  expect(row(), "after the fight it gets the client's own container, on the same unit").toMatchObject({ engine: true, kind: "AuraContainer", unit: "nameplate2" });
+  expect(addon.eval("return __old:IsShown()"), "and the fallback row is put away").toBe(false);
+  const old = loggedIn(UNITS_ENV + PLATE_ENV + "__wfgStub.noAuraContainer = true");
+  setCombat(old, true);
+  old.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
+  setCombat(old, false);
+  expect(old.eval("return __plates.nameplate2.fui.debuffsOnEngine"), "a client without the container keeps the fallback").toBe(false);
+});
 
 it("nameplates", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV);
@@ -2352,7 +2481,7 @@ it("setup layouts: Healing puts the raid frames under the character and turns cl
   expect(addon.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "click casting and the raid frames are on").toBe(true);
   setupClick(addon, "next");
   setupClick(addon, "next");
-  expect(addon.eval("return ForeverUI_Confirm == nil"), "nothing was off, so no reload is offered").toBe(true);
+  expect(addon.eval("return ForeverUI_Reload == nil"), "nothing was off, so no reload is offered").toBe(true);
   const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { ClickCast = false, RaidFrames = false } } } }" });
   off.eval('__click("Healing")');
   setupClick(off, "next");
@@ -2360,7 +2489,7 @@ it("setup layouts: Healing puts the raid frames under the character and turns cl
   expect(off.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "Healing turns click casting and the raid frames on").toBe(true);
   setupClick(off, "next");
   setupClick(off, "next");
-  expect(off.eval("return ForeverUI_Confirm:IsShown() and ForeverUI_Confirm.title:GetText()"), "a module that was off offers a reload at the end").toMatch(/Setup turned on a module that was off/);
+  expect(off.eval("return ForeverUI_Reload:IsShown() and ForeverUI_Reload.title:GetText()"), "a module that was off offers a reload at the end").toMatch(/Setup turned on a module that was off/);
 });
 
 it("setup layouts: Damage and tanking restores ForeverUI's defaults, undoing Healing", () => {

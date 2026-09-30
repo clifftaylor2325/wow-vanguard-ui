@@ -38,6 +38,7 @@ Modules/UnitFrames.lua
 Modules/CastBars.lua
 Modules/FrameAuras.lua
 Modules/ComboPoints.lua
+Modules/ClassBars.lua
 Modules/RaidFrames.lua
 Modules/RaidAuras.lua
 Modules/RaidHealing.lua

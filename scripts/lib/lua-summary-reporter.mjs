@@ -10,7 +10,7 @@ const OTHER = "other";
 
 // Category name -> the it() names in scripts/verify-lua.test.mjs it covers.
 export const CATEGORIES = [
-  ["core", ["saved variables", "modules", "combat queue", "slash", "events unsubscribe and a delivered event with no listeners", "slash commands for frames, accent, grid, theme, modules, skins, profile and spec", "WoW Forever client: interface, hidden auras, no specializations", "a retail client is not WoW Forever and keeps its aura state readable"]],
+  ["core", ["saved variables", "modules", "combat queue", "slash", "events unsubscribe and a delivered event with no listeners", "slash commands for frames, accent, grid, theme, modules, skins, profile and spec", "WoW Forever client: interface, hidden auras, no specializations", "a retail client is not WoW Forever and keeps its aura state readable", "reload buttons: a /reload macro overlay, since the Forever client blocks ReloadUI()"]],
   ["theme", ["theme", "widgets", "theme tokens and pixel-perfect borders", "bundled font and logo", "text roles, sheen and shadows"]],
   ["skins", ["skin API", "skin SetFont and a UI scale change"]],
   ["movers", ["movers", "layout", "mover coordinates with no handle"]],
@@ -18,10 +18,10 @@ export const CATEGORIES = [
   ["special", ["special bars"]],
   ["motion", ["motion: fades, reduce motion, sounds"]],
   ["frames", ["frames pass: bar texture, smoothing, raid style, shields, glows", "proc glow on action buttons"]],
-  ["bars", ["action bars", "action bars stack with bar 1 on top", "action bar stack follows button size and rows", "a moved action bar keeps its spot until reset", "the bottom stack follows per-bar size and rows, live", "action bar paging and events", "action bar dragging", "action button cooldowns, the C_ActionBar API and range polling", "a dropped spell named by GetSpellInfo", "action bar visibility: each mode's state driver and mouseover alpha", "action bar empty slots hide until the grid shows", "the right-edge bars start off and show on mouseover when turned on", "action bar layout: per-bar buttons, rows and size, deferred in combat", "an old profile keeps its right-edge bar on Always; a fresh enable gets On mouseover", "In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone", "mouseover bars are revealed during a drag and restored after", "Hidden bar bindings stay intact", "action bar cooldown numbers in the theme's font"]],
+  ["bars", ["action bars", "reagent and item counts show even at 0 and 1", "action bars stack with bar 1 on top", "action bar stack follows button size and rows", "a moved action bar keeps its spot until reset", "the bottom stack follows per-bar size and rows, live", "action bar paging and events", "action bar dragging", "action button cooldowns, the C_ActionBar API and range polling", "a dropped spell named by GetSpellInfo", "action bar visibility: each mode's state driver and mouseover alpha", "action bar empty slots hide until the grid shows", "the right-edge bars start off and show on mouseover when turned on", "action bar layout: per-bar buttons, rows and size, deferred in combat", "an old profile keeps its right-edge bar on Always; a fresh enable gets On mouseover", "In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone", "mouseover bars are revealed during a drag and restored after", "Hidden bar bindings stay intact", "action bar cooldown numbers in the theme's font"]],
   ["status", ["raid status marks"]],
   ["tooltip", ["tooltips"]],
-  ["plates", ["nameplates"]],
+  ["plates", ["nameplates", "a nameplate first drawn in combat gets the client's aura container after the fight"]],
   ["healing", ["heal prediction, aggro, buff watch", "healing fallbacks and options"]],
   ["auras", ["raid indicators", "raid indicators on the fallback", "a client that won't drive the dispel highlight never shows it uncolored", "raid tile zones never overlap", "target and focus auras", "aura duration objects and power colors the theme does not name", "aura containers on the client's engine", "aura container timer options a client refuses, and the engine probe", "aura containers without the engine (the fallback)", "aura colors and stacks when the client hides the values"]],
   ["clicks", ["click casting", "click casting options", "click-casting validation, labels and unit frames"]],
@@ -32,7 +32,7 @@ export const CATEGORIES = [
   ["data", ["data bars"]],
   ["more", ["minimap", "chat", "bags", "minimap with no position, chat window hooks, and short numbers"]],
   ["casts", ["cast bars", "cast bars: spark, seconds left, latency and the uninterruptible edge", "cast bar flashes on finish and interrupt", "cast timing from the client's duration object"]],
-  ["units", ["unit frames", "unit frames on WoW Forever: levels, health percent, classification", "combo points for rogues and druids", "unit frame events", "unit frames wait for combat"]],
+  ["units", ["unit frames", "unit frames on WoW Forever: levels, health percent, classification", "combo points for rogues and druids", "class bars: totems for shamans, mana in forms for druids", "unit frame health text settings apply at once", "class bars: druid mana while a form shows rage or energy", "unit frame events", "unit frames wait for combat"]],
   ["setup", ["first-run setup: once per account, three clicks with the defaults", "first-run setup waits for combat and steps aside in a fight", "/fui setup reopens setup; Back and the close button", "setup layouts: Healing puts the raid frames under the character and turns click casting on", "setup layouts: Damage and tanking restores ForeverUI's defaults, undoing Healing", "setup Healing layout: clear of the bars, the cast bar, and the player and target frames", "setup look: accent swatches and the raid frame style apply at once"]],
 ];
 
