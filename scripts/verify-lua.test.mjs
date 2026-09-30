@@ -1129,6 +1129,53 @@ it("healing fallbacks and options", () => {
   expect(addon.eval('return __click("Aggro strip")') && addon.eval("return ForeverUIDB.profiles.Default.RaidHealing.aggro") === false, "the page's switches work").toBeTruthy();
 });
 
+// TEST-ONLY WoW Forever client: a 1.x interface number, the aura restriction, no specializations.
+const FOREVER_ENV = `
+  GetBuildInfo = function() return "1.16.0", "TEST-ONLY", "Sep 1 2026", 16001 end
+  __secretAuras = false
+  C_Secrets = { ShouldAurasBeSecret = function() return __secretAuras end }
+`;
+
+// Whether any shown font string reads exactly `text`.
+const shownText = (addon, text) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+  local shown, f = true, w
+  while f do if not f.__shown then shown = false end f = f.__parent end
+  if shown and w.__kind == "FontString" and w.__text == "${text}" then return true end
+end return false`);
+
+it("WoW Forever client: interface, hidden auras, no specializations", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV + FOREVER_ENV);
+  expect(addon.eval("return ns.IsForever()") === true, "a 1.x interface number (16001) is WoW Forever").toBeTruthy();
+  addon.eval('__spawn(1, "raid1")');
+  expect(healing(addon, 1).missing === "TEST-ONLY-ICON-Arcane Intellect", "readable auras: a missing buff is marked").toBeTruthy();
+  addon.eval("__secretAuras = true");
+  addon.fire("UNIT_AURA", "raid1");
+  expect(healing(addon, 1).missing === false, "while auras are hidden, an unseen buff is unknown, not missing").toBeTruthy();
+  addon.eval("__secretAuras = { __secret = true }");
+  addon.fire("UNIT_AURA", "raid1");
+  expect(healing(addon, 1).missing === false, "a hidden answer to 'are auras hidden?' counts as hidden").toBeTruthy();
+  addon.eval("C_Secrets.ShouldAurasBeSecret = function() error('TEST-ONLY') end");
+  expect(addon.eval("return ns.AurasSecret()") === true, "an error counts as hidden").toBeTruthy();
+  addon.eval("C_Secrets.ShouldAurasBeSecret = function() return __secretAuras end __secretAuras = false");
+  setCombat(addon, false);
+  expect(healing(addon, 1).missing === "TEST-ONLY-ICON-Arcane Intellect", "leaving combat looks at every buff again").toBeTruthy();
+  addon.slash("status");
+  expect(chatHas(addon, /Client WoW Forever {2}· {2}aura values readable/), "/fui status names the client and the aura state").toBeTruthy();
+  addon.slash("spec Default");
+  expect(chatHas(addon, /no specializations/), "/fui spec explains there are no specializations").toBeTruthy();
+  addon.eval('ns.Options.Show("profiles")');
+  expect(shownText(addon, "SWITCH PROFILE") && !shownText(addon, "SPECIALIZATION"), "the Profiles page has no spec section").toBeTruthy();
+  addon.eval('UnitClass = function() return "Paladin", "PALADIN" end');
+  expect(addon.eval('for _, n in ipairs(ns.GetModule("RaidHealing").BuffNames()) do if n == "Greater Blessing of Kings" then return true end end'), "any blessing counts for a paladin").toBeTruthy();
+});
+
+it("a retail client is not WoW Forever and keeps its aura state readable", () => {
+  const addon = loggedIn('GetBuildInfo = function() return "12.0.7", "TEST-ONLY", "Sep 1 2026", 120007 end');
+  expect(addon.eval("return ns.IsForever()") === false && addon.eval("return ns.AurasSecret()") === false, "120007 is retail; no C_Secrets means readable").toBeTruthy();
+  addon.slash("status");
+  expect(chatHas(addon, /Client Retail/), "/fui status says Retail").toBeTruthy();
+});
+
 // TEST-ONLY group status: raid icons, ready check, resurrection, leader, range.
 const STATUS_ENV = `
   __status = { icon = { raid1 = 8 }, ready = {}, rez = {}, range = { raid1 = true, raid3 = false } }

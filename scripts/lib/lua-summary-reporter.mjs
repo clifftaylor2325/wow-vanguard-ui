@@ -10,7 +10,7 @@ const OTHER = "other";
 
 // Category name -> the it() names in scripts/verify-lua.test.mjs it covers.
 export const CATEGORIES = [
-  ["core", ["saved variables", "modules", "combat queue", "slash", "events unsubscribe and a delivered event with no listeners", "slash commands for frames, accent, grid, theme, modules, skins, profile and spec"]],
+  ["core", ["saved variables", "modules", "combat queue", "slash", "events unsubscribe and a delivered event with no listeners", "slash commands for frames, accent, grid, theme, modules, skins, profile and spec", "WoW Forever client: interface, hidden auras, no specializations", "a retail client is not WoW Forever and keeps its aura state readable"]],
   ["theme", ["theme", "widgets", "theme tokens and pixel-perfect borders", "bundled font and logo", "text roles, sheen and shadows"]],
   ["skins", ["skin API", "skin SetFont and a UI scale change"]],
   ["movers", ["movers", "layout", "mover coordinates with no handle"]],

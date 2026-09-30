@@ -228,6 +228,7 @@ end
 
 -- /fui spec [profile|off]
 local function specCommand(rest)
+  if not ns.HasSpecs() then return chat("This client has no specializations, so profiles don't switch by spec.") end
   local spec = ns.SpecIndex()
   if not spec then return chat("No specialization on this character yet.") end
   if rest == "" then
@@ -245,6 +246,12 @@ local function version()
   return ok and v or "?"
 end
 
+-- The client line: which game, and whether aura values are hidden right now.
+local function clientLine()
+  local client = ns.IsForever() and "WoW Forever" or "Retail"
+  return string.format("Client %s  ·  aura values %s", client, ns.AurasSecret() and "hidden right now" or "readable")
+end
+
 -- /fui status
 local function statusCommand()
   local enabled = 0
@@ -253,6 +260,7 @@ local function statusCommand()
   end
   chat(string.format("ForeverUI %s  ·  profile %s  ·  %d/%d modules on", version(), ns.ProfileName(), enabled, #ns.ModuleNames()))
   chat(string.format("%d skinned addon(s)  ·  %d painted frame(s)  ·  %d change(s) waiting on combat", #ns.SkinList(), T.PaintedCount(), ns.QueuedCount()))
+  chat(clientLine())
 end
 
 local COMMANDS = {
