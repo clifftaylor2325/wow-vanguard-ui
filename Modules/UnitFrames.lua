@@ -15,6 +15,9 @@ local UF = ns.Module("UnitFrames", {
   defaults = { hideBlizzard = true, healthText = true, powerHeight = 6 },
 })
 
+-- Target classification -> the color of its diamond (none for normal units).
+local CLASSIFICATION = { elite = "gold", rareelite = "accent", rare = "text2", worldboss = "bad" }
+
 -- key, unit, size, label and default point (on UIParent) for each frame.
 local LAYOUT = {
   { key = "player", unit = "player", w = 220, h = 38, label = "Player", point = { "CENTER", "CENTER", -260, -170 } },
@@ -106,10 +109,33 @@ function UF.DownState(unit)
   return isOffline(unit) and "Offline" or nil
 end
 
--- The health text: Dead, Offline, or current health shortened. The shortened
--- health may itself be secret (in instanced combat): show it, never compare it.
+-- Health as a percent ("84%"), from the client's own percent with its 0-100
+-- curve, so it works while health is hidden; nil where the client can't.
+local function percentText(unit)
+  local get, curve = _G.UnitHealthPercent, _G.CurveConstants and _G.CurveConstants.ScaleTo100
+  if type(get) ~= "function" or not curve then return nil end
+  local ok, text = pcall(function() return string.format("%d%%", get(unit, true, curve)) end)
+  return ok and text or nil
+end
+
+-- The health text: Dead, Offline, else the percent (if chosen) or current
+-- health shortened. Either may itself be secret: show it, never compare it.
 function UF.HealthText(unit)
-  return UF.DownState(unit) or shortNumber(UnitHealth(unit))
+  local percent = UF.settings and UF.settings.healthFormat == "percent" and percentText(unit)
+  return UF.DownState(unit) or percent or shortNumber(UnitHealth(unit))
+end
+
+-- The unit's level as text ("??" for a boss or a level too far above you), or "".
+function UF.LevelText(unit)
+  local level = ns.PlainNumber(type(UnitLevel) == "function" and UnitLevel(unit) or nil)
+  if not level then return "" end
+  return level < 1 and "??" or tostring(level)
+end
+
+-- The color token of a unit's classification diamond, or nil for a normal unit.
+function UF.ClassToken(unit)
+  local kind = type(UnitClassification) == "function" and UnitClassification(unit) or nil
+  return not ns.IsSecret(kind) and CLASSIFICATION[kind] or nil
 end
 
 -- Building ------------------------------------------------------------------------------
@@ -147,6 +173,22 @@ local function makeSecure(f, unit)
   f:RegisterForClicks("AnyUp")
 end
 
+-- The level left of the name (where levels are shown).
+local function addLevel(f)
+  f.level = createText(f, "name", "LEFT", 4)
+  f.name:ClearAllPoints()
+  f.name:SetPoint("LEFT", f.level, "RIGHT", 4, 0)
+end
+
+-- A small diamond (the ForeverUI mark) over the top-right corner: elite, rare or boss.
+local function addClassMark(f)
+  f.class = T.Snap(f.health:CreateTexture(nil, "OVERLAY"))
+  f.class:SetTexture(T.Texture("LogoLeft"))
+  f.class:SetSize(14, 14)
+  f.class:SetPoint("CENTER", f, "TOPRIGHT", -2, -2)
+  f.class:Hide()
+end
+
 -- Creates one unit frame (a secure unit button) with its bars and texts.
 local function createUnitFrame(key, unit, w, h, settings)
   local f = CreateFrame("Button", "ForeverUI_" .. key, UIParent, "SecureUnitButtonTemplate")
@@ -157,6 +199,7 @@ local function createUnitFrame(key, unit, w, h, settings)
   f.health, f.power = createBar(f), createBar(f)
   layoutBars(f, settings.powerHeight)
   f.name, f.healthText = createText(f, "name", "LEFT", 4), createText(f, "number", "RIGHT", -4)
+  if settings.showLevel then addLevel(f) end
   return f
 end
 
@@ -179,9 +222,27 @@ function UF.UpdatePower(f)
   f.power:SetStatusBarColor(UF.PowerColor(unit))
 end
 
--- The unit's name (passed through as is: it may be secret, and nil clears).
+-- The level, colored by how hard the unit is for you (the client's color).
+local function updateLevel(f)
+  f.level:SetText(UF.LevelText(f.unit))
+  local get = _G.GetCreatureDifficultyColor
+  local c = type(get) == "function" and ns.PlainNumber(UnitLevel(f.unit)) and get(UnitLevel(f.unit))
+  if c then f.level:SetTextColor(c.r, c.g, c.b) else T.Color(f.level, "text2") end
+end
+
+-- The classification diamond: shown in its color for elite, rare and boss units.
+local function updateClass(f)
+  local token = UF.ClassToken(f.unit)
+  f.class:SetShown(token ~= nil)
+  if token then T.Tint(f.class, token) end
+end
+
+-- The unit's name (passed through as is: it may be secret, and nil clears),
+-- its level and its classification where the frame shows them.
 function UF.UpdateName(f)
   f.name:SetText(UnitName(f.unit))
+  if f.level then updateLevel(f) end
+  if f.class then updateClass(f) end
 end
 
 -- Everything on a frame, if its unit exists.
@@ -266,6 +327,7 @@ end
 -- Creates, places and wires one frame.
 local function addFrame(key, unit, w, h, label, point)
   local f = createUnitFrame(key, unit, w, h, UF.settings)
+  if key == "target" or key == "focus" then addClassMark(f) end
   UF.frames[key] = f
   listen(f)
   watch(f)
@@ -320,9 +382,17 @@ local function build(settings)
   UF.Refresh()
 end
 
+-- WoW Forever players read levels and health percent on every frame (as its
+-- own UI does), so a profile that hasn't chosen yet starts that way there.
+local function clientDefaults(settings)
+  if settings.showLevel == nil then settings.showLevel = ns.IsForever() end
+  if settings.healthFormat == nil then settings.healthFormat = ns.IsForever() and "percent" or "value" end
+end
+
 -- Module entry point (Core/Modules.lua): build once out of combat, then listen.
 function UF.Enable(settings)
   UF.settings = settings
+  clientDefaults(settings)
   ns.OutOfCombat(function() build(settings) end)
   for event in pairs(GLOBAL_EVENTS) do
     ns.On(event, onGlobalEvent)

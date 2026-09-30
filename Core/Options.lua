@@ -153,6 +153,8 @@ local function unitFrameRows()
     { "header", "Unit frames" },
     check("Replace the default unit frames", setting("UnitFrames", "hideBlizzard", true)),
     check("Show health numbers", setting("UnitFrames", "healthText", true)),
+    { "cycle", "Health as", { { "value", "Value (42.8K)" }, { "percent", "Percent (84%)" } }, setting("UnitFrames", "healthFormat") },
+    check("Show levels (reload)", setting("UnitFrames", "showLevel", true)),
   }
 end
 
