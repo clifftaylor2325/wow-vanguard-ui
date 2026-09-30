@@ -2322,6 +2322,71 @@ it("aura containers on the client's engine", () => {
   expect(addon.eval("return __c.frame.__groups[1].buttons[1].__shown") === false, "Refresh reads the auras again").toBeTruthy();
 });
 
+// TEST-ONLY weapons: a shaman's imbue on the main hand (30 minutes left), nothing on the off hand.
+const WEAPONS_ENV = `
+  Enum = Enum or {}
+  Enum.WeaponSlot = { MainHand = 0, OffHand = 1, Ranged = 2 }
+  __enchants = { [0] = { { hasEnchant = true, enchantType = 2, timeLeft = 1800000, enchantIconID = "TEST-ONLY-ICON-Imbue" } } }
+  C_Item = { GetWeaponEnchantInfo = function(slot) return __enchants[slot] end }
+  GetInventoryItemTexture = function(unit, slot) return "TEST-ONLY-ICON-Weapon" .. slot end
+  BuffFrame = CreateFrame("Frame", "BuffFrame", UIParent) BuffFrame:RegisterEvent("UNIT_AURA")
+  DebuffFrame = CreateFrame("Frame", "DebuffFrame", UIParent)
+  GameTooltip = CreateFrame("Frame", "GameTooltip", UIParent)
+  function GameTooltip:SetOwner(owner) self.__owner = owner end
+  function GameTooltip:SetInventoryItem(unit, slot) self.__item = slot end
+`;
+
+// The player aura holder's state: the container's groups and point, and the enchant cells.
+const playerAuras = (addon) => addon.eval(`local PA = ns.GetModule("PlayerAuras") local f = PA.auras.frame
+  local cells = {} for i, c in ipairs(PA.cells) do cells[i] = { shown = c:IsShown(), icon = c.icon.__texture, sweep = c.cooldown.__cooldown, inv = c.inv } end
+  return { unit = f.__unit, filters = { f.__groups[1].filter, f.__groups[2].filter }, newLine = f.__groups[2].opts.layout.forceNewLine,
+    cancel = f.__groups[1].buttons[1].__cancelButtons, x = f.__points.TOPRIGHT.x, cells = cells }`);
+
+it("your buffs and debuffs replace the game's, with weapon enchants in front", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + "GetTime = function() return 1000 end");
+  expect(addon.eval("return { BuffFrame:IsShown(), BuffFrame:IsEventRegistered('UNIT_AURA'), DebuffFrame:IsShown() }"), "the game's buff frames are put away").toEqual([false, false, false]);
+  const pa = playerAuras(addon);
+  expect(pa, "one container on you: buffs, then debuffs from a new row; right-click cancels").toMatchObject({ unit: "player", filters: ["HELPFUL", "HARMFUL"], newLine: true, cancel: "RightButtonUp" });
+  expect(pa.cells[0], "the main hand's imbue shows first, its sweep full").toMatchObject({ shown: true, icon: "TEST-ONLY-ICON-Imbue", sweep: [1000, 1800], inv: 16 });
+  expect(pa.cells[1].shown === false && pa.x === -34, "no off-hand enchant, and the buffs move over by one cell").toBe(true);
+  expect(addon.eval('return { ns.MoverPoint("playerauras") }'), "the holder is movable, left of the minimap").toEqual(["TOPRIGHT", "TOPRIGHT", -210, -14]);
+  addon.eval("__enchants[0][1].timeLeft = 1200000 __enchants[1] = { { hasEnchant = true, timeLeft = 600000, enchantIconID = 0 } }");
+  addon.fire("UNIT_INVENTORY_CHANGED", "party1");
+  expect(playerAuras(addon).cells[1].shown, "another unit's inventory changes nothing").toBe(false);
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  const two = playerAuras(addon);
+  expect(two.cells[0].sweep, "time passing keeps the sweep's full length, so it empties").toEqual([400, 1800]);
+  expect(two.cells[1], "an oil on the off hand, drawn with the weapon's icon").toMatchObject({ shown: true, icon: "TEST-ONLY-ICON-Weapon17", sweep: [1000, 600] });
+  expect(two.x, "and the buffs move over by two cells").toBe(-68);
+  addon.eval("__enchants[1] = { { hasEnchant = { __secret = true }, timeLeft = 600000 } } local c = ns.GetModule('PlayerAuras').cells[1] c.cooldown:GetScript('OnCooldownDone')(c.cooldown)");
+  expect(playerAuras(addon).cells[1].shown, "a hidden answer shows no cell").toBe(false);
+  addon.eval("local c = ns.GetModule('PlayerAuras').cells[1] c:GetScript('OnEnter')(c)");
+  expect(addon.eval("return { GameTooltip.__owner == ns.GetModule('PlayerAuras').cells[1], GameTooltip.__item, GameTooltip:IsShown() }"), "hovering a cell shows the weapon").toEqual([true, 16, true]);
+  addon.eval("local c = ns.GetModule('PlayerAuras').cells[1] c:GetScript('OnLeave')(c) c = ns.GetModule('PlayerAuras').cells[2] c:GetScript('OnEnter')(c)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "and leaving hides it; an empty cell shows nothing").toBe(false);
+});
+
+it("your buffs: the enchant switch, and clients without enchant info", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + CLICK_LUA);
+  addon.slash("");
+  addon.eval('__click("Bars, map, chat")');
+  expect(addon.eval('return __click("Weapon enchants in front")') && playerAuras(addon).cells[0].shown, "turning enchants off hides them at once").toBe(false);
+  expect(playerAuras(addon).x, "and the buffs take the corner").toBe(0);
+  expect(addon.eval('return __click("Icon size") and ForeverUIDB.profiles.Default.PlayerAuras.size'), "the icon size is on the page").toBe(36);
+  const bare = loggedIn(UNITS_ENV + ENGINE_ENV + "GameTooltip = nil");
+  expect(bare.eval("local PA = ns.GetModule('PlayerAuras') local c = PA.cells[1] c:GetScript('OnEnter')(c) c:GetScript('OnLeave')(c) return #PA.Enchants()"), "no enchant info on this client: no cells, and no tooltip to show").toBe(0);
+  const old = loggedIn(UNITS_ENV + WEAPONS_ENV + "__wfgStub.noAuraContainer = true");
+  expect(old.eval('return ns.GetModule("PlayerAuras").auras.frame.__kind'), "without the client's containers, ForeverUI's own icons").toBe("Frame");
+  const combat = createAddon({ savedVariables: SETUP_DONE });
+  combat.eval(UNITS_ENV + WEAPONS_ENV + `C_EventUtils = { IsEventValid = function(e) return e ~= "WEAPON_ENCHANT_CHANGED" end }
+    __caught = {} local keep = ns.CaughtError ns.CaughtError = function(where, err) __caught[#__caught + 1] = where .. ": " .. err keep(where, err) end`);
+  setCombat(combat, true);
+  combat.login();
+  expect(combat.eval('return ns.GetModule("PlayerAuras").cells == nil and BuffFrame:IsShown() == false'), "logging in during a fight hides the game's frames and waits to build").toBe(true);
+  setCombat(combat, false);
+  expect(combat.eval("return ns.GetModule('PlayerAuras').cells[1]:IsShown() and table.concat(__caught, '\\n')"), "an event this client lacks is skipped and noted").toMatch(/event WEAPON_ENCHANT_CHANGED: not on this client/);
+});
+
 it("aura container timer options a client refuses, and the engine probe", () => {
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS);
   // The timer options a fresh container's first icon got, with `refuse` refused by the client.
@@ -2332,7 +2397,7 @@ it("aura container timer options a client refuses, and the engine probe", () => 
   expect(noColor.formatter && !noColor.color, "a refused color keeps the formatter").toBeTruthy();
   const bare = opts("{ textColor = true, textFormatter = true }");
   expect(!bare.formatter && !bare.color, "a refused formatter falls back to the client's own text").toBeTruthy();
-  const fresh = loggedIn(UNITS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { FrameAuras = false } } } }" });
+  const fresh = loggedIn(UNITS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { FrameAuras = false, PlayerAuras = false } } } }" });
   expect(fresh.eval("__wfgStub.inCombat = true return ns.AuraEngine.Available()") === false, "the probe waits for the end of combat").toBeTruthy();
   expect(fresh.eval("__wfgStub.inCombat = false return ns.AuraEngine.Available()") === true, "then asks once").toBeTruthy();
   const bareClient = loggedIn(UNITS_ENV + CONTAINER_AURAS);

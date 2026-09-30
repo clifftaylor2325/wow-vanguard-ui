@@ -356,7 +356,7 @@ end
 
 local hiddenParent
 
--- Hides a Blizzard unit frame for good: no events, parented to a hidden frame.
+-- Hides one of the game's frames for good: no events, parented to a hidden frame.
 local function hideBlizzard(name)
   local f = _G[name]
   if type(f) ~= "table" or not f.UnregisterAllEvents then
@@ -368,6 +368,8 @@ local function hideBlizzard(name)
   f:Hide()
   f:SetParent(hiddenParent)
 end
+-- Shared with modules that replace other game frames (PlayerAuras).
+UF.HideBlizzard = hideBlizzard
 
 -- Builds every frame. Secure frames can't be set up in combat, so this waits.
 local function build(settings)

@@ -123,6 +123,7 @@ function E.Init(button, style)
   if parts.ring then ns.Try("debuff type colors", E.RegisterDispel, button, parts.ring, 1) end
   if style.pandemic then ns.Try("HoT refresh window", pandemic, button, parts) end
   if style.register then ns.Try("aura icon extras", style.register, button) end
+  if style.cancel and button.SetCancelAuraButtons then button:SetCancelAuraButtons("RightButtonUp") end
 end
 
 -- Containers ------------------------------------------------------------------------------
