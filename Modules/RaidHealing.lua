@@ -197,20 +197,20 @@ local function update(b, unit)
   updateBuff(b, unit)
 end
 
--- Runs fn(b, unit) for the raid buttons showing a unit.
-local function forUnit(unit, fn)
-  for _, b in ipairs(RF.buttons) do
-    if b.heal and b:IsShown() and RF.Shows(b, unit) then fn(b, b:GetAttribute("unit")) end
-  end
+-- An event handler that runs fn(b, unit) on the tile showing the event's unit.
+local function onTile(fn)
+  -- Only tiles this module has set up (they have the heal bar).
+  local run = function(b, unit) if b.heal then fn(b, unit) end end
+  return function(_, unit) RF.ForUnit(unit, run) end
 end
 
 -- Event -> which part it refreshes (health changes refresh everything via RF.Update).
 local EVENTS = {
   -- Each handler refreshes one part for the unit named in the event.
-  UNIT_HEAL_PREDICTION = function(_, unit) forUnit(unit, updatePrediction) end,
-  UNIT_ABSORB_AMOUNT_CHANGED = function(_, unit) forUnit(unit, updatePrediction) end,
-  UNIT_THREAT_SITUATION_UPDATE = function(_, unit) forUnit(unit, updateThreat) end,
-  UNIT_AURA = function(_, unit) forUnit(unit, updateBuff) end,
+  UNIT_HEAL_PREDICTION = onTile(updatePrediction),
+  UNIT_ABSORB_AMOUNT_CHANGED = onTile(updatePrediction),
+  UNIT_THREAT_SITUATION_UPDATE = onTile(updateThreat),
+  UNIT_AURA = onTile(updateBuff),
   -- Leaving combat usually lifts the aura restriction: look at every buff again.
   PLAYER_REGEN_ENABLED = function() RF.UpdateAll() end,
 }

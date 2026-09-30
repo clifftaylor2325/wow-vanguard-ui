@@ -16,26 +16,57 @@ function ns.Chat(msg)
   end
 end
 
+-- Caught errors ------------------------------------------------------------------------------
+-- A failure ForeverUI catches (a module that fails to load, an icon the
+-- client refuses) must not stop the rest, but it shouldn't vanish either: the
+-- last few are kept, newest last, for /fui errors.
+
+ns.errors = {}
+ns.MAX_ERRORS = 20
+
+-- Keeps a caught error, saying where it happened; the oldest goes past MAX_ERRORS.
+function ns.CaughtError(where, err)
+  table.insert(ns.errors, where .. ": " .. tostring(err))
+  if #ns.errors > ns.MAX_ERRORS then table.remove(ns.errors, 1) end
+end
+
+-- Keeps a failed call's error; passes pcall's results through.
+local function checked(where, ok, ...)
+  if not ok then ns.CaughtError(where, ...) end
+  return ok, ...
+end
+
+-- pcall that keeps the error (see ns.CaughtError): returns what pcall returns.
+function ns.Try(where, fn, ...)
+  return checked(where, pcall(fn, ...))
+end
+
+-- Events ------------------------------------------------------------------------------------
+
+-- Event -> list of handlers. A list is never changed in place: ns.On and
+-- ns.Off put a new one in, so a dispatch under way keeps the list it started
+-- with (a handler may ns.Off itself) and no event pays for a copy.
 local handlers = {}
 local frame = CreateFrame("Frame")
 
--- A copy of a handler list, so a handler can ns.Off itself mid-dispatch.
-local function snapshot(list)
+-- The list with fn added at the end, or the list itself if fn is already in it.
+local function with(list, fn)
   local out = {}
-  for i, fn in ipairs(list) do
-    out[i] = fn
+  for i, existing in ipairs(list) do
+    if existing == fn then return list end
+    out[i] = existing
   end
+  out[#out + 1] = fn
   return out
 end
 
--- True if fn is already in the list.
-local function contains(list, fn)
+-- The list without any copy of fn.
+local function without(list, fn)
+  local out = {}
   for _, existing in ipairs(list) do
-    if existing == fn then
-      return true
-    end
+    if existing ~= fn then out[#out + 1] = existing end
   end
-  return false
+  return out
 end
 
 frame:SetScript("OnEvent", function(_, event, ...)
@@ -43,7 +74,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
   if not list then
     return
   end
-  for _, fn in ipairs(snapshot(list)) do
+  for _, fn in ipairs(list) do
     fn(event, ...)
   end
 end)
@@ -53,22 +84,9 @@ end)
 function ns.On(event, fn)
   local list = handlers[event]
   if not list then
-    list = {}
-    handlers[event] = list
     frame:RegisterEvent(event)
   end
-  if not contains(list, fn) then
-    list[#list + 1] = fn
-  end
-end
-
--- Removes every copy of fn from the list.
-local function remove(list, fn)
-  for i = #list, 1, -1 do
-    if list[i] == fn then
-      table.remove(list, i)
-    end
-  end
+  handlers[event] = with(list or {}, fn)
 end
 
 -- Stops calling fn for the event; unregisters the event when nothing listens.
@@ -77,9 +95,9 @@ function ns.Off(event, fn)
   if not list then
     return
   end
-  remove(list, fn)
+  list = without(list, fn)
+  handlers[event] = #list > 0 and list or nil
   if #list == 0 then
-    handlers[event] = nil
     frame:UnregisterEvent(event)
   end
 end

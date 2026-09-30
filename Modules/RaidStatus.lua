@@ -181,9 +181,14 @@ local function onReadyFinished()
   clearReady()
 end
 
--- A unit's resurrection state changed: refresh the buttons showing it.
+-- Refreshes a tile's marks, if it has them.
+local function updateMarks(b, unit)
+  if b.raidIcon then update(b, unit) end
+end
+
+-- A unit's resurrection state changed: refresh the tile showing it.
 local function onUnit(_, unit)
-  each(function(b, own) if RF.Shows(b, unit) then update(b, own) end end)
+  RF.ForUnit(unit, updateMarks)
 end
 
 -- Checks range five times a second (range has no dependable event).

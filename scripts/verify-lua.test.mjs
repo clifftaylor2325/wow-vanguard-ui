@@ -4,6 +4,7 @@
 import { afterAll, expect, it } from "vitest";
 import { createAddon } from "./lib/lua-harness.mjs";
 import { dumpHits } from "./lib/lua-coverage.mjs";
+import { luaValue } from "./lib/lua-emit.mjs";
 
 // Writes the worker's line hits when coverage asked for a hits file.
 afterAll(() => {
@@ -938,6 +939,23 @@ const RAID_ENV = `
 const raidButton = (addon, i) => addon.eval(`local b = ForeverUI_RaidUnitButton${i}
   return { hp = b.health.__value, max = b.health.__max, color = b.health.__barColor, name = b.name:GetText(), role = b.role:GetText(), status = b.status:GetText() }`);
 
+it("a unit event reaches only the tile showing that unit", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  addon.eval(`__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3")
+    local RF = ns.GetModule("RaidFrames") local update, isUnit = RF.Update, UnitIsUnit
+    __updates, __asked = {}, 0
+    RF.Update = function(b, ...) __updates[#__updates + 1] = b:GetName() return update(b, ...) end
+    UnitIsUnit = function(a, b) if b ~= "target" and b ~= "player" then __asked = __asked + 1 end return isUnit(a, b) end`);
+  addon.fire("UNIT_HEALTH", "raid3");
+  expect(addon.eval("return { __updates, __asked }"), "one tile is updated, and the client is never asked which tile shows raid3").toEqual([["ForeverUI_RaidUnitButton3"], 0]);
+  expect(addon.eval('local RF = ns.GetModule("RaidFrames") return RF.byUnit.player == ForeverUI_RaidUnitButton2'), "the tile showing you is also found by player").toBe(true);
+  addon.eval('__updates = {} ForeverUI_RaidUnitButton3:SetAttribute("unit", "raid9")');
+  addon.fire("UNIT_HEALTH", "raid3");
+  expect(addon.eval('local RF = ns.GetModule("RaidFrames") return { RF.byUnit.raid3 == nil, RF.byUnit.raid9 == ForeverUI_RaidUnitButton3, #__updates }'), "a roster change moves the tile to its new unit").toEqual([true, true, 1]);
+  addon.eval('ForeverUI_RaidUnitButton2:SetAttribute("unit", "raid1")');
+  expect(addon.eval('local RF = ns.GetModule("RaidFrames") return RF.byUnit.player == nil'), "and the player entry goes when that tile shows someone else").toBe(true);
+});
+
 it("raid frames", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
   const h = addon.eval(`local h = ForeverUI_Raid return { template = h:GetAttribute("template"), groupBy = h:GetAttribute("groupBy"),
@@ -1290,6 +1308,48 @@ const marks = (addon, i) => addon.eval(`local b = ForeverUI_RaidUnitButton${i}
 // The reload overlay on a button as [type, macro, key-down, sits above the button], or false.
 const reloadOverlay = (addon, path) => addon.eval(`local b = ${path} local o = b.reloadOverlay
   return o and { o:GetAttribute("type"), o:GetAttribute("macrotext"), o:GetAttribute("useOnKeyDown"), o:GetFrameLevel() > b:GetFrameLevel() } or false`);
+
+// The next session of an addon: the client writes SavedVariables at logout and
+// loads them back before ADDON_LOADED; extra Lua runs before login.
+function nextSession(addon, extra = "") {
+  addon.fire("PLAYER_LOGOUT");
+  const sv = addon.savedVariables();
+  const next = createAddon({ savedVariables: `ForeverUIDB = ${luaValue(sv.account)}\nForeverUICharDB = ${luaValue(sv.char)}\n` });
+  if (extra) next.eval(extra);
+  next.login();
+  return next;
+}
+
+it("a session: what you set in one login comes back in the next", () => {
+  const first = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
+  first.slash("profile TEST-ONLY Alt");
+  first.slash("accent arcane");
+  first.slash("disable Minimap");
+  first.eval('ns.Settings("UnitFrames").healthFormat = "percent" ns.Settings("RaidFrames").look = "dark"');
+  first.eval('ns.SetMoverPoint("uf_player", "TOPLEFT", "TOPLEFT", 40, -60)');
+  const next = nextSession(first, UNITS_ENV + RAID_ENV + CLICK_LUA);
+  expect(next.eval("return ns.ProfileName()"), "the character is still on its profile").toBe("TEST-ONLY Alt");
+  expect(next.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]"), "the accent is kept").toBe(true);
+  expect(next.eval("return ns.ModuleEnabled('Minimap')"), "a module turned off stays off").toBe(false);
+  expect(next.eval('return { ns.Settings("UnitFrames").healthFormat, ns.Settings("RaidFrames").look }'), "module settings are kept").toEqual(["percent", "dark"]);
+  expect(next.eval('return { ns.MoverPoint("uf_player") }'), "a moved frame stays where you put it").toEqual(["TOPLEFT", "TOPLEFT", 40, -60]);
+  expect(next.eval("return ForeverUI_Setup == nil or not ForeverUI_Setup:IsShown()"), "setup doesn't come back").toBe(true);
+  const third = nextSession(next, UNITS_ENV + RAID_ENV + CLICK_LUA);
+  expect(third.eval("return ns.ProfileName()"), "and it holds for a third session").toBe("TEST-ONLY Alt");
+});
+
+it("/fui errors: what ForeverUI caught this session", () => {
+  const addon = loggedIn();
+  addon.eval("for i = #ns.errors, 1, -1 do ns.errors[i] = nil end");
+  addon.slash("errors");
+  expect(chatHas(addon, /No errors caught this session/), "with nothing caught, it says so").toBe(true);
+  const broken = loggedIn(`__wfgStub.noAuraContainer = true
+    local M = ns.Module("TEST-ONLY Broken", {}) function M.Enable() error("TEST-ONLY boom") end`);
+  broken.slash("errors");
+  expect(chatHas(broken, /\d+ error\(s\) caught this session, newest last/) && chatHas(broken, /aura containers \(using ForeverUI's own icons\)/) && chatHas(broken, /module TEST-ONLY Broken: .*TEST-ONLY boom/), "a module that failed and a missing aura container are both listed").toBe(true);
+  broken.eval('for i = 1, 25 do ns.CaughtError("TEST-ONLY", i) end');
+  expect(broken.eval("return { #ns.errors, ns.errors[1] }"), "only the last 20 are kept").toEqual([20, "TEST-ONLY: 6"]);
+});
 
 it("reload buttons: a /reload macro overlay, since the Forever client blocks ReloadUI()", () => {
   const addon = loggedIn(FOREVER_ENV + "ReloadUI = function() __reloaded = true end");

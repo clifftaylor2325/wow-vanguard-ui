@@ -39,6 +39,8 @@ RF.buttons = {}
 -- Other modules add to a raid button here: setupHooks(b) once per button,
 -- updateHooks(b, unit) on every refresh (Modules/RaidAuras.lua uses both).
 RF.setupHooks, RF.updateHooks = {}, {}
+-- Tiles by the unit token the group header gave them (see RF.ForUnit).
+RF.byUnit = {}
 
 -- Values ----------------------------------------------------------------------------------
 
@@ -62,10 +64,15 @@ function RF.Deficit(unit)
   return "-" .. (type(AbbreviateNumbers) == "function" and AbbreviateNumbers(missing) or tostring(missing))
 end
 
+-- True when two unit tokens name the same unit (a hidden answer counts as no).
+function RF.Same(a, b)
+  local same = type(UnitIsUnit) == "function" and UnitIsUnit(a, b)
+  return not ns.IsSecret(same) and same == true
+end
+
 -- True when a unit is your target (a hidden answer counts as no).
 local function isTarget(unit)
-  local same = type(UnitIsUnit) == "function" and UnitIsUnit(unit, "target")
-  return not ns.IsSecret(same) and same == true
+  return RF.Same(unit, "target")
 end
 
 -- A class color mixed into the panel color (SOFT of the class color).
@@ -136,19 +143,17 @@ function RF.UpdateAll()
   end
 end
 
--- True when the button shows this unit (by token, or the same player under another token).
-function RF.Shows(b, unit)
-  local own = b:GetAttribute("unit")
-  if own == unit then return true end
-  local same = own and type(UnitIsUnit) == "function" and UnitIsUnit(own, unit)
-  return not ns.IsSecret(same) and same == true
+-- Runs fn(tile, unit) for the shown tile showing this unit token, if any.
+-- The client sends a unit event for each token that names the unit (raid3,
+-- target...), so the tile's own token is enough, as for the game's raid frames.
+function RF.ForUnit(unit, fn)
+  local b = unit and RF.byUnit[unit]
+  if b and b:IsShown() then fn(b, unit) end
 end
 
--- A unit event: refresh the buttons showing that unit.
+-- A unit event: refresh the tile showing that unit.
 local function onUnitEvent(_, unit)
-  for _, b in ipairs(RF.buttons) do
-    if b:IsShown() and RF.Shows(b, unit) then RF.Update(b) end
-  end
+  RF.ForUnit(unit, RF.Update)
 end
 
 -- Zones ------------------------------------------------------------------------------------
@@ -254,21 +259,39 @@ local function addParts(b)
   addOverlay(b)
 end
 
--- A button's unit changed (roster change): refresh it.
-local function onAttributeChanged(b, name)
-  if name == "unit" then RF.Update(b) end
+-- Moves a tile to its new unit token in RF.byUnit. The tile showing you is
+-- also filed under "player", since your own events name you that way.
+local function track(b, unit)
+  if b.tracked and RF.byUnit[b.tracked] == b then RF.byUnit[b.tracked] = nil end
+  if RF.byUnit.player == b then RF.byUnit.player = nil end
+  b.tracked = unit
+  if unit then RF.byUnit[unit] = b end
+  if unit and RF.Same(unit, "player") then RF.byUnit.player = b end
+end
+
+-- A button's unit changed (roster change): track it and refresh it.
+local function onAttributeChanged(b, name, value)
+  if name ~= "unit" then return end
+  track(b, value)
+  RF.Update(b)
+end
+
+-- A button's scripts: clicks, follow its unit, refresh on show, light on hover.
+local function addScripts(b)
+  b:RegisterForClicks("AnyUp")
+  b:HookScript("OnAttributeChanged", onAttributeChanged)
+  b:HookScript("OnShow", RF.Update)
+  b:HookScript("OnEnter", function() b.hover:Show() end)
+  b:HookScript("OnLeave", function() b.hover:Hide() end)
 end
 
 -- Insecure setup for a button the header created (called from RF.INIT).
 function RF.Setup(b)
   T.Panel(b)
   addParts(b)
-  b:RegisterForClicks("AnyUp")
-  b:HookScript("OnAttributeChanged", onAttributeChanged)
-  b:HookScript("OnShow", RF.Update)
-  b:HookScript("OnEnter", function() b.hover:Show() end)
-  b:HookScript("OnLeave", function() b.hover:Hide() end)
+  addScripts(b)
   RF.buttons[#RF.buttons + 1] = b
+  track(b, b:GetAttribute("unit"))
   for _, hook in ipairs(RF.setupHooks) do hook(b) end
   if RF.OnButtonCreated then RF.OnButtonCreated(b) end
 end
