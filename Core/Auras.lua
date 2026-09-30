@@ -142,7 +142,7 @@ end
 
 -- The icon style for one group of a container spec.
 function A.Style(spec, def)
-  return { size = def.size, debuff = def.debuff, dim = def.dim, pandemic = def.pandemic, register = def.register, timer = spec.timer, mouse = spec.mouse }
+  return { size = def.size, debuff = def.debuff, dim = def.dim, pandemic = def.pandemic, register = def.register, timer = spec.timer, mouse = spec.mouse, cancel = spec.cancel }
 end
 
 -- The backend in use: the engine when the client has AuraContainer, else the

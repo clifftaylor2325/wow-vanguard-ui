@@ -294,6 +294,15 @@ const SCENES = [
       UnitLevel = function(unit) return unit == "target" and -1 or 60 end
       GetCreatureDifficultyColor = function(level) return level == -1 and { r = 1, g = 0.1, b = 0.1 } or { r = 1, g = 0.82, b = 0 } end
       UnitClassification = function(unit) return unit == "target" and "worldboss" or "normal" end` },
+  { name: "foreverui-buffs", caption: "Your buffs left of the minimap, a weapon imbue in front, and two debuffs on a new row (TEST-ONLY auras)", lua: '__group({ "player", "party1", "party2" })',
+    before: `local getAura = C_UnitAuras.GetAuraDataByIndex
+      C_UnitAuras.GetAuraDataByIndex = function(unit, i, filter)
+        if unit == "player" and filter == "HELPFUL" and i <= 9 then return { icon = "TEST-ONLY-BUFF" .. i } end
+        if unit == "player" and filter == "HARMFUL" and i <= 2 then return { icon = "TEST-ONLY-DEBUFF", dispelName = ({ "Magic", "Poison" })[i] } end
+        return getAura(unit, i, filter)
+      end
+      Enum.WeaponSlot = { MainHand = 0, OffHand = 1, Ranged = 2 }
+      C_Item = { GetWeaponEnchantInfo = function(slot) if slot == 0 then return { { hasEnchant = true, timeLeft = 1500000, enchantIconID = "TEST-ONLY-IMBUE" } } end end }` },
   { name: "foreverui-shaman", caption: "A shaman: three totems under the player frame (the game draws their time left), the air slot empty (TEST-ONLY totems)", lua: '__group({ "player", "party1", "party2" })',
     before: `__units.player.class = "SHAMAN"
       local totems = { { "TEST-ONLY Fire", 100 }, { "TEST-ONLY Earth", 45 }, { "TEST-ONLY Water", 190 } }
