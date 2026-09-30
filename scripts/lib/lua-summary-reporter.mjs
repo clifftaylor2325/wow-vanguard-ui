@@ -33,6 +33,7 @@ export const CATEGORIES = [
   ["more", ["minimap", "chat", "bags", "minimap with no position, chat window hooks, and short numbers"]],
   ["casts", ["cast bars", "cast bars: spark, seconds left, latency and the uninterruptible edge", "cast bar flashes on finish and interrupt", "cast timing from the client's duration object"]],
   ["units", ["unit frames", "unit frames on WoW Forever: levels, health percent, classification", "combo points for rogues and druids", "unit frame events", "unit frames wait for combat"]],
+  ["setup", ["first-run setup: once per account, three clicks with the defaults", "first-run setup waits for combat and steps aside in a fight", "/fui setup reopens setup; Back and the close button", "setup layouts: Healing puts the raid frames under the character and turns click casting on", "setup layouts: Damage and tanking restores ForeverUI's defaults, undoing Healing", "setup Healing layout: clear of the bars, the cast bar, and the player and target frames", "setup look: accent swatches and the raid frame style apply at once"]],
 ];
 
 // The category a Lua harness case belongs to ("other" when it is not listed).

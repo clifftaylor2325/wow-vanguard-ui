@@ -53,8 +53,8 @@ local BARS = {
   { slot = 169, bind = "MULTIACTIONBAR7BUTTON", stack = true },
 }
 
--- The bottom stack starts this far up, with this gap between bars.
-local STACK_BASE, STACK_GAP = 40, 6
+-- The bottom stack starts this far up; the bars are one layout gap (ns.Layout.GAP) apart.
+local STACK_BASE = 40
 
 -- Bar 1's page for each state: vehicle/possess, override, shapeshift,
 -- dragonriding, class bonus bars (stances, stealth, forms), then Shift+number pages.
@@ -370,7 +370,7 @@ function AB.StackPoint(n, settings)
   local y = STACK_BASE
   for k = #BARS, n + 1, -1 do
     local bar = settings.bars[k]
-    if BARS[k].stack and bar and bar.enabled then y = y + barHeight(settings, bar) + STACK_GAP end
+    if BARS[k].stack and bar and bar.enabled then y = y + barHeight(settings, bar) + ns.Layout.GAP end
   end
   return { "BOTTOM", "BOTTOM", 0, y }
 end

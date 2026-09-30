@@ -24,6 +24,7 @@ Written from scratch. It contains no code, art or fonts from other UI addons.
 - **Nameplates**: class/reaction/threat colors, your debuffs (soonest to expire first, with timers) and your crowd control, casts, raid icon, target border.
 - **Everything else**: XP and reputation bars, square minimap, chat skin, combined bag, and themed tooltips with class colors and a Target line.
 - **Options**: `/fui` or the addons button. Turn any module off under Modules to keep the default one.
+- **First-run setup**: the first time you log in on an account, a three-step wizard asks for a layout (Damage and tanking, or Healing), an accent and raid frame style, then unlocks your frames so you can move them (the same unlock mode as `/fui unlock`, or **Move frames** under General in `/fui`; `/fui lock` or Done locks them again). With the defaults it takes three clicks: Next, Next, Done. It waits until you're out of combat. Done, the close button and Escape all end it, and it doesn't come back on its own; `/fui setup` reopens it. Damage and tanking is ForeverUI's defaults (picking it puts back anything Healing moved); Healing puts the raid frames centered just above your cast bar, growing upward, and turns click casting on. With Healing, a party and raids of up to 2 groups fit between the player and target frames; raids of more than 2 groups overlap them, so drag the raid frames where you want them with `/fui unlock` (or **Move frames** under General in `/fui`).
 
 Every client call is checked before use, and values the client hides from
 addons go to the bars unread. Auras use the client's own aura containers where
@@ -40,6 +41,7 @@ Download `ForeverUI-<version>.zip` from the [latest release](https://github.com/
 
 ```
 /fui               the options window (also: left-click the addons button by the minimap)
+/fui setup         the first-run setup again: layout, look, then move things
 /fui unlock | lock drag handles on every ForeverUI frame (also: right-click the addons button)
 /fui reset <frame|all>
 /fui accent <rrggbb|brass|arcane|fel|void|ember> | reset      /fui theme reset
