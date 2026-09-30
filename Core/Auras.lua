@@ -142,7 +142,7 @@ end
 
 -- The icon style for one group of a container spec.
 function A.Style(spec, def)
-  return { size = def.size, debuff = def.debuff, dim = def.dim, pandemic = def.pandemic, timer = spec.timer, mouse = spec.mouse }
+  return { size = def.size, debuff = def.debuff, dim = def.dim, pandemic = def.pandemic, register = def.register, timer = spec.timer, mouse = spec.mouse }
 end
 
 -- The backend in use: the engine when the client has AuraContainer, else the
@@ -159,6 +159,8 @@ end
 
 -- Builds a container from a spec (see the top of this file) on the backend in
 -- use, showing `unit`'s auras. Returns an object with :SetUnit and :Refresh.
+-- spec.level sets its frame level; a group's `register(button)` runs on each
+-- engine button as it is made (to hand the client more regions to drive).
 function A.Container(parent, spec, unit)
   return A.Backend().Create(parent, spec, unit)
 end

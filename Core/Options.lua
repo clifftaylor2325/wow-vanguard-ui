@@ -308,17 +308,24 @@ local function raidRows()
     check("Sort by role (tanks, healers, damage)", setting("RaidFrames", "sortByRole", true)),
     check("Hide the default raid frames", setting("RaidFrames", "hideBlizzard", true)),
     { "cycle", "Style", { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }, raidSetting("look") },
-    { "cycle", "Width", { { 72, "72" }, { 90, "90" }, { 110, "110" } }, setting("RaidFrames", "width", true) },
-    { "cycle", "Height", { { 32, "32" }, { 40, "40" }, { 48, "48" } }, setting("RaidFrames", "height", true) },
+    { "cycle", "Width", { { 72, "72" }, { 90, "90" }, { 100, "100" }, { 120, "120" } }, setting("RaidFrames", "width", true) },
+    { "cycle", "Height", { { 36, "36" }, { 40, "40" }, { 48, "48" }, { 56, "56" } }, setting("RaidFrames", "height", true) },
+  }
+end
+
+-- The raid frames' auras: debuffs, the dispel highlight and your HoTs (after a reload).
+local function raidAuraRows()
+  return {
+    check("Highlight debuffs you can dispel (reload)", setting("RaidAuras", "dispel", true)),
+    { "cycle", "Debuff icons (reload)", { { 0, "none" }, { 2, "2" }, { 3, "3" } }, setting("RaidAuras", "debuffs", true) },
+    check("Show your HoTs (reload)", setting("RaidAuras", "hots", true)),
   }
 end
 
 -- Raid frames plus their indicators.
 local function raidPageRows()
-  return append(raidRows(), {
+  return append(append(raidRows(), raidAuraRows()), {
     check("Power bar", raidSetting("showPower")),
-    check("Highlight debuffs you can dispel", setting("RaidAuras", "dispel")),
-    check("Show your HoTs", setting("RaidAuras", "hots")),
     check("Fade players out of range", setting("RaidStatus", "rangeFade")),
     check("Raid target icons", setting("RaidStatus", "raidIcons")),
     check("Ready check answers", setting("RaidStatus", "readyCheck")),

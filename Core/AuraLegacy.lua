@@ -98,6 +98,7 @@ function L.Create(parent, spec, unit)
   local frame = CreateFrame("Frame", nil, parent)
   frame:SetPoint(unpack(spec.point))
   frame:SetSize(1, 1)
+  if spec.level then frame:SetFrameLevel(spec.level) end
   local c = setmetatable({ frame = frame, flow = flow(spec), groups = build(frame, spec) }, Container)
   frame:SetScript("OnEvent", function() c:Refresh() end)
   c:SetUnit(unit)
