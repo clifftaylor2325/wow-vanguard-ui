@@ -147,14 +147,22 @@ local function moduleRows()
   return rows
 end
 
--- Unit frames.
+-- get/set for a unit frame setting that repaints the frames at once.
+local function unitFrameSetting(key)
+  local get, set = setting("UnitFrames", key)
+  return get, function(v) set(v); ns.GetModule("UnitFrames").Refresh() end
+end
+
+-- Unit frames, and the class bars under the player frame.
 local function unitFrameRows()
   return {
     { "header", "Unit frames" },
     check("Replace the default unit frames", setting("UnitFrames", "hideBlizzard", true)),
-    check("Show health numbers", setting("UnitFrames", "healthText", true)),
-    { "cycle", "Health as", { { "value", "Value (42.8K)" }, { "percent", "Percent (84%)" } }, setting("UnitFrames", "healthFormat") },
+    check("Show health numbers", unitFrameSetting("healthText")),
+    { "cycle", "Health as", { { "value", "Value (42.8K)" }, { "percent", "Percent (84%)" } }, unitFrameSetting("healthFormat") },
     check("Show levels (reload)", setting("UnitFrames", "showLevel", true)),
+    check("Shaman totems under the player frame (reload)", setting("ClassBars", "totems", true)),
+    check("Druid mana under the player frame in bear and cat form (reload)", setting("ClassBars", "druidMana", true)),
   }
 end
 

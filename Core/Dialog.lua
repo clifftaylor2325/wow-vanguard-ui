@@ -1,12 +1,14 @@
 -- Two themed dialogs: a text box for export/import strings (chat can't hold
--- them), and a confirm prompt (used to offer a reload). One of each is built
--- on first use and reused.
+-- them), and a reload prompt. One of each is built on first use and reused.
+-- Also the reload button itself: the WoW Forever client blocks ReloadUI()
+-- from addon code, even inside a click, so a reload button carries a secure
+-- /reload macro overlay (see ns.ReloadButton).
 
 local ADDON, ns = ...
 
 local T = ns.Theme
 
-local box, confirm
+local box, reload
 
 -- A themed button on a dialog.
 local function button(parent, label, width)
@@ -88,33 +90,63 @@ function ns.HideText()
   if box then box:Hide() end
 end
 
--- Confirm -------------------------------------------------------------------------------
+-- Reload ------------------------------------------------------------------------------
 
--- Builds the confirm dialog once: message, accept and cancel buttons.
-local function confirmDialog()
-  if confirm then return confirm end
-  confirm = dialog("ForeverUI_Confirm", 360, 110)
-  confirm.title:SetWidth(336)
-  confirm.accept = button(confirm, "OK")
-  confirm.accept:SetPoint("BOTTOMRIGHT", -12, 12)
-  confirm.cancel = button(confirm, "Later")
-  confirm.cancel:SetPoint("RIGHT", confirm.accept, "LEFT", -8, 0)
-  confirm.cancel:SetScript("OnClick", function() confirm:Hide() end)
-  return confirm
+-- Passes hover from an overlay to the button under it, so the button's hover look still shows.
+local function forwardHover(overlay, btn)
+  overlay:SetScript("OnEnter", function() local fn = btn:GetScript("OnEnter") if fn then fn(btn) end end)
+  overlay:SetScript("OnLeave", function() local fn = btn:GetScript("OnLeave") if fn then fn(btn) end end)
 end
 
--- Asks a yes/no question; onAccept runs from the click (so it may reload the UI).
-function ns.Confirm(text, acceptLabel, onAccept)
-  local f = confirmDialog()
-  f.title:SetText(text)
-  f.accept.text:SetText(acceptLabel)
-  f.accept:SetScript("OnClick", function() f:Hide(); onAccept() end)
-  f:Show()
+-- Lays an overlay over a button that runs the /reload macro when clicked.
+-- A click on an action button running a macro is the one reload the Forever
+-- client still allows an addon (Blizzard's own reload prompts work this way).
+local function addReloadOverlay(btn)
+  local o = CreateFrame("Button", nil, btn, "InsecureActionButtonTemplate")
+  o:SetAllPoints(btn)
+  o:SetFrameLevel(btn:GetFrameLevel() + 5)
+  o:RegisterForClicks("AnyUp")
+  o:SetAttribute("useOnKeyDown", false)
+  o:SetAttribute("type", "macro")
+  o:SetAttribute("macrotext", "/reload")
+  forwardHover(o, btn)
+  btn.reloadOverlay = o
+end
+
+-- A click on a reload button before its overlay exists (it was built in combat):
+-- elsewhere ReloadUI() still works; on Forever, say how to reload by hand.
+local function reloadByHand()
+  if ns.IsForever() or type(ReloadUI) ~= "function" then
+    ns.Chat("Type /reload in chat to apply the change (the game only lets addons reload out of combat).")
+    return
+  end
+  ReloadUI()
+end
+
+-- Makes a button reload the UI when clicked. The overlay is a protected
+-- setup, so a button built in combat gets it as soon as combat ends.
+function ns.ReloadButton(btn)
+  btn:SetScript("OnClick", reloadByHand)
+  ns.OutOfCombat(function() addReloadOverlay(btn) end)
+  return btn
+end
+
+-- Builds the reload dialog once: the reason, a Reload button and Later.
+local function reloadDialog()
+  if reload then return reload end
+  reload = dialog("ForeverUI_Reload", 360, 110)
+  reload.title:SetWidth(336)
+  reload.accept = ns.ReloadButton(button(reload, "Reload"))
+  reload.accept:SetPoint("BOTTOMRIGHT", -12, 12)
+  reload.cancel = button(reload, "Later")
+  reload.cancel:SetPoint("RIGHT", reload.accept, "LEFT", -8, 0)
+  reload.cancel:SetScript("OnClick", function() reload:Hide() end)
+  return reload
 end
 
 -- Offers a reload, for changes that apply after one.
 function ns.OfferReload(why)
-  ns.Confirm(why .. " Reload the UI now to apply it?", "Reload", function()
-    if type(ReloadUI) == "function" then ReloadUI() end
-  end)
+  local f = reloadDialog()
+  f.title:SetText(why .. " Reload the UI now to apply it?")
+  f:Show()
 end
