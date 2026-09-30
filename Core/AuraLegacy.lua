@@ -17,7 +17,7 @@ ns.AuraLegacy = L
 -- Icons -----------------------------------------------------------------------------------
 
 -- The client's countdown numbers on an icon, in the theme's font (timer icons only).
-local function countdown(cd, size)
+function A.Countdown(cd, size)
   cd:SetHideCountdownNumbers(false)
   local fs = cd:GetCountdownFontString()
   if fs then T.Text(fs, size >= 20 and "auraTimer" or "auraTimerSmall", "white") end
@@ -30,7 +30,7 @@ function A.Icon(parent, size, style)
   local f = CreateFrame("Frame", nil, parent)
   local parts = A.Dress(f, { size = size, debuff = style.debuff, dim = style.dim })
   f.icon, f.cooldown, f.count, f.ring = parts.icon, parts.cooldown, parts.count, parts.ring
-  if style.timer then countdown(f.cooldown, size) end
+  if style.timer then A.Countdown(f.cooldown, size) end
   f:Hide()
   return f
 end

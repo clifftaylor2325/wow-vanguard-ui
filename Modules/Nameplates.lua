@@ -24,6 +24,8 @@ local NP = ns.Module("Nameplates", {
 local ICON = 18
 
 NP.plates = {}
+-- Every frame we built on a plate (the client reuses plates, so each gets one).
+NP.built = {}
 
 -- Values -----------------------------------------------------------------------------------
 
@@ -83,18 +85,38 @@ local function addCastBar(f, s)
   f.cast:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, -4)
 end
 
+-- A plate's debuff row on the backend in use, noting whether that was the
+-- client's engine (a plate first drawn in combat gets the fallback).
+local function addDebuffs(f)
+  f.debuffs = ns.Auras.Container(f, NP.DebuffSpec(f, NP.settings), f.unit)
+  f.debuffsOnEngine = ns.Auras.Backend() == ns.AuraEngine
+end
+
 -- Our frame on a client nameplate: health bar, texts, debuffs, cast bar.
 local function build(plate)
   local s = NP.settings
   local f = CreateFrame("StatusBar", nil, plate)
   f:SetSize(s.width, s.height)
   f:SetPoint("CENTER")
-  T.StyleBar(f)
-  T.Panel(f, { inset = true })
+  T.Panel(T.StyleBar(f), { inset = true })
   addTexts(f)
-  f.debuffs = ns.Auras.Container(f, NP.DebuffSpec(f, s), nil)
+  addDebuffs(f)
   if s.castBar then addCastBar(f, s) end
+  table.insert(NP.built, f)
   return f
+end
+
+-- After a fight: plates first drawn in it got the fallback icons, so give
+-- them the client's own aura container now that one can be made.
+local function upgradeDebuffs()
+  if not ns.AuraEngine.Available() then return end
+  for _, f in ipairs(NP.built) do
+    if not f.debuffsOnEngine then
+      f.debuffs:SetUnit(nil)
+      f.debuffs.frame:Hide()
+      addDebuffs(f)
+    end
+  end
 end
 
 -- Hides the client's own frame on a plate, and keeps it hidden.
@@ -148,6 +170,7 @@ local function onAdded(_, unit)
   plate.fui = plate.fui or build(plate)
   hideDefault(plate)
   NP.plates[unit] = plate.fui
+  plate.fui.unit = unit
   plate.fui:Show()
   refresh(plate.fui, unit)
 end
@@ -155,7 +178,7 @@ end
 -- A nameplate went away: forget it (the client reuses the plate).
 local function onRemoved(_, unit)
   local f = NP.plates[unit]
-  if f then f:Hide(); f.debuffs:SetUnit(nil) end
+  if f then f:Hide(); f.unit = nil; f.debuffs:SetUnit(nil) end
   NP.plates[unit] = nil
 end
 
@@ -182,6 +205,7 @@ local EVENTS = {
   UNIT_HEALTH = forUnit(NP.Update), UNIT_MAXHEALTH = forUnit(NP.Update), UNIT_NAME_UPDATE = forUnit(NP.Update),
   UNIT_FACTION = forUnit(NP.Update), UNIT_THREAT_LIST_UPDATE = forUnit(NP.Update),
   PLAYER_TARGET_CHANGED = function() each(NP.Update) end, RAID_TARGET_UPDATE = function() each(NP.Update) end,
+  PLAYER_REGEN_ENABLED = upgradeDebuffs,
 }
 
 -- A cast event: show it on that unit's plate.

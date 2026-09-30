@@ -286,6 +286,10 @@ const SCENES = [
   { name: "foreverui-raid-secret", caption: "Raid frames in instanced combat: health is secret, so bars still draw but missing-health text hides; first-run setup open on top (TEST-ONLY raid)", lua: SECRET + RAID + "ns.Setup.Open()" },
   { name: "foreverui-setup", caption: "First-run setup, step 2 of 3: accent and raid frame style (/fui setup)", lua: "ns.Setup.Open() ns.Setup.Next()" },
   { name: "foreverui-setup-healing", caption: "The Healing layout: party on the raid frames, centered just above the cast bar (TEST-ONLY party)", lua: '__group({ "player", "party1", "party2" }) ns.Setup.ApplyLayout("healing")' },
+  { name: "foreverui-shaman", caption: "A shaman: three totems under the player frame (the game draws their time left), the air slot empty (TEST-ONLY totems)", lua: '__group({ "player", "party1", "party2" })',
+    before: `__units.player.class = "SHAMAN"
+      local totems = { { "TEST-ONLY Fire", 100 }, { "TEST-ONLY Earth", 45 }, { "TEST-ONLY Water", 190 } }
+      GetTotemInfo = function(slot) local t = totems[slot] if not t then return false, "", 0, 0, nil end return true, t[1], GetTime() - 10, t[2] + 10, "TEST-ONLY-ICON-" .. t[1] end` },
   { name: "foreverui-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a friendly player (TEST-ONLY units)", lua: PLATES },
   { name: "foreverui-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)
@@ -307,6 +311,7 @@ const SAVED = "ForeverUIDB = { version = 1, profiles = {}, setupDone = true }";
 for (const scene of SCENES) {
   const addon = createAddon({ savedVariables: SAVED });
   addon.eval(UNITS + ACTIONS + WORLD + TOOLTIP + GROUP + "GetSpecialization = function() return 1 end");
+  if (scene.before) addon.eval(scene.before);
   addon.login();
   addon.fire("PLAYER_ENTERING_WORLD");
   // In game the client hides the vehicle exit until you can leave; the stub has no state drivers.
