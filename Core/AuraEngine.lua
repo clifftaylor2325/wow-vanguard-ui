@@ -157,7 +157,8 @@ Container.__index = Container
 function E.Create(parent, spec, unit)
   local frame = CreateFrame("AuraContainer", nil, parent, "CustomAuraContainerTemplate")
   layout(frame, spec)
-  for i, def in ipairs(spec.groups) do frame:AddAuraGroup("fui" .. i, def.filter, groupOptions(spec, def)) end
+  -- A filter token this client doesn't know is refused: that group is left out, not the rest.
+  for i, def in ipairs(spec.groups) do pcall(frame.AddAuraGroup, frame, "fui" .. i, def.filter, groupOptions(spec, def)) end
   local c = setmetatable({ frame = frame }, Container)
   c:SetUnit(unit)
   return c

@@ -1286,7 +1286,7 @@ const PLATE_ENV = `
   UnitThreatSituation = function(_, unit) return __threat[unit] end
   UnitCastingInfo = function(unit) if __cast[unit] then return "TEST-ONLY Spell", "", "TEST-ONLY-ICON", 1000, 3000, false, nil, false end end
   C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
-    if unit == "nameplate1" and filter == "HARMFUL|PLAYER" and i == 1 then return { icon = "TEST-ONLY-DOT", expirationTime = 1010, duration = 12 } end
+    if unit == "nameplate1" and filter == "HARMFUL|PLAYER|!CROWD_CONTROL" and i == 1 then return { icon = "TEST-ONLY-DOT", expirationTime = 1010, duration = 12 } end
   end }
   local function plate(unit, forbidden)
     local p = CreateFrame("Frame", nil, UIParent)
@@ -1305,7 +1305,7 @@ const plate = (addon, unit) => addon.eval(`local p = __plates.${unit} local f = 
   if not f then return { drawn = false, default = p.UnitFrame:IsShown() } end
   local edge for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "BORDER" then edge = w.__vertexColor break end end
   return { drawn = f:IsShown(), default = p.UnitFrame:IsShown(), hp = f.__value, color = f.__barColor, name = f.name:GetText(),
-    dot = f.debuffs[1]:IsShown() and f.debuffs[1].icon.__texture, cast = f.cast:IsShown() and f.cast.text:GetText(), edge = edge }`);
+    dot = f.debuffs.frame.__groups[1].buttons[1].__shown and f.debuffs.frame.__groups[1].buttons[1].__icon.__texture, cast = f.cast:IsShown() and f.cast.text:GetText(), edge = edge }`);
 
 it("nameplates", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV);
@@ -1319,6 +1319,9 @@ it("nameplates", () => {
   expect(one.hp?.__secret, "hidden health goes to the bar untouched").toBeTruthy();
   expect(isTok(addon, one.color, "hostile") && one.name === "TEST-ONLY Boar", "reaction color and name").toBeTruthy();
   expect(one.dot === "TEST-ONLY-DOT", "your debuffs show over the name").toBeTruthy();
+  const row = addon.eval(`local c = __plates.nameplate1.fui.debuffs.frame local b = c.__groups[1].buttons[1]
+    return { unit = c.__unit, timer = b.__durationText ~= nil, mouse = b.__mouse, sort = c.__groups[1].opts.sortMethod, point = c.__points.BOTTOMLEFT.relPoint }`);
+  expect(row.unit === "nameplate1" && row.timer && row.mouse === false && row.point === "TOPLEFT", "a row over the plate that follows its unit, with timers, letting clicks through").toBeTruthy();
   expect(same(one.edge, accent), "your target gets an accent border").toBeTruthy();
   expect(plate(addon, "nameplate3").drawn === false && plate(addon, "nameplate3").default === true, "a plate kept from addons is left alone").toBeTruthy();
   addon.eval("__plates.nameplate1.UnitFrame:Show()");
@@ -1649,19 +1652,43 @@ it("cast bar flashes on finish and interrupt", () => {
   expect(isTok(addon, castBar(addon, "player").color, "cast") && castBar(addon, "player").text === "TEST-ONLY Spell", "a new cast replaces the flash at once").toBeTruthy();
 });
 
+// TEST-ONLY auras on the target and focus: a sheep, your dot, someone else's debuff, two buffs.
+const FRAME_AURAS = `
+  __units.focus = { name = "TEST-ONLY Focus", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA", reaction = 5 }
+  __frameAuras = { ["HARMFUL|CROWD_CONTROL"] = { { icon = "SHEEP" } }, ["HARMFUL|PLAYER|!CROWD_CONTROL"] = { { icon = "MY-DOT", applications = 3 } },
+    ["HARMFUL|!PLAYER|!CROWD_CONTROL"] = { { icon = "ANY-DEBUFF" } }, HELPFUL = { { icon = "BUFF-A" }, { icon = "BUFF-B" } } }
+  C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) return (__frameAuras[filter] or {})[i] end }
+`;
+
+// A frame's aura rows, as the client's containers hold them.
+const frameRows = (addon, key) => addon.eval(`local f = ForeverUI_${key}
+  local function row(c) if not c then return nil end local p = c.frame.__points[c.frame.__flowAnchor] local out = { point = { point = p.point, relPoint = p.relPoint }, groups = {} }
+    for g, grp in ipairs(c.frame.__groups) do local b = grp.buttons[1]
+      out.groups[g] = { filter = grp.filter, max = grp.opts.maxFrameCount, icon = b and b.__shown and b.__icon.__texture or false,
+        count = b and b.__count:GetText(), dim = b and b.__icon.__desaturated, timer = b and b.__durationText ~= nil } end
+    return out end
+  return { debuffs = row(f.debuffs), buffs = row(f.buffs) }`);
+
 it("target and focus auras", () => {
-  const addon = loggedIn(UNITS_ENV + `
-    __units.focus = { name = "TEST-ONLY Focus", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA", reaction = 5 }
-    __frameAuras = { ["HARMFUL|PLAYER"] = { { icon = "MY-DOT", applications = 3 } }, HARMFUL = { { icon = "ANY-DEBUFF" }, { icon = "MY-DOT" } }, HELPFUL = { { icon = "BUFF-A" }, { icon = "BUFF-B" } } }
-    C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) return (__frameAuras[filter] or {})[i] end }`, NO_RAID);
+  const addon = loggedIn(UNITS_ENV + FRAME_AURAS, NO_RAID);
   addon.fire("PLAYER_TARGET_CHANGED");
-  const t = addon.eval(`local f = ForeverUI_target return { d1 = f.debuffs[1]:IsShown() and f.debuffs[1].icon.__texture, d2 = f.debuffs[2]:IsShown(),
-    count = f.debuffs[1].count:GetText(), b = { f.buffs[1].icon.__texture, f.buffs[2].icon.__texture }, b3 = f.buffs[3]:IsShown() }`);
-  expect(t.d1 === "MY-DOT" && t.d2 === false && t.count === "3", "your debuffs show above the target, with stacks").toBeTruthy();
-  expect(t.b[0] === "BUFF-A" && t.b[1] === "BUFF-B" && t.b3 === false, "buffs show above them").toBeTruthy();
-  addon.eval("ForeverUIDB.profiles.Default.FrameAuras.onlyMine = false");
-  addon.fire("UNIT_AURA", "focus");
-  expect(addon.eval("return ForeverUI_focus.debuffs[2]:IsShown()") === true, "with onlyMine off, everyone's debuffs show (focus refreshed on UNIT_AURA)").toBeTruthy();
+  const t = frameRows(addon, "target");
+  expect(t.debuffs.point.point === "TOPLEFT" && t.debuffs.point.relPoint === "BOTTOMLEFT", "debuffs sit under the target frame").toBeTruthy();
+  expect(t.buffs.point.point === "BOTTOMLEFT" && t.buffs.point.relPoint === "TOPLEFT", "buffs sit above it, so neither row floats").toBeTruthy();
+  expect(t.debuffs.groups[0].icon === "SHEEP" && t.debuffs.groups[1].icon === "MY-DOT" && t.debuffs.groups[1].count === "3", "crowd control first, then your debuffs, with stacks").toBeTruthy();
+  expect(t.debuffs.groups[2].max === 0, "only your debuffs by default").toBeTruthy();
+  expect(t.buffs.groups[0].icon === "BUFF-A" && t.debuffs.groups[1].timer === false, "buffs above; no timer numbers by default (the sweep shows time left)").toBeTruthy();
+  const f = frameRows(addon, "focus");
+  expect(f.buffs == null && f.debuffs.groups[1].icon === "MY-DOT", "the focus shows your debuffs only").toBeTruthy();
+  expect(addon.eval("return ForeverUI_target.debuffs.frame.__flowLine") === 220, "the row wraps at the frame's width").toBeTruthy();
+  addon.eval('__frameAuras.HELPFUL = {}');
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(frameRows(addon, "target").buffs.groups[0].icon === false, "a new target reads its auras again").toBeTruthy();
+  const all = loggedIn(UNITS_ENV + FRAME_AURAS, { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { RaidFrames = false }, FrameAuras = { onlyMine = false, timers = true } } } }" });
+  all.fire("PLAYER_FOCUS_CHANGED");
+  const others = frameRows(all, "focus").debuffs.groups[2];
+  expect(others.icon === "ANY-DEBUFF" && others.dim === true && others.max === 8, "with onlyMine off, others' debuffs show too, dimmed").toBeTruthy();
+  expect(frameRows(all, "focus").debuffs.groups[1].timer === true, "timer numbers can be turned on").toBeTruthy();
 });
 
 it("events unsubscribe and a delivered event with no listeners", () => {
@@ -2022,6 +2049,7 @@ it("aura containers on the client's engine", () => {
   expect(c.timer === "%dm" && c.color === 0, "the timer text gets the theme's formatter and time-left colors").toBeTruthy();
   addon.eval("__c:SetUnit(nil)");
   expect(addon.eval("return __c.frame.__enabled == false and __c.frame.__groups[1].buttons[1].__shown == false"), "no unit: the container turns off").toBeTruthy();
+  expect(addon.eval("__wfgStub.inCombat = true local n = ns.Auras.BackendName() __wfgStub.inCombat = false return n") === "fallback", "a container needed in combat (a new nameplate) gets the fallback").toBeTruthy();
   addon.eval('__c:SetUnit("target") __ca["HARMFUL|PLAYER"] = {} __c:Refresh()');
   expect(addon.eval("return __c.frame.__groups[1].buttons[1].__shown") === false, "Refresh reads the auras again").toBeTruthy();
 });
@@ -2036,7 +2064,7 @@ it("aura container timer options a client refuses, and the engine probe", () => 
   expect(noColor.formatter && !noColor.color, "a refused color keeps the formatter").toBeTruthy();
   const bare = opts("{ textColor = true, textFormatter = true }");
   expect(!bare.formatter && !bare.color, "a refused formatter falls back to the client's own text").toBeTruthy();
-  const fresh = loggedIn(UNITS_ENV);
+  const fresh = loggedIn(UNITS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { FrameAuras = false } } } }" });
   expect(fresh.eval("__wfgStub.inCombat = true return ns.AuraEngine.Available()") === false, "the probe waits for the end of combat").toBeTruthy();
   expect(fresh.eval("__wfgStub.inCombat = false return ns.AuraEngine.Available()") === true, "then asks once").toBeTruthy();
   const bareClient = loggedIn(UNITS_ENV + CONTAINER_AURAS);
