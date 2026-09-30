@@ -94,10 +94,21 @@ end
 
 -- Specialization -------------------------------------------------------------------------
 
+-- The client's specialization getter, or nil (WoW Forever has no specializations).
+local function specGetter()
+  local get = (C_SpecializationInfo and C_SpecializationInfo.GetSpecialization) or GetSpecialization
+  return type(get) == "function" and get or nil
+end
+
+-- True when the client has specializations at all.
+function ns.HasSpecs()
+  return specGetter() ~= nil
+end
+
 -- The active specialization index (1-4), or nil where the client has none.
 function ns.SpecIndex()
-  local get = (C_SpecializationInfo and C_SpecializationInfo.GetSpecialization) or GetSpecialization
-  local index = type(get) == "function" and ns.PlainNumber(get()) or nil
+  local get = specGetter()
+  local index = get and ns.PlainNumber(get()) or nil
   return index and index > 0 and index or nil
 end
 

@@ -1,12 +1,17 @@
--- Raid frame indicators: a colored border when a player has a debuff you
--- can dispel, and your own HoTs as small icons with their timers.
+-- Raid frame auras, in the tile's zones (Modules/RaidFrames.lua):
+--   * debuffs bottom left: first one you can dispel, then the others;
+--   * your HoTs bottom right, lit while they're in their refresh window;
+--   * a debuff you can dispel also washes the tile in its type's color
+--     (rising from the bottom, clear of the name) and colors its edge.
+-- No timer numbers on these small icons: the sweep shows time left.
 --
--- The client's aura filters decide what counts ("HARMFUL|RAID" is debuffs
--- you can dispel; "HELPFUL|PLAYER|RAID(_IN_COMBAT)" is your buffs worth
--- showing on raid frames), so this file never has to read spell names or
--- durations. Midnight may hide some aura values in combat: icons and timers
--- are handed to the widgets as they come, and a hidden dispel type gets a
--- plain highlight instead of its color.
+-- The icons are aura containers (Core/Auras.lua). On the client's engine the
+-- wash and edge are handed to the client too, so they keep their color while
+-- the client hides debuff types in instanced combat; on the fallback they are
+-- painted here. The client's filters decide what counts: "HARMFUL|RAID" is
+-- what YOU can dispel, "HELPFUL|PLAYER|RAID_IN_COMBAT" your buffs worth
+-- showing on raid frames. The groups are fixed once built, so the settings
+-- apply after a reload.
 
 local ADDON, ns = ...
 
@@ -14,110 +19,129 @@ local T = ns.Theme
 local RF = ns.GetModule("RaidFrames")
 
 local RA = ns.Module("RaidAuras", {
-  defaults = { dispel = true, hots = true, maxHots = 3 },
+  defaults = { dispel = true, debuffs = 3, hots = true, maxHots = 3 },
 })
 
-local ICON_SIZE = 14
--- Dispel type -> color token.
-local DISPEL_TOKENS = { Magic = "magic", Curse = "curse", Disease = "disease", Poison = "poison" }
+-- The client's filter for debuffs you can dispel.
+RA.DISPELLABLE = "HARMFUL|RAID"
 
--- Aura reads ----------------------------------------------------------------------------
-
--- The i-th aura on a unit through a client filter (Core/Auras.lua).
-RA.Aura = ns.Auras.Get
-
--- The border color for a dispellable debuff: its type's color, or a plain highlight when hidden.
-function RA.DispelColor(aura)
-  local kind = aura.dispelName
-  if ns.IsSecret(kind) or type(kind) ~= "string" then return T.TOKENS.dispel end
-  return T.TOKENS[DISPEL_TOKENS[kind] or "dispel"]
-end
-
--- The filter for your HoTs: the combat one while in combat.
-local function hotFilter()
-  return ns.InCombat() and "HELPFUL|PLAYER|RAID_IN_COMBAT" or "HELPFUL|PLAYER|RAID"
-end
-
--- Parts --------------------------------------------------------------------------------
-
--- The border's sides: two anchor points and a width (vertical) or height (horizontal).
+-- The dispel edge's sides: two anchor points and a width (vertical) or height (horizontal).
 local SIDES = {
   { "TOPLEFT", "TOPRIGHT", nil, 2 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 2 },
   { "TOPLEFT", "BOTTOMLEFT", 2 }, { "TOPRIGHT", "BOTTOMRIGHT", 2 },
 }
 
--- One 2 px border edge along a side.
-local function edge(frame, side)
-  local t = frame:CreateTexture(nil, "OVERLAY")
+-- Dispel highlight ------------------------------------------------------------------------
+
+-- One 2 px edge along a side of the tile, drawn on `host`, hidden until a debuff shows.
+local function edge(host, b, side)
+  local t = T.Snap(host:CreateTexture(nil, "OVERLAY"))
   t:SetTexture(T.WHITE)
-  t:SetPoint(side[1])
-  t:SetPoint(side[2])
+  t:SetPoint(side[1], b, side[1])
+  t:SetPoint(side[2], b, side[2])
   if side[3] then t:SetWidth(side[3]) else t:SetHeight(side[4]) end
+  t:Hide()
   return t
 end
 
--- Four 2 px edges around a raid button, hidden until a debuff shows.
-local function addBorder(b)
+-- The wash rising from the tile's bottom and the edge around it, drawn on
+-- `host`. Hidden until a debuff shows them: if the client ever refuses to
+-- drive them, they stay hidden rather than showing uncolored.
+function RA.DispelParts(host, b)
+  local wash = T.Snap(host:CreateTexture(nil, "ARTWORK"))
+  wash:SetTexture(T.Texture("Fade"))
+  wash:SetAllPoints(b.health)
+  wash:Hide()
+  local edges = {}
+  for i, side in ipairs(SIDES) do edges[i] = edge(host, b, side) end
+  return wash, edges
+end
+
+-- On the engine: each "you can dispel" button carries the tile's wash and
+-- edge, and the client shows and colors them with the debuff.
+local function engineDispel(b)
+  return function(button)
+    local wash, edges = RA.DispelParts(button, b)
+    ns.AuraEngine.RegisterDispel(button, { wash }, 0.35)
+    ns.AuraEngine.RegisterDispel(button, edges, 1)
+  end
+end
+
+-- On the fallback: the tile's own wash and edge, painted on each refresh.
+local function legacyDispel(b)
   b.dispel = CreateFrame("Frame", nil, b)
   b.dispel:SetAllPoints()
-  b.dispel.edges = {}
-  for i, side in ipairs(SIDES) do b.dispel.edges[i] = edge(b.dispel, side) end
+  b.dispel:SetFrameLevel(b:GetFrameLevel() + 10)
+  b.dispel.wash, b.dispel.edges = RA.DispelParts(b.dispel, b)
   b.dispel:Hide()
 end
 
--- One HoT icon, placed right to left along the bottom edge, just above the
--- power bar; hidden until used.
-local function hotIcon(b, i)
-  local f = ns.Auras.Icon(b, ICON_SIZE)
-  f:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -2 - (i - 1) * (ICON_SIZE + 1), 5)
-  return f
+-- Paints the fallback wash and edge for the first debuff you can dispel, or hides them.
+local function paintDispel(b, unit)
+  local aura = RA.settings.dispel and ns.Auras.Get(unit, 1, RA.DISPELLABLE)
+  b.dispel:SetShown(aura ~= nil and aura ~= false)
+  if not aura then return end
+  local r, g, bl = ns.Auras.DispelColor(unit, aura)
+  b.dispel.wash:SetVertexColor(r, g, bl, 0.35)
+  b.dispel.wash:Show()
+  for _, t in ipairs(b.dispel.edges) do t:SetVertexColor(r, g, bl); t:Show() end
 end
 
+-- Containers -------------------------------------------------------------------------------
 
--- Adds the border and HoT icons to a raid button (RF setup hook).
+-- The debuff groups: first one you can dispel (carrying the highlight), then the others.
+local function debuffGroups(b, z, s)
+  local count = math.min(s.debuffs, z.per)
+  local first = (count > 0 or s.dispel) and 1 or 0
+  return {
+    { filter = RA.DISPELLABLE, max = first, size = z.icon, debuff = true, register = s.dispel and engineDispel(b) or nil },
+    { filter = "HARMFUL|!RAID", max = math.max(0, count - first), size = z.icon, debuff = true },
+  }
+end
+
+-- Debuffs from the bottom-left corner of the icon strip, growing right.
+function RA.DebuffSpec(b, z, s)
+  local x, bottom = z.debuffs[1], z.debuffs[2] + z.icon
+  return { point = { "BOTTOMLEFT", b, "TOPLEFT", x, -bottom }, grow = "RIGHT", growY = "UP", lineSize = z.debuffs[3] + 1,
+    gap = 1, mouse = false, level = b:GetFrameLevel() + 10, groups = debuffGroups(b, z, s) }
+end
+
+-- Your HoTs from the bottom-right corner of the icon strip, growing left.
+function RA.HotSpec(b, z, s)
+  local right, bottom = z.hots[1] + z.hots[3], z.hots[2] + z.icon
+  local count = s.hots and math.min(s.maxHots, z.per) or 0
+  return { point = { "BOTTOMRIGHT", b, "TOPLEFT", right, -bottom }, grow = "LEFT", growY = "UP", lineSize = z.hots[3] + 1,
+    gap = 1, mouse = false, level = b:GetFrameLevel() + 10,
+    groups = { { filter = "HELPFUL|PLAYER|RAID_IN_COMBAT", max = count, size = z.icon, pandemic = true } } }
+end
+
+-- Adds the aura rows to a raid button (RF setup hook).
 local function setup(b)
-  addBorder(b)
-  b.hots = {}
-  for i = 1, RA.settings.maxHots do b.hots[i] = hotIcon(b, i) end
+  local z, s = RF.TileZones(), RA.settings
+  b.debuffRow = ns.Auras.Container(b, RA.DebuffSpec(b, z, s), nil)
+  b.hotRow = ns.Auras.Container(b, RA.HotSpec(b, z, s), nil)
+  if ns.Auras.BackendName() == "fallback" then legacyDispel(b) end
 end
 
 -- Updating ------------------------------------------------------------------------------
 
--- Shows the border while the unit has a debuff you can dispel.
-local function updateDispel(b, unit)
-  local aura = RA.settings.dispel and RA.Aura(unit, 1, "HARMFUL|RAID")
-  b.dispel:SetShown(aura ~= nil and aura ~= false)
-  if not aura then return end
-  local c = RA.DispelColor(aura)
-  for _, t in ipairs(b.dispel.edges) do t:SetVertexColor(c[1], c[2], c[3]) end
-end
-
--- Your HoTs on the unit, up to maxHots icons.
-local function updateHots(b, unit)
-  local filter = hotFilter()
-  for i, f in ipairs(b.hots) do
-    ns.Auras.Show(f, unit, RA.settings.hots and RA.Aura(unit, i, filter) or nil)
-  end
-end
-
--- Refreshes both indicators (RF update hook).
+-- Points the rows at the button's unit, hides them on the dead and offline,
+-- and paints the fallback highlight (RF update hook).
 local function update(b, unit)
-  updateDispel(b, unit)
-  updateHots(b, unit)
+  if b.auraUnit ~= unit then
+    b.auraUnit = unit
+    b.debuffRow:SetUnit(unit)
+    b.hotRow:SetUnit(unit)
+  end
+  b.debuffRow.frame:SetShown(not b.down)
+  b.hotRow.frame:SetShown(not b.down)
+  if b.dispel then paintDispel(b, unit) end
 end
 
--- UNIT_AURA: refresh the raid buttons showing that unit.
+-- UNIT_AURA: repaint the fallback highlight on the buttons showing that unit.
 local function onAura(_, unit)
   for _, b in ipairs(RF.buttons) do
-    local own = b:GetAttribute("unit")
-    if b:IsShown() and b.dispel and own == unit then update(b, unit) end
-  end
-end
-
--- Entering or leaving combat changes the HoT filter: refresh every shown button.
-local function refreshAll()
-  for _, b in ipairs(RF.buttons) do
-    if b.dispel and b:IsShown() then update(b, b:GetAttribute("unit")) end
+    if b.dispel and b:IsShown() and RF.Shows(b, unit) then paintDispel(b, b:GetAttribute("unit")) end
   end
 end
 
@@ -128,6 +152,4 @@ function RA.Enable(settings)
   table.insert(RF.setupHooks, setup)
   table.insert(RF.updateHooks, update)
   ns.On("UNIT_AURA", onAura)
-  ns.On("PLAYER_REGEN_DISABLED", refreshAll)
-  ns.On("PLAYER_REGEN_ENABLED", refreshAll)
 end

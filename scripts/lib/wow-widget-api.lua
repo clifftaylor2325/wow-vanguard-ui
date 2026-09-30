@@ -122,10 +122,29 @@ local CHECK_BUTTON = {
 }
 
 local COOLDOWN = {
-  "Clear", "GetCooldownDuration", "GetCooldownTimes", "IsPaused", "Pause",
-  "Resume", "SetCooldown", "SetCooldownDuration", "SetDrawBling",
-  "SetDrawEdge", "SetDrawSwipe", "SetHideCountdownNumbers", "SetReverse",
-  "SetSwipeColor", "SetSwipeTexture",
+  "Clear", "GetCooldownDuration", "GetCooldownTimes", "GetCountdownFontString",
+  "IsPaused", "Pause", "Resume", "SetCooldown", "SetCooldownDuration",
+  "SetCooldownFromDurationObject", "SetCountdownAbbrevThreshold",
+  "SetCountdownFont", "SetCountdownFormatter", "SetDrawBling", "SetDrawEdge",
+  "SetDrawSwipe", "SetHideCountdownNumbers", "SetMinimumCountdownDuration",
+  "SetReverse", "SetSwipeColor", "SetSwipeTexture",
+}
+
+-- The client's aura container (12.1+, Blizzard_AuraContainer) and the aura
+-- buttons it makes, as their public mixins define them.
+local AURA_CONTAINER = {
+  "AddAuraGroup", "AddAuraSlot", "AddItemEnchantment", "GetUnit",
+  "SetAuraProcessingPolicy", "SetEnabled", "SetFlowLayoutAnchorPoint",
+  "SetFlowLayoutAxis", "SetFlowLayoutGrowthDirection",
+  "SetFlowLayoutMaximumLineSize", "SetFlowLayoutPadding", "SetUnit",
+  "UpdateAllAuras",
+}
+
+local AURA_BUTTON = {
+  "AddDispelTypeTexture", "AddPandemicRegion", "ClearDispelTypeTextures",
+  "SetApplicationCount", "SetCancelAuraButtons", "SetDurationCooldown",
+  "SetDurationText", "SetHideTooltipInCombat", "SetIcon",
+  "SetTooltipAnchorPoint",
 }
 
 local MINIMAP = {
@@ -163,6 +182,8 @@ return {
     Minimap = set(REGION, FRAME, MINIMAP),
     ScrollingMessageFrame = set(REGION, FRAME, FONT, SCROLLING_MESSAGE_FRAME),
     Cooldown = set(REGION, FRAME, COOLDOWN),
+    AuraContainer = set(REGION, FRAME, AURA_CONTAINER),
+    AuraButton = set(REGION, FRAME, AURA_BUTTON),
     EditBox = set(REGION, FRAME, FONT, EDIT_BOX),
     Texture = set(REGION, LAYERED, TEXTURE),
     FontString = set(REGION, LAYERED, FONT, FONT_STRING),
@@ -175,6 +196,8 @@ return {
     ScrollingMessageFrame = set(FRAME_SCRIPTS, { "OnHyperlinkClick", "OnHyperlinkEnter", "OnHyperlinkLeave", "OnMessageScrollChanged" }),
     CheckButton = set(FRAME_SCRIPTS, { "OnClick", "OnDoubleClick", "PostClick", "PreClick" }),
     Cooldown = set(FRAME_SCRIPTS, { "OnCooldownDone" }),
+    AuraContainer = set(FRAME_SCRIPTS),
+    AuraButton = set(FRAME_SCRIPTS),
     ScrollFrame = set(FRAME_SCRIPTS, { "OnHorizontalScroll", "OnScrollRangeChanged", "OnVerticalScroll" }),
     EditBox = set(FRAME_SCRIPTS, {
       "OnChar", "OnCursorChanged", "OnEditFocusGained", "OnEditFocusLost",
@@ -195,5 +218,6 @@ return {
     SecureGroupHeaderTemplate = { kind = "Frame" },
     SecureHandlerBaseTemplate = {},
     CooldownFrameTemplate = { kind = "Cooldown" },
+    CustomAuraContainerTemplate = { kind = "AuraContainer" },
   },
 }

@@ -153,6 +153,8 @@ local function unitFrameRows()
     { "header", "Unit frames" },
     check("Replace the default unit frames", setting("UnitFrames", "hideBlizzard", true)),
     check("Show health numbers", setting("UnitFrames", "healthText", true)),
+    { "cycle", "Health as", { { "value", "Value (42.8K)" }, { "percent", "Percent (84%)" } }, setting("UnitFrames", "healthFormat") },
+    check("Show levels (reload)", setting("UnitFrames", "showLevel", true)),
   }
 end
 
@@ -164,7 +166,8 @@ local function castRows()
     check("Target cast bar", setting("CastBars", "target", true)),
     check("Focus cast bar", setting("CastBars", "focus", true)),
     { "header", "Target and focus auras" },
-    check("Only your debuffs", setting("FrameAuras", "onlyMine")),
+    check("Only your debuffs (reload)", setting("FrameAuras", "onlyMine", true)),
+    check("Timer numbers on the icons (reload)", setting("FrameAuras", "timers", true)),
   }
 end
 
@@ -279,8 +282,9 @@ local function currentProfileRows()
   }
 end
 
--- Profiles, part two: the spec profile.
+-- Profiles, part two: the spec profile (nothing on a client with no specializations).
 local function specRows()
+  if not ns.HasSpecs() then return {} end
   return {
     { "header", "Specialization" },
     { "text", specText },
@@ -306,17 +310,24 @@ local function raidRows()
     check("Sort by role (tanks, healers, damage)", setting("RaidFrames", "sortByRole", true)),
     check("Hide the default raid frames", setting("RaidFrames", "hideBlizzard", true)),
     { "cycle", "Style", { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }, raidSetting("look") },
-    { "cycle", "Width", { { 72, "72" }, { 90, "90" }, { 110, "110" } }, setting("RaidFrames", "width", true) },
-    { "cycle", "Height", { { 32, "32" }, { 40, "40" }, { 48, "48" } }, setting("RaidFrames", "height", true) },
+    { "cycle", "Width", { { 72, "72" }, { 90, "90" }, { 100, "100" }, { 120, "120" } }, setting("RaidFrames", "width", true) },
+    { "cycle", "Height", { { 36, "36" }, { 40, "40" }, { 48, "48" }, { 56, "56" } }, setting("RaidFrames", "height", true) },
+  }
+end
+
+-- The raid frames' auras: debuffs, the dispel highlight and your HoTs (after a reload).
+local function raidAuraRows()
+  return {
+    check("Highlight debuffs you can dispel (reload)", setting("RaidAuras", "dispel", true)),
+    { "cycle", "Debuff icons (reload)", { { 0, "none" }, { 2, "2" }, { 3, "3" } }, setting("RaidAuras", "debuffs", true) },
+    check("Show your HoTs (reload)", setting("RaidAuras", "hots", true)),
   }
 end
 
 -- Raid frames plus their indicators.
 local function raidPageRows()
-  return append(raidRows(), {
+  return append(append(raidRows(), raidAuraRows()), {
     check("Power bar", raidSetting("showPower")),
-    check("Highlight debuffs you can dispel", setting("RaidAuras", "dispel")),
-    check("Show your HoTs", setting("RaidAuras", "hots")),
     check("Fade players out of range", setting("RaidStatus", "rangeFade")),
     check("Raid target icons", setting("RaidStatus", "raidIcons")),
     check("Ready check answers", setting("RaidStatus", "readyCheck")),
