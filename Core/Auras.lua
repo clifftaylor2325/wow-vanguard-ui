@@ -145,9 +145,11 @@ function A.Style(spec, def)
   return { size = def.size, debuff = def.debuff, dim = def.dim, pandemic = def.pandemic, timer = spec.timer, mouse = spec.mouse }
 end
 
--- The backend in use: the engine when the client has AuraContainer, else the fallback.
+-- The backend in use: the engine when the client has AuraContainer, else the
+-- fallback. A container can't be made in combat, so one needed then (a new
+-- nameplate) gets the fallback.
 function A.Backend()
-  return ns.AuraEngine.Available() and ns.AuraEngine or ns.AuraLegacy
+  return not ns.InCombat() and ns.AuraEngine.Available() and ns.AuraEngine or ns.AuraLegacy
 end
 
 -- "engine" or "fallback", for /fui status.

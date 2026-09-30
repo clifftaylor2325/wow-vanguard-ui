@@ -113,6 +113,8 @@ const TOOLTIP = `
 // action, casts on you and your target, and auras on the target.
 const WORLD = `
   UIParent:SetSize(1920, 1080)
+  Enum = Enum or {}
+  Enum.CustomAuraButtonDispelTypeTextureStyle = { PreserveAsset = 3 }
   Minimap = CreateFrame("Minimap", "Minimap", UIParent)
   GetMinimapZoneText = function() return "TEST-ONLY Zone" end
   GetZonePVPInfo = function() return "sanctuary" end
@@ -147,7 +149,8 @@ const WORLD = `
   end
   C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
     if unit ~= "target" then return nil end
-    if filter == "HARMFUL|PLAYER" and i <= 2 then return { icon = "TEST-ONLY-DOT", applications = i } end
+    if filter == "HARMFUL|CROWD_CONTROL" and i == 1 then return { icon = "TEST-ONLY-CC", dispelName = "Magic" } end
+    if filter == "HARMFUL|PLAYER|!CROWD_CONTROL" and i <= 3 then return { icon = "TEST-ONLY-DOT", applications = i, dispelName = ({ "Magic", "Curse" })[i] } end
     if filter == "HELPFUL" and i <= 3 then return { icon = "TEST-ONLY-BUFF" } end
   end }
 `;
@@ -252,7 +255,7 @@ const PLATES = `
   GetRaidTargetIndex = function(unit) return unit == "nameplate3" and 8 or nil end
   local getAura = C_UnitAuras.GetAuraDataByIndex
   C_UnitAuras.GetAuraDataByIndex = function(unit, i, filter)
-    if unit == "nameplate1" and filter == "HARMFUL|PLAYER" and i <= 2 then return { icon = "TEST-ONLY-DOT", expirationTime = 0, duration = 0 } end
+    if unit == "nameplate1" and filter == "HARMFUL|PLAYER|!CROWD_CONTROL" and i <= 2 then return { icon = "TEST-ONLY-DOT", expirationTime = 0, duration = 0 } end
     return getAura(unit, i, filter)
   end
   UnitCastingInfo = function(unit) if unit == "nameplate1" then return "TEST-ONLY Charge", "", "TEST-ONLY-ICON", GetTime() * 1000 - 600, GetTime() * 1000 + 1400, false, nil, false end end

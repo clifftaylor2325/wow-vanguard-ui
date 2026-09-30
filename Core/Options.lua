@@ -164,7 +164,8 @@ local function castRows()
     check("Target cast bar", setting("CastBars", "target", true)),
     check("Focus cast bar", setting("CastBars", "focus", true)),
     { "header", "Target and focus auras" },
-    check("Only your debuffs", setting("FrameAuras", "onlyMine")),
+    check("Only your debuffs (reload)", setting("FrameAuras", "onlyMine", true)),
+    check("Timer numbers on the icons (reload)", setting("FrameAuras", "timers", true)),
   }
 end
 

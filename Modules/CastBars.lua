@@ -19,8 +19,9 @@ local CB = ns.Module("CastBars", {
 -- Unit -> size and default point.
 local LAYOUT = {
   player = { w = 240, h = 18, point = { "BOTTOM", "BOTTOM", 0, 200 } },
-  target = { w = 220, h = 16, point = { "CENTER", "CENTER", 260, -205 } },
-  focus = { w = 160, h = 14, point = { "CENTER", "CENTER", -260, -85 } },
+  -- Target and focus bars sit below their frame's debuff row (Modules/FrameAuras.lua).
+  target = { w = 220, h = 16, point = { "CENTER", "CENTER", 260, -230 } },
+  focus = { w = 160, h = 14, point = { "CENTER", "CENTER", -260, -110 } },
 }
 local BLIZZARD = { "PlayerCastingBarFrame", "CastingBarFrame", "PetCastingBarFrame" }
 
