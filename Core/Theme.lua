@@ -42,6 +42,8 @@ local TOKENS = {
   edge = "000000", sheen = { "ffffff", 0.06 }, divider = "242a34", shade = { "000000", 0.5 },
   hover = { "ffffff", 0.08 }, darkBar = "2a3039", checked = { "ffffff", 0.25 }, gridline = { "ffffff", 0.12 },
   textShadow = { "000000", 0.9 },
+  -- The dark sweep over an aura icon as its time runs out.
+  sweep = { "000000", 0.65 },
   -- Text
   text = "e8eaee", text2 = "a6adb9", muted = "6b7280", white = "ffffff", gold = "ffd100",
   -- State (kept apart from the accent)
@@ -181,7 +183,17 @@ end
 local function solid(frame, layer)
   local t = frame:CreateTexture(nil, layer)
   t:SetTexture(T.WHITE)
-  return t
+  return T.Snap(t)
+end
+
+-- Keeps a texture off the client's pixel-grid snapping, so 1 px lines and
+-- icon edges stay crisp at any UI scale instead of blurring or jumping.
+function T.Snap(texture)
+  if texture.SetSnapToPixelGrid then
+    texture:SetSnapToPixelGrid(false)
+    texture:SetTexelSnappingBias(0)
+  end
+  return texture
 end
 
 -- Pixels ----------------------------------------------------------------------------
@@ -313,6 +325,7 @@ end
 -- Gives a status bar the theme's bar texture.
 function T.StyleBar(bar)
   bar:SetStatusBarTexture(T.BarTexture())
+  T.Snap(bar:GetStatusBarTexture())
   return bar
 end
 
@@ -516,6 +529,8 @@ T.ROLES = {
   title = { 15, true }, heading = { 13, true }, name = { 13, true }, cell = { 11, true },
   label = { 12 }, number = { 12 }, small = { 10 }, tiny = { 9 }, world = { 10, true, "OUTLINE" },
   barName = { 11, true, "OUTLINE" }, barSmall = { 10, false, "OUTLINE" },
+  -- Aura icons: stack counts, and the timer on larger and smaller icons.
+  auraCount = { 10, true, "OUTLINE" }, auraTimer = { 11, true, "OUTLINE" }, auraTimerSmall = { 9, true, "OUTLINE" },
 }
 
 -- A role's font size after the text scale setting.
