@@ -303,6 +303,14 @@ const SCENES = [
       end
       Enum.WeaponSlot = { MainHand = 0, OffHand = 1, Ranged = 2 }
       C_Item = { GetWeaponEnchantInfo = function(slot) if slot == 0 then return { { hasEnchant = true, timeLeft = 1500000, enchantIconID = "TEST-ONLY-IMBUE" } } end end }` },
+  { name: "foreverui-strip", caption: "The strip under the minimap for a hunter: worn gear in orange, free slots, fps and latency, gold, ammo, the time (TEST-ONLY numbers)", lua: '__group({ "player", "party1", "party2" })',
+    before: `__units.player.class = "HUNTER"
+      GetInventoryItemDurability = function(slot) if slot == 5 then return 22, 100 end if slot == 1 then return 80, 100 end end
+      C_Container = C_Container or {} C_Container.GetContainerNumFreeSlots = function(bag) return bag == 0 and 6 or 2 end
+      GetFramerate = function() return 58 end GetNetStats = function() return 0, 0, 40, 64 end
+      GetMoney = function() return 123407 end
+      GetInventoryItemCount = function(unit, slot) return slot == 0 and 412 or 0 end
+      date = function() return "21:04" end` },
   { name: "foreverui-shaman", caption: "A shaman: three totems under the player frame (the game draws their time left), the air slot empty (TEST-ONLY totems)", lua: '__group({ "player", "party1", "party2" })',
     before: `__units.player.class = "SHAMAN"
       local totems = { { "TEST-ONLY Fire", 100 }, { "TEST-ONLY Earth", 45 }, { "TEST-ONLY Water", 190 } }
