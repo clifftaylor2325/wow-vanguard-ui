@@ -41,6 +41,7 @@ local function enable(def)
   local ok, err = pcall(def.Enable, ns.Settings(def.name, def.defaults))
   def.enabled = ok
   if not ok then
+    ns.CaughtError("module " .. def.name, err)
     ns.Chat(string.format("module %s failed to load: %s", def.name, tostring(err)))
   end
 end

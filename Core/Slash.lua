@@ -23,6 +23,7 @@ local HELP = {
   "spec [profile|off]   use a profile whenever you're in this specialization",
   "binds                this spec's click-casting and hover-key bindings (set them in /fui > Click casting)",
   "status               version, profile, modules, skins, work waiting on combat",
+  "errors               the errors ForeverUI caught this session (for a bug report)",
 }
 
 -- Prints each line.
@@ -265,6 +266,13 @@ local function statusCommand()
   chat(clientLine())
 end
 
+-- /fui errors: the errors ForeverUI caught this session, newest last.
+local function errorsCommand()
+  if #ns.errors == 0 then return chat("No errors caught this session.") end
+  chat(string.format("%d error(s) caught this session, newest last:", #ns.errors))
+  for _, line in ipairs(ns.errors) do chat(line) end
+end
+
 local COMMANDS = {
   -- /fui help
   help = function() printLines(HELP) end,
@@ -292,6 +300,7 @@ local COMMANDS = {
   spec = specCommand,
   binds = bindsCommand,
   status = statusCommand,
+  errors = errorsCommand,
 }
 
 -- /fui entry point: no arguments opens the options window.
