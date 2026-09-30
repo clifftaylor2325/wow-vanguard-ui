@@ -125,6 +125,8 @@ function methods:SetTexture(t) self.__texture = t end
 function methods:SetColorTexture(r, g, b, a) self.__color = { r, g, b, a or 1 } end
 function methods:SetVertexColor(r, g, b, a) self.__vertexColor = { r, g, b, a or 1 } end
 function methods:SetAlpha(a) self.__alpha = a end
+-- Records the (possibly hidden) boolean a region's alpha follows.
+function methods:SetAlphaFromBoolean(v) self.__alphaFromBoolean = v end
 function methods:GetAlpha() return self.__alpha or 1 end
 function methods:SetTexCoord(...) self.__texCoord = { ... } end
 function methods:SetScale(s) self.__scale = s end

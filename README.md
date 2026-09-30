@@ -6,7 +6,7 @@ Written from scratch. It contains no code, art or fonts from other UI addons.
 ## What's in it
 
 - **Look and layout**: the Slate & Brass theme: slate panels with soft shadows, a brass accent (or arcane, fel, void, ember), bundled Fira Sans Condensed, pixel-perfect borders, smooth bars, quiet fades and interface sounds (Reduce motion and Interface sounds switches turn them off). Every frame can be moved in unlock mode (`/fui unlock`), with a grid, snapping and arrow-key nudging; right-click a frame's handle to set its anchor and exact offsets. Profiles can be exported and imported, and can switch with your spec (on clients that have specializations).
-- **Unit frames**: player, target, target of target, focus and party frames. On WoW Forever they show levels (colored by difficulty) and health as a percent, and a diamond marks elite, rare and boss targets. Combo points for rogues and druids above the player frame.
+- **Unit frames**: player, target, target of target, focus and party frames. On WoW Forever they show levels (colored by difficulty) and health as a percent, and a diamond marks elite, rare and boss targets. Combo points for rogues and druids above the player frame. Under it, shamans get their totems (icon and time left; right-click one to destroy it) and druids their mana while bear or cat form shows rage or energy: the game keeps both inside its own player frame, which ForeverUI replaces.
   - Target and focus auras: debuffs under the frame (a crowd-control slot, then yours soonest-first, then others' dimmed if you turn "Only your debuffs" off), the target's buffs above it, each row wrapping at the frame's width. Timer numbers are off by default (the dark sweep shows time left) and can be turned on.
   - Cast bars for you, your target and your focus, with a spark, the seconds left, your latency at the end of your own cast, and a gray edge on a cast you can't interrupt.
 - **Raid frames** (VuhDo-style):
@@ -21,9 +21,9 @@ Written from scratch. It contains no code, art or fonts from other UI addons.
   - Each bar has its own number of buttons, buttons per row, button size, and visibility: Always, On mouseover (seen only while the mouse is over it), In combat, or Hidden. While you drag a spell or item, On mouseover and In combat bars show too (In combat bars only when the drag starts out of combat).
   - Hidden bars keep their keys: the bar isn't drawn, but a bound key still casts, like a keybind-only bar. A Hidden bottom bar keeps its row in the stack (leaving a gap), because bars can't be re-stacked during combat.
   - The right-edge bars (4 and 5) start off; turned on, they show on mouseover. Profiles that already had them on keep them on Always.
-- **Nameplates**: class/reaction/threat colors, your debuffs (soonest to expire first, with timers) and your crowd control, casts, raid icon, target border.
+- **Nameplates**: class/reaction/threat colors, your debuffs (soonest to expire first, with timers) and your crowd control, casts, raid icon, target border. A plate first drawn during a fight uses ForeverUI's own icons (the client's aura containers can't be made in combat) and switches to the client's when the fight ends.
 - **Everything else**: XP and reputation bars, square minimap, chat skin, combined bag, and themed tooltips with class colors and a Target line.
-- **Options**: `/fui` or the addons button. Turn any module off under Modules to keep the default one.
+- **Options**: `/fui` or the addons button. Turn any module off under Modules to keep the default one. Most changes apply at once; the rest show a Reload now button. WoW Forever lets an addon reload only from a click on a secure button, so that's what ForeverUI's Reload buttons are; one built during a fight becomes one when the fight ends, and until then it asks you to type `/reload`.
 - **First-run setup**: the first time you log in on an account, a three-step wizard asks for a layout (Damage and tanking, or Healing), an accent and raid frame style, then unlocks your frames so you can move them (the same unlock mode as `/fui unlock`, or **Move frames** under General in `/fui`; `/fui lock` or Done locks them again). With the defaults it takes three clicks: Next, Next, Done. It waits until you're out of combat. Done, the close button and Escape all end it, and it doesn't come back on its own; `/fui setup` reopens it. Damage and tanking is ForeverUI's defaults (picking it puts back anything Healing moved); Healing puts the raid frames centered just above your cast bar, growing upward, and turns click casting on. With Healing, a party and raids of up to 2 groups fit between the player and target frames; raids of more than 2 groups overlap them, so drag the raid frames where you want them with `/fui unlock` (or **Move frames** under General in `/fui`).
 
 Every client call is checked before use, and values the client hides from
@@ -45,7 +45,7 @@ Download `ForeverUI-<version>.zip` from the [latest release](https://github.com/
 /fui unlock | lock drag handles on every ForeverUI frame (also: right-click the addons button)
 /fui reset <frame|all>
 /fui accent <rrggbb|brass|arcane|fel|void|ember> | reset      /fui theme reset
-/fui modules       enable|disable <module>, then /reload
+/fui modules       the list of modules; /fui enable|disable <module>, then /reload
 /fui skins         addons skinned through the API; skins <addon> on|off
 /fui profile [name]              switch (or create); profile new|copy|delete <name>, profile reset
 /fui export [module] | import    profile strings (whole profile or one module's settings)
