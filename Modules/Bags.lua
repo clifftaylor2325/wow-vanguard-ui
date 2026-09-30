@@ -59,6 +59,16 @@ function BG.SkinWindow(frame)
   end
 end
 
+-- A Sort button at the top of the window, if the client can sort bags.
+function BG.AddSort(frame)
+  local sort = C_Container and C_Container.SortBags
+  if type(sort) ~= "function" or BG.sort then return end
+  BG.sort = ns.DialogButton(frame, "Sort", 52)
+  BG.sort:SetHeight(20)
+  BG.sort:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -30, -6)
+  BG.sort:SetScript("OnClick", function() sort() end)
+end
+
 -- Module entry point (Core/Modules.lua): combined bags on, skin on every show.
 function BG.Enable(settings)
   if settings.combined then useCombined() end
@@ -66,6 +76,7 @@ function BG.Enable(settings)
   if not frame then
     return
   end
+  BG.AddSort(frame)
   frame:HookScript("OnShow", BG.SkinWindow)
   ns.On("BAG_UPDATE_DELAYED", function() if frame:IsShown() then BG.SkinWindow(frame) end end)
 end

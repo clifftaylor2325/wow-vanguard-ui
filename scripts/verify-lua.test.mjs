@@ -736,6 +736,125 @@ it("bags", () => {
   expect(addon.eval("return ns.Theme.PaintedCount()") === b.painted, "reopening repaints, it doesn't pile up").toBeTruthy();
 });
 
+// TEST-ONLY numbers for the info strip: head slot 30%, legs 9% worn, 12 free slots, 12g 34s 7c.
+const STRIP_ENV = `
+  __dur = { [1] = { 30, 100 }, [7] = { 9, 100 }, [2] = { 0, 0 } }
+  GetInventoryItemDurability = function(slot) local d = __dur[slot] if d then return d[1], d[2] end end
+  C_Container = { GetContainerNumFreeSlots = function(bag) return bag == 0 and 4 or 2 end }
+  __fps, __ammo, __money = 58.7, 412, 123407
+  GetFramerate = function() return __fps end
+  GetNetStats = function() return 0, 0, 40, 64 end
+  GetMoney = function() return __money end
+  GetInventoryItemCount = function(unit, slot) return slot == 0 and __ammo or 0 end
+  date = function() return "21:04" end
+`;
+
+// One info strip block: shown, its text and its color.
+const block = (addon, key) => addon.eval(`local fs = ns.GetModule("InfoStrip").texts.${key} return { shown = fs:IsShown(), text = fs:GetText(), color = fs.__textColor }`);
+
+it("the info strip under the minimap", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + CLICK_LUA);
+  const dur = block(addon, "durability");
+  expect(dur.text === "9%" && isTok(addon, dur.color, "bad"), "your most worn item, red at 10% or less").toBe(true);
+  addon.eval("__dur[7] = { 50, 100 } __dur[1] = { 20, 100 }");
+  addon.fire("UPDATE_INVENTORY_DURABILITY");
+  expect(isTok(addon, block(addon, "durability").color, "warn"), "orange at 25% or less").toBe(true);
+  addon.eval("__dur[1] = { 90, 100 }");
+  addon.fire("UPDATE_INVENTORY_DURABILITY");
+  expect(block(addon, "durability").text === "50%" && isTok(addon, block(addon, "durability").color, "text"), "plain above that").toBe(true);
+  expect(block(addon, "bags").text, "free slots across the five bags").toBe("12 free");
+  expect([block(addon, "system").text, block(addon, "gold").text, block(addon, "clock").text], "fps and latency, gold, the time").toEqual(["58 fps  64 ms", "12g 34s 7c", "21:04"]);
+  expect(block(addon, "ammo").shown, "a mage carries no ammo").toBe(false);
+  addon.eval("__fps = 30 __money = 507 __wfgStub.advance(1.1)");
+  expect(block(addon, "system").text, "fps waits for the third second").toBe("58 fps  64 ms");
+  addon.eval("__wfgStub.advance(2.2)");
+  addon.fire("PLAYER_MONEY");
+  expect([block(addon, "system").text, block(addon, "gold").text], "then updates; under a gold, no gold part").toEqual(["30 fps  64 ms", "5s 7c"]);
+  addon.eval("C_Container.GetContainerNumFreeSlots = function() return 0 end");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect(isTok(addon, block(addon, "bags").color, "bad"), "full bags are red").toBe(true);
+  addon.slash("");
+  addon.eval('__click("Bars, map, chat")');
+  expect(addon.eval('return __click("Clock")') && block(addon, "clock").shown, "a block turns off at once").toBe(false);
+  expect(addon.eval('return { ns.MoverPoint("infostrip") }'), "the strip is movable, under the minimap").toEqual(["TOPRIGHT", "TOPRIGHT", -12, -200]);
+});
+
+it("the info strip: ammo, and clients that can't answer", () => {
+  const hunter = loggedIn(UNITS_ENV + STRIP_ENV + '__units.player.class = "HUNTER"');
+  expect(block(hunter, "ammo").text, "a hunter's ammo").toBe("ammo 412");
+  hunter.eval("__ammo = 0");
+  hunter.fire("UNIT_INVENTORY_CHANGED", "player");
+  expect(block(hunter, "ammo").text === "ammo 0" && isTok(hunter, block(hunter, "ammo").color, "bad"), "out of ammo is red").toBe(true);
+  hunter.eval('__units.player.class = "WARRIOR"');
+  hunter.fire("BAG_UPDATE_DELAYED");
+  expect(block(hunter, "ammo").shown, "a warrior with none shows nothing").toBe(false);
+  hunter.eval('UnitClass = function() return "x", { __secret = true } end');
+  hunter.fire("BAG_UPDATE_DELAYED");
+  expect(block(hunter, "ammo").shown, "a hidden class shows nothing").toBe(false);
+  const bare = loggedIn(UNITS_ENV + "GetMoney = function() return { __secret = true } end");
+  expect(["durability", "bags", "system", "gold", "clock"].map((k) => block(bare, k).shown), "no answer, no block").toEqual([false, false, false, false, false]);
+});
+
+// TEST-ONLY merchant: repairs for 50s; bag 0 holds a gray item, a gray with no value, and a white.
+const MERCHANT_ENV = `
+  __repairs, __used = {}, {}
+  CanMerchantRepair = function() return __canRepair end
+  __canRepair, __cost, __gold = true, 5000, 10000
+  GetRepairAllCost = function() return __cost, true end
+  GetMoney = function() return __gold end
+  RepairAllItems = function(guild) __repairs[#__repairs + 1] = guild end
+  __bag = { { quality = 0 }, { quality = 0, hasNoValue = true }, { quality = 1 }, { quality = { __secret = true } } }
+  __sticky = 1
+  C_Container = { GetContainerNumSlots = function(bag) return bag == 0 and 4 or 0 end,
+    GetContainerItemInfo = function(bag, slot) return __bag[slot] end,
+    UseContainerItem = function(bag, slot) __used[#__used + 1] = slot if __sticky > 0 then __sticky = __sticky - 1 else __bag[slot] = nil end end }
+  C_Timer = { After = function(_, fn) fn() end }
+  ERR_ABILITY_COOLDOWN = "TEST-ONLY not ready"
+  UIErrorsFrame = CreateFrame("Frame", "UIErrorsFrame", UIParent) UIErrorsFrame:RegisterEvent("UI_ERROR_MESSAGE")
+  function UIErrorsFrame:AddMessage(text) self.__lines = self.__lines or {} self.__lines[#self.__lines + 1] = text end
+`;
+
+it("at a merchant: repair with your own gold, sell junk", () => {
+  const addon = loggedIn(MERCHANT_ENV);
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __repairs"), "repairs with your own gold, not the guild's").toEqual([false]);
+  expect(chatHas(addon, /Repaired for 50s 0c/) && chatHas(addon, /Selling 1 junk item/), "and says so").toBe(true);
+  expect(addon.eval("return { __used, __bag[1] == nil }"), "the gray item is sold, tried again when the first try didn't take").toEqual([[1, 1], true]);
+  addon.eval("__gold = 100 __repairs = {}");
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return #__repairs") === 0 && chatHas(addon, /Not enough gold to repair/), "no repair you can't pay for").toBe(true);
+  addon.eval("__cost = 0");
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("__canRepair = false");
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("C_MerchantFrame = { SellAllJunkItems = function() __all = true end }");
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __all"), "the client's own one-step sale where it has one").toBe(true);
+  const off = loggedIn(MERCHANT_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Merchant = { repair = false, junk = false, errors = false } } }" });
+  off.fire("MERCHANT_SHOW");
+  expect(off.eval("return { #__repairs, #__used, UIErrorsFrame:IsEventRegistered('UI_ERROR_MESSAGE') }"), "each part can be turned off").toEqual([0, 0, true]);
+  const bare = loggedIn("CanMerchantRepair = nil");
+  bare.fire("MERCHANT_SHOW");
+  expect(bare.eval("return ns.GetModule('Merchant').Noisy('x')"), "a client without these calls does nothing").toBe(false);
+});
+
+it("the error line drops what the action bar already shows", () => {
+  const addon = loggedIn(MERCHANT_ENV);
+  expect(addon.eval("return UIErrorsFrame:IsEventRegistered('UI_ERROR_MESSAGE')"), "ForeverUI takes over the error line").toBe(false);
+  addon.fire("UI_ERROR_MESSAGE", 51, "TEST-ONLY not ready");
+  addon.fire("UI_ERROR_MESSAGE", 52, "TEST-ONLY Out of range");
+  addon.fire("UI_ERROR_MESSAGE", 53);
+  expect(addon.eval("return UIErrorsFrame.__lines"), "noise is dropped, useful errors stay").toEqual(["TEST-ONLY Out of range"]);
+  const none = loggedIn("UIErrorsFrame = nil");
+  expect(none.eval("return ns.GetModule('Merchant').settings.errors"), "no error line on this client: nothing to take over").toBe(true);
+});
+
+it("a Sort button on the combined bag, where the client can sort", () => {
+  const addon = loggedIn(UI_ENV + "C_Container = { SortBags = function() __sorted = true end }");
+  expect(addon.eval('local b = ns.GetModule("Bags").sort b:GetScript("OnClick")(b) return __sorted'), "Sort sorts your bags").toBe(true);
+  expect(loggedIn(UI_ENV).eval('return ns.GetModule("Bags").sort == nil'), "no sort call, no button").toBe(true);
+});
+
 it("range tint", () => {
   const polled = loggedIn(ACTIONS_ENV + "IsActionInRange = function(slot) if slot == 1 then return false end if slot == 3 then return { __secret = true } end return true end");
   expect(isTok(polled, button(polled, 1, 1).color, "outOfRange"), "out of range tints red (asked directly on clients without range events)").toBeTruthy();
