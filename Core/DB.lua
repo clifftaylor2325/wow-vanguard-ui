@@ -53,10 +53,21 @@ function ns.Profile()
   return ForeverUIDB.profiles[name]
 end
 
--- The settings table `key` in the active profile, with defaults filled in.
+local migrations = {}
+
+-- Registers fn(saved) to upgrade the settings table `key` as older versions
+-- saved it. It runs on the saved table before defaults are filled in, so it
+-- can tell a value the player had from one a new default would add.
+function ns.Migrate(key, fn)
+  migrations[key] = fn
+end
+
+-- The settings table `key` in the active profile, upgraded (ns.Migrate), with defaults filled in.
 function ns.Settings(key, defaults)
   local profile = ns.Profile()
-  profile[key] = fill(type(profile[key]) == "table" and profile[key] or {}, defaults or {})
+  local saved = type(profile[key]) == "table" and profile[key] or {}
+  if migrations[key] then migrations[key](saved) end
+  profile[key] = fill(saved, defaults or {})
   return profile[key]
 end
 

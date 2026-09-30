@@ -135,6 +135,10 @@ function methods:GetEffectiveScale()
   local parent = self.__parent
   return (self.__scale or 1) * (parent and parent:GetEffectiveScale() or 1)
 end
+-- Mouse: whether the frame takes the mouse, and whether it is under it
+-- (only what a test sets in __mouseOver).
+function methods:EnableMouse(on) self.__mouse = on == true end
+function methods:IsMouseOver() return self.__mouseOver == true end
 -- Moving (recorded for the mover tests).
 function methods:StartMoving() self.__moving = true end
 function methods:StopMovingOrSizing() self.__moving = false end
@@ -165,8 +169,30 @@ end
 -- The checked highlight texture, if set.
 function methods:GetCheckedTexture() return self.__checkedTexture end
 
--- Cooldowns: the last start and duration given.
+-- Cooldowns: the last start and duration given, or the duration object.
 function methods:SetCooldown(start, duration) self.__cooldown = { start, duration } end
+function methods:SetCooldownFromDurationObject(d) self.__durationObject = d end
+function methods:SetHideCountdownNumbers(hide) self.__hideNumbers = hide end
+function methods:SetSwipeColor(r, g, b, a) self.__swipeColor = { r, g, b, a } end
+function methods:SetReverse(on) self.__reverse = on end
+
+-- The countdown numbers' font string: made on first use, as the client's cooldown has one.
+function methods:GetCountdownFontString()
+  self.__countdown = self.__countdown or newWidget("FontString", nil, self, nil, "OVERLAY")
+  return self.__countdown
+end
+
+-- Frame levels: the level set.
+function methods:SetFrameLevel(level) self.__level = level end
+
+-- The level set, or one above the parent's, as the client stacks new frames.
+function methods:GetFrameLevel()
+  local parent = self.__parent
+  return self.__level or ((parent and parent.GetFrameLevel and parent:GetFrameLevel() or 0) + 1)
+end
+
+-- Textures: desaturation, recorded.
+function methods:SetDesaturated(on) self.__desaturated = on == true end
 
 -- Runs fn after a script's current handler, as HookScript does.
 function methods:HookScript(name, fn)
@@ -340,7 +366,8 @@ end
 
 -- Unknown frame types and templates are errors in game, so they are here.
 function CreateFrame(kind, name, parent, template)
-  if not API.methods[kind] or kind == "Texture" or kind == "FontString" then
+  local missing = kind == "AuraContainer" and stub.noAuraContainer
+  if missing or not API.methods[kind] or kind == "Texture" or kind == "FontString" then
     error("CreateFrame: unknown frame type " .. tostring(kind), 2)
   end
   local backdrop = checkTemplates(template, kind)
@@ -358,6 +385,104 @@ end
 -- Removes a recorded wrapper.
 function SecureHandlerUnwrapScript(frame, script)
   if frame.__wraps then frame.__wraps[script] = nil end
+end
+
+-- Aura containers (TEST-ONLY model of the client's) ------------------------------------
+
+-- Layout settings, recorded as given.
+function methods:SetFlowLayoutAnchorPoint(point) self.__flowAnchor = point end
+function methods:SetFlowLayoutGrowthDirection(h, v) self.__flowGrow = { h, v } end
+function methods:SetFlowLayoutMaximumLineSize(size) self.__flowLine = size end
+
+-- A group: its buttons are made now and dressed by initializeFrame, as the client does.
+function methods:AddAuraGroup(key, filter, opts)
+  local g = { key = key, filter = filter, opts = opts, buttons = {} }
+  self.__groups = self.__groups or {}
+  self.__groups[#self.__groups + 1] = g
+  for i = 1, math.min(opts.maxFrameCount or 10, 10) do
+    g.buttons[i] = newWidget("AuraButton", nil, self)
+    g.buttons[i].__dispel, g.buttons[i].__pandemic = {}, {}
+    if opts.initializeFrame then opts.initializeFrame(g.buttons[i]) end
+  end
+  self:UpdateAllAuras()
+end
+
+-- The unit and whether the container is on; either change reads the auras again.
+function methods:SetUnit(unit) self.__unit = unit self:UpdateAllAuras() end
+function methods:GetUnit() return self.__unit end
+function methods:SetEnabled(on) self.__enabled = on self:UpdateAllAuras() end
+
+-- Aura buttons: the regions the addon hands the client, recorded.
+function methods:SetIcon(t) self.__icon = t end
+function methods:SetDurationCooldown(cd) self.__durationCooldown = cd end
+function methods:SetApplicationCount(fs) self.__count = fs end
+function methods:AddDispelTypeTexture(t, opts) self.__dispel[#self.__dispel + 1] = { texture = t, opts = opts } end
+function methods:AddPandemicRegion(region) self.__pandemic[#self.__pandemic + 1] = region end
+
+-- The timer text binding. A test can make the client refuse an option by
+-- naming it in stub.refuseDurationOptions.
+function methods:SetDurationText(fs, opts)
+  for key in pairs(opts or {}) do
+    if (stub.refuseDurationOptions or {})[key] then error("TEST-ONLY: option " .. key .. " refused") end
+  end
+  self.__durationText = { fontString = fs, opts = opts }
+end
+
+-- Colors and shows a button's debuff-type textures for an aura, as the client does.
+local function paintDispel(b, aura, harmful)
+  for _, d in ipairs(b.__dispel) do
+    local kind = type(aura.dispelName) == "string" and aura.dispelName or "None"
+    local color = (d.opts.customDispelColorMap or {})[kind]
+    d.texture:SetShown(harmful and (kind ~= "None" or d.opts.showWithoutDispelType == true))
+    if color then d.texture:SetVertexColor(color:GetRGBA()) end
+  end
+end
+
+-- Fills one button from an aura (nil hides it).
+local function fillButton(b, aura, harmful)
+  b.__aura, b.__shown = aura, aura ~= nil
+  if not aura then return end
+  if b.__icon then b.__icon:SetTexture(aura.icon) end
+  local n = aura.applications
+  if b.__count then b.__count:SetText(type(n) == "number" and n > 1 and tostring(n) or "") end
+  paintDispel(b, aura, harmful)
+end
+
+-- Fills a group's buttons from C_UnitAuras through its filter.
+local function fillGroup(c, g)
+  local get = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
+  for i, b in ipairs(g.buttons) do
+    local aura = c.__enabled and c.__unit and get and get(c.__unit, i, g.filter) or nil
+    fillButton(b, aura, g.filter:find("HARMFUL") ~= nil)
+  end
+end
+
+-- Flows the shown buttons from the anchor corner, wrapping at the line size (for the preview).
+local function flowButtons(c)
+  local grow, anchor, x, y, lineH = c.__flowGrow or { 1, 1 }, c.__flowAnchor or "TOPLEFT", 0, 0, 0
+  for _, g in ipairs(c.__groups or {}) do
+    local gap, newLine = g.opts.layout.elementSpacing or 0, g.opts.layout.forceNewLine
+    for i, b in ipairs(g.buttons) do
+      if b.__shown and x > 0 and ((i == 1 and newLine) or (c.__flowLine and x + b.__width > c.__flowLine)) then x, y, lineH = 0, y + lineH + gap, 0 end
+      if b.__shown then b.__points = { [anchor] = { point = anchor, rel = c, relPoint = anchor, x = x * grow[1], y = y * grow[2] } } end
+      if b.__shown then x, lineH = x + b.__width + gap, math.max(lineH, b.__height) end
+    end
+  end
+end
+
+-- Reads every group's auras again and lays the buttons out.
+function methods:UpdateAllAuras()
+  for _, g in ipairs(self.__groups or {}) do fillGroup(self, g) end
+  flowButtons(self)
+end
+
+-- The client's Color objects (FrameXML CreateColor).
+function CreateColor(r, g, b, a)
+  local c = { r = r, g = g, b = b, a = a or 1 }
+  -- r, g, b (and a) back.
+  function c:GetRGB() return self.r, self.g, self.b end
+  function c:GetRGBA() return self.r, self.g, self.b, self.a end
+  return c
 end
 
 UIParent = newWidget("Frame", "UIParent")

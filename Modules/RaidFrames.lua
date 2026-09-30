@@ -15,7 +15,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local RF = ns.Module("RaidFrames", {
-  defaults = { width = 90, height = 40, spacing = 4, showInParty = true, showPlayer = true, sortByRole = false, hideBlizzard = true, look = "soft", showPower = true },
+  defaults = { width = 100, height = 48, spacing = 4, showInParty = true, showPlayer = true, sortByRole = false, hideBlizzard = true, look = "soft", showPower = true },
 })
 
 local MAX_UNITS = 40
@@ -62,6 +62,12 @@ function RF.Deficit(unit)
   return "-" .. (type(AbbreviateNumbers) == "function" and AbbreviateNumbers(missing) or tostring(missing))
 end
 
+-- True when a unit is your target (a hidden answer counts as no).
+local function isTarget(unit)
+  local same = type(UnitIsUnit) == "function" and UnitIsUnit(unit, "target")
+  return not ns.IsSecret(same) and same == true
+end
+
 -- A class color mixed into the panel color (SOFT of the class color).
 function RF.Soften(r, g, b)
   local pr, pg, pb = T.RGB("panel")
@@ -83,9 +89,10 @@ local function updateTexts(b, unit)
 end
 
 -- Colors by look: softened class bars (default) or bright ones, both with light
--- names; or dark bars with class-colored names.
+-- names; or dark bars with class-colored names. The dead and offline get a dark bar.
 local function paintHealth(b, unit)
   local r, g, bl = unitFrames().HealthColor(unit)
+  if b.down then return T.BarColor(b.health, "darkBar") end
   if RF.settings.look == "dark" then
     T.BarColor(b.health, "darkBar")
     return b.name:SetTextColor(r, g, bl)
@@ -110,10 +117,16 @@ function RF.Update(b)
   if not unit or not UnitExists(unit) then return end
   b.health:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(b.health, UnitHealth(unit))
-  paintHealth(b, unit)
   updateTexts(b, unit)
+  paintHealth(b, unit)
   updatePower(b, unit)
+  RF.PaintEdge(b, unit)
   for _, hook in ipairs(RF.updateHooks) do hook(b, unit) end
+end
+
+-- The tile's own edge: accent on your target, the theme's otherwise.
+function RF.PaintEdge(b, unit)
+  T.SetBorder(b, isTarget(unit) and { T.Accent() } or nil)
 end
 
 -- Every button currently showing a unit.
@@ -138,25 +151,87 @@ local function onUnitEvent(_, unit)
   end
 end
 
+-- Zones ------------------------------------------------------------------------------------
+-- A tile is laid out in zones that never overlap (tested at several sizes and
+-- text scales): the name row at the top, the missing-buff mark in the top-right
+-- corner, the status line under the name (or at the name row's right when the
+-- tile is too short), debuffs bottom left, your HoTs bottom right, the power
+-- bar along the bottom. Ready check and resurrection come and go in the center.
+-- Rects are { x, y, w, h } from the tile's top-left, y growing down.
+
+RF.POWER = 3
+local CORNER = 10
+
+-- A text role's line height: its size (text scale included) and a pixel of air each side.
+local function lineHeight(role)
+  return T.RoleSize(role) + 2
+end
+
+-- The icon strip: icon size from the tile's height, how many fit each side, and its top.
+local function strip(w, h)
+  local icon = math.max(10, math.min(18, math.floor(h * 0.3)))
+  local per = math.max(1, math.min(3, math.floor((w / 2 - 3) / (icon + 1))))
+  return icon, per, h - 1 - RF.POWER - 1 - icon
+end
+
+-- The name row and status line: status under the name when it fits above the
+-- icon strip, else at the right of the name row. The fifth field is its justification.
+local function textZones(z, w, top)
+  local nameH, statusH = lineHeight("barName"), lineHeight("barSmall")
+  if top - (4 + nameH) >= statusH then
+    z.name, z.status = { 4, 4, w - 20, nameH }, { 4, 4 + nameH, w - 8, statusH, "CENTER" }
+  else
+    z.name, z.status = { 4, 4, w - 52, nameH }, { w - 44, 4, 28, statusH, "RIGHT" }
+  end
+end
+
+-- Every zone of a w x h tile.
+function RF.Zones(w, h)
+  local icon, per, top = strip(w, h)
+  local rowW = per * (icon + 1) - 1
+  local z = { icon = icon, per = per, missing = { w - 3 - CORNER, 3, CORNER, CORNER }, power = { 1, h - 1 - RF.POWER, w - 2, RF.POWER } }
+  z.debuffs, z.hots = { 2, top, rowW, icon }, { w - 2 - rowW, top, rowW, icon }
+  textZones(z, w, top)
+  return z
+end
+
+-- The zones of the tiles at the set size.
+function RF.TileZones()
+  return RF.Zones(RF.settings.width, RF.settings.height)
+end
+
 -- Building ---------------------------------------------------------------------------------
 
--- Top row: the role letter, then the name, which stops short of the ready check
--- (top right) and ends in "..." when it's too long. All outlined over the bar.
-local function addTopRow(b)
+-- Top row: the role letter, then the name, which stops at its zone's edge and
+-- ends in "..." when it's too long. All outlined over the bar.
+local function addTopRow(b, z)
   b.role = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "barName", "text2")
-  b.role:SetPoint("TOPLEFT", 4, -5)
+  b.role:SetPoint("TOPLEFT", b, "TOPLEFT", z.name[1], -z.name[2])
   b.name = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "barName")
   b.name:SetPoint("TOPLEFT", b.role, "TOPRIGHT", 3, 0)
-  b.name:SetPoint("RIGHT", -18, 0)
+  b.name:SetPoint("TOPRIGHT", b, "TOPLEFT", z.name[1] + z.name[3], -z.name[2])
   b.name:SetJustifyH("LEFT")
   b.name:SetWordWrap(false)
 end
 
--- Second row, left: Dead / Offline or the missing health.
-local function addStatus(b)
+-- The status line: Dead / Offline or the missing health.
+local function addStatus(b, z)
   b.status = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "barSmall", "text2")
-  b.status:SetPoint("TOPLEFT", 4, -19)
-  b.status:SetJustifyH("LEFT")
+  b.status:SetPoint("TOPLEFT", b, "TOPLEFT", z.status[1], -z.status[2])
+  b.status:SetWidth(z.status[3])
+  b.status:SetJustifyH(z.status[5])
+end
+
+-- The layer above everything on the tile (auras included) for marks, and a
+-- faint wash while the mouse is over the tile.
+local function addOverlay(b)
+  b.overlay = CreateFrame("Frame", nil, b)
+  b.overlay:SetAllPoints()
+  b.overlay:SetFrameLevel(b:GetFrameLevel() + 20)
+  b.hover = T.Tint(T.Snap(b.overlay:CreateTexture(nil, "BACKGROUND")), "hover")
+  b.hover:SetTexture(T.WHITE)
+  b.hover:SetAllPoints(b.health)
+  b.hover:Hide()
 end
 
 -- A 3 px power bar along the bottom edge.
@@ -167,14 +242,16 @@ local function addPower(b)
   b.power:SetHeight(3)
 end
 
--- The health bar filling the button, with its texts and power bar.
+-- The health bar filling the button, with its texts, power bar and overlay.
 local function addParts(b)
+  local z = RF.TileZones()
   b.health = T.StyleBar(CreateFrame("StatusBar", nil, b))
   b.health:SetPoint("TOPLEFT", 1, -1)
   b.health:SetPoint("BOTTOMRIGHT", -1, 1)
-  addTopRow(b)
-  addStatus(b)
+  addTopRow(b, z)
+  addStatus(b, z)
   addPower(b)
+  addOverlay(b)
 end
 
 -- A button's unit changed (roster change): refresh it.
@@ -189,6 +266,8 @@ function RF.Setup(b)
   b:RegisterForClicks("AnyUp")
   b:HookScript("OnAttributeChanged", onAttributeChanged)
   b:HookScript("OnShow", RF.Update)
+  b:HookScript("OnEnter", function() b.hover:Show() end)
+  b:HookScript("OnLeave", function() b.hover:Hide() end)
   RF.buttons[#RF.buttons + 1] = b
   for _, hook in ipairs(RF.setupHooks) do hook(b) end
   if RF.OnButtonCreated then RF.OnButtonCreated(b) end
@@ -272,5 +351,5 @@ function RF.Enable(settings)
   migrateStyle(settings)
   ns.OutOfCombat(function() build(settings) end)
   for _, e in ipairs(UNIT_EVENTS) do ns.On(e, onUnitEvent) end
-  for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "PLAYER_ENTERING_WORLD" }) do ns.On(e, RF.UpdateAll) end
+  for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHANGED" }) do ns.On(e, RF.UpdateAll) end
 end

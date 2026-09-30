@@ -94,22 +94,24 @@ end
 
 -- Parts ------------------------------------------------------------------------------------
 
--- One hidden texture on the button's health bar, sized and placed, above the aggro strip.
+-- One hidden texture on the button's overlay (above the health bar and the
+-- aura icons), sized and placed.
 local function mark(b, size, ...)
-  local t = b.health:CreateTexture(nil, "OVERLAY", nil, 7)
+  local t = b.overlay:CreateTexture(nil, "OVERLAY", nil, 7)
   t:SetSize(size, size)
   t:SetPoint(...)
   t:Hide()
   return t
 end
 
--- Adds the marks to a raid button (RF setup hook), each in its own place so
--- none covers the texts: raid icon and leader crown on the top edge, ready
--- check top right (where the name stops), resurrection bottom center.
+-- Adds the marks to a raid button (RF setup hook): raid icon and leader crown
+-- on the top edge; the ready check and resurrection, which come and go, big
+-- in the center over everything (as the client's own raid frames do).
 local function setup(b)
+  local big = RF.TileZones().icon + 4
   b.raidIcon = mark(b, 12, "TOP", 0, 3)
-  b.ready = mark(b, 14, "TOPRIGHT", -2, -3)
-  b.rez = mark(b, 14, "BOTTOM", 0, 5)
+  b.ready = mark(b, big, "CENTER", 0, 0)
+  b.rez = mark(b, big, "CENTER", 0, 0)
   b.rez:SetTexture(RS.REZ)
   b.leader = mark(b, 10, "TOPLEFT", 2, 4)
 end

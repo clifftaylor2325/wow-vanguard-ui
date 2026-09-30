@@ -18,7 +18,7 @@ local CB = ns.GetModule("CastBars")
 local RS = ns.GetModule("RaidStatus")
 
 local NP = ns.Module("Nameplates", {
-  defaults = { width = 130, height = 10, threat = true, castBar = true, debuffs = 4, targetBorder = true },
+  defaults = { width = 130, height = 10, threat = true, castBar = true, debuffs = 4, targetBorder = true, timers = true },
 })
 
 local ICON = 18
@@ -68,13 +68,13 @@ local function addTexts(f)
   f.raidIcon:Hide()
 end
 
--- Debuff icons in a row over the name, left to right.
-local function addDebuffs(f, count)
-  f.debuffs = {}
-  for i = 1, count do
-    f.debuffs[i] = ns.Auras.Icon(f, ICON)
-    f.debuffs[i]:SetPoint("BOTTOMLEFT", f, "TOPLEFT", (i - 1) * (ICON + 2), 16)
-  end
+-- Your debuffs in a row over the name, soonest to expire first, with timers
+-- (a plate is where you watch your damage over time): an aura container that
+-- follows the plate's unit (Core/Auras.lua).
+function NP.DebuffSpec(f, s)
+  return { point = { "BOTTOMLEFT", f, "TOPLEFT", 0, 16 }, grow = "RIGHT", growY = "UP", lineSize = s.width, gap = 2, timer = s.timers, mouse = false,
+    groups = { { filter = "HARMFUL|PLAYER|!CROWD_CONTROL", max = s.debuffs, size = ICON, debuff = true, sort = "ExpirationOnly" },
+      { filter = "HARMFUL|PLAYER|CROWD_CONTROL", max = s.debuffs > 0 and 1 or 0, size = ICON, debuff = true } } }
 end
 
 -- The cast bar under the health bar; its icon (left of it) lines up with the plate's left edge.
@@ -92,7 +92,7 @@ local function build(plate)
   T.StyleBar(f)
   T.Panel(f, { inset = true })
   addTexts(f)
-  addDebuffs(f, s.debuffs)
+  f.debuffs = ns.Auras.Container(f, NP.DebuffSpec(f, s), nil)
   if s.castBar then addCastBar(f, s) end
   return f
 end
@@ -122,11 +122,9 @@ function NP.Update(f, unit)
   T.ShowGlow(f.glow, target)
 end
 
--- Your debuffs on the unit, one per icon.
+-- Points the debuff row at the plate's unit (the client reuses plates for other units).
 function NP.UpdateAuras(f, unit)
-  for i, icon in ipairs(f.debuffs) do
-    ns.Auras.Show(icon, unit, ns.Auras.Get(unit, i, "HARMFUL|PLAYER"))
-  end
+  f.debuffs:SetUnit(unit)
 end
 
 -- Everything on one plate.
@@ -157,7 +155,7 @@ end
 -- A nameplate went away: forget it (the client reuses the plate).
 local function onRemoved(_, unit)
   local f = NP.plates[unit]
-  if f then f:Hide() end
+  if f then f:Hide(); f.debuffs:SetUnit(nil) end
   NP.plates[unit] = nil
 end
 
@@ -182,7 +180,7 @@ local EVENTS = {
   PLAYER_ENTERING_WORLD = scan,
   NAME_PLATE_UNIT_ADDED = onAdded, NAME_PLATE_UNIT_REMOVED = onRemoved,
   UNIT_HEALTH = forUnit(NP.Update), UNIT_MAXHEALTH = forUnit(NP.Update), UNIT_NAME_UPDATE = forUnit(NP.Update),
-  UNIT_FACTION = forUnit(NP.Update), UNIT_THREAT_LIST_UPDATE = forUnit(NP.Update), UNIT_AURA = forUnit(NP.UpdateAuras),
+  UNIT_FACTION = forUnit(NP.Update), UNIT_THREAT_LIST_UPDATE = forUnit(NP.Update),
   PLAYER_TARGET_CHANGED = function() each(NP.Update) end, RAID_TARGET_UPDATE = function() each(NP.Update) end,
 }
 
@@ -207,21 +205,24 @@ local function setting(key, reload)
     end
 end
 
+-- The Nameplates page: looks first, then debuffs and size (both after a reload).
+function NP.OptionRows()
+  return {
+    { "header", "Nameplates" },
+    { "text", "Turn the whole module off under Modules to keep the default plates." },
+    { "check", "Threat colors while you have aggro", setting("threat") },
+    { "check", "Accent border on your target", setting("targetBorder") },
+    { "check", "Cast bar", setting("castBar", true) },
+    { "cycle", "Your debuffs shown", { { 0, "none" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", true) },
+    { "check", "Timer numbers on your debuffs (reload)", setting("timers", true) },
+    { "cycle", "Width", { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", true) },
+    { "cycle", "Height", { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", true) } }
+end
+
 ns.Options.AddPage({
   key = "nameplates",
   title = "Nameplates",
   icon = "Nameplates",
   order = 70,
-  rows = function()
-    return {
-      { "header", "Nameplates" },
-      { "text", "Turn the whole module off under Modules to keep the default plates." },
-      { "check", "Threat colors while you have aggro", setting("threat") },
-      { "check", "Accent border on your target", setting("targetBorder") },
-      { "check", "Cast bar", setting("castBar", true) },
-      { "cycle", "Your debuffs shown", { { 0, "none" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", true) },
-      { "cycle", "Width", { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", true) },
-      { "cycle", "Height", { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", true) },
-    }
-  end,
+  rows = function() return NP.OptionRows() end,
 })
