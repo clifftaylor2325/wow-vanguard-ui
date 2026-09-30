@@ -50,6 +50,8 @@ Modules/SpecialBars.lua
 Modules/Minimap.lua
 Modules/Chat.lua
 Modules/Bags.lua
+Modules/InfoStrip.lua
+Modules/Merchant.lua
 Modules/DataBars.lua
 Modules/Tooltips.lua
 Modules/Nameplates.lua

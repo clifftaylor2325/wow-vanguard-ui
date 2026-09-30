@@ -9,5 +9,8 @@ export default defineConfig({
     environment: "node",
     include: ["scripts/**/*.test.mjs"],
     reporters: [...configDefaults.reporters, luaSummaryReporter()],
+    // A Lua harness case loads the whole addon, often several times; with
+    // coverage counting every line hit that can pass Vitest's 5 s default.
+    testTimeout: 20_000,
   },
 });

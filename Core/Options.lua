@@ -266,6 +266,32 @@ local function playerAuraRows()
   }
 end
 
+-- get/set for one info strip block, which shows or hides at once.
+local function stripSetting(key)
+  local get, set = setting("InfoStrip", key)
+  return get, function(v) set(v); ns.GetModule("InfoStrip").UpdateAll() end
+end
+
+-- The info strip under the minimap: one switch per block.
+local function stripRows()
+  return {
+    { "header", "Strip under the minimap" },
+    check("Durability", stripSetting("durability")), check("Free bag slots", stripSetting("bags")),
+    check("Frame rate and latency", stripSetting("system")), check("Gold", stripSetting("gold")),
+    check("Ammo (hunters, warriors, rogues)", stripSetting("ammo")), check("Clock", stripSetting("clock")),
+  }
+end
+
+-- At a merchant, and the error line.
+local function merchantRows()
+  return {
+    { "header", "Merchants and errors" },
+    check("Repair with your own gold at a merchant", setting("Merchant", "repair")),
+    check("Sell gray items at a merchant", setting("Merchant", "junk")),
+    check("Hide errors the action bar already shows (reload)", setting("Merchant", "errors", true)),
+  }
+end
+
 -- Tooltips: where they sit and what they add.
 local function tooltipRows()
   return {
@@ -275,6 +301,14 @@ local function tooltipRows()
     check("Show who the unit is targeting", setting("Tooltips", "targetLine")),
     check("Hide unit tooltips in combat", setting("Tooltips", "hideInCombat")),
   }
+end
+
+-- The Bars, map, chat page: your buffs, bars and map, the strip, merchants, tooltips.
+local function morePageRows()
+  local rows = append(playerAuraRows(), moreRows())
+  append(rows, stripRows())
+  append(rows, merchantRows())
+  return append(rows, tooltipRows())
 end
 
 -- "Spec 2 uses Healer." or why there's no spec profile.
@@ -367,7 +401,7 @@ local PAGES = {
   { key = "unitframes", title = "Unit frames", icon = "UnitFrames", order = 30, rows = function() return append(unitFrameRows(), castRows()) end },
   { key = "raid", title = "Raid frames", icon = "RaidFrames", order = 40, rows = raidPageRows },
   { key = "actionbars", title = "Action bars", icon = "ActionBars", order = 60, rows = actionBarPageRows },
-  { key = "more", title = "Bars, map, chat", icon = "Map", order = 80, rows = function() return append(append(playerAuraRows(), moreRows()), tooltipRows()) end },
+  { key = "more", title = "Bars, map, chat", icon = "Map", order = 80, rows = function() return morePageRows() end },
   { key = "profiles", title = "Profiles", icon = "Profiles", order = 90, rows = profileRows },
 }
 O.PAGES = PAGES
