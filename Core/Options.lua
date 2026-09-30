@@ -279,8 +279,9 @@ local function currentProfileRows()
   }
 end
 
--- Profiles, part two: the spec profile.
+-- Profiles, part two: the spec profile (nothing on a client with no specializations).
 local function specRows()
+  if not ns.HasSpecs() then return {} end
   return {
     { "header", "Specialization" },
     { "text", specText },

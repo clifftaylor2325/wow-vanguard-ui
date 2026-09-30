@@ -38,6 +38,22 @@ function ns.PlainNumber(value)
   return value
 end
 
+-- True on the WoW Forever client (game type "camelot"): the 12.1 engine with
+-- vanilla content, reporting a 1.x interface number (16001).
+function ns.IsForever()
+  local iface = type(GetBuildInfo) == "function" and select(4, GetBuildInfo())
+  return type(iface) == "number" and iface >= 16000 and iface < 20000
+end
+
+-- True while the client hides aura values from addons (instanced combat).
+-- An error or a hidden answer counts as hidden: unknown is never "readable".
+function ns.AurasSecret()
+  local ask = C_Secrets and C_Secrets.ShouldAurasBeSecret
+  if type(ask) ~= "function" then return false end
+  local ok, secret = pcall(ask)
+  return not ok or ns.IsSecret(secret) or secret == true
+end
+
 -- How many functions are waiting for combat to end.
 function ns.QueuedCount()
   return #queue

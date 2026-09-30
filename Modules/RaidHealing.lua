@@ -25,6 +25,12 @@ RH.CLASS_BUFFS = {
   MAGE = { "Arcane Intellect", "Arcane Brilliance" },
   DRUID = { "Mark of the Wild", "Gift of the Wild" },
   WARRIOR = { "Battle Shout" },
+  -- Any blessing, normal or greater, counts: a paladin gives one per player.
+  PALADIN = {
+    "Blessing of Might", "Blessing of Wisdom", "Blessing of Kings", "Blessing of Salvation", "Blessing of Light",
+    "Greater Blessing of Might", "Greater Blessing of Wisdom", "Greater Blessing of Kings",
+    "Greater Blessing of Salvation", "Greater Blessing of Light",
+  },
 }
 
 -- Values -----------------------------------------------------------------------------------
@@ -94,7 +100,10 @@ local function hasBuff(unit, name)
 end
 
 -- The first watched buff you know, if the unit has none of the watched buffs; else nil.
+-- While the client hides auras a lookup can't see a hidden buff, so an absent
+-- buff proves nothing: unknown shows no marker rather than a false alarm.
 function RH.MissingBuff(unit)
+  if ns.AurasSecret() then return nil end
   local names, canGive = RH.BuffNames(), nil
   for _, name in ipairs(names) do
     if hasBuff(unit, name) then return nil end
@@ -201,6 +210,8 @@ local EVENTS = {
   UNIT_ABSORB_AMOUNT_CHANGED = function(_, unit) forUnit(unit, updatePrediction) end,
   UNIT_THREAT_SITUATION_UPDATE = function(_, unit) forUnit(unit, updateThreat) end,
   UNIT_AURA = function(_, unit) forUnit(unit, updateBuff) end,
+  -- Leaving combat usually lifts the aura restriction: look at every buff again.
+  PLAYER_REGEN_ENABLED = function() RF.UpdateAll() end,
 }
 
 -- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new).
