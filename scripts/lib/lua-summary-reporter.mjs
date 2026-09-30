@@ -10,7 +10,7 @@ const OTHER = "other";
 
 // Category name -> the it() names in scripts/verify-lua.test.mjs it covers.
 export const CATEGORIES = [
-  ["core", ["saved variables", "modules", "combat queue", "slash", "events unsubscribe and a delivered event with no listeners", "slash commands for frames, accent, grid, theme, modules, skins, profile and spec", "WoW Forever client: interface, hidden auras, no specializations", "a retail client is not WoW Forever and keeps its aura state readable", "reload buttons: a /reload macro overlay, since the Forever client blocks ReloadUI()"]],
+  ["core", ["saved variables", "a session: what you set in one login comes back in the next", "modules", "combat queue", "slash", "events unsubscribe and a delivered event with no listeners", "slash commands for frames, accent, grid, theme, modules, skins, profile and spec", "WoW Forever client: interface, hidden auras, no specializations", "a retail client is not WoW Forever and keeps its aura state readable", "reload buttons: a /reload macro overlay, since the Forever client blocks ReloadUI()", "/fui errors: what ForeverUI caught this session"]],
   ["theme", ["theme", "widgets", "theme tokens and pixel-perfect borders", "bundled font and logo", "text roles, sheen and shadows"]],
   ["skins", ["skin API", "skin SetFont and a UI scale change"]],
   ["movers", ["movers", "layout", "mover coordinates with no handle"]],
@@ -25,7 +25,7 @@ export const CATEGORIES = [
   ["healing", ["heal prediction, aggro, buff watch", "healing fallbacks and options"]],
   ["auras", ["raid indicators", "raid indicators on the fallback", "a client that won't drive the dispel highlight never shows it uncolored", "raid tile zones never overlap", "target and focus auras", "aura duration objects and power colors the theme does not name", "aura containers on the client's engine", "aura container timer options a client refuses, and the engine probe", "aura containers without the engine (the fallback)", "aura colors and stacks when the client hides the values"]],
   ["clicks", ["click casting", "click casting options", "click-casting validation, labels and unit frames"]],
-  ["raid", ["raid frames", "raid frames: a dark style chosen before 'look' carries over"]],
+  ["raid", ["raid frames", "a unit event reaches only the tile showing that unit", "raid frames: a dark style chosen before 'look' carries over"]],
   ["options", ["options window", "options window: nav, search, controls, footer", "options slider, search, scroll, special bars and profile switch", "choice fallback, key capture and the mouse wheel"]],
   ["profiles", ["profile strings", "export and import", "profile management", "spec profiles", "profile copy, empty export and a taken import name", "a profile string with an unterminated quote"]],
   ["range", ["range tint"]],

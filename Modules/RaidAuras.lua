@@ -138,11 +138,14 @@ local function update(b, unit)
   if b.dispel then paintDispel(b, unit) end
 end
 
--- UNIT_AURA: repaint the fallback highlight on the buttons showing that unit.
+-- Repaints a tile's fallback highlight, if it has one.
+local function repaint(b, unit)
+  if b.dispel then paintDispel(b, unit) end
+end
+
+-- UNIT_AURA: repaint the fallback highlight on the tile showing that unit.
 local function onAura(_, unit)
-  for _, b in ipairs(RF.buttons) do
-    if b.dispel and b:IsShown() and RF.Shows(b, unit) then paintDispel(b, b:GetAttribute("unit")) end
-  end
+  RF.ForUnit(unit, repaint)
 end
 
 -- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new).

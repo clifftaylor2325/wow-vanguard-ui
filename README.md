@@ -52,6 +52,7 @@ Download `ForeverUI-<version>.zip` from the [latest release](https://github.com/
 /fui spec [profile|off]          use a profile whenever you're in this specialization
 /fui binds                       this spec's click-casting and hover-key bindings
 /fui status
+/fui errors                      what ForeverUI caught going wrong this session (paste it in a bug report)
 ```
 
 ## Skin API (for other addons)

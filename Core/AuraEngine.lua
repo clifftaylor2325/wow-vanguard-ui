@@ -28,7 +28,7 @@ function E.Available()
   if probed ~= nil then return probed end
   if ns.InCombat() then return false end
   if C_AddOns and type(C_AddOns.LoadAddOn) == "function" then pcall(C_AddOns.LoadAddOn, "Blizzard_AuraContainer") end
-  local ok, probe = pcall(CreateFrame, "AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+  local ok, probe = ns.Try("aura containers (using ForeverUI's own icons)", CreateFrame, "AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
   if ok then probe:Hide() end
   probed = ok
   return ok
@@ -120,9 +120,9 @@ function E.Init(button, style)
   button:SetDurationCooldown(parts.cooldown)
   button:SetApplicationCount(parts.count, {})
   if parts.timer then durationText(button, parts.timer) end
-  if parts.ring then pcall(E.RegisterDispel, button, parts.ring, 1) end
-  if style.pandemic then pcall(pandemic, button, parts) end
-  if style.register then pcall(style.register, button) end
+  if parts.ring then ns.Try("debuff type colors", E.RegisterDispel, button, parts.ring, 1) end
+  if style.pandemic then ns.Try("HoT refresh window", pandemic, button, parts) end
+  if style.register then ns.Try("aura icon extras", style.register, button) end
 end
 
 -- Containers ------------------------------------------------------------------------------
@@ -154,7 +154,7 @@ local function groupOptions(spec, def)
   return {
     maxFrameCount = def.max, sortMethod = def.sort and sorts and sorts[def.sort] or nil,
     layout = { elementSpacing = gap, lineSpacing = gap, groupSpacing = gap, groupLineSpacing = gap, forceNewLine = def.newLine == true },
-    initializeFrame = function(button) pcall(E.Init, button, style) end,
+    initializeFrame = function(button) ns.Try("aura icon", E.Init, button, style) end,
   }
 end
 
@@ -166,7 +166,7 @@ function E.Create(parent, spec, unit)
   local frame = CreateFrame("AuraContainer", nil, parent, "CustomAuraContainerTemplate")
   layout(frame, spec)
   -- A filter token this client doesn't know is refused: that group is left out, not the rest.
-  for i, def in ipairs(spec.groups) do pcall(frame.AddAuraGroup, frame, "fui" .. i, def.filter, groupOptions(spec, def)) end
+  for i, def in ipairs(spec.groups) do ns.Try("aura filter " .. def.filter, frame.AddAuraGroup, frame, "fui" .. i, def.filter, groupOptions(spec, def)) end
   local c = setmetatable({ frame = frame }, Container)
   c:SetUnit(unit)
   return c
