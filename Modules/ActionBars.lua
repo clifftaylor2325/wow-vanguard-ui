@@ -313,12 +313,21 @@ local function addTexts(b)
   T.Color(b.hotkey, "text2")
 end
 
+-- The client's cooldown numbers in the theme's font (they show when the game's
+-- "Show numbers for cooldowns" option is on), not for the last second and a half.
+local function themeCountdown(cd)
+  local fs = cd:GetCountdownFontString()
+  if fs then T.Text(fs, "cooldown", "white") end
+  cd:SetMinimumCountdownDuration(1500)
+end
+
 -- The icon, count, hotkey, cooldown and checked highlight on a button.
 local function addRegions(b)
   addIcon(b)
   addTexts(b)
   b.cooldown = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
   b.cooldown:SetAllPoints(b.icon)
+  themeCountdown(b.cooldown)
   b.glow = T.Glow(b, 6)
   b:SetCheckedTexture(T.WHITE)
   T.Tint(b:GetCheckedTexture(), "checked")

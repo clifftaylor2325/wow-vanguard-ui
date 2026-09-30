@@ -31,6 +31,12 @@ function softBox(size, m, sigma, rgb, alpha, hollow) {
   });
 }
 
+// A white wash fading in from the top to the bottom: the dispel highlight
+// rises from a raid tile's bottom edge, clear of the name.
+function fade() {
+  return fill(image(8, 64), (x, y) => [1, 1, 1, Math.pow(y / 63, 1.4)]);
+}
+
 // Diagonal stripes for shields, tiled across a bar.
 function stripes() {
   return fill(image(16, 16), (x, y) => [1, 1, 1, (x + y) % 16 < 5 ? 0.55 : 0.12]);
@@ -53,6 +59,7 @@ export const TEXTURES = {
   Shadow: () => softBox(64, 16, 6, [0, 0, 0], 0.8, false),
   Glow: () => softBox(64, 16, 5, [1, 1, 1], 0.9, true),
   Stripes: stripes,
+  Fade: fade,
   // The logo halves, white, for the addon to tint (accent left, text right).
   LogoLeft: () => draw(image(64, 64), 64, LOGO_LEFT),
   LogoRight: () => draw(image(64, 64), 64, LOGO_RIGHT),

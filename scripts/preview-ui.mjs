@@ -91,7 +91,8 @@ const TOOLTIP = `
   __tipHooks = {}
   hooksecurefunc = function(name, fn) __tipHooks[name] = fn end
   GameTooltip_SetDefaultAnchor = function() end
-  Enum = { TooltipDataType = { Unit = 2 } }
+  Enum = Enum or {}
+  Enum.TooltipDataType = { Unit = 2 }
   TooltipDataProcessor = { AddTooltipPostCall = function(_, fn) __tipPost = fn end }
   local tt = CreateFrame("Frame", "GameTooltip", UIParent)
   tt:SetFrameStrata("TOOLTIP")
@@ -113,6 +114,8 @@ const TOOLTIP = `
 // action, casts on you and your target, and auras on the target.
 const WORLD = `
   UIParent:SetSize(1920, 1080)
+  Enum = Enum or {}
+  Enum.CustomAuraButtonDispelTypeTextureStyle = { PreserveAsset = 3 }
   Minimap = CreateFrame("Minimap", "Minimap", UIParent)
   GetMinimapZoneText = function() return "TEST-ONLY Zone" end
   GetZonePVPInfo = function() return "sanctuary" end
@@ -147,7 +150,8 @@ const WORLD = `
   end
   C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
     if unit ~= "target" then return nil end
-    if filter == "HARMFUL|PLAYER" and i <= 2 then return { icon = "TEST-ONLY-DOT", applications = i } end
+    if filter == "HARMFUL|CROWD_CONTROL" and i == 1 then return { icon = "TEST-ONLY-CC", dispelName = "Magic" } end
+    if filter == "HARMFUL|PLAYER|!CROWD_CONTROL" and i <= 3 then return { icon = "TEST-ONLY-DOT", applications = i, dispelName = ({ "Magic", "Curse" })[i] } end
     if filter == "HELPFUL" and i <= 3 then return { icon = "TEST-ONLY-BUFF" } end
   end }
 `;
@@ -200,9 +204,11 @@ const RAID = `
   UnitIsConnected = function(unit) return not (__units[unit] or {}).offline end
   local debuffs = { raid4 = "Magic", raid9 = "Poison", raid16 = "Curse" }
   local hots = { raid1 = 3, raid3 = 1, raid6 = 2, raid11 = 2, raid17 = 1 }
+  local boss = { raid2 = true, raid4 = true, raid12 = true }
   C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
-    if filter == "HARMFUL|RAID" then return i == 1 and debuffs[unit] and { dispelName = debuffs[unit] } or nil end
-    if i <= (hots[unit] or 0) then return { icon = "TEST-ONLY-HOT", expirationTime = 0, duration = 0 } end
+    if filter == "HARMFUL|RAID" then return i == 1 and debuffs[unit] and { icon = "TEST-ONLY-DEBUFF", dispelName = debuffs[unit] } or nil end
+    if filter == "HARMFUL|!RAID" then return i == 1 and boss[unit] and { icon = "TEST-ONLY-BOSS" } or nil end
+    if filter == "HELPFUL|PLAYER|RAID_IN_COMBAT" and i <= (hots[unit] or 0) then return { icon = "TEST-ONLY-HOT", expirationTime = 0, duration = 0 } end
   end }
   local heals, shields = { raid2 = 9000, raid5 = 12000, raid12 = 6000 }, { raid1 = 8000, raid6 = 5000, raid11 = 7000 }
   CreateUnitHealPredictionCalculator = function()
@@ -252,7 +258,7 @@ const PLATES = `
   GetRaidTargetIndex = function(unit) return unit == "nameplate3" and 8 or nil end
   local getAura = C_UnitAuras.GetAuraDataByIndex
   C_UnitAuras.GetAuraDataByIndex = function(unit, i, filter)
-    if unit == "nameplate1" and filter == "HARMFUL|PLAYER" and i <= 2 then return { icon = "TEST-ONLY-DOT", expirationTime = 0, duration = 0 } end
+    if unit == "nameplate1" and filter == "HARMFUL|PLAYER|!CROWD_CONTROL" and i <= 2 then return { icon = "TEST-ONLY-DOT", expirationTime = 0, duration = 0 } end
     return getAura(unit, i, filter)
   end
   UnitCastingInfo = function(unit) if unit == "nameplate1" then return "TEST-ONLY Charge", "", "TEST-ONLY-ICON", GetTime() * 1000 - 600, GetTime() * 1000 + 1400, false, nil, false end end

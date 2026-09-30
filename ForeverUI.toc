@@ -1,4 +1,4 @@
-## Interface: 120007
+## Interface: 16001, 120007
 ## Title: ForeverUI
 ## Notes: A from-scratch UI suite for WoW Forever: theme, movers, unit frames, action bars, minimap, chat, bags.
 ## Author: clifftaylor2325
@@ -21,6 +21,8 @@ Core/Modules.lua
 Core/Theme.lua
 Core/Dialog.lua
 Core/Auras.lua
+Core/AuraLegacy.lua
+Core/AuraEngine.lua
 Core/Skin.lua
 Core/Layout.lua
 Core/Grid.lua
@@ -34,6 +36,7 @@ Core/Slash.lua
 Modules/UnitFrames.lua
 Modules/CastBars.lua
 Modules/FrameAuras.lua
+Modules/ComboPoints.lua
 Modules/RaidFrames.lua
 Modules/RaidAuras.lua
 Modules/RaidHealing.lua

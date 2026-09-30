@@ -19,8 +19,9 @@ local CB = ns.Module("CastBars", {
 -- Unit -> size and default point.
 local LAYOUT = {
   player = { w = 240, h = 18, point = { "BOTTOM", "BOTTOM", 0, 200 } },
-  target = { w = 220, h = 16, point = { "CENTER", "CENTER", 260, -205 } },
-  focus = { w = 160, h = 14, point = { "CENTER", "CENTER", -260, -85 } },
+  -- Target and focus bars sit below their frame's debuff row (Modules/FrameAuras.lua).
+  target = { w = 220, h = 16, point = { "CENTER", "CENTER", 260, -230 } },
+  focus = { w = 160, h = 14, point = { "CENTER", "CENTER", -260, -110 } },
 }
 local BLIZZARD = { "PlayerCastingBarFrame", "CastingBarFrame", "PetCastingBarFrame" }
 
@@ -59,17 +60,37 @@ end
 
 -- Showing ----------------------------------------------------------------------------
 
--- Moves the bar by plain times; hidden times leave it full.
+-- Moves the bar by plain times and shows the seconds left; hidden times leave it full.
 local function onUpdate(bar)
   local startMS, endMS = ns.PlainNumber(bar.startMS), ns.PlainNumber(bar.endMS)
   if not startMS or not endMS or endMS <= startMS then return end
-  local share = math.max(0, math.min(1, (GetTime() * 1000 - startMS) / (endMS - startMS)))
+  local now = GetTime() * 1000
+  local share = math.max(0, math.min(1, (now - startMS) / (endMS - startMS)))
   bar:SetValue(bar.channel and (1 - share) or share)
+  bar.time:SetText(string.format("%.1f", math.max(0, endMS - now) / 1000))
+end
+
+-- Your latency in ms (to the world server, else home), or nil where the client can't say.
+local function latency()
+  if type(GetNetStats) ~= "function" then return nil end
+  local _, _, home, world = GetNetStats()
+  return ns.PlainNumber(world) or ns.PlainNumber(home)
+end
+
+-- Your own latency at the end of your cast bar (plain times only): the part
+-- of the cast the server may already count as done, so you can queue the next.
+local function showLatency(bar, cast)
+  local startMS, endMS = ns.PlainNumber(cast.startMS), ns.PlainNumber(cast.endMS)
+  local lag = latency()
+  bar.lag:SetShown(bar.unit == "player" and not cast.channel and lag ~= nil and startMS ~= nil and endMS ~= nil and endMS > startMS)
+  if bar.lag:IsShown() then bar.lag:SetWidth(bar:GetWidth() * math.min(1, lag / (endMS - startMS))) end
 end
 
 -- Starts the bar's timing: the client's own timer where it can, else plain times on each frame.
 local function startTiming(bar, unit, cast)
   local duration = castDuration(unit, cast)
+  bar.time:SetText("")
+  showLatency(bar, cast)
   if duration and bar.SetTimerDuration and pcall(bar.SetTimerDuration, bar, duration) then
     return bar:SetScript("OnUpdate", nil)
   end
@@ -87,6 +108,7 @@ function CB.Show(bar, unit)
   bar:SetShown(cast ~= nil)
   if not cast then return bar:SetScript("OnUpdate", nil) end
   T.BarColor(bar, isTrue(cast.shielded) and "shielded" or cast.channel and "channel" or "cast")
+  T.SetBorder(bar, isTrue(cast.shielded) and { T.RGB("shielded") } or nil)
   bar.icon:SetTexture(cast.icon)
   bar.text:SetText(cast.name)
   startTiming(bar, unit, cast)
@@ -112,14 +134,30 @@ end
 
 -- Building ---------------------------------------------------------------------------
 
--- The icon to the left and the spell name on the bar.
+-- The icon to the left, the spell name on the bar and the seconds left at its right.
 local function addParts(bar, h)
-  bar.icon = T.Crop(bar:CreateTexture(nil, "ARTWORK"))
+  bar.icon = T.Snap(T.Crop(bar:CreateTexture(nil, "ARTWORK")))
   bar.icon:SetSize(h, h)
   bar.icon:SetPoint("RIGHT", bar, "LEFT", -3, 0)
-  bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), h >= 18 and "label" or "small")
+  local role = h >= 18 and "label" or "small"
+  bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), role)
   bar.text:SetPoint("LEFT", 4, 0)
-  T.Color(bar.text, "text")
+  bar.time = T.Text(bar:CreateFontString(nil, "OVERLAY"), role, "text2")
+  bar.time:SetPoint("RIGHT", -4, 0)
+end
+
+-- A 1 px spark riding the fill's edge, and the latency shade at the bar's end.
+local function addSpark(bar)
+  local fill = bar:GetStatusBarTexture()
+  bar.spark = T.Tint(T.Snap(bar:CreateTexture(nil, "OVERLAY")), "white", 0.8)
+  bar.spark:SetTexture(T.WHITE)
+  bar.spark:SetWidth(1)
+  bar.spark:SetPoint("TOP", fill, "TOPRIGHT")
+  bar.spark:SetPoint("BOTTOM", fill, "BOTTOMRIGHT")
+  bar.lag = T.Tint(T.Snap(bar:CreateTexture(nil, "ARTWORK", nil, 2)), "shade")
+  bar.lag:SetTexture(T.WHITE)
+  bar.lag:SetPoint("TOPRIGHT"); bar.lag:SetPoint("BOTTOMRIGHT")
+  bar.lag:Hide()
 end
 
 -- Makes a status bar a themed cast bar (w x h), hidden until CB.Show finds a cast.
@@ -128,6 +166,7 @@ function CB.Build(bar, w, h)
   T.StyleBar(bar)
   T.Panel(bar, { inset = true, shadow = true })
   addParts(bar, h)
+  addSpark(bar)
   bar:Hide()
   return bar
 end
@@ -136,6 +175,7 @@ end
 local function createBar(unit)
   local def = LAYOUT[unit]
   local bar = CB.Build(CreateFrame("StatusBar", "ForeverUI_CastBar_" .. unit, UIParent), def.w, def.h)
+  bar.unit = unit
   ns.Mover(bar, "cast_" .. unit, unit:sub(1, 1):upper() .. unit:sub(2) .. " cast bar", def.point)
   return bar
 end
