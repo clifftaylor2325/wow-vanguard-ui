@@ -2186,3 +2186,83 @@ it("aura colors and stacks when the client hides the values", () => {
   const noCurve = loggedIn(UNITS_ENV + `C_UnitAuras = { GetAuraDispelTypeColor = function() return nil end }`);
   expect(noCurve.eval('return ns.Auras.DispelToken("Magic")') === "magic" && isTok(noCurve, noCurve.eval('return { ns.Auras.DispelColor("target", { dispelName = { __secret = true } }) }'), "bad"), "no curve support: a hidden type shows as 'bad'").toBeTruthy();
 });
+
+it("cast bars: spark, seconds left, latency and the uninterruptible edge", () => {
+  const addon = loggedIn(CAST_ENV + 'GetNetStats = function() return 0, 0, 40, 150 end');
+  addon.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
+  addon.fire("UNIT_SPELLCAST_START", "player");
+  addon.eval("__wfgStub.update(1)");
+  const b = addon.eval(`local b = ForeverUI_CastBar_player
+    return { time = b.time:GetText(), lag = b.lag:IsShown() and b.lag.__width, width = b:GetWidth(), spark = b.spark.__points.TOP.relPoint }`);
+  expect(b.time === "2.0", "the seconds left, at the bar's right").toBeTruthy();
+  expect(b.lag === b.width * 150 / 3000, "your latency shaded at the end of your cast (world latency)").toBeTruthy();
+  expect(b.spark === "TOPRIGHT", "a spark rides the fill's edge").toBeTruthy();
+  addon.eval('__casts.target = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000, shielded = true }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  const t = addon.eval(`local b = ForeverUI_CastBar_target local edge
+    for _, w in ipairs(__wfgStub.frames) do if w.__parent == b and w.__layer == "BORDER" then edge = w.__vertexColor break end end
+    return { lag = b.lag:IsShown(), edge = edge }`);
+  expect(t.lag === false && isTok(addon, t.edge, "shielded"), "no latency on others' bars; a cast you can't interrupt gets a gray edge").toBeTruthy();
+  const noStats = loggedIn(CAST_ENV + "GetNetStats = nil");
+  noStats.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
+  noStats.fire("UNIT_SPELLCAST_START", "player");
+  expect(noStats.eval("return ForeverUI_CastBar_player.lag:IsShown()") === false, "no latency shade where the client can't say").toBeTruthy();
+  const homeOnly = loggedIn(CAST_ENV + "GetNetStats = function() return 0, 0, 60, { __secret = true } end");
+  homeOnly.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
+  homeOnly.fire("UNIT_SPELLCAST_START", "player");
+  expect(homeOnly.eval("return ForeverUI_CastBar_player.lag.__width") === homeOnly.eval("return ForeverUI_CastBar_player:GetWidth()") * 60 / 3000, "home latency when world latency is hidden").toBeTruthy();
+});
+
+it("unit frames on WoW Forever: levels, health percent, classification", () => {
+  const addon = loggedIn(UNITS_ENV + FOREVER_ENV + `
+    UnitLevel = function(unit) return ({ player = 60, target = -1, focus = { __secret = true } })[unit] or 12 end
+    GetCreatureDifficultyColor = function(level) return { r = 1, g = 0.1, b = 0.1 } end
+    UnitClassification = function(unit) return ({ target = "worldboss", focus = "rare" })[unit] or "normal" end
+    CurveConstants = { ScaleTo100 = { __curve = true } }
+    UnitHealthPercent = function(unit, predicted, curve) return 84 end
+    __units.focus = { name = "TEST-ONLY Focus", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA", reaction = 5 }`, NO_RAID);
+  addon.fire("PLAYER_TARGET_CHANGED");
+  addon.fire("PLAYER_FOCUS_CHANGED");
+  const f = addon.eval(`local p, t, fo = ForeverUI_player, ForeverUI_target, ForeverUI_focus
+    return { level = p.level:GetText(), color = p.level.__textColor, boss = t.level:GetText(), hidden = fo.level:GetText(), hiddenColor = fo.level.__textColor,
+      health = p.healthText:GetText(), mark = t.class:IsShown() and t.class.__vertexColor, rare = fo.class.__vertexColor, playerMark = p.class }`);
+  expect(f.level === "60" && f.color[1] === 0.1 && f.boss === "??" && f.hidden === "", "the level left of the name, colored by difficulty; ?? for a boss; nothing when hidden").toBeTruthy();
+  expect(isTok(addon, f.hiddenColor, "text2"), "a hidden level falls back to the plain text color").toBeTruthy();
+  expect(f.health === "84%", "health as a percent from the client's own percent").toBeTruthy();
+  expect(isTok(addon, f.mark, "bad") && isTok(addon, f.rare, "text2") && f.playerMark == null, "a diamond marks bosses, rares and elites on the target and focus").toBeTruthy();
+  addon.eval("UnitHealthPercent = function() error('TEST-ONLY') end");
+  addon.fire("UNIT_HEALTH", "player");
+  expect(addon.eval("return ForeverUI_player.healthText:GetText()") === "900", "if the client's percent fails, the value shows").toBeTruthy();
+  const retail = loggedIn(UNITS_ENV, NO_RAID);
+  expect(retail.eval("return ForeverUI_player.level") === null && retail.eval("return ForeverUI_player.healthText:GetText()") === "900", "elsewhere: no level, health as a value").toBeTruthy();
+});
+
+it("combo points for rogues and druids", () => {
+  const addon = loggedIn(UNITS_ENV + `__units.player.class = "ROGUE" __cp = 3
+    GetComboPoints = function(unit, target) return __cp end`, NO_RAID);
+  // The pips' state: shown, how many lit, how many in all.
+  const pips = () => addon.eval(`local CP = ns.GetModule("ComboPoints") local lit = 0
+    for _, p in ipairs(CP.pips) do if p.fill:IsShown() then lit = lit + 1 end end
+    return { shown = CP.bar:IsShown(), lit = lit, n = #CP.pips }`);
+  let p = pips();
+  expect(p.shown && p.lit === 3 && p.n === 5, "five pips above the player frame, one lit per point").toBeTruthy();
+  addon.eval("__cp = 0");
+  addon.fire("UNIT_POWER_UPDATE", "player", "COMBO_POINTS");
+  expect(pips().shown === false, "hidden while you have no points").toBeTruthy();
+  addon.eval("__cp = { __secret = true }");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(pips().shown === false, "a hidden count shows nothing").toBeTruthy();
+  const druid = loggedIn(UNITS_ENV + `__units.player.class = "DRUID"
+    Enum = Enum or {} Enum.PowerType = { ComboPoints = 4 } UnitPower = function(unit, kind) return kind == 4 and 2 or 0 end`, NO_RAID);
+  expect(druid.eval('local CP = ns.GetModule("ComboPoints") return CP.bar:IsShown() and CP.Count()') === 2, "without the older call, your combo-point power is read").toBeTruthy();
+  const mage = loggedIn(UNITS_ENV, NO_RAID);
+  expect(mage.eval('return ns.GetModule("ComboPoints").bar') === null, "other classes build nothing").toBeTruthy();
+  const noFrames = loggedIn(UNITS_ENV + '__units.player.class = "ROGUE"', { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { UnitFrames = false, RaidFrames = false } } } }" });
+  expect(noFrames.eval('local CP = ns.GetModule("ComboPoints") CP.Update() return CP.bar') === null, "no player frame, no pips").toBeTruthy();
+});
+
+it("action bar cooldown numbers in the theme's font", () => {
+  const addon = loggedIn(UNITS_ENV + ACTIONS_ENV);
+  const cd = addon.eval(`local cd = ForeverUI_Bar1Button1.cooldown local fs = cd:GetCountdownFontString() return { font = fs.__font, color = fs.__textColor }`);
+  expect(cd.font[0].includes("SemiBold") && cd.font[1] === 14, "the client's countdown numbers use the theme's bold font").toBeTruthy();
+});
