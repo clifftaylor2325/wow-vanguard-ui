@@ -136,11 +136,12 @@ local function addThreat(b)
   b.threat:Hide()
 end
 
--- The missing-buff marker: the buff's icon in the top-right corner.
+-- The missing-buff marker: the buff's icon in the tile's top-right corner zone.
 local function addBuffMarker(b)
-  b.missing = b.health:CreateTexture(nil, "OVERLAY")
-  b.missing:SetSize(12, 12)
-  b.missing:SetPoint("RIGHT", -2, 0)
+  local z = RF.TileZones().missing
+  b.missing = T.Snap(b.overlay:CreateTexture(nil, "OVERLAY"))
+  b.missing:SetSize(z[3], z[4])
+  b.missing:SetPoint("TOPLEFT", b, "TOPLEFT", z[1], -z[2])
   b.missing:SetTexCoord(0.08, 0.92, 0.08, 0.92)
   b.missing:Hide()
 end

@@ -538,6 +538,11 @@ local function roleSize(r)
   return math.floor(r[1] * (T.Settings().textScale or 1) + 0.5)
 end
 
+-- A text role's font size (by name) after the text scale setting, for layouts.
+function T.RoleSize(role)
+  return roleSize(T.ROLES[role])
+end
+
 -- Styles a font string for a role: font, size, shadow (or outline) and a
 -- color (a name; "text" by default; false leaves the color alone).
 function T.Text(fs, role, color)

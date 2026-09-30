@@ -80,18 +80,24 @@ end
 
 -- Buttons ----------------------------------------------------------------------------------
 
--- Debuff type -> the theme's color for it, as the client's Color objects.
-local function colorMap()
-  local map = { None = CreateColor(T.RGB("bad")), Bleed = CreateColor(T.RGB("bad")) }
-  for kind in pairs(A.DISPEL_TOKENS) do map[kind] = CreateColor(T.RGB(A.DispelToken(kind))) end
+-- Debuff type -> the theme's color for it at an alpha, as the client's Color objects.
+local function colorMap(alpha)
+  local r, g, b = T.RGB("bad")
+  local map = { None = CreateColor(r, g, b, alpha), Bleed = CreateColor(r, g, b, alpha) }
+  for kind in pairs(A.DISPEL_TOKENS) do
+    r, g, b = T.RGB(A.DispelToken(kind))
+    map[kind] = CreateColor(r, g, b, alpha)
+  end
   return map
 end
 
--- Hands the debuff edge's strips to the client, which shows and colors them per debuff type.
-local function dispelRing(button, strips)
+-- Hands textures to the client, which shows them while the button holds a
+-- debuff and colors them by its type (at `alpha`), hidden types included.
+function E.RegisterDispel(button, textures, alpha)
   local style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset
-  local opts = { style = style, showWhenHarmful = true, showWithoutDispelType = true, customDispelColorMap = once("colorMap", colorMap) }
-  for _, t in ipairs(strips) do button:AddDispelTypeTexture(t, opts) end
+  local map = once("colorMap" .. alpha, function() return colorMap(alpha) end)
+  local opts = { style = style, showWhenHarmful = true, showWithoutDispelType = true, customDispelColorMap = map }
+  for _, t in ipairs(textures) do button:AddDispelTypeTexture(t, opts) end
 end
 
 -- A soft accent wash the client shows while your HoT is in its refresh window
@@ -114,8 +120,9 @@ function E.Init(button, style)
   button:SetDurationCooldown(parts.cooldown)
   button:SetApplicationCount(parts.count, {})
   if parts.timer then durationText(button, parts.timer) end
-  if parts.ring then pcall(dispelRing, button, parts.ring) end
+  if parts.ring then pcall(E.RegisterDispel, button, parts.ring, 1) end
   if style.pandemic then pcall(pandemic, button, parts) end
+  if style.register then pcall(style.register, button) end
 end
 
 -- Containers ------------------------------------------------------------------------------
@@ -134,6 +141,7 @@ end
 local function layout(c, spec)
   c:SetPoint(unpack(spec.point))
   c:SetSize(1, 1)
+  if spec.level then c:SetFrameLevel(spec.level) end
   c:SetFlowLayoutAnchorPoint(spec.point[1])
   c:SetFlowLayoutGrowthDirection(direction(spec.grow or "RIGHT"), direction(spec.growY or "UP"))
   c:SetFlowLayoutMaximumLineSize(spec.lineSize)
@@ -166,6 +174,7 @@ end
 
 -- Shows another unit's auras (nil: none). The client follows UNIT_AURA itself.
 function Container:SetUnit(unit)
+  self.unit = unit
   if unit then self.frame:SetUnit(unit) end
   self.frame:SetEnabled(unit ~= nil)
 end
