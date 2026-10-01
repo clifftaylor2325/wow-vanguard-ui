@@ -326,6 +326,15 @@ const SCENES = [
     before: `__units.player.class = "ROGUE" __units.player.power = 40 __units.player.maxpower = 100 __units.player.ptype = "ENERGY"
       UnitPowerType = function(unit) local x = __units[unit] if x and x.ptype == "ENERGY" then return 3, "ENERGY" end return 0, "MANA" end
       C_SwingTimer = {} Enum.PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 }` },
+  { name: "foreverui-menu", caption: "The menu strip in the bottom-right corner with the mouse over it: the game's menu buttons as ForeverUI line icons, then the bag buttons (TEST-ONLY buttons)",
+    lua: "function ForeverUI_MenuStrip:IsMouseOver() return true end ForeverUI_MenuStrip:SetAlpha(1)",
+    before: `MicroMenuContainer = CreateFrame("Frame", "MicroMenuContainer", UIParent) MicroMenuContainer:SetSize(198, 28)
+      for i, name in ipairs({ "Character", "PlayerSpells", "Talent", "Achievement", "QuestLog", "Guild", "LFD", "Collections", "MainMenu" }) do
+        local b = CreateFrame("Button", name .. "MicroButton", MicroMenuContainer) b:SetSize(22, 28) b:SetPoint("LEFT", (i - 1) * 22, 0)
+        local art = b:CreateTexture(nil, "ARTWORK") art:SetAllPoints() art:SetColorTexture(0.55, 0.12, 0.1, 1) end
+      BagsBar = CreateFrame("Frame", "BagsBar", UIParent) BagsBar:SetSize(88, 22)
+      for i = 1, 4 do local b = CreateFrame("Button", nil, BagsBar) b:SetSize(20, 20) b:SetPoint("LEFT", (i - 1) * 22, 0)
+        local art = b:CreateTexture(nil, "ARTWORK") art:SetAllPoints() art:SetColorTexture(0.35, 0.25, 0.15, 1) end` },
   { name: "foreverui-window", caption: "A game window in the ForeverUI look: the game's art faded, a flat panel with a soft shadow, the theme's close button, title and buttons (TEST-ONLY merchant window)",
     lua: "MerchantFrame:Show()",
     before: `local f = CreateFrame("Frame", "MerchantFrame", UIParent) f:SetSize(340, 420) f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 40, -120)

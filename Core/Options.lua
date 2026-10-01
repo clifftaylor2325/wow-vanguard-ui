@@ -183,7 +183,7 @@ O.MODULE_INFO = {
   SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, and the vehicle exit." },
   Minimap = { "Minimap", "A square minimap with the zone and coordinates." },
   InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo and the time, under the minimap." },
-  MenuStrip = { "Menu and quest tracker", "The game's menu and bag buttons in a corner strip, and the quest tracker under the info strip." },
+  MenuStrip = { "Menu and quest tracker", "The game's menu buttons (as ForeverUI icons) and bag buttons in a corner strip, and the quest tracker under the info strip." },
   Chat = { "Chat", "Themed chat windows and tabs." },
   Bags = { "Bags", "One combined bag, with a Sort button." },
   Merchant = { "Merchant helpers", "Repair, sell gray items, and a quieter error line." },
@@ -340,6 +340,7 @@ local function gamePartRows()
     { "header", "The game's extras" },
     check("Tracking, mail and difficulty on the minimap's corners (reload)", setting("Minimap", "icons", true)),
     { "cycle", "Menu and bag buttons (reload)", { { "mouseover", "On mouseover" }, { "always", "Always" } }, setting("MenuStrip", "menu", true) },
+    check("ForeverUI icons on the menu buttons (reload)", setting("MenuStrip", "glyphs", true)),
     check("Quest tracker under the info strip (reload)", setting("MenuStrip", "tracker", true)),
   }
 end
