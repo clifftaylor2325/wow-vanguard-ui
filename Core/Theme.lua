@@ -260,8 +260,10 @@ local function placeSheen(t, frame)
   T.Tint(t, "sheen")
 end
 
--- How far a shadow reaches past its frame, and how far it drops.
-local SHADOW_SIZE, SHADOW_DROP = 10, 2
+-- How far a shadow reaches past its frame. It sits evenly around the frame:
+-- a drop left an uncovered sliver under the frame (the ring has no middle),
+-- so the shadow looked detached below it.
+local SHADOW_SIZE = 10
 
 -- The eight pieces of a shadow: texcoords (left, right, top, bottom) in
 -- Media/Textures/Shadow, anchors { piece point, frame point }, and which
@@ -277,14 +279,23 @@ local SHADOW_PIECES = {
   { tc = { 0.75, 1, 0.25, 0.75 }, at = { { "TOPLEFT", "TOPRIGHT" }, { "BOTTOMLEFT", "BOTTOMRIGHT" } }, w = true },
 }
 
--- One piece of a nine-slice ring around frame: look = { texture, size, drop, layer, sublevel }.
+-- A length rounded to whole screen pixels at frame's scale (at least one).
+local function wholePixels(frame, length)
+  local px = T.Pixel(frame)
+  return math.max(1, math.floor(length / px + 0.5)) * px
+end
+
+-- One piece of a nine-slice ring around frame: look = { texture, size, layer, sublevel }.
+-- Pixel-snapped and a whole number of pixels thick, so every side meets the
+-- frame's edge exactly at any UI scale.
 local function ringPiece(frame, piece, look)
-  local t = frame:CreateTexture(nil, look.layer, nil, look.sublevel)
+  local t = T.Snap(frame:CreateTexture(nil, look.layer, nil, look.sublevel))
   t:SetTexture(T.Texture(look.texture))
   t:SetTexCoord(unpack(piece.tc))
-  for _, a in ipairs(piece.at) do t:SetPoint(a[1], frame, a[2], 0, -look.drop) end
-  if not piece.w then t:SetHeight(look.size) end
-  if not piece.h then t:SetWidth(look.size) end
+  for _, a in ipairs(piece.at) do t:SetPoint(a[1], frame, a[2]) end
+  local size = wholePixels(frame, look.size)
+  if not piece.w then t:SetHeight(size) end
+  if not piece.h then t:SetWidth(size) end
   return t
 end
 
@@ -295,14 +306,14 @@ local function ring(frame, look)
   return pieces
 end
 
--- A soft drop shadow around frame, behind everything else on it.
+-- A soft shadow around frame, behind everything else on it.
 local function shadow(frame)
-  return ring(frame, { texture = "Shadow", size = SHADOW_SIZE, drop = SHADOW_DROP, layer = "BACKGROUND", sublevel = -8 })
+  return ring(frame, { texture = "Shadow", size = SHADOW_SIZE, layer = "BACKGROUND", sublevel = -8 })
 end
 
 -- A glow ring around frame (hidden until T.ShowGlow), size units wide.
 function T.Glow(frame, size)
-  local pieces = ring(frame, { texture = "Glow", size = size or 8, drop = 0, layer = "BACKGROUND", sublevel = -7 })
+  local pieces = ring(frame, { texture = "Glow", size = size or 8, layer = "BACKGROUND", sublevel = -7 })
   for _, t in ipairs(pieces) do t:Hide() end
   return pieces
 end

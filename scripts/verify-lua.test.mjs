@@ -1807,11 +1807,14 @@ it("text roles, sheen and shadows", () => {
   const parts = addon.eval(`local f = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })
     local out = { shadow = 0, sheen = 0 }
     for _, w in ipairs(__wfgStub.frames) do
-      if w.__parent == f and w.__texture and w.__texture:find("Shadow") then out.shadow = out.shadow + 1 out.tc = out.tc or w.__texCoord end
+      if w.__parent == f and w.__texture and w.__texture:find("Shadow") then out.shadow = out.shadow + 1 out.tc = out.tc or w.__texCoord
+        for _, p in pairs(w.__points) do if p.y ~= 0 or p.x ~= 0 then out.shifted = true end end
+        out.snapped = (out.snapped or true) and w.__snapToPixelGrid == false end
       if w.__parent == f and w.__layer == "BORDER" and w.__points.TOPLEFT and w.__points.TOPLEFT.y ~= 0 then out.sheen = out.sheen + 1 out.sheenColor = w.__vertexColor end
     end
     return out`);
   expect(parts.shadow === 8 && parts.tc?.length === 4, "a shadowed panel gets eight shadow pieces cut from Media/Textures/Shadow").toBeTruthy();
+  expect([parts.shifted ?? false, parts.snapped], "the shadow sits flush around the panel (no drop, so no gap under it), pixel-snapped").toEqual([false, true]);
   expect(parts.sheen === 1 && isTok(addon, parts.sheenColor, "sheen"), "and a sheen one pixel inside its top edge").toBeTruthy();
   expect(addon.eval("local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.__parent == ForeverUI_Options and w.__texture and w.__texture:find('Shadow') then n = n + 1 end end return n") === 8, "the options window casts a shadow").toBeTruthy();
 });
@@ -2609,6 +2612,12 @@ it("unit frames on WoW Forever: levels, health percent, classification", () => {
   expect(isTok(addon, f.hiddenColor, "text2"), "a hidden level falls back to the plain text color").toBeTruthy();
   expect(f.health === "84%", "health as a percent from the client's own percent").toBeTruthy();
   expect(isTok(addon, f.mark, "bad") && isTok(addon, f.rare, "text2") && f.playerMark == null, "a diamond marks bosses, rares and elites on the target and focus").toBeTruthy();
+  addon.eval("UnitLevel = function(unit) return unit == 'player' and 61 or 12 end");
+  addon.fire("UNIT_LEVEL", "player");
+  expect(addon.eval("return ForeverUI_player.level:GetText()"), "when you level, your frame shows the new level").toBe("61");
+  addon.eval("UnitLevel = function(unit) return unit == 'player' and 62 or 14 end");
+  addon.fire("PLAYER_LEVEL_UP", 62);
+  expect(addon.eval("return { ForeverUI_player.level:GetText(), ForeverUI_target.level:GetText() }"), "a level-up refreshes every frame (their level colors are relative to yours)").toEqual(["62", "14"]);
   addon.eval("UnitHealthPercent = function() error('TEST-ONLY') end");
   addon.fire("UNIT_HEALTH", "player");
   expect(addon.eval("return ForeverUI_player.healthText:GetText()") === "900", "if the client's percent fails, the value shows").toBeTruthy();
