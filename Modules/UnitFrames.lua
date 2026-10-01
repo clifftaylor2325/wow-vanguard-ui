@@ -222,12 +222,24 @@ function UF.UpdatePower(f)
   f.power:SetStatusBarColor(UF.PowerColor(unit))
 end
 
--- The level, colored by how hard the unit is for you (the client's color).
-local function updateLevel(f)
-  f.level:SetText(UF.LevelText(f.unit))
+-- r, g, b for how hard a unit is for you (the client's level color), or nil when it can't say.
+function UF.LevelColor(unit)
   local get = _G.GetCreatureDifficultyColor
-  local c = type(get) == "function" and ns.PlainNumber(UnitLevel(f.unit)) and get(UnitLevel(f.unit))
-  if c then f.level:SetTextColor(c.r, c.g, c.b) else T.Color(f.level, "text2") end
+  local level = ns.PlainNumber(type(UnitLevel) == "function" and UnitLevel(unit) or nil)
+  local c = type(get) == "function" and level and get(level)
+  if c then return c.r, c.g, c.b end
+end
+
+-- Paints a level text: the unit's level in its difficulty color (secondary text when there's none).
+function UF.PaintLevel(fs, unit)
+  fs:SetText(UF.LevelText(unit))
+  local r, g, b = UF.LevelColor(unit)
+  if r then fs:SetTextColor(r, g, b) else T.Color(fs, "text2") end
+end
+
+-- The level, colored by how hard the unit is for you.
+local function updateLevel(f)
+  UF.PaintLevel(f.level, f.unit)
 end
 
 -- The classification diamond: shown in its color for elite, rare and boss units.

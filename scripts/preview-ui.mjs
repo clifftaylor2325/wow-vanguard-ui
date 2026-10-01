@@ -286,14 +286,15 @@ const SCENES = [
   { name: "foreverui-raid-secret", caption: "Raid frames in instanced combat: health is secret, so bars still draw but missing-health text hides; first-run setup open on top (TEST-ONLY raid)", lua: SECRET + RAID + "ns.Setup.Open()" },
   { name: "foreverui-setup", caption: "First-run setup, step 2 of 3: accent and raid frame style (/fui setup)", lua: "ns.Setup.Open() ns.Setup.Next()" },
   { name: "foreverui-setup-healing", caption: "The Healing layout: party on the raid frames, centered just above the cast bar (TEST-ONLY party)", lua: '__group({ "player", "party1", "party2" }) ns.Setup.ApplyLayout("healing")' },
-  { name: "foreverui-forever", caption: "On the WoW Forever client (interface 16001, no specializations): levels, health as a percent, a boss diamond (TEST-ONLY units)", lua: '__group({ "player", "party1", "party2" })',
+  { name: "foreverui-forever", caption: "On the WoW Forever client (interface 16001, no specializations): levels, health as a percent, a boss diamond, your threat on the target (TEST-ONLY units)", lua: '__group({ "player", "party1", "party2" })',
     before: `GetBuildInfo = function() return "1.16.0", "TEST-ONLY", "Sep 1 2026", 16001 end
       GetSpecialization = nil
       CurveConstants = { ScaleTo100 = 1 }
       UnitHealthPercent = function(unit) local x = __units[unit] if x and type(x.hp) == "number" then return math.floor(x.hp / x.maxhp * 100) end return 62 end
       UnitLevel = function(unit) return unit == "target" and -1 or 60 end
       GetCreatureDifficultyColor = function(level) return level == -1 and { r = 1, g = 0.1, b = 0.1 } or { r = 1, g = 0.82, b = 0 } end
-      UnitClassification = function(unit) return unit == "target" and "worldboss" or "normal" end` },
+      UnitClassification = function(unit) return unit == "target" and "worldboss" or "normal" end
+      UnitDetailedThreatSituation = function() return false, 1, 87, 87, 0 end` },
   { name: "foreverui-buffs", caption: "Your buffs left of the minimap, a weapon imbue in front, and two debuffs on a new row (TEST-ONLY auras)", lua: '__group({ "player", "party1", "party2" })',
     before: `local getAura = C_UnitAuras.GetAuraDataByIndex
       C_UnitAuras.GetAuraDataByIndex = function(unit, i, filter)
