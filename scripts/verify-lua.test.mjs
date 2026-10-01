@@ -720,7 +720,7 @@ it("chat", () => {
   const addon = loggedIn(UI_ENV);
   const c = addon.eval(`return { font = { ChatFrame1:GetFont() }, box = ns.Theme.PaintedCount(),
     tab1 = ChatFrame1Tab.Text.__textColor, tab2 = ChatFrame2Tab.Text.__textColor }`);
-  expect(c.font[0] === "Interface\\AddOns\\ForeverUI\\Media\\Fonts\\FiraSansCondensed-Medium.ttf" && c.font[1] === 15, `chat windows get the theme font at their own size (got ${JSON.stringify(c.font)})`).toBeTruthy();
+  expect(c.font[0] === "Interface\\AddOns\\ForeverUI\\Media\\Fonts\\FiraSansCondensed-Medium.ttf" && c.font[1] === 12, `chat windows get the theme font at Medium, 12 (got ${JSON.stringify(c.font)})`).toBeTruthy();
   expect(isTok(addon, c.tab2, "accent") && isTok(addon, c.tab1, "text2"), "the selected window's tab is accent, others gray").toBeTruthy();
   addon.slash("accent ember");
   expect(isTok(addon, addon.eval("return ChatFrame2Tab.Text.__textColor"), "accent"), "tabs follow accent changes").toBeTruthy();
@@ -1779,7 +1779,7 @@ it("bundled font and logo", () => {
   expect(addon.eval("return (ns.Theme.Font(true))") === FIRA + "SemiBold.ttf", "bold asks for its SemiBold weight").toBeTruthy();
   addon.eval('ns.Options.Show("general")');
   expect(addon.eval('return __click("Font")') && addon.eval("return (ns.Theme.Font())") === "Fonts\\FRIZQT__.TTF", "the Font option switches to the game's font").toBeTruthy();
-  expect(addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "a font change offers a reload").toBeTruthy();
+  expect([addon.eval("return ForeverUI_Options.title:GetFont()"), addon.eval("return ForeverUI_Options.reload:IsShown()")], "a font change re-fonts the text already on screen, with no reload").toEqual(["Fonts\\FRIZQT__.TTF", false]);
   const korean = loggedIn('GetLocale = function() return "koKR" end');
   expect(korean.eval("return (ns.Theme.Font())") === "Fonts\\FRIZQT__.TTF", "Korean and Chinese clients keep the game's font (Fira has no Hangul or Han)").toBeTruthy();
   const logo = addon.eval(`local l = ForeverUI_Options.logo
@@ -1805,9 +1805,10 @@ it("text roles, sheen and shadows", () => {
   expect(world.font[2] === "OUTLINE" && world.shadow?.[0] === 0, "world text is outlined without a shadow").toBeTruthy();
   expect(fs("label").shadow?.[0] === 1 && fs("label").shadow?.[1] === -1, "other text gets a one-pixel shadow").toBeTruthy();
   expect(addon.eval('return (pcall(ns.Theme.Text, UIParent:CreateFontString(), "TEST-ONLY-nope"))') === false, "an unknown role is an error").toBeTruthy();
-  addon.eval('ns.Options.Show("general")');
+  addon.eval('__old = ns.Theme.Text(UIParent:CreateFontString(), "label", "muted") ns.Options.Show("general")');
   addon.eval('__click("Text size")');
-  expect(fs("label").font[1] === 13 && addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "Text size scales every role (110%: 12 -> 13) and offers a reload").toBeTruthy();
+  expect(fs("label").font[1] === 13 && addon.eval("return ForeverUI_Options.reload:IsShown()") === false, "Text size scales every role (110%: 12 -> 13) at once, no reload").toBeTruthy();
+  expect(addon.eval("return { select(2, __old:GetFont()), __old.__textColor == nil }"), "text already on screen is re-sized too, its color kept").toEqual([13, false]);
   const parts = addon.eval(`local f = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })
     local out = { shadow = 0, sheen = 0 }
     for _, w in ipairs(__wfgStub.frames) do
@@ -2221,7 +2222,7 @@ it("options slider, search, scroll, special bars and profile switch", () => {
     end
     return { wrapped = wrapped, dragged = dragged, hint = hint }
   `);
-  expect(scale.wrapped === 0.8 && Math.abs(scale.dragged - 1.05) < 1e-9 && scale.hint === true, "a slider wraps at the max, drags with the cursor, and the search hint shows while empty").toBeTruthy();
+  expect(scale.wrapped === 0.7 && Math.abs(scale.dragged - 1) < 1e-9 && scale.hint === true, "a slider wraps at the max, drags with the cursor, and the search hint shows while empty").toBeTruthy();
   expect(addon.eval('ns.Options.Show("actionbars") return __click("Restyle the pet, stance and extra action buttons (reload)")') === true, "the special-bars switch is on the action bar page").toBeTruthy();
   expect(addon.eval("return ForeverUIDB.profiles.Default.SpecialBars.skinPet") === false, "it turns pet, stance and extra bars off together").toBeTruthy();
 });
@@ -3126,4 +3127,38 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   expect(addon.eval("return { GameTooltip.__owner == __dot, GameTooltip:IsShown(), GameTooltip.__tip }"), "hovering the dot says what it does").toEqual([true, true, "Changed from the default. Click to put it back."]);
   addon.eval("__dot:GetScript('OnLeave')(__dot)");
   expect(addon.eval("return GameTooltip:IsShown()"), "and the tooltip goes when the mouse leaves").toBe(false);
+});
+
+// TEST-ONLY client hooks and fonts: hooks run after the client function, as hooksecurefunc does.
+const TEXT_ENV = `
+  hooksecurefunc = function(name, fn) local orig = _G[name] _G[name] = function(...) orig(...) fn(...) end end
+  FCF_OpenTemporaryWindow = function() end
+  FCF_Tab_OnClick = function() end
+  FCF_SetChatWindowFontSize = function(self, frame, size) frame:SetFont("TEST-ONLY-FONT", size, "") end
+  local function font() return { SetFont = function(self, path, size, flags) self.font = { path, size, flags } end } end
+  GameTooltipHeaderText, GameTooltipText = font(), font()
+`;
+
+it("text that fits: chat size, tooltip fonts, the status line, name width", () => {
+  const addon = loggedIn(UI_ENV + TEXT_ENV + CLICK_LUA);
+  // Chat window 1's font size, and the tooltip fonts' sizes.
+  const sizes = () => addon.eval("return { select(2, ChatFrame1:GetFont()), GameTooltipText.font[2], GameTooltipHeaderText.font[2] }");
+  expect(sizes(), "chat at Medium (12), tooltips in the theme font at their sizes").toEqual([12, 12, 14]);
+  addon.eval("ns.Theme.Settings().textScale = 0.7 ns.Theme.Refresh()");
+  expect(sizes(), "Text size shrinks chat and tooltips at once (70%)").toEqual([8, 8, 10]);
+  addon.eval("FCF_SetChatWindowFontSize(nil, ChatFrame1, 18)");
+  expect(sizes()[0], "the game's own chat size menu can't undo ForeverUI's size").toBe(8);
+  addon.slash("");
+  addon.eval('__click("Bars, map, chat")');
+  expect(addon.eval('return __click("Chat text size") and ForeverUIDB.profiles.Default.Chat.textSize'), "the chat size is on the options page").toBe(14);
+  expect(sizes()[0], "and Large applies at once (14 at 70%)").toBe(10);
+  addon.eval('ForeverUIDB.profiles.Default.Chat.textSize = "game" FCF_SetChatWindowFontSize(nil, ChatFrame1, 18)');
+  expect(sizes()[0], "set to the game's chat setting, chat keeps the size the game's menu picked").toBe(18);
+  addon.slash("status");
+  expect(chatHas(addon, /UI scale 1\.00 {2}· {2}text 70% {2}· {2}chat 18 \(about \d+ px on this screen\)/), "/fui status shows the UI scale, Text size and chat size").toBe(true);
+  const noChat = loggedIn(UI_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { Chat = false } } }" });
+  noChat.slash("status");
+  expect(chatHas(noChat, /chat 12 \(about/), "with the chat module off, the status line shows the default size").toBe(true);
+  const units = loggedIn(UNITS_ENV);
+  expect(units.eval("local p = ForeverUI_player.name.__points.RIGHT return p.rel == ForeverUI_player.healthText and p.relPoint"), "a unit's name stops short of its health text").toBe("LEFT");
 });

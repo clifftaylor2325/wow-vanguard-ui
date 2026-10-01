@@ -97,10 +97,21 @@ local function themeSetting(key)
   return function() return T.Settings()[key] end, function(v) T.Settings()[key] = v; O.NeedReload() end
 end
 
+-- get/set for a theme setting that applies at once (font, text size): every
+-- styled text is re-fonted. Setting the same value again does nothing, so
+-- dragging a slider only re-fonts when the value moves.
+local function liveThemeSetting(key)
+  return function() return T.Settings()[key] end, function(v)
+    if T.Settings()[key] == v then return end
+    T.Settings()[key] = v
+    T.Refresh()
+  end
+end
+
 local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", "the game's font" } }
 local BAR_TEXTURES = { { "forever", "Forever" }, { "flat", "Flat" } }
--- Text size: 80% to 130% in steps of 5.
-local TEXT_SIZES = { min = 0.8, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
+-- Text size: 70% to 130% in steps of 5.
+local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
 -- General, part one: accent, font, text size, scale and theme reset.
 local function lookRows()
@@ -108,8 +119,8 @@ local function lookRows()
     { "header", "Look" },
     { "preview" },
     { "swatches" },
-    { "cycle", "Font", FONT_CHOICES, themeSetting("font") },
-    { "slider", "Text size", TEXT_SIZES, themeSetting("textScale") },
+    { "cycle", "Font", FONT_CHOICES, liveThemeSetting("font") },
+    { "slider", "Text size", TEXT_SIZES, liveThemeSetting("textScale") },
     check("Pixel-perfect scale (crisp 1-pixel lines)", function() return T.Settings().pixelScale end,
       function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end),
     { "button", "Reset theme", function() T.Reset() end },
@@ -305,16 +316,21 @@ local function actionBarPageRows()
   return rows
 end
 
+-- get/set for the chat text size, which chat windows take at once.
+local function chatSizeSetting()
+  return liveSetting("Chat", "textSize", function() local CH = ns.GetModule("Chat") if CH.settings then CH.Refresh() end end)
+end
+
 -- XP and reputation bars, minimap, chat and bags.
 local function moreRows()
   return {
     { "header", "XP and reputation" },
-    check("Experience bar", setting("DataBars", "xp", true)),
-    check("Reputation bar", setting("DataBars", "reputation", true)),
+    check("Experience bar", setting("DataBars", "xp", true)), check("Reputation bar", setting("DataBars", "reputation", true)),
     { "cycle", "Numbers", { { "hover", "on hover" }, { "always", "always" } }, setting("DataBars", "text", true) },
     { "header", "Minimap, chat, bags" },
     check("Coordinates under the minimap", setting("Minimap", "coords", true)),
     check("Chat background", setting("Chat", "background", true)),
+    { "cycle", "Chat text size (follows Text size)", ns.GetModule("Chat").SIZES, chatSizeSetting() },
     check("Combined bag", setting("Bags", "combined", true)),
   }
 end

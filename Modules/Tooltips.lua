@@ -17,6 +17,8 @@ local TT = ns.Module("Tooltips", {
 })
 
 TT.NAMES = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2", "EmbeddedItemTooltip" }
+-- The client's tooltip fonts -> size before Text size, and bold.
+TT.FONTS = { GameTooltipHeaderText = { 14, true }, GameTooltipText = { 12 }, GameTooltipTextSmall = { 11 } }
 
 -- Skinning ---------------------------------------------------------------------------------
 
@@ -33,6 +35,17 @@ local function skinHealthBar()
   local bar = _G.GameTooltipStatusBar
   if type(bar) ~= "table" or not bar.SetStatusBarTexture then return end
   T.StyleBar(bar)
+end
+
+-- The theme font, scaled by Text size, on the client's tooltip fonts (those it has).
+function TT.ApplyFonts()
+  for name, f in pairs(TT.FONTS) do
+    local font = _G[name]
+    if type(font) == "table" and font.SetFont then
+      local path, outline = T.Font(f[2])
+      font:SetFont(path, T.ScaledSize(f[1]), outline)
+    end
+  end
 end
 
 -- Skins every tooltip this client has.
@@ -122,6 +135,8 @@ function TT.Enable(settings)
   TT.settings = settings
   buildCorner()
   TT.SkinAll()
+  TT.ApplyFonts()
+  T.OnChanged(TT.ApplyFonts)
   hookUnits()
   if _G.GameTooltip then _G.GameTooltip:HookScript("OnHide", onHide) end
   if type(hooksecurefunc) == "function" and type(_G.GameTooltip_SetDefaultAnchor) == "function" then

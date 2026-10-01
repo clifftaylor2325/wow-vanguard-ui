@@ -189,6 +189,16 @@ local function addClassMark(f)
   f.class:Hide()
 end
 
+-- The name (with the level left of it, where shown) and the health text. The
+-- name stops short of the health text: a long one is cut off, not overlapped.
+local function addTexts(f, settings)
+  f.name, f.healthText = createText(f, "name", "LEFT", 4), createText(f, "number", "RIGHT", -4)
+  if settings.showLevel then addLevel(f) end
+  f.name:SetPoint("RIGHT", f.healthText, "LEFT", -4, 0)
+  f.name:SetJustifyH("LEFT")
+  f.name:SetWordWrap(false)
+end
+
 -- Creates one unit frame (a secure unit button) with its bars and texts.
 local function createUnitFrame(key, unit, w, h, settings)
   local f = CreateFrame("Button", "ForeverUI_" .. key, UIParent, "SecureUnitButtonTemplate")
@@ -198,8 +208,7 @@ local function createUnitFrame(key, unit, w, h, settings)
   T.Panel(f, { shadow = true })
   f.health, f.power = createBar(f), createBar(f)
   layoutBars(f, settings.powerHeight)
-  f.name, f.healthText = createText(f, "name", "LEFT", 4), createText(f, "number", "RIGHT", -4)
-  if settings.showLevel then addLevel(f) end
+  addTexts(f, settings)
   return f
 end
 
