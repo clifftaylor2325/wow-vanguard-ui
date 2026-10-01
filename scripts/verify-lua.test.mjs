@@ -410,40 +410,40 @@ it("reagent and item counts show even at 0 and 1", () => {
 
 it("action bars stack with bar 1 on top", () => {
   const addon = loggedIn(ACTIONS_ENV);
-  expect(JSON.stringify(stackY(addon)) === JSON.stringify([124, 82, 40, false, false, false, false, false]), `bar 3 at the bottom, bar 1 on top (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
+  expect(JSON.stringify(stackY(addon)) === JSON.stringify([100, 62, 24, false, false, false, false, false]), `bar 3 at the bottom, bar 1 on top (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
   const six = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [6] = { enabled = true } } } } } }" });
   const y6 = stackY(six);
-  expect(y6[5] === 40 && y6[2] === 82 && y6[0] === 166, `turning on bar 6 puts it underneath; bar 1 stays on top (got ${JSON.stringify(y6)})`).toBeTruthy();
+  expect(y6[5] === 24 && y6[2] === 62 && y6[0] === 138, `turning on bar 6 puts it underneath; bar 1 stays on top (got ${JSON.stringify(y6)})`).toBeTruthy();
 });
 
 it("action bar stack follows button size and rows", () => {
   const big = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { size = 44 } } } }" });
-  expect(JSON.stringify(stackY(big).slice(0, 3)) === JSON.stringify([140, 90, 40]), "bigger buttons stack without overlapping").toBeTruthy();
+  expect(JSON.stringify(stackY(big).slice(0, 3)) === JSON.stringify([116, 70, 24]), "bigger buttons stack without overlapping").toBeTruthy();
   const two = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [3] = { perRow = 6 } } } } } }" });
-  expect(JSON.stringify(stackY(two).slice(0, 3)) === JSON.stringify([164, 122, 40]), "a two-row bar pushes the bars above it up by its height").toBeTruthy();
+  expect(JSON.stringify(stackY(two).slice(0, 3)) === JSON.stringify([138, 100, 24]), "a two-row bar pushes the bars above it up by its height").toBeTruthy();
 });
 
 it("a moved action bar keeps its spot until reset", () => {
   const moved = loggedIn(ACTIONS_ENV, { savedVariables: 'ForeverUIDB = { profiles = { Default = { positions = { bar1 = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 40 } } } } }' });
   expect(stackY(moved)[0] === 40, "a position you saved wins").toBeTruthy();
   moved.slash("reset all");
-  expect(stackY(moved)[0] === 124, "/fui reset all puts bar 1 back on top").toBeTruthy();
+  expect(stackY(moved)[0] === 100, "/fui reset all puts bar 1 back on top").toBeTruthy();
 });
 
 it("the bottom stack follows per-bar size and rows, live", () => {
   const addon = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [2] = { size = 48 } } } } } }" });
-  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([136, 82, 40]), `a bar's own button size sets its row height (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
+  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([112, 62, 24]), `a bar's own button size sets its row height (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
   // Bar n's frame: its bottom offset on screen.
   const frameY = (n) => addon.eval(`return ForeverUI_Bar${n}.__points.BOTTOM.y`);
   addon.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 6 AB.SettingChanged(3, "perRow")');
-  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([176, 122, 40]) && frameY(1) === 176 && frameY(2) === 122, "changing a bar's buttons per row re-stacks at once: bar 1 stays on top, nothing overlaps").toBeTruthy();
+  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([150, 100, 24]) && frameY(1) === 150 && frameY(2) === 100, "changing a bar's buttons per row re-stacks at once: bar 1 stays on top, nothing overlaps").toBeTruthy();
   setCombat(addon, true);
   addon.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].size = 48 AB.SettingChanged(3, "size")');
-  expect(frameY(1) === 176, "in combat the stack waits (secure frames don't move)").toBeTruthy();
+  expect(frameY(1) === 150, "in combat the stack waits (secure frames don't move)").toBeTruthy();
   setCombat(addon, false);
-  expect(frameY(2) === 146 && frameY(1) === 200, "and re-stacks when combat ends").toBeTruthy();
+  expect(frameY(2) === 124 && frameY(1) === 174, "and re-stacks when combat ends").toBeTruthy();
   addon.eval('ns.SetMoverPoint("bar1", "BOTTOM", "BOTTOM", 0, 300) ns.Unlock() local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 12 AB.SettingChanged(3, "perRow") ns.SetMoverDefault("TEST-ONLY missing", { "CENTER", "CENTER", 0, 0 })');
-  expect(frameY(1) === 300 && frameY(2) === 94, "a bar you dragged keeps its spot; the others re-stack (with unlock mode on)").toBeTruthy();
+  expect(frameY(1) === 300 && frameY(2) === 74, "a bar you dragged keeps its spot; the others re-stack (with unlock mode on)").toBeTruthy();
   addon.eval("ns.Lock()");
 });
 
@@ -568,7 +568,7 @@ it("the right-edge bars start off and show on mouseover when turned on", () => {
   const bar4 = barVis(on, 4);
   expect(bar4.driver === "show" && bar4.alpha === 0 && bar4.mouse === true, "turned on, bar 4 is faded out until the mouse is over it").toBeTruthy();
   const second = on.eval("local _, _, _, x, y = ForeverUI_Bar4Button2:GetPoint(1) return { x, y }");
-  expect(second[0] === 0 && second[1] === -40, "one button per row, as before").toBeTruthy();
+  expect(second[0] === 0 && second[1] === -38, "one button per row, as before").toBeTruthy();
 });
 
 // TEST-ONLY profile saved before bars had a visibility setting: bar 4 was on
@@ -652,7 +652,7 @@ it("action bar layout: per-bar buttons, rows and size, deferred in combat", () =
     local _, _, _, x, y = b7:GetPoint(1)
     return { w = bar:GetWidth(), h = bar:GetHeight(), x7 = x, y7 = y, size = b7:GetWidth(), shown12 = ForeverUI_Bar2Button12:IsShown() }`);
   const before = lay();
-  expect(JSON.stringify(before) === JSON.stringify({ w: 476, h: 36, x7: 240, y7: 0, size: 36, shown12: true }), `bar 2 starts as one row of 12 at the shared 36 px (got ${JSON.stringify(before)})`).toBeTruthy();
+  expect(JSON.stringify(before) === JSON.stringify({ w: 454, h: 36, x7: 228, y7: 0, size: 36, shown12: true }), `bar 2 starts as one row of 12 at the shared 36 px (got ${JSON.stringify(before)})`).toBeTruthy();
   expect(getBarOption(addon, 2, "Button size") === 36 && addon.eval("return __overrides.F12") === "ForeverUI_Bar2Button12:LeftButton", "its size row reads the shared size; button 12 has its key").toBeTruthy();
   setCombat(addon, true);
   setBarOption(addon, 2, "Buttons per row", 6);
@@ -661,7 +661,7 @@ it("action bar layout: per-bar buttons, rows and size, deferred in combat", () =
   expect(JSON.stringify(lay()) === JSON.stringify(before) && addon.eval("return ns.QueuedCount()") === 3, "layout changes made in combat wait for it to end (secure frames)").toBeTruthy();
   setCombat(addon, false);
   const after = lay();
-  expect(JSON.stringify(after) === JSON.stringify({ w: 260, h: 84, x7: 0, y7: -44, size: 40, shown12: false }), `then bar 2 is two rows of 6 at 40 px, showing 10 buttons (got ${JSON.stringify(after)})`).toBeTruthy();
+  expect(JSON.stringify(after) === JSON.stringify({ w: 250, h: 82, x7: 0, y7: -42, size: 40, shown12: false }), `then bar 2 is two rows of 6 at 40 px, showing 10 buttons (got ${JSON.stringify(after)})`).toBeTruthy();
   expect(addon.eval("return __overrides.F12") === null && getBarOption(addon, 2, "Button size") === 40, "a hidden button gives up its key; the bar keeps its own size").toBeTruthy();
   expect(addon.eval("return ForeverUI_Bar3Button1:GetWidth()") === 36, "other bars keep theirs").toBeTruthy();
 });
@@ -888,7 +888,7 @@ const bars = (addon) => addon.eval(`local x, r = ForeverUI_xpbar, ForeverUI_repb
 it("data bars", () => {
   const addon = loggedIn(DATA_ENV);
   const b = bars(addon);
-  expect(b.xp === 12300 && b.xpMax === 40000 && Math.abs(b.rested - 476 * 17300 / 40000) < 1e-9, "XP bar with rested overlay out to XP + rested").toBeTruthy();
+  expect(b.xp === 12300 && b.xpMax === 40000 && Math.abs(b.rested - 454 * 17300 / 40000) < 1e-9, "XP bar with rested overlay out to XP + rested").toBeTruthy();
   expect(b.xpText === "Level 42  12.3K / 40.0K (30%)  rested 5.0K", `XP text (got ${b.xpText})`).toBeTruthy();
   expect(b.xpTextShown === false, "text shows on hover only by default").toBeTruthy();
   addon.eval("ForeverUI_xpbar:GetScript('OnEnter')(ForeverUI_xpbar)");
@@ -2785,19 +2785,19 @@ it("/fui setup reopens setup; Back and the close button", () => {
 it("setup layouts: Healing puts the raid frames under the character and turns click casting on", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   const layouts = addon.eval("local out = {} for i, b in ipairs(ForeverUI_Setup.pages[1].choices) do out[i] = b.text:GetText() end return out");
-  expect(layouts, "there are two layouts, Damage and tanking first").toEqual(["Damage and tanking", "Healing"]);
-  expect(addon.eval('return __click("Healing")') && addon.eval("return ForeverUI_Setup.pages[1].hint:GetText()"), "picking Healing shows what it does").toMatch(/click casting on/);
+  expect(layouts, "there are two layouts, damage and tanking first").toEqual(["Centered: damage and tanking", "Centered: healing"]);
+  expect(addon.eval('return __click("Centered: healing")') && addon.eval("return ForeverUI_Setup.pages[1].hint:GetText()"), "picking Healing shows what it does").toMatch(/click casting on/);
   expect(borderOf(addon, "ForeverUI_Setup.pages[1].choices[2]"), "the chosen layout is outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
   setupClick(addon, "next");
-  expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing centers the raid frames just above the player cast bar").toEqual(["BOTTOM", "BOTTOM", 0, 224]);
+  expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing centers the raid frames above your frames").toEqual(["BOTTOM", "BOTTOM", 0, 342]);
   expect(addon.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "click casting and the raid frames are on").toBe(true);
   setupClick(addon, "next");
   setupClick(addon, "next");
   expect(addon.eval("return ForeverUI_Reload == nil"), "nothing was off, so no reload is offered").toBe(true);
   const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { ClickCast = false, RaidFrames = false } } } }" });
-  off.eval('__click("Healing")');
+  off.eval('__click("Centered: healing")');
   setupClick(off, "next");
-  expect(off.eval("return ForeverUIDB.profiles.Default.positions.raid"), "without raid frames built, the spot is saved for next time").toEqual({ point: "BOTTOM", relPoint: "BOTTOM", x: 0, y: 224 });
+  expect(off.eval("return ForeverUIDB.profiles.Default.positions.raid"), "without raid frames built, the spot is saved for next time").toEqual({ point: "BOTTOM", relPoint: "BOTTOM", x: 0, y: 342 });
   expect(off.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "Healing turns click casting and the raid frames on").toBe(true);
   setupClick(off, "next");
   setupClick(off, "next");
@@ -2807,7 +2807,7 @@ it("setup layouts: Healing puts the raid frames under the character and turns cl
 it("setup layouts: Damage and tanking restores ForeverUI's defaults, undoing Healing", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   const home = addon.eval("return { ns.MoverPoint('raid') }");
-  addon.eval('__click("Healing")');
+  addon.eval('__click("Centered: healing")');
   for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
   expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing moved the raid frames").not.toEqual(home);
   addon.slash("setup");
@@ -2833,52 +2833,66 @@ function rectAt([point, relPoint, x, y], w, h, sw, sh) {
 // True when two rects overlap (touching edges don't count).
 const overlaps = (a, c) => a.l < c.r && c.l < a.r && a.b < c.t && c.b < a.t;
 
-// The frames Healing must stay clear of, as { key: [point, relPoint, x, y, w, h] } from the addon's movers and frames.
-const healingNeighbours = (addon) => addon.eval(`
-  local out = {}
-  local frames = { cast_player = ForeverUI_CastBar_player, uf_player = ForeverUI_player, uf_target = ForeverUI_target }
-  for n = 1, 8 do frames["bar" .. n] = _G["ForeverUI_Bar" .. n] end
-  for key, f in pairs(frames) do
-    local p, rp, x, y = ns.MoverPoint(key)
-    if p then out[key] = { p, rp, x, y, f:GetWidth(), f:GetHeight() } end
+// Rows that ride on frames rather than being movers: parent mover, side, gap, w, h
+// (Modules/ComboPoints.lua: 5 pips of 14 + 3; Modules/FrameAuras.lua: buffs 18, debuffs 22 with crowd control).
+const ATTACHED = {
+  combo: ["uf_player", "above", 2, 85, 14], targetBuffs: ["uf_target", "above", 3, 160, 18],
+  targetDebuffs: ["uf_target", "below", 3, 220, 22], focusDebuffs: ["uf_focus", "below", 3, 160, 20],
+};
+
+// Every built mover's [point, relPoint, x, y, w, h], read from the addon.
+const moverSpots = (addon) => addon.eval(`local out = {}
+  for _, m in ipairs(ns.MoverList()) do
+    local f, p, rp, x, y = ns.MoverFrame(m.key), ns.MoverPoint(m.key)
+    if f then out[m.key] = { p, rp, x, y, f:GetWidth(), f:GetHeight() } end
   end
   return out`);
 
-// The raid block for g side-by-side groups of five, sized from the raid header's own attributes.
-const raidBlock = (addon, groups) => addon.eval(`local h = ForeverUI_Raid
-  local w, ht, gap, dy = h:GetAttribute("fui-width"), h:GetAttribute("fui-height"), h:GetAttribute("columnSpacing"), -h:GetAttribute("yOffset")
-  local rows = h:GetAttribute("unitsPerColumn")
-  return { ${groups} * w + (${groups} - 1) * gap, rows * ht + (rows - 1) * dy }`);
+// The raid grid for n players: columns of five side by side, drawn at the compact scale, pinned to the holder's side.
+function raidRect(addon, spot, n, sw, sh) {
+  const s = addon.eval("local s = ns.GetModule('RaidFrames').settings return { s.width, s.height, s.spacing }");
+  const scale = addon.eval(`return ns.GetModule('RaidFrames').Scale(${n})`);
+  const cols = Math.ceil(n / 5);
+  const w = (cols * (s[0] + s[2]) - s[2]) * scale, h = (5 * (s[1] + s[2]) - s[2]) * scale;
+  const holder = rectAt(spot.slice(0, 4), spot[4], spot[5], sw, sh);
+  const l = /LEFT/.test(spot[0]) ? holder.l : /RIGHT/.test(spot[0]) ? holder.r - w : (holder.l + holder.r) / 2 - w / 2;
+  return { l, b: holder.b, r: l + w, t: holder.b + h };
+}
 
-it("setup Healing layout: clear of the bars, the cast bar, and the player and target frames", () => {
-  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV, { firstRun: true });
-  const cast = addon.eval("return ns.GetModule('CastBars').LAYOUT.player");
-  expect(cast.point[0], "the cast bar is anchored by its bottom, so its top is y + height").toBe("BOTTOM");
-  expect(addon.eval("return ns.Setup.HealingPoint()"), "Healing: centered, one layout gap above the cast bar's top").toEqual(["BOTTOM", "BOTTOM", 0, cast.point[3] + cast.h + addon.eval("return ns.Layout.GAP")]);
-  addon.eval("ns.Setup.ApplyLayout('healing')");
-  const at = addon.eval("return { ns.MoverPoint('raid') }");
-  const near = healingNeighbours(addon);
-  expect(["bar1", "bar2", "bar3", "cast_player", "uf_player", "uf_target"].every((k) => near[k]), "the default layout has the bottom bars, the cast bar, and the player and target frames").toBe(true);
-  const bars = Object.keys(near).filter((k) => k.startsWith("bar"));
-  // 1366 x 768 is UI scale 1; 2133 x 1200 is 1080p at UI scale 0.64.
-  for (const [sw, sh] of [[1366, 768], [2133, 1200]]) {
-    // A neighbour's rect on this screen.
-    const rect = (key) => rectAt(near[key].slice(0, 4), near[key][4], near[key][5], sw, sh);
-    // Whether a raid of this many groups, at the Healing spot, overlaps none of these neighbours.
-    const clearOf = (groups, keys) => {
-      const [w, h] = raidBlock(addon, groups);
-      const r = rectAt(at, w, h, sw, sh);
-      return keys.every((k) => !overlaps(r, rect(k)));
-    };
-    const [w1, h1] = raidBlock(addon, 1);
-    expect(rectAt(at, w1, h1, sw, sh).b - rect("cast_player").t, `${sw}x${sh}: one layout gap above the cast bar`).toBe(6);
-    for (let g = 1; g <= 8; g += 1) expect(clearOf(g, [...bars, "cast_player"]), `${sw}x${sh}: ${g} group(s) clear every action bar and the cast bar`).toBe(true);
-    // N: the most groups (a party is one column, like one group) that fit between the player and target frames.
-    let n = 0;
-    while (n < 8 && clearOf(n + 1, ["uf_player", "uf_target"])) n += 1;
-    // Cutoff: with 100 px tiles, 2 groups (204 px wide) fit the 300 px between the player and target frames; 3 groups (308 px) overlap them.
-    expect(n, `${sw}x${sh}: a party and raids of up to 2 groups clear the player and target frames; 3 or more overlap them`).toBe(2);
+// Every part's rect on an sw x sh screen with n players in the group (0: solo, no grid).
+function layoutRects(addon, n, sw, sh) {
+  const spots = moverSpots(addon), out = {};
+  for (const [key, spot] of Object.entries(spots)) if (key !== "raid") out[key] = rectAt(spot.slice(0, 4), spot[4], spot[5], sw, sh);
+  for (const [key, [parent, side, gap, w, h]] of Object.entries(ATTACHED)) {
+    const p = out[parent];
+    if (p) out[key] = side === "above" ? { l: p.l, b: p.t + gap, r: p.l + w, t: p.t + gap + h } : { l: p.l, b: p.b - gap - h, r: p.l + w, t: p.b - gap };
   }
+  if (n > 0) out.raid = raidRect(addon, spots.raid, n, sw, sh);
+  // Chat, where ForeverUI places it, with its tabs (22 tall) above the window.
+  const chat = addon.eval("local p = ChatFrame1 and ChatFrame1.__points.BOTTOMLEFT return p and { p.x, p.y, ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
+  if (chat) out.chat = rectAt(["BOTTOMLEFT", "BOTTOMLEFT", chat[0], chat[1]], chat[2], chat[3] + 22, sw, sh);
+  return out;
+}
+
+// Problems on one screen: pairs that overlap and parts off screen.
+function layoutProblems(rects, sw, sh) {
+  const keys = Object.keys(rects), bad = [];
+  keys.forEach((a, i) => keys.slice(i + 1).forEach((c) => { if (overlaps(rects[a], rects[c])) bad.push(`${a} / ${c}`); }));
+  keys.forEach((k) => { const r = rects[k]; if (r.l < 0 || r.b < 0 || r.r > sw || r.t > sh) bad.push(`${k} off screen`); });
+  return bad;
+}
+
+it("Centered layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", () => {
+  const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV, { firstRun: true });
+  expect(addon.eval("return ChatFrame1.__points.BOTTOMLEFT ~= nil"), "chat sits in its layout spot").toBe(true);
+  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
+  for (const layout of ["damage", "healing"]) {
+    addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
+    for (const [sw, sh] of [[1365, 768], [1920, 1080]]) {
+      for (const n of [0, 5, 25, 40]) expect(layoutProblems(layoutRects(addon, n, sw, sh), sw, sh), `${layout}, ${sw}x${sh}, ${n} players`).toEqual([]);
+    }
+  }
+  expect(addon.eval("return { ns.Setup.HealingPoint() }")[0], "Healing centers the grid above the focus cast bar").toEqual(["BOTTOM", "BOTTOM", 0, 342]);
 });
 
 it("setup look: accent swatches and the raid frame style apply at once", () => {
@@ -3161,4 +3175,32 @@ it("text that fits: chat size, tooltip fonts, the status line, name width", () =
   expect(chatHas(noChat, /chat 12 \(about/), "with the chat module off, the status line shows the default size").toBe(true);
   const units = loggedIn(UNITS_ENV);
   expect(units.eval("local p = ForeverUI_player.name.__points.RIGHT return p.rel == ForeverUI_player.healthText and p.relPoint"), "a unit's name stops short of its health text").toBe("LEFT");
+});
+
+it("Centered layout: compact raid grid, one-time migrations, a strip with nothing to show", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + "__members = 5 GetNumGroupMembers = function() return __members end");
+  const RF = "ns.GetModule('RaidFrames')";
+  expect(addon.eval(`return { ${RF}.Scale(5), ${RF}.Scale(25), ${RF}.Scale(40), ${RF}.Scale(60) }`), "full size up to 10, 80% up to 25, 72% above").toEqual([1, 0.8, 0.72, 0.72]);
+  // The grid's scale and the point it's pinned to on the holder.
+  const grid = () => addon.eval("local p = ForeverUI_Raid.__points return { ForeverUI_Raid:GetScale(), p.BOTTOMLEFT and 'left' or p.BOTTOMRIGHT and 'right' or p.BOTTOM and 'center' }");
+  expect(grid(), "a party is full size, growing up from the holder's bottom-left").toEqual([1, "left"]);
+  addon.eval("__members = 40");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect(grid(), "a 40-man raid is drawn at 72%").toEqual([0.72, "left"]);
+  addon.eval('ns.SetMoverPoint("raid", "BOTTOMRIGHT", "BOTTOMRIGHT", -20, 344)');
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect(grid()[1], "moved to the right edge, it grows from there").toBe("right");
+  addon.eval("ns.Setup.ApplyLayout('healing')");
+  expect(grid()[1], "the healing layout centers it").toBe("center");
+  addon.eval(`${RF}.settings.compact = false`);
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect(grid()[0], "compact off: always full size").toBe(1);
+  const old = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { spacing = 4 }, DataBars = { width = 476, height = 10 } } } }" });
+  expect(old.eval("local p = ForeverUIDB.profiles.Default return { p.ActionBars.spacing, p.DataBars.width, p.DataBars.height }"), "a profile saved with the old sizes moves to the new ones").toEqual([2, 454, 6]);
+  old.eval("local p = ForeverUIDB.profiles.Default p.ActionBars.spacing = 4 p.DataBars.width = 476 p.DataBars.height = 10");
+  expect(old.eval("local s = ns.Settings('ActionBars', ns.GetModule('ActionBars').defaults) local d = ns.Settings('DataBars', ns.GetModule('DataBars').defaults) return { s.spacing, d.width, d.height }"), "but only once: picking those sizes again keeps them").toEqual([4, 476, 10]);
+  const strip = loggedIn(UNITS_ENV + STRIP_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { InfoStrip = { durability = false, bags = false, system = false, gold = false, ammo = false, clock = false } } }" });
+  expect(strip.eval("return ForeverUI_InfoStrip:IsShown()"), "a strip with every block off isn't drawn as an empty box").toBe(false);
+  const chatFree = loggedIn(UI_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Chat = { place = false } } }" });
+  expect(chatFree.eval("return ChatFrame1.__points.BOTTOMLEFT == nil"), "with Keep chat in its spot off, chat stays where the game puts it").toBe(true);
 });

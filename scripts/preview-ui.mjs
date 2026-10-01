@@ -282,6 +282,8 @@ const SECRET = `
 // Scenes: the default layout (party on the raid frames), a 20-player raid, setup, then the options window.
 const SCENES = [
   { name: "foreverui-default", caption: "ForeverUI defaults (brass accent)", lua: '__group({ "player", "party1", "party2" })' },
+  { name: "foreverui-scale1", caption: "The same defaults at the game's UI scale 1.0 (1365 x 768 units, zoomed to 1080p): the cluster keeps its shape", lua: '__group({ "player", "party1", "party2" })',
+    screen: { width: 1365, height: 768 }, before: "UIParent:SetSize(1365, 768)" },
   { name: "foreverui-raid", caption: "Raid frames, 20 players: heals, shields, aggro, missing buffs, dispel borders, HoTs, raid icons, ready check, leader, range fade (TEST-ONLY raid)", lua: RAID },
   { name: "foreverui-raid-secret", caption: "Raid frames in instanced combat: health is secret, so bars still draw but missing-health text hides; first-run setup open on top (TEST-ONLY raid)", lua: SECRET + RAID + "ns.Setup.Open()" },
   { name: "foreverui-setup", caption: "First-run setup, step 2 of 3: accent and raid frame style (/fui setup)", lua: "ns.Setup.Open() ns.Setup.Next()" },
@@ -362,6 +364,7 @@ for (const scene of SCENES) {
     caption: `Preview · ${scene.caption} · layout from the addon's Lua; TEST-ONLY units, icons and chat; map, icons and font approximated, not a game screenshot`,
     // Nothing depends on measured text height, so there is nothing to redo.
     relayout: () => {},
+    screen: scene.screen,
   });
   console.log(`wrote ${path.relative(process.cwd(), file)}`);
 }

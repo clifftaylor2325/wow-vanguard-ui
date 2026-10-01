@@ -1,4 +1,4 @@
--- A swing timer above the player frame, one row per hand that swings: main
+-- A swing timer centered above your cast bar, one row per hand that swings: main
 -- hand, off hand, and ranged (a hunter's Auto Shot). 12.x took the combat log
 -- away from addons, so the old swing-timer recipe is gone; the WoW Forever
 -- client sends its own PLAYER_SWING (length, which hand) instead, and this
@@ -70,11 +70,11 @@ end
 
 -- Building ----------------------------------------------------------------------------------
 
--- The movable holder above the player frame (and its combo points), and a row per swing type.
+-- The movable holder, centered above your cast bar, and a row per swing type.
 local function build()
   SW.holder = CreateFrame("Frame", "ForeverUI_SwingTimer", UIParent)
   SW.holder:SetSize(SW.WIDTH, 3 * SW.ROW + 2 * SW.GAP)
-  ns.Mover(SW.holder, "swing", "Swing timer", { "BOTTOM", "CENTER", -260, -130 })
+  ns.Mover(SW.holder, "swing", "Swing timer", { "BOTTOM", "BOTTOM", 0, 170 })
   SW.rows = {}
   for i, kind in ipairs(SW.KINDS) do
     local id = Enum.PlayerSwingType[kind[1]]

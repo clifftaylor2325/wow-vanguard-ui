@@ -15,8 +15,8 @@ local STEPS = { "Layout", "Look", "Move things" }
 
 -- Layout presets, in display order; the first is the default.
 S.LAYOUTS = {
-  { key = "damage", text = "Damage and tanking" },
-  { key = "healing", text = "Healing", hint = "Raid frames centered just above your cast bar, click casting on." },
+  { key = "damage", text = "Centered: damage and tanking", hint = "Your frames around your character; party and raid on the left, above chat." },
+  { key = "healing", text = "Centered: healing", hint = "Party and raid centered above your frames, click casting on." },
 }
 -- Raid frame styles: the Raid page's Style choices.
 S.STYLES = { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }
@@ -34,10 +34,11 @@ local function turnOn(name)
   state.reload = true
 end
 
--- Saves the raid frames' spot, moving them now (or after combat) when they are built.
+-- Saves the raid frames' spot, moving them now (or after combat) when they are
+-- built, with the grid pinned to the new spot's side.
 local function placeRaid(p)
-  if ns.MoverPoint("raid") then return ns.SetMoverPoint("raid", p[1], p[2], p[3], p[4]) end
   ns.Settings("positions").raid = { point = p[1], relPoint = p[2], x = p[3], y = p[4] }
+  if ns.MoverPoint("raid") then ns.SetMoverPoint("raid", p[1], p[2], p[3], p[4]) ns.GetModule("RaidFrames").Fit() end
 end
 
 -- Puts everything a preset moves (today only the raid frames) back at
@@ -45,21 +46,22 @@ end
 local function restoreDefaults()
   ns.Settings("positions").raid = nil
   ns.ResetMovers("raid")
+  if ns.MoverPoint("raid") then ns.GetModule("RaidFrames").Fit() end
 end
 
--- Healing's raid frame spot: centered, their bottom edge one layout gap above
--- the top of the player cast bar's default spot (anchored by its bottom), so
--- they grow upward from there. Groups sit side by side, as always.
+-- Healing's raid frame spot: centered, four units above the focus cast
+-- bar's default spot (the top of the cluster around your character), so the
+-- grid grows upward from there and never covers your frames.
 function S.HealingPoint()
-  local cast = ns.GetModule("CastBars").LAYOUT.player
-  return { "BOTTOM", cast.point[2], 0, cast.point[4] + cast.h + ns.Layout.GAP }
+  local cast = ns.GetModule("CastBars").LAYOUT.focus
+  return { "BOTTOM", "BOTTOM", 0, cast.point[4] + cast.h + 4 }
 end
 
 -- What each layout changes.
 local APPLY = {
   -- Damage and tanking: ForeverUI's defaults.
   damage = restoreDefaults,
-  -- Healing: raid frames centered above the cast bar, click casting on.
+  -- Healing: party and raid centered above your frames, click casting on.
   healing = function()
     placeRaid(S.HealingPoint())
     turnOn("RaidFrames")
