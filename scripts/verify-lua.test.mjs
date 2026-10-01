@@ -3249,3 +3249,55 @@ it("the game's extras: each switch off leaves the game's frame alone, and missin
   const bare = loggedIn(UI_ENV);
   expect(bare.eval("return ForeverUI_MenuStrip ~= nil and ForeverUI_QuestTracker ~= nil"), "a client without these frames still gets the strip and the spot, with nothing to pin").toBe(true);
 });
+
+// TEST-ONLY game windows: a framed window built like the game's ButtonFrameTemplate (art textures,
+// NineSlice, inset, portrait, close button, title, push buttons), a popup and a breath bar.
+const WINDOWS_ENV = `
+  function __window(name, kind)
+    local f = CreateFrame("Frame", name, UIParent)
+    f:CreateTexture(nil, "BACKGROUND"):SetTexture("TEST-ONLY-ART")
+    f.NineSlice = CreateFrame("Frame", nil, f) f.NineSlice:CreateTexture(nil, "BORDER")
+    f.Inset = CreateFrame("Frame", nil, f) f.Inset.NineSlice = CreateFrame("Frame", nil, f.Inset)
+    f.PortraitContainer = CreateFrame("Frame", nil, f)
+    f.CloseButton = CreateFrame("Button", name .. "CloseButton", f)
+    f.TitleContainer = CreateFrame("Frame", nil, f) f.TitleContainer.TitleText = f.TitleContainer:CreateFontString(nil, "OVERLAY")
+    for i = 1, 2 do CreateFrame("Button", name .. "Button" .. i, f) end
+    f:Hide()
+    return f
+  end
+  __window("MerchantFrame") __window("StaticPopup1")
+  local t = __window("MirrorTimer1") t.StatusBar = CreateFrame("StatusBar", nil, t)
+`;
+
+// A window's state: its own art faded, its parts dressed, how many frames are painted.
+const windowState = (addon, name) => addon.eval(`local f = ${name}
+  local art for _, r in ipairs({ f:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
+  local panel = 0 for _, r in ipairs({ f:GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then panel = panel + 1 end end
+  return { art = art, nine = f.NineSlice.__alpha, portrait = f.PortraitContainer.__alpha, insetNine = f.Inset.NineSlice.__alpha,
+    panel = panel > 0, title = f.TitleContainer.TitleText:GetFont() ~= nil, painted = ns.Theme.PaintedCount() }`);
+
+it("game windows in the ForeverUI look: framed windows, popups, breath bar, and windows that load later", () => {
+  const addon = loggedIn(WINDOWS_ENV);
+  addon.eval("MerchantFrame:Show()");
+  const first = windowState(addon, "MerchantFrame");
+  expect(first, "the game's art is faded, a panel is painted, the title takes the theme font").toMatchObject({ art: 0, nine: 0, portrait: 0, insetNine: 0, panel: true, title: true });
+  addon.eval("MerchantFrame:Hide() MerchantFrame:Show()");
+  expect(windowState(addon, "MerchantFrame"), "showing it again keeps the panel and paints nothing new").toMatchObject({ panel: true, painted: first.painted });
+  expect(windowState(addon, "StaticPopup1"), "popups too").toMatchObject({ art: 0, panel: true });
+  expect(addon.eval("return MirrorTimer1.StatusBar:GetStatusBarTexture() ~= nil"), "the breath bar uses the theme's bar texture").toBe(true);
+  addon.eval('__window("PlayerSpellsFrame")');
+  addon.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
+  expect(windowState(addon, "PlayerSpellsFrame"), "the spellbook is skinned when it loads").toMatchObject({ art: 0, panel: true });
+  addon.fire("ADDON_LOADED", "TEST-ONLY_SomethingElse");
+});
+
+it("game windows: switched off they stay the game's, and missing windows are fine", () => {
+  const off = loggedIn(WINDOWS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Windows = { windows = false, popups = false, timers = false } } }" });
+  off.eval("MerchantFrame:Show() StaticPopup1:Show()");
+  expect([windowState(off, "MerchantFrame").art, windowState(off, "StaticPopup1").art].every((a) => a !== 0), "nothing is faded").toBe(true);
+  const bare = loggedIn("");
+  expect(bare.eval("for _, e in ipairs(ns.errors) do if e:find('Windows') then return e end end return 'none'"), "a client without these windows loads cleanly").toBe("none");
+  const plain = loggedIn(`local f = CreateFrame("Frame", "LootFrame", UIParent) f.ButtonContainer = { Buttons = { CreateFrame("Button", nil, f) } }
+    t = CreateFrame("Frame", "MirrorTimer2", UIParent) CreateFrame("StatusBar", "MirrorTimer2StatusBar", t)`);
+  expect(plain.eval("return { select('#', LootFrame.ButtonContainer.Buttons[1]:GetRegions()) > 0, MirrorTimer2StatusBar:GetStatusBarTexture() ~= nil }"), "a window with a button container, and a bar found by name").toEqual([true, true]);
+});

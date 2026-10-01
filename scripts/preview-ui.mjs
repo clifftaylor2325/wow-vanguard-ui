@@ -326,6 +326,16 @@ const SCENES = [
     before: `__units.player.class = "ROGUE" __units.player.power = 40 __units.player.maxpower = 100 __units.player.ptype = "ENERGY"
       UnitPowerType = function(unit) local x = __units[unit] if x and x.ptype == "ENERGY" then return 3, "ENERGY" end return 0, "MANA" end
       C_SwingTimer = {} Enum.PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 }` },
+  { name: "foreverui-window", caption: "A game window in the ForeverUI look: the game's art faded, a flat panel with a soft shadow, the theme's close button, title and buttons (TEST-ONLY merchant window)",
+    lua: "MerchantFrame:Show()",
+    before: `local f = CreateFrame("Frame", "MerchantFrame", UIParent) f:SetSize(340, 420) f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 40, -120)
+      local art = f:CreateTexture(nil, "BACKGROUND") art:SetAllPoints() art:SetColorTexture(0.45, 0.32, 0.18, 1)
+      f.CloseButton = CreateFrame("Button", "MerchantFrameCloseButton", f) f.CloseButton:SetSize(20, 20) f.CloseButton:SetPoint("TOPRIGHT", -4, -4)
+      f.TitleContainer = CreateFrame("Frame", nil, f) f.TitleContainer:SetAllPoints()
+      f.TitleContainer.TitleText = f.TitleContainer:CreateFontString(nil, "OVERLAY") f.TitleContainer.TitleText:SetPoint("TOP", 0, -8) f.TitleContainer.TitleText:SetText("TEST-ONLY Merchant")
+      for i = 1, 2 do local b = CreateFrame("Button", "MerchantFrameButton" .. i, f) b:SetSize(120, 22) b:SetPoint("BOTTOMLEFT", 16 + (i - 1) * 140, 14)
+        b.text = b:CreateFontString(nil, "OVERLAY") b.text:SetPoint("CENTER") b.text:SetText(i == 1 and "TEST-ONLY Repair" or "TEST-ONLY Buyback") end
+      f:Hide()` },
   { name: "foreverui-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a friendly player (TEST-ONLY units)", lua: PLATES },
   { name: "foreverui-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)
