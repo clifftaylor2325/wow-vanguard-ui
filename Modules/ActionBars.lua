@@ -21,7 +21,7 @@ local AB = ns.Module("ActionBars", {
     lockButtons = true,
     rangeTint = true,
     size = 36,
-    spacing = 4,
+    spacing = 2,
     -- Per bar: on/off, buttons shown, buttons per row, and visibility
     -- (always, mouseover, combat or hidden). A bar's own `size` wins over
     -- the shared size above once the player sets one. The right-edge bars
@@ -53,8 +53,8 @@ local BARS = {
   { slot = 169, bind = "MULTIACTIONBAR7BUTTON", stack = true },
 }
 
--- The bottom stack starts this far up; the bars are one layout gap (ns.Layout.GAP) apart.
-local STACK_BASE = 40
+-- The bottom stack starts this far up (over the data bars); the bars sit BAR_GAP apart.
+local STACK_BASE, BAR_GAP = 24, 2
 
 -- Bar 1's page for each state: vehicle/possess, override, shapeshift,
 -- dragonriding, class bonus bars (stances, stealth, forms), then Shift+number pages.
@@ -107,7 +107,20 @@ local function keepOldRightBars(saved)
     end
   end
 end
-ns.Migrate("ActionBars", keepOldRightBars)
+-- Profiles saved before the Centered layout hold the old button spacing (4)
+-- as a value: once, put it back to the new default.
+local function centeredSpacing(saved)
+  if (saved.layout or 0) >= 2 then return end
+  if saved.spacing == 4 then saved.spacing = nil end
+  saved.layout = 2
+end
+
+-- Every upgrade of saved action bar settings, oldest first.
+local function migrate(saved)
+  keepOldRightBars(saved)
+  centeredSpacing(saved)
+end
+ns.Migrate("ActionBars", migrate)
 
 -- Client API ----------------------------------------------------------------------------
 
@@ -307,11 +320,12 @@ local function onAttributeChanged(b, name)
   end
 end
 
--- The icon, inset 1 px inside the border and cropped past the baked-in edge.
+-- The icon, one screen pixel inside the border and cropped past the baked-in edge.
 local function addIcon(b)
+  local px = T.Pixel(b)
   b.icon = b:CreateTexture(nil, "ARTWORK")
-  b.icon:SetPoint("TOPLEFT", 1, -1)
-  b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+  b.icon:SetPoint("TOPLEFT", px, -px)
+  b.icon:SetPoint("BOTTOMRIGHT", -px, px)
   b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 end
 
@@ -382,7 +396,7 @@ function AB.StackPoint(n, settings)
   local y = STACK_BASE
   for k = #BARS, n + 1, -1 do
     local bar = settings.bars[k]
-    if BARS[k].stack and bar and bar.enabled then y = y + barHeight(settings, bar) + ns.Layout.GAP end
+    if BARS[k].stack and bar and bar.enabled then y = y + barHeight(settings, bar) + BAR_GAP end
   end
   return { "BOTTOM", "BOTTOM", 0, y }
 end

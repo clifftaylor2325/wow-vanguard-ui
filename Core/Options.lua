@@ -168,7 +168,7 @@ O.MODULE_INFO = {
   CastBars = { "Cast bars", "Your cast bar, and your target's and focus's." },
   FrameAuras = { "Target and focus auras", "Buffs and debuffs under the target and focus frames. Needs Unit frames." },
   PlayerAuras = { "Your buffs and debuffs", "Your own auras and weapon enchants, left of the minimap." },
-  ComboPoints = { "Combo points", "Rogue and druid combo points above the target frame. Needs Unit frames." },
+  ComboPoints = { "Combo points", "Rogue and druid combo points above the player frame. Needs Unit frames." },
   ClassBars = { "Class bars", "Shaman totems, and druid mana in forms, under the player frame. Needs Unit frames." },
   PowerTicks = { "Power bar sparks", "The five-second rule and energy ticks on your power bar. Needs Unit frames." },
   SwingTimer = { "Swing timer", "A row per hand that swings, from WoW Forever's own swing events." },
@@ -329,7 +329,7 @@ local function moreRows()
     { "cycle", "Numbers", { { "hover", "on hover" }, { "always", "always" } }, setting("DataBars", "text", true) },
     { "header", "Minimap, chat, bags" },
     check("Coordinates under the minimap", setting("Minimap", "coords", true)),
-    check("Chat background", setting("Chat", "background", true)),
+    check("Chat background", setting("Chat", "background", true)), check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
     { "cycle", "Chat text size (follows Text size)", ns.GetModule("Chat").SIZES, chatSizeSetting() },
     check("Combined bag", setting("Bags", "combined", true)),
   }

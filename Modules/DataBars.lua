@@ -8,8 +8,17 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local DB = ns.Module("DataBars", {
-  defaults = { width = 476, height = 10, xp = true, reputation = true, text = "hover" },
+  defaults = { width = 454, height = 6, xp = true, reputation = true, text = "hover" },
 })
+
+-- Profiles saved before the Centered layout hold the old size (476 x 10) as
+-- values: once, put them back to the new defaults (as wide as the action bars).
+ns.Migrate("DataBars", function(saved)
+  if (saved.layout or 0) >= 2 then return end
+  if saved.width == 476 then saved.width = nil end
+  if saved.height == 10 then saved.height = nil end
+  saved.layout = 2
+end)
 
 -- Reputation bar color tokens by standing (1 hated .. 8 exalted).
 local REACTION = {
@@ -139,7 +148,7 @@ end
 
 -- The XP bar with its rested overlay, kept current.
 local function enableXP(settings)
-  DB.xpBar = createBar("xpbar", "Experience", { "BOTTOM", "BOTTOM", 0, 20 }, settings)
+  DB.xpBar = createBar("xpbar", "Experience", { "BOTTOM", "BOTTOM", 0, 4 }, settings)
   addRested(DB.xpBar)
   for _, e in ipairs({ "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD" }) do ns.On(e, DB.UpdateXP) end
   DB.UpdateXP()
@@ -147,7 +156,7 @@ end
 
 -- The reputation bar for the watched faction, kept current.
 local function enableReputation(settings)
-  DB.repBar = createBar("repbar", "Reputation", { "BOTTOM", "BOTTOM", 0, 8 }, settings)
+  DB.repBar = createBar("repbar", "Reputation", { "BOTTOM", "BOTTOM", 0, 12 }, settings)
   for _, e in ipairs({ "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" }) do ns.On(e, DB.UpdateReputation) end
   DB.UpdateReputation()
 end

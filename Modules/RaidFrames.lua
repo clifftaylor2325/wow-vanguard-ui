@@ -9,14 +9,21 @@
 --
 -- All 40 buttons are created up front, out of combat, so click casting and
 -- hover keys (Modules/ClickCast.lua) can be set on every one of them safely.
+--
+-- The frames grow up from a movable holder (bottom-left above chat by
+-- default). In bigger raids the whole grid is drawn smaller (compact), so 40
+-- players fit beside the unit frames at any UI scale; each tile keeps its layout.
 
 local ADDON, ns = ...
 
 local T = ns.Theme
 
 local RF = ns.Module("RaidFrames", {
-  defaults = { width = 100, height = 48, spacing = 4, showInParty = true, showPlayer = true, sortByRole = false, hideBlizzard = true, look = "soft", showPower = true },
+  defaults = { width = 100, height = 48, spacing = 4, showInParty = true, showPlayer = true, sortByRole = false, hideBlizzard = true, look = "soft", showPower = true, compact = true },
 })
+
+-- Group size -> how large the grid is drawn when compact: up to 10 full size, up to 25 at 80%, more at 72%.
+RF.COMPACT = { { 10, 1 }, { 25, 0.8 }, { 40, 0.72 } }
 
 local MAX_UNITS = 40
 -- The class color's share of a softened bar; the rest is the panel color.
@@ -250,9 +257,10 @@ end
 -- The health bar filling the button, with its texts, power bar and overlay.
 local function addParts(b)
   local z = RF.TileZones()
+  local px = T.Pixel(b)
   b.health = T.StyleBar(CreateFrame("StatusBar", nil, b))
-  b.health:SetPoint("TOPLEFT", 1, -1)
-  b.health:SetPoint("BOTTOMRIGHT", -1, 1)
+  b.health:SetPoint("TOPLEFT", px, -px)
+  b.health:SetPoint("BOTTOMRIGHT", -px, px)
   addTopRow(b, z)
   addStatus(b, z)
   addPower(b)
@@ -304,8 +312,8 @@ local function layout(header, s)
   header:SetAttribute("unitsPerColumn", 5)
   header:SetAttribute("columnSpacing", s.spacing)
   header:SetAttribute("columnAnchorPoint", "LEFT")
-  header:SetAttribute("point", "TOP")
-  header:SetAttribute("yOffset", -s.spacing)
+  header:SetAttribute("point", "BOTTOM")
+  header:SetAttribute("yOffset", s.spacing)
 end
 
 -- Which groups show: raid always, party and yourself by setting.
@@ -350,10 +358,47 @@ local function hideBlizzard(name)
   f:SetParent(hiddenParent)
 end
 
+-- Sizing and placing the grid ------------------------------------------------------------
+
+-- How large the grid is drawn for a group of n players (always 1 with compact off).
+function RF.Scale(n)
+  if not RF.settings.compact then return 1 end
+  for _, step in ipairs(RF.COMPACT) do
+    if n <= step[1] then return step[2] end
+  end
+  return RF.COMPACT[#RF.COMPACT][2]
+end
+
+-- The header's point on the holder: the holder's own side (left, right or
+-- center), at the bottom, so the grid grows up and away from that side.
+local function headerPoint()
+  local point = ns.MoverPoint("raid") or "BOTTOMLEFT"
+  return point:find("LEFT") and "BOTTOMLEFT" or point:find("RIGHT") and "BOTTOMRIGHT" or "BOTTOM"
+end
+
+-- Scales the grid to the group's size and pins it to the holder (out of combat).
+function RF.Fit()
+  if not RF.header then return end
+  local n = type(GetNumGroupMembers) == "function" and ns.PlainNumber(GetNumGroupMembers()) or 0
+  ns.OutOfCombat(function()
+    RF.header:SetScale(RF.Scale(n or 0))
+    RF.header:ClearAllPoints()
+    RF.header:SetPoint(headerPoint(), RF.holder, headerPoint())
+  end)
+end
+
+-- The movable holder: one tile wide and a party tall, where the grid starts.
+local function holder(s)
+  local f = CreateFrame("Frame", "ForeverUI_RaidHolder", UIParent)
+  f:SetSize(s.width, 5 * (s.height + s.spacing) - s.spacing)
+  ns.Mover(f, "raid", "Raid frames", { "BOTTOMLEFT", "BOTTOMLEFT", 20, 344 })
+  return f
+end
+
 -- Builds the header, precreates its buttons and replaces the default frames.
 local function build(s)
-  RF.header = createHeader(s)
-  ns.Mover(RF.header, "raid", "Raid frames", { "TOPLEFT", "TOPLEFT", 20, -220 })
+  RF.holder, RF.header = holder(s), createHeader(s)
+  RF.Fit()
   precreate(RF.header)
   membership(RF.header, s)
   if s.hideBlizzard then
@@ -375,4 +420,5 @@ function RF.Enable(settings)
   ns.OutOfCombat(function() build(settings) end)
   for _, e in ipairs(UNIT_EVENTS) do ns.On(e, onUnitEvent) end
   for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHANGED" }) do ns.On(e, RF.UpdateAll) end
+  for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD" }) do ns.On(e, RF.Fit) end
 end

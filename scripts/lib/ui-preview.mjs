@@ -103,27 +103,34 @@ const PAGE_CSS = `
     color:rgba(255,255,255,.75);background:rgba(0,0,0,.55);padding:4px 8px;border-radius:4px}
   `;
 
+// The stage's size and zoom for a canvas: a UI scale 1.0 canvas (1365 x 768
+// units) is zoomed to fill the same 1920 x 1080 image, as it does on a 1080p screen.
+function stageStyle(screen) {
+  const zoom = SCREEN.width / screen.width;
+  return `width:${screen.width}px;height:${screen.height}px;transform:scale(${zoom});transform-origin:0 0`;
+}
+
 // The preview page: a screen-sized stage with the caption in the corner.
-export function pageHtml(caption) {
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${PAGE_CSS}</style></head><body><div id="stage"><div id="caption">${caption}</div></div></body></html>`;
+export function pageHtml(caption, screen = SCREEN) {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${PAGE_CSS}</style></head><body><div id="stage" style="${stageStyle(screen)}"><div id="caption">${caption}</div></div></body></html>`;
 }
 
 // Loads a fresh page, draws the addon's frames, and returns the measured text heights.
-async function drawPage(page, addon, caption) {
-  await page.setContent(pageHtml(caption));
+async function drawPage(page, addon, caption, screen = SCREEN) {
+  await page.setContent(pageHtml(caption, screen));
   await page.addScriptTag({ path: PAGE_SCRIPT });
   media = media || mediaUris();
   await page.evaluate(() => document.fonts.ready);
-  return page.evaluate((args) => window.wfgLayoutAndDraw(args), { frames: dumpFrames(addon), screen: SCREEN, media });
+  return page.evaluate((args) => window.wfgLayoutAndDraw(args), { frames: dumpFrames(addon), screen, media });
 }
 
 // Two passes: the first measures text, the second lets the addon size its
 // frames from those measurements, the same way GetStringHeight does in game.
-export async function renderScene(page, addon, { caption, relayout, file }) {
-  const measured = await drawPage(page, addon, caption);
+export async function renderScene(page, addon, { caption, relayout, file, screen = SCREEN }) {
+  const measured = await drawPage(page, addon, caption, screen);
   const entries = Object.entries(measured).map(([id, h]) => `[${Number(id)}]=${Number(h)}`).join(",");
   addon.eval(`__wfgStub.stringHeights = {${entries}}`);
   relayout();
-  await drawPage(page, addon, caption);
+  await drawPage(page, addon, caption, screen);
   await page.locator("#stage").screenshot({ path: file });
 }
