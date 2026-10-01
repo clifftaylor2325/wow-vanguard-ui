@@ -42,6 +42,7 @@ Modules/ComboPoints.lua
 Modules/ClassBars.lua
 Modules/PowerTicks.lua
 Modules/SwingTimer.lua
+Modules/UnitExtras.lua
 Modules/RaidFrames.lua
 Modules/RaidAuras.lua
 Modules/RaidHealing.lua
