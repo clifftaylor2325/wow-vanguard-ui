@@ -1,15 +1,27 @@
 -- Minimap: square, in a themed frame you can move in unlock mode, with the
 -- zone name along its top edge (colored by PvP status), coordinates along the bottom
 -- and mouse-wheel zoom. The round border art and zoom buttons are faded
--- out (alpha only; nothing Blizzard owns is hidden or unregistered).
+-- out (alpha only; nothing Blizzard owns is hidden or unregistered). The
+-- game's small minimap buttons (tracking, mail, dungeon difficulty, the addon
+-- compartment) move from the old minimap spot onto this map's corners.
 
 local ADDON, ns = ...
 
 local T = ns.Theme
 
 local MM = ns.Module("Minimap", {
-  defaults = { size = 180, coords = true },
+  defaults = { size = 180, coords = true, icons = true },
 })
+
+-- The game's minimap buttons this map takes onto its corners: where to find
+-- each (newer client path first) and which corner it sits in.
+MM.LEFTOVERS = {
+  { paths = { { "MinimapCluster", "Tracking" }, { "MiniMapTracking" } }, point = "BOTTOMLEFT", x = 2, y = 2 },
+  { paths = { { "MinimapCluster", "IndicatorFrame", "MailFrame" }, { "MiniMapMailFrame" } }, point = "TOPRIGHT", x = -2, y = -2 },
+  { paths = { { "MinimapCluster", "InstanceDifficulty" }, { "MiniMapInstanceDifficulty" } }, point = "TOPLEFT", x = 2, y = -2 },
+  { paths = { { "AddonCompartmentFrame" } }, point = "BOTTOMRIGHT", x = -2, y = 2 },
+}
+MM.ICON_SCALE = 0.85
 
 -- Zone text color tokens by PvP type (GetZonePVPInfo); gold otherwise.
 local ZONE_COLORS = {
@@ -50,6 +62,27 @@ local function fadeArt()
       obj:SetAlpha(0)
     end
   end
+end
+
+-- The first of several paths this client has, or nil.
+local function first(paths)
+  for _, path in ipairs(paths) do
+    local obj = lookup(path)
+    if type(obj) == "table" and obj.SetPoint then return obj end
+  end
+end
+
+-- Pins one of the game's minimap buttons to a corner of the map (it stays
+-- there when the game lays out its old minimap spot again).
+local function placeLeftover(spec)
+  local obj = first(spec.paths)
+  if not obj then return end
+  ns.Pin(obj, function(f)
+    f:SetParent(MM.overlay)
+    f:SetScale(MM.ICON_SCALE)
+    f:ClearAllPoints()
+    f:SetPoint(spec.point, MM.overlay, spec.point, spec.x, spec.y)
+  end)
 end
 
 -- Zone and coordinates -------------------------------------------------------------------
@@ -119,6 +152,7 @@ end
 -- live on an overlay frame above the map; on the holder the map would cover them.
 local function addTexts(holder)
   local overlay = CreateFrame("Frame", nil, holder)
+  MM.overlay = overlay
   overlay:SetAllPoints()
   overlay:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 2)
   MM.zone = T.Text(overlay:CreateFontString(nil, "OVERLAY"), "label", false)
@@ -134,6 +168,7 @@ local function build(settings)
   adoptMinimap(holder, settings.size)
   addTexts(holder)
   fadeArt()
+  if settings.icons then for _, spec in ipairs(MM.LEFTOVERS) do placeLeftover(spec) end end
   if settings.coords then coordsTicker(holder) end
   MM.UpdateZone()
 end

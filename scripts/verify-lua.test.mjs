@@ -3204,3 +3204,48 @@ it("Centered layout: compact raid grid, one-time migrations, a strip with nothin
   const chatFree = loggedIn(UI_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Chat = { place = false } } }" });
   expect(chatFree.eval("return ChatFrame1.__points.BOTTOMLEFT == nil"), "with Keep chat in its spot off, chat stays where the game puts it").toBe(true);
 });
+
+// TEST-ONLY client frames ForeverUI tidies away: the game's XP bar, durability figure, clock and calendar
+// button, minimap buttons, micro menu, bag bar and quest tracker. hooksecurefunc hooks methods too, as in game.
+const TIDY_ENV = `
+  hooksecurefunc = function(a, b, c)
+    if type(a) == "table" then local orig = a[b] a[b] = function(...) local r = orig(...) c(...) return r end
+    else local orig = _G[a] _G[a] = function(...) orig(...) b(...) end end
+  end
+  for _, name in ipairs({ "StatusTrackingBarManager", "DurabilityFrame", "TimeManagerClockButton", "GameTimeFrame",
+    "AddonCompartmentFrame", "MicroMenuContainer", "BagsBar", "ObjectiveTrackerFrame" }) do CreateFrame("Frame", name, UIParent) end
+  MinimapCluster.Tracking = CreateFrame("Frame", nil, MinimapCluster)
+  MinimapCluster.IndicatorFrame = CreateFrame("Frame", nil, MinimapCluster)
+  MinimapCluster.IndicatorFrame.MailFrame = CreateFrame("Frame", nil, MinimapCluster.IndicatorFrame)
+`;
+
+// Whether one of the game's frames was put away (hidden, under another parent).
+const putAway = (addon, path) => addon.eval(`local f = ${path} return f:GetParent() ~= UIParent and not f:IsShown()`);
+// A frame's parent check and its single anchor point name.
+const pinned = (addon, path, parent) => addon.eval(`local f = ${path} local p = next(f.__points) return { f:GetParent() == ${parent}, p }`);
+
+it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip, quest tracker", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV);
+  expect(["StatusTrackingBarManager", "DurabilityFrame", "TimeManagerClockButton", "GameTimeFrame"].map((n) => putAway(addon, n)), "the game's XP bar, durability figure, clock and calendar button are put away").toEqual([true, true, true, true]);
+  const overlay = "ns.GetModule('Minimap').overlay";
+  expect([pinned(addon, "MinimapCluster.Tracking", overlay), pinned(addon, "MinimapCluster.IndicatorFrame.MailFrame", overlay), pinned(addon, "AddonCompartmentFrame", overlay)],
+    "tracking, mail and the addon compartment sit on the map's corners").toEqual([[true, "BOTTOMLEFT"], [true, "TOPRIGHT"], [true, "BOTTOMRIGHT"]]);
+  addon.eval('MinimapCluster.Tracking:ClearAllPoints() MinimapCluster.Tracking:SetPoint("CENTER", UIParent, "CENTER", 0, 0)');
+  expect(pinned(addon, "MinimapCluster.Tracking", overlay), "when the game moves one back, it returns to its corner").toEqual([true, "BOTTOMLEFT"]);
+  expect([pinned(addon, "MicroMenuContainer", "ForeverUI_MenuStrip"), pinned(addon, "BagsBar", "ForeverUI_MenuStrip")], "the micro menu and bag bar sit in one strip").toEqual([[true, "LEFT"], [true, "RIGHT"]]);
+  expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "which is out of sight until the mouse is over it").toBe(0);
+  addon.eval("function ForeverUI_MenuStrip:IsMouseOver() return true end __wfgStub.advance(0.3)");
+  expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "and shows with the mouse over it").toBe(1);
+  expect(addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p.rel == ForeverUI_QuestTracker, ObjectiveTrackerFrame:GetHeight() }"), "the quest tracker sits under the info strip, no taller than its spot").toEqual([true, 280]);
+});
+
+it("the game's extras: each switch off leaves the game's frame alone, and missing frames are fine", () => {
+  const off = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: `ForeverUIDB.profiles = { Default = { DataBars = { xp = false, reputation = false },
+    InfoStrip = { durability = false, clock = false }, Minimap = { icons = false }, MenuStrip = { menu = "always", tracker = false } } }` });
+  expect(["StatusTrackingBarManager", "DurabilityFrame", "TimeManagerClockButton"].map((n) => putAway(off, n)), "replacements off: the game's own stay").toEqual([false, false, false]);
+  expect(off.eval("return MinimapCluster.Tracking:GetParent() == MinimapCluster"), "minimap buttons off: tracking stays where the game put it").toBe(true);
+  expect(off.eval("return { ForeverUI_MenuStrip:GetAlpha(), ForeverUI_MenuStrip.__scripts.OnUpdate == nil }"), "menu strip set to Always: always shown, nothing polling").toEqual([1, true]);
+  expect(off.eval("return next(ObjectiveTrackerFrame.__points) == nil and ForeverUI_QuestTracker == nil"), "tracker off: the game's tracker is left alone").toBe(true);
+  const bare = loggedIn(UI_ENV);
+  expect(bare.eval("return ForeverUI_MenuStrip ~= nil and ForeverUI_QuestTracker ~= nil"), "a client without these frames still gets the strip and the spot, with nothing to pin").toBe(true);
+});

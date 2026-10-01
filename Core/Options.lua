@@ -182,6 +182,7 @@ O.MODULE_INFO = {
   SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, and the vehicle exit." },
   Minimap = { "Minimap", "A square minimap with the zone and coordinates." },
   InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo and the time, under the minimap." },
+  MenuStrip = { "Menu and quest tracker", "The game's menu and bag buttons in a corner strip, and the quest tracker under the info strip." },
   Chat = { "Chat", "Themed chat windows and tabs." },
   Bags = { "Bags", "One combined bag, with a Sort button." },
   Merchant = { "Merchant helpers", "Repair, sell gray items, and a quieter error line." },
@@ -321,6 +322,16 @@ local function chatSizeSetting()
   return liveSetting("Chat", "textSize", function() local CH = ns.GetModule("Chat") if CH.settings then CH.Refresh() end end)
 end
 
+-- The game's extras: minimap buttons, the menu strip and the quest tracker (after a reload).
+local function gamePartRows()
+  return {
+    { "header", "The game's extras" },
+    check("Tracking, mail and difficulty on the minimap's corners (reload)", setting("Minimap", "icons", true)),
+    { "cycle", "Menu and bag buttons (reload)", { { "mouseover", "On mouseover" }, { "always", "Always" } }, setting("MenuStrip", "menu", true) },
+    check("Quest tracker under the info strip (reload)", setting("MenuStrip", "tracker", true)),
+  }
+end
+
 -- XP and reputation bars, minimap, chat and bags.
 local function moreRows()
   return {
@@ -390,6 +401,7 @@ end
 local function morePageRows()
   local rows = append(playerAuraRows(), moreRows())
   append(rows, stripRows())
+  append(rows, gamePartRows())
   append(rows, merchantRows())
   return append(rows, tooltipRows())
 end

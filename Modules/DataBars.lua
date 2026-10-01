@@ -161,8 +161,13 @@ local function enableReputation(settings)
   DB.UpdateReputation()
 end
 
+-- The game's own XP and reputation bars, which these replace (so XP doesn't show twice).
+DB.BLIZZARD = { "StatusTrackingBarManager", "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" }
+
 -- Module entry point (Core/Modules.lua). Data bars aren't protected, so no combat wait.
 function DB.Enable(settings)
   if settings.xp then enableXP(settings) end
   if settings.reputation then enableReputation(settings) end
+  if not (settings.xp or settings.reputation) then return end
+  for _, name in ipairs(DB.BLIZZARD) do ns.GetModule("UnitFrames").HideBlizzard(name) end
 end
