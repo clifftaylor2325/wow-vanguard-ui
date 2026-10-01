@@ -99,6 +99,9 @@ function methods:SetPoint(point, ...)
   self.__points[point] = { point = point, rel = rel, relPoint = relPoint, x = x or 0, y = y or 0 }
 end
 
+-- Records whether a texture snaps to the pixel grid.
+function methods:SetSnapToPixelGrid(snap) self.__snapToPixelGrid = snap end
+
 -- Forgets every anchor point.
 function methods:ClearAllPoints() self.__points = {} end
 
