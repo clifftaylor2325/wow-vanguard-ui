@@ -330,6 +330,8 @@ const SCENES = [
     GameTooltip.unit = "target" __tipHooks.GameTooltip_SetDefaultAnchor(GameTooltip, UIParent) GameTooltip:Show() __tipPost(GameTooltip)` },
   { name: "foreverui-options", caption: "Options window: General (/fui)", lua: 'ns.Options.Show("general")' },
   { name: "foreverui-bars-drag", caption: "Action bars while you drag a spell or item: the empty slots show so there is somewhere to drop it; otherwise they stay hidden (TEST-ONLY icons)", lua: '__wfgStub.fire("ACTIONBAR_SHOWGRID")' },
+  { name: "foreverui-options-modules", caption: "Options window: Modules, each with what it does and what it needs", lua: 'ns.Options.Show("modules")' },
+  { name: "foreverui-options-changed", caption: "Options window: Unit frames with two settings changed; the dot left of each puts its default back", lua: 'ns.Settings("UnitFrames").healthText = false ns.Settings("PowerTicks").energy = false ns.Options.Show("unitframes")' },
   { name: "foreverui-options-bars", caption: "Options window: Action bars", lua: 'ns.Options.Show("actionbars")' },
   { name: "foreverui-healing", caption: "Options window: Healing", lua: 'ns.Options.Show("healing")' },
   { name: "foreverui-clickcast", caption: "Options window: Click casting (TEST-ONLY bindings)", lua: `

@@ -1020,7 +1020,11 @@ it("options window", () => {
   expect(addon.eval('return __click("Visibility")') && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.bars[1].visibility") === "mouseover", "cycle buttons step through choices").toBeTruthy();
   expect(addon.eval('return __click("Button size")') && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.bars[1].size") === 38, "a bar's size slider starts at the shared size and steps by 2").toBeTruthy();
   addon.eval('__click("Modules")');
-  expect(addon.eval('return __click("UnitFrames")') && addon.eval("return ns.ModuleEnabled('UnitFrames')") === false, "modules can be turned off").toBeTruthy();
+  // The Modules page's row for unit frames: its description, and clicking it.
+  const moduleRow = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.desc and w.label.__text == "Unit frames" and w:IsVisible() then
+    local desc = w.desc.__text w.__scripts.OnClick(w, "LeftButton") return desc end end`);
+  expect(moduleRow, "each module has a name and a line on what it does").toMatch(/^Player, target/);
+  expect(addon.eval("return ns.ModuleEnabled('UnitFrames')"), "modules can be turned off").toBe(false);
   addon.eval('__click("Profiles")');
   expect(addon.eval('return __click("Export profile")') && addon.eval("return ForeverUI_TextEdit:GetText():sub(1, 5)") === "FUI1:", "Export profile shows the string").toBeTruthy();
   expect(addon.eval('return __click("Use this profile for this spec")') && addon.eval("return ForeverUICharDB.specProfiles[1]") === "Default", "the spec button maps this spec").toBeTruthy();
@@ -1760,11 +1764,11 @@ it("theme tokens and pixel-perfect borders", () => {
   expect(last.startsWith("|c" + addon.eval('return ns.Theme.Hex("accent")') + "ForeverUI:|r"), `chat lines start with ForeverUI: in the accent (got ${last})`).toBeTruthy();
   addon.eval('ns.Options.Show("general")');
   setCombat(addon, true);
-  addon.eval('__click("Pixel-perfect UI scale")');
+  addon.eval('__click("Pixel-perfect scale")');
   expect(addon.eval("return UIParent:GetScale()") === 1, "the pixel-perfect scale waits for combat to end").toBeTruthy();
   setCombat(addon, false);
   expect(Math.abs(addon.eval("return UIParent:GetScale()") - 768 / 1440) < 1e-9, "then UIParent gets 768 / screen height").toBeTruthy();
-  addon.eval('__click("Pixel-perfect UI scale")');
+  addon.eval('__click("Pixel-perfect scale")');
   expect(addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "turning it off offers a reload (the client's scale comes back)").toBeTruthy();
 });
 
@@ -3036,4 +3040,36 @@ it("threat and happiness only where the client and settings allow", () => {
   expect(built(EXTRAS_ENV, "ForeverUIDB.profiles = { Default = { UnitExtras = { threat = false, happiness = false } } }"), "both can be switched off").toEqual([false, false]);
   expect(built(EXTRAS_ENV, "ForeverUIDB.profiles = { Default = { modules = { UnitFrames = false } } }"), "no unit frames, nothing to add to").toEqual([false, false]);
   expect(loggedIn(UNITS_ENV + EXTRAS_ENV).eval("return ns.GetModule('UnitExtras').Threat ~= nil"), "the module loads").toBe(true);
+});
+
+// The reset dot on the visible row whose caption starts with this text: { shown, has a dot }.
+const resetDot = (addon, text) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+  if w.label and type(w.label.__text) == "string" and w.label.__text:sub(1, #"${text}") == "${text}" and w:IsVisible() then
+    return { w.reset ~= nil and w.reset:IsShown(), w.reset ~= nil } end end`);
+
+it("options: a changed setting gets a dot that puts the default back", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA);
+  addon.slash("");
+  addon.eval('__click("Unit frames")');
+  expect(resetDot(addon, "Show health numbers"), "a setting at its default: no dot showing").toEqual([false, true]);
+  addon.eval('__click("Show health numbers")');
+  expect(resetDot(addon, "Show health numbers"), "changed: the dot shows").toEqual([true, true]);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then __dot = w.reset end end
+    __dot:GetScript("OnEnter")(__dot) __dot:GetScript("OnLeave")(__dot) __dot:GetScript("OnClick")(__dot)`);
+  expect([addon.eval("return ForeverUIDB.profiles.Default.UnitFrames.healthText"), ...resetDot(addon, "Show health numbers")], "clicking it puts the default back and hides it").toEqual([true, false, true]);
+  expect(resetDot(addon, "Health as"), "a default that depends on the client has no dot").toEqual([false, false]);
+  addon.eval('__click("General")');
+  expect(resetDot(addon, "Snap to other frames"), "a setting with no default has no dot").toEqual([false, false]);
+  addon.eval(`GameTooltip = CreateFrame("Frame", "GameTooltip", UIParent) function GameTooltip:SetOwner(o) self.__owner = o end
+    function GameTooltip:SetText(t) self.__tip = t end`);
+  addon.eval('__click("Nameplates")');
+  addon.eval('__click("Width")');
+  expect(resetDot(addon, "Width"), "choices get one too").toEqual([true, true]);
+  addon.eval('__click("Width") __click("Width")');
+  expect(resetDot(addon, "Width")[0], "and lose it back at the default").toBe(false);
+  addon.eval('__click("Cast bar")');
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then __dot = w.reset end end __dot:GetScript("OnEnter")(__dot)`);
+  expect(addon.eval("return { GameTooltip.__owner == __dot, GameTooltip:IsShown(), GameTooltip.__tip }"), "hovering the dot says what it does").toEqual([true, true, "Changed from the default. Click to put it back."]);
+  addon.eval("__dot:GetScript('OnLeave')(__dot)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "and the tooltip goes when the mouse leaves").toBe(false);
 });
