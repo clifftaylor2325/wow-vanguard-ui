@@ -156,12 +156,14 @@ local function addCardTitle(card, title)
   return PAD + 18
 end
 
--- Builds a card's rows top to bottom from y; returns the y below them.
-local function placeRows(card, rows, y)
+-- Builds a card's rows top to bottom from y; returns the y below them. Each
+-- row keeps its card, its caption and where it sits on the page (for search).
+local function placeRows(card, rows, y, cardY)
   for _, row in ipairs(rows) do
     local full = FULL_WIDTH[row[1]]
     local w = BUILDERS[row[1]](card, row, CARD_WIDTH - 8)
     markChanges(w, row)
+    w.card, w.caption, w.pageY = card, row[2], cardY + y
     w:SetPoint("TOPLEFT", card, "TOPLEFT", full and 4 or PAD + 2, -y)
     widgets[#widgets + 1] = w
     y = y + (ROW_HEIGHT[row[1]] or 28)
@@ -174,8 +176,9 @@ local function buildCard(child, spec, y)
   local card = T.Panel(CreateFrame("Frame", nil, child), { raised = true })
   card:SetPoint("TOPLEFT", 0, -y)
   card:SetWidth(CARD_WIDTH)
+  card.child = child
   local top = spec.title and addCardTitle(card, spec.title) or PAD
-  local height = placeRows(card, spec.rows, top) + PAD - 2
+  local height = placeRows(card, spec.rows, top, y) + PAD - 2
   card:SetHeight(height)
   return height
 end
@@ -193,11 +196,49 @@ local function updateThumb(view)
   window.thumb:SetPoint("TOPRIGHT", view, "TOPRIGHT", 12, -(view:GetVerticalScroll() or 0) / (ch - vh) * (vh - h))
 end
 
--- Scrolls a page 40 units per wheel notch, within its content.
-local function onWheel(view, delta)
-  local max = math.max(0, view.child:GetHeight() - view:GetHeight())
-  view:SetVerticalScroll(math.max(0, math.min(max, (view:GetVerticalScroll() or 0) - delta * 40)))
+-- How far a page can scroll.
+local function maxScroll(view)
+  return math.max(0, view.child:GetHeight() - view:GetHeight())
+end
+
+-- The soft edges: the top one once scrolled down, the bottom one while there's more below.
+local function updateEdges(view)
+  local scroll, max = view:GetVerticalScroll() or 0, maxScroll(view)
+  view.fadeTop:SetShown(scroll > 1)
+  view.fadeBottom:SetShown(scroll < max - 1)
+end
+
+-- Scrolls a page to y (kept within its content), with its thumb and edges.
+local function scrollTo(view, y)
+  view:SetVerticalScroll(math.max(0, math.min(maxScroll(view), y)))
   updateThumb(view)
+  updateEdges(view)
+end
+
+-- Scrolls a page 40 units per wheel notch.
+local function onWheel(view, delta)
+  scrollTo(view, (view:GetVerticalScroll() or 0) - delta * 40)
+end
+
+-- A soft edge in the window's color over one end of a page (rows fade into it).
+local function fadeEdge(holder, side)
+  local t = T.Snap(holder:CreateTexture(nil, "OVERLAY"))
+  t:SetTexture(T.Texture("Fade"))
+  T.Tint(t, "panel")
+  if side == "TOP" then t:SetTexCoord(0, 1, 1, 0) end
+  t:SetPoint(side .. "LEFT")
+  t:SetPoint(side .. "RIGHT")
+  t:SetHeight(24)
+  return t
+end
+
+-- The two edges, on a layer above the page's rows; the wheel scrolls the page.
+local function addEdges(view)
+  view:EnableMouseWheel(true)
+  local holder = CreateFrame("Frame", nil, view)
+  holder:SetAllPoints(view)
+  holder:SetFrameLevel(view:GetFrameLevel() + 10)
+  view.fadeTop, view.fadeBottom = fadeEdge(holder, "TOP"), fadeEdge(holder, "BOTTOM")
 end
 
 -- Pages --------------------------------------------------------------------------------------
@@ -218,7 +259,7 @@ local function buildPage(page)
   view.child:SetWidth(CARD_WIDTH)
   view:SetScrollChild(view.child)
   placeCards(view.child, page.rows())
-  view:EnableMouseWheel(true)
+  addEdges(view)
   view:SetScript("OnMouseWheel", onWheel)
   return view
 end
@@ -243,7 +284,15 @@ end
 
 -- The profile picker: picking one switches on reload.
 local function profileDropdown(parent)
-  return W.Dropdown(parent, profileChoices, ns.ProfileName, function(v) ns.UseProfile(v); O.NeedReload() end, 150)
+  return W.Dropdown(parent, profileChoices, ns.ProfileName, function(v) ns.UseProfile(v); O.NeedReload(); O.RebuildPage("profiles") end, 150)
+end
+
+-- Enter in the search box: opens the first page that matches and jumps to the row.
+local function searchEnter(self)
+  self:ClearFocus()
+  if not (O.matches and O.matches[1]) then return end
+  O.Show(O.matches[1])
+  O.JumpTo(self:GetText())
 end
 
 -- The header: logo and title, search, profile, close.
@@ -266,7 +315,7 @@ local function addHeaderControls(f)
   f.profile:SetPoint("RIGHT", f.close, "LEFT", -10, 0)
   f.search = W.Search(f.header, 190, "Search settings", function(text) O.Search(text) end)
   f.search:SetPoint("RIGHT", f.profile, "LEFT", -8, 0)
-  f.search:SetScript("OnEnterPressed", function(self) self:ClearFocus(); if O.matches and O.matches[1] then O.Show(O.matches[1]) end end)
+  f.search:SetScript("OnEnterPressed", searchEnter)
 end
 
 -- The addon's version from its TOC, or nil.
@@ -437,7 +486,7 @@ end
 local function appear(previous)
   if not previous then T.Sound("open") elseif previous ~= O.current then T.Sound("page") end
   if previous then T.StopFade(window) else T.FadeIn(window) end
-  if pages[O.current] then updateThumb(pages[O.current]) end
+  if pages[O.current] then scrollTo(pages[O.current], pages[O.current]:GetVerticalScroll() or 0) end
 end
 
 -- Opens the window on a page (default: the last one shown, or General).
@@ -462,9 +511,43 @@ local function pageMatches(page, text)
   return false
 end
 
+-- Throws a built page away so it's built again from its rows (its list
+-- changed), showing it again if it's the current one.
+function O.RebuildPage(key)
+  if pages[key] then pages[key]:Hide() pages[key] = nil end
+  if window and window:IsShown() and O.current == key then O.Show(key) end
+end
+
+-- The first row on a page whose caption has the (lower-case) text.
+local function firstRow(view, text)
+  for _, w in ipairs(widgets) do
+    if w.card and w.card.child == view.child and type(w.caption) == "string" and w.caption:lower():find(text, 1, true) then return w end
+  end
+end
+
+-- Marks a found row with an accent wash (the last one found loses its mark).
+local function markFound(w)
+  if window.found then window.found:Hide() end
+  w.found = w.found or W.Flat(w, "BACKGROUND", "accent")
+  w.found:SetAllPoints()
+  w.found:SetAlpha(0.18)
+  w.found:Show()
+  window.found = w.found
+end
+
+-- Scrolls the current page to the first row with the text in its caption, and marks it.
+function O.JumpTo(text)
+  local view = pages[O.current]
+  local w = view and firstRow(view, (text or ""):lower())
+  if not w then return end
+  scrollTo(view, w.pageY - 40)
+  markFound(w)
+end
+
 -- Filters the nav by search text: pages that don't match fade; Enter opens the first match.
 function O.Search(text)
   text = (text or ""):lower()
+  if window and window.found then window.found:Hide() end
   O.matches, O.matched = nil, nil
   if text ~= "" then
     O.matches, O.matched = {}, {}

@@ -385,15 +385,12 @@ local function specText()
   return string.format("Spec %d uses %s.", spec, ns.SpecProfile(spec) or "the character's profile")
 end
 
--- Buttons to switch to each other profile (up to five).
-local function profileButtons(rows)
-  local shown = 0
-  for _, name in ipairs(ns.ProfileNames()) do
-    if name ~= ns.ProfileName() and shown < 5 then
-      shown = shown + 1
-      rows[#rows + 1] = { "button", "Use " .. name, function() ns.UseProfile(name); O.NeedReload() end }
-    end
-  end
+-- Every profile, with its buttons, then the box for a new one (Core/OptionsProfiles.lua).
+local function profileListRows()
+  local rows = { { "header", "Your profiles" } }
+  for _, name in ipairs(ns.ProfileNames()) do rows[#rows + 1] = { "profile", name } end
+  rows[#rows + 1] = { "newprofile" }
+  return rows
 end
 
 -- Profiles, part one: which profile, export/import, reset.
@@ -418,12 +415,9 @@ local function specRows()
   }
 end
 
--- Profiles: export/import, reset, spec profiles, switching.
+-- Profiles: export/import, reset, spec profiles, and every profile.
 local function profileRows()
-  local rows = append(currentProfileRows(), specRows())
-  rows[#rows + 1] = { "header", "Switch profile" }
-  profileButtons(rows)
-  return rows
+  return append(append(currentProfileRows(), specRows()), profileListRows())
 end
 
 -- Raid frames: party coverage, sorting, size.
