@@ -3305,6 +3305,61 @@ it("the game's extras: each switch off leaves the game's frame alone, and missin
   expect(bare.eval("return ForeverUI_MenuStrip ~= nil and ForeverUI_QuestTracker ~= nil"), "a client without these frames still gets the strip and the spot, with nothing to pin").toBe(true);
 });
 
+// TEST-ONLY micro menu buttons in the game's micro menu: their art, a normal
+// texture the game swaps atlases on, and an alert flash.
+const MICRO_ENV = `
+  function __micro(name)
+    local b = CreateFrame("Button", name, MicroMenuContainer)
+    b:SetSize(32, 40)
+    b:CreateTexture(nil, "ARTWORK"):SetTexture("TEST-ONLY-ART")
+    b.normal = b:CreateTexture(nil, "ARTWORK")
+    b.GetNormalTexture = function(self) return self.normal end
+    b.Flash = b:CreateTexture(nil, "OVERLAY")
+    return b
+  end
+  __micro("CharacterMicroButton") __micro("MainMenuMicroButton")
+`;
+
+it("Round Four leftovers: menu glyphs, a target diamond, raid names above incoming heals", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + CLICK_LUA);
+  // A menu button's state: its icon, the icon's color, its faded art and kept flash, the icon's width.
+  const glyph = (name) => addon.eval(`local b = ${name} local art
+    for _, r in ipairs({ b:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
+    return { tex = b.fuiGlyph and b.fuiGlyph.__texture, color = b.fuiGlyph and b.fuiGlyph.__vertexColor, art = art, normal = b.normal.__alpha, flash = b.Flash.__alpha or 1, w = b.fuiGlyph and b.fuiGlyph.__width }`);
+  const char = glyph("CharacterMicroButton");
+  expect(/Icons\\Character$/.test(char.tex) && /Icons\\MenuCog$/.test(glyph("MainMenuMicroButton").tex), "each menu button gets its ForeverUI icon (a client without the rest is fine)").toBeTruthy();
+  expect(char.art === 0 && char.normal === 0 && char.flash === 1 && Math.abs(char.w - 32 * 0.7) < 1e-9, "the game's art is faded but its alert flash stays; the icon is 70% of the button").toBeTruthy();
+  expect(isTok(addon, char.color, "text2"), "the icon is text2").toBeTruthy();
+  addon.eval("CharacterMicroButton:Disable()");
+  expect(isTok(addon, glyph("CharacterMicroButton").color, "muted"), "and muted while the button is disabled").toBeTruthy();
+  addon.eval("CharacterMicroButton:Enable()");
+  expect(isTok(addon, glyph("CharacterMicroButton").color, "text2"), "back to text2 when it's enabled again").toBeTruthy();
+  addon.eval('ns.Options.Show("more")');
+  expect(addon.eval('return __click("ForeverUI icons on the menu buttons") and ForeverUIDB.profiles.Default.MenuStrip.glyphs'), "the switch is on the page").toBe(false);
+  const plain = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
+  expect(plain.eval("return CharacterMicroButton.fuiGlyph == nil and CharacterMicroButton.normal.__alpha == nil"), "switched off, the game's menu art stays").toBe(true);
+
+  const plates = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV);
+  plates.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  plates.fire("PLAYER_ENTERING_WORLD");
+  // A plate's target marker: shown, texture, color and where it's anchored.
+  const marker = (unit) => plates.eval(`local m = __plates.${unit}.fui.marker return { m:IsShown(), m.__texture, m.__vertexColor, m.__points.LEFT.relPoint }`);
+  const target = marker("nameplate1");
+  expect(target[0] === true && /Textures\\Diamond$/.test(target[1]) && isTok(plates, target[2], "accent") && target[3] === "RIGHT", "your target's plate gets an accent diamond at its right").toBeTruthy();
+  // Whether a plate's target marker shows.
+  const shown = (unit) => plates.eval(`return __plates.${unit}.fui.marker:IsShown()`);
+  expect(shown("nameplate2"), "other plates don't").toBe(false);
+  plates.eval('ForeverUIDB.profiles.Default.Nameplates.targetBorder = false ns.GetModule("Nameplates").Update(__plates.nameplate1.fui, "nameplate1")');
+  expect(shown("nameplate1"), "and it goes with the target border switch").toBe(false);
+
+  const raid = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV);
+  raid.eval('__spawn(1, "raid1")');
+  const layers = raid.eval(`local b = ForeverUI_RaidUnitButton1
+    return { b.name:GetParent() == b.texts and b.status:GetParent() == b.texts and b.role:GetParent() == b.texts and b.roleShadow:GetParent() == b.texts,
+      b.texts:GetFrameLevel() > b.heal:GetFrameLevel() and b.texts:GetFrameLevel() > b.shield:GetFrameLevel(), b.texts:GetFrameLevel() < b.overlay:GetFrameLevel() }`);
+  expect(layers, "a tile's name, role and status sit above the incoming-heal and shield bars, under the status marks").toEqual([true, true, true]);
+});
+
 // TEST-ONLY game windows: a framed window built like the game's ButtonFrameTemplate (art textures,
 // NineSlice, inset, portrait, close button, title, push buttons), a popup and a breath bar.
 const WINDOWS_ENV = `

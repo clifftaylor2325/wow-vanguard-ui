@@ -311,14 +311,16 @@ function nodeFor(f, r) {
   return el;
 }
 
-// Stacking order: strata, then frame depth, then draw layer. A frame sits
-// below its own regions; a child frame sits above its parent's regions.
+// Stacking order: strata, then frame level (a region uses its frame's), then
+// draw layer, as the client does. A frame sits below its own regions; a child
+// frame (one level up by default) sits above its parent's regions.
 function zIndexOf(ctx, f) {
   const region = REGIONS.has(f.kind);
   // A status bar's node is its fill, which the client draws in the ARTWORK layer.
   const layer = f.kind === "StatusBar" ? LAYER.ARTWORK + 1 : region ? (LAYER[f.layer] ?? 2) + 1 : 0;
-  const depth = ancestors(ctx, f).length - (region ? 1 : 0);
-  return strataOf(ctx, f) * 1000 + depth * 10 + layer;
+  const owner = region ? ctx.byId.get(f.parent) : f;
+  const level = owner?.level ?? ancestors(ctx, f).length - (region ? 1 : 0);
+  return strataOf(ctx, f) * 10000 + level * 10 + layer;
 }
 
 // Clips a node to the rect of the frame that clips it.

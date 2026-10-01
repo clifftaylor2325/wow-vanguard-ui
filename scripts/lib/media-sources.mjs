@@ -118,13 +118,53 @@ const ICON_SHAPES = {
   Waiting: [box(1.5, 6.5, 4.5, 9.5, 1.5), box(6.5, 6.5, 9.5, 9.5, 1.5), box(11.5, 6.5, 14.5, 9.5, 1.5)],
 };
 
+// A filled five-point star centered at (cx, cy) with outer radius r.
+function star(cx, cy, r) {
+  return poly(Array.from({ length: 10 }, (_, i) => {
+    const a = ((-90 + i * 36) * Math.PI) / 180;
+    const d = i % 2 ? r * 0.42 : r;
+    return [cx + d * Math.cos(a), cy + d * Math.sin(a)];
+  }));
+}
+
+// A filled circle (a fully rounded box) centered at (cx, cy).
+function dot(cx, cy, r) {
+  return box(cx - r, cy - r, cx + r, cy + r, r);
+}
+
+// A cog: a ring with eight teeth around it.
+function cog() {
+  const teeth = Array.from({ length: 8 }, (_, i) => {
+    const a = (i * 45 * Math.PI) / 180;
+    return line(8 + 4.5 * Math.cos(a), 8 + 4.5 * Math.sin(a), 8 + 6.8 * Math.cos(a), 8 + 6.8 * Math.sin(a), 2.2);
+  });
+  return [ring(8, 8, 3.8, 2), ...teeth];
+}
+
+// The micro menu glyphs (Modules/MenuStrip.lua), on the same 16-unit grid.
+const MENU_SHAPES = {
+  Character: [dot(8, 4.4, 2.8), poly(arc(8, 15, 5.5, 6.5, 0, 180))],
+  Spellbook: [frame(3, 2, 13, 14.5, 1.4, 1), line(5.6, 2, 5.6, 14.5, 1.2), line(7.6, 6, 11, 6, 1.2)],
+  Talents: [line(8, 13, 8, 8.5, 1.5), line(8, 8.5, 4, 3.5, 1.5), line(8, 8.5, 12, 3.5, 1.5), dot(4, 3.5, 1.8), dot(12, 3.5, 1.8), dot(8, 13, 1.8)],
+  Professions: [box(2.5, 2.5, 13.5, 6.5, 0.6), line(8, 6.5, 8, 14.5, 2.2)],
+  Achievements: [star(8, 8.6, 6.8)],
+  Quests: [line(8, 2.5, 8, 10, 2.6), dot(8, 13.2, 1.4)],
+  Social: [dot(5.2, 5, 2.2), dot(11, 5.6, 1.9), poly(arc(5.2, 14.5, 4, 5.5, 0, 180)), poly(arc(11.2, 14.5, 3.4, 4.6, 0, 180))],
+  Group: [path(arc(8, 8, 6.5, 4.8, 0, 180), 1.5), path(arc(8, 8, 6.5, 4.8, 180, 360), 1.5), dot(8, 8, 2.3)],
+  Collections: [box(1.5, 3, 14.5, 6.5, 0.5), frame(2.5, 6.5, 13.5, 14, 1.4), line(8, 6.5, 8, 14, 1.4)],
+  Journal: [path([[1.5, 4], [8, 5.5], [14.5, 4], [14.5, 13], [8, 14.5], [1.5, 13]], 1.4, true), line(8, 5.5, 8, 14.5, 1.4)],
+  Shop: [ring(8, 8, 5.6, 1.5), dot(8, 8, 2.2)],
+  MenuCog: cog(),
+  Help: [path([...arc(8, 6, 3.5, 3.5, 180, -60, 10), [8, 10.5]], 1.8), dot(8, 13.4, 1.2)],
+};
+
 // The two strokes of an arrow head at (x, y) pointing against (dx, dy).
 function arrowHead([x, y, dx, dy]) {
   return [line(x, y, x + 2 * dx + 2 * dy, y + 2 * dy + 2 * dx, 1.4), line(x, y, x + 2 * dx - 2 * dy, y + 2 * dy - 2 * dx, 1.4)];
 }
 
 // Name (under Media/Icons) -> the image it holds.
-export const ICONS = Object.fromEntries(Object.entries(ICON_SHAPES).map(([name, shapes]) => [name, () => draw(image(32, 32), 16, shapes)]));
+export const ICONS = Object.fromEntries(Object.entries({ ...ICON_SHAPES, ...MENU_SHAPES }).map(([name, shapes]) => [name, () => draw(image(32, 32), 16, shapes)]));
 
 // Every generated file: path under Media -> image maker.
 export const MEDIA = {

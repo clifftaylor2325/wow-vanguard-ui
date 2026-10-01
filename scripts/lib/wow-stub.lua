@@ -204,6 +204,23 @@ end
 -- Textures: desaturation, recorded.
 function methods:SetDesaturated(on) self.__desaturated = on == true end
 
+-- Buttons: whether they're enabled, recorded.
+function methods:IsEnabled() return self.__disabled ~= true end
+
+-- Enables a button, running OnEnable if it was disabled, as the client does.
+function methods:Enable()
+  local was = self.__disabled
+  self.__disabled = false
+  if was and self.__scripts.OnEnable then self.__scripts.OnEnable(self) end
+end
+
+-- Disables a button, running OnDisable if it was enabled, as the client does.
+function methods:Disable()
+  local was = self.__disabled
+  self.__disabled = true
+  if not was and self.__scripts.OnDisable then self.__scripts.OnDisable(self) end
+end
+
 -- Runs fn after a script's current handler, as HookScript does.
 function methods:HookScript(name, fn)
   local old = self.__scripts[name]
