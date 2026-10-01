@@ -16,12 +16,13 @@ local CB = ns.Module("CastBars", {
   defaults = { player = true, target = true, focus = true, hideBlizzard = true },
 })
 
--- Unit -> size and default point.
+-- Unit -> size and default point (the Centered layout; Modules/UnitFrames.lua).
 local LAYOUT = {
-  player = { w = 240, h = 18, point = { "BOTTOM", "BOTTOM", 0, 200 } },
-  -- Target and focus bars sit below their frame's debuff row (Modules/FrameAuras.lua).
-  target = { w = 220, h = 16, point = { "CENTER", "CENTER", 260, -230 } },
-  focus = { w = 160, h = 14, point = { "CENTER", "CENTER", -260, -110 } },
+  -- Yours: centered just above the action bars, between the player and target frames.
+  player = { w = 220, h = 18, point = { "BOTTOM", "BOTTOM", 0, 146 } },
+  -- The target's sits over its buff row (Modules/FrameAuras.lua), the focus's over the focus frame.
+  target = { w = 220, h = 16, point = { "BOTTOM", "BOTTOM", 240, 259 } },
+  focus = { w = 160, h = 14, point = { "BOTTOM", "BOTTOM", -270, 324 } },
 }
 -- The default sizes and points, for layouts placed around them (Core/Setup.lua).
 CB.LAYOUT = LAYOUT

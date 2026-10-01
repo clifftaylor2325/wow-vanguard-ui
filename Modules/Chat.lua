@@ -11,8 +11,13 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local CH = ns.Module("Chat", {
-  defaults = { background = true, textSize = 12 },
+  defaults = { background = true, textSize = 12, place = true },
 })
+
+-- The main chat window's spot in the Centered layout: bottom-left, under the
+-- unit frames and left of the action bars, with room for its tabs above it
+-- (it fits at any UI scale). x, y, width, height.
+CH.SPOT = { 16, 20, 420, 140 }
 
 -- Chat text sizes before the Text size setting; "game" keeps each window's own size.
 CH.SIZES = { { 10, "Small" }, { 12, "Medium" }, { 14, "Large" }, { "game", "The game's chat setting" } }
@@ -111,6 +116,15 @@ function CH.Refresh()
   CH.UpdateTabs()
 end
 
+-- Puts the main chat window in its layout spot (when that's switched on).
+function CH.Place()
+  local frame = _G.ChatFrame1
+  if not CH.settings.place or type(frame) ~= "table" then return end
+  frame:ClearAllPoints()
+  frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", CH.SPOT[1], CH.SPOT[2])
+  frame:SetSize(CH.SPOT[3], CH.SPOT[4])
+end
+
 -- Hooks a client function by name, when this client has it.
 local function after(name, fn)
   if type(hooksecurefunc) == "function" and type(_G[name]) == "function" then hooksecurefunc(name, fn) end
@@ -128,6 +142,9 @@ function CH.Enable(settings)
   CH.backgrounds = {}
   CH.SkinAll()
   T.OnChanged(CH.Refresh)
+  CH.Place()
+  ns.On("PLAYER_ENTERING_WORLD", CH.Place)
+  after("FCF_RestorePositionAndDimensions", CH.Place)
   after("FCF_OpenTemporaryWindow", CH.SkinAll)
   after("FCF_Tab_OnClick", CH.UpdateTabs)
   after("FCF_SetChatWindowFontSize", onGameSize)

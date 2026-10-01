@@ -119,7 +119,16 @@ end
 
 -- Showing -----------------------------------------------------------------------------------
 
--- Repaints one block: hidden when off or when the client can't answer.
+-- True while at least one block shows something.
+local function anyShown()
+  for _, fs in pairs(IS.texts) do
+    if fs:IsShown() then return true end
+  end
+  return false
+end
+
+-- Repaints one block: hidden when off or when the client can't answer. The
+-- strip itself hides while it has nothing to show (no empty box on screen).
 function IS.Paint(key)
   local fs = IS.texts and IS.texts[key]
   if not fs then return end
@@ -128,6 +137,7 @@ function IS.Paint(key)
   fs:SetShown(text ~= nil)
   if text and text ~= fs.last then fs:SetText(text) fs.last = text end
   if color then T.Color(fs, color) end
+  IS.frame:SetShown(anyShown())
 end
 
 -- Repaints every block.
@@ -161,6 +171,7 @@ end
 -- The movable strip, just under the minimap.
 local function build()
   local f = T.Panel(CreateFrame("Frame", "ForeverUI_InfoStrip", UIParent), { shadow = true })
+  IS.frame = f
   f:SetSize(IS.WIDTH, IS.ROW * 2 + 4)
   ns.Mover(f, "infostrip", "Info strip", { "TOPRIGHT", "TOPRIGHT", -12, -200 })
   IS.texts = {}

@@ -18,16 +18,23 @@ local UF = ns.Module("UnitFrames", {
 -- Target classification -> the color of its diamond (none for normal units).
 local CLASSIFICATION = { elite = "gold", rareelite = "accent", rare = "text2", worldboss = "bad" }
 
--- key, unit, size, label and default point (on UIParent) for each frame.
+-- key, unit, size, label and default point (on UIParent) for each frame. The
+-- Centered layout: everything anchored to the bottom center, so it keeps its
+-- shape at any UI scale. Player and target mirror each other either side of
+-- your character, the pet and target of target sit outside them on the same
+-- line, and the focus sits above the player (its debuffs under it, its cast
+-- bar over it; Modules/CastBars.lua).
 local LAYOUT = {
-  { key = "player", unit = "player", w = 220, h = 38, label = "Player", point = { "CENTER", "CENTER", -260, -170 } },
-  { key = "target", unit = "target", w = 220, h = 38, label = "Target", point = { "CENTER", "CENTER", 260, -170 } },
-  { key = "targettarget", unit = "targettarget", w = 120, h = 24, label = "Target of target", point = { "CENTER", "CENTER", 430, -200 } },
-  { key = "focus", unit = "focus", w = 160, h = 30, label = "Focus", point = { "CENTER", "CENTER", -260, -60 } },
-  { key = "pet", unit = "pet", w = 120, h = 24, label = "Pet", point = { "CENTER", "CENTER", -300, -210 } },
+  { key = "player", unit = "player", w = 220, h = 38, label = "Player", point = { "BOTTOM", "BOTTOM", -240, 196 } },
+  { key = "target", unit = "target", w = 220, h = 38, label = "Target", point = { "BOTTOM", "BOTTOM", 240, 196 } },
+  { key = "targettarget", unit = "targettarget", w = 120, h = 24, label = "Target of target", point = { "BOTTOM", "BOTTOM", 416, 196 } },
+  { key = "focus", unit = "focus", w = 160, h = 30, label = "Focus", point = { "BOTTOM", "BOTTOM", -270, 290 } },
+  { key = "pet", unit = "pet", w = 120, h = 24, label = "Pet", point = { "BOTTOM", "BOTTOM", -416, 196 } },
 }
+UF.LAYOUT = LAYOUT
 local PARTY_SIZE = 4
-local PARTY = { w = 160, h = 32, gap = 10, label = "Party", point = { "TOPLEFT", "TOPLEFT", 20, -220 } }
+-- Party 1 at the top of a column that ends 344 up, on the left above chat (where the raid frames sit too).
+local PARTY = { w = 160, h = 32, gap = 10, label = "Party", point = { "BOTTOMLEFT", "BOTTOMLEFT", 20, 470 } }
 
 -- Blizzard frames replaced when hideBlizzard is on (only those this client has).
 local BLIZZARD_FRAMES = { "PlayerFrame", "TargetFrame", "FocusFrame", "PetFrame", "PartyFrame" }
@@ -157,12 +164,15 @@ local function createText(f, role, point, x)
   return fs
 end
 
--- Lays out the bars inside a frame: health on top, power along the bottom.
+-- Lays out the bars inside a frame: health on top, power along the bottom,
+-- one screen pixel inside the border (not one UI unit, which shows a sliver
+-- of panel when the UI scale isn't pixel-perfect).
 local function layoutBars(f, powerHeight)
-  f.health:SetPoint("TOPLEFT", 1, -1)
-  f.health:SetPoint("BOTTOMRIGHT", -1, powerHeight + 2)
-  f.power:SetPoint("TOPLEFT", f.health, "BOTTOMLEFT", 0, -1)
-  f.power:SetPoint("BOTTOMRIGHT", -1, 1)
+  local px = T.Pixel(f)
+  f.health:SetPoint("TOPLEFT", px, -px)
+  f.health:SetPoint("BOTTOMRIGHT", -px, powerHeight + 2 * px)
+  f.power:SetPoint("TOPLEFT", f.health, "BOTTOMLEFT", 0, -px)
+  f.power:SetPoint("BOTTOMRIGHT", -px, px)
 end
 
 -- The secure part: which unit, left-click targets, right-click opens the menu.

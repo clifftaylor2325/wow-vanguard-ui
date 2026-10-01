@@ -127,7 +127,7 @@ end
 local function buildCorner()
   TT.corner = CreateFrame("Frame", "ForeverUI_TooltipAnchor", UIParent)
   TT.corner:SetSize(200, 80)
-  ns.Mover(TT.corner, "tooltip", "Tooltip", { "BOTTOMRIGHT", "BOTTOMRIGHT", -20, 200 })
+  ns.Mover(TT.corner, "tooltip", "Tooltip", { "BOTTOMRIGHT", "BOTTOMRIGHT", -20, 300 })
 end
 
 -- Module entry point (Core/Modules.lua).

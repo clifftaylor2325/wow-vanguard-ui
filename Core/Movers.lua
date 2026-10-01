@@ -88,6 +88,11 @@ function ns.MoverPoint(key)
   if movers[key] then return pointFor(movers[key]) end
 end
 
+-- The frame a mover places (for layout checks), or nil.
+function ns.MoverFrame(key)
+  return movers[key] and movers[key].frame
+end
+
 -- Places a mover at a point on UIParent with offsets, and saves it.
 function ns.SetMoverPoint(key, point, relPoint, x, y)
   savePosition(movers[key], point, relPoint or point, x, y)
