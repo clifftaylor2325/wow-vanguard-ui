@@ -186,9 +186,23 @@ IS.EVENTS = {
   PLAYER_MONEY = "gold", UNIT_INVENTORY_CHANGED = "ammo",
 }
 
+-- The game's frames a block replaces, hidden while that block is on: the
+-- durability figure, and the minimap clock and calendar button (/calendar still opens it).
+IS.REPLACES = { durability = { "DurabilityFrame" }, clock = { "TimeManagerClockButton", "GameTimeFrame" } }
+
+-- Hides the game's frames that switched-on blocks replace.
+local function hideReplaced(settings)
+  for key, names in pairs(IS.REPLACES) do
+    if settings[key] then
+      for _, name in ipairs(names) do ns.GetModule("UnitFrames").HideBlizzard(name) end
+    end
+  end
+end
+
 -- Module entry point (Core/Modules.lua).
 function IS.Enable(settings)
   IS.settings = settings
+  hideReplaced(settings)
   build()
   for event, key in pairs(IS.EVENTS) do ns.On(event, function() IS.Paint(key) end) end
   ns.On("BAG_UPDATE_DELAYED", function() IS.Paint("ammo") end)
