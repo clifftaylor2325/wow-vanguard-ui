@@ -187,6 +187,8 @@ end
 -- Rects are { x, y, w, h } from the tile's top-left, y growing down.
 
 RF.POWER = 3
+-- How far above the health bar the texts sit (the heal bars are one level above it).
+RF.TEXT_LEVEL = 5
 local CORNER = 10
 
 -- A text role's line height: its size (text scale included) and a pixel of air each side.
@@ -235,8 +237,8 @@ end
 local function addRoleMark(b, z)
   local size, px = T.RoleSize("barName") - 1, T.Pixel(b)
   b.roleSize = size
-  b.roleShadow = T.Tint(T.Snap(b.health:CreateTexture(nil, "OVERLAY", nil, 1)), "textShadow")
-  b.role = T.Tint(T.Snap(b.health:CreateTexture(nil, "OVERLAY", nil, 2)), "text2")
+  b.roleShadow = T.Tint(T.Snap(b.texts:CreateTexture(nil, "OVERLAY", nil, 1)), "textShadow")
+  b.role = T.Tint(T.Snap(b.texts:CreateTexture(nil, "OVERLAY", nil, 2)), "text2")
   for i, t in ipairs({ b.role, b.roleShadow }) do
     t:SetSize(size, size)
     t:SetPoint("TOPLEFT", b, "TOPLEFT", z.name[1] + (i - 1) * px, -z.name[2] - 1 - (i - 1) * px)
@@ -247,7 +249,7 @@ end
 -- ends in "..." when it's too long (outlined over the bar).
 local function addTopRow(b, z)
   addRoleMark(b, z)
-  b.name = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "barName")
+  b.name = T.Text(b.texts:CreateFontString(nil, "OVERLAY"), "barName")
   b.name:SetPoint("TOPLEFT", b.role, "TOPRIGHT", 3, 1)
   b.name:SetPoint("TOPRIGHT", b, "TOPLEFT", z.name[1] + z.name[3], -z.name[2])
   b.name:SetJustifyH("LEFT")
@@ -256,7 +258,7 @@ end
 
 -- The status line: Dead / Offline or the missing health.
 local function addStatus(b, z)
-  b.status = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "barSmall", "text2")
+  b.status = T.Text(b.texts:CreateFontString(nil, "OVERLAY"), "barSmall", "text2")
   b.status:SetPoint("TOPLEFT", b, "TOPLEFT", z.status[1], -z.status[2])
   b.status:SetWidth(z.status[3])
   b.status:SetJustifyH(z.status[5])
@@ -282,6 +284,15 @@ local function addPower(b)
   b.power:SetHeight(3)
 end
 
+-- The layer the tile's texts sit on: above the incoming-heal and shield bars
+-- (child frames of the health bar, which would otherwise cover the name) and
+-- under the status marks on the overlay.
+local function addTextLayer(b)
+  b.texts = CreateFrame("Frame", nil, b.health)
+  b.texts:SetAllPoints()
+  b.texts:SetFrameLevel(b.health:GetFrameLevel() + RF.TEXT_LEVEL)
+end
+
 -- The health bar filling the button, with its texts, power bar and overlay.
 local function addParts(b)
   local z = RF.TileZones()
@@ -289,6 +300,7 @@ local function addParts(b)
   b.health = T.StyleBar(CreateFrame("StatusBar", nil, b))
   b.health:SetPoint("TOPLEFT", px, -px)
   b.health:SetPoint("BOTTOMRIGHT", -px, px)
+  addTextLayer(b)
   addTopRow(b, z)
   addStatus(b, z)
   addPower(b)

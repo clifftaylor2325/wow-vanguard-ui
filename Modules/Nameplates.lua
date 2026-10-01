@@ -22,6 +22,8 @@ local NP = ns.Module("Nameplates", {
 })
 
 local ICON = 18
+-- The target marker's size (a diamond right of your target's plate).
+NP.MARKER = 8
 
 NP.plates = {}
 -- Every frame we built on a plate (the client reuses plates, so each gets one).
@@ -59,7 +61,17 @@ end
 
 -- Building ---------------------------------------------------------------------------------
 
--- The name above the bar (its level just left of it) and the raid icon to its left.
+-- An accent diamond just right of the plate, shown on your target's plate.
+local function addMarker(f)
+  f.marker = T.Snap(f:CreateTexture(nil, "OVERLAY"))
+  f.marker:SetTexture(T.Texture("Diamond"))
+  f.marker:SetSize(NP.MARKER, NP.MARKER)
+  f.marker:SetPoint("LEFT", f, "RIGHT", 4, 0)
+  f.marker:Hide()
+end
+
+-- The name above the bar (its level just left of it), the raid icon to its
+-- left and the target marker to its right.
 local function addTexts(f)
   f.name = T.Text(f:CreateFontString(nil, "OVERLAY"), "world")
   f.name:SetPoint("BOTTOM", f, "TOP", 0, 3)
@@ -69,6 +81,7 @@ local function addTexts(f)
   f.raidIcon:SetSize(ICON, ICON)
   f.raidIcon:SetPoint("RIGHT", f, "LEFT", -4, 0)
   f.raidIcon:Hide()
+  addMarker(f)
 end
 
 -- Your debuffs in a row over the name, soonest to expire first, with timers
@@ -139,7 +152,7 @@ local function updateLevel(f, unit)
   f.level:SetText("")
 end
 
--- Health bar, color, name and level, raid icon and target border.
+-- Health bar, color, name and level, raid icon, and your target's border and marker.
 function NP.Update(f, unit)
   f:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(f, UnitHealth(unit))
@@ -149,6 +162,8 @@ function NP.Update(f, unit)
   RS.PaintIcon(f.raidIcon, RS.RaidIcon(unit))
   local target = NP.settings.targetBorder and isTarget(unit)
   T.SetBorder(f, target and { T.Accent() } or nil)
+  f.marker:SetShown(target == true)
+  if target then T.Tint(f.marker, "accent") end
 end
 
 -- Points the debuff row at the plate's unit (the client reuses plates for other units).
@@ -245,7 +260,7 @@ function NP.OptionRows()
     { "text", "Turn the whole module off under Modules to keep the default plates." },
     { "check", "Levels, colored by how hard the unit is for you", setting("level") },
     { "check", "Threat colors while you have aggro", setting("threat") },
-    { "check", "Accent border on your target", setting("targetBorder") }, { "check", "Cast bar", setting("castBar", true) },
+    { "check", "Accent border and marker on your target", setting("targetBorder") }, { "check", "Cast bar", setting("castBar", true) },
     { "cycle", "Your debuffs shown", { { 0, "none" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", true) },
     { "check", "Timer numbers on your debuffs (reload)", setting("timers", true) },
     { "cycle", "Width", { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", true) },

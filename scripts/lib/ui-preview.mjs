@@ -24,6 +24,7 @@ for i, w in ipairs(__wfgStub.frames) do
   out[i] = {
     id = w.__id, kind = w.__kind, name = w.__name, parent = ref(w.__parent),
     template = w.__template, layer = w.__layer, sublevel = w.__sublevel, shown = w.__shown,
+    level = w.__kind ~= "Texture" and w.__kind ~= "FontString" and w:GetFrameLevel() or nil,
     width = w.__width, height = w.__height, points = points,
     text = w.__text, textColor = w.__textColor, justifyH = w.__justifyH,
     backdrop = w.__backdrop and true or false, backdropColor = w.__backdropColor,
