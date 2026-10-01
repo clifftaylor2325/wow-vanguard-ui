@@ -88,6 +88,28 @@ function ns.MoverPoint(key)
   if movers[key] then return pointFor(movers[key]) end
 end
 
+-- Pinning the game's frames ------------------------------------------------------------------
+
+-- Runs a frame's pin out of combat, flagged so its own SetPoint calls aren't seen as the game's.
+local function runPin(frame)
+  ns.OutOfCombat(function()
+    frame.fuiPinning = true
+    frame.fuiPin(frame)
+    frame.fuiPinning = false
+  end)
+end
+
+-- Keeps one of the game's frames where ForeverUI put it: apply(frame) runs now
+-- (after combat if in it) and again whenever the game moves the frame back
+-- (Edit Mode re-anchors some of its frames when it lays out).
+function ns.Pin(frame, apply)
+  frame.fuiPin = apply
+  runPin(frame)
+  if frame.fuiPinned or type(hooksecurefunc) ~= "function" then return end
+  frame.fuiPinned = true
+  hooksecurefunc(frame, "SetPoint", function(self) if not self.fuiPinning then runPin(self) end end)
+end
+
 -- The frame a mover places (for layout checks), or nil.
 function ns.MoverFrame(key)
   return movers[key] and movers[key].frame
