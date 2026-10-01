@@ -315,6 +315,14 @@ const SCENES = [
     before: `__units.player.class = "SHAMAN"
       local totems = { { "TEST-ONLY Fire", 100 }, { "TEST-ONLY Earth", 45 }, { "TEST-ONLY Water", 190 } }
       GetTotemInfo = function(slot) local t = totems[slot] if not t then return false, "", 0, 0, nil end return true, t[1], GetTime() - 10, t[2] + 10, "TEST-ONLY-ICON-" .. t[1] end` },
+  { name: "foreverui-rogue", caption: "A rogue on WoW Forever: the swing timer (main hand and off hand, from the client's own swings) and the energy tick spark on the power bar (TEST-ONLY swings)",
+    lua: `__group({ "player", "party1", "party2" })
+      __wfgStub.fire("UNIT_POWER_FREQUENT", "player", "ENERGY") __units.player.power = 60 __wfgStub.fire("UNIT_POWER_FREQUENT", "player", "ENERGY")
+      ns.GetModule("PowerTicks").bar:SetWidth(218) -- the stub has no layout; the game measures the bar
+      __wfgStub.fire("PLAYER_SWING", 2.6, 0) __wfgStub.fire("PLAYER_SWING", 1.4, 1) __wfgStub.advance(0.75)`,
+    before: `__units.player.class = "ROGUE" __units.player.power = 40 __units.player.maxpower = 100 __units.player.ptype = "ENERGY"
+      UnitPowerType = function(unit) local x = __units[unit] if x and x.ptype == "ENERGY" then return 3, "ENERGY" end return 0, "MANA" end
+      C_SwingTimer = {} Enum.PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 }` },
   { name: "foreverui-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a friendly player (TEST-ONLY units)", lua: PLATES },
   { name: "foreverui-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)
