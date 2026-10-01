@@ -255,6 +255,15 @@ local function clientLine()
   return string.format("Client %s  ·  auras on the %s  ·  aura values %s", client, ns.Auras.BackendName(), hidden)
 end
 
+-- The text line: UI scale, Text size, and how tall chat text draws on this screen.
+local function textLine()
+  local CH, frame = ns.GetModule("Chat"), _G.ChatFrame1
+  local size = (CH.settings and frame) and CH.TextSize(frame) or T.ScaledSize(T.ROLES.chat[1])
+  local percent = math.floor((T.Settings().textScale or 1) * 100 + 0.5)
+  return string.format("UI scale %.2f  ·  text %d%%  ·  chat %d (about %d px on this screen)",
+    UIParent:GetScale(), percent, size, math.floor(size * T.PixelsPerUnit() + 0.5))
+end
+
 -- /fui status
 local function statusCommand()
   local enabled = 0
@@ -264,6 +273,7 @@ local function statusCommand()
   chat(string.format("ForeverUI %s  ·  profile %s  ·  %d/%d modules on", version(), ns.ProfileName(), enabled, #ns.ModuleNames()))
   chat(string.format("%d skinned addon(s)  ·  %d painted frame(s)  ·  %d change(s) waiting on combat", #ns.SkinList(), T.PaintedCount(), ns.QueuedCount()))
   chat(clientLine())
+  chat(textLine())
 end
 
 -- /fui errors: the errors ForeverUI caught this session, newest last.
