@@ -10,9 +10,11 @@ local T, W, O = ns.Theme, ns.Widgets, ns.Options
 local WIDTH, HEIGHT, NAV_WIDTH, BAR = 780, 560, 176, 40
 local CARD_WIDTH, PAD = WIDTH - NAV_WIDTH - 40, 10
 -- Height of each row kind (modules add theirs with O.AddRowKind).
-local ROW_HEIGHT = { check = 28, cycle = 28, slider = 28, swatches = 30, button = 32, text = 20, preview = 44 }
+local ROW_HEIGHT = { check = 28, cycle = 28, slider = 28, swatches = 30, button = 32, text = 20, preview = 44, module = 40 }
 -- Row kinds laid out edge to edge in a card (the rest are indented).
-local FULL_WIDTH = { check = true, cycle = true, slider = true, swatches = true }
+local FULL_WIDTH = { check = true, cycle = true, slider = true, swatches = true, module = true }
+-- Where a row kind keeps its setter; the setting's default, if the row has one, comes right after it.
+local SETTER_AT = { check = 4, cycle = 5, slider = 5 }
 
 local window
 local pages, widgets = {}, {}
@@ -66,6 +68,18 @@ local function refreshPreview(r)
   r.bar.name:SetText("<name>  72%")
 end
 
+-- A module's switch: its name, and under it what the module does, in small muted text.
+local function moduleRow(parent, row, width)
+  local r = W.Check(parent, row[2], row[3], row[4], width)
+  r:SetHeight(ROW_HEIGHT.module)
+  r.label:ClearAllPoints()
+  r.label:SetPoint("TOPLEFT", 8, -6)
+  r.desc = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "muted")
+  r.desc:SetPoint("TOPLEFT", r.label, "BOTTOMLEFT", 0, -3)
+  r.desc:SetText(row[6])
+  return r
+end
+
 -- Row kind -> builder(parent, row, width) returning the widget.
 local BUILDERS = {
   -- One builder per row kind; each returns the widget it made.
@@ -77,12 +91,49 @@ local BUILDERS = {
   slider = function(c, r, w) return W.Slider(c, r[2], r[3], r[4], r[5], w) end,
   swatches = function(c, _, w) local r = accentRow(c, w) addSwatches(r) return r end,
   preview = function(c, _, w) local r = previewRow(c, w) r.Refresh = refreshPreview return r end,
+  module = moduleRow,
 }
 
 -- Adds a row kind: builder(parent, row, width) returns the widget; height is its row height.
 function O.AddRowKind(kind, builder, height)
   BUILDERS[kind] = builder
   ROW_HEIGHT[kind] = height
+end
+
+-- Changed from the default ------------------------------------------------------------------
+
+-- The reset dot's tooltip, where the client has one.
+local function dotTooltip(d)
+  if not GameTooltip then return end
+  GameTooltip:SetOwner(d, "ANCHOR_RIGHT")
+  GameTooltip:SetText("Changed from the default. Click to put it back.")
+  GameTooltip:Show()
+end
+
+-- A small accent dot left of a row's caption; clicking it puts the default back.
+local function resetDot(w, set, initial)
+  local d = CreateFrame("Button", nil, w)
+  d:SetSize(8, 16)
+  d:SetPoint("LEFT", 0, 0)
+  d.mark = W.Flat(d, "OVERLAY", "accent")
+  d.mark:SetSize(4, 4)
+  d.mark:SetPoint("CENTER")
+  d:SetScript("OnClick", function() set(initial); T.Sound("off"); w:Refresh() end)
+  d:SetScript("OnEnter", dotTooltip)
+  d:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+  return d
+end
+
+-- Gives a row with a default its reset dot, shown while the setting differs from the default.
+local function markChanges(w, row)
+  local at = SETTER_AT[row[1]]
+  local initial = at and row[at + 1]
+  if initial == nil then return end
+  w.reset = resetDot(w, row[at], initial)
+  local refresh = w.Refresh
+  -- The row's own refresh, then the dot: shown while changed, in the current accent.
+  w.Refresh = function(self) refresh(self) self.reset:SetShown(row[at - 1]() ~= initial) T.Tint(self.reset.mark, "accent") end
+  w:Refresh()
 end
 
 -- Cards --------------------------------------------------------------------------------------
@@ -110,6 +161,7 @@ local function placeRows(card, rows, y)
   for _, row in ipairs(rows) do
     local full = FULL_WIDTH[row[1]]
     local w = BUILDERS[row[1]](card, row, CARD_WIDTH - 8)
+    markChanges(w, row)
     w:SetPoint("TOPLEFT", card, "TOPLEFT", full and 4 or PAD + 2, -y)
     widgets[#widgets + 1] = w
     y = y + (ROW_HEIGHT[row[1]] or 28)
