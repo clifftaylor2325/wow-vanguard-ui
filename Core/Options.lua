@@ -19,20 +19,34 @@ local function moduleSettings(name)
   return ns.Settings(name, m and m.defaults or {})
 end
 
--- get/set for one module setting; reload marks a change that needs one.
+-- A module's default for one setting (nil when it has none).
+local function default(module, key)
+  local m = ns.GetModule(module)
+  return m and m.defaults and m.defaults[key]
+end
+
+-- get/set for one module setting, and its default (the window marks a changed
+-- setting and can put it back); reload marks a change that needs one.
 local function setting(module, key, reload)
   return function() return moduleSettings(module)[key] end,
-    function(v) moduleSettings(module)[key] = v; if reload then O.NeedReload() end end
+    function(v) moduleSettings(module)[key] = v; if reload then O.NeedReload() end end,
+    default(module, key)
+end
+
+-- get/set for a module setting that applies at once (after() runs on each change), and its default.
+local function liveSetting(module, key, after)
+  local get, set, initial = setting(module, key)
+  return get, function(v) set(v); after() end, initial
 end
 
 -- get/set for a raid frame setting that repaints the raid frames at once (look, power bar).
 local function raidSetting(key)
-  local get, set = setting("RaidFrames", key)
+  local get, set, initial = setting("RaidFrames", key)
   return get, function(v)
     set(v)
     local RF = ns.GetModule("RaidFrames")
     if RF and RF.settings then RF.UpdateAll() end
-  end
+  end, initial
 end
 
 -- get/set for whether action bar n is shown (applies on reload).
@@ -67,9 +81,9 @@ end
 
 -- Page rows ---------------------------------------------------------------------------
 
--- A check row: { "check", label, get, set }.
-local function check(text, get, set)
-  return { "check", text, get, set }
+-- A check row: { "check", label, get, set, default }.
+local function check(text, get, set, initial)
+  return { "check", text, get, set, initial }
 end
 
 -- The rows of b appended to a; returns a.
@@ -96,7 +110,7 @@ local function lookRows()
     { "swatches" },
     { "cycle", "Font", FONT_CHOICES, themeSetting("font") },
     { "slider", "Text size", TEXT_SIZES, themeSetting("textScale") },
-    check("Pixel-perfect UI scale (768 / screen height)", function() return T.Settings().pixelScale end,
+    check("Pixel-perfect scale (crisp 1-pixel lines)", function() return T.Settings().pixelScale end,
       function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end),
     { "button", "Reset theme", function() T.Reset() end },
   }
@@ -137,20 +151,51 @@ local function generalRows()
   return append(append(append(lookRows(), barRows()), motionRows()), layoutRows())
 end
 
--- Modules: one check per module (applies on reload).
+-- Each module's name in the window and what it does (and what it needs, if anything).
+O.MODULE_INFO = {
+  UnitFrames = { "Unit frames", "Player, target, target of target, focus, pet and party frames." },
+  CastBars = { "Cast bars", "Your cast bar, and your target's and focus's." },
+  FrameAuras = { "Target and focus auras", "Buffs and debuffs under the target and focus frames. Needs Unit frames." },
+  PlayerAuras = { "Your buffs and debuffs", "Your own auras and weapon enchants, left of the minimap." },
+  ComboPoints = { "Combo points", "Rogue and druid combo points above the target frame. Needs Unit frames." },
+  ClassBars = { "Class bars", "Shaman totems, and druid mana in forms, under the player frame. Needs Unit frames." },
+  PowerTicks = { "Power bar sparks", "The five-second rule and energy ticks on your power bar. Needs Unit frames." },
+  SwingTimer = { "Swing timer", "A row per hand that swings, from WoW Forever's own swing events." },
+  UnitExtras = { "Readouts", "Threat on your target, and your pet's happiness. Needs Unit frames." },
+  RaidFrames = { "Raid frames", "Raid (and party) tiles sorted by group or role." },
+  RaidAuras = { "Raid debuffs and HoTs", "Debuffs you can dispel, and your heals over time, on the tiles. Needs Raid frames." },
+  RaidHealing = { "Raid heals and aggro", "Incoming heals, shields, aggro and missing raid buffs. Needs Raid frames." },
+  RaidStatus = { "Raid marks", "Range fade, raid icons, ready check, resurrection, leader. Needs Raid frames." },
+  ClickCast = { "Click casting", "Cast on a frame with a click or a hover key." },
+  ActionBars = { "Action bars", "Eight bars with their own size, layout and visibility." },
+  SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, and the vehicle exit." },
+  Minimap = { "Minimap", "A square minimap with the zone and coordinates." },
+  InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo and the time, under the minimap." },
+  Chat = { "Chat", "Themed chat windows and tabs." },
+  Bags = { "Bags", "One combined bag, with a Sort button." },
+  Merchant = { "Merchant helpers", "Repair, sell gray items, and a quieter error line." },
+  DataBars = { "XP and reputation", "Thin experience and reputation bars." },
+  Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },
+  Nameplates = { "Nameplates", "Flat plates with levels, your debuffs, casts and threat." },
+}
+
+-- One module's switch, with its name and what it does (applies on reload).
+local function moduleRow(name)
+  local info = O.MODULE_INFO[name] or { name, "" }
+  return { "module", info[1], function() return ns.ModuleEnabled(name) end,
+    function(v) ns.SetModuleEnabled(name, v); O.NeedReload() end, nil, info[2] }
+end
+
+-- Modules: one switch per module.
 local function moduleRows()
   local rows = { { "header", "Modules" }, { "text", "A module that's off builds nothing and costs nothing." } }
-  for _, name in ipairs(ns.ModuleNames()) do
-    rows[#rows + 1] = check(name, function() return ns.ModuleEnabled(name) end,
-      function(v) ns.SetModuleEnabled(name, v); O.NeedReload() end)
-  end
+  for _, name in ipairs(ns.ModuleNames()) do rows[#rows + 1] = moduleRow(name) end
   return rows
 end
 
 -- get/set for a unit frame setting that repaints the frames at once.
 local function unitFrameSetting(key)
-  local get, set = setting("UnitFrames", key)
-  return get, function(v) set(v); ns.GetModule("UnitFrames").Refresh() end
+  return liveSetting("UnitFrames", key, function() ns.GetModule("UnitFrames").Refresh() end)
 end
 
 -- Unit frames, and the class bars under the player frame.
@@ -190,8 +235,7 @@ end
 
 -- get/set for one power bar spark, which switches at once.
 local function sparkSetting(key)
-  local get, set = setting("PowerTicks", key)
-  return get, function(v) set(v); local PT = ns.GetModule("PowerTicks") if PT.spark then PT.UpdateMode() end end
+  return liveSetting("PowerTicks", key, function() local PT = ns.GetModule("PowerTicks") if PT.spark then PT.UpdateMode() end end)
 end
 
 -- Combat timers: the swing timer, and the sparks on your power bar.
@@ -277,8 +321,7 @@ end
 
 -- get/set for the weapon enchant cells, which show or hide at once.
 local function enchantSetting()
-  local get, set = setting("PlayerAuras", "enchants")
-  return get, function(v) set(v); ns.GetModule("PlayerAuras").UpdateEnchants() end
+  return liveSetting("PlayerAuras", "enchants", function() ns.GetModule("PlayerAuras").UpdateEnchants() end)
 end
 
 -- Your own buffs and debuffs (by the minimap).
@@ -293,8 +336,7 @@ end
 
 -- get/set for one info strip block, which shows or hides at once.
 local function stripSetting(key)
-  local get, set = setting("InfoStrip", key)
-  return get, function(v) set(v); ns.GetModule("InfoStrip").UpdateAll() end
+  return liveSetting("InfoStrip", key, function() ns.GetModule("InfoStrip").UpdateAll() end)
 end
 
 -- The info strip under the minimap: one switch per block.

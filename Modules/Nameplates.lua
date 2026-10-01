@@ -231,13 +231,13 @@ end
 
 -- Options ------------------------------------------------------------------------------------
 
--- get/set for one of this module's settings; reload says it applies after a reload.
+-- get/set for one of this module's settings, and its default; reload says it applies after a reload.
 local function setting(key, reload)
   return function() return ns.Settings("Nameplates", NP.defaults)[key] end,
     function(v)
       ns.Settings("Nameplates", NP.defaults)[key] = v
       if reload then ns.Options.NeedReload() else each(refresh) end
-    end
+    end, NP.defaults[key]
 end
 
 -- The Nameplates page: looks first, then debuffs and size (both after a reload).
