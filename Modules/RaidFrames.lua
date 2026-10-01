@@ -2,7 +2,7 @@
 -- by role), built on the client's secure group header so the roster can
 -- change in combat. Each button shows class-colored health (softened into
 -- the panel color by default, so the outlined name stays readable), a role
--- letter and the name on the top row, then Dead / Offline or the missing
+-- mark (a shield for tanks, a cross for healers) and the name on the top row, then Dead / Offline or the missing
 -- health on the second, and a thin power bar along the bottom. With
 -- showInParty on, these frames also cover your party (and the party frames
 -- in UnitFrames aren't built).
@@ -27,8 +27,9 @@ RF.COMPACT = { { 10, 1 }, { 25, 0.8 }, { 40, 0.72 } }
 
 local MAX_UNITS = 40
 -- The class color's share of a softened bar; the rest is the panel color.
-local SOFT = 0.55
-local ROLE_LETTER = { TANK = "T", HEALER = "H", DAMAGER = "", NONE = "" }
+local SOFT = 0.7
+-- Role marks: a shield for tanks and a cross for healers; damage dealers get none.
+RF.ROLE_MARKS = { TANK = T.Icon("RoleTank"), HEALER = T.Icon("RoleHealer") }
 local BLIZZARD_FRAMES = { "CompactRaidFrameManager", "CompactRaidFrameContainer", "CompactPartyFrame" }
 
 -- Runs in the secure environment for every button the header creates: size
@@ -56,10 +57,12 @@ local function unitFrames()
   return ns.GetModule("UnitFrames")
 end
 
--- The role letter for a unit: T for tanks, H for healers, nothing otherwise.
-function RF.RoleLetter(unit)
+-- The role mark (an icon path) for a unit: a shield for tanks, a cross for
+-- healers; nil for anyone else, or when the client keeps the role hidden.
+function RF.RoleMark(unit)
   local role = type(UnitGroupRolesAssigned) == "function" and UnitGroupRolesAssigned(unit) or "NONE"
-  return ns.IsSecret(role) and "" or (ROLE_LETTER[role] or "")
+  if ns.IsSecret(role) then return nil end
+  return RF.ROLE_MARKS[role]
 end
 
 -- Missing health as short text ("-16K"); "" at full health, or when the client
@@ -90,10 +93,22 @@ end
 
 -- Updating ---------------------------------------------------------------------------------
 
--- Role letter and name on the top row; Dead / Offline, else the missing health, below.
+-- The role mark (with its shadow), or none. With no mark it narrows to one
+-- unit, so the name anchored after it starts near the row's start. Nothing is
+-- re-anchored, so this is safe in combat (the game's raid frames do the same).
+local function updateRole(b, unit)
+  local mark = RF.RoleMark(unit)
+  for _, t in ipairs({ b.role, b.roleShadow }) do
+    t:SetShown(mark ~= nil)
+    if mark then t:SetTexture(mark) end
+  end
+  b.role:SetWidth(mark and b.roleSize or 1)
+end
+
+-- Role mark and name on the top row; Dead / Offline, else the missing health, below.
 local function updateTexts(b, unit)
   b.name:SetText(UnitName(unit))
-  b.role:SetText(RF.RoleLetter(unit))
+  updateRole(b, unit)
   -- DownState, not the health text: that text can be a secret string, and
   -- comparing a secret errors ("attempt to compare ... a secret string value").
   local down = unitFrames().DownState(unit)
@@ -214,13 +229,26 @@ end
 
 -- Building ---------------------------------------------------------------------------------
 
--- Top row: the role letter, then the name, which stops at its zone's edge and
--- ends in "..." when it's too long. All outlined over the bar.
+-- The role mark at the name row's start, as tall as the name's letters, with a
+-- dark copy one pixel down and right under it, so it reads on a bright bar as
+-- the outlined name does.
+local function addRoleMark(b, z)
+  local size, px = T.RoleSize("barName") - 1, T.Pixel(b)
+  b.roleSize = size
+  b.roleShadow = T.Tint(T.Snap(b.health:CreateTexture(nil, "OVERLAY", nil, 1)), "textShadow")
+  b.role = T.Tint(T.Snap(b.health:CreateTexture(nil, "OVERLAY", nil, 2)), "text2")
+  for i, t in ipairs({ b.role, b.roleShadow }) do
+    t:SetSize(size, size)
+    t:SetPoint("TOPLEFT", b, "TOPLEFT", z.name[1] + (i - 1) * px, -z.name[2] - 1 - (i - 1) * px)
+  end
+end
+
+-- Top row: the role mark, then the name, which stops at its zone's edge and
+-- ends in "..." when it's too long (outlined over the bar).
 local function addTopRow(b, z)
-  b.role = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "barName", "text2")
-  b.role:SetPoint("TOPLEFT", b, "TOPLEFT", z.name[1], -z.name[2])
+  addRoleMark(b, z)
   b.name = T.Text(b.health:CreateFontString(nil, "OVERLAY"), "barName")
-  b.name:SetPoint("TOPLEFT", b.role, "TOPRIGHT", 3, 0)
+  b.name:SetPoint("TOPLEFT", b.role, "TOPRIGHT", 3, 1)
   b.name:SetPoint("TOPRIGHT", b, "TOPLEFT", z.name[1] + z.name[3], -z.name[2])
   b.name:SetJustifyH("LEFT")
   b.name:SetWordWrap(false)
@@ -295,7 +323,7 @@ end
 
 -- Insecure setup for a button the header created (called from RF.INIT).
 function RF.Setup(b)
-  T.Panel(b)
+  T.HudPanel(b)
   addParts(b)
   addScripts(b)
   RF.buttons[#RF.buttons + 1] = b

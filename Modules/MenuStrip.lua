@@ -46,7 +46,7 @@ end
 
 -- The strip in the bottom-right corner with the micro menu and bag bar in it.
 local function buildStrip(settings)
-  MS.strip = T.Panel(CreateFrame("Frame", "ForeverUI_MenuStrip", UIParent), { inset = true })
+  MS.strip = T.HudPanel(CreateFrame("Frame", "ForeverUI_MenuStrip", UIParent), { inset = true })
   MS.strip:SetSize(MS.WIDTH, MS.HEIGHT)
   ns.Mover(MS.strip, "menustrip", "Menu and bags", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 20 })
   pinInto("MicroMenuContainer", "LEFT", 4)

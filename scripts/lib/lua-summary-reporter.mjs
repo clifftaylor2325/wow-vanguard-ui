@@ -17,7 +17,7 @@ export const CATEGORIES = [
   ["unlock", ["unlock mode", "accent presets", "unlock popover: anchor, offsets, reset"]],
   ["special", ["special bars"]],
   ["motion", ["motion: fades, reduce motion, sounds"]],
-  ["frames", ["frames pass: bar texture, smoothing, raid style, shields, glows", "proc glow on action buttons"]],
+  ["frames", ["frames pass: bar texture, smoothing, raid style, shields, glows", "proc glow on action buttons", "brass art: a calmer HUD, soft sparks, corner diamonds and role marks"]],
   ["bars", ["action bars", "reagent and item counts show even at 0 and 1", "action bars stack with bar 1 on top", "action bar stack follows button size and rows", "a moved action bar keeps its spot until reset", "the bottom stack follows per-bar size and rows, live", "action bar paging and events", "action bar dragging", "action button cooldowns, the C_ActionBar API and range polling", "a dropped spell named by GetSpellInfo", "action bar visibility: each mode's state driver and mouseover alpha", "action bar empty slots hide until the grid shows", "the right-edge bars start off and show on mouseover when turned on", "action bar layout: per-bar buttons, rows and size, deferred in combat", "an old profile keeps its right-edge bar on Always; a fresh enable gets On mouseover", "In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone", "mouseover bars are revealed during a drag and restored after", "Hidden bar bindings stay intact", "action bar cooldown numbers in the theme's font"]],
   ["status", ["raid status marks"]],
   ["tooltip", ["tooltips"]],

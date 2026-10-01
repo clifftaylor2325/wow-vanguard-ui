@@ -1060,7 +1060,8 @@ const RAID_ENV = `
 
 // One raid button's state.
 const raidButton = (addon, i) => addon.eval(`local b = ForeverUI_RaidUnitButton${i}
-  return { hp = b.health.__value, max = b.health.__max, color = b.health.__barColor, name = b.name:GetText(), role = b.role:GetText(), status = b.status:GetText() }`);
+  return { hp = b.health.__value, max = b.health.__max, color = b.health.__barColor, name = b.name:GetText(), role = b.role:IsShown() and b.role.__texture,
+    roleW = b.role.__width, nameAfter = b.name.__points.TOPLEFT.rel == b.role, status = b.status:GetText() }`);
 
 it("a unit event reaches only the tile showing that unit", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
@@ -1089,8 +1090,9 @@ it("raid frames", () => {
   expect(/CallMethod\("initialConfigFunction"/.test(h.init) && /\*type2", "togglemenu"/.test(h.init), "each new button is sized, gets target/menu clicks, and is set up").toBeTruthy();
   addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
   const tank = raidButton(addon, 1);
-  expect(tank.hp === 300 && tank.max === 1000 && tank.name === "TEST-ONLY Tank" && tank.role === "T", "health, name and role letter").toBeTruthy();
-  const soft = 0.78 * 0.55 + (0x12 / 255) * 0.45;
+  expect(tank.hp === 300 && tank.max === 1000 && tank.name === "TEST-ONLY Tank" && /Icons\\RoleTank$/.test(tank.role), "health, name and a tank's shield").toBeTruthy();
+  expect(tank.nameAfter && raidButton(addon, 3).role === false && raidButton(addon, 3).roleW === 1 && tank.roleW > 1, "no role, no mark: it narrows, so the name after it starts near the row's start").toBeTruthy();
+  const soft = 0.78 * 0.7 + (0x12 / 255) * 0.3;
   expect(Math.abs(tank.color[0] - soft) < 1e-6, "class colors, softened into the panel color by default").toBeTruthy();
   expect(tank.status === "-700", "the second row shows missing health").toBeTruthy();
   expect(addon.eval("return ForeverUI_RaidUnitButton1.name.__font[3]") === "OUTLINE", "names over the bar are outlined").toBeTruthy();
@@ -1426,7 +1428,8 @@ const STATUS_ENV = `
 // Raid button i's status marks.
 const marks = (addon, i) => addon.eval(`local b = ForeverUI_RaidUnitButton${i}
   local function tex(t) return t:IsShown() and t.__texture end
-  return { icon = b.raidIcon:IsShown() and b.raidIcon.__texCoord, ready = tex(b.ready), rez = b.rez:IsShown(), leader = tex(b.leader), alpha = b.__alpha }`);
+  return { icon = b.raidIcon:IsShown() and b.raidIcon.__texCoord, ready = tex(b.ready), readyColor = b.ready.__vertexColor, rez = b.rez:IsShown(),
+    leader = tex(b.leader), leaderColor = b.leader.__vertexColor, leaderShadow = b.leader.shadow:IsShown(), status = b.status:IsShown(), alpha = b.__alpha }`);
 
 // The reload overlay on a button as [type, macro, key-down, sits above the button], or false.
 const reloadOverlay = (addon, path) => addon.eval(`local b = ${path} local o = b.reloadOverlay
@@ -1568,7 +1571,8 @@ it("raid status marks", () => {
   addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
   const one = marks(addon, 1);
   expect(one.icon && one.icon[0] === 0.75 && one.icon[2] === 0.25, "the skull shows from the icon sheet's eighth cell").toBeTruthy();
-  expect(one.leader === "Interface\\GroupFrame\\UI-Group-LeaderIcon" && /Assistant/.test(marks(addon, 3).leader), "leader crown and assistant mark").toBeTruthy();
+  expect(/Icons\\Crown$/.test(one.leader) && /Textures\\Diamond$/.test(marks(addon, 3).leader), "leader crown and assistant diamond").toBeTruthy();
+  expect(isTok(addon, one.leaderColor, "gold") && isTok(addon, marks(addon, 3).leaderColor, "text2") && one.leaderShadow === true, "in gold and text2, with a dark shadow under them").toBeTruthy();
   expect(marks(addon, 2).leader === false && marks(addon, 2).icon === false, "others get neither").toBeTruthy();
   expect(one.alpha === 1 && marks(addon, 3).alpha === 0.4 && marks(addon, 2).alpha === 1, "out of range fades; you never fade").toBeTruthy();
   addon.eval("__status.range.raid3 = true");
@@ -1579,17 +1583,20 @@ it("raid status marks", () => {
   expect(addon.eval("return ForeverUI_RaidUnitButton3.__alphaFromBoolean.__secret"), "a hidden range goes to the client's alpha-from-boolean").toBe(true);
   addon.eval("ForeverUI_RaidUnitButton3.SetAlphaFromBoolean = false __wfgStub.advance(0.25)");
   expect(marks(addon, 3).alpha === 1, "a hidden range never fades on a client without alpha-from-boolean").toBeTruthy();
+  expect(marks(addon, 1).status === true, "the status text shows while nothing covers the center").toBeTruthy();
   addon.eval('__status.ready = { raid1 = "ready", raid3 = "waiting" }');
   addon.fire("READY_CHECK");
-  expect(/ReadyCheck-Ready/.test(marks(addon, 1).ready) && /Waiting/.test(marks(addon, 3).ready), "ready check answers show").toBeTruthy();
+  const ready = marks(addon, 1), waiting = marks(addon, 3);
+  expect(/Icons\\Check$/.test(ready.ready) && isTok(addon, ready.readyColor, "good") && /Icons\\Waiting$/.test(waiting.ready) && isTok(addon, waiting.readyColor, "text2"), "ready check answers show in the theme's marks").toBeTruthy();
+  expect(ready.status === false && waiting.status === false && marks(addon, 2).status === true, "the status text steps aside while the center mark shows").toBeTruthy();
   addon.eval('__status.ready.raid3 = "notready"');
   addon.fire("READY_CHECK_CONFIRM", "raid3");
-  expect(/NotReady/.test(marks(addon, 3).ready), "answers update").toBeTruthy();
+  expect(/Icons\\Close$/.test(marks(addon, 3).ready) && isTok(addon, marks(addon, 3).readyColor, "bad"), "answers update").toBeTruthy();
   addon.fire("READY_CHECK_FINISHED");
-  expect(marks(addon, 1).ready === false, "and clear when the check ends (no timer on this client)").toBeTruthy();
+  expect(marks(addon, 1).ready === false && marks(addon, 1).status === true, "and clear when the check ends (no timer on this client), the status text back").toBeTruthy();
   addon.eval("__status.rez.raid3 = true");
   addon.fire("INCOMING_RESURRECT_CHANGED", "raid3");
-  expect(marks(addon, 3).rez === true && marks(addon, 1).rez === false, "a resurrection on the way is marked").toBeTruthy();
+  expect(marks(addon, 3).rez === true && marks(addon, 1).rez === false && marks(addon, 3).status === false, "a resurrection on the way is marked, over the status text").toBeTruthy();
   addon.eval("__status.icon.raid1 = { __secret = true }");
   addon.fire("RAID_TARGET_UPDATE");
   expect(marks(addon, 1).icon === false, "a hidden raid icon shows nothing").toBeTruthy();
@@ -1676,7 +1683,7 @@ const PLATE_ENV = `
 // One nameplate's state.
 const plate = (addon, unit) => addon.eval(`local p = __plates.${unit} local f = p.fui
   if not f then return { drawn = false, default = p.UnitFrame:IsShown() } end
-  local edge for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "BORDER" then edge = w.__vertexColor break end end
+  local edge for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "OVERLAY" and w.__sublevel == 7 then edge = w.__vertexColor break end end
   return { drawn = f:IsShown(), default = p.UnitFrame:IsShown(), hp = f.__value, color = f.__barColor, name = f.name:GetText(),
     dot = f.debuffs.frame.__groups[1].buttons[1].__shown and f.debuffs.frame.__groups[1].buttons[1].__icon.__texture, cast = f.cast:IsShown() and f.cast.text:GetText(), edge = edge }`);
 
@@ -1713,7 +1720,10 @@ it("nameplates", () => {
   const row = addon.eval(`local c = __plates.nameplate1.fui.debuffs.frame local b = c.__groups[1].buttons[1]
     return { unit = c.__unit, timer = b.__durationText ~= nil, mouse = b.__mouse, sort = c.__groups[1].opts.sortMethod, point = c.__points.BOTTOMLEFT.relPoint }`);
   expect(row.unit === "nameplate1" && row.timer && row.mouse === false && row.point === "TOPLEFT", "a row over the plate that follows its unit, with timers, letting clicks through").toBeTruthy();
-  expect(same(one.edge, accent), "your target gets an accent border").toBeTruthy();
+  expect(same(one.edge, accent), "your target gets an accent border (over the fill)").toBeTruthy();
+  expect(addon.eval(`local f = __plates.nameplate1.fui
+    for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and type(w.__texture) == "string" and w.__texture:find("Glow$") then return true end end
+    return f.glow ~= nil`), "and no glow: the border is enough").toBe(false);
   expect(plate(addon, "nameplate3").drawn === false && plate(addon, "nameplate3").default === true, "a plate kept from addons is left alone").toBeTruthy();
   addon.eval("__plates.nameplate1.UnitFrame:Show()");
   expect(plate(addon, "nameplate1").default === false, "the default frame stays hidden").toBeTruthy();
@@ -1883,10 +1893,54 @@ it("frames pass: bar texture, smoothing, raid style, shields, glows", () => {
   expect(isTok(addon, dark.bar, "darkBar") && dark.name[0] === 0.78, "the dark raid style: dark bars, class-colored names (at once)").toBeTruthy();
   addon.eval('ns.Options.Show("general")');
   addon.eval('__click("Bar texture")');
-  expect(addon.eval("return ns.Theme.BarTexture()") === "Interface\\Buttons\\WHITE8X8" && addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "Flat bars are an option (on reload)").toBeTruthy();
+  expect(/Media\\Textures\\BarSoft$/.test(addon.eval("return ns.Theme.BarTexture()")) && addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "Soft bars are an option (on reload)").toBeTruthy();
+  addon.eval('__click("Bar texture")');
+  expect(addon.eval("return ns.Theme.BarTexture()") === "Interface\\Buttons\\WHITE8X8", "and Flat bars").toBeTruthy();
   const glow = addon.eval(`local f = CreateFrame("Frame", nil, UIParent) local g = ns.Theme.Glow(f, 6)
     local hidden = not g[1]:IsShown() ns.Theme.ShowGlow(g, true) return { n = #g, hidden = hidden, shown = g[1]:IsShown(), tex = g[1].__texture, color = g[1].__vertexColor }`);
   expect(glow.n === 8 && glow.hidden && glow.shown && /Glow$/.test(glow.tex) && isTok(addon, glow.color, "accent"), "a glow is eight hidden Glow pieces, shown in the accent").toBeTruthy();
+});
+
+// What ForeverUI painted on a frame: soft shadow pieces, a sheen line, and the
+// layer (and sublevel) of its border.
+const paintedOn = (addon, path) => addon.eval(`local f, out = ${path}, { shadow = 0, sheen = 0 }
+  for _, w in ipairs(__wfgStub.frames) do
+    if w.__parent == f and type(w.__texture) == "string" and w.__texture:find("Shadow$") then out.shadow = out.shadow + 1 end
+    if w.__parent == f and w.__layer == "BORDER" and w.__points.TOPLEFT and w.__points.TOPLEFT.y ~= 0 then out.sheen = out.sheen + 1 end
+    if w.__parent == f and w.__points.TOPLEFT and w.__points.TOPRIGHT and w.__height and not out.edge then out.edge = { w.__layer, w.__sublevel or 0 } end
+  end
+  return out`);
+
+it("brass art: a calmer HUD, soft sparks, corner diamonds and role marks", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + TICKS_ENV + CLICK_LUA);
+  const player = paintedOn(addon, "ForeverUI_player");
+  expect(player.shadow === 0 && player.sheen === 0 && player.edge[0] === "BORDER", "HUD frames: no soft shadow, no sheen, the border under their content").toBeTruthy();
+  const cast = paintedOn(addon, "ForeverUI_CastBar_player");
+  expect(cast.shadow === 0 && cast.edge[0] === "OVERLAY" && cast.edge[1] === 7, "a status bar's border sits over its fill").toBeTruthy();
+  const window = paintedOn(addon, 'ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })');
+  expect(window.shadow === 8 && window.sheen === 1, "floating windows keep their shadow and sheen").toBeTruthy();
+  const tick = addon.eval("local s = ns.GetModule('PowerTicks').spark return { s.__texture, s.__blend, s.__width, s.__layer }");
+  expect(/Textures\\Spark$/.test(tick[0]) && tick[1] === "ADD" && tick[2] === 6 && tick[3] === "OVERLAY", "the power bar's spark is the soft Spark too").toBeTruthy();
+  addon.eval('__units.raid4 = { name = "TEST-ONLY Healer", hp = 1, maxhp = 1, power = 0, maxpower = 0, ptype = "MANA", player = true, class = "PRIEST", role = "HEALER" }');
+  addon.eval('__units.raid5 = { name = "TEST-ONLY Hidden", hp = 1, maxhp = 1, power = 0, maxpower = 0, ptype = "MANA", player = true, class = "PRIEST", role = { __secret = true } }');
+  addon.eval('__spawn(4, "raid4") __spawn(5, "raid5")');
+  const healer = raidButton(addon, 4);
+  expect(/Icons\\RoleHealer$/.test(healer.role) && raidButton(addon, 5).role === false, "healers get a cross; a hidden role shows no mark").toBeTruthy();
+  const mark = addon.eval("local b = ForeverUI_RaidUnitButton4 return { b.role.__vertexColor, b.roleShadow:IsShown(), b.roleShadow.__vertexColor, b.role.__sublevel > b.roleShadow.__sublevel }");
+  expect(isTok(addon, mark[0], "text2") && mark[1] === true && isTok(addon, mark[2], "textShadow") && mark[3] === true, "the mark is text2 over a dark shadow").toBeTruthy();
+  addon.eval('ns.Options.Show("general")');
+  expect(addon.eval('return __click("Soft shadows under frames") and ns.Theme.Settings().hudShadow') === true && addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "Soft shadows under frames is a switch (on reload)").toBeTruthy();
+  const shadowed = loggedIn(UNITS_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { theme = { hudShadow = true } }" });
+  const withShadow = paintedOn(shadowed, "ForeverUI_player");
+  expect(withShadow.shadow === 8 && withShadow.sheen === 0, "with it on, HUD frames get the soft shadow (still no sheen)").toBeTruthy();
+  const map = loggedIn(UI_ENV);
+  // Each corner diamond as [texture, color, width, the map corner it's centered on].
+  const corners = () => map.eval("local out = {} for i, d in ipairs(ns.GetModule('Minimap').corners) do out[i] = { d.__texture, d.__vertexColor, d.__width, d.__points.CENTER.relPoint } end return out");
+  const four = corners();
+  expect(four.length === 4 && four.every((c) => /Textures\\Diamond$/.test(c[0]) && isTok(map, c[1], "accent") && c[2] === 8), "four accent diamonds on the minimap").toBeTruthy();
+  expect(four.map((c) => c[3]).join(",") === "TOPLEFT,TOPRIGHT,BOTTOMLEFT,BOTTOMRIGHT", "one centered on each corner").toBeTruthy();
+  map.eval("ns.Theme.SetAccent(0.1, 0.2, 0.3)");
+  expect(corners()[0][1][2] === 0.3, "they follow the accent live").toBeTruthy();
 });
 
 it("proc glow on action buttons", () => {
@@ -2634,14 +2688,15 @@ it("cast bars: spark, seconds left, latency and the uninterruptible edge", () =>
   addon.fire("UNIT_SPELLCAST_START", "player");
   addon.eval("__wfgStub.update(1)");
   const b = addon.eval(`local b = ForeverUI_CastBar_player
-    return { time = b.time:GetText(), lag = b.lag:IsShown() and b.lag.__width, width = b:GetWidth(), spark = b.spark.__points.TOP.relPoint }`);
+    return { time = b.time:GetText(), lag = b.lag:IsShown() and b.lag.__width, width = b:GetWidth(), spark = b.spark.__points.TOP.relPoint,
+      sparkTex = b.spark.__texture, blend = b.spark.__blend, sparkW = b.spark.__width }`);
   expect(b.time === "2.0", "the seconds left, at the bar's right").toBeTruthy();
   expect(b.lag === b.width * 150 / 3000, "your latency shaded at the end of your cast (world latency)").toBeTruthy();
-  expect(b.spark === "TOPRIGHT", "a spark rides the fill's edge").toBeTruthy();
+  expect(b.spark === "TOPRIGHT" && /Textures\\Spark$/.test(b.sparkTex) && b.blend === "ADD" && b.sparkW === 8, "a soft spark (added light) rides the fill's edge").toBeTruthy();
   addon.eval('__casts.target = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000, shielded = true }');
   addon.fire("UNIT_SPELLCAST_START", "target");
   const t = addon.eval(`local b = ForeverUI_CastBar_target local edge
-    for _, w in ipairs(__wfgStub.frames) do if w.__parent == b and w.__layer == "BORDER" then edge = w.__vertexColor break end end
+    for _, w in ipairs(__wfgStub.frames) do if w.__parent == b and w.__layer == "OVERLAY" and w.__sublevel == 7 then edge = w.__vertexColor break end end
     return { lag = b.lag:IsShown(), edge = edge }`);
   expect(t.lag === false && isTok(addon, t.edge, "shielded"), "no latency on others' bars; a cast you can't interrupt gets a gray edge").toBeTruthy();
   const noStats = loggedIn(CAST_ENV + "GetNetStats = nil");

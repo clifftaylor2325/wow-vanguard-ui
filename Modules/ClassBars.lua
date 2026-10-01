@@ -89,7 +89,7 @@ end
 
 -- The thin mana bar just under the player frame, in the mana color.
 local function buildMana(player, height)
-  CB.manaHolder = T.Panel(CreateFrame("Frame", nil, player), { inset = true })
+  CB.manaHolder = T.HudPanel(CreateFrame("Frame", nil, player), { inset = true })
   CB.manaHolder:SetPoint("TOPLEFT", player, "BOTTOMLEFT", 0, -3)
   CB.manaHolder:SetPoint("TOPRIGHT", player, "BOTTOMRIGHT", 0, -3)
   CB.manaHolder:SetHeight(height)

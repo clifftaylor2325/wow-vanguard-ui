@@ -242,9 +242,9 @@ function styleImage(el, f) {
   else styleArt(el, f);
 }
 
-// Our grayscale bar texture multiplied into a fill's color, as the game tints it.
+// Our grayscale bar texture (Bar or BarSoft) multiplied into a fill's color, as the game tints it.
 function shadeFill(fill, f) {
-  const art = /Textures\\Bar$/.test(f.barTexture || "") && mediaUrl(f.barTexture);
+  const art = /Textures\\Bar(Soft)?$/.test(f.barTexture || "") && mediaUrl(f.barTexture);
   if (art) Object.assign(fill.style, { backgroundImage: `url(${art.url})`, backgroundSize: "100% 100%", backgroundBlendMode: "multiply" });
 }
 
@@ -350,11 +350,14 @@ const drawable = (ctx, f) =>
   f.layer !== "HIGHLIGHT" && !(f.checkedTexture && !ctx.byId.get(f.parent)?.checked) && !f.barFill;
 
 // Measures every font string, then draws every drawable widget. Returns the measured heights.
+// Lower sublevels go in first, so within a layer they sit under higher ones (as in game).
 window.wfgLayoutAndDraw = function layoutAndDraw({ frames, screen, media }) {
   MEDIA = media || {};
   const ctx = { frames, screen, byId: new Map(frames.map((f) => [f.id, f])), stage: document.getElementById("stage"), rects: new Map(), natural: new Map() };
   const measured = {};
   frames.filter((f) => f.kind === "FontString").forEach((f) => measure(ctx, f, measured));
-  frames.filter((f) => drawable(ctx, f)).forEach((f) => draw(ctx, f));
+  // Orders two widgets by draw sublevel (the sort is stable, so ties keep creation order).
+  const bySublevel = (a, b) => (a.sublevel ?? 0) - (b.sublevel ?? 0);
+  frames.filter((f) => drawable(ctx, f)).sort(bySublevel).forEach((f) => draw(ctx, f));
   return measured;
 };

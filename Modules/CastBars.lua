@@ -149,12 +149,10 @@ local function addParts(bar, h)
   bar.time:SetPoint("RIGHT", -4, 0)
 end
 
--- A 1 px spark riding the fill's edge, and the latency shade at the bar's end.
+-- A soft spark riding the fill's edge, and the latency shade at the bar's end.
 local function addSpark(bar)
   local fill = bar:GetStatusBarTexture()
-  bar.spark = T.Tint(T.Snap(bar:CreateTexture(nil, "OVERLAY")), "white", 0.8)
-  bar.spark:SetTexture(T.WHITE)
-  bar.spark:SetWidth(1)
+  bar.spark = T.Tint(T.Spark(bar, 8), "white", 0.8)
   bar.spark:SetPoint("TOP", fill, "TOPRIGHT")
   bar.spark:SetPoint("BOTTOM", fill, "BOTTOMRIGHT")
   bar.lag = T.Tint(T.Snap(bar:CreateTexture(nil, "ARTWORK", nil, 2)), "shade")
@@ -167,7 +165,7 @@ end
 function CB.Build(bar, w, h)
   bar:SetSize(w, h)
   T.StyleBar(bar)
-  T.Panel(bar, { inset = true, shadow = true })
+  T.HudPanel(bar, { inset = true })
   addParts(bar, h)
   addSpark(bar)
   bar:Hide()

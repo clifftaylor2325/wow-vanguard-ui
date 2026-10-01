@@ -24,7 +24,7 @@ SW.KINDS = { { "MainHand", "accent" }, { "OffHand", "text2" }, { "Ranged", "focu
 
 -- One row: a thin themed bar with the seconds left at its right end.
 local function row(holder, i, color)
-  local r = T.Panel(CreateFrame("StatusBar", nil, holder), { inset = true })
+  local r = T.HudPanel(CreateFrame("StatusBar", nil, holder), { inset = true })
   T.BarColor(T.StyleBar(r), color)
   r:SetSize(SW.WIDTH, SW.ROW)
   r:SetPoint("BOTTOM", holder, "BOTTOM", 0, (i - 1) * (SW.ROW + SW.GAP))
