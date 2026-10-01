@@ -186,6 +186,7 @@ O.MODULE_INFO = {
   Chat = { "Chat", "Themed chat windows and tabs." },
   Bags = { "Bags", "One combined bag, with a Sort button." },
   Merchant = { "Merchant helpers", "Repair, sell gray items, and a quieter error line." },
+  Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the ForeverUI look." },
   DataBars = { "XP and reputation", "Thin experience and reputation bars." },
   Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },
   Nameplates = { "Nameplates", "Flat plates with levels, your debuffs, casts and threat." },
@@ -322,6 +323,16 @@ local function chatSizeSetting()
   return liveSetting("Chat", "textSize", function() local CH = ns.GetModule("Chat") if CH.settings then CH.Refresh() end end)
 end
 
+-- The game's own windows in the ForeverUI look (after a reload).
+local function windowRows()
+  return {
+    { "header", "Game windows" },
+    check("Character, merchant, quest, loot and other windows (reload)", setting("Windows", "windows", true)),
+    check("Popups (reload)", setting("Windows", "popups", true)),
+    check("Breath and fatigue bars (reload)", setting("Windows", "timers", true)),
+  }
+end
+
 -- The game's extras: minimap buttons, the menu strip and the quest tracker (after a reload).
 local function gamePartRows()
   return {
@@ -402,6 +413,7 @@ local function morePageRows()
   local rows = append(playerAuraRows(), moreRows())
   append(rows, stripRows())
   append(rows, gamePartRows())
+  append(rows, windowRows())
   append(rows, merchantRows())
   return append(rows, tooltipRows())
 end

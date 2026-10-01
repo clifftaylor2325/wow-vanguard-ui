@@ -362,10 +362,23 @@ local function colorEdges(e, r, g, b, a)
   end
 end
 
--- Alpha-out a frame's existing texture regions (template art). Never hides.
+-- The textures ForeverUI painted on a frame (its panel, border, sheen,
+-- shadow...), so fading the game's art again leaves them alone.
+local function ownParts(frame)
+  local own, entry = {}, painted[frame]
+  for _, part in pairs(entry and entry.parts or {}) do
+    if type(part) == "table" and part.GetObjectType then own[part] = true
+    elseif type(part) == "table" then for _, p in pairs(part) do own[p] = true end end
+  end
+  return own
+end
+
+-- Alpha-out a frame's texture regions (template art), except ForeverUI's own
+-- painted parts and any in keep. Never hides; safe to run again on every show.
 function T.FadeRegions(frame, keep)
+  local own = ownParts(frame)
   for _, region in ipairs({ frame:GetRegions() }) do
-    if region.GetObjectType and region:GetObjectType() == "Texture" and not (keep and keep[region]) then
+    if region.GetObjectType and region:GetObjectType() == "Texture" and not own[region] and not (keep and keep[region]) then
       region:SetAlpha(0)
     end
   end
