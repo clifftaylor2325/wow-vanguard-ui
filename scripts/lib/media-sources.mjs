@@ -19,6 +19,25 @@ function bar() {
   });
 }
 
+// The "Soft" status bar fill: no bright top line, and only a slight darkening
+// toward the bottom, for a calmer, flatter bar.
+function barSoft() {
+  return fill(image(256, 32), (x, y) => {
+    const l = 0.97 - 0.09 * Math.pow(y / 31, 1.5);
+    return [l, l, l, 1];
+  });
+}
+
+// A spark riding a bar's fill edge: a white streak, soft at the sides and
+// fading a little toward its ends (drawn with additive blending).
+function spark() {
+  return fill(image(16, 64), (x, y) => {
+    const across = Math.exp(-Math.pow(x + 0.5 - 8, 2) / (2 * 2.2 * 2.2));
+    const along = 1 - 0.4 * Math.pow(Math.abs(y + 0.5 - 32) / 32, 2);
+    return [1, 1, 1, across * along];
+  });
+}
+
 // A soft falloff around a centered square (margin m) for nine-slice use.
 // hollow leaves the middle clear (a glow); otherwise it's filled (a shadow).
 function softBox(size, m, sigma, rgb, alpha, hollow) {
@@ -55,6 +74,10 @@ function coloredIcon() {
 // Name (under Media/Textures) -> the image it holds.
 export const TEXTURES = {
   Bar: bar,
+  BarSoft: barSoft,
+  Spark: spark,
+  // A small filled diamond (minimap corners, the assist mark), on a 16-unit grid.
+  Diamond: () => draw(image(16, 16), 16, [poly([[8, 1], [15, 8], [8, 15], [1, 8]])]),
   // Shadow (filled) and glow (hollow) share the soft falloff.
   Shadow: () => softBox(64, 16, 6, [0, 0, 0], 0.8, false),
   Glow: () => softBox(64, 16, 5, [1, 1, 1], 0.9, true),
@@ -87,6 +110,12 @@ const ICON_SHAPES = {
   Down: [path([[4, 6], [8, 10], [12, 6]], 1.8)],
   Right: [path([[6, 4], [10, 8], [6, 12]], 1.8)],
   Search: [ring(7, 7, 4.5), line(10.3, 10.3, 14, 14, 1.8)],
+  // Raid marks, filled so they read at 10 px: a tank's shield, a healer's cross,
+  // the leader's crown and three dots for a ready check still waiting.
+  RoleTank: [poly([[2.5, 2], [13.5, 2], [13.5, 7.5], [12.3, 10.6], [8, 14.5], [3.7, 10.6], [2.5, 7.5]])],
+  RoleHealer: [box(6, 1.5, 10, 14.5, 0.5), box(1.5, 6, 14.5, 10, 0.5)],
+  Crown: [poly([[2, 4.5], [5.5, 8], [8, 2.5], [10.5, 8], [14, 4.5], [13, 11.5], [3, 11.5]]), box(3, 12.5, 13, 14.5, 0.5)],
+  Waiting: [box(1.5, 6.5, 4.5, 9.5, 1.5), box(6.5, 6.5, 9.5, 9.5, 1.5), box(11.5, 6.5, 14.5, 9.5, 1.5)],
 };
 
 // The two strokes of an arrow head at (x, y) pointing against (dx, dy).

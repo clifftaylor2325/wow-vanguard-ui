@@ -99,6 +99,9 @@ function methods:SetPoint(point, ...)
   self.__points[point] = { point = point, rel = rel, relPoint = relPoint, x = x or 0, y = y or 0 }
 end
 
+-- Records a texture's blend mode ("ADD" for sparks).
+function methods:SetBlendMode(mode) self.__blend = mode end
+
 -- Records whether a texture snaps to the pixel grid.
 function methods:SetSnapToPixelGrid(snap) self.__snapToPixelGrid = snap end
 
@@ -362,7 +365,14 @@ function methods:GetName() return self.__name end
 function methods:GetObjectType() return self.__kind end
 function methods:GetScrollChild() return self.__scrollChild end
 function methods:GetParent() return self.__parent end
-function methods:CreateTexture(name, layer) return newWidget("Texture", name, self, nil, layer) end
+-- Textures record their draw layer and sublevel.
+function methods:CreateTexture(name, layer, _, sublevel)
+  local t = newWidget("Texture", name, self, nil, layer)
+  t.__sublevel = sublevel
+  return t
+end
+
+-- Font strings record their draw layer and template.
 function methods:CreateFontString(name, layer, template) return newWidget("FontString", name, self, template, layer) end
 
 -- Checks one template name against the frame type; true if it adds the backdrop mixin.

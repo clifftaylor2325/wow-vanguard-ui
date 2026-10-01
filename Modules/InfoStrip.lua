@@ -170,7 +170,7 @@ end
 
 -- The movable strip, just under the minimap.
 local function build()
-  local f = T.Panel(CreateFrame("Frame", "ForeverUI_InfoStrip", UIParent), { shadow = true })
+  local f = T.HudPanel(CreateFrame("Frame", "ForeverUI_InfoStrip", UIParent))
   IS.frame = f
   f:SetSize(IS.WIDTH, IS.ROW * 2 + 4)
   ns.Mover(f, "infostrip", "Info strip", { "TOPRIGHT", "TOPRIGHT", -12, -200 })

@@ -59,13 +59,12 @@ end
 
 -- Building ---------------------------------------------------------------------------------
 
--- The name above the bar (its level just left of it), the raid icon to its left, and the target glow around it.
+-- The name above the bar (its level just left of it) and the raid icon to its left.
 local function addTexts(f)
   f.name = T.Text(f:CreateFontString(nil, "OVERLAY"), "world")
   f.name:SetPoint("BOTTOM", f, "TOP", 0, 3)
   f.level = T.Text(f:CreateFontString(nil, "OVERLAY"), "world")
   f.level:SetPoint("RIGHT", f.name, "LEFT", -3, 0)
-  f.glow = T.Glow(f, 6)
   f.raidIcon = f:CreateTexture(nil, "OVERLAY")
   f.raidIcon:SetSize(ICON, ICON)
   f.raidIcon:SetPoint("RIGHT", f, "LEFT", -4, 0)
@@ -100,7 +99,7 @@ local function build(plate)
   local f = CreateFrame("StatusBar", nil, plate)
   f:SetSize(s.width, s.height)
   f:SetPoint("CENTER")
-  T.Panel(T.StyleBar(f), { inset = true })
+  T.HudPanel(T.StyleBar(f), { inset = true })
   addTexts(f)
   addDebuffs(f)
   if s.castBar then addCastBar(f, s) end
@@ -150,7 +149,6 @@ function NP.Update(f, unit)
   RS.PaintIcon(f.raidIcon, RS.RaidIcon(unit))
   local target = NP.settings.targetBorder and isTarget(unit)
   T.SetBorder(f, target and { T.Accent() } or nil)
-  T.ShowGlow(f.glow, target)
 end
 
 -- Points the debuff row at the plate's unit (the client reuses plates for other units).

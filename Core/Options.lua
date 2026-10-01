@@ -109,7 +109,7 @@ local function liveThemeSetting(key)
 end
 
 local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", "the game's font" } }
-local BAR_TEXTURES = { { "forever", "Forever" }, { "flat", "Flat" } }
+local BAR_TEXTURES = { { "forever", "Forever" }, { "soft", "Soft" }, { "flat", "Flat" } }
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
@@ -139,12 +139,13 @@ local function layoutRows()
   }
 end
 
--- General, bars: texture and smoothing.
+-- General, bars: texture, smoothing and shadows under the HUD.
 local function barRows()
   return {
     { "header", "Bars" },
     { "cycle", "Bar texture", BAR_TEXTURES, themeSetting("barTexture") },
     check("Smooth health and power bars", function() return T.Settings().smoothBars end, function(v) T.Settings().smoothBars = v end),
+    check("Soft shadows under frames (reload)", themeSetting("hudShadow")),
   }
 end
 

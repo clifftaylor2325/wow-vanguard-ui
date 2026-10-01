@@ -24,7 +24,7 @@ end
 
 -- One pip: a small inset panel, and its fill in the energy color.
 local function pip(bar, i, size)
-  local p = T.Panel(CreateFrame("Frame", nil, bar), { inset = true })
+  local p = T.HudPanel(CreateFrame("Frame", nil, bar), { inset = true })
   p:SetSize(size, math.floor(size / 2))
   p:SetPoint("LEFT", bar, "LEFT", (i - 1) * (size + 3), 0)
   local px = T.Pixel(p)

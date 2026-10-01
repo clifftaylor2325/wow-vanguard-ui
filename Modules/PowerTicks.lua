@@ -96,9 +96,7 @@ end
 -- The spark on the player frame's power bar, and the timer that moves it.
 local function build(bar)
   PT.bar, PT.driver = bar, CreateFrame("Frame")
-  PT.spark = T.Snap(bar:CreateTexture(nil, "OVERLAY"))
-  PT.spark:SetColorTexture(T.RGB("spark"))
-  PT.spark:SetWidth(2 * T.Pixel(bar))
+  PT.spark = T.Tint(T.Spark(bar, 6), "spark")
   PT.spark:Hide()
   PT.UpdateMode()
 end

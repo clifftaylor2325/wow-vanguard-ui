@@ -4,6 +4,8 @@
 --   * ready check answers in the middle while a check runs
 --   * a marker on dead players someone is resurrecting
 --   * a crown for the group leader, a smaller mark for assistants
+-- The ready check, leader and assist marks are ForeverUI's own icons in
+-- theme colors; the missing-health text steps aside while a center mark shows.
 --
 -- Written for WoW Forever. Every client call is looked up when used, so a
 -- missing one just switches that mark off. Values the client hides are never
@@ -12,6 +14,7 @@
 
 local ADDON, ns = ...
 
+local T = ns.Theme
 local RF = ns.GetModule("RaidFrames")
 
 local RS = ns.Module("RaidStatus", {
@@ -21,14 +24,15 @@ local RS = ns.Module("RaidStatus", {
 local RANGE_EVERY = 0.2
 local READY_LINGER = 6
 local ICONS = "Interface\\TargetingFrame\\UI-RaidTargetingIcons"
+-- Marks as { texture, color name }: ready check answers, leader and assistant.
 RS.READY = {
-  ready = "Interface\\RaidFrame\\ReadyCheck-Ready",
-  notready = "Interface\\RaidFrame\\ReadyCheck-NotReady",
-  waiting = "Interface\\RaidFrame\\ReadyCheck-Waiting",
+  ready = { T.Icon("Check"), "good" },
+  notready = { T.Icon("Close"), "bad" },
+  waiting = { T.Icon("Waiting"), "text2" },
 }
 RS.REZ = "Interface\\RaidFrame\\Raid-Icon-Rez"
-RS.LEADER = "Interface\\GroupFrame\\UI-Group-LeaderIcon"
-RS.ASSIST = "Interface\\GroupFrame\\UI-Group-AssistantIcon"
+RS.LEADER = { T.Icon("Crown"), "gold" }
+RS.ASSIST = { T.Texture("Diamond"), "text2" }
 
 -- Values -----------------------------------------------------------------------------------
 
@@ -52,14 +56,14 @@ function RS.RaidIcon(unit)
   return index
 end
 
--- The ready check texture for a unit while a check runs, or nil.
-function RS.ReadyTexture(unit)
+-- The ready check mark { texture, color } for a unit while a check runs, or nil.
+function RS.ReadyMark(unit)
   local status = plain(call("GetReadyCheckStatus", unit))
   return type(status) == "string" and RS.READY[status] or nil
 end
 
--- The leader or assistant texture for a unit, or nil.
-function RS.LeaderTexture(unit)
+-- The leader or assistant mark { texture, color } for a unit, or nil.
+function RS.LeaderMark(unit)
   if plain(call("UnitIsGroupLeader", unit)) == true then return RS.LEADER end
   if plain(call("UnitIsGroupAssistant", unit)) == true then return RS.ASSIST end
   return nil
@@ -104,6 +108,16 @@ local function mark(b, size, ...)
   return t
 end
 
+-- A dark copy of a mark one pixel down and right, under it, so a flat icon
+-- reads over a bright bar (showMark shows and hides it with the mark).
+local function addShadow(b, t, size)
+  local px = T.Pixel(b)
+  t.shadow = T.Tint(b.overlay:CreateTexture(nil, "OVERLAY", nil, 6), "textShadow")
+  t.shadow:SetSize(size, size)
+  t.shadow:SetPoint("TOPLEFT", t, "TOPLEFT", px, -px)
+  t.shadow:Hide()
+end
+
 -- Adds the marks to a raid button (RF setup hook): raid icon and leader crown
 -- on the top edge; the ready check and resurrection, which come and go, big
 -- in the center over everything (as the client's own raid frames do).
@@ -113,15 +127,22 @@ local function setup(b)
   b.ready = mark(b, big, "CENTER", 0, 0)
   b.rez = mark(b, big, "CENTER", 0, 0)
   b.rez:SetTexture(RS.REZ)
-  b.leader = mark(b, 10, "TOPLEFT", 2, 4)
+  b.leader = mark(b, 10, "TOPLEFT", 2, 5)
+  addShadow(b, b.ready, big)
+  addShadow(b, b.leader, 10)
 end
 
 -- Updating ---------------------------------------------------------------------------------
 
--- Shows a mark with a texture, or hides it when the texture is nil (or the mark is off).
-local function showTexture(t, on, texture)
-  t:SetShown(on and texture ~= nil)
-  if on and texture then t:SetTexture(texture) end
+-- Shows a mark { texture, color } tinted, with its shadow, or hides both when
+-- there's none (or the mark is off).
+local function showMark(t, on, spec)
+  local shown = on and spec ~= nil
+  for _, x in ipairs({ t, t.shadow }) do
+    x:SetShown(shown)
+    if shown then x:SetTexture(spec[1]) end
+  end
+  if shown then T.Tint(t, spec[2]) end
 end
 
 -- Shows raid target icon `index` (1-8, a cell of the 4 x 4 icon sheet) on a texture, or hides it for nil.
@@ -138,13 +159,15 @@ local function updateRaidIcon(b, unit)
   RS.PaintIcon(b.raidIcon, RS.settings.raidIcons and RS.RaidIcon(unit))
 end
 
--- Every mark on one button (RF update hook).
+-- Every mark on one button (RF update hook). The status text (missing health,
+-- Dead) hides while the ready check or resurrection mark covers the center.
 local function update(b, unit)
   local s = RS.settings
   updateRaidIcon(b, unit)
-  showTexture(b.ready, s.readyCheck and RS.readyRunning, RS.ReadyTexture(unit))
+  showMark(b.ready, s.readyCheck and RS.readyRunning, RS.ReadyMark(unit))
   b.rez:SetShown(s.resurrect and RS.Resurrecting(unit))
-  showTexture(b.leader, s.leader, RS.LeaderTexture(unit))
+  b.status:SetShown(not (b.ready:IsShown() or b.rez:IsShown()))
+  showMark(b.leader, s.leader, RS.LeaderMark(unit))
   RS.UpdateRange(b, unit)
 end
 
