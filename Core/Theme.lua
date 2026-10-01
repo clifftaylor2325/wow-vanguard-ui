@@ -230,6 +230,11 @@ function T.PixelPerfectScale()
   return 768 / screenHeight()
 end
 
+-- How many screen pixels one UI unit covers at the current UI scale (1 at pixel-perfect scale).
+function T.PixelsPerUnit()
+  return scaleOf(UIParent) * screenHeight() / 768
+end
+
 -- Four edge textures around frame (sized to one pixel when painted).
 local function edges(frame)
   local e = { top = solid(frame, "BORDER"), bottom = solid(frame, "BORDER"), left = solid(frame, "BORDER"), right = solid(frame, "BORDER") }
@@ -544,11 +549,22 @@ T.ROLES = {
   barName = { 11, true, "OUTLINE" }, barSmall = { 10, false, "OUTLINE" },
   -- Aura icons: stack counts, and the timer on larger and smaller icons.
   cooldown = { 14, true, "OUTLINE" }, auraCount = { 10, true, "OUTLINE" }, auraTimer = { 11, true, "OUTLINE" }, auraTimerSmall = { 9, true, "OUTLINE" },
+  -- Chat windows (Modules/Chat.lua picks the size; this is Medium).
+  chat = { 12 },
 }
+
+-- Every font string styled with a role: string -> role name. Weak, so text
+-- that gets collected doesn't stay; T.RefreshText re-fonts them all.
+local styled = setmetatable({}, { __mode = "k" })
+
+-- A size after the text scale setting.
+function T.ScaledSize(size)
+  return math.floor(size * (T.Settings().textScale or 1) + 0.5)
+end
 
 -- A role's font size after the text scale setting.
 local function roleSize(r)
-  return math.floor(r[1] * (T.Settings().textScale or 1) + 0.5)
+  return T.ScaledSize(r[1])
 end
 
 -- A text role's font size (by name) after the text scale setting, for layouts.
@@ -561,12 +577,24 @@ end
 function T.Text(fs, role, color)
   local r = T.ROLES[role]
   if not r then error("ForeverUI: no text role named " .. tostring(role), 2) end
+  styled[fs] = role
+  T.ApplyRole(fs, role)
+  if color ~= false then T.Color(fs, color or "text") end
+  return fs
+end
+
+-- Sets a role's font, size and shadow (or outline) on a font string; leaves its color alone.
+function T.ApplyRole(fs, role)
+  local r = T.ROLES[role]
   local path, outline = T.Font(r[2])
   fs:SetFont(path, roleSize(r), r[3] or outline)
   fs:SetShadowOffset(r[3] and 0 or 1, r[3] and 0 or -1)
   fs:SetShadowColor(T.RGB("textShadow"))
-  if color ~= false then T.Color(fs, color or "text") end
-  return fs
+end
+
+-- Re-fonts every string styled with a role (after a font or text size change).
+function T.RefreshText()
+  for fs, role in pairs(styled) do T.ApplyRole(fs, role) end
 end
 
 -- Colors a font string: a named color, r, g, b (for other addons' skins), or the accent.
@@ -586,11 +614,12 @@ function T.OnChanged(fn)
   listeners[#listeners + 1] = fn
 end
 
--- Repaints every painted frame and tells the listeners.
+-- Repaints every painted frame, re-fonts styled text and tells the listeners.
 function T.Refresh()
   for frame, entry in pairs(painted) do
     repaint(frame, entry)
   end
+  T.RefreshText()
   for _, fn in ipairs(listeners) do
     fn()
   end

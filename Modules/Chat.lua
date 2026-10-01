@@ -1,32 +1,49 @@
 -- Chat: every chat window, tab and edit box in the ForeverUI look. The
--- windows get a flat panel and the theme font (same size), tabs lose their
--- art and show the accent on the selected one, and the edit box becomes a
--- themed input. Messages are never touched: in Midnight some chat text is
--- hidden from addons, so this module only skins.
+-- windows get a flat panel and the theme font, tabs lose their art and show
+-- the accent on the selected one, and the edit box becomes a themed input.
+-- Chat text is Small, Medium or Large, scaled by the Text size setting (so
+-- one slider shrinks everything), or the size the game's own chat menu set.
+-- Messages are never touched: in Midnight some chat text is hidden from
+-- addons, so this module only skins.
 
 local ADDON, ns = ...
 
 local T = ns.Theme
 
 local CH = ns.Module("Chat", {
-  defaults = { background = true },
+  defaults = { background = true, textSize = 12 },
 })
+
+-- Chat text sizes before the Text size setting; "game" keeps each window's own size.
+CH.SIZES = { { 10, "Small" }, { 12, "Medium" }, { 14, "Large" }, { "game", "The game's chat setting" } }
 
 -- The chat window count on this client.
 local function windowCount()
   return NUM_CHAT_WINDOWS or 10
 end
 
--- A chat window's font string size, or 14.
+-- A chat window's own font size, or 14.
 local function fontSize(frame)
   local _, size = frame:GetFont()
   return ns.PlainNumber(size) or 14
 end
 
--- Theme font on a chat window, keeping its size.
-local function skinWindow(frame, settings)
+-- The size chat text draws at: the chosen size scaled by Text size, or the window's own.
+function CH.TextSize(frame)
+  local size = CH.settings.textSize
+  if type(size) ~= "number" then return fontSize(frame) end
+  return T.ScaledSize(size)
+end
+
+-- Theme font on a chat window, at the chat text size.
+function CH.FontWindow(frame)
   local path, outline = T.Font()
-  frame:SetFont(path, fontSize(frame), outline)
+  frame:SetFont(path, CH.TextSize(frame), outline)
+end
+
+-- A chat window: theme font, faded art and (if on) a flat background.
+local function skinWindow(frame, settings)
+  CH.FontWindow(frame)
   T.FadeRegions(frame)
   if settings.background then
     CH.backgrounds[frame] = CH.backgrounds[frame] or T.Panel(CreateFrame("Frame", nil, frame), { alpha = 0.55 })
@@ -85,17 +102,33 @@ function CH.SkinAll()
   CH.UpdateTabs()
 end
 
+-- Re-fonts every chat window (after a text size or font change) and re-colors the tabs.
+function CH.Refresh()
+  for i = 1, windowCount() do
+    local frame = _G["ChatFrame" .. i]
+    if frame then CH.FontWindow(frame) end
+  end
+  CH.UpdateTabs()
+end
+
+-- Hooks a client function by name, when this client has it.
+local function after(name, fn)
+  if type(hooksecurefunc) == "function" and type(_G[name]) == "function" then hooksecurefunc(name, fn) end
+end
+
+-- The game's own chat size menu re-fonts a window: put ours back (unless chat follows the game).
+local function onGameSize()
+  if type(CH.settings.textSize) == "number" then CH.Refresh() end
+end
+
 -- Module entry point (Core/Modules.lua). Chat frames aren't protected, so
 -- this runs at once; temporary windows (whispers) are skinned as they open.
 function CH.Enable(settings)
   CH.settings = settings
   CH.backgrounds = {}
   CH.SkinAll()
-  T.OnChanged(CH.UpdateTabs)
-  if type(hooksecurefunc) == "function" and type(FCF_OpenTemporaryWindow) == "function" then
-    hooksecurefunc("FCF_OpenTemporaryWindow", CH.SkinAll)
-  end
-  if type(hooksecurefunc) == "function" and type(FCF_Tab_OnClick) == "function" then
-    hooksecurefunc("FCF_Tab_OnClick", CH.UpdateTabs)
-  end
+  T.OnChanged(CH.Refresh)
+  after("FCF_OpenTemporaryWindow", CH.SkinAll)
+  after("FCF_Tab_OnClick", CH.UpdateTabs)
+  after("FCF_SetChatWindowFontSize", onGameSize)
 end
