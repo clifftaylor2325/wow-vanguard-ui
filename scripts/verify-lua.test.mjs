@@ -1400,7 +1400,7 @@ it("WoW Forever client: interface, hidden auras, no specializations", () => {
   addon.slash("spec Default");
   expect(chatHas(addon, /no specializations/), "/fui spec explains there are no specializations").toBeTruthy();
   addon.eval('ns.Options.Show("profiles")');
-  expect(shownText(addon, "SWITCH PROFILE") && !shownText(addon, "SPECIALIZATION"), "the Profiles page has no spec section").toBeTruthy();
+  expect(shownText(addon, "YOUR PROFILES") && !shownText(addon, "SPECIALIZATION"), "the Profiles page has no spec section").toBeTruthy();
   addon.eval('UnitClass = function() return "Paladin", "PALADIN" end');
   expect(addon.eval('for _, n in ipairs(ns.GetModule("RaidHealing").BuffNames()) do if n == "Greater Blessing of Kings" then return true end end'), "any blessing counts for a paladin").toBeTruthy();
 });
@@ -2224,9 +2224,63 @@ it("options slider, search, scroll, special bars and profile switch", () => {
   expect(scale.wrapped === 0.8 && Math.abs(scale.dragged - 1.05) < 1e-9 && scale.hint === true, "a slider wraps at the max, drags with the cursor, and the search hint shows while empty").toBeTruthy();
   expect(addon.eval('ns.Options.Show("actionbars") return __click("Restyle the pet, stance and extra action buttons (reload)")') === true, "the special-bars switch is on the action bar page").toBeTruthy();
   expect(addon.eval("return ForeverUIDB.profiles.Default.SpecialBars.skinPet") === false, "it turns pet, stance and extra bars off together").toBeTruthy();
-  addon.eval('ns.NewProfile("TEST-ONLY Healer") ns.Options.Show("profiles")');
-  expect(addon.eval('return __click("Use TEST-ONLY Healer")') === true, "each other profile gets a switch button").toBeTruthy();
-  expect(addon.eval("return ns.ProfileName()") === "TEST-ONLY Healer", "the button switches to that profile").toBeTruthy();
+});
+
+// The visible profile row for a name: its caption and which buttons it has.
+const profileRow = (addon, name) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+  if w.label and type(w.label.__text) == "string" and w.label.__text:sub(1, #"${name}") == "${name}" and w.card and w:IsVisible() then
+    return { w.label.__text, w.use ~= nil, w.copy ~= nil, w.delete ~= nil } end end`);
+// Clicks one of a profile row's buttons.
+const profileButton = (addon, name, button) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+  if w.label and w.label.__text == "${name}" and w.card and w:IsVisible() then local b = w.${button} b:GetScript("OnClick")(b) return b.text.__text end end`);
+
+it("options: profiles in the window", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.NewProfile("TEST-ONLY Healer") ns.NewProfile("TEST-ONLY Tank") ns.Options.Show("profiles")');
+  expect(profileRow(addon, "Default"), "the profile in use is marked and has no buttons").toEqual(["Default  (in use)", false, false, false]);
+  expect(profileRow(addon, "TEST-ONLY Healer"), "every other profile can be used, copied here or deleted").toEqual(["TEST-ONLY Healer", true, true, true]);
+  expect(profileButton(addon, "TEST-ONLY Tank", "delete"), "Delete asks first").toBe("Sure?");
+  expect(addon.eval('return ForeverUIDB.profiles["TEST-ONLY Tank"] ~= nil'), "and deletes nothing yet").toBe(true);
+  profileButton(addon, "TEST-ONLY Tank", "delete");
+  expect([addon.eval('return ForeverUIDB.profiles["TEST-ONLY Tank"] == nil'), profileRow(addon, "TEST-ONLY Tank")], "the second click deletes it, and the page rebuilds without it").toEqual([true, null]);
+  addon.eval('ForeverUIDB.profiles["TEST-ONLY Healer"].Chat = { background = false }');
+  profileButton(addon, "TEST-ONLY Healer", "copy");
+  profileButton(addon, "TEST-ONLY Healer", "copy");
+  expect(addon.eval("return ForeverUIDB.profiles.Default.Chat.background"), "Copy here (asked twice) copies that profile's settings over this one").toBe(false);
+  profileButton(addon, "TEST-ONLY Healer", "use");
+  expect([addon.eval("return ns.ProfileName()"), profileRow(addon, "TEST-ONLY Healer")[0], addon.eval("return ForeverUI_Options.reload:IsShown()")], "Use switches (on reload)").toEqual(["TEST-ONLY Healer", "TEST-ONLY Healer  (in use)", true]);
+  // The new-profile row: types a name and presses Create (or Enter); returns the row's caption.
+  const create = (name, enter) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.input and w.create and w:IsVisible() then
+    w.input:SetText("${name}") local b = ${enter ? "w.input" : "w.create"} b:GetScript(${enter ? '"OnEnterPressed"' : '"OnClick"'})(b) return w.label.__text end end`);
+  expect(create("TEST-ONLY Bad/Name"), "a bad name says why").toBe("Name taken or not allowed");
+  create("TEST-ONLY Leveling", true);
+  expect([addon.eval("return ns.ProfileName()"), profileRow(addon, "TEST-ONLY Leveling")[0]], "a good name makes the profile and switches to it").toEqual(["TEST-ONLY Leveling", "TEST-ONLY Leveling  (in use)"]);
+  addon.eval('ns.Options.Hide() ns.Options.RebuildPage("profiles")');
+  expect(addon.eval("return ForeverUI_Options:IsShown()"), "rebuilding a page while the window is closed doesn't open it").toBe(false);
+});
+
+it("options: search jumps to the row, and the page edges fade", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("");
+  // Types into the search box and presses Enter.
+  const search = (text) => addon.eval(`local s = ForeverUI_Options.search s:SetText("${text}") s:GetScript("OnTextChanged")(s) s:GetScript("OnEnterPressed")(s)`);
+  search("swing timer");
+  // The current page and the found row: page key, its caption, the page's scroll, the wash shown.
+  const found = () => addon.eval(`local f = ForeverUI_Options.found local w for _, x in ipairs(__wfgStub.frames) do if x.found == f and f then w = x end end
+    return { ns.Options.current, w and w.caption, f ~= nil and f:IsShown() }`);
+  expect(found(), "Enter opens the first page that matches and marks the row").toEqual(["modules", "Swing timer", true]);
+  search("bars, map");
+  expect(found()[2], "a new search clears the old mark (a page title match marks no row)").toBe(false);
+  search("TEST-ONLY nothing matches");
+  expect(addon.eval("return ns.Options.current"), "no match: Enter stays put").toBe("more");
+  addon.eval('ns.Options.current = "nowhere" ns.Options.JumpTo("swing")');
+  addon.eval('ns.Options.Show("unitframes")');
+  // The page's view: its edges, after scrolling to a place.
+  const edges = (y) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and w:IsVisible() then
+    w.__height, w.__scrollChild.__height = 100, 800 w:SetVerticalScroll(${y}) w:GetScript("OnMouseWheel")(w, 0) return { w.fadeTop:IsShown(), w.fadeBottom:IsShown() } end end`);
+  expect(edges(0), "at the top: only the bottom edge fades").toEqual([false, true]);
+  expect(edges(300), "midway: both").toEqual([true, true]);
+  expect(edges(700), "at the bottom: only the top").toEqual([true, false]);
 });
 
 it("choice fallback, key capture and the mouse wheel", () => {

@@ -311,7 +311,22 @@ end
 
 -- The shown state.
 function methods:IsShown() return self.__shown end
-function methods:IsVisible() return self.__shown end
+
+-- A scroll frame's offset.
+function methods:SetVerticalScroll(y) self.__scroll = y end
+function methods:GetVerticalScroll() return self.__scroll or 0 end
+
+-- Visible only while it and every parent are shown, as in game.
+function methods:IsVisible()
+  local f = self
+  while f do
+    if not f.__shown then return false end
+    f = f.__parent
+  end
+  return true
+end
+
+-- Shows or hides by a flag.
 function methods:SetShown(shown) self.__shown = not not shown end
 
 -- Script handlers: only ones the real widget type has.
