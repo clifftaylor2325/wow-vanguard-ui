@@ -1,6 +1,6 @@
 -- Nameplates in the ForeverUI look: a flat health bar in the unit's class
 -- or reaction color (or its threat color while you have aggro), the name
--- above it, your debuffs over the name, the raid target icon to the left,
+-- above it with its level (colored by how hard it is for you), your debuffs over the name, the raid target icon to the left,
 -- a cast bar under it, and an accent border on your target.
 --
 -- ForeverUI draws its own frame on each nameplate the client gives it and
@@ -18,7 +18,7 @@ local CB = ns.GetModule("CastBars")
 local RS = ns.GetModule("RaidStatus")
 
 local NP = ns.Module("Nameplates", {
-  defaults = { width = 130, height = 10, threat = true, castBar = true, debuffs = 4, targetBorder = true, timers = true },
+  defaults = { width = 130, height = 10, level = true, threat = true, castBar = true, debuffs = 4, targetBorder = true, timers = true },
 })
 
 local ICON = 18
@@ -59,10 +59,12 @@ end
 
 -- Building ---------------------------------------------------------------------------------
 
--- The name above the bar, the raid icon to its left, and the target glow around it.
+-- The name above the bar (its level just left of it), the raid icon to its left, and the target glow around it.
 local function addTexts(f)
   f.name = T.Text(f:CreateFontString(nil, "OVERLAY"), "world")
   f.name:SetPoint("BOTTOM", f, "TOP", 0, 3)
+  f.level = T.Text(f:CreateFontString(nil, "OVERLAY"), "world")
+  f.level:SetPoint("RIGHT", f.name, "LEFT", -3, 0)
   f.glow = T.Glow(f, 6)
   f.raidIcon = f:CreateTexture(nil, "OVERLAY")
   f.raidIcon:SetSize(ICON, ICON)
@@ -132,12 +134,19 @@ end
 
 -- Updating ---------------------------------------------------------------------------------
 
--- Health bar, color, name, raid icon and target border.
+-- The level left of the name, where it's switched on.
+local function updateLevel(f, unit)
+  if NP.settings.level then return ns.GetModule("UnitFrames").PaintLevel(f.level, unit) end
+  f.level:SetText("")
+end
+
+-- Health bar, color, name and level, raid icon and target border.
 function NP.Update(f, unit)
   f:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(f, UnitHealth(unit))
   f:SetStatusBarColor(NP.Color(unit))
   f.name:SetText(UnitName(unit))
+  updateLevel(f, unit)
   RS.PaintIcon(f.raidIcon, RS.RaidIcon(unit))
   local target = NP.settings.targetBorder and isTarget(unit)
   T.SetBorder(f, target and { T.Accent() } or nil)
@@ -203,8 +212,10 @@ local EVENTS = {
   PLAYER_ENTERING_WORLD = scan,
   NAME_PLATE_UNIT_ADDED = onAdded, NAME_PLATE_UNIT_REMOVED = onRemoved,
   UNIT_HEALTH = forUnit(NP.Update), UNIT_MAXHEALTH = forUnit(NP.Update), UNIT_NAME_UPDATE = forUnit(NP.Update),
-  UNIT_FACTION = forUnit(NP.Update), UNIT_THREAT_LIST_UPDATE = forUnit(NP.Update),
+  UNIT_FACTION = forUnit(NP.Update), UNIT_THREAT_LIST_UPDATE = forUnit(NP.Update), UNIT_LEVEL = forUnit(NP.Update),
   PLAYER_TARGET_CHANGED = function() each(NP.Update) end, RAID_TARGET_UPDATE = function() each(NP.Update) end,
+  -- Your new level changes how hard every unit is for you.
+  PLAYER_LEVEL_UP = function() each(NP.Update) end,
   PLAYER_REGEN_ENABLED = upgradeDebuffs,
 }
 
@@ -234,9 +245,9 @@ function NP.OptionRows()
   return {
     { "header", "Nameplates" },
     { "text", "Turn the whole module off under Modules to keep the default plates." },
+    { "check", "Levels, colored by how hard the unit is for you", setting("level") },
     { "check", "Threat colors while you have aggro", setting("threat") },
-    { "check", "Accent border on your target", setting("targetBorder") },
-    { "check", "Cast bar", setting("castBar", true) },
+    { "check", "Accent border on your target", setting("targetBorder") }, { "check", "Cast bar", setting("castBar", true) },
     { "cycle", "Your debuffs shown", { { 0, "none" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", true) },
     { "check", "Timer numbers on your debuffs (reload)", setting("timers", true) },
     { "cycle", "Width", { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", true) },

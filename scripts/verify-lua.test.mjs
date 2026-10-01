@@ -2960,3 +2960,80 @@ it("swing timer: who sees it", () => {
   addon.eval('__click("Unit frames")');
   expect(addon.eval('return __click("Swing timer") and ForeverUIDB.profiles.Default.SwingTimer.show'), "the switch is on the page").toBe("always");
 });
+
+// TEST-ONLY levels: the boar is level 12 (a yellow, even fight), the friend 14 (no color from the client).
+const LEVELS_ENV = `
+  UnitLevel = function(unit) return ({ target = 12, nameplate1 = 12, party1 = 14, nameplate2 = 14 })[unit] or 10 end
+  GetCreatureDifficultyColor = function(level) if level == 12 then return { r = 1, g = 0.82, b = 0 } end end
+`;
+
+it("nameplates show levels in the difficulty color", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + LEVELS_ENV);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
+  // A plate's level text and its color.
+  const level = (unit) => addon.eval(`local fs = __plates.${unit}.fui.level return { fs:GetText(), fs.__textColor }`);
+  expect(level("nameplate1"), "the boar's level, in the client's difficulty color, left of its name").toEqual(["12", [1, 0.82, 0, 1]]);
+  expect(level("nameplate2")[0], "a level the client gives no color for still shows").toBe("14");
+  expect(level("nameplate2")[1], "in the secondary text color").toEqual(tok(addon, "text2"));
+  addon.eval("__units.party1.level = nil UnitLevel = function(unit) return unit == 'nameplate2' and 15 or 12 end");
+  addon.fire("UNIT_LEVEL", "nameplate2");
+  expect(level("nameplate2")[0], "a unit that levels shows its new level").toBe("15");
+  addon.eval("UnitLevel = function() return 13 end");
+  addon.fire("PLAYER_LEVEL_UP", 61);
+  expect(level("nameplate1")[0], "your own level up repaints every plate").toBe("13");
+  addon.slash("");
+  addon.eval('__click("Nameplates")');
+  expect(addon.eval('return __click("Levels, colored") and __plates.nameplate1.fui.level:GetText()'), "switched off, the levels clear at once").toBe("");
+});
+
+// TEST-ONLY threat and pet: threat on the target and your pet's mood.
+const EXTRAS_ENV = `
+  __threatInfo = { false, 0, 42 }
+  UnitDetailedThreatSituation = function(a, b) return __threatInfo[1], __threatInfo[2], __threatInfo[3], 0, 0 end
+  __happy = 3
+  GetPetHappiness = function() return __happy, 0, 0 end
+`;
+
+it("threat on your target and your pet's happiness", () => {
+  const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + CLICK_LUA);
+  // The threat text above the target frame: its text and color.
+  const threat = () => addon.eval("local UX = ns.GetModule('UnitExtras') return { UX.threat:GetText(), UX.threat.__textColor, select(2, UX.threat:GetPoint()) == ForeverUI_target }");
+  expect(threat(), "under aggro, your share shows above the target frame in the secondary color").toEqual(["42%", tok(addon, "text2"), true]);
+  addon.eval("__threatInfo = { true, 3, 100 }");
+  addon.fire("UNIT_THREAT_SITUATION_UPDATE", "player");
+  expect(threat().slice(0, 2), "with aggro it turns the threat color").toEqual(["100%", tok(addon, "threat3")]);
+  addon.eval("__threatInfo = { false, 7, 99.6 }");
+  addon.fire("UNIT_THREAT_LIST_UPDATE", "target");
+  expect(threat().slice(0, 2), "rounded, and the color caps at the top threat color").toEqual(["100%", tok(addon, "threat3")]);
+  for (const info of ["{ false, { __secret = true }, 50 }", "{ false, 0, 0 }", "{ nil, nil, nil }"]) {
+    addon.eval(`__threatInfo = ${info}`);
+    addon.fire("PLAYER_TARGET_CHANGED");
+    expect(threat()[0], `no threat to show (${info}): the text clears`).toBe("");
+  }
+  // The pet's mood dot: shown, its color.
+  const dot = () => addon.eval("local d = ns.GetModule('UnitExtras').happy return { d:IsShown(), d.__color }");
+  expect(dot(), "a happy pet gets a green dot").toEqual([true, tok(addon, "good")]);
+  addon.eval("__happy = 1");
+  addon.fire("UNIT_HAPPINESS", "pet");
+  expect(dot(), "an unhappy one, red").toEqual([true, tok(addon, "bad")]);
+  addon.eval("__happy = nil");
+  addon.fire("UNIT_PET", "player");
+  expect(dot()[0], "no pet with moods: no dot").toBe(false);
+  addon.eval("GetPetHappiness = nil");
+  expect(addon.eval("return ns.GetModule('UnitExtras').Happiness()"), "a client without moods has none").toBe(null);
+  addon.slash("");
+  addon.eval('__click("Unit frames")');
+  expect(addon.eval('return __click("Your threat on your target") and ForeverUIDB.profiles.Default.UnitExtras.threat'), "the threat switch is on the page").toBe(false);
+  expect(addon.eval('return __click("happiness") and ForeverUIDB.profiles.Default.UnitExtras.happiness'), "and the pet's").toBe(false);
+});
+
+it("threat and happiness only where the client and settings allow", () => {
+  // Whether a login with this setup and these saved settings builds the threat text and the mood dot.
+  const built = (env, saved) => loggedIn(UNITS_ENV + env, saved ? { savedVariables: saved } : undefined)
+    .eval("local UX = ns.GetModule('UnitExtras') return { UX.threat ~= nil, UX.happy ~= nil }");
+  expect(built(""), "a client without either builds neither").toEqual([false, false]);
+  expect(built(EXTRAS_ENV, "ForeverUIDB.profiles = { Default = { UnitExtras = { threat = false, happiness = false } } }"), "both can be switched off").toEqual([false, false]);
+  expect(built(EXTRAS_ENV, "ForeverUIDB.profiles = { Default = { modules = { UnitFrames = false } } }"), "no unit frames, nothing to add to").toEqual([false, false]);
+  expect(loggedIn(UNITS_ENV + EXTRAS_ENV).eval("return ns.GetModule('UnitExtras').Threat ~= nil"), "the module loads").toBe(true);
+});

@@ -179,6 +179,15 @@ local function castRows()
   }
 end
 
+-- Small readouts on the unit frames: threat on your target, your pet's mood.
+local function readoutRows()
+  return {
+    { "header", "Readouts" },
+    check("Your threat on your target, above its frame (reload)", setting("UnitExtras", "threat", true)),
+    check("Your pet's happiness, a dot on the pet frame (reload)", setting("UnitExtras", "happiness", true)),
+  }
+end
+
 -- get/set for one power bar spark, which switches at once.
 local function sparkSetting(key)
   local get, set = setting("PowerTicks", key)
@@ -414,7 +423,7 @@ end
 local PAGES = {
   { key = "general", title = "General", icon = "General", order = 10, rows = generalRows },
   { key = "modules", title = "Modules", icon = "Modules", order = 20, rows = moduleRows },
-  { key = "unitframes", title = "Unit frames", icon = "UnitFrames", order = 30, rows = function() return append(append(unitFrameRows(), castRows()), timerRows()) end },
+  { key = "unitframes", title = "Unit frames", icon = "UnitFrames", order = 30, rows = function() return append(append(append(unitFrameRows(), readoutRows()), castRows()), timerRows()) end },
   { key = "raid", title = "Raid frames", icon = "RaidFrames", order = 40, rows = raidPageRows },
   { key = "actionbars", title = "Action bars", icon = "ActionBars", order = 60, rows = actionBarPageRows },
   { key = "more", title = "Bars, map, chat", icon = "Map", order = 80, rows = function() return morePageRows() end },
