@@ -2834,3 +2834,129 @@ it("setup look: accent swatches and the raid frame style apply at once", () => {
   expect(addon.eval("return ns.Settings('RaidFrames').look"), "a style button sets the raid frame style").toBe("dark");
   expect(borderOf(addon, "ForeverUI_Setup.pages[2].styles[2]"), "the chosen style is outlined").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
 });
+
+// TEST-ONLY power: your power type and your spells' costs (90001 costs mana, 90002 costs nothing).
+const TICKS_ENV = `
+  __ptype = 0
+  UnitPowerType = function() return __ptype end
+  __costs = { [90001] = { { type = 0, cost = 20 } }, [90002] = { { type = 0, cost = 0 } } }
+  C_Spell = C_Spell or {}
+  C_Spell.GetSpellPowerCost = function(id) return __costs[id] end
+`;
+
+// The spark: shown, where it sits along the bar (its TOP point's x) and whether its timer runs.
+const spark = (addon) => addon.eval(`local PT = ns.GetModule("PowerTicks") local top = PT.spark.__points.TOP
+  return { PT.spark:IsShown(), top and top.x or -1, PT.driver.__scripts.OnUpdate ~= nil }`);
+
+it("power ticks: the five-second rule after a mana spell", () => {
+  const addon = loggedIn(UNITS_ENV + TICKS_ENV);
+  addon.eval("ns.GetModule('PowerTicks').bar:SetWidth(200)");
+  expect(addon.eval("local PT = ns.GetModule('PowerTicks') return { PT.mode, PT.spark:GetParent() == ForeverUI_player.power }"), "a mana user gets the mana spark on the player frame's power bar").toEqual(["mana", true]);
+  expect(spark(addon), "no spark before a cast").toEqual([false, -1, false]);
+  addon.fire("UNIT_SPELLCAST_SUCCEEDED", "target", "x", 90001);
+  addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90002);
+  addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", { __secret: true });
+  expect(spark(addon)[0], "another unit's cast, a free spell or a hidden spell starts nothing").toBe(false);
+  addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90001);
+  expect(spark(addon), "a mana spell starts the spark at the left").toEqual([true, 0, true]);
+  addon.eval("__wfgStub.advance(2.5)");
+  expect(spark(addon)[1], "halfway through the five seconds it's halfway along").toBe(100);
+  addon.eval("__wfgStub.advance(3)");
+  expect([spark(addon)[0], spark(addon)[2]], "after five seconds it hides and its timer stops").toEqual([false, false]);
+  addon.fire("UNIT_POWER_FREQUENT", "player", "MANA");
+  expect(spark(addon)[0], "mana going up is not an energy tick").toBe(false);
+  addon.eval("C_Spell.GetSpellPowerCost = nil");
+  addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90001);
+  expect(spark(addon)[0], "a client that can't say what a spell costs: no spark").toBe(false);
+});
+
+it("power ticks: energy every two seconds, and forms switch", () => {
+  const addon = loggedIn(UNITS_ENV + TICKS_ENV + "__ptype = 3");
+  addon.eval("ns.GetModule('PowerTicks').bar:SetWidth(200)");
+  addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
+  expect(spark(addon)[0], "the first reading is only a starting point").toBe(false);
+  addon.eval("__units.player.power = 70");
+  addon.fire("UNIT_POWER_FREQUENT", "target", "ENERGY");
+  addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
+  expect(spark(addon), "energy going up is a tick: the spark starts").toEqual([true, 0, true]);
+  addon.eval("__wfgStub.advance(2.5)");
+  expect(spark(addon), "and keeps crossing every two seconds").toEqual([true, 50, true]);
+  addon.eval("__units.player.power = { __secret = true }");
+  addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
+  addon.eval("__units.player.power = 10");
+  addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
+  expect(spark(addon)[1], "a hidden value and a drop (an ability) don't restart it").toBe(50);
+  addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90001);
+  expect(spark(addon)[1], "casts don't move the energy spark").toBe(50);
+  addon.fire("UNIT_DISPLAYPOWER", "player");
+  expect(spark(addon)[0], "the same power type keeps it").toBe(true);
+  addon.eval("__ptype = 1");
+  addon.fire("UPDATE_SHAPESHIFT_FORM");
+  expect([addon.eval("return ns.GetModule('PowerTicks').mode"), ...spark(addon)], "rage (bear form) has no spark").toEqual([null, false, 50, false]);
+});
+
+it("power ticks: switches, and no player frame", () => {
+  const addon = loggedIn(UNITS_ENV + TICKS_ENV + CLICK_LUA);
+  addon.slash("");
+  addon.eval('__click("Unit frames")');
+  expect(addon.eval('return __click("Five-second rule") and ns.GetModule("PowerTicks").mode'), "the mana spark switches off at once").toBe(null);
+  expect(addon.eval('return __click("Energy tick") and ForeverUIDB.profiles.Default.PowerTicks.energy'), "the energy switch is on the page").toBe(false);
+  const off = loggedIn(UNITS_ENV + TICKS_ENV + "__ptype = 3", { savedVariables: "ForeverUIDB.profiles = { Default = { PowerTicks = { energy = false } } }" });
+  expect(off.eval("return ns.GetModule('PowerTicks').mode"), "energy switched off: no spark").toBe(null);
+  const noFrames = loggedIn(UNITS_ENV + TICKS_ENV + CLICK_LUA, { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { UnitFrames = false } } }" });
+  expect(noFrames.eval("return ns.GetModule('PowerTicks').spark == nil"), "no player frame, no spark").toBe(true);
+  noFrames.slash("");
+  noFrames.eval('__click("Unit frames")');
+  expect(noFrames.eval('return __click("Five-second rule") and ForeverUIDB.profiles.Default.PowerTicks.mana'), "the switch still saves").toBe(false);
+});
+
+// TEST-ONLY swings: a client with the swing timer, and you a warrior.
+const SWING_ENV = `
+  __units.player.class = "WARRIOR"
+  C_SwingTimer = {}
+  Enum = Enum or {}
+  Enum.PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 }
+`;
+
+// Each swing row: shown, its fill (value of max) and its seconds left.
+const swings = (addon) => addon.eval(`local SW = ns.GetModule("SwingTimer") local out = {}
+  for id = 0, 2 do local r = SW.rows[id] out[id + 1] = { r:IsShown(), r:GetValue(), select(2, r:GetMinMaxValues()), r.time:GetText() } end
+  return out`);
+
+it("swing timer: a row per hand, from the client's own swings", () => {
+  const addon = loggedIn(UNITS_ENV + SWING_ENV);
+  expect(swings(addon).map((r) => r[0]), "nothing shows before you swing").toEqual([false, false, false]);
+  addon.fire("PLAYER_SWING", 2.6, 0);
+  addon.fire("PLAYER_SWING", 1.4, 1);
+  expect(swings(addon).slice(0, 2), "main hand and off hand start empty, timed by the client").toEqual([[true, 0, 2.6, "2.6"], [true, 0, 1.4, "1.4"]]);
+  addon.eval("__wfgStub.advance(1)");
+  expect(swings(addon)[0], "a second later the main hand has filled that much").toEqual([true, 1, 2.6, "1.6"]);
+  addon.eval("__wfgStub.advance(0.5)");
+  expect(swings(addon)[1][0], "the off hand hides once its swing lands").toBe(false);
+  addon.fire("PLAYER_SWING", { __secret: true }, 0);
+  addon.fire("PLAYER_SWING", 0, 0);
+  addon.fire("PLAYER_SWING", 2, 7);
+  expect(swings(addon)[0][1], "a hidden or empty length, or an unknown hand, changes nothing").toBe(1.5);
+  addon.eval("__wfgStub.advance(2)");
+  expect([swings(addon)[0][0], addon.eval("return ForeverUI_SwingTimer.__scripts.OnUpdate == nil")], "once every swing has landed the timer stops").toEqual([false, true]);
+  addon.fire("PLAYER_SWING", 2, 2);
+  addon.fire("PLAYER_DEAD");
+  expect(swings(addon)[2][0], "dying clears the rows").toBe(false);
+});
+
+it("swing timer: who sees it", () => {
+  // Whether a login with this setup and these saved settings builds the swing rows.
+  const wanted = (env, saved) => loggedIn(UNITS_ENV + env, saved ? { savedVariables: saved } : undefined).eval("return ns.GetModule('SwingTimer').rows ~= nil");
+  expect(wanted(SWING_ENV.replace("WARRIOR", "MAGE")), "a mage doesn't, by default").toBe(false);
+  expect(wanted(SWING_ENV.replace("WARRIOR", "MAGE"), "ForeverUIDB.profiles = { Default = { SwingTimer = { show = 'always' } } }"), "unless it's set to always").toBe(true);
+  expect(wanted(SWING_ENV, "ForeverUIDB.profiles = { Default = { SwingTimer = { show = 'never' } } }"), "never is never").toBe(false);
+  expect(wanted(SWING_ENV.replace('"WARRIOR"', '{ __secret = true }')), "a hidden class: no timer").toBe(false);
+  expect(wanted(SWING_ENV.replace("C_SwingTimer = {}", "")), "a client without swings: no timer").toBe(false);
+  expect(wanted(SWING_ENV + "Enum.PlayerSwingType = nil"), "or without swing types").toBe(false);
+  const partial = loggedIn(UNITS_ENV + SWING_ENV + "Enum.PlayerSwingType = { MainHand = 0 }");
+  expect(partial.eval("local n = 0 for _ in pairs(ns.GetModule('SwingTimer').rows) do n = n + 1 end return n"), "a row only for each hand the client names").toBe(1);
+  const addon = loggedIn(UNITS_ENV + SWING_ENV + CLICK_LUA);
+  addon.slash("");
+  addon.eval('__click("Unit frames")');
+  expect(addon.eval('return __click("Swing timer") and ForeverUIDB.profiles.Default.SwingTimer.show'), "the switch is on the page").toBe("always");
+});

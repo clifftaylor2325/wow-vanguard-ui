@@ -179,6 +179,22 @@ local function castRows()
   }
 end
 
+-- get/set for one power bar spark, which switches at once.
+local function sparkSetting(key)
+  local get, set = setting("PowerTicks", key)
+  return get, function(v) set(v); local PT = ns.GetModule("PowerTicks") if PT.spark then PT.UpdateMode() end end
+end
+
+-- Combat timers: the swing timer, and the sparks on your power bar.
+local function timerRows()
+  return {
+    { "header", "Combat timers" },
+    { "cycle", "Swing timer (reload)", { { "auto", "Warriors, rogues, hunters" }, { "always", "Always" }, { "never", "Never" } }, setting("SwingTimer", "show", true) },
+    check("Five-second rule spark on your mana bar", sparkSetting("mana")),
+    check("Energy tick spark on your energy bar", sparkSetting("energy")),
+  }
+end
+
 -- get/set for restyling all three of the client's special bars at once (applies on reload).
 local function skinSpecial()
   return function() return moduleSettings("SpecialBars").skinPet end, function(v)
@@ -398,7 +414,7 @@ end
 local PAGES = {
   { key = "general", title = "General", icon = "General", order = 10, rows = generalRows },
   { key = "modules", title = "Modules", icon = "Modules", order = 20, rows = moduleRows },
-  { key = "unitframes", title = "Unit frames", icon = "UnitFrames", order = 30, rows = function() return append(unitFrameRows(), castRows()) end },
+  { key = "unitframes", title = "Unit frames", icon = "UnitFrames", order = 30, rows = function() return append(append(unitFrameRows(), castRows()), timerRows()) end },
   { key = "raid", title = "Raid frames", icon = "RaidFrames", order = 40, rows = raidPageRows },
   { key = "actionbars", title = "Action bars", icon = "ActionBars", order = 60, rows = actionBarPageRows },
   { key = "more", title = "Bars, map, chat", icon = "Map", order = 80, rows = function() return morePageRows() end },

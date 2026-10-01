@@ -44,6 +44,8 @@ local TOKENS = {
   textShadow = { "000000", 0.9 },
   -- The dark sweep over an aura icon as its time runs out.
   sweep = { "000000", 0.65 },
+  -- The spark on the power bar (the five-second rule, energy ticks) and the swing timer.
+  spark = { "ffffff", 0.9 },
   -- Text
   text = "e8eaee", text2 = "a6adb9", muted = "6b7280", white = "ffffff", gold = "ffd100",
   -- State (kept apart from the accent)
