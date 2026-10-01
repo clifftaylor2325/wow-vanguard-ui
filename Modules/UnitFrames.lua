@@ -215,7 +215,7 @@ local function createUnitFrame(key, unit, w, h, settings)
   f.unit, f.key = unit, key
   f:SetSize(w, h)
   makeSecure(f, unit)
-  T.Panel(f, { shadow = true })
+  T.HudPanel(f)
   f.health, f.power = createBar(f), createBar(f)
   layoutBars(f, settings.powerHeight)
   addTexts(f, settings)

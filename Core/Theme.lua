@@ -96,6 +96,8 @@ local DEFAULTS = {
   pixelScale = false,
   textScale = 1,
   barTexture = "forever",
+  -- Soft shadows under HUD frames (unit frames, bars, minimap); floating windows always have one.
+  hudShadow = false,
   smoothBars = true,
   reduceMotion = false,
   sounds = true,
@@ -181,9 +183,9 @@ end
 
 -- Parts --------------------------------------------------------------------------------
 
--- A solid-color texture on frame at a draw layer.
-local function solid(frame, layer)
-  local t = frame:CreateTexture(nil, layer)
+-- A solid-color texture on frame at a draw layer (and sublevel).
+local function solid(frame, layer, sublevel)
+  local t = frame:CreateTexture(nil, layer, nil, sublevel)
   t:SetTexture(T.WHITE)
   return T.Snap(t)
 end
@@ -235,9 +237,18 @@ function T.PixelsPerUnit()
   return scaleOf(UIParent) * screenHeight() / 768
 end
 
+-- Where a frame's border is drawn: a status bar's on top (its fill would cover
+-- a BORDER-layer line), anything else's under its content.
+local function edgeLayer(frame)
+  local bar = frame.GetObjectType and frame:GetObjectType() == "StatusBar"
+  if bar then return "OVERLAY", 7 end
+  return "BORDER", 0
+end
+
 -- Four edge textures around frame (sized to one pixel when painted).
 local function edges(frame)
-  local e = { top = solid(frame, "BORDER"), bottom = solid(frame, "BORDER"), left = solid(frame, "BORDER"), right = solid(frame, "BORDER") }
+  local layer, sub = edgeLayer(frame)
+  local e = { top = solid(frame, layer, sub), bottom = solid(frame, layer, sub), left = solid(frame, layer, sub), right = solid(frame, layer, sub) }
   e.top:SetPoint("TOPLEFT"); e.top:SetPoint("TOPRIGHT")
   e.bottom:SetPoint("BOTTOMLEFT"); e.bottom:SetPoint("BOTTOMRIGHT")
   e.left:SetPoint("TOPLEFT"); e.left:SetPoint("BOTTOMLEFT")
@@ -335,9 +346,23 @@ end
 
 -- Bars ---------------------------------------------------------------------------------------
 
--- The status bar texture: the bundled Bar texture, or flat when the setting says so.
+-- The status bar texture the setting picks: the bundled Bar (Forever), the
+-- calmer BarSoft (Soft), or flat.
 function T.BarTexture()
-  return T.Settings().barTexture == "flat" and T.WHITE or T.Texture("Bar")
+  local pick = T.Settings().barTexture
+  if pick == "flat" then return T.WHITE end
+  if pick == "soft" then return T.Texture("BarSoft") end
+  return T.Texture("Bar")
+end
+
+-- A soft spark (Media/Textures/Spark) on a bar's top layer, width units wide,
+-- drawn additively so it brightens the fill under it. The caller places and tints it.
+function T.Spark(bar, width)
+  local t = T.Snap(bar:CreateTexture(nil, "OVERLAY"))
+  t:SetTexture(T.Texture("Spark"))
+  t:SetBlendMode("ADD")
+  t:SetWidth(width)
+  return t
 end
 
 -- Gives a status bar the theme's bar texture.
@@ -447,6 +472,16 @@ function T.Panel(frame, opts)
   local entry = base(frame, "panel", opts)
   repaint(frame, entry)
   return frame
+end
+
+-- A panel for the HUD (unit frames, bars, the minimap...): T.Panel without
+-- the sheen, and with a soft shadow only when "Soft shadows under frames" is
+-- on, so the screen stays calm. Floating windows use T.Panel's shadow.
+function T.HudPanel(frame, opts)
+  local o = {}
+  for k, v in pairs(opts or {}) do o[k] = v end
+  o.noSheen, o.shadow = true, T.Settings().hudShadow == true
+  return T.Panel(frame, o)
 end
 
 -- Sets a painted frame's border to { r, g, b }, or back to the theme's with nil.

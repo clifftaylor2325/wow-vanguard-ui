@@ -22,6 +22,8 @@ MM.LEFTOVERS = {
   { paths = { { "AddonCompartmentFrame" } }, point = "BOTTOMRIGHT", x = -2, y = 2 },
 }
 MM.ICON_SCALE = 0.85
+-- The accent diamonds on the map's corners (UI units across).
+MM.CORNER = 8
 
 -- Zone text color tokens by PvP type (GetZonePVPInfo); gold otherwise.
 local ZONE_COLORS = {
@@ -131,7 +133,7 @@ end
 local function createHolder(size)
   local holder = CreateFrame("Frame", "ForeverUI_Minimap", UIParent)
   holder:SetSize(size + 2, size + 2)
-  T.Panel(holder, { shadow = true })
+  T.HudPanel(holder)
   ns.Mover(holder, "minimap", "Minimap", { "TOPRIGHT", "TOPRIGHT", -12, -12 })
   return holder
 end
@@ -162,11 +164,35 @@ local function addTexts(holder)
   T.Color(MM.coords, "text")
 end
 
+-- Tints the corner diamonds in the accent (again after every theme change).
+local function paintCorners()
+  for _, d in ipairs(MM.corners) do T.Tint(d, "accent") end
+end
+
+-- One accent diamond centered on a corner of the map's overlay, under the
+-- game buttons that sit in that corner.
+local function cornerMark(overlay, point)
+  local d = T.Snap(overlay:CreateTexture(nil, "ARTWORK"))
+  d:SetTexture(T.Texture("Diamond"))
+  d:SetSize(MM.CORNER, MM.CORNER)
+  d:SetPoint("CENTER", overlay, point)
+  return d
+end
+
+-- The four corner diamonds; they follow the accent live.
+local function addCorners(overlay)
+  MM.corners = {}
+  for _, point in ipairs({ "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }) do MM.corners[#MM.corners + 1] = cornerMark(overlay, point) end
+  paintCorners()
+  T.OnChanged(paintCorners)
+end
+
 -- Builds the minimap frame. Out of combat, since it moves Blizzard frames.
 local function build(settings)
   local holder = createHolder(settings.size)
   adoptMinimap(holder, settings.size)
   addTexts(holder)
+  addCorners(MM.overlay)
   fadeArt()
   if settings.icons then for _, spec in ipairs(MM.LEFTOVERS) do placeLeftover(spec) end end
   if settings.coords then coordsTicker(holder) end
