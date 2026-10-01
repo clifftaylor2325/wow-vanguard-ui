@@ -265,6 +265,8 @@ local UNIT_EVENTS = {
   UNIT_MAXPOWER = UF.UpdatePower,
   UNIT_DISPLAYPOWER = UF.UpdatePower,
   UNIT_NAME_UPDATE = UF.UpdateName,
+  -- A unit's level changed (you dinged, or your target did): its level text.
+  UNIT_LEVEL = UF.UpdateName,
 }
 
 -- Frame OnEvent: a unit event for this frame's unit.
@@ -308,6 +310,8 @@ local GLOBAL_EVENTS = {
   PLAYER_FOCUS_CHANGED = { focus = true },
   UNIT_PET = { pet = true },
   GROUP_ROSTER_UPDATE = { party1 = true, party2 = true, party3 = true, party4 = true },
+  -- Your new level changes how hard every other unit is for you (the level colors).
+  PLAYER_LEVEL_UP = false,
 }
 
 -- Refreshes the frames a global event affects.
