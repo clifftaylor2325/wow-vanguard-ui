@@ -49,6 +49,7 @@ Modules/RaidFrames.lua
 Modules/RaidAuras.lua
 Modules/RaidHealing.lua
 Modules/RaidStatus.lua
+Modules/RaidTools.lua
 Modules/ActionBars.lua
 Modules/ActionBarLayout.lua
 Modules/SpecialBars.lua

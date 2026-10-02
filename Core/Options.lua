@@ -178,6 +178,7 @@ O.MODULE_INFO = {
   RaidAuras = { "Raid debuffs and HoTs", "Debuffs you can dispel, and your heals over time, on the tiles. Needs Raid frames." },
   RaidHealing = { "Raid heals and aggro", "Incoming heals, shields, aggro and missing raid buffs. Needs Raid frames." },
   RaidStatus = { "Raid marks", "Range fade, raid icons, ready check, resurrection, leader. Needs Raid frames." },
+  RaidTools = { "Raid tools", "For the leader and assistants: ready check, pull timer, role check, target icons and world markers." },
   ClickCast = { "Click casting", "Cast on a frame with a click or a hover key." },
   ActionBars = { "Action bars", "Eight bars with their own size, layout and visibility." },
   SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, and the vehicle exit." },
@@ -222,6 +223,7 @@ local function unitFrameRows()
     check("Show health numbers", unitFrameSetting("healthText")),
     { "cycle", "Health as", { { "value", "Value (42.8K)" }, { "percent", "Percent (84%)" } }, unitFrameSetting("healthFormat") },
     check("Show levels (reload)", setting("UnitFrames", "showLevel", true)),
+    check("Boss frames, top left (reload)", setting("UnitFrames", "boss", true)),
     check("Shaman totems under the player frame (reload)", setting("ClassBars", "totems", true)),
     check("Druid mana under the player frame in bear and cat form (reload)", setting("ClassBars", "druidMana", true)),
   }
@@ -494,9 +496,9 @@ end
 local function raidRows()
   return {
     { "header", "Raid frames" },
-    check("Use them for your party too", setting("RaidFrames", "showInParty", true)),
-    check("Include yourself", setting("RaidFrames", "showPlayer", true)),
+    check("Use them for your party too", setting("RaidFrames", "showInParty", true)), check("Include yourself", setting("RaidFrames", "showPlayer", true)),
     check("Sort by role (tanks, healers, damage)", setting("RaidFrames", "sortByRole", true)),
+    { "cycle", "Groups as (reload)", { { "columns", "Columns" }, { "rows", "Rows (wide, for big raids)" } }, setting("RaidFrames", "layout", true) },
     check("Hide the default raid frames", setting("RaidFrames", "hideBlizzard", true)),
     { "cycle", "Style", { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }, raidSetting("look") },
     { "cycle", "Width", { { 72, "72" }, { 90, "90" }, { 100, "100" }, { 120, "120" } }, setting("RaidFrames", "width", true) },

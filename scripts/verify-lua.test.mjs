@@ -950,6 +950,80 @@ it("a ForeverUI button on the game menu opens the options", () => {
   expect(loggedIn("").eval("return ns.gameMenuButton == nil"), "no game menu, nothing added").toBe(true);
 });
 
+// TEST-ONLY boss: one boss in the fight, and the game's boss frame holder (an Edit Mode frame).
+const BOSS_ENV = `
+  __units.boss1 = { name = "TEST-ONLY Boss", hp = 5000, maxhp = 10000, power = 0, maxpower = 0, ptype = "MANA" }
+  hooksecurefunc = function(t, name, fn) local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
+  BossTargetFrameContainer = CreateFrame("Frame", "BossTargetFrameContainer", UIParent)
+`;
+
+it("boss frames: five in a column at the top left, the game's hidden in place", () => {
+  const addon = loggedIn(UNITS_ENV + BOSS_ENV);
+  expect(addon.eval(`return { ForeverUI_boss5 ~= nil, ForeverUI_boss1.__watched, ForeverUI_boss2.__points.TOPLEFT.rel == ForeverUI_boss1, ForeverUI_boss2:GetWidth() }`), "five boss frames, each shown while its boss exists, stacked").toEqual([true, true, true, 150]);
+  expect(addon.eval("return { ns.MoverPoint('uf_boss1') }"), "movable, from the top-left corner").toEqual(["TOPLEFT", "TOPLEFT", 20, -20]);
+  addon.eval("__units.boss1.hp = 4200");
+  addon.fire("INSTANCE_ENCOUNTER_ENGAGE_UNIT");
+  expect(addon.eval("return { ForeverUI_boss1.health.__value, ForeverUI_boss1.name:GetText() }"), "a boss joining the fight shows on its frame").toEqual([4200, "TEST-ONLY Boss"]);
+  addon.eval("BossTargetFrameContainer:Show()");
+  expect(addon.eval("return { BossTargetFrameContainer:IsShown(), BossTargetFrameContainer:GetParent() == UIParent }"), "the game's boss frames stay hidden, in place (Edit Mode keeps working)").toEqual([false, true]);
+  const off = loggedIn(UNITS_ENV + BOSS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { UnitFrames = { boss = false } } }" });
+  expect(off.eval("return { ForeverUI_boss1 == nil, BossTargetFrameContainer:IsShown() }"), "switched off: no boss frames, the game keeps its own").toEqual([true, true]);
+});
+
+// TEST-ONLY group: you lead a party; every raid tool call is recorded.
+const TOOLS_GROUP_ENV = `
+  __leader, __assist, __inGroup, __inRaid, __markable, __calls = true, false, true, false, true, {}
+  local function log(text) __calls[#__calls + 1] = text end
+  IsInGroup = function() return __inGroup end
+  IsInRaid = function() return __inRaid end
+  UnitIsGroupLeader = function() return __leader end
+  UnitIsGroupAssistant = function() return __assist end
+  IsEveryoneAssistant = function() return false end
+  C_PartyInfo = { DoReadyCheck = function() log("ready") end, DoCountdown = function(n) log("pull " .. n) end, ConvertToRaid = function() log("raid") end }
+  InitiateRolePoll = function() log("roles") end
+  SetRaidTarget = function(unit, i) log("mark " .. unit .. " " .. i) end
+  CanBeRaidTarget = function() return __markable end
+  function __tool(i, button) local b = ForeverUI_RaidTools.list[i] b.__scripts.OnClick(b, button or "LeftButton") end
+`;
+
+it("raid tools: calls, target icons and world markers for the leader and assistants", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_GROUP_ENV);
+  // Whether the bar shows, and whether its Raid button does.
+  const state = () => addon.eval("local a = ForeverUI_RaidTools.actions return { ForeverUI_RaidTools:IsShown(), a.Raid:IsShown() }");
+  expect(state(), "a party's leader sees the bar, with Raid").toEqual([true, true]);
+  addon.eval("for i = 1, 4 do __tool(i) end __tool(2, 'RightButton') __tool(5) __tool(13)");
+  expect(addon.eval("return __calls"), "ready check, pull 10 (right-click cancels), roles, convert; skull on the target, then clear").toEqual(["ready", "pull 10", "roles", "raid", "pull 0", "mark target 1", "mark target 0"]);
+  addon.eval("__markable = false __calls = {} __tool(5)");
+  expect(addon.eval("return #__calls"), "a target that can't be marked is left alone").toBe(0);
+  expect(addon.eval(`local m, c = ForeverUI_RaidTools.list[14], ForeverUI_RaidTools.list[22]
+    return { m:GetAttribute("type"), m:GetAttribute("marker"), m:GetAttribute("action1"), m:GetAttribute("action2"), c:GetAttribute("action") }`), "world markers are the game's secure marker buttons").toEqual(["worldmarker", 1, "toggle", "clear", "clear"]);
+  addon.eval("__inRaid, __leader, __assist = true, false, true");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect(state(), "a raid assistant sees it too, without Raid").toEqual([true, false]);
+  addon.eval("__assist = false");
+  setCombat(addon, true);
+  addon.fire("PARTY_LEADER_CHANGED");
+  expect(state()[0], "in combat it waits").toBe(true);
+  setCombat(addon, false);
+  expect(state()[0], "then hides for a plain raid member").toBe(false);
+  const bare = loggedIn(UNITS_ENV + TOOLS_GROUP_ENV + "C_PartyInfo = { DoReadyCheck = C_PartyInfo.DoReadyCheck } InitiateRolePoll = nil");
+  expect(bare.eval("local out = {} for k in pairs(ForeverUI_RaidTools.actions) do out[#out + 1] = k end return out"), "only the calls this client has").toEqual(["Ready"]);
+  const solo = loggedIn(UNITS_ENV + TOOLS_GROUP_ENV + "__inGroup = false");
+  expect(solo.eval("return ForeverUI_RaidTools:IsShown()"), "hidden out of a group").toBe(false);
+});
+
+it("raid frames: groups as rows, and the main tank's shield", () => {
+  const rows = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { RaidFrames = { layout = 'rows' } } }" });
+  expect(rows.eval(`local h = ForeverUI_Raid return { h:GetAttribute("point"), h:GetAttribute("columnAnchorPoint"), h:GetAttribute("xOffset"), h:GetAttribute("yOffset"), ForeverUI_RaidHolder:GetWidth(), ForeverUI_RaidHolder:GetHeight() }`), "each group a row of five, groups stacked up; the holder is one row").toEqual(["LEFT", "BOTTOM", 4, 0, 516, 48]);
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + 'GetPartyAssignment = function(kind, unit) return (unit == "raid1" and kind == "MAINTANK") or (unit == "raid2" and kind == "MAINASSIST") end');
+  addon.eval('__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3")');
+  // Whether tile i's role mark shows, and its color.
+  const tint = (i) => addon.eval(`local b = ForeverUI_RaidUnitButton${i} return { b.role:IsShown(), b.role.__vertexColor }`);
+  expect(raidButton(addon, 1).role === addon.eval("return ns.Theme.Icon('RoleTank')") && isTok(addon, tint(1)[1], "accent"), "the main tank's shield in the accent").toBe(true);
+  expect(raidButton(addon, 2).role === addon.eval("return ns.Theme.Icon('RoleTank')") && isTok(addon, tint(2)[1], "text2"), "the main assist's in text2").toBe(true);
+  expect(tint(3)[0], "no assignment, no role: no mark").toBe(false);
+});
+
 // TEST-ONLY leveling numbers: level 10 of 60, 1000 of 5000 XP into the level.
 const LEVEL_ENV = `
   __xp, __xpmax, __rested, __level = 1000, 5000, 2500, 10
@@ -3211,12 +3285,14 @@ const moverSpots = (addon) => addon.eval(`local out = {}
   end
   return out`);
 
-// The raid grid for n players: columns of five side by side, drawn at the compact scale, pinned to the holder's side.
+// The raid grid for n players: groups of five as columns side by side (or as rows
+// stacked up), drawn at the compact scale, pinned to the holder's side.
 function raidRect(addon, spot, n, sw, sh) {
-  const s = addon.eval("local s = ns.GetModule('RaidFrames').settings return { s.width, s.height, s.spacing }");
+  const s = addon.eval("local s = ns.GetModule('RaidFrames').settings return { s.width, s.height, s.spacing, s.layout }");
   const scale = addon.eval(`return ns.GetModule('RaidFrames').Scale(${n})`);
-  const cols = Math.ceil(n / 5);
-  const w = (cols * (s[0] + s[2]) - s[2]) * scale, h = (5 * (s[1] + s[2]) - s[2]) * scale;
+  const groups = Math.ceil(n / 5), five = [5 * (s[0] + s[2]) - s[2], 5 * (s[1] + s[2]) - s[2]];
+  const across = [groups * (s[0] + s[2]) - s[2], groups * (s[1] + s[2]) - s[2]];
+  const w = (s[3] === "rows" ? five[0] : across[0]) * scale, h = (s[3] === "rows" ? across[1] : five[1]) * scale;
   const holder = rectAt(spot.slice(0, 4), spot[4], spot[5], sw, sh);
   const l = /LEFT/.test(spot[0]) ? holder.l : /RIGHT/.test(spot[0]) ? holder.r - w : (holder.l + holder.r) / 2 - w / 2;
   return { l, b: holder.b, r: l + w, t: holder.b + h };
@@ -3249,11 +3325,14 @@ it("Centered layouts: nothing overlaps or leaves the screen, solo to 40-man, at 
   const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + "TakeTaxiNode = function() end", { firstRun: true });
   expect(addon.eval("return ChatFrame1.__points.BOTTOMLEFT ~= nil"), "chat sits in its layout spot").toBe(true);
   addon.eval("ForeverUI_InfoStrip:SetHeight(52)"); // the info strip at its tallest, with the leveling row
-  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
+  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
   for (const layout of ["damage", "healing"]) {
     addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
-    for (const [sw, sh] of [[1365, 768], [1920, 1080]]) {
-      for (const n of [0, 5, 25, 40]) expect(layoutProblems(layoutRects(addon, n, sw, sh), sw, sh), `${layout}, ${sw}x${sh}, ${n} players`).toEqual([]);
+    for (const grow of ["columns", "rows"]) {
+      addon.eval(`ns.GetModule("RaidFrames").settings.layout = "${grow}"`);
+      for (const [sw, sh] of [[1365, 768], [1920, 1080]]) {
+        for (const n of [0, 5, 25, 40]) expect(layoutProblems(layoutRects(addon, n, sw, sh), sw, sh), `${layout}, groups as ${grow}, ${sw}x${sh}, ${n} players`).toEqual([]);
+      }
     }
   }
   expect(addon.eval("return { ns.Setup.HealingPoint() }")[0], "Healing centers the grid above the focus cast bar").toEqual(["BOTTOM", "BOTTOM", 0, 342]);
