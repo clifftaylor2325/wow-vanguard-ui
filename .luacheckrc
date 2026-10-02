@@ -29,5 +29,5 @@ read_globals = {
   "RegisterAttributeDriver", "RegisterStateDriver", "UnitGroupRolesAssigned", "UnitIsUnit", "RegisterUnitWatch", "SetOverrideBindingClick", "STANDARD_TEXT_FONT", "UIParent", "UnitClass",
   "UnitExists", "UnitHealth", "UnitHealthMax", "UnitIsConnected",
   "UnitIsDeadOrGhost", "UnitIsPlayer", "UnitName", "UnitPower", "UnitPowerMax",
-  "UnitPowerType", "UnitReaction", "issecretvalue", "GetTotemInfo", "GetTotemDuration", "C_EventUtils", "C_Item", "GetInventoryItemTexture", "GameTooltip", "C_Container", "C_MerchantFrame", "CanMerchantRepair", "GetRepairAllCost", "RepairAllItems", "GetMoney", "UIErrorsFrame", "C_SwingTimer", "GetPetHappiness", "C_PetInfo", "C_PvP", "HideUIPanel", "GetPartyAssignment", "C_PartyInfo", "SetRaidTarget", "CanBeRaidTarget", "GetNumGroupMembers",
+  "UnitPowerType", "UnitReaction", "issecretvalue", "GetTotemInfo", "GetTotemDuration", "C_EventUtils", "C_Item", "GetInventoryItemTexture", "GameTooltip", "C_Container", "C_MerchantFrame", "CanMerchantRepair", "GetRepairAllCost", "RepairAllItems", "GetMoney", "UIErrorsFrame", "C_SwingTimer", "GetPetHappiness", "C_PetInfo", "C_PvP", "HideUIPanel", "GetInventoryItemDurability", "GetPartyAssignment", "C_PartyInfo", "SetRaidTarget", "CanBeRaidTarget", "GetNumGroupMembers",
 }

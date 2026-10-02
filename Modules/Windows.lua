@@ -4,13 +4,14 @@
 -- bars. Each window keeps its own layout and buttons: its art is faded out
 -- (alpha only) and a flat panel, the close button, title font and push
 -- buttons are themed. It's done every time a window shows, so parts the game
--- adds later are covered too, and painting again never piles up.
+-- adds later are covered too, and painting again never piles up. The
+-- character pane also shows each worn item's durability on its slot.
 
 local ADDON, ns = ...
 
 local T = ns.Theme
 
-local GW = ns.Module("Windows", { defaults = { windows = true, popups = true, timers = true } })
+local GW = ns.Module("Windows", { defaults = { windows = true, popups = true, timers = true, durability = true } })
 
 -- Framed windows (most use the game's ButtonFrameTemplate or PortraitFrameTemplate).
 GW.FRAMED = {
@@ -26,6 +27,11 @@ GW.ON_DEMAND = { Blizzard_PlayerSpells = { "PlayerSpellsFrame" }, Blizzard_TimeM
 -- on the dark panel): body text goes light, headings gold.
 GW.QUEST_BODY = { "QuestInfoDescriptionText", "QuestInfoObjectivesText", "QuestInfoRewardText", "QuestProgressText", "GreetingText" }
 GW.QUEST_HEADS = { "QuestInfoTitleHeader", "QuestInfoDescriptionHeader", "QuestInfoObjectivesHeader", "QuestProgressTitleText", "CurrentQuestsText", "AvailableQuestsText" }
+-- Push buttons a window keeps outside its button row (the mail's Open All).
+GW.EXTRA_BUTTONS = { MailFrame = { "OpenAllMail" } }
+-- The character pane's gear slots (Character<slot>Slot; each button's ID is its inventory slot).
+GW.SLOTS = { "Head", "Neck", "Shoulder", "Back", "Chest", "Wrist", "Hands", "Waist", "Legs", "Feet",
+  "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged" }
 -- A window's art pieces that are faded out, where it has them.
 GW.ART = { "NineSlice", "Bg", "TopTileStreaks", "PortraitContainer", "Border", "Inset" }
 
@@ -58,6 +64,9 @@ local function dressParts(frame, name)
   local title = (type(frame.TitleContainer) == "table" and frame.TitleContainer.TitleText) or frame.TitleText
   if type(title) == "table" and title.SetFont then T.Text(title, "heading", false) end
   for _, b in ipairs(buttons(frame, name)) do T.Button(b) end
+  for _, extra in ipairs(GW.EXTRA_BUTTONS[name] or {}) do
+    if type(_G[extra]) == "table" then T.Button(_G[extra]) end
+  end
 end
 
 -- Skins one window: art faded, a flat panel with a soft shadow, its parts themed.
@@ -178,9 +187,50 @@ local function watchWindows()
   keepTextReadable()
 end
 
+-- Durability on the character pane ----------------------------------------------------------
+
+-- A gear slot's durability label (made once), along the slot's bottom edge.
+local function slotLabel(button)
+  if not button.fuiDurability then
+    button.fuiDurability = T.Text(button:CreateFontString(nil, "OVERLAY"), "auraCount", false)
+    button.fuiDurability:SetPoint("BOTTOM", button, "BOTTOM", 0, 2)
+  end
+  return button.fuiDurability
+end
+
+-- One slot's durability as "62%" in the info strip's colors; hidden at full,
+-- for items without durability, or when the client hides it.
+function GW.PaintDurability(button)
+  local label, cur, max = slotLabel(button), GetInventoryItemDurability(button:GetID())
+  cur, max = ns.PlainNumber(cur), ns.PlainNumber(max)
+  local percent = cur and max and max > 0 and math.floor(cur * 100 / max)
+  label:SetShown(percent and percent < 100 or false)
+  if not percent or percent >= 100 then return end
+  label:SetText(percent .. "%")
+  T.Color(label, ns.GetModule("InfoStrip").DurabilityColor(percent))
+end
+
+-- Every gear slot on the character pane, while it's open.
+function GW.PaintAllDurability()
+  if not (_G.CharacterFrame and _G.CharacterFrame:IsShown()) then return end
+  for _, slot in ipairs(GW.SLOTS) do
+    local b = _G["Character" .. slot .. "Slot"]
+    if type(b) == "table" and b.GetID then GW.PaintDurability(b) end
+  end
+end
+
+-- Durability on the gear slots: when the pane opens, and as gear wears or changes.
+local function watchDurability()
+  local pane = _G.CharacterFrame
+  if type(pane) ~= "table" or type(GetInventoryItemDurability) ~= "function" then return end
+  pane:HookScript("OnShow", GW.PaintAllDurability)
+  for _, e in ipairs({ "UPDATE_INVENTORY_DURABILITY", "UNIT_INVENTORY_CHANGED" }) do ns.On(e, GW.PaintAllDurability) end
+end
+
 -- Module entry point (Core/Modules.lua): watch each switched-on group of windows.
 function GW.Enable(settings)
   if settings.windows then watchWindows() end
+  if settings.durability then watchDurability() end
   if settings.popups then watchAll(GW.POPUPS, GW.Skin) end
   if settings.timers then
     watchAll(GW.TIMERS, GW.SkinTimer)
