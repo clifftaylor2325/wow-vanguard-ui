@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { staleMedia } from "./build-media.mjs";
 import { fontFacts } from "./lib/truetype.mjs";
+import { crest, crestNames } from "./lib/media-crests.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -86,6 +87,23 @@ function fileExists(file) {
   expect(fs.existsSync(path.join(root, file)), `${file} is used by the addon but missing`).toBe(true);
 }
 
+// Every crest source rasterizes to a white glyph on transparency (its black square dropped).
+function crestsRasterize() {
+  for (const name of crestNames()) {
+    const img = crest(name);
+    let covered = 0;
+    for (let i = 3; i < img.px.length; i += 4) covered += img.px[i] > 0.5 ? 1 : 0;
+    const share = covered / (img.w * img.h);
+    expect([img.w, img.h, img.px[3], img.px[0], share > 0.1 && share < 0.7], `${name}: 64x64, clear corner, white, a glyph not a square`).toEqual([64, 64, 0, 1, true]);
+  }
+}
+
+// Every crest source is credited, with its author, in art/CREDITS.md.
+function crestsCredited() {
+  const credits = fs.readFileSync(path.join(root, "art/CREDITS.md"), "utf8");
+  for (const name of crestNames()) expect(credits, `${name}.svg needs a credit line`).toContain(`\`${name}.svg\``);
+}
+
 describe(
   "media",
   // Generated art, then digits, glyphs and the license for each weight.
@@ -96,6 +114,8 @@ describe(
     it("SemiBold: digits 0-9 must share one width", semiBoldDigits);
     it("SemiBold: Latin, Greek, Cyrillic and euro glyphs", semiBoldGlyphs);
     it("Media/Fonts/OFL.txt must hold the font license", oflLicense);
+    it("faction crests rasterize from their SVGs", crestsRasterize);
+    it("faction crest sources are credited", crestsCredited);
   },
 );
 
