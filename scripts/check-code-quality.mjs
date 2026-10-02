@@ -8,19 +8,17 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { checkSource } from "./lib/code-quality.mjs";
+import { checkSource, sourceFiles as listSources } from "./lib/code-quality.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 // Vendored code is kept as upstream wrote it.
 const EXCLUDE = new Set();
 
-// Tracked Lua and JS files this repo owns.
+// The Lua and JS files this repo owns, new ones included.
 function sourceFiles() {
-  const out = execFileSync("git", ["ls-files", "*.lua", "*.mjs", "*.js"], { cwd: root, encoding: "utf8" });
-  return out.split("\n").filter((f) => f && !EXCLUDE.has(f));
+  return listSources(root).filter((f) => !EXCLUDE.has(f));
 }
 
 // Prints problems (or a per-file summary) and returns how many there were.

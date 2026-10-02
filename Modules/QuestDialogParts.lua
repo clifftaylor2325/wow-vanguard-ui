@@ -61,6 +61,15 @@ function QP.Line(parent)
   return b
 end
 
+-- Marks a line as the chosen one with a faint accent wash (made the first time), or clears it.
+function QP.Mark(b, on)
+  if not b.mark then
+    b.mark = T.Tint(b:CreateTexture(nil, "BACKGROUND"), "accent", 0.22)
+    b.mark:SetAllPoints()
+  end
+  b.mark:SetShown(on)
+end
+
 -- Fills a line from { text, icon, color = { r, g, b } or token, select }; number n before the text.
 function QP.PaintLine(b, n, spec)
   b.text:SetText(n .. ".  " .. spec.text)

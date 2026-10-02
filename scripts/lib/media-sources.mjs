@@ -158,6 +158,8 @@ const MENU_SHAPES = {
   // Housing: a house outline with a door.
   House: [path([[2, 7.5], [8, 2], [14, 7.5]], 1.6), path([[3.5, 6.5], [3.5, 14], [12.5, 14], [12.5, 6.5]], 1.5), box(6.6, 9.5, 9.4, 14, 0.4)],
   Help: [path([...arc(8, 6, 3.5, 3.5, 180, -60, 10), [8, 10.5]], 1.8), dot(8, 13.4, 1.2)],
+  // Legacy: an hourglass (a frame top and bottom, the two glass halves, sand at the bottom).
+  Legacy: [line(3, 2, 13, 2, 1.4), line(3, 14, 13, 14, 1.4), path([[4.5, 2], [11.5, 2], [8, 8], [4.5, 2]], 1.3, true), path([[8, 8], [11.5, 14], [4.5, 14], [8, 8]], 1.3, true), box(6.2, 11.6, 9.8, 13.3, 0.3)],
 };
 
 // The two strokes of an arrow head at (x, y) pointing against (dx, dy).

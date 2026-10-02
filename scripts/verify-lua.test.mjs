@@ -1004,6 +1004,23 @@ it("quest dialog: turning in, picking a reward, closing, and handing the windows
   expect(off.eval("return { ForeverUI_QuestDialog == nil, QuestFrame:IsEventRegistered('QUEST_DETAIL') }"), "switched off, the game's windows stay").toEqual([true, true]);
 });
 
+it("quest dialog: late item details redraw the page; spell and currency rewards", () => {
+  const addon = loggedIn(QUEST_ENV + `GetQuestID = function() return 90031 end
+    C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 90081 } end, GetQuestRewardSpellInfo = function() return { name = "TEST-ONLY Bolt" } end,
+      GetQuestRewardCurrencies = function() return { { name = "TEST-ONLY Marks", totalRewardAmount = 3 } } end }`);
+  addon.fire("QUEST_COMPLETE");
+  expect(dialog(addon).money, "spells it teaches and currencies, after the money and XP").toBe("+12s 0c  ·  450 XP  ·  Teaches: TEST-ONLY Bolt  ·  3 TEST-ONLY Marks");
+  key(addon, "2");
+  addon.eval('__choices[1][1] = "TEST-ONLY Better Boots"');
+  addon.fire("QUEST_ITEM_UPDATE");
+  expect([dialog(addon).cards[0], addon.eval("return ForeverUI_QuestDialog.cards[2].picked:IsShown()")], "an item the game just loaded shows; the pick stays").toEqual(["TEST-ONLY Better Boots", true]);
+  addon.eval("ForeverUI_QuestDialog:Hide() __choices[1][1] = 'TEST-ONLY Later'");
+  addon.fire("QUEST_ITEM_UPDATE");
+  expect(dialog(addon).cards[0], "closed, nothing redraws").toBe("TEST-ONLY Better Boots");
+  addon.eval("C_QuestInfoSystem = nil");
+  expect(addon.eval("return #ns.GetModule('QuestDialog').ExtraRewards(90031)"), "a client without those calls shows none").toBe(0);
+});
+
 it("quest automation: accept, turn in, best reward, skip chatter; Shift skips it", () => {
   const on = "ForeverUIDB.profiles = { Default = { QuestAuto = { accept = true, turnIn = true, skipGossip = true } } }";
   const addon = loggedIn(QUEST_ENV, { savedVariables: on });
@@ -1185,6 +1202,7 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   logLine(addon, 3);
   logButton(addon, "track");
   expect([addon.eval("return { __removed, __added }"), questLog(addon).title], "Untrack the wolves; choose the letter and Track it").toEqual([[90051, 90052], "[12] TEST-ONLY Letter"]);
+  expect(addon.eval("local l = ForeverUI_QuestLog.lines return { l[3].mark:IsShown(), l[2].mark:IsShown(), l[1].mark:IsShown() }"), "the chosen quest's line is marked").toEqual([true, false, false]);
   addon.eval("__group = true");
   logLine(addon, 3);
   logButton(addon, "share"); logButton(addon, "abandon"); logButton(addon, "map");

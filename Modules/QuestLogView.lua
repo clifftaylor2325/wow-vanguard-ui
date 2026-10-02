@@ -98,7 +98,7 @@ local function lineSpec(e)
     return { text = QP.Plain(e.title), icon = T.Icon(QL.collapsed[e.title] and "Right" or "Down"), color = "gold",
       select = function() QL.collapsed[e.title] = not QL.collapsed[e.title] QL.Refresh() end }
   end
-  return { text = QP.Titled(e.level, e.title), icon = e.ready and T.Icon("Check") or nil, color = { QP.LevelColor(e.level) }, select = function() QL.Select(e.id) end }
+  return { id = e.id, text = QP.Titled(e.level, e.title), icon = e.ready and T.Icon("Check") or nil, color = { QP.LevelColor(e.level) }, select = function() QL.Select(e.id) end }
 end
 
 -- One list line (quests indented under their zone; no numbers in the log).
@@ -154,10 +154,19 @@ local function renderButtons(f, d)
   if d.shareable then f.buttons.share:Enable() else f.buttons.share:Disable() end
 end
 
+-- Marks the chosen quest's line in the list.
+local function markChosen(f)
+  for i = 1, f.lines.used do
+    local b = f.lines[i]
+    QP.Mark(b, b.spec.id ~= nil and b.spec.id == QL.selected)
+  end
+end
+
 -- Shows a quest on the details side (or nothing, when it's gone from the log).
 function QL.Select(id)
   local f, d = QL.frame, id and QL.Details(id)
   QL.selected, QL.details = d and id or nil, d
+  markChosen(f)
   f.detail:SetShown(d ~= nil)
   renderButtons(f, d)
   if not d then return end

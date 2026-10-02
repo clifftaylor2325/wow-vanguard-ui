@@ -98,7 +98,29 @@ function QD.MoneyLine()
   local money, xp, parts = ns.PlainNumber(call(GetRewardMoney)), ns.PlainNumber(call(GetRewardXP)), {}
   if money and money > 0 then parts[#parts + 1] = "+" .. ns.GetModule("InfoStrip").Money(money) end
   if xp and xp > 0 then parts[#parts + 1] = xp .. " XP" end
+  for _, extra in ipairs(QD.ExtraRewards(ns.PlainNumber(call(GetQuestID)))) do parts[#parts + 1] = extra end
   return table.concat(parts, "  ·  ")
+end
+
+-- The spells a quest teaches, as "Teaches: Name".
+local function spellRewards(info, questID)
+  local out = {}
+  for _, spellID in ipairs(call(info.GetQuestRewardSpells, questID) or {}) do
+    local spell = call(info.GetQuestRewardSpellInfo, questID, spellID)
+    if type(spell) == "table" and spell.name then out[#out + 1] = "Teaches: " .. QP.Plain(spell.name) end
+  end
+  return out
+end
+
+-- A quest's spell and currency rewards as text ("Teaches: Name", "3 Marks"); none without the client's calls.
+function QD.ExtraRewards(questID)
+  local info = C_QuestInfoSystem
+  if type(info) ~= "table" or not questID then return {} end
+  local out = spellRewards(info, questID)
+  for _, c in ipairs(call(info.GetQuestRewardCurrencies, questID) or {}) do
+    out[#out + 1] = (ns.PlainNumber(c.totalRewardAmount) or 0) .. " " .. QP.Plain(c.name)
+  end
+  return out
 end
 
 -- Closing --------------------------------------------------------------------------------------
@@ -184,10 +206,19 @@ end
 function QD.Show(key, event)
   local auto = ns.GetModule("QuestAuto")
   if auto and auto.Claims and auto.Claims(event) then return end
-  QD.page, QD.choice = QD.PAGES[key](), nil
+  QD.key, QD.page, QD.choice = key, QD.PAGES[key](), nil
   QD.Render(QD.page)
   QD.frame:Show()
   QD.frame:EnableKeyboard(not ns.InCombat())
+end
+
+-- The game finished loading an item's details: redraw the page (keeping a reward already picked).
+function QD.Redraw()
+  if not (QD.frame:IsShown() and QD.key) then return end
+  local choice = QD.choice
+  QD.page = QD.PAGES[QD.key]()
+  QD.Render(QD.page)
+  if choice then QD.Pick(choice) end
 end
 
 -- Event -> the page it shows.
@@ -211,4 +242,5 @@ function QD.Enable(settings)
   for event, key in pairs(QD.EVENTS) do ns.On(event, function() QD.Show(key, event) end) end
   for _, event in ipairs({ "GOSSIP_CLOSED", "QUEST_FINISHED" }) do ns.On(event, QD.Quiet) end
   ns.On("PLAYER_REGEN_DISABLED", function() QD.frame:EnableKeyboard(false) end)
+  ns.On("QUEST_ITEM_UPDATE", QD.Redraw)
 end
