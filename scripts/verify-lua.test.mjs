@@ -1317,6 +1317,54 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
   expect(block(bare, "dps").shown, "a client without the damage meter shows nothing").toBe(false);
 });
 
+// TEST-ONLY group extras: a raid tank (raid1) targeting the boar, and a party pet targeting nothing.
+const GROUP_EXTRAS_ENV = `
+  RegisterAttributeDriver = function(frame, attr, driver) frame.__drivers = frame.__drivers or {}; frame.__drivers[attr] = driver end
+  __units.raid1 = { name = "TEST-ONLY Tank", hp = 300, maxhp = 1000, power = 0, maxpower = 0, ptype = "RAGE", player = true, class = "ROGUE" }
+  __units.raid1target = __units.target
+  __units.partypet1 = { name = "TEST-ONLY Wolf", hp = 50, maxhp = 100, power = 0, maxpower = 0, ptype = "FOCUS", reaction = 5 }
+  function __mt(i, unit)
+    local b = CreateFrame("Button", "ForeverUI_MainTanksUnitButton" .. i, ForeverUI_MainTanks, "SecureUnitButtonTemplate")
+    ForeverUI_MainTanks.initialConfigFunction(ForeverUI_MainTanks, b:GetName())
+    b:SetAttribute("unit", unit)
+    return b
+  end
+`;
+
+it("main tank frames: the raid's main tanks and assists, with what each is targeting", () => {
+  const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV);
+  const header = addon.eval(`local h = ForeverUI_MainTanks
+    return { h:GetAttribute("groupFilter"), h:GetAttribute("showRaid"), h:GetAttribute("template"), h.__drivers["state-visibility"], h:GetAttribute("initialConfigFunction") == ns.GetModule("MainTanks").INIT }`);
+  expect(header, "a secure header of the raid's main tanks and assists, shown in a raid").toEqual(["MAINTANK,MAINASSIST", true, "SecureUnitButtonTemplate", "[group:raid] show; hide", true]);
+  expect([addon.eval("return { ns.MoverPoint('maintanks') }"), addon.eval("return { ForeverUI_MainTanksHolder:GetWidth(), ForeverUI_MainTanksHolder:GetHeight() }")], "movable, at the top left beside the raid tools, room for four").toEqual([["TOPLEFT", "TOPLEFT", 400, -20], [236, 100]]);
+  addon.eval('__mt(1, "raid1") __wfgStub.advance(0.5)');
+  // The first tile: bar value and color, name, target line and its color.
+  const tile = () => addon.eval("local b = ForeverUI_MainTanksUnitButton1 return { b.bar.__value, b.bar.__barColor, b.name:GetText(), b.target:GetText(), b.target.__textColor }");
+  const one = tile();
+  expect([one[0], one[1].slice(0, 3), one[2], one[3], isTok(addon, one[4], "hostile")], "health in their class color, their name, and their target in its reaction color").toEqual([300, [1, 0.96, 0.41], "TEST-ONLY Tank", "TEST-ONLY Boar", true]);
+  addon.eval("__units.raid1target = nil __wfgStub.advance(0.5)");
+  expect(tile()[3], "no target, no line").toBe("");
+  addon.eval('__units.raid1.name = "TEST-ONLY Renamed" ForeverUI_MainTanksUnitButton1:SetAttribute("unit", "raid9") ForeverUI_MainTanksUnitButton1:Hide() ForeverUI_MainTanksUnitButton1:Show()');
+  expect(tile()[2], "a unit that isn't there leaves the tile as it was").toBe("TEST-ONLY Tank");
+  const off = loggedIn(UNITS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { MainTanks = false } } }" });
+  expect(off.eval("return ForeverUI_MainTanks == nil"), "switched off under Modules, nothing is built").toBe(true);
+  expect(loggedIn(UNITS_ENV).eval("return ForeverUI_MainTanks ~= nil"), "a client without attribute drivers still builds them").toBe(true);
+});
+
+it("party pets and targets: small tiles above the party, only in a party, when switched on", () => {
+  expect(loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV).eval("return ForeverUI_PartyExtras == nil"), "off until you turn it on").toBe(true);
+  const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV + CLICK_LUA, { savedVariables: "ForeverUIDB.profiles = { Default = { PartyExtras = { show = true } } }" });
+  const tiles = addon.eval(`local pet, target = ForeverUI_partypet1, ForeverUI_party4target
+    return { #ns.GetModule("PartyExtras").tiles, pet:GetAttribute("unit"), pet.__watched, target:GetAttribute("unit"), target.__points.TOPLEFT.x, target.__points.TOPLEFT.y, ForeverUI_PartyExtras.__drivers["state-visibility"] }`);
+  expect(tiles, "a pet and a target tile per party member, each shown while its unit exists, the column only in a party").toEqual([8, "partypet1", true, "party4target", 94, -54, "[group:raid] hide; [group:party] show; hide"]);
+  expect(addon.eval("return { ns.MoverPoint('partyextras') }"), "movable, just above the party").toEqual(["BOTTOM", "BOTTOM", -240, 606]);
+  addon.eval("ns.GetModule('MainTanks').Paint(ForeverUI_partypet1)");
+  expect(addon.eval("return { ForeverUI_partypet1.name:GetText(), ForeverUI_partypet1.target == nil }"), "the pet's name on its tile, no target line").toEqual(["TEST-ONLY Wolf", true]);
+  addon.slash("");
+  addon.eval('__click("Unit frames")');
+  expect(addon.eval('return __click("Party pets and targets, above the party (reload)") and ForeverUIDB.profiles.Default.PartyExtras.show'), "the switch is under Unit frames").toBe(false);
+});
+
 // TEST-ONLY numbers for the info strip: head slot 30%, legs 9% worn, 12 free slots, 12g 34s 7c.
 const STRIP_ENV = `
   __dur = { [1] = { 30, 100 }, [7] = { 9, 100 }, [2] = { 0, 0 } }
@@ -3956,10 +4004,16 @@ function raidRect(addon, spot, n, sw, sh) {
 // Windows that open over the HUD for a moment (talking to an NPC), so they're left out of the overlap check.
 const FLOATING = new Set(["questdialog", "questlog", "lossofcontrol", "talkinghead"]);
 
+// Parts that show only with some group sizes [fewest, most]: main tanks in a raid, party pets and targets in a party.
+const ONLY_WITH = { maintanks: [6, 40], partyextras: [1, 5] };
+
+// Whether a mover's part is on screen with n players (the raid grid is drawn on its own).
+const onScreen = (key, n) => key !== "raid" && !FLOATING.has(key) && (!ONLY_WITH[key] || (n >= ONLY_WITH[key][0] && n <= ONLY_WITH[key][1]));
+
 // Every part's rect on an sw x sh screen with n players in the group (0: solo, no grid).
 function layoutRects(addon, n, sw, sh) {
   const spots = moverSpots(addon), out = {};
-  for (const [key, spot] of Object.entries(spots)) if (key !== "raid" && !FLOATING.has(key)) out[key] = rectAt(spot.slice(0, 4), spot[4], spot[5], sw, sh);
+  for (const [key, spot] of Object.entries(spots)) if (onScreen(key, n)) out[key] = rectAt(spot.slice(0, 4), spot[4], spot[5], sw, sh);
   for (const [key, [parent, side, gap, w, h]] of Object.entries(ATTACHED)) {
     const p = out[parent];
     if (p) out[key] = side === "above" ? { l: p.l, b: p.t + gap, r: p.l + w, t: p.t + gap + h } : { l: p.l, b: p.b - gap - h, r: p.l + w, t: p.b - gap };
@@ -3980,10 +4034,10 @@ function layoutProblems(rects, sw, sh) {
 }
 
 it("Centered layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", () => {
-  const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + "TakeTaxiNode = function() end", { firstRun: true });
+  const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
   expect(addon.eval("return ChatFrame1.__points.BOTTOMLEFT ~= nil"), "chat sits in its layout spot").toBe(true);
   addon.eval("ForeverUI_InfoStrip:SetHeight(68)"); // the info strip at its tallest, with the leveling and DPS rows
-  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
+  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
   for (const layout of ["damage", "healing"]) {
     addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
     for (const grow of ["columns", "rows"]) {
