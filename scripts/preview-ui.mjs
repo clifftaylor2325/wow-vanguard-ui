@@ -398,6 +398,36 @@ const SCENES = [
       IsInGroup = function() return true end UnitIsGroupLeader = function(u) return u == "player" end IsInRaid = function() return false end
       C_PartyInfo = C_PartyInfo or {} C_PartyInfo.DoReadyCheck = function() end C_PartyInfo.DoCountdown = function() end C_PartyInfo.ConvertToRaid = function() end
       InitiateRolePoll = function() end` },
+  { name: "foreverui-quest-gossip", caption: "The quest dialog at a quest giver: portrait, name, greeting, numbered lines (a quest to take in its difficulty color, one ready to turn in in gold, a gossip option) (TEST-ONLY NPC and quests)",
+    lua: '__wfgStub.fire("GOSSIP_SHOW")', before: `UnitName = (function(old) return function(u) if u == "npc" then return "TEST-ONLY Farmer Maple" end return old(u) end end)(UnitName)
+      GetQuestDifficultyColor = function(level) if level >= 12 then return { r = 1, g = 0.5, b = 0.25 } end return { r = 0.25, g = 0.75, b = 0.25 } end
+      C_Item = C_Item or {} C_Item.GetItemQualityColor = function(q) if q == 3 then return 0, 0.44, 0.87 end return 0.12, 1, 0 end
+      C_GossipInfo = { GetText = function() return "TEST-ONLY Times are hard, <name>. Wolves take a sheep a night, and the road to town isn't safe anymore." end,
+        GetAvailableQuests = function() return { { title = "TEST-ONLY The Wolves of the Fold", questLevel = 9, questID = 90031 } } end,
+        GetActiveQuests = function() return { { title = "TEST-ONLY A Letter for the Farm", questLevel = 12, questID = 90032, isComplete = true } } end,
+        GetOptions = function() return { { name = "TEST-ONLY What news from town?", gossipOptionID = 90041, orderIndex = 0 } } end }
+      GetTitleText = function() return "TEST-ONLY The Wolves of the Fold" end
+      GetQuestText = function() return "TEST-ONLY The wolves come down from the hills each night. Thin their numbers before the flock is gone, and I'll see you're paid for it." end
+      GetObjectiveText = function() return "Slay 8 TEST-ONLY Hill Wolves." end
+      local choices = { { "TEST-ONLY Shepherd's Boots", "TEST-ONLY-ICON", 1, 3 }, { "TEST-ONLY Wolfhide Gloves", "TEST-ONLY-ICON", 1, 2 } }
+      GetNumQuestChoices = function() return 2 end GetNumQuestRewards = function() return 1 end
+      GetQuestItemInfo = function(kind, i) local x = kind == "choice" and choices[i] or { "TEST-ONLY Farm Bread", "TEST-ONLY-ICON", 5, 1 } return x[1], x[2], x[3], x[4] end
+      GetRewardMoney = function() return 1500 end GetRewardXP = function() return 650 end` },
+  { name: "foreverui-quest-detail", caption: "The quest dialog showing a quest: text, objectives, reward cards with quality borders, money and XP, Accept and Decline (TEST-ONLY quest and rewards)",
+    lua: '__wfgStub.fire("QUEST_DETAIL")', before: `UnitName = (function(old) return function(u) if u == "npc" then return "TEST-ONLY Farmer Maple" end return old(u) end end)(UnitName)
+      GetQuestDifficultyColor = function(level) if level >= 12 then return { r = 1, g = 0.5, b = 0.25 } end return { r = 0.25, g = 0.75, b = 0.25 } end
+      C_Item = C_Item or {} C_Item.GetItemQualityColor = function(q) if q == 3 then return 0, 0.44, 0.87 end return 0.12, 1, 0 end
+      C_GossipInfo = { GetText = function() return "TEST-ONLY Times are hard, <name>. Wolves take a sheep a night, and the road to town isn't safe anymore." end,
+        GetAvailableQuests = function() return { { title = "TEST-ONLY The Wolves of the Fold", questLevel = 9, questID = 90031 } } end,
+        GetActiveQuests = function() return { { title = "TEST-ONLY A Letter for the Farm", questLevel = 12, questID = 90032, isComplete = true } } end,
+        GetOptions = function() return { { name = "TEST-ONLY What news from town?", gossipOptionID = 90041, orderIndex = 0 } } end }
+      GetTitleText = function() return "TEST-ONLY The Wolves of the Fold" end
+      GetQuestText = function() return "TEST-ONLY The wolves come down from the hills each night. Thin their numbers before the flock is gone, and I'll see you're paid for it." end
+      GetObjectiveText = function() return "Slay 8 TEST-ONLY Hill Wolves." end
+      local choices = { { "TEST-ONLY Shepherd's Boots", "TEST-ONLY-ICON", 1, 3 }, { "TEST-ONLY Wolfhide Gloves", "TEST-ONLY-ICON", 1, 2 } }
+      GetNumQuestChoices = function() return 2 end GetNumQuestRewards = function() return 1 end
+      GetQuestItemInfo = function(kind, i) local x = kind == "choice" and choices[i] or { "TEST-ONLY Farm Bread", "TEST-ONLY-ICON", 5, 1 } return x[1], x[2], x[3], x[4] end
+      GetRewardMoney = function() return 1500 end GetRewardXP = function() return 650 end` },
   { name: "foreverui-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a friendly player (TEST-ONLY units)", lua: PLATES },
   { name: "foreverui-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)

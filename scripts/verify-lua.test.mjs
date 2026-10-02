@@ -864,6 +864,185 @@ it("auto-accept: summons, resurrections and duels, each off until switched on", 
   expect(on.eval("return #__answers"), "no summons in combat").toBe(0);
 });
 
+// TEST-ONLY quest giver: a farmer with a quest to take (wolves), one to turn in (a letter) and
+// a gossip option; two reward choices (boots sell for 50c, gloves for 3s) and bread you always get.
+const QUEST_ENV = `
+  __calls, __prices = {}, { ["item:90021"] = 50, ["item:90022"] = 300 }
+  local function log(name) return function(...) __calls[#__calls + 1] = name .. " " .. tostring((...)) end end
+  UISpecialFrames = {}
+  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  UnitName = function(unit) if unit == "npc" then return "TEST-ONLY Farmer" end return "<name>" end
+  SetPortraitTexture = function(t, unit) t.__portrait = unit end
+  GetQuestDifficultyColor = function(level) return { r = level > 10 and 1 or 0.25, g = 0.75, b = 0.25 } end
+  C_Item = { GetItemQualityColor = function() return 0, 0.44, 0.87 end, GetItemInfo = function(link) return "x", link, 1, 1, 1, "", "", 1, "", "", __prices[link] end }
+  __avail = { { title = "TEST-ONLY Wolves", questLevel = 8, questID = 90031 } }
+  __active = { { title = "TEST-ONLY Letter", questLevel = 12, questID = 90032, isComplete = true } }
+  __options = { { name = "TEST-ONLY Tell me more", icon = 90041, gossipOptionID = 90041, orderIndex = 0 } }
+  C_GossipInfo = { GetText = function() return __greeting end, GetAvailableQuests = function() return __avail end,
+    GetActiveQuests = function() return __active end, GetOptions = function() return __options end,
+    SelectAvailableQuest = log("avail"), SelectActiveQuest = log("active"), SelectOption = log("option"), CloseGossip = log("closeGossip") }
+  __greeting = "TEST-ONLY Well met, <name>."
+  GetTitleText = function() return "TEST-ONLY Wolves" end
+  GetQuestText = function() return "TEST-ONLY Wolves trouble the farm." end
+  GetObjectiveText = function() return "Slay 8 TEST-ONLY Wolves." end
+  GetProgressText = function() return "TEST-ONLY Done yet?" end
+  GetRewardText = function() return "TEST-ONLY Thank you." end
+  GetGreetingText = function() return "TEST-ONLY Hello." end
+  __choices = { { "TEST-ONLY Boots", "TEST-ONLY-ICON", 1, 3, "item:90021" }, { "TEST-ONLY Gloves", "TEST-ONLY-ICON", 1, 2, "item:90022" } }
+  __rewards = { { "TEST-ONLY Bread", "TEST-ONLY-ICON", 5, 1, "item:90023" } }
+  GetNumQuestChoices = function() return #__choices end
+  GetNumQuestRewards = function() return #__rewards end
+  GetNumQuestItems = function() return 0 end
+  GetQuestItemInfo = function(kind, i) local x = (kind == "choice" and __choices or __rewards)[i] return x[1], x[2], x[3], x[4] end
+  GetQuestItemLink = function(kind, i) return (kind == "choice" and __choices or __rewards)[i][5] end
+  GetRewardMoney = function() return 1200 end
+  GetRewardXP = function() return 450 end
+  __completable, __autoAccept, __shift = true, false, false
+  IsQuestCompletable = function() return __completable end
+  QuestGetAutoAccept = function() return __autoAccept end
+  IsShiftKeyDown = function() return __shift end
+  AcceptQuest, DeclineQuest, CompleteQuest, CloseQuest, AcknowledgeAutoAcceptQuest = log("accept"), log("decline"), log("complete"), log("closeQuest"), log("ack")
+  GetQuestReward = log("reward")
+  __greetAvail, __greetActive = 1, 0
+  GetNumAvailableQuests = function() return __greetAvail end
+  GetNumActiveQuests = function() return __greetActive end
+  GetAvailableTitle = function() return "TEST-ONLY Rats" end
+  GetAvailableLevel = function() return 5 end
+  GetActiveTitle = function() return "TEST-ONLY Parcel", false end
+  GetActiveLevel = function() return 6 end
+  SelectAvailableQuest, SelectActiveQuest = log("greetAvail"), log("greetActive")
+  QuestFrame = CreateFrame("Frame", "QuestFrame", UIParent) QuestFrame:RegisterEvent("QUEST_DETAIL") QuestFrame:RegisterEvent("QUEST_LOG_UPDATE")
+  CustomGossipFrameManager = CreateFrame("Frame", "CustomGossipFrameManager", UIParent) CustomGossipFrameManager:RegisterEvent("GOSSIP_SHOW")
+  GameTooltip = CreateFrame("Frame", "GameTooltip", UIParent)
+  GameTooltip.SetOwner = function() end
+  GameTooltip.SetQuestItem = function(self, kind, i) self.__questItem = kind .. " " .. i end
+`;
+
+// The quest dialog's state: shown, header, body, lines, cards, money and buttons.
+const dialog = (addon) => addon.eval(`local f = ForeverUI_QuestDialog
+  local lines, cards = {}, {}
+  for i = 1, f.lines.used do lines[i] = f.lines[i].text:GetText() end
+  for i = 1, f.cards.used do cards[i] = f.cards[i].name:GetText() end
+  return { shown = f:IsShown(), npc = f.npc:GetText(), title = f.title:GetText(), text = f.text:GetText(),
+    objectives = f.objectives:IsShown() and f.objectives:GetText() or false, lines = lines, cards = cards, money = f.money:GetText(),
+    primary = f.primary:IsShown() and f.primary.text:GetText() or false, enabled = f.primary:IsEnabled(),
+    secondary = f.secondary:IsShown() and f.secondary.text:GetText() or false }`);
+
+// Presses a key on the quest dialog.
+const key = (addon, k) => addon.eval(`ForeverUI_QuestDialog.__scripts.OnKeyDown(ForeverUI_QuestDialog, "${k}")`);
+
+// The game calls made so far (then forgets them).
+const calls = (addon) => { const c = addon.eval("local c = __calls __calls = {} return c"); return Array.isArray(c) ? c : []; };
+
+it("quest dialog: gossip lines, quest details, rewards and keys", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("GOSSIP_SHOW");
+  const g = dialog(addon);
+  expect([g.shown, g.npc, g.text, g.primary, addon.eval("return ForeverUI_QuestDialog.portrait.__portrait")], "the NPC's portrait, name and greeting").toEqual([true, "TEST-ONLY Farmer", "TEST-ONLY Well met, <name>.", "Goodbye", "npc"]);
+  expect(g.lines, "quests to take, to turn in, then the options, numbered").toEqual(["1.  [8] TEST-ONLY Wolves", "2.  [12] TEST-ONLY Letter", "3.  TEST-ONLY Tell me more"]);
+  expect(isTok(addon, addon.eval("return ForeverUI_QuestDialog.lines[2].text.__textColor"), "gold"), "a quest ready to turn in is gold").toBe(true);
+  key(addon, "2"); key(addon, "7"); key(addon, "W");
+  addon.eval("local b = ForeverUI_QuestDialog.lines[3] b.__scripts.OnClick(b)");
+  expect(calls(addon), "a number key picks its line (keys with no line, and other keys, are left to the game); so does a click").toEqual(["active 90032", "option 90041"]);
+  addon.fire("GOSSIP_CLOSED");
+  expect([dialog(addon).shown, calls(addon)], "the game closing the talk hides it without closing again").toEqual([false, []]);
+  addon.fire("QUEST_DETAIL");
+  const d = dialog(addon);
+  expect([d.title, d.text, d.objectives, d.money, d.primary, d.secondary], "a quest's details, with Accept and Decline").toEqual(["TEST-ONLY Wolves", "TEST-ONLY Wolves trouble the farm.", "Objectives:  Slay 8 TEST-ONLY Wolves.", "+12s 0c  ·  450 XP", "Accept", "Decline"]);
+  expect([d.cards, borderOf(addon, "ForeverUI_QuestDialog.cards[1]")], "reward cards, a rare one in its quality color").toEqual([["TEST-ONLY Boots", "TEST-ONLY Gloves", "TEST-ONLY Bread"], [0, 0.44, 0.87, 1]]);
+  addon.eval("local c = ForeverUI_QuestDialog.cards[3] c.__scripts.OnEnter(c) c.__scripts.OnLeave(c) ForeverUI_QuestDialog.scroll.__scripts.OnMouseWheel(ForeverUI_QuestDialog.scroll, -1)");
+  expect(addon.eval("return GameTooltip.__questItem"), "hovering a card shows its item").toBe("reward 1");
+  key(addon, "SPACE");
+  addon.eval("ForeverUI_QuestDialog.secondary.__scripts.OnClick(ForeverUI_QuestDialog.secondary)");
+  expect(calls(addon), "Space accepts; Decline declines").toEqual(["accept nil", "decline nil"]);
+  addon.eval("__autoAccept = true");
+  addon.fire("QUEST_DETAIL");
+  key(addon, "SPACE");
+  expect([dialog(addon).primary, dialog(addon).secondary, calls(addon)], "a quest the game already accepted: just OK").toEqual(["OK", false, ["ack nil"]]);
+});
+
+it("quest dialog: turning in, picking a reward, closing, and handing the windows back", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.eval("__completable = false");
+  addon.fire("QUEST_PROGRESS");
+  key(addon, "SPACE");
+  expect([dialog(addon).primary, dialog(addon).enabled, calls(addon)], "Continue waits until you have what the quest needs").toEqual(["Continue", false, []]);
+  addon.eval("__completable = true");
+  addon.fire("QUEST_PROGRESS");
+  key(addon, "SPACE");
+  expect(calls(addon), "then hands it in").toEqual(["complete nil"]);
+  addon.fire("QUEST_COMPLETE");
+  key(addon, "SPACE");
+  expect([dialog(addon).enabled, calls(addon)], "with a choice of rewards, Complete waits for a pick").toEqual([false, []]);
+  key(addon, "9");
+  key(addon, "2");
+  expect(addon.eval("local c = ForeverUI_QuestDialog.cards return { c[1].picked:IsShown(), c[2].picked:IsShown(), ForeverUI_QuestDialog.primary:IsEnabled() }"), "2 picks the gloves (9 has no reward)").toEqual([false, true, true]);
+  addon.eval("local c = ForeverUI_QuestDialog.cards[1] c.__scripts.OnClick(c) c = ForeverUI_QuestDialog.cards[3] c.__scripts.OnClick(c)");
+  key(addon, "SPACE");
+  expect(calls(addon), "a click picks too (bread is no choice); Space takes it").toEqual(["reward 1"]);
+  addon.eval("__choices = { __choices[1] }");
+  addon.fire("QUEST_COMPLETE");
+  key(addon, "SPACE");
+  expect(calls(addon), "one reward: no pick needed").toEqual(["reward 1"]);
+  addon.fire("QUEST_GREETING");
+  addon.eval("local b = ForeverUI_QuestDialog.lines[1] b.__scripts.OnClick(b)");
+  expect([dialog(addon).lines, calls(addon)], "a quest giver without gossip").toEqual([["1.  [5] TEST-ONLY Rats"], ["greetAvail 1"]]);
+  addon.eval("__greetAvail, __greetActive = 0, 1 C_GossipInfo.GetText = function() return { __secret = true } end");
+  addon.fire("QUEST_GREETING");
+  expect(dialog(addon).lines, "a quest of yours still in progress").toEqual(["1.  [6] TEST-ONLY Parcel"]);
+  addon.fire("GOSSIP_SHOW");
+  expect(dialog(addon).text, "text the client hides shows as …").toBe("…");
+  addon.eval("ForeverUI_QuestDialog:Hide()");
+  expect(calls(addon), "Escape or Goodbye ends the talk").toEqual(["closeGossip nil", "closeQuest nil"]);
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  key(addon, "SPACE");
+  setCombat(addon, false);
+  expect(addon.eval("return { QuestFrame:IsEventRegistered('QUEST_DETAIL'), QuestFrame:IsEventRegistered('QUEST_LOG_UPDATE'), CustomGossipFrameManager:IsEventRegistered('GOSSIP_SHOW') }"), "the game's windows no longer open for these talks (their other events stay)").toEqual([false, true, false]);
+  const off = loggedIn(QUEST_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { QuestDialog = { dialog = false } } }" });
+  expect(off.eval("return { ForeverUI_QuestDialog == nil, QuestFrame:IsEventRegistered('QUEST_DETAIL') }"), "switched off, the game's windows stay").toEqual([true, true]);
+});
+
+it("quest automation: accept, turn in, best reward, skip chatter; Shift skips it", () => {
+  const on = "ForeverUIDB.profiles = { Default = { QuestAuto = { accept = true, turnIn = true, skipGossip = true } } }";
+  const addon = loggedIn(QUEST_ENV, { savedVariables: on });
+  addon.fire("QUEST_DETAIL");
+  expect([dialog(addon).shown, calls(addon), chatHas(addon, /Accepted: TEST-ONLY Wolves/)], "accepted for you, the dialog stays shut").toEqual([false, ["accept nil"], true]);
+  addon.eval("__shift = true");
+  addon.fire("QUEST_DETAIL");
+  expect([dialog(addon).shown, calls(addon)], "holding Shift: the dialog, as usual").toEqual([true, []]);
+  addon.eval("__shift, __autoAccept = false, true");
+  addon.fire("QUEST_DETAIL");
+  addon.fire("QUEST_PROGRESS");
+  addon.fire("QUEST_COMPLETE");
+  expect(calls(addon), "acknowledged, handed in; a choice of rewards is left to you").toEqual(["ack nil", "complete nil"]);
+  addon.eval("ForeverUIDB.profiles.Default.QuestAuto.bestReward = true");
+  addon.fire("QUEST_COMPLETE");
+  expect([calls(addon), chatHas(addon, /Turned in: TEST-ONLY Wolves \(took TEST-ONLY Gloves\)/)], "the best seller, when switched on").toEqual([["reward 2"], true]);
+  addon.eval('__prices["item:90022"] = nil');
+  addon.fire("QUEST_COMPLETE");
+  expect(calls(addon), "a price the game doesn't know yet: left to you").toEqual([]);
+  addon.eval("__choices = {}");
+  addon.fire("QUEST_COMPLETE");
+  expect(calls(addon), "no choice: just turned in").toEqual(["reward nil"]);
+  addon.fire("GOSSIP_SHOW");
+  addon.eval("__options = {} __active = {}");
+  addon.fire("GOSSIP_SHOW");
+  addon.eval("__avail, __active = {}, { { title = 'TEST-ONLY Letter', questLevel = 12, questID = 90032 } }");
+  addon.fire("GOSSIP_SHOW");
+  expect(calls(addon), "chatter kept when there's more to say; skipped for the one quest").toEqual(["avail 90031", "active 90032"]);
+  addon.fire("QUEST_GREETING");
+  addon.eval("__greetAvail, __greetActive = 0, 1");
+  addon.fire("QUEST_GREETING");
+  addon.eval("__greetActive = 2");
+  addon.fire("QUEST_GREETING");
+  expect(calls(addon), "the same without gossip; two quests are left to you").toEqual(["greetAvail 1", "greetActive 1"]);
+  const off = loggedIn(QUEST_ENV);
+  off.fire("QUEST_DETAIL");
+  expect([dialog(off).shown, calls(off)], "off by default").toEqual([true, []]);
+  expect(off.eval("GetQuestDifficultyColor = nil local QP = ns.QuestParts return { QP.Titled(nil, 'TEST-ONLY Note'), select(1, QP.LevelColor(5)) == select(1, ns.Theme.RGB('text')) }"), "a quest without a level, and a client without difficulty colors").toEqual(["TEST-ONLY Note", true]);
+});
+
 // TEST-ONLY numbers for the info strip: head slot 30%, legs 9% worn, 12 free slots, 12g 34s 7c.
 const STRIP_ENV = `
   __dur = { [1] = { 30, 100 }, [7] = { 9, 100 }, [2] = { 0, 0 } }
@@ -3436,10 +3615,13 @@ function raidRect(addon, spot, n, sw, sh) {
   return { l, b: holder.b, r: l + w, t: holder.b + h };
 }
 
+// Windows that open over the HUD for a moment (talking to an NPC), so they're left out of the overlap check.
+const FLOATING = new Set(["questdialog"]);
+
 // Every part's rect on an sw x sh screen with n players in the group (0: solo, no grid).
 function layoutRects(addon, n, sw, sh) {
   const spots = moverSpots(addon), out = {};
-  for (const [key, spot] of Object.entries(spots)) if (key !== "raid") out[key] = rectAt(spot.slice(0, 4), spot[4], spot[5], sw, sh);
+  for (const [key, spot] of Object.entries(spots)) if (key !== "raid" && !FLOATING.has(key)) out[key] = rectAt(spot.slice(0, 4), spot[4], spot[5], sw, sh);
   for (const [key, [parent, side, gap, w, h]] of Object.entries(ATTACHED)) {
     const p = out[parent];
     if (p) out[key] = side === "above" ? { l: p.l, b: p.t + gap, r: p.l + w, t: p.t + gap + h } : { l: p.l, b: p.b - gap - h, r: p.l + w, t: p.b - gap };
