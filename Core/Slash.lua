@@ -27,7 +27,7 @@ local HELP = {
   "binds                this spec's click-casting and hover-key bindings (set them in /fui > Click casting)",
   "status               version, profile, modules, skins, work waiting on combat",
   "factionart           which of the game's own faction pictures this client has",
-  "errors               the errors ForeverUI caught this session (for a bug report)",
+  "errors [clear]       the errors ForeverUI caught this session, with stacks and counts (for a bug report); clear empties the list",
 }
 
 -- Prints each line.
@@ -293,11 +293,33 @@ local function statusCommand()
   chat(textLine())
 end
 
--- /fui errors: the errors ForeverUI caught this session, newest last.
-local function errorsCommand()
+-- "16001": the client's interface version, or "?" when it can't say.
+local function interfaceText()
+  local iface = type(GetBuildInfo) == "function" and select(4, GetBuildInfo())
+  return tostring(iface or "?")
+end
+
+-- How many times the caught errors happened, in all.
+local function occurrences()
+  local n = 0
+  for _, e in ipairs(ns.errors) do n = n + e.count end
+  return n
+end
+
+-- One caught error: its text and count, then each line of its stack, indented.
+local function printError(e)
+  chat(string.format("%s  (x%d)", e.text, e.count))
+  for line in e.stack:gmatch("[^\n]+") do chat("    " .. line) end
+end
+
+-- /fui errors [clear]: the errors ForeverUI caught this session, newest last, with
+-- the version, client and aura backend a bug report needs; clear empties the list.
+local function errorsCommand(rest)
+  if rest == "clear" then ns.ClearErrors() return chat("Cleared.") end
   if #ns.errors == 0 then return chat("No errors caught this session.") end
-  chat(string.format("%d error(s) caught this session, newest last:", #ns.errors))
-  for _, line in ipairs(ns.errors) do chat(line) end
+  chat(string.format("ForeverUI %s  ·  interface %s  ·  %d error(s) caught this session (%d in all), newest last:", version(), interfaceText(), #ns.errors, occurrences()))
+  chat(clientLine())
+  for _, e in ipairs(ns.errors) do printError(e) end
 end
 
 local COMMANDS = {

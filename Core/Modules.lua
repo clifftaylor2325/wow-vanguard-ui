@@ -1,6 +1,7 @@
 -- Modules: each feature (unit frames, action bars, ...) registers itself here
 -- and is enabled at PLAYER_LOGIN unless the profile turns it off. A module
--- that errors is reported and skipped; the others still load.
+-- that errors is reported (chat, /fui errors, the game's error handler) and
+-- skipped; the others still load.
 
 local ADDON, ns = ...
 
@@ -36,14 +37,9 @@ function ns.SetModuleEnabled(name, on)
   ns.Settings("modules")[name] = on and true or false
 end
 
--- Enables one module; an error is printed instead of stopping the others.
+-- Enables one module; a failure is reported (see ns.Report) instead of stopping the others.
 local function enable(def)
-  local ok, err = pcall(def.Enable, ns.Settings(def.name, def.defaults))
-  def.enabled = ok
-  if not ok then
-    ns.CaughtError("module " .. def.name, err)
-    ns.Chat(string.format("module %s failed to load: %s", def.name, tostring(err)))
-  end
+  def.enabled = (ns.Try("module " .. def.name, def.Enable, ns.Settings(def.name, def.defaults)))
 end
 
 ns.On("PLAYER_LOGIN", function()

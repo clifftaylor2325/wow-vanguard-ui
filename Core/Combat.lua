@@ -59,15 +59,12 @@ function ns.QueuedCount()
   return #queue
 end
 
--- Runs queued work; one failing function is reported and the rest still run.
+-- Runs queued work; one failing function is reported (see ns.Report) and the rest still run.
 local function flush()
   local pending = queue
   queue = {}
   for _, fn in ipairs(pending) do
-    local ok, err = pcall(fn)
-    if not ok then
-      ns.Chat("after-combat update failed: " .. tostring(err))
-    end
+    ns.Try("after-combat update", fn)
   end
 end
 
