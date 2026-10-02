@@ -135,6 +135,12 @@ local function addTexts(f, card)
   f.clock:SetPoint("BOTTOMRIGHT", card, "BOTTOMRIGHT", -12, AFK.BAR_H + 16)
 end
 
+-- Your faction's crest at the card's left, while the faction look is on.
+local function addCrest(f, card)
+  f.crest = T.Crest(card, 44)
+  f.crest:SetPoint("TOPLEFT", card, "TOPLEFT", 14, -14)
+end
+
 -- The XP bar along the card's bottom.
 local function addXP(f, card)
   f.xp = T.BarColor(T.StyleBar(CreateFrame("StatusBar", nil, card)), "xp")
@@ -162,6 +168,7 @@ local function build()
   card:SetSize(AFK.CARD_W, AFK.CARD_H)
   card:SetPoint("CENTER", f, "CENTER", 0, 60)
   addTexts(f, card)
+  addCrest(f, card)
   addXP(f, card)
   return f
 end

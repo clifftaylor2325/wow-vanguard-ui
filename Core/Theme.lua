@@ -20,7 +20,14 @@ T.MEDIA = "Interface\\AddOns\\ForeverUI\\Media\\"
 T.FONTS = {
   regular = T.MEDIA .. "Fonts\\FiraSansCondensed-Medium.ttf",
   bold = T.MEDIA .. "Fonts\\FiraSansCondensed-SemiBold.ttf",
+  -- The faction look's heading fonts (window titles and headings only).
+  alliance = T.MEDIA .. "Fonts\\Cinzel-SemiBold.ttf",
+  horde = T.MEDIA .. "Fonts\\Metamorphous-Regular.ttf",
 }
+-- The faction look's crest (Media/Art) and its color, by faction.
+T.CRESTS = { Alliance = { "lorc-crossed-swords", "allianceCrest" }, Horde = { "lorc-crossed-axes", "hordeCrest" } }
+-- Text roles that take the faction's heading font.
+T.HEADING_ROLES = { title = true, heading = true }
 -- Clients whose script the bundled font doesn't cover use the game's font.
 local CLIENT_FONT_LOCALES = { koKR = true, zhCN = true, zhTW = true }
 
@@ -67,6 +74,8 @@ local TOKENS = {
   -- Experience and reputation
   xp = "940090", rested = { "0063e0", 0.5 },
   repHostile = "cc2121", repUnfriendly = "bf4500", repNeutral = "e6b300", repFriendly = "00991a",
+  -- The faction look's crests: Alliance gold, Horde red
+  allianceCrest = "d6b25a", hordeCrest = "c8453a",
   -- Zone text
   zoneSanctuary = "69ccf0", zoneFriendly = "1aff1a", zoneHostile = "ff1a1a", zoneContested = "ffb300",
 }
@@ -101,12 +110,16 @@ local DEFAULTS = {
   smoothBars = true,
   reduceMotion = false,
   sounds = true,
+  -- The faction look: "auto" (by your faction) or "off".
+  faction = "auto",
 }
 
 -- Painted frames: frame -> { kind, opts, parts }. Weak, so hidden frames
 -- that get collected don't stay here.
 local painted = setmetatable({}, { __mode = "k" })
 local listeners = {}
+-- Every crest texture (weak), repainted when the theme changes.
+local crests = setmetatable({}, { __mode = "k" })
 
 -- Theme settings in the active profile, with defaults.
 function T.Settings()
@@ -635,6 +648,7 @@ end
 function T.ApplyRole(fs, role)
   local r = T.ROLES[role]
   local path, outline = T.Font(r[2])
+  if T.HEADING_ROLES[role] then path = T.HeadingFont() or path end
   fs:SetFont(path, roleSize(r), r[3] or outline)
   fs:SetShadowOffset(r[3] and 0 or 1, r[3] and 0 or -1)
   fs:SetShadowColor(T.RGB("textShadow"))
@@ -668,9 +682,45 @@ function T.Refresh()
     repaint(frame, entry)
   end
   T.RefreshText()
+  for t in pairs(crests) do T.PaintCrest(t) end
   for _, fn in ipairs(listeners) do
     fn()
   end
+end
+
+-- The faction look ---------------------------------------------------------------------
+
+-- Your faction for the faction look ("Alliance" or "Horde"), or nil when it's off or you have none.
+function T.Faction()
+  if T.Settings().faction == "off" or not ns.FactionArt then return nil end
+  local faction = ns.FactionArt.Faction()
+  return faction ~= "none" and faction or nil
+end
+
+-- The faction's heading font, or nil (look off, no faction, another font chosen, or a client using the game's font).
+function T.HeadingFont()
+  local s, faction = T.Settings(), T.Faction()
+  if not faction or s.font ~= "" or useClientFont(s) then return nil end
+  return T.FONTS[faction:lower()]
+end
+
+-- Paints a crest texture: your faction's crest in its color, hidden while the look is off.
+function T.PaintCrest(t)
+  local crest = T.CRESTS[T.Faction() or ""]
+  t:SetShown(crest ~= nil)
+  if not crest then return end
+  t:SetTexture(T.MEDIA .. "Art\\" .. crest[1])
+  T.Tint(t, crest[2], t.fuiAlpha)
+end
+
+-- A size x size crest on a frame (at an optional alpha), following the faction look as it changes.
+function T.Crest(parent, size, layer, alpha)
+  local t = parent:CreateTexture(nil, layer or "ARTWORK")
+  t:SetSize(size, size)
+  t.fuiAlpha = alpha
+  crests[t] = true
+  T.PaintCrest(t)
+  return t
 end
 
 -- Sets the accent color (0-1 components) and repaints.

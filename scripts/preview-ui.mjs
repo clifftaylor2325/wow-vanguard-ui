@@ -482,6 +482,10 @@ const SCENES = [
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)
     GameTooltip.unit = "target" __tipHooks.GameTooltip_SetDefaultAnchor(GameTooltip, UIParent) GameTooltip:Show() __tipPost(GameTooltip)` },
   { name: "foreverui-options", caption: "Options window: General (/fui)", lua: 'ns.Options.Show("general")' },
+  { name: "foreverui-faction-alliance", caption: "The faction look on an Alliance character: Cinzel headings and the crossed swords beside the title (TEST-ONLY character)", lua: 'ns.Options.Show("general")', before: 'UnitFactionGroup = function() return "Alliance" end' },
+  { name: "foreverui-faction-horde", caption: "The faction look on a Horde character while away: Metamorphous for the name and the crossed axes on the AFK card (TEST-ONLY character)",
+    lua: '__group({ "player", "party1", "party2" }) UnitIsAFK = function() return true end __wfgStub.fire("PLAYER_FLAGS_CHANGED", "player")',
+    before: 'UnitFactionGroup = function() return "Horde" end GetRealZoneText = function() return "TEST-ONLY Barrens" end date = function() return "21:04" end UnitXP = function() return 3400 end UnitXPMax = function() return 9800 end UnitLevel = function() return 18 end GetMaxPlayerLevel = function() return 60 end' },
   { name: "foreverui-bars-drag", caption: "Action bars while you drag a spell or item: the empty slots show so there is somewhere to drop it; otherwise they stay hidden (TEST-ONLY icons)", lua: '__wfgStub.fire("ACTIONBAR_SHOWGRID")' },
   { name: "foreverui-options-modules", caption: "Options window: Modules, each with what it does and what it needs", lua: 'ns.Options.Show("modules")' },
   { name: "foreverui-options-changed", caption: "Options window: Unit frames with two settings changed; the dot left of each puts its default back", lua: 'ns.Settings("UnitFrames").healthText = false ns.Settings("PowerTicks").energy = false ns.Options.Show("unitframes")' },

@@ -46,6 +46,9 @@ local function line(kind, name, found)
   ns.Chat(string.format("  %s %s  %s", kind, name, found and T.Paint("yes", "good") or T.Paint("missing", "muted")))
 end
 
+-- A neutral character who just picked a side gets the faction look at once.
+ns.On("NEUTRAL_FACTION_SELECT_RESULT", function() T.Refresh() end)
+
 -- Prints the report: your faction, then each atlas and file and whether it's there.
 function FA.Report()
   ns.Chat("Faction art on this client (you're " .. FA.Faction() .. "):")
