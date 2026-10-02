@@ -67,6 +67,8 @@ Modules/QuestDialogParts.lua
 Modules/QuestDialog.lua
 Modules/QuestDialogView.lua
 Modules/QuestAuto.lua
+Modules/QuestTracker.lua
+Modules/QuestTrackerView.lua
 Modules/Windows.lua
 Modules/GameTools.lua
 Modules/DataBars.lua
