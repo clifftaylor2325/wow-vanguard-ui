@@ -26,6 +26,7 @@ local HELP = {
   "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
   "binds                this spec's click-casting and hover-key bindings (set them in /fui > Click casting)",
   "status               version, profile, modules, skins, work waiting on combat",
+  "factionart           which of the game's own faction pictures this client has",
   "errors               the errors ForeverUI caught this session (for a bug report)",
 }
 
@@ -328,6 +329,7 @@ local COMMANDS = {
   copy = function() ns.GetModule("ChatExtras").ShowCopy() end,
   quests = function() local QL = ns.GetModule("QuestLog") if QL.frame then QL.Toggle() else ns.Chat("ForeverUI's quest log is off (/fui > Quests).") end end,
   stock = function(rest) ns.GetModule("Errands").StockCommand(rest) end,
+  factionart = function() ns.FactionArt.Report() end,
   status = statusCommand,
   errors = errorsCommand,
 }
