@@ -48,9 +48,10 @@ export function dumpFrames(addon) {
 // ForeverUI's fonts as @font-face rules, so previews use the real typeface.
 function fontFaces() {
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "Media", "Fonts");
-  return ["Medium", "SemiBold"].map((w) => {
-    const data = fs.readFileSync(path.join(dir, `FiraSansCondensed-${w}.ttf`)).toString("base64");
-    return `@font-face{font-family:"FUI-${w}";src:url(data:font/ttf;base64,${data})}`;
+  const files = { Medium: "FiraSansCondensed-Medium", SemiBold: "FiraSansCondensed-SemiBold", Cinzel: "Cinzel-SemiBold", Metamorphous: "Metamorphous-Regular" };
+  return Object.entries(files).map(([name, file]) => {
+    const data = fs.readFileSync(path.join(dir, `${file}.ttf`)).toString("base64");
+    return `@font-face{font-family:"FUI-${name}";src:url(data:font/ttf;base64,${data})}`;
   }).join("");
 }
 

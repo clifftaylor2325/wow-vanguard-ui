@@ -1379,6 +1379,32 @@ it("/fui factionart: which of the game's own faction pictures the client has", (
   expect(bare.eval("return { ns.FactionArt.HasAtlas('MountJournalIcons-Horde'), ns.FactionArt.Faction() }"), "a client without these calls has none, and no faction").toEqual([false, "none"]);
 });
 
+it("the faction look: your faction's crest and heading font, and Off", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + '__faction = "Alliance" UnitFactionGroup = function() return __faction end');
+  // A new title and label string's font file, and a new crest's texture, color and shown state.
+  const look = () => addon.eval(`local T = ns.Theme
+    local title, label = T.Text(UIParent:CreateFontString(), "title"), T.Text(UIParent:CreateFontString(), "label")
+    local c = ForeverUI_AfkScreen.crest
+    return { title.__font[1]:match("[^\\\\]+$"), label.__font[1]:match("[^\\\\]+$"), c:IsShown(), (c.__texture or ""):match("[^\\\\]+$") or "", c.__vertexColor }`);
+  const ally = look();
+  expect(ally.slice(0, 4), "Alliance: Cinzel headings (body text stays Fira Sans), the crossed swords").toEqual(["Cinzel-SemiBold.ttf", "FiraSansCondensed-Medium.ttf", true, "lorc-crossed-swords"]);
+  expect(isTok(addon, ally[4], "allianceCrest"), "in Alliance gold").toBe(true);
+  expect(addon.eval("return { ForeverUI_QuestDialog.crest.fuiAlpha, ForeverUI_QuestDialog.crest.__vertexColor[4] }"), "a faint watermark in the quest dialog").toEqual([0.1, 0.1]);
+  addon.eval('__faction = "Horde"');
+  addon.fire("NEUTRAL_FACTION_SELECT_RESULT");
+  const horde = look();
+  expect([horde[0], horde[3], isTok(addon, horde[4], "hordeCrest")], "Horde: Metamorphous and the crossed axes, in Horde red").toEqual(["Metamorphous-Regular.ttf", "lorc-crossed-axes", true]);
+  addon.slash("");
+  expect(addon.eval("return ForeverUI_Options.crest:IsShown() and ForeverUI_Options.crest.__points.LEFT.rel == ForeverUI_Options.title"), "the crest beside the options window's title").toBe(true);
+  addon.eval('__click("Faction look: crest and heading font")');
+  const off = look();
+  expect([off[0], off[2], addon.eval("return ForeverUI_Options.title.__font[1]:find('Fira') ~= nil")], "Off: the usual heading font, no crests, at once").toEqual(["FiraSansCondensed-SemiBold.ttf", false, true]);
+  addon.eval('__click("Faction look: crest and heading font") __faction = "Neutral" ns.Theme.Refresh()');
+  expect(look().slice(0, 3), "a neutral character keeps the usual look").toEqual(["FiraSansCondensed-SemiBold.ttf", "FiraSansCondensed-Medium.ttf", false]);
+  addon.eval('__faction = "Alliance" ns.Theme.Settings().font = "client" ns.Theme.Refresh()');
+  expect(addon.eval("return { ns.Theme.HeadingFont() == nil, ForeverUI_AfkScreen.crest:IsShown() }"), "with the game's font chosen, headings follow it (the crest stays)").toEqual([true, true]);
+});
+
 // TEST-ONLY numbers for the info strip: head slot 30%, legs 9% worn, 12 free slots, 12g 34s 7c.
 const STRIP_ENV = `
   __dur = { [1] = { 30, 100 }, [7] = { 9, 100 }, [2] = { 0, 0 } }

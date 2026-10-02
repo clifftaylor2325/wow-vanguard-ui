@@ -295,14 +295,21 @@ local function searchEnter(self)
   O.JumpTo(self:GetText())
 end
 
+-- The title, with your faction's crest just right of it while the faction look is on.
+local function addTitle(f)
+  f.title = T.Text(f.header:CreateFontString(nil, "OVERLAY"), "title")
+  f.title:SetPoint("LEFT", f.logo, "RIGHT", 6, 0)
+  f.title:SetText("ForeverUI")
+  f.crest = T.Crest(f.header, 20, "OVERLAY")
+  f.crest:SetPoint("LEFT", f.title, "RIGHT", 8, 0)
+end
+
 -- The header: logo and title, search, profile, close.
 local function addHeader(f)
   f.header = bar(f, "TOP")
   f.logo = T.Logo(f.header, 22)
   f.logo:SetPoint("LEFT", 10, 0)
-  f.title = T.Text(f.header:CreateFontString(nil, "OVERLAY"), "title")
-  f.title:SetPoint("LEFT", f.logo, "RIGHT", 6, 0)
-  f.title:SetText("ForeverUI")
+  addTitle(f)
   f.close = T.CloseButton(CreateFrame("Button", nil, f.header))
   f.close:SetSize(24, 24)
   f.close:SetPoint("RIGHT", -8, 0)

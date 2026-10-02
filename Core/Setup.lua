@@ -207,6 +207,16 @@ local function movePage(page)
   end
 end
 
+-- The title, the step caption under it, and your faction's crest left of the close button.
+local function addTitle(f)
+  f.title = text(f, "title", "text", "Set up ForeverUI")
+  f.title:SetPoint("TOPLEFT", PAD, -14)
+  f.caption = text(f, "small", "accent", "")
+  f.caption:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -4)
+  f.crest = T.Crest(f, 28)
+  f.crest:SetPoint("TOPRIGHT", -PAD - 32, -12)
+end
+
 -- The window: a floating panel with a title and the step caption.
 local function window()
   local f = T.Panel(CreateFrame("Frame", "ForeverUI_Setup", UIParent), { alpha = 0.98, shadow = true })
@@ -214,10 +224,7 @@ local function window()
   f:SetPoint("CENTER")
   f:SetFrameStrata("DIALOG")
   f:EnableMouse(true)
-  f.title = text(f, "title", "text", "Set up ForeverUI")
-  f.title:SetPoint("TOPLEFT", PAD, -14)
-  f.caption = text(f, "small", "accent", "")
-  f.caption:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -4)
+  addTitle(f)
   return f
 end
 

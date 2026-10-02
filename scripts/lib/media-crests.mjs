@@ -10,8 +10,8 @@ import { image } from "./media-art.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
-// The crests the faction look ships (Media/Art/<name>.tga); empty until one is picked.
-export const CRESTS = [];
+// The crests the faction look ships (Media/Art/<name>.tga): the Alliance's, then the Horde's.
+export const CRESTS = ["lorc-crossed-swords", "lorc-crossed-axes"];
 
 // Every crest source on disk, by name ("lorc-lion").
 export function crestNames() {
