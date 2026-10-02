@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// npm run coverage: runs the Lua harness tests under Vitest with line
-// coverage on, loads the worker's dumped hits, writes
+// npm run coverage: runs the Lua harness tests (scripts/tests/) under Vitest
+// with line coverage on, merges the hits each test file dumped, writes
 // coverage/lua-coverage.json, and fails if the total is under the floor
-// in scripts/lua-coverage-floor.json. A missing hits file fails.
+// in scripts/lua-coverage-floor.json. No hits files at all fails.
 // The floor only goes up; 100 is the goal.
 
 import { spawnSync } from "node:child_process";
@@ -11,12 +11,12 @@ import path from "node:path";
 import { root, tocFiles } from "./lib/lua-harness.mjs";
 import { coverageReport, formatReport, loadHits } from "./lib/lua-coverage.mjs";
 
-const hits = path.join(root, "coverage", "lua-hits.json");
+const hits = path.join(root, "coverage", "lua-hits");
 const bin = path.join(root, "node_modules", "vitest", "vitest.mjs");
-const tests = path.join(root, "scripts", "verify-lua.test.mjs");
+const tests = path.join(root, "scripts", "tests");
 
-fs.mkdirSync(path.dirname(hits), { recursive: true });
-fs.rmSync(hits, { force: true });
+fs.rmSync(hits, { recursive: true, force: true });
+fs.mkdirSync(hits, { recursive: true });
 const run = spawnSync(process.execPath, [bin, "run", tests], {
   cwd: root,
   stdio: "inherit",
