@@ -39,6 +39,7 @@ Written from scratch. It contains no code, art or fonts from other UI addons.
 - **Chat extras**: web addresses in chat become links in your accent color; click one and it opens selected, ready to copy. A small **Copy** button over the chat (or `/fui copy`) opens the recent chat as plain text to copy. Chat the game hides from addons (in instances) is left untouched and out of the copy.
 - **Minimap drawer**: other addons' round minimap buttons are gathered into a drawer beside the map; the small "..." button on the map's left edge opens it (it only shows once there's a button to gather).
 - **Auto-accept** (each off until you switch it on, under Bars, map, chat): accept summons (out of combat), accept resurrections, decline duel requests. Each says in chat what it did.
+- **Faction look** (on by default; General → Look → Faction look): an Alliance character gets the crossed swords in gold and Cinzel for window titles and headings; a Horde character gets the crossed axes in red and Metamorphous. The crest sits beside the options window's title, on the setup wizard, on the AFK card and faintly behind the quest dialog's header. Numbers and body text stay in Fira Sans, the HUD and your accent color are unchanged, and neutral characters (and Korean and Chinese clients, which use the game's font) keep the usual look. `/fui factionart` lists which of the game's own faction pictures your client has.
 - **AFK screen**: while you're away (`/afk`, or the game marks you idle), the screen dims to a card with your name in your class color, level and class, the zone, how long you've been away, the time and your XP bar. Moving or a fight brings everything back; a click or a key puts it away until you're next away. It only shows out of combat and never hides the game's own frames. Turn it off under Modules.
 - **Main tank frames**: in a raid, the players marked main tank or main assist get small tiles at the top left (beside the raid tools), with health in their class color and what each is targeting written beside it. Click one to target them. Move them with `/fui unlock`; turn them off under Modules.
 - **Party pets and targets** (off until you turn it on under Unit frames): a small tile for each party member's pet and target, one row per member, above the party frames. They show only in a party, each while its unit exists.
@@ -129,3 +130,8 @@ npm run preview   # preview/*.png: the default layout and the options window (ne
 ## License
 
 MIT, except the fonts: `Media/Fonts/FiraSansCondensed-*.ttf` are Fira Sans Condensed (Copyright 2012-2015 The Mozilla Foundation and Telefonica S.A.) under the SIL Open Font License 1.1, in `Media/Fonts/OFL.txt`. ForeverUI ships them trimmed to Latin, Greek and Cyrillic, with the digits pointing at the font's tabular figures.
+
+## Credits
+
+- Fira Sans Condensed, Cinzel and Metamorphous: SIL Open Font License 1.1 (licenses in `Media/Fonts`).
+- Faction crests "Crossed swords" and "Crossed axes" by Lorc, from game-icons.net, CC BY 3.0 (`Media/Art/CREDITS.txt`; all sources in `art/CREDITS.md`).

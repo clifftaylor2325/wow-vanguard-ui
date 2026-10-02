@@ -21,6 +21,9 @@ local function addHeader(f)
   f.npc:SetPoint("TOPLEFT", f.portrait, "TOPRIGHT", 10, -2)
   f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "gold")
   f.title:SetPoint("TOPLEFT", f.npc, "BOTTOMLEFT", 0, -4)
+  -- Your faction's crest, faint, behind the top-right corner.
+  f.crest = T.Crest(f, 96, "BORDER", 0.1)
+  f.crest:SetPoint("TOPRIGHT", f, "TOPRIGHT", -12, -6)
 end
 
 -- Scrolls the body by the mouse wheel, within its range.

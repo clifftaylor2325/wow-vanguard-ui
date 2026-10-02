@@ -49,7 +49,10 @@ const strataOf = (ctx, f) => STRATA[[f, ...ancestors(ctx, f)].find((w) => w.stra
 const scrollParent = (ctx, f) => ancestors(ctx, f).find((w) => w.kind === "ScrollFrame" || w.clips) || null;
 
 // The page font for a font file: ForeverUI's bundled weights, else the default.
-const fontFamily = (file) => (/SemiBold/.test(file || "") ? '"FUI-SemiBold"' : /FiraSans/.test(file || "") ? '"FUI-Medium"' : "");
+const fontFamily = (file) => {
+  const f = file || "";
+  return /Cinzel/.test(f) ? '"FUI-Cinzel"' : /Metamorphous/.test(f) ? '"FUI-Metamorphous"' : /SemiBold/.test(f) ? '"FUI-SemiBold"' : /FiraSans/.test(f) ? '"FUI-Medium"' : "";
+};
 
 // A font string's size, line height, color and family.
 function fontStyle(f) {
