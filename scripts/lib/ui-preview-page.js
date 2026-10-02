@@ -15,7 +15,7 @@ const FONTS = {
   GameFontDisableSmall: [10, [0.5, 0.5, 0.5]],
   ChatFontNormal: [14, [1, 1, 1]],
 };
-const STRATA = { BACKGROUND: 0, LOW: 1, MEDIUM: 2, HIGH: 3, DIALOG: 4, FULLSCREEN: 5, TOOLTIP: 6 };
+const STRATA = { BACKGROUND: 0, LOW: 1, MEDIUM: 2, HIGH: 3, DIALOG: 4, FULLSCREEN: 5, FULLSCREEN_DIALOG: 6, TOOLTIP: 7 };
 const LAYER = { BACKGROUND: 0, BORDER: 1, ARTWORK: 2, OVERLAY: 3, HIGHLIGHT: 4 };
 // Regions draw in their frame's layers; everything else is a frame.
 const REGIONS = new Set(["Texture", "FontString", "Line"]);

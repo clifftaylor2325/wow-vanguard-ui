@@ -134,6 +134,7 @@ local function layoutRows()
     { "button", "Move frames", function() O.Hide(); ns.Unlock() end },
     check("Show a grid while moving", moverOption("grid")),
     check("Snap to other frames", moverOption("snap")),
+    check("Show these handles in the game's Edit Mode too", moverOption("editMode")),
     { "text", "While moving frames, right-click one for its exact anchor and offsets." },
     { "button", "Reset all positions", function() ns.ResetMovers("all") end },
   }
@@ -183,7 +184,8 @@ O.MODULE_INFO = {
   ActionBars = { "Action bars", "Eight bars with their own size, layout and visibility." },
   SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, and the vehicle exit." },
   Minimap = { "Minimap", "A square minimap with the zone and coordinates." },
-  InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo and the time, under the minimap, and your XP and gold per hour while you level." },
+  InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo and the time, under the minimap, your XP and gold per hour while you level, and your DPS if you like." },
+  AfkScreen = { "AFK screen", "While you're away, the screen dims to a card with your character, zone, time away and XP." },
   MenuStrip = { "Menu and quest tracker", "The game's menu buttons (as ForeverUI icons) and bag buttons in a corner strip, and the quest tracker under the info strip." },
   Chat = { "Chat", "Themed chat windows and tabs." },
   Bags = { "Bags", "One combined bag, with a Sort button." },
@@ -414,6 +416,7 @@ local function stripRows()
     check("Ammo (hunters, warriors, rogues)", stripSetting("ammo")), check("Clock", stripSetting("clock")),
     check("XP per hour this session", stripSetting("xprate")), check("Time to the next level", stripSetting("leveltime")),
     check("Gold per hour this session", stripSetting("goldrate")),
+    check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")),
   }
 end
 

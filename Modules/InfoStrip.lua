@@ -1,7 +1,8 @@
--- A strip of numbers under the minimap, up to three rows:
+-- A strip of numbers under the minimap, up to four rows:
 --   durability (orange at 25% or less, red at 10% or less) · free bag slots · fps and latency
 --   gold · ammo (hunters, warriors, rogues) · clock
 --   leveling: XP per hour · time to level · gold per hour this session
+--   your damage per second in the last fight (off until you turn it on)
 -- Each block reads the client when its event fires (fps, latency and the
 -- clock once a second on one shared timer), shows only where the client
 -- can answer, and sets its text only when it changed. Values the client
@@ -14,7 +15,7 @@ local T = ns.Theme
 local IS = ns.Module("InfoStrip", {
   defaults = {
     durability = true, bags = true, system = true, gold = true, ammo = true, clock = true,
-    xprate = true, leveltime = true, goldrate = true,
+    xprate = true, leveltime = true, goldrate = true, dps = false,
   },
 })
 
@@ -24,6 +25,7 @@ IS.BLOCKS = {
   durability = { 1, "LEFT" }, bags = { 1, "CENTER" }, system = { 1, "RIGHT" },
   gold = { 2, "LEFT" }, ammo = { 2, "CENTER" }, clock = { 2, "RIGHT" },
   xprate = { 3, "LEFT" }, leveltime = { 3, "CENTER" }, goldrate = { 3, "RIGHT" },
+  dps = { 4, "LEFT" },
 }
 -- The session's rates wait this long (seconds) before showing: early numbers jump about.
 IS.SETTLE = 60
@@ -143,6 +145,26 @@ function IS.GoldRate()
   return (now - start) * 3600 / elapsed
 end
 
+-- Damage meter ---------------------------------------------------------------------------------
+
+-- An Enum value from the client, else the number the game's API documents for it.
+local function enum(kind, key, fallback)
+  local t = Enum and Enum[kind]
+  return t and t[key] or fallback
+end
+
+-- Your damage per second in the current (or last) fight, from the game's damage
+-- meter; nil in combat and wherever the client keeps it hidden.
+function IS.DPS()
+  local get = C_DamageMeter and C_DamageMeter.GetCombatSessionFromType
+  if type(get) ~= "function" or ns.InCombat() then return nil end
+  local session = get(enum("DamageMeterSessionType", "Current", 1), enum("DamageMeterType", "Dps", 1))
+  if type(session) ~= "table" or ns.IsSecret(session) then return nil end
+  for _, source in ipairs(session.combatSources or {}) do
+    if source.isLocalPlayer == true then return ns.PlainNumber(source.amountPerSecond) end
+  end
+end
+
 -- True at the level cap, where XP stops.
 local function atMaxLevel()
   local level, cap = ns.PlainNumber(ask("UnitLevel", "player")), ns.PlainNumber(ask("GetMaxPlayerLevel"))
@@ -213,6 +235,12 @@ function IS.TEXT.goldrate()
   return sign .. IS.ShortMoney(math.floor(math.abs(rate))) .. "/h", rate < 0 and "bad" or "gold"
 end
 
+-- Your damage per second in the last fight (it updates when the fight ends).
+function IS.TEXT.dps()
+  local dps = IS.DPS()
+  if dps and dps > 0 then return ns.GetModule("DataBars").Short(math.floor(dps)) .. " dps", "text" end
+end
+
 -- Showing -----------------------------------------------------------------------------------
 
 -- The lowest row with a block showing (0 when nothing shows).
@@ -225,7 +253,7 @@ local function rowsShown()
 end
 
 -- Hides the strip while it has nothing to show (no empty box on screen), and
--- grows it to a third row only while a leveling block shows.
+-- grows it to a third (or fourth) row only while a block there shows.
 local function fitRows()
   local rows = rowsShown()
   IS.frame:SetShown(rows > 0)
@@ -315,16 +343,23 @@ local function onXP()
   IS.PaintRates()
 end
 
--- Module entry point (Core/Modules.lua).
-function IS.Enable(settings)
-  IS.settings = settings
-  hideReplaced(settings)
-  IS.StartSession()
-  build()
+-- Repaints each block when its event fires.
+local function watch()
   for event, key in pairs(IS.EVENTS) do ns.On(event, function() IS.Paint(key) end) end
   ns.On("BAG_UPDATE_DELAYED", function() IS.Paint("ammo") end)
   ns.On("PLAYER_MONEY", function() IS.Paint("goldrate") end)
   ns.On("PLAYER_XP_UPDATE", onXP)
   ns.On("PLAYER_LEVEL_UP", IS.PaintRates)
   ns.On("PLAYER_ENTERING_WORLD", IS.UpdateAll)
+  -- Your DPS is readable once a fight ends (and gone when the meter resets).
+  for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "DAMAGE_METER_RESET" }) do ns.On(event, function() IS.Paint("dps") end) end
+end
+
+-- Module entry point (Core/Modules.lua).
+function IS.Enable(settings)
+  IS.settings = settings
+  hideReplaced(settings)
+  IS.StartSession()
+  build()
+  watch()
 end
