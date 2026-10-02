@@ -353,6 +353,7 @@ local function gamePartRows()
     { "cycle", "Game menu buttons (reload)", { { "mouseover", "On mouseover" }, { "always", "Always" } }, setting("MenuStrip", "menu", true) },
     check("ForeverUI icons on the menu buttons (reload)", setting("MenuStrip", "glyphs", true)),
     check("Quest tracker under the info strip (reload)", setting("MenuStrip", "tracker", true)),
+    check("Quest tracker in the ForeverUI look (reload)", setting("MenuStrip", "trackerLook", true)),
   }
 end
 

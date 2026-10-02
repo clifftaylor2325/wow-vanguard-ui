@@ -12,9 +12,11 @@ local ADDON, ns = ...
 
 local T = ns.Theme
 
-local MS = ns.Module("MenuStrip", { defaults = { menu = "mouseover", tracker = true, glyphs = true } })
+local MS = ns.Module("MenuStrip", { defaults = { menu = "mouseover", tracker = true, glyphs = true, trackerLook = true } })
 
 MS.WIDTH, MS.HEIGHT, MS.SCALE = 300, 36, 0.8
+-- The space between a strip's edge and the buttons in it (UI units, all round).
+MS.MARGIN = 6
 -- The quest tracker's spot: its width and the most height it gets (it ends above the
 -- target of target at UI scale 1.0).
 MS.TRACKER_W, MS.TRACKER_H = 260, 280
@@ -45,15 +47,23 @@ local STATES = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "
 
 -- The menu strip ---------------------------------------------------------------------------
 
--- Pins one of the game's bars into a strip (at one end, or centered), drawn smaller.
-local function pinInto(name, strip, point, x, scale)
+-- Sizes a strip to hold its bar (drawn at scale) with MS.MARGIN all round,
+-- never smaller than its default size.
+function MS.FitStrip(strip, bar, scale, minWidth)
+  local w, h = (bar:GetWidth() or 0) * scale, (bar:GetHeight() or 0) * scale
+  strip:SetSize(math.max(minWidth, w + 2 * MS.MARGIN), math.max(MS.HEIGHT, h + 2 * MS.MARGIN))
+end
+
+-- Pins one of the game's bars centered in a strip, drawn smaller, and sizes the strip around it.
+local function pinInto(name, strip, scale, minWidth)
   local f = _G[name]
   if type(f) ~= "table" or not f.SetPoint then return end
   ns.Pin(f, function(bar)
     bar:SetParent(strip)
     bar:SetScale(scale)
     bar:ClearAllPoints()
-    bar:SetPoint(point, strip, point, x, 0)
+    bar:SetPoint("CENTER", strip, "CENTER", 0, 0)
+    MS.FitStrip(strip, bar, scale, minWidth)
   end)
 end
 
@@ -163,12 +173,13 @@ function MS.SkinBag(b)
   insetIcon(b, icon)
 end
 
--- The bag strip, left of the menu strip and always shown, with the game's bag bar centered in it.
+-- The bag strip, just left of the menu strip (however wide it grew) and always
+-- shown, with the game's bag bar centered in it.
 local function buildBags(settings)
   MS.bags = T.HudPanel(CreateFrame("Frame", "ForeverUI_BagStrip", UIParent), { inset = true })
   MS.bags:SetSize(MS.BAG_W, MS.HEIGHT)
-  ns.Mover(MS.bags, "bagstrip", "Bags", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16 - MS.WIDTH - 6, 20 })
-  pinInto("BagsBar", MS.bags, "CENTER", 0, MS.BAG_SCALE)
+  ns.Mover(MS.bags, "bagstrip", "Bags", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16 - MS.strip:GetWidth() - 6, 20 })
+  pinInto("BagsBar", MS.bags, MS.BAG_SCALE, MS.BAG_W)
   if not settings.glyphs then return end
   for _, name in ipairs(MS.BAGS) do if type(_G[name]) == "table" then MS.SkinBag(_G[name]) end end
 end
@@ -178,7 +189,7 @@ local function buildStrip(settings)
   MS.strip = T.HudPanel(CreateFrame("Frame", "ForeverUI_MenuStrip", UIParent), { inset = true })
   MS.strip:SetSize(MS.WIDTH, MS.HEIGHT)
   ns.Mover(MS.strip, "menustrip", "Game menu", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 20 })
-  pinInto("MicroMenuContainer", MS.strip, "LEFT", 4, MS.SCALE)
+  pinInto("MicroMenuContainer", MS.strip, MS.SCALE, MS.WIDTH)
   buildBags(settings)
   if settings.glyphs then skinGlyphs() end
   if settings.menu == "mouseover" then watchMouse(MS.strip) MS.strip:SetAlpha(0) end
@@ -200,10 +211,95 @@ local function buildTracker()
   end)
 end
 
+-- The quest tracker's look ------------------------------------------------------------------
+
+-- Tracker header art that's faded ("All Objectives", "Quests"... each have their own).
+MS.HEADER_ART = { "Background", "Shine", "Glow" }
+-- The tracker's font objects -> { size before Text size, bold }.
+MS.TRACKER_FONTS = { ObjectiveTrackerLineFont = { 12 }, ObjectiveTrackerHeaderFont = { 13, true } }
+-- The accent lines under the tracker's headers (repainted when the accent changes).
+MS.rules = {}
+
+-- Paints every header's accent line in the current accent.
+local function paintRules()
+  for _, rule in ipairs(MS.rules) do T.Tint(rule, "accent") end
+end
+
+-- A one-pixel accent line along a header's bottom edge.
+local function addRule(header)
+  local rule = T.Snap(header:CreateTexture(nil, "ARTWORK"))
+  rule:SetTexture(T.WHITE)
+  rule:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT")
+  rule:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT")
+  rule:SetHeight(T.Pixel(header))
+  MS.rules[#MS.rules + 1] = rule
+  T.Tint(rule, "accent")
+end
+
+-- Shows a header's collapse arrow: Down while open, Right while collapsed.
+function MS.PaintArrow(header, collapsed)
+  header.fuiArrow:SetTexture(T.Icon(collapsed and "Right" or "Down"))
+end
+
+-- A header's collapse button: the game's art faded, the theme's arrow drawn on
+-- it, following the header as it collapses and opens.
+local function skinToggle(header)
+  local b = header.MinimizeButton
+  fadeStates(b)
+  header.fuiArrow = T.Tint(T.Snap(b:CreateTexture(nil, "OVERLAY")), "text2")
+  header.fuiArrow:SetSize(12, 12)
+  header.fuiArrow:SetPoint("CENTER", b, "CENTER")
+  MS.PaintArrow(header, false)
+  if type(header.SetCollapsed) == "function" then hooksecurefunc(header, "SetCollapsed", MS.PaintArrow) end
+end
+
+-- One tracker header in the theme: its art faded, a flat band with an accent
+-- line along the bottom, its title in the heading font (its color kept). Once.
+function MS.SkinHeader(header)
+  if header.fuiHeader then return end
+  header.fuiHeader = true
+  for _, key in ipairs(MS.HEADER_ART) do if type(header[key]) == "table" then header[key]:SetAlpha(0) end end
+  T.HudPanel(header, { inset = true, alpha = 0.6 })
+  addRule(header)
+  if type(header.Text) == "table" then T.Text(header.Text, "heading", false) end
+  if type(header.MinimizeButton) == "table" then skinToggle(header) end
+end
+
+-- Every tracker header there is now: the tracker's own and each section's.
+function MS.SkinTracker()
+  local tracker = _G.ObjectiveTrackerFrame
+  if type(tracker.Header) == "table" then MS.SkinHeader(tracker.Header) end
+  for _, section in ipairs(type(tracker.modules) == "table" and tracker.modules or {}) do
+    if type(section.Header) == "table" then MS.SkinHeader(section.Header) end
+  end
+end
+
+-- The theme font, scaled by Text size, on the tracker's font objects (the
+-- quest titles and objectives keep the game's colors).
+function MS.TrackerFonts()
+  for name, spec in pairs(MS.TRACKER_FONTS) do
+    local font, path, outline = _G[name], T.Font(spec[2])
+    if type(font) == "table" and font.SetFont then font:SetFont(path, T.ScaledSize(spec[1]), outline) end
+  end
+end
+
+-- The quest tracker in the ForeverUI look, kept up as the game adds sections
+-- and as Text size or the accent changes.
+local function lookTracker()
+  local tracker = _G.ObjectiveTrackerFrame
+  if type(tracker) ~= "table" or type(hooksecurefunc) ~= "function" then return end
+  MS.SkinTracker()
+  MS.TrackerFonts()
+  T.OnChanged(MS.TrackerFonts)
+  T.OnChanged(paintRules)
+  if type(tracker.Update) == "function" then hooksecurefunc(tracker, "Update", MS.SkinTracker) end
+end
+
 -- Module entry point (Core/Modules.lua): out of combat, since some of these hold secure buttons.
 function MS.Enable(settings)
   ns.OutOfCombat(function()
     buildStrip(settings)
     if settings.tracker then buildTracker() end
+    if settings.trackerLook then lookTracker() end
   end)
 end
