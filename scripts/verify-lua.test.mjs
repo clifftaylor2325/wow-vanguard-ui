@@ -3173,6 +3173,50 @@ it("events unsubscribe and a delivered event with no listeners", () => {
   expect(out.once === 1 && out.after === 1 && out.offMissing === true, "a listener is registered once, Off removes it, and Off of nothing is a no-op").toBeTruthy();
 });
 
+// Two handlers on a TEST-ONLY event, the first throwing, fired once into an
+// emptied error ring (the stub's login already fills it) so counts are exact.
+const THROWING_HANDLERS = `
+  for i = #ns.errors, 1, -1 do ns.errors[i] = nil end
+  __ran = {}
+  ns.On("TEST_ONLY_EVENT", function() error("TEST-ONLY first") end)
+  ns.On("TEST_ONLY_EVENT", function(event, arg) __ran[#__ran + 1] = event .. ":" .. tostring(arg) end)
+  __wfgStub.fire("TEST_ONLY_EVENT", "payload")
+`;
+
+it("events: a handler that throws does not stop the others, and the error is kept with its stack", () => {
+  const addon = loggedIn(`debugstack = function(level) return "TEST-ONLY stack " .. tostring(level) end
+    __handled = {} geterrorhandler = function() return function(err) __handled[#__handled + 1] = err end end`);
+  const out = addon.eval(THROWING_HANDLERS + "return { ran = __ran, last = ns.errors[#ns.errors], handled = __handled, n = #ns.errors }");
+  expect(out.ran, "the second handler still ran, with the event's arguments").toEqual(["TEST_ONLY_EVENT:payload"]);
+  expect(out.last, "the error is recorded under the event's name, with the stack read at level 2 appended").toMatch(/^event TEST_ONLY_EVENT: .*TEST-ONLY first\nTEST-ONLY stack 2$/);
+  expect(out.handled, "the game's error handler got the raw error, not the decorated one").toEqual([expect.stringMatching(/TEST-ONLY first$/)]);
+  expect(() => addon.fire("TEST_ONLY_EVENT"), "a handler error no longer escapes the event frame").not.toThrow();
+  expect([out.n, addon.eval("return #ns.errors")], "and each delivery that fails is kept").toEqual([1, 2]);
+});
+
+it("events: on a client without debugstack or an error handler, the error is still kept", () => {
+  const out = loggedIn().eval(THROWING_HANDLERS + "return { ran = #__ran, last = ns.errors[#ns.errors] }");
+  expect(out.ran, "the second handler ran").toBe(1);
+  expect(out.last, "the record has no stack appended and nothing was forwarded").toMatch(/^event TEST_ONLY_EVENT: .*TEST-ONLY first$/);
+});
+
+it("events: a broken game error handler cannot lose the record", () => {
+  const broken = loggedIn('geterrorhandler = function() return function() error("TEST-ONLY handler broke") end end');
+  const last = broken.eval(THROWING_HANDLERS + "return ns.errors[#ns.errors]");
+  expect(last, "the handler's own failure is swallowed").toMatch(/TEST-ONLY first$/);
+  expect(last).not.toMatch(/handler broke|error in error handling/);
+  const none = loggedIn("geterrorhandler = function() return nil end");
+  expect(none.eval(THROWING_HANDLERS + "return { #__ran, ns.errors[#ns.errors] }"), "a client whose handler slot is empty is treated like one without").toEqual([1, expect.stringMatching(/^event TEST_ONLY_EVENT: .*TEST-ONLY first$/)]);
+});
+
+it("events: Blizzard's CallErrorHandler is preferred when the client has it", () => {
+  const addon = loggedIn(`__called = nil CallErrorHandler = function(err) __called = err end
+    geterrorhandler = function() return function() __wrong = true end end`);
+  const out = addon.eval(THROWING_HANDLERS + "return { called = __called, wrong = __wrong }");
+  expect(out.called, "CallErrorHandler got the raw error").toMatch(/TEST-ONLY first$/);
+  expect(out.wrong, "and geterrorhandler was not called as well").toBeUndefined();
+});
+
 it("mover coordinates with no handle", () => {
   const addon = loggedIn();
   expect(addon.eval('return ns.ShowCoords({ label = "TEST-ONLY" })') === null, "a mover that has no handle yet shows nothing").toBeTruthy();

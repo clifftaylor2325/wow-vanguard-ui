@@ -41,6 +41,16 @@ function ns.Try(where, fn, ...)
   return checked(where, pcall(fn, ...))
 end
 
+-- Hands an error to the game's own handler (the Lua error popup, or an error
+-- addon) when the client has one. Blizzard's CallErrorHandler comes first: it
+-- tells the popup where the failing stack starts, which a bare
+-- geterrorhandler() call does not. Neither exists in the test stub.
+function ns.ForwardError(err)
+  if type(CallErrorHandler) == "function" then return CallErrorHandler(err) end
+  local handler = type(geterrorhandler) == "function" and geterrorhandler()
+  if type(handler) == "function" then handler(err) end
+end
+
 -- Events ------------------------------------------------------------------------------------
 
 -- Event -> list of handlers. A list is never changed in place: ns.On and
@@ -69,13 +79,29 @@ local function without(list, fn)
   return out
 end
 
+-- xpcall's message handler. It runs while the failing stack is still there,
+-- so the stack is read here (once xpcall has returned it is gone). The game's
+-- handler gets the raw error, under pcall so a broken one can't lose ours.
+local function traced(err)
+  local stack = type(debugstack) == "function" and debugstack(2)
+  pcall(ns.ForwardError, err)
+  return tostring(err) .. (stack and ("\n" .. stack) or "")
+end
+
+-- Calls one handler. A failure is kept for /fui errors and does not stop the
+-- others, so one broken module can't take the rest down at PLAYER_LOGIN.
+local function dispatch(fn, event, ...)
+  local ok, err = xpcall(fn, traced, event, ...)
+  if not ok then ns.CaughtError("event " .. event, err) end
+end
+
 frame:SetScript("OnEvent", function(_, event, ...)
   local list = handlers[event]
   if not list then
     return
   end
   for _, fn in ipairs(list) do
-    fn(event, ...)
+    dispatch(fn, event, ...)
   end
 end)
 
