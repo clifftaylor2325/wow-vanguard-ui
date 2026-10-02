@@ -54,12 +54,15 @@ Modules/ActionBars.lua
 Modules/ActionBarLayout.lua
 Modules/SpecialBars.lua
 Modules/Minimap.lua
+Modules/MinimapButtons.lua
 Modules/Chat.lua
+Modules/ChatExtras.lua
 Modules/Bags.lua
 Modules/InfoStrip.lua
 Modules/MenuStrip.lua
 Modules/Merchant.lua
 Modules/Errands.lua
+Modules/AutoAccept.lua
 Modules/Windows.lua
 Modules/GameTools.lua
 Modules/DataBars.lua
