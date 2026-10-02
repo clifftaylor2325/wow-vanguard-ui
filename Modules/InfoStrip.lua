@@ -1,6 +1,7 @@
--- A strip of numbers under the minimap, two rows:
+-- A strip of numbers under the minimap, up to three rows:
 --   durability (orange at 25% or less, red at 10% or less) · free bag slots · fps and latency
 --   gold · ammo (hunters, warriors, rogues) · clock
+--   leveling: XP per hour · time to level · gold per hour this session
 -- Each block reads the client when its event fires (fps, latency and the
 -- clock once a second on one shared timer), shows only where the client
 -- can answer, and sets its text only when it changed. Values the client
@@ -11,7 +12,10 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local IS = ns.Module("InfoStrip", {
-  defaults = { durability = true, bags = true, system = true, gold = true, ammo = true, clock = true },
+  defaults = {
+    durability = true, bags = true, system = true, gold = true, ammo = true, clock = true,
+    xprate = true, leveltime = true, goldrate = true,
+  },
 })
 
 IS.WIDTH, IS.ROW = 182, 16
@@ -19,7 +23,12 @@ IS.WIDTH, IS.ROW = 182, 16
 IS.BLOCKS = {
   durability = { 1, "LEFT" }, bags = { 1, "CENTER" }, system = { 1, "RIGHT" },
   gold = { 2, "LEFT" }, ammo = { 2, "CENTER" }, clock = { 2, "RIGHT" },
+  xprate = { 3, "LEFT" }, leveltime = { 3, "CENTER" }, goldrate = { 3, "RIGHT" },
 }
+-- The session's rates wait this long (seconds) before showing: early numbers jump about.
+IS.SETTLE = 60
+-- The leveling blocks, repainted every few seconds as the session's rates change.
+IS.RATES = { "xprate", "leveltime", "goldrate" }
 -- Classes that carry ammo; hunters see 0 when they run out.
 IS.AMMO_CLASSES = { HUNTER = true, WARRIOR = true, ROGUE = true }
 -- The ammo inventory slot, and the equipment slots durability reads.
@@ -73,6 +82,73 @@ function IS.Money(copper)
   return string.format("%ds %dc", s, c)
 end
 
+-- Copper in its two biggest parts: "2g 5s", "5s 7c", "7c" (fits the leveling row).
+function IS.ShortMoney(copper)
+  local g, sv, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
+  if g > 0 then return string.format("%dg %ds", g, sv) end
+  if sv > 0 then return string.format("%ds %dc", sv, c) end
+  return c .. "c"
+end
+
+-- Seconds as "42m" (at least 1m) or "1h 05m".
+function IS.Duration(seconds)
+  local minutes = math.max(1, math.ceil(seconds / 60))
+  if minutes < 60 then return minutes .. "m" end
+  return string.format("%dh %02dm", math.floor(minutes / 60), minutes % 60)
+end
+
+-- Session --------------------------------------------------------------------------------------
+
+-- Your XP into this level and the level's total, or nil when the client hides them.
+local function xpNow()
+  local cur, max = ns.PlainNumber(ask("UnitXP", "player")), ns.PlainNumber(ask("UnitXPMax", "player"))
+  if cur and max and max > 0 then return cur, max end
+end
+
+-- Starts this session's counters (at login or a reload; once).
+function IS.StartSession()
+  if IS.session then return end
+  local cur, max = xpNow()
+  IS.session = { start = ask("GetTime") or 0, gained = 0, xp = cur, max = max, money = ns.PlainNumber(ask("GetMoney")) }
+end
+
+-- Counts the XP gained since the last update; after a level-up, the old level's rest too.
+function IS.CountXP()
+  local s, cur, max = IS.session, xpNow()
+  if not (s and cur and s.xp) then return end
+  if cur >= s.xp then s.gained = s.gained + cur - s.xp
+  else s.gained = s.gained + (s.max - s.xp) + cur end
+  s.xp, s.max = cur, max
+end
+
+-- Seconds this session has run, or nil while it's still settling.
+local function sessionTime()
+  local s = IS.session
+  local elapsed = s and (ask("GetTime") or 0) - s.start
+  if elapsed and elapsed >= IS.SETTLE then return elapsed end
+end
+
+-- XP per hour this session, or nil (settling, nothing gained yet).
+function IS.XPRate()
+  local elapsed = sessionTime()
+  if not elapsed or IS.session.gained <= 0 then return nil end
+  return IS.session.gained * 3600 / elapsed
+end
+
+-- Copper per hour this session (negative when spending), or nil (settling, unchanged, hidden).
+function IS.GoldRate()
+  local elapsed, now = sessionTime(), ns.PlainNumber(ask("GetMoney"))
+  local start = IS.session and IS.session.money
+  if not (elapsed and now and start) or now == start then return nil end
+  return (now - start) * 3600 / elapsed
+end
+
+-- True at the level cap, where XP stops.
+local function atMaxLevel()
+  local level, cap = ns.PlainNumber(ask("UnitLevel", "player")), ns.PlainNumber(ask("GetMaxPlayerLevel"))
+  return level ~= nil and cap ~= nil and level >= cap
+end
+
 -- Block texts (text, color token), nil to hide ------------------------------------------------
 
 IS.TEXT = {}
@@ -117,18 +193,46 @@ function IS.TEXT.clock()
   if t then return t, "text" end
 end
 
--- Showing -----------------------------------------------------------------------------------
-
--- True while at least one block shows something.
-local function anyShown()
-  for _, fs in pairs(IS.texts) do
-    if fs:IsShown() then return true end
-  end
-  return false
+-- XP per hour this session (the XP bar shows rested XP).
+function IS.TEXT.xprate()
+  local rate = not atMaxLevel() and IS.XPRate()
+  if rate then return ns.GetModule("DataBars").Short(math.floor(rate)) .. " xp/h", "text" end
 end
 
--- Repaints one block: hidden when off or when the client can't answer. The
--- strip itself hides while it has nothing to show (no empty box on screen).
+-- Time to the next level at this session's pace.
+function IS.TEXT.leveltime()
+  local rate, cur, max = not atMaxLevel() and IS.XPRate(), xpNow()
+  if rate and cur then return "lvl " .. IS.Duration((max - cur) * 3600 / rate), "text2" end
+end
+
+-- Gold per hour this session (red while you're spending).
+function IS.TEXT.goldrate()
+  local rate = IS.GoldRate()
+  if not rate then return nil end
+  local sign = rate < 0 and "-" or "+"
+  return sign .. IS.ShortMoney(math.floor(math.abs(rate))) .. "/h", rate < 0 and "bad" or "gold"
+end
+
+-- Showing -----------------------------------------------------------------------------------
+
+-- The lowest row with a block showing (0 when nothing shows).
+local function rowsShown()
+  local rows = 0
+  for key, fs in pairs(IS.texts) do
+    if fs:IsShown() then rows = math.max(rows, IS.BLOCKS[key][1]) end
+  end
+  return rows
+end
+
+-- Hides the strip while it has nothing to show (no empty box on screen), and
+-- grows it to a third row only while a leveling block shows.
+local function fitRows()
+  local rows = rowsShown()
+  IS.frame:SetShown(rows > 0)
+  IS.frame:SetHeight(IS.ROW * math.max(rows, 2) + 4)
+end
+
+-- Repaints one block: hidden when off or when the client can't answer; the strip fits what shows.
 function IS.Paint(key)
   local fs = IS.texts and IS.texts[key]
   if not fs then return end
@@ -137,12 +241,17 @@ function IS.Paint(key)
   fs:SetShown(text ~= nil)
   if text and text ~= fs.last then fs:SetText(text) fs.last = text end
   if color then T.Color(fs, color) end
-  IS.frame:SetShown(anyShown())
+  fitRows()
 end
 
 -- Repaints every block.
 function IS.UpdateAll()
   for key in pairs(IS.BLOCKS) do IS.Paint(key) end
+end
+
+-- Repaints the leveling blocks.
+function IS.PaintRates()
+  for _, key in ipairs(IS.RATES) do IS.Paint(key) end
 end
 
 -- Building ----------------------------------------------------------------------------------
@@ -156,7 +265,7 @@ local function addText(frame, key)
   return fs
 end
 
--- The fps, latency and clock timer: the clock every second, the rest every third.
+-- The strip's timer: the clock every second, fps and latency every third, the rates every fifth.
 local function ticker(frame)
   local elapsed, ticks = 0, 0
   frame:SetScript("OnUpdate", function(_, dt)
@@ -165,6 +274,7 @@ local function ticker(frame)
     elapsed, ticks = 0, ticks + 1
     IS.Paint("clock")
     if ticks % 3 == 0 then IS.Paint("system") end
+    if ticks % 5 == 0 then IS.PaintRates() end
   end)
 end
 
@@ -199,12 +309,22 @@ local function hideReplaced(settings)
   end
 end
 
+-- XP came in: count it and repaint the leveling blocks.
+local function onXP()
+  IS.CountXP()
+  IS.PaintRates()
+end
+
 -- Module entry point (Core/Modules.lua).
 function IS.Enable(settings)
   IS.settings = settings
   hideReplaced(settings)
+  IS.StartSession()
   build()
   for event, key in pairs(IS.EVENTS) do ns.On(event, function() IS.Paint(key) end) end
   ns.On("BAG_UPDATE_DELAYED", function() IS.Paint("ammo") end)
+  ns.On("PLAYER_MONEY", function() IS.Paint("goldrate") end)
+  ns.On("PLAYER_XP_UPDATE", onXP)
+  ns.On("PLAYER_LEVEL_UP", IS.PaintRates)
   ns.On("PLAYER_ENTERING_WORLD", IS.UpdateAll)
 end
