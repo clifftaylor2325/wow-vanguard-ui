@@ -39,10 +39,18 @@ end
 
 -- Pet happiness ----------------------------------------------------------------------------------
 
+-- The client's pet happiness call: C_PetInfo's (WoW Forever), else the older global, else nil.
+function UX.HappinessCall()
+  local get = C_PetInfo and C_PetInfo.GetPetHappiness
+  if type(get) == "function" then return get end
+  return type(GetPetHappiness) == "function" and GetPetHappiness or nil
+end
+
 -- Your pet's happiness as a color token, or nil (no pet that has moods, or no answer).
 function UX.Happiness()
-  if type(GetPetHappiness) ~= "function" then return nil end
-  return UX.HAPPINESS[ns.PlainNumber(GetPetHappiness()) or 0]
+  local get = UX.HappinessCall()
+  if not get then return nil end
+  return UX.HAPPINESS[ns.PlainNumber(get()) or 0]
 end
 
 -- Shows the dot on the pet frame in your pet's mood, or hides it.
@@ -77,7 +85,7 @@ end
 local function attach()
   local s, frames = UX.settings, UF.frames
   if s.threat and frames.target and type(_G.UnitDetailedThreatSituation) == "function" then addThreat(frames.target) end
-  if s.happiness and frames.pet and type(GetPetHappiness) == "function" then addHappiness(frames.pet) end
+  if s.happiness and frames.pet and UX.HappinessCall() then addHappiness(frames.pet) end
 end
 
 -- Module entry point (Core/Modules.lua): out of combat, once the unit frames are built.
