@@ -397,13 +397,19 @@ const SCENES = [
       GetTrainerServiceCost = function(i) return services[i][2] end
       GetMoney = function() return 123407 end
       TakeTaxiNode = function() end hooksecurefunc = hooksecurefunc or function() end` },
-  { name: "foreverui-bosses", caption: "A boss fight as the group's leader: two boss frames at the top left, the raid tools bar beside them (calls, target icons, world markers) (TEST-ONLY bosses)",
-    lua: '__group({ "player", "party1", "party2" }) __wfgStub.fire("INSTANCE_ENCOUNTER_ENGAGE_UNIT")',
+  { name: "foreverui-bosses", caption: "A boss fight as the group's leader: two boss frames at the top left, the raid tools bar beside them (calls, target icons, world markers), and two main tanks with the boss each is targeting (TEST-ONLY bosses)",
+    lua: `__group({ "player", "party1", "party2" }) __wfgStub.fire("INSTANCE_ENCOUNTER_ENGAGE_UNIT")
+      for i, unit in ipairs({ "party1", "party2" }) do
+        local b = CreateFrame("Button", "ForeverUI_MainTanksUnitButton" .. i, ForeverUI_MainTanks, "SecureUnitButtonTemplate")
+        b:SetSize(140, 22) ForeverUI_MainTanks.initialConfigFunction(ForeverUI_MainTanks, b:GetName())
+        b:SetPoint("TOPLEFT", ForeverUI_MainTanks, "TOPLEFT", 0, -(i - 1) * 26) b:SetAttribute("unit", unit) ns.GetModule("MainTanks").Paint(b)
+      end`,
     before: `__units.boss1 = { name = "TEST-ONLY Warlord", hp = 72000, maxhp = 100000, power = 0, maxpower = 0, ptype = "RAGE", reaction = 2, classification = "worldboss" }
       __units.boss2 = { name = "TEST-ONLY Guard", hp = 30000, maxhp = 40000, power = 0, maxpower = 0, ptype = "RAGE", reaction = 2, classification = "elite" }
       IsInGroup = function() return true end UnitIsGroupLeader = function(u) return u == "player" end IsInRaid = function() return false end
       C_PartyInfo = C_PartyInfo or {} C_PartyInfo.DoReadyCheck = function() end C_PartyInfo.DoCountdown = function() end C_PartyInfo.ConvertToRaid = function() end
-      InitiateRolePoll = function() end` },
+      InitiateRolePoll = function() end
+      __units.party1target = __units.boss1 __units.party2target = __units.boss2` },
   { name: "foreverui-quest-gossip", caption: "The quest dialog at a quest giver: portrait, name, greeting, numbered lines (a quest to take in its difficulty color, one ready to turn in in gold, a gossip option) (TEST-ONLY NPC and quests)",
     lua: '__wfgStub.fire("GOSSIP_SHOW")', before: `UnitName = (function(old) return function(u) if u == "npc" then return "TEST-ONLY Farmer Maple" end return old(u) end end)(UnitName)
       GetQuestDifficultyColor = function(level) if level >= 12 then return { r = 1, g = 0.5, b = 0.25 } end return { r = 0.25, g = 0.75, b = 0.25 } end
