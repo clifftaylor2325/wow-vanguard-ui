@@ -11,7 +11,7 @@ local ADDON, ns = ...
 
 local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game" } })
 
-QT.W, QT.H, QT.SORT_EVERY = 260, 264, 1
+QT.W, QT.H, QT.SORT_EVERY = 260, 248, 1
 QT.EVENTS = { "QUEST_WATCH_LIST_CHANGED", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_REMOVED", "PLAYER_ENTERING_WORLD" }
 
 -- Calls a C_QuestLog function by name, if this client has it.

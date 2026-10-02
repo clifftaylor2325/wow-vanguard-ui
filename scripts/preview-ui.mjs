@@ -265,6 +265,7 @@ const PLATES = `
     return getAura(unit, i, filter)
   end
   UnitCastingInfo = function(unit) if unit == "nameplate1" then return "TEST-ONLY Charge", "", "TEST-ONLY-ICON", GetTime() * 1000 - 600, GetTime() * 1000 + 1400, false, nil, false end end
+  C_QuestLog = C_QuestLog or {} C_QuestLog.UnitIsRelatedToActiveQuest = function(unit) return unit == "nameplate2" or unit == "nameplate3" end
   for unit in pairs(spots) do __wfgStub.fire("NAME_PLATE_UNIT_ADDED", unit) end
 `;
 
@@ -306,8 +307,8 @@ const SCENES = [
       end
       Enum.WeaponSlot = { MainHand = 0, OffHand = 1, Ranged = 2 }
       C_Item = { GetWeaponEnchantInfo = function(slot) if slot == 0 then return { { hasEnchant = true, timeLeft = 1500000, enchantIconID = "TEST-ONLY-IMBUE" } } end end }` },
-  { name: "foreverui-strip", caption: "The strip under the minimap for a hunter: worn gear in orange, free slots, fps and latency, gold, ammo, the time, and the leveling row: XP per hour, time to level, gold per hour (TEST-ONLY numbers)",
-    lua: '__group({ "player", "party1", "party2" }) local IS = ns.GetModule("InfoStrip") IS.session.start, IS.session.gained, IS.session.money = GetTime() - 1800, 2100, 113407 IS.UpdateAll()',
+  { name: "foreverui-strip", caption: "The strip under the minimap for a hunter: worn gear in orange, free slots, fps and latency, gold, ammo, the time, and the leveling row: XP per hour, time to level, gold per hour, and your DPS in the last fight (TEST-ONLY numbers)",
+    lua: '__group({ "player", "party1", "party2" }) local IS = ns.GetModule("InfoStrip") IS.session.start, IS.session.gained, IS.session.money = GetTime() - 1800, 2100, 113407 IS.settings.dps = true IS.UpdateAll()',
     before: `__units.player.class = "HUNTER"
       GetInventoryItemDurability = function(slot) if slot == 5 then return 22, 100 end if slot == 1 then return 80, 100 end end
       C_Container = C_Container or {} C_Container.GetContainerNumFreeSlots = function(bag) return bag == 0 and 6 or 2 end
@@ -316,7 +317,12 @@ const SCENES = [
       GetInventoryItemCount = function(unit, slot) return slot == 0 and 412 or 0 end
       date = function() return "21:04" end
       UnitXP = function() return 3400 end UnitXPMax = function() return 9800 end GetXPExhaustion = function() return 4900 end
-      UnitLevel = function() return 18 end GetMaxPlayerLevel = function() return 60 end` },
+      UnitLevel = function() return 18 end GetMaxPlayerLevel = function() return 60 end
+      C_DamageMeter = { GetCombatSessionFromType = function() return { combatSources = { { isLocalPlayer = true, amountPerSecond = 412.6 } } } end }` },
+  { name: "foreverui-afk", caption: "The AFK screen: while you're away the screen dims to a card with your name, level and class, the zone, the time away, the clock and your XP (TEST-ONLY zone)",
+    lua: '__group({ "player", "party1", "party2" }) UnitIsAFK = function() return true end __wfgStub.fire("PLAYER_FLAGS_CHANGED", "player") __wfgStub.advance(12, 1)',
+    before: `GetRealZoneText = function() return "TEST-ONLY Vale" end GetSubZoneText = function() return "TEST-ONLY Hamlet" end date = function() return "21:04" end
+      UnitXP = function() return 3400 end UnitXPMax = function() return 9800 end UnitLevel = function() return 18 end GetMaxPlayerLevel = function() return 60 end` },
   { name: "foreverui-shaman", caption: "A shaman: three totems under the player frame (the game draws their time left), the air slot empty (TEST-ONLY totems)", lua: '__group({ "player", "party1", "party2" })',
     before: `__units.player.class = "SHAMAN"
       local totems = { { "TEST-ONLY Fire", 100 }, { "TEST-ONLY Earth", 45 }, { "TEST-ONLY Water", 190 } }
@@ -464,7 +470,7 @@ const SCENES = [
       GetQuestLogChoiceInfo = function(i) if i == 1 then return "TEST-ONLY Shepherd's Boots", "TEST-ONLY-ICON", 1, 3 end return "TEST-ONLY Wolfhide Gloves", "TEST-ONLY-ICON", 1, 2 end
       GetQuestLogRewardInfo = function() return "TEST-ONLY Farm Bread", "TEST-ONLY-ICON", 5, 1 end
       GetQuestLogRewardMoney = function() return 1500 end GetQuestLogRewardXP = function() return 650 end` },
-  { name: "foreverui-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a friendly player (TEST-ONLY units)", lua: PLATES },
+  { name: "foreverui-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a gold ! on the wolves a quest needs, a friendly player (TEST-ONLY units)", lua: PLATES },
   { name: "foreverui-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)
     GameTooltip.unit = "target" __tipHooks.GameTooltip_SetDefaultAnchor(GameTooltip, UIParent) GameTooltip:Show() __tipPost(GameTooltip)` },
