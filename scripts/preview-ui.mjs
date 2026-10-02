@@ -326,15 +326,34 @@ const SCENES = [
     before: `__units.player.class = "ROGUE" __units.player.power = 40 __units.player.maxpower = 100 __units.player.ptype = "ENERGY"
       UnitPowerType = function(unit) local x = __units[unit] if x and x.ptype == "ENERGY" then return 3, "ENERGY" end return 0, "MANA" end
       C_SwingTimer = {} Enum.PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 }` },
-  { name: "foreverui-menu", caption: "The menu strip in the bottom-right corner with the mouse over it: the game's menu buttons as ForeverUI line icons, then the bag buttons (TEST-ONLY buttons)",
+  { name: "foreverui-menu", caption: "Bottom-right with the mouse over the menu: the game's menu buttons as ForeverUI line icons, the bag buttons in their own strip, the game's damage meter above them, and the Cooldown Manager row between the unit frames (TEST-ONLY buttons, meter and cooldowns)",
     lua: "function ForeverUI_MenuStrip:IsMouseOver() return true end ForeverUI_MenuStrip:SetAlpha(1)",
     before: `MicroMenuContainer = CreateFrame("Frame", "MicroMenuContainer", UIParent) MicroMenuContainer:SetSize(198, 28)
       for i, name in ipairs({ "Character", "PlayerSpells", "Talent", "Achievement", "QuestLog", "Guild", "LFD", "Collections", "MainMenu" }) do
         local b = CreateFrame("Button", name .. "MicroButton", MicroMenuContainer) b:SetSize(22, 28) b:SetPoint("LEFT", (i - 1) * 22, 0)
         local art = b:CreateTexture(nil, "ARTWORK") art:SetAllPoints() art:SetColorTexture(0.55, 0.12, 0.1, 1) end
-      BagsBar = CreateFrame("Frame", "BagsBar", UIParent) BagsBar:SetSize(88, 22)
-      for i = 1, 4 do local b = CreateFrame("Button", nil, BagsBar) b:SetSize(20, 20) b:SetPoint("LEFT", (i - 1) * 22, 0)
-        local art = b:CreateTexture(nil, "ARTWORK") art:SetAllPoints() art:SetColorTexture(0.35, 0.25, 0.15, 1) end` },
+      BagsBar = CreateFrame("Frame", "BagsBar", UIParent) BagsBar:SetSize(176, 40)
+      for i, name in ipairs({ "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot" }) do
+        local b = CreateFrame("Button", name, BagsBar) b:SetSize(i == 1 and 40 or 32, i == 1 and 40 or 32) b:SetPoint("RIGHT", BagsBar, "RIGHT", i == 1 and 0 or -42 - (i - 2) * 34, 0)
+        b.icon = b:CreateTexture(nil, "ARTWORK") b.icon:SetAllPoints() b.icon:SetColorTexture(0.42, 0.3, 0.16, 1)
+        local art = b:CreateTexture(nil, "OVERLAY") art:SetAllPoints() art:SetColorTexture(0.55, 0.12, 0.1, 0.6) end
+      DamageMeter = CreateFrame("Frame", "DamageMeter", UIParent) DamageMeter:SetSize(400, 200) DamageMeter:SetPoint("TOPLEFT")
+      local w = CreateFrame("Frame", "DamageMeterSessionWindow1", DamageMeter) w:SetPoint("TOPLEFT") w:SetPoint("BOTTOMRIGHT")
+      w.Header = w:CreateTexture() w.Header:SetColorTexture(0.5, 0.35, 0.1, 1) w.Header:SetPoint("TOPLEFT") w.Header:SetPoint("TOPRIGHT") w.Header:SetHeight(22)
+      local title = w:CreateFontString(nil, "OVERLAY") title:SetPoint("TOPLEFT", 8, -5) title:SetText("TEST-ONLY Damage Done") title:SetTextColor(1, 0.82, 0)
+      w.ScrollBox = CreateFrame("Frame", nil, w) w.ScrollBox.lines = {}
+      function w.ScrollBox:ForEachFrame(fn) for _, l in ipairs(self.lines) do fn(l) end end
+      for i, row in ipairs({ { "<name>", 0.41, 0.8, 0.94, 1 }, { "TEST-ONLY Rogue", 1, 0.96, 0.41, 0.6 }, { "TEST-ONLY Priest", 1, 1, 1, 0.45 } }) do
+        local l = CreateFrame("Button", nil, w.ScrollBox) l:SetPoint("TOPLEFT", w, "TOPLEFT", 4, -26 - (i - 1) * 20) l:SetPoint("RIGHT", w, "RIGHT", -4, 0) l:SetHeight(18)
+        l.StatusBar = CreateFrame("StatusBar", nil, l) l.StatusBar:SetAllPoints() l.StatusBar:SetMinMaxValues(0, 1) l.StatusBar:SetValue(row[5]) l.StatusBar:SetStatusBarColor(row[2], row[3], row[4])
+        l.StatusBar.Name = l.StatusBar:CreateFontString(nil, "OVERLAY") l.StatusBar.Name:SetPoint("LEFT", 4, 0) l.StatusBar.Name:SetText(i .. ". " .. row[1])
+        w.ScrollBox.lines[i] = l end
+      DamageMeter.windows = { w }
+      function DamageMeter:ForEachSessionWindow(fn) for _, x in ipairs(self.windows) do fn(x) end end
+      local v = CreateFrame("Frame", "EssentialCooldownViewer", UIParent) v:SetSize(236, 32) v.items = {}
+      for i = 1, 7 do local it = CreateFrame("Frame", nil, v) it:SetSize(32, 32) it:SetPoint("LEFT", v, "LEFT", (i - 1) * 34, 0)
+        it.Icon = it:CreateTexture() it.Icon:SetAllPoints() it.Icon:SetColorTexture(0.2 + i * 0.08, 0.25, 0.5 - i * 0.04, 1) v.items[i] = it end
+      function v:GetItemFrames() return self.items end` },
   { name: "foreverui-window", caption: "A game window in the ForeverUI look: the game's art faded, a flat panel with a soft shadow, the theme's close button, title and buttons (TEST-ONLY merchant window)",
     lua: "MerchantFrame:Show()",
     before: `local f = CreateFrame("Frame", "MerchantFrame", UIParent) f:SetSize(340, 420) f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 40, -120)

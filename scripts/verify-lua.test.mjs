@@ -2878,6 +2878,82 @@ it("setup layouts: Damage and tanking restores ForeverUI's defaults, undoing Hea
 const ACROSS = (point) => (/LEFT/.test(point) ? 0 : /RIGHT/.test(point) ? 1 : 0.5);
 const UP = (point) => (/BOTTOM/.test(point) ? 0 : /TOP/.test(point) ? 1 : 0.5);
 
+// TEST-ONLY game tools: Cooldown Manager rows (one item each), a damage meter
+// with one window and one line, and the Edit Mode window.
+const TOOLS_ENV = `
+  hooksecurefunc = hooksecurefunc or function(a, b, c)
+    if type(a) == "table" then local orig = a[b] a[b] = function(...) local r = orig(...) c(...) return r end
+    else local orig = _G[a] _G[a] = function(...) orig(...) b(...) end end
+  end
+  function __item(viewer, bar)
+    local item = CreateFrame("Frame", nil, viewer) item:SetSize(32, 32)
+    if bar then
+      item.Icon = CreateFrame("Frame", nil, item) item.Icon.Icon = item.Icon:CreateTexture()
+      item.Bar = CreateFrame("StatusBar", nil, item) item.Bar.Name = item.Bar:CreateFontString() item.Bar.Duration = item.Bar:CreateFontString()
+    else
+      item.Icon = item:CreateTexture() item.Icon:SetAllPoints()
+      item.ChargeCount = CreateFrame("Frame", nil, item) item.ChargeCount.Current = item.ChargeCount:CreateFontString()
+    end
+    viewer.items[#viewer.items + 1] = item
+    return item
+  end
+  for _, name in ipairs({ "EssentialCooldownViewer", "UtilityCooldownViewer", "BuffIconCooldownViewer", "BuffBarCooldownViewer" }) do
+    local v = CreateFrame("Frame", name, UIParent) v.items = {}
+    function v:GetItemFrames() return self.items end
+    function v:RefreshLayout() __item(self, self == BuffBarCooldownViewer) end
+    __item(v, name == "BuffBarCooldownViewer")
+  end
+  DamageMeter = CreateFrame("Frame", "DamageMeter", UIParent) DamageMeter:SetSize(400, 200) DamageMeter:SetPoint("TOPLEFT")
+  DamageMeter.windows = {}
+  function DamageMeter:ForEachSessionWindow(fn) for _, w in ipairs(self.windows) do fn(w) end end
+  function DamageMeter:SetupSessionWindow()
+    local w = CreateFrame("Frame", "DamageMeterSessionWindow" .. (#self.windows + 1), self)
+    w.Header = w:CreateTexture() w.ScrollBox = CreateFrame("Frame", nil, w) w.ScrollBox.lines = {}
+    function w.ScrollBox:ForEachFrame(fn) for _, l in ipairs(self.lines) do fn(l) end end
+    function w.ScrollBox:Update() end
+    self.windows[#self.windows + 1] = w
+    return w
+  end
+  function __line(w)
+    local l = CreateFrame("Button", nil, w.ScrollBox) l.StatusBar = CreateFrame("StatusBar", nil, l)
+    l.StatusBar.BackgroundRegions = { l.StatusBar:CreateTexture() } l.StatusBar.Name = l.StatusBar:CreateFontString() l.StatusBar.Value = l.StatusBar:CreateFontString()
+    l.Icon = CreateFrame("Frame", nil, l) l.Icon.Icon = l.Icon:CreateTexture()
+    w.ScrollBox.lines[#w.ScrollBox.lines + 1] = l
+    return l
+  end
+  __line(DamageMeter:SetupSessionWindow())
+  EditModeManagerFrame = CreateFrame("Frame", "EditModeManagerFrame", UIParent) EditModeManagerFrame:Hide()
+`;
+
+it("the game's tools: Cooldown Manager and damage meter styled and placed, standing aside for Edit Mode", () => {
+  const addon = loggedIn(TOOLS_ENV + CLICK_LUA);
+  const item = addon.eval(`local i = EssentialCooldownViewer.items[1]
+    return { crop = i.Icon.__texCoord and i.Icon.__texCoord[1], inset = i.Icon.__points.TOPLEFT.x > 0, font = i.ChargeCount.Current.__font[3] }`);
+  expect(item.crop > 0 && item.inset && item.font === "OUTLINE", "cooldown icons are cropped, inset in a thin border, with outlined numbers").toBe(true);
+  addon.eval("UtilityCooldownViewer:RefreshLayout()");
+  expect(addon.eval("return UtilityCooldownViewer.items[2].fuiSkinned"), "items the game adds later are styled too").toBe(true);
+  expect(addon.eval("return BuffBarCooldownViewer.items[1].Bar:GetStatusBarTexture() ~= nil and BuffBarCooldownViewer.items[1].Bar.Name.__font ~= nil"), "buff bars get the theme's bar and font").toBe(true);
+  const win = addon.eval("local w = DamageMeterSessionWindow1 local l = w.ScrollBox.lines[1] return { w.Header.__alpha, l.StatusBar.BackgroundRegions[1].__alpha, l.StatusBar.Name.__font ~= nil }");
+  expect(win, "the meter's header and bar shading fade, its lines take the theme font").toEqual([0, 0, true]);
+  addon.eval("__line(DamageMeterSessionWindow1) DamageMeterSessionWindow1.ScrollBox:Update() DamageMeter:SetupSessionWindow() __line(DamageMeterSessionWindow2) DamageMeterSessionWindow2.ScrollBox:Update()");
+  expect(addon.eval("return { DamageMeterSessionWindow1.ScrollBox.lines[2].fuiSkinned, DamageMeterSessionWindow2.fuiSkinned, DamageMeterSessionWindow2.ScrollBox.lines[1].fuiSkinned }"), "new lines and new windows are styled as they come").toEqual([true, true, true]);
+  // Where a game frame is anchored: { point, the spot it's on }.
+  const spot = (name, point) => addon.eval(`local p = ${name}.__points.${point} return p and { p.relPoint, p.rel == ForeverUI_${name}Spot } or false`);
+  expect([spot("EssentialCooldownViewer", "CENTER"), spot("DamageMeter", "TOPLEFT"), spot("DamageMeter", "BOTTOMRIGHT")], "rows are centered on their spots; the meter fills its own").toEqual([["CENTER", true], ["TOPLEFT", true], ["BOTTOMRIGHT", true]]);
+  addon.eval('EditModeManagerFrame:Show() EssentialCooldownViewer:ClearAllPoints() EssentialCooldownViewer:SetPoint("TOP", UIParent, "TOP", 0, -50)');
+  expect(spot("EssentialCooldownViewer", "TOP"), "while Edit Mode is open, the game can move it").toEqual(["TOP", false]);
+  addon.eval("EditModeManagerFrame:Hide()");
+  expect(spot("EssentialCooldownViewer", "CENTER"), "and it's back on its spot when Edit Mode closes").toEqual(["CENTER", true]);
+  addon.slash("");
+  addon.eval('__click("Bars, map, chat")');
+  expect(addon.eval('return __click("Place them to fit the layout") and ForeverUIDB.profiles.Default.GameTools.place'), "the placing switch is on the page").toBe(false);
+  const left = loggedIn(TOOLS_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { GameTools = { place = false } }" });
+  expect(left.eval("return { ForeverUI_DamageMeterSpot == nil, DamageMeter.__points.TOPLEFT.rel == UIParent, DamageMeterSessionWindow1.fuiSkinned }"), "with placing off they keep Edit Mode's spots but are still styled").toEqual([true, true, true]);
+  const off = loggedIn(TOOLS_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { GameTools = { cooldowns = false, meter = false } }" });
+  expect(off.eval("return { EssentialCooldownViewer.items[1].fuiSkinned == nil, DamageMeterSessionWindow1.fuiSkinned == nil, ForeverUI_DamageMeterSpot == nil }"), "switched off, both stay the game's").toEqual([true, true, true]);
+  expect(loggedIn("").eval("return ns.GetModule('GameTools') ~= nil"), "a client without these tools loads cleanly").toBe(true);
+});
+
 // The rect { l, b, r, t } of a w x h frame anchored at [point, relPoint, x, y] on UIParent, on an sw x sh screen.
 function rectAt([point, relPoint, x, y], w, h, sw, sh) {
   const l = ACROSS(relPoint) * sw + x - ACROSS(point) * w;
@@ -2938,9 +3014,9 @@ function layoutProblems(rects, sw, sh) {
 }
 
 it("Centered layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", () => {
-  const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV, { firstRun: true });
+  const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV, { firstRun: true });
   expect(addon.eval("return ChatFrame1.__points.BOTTOMLEFT ~= nil"), "chat sits in its layout spot").toBe(true);
-  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
+  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
   for (const layout of ["damage", "healing"]) {
     addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
     for (const [sw, sh] of [[1365, 768], [1920, 1080]]) {
@@ -3295,7 +3371,8 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
     "tracking, mail and the addon compartment sit on the map's corners").toEqual([[true, "BOTTOMLEFT"], [true, "TOPRIGHT"], [true, "BOTTOMRIGHT"]]);
   addon.eval('MinimapCluster.Tracking:ClearAllPoints() MinimapCluster.Tracking:SetPoint("CENTER", UIParent, "CENTER", 0, 0)');
   expect(pinned(addon, "MinimapCluster.Tracking", overlay), "when the game moves one back, it returns to its corner").toEqual([true, "BOTTOMLEFT"]);
-  expect([pinned(addon, "MicroMenuContainer", "ForeverUI_MenuStrip"), pinned(addon, "BagsBar", "ForeverUI_MenuStrip")], "the micro menu and bag bar sit in one strip").toEqual([[true, "LEFT"], [true, "RIGHT"]]);
+  expect([pinned(addon, "MicroMenuContainer", "ForeverUI_MenuStrip"), pinned(addon, "BagsBar", "ForeverUI_BagStrip")], "the micro menu and the bag bar each get their own strip").toEqual([[true, "LEFT"], [true, "CENTER"]]);
+  expect(addon.eval("return { BagsBar:GetScale(), ForeverUI_BagStrip:GetAlpha(), ForeverUI_BagStrip.__points.BOTTOMRIGHT.x }"), "bags sit small, always shown, just left of the menu").toEqual([0.6, 1, -322]);
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "which is out of sight until the mouse is over it").toBe(0);
   addon.eval("function ForeverUI_MenuStrip:IsMouseOver() return true end __wfgStub.advance(0.3)");
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "and shows with the mouse over it").toBe(1);
@@ -3326,6 +3403,8 @@ const MICRO_ENV = `
     return b
   end
   __micro("CharacterMicroButton") __micro("MainMenuMicroButton")
+  __bag = CreateFrame("Button", "MainMenuBarBackpackButton", BagsBar) __bag:SetSize(40, 40)
+  __bag.icon = __bag:CreateTexture() __bag.icon:SetAllPoints() __bag:CreateTexture(nil, "OVERLAY"):SetTexture("TEST-ONLY-ART")
 `;
 
 it("Round Four leftovers: menu glyphs, a target diamond, raid names above incoming heals", () => {
@@ -3336,8 +3415,14 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
     return { tex = b.fuiGlyph and b.fuiGlyph.__texture, color = b.fuiGlyph and b.fuiGlyph.__vertexColor, art = art, normal = b.normal.__alpha, flash = b.Flash.__alpha or 1, w = b.fuiGlyph and b.fuiGlyph.__width }`);
   const char = glyph("CharacterMicroButton");
   expect(/Icons\\Character$/.test(char.tex) && /Icons\\MenuCog$/.test(glyph("MainMenuMicroButton").tex), "each menu button gets its ForeverUI icon (a client without the rest is fine)").toBeTruthy();
-  expect(char.art === 0 && char.normal === 0 && char.flash === 1 && Math.abs(char.w - 32 * 0.7) < 1e-9, "the game's art is faded but its alert flash stays; the icon is 70% of the button").toBeTruthy();
+  expect(char.art === 0 && char.normal === 0 && char.flash === 1 && Math.abs(char.w - (32 - 4) * 0.7) < 1e-9, "the game's art is faded but its alert flash stays; the icon is 70% of the button's face").toBeTruthy();
   expect(isTok(addon, char.color, "text2"), "the icon is text2").toBeTruthy();
+  const face = addon.eval("local f = CharacterMicroButton.fuiFace return { f.__points.TOPLEFT.x, f.__points.BOTTOMRIGHT.x, CharacterMicroButton.fuiGlyph:GetParent() == f }");
+  expect(face, "each button's face sits 2 units inside its edges (a gap between neighbors), the icon on it").toEqual([2, -2, true]);
+  const bag = addon.eval(`local b = MainMenuBarBackpackButton local art
+    for _, r in ipairs({ b:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
+    return { art, b.icon.__alpha, b.icon.__texCoord[1] > 0, b.icon.__points.TOPLEFT.x }`);
+  expect(bag, "bag buttons: the game's art faded, the bag icon kept, cropped and inset in a thin border").toEqual([0, 1, true, 2]);
   addon.eval("CharacterMicroButton:Disable()");
   expect(isTok(addon, glyph("CharacterMicroButton").color, "muted"), "and muted while the button is disabled").toBeTruthy();
   addon.eval("CharacterMicroButton:Enable()");

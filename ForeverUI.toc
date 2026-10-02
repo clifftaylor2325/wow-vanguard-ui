@@ -58,6 +58,7 @@ Modules/InfoStrip.lua
 Modules/MenuStrip.lua
 Modules/Merchant.lua
 Modules/Windows.lua
+Modules/GameTools.lua
 Modules/DataBars.lua
 Modules/Tooltips.lua
 Modules/Nameplates.lua

@@ -66,7 +66,7 @@ local function vehicleExit()
   b:RegisterForClicks("AnyUp", "AnyDown")
   addLabel(b, "Exit")
   RegisterStateDriver(b, "visibility", "[canexitvehicle] show; hide")
-  ns.Mover(b, "vehicleexit", "Vehicle exit", { "BOTTOM", "BOTTOM", 260, 40 })
+  ns.Mover(b, "vehicleexit", "Vehicle exit", { "BOTTOM", "BOTTOM", 260, 100 })
   return b
 end
 
