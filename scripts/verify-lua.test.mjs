@@ -1231,6 +1231,61 @@ it("quest log: keys follow rebinding, /fui quests, closing, and switched off", (
   expect([off.eval("return ForeverUI_QuestLog == nil and next(__overrides) == nil"), chatHas(off, /quest log is off/)], "switched off: the game's quest log key stays the game's").toEqual([true, true]);
 });
 
+// TEST-ONLY extra windows: friends, a book (its page text records the colors it's given), and
+// the game's loss of control and talking head alerts with their parts.
+const ALERTS_ENV = `
+  hooksecurefunc = function(t, name, fn) if type(t) == "string" then return end local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
+  FriendsFrame = CreateFrame("Frame", "FriendsFrame", UIParent) FriendsFrame:Hide()
+  ItemTextFrame = CreateFrame("Frame", "ItemTextFrame", UIParent) ItemTextFrame:Hide()
+  ItemTextFrame:SetScript("OnEvent", function() end)
+  ItemTextMaterialTopLeft = ItemTextFrame:CreateTexture("ItemTextMaterialTopLeft")
+  ItemTextPageText = { __colors = {}, SetTextColor = function(self, tag, r, g, b) self.__colors[tag] = { r, g, b, 1 } end }
+  LossOfControlFrame = CreateFrame("Frame", "LossOfControlFrame", UIParent)
+  LossOfControlFrame.blackBg = LossOfControlFrame:CreateTexture()
+  LossOfControlFrame.Icon = LossOfControlFrame:CreateTexture()
+  LossOfControlFrame.AbilityName = LossOfControlFrame:CreateFontString()
+  LossOfControlFrame.TimeLeft = CreateFrame("Frame", nil, LossOfControlFrame)
+  LossOfControlFrame.TimeLeft.NumberText = LossOfControlFrame.TimeLeft:CreateFontString()
+  TalkingHeadFrame = CreateFrame("Frame", "TalkingHeadFrame", UIParent)
+  TalkingHeadFrame.BackgroundFrame = CreateFrame("Frame", nil, TalkingHeadFrame)
+  TalkingHeadFrame.MainFrame = CreateFrame("Frame", nil, TalkingHeadFrame)
+  TalkingHeadFrame.MainFrame.Name = TalkingHeadFrame.MainFrame:CreateFontString()
+  TalkingHeadFrame.MainFrame.Text = TalkingHeadFrame.MainFrame:CreateFontString()
+`;
+
+it("more game windows: friends, books and letters, and windows that load later", () => {
+  const addon = loggedIn(ALERTS_ENV);
+  addon.eval("FriendsFrame:Show()");
+  expect(borderOf(addon, "FriendsFrame") !== undefined, "friends in the ForeverUI look").toBe(true);
+  addon.eval('ItemTextFrame:Show() ItemTextFrame.__scripts.OnEvent(ItemTextFrame, "ITEM_TEXT_READY")');
+  const page = addon.eval("return { ItemTextPageText.__colors.P, ItemTextPageText.__colors.H1, ItemTextMaterialTopLeft.__alpha }");
+  expect([isTok(addon, page[0], "text"), isTok(addon, page[1], "gold"), page[2]], "a book's page in light text, gold headings, its parchment faded").toEqual([true, true, 0]);
+  addon.eval('AuctionHouseFrame = CreateFrame("Frame", "AuctionHouseFrame", UIParent)');
+  addon.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  expect(borderOf(addon, "AuctionHouseFrame") !== undefined, "the auction house, when it loads").toBe(true);
+  addon.eval("ItemTextPageText = { }");
+  addon.eval('ItemTextFrame.__scripts.OnEvent(ItemTextFrame, "ITEM_TEXT_READY")');
+  expect(addon.eval("return ItemTextMaterialTopLeft.__alpha"), "a page without colors to set is left alone").toBe(0);
+});
+
+it("game alerts: loss of control and the talking head, styled and placed (or hidden)", () => {
+  const addon = loggedIn(ALERTS_ENV);
+  const loc = addon.eval(`local f = LossOfControlFrame
+    return { f.blackBg.__alpha, f.Icon.__texCoord ~= nil, f.AbilityName.__font ~= nil, f.TimeLeft.NumberText.__font ~= nil, f.__points.CENTER.rel == ForeverUI_LossOfControlFrameSpot }`);
+  expect(loc, "loss of control: its black band faded, icon cropped, theme text, centered on its spot").toEqual([0, true, true, true, true]);
+  expect(addon.eval("return { ns.MoverPoint('lossofcontrol') }"), "a little above your character").toEqual(["CENTER", "CENTER", 0, 140]);
+  const head = addon.eval("local f = TalkingHeadFrame return { f.BackgroundFrame.__alpha, f.MainFrame.Name.__font ~= nil, f.__points.CENTER.rel == ForeverUI_TalkingHeadFrameSpot }");
+  expect([head, addon.eval("return (ns.MoverPoint('talkinghead'))")], "the talking head: parchment faded, theme text, at the top center").toEqual([[0, true, true], "TOP"]);
+  const hide = loggedIn(ALERTS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { GameAlerts = { talkingHead = 'hide', lossOfControl = false } } }" });
+  hide.eval("TalkingHeadFrame:Show()");
+  expect(hide.eval("return { TalkingHeadFrame:IsShown(), ForeverUI_TalkingHeadFrameSpot == nil, LossOfControlFrame.blackBg.__alpha == nil }"), "hidden, if you'd rather; loss of control off stays the game's").toEqual([false, true, true]);
+  const game = loggedIn(ALERTS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { GameAlerts = { talkingHead = 'game' } } }" });
+  expect(game.eval("return { TalkingHeadFrame:IsShown(), ForeverUI_TalkingHeadFrameSpot == nil }"), "or left to the game").toEqual([true, true]);
+  const partial = loggedIn("LossOfControlFrame = CreateFrame('Frame', 'LossOfControlFrame', UIParent) TalkingHeadFrame = CreateFrame('Frame', 'TalkingHeadFrame', UIParent)");
+  expect(partial.eval("return ForeverUI_LossOfControlFrameSpot ~= nil and ForeverUI_TalkingHeadFrameSpot ~= nil"), "frames without their usual parts are still placed").toBe(true);
+  expect(loggedIn("").eval("return ForeverUI_LossOfControlFrameSpot == nil"), "a client without them loads cleanly").toBe(true);
+});
+
 // TEST-ONLY numbers for the info strip: head slot 30%, legs 9% worn, 12 free slots, 12g 34s 7c.
 const STRIP_ENV = `
   __dur = { [1] = { 30, 100 }, [7] = { 9, 100 }, [2] = { 0, 0 } }
@@ -3804,7 +3859,7 @@ function raidRect(addon, spot, n, sw, sh) {
 }
 
 // Windows that open over the HUD for a moment (talking to an NPC), so they're left out of the overlap check.
-const FLOATING = new Set(["questdialog", "questlog"]);
+const FLOATING = new Set(["questdialog", "questlog", "lossofcontrol", "talkinghead"]);
 
 // Every part's rect on an sw x sh screen with n players in the group (0: solo, no grid).
 function layoutRects(addon, n, sw, sh) {

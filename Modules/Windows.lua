@@ -1,7 +1,9 @@
 -- The game's own windows in the ForeverUI look: character, merchant, mail,
--- quest, gossip, trade, loot and roll windows, the game menu, the ready
--- check, popups, the spellbook (when it loads) and the breath and fatigue
--- bars. Each window keeps its own layout and buttons: its art is faded out
+-- quest, gossip, trade, loot and roll windows, friends, the dressing room,
+-- the flight map, books and letters, the game menu, the ready check, popups,
+-- the windows that load later (spellbook, auction house, professions,
+-- inspect, guild bank, collections, achievements, dungeon journal) and the
+-- breath and fatigue bars. Each window keeps its own layout and buttons: its art is faded out
 -- (alpha only) and a flat panel, the close button, title font and push
 -- buttons are themed. It's done every time a window shows, so parts the game
 -- adds later are covered too, and painting again never piles up. The
@@ -16,13 +18,23 @@ local GW = ns.Module("Windows", { defaults = { windows = true, popups = true, ti
 -- Framed windows (most use the game's ButtonFrameTemplate or PortraitFrameTemplate).
 GW.FRAMED = {
   "CharacterFrame", "MerchantFrame", "MailFrame", "QuestFrame", "GossipFrame", "TradeFrame",
-  "LootFrame", "GameMenuFrame", "ReadyCheckFrame",
+  "LootFrame", "GameMenuFrame", "ReadyCheckFrame", "FriendsFrame", "DressUpFrame", "TaxiFrame", "ItemTextFrame",
   "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4",
 }
 GW.POPUPS = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }
 GW.TIMERS = { "MirrorTimer1", "MirrorTimer2", "MirrorTimer3" }
 -- Windows that load with their own part of the game: addon name -> window names.
-GW.ON_DEMAND = { Blizzard_PlayerSpells = { "PlayerSpellsFrame" }, Blizzard_TimeManager = { "TimeManagerFrame" } }
+GW.ON_DEMAND = {
+  Blizzard_PlayerSpells = { "PlayerSpellsFrame" }, Blizzard_TimeManager = { "TimeManagerFrame" },
+  Blizzard_AuctionHouseUI = { "AuctionHouseFrame" }, Blizzard_Professions = { "ProfessionsFrame" },
+  Blizzard_InspectUI = { "InspectFrame" }, Blizzard_GuildBankUI = { "GuildBankFrame" },
+  Blizzard_Collections = { "CollectionsJournal" }, Blizzard_AchievementUI = { "AchievementFrame" },
+  Blizzard_EncounterJournal = { "EncounterJournal" }, Blizzard_FlightMap = { "FlightMapFrame" },
+}
+-- The parchment behind book and letter pages (faded: the page text goes light on the dark panel).
+GW.ITEM_TEXT_ART = { "ItemTextMaterialTopLeft", "ItemTextMaterialTopRight", "ItemTextMaterialBotLeft", "ItemTextMaterialBotRight", "ItemTextFramePageBg" }
+-- A book or letter page's text parts: body text, and its headings.
+GW.ITEM_TEXT_TAGS = { P = "text", H1 = "gold", H2 = "gold", H3 = "gold" }
 -- Quest window texts the game colors for its parchment (dark brown, unreadable
 -- on the dark panel): body text goes light, headings gold.
 GW.QUEST_BODY = { "QuestInfoDescriptionText", "QuestInfoObjectivesText", "QuestInfoRewardText", "QuestProgressText", "GreetingText" }
@@ -137,6 +149,17 @@ function GW.LightGossip()
   if type(box) == "table" and box.ForEachFrame then box:ForEachFrame(lightGossipLine) end
 end
 
+-- A book or letter page in light text with gold headings, its parchment faded
+-- (the game sets the page's colors as each page loads, so this runs after it).
+function GW.LightItemText()
+  for _, name in ipairs(GW.ITEM_TEXT_ART) do
+    if type(_G[name]) == "table" and _G[name].SetAlpha then _G[name]:SetAlpha(0) end
+  end
+  local page = _G.ItemTextPageText
+  if type(page) ~= "table" or type(page.SetTextColor) ~= "function" then return end
+  for tag, token in pairs(GW.ITEM_TEXT_TAGS) do page:SetTextColor(tag, T.RGB(token)) end
+end
+
 -- Runs fn after a game function (by name, or a frame's method) each time it runs, if it exists.
 local function after(owner, name, fn)
   local target = owner or _G
@@ -156,6 +179,7 @@ local function keepTextReadable()
   for _, f in ipairs({ _G.QuestFrame, _G.GossipFrame }) do
     if type(f) == "table" and f.HookScript then f:HookScript("OnShow", function() GW.LightQuestText() GW.LightGossip() end) end
   end
+  if type(_G.ItemTextFrame) == "table" and _G.ItemTextFrame.HookScript then _G.ItemTextFrame:HookScript("OnEvent", GW.LightItemText) end
 end
 
 -- Hooking -------------------------------------------------------------------------------------
