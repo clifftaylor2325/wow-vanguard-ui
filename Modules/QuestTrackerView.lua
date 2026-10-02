@@ -73,7 +73,7 @@ end
 local function ownSpot()
   local spot = CreateFrame("Frame", "ForeverUI_QuestTracker", UIParent)
   spot:SetSize(QT.W, QT.H)
-  ns.Mover(spot, "questtracker", "Quest tracker", { "TOPRIGHT", "TOPRIGHT", -12, -260 })
+  ns.Mover(spot, "questtracker", "Quest tracker", { "TOPRIGHT", "TOPRIGHT", -12, -276 })
   return spot
 end
 

@@ -15,7 +15,7 @@ local ADDON, ns = ...
 
 local T = ns.Theme
 
-local GT = ns.Module("GameTools", { defaults = { cooldowns = true, meter = true, place = true } })
+local GT = ns.Module("GameTools", { defaults = { cooldowns = true, meter = true, place = true, cdmHint = true } })
 
 -- Each placed frame's mover: key, label, default point, and the spot's size
 -- (UI units; the rows fit the 260-unit gap between the unit frames).
@@ -152,9 +152,28 @@ local function watchMeter()
   end
 end
 
+-- Where to turn the Cooldown Manager on, said once when it's off.
+GT.HINT = "The game's Cooldown Manager is off. Turn it on in Options > Gameplay Enhancements > Enable Cooldown Manager, and ForeverUI places it between your frames."
+
+-- True when this client has the Cooldown Manager but it's switched off.
+function GT.CooldownsOff()
+  local viewer, cvar = C_CooldownViewer, C_CVar
+  local available = type(viewer) == "table" and type(viewer.IsCooldownViewerAvailable) == "function" and viewer.IsCooldownViewerAvailable()
+  if available ~= true or type(cvar) ~= "table" or type(cvar.GetCVarBool) ~= "function" then return false end
+  return cvar.GetCVarBool("cooldownViewerEnabled") == false
+end
+
+-- Says where to turn the Cooldown Manager on, once (per profile), while it's off.
+function GT.Hint(settings)
+  if not settings.cdmHint or not GT.CooldownsOff() then return end
+  settings.cdmHint = false
+  ns.Chat(GT.HINT)
+end
+
 -- Module entry point (Core/Modules.lua): style what's switched on, then place
 -- it (out of combat: the cooldown rows are laid out by the game's frame manager).
 function GT.Enable(settings)
+  if settings.cooldowns then ns.On("PLAYER_ENTERING_WORLD", function() GT.Hint(settings) end) end
   if settings.cooldowns then for _, name in ipairs(GT.VIEWERS) do watchViewer(name) end end
   if settings.meter then watchMeter() end
   if not settings.place then return end

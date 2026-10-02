@@ -1286,6 +1286,37 @@ it("game alerts: loss of control and the talking head, styled and placed (or hid
   expect(loggedIn("").eval("return ForeverUI_LossOfControlFrameSpot == nil"), "a client without them loads cleanly").toBe(true);
 });
 
+// TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
+const DPS_ENV = `
+  __dps = { combatSources = { { isLocalPlayer = false, amountPerSecond = 999 }, { isLocalPlayer = true, amountPerSecond = 1234.5 } } }
+  C_DamageMeter = { GetCombatSessionFromType = function(kind, what) __asked = { kind, what } return __dps end }
+`;
+
+it("the info strip: your DPS in the last fight, from the game's damage meter", () => {
+  const addon = loggedIn(UNITS_ENV + DPS_ENV + CLICK_LUA);
+  const before = addon.eval("return ForeverUI_InfoStrip:GetHeight()");
+  expect(block(addon, "dps").shown, "off until you turn it on").toBe(false);
+  addon.slash("");
+  addon.eval('__click("Bars, map, chat")');
+  addon.eval(`__click("Your DPS in the last fight (from the game's damage meter)")`);
+  expect([block(addon, "dps").text, addon.eval("return __asked"), addon.eval("return ForeverUI_InfoStrip:GetHeight()")], "your line's figure, the current fight's DPS, on a fourth row").toEqual(["1.2K dps", [1, 1], 68]);
+  setCombat(addon, true);
+  addon.eval("__dps.combatSources[2].amountPerSecond = 2500");
+  addon.fire("DAMAGE_METER_RESET");
+  expect(addon.eval("return ns.GetModule('InfoStrip').DPS()"), "in a fight it isn't read (the client hides it)").toBe(null);
+  setCombat(addon, false);
+  expect(block(addon, "dps").text, "when the fight ends it shows that fight's").toBe("2.5K dps");
+  // Runs lua, ends a fight, and says whether the DPS block shows.
+  const hidden = (lua) => { addon.eval(lua); addon.fire("PLAYER_REGEN_ENABLED"); return block(addon, "dps").shown; };
+  expect([hidden("__dps.combatSources[2].amountPerSecond = { __secret = true }"), hidden("__dps = { __secret = true }"), hidden("__dps = {}"), hidden("__dps = nil")], "hidden figures, a hidden fight, no fight: nothing shows").toEqual([false, false, false, false]);
+  expect(addon.eval("return ForeverUI_InfoStrip:GetHeight()"), "and the fourth row goes").toBe(before);
+  addon.eval("Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } } __dps = { combatSources = { { isLocalPlayer = true, amountPerSecond = 0 } } }");
+  expect(hidden(""), "no damage done: nothing shows").toBe(false);
+  const bare = loggedIn(UNITS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { InfoStrip = { dps = true } } }" });
+  bare.fire("PLAYER_REGEN_ENABLED");
+  expect(block(bare, "dps").shown, "a client without the damage meter shows nothing").toBe(false);
+});
+
 // TEST-ONLY numbers for the info strip: head slot 30%, legs 9% worn, 12 free slots, 12g 34s 7c.
 const STRIP_ENV = `
   __dur = { [1] = { 30, 100 }, [7] = { 9, 100 }, [2] = { 0, 0 } }
@@ -2571,6 +2602,30 @@ it("a nameplate first drawn in combat gets the client's aura container after the
   expect(old.eval("return __plates.nameplate2.fui.debuffsOnEngine"), "a client without the container keeps the fallback").toBe(false);
 });
 
+it("nameplates: a gold ! by units your quests need", () => {
+  const env = "__related = { nameplate1 = true, nameplate2 = { __secret = true } } C_QuestLog = { UnitIsRelatedToActiveQuest = function(unit) return __related[unit] end }";
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + CLICK_LUA + env);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
+  // A plate's quest mark: shown, its icon, its color.
+  const mark = (unit) => addon.eval(`local q = __plates.${unit}.fui.quest return { q:IsShown(), q.__texture, q.__vertexColor }`);
+  const one = mark("nameplate1");
+  expect([one[0], /Icons\\Quests$/.test(one[1]), isTok(addon, one[2], "gold")], "a quest unit gets the gold !").toEqual([true, true, true]);
+  expect(addon.eval("return __plates.nameplate1.fui.quest.__points.LEFT.rel == __plates.nameplate1.fui.name"), "just right of its name").toBe(true);
+  expect(mark("nameplate2")[0], "a hidden answer counts as no").toBe(false);
+  addon.eval("__related.nameplate1 = nil");
+  addon.fire("QUEST_LOG_UPDATE");
+  expect(mark("nameplate1")[0], "it goes when your quests no longer need the unit").toBe(false);
+  addon.eval("__related.nameplate1 = true");
+  addon.slash("");
+  addon.eval('__click("Nameplates")');
+  addon.eval('__click("A gold ! by units your quests need")');
+  expect(mark("nameplate1")[0], "the switch turns the marks off at once").toBe(false);
+  const bare = loggedIn(UNITS_ENV + PLATE_ENV + "C_QuestLog = nil");
+  bare.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  expect(bare.eval("return __plates.nameplate1.fui.quest:IsShown()"), "a client that can't say shows none").toBe(false);
+});
+
 it("nameplates", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV);
   const accent = addon.eval("return { ns.Theme.Accent() }");
@@ -3820,6 +3875,46 @@ it("the game's tools: Cooldown Manager and damage meter styled and placed, stand
   expect(loggedIn("").eval("return ns.GetModule('GameTools') ~= nil"), "a client without these tools loads cleanly").toBe(true);
 });
 
+it("Edit Mode shows ForeverUI's handles too, with a note under its window", () => {
+  const addon = loggedIn(TOOLS_ENV + CLICK_LUA);
+  // Whether the handles are up, how many grid lines show, and whether the note shows (with its text).
+  const state = () => addon.eval("local n = ForeverUI_EditModeNote return { ns.Unlocked(), ns.GridLineCount(), n ~= nil and n:IsShown(), n ~= nil and n.text:GetText() == ns.EDIT_NOTE }");
+  addon.eval("EditModeManagerFrame:Show()");
+  expect(state(), "opening Edit Mode shows the handles (the game draws its own grid) and the note").toEqual([true, 0, true, true]);
+  expect(addon.eval("return ForeverUI_EditModeNote.__points.TOP.rel == EditModeManagerFrame"), "the note sits under Edit Mode's window").toBe(true);
+  addon.eval("EditModeManagerFrame:Hide()");
+  expect(state().slice(0, 3), "closing it hides them again").toEqual([false, 0, false]);
+  addon.slash("unlock");
+  addon.eval("EditModeManagerFrame:Show() EditModeManagerFrame:Hide()");
+  expect(addon.eval("return ns.Unlocked()"), "handles you put up with /fui unlock stay up").toBe(true);
+  addon.slash("lock");
+  setCombat(addon, true);
+  addon.eval("EditModeManagerFrame:Show()");
+  expect(state().slice(0, 3), "not in combat").toEqual([false, 0, false]);
+  addon.eval("EditModeManagerFrame:Hide()");
+  setCombat(addon, false);
+  addon.slash("");
+  addon.eval(`__click("Show these handles in the game's Edit Mode too")`);
+  addon.eval("EditModeManagerFrame:Show()");
+  expect(state().slice(0, 3), "the switch under General turns it off").toEqual([false, 0, false]);
+});
+
+it("the game's tools: one hint when the Cooldown Manager is off", () => {
+  // A client whose Cooldown Manager is available (or not) and switched on (or not).
+  const env = (enabled, available = "true") => `C_CooldownViewer = { IsCooldownViewerAvailable = function() return ${available} end }
+    C_CVar = { GetCVarBool = function(name) if name == "cooldownViewerEnabled" then return ${enabled} end end }`;
+  const addon = loggedIn(UNITS_ENV + env("false"));
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(chatHas(addon, /Cooldown Manager is off\. Turn it on in Options > Gameplay Enhancements/), "where to turn it on").toBe(true);
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect([addon.chat().filter((line) => /Cooldown Manager is off/.test(line)).length, addon.eval("return ForeverUIDB.profiles.Default.GameTools.cdmHint")], "said once").toEqual([1, false]);
+  // Whether a client says the hint at all.
+  const hints = (lua, saved = "") => { const a = loggedIn(UNITS_ENV + lua, { savedVariables: saved }); a.fire("PLAYER_ENTERING_WORLD"); return chatHas(a, /Cooldown Manager is off/); };
+  expect([hints(env("true")), hints(env("false", "false")), hints(env("false") + " C_CVar = nil"), hints("C_CooldownViewer = nil"),
+    hints(env("false"), "ForeverUIDB.profiles = { Default = { GameTools = { cooldowns = false } } }")],
+  "not when it's on, not available yet, the client can't say, or ForeverUI leaves it alone").toEqual([false, false, false, false, false]);
+});
+
 // The rect { l, b, r, t } of a w x h frame anchored at [point, relPoint, x, y] on UIParent, on an sw x sh screen.
 function rectAt([point, relPoint, x, y], w, h, sw, sh) {
   const l = ACROSS(relPoint) * sw + x - ACROSS(point) * w;
@@ -3887,7 +3982,7 @@ function layoutProblems(rects, sw, sh) {
 it("Centered layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", () => {
   const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + "TakeTaxiNode = function() end", { firstRun: true });
   expect(addon.eval("return ChatFrame1.__points.BOTTOMLEFT ~= nil"), "chat sits in its layout spot").toBe(true);
-  addon.eval("ForeverUI_InfoStrip:SetHeight(52)"); // the info strip at its tallest, with the leveling row
+  addon.eval("ForeverUI_InfoStrip:SetHeight(68)"); // the info strip at its tallest, with the leveling and DPS rows
   expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
   for (const layout of ["damage", "healing"]) {
     addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
@@ -4255,7 +4350,7 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "which is out of sight until the mouse is over it").toBe(0);
   addon.eval("function ForeverUI_MenuStrip:IsMouseOver() return true end __wfgStub.advance(0.3)");
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "and shows with the mouse over it").toBe(1);
-  expect(addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p.rel == ForeverUI_QuestTracker, ObjectiveTrackerFrame:GetHeight() }"), "the quest tracker sits under the info strip, no taller than its spot").toEqual([true, 264]);
+  expect(addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p.rel == ForeverUI_QuestTracker, ObjectiveTrackerFrame:GetHeight() }"), "the quest tracker sits under the info strip, no taller than its spot").toEqual([true, 248]);
 });
 
 it("the game's extras: each switch off leaves the game's frame alone, and missing frames are fine", () => {
@@ -4502,4 +4597,68 @@ it("game windows: switched off they stay the game's, and missing windows are fin
   const plain = loggedIn(`local f = CreateFrame("Frame", "LootFrame", UIParent) f.ButtonContainer = { Buttons = { CreateFrame("Button", nil, f) } }
     t = CreateFrame("Frame", "MirrorTimer2", UIParent) CreateFrame("StatusBar", "MirrorTimer2StatusBar", t)`);
   expect(plain.eval("return { select('#', LootFrame.ButtonContainer.Buttons[1]:GetRegions()) > 0, MirrorTimer2StatusBar:GetStatusBarTexture() ~= nil }"), "a window with a button container, and a bar found by name").toEqual([true, true]);
+});
+
+// TEST-ONLY away player: a level 42 mage in a made-up zone, 300 of 1000 XP into the level.
+const AFK_ENV = `
+  __afk, __level = false, 42
+  UnitIsAFK = function(unit) return unit == "player" and __afk end
+  UnitLevel = function() return __level end
+  GetMaxPlayerLevel = function() return 60 end
+  GetRealZoneText = function() return "TEST-ONLY Vale" end
+  GetSubZoneText = function() return "TEST-ONLY Hamlet" end
+  UnitXP = function() return 300 end
+  UnitXPMax = function() return 1000 end
+  date = function() return "21:04" end
+`;
+
+it("the AFK screen: a dimmed screen and a card while you're away", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV);
+  // The AFK screen and its card's texts.
+  const afk = () => addon.eval(`local f = ForeverUI_AfkScreen
+    return { shown = f:IsShown(), name = f.name:GetText(), who = f.who:GetText(), where = f.where:GetText(), away = f.away:GetText(), clock = f.clock:GetText(), xp = f.xp:IsShown() and f.xp.__value, color = f.name.__textColor }`);
+  expect(afk().shown, "hidden while you're here").toBe(false);
+  addon.eval("__afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  const card = afk();
+  expect(card, "your name, level and class, where you are, the time away and the clock, your XP").toMatchObject({ shown: true, name: "<name>", who: "Level 42 Class", where: "TEST-ONLY Vale  ·  TEST-ONLY Hamlet", away: "Away 0:00", clock: "21:04", xp: 300 });
+  expect(card.color.slice(0, 3), "the name in your class color").toEqual([0.25, 0.78, 0.92]);
+  expect(addon.eval("return { ForeverUI_AfkScreen.__strata, ForeverUI_AfkScreen.dim.__vertexColor[4] }"), "over the whole UI, dimmed").toEqual(["FULLSCREEN_DIALOG", 0.75]);
+  addon.eval("__wfgStub.advance(65, 1)");
+  expect(afk().away, "the time away ticks").toBe("Away 1:05");
+  expect(addon.eval("return ns.GetModule('AfkScreen').AwayText(3725)"), "past an hour").toBe("Away 1:02:05");
+  addon.fire("PLAYER_FLAGS_CHANGED", "party1");
+  addon.eval("__afk = false");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  expect(afk().shown, "back: it goes").toBe(false);
+});
+
+it("the AFK screen: clicks, keys and fights put it away; what the client can't say is left out", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV);
+  // Marks you away (or back) and says so.
+  const away = (on) => { addon.eval(`__afk = ${on}`); addon.fire("PLAYER_FLAGS_CHANGED", "player"); return addon.eval("return ForeverUI_AfkScreen:IsShown()"); };
+  expect(away(true), "away").toBe(true);
+  addon.eval("ForeverUI_AfkScreen.__scripts.OnMouseDown(ForeverUI_AfkScreen)");
+  expect([addon.eval("return ForeverUI_AfkScreen:IsShown()"), away(true)], "a click puts it away, and it stays away while you are").toEqual([false, false]);
+  away(false);
+  expect(away(true), "next time you're away it's back").toBe(true);
+  addon.eval("ForeverUI_AfkScreen.__scripts.OnKeyDown(ForeverUI_AfkScreen, 'ENTER')");
+  expect(addon.eval("return ForeverUI_AfkScreen:IsShown()"), "a key puts it away too").toBe(false);
+  away(false);
+  away(true);
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect([addon.eval("return ForeverUI_AfkScreen:IsShown()"), away(true)], "a fight puts it away; it doesn't open in one").toEqual([false, false]);
+  setCombat(addon, false);
+  expect(addon.eval("return ForeverUI_AfkScreen:IsShown()"), "after the fight, still away: it's back").toBe(true);
+  addon.eval("__level = 60 UnitClass = function() return { __secret = true }, { __secret = true } end GetSubZoneText = function() return 'TEST-ONLY Vale' end ns.GetModule('AfkScreen').Paint()");
+  const capped = addon.eval("local f = ForeverUI_AfkScreen return { f.xp:IsShown(), f.who:GetText(), f.where:GetText(), f.name.__textColor }");
+  expect(capped.slice(0, 3), "at the cap no XP bar; a hidden class is left out; no spot within the zone").toEqual([false, "Level 60", "TEST-ONLY Vale"]);
+  expect(isTok(addon, capped[3], "accent"), "the name in the accent when the class is hidden").toBe(true);
+  addon.eval("UnitIsAFK = function() return { __secret = true } end");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  expect(addon.eval("return ForeverUI_AfkScreen:IsShown()"), "a hidden away flag counts as here").toBe(false);
+  const bare = loggedIn("");
+  bare.eval("ns.GetModule('AfkScreen').Paint()");
+  expect(bare.eval("local f = ForeverUI_AfkScreen return { f.name:GetText(), f.who:GetText(), f.xp:IsShown() }"), "a client that can't say much gets a blank card, no errors").toEqual(["", "", false]);
 });

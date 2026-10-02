@@ -1,7 +1,8 @@
 -- Nameplates in the ForeverUI look: a flat health bar in the unit's class
 -- or reaction color (or its threat color while you have aggro), the name
 -- above it with its level (colored by how hard it is for you), your debuffs over the name, the raid target icon to the left,
--- a cast bar under it, and an accent border on your target.
+-- a cast bar under it, an accent border on your target, and a gold "!" by the
+-- name of units your quests need (when the client says so plainly).
 --
 -- ForeverUI draws its own frame on each nameplate the client gives it and
 -- hides the default one; the client still places, sizes and stacks the
@@ -18,12 +19,14 @@ local CB = ns.GetModule("CastBars")
 local RS = ns.GetModule("RaidStatus")
 
 local NP = ns.Module("Nameplates", {
-  defaults = { width = 130, height = 10, level = true, threat = true, castBar = true, debuffs = 4, targetBorder = true, timers = true },
+  defaults = { width = 130, height = 10, level = true, threat = true, castBar = true, debuffs = 4, targetBorder = true, timers = true, questMarks = true },
 })
 
 local ICON = 18
 -- The target marker's size (a diamond right of your target's plate).
 NP.MARKER = 8
+-- The quest mark's size (a "!" right of the name).
+NP.QUEST = 12
 
 NP.plates = {}
 -- Every frame we built on a plate (the client reuses plates, so each gets one).
@@ -53,6 +56,13 @@ function NP.Color(unit)
   return ns.GetModule("UnitFrames").HealthColor(unit)
 end
 
+-- True when one of your active quests needs the unit (a hidden answer counts as no).
+function NP.QuestUnit(unit)
+  local fn = C_QuestLog and C_QuestLog.UnitIsRelatedToActiveQuest
+  local related = type(fn) == "function" and fn(unit)
+  return not ns.IsSecret(related) and related == true
+end
+
 -- True when the unit is your target (hidden counts as no).
 local function isTarget(unit)
   local same = UnitIsUnit(unit, "target")
@@ -70,8 +80,18 @@ local function addMarker(f)
   f.marker:Hide()
 end
 
--- The name above the bar (its level just left of it), the raid icon to its
--- left and the target marker to its right.
+-- A gold "!" just right of the name, shown on units your quests need.
+local function addQuestMark(f)
+  f.quest = f:CreateTexture(nil, "OVERLAY")
+  f.quest:SetTexture(T.Icon("Quests"))
+  f.quest:SetSize(NP.QUEST, NP.QUEST)
+  f.quest:SetPoint("LEFT", f.name, "RIGHT", 2, 0)
+  T.Tint(f.quest, "gold")
+  f.quest:Hide()
+end
+
+-- The name above the bar (its level just left of it, the quest mark just
+-- right), the raid icon to its left and the target marker to its right.
 local function addTexts(f)
   f.name = T.Text(f:CreateFontString(nil, "OVERLAY"), "world")
   f.name:SetPoint("BOTTOM", f, "TOP", 0, 3)
@@ -82,6 +102,7 @@ local function addTexts(f)
   f.raidIcon:SetPoint("RIGHT", f, "LEFT", -4, 0)
   f.raidIcon:Hide()
   addMarker(f)
+  addQuestMark(f)
 end
 
 -- Your debuffs in a row over the name, soonest to expire first, with timers
@@ -166,6 +187,11 @@ function NP.Update(f, unit)
   if target then T.Tint(f.marker, "accent") end
 end
 
+-- Shows a plate's quest mark while the unit is one your quests need (and the marks are on).
+function NP.PaintQuest(f, unit)
+  f.quest:SetShown(NP.settings.questMarks == true and NP.QuestUnit(unit))
+end
+
 -- Points the debuff row at the plate's unit (the client reuses plates for other units).
 function NP.UpdateAuras(f, unit)
   f.debuffs:SetUnit(unit)
@@ -174,6 +200,7 @@ end
 -- Everything on one plate.
 local function refresh(f, unit)
   NP.Update(f, unit)
+  NP.PaintQuest(f, unit)
   NP.UpdateAuras(f, unit)
   if f.cast then CB.Show(f.cast, unit) end
 end
@@ -230,6 +257,8 @@ local EVENTS = {
   -- Your new level changes how hard every unit is for you.
   PLAYER_LEVEL_UP = function() each(NP.Update) end,
   PLAYER_REGEN_ENABLED = upgradeDebuffs,
+  -- Your quests changed: which units they need may have too.
+  QUEST_LOG_UPDATE = function() each(NP.PaintQuest) end,
 }
 
 -- A cast event: show it on that unit's plate.
@@ -261,10 +290,10 @@ function NP.OptionRows()
     { "check", "Levels, colored by how hard the unit is for you", setting("level") },
     { "check", "Threat colors while you have aggro", setting("threat") },
     { "check", "Accent border and marker on your target", setting("targetBorder") }, { "check", "Cast bar", setting("castBar", true) },
+    { "check", "A gold ! by units your quests need", setting("questMarks") },
     { "cycle", "Your debuffs shown", { { 0, "none" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", true) },
     { "check", "Timer numbers on your debuffs (reload)", setting("timers", true) },
-    { "cycle", "Width", { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", true) },
-    { "cycle", "Height", { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", true) } }
+    { "cycle", "Width", { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", true) }, { "cycle", "Height", { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", true) } }
 end
 
 ns.Options.AddPage({

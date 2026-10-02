@@ -9,14 +9,14 @@ local ADDON, ns = ...
 local T = ns.Theme
 local L = ns.Layout
 
-local DEFAULTS = { grid = true, gridSize = 32, snap = true }
+local DEFAULTS = { grid = true, gridSize = 32, snap = true, editMode = true }
 local NUDGE = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 0 } }
 
 local movers, order = {}, {}
 local unlocked = false
 local selected
 
--- Unlock-mode options (grid, gridSize, snap) in the active profile.
+-- Unlock-mode options (grid, gridSize, snap, editMode) in the active profile.
 function ns.MoverOptions()
   return ns.Settings("movers", DEFAULTS)
 end
@@ -124,12 +124,43 @@ function ns.PausePins(paused)
   for frame in pairs(pinned) do runPin(frame) end
 end
 
--- Pins pause while the game's Edit Mode window is open and come back when it closes.
+-- Edit Mode ---------------------------------------------------------------------------
+
+-- ForeverUI's frames move with their own handles, so Edit Mode shows those too.
+ns.EDIT_NOTE = "The labeled handles are ForeverUI's frames: drag them here too (right-click one for more)."
+
+-- The note under Edit Mode's window, made on first use (it shows and hides with that window).
+local function editNote(edit)
+  if ns.editNote then return ns.editNote end
+  local note = T.Panel(CreateFrame("Frame", "ForeverUI_EditModeNote", edit), { accent = true })
+  note:SetSize(320, 36)
+  note:SetPoint("TOP", edit, "BOTTOM", 0, -6)
+  note.text = T.Text(note:CreateFontString(nil, "OVERLAY"), "small")
+  note.text:SetPoint("TOPLEFT", 8, -6) note.text:SetPoint("BOTTOMRIGHT", -8, 6)
+  note.text:SetText(ns.EDIT_NOTE)
+  ns.editNote = note
+  return note
+end
+
+-- Edit Mode opened: ForeverUI's handles show too (without the grid: the game
+-- draws its own), with the note, unless that's switched off. It closed: they
+-- hide, unless /fui unlock had them up already.
+function ns.EditModeMovers(edit, open)
+  if open and not unlocked and ns.MoverOptions().editMode then ns.editUnlocked = ns.Unlock(true) end
+  if not open and ns.editUnlocked then
+    ns.editUnlocked = false
+    ns.Lock()
+  end
+  editNote(edit):SetShown(open and unlocked)
+end
+
+-- While the game's Edit Mode window is open, pins pause and ForeverUI's handles
+-- show; when it closes, everything goes back to its ForeverUI spot.
 local function watchEditMode()
   local edit = _G.EditModeManagerFrame
   if type(edit) ~= "table" or not edit.HookScript then return end
-  edit:HookScript("OnShow", function() ns.PausePins(true) end)
-  edit:HookScript("OnHide", function() ns.PausePins(false) end)
+  edit:HookScript("OnShow", function() ns.PausePins(true) ns.EditModeMovers(edit, true) end)
+  edit:HookScript("OnHide", function() ns.PausePins(false) ns.EditModeMovers(edit, false) end)
 end
 ns.On("PLAYER_LOGIN", watchEditMode)
 
@@ -274,8 +305,8 @@ end
 
 -- Lock / unlock -----------------------------------------------------------------------
 
--- Shows every handle and the grid. Refused in combat.
-function ns.Unlock()
+-- Shows every handle and the grid (not with noGrid). Refused in combat.
+function ns.Unlock(noGrid)
   if ns.InCombat() then
     return false
   end
@@ -284,7 +315,7 @@ function ns.Unlock()
     handleFor(movers[key]):Show()
   end
   local options = ns.MoverOptions()
-  if options.grid then ns.ShowGrid(options.gridSize) end
+  if options.grid and not noGrid then ns.ShowGrid(options.gridSize) end
   return true
 end
 
