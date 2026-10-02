@@ -9,6 +9,9 @@
 //      roles, both in Core/Theme.lua.
 // Test cases (the callback passed to it(...)) are exempt from rule 1.
 
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
 import * as acorn from "acorn";
 
 export const MAX_BODY_LINES = 10;
@@ -298,6 +301,13 @@ function fontProblems(file, src) {
   const code = luaCodeOnly(src);
   const line = lineIndex(code);
   return [...code.matchAll(FONT_SIZE)].map((m) => ({ line: line(m.index), message: FONT_MESSAGE }));
+}
+
+// The Lua and JS files in the repo at root: tracked ones and new ones git
+// would add (ignored files and deleted ones left out), each once, in order.
+export function sourceFiles(root) {
+  const out = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "*.lua", "*.mjs", "*.js"], { cwd: root, encoding: "utf8" });
+  return [...new Set(out.split("\n"))].filter((f) => f && fs.existsSync(path.join(root, f)));
 }
 
 // Problems in one file: [{ line, message }].

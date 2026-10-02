@@ -38,7 +38,7 @@ MS.GLYPHS = {
   QuestLogMicroButton = T.Icon("Quests"), GuildMicroButton = T.Icon("Social"), SocialsMicroButton = T.Icon("Social"),
   LFDMicroButton = T.Icon("Group"), CollectionsMicroButton = T.Icon("Collections"), EJMicroButton = T.Icon("Journal"),
   StoreMicroButton = T.Icon("Shop"), MainMenuMicroButton = T.Icon("MenuCog"), HelpMicroButton = T.Icon("Help"),
-  WorldMapMicroButton = T.Icon("Map"), HousingMicroButton = T.Icon("House"),
+  WorldMapMicroButton = T.Icon("Map"), HousingMicroButton = T.Icon("House"), LegacyMicroButton = T.Icon("Legacy"),
 }
 -- A menu button's alert textures (new talents, mail...), kept when its art is faded.
 MS.ALERTS = { "Flash", "FlashBorder", "FlashContent" }

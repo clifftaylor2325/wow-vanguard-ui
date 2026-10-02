@@ -2,8 +2,12 @@
 // TEST-ONLY sources below are never loaded. The repo-wide scan stays in
 // scripts/check-code-quality.mjs (npm run quality, part of npm run verify).
 
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { checkSource } from "./lib/code-quality.mjs";
+import { checkSource, sourceFiles } from "./lib/code-quality.mjs";
 
 // n body lines of Lua, or of JS when js is true.
 const body = (n, js = false) => Array.from({ length: n }, (_, i) => `  ${js ? "let" : "local"} v${i} = ${i}${js ? ";" : ""}`).join("\n");
@@ -190,3 +194,17 @@ describe(
     it("colors: only addon Lua is checked", colorAddonOnly);
   },
 );
+
+// A new file nobody has added to git yet is checked too; ignored and deleted ones aren't.
+it("the scan covers new files, not ignored or deleted ones", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fui-quality-"));
+  // Runs git in the scratch repo.
+  const git = (...args) => execFileSync("git", args, { cwd: dir, stdio: "pipe" });
+  git("init", "-q");
+  for (const [f, text] of [["tracked.lua", "-- x\n"], ["gone.lua", "-- x\n"], [".gitignore", "ignored.lua\n"]]) fs.writeFileSync(path.join(dir, f), text);
+  git("add", "tracked.lua", "gone.lua", ".gitignore");
+  fs.rmSync(path.join(dir, "gone.lua"));
+  for (const f of ["new.lua", "ignored.lua", "notes.txt"]) fs.writeFileSync(path.join(dir, f), "-- x\n");
+  expect(sourceFiles(dir).sort()).toEqual(["new.lua", "tracked.lua"]);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
