@@ -191,6 +191,8 @@ O.MODULE_INFO = {
   ChatExtras = { "Chat extras", "Clickable web links in chat, and a Copy button for the recent chat." },
   MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map." },
   AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels (each off until you switch it on)." },
+  QuestDialog = { "Quest dialog", "Talking to quest givers in ForeverUI's own dialog: numbered lines, reward cards, keys 1-9 and Space." },
+  QuestAuto = { "Quest automation", "Accept, turn in, pick the best-selling reward, skip chatter; each off until switched on." },
   Errands = { "Errands", "Train all at a trainer, keep items stocked from merchants, and time your flights." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
   Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the ForeverUI look." },
@@ -546,12 +548,25 @@ local function raidPageRows()
 end
 
 -- Pages: key, title, nav icon (Media/Icons) and order in the nav (groups: under 30, under 90, the rest).
+-- Quests: the dialog, and the automation (each off until switched on).
+local function questRows()
+  return {
+    { "header", "Quest dialog" },
+    check("ForeverUI's quest dialog at the bottom center (reload)", setting("QuestDialog", "dialog", true)),
+    { "header", "Automation (hold Shift while talking to skip it)" },
+    check("Accept quests", setting("QuestAuto", "accept")), check("Turn in finished quests", setting("QuestAuto", "turnIn")),
+    check("With a choice of rewards, take the one that sells for most", setting("QuestAuto", "bestReward")),
+    check("Skip the chatter when an NPC has just one quest for you", setting("QuestAuto", "skipGossip")),
+  }
+end
+
 local PAGES = {
   { key = "general", title = "General", icon = "General", order = 10, rows = generalRows },
   { key = "modules", title = "Modules", icon = "Modules", order = 20, rows = moduleRows },
   { key = "unitframes", title = "Unit frames", icon = "UnitFrames", order = 30, rows = function() return append(append(append(unitFrameRows(), readoutRows()), castRows()), timerRows()) end },
   { key = "raid", title = "Raid frames", icon = "RaidFrames", order = 40, rows = raidPageRows },
   { key = "actionbars", title = "Action bars", icon = "ActionBars", order = 60, rows = actionBarPageRows },
+  { key = "quests", title = "Quests", icon = "Quests", order = 70, rows = questRows },
   { key = "more", title = "Bars, map, chat", icon = "Map", order = 80, rows = function() return morePageRows() end },
   { key = "profiles", title = "Profiles", icon = "Profiles", order = 90, rows = profileRows },
 }
