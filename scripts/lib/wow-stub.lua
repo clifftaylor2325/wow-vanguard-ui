@@ -382,6 +382,14 @@ function methods:GetName() return self.__name end
 function methods:GetObjectType() return self.__kind end
 function methods:GetScrollChild() return self.__scrollChild end
 function methods:GetParent() return self.__parent end
+-- The frames parented to this one (not its textures or font strings), as the client returns them.
+function methods:GetChildren()
+  local out = {}
+  for _, w in ipairs(stub.frames) do
+    if w.__parent == self and w.__kind ~= "Texture" and w.__kind ~= "FontString" then out[#out + 1] = w end
+  end
+  return unpack(out)
+end
 -- Textures record their draw layer and sublevel.
 function methods:CreateTexture(name, layer, _, sublevel)
   local t = newWidget("Texture", name, self, nil, layer)
