@@ -19,7 +19,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local RF = ns.Module("RaidFrames", {
-  defaults = { width = 100, height = 48, spacing = 4, showInParty = true, showPlayer = true, sortByRole = false, hideBlizzard = true, look = "soft", showPower = true, compact = true },
+  defaults = { width = 100, height = 48, spacing = 4, showInParty = true, showPlayer = true, sortByRole = false, hideBlizzard = true, look = "soft", showPower = true, compact = true, layout = "columns" },
 })
 
 -- Group size -> how large the grid is drawn when compact: up to 10 full size, up to 25 at 80%, more at 72%.
@@ -57,12 +57,27 @@ local function unitFrames()
   return ns.GetModule("UnitFrames")
 end
 
--- The role mark (an icon path) for a unit: a shield for tanks, a cross for
--- healers; nil for anyone else, or when the client keeps the role hidden.
+-- The raid's main tank and main assist get the shield in these colors.
+RF.ASSIGNMENTS = { MAINTANK = "accent", MAINASSIST = "text2" }
+
+-- The color for a unit the raid assigned as main tank or main assist, or nil.
+local function assignment(unit)
+  if type(GetPartyAssignment) ~= "function" then return nil end
+  for kind, color in pairs(RF.ASSIGNMENTS) do
+    local yes = GetPartyAssignment(kind, unit)
+    if not ns.IsSecret(yes) and yes == true then return color end
+  end
+end
+
+-- The role mark (an icon path) and its color for a unit: a shield for tanks
+-- (accent for the main tank), a cross for healers; nil for anyone else, or
+-- when the client keeps the role hidden.
 function RF.RoleMark(unit)
+  local assigned = assignment(unit)
+  if assigned then return RF.ROLE_MARKS.TANK, assigned end
   local role = type(UnitGroupRolesAssigned) == "function" and UnitGroupRolesAssigned(unit) or "NONE"
   if ns.IsSecret(role) then return nil end
-  return RF.ROLE_MARKS[role]
+  return RF.ROLE_MARKS[role], RF.ROLE_MARKS[role] and "text2"
 end
 
 -- Missing health as short text ("-16K"); "" at full health, or when the client
@@ -97,11 +112,12 @@ end
 -- unit, so the name anchored after it starts near the row's start. Nothing is
 -- re-anchored, so this is safe in combat (the game's raid frames do the same).
 local function updateRole(b, unit)
-  local mark = RF.RoleMark(unit)
+  local mark, color = RF.RoleMark(unit)
   for _, t in ipairs({ b.role, b.roleShadow }) do
     t:SetShown(mark ~= nil)
     if mark then t:SetTexture(mark) end
   end
+  if color then T.Tint(b.role, color) end
   b.role:SetWidth(mark and b.roleSize or 1)
 end
 
@@ -344,16 +360,24 @@ function RF.Setup(b)
   if RF.OnButtonCreated then RF.OnButtonCreated(b) end
 end
 
--- Layout attributes: columns of five, one per group (or sorted by role).
+-- Where the header grows for each layout: columns of five side by side
+-- (growing up), or rows of five stacked upward (wide, for big healing raids).
+RF.GROW = {
+  columns = { point = "BOTTOM", columnAnchorPoint = "LEFT", xOffset = 0, yOffset = 4 },
+  rows = { point = "LEFT", columnAnchorPoint = "BOTTOM", xOffset = 4, yOffset = 0 },
+}
+
+-- Layout attributes: groups of five (or sorted by role), as columns or rows.
 local function layout(header, s)
+  local grow = RF.GROW[s.layout] or RF.GROW.columns
   header:SetAttribute("groupBy", s.sortByRole and "ASSIGNEDROLE" or "GROUP")
   header:SetAttribute("groupingOrder", s.sortByRole and "TANK,HEALER,DAMAGER,NONE" or "1,2,3,4,5,6,7,8")
   header:SetAttribute("maxColumns", 8)
   header:SetAttribute("unitsPerColumn", 5)
   header:SetAttribute("columnSpacing", s.spacing)
-  header:SetAttribute("columnAnchorPoint", "LEFT")
-  header:SetAttribute("point", "BOTTOM")
-  header:SetAttribute("yOffset", s.spacing)
+  for _, key in ipairs({ "point", "columnAnchorPoint" }) do header:SetAttribute(key, grow[key]) end
+  header:SetAttribute("xOffset", grow.xOffset > 0 and s.spacing or 0)
+  header:SetAttribute("yOffset", grow.yOffset > 0 and s.spacing or 0)
 end
 
 -- Which groups show: raid always, party and yourself by setting.
@@ -427,10 +451,11 @@ function RF.Fit()
   end)
 end
 
--- The movable holder: one tile wide and a party tall, where the grid starts.
+-- The movable holder, where the grid starts: one group's size (a column of
+-- five tall, or a row of five wide).
 local function holder(s)
-  local f = CreateFrame("Frame", "ForeverUI_RaidHolder", UIParent)
-  f:SetSize(s.width, 5 * (s.height + s.spacing) - s.spacing)
+  local f, five = CreateFrame("Frame", "ForeverUI_RaidHolder", UIParent), 5 * (s.width + s.spacing) - s.spacing
+  if s.layout == "rows" then f:SetSize(five, s.height) else f:SetSize(s.width, 5 * (s.height + s.spacing) - s.spacing) end
   ns.Mover(f, "raid", "Raid frames", { "BOTTOMLEFT", "BOTTOMLEFT", 20, 344 })
   return f
 end

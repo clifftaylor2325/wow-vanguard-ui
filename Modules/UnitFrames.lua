@@ -12,7 +12,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local UF = ns.Module("UnitFrames", {
-  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6 },
+  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true },
 })
 
 -- Target classification -> the color of its diamond (none for normal units).
@@ -35,6 +35,8 @@ UF.LAYOUT = LAYOUT
 local PARTY_SIZE = 4
 -- Party 1 at the top of a column that ends 344 up, on the left above chat (where the raid frames sit too).
 local PARTY = { w = 160, h = 32, gap = 10, label = "Party", point = { "BOTTOMLEFT", "BOTTOMLEFT", 20, 470 } }
+-- Boss 1-5 in a column down from the empty top-left corner (clear of party and raid below).
+UF.BOSS = { count = 5, w = 150, h = 26, gap = 6, label = "Boss frames", point = { "TOPLEFT", "TOPLEFT", 20, -20 } }
 
 -- Blizzard frames replaced when hideBlizzard is on (only those this client has).
 local BLIZZARD_FRAMES = { "PlayerFrame", "TargetFrame", "FocusFrame", "PetFrame", "PartyFrame" }
@@ -341,6 +343,9 @@ local GLOBAL_EVENTS = {
   PLAYER_FOCUS_CHANGED = { focus = true },
   UNIT_PET = { pet = true },
   GROUP_ROSTER_UPDATE = { party1 = true, party2 = true, party3 = true, party4 = true },
+  -- A boss joined or left the fight, or became attackable.
+  INSTANCE_ENCOUNTER_ENGAGE_UNIT = { boss1 = true, boss2 = true, boss3 = true, boss4 = true, boss5 = true },
+  UNIT_TARGETABLE_CHANGED = { boss1 = true, boss2 = true, boss3 = true, boss4 = true, boss5 = true },
   -- Your new level changes how hard every other unit is for you (the level colors).
   PLAYER_LEVEL_UP = false,
 }
@@ -389,6 +394,19 @@ local function addParty()
   end
 end
 
+-- Boss 1-5: the first is movable, the rest stack below it (each shows while its boss exists).
+local function addBosses()
+  local b = UF.BOSS
+  local prev = addFrame("boss1", "boss1", b.w, b.h, b.label, b.point)
+  addClassMark(prev)
+  for i = 2, b.count do
+    local f = addFrame("boss" .. i, "boss" .. i, b.w, b.h)
+    f:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -b.gap)
+    addClassMark(f)
+    prev = f
+  end
+end
+
 local hiddenParent
 
 -- Hides one of the game's frames for good: no events, parented to a hidden frame.
@@ -406,16 +424,22 @@ end
 -- Shared with modules that replace other game frames (PlayerAuras).
 UF.HideBlizzard = hideBlizzard
 
+-- Hides the game's frames ForeverUI replaces. The boss frames' holder is an
+-- Edit Mode frame, so it's hidden in place (moving it breaks Edit Mode).
+local function hideReplaced(settings)
+  for _, name in ipairs(BLIZZARD_FRAMES) do hideBlizzard(name) end
+  if settings.boss then ns.GetModule("DataBars").Suppress("BossTargetFrameContainer") end
+end
+
 -- Builds every frame. Secure frames can't be set up in combat, so this waits.
 local function build(settings)
   for _, def in ipairs(LAYOUT) do
     addFrame(def.key, def.unit, def.w, def.h, def.label, def.point)
   end
   if not UF.RaidCoversParty() then addParty() end
+  if settings.boss then addBosses() end
   pollTargetOfTarget(UF.frames.targettarget)
-  if settings.hideBlizzard then
-    for _, name in ipairs(BLIZZARD_FRAMES) do hideBlizzard(name) end
-  end
+  if settings.hideBlizzard then hideReplaced(settings) end
   UF.Refresh()
 end
 

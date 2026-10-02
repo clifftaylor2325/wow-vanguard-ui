@@ -1,0 +1,161 @@
+-- Raid tools for the group's leader and assistants, in one small bar:
+--   * Ready check, a 10-second pull countdown (right-click cancels it), a role
+--     check, and "Raid" to turn your party into a raid while you lead one;
+--   * the eight raid target icons (click one to mark your target; the last
+--     button clears it);
+--   * the eight world markers (click to place or remove one where you aim; the
+--     last button clears them all). These are the game's own secure marker
+--     buttons, so they work in combat.
+-- The bar shows while you're in a group and lead it or assist (or everyone
+-- assists). It holds secure buttons, so it only shows or hides out of combat.
+
+local ADDON, ns = ...
+
+local T = ns.Theme
+
+local RT = ns.Module("RaidTools", { defaults = {} })
+
+RT.ICON, RT.GAP, RT.PAD = 18, 2, 4
+-- The raid icon that matches each world marker's color (blue square, green
+-- triangle, purple diamond, red cross, yellow star, orange circle, silver moon, white skull).
+RT.MARKER_ICONS = { 6, 4, 3, 7, 1, 2, 5, 8 }
+-- The clear button's mark.
+RT.CLEAR = T.Icon("Close")
+
+-- Calls a function from C_PartyInfo, else the global of that name; nil when neither exists.
+local function party(name, ...)
+  local fn = C_PartyInfo and C_PartyInfo[name]
+  if type(fn) ~= "function" then fn = _G[name] end
+  if type(fn) == "function" then return fn(...) end
+end
+
+-- A plain true from a client call (hidden values count as false).
+local function yes(name, ...)
+  local fn = _G[name]
+  local v = type(fn) == "function" and fn(...)
+  return not ns.IsSecret(v) and v == true
+end
+
+-- Who may use the tools: the leader, an assistant, or anyone when everyone assists.
+function RT.CanLead()
+  if not yes("IsInGroup") then return false end
+  return yes("UnitIsGroupLeader", "player") or (yes("IsInRaid") and (yes("UnitIsGroupAssistant", "player") or yes("IsEveryoneAssistant")))
+end
+
+-- The text buttons -----------------------------------------------------------------------
+
+-- Each text button: label, what a click does, and the client call it needs.
+RT.ACTIONS = {
+  { "Ready", function() party("DoReadyCheck") end, "DoReadyCheck" },
+  { "Pull", function(_, button) party("DoCountdown", button == "RightButton" and 0 or 10) end, "DoCountdown" },
+  { "Roles", function() _G.InitiateRolePoll() end, "InitiateRolePoll" },
+  { "Raid", function() party("ConvertToRaid") end, "ConvertToRaid" },
+}
+
+-- True when this client has the call a button needs.
+local function hasCall(name)
+  return type(C_PartyInfo and C_PartyInfo[name]) == "function" or type(_G[name]) == "function"
+end
+
+-- The row of text buttons this client can use.
+local function addActions(bar)
+  bar.actions = {}
+  for _, spec in ipairs(RT.ACTIONS) do
+    if hasCall(spec[3]) then
+      local b = ns.DialogButton(bar, spec[1], 44)
+      b:SetHeight(RT.ICON)
+      b:RegisterForClicks("AnyUp")
+      b:SetScript("OnClick", spec[2])
+      bar.actions[spec[1]] = b
+      RT.Place(bar, b, 1, #bar.list)
+    end
+  end
+end
+
+-- Icon buttons ---------------------------------------------------------------------------
+
+-- Puts a button at column `col` (0-based) of row `row` (1-3), and keeps it in the bar's list.
+function RT.Place(bar, b, row, col)
+  b:SetPoint("TOPLEFT", bar, "TOPLEFT", RT.PAD + col * (b:GetWidth() + RT.GAP), -RT.PAD - (row - 1) * (RT.ICON + RT.GAP))
+  bar.list[#bar.list + 1] = b
+end
+
+-- An icon button showing raid icon `index` (or the clear mark for nil).
+local function iconButton(bar, template, index)
+  local b = T.Button(CreateFrame("Button", nil, bar, template))
+  b:SetSize(RT.ICON, RT.ICON)
+  b.icon = b:CreateTexture(nil, "OVERLAY")
+  b.icon:SetPoint("TOPLEFT", 2, -2)
+  b.icon:SetPoint("BOTTOMRIGHT", -2, 2)
+  if index then ns.GetModule("RaidStatus").PaintIcon(b.icon, index) else b.icon:SetTexture(RT.CLEAR) end
+  b:RegisterForClicks("AnyUp")
+  return b
+end
+
+-- Marks your target with raid icon i (0 clears it), if it can be marked.
+function RT.MarkTarget(i)
+  if type(SetRaidTarget) ~= "function" or not yes("UnitExists", "target") then return end
+  if type(CanBeRaidTarget) == "function" and not yes("CanBeRaidTarget", "target") then return end
+  SetRaidTarget("target", i)
+end
+
+-- The row of raid target icons, then a button that clears your target's.
+local function addTargetIcons(bar)
+  for i = 1, 9 do
+    local b = iconButton(bar, nil, i <= 8 and i or nil)
+    b:SetScript("OnClick", function() RT.MarkTarget(i <= 8 and i or 0) end)
+    RT.Place(bar, b, 2, i - 1)
+  end
+end
+
+-- One secure world marker button: left places or removes marker i, right clears it.
+local function markerButton(bar, i)
+  local b = iconButton(bar, "SecureActionButtonTemplate", RT.MARKER_ICONS[i])
+  b:SetAttribute("type", "worldmarker")
+  b:SetAttribute("marker", i)
+  b:SetAttribute("action1", "toggle")
+  b:SetAttribute("action2", "clear")
+  return b
+end
+
+-- The row of world markers, then a secure button that clears them all.
+local function addMarkers(bar)
+  for i = 1, 8 do RT.Place(bar, markerButton(bar, i), 3, i - 1) end
+  local clear = iconButton(bar, "SecureActionButtonTemplate")
+  clear:SetAttribute("type", "worldmarker")
+  clear:SetAttribute("action", "clear")
+  RT.Place(bar, clear, 3, 8)
+end
+
+-- Showing --------------------------------------------------------------------------------
+
+-- Shows the bar to the leader and assistants in a group (and "Raid" only to a
+-- party's leader). Waits for the end of combat: the bar holds secure buttons.
+function RT.Update()
+  ns.OutOfCombat(function()
+    local raid = RT.bar.actions.Raid
+    RT.bar:SetShown(RT.CanLead())
+    if raid then raid:SetShown(not yes("IsInRaid") and yes("UnitIsGroupLeader", "player")) end
+  end)
+end
+
+-- The movable bar: three rows (calls, target icons, world markers).
+local function build()
+  local bar = T.HudPanel(CreateFrame("Frame", "ForeverUI_RaidTools", UIParent))
+  bar.list = {}
+  bar:SetSize(2 * RT.PAD + 9 * RT.ICON + 8 * RT.GAP, 2 * RT.PAD + 3 * RT.ICON + 2 * RT.GAP)
+  ns.Mover(bar, "raidtools", "Raid tools", { "TOPLEFT", "TOPLEFT", 186, -20 })
+  addActions(bar)
+  addTargetIcons(bar)
+  addMarkers(bar)
+  RT.bar = bar
+end
+
+-- Module entry point (Core/Modules.lua): build out of combat, then follow the group.
+function RT.Enable()
+  ns.OutOfCombat(function()
+    build()
+    RT.Update()
+  end)
+  for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PARTY_LEADER_CHANGED", "PLAYER_ENTERING_WORLD" }) do ns.On(e, RT.Update) end
+end
