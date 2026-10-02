@@ -3626,10 +3626,10 @@ it("Centered layout: compact raid grid, one-time migrations, a strip with nothin
   expect(addon.eval(`return { ${RF}.Scale(5), ${RF}.Scale(25), ${RF}.Scale(40), ${RF}.Scale(60) }`), "full size up to 10, 80% up to 25, 72% above").toEqual([1, 0.8, 0.72, 0.72]);
   // The grid's scale and the point it's pinned to on the holder.
   const grid = () => addon.eval("local p = ForeverUI_Raid.__points return { ForeverUI_Raid:GetScale(), p.BOTTOMLEFT and 'left' or p.BOTTOMRIGHT and 'right' or p.BOTTOM and 'center' }");
-  expect(grid(), "a party is full size, growing up from the holder's bottom-left").toEqual([1, "left"]);
+  expect(grid(), "a party is full size, growing up from just above the player frame").toEqual([1, "center"]);
   addon.eval("__members = 40");
   addon.fire("GROUP_ROSTER_UPDATE");
-  expect(grid(), "a 40-man raid is drawn at 72%").toEqual([0.72, "left"]);
+  expect(grid(), "a 40-man raid is drawn at 72%").toEqual([0.72, "center"]);
   addon.eval('ns.SetMoverPoint("raid", "BOTTOMRIGHT", "BOTTOMRIGHT", -20, 344)');
   addon.fire("GROUP_ROSTER_UPDATE");
   expect(grid()[1], "moved to the right edge, it grows from there").toBe("right");
