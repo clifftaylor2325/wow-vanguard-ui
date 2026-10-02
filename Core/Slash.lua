@@ -21,6 +21,7 @@ local HELP = {
   "export [module]      copy the profile (or one module's settings) as a string",
   "import               paste a string from /fui export",
   "spec [profile|off]   use a profile whenever you're in this specialization",
+  "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
   "binds                this spec's click-casting and hover-key bindings (set them in /fui > Click casting)",
   "status               version, profile, modules, skins, work waiting on combat",
   "errors               the errors ForeverUI caught this session (for a bug report)",
@@ -322,6 +323,7 @@ local COMMANDS = {
   import = importCommand,
   spec = specCommand,
   binds = bindsCommand,
+  stock = function(rest) ns.GetModule("Errands").StockCommand(rest) end,
   status = statusCommand,
   errors = errorsCommand,
 }

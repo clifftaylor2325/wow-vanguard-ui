@@ -19,7 +19,7 @@ MS.WIDTH, MS.HEIGHT, MS.SCALE = 300, 36, 0.8
 MS.MARGIN = 6
 -- The quest tracker's spot: its width and the most height it gets (it ends above the
 -- target of target at UI scale 1.0).
-MS.TRACKER_W, MS.TRACKER_H = 260, 280
+MS.TRACKER_W, MS.TRACKER_H = 260, 264
 -- How often the strip checks for the mouse (seconds).
 MS.POLL = 0.15
 -- The glyph's share of a menu button's shorter side, and the gap (UI units)
@@ -201,7 +201,7 @@ end
 local function buildTracker()
   MS.trackerSpot = CreateFrame("Frame", "ForeverUI_QuestTracker", UIParent)
   MS.trackerSpot:SetSize(MS.TRACKER_W, MS.TRACKER_H)
-  ns.Mover(MS.trackerSpot, "questtracker", "Quest tracker", { "TOPRIGHT", "TOPRIGHT", -12, -244 })
+  ns.Mover(MS.trackerSpot, "questtracker", "Quest tracker", { "TOPRIGHT", "TOPRIGHT", -12, -260 })
   local tracker = _G.ObjectiveTrackerFrame
   if type(tracker) ~= "table" or not tracker.SetPoint then return end
   ns.Pin(tracker, function(f)

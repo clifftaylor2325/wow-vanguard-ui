@@ -2,7 +2,8 @@
 -- a border in the class (or reaction) color of the unit you're looking at,
 -- the unit's name in that color, and a "Target:" line. The default tooltip
 -- can sit in a movable corner, follow the cursor, or stay where the client
--- puts it, and unit tooltips can be hidden in combat.
+-- puts it, and unit tooltips can be hidden in combat. Item tooltips show what
+-- the item sells for (the stack's worth), unless the client already shows it.
 --
 -- Written for WoW Forever. Every client call is looked up when used. The
 -- tooltip's text is never read: in Midnight some of it is hidden from
@@ -13,7 +14,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local TT = ns.Module("Tooltips", {
-  defaults = { anchor = "corner", classBorder = true, targetLine = true, hideInCombat = false },
+  defaults = { anchor = "corner", classBorder = true, targetLine = true, hideInCombat = false, sellPrice = true },
 })
 
 TT.NAMES = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2", "EmbeddedItemTooltip" }
@@ -101,14 +102,49 @@ local function onHide(tt)
   T.SetBorder(tt, nil)
 end
 
--- Calls TT.OnUnit after the client fills a unit tooltip (new data API, else the old script).
-local function hookUnits()
+-- Sell price --------------------------------------------------------------------------------
+
+-- What one of an item sells for (copper), or nil: not cached yet, no value, or hidden.
+function TT.SellPrice(link)
+  local info = C_Item and C_Item.GetItemInfo
+  if type(info) ~= "function" or type(link) ~= "string" then return nil end
+  local price = ns.PlainNumber((select(11, info(link))))
+  if price and price > 0 then return price end
+end
+
+-- How many the item button under the tooltip holds (1 when it can't say).
+local function stackOf(tt)
+  local owner = tt.GetOwner and tt:GetOwner()
+  local count = type(owner) == "table" and ns.PlainNumber(owner.count)
+  return count and count > 1 and count or 1
+end
+
+-- An item tooltip was filled in: add what the stack sells for, unless the client already shows a price.
+function TT.OnItem(tt)
+  if not TT.settings.sellPrice or not tt.GetItem or (tonumber(tt.shownMoneyFrames) or 0) > 0 then return end
+  local _, link = tt:GetItem()
+  local price = not ns.IsSecret(link) and TT.SellPrice(link)
+  if not price then return end
+  local r, g, b = T.RGB("text2")
+  tt:AddDoubleLine("Sells for", ns.GetModule("InfoStrip").Money(price * stackOf(tt)), r, g, b, T.RGB("gold"))
+end
+
+-- Hooks ------------------------------------------------------------------------------------
+
+-- Calls fn after the client fills a tooltip of one kind (new data API, else the old script).
+local function hookFilled(kind, script, fn)
   local processor, kinds = _G.TooltipDataProcessor, _G.Enum and _G.Enum.TooltipDataType
-  if type(processor) == "table" and processor.AddTooltipPostCall and kinds and kinds.Unit then
-    return processor.AddTooltipPostCall(kinds.Unit, TT.OnUnit)
+  if type(processor) == "table" and processor.AddTooltipPostCall and kinds and kinds[kind] then
+    return processor.AddTooltipPostCall(kinds[kind], fn)
   end
   local tt = _G.GameTooltip
-  if tt and tt.HasScript and tt:HasScript("OnTooltipSetUnit") then tt:HookScript("OnTooltipSetUnit", TT.OnUnit) end
+  if tt and tt.HasScript and tt:HasScript(script) then tt:HookScript(script, fn) end
+end
+
+-- Decorates unit tooltips and adds sell prices to item tooltips as the client fills them.
+local function hookTooltips()
+  hookFilled("Unit", "OnTooltipSetUnit", TT.OnUnit)
+  hookFilled("Item", "OnTooltipSetItem", TT.OnItem)
 end
 
 -- Anchoring --------------------------------------------------------------------------------
@@ -137,7 +173,7 @@ function TT.Enable(settings)
   TT.SkinAll()
   TT.ApplyFonts()
   T.OnChanged(TT.ApplyFonts)
-  hookUnits()
+  hookTooltips()
   if _G.GameTooltip then _G.GameTooltip:HookScript("OnHide", onHide) end
   if type(hooksecurefunc) == "function" and type(_G.GameTooltip_SetDefaultAnchor) == "function" then
     hooksecurefunc("GameTooltip_SetDefaultAnchor", TT.Anchor)

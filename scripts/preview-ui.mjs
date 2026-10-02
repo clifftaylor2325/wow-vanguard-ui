@@ -306,14 +306,17 @@ const SCENES = [
       end
       Enum.WeaponSlot = { MainHand = 0, OffHand = 1, Ranged = 2 }
       C_Item = { GetWeaponEnchantInfo = function(slot) if slot == 0 then return { { hasEnchant = true, timeLeft = 1500000, enchantIconID = "TEST-ONLY-IMBUE" } } end end }` },
-  { name: "foreverui-strip", caption: "The strip under the minimap for a hunter: worn gear in orange, free slots, fps and latency, gold, ammo, the time (TEST-ONLY numbers)", lua: '__group({ "player", "party1", "party2" })',
+  { name: "foreverui-strip", caption: "The strip under the minimap for a hunter: worn gear in orange, free slots, fps and latency, gold, ammo, the time, and the leveling row: XP per hour, time to level, gold per hour (TEST-ONLY numbers)",
+    lua: '__group({ "player", "party1", "party2" }) local IS = ns.GetModule("InfoStrip") IS.session.start, IS.session.gained, IS.session.money = GetTime() - 1800, 2100, 113407 IS.UpdateAll()',
     before: `__units.player.class = "HUNTER"
       GetInventoryItemDurability = function(slot) if slot == 5 then return 22, 100 end if slot == 1 then return 80, 100 end end
       C_Container = C_Container or {} C_Container.GetContainerNumFreeSlots = function(bag) return bag == 0 and 6 or 2 end
       GetFramerate = function() return 58 end GetNetStats = function() return 0, 0, 40, 64 end
       GetMoney = function() return 123407 end
       GetInventoryItemCount = function(unit, slot) return slot == 0 and 412 or 0 end
-      date = function() return "21:04" end` },
+      date = function() return "21:04" end
+      UnitXP = function() return 3400 end UnitXPMax = function() return 9800 end GetXPExhaustion = function() return 4900 end
+      UnitLevel = function() return 18 end GetMaxPlayerLevel = function() return 60 end` },
   { name: "foreverui-shaman", caption: "A shaman: three totems under the player frame (the game draws their time left), the air slot empty (TEST-ONLY totems)", lua: '__group({ "player", "party1", "party2" })',
     before: `__units.player.class = "SHAMAN"
       local totems = { { "TEST-ONLY Fire", 100 }, { "TEST-ONLY Earth", 45 }, { "TEST-ONLY Water", 190 } }
@@ -376,6 +379,18 @@ const SCENES = [
       for i = 1, 2 do local b = CreateFrame("Button", "MerchantFrameButton" .. i, f) b:SetSize(120, 22) b:SetPoint("BOTTOMLEFT", 16 + (i - 1) * 140, 14)
         b.text = b:CreateFontString(nil, "OVERLAY") b.text:SetPoint("CENTER") b.text:SetText(i == 1 and "TEST-ONLY Repair" or "TEST-ONLY Buyback") end
       f:Hide()` },
+  { name: "foreverui-errands", caption: "Errands: Train all on the trainer's window, with the count and what it costs, and the flight timer counting down to a route flown before (TEST-ONLY trainer and route)",
+    lua: `__wfgStub.fire("ADDON_LOADED", "Blizzard_TrainerUI") __wfgStub.fire("TRAINER_SHOW")
+      ns.GetModule("Errands").PaintFlight({ to = "TEST-ONLY Outpost", start = GetTime() - 30, known = 91 })`,
+    before: `local f = CreateFrame("Frame", "ClassTrainerFrame", UIParent) f:SetSize(340, 420) f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 40, -120)
+      local art = f:CreateTexture(nil, "BACKGROUND") art:SetAllPoints() art:SetColorTexture(0.45, 0.32, 0.18, 1)
+      local t = CreateFrame("Button", "ClassTrainerTrainButton", f) t:SetSize(80, 22) t:SetPoint("BOTTOMRIGHT", -12, 8)
+      local services = { { "available", 500 }, { "available", 2000 }, { "unavailable", 100 } }
+      GetNumTrainerServices = function() return #services end
+      GetTrainerServiceInfo = function(i) return "TEST-ONLY Skill", "", services[i][1] end
+      GetTrainerServiceCost = function(i) return services[i][2] end
+      GetMoney = function() return 123407 end
+      TakeTaxiNode = function() end hooksecurefunc = hooksecurefunc or function() end` },
   { name: "foreverui-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a friendly player (TEST-ONLY units)", lua: PLATES },
   { name: "foreverui-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)
