@@ -192,6 +192,7 @@ O.MODULE_INFO = {
   MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map." },
   AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels (each off until you switch it on)." },
   QuestDialog = { "Quest dialog", "Talking to quest givers in ForeverUI's own dialog: numbered lines, reward cards, keys 1-9 and Space." },
+  QuestTracker = { "Quest tracker", "Your watched quests under the info strip: levels in difficulty colors, objectives, quest items, nearest first if you like." },
   QuestAuto = { "Quest automation", "Accept, turn in, pick the best-selling reward, skip chatter; each off until switched on." },
   Errands = { "Errands", "Train all at a trainer, keep items stocked from merchants, and time your flights." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
@@ -553,10 +554,12 @@ local function questRows()
   return {
     { "header", "Quest dialog" },
     check("ForeverUI's quest dialog at the bottom center (reload)", setting("QuestDialog", "dialog", true)),
+    { "header", "Quest tracker" },
+    check("ForeverUI's quest tracker under the info strip (reload)", setting("QuestTracker", "own", true)),
+    { "cycle", "Order", { { "game", "As the game orders them" }, { "nearest", "Nearest first" } }, setting("QuestTracker", "order") },
     { "header", "Automation (hold Shift while talking to skip it)" },
     check("Accept quests", setting("QuestAuto", "accept")), check("Turn in finished quests", setting("QuestAuto", "turnIn")),
-    check("With a choice of rewards, take the one that sells for most", setting("QuestAuto", "bestReward")),
-    check("Skip the chatter when an NPC has just one quest for you", setting("QuestAuto", "skipGossip")),
+    check("With a choice of rewards, take the one that sells for most", setting("QuestAuto", "bestReward")), check("Skip the chatter when an NPC has just one quest for you", setting("QuestAuto", "skipGossip")),
   }
 end
 

@@ -1043,6 +1043,86 @@ it("quest automation: accept, turn in, best reward, skip chatter; Shift skips it
   expect(off.eval("GetQuestDifficultyColor = nil local QP = ns.QuestParts return { QP.Titled(nil, 'TEST-ONLY Note'), select(1, QP.LevelColor(5)) == select(1, ns.Theme.RGB('text')) }"), "a quest without a level, and a client without difficulty colors").toEqual(["TEST-ONLY Note", true]);
 });
 
+// TEST-ONLY watched quests: wolves (one objective left, a usable item, 400 away), a letter ready
+// to turn in (100 away), and a far one whose distance the client hides.
+const TRACK_ENV = `
+  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  hooksecurefunc = function(t, name, fn) if type(t) == "string" then return end local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
+  ObjectiveTrackerFrame = CreateFrame("Frame", "ObjectiveTrackerFrame", UIParent)
+  __watches = { 90051, 90052, 90053 }
+  __quests = {
+    [90051] = { index = 1, title = "TEST-ONLY Wolves", level = 8, dist = 400, item = "item:90061",
+      objectives = { { text = "3/8 TEST-ONLY Wolves slain", finished = false }, { text = "1/1 TEST-ONLY Pelt", finished = true } } },
+    [90052] = { index = 2, title = "TEST-ONLY Letter", level = 12, ready = true, dist = 100, objectives = {} },
+    [90053] = { index = 3, title = "TEST-ONLY Far", level = 3, dist = { __secret = true }, objectives = { { text = "0/1 TEST-ONLY Stone", finished = false } } },
+  }
+  function __index(i) for id, q in pairs(__quests) do if q.index == i then return id end end end
+  C_QuestLog = {
+    GetNumQuestWatches = function() return #__watches end,
+    GetQuestIDForQuestWatchIndex = function(i) return __watches[i] end,
+    GetLogIndexForQuestID = function(id) return __quests[id] and __quests[id].index end,
+    GetInfo = function(i) local q = __quests[__index(i)] return q and { title = q.title, level = q.level } end,
+    ReadyForTurnIn = function(id) return __quests[id].ready == true end,
+    IsComplete = function() return false end,
+    GetQuestObjectives = function(id) return __quests[id].objectives end,
+    GetDistanceSqToQuest = function(id) return __quests[id].dist end,
+    RemoveQuestWatch = function(id) __removed = id end,
+  }
+  GetQuestLogSpecialItemInfo = function(i) local q = __quests[__index(i)] if q.item then return q.item, "TEST-ONLY-ICON" end end
+  QuestMapFrame_OpenToQuestDetails = function(id) __opened = id end
+  GetQuestDifficultyColor = function(level) return { r = level > 10 and 1 or 0.25, g = 0.75, b = 0.25 } end
+`;
+
+// The tracker: shown, count, each shown block's title and lines, and the "+N more" line.
+const tracker = (addon) => addon.eval(`local f = ForeverUI_QuestTrackerFrame
+  local blocks = {}
+  for i = 1, f.blocks.used do
+    local b, lines = f.blocks[i], {}
+    for j = 1, b.lines.used do lines[j] = b.lines[j]:GetText() end
+    blocks[i] = { b.title:GetText(), lines }
+  end
+  return { shown = f:IsShown(), count = f.count:GetText(), blocks = blocks, more = f.more:IsShown() and f.more:GetText() or false }`);
+
+it("quest tracker: watched quests with levels, objectives and items", () => {
+  const addon = loggedIn(TRACK_ENV);
+  const t = tracker(addon);
+  expect([t.shown, t.count, t.more], "shown with the count").toEqual([true, "3", false]);
+  expect(t.blocks, "each quest with its level, its objectives, or ready to turn in").toEqual([
+    ["[8] TEST-ONLY Wolves", ["- 3/8 TEST-ONLY Wolves slain", "- 1/1 TEST-ONLY Pelt"]], ["[12] TEST-ONLY Letter", ["Ready to turn in"]], ["[3] TEST-ONLY Far", ["- 0/1 TEST-ONLY Stone"]]]);
+  const colors = addon.eval("local b = ForeverUI_QuestTrackerFrame.blocks return { b[1].lines[1].__textColor, b[1].lines[2].__textColor, b[2].lines[1].__textColor, b[2].title.__textColor }");
+  expect([isTok(addon, colors[0], "text2"), isTok(addon, colors[1], "good"), isTok(addon, colors[2], "good"), colors[3][0]], "done objectives in green, the title in its difficulty color").toEqual([true, true, true, 1]);
+  expect(addon.eval("return { ObjectiveTrackerFrame:IsShown(), ObjectiveTrackerFrame:GetParent() == UIParent, ForeverUI_QuestTrackerFrame:GetParent() == ForeverUI_QuestTracker }"), "the game's tracker is hidden in place; this one sits in the tracker's spot").toEqual([false, true, true]);
+  expect(addon.eval(`local b = ForeverUI_QuestItem1 return { b:GetAttribute("type"), b:GetAttribute("item"), b.__points.TOPRIGHT.rel == ForeverUI_QuestTrackerFrame.blocks[1], b:IsShown() }`), "the wolves' item, beside its quest").toEqual(["item", "item:90061", true, true]);
+  setCombat(addon, true);
+  addon.eval("__quests[90051].item = nil");
+  addon.fire("QUEST_LOG_UPDATE");
+  expect(addon.eval("return ForeverUI_QuestItem1:IsShown()"), "in combat the item buttons wait").toBe(true);
+  setCombat(addon, false);
+  expect(addon.eval("return ForeverUI_QuestItem1:IsShown()"), "and update after").toBe(false);
+  addon.eval("local b = ForeverUI_QuestTrackerFrame.blocks b[2].__scripts.OnClick(b[2], 'RightButton') b[1].__scripts.OnClick(b[1], 'LeftButton')");
+  expect(addon.eval("return { __removed, __opened }"), "right-click stops watching; left-click opens the quest").toEqual([90052, 90051]);
+});
+
+it("quest tracker: nearest first, collapsing, too many quests, and switched off", () => {
+  const addon = loggedIn(UNITS_ENV + TRACK_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { QuestTracker = { order = 'nearest' } } }" });
+  addon.eval("__wfgStub.advance(1.25)");
+  expect(tracker(addon).blocks.map((b) => b[0]), "nearest first; a distance the client hides goes last").toEqual(["[12] TEST-ONLY Letter", "[8] TEST-ONLY Wolves", "[3] TEST-ONLY Far"]);
+  addon.eval("local t = ForeverUI_QuestTrackerFrame.toggle t.__scripts.OnClick(t)");
+  expect([Object.keys(tracker(addon).blocks).length, addon.eval("return ForeverUI_QuestTrackerFrame.body:IsShown()"), addon.eval("return ForeverUI_QuestTrackerFrame.toggle.icon.__texture:match('Right') ~= nil")], "collapsed: just the header").toEqual([0, false, true]);
+  addon.eval(`local t = ForeverUI_QuestTrackerFrame.toggle t.__scripts.OnClick(t)
+    for i = 1, 6 do local id = 90070 + i __quests[id] = { index = 10 + i, title = "TEST-ONLY Many " .. i, level = 5, dist = i, objectives = { { text = "a" }, { text = "b" }, { text = "c" } } } __watches[#__watches + 1] = id end`);
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  const t = tracker(addon);
+  expect([t.count, t.more], "more than fit: the rest are counted").toEqual(["9", `+${9 - t.blocks.length} more`]);
+  addon.eval("__watches = {}");
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  expect(tracker(addon).shown, "nothing watched, nothing shown").toBe(false);
+  const own = loggedIn(TRACK_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { MenuStrip = { tracker = false } } }" });
+  expect(own.eval("return { ForeverUI_QuestTrackerFrame:GetParent():GetName(), (ns.MoverPoint('questtracker')) }"), "with the menu strip's spot off, it makes its own").toEqual(["ForeverUI_QuestTracker", "TOPRIGHT"]);
+  const off = loggedIn(TRACK_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { QuestTracker = { own = false } } }" });
+  expect(off.eval("return { ForeverUI_QuestTrackerFrame == nil, ObjectiveTrackerFrame:IsShown() }"), "switched off: the game's tracker").toEqual([true, true]);
+});
+
 // TEST-ONLY numbers for the info strip: head slot 30%, legs 9% worn, 12 free slots, 12g 34s 7c.
 const STRIP_ENV = `
   __dur = { [1] = { 30, 100 }, [7] = { 9, 100 }, [2] = { 0, 0 } }
@@ -4017,7 +4097,7 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
 
 it("the game's extras: each switch off leaves the game's frame alone, and missing frames are fine", () => {
   const off = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: `ForeverUIDB.profiles = { Default = { DataBars = { xp = false, reputation = false },
-    InfoStrip = { durability = false, clock = false }, Minimap = { icons = false }, MenuStrip = { menu = "always", tracker = false } } }` });
+    InfoStrip = { durability = false, clock = false }, Minimap = { icons = false }, MenuStrip = { menu = "always", tracker = false }, QuestTracker = { own = false } } }` });
   expect(["StatusTrackingBarManager", "DurabilityFrame", "TimeManagerClockButton"].map((n) => putAway(off, n)), "replacements off: the game's own stay").toEqual([false, false, false]);
   expect(off.eval("return MinimapCluster.Tracking:GetParent() == MinimapCluster"), "minimap buttons off: tracking stays where the game put it").toBe(true);
   expect(off.eval("return { ForeverUI_MenuStrip:GetAlpha(), ForeverUI_MenuStrip.__scripts.OnUpdate == nil }"), "menu strip set to Always: always shown, nothing polling").toEqual([1, true]);

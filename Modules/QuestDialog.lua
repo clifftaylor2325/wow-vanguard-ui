@@ -133,10 +133,15 @@ local GOODBYE = { "Goodbye", function() QD.Close() end }
 
 -- Each page: what it shows, from the game's current quest or gossip.
 QD.PAGES = {
+  -- A gossip NPC: its greeting and lines.
   gossip = function() return { text = gossip("GetText"), lines = QD.GossipLines(), primary = GOODBYE } end,
+  -- A quest giver without gossip: its greeting and quests.
   greeting = function() return { text = call(GetGreetingText), lines = QD.GreetingLines(), primary = GOODBYE } end,
+  -- A quest's details.
   detail = function() return QD.DetailPage() end,
+  -- A quest being handed in.
   progress = function() return QD.ProgressPage() end,
+  -- A quest's rewards.
   complete = function() return QD.CompletePage() end,
 }
 
