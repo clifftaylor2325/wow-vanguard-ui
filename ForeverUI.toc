@@ -63,6 +63,10 @@ Modules/MenuStrip.lua
 Modules/Merchant.lua
 Modules/Errands.lua
 Modules/AutoAccept.lua
+Modules/QuestDialogParts.lua
+Modules/QuestDialog.lua
+Modules/QuestDialogView.lua
+Modules/QuestAuto.lua
 Modules/Windows.lua
 Modules/GameTools.lua
 Modules/DataBars.lua
