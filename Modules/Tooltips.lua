@@ -126,8 +126,8 @@ end
 -- The movable corner frame the tooltip sits in (unlock mode shows it).
 local function buildCorner()
   TT.corner = CreateFrame("Frame", "ForeverUI_TooltipAnchor", UIParent)
-  TT.corner:SetSize(200, 80)
-  ns.Mover(TT.corner, "tooltip", "Tooltip", { "BOTTOMRIGHT", "BOTTOMRIGHT", -20, 60 })
+  TT.corner:SetSize(180, 56)
+  ns.Mover(TT.corner, "tooltip", "Tooltip", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 186 })
 end
 
 -- Module entry point (Core/Modules.lua).
