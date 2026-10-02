@@ -787,6 +787,83 @@ it("character pane durability, the mail's Open All button", () => {
   expect(off.eval("return CharacterHeadSlot.fuiDurability == nil"), "switched off, no labels").toBe(true);
 });
 
+// TEST-ONLY chat hooks: the game's message filters and link callback, and the lines the main window holds.
+const CHAT_EXTRAS_ENV = `
+  __filters, __lines = {}, {}
+  ChatFrame_AddMessageEventFilter = function(event, fn) __filters[event] = fn end
+  EventRegistry = { RegisterCallback = function(self, event, fn) __linkCallback = fn end }
+  ChatFrame1.GetNumMessages = function() return #__lines end
+  ChatFrame1.GetMessageInfo = function(_, i) return __lines[i] end
+`;
+
+it("chat extras: web links you can copy, and a Copy button for the recent chat", () => {
+  const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV);
+  addon.eval("ns.ShowText = function(title, text) __shown = { title, text } end");
+  const linked = addon.eval('return { __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", "see https://example.test/a?b=1 or www.example.test now", "<name>") }');
+  expect(linked[0] === false && linked[2] === "<name>", "the message passes on, with the rest of its details").toBe(true);
+  expect(linked[1].includes("|Haddon:ForeverUI:url:https://example.test/a?b=1|h[https://example.test/a?b=1]|h") && linked[1].includes("|h[www.example.test]|h"), "both addresses become links").toBe(true);
+  expect(addon.eval('return { select("#", __filters.CHAT_MSG_GUILD(nil, "CHAT_MSG_GUILD", "no address here")), select("#", __filters.CHAT_MSG_GUILD(nil, "x", { __secret = true })) }'), "nothing to link, or hidden text: the message is left as it is").toEqual([1, 1]);
+  addon.eval('__linkCallback(nil, "addon:ForeverUI:url:https://example.test/a") __linkCallback(nil, "addon:OtherAddon:thing")');
+  expect(addon.eval("return __shown"), "clicking one opens it ready to copy; other addons' links are left to them").toEqual(["Copy the address (Ctrl+C)", "https://example.test/a"]);
+  addon.eval('__lines = { "|cffff8000[TEST-ONLY General]|r hi |Hitem:90001|h[TEST-ONLY Sword]|h", { __secret = true }, "two |TTEST-ONLY-ICON:0|tlines" }');
+  addon.eval("local b = ns.GetModule('ChatExtras').copyButton b.__scripts.OnClick(b)");
+  expect(addon.eval("return __shown"), "the Copy button gives plain text; hidden lines are left out").toEqual(["Copy chat (Ctrl+C)", "[TEST-ONLY General] hi [TEST-ONLY Sword]\ntwo lines"]);
+  const bare = loggedIn("");
+  bare.slash("copy");
+  expect(chatHas(bare, /can't read the chat back/) && bare.eval("return ns.GetModule('ChatExtras').copyButton == nil"), "a client that can't read chat back says so").toBe(true);
+  const off = loggedIn(UI_ENV + CHAT_EXTRAS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { ChatExtras = { links = false } } }" });
+  expect(off.eval("return next(__filters) == nil"), "links switched off: no filters").toBe(true);
+});
+
+// TEST-ONLY addon minimap buttons (the LibDBIcon kind) and one that isn't.
+const DRAWER_ENV = `
+  hooksecurefunc = function(t, name, fn) if type(t) == "string" then return end local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
+  CreateFrame("Button", "LibDBIcon10_TestOnlyOne", Minimap)
+  CreateFrame("Button", "TestOnlyOtherButton", Minimap)
+`;
+
+it("minimap drawer: addon buttons gathered beside the map", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV);
+  // A button's parent and its spot in the drawer.
+  const spot = (name) => addon.eval(`local b = ${name} local p = b.__points.TOPLEFT return { b:GetParent():GetName(), p and p.x, p and p.y }`);
+  expect([addon.eval("return { ForeverUI_MinimapDrawerToggle:IsShown(), ForeverUI_MinimapDrawer:IsShown() }"), spot("LibDBIcon10_TestOnlyOne")], "gathered into the shut drawer, the toggle showing").toEqual([[true, false], ["ForeverUI_MinimapDrawer", 4, -4]]);
+  expect(addon.eval("return TestOnlyOtherButton:GetParent():GetName()"), "other minimap children are left alone").toBe("Minimap");
+  addon.eval("local t = ForeverUI_MinimapDrawerToggle t.__scripts.OnClick(t)");
+  expect(addon.eval("return ForeverUI_MinimapDrawer:IsShown()"), "the toggle opens it").toBe(true);
+  addon.eval('CreateFrame("Button", "LibDBIcon10_TestOnlyTwo", Minimap)');
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect([spot("LibDBIcon10_TestOnlyTwo"), addon.eval("return ForeverUI_MinimapDrawer:GetWidth()")], "a late button joins the next cell; the drawer fits").toEqual([["ForeverUI_MinimapDrawer", 32, -4], 62]);
+  addon.eval('LibDBIcon10_TestOnlyOne:ClearAllPoints() LibDBIcon10_TestOnlyOne:SetPoint("CENTER", Minimap, "CENTER")');
+  expect(spot("LibDBIcon10_TestOnlyOne"), "when its addon moves it back, it returns to its cell").toEqual(["ForeverUI_MinimapDrawer", 4, -4]);
+  const off = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { MinimapButtons = { drawer = false } } }" });
+  expect(off.eval("return { LibDBIcon10_TestOnlyOne:GetParent():GetName(), ForeverUI_MinimapDrawer == nil }"), "switched off, they stay on the map").toEqual(["Minimap", true]);
+});
+
+// TEST-ONLY prompts: every answer is recorded.
+const PROMPT_ENV = `
+  __answers = {}
+  local function log(text) return function() __answers[#__answers + 1] = text end end
+  C_SummonInfo = { ConfirmSummon = log("summon"), GetSummonConfirmSummoner = function() return "<name>" end, GetSummonConfirmAreaName = function() return "TEST-ONLY Vale" end }
+  AcceptResurrect, CancelDuel = log("resurrect"), log("decline")
+  StaticPopup_Hide = function(which) __answers[#__answers + 1] = "close " .. which end
+`;
+
+it("auto-accept: summons, resurrections and duels, each off until switched on", () => {
+  // Brings up all three prompts.
+  const fire = (addon) => { addon.fire("CONFIRM_SUMMON"); addon.fire("RESURRECT_REQUEST", "<name>"); addon.fire("DUEL_REQUESTED", { __secret: true }); };
+  const off = loggedIn(PROMPT_ENV);
+  fire(off);
+  expect(off.eval("return #__answers"), "off by default: the game asks as usual").toBe(0);
+  const on = loggedIn(PROMPT_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { AutoAccept = { summons = true, resurrect = true, duels = true } } }" });
+  fire(on);
+  expect(on.eval("return __answers"), "each answered, its prompt closed").toEqual(["summon", "close CONFIRM_SUMMON", "resurrect", "close RESURRECT", "close RESURRECT_NO_SICKNESS", "decline", "close DUEL_REQUESTED"]);
+  expect(chatHas(on, /summon from <name> to TEST-ONLY Vale/) && chatHas(on, /resurrection from <name>/) && chatHas(on, /duel from someone/), "and said in chat (a hidden name reads as someone)").toBe(true);
+  on.eval("__answers = {}");
+  setCombat(on, true);
+  on.fire("CONFIRM_SUMMON");
+  expect(on.eval("return #__answers"), "no summons in combat").toBe(0);
+});
+
 // TEST-ONLY numbers for the info strip: head slot 30%, legs 9% worn, 12 free slots, 12g 34s 7c.
 const STRIP_ENV = `
   __dur = { [1] = { 30, 100 }, [7] = { 9, 100 }, [2] = { 0, 0 } }

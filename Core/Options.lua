@@ -188,6 +188,9 @@ O.MODULE_INFO = {
   Chat = { "Chat", "Themed chat windows and tabs." },
   Bags = { "Bags", "One combined bag, with a Sort button." },
   Merchant = { "Merchant helpers", "Repair, sell gray items, and a quieter error line." },
+  ChatExtras = { "Chat extras", "Clickable web links in chat, and a Copy button for the recent chat." },
+  MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map." },
+  AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels (each off until you switch it on)." },
   Errands = { "Errands", "Train all at a trainer, keep items stocked from merchants, and time your flights." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
   Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the ForeverUI look." },
@@ -417,6 +420,18 @@ local function merchantRows()
   }
 end
 
+-- Chat extras, the minimap drawer and the auto-accept switches.
+local function comfortRows()
+  return {
+    { "header", "Chat, minimap and prompts" },
+    check("Clickable web links in chat (reload)", setting("ChatExtras", "links", true)),
+    check("Copy button over the chat (reload)", setting("ChatExtras", "copy", true)),
+    check("Gather addon minimap buttons into a drawer (reload)", setting("MinimapButtons", "drawer", true)),
+    check("Accept summons (out of combat)", setting("AutoAccept", "summons")),
+    check("Accept resurrections", setting("AutoAccept", "resurrect")), check("Decline duels", setting("AutoAccept", "duels")),
+  }
+end
+
 -- Errands: training, stocking up and flight times.
 local function errandRows()
   return {
@@ -449,6 +464,7 @@ local function morePageRows()
   append(rows, gameToolRows())
   append(rows, merchantRows())
   append(rows, errandRows())
+  append(rows, comfortRows())
   return append(rows, tooltipRows())
 end
 
