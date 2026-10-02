@@ -1398,7 +1398,7 @@ it("WoW Forever client: interface, hidden auras, no specializations", () => {
   setCombat(addon, false);
   expect(healing(addon, 1).missing === "TEST-ONLY-ICON-Arcane Intellect", "leaving combat looks at every buff again").toBeTruthy();
   addon.slash("status");
-  expect(chatHas(addon, /Client WoW Forever {2}· {2}auras on the engine {2}· {2}aura values readable/), "/fui status names the client and the aura state").toBeTruthy();
+  expect(chatHas(addon, /Client WoW Forever {2}· {2}build 1\.16\.0 \(TEST-ONLY\) {2}· {2}auras on the engine {2}· {2}aura values readable/), "/fui status names the client, its build and the aura state").toBeTruthy();
   addon.slash("spec Default");
   expect(chatHas(addon, /no specializations/), "/fui spec explains there are no specializations").toBeTruthy();
   addon.eval('ns.Options.Show("profiles")');
@@ -3281,7 +3281,15 @@ const pinned = (addon, path, parent) => addon.eval(`local f = ${path} local p = 
 
 it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip, quest tracker", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV);
-  expect(["StatusTrackingBarManager", "DurabilityFrame", "TimeManagerClockButton", "GameTimeFrame"].map((n) => putAway(addon, n)), "the game's XP bar, durability figure, clock and calendar button are put away").toEqual([true, true, true, true]);
+  expect(["DurabilityFrame", "TimeManagerClockButton", "GameTimeFrame"].map((n) => putAway(addon, n)), "the game's durability figure, clock and calendar button are put away").toEqual([true, true, true]);
+  // The game's XP bar: still under its own parent (Edit Mode calls methods on it), and hidden.
+  const xpBar = () => addon.eval("local f = StatusTrackingBarManager return { f:GetParent() == UIParent, f:IsShown() }");
+  expect(xpBar(), "the game's XP bar is hidden where it is, not moved").toEqual([true, false]);
+  addon.eval("StatusTrackingBarManager:Show()");
+  expect(xpBar(), "when the game shows it, it's hidden again").toEqual([true, false]);
+  addon.eval("StatusTrackingBarManager:SetShown(true)");
+  expect(xpBar(), "however it's shown").toEqual([true, false]);
+  expect(addon.eval("local M = ns.GetModule('Minimap') M.overlay:Layout() return M.overlay.Layout == M.NoLayout"), "the map's overlay answers a moved button's Layout call (the mail icon makes one when mail arrives)").toBe(true);
   const overlay = "ns.GetModule('Minimap').overlay";
   expect([pinned(addon, "MinimapCluster.Tracking", overlay), pinned(addon, "MinimapCluster.IndicatorFrame.MailFrame", overlay), pinned(addon, "AddonCompartmentFrame", overlay)],
     "tracking, mail and the addon compartment sit on the map's corners").toEqual([[true, "BOTTOMLEFT"], [true, "TOPRIGHT"], [true, "BOTTOMRIGHT"]]);
@@ -3358,6 +3366,87 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
     return { b.name:GetParent() == b.texts and b.status:GetParent() == b.texts and b.role:GetParent() == b.texts and b.roleShadow:GetParent() == b.texts,
       b.texts:GetFrameLevel() > b.heal:GetFrameLevel() and b.texts:GetFrameLevel() > b.shield:GetFrameLevel(), b.texts:GetFrameLevel() < b.overlay:GetFrameLevel() }`);
   expect(layers, "a tile's name, role and status sit above the incoming-heal and shield bars, under the status marks").toEqual([true, true, true]);
+});
+
+// TEST-ONLY WoW Forever calls: only the newer C_ functions and frames, none of the older globals.
+const NEWER_ENV = `
+  GetZonePVPInfo = nil
+  __pvp = "sanctuary"
+  C_PvP = { GetZonePVPInfo = function() return __pvp end }
+  CreateFrame("Button", "QueueStatusButton", UIParent)
+  CreateFrame("Button", "ExpansionLandingPageMinimapButton", UIParent)
+  __micro("HousingMicroButton")
+  MirrorTimerContainer = CreateFrame("Frame", "MirrorTimerContainer", UIParent)
+  __timers = {}
+  function MirrorTimerContainer:GetChildren() return unpack(__timers) end
+  function MirrorTimerContainer:SetupTimer()
+    local t = CreateFrame("Frame", nil, self) t.StatusBar = CreateFrame("StatusBar", nil, t) __timers[#__timers + 1] = t
+  end
+  MirrorTimerContainer:SetupTimer()
+`;
+
+it("Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + NEWER_ENV);
+  expect(isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneSanctuary"), "the zone name takes its PvP color from C_PvP").toBe(true);
+  addon.eval("__pvp = { __secret = true } ns.GetModule('Minimap').UpdateZone()");
+  expect(isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "gold"), "a hidden answer is plain gold").toBe(true);
+  expect(addon.eval("local f = QueueStatusButton local p = f.__points.BOTTOMRIGHT return { f:GetParent() == ns.GetModule('Minimap').overlay, p.y, f:GetScale() }"), "the group finder eye sits small on the map's bottom-right, above the compartment").toEqual([true, 26, 0.6]);
+  expect(putAway(addon, "ExpansionLandingPageMinimapButton"), "the expansion button is put away").toBe(true);
+  expect(/Icons\\House$/.test(addon.eval("return HousingMicroButton.fuiGlyph.__texture")), "the housing button gets the house icon").toBe(true);
+  // Whether the breath bar container's i-th timer has the theme's bar texture.
+  const barStyled = (i) => addon.eval(`return __timers[${i}].StatusBar:GetStatusBarTexture() ~= nil`);
+  expect(barStyled(1), "a breath bar the container already holds is styled").toBe(true);
+  addon.eval("MirrorTimerContainer:SetupTimer()");
+  expect(barStyled(2), "and so is one it sets up later").toBe(true);
+  const pets = loggedIn(UNITS_ENV + "C_PetInfo = { GetPetHappiness = function() return 3 end }");
+  expect(pets.eval("local d = ns.GetModule('UnitExtras').happy return d and d:IsShown()"), "the pet's mood comes from C_PetInfo").toBe(true);
+  // The /fui status client line for a WoW Forever client reporting this build (or no build call at all).
+  const status = (build) => { const a = loggedIn(FOREVER_ENV + (build ? `GetBuildInfo = function() return "1.60.1", "${build}", "Sep 1 2026", 16001 end` : "")); a.slash("status"); return a; };
+  expect(chatHas(status("69893"), /build 1\.60\.1 \(69893\) {2}· {2}update the game: this build loses settings at every launch/), "a build before the fix says to update").toBe(true);
+  expect(chatHas(status("70009"), /update the game/), "a fixed build doesn't").toBe(false);
+  const noBuild = loggedIn(FOREVER_ENV);
+  noBuild.eval("ns.IsForever = function() return true end GetBuildInfo = nil");
+  noBuild.slash("status");
+  expect(chatHas(noBuild, /Client WoW Forever {2}· {2}auras/), "a client that can't say its build just leaves it out").toBe(true);
+});
+
+// TEST-ONLY quest and gossip windows that color their text for parchment (dark brown), as the game does.
+const PARCHMENT_ENV = `
+  hooksecurefunc = function(a, b, c)
+    if type(a) == "table" then local orig = a[b] a[b] = function(...) local r = orig(...) c(...) return r end
+    else local orig = _G[a] _G[a] = function(...) orig(...) b(...) end end
+  end
+  QuestFrame = CreateFrame("Frame", "QuestFrame", UIParent) QuestFrame:Hide()
+  for _, name in ipairs({ "QuestInfoDescriptionText", "QuestInfoTitleHeader" }) do UIParent:CreateFontString(name) _G[name] = __wfgStub.frames[#__wfgStub.frames] end
+  function QuestFrame_SetTextColor(fs) fs:SetTextColor(0.2, 0.1, 0) end
+  function QuestFrame_SetTitleTextColor(fs) fs:SetTextColor(0.2, 0.1, 0) end
+  function QuestInfo_Display() QuestInfoDescriptionText:SetTextColor(0.2, 0.1, 0) end
+  GossipFrame = CreateFrame("Frame", "GossipFrame", UIParent) GossipFrame:Hide()
+  GossipFrame.GreetingPanel = CreateFrame("Frame", nil, GossipFrame)
+  local box = CreateFrame("Frame", nil, GossipFrame.GreetingPanel)
+  GossipFrame.GreetingPanel.ScrollBox = box
+  local greeting = CreateFrame("Frame", nil, box) greeting.GreetingText = greeting:CreateFontString()
+  local option = CreateFrame("Button", nil, box) option.label = option:CreateFontString()
+  option.GetFontString = function(self) return self.label end
+  __lines = { greeting, option }
+  function box:ForEachFrame(fn) for _, f in ipairs(__lines) do fn(f) end end
+  function box:Update() for _, f in ipairs(__lines) do (f.GreetingText or f.label):SetTextColor(0.2, 0.1, 0) end end
+`;
+
+it("game windows: quest and gossip text stays readable on the dark panel", () => {
+  const addon = loggedIn(PARCHMENT_ENV);
+  addon.eval("QuestInfo_Display() QuestFrame_SetTitleTextColor(QuestInfoTitleHeader)");
+  expect(isTok(addon, addon.eval("return QuestInfoDescriptionText.__textColor"), "text") && isTok(addon, addon.eval("return QuestInfoTitleHeader.__textColor"), "gold"), "quest text goes light and headings gold after the game colors them").toBe(true);
+  addon.eval("local fs = UIParent:CreateFontString() QuestFrame_SetTextColor(fs) __fs = fs");
+  expect(isTok(addon, addon.eval("return __fs.__textColor"), "text"), "any text the game colors for parchment is lightened").toBe(true);
+  addon.eval("GossipFrame.GreetingPanel.ScrollBox:Update()");
+  expect(addon.eval("return { __lines[1].GreetingText.__textColor[1] > 0.5, __lines[2].label.__textColor[1] > 0.5 }"), "the gossip greeting and options are light after each redraw").toEqual([true, true]);
+  addon.eval("QuestInfoDescriptionText:SetTextColor(0, 0, 0) QuestFrame:Show()");
+  expect(isTok(addon, addon.eval("return QuestInfoDescriptionText.__textColor"), "text"), "and when the window shows").toBe(true);
+  const off = loggedIn(PARCHMENT_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { Windows = { windows = false } }" });
+  off.eval("QuestInfo_Display()");
+  expect(off.eval("return QuestInfoDescriptionText.__textColor[1]"), "with game windows off, the game's colors stay").toBeCloseTo(0.2);
+  expect(loggedIn("").eval("return ns.GetModule('Windows').LightGossip() == nil"), "a client without these windows is fine").toBe(true);
 });
 
 // TEST-ONLY game windows: a framed window built like the game's ButtonFrameTemplate (art textures,

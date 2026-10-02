@@ -20,7 +20,11 @@ MM.LEFTOVERS = {
   { paths = { { "MinimapCluster", "IndicatorFrame", "MailFrame" }, { "MiniMapMailFrame" } }, point = "TOPRIGHT", x = -2, y = -2 },
   { paths = { { "MinimapCluster", "InstanceDifficulty" }, { "MiniMapInstanceDifficulty" } }, point = "TOPLEFT", x = 2, y = -2 },
   { paths = { { "AddonCompartmentFrame" } }, point = "BOTTOMRIGHT", x = -2, y = 2 },
+  -- The group finder eye (shown while you're queued), smaller, just above the compartment.
+  { paths = { { "QueueStatusButton" } }, point = "BOTTOMRIGHT", x = -2, y = 26, scale = 0.6 },
 }
+-- Minimap buttons that have nothing to show here (vanilla content has no expansion page): put away.
+MM.HIDE = { "ExpansionLandingPageMinimapButton" }
 MM.ICON_SCALE = 0.85
 -- The accent diamonds on the map's corners (UI units across).
 MM.CORNER = 8
@@ -81,18 +85,38 @@ local function placeLeftover(spec)
   if not obj then return end
   ns.Pin(obj, function(f)
     f:SetParent(MM.overlay)
-    f:SetScale(MM.ICON_SCALE)
+    f:SetScale(spec.scale or MM.ICON_SCALE)
     f:ClearAllPoints()
     f:SetPoint(spec.point, MM.overlay, spec.point, spec.x, spec.y)
   end)
 end
 
+-- Moves the game's minimap buttons onto the map's corners and puts away the ones with nothing to show.
+local function placeLeftovers()
+  for _, spec in ipairs(MM.LEFTOVERS) do placeLeftover(spec) end
+  for _, name in ipairs(MM.HIDE) do ns.GetModule("UnitFrames").HideBlizzard(name) end
+end
+
+-- The game's minimap buttons ask their parent to lay them out again (the mail
+-- icon does when mail arrives); on the map's overlay there's nothing to lay out.
+function MM.NoLayout() end
+
 -- Zone and coordinates -------------------------------------------------------------------
+
+-- The zone's PvP type ("sanctuary", "contested"...): C_PvP's answer where the
+-- client has it (WoW Forever), else the older global; nil when hidden or missing.
+local function zonePvP()
+  local get = (C_PvP and C_PvP.GetZonePVPInfo) or GetZonePVPInfo
+  if type(get) ~= "function" then return nil end
+  local pvp = get()
+  if ns.IsSecret(pvp) then return nil end
+  return pvp
+end
 
 -- Sets the zone text and its PvP color.
 function MM.UpdateZone()
   local zone = GetMinimapZoneText and GetMinimapZoneText() or ""
-  local pvp = GetZonePVPInfo and GetZonePVPInfo()
+  local pvp = zonePvP()
   MM.zone:SetText(zone)
   T.Color(MM.zone, ZONE_COLORS[pvp] or "gold")
 end
@@ -155,6 +179,7 @@ end
 local function addTexts(holder)
   local overlay = CreateFrame("Frame", nil, holder)
   MM.overlay = overlay
+  overlay.Layout = MM.NoLayout
   overlay:SetAllPoints()
   overlay:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 2)
   MM.zone = T.Text(overlay:CreateFontString(nil, "OVERLAY"), "label", false)
@@ -194,7 +219,7 @@ local function build(settings)
   addTexts(holder)
   addCorners(MM.overlay)
   fadeArt()
-  if settings.icons then for _, spec in ipairs(MM.LEFTOVERS) do placeLeftover(spec) end end
+  if settings.icons then placeLeftovers() end
   if settings.coords then coordsTicker(holder) end
   MM.UpdateZone()
 end
