@@ -736,6 +736,57 @@ it("bags", () => {
   expect(addon.eval("return ns.Theme.PaintedCount()") === b.painted, "reopening repaints, it doesn't pile up").toBeTruthy();
 });
 
+// TEST-ONLY bank, search boxes, character pane slots and mail, with hooks that run after the original.
+const GEAR_ENV = `
+  hooksecurefunc = function(t, name, fn) if type(t) == "string" then return end local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
+  BagItemSearchBox = CreateFrame("EditBox", "BagItemSearchBox", ContainerFrameCombinedBags)
+  BankFrame = CreateFrame("Frame", "BankFrame", UIParent) BankFrame:Hide()
+  BankPanel = CreateFrame("Frame", "BankPanel", BankFrame)
+  BankItemSearchBox = CreateFrame("EditBox", "BankItemSearchBox", BankFrame)
+  __bankItems = {}
+  BankPanel.itemButtonPool = { EnumerateActive = function() local i = 0 return function() i = i + 1 return __bankItems[i] end end }
+  function BankPanel:GenerateItemSlotsForSelectedTab() local b = CreateFrame("Button", nil, self) b.IconBorder = b:CreateTexture() __bankItems[#__bankItems + 1] = b end
+  BankPanel:GenerateItemSlotsForSelectedTab()
+  CharacterFrame = CreateFrame("Frame", "CharacterFrame", UIParent) CharacterFrame:Hide()
+  for slot, id in pairs({ Head = 1, Neck = 2, Legs = 7 }) do CreateFrame("Button", "Character" .. slot .. "Slot", CharacterFrame).GetID = function() return id end end
+  MailFrame = CreateFrame("Frame", "MailFrame", UIParent) MailFrame:Hide()
+  OpenAllMail = CreateFrame("Button", "OpenAllMail", MailFrame)
+`;
+
+it("bags and bank: item quality borders, the search boxes and the bank in the theme", () => {
+  const addon = loggedIn(UI_ENV + GEAR_ENV);
+  addon.eval("ContainerFrameCombinedBags:Show() __item.IconBorder:SetVertexColor(0.1, 0.4, 1)");
+  expect(borderOf(addon, "__item"), "a rare item's slot border takes its quality color").toEqual([0.1, 0.4, 1, 1]);
+  addon.eval("__item.IconBorder:Hide()");
+  expect(borderOf(addon, "__item"), "no quality, the theme's border").not.toEqual([0.1, 0.4, 1, 1]);
+  expect(borderOf(addon, "BagItemSearchBox") !== undefined, "the bag's search box is in the theme").toBe(true);
+  addon.eval("BankFrame:Show()");
+  expect([borderOf(addon, "BankFrame") !== undefined, borderOf(addon, "__bankItems[1]") !== undefined, borderOf(addon, "BankItemSearchBox") !== undefined], "the bank window, its slots and its search box").toEqual([true, true, true]);
+  addon.eval("BankPanel:GenerateItemSlotsForSelectedTab()");
+  expect(borderOf(addon, "__bankItems[2]") !== undefined, "slots of another bank tab too").toBe(true);
+  const off = loggedIn(UI_ENV + GEAR_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Bags = { bank = false } } }" });
+  off.eval("BankFrame:Show()");
+  expect(borderOf(off, "__bankItems[1]") == null, "switched off, the bank stays the game's").toBe(true);
+});
+
+it("character pane durability, the mail's Open All button", () => {
+  const addon = loggedIn(UNITS_ENV + UI_ENV + STRIP_ENV + GEAR_ENV);
+  // A gear slot's durability label: shown, text and color.
+  const slot = (name) => addon.eval(`local l = Character${name}Slot.fuiDurability return l and { l:IsShown(), l:GetText(), l.__textColor } or false`);
+  expect(slot("Head"), "nothing painted while the pane is shut").toBe(false);
+  addon.eval("CharacterFrame:Show()");
+  const legs = slot("Legs");
+  expect([slot("Head").slice(0, 2), legs[1], isTok(addon, legs[2], "bad"), slot("Neck")[0]], "worn gear shows its durability, red when nearly broken; no durability, no label").toEqual([[true, "30%"], "9%", true, false]);
+  addon.eval("__dur[1] = { 100, 100 }");
+  addon.fire("UPDATE_INVENTORY_DURABILITY");
+  expect(slot("Head")[0], "repaired, the label goes").toBe(false);
+  addon.eval("MailFrame:Show()");
+  expect(borderOf(addon, "OpenAllMail") !== undefined, "the mail's Open All button is themed").toBe(true);
+  const off = loggedIn(UNITS_ENV + UI_ENV + STRIP_ENV + GEAR_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Windows = { durability = false } } }" });
+  off.eval("CharacterFrame:Show()");
+  expect(off.eval("return CharacterHeadSlot.fuiDurability == nil"), "switched off, no labels").toBe(true);
+});
+
 // TEST-ONLY numbers for the info strip: head slot 30%, legs 9% worn, 12 free slots, 12g 34s 7c.
 const STRIP_ENV = `
   __dur = { [1] = { 30, 100 }, [7] = { 9, 100 }, [2] = { 0, 0 } }
@@ -1961,6 +2012,16 @@ it("item tooltips show what the stack sells for, unless the client already does"
   expect(addon.eval('return #__showItem("item:90001", 1)'), "the switch turns it off").toBe(0);
   const old = loggedIn(UNITS_ENV + TOOLTIP_ENV.replace("TooltipDataProcessor =", "__noProcessor =") + "GameTooltip.HasScript = function() return true end" + ITEM_TIP_ENV);
   expect(old.eval('return __showItem("item:90001", 2)[1].text'), "a client without the tooltip data API: the old script").toBe("Sells for 0s 50c");
+});
+
+it("item tooltips: how many you have, and the item ID when asked", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV + "C_Item.GetItemCount = function(link, bank) if link == 'item:90002' then return 3, 3 end return bank and 12 or 7 end");
+  expect(addon.eval('local l = __showItem("item:90002", 1) return l[1].text'), "all in your bags").toBe("You have 3");
+  expect(addon.eval('local l = __showItem("item:90001", 1) return { l[2].text, #l }'), "some in the bank; no ID line by default").toEqual(["You have 12 (5 in the bank)", 2]);
+  addon.eval("ForeverUIDB.profiles.Default.Tooltips.itemID = true ForeverUIDB.profiles.Default.Tooltips.itemCount = false");
+  expect(addon.eval('local l = __showItem("item:90002", 1) return l[#l].text'), "the ID line, when switched on").toBe("Item ID 90002");
+  addon.eval("C_Item.GetItemCount = function() return 0, 0 end ForeverUIDB.profiles.Default.Tooltips.itemCount = true ForeverUIDB.profiles.Default.Tooltips.itemID = false");
+  expect(addon.eval('return #__showItem("item:90002", 1)'), "none of it: no count line").toBe(0);
 });
 
 // TEST-ONLY nameplates: nameplate1 is the hostile target (hidden health), nameplate2 a friend,
