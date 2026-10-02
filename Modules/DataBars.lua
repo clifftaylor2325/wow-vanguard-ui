@@ -164,10 +164,23 @@ end
 -- The game's own XP and reputation bars, which these replace (so XP doesn't show twice).
 DB.BLIZZARD = { "StatusTrackingBarManager", "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" }
 
+-- Keeps one of the game's XP bar frames hidden where it is. It isn't moved
+-- under another parent: the game and Edit Mode call methods on its own parent
+-- (moving it broke Edit Mode). Whenever the game shows it, it's hidden again.
+function DB.Suppress(name)
+  local f = _G[name]
+  if type(f) ~= "table" or not f.Hide or f.fuiSuppressed then return end
+  f.fuiSuppressed = true
+  f:Hide()
+  if type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(f, "Show", f.Hide)
+  hooksecurefunc(f, "SetShown", f.Hide)
+end
+
 -- Module entry point (Core/Modules.lua). Data bars aren't protected, so no combat wait.
 function DB.Enable(settings)
   if settings.xp then enableXP(settings) end
   if settings.reputation then enableReputation(settings) end
   if not (settings.xp or settings.reputation) then return end
-  for _, name in ipairs(DB.BLIZZARD) do ns.GetModule("UnitFrames").HideBlizzard(name) end
+  for _, name in ipairs(DB.BLIZZARD) do DB.Suppress(name) end
 end

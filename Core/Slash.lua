@@ -248,11 +248,24 @@ local function version()
   return ok and v or "?"
 end
 
--- The client line: which game, which aura backend, and whether aura values are hidden right now.
+-- The first WoW Forever beta build that loads addon settings and runs secure
+-- frames (raid frames, click casting, bar paging); older ones break both.
+local FIXED_BUILD = 70009
+
+-- "  ·  build 1.60.1 (70009)", with a warning on an older WoW Forever build; "" when the client can't say.
+local function buildText()
+  if type(GetBuildInfo) ~= "function" then return "" end
+  local release, build = GetBuildInfo()
+  local text = string.format("  ·  build %s (%s)", tostring(release), tostring(build))
+  local old = ns.IsForever() and (tonumber(build) or FIXED_BUILD) < FIXED_BUILD
+  return old and (text .. "  ·  update the game: this build loses settings at every launch") or text
+end
+
+-- The client line: which game and build, which aura backend, and whether aura values are hidden right now.
 local function clientLine()
   local client = ns.IsForever() and "WoW Forever" or "Retail"
   local hidden = ns.AurasSecret() and "hidden right now" or "readable"
-  return string.format("Client %s  ·  auras on the %s  ·  aura values %s", client, ns.Auras.BackendName(), hidden)
+  return string.format("Client %s%s  ·  auras on the %s  ·  aura values %s", client, buildText(), ns.Auras.BackendName(), hidden)
 end
 
 -- The text line: UI scale, Text size, and how tall chat text draws on this screen.
