@@ -8,7 +8,10 @@
 --   * containers can only be made out of combat (the probe waits too);
 --   * groups are fixed once added: a changed filter needs a new container;
 --   * an engine button is dressed only while it is being made
---     (initializeFrame): afterwards the client may refuse addon calls on it.
+--     (initializeFrame): afterwards the client may refuse addon calls on it;
+--   * a container the client refuses (a template that gives a frame without
+--     the methods, a call that errors) retires the engine for the session:
+--     that container and every later one are built by the fallback.
 -- Every call into a newer option is wrapped, so a client that rejects an
 -- option still gets the icons, only without that extra.
 
@@ -22,16 +25,37 @@ ns.AuraEngine = E
 
 local probed
 
+-- The container methods the engine calls without a guard: AddAuraGroup and
+-- SetUnit while making one, SetEnabled and UpdateAllAuras later from the
+-- modules. A frame without them is not an engine container, whatever
+-- CreateFrame returned (in game a bad template still returns a frame).
+E.REQUIRED = { "AddAuraGroup", "SetUnit", "SetEnabled", "UpdateAllAuras" }
+
+-- The first of E.REQUIRED that `frame` lacks, or nil when it has them all.
+local function missing(frame)
+  for _, name in ipairs(E.REQUIRED) do
+    if type(frame[name]) ~= "function" then return name end
+  end
+end
+
+-- Makes a probe container and puts it away; an error names the first method
+-- it lacks (level 0: the message alone, for /fui errors).
+local function makeProbe()
+  local probe = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+  local lack = missing(probe)
+  if lack then error("the client's AuraContainer has no " .. lack, 0) end
+  probe:Hide()
+end
+
 -- Whether the client has AuraContainer: asked once, out of combat (making one
--- in combat is an error), after loading the client's AuraContainer code.
+-- in combat is an error), after loading the client's AuraContainer code. The
+-- answer turns false for the session when the client later refuses a container (see retire).
 function E.Available()
   if probed ~= nil then return probed end
   if ns.InCombat() then return false end
   if C_AddOns and type(C_AddOns.LoadAddOn) == "function" then pcall(C_AddOns.LoadAddOn, "Blizzard_AuraContainer") end
-  local ok, probe = ns.Try("aura containers (using ForeverUI's own icons)", CreateFrame, "AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
-  if ok then probe:Hide() end
-  probed = ok
-  return ok
+  probed = (ns.Try("aura containers (using ForeverUI's own icons)", makeProbe))
+  return probed
 end
 
 -- Timers -----------------------------------------------------------------------------------
@@ -162,15 +186,37 @@ end
 local Container = {}
 Container.__index = Container
 
--- An engine container at spec.point with the spec's groups, showing `unit`'s auras.
-function E.Create(parent, spec, unit)
-  local frame = CreateFrame("AuraContainer", nil, parent, "CustomAuraContainerTemplate")
+-- Lays an engine frame out, adds the spec's groups and makes the container showing `unit`.
+local function fill(frame, spec, unit)
   layout(frame, spec)
   -- A filter token this client doesn't know is refused: that group is left out, not the rest.
   for i, def in ipairs(spec.groups) do ns.Try("aura filter " .. def.filter, frame.AddAuraGroup, frame, "fui" .. i, def.filter, groupOptions(spec, def)) end
   local c = setmetatable({ frame = frame }, Container)
   c:SetUnit(unit)
   return c
+end
+
+-- The client refused a container after the probe passed: the half-made frame
+-- (if any) is put away so it can't draw next to the fallback's icons, the
+-- engine is retired for this session (A.Backend asks E.Available again for
+-- every container, so it is never tried again) and the fallback builds this one.
+local function retire(frame, parent, spec, unit)
+  if frame then frame:Hide() end
+  probed = false
+  return ns.AuraLegacy.Create(parent, spec, unit)
+end
+
+-- The /fui errors label of a refused container; the probe's own is different, so the two read apart.
+local REFUSED = "aura container (switching to ForeverUI's own icons)"
+
+-- An engine container at spec.point with the spec's groups, showing `unit`'s
+-- auras; one the client refuses is built by the fallback instead (see retire).
+function E.Create(parent, spec, unit)
+  local ok, frame = ns.Try(REFUSED, CreateFrame, "AuraContainer", nil, parent, "CustomAuraContainerTemplate")
+  if not ok then return retire(nil, parent, spec, unit) end
+  local built, c = ns.Try(REFUSED, fill, frame, spec, unit)
+  if built then return c end
+  return retire(frame, parent, spec, unit)
 end
 
 -- Shows another unit's auras (nil: none). The client follows UNIT_AURA itself.

@@ -3793,6 +3793,67 @@ it("aura containers without the engine (the fallback)", () => {
   expect(addon.eval("return __c.groups[1].icons[1]:IsShown()") === false, "no unit: nothing shows").toBeTruthy();
 });
 
+// TEST-ONLY client whose AuraContainer template gives a plain frame: one without the engine's methods.
+const BAD_TEMPLATE_ENV = `
+  local real = CreateFrame
+  CreateFrame = function(kind, name, parent, template) if kind == "AuraContainer" then return real("Frame", name, parent) end return real(kind, name, parent, template) end
+`;
+
+// TEST-ONLY client whose AuraContainer has every method, but whose SetUnit errors.
+const REFUSING_ENV = `
+  local real = CreateFrame
+  CreateFrame = function(kind, ...) local f = real(kind, ...) if kind == "AuraContainer" then f.SetUnit = function() error("TEST-ONLY: SetUnit refused") end end return f end
+`;
+
+// The number of caught errors whose text holds `text`, and the count of the first of them.
+const errorsWith = (addon, text) => addon.eval(`local n, count = 0, 0
+  for _, e in ipairs(ns.errors) do if e.text:find(${JSON.stringify(text)}, 1, true) then n, count = n + 1, count == 0 and e.count or count end end
+  return { n, count }`);
+
+const PROBE_WHERE = "aura containers (using ForeverUI's own icons)";
+const REFUSED_WHERE = "aura container (switching to ForeverUI's own icons)";
+
+it("the engine probe refuses an AuraContainer without AddAuraGroup", () => {
+  const addon = loggedIn(UNITS_ENV + CONTAINER_AURAS + BAD_TEMPLATE_ENV);
+  expect(addon.eval("return ns.AuraEngine.Available()"), "a frame without the engine's methods is no engine").toBe(false);
+  const c = addon.eval(`__c = ns.Auras.Container(UIParent, __spec, "target") local other = ns.Auras.Container(UIParent, __spec, "target")
+    return { kind = __c.frame.__kind, backend = ns.Auras.BackendName(), icon = __c.groups[1].icons[1].icon.__texture, otherKind = other.frame.__kind }`);
+  expect(c, "the fallback builds the containers, and reads the auras").toEqual({ kind: "Frame", backend: "fallback", icon: "MY-DOT", otherKind: "Frame" });
+  expect(errorsWith(addon, PROBE_WHERE), "the probe answered once, in one entry").toEqual([1, 1]);
+  expect(addon.eval(`for _, e in ipairs(ns.errors) do if e.text:find("${PROBE_WHERE}", 1, true) then return e.text end end`), "which names the missing method").toMatch(/: the client's AuraContainer has no AddAuraGroup$/);
+  addon.slash("status");
+  expect(chatHas(addon, /auras on the fallback/), "/fui status says so").toBe(true);
+});
+
+it("a container the client refuses after the probe retires the engine for the session", () => {
+  const off = { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { FrameAuras = false, PlayerAuras = false } } } }" };
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS + REFUSING_ENV, off);
+  expect(addon.eval("return ns.AuraEngine.Available()"), "the probe sees the methods, so the engine is in").toBe(true);
+  const c = addon.eval(`__c = ns.Auras.Container(UIParent, __spec, "target")
+    local hidden = true for _, w in ipairs(__wfgStub.frames) do if w.__kind == "AuraContainer" and w.__shown then hidden = false end end
+    return { kind = __c.frame.__kind, available = ns.AuraEngine.Available(), backend = ns.Auras.BackendName(), icon = __c.groups[1].icons[1].icon.__texture, hidden = hidden }`);
+  expect(c, "the refused container is built by the fallback, and the engine is retired").toEqual({ kind: "Frame", available: false, backend: "fallback", icon: "MY-DOT", hidden: true });
+  expect(addon.eval("return ns.errors[#ns.errors].text"), "the refusal is kept under its own label").toMatch(/^aura container \(switching to ForeverUI's own icons\): .*TEST-ONLY: SetUnit refused$/);
+  expect(addon.eval('return ns.Auras.Container(UIParent, __spec, "target").frame.__kind'), "the next container goes straight to the fallback").toBe("Frame");
+  expect(errorsWith(addon, REFUSED_WHERE), "and the engine is never tried again: one entry, seen once").toEqual([1, 1]);
+  addon.eval("__c:SetUnit(nil) __c:Refresh()");
+  expect(addon.eval("return __c.groups[1].icons[1]:IsShown()"), "the fallback container is fully usable").toBe(false);
+  const noMore = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS + `local n, real = 0, CreateFrame
+    CreateFrame = function(kind, ...) if kind == "AuraContainer" then n = n + 1 if n > 1 then error("TEST-ONLY: no more containers") end end return real(kind, ...) end`, off);
+  expect(noMore.eval("return ns.AuraEngine.Available()"), "the probe's container is the first and only one the client makes").toBe(true);
+  expect(noMore.eval('local c = ns.Auras.Container(UIParent, __spec, "target") return { c.frame.__kind, ns.AuraEngine.Available(), ns.errors[#ns.errors].text }'),
+    "a CreateFrame that errors retires the engine the same way").toEqual(["Frame", false, expect.stringMatching(/^aura container \(switching.*TEST-ONLY: no more containers$/)]);
+});
+
+it("raid tiles built after the engine retires get the fallback highlight", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV + REFUSING_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  const b = addon.eval(`local b = ForeverUI_RaidUnitButton1
+    return { legacy = b.debuffRow.groups ~= nil, highlight = b.dispel ~= nil, backend = ns.Auras.BackendName(), first = b.debuffRow.groups[1].icons[1].icon.__texture }`);
+  expect(b, "the tile's rows are fallback containers with the fallback's dispel highlight").toEqual({ legacy: true, highlight: true, backend: "fallback", first: "TEST-ONLY-CURSE" });
+  expect(errorsWith(addon, REFUSED_WHERE), "one refusal at login, and no other container tried the engine").toEqual([1, 1]);
+});
+
 it("aura colors and stacks when the client hides the values", () => {
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + `
     C_UnitAuras = { GetAuraDispelTypeColor = function(unit, id, curve) __curve = curve return CreateColor(0.1, 0.2, 0.3) end,

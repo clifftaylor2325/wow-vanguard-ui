@@ -147,7 +147,9 @@ end
 
 -- The backend in use: the engine when the client has AuraContainer, else the
 -- fallback. A container can't be made in combat, so one needed then (a new
--- nameplate) gets the fallback.
+-- nameplate) gets the fallback. Asked afresh every time, never cached: the
+-- engine's answer turns false for the session once the client refuses a
+-- container (Core/AuraEngine.lua), and this is where that switch is read.
 function A.Backend()
   return not ns.InCombat() and ns.AuraEngine.Available() and ns.AuraEngine or ns.AuraLegacy
 end
