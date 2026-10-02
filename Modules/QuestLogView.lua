@@ -1,0 +1,168 @@
+-- The quest log window (Modules/QuestLog.lua gathers the quests): the list
+-- on the left (zone headers you can fold, then the quests), the chosen
+-- quest on the right (title, text, objectives, reward cards, money and XP),
+-- and its buttons along the bottom.
+
+local ADDON, ns = ...
+
+local T = ns.Theme
+local QP = ns.QuestParts
+local QL = ns.GetModule("QuestLog")
+
+QL.W, QL.H, QL.LIST_W, QL.PER_ROW = 640, 440, 230, 2
+
+-- Building ----------------------------------------------------------------------------------------
+
+-- A scrolling area on the window: its scroll frame and the child its contents sit on.
+local function scrollArea(f, x, w)
+  local scroll = CreateFrame("ScrollFrame", nil, f)
+  scroll:SetPoint("TOPLEFT", f, "TOPLEFT", x, -40)
+  scroll:SetSize(w, QL.H - 84)
+  local child = CreateFrame("Frame", nil, scroll)
+  child:SetSize(w, QL.H - 84)
+  scroll:SetScrollChild(child)
+  scroll:SetScript("OnMouseWheel", function(self, delta) self:SetVerticalScroll(math.max(0, (self:GetVerticalScroll() or 0) - delta * 24)) end)
+  return scroll, child
+end
+
+-- The title, the quest count and the close button along the top.
+local function addTop(f)
+  f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "title", "text")
+  f.title:SetPoint("TOPLEFT", f, "TOPLEFT", 14, -12)
+  f.title:SetText("Quest log")
+  f.count = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  f.count:SetPoint("LEFT", f.title, "RIGHT", 10, 0)
+  f.close = T.CloseButton(CreateFrame("Button", nil, f))
+  f.close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -8, -8)
+  f.close:SetScript("OnClick", function() f:Hide() end)
+end
+
+-- A text on the details side, wrapping to its width.
+local function detailText(child, role, color)
+  local fs = T.Text(child:CreateFontString(nil, "OVERLAY"), role, color)
+  fs:SetWidth(QL.W - QL.LIST_W - 50)
+  fs:SetJustifyH("LEFT")
+  return fs
+end
+
+-- The details side: the quest's title, text and objectives, then its reward cards.
+local function addDetails(f)
+  f.detailScroll, f.detail = scrollArea(f, QL.LIST_W + 26, QL.W - QL.LIST_W - 40)
+  f.questTitle, f.text = detailText(f.detail, "heading", "gold"), detailText(f.detail, "label", "text")
+  f.objectives, f.money = detailText(f.detail, "label", "text2"), detailText(f.detail, "label", "gold")
+  f.questTitle:SetPoint("TOPLEFT", f.detail, "TOPLEFT", 0, 0)
+  f.text:SetPoint("TOPLEFT", f.questTitle, "BOTTOMLEFT", 0, -8)
+  f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -10)
+  f.rewards = CreateFrame("Frame", nil, f.detail)
+  f.rewards:SetSize(QL.W - QL.LIST_W - 40, 1)
+  f.cards = QP.Pool(f.rewards, QP.Card)
+end
+
+-- The buttons along the bottom of the details side.
+QL.BUTTONS = { { "track", "Track", QL.ToggleTrack }, { "share", "Share", QL.Share }, { "abandon", "Abandon", QL.Abandon }, { "map", "Map", QL.ShowOnMap } }
+
+-- One details button: it runs its action on the chosen quest.
+local function addButton(f, spec, x)
+  local b = ns.DialogButton(f, spec[2], 90)
+  b:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", QL.LIST_W + 26 + x, 12)
+  b:SetScript("OnClick", function() if QL.details then spec[3](QL.details) end end)
+  f.buttons[spec[1]] = b
+end
+
+-- Builds the window (hidden), movable, closed by Escape.
+function QL.Build()
+  local f = T.Panel(CreateFrame("Frame", "ForeverUI_QuestLog", UIParent), { alpha = 0.97, shadow = true })
+  f:SetSize(QL.W, QL.H)
+  f:SetFrameStrata("HIGH")
+  ns.Mover(f, "questlog", "Quest log", { "CENTER", "CENTER", -200, 40 })
+  addTop(f)
+  f.listScroll, f.list = scrollArea(f, 12, QL.LIST_W)
+  f.lines, f.buttons = QP.Pool(f.list, QP.Line), {}
+  addDetails(f)
+  QL.frame = f
+  QL.Finish(f)
+end
+
+-- The details buttons; the window starts hidden, and Escape closes it.
+function QL.Finish(f)
+  for i, spec in ipairs(QL.BUTTONS) do addButton(f, spec, (i - 1) * 96) end
+  f:Hide()
+  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "ForeverUI_QuestLog") end
+end
+
+-- The list ----------------------------------------------------------------------------------------
+
+-- A list line for a zone header (folds its quests) or a quest (shows it).
+local function lineSpec(e)
+  if e.header then
+    return { text = QP.Plain(e.title), icon = T.Icon(QL.collapsed[e.title] and "Right" or "Down"), color = "gold",
+      select = function() QL.collapsed[e.title] = not QL.collapsed[e.title] QL.Refresh() end }
+  end
+  return { text = QP.Titled(e.level, e.title), icon = e.ready and T.Icon("Check") or nil, color = { QP.LevelColor(e.level) }, select = function() QL.Select(e.id) end }
+end
+
+-- One list line (quests indented under their zone; no numbers in the log).
+local function paintEntry(f, i, e)
+  local b, spec = f.lines.Next(), lineSpec(e)
+  b:SetPoint("TOPLEFT", f.list, "TOPLEFT", e.header and 0 or 10, -(i - 1) * QP.LINE_H)
+  b:SetWidth(QL.LIST_W - 10)
+  QP.PaintLine(b, i, spec)
+  b.text:SetText(spec.text)
+  b:SetScript("OnClick", function(self) self.spec.select() end)
+end
+
+-- Redraws the list, and shows the chosen quest (the first one when none is chosen yet).
+function QL.Refresh()
+  local f, first = QL.frame, nil
+  f.count:SetText(QL.Count() .. " quests")
+  f.lines.Reset()
+  for i, e in ipairs(QL.Entries()) do
+    paintEntry(f, i, e)
+    first = first or e.id
+  end
+  QL.Select(QL.selected or first)
+end
+
+-- Details -----------------------------------------------------------------------------------------
+
+-- The reward cards under the objectives, two to a row, then the money line.
+local function renderRewards(f, d)
+  f.cards.Reset()
+  f.rewards:SetPoint("TOPLEFT", f.objectives, "BOTTOMLEFT", 0, -12)
+  for n, item in ipairs(d.rewards) do
+    local c, col, row = f.cards.Next(), (n - 1) % QL.PER_ROW, math.floor((n - 1) / QL.PER_ROW)
+    c:SetPoint("TOPLEFT", f.rewards, "TOPLEFT", col * (QP.CARD_W + QP.GAP), -row * (QP.CARD_H + QP.GAP))
+    QP.PaintCard(c, item)
+  end
+  local rows = math.ceil(#d.rewards / QL.PER_ROW)
+  f.money:SetPoint("TOPLEFT", f.rewards, "TOPLEFT", 0, -rows * (QP.CARD_H + QP.GAP) - 6)
+  f.money:SetText(d.money)
+end
+
+-- The objectives as lines: "- 3/8 Wolves slain", each marked done or not.
+local function objectivesText(d)
+  local lines = {}
+  for _, o in ipairs(d.objectives) do lines[#lines + 1] = (o.done and "+ " or "- ") .. o.text end
+  return #lines > 0 and ("Objectives\n" .. table.concat(lines, "\n")) or ""
+end
+
+-- The details buttons: Track or Untrack, Share only when you can.
+local function renderButtons(f, d)
+  for _, b in pairs(f.buttons) do b:SetShown(d ~= nil) end
+  if not d then return end
+  f.buttons.track.text:SetText(d.watched and "Untrack" or "Track")
+  if d.shareable then f.buttons.share:Enable() else f.buttons.share:Disable() end
+end
+
+-- Shows a quest on the details side (or nothing, when it's gone from the log).
+function QL.Select(id)
+  local f, d = QL.frame, id and QL.Details(id)
+  QL.selected, QL.details = d and id or nil, d
+  f.detail:SetShown(d ~= nil)
+  renderButtons(f, d)
+  if not d then return end
+  f.questTitle:SetText(QP.Titled(d.level, d.title))
+  f.text:SetText(QP.Plain(d.text))
+  f.objectives:SetText(objectivesText(d))
+  renderRewards(f, d)
+end

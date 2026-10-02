@@ -193,6 +193,7 @@ O.MODULE_INFO = {
   AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels (each off until you switch it on)." },
   QuestDialog = { "Quest dialog", "Talking to quest givers in ForeverUI's own dialog: numbered lines, reward cards, keys 1-9 and Space." },
   QuestTracker = { "Quest tracker", "Your watched quests under the info strip: levels in difficulty colors, objectives, quest items, nearest first if you like." },
+  QuestLog = { "Quest log", "Your quests by zone, each quest's text, objectives and rewards, with Track, Share, Abandon and Map." },
   QuestAuto = { "Quest automation", "Accept, turn in, pick the best-selling reward, skip chatter; each off until switched on." },
   Errands = { "Errands", "Train all at a trainer, keep items stocked from merchants, and time your flights." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
@@ -552,11 +553,18 @@ end
 -- Quests: the dialog, and the automation (each off until switched on).
 local function questRows()
   return {
-    { "header", "Quest dialog" },
+    { "header", "Quest windows" },
     check("ForeverUI's quest dialog at the bottom center (reload)", setting("QuestDialog", "dialog", true)),
+    check("ForeverUI's quest log on the quest log key (reload)", setting("QuestLog", "own", true)),
     { "header", "Quest tracker" },
     check("ForeverUI's quest tracker under the info strip (reload)", setting("QuestTracker", "own", true)),
     { "cycle", "Order", { { "game", "As the game orders them" }, { "nearest", "Nearest first" } }, setting("QuestTracker", "order") },
+  }
+end
+
+-- Quest automation (each off until switched on).
+local function questAutoRows()
+  return {
     { "header", "Automation (hold Shift while talking to skip it)" },
     check("Accept quests", setting("QuestAuto", "accept")), check("Turn in finished quests", setting("QuestAuto", "turnIn")),
     check("With a choice of rewards, take the one that sells for most", setting("QuestAuto", "bestReward")), check("Skip the chatter when an NPC has just one quest for you", setting("QuestAuto", "skipGossip")),
@@ -569,7 +577,7 @@ local PAGES = {
   { key = "unitframes", title = "Unit frames", icon = "UnitFrames", order = 30, rows = function() return append(append(append(unitFrameRows(), readoutRows()), castRows()), timerRows()) end },
   { key = "raid", title = "Raid frames", icon = "RaidFrames", order = 40, rows = raidPageRows },
   { key = "actionbars", title = "Action bars", icon = "ActionBars", order = 60, rows = actionBarPageRows },
-  { key = "quests", title = "Quests", icon = "Quests", order = 70, rows = questRows },
+  { key = "quests", title = "Quests", icon = "Quests", order = 70, rows = function() return append(questRows(), questAutoRows()) end },
   { key = "more", title = "Bars, map, chat", icon = "Map", order = 80, rows = function() return morePageRows() end },
   { key = "profiles", title = "Profiles", icon = "Profiles", order = 90, rows = profileRows },
 }
