@@ -10,7 +10,7 @@
 -- All 40 buttons are created up front, out of combat, so click casting and
 -- hover keys (Modules/ClickCast.lua) can be set on every one of them safely.
 --
--- The frames grow up from a movable holder (bottom-left above chat by
+-- The frames grow up from a movable holder (just above your player frame,
 -- default). In bigger raids the whole grid is drawn smaller (compact), so 40
 -- players fit beside the unit frames at any UI scale; each tile keeps its layout.
 
@@ -436,7 +436,7 @@ end
 -- The header's point on the holder: the holder's own side (left, right or
 -- center), at the bottom, so the grid grows up and away from that side.
 local function headerPoint()
-  local point = ns.MoverPoint("raid") or "BOTTOMLEFT"
+  local point = ns.MoverPoint("raid") or "BOTTOM"
   return point:find("LEFT") and "BOTTOMLEFT" or point:find("RIGHT") and "BOTTOMRIGHT" or "BOTTOM"
 end
 
@@ -456,7 +456,7 @@ end
 local function holder(s)
   local f, five = CreateFrame("Frame", "ForeverUI_RaidHolder", UIParent), 5 * (s.width + s.spacing) - s.spacing
   if s.layout == "rows" then f:SetSize(five, s.height) else f:SetSize(s.width, 5 * (s.height + s.spacing) - s.spacing) end
-  ns.Mover(f, "raid", "Raid frames", { "BOTTOMLEFT", "BOTTOMLEFT", 20, 344 })
+  ns.Mover(f, "raid", "Raid frames", { "BOTTOM", "BOTTOM", -240, 344 })
   return f
 end
 

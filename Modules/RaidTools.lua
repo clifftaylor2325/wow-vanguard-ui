@@ -57,18 +57,21 @@ local function hasCall(name)
   return type(C_PartyInfo and C_PartyInfo[name]) == "function" or type(_G[name]) == "function"
 end
 
+-- One text button { label, click, call } on the first row.
+local function actionButton(bar, spec)
+  local b = ns.DialogButton(bar, spec[1], 44)
+  b:SetHeight(RT.ICON)
+  b:RegisterForClicks("AnyUp")
+  b:SetScript("OnClick", spec[2])
+  bar.actions[spec[1]] = b
+  RT.Place(bar, b, 1, #bar.list)
+end
+
 -- The row of text buttons this client can use.
 local function addActions(bar)
   bar.actions = {}
   for _, spec in ipairs(RT.ACTIONS) do
-    if hasCall(spec[3]) then
-      local b = ns.DialogButton(bar, spec[1], 44)
-      b:SetHeight(RT.ICON)
-      b:RegisterForClicks("AnyUp")
-      b:SetScript("OnClick", spec[2])
-      bar.actions[spec[1]] = b
-      RT.Place(bar, b, 1, #bar.list)
-    end
+    if hasCall(spec[3]) then actionButton(bar, spec) end
   end
 end
 

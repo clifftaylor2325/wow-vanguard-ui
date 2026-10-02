@@ -15,7 +15,7 @@ local STEPS = { "Layout", "Look", "Move things" }
 
 -- Layout presets, in display order; the first is the default.
 S.LAYOUTS = {
-  { key = "damage", text = "Centered: damage and tanking", hint = "Your frames around your character; party and raid on the left, above chat." },
+  { key = "damage", text = "Centered: damage and tanking", hint = "Your frames around your character; party and raid just above your player frame." },
   { key = "healing", text = "Centered: healing", hint = "Party and raid centered above your frames, click casting on." },
 }
 -- Raid frame styles: the Raid page's Style choices.
