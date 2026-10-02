@@ -444,6 +444,26 @@ const SCENES = [
       C_QuestLog.ReadyForTurnIn = function(id) return quests[byId[id]][6] == true end
       C_QuestLog.GetQuestObjectives = function(id) local out = {} for _, o in ipairs(quests[byId[id]][4]) do out[#out + 1] = { text = o[1], finished = o[2] } end return out end
       GetQuestLogSpecialItemInfo = function(i) if quests[i][5] then return quests[i][5], "TEST-ONLY-ICON" end end` },
+  { name: "foreverui-quest-log", caption: "ForeverUI's quest log: quests under their zones (a check when ready), the chosen quest's text, objectives and reward cards, and its buttons (TEST-ONLY quests)",
+    lua: 'ns.GetModule("QuestLog").Open(90051)',
+    before: `UISpecialFrames = {}
+      local quests = { [90051] = { "TEST-ONLY The Wolves of the Fold", 9, 2, { { "3/8 TEST-ONLY Hill Wolves slain", false }, { "1/1 TEST-ONLY Wolf Pelt", true } } },
+        [90052] = { "TEST-ONLY A Letter for the Farm", 12, 3, {}, true }, [90053] = { "TEST-ONLY Stones of the Old Road", 7, 5, { { "2/5 TEST-ONLY Road Stones", false } } } }
+      local log = { { isHeader = true, title = "TEST-ONLY Maple Vale" }, { questID = 90051 }, { questID = 90052 }, { isHeader = true, title = "TEST-ONLY Old Road" }, { questID = 90053 } }
+      GetQuestDifficultyColor = function(level) if level >= 12 then return { r = 1, g = 0.5, b = 0.25 } elseif level >= 9 then return { r = 1, g = 0.82, b = 0 } end return { r = 0.25, g = 0.75, b = 0.25 } end
+      C_QuestLog = C_QuestLog or {}
+      C_QuestLog.GetNumQuestLogEntries = function() return #log end
+      C_QuestLog.GetInfo = function(i) local e = log[i] local q = e and e.questID and quests[e.questID] if q then return { questID = e.questID, title = q[1], level = q[2] } end return e end
+      C_QuestLog.GetLogIndexForQuestID = function(id) return quests[id] and quests[id][3] end
+      C_QuestLog.ReadyForTurnIn = function(id) return quests[id][5] == true end
+      C_QuestLog.GetQuestObjectives = function(id) local out = {} for _, o in ipairs(quests[id][4]) do out[#out + 1] = { text = o[1], finished = o[2] } end return out end
+      C_QuestLog.GetQuestWatchType = function(id) if id == 90051 then return 0 end end
+      GetQuestLogQuestText = function() return "TEST-ONLY The wolves come down from the hills each night. Thin their numbers before the flock is gone, and I'll see you're paid for it." end
+      C_Item = C_Item or {} C_Item.GetItemQualityColor = function(q) if q == 3 then return 0, 0.44, 0.87 end return 0.12, 1, 0 end
+      GetNumQuestLogChoices = function() return 2 end GetNumQuestLogRewards = function() return 1 end
+      GetQuestLogChoiceInfo = function(i) if i == 1 then return "TEST-ONLY Shepherd's Boots", "TEST-ONLY-ICON", 1, 3 end return "TEST-ONLY Wolfhide Gloves", "TEST-ONLY-ICON", 1, 2 end
+      GetQuestLogRewardInfo = function() return "TEST-ONLY Farm Bread", "TEST-ONLY-ICON", 5, 1 end
+      GetQuestLogRewardMoney = function() return 1500 end GetQuestLogRewardXP = function() return 650 end` },
   { name: "foreverui-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a friendly player (TEST-ONLY units)", lua: PLATES },
   { name: "foreverui-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)

@@ -346,8 +346,9 @@ const ACTIONS_ENV = `
   __binds = { ACTIONBUTTON1 = { "1" }, ACTIONBUTTON2 = { "SHIFT-2" }, MULTIACTIONBAR1BUTTON1 = { "CTRL-BUTTON4" } }
   GetBindingKey = function(cmd) return unpack(__binds[cmd] or {}) end
   __overrides = {}
-  ClearOverrideBindings = function() __overrides = {} end
-  SetOverrideBindingClick = function(_, _, key, name, button) __overrides[key] = name .. ":" .. button end
+  __owners = {}
+  ClearOverrideBindings = function(owner) for k in pairs(__overrides) do if __owners[k] == owner then __overrides[k] = nil end end end
+  SetOverrideBindingClick = function(owner, _, key, name, button) __overrides[key] = name .. ":" .. (button or "LeftButton") __owners[key] = owner end
   RegisterStateDriver = function(frame, state, driver) frame.__states = frame.__states or {}; frame.__states[state] = driver end
   MainMenuBar = CreateFrame("Frame", "MainMenuBar", UIParent)
 `;
@@ -1100,7 +1101,10 @@ it("quest tracker: watched quests with levels, objectives and items", () => {
   setCombat(addon, false);
   expect(addon.eval("return ForeverUI_QuestItem1:IsShown()"), "and update after").toBe(false);
   addon.eval("local b = ForeverUI_QuestTrackerFrame.blocks b[2].__scripts.OnClick(b[2], 'RightButton') b[1].__scripts.OnClick(b[1], 'LeftButton')");
-  expect(addon.eval("return { __removed, __opened }"), "right-click stops watching; left-click opens the quest").toEqual([90052, 90051]);
+  expect(addon.eval("return { __removed, ForeverUI_QuestLog:IsShown(), ns.GetModule('QuestLog').selected }"), "right-click stops watching; left-click opens the quest in the quest log").toEqual([90052, true, 90051]);
+  const noLog = loggedIn(TRACK_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { QuestLog = { own = false } } }" });
+  noLog.eval("local b = ForeverUI_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton')");
+  expect(noLog.eval("return __opened"), "with ForeverUI's quest log off, the game's map opens it").toBe(90051);
 });
 
 it("quest tracker: nearest first, collapsing, too many quests, and switched off", () => {
@@ -1121,6 +1125,92 @@ it("quest tracker: nearest first, collapsing, too many quests, and switched off"
   expect(own.eval("return { ForeverUI_QuestTrackerFrame:GetParent():GetName(), (ns.MoverPoint('questtracker')) }"), "with the menu strip's spot off, it makes its own").toEqual(["ForeverUI_QuestTracker", "TOPRIGHT"]);
   const off = loggedIn(TRACK_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { QuestTracker = { own = false } } }" });
   expect(off.eval("return { ForeverUI_QuestTrackerFrame == nil, ObjectiveTrackerFrame:IsShown() }"), "switched off: the game's tracker").toEqual([true, true]);
+});
+
+// TEST-ONLY quest log: two zones (the wolves and the letter in one, the far quest in the other),
+// a hidden entry; the wolves are watched and give boots (a choice) and bread.
+const QLOG_ENV = `
+  UISpecialFrames = {}
+  __quests[90051].index, __quests[90052].index, __quests[90053].index = 2, 3, 5
+  __log = { { isHeader = true, title = "TEST-ONLY Vale" }, { questID = 90051 }, { questID = 90052 }, { isHeader = true, title = "TEST-ONLY Hills" }, { questID = 90053 }, { questID = 90054, isHidden = true } }
+  C_QuestLog.GetNumQuestLogEntries = function() return #__log end
+  C_QuestLog.GetInfo = function(i) local e = __log[i] local q = e and e.questID and __quests[e.questID]
+    if q then return { questID = e.questID, title = q.title, level = q.level } end return e end
+  __watched, __group, __overrides, __owners = { [90051] = 0 }, false, {}, {}
+  C_QuestLog.SetSelectedQuest = function(id) __selected = id end
+  C_QuestLog.GetQuestWatchType = function(id) return __watched[id] end
+  C_QuestLog.AddQuestWatch = function(id) __added = id end
+  C_QuestLog.IsPushableQuest = function() return true end
+  C_QuestLog.SetAbandonQuest = function() __abandoning = __selected end
+  IsInGroup = function() return __group end
+  StaticPopup_Show = function(which, text) __popup = which .. " " .. text end
+  QuestLogPushQuest = function() __pushed = __selected end
+  GetQuestLogQuestText = function() return "TEST-ONLY About " .. __selected end
+  GetNumQuestLogChoices = function(id) return id == 90051 and 1 or 0 end
+  GetQuestLogChoiceInfo = function() return "TEST-ONLY Boots", "TEST-ONLY-ICON", 1, 3 end
+  GetNumQuestLogRewards = function(id) return id == 90051 and 1 or 0 end
+  GetQuestLogRewardInfo = function() return "TEST-ONLY Bread", "TEST-ONLY-ICON", 5, 1 end
+  GetQuestLogRewardMoney = function() return 1200 end
+  GetQuestLogRewardXP = function() return 450 end
+  C_Item = { GetItemQualityColor = function() return 0, 0.44, 0.87 end }
+  __keys = { "L", "SHIFT-L" }
+  GetBindingKey = function(action) if action == "TOGGLEQUESTLOG" then return unpack(__keys) end end
+  ClearOverrideBindings = function(owner) for k in pairs(__overrides) do if __owners[k] == owner then __overrides[k] = nil end end end
+  SetOverrideBindingClick = function(owner, _, key, name, button) __overrides[key] = name .. ":" .. (button or "LeftButton") __owners[key] = owner end
+`;
+
+// The quest log: shown, count, list lines, and the chosen quest's details and buttons.
+const questLog = (addon) => addon.eval(`local f = ForeverUI_QuestLog
+  local lines, cards = {}, {}
+  for i = 1, f.lines.used do lines[i] = f.lines[i].text:GetText() end
+  for i = 1, f.cards.used do cards[i] = f.cards[i].name:GetText() end
+  local b = f.buttons
+  return { shown = f:IsShown(), count = f.count:GetText(), lines = lines, detail = f.detail:IsShown(),
+    title = f.questTitle:GetText(), text = f.text:GetText(), objectives = f.objectives:GetText(), cards = cards, money = f.money:GetText(),
+    track = b.track:IsShown() and b.track.text:GetText() or false, share = b.share:IsEnabled() }`);
+
+// Clicks a quest log line, or one of its buttons.
+const logLine = (addon, i) => addon.eval(`local b = ForeverUI_QuestLog.lines[${i}] b.__scripts.OnClick(b)`);
+const logButton = (addon, key) => addon.eval(`local b = ForeverUI_QuestLog.buttons.${key} b.__scripts.OnClick(b)`);
+
+it("quest log: zones, a quest's details, and its buttons", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  expect(addon.eval("return __overrides"), "the game's quest log keys open this log").toEqual({ L: "ForeverUI_QuestLogToggle:LeftButton", "SHIFT-L": "ForeverUI_QuestLogToggle:LeftButton" });
+  addon.eval("ForeverUI_QuestLogToggle.__scripts.OnClick(ForeverUI_QuestLogToggle)");
+  let q = questLog(addon);
+  expect([q.shown, q.count, q.lines], "your quests under their zones (hidden ones left out)").toEqual([true, "3 quests", ["TEST-ONLY Vale", "[8] TEST-ONLY Wolves", "[12] TEST-ONLY Letter", "TEST-ONLY Hills", "[3] TEST-ONLY Far"]]);
+  expect([q.title, q.text, q.objectives, q.cards, q.money, q.track, q.share], "the first quest, chosen: text, objectives, rewards; watched; nobody to share with").toEqual([
+    "[8] TEST-ONLY Wolves", "TEST-ONLY About 90051", "Objectives\n- 3/8 TEST-ONLY Wolves slain\n+ 1/1 TEST-ONLY Pelt", ["TEST-ONLY Boots", "TEST-ONLY Bread"], "+12s 0c  ·  450 XP", "Untrack", false]);
+  logButton(addon, "track");
+  logLine(addon, 3);
+  logButton(addon, "track");
+  expect([addon.eval("return { __removed, __added }"), questLog(addon).title], "Untrack the wolves; choose the letter and Track it").toEqual([[90051, 90052], "[12] TEST-ONLY Letter"]);
+  addon.eval("__group = true");
+  logLine(addon, 3);
+  logButton(addon, "share"); logButton(addon, "abandon"); logButton(addon, "map");
+  expect(addon.eval("return { __pushed, __abandoning, __popup, __opened }"), "Share; Abandon through the game's own confirmation; Map").toEqual([90052, 90052, "ABANDON_QUEST TEST-ONLY Letter", 90052]);
+  logLine(addon, 1);
+  expect(questLog(addon).lines, "a zone folds its quests away").toEqual(["TEST-ONLY Vale", "TEST-ONLY Hills", "[3] TEST-ONLY Far"]);
+  addon.eval("ForeverUI_QuestLog.listScroll.__scripts.OnMouseWheel(ForeverUI_QuestLog.listScroll, -1) ns.GetModule('QuestLog').Select(90099)");
+  expect([questLog(addon).detail, questLog(addon).track], "a quest gone from the log: nothing chosen").toEqual([false, false]);
+  addon.fire("QUEST_LOG_UPDATE");
+  expect(questLog(addon).title, "the log's next update chooses the first quest showing").toBe("[3] TEST-ONLY Far");
+});
+
+it("quest log: keys follow rebinding, /fui quests, closing, and switched off", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval('__keys = { "K" }');
+  addon.fire("UPDATE_BINDINGS");
+  expect(addon.eval("return __overrides"), "a new key for the quest log moves with it").toEqual({ K: "ForeverUI_QuestLogToggle:LeftButton" });
+  addon.slash("quests");
+  expect(addon.eval("return ForeverUI_QuestLog:IsShown()"), "/fui quests opens it").toBe(true);
+  addon.eval("ForeverUI_QuestLog.close.__scripts.OnClick(ForeverUI_QuestLog.close)");
+  addon.slash("quests");
+  addon.slash("quests");
+  expect(addon.eval("return { ForeverUI_QuestLog:IsShown(), UISpecialFrames[#UISpecialFrames] }"), "the close button and /fui quests close it; Escape too").toEqual([false, "ForeverUI_QuestLog"]);
+  const off = loggedIn(TRACK_ENV + QLOG_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { QuestLog = { own = false } } }" });
+  off.slash("quests");
+  expect([off.eval("return ForeverUI_QuestLog == nil and next(__overrides) == nil"), chatHas(off, /quest log is off/)], "switched off: the game's quest log key stays the game's").toEqual([true, true]);
 });
 
 // TEST-ONLY numbers for the info strip: head slot 30%, legs 9% worn, 12 free slots, 12g 34s 7c.
@@ -3696,7 +3786,7 @@ function raidRect(addon, spot, n, sw, sh) {
 }
 
 // Windows that open over the HUD for a moment (talking to an NPC), so they're left out of the overlap check.
-const FLOATING = new Set(["questdialog"]);
+const FLOATING = new Set(["questdialog", "questlog"]);
 
 // Every part's rect on an sw x sh screen with n players in the group (0: solo, no grid).
 function layoutRects(addon, n, sw, sh) {

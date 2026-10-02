@@ -37,8 +37,8 @@ function QT.Watched()
   return out
 end
 
--- A quest's objectives as { text, done }.
-local function objectives(id)
+-- A quest's objectives as { text, done } (the quest log shows them too).
+function QT.Objectives(id)
   local out = {}
   for _, o in ipairs(questLog("GetQuestObjectives", id) or {}) do
     out[#out + 1] = { text = ns.QuestParts.Plain(o.text), done = yes(o.finished) }
@@ -59,7 +59,7 @@ function QT.Quest(id)
   local info = index and questLog("GetInfo", index)
   if type(info) ~= "table" then return nil end
   local ready = yes(questLog("ReadyForTurnIn", id)) or yes(questLog("IsComplete", id))
-  return { id = id, title = info.title, level = info.level, ready = ready, objectives = objectives(id), item = questItem(index) }
+  return { id = id, title = info.title, level = info.level, ready = ready, objectives = QT.Objectives(id), item = questItem(index) }
 end
 
 -- How far a quest is (squared), or a long way when the client can't say.
