@@ -428,6 +428,22 @@ const SCENES = [
       GetNumQuestChoices = function() return 2 end GetNumQuestRewards = function() return 1 end
       GetQuestItemInfo = function(kind, i) local x = kind == "choice" and choices[i] or { "TEST-ONLY Farm Bread", "TEST-ONLY-ICON", 5, 1 } return x[1], x[2], x[3], x[4] end
       GetRewardMoney = function() return 1500 end GetRewardXP = function() return 650 end` },
+  { name: "foreverui-quest-tracker", caption: "ForeverUI's quest tracker under the info strip: levels in difficulty colors, objectives gray until done, a quest ready to turn in, a quest item beside its quest (TEST-ONLY quests)",
+    lua: '__wfgStub.fire("QUEST_WATCH_LIST_CHANGED")',
+    before: `local quests = {
+        { 90051, "TEST-ONLY The Wolves of the Fold", 9, { { "3/8 TEST-ONLY Hill Wolves slain", false }, { "1/1 TEST-ONLY Wolf Pelt", true } }, "item:90061" },
+        { 90052, "TEST-ONLY A Letter for the Farm", 12, {}, nil, true },
+        { 90053, "TEST-ONLY Stones of the Old Road", 7, { { "2/5 TEST-ONLY Road Stones", false } } } }
+      local byId = {} for i, q in ipairs(quests) do byId[q[1]] = i end
+      GetQuestDifficultyColor = function(level) if level >= 12 then return { r = 1, g = 0.5, b = 0.25 } elseif level >= 9 then return { r = 1, g = 0.82, b = 0 } end return { r = 0.25, g = 0.75, b = 0.25 } end
+      C_QuestLog = C_QuestLog or {}
+      C_QuestLog.GetNumQuestWatches = function() return #quests end
+      C_QuestLog.GetQuestIDForQuestWatchIndex = function(i) return quests[i][1] end
+      C_QuestLog.GetLogIndexForQuestID = function(id) return byId[id] end
+      C_QuestLog.GetInfo = function(i) return { title = quests[i][2], level = quests[i][3] } end
+      C_QuestLog.ReadyForTurnIn = function(id) return quests[byId[id]][6] == true end
+      C_QuestLog.GetQuestObjectives = function(id) local out = {} for _, o in ipairs(quests[byId[id]][4]) do out[#out + 1] = { text = o[1], finished = o[2] } end return out end
+      GetQuestLogSpecialItemInfo = function(i) if quests[i][5] then return quests[i][5], "TEST-ONLY-ICON" end end` },
   { name: "foreverui-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a friendly player (TEST-ONLY units)", lua: PLATES },
   { name: "foreverui-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)

@@ -85,10 +85,15 @@ end
 
 -- What each event's automation would do, or nil when it leaves the page to you.
 QA.ACTIONS = {
+  -- A quest offered: accept it.
   QUEST_DETAIL = function() return QA.settings.accept and QA.Accept or nil end,
+  -- A finished quest's hand-in: continue.
   QUEST_PROGRESS = function() return QA.settings.turnIn and call(IsQuestCompletable) == true and QA.Continue or nil end,
+  -- The reward page: finish, when the reward is settled.
   QUEST_COMPLETE = function() return QA.settings.turnIn and QA.RewardChoice() and QA.Finish or nil end,
+  -- Gossip with one quest and nothing else: pick it.
   GOSSIP_SHOW = function() return QA.settings.skipGossip and QA.OnlyQuest() or nil end,
+  -- The same without gossip.
   QUEST_GREETING = function() return QA.settings.skipGossip and QA.OnlyGreeting() or nil end,
 }
 

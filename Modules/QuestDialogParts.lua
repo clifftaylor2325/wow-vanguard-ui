@@ -41,12 +41,17 @@ end
 
 -- Lines ----------------------------------------------------------------------------------------
 
+-- A texture sized square; returns it.
+function QP.Square(t, size)
+  t:SetSize(size, size)
+  return t
+end
+
 -- A clickable line: an icon, then its text; a faint wash under the mouse.
 function QP.Line(parent)
   local b = CreateFrame("Button", nil, parent)
   b:SetHeight(QP.LINE_H)
-  b.icon = b:CreateTexture(nil, "ARTWORK")
-  b.icon:SetSize(16, 16)
+  b.icon = QP.Square(b:CreateTexture(nil, "ARTWORK"), 16)
   b.icon:SetPoint("LEFT", b, "LEFT", 2, 0)
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label", "text")
   b.text:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
@@ -72,8 +77,7 @@ end
 function QP.Card(parent)
   local c = T.Button(CreateFrame("Button", nil, parent))
   c:SetSize(QP.CARD_W, QP.CARD_H)
-  c.icon = T.Crop(c:CreateTexture(nil, "ARTWORK"))
-  c.icon:SetSize(QP.CARD_H - 6, QP.CARD_H - 6)
+  c.icon = QP.Square(T.Crop(c:CreateTexture(nil, "ARTWORK")), QP.CARD_H - 6)
   c.icon:SetPoint("LEFT", c, "LEFT", 3, 0)
   c.count = T.Text(c:CreateFontString(nil, "OVERLAY"), "auraCount", "text")
   c.count:SetPoint("BOTTOMRIGHT", c.icon, "BOTTOMRIGHT", -1, 1)
@@ -105,7 +109,7 @@ end
 
 -- A pool of widgets made on demand by make(parent), shown in order, the rest hidden.
 function QP.Pool(parent, make)
-  local pool = { parent = parent, make = make, used = 0 }
+  local pool = { used = 0 }
   -- The next widget (made the first time it's needed).
   function pool.Next()
     pool.used = pool.used + 1
@@ -113,9 +117,6 @@ function QP.Pool(parent, make)
     return pool[pool.used]
   end
   -- Hides every widget and starts over.
-  function pool.Reset()
-    for i = 1, #pool do pool[i]:Hide() end
-    pool.used = 0
-  end
+  function pool.Reset() for i = 1, #pool do pool[i]:Hide() end pool.used = 0 end
   return pool
 end
