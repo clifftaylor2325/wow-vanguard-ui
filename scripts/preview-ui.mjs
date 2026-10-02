@@ -391,6 +391,13 @@ const SCENES = [
       GetTrainerServiceCost = function(i) return services[i][2] end
       GetMoney = function() return 123407 end
       TakeTaxiNode = function() end hooksecurefunc = hooksecurefunc or function() end` },
+  { name: "foreverui-bosses", caption: "A boss fight as the group's leader: two boss frames at the top left, the raid tools bar beside them (calls, target icons, world markers) (TEST-ONLY bosses)",
+    lua: '__group({ "player", "party1", "party2" }) __wfgStub.fire("INSTANCE_ENCOUNTER_ENGAGE_UNIT")',
+    before: `__units.boss1 = { name = "TEST-ONLY Warlord", hp = 72000, maxhp = 100000, power = 0, maxpower = 0, ptype = "RAGE", reaction = 2, classification = "worldboss" }
+      __units.boss2 = { name = "TEST-ONLY Guard", hp = 30000, maxhp = 40000, power = 0, maxpower = 0, ptype = "RAGE", reaction = 2, classification = "elite" }
+      IsInGroup = function() return true end UnitIsGroupLeader = function(u) return u == "player" end IsInRaid = function() return false end
+      C_PartyInfo = C_PartyInfo or {} C_PartyInfo.DoReadyCheck = function() end C_PartyInfo.DoCountdown = function() end C_PartyInfo.ConvertToRaid = function() end
+      InitiateRolePoll = function() end` },
   { name: "foreverui-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a friendly player (TEST-ONLY units)", lua: PLATES },
   { name: "foreverui-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)
