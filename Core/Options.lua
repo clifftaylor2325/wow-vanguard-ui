@@ -179,6 +179,8 @@ O.MODULE_INFO = {
   RaidAuras = { "Raid debuffs and HoTs", "Debuffs you can dispel, and your heals over time, on the tiles. Needs Raid frames." },
   RaidHealing = { "Raid heals and aggro", "Incoming heals, shields, aggro and missing raid buffs. Needs Raid frames." },
   RaidStatus = { "Raid marks", "Range fade, raid icons, ready check, resurrection, leader. Needs Raid frames." },
+  MainTanks = { "Main tank frames", "In a raid, the main tanks and assists as small tiles at the top left, with what each is targeting." },
+  PartyExtras = { "Party pets and targets", "Small tiles for each party member's pet and target, above the party (switch it on under Unit frames)." },
   RaidTools = { "Raid tools", "For the leader and assistants: ready check, pull timer, role check, target icons and world markers." },
   ClickCast = { "Click casting", "Cast on a frame with a click or a hover key." },
   ActionBars = { "Action bars", "Eight bars with their own size, layout and visibility." },
@@ -233,7 +235,7 @@ local function unitFrameRows()
     check("Show health numbers", unitFrameSetting("healthText")),
     { "cycle", "Health as", { { "value", "Value (42.8K)" }, { "percent", "Percent (84%)" } }, unitFrameSetting("healthFormat") },
     check("Show levels (reload)", setting("UnitFrames", "showLevel", true)),
-    check("Boss frames, top left (reload)", setting("UnitFrames", "boss", true)),
+    check("Boss frames, top left (reload)", setting("UnitFrames", "boss", true)), check("Party pets and targets, above the party (reload)", setting("PartyExtras", "show", true)),
     check("Shaman totems under the player frame (reload)", setting("ClassBars", "totems", true)),
     check("Druid mana under the player frame in bear and cat form (reload)", setting("ClassBars", "druidMana", true)),
   }
