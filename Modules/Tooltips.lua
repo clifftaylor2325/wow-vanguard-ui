@@ -3,7 +3,8 @@
 -- the unit's name in that color, and a "Target:" line. The default tooltip
 -- can sit in a movable corner, follow the cursor, or stay where the client
 -- puts it, and unit tooltips can be hidden in combat. Item tooltips show what
--- the item sells for (the stack's worth), unless the client already shows it.
+-- the item sells for (the stack's worth, unless the client already shows it),
+-- how many you have (bags and bank), and optionally the item's ID.
 --
 -- Written for WoW Forever. Every client call is looked up when used. The
 -- tooltip's text is never read: in Midnight some of it is hidden from
@@ -14,7 +15,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local TT = ns.Module("Tooltips", {
-  defaults = { anchor = "corner", classBorder = true, targetLine = true, hideInCombat = false, sellPrice = true },
+  defaults = { anchor = "corner", classBorder = true, targetLine = true, hideInCombat = false, sellPrice = true, itemCount = true, itemID = false },
 })
 
 TT.NAMES = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2", "EmbeddedItemTooltip" }
@@ -119,14 +120,44 @@ local function stackOf(tt)
   return count and count > 1 and count or 1
 end
 
--- An item tooltip was filled in: add what the stack sells for, unless the client already shows a price.
-function TT.OnItem(tt)
-  if not TT.settings.sellPrice or not tt.GetItem or (tonumber(tt.shownMoneyFrames) or 0) > 0 then return end
-  local _, link = tt:GetItem()
-  local price = not ns.IsSecret(link) and TT.SellPrice(link)
+-- What the stack sells for, unless the client already shows a price.
+local function addPrice(tt, link)
+  local price = (tonumber(tt.shownMoneyFrames) or 0) == 0 and TT.SellPrice(link)
   if not price then return end
   local r, g, b = T.RGB("text2")
   tt:AddDoubleLine("Sells for", ns.GetModule("InfoStrip").Money(price * stackOf(tt)), r, g, b, T.RGB("gold"))
+end
+
+-- How many you have (in your bags and bank), or nil when none or the client can't say.
+function TT.Owned(link)
+  local count = C_Item and C_Item.GetItemCount
+  if type(count) ~= "function" then return nil end
+  local bags, all = ns.PlainNumber(count(link)), ns.PlainNumber(count(link, true))
+  if all and all > 0 then return bags or all, all end
+end
+
+-- "You have 12" (and how many of those are in the bank).
+local function addCount(tt, link)
+  local bags, all = TT.Owned(link)
+  if not all then return end
+  local text = "You have " .. all .. (all > bags and string.format(" (%d in the bank)", all - bags) or "")
+  tt:AddLine(text, T.RGB("text2"))
+end
+
+-- The item's ID, for players who look items up.
+local function addID(tt, link)
+  local id = link:match("item:(%d+)")
+  if id then tt:AddLine("Item ID " .. id, T.RGB("text2")) end
+end
+
+-- An item tooltip was filled in: add the switched-on lines.
+function TT.OnItem(tt)
+  if not tt.GetItem then return end
+  local _, link = tt:GetItem()
+  if ns.IsSecret(link) or type(link) ~= "string" then return end
+  if TT.settings.sellPrice then addPrice(tt, link) end
+  if TT.settings.itemCount then addCount(tt, link) end
+  if TT.settings.itemID then addID(tt, link) end
 end
 
 -- Hooks ------------------------------------------------------------------------------------

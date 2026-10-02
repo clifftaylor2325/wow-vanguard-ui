@@ -335,6 +335,7 @@ local function windowRows()
     check("Character, merchant, quest, loot and other windows (reload)", setting("Windows", "windows", true)),
     check("Popups (reload)", setting("Windows", "popups", true)),
     check("Breath and fatigue bars (reload)", setting("Windows", "timers", true)),
+    check("Durability on the character pane's gear (reload)", setting("Windows", "durability", true)),
   }
 end
 
@@ -370,7 +371,7 @@ local function moreRows()
     check("Coordinates under the minimap", setting("Minimap", "coords", true)),
     check("Chat background", setting("Chat", "background", true)), check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
     { "cycle", "Chat text size (follows Text size)", ns.GetModule("Chat").SIZES, chatSizeSetting() },
-    check("Combined bag", setting("Bags", "combined", true)),
+    check("Combined bag", setting("Bags", "combined", true)), check("Bank in the ForeverUI look (reload)", setting("Bags", "bank", true)),
   }
 end
 
@@ -434,6 +435,7 @@ local function tooltipRows()
     check("Border in the unit's class color", setting("Tooltips", "classBorder")),
     check("Show who the unit is targeting", setting("Tooltips", "targetLine")),
     check("What an item sells for (when the game doesn't say)", setting("Tooltips", "sellPrice")),
+    check("How many of an item you have", setting("Tooltips", "itemCount")), check("Item IDs", setting("Tooltips", "itemID")),
     check("Hide unit tooltips in combat", setting("Tooltips", "hideInCombat")),
   }
 end
