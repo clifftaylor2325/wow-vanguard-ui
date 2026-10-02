@@ -1365,6 +1365,20 @@ it("party pets and targets: small tiles above the party, only in a party, when s
   expect(addon.eval('return __click("Party pets and targets, above the party (reload)") and ForeverUIDB.profiles.Default.PartyExtras.show'), "the switch is under Unit frames").toBe(false);
 });
 
+it("/fui factionart: which of the game's own faction pictures the client has", () => {
+  const addon = loggedIn(`C_Texture = { GetAtlasInfo = function(name) if name:find("MountJournal") then return { width = 64 } end end }
+    UnitFactionGroup = function() return "Horde" end`);
+  addon.slash("factionart");
+  const lines = addon.chat().join("\n");
+  expect([/you're Horde/.test(lines), /atlas MountJournalIcons-Horde\s+\|c\w+yes/.test(lines), /atlas UI-HUD-UnitFrame-Player-PVP-HordeIcon\s+\|c\w+missing/.test(lines)], "your faction, and each atlas found or missing").toEqual([true, true, true]);
+  addon.eval("ns.FactionArt.tester.SetTexture = function(_, file) return file:find('Timer') ~= nil end");
+  expect(addon.eval("return { ns.FactionArt.HasFile('Interface\\\\Timer\\\\Horde-Logo'), ns.FactionArt.HasFile('Interface\\\\TargetingFrame\\\\UI-PVP-Horde') }"), "a file counts when the client loads it").toEqual([true, false]);
+  addon.eval("UnitFactionGroup = function() return { __secret = true } end issecretvalue = function(v) return type(v) == 'table' and v.__secret end");
+  expect(addon.eval("return ns.FactionArt.Faction()"), "a hidden answer counts as none").toBe("none");
+  const bare = loggedIn("");
+  expect(bare.eval("return { ns.FactionArt.HasAtlas('MountJournalIcons-Horde'), ns.FactionArt.Faction() }"), "a client without these calls has none, and no faction").toEqual([false, "none"]);
+});
+
 // TEST-ONLY numbers for the info strip: head slot 30%, legs 9% worn, 12 free slots, 12g 34s 7c.
 const STRIP_ENV = `
   __dur = { [1] = { 30, 100 }, [7] = { 9, 100 }, [2] = { 0, 0 } }

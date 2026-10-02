@@ -1,9 +1,11 @@
 // ForeverUI's artwork, as code: every file under Media/Textures and
-// Media/Icons is made here (scripts/build-media.mjs writes them).
+// Media/Icons is made here, and the faction crests under Media/Art come from
+// their SVGs (scripts/lib/media-crests.mjs); scripts/build-media.mjs writes them.
 // Textures are white or grayscale so the addon tints them with theme colors;
 // Icon is the one pre-colored image (the addons list can't tint).
 
 import { image, fill, draw, line, poly, box, frame, ring, path, arc } from "./media-art.mjs";
+import { CRESTS, crest } from "./media-crests.mjs";
 
 const BRASS = [0xd9 / 255, 0xa4 / 255, 0x41 / 255];
 const LIGHT = [0xe8 / 255, 0xea / 255, 0xee / 255];
@@ -174,4 +176,5 @@ export const ICONS = Object.fromEntries(Object.entries({ ...ICON_SHAPES, ...MENU
 export const MEDIA = {
   ...Object.fromEntries(Object.entries(TEXTURES).map(([n, make]) => [`Textures/${n}.tga`, make])),
   ...Object.fromEntries(Object.entries(ICONS).map(([n, make]) => [`Icons/${n}.tga`, make])),
+  ...Object.fromEntries(CRESTS.map((n) => [`Art/${n}.tga`, () => crest(n)])),
 };
