@@ -17,6 +17,22 @@ local STEPS = { "Layout", "Look", "Move things" }
 S.LAYOUTS = {
   { key = "damage", text = "Centered: damage and tanking", hint = "Your frames around your character; party and raid just above your player frame." },
   { key = "healing", text = "Centered: healing", hint = "Party and raid centered above your frames, click casting on." },
+  { key = "classic", text = "Like the game's", hint = "Your frames at the top left as the game has them, party and raid down the left side." },
+}
+-- Like the game's: player and target along the top left (the pet under the
+-- player, the target of target beside the target, the focus under that), the
+-- party and raid down the left side (the raid grows up from above the bars'
+-- height, so a full raid stays clear of the middle), the boss frames on the
+-- right under your buffs, and the raid leader's tools and main tanks near the
+-- top center, clear of all of it.
+S.CLASSIC = {
+  uf_player = { "TOPLEFT", "TOPLEFT", 20, -40 }, uf_pet = { "TOPLEFT", "TOPLEFT", 20, -84 },
+  uf_target = { "TOPLEFT", "TOPLEFT", 250, -40 }, uf_targettarget = { "TOPLEFT", "TOPLEFT", 480, -47 },
+  cast_target = { "TOPLEFT", "TOPLEFT", 250, -108 },
+  cast_focus = { "TOPLEFT", "TOPLEFT", 480, -76 }, uf_focus = { "TOPLEFT", "TOPLEFT", 480, -94 },
+  raid = { "BOTTOMLEFT", "BOTTOMLEFT", 20, 330 }, uf_party1 = { "TOPLEFT", "TOPLEFT", 20, -310 },
+  partyextras = { "TOPLEFT", "TOPLEFT", 190, -310 }, uf_boss1 = { "TOPRIGHT", "TOPRIGHT", -290, -200 },
+  raidtools = { "TOP", "TOP", 60, -120 }, maintanks = { "TOP", "TOP", 60, -196 },
 }
 -- Raid frame styles: the Raid page's Style choices.
 S.STYLES = { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }
@@ -34,18 +50,22 @@ local function turnOn(name)
   state.reload = true
 end
 
--- Saves the raid frames' spot, moving them now (or after combat) when they are
--- built, with the grid pinned to the new spot's side.
-local function placeRaid(p)
-  ns.Settings("positions").raid = { point = p[1], relPoint = p[2], x = p[3], y = p[4] }
-  if ns.MoverPoint("raid") then ns.SetMoverPoint("raid", p[1], p[2], p[3], p[4]) ns.GetModule("RaidFrames").Fit() end
+-- Saves a frame's spot, moving it now (or after combat) when it is built; the
+-- raid grid is pinned to its new spot's side.
+local function place(key, p)
+  ns.Settings("positions")[key] = { point = p[1], relPoint = p[2], x = p[3], y = p[4] }
+  if not ns.MoverPoint(key) then return end
+  ns.SetMoverPoint(key, p[1], p[2], p[3], p[4])
+  if key == "raid" then ns.GetModule("RaidFrames").Fit() end
 end
 
--- Puts everything a preset moves (today only the raid frames) back at
--- ForeverUI's defaults, so picking Damage and tanking undoes Healing.
+-- Puts everything a preset moves back at ForeverUI's defaults, so picking
+-- Damage and tanking undoes Healing and Like the game's.
 local function restoreDefaults()
-  ns.Settings("positions").raid = nil
-  ns.ResetMovers("raid")
+  for key in pairs(S.CLASSIC) do
+    ns.Settings("positions")[key] = nil
+    ns.ResetMovers(key)
+  end
   if ns.MoverPoint("raid") then ns.GetModule("RaidFrames").Fit() end
 end
 
@@ -63,9 +83,15 @@ local APPLY = {
   damage = restoreDefaults,
   -- Healing: party and raid centered above your frames, click casting on.
   healing = function()
-    placeRaid(S.HealingPoint())
+    restoreDefaults()
+    place("raid", S.HealingPoint())
     turnOn("RaidFrames")
     turnOn("ClickCast")
+  end,
+  -- Like the game's: every spot in S.CLASSIC.
+  classic = function()
+    restoreDefaults()
+    for key, p in pairs(S.CLASSIC) do place(key, p) end
   end,
 }
 

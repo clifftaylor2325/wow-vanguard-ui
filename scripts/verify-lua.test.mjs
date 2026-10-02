@@ -3809,7 +3809,7 @@ it("/fui setup reopens setup; Back and the close button", () => {
 it("setup layouts: Healing puts the raid frames under the character and turns click casting on", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   const layouts = addon.eval("local out = {} for i, b in ipairs(ForeverUI_Setup.pages[1].choices) do out[i] = b.text:GetText() end return out");
-  expect(layouts, "there are two layouts, damage and tanking first").toEqual(["Centered: damage and tanking", "Centered: healing"]);
+  expect(layouts, "there are three layouts, damage and tanking first").toEqual(["Centered: damage and tanking", "Centered: healing", "Like the game's"]);
   expect(addon.eval('return __click("Centered: healing")') && addon.eval("return ForeverUI_Setup.pages[1].hint:GetText()"), "picking Healing shows what it does").toMatch(/click casting on/);
   expect(borderOf(addon, "ForeverUI_Setup.pages[1].choices[2]"), "the chosen layout is outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
   setupClick(addon, "next");
@@ -3841,6 +3841,24 @@ it("setup layouts: Damage and tanking restores ForeverUI's defaults, undoing Hea
   const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: 'ForeverUIDB = { profiles = { Default = { modules = { RaidFrames = false }, positions = { raid = { point = "TOP", relPoint = "CENTER", x = 0, y = -200 } } } } }' });
   setupClick(off, "next");
   expect(off.eval("return ForeverUIDB.profiles.Default.positions.raid == nil"), "without raid frames built, the saved spot is cleared for next time").toBe(true);
+});
+
+it("setup layouts: Like the game's puts your frames at the top left; another layout puts them back", () => {
+  const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
+  // Where the player, focus, raid and boss frames are now.
+  const spots = () => addon.eval("return { { ns.MoverPoint('uf_player') }, { ns.MoverPoint('uf_focus') }, { ns.MoverPoint('raid') }, { ns.MoverPoint('uf_boss1') } }");
+  const home = spots();
+  expect(addon.eval('return __click("Like the game\'s") and ForeverUI_Setup.pages[1].hint:GetText()'), "picking it says what it does").toMatch(/top left as the game has them/);
+  setupClick(addon, "next");
+  expect(spots(), "player at the top left, focus beside the target of target, party and raid down the left, bosses on the right").toEqual([["TOPLEFT", "TOPLEFT", 20, -40], ["TOPLEFT", "TOPLEFT", 480, -94], ["BOTTOMLEFT", "BOTTOMLEFT", 20, 330], ["TOPRIGHT", "TOPRIGHT", -290, -200]]);
+  expect(addon.eval("return ForeverUIDB.profiles.Default.positions.maintanks"), "frames not built yet get their spot saved for later").toEqual({ point: "TOP", relPoint: "TOP", x: 60, y: -196 });
+  setupClick(addon, "next");
+  setupClick(addon, "next");
+  addon.slash("setup");
+  addon.eval('__click("Centered: healing")');
+  setupClick(addon, "next");
+  expect(spots().slice(0, 2).concat([spots()[3]]), "Healing puts the frames back first").toEqual([home[0], home[1], home[3]]);
+  expect([addon.eval("return ForeverUIDB.profiles.Default.positions.uf_player == nil"), spots()[2]], "and then places only the raid").toEqual([true, ["BOTTOM", "BOTTOM", 0, 342]]);
 });
 
 // Where a point name sits across and up a rect (0 = left or bottom, 1 = right or top).
@@ -4033,12 +4051,12 @@ function layoutProblems(rects, sw, sh) {
   return bad;
 }
 
-it("Centered layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", () => {
+it("setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", () => {
   const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
   expect(addon.eval("return ChatFrame1.__points.BOTTOMLEFT ~= nil"), "chat sits in its layout spot").toBe(true);
   addon.eval("ForeverUI_InfoStrip:SetHeight(68)"); // the info strip at its tallest, with the leveling and DPS rows
   expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
-  for (const layout of ["damage", "healing"]) {
+  for (const layout of ["damage", "healing", "classic"]) {
     addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
     for (const grow of ["columns", "rows"]) {
       addon.eval(`ns.GetModule("RaidFrames").settings.layout = "${grow}"`);
