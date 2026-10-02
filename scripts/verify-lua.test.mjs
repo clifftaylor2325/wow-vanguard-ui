@@ -795,6 +795,211 @@ it("the info strip: ammo, and clients that can't answer", () => {
   expect(["durability", "bags", "system", "gold", "clock"].map((k) => block(bare, k).shown), "no answer, no block").toEqual([false, false, false, false, false]);
 });
 
+// TEST-ONLY trainer: two services you can learn (5s and 20s), one you can't yet, one learned; 22s on hand.
+const TRAINER_ENV = `
+  __services = { { "TEST-ONLY Bolt", "available", 500 }, { "TEST-ONLY Ward", "unavailable", 100 }, { "TEST-ONLY Blast", "available", 2000 }, { "TEST-ONLY Old", "used", 0 } }
+  __money, __learned = 2200, {}
+  GetMoney = function() return __money end
+  GetNumTrainerServices = function() return #__services end
+  GetTrainerServiceInfo = function(i) local s = __services[i] return s[1], "", s[2], false end
+  GetTrainerServiceCost = function(i) return __services[i][3] end
+  BuyTrainerService = function(i) __learned[#__learned + 1] = __services[i][1] __money = __money - __services[i][3] __services[i][2] = "used" end
+  C_Timer = { After = function(_, fn) fn() end }
+  function __loadTrainer(withTrain)
+    ClassTrainerFrame = CreateFrame("Frame", "ClassTrainerFrame", UIParent)
+    if withTrain then ClassTrainerTrainButton = CreateFrame("Button", "ClassTrainerTrainButton", ClassTrainerFrame) end
+  end
+`;
+
+// The Train all button: its label, whether it's enabled, and where it sits.
+const trainButton = (addon) => addon.eval(`local b = ns.GetModule("Errands").trainButton
+  if not b then return false end
+  local p = b.__points.RIGHT or b.__points.BOTTOMLEFT
+  return { text = b.text:GetText(), enabled = b:IsEnabled(), shown = b:IsShown(), by = p.rel:GetName() }`);
+
+it("Train all at a trainer: learns what you can afford, one at a time", () => {
+  const addon = loggedIn(TRAINER_ENV);
+  expect(trainButton(addon), "no trainer window yet, no button").toBe(false);
+  addon.eval("__loadTrainer(true)");
+  addon.fire("ADDON_LOADED", "Blizzard_TrainerUI");
+  addon.fire("TRAINER_SHOW");
+  expect(trainButton(addon), "on the trainer's window, beside its own Train button, with the count and cost").toEqual({ text: "Train all (2) · 25s 0c", enabled: true, shown: true, by: "ClassTrainerTrainButton" });
+  addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(addon.eval("return __learned"), "learns what 22s pays for, then stops").toEqual(["TEST-ONLY Bolt"]);
+  expect(chatHas(addon, /Trained 1 skill\(s\) for 5s 0c\./), "and says what it cost").toBe(true);
+  expect(trainButton(addon).enabled, "the one left costs more than you have").toBe(false);
+  addon.eval("__money = 5000");
+  addon.fire("TRAINER_UPDATE");
+  setCombat(addon, true);
+  addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(addon.eval("return #__learned"), "nothing in combat").toBe(1);
+  setCombat(addon, false);
+  addon.fire("TRAINER_CLOSED");
+  addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(addon.eval("return #__learned"), "nor once the trainer closed").toBe(1);
+  addon.fire("TRAINER_SHOW");
+  addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect([addon.eval("return __learned"), trainButton(addon).text], "then the rest").toEqual([["TEST-ONLY Bolt", "TEST-ONLY Blast"], "Train all"]);
+  const loaded = loggedIn(TRAINER_ENV + "__loadTrainer(false)", { savedVariables: "ForeverUIDB.profiles = { Default = { Errands = { trainAll = false } } }" });
+  loaded.fire("TRAINER_SHOW");
+  expect(trainButton(loaded), "a window already loaded gets it too; switched off it hides").toMatchObject({ shown: false, by: "ClassTrainerFrame" });
+});
+
+// TEST-ONLY merchant stock: 90011 sells singly (5c, stacks of 20), 90012 in fives (40c for 5), 90013 is sold out.
+const STOCK_ENV = `
+  __goods = { { id = 90011, price = 5, stack = 1, left = -1, max = 20 }, { id = 90012, price = 40, stack = 5, left = -1, max = 10 }, { id = 90013, price = 1, stack = 1, left = 0, max = 20 } }
+  __have, __buys, __money = { [90011] = 5 }, {}, 100000
+  GetMoney = function() return __money end
+  GetMerchantNumItems = function() return #__goods end
+  GetMerchantItemLink = function(i) return "|cffffffff|Hitem:" .. __goods[i].id .. "::|h[TEST-ONLY Good]|h|r" end
+  GetMerchantItemMaxStack = function(i) return __goods[i].max end
+  C_MerchantFrame = { GetItemInfo = function(i) local g = __goods[i] return { price = g.price, stackCount = g.stack, numAvailable = g.left } end }
+  BuyMerchantItem = function(i, n) local g = __goods[i] __buys[#__buys + 1] = { g.id, n } __have[g.id] = (__have[g.id] or 0) + n __money = __money - math.ceil(g.price / g.stack * n) end
+  C_Item = { GetItemCount = function(id) return __have[id] or 0 end, GetItemInfo = function(id) if id == 90011 then return "TEST-ONLY Bread" end end }
+  C_Timer = { After = function(_, fn) fn() end }
+`;
+
+it("keep stocked: /fui stock sets the list, a merchant tops you up", () => {
+  const addon = loggedIn(STOCK_ENV);
+  addon.slash("stock");
+  expect(chatHas(addon, /stock list is empty/), "an empty list says how to add").toBe(true);
+  addon.slash("stock |cffffffff|Hitem:90011::|h[TEST-ONLY Bread]|h|r 45");
+  addon.slash("stock item:90012 12");
+  addon.slash("stock 90013 3");
+  addon.slash("stock 90014");
+  expect(chatHas(addon, /Keeping 45 × TEST-ONLY Bread\./) && chatHas(addon, /Usage: \/fui stock/), "a shift-clicked item and an amount; no amount, the usage").toBe(true);
+  addon.slash("stock");
+  expect(chatHas(addon, /Keep 12 × item 90012/), "the list, by name where the game knows it").toBe(true);
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __buys"), "40 more bread in stacks of 20, 12 of the fives, nothing sold out").toEqual([[90011, 20], [90011, 20], [90012, 10], [90012, 2]]);
+  expect(chatHas(addon, /Bought 40 × TEST-ONLY Bread for 2s 0c\./) && chatHas(addon, /Bought 12 × item 90012 for 0s 96c\./), "and says what it bought").toBe(true);
+  addon.eval("__buys = {}");
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return #__buys"), "nothing when you have enough").toBe(0);
+  addon.eval("__have = {} __buys = {} __money = 150");
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __buys"), "it stops when you can't pay for the next stack").toEqual([[90011, 20]]);
+  addon.fire("MERCHANT_CLOSED");
+  addon.slash("stock item:90011 0");
+  addon.slash("stock clear");
+  expect(chatHas(addon, /TEST-ONLY Bread is off your stock list/) && addon.eval("return next(ForeverUIDB.profiles.Default.Errands.stockList)") === null, "0 removes an item, clear empties the list").toBe(true);
+  const old = loggedIn(STOCK_ENV + "C_Timer = nil C_MerchantFrame = nil GetMerchantItemInfo = function(i) local g = __goods[i] return 'x', '', g.price, g.stack, g.left end", { savedVariables: "ForeverUIDB.profiles = { Default = { Errands = { stockList = { [90012] = 5 } } } }" });
+  old.fire("MERCHANT_SHOW");
+  expect(old.eval("return __buys"), "a client with the old merchant call (and no timers)").toEqual([[90012, 5]]);
+  const off = loggedIn(STOCK_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Errands = { stock = false, stockList = { [90012] = 5 } } } }" });
+  off.fire("MERCHANT_SHOW");
+  expect(off.eval("return #__buys"), "switched off it buys nothing").toBe(0);
+});
+
+// TEST-ONLY flight points: you stand at node 1, node 2 is a destination.
+const TAXI_ENV = `
+  __onTaxi = false
+  hooksecurefunc = function(name, fn) local orig = _G[name] _G[name] = function(...) orig(...) fn(...) end end
+  NumTaxiNodes = function() return 2 end
+  TaxiNodeGetType = function(i) return i == 1 and "CURRENT" or "REACHABLE" end
+  TaxiNodeName = function(i) return i == 1 and "TEST-ONLY Landing" or "TEST-ONLY Outpost" end
+  TakeTaxiNode = function() end
+  UnitOnTaxi = function() return __onTaxi end
+`;
+
+// The flight bar: shown, its text, value and max.
+const flightBar = (addon) => addon.eval("local b = ForeverUI_FlightTimer return { shown = b:IsShown(), text = b.text:GetText(), value = b:GetValue(), max = select(2, b:GetMinMaxValues()) }");
+
+it("flight timer: the first flight is timed, the next counts down", () => {
+  const addon = loggedIn(UNITS_ENV + TAXI_ENV);
+  expect(flightBar(addon).shown, "no bar until a flight").toBe(false);
+  addon.eval("TakeTaxiNode(2) __onTaxi = true __wfgStub.advance(1)");
+  expect(flightBar(addon), "a route never flown: timing it").toMatchObject({ shown: true, text: "Timing this flight to TEST-ONLY Outpost" });
+  addon.eval("__wfgStub.advance(90) __onTaxi = false __wfgStub.advance(1)");
+  expect([flightBar(addon).shown, addon.eval('return ForeverUIDB.profiles.Default.Errands.flights["TEST-ONLY Landing > TEST-ONLY Outpost"]')], "landing saves the time and hides the bar").toEqual([false, 91]);
+  addon.eval("TakeTaxiNode(2) __onTaxi = true __wfgStub.advance(1)");
+  addon.eval("__wfgStub.advance(30)");
+  expect(flightBar(addon), "the same route again counts down").toMatchObject({ shown: true, text: "TEST-ONLY Outpost  1:01", max: 91 });
+  addon.eval("__onTaxi = false __wfgStub.advance(1)");
+  addon.eval("TakeTaxiNode(2) __wfgStub.advance(12)");
+  expect(addon.eval('return ns.GetModule("Errands").flight'), "a flight that never takes off is forgotten").toBe(null);
+  addon.eval('TaxiNodeGetType = function() return { __secret = true } end TakeTaxiNode(2)');
+  expect(addon.eval('return ns.GetModule("Errands").flight'), "no route when the start is hidden").toBe(null);
+  expect(addon.eval("return { ns.MoverPoint('flighttimer') }"), "the bar is movable, above the cluster").toEqual(["BOTTOM", "BOTTOM", 0, 312]);
+  const bare = loggedIn("");
+  expect(bare.eval("return ForeverUI_FlightTimer == nil and ns.GetModule('Errands').settings ~= nil"), "a client without taxi calls loads cleanly").toBe(true);
+});
+
+// TEST-ONLY game menu that builds its buttons each time it opens, as the game's does.
+const GAME_MENU_ENV = `
+  hooksecurefunc = function(t, name, fn) local orig = t[name] t[name] = function(...) orig(...) fn(...) end end
+  GameMenuFrame = CreateFrame("Frame", "GameMenuFrame", UIParent) GameMenuFrame:Hide()
+  function GameMenuFrame:InitButtons() self.buttons = { { "Options" }, "section", { "Log Out" } } end
+  function GameMenuFrame:AddSection() self.buttons[#self.buttons + 1] = "section" end
+  function GameMenuFrame:AddButton(text, fn) self.buttons[#self.buttons + 1] = { text, fn } end
+  GameMenuFrame:SetScript("OnShow", function(self) self:InitButtons() end)
+`;
+
+it("a ForeverUI button on the game menu opens the options", () => {
+  const addon = loggedIn(GAME_MENU_ENV);
+  addon.eval("GameMenuFrame:Show()");
+  expect(addon.eval("local b = GameMenuFrame.buttons return { #b, b[#b - 1], b[#b][1] }"), "at the end of the menu, in its own section").toEqual([5, "section", "ForeverUI"]);
+  addon.eval("GameMenuFrame:Hide() GameMenuFrame:Show()");
+  expect(addon.eval("return #GameMenuFrame.buttons"), "once each time the menu is built").toBe(5);
+  addon.eval("local b = GameMenuFrame.buttons b[#b][2]()");
+  expect(addon.eval("return { GameMenuFrame:IsShown(), ForeverUI_Options and ForeverUI_Options:IsShown() or ns.Options.current ~= nil }"), "clicking it closes the menu and opens the options").toEqual([false, true]);
+  const old = loggedIn("GameMenuFrame = CreateFrame('Frame', 'GameMenuFrame', UIParent)");
+  expect(old.eval("local b = ns.gameMenuButton return { b.text:GetText(), b.__points.TOP.rel == GameMenuFrame }"), "an older menu gets a themed button just under it").toEqual(["ForeverUI", true]);
+  old.eval("HideUIPanel = function(f) f:Hide() end ns.gameMenuButton.__scripts.OnClick()");
+  expect(old.eval("return GameMenuFrame:IsShown()"), "which closes the menu too").toBe(false);
+  expect(loggedIn("").eval("return ns.gameMenuButton == nil"), "no game menu, nothing added").toBe(true);
+});
+
+// TEST-ONLY leveling numbers: level 10 of 60, 1000 of 5000 XP into the level.
+const LEVEL_ENV = `
+  __xp, __xpmax, __rested, __level = 1000, 5000, 2500, 10
+  UnitXP = function() return __xp end
+  UnitXPMax = function() return __xpmax end
+  GetXPExhaustion = function() return __rested end
+  UnitLevel = function() return __level end
+  GetMaxPlayerLevel = function() return 60 end
+`;
+
+// Moves the test clock without running a frame (a long stretch of play).
+const later = (addon, seconds) => addon.eval(`__wfgStub.now = __wfgStub.now + ${seconds}`);
+
+it("the info strip: XP and gold per hour, and time to level", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
+  // Whether each leveling block shows.
+  const rates = () => ["xprate", "leveltime", "goldrate"].map((k) => block(addon, k).shown);
+  // The strip's height (two rows, or three with the leveling row).
+  const height = () => addon.eval("return ForeverUI_InfoStrip:GetHeight()");
+  expect([rates(), height()], "nothing to say yet: two rows").toEqual([[false, false, false], 36]);
+  addon.eval("__xp = 1900");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  later(addon, 10);
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  expect(rates(), "the first minute's numbers jump about, so they wait").toEqual([false, false, false]);
+  later(addon, 1790);
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  expect([block(addon, "xprate").text, block(addon, "leveltime").text, height()], "900 XP in half an hour; the strip grows a row").toEqual(["1.8K xp/h", "lvl 1h 44m", 52]);
+  addon.eval("__xp, __xpmax, __rested = 200, 6000, nil");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  expect([block(addon, "xprate").text, block(addon, "leveltime").text], "a level-up counts the old level's rest too").toEqual(["8.4K xp/h", "lvl 42m"]);
+  addon.eval("__money = 128407");
+  addon.fire("PLAYER_MONEY");
+  const gold = block(addon, "goldrate");
+  expect(gold.text === "+1g 0s/h" && isTok(addon, gold.color, "gold"), "gold earned per hour").toBe(true);
+  addon.eval("__money = 123207 __wfgStub.advance(5)");
+  const spent = block(addon, "goldrate");
+  expect(/^-3s 9\dc\/h$/.test(spent.text) && isTok(addon, spent.color, "bad"), "the timer repaints the rates; spending shows red").toBe(true);
+  addon.eval("__level = 60");
+  addon.fire("PLAYER_LEVEL_UP");
+  expect(rates(), "no XP numbers at the level cap").toEqual([false, false, true]);
+  addon.eval("__money = 123407");
+  addon.fire("PLAYER_MONEY");
+  expect([rates(), height()], "no change in gold, no gold rate; back to two rows").toEqual([[false, false, false], 36]);
+  addon.eval('__level = 20 __xp = { __secret = true }');
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  expect(rates(), "hidden XP: the rate so far stays, the time to level hides").toEqual([true, false, false]);
+  expect(addon.eval('local IS = ns.GetModule("InfoStrip") return { IS.ShortMoney(5), IS.ShortMoney(507), IS.Duration(30) }'), "short money and times").toEqual(["5c", "5s 7c", "1m"]);
+});
+
 // TEST-ONLY merchant: repairs for 50s; bag 0 holds a gray item, a gray with no value, and a white.
 const MERCHANT_ENV = `
   __repairs, __used = {}, {}
@@ -1609,7 +1814,7 @@ const TOOLTIP_ENV = `
   __hooks, __post = {}, {}
   hooksecurefunc = function(name, fn) __hooks[name] = fn end
   GameTooltip_SetDefaultAnchor = function() end
-  Enum = { TooltipDataType = { Unit = 2 } }
+  Enum = { TooltipDataType = { Item = 0, Unit = 2 } }
   TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) __post[kind] = fn end }
   local tt = CreateFrame("Frame", "GameTooltip", UIParent)
   tt.NineSlice = CreateFrame("Frame", nil, tt)
@@ -1655,6 +1860,33 @@ it("tooltips", () => {
   addon.eval("ForeverUIDB.profiles.Default.Tooltips.hideInCombat = true; __wfgStub.inCombat = true; __showUnit('target')");
   expect(tooltip(addon).shown === false, "unit tooltips can hide in combat").toBeTruthy();
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.tooltip") === true, "the tooltip corner is movable").toBeTruthy();
+});
+
+// TEST-ONLY items for the sell price: 90001 sells for 25c, 90002 has no value, 90003 isn't cached yet.
+const ITEM_TIP_ENV = `
+  __prices = { ["item:90001"] = 25, ["item:90002"] = 0 }
+  C_Item = { GetItemInfo = function(link) local p = __prices[link] if p then return "TEST-ONLY Item", link, 1, 1, 1, "", "", 20, "", "", p end end }
+  local tt = GameTooltip
+  tt.GetItem = function(self) return "TEST-ONLY Item", self.__link end
+  tt.GetOwner = function(self) return self.__owner end
+  tt.AddDoubleLine = function(self, left, right, lr, lg, lb, rr, rg, rb) self.__lines[#self.__lines + 1] = { text = left .. " " .. right, left = { lr, lg, lb }, right = { rr, rg, rb } } end
+  function __showItem(link, count, money)
+    tt.__link, tt.__owner, tt.shownMoneyFrames, tt.__lines = link, { count = count }, money, {}
+    if __post[0] then __post[0](tt) else tt.__scripts.OnTooltipSetItem(tt) end
+    return tt.__lines
+  end
+`;
+
+it("item tooltips show what the stack sells for, unless the client already does", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV);
+  const line = addon.eval('return __showItem("item:90001", 20)[1]');
+  expect(line.text === "Sells for 5s 0c" && isTok(addon, line.left, "text2") && isTok(addon, line.right, "gold"), "a stack of 20 at 25c each, the price in gold").toBe(true);
+  expect(addon.eval('return __showItem("item:90001", nil)[1].text'), "a single item").toBe("Sells for 0s 25c");
+  expect(addon.eval('return { #__showItem("item:90002", 1), #__showItem("item:90003", 1), #__showItem({ __secret = true }, 1), #__showItem("item:90001", 1, 1) }'), "no value, not cached yet, hidden, or the client's own price: no line").toEqual([0, 0, 0, 0]);
+  addon.eval("ForeverUIDB.profiles.Default.Tooltips.sellPrice = false");
+  expect(addon.eval('return #__showItem("item:90001", 1)'), "the switch turns it off").toBe(0);
+  const old = loggedIn(UNITS_ENV + TOOLTIP_ENV.replace("TooltipDataProcessor =", "__noProcessor =") + "GameTooltip.HasScript = function() return true end" + ITEM_TIP_ENV);
+  expect(old.eval('return __showItem("item:90001", 2)[1].text'), "a client without the tooltip data API: the old script").toBe("Sells for 0s 50c");
 });
 
 // TEST-ONLY nameplates: nameplate1 is the hostile target (hidden health), nameplate2 a friend,
@@ -3014,9 +3246,10 @@ function layoutProblems(rects, sw, sh) {
 }
 
 it("Centered layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", () => {
-  const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV, { firstRun: true });
+  const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + "TakeTaxiNode = function() end", { firstRun: true });
   expect(addon.eval("return ChatFrame1.__points.BOTTOMLEFT ~= nil"), "chat sits in its layout spot").toBe(true);
-  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
+  addon.eval("ForeverUI_InfoStrip:SetHeight(52)"); // the info strip at its tallest, with the leveling row
+  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
   for (const layout of ["damage", "healing"]) {
     addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
     for (const [sw, sh] of [[1365, 768], [1920, 1080]]) {
@@ -3380,7 +3613,7 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "which is out of sight until the mouse is over it").toBe(0);
   addon.eval("function ForeverUI_MenuStrip:IsMouseOver() return true end __wfgStub.advance(0.3)");
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "and shows with the mouse over it").toBe(1);
-  expect(addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p.rel == ForeverUI_QuestTracker, ObjectiveTrackerFrame:GetHeight() }"), "the quest tracker sits under the info strip, no taller than its spot").toEqual([true, 280]);
+  expect(addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p.rel == ForeverUI_QuestTracker, ObjectiveTrackerFrame:GetHeight() }"), "the quest tracker sits under the info strip, no taller than its spot").toEqual([true, 264]);
 });
 
 it("the game's extras: each switch off leaves the game's frame alone, and missing frames are fine", () => {

@@ -1,0 +1,339 @@
+-- The errands of leveling, done for you:
+--   * Train all: a button on the trainer's window that learns everything you
+--     can afford, one at a time, and says what it cost;
+--   * keep stocked: a list of items and how many to carry (/fui stock); a
+--     merchant who sells them tops you up, a stack at a time, while you can pay;
+--   * flight timer: each flight's time is saved by route, and the next flight
+--     on that route shows a bar counting down to landing.
+-- Every client call is looked up when used, so a missing one just switches
+-- that errand off. Buying and training stop in combat.
+
+local ADDON, ns = ...
+
+local T = ns.Theme
+
+local ER = ns.Module("Errands", {
+  defaults = { trainAll = true, stock = true, flightTimer = true, stockList = {}, flights = {} },
+})
+
+ER.TRAIN_STEPS, ER.TRAIN_EVERY, ER.BUY_EVERY = 30, 0.3, 0.2
+ER.FLIGHT_POLL, ER.FLIGHT_MAX, ER.TAKEOFF_WAIT = 0.5, 3600, 10
+ER.BAR_W, ER.BAR_H = 200, 14
+
+-- Helpers ------------------------------------------------------------------------------------
+
+-- Calls a client function by name; nil when this client doesn't have it.
+local function ask(name, ...)
+  local fn = _G[name]
+  if type(fn) ~= "function" then return nil end
+  return fn(...)
+end
+
+-- Runs fn after a short wait (at once on a client without timers).
+local function later(seconds, fn)
+  if type(C_Timer) == "table" and type(C_Timer.After) == "function" then return C_Timer.After(seconds, fn) end
+  fn()
+end
+
+-- Money as text, the info strip's way.
+local function money(copper)
+  return ns.GetModule("InfoStrip").Money(copper)
+end
+
+-- Your money in copper (0 when the client can't say).
+local function cash()
+  return ns.PlainNumber(ask("GetMoney")) or 0
+end
+
+-- Train all ----------------------------------------------------------------------------------
+
+-- The trainer's services you can learn now, as { index, cost }.
+function ER.Trainable()
+  local out = {}
+  for i = 1, ns.PlainNumber(ask("GetNumTrainerServices")) or 0 do
+    local _, _, kind = ask("GetTrainerServiceInfo", i)
+    if not ns.IsSecret(kind) and kind == "available" then
+      out[#out + 1] = { index = i, cost = ns.PlainNumber(ask("GetTrainerServiceCost", i)) or 0 }
+    end
+  end
+  return out
+end
+
+-- The first service you can afford, or nil.
+local function nextAffordable()
+  for _, s in ipairs(ER.Trainable()) do
+    if s.cost <= cash() then return s end
+  end
+end
+
+-- The button's label (how many, and their cost); it's off while nothing is affordable.
+function ER.UpdateTrainButton()
+  local b, list, total = ER.trainButton, ER.Trainable(), 0
+  if not b then return end
+  for _, s in ipairs(list) do total = total + s.cost end
+  b.text:SetText(#list > 0 and string.format("Train all (%d) · %s", #list, money(total)) or "Train all")
+  if ER.training == nil and nextAffordable() then b:Enable() else b:Disable() end
+  b:SetShown(ER.settings.trainAll)
+end
+
+-- Training ended: say what it cost, and refresh the button.
+function ER.FinishTraining()
+  local run = ER.training
+  ER.training = nil
+  if run.count > 0 then ns.Chat(string.format("Trained %d skill(s) for %s.", run.count, money(run.spent))) end
+  ER.UpdateTrainButton()
+end
+
+-- Learns one affordable service, then the next shortly after, until none is
+-- left (or the trainer closed, combat started, or the step cap is reached).
+function ER.TrainNext()
+  local run, s = ER.training, nextAffordable()
+  if not run then return end
+  if not s or not ER.trainerOpen or ns.InCombat() or run.steps >= ER.TRAIN_STEPS then return ER.FinishTraining() end
+  ask("BuyTrainerService", s.index)
+  run.steps, run.count, run.spent = run.steps + 1, run.count + 1, run.spent + s.cost
+  later(ER.TRAIN_EVERY, ER.TrainNext)
+end
+
+-- The Train all button was clicked: start learning (not in combat).
+local function startTraining()
+  if ER.training or ns.InCombat() then return end
+  ER.training = { steps = 0, count = 0, spent = 0 }
+  ER.TrainNext()
+end
+
+-- Adds the Train all button to the game's trainer window, once that window exists.
+function ER.AddTrainButton()
+  local frame = _G.ClassTrainerFrame
+  if ER.trainButton or type(frame) ~= "table" then return end
+  local b, train = ns.DialogButton(frame, "Train all", 170), _G.ClassTrainerTrainButton
+  if type(train) == "table" then b:SetPoint("RIGHT", train, "LEFT", -4, 0) else b:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 6) end
+  b:SetScript("OnClick", startTraining)
+  ER.trainButton = b
+  ER.UpdateTrainButton()
+end
+
+-- A trainer opened or closed: note it, and refresh the button.
+local function trainerOpen(open)
+  return function()
+    ER.trainerOpen = open
+    ER.AddTrainButton()
+    ER.UpdateTrainButton()
+  end
+end
+
+-- The trainer's window loads with its part of the game.
+local function onLoaded(_, addon)
+  if addon == "Blizzard_TrainerUI" then ER.AddTrainButton() end
+end
+
+-- Keep stocked: the list ---------------------------------------------------------------------
+
+-- The item ID in an item link or "item:123" or a bare number at the start, or nil.
+function ER.ItemID(text)
+  if type(text) ~= "string" then return nil end
+  return tonumber(text:match("item:(%d+)") or text:match("^%s*(%d+)"))
+end
+
+-- An item's name, when the client has it cached ("item 123" until then).
+local function itemName(id)
+  local info = C_Item and C_Item.GetItemInfo
+  local name = type(info) == "function" and info(id)
+  if type(name) == "string" then return name end
+  return "item " .. id
+end
+
+-- Prints the stock list.
+local function listStock()
+  local ids = {}
+  for id in pairs(ER.settings.stockList) do ids[#ids + 1] = id end
+  if #ids == 0 then return ns.Chat("Your stock list is empty. /fui stock <item> <amount> adds one.") end
+  table.sort(ids)
+  for _, id in ipairs(ids) do ns.Chat(string.format("Keep %d × %s", ER.settings.stockList[id], itemName(id))) end
+end
+
+-- Sets how many of an item to keep (0 takes it off the list).
+local function setStock(id, amount)
+  ER.settings.stockList[id] = amount > 0 and amount or nil
+  if amount > 0 then return ns.Chat(string.format("Keeping %d × %s.", amount, itemName(id))) end
+  ns.Chat(itemName(id) .. " is off your stock list.")
+end
+
+-- /fui stock [<item> <amount> | clear]: list, set or clear the stock list.
+function ER.StockCommand(rest)
+  rest = rest or ""
+  if rest == "" then return listStock() end
+  if rest == "clear" then ER.settings.stockList = {} return ns.Chat("Your stock list is empty.") end
+  local id, amount = ER.ItemID(rest), tonumber(rest:match("%s(%d+)%s*$"))
+  if not (id and amount) then return ns.Chat("Usage: /fui stock <shift-click an item> <amount>  (0 removes it)") end
+  setStock(id, amount)
+end
+
+-- Keep stocked: buying -----------------------------------------------------------------------
+
+-- A merchant item's price, how many that price buys, and how many are left (modern table, else the old call).
+local function merchantInfo(i)
+  local api = C_MerchantFrame and C_MerchantFrame.GetItemInfo
+  if type(api) == "function" then
+    local info = api(i)
+    if type(info) == "table" then return info.price, info.stackCount, info.numAvailable end
+  end
+  local _, _, price, stack, left = ask("GetMerchantItemInfo", i)
+  return price, stack, left
+end
+
+-- How many of merchant item i your list wants (0 for none), and its item ID.
+local function wanted(i)
+  local id = ER.ItemID(ask("GetMerchantItemLink", i))
+  local goal = id and ER.settings.stockList[id]
+  if not goal then return 0, id end
+  local count = C_Item and C_Item.GetItemCount
+  local have = type(count) == "function" and ns.PlainNumber(count(id)) or 0
+  return math.max(0, goal - have), id
+end
+
+-- What this merchant can sell toward your list: { index, id, need, unit price } per item.
+function ER.Orders()
+  local out = {}
+  for i = 1, ns.PlainNumber(ask("GetMerchantNumItems")) or 0 do
+    local need, id = wanted(i)
+    local price, stack, left = merchantInfo(i)
+    price, stack = ns.PlainNumber(price), math.max(ns.PlainNumber(stack) or 1, 1)
+    if need > 0 and price and ns.PlainNumber(left) ~= 0 then out[#out + 1] = { index = i, id = id, need = need, unit = price / stack } end
+  end
+  return out
+end
+
+-- Notes a purchase, and drops the order once it's filled.
+local function record(run, order, count, cost)
+  order.need = order.need - count
+  run.bought[order.id] = (run.bought[order.id] or 0) + count
+  run.spent[order.id] = (run.spent[order.id] or 0) + cost
+  if order.need <= 0 then table.remove(run.orders, 1) end
+end
+
+-- Buys the next chunk (a stack at most) of the first order if you can pay; false when done.
+local function buyChunk(run)
+  local order = run.orders[1]
+  if not order then return false end
+  local count = math.min(order.need, math.max(ns.PlainNumber(ask("GetMerchantItemMaxStack", order.index)) or 1, 1))
+  local cost = math.ceil(order.unit * count)
+  if cost > cash() then return false end
+  ask("BuyMerchantItem", order.index, count)
+  record(run, order, count, cost)
+  return true
+end
+
+-- Buys a chunk, then the next shortly after; says what it bought once done
+-- (or out of money, or the merchant closed, or combat started).
+function ER.StockNext()
+  local run = ER.stocking
+  if not run then return end
+  if ER.merchantOpen and not ns.InCombat() and buyChunk(run) then return later(ER.BUY_EVERY, ER.StockNext) end
+  ER.stocking = nil
+  for id, n in pairs(run.bought) do ns.Chat(string.format("Bought %d × %s for %s.", n, itemName(id), money(run.spent[id]))) end
+end
+
+-- A merchant opened: top up your stock list (not in combat).
+local function onMerchant()
+  ER.merchantOpen = true
+  if not ER.settings.stock or ER.stocking or ns.InCombat() or next(ER.settings.stockList) == nil then return end
+  ER.stocking = { orders = ER.Orders(), bought = {}, spent = {} }
+  ER.StockNext()
+end
+
+-- Flight timer -------------------------------------------------------------------------------
+
+-- The name of the flight point you're standing at, or nil.
+local function currentNode()
+  for i = 1, ns.PlainNumber(ask("NumTaxiNodes")) or 0 do
+    local kind = ask("TaxiNodeGetType", i)
+    if not ns.IsSecret(kind) and kind == "CURRENT" then return ask("TaxiNodeName", i) end
+  end
+end
+
+-- You picked a destination: note the route, and wait for takeoff.
+function ER.OnTakeTaxi(index)
+  local from, to = currentNode(), ask("TaxiNodeName", index)
+  if type(from) ~= "string" or type(to) ~= "string" then return end
+  local key = from .. " > " .. to
+  ER.flight = { key = key, to = to, picked = ask("GetTime") or 0, known = ER.settings.flights[key] }
+end
+
+-- Seconds as "1:05".
+local function clock(seconds)
+  seconds = math.max(0, math.ceil(seconds))
+  return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
+end
+
+-- The bar for a flight in the air: a countdown on a route flown before, else "timing".
+function ER.PaintFlight(f)
+  local bar, left = ER.bar, (f.known or 0) - ((ask("GetTime") or 0) - f.start)
+  bar:Show()
+  bar:SetMinMaxValues(0, f.known or 1)
+  bar:SetValue(f.known and math.max(0, left) or 1)
+  bar.text:SetText(f.known and (f.to .. "  " .. clock(left)) or ("Timing this flight to " .. f.to))
+end
+
+-- Landed: save the flight's time (a sane one) and put the bar away.
+local function land(f)
+  local took = (ask("GetTime") or 0) - f.start
+  if took > 0 and took <= ER.FLIGHT_MAX then ER.settings.flights[f.key] = math.floor(took + 0.5) end
+  ER.flight = nil
+  ER.bar:Hide()
+end
+
+-- Follows a picked flight: takeoff starts the bar, landing saves the time; a
+-- flight that never took off is forgotten.
+function ER.PollFlight()
+  local f, flying, now = ER.flight, ask("UnitOnTaxi", "player") == true, ask("GetTime") or 0
+  if not f then return end
+  if f.start and not flying then return land(f) end
+  if flying then f.start = f.start or now return ER.PaintFlight(f) end
+  if now - f.picked > ER.TAKEOFF_WAIT then ER.flight = nil end
+end
+
+-- The movable flight bar, above the cluster, hidden until a flight.
+local function buildBar()
+  local bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", "ForeverUI_FlightTimer", UIParent)), "accent")
+  T.HudPanel(bar)
+  bar:SetSize(ER.BAR_W, ER.BAR_H)
+  ns.Mover(bar, "flighttimer", "Flight timer", { "BOTTOM", "BOTTOM", 0, 312 })
+  bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "barSmall")
+  bar.text:SetPoint("CENTER")
+  bar:Hide()
+  ER.bar = bar
+end
+
+-- Checks the taxi state twice a second.
+local function pollFlights()
+  local elapsed = 0
+  ER.poller = CreateFrame("Frame")
+  ER.poller:SetScript("OnUpdate", function(_, dt)
+    elapsed = elapsed + dt
+    if elapsed < ER.FLIGHT_POLL then return end
+    elapsed = 0
+    ER.PollFlight()
+  end)
+end
+
+-- Times flights, where the client lets addons see you pick one.
+local function watchFlights()
+  if type(hooksecurefunc) ~= "function" or type(_G.TakeTaxiNode) ~= "function" then return end
+  hooksecurefunc("TakeTaxiNode", ER.OnTakeTaxi)
+  buildBar()
+  pollFlights()
+end
+
+-- Module entry point (Core/Modules.lua).
+function ER.Enable(settings)
+  ER.settings = settings
+  ER.AddTrainButton()
+  ns.On("ADDON_LOADED", onLoaded)
+  ns.On("TRAINER_SHOW", trainerOpen(true))
+  ns.On("TRAINER_CLOSED", trainerOpen(false))
+  ns.On("TRAINER_UPDATE", ER.UpdateTrainButton)
+  ns.On("MERCHANT_SHOW", onMerchant)
+  ns.On("MERCHANT_CLOSED", function() ER.merchantOpen = false end)
+  if settings.flightTimer then watchFlights() end
+end

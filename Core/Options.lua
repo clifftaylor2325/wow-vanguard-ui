@@ -182,11 +182,12 @@ O.MODULE_INFO = {
   ActionBars = { "Action bars", "Eight bars with their own size, layout and visibility." },
   SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, and the vehicle exit." },
   Minimap = { "Minimap", "A square minimap with the zone and coordinates." },
-  InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo and the time, under the minimap." },
+  InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo and the time, under the minimap, and your XP and gold per hour while you level." },
   MenuStrip = { "Menu and quest tracker", "The game's menu buttons (as ForeverUI icons) and bag buttons in a corner strip, and the quest tracker under the info strip." },
   Chat = { "Chat", "Themed chat windows and tabs." },
   Bags = { "Bags", "One combined bag, with a Sort button." },
   Merchant = { "Merchant helpers", "Repair, sell gray items, and a quieter error line." },
+  Errands = { "Errands", "Train all at a trainer, keep items stocked from merchants, and time your flights." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
   Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the ForeverUI look." },
   DataBars = { "XP and reputation", "Thin experience and reputation bars." },
@@ -398,6 +399,8 @@ local function stripRows()
     check("Durability", stripSetting("durability")), check("Free bag slots", stripSetting("bags")),
     check("Frame rate and latency", stripSetting("system")), check("Gold", stripSetting("gold")),
     check("Ammo (hunters, warriors, rogues)", stripSetting("ammo")), check("Clock", stripSetting("clock")),
+    check("XP per hour this session", stripSetting("xprate")), check("Time to the next level", stripSetting("leveltime")),
+    check("Gold per hour this session", stripSetting("goldrate")),
   }
 end
 
@@ -411,6 +414,16 @@ local function merchantRows()
   }
 end
 
+-- Errands: training, stocking up and flight times.
+local function errandRows()
+  return {
+    { "header", "Errands" },
+    check("Train all button at trainers", setting("Errands", "trainAll")),
+    check("Keep items stocked from merchants (/fui stock)", setting("Errands", "stock")),
+    check("Flight timer (reload)", setting("Errands", "flightTimer", true)),
+  }
+end
+
 -- Tooltips: where they sit and what they add.
 local function tooltipRows()
   return {
@@ -418,6 +431,7 @@ local function tooltipRows()
     { "cycle", "Tooltip position", { { "corner", "corner (movable)" }, { "cursor", "at the cursor" }, { "default", "client default" } }, setting("Tooltips", "anchor") },
     check("Border in the unit's class color", setting("Tooltips", "classBorder")),
     check("Show who the unit is targeting", setting("Tooltips", "targetLine")),
+    check("What an item sells for (when the game doesn't say)", setting("Tooltips", "sellPrice")),
     check("Hide unit tooltips in combat", setting("Tooltips", "hideInCombat")),
   }
 end
@@ -430,6 +444,7 @@ local function morePageRows()
   append(rows, windowRows())
   append(rows, gameToolRows())
   append(rows, merchantRows())
+  append(rows, errandRows())
   return append(rows, tooltipRows())
 end
 
