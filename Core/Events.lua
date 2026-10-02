@@ -17,28 +17,36 @@ function ns.Chat(msg)
 end
 
 -- Caught errors ------------------------------------------------------------------------------
--- A failure ForeverUI catches (a module that fails to load, an icon the
--- client refuses) must not stop the rest, but it shouldn't vanish either: the
--- last few are kept, newest last, for /fui errors.
+-- A failure ForeverUI catches (a module that fails to load, a handler that
+-- throws, an icon the client refuses) must not stop the rest, but it shouldn't
+-- vanish either. ns.Report keeps one entry per distinct error text, newest
+-- last: { text = "where: message", count = how often, stack = the call stack
+-- the first time }; the oldest goes past MAX_ERRORS. The first time an error
+-- is seen it is printed to chat; every time, it goes to the game's own error
+-- handler (the Lua error popup, or an error addon) when the client has one.
 
 ns.errors = {}
 ns.MAX_ERRORS = 20
+local byText = {}  -- error text -> its entry in ns.errors
+local forwarding = false  -- while the game's handler has an error of ours
 
--- Keeps a caught error, saying where it happened; the oldest goes past MAX_ERRORS.
-function ns.CaughtError(where, err)
-  table.insert(ns.errors, where .. ": " .. tostring(err))
-  if #ns.errors > ns.MAX_ERRORS then table.remove(ns.errors, 1) end
+-- The call stack as text, from `level` frames up (1 = this function); "" when the client can't say.
+local function stack(level)
+  return type(debugstack) == "function" and tostring(debugstack(level) or "") or ""
 end
 
--- Keeps a failed call's error; passes pcall's results through.
-local function checked(where, ok, ...)
-  if not ok then ns.CaughtError(where, ...) end
-  return ok, ...
+-- An error value as text; a value the client hides from addons is named, never read.
+local function errorText(err)
+  if ns.IsSecret and ns.IsSecret(err) then return "(a hidden error message)" end
+  return tostring(err)
 end
 
--- pcall that keeps the error (see ns.CaughtError): returns what pcall returns.
-function ns.Try(where, fn, ...)
-  return checked(where, pcall(fn, ...))
+-- A new entry for an error text, at the end of ns.errors; the oldest is dropped past MAX_ERRORS.
+local function keep(text, stackText)
+  local e = { text = text, count = 0, stack = stackText }
+  byText[text], ns.errors[#ns.errors + 1] = e, e
+  if #ns.errors > ns.MAX_ERRORS then byText[table.remove(ns.errors, 1).text] = nil end
+  return e
 end
 
 -- Hands an error to the game's own handler (the Lua error popup, or an error
@@ -49,6 +57,63 @@ function ns.ForwardError(err)
   if type(CallErrorHandler) == "function" then return CallErrorHandler(err) end
   local handler = type(geterrorhandler) == "function" and geterrorhandler()
   if type(handler) == "function" then handler(err) end
+end
+
+-- Tells the game's handler, under pcall; not while it is already handling one
+-- of ours (an error addon that fails inside ours can't loop).
+local function forward(text)
+  if forwarding then return end
+  forwarding = true
+  pcall(ns.ForwardError, text)
+  forwarding = false
+end
+
+-- Keeps the error with the stack from `level` frames up (see stack), tells
+-- chat the first time, and the game's handler every time.
+local function report(where, err, level)
+  local text = where .. ": " .. errorText(err)
+  local e = byText[text]
+  if not e then
+    e = keep(text, stack(level))
+    ns.Chat(text .. "  (once per error; /fui errors has the stack)")
+  end
+  e.count = e.count + 1
+  forward(text)
+end
+
+-- Reports an error caught at `where` (a short name of the site), with the caller's stack.
+function ns.Report(where, err)
+  report(where, err, 4)
+end
+
+-- Forgets every caught error (/fui errors clear).
+function ns.ClearErrors()
+  ns.errors, byText = {}, {}
+end
+
+-- The `where` of the ns.Try under way (nil outside one), for its message handler.
+local current
+
+-- xpcall's message handler. It runs while the failing stack is still there,
+-- so the report (the stack, the game's handler) is made from here; once
+-- xpcall has returned the frames are gone. The error itself passes through.
+local function traced(err)
+  report(current, err, 4)
+  return err
+end
+
+-- Puts the outer ns.Try's site back; passes xpcall's results through.
+local function finished(outer, ...)
+  current = outer
+  return ...
+end
+
+-- Calls fn(...) with any error reported under `where` (see ns.Report) and
+-- returns what pcall would: true and fn's results, or false and the error.
+function ns.Try(where, fn, ...)
+  local outer = current
+  current = where
+  return finished(outer, xpcall(fn, traced, ...))
 end
 
 -- Events ------------------------------------------------------------------------------------
@@ -79,29 +144,29 @@ local function without(list, fn)
   return out
 end
 
--- xpcall's message handler. It runs while the failing stack is still there,
--- so the stack is read here (once xpcall has returned it is gone). The game's
--- handler gets the raw error, under pcall so a broken one can't lose ours.
-local function traced(err)
-  local stack = type(debugstack) == "function" and debugstack(2)
-  pcall(ns.ForwardError, err)
-  return tostring(err) .. (stack and ("\n" .. stack) or "")
+local labels = {}
+
+-- "event NAME", the report label for an event, built once per event name.
+local function label(event)
+  local text = labels[event]
+  if not text then
+    text = "event " .. event
+    labels[event] = text
+  end
+  return text
 end
 
--- Calls one handler. A failure is kept for /fui errors and does not stop the
--- others, so one broken module can't take the rest down at PLAYER_LOGIN.
-local function dispatch(fn, event, ...)
-  local ok, err = xpcall(fn, traced, event, ...)
-  if not ok then ns.CaughtError("event " .. event, err) end
-end
-
+-- Each handler runs under ns.Try: a failure is reported (/fui errors, the
+-- game's handler) and does not stop the others, so one broken module can't
+-- take the rest down at PLAYER_LOGIN.
 frame:SetScript("OnEvent", function(_, event, ...)
   local list = handlers[event]
   if not list then
     return
   end
+  local where = label(event)
   for _, fn in ipairs(list) do
-    dispatch(fn, event, ...)
+    ns.Try(where, fn, event, ...)
   end
 end)
 
@@ -117,7 +182,7 @@ end
 function ns.On(event, fn)
   local list = handlers[event]
   if not list then
-    if not known(event) then return ns.CaughtError("event " .. event, "not on this client") end
+    if not known(event) then return ns.Report(label(event), "not on this client") end
     frame:RegisterEvent(event)
   end
   handlers[event] = with(list or {}, fn)

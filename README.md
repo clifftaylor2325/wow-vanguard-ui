@@ -77,7 +77,7 @@ Download `ForeverUI-<version>.zip` from the [latest release](https://github.com/
 /fui spec [profile|off]          use a profile whenever you're in this specialization
 /fui binds                       this spec's click-casting and hover-key bindings
 /fui status
-/fui errors                      what ForeverUI caught going wrong this session, each with its stack (paste it in a bug report); an error in one module's event handler is kept here and doesn't stop the other modules
+/fui errors [clear]              what ForeverUI caught going wrong this session: the version, client and aura backend, then each distinct error once with how often it happened and its stack (paste it in a bug report; clear empties the list). An error is printed to chat the first time it happens and handed to the game's error popup or your error addon every time; an error in one module, skin, event handler or after-combat update is kept here and doesn't stop the others
 ```
 
 ## Skin API (for other addons)
