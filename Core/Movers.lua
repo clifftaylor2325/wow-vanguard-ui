@@ -90,8 +90,13 @@ end
 
 -- Pinning the game's frames ------------------------------------------------------------------
 
--- Runs a frame's pin out of combat, flagged so its own SetPoint calls aren't seen as the game's.
+-- Every frame ForeverUI pins (weak keys, so a frame that goes away doesn't stay).
+local pinned = setmetatable({}, { __mode = "k" })
+
+-- Runs a frame's pin out of combat, flagged so its own SetPoint calls aren't
+-- seen as the game's. Nothing happens while pins are paused (Edit Mode open).
 local function runPin(frame)
+  if ns.pinsPaused then return end
   ns.OutOfCombat(function()
     frame.fuiPinning = true
     frame.fuiPin(frame)
@@ -104,11 +109,29 @@ end
 -- (Edit Mode re-anchors some of its frames when it lays out).
 function ns.Pin(frame, apply)
   frame.fuiPin = apply
+  pinned[frame] = true
   runPin(frame)
   if frame.fuiPinned or type(hooksecurefunc) ~= "function" then return end
   frame.fuiPinned = true
   hooksecurefunc(frame, "SetPoint", function(self) if not self.fuiPinning then runPin(self) end end)
 end
+
+-- Pauses every pin (so the game's Edit Mode can move its frames freely), or
+-- ends the pause and puts every pinned frame back in its ForeverUI spot.
+function ns.PausePins(paused)
+  ns.pinsPaused = paused == true
+  if ns.pinsPaused then return end
+  for frame in pairs(pinned) do runPin(frame) end
+end
+
+-- Pins pause while the game's Edit Mode window is open and come back when it closes.
+local function watchEditMode()
+  local edit = _G.EditModeManagerFrame
+  if type(edit) ~= "table" or not edit.HookScript then return end
+  edit:HookScript("OnShow", function() ns.PausePins(true) end)
+  edit:HookScript("OnHide", function() ns.PausePins(false) end)
+end
+ns.On("PLAYER_LOGIN", watchEditMode)
 
 -- The frame a mover places (for layout checks), or nil.
 function ns.MoverFrame(key)

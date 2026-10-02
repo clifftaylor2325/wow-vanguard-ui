@@ -20,8 +20,13 @@ MS.WIDTH, MS.HEIGHT, MS.SCALE = 300, 36, 0.8
 MS.TRACKER_W, MS.TRACKER_H = 260, 280
 -- How often the strip checks for the mouse (seconds).
 MS.POLL = 0.15
--- The glyph's share of a menu button's shorter side.
-MS.GLYPH = 0.7
+-- The glyph's share of a menu button's shorter side, and the gap (UI units)
+-- inside each button's edge so neighbors don't run together.
+MS.GLYPH, MS.PAD = 0.7, 2
+-- The bag strip, left of the menu strip, and how small the bag buttons are drawn there.
+MS.BAG_W, MS.BAG_SCALE = 132, 0.6
+-- The game's bag buttons (backpack, bags, reagent bag), styled where the client has them.
+MS.BAGS = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot", "CharacterReagentBag0Slot" }
 
 -- The game's menu buttons -> ForeverUI's icon for each. A client without one skips it.
 MS.GLYPHS = {
@@ -40,15 +45,15 @@ local STATES = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "
 
 -- The menu strip ---------------------------------------------------------------------------
 
--- Pins one of the game's bars into the strip at one end, drawn smaller.
-local function pinInto(name, point, x)
+-- Pins one of the game's bars into a strip (at one end, or centered), drawn smaller.
+local function pinInto(name, strip, point, x, scale)
   local f = _G[name]
   if type(f) ~= "table" or not f.SetPoint then return end
   ns.Pin(f, function(bar)
-    bar:SetParent(MS.strip)
-    bar:SetScale(MS.SCALE)
+    bar:SetParent(strip)
+    bar:SetScale(scale)
     bar:ClearAllPoints()
-    bar:SetPoint(point, MS.strip, point, x, 0)
+    bar:SetPoint(point, strip, point, x, 0)
   end)
 end
 
@@ -87,16 +92,26 @@ local function paintGlyph(b)
   T.Tint(b.fuiGlyph, b:IsEnabled() and "text2" or "muted")
 end
 
--- The glyph centered on a button, and a faint wash under the mouse.
-local function addGlyph(b, icon)
-  local side = math.min(b:GetWidth(), b:GetHeight())
-  b.fuiGlyph = T.Snap(b:CreateTexture(nil, "OVERLAY"))
-  b.fuiGlyph:SetTexture(icon)
-  b.fuiGlyph:SetSize((side > 0 and side or 24) * MS.GLYPH, (side > 0 and side or 24) * MS.GLYPH)
-  b.fuiGlyph:SetPoint("CENTER")
+-- The button's face: a flat inset panel MS.PAD inside its edges (so neighbors
+-- keep a gap), with a faint wash while the mouse is over the button.
+local function addFace(b)
+  local face = T.HudPanel(CreateFrame("Frame", nil, b), { inset = true })
+  face:SetPoint("TOPLEFT", b, "TOPLEFT", MS.PAD, -MS.PAD)
+  face:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -MS.PAD, MS.PAD)
   local hover = T.Tint(T.Snap(b:CreateTexture(nil, "HIGHLIGHT")), "hover")
   hover:SetTexture(T.WHITE)
-  hover:SetAllPoints()
+  hover:SetAllPoints(face)
+  return face
+end
+
+-- The glyph centered on the button's face.
+local function addGlyph(b, icon)
+  local side = math.min(b:GetWidth(), b:GetHeight()) - 2 * MS.PAD
+  b.fuiFace = addFace(b)
+  b.fuiGlyph = T.Snap(b.fuiFace:CreateTexture(nil, "OVERLAY"))
+  b.fuiGlyph:SetTexture(icon)
+  b.fuiGlyph:SetSize((side > 0 and side or 24) * MS.GLYPH, (side > 0 and side or 24) * MS.GLYPH)
+  b.fuiGlyph:SetPoint("CENTER", b.fuiFace, "CENTER")
 end
 
 -- One of the game's menu buttons in the ForeverUI look: its art faded (alerts
@@ -105,7 +120,6 @@ function MS.SkinButton(b, icon)
   if b.fuiGlyph then return end
   T.FadeRegions(b, alerts(b))
   fadeStates(b)
-  T.HudPanel(b, { inset = true })
   addGlyph(b, icon)
   paintGlyph(b)
   b:HookScript("OnEnable", paintGlyph)
@@ -120,13 +134,52 @@ local function skinGlyphs()
   end
 end
 
--- The strip in the bottom-right corner with the micro menu and bag bar in it.
+-- Bag buttons ---------------------------------------------------------------------------------
+
+-- A bag button's icon texture, by key or by the game's global name.
+local function bagIcon(b)
+  local icon = b.icon or b.Icon or _G[(b:GetName() or "") .. "IconTexture"]
+  return type(icon) == "table" and icon.SetTexCoord and icon or nil
+end
+
+-- The bag's icon, shown, cropped and inset MS.PAD inside the button's border.
+local function insetIcon(b, icon)
+  icon:SetAlpha(1)
+  T.Crop(icon)
+  icon:ClearAllPoints()
+  icon:SetPoint("TOPLEFT", b, "TOPLEFT", MS.PAD, -MS.PAD)
+  icon:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -MS.PAD, MS.PAD)
+end
+
+-- One of the game's bag buttons in the ForeverUI look: its art faded, a thin
+-- border, the bag's icon cropped and inset inside it. Once per button.
+function MS.SkinBag(b)
+  local icon = bagIcon(b)
+  if b.fuiBag or not icon then return end
+  b.fuiBag = true
+  T.FadeRegions(b, alerts(b))
+  fadeStates(b)
+  T.HudPanel(b, { inset = true })
+  insetIcon(b, icon)
+end
+
+-- The bag strip, left of the menu strip and always shown, with the game's bag bar centered in it.
+local function buildBags(settings)
+  MS.bags = T.HudPanel(CreateFrame("Frame", "ForeverUI_BagStrip", UIParent), { inset = true })
+  MS.bags:SetSize(MS.BAG_W, MS.HEIGHT)
+  ns.Mover(MS.bags, "bagstrip", "Bags", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16 - MS.WIDTH - 6, 20 })
+  pinInto("BagsBar", MS.bags, "CENTER", 0, MS.BAG_SCALE)
+  if not settings.glyphs then return end
+  for _, name in ipairs(MS.BAGS) do if type(_G[name]) == "table" then MS.SkinBag(_G[name]) end end
+end
+
+-- The menu strip in the bottom-right corner with the game's micro menu in it.
 local function buildStrip(settings)
   MS.strip = T.HudPanel(CreateFrame("Frame", "ForeverUI_MenuStrip", UIParent), { inset = true })
   MS.strip:SetSize(MS.WIDTH, MS.HEIGHT)
-  ns.Mover(MS.strip, "menustrip", "Menu and bags", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 20 })
-  pinInto("MicroMenuContainer", "LEFT", 4)
-  pinInto("BagsBar", "RIGHT", -4)
+  ns.Mover(MS.strip, "menustrip", "Game menu", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 20 })
+  pinInto("MicroMenuContainer", MS.strip, "LEFT", 4, MS.SCALE)
+  buildBags(settings)
   if settings.glyphs then skinGlyphs() end
   if settings.menu == "mouseover" then watchMouse(MS.strip) MS.strip:SetAlpha(0) end
 end
