@@ -73,6 +73,7 @@ Modules/QuestLog.lua
 Modules/QuestLogView.lua
 Modules/Windows.lua
 Modules/GameTools.lua
+Modules/GameAlerts.lua
 Modules/DataBars.lua
 Modules/Tooltips.lua
 Modules/Nameplates.lua
