@@ -105,8 +105,8 @@ The callback runs once at login, or immediately if the addon registers after log
 
 ```bash
 npm install
-npm test          # JS and Lua harness tests under Vitest, once (vitest run, no watch), then a per-category Lua harness summary
-npm run verify    # npm test (real addon Lua under a strict TEST-ONLY WoW stub, and the JS tests), then the code-quality scan; CI runs this
+npm test          # JS and Lua harness tests under Vitest, once (vitest run, no watch), then a per-area Lua harness summary
+npm run verify    # npm test (real addon Lua in a TEST-ONLY headless WoW client, and the JS tests), then the code-quality scan; CI runs this
                   # (functions of 10 lines or fewer, all documented; colors only from Core/Theme.lua)
 npm run coverage  # line coverage of the addon Lua; fails below scripts/lua-coverage-floor.json
 npm run lint      # luacheck
@@ -124,6 +124,8 @@ npm run preview   # preview/*.png: the default layout and the options window (ne
 **Release:** bump `## Version` in `ForeverUI.toc` and merge, then run the `release` workflow from the Actions tab on `main` (it tags `v<version>`), or push a matching tag. It re-runs the checks and publishes a GitHub release with the zip.
 
 **Art and fonts:** every texture and icon under `Media/` is drawn by code in `scripts/lib/media-sources.mjs` (plain math, no image editor), and `npm run verify` fails if a committed file doesn't match its source. The fonts are made from upstream Fira Sans Condensed by `scripts/fonts/make-fonts.py` (see that file).
+
+**Testing the addon:** `scripts/tests/<area>.test.mjs` play the addon's real Lua in a headless client built for the tests (`scripts/lib/wow-*.lua`): Lua 5.1 semantics, frames with real layout on a 1920x1080 screen, a world model (units, auras, actions, quests, combat, timers) behind the game API, and mouse and keyboard input. A test sets up the world, acts as the player would, and asserts on what the addon drew. The guide is [scripts/tests/README.md](scripts/tests/README.md).
 
 **Code quality:** every function has a comment on the line above it and at most 10 lines of body code; `npm run verify` and CI enforce it.
 
