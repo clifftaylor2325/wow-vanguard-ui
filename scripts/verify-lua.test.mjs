@@ -3371,7 +3371,11 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
     "tracking, mail and the addon compartment sit on the map's corners").toEqual([[true, "BOTTOMLEFT"], [true, "TOPRIGHT"], [true, "BOTTOMRIGHT"]]);
   addon.eval('MinimapCluster.Tracking:ClearAllPoints() MinimapCluster.Tracking:SetPoint("CENTER", UIParent, "CENTER", 0, 0)');
   expect(pinned(addon, "MinimapCluster.Tracking", overlay), "when the game moves one back, it returns to its corner").toEqual([true, "BOTTOMLEFT"]);
-  expect([pinned(addon, "MicroMenuContainer", "ForeverUI_MenuStrip"), pinned(addon, "BagsBar", "ForeverUI_BagStrip")], "the micro menu and the bag bar each get their own strip").toEqual([[true, "LEFT"], [true, "CENTER"]]);
+  expect([pinned(addon, "MicroMenuContainer", "ForeverUI_MenuStrip"), pinned(addon, "BagsBar", "ForeverUI_BagStrip")], "the micro menu and the bag bar each get their own strip, centered in it").toEqual([[true, "CENTER"], [true, "CENTER"]]);
+  addon.eval("BagsBar:SetSize(300, 40) ns.PausePins(false)");
+  expect(addon.eval("return { ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }"), "a bag bar wider than the strip grows it, with a margin all round").toEqual([300 * 0.6 + 12, 40 * 0.6 + 12]);
+  addon.eval("BagsBar:SetSize(50, 20) ns.PausePins(false)");
+  expect(addon.eval("return { ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }"), "and never shrinks below its default").toEqual([132, 36]);
   expect(addon.eval("return { BagsBar:GetScale(), ForeverUI_BagStrip:GetAlpha(), ForeverUI_BagStrip.__points.BOTTOMRIGHT.x }"), "bags sit small, always shown, just left of the menu").toEqual([0.6, 1, -322]);
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "which is out of sight until the mouse is over it").toBe(0);
   addon.eval("function ForeverUI_MenuStrip:IsMouseOver() return true end __wfgStub.advance(0.3)");
@@ -3532,6 +3536,45 @@ it("game windows: quest and gossip text stays readable on the dark panel", () =>
   off.eval("QuestInfo_Display()");
   expect(off.eval("return QuestInfoDescriptionText.__textColor[1]"), "with game windows off, the game's colors stay").toBeCloseTo(0.2);
   expect(loggedIn("").eval("return ns.GetModule('Windows').LightGossip() == nil"), "a client without these windows is fine").toBe(true);
+});
+
+// TEST-ONLY quest tracker parts the game builds: headers with art, a title and a
+// collapse button, a list of sections, an Update the game calls, and its font objects.
+const TRACKER_ENV = `
+  function __header(parent)
+    local h = CreateFrame("Frame", nil, parent) h:SetSize(260, 26)
+    h.Background = h:CreateTexture() h.Glow = h:CreateTexture() h.Text = h:CreateFontString()
+    h.MinimizeButton = CreateFrame("Button", nil, h) h.MinimizeButton.normal = h.MinimizeButton:CreateTexture()
+    h.MinimizeButton.GetNormalTexture = function(self) return self.normal end
+    function h:SetCollapsed(collapsed) self.collapsed = collapsed end
+    return h
+  end
+  ObjectiveTrackerFrame.Header = __header(ObjectiveTrackerFrame)
+  ObjectiveTrackerFrame.modules = { { Header = __header(ObjectiveTrackerFrame) } }
+  function ObjectiveTrackerFrame:Update() end
+  ObjectiveTrackerLineFont = { SetFont = function(self, ...) self.font = { ... } end }
+  ObjectiveTrackerHeaderFont = { SetFont = function(self, ...) self.font = { ... } end }
+`;
+
+it("the quest tracker in the ForeverUI look: flat headers, brass lines, theme arrows and font", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV);
+  const head = addon.eval(`local h = ObjectiveTrackerFrame.Header
+    return { h.Background.__alpha, h.Glow.__alpha, h.MinimizeButton.normal.__alpha, h.Text.__font ~= nil, #ns.GetModule("MenuStrip").rules }`);
+  expect(head, "header art and the game's button fade; the title takes the theme font; each header gets a brass line").toEqual([0, 0, 0, true, 2]);
+  expect(isTok(addon, addon.eval("return ns.GetModule('MenuStrip').rules[1].__vertexColor"), "accent"), "the line is the accent").toBe(true);
+  // The container header's arrow texture.
+  const arrow = () => addon.eval("return ObjectiveTrackerFrame.Header.fuiArrow.__texture");
+  expect(/Icons\\Down$/.test(arrow()), "an open section shows the Down arrow").toBe(true);
+  addon.eval("ObjectiveTrackerFrame.Header:SetCollapsed(true)");
+  expect(/Icons\\Right$/.test(arrow()), "collapsed, it shows Right").toBe(true);
+  expect(addon.eval("return { ObjectiveTrackerLineFont.font[2], ObjectiveTrackerHeaderFont.font[2], ObjectiveTrackerHeaderFont.font[1]:find('SemiBold') ~= nil }"), "the tracker's fonts are the theme's (headers bold)").toEqual([12, 13, true]);
+  addon.eval("ns.Theme.SetAccent(0.1, 0.2, 0.3)");
+  expect(addon.eval("return ns.GetModule('MenuStrip').rules[2].__vertexColor[3]"), "the lines follow the accent").toBe(0.3);
+  addon.eval("ObjectiveTrackerFrame.modules[2] = { Header = __header(ObjectiveTrackerFrame) } ObjectiveTrackerFrame:Update()");
+  expect(addon.eval("return ObjectiveTrackerFrame.modules[2].Header.fuiHeader"), "a section the game adds later is styled on its next update").toBe(true);
+  const off = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { trackerLook = false } }" });
+  expect(off.eval("return { ObjectiveTrackerFrame.Header.fuiHeader == nil, ObjectiveTrackerLineFont.font == nil }"), "switched off, the tracker stays the game's").toEqual([true, true]);
+  expect(loggedIn(UI_ENV).eval("return ns.GetModule('MenuStrip').rules ~= nil"), "a client without the tracker loads cleanly").toBe(true);
 });
 
 // TEST-ONLY game windows: a framed window built like the game's ButtonFrameTemplate (art textures,

@@ -326,7 +326,7 @@ const SCENES = [
     before: `__units.player.class = "ROGUE" __units.player.power = 40 __units.player.maxpower = 100 __units.player.ptype = "ENERGY"
       UnitPowerType = function(unit) local x = __units[unit] if x and x.ptype == "ENERGY" then return 3, "ENERGY" end return 0, "MANA" end
       C_SwingTimer = {} Enum.PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 }` },
-  { name: "foreverui-menu", caption: "Bottom-right with the mouse over the menu: the game's menu buttons as ForeverUI line icons, the bag buttons in their own strip, the game's damage meter above them, and the Cooldown Manager row between the unit frames (TEST-ONLY buttons, meter and cooldowns)",
+  { name: "foreverui-menu", caption: "Bottom-right with the mouse over the menu: the game's menu buttons as ForeverUI line icons, the bag buttons in their own strip, the game's damage meter above them, and the Cooldown Manager row between the unit frames, and the quest tracker's flat headers (TEST-ONLY buttons, meter, cooldowns and quests)",
     lua: "function ForeverUI_MenuStrip:IsMouseOver() return true end ForeverUI_MenuStrip:SetAlpha(1)",
     before: `MicroMenuContainer = CreateFrame("Frame", "MicroMenuContainer", UIParent) MicroMenuContainer:SetSize(198, 28)
       for i, name in ipairs({ "Character", "PlayerSpells", "Talent", "Achievement", "QuestLog", "Guild", "LFD", "Collections", "MainMenu" }) do
@@ -353,7 +353,19 @@ const SCENES = [
       local v = CreateFrame("Frame", "EssentialCooldownViewer", UIParent) v:SetSize(236, 32) v.items = {}
       for i = 1, 7 do local it = CreateFrame("Frame", nil, v) it:SetSize(32, 32) it:SetPoint("LEFT", v, "LEFT", (i - 1) * 34, 0)
         it.Icon = it:CreateTexture() it.Icon:SetAllPoints() it.Icon:SetColorTexture(0.2 + i * 0.08, 0.25, 0.5 - i * 0.04, 1) v.items[i] = it end
-      function v:GetItemFrames() return self.items end` },
+      function v:GetItemFrames() return self.items end
+      ObjectiveTrackerFrame = CreateFrame("Frame", "ObjectiveTrackerFrame", UIParent) ObjectiveTrackerFrame:SetSize(260, 280)
+      local function header(y, text)
+        local h = CreateFrame("Frame", nil, ObjectiveTrackerFrame) h:SetSize(260, 24) h:SetPoint("TOPLEFT", 0, y)
+        h.Background = h:CreateTexture() h.Background:SetAllPoints() h.Background:SetColorTexture(0.45, 0.32, 0.12, 1)
+        h.Text = h:CreateFontString(nil, "OVERLAY") h.Text:SetPoint("LEFT", 8, 0) h.Text:SetText(text) h.Text:SetTextColor(1, 0.82, 0)
+        h.MinimizeButton = CreateFrame("Button", nil, h) h.MinimizeButton:SetSize(16, 16) h.MinimizeButton:SetPoint("RIGHT", -6, 0)
+        return h
+      end
+      ObjectiveTrackerFrame.Header = header(0, "All Objectives")
+      ObjectiveTrackerFrame.modules = { { Header = header(-30, "Quests") } }
+      for i, line in ipairs({ { "[14] TEST-ONLY Patrolling", 1, 0.82, 0 }, { "  - Ready for turn-in", 0.8, 0.8, 0.8 }, { "[12] TEST-ONLY Militia", 0.25, 0.75, 0.25 }, { "  - 3/15 TEST-ONLY slain", 0.8, 0.8, 0.8 } }) do
+        local fs = ObjectiveTrackerFrame:CreateFontString(nil, "OVERLAY") fs:SetPoint("TOPLEFT", 10, -60 - (i - 1) * 16) fs:SetText(line[1]) fs:SetTextColor(line[2], line[3], line[4]) end` },
   { name: "foreverui-window", caption: "A game window in the ForeverUI look: the game's art faded, a flat panel with a soft shadow, the theme's close button, title and buttons (TEST-ONLY merchant window)",
     lua: "MerchantFrame:Show()",
     before: `local f = CreateFrame("Frame", "MerchantFrame", UIParent) f:SetSize(340, 420) f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 40, -120)
