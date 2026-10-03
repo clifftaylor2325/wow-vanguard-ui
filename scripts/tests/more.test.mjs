@@ -312,6 +312,26 @@ it("quest dialog: a long greeting or quest text scrolls, a short one does not", 
   expect(bodyScroll(addon), "a quest's text and its objectives (24 + 14 px lines) count too, and no numbered lines").toEqual([278, 146, 0]);
 });
 
+it("quest dialog: hiding the whole UI keeps the conversation open; closing it ends it", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("GOSSIP_SHOW");
+  // Alt-Z hides UIParent; the client then runs OnHide on the dialog, which is still marked shown.
+  addon.eval("UIParent:Hide() local f = ForeverUI_QuestDialog f.__scripts.OnHide(f)");
+  expect([calls(addon), addon.eval("return { ForeverUI_QuestDialog:IsShown(), ForeverUI_QuestDialog:IsVisible() }")], "the UI is hidden, the dialog is waiting and the talk has not ended").toEqual([[], [true, false]]);
+  addon.eval("UIParent:Show()");
+  expect([addon.eval("return ForeverUI_QuestDialog:IsVisible()"), dialog(addon).lines.length], "the UI comes back, and so does the dialog, as it was").toEqual([true, 3]);
+  addon.eval("UIParent:Hide()");
+  addon.fire("GOSSIP_CLOSED");
+  addon.eval("UIParent:Show()");
+  expect([calls(addon), addon.eval("return ForeverUI_QuestDialog:IsShown()")], "the game ending the talk meanwhile hides it for good, without closing again").toEqual([[], false]);
+  addon.fire("GOSSIP_SHOW");
+  addon.eval("ForeverUI_QuestDialog.primary.__scripts.OnClick(ForeverUI_QuestDialog.primary)");
+  expect([calls(addon), addon.eval("return ForeverUI_QuestDialog:IsShown()")], "Goodbye closes the dialog and ends the talk").toEqual([["closeGossip nil", "closeQuest nil"], false]);
+  addon.fire("GOSSIP_SHOW");
+  addon.eval("ForeverUI_QuestDialog:Hide()");
+  expect([calls(addon), addon.eval("return ForeverUI_QuestDialog:IsShown()")], "so does Escape (the game's special windows hide it)").toEqual([["closeGossip nil", "closeQuest nil"], false]);
+});
+
 it("quest dialog: late item details redraw the page; spell and currency rewards", () => {
   const addon = loggedIn(QUEST_ENV + `GetQuestID = function() return 90031 end
     C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 90081 } end, GetQuestRewardSpellInfo = function() return { name = "TEST-ONLY Bolt" } end,
