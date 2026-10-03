@@ -51,3 +51,27 @@ it("raid status marks", () => {
   addon.eval('ForeverUIDB.profiles.Default.RaidStatus.leader = false; ns.GetModule("RaidStatus").UpdateAll()');
   expect(marks(addon, 1).leader === false, "each mark can be turned off").toBeTruthy();
 });
+
+// TEST-ONLY counters for the range ticker: UnitInRange and UnitIsUnit calls, and each tile's SetAlpha calls.
+const RANGE_COUNT = `__rangeCalls, __isUnitCalls, __alphaCalls = 0, 0, 0
+  local inRange, isUnit = UnitInRange, UnitIsUnit
+  UnitInRange = function(...) __rangeCalls = __rangeCalls + 1 return inRange(...) end
+  UnitIsUnit = function(...) __isUnitCalls = __isUnitCalls + 1 return isUnit(...) end
+  for i = 1, 3 do local b = _G["ForeverUI_RaidUnitButton" .. i] local set = b.SetAlpha b.SetAlpha = function(...) __alphaCalls = __alphaCalls + 1 return set(...) end end`;
+
+// The range ticker's calls since the last look (then forgets them): { range, isUnit, alpha }.
+const rangeCalls = (addon) => addon.eval("local c = { range = __rangeCalls, isUnit = __isUnitCalls, alpha = __alphaCalls } __rangeCalls, __isUnitCalls, __alphaCalls = 0, 0, 0 return c");
+
+it("range ticker: only while the raid frames show, no repeat questions, no repaint when nothing changed", () => {
+  const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + STATUS_ENV);
+  addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
+  addon.eval(RANGE_COUNT);
+  addon.eval("__wfgStub.advance(0.25)");
+  expect(rangeCalls(addon), "a tick asks the range of the two others, never asks again who you are, and repaints nothing unchanged").toEqual({ range: 2, isUnit: 0, alpha: 0 });
+  addon.eval("__status.range.raid1 = false __wfgStub.advance(0.25)");
+  expect([rangeCalls(addon).alpha, marks(addon, 1).alpha], "a change of range repaints that tile only").toEqual([1, 0.4]);
+  addon.eval("ForeverUI_Raid:Hide() __wfgStub.advance(1)");
+  expect(rangeCalls(addon), "while the raid frames are hidden, no range checks at all").toEqual({ range: 0, isUnit: 0, alpha: 0 });
+  addon.eval("ForeverUI_Raid:Show() __wfgStub.advance(0.25)");
+  expect(rangeCalls(addon).range, "shown again, the checks resume").toBe(2);
+});
