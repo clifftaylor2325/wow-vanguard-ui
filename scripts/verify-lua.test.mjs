@@ -2445,9 +2445,9 @@ const marks = (addon, i) => addon.eval(`local b = ForeverUI_RaidUnitButton${i}
   return { icon = b.raidIcon:IsShown() and b.raidIcon.__texCoord, ready = tex(b.ready), readyColor = b.ready.__vertexColor, rez = b.rez:IsShown(),
     leader = tex(b.leader), leaderColor = b.leader.__vertexColor, leaderShadow = b.leader.shadow:IsShown(), status = b.status:IsShown(), alpha = b.__alpha }`);
 
-// The reload overlay on a button as [type, macro, key-down, sits above the button], or false.
+// The reload overlay on a button as [type, macro, key-down, sits above the button, template, clicks], or false.
 const reloadOverlay = (addon, path) => addon.eval(`local b = ${path} local o = b.reloadOverlay
-  return o and { o:GetAttribute("type"), o:GetAttribute("macrotext"), o:GetAttribute("useOnKeyDown"), o:GetFrameLevel() > b:GetFrameLevel() } or false`);
+  return o and { o:GetAttribute("type"), o:GetAttribute("macrotext"), o:GetAttribute("useOnKeyDown"), o:GetFrameLevel() > b:GetFrameLevel(), o.__template, o.__clicks } or false`);
 
 // The next session of an addon: the client writes SavedVariables at logout and
 // loads them back before ADDON_LOADED; extra Lua runs before login.
@@ -2652,11 +2652,14 @@ it("/fui errors: counts, build, interface version and the aura backend, then cle
   expect(chatHas(addon, /No errors caught this session/), "so a bug can be reproduced cleanly").toBe(true);
 });
 
+// What a reload overlay reads: a macro run on release, above its button, on the secure template, clicked down and up.
+const SECURE_RELOAD = ["macro", "/reload", false, true, "SecureActionButtonTemplate", ["AnyDown", "AnyUp"]];
+
 it("reload buttons: a /reload macro overlay, since the Forever client blocks ReloadUI()", () => {
   const addon = loggedIn(FOREVER_ENV + "ReloadUI = function() __reloaded = true end");
   addon.eval('ns.OfferReload("TEST-ONLY change.")');
   expect(addon.eval("return ForeverUI_Reload:IsShown() and ForeverUI_Reload.title:GetText()"), "a reload is offered with its reason").toBe("TEST-ONLY change. Reload the UI now to apply it?");
-  expect(reloadOverlay(addon, "ForeverUI_Reload.accept"), "Reload carries a /reload macro overlay, on mouse-up, above the button").toEqual(["macro", "/reload", false, true]);
+  expect(reloadOverlay(addon, "ForeverUI_Reload.accept"), "Reload carries a secure action button overlay with a /reload macro, run on mouse-up, above the button").toEqual(SECURE_RELOAD);
   addon.eval('local a = ForeverUI_Reload.accept a:SetScript("OnEnter", function() __hover = "in" end) a:SetScript("OnLeave", function() __hover = "out" end)');
   addon.eval("local o = ForeverUI_Reload.accept.reloadOverlay o:GetScript('OnEnter')(o)");
   expect(addon.eval("return __hover"), "hovering the overlay lights the button under it").toBe("in");
@@ -2671,7 +2674,8 @@ it("reload buttons: a /reload macro overlay, since the Forever client blocks Rel
   addon.eval("ForeverUI_Options.reload:GetScript('OnClick')(ForeverUI_Options.reload)");
   expect(addon.eval("return __reloaded") === null && chatHas(addon, /Type \/reload in chat/), "clicked then, it says to type /reload (ReloadUI would be blocked)").toBe(true);
   setCombat(addon, false);
-  expect(reloadOverlay(addon, "ForeverUI_Options.reload"), "the overlay arrives when combat ends").toEqual(["macro", "/reload", false, true]);
+  expect(reloadOverlay(addon, "ForeverUI_Options.reload"), "the overlay arrives when combat ends, as the same secure button").toEqual(SECURE_RELOAD)
+  expect(addon.eval("local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.__template == 'InsecureActionButtonTemplate' then n = n + 1 end end return n"), "no reload button is left on the insecure template").toBe(0);
 });
 
 it("unit frame health text settings apply at once", () => {

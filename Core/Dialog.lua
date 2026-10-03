@@ -2,7 +2,7 @@
 -- them), and a reload prompt. One of each is built on first use and reused.
 -- Also the reload button itself: the WoW Forever client blocks ReloadUI()
 -- from addon code, even inside a click, so a reload button carries a secure
--- /reload macro overlay (see ns.ReloadButton).
+-- action button overlay that runs a /reload macro (see ns.ReloadButton).
 
 local ADDON, ns = ...
 
@@ -99,13 +99,14 @@ local function forwardHover(overlay, btn)
 end
 
 -- Lays an overlay over a button that runs the /reload macro when clicked.
--- A click on an action button running a macro is the one reload the Forever
--- client still allows an addon (Blizzard's own reload prompts work this way).
+-- Blizzard's own prompts call ReloadUI() from secure code (Blizzard_StaticPopup_Game);
+-- an addon's nearest equivalent is a secure action button whose macro the client
+-- runs on a hardware click, out of combat. The overlay is a protected frame.
 local function addReloadOverlay(btn)
-  local o = CreateFrame("Button", nil, btn, "InsecureActionButtonTemplate")
+  local o = CreateFrame("Button", nil, btn, "SecureActionButtonTemplate")
   o:SetAllPoints(btn)
   o:SetFrameLevel(btn:GetFrameLevel() + 5)
-  o:RegisterForClicks("AnyUp")
+  o:RegisterForClicks("AnyDown", "AnyUp")
   o:SetAttribute("useOnKeyDown", false)
   o:SetAttribute("type", "macro")
   o:SetAttribute("macrotext", "/reload")
@@ -124,10 +125,10 @@ local function reloadByHand()
 end
 
 -- Makes a button reload the UI when clicked. The overlay is a protected
--- setup, so a button built in combat gets it as soon as combat ends.
+-- frame, so it is built out of combat; a button built in combat gets it when combat ends.
 function ns.ReloadButton(btn)
   btn:SetScript("OnClick", reloadByHand)
-  ns.OutOfCombat(function() addReloadOverlay(btn) end)
+  ns.OutOfCombat(function() addReloadOverlay(btn) end, btn)
   return btn
 end
 
