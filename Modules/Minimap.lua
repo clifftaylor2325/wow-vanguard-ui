@@ -1,7 +1,8 @@
 -- Minimap: square, in a themed frame you can move in unlock mode, with the
 -- zone name along its top edge (colored by PvP status), coordinates along the bottom
 -- and mouse-wheel zoom. The round border art and zoom buttons are faded
--- out (alpha only; nothing Blizzard owns is hidden or unregistered). The
+-- out (alpha only), and the game's emptied cluster frame stops taking the
+-- mouse and loses its zone button. Nothing is unregistered. The
 -- game's small minimap buttons (tracking, mail, dungeon difficulty, the addon
 -- compartment) move from the old minimap spot onto this map's corners.
 
@@ -39,7 +40,6 @@ local ZONE_COLORS = {
 local FADE = {
   { "MinimapCompassTexture" },
   { "MinimapCluster", "BorderTop" },
-  { "MinimapCluster", "ZoneTextButton" },
   { "Minimap", "ZoomIn" },
   { "Minimap", "ZoomOut" },
   { "MinimapBackdrop" },
@@ -68,6 +68,17 @@ local function fadeArt()
       obj:SetAlpha(0)
     end
   end
+end
+
+-- The game's cluster frame at the old top-right spot has nothing left to show:
+-- it takes no mouse (it ate clicks there, and Edit Mode drew a handle on the
+-- empty frame), and its zone button is hidden (faded, it stayed clickable).
+local function quietCluster()
+  local cluster = _G.MinimapCluster
+  if type(cluster) ~= "table" then return end
+  cluster:EnableMouse(false)
+  local button = cluster.ZoneTextButton
+  if type(button) == "table" and button.Hide then button:Hide() end
 end
 
 -- The first of several paths this client has, or nil.
@@ -240,6 +251,7 @@ local function build(settings)
   addTexts(holder)
   addCorners(MM.overlay)
   fadeArt()
+  quietCluster()
   if settings.icons then placeLeftovers() end
   if settings.coords then coordsTicker(holder) end
   MM.UpdateZone()
