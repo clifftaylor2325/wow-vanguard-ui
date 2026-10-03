@@ -423,6 +423,8 @@ end
 -- The unit API, read from world.units.
 function UnitExists(unit) return resolveUnit(unit) ~= nil end
 function UnitName(unit) local u = resolveUnit(unit) return u and u.name, u and u.realm end
+-- A unit's GUID: its guid field, else one made from its name (nil when it doesn't exist).
+function UnitGUID(unit) local u = resolveUnit(unit) return u and (u.guid or ("TEST-ONLY-GUID-" .. tostring(u.name))) end
 function UnitHealth(unit) return uf(unit, "hp") or 0 end
 function UnitHealthMax(unit) return uf(unit, "maxhp") or 0 end
 function UnitHealthPercent(unit) local u = resolveUnit(unit) return u and u.maxhp > 0 and u.hp / u.maxhp * 100 or 0 end

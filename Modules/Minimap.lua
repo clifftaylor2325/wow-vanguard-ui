@@ -121,9 +121,15 @@ function MM.UpdateZone()
   T.Color(MM.zone, ZONE_COLORS[pvp] or "gold")
 end
 
--- "x, y" in map percent, or "" where the client won't say (instances, secrets).
-function MM.CoordsText()
-  local mapID = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+-- The map the player is on, or nil.
+local function playerMap()
+  return C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+end
+
+-- "x, y" in map percent on mapID (default: the player's map), or "" where the
+-- client won't say (instances, secrets).
+function MM.CoordsText(mapID)
+  mapID = mapID or playerMap()
   local pos = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
   if not pos or not pos.GetXY then
     return ""
@@ -133,15 +139,30 @@ function MM.CoordsText()
   return x and y and string.format("%.1f, %.1f", x * 100, y * 100) or ""
 end
 
--- Refreshes the coordinates at most five times a second.
+-- Where the coordinates were last read: plain world x and y, continent and map.
+local lastSpot = {}
+
+-- Whether the player stands where the coordinates were last read (same map,
+-- same plain world position), so the text already shown still holds; notes the spot.
+local function unmoved(mapID)
+  local x, y, _, instance
+  if type(UnitPosition) == "function" then x, y, _, instance = UnitPosition("player") end
+  x, y, instance, mapID = ns.PlainNumber(x), ns.PlainNumber(y), ns.PlainNumber(instance), ns.PlainNumber(mapID)
+  local same = x ~= nil and y ~= nil and x == lastSpot[1] and y == lastSpot[2] and instance == lastSpot[3] and mapID == lastSpot[4]
+  lastSpot[1], lastSpot[2], lastSpot[3], lastSpot[4] = x, y, instance, mapID
+  return same
+end
+
+-- Refreshes the coordinates at most five times a second, and only after the
+-- player moved: standing still asks the client for no new map position.
 local function coordsTicker(frame)
   local elapsed = 0
   frame:SetScript("OnUpdate", function(_, dt)
     elapsed = elapsed + dt
-    if elapsed >= 0.2 then
-      elapsed = 0
-      MM.coords:SetText(MM.CoordsText())
-    end
+    if elapsed < 0.2 then return end
+    elapsed = 0
+    local mapID = playerMap()
+    if not unmoved(mapID) then MM.coords:SetText(MM.CoordsText(mapID)) end
   end)
 end
 
