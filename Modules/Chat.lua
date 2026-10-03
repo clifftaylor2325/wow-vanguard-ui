@@ -11,12 +11,13 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local CH = ns.Module("Chat", {
-  defaults = { background = true, textSize = 12, place = true },
+  defaults = { background = true, textSize = 12, place = true, sized = false },
 })
 
 -- The main chat window's spot in the Centered layout: bottom-left, under the
 -- unit frames and left of the action bars, with room for its tabs above it
--- (it fits at any UI scale). x, y, width, height.
+-- (it fits at any UI scale). x, y, width, height. It is a mover (/fui unlock);
+-- the size is set once, and after that the game's layout and the player rule it.
 CH.SPOT = { 16, 20, 420, 140 }
 
 -- Chat text sizes before the Text size setting; "game" keeps each window's own size.
@@ -46,10 +47,21 @@ function CH.FontWindow(frame)
   frame:SetFont(path, CH.TextSize(frame), outline)
 end
 
--- A chat window: theme font, faded art and (if on) a flat background.
+-- Hides the game's window art. It is hidden, not faded: the game's mouseover
+-- fade raises a shown texture's alpha again and skips a hidden one.
+local function hideArt(frame)
+  local name = frame:GetName()
+  for _, part in ipairs(_G.CHAT_FRAME_TEXTURES or {}) do
+    local art = _G[name .. part]
+    if art then art:Hide() end
+  end
+end
+
+-- A chat window: theme font, hidden art and (if on) a flat background.
 local function skinWindow(frame, settings)
   CH.FontWindow(frame)
   T.FadeRegions(frame)
+  hideArt(frame)
   if settings.background then
     CH.backgrounds[frame] = CH.backgrounds[frame] or T.Panel(CreateFrame("Frame", nil, frame), { alpha = 0.55 })
     CH.backgrounds[frame]:SetPoint("TOPLEFT", -4, 4)
@@ -116,12 +128,31 @@ function CH.Refresh()
   CH.UpdateTabs()
 end
 
--- Puts the main chat window in its layout spot (when that's switched on).
+-- Keeps the main chat window where its mover put it: the game's Edit Mode
+-- re-anchors it whenever a layout is applied.
+local function pinChat(frame)
+  ns.Pin(frame, function(f)
+    local point, relPoint, x, y = ns.MoverPoint("chat")
+    f:ClearAllPoints()
+    f:SetPoint(point, UIParent, relPoint, x, y)
+  end)
+end
+
+-- Makes the main chat window a mover (default: its layout spot, bottom-left)
+-- when that's switched on, and keeps it there. Done once per login.
 function CH.Place()
   local frame = _G.ChatFrame1
   if not CH.settings.place or type(frame) ~= "table" then return end
-  frame:ClearAllPoints()
-  frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", CH.SPOT[1], CH.SPOT[2])
+  ns.Mover(frame, "chat", "Chat", { "BOTTOMLEFT", "BOTTOMLEFT", CH.SPOT[1], CH.SPOT[2] })
+  pinChat(frame)
+end
+
+-- Sizes the main chat window the first time only (when entering the world, after
+-- the game's layout has been applied); a resize after that is the player's.
+function CH.Size()
+  local frame = _G.ChatFrame1
+  if CH.settings.sized or not CH.settings.place or type(frame) ~= "table" then return end
+  CH.settings.sized = true
   frame:SetSize(CH.SPOT[3], CH.SPOT[4])
 end
 
@@ -143,8 +174,7 @@ function CH.Enable(settings)
   CH.SkinAll()
   T.OnChanged(CH.Refresh)
   CH.Place()
-  ns.On("PLAYER_ENTERING_WORLD", CH.Place)
-  after("FCF_RestorePositionAndDimensions", CH.Place)
+  ns.On("PLAYER_ENTERING_WORLD", CH.Size)
   after("FCF_OpenTemporaryWindow", CH.SkinAll)
   after("FCF_Tab_OnClick", CH.UpdateTabs)
   after("FCF_SetChatWindowFontSize", onGameSize)

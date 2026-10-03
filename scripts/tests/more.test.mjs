@@ -34,6 +34,48 @@ it("chat", () => {
   expect(isTok(addon, addon.eval("return ChatFrame2Tab.Text.__textColor"), "accent"), "tabs follow accent changes").toBeTruthy();
 });
 
+// TEST-ONLY chat window art as the game names it (ChatFrame<i><part>), with the game's own mouseover fade.
+const CHAT_ART_ENV = `
+  CHAT_FRAME_TEXTURES = { "Background", "ButtonFrameBackground" }
+  for i = 1, 2 do
+    for _, part in ipairs(CHAT_FRAME_TEXTURES) do _G["ChatFrame" .. i .. part] = _G["ChatFrame" .. i]:CreateTexture() end
+  end
+  function __fadeIn(frame)
+    for _, part in ipairs(CHAT_FRAME_TEXTURES) do
+      local art = _G[frame:GetName() .. part]
+      if art:IsShown() then art:SetAlpha(1) end
+    end
+  end
+`;
+
+it("chat art is hidden so the game's mouseover fade cannot bring it back", () => {
+  const addon = loggedIn(UI_ENV + CHAT_ART_ENV);
+  // Whether each window's art is showing.
+  const art = () => addon.eval(`return { ChatFrame1Background:IsShown(), ChatFrame1ButtonFrameBackground:IsShown(), ChatFrame2Background:IsShown(), ChatFrame2ButtonFrameBackground:IsShown() }`);
+  expect(art(), "every window's art is hidden").toEqual([false, false, false, false]);
+  addon.eval("ChatFrame1Background:SetAlpha(0) __fadeIn(ChatFrame1)");
+  expect(addon.eval("return ChatFrame1Background:GetAlpha()"), "the game's fade skips hidden art, so it stays at 0").toBe(0);
+  expect(addon.eval("ChatFrame2Background = nil return ns.GetModule('Chat').SkinAll()"), "a window whose art is missing is skipped").toBe(null);
+});
+
+it("chat is a mover: placed once, sized once, kept where the player put it", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV);
+  // Chat's anchor point, offsets and size.
+  const spot = () => addon.eval("local p = ChatFrame1.__points local k, v = next(p) return { k, v.x, v.y, ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
+  expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key .. '=' .. m.label end return out").includes("chat=Chat"), "chat is in the unlock list").toBe(true);
+  expect(spot(), "first login: bottom-left, 420 x 140").toEqual(["BOTTOMLEFT", 16, 20, 420, 140]);
+  addon.eval('ns.SetMoverPoint("chat", "TOPLEFT", "TOPLEFT", 100, -50)');
+  expect(spot().slice(0, 3), "dragging it in /fui unlock moves the window").toEqual(["TOPLEFT", 100, -50]);
+  addon.eval('ChatFrame1:ClearAllPoints() ChatFrame1:SetPoint("CENTER")');
+  expect(spot().slice(0, 3), "and the game's own layout moving it is undone").toEqual(["TOPLEFT", 100, -50]);
+  addon.eval("ChatFrame1:SetSize(600, 300)");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(spot().slice(3), "entering the world again keeps the player's size").toEqual([600, 300]);
+  expect(addon.eval("return ForeverUIDB.profiles.Default.Chat.sized"), "the size is only set once ever").toBe(true);
+  expect(addon.eval('return ns.ResetMovers("chat")'), "/fui reset chat puts it back").toBe(1);
+  expect(spot().slice(0, 3), "at the bottom-left").toEqual(["BOTTOMLEFT", 16, 20]);
+});
+
 it("bags", () => {
   const addon = loggedIn(UI_ENV);
   expect(addon.eval("return __cvars.combinedBags") === "1", "combined bags are turned on").toBeTruthy();

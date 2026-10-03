@@ -170,7 +170,7 @@ it("pins: any number of game moves in combat leave one pending pin", () => {
   addon.eval("for i = 1, 50 do __pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', i, i) end");
   expect([addon.eval("return ns.QueuedCount()"), pinCalls(addon), pinPoint(addon)], "50 moves queue one pin and run nothing in combat").toEqual([1, 1, "several"]);
   addon.eval("ns.PausePins(true) ns.PausePins(false)");
-  expect(addon.eval("return ns.QueuedCount()"), "ending a pause in combat joins the same entry").toBe(1);
+  expect(addon.eval("return ns.QueuedCount()"), "ending a pause in combat joins the same entry (and queues the chat window's own pin, the one other pinned frame)").toBe(2);
   setCombat(addon, false);
   expect([addon.eval("return ns.QueuedCount()"), pinCalls(addon), pinPoint(addon)], "after combat the pin runs once and puts the frame back").toEqual([0, 2, "CENTER"]);
 });
