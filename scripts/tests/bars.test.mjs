@@ -1,7 +1,8 @@
 // bars: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { ACTIONS_ENV, UNITS_ENV, bars, button, key, loggedIn, overlaps, setCombat } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { ACTIONS_ENV, SETUP_DONE, UNITS_ENV, bars, button, key, loggedIn, overlaps, setCombat } from "./helpers.mjs";
 
 it("action bars", () => {
   const addon = loggedIn(ACTIONS_ENV);
@@ -359,4 +360,45 @@ it("action bar cooldown numbers in the theme's font", () => {
   const addon = loggedIn(UNITS_ENV + ACTIONS_ENV);
   const cd = addon.eval(`local cd = ForeverUI_Bar1Button1.cooldown local fs = cd:GetCountdownFontString() return { font = fs.__font, color = fs.__textColor }`);
   expect(cd.font[0].includes("SemiBold") && cd.font[1] === 14, "the client's countdown numbers use the theme's bold font").toBeTruthy();
+});
+
+// TEST-ONLY: a client whose secure snippets fail to compile (the probe's call throws).
+const NO_SNIPPETS = 'SecureHandlerExecute = function() error("TEST-ONLY: snippets do not compile") end\n';
+// The slot bar 1's button i shows (its action attribute keeps page 1's slot without snippets).
+const shownSlot = (addon, i) => addon.eval(`return ForeverUI_Bar1Button${i}.action`);
+
+it("bar 1 pages without secure snippets: the driver sets the bar's own actionpage, the buttons read it", () => {
+  const addon = loggedIn(ACTIONS_ENV + NO_SNIPPETS);
+  const PAGE_DRIVER = addon.eval('return ns.GetModule("ActionBars").PAGE_DRIVER');
+  expect(addon.eval("local b = ForeverUI_Bar1 return { b.__drivers.actionpage, b.__states == nil or b.__states.page == nil, b:GetAttribute('_onstate-page') == nil }"),
+    "an attribute driver on actionpage replaces the state driver and its snippet").toEqual([PAGE_DRIVER, true, true]);
+  expect(addon.eval("local b = ForeverUI_Bar1Button3 return { b:GetID(), b:GetAttribute('useparent-actionpage') }"), "each button has its index as its ID and reads the page from the bar").toEqual([3, true]);
+  expect(shownSlot(addon, 1), "until the driver sets a page, the button shows its own slot").toBe(1);
+  addon.eval("ForeverUI_Bar1:SetAttribute('actionpage', '7')");
+  expect([shownSlot(addon, 1), button(addon, 1, 1).icon, shownSlot(addon, 3)], "page 7 (a stance): the buttons show slots 73 and 75").toEqual([73, "TEST-ONLY-PAGE7", 75]);
+  addon.eval("ForeverUI_Bar1:SetAttribute('TEST-ONLY', 1)");
+  expect(shownSlot(addon, 1), "another attribute changes nothing").toBe(73);
+  expect(addon.eval("local b = ForeverUI_Bar2Button3 return { b:GetID(), ForeverUI_Bar2.__drivers == nil or ForeverUI_Bar2.__drivers.actionpage == nil }"), "the other bars keep their fixed slots").toEqual([0, true]);
+  addon.eval('ns.GetModule("ActionBars").PageWithoutSnippets(ForeverUI_Bar1)');
+  const refreshes = addon.eval(`local AB = ns.GetModule("ActionBars") local n, update = 0, AB.UpdateButton
+    AB.UpdateButton = function(b) n = n + 1 return update(b) end
+    ForeverUI_Bar1:SetAttribute("actionpage", "8") AB.UpdateButton = update return n`);
+  expect(refreshes, "switching twice hooks the bar once: a page change refreshes each of the 12 buttons once").toBe(12);
+});
+
+it("bar 1 without secure snippets, found out after a login in a fight: the snippet paging is undone when it ends", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE });
+  addon.eval(ACTIONS_ENV + NO_SNIPPETS);
+  setCombat(addon, true);
+  addon.login();
+  setCombat(addon, false);
+  expect(addon.eval("return ns.Client.has.secureSnippets"), "the probe answered after the fight").toBe(false);
+  expect(addon.eval("local b = ForeverUI_Bar1 return { b.__drivers and b.__drivers.actionpage ~= nil, b.__states == nil or b.__states.page == nil, b:GetAttribute('_onstate-page') == nil, ForeverUI_Bar1Button1:GetID() }"),
+    "bar 1 then pages without the snippet").toEqual([true, true, true, 1]);
+});
+
+it("bar 1 with secure snippets keeps the snippet paging", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  expect(addon.eval("local b = ForeverUI_Bar1 return { b.__states.page ~= nil, b:GetAttribute('_onstate-page') ~= nil, b.__drivers == nil or b.__drivers.actionpage == nil, ForeverUI_Bar1Button1:GetID() }"),
+    "the state driver and its snippet, buttons without IDs").toEqual([true, true, true, 0]);
 });
