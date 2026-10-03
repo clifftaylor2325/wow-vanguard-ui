@@ -108,9 +108,10 @@ it("combat queue: a key replaces its entry, in place", () => {
   expect([addon.eval("return __n"), addon.eval("return ns.QueuedCount()")], "out of combat a keyed call runs at once").toEqual([101, 0]);
 });
 
+// How often the pinned test frame's pin ran.
 const pinCalls = (addon) => addon.eval("return __calls");
 
-// The pinned test frame's anchor point name, and how often its pin ran.
+// The pinned test frame's anchor point name ("several" when it has more than one).
 const pinPoint = (addon) => addon.eval("local n = next(__pinTarget.__points) return next(__pinTarget.__points, n) == nil and n or 'several'");
 
 // TEST-ONLY pin: the game's hooksecurefunc (a post-hook on a table's method) and a frame ForeverUI pins.
