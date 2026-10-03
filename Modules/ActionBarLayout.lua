@@ -1,11 +1,13 @@
 -- Action bar layout and visibility (UX round two). Each bar shows its own
 -- number of buttons, wraps them into rows, sizes them, and is seen always,
--- on mouseover, only in combat, or never. Empty slots stay invisible unless
+-- on mouseover, only in combat, never, or while any condition of a checklist
+-- holds (Core/Visibility.lua). Empty slots stay invisible unless
 -- you are dragging a spell or item, so a new character sees no empty squares,
 -- and they take no mouse, so blank bar space doesn't eat clicks.
--- While you drag, On mouseover bars are revealed and In combat bars are shown
--- (the latter only when the drag starts out of combat), so every bar you can
--- drop onto is visible. A Hidden bar is not drawn but its keys still cast.
+-- While you drag, bars that fade on mouseover are revealed and bars shown on
+-- conditions (In combat, a checklist) are shown (the latter only when the drag
+-- starts out of combat), so every bar you can drop onto is visible. A Hidden
+-- bar is not drawn but its keys still cast.
 --
 -- Secure frames: showing, hiding, sizing and placing bars and buttons happen
 -- out of combat only (ns.OutOfCombat), and visibility is a secure state
@@ -17,21 +19,13 @@
 local ADDON, ns = ...
 
 local AB = ns.GetModule("ActionBars")
+local V = ns.Visibility
 
 AB.MAX_BUTTONS = 12
 -- True while you drag a spell or item (ACTIONBAR_SHOWGRID until HIDEGRID).
 AB.grid = false
 -- True while In combat bars are shown for a drag that started out of combat.
 AB.dragShown = false
-
--- Visibility setting -> the bar's secure state driver. A mouseover bar is
--- always shown and fades with alpha instead (see AB.UpdateAlpha).
-AB.VISIBILITY = {
-  always = "show",
-  mouseover = "show",
-  combat = "[combat] show; hide",
-  hidden = "hide",
-}
 
 -- Layout ------------------------------------------------------------------------------
 
@@ -86,45 +80,53 @@ end
 
 -- Bar n's visibility setting ("always" when it is unset or unknown).
 function AB.Visibility(n)
-  local v = AB.settings.bars[n].visibility
-  return AB.VISIBILITY[v] and v or "always"
+  return V.Mode(AB.settings.bars[n].visibility)
 end
 
--- Alpha 0 for a mouseover bar the mouse isn't over (unless you are dragging
--- a spell or item), else 1. Alpha only, so it is safe in combat.
+-- Bar n's own secure visibility driver, from its setting and checklist.
+function AB.OwnDriver(n)
+  return V.Driver(V.State(AB.Visibility(n), AB.settings.bars[n].showWhen))
+end
+
+-- Alpha 0 for a bar that fades on mouseover while the mouse isn't over it
+-- (unless you are dragging a spell or item), else 1. Alpha only, so it is safe in combat.
 function AB.UpdateAlpha(n)
   local bar = AB.bars[n]
   if not bar then return end
-  local faded = AB.Visibility(n) == "mouseover" and not bar.fuiHover and not AB.grid
-  bar:SetAlpha(faded and 0 or 1)
+  bar.fuiReveal = AB.grid
+  bar:SetAlpha(V.Alpha(bar))
 end
 
--- Bar n's state driver: its visibility's, or "show" for an In combat bar
+-- Bar n's state driver: its own, or "show" for a bar shown on conditions
 -- while a drag that started out of combat is under way.
 function AB.Driver(n)
-  local mode = AB.Visibility(n)
-  if mode == "combat" and AB.dragShown then return "show" end
-  return AB.VISIBILITY[mode]
+  local own = AB.OwnDriver(n)
+  if AB.dragShown and V.Conditional(own) then return "show" end
+  return own
 end
 
--- Registers bar n's secure visibility driver and mouse watching right now.
+-- Registers bar n's secure visibility driver, its state and mouse watching right now.
 local function visibilityNow(n)
   local bar = AB.bars[n]
   if not bar then return end
   RegisterStateDriver(bar, "visibility", AB.Driver(n))
-  bar:EnableMouse(AB.Visibility(n) == "mouseover")
+  V.ApplyNow(bar, AB.Visibility(n), AB.settings.bars[n].showWhen)
+  bar:EnableMouse(V.Fades(bar))
   AB.UpdateAlpha(n)
 end
 
--- Re-registers every In combat bar's driver right now (out of combat only).
-local function combatBarsNow()
-  for n in pairs(AB.bars) do
-    if AB.Visibility(n) == "combat" then visibilityNow(n) end
+-- Re-registers the visibility driver of every bar shown on conditions right now (out of combat only).
+local function conditionalBarsNow()
+  for n, bar in pairs(AB.bars) do
+    if V.Conditional(AB.OwnDriver(n)) then RegisterStateDriver(bar, "visibility", AB.Driver(n)) end
   end
 end
 
--- Applies bar n's visibility setting: now, or when combat ends.
+-- Applies bar n's visibility setting: now, or when combat ends (also on every
+-- zone change while it checks In an instance).
 function AB.ApplyVisibility(n)
+  local bar = AB.bars[n]
+  if bar then V.Track(bar, function() visibilityNow(n) end) end
   ns.OutOfCombat(function() visibilityNow(n) end)
 end
 
@@ -170,21 +172,21 @@ function AB.UpdateEmpty(b)
   ns.OutOfCombat(function() b:EnableMouse(seen) end, b)
 end
 
--- A drag started: out of combat, In combat bars show (through the
+-- A drag started: out of combat, bars shown on conditions show (through the
 -- out-of-combat path). A drag that starts in combat leaves secure
 -- visibility alone.
 local function showCombatBars()
   if ns.InCombat() then return end
   AB.dragShown = true
-  ns.OutOfCombat(combatBarsNow)
+  ns.OutOfCombat(conditionalBarsNow)
 end
 
--- The drag ended: In combat bars shown for it get their own driver back
+-- The drag ended: bars shown for it get their own driver back
 -- (after combat if it started meanwhile). Otherwise nothing secure changes.
 local function restoreCombatBars()
   if not AB.dragShown then return end
   AB.dragShown = false
-  ns.OutOfCombat(combatBarsNow)
+  ns.OutOfCombat(conditionalBarsNow)
 end
 
 -- Re-reads whether the mouse is over each bar and repaints its alpha, so a
@@ -209,14 +211,14 @@ end
 
 -- Settings changes --------------------------------------------------------------------
 
--- Keys whose change re-lays a bar out; "visibility" re-applies its driver.
+-- Keys whose change re-lays a bar out; "visibility" (and its checklist) re-applies its driver.
 local LAYOUT_KEYS = { buttons = true, perRow = true, size = true }
 
 -- Applies a change to bar n's setting `key` from the options (deferred in combat).
 function AB.SettingChanged(n, key)
   if LAYOUT_KEYS[key] then
     AB.Layout(n)
-  elseif key == "visibility" then
+  elseif key == "visibility" or key == "showWhen" then
     AB.ApplyVisibility(n)
   end
 end

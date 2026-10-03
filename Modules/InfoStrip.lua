@@ -6,11 +6,13 @@
 -- Each block reads the client when its event fires (fps, latency and the
 -- clock once a second on one shared timer), shows only where the client
 -- can answer, and sets its text only when it changed. Values the client
--- hides show nothing.
+-- hides show nothing. The strip is seen always unless its visibility setting
+-- says otherwise (Core/Visibility.lua): on mouseover, in combat, hidden, or on a checklist.
 
 local ADDON, ns = ...
 
 local T = ns.Theme
+local V = ns.Visibility
 
 local IS = ns.Module("InfoStrip", {
   defaults = {
@@ -253,11 +255,11 @@ local function rowsShown()
   return rows
 end
 
--- Hides the strip while it has nothing to show (no empty box on screen), and
--- grows it to a third (or fourth) row only while a block there shows.
+-- Hides the strip while it has nothing to show (no empty box on screen) or its
+-- visibility hides it, and grows it to a third (or fourth) row only while a block there shows.
 local function fitRows()
   local rows = rowsShown()
-  IS.frame:SetShown(rows > 0)
+  IS.frame:SetShown(rows > 0 and V.Shows(IS.frame))
   IS.frame:SetHeight(IS.ROW * math.max(rows, 2) + 4)
 end
 
@@ -307,6 +309,21 @@ local function ticker(frame)
   end)
 end
 
+-- Applies the strip's visibility setting: now, or when combat ends (the client's
+-- state driver shows or hides it from then on, and it fades on mouseover).
+function IS.ApplyVisibility()
+  ns.OutOfCombat(function() V.ApplyNow(IS.frame, IS.settings.visibility, IS.settings.showWhen) end, IS.frame)
+end
+
+-- Follows the strip's visibility from the start: the mouse over it, the state's
+-- changes (fitRows shows or hides it), and zone changes for In an instance.
+local function watchVisibility(f)
+  f.fuiOnState = fitRows
+  V.WatchHover(f)
+  V.Track(f, IS.ApplyVisibility)
+  IS.ApplyVisibility()
+end
+
 -- The movable strip, just under the minimap.
 local function build()
   local f = T.HudPanel(CreateFrame("Frame", "ForeverUI_InfoStrip", UIParent))
@@ -317,6 +334,7 @@ local function build()
   for key in pairs(IS.BLOCKS) do IS.texts[key] = addText(f, key) end
   ticker(f)
   IS.UpdateAll()
+  watchVisibility(f)
 end
 
 -- Event -> the block it repaints.

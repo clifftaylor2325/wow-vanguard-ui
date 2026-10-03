@@ -344,10 +344,6 @@ local function actionBarRows()
   }
 end
 
--- When a bar is seen. "On mouseover" shows it only while the mouse is over it;
--- On mouseover and In combat bars also show while you drag a spell or item.
--- "Hidden" doesn't draw the bar, but its keys still cast (a keybind-only bar).
-local BAR_VISIBILITY = { { "always", "Always" }, { "mouseover", "On mouseover" }, { "combat", "In combat" }, { "hidden", "Hidden" } }
 -- Buttons on a bar, and per row: 1 to 12.
 local BAR_BUTTONS = { min = 1, max = 12, step = 1 }
 -- Button size: 24 to 48 px in steps of 2.
@@ -359,13 +355,23 @@ local function barTitle(n)
   return (AB and AB.RightEdge(n)) and ("Bar " .. n .. ", right edge") or ("Bar " .. n)
 end
 
+-- When bar n is seen (Core/Visibility.lua): Always, On mouseover (only while the
+-- mouse is over it), In combat, Hidden, or while a condition checked below holds.
+-- Bars shown on mouseover or on conditions also show while you drag a spell or
+-- item. "Hidden" doesn't draw the bar, but its keys still cast (a keybind-only bar).
+local function barVisibilityRows(n)
+  return ns.Visibility.Rows("Visibility", function() return moduleSettings("ActionBars").bars[n] end,
+    "visibility", "showWhen", function() barChanged(n, "visibility") end)
+end
+
 -- One action bar's card: on/off, visibility, button count, per row and size.
 local function oneBarRows(n)
+  local visibility, showWhen = barVisibilityRows(n)
   return {
-    { "header", barTitle(n) },
-    check("Show bar " .. n, barSetting(n)),
-    { "cycle", "Visibility", BAR_VISIBILITY, barOption(n, "visibility") },
+    { "header", barTitle(n) }, check("Show bar " .. n, barSetting(n)),
+    visibility,
     { "text", "Hidden bars keep their keys: a bound key still casts." },
+    showWhen,
     { "slider", "Buttons", BAR_BUTTONS, barOption(n, "buttons") },
     { "slider", "Buttons per row", BAR_BUTTONS, barOption(n, "perRow") },
     { "slider", "Button size", BAR_SIZES, barSizeOption(n) },
@@ -407,24 +413,42 @@ local function gameToolRows()
   }
 end
 
+-- The visibility rows (Core/Visibility.lua) of a module's frame, applied at once
+-- (when the module runs); unset, the setting is Always.
+local function visibilityRows(caption, module, modeKey, whenKey)
+  return ns.Visibility.Rows(caption, function() return moduleSettings(module) end, modeKey, whenKey, function()
+    local m = ns.GetModule(module)
+    if m.enabled then m.ApplyVisibility() end
+  end, "always")
+end
+
 -- The game's extras: minimap buttons, the menu strip and the quest tracker (after a reload).
 local function gamePartRows()
+  local menuVisibility, menuWhen = visibilityRows("Game menu buttons", "MenuStrip", "menu", "menuWhen")
   return {
     { "header", "The game's extras" },
     check("Tracking, mail and difficulty on the minimap's corners (reload)", setting("Minimap", "icons", true)),
-    { "cycle", "Game menu buttons (reload)", { { "mouseover", "On mouseover" }, { "always", "Always" } }, setting("MenuStrip", "menu", true) },
+    menuVisibility, menuWhen,
     check("ForeverUI icons on the menu buttons (reload)", setting("MenuStrip", "glyphs", true)),
     check("Quest tracker under the info strip (reload)", setting("MenuStrip", "tracker", true)),
     check("Quest tracker in the ForeverUI look (reload)", setting("MenuStrip", "trackerLook", true)),
   }
 end
 
--- XP and reputation bars, minimap, chat and bags.
-local function moreRows()
+-- XP and reputation bars: which, their numbers, and when they're seen.
+local function dataBarRows()
+  local barsVisibility, barsWhen = visibilityRows("XP and reputation bars", "DataBars", "visibility", "showWhen")
   return {
     { "header", "XP and reputation" },
     check("Experience bar", setting("DataBars", "xp", true)), check("Reputation bar", setting("DataBars", "reputation", true)),
     { "cycle", "Numbers", { { "hover", "on hover" }, { "always", "always" } }, setting("DataBars", "text", true) },
+    barsVisibility, barsWhen,
+  }
+end
+
+-- Minimap, chat and bags.
+local function moreRows()
+  return {
     { "header", "Minimap, chat, bags" },
     check("Coordinates under the minimap", setting("Minimap", "coords", true)),
     check("Chat background", setting("Chat", "background", true)), check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
@@ -455,8 +479,9 @@ end
 
 -- The info strip under the minimap: one switch per block.
 local function stripRows()
+  local stripVisibility, stripWhen = visibilityRows("Strip visibility", "InfoStrip", "visibility", "showWhen")
   return {
-    { "header", "Strip under the minimap" },
+    { "header", "Strip under the minimap" }, stripVisibility, stripWhen,
     check("Durability", stripSetting("durability")), check("Free bag slots", stripSetting("bags")),
     check("Frame rate and latency", stripSetting("system")), check("Gold", stripSetting("gold")),
     check("Ammo (hunters, warriors, rogues)", stripSetting("ammo")), check("Clock", stripSetting("clock")),
@@ -513,7 +538,7 @@ end
 
 -- The Bars, map, chat page: your buffs, bars and map, the strip, merchants, tooltips.
 local function morePageRows()
-  local rows = append(playerAuraRows(), moreRows())
+  local rows = append(append(playerAuraRows(), dataBarRows()), moreRows())
   append(rows, stripRows())
   append(rows, gamePartRows())
   append(rows, windowRows())
