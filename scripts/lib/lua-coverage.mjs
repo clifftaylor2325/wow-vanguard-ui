@@ -65,12 +65,23 @@ export function dumpHits(file) {
   fs.writeFileSync(file, `${JSON.stringify(out)}\n`);
 }
 
-// Loads hits dumped by a worker. A missing file is a failure, not a pass.
-export function loadHits(file) {
-  if (!fs.existsSync(file)) throw new Error(`Lua coverage hits file is missing: ${file}`);
-  executed.clear();
+// Adds one dumped hits file to the record.
+function mergeHits(file) {
   const data = JSON.parse(fs.readFileSync(file, "utf8"));
-  for (const [name, lines] of Object.entries(data)) executed.set(name, new Set(lines));
+  for (const [name, lines] of Object.entries(data)) {
+    if (!executed.has(name)) executed.set(name, new Set());
+    for (const line of lines) executed.get(name).add(line);
+  }
+}
+
+// Loads the hits workers dumped: one file, or every .json in a directory.
+// A missing file or an empty directory is a failure, not a pass.
+export function loadHits(target) {
+  executed.clear();
+  const isDir = fs.existsSync(target) && fs.statSync(target).isDirectory();
+  const files = isDir ? fs.readdirSync(target).filter((f) => f.endsWith(".json")).map((f) => path.join(target, f)) : [target];
+  if (files.length === 0 || !fs.existsSync(files[0])) throw new Error(`Lua coverage hits file is missing: ${target}`);
+  for (const file of files) mergeHits(file);
 }
 
 // Starts recording executed lines in a Lua state.

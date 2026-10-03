@@ -1,11 +1,69 @@
 -- Minimal WoW API stub so addon Lua runs under Node (fengari, Lua 5.3).
 -- TEST-ONLY. Not listed in the TOC and never shipped in game.
 
--- Lua 5.1 names fengari (5.3) lacks.
+-- Lua 5.1 fidelity -----------------------------------------------------------------------
+-- The game runs Lua 5.1; fengari is 5.3. These shims make the differences
+-- the addon could meet behave as in game: 5.1 names, and numbers that print
+-- as integers when they are whole (5.3 says "3.0" for 6 / 2; 5.1 says "3").
+-- Concatenation (`..`) is patched in the harness (scripts/lib/lua-harness.mjs).
+
 math.atan2 = math.atan2 or function(y, x)
   return math.atan(y, x)
 end
 unpack = unpack or table.unpack
+math.pow = math.pow or function(x, y) return x ^ y end
+math.mod = math.mod or math.fmod
+math.log10 = math.log10 or function(x) return math.log(x, 10) end
+loadstring = loadstring or load
+table.getn = table.getn or function(t) return #t end
+table.maxn = table.maxn or function(t)
+  local n = 0
+  for k in pairs(t) do if type(k) == "number" and k > n then n = k end end
+  return n
+end
+string.gfind = string.gfind or string.gmatch
+
+-- A whole float as the integer 5.1 would print; anything else as is.
+local function wholeNumber(v)
+  if math.type(v) == "float" and v == math.floor(v) and v > -2^53 and v < 2^53 then
+    return math.tointeger(v)
+  end
+  return v
+end
+__wfgWholeNumber = wholeNumber
+
+local rawtostring = tostring
+-- tostring as 5.1 prints numbers: whole floats without ".0".
+function tostring(v)
+  return rawtostring(wholeNumber(v))
+end
+
+-- Truncates toward zero, as 5.1's %d did with a fractional number.
+local function truncated(v)
+  if type(v) ~= "number" or math.type(v) == "integer" then return v end
+  local t = v < 0 and math.ceil(v) or math.floor(v)
+  return math.tointeger(t) or v
+end
+
+-- The conversion each % spec in a format string wants, in order.
+local function formatSpecs(fmt)
+  local specs = {}
+  for spec in fmt:gmatch("%%[%-%+ #0]*%d*%.?%d*([%a%%])") do
+    if spec ~= "%" then specs[#specs + 1] = spec end
+  end
+  return specs
+end
+
+local rawformat = string.format
+-- string.format as 5.1 does it: %d truncates a fraction, %s prints whole floats as integers.
+function string.format(fmt, ...)
+  local args, specs = { ... }, formatSpecs(fmt)
+  for i, spec in ipairs(specs) do
+    if spec:find("[dicxXo]") then args[i] = truncated(args[i])
+    elseif spec == "s" then args[i] = wholeNumber(args[i]) end
+  end
+  return rawformat(fmt, unpack(args, 1, math.max(#specs, select("#", ...))))
+end
 
 local stub = { frames = {}, chat = {}, now = 1000, inCombat = false }
 __wfgStub = stub
@@ -24,6 +82,7 @@ end
 local function noop() end
 
 local methods = {}
+stub.methods = methods
 
 -- Widget methods resolve only if the real client has them for that widget
 -- type (scripts/lib/wow-widget-api.lua). Real methods the tests don't model
@@ -68,6 +127,7 @@ local function newWidget(kind, name, parent, template, layer)
   end
   return w
 end
+stub.newWidget = newWidget
 
 -- Layout recording. Only the UI preview (scripts/preview-ui.mjs) reads it;
 -- in game these are the real widget methods.
@@ -128,6 +188,9 @@ function methods:SetBackdrop(b) self.__backdrop = b end
 function methods:SetBackdropColor(r, g, b, a) self.__backdropColor = { r, g, b, a or 1 } end
 function methods:SetBackdropBorderColor(r, g, b, a) self.__borderColor = { r, g, b, a or 1 } end
 function methods:SetTexture(t) self.__texture = t end
+function methods:GetTexture() return self.__texture end
+function methods:SetAtlas(a, useSize) self.__atlas = a self.__atlasSize = useSize end
+function methods:GetAtlas() return self.__atlas end
 function methods:SetColorTexture(r, g, b, a) self.__color = { r, g, b, a or 1 } end
 function methods:SetVertexColor(r, g, b, a) self.__vertexColor = { r, g, b, a or 1 } end
 function methods:SetAlpha(a) self.__alpha = a end
@@ -608,4 +671,78 @@ end
 -- Forgets the chat lines seen so far.
 function stub.clearChat()
   stub.chat = {}
+end
+
+-- Driving the mouse and keyboard (TEST-ONLY) -------------------------------------------------
+
+-- Runs a script handler on a frame if it has one.
+local function runScript(frame, name, ...)
+  local fn = frame.__scripts[name]
+  if fn then return fn(frame, ...) end
+end
+stub.runScript = runScript
+
+-- Clicks a frame: PreClick, OnMouseDown, OnMouseUp, OnClick, PostClick, as the client does.
+function stub.click(frame, button, down)
+  button = button or "LeftButton"
+  runScript(frame, "PreClick", button, down == true)
+  runScript(frame, "OnMouseDown", button)
+  runScript(frame, "OnMouseUp", button)
+  if frame.__disabled ~= true then runScript(frame, "OnClick", button, down == true) end
+  runScript(frame, "PostClick", button, down == true)
+end
+
+-- The widget's Click method, as buttons have in game.
+function methods:Click(button, down) stub.click(self, button, down) end
+
+-- Takes the mouse off the frame it is over, running its OnLeave.
+local function leave()
+  local last = stub.hovered
+  stub.hovered = nil
+  if not last then return end
+  last.__mouseOver = false
+  runScript(last, "OnLeave")
+end
+
+-- Moves the mouse onto a frame (nil: off everything): OnLeave on the last one, OnEnter on this.
+function stub.hover(frame)
+  if stub.hovered == frame then return end
+  leave()
+  stub.hovered = frame
+  if frame then
+    frame.__mouseOver = true
+    runScript(frame, "OnEnter")
+  end
+end
+
+-- Scrolls the mouse wheel over a frame (delta 1 up, -1 down).
+function stub.wheel(frame, delta)
+  runScript(frame, "OnMouseWheel", delta or 1)
+end
+
+-- Presses a key on a frame: OnKeyDown then OnKeyUp.
+function stub.key(frame, key)
+  runScript(frame, "OnKeyDown", key)
+  runScript(frame, "OnKeyUp", key)
+end
+
+-- Drags a frame: OnDragStart, then moves it to a point on UIParent, then OnDragStop.
+function stub.drag(frame, point, x, y)
+  runScript(frame, "OnDragStart", "LeftButton")
+  if point then
+    frame:ClearAllPoints()
+    frame:SetPoint(point, UIParent, point, x or 0, y or 0)
+  end
+  runScript(frame, "OnDragStop")
+end
+
+-- Types into an edit box: sets the text and runs OnTextChanged (as user input).
+function stub.type(frame, text)
+  frame:SetText(text)
+  runScript(frame, "OnTextChanged", true)
+end
+
+-- Presses Enter in an edit box.
+function stub.enter(frame)
+  runScript(frame, "OnEnterPressed")
 end
