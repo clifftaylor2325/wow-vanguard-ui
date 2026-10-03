@@ -29,8 +29,15 @@ NP.MARKER = 8
 NP.QUEST = 12
 
 NP.plates = {}
--- Every frame we built on a plate (the client reuses plates, so each gets one).
+-- Every frame we built for a plate (the client reuses plates, so each keeps one).
 NP.built = {}
+-- How many plate frames are built ahead, at login: a pull that brings 30
+-- plates at once then builds none (each is some 20 frames).
+NP.POOL = 40
+-- The frames built ahead that no plate has taken yet.
+NP.pool = {}
+-- Fallback debuff rows put away after a fight, for the next plate drawn in one.
+NP.spare = {}
 
 -- Values -----------------------------------------------------------------------------------
 
@@ -120,18 +127,30 @@ local function addCastBar(f, s)
   f.cast:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, -4)
 end
 
+-- A fallback debuff row put away after a fight, moved over another plate's frame.
+local function reuseRow(row, f)
+  row.frame:SetParent(f)
+  row.frame:ClearAllPoints()
+  row.frame:SetPoint(unpack(NP.DebuffSpec(f, NP.settings).point))
+  row.frame:Show()
+  return row
+end
+
 -- A plate's debuff row on the backend in use, noting whether that was the
--- client's engine (a plate first drawn in combat gets the fallback).
+-- client's engine (a plate first drawn in combat gets the fallback: a row put
+-- away after an earlier fight when there is one, else a new one).
 local function addDebuffs(f)
-  f.debuffs = ns.Auras.Container(f, NP.DebuffSpec(f, NP.settings), f.unit)
+  local spare = ns.Auras.Backend() ~= ns.AuraEngine and table.remove(NP.spare)
+  f.debuffs = spare and reuseRow(spare, f) or ns.Auras.Container(f, NP.DebuffSpec(f, NP.settings), f.unit)
   f.debuffsOnEngine = ns.Auras.Backend() == ns.AuraEngine
 end
 
--- Our frame on a client nameplate: health bar, texts, debuffs, cast bar, and
--- its own unit events (ns.SetUnits points them at the plate's unit).
-local function build(plate)
+-- Our frame for a client nameplate: health bar, texts, debuffs, cast bar, and
+-- its own unit events (ns.SetUnits points them at the plate's unit). `parent`
+-- is the plate, or the hidden holder of the frames built ahead.
+local function build(parent)
   local s = NP.settings
-  local f = CreateFrame("StatusBar", nil, plate)
+  local f = CreateFrame("StatusBar", nil, parent)
   f:SetSize(s.width, s.height)
   f:SetPoint("CENTER")
   T.HudPanel(T.StyleBar(f), { inset = true })
@@ -143,16 +162,36 @@ local function build(plate)
 end
 
 -- After a fight: plates first drawn in it got the fallback icons, so give
--- them the client's own aura container now that one can be made.
+-- them the client's own aura container now that one can be made. The
+-- fallback rows are kept for plates drawn in the next fight.
 local function upgradeDebuffs()
   if not ns.AuraEngine.Available() then return end
   for _, f in ipairs(NP.built) do
     if not f.debuffsOnEngine then
       f.debuffs:SetUnit(nil)
       f.debuffs.frame:Hide()
+      NP.spare[#NP.spare + 1] = f.debuffs
       addDebuffs(f)
     end
   end
+end
+
+-- Builds the plate frames ahead (out of combat, at login), hidden until a
+-- plate takes one; none on a client without nameplates for addons.
+function NP.FillPool()
+  if type(_G.C_NamePlate) ~= "table" then return end
+  NP.holder = NP.holder or CreateFrame("Frame")
+  NP.holder:Hide()
+  for _ = #NP.pool + 1, NP.POOL do NP.pool[#NP.pool + 1] = build(NP.holder) end
+end
+
+-- A frame for a plate: one built ahead while any is left, else a new one, moved onto the plate.
+local function claim(plate)
+  local f = table.remove(NP.pool) or build(plate)
+  f:SetParent(plate)
+  f:ClearAllPoints()
+  f:SetPoint("CENTER", plate)
+  return f
 end
 
 -- Hides the client's own frame on a plate, and keeps it hidden.
@@ -247,11 +286,11 @@ end
 
 -- Events -----------------------------------------------------------------------------------
 
--- A nameplate appeared: draw on it (once per plate) and fill it in.
+-- A nameplate appeared: draw on it (once per plate, with a frame built ahead) and fill it in.
 local function onAdded(_, unit)
   local plate = NP.PlateFor(unit)
   if not plate then return end
-  plate.fui = plate.fui or build(plate)
+  plate.fui = plate.fui or claim(plate)
   hideDefault(plate)
   NP.plates[unit] = plate.fui
   plate.fui.unit = unit
@@ -310,9 +349,10 @@ local EVENTS = {
   QUEST_LOG_UPDATE = function() each(NP.PaintQuest) end,
 }
 
--- Module entry point (Core/Modules.lua).
+-- Module entry point (Core/Modules.lua): builds the plate frames ahead, out of combat.
 function NP.Enable(settings)
   NP.settings = settings
+  ns.OutOfCombat(NP.FillPool)
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
   T.OnChanged(function() each(repaintTarget) end)
 end
