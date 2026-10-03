@@ -7,6 +7,8 @@
 --          wheel...) casts on that player; off the frames the key does its
 --          usual job. Stored as a binding string ("SHIFT-Q", "MOUSEWHEELUP").
 --
+-- A binding is { key, action, value, spellID, rank }: a spell is cast by name
+-- (its highest rank) unless a rank was picked, then by that rank's spell id.
 -- Bindings are per character and per specialization. Everything here sets
 -- secure attributes and secure enter/leave snippets, so it only changes out
 -- of combat; in combat, the bindings you set earlier keep working. Hover keys
@@ -20,19 +22,44 @@ local CC = ns.Module("ClickCast", {
 })
 
 local MOUSE_NAMES = { "Left click", "Right click", "Middle click", "Button 4", "Button 5" }
-local ACTIONS = { spell = true, macro = true, target = true, menu = true }
+local ACTIONS = { spell = true, macro = true, target = true, menu = true, focus = true, assist = true }
+local ACTION_NAMES = { target = "Target", menu = "Unit menu", focus = "Focus", assist = "Assist" }
 local MODIFIER_ORDER = { "alt", "ctrl", "shift" }
 
 CC.frames = {}
+CC.ACTION_NAMES = ACTION_NAMES
 
 -- Bindings --------------------------------------------------------------------------------
+
+-- A spell's id from its name, where the client can say (C_Spell, then the old global).
+local function spellID(name)
+  if C_Spell and type(C_Spell.GetSpellInfo) == "function" then
+    local info = C_Spell.GetSpellInfo(name)
+    return type(info) == "table" and info.spellID or nil
+  end
+  if type(GetSpellInfo) == "function" then return select(7, GetSpellInfo(name)) end
+end
+
+-- Gives a spell binding that has no spell id (an older one, or a typed name) the id the
+-- client knows for its name, so the grid can show its icon and tooltip.
+local function upgrade(b)
+  if b.action == "spell" and b.spellID == nil then b.spellID = spellID(b.value) end
+end
 
 -- This character's bindings for a spec (the current one by default), created empty.
 function CC.Bindings(spec)
   spec = spec or ns.SpecIndex() or 0
   ForeverUICharDB.clickcast = type(ForeverUICharDB.clickcast) == "table" and ForeverUICharDB.clickcast or {}
   ForeverUICharDB.clickcast[spec] = ForeverUICharDB.clickcast[spec] or {}
+  for _, b in ipairs(ForeverUICharDB.clickcast[spec]) do upgrade(b) end
   return ForeverUICharDB.clickcast[spec]
+end
+
+-- The current spec's binding for a key, or nil.
+function CC.Binding(key)
+  for _, b in ipairs(CC.Bindings()) do
+    if b.key == key then return b end
+  end
 end
 
 -- For a mouse binding ("ctrl-BUTTON2"): its modifier prefix ("ctrl-") and button number. nil for keys.
@@ -47,19 +74,20 @@ local function problem(key, action, value)
   if type(key) ~= "string" or key == "" then return "press a key or click first" end
   if not ACTIONS[action] then return "unknown action" end
   if (action == "spell" or action == "macro") and (type(value) ~= "string" or value:match("^%s*$")) then
-    return action == "spell" and "type or drag a spell" or "type the macro text"
+    return action == "spell" and "pick a spell" or "type the macro text"
   end
   return nil
 end
 
 -- Adds (or replaces) the binding for a key in the current spec, then applies.
-function CC.Add(key, action, value)
+-- A spell binding may carry its spell id and, for a specific rank, the rank number.
+function CC.Add(key, action, value, id, rank)
   local err = problem(key, action, value)
   if err then return false, err end
   CC.Remove(key)
   local list = CC.Bindings()
-  list[#list + 1] = { key = key, action = action, value = value }
-  ns.OutOfCombat(CC.ApplyAll)
+  list[#list + 1] = { key = key, action = action, value = value, spellID = id, rank = rank }
+  ns.OutOfCombat(CC.ApplyAll, "clickcast")
   return true
 end
 
@@ -69,7 +97,69 @@ function CC.Remove(key)
   for i = #list, 1, -1 do
     if list[i].key == key then table.remove(list, i) end
   end
-  ns.OutOfCombat(CC.ApplyAll)
+  ns.OutOfCombat(CC.ApplyAll, "clickcast")
+end
+
+-- Moves a binding to another key (swapping with whatever is there).
+function CC.Move(from, to)
+  local a, b = CC.Binding(from), CC.Binding(to)
+  if not a or from == to then return end
+  a.key = to
+  if b then b.key = from end
+  ns.OutOfCombat(CC.ApplyAll, "clickcast")
+end
+
+-- Removes every binding in the current spec.
+function CC.Clear()
+  local list = CC.Bindings()
+  for i = #list, 1, -1 do list[i] = nil end
+  ns.OutOfCombat(CC.ApplyAll, "clickcast")
+end
+
+-- Layouts, copies and strings ---------------------------------------------------------------------
+
+-- Binds a layout ({ key = { action, value } }, from Modules/ClickCastSpells.lua) over the current
+-- bindings: its keys are replaced, other keys are kept. A spell binds by name, so one the
+-- character hasn't learned yet starts working when it is.
+function CC.ApplyLayout(layout)
+  for key, b in pairs(layout) do
+    CC.Add(key, b.action, b.value, b.action == "spell" and spellID(b.value) or nil)
+  end
+end
+
+-- Copies the current spec's bindings over another spec's.
+function CC.CopyToSpec(spec)
+  local from, to = CC.Bindings(), CC.Bindings(spec)
+  for i = #to, 1, -1 do to[i] = nil end
+  for i, b in ipairs(from) do
+    to[i] = { key = b.key, action = b.action, value = b.value, spellID = b.spellID, rank = b.rank }
+  end
+end
+
+-- The current spec's bindings as a string to share.
+function CC.Export()
+  local list = {}
+  for i, b in ipairs(CC.Bindings()) do
+    list[i] = { key = b.key, action = b.action, value = b.value, spellID = b.spellID, rank = b.rank }
+  end
+  return ns.Serialize.Encode("clickcast", { bindings = list })
+end
+
+-- Whether a decoded binding has the shape CC.Add accepts.
+local function wellFormed(b)
+  return type(b) == "table" and type(b.key) == "string" and ACTIONS[b.action] and (b.value == nil or type(b.value) == "string")
+end
+
+-- Replaces the current spec's bindings with the ones in a string; nil and a reason when it can't.
+function CC.Import(text)
+  local scope, data = ns.Serialize.Decode(text)
+  if not scope then return nil, data end
+  if scope ~= "clickcast" or type(data.bindings) ~= "table" then return nil, "not a click-casting string" end
+  CC.Clear()
+  for _, b in ipairs(data.bindings) do
+    if wellFormed(b) then CC.Add(b.key, b.action, b.value, tonumber(b.spellID), tonumber(b.rank)) end
+  end
+  return #CC.Bindings()
 end
 
 -- Descriptions -----------------------------------------------------------------------------
@@ -92,11 +182,22 @@ function CC.KeyText(key)
   return modifierText(mods) .. (names[base] or base) .. " (hover)"
 end
 
--- What a binding does: the spell name, "Macro: ...", "Target" or "Menu".
+-- What a binding does: the spell name (with its rank when one was picked), "Macro: ...", "Target", "Unit menu"...
 function CC.ActionText(b)
-  if b.action == "spell" then return b.value end
+  if b.action == "spell" then return b.value .. (b.rank and (" (Rank " .. b.rank .. ")") or "") end
   if b.action == "macro" then return "Macro: " .. b.value end
-  return b.action == "target" and "Target" or "Menu"
+  return ACTION_NAMES[b.action] or "Unit menu"
+end
+
+-- What a hover key does off the frames ("Action bar 1 slot 2"), or nil when it's free or the client can't say.
+function CC.Collision(key)
+  if CC.MouseParts(key) or type(GetBindingAction) ~= "function" then return nil end
+  local action = GetBindingAction(key)
+  if type(action) ~= "string" or action == "" then return nil end
+  local bar, slot = action:match("^MULTIACTIONBAR(%d)BUTTON(%d+)$")
+  if bar then return "Action bar " .. (bar + 1) .. " slot " .. slot end
+  slot = action:match("^ACTIONBUTTON(%d+)$")
+  return slot and ("Action bar 1 slot " .. slot) or action:lower():gsub("_", " ")
 end
 
 -- Applying ---------------------------------------------------------------------------------
@@ -114,13 +215,18 @@ local function clearAttrs(f)
 end
 
 -- The secure "type" for an action.
-local TYPES = { spell = "spell", macro = "macro", target = "target", menu = "togglemenu" }
+local TYPES = { spell = "spell", macro = "macro", target = "target", menu = "togglemenu", focus = "focus", assist = "assist" }
+
+-- What the secure spell attribute gets: the rank's id when a rank was picked, else the name (highest rank).
+local function spellValue(b)
+  return b.rank and b.spellID or b.value
+end
 
 -- Sets type and spell/macro text for a binding, with the attribute suffix
 -- ("2" for mouse button 2, "-fui3" for a hover key's virtual button).
 local function setAction(f, prefix, suffix, b)
   setAttr(f, prefix .. "type" .. suffix, TYPES[b.action])
-  if b.action == "spell" then setAttr(f, prefix .. "spell" .. suffix, b.value) end
+  if b.action == "spell" then setAttr(f, prefix .. "spell" .. suffix, spellValue(b)) end
   if b.action == "macro" then setAttr(f, prefix .. "macrotext" .. suffix, b.value) end
 end
 
@@ -149,7 +255,7 @@ local function wrap(f, enter)
 end
 
 -- Whether this client compiles secure snippets (probed on first use, Core/Client.lua); without the probe, assume yes.
-local function snippetsOn()
+function CC.SnippetsOn()
   local probe = ns.Client and ns.Client.ProbeSnippets
   return probe == nil or probe() ~= false
 end
@@ -160,14 +266,15 @@ function CC.ApplyFrame(f)
   clearAttrs(f)
   for i, b in ipairs(bindings) do
     local prefix, n = CC.MouseParts(b.key)
-    if prefix then setAction(f, prefix, n, b) else setAction(f, "", "-fui" .. i, b) end
+    if prefix then setAction(f, prefix, n, b) else setAction(f, "*", "-fui" .. i, b) end
   end
-  if snippetsOn() then wrap(f, CC.EnterSnippet(bindings)) end
+  if CC.SnippetsOn() then wrap(f, CC.EnterSnippet(bindings)) end
 end
 
 -- Applies the bindings to every registered frame (out of combat only).
 function CC.ApplyAll()
   for _, f in ipairs(CC.frames) do CC.ApplyFrame(f) end
+  if CC.OnApplied then CC.OnApplied() end
 end
 
 -- Adds a frame to click casting and applies the bindings to it.
@@ -192,7 +299,7 @@ function CC.Enable(settings)
   CC.handler = CreateFrame("Frame", "ForeverUI_ClickCastHandler", UIParent, "SecureHandlerBaseTemplate")
   ns.OutOfCombat(function() registerFrames(settings) end)
   -- A new spec has its own bindings: apply them (spec changes happen out of combat).
-  local function reapply() ns.OutOfCombat(CC.ApplyAll) end
+  local function reapply() ns.OutOfCombat(CC.ApplyAll, "clickcast") end
   ns.On("PLAYER_SPECIALIZATION_CHANGED", reapply)
   ns.On("ACTIVE_TALENT_GROUP_CHANGED", reapply)
 end

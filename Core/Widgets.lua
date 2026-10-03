@@ -75,6 +75,7 @@ end
 
 local MODIFIER_KEYS = { LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, LALT = true, RALT = true, LMETA = true, RMETA = true }
 local MOUSE_BUTTONS = { LeftButton = 1, RightButton = 2, MiddleButton = 3, Button4 = 4, Button5 = 5 }
+W.MODIFIER_KEYS, W.MOUSE_BUTTONS = MODIFIER_KEYS, MOUSE_BUTTONS
 
 -- True when a modifier-key query (IsShiftKeyDown...) exists and says held.
 local function held(fn)
