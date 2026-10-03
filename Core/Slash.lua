@@ -75,8 +75,7 @@ end
 
 -- /fui accent reset
 local function resetAccent()
-  T.Settings().accent = nil
-  T.Refresh()
+  T.ResetAccent()
   chat("Accent back to default.")
 end
 

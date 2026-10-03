@@ -34,6 +34,29 @@ it("wrong-typed saved values are replaced by their defaults", () => {
   expect(addon.eval('local c = ns.Copy({ a = 1, b = { c = "x" } }) return { c.a, c.b.c }'), "ns.Copy still copies every key").toEqual([1, "x"]);
 });
 
+it("settings tables are filled once per profile and key", () => {
+  // TEST-ONLY spies: count ns.Fill calls, a migration's runs and profile-change notices.
+  const addon = loggedIn(`__fills, __migs, __changes = 0, 0, 0
+    local realFill = ns.Fill
+    ns.Fill = function(...) __fills = __fills + 1 return realFill(...) end
+    ns.Migrate("TESTONLY", function(saved) __migs = __migs + 1 end)
+    ns.OnProfileChanged(function() __changes = __changes + 1 end)`);
+  addon.eval("__fills = 0");
+  expect(addon.eval("local a, b = ns.Theme.Settings(), ns.Settings('theme') return { a == b, a == ForeverUIDB.profiles.Default.theme, __fills }"), "a second lookup returns the same table without filling it").toEqual([true, true, 0]);
+  expect(addon.eval("ns.Theme.Settings().sounds = false ForeverUIDB.profiles.Default.theme.smoothBars = false return { ForeverUIDB.profiles.Default.theme.sounds, ns.Theme.Settings().smoothBars, __fills }"), "writes through the cached table and the saved one are the same writes").toEqual([false, false, 0]);
+  expect(addon.eval("local old = ns.Theme.Settings() ns.UseProfile('Raid') local new = ns.Theme.Settings() return { new ~= old, new == ForeverUIDB.profiles.Raid.theme, new.sounds, __fills, ns.Theme.Settings() == new, __fills, __changes }"), "after a profile switch it is a new table, filled once").toEqual([true, true, true, 1, true, 1, 1]);
+  expect(addon.eval("ns.Profile().theme = { accent = { 0, 1, 0 } } local t = ns.Theme.Settings() return { t == ns.Profile().theme, t.accent[2], t.panel[4], __fills }"), "a write that replaces the saved table is seen without a notice").toEqual([true, 1, 0.94, 2]);
+  expect(addon.eval("local a = ns.Settings('TESTONLY', { x = 1 }) local b = ns.Settings('TESTONLY', { y = 2 }) local c = ns.Settings('TESTONLY') return { a == b, b == c, c.x, c.y, __fills, __migs }"), "other defaults fill the same table again; none reuses it").toEqual([true, true, 1, 2, 4, 1]);
+  expect(addon.eval("local a = ns.Settings('TESTONLY') ns.ProfileChanged() local b = ns.Settings('TESTONLY') return { a == b, __fills, __migs, __changes }"), "a notice refills the table, but its migration ran once").toEqual([true, 5, 1, 2]);
+  expect(addon.eval("ns.Profile().TESTONLY = {} ns.Settings('TESTONLY') return __migs"), "a new table is migrated").toBe(2);
+  addon.eval("ns.Profile().theme.panel = { 1, 0, 0, 1 }");
+  expect(addon.eval("ns.CopyProfile('Default') local copied = __changes ns.ResetProfile() local reset = __changes return { copied, reset, ns.Theme.Settings().panel[4] }"), "copy and reset notify, and the settings are filled again").toEqual([3, 4, 0.94]);
+  expect(addon.eval(`local text = ns.ExportProfile('theme') ns.Theme.Settings().accent = { 1, 1, 1 } ns.ImportProfile(text) return { __changes, ns.Theme.Settings().accent[1] == ns.Theme.PRESETS.brass[1] }`), "a module import notifies and is used").toEqual([5, true]);
+  addon.slash("accent ff0000");
+  addon.slash("accent reset");
+  expect(addon.eval("return { ns.Theme.Accent() == ns.Theme.PRESETS.brass[1], ns.Theme.Settings().accent[4] }"), "/fui accent reset puts the default accent into the cached table").toEqual([true, 1]);
+});
+
 it("the account file's version is read and upgraded", () => {
   const spy = "__mig = {} local real = ns.MigrateDB ns.MigrateDB = function(from, to) __mig[#__mig + 1] = { from, to } return real(from, to) end";
   const stamped = loggedIn(spy, { savedVariables: "ForeverUIDB.version = nil" });
