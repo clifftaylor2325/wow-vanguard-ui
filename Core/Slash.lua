@@ -7,7 +7,7 @@ local chat = ns.Chat
 
 local HELP = {
   "A from-scratch UI suite. /fui opens the options window; /fui <command>:",
-  "setup                first-run setup again: layout, look, then move things",
+  "setup                first-run setup again: layout, screen, look, then move things",
   "unlock | lock        drag handles on every ForeverUI frame; click one, then arrow keys nudge (Shift: 10 px)",
   "reset <frame|all>    put a frame (or every frame) back at its default spot",
   "frames               list the movable frames",
