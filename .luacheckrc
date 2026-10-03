@@ -2,7 +2,8 @@
 -- addon may set are listed exactly, so a missing `local` fails.
 std = "lua51"
 max_line_length = false
-exclude_files = { "node_modules/", "scripts/" }
+-- Libs/ holds the shared libraries, unmodified as upstream wrote them.
+exclude_files = { "node_modules/", "scripts/", "Libs/" }
 
 -- Every addon file starts `local ADDON, ns = ...`; not all use ADDON.
 ignore = { "211/ADDON" }
@@ -44,4 +45,6 @@ read_globals = {
   "IsInInstance", "SecureCmdOptionParse",
   -- P3.4 Keybind mode: binding a key to a button's command and saving it in the binding set in use.
   "SetBinding", "SaveBindings", "GetCurrentBindingSet",
+  -- P3.5 Shared media: the bundled libraries' loader (Libs/LibStub).
+  "LibStub",
 }

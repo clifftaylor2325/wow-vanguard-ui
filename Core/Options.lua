@@ -132,6 +132,7 @@ local function liveThemeSetting(key)
   end
 end
 
+-- The built-in fonts and bar textures; the pickers add what LibSharedMedia shares.
 local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", "the game's font" } }
 -- The faction look: by your character's faction, or off.
 local FACTION_LOOK = { { "auto", "By your faction" }, { "off", "Off" } }
@@ -153,7 +154,7 @@ local function lookRows()
     { "header", "Look" },
     { "preview" },
     { "swatches" },
-    { "cycle", "Font", FONT_CHOICES, liveThemeSetting("font") },
+    { "cycle", "Font", T.SharedChoices("font", FONT_CHOICES), liveThemeSetting("font") },
     { "slider", "Text size", TEXT_SIZES, liveThemeSetting("textScale") }, { "cycle", "Faction look: crest and heading font", FACTION_LOOK, liveThemeSetting("faction") },
     check("Pixel-perfect scale (crisp 1-pixel lines)", function() return T.Settings().pixelScale end,
       function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end),
@@ -187,7 +188,7 @@ end
 local function barRows()
   return {
     { "header", "Bars" },
-    { "cycle", "Bar texture", BAR_TEXTURES, themeSetting("barTexture") },
+    { "cycle", "Bar texture", T.SharedChoices("statusbar", BAR_TEXTURES), themeSetting("barTexture") },
     check("Smooth health and power bars", function() return T.Settings().smoothBars end, function(v) T.Settings().smoothBars = v end),
     check("Soft shadows under frames (reload)", themeSetting("hudShadow")),
   }
