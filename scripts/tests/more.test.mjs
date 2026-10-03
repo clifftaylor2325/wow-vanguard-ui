@@ -77,6 +77,38 @@ it("bags and bank: item quality borders, the search boxes and the bank in the th
   expect(borderOf(off, "__bankItems[1]") == null, "switched off, the bank stays the game's").toBe(true);
 });
 
+// TEST-ONLY spies counting the theme's painting calls, and a bag window the game fills with UpdateItems.
+const BAG_SPY_ENV = `
+  __paint = { Panel = 0, FadeRegions = 0, SetBorder = 0 }
+  function ContainerFrameCombinedBags:UpdateItems() end
+`;
+// Wraps the theme's painting calls in counters (after login, so the addon's own calls go through them).
+const BAG_SPIES = `for name in pairs(__paint) do local real = ns.Theme[name] ns.Theme[name] = function(...) __paint[name] = __paint[name] + 1 return real(...) end end`;
+// The painting counts so far, then reset.
+const painted = (addon) => addon.eval("local c = { __paint.Panel, __paint.FadeRegions, __paint.SetBorder } for k in pairs(__paint) do __paint[k] = 0 end return c");
+
+it("bags: each slot is skinned once, the window on show, a border only when its color changes", () => {
+  const addon = loggedIn(UI_ENV + GEAR_ENV + BAG_SPY_ENV);
+  addon.eval(BAG_SPIES);
+  addon.eval("ContainerFrameCombinedBags:Show()");
+  expect(painted(addon), "opening paints the window and its one slot, and fades the window and the new search box").toEqual([2, 2, 0]);
+  addon.fire("BAG_UPDATE_DELAYED");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect(painted(addon), "bag updates while open repaint nothing").toEqual([0, 0, 0]);
+  addon.eval(`__new = CreateFrame("Button", nil, ContainerFrameCombinedBags) __new.IconBorder = __new:CreateTexture()
+    ContainerFrameCombinedBags.EnumerateValidItems = function() return ipairs({ __item, __new }) end
+    ContainerFrameCombinedBags:UpdateItems()`);
+  expect([painted(addon), addon.eval("return __new.fuiSkinned"), borderOf(addon, "__new") !== undefined], "a slot the game adds is skinned when it fills the slots, the old one is left alone").toEqual([[1, 0, 0], true, true]);
+  addon.eval("for _ = 1, 3 do __item.IconBorder:SetVertexColor(0.1, 0.4, 1) end");
+  expect([painted(addon)[2], borderOf(addon, "__item")], "the same quality color three times: one repaint").toEqual([1, [0.1, 0.4, 1, 1]]);
+  addon.eval("__item.IconBorder:Hide() __item.IconBorder:Hide() __item.IconBorder:SetVertexColor(0.1, 0.4, 1)");
+  expect(painted(addon)[2], "back to the theme's border once, then the color again").toBe(2);
+  addon.eval("local s = { __secret = true } for _ = 1, 2 do __item.IconBorder:SetVertexColor(s, s, s) end __item.IconBorder:SetVertexColor(0.1, 0.4, 1)");
+  expect(painted(addon)[2], "a secret color is never compared: every call repaints, and so does the next plain color").toBe(3);
+  addon.eval("ContainerFrameCombinedBags:Hide() ContainerFrameCombinedBags:Show()");
+  expect(painted(addon), "reopening fades and panels the window again, no slot").toEqual([1, 1, 0]);
+});
+
 it("character pane durability, the mail's Open All button", () => {
   const addon = loggedIn(UNITS_ENV + UI_ENV + STRIP_ENV + GEAR_ENV);
   // A gear slot's durability label: shown, text and color.
@@ -361,6 +393,7 @@ it("quest tracker: watched quests with levels, objectives and items", () => {
   setCombat(addon, true);
   addon.eval("__quests[90051].item = nil");
   addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
   expect(addon.eval("return ForeverUI_QuestItem1:IsShown()"), "in combat the item buttons wait").toBe(true);
   setCombat(addon, false);
   expect(addon.eval("return ForeverUI_QuestItem1:IsShown()"), "and update after").toBe(false);
@@ -380,10 +413,12 @@ it("quest tracker: nearest first, collapsing, too many quests, and switched off"
   addon.eval(`local t = ForeverUI_QuestTrackerFrame.toggle t.__scripts.OnClick(t)
     for i = 1, 6 do local id = 90070 + i __quests[id] = { index = 10 + i, title = "TEST-ONLY Many " .. i, level = 5, dist = i, objectives = { { text = "a" }, { text = "b" }, { text = "c" } } } __watches[#__watches + 1] = id end`);
   addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
   const t = tracker(addon);
   expect([t.count, t.more], "more than fit: the rest are counted").toEqual(["9", `+${9 - t.blocks.length} more`]);
   addon.eval("__watches = {}");
   addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
   expect(tracker(addon).shown, "nothing watched, nothing shown").toBe(false);
   const own = loggedIn(TRACK_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { MenuStrip = { tracker = false } } }" });
   expect(own.eval("return { ForeverUI_QuestTrackerFrame:GetParent():GetName(), (ns.MoverPoint('questtracker')) }"), "with the menu strip's spot off, it makes its own").toEqual(["ForeverUI_QuestTracker", "TOPRIGHT"]);
@@ -461,7 +496,49 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   addon.eval("ForeverUI_QuestLog.listScroll.__scripts.OnMouseWheel(ForeverUI_QuestLog.listScroll, -1) ns.GetModule('QuestLog').Select(90099)");
   expect([questLog(addon).detail, questLog(addon).track], "a quest gone from the log: nothing chosen").toEqual([false, false]);
   addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
   expect(questLog(addon).title, "the log's next update chooses the first quest showing").toBe("[3] TEST-ONLY Far");
+});
+
+// TEST-ONLY counters: how often the tracker and the quest log rebuild (__rebuilds.tracker, __rebuilds.log).
+const COUNT_REBUILDS = `__rebuilds = { tracker = 0, log = 0 }
+  local QT, QL = ns.GetModule("QuestTracker"), ns.GetModule("QuestLog")
+  local tracker, log = QT.Refresh, QL.Refresh
+  QT.Refresh = function(...) __rebuilds.tracker = __rebuilds.tracker + 1 return tracker(...) end
+  QL.Refresh = function(...) __rebuilds.log = __rebuilds.log + 1 return log(...) end`;
+
+// The rebuilds counted since the last look (then forgets them).
+const rebuilds = (addon) => addon.eval("local r = __rebuilds __rebuilds = { tracker = 0, log = 0 } return r");
+
+it("quest bursts: many quest log updates in one frame rebuild the tracker and the open log once", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval(COUNT_REBUILDS);
+  for (let i = 0; i < 20; i++) addon.fire("QUEST_LOG_UPDATE");
+  expect(rebuilds(addon), "nothing rebuilds within the frame of the burst (the log is closed)").toEqual({ tracker: 0, log: 0 });
+  addon.eval("__quests[90051].title = 'TEST-ONLY Wolves, renamed'");
+  addon.update(0);
+  expect([rebuilds(addon), addon.eval("return ForeverUI_QuestTrackerFrame.blocks[1].title:GetText()")], "the next frame: one tracker rebuild, with the news").toEqual([{ tracker: 1, log: 0 }, "[8] TEST-ONLY Wolves, renamed"]);
+  addon.eval("ns.GetModule('QuestLog').Open()");
+  rebuilds(addon);
+  for (let i = 0; i < 20; i++) addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  addon.update(0);
+  expect(rebuilds(addon), "with the log open: one rebuild of each").toEqual({ tracker: 1, log: 1 });
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.eval("ForeverUI_QuestLog:Hide()");
+  addon.update(0);
+  expect(rebuilds(addon).log, "a log closed before the next frame isn't re-rendered").toBe(0);
+});
+
+it("quest tracker: the nearest-first sort ticks only while that order is on", () => {
+  const addon = loggedIn(TRACK_ENV);
+  // Whether the tracker has its sort ticker (an OnUpdate script).
+  const ticking = () => addon.eval("return ForeverUI_QuestTrackerFrame:GetScript('OnUpdate') ~= nil");
+  expect(ticking(), "in the game's order, no sort ticker").toBe(false);
+  addon.eval("ns.GetModule('QuestTracker').settings.order = 'nearest' ns.GetModule('QuestTracker').ApplyOrder()");
+  expect([ticking(), addon.eval("return ForeverUI_QuestTrackerFrame.blocks[1].title:GetText()")], "nearest first: it ticks, and the tracker is re-sorted at once").toEqual([true, "[12] TEST-ONLY Letter"]);
+  addon.eval("ns.GetModule('QuestTracker').settings.order = 'game' ns.GetModule('QuestTracker').ApplyOrder()");
+  expect([ticking(), addon.eval("return ForeverUI_QuestTrackerFrame.blocks[1].title:GetText()")], "back to the game's order: no ticker, the game's order").toEqual([false, "[8] TEST-ONLY Wolves"]);
 });
 
 it("quest log: keys follow rebinding, /fui quests, closing, and switched off", () => {
@@ -1130,6 +1207,45 @@ it("nameplates: a gold ! by units your quests need", () => {
   expect(bare.eval("return __plates.nameplate1.fui.quest:IsShown()"), "a client that can't say shows none").toBe(false);
 });
 
+it("flight timer: the taxi check runs only from picking a flight until it lands", () => {
+  const addon = loggedIn(UNITS_ENV + TAXI_ENV + "__asked = 0 local real = UnitOnTaxi UnitOnTaxi = function(...) __asked = __asked + 1 return real(...) end");
+  // How often the taxi state was asked so far, then reset.
+  const asked = () => addon.eval("local n = __asked __asked = 0 return n");
+  addon.advance(60);
+  expect([asked(), addon.eval('return ns.GetModule("Errands").poller:IsShown()')], "a minute on the ground with no flight picked: never asked").toEqual([0, false]);
+  addon.eval("TakeTaxiNode(2) __onTaxi = true");
+  addon.advance(5);
+  expect([asked(), flightBar(addon).shown], "in the air: asked twice a second, the bar up").toEqual([10, true]);
+  addon.eval("__onTaxi = false");
+  addon.advance(1);
+  expect([addon.eval('return ns.GetModule("Errands").poller:IsShown()'), flightBar(addon).shown], "landed: the check stops").toEqual([false, false]);
+  asked();
+  addon.advance(30);
+  expect(asked(), "and stays stopped").toBe(0);
+});
+
+it("minimap coordinates: asked again only after the player moves", () => {
+  // TEST-ONLY world position, and a counter of map position lookups.
+  const addon = loggedIn(UI_ENV + `__pos = { 100, 200, 0, 1 } UnitPosition = function() return __pos[1], __pos[2], __pos[3], __pos[4] end
+    __asked = 0 local real = C_Map.GetPlayerMapPosition C_Map.GetPlayerMapPosition = function(...) __asked = __asked + 1 return real(...) end`);
+  // Map position lookups so far, then reset; and the text under the map.
+  const asked = () => addon.eval("local n = __asked __asked = 0 return n");
+  const coords = () => addon.eval('return ns.GetModule("Minimap").coords:GetText()');
+  addon.advance(2);
+  expect([asked(), coords()], "standing still for two seconds: one lookup, the coordinates shown").toEqual([1, "45.7, 12.3"]);
+  addon.eval("__pos[1] = 101 C_Map.GetPlayerMapPosition = function() __asked = __asked + 1 return { GetXY = function() return 0.5, 0.25 end } end");
+  addon.advance(0.25);
+  expect([asked(), coords()], "a step: looked up again, the new coordinates").toEqual([1, "50.0, 25.0"]);
+  addon.eval("__pos[4] = 2");
+  addon.advance(0.25);
+  addon.eval("C_Map.GetBestMapForUnit = function() return 7 end");
+  addon.advance(0.25);
+  expect(asked(), "another continent, or another map at the same spot: looked up again each time").toBe(2);
+  addon.eval("__pos[1] = { __secret = true }");
+  addon.advance(1);
+  expect(asked(), "a hidden position can't be compared: looked up on every refresh, as before").toBe(4);
+});
+
 it("minimap with no position, chat window hooks, and short numbers", () => {
   const addon = loggedIn(`
     C_Map = nil
@@ -1238,7 +1354,7 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   expect(addon.eval("return { ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }"), "and never shrinks below its default").toEqual([132, 36]);
   expect(addon.eval("return { BagsBar:GetScale(), ForeverUI_BagStrip:GetAlpha(), ForeverUI_BagStrip.__points.BOTTOMRIGHT.x, ForeverUI_BagStrip.__points.BOTTOMRIGHT.y }"), "bags sit small, always shown, just above the menu on its right edge").toEqual([0.7, 1, -16, 20 + 36 + 6]);
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "which is out of sight until the mouse is over it").toBe(0);
-  addon.eval("function ForeverUI_MenuStrip:IsMouseOver() return true end __wfgStub.advance(0.3)");
+  addon.hover("ForeverUI_MenuStrip");
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "and shows with the mouse over it").toBe(1);
   expect(addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p.rel == ForeverUI_QuestTracker, ObjectiveTrackerFrame:GetHeight() }"), "the quest tracker sits under the info strip, no taller than its spot").toEqual([true, 248]);
 });
@@ -1310,6 +1426,24 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
     return { b.name:GetParent() == b.texts and b.status:GetParent() == b.texts and b.role:GetParent() == b.texts and b.roleShadow:GetParent() == b.texts,
       b.texts:GetFrameLevel() > b.heal:GetFrameLevel() and b.texts:GetFrameLevel() > b.shield:GetFrameLevel(), b.texts:GetFrameLevel() < b.overlay:GetFrameLevel() }`);
   expect(layers, "a tile's name, role and status sit above the incoming-heal and shield bars, under the status marks").toEqual([true, true, true]);
+});
+
+it("menu strip: shown by the mouse entering and leaving it and its buttons, with nothing polling", () => {
+  const addon = strips();
+  // The menu strip's alpha.
+  const alpha = () => addon.eval("return ForeverUI_MenuStrip:GetAlpha()");
+  expect(addon.eval("local s = ForeverUI_MenuStrip return { s:GetScript('OnUpdate') == nil, s.__mouseMotion, s.__mouseClick }"), "no OnUpdate; the strip feels the mouse but lets clicks through").toEqual([true, true, false]);
+  addon.hover("CharacterMicroButton");
+  expect(alpha(), "straight onto a button: the strip shows").toBe(1);
+  addon.hover("ForeverUI_MenuStrip");
+  expect(alpha(), "from the button onto the strip between buttons: still shown").toBe(1);
+  addon.hover("EJMicroButton");
+  addon.hover(null);
+  expect(alpha(), "off the strip: hidden").toBe(0);
+  addon.hover("MainMenuMicroButton");
+  addon.eval("ForeverUI_MenuStrip.__mouseOver = true");
+  addon.hover(null);
+  expect(alpha(), "leaving a button while still over the strip keeps it shown").toBe(1);
 });
 
 it("menu and bag strips: the bars' own frame art is hidden, the key ring is skinned", () => {

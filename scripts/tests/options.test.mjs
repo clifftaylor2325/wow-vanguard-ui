@@ -171,6 +171,27 @@ it("options: search jumps to the row, and the page edges fade", () => {
   expect(edges(700), "at the bottom: only the top").toEqual([true, false]);
 });
 
+it("options: search reads each page's rows once per opening; a rebuilt page leaves no orphan rows", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // Counts each page's rows() calls (a TEST-ONLY spy around every page's own builder).
+  addon.eval("__rows = {} for _, p in ipairs(ns.Options.PAGES) do local real = p.rows p.rows = function() __rows[p.key] = (__rows[p.key] or 0) + 1 return real() end end");
+  // The rows() calls so far for the general and profiles pages, then reset.
+  const reads = () => addon.eval("local r = { __rows.general or 0, __rows.profiles or 0 } __rows = {} return r");
+  addon.eval('ns.NewProfile("TEST-ONLY Healer") ns.Options.Show("profiles")');
+  reads();
+  const rows = addon.eval("return ns.Options.RowCount()");
+  for (const text of ["h", "he", "hea", "heal"]) addon.eval(`ns.Options.Search("${text}")`);
+  expect([reads(), addon.eval("return ns.Options.matched.profiles")], "four keystrokes read each page's rows once, and still find a profile's name").toEqual([[1, 1], true]);
+  addon.eval('ns.Options.RebuildPage("profiles")');
+  expect([addon.eval("return ns.Options.RowCount()"), reads()], "a rebuilt page replaces its rows: the row list is the same length, the profiles page read again to build it").toEqual([rows, [0, 1]]);
+  addon.eval('ns.NewProfile("TEST-ONLY Tank") ns.Options.RebuildPage("profiles") ns.Options.Search("tank")');
+  expect([addon.eval("return ns.Options.RowCount()"), addon.eval("return ns.Options.matched.profiles"), reads()], "a new profile: one more row, found by the search; only the rebuilt page is read again (to build it, then to search it)").toEqual([rows + 1, true, [0, 2]]);
+  addon.eval('ns.Options.Search("tan")');
+  expect(reads(), "the next keystroke reads nothing").toEqual([0, 0]);
+  addon.eval('ns.Options.Hide() ForeverUI_Options:Hide() ns.Options.Show() ns.Options.Search("tan")');
+  expect(reads(), "opening the window again reads the rows afresh").toEqual([1, 1]);
+});
+
 it("choice fallback, key capture and the mouse wheel", () => {
   const addon = loggedIn(CLICK_LUA + `
     -- TEST-ONLY spec index so the click-cast page builds for spec 1.

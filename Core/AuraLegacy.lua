@@ -76,12 +76,19 @@ function L.BaseFilter(filter)
   return (filter:gsub("|![%w_]+", ""))
 end
 
+-- One group's icon: its size, and whether it starts a new row (the group's first, when asked), kept on it for the layout.
+local function groupIcon(frame, spec, def, i)
+  local icon = A.Icon(frame, def.size, A.Style(spec, def))
+  icon.fuiSize, icon.fuiNewLine = def.size, i == 1 and def.newLine
+  return icon
+end
+
 -- The icons for each group of a spec.
 local function build(frame, spec)
   local groups = {}
   for g, def in ipairs(spec.groups) do
     groups[g] = { def = def, filter = L.BaseFilter(def.filter), icons = {} }
-    for i = 1, def.max do groups[g].icons[i] = A.Icon(frame, def.size, A.Style(spec, def)) end
+    for i = 1, def.max do groups[g].icons[i] = groupIcon(frame, spec, def, i) end
   end
   return groups
 end
@@ -99,8 +106,8 @@ function L.Create(parent, spec, unit)
   frame:SetPoint(unpack(spec.point))
   frame:SetSize(1, 1)
   if spec.level then frame:SetFrameLevel(spec.level) end
-  local c = setmetatable({ frame = frame, flow = flow(spec), groups = build(frame, spec) }, Container)
-  frame:SetScript("OnEvent", function() c:Refresh() end)
+  local c = setmetatable({ frame = frame, flow = flow(spec), groups = build(frame, spec), ids = {}, placed = {} }, Container)
+  frame:SetScript("OnEvent", function(_, _, _, info) c:Refresh(info) end)
   c:SetUnit(unit)
   return c
 end
@@ -113,8 +120,17 @@ function Container:SetUnit(unit)
   self:Refresh()
 end
 
+-- Scratch tables every refresh reuses (one runs at a time): the aura ids
+-- already shown, one group's auras, and the icons shown, in order.
+local seen, auras, shown, NONE = {}, {}, {}, {}
+
+-- Empties a table in place.
+local function clear(t)
+  for k in pairs(t) do t[k] = nil end
+end
+
 -- True the first time an aura is seen (by its instance id; a hidden id always counts as new).
-local function fresh(seen, aura)
+local function fresh(aura)
   local id = ns.PlainNumber(aura.auraInstanceID)
   if not id then return true end
   if seen[id] then return false end
@@ -122,41 +138,84 @@ local function fresh(seen, aura)
   return true
 end
 
--- Up to `max` auras through a group's filter that no earlier group shows.
-local function collect(unit, g, seen)
-  local out, i = {}, 1
+-- Up to `max` auras through a group's filter that no earlier group shows, into `auras`.
+local function collect(unit, g)
+  clear(auras)
+  local i = 1
   local aura = unit and A.Get(unit, i, g.filter)
-  while aura and #out < #g.icons do
-    if fresh(seen, aura) then out[#out + 1] = aura end
+  while aura and #auras < #g.icons do
+    if fresh(aura) then auras[#auras + 1] = aura end
     i = i + 1
     aura = A.Get(unit, i, g.filter)
   end
-  return out
+end
+
+-- Notes a shown aura's id on the container (a hidden id: it can't tell, so every update counts).
+local function remember(c, aura)
+  local id = ns.PlainNumber(aura.auraInstanceID)
+  if id then c.ids[id] = true else c.anyHidden = true end
 end
 
 -- Fills one group's icons; adds the shown ones to `shown` for the layout.
-local function fill(unit, g, seen, shown)
-  local auras = collect(unit, g, seen)
+local function fill(c, g)
+  collect(c.unit, g)
   for i, icon in ipairs(g.icons) do
-    A.Show(icon, unit, auras[i])
-    if auras[i] then shown[#shown + 1] = { icon = icon, size = g.def.size, newLine = i == 1 and g.def.newLine } end
+    A.Show(icon, c.unit, auras[i])
+    if auras[i] then shown[#shown + 1] = icon remember(c, auras[i]) end
   end
+end
+
+-- Whether the shown icons differ (in order) from those last placed; remembers them.
+local function reordered(c)
+  local placed = c.placed
+  local changed = #placed ~= #shown
+  for i, icon in ipairs(shown) do
+    changed = changed or placed[i] ~= icon
+    placed[i] = icon
+  end
+  for i = #shown + 1, #placed do placed[i] = nil end
+  return changed
 end
 
 -- Flows the shown icons into rows from the anchor corner, wrapping at the line size.
-local function place(c, shown)
+local function place(c)
   local f, x, y, lineH = c.flow, 0, 0, 0
-  for _, s in ipairs(shown) do
-    if x > 0 and (s.newLine or (f.line and x + s.size > f.line)) then x, y, lineH = 0, y + lineH + f.gap, 0 end
-    s.icon:ClearAllPoints()
-    s.icon:SetPoint(f.anchor, c.frame, f.anchor, x * f.dx, y * f.dy)
-    x, lineH = x + s.size + f.gap, math.max(lineH, s.size)
+  for _, icon in ipairs(shown) do
+    local size = icon.fuiSize
+    if x > 0 and (icon.fuiNewLine or (f.line and x + size > f.line)) then x, y, lineH = 0, y + lineH + f.gap, 0 end
+    icon:ClearAllPoints()
+    icon:SetPoint(f.anchor, c.frame, f.anchor, x * f.dx, y * f.dy)
+    x, lineH = x + size + f.gap, math.max(lineH, size)
   end
 end
 
--- Reads the unit's auras again and lays the icons out.
-function Container:Refresh()
-  local seen, shown = {}, {}
-  for _, g in ipairs(self.groups) do fill(self.unit, g, seen, shown) end
-  place(self, shown)
+-- True when one of the ids (UNIT_AURA's updated or removed list) is shown
+-- here, or is hidden from addons (then it can't be ruled out).
+local function touches(c, ids)
+  for _, id in ipairs(ids or NONE) do
+    local plain = ns.PlainNumber(id)
+    if not plain or c.ids[plain] then return true end
+  end
+  return false
+end
+
+-- True when a UNIT_AURA's update info can't change what the container shows:
+-- not a full update, nothing added, and nothing it shows updated or removed.
+-- Without update info (an older client, or a unit change) it reads again.
+local function untouched(c, info)
+  if type(info) ~= "table" or info.isFullUpdate or c.anyHidden then return false end
+  if info.addedAuras and #info.addedAuras > 0 then return false end
+  return not touches(c, info.updatedAuraInstanceIDs) and not touches(c, info.removedAuraInstanceIDs)
+end
+
+-- Reads the unit's auras again and lays the icons out (re-anchoring them
+-- only when the icons shown, or their order, changed). `info` is UNIT_AURA's
+-- update info: an update that can't change what shows is skipped.
+function Container:Refresh(info)
+  if untouched(self, info) then return end
+  clear(seen) clear(shown) clear(self.ids)
+  self.anyHidden = false
+  for _, g in ipairs(self.groups) do fill(self, g) end
+  if reordered(self) then place(self) end
+  clear(auras)
 end

@@ -34,6 +34,29 @@ it("wrong-typed saved values are replaced by their defaults", () => {
   expect(addon.eval('local c = ns.Copy({ a = 1, b = { c = "x" } }) return { c.a, c.b.c }'), "ns.Copy still copies every key").toEqual([1, "x"]);
 });
 
+it("settings tables are filled once per profile and key", () => {
+  // TEST-ONLY spies: count ns.Fill calls, a migration's runs and profile-change notices.
+  const addon = loggedIn(`__fills, __migs, __changes = 0, 0, 0
+    local realFill = ns.Fill
+    ns.Fill = function(...) __fills = __fills + 1 return realFill(...) end
+    ns.Migrate("TESTONLY", function(saved) __migs = __migs + 1 end)
+    ns.OnProfileChanged(function() __changes = __changes + 1 end)`);
+  addon.eval("__fills = 0");
+  expect(addon.eval("local a, b = ns.Theme.Settings(), ns.Settings('theme') return { a == b, a == ForeverUIDB.profiles.Default.theme, __fills }"), "a second lookup returns the same table without filling it").toEqual([true, true, 0]);
+  expect(addon.eval("ns.Theme.Settings().sounds = false ForeverUIDB.profiles.Default.theme.smoothBars = false return { ForeverUIDB.profiles.Default.theme.sounds, ns.Theme.Settings().smoothBars, __fills }"), "writes through the cached table and the saved one are the same writes").toEqual([false, false, 0]);
+  expect(addon.eval("local old = ns.Theme.Settings() ns.UseProfile('Raid') local new = ns.Theme.Settings() return { new ~= old, new == ForeverUIDB.profiles.Raid.theme, new.sounds, __fills, ns.Theme.Settings() == new, __fills, __changes }"), "after a profile switch it is a new table, filled once").toEqual([true, true, true, 1, true, 1, 1]);
+  expect(addon.eval("ns.Profile().theme = { accent = { 0, 1, 0 } } local t = ns.Theme.Settings() return { t == ns.Profile().theme, t.accent[2], t.panel[4], __fills }"), "a write that replaces the saved table is seen without a notice").toEqual([true, 1, 0.94, 2]);
+  expect(addon.eval("local a = ns.Settings('TESTONLY', { x = 1 }) local b = ns.Settings('TESTONLY', { y = 2 }) local c = ns.Settings('TESTONLY') return { a == b, b == c, c.x, c.y, __fills, __migs }"), "other defaults fill the same table again; none reuses it").toEqual([true, true, 1, 2, 4, 1]);
+  expect(addon.eval("local a = ns.Settings('TESTONLY') ns.ProfileChanged() local b = ns.Settings('TESTONLY') return { a == b, __fills, __migs, __changes }"), "a notice refills the table, but its migration ran once").toEqual([true, 5, 1, 2]);
+  expect(addon.eval("ns.Profile().TESTONLY = {} ns.Settings('TESTONLY') return __migs"), "a new table is migrated").toBe(2);
+  addon.eval("ns.Profile().theme.panel = { 1, 0, 0, 1 }");
+  expect(addon.eval("ns.CopyProfile('Default') local copied = __changes ns.ResetProfile() local reset = __changes return { copied, reset, ns.Theme.Settings().panel[4] }"), "copy and reset notify, and the settings are filled again").toEqual([3, 4, 0.94]);
+  expect(addon.eval(`local text = ns.ExportProfile('theme') ns.Theme.Settings().accent = { 1, 1, 1 } ns.ImportProfile(text) return { __changes, ns.Theme.Settings().accent[1] == ns.Theme.PRESETS.brass[1] }`), "a module import notifies and is used").toEqual([5, true]);
+  addon.slash("accent ff0000");
+  addon.slash("accent reset");
+  expect(addon.eval("return { ns.Theme.Accent() == ns.Theme.PRESETS.brass[1], ns.Theme.Settings().accent[4] }"), "/fui accent reset puts the default accent into the cached table").toEqual([true, 1]);
+});
+
 it("the account file's version is read and upgraded", () => {
   const spy = "__mig = {} local real = ns.MigrateDB ns.MigrateDB = function(from, to) __mig[#__mig + 1] = { from, to } return real(from, to) end";
   const stamped = loggedIn(spy, { savedVariables: "ForeverUIDB.version = nil" });
@@ -164,6 +187,61 @@ it("slash", () => {
   expect(chatHas(addon, /Unknown command/), "unknown commands say so").toBeTruthy();
 });
 
+// The chat lines printed by one /fui command, without the colored "ForeverUI:" prefix.
+const said = (addon, command) => {
+  addon.clearChat();
+  addon.slash(command);
+  return Array.from(addon.chat()).map((line) => line.replace(/^.*ForeverUI:\S*\s/, ""));
+};
+
+it("/fui perf: says what it can without the game's counters", () => {
+  const addon = loggedIn("GetCVar = nil C_CVar = nil SetCVar = nil C_Timer = nil");
+  expect(said(addon, "perf"), "no profiling setting and no memory counter: it says so, and lists nothing").toEqual(["CPU off (/fui perf cpu turns the game's profiling on)  ·  memory: the client can't say"]);
+  expect(said(addon, "perf cpu"), "no way to switch profiling").toEqual(["This client can't switch script profiling."]);
+  expect(said(addon, "perf watch"), "no timers to print with").toEqual(["This client has no timers to print with."]);
+  expect(said(addon, "perf bogus"), "anything else: the usage").toEqual(["Usage: /fui perf [cpu | watch]"]);
+});
+
+// TEST-ONLY counters: ForeverUI's CPU total (__cpu ms) and memory (2048 KB), each refreshed by its Update call (counted).
+const PERF_ENV = `
+  __cpu, __updates = 0, { cpu = 0, mem = 0 }
+  UpdateAddOnCPUUsage = function() __updates.cpu = __updates.cpu + 1 end
+  GetAddOnCPUUsage = function(name) return name == "ForeverUI" and __cpu or 0 end
+  UpdateAddOnMemoryUsage = function() __updates.mem = __updates.mem + 1 end
+  GetAddOnMemoryUsage = function(name) return name == "ForeverUI" and 2048 or 0 end
+`;
+
+it("/fui perf: CPU and memory with the change since the last report, the busiest functions, profiling and the watch", () => {
+  const addon = loggedIn(PERF_ENV);
+  expect(said(addon, "perf"), "profiling off: memory only").toEqual(["CPU off (/fui perf cpu turns the game's profiling on)  ·  memory 2.0 MB"]);
+  addon.eval("ns.OfferReload = function(why) __reload = why end");
+  said(addon, "perf cpu");
+  expect(addon.eval("return { GetCVar('scriptProfile'), __reload:find('starts after a reload') ~= nil }"), "perf cpu turns profiling on, with a reload offered").toEqual(["1", true]);
+  expect(said(addon, "perf")[0], "on, but not yet reloaded: the counter is still 0").toBe("CPU: profiling starts after a reload  ·  memory 2.0 MB");
+  // Every named function costs 1 ms, two of them more (callees included).
+  addon.eval(`__busy = { [ns.Theme.Panel] = 50, [ns.GetModule("Bags").SkinWindow] = 20 }
+    GetFunctionCPUUsage = function(fn, callees) __callees = callees return __busy[fn] or 1, 1 end
+    __cpu = 120`);
+  const report = said(addon, "perf");
+  expect(report.slice(0, 3), "the total, then the busiest functions, most first").toEqual(["CPU 120.0 ms in all  ·  memory 2.0 MB", "  1. Theme.Panel  50.0 ms", "  2. Bags.SkinWindow  20.0 ms"]);
+  expect([report.length, addon.eval("return __callees"), addon.eval("return { __updates.cpu, __updates.mem }")], "ten of them at most, with what they call, after refreshing both counters").toEqual([11, true, [2, 3]]);
+  addon.eval("__cpu = 150");
+  addon.advance(60, 5);
+  expect(said(addon, "perf")[0], "the change since the last report, and its rate").toBe("CPU 150.0 ms in all, +30.0 ms in the last 60 s (0.50 ms/s)  ·  memory 2.0 MB");
+  expect(said(addon, "perf watch"), "watch says how often it prints").toEqual(["Printing ForeverUI's CPU and memory every 60 s; /fui perf watch again stops."]);
+  addon.clearChat();
+  addon.eval("__cpu = 156");
+  addon.advance(60, 5);
+  expect(Array.from(addon.chat()).length, "a minute later: one line, no function list").toBe(1);
+  expect(said(addon, "perf watch"), "asked again, it stops").toEqual(["Stopped printing ForeverUI's CPU and memory."]);
+  addon.advance(120, 5);
+  expect(Array.from(addon.chat()).length, "and prints nothing more").toBe(1);
+  addon.eval("GetAddOnCPUUsage = nil");
+  expect(said(addon, "perf")[0], "profiling on with no counter").toBe("CPU: the client has no counter  ·  memory 2.0 MB");
+  said(addon, "perf cpu");
+  expect(addon.eval("return { GetCVar('scriptProfile'), __reload }"), "perf cpu again turns it off").toEqual(["0", "CPU profiling stops after a reload."]);
+});
+
 // Every distinct command word that follows "/fui " in the text, in order of first use.
 const fuiWords = (text) => [...new Set([...text.matchAll(/\/fui ([a-z]+)/g)].map((m) => m[1]))];
 
@@ -224,7 +302,8 @@ it("WoW Forever client: interface, hidden auras, no specializations", () => {
   expect(chatHas(addon, /no specializations/), "/fui spec explains there are no specializations").toBeTruthy();
   addon.eval('ns.Options.Show("profiles")');
   expect(shownText(addon, "YOUR PROFILES") && !shownText(addon, "SPECIALIZATION"), "the Profiles page has no spec section").toBeTruthy();
-  addon.eval('UnitClass = function() return "Paladin", "PALADIN" end');
+  // The names are read once per login (or list change), so a paladin is a new login here.
+  addon.eval('UnitClass = function() return "Paladin", "PALADIN" end ns.GetModule("RaidHealing").Forget()');
   expect(addon.eval('for _, n in ipairs(ns.GetModule("RaidHealing").BuffNames()) do if n == "Greater Blessing of Kings" then return true end end'), "any blessing counts for a paladin").toBeTruthy();
 });
 
@@ -653,6 +732,63 @@ it("events: a game handler that fails inside a failing handler keeps the record,
   const out = addon.eval("__calls = 0 " + THROWING_HANDLERS + "return { ran = #__ran, n = #ns.errors, text = ns.errors[1].text, calls = __calls }");
   expect(out, "the record is kept once, the second handler ran, the broken handler was called once").toEqual({ ran: 1, n: 1, text: expect.stringMatching(/TEST-ONLY first$/), calls: 1 });
   expect(addon.eval('ns.Try("TEST-ONLY again", error, "second") return __calls'), "the next failure is forwarded again (the guard did not stay set)").toBe(2);
+});
+
+it("secret checks: the client's check is chosen once and called bare, with no pcall per value", () => {
+  const addon = loggedIn(`__asked = 0
+    -- TEST-ONLY check: counts each question.
+    issecretvalue = function(v) __asked = __asked + 1 return type(v) == "table" and v.__secret == true end`);
+  const out = addon.eval(`local calls, raw = 0, pcall
+    __asked = 0
+    pcall = function(...) calls = calls + 1 return raw(...) end
+    local answers = { ns.IsSecret({ __secret = true }), ns.IsSecret(5), ns.PlainNumber(7) }
+    pcall = raw
+    return { calls, __asked, answers }`);
+  expect(out, "three values asked: three calls to the client's check, none through pcall").toEqual([0, 3, [true, false, 7]]);
+});
+
+// TEST-ONLY unit-event listener: notes "event:unit:arg" for each event it hears; __took() hands the notes over.
+const NOTE_LUA = `
+  __heard = {}
+  function __note(event, unit, arg) __heard[#__heard + 1] = event .. ":" .. unit .. ":" .. tostring(arg) end
+  function __took() local out = table.concat(__heard, " ") __heard = {} return out end
+`;
+
+it("unit events: a subscription hears only the units it asked the client for, and can be pointed at others", () => {
+  const addon = loggedIn(NOTE_LUA);
+  addon.eval('__sub = ns.OnUnit({ "UNIT_HEALTH", "UNIT_MAXHEALTH" }, __note, "target", "focus")');
+  expect(addon.eval("return { __sub.__unitEvents.UNIT_HEALTH, __sub.__unitEvents.UNIT_MAXHEALTH }"), "each event is registered with the client's unit filter").toEqual([["target", "focus"], ["target", "focus"]]);
+  addon.fire("UNIT_HEALTH", "target", 1);
+  addon.fire("UNIT_HEALTH", "nameplate1", 2);
+  addon.fire("UNIT_MAXHEALTH", "focus", 3);
+  expect(addon.eval("return __took()"), "its units' events reach the handler with their arguments; another unit's never do").toBe("UNIT_HEALTH:target:1 UNIT_MAXHEALTH:focus:3");
+  addon.eval('ns.SetUnits(__sub, "nameplate1")');
+  addon.fire("UNIT_HEALTH", "target", 4);
+  addon.fire("UNIT_HEALTH", "nameplate1", 5);
+  expect(addon.eval("return __took()"), "pointed at another unit, it hears that one instead").toBe("UNIT_HEALTH:nameplate1:5");
+  addon.eval("ns.SetUnits(__sub)");
+  addon.fire("UNIT_HEALTH", "nameplate1", 6);
+  expect([addon.eval("return __took()"), addon.eval("return next(__sub.__events) == nil")], "pointed at no unit, it hears nothing and holds no registration").toEqual(["", true]);
+  addon.eval('ns.OnUnit("UNIT_LEVEL", __note, "player", "target", "focus")');
+  addon.fire("UNIT_LEVEL", "focus", 7);
+  expect(addon.eval("return __took()"), "up to three units").toBe("UNIT_LEVEL:focus:7");
+});
+
+it("unit events: a failing handler is reported, an event the client lacks is skipped, and an old client is filtered here", () => {
+  const addon = loggedIn(NOTE_LUA + "__wfgWorld.invalidEvents.TEST_ONLY_GONE = true");
+  addon.eval('ns.ClearErrors() ns.OnUnit("UNIT_LEVEL", function() error("TEST-ONLY unit handler") end, "player") ns.OnUnit("UNIT_LEVEL", __note, "player")');
+  addon.fire("UNIT_LEVEL", "player", 1);
+  expect(addon.eval("return __took()"), "another subscription still runs").toBe("UNIT_LEVEL:player:1");
+  expect(addon.eval("return ns.errors[1].text"), "the failure is kept under its event").toMatch(/^event UNIT_LEVEL: .*TEST-ONLY unit handler$/);
+  addon.eval('ns.ClearErrors() __gone = ns.OnUnit({ "TEST_ONLY_GONE", "UNIT_FACTION" }, __note, "player")');
+  expect(addon.eval("return { ns.errors[1].text, __gone.__events.TEST_ONLY_GONE == nil, __gone.__events.UNIT_FACTION }"), "an event this client lacks is noted and left out; the rest are kept").toEqual(["event TEST_ONLY_GONE: not on this client", true, true]);
+  addon.eval(`local frame = __wfgWidgetApi.methods.Frame
+    frame.RegisterUnitEvent = nil
+    __old = ns.OnUnit("UNIT_PORTRAIT_UPDATE", __note, "target", "focus")
+    frame.RegisterUnitEvent = true`);
+  expect(addon.eval("return { __old.__events.UNIT_PORTRAIT_UPDATE, __old.__unitEvents == nil }"), "a client without RegisterUnitEvent: the plain event").toEqual([true, true]);
+  for (const unit of ["player", "focus", "nameplate4", "target"]) addon.fire("UNIT_PORTRAIT_UPDATE", unit, unit.length);
+  expect(addon.eval("return __took()"), "and other units are dropped here").toBe("UNIT_PORTRAIT_UPDATE:focus:5 UNIT_PORTRAIT_UPDATE:target:6");
 });
 
 it("slash commands for frames, accent, grid, theme, modules, skins, profile and spec", () => {

@@ -26,6 +26,38 @@ it("heal prediction, aggro, buff watch", () => {
   expect(healing(addon, 1).heal === 50, "UNIT_HEAL_PREDICTION refreshes the heal bar").toBeTruthy();
 });
 
+// TEST-ONLY: the client's all-at-once aura list (counted), the by-name lookup and the spell lookup (counted too),
+// and the aura restriction (__secretAuras).
+const AURA_LIST = `__auraCalls, __byName, __spellInfo, __secretAuras = 0, 0, 0, false
+  C_UnitAuras.GetUnitAuras = function(unit) __auraCalls = __auraCalls + 1 local out = {} for name in pairs(__buffs[unit] or {}) do out[#out + 1] = { name = name } end return out end
+  local byName, info = C_UnitAuras.GetAuraDataBySpellName, C_Spell.GetSpellInfo
+  C_UnitAuras.GetAuraDataBySpellName = function(...) __byName = __byName + 1 return byName(...) end
+  C_Spell.GetSpellInfo = function(...) __spellInfo = __spellInfo + 1 return info(...) end
+  C_Secrets = { ShouldAurasBeSecret = function() return __secretAuras end }`;
+
+// The buff watch's calls since the last look (then forgets them): { list, byName, spell }.
+const buffCalls = (addon) => addon.eval("local c = { list = __auraCalls, byName = __byName, spell = __spellInfo } __auraCalls, __byName, __spellInfo = 0, 0, 0 return c");
+
+it("buff watch: one aura pass per aura change, nothing on health, the names and known spells kept", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + AURA_LIST);
+  addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
+  buffCalls(addon);
+  for (let i = 0; i < 100; i++) { addon.eval(`__units.raid1.hp = ${300 + i}`); addon.fire("UNIT_HEALTH", "raid1"); }
+  expect([buffCalls(addon), healing(addon, 1).missing], "100 health events: no aura or spell lookups, the marker stays").toEqual([{ list: 0, byName: 0, spell: 0 }, "TEST-ONLY-ICON-Arcane Intellect"]);
+  addon.eval("__buffs.raid1 = { ['Arcane Intellect'] = true }");
+  addon.fire("UNIT_AURA", "raid1");
+  expect([buffCalls(addon), healing(addon, 1).missing], "one aura change: one pass over the unit's buffs, no by-name lookups, no spell lookups").toEqual([{ list: 1, byName: 0, spell: 0 }, false]);
+  expect(addon.eval('local RH = ns.GetModule("RaidHealing") return RH.BuffNames() == RH.BuffNames()'), "the name list is read once and kept").toBe(true);
+  addon.eval("__buffs.raid1 = {} __known = { ['Arcane Brilliance'] = true } GetSpellInfo = nil");
+  addon.fire("SPELLS_CHANGED");
+  addon.fire("SPELLS_CHANGED");
+  addon.update(0);
+  expect([buffCalls(addon).spell, healing(addon, 1).missing], "your spells changed: they are looked up again once (two names), and the tiles marked with what you know now").toEqual([2, "TEST-ONLY-ICON-Arcane Brilliance"]);
+  addon.eval("__secretAuras = true");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(healing(addon, 1).missing, "a fight that hides auras takes the marker away").toBe(false);
+});
+
 it("healing fallbacks and options", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV + `CreateUnitHealPredictionCalculator = nil UnitGetTotalAbsorbs = nil
     UnitGetIncomingHeals = function() return 120 end`);

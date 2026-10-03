@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, button, isTok, key, later, loggedIn, marks, setCombat, spark, tok, totemCell } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, button, isTok, key, later, loggedIn, marks, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
 
 // A frame's state for the unit-frame tests.
 const ufState = (addon, key) => addon.eval(`
@@ -45,6 +45,30 @@ it("unit frame events", () => {
   addon.eval('__units.targettarget = { name = "TEST-ONLY ToT", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA" }');
   addon.update(0.25);
   expect(ufState(addon, "targettarget").name === "TEST-ONLY ToT", "target of target refreshes on a timer").toBeTruthy();
+});
+
+it("target of target: health and power on every look, its name only when it's someone else", () => {
+  // TEST-ONLY GUIDs from the units table, and a counter of target-of-target name updates.
+  const addon = loggedIn(UNITS_ENV + "UnitGUID = function(unit) return __units[unit] and __units[unit].guid end");
+  addon.eval(`__names = 0 local UF = ns.GetModule("UnitFrames") local real = UF.UpdateName
+    UF.UpdateName = function(f) if f.unit == "targettarget" then __names = __names + 1 end return real(f) end
+    __units.targettarget = { guid = "TEST-ONLY-1", name = "TEST-ONLY ToT", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA" }`);
+  // Target-of-target name updates so far, then reset.
+  const names = () => addon.eval("local n = __names __names = 0 return n");
+  addon.advance(1);
+  expect([names(), ufState(addon, "targettarget").name], "a second of looks: the name is set once").toEqual([1, "TEST-ONLY ToT"]);
+  addon.eval("__units.targettarget.hp = 2");
+  addon.advance(0.5);
+  expect([names(), ufState(addon, "targettarget").hp], "its health still follows, with no name update").toEqual([0, 2]);
+  addon.eval('__units.targettarget = { guid = "TEST-ONLY-2", name = "TEST-ONLY Other", hp = 5, maxhp = 5, power = 0, maxpower = 0, ptype = "MANA" }');
+  addon.advance(0.5);
+  expect([names(), ufState(addon, "targettarget").name], "someone else: the name follows once").toEqual([1, "TEST-ONLY Other"]);
+  addon.eval('__units.targettarget.name = "TEST-ONLY Renamed"');
+  addon.advance(0.5);
+  expect([names(), ufState(addon, "targettarget").name], "the same unit with a new name: the name follows").toEqual([1, "TEST-ONLY Renamed"]);
+  addon.eval("__units.targettarget.guid = { __secret = true }");
+  addon.advance(1);
+  expect(names(), "a hidden GUID can't be compared: every look updates the name").toBe(4);
 });
 
 it("unit frames wait for combat", () => {
@@ -192,6 +216,23 @@ it("power ticks: the five-second rule after a mana spell", () => {
   expect(spark(addon)[0], "a client that can't say what a spell costs: no spark").toBe(false);
 });
 
+it("power ticks: the spark moves on one anchor, as tall as the bar, with no anchors cleared per frame", () => {
+  const addon = loggedIn(UNITS_ENV + TICKS_ENV);
+  addon.eval(`local PT = ns.GetModule('PowerTicks')
+    PT.bar:SetWidth(200)
+    __clears, __sets = 0, 0
+    local set = PT.spark.SetPoint
+    -- TEST-ONLY spies: the spark's anchor calls.
+    PT.spark.ClearAllPoints = function() __clears = __clears + 1 end
+    PT.spark.SetPoint = function(...) __sets = __sets + 1 return set(...) end`);
+  addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90001);
+  addon.eval("for i = 1, 10 do __wfgStub.update(0.25) end");
+  const out = addon.eval(`local PT = ns.GetModule('PowerTicks') local n = 0 for _ in pairs(PT.spark.__points) do n = n + 1 end
+    return { __clears, __sets, n, PT.spark:GetHeight() == PT.bar:GetHeight() and PT.bar:GetHeight() > 0 }`);
+  expect(out, "the start and 10 frames: 11 moves of its one anchor, none cleared; as tall as the bar").toEqual([0, 11, 1, true]);
+  expect(spark(addon), "and it is where the sweep is (halfway after 2.5 s)").toEqual([true, 100, true]);
+});
+
 it("power ticks: energy every two seconds, and forms switch", () => {
   const addon = loggedIn(UNITS_ENV + TICKS_ENV + "__ptype = 3");
   addon.eval("ns.GetModule('PowerTicks').bar:SetWidth(200)");
@@ -314,6 +355,26 @@ it("threat on your target and your pet's happiness", () => {
   addon.eval('__click("Unit frames")');
   expect(addon.eval('return __click("Your threat on your target") and ForeverUIDB.profiles.Default.UnitExtras.threat'), "the threat switch is on the page").toBe(false);
   expect(addon.eval('return __click("happiness") and ForeverUIDB.profiles.Default.UnitExtras.happiness'), "and the pet's").toBe(false);
+});
+
+it("unit events: combo points, the druid's mana, power ticks and threat ask the client for your own units only", () => {
+  const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + TICKS_ENV + `__units.player.class = "DRUID" __cp = 2
+    GetComboPoints = function() return __cp end`, NO_RAID);
+  // Who hears the event (see unitEvents).
+  const heard = (event) => unitEvents(addon, event);
+  expect(heard("UNIT_POWER_UPDATE"), "combo points and the mana bar: your power only, nothing takes every unit's").toEqual({ subs: "player player", plain: 0 });
+  expect(heard("UNIT_POWER_FREQUENT"), "the energy tick too").toEqual({ subs: "player player player", plain: 0 });
+  expect(heard("UNIT_MAXPOWER")).toEqual({ subs: "player player", plain: 0 });
+  expect(heard("UNIT_DISPLAYPOWER"), "a form's power type: the mana bar and the spark").toEqual({ subs: "player player", plain: 0 });
+  expect(heard("UNIT_SPELLCAST_SUCCEEDED"), "the five-second rule: your casts").toEqual({ subs: "player", plain: 0 });
+  expect([heard("UNIT_THREAT_LIST_UPDATE").subs, heard("UNIT_THREAT_SITUATION_UPDATE").subs], "threat: your target's list, and your own situation").toEqual(["target", "player"]);
+  // How many combo-point pips are lit.
+  const lit = () => addon.eval('local n = 0 for _, p in ipairs(ns.GetModule("ComboPoints").pips) do if p.fill:IsShown() then n = n + 1 end end return n');
+  addon.eval("__cp = 4");
+  addon.fire("UNIT_POWER_UPDATE", "target", "COMBO_POINTS");
+  expect(lit(), "another unit's power event repaints nothing").toBe(2);
+  addon.fire("UNIT_POWER_FREQUENT", "player", "COMBO_POINTS");
+  expect(lit(), "yours does").toBe(4);
 });
 
 it("threat and happiness only where the client and settings allow", () => {

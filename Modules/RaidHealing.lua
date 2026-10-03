@@ -73,8 +73,8 @@ end
 
 -- Buff watch -------------------------------------------------------------------------------
 
--- The watched buff names: your own list if you set one, else your class's defaults.
-function RH.BuffNames()
+-- The watched buff names from the settings: your own list if you set one, else your class's defaults.
+local function readNames()
   local names = {}
   for name in (RH.settings.buffs or ""):gmatch("[^,]+") do
     names[#names + 1] = name:match("^%s*(.-)%s*$")
@@ -84,11 +84,36 @@ function RH.BuffNames()
   return RH.CLASS_BUFFS[class] or {}
 end
 
+-- The watched buff names, read once and kept until the list changes (RH.Forget).
+function RH.BuffNames()
+  RH.names = RH.names or readNames()
+  return RH.names
+end
+
 -- Whether the client knows you can cast a spell by name.
 local function known(name)
   local info = C_Spell and type(C_Spell.GetSpellInfo) == "function" and C_Spell.GetSpellInfo(name)
   if not absent(info) and info then return true end
   return type(GetSpellInfo) == "function" and not absent(GetSpellInfo(name))
+end
+
+-- What the buff watch looks for: { set = name -> true, give = the first
+-- watched buff you know, or nil }. Worked out once and kept until the list or
+-- your spells change (RH.Forget), not per unit or per update.
+local function watched()
+  if RH.watch then return RH.watch end
+  local w = { set = {} }
+  for _, name in ipairs(RH.BuffNames()) do
+    w.set[name] = true
+    w.give = w.give or (known(name) and name or nil)
+  end
+  RH.watch = w
+  return w
+end
+
+-- Forgets the watched names and the spells you know (the list or your spells changed).
+function RH.Forget()
+  RH.names, RH.watch = nil, nil
 end
 
 -- Whether a unit has an aura by name (HELPFUL).
@@ -99,17 +124,34 @@ local function hasBuff(unit, name)
   return AuraUtil and type(AuraUtil.FindAuraByName) == "function" and not absent(AuraUtil.FindAuraByName(name, unit, "HELPFUL"))
 end
 
+-- Whether a unit has any watched buff, one by-name lookup per watched name
+-- (for a client without the all-at-once aura list).
+local function hasByName(unit)
+  for _, name in ipairs(RH.BuffNames()) do
+    if hasBuff(unit, name) then return true end
+  end
+  return false
+end
+
+-- Whether a unit has any watched buff: one pass over its buffs, from the
+-- client's all-at-once list, matched against the watched names.
+local function hasWatched(unit, w)
+  local list = C_UnitAuras and type(C_UnitAuras.GetUnitAuras) == "function" and C_UnitAuras.GetUnitAuras(unit, "HELPFUL")
+  if type(list) ~= "table" then return hasByName(unit) end
+  for _, aura in ipairs(list) do
+    if not ns.IsSecret(aura.name) and w.set[aura.name] then return true end
+  end
+  return false
+end
+
 -- The first watched buff you know, if the unit has none of the watched buffs; else nil.
 -- While the client hides auras a lookup can't see a hidden buff, so an absent
 -- buff proves nothing: unknown shows no marker rather than a false alarm.
 function RH.MissingBuff(unit)
   if ns.AurasSecret() then return nil end
-  local names, canGive = RH.BuffNames(), nil
-  for _, name in ipairs(names) do
-    if hasBuff(unit, name) then return nil end
-    canGive = canGive or (known(name) and name)
-  end
-  return canGive
+  local w = watched()
+  if not w.give or hasWatched(unit, w) then return nil end
+  return w.give
 end
 
 -- Parts ------------------------------------------------------------------------------------
@@ -197,6 +239,18 @@ local function update(b, unit)
   updateBuff(b, unit)
 end
 
+-- The missing-buff marker on every tile this module has set up.
+local function refreshBuffs()
+  RF.EachTile(function(b, unit) if b.heal then updateBuff(b, unit) end end)
+end
+
+-- Your spells changed: work out which watched buffs you know again, and mark
+-- the tiles once on the next frame (the client sends this in bursts).
+local function onSpells()
+  RH.Forget()
+  ns.Soon("raidbuffs", refreshBuffs)
+end
+
 -- An event handler that runs fn(b, unit) on the tile showing the event's unit.
 local function onTile(fn)
   -- Only tiles this module has set up (they have the heal bar).
@@ -204,13 +258,20 @@ local function onTile(fn)
   return function(_, unit) RF.ForUnit(unit, run) end
 end
 
--- Event -> which part it refreshes (health changes refresh everything via RF.Update).
+-- Event -> which part it refreshes (a health change refreshes the heal bars
+-- through RF.healthHooks: incoming heals are clamped to the missing health).
 local EVENTS = {
   -- Each handler refreshes one part for the unit named in the event.
   UNIT_HEAL_PREDICTION = onTile(updatePrediction),
   UNIT_ABSORB_AMOUNT_CHANGED = onTile(updatePrediction),
   UNIT_THREAT_SITUATION_UPDATE = onTile(updateThreat),
+  -- The buff marker follows the unit's auras and the roster (RF.Update), not health.
   UNIT_AURA = onTile(updateBuff),
+  SPELLS_CHANGED = onSpells,
+  -- Logging in or zoning: read the list and your spells again.
+  PLAYER_ENTERING_WORLD = function() RH.Forget() end,
+  -- Entering combat may hide auras: the markers go rather than linger unchecked.
+  PLAYER_REGEN_DISABLED = refreshBuffs,
   -- Leaving combat usually lifts the aura restriction: look at every buff again.
   PLAYER_REGEN_ENABLED = function() RF.UpdateAll() end,
 }
@@ -221,6 +282,7 @@ function RH.Enable(settings)
   for _, b in ipairs(RF.buttons) do setup(b) end
   table.insert(RF.setupHooks, setup)
   table.insert(RF.updateHooks, update)
+  table.insert(RF.healthHooks, updatePrediction)
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
 end
 
@@ -237,6 +299,7 @@ end
 -- Saves the typed buff list (empty = class defaults) and refreshes the frames.
 local function saveBuffs(input)
   ns.Settings("RaidHealing", RH.defaults).buffs = input:GetText()
+  RH.Forget()
   input:ClearFocus()
   RF.UpdateAll()
 end

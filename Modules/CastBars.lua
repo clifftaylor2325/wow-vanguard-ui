@@ -32,20 +32,30 @@ CB.bars = {}
 
 -- Reading casts -----------------------------------------------------------------------
 
--- A cast from one of the client's cast calls, or nil. The uninterruptible
--- flag is the 8th return for casts and the 7th for channels.
+-- A cast from one of the client's cast calls: name, icon, startMS, endMS,
+-- shielded, channel; nothing when there is none. The uninterruptible flag is
+-- the 8th return for casts and the 7th for channels.
 local function castFrom(unit, call, channel)
   local get = _G[call]
   if type(get) ~= "function" then return nil end
   local name, _, icon, startMS, endMS, _, a7, a8 = get(unit)
   if type(name) == "nil" then return nil end
-  return { name = name, icon = icon, startMS = startMS, endMS = endMS, channel = channel, shielded = (channel and { a7 } or { a8 })[1] }
+  if channel then return name, icon, startMS, endMS, a7, true end
+  return name, icon, startMS, endMS, a8, false
 end
 
--- The unit's current cast or channel: { name, icon, startMS, endMS, shielded, channel }, or nil.
--- (Checked with type() so a hidden name is never tested for truth.)
+-- The unit's current cast or channel as values (no table each time it's
+-- asked): name, icon, startMS, endMS, shielded, channel; nil when there is
+-- none. (Checked with type() so a hidden name is never tested for truth.)
 function CB.Cast(unit)
-  return castFrom(unit, "UnitCastingInfo", false) or castFrom(unit, "UnitChannelInfo", true)
+  local name, icon, startMS, endMS, shielded, channel = castFrom(unit, "UnitCastingInfo", false)
+  if type(name) ~= "nil" then return name, icon, startMS, endMS, shielded, channel end
+  return castFrom(unit, "UnitChannelInfo", true)
+end
+
+-- Whether the unit is casting or channeling.
+local function casting(unit)
+  return type((CB.Cast(unit))) ~= "nil"
 end
 
 -- A plain true (hidden counts as false).
@@ -54,14 +64,33 @@ local function isTrue(v)
 end
 
 -- The client's duration object for a cast, where it has one.
-local function castDuration(unit, cast)
-  local get = cast.channel and _G.UnitChannelDuration or _G.UnitCastingDuration
+local function castDuration(unit, channel)
+  local get = channel and _G.UnitChannelDuration or _G.UnitCastingDuration
   if type(get) ~= "function" then return nil end
   local ok, d = pcall(get, unit)
   return ok and d or nil
 end
 
 -- Showing ----------------------------------------------------------------------------
+
+-- Shows seconds left ("2.4") on a font string, formatting only when the text
+-- would read differently: the key changes exactly when "%.1f" would (a value
+-- on a half tenth gets a key of its own, so the rounding there stays the
+-- formatter's). Saves a new string per bar per frame. Plain numbers only.
+function CB.ShowSeconds(fs, seconds)
+  local t = seconds * 10 + 0.5
+  local key = math.floor(t)
+  if key == t then key = -key - 1 end
+  if key == fs.fuiTenth then return end
+  fs.fuiTenth = key
+  fs:SetText(string.format("%.1f", seconds))
+end
+
+-- Clears a font string CB.ShowSeconds writes to, so the next call writes again.
+function CB.ClearSeconds(fs)
+  fs.fuiTenth = nil
+  fs:SetText("")
+end
 
 -- Moves the bar by plain times and shows the seconds left; hidden times leave it full.
 local function onUpdate(bar)
@@ -70,7 +99,7 @@ local function onUpdate(bar)
   local now = GetTime() * 1000
   local share = math.max(0, math.min(1, (now - startMS) / (endMS - startMS)))
   bar:SetValue(bar.channel and (1 - share) or share)
-  bar.time:SetText(string.format("%.1f", math.max(0, endMS - now) / 1000))
+  CB.ShowSeconds(bar.time, math.max(0, endMS - now) / 1000)
 end
 
 -- Your latency in ms (to the world server, else home), or nil where the client can't say.
@@ -82,39 +111,45 @@ end
 
 -- Your own latency at the end of your cast bar (plain times only): the part
 -- of the cast the server may already count as done, so you can queue the next.
-local function showLatency(bar, cast)
-  local startMS, endMS = ns.PlainNumber(cast.startMS), ns.PlainNumber(cast.endMS)
+local function showLatency(bar, startMS, endMS, channel)
+  startMS, endMS = ns.PlainNumber(startMS), ns.PlainNumber(endMS)
   local lag = latency()
-  bar.lag:SetShown(bar.unit == "player" and not cast.channel and lag ~= nil and startMS ~= nil and endMS ~= nil and endMS > startMS)
+  bar.lag:SetShown(bar.unit == "player" and not channel and lag ~= nil and startMS ~= nil and endMS ~= nil and endMS > startMS)
   if bar.lag:IsShown() then bar.lag:SetWidth(bar:GetWidth() * math.min(1, lag / (endMS - startMS))) end
 end
 
 -- Starts the bar's timing: the client's own timer where it can, else plain times on each frame.
-local function startTiming(bar, unit, cast)
-  local duration = castDuration(unit, cast)
-  bar.time:SetText("")
-  showLatency(bar, cast)
+local function startTiming(bar, unit, startMS, endMS, channel)
+  local duration = castDuration(unit, channel)
+  CB.ClearSeconds(bar.time)
+  showLatency(bar, startMS, endMS, channel)
   if duration and bar.SetTimerDuration and pcall(bar.SetTimerDuration, bar, duration) then
     return bar:SetScript("OnUpdate", nil)
   end
   bar:SetMinMaxValues(0, 1)
   bar:SetValue(1)
-  bar.startMS, bar.endMS, bar.channel = cast.startMS, cast.endMS, cast.channel
+  bar.startMS, bar.endMS, bar.channel = startMS, endMS, channel
   bar:SetScript("OnUpdate", onUpdate)
+end
+
+-- A cast's look on its bar: the color and edge for its kind, its icon and name.
+local function paintCast(bar, name, icon, shielded, channel)
+  T.BarColor(bar, isTrue(shielded) and "shielded" or channel and "channel" or "cast")
+  T.SetBorder(bar, isTrue(shielded) and { T.RGB("shielded") } or nil)
+  bar.icon:SetTexture(icon)
+  bar.text:SetText(name)
 end
 
 -- Shows the unit's cast on a bar made by CB.Build, or hides the bar when it isn't casting.
 function CB.Show(bar, unit)
-  local cast = CB.Cast(unit)
+  local name, icon, startMS, endMS, shielded, channel = CB.Cast(unit)
+  local cast = type(name) ~= "nil"
   if not cast and bar.fuiFinishing then return end
   if cast then bar.fuiFinishing = nil T.StopFade(bar) end
-  bar:SetShown(cast ~= nil)
+  bar:SetShown(cast)
   if not cast then return bar:SetScript("OnUpdate", nil) end
-  T.BarColor(bar, isTrue(cast.shielded) and "shielded" or cast.channel and "channel" or "cast")
-  T.SetBorder(bar, isTrue(cast.shielded) and { T.RGB("shielded") } or nil)
-  bar.icon:SetTexture(cast.icon)
-  bar.text:SetText(cast.name)
-  startTiming(bar, unit, cast)
+  paintCast(bar, name, icon, shielded, channel)
+  startTiming(bar, unit, startMS, endMS, channel)
 end
 
 -- A cast ended on a showing bar: flash it full (good: green; otherwise red
@@ -212,17 +247,25 @@ local FINISH = {
 -- A cast event for one of our units: an end flashes the bar, anything else refreshes it.
 local function onCast(event, unit)
   local bar = CB.bars[unit]
-  if bar and FINISH[event] and not CB.Cast(unit) then return CB.Finish(bar, FINISH[event]) end
+  if bar and FINISH[event] and not casting(unit) then return CB.Finish(bar, FINISH[event]) end
   CB.Update(unit)
 end
 
--- Module entry point (Core/Modules.lua).
-function CB.Enable(settings)
-  for unit in pairs(LAYOUT) do
-    if settings[unit] then CB.bars[unit] = createBar(unit) end
+-- Builds the bars switched on (yours, your target's, your focus's); returns their units.
+local function createBars(settings)
+  local units = {}
+  for _, unit in ipairs({ "player", "target", "focus" }) do
+    if settings[unit] then CB.bars[unit], units[#units + 1] = createBar(unit), unit end
   end
+  return units
+end
+
+-- Module entry point (Core/Modules.lua). Cast events come only for the units
+-- with a bar (the client sends every nameplate's casts to whoever asks for all).
+function CB.Enable(settings)
+  local units = createBars(settings)
   if settings.hideBlizzard then ns.OutOfCombat(function() for _, n in ipairs(BLIZZARD) do hideBlizzard(n) end end) end
-  for _, e in ipairs(CAST_EVENTS) do ns.On(e, onCast) end
+  ns.OnUnit(CAST_EVENTS, onCast, unpack(units))
   ns.On("PLAYER_TARGET_CHANGED", function() CB.Update("target") end)
   ns.On("PLAYER_FOCUS_CHANGED", function() CB.Update("focus") end)
   ns.On("PLAYER_ENTERING_WORLD", function() for unit in pairs(CB.bars) do CB.Update(unit) end end)

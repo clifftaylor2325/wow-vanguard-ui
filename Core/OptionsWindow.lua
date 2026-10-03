@@ -18,6 +18,8 @@ local SETTER_AT = { check = 4, cycle = 5, slider = 5 }
 
 local window
 local pages, widgets = {}, {}
+-- Each page's rows as the search reads them, kept while the window is open (O.RebuildPage drops a page's).
+local rowCache = {}
 local needsReload = false
 
 -- Rows ---------------------------------------------------------------------------------------
@@ -500,6 +502,7 @@ end
 function O.Show(key)
   if not window then build() end
   local previous = window:IsShown() and O.current
+  if not previous then rowCache = {} end
   O.current = key or O.current or "general"
   showPage()
   markNav(O.current)
@@ -509,19 +512,38 @@ function O.Show(key)
   appear(previous)
 end
 
+-- A page's rows, built once per opening of the window rather than per search keystroke.
+local function rowsOf(page)
+  rowCache[page.key] = rowCache[page.key] or page.rows()
+  return rowCache[page.key]
+end
+
 -- Whether a page's title or any row's caption contains the (lower-case) text.
 local function pageMatches(page, text)
   if page.title:lower():find(text, 1, true) then return true end
-  for _, row in ipairs(page.rows()) do
+  for _, row in ipairs(rowsOf(page)) do
     if type(row[2]) == "string" and row[2]:lower():find(text, 1, true) then return true end
   end
   return false
 end
 
+-- Drops a thrown-away page's rows from the widget list (so they're no longer refreshed or searched).
+local function forgetRows(view)
+  for i = #widgets, 1, -1 do
+    if widgets[i].card.child == view.child then table.remove(widgets, i) end
+  end
+end
+
+-- How many rows the built pages hold (for tests).
+function O.RowCount()
+  return #widgets
+end
+
 -- Throws a built page away so it's built again from its rows (its list
 -- changed), showing it again if it's the current one.
 function O.RebuildPage(key)
-  if pages[key] then pages[key]:Hide() pages[key] = nil end
+  rowCache[key] = nil
+  if pages[key] then forgetRows(pages[key]) pages[key]:Hide() pages[key] = nil end
   if window and window:IsShown() and O.current == key then O.Show(key) end
 end
 

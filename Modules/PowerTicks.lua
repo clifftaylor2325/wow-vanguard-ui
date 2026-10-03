@@ -29,19 +29,19 @@ function PT.Fraction(now)
   if gone < length then return gone / length end
 end
 
--- Moves the spark along the bar; it hides, and the timer stops, once a sweep is over.
+-- Moves the spark along the bar (one anchor, moved in place each frame); it
+-- hides, and the timer stops, once a sweep is over.
 function PT.Tick()
   local at = PT.Fraction(GetTime())
   PT.spark:SetShown(at ~= nil)
   if not at then PT.driver:SetScript("OnUpdate", nil) return end
-  PT.spark:ClearAllPoints()
   PT.spark:SetPoint("TOP", PT.bar, "TOPLEFT", at * PT.bar:GetWidth(), 0)
-  PT.spark:SetPoint("BOTTOM", PT.bar, "BOTTOMLEFT", at * PT.bar:GetWidth(), 0)
 end
 
--- Starts a sweep from now.
+-- Starts a sweep from now; the spark is as tall as the bar.
 function PT.Start()
   PT.from = GetTime()
+  PT.spark:SetHeight(PT.bar:GetHeight())
   PT.driver:SetScript("OnUpdate", PT.Tick)
   PT.Tick()
 end
@@ -101,14 +101,15 @@ local function build(bar)
   PT.UpdateMode()
 end
 
--- Builds the spark on the player frame (none, no spark) and follows casts, power and forms.
+-- Builds the spark on the player frame (none, no spark) and follows your casts, power and forms.
 local function attach()
   local player = UF.frames.player
   if not player then return end
   build(player.power)
-  ns.On("UNIT_SPELLCAST_SUCCEEDED", PT.OnCast)
-  ns.On("UNIT_POWER_FREQUENT", PT.OnPower)
-  for _, e in ipairs({ "UNIT_DISPLAYPOWER", "UPDATE_SHAPESHIFT_FORM" }) do ns.On(e, PT.UpdateMode) end
+  ns.OnUnit("UNIT_SPELLCAST_SUCCEEDED", PT.OnCast, "player")
+  ns.OnUnit("UNIT_POWER_FREQUENT", PT.OnPower, "player")
+  ns.OnUnit("UNIT_DISPLAYPOWER", PT.UpdateMode, "player")
+  ns.On("UPDATE_SHAPESHIFT_FORM", PT.UpdateMode)
 end
 
 -- Module entry point (Core/Modules.lua): out of combat, once the unit frames are built.

@@ -37,6 +37,7 @@ Core/OptionsProfiles.lua
 Core/Setup.lua
 Core/FactionArt.lua
 Core/Slash.lua
+Core/Perf.lua
 Core/GameMenu.lua
 Modules/UnitFrames.lua
 Modules/CastBars.lua

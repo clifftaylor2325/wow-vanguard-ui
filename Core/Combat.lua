@@ -35,13 +35,25 @@ function ns.OutOfCombat(fn, key)
   end
 end
 
+-- The client's check for a hidden value, or one that says no on a client
+-- without it. It never throws, so it is called bare, not under pcall.
+local isSecret
+
+-- Never hidden (a client without issecretvalue).
+local function never()
+  return false
+end
+
+-- Picks the check: at load, and again as addons load (the client defines it first).
+local function resolveSecret()
+  isSecret = type(issecretvalue) == "function" and issecretvalue or never
+end
+resolveSecret()
+ns.On("ADDON_LOADED", resolveSecret)
+
 -- True for a value Midnight hides from addons.
 function ns.IsSecret(value)
-  if type(issecretvalue) ~= "function" then
-    return false
-  end
-  local ok, secret = pcall(issecretvalue, value)
-  return ok and secret == true
+  return isSecret(value) == true
 end
 
 -- The value if it's a plain (non-secret) number; nil otherwise.
@@ -83,3 +95,25 @@ local function flush()
 end
 
 ns.On("PLAYER_REGEN_ENABLED", flush)
+
+-- Next frame ---------------------------------------------------------------------------------
+
+-- The work waiting for the next frame, by key (see ns.Soon).
+local soon = {}
+
+-- Runs the work last asked for under key, freeing the key first; a failure is reported.
+local function runSoon(key)
+  local fn = soon[key]
+  soon[key] = nil
+  ns.Try(key, fn)
+end
+
+-- Runs fn on the next frame, once however often it is asked for before then
+-- (a burst of events in one frame becomes one refresh): a call with a key
+-- already waiting replaces its work. Without the client's timer it runs now.
+function ns.Soon(key, fn)
+  if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return fn() end
+  local waiting = soon[key] ~= nil
+  soon[key] = fn
+  if not waiting then C_Timer.After(0, function() runSoon(key) end) end
+end
