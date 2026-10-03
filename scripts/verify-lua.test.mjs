@@ -4850,9 +4850,8 @@ it("setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI 
       for (const [sw, sh] of [[1365, 768], [1920, 1080]]) {
         for (const n of [0, 5, 25, 40]) {
           const rects = layoutRects(addon, n, sw, sh);
-          // KNOWN, OPEN (owner decision, P0.14): on a 1365-wide screen the laid-out bag strip (198 wide) has no room left of
-          // the menu strip beside the centered bars, so it overlaps bar3; nothing else may overlap, the two strips never.
-          expect(layoutProblems(rects, sw, sh), `${layout}, groups as ${grow}, ${sw}x${sh}, ${n} players`).toEqual(sw < 1600 ? ["bar3 / bagstrip"] : []);
+          // The bag strip sits above the menu strip, so the pair is no wider than the menu strip and clears the bars at 1365.
+          expect(layoutProblems(rects, sw, sh), `${layout}, groups as ${grow}, ${sw}x${sh}, ${n} players`).toEqual([]);
         }
       }
     }
@@ -5210,7 +5209,7 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   expect(addon.eval("return { ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }"), "a bag bar wider than the strip grows it, with a margin around it (36 tall at least)").toEqual([300 * 0.7 + 12, 36]);
   addon.eval("BagsBar:SetSize(50, 20) ns.PausePins(false)");
   expect(addon.eval("return { ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }"), "and never shrinks below its default").toEqual([132, 36]);
-  expect(addon.eval("return { BagsBar:GetScale(), ForeverUI_BagStrip:GetAlpha(), ForeverUI_BagStrip.__points.BOTTOMRIGHT.x }"), "bags sit small, always shown, just left of the menu").toEqual([0.7, 1, -322]);
+  expect(addon.eval("return { BagsBar:GetScale(), ForeverUI_BagStrip:GetAlpha(), ForeverUI_BagStrip.__points.BOTTOMRIGHT.x, ForeverUI_BagStrip.__points.BOTTOMRIGHT.y }"), "bags sit small, always shown, just above the menu on its right edge").toEqual([0.7, 1, -16, 20 + 36 + 6]);
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "which is out of sight until the mouse is over it").toBe(0);
   addon.eval("function ForeverUI_MenuStrip:IsMouseOver() return true end __wfgStub.advance(0.3)");
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "and shows with the mouse over it").toBe(1);
@@ -5322,6 +5321,8 @@ const strips = (extra = "") => loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_E
 // The two strips' sizes, and the bag strip's x offset at a point name.
 const stripSizes = (addon) => addon.eval("return { ForeverUI_MenuStrip:GetWidth(), ForeverUI_MenuStrip:GetHeight(), ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }");
 const bagX = (addon, point) => addon.eval(`local p = ForeverUI_BagStrip.__points.${point} return p and p.x`);
+// The bag strip's x and y offsets at a point name.
+const bagXY = (addon, point) => addon.eval(`local p = ForeverUI_BagStrip.__points.${point} return { p.x, p.y }`);
 
 it("menu and bag strips: the bars' own frame art is hidden, the key ring is skinned", () => {
   const addon = strips();
@@ -5336,13 +5337,13 @@ it("menu and bag strips: they re-fit when the game lays the bars out or resizes 
   expect(stripSizes(addon), "before the game lays them out, the strips have their default sizes").toEqual([300, 36, 132, 36]);
   addon.eval("MicroMenuContainer:Layout()");
   expect(stripSizes(addon).slice(0, 2), "the menu strip grows around the laid-out micro menu, 36 tall").toEqual([378 * 0.8 + 12, 36]);
-  expect(bagX(addon, "BOTTOMRIGHT"), "and the bag strip sits just left of it").toBeCloseTo(-16 - (378 * 0.8 + 12) - 6, 9);
+  expect(bagXY(addon, "BOTTOMRIGHT"), "and the bag strip sits just above it, on the same right edge").toEqual([-16, 20 + 36 + 6]);
   addon.eval("BagsBar:SetScale(1) BagsBar:Layout()");
   expect(stripSizes(addon).slice(2), "the bag strip grows around the laid-out bag bar, 36 tall").toEqual([266 * 0.7 + 12, 36]);
   expect(addon.eval("return BagsBar:GetScale()"), "the game's reset of the bag bar's scale is undone").toBe(0.7);
   addon.eval("MicroMenuContainer:SetSize(500, 40) MicroMenuContainer.__scripts.OnSizeChanged(MicroMenuContainer, 500, 40)");
   expect(stripSizes(addon)[0], "a size change alone re-fits the menu strip").toBe(500 * 0.8 + 12);
-  expect(bagX(addon, "BOTTOMRIGHT"), "and moves the bag strip").toBeCloseTo(-16 - (500 * 0.8 + 12) - 6, 9);
+  expect(bagXY(addon, "BOTTOMRIGHT"), "and keeps the bag strip just above it").toEqual([-16, 20 + stripSizes(addon)[1] + 6]);
 });
 
 it("menu and bag strips: a saved bag position wins; the default follows the menu strip's spot", () => {
@@ -5350,20 +5351,24 @@ it("menu and bag strips: a saved bag position wins; the default follows the menu
   addon.eval("ns.SetMoverPoint('bagstrip', 'BOTTOMLEFT', 'BOTTOMLEFT', 10, 10) MicroMenuContainer:Layout()");
   expect([bagX(addon, "BOTTOMLEFT"), bagX(addon, "BOTTOMRIGHT")], "a bag strip the player moved stays there through a re-fit").toEqual([10, null]);
   addon.eval("ns.ResetMovers('bagstrip')");
-  expect(bagX(addon, "BOTTOMRIGHT"), "and Reset puts it at the computed default").toBeCloseTo(-16 - (378 * 0.8 + 12) - 6, 9);
+  expect(bagXY(addon, "BOTTOMRIGHT"), "and Reset puts it at the computed default").toEqual([-16, 20 + 36 + 6]);
   addon.eval("ns.SetMoverPoint('menustrip', 'BOTTOMLEFT', 'BOTTOMLEFT', 400, 20) MicroMenuContainer:Layout()");
-  expect(bagX(addon, "BOTTOMLEFT"), "a menu strip on the left: the bags' left edge is a bag strip's width and a gap left of it").toBeCloseTo(400 - 132 - 6, 9);
+  expect(bagXY(addon, "BOTTOMLEFT"), "a menu strip on the left: the bags line up on its left edge, above it").toEqual([400, 20 + 36 + 6]);
   addon.eval("ns.SetMoverPoint('menustrip', 'BOTTOM', 'BOTTOM', 40, 20) MicroMenuContainer:Layout()");
-  expect(bagX(addon, "BOTTOM"), "centered: half of each strip's width and a gap").toBeCloseTo(40 - (378 * 0.8 + 12 + 132) / 2 - 6, 9);
+  expect(bagXY(addon, "BOTTOM"), "centered: centered over it").toEqual([40, 20 + 36 + 6]);
+  addon.eval("ns.SetMoverPoint('menustrip', 'TOPRIGHT', 'TOPRIGHT', -16, -40) MicroMenuContainer:Layout()");
+  expect(bagXY(addon, "TOPRIGHT"), "a top anchor: the bag strip's top is its height and a gap above the menu strip's").toEqual([-16, -40 + 36 + 6]);
+  addon.eval("ns.SetMoverPoint('menustrip', 'RIGHT', 'RIGHT', -16, 0) MicroMenuContainer:Layout()");
+  expect(bagXY(addon, "RIGHT"), "a middle anchor: centers a strip's half-heights and a gap apart").toEqual([-16, 36 + 6]);
 });
 
 it("menu and bag strips: moving or resetting the menu strip moves the bag strip's default at once, with no re-fit", () => {
   const addon = strips();
   addon.eval("MicroMenuContainer:Layout()");
   addon.eval("ns.SetMoverPoint('menustrip', 'BOTTOMRIGHT', 'BOTTOMRIGHT', -216, 20)");
-  expect(bagX(addon, "BOTTOMRIGHT"), "a drag of the menu strip carries the bag strip's default along").toBeCloseTo(-216 - (378 * 0.8 + 12) - 6, 9);
+  expect(bagXY(addon, "BOTTOMRIGHT"), "a drag of the menu strip carries the bag strip's default along").toEqual([-216, 20 + 36 + 6]);
   addon.eval("ns.ResetMovers('menustrip')");
-  expect(bagX(addon, "BOTTOMRIGHT"), "and Reset brings it back").toBeCloseTo(-16 - (378 * 0.8 + 12) - 6, 9);
+  expect(bagXY(addon, "BOTTOMRIGHT"), "and Reset brings it back").toEqual([-16, 20 + 36 + 6]);
   addon.eval("ns.SetMoverPoint('bagstrip', 'BOTTOMLEFT', 'BOTTOMLEFT', 10, 10) ns.SetMoverPoint('menustrip', 'BOTTOMRIGHT', 'BOTTOMRIGHT', -216, 20)");
   expect(bagX(addon, "BOTTOMLEFT"), "a bag strip the player placed stays where it is").toBe(10);
   expect(addon.eval("local n = 0 ns.WatchMover('nothing', function() n = n + 1 end) ns.SetMoverPoint('menustrip', 'BOTTOM', 'BOTTOM', 0, 20) return n"), "a watcher is told of its own mover only").toBe(0);

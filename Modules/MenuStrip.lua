@@ -31,7 +31,7 @@ MS.POLL = 0.15
 -- button's edge so neighbors don't run together (the game's micro buttons sit on a
 -- 27-unit pitch, its grid pads them by -5, so 4 leaves a 3-unit gap between faces).
 MS.GLYPH_PX, MS.PAD = 16, 4
--- The bag strip, left of the menu strip, and how big the bag buttons are drawn there (45 * 0.7 = 31.5).
+-- The bag strip, above the menu strip, and how big the bag buttons are drawn there (45 * 0.7 = 31.5).
 MS.BAG_W, MS.BAG_SCALE = 132, 0.7
 -- The game's bag buttons (backpack, bags, reagent bag, and the key ring Forever adds), styled where the client has them.
 MS.BAGS = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot", "CharacterReagentBag0Slot", "KeyRingButton" }
@@ -250,18 +250,19 @@ function MS.SkinBag(b)
   insetIcon(b, icon)
 end
 
--- The x offset that puts a strip wBags wide MS.GAP left of one wMenu wide, both
--- anchored at point (the menu strip's offset being x).
-local function leftOf(point, x, wMenu, wBags)
-  if point:find("RIGHT") then return x - wMenu - MS.GAP end
-  if point:find("LEFT") then return x - wBags - MS.GAP end
-  return x - (wMenu + wBags) / 2 - MS.GAP
+-- The bag strip's y for a spot MS.GAP above the menu strip, whose anchor
+-- point is point at y (the strips share that point and its x).
+local function above(point, y, hMenu, hBags)
+  if point:find("BOTTOM") then return y + hMenu + MS.GAP end
+  if point:find("TOP") then return y + hBags + MS.GAP end
+  return y + (hMenu + hBags) / 2 + MS.GAP
 end
 
--- The bag strip's default spot: MS.GAP left of the menu strip, at its height.
+-- The bag strip's default spot: MS.GAP above the menu strip, lined up on the
+-- same edge (so the pair stays as narrow as the menu strip and clear of the bars).
 function MS.BagsDefault()
   local point, relPoint, x, y = ns.MoverPoint("menustrip")
-  return { point, relPoint, leftOf(point, x, MS.strip:GetWidth(), MS.bags:GetWidth()), y }
+  return { point, relPoint, x, above(point, y, MS.strip:GetHeight(), MS.bags:GetHeight()) }
 end
 
 -- The bag strip's default follows the menu strip's size and spot (on a re-fit,
@@ -277,7 +278,7 @@ function MS.OnMenuFit()
   MS.PlaceBags()
 end
 
--- The bag strip, just left of the menu strip (however wide it grew) and always
+-- The bag strip, just above the menu strip (however tall it grew) and always
 -- shown, with the game's bag bar centered in it.
 local function buildBags(settings)
   MS.bags = T.HudPanel(CreateFrame("Frame", "ForeverUI_BagStrip", UIParent), { inset = true })
