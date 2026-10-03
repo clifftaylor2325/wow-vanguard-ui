@@ -1091,6 +1091,35 @@ it("Train all at a trainer: learns what you can afford, one at a time", () => {
   expect(trainButton(loaded), "a window already loaded gets it too; switched off it hides").toMatchObject({ shown: false, by: "ClassTrainerFrame" });
 });
 
+// TEST-ONLY trainer as the game reports it: GetTrainerServiceInfo is name, kind, texture, ...; buying
+// changes nothing until the server answers (money and list as they were), or removes the service from the list.
+const FOREVER_TRAINER_ENV = `
+  __services = { { "TEST-ONLY Bolt", "available", 500 }, { "TEST-ONLY Ward", "unavailable", 100 }, { "TEST-ONLY Blast", "available", 2000 }, { "TEST-ONLY Gust", "available", 1000 } }
+  __money, __learned, __shrink = 3200, {}, false
+  GetMoney = function() return __money end
+  GetNumTrainerServices = function() return #__services end
+  GetTrainerServiceInfo = function(i) local s = __services[i] return s[1], s[2], 134400, 1, "Rank 1" end
+  GetTrainerServiceCost = function(i) return __services[i][3] end
+  BuyTrainerService = function(i) __learned[#__learned + 1] = __services[i][1] if __shrink then table.remove(__services, i) end end
+  ClassTrainerFrame = CreateFrame("Frame", "ClassTrainerFrame", UIParent)
+`;
+
+it("Train all in one click: no purchase twice, the budget counted before the game answers, a list that re-indexes", () => {
+  const addon = loggedIn(FOREVER_TRAINER_ENV);
+  addon.fire("TRAINER_SHOW");
+  addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(addon.eval("return __learned"), "32s on hand, game still showing everything: Bolt (5s) and Blast (20s), not Gust (10s: only 7s left), none twice").toEqual(["TEST-ONLY Bolt", "TEST-ONLY Blast"]);
+  expect(chatHas(addon, /Trained 2 skill\(s\) for 25s 0c\./), "one line for the whole click").toBe(true);
+  const shrinking = loggedIn(FOREVER_TRAINER_ENV + "__shrink = true __money = 100000");
+  shrinking.fire("TRAINER_SHOW");
+  shrinking.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(shrinking.eval("return __learned"), "the list shrinking under the buying (indexes shifting) skips and repeats nothing").toEqual(["TEST-ONLY Bolt", "TEST-ONLY Blast", "TEST-ONLY Gust"]);
+  const capped = loggedIn(FOREVER_TRAINER_ENV + "__shrink = true __money = 100000 ns.GetModule('Errands').TRAIN_STEPS = 2");
+  capped.fire("TRAINER_SHOW");
+  capped.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(capped.eval("return #__learned"), "a click learns at most TRAIN_STEPS services").toBe(2);
+});
+
 // TEST-ONLY merchant stock: 90011 sells singly (5c, stacks of 20), 90012 in fives (40c for 5), 90013 is sold out.
 const STOCK_ENV = `
   __goods = { { id = 90011, price = 5, stack = 1, left = -1, max = 20 }, { id = 90012, price = 40, stack = 5, left = -1, max = 10 }, { id = 90013, price = 1, stack = 1, left = 0, max = 20 } }
@@ -1117,8 +1146,8 @@ it("keep stocked: /fui stock sets the list, a merchant tops you up", () => {
   addon.slash("stock");
   expect(chatHas(addon, /Keep 12 × item 90012/), "the list, by name where the game knows it").toBe(true);
   addon.fire("MERCHANT_SHOW");
-  expect(addon.eval("return __buys"), "40 more bread in stacks of 20, 12 of the fives, nothing sold out").toEqual([[90011, 20], [90011, 20], [90012, 10], [90012, 2]]);
-  expect(chatHas(addon, /Bought 40 × TEST-ONLY Bread for 2s 0c\./) && chatHas(addon, /Bought 12 × item 90012 for 0s 96c\./), "and says what it bought").toBe(true);
+  expect(addon.eval("return __buys"), "40 more bread in stacks of 20, 12 of the fives rounded up to whole fives, nothing sold out").toEqual([[90011, 20], [90011, 20], [90012, 10], [90012, 5]]);
+  expect(chatHas(addon, /Bought 40 × TEST-ONLY Bread for 2s 0c\./) && chatHas(addon, /Bought 15 × item 90012 for 1s 20c\./), "and says what it bought").toBe(true);
   addon.eval("__buys = {}");
   addon.fire("MERCHANT_SHOW");
   expect(addon.eval("return #__buys"), "nothing when you have enough").toBe(0);
@@ -1135,6 +1164,13 @@ it("keep stocked: /fui stock sets the list, a merchant tops you up", () => {
   const off = loggedIn(STOCK_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Errands = { stock = false, stockList = { [90012] = 5 } } } }" });
   off.fire("MERCHANT_SHOW");
   expect(off.eval("return #__buys"), "switched off it buys nothing").toBe(0);
+});
+
+it("keep stocked: an item sold in stacks (ammo) is bought in whole stacks", () => {
+  const addon = loggedIn(STOCK_ENV + "__goods[4] = { id = 90014, price = 100, stack = 200, left = -1, max = 200 }", { savedVariables: "ForeverUIDB.profiles = { Default = { Errands = { stockList = { [90014] = 450 } } } }" });
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __buys"), "450 wanted: two full stacks and the last 50 rounded up to a whole stack of 200").toEqual([[90014, 200], [90014, 200], [90014, 200]]);
+  expect(chatHas(addon, /Bought 600 × item 90014 for 3s 0c\./), "and it says what it really bought").toBe(true);
 });
 
 // TEST-ONLY flight points: you stand at node 1, node 2 is a destination.
