@@ -79,6 +79,40 @@ it("each nameplate asks the client for its own unit's events, once", () => {
   expect(unitEvents(addon, "UNIT_FACTION").subs, "the client reuses a plate for another unit: it listens for that one").toBe("nameplate2 nameplate5");
 });
 
+it("nameplates repaint only what an event changed, and the border only when the target or the scale does", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + `__borders = 0
+    local setBorder = ns.Theme.SetBorder
+    -- TEST-ONLY spy: counts border repaints of nameplates (the frames with a target marker).
+    ns.Theme.SetBorder = function(f, rgb) if f.marker then __borders = __borders + 1 end return setBorder(f, rgb) end`);
+  // How many times a plate border has been painted.
+  const borders = () => addon.eval("return __borders");
+  expect(borders(), "the two plates on screen at login paint their borders once each").toBe(2);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  expect(borders(), "the client hands the same plate again: its border is already right").toBe(2);
+  addon.eval("__units.target.hp, __units.target.maxhp, __units.target.name = 300, 800, 'TEST-ONLY Renamed'");
+  for (let i = 0; i < 10; i++) addon.fire("UNIT_HEALTH", "nameplate1");
+  let one = plate(addon, "nameplate1");
+  expect([borders(), one.hp, one.name], "10 health events: the fill moves, no border repaint, the name is left alone").toEqual([2, 300, "TEST-ONLY Boar"]);
+  addon.fire("UNIT_NAME_UPDATE", "nameplate1");
+  expect(plate(addon, "nameplate1").name, "a name event repaints the name").toBe("TEST-ONLY Renamed");
+  addon.eval("__threat.nameplate1 = 2");
+  addon.fire("UNIT_THREAT_LIST_UPDATE", "nameplate1");
+  expect([isTok(addon, plate(addon, "nameplate1").color, "threat2"), borders()], "threat recolors the bar only").toEqual([true, 2]);
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(borders(), "the same target again: nothing to repaint").toBe(2);
+  addon.eval("__units.target = __units.party1");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  const accent = addon.eval("return { ns.Theme.Accent() }");
+  one = plate(addon, "nameplate1");
+  const two = plate(addon, "nameplate2");
+  expect([borders(), isTok(addon, one.edge, "accent"), two.edge.slice(0, 3)], "a new target: both plates whose state flipped repaint").toEqual([4, false, accent.slice(0, 3)]);
+  addon.eval("__plates.nameplate2:SetScale(1.4)");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(borders(), "a plate whose scale changed repaints its edge at the new pixel size").toBe(5);
+  addon.eval("ns.Theme.SetAccent(0.1, 0.9, 0.2)");
+  expect(plate(addon, "nameplate2").edge.slice(0, 3), "a new accent repaints your target's border").toEqual([0.1, 0.9, 0.2]);
+});
+
 // TEST-ONLY levels: the boar is level 12 (a yellow, even fight), the friend 14 (no color from the client).
 const LEVELS_ENV = `
   UnitLevel = function(unit) return ({ target = 12, nameplate1 = 12, party1 = 14, nameplate2 = 14 })[unit] or 10 end

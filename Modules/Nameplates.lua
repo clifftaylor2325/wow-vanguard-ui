@@ -174,18 +174,52 @@ local function updateLevel(f, unit)
   f.level:SetText("")
 end
 
--- Health bar, color, name and level, raid icon, and your target's border and marker.
-function NP.Update(f, unit)
+-- The bar's fill: health goes to the bar as the client gives it, hidden or not.
+function NP.UpdateHealth(f, unit)
   f:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(f, UnitHealth(unit))
+end
+
+-- The bar's color: threat, class or reaction (see NP.Color).
+function NP.UpdateColor(f, unit)
   f:SetStatusBarColor(NP.Color(unit))
+end
+
+-- The name, and the level left of it.
+function NP.UpdateName(f, unit)
   f.name:SetText(UnitName(unit))
   updateLevel(f, unit)
+end
+
+-- The raid target icon left of the plate.
+function NP.UpdateIcon(f, unit)
   RS.PaintIcon(f.raidIcon, RS.RaidIcon(unit))
-  local target = NP.settings.targetBorder and isTarget(unit)
+end
+
+-- Your target's accent border and marker. The border is repainted only when
+-- the plate's target state or its scale (the pixel size of the edge) changed
+-- since it was last painted, or when `force` says the theme did.
+function NP.UpdateTarget(f, unit, force)
+  local target, scale = NP.settings.targetBorder and isTarget(unit) or false, f:GetEffectiveScale()
+  if not force and target == f.fuiTarget and scale == f.fuiScale then return end
+  f.fuiTarget, f.fuiScale = target, scale
   T.SetBorder(f, target and { T.Accent() } or nil)
-  f.marker:SetShown(target == true)
+  f.marker:SetShown(target)
   if target then T.Tint(f.marker, "accent") end
+end
+
+-- Repaints a plate's target border and marker whatever its state (the accent changed).
+local function repaintTarget(f, unit)
+  NP.UpdateTarget(f, unit, true)
+end
+
+-- Health bar, color, name and level, raid icon, and your target's border and marker.
+function NP.Update(f, unit)
+  NP.UpdateHealth(f, unit)
+  NP.UpdateColor(f, unit)
+  NP.UpdateName(f, unit)
+  NP.UpdateIcon(f, unit)
+  NP.UpdateTarget(f, unit)
 end
 
 -- Shows a plate's quest mark while the unit is one your quests need (and the marks are on).
@@ -249,9 +283,10 @@ end
 -- A plate's unit event -> what it repaints on that plate. Each plate asks the
 -- client for its own unit's events only (ns.OnUnit), so 30 plates don't each
 -- hear the other 29 (or the raid's).
+-- Health moves the fill only; threat and faction recolor the bar only.
 local UNIT_HANDLERS = {
-  UNIT_HEALTH = NP.Update, UNIT_MAXHEALTH = NP.Update, UNIT_NAME_UPDATE = NP.Update,
-  UNIT_FACTION = NP.Update, UNIT_THREAT_LIST_UPDATE = NP.Update, UNIT_LEVEL = NP.Update,
+  UNIT_HEALTH = NP.UpdateHealth, UNIT_MAXHEALTH = NP.UpdateHealth, UNIT_NAME_UPDATE = NP.UpdateName,
+  UNIT_FACTION = NP.UpdateColor, UNIT_THREAT_LIST_UPDATE = NP.UpdateColor, UNIT_LEVEL = NP.UpdateName,
 }
 for _, event in ipairs(CB.EVENTS) do UNIT_HANDLERS[event] = showCast end
 NP.UNIT_EVENTS = {}
@@ -267,9 +302,9 @@ end
 local EVENTS = {
   PLAYER_ENTERING_WORLD = scan,
   NAME_PLATE_UNIT_ADDED = onAdded, NAME_PLATE_UNIT_REMOVED = onRemoved,
-  PLAYER_TARGET_CHANGED = function() each(NP.Update) end, RAID_TARGET_UPDATE = function() each(NP.Update) end,
+  PLAYER_TARGET_CHANGED = function() each(NP.UpdateTarget) end, RAID_TARGET_UPDATE = function() each(NP.UpdateIcon) end,
   -- Your new level changes how hard every unit is for you.
-  PLAYER_LEVEL_UP = function() each(NP.Update) end,
+  PLAYER_LEVEL_UP = function() each(NP.UpdateName) end,
   PLAYER_REGEN_ENABLED = upgradeDebuffs,
   -- Your quests changed: which units they need may have too.
   QUEST_LOG_UPDATE = function() each(NP.PaintQuest) end,
@@ -279,6 +314,7 @@ local EVENTS = {
 function NP.Enable(settings)
   NP.settings = settings
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
+  T.OnChanged(function() each(repaintTarget) end)
 end
 
 -- Options ------------------------------------------------------------------------------------
