@@ -264,8 +264,9 @@ function MS.BagsDefault()
   return { point, relPoint, leftOf(point, x, MS.strip:GetWidth(), MS.bags:GetWidth()), y }
 end
 
--- The bag strip's default follows the menu strip's size and spot; a saved
--- position of its own wins (ns.SetMoverDefault).
+-- The bag strip's default follows the menu strip's size and spot (on a re-fit,
+-- and when the menu strip is moved or reset); a saved position of its own wins
+-- (ns.SetMoverDefault).
 function MS.PlaceBags()
   if MS.bags then ns.SetMoverDefault("bagstrip", MS.BagsDefault()) end
 end
@@ -292,6 +293,7 @@ local function buildStrip(settings)
   MS.strip = T.HudPanel(CreateFrame("Frame", "ForeverUI_MenuStrip", UIParent), { inset = true })
   MS.strip:SetSize(MS.WIDTH, MS.HEIGHT)
   ns.Mover(MS.strip, "menustrip", "Game menu", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 20 })
+  ns.WatchMover("menustrip", MS.PlaceBags)
   pinInto("MicroMenuContainer", MS.strip, MS.SCALE, MS.WIDTH, MS.OnMenuFit)
   MS.FadeArt()
   buildBags(settings)
