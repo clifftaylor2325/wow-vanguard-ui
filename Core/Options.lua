@@ -234,7 +234,7 @@ O.MODULE_INFO = {
   AfkScreen = { "AFK screen", "While you're away, the screen dims to a card with your character, zone, time away and XP." },
   MenuStrip = { "Menu and quest tracker", "The game's menu buttons (as ForeverUI icons) and bag buttons in a corner strip, and the quest tracker under the info strip." },
   Chat = { "Chat", "Themed chat windows and tabs." },
-  Bags = { "Bags", "One combined bag, with a Sort button." },
+  Bags = { "Bags", "One combined bag, in sections by kind of item, with a Sort button." },
   Merchant = { "Merchant helpers", "Repair, sell gray items, and a quieter error line." },
   ChatExtras = { "Chat extras", "Clickable web links in chat, and a Copy button for the recent chat." },
   MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map." },
@@ -471,6 +471,12 @@ local function moreRows()
   }
 end
 
+-- The combined bag's sections, laid out (or back to the plain grid) at once.
+local function bagRows()
+  return { check("Combined bag in sections: equipment, consumables, quest items, junk",
+    liveSetting("Bags", "sections", function() ns.GetModule("Bags").SectionsChanged() end)) }
+end
+
 -- get/set for the weapon enchant cells, which show or hide at once.
 local function enchantSetting()
   return liveSetting("PlayerAuras", "enchants", function() ns.GetModule("PlayerAuras").UpdateEnchants() end)
@@ -572,7 +578,7 @@ end
 
 -- The Bars, map, chat page: your buffs, bars and map, the strip, merchants, tooltips.
 local function morePageRows()
-  local rows = append(append(playerAuraRows(), dataBarRows()), moreRows())
+  local rows = append(append(append(playerAuraRows(), dataBarRows()), moreRows()), bagRows())
   append(rows, stripRows())
   append(rows, gamePartRows())
   append(rows, windowRows())
