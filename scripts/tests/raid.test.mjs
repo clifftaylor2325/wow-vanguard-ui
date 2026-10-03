@@ -1,7 +1,7 @@
 // raid: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { RAID_ENV, UNITS_ENV, button, key, loggedIn, raidButton } from "./helpers.mjs";
+import { RAID_ENV, UNITS_ENV, button, key, loggedIn, raidButton, setCombat } from "./helpers.mjs";
 
 it("a unit event reaches only the tile showing that unit", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
@@ -74,4 +74,38 @@ it("raid frames: a dark style chosen before 'look' carries over", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: sv });
   const s = addon.eval("return ForeverUIDB.profiles.Default.RaidFrames");
   expect(s.look === "dark" && s.style == null, "style = dark becomes look = dark, and the old key goes").toBeTruthy();
+});
+
+// TEST-ONLY: a client whose secure snippets fail to compile (the probe's call throws).
+const NO_SNIPPETS = 'SecureHandlerExecute = function() error("TEST-ONLY: snippets do not compile") end\n';
+
+// A raid button made the way the header would on a client without snippets (no init call).
+const headerMakes = (addon, i, unit) => addon.eval(`local b = CreateFrame("Button", "ForeverUI_RaidUnitButton${i}", ForeverUI_Raid, "SecureUnitButtonTemplate") b:SetAttribute("unit", "${unit}") return b:GetName()`);
+
+it("raid frames without secure snippets: the header copies the clicks; buttons are sized and set up out of combat", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + NO_SNIPPETS);
+  expect(addon.eval("local h = ForeverUI_Raid return { h:GetAttribute('initialConfigFunction') == nil, h:GetAttribute('_initialAttributeNames'), h:GetAttribute('_initialAttribute-*type1'), h:GetAttribute('_initialAttribute-*type2') }"),
+    "no init snippet; the header's own attribute copy carries the clicks").toEqual([true, "*type1,*type2", "target", "togglemenu"]);
+  headerMakes(addon, 1, "raid1");
+  addon.eval('CreateFrame("Frame", "TESTONLY_NotAButton", ForeverUI_Raid)');
+  setCombat(addon, true);
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect(addon.eval("return ForeverUI_RaidUnitButton1.fuiHeaderSetup == nil"), "in a fight the new button waits").toBe(true);
+  setCombat(addon, false);
+  const w = addon.eval('return ns.Settings("RaidFrames").width'), h = addon.eval('return ns.Settings("RaidFrames").height');
+  expect(addon.eval("local b = ForeverUI_RaidUnitButton1 return { b:GetWidth(), b:GetHeight(), b:GetAttribute('*type1'), b:GetAttribute('*type2'), b.health ~= nil }"),
+    "after it, the button has its size, its clicks and the raid tile setup").toEqual([w, h, "target", "togglemenu", true]);
+  expect(raidButton(addon, 1).name, "and shows its unit").toBe("TEST-ONLY Tank");
+  expect(addon.eval("return TESTONLY_NotAButton.fuiHeaderSetup == nil"), "a child that is not a unit button is left alone").toBe(true);
+  addon.eval('__setups = 0 local RF = ns.GetModule("RaidFrames") local s = RF.Setup RF.Setup = function(...) __setups = __setups + 1 return s(...) end RF.SetupButtons()');
+  expect(addon.eval("return __setups"), "a button is set up once").toBe(0);
+});
+
+it("raid frames with secure snippets keep the init snippet", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  expect(addon.eval('local h = ForeverUI_Raid return { h:GetAttribute("initialConfigFunction") == ns.GetModule("RaidFrames").INIT, h:GetAttribute("_initialAttributeNames") == nil }'),
+    "the snippet, and no attribute copy").toEqual([true, true]);
+  headerMakes(addon, 1, "raid1");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect(addon.eval("return ForeverUI_RaidUnitButton1.fuiHeaderSetup == nil"), "the module leaves set-up to the snippet").toBe(true);
 });

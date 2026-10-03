@@ -404,9 +404,24 @@ local function createHeader(s)
   header:SetAttribute("fui-height", s.height)
   -- Called by RF.INIT (CallMethod) with the new button's name.
   header.initialConfigFunction = function(_, name) RF.Setup(_G[name]) end
-  header:SetAttribute("initialConfigFunction", RF.INIT)
+  if ns.Client.ProbeSnippets() ~= false then header:SetAttribute("initialConfigFunction", RF.INIT) end
   layout(header, s)
   return header
+end
+
+-- Sets up the raid buttons the header made without its init snippet (out of combat).
+function RF.SetupButtons()
+  ns.Client.SetupHeaderButtons(RF.header, RF.Setup)
+end
+
+-- The raid header on a client that can't run snippets: the header copies the
+-- clicks, the buttons are made (again) and set up from here, now and on every
+-- roster change, out of combat.
+function RF.WithoutSnippets()
+  ns.Client.HeaderWithoutSnippets(RF.header)
+  precreate(RF.header)
+  RF.SetupButtons()
+  ns.On("GROUP_ROSTER_UPDATE", function() ns.OutOfCombat(RF.SetupButtons, "raidbuttons") end)
 end
 
 local hiddenParent
@@ -466,6 +481,7 @@ local function build(s)
   RF.Fit()
   precreate(RF.header)
   membership(RF.header, s)
+  ns.Client.WhenSnippetsKnown(function(worked) if worked == false then RF.WithoutSnippets() end end)
   if s.hideBlizzard then
     for _, name in ipairs(BLIZZARD_FRAMES) do hideBlizzard(name) end
   end
