@@ -425,3 +425,39 @@ it("the game's hidden action buttons are silenced, and one cooldown event refres
   const kept = loggedIn(ACTIONS_ENV + GAME_BUTTONS, { savedVariables: "ForeverUIDB.profiles = { Default = { ActionBars = { hideBlizzard = false } } }" });
   expect(kept.eval('return ActionButton1:IsEventRegistered("ACTIONBAR_UPDATE_COOLDOWN")'), "with the game's bars kept, its buttons keep their events").toBe(true);
 });
+
+// The tooltip's owner name, the slot it shows, its first line, and whether it is up.
+const tip = (addon) => addon.eval("local o = GameTooltip:GetOwner() return { owner = o and o:GetName(), action = GameTooltip.__action, line = GameTooltip.__lines and GameTooltip.__lines[1].text, shown = GameTooltip:IsShown() }");
+
+it("action buttons show their action's tooltip on hover and hide it on leave", () => {
+  const addon = loggedIn();
+  addon.world.setAction(1, { id: 133 });
+  addon.hover("ForeverUI_Bar1Button1");
+  expect(tip(addon), "hovering slot 1 shows Fireball's tooltip, owned by the button").toEqual({ owner: "ForeverUI_Bar1Button1", action: 1, line: "Fireball", shown: true });
+  expect(addon.eval("return type(ForeverUI_Bar1Button1.UpdateTooltip)"), "the client can refresh it through UpdateTooltip").toBe("function");
+  addon.world.setAction(1, { id: 116 });
+  addon.eval("ForeverUI_Bar1Button1:UpdateTooltip()");
+  expect(tip(addon), "the refresh shows what is in the slot now").toEqual({ owner: "ForeverUI_Bar1Button1", action: 1, line: "Frostbolt", shown: true });
+  addon.hover(null);
+  expect([tip(addon).shown, addon.eval("return ForeverUI_Bar1Button1.UpdateTooltip")], "leaving hides the tooltip and drops the refresh").toEqual([false, null]);
+  addon.hover("ForeverUI_Bar1Button2");
+  expect([tip(addon).action, tip(addon).shown, addon.eval("return ForeverUI_Bar1Button2.UpdateTooltip")], "an empty slot shows no tooltip").toEqual([2, false, null]);
+});
+
+it("a paged bar 1 button's tooltip is for the slot it shows now, not its action attribute", () => {
+  const addon = loggedIn(NO_SNIPPETS);
+  addon.world.setAction(1, { id: 133 });
+  addon.world.setAction(73, { id: 118 });
+  addon.eval("ForeverUI_Bar1:SetAttribute('actionpage', '7')");
+  addon.hover("ForeverUI_Bar1Button1");
+  expect([addon.eval("return ForeverUI_Bar1Button1:GetAttribute('action')"), tip(addon)], "page 7 shows slot 73's Polymorph though the attribute still says 1").toEqual([1, { owner: "ForeverUI_Bar1Button1", action: 73, line: "Polymorph", shown: true }]);
+});
+
+it("the mouseover fade still follows hovering an action button", () => {
+  const addon = loggedIn();
+  addon.world.setAction(61, { id: 133 });
+  addon.eval("local AB = ns.GetModule('ActionBars') ns.Settings('ActionBars').bars[2].visibility = 'mouseover' AB.ApplyVisibility(2)");
+  expect(addon.eval("return ForeverUI_Bar2:GetAlpha()"), "bar 2 starts faded out").toBe(0);
+  addon.hover("ForeverUI_Bar2Button1");
+  expect([addon.eval("return ForeverUI_Bar2:GetAlpha()"), tip(addon).owner], "hovering one of its buttons shows the bar and a tooltip").toEqual([1, "ForeverUI_Bar2Button1"]);
+});

@@ -1220,11 +1220,22 @@ local function tooltipLines(tip)
   function tip:ClearLines() self.__lines = {} end
 end
 
+-- The tooltip's action methods.
+local function tooltipAction(tip)
+  -- An action slot's tooltip, as the client fills it: true when the slot holds an action.
+  function tip:SetAction(slot)
+    self.__action = slot
+    self.__lines = { { text = actionOf(slot).name } }
+    return HasAction(slot)
+  end
+end
+
 -- GameTooltip: a hidden frame with the methods the addon calls, recorded.
 local function tooltipFrame()
   local tip = stub.newWidget("Frame", "GameTooltip", UIParent)
   tip:Hide()
   tooltipLines(tip)
+  tooltipAction(tip)
   -- What the tooltip was set to: a unit, an equipped item, a link or an item id.
   function tip:SetUnit(unit) self.__unit = unit self.__lines = { { text = UnitName(unit) } } end
   function tip:SetInventoryItem(unit, slot) self.__item = { unit = unit, slot = slot } end
@@ -1248,6 +1259,9 @@ local function blizzardFrames()
 end
 
 blizzardFrames()
+
+-- The client's default tooltip anchor: owned by the frame, placed by the game.
+function GameTooltip_SetDefaultAnchor(tooltip, parent) tooltip:SetOwner(parent, "ANCHOR_NONE") end
 
 -- Resets the world to its defaults (units, actions, bags, quests) without touching frames.
 function world.reset()

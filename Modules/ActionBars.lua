@@ -373,16 +373,48 @@ local function addRegions(b)
   T.Tint(b:GetCheckedTexture(), "checked")
 end
 
--- Secure attributes and scripts: click to use, drag to move actions.
-local function wireButton(b, action, index)
+-- The mouse came over a button: the tooltip of the action in the slot it shows
+-- now (b.action follows bar 1's page, the action attribute may not), and the
+-- client's UpdateTooltip hook refreshes it while it stays up. An empty slot shows none.
+local function showTooltip(b)
+  GameTooltip_SetDefaultAnchor(GameTooltip, b)
+  if GameTooltip:SetAction(b.action) then
+    b.UpdateTooltip = showTooltip
+    GameTooltip:Show()
+  else
+    b.UpdateTooltip = nil
+    GameTooltip:Hide()
+  end
+end
+
+-- The mouse left a button: its tooltip goes.
+local function hideTooltip(b)
+  b.UpdateTooltip = nil
+  GameTooltip:Hide()
+end
+
+-- Secure attributes: click to use the action in a slot.
+local function wireAttributes(b, action, index)
   b:SetAttribute("type", "action")
   b:SetAttribute("action", action)
   b:SetAttribute("index", index)
+end
+
+-- Scripts: click on either edge of the press, drag to move actions, the tooltip.
+local function wireScripts(b)
   b:RegisterForClicks("AnyUp", "AnyDown")
   b:RegisterForDrag("LeftButton", "RightButton")
   b:SetScript("OnDragStart", onDragStart)
   b:SetScript("OnReceiveDrag", onReceiveDrag)
   b:SetScript("OnAttributeChanged", onAttributeChanged)
+  b:SetScript("OnEnter", showTooltip)
+  b:SetScript("OnLeave", hideTooltip)
+end
+
+-- Secure attributes and scripts of a button.
+local function wireButton(b, action, index)
+  wireAttributes(b, action, index)
+  wireScripts(b)
 end
 
 -- One secure action button on a bar (sized and placed by AB.LayoutBar).

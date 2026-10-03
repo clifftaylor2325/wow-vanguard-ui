@@ -34,4 +34,6 @@ read_globals = {
   "UnitGUID", "UnitPosition",
   -- /fui perf: the game's CPU and memory counters (P1.14).
   "GetCVar", "GetAddOnCPUUsage", "UpdateAddOnCPUUsage", "GetAddOnMemoryUsage", "UpdateAddOnMemoryUsage", "GetFunctionCPUUsage",
+  -- Action button tooltips: the client's default anchor (P2.3).
+  "GameTooltip_SetDefaultAnchor",
 }
