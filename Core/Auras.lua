@@ -12,6 +12,7 @@
 -- and cropped, a dark sweep that empties as time runs out, stacks above the
 -- sweep, an edge in the debuff's type color, and a timer only where asked.
 -- Nothing here compares or computes with a value the client hides.
+-- A filter word the client rejects is dropped for the session and reported once (A.Filter).
 
 local ADDON, ns = ...
 
@@ -28,11 +29,61 @@ local DISPEL_INDEXES = { None = 0, Magic = 1, Curse = 2, Disease = 3, Poison = 4
 
 -- Reading --------------------------------------------------------------------------------
 
--- The i-th aura on a unit through a client filter, or nil (no API, none, or an error).
+-- Filter string -> the filter this client accepts for it, and probe string -> whether
+-- the client takes it: each distinct string is probed once per session.
+local knownFilters, knownTokens = {}, {}
+
+-- Whether the client's aura read takes `filter`; an error means a word it doesn't know.
+-- Only pcall's verdict is used: the aura (possibly hidden) is never read; it is
+-- kept, so no string is probed twice.
+local function accepts(get, filter)
+  if knownTokens[filter] == nil then knownTokens[filter] = (pcall(get, "player", 1, filter)) end
+  return knownTokens[filter]
+end
+
+-- `filter` with every word the client rejects dropped. The first word (HELPFUL or
+-- HARMFUL) is probed alone and each later one together with it, so a word that
+-- only qualifies another is never taken for an unknown one.
+local function strip(get, filter)
+  local kept = {}
+  for token in filter:gmatch("[^|]+") do
+    local probe = kept[1] and (kept[1] .. "|" .. token) or token
+    if accepts(get, probe) then kept[#kept + 1] = token end
+  end
+  return table.concat(kept, "|")
+end
+
+-- Notes a filter the client rejects, once per filter, saying what is read instead.
+local function reportFilter(filter, used)
+  local what = used == "" and "no part of it is known to this client" or ("this client rejects it; reading " .. used)
+  ns.Report("aura filter " .. filter, what)
+end
+
+-- The filter the client accepts for `filter`: itself, or the same with the rejected
+-- words dropped (reported). When it rejects every word the filter stays as it is, so
+-- the read keeps failing safely to "no auras".
+local function probe(get, filter)
+  if accepts(get, filter) then return filter end
+  local used = strip(get, filter)
+  reportFilter(filter, used)
+  return used ~= "" and used or filter
+end
+
+-- The filter the client accepts for `filter`, probed once per session (see probe);
+-- a nil filter, or a client without the read, passes through unchanged.
+function A.Filter(filter)
+  local get = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
+  if type(filter) ~= "string" or type(get) ~= "function" then return filter end
+  if knownFilters[filter] == nil then knownFilters[filter] = probe(get, filter) end
+  return knownFilters[filter]
+end
+
+-- The i-th aura on a unit through a client filter (with the words this client
+-- rejects dropped, see A.Filter), or nil (no API, none, or an error).
 function A.Get(unit, i, filter)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
   if type(get) ~= "function" then return nil end
-  local ok, aura = pcall(get, unit, i, filter)
+  local ok, aura = pcall(get, unit, i, A.Filter(filter))
   return ok and type(aura) == "table" and aura or nil
 end
 
@@ -147,7 +198,9 @@ end
 
 -- The backend in use: the engine when the client has AuraContainer, else the
 -- fallback. A container can't be made in combat, so one needed then (a new
--- nameplate) gets the fallback.
+-- nameplate) gets the fallback. Asked afresh every time, never cached: the
+-- engine's answer turns false for the session once the client refuses a
+-- container (Core/AuraEngine.lua), and this is where that switch is read.
 function A.Backend()
   return not ns.InCombat() and ns.AuraEngine.Available() and ns.AuraEngine or ns.AuraLegacy
 end

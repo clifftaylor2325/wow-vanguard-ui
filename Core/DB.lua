@@ -6,12 +6,14 @@ local ADDON, ns = ...
 
 local DEFAULT_PROFILE = "Default"
 
--- Copies every missing key of defaults into t (recursing into tables); returns t.
+-- Copies every missing or wrong-typed key of defaults into t (recursing into
+-- tables); returns t. A default fixes its key's type: a saved value of another
+-- type is replaced, so a setting must not change type (nil counts as missing).
 local function fill(t, defaults)
   for k, v in pairs(defaults) do
     if type(v) == "table" then
       t[k] = fill(type(t[k]) == "table" and t[k] or {}, v)
-    elseif t[k] == nil then
+    elseif type(t[k]) ~= type(v) then
       t[k] = v
     end
   end
@@ -24,10 +26,43 @@ function ns.Copy(t)
   return fill({}, t)
 end
 
--- Creates or repairs the saved tables. Runs at ADDON_LOADED, when WoW has
--- restored them.
+local DB_VERSION = 1
+local upgrades = {}
+
+-- Registers fn(ForeverUIDB) that brings the account file up to `version`; steps run once, in version order.
+function ns.UpgradeDB(version, fn)
+  upgrades[version] = fn
+end
+
+-- Runs the upgrade step for version v under ns.Try and stamps it; false when the step failed (the stamp is left so the next login retries).
+local function upgradeStep(v)
+  local fn = upgrades[v]
+  if fn and not ns.Try("DB upgrade " .. v, fn, ForeverUIDB) then return false end
+  ForeverUIDB.version = v
+  return true
+end
+
+-- Brings a saved account file from version `from` up to `to`, one registered step at a time; stops at the first failing step. true when every step ran.
+function ns.MigrateDB(from, to)
+  for v = from + 1, to do
+    if not upgradeStep(v) then return false end
+  end
+  return true
+end
+
+-- The saved account file's version: 0 for a file saved before a version was stamped, nil for a fresh install.
+local function savedVersion()
+  if type(ForeverUIDB) ~= "table" then return nil end
+  return type(ForeverUIDB.version) == "number" and ForeverUIDB.version or 0
+end
+
+-- Creates or repairs the saved tables, and upgrades an older account file.
+-- Runs at ADDON_LOADED, when WoW has restored them.
 local function initDB()
-  ForeverUIDB = fill(type(ForeverUIDB) == "table" and ForeverUIDB or {}, { version = 1, profiles = {} })
+  local from = savedVersion()
+  ForeverUIDB = fill(type(ForeverUIDB) == "table" and ForeverUIDB or {}, { profiles = {} })
+  ForeverUIDB.version = from or DB_VERSION
+  if from and from < DB_VERSION then ns.MigrateDB(from, DB_VERSION) end
   ForeverUICharDB = fill(type(ForeverUICharDB) == "table" and ForeverUICharDB or {}, { profile = DEFAULT_PROFILE })
   ForeverUIDB.profiles[ForeverUICharDB.profile] = ForeverUIDB.profiles[ForeverUICharDB.profile] or {}
 end

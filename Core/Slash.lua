@@ -25,9 +25,9 @@ local HELP = {
   "quests               open or close ForeverUI's quest log (the game's quest log key does too)",
   "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
   "binds                this spec's click-casting and hover-key bindings (set them in /fui > Click casting)",
-  "status               version, profile, modules, skins, work waiting on combat",
+  "status               version, profile, modules, skins, work waiting on combat, what the client has",
   "factionart           which of the game's own faction pictures this client has",
-  "errors               the errors ForeverUI caught this session (for a bug report)",
+  "errors [clear]       the errors ForeverUI caught this session, with stacks and counts (for a bug report); clear empties the list",
 }
 
 -- Prints each line.
@@ -265,11 +265,18 @@ local function buildText()
   return old and (text .. "  ·  update the game: this build loses settings at every launch") or text
 end
 
+-- The secure snippet part of the client line: what the probe found, or nothing before it ran.
+local function snippetText()
+  local has = ns.Client and ns.Client.has or {}
+  if has.secureSnippets == false then return "  ·  secure snippets: no (hover keys off)" end
+  return has.secureSnippets and "  ·  secure snippets: yes" or ""
+end
+
 -- The client line: which game and build, which aura backend, and whether aura values are hidden right now.
 local function clientLine()
   local client = ns.IsForever() and "WoW Forever" or "Retail"
   local hidden = ns.AurasSecret() and "hidden right now" or "readable"
-  return string.format("Client %s%s  ·  auras on the %s  ·  aura values %s", client, buildText(), ns.Auras.BackendName(), hidden)
+  return string.format("Client %s%s  ·  auras on the %s  ·  aura values %s", client, buildText(), ns.Auras.BackendName(), hidden) .. snippetText()
 end
 
 -- The text line: UI scale, Text size, and how tall chat text draws on this screen.
@@ -290,14 +297,37 @@ local function statusCommand()
   chat(string.format("ForeverUI %s  ·  profile %s  ·  %d/%d modules on", version(), ns.ProfileName(), enabled, #ns.ModuleNames()))
   chat(string.format("%d skinned addon(s)  ·  %d painted frame(s)  ·  %d change(s) waiting on combat", #ns.SkinList(), T.PaintedCount(), ns.QueuedCount()))
   chat(clientLine())
+  chat(ns.Client.Line())
   chat(textLine())
 end
 
--- /fui errors: the errors ForeverUI caught this session, newest last.
-local function errorsCommand()
+-- "16001": the client's interface version, or "?" when it can't say.
+local function interfaceText()
+  local iface = type(GetBuildInfo) == "function" and select(4, GetBuildInfo())
+  return tostring(iface or "?")
+end
+
+-- How many times the caught errors happened, in all.
+local function occurrences()
+  local n = 0
+  for _, e in ipairs(ns.errors) do n = n + e.count end
+  return n
+end
+
+-- One caught error: its text and count, then each line of its stack, indented.
+local function printError(e)
+  chat(string.format("%s  (x%d)", e.text, e.count))
+  for line in e.stack:gmatch("[^\n]+") do chat("    " .. line) end
+end
+
+-- /fui errors [clear]: the errors ForeverUI caught this session, newest last, with
+-- the version, client and aura backend a bug report needs; clear empties the list.
+local function errorsCommand(rest)
+  if rest == "clear" then ns.ClearErrors() return chat("Cleared.") end
   if #ns.errors == 0 then return chat("No errors caught this session.") end
-  chat(string.format("%d error(s) caught this session, newest last:", #ns.errors))
-  for _, line in ipairs(ns.errors) do chat(line) end
+  chat(string.format("ForeverUI %s  ·  interface %s  ·  %d error(s) caught this session (%d in all), newest last:", version(), interfaceText(), #ns.errors, occurrences()))
+  chat(clientLine())
+  for _, e in ipairs(ns.errors) do printError(e) end
 end
 
 local COMMANDS = {

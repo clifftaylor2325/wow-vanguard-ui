@@ -69,6 +69,20 @@ function ns.SetMoverDefault(key, default)
   if m.handle then anchor(m.handle, m) end
 end
 
+-- Mover watchers: key -> fn(key), run when that mover's saved position changes
+-- (moved, nudged, or reset); a frame whose own default depends on another's spot.
+local watchers = {}
+
+-- Runs fn(key) whenever the mover for key is moved or reset (one watcher per key).
+function ns.WatchMover(key, fn)
+  watchers[key] = fn
+end
+
+-- Tells the key's watcher that the mover's point changed.
+local function changed(key)
+  if watchers[key] then watchers[key](key) end
+end
+
 -- Saving ------------------------------------------------------------------------------
 
 -- Saves a position for a mover, moves its frame, and keeps its handle on it.
@@ -79,6 +93,7 @@ local function savePosition(m, point, relPoint, x, y)
     anchor(m.handle, m)
     ns.ShowCoords(m)
   end
+  changed(m.key)
   if ns.OnMoverMoved then ns.OnMoverMoved(m.key) end
 end
 
@@ -93,15 +108,19 @@ end
 -- Every frame ForeverUI pins (weak keys, so a frame that goes away doesn't stay).
 local pinned = setmetatable({}, { __mode = "k" })
 
--- Runs a frame's pin out of combat, flagged so its own SetPoint calls aren't
--- seen as the game's. Nothing happens while pins are paused (Edit Mode open).
+-- Runs a frame's pin, flagged so its own SetPoint calls aren't seen as the
+-- game's. A pin that fails is reported (ns.Try) and the flag is cleared all the same.
+local function applyPin(frame)
+  frame.fuiPinning = true
+  ns.Try("pin " .. (frame:GetName() or "frame"), frame.fuiPin, frame)
+  frame.fuiPinning = false
+end
+
+-- Queues a frame's pin for after combat, one entry per frame however often the
+-- game moves it; nothing happens while pins are paused (Edit Mode open).
 local function runPin(frame)
   if ns.pinsPaused then return end
-  ns.OutOfCombat(function()
-    frame.fuiPinning = true
-    frame.fuiPin(frame)
-    frame.fuiPinning = false
-  end)
+  ns.OutOfCombat(frame.fuiRun, frame)
 end
 
 -- Keeps one of the game's frames where ForeverUI put it: apply(frame) runs now
@@ -109,6 +128,7 @@ end
 -- (Edit Mode re-anchors some of its frames when it lays out).
 function ns.Pin(frame, apply)
   frame.fuiPin = apply
+  frame.fuiRun = frame.fuiRun or function() applyPin(frame) end
   pinned[frame] = true
   runPin(frame)
   if frame.fuiPinned or type(hooksecurefunc) ~= "function" then return end
@@ -252,7 +272,7 @@ end
 -- Arrow keys nudge the selected handle (Shift: 10 px); other keys pass through.
 local function onKeyDown(h, key)
   local dir = NUDGE[key]
-  h:SetPropagateKeyboardInput(not (dir and selected == h.mover))
+  if ns.Client.Has("keyPropagate") then h:SetPropagateKeyboardInput(not (dir and selected == h.mover)) end
   if dir and selected == h.mover then
     local step = IsShiftKeyDown and IsShiftKeyDown() and 10 or 1
     ns.Nudge(h.mover.key, dir[1] * step, dir[2] * step)
@@ -342,6 +362,7 @@ function ns.ResetMovers(key)
     if key == "all" or key == k then
       saved()[k] = nil
       place(movers[k])
+      changed(k)
       n = n + 1
     end
   end

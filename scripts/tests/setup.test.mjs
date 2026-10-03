@@ -1,7 +1,7 @@
 // setup: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { ACTIONS_ENV, CLICK_LUA, RAID_ENV, STRIP_ENV, SWING_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, UP, block, borderOf, button, chatHas, healing, key, later, loggedIn, overlaps, pinned, setCombat, tok, tooltip } from "./helpers.mjs";
+import { ACTIONS_ENV, CLICK_LUA, MICRO_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, SWING_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, UP, block, borderOf, button, chatHas, healing, key, later, loggedIn, overlaps, pinned, setCombat, strips, tok, tooltip } from "./helpers.mjs";
 
 // Clicks one of the setup wizard's buttons (next, back or close) as the player would.
 const setupClick = (addon, which) => addon.eval(`local b = ForeverUI_Setup.${which} b:GetScript("OnClick")(b, "LeftButton")`);
@@ -191,16 +191,22 @@ function layoutProblems(rects, sw, sh) {
 }
 
 it("setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", () => {
-  const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
+  const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
   expect(addon.eval("return ChatFrame1.__points.BOTTOMLEFT ~= nil"), "chat sits in its layout spot").toBe(true);
   addon.eval("ForeverUI_InfoStrip:SetHeight(68)"); // the info strip at its tallest, with the leveling and DPS rows
+  addon.eval("MicroMenuContainer:Layout() BagsBar:Layout()"); // the menu and bag strips at their laid-out sizes (314.4 and 198.2 wide, 36 tall)
+  expect(moverSpots(addon).bagstrip.slice(4), "the bag strip is as laid out").toEqual([266 * 0.7 + 12, 36]);
   expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
   for (const layout of ["damage", "healing", "classic"]) {
     addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
     for (const grow of ["columns", "rows"]) {
       addon.eval(`ns.GetModule("RaidFrames").settings.layout = "${grow}"`);
       for (const [sw, sh] of [[1365, 768], [1920, 1080]]) {
-        for (const n of [0, 5, 25, 40]) expect(layoutProblems(layoutRects(addon, n, sw, sh), sw, sh), `${layout}, groups as ${grow}, ${sw}x${sh}, ${n} players`).toEqual([]);
+        for (const n of [0, 5, 25, 40]) {
+          const rects = layoutRects(addon, n, sw, sh);
+          // The bag strip sits above the menu strip, so the pair is no wider than the menu strip and clears the bars at 1365.
+          expect(layoutProblems(rects, sw, sh), `${layout}, groups as ${grow}, ${sw}x${sh}, ${n} players`).toEqual([]);
+        }
       }
     }
   }

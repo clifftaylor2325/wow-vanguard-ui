@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, UNITS_ENV, bars, button, isTok, key, later, loggedIn, marks, setCombat, spark, tok } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, button, isTok, key, later, loggedIn, marks, setCombat, spark, tok, totemCell } from "./helpers.mjs";
 
 // A frame's state for the unit-frame tests.
 const ufState = (addon, key) => addon.eval(`
@@ -69,19 +69,6 @@ it("unit frame health text settings apply at once", () => {
   expect(addon.eval('return __click("Druid mana") and ForeverUIDB.profiles.Default.ClassBars.druidMana'), "and the druid mana switch").toBe(false);
 });
 
-// TEST-ONLY totems: slot 1 has a totem down (plain values), the other slots are empty.
-const TOTEMS_ENV = `
-  __units.player.class = "SHAMAN"
-  __totems = { [1] = { true, "TEST-ONLY Totem", 100, 120, "TEST-ONLY-ICON-Totem" } }
-  GetTotemInfo = function(slot) local t = __totems[slot] if t then return t[1], t[2], t[3], t[4], t[5] end return false, "", 0, 0, nil end
-  GetTotemDuration = nil
-`;
-
-// One totem cell's state: alpha, icon, plain sweep, duration object, numbers shown, secure attributes.
-const totemCell = (addon, slot) => addon.eval(`local c = ns.GetModule("ClassBars").cells[${slot}]
-  return { alpha = c.__alpha, icon = c.icon.__texture, sweep = c.cooldown.__cooldown, object = c.cooldown.__durationObject,
-    numbers = c.cooldown.__hideNumbers == false, type2 = c:GetAttribute("type2"), slot = c:GetAttribute("totem-slot"), follows = c.__alphaFromBoolean }`);
-
 it("class bars: totems for shamans, mana in forms for druids", () => {
   const addon = loggedIn(UNITS_ENV + TOTEMS_ENV);
   expect(addon.eval('local CB = ns.GetModule("ClassBars") return { #CB.cells, select(2, CB.totems:GetPoint()) == ForeverUI_player }'), "a shaman gets four totem cells under the player frame").toEqual([4, true]);
@@ -90,6 +77,10 @@ it("class bars: totems for shamans, mana in forms for druids", () => {
   addon.eval('GetTotemDuration = function(slot) return { __duration = slot } end __totems[2] = { true, "TEST-ONLY Totem 2", 200, 60, "TEST-ONLY-ICON-Two" }');
   addon.fire("PLAYER_TOTEM_UPDATE");
   expect(totemCell(addon, 2), "a new totem shows, timed by the client's duration object").toMatchObject({ alpha: 1, icon: "TEST-ONLY-ICON-Two", object: { __duration: 2 } });
+  addon.eval('ns.GetModule("ClassBars").cells[2].cooldown.__durationObject = "TEST-ONLY-stale" GetTotemDuration = function() return nil end');
+  addon.fire("PLAYER_TOTEM_UPDATE");
+  expect(totemCell(addon, 2), "a client that has no duration object to give: the plain start and length, the old object untouched").toMatchObject({ sweep: [200, 60], object: "TEST-ONLY-stale" });
+  addon.eval('GetTotemDuration = function(slot) return { __duration = slot } end');
   addon.eval("__totems[1] = { { __secret = true }, 'x', { __secret = true }, { __secret = true }, 'TEST-ONLY-ICON-Totem' }");
   addon.fire("PLAYER_TOTEM_UPDATE");
   expect(totemCell(addon, 1), "a hidden answer goes to the client's alpha-from-boolean; the cell keeps its alpha").toMatchObject({ alpha: 1, follows: { __secret: true } });

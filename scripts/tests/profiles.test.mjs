@@ -27,6 +27,23 @@ it("profile strings", () => {
   expect(/can't be read/.test(decode(JSON.stringify(code)).err), "text that isn't settings (e.g. code) is refused, never run").toBeTruthy();
 });
 
+it("profile strings keep big whole numbers", () => {
+  const r = loggedIn().eval(`local S = ns.Serialize
+    local realFormat = string.format
+    string.format = function(f, ...)
+      local v = ...
+      if f:find("%d", 1, true) and type(v) == "number" and (math.abs(v) >= 2 ^ 31 or v ~= math.floor(v)) then error("%d of " .. v .. " is undefined on Lua 5.1") end
+      return realFormat(f, ...)
+    end
+    local text = S.Encode("profile", { big = 2 ^ 40, neg = -(2 ^ 40), half = 2 ^ 40 + 0.5, one = 1 })
+    local raw = S.Unbase64(text:match("^FUI1:profile:%x%x%x%x:(.+)$"))
+    local _, back = S.Decode(text)
+    string.format = realFormat
+    return { raw = raw, big = back.big, neg = back.neg, half = back.half, one = back.one }`);
+  expect(r.raw, "whole numbers are written as plain digits").toBe('{["big"]=1099511627776,["half"]=1099511627776.5,["neg"]=-1099511627776,["one"]=1}');
+  expect([r.big, r.neg, r.half, r.one], "and read back exactly").toEqual([1099511627776, -1099511627776, 1099511627776.5, 1]);
+});
+
 it("export and import", () => {
   const src = loggedIn();
   src.slash("accent ff8000");
