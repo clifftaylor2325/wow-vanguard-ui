@@ -158,7 +158,7 @@ function QT.Refresh()
   local shown, y = layout(f, QT.collapsed and {} or quests)
   QT.shown = shown
   showMore(f, QT.collapsed and 0 or #quests - #QT.shown, y)
-  ns.OutOfCombat(QT.PlaceItems)
+  ns.OutOfCombat(QT.PlaceItems, "questitems")
 end
 
 -- Item buttons ---------------------------------------------------------------------------------

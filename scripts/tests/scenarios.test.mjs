@@ -42,6 +42,7 @@ it("an action slot shows its spell's icon and cooldown sweep", () => {
 it("a tracked quest lists its title and objectives", () => {
   const addon = loggedIn();
   addon.world.addQuest({ questID: 7, title: "Wolves Across the Border", level: 8, watched: true, objectives: [{ text: "0/8 Wolves slain", finished: false, type: "monster" }] });
+  addon.update(0); // the tracker rebuilds on the next frame
   expect(addon.find("Wolves Across the Border").kind).toBe("FontString");
   expect(addon.find("Wolves slain").text).toBe("- 0/8 Wolves slain");
 });

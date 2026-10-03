@@ -361,6 +361,7 @@ it("quest tracker: watched quests with levels, objectives and items", () => {
   setCombat(addon, true);
   addon.eval("__quests[90051].item = nil");
   addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
   expect(addon.eval("return ForeverUI_QuestItem1:IsShown()"), "in combat the item buttons wait").toBe(true);
   setCombat(addon, false);
   expect(addon.eval("return ForeverUI_QuestItem1:IsShown()"), "and update after").toBe(false);
@@ -380,10 +381,12 @@ it("quest tracker: nearest first, collapsing, too many quests, and switched off"
   addon.eval(`local t = ForeverUI_QuestTrackerFrame.toggle t.__scripts.OnClick(t)
     for i = 1, 6 do local id = 90070 + i __quests[id] = { index = 10 + i, title = "TEST-ONLY Many " .. i, level = 5, dist = i, objectives = { { text = "a" }, { text = "b" }, { text = "c" } } } __watches[#__watches + 1] = id end`);
   addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
   const t = tracker(addon);
   expect([t.count, t.more], "more than fit: the rest are counted").toEqual(["9", `+${9 - t.blocks.length} more`]);
   addon.eval("__watches = {}");
   addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
   expect(tracker(addon).shown, "nothing watched, nothing shown").toBe(false);
   const own = loggedIn(TRACK_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { MenuStrip = { tracker = false } } }" });
   expect(own.eval("return { ForeverUI_QuestTrackerFrame:GetParent():GetName(), (ns.MoverPoint('questtracker')) }"), "with the menu strip's spot off, it makes its own").toEqual(["ForeverUI_QuestTracker", "TOPRIGHT"]);
@@ -461,7 +464,49 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   addon.eval("ForeverUI_QuestLog.listScroll.__scripts.OnMouseWheel(ForeverUI_QuestLog.listScroll, -1) ns.GetModule('QuestLog').Select(90099)");
   expect([questLog(addon).detail, questLog(addon).track], "a quest gone from the log: nothing chosen").toEqual([false, false]);
   addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
   expect(questLog(addon).title, "the log's next update chooses the first quest showing").toBe("[3] TEST-ONLY Far");
+});
+
+// TEST-ONLY counters: how often the tracker and the quest log rebuild (__rebuilds.tracker, __rebuilds.log).
+const COUNT_REBUILDS = `__rebuilds = { tracker = 0, log = 0 }
+  local QT, QL = ns.GetModule("QuestTracker"), ns.GetModule("QuestLog")
+  local tracker, log = QT.Refresh, QL.Refresh
+  QT.Refresh = function(...) __rebuilds.tracker = __rebuilds.tracker + 1 return tracker(...) end
+  QL.Refresh = function(...) __rebuilds.log = __rebuilds.log + 1 return log(...) end`;
+
+// The rebuilds counted since the last look (then forgets them).
+const rebuilds = (addon) => addon.eval("local r = __rebuilds __rebuilds = { tracker = 0, log = 0 } return r");
+
+it("quest bursts: many quest log updates in one frame rebuild the tracker and the open log once", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval(COUNT_REBUILDS);
+  for (let i = 0; i < 20; i++) addon.fire("QUEST_LOG_UPDATE");
+  expect(rebuilds(addon), "nothing rebuilds within the frame of the burst (the log is closed)").toEqual({ tracker: 0, log: 0 });
+  addon.eval("__quests[90051].title = 'TEST-ONLY Wolves, renamed'");
+  addon.update(0);
+  expect([rebuilds(addon), addon.eval("return ForeverUI_QuestTrackerFrame.blocks[1].title:GetText()")], "the next frame: one tracker rebuild, with the news").toEqual([{ tracker: 1, log: 0 }, "[8] TEST-ONLY Wolves, renamed"]);
+  addon.eval("ns.GetModule('QuestLog').Open()");
+  rebuilds(addon);
+  for (let i = 0; i < 20; i++) addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  addon.update(0);
+  expect(rebuilds(addon), "with the log open: one rebuild of each").toEqual({ tracker: 1, log: 1 });
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.eval("ForeverUI_QuestLog:Hide()");
+  addon.update(0);
+  expect(rebuilds(addon).log, "a log closed before the next frame isn't re-rendered").toBe(0);
+});
+
+it("quest tracker: the nearest-first sort ticks only while that order is on", () => {
+  const addon = loggedIn(TRACK_ENV);
+  // Whether the tracker has its sort ticker (an OnUpdate script).
+  const ticking = () => addon.eval("return ForeverUI_QuestTrackerFrame:GetScript('OnUpdate') ~= nil");
+  expect(ticking(), "in the game's order, no sort ticker").toBe(false);
+  addon.eval("ns.GetModule('QuestTracker').settings.order = 'nearest' ns.GetModule('QuestTracker').ApplyOrder()");
+  expect([ticking(), addon.eval("return ForeverUI_QuestTrackerFrame.blocks[1].title:GetText()")], "nearest first: it ticks, and the tracker is re-sorted at once").toEqual([true, "[12] TEST-ONLY Letter"]);
+  addon.eval("ns.GetModule('QuestTracker').settings.order = 'game' ns.GetModule('QuestTracker').ApplyOrder()");
+  expect([ticking(), addon.eval("return ForeverUI_QuestTrackerFrame.blocks[1].title:GetText()")], "back to the game's order: no ticker, the game's order").toEqual([false, "[8] TEST-ONLY Wolves"]);
 });
 
 it("quest log: keys follow rebinding, /fui quests, closing, and switched off", () => {

@@ -568,7 +568,7 @@ local function questRows()
     check("ForeverUI's quest log on the quest log key (reload)", setting("QuestLog", "own", true)),
     { "header", "Quest tracker" },
     check("ForeverUI's quest tracker under the info strip (reload)", setting("QuestTracker", "own", true)),
-    { "cycle", "Order", { { "game", "As the game orders them" }, { "nearest", "Nearest first" } }, setting("QuestTracker", "order") },
+    { "cycle", "Order", { { "game", "As the game orders them" }, { "nearest", "Nearest first" } }, liveSetting("QuestTracker", "order", function() ns.GetModule("QuestTracker").ApplyOrder() end) },
   }
 end
 

@@ -524,7 +524,7 @@ function RF.Fit()
     RF.header:SetScale(RF.Scale(n or 0))
     RF.header:ClearAllPoints()
     RF.header:SetPoint(headerPoint(), RF.holder, headerPoint())
-  end)
+  end, "raidfit")
 end
 
 -- The movable holder, where the grid starts: one group's size (a column of
@@ -555,13 +555,23 @@ local function migrateStyle(s)
   s.style = nil
 end
 
+-- The roster changed (or you zoned in): the grid is fitted to the group now,
+-- and every tile is refreshed once on the next frame, however many roster
+-- events come in this one (the marks and heal parts refresh with the tiles).
+function RF.RosterChanged()
+  RF.Fit()
+  ns.Soon("raidtiles", RF.UpdateAll)
+end
+
+-- Event -> what it refreshes on every tile: the edge for a new target, the role marks for roles.
+local TILE_EVENTS = { PLAYER_TARGET_CHANGED = "PaintEdge", PLAYER_ROLES_ASSIGNED = "UpdateRole" }
+
 -- Module entry point (Core/Modules.lua): build out of combat, then listen.
 function RF.Enable(settings)
   RF.settings = settings
   migrateStyle(settings)
   ns.OutOfCombat(function() build(settings) end)
   for e, fn in pairs(UNIT_EVENTS) do ns.On(e, fn) end
-  for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHANGED" }) do ns.On(e, RF.UpdateAll) end
-  ns.On("PLAYER_ROLES_ASSIGNED", function() RF.EachTile(RF.UpdateRole) end)
-  for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD" }) do ns.On(e, RF.Fit) end
+  for e, part in pairs(TILE_EVENTS) do ns.On(e, function() RF.EachTile(RF[part]) end) end
+  for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD" }) do ns.On(e, RF.RosterChanged) end
 end
