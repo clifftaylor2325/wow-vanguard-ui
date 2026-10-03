@@ -6,7 +6,9 @@
 -- The menu buttons keep working as the game's own (alerts included), drawn as
 -- ForeverUI line icons on flat panels unless that's switched off.
 -- Both stay where they're put when the game lays out its own frames again
--- (ns.Pin), and a client without one of these frames simply keeps its own.
+-- (ns.Pin), re-fit whenever the game resizes or re-lays out their bars, hide the
+-- bars' own frame art (the brass box), and a client without one of these frames
+-- simply keeps its own.
 
 local ADDON, ns = ...
 
@@ -15,20 +17,26 @@ local T = ns.Theme
 local MS = ns.Module("MenuStrip", { defaults = { menu = "mouseover", tracker = true, glyphs = true, trackerLook = true } })
 
 MS.WIDTH, MS.HEIGHT, MS.SCALE = 300, 36, 0.8
--- The space between a strip's edge and the buttons in it (UI units, all round).
-MS.MARGIN = 6
+-- The space between a strip's edge and the buttons in it (UI units): sideways, and the
+-- thinner top and bottom one, so a 40-tall micro menu drawn at 0.8 fits the 36-unit strip.
+MS.MARGIN_X, MS.MARGIN_Y = 6, 2
+-- The space between the menu strip and the bag strip (UI units).
+MS.GAP = 6
 -- The quest tracker's spot: its width and the most height it gets (it ends above the
 -- target of target at UI scale 1.0).
 MS.TRACKER_W, MS.TRACKER_H = 260, 248
 -- How often the strip checks for the mouse (seconds).
 MS.POLL = 0.15
--- The glyph's share of a menu button's shorter side, and the gap (UI units)
--- inside each button's edge so neighbors don't run together.
-MS.GLYPH, MS.PAD = 0.7, 2
--- The bag strip, left of the menu strip, and how small the bag buttons are drawn there.
-MS.BAG_W, MS.BAG_SCALE = 132, 0.6
--- The game's bag buttons (backpack, bags, reagent bag), styled where the client has them.
-MS.BAGS = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot", "CharacterReagentBag0Slot" }
+-- A glyph's side in screen pixels at UI scale 1, and the gap (UI units) inside each
+-- button's edge so neighbors don't run together (the game's micro buttons sit on a
+-- 27-unit pitch, its grid pads them by -5, so 4 leaves a 3-unit gap between faces).
+MS.GLYPH_PX, MS.PAD = 16, 4
+-- The bag strip, left of the menu strip, and how big the bag buttons are drawn there (45 * 0.7 = 31.5).
+MS.BAG_W, MS.BAG_SCALE = 132, 0.7
+-- The game's bag buttons (backpack, bags, reagent bag, and the key ring Forever adds), styled where the client has them.
+MS.BAGS = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot", "CharacterReagentBag0Slot", "KeyRingButton" }
+-- The bars' own frame art on Forever (the brass box), faded: the strips' panels are the only frame.
+MS.BAR_ART = { MicroMenu = { "BorderArt", "BackgroundArt" }, BagsBar = { "BorderArt" } }
 
 -- The game's menu buttons -> ForeverUI's icon for each. A client without one skips it.
 MS.GLYPHS = {
@@ -47,24 +55,45 @@ local STATES = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "
 
 -- The menu strip ---------------------------------------------------------------------------
 
--- Sizes a strip to hold its bar (drawn at scale) with MS.MARGIN all round,
--- never smaller than its default size.
+-- Sizes a strip to hold its bar (drawn at scale) with MS.MARGIN_X and MS.MARGIN_Y
+-- around it, never smaller than its default size.
 function MS.FitStrip(strip, bar, scale, minWidth)
   local w, h = (bar:GetWidth() or 0) * scale, (bar:GetHeight() or 0) * scale
-  strip:SetSize(math.max(minWidth, w + 2 * MS.MARGIN), math.max(MS.HEIGHT, h + 2 * MS.MARGIN))
+  strip:SetSize(math.max(minWidth, w + 2 * MS.MARGIN_X), math.max(MS.HEIGHT, h + 2 * MS.MARGIN_Y))
 end
 
--- Pins one of the game's bars centered in a strip, drawn smaller, and sizes the strip around it.
-local function pinInto(name, strip, scale, minWidth)
+-- Runs a pinned bar's placement again after the game resized it or laid it out
+-- again; through the pin, so pauses, combat and the pinning flag are honored.
+function MS.Refit(bar)
+  if bar.fuiPinning or type(bar.fuiPin) ~= "function" then return end
+  ns.Pin(bar, bar.fuiPin)
+end
+
+-- Re-fits the strip whenever the game changes the bar's size or lays it out again.
+local function watchBar(f)
+  f:HookScript("OnSizeChanged", MS.Refit)
+  if type(f.Layout) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(f, "Layout", MS.Refit) end
+end
+
+-- Seats one of the game's bars centered in a strip, drawn at scale.
+local function seat(bar, strip, scale)
+  bar:SetParent(strip)
+  bar:SetScale(scale)
+  bar:ClearAllPoints()
+  bar:SetPoint("CENTER", strip, "CENTER", 0, 0)
+end
+
+-- Pins one of the game's bars centered in a strip, drawn smaller, sizes the strip
+-- around it and then calls after (if given), now and at every re-fit.
+local function pinInto(name, strip, scale, minWidth, after)
   local f = _G[name]
   if type(f) ~= "table" or not f.SetPoint then return end
   ns.Pin(f, function(bar)
-    bar:SetParent(strip)
-    bar:SetScale(scale)
-    bar:ClearAllPoints()
-    bar:SetPoint("CENTER", strip, "CENTER", 0, 0)
+    seat(bar, strip, scale)
     MS.FitStrip(strip, bar, scale, minWidth)
+    if after then after() end
   end)
+  watchBar(f)
 end
 
 -- Shows the strip while the mouse is over it (checked a few times a second).
@@ -76,6 +105,17 @@ local function watchMouse(strip)
     elapsed = 0
     self:SetAlpha(self:IsMouseOver() and 1 or 0)
   end)
+end
+
+-- Fades the bars' own border and background art, whichever of it this client has.
+function MS.FadeArt()
+  for name, keys in pairs(MS.BAR_ART) do
+    local f = _G[name]
+    for _, key in ipairs(keys) do
+      local t = type(f) == "table" and f[key]
+      if type(t) == "table" and t.SetAlpha then t:SetAlpha(0) end
+    end
+  end
 end
 
 -- Menu glyphs ---------------------------------------------------------------------------------
@@ -97,35 +137,70 @@ local function fadeStates(b)
   end
 end
 
--- Tints a button's glyph: text2, or muted while the button is disabled.
+-- Tints a button's glyph: muted while the button is disabled, else accent
+-- while the mouse is over it, else text.
 local function paintGlyph(b)
-  T.Tint(b.fuiGlyph, b:IsEnabled() and "text2" or "muted")
+  T.Tint(b.fuiGlyph, not b:IsEnabled() and "muted" or (b.fuiHover and "accent" or "text"))
 end
 
--- The button's face: a flat inset panel MS.PAD inside its edges (so neighbors
--- keep a gap), with a faint wash while the mouse is over the button.
+-- Notes whether the mouse is over a button and repaints its glyph.
+local function hover(b, over)
+  b.fuiHover = over
+  paintGlyph(b)
+end
+
+-- The side of a button's square face (UI units): its shorter side less MS.PAD
+-- all round, or 24 for a button with no size yet.
+local function faceSide(b)
+  local side = math.min(b:GetWidth(), b:GetHeight()) - 2 * MS.PAD
+  return side > 0 and side or 24
+end
+
+-- The button's face: a flat inset square MS.PAD in from its shorter side (so
+-- neighbors keep a gap) with no border of its own (the strip has one), and a
+-- faint wash while the mouse is over the button.
 local function addFace(b)
-  local face = T.HudPanel(CreateFrame("Frame", nil, b), { inset = true })
-  face:SetPoint("TOPLEFT", b, "TOPLEFT", MS.PAD, -MS.PAD)
-  face:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -MS.PAD, MS.PAD)
-  local hover = T.Tint(T.Snap(b:CreateTexture(nil, "HIGHLIGHT")), "hover")
-  hover:SetTexture(T.WHITE)
-  hover:SetAllPoints(face)
+  local face = T.HudPanel(CreateFrame("Frame", nil, b), { inset = true, noBorder = true })
+  face:SetSize(faceSide(b), faceSide(b))
+  face:SetPoint("CENTER", b, "CENTER")
+  local wash = T.Tint(T.Snap(b:CreateTexture(nil, "HIGHLIGHT")), "hover")
+  wash:SetTexture(T.WHITE)
+  wash:SetAllPoints(face)
   return face
+end
+
+-- A button's scale relative to the screen's (1 when the client can't say).
+local function relScale(b)
+  local s = b:GetEffectiveScale() / UIParent:GetEffectiveScale()
+  return s > 0 and s or 1
+end
+
+-- Sizes a button's glyph to MS.GLYPH_PX screen pixels at UI scale 1, never bigger than its face.
+local function sizeGlyph(b)
+  local side = math.min(faceSide(b), MS.GLYPH_PX / relScale(b))
+  b.fuiGlyph:SetSize(side, side)
+end
+
+-- Sizes every skinned menu glyph again (after the menu's scale changed).
+function MS.SizeGlyphs()
+  for name in pairs(MS.GLYPHS) do
+    local b = _G[name]
+    if type(b) == "table" and b.fuiGlyph then sizeGlyph(b) end
+  end
 end
 
 -- The glyph centered on the button's face.
 local function addGlyph(b, icon)
-  local side = math.min(b:GetWidth(), b:GetHeight()) - 2 * MS.PAD
   b.fuiFace = addFace(b)
   b.fuiGlyph = T.Snap(b.fuiFace:CreateTexture(nil, "OVERLAY"))
   b.fuiGlyph:SetTexture(icon)
-  b.fuiGlyph:SetSize((side > 0 and side or 24) * MS.GLYPH, (side > 0 and side or 24) * MS.GLYPH)
   b.fuiGlyph:SetPoint("CENTER", b.fuiFace, "CENTER")
+  sizeGlyph(b)
 end
 
 -- One of the game's menu buttons in the ForeverUI look: its art faded (alerts
--- kept), a flat inset panel and a line icon that dims while it's disabled.
+-- kept), a flat inset square and a line icon that dims while it's disabled
+-- and lights up in the accent under the mouse.
 function MS.SkinButton(b, icon)
   if b.fuiGlyph then return end
   T.FadeRegions(b, alerts(b))
@@ -134,6 +209,8 @@ function MS.SkinButton(b, icon)
   paintGlyph(b)
   b:HookScript("OnEnable", paintGlyph)
   b:HookScript("OnDisable", paintGlyph)
+  b:HookScript("OnEnter", function(self) hover(self, true) end)
+  b:HookScript("OnLeave", function(self) hover(self, false) end)
 end
 
 -- Every menu button this client has, in the ForeverUI look.
@@ -173,13 +250,39 @@ function MS.SkinBag(b)
   insetIcon(b, icon)
 end
 
+-- The x offset that puts a strip wBags wide MS.GAP left of one wMenu wide, both
+-- anchored at point (the menu strip's offset being x).
+local function leftOf(point, x, wMenu, wBags)
+  if point:find("RIGHT") then return x - wMenu - MS.GAP end
+  if point:find("LEFT") then return x - wBags - MS.GAP end
+  return x - (wMenu + wBags) / 2 - MS.GAP
+end
+
+-- The bag strip's default spot: MS.GAP left of the menu strip, at its height.
+function MS.BagsDefault()
+  local point, relPoint, x, y = ns.MoverPoint("menustrip")
+  return { point, relPoint, leftOf(point, x, MS.strip:GetWidth(), MS.bags:GetWidth()), y }
+end
+
+-- The bag strip's default follows the menu strip's size and spot; a saved
+-- position of its own wins (ns.SetMoverDefault).
+function MS.PlaceBags()
+  if MS.bags then ns.SetMoverDefault("bagstrip", MS.BagsDefault()) end
+end
+
+-- The menu strip was fitted again: its glyphs and the bag strip follow.
+function MS.OnMenuFit()
+  MS.SizeGlyphs()
+  MS.PlaceBags()
+end
+
 -- The bag strip, just left of the menu strip (however wide it grew) and always
 -- shown, with the game's bag bar centered in it.
 local function buildBags(settings)
   MS.bags = T.HudPanel(CreateFrame("Frame", "ForeverUI_BagStrip", UIParent), { inset = true })
   MS.bags:SetSize(MS.BAG_W, MS.HEIGHT)
-  ns.Mover(MS.bags, "bagstrip", "Bags", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16 - MS.strip:GetWidth() - 6, 20 })
-  pinInto("BagsBar", MS.bags, MS.BAG_SCALE, MS.BAG_W)
+  ns.Mover(MS.bags, "bagstrip", "Bags", MS.BagsDefault())
+  pinInto("BagsBar", MS.bags, MS.BAG_SCALE, MS.BAG_W, MS.PlaceBags)
   if not settings.glyphs then return end
   for _, name in ipairs(MS.BAGS) do if type(_G[name]) == "table" then MS.SkinBag(_G[name]) end end
 end
@@ -189,7 +292,8 @@ local function buildStrip(settings)
   MS.strip = T.HudPanel(CreateFrame("Frame", "ForeverUI_MenuStrip", UIParent), { inset = true })
   MS.strip:SetSize(MS.WIDTH, MS.HEIGHT)
   ns.Mover(MS.strip, "menustrip", "Game menu", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 20 })
-  pinInto("MicroMenuContainer", MS.strip, MS.SCALE, MS.WIDTH)
+  pinInto("MicroMenuContainer", MS.strip, MS.SCALE, MS.WIDTH, MS.OnMenuFit)
+  MS.FadeArt()
   buildBags(settings)
   if settings.glyphs then skinGlyphs() end
   if settings.menu == "mouseover" then watchMouse(MS.strip) MS.strip:SetAlpha(0) end
