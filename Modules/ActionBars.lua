@@ -393,11 +393,16 @@ local function hideTooltip(b)
   GameTooltip:Hide()
 end
 
--- Secure attributes: click to use the action in a slot.
+-- Secure attributes: click to use the action in a slot, and, as the game's own
+-- buttons do, cast on yourself, your focus or the unit under the mouse while
+-- the self-cast, focus-cast or mouseover-cast modifier is held.
 local function wireAttributes(b, action, index)
   b:SetAttribute("type", "action")
   b:SetAttribute("action", action)
   b:SetAttribute("index", index)
+  b:SetAttribute("checkselfcast", true)
+  b:SetAttribute("checkfocuscast", true)
+  b:SetAttribute("checkmouseovercast", true)
 end
 
 -- Scripts: click on either edge of the press, drag to move actions, the tooltip.
