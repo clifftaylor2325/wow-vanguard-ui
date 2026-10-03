@@ -603,6 +603,17 @@ it("main tank frames: the raid's main tanks and assists, with what each is targe
   expect(loggedIn(UNITS_ENV).eval("return ForeverUI_MainTanks ~= nil"), "a client without attribute drivers still builds them").toBe(true);
 });
 
+it("main tank frames without secure snippets: the header copies the clicks; tiles are sized and set up out of combat", () => {
+  const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV + 'SecureHandlerExecute = function() error("TEST-ONLY: snippets do not compile") end');
+  expect(addon.eval("local h = ForeverUI_MainTanks return { h:GetAttribute('initialConfigFunction') == nil, h:GetAttribute('_initialAttributeNames') }"),
+    "no init snippet; the header copies the clicks").toEqual([true, "*type1,*type2"]);
+  addon.eval('local b = CreateFrame("Button", "ForeverUI_MainTanksUnitButton1", ForeverUI_MainTanks, "SecureUnitButtonTemplate") b:SetAttribute("unit", "raid1")');
+  addon.fire("GROUP_ROSTER_UPDATE");
+  const MT = addon.eval('local MT = ns.GetModule("MainTanks") return { MT.W, MT.H }');
+  expect(addon.eval("local b = ForeverUI_MainTanksUnitButton1 return { b:GetWidth(), b:GetHeight(), b:GetAttribute('*type1'), b.bar ~= nil }"),
+    "the tile has its size, its click and the tile setup").toEqual([MT[0], MT[1], "target", true]);
+});
+
 it("party pets and targets: small tiles above the party, only in a party, when switched on", () => {
   expect(loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV).eval("return ForeverUI_PartyExtras == nil"), "off until you turn it on").toBe(true);
   const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV + CLICK_LUA, { savedVariables: "ForeverUIDB.profiles = { Default = { PartyExtras = { show = true } } }" });

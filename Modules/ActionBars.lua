@@ -245,9 +245,17 @@ local function updateHotkey(b)
   b.hotkey:SetText(AB.ShortKey(key))
 end
 
+-- A button's action slot: on bar 1 without snippets, its ID on the page the
+-- bar's driver last set; else the slot its action attribute names.
+function AB.ActionSlot(b)
+  local page = b.fuiBar and b.fuiBar.fuiPaged and b.fuiBar.fuiPage
+  if page then return (page - 1) * AB.MAX_BUTTONS + b:GetID() end
+  return b:GetAttribute("action")
+end
+
 -- Everything on a button, for its current action slot.
 function AB.UpdateButton(b)
-  b.action = b:GetAttribute("action")
+  b.action = AB.ActionSlot(b)
   AB.UpdateGlow(b)
   updateIcon(b)
   updateCount(b)
@@ -410,8 +418,32 @@ function AB.Restack()
   end
 end
 
--- Bar 1 pages through a secure state driver.
+-- The bar's actionpage changed (bar 1 without snippets): its buttons show that page's slots.
+function AB.OnBarPage(bar, name, value)
+  if name ~= "actionpage" then return end
+  bar.fuiPage = tonumber(value)
+  for _, b in ipairs(bar.fuiButtons) do AB.UpdateButton(b) end
+end
+
+-- Bar 1 on a client that can't run secure snippets: the driver sets the bar's
+-- own actionpage (no snippet), and each button, its index as its ID, reads it
+-- from the bar when clicked, so stances, forms and Shift+number still page in
+-- a fight. Out of combat (ns.Client.WhenSnippetsKnown); undoes the snippet paging.
+function AB.PageWithoutSnippets(bar)
+  if bar.fuiPaged then return end
+  bar.fuiPaged = true
+  UnregisterStateDriver(bar, "page")
+  bar:SetAttribute("_onstate-page", nil)
+  for i, b in ipairs(bar.fuiButtons) do b:SetID(i) b:SetAttribute("useparent-actionpage", true) end
+  bar:HookScript("OnAttributeChanged", AB.OnBarPage)
+  RegisterAttributeDriver(bar, "actionpage", AB.PAGE_DRIVER)
+end
+
+-- Bar 1 pages through a secure state driver and a snippet, or, on a client
+-- that can't run snippets, through its own actionpage (decided once the probe answers).
 local function addPaging(bar)
+  ns.Client.WhenSnippetsKnown(function(worked) if worked == false then AB.PageWithoutSnippets(bar) end end)
+  if bar.fuiPaged then return end
   bar:SetAttribute("_onstate-page", AB.ON_PAGE)
   RegisterStateDriver(bar, "page", AB.PAGE_DRIVER)
 end

@@ -135,7 +135,17 @@ end
 
 -- The one chat line when snippets are off, with the probe's error when it threw.
 local function warnNoSnippets(err)
-  ns.Chat("This client can't run secure snippets: hover keys are off; bar paging, bar visibility and the raid frames may not work until the game fixes it." .. (err and ("  (probe: " .. err .. ")") or ""))
+  ns.Chat("This client can't run secure snippets: hover keys are off; bar 1 pages and the raid frames are set up without them." .. (err and ("  (probe: " .. err .. ")") or ""))
+end
+
+-- Functions waiting for the probe's answer (C.WhenSnippetsKnown).
+local snippetWaiters = {}
+
+-- Hands the probe's answer to every waiting function, each under ns.Try.
+local function tellSnippetWaiters(worked)
+  local waiting = snippetWaiters
+  snippetWaiters = {}
+  for _, fn in ipairs(waiting) do ns.Try("secure snippet fallback", fn, worked) end
 end
 
 -- Probes once, out of combat (nil until then); says so in chat, once, when snippets are off.
@@ -145,8 +155,55 @@ function C.ProbeSnippets()
   local worked, err = snippetsWork()
   has.secureSnippets = worked
   if not worked then warnNoSnippets(err) end
+  tellSnippetWaiters(worked)
   return has.secureSnippets
+end
+
+-- Calls fn(worked) once the probe has answered and out of combat (so fn may
+-- change secure frames): at once when both hold, else when they do.
+function C.WhenSnippetsKnown(fn)
+  if C.ProbeSnippets() == nil then
+    snippetWaiters[#snippetWaiters + 1] = fn
+    return
+  end
+  ns.OutOfCombat(function() fn(C.has.secureSnippets) end)
 end
 
 -- At login, out of combat (queued if the login is in a fight), before any module's own login work.
 ns.On("PLAYER_LOGIN", function() ns.OutOfCombat(C.ProbeSnippets, "snippetprobe") end)
+
+-- Group headers without snippets ------------------------------------------------------------
+-- The raid and main tank headers configure each button they make through an
+-- init snippet. Without snippets the header copies the clicks itself
+-- (_initialAttribute, plain secure code), and the size and the rest of the
+-- setup come from the module, out of combat; every button is made out of combat
+-- anyway (the modules precreate them).
+
+-- The clicks every unit button gets, as the init snippets set them.
+C.HEADER_CLICKS = { ["*type1"] = "target", ["*type2"] = "togglemenu" }
+
+-- Turns a header's init snippet off and has the header copy the clicks onto each new button.
+function C.HeaderWithoutSnippets(header)
+  header.fuiNoSnippets = true
+  header:SetAttribute("initialConfigFunction", nil)
+  header:SetAttribute("_initialAttributeNames", "*type1,*type2")
+  for name, value in pairs(C.HEADER_CLICKS) do header:SetAttribute("_initialAttribute-" .. name, value) end
+end
+
+-- One button of a header without snippets: its size and clicks, then setup(button). Once.
+local function setupHeaderButton(header, b, setup)
+  b.fuiHeaderSetup = true
+  b:SetSize(header:GetAttribute("fui-width"), header:GetAttribute("fui-height"))
+  for name, value in pairs(C.HEADER_CLICKS) do b:SetAttribute(name, value) end
+  setup(b)
+end
+
+-- Sets up every unit button a header without snippets has made and not set up
+-- yet (its children named <header>UnitButtonN); out of combat only.
+function C.SetupHeaderButtons(header, setup)
+  if not header or not header.fuiNoSnippets or ns.InCombat() then return end
+  local prefix = "^" .. header:GetName() .. "UnitButton"
+  for _, b in ipairs({ header:GetChildren() }) do
+    if not b.fuiHeaderSetup and (b:GetName() or ""):find(prefix) then setupHeaderButton(header, b, setup) end
+  end
+end
