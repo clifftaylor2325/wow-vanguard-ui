@@ -1,7 +1,8 @@
 -- The public skin API: other addons hand ForeverUI their frames and get the
 -- ForeverUI look. Registered callbacks run once at PLAYER_LOGIN (or at once
 -- if registered later) with S, the theme primitives. A callback that errors
--- is reported and never breaks ForeverUI or other skins.
+-- is reported (chat, /fui errors, the game's error handler) and never breaks
+-- ForeverUI or other skins.
 --
 --   ## OptionalDeps: ForeverUI
 --   if ForeverUI and ForeverUI.RegisterSkin then
@@ -41,18 +42,15 @@ local function skinEnabled(name)
   return ns.Settings("skins")[name] ~= false
 end
 
--- Runs one skin callback, isolated; an error is printed, not raised.
+-- Runs one skin callback, isolated; an error is reported (see ns.Report), not raised.
 local function runSkin(name)
   local entry = skins[name]
   if entry.ran or not skinEnabled(name) then
     return
   end
   entry.ran = true
-  local ok, err = pcall(entry.fn, S)
+  local ok, err = ns.Try("skin for " .. name, entry.fn, S)
   entry.error = not ok and tostring(err) or nil
-  if not ok then
-    ns.Chat(string.format("skin for %s failed: %s", name, tostring(err)))
-  end
 end
 
 ForeverUI = ForeverUI or {}

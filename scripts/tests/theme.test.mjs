@@ -43,10 +43,23 @@ it("widgets", () => {
   expect(/Media\\Icons\\Close$/.test(out.glyph || ""), "the close button draws the Close icon").toBeTruthy();
 });
 
+// A TEST-ONLY PixelUtil for a screen `height` pixels tall, as Blizzard writes it:
+// the factor is 768 / height and GetNearestPixelSize rounds to whole pixels.
+function pixelUtilLua(height) {
+  return `PixelUtil = {
+    GetPixelToUIUnitFactor = function() __pu = true return 768 / ${height} end,
+    GetNearestPixelSize = function(size, s, min)
+      local f = 768 / ${height}
+      local n = math.floor(size * s / f + 0.5)
+      if min and n < min then n = min end
+      return n * f / s
+    end }`;
+}
+
 // The top border of a fresh panel at a UI scale on a screen `height` pixels tall
 // (optionally with a TEST-ONLY PixelUtil): { h, pixelUtil }.
 function borderAt(scale, height, pixelUtil = false) {
-  const pu = pixelUtil ? `PixelUtil = { GetNearestPixelSize = function(size, s) __pu = true return size * 768 / ${height} / s end }` : "";
+  const pu = pixelUtil ? pixelUtilLua(height) : "";
   const addon = loggedIn(`GetPhysicalScreenSize = function() return 1920, ${height} end ${pu}`);
   return addon.eval(`UIParent:SetScale(${scale})
     local f = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent))
@@ -77,6 +90,33 @@ it("theme tokens and pixel-perfect borders", () => {
   expect(Math.abs(addon.eval("return UIParent:GetScale()") - 768 / 1440) < 1e-9, "then UIParent gets 768 / screen height").toBeTruthy();
   addon.eval('__click("Pixel-perfect scale")');
   expect(addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "turning it off offers a reload (the client's scale comes back)").toBeTruthy();
+});
+
+it("one-pixel borders at every resolution and UI scale", () => {
+  // One addon; each case swaps the globals Theme reads (it looks them up on every call).
+  const addon = loggedIn("");
+  // T.Pixel(UIParent) in screen pixels for a screen `h` tall, a UI scale, and a PixelUtil source (Lua text or "nil").
+  const pixels = (h, scale, util) => addon.eval(`GetPhysicalScreenSize = function() return 1920, ${h} end
+    ${util === "nil" ? "PixelUtil = nil" : util}
+    UIParent:SetScale(${scale}) return ns.Theme.Pixel(UIParent) * UIParent:GetEffectiveScale() * ${h} / 768`);
+  for (const h of [1080, 1440, 2160]) {
+    for (const scale of [1, 768 / h]) {
+      expect(pixels(h, scale, "nil"), `${h}p, UI scale ${scale}, no PixelUtil`).toBeCloseTo(1, 9);
+      expect(pixels(h, scale, pixelUtilLua(h)), `${h}p, UI scale ${scale}, PixelUtil`).toBeCloseTo(1, 9);
+    }
+  }
+  // The client's rounding gives whole pixels (2 at 1440p, 3 at 2160p); a border must not.
+  for (const [h, rounded] of [[1440, 2], [2160, 3]]) {
+    pixels(h, 1, pixelUtilLua(h));
+    expect(addon.eval(`return PixelUtil.GetNearestPixelSize(1, 1, 1) * ${h} / 768`), `GetNearestPixelSize at ${h}p`).toBeCloseTo(rounded, 9);
+    expect(borderAt(1, h, true).h * h / 768, `a panel border at ${h}p`).toBeCloseTo(1, 9);
+  }
+  pixels(1440, 1, pixelUtilLua(1440));
+  expect(addon.eval('UIParent:SetScale(0.71) local f = CreateFrame("Frame", nil, UIParent) f:SetScale(0.5) return ns.Theme.Pixel(f) * f:GetEffectiveScale() * 1440 / 768'), "a frame at its own scale").toBeCloseTo(1, 9);
+  expect(pixels(1440, 1, "PixelUtil = { GetNearestPixelSize = function() return 999 end }"), "a PixelUtil without the factor falls back to the screen height").toBeCloseTo(1, 9);
+  expect(pixels(1080, 1, "PixelUtil = { GetPixelToUIUnitFactor = function() return nil end }"), "a factor that is not a number falls back too").toBeCloseTo(1, 9);
+  expect(pixels(1440, 1, "PixelUtil = { GetPixelToUIUnitFactor = function() return 0 end }"), "a factor of zero falls back too").toBeCloseTo(1, 9);
+  expect(pixels(1440, 1, "PixelUtil = { GetPixelToUIUnitFactor = function() return -1 end }"), "a negative factor falls back too").toBeCloseTo(1, 9);
 });
 
 it("bundled font and logo", () => {

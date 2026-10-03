@@ -147,18 +147,19 @@ end
 
 -- Damage meter ---------------------------------------------------------------------------------
 
--- An Enum value from the client, else the number the game's API documents for it.
-local function enum(kind, key, fallback)
+-- An Enum value from the client, or nil when it has none.
+local function enum(kind, key)
   local t = Enum and Enum[kind]
-  return t and t[key] or fallback
+  return t and t[key] or nil
 end
 
 -- Your damage per second in the current (or last) fight, from the game's damage
 -- meter; nil in combat and wherever the client keeps it hidden.
 function IS.DPS()
   local get = C_DamageMeter and C_DamageMeter.GetCombatSessionFromType
-  if type(get) ~= "function" or ns.InCombat() then return nil end
-  local session = get(enum("DamageMeterSessionType", "Current", 1), enum("DamageMeterType", "Dps", 1))
+  local kind, what = enum("DamageMeterSessionType", "Current"), enum("DamageMeterType", "Dps")
+  if type(get) ~= "function" or kind == nil or what == nil or ns.InCombat() then return nil end
+  local session = get(kind, what)
   if type(session) ~= "table" or ns.IsSecret(session) then return nil end
   for _, source in ipairs(session.combatSources or {}) do
     if source.isLocalPlayer == true then return ns.PlainNumber(source.amountPerSecond) end

@@ -164,13 +164,21 @@ end
 -- The game's own XP and reputation bars, which these replace (so XP doesn't show twice).
 DB.BLIZZARD = { "StatusTrackingBarManager", "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" }
 
--- Keeps one of the game's XP bar frames hidden where it is. It isn't moved
--- under another parent: the game and Edit Mode call methods on its own parent
--- (moving it broke Edit Mode). Whenever the game shows it, it's hidden again.
+-- True for a frame the client protects (itself, or through a secure child).
+local function protected(f)
+  return type(f.IsProtected) == "function" and f:IsProtected() == true
+end
+
+-- Keeps one of the game's frames hidden where it is. An XP bar frame isn't moved
+-- under another parent (the game and Edit Mode call methods on its own parent;
+-- moving it broke Edit Mode), and whenever the game shows it, it's hidden again.
+-- A protected frame gets no hook (the hook's Hide is blocked in combat): it is
+-- hidden once, out of combat.
 function DB.Suppress(name)
   local f = _G[name]
   if type(f) ~= "table" or not f.Hide or f.fuiSuppressed then return end
   f.fuiSuppressed = true
+  if protected(f) then return ns.OutOfCombat(function() f:Hide() end, f) end
   f:Hide()
   if type(hooksecurefunc) ~= "function" then return end
   hooksecurefunc(f, "Show", f.Hide)

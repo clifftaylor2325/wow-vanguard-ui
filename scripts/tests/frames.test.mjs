@@ -22,6 +22,9 @@ it("frames pass: bar texture, smoothing, raid style, shields, glows", () => {
   expect(/Media\\Textures\\BarSoft$/.test(addon.eval("return ns.Theme.BarTexture()")) && addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "Soft bars are an option (on reload)").toBeTruthy();
   addon.eval('__click("Bar texture")');
   expect(addon.eval("return ns.Theme.BarTexture()") === "Interface\\Buttons\\WHITE8X8", "and Flat bars").toBeTruthy();
+  // The interpolation the player health bar was last given with smoothing on or off ("none" for a plain set).
+  const eased = (on) => addon.eval(`ns.Theme.Settings().smoothBars = ${on} ns.Theme.SetBarValue(ForeverUI_player.health, 7) return ForeverUI_player.health.__ease or "none"`);
+  expect([eased(true), eased(false)], "smooth bars ask the client to ease the value; off, a plain set").toEqual([1, "none"]);
   const glow = addon.eval(`local f = CreateFrame("Frame", nil, UIParent) local g = ns.Theme.Glow(f, 6)
     local hidden = not g[1]:IsShown() ns.Theme.ShowGlow(g, true) return { n = #g, hidden = hidden, shown = g[1]:IsShown(), tex = g[1].__texture, color = g[1].__vertexColor }`);
   expect(glow.n === 8 && glow.hidden && glow.shown && /Glow$/.test(glow.tex) && isTok(addon, glow.color, "accent"), "a glow is eight hidden Glow pieces, shown in the accent").toBeTruthy();

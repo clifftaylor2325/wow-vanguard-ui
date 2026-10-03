@@ -45,11 +45,18 @@ local function buildTotems(player, size)
   CB.UpdateTotems()
 end
 
+-- The client's duration object for a totem slot, or nil when it has none to give.
+local function totemObject(slot)
+  if not ns.Client.Has("cooldownObject") or type(GetTotemDuration) ~= "function" then return nil end
+  return GetTotemDuration(slot)
+end
+
 -- A totem's sweep: the client's duration object where it has one (it works
 -- while totem values are hidden), else the plain start and length.
 local function totemSweep(cd, slot, start, duration)
-  if type(GetTotemDuration) == "function" and cd.SetCooldownFromDurationObject then
-    cd:SetCooldownFromDurationObject(GetTotemDuration(slot))
+  local object = totemObject(slot)
+  if object ~= nil then
+    cd:SetCooldownFromDurationObject(object)
     return
   end
   local s, len = ns.PlainNumber(start), ns.PlainNumber(duration)

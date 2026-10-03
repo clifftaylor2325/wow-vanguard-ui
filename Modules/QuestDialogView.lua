@@ -234,5 +234,5 @@ end
 -- Keys the dialog doesn't use go on to the game (you can still move and use your bars).
 function QD.OnKey(f, key)
   local handled = useKey(key)
-  if not ns.InCombat() then f:SetPropagateKeyboardInput(not handled) end
+  if not ns.InCombat() and ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(not handled) end
 end

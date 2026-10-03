@@ -1,7 +1,7 @@
 // more: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, HEALING_ENV, MICRO_ENV, PLATE_ENV, RAID_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, isTok, key, later, loggedIn, marks, pinned, plate, putAway, raidButton, setCombat } from "./helpers.mjs";
+import { AFK_ENV, CLICK_LUA, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, isTok, key, later, loggedIn, marks, pinned, plate, putAway, raidButton, setCombat, strips } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -171,60 +171,6 @@ it("auto-accept: summons, resurrections and duels, each off until switched on", 
   on.fire("CONFIRM_SUMMON");
   expect(on.eval("return #__answers"), "no summons in combat").toBe(0);
 });
-
-// TEST-ONLY quest giver: a farmer with a quest to take (wolves), one to turn in (a letter) and
-// a gossip option; two reward choices (boots sell for 50c, gloves for 3s) and bread you always get.
-const QUEST_ENV = `
-  __calls, __prices = {}, { ["item:90021"] = 50, ["item:90022"] = 300 }
-  local function log(name) return function(...) __calls[#__calls + 1] = name .. " " .. tostring((...)) end end
-  UISpecialFrames = {}
-  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
-  UnitName = function(unit) if unit == "npc" then return "TEST-ONLY Farmer" end return "<name>" end
-  SetPortraitTexture = function(t, unit) t.__portrait = unit end
-  GetQuestDifficultyColor = function(level) return { r = level > 10 and 1 or 0.25, g = 0.75, b = 0.25 } end
-  C_Item = { GetItemQualityColor = function() return 0, 0.44, 0.87 end, GetItemInfo = function(link) return "x", link, 1, 1, 1, "", "", 1, "", "", __prices[link] end }
-  __avail = { { title = "TEST-ONLY Wolves", questLevel = 8, questID = 90031 } }
-  __active = { { title = "TEST-ONLY Letter", questLevel = 12, questID = 90032, isComplete = true } }
-  __options = { { name = "TEST-ONLY Tell me more", icon = 90041, gossipOptionID = 90041, orderIndex = 0 } }
-  C_GossipInfo = { GetText = function() return __greeting end, GetAvailableQuests = function() return __avail end,
-    GetActiveQuests = function() return __active end, GetOptions = function() return __options end,
-    SelectAvailableQuest = log("avail"), SelectActiveQuest = log("active"), SelectOption = log("option"), CloseGossip = log("closeGossip") }
-  __greeting = "TEST-ONLY Well met, <name>."
-  GetTitleText = function() return "TEST-ONLY Wolves" end
-  GetQuestText = function() return "TEST-ONLY Wolves trouble the farm." end
-  GetObjectiveText = function() return "Slay 8 TEST-ONLY Wolves." end
-  GetProgressText = function() return "TEST-ONLY Done yet?" end
-  GetRewardText = function() return "TEST-ONLY Thank you." end
-  GetGreetingText = function() return "TEST-ONLY Hello." end
-  __choices = { { "TEST-ONLY Boots", "TEST-ONLY-ICON", 1, 3, "item:90021" }, { "TEST-ONLY Gloves", "TEST-ONLY-ICON", 1, 2, "item:90022" } }
-  __rewards = { { "TEST-ONLY Bread", "TEST-ONLY-ICON", 5, 1, "item:90023" } }
-  GetNumQuestChoices = function() return #__choices end
-  GetNumQuestRewards = function() return #__rewards end
-  GetNumQuestItems = function() return 0 end
-  GetQuestItemInfo = function(kind, i) local x = (kind == "choice" and __choices or __rewards)[i] return x[1], x[2], x[3], x[4] end
-  GetQuestItemLink = function(kind, i) return (kind == "choice" and __choices or __rewards)[i][5] end
-  GetRewardMoney = function() return 1200 end
-  GetRewardXP = function() return 450 end
-  __completable, __autoAccept, __shift = true, false, false
-  IsQuestCompletable = function() return __completable end
-  QuestGetAutoAccept = function() return __autoAccept end
-  IsShiftKeyDown = function() return __shift end
-  AcceptQuest, DeclineQuest, CompleteQuest, CloseQuest, AcknowledgeAutoAcceptQuest = log("accept"), log("decline"), log("complete"), log("closeQuest"), log("ack")
-  GetQuestReward = log("reward")
-  __greetAvail, __greetActive = 1, 0
-  GetNumAvailableQuests = function() return __greetAvail end
-  GetNumActiveQuests = function() return __greetActive end
-  GetAvailableTitle = function() return "TEST-ONLY Rats" end
-  GetAvailableLevel = function() return 5 end
-  GetActiveTitle = function() return "TEST-ONLY Parcel", false end
-  GetActiveLevel = function() return 6 end
-  SelectAvailableQuest, SelectActiveQuest = log("greetAvail"), log("greetActive")
-  QuestFrame = CreateFrame("Frame", "QuestFrame", UIParent) QuestFrame:RegisterEvent("QUEST_DETAIL") QuestFrame:RegisterEvent("QUEST_LOG_UPDATE")
-  CustomGossipFrameManager = CreateFrame("Frame", "CustomGossipFrameManager", UIParent) CustomGossipFrameManager:RegisterEvent("GOSSIP_SHOW")
-  GameTooltip = CreateFrame("Frame", "GameTooltip", UIParent)
-  GameTooltip.SetOwner = function() end
-  GameTooltip.SetQuestItem = function(self, kind, i) self.__questItem = kind .. " " .. i end
-`;
 
 // The quest dialog's state: shown, header, body, lines, cards, money and buttons.
 const dialog = (addon) => addon.eval(`local f = ForeverUI_QuestDialog
@@ -592,6 +538,7 @@ it("game alerts: loss of control and the talking head, styled and placed (or hid
 // TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
 const DPS_ENV = `
   __dps = { combatSources = { { isLocalPlayer = false, amountPerSecond = 999 }, { isLocalPlayer = true, amountPerSecond = 1234.5 } } }
+  Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } }
   C_DamageMeter = { GetCombatSessionFromType = function(kind, what) __asked = { kind, what } return __dps end }
 `;
 
@@ -615,6 +562,8 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
   expect(addon.eval("return ForeverUI_InfoStrip:GetHeight()"), "and the fourth row goes").toBe(before);
   addon.eval("Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } } __dps = { combatSources = { { isLocalPlayer = true, amountPerSecond = 0 } } }");
   expect(hidden(""), "no damage done: nothing shows").toBe(false);
+  addon.eval("__asked = nil Enum = nil");
+  expect([addon.eval("return ns.GetModule('InfoStrip').DPS()"), addon.eval("return __asked")], "without the client's enums the meter is not asked with guessed numbers").toEqual([null, null]);
   const bare = loggedIn(UNITS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { InfoStrip = { dps = true } } }" });
   bare.fire("PLAYER_REGEN_ENABLED");
   expect(block(bare, "dps").shown, "a client without the damage meter shows nothing").toBe(false);
@@ -881,50 +830,108 @@ it("flight timer: the first flight is timed, the next counts down", () => {
   expect(bare.eval("return ForeverUI_FlightTimer == nil and ns.GetModule('Errands').settings ~= nil"), "a client without taxi calls loads cleanly").toBe(true);
 });
 
-// TEST-ONLY game menu that builds its buttons each time it opens, as the game's does.
-const GAME_MENU_ENV = `
-  hooksecurefunc = function(t, name, fn) local orig = t[name] t[name] = function(...) orig(...) fn(...) end end
+// TEST-ONLY model of the Forever game menu: pooled buttons numbered from 1 by InitButtons on every
+// show, then a layout that orders the shown children by layoutIndex (LayoutFrame.lua).
+const FOREVER_MENU_ENV = `
+  HideUIPanel = function(f) f:Hide() end
+  local hookAll = hooksecurefunc
+  hooksecurefunc = function(t, ...) if t == GameMenuFrame then __hooked = true end return hookAll(t, ...) end
+  __calls = { AddButton = 0, AddSection = 0, MarkDirty = 0 }
   GameMenuFrame = CreateFrame("Frame", "GameMenuFrame", UIParent) GameMenuFrame:Hide()
-  function GameMenuFrame:InitButtons() self.buttons = { { "Options" }, "section", { "Log Out" } } end
-  function GameMenuFrame:AddSection() self.buttons[#self.buttons + 1] = "section" end
-  function GameMenuFrame:AddButton(text, fn) self.buttons[#self.buttons + 1] = { text, fn } end
-  GameMenuFrame:SetScript("OnShow", function(self) self:InitButtons() end)
+  GameMenuFrame.buttonTemplate = "GameMenuFrameButtonTemplate"
+  function GameMenuFrame:Reset()
+    self.nextLayoutIndex = 1
+    for _, c in ipairs({ self:GetChildren() }) do
+      if c.layoutIndex and c.layoutIndex >= 1 then c:Hide() c.layoutIndex = nil end
+    end
+  end
+  function GameMenuFrame:AddButton(text, fn)
+    __calls.AddButton = __calls.AddButton + 1
+    local b = CreateFrame("Button", nil, self, self.buttonTemplate)
+    b:SetText(text) b:SetScript("OnClick", fn)
+    b.layoutIndex = self.nextLayoutIndex self.nextLayoutIndex = self.nextLayoutIndex + 1
+    return b
+  end
+  function GameMenuFrame:AddSection() __calls.AddSection = __calls.AddSection + 1 end
+  function GameMenuFrame:InitButtons()
+    self:Reset() self:AddButton("Options", function() end) self:AddSection() self:AddButton("Return to Game", function() end)
+  end
+  function GameMenuFrame:MarkDirty() __calls.MarkDirty = __calls.MarkDirty + 1 end
+  function GameMenuFrame:Layout()
+    local kids = {}
+    for _, c in ipairs({ self:GetChildren() }) do if c:IsShown() and c.layoutIndex then kids[#kids + 1] = c end end
+    table.sort(kids, function(a, b) return a.layoutIndex < b.layoutIndex end)
+    self.order = {}
+    for i, c in ipairs(kids) do self.order[i] = c:GetText() or c.text:GetText() end
+  end
+  GameMenuFrame:SetScript("OnShow", function(self) self:InitButtons() self:Layout() end)
 `;
 
 it("a ForeverUI button on the game menu opens the options", () => {
-  const addon = loggedIn(GAME_MENU_ENV);
+  const addon = loggedIn(FOREVER_MENU_ENV);
+  expect(addon.eval("return { __calls.AddButton, __calls.AddSection, __calls.MarkDirty, __hooked == nil }"), "no AddButton or AddSection, no InitButtons hook, one MarkDirty").toEqual([0, 0, 1, true]);
+  expect(addon.eval("local b = ns.gameMenuButton return { b.layoutIndex, b.bottomPadding, b:GetParent() == GameMenuFrame, b.__template, b:GetText(), b:IsShown() }"), "the menu's own template, first index, section gap under it").toEqual([0, 20, true, "GameMenuFrameButtonTemplate", "ForeverUI", true]);
   addon.eval("GameMenuFrame:Show()");
-  expect(addon.eval("local b = GameMenuFrame.buttons return { #b, b[#b - 1], b[#b][1] }"), "at the end of the menu, in its own section").toEqual([5, "section", "ForeverUI"]);
+  expect(addon.eval("return GameMenuFrame.order"), "first in the menu, above Options").toEqual(["ForeverUI", "Options", "Return to Game"]);
+  expect(addon.eval("local m = math.huge for _, c in ipairs({ GameMenuFrame:GetChildren() }) do if c ~= ns.gameMenuButton and c.layoutIndex then m = math.min(m, c.layoutIndex) end end return ns.gameMenuButton.layoutIndex < m"), "lower than every pooled button's layoutIndex").toBe(true);
   addon.eval("GameMenuFrame:Hide() GameMenuFrame:Show()");
-  expect(addon.eval("return #GameMenuFrame.buttons"), "once each time the menu is built").toBe(5);
-  addon.eval("local b = GameMenuFrame.buttons b[#b][2]()");
+  expect(addon.eval("local n = 0 for _, c in ipairs({ GameMenuFrame:GetChildren() }) do if c:GetText() == 'ForeverUI' then n = n + 1 end end return { GameMenuFrame.order[1], n, __calls.AddButton }"), "still first on the next open, one button, AddButton only from the game").toEqual(["ForeverUI", 1, 4]);
+  addon.eval("ns.gameMenuButton:GetScript('OnClick')(ns.gameMenuButton)");
   expect(addon.eval("return { GameMenuFrame:IsShown(), ForeverUI_Options and ForeverUI_Options:IsShown() or ns.Options.current ~= nil }"), "clicking it closes the menu and opens the options").toEqual([false, true]);
   const old = loggedIn("GameMenuFrame = CreateFrame('Frame', 'GameMenuFrame', UIParent)");
-  expect(old.eval("local b = ns.gameMenuButton return { b.text:GetText(), b.__points.TOP.rel == GameMenuFrame }"), "an older menu gets a themed button just under it").toEqual(["ForeverUI", true]);
+  expect(old.eval("local b = ns.gameMenuButton return { b.text:GetText(), b.__points.TOP.rel == GameMenuFrame, b.layoutIndex == nil }"), "an older menu gets a themed button just under it, not laid out").toEqual(["ForeverUI", true, true]);
   old.eval("HideUIPanel = function(f) f:Hide() end ns.gameMenuButton.__scripts.OnClick()");
   expect(old.eval("return GameMenuFrame:IsShown()"), "which closes the menu too").toBe(false);
   expect(loggedIn("").eval("return ns.gameMenuButton == nil"), "no game menu, nothing added").toBe(true);
 });
 
-// TEST-ONLY boss: one boss in the fight, and the game's boss frame holder (an Edit Mode frame).
-const BOSS_ENV = `
-  __units.boss1 = { name = "TEST-ONLY Boss", hp = 5000, maxhp = 10000, power = 0, maxpower = 0, ptype = "MANA" }
-  hooksecurefunc = function(t, name, fn) local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
-  BossTargetFrameContainer = CreateFrame("Frame", "BossTargetFrameContainer", UIParent)
-`;
+it("game menu button: falls back, or goes without what the menu lacks", () => {
+  const broken = loggedIn(FOREVER_MENU_ENV + 'GameMenuFrame.buttonTemplate = "NoSuchTemplate"');
+  expect(broken.eval("local b = ns.gameMenuButton return { b.text:GetText(), b.__points.TOP.rel == GameMenuFrame, ns.errors[#ns.errors].text:match('^GameMenu:') ~= nil }"), "a template that can't be built: themed button under the menu, one logged error").toEqual(["ForeverUI", true, true]);
+  const plain = loggedIn(FOREVER_MENU_ENV + "GameMenuFrame.buttonTemplate = nil");
+  expect(plain.eval("GameMenuFrame:Show() local b = ns.gameMenuButton return { b.text:GetText(), b.layoutIndex, b:GetWidth(), GameMenuFrame.order[1] }"), "a layout menu without a template gets a themed button, still first").toEqual(["ForeverUI", 0, 200, "ForeverUI"]);
+  const clean = loggedIn(FOREVER_MENU_ENV + "GameMenuFrame.MarkDirty = nil");
+  expect(clean.eval("GameMenuFrame:Show() local n = 0 for _, e in ipairs(ns.errors) do if e.text:match('^GameMenu:') then n = n + 1 end end return { GameMenuFrame.order[1], n }"), "a layout menu without MarkDirty still gets the button first, no GameMenu error").toEqual(["ForeverUI", 0]);
+});
 
-it("boss frames: five in a column at the top left, the game's hidden in place", () => {
+// What the game's boss holder and its first and last boss button look like: shown, parked, listening, hooked.
+const bossHolder = (addon) => addon.eval(`local c, b1, b5 = BossTargetFrameContainer, Boss1TargetFrame, Boss5TargetFrame
+  return { c:IsShown(), c:GetParent() == UIParent, c:IsEventRegistered("PLAYER_ENTERING_WORLD"), rawget(c, "Show") == nil and rawget(c, "SetShown") == nil,
+    b1:IsEventRegistered("INSTANCE_ENCOUNTER_ENGAGE_UNIT"), b5:IsEventRegistered("INSTANCE_ENCOUNTER_ENGAGE_UNIT"), b1:GetParent() == c, b5:GetParent() == c }`);
+
+it("boss frames: five in a column at the top left, the game's put away", () => {
   const addon = loggedIn(UNITS_ENV + BOSS_ENV);
   expect(addon.eval(`return { ForeverUI_boss5 ~= nil, ForeverUI_boss1.__watched, ForeverUI_boss2.__points.TOPLEFT.rel == ForeverUI_boss1, ForeverUI_boss2:GetWidth() }`), "five boss frames, each shown while its boss exists, stacked").toEqual([true, true, true, 150]);
   expect(addon.eval("return { ns.MoverPoint('uf_boss1') }"), "movable, from the top-left corner").toEqual(["TOPLEFT", "TOPLEFT", 20, -20]);
   addon.eval("__units.boss1.hp = 4200");
   addon.fire("INSTANCE_ENCOUNTER_ENGAGE_UNIT");
   expect(addon.eval("return { ForeverUI_boss1.health.__value, ForeverUI_boss1.name:GetText() }"), "a boss joining the fight shows on its frame").toEqual([4200, "TEST-ONLY Boss"]);
-  addon.eval("BossTargetFrameContainer:Show()");
-  expect(addon.eval("return { BossTargetFrameContainer:IsShown(), BossTargetFrameContainer:GetParent() == UIParent }"), "the game's boss frames stay hidden, in place (Edit Mode keeps working)").toEqual([false, true]);
+  expect(bossHolder(addon), "the game's holder is hidden, parked, silenced and has no Show hook; its boss buttons are silenced and out of it").toEqual([false, false, false, true, false, false, false, false]);
+  expect(addon.eval("return { BossTargetFrameContainer:GetParent():IsShown(), Boss5TargetFrame:IsShown() }"), "under a parent that is hidden").toEqual([false, false]);
   const off = loggedIn(UNITS_ENV + BOSS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { UnitFrames = { boss = false } } }" });
-  expect(off.eval("return { ForeverUI_boss1 == nil, BossTargetFrameContainer:IsShown() }"), "switched off: no boss frames, the game keeps its own").toEqual([true, true]);
+  expect(off.eval("return ForeverUI_boss1 == nil"), "switched off: no boss frames").toBe(true);
+  expect(bossHolder(off), "and the game keeps its own, untouched").toEqual([true, true, true, true, true, true, true, true]);
 });
+
+it("boss frames: the game's holder is put away only out of combat", () => {
+  const addon = loggedIn(UNITS_ENV + BOSS_ENV + "__wfgStub.inCombat = true");
+  expect([addon.eval("return ForeverUI_boss1 == nil"), ...bossHolder(addon)], "in combat nothing is touched").toEqual([true, true, true, true, true, true, true, true, true]);
+  setCombat(addon, false);
+  expect([addon.eval("return ForeverUI_boss1 ~= nil"), ...bossHolder(addon)], "when combat ends it is put away, still without a hook").toEqual([true, false, false, false, true, false, false, false, false]);
+});
+
+// TEST-ONLY boss: one boss in the fight, and the game's boss frame holder (an Edit Mode frame,
+// protected through its five secure boss buttons, which register the engage event).
+const BOSS_ENV = `
+  __units.boss1 = { name = "TEST-ONLY Boss", hp = 5000, maxhp = 10000, power = 0, maxpower = 0, ptype = "MANA" }
+  hooksecurefunc = function(t, name, fn) local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
+  BossTargetFrameContainer = CreateFrame("Frame", "BossTargetFrameContainer", UIParent)
+  BossTargetFrameContainer:RegisterEvent("PLAYER_ENTERING_WORLD")
+  BossTargetFrameContainer.IsProtected = function() return true, false end
+  for i = 1, 5 do
+    CreateFrame("Button", "Boss" .. i .. "TargetFrame", BossTargetFrameContainer, "SecureUnitButtonTemplate"):RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT")
+  end
+`;
 
 // TEST-ONLY group: you lead a party; every raid tool call is recorded.
 const TOOLS_GROUP_ENV = `
@@ -1215,14 +1222,26 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   expect(pinned(addon, "MinimapCluster.Tracking", overlay), "when the game moves one back, it returns to its corner").toEqual([true, "BOTTOMLEFT"]);
   expect([pinned(addon, "MicroMenuContainer", "ForeverUI_MenuStrip"), pinned(addon, "BagsBar", "ForeverUI_BagStrip")], "the micro menu and the bag bar each get their own strip, centered in it").toEqual([[true, "CENTER"], [true, "CENTER"]]);
   addon.eval("BagsBar:SetSize(300, 40) ns.PausePins(false)");
-  expect(addon.eval("return { ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }"), "a bag bar wider than the strip grows it, with a margin all round").toEqual([300 * 0.6 + 12, 40 * 0.6 + 12]);
+  expect(addon.eval("return { ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }"), "a bag bar wider than the strip grows it, with a margin around it (36 tall at least)").toEqual([300 * 0.7 + 12, 36]);
   addon.eval("BagsBar:SetSize(50, 20) ns.PausePins(false)");
   expect(addon.eval("return { ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }"), "and never shrinks below its default").toEqual([132, 36]);
-  expect(addon.eval("return { BagsBar:GetScale(), ForeverUI_BagStrip:GetAlpha(), ForeverUI_BagStrip.__points.BOTTOMRIGHT.x }"), "bags sit small, always shown, just left of the menu").toEqual([0.6, 1, -322]);
+  expect(addon.eval("return { BagsBar:GetScale(), ForeverUI_BagStrip:GetAlpha(), ForeverUI_BagStrip.__points.BOTTOMRIGHT.x, ForeverUI_BagStrip.__points.BOTTOMRIGHT.y }"), "bags sit small, always shown, just above the menu on its right edge").toEqual([0.7, 1, -16, 20 + 36 + 6]);
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "which is out of sight until the mouse is over it").toBe(0);
   addon.eval("function ForeverUI_MenuStrip:IsMouseOver() return true end __wfgStub.advance(0.3)");
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "and shows with the mouse over it").toBe(1);
   expect(addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p.rel == ForeverUI_QuestTracker, ObjectiveTrackerFrame:GetHeight() }"), "the quest tracker sits under the info strip, no taller than its spot").toEqual([true, 248]);
+});
+
+it("the game's extras: a protected frame is hidden once, out of combat, with no Show hook", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + "ProtectedBar = CreateFrame('Frame', 'ProtectedBar', UIParent) ProtectedBar.IsProtected = function() return true, false end __wfgStub.inCombat = true");
+  // Shown, still under UIParent, and without a raw Show or SetShown hook.
+  const state = () => addon.eval("local f = ProtectedBar return { f:IsShown(), f:GetParent() == UIParent, rawget(f, 'Show') == nil and rawget(f, 'SetShown') == nil }");
+  addon.eval("ns.GetModule('DataBars').Suppress('ProtectedBar')");
+  expect(state(), "in combat it is left alone, with no hook").toEqual([true, true, true]);
+  setCombat(addon, false);
+  expect(state(), "after combat it is hidden where it is, still with no hook").toEqual([false, true, true]);
+  addon.eval("ProtectedBar:Show() ns.GetModule('DataBars').Suppress('ProtectedBar')");
+  expect(state(), "hidden once: shown again when the game shows it, and a second Suppress does nothing").toEqual([true, true, true]);
 });
 
 it("the game's extras: each switch off leaves the game's frame alone, and missing frames are fine", () => {
@@ -1244,18 +1263,18 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
     return { tex = b.fuiGlyph and b.fuiGlyph.__texture, color = b.fuiGlyph and b.fuiGlyph.__vertexColor, art = art, normal = b.normal.__alpha, flash = b.Flash.__alpha or 1, w = b.fuiGlyph and b.fuiGlyph.__width }`);
   const char = glyph("CharacterMicroButton");
   expect(/Icons\\Character$/.test(char.tex) && /Icons\\MenuCog$/.test(glyph("MainMenuMicroButton").tex), "each menu button gets its ForeverUI icon (a client without the rest is fine)").toBeTruthy();
-  expect(char.art === 0 && char.normal === 0 && char.flash === 1 && Math.abs(char.w - (32 - 4) * 0.7) < 1e-9, "the game's art is faded but its alert flash stays; the icon is 70% of the button's face").toBeTruthy();
-  expect(isTok(addon, char.color, "text2"), "the icon is text2").toBeTruthy();
-  const face = addon.eval("local f = CharacterMicroButton.fuiFace return { f.__points.TOPLEFT.x, f.__points.BOTTOMRIGHT.x, CharacterMicroButton.fuiGlyph:GetParent() == f }");
-  expect(face, "each button's face sits 2 units inside its edges (a gap between neighbors), the icon on it").toEqual([2, -2, true]);
+  expect(char.art === 0 && char.normal === 0 && char.flash === 1 && Math.abs(char.w - 16 / 0.8) < 1e-9, "the game's art is faded but its alert flash stays; the icon is 16 screen pixels").toBeTruthy();
+  expect(isTok(addon, char.color, "text"), "the icon is text").toBeTruthy();
+  const face = addon.eval("local f = CharacterMicroButton.fuiFace return { f.__width, f.__height, f.__points.CENTER ~= nil, CharacterMicroButton.fuiGlyph:GetParent() == f }");
+  expect(face, "each button's face is a centered 24-unit square (a gap between neighbors), the icon on it").toEqual([24, 24, true, true]);
   const bag = addon.eval(`local b = MainMenuBarBackpackButton local art
     for _, r in ipairs({ b:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
     return { art, b.icon.__alpha, b.icon.__texCoord[1] > 0, b.icon.__points.TOPLEFT.x }`);
-  expect(bag, "bag buttons: the game's art faded, the bag icon kept, cropped and inset in a thin border").toEqual([0, 1, true, 2]);
+  expect(bag, "bag buttons: the game's art faded, the bag icon kept, cropped and inset in a thin border").toEqual([0, 1, true, 4]);
   addon.eval("CharacterMicroButton:Disable()");
   expect(isTok(addon, glyph("CharacterMicroButton").color, "muted"), "and muted while the button is disabled").toBeTruthy();
   addon.eval("CharacterMicroButton:Enable()");
-  expect(isTok(addon, glyph("CharacterMicroButton").color, "text2"), "back to text2 when it's enabled again").toBeTruthy();
+  expect(isTok(addon, glyph("CharacterMicroButton").color, "text"), "back to text when it's enabled again").toBeTruthy();
   addon.eval('ns.Options.Show("more")');
   expect(addon.eval('return __click("ForeverUI icons on the menu buttons") and ForeverUIDB.profiles.Default.MenuStrip.glyphs'), "the switch is on the page").toBe(false);
   const plain = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
@@ -1280,6 +1299,105 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
     return { b.name:GetParent() == b.texts and b.status:GetParent() == b.texts and b.role:GetParent() == b.texts and b.roleShadow:GetParent() == b.texts,
       b.texts:GetFrameLevel() > b.heal:GetFrameLevel() and b.texts:GetFrameLevel() > b.shield:GetFrameLevel(), b.texts:GetFrameLevel() < b.overlay:GetFrameLevel() }`);
   expect(layers, "a tile's name, role and status sit above the incoming-heal and shield bars, under the status marks").toEqual([true, true, true]);
+});
+
+it("menu and bag strips: the bars' own frame art is hidden, the key ring is skinned", () => {
+  const addon = strips();
+  expect(addon.eval("return { MicroMenu.BorderArt.__alpha, MicroMenu.BackgroundArt.__alpha, BagsBar.BorderArt.__alpha }"), "the brass box is faded").toEqual([0, 0, 0]);
+  expect(addon.eval("return { KeyRingButton.fuiBag, KeyRingButton.icon.__alpha, KeyRingButton.icon.__points.TOPLEFT.x, KeyRingButton.icon.__texCoord[1] > 0 }"), "the key ring gets the bag look").toEqual([true, 1, 4, true]);
+  const off = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
+  expect(off.eval("return { MicroMenu.BorderArt.__alpha, KeyRingButton.fuiBag == nil }"), "the frame art goes with or without the glyphs; the key ring keeps the game's look without them").toEqual([0, true]);
+});
+
+// The bag strip's x and y offsets at a point name.
+const bagXY = (addon, point) => addon.eval(`local p = ForeverUI_BagStrip.__points.${point} return { p.x, p.y }`);
+
+// The two strips' sizes, and the bag strip's x offset at a point name.
+const stripSizes = (addon) => addon.eval("return { ForeverUI_MenuStrip:GetWidth(), ForeverUI_MenuStrip:GetHeight(), ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }");
+
+it("menu and bag strips: they re-fit when the game lays the bars out or resizes them", () => {
+  const addon = strips();
+  expect(stripSizes(addon), "before the game lays them out, the strips have their default sizes").toEqual([300, 36, 132, 36]);
+  addon.eval("MicroMenuContainer:Layout()");
+  expect(stripSizes(addon).slice(0, 2), "the menu strip grows around the laid-out micro menu, 36 tall").toEqual([378 * 0.8 + 12, 36]);
+  expect(bagXY(addon, "BOTTOMRIGHT"), "and the bag strip sits just above it, on the same right edge").toEqual([-16, 20 + 36 + 6]);
+  addon.eval("BagsBar:SetScale(1) BagsBar:Layout()");
+  expect(stripSizes(addon).slice(2), "the bag strip grows around the laid-out bag bar, 36 tall").toEqual([266 * 0.7 + 12, 36]);
+  expect(addon.eval("return BagsBar:GetScale()"), "the game's reset of the bag bar's scale is undone").toBe(0.7);
+  addon.eval("MicroMenuContainer:SetSize(500, 40) MicroMenuContainer.__scripts.OnSizeChanged(MicroMenuContainer, 500, 40)");
+  expect(stripSizes(addon)[0], "a size change alone re-fits the menu strip").toBe(500 * 0.8 + 12);
+  expect(bagXY(addon, "BOTTOMRIGHT"), "and keeps the bag strip just above it").toEqual([-16, 20 + stripSizes(addon)[1] + 6]);
+});
+
+// The bag strip's x offset at a point name (nil when it has no such point).
+const bagX = (addon, point) => addon.eval(`local p = ForeverUI_BagStrip.__points.${point} return p and p.x`);
+
+it("menu and bag strips: a saved bag position wins; the default follows the menu strip's spot", () => {
+  const addon = strips();
+  addon.eval("ns.SetMoverPoint('bagstrip', 'BOTTOMLEFT', 'BOTTOMLEFT', 10, 10) MicroMenuContainer:Layout()");
+  expect([bagX(addon, "BOTTOMLEFT"), bagX(addon, "BOTTOMRIGHT")], "a bag strip the player moved stays there through a re-fit").toEqual([10, null]);
+  addon.eval("ns.ResetMovers('bagstrip')");
+  expect(bagXY(addon, "BOTTOMRIGHT"), "and Reset puts it at the computed default").toEqual([-16, 20 + 36 + 6]);
+  addon.eval("ns.SetMoverPoint('menustrip', 'BOTTOMLEFT', 'BOTTOMLEFT', 400, 20) MicroMenuContainer:Layout()");
+  expect(bagXY(addon, "BOTTOMLEFT"), "a menu strip on the left: the bags line up on its left edge, above it").toEqual([400, 20 + 36 + 6]);
+  addon.eval("ns.SetMoverPoint('menustrip', 'BOTTOM', 'BOTTOM', 40, 20) MicroMenuContainer:Layout()");
+  expect(bagXY(addon, "BOTTOM"), "centered: centered over it").toEqual([40, 20 + 36 + 6]);
+  addon.eval("ns.SetMoverPoint('menustrip', 'TOPRIGHT', 'TOPRIGHT', -16, -40) MicroMenuContainer:Layout()");
+  expect(bagXY(addon, "TOPRIGHT"), "a top anchor: the bag strip's top is its height and a gap above the menu strip's").toEqual([-16, -40 + 36 + 6]);
+  addon.eval("ns.SetMoverPoint('menustrip', 'RIGHT', 'RIGHT', -16, 0) MicroMenuContainer:Layout()");
+  expect(bagXY(addon, "RIGHT"), "a middle anchor: centers a strip's half-heights and a gap apart").toEqual([-16, 36 + 6]);
+});
+
+it("menu and bag strips: moving or resetting the menu strip moves the bag strip's default at once, with no re-fit", () => {
+  const addon = strips();
+  addon.eval("MicroMenuContainer:Layout()");
+  addon.eval("ns.SetMoverPoint('menustrip', 'BOTTOMRIGHT', 'BOTTOMRIGHT', -216, 20)");
+  expect(bagXY(addon, "BOTTOMRIGHT"), "a drag of the menu strip carries the bag strip's default along").toEqual([-216, 20 + 36 + 6]);
+  addon.eval("ns.ResetMovers('menustrip')");
+  expect(bagXY(addon, "BOTTOMRIGHT"), "and Reset brings it back").toEqual([-16, 20 + 36 + 6]);
+  addon.eval("ns.SetMoverPoint('bagstrip', 'BOTTOMLEFT', 'BOTTOMLEFT', 10, 10) ns.SetMoverPoint('menustrip', 'BOTTOMRIGHT', 'BOTTOMRIGHT', -216, 20)");
+  expect(bagX(addon, "BOTTOMLEFT"), "a bag strip the player placed stays where it is").toBe(10);
+  expect(addon.eval("local n = 0 ns.WatchMover('nothing', function() n = n + 1 end) ns.SetMoverPoint('menustrip', 'BOTTOM', 'BOTTOM', 0, 20) return n"), "a watcher is told of its own mover only").toBe(0);
+});
+
+it("menu and bag strips: no re-fit while pins are paused or in combat, and one queued entry per bar", () => {
+  const addon = strips();
+  addon.eval("ns.PausePins(true) __menuW = 600 MicroMenuContainer:Layout()");
+  expect(stripSizes(addon)[0], "Edit Mode open: the strip waits").toBe(300);
+  addon.eval("ns.PausePins(false)");
+  expect(stripSizes(addon)[0], "and fits when it closes").toBe(600 * 0.8 + 12);
+  setCombat(addon, true);
+  addon.eval("__menuW = 400 MicroMenuContainer:Layout()");
+  const queued = addon.eval("return ns.QueuedCount()");
+  addon.eval("for _ = 1, 50 do MicroMenuContainer:Layout() end");
+  expect([stripSizes(addon)[0], addon.eval("return ns.QueuedCount()")], "in combat nothing changes, and 50 more Layout calls queue nothing more").toEqual([600 * 0.8 + 12, queued]);
+  setCombat(addon, false);
+  expect(stripSizes(addon)[0], "after combat the strip fits").toBe(400 * 0.8 + 12);
+  const plain = loggedIn(UI_ENV + 'CreateFrame("Frame", "MicroMenuContainer", UIParent) function MicroMenuContainer:Layout() end');
+  expect(plain.eval("return { MicroMenuContainer:GetParent() == ForeverUI_MenuStrip, MicroMenuContainer.__scripts.OnSizeChanged ~= nil }"), "a client without hooksecurefunc still pins and watches the size").toEqual([true, true]);
+});
+
+it("menu and bag strips: glyphs are 16 screen pixels on a square face, accent under the mouse", () => {
+  const addon = strips();
+  // The glyph's screen size, whether it is square, and the face's size and centering.
+  const look = () => addon.eval(`local b = CharacterMicroButton local rel = b:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    return { b.fuiGlyph.__width * rel, b.fuiGlyph.__height == b.fuiGlyph.__width, b.fuiFace.__width, b.fuiFace.__height, b.fuiFace.__points.CENTER ~= nil }`);
+  expect(look(), "16 screen pixels, square, on a centered 24-unit face").toEqual([16, true, 24, 24, true]);
+  addon.eval("CharacterMicroButton:SetScale(0.5) MicroMenuContainer:Layout()");
+  expect(addon.eval("return CharacterMicroButton.fuiGlyph.__width"), "a smaller menu: the glyph is capped at the face and re-sized by the re-fit").toBe(24);
+  expect(addon.eval("return EJMicroButton.fuiFace.__width"), "a button with no size yet gets a 24-unit face").toBe(24);
+  // The glyph's current color.
+  const color = () => addon.eval("return CharacterMicroButton.fuiGlyph.__vertexColor");
+  expect(isTok(addon, color(), "text"), "text at rest").toBe(true);
+  addon.eval("CharacterMicroButton.__scripts.OnEnter(CharacterMicroButton)");
+  expect(isTok(addon, color(), "accent"), "accent under the mouse").toBe(true);
+  addon.eval("CharacterMicroButton:Disable()");
+  expect(isTok(addon, color(), "muted"), "muted while disabled, even under the mouse").toBe(true);
+  addon.eval("CharacterMicroButton:Enable()");
+  expect(isTok(addon, color(), "accent"), "enabled again under the mouse: accent").toBe(true);
+  addon.eval("CharacterMicroButton.__scripts.OnLeave(CharacterMicroButton)");
+  expect(isTok(addon, color(), "text"), "text once the mouse leaves").toBe(true);
+  expect(addon.eval("return MainMenuBarBackpackButton:GetWidth() * BagsBar:GetEffectiveScale() / UIParent:GetEffectiveScale()"), "bag buttons are 31.5 screen pixels").toBe(45 * 0.7);
 });
 
 // TEST-ONLY quest and gossip windows that color their text for parchment (dark brown), as the game does.
@@ -1406,24 +1524,11 @@ it("game windows: switched off they stay the game's, and missing windows are fin
   off.eval("MerchantFrame:Show() StaticPopup1:Show()");
   expect([windowState(off, "MerchantFrame").art, windowState(off, "StaticPopup1").art].every((a) => a !== 0), "nothing is faded").toBe(true);
   const bare = loggedIn("");
-  expect(bare.eval("for _, e in ipairs(ns.errors) do if e:find('Windows') then return e end end return 'none'"), "a client without these windows loads cleanly").toBe("none");
+  expect(bare.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'"), "a client without these windows loads cleanly").toBe("none");
   const plain = loggedIn(`local f = CreateFrame("Frame", "LootFrame", UIParent) f.ButtonContainer = { Buttons = { CreateFrame("Button", nil, f) } }
     t = CreateFrame("Frame", "MirrorTimer2", UIParent) CreateFrame("StatusBar", "MirrorTimer2StatusBar", t)`);
   expect(plain.eval("return { select('#', LootFrame.ButtonContainer.Buttons[1]:GetRegions()) > 0, MirrorTimer2StatusBar:GetStatusBarTexture() ~= nil }"), "a window with a button container, and a bar found by name").toEqual([true, true]);
 });
-
-// TEST-ONLY away player: a level 42 mage in a made-up zone, 300 of 1000 XP into the level.
-const AFK_ENV = `
-  __afk, __level = false, 42
-  UnitIsAFK = function(unit) return unit == "player" and __afk end
-  UnitLevel = function() return __level end
-  GetMaxPlayerLevel = function() return 60 end
-  GetRealZoneText = function() return "TEST-ONLY Vale" end
-  GetSubZoneText = function() return "TEST-ONLY Hamlet" end
-  UnitXP = function() return 300 end
-  UnitXPMax = function() return 1000 end
-  date = function() return "21:04" end
-`;
 
 it("the AFK screen: a dimmed screen and a card while you're away", () => {
   const addon = loggedIn(UNITS_ENV + AFK_ENV);

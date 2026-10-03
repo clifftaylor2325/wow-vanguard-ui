@@ -24,7 +24,7 @@ it("a Lua error carries a traceback naming the addon file", () => {
   const addon = createAddon();
   expect(() => addon.eval("ns.Theme.RGB(nil .. 'x')")).toThrow(/eval:2: attempt to concatenate/);
   expect(() => addon.eval("ns.Try('TEST-ONLY', function() local t = nil; return t.x end) return ns.errors[#ns.errors]")).not.toThrow();
-  expect(addon.eval("return ns.errors[#ns.errors]")).toMatch(/TEST-ONLY: eval:2: attempt to index/);
+  expect(addon.eval("return ns.errors[#ns.errors].text")).toMatch(/TEST-ONLY: eval:2: attempt to index/);
 });
 
 it("layout: anchors, sizes and scale resolve to screen rects as the client lays them out", () => {

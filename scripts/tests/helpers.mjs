@@ -36,7 +36,7 @@ export function loggedIn(extra = "", { firstRun = false, savedVariables = "" } =
 }
 
 // Whether any chat line matches re.
-export const chatHas = (addon, re) => addon.chat().some((line) => re.test(line));
+export const chatHas = (addon, re) => Array.from(addon.chat()).some((line) => re.test(line));
 
 // TEST-ONLY units. A secret is a table: Lua errors on arithmetic or
 // comparison with it, so any math the addon did on a secret would fail here.
@@ -429,4 +429,119 @@ export const MICRO_ENV = `
   __micro("CharacterMicroButton") __micro("MainMenuMicroButton")
   __bag = CreateFrame("Button", "MainMenuBarBackpackButton", BagsBar) __bag:SetSize(40, 40)
   __bag.icon = __bag:CreateTexture() __bag.icon:SetAllPoints() __bag:CreateTexture(nil, "OVERLAY"):SetTexture("TEST-ONLY-ART")
+`;
+
+// Strips under the Forever-like bars; extra is more Lua to run first.
+export const strips = (extra = "") => loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + extra);
+
+// TEST-ONLY Forever extras for the strips (on top of TIDY_ENV + MICRO_ENV): the bars' own frame art, bars that size
+// themselves in Layout (__menuW is the micro menu's width then), the key ring, a menu button with no size yet.
+export const STRIPS_ENV = `
+  MicroMenu = CreateFrame("Frame", "MicroMenu", MicroMenuContainer)
+  MicroMenu.BorderArt = MicroMenu:CreateTexture(nil, "BACKGROUND")
+  MicroMenu.BackgroundArt = MicroMenu:CreateTexture(nil, "BACKGROUND")
+  BagsBar.BorderArt = BagsBar:CreateTexture(nil, "BACKGROUND")
+  function MicroMenuContainer:Layout() self:SetSize(__menuW or 378, 40) end
+  function BagsBar:Layout() self:SetSize(266, 45) end
+  __bag:SetSize(45, 45)
+  __keyring = CreateFrame("Button", "KeyRingButton", BagsBar) __keyring:SetSize(33, 45) __keyring.icon = __keyring:CreateTexture()
+  CreateFrame("Button", "EJMicroButton", MicroMenuContainer)
+`;
+
+// TEST-ONLY client whose AuraContainer has every engine method except `name`.
+export const lacking = (name) => `
+  local real = CreateFrame
+  CreateFrame = function(kind, ...) local f = real(kind, ...) if kind == "AuraContainer" then f[${JSON.stringify(name)}] = false end return f end
+`;
+
+// TEST-ONLY totems: slot 1 has a totem down (plain values), the other slots are empty.
+export const TOTEMS_ENV = `
+  __units.player.class = "SHAMAN"
+  __totems = { [1] = { true, "TEST-ONLY Totem", 100, 120, "TEST-ONLY-ICON-Totem" } }
+  GetTotemInfo = function(slot) local t = __totems[slot] if t then return t[1], t[2], t[3], t[4], t[5] end return false, "", 0, 0, nil end
+  GetTotemDuration = nil
+`;
+
+// TEST-ONLY client pieces the engine backend uses for its timer text and debuff edges.
+export const ENGINE_ENV = `
+  Enum = Enum or {}
+  Enum.NumericRuleFormatRounding = { Up = 1, Down = 2 }
+  Enum.LuaCurveType = { Step = 1 }
+  Enum.DurationTextBindingProperty = { RemainingDuration = 0 }
+  Enum.CustomAuraButtonDispelTypeTextureStyle = { PreserveAsset = 3 }
+  AuraContainerSortMethod = { ExpirationOnly = 5 }
+  C_StringUtil = { CreateNumericRuleFormatter = function() local f = {} function f:SetBreakpoints(p) self.points = p end return f end }
+  C_CurveUtil = { CreateColorCurve = function() local c = { points = {} } function c:SetType(t) self.type = t end function c:AddPoint(x, color) self.points[#self.points + 1] = { x, color } end return c end }
+`;
+
+// One totem cell's state: alpha, icon, plain sweep, duration object, numbers shown, secure attributes.
+export const totemCell = (addon, slot) => addon.eval(`local c = ns.GetModule("ClassBars").cells[${slot}]
+  return { alpha = c.__alpha, icon = c.icon.__texture, sweep = c.cooldown.__cooldown, object = c.cooldown.__durationObject,
+    numbers = c.cooldown.__hideNumbers == false, type2 = c:GetAttribute("type2"), slot = c:GetAttribute("totem-slot"), follows = c.__alphaFromBoolean }`);
+
+// TEST-ONLY quest giver: a farmer with a quest to take (wolves), one to turn in (a letter) and
+// a gossip option; two reward choices (boots sell for 50c, gloves for 3s) and bread you always get.
+export const QUEST_ENV = `
+  __calls, __prices = {}, { ["item:90021"] = 50, ["item:90022"] = 300 }
+  local function log(name) return function(...) __calls[#__calls + 1] = name .. " " .. tostring((...)) end end
+  UISpecialFrames = {}
+  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  UnitName = function(unit) if unit == "npc" then return "TEST-ONLY Farmer" end return "<name>" end
+  SetPortraitTexture = function(t, unit) t.__portrait = unit end
+  GetQuestDifficultyColor = function(level) return { r = level > 10 and 1 or 0.25, g = 0.75, b = 0.25 } end
+  C_Item = { GetItemQualityColor = function() return 0, 0.44, 0.87 end, GetItemInfo = function(link) return "x", link, 1, 1, 1, "", "", 1, "", "", __prices[link] end }
+  __avail = { { title = "TEST-ONLY Wolves", questLevel = 8, questID = 90031 } }
+  __active = { { title = "TEST-ONLY Letter", questLevel = 12, questID = 90032, isComplete = true } }
+  __options = { { name = "TEST-ONLY Tell me more", icon = 90041, gossipOptionID = 90041, orderIndex = 0 } }
+  C_GossipInfo = { GetText = function() return __greeting end, GetAvailableQuests = function() return __avail end,
+    GetActiveQuests = function() return __active end, GetOptions = function() return __options end,
+    SelectAvailableQuest = log("avail"), SelectActiveQuest = log("active"), SelectOption = log("option"), CloseGossip = log("closeGossip") }
+  __greeting = "TEST-ONLY Well met, <name>."
+  GetTitleText = function() return "TEST-ONLY Wolves" end
+  GetQuestText = function() return "TEST-ONLY Wolves trouble the farm." end
+  GetObjectiveText = function() return "Slay 8 TEST-ONLY Wolves." end
+  GetProgressText = function() return "TEST-ONLY Done yet?" end
+  GetRewardText = function() return "TEST-ONLY Thank you." end
+  GetGreetingText = function() return "TEST-ONLY Hello." end
+  __choices = { { "TEST-ONLY Boots", "TEST-ONLY-ICON", 1, 3, "item:90021" }, { "TEST-ONLY Gloves", "TEST-ONLY-ICON", 1, 2, "item:90022" } }
+  __rewards = { { "TEST-ONLY Bread", "TEST-ONLY-ICON", 5, 1, "item:90023" } }
+  GetNumQuestChoices = function() return #__choices end
+  GetNumQuestRewards = function() return #__rewards end
+  GetNumQuestItems = function() return 0 end
+  GetQuestItemInfo = function(kind, i) local x = (kind == "choice" and __choices or __rewards)[i] return x[1], x[2], x[3], x[4] end
+  GetQuestItemLink = function(kind, i) return (kind == "choice" and __choices or __rewards)[i][5] end
+  GetRewardMoney = function() return 1200 end
+  GetRewardXP = function() return 450 end
+  __completable, __autoAccept, __shift = true, false, false
+  IsQuestCompletable = function() return __completable end
+  QuestGetAutoAccept = function() return __autoAccept end
+  IsShiftKeyDown = function() return __shift end
+  AcceptQuest, DeclineQuest, CompleteQuest, CloseQuest, AcknowledgeAutoAcceptQuest = log("accept"), log("decline"), log("complete"), log("closeQuest"), log("ack")
+  GetQuestReward = log("reward")
+  __greetAvail, __greetActive = 1, 0
+  GetNumAvailableQuests = function() return __greetAvail end
+  GetNumActiveQuests = function() return __greetActive end
+  GetAvailableTitle = function() return "TEST-ONLY Rats" end
+  GetAvailableLevel = function() return 5 end
+  GetActiveTitle = function() return "TEST-ONLY Parcel", false end
+  GetActiveLevel = function() return 6 end
+  SelectAvailableQuest, SelectActiveQuest = log("greetAvail"), log("greetActive")
+  QuestFrame = CreateFrame("Frame", "QuestFrame", UIParent) QuestFrame:RegisterEvent("QUEST_DETAIL") QuestFrame:RegisterEvent("QUEST_LOG_UPDATE")
+  CustomGossipFrameManager = CreateFrame("Frame", "CustomGossipFrameManager", UIParent) CustomGossipFrameManager:RegisterEvent("GOSSIP_SHOW")
+  GameTooltip = CreateFrame("Frame", "GameTooltip", UIParent)
+  GameTooltip.SetOwner = function() end
+  GameTooltip.SetQuestItem = function(self, kind, i) self.__questItem = kind .. " " .. i end
+`;
+
+// TEST-ONLY away player: a level 42 mage in a made-up zone, 300 of 1000 XP into the level.
+export const AFK_ENV = `
+  __afk, __level = false, 42
+  UnitIsAFK = function(unit) return unit == "player" and __afk end
+  UnitLevel = function() return __level end
+  GetMaxPlayerLevel = function() return 60 end
+  GetRealZoneText = function() return "TEST-ONLY Vale" end
+  GetSubZoneText = function() return "TEST-ONLY Hamlet" end
+  UnitXP = function() return 300 end
+  UnitXPMax = function() return 1000 end
+  date = function() return "21:04" end
 `;

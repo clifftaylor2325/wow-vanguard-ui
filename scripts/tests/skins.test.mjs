@@ -11,7 +11,8 @@ it("skin API", () => {
   `);
   expect(addon.eval("return __early") === 1, "a skin registered before login runs at login with apiVersion 1").toBeTruthy();
   expect(addon.eval("return __dup") === null, "the first registration of a name wins").toBeTruthy();
-  expect(chatHas(addon, /skin for Broken failed: .*oops/), "a failing skin is reported, not raised").toBeTruthy();
+  expect(chatHas(addon, /skin for Broken: .*oops/), "a failing skin is reported, not raised").toBeTruthy();
+  expect(addon.eval("for _, s in ipairs(ns.SkinList()) do if s.name == 'Broken' then return s.error end end"), "and /fui skins still knows the error").toMatch(/oops/);
   addon.eval('ForeverUI.RegisterSkin("Late", function() __late = true end)');
   expect(addon.eval("return __late") === true, "a skin registered after login runs at once").toBeTruthy();
   const off = loggedIn('ForeverUI.RegisterSkin("Muted", function() __muted = true end)', {

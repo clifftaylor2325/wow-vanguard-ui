@@ -12,7 +12,7 @@ it("without issecretvalue nothing is secret, and a failing after-combat update i
   addon.eval("ns.OutOfCombat(function() error('TEST-ONLY boom') end) ns.OutOfCombat(function() __ran = true end)");
   addon.clearChat();
   addon.world.combat(false);
-  expect(addon.chat().join("\n")).toMatch(/after-combat update failed: .*TEST-ONLY boom/);
+  expect(addon.chat().join("\n")).toMatch(/after-combat update: .*TEST-ONLY boom/);
   expect(addon.eval("return __ran")).toBe(true);
 });
 

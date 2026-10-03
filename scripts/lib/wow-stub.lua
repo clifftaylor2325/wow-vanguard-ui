@@ -267,6 +267,9 @@ end
 -- Textures: desaturation, recorded.
 function methods:SetDesaturated(on) self.__desaturated = on == true end
 
+-- Buttons: the click types registered, as given.
+function methods:RegisterForClicks(...) self.__clicks = { ... } end
+
 -- Buttons: whether they're enabled, recorded.
 function methods:IsEnabled() return self.__disabled ~= true end
 
@@ -337,7 +340,7 @@ function methods:GetStatusBarTexture() return self.__barTexture end
 -- Status bars: range, value and color, recorded as given (secrets included).
 function methods:SetMinMaxValues(lo, hi) self.__min, self.__max = lo, hi end
 function methods:GetMinMaxValues() return self.__min or 0, self.__max or 0 end
-function methods:SetValue(v) self.__value = v end
+function methods:SetValue(v, ease) self.__value, self.__ease = v, ease end
 function methods:GetValue() return self.__value or 0 end
 function methods:SetStatusBarColor(r, g, b, a) self.__barColor = { r, g, b, a or 1 } end
 
@@ -500,6 +503,14 @@ end
 function SecureHandlerWrapScript(frame, script, _, preBody)
   frame.__wraps = frame.__wraps or {}
   frame.__wraps[script] = preBody
+end
+
+-- TEST-ONLY: runs a snippet with self bound to the frame, as the client's restricted
+-- environment does, without its restrictions (Lua 5.3 load with an env table).
+function SecureHandlerExecute(frame, body)
+  local env = setmetatable({ self = frame }, { __index = _G })
+  local fn = assert(load(body, "=snippet", "t", env))
+  fn()
 end
 
 -- Removes a recorded wrapper.
