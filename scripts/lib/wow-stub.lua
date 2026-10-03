@@ -442,6 +442,14 @@ function SecureHandlerWrapScript(frame, script, _, preBody)
   frame.__wraps[script] = preBody
 end
 
+-- TEST-ONLY: runs a snippet with self bound to the frame, as the client's restricted
+-- environment does, without its restrictions (Lua 5.3 load with an env table).
+function SecureHandlerExecute(frame, body)
+  local env = setmetatable({ self = frame }, { __index = _G })
+  local fn = assert(load(body, "=snippet", "t", env))
+  fn()
+end
+
 -- Removes a recorded wrapper.
 function SecureHandlerUnwrapScript(frame, script)
   if frame.__wraps then frame.__wraps[script] = nil end
