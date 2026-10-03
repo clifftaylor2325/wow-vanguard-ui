@@ -302,7 +302,8 @@ it("WoW Forever client: interface, hidden auras, no specializations", () => {
   expect(chatHas(addon, /no specializations/), "/fui spec explains there are no specializations").toBeTruthy();
   addon.eval('ns.Options.Show("profiles")');
   expect(shownText(addon, "YOUR PROFILES") && !shownText(addon, "SPECIALIZATION"), "the Profiles page has no spec section").toBeTruthy();
-  addon.eval('UnitClass = function() return "Paladin", "PALADIN" end');
+  // The names are read once per login (or list change), so a paladin is a new login here.
+  addon.eval('UnitClass = function() return "Paladin", "PALADIN" end ns.GetModule("RaidHealing").Forget()');
   expect(addon.eval('for _, n in ipairs(ns.GetModule("RaidHealing").BuffNames()) do if n == "Greater Blessing of Kings" then return true end end'), "any blessing counts for a paladin").toBeTruthy();
 });
 
