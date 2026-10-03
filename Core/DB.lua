@@ -60,7 +60,8 @@ end
 -- Runs at ADDON_LOADED, when WoW has restored them.
 local function initDB()
   local from = savedVersion()
-  ForeverUIDB = fill(type(ForeverUIDB) == "table" and ForeverUIDB or {}, { version = DB_VERSION, profiles = {} })
+  ForeverUIDB = fill(type(ForeverUIDB) == "table" and ForeverUIDB or {}, { profiles = {} })
+  ForeverUIDB.version = from or DB_VERSION
   if from and from < DB_VERSION then ns.MigrateDB(from, DB_VERSION) end
   ForeverUICharDB = fill(type(ForeverUICharDB) == "table" and ForeverUICharDB or {}, { profile = DEFAULT_PROFILE })
   ForeverUIDB.profiles[ForeverUICharDB.profile] = ForeverUIDB.profiles[ForeverUICharDB.profile] or {}
