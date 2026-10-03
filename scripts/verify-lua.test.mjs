@@ -1685,24 +1685,43 @@ it("a ForeverUI button on the game menu opens the options", () => {
   expect(loggedIn("").eval("return ns.gameMenuButton == nil"), "no game menu, nothing added").toBe(true);
 });
 
-// TEST-ONLY boss: one boss in the fight, and the game's boss frame holder (an Edit Mode frame).
+// TEST-ONLY boss: one boss in the fight, and the game's boss frame holder (an Edit Mode frame,
+// protected through its five secure boss buttons, which register the engage event).
 const BOSS_ENV = `
   __units.boss1 = { name = "TEST-ONLY Boss", hp = 5000, maxhp = 10000, power = 0, maxpower = 0, ptype = "MANA" }
   hooksecurefunc = function(t, name, fn) local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
   BossTargetFrameContainer = CreateFrame("Frame", "BossTargetFrameContainer", UIParent)
+  BossTargetFrameContainer:RegisterEvent("PLAYER_ENTERING_WORLD")
+  BossTargetFrameContainer.IsProtected = function() return true, false end
+  for i = 1, 5 do
+    CreateFrame("Button", "Boss" .. i .. "TargetFrame", BossTargetFrameContainer, "SecureUnitButtonTemplate"):RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT")
+  end
 `;
 
-it("boss frames: five in a column at the top left, the game's hidden in place", () => {
+// What the game's boss holder and its first and last boss button look like: shown, parked, listening, hooked.
+const bossHolder = (addon) => addon.eval(`local c, b1, b5 = BossTargetFrameContainer, Boss1TargetFrame, Boss5TargetFrame
+  return { c:IsShown(), c:GetParent() == UIParent, c:IsEventRegistered("PLAYER_ENTERING_WORLD"), rawget(c, "Show") == nil and rawget(c, "SetShown") == nil,
+    b1:IsEventRegistered("INSTANCE_ENCOUNTER_ENGAGE_UNIT"), b5:IsEventRegistered("INSTANCE_ENCOUNTER_ENGAGE_UNIT"), b1:GetParent() == c, b5:GetParent() == c }`);
+
+it("boss frames: five in a column at the top left, the game's put away", () => {
   const addon = loggedIn(UNITS_ENV + BOSS_ENV);
   expect(addon.eval(`return { ForeverUI_boss5 ~= nil, ForeverUI_boss1.__watched, ForeverUI_boss2.__points.TOPLEFT.rel == ForeverUI_boss1, ForeverUI_boss2:GetWidth() }`), "five boss frames, each shown while its boss exists, stacked").toEqual([true, true, true, 150]);
   expect(addon.eval("return { ns.MoverPoint('uf_boss1') }"), "movable, from the top-left corner").toEqual(["TOPLEFT", "TOPLEFT", 20, -20]);
   addon.eval("__units.boss1.hp = 4200");
   addon.fire("INSTANCE_ENCOUNTER_ENGAGE_UNIT");
   expect(addon.eval("return { ForeverUI_boss1.health.__value, ForeverUI_boss1.name:GetText() }"), "a boss joining the fight shows on its frame").toEqual([4200, "TEST-ONLY Boss"]);
-  addon.eval("BossTargetFrameContainer:Show()");
-  expect(addon.eval("return { BossTargetFrameContainer:IsShown(), BossTargetFrameContainer:GetParent() == UIParent }"), "the game's boss frames stay hidden, in place (Edit Mode keeps working)").toEqual([false, true]);
+  expect(bossHolder(addon), "the game's holder is hidden, parked, silenced and has no Show hook; its boss buttons are silenced and out of it").toEqual([false, false, false, true, false, false, false, false]);
+  expect(addon.eval("return { BossTargetFrameContainer:GetParent():IsShown(), Boss5TargetFrame:IsShown() }"), "under a parent that is hidden").toEqual([false, false]);
   const off = loggedIn(UNITS_ENV + BOSS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { UnitFrames = { boss = false } } }" });
-  expect(off.eval("return { ForeverUI_boss1 == nil, BossTargetFrameContainer:IsShown() }"), "switched off: no boss frames, the game keeps its own").toEqual([true, true]);
+  expect(off.eval("return ForeverUI_boss1 == nil"), "switched off: no boss frames").toBe(true);
+  expect(bossHolder(off), "and the game keeps its own, untouched").toEqual([true, true, true, true, true, true, true, true]);
+});
+
+it("boss frames: the game's holder is put away only out of combat", () => {
+  const addon = loggedIn(UNITS_ENV + BOSS_ENV + "__wfgStub.inCombat = true");
+  expect([addon.eval("return ForeverUI_boss1 == nil"), ...bossHolder(addon)], "in combat nothing is touched").toEqual([true, true, true, true, true, true, true, true, true]);
+  setCombat(addon, false);
+  expect([addon.eval("return ForeverUI_boss1 ~= nil"), ...bossHolder(addon)], "when combat ends it is put away, still without a hook").toEqual([true, false, false, false, true, false, false, false, false]);
 });
 
 // TEST-ONLY group: you lead a party; every raid tool call is recorded.
@@ -4843,6 +4862,18 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   addon.eval("function ForeverUI_MenuStrip:IsMouseOver() return true end __wfgStub.advance(0.3)");
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "and shows with the mouse over it").toBe(1);
   expect(addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p.rel == ForeverUI_QuestTracker, ObjectiveTrackerFrame:GetHeight() }"), "the quest tracker sits under the info strip, no taller than its spot").toEqual([true, 248]);
+});
+
+it("the game's extras: a protected frame is hidden once, out of combat, with no Show hook", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + "ProtectedBar = CreateFrame('Frame', 'ProtectedBar', UIParent) ProtectedBar.IsProtected = function() return true, false end __wfgStub.inCombat = true");
+  // Shown, still under UIParent, and without a raw Show or SetShown hook.
+  const state = () => addon.eval("local f = ProtectedBar return { f:IsShown(), f:GetParent() == UIParent, rawget(f, 'Show') == nil and rawget(f, 'SetShown') == nil }");
+  addon.eval("ns.GetModule('DataBars').Suppress('ProtectedBar')");
+  expect(state(), "in combat it is left alone, with no hook").toEqual([true, true, true]);
+  setCombat(addon, false);
+  expect(state(), "after combat it is hidden where it is, still with no hook").toEqual([false, true, true]);
+  addon.eval("ProtectedBar:Show() ns.GetModule('DataBars').Suppress('ProtectedBar')");
+  expect(state(), "hidden once: shown again when the game shows it, and a second Suppress does nothing").toEqual([true, true, true]);
 });
 
 it("the game's extras: each switch off leaves the game's frame alone, and missing frames are fine", () => {

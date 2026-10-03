@@ -41,6 +41,11 @@ UF.BOSS = { count = 5, w = 150, h = 26, gap = 6, label = "Boss frames", point = 
 
 -- Blizzard frames replaced when hideBlizzard is on (only those this client has).
 local BLIZZARD_FRAMES = { "PlayerFrame", "TargetFrame", "FocusFrame", "PetFrame", "PartyFrame" }
+-- The game's boss frames: the holder is an ancestor of the secure boss buttons (protected with them, so an
+-- insecure Show hook's Hide would be blocked in combat), and the buttons' own INSTANCE_ENCOUNTER_ENGAGE_UNIT
+-- handler is what shows the holder, so holder and buttons are silenced and parked together.
+local BOSS_FRAMES = { "BossTargetFrameContainer", "Boss1TargetFrame", "Boss2TargetFrame", "Boss3TargetFrame",
+  "Boss4TargetFrame", "Boss5TargetFrame" }
 
 
 UF.frames = {}
@@ -425,11 +430,12 @@ end
 -- Shared with modules that replace other game frames (PlayerAuras).
 UF.HideBlizzard = hideBlizzard
 
--- Hides the game's frames ForeverUI replaces. The boss frames' holder is an
--- Edit Mode frame, so it's hidden in place (moving it breaks Edit Mode).
+-- Hides the game's frames ForeverUI replaces, the boss holder and buttons too when
+-- ForeverUI draws bosses. Runs from build, so out of combat, with no Show hook.
 local function hideReplaced(settings)
   for _, name in ipairs(BLIZZARD_FRAMES) do hideBlizzard(name) end
-  if settings.boss then ns.GetModule("DataBars").Suppress("BossTargetFrameContainer") end
+  if not settings.boss then return end
+  for _, name in ipairs(BOSS_FRAMES) do hideBlizzard(name) end
 end
 
 -- Builds every frame. Secure frames can't be set up in combat, so this waits.
