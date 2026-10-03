@@ -1329,6 +1329,7 @@ it("menu and bag strips: they re-fit when the game lays the bars out or resizes 
   expect(bagXY(addon, "BOTTOMRIGHT"), "and keeps the bag strip just above it").toEqual([-16, 20 + stripSizes(addon)[1] + 6]);
 });
 
+// The bag strip's x offset at a point name (nil when it has no such point).
 const bagX = (addon, point) => addon.eval(`local p = ForeverUI_BagStrip.__points.${point} return p and p.x`);
 
 it("menu and bag strips: a saved bag position wins; the default follows the menu strip's spot", () => {
