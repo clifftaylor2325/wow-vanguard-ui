@@ -111,6 +111,48 @@ it("raid frames with secure snippets keep the init snippet", () => {
   expect(addon.eval("return ForeverUI_RaidUnitButton1.fuiHeaderSetup == nil"), "the module leaves set-up to the snippet").toBe(true);
 });
 
+// TEST-ONLY: logs what the raid header is told, in order (its attributes, the visibility driver, Show); the driver hides the header, as it does for a player who is not in a group.
+const HEADER_LOG = `__log = {}
+  local create, drive = CreateFrame, RegisterAttributeDriver
+  CreateFrame = function(kind, name, ...)
+    local f = create(kind, name, ...)
+    if name == "ForeverUI_Raid" then
+      local set, show = f.SetAttribute, f.Show
+      f.SetAttribute = function(self, k, v) __log[#__log + 1] = k .. "=" .. tostring(v) return set(self, k, v) end
+      f.Show = function(self) __log[#__log + 1] = "show" return show(self) end
+    end
+    return f
+  end
+  RegisterAttributeDriver = function(f, attr, v)
+    if f:GetName() == "ForeverUI_Raid" then __log[#__log + 1] = "driver " .. attr f:Hide() end
+    return drive(f, attr, v)
+  end
+`;
+
+// The header's log split at its first Show: what came before, what came after, and how many Shows there were.
+const splitAtShow = (addon) => {
+  const log = addon.eval("return __log");
+  const first = log.indexOf("show");
+  return { before: log.slice(0, first), after: log.slice(first), shows: log.filter((entry) => entry === "show").length };
+};
+
+it("the raid header is configured before the first precreate shows it, and stays hidden if the driver hid it", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEADER_LOG);
+  const { before, after, shows } = splitAtShow(addon);
+  expect(["showRaid=true", "showParty=true", "showPlayer=true", "showSolo=false", "driver state-visibility", "groupBy=GROUP", "unitsPerColumn=5"].filter((entry) => !before.includes(entry)),
+    "what the header shows, how it groups and the visibility driver are all set before the first Show").toEqual([]);
+  expect([before[before.length - 1], after.slice(0, 2), shows], "then it is shown once, with the negative start index, and the index goes back to 1").toEqual(["startingIndex=-39", ["show", "startingIndex=1"], 1]);
+  expect(addon.eval("return { ForeverUI_Raid:GetAttribute('startingIndex'), ForeverUI_Raid:IsShown() }"), "the header the driver hid stays hidden").toEqual([1, false]);
+});
+
+it("without snippets the header is configured before each precreate, and the one that shows it again leaves it as it was", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + NO_SNIPPETS + HEADER_LOG);
+  const { before, after, shows } = splitAtShow(addon);
+  expect([before.includes("showRaid=true"), before.includes("showPlayer=true"), before.includes("driver state-visibility"), shows], "configured before the first Show, which runs again once the probe says no snippets").toEqual([true, true, true, 2]);
+  expect(after.lastIndexOf("show") > after.indexOf("_initialAttributeNames=*type1,*type2"), "the second Show comes after the header copies the clicks itself").toBe(true);
+  expect(addon.eval("return { ForeverUI_Raid:GetAttribute('startingIndex'), ForeverUI_Raid:IsShown() }"), "start index back to 1, and still hidden").toEqual([1, false]);
+});
+
 // TEST-ONLY group status calls for the marks (no icons, checks or leaders), so their reads can be counted.
 const MARK_CALLS = `
   GetRaidTargetIndex = function() return nil end
