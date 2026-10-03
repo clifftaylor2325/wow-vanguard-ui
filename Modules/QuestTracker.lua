@@ -2,10 +2,13 @@
 -- (Modules/MenuStrip.lua makes the spot): each quest you watch as a block,
 --   * "[12] Title" in its difficulty color ("Ready to turn in" when done),
 --   * its objectives, gray until each is done, then green,
---   * its usable quest item as a button beside it (the game's own item use).
+--   * its usable quest item as a button beside it (the game's own item use, with
+--     its cooldown, a red tint out of range and the game's item tooltip).
 -- Left-click a title to open the quest; right-click to stop watching it.
 -- Quests are in the game's order, or nearest first. The game's objective
 -- tracker is hidden in place while this one shows (it's an Edit Mode frame).
+-- In combat the text still updates; the item buttons are secure, so they stay put
+-- and are placed once, when combat ends.
 
 local ADDON, ns = ...
 
@@ -53,9 +56,14 @@ local function questItem(logIndex)
   if type(link) == "string" then return { link = link, texture = texture } end
 end
 
+-- A quest's place in the log (it moves as quests come and go), or nil when the log doesn't have it.
+function QT.LogIndex(id)
+  return ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
+end
+
 -- One watched quest: { id, title, level, ready, objectives, item }, or nil when the log doesn't have it.
 function QT.Quest(id)
-  local index = ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
+  local index = QT.LogIndex(id)
   local info = index and questLog("GetInfo", index)
   if type(info) ~= "table" then return nil end
   local ready = yes(questLog("ReadyForTurnIn", id)) or yes(questLog("IsComplete", id))
@@ -127,4 +135,5 @@ function QT.Enable(settings)
   if not settings.own then return end
   ns.OutOfCombat(build)
   for _, event in ipairs(QT.EVENTS) do ns.On(event, refreshSoon) end
+  ns.On("BAG_UPDATE_COOLDOWN", QT.UpdateCooldowns)
 end

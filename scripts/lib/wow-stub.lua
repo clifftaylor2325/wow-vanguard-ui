@@ -252,6 +252,8 @@ function methods:GetCheckedTexture() return self.__checkedTexture end
 -- Cooldowns: the last start and duration given, or the duration object.
 function methods:SetCooldown(start, duration) self.__cooldown = { start, duration } end
 function methods:SetCooldownFromDurationObject(d) self.__durationObject = d end
+-- Clearing a cooldown forgets what it was given.
+function methods:Clear() self.__cooldown, self.__durationObject = nil, nil end
 function methods:SetHideCountdownNumbers(hide) self.__hideNumbers = hide end
 function methods:SetSwipeColor(r, g, b, a) self.__swipeColor = { r, g, b, a } end
 function methods:SetReverse(on) self.__reverse = on end
