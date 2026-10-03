@@ -3677,12 +3677,20 @@ it("events: a broken game error handler cannot lose the record", () => {
   expect(none.eval(THROWING_HANDLERS + "return { #__ran, ns.errors[#ns.errors].text }"), "a client whose handler slot is empty is treated like one without").toEqual([1, expect.stringMatching(/^event TEST_ONLY_EVENT: .*TEST-ONLY first$/)]);
 });
 
-it("events: Blizzard's CallErrorHandler is preferred when the client has it", () => {
-  const addon = loggedIn(`__called = nil CallErrorHandler = function(err) __called = err end
+it("events: Blizzard's CallErrorHandler is preferred, and called straight from the failing stack's handler", () => {
+  const addon = loggedIn(`__called = nil CallErrorHandler = function(err) __called = err __caller = debug.getinfo(2, "S").what end
     geterrorhandler = function() return function() __wrong = true end end`);
-  const out = addon.eval(THROWING_HANDLERS + "return { called = __called, wrong = __wrong }");
+  const out = addon.eval(THROWING_HANDLERS + "return { called = __called, wrong = __wrong, caller = __caller }");
   expect(out.called, "CallErrorHandler got the raw error").toMatch(/TEST-ONLY first$/);
   expect(out.wrong, "and geterrorhandler was not called as well").toBeUndefined();
+  expect(out.caller, "its caller is a Lua function (the message handler), not pcall, so the popup's stack starts at the failing frames").toBe("Lua");
+});
+
+it("events: a game handler that fails inside a failing handler keeps the record, loses nothing after, and is not told twice", () => {
+  const addon = loggedIn(`__calls = 0 geterrorhandler = function() return function() __calls = __calls + 1 error("TEST-ONLY handler broke") end end`);
+  const out = addon.eval("__calls = 0 " + THROWING_HANDLERS + "return { ran = #__ran, n = #ns.errors, text = ns.errors[1].text, calls = __calls }");
+  expect(out, "the record is kept once, the second handler ran, the broken handler was called once").toEqual({ ran: 1, n: 1, text: expect.stringMatching(/TEST-ONLY first$/), calls: 1 });
+  expect(addon.eval('ns.Try("TEST-ONLY again", error, "second") return __calls'), "the next failure is forwarded again (the guard did not stay set)").toBe(2);
 });
 
 it("mover coordinates with no handle", () => {

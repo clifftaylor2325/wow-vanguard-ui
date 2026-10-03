@@ -49,18 +49,25 @@ local function keep(text, stackText)
   return e
 end
 
--- Hands an error to the game's own handler (the Lua error popup, or an error
--- addon) when the client has one. Blizzard's CallErrorHandler comes first: it
+-- The game's own error handler (the Lua error popup, or an error addon), or
+-- nil when the client has none. Blizzard's CallErrorHandler comes first: it
 -- tells the popup where the failing stack starts, which a bare
 -- geterrorhandler() call does not. Neither exists in the test stub.
-function ns.ForwardError(err)
-  if type(CallErrorHandler) == "function" then return CallErrorHandler(err) end
+local function gameHandler()
+  if type(CallErrorHandler) == "function" then return CallErrorHandler end
   local handler = type(geterrorhandler) == "function" and geterrorhandler()
-  if type(handler) == "function" then handler(err) end
+  return type(handler) == "function" and handler or nil
+end
+
+-- Hands an error to the game's handler, if there is one.
+function ns.ForwardError(err)
+  local handler = gameHandler()
+  if handler then return handler(err) end
 end
 
 -- Tells the game's handler, under pcall; not while it is already handling one
--- of ours (an error addon that fails inside ours can't loop).
+-- of ours (an error addon that fails inside ours can't loop). The pcall adds
+-- frames, so this is for errors with no failing stack to point at (ns.Report).
 local function forward(text)
   if forwarding then return end
   forwarding = true
@@ -69,8 +76,8 @@ local function forward(text)
 end
 
 -- Keeps the error with the stack from `level` frames up (see stack), tells
--- chat the first time, and the game's handler every time.
-local function report(where, err, level)
+-- chat the first time, counts it; returns the text the game's handler gets.
+local function record(where, err, level)
   local text = where .. ": " .. errorText(err)
   local e = byText[text]
   if not e then
@@ -78,12 +85,12 @@ local function report(where, err, level)
     ns.Chat(text .. "  (once per error; /fui errors has the stack)")
   end
   e.count = e.count + 1
-  forward(text)
+  return text
 end
 
 -- Reports an error caught at `where` (a short name of the site), with the caller's stack.
 function ns.Report(where, err)
-  report(where, err, 4)
+  forward(record(where, err, 4))
 end
 
 -- Forgets every caught error (/fui errors clear).
@@ -96,15 +103,25 @@ local current
 
 -- xpcall's message handler. It runs while the failing stack is still there,
 -- so the report (the stack, the game's handler) is made from here; once
--- xpcall has returned the frames are gone. The error itself passes through.
+-- xpcall has returned the frames are gone. The game's handler is called
+-- straight from this function, with no pcall in between, so Blizzard's
+-- CallErrorHandler (which reports from "the previous function") starts the
+-- popup's stack here, at the failing frames. A handler that fails is not
+-- guarded: the record is already kept, and the failure it raises passes
+-- through here silently (forwarding stays set until xpcall returns).
 local function traced(err)
-  report(current, err, 4)
+  if forwarding then return err end
+  local text = record(current, err, 4)
+  local handler = gameHandler()
+  forwarding = handler ~= nil
+  if handler then handler(text) end
+  forwarding = false
   return err
 end
 
--- Puts the outer ns.Try's site back; passes xpcall's results through.
+-- Puts the outer ns.Try's site back and clears a handler failure; passes xpcall's results through.
 local function finished(outer, ...)
-  current = outer
+  current, forwarding = outer, false
   return ...
 end
 
