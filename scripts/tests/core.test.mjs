@@ -187,6 +187,61 @@ it("slash", () => {
   expect(chatHas(addon, /Unknown command/), "unknown commands say so").toBeTruthy();
 });
 
+// The chat lines printed by one /fui command, without the colored "ForeverUI:" prefix.
+const said = (addon, command) => {
+  addon.clearChat();
+  addon.slash(command);
+  return Array.from(addon.chat()).map((line) => line.replace(/^.*ForeverUI:\S*\s/, ""));
+};
+
+it("/fui perf: says what it can without the game's counters", () => {
+  const addon = loggedIn("GetCVar = nil C_CVar = nil SetCVar = nil C_Timer = nil");
+  expect(said(addon, "perf"), "no profiling setting and no memory counter: it says so, and lists nothing").toEqual(["CPU off (/fui perf cpu turns the game's profiling on)  ·  memory: the client can't say"]);
+  expect(said(addon, "perf cpu"), "no way to switch profiling").toEqual(["This client can't switch script profiling."]);
+  expect(said(addon, "perf watch"), "no timers to print with").toEqual(["This client has no timers to print with."]);
+  expect(said(addon, "perf bogus"), "anything else: the usage").toEqual(["Usage: /fui perf [cpu | watch]"]);
+});
+
+// TEST-ONLY counters: ForeverUI's CPU total (__cpu ms) and memory (2048 KB), each refreshed by its Update call (counted).
+const PERF_ENV = `
+  __cpu, __updates = 0, { cpu = 0, mem = 0 }
+  UpdateAddOnCPUUsage = function() __updates.cpu = __updates.cpu + 1 end
+  GetAddOnCPUUsage = function(name) return name == "ForeverUI" and __cpu or 0 end
+  UpdateAddOnMemoryUsage = function() __updates.mem = __updates.mem + 1 end
+  GetAddOnMemoryUsage = function(name) return name == "ForeverUI" and 2048 or 0 end
+`;
+
+it("/fui perf: CPU and memory with the change since the last report, the busiest functions, profiling and the watch", () => {
+  const addon = loggedIn(PERF_ENV);
+  expect(said(addon, "perf"), "profiling off: memory only").toEqual(["CPU off (/fui perf cpu turns the game's profiling on)  ·  memory 2.0 MB"]);
+  addon.eval("ns.OfferReload = function(why) __reload = why end");
+  said(addon, "perf cpu");
+  expect(addon.eval("return { GetCVar('scriptProfile'), __reload:find('starts after a reload') ~= nil }"), "perf cpu turns profiling on, with a reload offered").toEqual(["1", true]);
+  expect(said(addon, "perf")[0], "on, but not yet reloaded: the counter is still 0").toBe("CPU: profiling starts after a reload  ·  memory 2.0 MB");
+  // Every named function costs 1 ms, two of them more (callees included).
+  addon.eval(`__busy = { [ns.Theme.Panel] = 50, [ns.GetModule("Bags").SkinWindow] = 20 }
+    GetFunctionCPUUsage = function(fn, callees) __callees = callees return __busy[fn] or 1, 1 end
+    __cpu = 120`);
+  const report = said(addon, "perf");
+  expect(report.slice(0, 3), "the total, then the busiest functions, most first").toEqual(["CPU 120.0 ms in all  ·  memory 2.0 MB", "  1. Theme.Panel  50.0 ms", "  2. Bags.SkinWindow  20.0 ms"]);
+  expect([report.length, addon.eval("return __callees"), addon.eval("return { __updates.cpu, __updates.mem }")], "ten of them at most, with what they call, after refreshing both counters").toEqual([11, true, [2, 3]]);
+  addon.eval("__cpu = 150");
+  addon.advance(60, 5);
+  expect(said(addon, "perf")[0], "the change since the last report, and its rate").toBe("CPU 150.0 ms in all, +30.0 ms in the last 60 s (0.50 ms/s)  ·  memory 2.0 MB");
+  expect(said(addon, "perf watch"), "watch says how often it prints").toEqual(["Printing ForeverUI's CPU and memory every 60 s; /fui perf watch again stops."]);
+  addon.clearChat();
+  addon.eval("__cpu = 156");
+  addon.advance(60, 5);
+  expect(Array.from(addon.chat()).length, "a minute later: one line, no function list").toBe(1);
+  expect(said(addon, "perf watch"), "asked again, it stops").toEqual(["Stopped printing ForeverUI's CPU and memory."]);
+  addon.advance(120, 5);
+  expect(Array.from(addon.chat()).length, "and prints nothing more").toBe(1);
+  addon.eval("GetAddOnCPUUsage = nil");
+  expect(said(addon, "perf")[0], "profiling on with no counter").toBe("CPU: the client has no counter  ·  memory 2.0 MB");
+  said(addon, "perf cpu");
+  expect(addon.eval("return { GetCVar('scriptProfile'), __reload }"), "perf cpu again turns it off").toEqual(["0", "CPU profiling stops after a reload."]);
+});
+
 // Every distinct command word that follows "/fui " in the text, in order of first use.
 const fuiWords = (text) => [...new Set([...text.matchAll(/\/fui ([a-z]+)/g)].map((m) => m[1]))];
 

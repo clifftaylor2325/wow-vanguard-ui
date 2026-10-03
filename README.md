@@ -82,7 +82,10 @@ Download `ForeverUI-<version>.zip` from the [latest release](https://github.com/
 /fui binds                       this spec's click-casting and hover-key bindings
 /fui status
 /fui errors [clear]              what ForeverUI caught going wrong this session: the version, client and aura backend, then each distinct error once with how often it happened and its stack (paste it in a bug report; clear empties the list). An error is printed to chat the first time it happens and handed to the game's error popup or your error addon every time; an error in one module, skin, event handler or after-combat update is kept here and doesn't stop the others
+/fui perf [cpu|watch]            what ForeverUI costs: its CPU time (in all, and since the last report) and memory now, and its ten busiest functions; cpu turns the game's script profiling on or off (after a reload; it slows every addon a little, so turn it off when done); watch prints the line every minute until asked again
 ```
+
+To measure ForeverUI's CPU cost yourself: `/fui perf cpu`, reload, play a while (a raid pull is the hard case), then `/fui perf`; `/fui perf cpu` again (and a reload) turns profiling off.
 
 ## Skin API (for other addons)
 
