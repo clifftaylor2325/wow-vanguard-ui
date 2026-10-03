@@ -3297,6 +3297,7 @@ it("one-pixel borders at every resolution and UI scale", () => {
   }
   // The client's rounding gives whole pixels (2 at 1440p, 3 at 2160p); a border must not.
   for (const [h, rounded] of [[1440, 2], [2160, 3]]) {
+    pixels(h, 1, pixelUtilLua(h));
     expect(addon.eval(`return PixelUtil.GetNearestPixelSize(1, 1, 1) * ${h} / 768`), `GetNearestPixelSize at ${h}p`).toBeCloseTo(rounded, 9);
     expect(borderAt(1, h, true).h * h / 768, `a panel border at ${h}p`).toBeCloseTo(1, 9);
   }
@@ -3304,6 +3305,8 @@ it("one-pixel borders at every resolution and UI scale", () => {
   expect(addon.eval('UIParent:SetScale(0.71) local f = CreateFrame("Frame", nil, UIParent) f:SetScale(0.5) return ns.Theme.Pixel(f) * f:GetEffectiveScale() * 1440 / 768'), "a frame at its own scale").toBeCloseTo(1, 9);
   expect(pixels(1440, 1, "PixelUtil = { GetNearestPixelSize = function() return 999 end }"), "a PixelUtil without the factor falls back to the screen height").toBeCloseTo(1, 9);
   expect(pixels(1080, 1, "PixelUtil = { GetPixelToUIUnitFactor = function() return nil end }"), "a factor that is not a number falls back too").toBeCloseTo(1, 9);
+  expect(pixels(1440, 1, "PixelUtil = { GetPixelToUIUnitFactor = function() return 0 end }"), "a factor of zero falls back too").toBeCloseTo(1, 9);
+  expect(pixels(1440, 1, "PixelUtil = { GetPixelToUIUnitFactor = function() return -1 end }"), "a negative factor falls back too").toBeCloseTo(1, 9);
 });
 
 it("bundled font and logo", () => {
