@@ -1,7 +1,7 @@
 // clicks: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, RAID_ENV, UNITS_ENV, chatHas, key, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, RAID_ENV, UNITS_ENV, chatHas, loggedIn } from "./helpers.mjs";
 
 it("click casting", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + "GetSpecialization = function() return __spec end __spec = 1");
@@ -42,28 +42,6 @@ it("click casting", () => {
   expect(chatHas(addon, /Shift \+ 1 \(hover\)  ->  TEST-ONLY Flash Heal/), "/fui binds lists this spec's bindings").toBeTruthy();
 });
 
-it("click casting options", () => {
-  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + `GetSpecialization = function() return 1 end
-    IsControlKeyDown = function() return __ctrl == true end
-    C_Spell = { GetSpellName = function(id) return id == 139 and "TEST-ONLY Renew" or nil end }
-    GetCursorInfo = function() return __cursor, 1, "spell", 139 end
-    ClearCursor = function() __cursor = nil end`);
-  addon.eval('ns.Options.Show("clickcast")');
-  expect(addon.eval('return __click("Set key")'), "Set key starts capturing").toBeTruthy();
-  addon.eval(`__ctrl = true
-    for _, w in ipairs(__wfgStub.frames) do if w.capturing then w:GetScript("OnMouseDown")(w, "RightButton") end end`);
-  expect(addon.eval("for _, w in ipairs(__wfgStub.frames) do if w.input and w.keyText then return w.keyText:GetText() end end") === "Ctrl + Right click", "a Ctrl + right click is captured").toBeTruthy();
-  addon.eval(`__cursor = "spell"
-    for _, w in ipairs(__wfgStub.frames) do if w.input and w.keyText then w.input:GetScript("OnReceiveDrag")(w.input) end end`);
-  expect(addon.eval("for _, w in ipairs(__wfgStub.frames) do if w.input and w.keyText then return w.input:GetText() end end") === "TEST-ONLY Renew", "dropping a spell from the spellbook fills in its name").toBeTruthy();
-  expect(addon.eval('return __click("Add binding")'), "Add binding").toBeTruthy();
-  expect(addon.eval('local b = ns.GetModule("ClickCast").Bindings()[1] return b.key .. "=" .. b.value') === "ctrl-BUTTON2=TEST-ONLY Renew", "adds it for this spec").toBeTruthy();
-  expect(addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.remove and w.key == "ctrl-BUTTON2" and w:IsShown() then return w.text:GetText() end end') === "Ctrl + Right click  ->  TEST-ONLY Renew", "and lists it").toBeTruthy();
-  addon.eval('__click("Add binding")');
-  expect(addon.eval("for _, w in ipairs(__wfgStub.frames) do if w.input and w.keyText then return w.message:GetText() end end") === "Can't add: press a key or click first.", "an incomplete binding says what's missing").toBeTruthy();
-  expect(addon.eval('return __click("Remove")') && addon.eval('return #ns.GetModule("ClickCast").Bindings()') === 0, "Remove removes it").toBeTruthy();
-});
-
 it("click-casting validation, labels and unit frames", () => {
   const addon = loggedIn("", {
     // TEST-ONLY saved profile: unit-frame click casting starts on.
@@ -71,10 +49,11 @@ it("click-casting validation, labels and unit frames", () => {
   });
   const CC = 'ns.GetModule("ClickCast")';
   const bad = addon.eval(`local ok, err = ${CC}.Add("1", "spell", "   ") return err`);
-  expect(bad === "type or drag a spell", "a spell binding with no spell is refused").toBeTruthy();
+  expect(bad === "pick a spell", "a spell binding with no spell is refused").toBeTruthy();
   expect(addon.eval(`local _, err = ${CC}.Add("1", "macro", "") return err`) === "type the macro text", "a macro binding with no text is refused").toBeTruthy();
   expect(addon.eval(`return ${CC}.ActionText({ action = "target" })`) === "Target", "a target binding reads as Target").toBeTruthy();
-  expect(addon.eval(`return ${CC}.ActionText({ action = "menu" })`) === "Menu", "anything else reads as Menu").toBeTruthy();
+  expect(addon.eval(`return ${CC}.ActionText({ action = "menu" })`) === "Unit menu", "a menu binding reads as Unit menu").toBeTruthy();
+  expect(addon.eval(`return ${CC}.ActionText({ action = "what" })`) === "Unit menu", "anything unknown reads as Unit menu").toBeTruthy();
   const frames = addon.eval(`local n = 0 for _ in pairs(ns.GetModule("UnitFrames").frames) do n = n + 1 end return n`);
   expect(addon.eval(`return #${CC}.frames`) >= frames && frames > 0, "unit frames are registered when that setting is on").toBeTruthy();
 });

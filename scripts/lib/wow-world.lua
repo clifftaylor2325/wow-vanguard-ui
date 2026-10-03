@@ -98,10 +98,11 @@ function GetCursorPosition() return world.mouse.x, world.mouse.y end
 
 -- What's on the cursor: nil, or { type, id, ... } from a pickup.
 world.cursor = nil
--- The cursor's contents as type, id, subtype.
+-- The cursor's contents as type, id, subtype; a spell as the client gives it: "spell", book index, book type, spell id.
 function GetCursorInfo()
   local c = world.cursor
   if not c then return nil end
+  if c.type == "spell" then return "spell", c.index or 1, c.subType or "spell", c.id end
   return c.type, c.id, c.subType
 end
 -- Empties the cursor.
@@ -115,6 +116,8 @@ Enum = {
   LuaCurveType = { Linear = 0, Step = 1 },
   NumericRuleFormatRounding = { Down = 0, Up = 1, Nearest = 2 },
   PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 },
+  SpellBookSpellBank = { Player = 0, Pet = 1 },
+  SpellBookItemType = { None = 0, Spell = 1, FutureSpell = 2, PetAction = 3, Flyout = 4 },
   StatusBarInterpolation = { Immediate = 0, Smooth = 1 },
   TooltipDataType = { Item = 0, Spell = 1, Unit = 2 },
   WeaponSlot = { MainHand = 0, OffHand = 1 },
@@ -238,6 +241,14 @@ world.overrides = {}
 
 -- The keys bound to a command.
 function GetBindingKey(command) return unpack(world.bindings[command] or {}) end
+
+-- The command a key is bound to ("" when free), the reverse of world.bindings.
+function GetBindingAction(key)
+  for command, keys in pairs(world.bindings) do
+    for _, k in ipairs(keys) do if k == key then return command end end
+  end
+  return ""
+end
 
 -- Override bindings: key -> "frame:button", by owner.
 function SetOverrideBindingClick(owner, _, key, name, button)
@@ -830,6 +841,50 @@ C_Spell = {
   end,
 }
 
+-- Whether a spell is cast on friends (the healer's spells and buffs in the world).
+function C_Spell.IsSpellHelpful(key)
+  local _, s = spellOf(key)
+  return s ~= nil and s.helpful == true
+end
+
+-- The spellbook: world.book is the list of learned spellbook items, in book order,
+-- as { id, rank, passive, offSpec } over world.spells; C_SpellBook reads it as one
+-- skill line. world.learn(id, fields) adds a spell to both and fires SPELLS_CHANGED.
+world.book = {}
+
+-- Adds a spell to the world and the spellbook (fields: name, icon, rank, helpful, passive, offSpec, cost).
+function world.learn(id, fields)
+  world.spells[id] = world.spells[id] or { name = fields.name, icon = fields.icon or "Interface\\Icons\\TEST-ONLY", cost = fields.cost or 0, helpful = fields.helpful }
+  world.book[#world.book + 1] = { id = id, rank = fields.rank, passive = fields.passive, offSpec = fields.offSpec }
+  stub.fire("SPELLS_CHANGED")
+end
+
+-- Forgets every learned spell (the spellbook is empty again).
+function world.forgetAll()
+  world.book = {}
+  stub.fire("SPELLS_CHANGED")
+end
+
+C_SpellBook = {
+  -- One skill line while anything is learned.
+  GetNumSpellBookSkillLines = function() return #world.book > 0 and 1 or 0 end,
+  -- The one skill line holds every learned spell.
+  GetSpellBookSkillLineInfo = function(line) if line ~= 1 then return nil end return { name = "General", itemIndexOffset = 0, numSpellBookItems = #world.book } end,
+  -- A spellbook item as the client describes it: name, subName ("Rank 3"), icon, spellID, itemType, isPassive, isOffSpec.
+  GetSpellBookItemInfo = function(index, bank)
+    local item = bank == Enum.SpellBookSpellBank.Player and world.book[index]
+    local s = item and world.spells[item.id]
+    if not s then return nil end
+    return { name = s.name, subName = item.rank and ("Rank " .. item.rank) or "", iconID = s.icon, spellID = item.id, actionID = item.id,
+      itemType = Enum.SpellBookItemType.Spell, isPassive = item.passive == true, isOffSpec = item.offSpec == true }
+  end,
+  -- A spellbook item's name and rank text.
+  GetSpellBookItemName = function(index, bank)
+    local info = C_SpellBook.GetSpellBookItemInfo(index, bank)
+    return info and info.name, info and info.subName
+  end,
+}
+
 world.actions = {}
 
 -- The action in a slot (empty: {}).
@@ -1230,18 +1285,24 @@ local function tooltipAction(tip)
   end
 end
 
+-- The tooltip's setters, recorded so tests can read what it shows.
+local function tooltipSetters(tip)
+  -- What the tooltip was set to: a unit, an equipped item, a link, an item or a spell id.
+  function tip:SetUnit(unit) self.__unit = unit self.__lines = { { text = UnitName(unit) } } end
+  function tip:SetInventoryItem(unit, slot) self.__item = { unit = unit, slot = slot } end
+  function tip:SetHyperlink(link) self.__link = link end
+  function tip:SetItemByID(id) self.__itemId = id end
+  function tip:SetSpellByID(id) self.__spellId = id self.__lines = { { text = (world.spells[id] or {}).name } } end
+  function tip:GetItem() return self.__itemName, self.__itemLink end
+end
+
 -- GameTooltip: a hidden frame with the methods the addon calls, recorded.
 local function tooltipFrame()
   local tip = stub.newWidget("Frame", "GameTooltip", UIParent)
   tip:Hide()
   tooltipLines(tip)
   tooltipAction(tip)
-  -- What the tooltip was set to: a unit, an equipped item, a link or an item id.
-  function tip:SetUnit(unit) self.__unit = unit self.__lines = { { text = UnitName(unit) } } end
-  function tip:SetInventoryItem(unit, slot) self.__item = { unit = unit, slot = slot } end
-  function tip:SetHyperlink(link) self.__link = link end
-  function tip:SetItemByID(id) self.__itemId = id end
-  function tip:GetItem() return self.__itemName, self.__itemLink end
+  tooltipSetters(tip)
   return tip
 end
 
@@ -1267,6 +1328,6 @@ function GameTooltip_SetDefaultAnchor(tooltip, parent) tooltip:SetOwner(parent, 
 function world.reset()
   world.units = { player = defaultPlayer() }
   world.actions, world.quests, world.npc, world.merchant, world.trainer = {}, {}, nil, nil, nil
-  world.cursor, world.timers = nil, {}
+  world.cursor, world.timers, world.book = nil, {}, {}
   refreshWatches()
 end

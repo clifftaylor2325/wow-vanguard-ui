@@ -245,7 +245,9 @@ function lifecycle(addon) {
 //   removeAura(unit, name)
 //   setAction(slot, fields)        a spell (by world spell id) or any action fields; null clears
 //   addQuest(quest), openNpc(data)
-const WORLD_CALLS = ["unit", "setUnit", "removeUnit", "combat", "addAura", "removeAura", "setAction", "addQuest", "openNpc"];
+//   learn(id, fields)              a spell in the spellbook: { name, icon, rank, helpful, passive, offSpec }
+//   forgetAll()                    an empty spellbook
+const WORLD_CALLS = ["unit", "setUnit", "removeUnit", "combat", "addAura", "removeAura", "setAction", "addQuest", "openNpc", "learn", "forgetAll"];
 
 // The world: what the game API reports, from JS.
 function worldApi(addon) {

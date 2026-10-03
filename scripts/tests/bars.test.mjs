@@ -355,8 +355,9 @@ it("a dropped spell named by GetSpellInfo", () => {
     ClearCursor = function() __cleared = true end
   `);
   addon.eval('ns.Options.Show("clickcast")');
-  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.input and w.keyText then w.input:GetScript("OnReceiveDrag")(w.input) end end');
-  expect(addon.eval("for _, w in ipairs(__wfgStub.frames) do if w.input and w.keyText then return w.input:GetText() end end") === "TEST-ONLY Spark", "without C_Spell.GetSpellName, the dropped spell's name comes from GetSpellInfo").toBeTruthy();
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.key == "BUTTON4" and w.iconFrame then w:GetScript("OnReceiveDrag")(w) end end');
+  expect(addon.eval('local b = ns.GetModule("ClickCast").Binding("BUTTON4") return b and b.value') === "TEST-ONLY Spark", "without C_Spell.GetSpellName, a spell dropped on a cell is named by GetSpellInfo").toBeTruthy();
+  expect(addon.eval("return __cleared"), "and the cursor is cleared").toBe(true);
 });
 
 it("action bar cooldown numbers in the theme's font", () => {
