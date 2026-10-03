@@ -402,3 +402,26 @@ it("bar 1 with secure snippets keeps the snippet paging", () => {
   expect(addon.eval("local b = ForeverUI_Bar1 return { b.__states.page ~= nil, b:GetAttribute('_onstate-page') ~= nil, b.__drivers == nil or b.__drivers.actionpage == nil, ForeverUI_Bar1Button1:GetID() }"),
     "the state driver and its snippet, buttons without IDs").toEqual([true, true, true, 0]);
 });
+
+// TEST-ONLY game action buttons on the game's bars, each listening to cooldown and usable events as the game's do.
+const GAME_BUTTONS = `
+  for _, name in ipairs({ "ActionButton1", "ActionButton12", "MultiBarBottomLeftButton3", "MultiBar7Button12" }) do
+    local b = CreateFrame("CheckButton", name, MainMenuBar)
+    b:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN") b:RegisterEvent("SPELL_UPDATE_USABLE")
+  end
+`;
+
+it("the game's hidden action buttons are silenced, and one cooldown event refreshes the sweeps", () => {
+  const addon = loggedIn(ACTIONS_ENV + GAME_BUTTONS);
+  expect(addon.eval(`local out = {} for _, name in ipairs({ "ActionButton1", "ActionButton12", "MultiBarBottomLeftButton3", "MultiBar7Button12" }) do
+    out[#out + 1] = _G[name]:IsEventRegistered("ACTIONBAR_UPDATE_COOLDOWN") or _G[name]:IsEventRegistered("SPELL_UPDATE_USABLE") end return out`),
+    "no game action button listens to events any more").toEqual([false, false, false, false]);
+  addon.eval("__cooldowns = 0 local get = GetActionCooldown GetActionCooldown = function(...) __cooldowns = __cooldowns + 1 return get(...) end");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("return __cooldowns"), "SPELL_UPDATE_COOLDOWN no longer re-reads every button's cooldown").toBe(0);
+  addon.eval("__actions[1].cd = { 10, 30 }");
+  addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
+  expect([addon.eval("return __cooldowns > 0"), addon.eval("return ForeverUI_Bar1Button1.cooldown.__cooldown")], "ACTIONBAR_UPDATE_COOLDOWN does, and the sweep shows it").toEqual([true, [10, 30]]);
+  const kept = loggedIn(ACTIONS_ENV + GAME_BUTTONS, { savedVariables: "ForeverUIDB.profiles = { Default = { ActionBars = { hideBlizzard = false } } }" });
+  expect(kept.eval('return ActionButton1:IsEventRegistered("ACTIONBAR_UPDATE_COOLDOWN")'), "with the game's bars kept, its buttons keep their events").toBe(true);
+});

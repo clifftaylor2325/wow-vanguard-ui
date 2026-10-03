@@ -193,3 +193,11 @@ it("raid bursts: a roster burst is one refresh of every tile; a new target repai
   addon.fire("PLAYER_TARGET_CHANGED");
   expect([addon.eval("return __updates"), counted(addon).SetBorder, isTok(addon, borderOf(addon, "ForeverUI_RaidUnitButton3"), "accent")], "a new target: no tile refresh, one edge repainted").toEqual([0, 1, true]);
 });
+
+it("the hidden default raid frames are silenced", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + `CompactRaidFrameContainer:RegisterEvent("GROUP_ROSTER_UPDATE")
+    CompactRaidFrameManager = CreateFrame("Frame", "CompactRaidFrameManager", UIParent) CompactRaidFrameManager:RegisterEvent("GROUP_ROSTER_UPDATE")`);
+  expect(addon.eval(`local out = {} for _, f in ipairs({ CompactRaidFrameContainer, CompactRaidFrameManager }) do
+    out[#out + 1] = { f:IsEventRegistered("GROUP_ROSTER_UPDATE"), f:GetParent():IsShown() } end return out`),
+    "the manager and the container: hidden away, and no longer listening").toEqual([[false, false], [false, false]]);
+});
