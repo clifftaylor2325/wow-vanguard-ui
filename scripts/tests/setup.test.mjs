@@ -176,9 +176,8 @@ function layoutRects(addon, n, sw, sh) {
     if (p) out[key] = side === "above" ? { l: p.l, b: p.t + gap, r: p.l + w, t: p.t + gap + h } : { l: p.l, b: p.b - gap - h, r: p.l + w, t: p.b - gap };
   }
   if (n > 0) out.raid = raidRect(addon, spots.raid, n, sw, sh);
-  // Chat, where ForeverUI places it, with its tabs (22 tall) above the window.
-  const chat = addon.eval("local p = ChatFrame1 and ChatFrame1.__points.BOTTOMLEFT return p and { p.x, p.y, ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
-  if (chat) out.chat = rectAt(["BOTTOMLEFT", "BOTTOMLEFT", chat[0], chat[1]], chat[2], chat[3] + 22, sw, sh);
+  // Chat is a mover: its tabs (22 tall) ride above the window.
+  if (out.chat) out.chat.t += 22;
   return out;
 }
 
@@ -196,7 +195,7 @@ it("setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI 
   addon.eval("ForeverUI_InfoStrip:SetHeight(68)"); // the info strip at its tallest, with the leveling and DPS rows
   addon.eval("MicroMenuContainer:Layout() BagsBar:Layout()"); // the menu and bag strips at their laid-out sizes (314.4 and 198.2 wide, 36 tall)
   expect(moverSpots(addon).bagstrip.slice(4), "the bag strip is as laid out").toEqual([266 * 0.7 + 12, 36]);
-  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras", "petbar", "stancebar"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
+  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras", "petbar", "stancebar", "chat"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
   for (const layout of ["damage", "healing", "classic"]) {
     addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
     for (const grow of ["columns", "rows"]) {

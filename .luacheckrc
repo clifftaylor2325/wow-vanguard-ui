@@ -38,4 +38,6 @@ read_globals = {
   "GameTooltip_SetDefaultAnchor",
   -- Quest tracker item buttons: the quest item's cooldown and range (P2.10).
   "GetQuestLogSpecialItemCooldown", "IsQuestLogSpecialItemInRange",
+  -- P2.8 Chat: the game's list of chat window art names.
+  "CHAT_FRAME_TEXTURES",
 }
