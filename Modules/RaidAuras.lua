@@ -115,12 +115,15 @@ function RA.HotSpec(b, z, s)
     groups = { { filter = "HELPFUL|PLAYER|RAID_IN_COMBAT", max = count, size = z.icon, pandemic = true } } }
 end
 
--- Adds the aura rows to a raid button (RF setup hook).
+-- Adds the aura rows to a raid button (RF setup hook). The fallback highlight
+-- follows the debuff row, which carries the engine's: it is read right after
+-- that row is built, so a refusal on the hot row can't give the tile both.
 local function setup(b)
   local z, s = RF.TileZones(), RA.settings
   b.debuffRow = ns.Auras.Container(b, RA.DebuffSpec(b, z, s), nil)
+  local legacy = ns.Auras.BackendName() == "fallback"
   b.hotRow = ns.Auras.Container(b, RA.HotSpec(b, z, s), nil)
-  if ns.Auras.BackendName() == "fallback" then legacyDispel(b) end
+  if legacy then legacyDispel(b) end
 end
 
 -- Updating ------------------------------------------------------------------------------
