@@ -472,3 +472,26 @@ it("action buttons cast on yourself, your focus or the mouseover with the game's
     return out`);
   expect(attrs, "every button turns the three cast checks on, as the game's buttons do, and still uses its action").toEqual(Array(3).fill([true, true, true, "action"]));
 });
+
+it("bag, equipment, form, macro and charge events refresh the buttons they change", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  addon.eval("__actions[2].count = 9 __actions[3].usable = true");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect([button(addon, 1, 2).count, button(addon, 1, 3).color.slice(0, 3)], "BAG_UPDATE_DELAYED re-counts and re-checks usability").toEqual(["9", [1, 1, 1]]);
+  addon.eval("__actions[2].count = 7");
+  addon.fire("UNIT_INVENTORY_CHANGED", "target");
+  expect(button(addon, 1, 2).count, "another unit's inventory changes nothing").toBe("9");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  expect(button(addon, 1, 2).count, "your own inventory re-counts").toBe("7");
+  addon.eval("__actions[2].count = 6 __actions[1].tex = 'TEST-ONLY-EQUIPPED'");
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 13, false);
+  expect([button(addon, 1, 2).count, button(addon, 1, 1).icon], "an equipment change re-counts and repaints icons").toEqual(["6", "TEST-ONLY-EQUIPPED"]);
+  for (const [event, tex] of [["UPDATE_SHAPESHIFT_FORM", "TEST-ONLY-FORM"], ["UPDATE_MACROS", "TEST-ONLY-MACRO"], ["SPELL_UPDATE_ICON", "TEST-ONLY-MORPH"]]) {
+    addon.eval(`__actions[1].tex = '${tex}'`);
+    addon.fire(event);
+    expect(button(addon, 1, 1).icon, `${event} repaints the icon`).toBe(tex);
+  }
+  addon.eval("__actions[2].count = 2");
+  addon.fire("SPELL_UPDATE_CHARGES");
+  expect(button(addon, 1, 2).count, "SPELL_UPDATE_CHARGES re-counts").toBe("2");
+});

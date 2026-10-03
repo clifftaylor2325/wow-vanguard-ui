@@ -609,6 +609,23 @@ local function pollRange()
   end)
 end
 
+-- What you carry or wear changed: item counts, and whether an item can be used.
+local function refreshCarried()
+  each(updateCount)
+  each(updateUsable)
+end
+
+-- An icon may have changed (a form's attack icon, a macro, a spell that morphs).
+local function refreshIcons()
+  each(updateIcon)
+end
+
+-- Equipment changed: icons of equipped items, then counts and usability.
+local function onEquipment()
+  refreshIcons()
+  refreshCarried()
+end
+
 -- Event -> what it refreshes.
 local EVENTS = {
   -- One handler per event; most refresh one part of every button.
@@ -620,6 +637,14 @@ local EVENTS = {
   ACTIONBAR_UPDATE_USABLE = function() each(updateUsable) end,
   SPELL_UPDATE_USABLE = function() each(updateUsable) end,
   ACTIONBAR_UPDATE_STATE = function() each(updateChecked) end,
+  -- What the game's own buttons also follow: items you carry or wear, forms,
+  -- macros, and spells whose icon or charges change.
+  BAG_UPDATE_DELAYED = refreshCarried,
+  PLAYER_EQUIPMENT_CHANGED = onEquipment,
+  UPDATE_SHAPESHIFT_FORM = refreshIcons,
+  UPDATE_MACROS = refreshIcons,
+  SPELL_UPDATE_ICON = refreshIcons,
+  SPELL_UPDATE_CHARGES = function() each(updateCount) end,
   UPDATE_BINDINGS = function() ns.OutOfCombat(AB.ApplyBindings) end,
   ACTION_RANGE_CHECK_UPDATE = onRangeUpdate,
   SPELL_ACTIVATION_OVERLAY_GLOW_SHOW = onOverlay(true),
@@ -649,4 +674,5 @@ function AB.Enable(settings)
     ns.On(event, fn)
   end
   if settings.rangeTint and not rangeEvents() then pollRange() end
+  ns.OnUnit("UNIT_INVENTORY_CHANGED", refreshCarried, "player")
 end
