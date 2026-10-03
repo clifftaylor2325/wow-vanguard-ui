@@ -22,12 +22,15 @@ end
 -- vanish either. ns.Report keeps one entry per distinct error text, newest
 -- last: { text = "where: message", count = how often, stack = the call stack
 -- the first time }; the oldest goes past MAX_ERRORS. The first time an error
--- is seen it is printed to chat; every time, it goes to the game's own error
+-- text is seen it is printed to chat, once per session however many other
+-- errors have pushed it out of the list since (/fui errors clear starts over);
+-- every time, it goes to the game's own error
 -- handler (the Lua error popup, or an error addon) when the client has one.
 
 ns.errors = {}
 ns.MAX_ERRORS = 20
 local byText = {}  -- error text -> its entry in ns.errors
+local printed = {}  -- error text -> true once chat has heard of it; not dropped with the entry
 local forwarding = false  -- while the game's handler has an error of ours
 
 -- The call stack as text, from `level` frames up (1 = this function); "" when the client can't say.
@@ -79,9 +82,9 @@ end
 -- chat the first time, counts it; returns the text the game's handler gets.
 local function record(where, err, level)
   local text = where .. ": " .. errorText(err)
-  local e = byText[text]
-  if not e then
-    e = keep(text, stack(level))
+  local e = byText[text] or keep(text, stack(level))
+  if not printed[text] then
+    printed[text] = true
     ns.Chat(text .. "  (once per error; /fui errors has the stack)")
   end
   e.count = e.count + 1
@@ -95,7 +98,7 @@ end
 
 -- Forgets every caught error (/fui errors clear).
 function ns.ClearErrors()
-  ns.errors, byText = {}, {}
+  ns.errors, byText, printed = {}, {}, {}
 end
 
 -- The `where` of the ns.Try under way (nil outside one), for its message handler.
