@@ -87,6 +87,16 @@ it("the account file's version is read and upgraded", () => {
   expect(fresh.eval("return ns.MigrateDB(3, 1)"), "a target below the stamp has nothing to run").toBe(true);
 });
 
+it("a failing first upgrade step on an unstamped file is retried at the next login", () => {
+  const boom = 'ns.UpgradeDB(1, function() error("boom") end)';
+  for (const bad of ["ForeverUIDB.version = nil", 'ForeverUIDB.version = "old"']) {
+    const addon = loggedIn(boom, { savedVariables: bad });
+    expect(addon.eval("return ForeverUIDB.version"), "the stamp stays at 0 so the step runs again: " + bad).toBe(0);
+  }
+  const ok = loggedIn('ns.UpgradeDB(1, function(db) db.ran = true end)', { savedVariables: "ForeverUIDB.version = nil" });
+  expect(ok.eval("return { ForeverUIDB.ran, ForeverUIDB.version }"), "a step that works runs once and stamps").toEqual([true, 1]);
+});
+
 it("modules", () => {
   const addon = loggedIn(`
     ns.Module("Good", { defaults = { size = 3 }, Enable = function(s) __size = s.size end })
@@ -2064,9 +2074,16 @@ it("profile strings", () => {
 
 it("profile strings keep big whole numbers", () => {
   const r = loggedIn().eval(`local S = ns.Serialize
+    local realFormat = string.format
+    string.format = function(f, ...)
+      local v = ...
+      if f:find("%d", 1, true) and type(v) == "number" and (math.abs(v) >= 2 ^ 31 or v ~= math.floor(v)) then error("%d of " .. v .. " is undefined on Lua 5.1") end
+      return realFormat(f, ...)
+    end
     local text = S.Encode("profile", { big = 2 ^ 40, neg = -(2 ^ 40), half = 2 ^ 40 + 0.5, one = 1 })
     local raw = S.Unbase64(text:match("^FUI1:profile:%x%x%x%x:(.+)$"))
     local _, back = S.Decode(text)
+    string.format = realFormat
     return { raw = raw, big = back.big, neg = back.neg, half = back.half, one = back.one }`);
   expect(r.raw, "whole numbers are written as plain digits").toBe('{["big"]=1099511627776,["half"]=1099511627776.5,["neg"]=-1099511627776,["one"]=1}');
   expect([r.big, r.neg, r.half, r.one], "and read back exactly").toEqual([1099511627776, -1099511627776, 1099511627776.5, 1]);
