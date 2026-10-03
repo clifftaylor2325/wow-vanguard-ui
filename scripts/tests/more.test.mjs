@@ -48,6 +48,14 @@ const CHAT_ART_ENV = `
   end
 `;
 
+it("minimap: the game's emptied cluster takes no mouse and its zone button is hidden", () => {
+  const addon = loggedIn(UI_ENV + `MinimapCluster:EnableMouse(true)
+    MinimapCluster.ZoneTextButton = CreateFrame("Button", nil, MinimapCluster)`);
+  expect(addon.eval("return { MinimapCluster.__mouse, MinimapCluster.ZoneTextButton:IsShown() }"), "no mouse on the cluster, the zone button hidden (not just faded)").toEqual([false, false]);
+  expect(addon.eval("return { MinimapCluster.BorderTop.__alpha, ForeverUI_Minimap:IsShown() }"), "the border art is still faded, the map still shows").toEqual([0, true]);
+  expect(loggedIn(UI_ENV + "MinimapCluster = nil").eval("return ForeverUI_Minimap ~= nil"), "a client without the cluster still gets the map").toBe(true);
+});
+
 it("chat art is hidden so the game's mouseover fade cannot bring it back", () => {
   const addon = loggedIn(UI_ENV + CHAT_ART_ENV);
   // Whether each window's art is showing.
