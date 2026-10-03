@@ -489,12 +489,14 @@ local UNIT_EVENTS = {
   UNIT_CONNECTION = onUnit("Update"), UNIT_NAME_UPDATE = onUnit("Update"), UNIT_FACTION = onUnit("Update"),
 }
 
--- Hides a default raid/party frame by parenting it to a hidden frame.
+-- Hides a default raid/party frame by parenting it to a hidden frame, and
+-- silences it (no events), so it does no work while hidden (out of combat, from build).
 local function hideBlizzard(name)
   local f = _G[name]
   if type(f) ~= "table" or not f.SetParent then return end
   hiddenParent = hiddenParent or CreateFrame("Frame")
   hiddenParent:Hide()
+  if f.UnregisterAllEvents then f:UnregisterAllEvents() end
   f:SetParent(hiddenParent)
 end
 
