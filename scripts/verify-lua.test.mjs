@@ -1352,6 +1352,7 @@ it("game alerts: loss of control and the talking head, styled and placed (or hid
 // TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
 const DPS_ENV = `
   __dps = { combatSources = { { isLocalPlayer = false, amountPerSecond = 999 }, { isLocalPlayer = true, amountPerSecond = 1234.5 } } }
+  Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } }
   C_DamageMeter = { GetCombatSessionFromType = function(kind, what) __asked = { kind, what } return __dps end }
 `;
 
@@ -1375,6 +1376,8 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
   expect(addon.eval("return ForeverUI_InfoStrip:GetHeight()"), "and the fourth row goes").toBe(before);
   addon.eval("Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } } __dps = { combatSources = { { isLocalPlayer = true, amountPerSecond = 0 } } }");
   expect(hidden(""), "no damage done: nothing shows").toBe(false);
+  addon.eval("__asked = nil Enum = nil");
+  expect([addon.eval("return ns.GetModule('InfoStrip').DPS()"), addon.eval("return __asked")], "without the client's enums the meter is not asked with guessed numbers").toEqual([null, null]);
   const bare = loggedIn(UNITS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { InfoStrip = { dps = true } } }" });
   bare.fire("PLAYER_REGEN_ENABLED");
   expect(block(bare, "dps").shown, "a client without the damage meter shows nothing").toBe(false);
@@ -2475,6 +2478,95 @@ it("a session: what you set in one login comes back in the next", () => {
   expect(third.eval("return ns.ProfileName()"), "and it holds for a third session").toBe("TEST-ONLY Alt");
 });
 
+// TEST-ONLY: a client that has every optional call the probe asks about.
+const CLIENT_FULL_ENV = `
+  Enum = { StatusBarInterpolation = { ExponentialEaseOut = 1 }, PlayerSwingType = {}, DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } }
+  PixelUtil = { GetNearestPixelSize = function() return 1 end }
+  C_EventUtils = { IsEventValid = function() return true end }
+  C_DamageMeter = { GetCombatSessionFromType = function() end }
+  C_CooldownViewer = { IsCooldownViewerAvailable = function() return true end }
+  C_SwingTimer = {}
+`;
+
+// TEST-ONLY: a client with none of them: no aura container, no cooldown calls, no key propagation.
+const CLIENT_NONE_ENV = `
+  __wfgStub.noAuraContainer = true
+  for _, m in ipairs({ "SetCooldownFromDurationObject", "SetMinimumCountdownDuration", "GetCountdownFontString" }) do __wfgWidgetApi.methods.Cooldown[m] = nil end
+  for _, kind in pairs(__wfgWidgetApi.methods) do kind.SetPropagateKeyboardInput = nil end
+`;
+
+const CLIENT_KEYS = ["auraContainer", "pixelUtil", "eventValid", "barEase", "cooldownObject", "cooldownMin", "countdownText", "keyPropagate", "damageMeter", "cooldownViewer", "swingTimer", "meterEnums"];
+
+it("client capability probe: what this client has, and /fui status says so", () => {
+  const full = loggedIn(UNITS_ENV + CLIENT_FULL_ENV);
+  expect(full.eval("return ns.Client.has"), "a client with everything: every flag is true").toEqual(Object.fromEntries(CLIENT_KEYS.map((k) => [k, true])));
+  full.slash("status");
+  expect(chatHas(full, /Client has: auraContainer, pixelUtil, eventValid, barEase, cooldownObject, cooldownMin, countdownText, keyPropagate, damageMeter, cooldownViewer, swingTimer, meterEnums {2}· {2}lacks: none/), "/fui status lists them in a fixed order").toBe(true);
+  const bare = loggedIn();
+  expect(bare.eval("return ns.Client.has"), "the bare stub: the namespace flags are false, the widget ones come from the stub's widget list").toEqual({
+    auraContainer: true, pixelUtil: false, eventValid: false, barEase: false, cooldownObject: true, cooldownMin: true, countdownText: true,
+    keyPropagate: true, damageMeter: false, cooldownViewer: false, swingTimer: false, meterEnums: false });
+  bare.slash("status");
+  expect(chatHas(bare, /Client has: auraContainer, cooldownObject, cooldownMin, countdownText, keyPropagate {2}· {2}lacks: pixelUtil, eventValid, barEase, damageMeter, cooldownViewer, swingTimer, meterEnums$/), "and the lacking ones are named").toBe(true);
+  const noCooldown = loggedIn(`local real = CreateFrame
+    CreateFrame = function(kind, ...) if kind == "Cooldown" then error("TEST-ONLY: no cooldown frames") end return real(kind, ...) end`);
+  expect(noCooldown.eval("return { ns.Client.has.cooldownObject, ns.Client.has.cooldownMin, ns.Client.has.countdownText, ns.Client.has.keyPropagate }"), "a client that cannot make a Cooldown frame has none of its methods, and the probe does not fail").toEqual([false, false, false, true]);
+  // [barEase, meterEnums, swingTimer] on a client with this Lua defined.
+  const half = (lua) => loggedIn(lua).eval("return { ns.Client.has.barEase, ns.Client.has.meterEnums, ns.Client.has.swingTimer }");
+  expect(half("Enum = { StatusBarInterpolation = {}, DamageMeterSessionType = {}, DamageMeterType = { Dps = 1 } }"), "enums without the values asked for do not count").toEqual([false, false, false]);
+  expect(half("Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = {} }"), "the damage meter needs both enum values").toEqual([false, false, false]);
+  expect(half("Enum = { StatusBarInterpolation = { ExponentialEaseOut = 1 } } C_SwingTimer = {}"), "the swing timer needs its enum as well").toEqual([true, false, false]);
+});
+
+it("client capability probe: every flag off, every module still enables", () => {
+  const addon = loggedIn(UNITS_ENV + ACTIONS_ENV + TOTEMS_ENV + ENGINE_ENV + CLIENT_NONE_ENV);
+  expect(addon.eval("return ns.Client.has"), "a client with none of the optional calls").toEqual(Object.fromEntries(CLIENT_KEYS.map((k) => [k, false])));
+  // The modules that are on in the settings but did not enable, on a client with and without the calls.
+  const notEnabled = (a) => a.eval(`local out = {} for _, n in ipairs(ns.ModuleNames()) do
+    local d = ns.GetModule(n) if d.Enable and ns.ModuleEnabled(n) and d.enabled ~= true then out[#out + 1] = n end end return out`);
+  const baseline = loggedIn(UNITS_ENV + ACTIONS_ENV + TOTEMS_ENV + ENGINE_ENV);
+  expect(notEnabled(addon), "every module enables as it does on a client with the calls").toEqual(notEnabled(baseline));
+  expect(addon.eval("return ForeverUI_Bar1Button1.cooldown.__countdown == nil"), "an action button asks for no cooldown number font").toBe(true);
+  expect(totemCell(addon, 1), "a totem is timed by its start and length").toMatchObject({ sweep: [100, 120] });
+  expect(totemCell(addon, 1).object, "and is given no duration object").toBeUndefined();
+  expect(addon.eval(`local b = CreateFrame("StatusBar") ns.Theme.Settings().smoothBars = true ns.Theme.SetBarValue(b, 5) return { v = b:GetValue(), ease = b.__ease or "none" }`), "a bar is set without easing").toEqual({ v: 5, ease: "none" });
+  // The texts of the errors an addon has caught.
+  const errs = (a) => a.eval("local o = {} for _, e in ipairs(ns.errors) do o[#o + 1] = e.text end return o");
+  expect(errs(addon).filter((e) => !errs(baseline).includes(e)), "the missing aura container is the one thing reported more").toEqual([expect.stringMatching(/^aura containers \(using ForeverUI's own icons\): .*unknown frame type AuraContainer$/)]);
+  expect(addon.eval(`local h
+    UIParent:SetSize(1920, 1080)
+    local f = CreateFrame("Frame", nil, UIParent) f:SetSize(100, 20)
+    ns.Mover(f, "a", "A", { "CENTER", "CENTER", 0, 0 }) ns.Unlock()
+    for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "a" then h = w end end
+    h:GetScript("OnMouseDown")(h) h:GetScript("OnKeyDown")(h, "UP")
+    local p = ForeverUIDB.profiles.Default.positions.a
+    return p and p.y`), "unlock mode: the arrow keys still nudge").toBe(1);
+  const quest = loggedIn(QUEST_ENV + CLIENT_NONE_ENV);
+  key(quest, "ESCAPE");
+  expect(quest.eval("return ns.ModuleEnabled('QuestDialogView') and ForeverUI_QuestDialog ~= nil"), "the quest dialog takes keys without propagation").toBe(true);
+  const afk = loggedIn(UNITS_ENV + AFK_ENV + CLIENT_NONE_ENV);
+  afk.eval("ForeverUI_AfkScreen.__scripts.OnKeyDown(ForeverUI_AfkScreen, 'ENTER')");
+  expect(afk.eval("return ForeverUI_AfkScreen ~= nil and ns.GetModule('AfkScreen').enabled"), "the away screen is built and put away by a key").toBe(true);
+});
+
+it("client capability probe: in a fight the aura container waits; first use probes early", () => {
+  const combat = createAddon({ savedVariables: SETUP_DONE });
+  combat.eval(UNITS_ENV);
+  setCombat(combat, true);
+  combat.login();
+  expect([combat.eval("return ns.Client.has.auraContainer"), combat.eval("return ns.Client.has.cooldownMin"), combat.eval("return ns.Client.probed")], "logged in during a fight: the plain frames are probed, the aura container waits").toEqual([null, true, true]);
+  expect(combat.eval("return ns.Client.Has('auraContainer')"), "a flag still waiting reads as false").toBe(false);
+  combat.slash("status");
+  expect(chatHas(combat, /lacks: auraContainer\?/), "and /fui status marks it as not yet known").toBe(true);
+  setCombat(combat, false);
+  expect(combat.eval("return ns.Client.has.auraContainer"), "after the fight it is asked").toBe(true);
+  const early = createAddon({ savedVariables: SETUP_DONE });
+  expect(early.eval("return ns.Client.Has('cooldownMin')"), "a call before ADDON_LOADED probes right then").toBe(true);
+  early.eval("ns.Client.has.cooldownMin = 'TEST-ONLY-kept'");
+  early.login();
+  expect(early.eval("return ns.Client.has.cooldownMin"), "and the probe is not run again").toBe("TEST-ONLY-kept");
+});
+
 it("/fui errors: what ForeverUI caught this session", () => {
   const addon = loggedIn();
   addon.eval("ns.ClearErrors()");
@@ -2614,6 +2706,10 @@ it("class bars: totems for shamans, mana in forms for druids", () => {
   addon.eval('GetTotemDuration = function(slot) return { __duration = slot } end __totems[2] = { true, "TEST-ONLY Totem 2", 200, 60, "TEST-ONLY-ICON-Two" }');
   addon.fire("PLAYER_TOTEM_UPDATE");
   expect(totemCell(addon, 2), "a new totem shows, timed by the client's duration object").toMatchObject({ alpha: 1, icon: "TEST-ONLY-ICON-Two", object: { __duration: 2 } });
+  addon.eval('ns.GetModule("ClassBars").cells[2].cooldown.__durationObject = "TEST-ONLY-stale" GetTotemDuration = function() return nil end');
+  addon.fire("PLAYER_TOTEM_UPDATE");
+  expect(totemCell(addon, 2), "a client that has no duration object to give: the plain start and length, the old object untouched").toMatchObject({ sweep: [200, 60], object: "TEST-ONLY-stale" });
+  addon.eval('GetTotemDuration = function(slot) return { __duration = slot } end');
   addon.eval("__totems[1] = { { __secret = true }, 'x', { __secret = true }, { __secret = true }, 'TEST-ONLY-ICON-Totem' }");
   addon.fire("PLAYER_TOTEM_UPDATE");
   expect(totemCell(addon, 1), "a hidden answer goes to the client's alpha-from-boolean; the cell keeps its alpha").toMatchObject({ alpha: 1, follows: { __secret: true } });
@@ -3077,6 +3173,9 @@ it("frames pass: bar texture, smoothing, raid style, shields, glows", () => {
   expect(/Media\\Textures\\BarSoft$/.test(addon.eval("return ns.Theme.BarTexture()")) && addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "Soft bars are an option (on reload)").toBeTruthy();
   addon.eval('__click("Bar texture")');
   expect(addon.eval("return ns.Theme.BarTexture()") === "Interface\\Buttons\\WHITE8X8", "and Flat bars").toBeTruthy();
+  // The interpolation the player health bar was last given with smoothing on or off ("none" for a plain set).
+  const eased = (on) => addon.eval(`ns.Theme.Settings().smoothBars = ${on} ns.Theme.SetBarValue(ForeverUI_player.health, 7) return ForeverUI_player.health.__ease or "none"`);
+  expect([eased(true), eased(false)], "smooth bars ask the client to ease the value; off, a plain set").toEqual([1, "none"]);
   const glow = addon.eval(`local f = CreateFrame("Frame", nil, UIParent) local g = ns.Theme.Glow(f, 6)
     local hidden = not g[1]:IsShown() ns.Theme.ShowGlow(g, true) return { n = #g, hidden = hidden, shown = g[1]:IsShown(), tex = g[1].__texture, color = g[1].__vertexColor }`);
   expect(glow.n === 8 && glow.hidden && glow.shown && /Glow$/.test(glow.tex) && isTok(addon, glow.color, "accent"), "a glow is eight hidden Glow pieces, shown in the accent").toBeTruthy();

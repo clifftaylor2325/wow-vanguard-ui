@@ -274,7 +274,7 @@ function methods:GetStatusBarTexture() return self.__barTexture end
 -- Status bars: range, value and color, recorded as given (secrets included).
 function methods:SetMinMaxValues(lo, hi) self.__min, self.__max = lo, hi end
 function methods:GetMinMaxValues() return self.__min or 0, self.__max or 0 end
-function methods:SetValue(v) self.__value = v end
+function methods:SetValue(v, ease) self.__value, self.__ease = v, ease end
 function methods:GetValue() return self.__value or 0 end
 function methods:SetStatusBarColor(r, g, b, a) self.__barColor = { r, g, b, a or 1 } end
 
