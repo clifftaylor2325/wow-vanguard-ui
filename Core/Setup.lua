@@ -1,7 +1,7 @@
--- First-run setup: a three-step wizard (layout, look, move things). It opens
--- once per account (ForeverUIDB.setupDone), never in combat (it waits for
+-- First-run setup: a four-step wizard (layout, screen, look, move things). It
+-- opens once per account (ForeverUIDB.setupDone), never in combat (it waits for
 -- combat to end, and steps aside if a fight starts while it is open), and
--- /fui setup opens it again. With the defaults, Next, Next, Done finishes it.
+-- /fui setup opens it again. With the defaults, Next, Next, Next, Done finishes it.
 
 local ADDON, ns = ...
 
@@ -10,8 +10,8 @@ local T, W = ns.Theme, ns.Widgets
 local S = {}
 ns.Setup = S
 
-local WIDTH, HEIGHT, PAD = 440, 300, 16
-local STEPS = { "Layout", "Look", "Move things" }
+local WIDTH, HEIGHT, PAD = 440, 320, 16
+local STEPS = { "Layout", "Screen", "Look", "Move things" }
 
 -- Layout presets, in display order; the first is the default.
 S.LAYOUTS = {
@@ -34,11 +34,23 @@ S.CLASSIC = {
   partyextras = { "TOPLEFT", "TOPLEFT", 190, -310 }, uf_boss1 = { "TOPRIGHT", "TOPRIGHT", -290, -200 },
   raidtools = { "TOP", "TOP", 60, -120 }, maintanks = { "TOP", "TOP", 60, -196 },
 }
+-- Screen presets, in display order, for the screen each is made for (w x h pixels): the UI
+-- scale (the game's own UI scale, whose slider runs 0.65 to 1.15; it sizes the unit frames,
+-- whose layouts are drawn in UI units), the action button size, the raid tile size and the text size.
+S.SCREENS = {
+  { key = "1080", text = "1080p", w = 1920, h = 1080, ui = 0.8, button = 36, tile = { 100, 48 }, textScale = 1 },
+  { key = "1440", text = "1440p", w = 2560, h = 1440, ui = 0.7, button = 38, tile = { 110, 48 }, textScale = 1.05 },
+  { key = "4k", text = "4K", w = 3840, h = 2160, ui = 0.65, button = 38, tile = { 110, 48 }, textScale = 1.1 },
+  { key = "ultrawide", text = "Ultrawide", w = 3440, h = 1440, ui = 0.7, button = 38, tile = { 110, 48 }, textScale = 1.05 },
+}
+-- The client's UI scale range (its Graphics settings slider).
+S.UI_SCALE = { min = 0.65, max = 1.15 }
+
 -- Raid frame styles: the Raid page's Style choices.
 S.STYLES = { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }
 
 local frame
-local state = { step = 1, layout = S.LAYOUTS[1].key, paused = false, reload = false }
+local state = { step = 1, layout = S.LAYOUTS[1].key, screen = "keep", paused = false, reload = false }
 local waiting = false
 
 -- Presets -------------------------------------------------------------------------------
@@ -112,6 +124,86 @@ function S.SetStyle(look)
   if RF.settings then RF.UpdateAll() end
 end
 
+-- Screen ----------------------------------------------------------------------------------
+
+-- The screen's size in pixels, or 0, 0 when the client can't say.
+local function screenSize()
+  local get = _G.GetPhysicalScreenSize
+  if type(get) ~= "function" then return 0, 0 end
+  local w, h = get()
+  return tonumber(w) or 0, tonumber(h) or 0
+end
+
+-- The preset for this screen: ultrawide for anything wider than 2.2 : 1, else by height
+-- (4K from 2000 pixels, 1440p from 1300, 1080p from 1000); "keep" below that.
+function S.DetectScreen()
+  local w, h = screenSize()
+  if h < 1000 then return "keep" end
+  if w / h >= 2.2 then return "ultrawide" end
+  if h >= 2000 then return "4k" end
+  return h >= 1300 and "1440" or "1080"
+end
+
+-- A screen preset by key, or nil ("keep").
+function S.ScreenPreset(key)
+  for _, p in ipairs(S.SCREENS) do
+    if p.key == key then return p end
+  end
+end
+
+-- Sets the game's UI scale (clamped to its own slider's range), out of combat: the client's
+-- uiScale and useUiScale settings, as its Graphics options set them. ForeverUI's
+-- pixel-perfect scale is switched off, since it would replace this one.
+function ns.SetUIScale(scale)
+  local set = (C_CVar and C_CVar.SetCVar) or _G.SetCVar
+  if type(set) ~= "function" or type(scale) ~= "number" then return end
+  scale = math.max(S.UI_SCALE.min, math.min(S.UI_SCALE.max, scale))
+  T.Settings().pixelScale = false
+  ns.OutOfCombat(function()
+    set("useUiScale", "1")
+    set("uiScale", tostring(scale))
+  end)
+end
+
+-- Sets the action buttons' shared size and lays the built bars out again (a bar's own size still wins).
+local function setButtons(size)
+  local AB = ns.GetModule("ActionBars")
+  ns.Settings("ActionBars", AB.defaults).size = size
+  for n in pairs(AB.enabled and AB.bars or {}) do AB.SettingChanged(n, "size") end
+end
+
+-- Sets the raid tile size; a new size takes effect on reload.
+local function setTiles(tile)
+  local s = ns.Settings("RaidFrames", ns.GetModule("RaidFrames").defaults)
+  if s.width == tile[1] and s.height == tile[2] then return end
+  s.width, s.height = tile[1], tile[2]
+  state.retile = true
+end
+
+-- Applies a screen preset by key: UI scale, action button size, raid tile size and
+-- text size. "keep" changes nothing.
+function S.ApplyScreen(key)
+  local p = S.ScreenPreset(key)
+  if not p then return end
+  ns.SetUIScale(p.ui)
+  setButtons(p.button)
+  setTiles(p.tile)
+  T.Settings().textScale = p.textScale
+  T.Refresh()
+end
+
+-- A share as a whole percent.
+local function percent(v)
+  return math.floor(v * 100 + 0.5)
+end
+
+-- What a preset sets, in a line under the choices.
+local function screenHint(p)
+  if not p then return "Changes nothing: your UI scale and frame, button, tile and text sizes stay as they are." end
+  return string.format("UI scale %d%%, action buttons %d px, raid tiles %d x %d, text %d%%.",
+    percent(p.ui), p.button, p.tile[1], p.tile[2], percent(p.textScale))
+end
+
 -- Marks -----------------------------------------------------------------------------------
 
 -- Outlines a choice (and colors its label) in the accent when it is the chosen one.
@@ -127,15 +219,21 @@ local function isAccent(rgb)
   return r == rgb[1] and g == rgb[2] and b == rgb[3]
 end
 
--- Re-marks the chosen layout (and shows its hint), accent and style.
-local function refresh()
-  local p1, p2 = frame.pages[1], frame.pages[2]
-  for _, b in ipairs(p1.choices) do
-    mark(b, b.value == state.layout)
-    if b.value == state.layout then p1.hint:SetText(b.hint) end
+-- Marks the chosen button on a page of choices and shows its hint.
+local function markChoice(page, value)
+  for _, b in ipairs(page.choices) do
+    mark(b, b.value == value)
+    if b.value == value then page.hint:SetText(b.hint) end
   end
-  for _, s in ipairs(p2.swatches) do mark(s, isAccent(s.rgb)) end
-  for _, b in ipairs(p2.styles) do mark(b, b.value == raidSettings().look) end
+end
+
+-- Re-marks the chosen layout and screen (and shows their hints), accent and style.
+local function refresh()
+  local look = frame.pages[3]
+  markChoice(frame.pages[1], state.layout)
+  markChoice(frame.pages[2], state.screen)
+  for _, s in ipairs(look.swatches) do mark(s, isAccent(s.rgb)) end
+  for _, b in ipairs(look.styles) do mark(b, b.value == raidSettings().look) end
   T.Color(frame.caption, "accent")
 end
 
@@ -157,16 +255,38 @@ local function choice(page, label, value, y, onClick)
   return b
 end
 
--- Step 1: a button per layout, then the chosen one's hint.
-local function layoutPage(page)
-  text(page, "label", "text2", "How do you mostly play? You can change it all later in /fui."):SetPoint("TOPLEFT")
+-- A page of choices under a question: a button per { key, text, hint }; picking one
+-- sets state[field]. The chosen one's hint shows under them.
+local function choicePage(page, question, list, field)
+  text(page, "label", "text2", question):SetPoint("TOPLEFT")
   page.choices = {}
-  for i, l in ipairs(S.LAYOUTS) do
-    page.choices[i] = choice(page, l.text, l.key, -24 - (i - 1) * 32, function() state.layout = l.key; refresh() end)
+  for i, l in ipairs(list) do
+    page.choices[i] = choice(page, l.text, l.key, -24 - (i - 1) * 30, function() state[field] = l.key; refresh() end)
     page.choices[i].hint = l.hint or ""
   end
   page.hint = text(page, "small", "text2", "")
-  page.hint:SetPoint("TOPLEFT", 0, -24 - #S.LAYOUTS * 32)
+  page.hint:SetPoint("TOPLEFT", 0, -24 - #list * 30)
+end
+
+-- Step 1: a button per layout, then the chosen one's hint.
+local function layoutPage(page)
+  choicePage(page, "How do you mostly play? You can change it all later in /fui.", S.LAYOUTS, "layout")
+end
+
+-- The screen choices: each preset (the one for this screen marked), then Keep.
+local function screenChoices()
+  local detected, out = S.DetectScreen(), {}
+  for i, p in ipairs(S.SCREENS) do
+    local mine = p.key == detected and "  ·  your screen" or ""
+    out[i] = { key = p.key, hint = screenHint(p), text = string.format("%s (%d x %d)%s", p.text, p.w, p.h, mine) }
+  end
+  out[#out + 1] = { key = "keep", text = "Keep my current sizes", hint = screenHint(nil) }
+  return out
+end
+
+-- Step 2: a button per screen preset and Keep, then the chosen one's hint.
+local function screenPage(page)
+  choicePage(page, "Sizes for your screen. You can change them later in /fui.", screenChoices(), "screen")
 end
 
 -- The raid frame style buttons under the accent swatches.
@@ -188,7 +308,7 @@ local function swatch(page, i, rgb)
   return s
 end
 
--- Step 2: the accent presets, then the raid frame style.
+-- Step 3: the accent presets, then the raid frame style.
 local function lookPage(page)
   text(page, "label", "text", "Accent"):SetPoint("TOPLEFT")
   page.swatches = {}
@@ -198,7 +318,7 @@ local function lookPage(page)
   stylePicker(page)
 end
 
--- Step 3: how to move frames (they are unlocked while this step shows).
+-- Step 4: how to move frames (they are unlocked while this step shows).
 local function movePage(page)
   local lines = { "Your frames are unlocked: drag a handle to move that frame.",
     "Click a handle, then the arrow keys nudge it (Shift: 10 px).", "Done locks them. /fui unlock moves them any time." }
@@ -240,17 +360,24 @@ local function controls(f)
   f.back:SetPoint("RIGHT", f.next, "LEFT", -8, 0)
 end
 
--- Setup ended (Done, the close button or Escape): lock the frames, remember
--- that setup ran, and offer a reload when a module was turned on.
+-- Why setup offers a reload (a module turned on, new raid tile sizes), or nil.
+local function reloadReason()
+  if state.reload then return "Setup turned on a module that was off." end
+  if state.retile then return "The new raid tile size shows after a reload." end
+end
+
+-- Setup ended (Done, the close button or Escape): lock the frames, remember that setup
+-- ran, and offer a reload when a module was turned on or the raid tiles changed size.
 local function finished()
   if state.paused then return end
   if ns.Unlocked() then ns.Lock() end
   ForeverUIDB.setupDone = true
-  if state.reload then ns.OfferReload("Setup turned on a module that was off.") end
-  state.reload = false
+  local why = reloadReason()
+  if why then ns.OfferReload(why) end
+  state.reload, state.retile = false, false
 end
 
-local BUILDERS = { layoutPage, lookPage, movePage }
+local BUILDERS = { layoutPage, screenPage, lookPage, movePage }
 
 -- A page per step, between the caption and the footer.
 local function addPages(f)
@@ -286,9 +413,10 @@ local function showStep(n)
   refresh()
 end
 
--- Next: leaving step 1 applies the layout; on the last step it is Done.
+-- Next: leaving step 1 applies the layout, leaving step 2 the screen preset; on the last step it is Done.
 function S.Next()
   if state.step == 1 then S.ApplyLayout(state.layout) end
+  if state.step == 2 then S.ApplyScreen(state.screen) end
   if state.step == #STEPS then return frame:Hide() end
   showStep(state.step + 1)
 end
@@ -298,7 +426,7 @@ function S.Back()
   showStep(math.max(state.step - 1, 1))
 end
 
--- The step showing (1 to 3), or nil while setup is closed.
+-- The step showing (1 to 4), or nil while setup is closed.
 function S.Step()
   return frame and frame:IsShown() and state.step or nil
 end
@@ -311,11 +439,11 @@ function S.Defer()
   ns.OutOfCombat(function() waiting = false; S.Open() end)
 end
 
--- Opens setup at step 1 with the default layout; in combat it waits.
+-- Opens setup at step 1 with the default layout and this screen's preset; in combat it waits.
 function S.Open()
   if ns.InCombat() then return S.Defer() end
   frame = frame or build()
-  state.layout, state.reload, state.paused = S.LAYOUTS[1].key, false, false
+  state.layout, state.screen, state.reload, state.paused = S.LAYOUTS[1].key, S.DetectScreen(), false, false
   T.FadeIn(frame)
   showStep(1)
 end
