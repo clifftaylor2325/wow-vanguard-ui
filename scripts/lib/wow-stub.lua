@@ -204,6 +204,9 @@ end
 -- Textures: desaturation, recorded.
 function methods:SetDesaturated(on) self.__desaturated = on == true end
 
+-- Buttons: the click types registered, as given.
+function methods:RegisterForClicks(...) self.__clicks = { ... } end
+
 -- Buttons: whether they're enabled, recorded.
 function methods:IsEnabled() return self.__disabled ~= true end
 
