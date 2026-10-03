@@ -850,8 +850,8 @@ it("more game windows: friends, books and letters, and windows that load later",
 it("game alerts: loss of control and the talking head, styled and placed (or hidden)", () => {
   const addon = loggedIn(ALERTS_ENV);
   const loc = addon.eval(`local f = LossOfControlFrame
-    return { f.blackBg.__alpha, f.Icon.__texCoord ~= nil, f.AbilityName.__font ~= nil, f.TimeLeft.NumberText.__font ~= nil, f.__points.CENTER.rel == ForeverUI_LossOfControlFrameSpot }`);
-  expect(loc, "loss of control: its black band faded, icon cropped, theme text, centered on its spot").toEqual([0, true, true, true, true]);
+    return { f.blackBg:IsShown(), f.Icon.__texCoord ~= nil, f.AbilityName.__font ~= nil, f.TimeLeft.NumberText.__font ~= nil, f.__points.CENTER.rel == ForeverUI_LossOfControlFrameSpot }`);
+  expect(loc, "loss of control: its black band hidden, icon cropped, theme text, centered on its spot").toEqual([false, true, true, true, true]);
   expect(addon.eval("return { ns.MoverPoint('lossofcontrol') }"), "a little above your character").toEqual(["CENTER", "CENTER", 0, 140]);
   const head = addon.eval("local f = TalkingHeadFrame return { f.BackgroundFrame.__alpha, f.MainFrame.Name.__font ~= nil, f.__points.CENTER.rel == ForeverUI_TalkingHeadFrameSpot }");
   expect([head, addon.eval("return (ns.MoverPoint('talkinghead'))")], "the talking head: parchment faded, theme text, at the top center").toEqual([[0, true, true], "TOP"]);
@@ -863,6 +863,26 @@ it("game alerts: loss of control and the talking head, styled and placed (or hid
   const partial = loggedIn("LossOfControlFrame = CreateFrame('Frame', 'LossOfControlFrame', UIParent) TalkingHeadFrame = CreateFrame('Frame', 'TalkingHeadFrame', UIParent)");
   expect(partial.eval("return ForeverUI_LossOfControlFrameSpot ~= nil and ForeverUI_TalkingHeadFrameSpot ~= nil"), "frames without their usual parts are still placed").toBe(true);
   expect(loggedIn("").eval("return ForeverUI_LossOfControlFrameSpot == nil"), "a client without them loads cleanly").toBe(true);
+});
+
+it("game alerts: the loss of control band stays hidden when the game's animation resets its alpha", () => {
+  const addon = loggedIn(ALERTS_ENV + "LossOfControlFrame.RedLineTop = LossOfControlFrame:CreateTexture() LossOfControlFrame.RedLineBottom = LossOfControlFrame:CreateTexture()");
+  expect(addon.eval("local f = LossOfControlFrame return { f.blackBg:IsShown(), f.RedLineTop:IsShown(), f.RedLineBottom:IsShown() }"), "the band and both red lines are hidden").toEqual([false, false, false]);
+  addon.eval("local f = LossOfControlFrame f.blackBg:SetAlpha(0.6) f.RedLineTop:SetAlpha(1) f.RedLineBottom:SetAlpha(1)");
+  expect(addon.eval("local f = LossOfControlFrame return { f.blackBg:IsShown(), f.RedLineTop:IsShown(), f.RedLineBottom:IsShown() }"), "restoring their alpha shows nothing").toEqual([false, false, false]);
+});
+
+it("game alerts: a talking head that loads later is restyled once when its part of the game loads", () => {
+  const addon = loggedIn(ALERTS_ENV.replace(/TalkingHeadFrame/g, "TEST_ONLY_Unloaded"));
+  expect(addon.eval("return ForeverUI_TalkingHeadFrameSpot == nil"), "nil at login: nothing placed yet").toBe(true);
+  addon.fire("ADDON_LOADED", "Blizzard_Something");
+  expect(addon.eval("return ForeverUI_TalkingHeadFrameSpot == nil"), "another part loading changes nothing").toBe(true);
+  addon.eval(`TalkingHeadFrame = CreateFrame("Frame", "TalkingHeadFrame", UIParent) TalkingHeadFrame.BackgroundFrame = CreateFrame("Frame", nil, TalkingHeadFrame)`);
+  addon.fire("ADDON_LOADED", "Blizzard_TalkingHeadUI");
+  expect(addon.eval("local f = TalkingHeadFrame return { f.BackgroundFrame.__alpha, f.__points.CENTER.rel == ForeverUI_TalkingHeadFrameSpot }"), "loaded: parchment faded, on its spot").toEqual([0, true]);
+  addon.eval("__spot = ForeverUI_TalkingHeadFrameSpot");
+  addon.fire("ADDON_LOADED", "Blizzard_TalkingHeadUI");
+  expect(addon.eval("return ForeverUI_TalkingHeadFrameSpot == __spot"), "a second load event makes no second spot").toBe(true);
 });
 
 // TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
