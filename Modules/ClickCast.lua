@@ -7,6 +7,12 @@
 --          wheel...) casts on that player; off the frames the key does its
 --          usual job. Stored as a binding string ("SHIFT-Q", "MOUSEWHEELUP").
 --
+-- Hover keys click the frame's virtual button fui<i> (SetBindingClick), so the
+-- frame needs no extra click registration: SecureUnitButton_OnClick (the unit
+-- button template) acts on whichever phase the button is registered for and
+-- ignores ActionButtonUseKeyDown, so registering AnyDown as well would cast
+-- twice (key down and key up); the raid buttons stay AnyUp.
+--
 -- Bindings are per character and per specialization. Everything here sets
 -- secure attributes and secure enter/leave snippets, so it only changes out
 -- of combat; in combat, the bindings you set earlier keep working. Hover keys
@@ -116,7 +122,10 @@ end
 -- The secure "type" for an action.
 local TYPES = { spell = "spell", macro = "macro", target = "target", menu = "togglemenu" }
 
--- Sets type and spell/macro text for a binding, with the attribute suffix
+-- Sets type and spell/macro text for a binding, with the attribute prefix
+-- ("ctrl-" for a mouse binding, "*" for a hover key: SecureButton_GetModifiedAttribute
+-- looks up <modifiers>type-fui3, then *type-fui3, never the bare type-fui3, so a
+-- hover key bound with Shift held only finds the "*" form) and the suffix
 -- ("2" for mouse button 2, "-fui3" for a hover key's virtual button).
 local function setAction(f, prefix, suffix, b)
   setAttr(f, prefix .. "type" .. suffix, TYPES[b.action])
@@ -160,7 +169,7 @@ function CC.ApplyFrame(f)
   clearAttrs(f)
   for i, b in ipairs(bindings) do
     local prefix, n = CC.MouseParts(b.key)
-    if prefix then setAction(f, prefix, n, b) else setAction(f, "", "-fui" .. i, b) end
+    if prefix then setAction(f, prefix, n, b) else setAction(f, "*", "-fui" .. i, b) end
   end
   if snippetsOn() then wrap(f, CC.EnterSnippet(bindings)) end
 end
