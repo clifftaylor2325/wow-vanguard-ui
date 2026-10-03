@@ -16,7 +16,7 @@ Things to know before you start:
 For every failed step, paste all of this (steps below say "If it fails, paste:" for anything extra):
 
 1. The step id (for example `3.3`).
-2. The whole output of `/fui status`. Today it is five lines: the version, profile and module count; the skinned, painted and waiting-on-combat counts; the client line (`Client WoW Forever`, the build, `auras on the engine` or `auras on the legacy`, `aura values readable` or `hidden right now`, and whether secure snippets work); a `Client has: ... lacks: ...` line; and the `UI scale ... text ... chat ...` line.
+2. The whole output of `/fui status`. Today it is five lines: the version, profile and module count; the skinned, painted and waiting-on-combat counts; the client line (`Client WoW Forever`, the build, `auras on the engine` or `auras on the fallback`, `aura values readable` or `hidden right now`, and whether secure snippets work); a `Client has: ... lacks: ...` line; and the `UI scale ... text ... chat ...` line.
 3. The whole output of `/fui errors`: either `No errors caught this session.`, or a header with the version, interface number and error count, the client line, and each error with `(xN)` and its stack lines.
 4. A screenshot (Print Screen; the files land in the game's Screenshots folder).
 
@@ -37,7 +37,7 @@ For every failed step, paste all of this (steps below say "If it fails, paste:" 
 ### 1.3 Status
 
 - Do: type `/fui status`.
-- Expect: the lines described in the Report block. The client line says `Client WoW Forever` and `auras on the engine`. [After P0.3: `auras on the legacy` means the client refused the aura container and ForeverUI fell back; `/fui errors` should say so.] [After P0.6 and P0.11: the `Client has:` line and a `secure snippets: yes` part are present; `secure snippets: no (hover keys off)` means the client could not run secure snippets.]
+- Expect: the lines described in the Report block. The client line says `Client WoW Forever` and `auras on the engine`. [After P0.3: `auras on the fallback` means the client refused the aura container and ForeverUI fell back; `/fui errors` should say so.] [After P0.6 and P0.11: the `Client has:` line and a `secure snippets: yes` part are present; `secure snippets: no (hover keys off)` means the client could not run secure snippets.]
 - If it fails, paste: the whole `/fui status` output and `/fui errors`.
 
 ### 1.4 No errors yet
@@ -82,13 +82,13 @@ For every failed step, paste all of this (steps below say "If it fails, paste:" 
 
 ### 3.3 Combat while unlocked
 
-- Do: type `/fui unlock`, then start a fight with a mob. During the fight type `/fui unlock` again, and after it ends once more.
+- Do: type `/fui unlock`, then start a fight with a mob. During the fight type `/fui unlock` again, and after it ends once more, then type `/fui lock` so the frames are locked again.
 - Expect: `Locked for combat. /fui unlock again afterwards.` and the handles gone when the fight starts; during the fight `/fui unlock` prints `Not in combat. Try again once combat ends.` (that wording is the current text, even though it reads backwards); after the fight `/fui unlock` works again.
 - If it fails, paste: the chat lines and `/fui errors`.
 
 ### 3.4 Edit Mode
 
-- Do: press Escape, click Edit Mode, look, close Edit Mode.
+- Do: make sure the frames are locked (`/fui lock`), press Escape, click Edit Mode, look, close Edit Mode. (If `/fui unlock` had the handles up already, closing Edit Mode leaves them up; that is intended.)
 - Expect: ForeverUI's labelled handles appear too, with a note under the Edit Mode window reading `The labeled handles are ForeverUI's frames: drag them here too (right-click one for more).` On closing, the handles hide and the Blizzard frames ForeverUI pins (minimap, strips, tracker) return to their ForeverUI spots.
 - If it fails, paste: a screenshot while Edit Mode is open and `/fui errors`.
 
@@ -170,8 +170,8 @@ For every failed step, paste all of this (steps below say "If it fails, paste:" 
 
 ### 8.1 Quest dialog
 
-- Do: talk to a quest giver who offers three or more quests. Press a number key, Space and Escape in turn. Then talk again holding Shift.
-- Expect: ForeverUI's dialog at the bottom centre with numbered lines in difficulty colours; the number picks a line, Space presses the main button (Accept, Continue or Complete), Escape says goodbye; with Shift held, no automation runs.
+- Do: under `/fui > Quests` tick Accept quests and Turn in finished quests (they are off by default). Talk to a quest giver who offers three or more quests. Press a number key, Space and Escape in turn. Then talk to a quest giver again without Shift (a quest is accepted for you), and once more holding Shift.
+- Expect: ForeverUI's dialog at the bottom centre with numbered lines in difficulty colours; the number picks a line, Space presses the main button (Accept, Continue or Complete), Escape says goodbye; without Shift the ticked automation runs; with Shift held, no automation runs and the dialog stays open for you.
 - If it fails, paste: a screenshot and `/fui errors`.
 
 ### 8.2 Long quest text
