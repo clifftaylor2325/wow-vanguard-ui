@@ -204,7 +204,8 @@ local function onTile(fn)
   return function(_, unit) RF.ForUnit(unit, run) end
 end
 
--- Event -> which part it refreshes (health changes refresh everything via RF.Update).
+-- Event -> which part it refreshes (a health change refreshes the heal bars
+-- through RF.healthHooks: incoming heals are clamped to the missing health).
 local EVENTS = {
   -- Each handler refreshes one part for the unit named in the event.
   UNIT_HEAL_PREDICTION = onTile(updatePrediction),
@@ -221,6 +222,7 @@ function RH.Enable(settings)
   for _, b in ipairs(RF.buttons) do setup(b) end
   table.insert(RF.setupHooks, setup)
   table.insert(RF.updateHooks, update)
+  table.insert(RF.healthHooks, updatePrediction)
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
 end
 

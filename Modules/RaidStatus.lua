@@ -134,14 +134,18 @@ end
 
 -- Updating ---------------------------------------------------------------------------------
 
+-- Shows a texture with a picture, or hides it.
+local function showTexture(t, shown, texture)
+  t:SetShown(shown)
+  if shown then t:SetTexture(texture) end
+end
+
 -- Shows a mark { texture, color } tinted, with its shadow, or hides both when
 -- there's none (or the mark is off).
 local function showMark(t, on, spec)
   local shown = on and spec ~= nil
-  for _, x in ipairs({ t, t.shadow }) do
-    x:SetShown(shown)
-    if shown then x:SetTexture(spec[1]) end
-  end
+  showTexture(t, shown, shown and spec[1])
+  showTexture(t.shadow, shown, shown and spec[1])
   if shown then T.Tint(t, spec[2]) end
 end
 
@@ -159,15 +163,25 @@ local function updateRaidIcon(b, unit)
   RS.PaintIcon(b.raidIcon, RS.settings.raidIcons and RS.RaidIcon(unit))
 end
 
--- Every mark on one button (RF update hook). The status text (missing health,
--- Dead) hides while the ready check or resurrection mark covers the center.
-local function update(b, unit)
+-- The marks that come and go in the center: the ready check answer and the
+-- resurrection. The status text (missing health, Dead) hides while one shows.
+local function updateCenter(b, unit)
   local s = RS.settings
-  updateRaidIcon(b, unit)
   showMark(b.ready, s.readyCheck and RS.readyRunning, RS.ReadyMark(unit))
   b.rez:SetShown(s.resurrect and RS.Resurrecting(unit))
   b.status:SetShown(not (b.ready:IsShown() or b.rez:IsShown()))
-  showMark(b.leader, s.leader, RS.LeaderMark(unit))
+end
+
+-- The leader crown or assistant mark.
+local function updateLeader(b, unit)
+  showMark(b.leader, RS.settings.leader, RS.LeaderMark(unit))
+end
+
+-- Every mark on one button (RF update hook: a roster change, a new tile).
+local function update(b, unit)
+  updateRaidIcon(b, unit)
+  updateCenter(b, unit)
+  updateLeader(b, unit)
   RS.UpdateRange(b, unit)
 end
 
@@ -184,18 +198,23 @@ function RS.UpdateAll()
   each(update)
 end
 
+-- Refreshes one kind of mark on every shown button: icons, leader or center.
+local function eachPart(part)
+  return function() each(part) end
+end
+
 -- Events -----------------------------------------------------------------------------------
 
 -- A ready check started or someone answered: show the answers.
 local function onReadyCheck()
   RS.readyRunning = true
-  RS.UpdateAll()
+  each(updateCenter)
 end
 
 -- Hides every ready check answer.
 local function clearReady()
   RS.readyRunning = false
-  RS.UpdateAll()
+  each(updateCenter)
 end
 
 -- The check ended: leave the answers up a few seconds, then clear them.
@@ -204,9 +223,9 @@ local function onReadyFinished()
   clearReady()
 end
 
--- Refreshes a tile's marks, if it has them.
+-- Refreshes a tile's center marks, if it has them.
 local function updateMarks(b, unit)
-  if b.raidIcon then update(b, unit) end
+  if b.raidIcon then updateCenter(b, unit) end
 end
 
 -- A unit's resurrection state changed: refresh the tile showing it.
@@ -228,7 +247,7 @@ end
 
 -- Event -> handler.
 local EVENTS = {
-  RAID_TARGET_UPDATE = RS.UpdateAll, PARTY_LEADER_CHANGED = RS.UpdateAll, GROUP_ROSTER_UPDATE = RS.UpdateAll,
+  RAID_TARGET_UPDATE = eachPart(updateRaidIcon), PARTY_LEADER_CHANGED = eachPart(updateLeader), GROUP_ROSTER_UPDATE = RS.UpdateAll,
   READY_CHECK = onReadyCheck, READY_CHECK_CONFIRM = onReadyCheck, READY_CHECK_FINISHED = onReadyFinished,
   INCOMING_RESURRECT_CHANGED = onUnit,
 }

@@ -46,7 +46,8 @@ RF.INIT = [[
 RF.buttons = {}
 -- Other modules add to a raid button here: setupHooks(b) once per button,
 -- updateHooks(b, unit) on every refresh (Modules/RaidAuras.lua uses both).
-RF.setupHooks, RF.updateHooks = {}, {}
+-- healthHooks(b, unit) after a health event (only what follows health).
+RF.setupHooks, RF.updateHooks, RF.healthHooks = {}, {}, {}
 -- Tiles by the unit token the group header gave them (see RF.ForUnit).
 RF.byUnit = {}
 
@@ -108,23 +109,33 @@ end
 
 -- Updating ---------------------------------------------------------------------------------
 
+-- The accent as an { r, g, b } for a tile's edge: it reads the current accent
+-- whenever the edge is painted (an accent change included), so painting the
+-- target's edge makes no table.
+local ACCENT = setmetatable({}, {
+  -- ACCENT[i]: the i-th of the accent's r, g, b.
+  __index = function(_, i) return (select(i, T.Accent())) end,
+})
+
+-- Shows a role mark texture with the mark, or hides it.
+local function showRoleTexture(t, mark)
+  t:SetShown(mark ~= nil)
+  if mark then t:SetTexture(mark) end
+end
+
 -- The role mark (with its shadow), or none. With no mark it narrows to one
 -- unit, so the name anchored after it starts near the row's start. Nothing is
 -- re-anchored, so this is safe in combat (the game's raid frames do the same).
 local function updateRole(b, unit)
   local mark, color = RF.RoleMark(unit)
-  for _, t in ipairs({ b.role, b.roleShadow }) do
-    t:SetShown(mark ~= nil)
-    if mark then t:SetTexture(mark) end
-  end
+  showRoleTexture(b.role, mark)
+  showRoleTexture(b.roleShadow, mark)
   if color then T.Tint(b.role, color) end
   b.role:SetWidth(mark and b.roleSize or 1)
 end
 
--- Role mark and name on the top row; Dead / Offline, else the missing health, below.
-local function updateTexts(b, unit)
-  b.name:SetText(UnitName(unit))
-  updateRole(b, unit)
+-- Dead / Offline, else the missing health, on the status line.
+local function updateStatus(b, unit)
   -- DownState, not the health text: that text can be a secret string, and
   -- comparing a secret errors ("attempt to compare ... a secret string value").
   local down = unitFrames().DownState(unit)
@@ -147,8 +158,16 @@ local function paintHealth(b, unit)
   T.Color(b.name, "text")
 end
 
+-- The health bar, the status line under the name, and the colors.
+local function updateHealth(b, unit)
+  b.health:SetMinMaxValues(0, UnitHealthMax(unit))
+  T.SetBarValue(b.health, UnitHealth(unit))
+  updateStatus(b, unit)
+  paintHealth(b, unit)
+end
+
 -- The thin power bar: value, maximum and power color, or hidden when turned off.
-local function updatePower(b, unit)
+function RF.UpdatePower(b, unit)
   b.power:SetShown(RF.settings.showPower == true)
   if not RF.settings.showPower then return end
   b.power:SetMinMaxValues(0, UnitPowerMax(unit))
@@ -156,28 +175,60 @@ local function updatePower(b, unit)
   b.power:SetStatusBarColor(unitFrames().PowerColor(unit))
 end
 
--- Health bar, colors, texts and power for one button's unit.
-function RF.Update(b)
+-- The unit a tile shows, when it exists; else nil.
+local function tileUnit(b)
   local unit = b:GetAttribute("unit")
-  if not unit or not UnitExists(unit) then return end
-  b.health:SetMinMaxValues(0, UnitHealthMax(unit))
-  T.SetBarValue(b.health, UnitHealth(unit))
-  updateTexts(b, unit)
-  paintHealth(b, unit)
-  updatePower(b, unit)
+  if unit and UnitExists(unit) then return unit end
+  return nil
+end
+
+-- Everything on one tile: name, role, health, power, edge and every module's
+-- part (RF.updateHooks). For a roster change, a new tile, or a setting.
+function RF.Update(b)
+  local unit = tileUnit(b)
+  if not unit then return end
+  b.name:SetText(UnitName(unit))
+  updateRole(b, unit)
+  updateHealth(b, unit)
+  RF.UpdatePower(b, unit)
   RF.PaintEdge(b, unit)
   for _, hook in ipairs(RF.updateHooks) do hook(b, unit) end
 end
 
--- The tile's own edge: accent on your target, the theme's otherwise.
+-- A health event: the bar, status and colors, then the parts that follow
+-- health (RF.healthHooks). A unit that just died, came back or went offline
+-- gets everything, since other parts hide on the dead.
+function RF.UpdateHealth(b, unit)
+  local wasDown = b.down
+  updateHealth(b, unit)
+  if b.down ~= wasDown then return RF.Update(b) end
+  for _, hook in ipairs(RF.healthHooks) do hook(b, unit) end
+end
+
+-- The role marks on one tile (roles were assigned).
+RF.UpdateRole = updateRole
+
+-- The tile's own edge: accent on your target, the theme's otherwise. It is
+-- painted only when that changes (b.isTarget remembers it).
 function RF.PaintEdge(b, unit)
-  T.SetBorder(b, isTarget(unit) and { T.Accent() } or nil)
+  local on = isTarget(unit)
+  if on == b.isTarget then return end
+  b.isTarget = on
+  T.SetBorder(b, on and ACCENT or nil)
 end
 
 -- Every button currently showing a unit.
 function RF.UpdateAll()
   for _, b in ipairs(RF.buttons) do
     if b:IsShown() then RF.Update(b) end
+  end
+end
+
+-- Runs fn(tile, unit) on every shown tile with an existing unit.
+function RF.EachTile(fn)
+  for _, b in ipairs(RF.buttons) do
+    local unit = b:IsShown() and tileUnit(b)
+    if unit then fn(b, unit) end
   end
 end
 
@@ -189,9 +240,15 @@ function RF.ForUnit(unit, fn)
   if b and b:IsShown() then fn(b, unit) end
 end
 
--- A unit event: refresh the tile showing that unit.
-local function onUnitEvent(_, unit)
-  RF.ForUnit(unit, RF.Update)
+-- A unit event handler that runs one part, RF[part](tile, unit), on the tile
+-- showing the event's unit, with the tile's own unit token.
+local function onUnit(part)
+  -- The part, on a tile whose unit still exists.
+  local run = function(b)
+    local unit = tileUnit(b)
+    if unit then RF[part](b, unit) end
+  end
+  return function(_, unit) RF.ForUnit(unit, run) end
 end
 
 -- Zones ------------------------------------------------------------------------------------
@@ -425,8 +482,12 @@ function RF.WithoutSnippets()
 end
 
 local hiddenParent
-local UNIT_EVENTS = { "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_CONNECTION", "UNIT_NAME_UPDATE", "UNIT_FACTION",
-  "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER" }
+-- Unit event -> the part of the tile it refreshes (rare ones refresh all of it).
+local UNIT_EVENTS = {
+  UNIT_HEALTH = onUnit("UpdateHealth"), UNIT_MAXHEALTH = onUnit("UpdateHealth"),
+  UNIT_POWER_UPDATE = onUnit("UpdatePower"), UNIT_MAXPOWER = onUnit("UpdatePower"), UNIT_DISPLAYPOWER = onUnit("UpdatePower"),
+  UNIT_CONNECTION = onUnit("Update"), UNIT_NAME_UPDATE = onUnit("Update"), UNIT_FACTION = onUnit("Update"),
+}
 
 -- Hides a default raid/party frame by parenting it to a hidden frame.
 local function hideBlizzard(name)
@@ -499,7 +560,8 @@ function RF.Enable(settings)
   RF.settings = settings
   migrateStyle(settings)
   ns.OutOfCombat(function() build(settings) end)
-  for _, e in ipairs(UNIT_EVENTS) do ns.On(e, onUnitEvent) end
-  for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHANGED" }) do ns.On(e, RF.UpdateAll) end
+  for e, fn in pairs(UNIT_EVENTS) do ns.On(e, fn) end
+  for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHANGED" }) do ns.On(e, RF.UpdateAll) end
+  ns.On("PLAYER_ROLES_ASSIGNED", function() RF.EachTile(RF.UpdateRole) end)
   for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD" }) do ns.On(e, RF.Fit) end
 end
