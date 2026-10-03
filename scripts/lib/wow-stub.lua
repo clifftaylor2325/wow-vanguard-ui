@@ -409,6 +409,12 @@ function methods:IsShown() return self.__shown end
 function methods:SetVerticalScroll(y) self.__scroll = y end
 function methods:GetVerticalScroll() return self.__scroll or 0 end
 
+-- How far a scroll frame can scroll: its scroll child's height beyond its own (0 without a child, or a short one).
+function methods:GetVerticalScrollRange()
+  local child = self.__scrollChild
+  return math.max(0, (child and child:GetHeight() or 0) - self:GetHeight())
+end
+
 -- Visible only while it and every parent are shown, as in game.
 function methods:IsVisible()
   local f = self
