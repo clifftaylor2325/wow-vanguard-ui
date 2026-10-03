@@ -461,3 +461,14 @@ it("the mouseover fade still follows hovering an action button", () => {
   addon.hover("ForeverUI_Bar2Button1");
   expect([addon.eval("return ForeverUI_Bar2:GetAlpha()"), tip(addon).owner], "hovering one of its buttons shows the bar and a tooltip").toEqual([1, "ForeverUI_Bar2Button1"]);
 });
+
+it("action buttons cast on yourself, your focus or the mouseover with the game's modifiers", () => {
+  const addon = loggedIn();
+  const attrs = addon.eval(`local out = {}
+    for _, name in ipairs({ "ForeverUI_Bar1Button1", "ForeverUI_Bar1Button12", "ForeverUI_Bar3Button7" }) do
+      local b = _G[name]
+      out[#out + 1] = { b:GetAttribute("checkselfcast"), b:GetAttribute("checkfocuscast"), b:GetAttribute("checkmouseovercast"), b:GetAttribute("type") }
+    end
+    return out`);
+  expect(attrs, "every button turns the three cast checks on, as the game's buttons do, and still uses its action").toEqual(Array(3).fill([true, true, true, "action"]));
+});
