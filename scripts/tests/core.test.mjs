@@ -466,7 +466,7 @@ it("secure snippets: a client whose snippets fail to compile turns hover keys of
   expect(addon.chat().find((l) => /secure snippets/.test(l)), "it names the consequence").toMatch(/hover keys are off; bar 1 pages and the raid frames are set up without them/);
   addon.eval('local CC = ns.GetModule("ClickCast") CC.Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew") CC.Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") __spawn(1, "raid1")');
   expect(addon.eval('return ForeverUI_RaidUnitButton1:GetAttribute("ctrl-type2")'), "mouse bindings are still set").toBe("spell");
-  expect(addon.eval('return ForeverUI_RaidUnitButton1:GetAttribute("type-fui2")'), "and so is the inert virtual button").toBe("spell");
+  expect(addon.eval('return ForeverUI_RaidUnitButton1:GetAttribute("*type-fui2")'), "and so is the inert virtual button").toBe("spell");
   expect(addon.eval("return __wraps"), "no SecureHandlerWrapScript call").toBe(0);
   expect(addon.eval("return ForeverUI_RaidUnitButton1.fuiWrapped"), "the frame is not marked wrapped").toBe(null);
   expect(addon.eval("return ns.Client.ProbeSnippets()"), "asking again answers the same").toBe(false);
