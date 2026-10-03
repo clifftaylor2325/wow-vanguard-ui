@@ -74,11 +74,13 @@ function ns.ShowText(title, text)
   f.edit:HighlightText()
 end
 
--- An empty box to paste into; onImport(text) runs when Import is clicked.
-function ns.AskText(title, onImport)
+-- An empty box to type or paste into; onImport(text) runs when the primary button
+-- (Import, or the label given) is clicked.
+function ns.AskText(title, onImport, label)
   local f = textBox()
   f.title:SetText(title)
   f.edit:SetText("")
+  f.primary.text:SetText(label or "Import")
   f.primary:Show()
   f.primary:SetScript("OnClick", function() onImport(f.edit:GetText()) end)
   f:Show()
