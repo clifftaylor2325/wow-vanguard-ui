@@ -98,6 +98,7 @@ it("bindings carry spell ids and ranks, move, copy, export and import", () => {
   });
   expect(bindings(addon).BUTTON4, "an old name-only binding gets its spell id once").toBe("spell:Renew:139:nil");
   addon.eval(`${CC}.Add("ctrl-BUTTON2", "spell", "Flash Heal", 2061, 1) ${CC}.Add("shift-BUTTON1", "spell", "Flash Heal", 9472) ${CC}.Add("BUTTON5", "focus") ${CC}.Add("SHIFT-Q", "assist")`);
+  // An attribute expression read off the first click-cast frame (f).
   const attrs = (lua) => addon.eval(`local f = ${CC}.frames[1] return ${lua}`);
   expect(attrs('f:GetAttribute("ctrl-spell2")'), "a picked rank casts by its spell id").toBe(2061);
   expect(attrs('f:GetAttribute("shift-spell1")'), "no rank casts by name, so a new rank applies by itself").toBe("Flash Heal");
