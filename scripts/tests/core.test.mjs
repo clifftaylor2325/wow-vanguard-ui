@@ -678,6 +678,50 @@ it("events: a game handler that fails inside a failing handler keeps the record,
   expect(addon.eval('ns.Try("TEST-ONLY again", error, "second") return __calls'), "the next failure is forwarded again (the guard did not stay set)").toBe(2);
 });
 
+// TEST-ONLY unit-event listener: notes "event:unit:arg" for each event it hears; __took() hands the notes over.
+const NOTE_LUA = `
+  __heard = {}
+  function __note(event, unit, arg) __heard[#__heard + 1] = event .. ":" .. unit .. ":" .. tostring(arg) end
+  function __took() local out = table.concat(__heard, " ") __heard = {} return out end
+`;
+
+it("unit events: a subscription hears only the units it asked the client for, and can be pointed at others", () => {
+  const addon = loggedIn(NOTE_LUA);
+  addon.eval('__sub = ns.OnUnit({ "UNIT_HEALTH", "UNIT_MAXHEALTH" }, __note, "target", "focus")');
+  expect(addon.eval("return { __sub.__unitEvents.UNIT_HEALTH, __sub.__unitEvents.UNIT_MAXHEALTH }"), "each event is registered with the client's unit filter").toEqual([["target", "focus"], ["target", "focus"]]);
+  addon.fire("UNIT_HEALTH", "target", 1);
+  addon.fire("UNIT_HEALTH", "nameplate1", 2);
+  addon.fire("UNIT_MAXHEALTH", "focus", 3);
+  expect(addon.eval("return __took()"), "its units' events reach the handler with their arguments; another unit's never do").toBe("UNIT_HEALTH:target:1 UNIT_MAXHEALTH:focus:3");
+  addon.eval('ns.SetUnits(__sub, "nameplate1")');
+  addon.fire("UNIT_HEALTH", "target", 4);
+  addon.fire("UNIT_HEALTH", "nameplate1", 5);
+  expect(addon.eval("return __took()"), "pointed at another unit, it hears that one instead").toBe("UNIT_HEALTH:nameplate1:5");
+  addon.eval("ns.SetUnits(__sub)");
+  addon.fire("UNIT_HEALTH", "nameplate1", 6);
+  expect([addon.eval("return __took()"), addon.eval("return next(__sub.__events) == nil")], "pointed at no unit, it hears nothing and holds no registration").toEqual(["", true]);
+  addon.eval('ns.OnUnit("UNIT_LEVEL", __note, "player", "target", "focus")');
+  addon.fire("UNIT_LEVEL", "focus", 7);
+  expect(addon.eval("return __took()"), "up to three units").toBe("UNIT_LEVEL:focus:7");
+});
+
+it("unit events: a failing handler is reported, an event the client lacks is skipped, and an old client is filtered here", () => {
+  const addon = loggedIn(NOTE_LUA + "__wfgWorld.invalidEvents.TEST_ONLY_GONE = true");
+  addon.eval('ns.ClearErrors() ns.OnUnit("UNIT_LEVEL", function() error("TEST-ONLY unit handler") end, "player") ns.OnUnit("UNIT_LEVEL", __note, "player")');
+  addon.fire("UNIT_LEVEL", "player", 1);
+  expect(addon.eval("return __took()"), "another subscription still runs").toBe("UNIT_LEVEL:player:1");
+  expect(addon.eval("return ns.errors[1].text"), "the failure is kept under its event").toMatch(/^event UNIT_LEVEL: .*TEST-ONLY unit handler$/);
+  addon.eval('ns.ClearErrors() __gone = ns.OnUnit({ "TEST_ONLY_GONE", "UNIT_FACTION" }, __note, "player")');
+  expect(addon.eval("return { ns.errors[1].text, __gone.__events.TEST_ONLY_GONE == nil, __gone.__events.UNIT_FACTION }"), "an event this client lacks is noted and left out; the rest are kept").toEqual(["event TEST_ONLY_GONE: not on this client", true, true]);
+  addon.eval(`local frame = __wfgWidgetApi.methods.Frame
+    frame.RegisterUnitEvent = nil
+    __old = ns.OnUnit("UNIT_PORTRAIT_UPDATE", __note, "target", "focus")
+    frame.RegisterUnitEvent = true`);
+  expect(addon.eval("return { __old.__events.UNIT_PORTRAIT_UPDATE, __old.__unitEvents == nil }"), "a client without RegisterUnitEvent: the plain event").toEqual([true, true]);
+  for (const unit of ["player", "focus", "nameplate4", "target"]) addon.fire("UNIT_PORTRAIT_UPDATE", unit, unit.length);
+  expect(addon.eval("return __took()"), "and other units are dropped here").toBe("UNIT_PORTRAIT_UPDATE:focus:5 UNIT_PORTRAIT_UPDATE:target:6");
+});
+
 it("slash commands for frames, accent, grid, theme, modules, skins, profile and spec", () => {
   const addon = loggedIn(`
     -- TEST-ONLY spec index the slash command prints.

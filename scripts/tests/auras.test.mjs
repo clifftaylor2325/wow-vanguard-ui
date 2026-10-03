@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, ENGINE_ENV, NO_RAID, RAID_ENV, SETUP_DONE, UNITS_ENV, button, chatHas, isTok, key, lacking, loggedIn, setCombat, tooltip } from "./helpers.mjs";
+import { CLICK_LUA, ENGINE_ENV, NO_RAID, RAID_ENV, SETUP_DONE, UNITS_ENV, button, chatHas, isTok, key, lacking, loggedIn, setCombat, tooltip, unitEvents } from "./helpers.mjs";
 
 // TEST-ONLY auras by unit and filter. raid1: a Magic debuff and two of your HoTs.
 const AURA_ENV = `
@@ -69,6 +69,16 @@ it("a client that won't drive the dispel highlight never shows it uncolored", ()
     local shown = 0 for _, w in ipairs(__wfgStub.frames) do if w.__parent == first and w.__kind == "Texture" and w.__texture and w.__texture:find("Fade") and w.__shown then shown = shown + 1 end end
     return { regs = #first.__dispel, icon = first.__shown, washes = shown }`);
   expect(out.icon === true && out.regs === 0 && out.washes === 0, "the debuff icon still shows; the unregistered wash stays hidden").toBeTruthy();
+});
+
+it("raid auras listen for UNIT_AURA only on the fallback, where they paint the highlight themselves", () => {
+  const noHealing = { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { RaidHealing = false } } }" };
+  const engine = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV, noHealing);
+  engine.eval('__spawn(1, "raid1")');
+  expect(unitEvents(engine, "UNIT_AURA").plain, "on the client's engine nothing takes every unit's UNIT_AURA").toBe(0);
+  const fallback = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + "__wfgStub.noAuraContainer = true", noHealing);
+  fallback.eval('__spawn(1, "raid1") __spawn(2, "raid2")');
+  expect(unitEvents(fallback, "UNIT_AURA").plain, "on the fallback, one listener for every tile").toBe(1);
 });
 
 it("raid indicators on the fallback", () => {

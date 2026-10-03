@@ -1,7 +1,7 @@
 // casts: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { FAKE_FADES, bars, isTok, loggedIn, spark } from "./helpers.mjs";
+import { FAKE_FADES, bars, isTok, loggedIn, spark, unitEvents } from "./helpers.mjs";
 
 // TEST-ONLY casts: __casts[unit] = { kind = "cast"|"channel", start, finish, shielded }.
 const CAST_ENV = `
@@ -112,4 +112,19 @@ it("cast bars: spark, seconds left, latency and the uninterruptible edge", () =>
   homeOnly.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
   homeOnly.fire("UNIT_SPELLCAST_START", "player");
   expect(homeOnly.eval("return ForeverUI_CastBar_player.lag.__width") === homeOnly.eval("return ForeverUI_CastBar_player:GetWidth()") * 60 / 3000, "home latency when world latency is hidden").toBeTruthy();
+});
+
+it("cast bars ask the client for their own units' casts only", () => {
+  const addon = loggedIn(CAST_ENV + "__updates = {}");
+  expect(unitEvents(addon, "UNIT_SPELLCAST_START"), "one subscription for you, your target and your focus; nothing takes every unit's casts").toEqual({ subs: "player,target,focus", plain: 0 });
+  addon.eval(`local CB = ns.GetModule("CastBars") local update = CB.Update
+    CB.Update = function(unit) __updates[#__updates + 1] = unit return update(unit) end
+    __casts.nameplate7 = { kind = "cast", start = 1000, finish = 3000 }`);
+  addon.fire("UNIT_SPELLCAST_START", "nameplate7");
+  addon.fire("UNIT_SPELLCAST_DELAYED", "party2");
+  expect(addon.eval("return #__updates"), "a nameplate's or a party member's cast never reaches the cast bars").toBe(0);
+  addon.fire("UNIT_SPELLCAST_START", "focus");
+  expect(addon.eval("return __updates[1]"), "the focus's does").toBe("focus");
+  const some = loggedIn(CAST_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { CastBars = { player = false, focus = false } } }" });
+  expect(unitEvents(some, "UNIT_SPELLCAST_STOP").subs, "only the units whose bars are on").toBe("target");
 });

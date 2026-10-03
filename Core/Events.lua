@@ -220,3 +220,49 @@ function ns.Off(event, fn)
     frame:UnregisterEvent(event)
   end
 end
+
+-- Unit events -------------------------------------------------------------------------------
+-- A unit event (UNIT_HEALTH, UNIT_AURA, UNIT_SPELLCAST_START...) fires for
+-- every unit the client tracks: party, raid, every nameplate. On the shared
+-- frame above each one would reach every handler. ns.OnUnit gives a
+-- subscription its own frame, registered with RegisterUnitEvent, so the
+-- client only sends the units asked for; a client without that call gets the
+-- plain event, and the other units are dropped here.
+
+-- A subscription's OnEvent: its handler under ns.Try, for its own units only.
+local function onUnitEvent(sub, event, unit, ...)
+  if sub.fuiPlain and not sub.fuiUnits[unit] then return end
+  ns.Try(label(event), sub.fuiHandler, event, unit, ...)
+end
+
+-- The events this client has, from one name or a list (one it lacks is skipped and noted).
+local function knownEvents(events)
+  local out = {}
+  for _, event in ipairs(type(events) == "table" and events or { events }) do
+    if known(event) then out[#out + 1] = event else ns.Report(label(event), "not on this client") end
+  end
+  return out
+end
+
+-- Points a subscription (from ns.OnUnit) at other units, up to three; none stops it.
+function ns.SetUnits(sub, unit1, unit2, unit3)
+  sub:UnregisterAllEvents()
+  -- A unit as a key; a number stands in for a missing one (no event names a number).
+  sub.fuiUnits = { [unit1 or 1] = true, [unit2 or 2] = true, [unit3 or 3] = true }
+  if unit1 == nil then return end
+  for _, event in ipairs(sub.fuiEvents) do
+    if sub.fuiPlain then sub:RegisterEvent(event) else sub:RegisterUnitEvent(event, unit1, unit2, unit3) end
+  end
+end
+
+-- Calls fn(event, unit, ...) when one of the events (a name or a list) fires
+-- for one of the units (up to three; none until ns.SetUnits gives some).
+-- Returns the subscription, for ns.SetUnits.
+function ns.OnUnit(events, fn, unit1, unit2, unit3)
+  local sub = CreateFrame("Frame")
+  sub.fuiEvents, sub.fuiHandler = knownEvents(events), fn
+  sub.fuiPlain = type(sub.RegisterUnitEvent) ~= "function"
+  sub:SetScript("OnEvent", onUnitEvent)
+  ns.SetUnits(sub, unit1, unit2, unit3)
+  return sub
+end

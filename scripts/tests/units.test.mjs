@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, button, isTok, key, later, loggedIn, marks, setCombat, spark, tok, totemCell } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, button, isTok, key, later, loggedIn, marks, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
 
 // A frame's state for the unit-frame tests.
 const ufState = (addon, key) => addon.eval(`
@@ -314,6 +314,26 @@ it("threat on your target and your pet's happiness", () => {
   addon.eval('__click("Unit frames")');
   expect(addon.eval('return __click("Your threat on your target") and ForeverUIDB.profiles.Default.UnitExtras.threat'), "the threat switch is on the page").toBe(false);
   expect(addon.eval('return __click("happiness") and ForeverUIDB.profiles.Default.UnitExtras.happiness'), "and the pet's").toBe(false);
+});
+
+it("unit events: combo points, the druid's mana, power ticks and threat ask the client for your own units only", () => {
+  const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + TICKS_ENV + `__units.player.class = "DRUID" __cp = 2
+    GetComboPoints = function() return __cp end`, NO_RAID);
+  // Who hears the event (see unitEvents).
+  const heard = (event) => unitEvents(addon, event);
+  expect(heard("UNIT_POWER_UPDATE"), "combo points and the mana bar: your power only, nothing takes every unit's").toEqual({ subs: "player player", plain: 0 });
+  expect(heard("UNIT_POWER_FREQUENT"), "the energy tick too").toEqual({ subs: "player player player", plain: 0 });
+  expect(heard("UNIT_MAXPOWER")).toEqual({ subs: "player player", plain: 0 });
+  expect(heard("UNIT_DISPLAYPOWER"), "a form's power type: the mana bar and the spark").toEqual({ subs: "player player", plain: 0 });
+  expect(heard("UNIT_SPELLCAST_SUCCEEDED"), "the five-second rule: your casts").toEqual({ subs: "player", plain: 0 });
+  expect([heard("UNIT_THREAT_LIST_UPDATE").subs, heard("UNIT_THREAT_SITUATION_UPDATE").subs], "threat: your target's list, and your own situation").toEqual(["target", "player"]);
+  // How many combo-point pips are lit.
+  const lit = () => addon.eval('local n = 0 for _, p in ipairs(ns.GetModule("ComboPoints").pips) do if p.fill:IsShown() then n = n + 1 end end return n');
+  addon.eval("__cp = 4");
+  addon.fire("UNIT_POWER_UPDATE", "target", "COMBO_POINTS");
+  expect(lit(), "another unit's power event repaints nothing").toBe(2);
+  addon.fire("UNIT_POWER_FREQUENT", "player", "COMBO_POINTS");
+  expect(lit(), "yours does").toBe(4);
 });
 
 it("threat and happiness only where the client and settings allow", () => {
