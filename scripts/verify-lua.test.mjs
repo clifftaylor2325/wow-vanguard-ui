@@ -2716,8 +2716,8 @@ it("client capability probe: in a fight the aura container waits; first use prob
   expect(early.eval("return ns.Client.has.cooldownMin"), "and the probe is not run again").toBe("TEST-ONLY-kept");
 });
 
-// How many lines of chat mention secure snippets.
-const snippetLines = (addon) => addon.chat().filter((l) => /secure snippets/.test(l)).length;
+// How many lines of chat mention secure snippets (or the probe's own error report, "secure snippet probe: ...").
+const snippetLines = (addon) => addon.chat().filter((l) => /secure snippet/.test(l)).length;
 
 // The caught errors that came from the snippet probe.
 const probeErrors = (addon) => addon.eval(`local o = {} for _, e in ipairs(ns.errors) do
@@ -2740,6 +2740,7 @@ it("secure snippets: a client whose snippets fail to compile turns hover keys of
     __wraps = 0 local w = SecureHandlerWrapScript SecureHandlerWrapScript = function(...) __wraps = __wraps + 1 return w(...) end`);
   expect(addon.eval("return ns.Client.has.secureSnippets"), "the probe answers no").toBe(false);
   expect(snippetLines(addon), "one chat line at login").toBe(1);
+  expect(addon.chat().find((l) => /secure snippets/.test(l)), "it carries the probe's error in the same line").toMatch(/\(probe: .*TEST-ONLY: snippets do not compile\)$/);
   expect(addon.chat().find((l) => /secure snippets/.test(l)), "it names the consequence").toMatch(/hover keys are off; bar paging, bar visibility and the raid frames may not work/);
   addon.eval('local CC = ns.GetModule("ClickCast") CC.Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew") CC.Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") __spawn(1, "raid1")');
   expect(addon.eval('return ForeverUI_RaidUnitButton1:GetAttribute("ctrl-type2")'), "mouse bindings are still set").toBe("spell");
@@ -2748,7 +2749,7 @@ it("secure snippets: a client whose snippets fail to compile turns hover keys of
   expect(addon.eval("return ForeverUI_RaidUnitButton1.fuiWrapped"), "the frame is not marked wrapped").toBe(null);
   expect(addon.eval("return ns.Client.ProbeSnippets()"), "asking again answers the same").toBe(false);
   expect(snippetLines(addon), "and does not warn again").toBe(1);
-  expect(probeErrors(addon), "the compile error is kept for /fui errors").toEqual({ 1: expect.stringMatching(/^secure snippet probe: .*TEST-ONLY: snippets do not compile$/), n: 1 });
+  expect(probeErrors(addon).n, "the error is in the one warning, not reported to chat a second time").toBe(0);
   addon.slash("status");
   expect(chatHas(addon, /secure snippets: no \(hover keys off\)/), "/fui status says no, and what it costs").toBe(true);
 });
@@ -2770,9 +2771,14 @@ it("secure snippets: logging in during a fight defers the probe, and it runs bef
   setCombat(addon, true);
   addon.login();
   expect(addon.eval("return ns.Client.has.secureSnippets"), "not probed in a fight").toBe(null);
+  addon.slash("status");
+  expect(snippetLines(addon), "/fui status says nothing about snippets before the probe ran").toBe(0);
   expect(addon.eval("return ns.Client.ProbeSnippets()"), "asking in a fight does not probe either").toBe(null);
   setCombat(addon, false);
   expect(addon.eval("return ns.Client.has.secureSnippets"), "after the fight it is asked").toBe(true);
+  addon.clearChat();
+  addon.slash("status");
+  expect(chatHas(addon, /secure snippets: yes/), "and /fui status then says yes").toBe(true);
   addon.eval('ns.GetModule("ClickCast").Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") __spawn(1, "raid1")');
   expect(addon.eval("return ForeverUI_RaidUnitButton1.__wraps.OnLeave"), "and click casting wraps the frame").toBe("self:ClearBindings()");
 });

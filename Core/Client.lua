@@ -124,24 +124,27 @@ local function runSnippetProbe()
   return f:GetAttribute("fuiprobe") == "ok"
 end
 
--- Whether this client compiles secure snippets: a missing API, an error or a write that never lands all count as no.
+-- Whether this client compiles secure snippets, and the error text when the probe threw: a missing API, an error or a write that never lands all count as no.
+-- Plain pcall, not ns.Try: a failing probe is one chat line (the warning below, with the error in it), not a second report.
 local function snippetsWork()
   if type(SecureHandlerExecute) ~= "function" then return false end
-  local ok, worked = ns.Try("secure snippet probe", runSnippetProbe)
-  return ok and worked == true
+  local ok, worked = pcall(runSnippetProbe)
+  if not ok then return false, tostring(worked) end
+  return worked == true
 end
 
--- The one chat line when snippets are off.
-local function warnNoSnippets()
-  ns.Chat("This client can't run secure snippets: hover keys are off; bar paging, bar visibility and the raid frames may not work until the game fixes it.")
+-- The one chat line when snippets are off, with the probe's error when it threw.
+local function warnNoSnippets(err)
+  ns.Chat("This client can't run secure snippets: hover keys are off; bar paging, bar visibility and the raid frames may not work until the game fixes it." .. (err and ("  (probe: " .. err .. ")") or ""))
 end
 
 -- Probes once, out of combat (nil until then); says so in chat, once, when snippets are off.
 function C.ProbeSnippets()
   local has = C.has
   if has.secureSnippets ~= nil or ns.InCombat() then return has.secureSnippets end
-  has.secureSnippets = snippetsWork()
-  if not has.secureSnippets then warnNoSnippets() end
+  local worked, err = snippetsWork()
+  has.secureSnippets = worked
+  if not worked then warnNoSnippets(err) end
   return has.secureSnippets
 end
 
