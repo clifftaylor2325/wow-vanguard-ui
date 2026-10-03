@@ -122,7 +122,8 @@ end
 -- Builds the catalog: spells by name with their ranks, in spellbook order.
 local function build()
   local spells, byName = {}, {}
-  local ok, items = hasSpellbook() and ns.Try("ClickCast spellbook", bookItems)
+  local ok, items = false, nil
+  if hasSpellbook() then ok, items = ns.Try("ClickCast spellbook", bookItems) end
   for _, item in ipairs(ok and items or {}) do fold(spells, byName, item) end
   for _, s in ipairs(spells) do sortRanks(s) end
   return { spells = spells, byName = byName }
