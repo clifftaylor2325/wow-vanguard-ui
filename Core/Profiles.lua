@@ -33,9 +33,9 @@ function ns.CopyProfile(from)
   return true
 end
 
--- Deletes a profile (never the active one); characters or specs using it fall back to Default.
+-- Deletes a profile (never the active or the staged one); characters or specs using it fall back to Default.
 function ns.DeleteProfile(name)
-  if not ForeverUIDB.profiles[name] or name == ns.ProfileName() then
+  if not ForeverUIDB.profiles[name] or name == ns.ProfileName() or name == ns.SelectedProfileName() then
     return false
   end
   ForeverUIDB.profiles[name] = nil
@@ -71,12 +71,12 @@ local function freeName(base)
   return name
 end
 
--- A whole imported profile: saved under a free name, and this character switches to it.
+-- A whole imported profile: saved under a free name, and this character switches to it on reload.
 local function importWhole(data)
   local name = freeName("Imported")
   ForeverUIDB.profiles[name] = data
   ns.UseProfile(name)
-  return "Imported as profile " .. name .. " and switched to it."
+  return "Imported as profile " .. name .. "; this character will use it after a reload."
 end
 
 -- Applies an import string. A whole profile becomes a new profile this
@@ -135,24 +135,29 @@ function ns.SpecProfile(spec)
   return name and ForeverUIDB.profiles[name] and name or nil
 end
 
--- Switches to the current spec's profile. Returns true if it changed.
-local function followSpec()
+-- Stages the current spec's profile (and applies it now when `now`, which is only safe before modules
+-- read their settings). Returns true if it changed.
+local function followSpec(now)
   local name = ns.SpecProfile()
-  if not name or name == ns.ProfileName() then
+  if not name or name == ns.SelectedProfileName() then
     return false
   end
   ns.UseProfile(name)
+  if now then ns.ApplyPendingProfile() end
   return true
 end
 
 -- At login (before modules read settings), take the spec's profile quietly.
-ns.On("PLAYER_LOGIN", followSpec)
+ns.On("PLAYER_LOGIN", function() followSpec(true) end)
 
--- On a spec change mid-session, switch and offer the reload that applies it.
-local function onSpecChanged(_, unit)
-  if (unit == nil or unit == "player") and followSpec() then
-    ns.OfferReload("Your specialization uses profile " .. ns.ProfileName() .. ".")
+-- On a spec change mid-session, stage the spec's profile and offer the reload that applies it.
+local function onSpecChanged()
+  if followSpec(false) then
+    ns.OfferReload("Your specialization uses profile " .. ns.SelectedProfileName() .. ".")
   end
 end
-ns.On("PLAYER_SPECIALIZATION_CHANGED", onSpecChanged)
+
+-- PLAYER_SPECIALIZATION_CHANGED names the unit that changed; only the player's matters.
+ns.On("PLAYER_SPECIALIZATION_CHANGED", function(_, unit) if unit == nil or unit == "player" then onSpecChanged() end end)
+-- ACTIVE_TALENT_GROUP_CHANGED passes (current, previous) group numbers, no unit: always the player's.
 ns.On("ACTIVE_TALENT_GROUP_CHANGED", onSpecChanged)

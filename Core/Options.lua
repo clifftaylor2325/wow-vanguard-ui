@@ -498,11 +498,18 @@ local function profileListRows()
   return rows
 end
 
+-- "This character uses Default." or, with a switch staged, what it uses until the reload and after it.
+local function currentProfileText()
+  local later = ns.PendingProfileName()
+  if not later then return "This character uses " .. ns.ProfileName() .. "." end
+  return "This character uses " .. ns.ProfileName() .. " until you reload, then " .. later .. "."
+end
+
 -- Profiles, part one: which profile, export/import, reset.
 local function currentProfileRows()
   return {
     { "header", "Profile" },
-    { "text", function() return "This character uses " .. ns.ProfileName() .. "." end },
+    { "text", currentProfileText },
     { "button", "Export profile", function() ns.ShowText("ForeverUI export  Ctrl+C to copy", ns.ExportProfile()) end },
     { "button", "Import", function() ns.ImportDialog() end },
     { "button", "Reset profile", function() ns.ResetProfile(); O.NeedReload() end },
@@ -515,7 +522,7 @@ local function specRows()
   return {
     { "header", "Specialization" },
     { "text", specText },
-    { "button", "Use this profile for this spec", function() ns.SetSpecProfile(ns.ProfileName()); O.Refresh() end },
+    { "button", "Use this profile for this spec", function() ns.SetSpecProfile(ns.SelectedProfileName()); O.Refresh() end },
     { "button", "Stop spec switching", function() ns.SetSpecProfile(nil); O.Refresh() end },
   }
 end
