@@ -3,7 +3,7 @@
 //
 //   node scripts/preview-ui.mjs [--out dir]
 //
-// Runs the real addon Lua (same harness as verify-lua) against a TEST-ONLY
+// Runs the real addon Lua (same harness as the scripts/tests suite) against a TEST-ONLY
 // world (units, action slots, chat lines) and lays out the frames it built
 // in headless Chromium. Layout, sizes, colors and bar values are the
 // addon's own; spell icons, the map and the game font are approximated.
