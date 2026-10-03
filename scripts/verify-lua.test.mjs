@@ -4345,6 +4345,10 @@ it("a container the client refuses after the probe retires the engine for the se
     local hidden = true for _, w in ipairs(__wfgStub.frames) do if w.__kind == "AuraContainer" and w.__shown then hidden = false end end
     return { kind = __c.frame.__kind, available = ns.AuraEngine.Available(), backend = ns.Auras.BackendName(), icon = __c.groups[1].icons[1].icon.__texture, hidden = hidden }`);
   expect(c, "the refused container is built by the fallback, and the engine is retired").toEqual({ kind: "Frame", available: false, backend: "fallback", icon: "MY-DOT", hidden: true });
+  expect(addon.eval("return ns.Client.has.auraContainer"), "a retired engine no longer counts as a capability of the client").toBe(false);
+  addon.slash("status");
+  expect(chatHas(addon, /Client has: [^·]*· {2}lacks: auraContainer(,|$)/), "/fui status lists the aura container as lacking").toBe(true);
+  expect(chatHas(addon, /Client has: [^·]*auraContainer[^·]*·/), "and no longer under what the client has").toBe(false);
   expect(addon.eval("return ns.errors[#ns.errors].text"), "the refusal is kept under its own label").toMatch(/^aura container \(switching to ForeverUI's own icons\): .*TEST-ONLY: SetUnit refused$/);
   expect(addon.eval('return ns.Auras.Container(UIParent, __spec, "target").frame.__kind'), "the next container goes straight to the fallback").toBe("Frame");
   expect(errorsWith(addon, REFUSED_WHERE), "and the engine is never tried again: one entry, seen once").toEqual([1, 1]);
