@@ -246,7 +246,7 @@ it("auto-accept: summons, resurrections and duels, each off until switched on", 
   expect(off.eval("return #__answers"), "off by default: the game asks as usual").toBe(0);
   const on = loggedIn(PROMPT_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { AutoAccept = { summons = true, resurrect = true, duels = true } } }" });
   fire(on);
-  expect(on.eval("return __answers"), "each answered, its prompt closed").toEqual(["summon", "close CONFIRM_SUMMON", "resurrect", "close RESURRECT", "close RESURRECT_NO_SICKNESS", "decline", "close DUEL_REQUESTED"]);
+  expect(on.eval("return __answers"), "each answered, its prompt closed (all three resurrection prompts, whichever the game showed)").toEqual(["summon", "close CONFIRM_SUMMON", "resurrect", "close RESURRECT", "close RESURRECT_NO_SICKNESS", "close RESURRECT_NO_TIMER", "decline", "close DUEL_REQUESTED"]);
   expect(chatHas(on, /summon from <name> to TEST-ONLY Vale/) && chatHas(on, /resurrection from <name>/) && chatHas(on, /duel from someone/), "and said in chat (a hidden name reads as someone)").toBe(true);
   on.eval("__answers = {}");
   setCombat(on, true);
