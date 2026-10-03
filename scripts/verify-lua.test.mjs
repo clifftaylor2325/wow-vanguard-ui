@@ -53,6 +53,38 @@ it("saved variables", () => {
   expect(kept.eval("return ns.Theme.Settings().panel[4]") === 0.94, "missing theme settings get defaults").toBeTruthy();
 });
 
+it("wrong-typed saved values are replaced by their defaults", () => {
+  const addon = loggedIn("", {
+    savedVariables: `ForeverUIDB.profiles = { Default = { theme = { textScale = "large", pixelScale = "yes", accent = "arcane", font = "client",
+      panel = { "x", 0.1, 0.1, 0.94 } }, movers = { gridSize = true } } }`,
+  });
+  expect(addon.eval("return ns.Theme.Settings().textScale"), "a word for a number scale gets the default").toBe(1);
+  expect(addon.eval("return ns.Theme.ScaledSize(10)"), "so text sizing no longer throws").toBe(10);
+  expect(addon.eval("return ns.Theme.Settings().pixelScale"), "a string for a boolean gets the default").toBe(false);
+  expect(addon.eval("return ns.Theme.Settings().accent[1] == ns.Theme.PRESETS.brass[1]"), "a string where a table belongs gets the default table").toBe(true);
+  expect(addon.eval("return ns.Theme.Settings().panel[1] == ns.Theme.TOKENS.panel[1]"), "a wrong-typed entry inside a table is replaced").toBe(true);
+  expect(addon.eval("return ns.Theme.Settings().panel[4]"), "a right-typed sibling is kept").toBe(0.94);
+  expect(addon.eval("return ns.Theme.Settings().font"), "a right-typed scalar is kept").toBe("client");
+  expect(addon.eval("return ns.MoverOptions().gridSize"), "a boolean for a number gets the default").toBe(32);
+  expect(addon.eval('local c = ns.Copy({ a = 1, b = { c = "x" } }) return { c.a, c.b.c }'), "ns.Copy still copies every key").toEqual([1, "x"]);
+});
+
+it("the account file's version is read and upgraded", () => {
+  const spy = "__mig = {} local real = ns.MigrateDB ns.MigrateDB = function(from, to) __mig[#__mig + 1] = { from, to } return real(from, to) end";
+  const stamped = loggedIn(spy, { savedVariables: "ForeverUIDB.version = nil" });
+  expect(stamped.eval("return __mig"), "a file without a stamp is upgraded from 0").toEqual([[0, 1]]);
+  expect(stamped.eval("return ForeverUIDB.version"), "and stamped").toBe(1);
+  expect(loggedIn(spy).eval("return __mig"), "a current file runs nothing").toEqual({});
+  const newer = loggedIn(spy, { savedVariables: "ForeverUIDB.version = 7" });
+  expect(newer.eval("return __mig"), "a newer addon's file is left alone").toEqual({});
+  expect(newer.eval("return ForeverUIDB.version"), "and never downgraded").toBe(7);
+  const fresh = loggedIn(spy, { firstRun: true });
+  expect(fresh.eval("return { #__mig, ForeverUIDB.version }"), "a fresh install is stamped without an upgrade").toEqual([0, 1]);
+  expect(fresh.eval('ns.UpgradeDB(2, function(db) db.marker = "a" end) ns.UpgradeDB(3, function(db) db.marker = db.marker .. "b" end) ns.UpgradeDB(4, function() error("boom") end) local ok = ns.MigrateDB(1, 3) return { ok, ForeverUIDB.marker, ForeverUIDB.version }'), "registered steps run in order and stamp each").toEqual([true, "ab", 3]);
+  expect(fresh.eval("local n = #ns.errors local ok = ns.MigrateDB(3, 4) return { ok, ForeverUIDB.version, #ns.errors - n }"), "a failing step is logged, stops the chain and leaves the stamp for a retry").toEqual([false, 3, 1]);
+  expect(fresh.eval("return ns.MigrateDB(3, 1)"), "a target below the stamp has nothing to run").toBe(true);
+});
+
 it("modules", () => {
   const addon = loggedIn(`
     ns.Module("Good", { defaults = { size = 3 }, Enable = function(s) __size = s.size end })
@@ -1996,6 +2028,16 @@ it("profile strings", () => {
   expect(/cut off/.test(decode(`${JSON.stringify(round.text.slice(0, -4))}`).err), "rejects a truncated string").toBeTruthy();
   const code = addon.eval(`local S = ns.Serialize local body = S.Base64("os.exit()") return "FUI1:profile:" .. S.Checksum(body) .. ":" .. body`);
   expect(/can't be read/.test(decode(JSON.stringify(code)).err), "text that isn't settings (e.g. code) is refused, never run").toBeTruthy();
+});
+
+it("profile strings keep big whole numbers", () => {
+  const r = loggedIn().eval(`local S = ns.Serialize
+    local text = S.Encode("profile", { big = 2 ^ 40, neg = -(2 ^ 40), half = 2 ^ 40 + 0.5, one = 1 })
+    local raw = S.Unbase64(text:match("^FUI1:profile:%x%x%x%x:(.+)$"))
+    local _, back = S.Decode(text)
+    return { raw = raw, big = back.big, neg = back.neg, half = back.half, one = back.one }`);
+  expect(r.raw, "whole numbers are written as plain digits").toBe('{["big"]=1099511627776,["half"]=1099511627776.5,["neg"]=-1099511627776,["one"]=1}');
+  expect([r.big, r.neg, r.half, r.one], "and read back exactly").toEqual([1099511627776, -1099511627776, 1099511627776.5, 1]);
 });
 
 it("export and import", () => {

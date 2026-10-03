@@ -21,10 +21,10 @@ local function quote(s)
   return '"' .. s:gsub('[%c"\\\128-\255]', function(c) return string.format("\\%03d", c:byte()) end) .. '"'
 end
 
--- A number as text that reads back exactly (whole numbers stay whole).
+-- A number as text that reads back exactly (whole numbers stay whole; %.0f because Lua 5.1's %d is 32-bit on the game's build).
 local function number(n)
   if n == math.floor(n) and math.abs(n) < 2 ^ 53 then
-    return string.format("%d", n)
+    return string.format("%.0f", n)
   end
   return string.format("%.17g", n)
 end
