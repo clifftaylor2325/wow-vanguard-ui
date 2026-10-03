@@ -1274,7 +1274,7 @@ const FOREVER_MENU_ENV = `
 
 it("a ForeverUI button on the game menu opens the options", () => {
   const addon = loggedIn(FOREVER_MENU_ENV);
-  expect(addon.eval("return { __calls.AddButton, __calls.AddSection, __calls.MarkDirty, __hooked == nil }"), "no AddButton or AddSection, no InitButtons hook, one MarkDirty").toEqual([0, 0, 1, true]);
+  expect(addon.eval("return { __calls.AddButton, __calls.AddSection, __calls.MarkDirty, __hooked == true }"), "no AddButton or AddSection, one MarkDirty; the one InitButtons hook is the Windows skin's").toEqual([0, 0, 1, true]);
   expect(addon.eval("local b = ns.gameMenuButton return { b.layoutIndex, b.bottomPadding, b:GetParent() == GameMenuFrame, b.__template, b:GetText(), b:IsShown() }"), "the menu's own template, first index, section gap under it").toEqual([0, 20, true, "GameMenuFrameButtonTemplate", "ForeverUI", true]);
   addon.eval("GameMenuFrame:Show()");
   expect(addon.eval("return GameMenuFrame.order"), "first in the menu, above Options").toEqual(["ForeverUI", "Options", "Return to Game"]);
@@ -1288,6 +1288,40 @@ it("a ForeverUI button on the game menu opens the options", () => {
   old.eval("HideUIPanel = function(f) f:Hide() end ns.gameMenuButton.__scripts.OnClick()");
   expect(old.eval("return GameMenuFrame:IsShown()"), "which closes the menu too").toBe(false);
   expect(loggedIn("").eval("return ns.gameMenuButton == nil"), "no game menu, nothing added").toBe(true);
+});
+
+// TEST-ONLY the game menu's button pool (AddButton takes from it, Reset empties it; each button has template art)
+// and its header plate, as MainMenuFrameTemplates.lua and DialogHeaderTemplate make them.
+const MENU_POOL_ENV = `
+  GameMenuFrame.buttonPool = { __active = {} }
+  function GameMenuFrame.buttonPool:EnumerateActive() return next, self.__active end
+  local add, reset = GameMenuFrame.AddButton, GameMenuFrame.Reset
+  function GameMenuFrame:AddButton(...) local b = add(self, ...) b.Left = b:CreateTexture(nil, "BACKGROUND") self.buttonPool.__active[b] = true return b end
+  function GameMenuFrame:Reset() reset(self) self.buttonPool.__active = {} end
+  local header = CreateFrame("Frame", nil, GameMenuFrame)
+  header.LeftBG, header.RightBG, header.CenterBG = header:CreateTexture(), header:CreateTexture(), header:CreateTexture()
+  header.Text = header:CreateFontString()
+  GameMenuFrame.Header = header
+`;
+
+it("game menu: buttons made after the skin ran are skinned once, ForeverUI's matches, the header plate is gone", () => {
+  const addon = loggedIn(FOREVER_MENU_ENV + MENU_POOL_ENV);
+  addon.eval("__spy = 0 local real = ns.Theme.Button ns.Theme.Button = function(...) __spy = __spy + 1 return real(...) end");
+  addon.eval("GameMenuFrame:Show()");
+  // The alpha of a menu button's template art.
+  const look = (path) => addon.eval(`local b = ${path} return { b.Left and b.Left.__alpha }`);
+  expect(addon.eval("return __spy"), "ForeverUI's button and the two pooled ones are skinned when the menu opens").toBe(3);
+  expect(borderOf(addon, "ns.gameMenuButton"), "ForeverUI's button is painted like a pooled one").toEqual(borderOf(addon, "next(GameMenuFrame.buttonPool.__active)"));
+  expect(look("next(GameMenuFrame.buttonPool.__active)"), "a pooled button's template art is faded").toEqual([0]);
+  addon.eval("GameMenuFrame:Hide() GameMenuFrame:Show()");
+  expect(addon.eval("return __spy"), "the next open makes two new buttons: only those are skinned").toBe(5);
+  addon.eval("GameMenuFrame:Hide() GameMenuFrame.buttonPool.__active = {} GameMenuFrame:Show()");
+  expect(addon.eval("local n = 0 for b in GameMenuFrame.buttonPool:EnumerateActive() do if b.fuiMenuSkinned then n = n + 1 end end return n"), "every active button carries the skin").toBe(2);
+  const head = addon.eval("local h = GameMenuFrame.Header local p = h.__points.TOP return { h.LeftBG:IsShown(), h.RightBG:IsShown(), h.CenterBG:IsShown(), h.Text.__font ~= nil, p.rel == GameMenuFrame, p.y }");
+  expect(head, "the header plate is hidden, its title in the theme font, inside the panel").toEqual([false, false, false, true, true, -8]);
+  const off = loggedIn(FOREVER_MENU_ENV + MENU_POOL_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Windows = { windows = false } } }" });
+  off.eval("GameMenuFrame:Show()");
+  expect([borderOf(off, "ns.gameMenuButton") == null, off.eval("return GameMenuFrame.Header.LeftBG:IsShown()")], "with the windows switched off the menu stays the game's").toEqual([true, true]);
 });
 
 it("game menu button: falls back, or goes without what the menu lacks", () => {
