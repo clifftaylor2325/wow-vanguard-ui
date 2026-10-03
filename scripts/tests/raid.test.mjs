@@ -1,14 +1,15 @@
 // raid: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { RAID_ENV, UNITS_ENV, button, key, loggedIn, raidButton, setCombat } from "./helpers.mjs";
+import { HEALING_ENV, RAID_ENV, UNITS_ENV, borderOf, isTok, loggedIn, raidButton, setCombat } from "./helpers.mjs";
 
 it("a unit event reaches only the tile showing that unit", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
   addon.eval(`__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3")
-    local RF = ns.GetModule("RaidFrames") local update, isUnit = RF.Update, UnitIsUnit
+    local RF = ns.GetModule("RaidFrames") local update, health, isUnit = RF.Update, RF.UpdateHealth, UnitIsUnit
     __updates, __asked = {}, 0
     RF.Update = function(b, ...) __updates[#__updates + 1] = b:GetName() return update(b, ...) end
+    RF.UpdateHealth = function(b, ...) __updates[#__updates + 1] = b:GetName() return health(b, ...) end
     UnitIsUnit = function(a, b) if b ~= "target" and b ~= "player" then __asked = __asked + 1 end return isUnit(a, b) end`);
   addon.fire("UNIT_HEALTH", "raid3");
   expect(addon.eval("return { __updates, __asked }"), "one tile is updated, and the client is never asked which tile shows raid3").toEqual([["ForeverUI_RaidUnitButton3"], 0]);
@@ -108,4 +109,63 @@ it("raid frames with secure snippets keep the init snippet", () => {
   headerMakes(addon, 1, "raid1");
   addon.fire("GROUP_ROSTER_UPDATE");
   expect(addon.eval("return ForeverUI_RaidUnitButton1.fuiHeaderSetup == nil"), "the module leaves set-up to the snippet").toBe(true);
+});
+
+// TEST-ONLY group status calls for the marks (no icons, checks or leaders), so their reads can be counted.
+const MARK_CALLS = `
+  GetRaidTargetIndex = function() return nil end
+  GetReadyCheckStatus = function() return nil end
+  UnitHasIncomingResurrection = function() return false end
+  UnitIsGroupLeader = function() return false end
+  UnitIsGroupAssistant = function() return false end
+  UnitInRange = function() return true, true end
+`;
+
+// The game calls counted below: every client read a raid tile's parts make.
+const COUNTED = ["UnitHealth", "UnitHealthMax", "UnitName", "UnitGroupRolesAssigned", "UnitPower", "UnitPowerMax", "GetRaidTargetIndex",
+  "GetReadyCheckStatus", "UnitHasIncomingResurrection", "UnitIsGroupLeader", "UnitInRange", "UnitThreatSituation", "UnitGetDetailedHealPrediction"];
+
+// TEST-ONLY counters: each named global, the theme's SetBorder and the by-name aura lookup add to __counts[name] when called.
+const COUNT_LUA = `__counts = {}
+  local function count(t, key, name) local f = t[key] t[key] = function(...) __counts[name] = (__counts[name] or 0) + 1 return f(...) end end
+  for _, name in ipairs({ "${COUNTED.join('", "')}" }) do count(_G, name, name) end
+  count(ns.Theme, "SetBorder", "SetBorder") count(C_UnitAuras, "GetAuraDataBySpellName", "auras")`;
+
+// The calls counted since the last look (then forgets them), every counted name present (0 when not called).
+const counted = (addon) => {
+  const c = addon.eval("local c = __counts __counts = {} return c");
+  return Object.fromEntries([...COUNTED, "SetBorder", "auras"].map((name) => [name, (c && c[name]) || 0]));
+};
+
+// The same counts with every call zeroed: what "nothing else was asked" looks like.
+const none = (c) => Object.fromEntries(Object.keys(c).map((name) => [name, 0]));
+
+it("raid tiles: each event refreshes only its own part of the tile", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + MARK_CALLS);
+  addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
+  addon.eval(COUNT_LUA);
+  addon.eval("__units.raid1.hp = 650");
+  addon.fire("UNIT_HEALTH", "raid1");
+  const health = counted(addon);
+  expect([raidButton(addon, 1).hp, raidButton(addon, 1).status, health.UnitGetDetailedHealPrediction], "a health event: the bar, the missing health and the heal bars").toEqual([650, "-350", 1]);
+  expect({ ...health, UnitHealth: 0, UnitHealthMax: 0, UnitGetDetailedHealPrediction: 0 }, "and nothing else: no name, role, power, edge, marks, range, threat or buff lookups").toEqual(none(health));
+  addon.eval("__units.raid1.power = 40 __units.raid1.maxpower = 100");
+  addon.fire("UNIT_POWER_UPDATE", "raid1");
+  const power = counted(addon);
+  expect([addon.eval("return ForeverUI_RaidUnitButton1.power.__value"), power.UnitPower, power.UnitPowerMax], "a power event: the power bar").toEqual([40, 1, 1]);
+  expect({ ...power, UnitPower: 0, UnitPowerMax: 0 }, "only").toEqual(none(power));
+  addon.eval('__units.raid1.role = "HEALER"');
+  addon.fire("PLAYER_ROLES_ASSIGNED");
+  const roles = counted(addon);
+  expect([/RoleHealer$/.test(raidButton(addon, 1).role), roles.UnitGroupRolesAssigned], "roles assigned: the role mark on each tile").toEqual([true, 3]);
+  expect({ ...roles, UnitGroupRolesAssigned: 0 }, "only").toEqual(none(roles));
+  addon.eval("__units.target = __units.raid1");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect([counted(addon).SetBorder, isTok(addon, borderOf(addon, "ForeverUI_RaidUnitButton1"), "accent")], "a new target: only the tile whose edge changes is repainted, in the accent").toEqual([1, true]);
+  addon.eval("ns.Theme.Settings().accent = { 0.1, 0.2, 0.3, 1 } ns.Theme.Refresh()");
+  expect(borderOf(addon, "ForeverUI_RaidUnitButton1"), "the target's edge follows an accent change").toEqual([0.1, 0.2, 0.3, 1]);
+  addon.eval("__units.raid1.hp = 0 __units.raid1.dead = true");
+  addon.fire("UNIT_HEALTH", "raid1");
+  expect([raidButton(addon, 1).status, counted(addon).GetRaidTargetIndex, addon.eval("return ForeverUI_RaidUnitButton1.debuffRow.frame:IsShown()")],
+    "a death refreshes the whole tile: Dead, the marks read again, the aura rows hidden").toEqual(["Dead", 1, false]);
 });
