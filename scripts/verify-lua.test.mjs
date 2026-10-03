@@ -4847,9 +4847,9 @@ it("setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI 
       for (const [sw, sh] of [[1365, 768], [1920, 1080]]) {
         for (const n of [0, 5, 25, 40]) {
           const rects = layoutRects(addon, n, sw, sh);
-          // Known: on a 1365-wide screen the laid-out bag strip (198 wide) has no room left of the menu strip beside the centered bars.
-          if (sw < 1600) delete rects.bagstrip;
-          expect(layoutProblems(rects, sw, sh), `${layout}, groups as ${grow}, ${sw}x${sh}, ${n} players`).toEqual([]);
+          // KNOWN, OPEN (owner decision, P0.14): on a 1365-wide screen the laid-out bag strip (198 wide) has no room left of
+          // the menu strip beside the centered bars, so it overlaps bar3; nothing else may overlap, the two strips never.
+          expect(layoutProblems(rects, sw, sh), `${layout}, groups as ${grow}, ${sw}x${sh}, ${n} players`).toEqual(sw < 1600 ? ["bar3 / bagstrip"] : []);
         }
       }
     }
@@ -5352,6 +5352,18 @@ it("menu and bag strips: a saved bag position wins; the default follows the menu
   expect(bagX(addon, "BOTTOMLEFT"), "a menu strip on the left: the bags' left edge is a bag strip's width and a gap left of it").toBeCloseTo(400 - 132 - 6, 9);
   addon.eval("ns.SetMoverPoint('menustrip', 'BOTTOM', 'BOTTOM', 40, 20) MicroMenuContainer:Layout()");
   expect(bagX(addon, "BOTTOM"), "centered: half of each strip's width and a gap").toBeCloseTo(40 - (378 * 0.8 + 12 + 132) / 2 - 6, 9);
+});
+
+it("menu and bag strips: moving or resetting the menu strip moves the bag strip's default at once, with no re-fit", () => {
+  const addon = strips();
+  addon.eval("MicroMenuContainer:Layout()");
+  addon.eval("ns.SetMoverPoint('menustrip', 'BOTTOMRIGHT', 'BOTTOMRIGHT', -216, 20)");
+  expect(bagX(addon, "BOTTOMRIGHT"), "a drag of the menu strip carries the bag strip's default along").toBeCloseTo(-216 - (378 * 0.8 + 12) - 6, 9);
+  addon.eval("ns.ResetMovers('menustrip')");
+  expect(bagX(addon, "BOTTOMRIGHT"), "and Reset brings it back").toBeCloseTo(-16 - (378 * 0.8 + 12) - 6, 9);
+  addon.eval("ns.SetMoverPoint('bagstrip', 'BOTTOMLEFT', 'BOTTOMLEFT', 10, 10) ns.SetMoverPoint('menustrip', 'BOTTOMRIGHT', 'BOTTOMRIGHT', -216, 20)");
+  expect(bagX(addon, "BOTTOMLEFT"), "a bag strip the player placed stays where it is").toBe(10);
+  expect(addon.eval("local n = 0 ns.WatchMover('nothing', function() n = n + 1 end) ns.SetMoverPoint('menustrip', 'BOTTOM', 'BOTTOM', 0, 20) return n"), "a watcher is told of its own mover only").toBe(0);
 });
 
 it("menu and bag strips: no re-fit while pins are paused or in combat, and one queued entry per bar", () => {
