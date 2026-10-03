@@ -1477,6 +1477,39 @@ it("Edit Mode shows ForeverUI's handles too, with a note under its window", () =
   expect(state().slice(0, 3), "the switch under General turns it off").toEqual([false, 0, false]);
 });
 
+// TEST-ONLY Edit Mode systems (P2.18): each named game frame gets a Selection (shown to begin with) and
+// the HighlightSystem method Edit Mode calls on every system it shows, which shows that Selection.
+const SYSTEMS_ENV = `
+  function __system(name, noSelection)
+    local f = _G[name] or CreateFrame("Frame", name, UIParent)
+    if not noSelection then f.Selection = CreateFrame("Frame", nil, f) end
+    function f:HighlightSystem() if self.Selection then self.Selection:Show() end end
+    return f
+  end
+  for _, name in ipairs({ "MainMenuBar", "PlayerFrame", "PlayerCastingBarFrame", "CompactRaidFrameContainer", "StatusTrackingBarManager", "ObjectiveTrackerFrame", "EncounterBar" }) do __system(name) end
+  __system("PetFrame", true)
+  PetFrame:UnregisterAllEvents()
+`;
+
+// Whether each named system's Edit Mode handle is shown after Edit Mode highlights every system.
+const handles = (addon) => addon.eval(`local out = {}
+  for _, name in ipairs({ "MainMenuBar", "PlayerFrame", "PlayerCastingBarFrame", "CompactRaidFrameContainer", "StatusTrackingBarManager", "ObjectiveTrackerFrame", "EncounterBar" }) do
+    _G[name]:HighlightSystem() out[#out + 1] = _G[name].Selection:IsShown() end
+  return out`);
+
+it("Edit Mode: a game frame ForeverUI hides or replaces gets no handle, every other system keeps its own", () => {
+  const addon = loggedIn(UNITS_ENV + TIDY_ENV + RAID_ENV + SYSTEMS_ENV);
+  expect(addon.eval("return { MainMenuBar.Selection:IsShown(), PlayerFrame.Selection:IsShown(), EncounterBar.Selection:IsShown() }"), "the handle of a frame is hidden as soon as ForeverUI hides it; one it leaves alone is untouched").toEqual([false, false, true]);
+  expect(handles(addon), "action bars, unit frames, cast bar, raid frames, XP bar and the game's quest tracker (ForeverUI's is on): none shows; the encounter bar does").toEqual([false, false, false, false, false, false, true]);
+  expect(addon.eval("local ok = pcall(PetFrame.HighlightSystem, PetFrame) return ok"), "a replaced system with no Selection is fine").toBe(true);
+  const own = loggedIn(UNITS_ENV + TIDY_ENV + RAID_ENV + SYSTEMS_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { QuestTracker = { own = false } }" });
+  expect(handles(own)[5], "with ForeverUI's tracker off, the game's tracker keeps its handle").toBe(true);
+  const kept = loggedIn(UNITS_ENV + TIDY_ENV + RAID_ENV + SYSTEMS_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { ActionBars = { hideBlizzard = false }, UnitFrames = { hideBlizzard = false } }" });
+  expect(handles(kept).slice(0, 2), "with the game's bars and unit frames kept, their handles stay").toEqual([true, true]);
+  const plain = loggedIn(UNITS_ENV + TIDY_ENV + RAID_ENV + SYSTEMS_ENV + "hooksecurefunc = nil");
+  expect(plain.eval("return PlayerFrame.Selection:IsShown()"), "a client without hooksecurefunc leaves handles alone").toBe(true);
+});
+
 it("the game's tools: one hint when the Cooldown Manager is off", () => {
   // A client whose Cooldown Manager is available (or not) and switched on (or not).
   const env = (enabled, available = "true") => `C_CooldownViewer = { IsCooldownViewerAvailable = function() return ${available} end }
@@ -1515,10 +1548,17 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   addon.eval("BagsBar:SetSize(50, 20) ns.PausePins(false)");
   expect(addon.eval("return { ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }"), "and never shrinks below its default").toEqual([132, 36]);
   expect(addon.eval("return { BagsBar:GetScale(), ForeverUI_BagStrip:GetAlpha(), ForeverUI_BagStrip.__points.BOTTOMRIGHT.x, ForeverUI_BagStrip.__points.BOTTOMRIGHT.y }"), "bags sit small, always shown, just above the menu on its right edge").toEqual([0.7, 1, -16, 20 + 36 + 6]);
-  expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "which is out of sight until the mouse is over it").toBe(0);
-  addon.hover("ForeverUI_MenuStrip");
-  expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "and shows with the mouse over it").toBe(1);
-  expect(addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p.rel == ForeverUI_QuestTracker, ObjectiveTrackerFrame:GetHeight() }"), "the quest tracker sits under the info strip, no taller than its spot").toEqual([true, 248]);
+  expect(addon.eval("local s = ForeverUI_MenuStrip return { s:GetAlpha(), s.__mouseMotion == nil }"), "the menu strip is always shown by default (P2.18), nothing watching the mouse").toEqual([1, true]);
+  expect(addon.eval("return { ForeverUI_QuestTracker:GetWidth(), ForeverUI_QuestTracker:GetHeight(), next(ObjectiveTrackerFrame.__points) == nil }"), "ForeverUI's tracker is on: its spot is made (260 by 248) and the game's tracker is not pinned").toEqual([260, 248, true]);
+});
+
+it("menu strip: the game's tracker is pinned into the spot only while ForeverUI's own tracker is off", () => {
+  // Where the game's tracker is anchored: whether on the spot, and its height.
+  const pinned = (addon) => addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p ~= nil and p.rel == ForeverUI_QuestTracker, ObjectiveTrackerFrame:GetHeight() }");
+  const saved = (profile) => ({ savedVariables: `ForeverUIDB.profiles.Default = ${profile}` });
+  expect(pinned(loggedIn(UI_ENV + TIDY_ENV, saved("{ QuestTracker = { own = false } }"))), "ForeverUI's tracker off: the game's sits under the info strip, no taller than its spot").toEqual([true, 248]);
+  expect(pinned(loggedIn(UI_ENV + TIDY_ENV, saved("{ QuestTracker = { own = true } }"))), "ForeverUI's tracker on: one owner only, the game's is not pinned").toEqual([false, 0]);
+  expect(pinned(loggedIn(UI_ENV + TIDY_ENV, saved("{ modules = { QuestTracker = false } }"))), "the tracker module switched off altogether: the game's is pinned again").toEqual([true, 248]);
 });
 
 it("the game's extras: a protected frame is hidden once, out of combat, with no Show hook", () => {
@@ -1590,8 +1630,8 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
   expect(layers, "a tile's name, role and status sit above the incoming-heal and shield bars, under the status marks").toEqual([true, true, true]);
 });
 
-it("menu strip: shown by the mouse entering and leaving it and its buttons, with nothing polling", () => {
-  const addon = strips();
+it("menu strip: set to mouseover, shown by the mouse entering and leaving it and its buttons, with nothing polling", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: 'ForeverUIDB.profiles.Default = { MenuStrip = { menu = "mouseover" } }' });
   // The menu strip's alpha.
   const alpha = () => addon.eval("return ForeverUI_MenuStrip:GetAlpha()");
   expect(addon.eval("local s = ForeverUI_MenuStrip return { s:GetScript('OnUpdate') == nil, s.__mouseMotion, s.__mouseClick }"), "no OnUpdate; the strip feels the mouse but lets clicks through").toEqual([true, true, false]);
@@ -1765,7 +1805,7 @@ const TRACKER_ENV = `
 `;
 
 it("the quest tracker in the ForeverUI look: flat headers, brass lines, theme arrows and font", () => {
-  const addon = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV);
+  const addon = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { QuestTracker = { own = false } }" });
   const head = addon.eval(`local h = ObjectiveTrackerFrame.Header
     return { h.Background.__alpha, h.Glow.__alpha, h.MinimizeButton.normal.__alpha, h.Text.__font ~= nil, #ns.GetModule("MenuStrip").rules }`);
   expect(head, "header art and the game's button fade; the title takes the theme font; each header gets a brass line").toEqual([0, 0, 0, true, 2]);
@@ -1780,7 +1820,9 @@ it("the quest tracker in the ForeverUI look: flat headers, brass lines, theme ar
   expect(addon.eval("return ns.GetModule('MenuStrip').rules[2].__vertexColor[3]"), "the lines follow the accent").toBe(0.3);
   addon.eval("ObjectiveTrackerFrame.modules[2] = { Header = __header(ObjectiveTrackerFrame) } ObjectiveTrackerFrame:Update()");
   expect(addon.eval("return ObjectiveTrackerFrame.modules[2].Header.fuiHeader"), "a section the game adds later is styled on its next update").toBe(true);
-  const off = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { trackerLook = false } }" });
+  const own = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV);
+  expect(own.eval("return { ObjectiveTrackerFrame.Header.fuiHeader == nil, ObjectiveTrackerLineFont.font == nil, #ns.GetModule('MenuStrip').rules }"), "with ForeverUI's own tracker on, the game's tracker is not skinned").toEqual([true, true, 0]);
+  const off = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { QuestTracker = { own = false }, MenuStrip = { trackerLook = false } }" });
   expect(off.eval("return { ObjectiveTrackerFrame.Header.fuiHeader == nil, ObjectiveTrackerLineFont.font == nil }"), "switched off, the tracker stays the game's").toEqual([true, true]);
   expect(loggedIn(UI_ENV).eval("return ns.GetModule('MenuStrip').rules ~= nil"), "a client without the tracker loads cleanly").toBe(true);
 });

@@ -502,6 +502,7 @@ local function hideBlizzard(name)
   hiddenParent:Hide()
   if f.UnregisterAllEvents then f:UnregisterAllEvents() end
   f:SetParent(hiddenParent)
+  ns.EditModeReplaced(f)
 end
 
 -- Sizing and placing the grid ------------------------------------------------------------

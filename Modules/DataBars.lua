@@ -178,6 +178,7 @@ function DB.Suppress(name)
   local f = _G[name]
   if type(f) ~= "table" or not f.Hide or f.fuiSuppressed then return end
   f.fuiSuppressed = true
+  ns.EditModeReplaced(f)
   if protected(f) then return ns.OutOfCombat(function() f:Hide() end, f) end
   f:Hide()
   if type(hooksecurefunc) ~= "function" then return end

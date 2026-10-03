@@ -538,6 +538,7 @@ local function hideBlizzard(name)
   hiddenParent = hiddenParent or CreateFrame("Frame")
   hiddenParent:Hide()
   f:SetParent(hiddenParent)
+  ns.EditModeReplaced(f)
 end
 
 -- Silences the game's action buttons (hidden with their bars), so they stop
