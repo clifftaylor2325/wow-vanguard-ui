@@ -28,6 +28,7 @@ local HELP = {
   "status               version, profile, modules, skins, work waiting on combat, what the client has",
   "factionart           which of the game's own faction pictures this client has",
   "errors [clear]       the errors ForeverUI caught this session, with stacks and counts (for a bug report); clear empties the list",
+  "perf [cpu|watch]     ForeverUI's CPU and memory now; cpu turns the game's CPU profiling on or off (reload); watch prints them every minute",
 }
 
 -- Prints each line.
@@ -75,8 +76,7 @@ end
 
 -- /fui accent reset
 local function resetAccent()
-  T.Settings().accent = nil
-  T.Refresh()
+  T.ResetAccent()
   chat("Accent back to default.")
 end
 
@@ -362,6 +362,7 @@ local COMMANDS = {
   factionart = function() ns.FactionArt.Report() end,
   status = statusCommand,
   errors = errorsCommand,
+  perf = function(rest) ns.Perf.Command(rest) end,
 }
 
 -- /fui entry point: no arguments opens the options window.

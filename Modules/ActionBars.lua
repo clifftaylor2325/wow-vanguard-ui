@@ -78,6 +78,12 @@ local BLIZZARD_BARS = {
   "MainMenuBar", "MainActionBar", "MultiBarBottomLeft", "MultiBarBottomRight",
   "MultiBarRight", "MultiBarLeft", "MultiBar5", "MultiBar6", "MultiBar7",
 }
+-- The game's action buttons on those bars, by name prefix (1 to 12 each), as
+-- the client's ActionButtonUtil.ActionBarButtonNames lists them.
+local BLIZZARD_BUTTONS = {
+  "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton", "MultiBarLeftButton",
+  "MultiBarRightButton", "MultiBar5Button", "MultiBar6Button", "MultiBar7Button",
+}
 
 -- Short key names for the hotkey text.
 local KEY_SHORT = {
@@ -497,6 +503,23 @@ local function hideBlizzard(name)
   f:SetParent(hiddenParent)
 end
 
+-- Silences the game's action buttons (hidden with their bars), so they stop
+-- reacting to events of their own (out of combat, from build).
+local function silenceButtons()
+  for _, prefix in ipairs(BLIZZARD_BUTTONS) do
+    for i = 1, 12 do
+      local b = _G[prefix .. i]
+      if type(b) == "table" and b.UnregisterAllEvents then b:UnregisterAllEvents() end
+    end
+  end
+end
+
+-- Hides the game's bars and silences their buttons.
+local function hideBlizzardBars()
+  for _, name in ipairs(BLIZZARD_BARS) do hideBlizzard(name) end
+  silenceButtons()
+end
+
 -- Events ------------------------------------------------------------------------------
 
 -- Refreshes buttons showing a given action slot (or all with no slot).
@@ -554,8 +577,9 @@ local EVENTS = {
   -- One handler per event; most refresh one part of every button.
   PLAYER_ENTERING_WORLD = function() each(AB.UpdateButton) end,
   ACTIONBAR_SLOT_CHANGED = onSlotChanged,
+  -- One cooldown event: the client fires both for a cast, and its own action
+  -- buttons follow ACTIONBAR_UPDATE_COOLDOWN alone.
   ACTIONBAR_UPDATE_COOLDOWN = function() each(updateCooldown) end,
-  SPELL_UPDATE_COOLDOWN = function() each(updateCooldown) end,
   ACTIONBAR_UPDATE_USABLE = function() each(updateUsable) end,
   SPELL_UPDATE_USABLE = function() each(updateUsable) end,
   ACTIONBAR_UPDATE_STATE = function() each(updateChecked) end,
@@ -575,9 +599,7 @@ local function build(settings)
     local bar = settings.bars[n]
     if bar and bar.enabled then createBar(n, def, def.stack and AB.StackPoint(n, settings) or def.point) end
   end
-  if settings.hideBlizzard then
-    for _, name in ipairs(BLIZZARD_BARS) do hideBlizzard(name) end
-  end
+  if settings.hideBlizzard then hideBlizzardBars() end
   AB.ApplyBindings()
   each(AB.UpdateButton)
 end

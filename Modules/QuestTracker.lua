@@ -89,23 +89,36 @@ end
 
 -- Updates ---------------------------------------------------------------------------------------
 
--- Re-sorts by distance every second, while that order is on.
-local function sortTicker()
-  local elapsed = 0
-  QT.frame:SetScript("OnUpdate", function(_, dt)
-    elapsed = elapsed + dt
-    if elapsed < QT.SORT_EVERY then return end
-    elapsed = 0
-    if QT.settings.order == "nearest" then QT.Refresh() end
-  end)
+-- Seconds since the last nearest-first sort.
+local elapsed = 0
+
+-- One frame of the nearest-first order: re-sorts by distance once a second.
+local function sortTick(_, dt)
+  elapsed = elapsed + dt
+  if elapsed < QT.SORT_EVERY then return end
+  elapsed = 0
+  QT.Refresh()
+end
+
+-- Applies the order setting: the once-a-second sort runs only while the order
+-- is nearest first, and the tracker is drawn in the order now.
+function QT.ApplyOrder()
+  if not QT.frame then return end
+  QT.frame:SetScript("OnUpdate", QT.settings.order == "nearest" and sortTick or nil)
+  QT.Refresh()
+end
+
+-- Rebuilds the tracker on the next frame: the quest log fires its update many
+-- times at login and on each kill, and a burst in one frame is one rebuild.
+local function refreshSoon()
+  if QT.frame then ns.Soon("questtracker", QT.Refresh) end
 end
 
 -- Builds the tracker (in its spot), hides the game's, and follows the quest log.
 local function build()
   QT.Build(ns.MoverFrame("questtracker"))
   ns.GetModule("DataBars").Suppress("ObjectiveTrackerFrame")
-  sortTicker()
-  QT.Refresh()
+  QT.ApplyOrder()
 end
 
 -- Module entry point (Core/Modules.lua): after the menu strip has made the tracker's spot.
@@ -113,5 +126,5 @@ function QT.Enable(settings)
   QT.settings = settings
   if not settings.own then return end
   ns.OutOfCombat(build)
-  for _, event in ipairs(QT.EVENTS) do ns.On(event, function() if QT.frame then QT.Refresh() end end) end
+  for _, event in ipairs(QT.EVENTS) do ns.On(event, refreshSoon) end
 end

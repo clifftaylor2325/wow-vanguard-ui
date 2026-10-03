@@ -321,6 +321,27 @@ local function listen(f)
   f:SetScript("OnEvent", onUnitEvent)
 end
 
+-- Whether the frame's unit is someone else, or shows another name or level,
+-- than at the last look (a secret answer counts as a change); notes what it saw.
+local function identityChanged(f)
+  local guid, name, level = UnitGUID(f.unit), UnitName(f.unit), UnitLevel(f.unit)
+  local seen = f.fuiSeen or {}
+  f.fuiSeen = seen
+  if isSecret(guid) or isSecret(name) or isSecret(level) then seen[1] = nil return true end
+  local changed = seen[1] == nil or seen[1] ~= guid or seen[2] ~= name or seen[3] ~= level
+  seen[1], seen[2], seen[3] = guid, name, level
+  return changed
+end
+
+-- One look at the target of target: health and power every time (they change
+-- with no event to say so), its name, level and class only when it's someone else.
+local function refreshTargetOfTarget(f)
+  if not flag(UnitExists(f.unit)) then return end
+  UF.UpdateHealth(f)
+  UF.UpdatePower(f)
+  if identityChanged(f) then UF.UpdateName(f) end
+end
+
 -- Target of target has no events of its own; refresh it a few times a second.
 local function pollTargetOfTarget(f)
   local elapsed = 0
@@ -328,7 +349,7 @@ local function pollTargetOfTarget(f)
     elapsed = elapsed + dt
     if elapsed >= 0.2 then
       elapsed = 0
-      UF.UpdateFrame(self)
+      refreshTargetOfTarget(self)
     end
   end)
 end

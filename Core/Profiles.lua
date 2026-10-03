@@ -29,6 +29,7 @@ function ns.CopyProfile(from)
     return false
   end
   ForeverUIDB.profiles[ns.ProfileName()] = ns.Copy(source)
+  ns.ProfileChanged()
   return true
 end
 
@@ -44,6 +45,7 @@ end
 -- Clears every setting in the active profile back to defaults.
 function ns.ResetProfile()
   ForeverUIDB.profiles[ns.ProfileName()] = {}
+  ns.ProfileChanged()
 end
 
 -- Export / import ------------------------------------------------------------------------
@@ -87,6 +89,7 @@ function ns.ImportProfile(text)
   end
   if scope ~= "profile" then
     ns.Profile()[scope] = data
+    ns.ProfileChanged()
     return "Imported " .. scope .. " settings into profile " .. ns.ProfileName() .. "."
   end
   return importWhole(data)

@@ -25,8 +25,6 @@ MS.GAP = 6
 -- The quest tracker's spot: its width and the most height it gets (it ends above the
 -- target of target at UI scale 1.0).
 MS.TRACKER_W, MS.TRACKER_H = 260, 248
--- How often the strip checks for the mouse (seconds).
-MS.POLL = 0.15
 -- A glyph's side in screen pixels at UI scale 1, and the gap (UI units) inside each
 -- button's edge so neighbors don't run together (the game's micro buttons sit on a
 -- 27-unit pitch, its grid pads them by -5, so 4 leaves a 3-unit gap between faces).
@@ -96,15 +94,31 @@ local function pinInto(name, strip, scale, minWidth, after)
   watchBar(f)
 end
 
--- Shows the strip while the mouse is over it (checked a few times a second).
+-- The mouse came over the menu strip or one of its buttons: the strip shows.
+local function stripEnter()
+  MS.strip:SetAlpha(1)
+end
+
+-- The mouse left the strip or one of its buttons: the strip hides unless the
+-- mouse is still over it (moving between buttons crosses the strip itself).
+local function stripLeave()
+  MS.strip:SetAlpha(MS.strip:IsMouseOver() and 1 or 0)
+end
+
+-- Follows the mouse entering and leaving a frame and every frame inside it.
+local function watchHover(f)
+  f:HookScript("OnEnter", stripEnter)
+  f:HookScript("OnLeave", stripLeave)
+  for _, child in ipairs({ f:GetChildren() }) do watchHover(child) end
+end
+
+-- Shows the strip while the mouse is over it or its buttons, from the mouse's own
+-- enter and leave events (nothing polls): the strip takes mouse motion but lets
+-- clicks through, and every frame in it (the micro menu's buttons) reports too.
 local function watchMouse(strip)
-  local elapsed = 0
-  strip:SetScript("OnUpdate", function(self, dt)
-    elapsed = elapsed + dt
-    if elapsed < MS.POLL then return end
-    elapsed = 0
-    self:SetAlpha(self:IsMouseOver() and 1 or 0)
-  end)
+  strip:SetMouseMotionEnabled(true)
+  strip:SetMouseClickEnabled(false)
+  watchHover(strip)
 end
 
 -- Fades the bars' own border and background art, whichever of it this client has.

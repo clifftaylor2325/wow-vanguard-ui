@@ -81,19 +81,58 @@ local function isPlayer(unit)
   return unit == "player" or plain(call("UnitIsUnit", unit, "player")) == true
 end
 
--- Fades a button by a hidden in-range flag, if the client can (else leaves it opaque).
-local function fadeHidden(b, inRange)
-  if b.SetAlphaFromBoolean then return b:SetAlphaFromBoolean(inRange, 1, RS.settings.fadeAlpha) end
-  b:SetAlpha(1)
+-- Sets a button's alpha, only when it changes (b.rangeAlpha remembers it).
+local function setAlpha(b, alpha)
+  if b.rangeAlpha == alpha then return end
+  b.rangeAlpha = alpha
+  b:SetAlpha(alpha)
 end
 
--- Fades the button while its unit is out of range.
+-- Fades a button by a hidden in-range flag, if the client can (else leaves it opaque).
+local function fadeHidden(b, inRange)
+  if not b.SetAlphaFromBoolean then return setAlpha(b, 1) end
+  b.rangeAlpha = nil
+  b:SetAlphaFromBoolean(inRange, 1, RS.settings.fadeAlpha)
+end
+
+-- Fades the button while its unit is out of range. Whether the unit is you
+-- is remembered on the button (b.isPlayer) when it gets its unit.
 function RS.UpdateRange(b, unit)
-  if not RS.settings.rangeFade or isPlayer(unit) then return b:SetAlpha(1) end
+  if not RS.settings.rangeFade or b.isPlayer then return setAlpha(b, 1) end
   local inRange, checked = call("UnitInRange", unit)
   if ns.IsSecret(inRange) then return fadeHidden(b, inRange) end
   local out = not ns.IsSecret(checked) and checked == true and inRange == false
-  b:SetAlpha(out and RS.settings.fadeAlpha or 1)
+  setAlpha(b, out and RS.settings.fadeAlpha or 1)
+end
+
+-- The range of every shown tile, by the unit the raid frames track for it.
+local function checkRange()
+  for _, b in ipairs(RF.buttons) do
+    if b.raidIcon and b.tracked and b:IsShown() then RS.UpdateRange(b, b.tracked) end
+  end
+end
+
+-- Checks range five times a second (range has no dependable event).
+local function pollRange()
+  local elapsed = 0
+  RS.ticker = CreateFrame("Frame")
+  RS.ticker:SetScript("OnUpdate", function(_, dt)
+    elapsed = elapsed + dt
+    if elapsed < RANGE_EVERY then return end
+    elapsed = 0
+    checkRange()
+  end)
+end
+
+-- The range ticker runs only while the raid frames show: it follows the
+-- raid header (once it exists) as it shows and hides.
+local function followHeader()
+  local header = RF.header
+  if not header or RS.following then return end
+  RS.following = true
+  RS.ticker:SetShown(header:IsVisible())
+  header:HookScript("OnShow", function() RS.ticker:Show() end)
+  header:HookScript("OnHide", function() RS.ticker:Hide() end)
 end
 
 -- Parts ------------------------------------------------------------------------------------
@@ -122,6 +161,7 @@ end
 -- on the top edge; the ready check and resurrection, which come and go, big
 -- in the center over everything (as the client's own raid frames do).
 local function setup(b)
+  followHeader()
   local big = RF.TileZones().icon + 4
   b.raidIcon = mark(b, 12, "TOP", 0, 3)
   b.ready = mark(b, big, "CENTER", 0, 0)
@@ -134,14 +174,18 @@ end
 
 -- Updating ---------------------------------------------------------------------------------
 
+-- Shows a texture with a picture, or hides it.
+local function showTexture(t, shown, texture)
+  t:SetShown(shown)
+  if shown then t:SetTexture(texture) end
+end
+
 -- Shows a mark { texture, color } tinted, with its shadow, or hides both when
 -- there's none (or the mark is off).
 local function showMark(t, on, spec)
   local shown = on and spec ~= nil
-  for _, x in ipairs({ t, t.shadow }) do
-    x:SetShown(shown)
-    if shown then x:SetTexture(spec[1]) end
-  end
+  showTexture(t, shown, shown and spec[1])
+  showTexture(t.shadow, shown, shown and spec[1])
   if shown then T.Tint(t, spec[2]) end
 end
 
@@ -159,15 +203,26 @@ local function updateRaidIcon(b, unit)
   RS.PaintIcon(b.raidIcon, RS.settings.raidIcons and RS.RaidIcon(unit))
 end
 
--- Every mark on one button (RF update hook). The status text (missing health,
--- Dead) hides while the ready check or resurrection mark covers the center.
-local function update(b, unit)
+-- The marks that come and go in the center: the ready check answer and the
+-- resurrection. The status text (missing health, Dead) hides while one shows.
+local function updateCenter(b, unit)
   local s = RS.settings
-  updateRaidIcon(b, unit)
   showMark(b.ready, s.readyCheck and RS.readyRunning, RS.ReadyMark(unit))
   b.rez:SetShown(s.resurrect and RS.Resurrecting(unit))
   b.status:SetShown(not (b.ready:IsShown() or b.rez:IsShown()))
-  showMark(b.leader, s.leader, RS.LeaderMark(unit))
+end
+
+-- The leader crown or assistant mark.
+local function updateLeader(b, unit)
+  showMark(b.leader, RS.settings.leader, RS.LeaderMark(unit))
+end
+
+-- Every mark on one button (RF update hook: a roster change, a new tile).
+local function update(b, unit)
+  b.isPlayer = isPlayer(unit)
+  updateRaidIcon(b, unit)
+  updateCenter(b, unit)
+  updateLeader(b, unit)
   RS.UpdateRange(b, unit)
 end
 
@@ -184,18 +239,23 @@ function RS.UpdateAll()
   each(update)
 end
 
+-- Refreshes one kind of mark on every shown button: icons, leader or center.
+local function eachPart(part)
+  return function() each(part) end
+end
+
 -- Events -----------------------------------------------------------------------------------
 
 -- A ready check started or someone answered: show the answers.
 local function onReadyCheck()
   RS.readyRunning = true
-  RS.UpdateAll()
+  each(updateCenter)
 end
 
 -- Hides every ready check answer.
 local function clearReady()
   RS.readyRunning = false
-  RS.UpdateAll()
+  each(updateCenter)
 end
 
 -- The check ended: leave the answers up a few seconds, then clear them.
@@ -204,9 +264,9 @@ local function onReadyFinished()
   clearReady()
 end
 
--- Refreshes a tile's marks, if it has them.
+-- Refreshes a tile's center marks, if it has them.
 local function updateMarks(b, unit)
-  if b.raidIcon then update(b, unit) end
+  if b.raidIcon then updateCenter(b, unit) end
 end
 
 -- A unit's resurrection state changed: refresh the tile showing it.
@@ -214,21 +274,10 @@ local function onUnit(_, unit)
   RF.ForUnit(unit, updateMarks)
 end
 
--- Checks range five times a second (range has no dependable event).
-local function pollRange()
-  local elapsed = 0
-  RS.ticker = CreateFrame("Frame")
-  RS.ticker:SetScript("OnUpdate", function(_, dt)
-    elapsed = elapsed + dt
-    if elapsed < RANGE_EVERY then return end
-    elapsed = 0
-    each(RS.UpdateRange)
-  end)
-end
-
 -- Event -> handler.
 local EVENTS = {
-  RAID_TARGET_UPDATE = RS.UpdateAll, PARTY_LEADER_CHANGED = RS.UpdateAll, GROUP_ROSTER_UPDATE = RS.UpdateAll,
+  -- A roster change refreshes every tile, marks included, through RF.RosterChanged.
+  RAID_TARGET_UPDATE = eachPart(updateRaidIcon), PARTY_LEADER_CHANGED = eachPart(updateLeader),
   READY_CHECK = onReadyCheck, READY_CHECK_CONFIRM = onReadyCheck, READY_CHECK_FINISHED = onReadyFinished,
   INCOMING_RESURRECT_CHANGED = onUnit,
 }
@@ -236,9 +285,10 @@ local EVENTS = {
 -- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new), then listen.
 function RS.Enable(settings)
   RS.settings = settings
+  pollRange()
   for _, b in ipairs(RF.buttons) do setup(b) end
   table.insert(RF.setupHooks, setup)
   table.insert(RF.updateHooks, update)
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
-  pollRange()
+  followHeader()
 end

@@ -54,10 +54,12 @@ function CP.Update()
   CP.bar:SetShown(count > 0)
 end
 
--- Module entry point (Core/Modules.lua): rogues and druids only, after the unit frames.
+-- Module entry point (Core/Modules.lua): rogues and druids only, after the unit
+-- frames. Your points change with your own power events; another unit's don't count.
 function CP.Enable(settings)
   local _, class = UnitClass("player")
   if ns.IsSecret(class) or not CLASSES[class] then return end
   ns.OutOfCombat(function() build(settings) end)
-  for _, event in ipairs({ "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT", "UNIT_MAXPOWER", "PLAYER_TARGET_CHANGED" }) do ns.On(event, CP.Update) end
+  ns.OnUnit({ "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT", "UNIT_MAXPOWER" }, CP.Update, "player")
+  ns.On("PLAYER_TARGET_CHANGED", CP.Update)
 end

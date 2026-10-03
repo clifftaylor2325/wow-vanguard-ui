@@ -252,12 +252,13 @@ local function currentNode()
   end
 end
 
--- You picked a destination: note the route, and wait for takeoff.
+-- You picked a destination: note the route, and start watching for takeoff.
 function ER.OnTakeTaxi(index)
   local from, to = currentNode(), ask("TaxiNodeName", index)
   if type(from) ~= "string" or type(to) ~= "string" then return end
   local key = from .. " > " .. to
   ER.flight = { key = key, to = to, picked = ask("GetTime") or 0, known = ER.settings.flights[key] }
+  ER.poller:Show()
 end
 
 -- Seconds as "1:05".
@@ -284,10 +285,10 @@ local function land(f)
 end
 
 -- Follows a picked flight: takeoff starts the bar, landing saves the time; a
--- flight that never took off is forgotten.
+-- flight that never took off is forgotten. With no flight to follow, it stops.
 function ER.PollFlight()
   local f, flying, now = ER.flight, ask("UnitOnTaxi", "player") == true, ask("GetTime") or 0
-  if not f then return end
+  if not f then return ER.poller:Hide() end
   if f.start and not flying then return land(f) end
   if flying then f.start = f.start or now return ER.PaintFlight(f) end
   if now - f.picked > ER.TAKEOFF_WAIT then ER.flight = nil end
@@ -305,10 +306,12 @@ local function buildBar()
   ER.bar = bar
 end
 
--- Checks the taxi state twice a second.
+-- Checks the taxi state twice a second, only from picking a flight until it
+-- lands or is forgotten (hidden, the frame runs nothing).
 local function pollFlights()
   local elapsed = 0
   ER.poller = CreateFrame("Frame")
+  ER.poller:Hide()
   ER.poller:SetScript("OnUpdate", function(_, dt)
     elapsed = elapsed + dt
     if elapsed < ER.FLIGHT_POLL then return end

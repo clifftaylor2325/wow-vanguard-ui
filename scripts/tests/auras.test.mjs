@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, ENGINE_ENV, NO_RAID, RAID_ENV, SETUP_DONE, UNITS_ENV, button, chatHas, isTok, key, lacking, loggedIn, setCombat, tooltip } from "./helpers.mjs";
+import { CLICK_LUA, ENGINE_ENV, NO_RAID, RAID_ENV, SETUP_DONE, UNITS_ENV, button, chatHas, isTok, key, lacking, loggedIn, setCombat, tooltip, unitEvents } from "./helpers.mjs";
 
 // TEST-ONLY auras by unit and filter. raid1: a Magic debuff and two of your HoTs.
 const AURA_ENV = `
@@ -69,6 +69,16 @@ it("a client that won't drive the dispel highlight never shows it uncolored", ()
     local shown = 0 for _, w in ipairs(__wfgStub.frames) do if w.__parent == first and w.__kind == "Texture" and w.__texture and w.__texture:find("Fade") and w.__shown then shown = shown + 1 end end
     return { regs = #first.__dispel, icon = first.__shown, washes = shown }`);
   expect(out.icon === true && out.regs === 0 && out.washes === 0, "the debuff icon still shows; the unregistered wash stays hidden").toBeTruthy();
+});
+
+it("raid auras listen for UNIT_AURA only on the fallback, where they paint the highlight themselves", () => {
+  const noHealing = { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { RaidHealing = false } } }" };
+  const engine = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV, noHealing);
+  engine.eval('__spawn(1, "raid1")');
+  expect(unitEvents(engine, "UNIT_AURA").plain, "on the client's engine nothing takes every unit's UNIT_AURA").toBe(0);
+  const fallback = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + "__wfgStub.noAuraContainer = true", noHealing);
+  fallback.eval('__spawn(1, "raid1") __spawn(2, "raid2")');
+  expect(unitEvents(fallback, "UNIT_AURA").plain, "on the fallback, one listener for every tile").toBe(1);
 });
 
 it("raid indicators on the fallback", () => {
@@ -339,6 +349,34 @@ it("aura containers without the engine (the fallback)", () => {
   expect(wrapped[0] === 0 && wrapped[1] === -22, "a row wraps at the line size").toBeTruthy();
   addon.eval("__c:SetUnit(nil)");
   expect(addon.eval("return __c.groups[1].icons[1]:IsShown()") === false, "no unit: nothing shows").toBeTruthy();
+});
+
+it("fallback containers skip a UNIT_AURA that changes nothing they show, and re-anchor only when what shows moves", () => {
+  const addon = loggedIn(UNITS_ENV + CONTAINER_AURAS + "__wfgStub.noAuraContainer = true");
+  addon.eval(`__c = ns.Auras.Container(UIParent, __spec, "target")
+    __reads, __anchors = 0, 0
+    local get = ns.Auras.Get
+    -- TEST-ONLY spies: aura reads, and icons re-anchored.
+    ns.Auras.Get = function(...) __reads = __reads + 1 return get(...) end
+    for _, g in ipairs(__c.groups) do for _, icon in ipairs(g.icons) do
+      local clear = icon.ClearAllPoints
+      icon.ClearAllPoints = function(self) __anchors = __anchors + 1 return clear(self) end
+    end end`);
+  // UNIT_AURA on the target with this update info (Lua), then the reads and re-anchors it caused.
+  const aura = (info) => addon.eval(`__reads, __anchors = 0, 0 __wfgStub.fire("UNIT_AURA", "target", ${info}) return { __reads, __anchors }`);
+  expect(aura("{ updatedAuraInstanceIDs = { 99 }, removedAuraInstanceIDs = { 98 } }"), "auras it doesn't show changed: nothing read").toEqual([0, 0]);
+  expect(aura("{ updatedAuraInstanceIDs = {}, addedAuras = {} }"), "an empty update: nothing read").toEqual([0, 0]);
+  expect(aura("{ updatedAuraInstanceIDs = { 1 } }")[1], "one it shows changed: read again, nothing moves").toBe(0);
+  for (const info of ["nil", "{ isFullUpdate = true }", "{ addedAuras = { {} } }", "{ removedAuraInstanceIDs = { 3 } }", "{ updatedAuraInstanceIDs = { { __secret = true } } }"]) {
+    expect(aura(info)[0] > 0, `read again: ${info}`).toBe(true);
+  }
+  addon.eval('table.insert(__ca["HARMFUL|PLAYER"], { icon = "MY-THIRD", auraInstanceID = 5 })');
+  const moved = aura("{ addedAuras = { { auraInstanceID = 5 } } }");
+  const third = addon.eval("local p = __c.groups[1].icons[3].__points.TOPLEFT return { __c.groups[1].icons[3].icon.__texture, p.x, p.y }");
+  expect([moved[1] > 0, third], "a new aura that shows: the icons are laid out again").toEqual([true, ["MY-THIRD", 0, -22]]);
+  addon.eval('__ca["HARMFUL|PLAYER"][3].auraInstanceID = { __secret = true }');
+  aura("nil");
+  expect(aura("{ updatedAuraInstanceIDs = { 99 } }")[0] > 0, "while it shows an aura whose id is hidden, every update reads again").toBe(true);
 });
 
 // TEST-ONLY client whose aura read errors on the words CROWD_CONTROL and RAID_IN_COMBAT, as a client that doesn't know them would.

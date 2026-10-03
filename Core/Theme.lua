@@ -407,26 +407,38 @@ local function colorEdges(e, r, g, b, a)
   end
 end
 
+-- Scratch tables for T.FadeRegions, reused by every call (and emptied after,
+-- so they hold no frame): ForeverUI's own parts, and the frame's regions.
+local ownScratch, regionScratch, NO_PARTS = {}, {}, {}
+
 -- The textures ForeverUI painted on a frame (its panel, border, sheen,
 -- shadow...), so fading the game's art again leaves them alone.
 local function ownParts(frame)
-  local own, entry = {}, painted[frame]
-  for _, part in pairs(entry and entry.parts or {}) do
-    if type(part) == "table" and part.GetObjectType then own[part] = true
-    elseif type(part) == "table" then for _, p in pairs(part) do own[p] = true end end
+  local entry = painted[frame]
+  for _, part in pairs(entry and entry.parts or NO_PARTS) do
+    if type(part) == "table" and part.GetObjectType then ownScratch[part] = true
+    elseif type(part) == "table" then for _, p in pairs(part) do ownScratch[p] = true end end
   end
-  return own
+  return ownScratch
+end
+
+-- The regions given, in the regions scratch table (from index i on).
+local function gather(i, region, ...)
+  if region == nil then regionScratch[i] = nil return end
+  regionScratch[i] = region
+  return gather(i + 1, ...)
 end
 
 -- Alpha-out a frame's texture regions (template art), except ForeverUI's own
 -- painted parts and any in keep. Never hides; safe to run again on every show.
 function T.FadeRegions(frame, keep)
   local own = ownParts(frame)
-  for _, region in ipairs({ frame:GetRegions() }) do
-    if region.GetObjectType and region:GetObjectType() == "Texture" and not own[region] and not (keep and keep[region]) then
-      region:SetAlpha(0)
-    end
+  gather(1, frame:GetRegions())
+  for i, region in ipairs(regionScratch) do
+    if region.GetObjectType and region:GetObjectType() == "Texture" and not own[region] and not (keep and keep[region]) then region:SetAlpha(0) end
+    regionScratch[i] = nil
   end
+  for part in pairs(own) do own[part] = nil end
 end
 
 -- Painting -------------------------------------------------------------------------
@@ -733,6 +745,12 @@ end
 -- Sets the accent color (0-1 components) and repaints.
 function T.SetAccent(r, g, b)
   T.Settings().accent = { r, g, b }
+  T.Refresh()
+end
+
+-- Puts the accent back to its default (brass) and repaints.
+function T.ResetAccent()
+  T.Settings().accent = ns.Copy(DEFAULTS.accent)
   T.Refresh()
 end
 

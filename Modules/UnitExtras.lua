@@ -62,13 +62,15 @@ end
 
 -- Building ---------------------------------------------------------------------------------------
 
--- The threat text above the target frame, clear of its corner diamond, following threat and target changes.
+-- The threat text above the target frame, clear of its corner diamond,
+-- following threat and target changes: your target's threat list, and your
+-- own threat situation (the client names you, not the mob, when it changes).
 local function addThreat(target)
   UX.threat = T.Text(target:CreateFontString(nil, "OVERLAY"), "small", "text2")
   UX.threat:SetPoint("BOTTOMRIGHT", target, "TOPRIGHT", -12, 3)
-  for _, e in ipairs({ "UNIT_THREAT_LIST_UPDATE", "UNIT_THREAT_SITUATION_UPDATE", "PLAYER_TARGET_CHANGED", "PLAYER_REGEN_ENABLED" }) do
-    ns.On(e, UX.UpdateThreat)
-  end
+  ns.OnUnit("UNIT_THREAT_LIST_UPDATE", UX.UpdateThreat, "target")
+  ns.OnUnit("UNIT_THREAT_SITUATION_UPDATE", UX.UpdateThreat, "player")
+  for _, e in ipairs({ "PLAYER_TARGET_CHANGED", "PLAYER_REGEN_ENABLED" }) do ns.On(e, UX.UpdateThreat) end
   UX.UpdateThreat()
 end
 

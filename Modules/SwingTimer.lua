@@ -9,6 +9,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local CB = ns.GetModule("CastBars")
 
 -- show: "auto" (the classes that live by auto-attack), "always" or "never".
 local SW = ns.Module("SwingTimer", { defaults = { show = "auto" } })
@@ -39,7 +40,7 @@ local function step(r, now)
   local left = r.start + r.length - now
   if left <= 0 then r.live = false return r:Hide() end
   r:SetValue(now - r.start)
-  r.time:SetText(string.format("%.1f", left))
+  CB.ShowSeconds(r.time, left)
 end
 
 -- Moves every live row on; the timer stops when none is left.
