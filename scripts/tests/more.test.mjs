@@ -1207,6 +1207,45 @@ it("nameplates: a gold ! by units your quests need", () => {
   expect(bare.eval("return __plates.nameplate1.fui.quest:IsShown()"), "a client that can't say shows none").toBe(false);
 });
 
+it("flight timer: the taxi check runs only from picking a flight until it lands", () => {
+  const addon = loggedIn(UNITS_ENV + TAXI_ENV + "__asked = 0 local real = UnitOnTaxi UnitOnTaxi = function(...) __asked = __asked + 1 return real(...) end");
+  // How often the taxi state was asked so far, then reset.
+  const asked = () => addon.eval("local n = __asked __asked = 0 return n");
+  addon.advance(60);
+  expect([asked(), addon.eval('return ns.GetModule("Errands").poller:IsShown()')], "a minute on the ground with no flight picked: never asked").toEqual([0, false]);
+  addon.eval("TakeTaxiNode(2) __onTaxi = true");
+  addon.advance(5);
+  expect([asked(), flightBar(addon).shown], "in the air: asked twice a second, the bar up").toEqual([10, true]);
+  addon.eval("__onTaxi = false");
+  addon.advance(1);
+  expect([addon.eval('return ns.GetModule("Errands").poller:IsShown()'), flightBar(addon).shown], "landed: the check stops").toEqual([false, false]);
+  asked();
+  addon.advance(30);
+  expect(asked(), "and stays stopped").toBe(0);
+});
+
+it("minimap coordinates: asked again only after the player moves", () => {
+  // TEST-ONLY world position, and a counter of map position lookups.
+  const addon = loggedIn(UI_ENV + `__pos = { 100, 200, 0, 1 } UnitPosition = function() return __pos[1], __pos[2], __pos[3], __pos[4] end
+    __asked = 0 local real = C_Map.GetPlayerMapPosition C_Map.GetPlayerMapPosition = function(...) __asked = __asked + 1 return real(...) end`);
+  // Map position lookups so far, then reset; and the text under the map.
+  const asked = () => addon.eval("local n = __asked __asked = 0 return n");
+  const coords = () => addon.eval('return ns.GetModule("Minimap").coords:GetText()');
+  addon.advance(2);
+  expect([asked(), coords()], "standing still for two seconds: one lookup, the coordinates shown").toEqual([1, "45.7, 12.3"]);
+  addon.eval("__pos[1] = 101 C_Map.GetPlayerMapPosition = function() __asked = __asked + 1 return { GetXY = function() return 0.5, 0.25 end } end");
+  addon.advance(0.25);
+  expect([asked(), coords()], "a step: looked up again, the new coordinates").toEqual([1, "50.0, 25.0"]);
+  addon.eval("__pos[4] = 2");
+  addon.advance(0.25);
+  addon.eval("C_Map.GetBestMapForUnit = function() return 7 end");
+  addon.advance(0.25);
+  expect(asked(), "another continent, or another map at the same spot: looked up again each time").toBe(2);
+  addon.eval("__pos[1] = { __secret = true }");
+  addon.advance(1);
+  expect(asked(), "a hidden position can't be compared: looked up on every refresh, as before").toBe(4);
+});
+
 it("minimap with no position, chat window hooks, and short numbers", () => {
   const addon = loggedIn(`
     C_Map = nil
@@ -1315,7 +1354,7 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   expect(addon.eval("return { ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }"), "and never shrinks below its default").toEqual([132, 36]);
   expect(addon.eval("return { BagsBar:GetScale(), ForeverUI_BagStrip:GetAlpha(), ForeverUI_BagStrip.__points.BOTTOMRIGHT.x, ForeverUI_BagStrip.__points.BOTTOMRIGHT.y }"), "bags sit small, always shown, just above the menu on its right edge").toEqual([0.7, 1, -16, 20 + 36 + 6]);
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "which is out of sight until the mouse is over it").toBe(0);
-  addon.eval("function ForeverUI_MenuStrip:IsMouseOver() return true end __wfgStub.advance(0.3)");
+  addon.hover("ForeverUI_MenuStrip");
   expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "and shows with the mouse over it").toBe(1);
   expect(addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p.rel == ForeverUI_QuestTracker, ObjectiveTrackerFrame:GetHeight() }"), "the quest tracker sits under the info strip, no taller than its spot").toEqual([true, 248]);
 });
@@ -1387,6 +1426,24 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
     return { b.name:GetParent() == b.texts and b.status:GetParent() == b.texts and b.role:GetParent() == b.texts and b.roleShadow:GetParent() == b.texts,
       b.texts:GetFrameLevel() > b.heal:GetFrameLevel() and b.texts:GetFrameLevel() > b.shield:GetFrameLevel(), b.texts:GetFrameLevel() < b.overlay:GetFrameLevel() }`);
   expect(layers, "a tile's name, role and status sit above the incoming-heal and shield bars, under the status marks").toEqual([true, true, true]);
+});
+
+it("menu strip: shown by the mouse entering and leaving it and its buttons, with nothing polling", () => {
+  const addon = strips();
+  // The menu strip's alpha.
+  const alpha = () => addon.eval("return ForeverUI_MenuStrip:GetAlpha()");
+  expect(addon.eval("local s = ForeverUI_MenuStrip return { s:GetScript('OnUpdate') == nil, s.__mouseMotion, s.__mouseClick }"), "no OnUpdate; the strip feels the mouse but lets clicks through").toEqual([true, true, false]);
+  addon.hover("CharacterMicroButton");
+  expect(alpha(), "straight onto a button: the strip shows").toBe(1);
+  addon.hover("ForeverUI_MenuStrip");
+  expect(alpha(), "from the button onto the strip between buttons: still shown").toBe(1);
+  addon.hover("EJMicroButton");
+  addon.hover(null);
+  expect(alpha(), "off the strip: hidden").toBe(0);
+  addon.hover("MainMenuMicroButton");
+  addon.eval("ForeverUI_MenuStrip.__mouseOver = true");
+  addon.hover(null);
+  expect(alpha(), "leaving a button while still over the strip keeps it shown").toBe(1);
 });
 
 it("menu and bag strips: the bars' own frame art is hidden, the key ring is skinned", () => {

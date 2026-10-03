@@ -214,6 +214,10 @@ end
 -- Mouse: whether the frame takes the mouse, and whether it is under it
 -- (only what a test sets in __mouseOver).
 function methods:EnableMouse(on) self.__mouse = on == true end
+-- Mouse motion (OnEnter/OnLeave) and clicks, each on its own.
+function methods:SetMouseMotionEnabled(on) self.__mouseMotion = on == true end
+-- Whether clicks land on the frame (false lets them through to what's under it).
+function methods:SetMouseClickEnabled(on) self.__mouseClick = on == true end
 function methods:IsMouseOver() return self.__mouseOver == true end
 -- Moving (recorded for the mover tests).
 function methods:StartMoving() self.__moving = true end

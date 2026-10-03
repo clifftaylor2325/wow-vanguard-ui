@@ -47,6 +47,30 @@ it("unit frame events", () => {
   expect(ufState(addon, "targettarget").name === "TEST-ONLY ToT", "target of target refreshes on a timer").toBeTruthy();
 });
 
+it("target of target: health and power on every look, its name only when it's someone else", () => {
+  // TEST-ONLY GUIDs from the units table, and a counter of target-of-target name updates.
+  const addon = loggedIn(UNITS_ENV + "UnitGUID = function(unit) return __units[unit] and __units[unit].guid end");
+  addon.eval(`__names = 0 local UF = ns.GetModule("UnitFrames") local real = UF.UpdateName
+    UF.UpdateName = function(f) if f.unit == "targettarget" then __names = __names + 1 end return real(f) end
+    __units.targettarget = { guid = "TEST-ONLY-1", name = "TEST-ONLY ToT", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA" }`);
+  // Target-of-target name updates so far, then reset.
+  const names = () => addon.eval("local n = __names __names = 0 return n");
+  addon.advance(1);
+  expect([names(), ufState(addon, "targettarget").name], "a second of looks: the name is set once").toEqual([1, "TEST-ONLY ToT"]);
+  addon.eval("__units.targettarget.hp = 2");
+  addon.advance(0.5);
+  expect([names(), ufState(addon, "targettarget").hp], "its health still follows, with no name update").toEqual([0, 2]);
+  addon.eval('__units.targettarget = { guid = "TEST-ONLY-2", name = "TEST-ONLY Other", hp = 5, maxhp = 5, power = 0, maxpower = 0, ptype = "MANA" }');
+  addon.advance(0.5);
+  expect([names(), ufState(addon, "targettarget").name], "someone else: the name follows once").toEqual([1, "TEST-ONLY Other"]);
+  addon.eval('__units.targettarget.name = "TEST-ONLY Renamed"');
+  addon.advance(0.5);
+  expect([names(), ufState(addon, "targettarget").name], "the same unit with a new name: the name follows").toEqual([1, "TEST-ONLY Renamed"]);
+  addon.eval("__units.targettarget.guid = { __secret = true }");
+  addon.advance(1);
+  expect(names(), "a hidden GUID can't be compared: every look updates the name").toBe(4);
+});
+
 it("unit frames wait for combat", () => {
   const addon = createAddon();
   addon.eval(UNITS_ENV + "__wfgStub.inCombat = true");
