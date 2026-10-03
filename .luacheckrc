@@ -40,4 +40,6 @@ read_globals = {
   "GetQuestLogSpecialItemCooldown", "IsQuestLogSpecialItemInRange",
   -- P2.8 Chat: the game's list of chat window art names.
   "CHAT_FRAME_TEXTURES",
+  -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.
+  "IsInInstance", "SecureCmdOptionParse",
 }

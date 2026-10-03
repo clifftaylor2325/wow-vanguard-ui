@@ -39,6 +39,7 @@ Core/FactionArt.lua
 Core/Slash.lua
 Core/Perf.lua
 Core/GameMenu.lua
+Core/Visibility.lua
 Modules/UnitFrames.lua
 Modules/CastBars.lua
 Modules/FrameAuras.lua
