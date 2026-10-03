@@ -73,6 +73,7 @@ Modules/MinimapButtons.lua
 Modules/Chat.lua
 Modules/ChatExtras.lua
 Modules/Bags.lua
+Modules/BagSections.lua
 Modules/InfoStrip.lua
 Modules/MenuStrip.lua
 Modules/Merchant.lua
