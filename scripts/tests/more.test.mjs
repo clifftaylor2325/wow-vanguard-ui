@@ -433,6 +433,102 @@ it("quest tracker: watched quests with levels, objectives and items", () => {
   expect(noLog.eval("return __opened"), "with ForeverUI's quest log off, the game's map opens it").toBe(90051);
 });
 
+// TEST-ONLY quest item extras: the game's cooldown and range answers by log index (__cd, __range), and the tooltip call.
+const ITEM_ENV = `
+  __cd, __range = {}, {}
+  GetQuestLogSpecialItemCooldown = function(i) local c = __cd[i] if c then return c[1], c[2], 1 end return 0, 0, 1 end
+  IsQuestLogSpecialItemInRange = function(i) return __range[i] end
+  GameTooltip.SetOwner = function(self, owner) self.__owner = owner end
+  GameTooltip.SetQuestLogSpecialItem = function(self, i) self.__special = i end
+`;
+
+// Each item button: the quest it is for, whether it shows, and the title of the block it sits beside.
+const questItems = (addon) => addon.eval(`local out = {}
+  for i, b in ipairs(ns.GetModule("QuestTracker").items) do
+    out[i] = { b.questID or false, b:IsShown(), b:IsShown() and b.__points.TOPRIGHT.rel.title:GetText() or false }
+  end
+  return out`);
+
+// The tracker's block titles, top to bottom.
+const blockTitles = (addon) => tracker(addon).blocks.map((b) => b[0]);
+
+it("quest tracker: each quest keeps its own item button; in combat counts update and the items wait", () => {
+  const addon = loggedIn(TRACK_ENV);
+  addon.eval("__quests[90054] = { index = 4, title = 'TEST-ONLY Boar', level = 9, dist = 50, item = 'item:90062', objectives = {} } __watches[4] = 90054");
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  expect(questItems(addon), "the wolves' item and the boar's, each beside its quest").toEqual([[90051, true, "[8] TEST-ONLY Wolves"], [90054, true, "[9] TEST-ONLY Boar"]]);
+  addon.eval("__watches = { 90052, 90053, 90054 }");
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  expect(questItems(addon), "the wolves go: their button is free, and the boar keeps its own, beside its block").toEqual([[false, false, false], [90054, true, "[9] TEST-ONLY Boar"]]);
+  addon.eval("__watches = { 90052, 90053, 90054, 90051 }");
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  expect(questItems(addon), "the wolves back: they take the free button, the boar keeps its own").toEqual([[90051, true, "[8] TEST-ONLY Wolves"], [90054, true, "[9] TEST-ONLY Boar"]]);
+  expect(blockTitles(addon), "the blocks as watched").toEqual(["[12] TEST-ONLY Letter", "[3] TEST-ONLY Far", "[9] TEST-ONLY Boar", "[8] TEST-ONLY Wolves"]);
+  setCombat(addon, true);
+  const waiting = addon.eval("return ns.QueuedCount()");
+  addon.eval("__rels = { ns.GetModule('QuestTracker').items[1].__points.TOPRIGHT.rel, ns.GetModule('QuestTracker').items[2].__points.TOPRIGHT.rel }");
+  addon.eval("__watches = { 90053, 90054, 90051 } __quests[90051].objectives[1].text = '5/8 TEST-ONLY Wolves slain'");
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  for (let i = 0; i < 5; i++) addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect([blockTitles(addon), tracker(addon).blocks[2][1][0]], "in combat the tracker redraws: the letter is gone and the wolves' count is up").toEqual([["[3] TEST-ONLY Far", "[9] TEST-ONLY Boar", "[8] TEST-ONLY Wolves"], "- 5/8 TEST-ONLY Wolves slain"]);
+  const anchors = "local items = ns.GetModule('QuestTracker').items return { items[1].__points.TOPRIGHT.rel == __rels[1], items[2].__points.TOPRIGHT.rel == __rels[2], ns.QueuedCount() }";
+  expect(addon.eval(anchors).map((v, k) => (k === 2 ? v - waiting : v)), "the item buttons keep their anchors, and one placement waits").toEqual([true, true, 1]);
+  setCombat(addon, false);
+  expect([addon.eval(anchors).slice(0, 2), questItems(addon)], "after combat they move beside the right blocks").toEqual([
+    [false, false], [[90051, true, "[8] TEST-ONLY Wolves"], [90054, true, "[9] TEST-ONLY Boar"]]]);
+});
+
+it("quest tracker: an item shows its cooldown and range, and the game's tooltip", () => {
+  const addon = loggedIn(TRACK_ENV + ITEM_ENV);
+  // The first item button's cooldown (start, duration), or nil when none runs.
+  const cooldown = () => addon.eval("return ForeverUI_QuestItem1.cooldown.__cooldown");
+  expect(cooldown(), "no cooldown running: nothing drawn").toBeFalsy();
+  addon.eval("__cd[1] = { 500, 30 }");
+  addon.fire("BAG_UPDATE_COOLDOWN");
+  expect(cooldown(), "the game's cooldown for the quest item's log index").toEqual([500, 30]);
+  addon.eval("__cd[1] = { 0, 0 }");
+  addon.fire("BAG_UPDATE_COOLDOWN");
+  expect(cooldown(), "over: cleared").toBeFalsy();
+  addon.eval("__cd[1] = { { __secret = true }, { __secret = true } }");
+  addon.fire("BAG_UPDATE_COOLDOWN");
+  expect(cooldown().map((v) => v.__secret), "hidden numbers go to the widget untouched").toEqual([true, true]);
+  setCombat(addon, true);
+  addon.eval("__cd[1] = { 600, 10 }");
+  addon.fire("BAG_UPDATE_COOLDOWN");
+  expect(cooldown(), "the cooldown follows in combat too").toEqual([600, 10]);
+  setCombat(addon, false);
+  addon.eval("GetQuestLogSpecialItemCooldown = nil");
+  addon.fire("BAG_UPDATE_COOLDOWN");
+  expect(cooldown(), "a client without the call: cleared").toBeFalsy();
+  // Whether the item's icon is tinted as out of range.
+  const red = () => isTok(addon, addon.eval("return ForeverUI_QuestItem1.icon.__vertexColor"), "outOfRange");
+  addon.update(0.01);
+  expect(red(), "a fresh item is not tinted").toBe(false);
+  addon.eval("__range[1] = 0");
+  addon.update(0.1);
+  expect(red(), "the range is checked a few times a second, not every frame").toBe(false);
+  addon.update(0.2);
+  expect(red(), "out of range (0): the icon goes red").toBe(true);
+  addon.eval("__range[1] = 1");
+  addon.update(0.3);
+  expect(red(), "back in range (1): normal").toBe(false);
+  addon.eval("__range[1] = { __secret = true }");
+  addon.update(0.3);
+  expect(red(), "a hidden answer is never taken as out of range").toBe(false);
+  addon.eval("local b = ForeverUI_QuestItem1 b.__scripts.OnEnter(b)");
+  expect(addon.eval("return { GameTooltip.__special, GameTooltip.__owner == ForeverUI_QuestItem1, GameTooltip:IsShown() }"), "hovering shows the game's tooltip for the quest item's log index").toEqual([1, true, true]);
+  addon.eval("local b = ForeverUI_QuestItem1 b.__scripts.OnLeave(b)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "and leaving hides it").toBe(false);
+  addon.eval("GameTooltip.__special = nil ForeverUI_QuestItem1.questID = 90099 ForeverUI_QuestItem1.__scripts.OnEnter(ForeverUI_QuestItem1)");
+  expect(addon.eval("return GameTooltip.__special"), "an item whose quest has left the log shows no tooltip").toBeFalsy();
+  addon.eval("ForeverUI_QuestItem1.questID = 90051 GameTooltip.SetQuestLogSpecialItem = nil ForeverUI_QuestItem1.__scripts.OnEnter(ForeverUI_QuestItem1)");
+  expect(addon.eval("return GameTooltip.__special"), "a client without the tooltip call shows none").toBeFalsy();
+});
+
 it("quest tracker: nearest first, collapsing, too many quests, and switched off", () => {
   const addon = loggedIn(UNITS_ENV + TRACK_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { QuestTracker = { order = 'nearest' } } }" });
   addon.eval("__wfgStub.advance(1.25)");

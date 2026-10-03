@@ -36,4 +36,6 @@ read_globals = {
   "GetCVar", "GetAddOnCPUUsage", "UpdateAddOnCPUUsage", "GetAddOnMemoryUsage", "UpdateAddOnMemoryUsage", "GetFunctionCPUUsage",
   -- Action button tooltips: the client's default anchor (P2.3).
   "GameTooltip_SetDefaultAnchor",
+  -- Quest tracker item buttons: the quest item's cooldown and range (P2.10).
+  "GetQuestLogSpecialItemCooldown", "IsQuestLogSpecialItemInRange",
 }
