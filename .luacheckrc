@@ -49,4 +49,6 @@ read_globals = {
   "LibStub",
   -- P3.8 Chat: the game's time formatter and clock (chat timestamps), its chat windows list.
   "TimeUtil", "time", "CHAT_FRAMES",
+  -- P3.9 GameAlerts: rare spawns from the minimap's vignettes.
+  "C_VignetteInfo",
 }
