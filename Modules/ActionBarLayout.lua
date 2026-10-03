@@ -1,7 +1,8 @@
 -- Action bar layout and visibility (UX round two). Each bar shows its own
 -- number of buttons, wraps them into rows, sizes them, and is seen always,
 -- on mouseover, only in combat, or never. Empty slots stay invisible unless
--- you are dragging a spell or item, so a new character sees no empty squares.
+-- you are dragging a spell or item, so a new character sees no empty squares,
+-- and they take no mouse, so blank bar space doesn't eat clicks.
 -- While you drag, On mouseover bars are revealed and In combat bars are shown
 -- (the latter only when the drag starts out of combat), so every bar you can
 -- drop onto is visible. A Hidden bar is not drawn but its keys still cast.
@@ -10,7 +11,8 @@
 -- out of combat only (ns.OutOfCombat), and visibility is a secure state
 -- driver the client runs itself, in combat too. Mouseover and empty slots
 -- only change alpha, which is allowed in combat, and never animate, so
--- nothing moves when Reduce motion is on.
+-- nothing moves when Reduce motion is on. An empty slot's mouse is the one
+-- secure change on that path, and waits for combat to end.
 
 local ADDON, ns = ...
 
@@ -156,9 +158,16 @@ end
 -- Empty slots -------------------------------------------------------------------------
 
 -- A button is seen when it holds an action or the grid is up (while you
--- drag a spell or item). Alpha only, so paging in combat can change it.
+-- drag a spell or item). Seen changes its alpha, which paging in combat can
+-- do, and takes the mouse, which a blank slot doesn't, so a click or a
+-- right-drag camera turn over blank bar space reaches the world. The mouse is
+-- a secure change: out of combat only, the latest state kept (one entry per button).
 function AB.UpdateEmpty(b)
-  b:SetAlpha((b.hasAction or AB.grid) and 1 or 0)
+  local seen = (b.hasAction or AB.grid) and true or false
+  b:SetAlpha(seen and 1 or 0)
+  if b.fuiSeen == seen then return end
+  b.fuiSeen = seen
+  ns.OutOfCombat(function() b:EnableMouse(seen) end, b)
 end
 
 -- A drag started: out of combat, In combat bars show (through the

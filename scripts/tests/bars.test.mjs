@@ -237,6 +237,9 @@ it("an old profile keeps its right-edge bar on Always; a fresh enable gets On mo
   // A new profile's fresh enable is checked in "the right-edge bars start off and show on mouseover when turned on".
 });
 
+// ACTIONS_ENV's three bars of twelve buttons hold three actions: the other 33 slots are empty.
+const EMPTY_SLOTS = 33;
+
 it("In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone", () => {
   const addon = loggedIn(ACTIONS_ENV);
   setBarOption(addon, 2, "Visibility", '"combat"');
@@ -251,13 +254,13 @@ it("In combat bars show during a drag out of combat; a drag that starts in comba
   setCombat(addon, true);
   addon.fire("ACTIONBAR_SHOWGRID");
   addon.fire("ACTIONBAR_HIDEGRID");
-  expect(addon.eval("return __regs") === 0 && addon.eval("return ns.QueuedCount()") === 0, "a drag that starts in combat changes no driver and queues nothing").toBeTruthy();
+  expect(addon.eval("return __regs") === 0 && addon.eval("return ns.QueuedCount()") === EMPTY_SLOTS, "a drag that starts in combat changes no driver and queues only the empty slots' mouse, one entry each").toBeTruthy();
   setCombat(addon, false);
   expect(addon.eval("return __regs") === 0 && barVis(addon).driver === "[combat] show; hide", "not even after combat ends").toBeTruthy();
   addon.fire("ACTIONBAR_SHOWGRID");
   setCombat(addon, true);
   addon.fire("ACTIONBAR_HIDEGRID");
-  expect(barVis(addon).driver === "show" && addon.eval("return ns.QueuedCount()") === 1, "a drag that ends after combat starts restores the driver once combat ends").toBeTruthy();
+  expect(barVis(addon).driver === "show" && addon.eval("return ns.QueuedCount()") === EMPTY_SLOTS + 1, "a drag that ends after combat starts restores the driver once combat ends (and the empty slots' mouse)").toBeTruthy();
   setCombat(addon, false);
   expect(barVis(addon).driver === "[combat] show; hide", "and then it does").toBeTruthy();
 });
@@ -276,7 +279,7 @@ it("mouseover bars are revealed during a drag and restored after", () => {
   addon.eval("ForeverUI_Bar2.__mouseOver = true");
   addon.fire("ACTIONBAR_HIDEGRID");
   expect(barVis(addon).alpha === 1, "unless the mouse is still over the bar").toBeTruthy();
-  expect(addon.eval("return __shows") === 0 && addon.eval("return ns.QueuedCount()") === 0 && barVis(addon).driver === "show", "alpha only: no Show or Hide, nothing queued, driver unchanged").toBeTruthy();
+  expect(addon.eval("return __shows") === 0 && addon.eval("return ns.QueuedCount()") === EMPTY_SLOTS && barVis(addon).driver === "show", "alpha only: no Show or Hide, driver unchanged; only the empty slots' mouse waits").toBeTruthy();
 });
 
 it("Hidden bar bindings stay intact", () => {
@@ -494,4 +497,45 @@ it("bag, equipment, form, macro and charge events refresh the buttons they chang
   addon.eval("__actions[2].count = 2");
   addon.fire("SPELL_UPDATE_CHARGES");
   expect(button(addon, 1, 2).count, "SPELL_UPDATE_CHARGES re-counts").toBe("2");
+});
+
+// Whether button i of bar 1 takes the mouse, and its alpha.
+const takesMouse = (addon, i) => addon.eval(`return ForeverUI_Bar1Button${i}.__mouse`);
+const alphaOf = (addon, i) => addon.eval(`return ForeverUI_Bar1Button${i}:GetAlpha()`);
+
+it("empty slots take no mouse, so blank bar space passes clicks through; a drag turns it back on", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  expect([takesMouse(addon, 1), takesMouse(addon, 4)], "a slot with an action takes the mouse; an empty one doesn't").toEqual([true, false]);
+  addon.fire("ACTIONBAR_SHOWGRID");
+  expect([takesMouse(addon, 4), alphaOf(addon, 4)], "picking up a spell or item shows the empty slots and lets you drop onto them").toEqual([true, 1]);
+  addon.fire("ACTIONBAR_HIDEGRID");
+  expect([takesMouse(addon, 4), alphaOf(addon, 4), takesMouse(addon, 1)], "dropping it hides them and takes the mouse off again").toEqual([false, 0, true]);
+  addon.eval('__actions[4] = { tex = "TEST-ONLY-DROPPED", count = 0, usable = true }');
+  addon.fire("ACTIONBAR_SLOT_CHANGED", 4);
+  expect(takesMouse(addon, 4), "a slot that gets an action takes the mouse").toBe(true);
+  addon.eval("__actions[4] = nil");
+  addon.fire("ACTIONBAR_SLOT_CHANGED", 4);
+  expect(takesMouse(addon, 4), "and loses it when the action is taken away").toBe(false);
+});
+
+it("in combat an empty slot's mouse waits for the fight to end, one entry per button, the last state winning", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  setCombat(addon, true);
+  addon.eval('__actions[4] = { tex = "TEST-ONLY-DROPPED", count = 0, usable = true }');
+  addon.fire("ACTIONBAR_SLOT_CHANGED", 4);
+  const queued = addon.eval("return ns.QueuedCount()");
+  expect([alphaOf(addon, 4), takesMouse(addon, 4)], "a slot filled in combat shows at once (alpha is allowed); its mouse waits").toEqual([1, false]);
+  addon.eval("__actions[4] = nil");
+  addon.fire("ACTIONBAR_SLOT_CHANGED", 4);
+  addon.eval('__actions[4] = { tex = "TEST-ONLY-AGAIN", count = 0, usable = true }');
+  addon.fire("ACTIONBAR_SLOT_CHANGED", 4);
+  expect(addon.eval("return ns.QueuedCount()"), "emptied and filled again, the button still has one queued entry").toBe(queued);
+  setCombat(addon, false);
+  expect(takesMouse(addon, 4), "after the fight the last state applies: filled, so it takes the mouse").toBe(true);
+  setCombat(addon, true);
+  addon.eval("__actions[4] = nil");
+  addon.fire("ACTIONBAR_SLOT_CHANGED", 4);
+  expect([alphaOf(addon, 4), takesMouse(addon, 4)], "a slot emptied in combat hides at once and keeps its mouse until the fight ends").toEqual([0, true]);
+  setCombat(addon, false);
+  expect(takesMouse(addon, 4), "then it lets clicks through").toBe(false);
 });
