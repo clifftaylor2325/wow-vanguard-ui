@@ -23,6 +23,8 @@ GW.FRAMED = {
 }
 GW.POPUPS = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }
 GW.TIMERS = { "MirrorTimer1", "MirrorTimer2", "MirrorTimer3" }
+-- The windows ForeverUI's quest dialog stands in for: the game never shows them while it is on, so they are not skinned.
+GW.QUEST_WINDOWS = { QuestFrame = true, GossipFrame = true }
 -- Windows that load with their own part of the game: addon name -> window names.
 GW.ON_DEMAND = {
   Blizzard_PlayerSpells = { "PlayerSpellsFrame" }, Blizzard_TimeManager = { "TimeManagerFrame" },
@@ -184,10 +186,16 @@ end
 
 -- Hooking -------------------------------------------------------------------------------------
 
--- Skins a window now and every time it shows (once hooked).
+-- Whether ForeverUI's quest dialog is on in place of this game window (QuestDialog loads before this module).
+local function replaced(name)
+  local dialog = ns.GetModule("QuestDialog")
+  return GW.QUEST_WINDOWS[name] == true and dialog ~= nil and dialog.frame ~= nil
+end
+
+-- Skins a window now and every time it shows (once hooked); not one the quest dialog replaces.
 local function watch(name, skin)
   local frame = _G[name]
-  if type(frame) ~= "table" or not frame.HookScript or frame.fuiWindow then return end
+  if type(frame) ~= "table" or not frame.HookScript or frame.fuiWindow or replaced(name) then return end
   frame.fuiWindow = true
   skin(frame)
   frame:HookScript("OnShow", skin)

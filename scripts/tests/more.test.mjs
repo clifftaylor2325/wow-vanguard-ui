@@ -739,6 +739,35 @@ it("quest log: keys follow rebinding, /fui quests, closing, and switched off", (
   expect([off.eval("return ForeverUI_QuestLog == nil and next(__overrides) == nil"), chatHas(off, /quest log is off/)], "switched off: the game's quest log key stays the game's").toEqual([true, true]);
 });
 
+// TEST-ONLY game quest log toggle (what the quest log micro button calls) and the game's map window it opens.
+const TOGGLE_ENV = `
+  hooksecurefunc = function(a, b, c)
+    if type(a) == "table" then local orig = a[b] a[b] = function(...) local r = orig(...) c(...) return r end
+    else local orig = _G[a] _G[a] = function(...) orig(...) b(...) end end
+  end
+  __game = 0
+  WorldMapFrame = CreateFrame("Frame", "WorldMapFrame", UIParent) WorldMapFrame:Hide()
+  function ToggleQuestLog() __game = __game + 1 if WorldMapFrame then if WorldMapFrame:IsShown() then WorldMapFrame:Hide() else WorldMapFrame:Show() end end end
+`;
+
+it("quest log: the game's quest log button opens ForeverUI's log instead of the game's", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + TOGGLE_ENV);
+  // The state of ForeverUI's log and the game's map after a press of the micro button.
+  const press = () => { addon.eval("ToggleQuestLog()"); return addon.eval("return { ForeverUI_QuestLog:IsShown(), WorldMapFrame:IsShown(), __game }"); };
+  expect(press(), "the button opens this log, and the game's window it opened is put away").toEqual([true, false, 1]);
+  expect(press(), "pressed again it closes this log").toEqual([false, false, 2]);
+  addon.eval("WorldMapFrame:Show()");
+  expect(press(), "a map the player had open: the game's toggle closes it, and this log opens").toEqual([true, false, 3]);
+  const off = loggedIn(TRACK_ENV + QLOG_ENV + TOGGLE_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { QuestLog = { own = false } } }" });
+  off.eval("ToggleQuestLog()");
+  expect(off.eval("return { ForeverUI_QuestLog == nil, WorldMapFrame:IsShown() }"), "with ForeverUI's log off, the button is the game's").toEqual([true, true]);
+  const bare = loggedIn(TRACK_ENV + QLOG_ENV + TOGGLE_ENV + "WorldMapFrame = nil");
+  bare.eval("ToggleQuestLog()");
+  expect(bare.eval("return ForeverUI_QuestLog:IsShown()"), "a client without the map window is fine").toBe(true);
+  const none = loggedIn(TRACK_ENV + QLOG_ENV + "ToggleQuestLog = nil");
+  expect(none.eval("return ForeverUI_QuestLog ~= nil and ToggleQuestLog == nil"), "a client without the toggle loads cleanly").toBe(true);
+});
+
 // TEST-ONLY extra windows: friends, a book (its page text records the colors it's given), and
 // the game's loss of control and talking head alerts with their parts.
 const ALERTS_ENV = `
@@ -1886,6 +1915,19 @@ it("game windows in the ForeverUI look: framed windows, popups, breath bar, and 
   addon.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
   expect(windowState(addon, "PlayerSpellsFrame"), "the spellbook is skinned when it loads").toMatchObject({ art: 0, panel: true });
   addon.fire("ADDON_LOADED", "TEST-ONLY_SomethingElse");
+});
+
+it("game windows: the quest and gossip windows are skinned only when ForeverUI's quest dialog is off", () => {
+  const env = WINDOWS_ENV + '__window("QuestFrame") __window("GossipFrame")';
+  const on = loggedIn(env);
+  on.eval("MerchantFrame:Show() QuestFrame:Show() GossipFrame:Show()");
+  expect([windowState(on, "QuestFrame").panel, windowState(on, "GossipFrame").panel, windowState(on, "MerchantFrame").panel], "with the dialog on the game's never show: left alone, other windows skinned").toEqual([false, false, true]);
+  expect(on.eval("return QuestFrame.fuiWindow == nil and GossipFrame.fuiWindow == nil"), "and not even hooked").toBe(true);
+  for (const saved of ["ForeverUIDB.profiles = { Default = { QuestDialog = { dialog = false } } }", "ForeverUIDB.profiles = { Default = { modules = { QuestDialog = false } } }"]) {
+    const off = loggedIn(env, { savedVariables: saved });
+    off.eval("QuestFrame:Show() GossipFrame:Show()");
+    expect([windowState(off, "QuestFrame"), windowState(off, "GossipFrame")], "with the dialog off they are the game's windows again, skinned").toMatchObject([{ art: 0, panel: true }, { art: 0, panel: true }]);
+  }
 });
 
 it("game windows: switched off they stay the game's, and missing windows are fine", () => {
