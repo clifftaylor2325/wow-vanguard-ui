@@ -217,6 +217,7 @@ return {
     SecureActionButtonTemplate = {},
     InsecureActionButtonTemplate = { kind = "Button" },
     SecureHandlerStateTemplate = {},
+    SecureHandlerAttributeTemplate = {},
     SecureGroupHeaderTemplate = { kind = "Frame" },
     SecureHandlerBaseTemplate = {},
     CooldownFrameTemplate = { kind = "Cooldown" },

@@ -2512,6 +2512,7 @@ it("WoW Forever client: interface, hidden auras, no specializations", () => {
   expect(healing(addon, 1).missing === "TEST-ONLY-ICON-Arcane Intellect", "leaving combat looks at every buff again").toBeTruthy();
   addon.slash("status");
   expect(chatHas(addon, /Client WoW Forever {2}· {2}build 1\.16\.0 \(TEST-ONLY\) {2}· {2}auras on the engine {2}· {2}aura values readable/), "/fui status names the client, its build and the aura state").toBeTruthy();
+  expect(chatHas(addon, /aura values readable {2}· {2}secure snippets: yes/), "and whether secure snippets work").toBe(true);
   addon.slash("spec Default");
   expect(chatHas(addon, /no specializations/), "/fui spec explains there are no specializations").toBeTruthy();
   addon.eval('ns.Options.Show("profiles")');
@@ -2598,13 +2599,13 @@ const CLIENT_KEYS = ["auraContainer", "pixelUtil", "eventValid", "barEase", "coo
 
 it("client capability probe: what this client has, and /fui status says so", () => {
   const full = loggedIn(UNITS_ENV + CLIENT_FULL_ENV);
-  expect(full.eval("return ns.Client.has"), "a client with everything: every flag is true").toEqual(Object.fromEntries(CLIENT_KEYS.map((k) => [k, true])));
+  expect(full.eval("return ns.Client.has"), "a client with everything: every flag is true").toEqual({ ...Object.fromEntries(CLIENT_KEYS.map((k) => [k, true])), secureSnippets: true });
   full.slash("status");
   expect(chatHas(full, /Client has: auraContainer, pixelUtil, eventValid, barEase, cooldownObject, cooldownMin, countdownText, keyPropagate, damageMeter, cooldownViewer, swingTimer, meterEnums {2}· {2}lacks: none/), "/fui status lists them in a fixed order").toBe(true);
   const bare = loggedIn();
   expect(bare.eval("return ns.Client.has"), "the bare stub: the namespace flags are false, the widget ones come from the stub's widget list").toEqual({
     auraContainer: true, pixelUtil: false, eventValid: false, barEase: false, cooldownObject: true, cooldownMin: true, countdownText: true,
-    keyPropagate: true, damageMeter: false, cooldownViewer: false, swingTimer: false, meterEnums: false });
+    keyPropagate: true, damageMeter: false, cooldownViewer: false, swingTimer: false, meterEnums: false, secureSnippets: true });
   bare.slash("status");
   expect(chatHas(bare, /Client has: auraContainer, cooldownObject, cooldownMin, countdownText, keyPropagate {2}· {2}lacks: pixelUtil, eventValid, barEase, damageMeter, cooldownViewer, swingTimer, meterEnums$/), "and the lacking ones are named").toBe(true);
   const noCooldown = loggedIn(`local real = CreateFrame
@@ -2619,7 +2620,7 @@ it("client capability probe: what this client has, and /fui status says so", () 
 
 it("client capability probe: every flag off, every module still enables", () => {
   const addon = loggedIn(UNITS_ENV + ACTIONS_ENV + TOTEMS_ENV + ENGINE_ENV + CLIENT_NONE_ENV);
-  expect(addon.eval("return ns.Client.has"), "a client with none of the optional calls").toEqual(Object.fromEntries(CLIENT_KEYS.map((k) => [k, false])));
+  expect(addon.eval("return ns.Client.has"), "a client with none of the optional calls").toEqual({ ...Object.fromEntries(CLIENT_KEYS.map((k) => [k, false])), secureSnippets: true });
   // The modules that are on in the settings but did not enable, on a client with and without the calls.
   const notEnabled = (a) => a.eval(`local out = {} for _, n in ipairs(ns.ModuleNames()) do
     local d = ns.GetModule(n) if d.Enable and ns.ModuleEnabled(n) and d.enabled ~= true then out[#out + 1] = n end end return out`);
@@ -2664,6 +2665,67 @@ it("client capability probe: in a fight the aura container waits; first use prob
   early.eval("ns.Client.has.cooldownMin = 'TEST-ONLY-kept'");
   early.login();
   expect(early.eval("return ns.Client.has.cooldownMin"), "and the probe is not run again").toBe("TEST-ONLY-kept");
+});
+
+// How many lines of chat mention secure snippets.
+const snippetLines = (addon) => addon.chat().filter((l) => /secure snippets/.test(l)).length;
+
+// The caught errors that came from the snippet probe.
+const probeErrors = (addon) => addon.eval(`local o = {} for _, e in ipairs(ns.errors) do
+  if e.text:find("secure snippet probe", 1, true) then o[#o + 1] = e.text end end o.n = #o return o`);
+
+it("secure snippets: a client that compiles them keeps hover keys and says so in /fui status", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + "GetSpecialization = function() return 1 end");
+  expect(addon.eval("return ns.Client.has.secureSnippets"), "the stub runs the probe's snippet, so the flag is true").toBe(true);
+  expect(addon.eval('return ForeverUI_SnippetProbe:GetAttribute("fuiprobe")'), "the probe frame got the attribute the snippet wrote").toBe("ok");
+  expect(snippetLines(addon), "nothing is said at login").toBe(0);
+  addon.eval('ns.GetModule("ClickCast").Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") __spawn(1, "raid1")');
+  expect(addon.eval("return ForeverUI_RaidUnitButton1.__wraps.OnEnter"), "hover keys are wrapped").toMatch(/SetBindingClick\(true, "SHIFT-1", self, "fui1"\)/);
+  addon.slash("status");
+  expect(chatHas(addon, /secure snippets: yes/), "/fui status says yes").toBe(true);
+});
+
+it("secure snippets: a client whose snippets fail to compile turns hover keys off, once, and keeps mouse bindings", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + `GetSpecialization = function() return 1 end
+    SecureHandlerExecute = function() error("TEST-ONLY: snippets do not compile") end
+    __wraps = 0 local w = SecureHandlerWrapScript SecureHandlerWrapScript = function(...) __wraps = __wraps + 1 return w(...) end`);
+  expect(addon.eval("return ns.Client.has.secureSnippets"), "the probe answers no").toBe(false);
+  expect(snippetLines(addon), "one chat line at login").toBe(1);
+  expect(addon.chat().find((l) => /secure snippets/.test(l)), "it names the consequence").toMatch(/hover keys are off; bar paging, bar visibility and the raid frames may not work/);
+  addon.eval('local CC = ns.GetModule("ClickCast") CC.Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew") CC.Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") __spawn(1, "raid1")');
+  expect(addon.eval('return ForeverUI_RaidUnitButton1:GetAttribute("ctrl-type2")'), "mouse bindings are still set").toBe("spell");
+  expect(addon.eval('return ForeverUI_RaidUnitButton1:GetAttribute("type-fui2")'), "and so is the inert virtual button").toBe("spell");
+  expect(addon.eval("return __wraps"), "no SecureHandlerWrapScript call").toBe(0);
+  expect(addon.eval("return ForeverUI_RaidUnitButton1.fuiWrapped"), "the frame is not marked wrapped").toBe(null);
+  expect(addon.eval("return ns.Client.ProbeSnippets()"), "asking again answers the same").toBe(false);
+  expect(snippetLines(addon), "and does not warn again").toBe(1);
+  expect(probeErrors(addon), "the compile error is kept for /fui errors").toEqual({ 1: expect.stringMatching(/^secure snippet probe: .*TEST-ONLY: snippets do not compile$/), n: 1 });
+  addon.slash("status");
+  expect(chatHas(addon, /secure snippets: no \(hover keys off\)/), "/fui status says no, and what it costs").toBe(true);
+});
+
+it("secure snippets: a snippet that runs but writes nothing, and a client without the handler API, count as no", () => {
+  const silent = loggedIn("SecureHandlerExecute = function() end");
+  expect(silent.eval("return ns.Client.has.secureSnippets"), "no attribute came back").toBe(false);
+  expect(chatHas(silent, /can't run secure snippets/), "so it says so").toBe(true);
+  expect(probeErrors(silent).n, "without an error entry: nothing threw").toBe(0);
+  const missing = loggedIn("SecureHandlerExecute = nil");
+  expect(missing.eval("return ns.Client.has.secureSnippets"), "no API, no snippets").toBe(false);
+  expect(missing.eval("return ForeverUI_SnippetProbe"), "and no probe frame was made").toBe(null);
+  expect(snippetLines(missing), "one warning").toBe(1);
+});
+
+it("secure snippets: logging in during a fight defers the probe, and it runs before click casting applies", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE });
+  addon.eval(UNITS_ENV + RAID_ENV + CLICK_LUA + "GetSpecialization = function() return 1 end");
+  setCombat(addon, true);
+  addon.login();
+  expect(addon.eval("return ns.Client.has.secureSnippets"), "not probed in a fight").toBe(null);
+  expect(addon.eval("return ns.Client.ProbeSnippets()"), "asking in a fight does not probe either").toBe(null);
+  setCombat(addon, false);
+  expect(addon.eval("return ns.Client.has.secureSnippets"), "after the fight it is asked").toBe(true);
+  addon.eval('ns.GetModule("ClickCast").Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") __spawn(1, "raid1")');
+  expect(addon.eval("return ForeverUI_RaidUnitButton1.__wraps.OnLeave"), "and click casting wraps the frame").toBe("self:ClearBindings()");
 });
 
 it("/fui errors: what ForeverUI caught this session", () => {

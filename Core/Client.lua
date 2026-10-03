@@ -108,3 +108,42 @@ end
 ns.On("ADDON_LOADED", function(_, name)
   if name == ADDON then C.Probe() end
 end)
+
+-- Secure snippets -------------------------------------------------------------------------
+-- WoW Forever's beta once failed to compile the restricted environment's
+-- snippets. The probe runs one line through SecureHandlerExecute, out of combat,
+-- once; has.secureSnippets is true or false after that, and nil until then.
+
+-- The one-line write the restricted environment must compile (self is the frame).
+local PROBE_SNIPPET = "self:SetAttribute('fuiprobe', 'ok')"
+
+-- Makes the probe frame, runs the snippet on it; true only when the attribute came back.
+local function runSnippetProbe()
+  local f = CreateFrame("Frame", "ForeverUI_SnippetProbe", UIParent, "SecureHandlerAttributeTemplate")
+  SecureHandlerExecute(f, PROBE_SNIPPET)
+  return f:GetAttribute("fuiprobe") == "ok"
+end
+
+-- Whether this client compiles secure snippets: a missing API, an error or a write that never lands all count as no.
+local function snippetsWork()
+  if type(SecureHandlerExecute) ~= "function" then return false end
+  local ok, worked = ns.Try("secure snippet probe", runSnippetProbe)
+  return ok and worked == true
+end
+
+-- The one chat line when snippets are off.
+local function warnNoSnippets()
+  ns.Chat("This client can't run secure snippets: hover keys are off; bar paging, bar visibility and the raid frames may not work until the game fixes it.")
+end
+
+-- Probes once, out of combat (nil until then); says so in chat, once, when snippets are off.
+function C.ProbeSnippets()
+  local has = C.has
+  if has.secureSnippets ~= nil or ns.InCombat() then return has.secureSnippets end
+  has.secureSnippets = snippetsWork()
+  if not has.secureSnippets then warnNoSnippets() end
+  return has.secureSnippets
+end
+
+-- At login, out of combat (queued if the login is in a fight), before any module's own login work.
+ns.On("PLAYER_LOGIN", function() ns.OutOfCombat(C.ProbeSnippets, "snippetprobe") end)

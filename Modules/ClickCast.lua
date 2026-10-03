@@ -9,7 +9,9 @@
 --
 -- Bindings are per character and per specialization. Everything here sets
 -- secure attributes and secure enter/leave snippets, so it only changes out
--- of combat; in combat, the bindings you set earlier keep working.
+-- of combat; in combat, the bindings you set earlier keep working. Hover keys
+-- need secure snippets: when the client can't compile them (Core/Client.lua
+-- probes it), they are off and the mouse bindings still work.
 
 local ADDON, ns = ...
 
@@ -146,6 +148,12 @@ local function wrap(f, enter)
   f.fuiWrapped = true
 end
 
+-- Whether this client compiles secure snippets (probed on first use, Core/Client.lua); without the probe, assume yes.
+local function snippetsOn()
+  local probe = ns.Client and ns.Client.ProbeSnippets
+  return probe == nil or probe() ~= false
+end
+
 -- Applies the current spec's bindings to one frame.
 function CC.ApplyFrame(f)
   local bindings = CC.Bindings()
@@ -154,7 +162,7 @@ function CC.ApplyFrame(f)
     local prefix, n = CC.MouseParts(b.key)
     if prefix then setAction(f, prefix, n, b) else setAction(f, "", "-fui" .. i, b) end
   end
-  wrap(f, CC.EnterSnippet(bindings))
+  if snippetsOn() then wrap(f, CC.EnterSnippet(bindings)) end
 end
 
 -- Applies the bindings to every registered frame (out of combat only).

@@ -265,11 +265,18 @@ local function buildText()
   return old and (text .. "  ·  update the game: this build loses settings at every launch") or text
 end
 
+-- The secure snippet part of the client line: what the probe found, or nothing before it ran.
+local function snippetText()
+  local has = ns.Client and ns.Client.has or {}
+  if has.secureSnippets == false then return "  ·  secure snippets: no (hover keys off)" end
+  return has.secureSnippets and "  ·  secure snippets: yes" or ""
+end
+
 -- The client line: which game and build, which aura backend, and whether aura values are hidden right now.
 local function clientLine()
   local client = ns.IsForever() and "WoW Forever" or "Retail"
   local hidden = ns.AurasSecret() and "hidden right now" or "readable"
-  return string.format("Client %s%s  ·  auras on the %s  ·  aura values %s", client, buildText(), ns.Auras.BackendName(), hidden)
+  return string.format("Client %s%s  ·  auras on the %s  ·  aura values %s", client, buildText(), ns.Auras.BackendName(), hidden) .. snippetText()
 end
 
 -- The text line: UI scale, Text size, and how tall chat text draws on this screen.
