@@ -186,7 +186,7 @@ O.MODULE_INFO = {
   RaidTools = { "Raid tools", "For the leader and assistants: ready check, pull timer, role check, target icons and world markers." },
   ClickCast = { "Click casting", "Cast on a frame with a click or a hover key." },
   ActionBars = { "Action bars", "Eight bars with their own size, layout and visibility." },
-  SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, and the vehicle exit." },
+  SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, places the pet and stance bars, and adds the vehicle exit." },
   Minimap = { "Minimap", "A square minimap with the zone and coordinates." },
   InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo and the time, under the minimap, your XP and gold per hour while you level, and your DPS if you like." },
   AfkScreen = { "AFK screen", "While you're away, the screen dims to a card with your character, zone, time away and XP." },
@@ -297,6 +297,7 @@ local function actionBarRows()
     check("Red when out of range", setting("ActionBars", "rangeTint")),
     check("Hide the default bars", setting("ActionBars", "hideBlizzard", true)),
     check("Restyle the pet, stance and extra action buttons (reload)", skinSpecial()),
+    check("Pet and stance bars in their own movable spots (reload)", setting("SpecialBars", "place", true)),
     check("Vehicle exit button (reload)", setting("SpecialBars", "vehicleExit", true)),
     { "text", "Empty slots stay hidden until you drag a spell or item onto the bars." },
   }
