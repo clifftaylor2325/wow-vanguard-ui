@@ -56,7 +56,10 @@ addons go to the bars unread. Auras use the client's own aura containers where
 it has them (12.1 and WoW Forever), so icons, stacks, timers and debuff colors
 keep working while it hides aura values in instanced combat; if the client
 refuses one of those containers, ForeverUI switches to its own icons for the
-rest of the session (it says so in `/fui errors`); `/fui status` shows which
+rest of the session (it says so in `/fui errors`); on those icons, an aura
+filter word the client doesn't know (say crowd control) is dropped for the
+session, so that slot shows the nearest match (the first debuff), and it is
+listed in `/fui errors`; `/fui status` shows which
 aura backend is in use and which optional client calls were found. If the client can't compile secure snippets (a WoW Forever beta bug), ForeverUI says so at login and in `/fui status` and turns hover keys off; mouse click-casting still works, and bar paging and the raid frames may not until the game fixes it. None of this has been checked in game yet:
 please report what breaks.
 

@@ -4155,6 +4155,77 @@ it("aura containers without the engine (the fallback)", () => {
   expect(addon.eval("return __c.groups[1].icons[1]:IsShown()") === false, "no unit: nothing shows").toBeTruthy();
 });
 
+// TEST-ONLY client whose aura read errors on the words CROWD_CONTROL and RAID_IN_COMBAT, as a client that doesn't know them would.
+const REJECTING_AURAS = `__wfgStub.noAuraContainer = true
+  __reads = {}
+  __auras = { HARMFUL = { { icon = "FIRST-HARMFUL", auraInstanceID = 1 } }, ["HARMFUL|PLAYER"] = { { icon = "MY-DOT", auraInstanceID = 2 } },
+    ["HARMFUL|RAID"] = { { icon = "CURSE", dispelName = "Magic", auraInstanceID = 3 } }, ["HELPFUL|PLAYER"] = { { icon = "HOT", auraInstanceID = 4 } } }
+  C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
+    __reads[#__reads + 1] = unit .. " " .. filter
+    if filter:find("CROWD_CONTROL") or filter:find("RAID_IN_COMBAT") then error("TEST-ONLY: unknown aura filter " .. filter) end
+    return (__auras[filter] or {})[i]
+  end }
+  function __n(s) local k = 0 for _, r in ipairs(__reads) do if r == s then k = k + 1 end end return k end
+  function __errs(s) local k = 0 for _, e in ipairs(ns.errors) do if e.text:find(s, 1, true) then k = k + 1 end end return k end
+`;
+
+it("aura filter words this client rejects are dropped for the session", () => {
+  const addon = loggedIn(UNITS_ENV + REJECTING_AURAS);
+  expect(addon.eval('return ns.Auras.Filter("HARMFUL|CROWD_CONTROL")'), "the unknown word goes").toBe("HARMFUL");
+  expect(addon.eval('return ns.Auras.Filter("HELPFUL|PLAYER|RAID_IN_COMBAT")'), "a known qualifier stays").toBe("HELPFUL|PLAYER");
+  expect(addon.eval('return ns.Auras.Filter("HARMFUL|RAID")'), "an accepted filter is unchanged").toBe("HARMFUL|RAID");
+  addon.eval(`__spec = { point = { "TOPLEFT", UIParent, "BOTTOMLEFT", 0, -3 }, grow = "RIGHT", growY = "UP", lineSize = 60,
+    groups = { { filter = "HARMFUL|CROWD_CONTROL", max = 1, size = 20, debuff = true }, { filter = "HARMFUL|PLAYER|!CROWD_CONTROL", max = 2, size = 20, debuff = true },
+      { filter = "HELPFUL|PLAYER|RAID_IN_COMBAT", max = 1, size = 20 } } }
+    __c = ns.Auras.Container(UIParent, __spec, "target")`);
+  expect(addon.eval("local g = __c.groups return { g[1].icons[1].icon.__texture, g[2].icons[1].icon.__texture, g[3].icons[1].icon.__texture }"),
+    "the crowd-control slot shows the first debuff; the other groups read what they asked for").toEqual(["FIRST-HARMFUL", "MY-DOT", "HOT"]);
+  addon.eval('__c:Refresh() __c:Refresh() ns.Auras.Container(UIParent, __spec, "target") ns.Auras.Filter("HARMFUL|RAID") ns.Auras.Filter("HARMFUL|RAID")');
+  expect(addon.eval('return __n("player HARMFUL|CROWD_CONTROL")'), "the whole filter is probed once").toBe(1);
+  expect(addon.eval('return __n("player HELPFUL|PLAYER|RAID_IN_COMBAT")'), "the other rejected filter is probed once").toBe(1);
+  expect(addon.eval('return __n("player HARMFUL|RAID")'), "an accepted filter is probed once").toBe(1);
+  expect(addon.eval('return __n("target HARMFUL|CROWD_CONTROL")'), "no real read uses the rejected filter").toBe(0);
+  expect(addon.eval('return __errs("aura filter HARMFUL|CROWD_CONTROL")'), "one report per rejected filter").toBe(1);
+  expect(addon.eval('return __errs("aura filter HELPFUL|PLAYER|RAID_IN_COMBAT")')).toBe(1);
+  expect(addon.eval('return __errs("aura filter HARMFUL|RAID")'), "nothing is reported for an accepted filter").toBe(0);
+  expect(addon.eval('for _, e in ipairs(ns.errors) do if e.text:find("aura filter HARMFUL|CROWD_CONTROL", 1, true) then return e.text end end'),
+    "the entry says what is read instead").toBe("aura filter HARMFUL|CROWD_CONTROL: this client rejects it; reading HARMFUL");
+  expect(addon.chat().filter((l) => l.includes("aura filter HARMFUL|CROWD_CONTROL")).length, "and chat says so once").toBe(1);
+});
+
+it("a client that rejects every aura filter word keeps the filter and shows no auras", () => {
+  const addon = loggedIn(UNITS_ENV + `__wfgStub.noAuraContainer = true
+    C_UnitAuras = { GetAuraDataByIndex = function() error("TEST-ONLY: no filters") end }`);
+  expect(addon.eval('return ns.Auras.Filter("HARMFUL|CROWD_CONTROL")'), "nothing better to read: the filter is kept").toBe("HARMFUL|CROWD_CONTROL");
+  expect(addon.eval('return ns.Auras.Get("target", 1, "HARMFUL|CROWD_CONTROL")'), "and the read gives no aura").toBe(null);
+  expect(addon.eval('local k, text = 0 for _, e in ipairs(ns.errors) do if e.text:find("aura filter HARMFUL|CROWD_CONTROL", 1, true) then k, text = k + 1, e.text end end return { k, text }'))
+    .toEqual([1, "aura filter HARMFUL|CROWD_CONTROL: no part of it is known to this client"]);
+});
+
+it("aura filters pass through on a client without the aura read", () => {
+  const bare = loggedIn();
+  expect(bare.eval('return ns.Auras.Filter("HARMFUL")'), "no C_UnitAuras: unchanged").toBe("HARMFUL");
+  expect(bare.eval("return ns.Auras.Filter(nil)"), "no filter: none").toBe(null);
+  expect(bare.eval('return ns.Auras.Get("target", 1, "HARMFUL")')).toBe(null);
+  expect(bare.eval('local k = 0 for _, e in ipairs(ns.errors) do if e.text:find("aura filter", 1, true) then k = k + 1 end end return k'), "nothing is reported").toBe(0);
+});
+
+it("the raid dispel highlight reads through the stripped filter on the fallback", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + `__wfgStub.noAuraContainer = true
+    __errors = 0
+    C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
+      if filter:find("RAID") then error("TEST-ONLY: unknown aura filter " .. filter) end
+      return unit == "raid1" and filter == "HARMFUL" and i == 1 and { icon = "CURSE", dispelName = "Magic", auraInstanceID = 21 } or nil
+    end }`);
+  addon.eval('__spawn(1, "raid1")');
+  setCombat(addon, true);
+  addon.fire("UNIT_AURA", "raid1");
+  expect(addon.eval("return ForeverUI_RaidUnitButton1.dispel:IsShown()"), "the highlight is painted from the HARMFUL read").toBe(true);
+  expect(isTok(addon, addon.eval("return ForeverUI_RaidUnitButton1.dispel.edges[1].__vertexColor"), "magic")).toBe(true);
+  expect(addon.eval('return ns.Auras.Filter("HARMFUL|RAID")')).toBe("HARMFUL");
+  expect(addon.eval('local k = 0 for _, e in ipairs(ns.errors) do if e.text:find("aura filter HARMFUL|RAID", 1, true) then k = k + e.count end end return k'), "one report").toBe(1);
+});
+
 // TEST-ONLY client whose AuraContainer template gives a plain frame: one without the engine's methods.
 const BAD_TEMPLATE_ENV = `
   local real = CreateFrame
