@@ -2773,6 +2773,11 @@ it("/fui errors: what ForeverUI caught this session", () => {
   expect(broken.eval("return { #ns.errors, ns.errors[1].text }"), "only the last 20 distinct errors are kept").toEqual([20, "TEST-ONLY: 6"]);
   broken.eval('ns.Report("TEST-ONLY", 1)');
   expect(broken.eval("return { #ns.errors, ns.errors[1].text, ns.errors[20].text, ns.errors[20].count }"), "a dropped error comes back as a new entry, its old count gone").toEqual([20, "TEST-ONLY: 7", "TEST-ONLY: 1", 1]);
+  expect(broken.chat().filter((l) => /TEST-ONLY: 1  \(once per error/.test(l)).length, "but chat heard of it only once, though it was dropped from the list").toBe(1);
+  broken.eval("ns.ClearErrors()");
+  broken.clearChat();
+  broken.eval('ns.Report("TEST-ONLY", 1)');
+  expect(broken.chat().filter((l) => /TEST-ONLY: 1  \(once per error/.test(l)).length, "/fui errors clear starts the session's chat lines over").toBe(1);
 });
 
 // The game's error handler and debugstack as a client has them, recording what each was given.
@@ -2795,6 +2800,28 @@ it("caught errors: one entry per distinct error, counted, with its stack, told o
   expect(addon.eval("local r = { ns.Try('TEST-ONLY two', function() return nil, 'two' end) } return { r[1], r[2] == nil, r[3] }"), "a nil result included").toEqual([true, true, "two"]);
   expect(addon.eval("return { ns.Try('TEST-ONLY outer', function() ns.Try('TEST-ONLY inner', error, 'in') error('out') end) }"), "a nested ns.Try's failure doesn't take the outer one's label").toEqual([false, expect.stringMatching(/out$/)]);
   expect(addon.eval("return { ns.errors[#ns.errors - 1].text, ns.errors[#ns.errors].text }"), "each is kept under its own site").toEqual(["TEST-ONLY inner: in", expect.stringMatching(/^TEST-ONLY outer: .*out$/)]);
+});
+
+// A debugstack that says whether the function in __failer is still on the call stack when it is read.
+const LIVE_STACK_ENV = `
+  debugstack = function()
+    local i = 1
+    while debug.getinfo(i, "f") do
+      if debug.getinfo(i, "f").func == __failer then return "TEST-ONLY failing frame live" end
+      i = i + 1
+    end
+    return "TEST-ONLY failing frame gone"
+  end
+`;
+
+it("caught errors: the stack is read while the failing frames are still live", () => {
+  const addon = loggedIn(LIVE_STACK_ENV);
+  addon.eval('ns.ClearErrors() __failer = function() error("TEST-ONLY deep") end ns.Try("TEST-ONLY live", function() __failer() end)');
+  expect(addon.eval("return ns.errors[1].stack"), "ns.Try keeps a stack that still has the failing function in it").toBe("TEST-ONLY failing frame live");
+  addon.eval('ns.ClearErrors() ns.On("TEST_ONLY_LIVE", function() __failer() end) __wfgStub.fire("TEST_ONLY_LIVE")');
+  expect(addon.eval("return ns.errors[1].stack"), "so does an event handler's").toBe("TEST-ONLY failing frame live");
+  addon.eval('ns.ClearErrors() ns.Report("TEST-ONLY late", "x")');
+  expect(addon.eval("return ns.errors[1].stack"), "while a report made outside any failure does not have it (the probe tells them apart)").toBe("TEST-ONLY failing frame gone");
 });
 
 it("caught errors: without debugstack or an error handler (this stub), and a hidden error value", () => {
