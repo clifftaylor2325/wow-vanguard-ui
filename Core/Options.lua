@@ -79,6 +79,30 @@ local function moverOption(key)
   return function() return ns.MoverOptions()[key] end, function(v) ns.MoverOptions()[key] = v end
 end
 
+-- The frame whose scale and opacity the Layout card's sliders set (the first mover until one is picked).
+local function sizedMover()
+  local list = ns.MoverList()
+  return O.sizedMover or (list[1] and list[1].key)
+end
+
+-- Every movable frame as a { key, label } choice.
+local function moverChoices()
+  local out = {}
+  for i, m in ipairs(ns.MoverList()) do out[i] = { m.key, m.label } end
+  return out
+end
+
+-- get/set for which frame the sliders size; picking one re-reads the sliders.
+local function pickMover()
+  return sizedMover, function(key) O.sizedMover = key; O.Refresh() end
+end
+
+-- get/set for the picked frame's scale (look = 1) or opacity (look = 2), applied at once; the default is 1.
+local function moverLook(look, setter)
+  return function() return (select(look, ns.MoverLook(sizedMover()))) end,
+    function(v) local key = sizedMover() if key then setter(key, v) end end, 1
+end
+
 -- Page rows ---------------------------------------------------------------------------
 
 -- A check row: { "check", label, get, set, default }.
@@ -112,6 +136,14 @@ local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", "the game's fo
 -- The faction look: by your character's faction, or off.
 local FACTION_LOOK = { { "auto", "By your faction" }, { "off", "Off" } }
 local BAR_TEXTURES = { { "forever", "Forever" }, { "soft", "Soft" }, { "flat", "Flat" } }
+-- A share as a percent.
+local function percent(v)
+  return string.format("%d%%", math.floor(v * 100 + 0.5))
+end
+
+-- A frame's scale (50% to 200%) and opacity (10% to 100%), in steps of 5.
+local MOVER_SCALES = { min = ns.MOVER_SCALE.min, max = ns.MOVER_SCALE.max, step = 0.05, format = percent }
+local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step = 0.05, format = percent }
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
@@ -137,8 +169,17 @@ local function layoutRows()
     check("Show a grid while moving", moverOption("grid")),
     check("Snap to other frames", moverOption("snap")),
     check("Show these handles in the game's Edit Mode too", moverOption("editMode")),
-    { "text", "While moving frames, right-click one for its exact anchor and offsets." },
-    { "button", "Reset all positions", function() ns.ResetMovers("all") end },
+    { "text", "While moving frames, right-click one for its exact anchor, offsets, scale and opacity." },
+  }
+end
+
+-- General, part three: one frame's scale and opacity, and resetting every frame.
+local function sizeRows()
+  return {
+    { "cycle", "Frame to size", moverChoices(), pickMover() },
+    { "slider", "Its scale", MOVER_SCALES, moverLook(1, ns.SetMoverScale) },
+    { "slider", "Its opacity", MOVER_ALPHAS, moverLook(2, ns.SetMoverAlpha) },
+    { "button", "Reset all positions", function() ns.ResetMovers("all"); O.Refresh() end },
   }
 end
 
@@ -161,9 +202,9 @@ local function motionRows()
   }
 end
 
--- General: look, bars, motion and layout.
+-- General: look, bars, motion, layout and frame sizes.
 local function generalRows()
-  return append(append(append(lookRows(), barRows()), motionRows()), layoutRows())
+  return append(append(append(append(lookRows(), barRows()), motionRows()), layoutRows()), sizeRows())
 end
 
 -- Each module's name in the window and what it does (and what it needs, if anything).

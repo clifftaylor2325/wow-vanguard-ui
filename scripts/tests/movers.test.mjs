@@ -1,7 +1,7 @@
 // movers: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn } from "./helpers.mjs";
+import { chatHas, loggedIn, setCombat } from "./helpers.mjs";
 
 it("movers", () => {
   const addon = loggedIn(`
@@ -48,4 +48,68 @@ it("layout", () => {
 it("mover coordinates with no handle", () => {
   const addon = loggedIn();
   expect(addon.eval('return ns.ShowCoords({ label = "TEST-ONLY" })') === null, "a mover that has no handle yet shows nothing").toBeTruthy();
+});
+
+// TEST-ONLY movable box: 200 x 40, anchored at its bottom center 100 up from the screen's;
+// its module fades it with SetAlpha, as a mouseover bar does.
+const BOX = `
+  __box = CreateFrame("Frame", "TESTONLY_Box", UIParent)
+  __box:SetSize(200, 40)
+  ns.Mover(__box, "box", "TEST-ONLY box", { "BOTTOM", "BOTTOM", 0, 100 })
+`;
+
+// The box on screen: its scale, alpha, rect (screen pixels: center x, bottom, width) and saved entry.
+const box = (addon) => {
+  const r = addon.frame("TESTONLY_Box").rect;
+  return { scale: addon.eval("return __box:GetScale()"), alpha: addon.eval("return __box:GetAlpha()"), x: r.left + r.width / 2, bottom: r.bottom, width: r.width,
+    saved: addon.eval("return ForeverUIDB.profiles.Default.positions.box") };
+};
+
+it("per-frame scale and opacity: saved with the position, anchored where it was, reset to 1", () => {
+  const addon = loggedIn(BOX);
+  expect(box(addon), "a frame starts at scale 1, fully opaque, with nothing saved").toEqual({ scale: 1, alpha: 1, x: 960, bottom: 100, width: 200, saved: null });
+  addon.eval('ns.SetMoverScale("box", 1.5)');
+  expect(box(addon), "scaled, it grows around its anchor point, which stays put").toEqual({ scale: 1.5, alpha: 1, x: 960, bottom: 100, width: 300, saved: { scale: 1.5 } });
+  addon.eval('ns.Nudge("box", 5, 0)');
+  expect(box(addon), "a move keeps the scale, and the offsets stay in screen units").toEqual({ scale: 1.5, alpha: 1, x: 965, bottom: 100, width: 300, saved: { point: "BOTTOM", relPoint: "BOTTOM", x: 5, y: 100, scale: 1.5 } });
+  addon.eval('ns.SetMoverAlpha("box", 0.5)');
+  expect([box(addon).alpha, box(addon).saved.alpha], "opacity is saved beside it").toEqual([0.5, 0.5]);
+  addon.eval("__box:SetAlpha(0)");
+  expect(box(addon).alpha, "the module fading the frame out still hides it").toBe(0);
+  addon.eval("__box:SetAlpha(1)");
+  expect(box(addon).alpha, "and fading it back in shows it at its opacity").toBe(0.5);
+  addon.eval('ns.SetMoverScale("box", 5) ns.SetMoverAlpha("box", 0)');
+  expect(addon.eval("return { ns.MoverLook('box') }"), "scale and opacity keep to 50-200% and 10-100%").toEqual([2, 0.1]);
+  addon.eval('ns.SetMoverScale("box", 0.3333) ns.SetMoverScale("box", "big") ns.SetMoverScale("TEST-ONLY none", 2)');
+  expect(addon.eval("return { ns.MoverLook('box') }"), "to the hundredth; a bad value or an unknown frame changes nothing").toEqual([0.5, 0.1]);
+  addon.eval('ns.SetMoverScale("box", 1) ns.SetMoverAlpha("box", 1)');
+  expect(box(addon).saved, "1 is saved as unset").toEqual({ point: "BOTTOM", relPoint: "BOTTOM", x: 5, y: 100 });
+  addon.eval('ns.SetMoverScale("box", 1.2) ns.SetMoverAlpha("box", 0.6)');
+  addon.slash("reset box");
+  expect(box(addon), "/fui reset puts the place, scale and opacity back").toEqual({ scale: 1, alpha: 1, x: 960, bottom: 100, width: 200, saved: null });
+  addon.eval("__box:SetAlpha(0.25)");
+  expect(box(addon).alpha, "at opacity 1 the module's own alpha shows as it is").toBe(0.25);
+});
+
+it("per-frame scale: dragging a scaled handle, and combat", () => {
+  const addon = loggedIn(BOX);
+  addon.eval('ns.SetMoverScale("box", 2)');
+  addon.slash("unlock");
+  addon.slash("snap off");
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "box" then __h = w end end');
+  expect(addon.eval("return { __h:GetScale(), __h:GetWidth() }"), "the handle takes the frame's scale and size").toEqual([2, 200]);
+  addon.eval('__h:GetScript("OnDragStart")(__h) __h:ClearAllPoints() __h:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 10, -20) __h:GetScript("OnDragStop")(__h)');
+  expect(addon.eval("return { ns.MoverPoint('box') }"), "a drop is saved in screen units (twice the handle's own)").toEqual(["TOPLEFT", "TOPLEFT", 20, -40]);
+  expect([addon.frame("TESTONLY_Box").rect.left, addon.frame("TESTONLY_Box").rect.top], "and the frame lands where the handle was dropped").toEqual([20, 1040]);
+  addon.eval("__h.GetLeft = function() return nil end");
+  addon.eval('__h:GetScript("OnDragStart")(__h) __h:ClearAllPoints() __h:SetPoint("TOP", UIParent, "TOP", 5, -10) __h:GetScript("OnDragStop")(__h)');
+  expect(addon.eval("return { ns.MoverPoint('box') }"), "without geometry, the client's point is scaled to screen units too").toEqual(["TOP", "TOP", 10, -20]);
+  addon.eval('ns.SetMoverScale("box", 1.5)');
+  expect(addon.eval("return __h:GetScale()"), "a new scale rescales the handle").toBe(1.5);
+  addon.slash("lock");
+  setCombat(addon, true);
+  addon.eval('ns.SetMoverScale("box", 0.5)');
+  expect([addon.eval("return __box:GetScale()"), addon.eval("return (ns.MoverLook('box'))")], "in combat the scale is saved and waits").toEqual([1.5, 0.5]);
+  setCombat(addon, false);
+  expect(addon.eval("return __box:GetScale()"), "and applies when combat ends").toBe(0.5);
 });
