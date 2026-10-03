@@ -35,13 +35,25 @@ function ns.OutOfCombat(fn, key)
   end
 end
 
+-- The client's check for a hidden value, or one that says no on a client
+-- without it. It never throws, so it is called bare, not under pcall.
+local isSecret
+
+-- Never hidden (a client without issecretvalue).
+local function never()
+  return false
+end
+
+-- Picks the check: at load, and again as addons load (the client defines it first).
+local function resolveSecret()
+  isSecret = type(issecretvalue) == "function" and issecretvalue or never
+end
+resolveSecret()
+ns.On("ADDON_LOADED", resolveSecret)
+
 -- True for a value Midnight hides from addons.
 function ns.IsSecret(value)
-  if type(issecretvalue) ~= "function" then
-    return false
-  end
-  local ok, secret = pcall(issecretvalue, value)
-  return ok and secret == true
+  return isSecret(value) == true
 end
 
 -- The value if it's a plain (non-secret) number; nil otherwise.

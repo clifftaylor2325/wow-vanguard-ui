@@ -114,6 +114,37 @@ it("cast bars: spark, seconds left, latency and the uninterruptible edge", () =>
   expect(homeOnly.eval("return ForeverUI_CastBar_player.lag.__width") === homeOnly.eval("return ForeverUI_CastBar_player:GetWidth()") * 60 / 3000, "home latency when world latency is hidden").toBeTruthy();
 });
 
+it("cast bars read a cast as values and write the seconds left only when they read differently", () => {
+  const addon = loggedIn(CAST_ENV + `__formats = 0
+    local format = string.format
+    __rawFormat = format
+    -- TEST-ONLY spy: counts the "%.1f" formats (the seconds left).
+    string.format = function(fmt, ...) if fmt == "%.1f" then __formats = __formats + 1 end return format(fmt, ...) end`);
+  addon.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000, shielded = false } __casts.focus = { kind = "channel", start = 1, finish = 2, shielded = true }');
+  expect(addon.eval('return { ns.GetModule("CastBars").Cast("player") }'), "a cast: name, icon, start, end, shielded, channel").toEqual(["TEST-ONLY Spell", "TEST-ONLY-ICON", 1000000, 1003000, false, false]);
+  expect(addon.eval('return { ns.GetModule("CastBars").Cast("focus") }'), "a channel").toEqual(["TEST-ONLY Spell", "TEST-ONLY-ICON", 1, 2, true, true]);
+  expect(addon.eval('return select("#", ns.GetModule("CastBars").Cast("target"))'), "nothing for no cast").toBe(1);
+  addon.fire("UNIT_SPELLCAST_START", "player");
+  const out = addon.eval(`local texts, wanted, changes = {}, {}, 0
+    __formats = 0
+    for i = 1, 30 do
+      __wfgStub.update(0.01)
+      texts[i] = ForeverUI_CastBar_player.time:GetText()
+      wanted[i] = __rawFormat("%.1f", math.max(0, 1003000 - GetTime() * 1000) / 1000)
+      if wanted[i] ~= wanted[i - 1] then changes = changes + 1 end
+    end
+    return { texts = texts, wanted = wanted, formats = __formats, changes = changes }`);
+  expect(out.texts, "every frame the seconds left read as before").toEqual(out.wanted);
+  expect(out.changes, "30 frames over 0.3 s cross four tenths").toBe(4);
+  expect([out.formats >= 4, out.formats <= 5], "formatted once per tenth (and once more on a frame that lands on a half tenth), not 30 times").toEqual([true, true]);
+  const seconds = addon.eval(`local CB, fs = ns.GetModule("CastBars"), ForeverUI_CastBar_target.time
+    local out = {}
+    for _, s in ipairs({ 1.31, 1.28, 1.26, 1.25, 1.24, 1.16 }) do __formats = 0 CB.ShowSeconds(fs, s) out[#out + 1] = { fs:GetText(), string.format("%.1f", s), __formats - 1 } end
+    return out`);
+  expect(seconds.map((s) => s[0]), "always what %.1f reads, a value on a half tenth included").toEqual(seconds.map((s) => s[1]));
+  expect(seconds.map((s) => s[2]), "formatted only on a new tenth (or on a half tenth)").toEqual([1, 0, 0, 1, 1, 0]);
+});
+
 it("cast bars ask the client for their own units' casts only", () => {
   const addon = loggedIn(CAST_ENV + "__updates = {}");
   expect(unitEvents(addon, "UNIT_SPELLCAST_START"), "one subscription for you, your target and your focus; nothing takes every unit's casts").toEqual({ subs: "player,target,focus", plain: 0 });
