@@ -283,6 +283,35 @@ it("quest dialog: turning in, picking a reward, closing, and handing the windows
   expect(off.eval("return { ForeverUI_QuestDialog == nil, QuestFrame:IsEventRegistered('QUEST_DETAIL') }"), "switched off, the game's windows stay").toEqual([true, true]);
 });
 
+// The quest dialog's body scroll: its child's height, how far it can scroll, and where it is.
+const bodyScroll = (addon) => addon.eval(`local f = ForeverUI_QuestDialog return { f.child:GetHeight(), f.scroll:GetVerticalScrollRange(), f.scroll:GetVerticalScroll() }`);
+
+// Turns the quest dialog's body scroll by one wheel step of this delta.
+const wheelBody = (addon, delta) => addon.eval(`local s = ForeverUI_QuestDialog.scroll s.__scripts.OnMouseWheel(s, ${delta})`);
+
+it("quest dialog: a long greeting or quest text scrolls, a short one does not", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("GOSSIP_SHOW");
+  expect(bodyScroll(addon), "a short greeting fits the 132 px body: nothing to scroll").toEqual([132, 0, 0]);
+  wheelBody(addon, -1);
+  expect(bodyScroll(addon)[2], "the wheel stays at the top when there is no range").toBe(0);
+  addon.eval('__greeting = "TEST-ONLY " .. string.rep("word ", 400)');
+  addon.fire("GOSSIP_SHOW");
+  expect(bodyScroll(addon), "2010 characters wrap to 24 lines (336 px) plus three numbered lines (60 px): the child grows to hold them").toEqual([410, 278, 0]);
+  wheelBody(addon, -1);
+  expect(bodyScroll(addon)[2], "the wheel scrolls down a step").toBe(24);
+  wheelBody(addon, -50);
+  expect(bodyScroll(addon)[2], "and stops at the end of the content").toBe(278);
+  wheelBody(addon, 100);
+  expect(bodyScroll(addon)[2], "and at the top going back").toBe(0);
+  wheelBody(addon, -1);
+  addon.fire("GOSSIP_SHOW");
+  expect(bodyScroll(addon)[2], "a new page starts at the top").toBe(0);
+  addon.eval('GetQuestText = function() return "TEST-ONLY " .. string.rep("word ", 300) end');
+  addon.fire("QUEST_DETAIL");
+  expect(bodyScroll(addon), "a quest's text and its objectives (24 + 14 px lines) count too, and no numbered lines").toEqual([278, 146, 0]);
+});
+
 it("quest dialog: late item details redraw the page; spell and currency rewards", () => {
   const addon = loggedIn(QUEST_ENV + `GetQuestID = function() return 90031 end
     C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 90081 } end, GetQuestRewardSpellInfo = function() return { name = "TEST-ONLY Bolt" } end,

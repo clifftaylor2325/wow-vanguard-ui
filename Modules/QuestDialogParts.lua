@@ -116,6 +116,12 @@ function QP.PaintCard(c, item)
   c:Show()
 end
 
+-- Scrolls a scroll frame by one wheel step, within its range (a hidden range counts as none).
+function QP.Wheel(scroll, delta)
+  local range = ns.PlainNumber(scroll:GetVerticalScrollRange()) or 0
+  scroll:SetVerticalScroll(math.max(0, math.min(range, (scroll:GetVerticalScroll() or 0) - delta * 24)))
+end
+
 -- A pool of widgets made on demand by make(parent), shown in order, the rest hidden.
 function QP.Pool(parent, make)
   local pool = { used = 0 }
