@@ -276,7 +276,8 @@ end
 
 -- Event -> handler.
 local EVENTS = {
-  RAID_TARGET_UPDATE = eachPart(updateRaidIcon), PARTY_LEADER_CHANGED = eachPart(updateLeader), GROUP_ROSTER_UPDATE = RS.UpdateAll,
+  -- A roster change refreshes every tile, marks included, through RF.RosterChanged.
+  RAID_TARGET_UPDATE = eachPart(updateRaidIcon), PARTY_LEADER_CHANGED = eachPart(updateLeader),
   READY_CHECK = onReadyCheck, READY_CHECK_CONFIRM = onReadyCheck, READY_CHECK_FINISHED = onReadyFinished,
   INCOMING_RESURRECT_CHANGED = onUnit,
 }

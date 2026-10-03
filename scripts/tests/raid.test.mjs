@@ -169,3 +169,27 @@ it("raid tiles: each event refreshes only its own part of the tile", () => {
   expect([raidButton(addon, 1).status, counted(addon).GetRaidTargetIndex, addon.eval("return ForeverUI_RaidUnitButton1.debuffRow.frame:IsShown()")],
     "a death refreshes the whole tile: Dead, the marks read again, the aura rows hidden").toEqual(["Dead", 1, false]);
 });
+
+it("raid bursts: a roster burst is one refresh of every tile; a new target repaints edges only", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + MARK_CALLS + "__members = 5 GetNumGroupMembers = function() return __members end");
+  addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
+  addon.eval(`__updates = 0 local RF = ns.GetModule("RaidFrames") local update = RF.Update
+    RF.Update = function(...) __updates = __updates + 1 return update(...) end`);
+  addon.eval(COUNT_LUA);
+  addon.eval('__units.raid1.name = "TEST-ONLY Renamed"');
+  for (let i = 0; i < 20; i++) addon.fire("GROUP_ROSTER_UPDATE");
+  expect([addon.eval("return __updates"), raidButton(addon, 1).name], "within the burst's frame, no tile is refreshed").toEqual([0, "TEST-ONLY Tank"]);
+  addon.update(0);
+  expect([addon.eval("return __updates"), counted(addon).GetRaidTargetIndex, raidButton(addon, 1).name], "the next frame: each tile once, its marks once, with the news").toEqual([3, 3, "TEST-ONLY Renamed"]);
+  addon.update(0);
+  expect(addon.eval("return __updates"), "and no more after").toBe(3);
+  setCombat(addon, true);
+  addon.eval("__members = 40");
+  addon.eval("__scales = 0 local set = ForeverUI_Raid.SetScale ForeverUI_Raid.SetScale = function(...) __scales = __scales + 1 return set(...) end");
+  for (let i = 0; i < 20; i++) addon.fire("GROUP_ROSTER_UPDATE");
+  setCombat(addon, false);
+  expect([addon.eval("return __scales"), addon.eval("return ForeverUI_Raid:GetScale()")], "in combat the grid's fit waits once, not once per event, and fits the raid after").toEqual([1, 0.72]);
+  addon.eval("__updates = 0 __units.target = __units.raid3");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect([addon.eval("return __updates"), counted(addon).SetBorder, isTok(addon, borderOf(addon, "ForeverUI_RaidUnitButton3"), "accent")], "a new target: no tile refresh, one edge repainted").toEqual([0, 1, true]);
+});

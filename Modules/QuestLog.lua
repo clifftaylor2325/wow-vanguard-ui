@@ -150,6 +150,17 @@ local function addToggle()
   QL.toggle:SetScript("OnClick", QL.Toggle)
 end
 
+-- Re-renders the log, if it is still open.
+local function refreshIfOpen()
+  if QL.frame:IsShown() then QL.Refresh() end
+end
+
+-- QUEST_LOG_UPDATE while the log is open: re-render it on the next frame (the
+-- log fires many updates at once; a burst in one frame is one re-render).
+local function refreshSoon()
+  if QL.frame:IsShown() then ns.Soon("questlog", refreshIfOpen) end
+end
+
 -- Module entry point (Core/Modules.lua).
 function QL.Enable(settings)
   if not settings.own then return end
@@ -159,5 +170,5 @@ function QL.Enable(settings)
     QL.BindKeys()
     ns.On("UPDATE_BINDINGS", QL.BindKeys)
   end
-  ns.On("QUEST_LOG_UPDATE", function() if QL.frame:IsShown() then QL.Refresh() end end)
+  ns.On("QUEST_LOG_UPDATE", refreshSoon)
 end
