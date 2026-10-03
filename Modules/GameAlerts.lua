@@ -17,7 +17,7 @@ GA.SPOTS = {
   LossOfControlFrame = { "lossofcontrol", "Loss of control", { "CENTER", "CENTER", 0, 140 }, 256, 58 },
   TalkingHeadFrame = { "talkinghead", "Talking head", { "TOP", "TOP", 0, -90 }, 570, 155 },
 }
--- Loss of control's art that's faded (the black band and its red lines).
+-- Loss of control's art that's hidden (the black band and its red lines).
 GA.LOC_ART = { "blackBg", "RedLineTop", "RedLineBottom" }
 
 -- Placing ----------------------------------------------------------------------------------------
@@ -32,10 +32,11 @@ local function place(name)
   ns.Pin(f, function(frame) ns.GetModule("GameTools").Fit(frame, holder, false) end)
 end
 
--- Fades a frame's named art parts.
-local function fade(f, keys)
+-- Hides a frame's named art parts. Hidden, not faded: the frame's own
+-- animation and alpha handling would bring a faded texture back.
+local function hide(f, keys)
   for _, key in ipairs(keys) do
-    if type(f[key]) == "table" and f[key].SetAlpha then f[key]:SetAlpha(0) end
+    if type(f[key]) == "table" and f[key].Hide then f[key]:Hide() end
   end
 end
 
@@ -43,7 +44,7 @@ end
 
 -- Loss of control in the theme: a flat panel, the icon cropped, the ability and time in the theme font.
 function GA.SkinLossOfControl(f)
-  fade(f, GA.LOC_ART)
+  hide(f, GA.LOC_ART)
   T.HudPanel(f, { alpha = 0.9 })
   if type(f.Icon) == "table" and f.Icon.SetTexCoord then T.Crop(f.Icon) end
   if type(f.AbilityName) == "table" then T.Text(f.AbilityName, "heading", false) end
@@ -67,16 +68,25 @@ function GA.SkinTalkingHead(f)
 end
 
 -- The talking head, as chosen: moved and restyled, hidden, or left to the game.
+-- Done once, as soon as the frame exists (it can come with a part of the game that loads later).
 local function talkingHead(choice)
   local f = _G.TalkingHeadFrame
-  if type(f) ~= "table" or choice == "game" then return end
+  if type(f) ~= "table" or choice == "game" or GA.headDone then return end
+  GA.headDone = true
   if choice == "hide" then return ns.GetModule("DataBars").Suppress("TalkingHeadFrame") end
   GA.SkinTalkingHead(f)
   ns.OutOfCombat(function() place("TalkingHeadFrame") end)
 end
 
+-- The talking head's part of the game loaded: it can be restyled now.
+function GA.OnLoaded(_, addon)
+  if addon == "Blizzard_TalkingHeadUI" then talkingHead(GA.settings.talkingHead) end
+end
+
 -- Module entry point (Core/Modules.lua).
 function GA.Enable(settings)
+  GA.settings = settings
+  ns.On("ADDON_LOADED", GA.OnLoaded)
   local loc = _G.LossOfControlFrame
   if settings.lossOfControl and type(loc) == "table" then
     GA.SkinLossOfControl(loc)

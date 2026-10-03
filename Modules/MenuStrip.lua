@@ -1,8 +1,10 @@
 -- The game's always-on extras, put where they don't clutter the screen:
 --   * the micro menu (character, spellbook, talents, ...) and the bag bar,
---     side by side in one small strip in the bottom-right corner, which shows
---     only while the mouse is over it (or always, if you prefer);
---   * the quest tracker, under the info strip on the right, no taller than its spot.
+--     in two small strips in the bottom-right corner, always shown (or only
+--     while the mouse is over them, if you prefer);
+--   * the quest tracker's spot, under the info strip on the right, no taller than
+--     it. ForeverUI's own tracker (Modules/QuestTracker.lua) fills it; only when that
+--     is off is the game's tracker pinned into it and skinned here (one owner).
 -- The menu buttons keep working as the game's own (alerts included), drawn as
 -- ForeverUI line icons on flat panels unless that's switched off.
 -- Both stay where they're put when the game lays out its own frames again
@@ -14,7 +16,7 @@ local ADDON, ns = ...
 
 local T = ns.Theme
 
-local MS = ns.Module("MenuStrip", { defaults = { menu = "mouseover", tracker = true, glyphs = true, trackerLook = true } })
+local MS = ns.Module("MenuStrip", { defaults = { menu = "always", tracker = true, glyphs = true, trackerLook = true } })
 
 MS.WIDTH, MS.HEIGHT, MS.SCALE = 300, 36, 0.8
 -- The space between a strip's edge and the buttons in it (UI units): sideways, and the
@@ -318,13 +320,21 @@ end
 
 -- The quest tracker -------------------------------------------------------------------------
 
--- The tracker's spot under the info strip, and the game's tracker pinned into it.
+-- Whether ForeverUI's own quest tracker is on (it hides the game's tracker, which then has
+-- no business being pinned or skinned here).
+function MS.OwnTracker()
+  local qt = ns.GetModule("QuestTracker")
+  return qt ~= nil and ns.ModuleEnabled("QuestTracker") and ns.Settings("QuestTracker", qt.defaults).own == true
+end
+
+-- The tracker's spot under the info strip, and the game's tracker pinned into it
+-- unless ForeverUI's own tracker is on.
 local function buildTracker()
   MS.trackerSpot = CreateFrame("Frame", "ForeverUI_QuestTracker", UIParent)
   MS.trackerSpot:SetSize(MS.TRACKER_W, MS.TRACKER_H)
   ns.Mover(MS.trackerSpot, "questtracker", "Quest tracker", { "TOPRIGHT", "TOPRIGHT", -12, -276 })
   local tracker = _G.ObjectiveTrackerFrame
-  if type(tracker) ~= "table" or not tracker.SetPoint then return end
+  if MS.OwnTracker() or type(tracker) ~= "table" or not tracker.SetPoint then return end
   ns.Pin(tracker, function(f)
     f:ClearAllPoints()
     f:SetPoint("TOPRIGHT", MS.trackerSpot, "TOPRIGHT", 0, 0)
@@ -408,7 +418,7 @@ end
 -- and as Text size or the accent changes.
 local function lookTracker()
   local tracker = _G.ObjectiveTrackerFrame
-  if type(tracker) ~= "table" or type(hooksecurefunc) ~= "function" then return end
+  if MS.OwnTracker() or type(tracker) ~= "table" or type(hooksecurefunc) ~= "function" then return end
   MS.SkinTracker()
   MS.TrackerFonts()
   T.OnChanged(MS.TrackerFonts)

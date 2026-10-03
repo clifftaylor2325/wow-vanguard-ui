@@ -34,4 +34,10 @@ read_globals = {
   "UnitGUID", "UnitPosition",
   -- /fui perf: the game's CPU and memory counters (P1.14).
   "GetCVar", "GetAddOnCPUUsage", "UpdateAddOnCPUUsage", "GetAddOnMemoryUsage", "UpdateAddOnMemoryUsage", "GetFunctionCPUUsage",
+  -- Action button tooltips: the client's default anchor (P2.3).
+  "GameTooltip_SetDefaultAnchor",
+  -- Quest tracker item buttons: the quest item's cooldown and range (P2.10).
+  "GetQuestLogSpecialItemCooldown", "IsQuestLogSpecialItemInRange",
+  -- P2.8 Chat: the game's list of chat window art names.
+  "CHAT_FRAME_TEXTURES",
 }

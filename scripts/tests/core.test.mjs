@@ -44,7 +44,8 @@ it("settings tables are filled once per profile and key", () => {
   addon.eval("__fills = 0");
   expect(addon.eval("local a, b = ns.Theme.Settings(), ns.Settings('theme') return { a == b, a == ForeverUIDB.profiles.Default.theme, __fills }"), "a second lookup returns the same table without filling it").toEqual([true, true, 0]);
   expect(addon.eval("ns.Theme.Settings().sounds = false ForeverUIDB.profiles.Default.theme.smoothBars = false return { ForeverUIDB.profiles.Default.theme.sounds, ns.Theme.Settings().smoothBars, __fills }"), "writes through the cached table and the saved one are the same writes").toEqual([false, false, 0]);
-  expect(addon.eval("local old = ns.Theme.Settings() ns.UseProfile('Raid') local new = ns.Theme.Settings() return { new ~= old, new == ForeverUIDB.profiles.Raid.theme, new.sounds, __fills, ns.Theme.Settings() == new, __fills, __changes }"), "after a profile switch it is a new table, filled once").toEqual([true, true, true, 1, true, 1, 1]);
+  expect(addon.eval("local old = ns.Theme.Settings() ns.UseProfile('Raid') return { ns.Theme.Settings() == old, old == ForeverUIDB.profiles.Default.theme, ForeverUICharDB.profile, ForeverUICharDB.pendingProfile, __fills, __changes }"), "a staged profile switch leaves the cache handing out the running profile's table").toEqual([true, true, "Default", "Raid", 0, 0]);
+  expect(addon.eval("local old = ns.Theme.Settings() ns.ApplyPendingProfile() local new = ns.Theme.Settings() return { new ~= old, new == ForeverUIDB.profiles.Raid.theme, new.sounds, __fills, ns.Theme.Settings() == new, __fills, __changes }"), "once the profile is applied it is a new table, filled once").toEqual([true, true, true, 1, true, 1, 1]);
   expect(addon.eval("ns.Profile().theme = { accent = { 0, 1, 0 } } local t = ns.Theme.Settings() return { t == ns.Profile().theme, t.accent[2], t.panel[4], __fills }"), "a write that replaces the saved table is seen without a notice").toEqual([true, 1, 0.94, 2]);
   expect(addon.eval("local a = ns.Settings('TESTONLY', { x = 1 }) local b = ns.Settings('TESTONLY', { y = 2 }) local c = ns.Settings('TESTONLY') return { a == b, b == c, c.x, c.y, __fills, __migs }"), "other defaults fill the same table again; none reuses it").toEqual([true, true, 1, 2, 4, 1]);
   expect(addon.eval("local a = ns.Settings('TESTONLY') ns.ProfileChanged() local b = ns.Settings('TESTONLY') return { a == b, __fills, __migs, __changes }"), "a notice refills the table, but its migration ran once").toEqual([true, 5, 1, 2]);
@@ -169,7 +170,7 @@ it("pins: any number of game moves in combat leave one pending pin", () => {
   addon.eval("for i = 1, 50 do __pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', i, i) end");
   expect([addon.eval("return ns.QueuedCount()"), pinCalls(addon), pinPoint(addon)], "50 moves queue one pin and run nothing in combat").toEqual([1, 1, "several"]);
   addon.eval("ns.PausePins(true) ns.PausePins(false)");
-  expect(addon.eval("return ns.QueuedCount()"), "ending a pause in combat joins the same entry").toBe(1);
+  expect(addon.eval("return ns.QueuedCount()"), "ending a pause in combat joins the same entry (and queues the chat window's own pin, the one other pinned frame)").toBe(2);
   setCombat(addon, false);
   expect([addon.eval("return ns.QueuedCount()"), pinCalls(addon), pinPoint(addon)], "after combat the pin runs once and puts the frame back").toEqual([0, 2, "CENTER"]);
 });
@@ -181,7 +182,7 @@ it("slash", () => {
   addon.slash("status");
   expect(chatHas(addon, /profile Default/), "/fui status shows the profile").toBeTruthy();
   addon.slash("profile Raid");
-  expect(addon.eval("return ForeverUICharDB.profile") === "Raid", "/fui profile switches this character's profile").toBeTruthy();
+  expect(addon.eval("return { ForeverUICharDB.profile, ForeverUICharDB.pendingProfile }"), "/fui profile stages this character's switch until the reload").toEqual(["Default", "Raid"]);
   addon.clearChat();
   addon.slash("bogus");
   expect(chatHas(addon, /Unknown command/), "unknown commands say so").toBeTruthy();
@@ -330,8 +331,10 @@ function nextSession(addon, extra = "") {
 }
 
 it("a session: what you set in one login comes back in the next", () => {
-  const first = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
-  first.slash("profile TEST-ONLY Alt");
+  const staged = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
+  staged.slash("profile TEST-ONLY Alt");
+  // The switch applies at the next load, so the settings below are made on that profile.
+  const first = nextSession(staged, UNITS_ENV + RAID_ENV + CLICK_LUA);
   first.slash("accent arcane");
   first.slash("disable Minimap");
   first.eval('ns.Settings("UnitFrames").healthFormat = "percent" ns.Settings("RaidFrames").look = "dark"');

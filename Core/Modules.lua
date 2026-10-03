@@ -32,9 +32,12 @@ function ns.ModuleEnabled(name)
   return enabled[name] ~= false
 end
 
--- Turns a module on or off for this profile. Takes effect on /reload.
+-- Turns a module on or off for this profile. Takes effect on /reload, except
+-- that a module with a Disable(settings) gives back what it changed at once.
 function ns.SetModuleEnabled(name, on)
   ns.Settings("modules")[name] = on and true or false
+  local def = modules[name]
+  if not on and def and def.Disable then ns.Try("disable " .. name, def.Disable, ns.Settings(name, def.defaults)) end
 end
 
 -- Enables one module; a failure is reported (see ns.Report) instead of stopping the others.

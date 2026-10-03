@@ -226,6 +226,7 @@ local function hideBlizzard(name)
   hiddenParent:Hide()
   f:UnregisterAllEvents()
   f:SetParent(hiddenParent)
+  ns.EditModeReplaced(f)
 end
 
 -- Events ------------------------------------------------------------------------------

@@ -64,6 +64,7 @@ local function initDB()
   ForeverUIDB.version = from or DB_VERSION
   if from and from < DB_VERSION then ns.MigrateDB(from, DB_VERSION) end
   ForeverUICharDB = fill(type(ForeverUICharDB) == "table" and ForeverUICharDB or {}, { profile = DEFAULT_PROFILE })
+  ns.ApplyPendingProfile()
   ForeverUIDB.profiles[ForeverUICharDB.profile] = ForeverUIDB.profiles[ForeverUICharDB.profile] or {}
 end
 
@@ -128,11 +129,36 @@ function ns.Settings(key, defaults)
   return profile[key]
 end
 
--- Switches this character to a profile (created empty if new). Takes effect on /reload.
-function ns.UseProfile(name)
+-- Makes the profile staged by ns.UseProfile the active one (created empty if missing) and tells the
+-- ns.OnProfileChanged listeners, so the settings cache hands out its tables from now on. Returns true if
+-- the profile changed. Runs at ADDON_LOADED (the first load after the switch) and at login for a spec's
+-- profile, both before any module reads its settings.
+function ns.ApplyPendingProfile()
+  local name = ForeverUICharDB.pendingProfile
+  ForeverUICharDB.pendingProfile = nil
+  if type(name) ~= "string" or name == ForeverUICharDB.profile then return false end
   ForeverUIDB.profiles[name] = ForeverUIDB.profiles[name] or {}
   ForeverUICharDB.profile = name
   ns.ProfileChanged()
+  return true
+end
+
+-- Stages a switch to a profile (created empty if new). The running modules keep the active profile's
+-- tables until the reload, so ForeverUICharDB.profile and the settings cache stay as they are (a drag
+-- or an accent change still lands in the profile on screen); ns.ApplyPendingProfile applies it.
+function ns.UseProfile(name)
+  ForeverUIDB.profiles[name] = ForeverUIDB.profiles[name] or {}
+  ForeverUICharDB.pendingProfile = name ~= ForeverUICharDB.profile and name or nil
+end
+
+-- The profile staged for the next reload, or nil.
+function ns.PendingProfileName()
+  return ForeverUICharDB and ForeverUICharDB.pendingProfile or nil
+end
+
+-- The profile this character will use after the next reload: the staged one, else the active one.
+function ns.SelectedProfileName()
+  return ns.PendingProfileName() or ns.ProfileName()
 end
 
 -- Profile names, sorted.

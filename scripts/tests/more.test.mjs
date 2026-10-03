@@ -34,6 +34,56 @@ it("chat", () => {
   expect(isTok(addon, addon.eval("return ChatFrame2Tab.Text.__textColor"), "accent"), "tabs follow accent changes").toBeTruthy();
 });
 
+// TEST-ONLY chat window art as the game names it (ChatFrame<i><part>), with the game's own mouseover fade.
+const CHAT_ART_ENV = `
+  CHAT_FRAME_TEXTURES = { "Background", "ButtonFrameBackground" }
+  for i = 1, 2 do
+    for _, part in ipairs(CHAT_FRAME_TEXTURES) do _G["ChatFrame" .. i .. part] = _G["ChatFrame" .. i]:CreateTexture() end
+  end
+  function __fadeIn(frame)
+    for _, part in ipairs(CHAT_FRAME_TEXTURES) do
+      local art = _G[frame:GetName() .. part]
+      if art:IsShown() then art:SetAlpha(1) end
+    end
+  end
+`;
+
+it("minimap: the game's emptied cluster takes no mouse and its zone button is hidden", () => {
+  const addon = loggedIn(UI_ENV + `MinimapCluster:EnableMouse(true)
+    MinimapCluster.ZoneTextButton = CreateFrame("Button", nil, MinimapCluster)`);
+  expect(addon.eval("return { MinimapCluster.__mouse, MinimapCluster.ZoneTextButton:IsShown() }"), "no mouse on the cluster, the zone button hidden (not just faded)").toEqual([false, false]);
+  expect(addon.eval("return { MinimapCluster.BorderTop.__alpha, ForeverUI_Minimap:IsShown() }"), "the border art is still faded, the map still shows").toEqual([0, true]);
+  expect(loggedIn(UI_ENV + "MinimapCluster = nil").eval("return ForeverUI_Minimap ~= nil"), "a client without the cluster still gets the map").toBe(true);
+});
+
+it("chat art is hidden so the game's mouseover fade cannot bring it back", () => {
+  const addon = loggedIn(UI_ENV + CHAT_ART_ENV);
+  // Whether each window's art is showing.
+  const art = () => addon.eval(`return { ChatFrame1Background:IsShown(), ChatFrame1ButtonFrameBackground:IsShown(), ChatFrame2Background:IsShown(), ChatFrame2ButtonFrameBackground:IsShown() }`);
+  expect(art(), "every window's art is hidden").toEqual([false, false, false, false]);
+  addon.eval("ChatFrame1Background:SetAlpha(0) __fadeIn(ChatFrame1)");
+  expect(addon.eval("return ChatFrame1Background:GetAlpha()"), "the game's fade skips hidden art, so it stays at 0").toBe(0);
+  expect(addon.eval("ChatFrame2Background = nil return ns.GetModule('Chat').SkinAll()"), "a window whose art is missing is skipped").toBe(null);
+});
+
+it("chat is a mover: placed once, sized once, kept where the player put it", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV);
+  // Chat's anchor point, offsets and size.
+  const spot = () => addon.eval("local p = ChatFrame1.__points local k, v = next(p) return { k, v.x, v.y, ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
+  expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key .. '=' .. m.label end return out").includes("chat=Chat"), "chat is in the unlock list").toBe(true);
+  expect(spot(), "first login: bottom-left, 420 x 140").toEqual(["BOTTOMLEFT", 16, 20, 420, 140]);
+  addon.eval('ns.SetMoverPoint("chat", "TOPLEFT", "TOPLEFT", 100, -50)');
+  expect(spot().slice(0, 3), "dragging it in /fui unlock moves the window").toEqual(["TOPLEFT", 100, -50]);
+  addon.eval('ChatFrame1:ClearAllPoints() ChatFrame1:SetPoint("CENTER")');
+  expect(spot().slice(0, 3), "and the game's own layout moving it is undone").toEqual(["TOPLEFT", 100, -50]);
+  addon.eval("ChatFrame1:SetSize(600, 300)");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(spot().slice(3), "entering the world again keeps the player's size").toEqual([600, 300]);
+  expect(addon.eval("return ForeverUIDB.profiles.Default.Chat.sized"), "the size is only set once ever").toBe(true);
+  expect(addon.eval('return ns.ResetMovers("chat")'), "/fui reset chat puts it back").toBe(1);
+  expect(spot().slice(0, 3), "at the bottom-left").toEqual(["BOTTOMLEFT", 16, 20]);
+});
+
 it("bags", () => {
   const addon = loggedIn(UI_ENV);
   expect(addon.eval("return __cvars.combinedBags") === "1", "combined bags are turned on").toBeTruthy();
@@ -196,7 +246,7 @@ it("auto-accept: summons, resurrections and duels, each off until switched on", 
   expect(off.eval("return #__answers"), "off by default: the game asks as usual").toBe(0);
   const on = loggedIn(PROMPT_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { AutoAccept = { summons = true, resurrect = true, duels = true } } }" });
   fire(on);
-  expect(on.eval("return __answers"), "each answered, its prompt closed").toEqual(["summon", "close CONFIRM_SUMMON", "resurrect", "close RESURRECT", "close RESURRECT_NO_SICKNESS", "decline", "close DUEL_REQUESTED"]);
+  expect(on.eval("return __answers"), "each answered, its prompt closed (all three resurrection prompts, whichever the game showed)").toEqual(["summon", "close CONFIRM_SUMMON", "resurrect", "close RESURRECT", "close RESURRECT_NO_SICKNESS", "close RESURRECT_NO_TIMER", "decline", "close DUEL_REQUESTED"]);
   expect(chatHas(on, /summon from <name> to TEST-ONLY Vale/) && chatHas(on, /resurrection from <name>/) && chatHas(on, /duel from someone/), "and said in chat (a hidden name reads as someone)").toBe(true);
   on.eval("__answers = {}");
   setCombat(on, true);
@@ -281,6 +331,55 @@ it("quest dialog: turning in, picking a reward, closing, and handing the windows
   expect(addon.eval("return { QuestFrame:IsEventRegistered('QUEST_DETAIL'), QuestFrame:IsEventRegistered('QUEST_LOG_UPDATE'), CustomGossipFrameManager:IsEventRegistered('GOSSIP_SHOW') }"), "the game's windows no longer open for these talks (their other events stay)").toEqual([false, true, false]);
   const off = loggedIn(QUEST_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { QuestDialog = { dialog = false } } }" });
   expect(off.eval("return { ForeverUI_QuestDialog == nil, QuestFrame:IsEventRegistered('QUEST_DETAIL') }"), "switched off, the game's windows stay").toEqual([true, true]);
+});
+
+// The quest dialog's body scroll: its child's height, how far it can scroll, and where it is.
+const bodyScroll = (addon) => addon.eval(`local f = ForeverUI_QuestDialog return { f.child:GetHeight(), f.scroll:GetVerticalScrollRange(), f.scroll:GetVerticalScroll() }`);
+
+// Turns the quest dialog's body scroll by one wheel step of this delta.
+const wheelBody = (addon, delta) => addon.eval(`local s = ForeverUI_QuestDialog.scroll s.__scripts.OnMouseWheel(s, ${delta})`);
+
+it("quest dialog: a long greeting or quest text scrolls, a short one does not", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("GOSSIP_SHOW");
+  expect(bodyScroll(addon), "a short greeting fits the 132 px body: nothing to scroll").toEqual([132, 0, 0]);
+  wheelBody(addon, -1);
+  expect(bodyScroll(addon)[2], "the wheel stays at the top when there is no range").toBe(0);
+  addon.eval('__greeting = "TEST-ONLY " .. string.rep("word ", 400)');
+  addon.fire("GOSSIP_SHOW");
+  expect(bodyScroll(addon), "2010 characters wrap to 24 lines (336 px) plus three numbered lines (60 px): the child grows to hold them").toEqual([410, 278, 0]);
+  wheelBody(addon, -1);
+  expect(bodyScroll(addon)[2], "the wheel scrolls down a step").toBe(24);
+  wheelBody(addon, -50);
+  expect(bodyScroll(addon)[2], "and stops at the end of the content").toBe(278);
+  wheelBody(addon, 100);
+  expect(bodyScroll(addon)[2], "and at the top going back").toBe(0);
+  wheelBody(addon, -1);
+  addon.fire("GOSSIP_SHOW");
+  expect(bodyScroll(addon)[2], "a new page starts at the top").toBe(0);
+  addon.eval('GetQuestText = function() return "TEST-ONLY " .. string.rep("word ", 300) end');
+  addon.fire("QUEST_DETAIL");
+  expect(bodyScroll(addon), "a quest's text and its objectives (24 + 14 px lines) count too, and no numbered lines").toEqual([278, 146, 0]);
+});
+
+it("quest dialog: hiding the whole UI keeps the conversation open; closing it ends it", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("GOSSIP_SHOW");
+  // Alt-Z hides UIParent; the client then runs OnHide on the dialog, which is still marked shown.
+  addon.eval("UIParent:Hide() local f = ForeverUI_QuestDialog f.__scripts.OnHide(f)");
+  expect([calls(addon), addon.eval("return { ForeverUI_QuestDialog:IsShown(), ForeverUI_QuestDialog:IsVisible() }")], "the UI is hidden, the dialog is waiting and the talk has not ended").toEqual([[], [true, false]]);
+  addon.eval("UIParent:Show()");
+  expect([addon.eval("return ForeverUI_QuestDialog:IsVisible()"), dialog(addon).lines.length], "the UI comes back, and so does the dialog, as it was").toEqual([true, 3]);
+  addon.eval("UIParent:Hide()");
+  addon.fire("GOSSIP_CLOSED");
+  addon.eval("UIParent:Show()");
+  expect([calls(addon), addon.eval("return ForeverUI_QuestDialog:IsShown()")], "the game ending the talk meanwhile hides it for good, without closing again").toEqual([[], false]);
+  addon.fire("GOSSIP_SHOW");
+  addon.eval("ForeverUI_QuestDialog.primary.__scripts.OnClick(ForeverUI_QuestDialog.primary)");
+  expect([calls(addon), addon.eval("return ForeverUI_QuestDialog:IsShown()")], "Goodbye closes the dialog and ends the talk").toEqual([["closeGossip nil", "closeQuest nil"], false]);
+  addon.fire("GOSSIP_SHOW");
+  addon.eval("ForeverUI_QuestDialog:Hide()");
+  expect([calls(addon), addon.eval("return ForeverUI_QuestDialog:IsShown()")], "so does Escape (the game's special windows hide it)").toEqual([["closeGossip nil", "closeQuest nil"], false]);
 });
 
 it("quest dialog: late item details redraw the page; spell and currency rewards", () => {
@@ -404,6 +503,102 @@ it("quest tracker: watched quests with levels, objectives and items", () => {
   expect(noLog.eval("return __opened"), "with ForeverUI's quest log off, the game's map opens it").toBe(90051);
 });
 
+// TEST-ONLY quest item extras: the game's cooldown and range answers by log index (__cd, __range), and the tooltip call.
+const ITEM_ENV = `
+  __cd, __range = {}, {}
+  GetQuestLogSpecialItemCooldown = function(i) local c = __cd[i] if c then return c[1], c[2], 1 end return 0, 0, 1 end
+  IsQuestLogSpecialItemInRange = function(i) return __range[i] end
+  GameTooltip.SetOwner = function(self, owner) self.__owner = owner end
+  GameTooltip.SetQuestLogSpecialItem = function(self, i) self.__special = i end
+`;
+
+// Each item button: the quest it is for, whether it shows, and the title of the block it sits beside.
+const questItems = (addon) => addon.eval(`local out = {}
+  for i, b in ipairs(ns.GetModule("QuestTracker").items) do
+    out[i] = { b.questID or false, b:IsShown(), b:IsShown() and b.__points.TOPRIGHT.rel.title:GetText() or false }
+  end
+  return out`);
+
+// The tracker's block titles, top to bottom.
+const blockTitles = (addon) => tracker(addon).blocks.map((b) => b[0]);
+
+it("quest tracker: each quest keeps its own item button; in combat counts update and the items wait", () => {
+  const addon = loggedIn(TRACK_ENV);
+  addon.eval("__quests[90054] = { index = 4, title = 'TEST-ONLY Boar', level = 9, dist = 50, item = 'item:90062', objectives = {} } __watches[4] = 90054");
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  expect(questItems(addon), "the wolves' item and the boar's, each beside its quest").toEqual([[90051, true, "[8] TEST-ONLY Wolves"], [90054, true, "[9] TEST-ONLY Boar"]]);
+  addon.eval("__watches = { 90052, 90053, 90054 }");
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  expect(questItems(addon), "the wolves go: their button is free, and the boar keeps its own, beside its block").toEqual([[false, false, false], [90054, true, "[9] TEST-ONLY Boar"]]);
+  addon.eval("__watches = { 90052, 90053, 90054, 90051 }");
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  expect(questItems(addon), "the wolves back: they take the free button, the boar keeps its own").toEqual([[90051, true, "[8] TEST-ONLY Wolves"], [90054, true, "[9] TEST-ONLY Boar"]]);
+  expect(blockTitles(addon), "the blocks as watched").toEqual(["[12] TEST-ONLY Letter", "[3] TEST-ONLY Far", "[9] TEST-ONLY Boar", "[8] TEST-ONLY Wolves"]);
+  setCombat(addon, true);
+  const waiting = addon.eval("return ns.QueuedCount()");
+  addon.eval("__rels = { ns.GetModule('QuestTracker').items[1].__points.TOPRIGHT.rel, ns.GetModule('QuestTracker').items[2].__points.TOPRIGHT.rel }");
+  addon.eval("__watches = { 90053, 90054, 90051 } __quests[90051].objectives[1].text = '5/8 TEST-ONLY Wolves slain'");
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  for (let i = 0; i < 5; i++) addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect([blockTitles(addon), tracker(addon).blocks[2][1][0]], "in combat the tracker redraws: the letter is gone and the wolves' count is up").toEqual([["[3] TEST-ONLY Far", "[9] TEST-ONLY Boar", "[8] TEST-ONLY Wolves"], "- 5/8 TEST-ONLY Wolves slain"]);
+  const anchors = "local items = ns.GetModule('QuestTracker').items return { items[1].__points.TOPRIGHT.rel == __rels[1], items[2].__points.TOPRIGHT.rel == __rels[2], ns.QueuedCount() }";
+  expect(addon.eval(anchors).map((v, k) => (k === 2 ? v - waiting : v)), "the item buttons keep their anchors, and one placement waits").toEqual([true, true, 1]);
+  setCombat(addon, false);
+  expect([addon.eval(anchors).slice(0, 2), questItems(addon)], "after combat they move beside the right blocks").toEqual([
+    [false, false], [[90051, true, "[8] TEST-ONLY Wolves"], [90054, true, "[9] TEST-ONLY Boar"]]]);
+});
+
+it("quest tracker: an item shows its cooldown and range, and the game's tooltip", () => {
+  const addon = loggedIn(TRACK_ENV + ITEM_ENV);
+  // The first item button's cooldown (start, duration), or nil when none runs.
+  const cooldown = () => addon.eval("return ForeverUI_QuestItem1.cooldown.__cooldown");
+  expect(cooldown(), "no cooldown running: nothing drawn").toBeFalsy();
+  addon.eval("__cd[1] = { 500, 30 }");
+  addon.fire("BAG_UPDATE_COOLDOWN");
+  expect(cooldown(), "the game's cooldown for the quest item's log index").toEqual([500, 30]);
+  addon.eval("__cd[1] = { 0, 0 }");
+  addon.fire("BAG_UPDATE_COOLDOWN");
+  expect(cooldown(), "over: cleared").toBeFalsy();
+  addon.eval("__cd[1] = { { __secret = true }, { __secret = true } }");
+  addon.fire("BAG_UPDATE_COOLDOWN");
+  expect(cooldown().map((v) => v.__secret), "hidden numbers go to the widget untouched").toEqual([true, true]);
+  setCombat(addon, true);
+  addon.eval("__cd[1] = { 600, 10 }");
+  addon.fire("BAG_UPDATE_COOLDOWN");
+  expect(cooldown(), "the cooldown follows in combat too").toEqual([600, 10]);
+  setCombat(addon, false);
+  addon.eval("GetQuestLogSpecialItemCooldown = nil");
+  addon.fire("BAG_UPDATE_COOLDOWN");
+  expect(cooldown(), "a client without the call: cleared").toBeFalsy();
+  // Whether the item's icon is tinted as out of range.
+  const red = () => isTok(addon, addon.eval("return ForeverUI_QuestItem1.icon.__vertexColor"), "outOfRange");
+  addon.update(0.01);
+  expect(red(), "a fresh item is not tinted").toBe(false);
+  addon.eval("__range[1] = 0");
+  addon.update(0.1);
+  expect(red(), "the range is checked a few times a second, not every frame").toBe(false);
+  addon.update(0.2);
+  expect(red(), "out of range (0): the icon goes red").toBe(true);
+  addon.eval("__range[1] = 1");
+  addon.update(0.3);
+  expect(red(), "back in range (1): normal").toBe(false);
+  addon.eval("__range[1] = { __secret = true }");
+  addon.update(0.3);
+  expect(red(), "a hidden answer is never taken as out of range").toBe(false);
+  addon.eval("local b = ForeverUI_QuestItem1 b.__scripts.OnEnter(b)");
+  expect(addon.eval("return { GameTooltip.__special, GameTooltip.__owner == ForeverUI_QuestItem1, GameTooltip:IsShown() }"), "hovering shows the game's tooltip for the quest item's log index").toEqual([1, true, true]);
+  addon.eval("local b = ForeverUI_QuestItem1 b.__scripts.OnLeave(b)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "and leaving hides it").toBe(false);
+  addon.eval("GameTooltip.__special = nil ForeverUI_QuestItem1.questID = 90099 ForeverUI_QuestItem1.__scripts.OnEnter(ForeverUI_QuestItem1)");
+  expect(addon.eval("return GameTooltip.__special"), "an item whose quest has left the log shows no tooltip").toBeFalsy();
+  addon.eval("ForeverUI_QuestItem1.questID = 90051 GameTooltip.SetQuestLogSpecialItem = nil ForeverUI_QuestItem1.__scripts.OnEnter(ForeverUI_QuestItem1)");
+  expect(addon.eval("return GameTooltip.__special"), "a client without the tooltip call shows none").toBeFalsy();
+});
+
 it("quest tracker: nearest first, collapsing, too many quests, and switched off", () => {
   const addon = loggedIn(UNITS_ENV + TRACK_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { QuestTracker = { order = 'nearest' } } }" });
   addon.eval("__wfgStub.advance(1.25)");
@@ -500,6 +695,43 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   expect(questLog(addon).title, "the log's next update chooses the first quest showing").toBe("[3] TEST-ONLY Far");
 });
 
+// The quest log's two scroll areas: each child's height, how far it scrolls, and where it is.
+const logScrolls = (addon) => addon.eval(`local f = ForeverUI_QuestLog
+  return { list = { f.list:GetHeight(), f.listScroll:GetVerticalScrollRange(), f.listScroll:GetVerticalScroll() },
+    detail = { f.detail:GetHeight(), f.detailScroll:GetVerticalScrollRange(), f.detailScroll:GetVerticalScroll() } }`);
+
+// Turns one of the quest log's scroll areas ("listScroll" or "detailScroll") by one wheel step of this delta.
+const wheelLog = (addon, which, delta) => addon.eval(`local s = ForeverUI_QuestLog.${which} s.__scripts.OnMouseWheel(s, ${delta})`);
+
+it("quest log: a long list and long quest text scroll, a short one does not", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("ns.GetModule('QuestLog').Open()");
+  expect(logScrolls(addon), "five lines and a short text fit the 356 px views: nothing to scroll").toEqual({ list: [356, 0, 0], detail: [356, 0, 0] });
+  addon.eval(`for i = 1, 20 do local id = 91000 + i
+    __log[#__log + 1] = { questID = id }
+    __quests[id] = { index = #__log, title = "TEST-ONLY Many " .. i, level = 5, dist = i, objectives = {} } end
+    GetQuestLogQuestText = function() return "TEST-ONLY " .. string.rep("word ", 300) end`);
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(logScrolls(addon), "25 lines of 20 px make the list 500 px; the wolves' 1510 characters, objectives, a row of rewards and the money line make the details 516 px").toEqual({ list: [500, 144, 0], detail: [516, 160, 0] });
+  wheelLog(addon, "listScroll", -1);
+  expect(logScrolls(addon).list[2], "the wheel scrolls the list a step").toBe(24);
+  wheelLog(addon, "listScroll", -50);
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(logScrolls(addon).list[2], "it stops at the end of the list, and a redraw keeps the place").toBe(144);
+  logLine(addon, 4);
+  expect(logScrolls(addon).list, "folding the Hills away shortens the list; the scroll comes back inside it").toEqual([356, 0, 0]);
+  wheelLog(addon, "detailScroll", -3);
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(logScrolls(addon).detail, "the details scroll too, and the same quest redrawn keeps its place").toEqual([516, 160, 72]);
+  logLine(addon, 3);
+  expect(logScrolls(addon).detail, "another quest starts at the top, with its own height (no objectives or rewards)").toEqual([434, 78, 0]);
+  wheelLog(addon, "detailScroll", -100);
+  expect(logScrolls(addon).detail[2], "the wheel stops at the end of the details").toBe(78);
+});
+
 // TEST-ONLY counters: how often the tracker and the quest log rebuild (__rebuilds.tracker, __rebuilds.log).
 const COUNT_REBUILDS = `__rebuilds = { tracker = 0, log = 0 }
   local QT, QL = ns.GetModule("QuestTracker"), ns.GetModule("QuestLog")
@@ -557,6 +789,35 @@ it("quest log: keys follow rebinding, /fui quests, closing, and switched off", (
   expect([off.eval("return ForeverUI_QuestLog == nil and next(__overrides) == nil"), chatHas(off, /quest log is off/)], "switched off: the game's quest log key stays the game's").toEqual([true, true]);
 });
 
+// TEST-ONLY game quest log toggle (what the quest log micro button calls) and the game's map window it opens.
+const TOGGLE_ENV = `
+  hooksecurefunc = function(a, b, c)
+    if type(a) == "table" then local orig = a[b] a[b] = function(...) local r = orig(...) c(...) return r end
+    else local orig = _G[a] _G[a] = function(...) orig(...) b(...) end end
+  end
+  __game = 0
+  WorldMapFrame = CreateFrame("Frame", "WorldMapFrame", UIParent) WorldMapFrame:Hide()
+  function ToggleQuestLog() __game = __game + 1 if WorldMapFrame then if WorldMapFrame:IsShown() then WorldMapFrame:Hide() else WorldMapFrame:Show() end end end
+`;
+
+it("quest log: the game's quest log button opens ForeverUI's log instead of the game's", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + TOGGLE_ENV);
+  // The state of ForeverUI's log and the game's map after a press of the micro button.
+  const press = () => { addon.eval("ToggleQuestLog()"); return addon.eval("return { ForeverUI_QuestLog:IsShown(), WorldMapFrame:IsShown(), __game }"); };
+  expect(press(), "the button opens this log, and the game's window it opened is put away").toEqual([true, false, 1]);
+  expect(press(), "pressed again it closes this log").toEqual([false, false, 2]);
+  addon.eval("WorldMapFrame:Show()");
+  expect(press(), "a map the player had open: the game's toggle closes it, and this log opens").toEqual([true, false, 3]);
+  const off = loggedIn(TRACK_ENV + QLOG_ENV + TOGGLE_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { QuestLog = { own = false } } }" });
+  off.eval("ToggleQuestLog()");
+  expect(off.eval("return { ForeverUI_QuestLog == nil, WorldMapFrame:IsShown() }"), "with ForeverUI's log off, the button is the game's").toEqual([true, true]);
+  const bare = loggedIn(TRACK_ENV + QLOG_ENV + TOGGLE_ENV + "WorldMapFrame = nil");
+  bare.eval("ToggleQuestLog()");
+  expect(bare.eval("return ForeverUI_QuestLog:IsShown()"), "a client without the map window is fine").toBe(true);
+  const none = loggedIn(TRACK_ENV + QLOG_ENV + "ToggleQuestLog = nil");
+  expect(none.eval("return ForeverUI_QuestLog ~= nil and ToggleQuestLog == nil"), "a client without the toggle loads cleanly").toBe(true);
+});
+
 // TEST-ONLY extra windows: friends, a book (its page text records the colors it's given), and
 // the game's loss of control and talking head alerts with their parts.
 const ALERTS_ENV = `
@@ -597,8 +858,8 @@ it("more game windows: friends, books and letters, and windows that load later",
 it("game alerts: loss of control and the talking head, styled and placed (or hidden)", () => {
   const addon = loggedIn(ALERTS_ENV);
   const loc = addon.eval(`local f = LossOfControlFrame
-    return { f.blackBg.__alpha, f.Icon.__texCoord ~= nil, f.AbilityName.__font ~= nil, f.TimeLeft.NumberText.__font ~= nil, f.__points.CENTER.rel == ForeverUI_LossOfControlFrameSpot }`);
-  expect(loc, "loss of control: its black band faded, icon cropped, theme text, centered on its spot").toEqual([0, true, true, true, true]);
+    return { f.blackBg:IsShown(), f.Icon.__texCoord ~= nil, f.AbilityName.__font ~= nil, f.TimeLeft.NumberText.__font ~= nil, f.__points.CENTER.rel == ForeverUI_LossOfControlFrameSpot }`);
+  expect(loc, "loss of control: its black band hidden, icon cropped, theme text, centered on its spot").toEqual([false, true, true, true, true]);
   expect(addon.eval("return { ns.MoverPoint('lossofcontrol') }"), "a little above your character").toEqual(["CENTER", "CENTER", 0, 140]);
   const head = addon.eval("local f = TalkingHeadFrame return { f.BackgroundFrame.__alpha, f.MainFrame.Name.__font ~= nil, f.__points.CENTER.rel == ForeverUI_TalkingHeadFrameSpot }");
   expect([head, addon.eval("return (ns.MoverPoint('talkinghead'))")], "the talking head: parchment faded, theme text, at the top center").toEqual([[0, true, true], "TOP"]);
@@ -610,6 +871,26 @@ it("game alerts: loss of control and the talking head, styled and placed (or hid
   const partial = loggedIn("LossOfControlFrame = CreateFrame('Frame', 'LossOfControlFrame', UIParent) TalkingHeadFrame = CreateFrame('Frame', 'TalkingHeadFrame', UIParent)");
   expect(partial.eval("return ForeverUI_LossOfControlFrameSpot ~= nil and ForeverUI_TalkingHeadFrameSpot ~= nil"), "frames without their usual parts are still placed").toBe(true);
   expect(loggedIn("").eval("return ForeverUI_LossOfControlFrameSpot == nil"), "a client without them loads cleanly").toBe(true);
+});
+
+it("game alerts: the loss of control band stays hidden when the game's animation resets its alpha", () => {
+  const addon = loggedIn(ALERTS_ENV + "LossOfControlFrame.RedLineTop = LossOfControlFrame:CreateTexture() LossOfControlFrame.RedLineBottom = LossOfControlFrame:CreateTexture()");
+  expect(addon.eval("local f = LossOfControlFrame return { f.blackBg:IsShown(), f.RedLineTop:IsShown(), f.RedLineBottom:IsShown() }"), "the band and both red lines are hidden").toEqual([false, false, false]);
+  addon.eval("local f = LossOfControlFrame f.blackBg:SetAlpha(0.6) f.RedLineTop:SetAlpha(1) f.RedLineBottom:SetAlpha(1)");
+  expect(addon.eval("local f = LossOfControlFrame return { f.blackBg:IsShown(), f.RedLineTop:IsShown(), f.RedLineBottom:IsShown() }"), "restoring their alpha shows nothing").toEqual([false, false, false]);
+});
+
+it("game alerts: a talking head that loads later is restyled once when its part of the game loads", () => {
+  const addon = loggedIn(ALERTS_ENV.replace(/TalkingHeadFrame/g, "TEST_ONLY_Unloaded"));
+  expect(addon.eval("return ForeverUI_TalkingHeadFrameSpot == nil"), "nil at login: nothing placed yet").toBe(true);
+  addon.fire("ADDON_LOADED", "Blizzard_Something");
+  expect(addon.eval("return ForeverUI_TalkingHeadFrameSpot == nil"), "another part loading changes nothing").toBe(true);
+  addon.eval(`TalkingHeadFrame = CreateFrame("Frame", "TalkingHeadFrame", UIParent) TalkingHeadFrame.BackgroundFrame = CreateFrame("Frame", nil, TalkingHeadFrame)`);
+  addon.fire("ADDON_LOADED", "Blizzard_TalkingHeadUI");
+  expect(addon.eval("local f = TalkingHeadFrame return { f.BackgroundFrame.__alpha, f.__points.CENTER.rel == ForeverUI_TalkingHeadFrameSpot }"), "loaded: parchment faded, on its spot").toEqual([0, true]);
+  addon.eval("__spot = ForeverUI_TalkingHeadFrameSpot");
+  addon.fire("ADDON_LOADED", "Blizzard_TalkingHeadUI");
+  expect(addon.eval("return ForeverUI_TalkingHeadFrameSpot == __spot"), "a second load event makes no second spot").toBe(true);
 });
 
 // TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
@@ -838,6 +1119,35 @@ it("Train all at a trainer: learns what you can afford, one at a time", () => {
   expect(trainButton(loaded), "a window already loaded gets it too; switched off it hides").toMatchObject({ shown: false, by: "ClassTrainerFrame" });
 });
 
+// TEST-ONLY trainer as the game reports it: GetTrainerServiceInfo is name, kind, texture, ...; buying
+// changes nothing until the server answers (money and list as they were), or removes the service from the list.
+const FOREVER_TRAINER_ENV = `
+  __services = { { "TEST-ONLY Bolt", "available", 500 }, { "TEST-ONLY Ward", "unavailable", 100 }, { "TEST-ONLY Blast", "available", 2000 }, { "TEST-ONLY Gust", "available", 1000 } }
+  __money, __learned, __shrink = 3200, {}, false
+  GetMoney = function() return __money end
+  GetNumTrainerServices = function() return #__services end
+  GetTrainerServiceInfo = function(i) local s = __services[i] return s[1], s[2], 134400, 1, "Rank 1" end
+  GetTrainerServiceCost = function(i) return __services[i][3] end
+  BuyTrainerService = function(i) __learned[#__learned + 1] = __services[i][1] if __shrink then table.remove(__services, i) end end
+  ClassTrainerFrame = CreateFrame("Frame", "ClassTrainerFrame", UIParent)
+`;
+
+it("Train all in one click: no purchase twice, the budget counted before the game answers, a list that re-indexes", () => {
+  const addon = loggedIn(FOREVER_TRAINER_ENV);
+  addon.fire("TRAINER_SHOW");
+  addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(addon.eval("return __learned"), "32s on hand, game still showing everything: Bolt (5s) and Blast (20s), not Gust (10s: only 7s left), none twice").toEqual(["TEST-ONLY Bolt", "TEST-ONLY Blast"]);
+  expect(chatHas(addon, /Trained 2 skill\(s\) for 25s 0c\./), "one line for the whole click").toBe(true);
+  const shrinking = loggedIn(FOREVER_TRAINER_ENV + "__shrink = true __money = 100000");
+  shrinking.fire("TRAINER_SHOW");
+  shrinking.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(shrinking.eval("return __learned"), "the list shrinking under the buying (indexes shifting) skips and repeats nothing").toEqual(["TEST-ONLY Bolt", "TEST-ONLY Blast", "TEST-ONLY Gust"]);
+  const capped = loggedIn(FOREVER_TRAINER_ENV + "__shrink = true __money = 100000 ns.GetModule('Errands').TRAIN_STEPS = 2");
+  capped.fire("TRAINER_SHOW");
+  capped.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(capped.eval("return #__learned"), "a click learns at most TRAIN_STEPS services").toBe(2);
+});
+
 // TEST-ONLY merchant stock: 90011 sells singly (5c, stacks of 20), 90012 in fives (40c for 5), 90013 is sold out.
 const STOCK_ENV = `
   __goods = { { id = 90011, price = 5, stack = 1, left = -1, max = 20 }, { id = 90012, price = 40, stack = 5, left = -1, max = 10 }, { id = 90013, price = 1, stack = 1, left = 0, max = 20 } }
@@ -864,8 +1174,8 @@ it("keep stocked: /fui stock sets the list, a merchant tops you up", () => {
   addon.slash("stock");
   expect(chatHas(addon, /Keep 12 × item 90012/), "the list, by name where the game knows it").toBe(true);
   addon.fire("MERCHANT_SHOW");
-  expect(addon.eval("return __buys"), "40 more bread in stacks of 20, 12 of the fives, nothing sold out").toEqual([[90011, 20], [90011, 20], [90012, 10], [90012, 2]]);
-  expect(chatHas(addon, /Bought 40 × TEST-ONLY Bread for 2s 0c\./) && chatHas(addon, /Bought 12 × item 90012 for 0s 96c\./), "and says what it bought").toBe(true);
+  expect(addon.eval("return __buys"), "40 more bread in stacks of 20, 12 of the fives rounded up to whole fives, nothing sold out").toEqual([[90011, 20], [90011, 20], [90012, 10], [90012, 5]]);
+  expect(chatHas(addon, /Bought 40 × TEST-ONLY Bread for 2s 0c\./) && chatHas(addon, /Bought 15 × item 90012 for 1s 20c\./), "and says what it bought").toBe(true);
   addon.eval("__buys = {}");
   addon.fire("MERCHANT_SHOW");
   expect(addon.eval("return #__buys"), "nothing when you have enough").toBe(0);
@@ -882,6 +1192,13 @@ it("keep stocked: /fui stock sets the list, a merchant tops you up", () => {
   const off = loggedIn(STOCK_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Errands = { stock = false, stockList = { [90012] = 5 } } } }" });
   off.fire("MERCHANT_SHOW");
   expect(off.eval("return #__buys"), "switched off it buys nothing").toBe(0);
+});
+
+it("keep stocked: an item sold in stacks (ammo) is bought in whole stacks", () => {
+  const addon = loggedIn(STOCK_ENV + "__goods[4] = { id = 90014, price = 100, stack = 200, left = -1, max = 200 }", { savedVariables: "ForeverUIDB.profiles = { Default = { Errands = { stockList = { [90014] = 450 } } } }" });
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __buys"), "450 wanted: two full stacks and the last 50 rounded up to a whole stack of 200").toEqual([[90014, 200], [90014, 200], [90014, 200]]);
+  expect(chatHas(addon, /Bought 600 × item 90014 for 3s 0c\./), "and it says what it really bought").toBe(true);
 });
 
 // TEST-ONLY flight points: you stand at node 1, node 2 is a destination.
@@ -957,7 +1274,7 @@ const FOREVER_MENU_ENV = `
 
 it("a ForeverUI button on the game menu opens the options", () => {
   const addon = loggedIn(FOREVER_MENU_ENV);
-  expect(addon.eval("return { __calls.AddButton, __calls.AddSection, __calls.MarkDirty, __hooked == nil }"), "no AddButton or AddSection, no InitButtons hook, one MarkDirty").toEqual([0, 0, 1, true]);
+  expect(addon.eval("return { __calls.AddButton, __calls.AddSection, __calls.MarkDirty, __hooked == true }"), "no AddButton or AddSection, one MarkDirty; the one InitButtons hook is the Windows skin's").toEqual([0, 0, 1, true]);
   expect(addon.eval("local b = ns.gameMenuButton return { b.layoutIndex, b.bottomPadding, b:GetParent() == GameMenuFrame, b.__template, b:GetText(), b:IsShown() }"), "the menu's own template, first index, section gap under it").toEqual([0, 20, true, "GameMenuFrameButtonTemplate", "ForeverUI", true]);
   addon.eval("GameMenuFrame:Show()");
   expect(addon.eval("return GameMenuFrame.order"), "first in the menu, above Options").toEqual(["ForeverUI", "Options", "Return to Game"]);
@@ -971,6 +1288,40 @@ it("a ForeverUI button on the game menu opens the options", () => {
   old.eval("HideUIPanel = function(f) f:Hide() end ns.gameMenuButton.__scripts.OnClick()");
   expect(old.eval("return GameMenuFrame:IsShown()"), "which closes the menu too").toBe(false);
   expect(loggedIn("").eval("return ns.gameMenuButton == nil"), "no game menu, nothing added").toBe(true);
+});
+
+// TEST-ONLY the game menu's button pool (AddButton takes from it, Reset empties it; each button has template art)
+// and its header plate, as MainMenuFrameTemplates.lua and DialogHeaderTemplate make them.
+const MENU_POOL_ENV = `
+  GameMenuFrame.buttonPool = { __active = {} }
+  function GameMenuFrame.buttonPool:EnumerateActive() return next, self.__active end
+  local add, reset = GameMenuFrame.AddButton, GameMenuFrame.Reset
+  function GameMenuFrame:AddButton(...) local b = add(self, ...) b.Left = b:CreateTexture(nil, "BACKGROUND") self.buttonPool.__active[b] = true return b end
+  function GameMenuFrame:Reset() reset(self) self.buttonPool.__active = {} end
+  local header = CreateFrame("Frame", nil, GameMenuFrame)
+  header.LeftBG, header.RightBG, header.CenterBG = header:CreateTexture(), header:CreateTexture(), header:CreateTexture()
+  header.Text = header:CreateFontString()
+  GameMenuFrame.Header = header
+`;
+
+it("game menu: buttons made after the skin ran are skinned once, ForeverUI's matches, the header plate is gone", () => {
+  const addon = loggedIn(FOREVER_MENU_ENV + MENU_POOL_ENV);
+  addon.eval("__spy = 0 local real = ns.Theme.Button ns.Theme.Button = function(...) __spy = __spy + 1 return real(...) end");
+  addon.eval("GameMenuFrame:Show()");
+  // The alpha of a menu button's template art.
+  const look = (path) => addon.eval(`local b = ${path} return { b.Left and b.Left.__alpha }`);
+  expect(addon.eval("return __spy"), "ForeverUI's button and the two pooled ones are skinned when the menu opens").toBe(3);
+  expect(borderOf(addon, "ns.gameMenuButton"), "ForeverUI's button is painted like a pooled one").toEqual(borderOf(addon, "next(GameMenuFrame.buttonPool.__active)"));
+  expect(look("next(GameMenuFrame.buttonPool.__active)"), "a pooled button's template art is faded").toEqual([0]);
+  addon.eval("GameMenuFrame:Hide() GameMenuFrame:Show()");
+  expect(addon.eval("return __spy"), "the next open makes two new buttons: only those are skinned").toBe(5);
+  addon.eval("GameMenuFrame:Hide() GameMenuFrame.buttonPool.__active = {} GameMenuFrame:Show()");
+  expect(addon.eval("local n = 0 for b in GameMenuFrame.buttonPool:EnumerateActive() do if b.fuiMenuSkinned then n = n + 1 end end return n"), "every active button carries the skin").toBe(2);
+  const head = addon.eval("local h = GameMenuFrame.Header local p = h.__points.TOP return { h.LeftBG:IsShown(), h.RightBG:IsShown(), h.CenterBG:IsShown(), h.Text.__font ~= nil, p.rel == GameMenuFrame, p.y }");
+  expect(head, "the header plate is hidden, its title in the theme font, inside the panel").toEqual([false, false, false, true, true, -8]);
+  const off = loggedIn(FOREVER_MENU_ENV + MENU_POOL_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Windows = { windows = false } } }" });
+  off.eval("GameMenuFrame:Show()");
+  expect([borderOf(off, "ns.gameMenuButton") == null, off.eval("return GameMenuFrame.Header.LeftBG:IsShown()")], "with the windows switched off the menu stays the game's").toEqual([true, true]);
 });
 
 it("game menu button: falls back, or goes without what the menu lacks", () => {
@@ -1138,8 +1489,14 @@ const MERCHANT_ENV = `
     UseContainerItem = function(bag, slot) __used[#__used + 1] = slot if __sticky > 0 then __sticky = __sticky - 1 else __bag[slot] = nil end end }
   C_Timer = { After = function(_, fn) fn() end }
   ERR_ABILITY_COOLDOWN = "TEST-ONLY not ready"
+  -- The game's own error line: its handler asks ShouldDisplayMessageType (type 99 is on the game's blacklist),
+  -- shows the message under its type as the line's ID, and plays the type's sound.
   UIErrorsFrame = CreateFrame("Frame", "UIErrorsFrame", UIParent) UIErrorsFrame:RegisterEvent("UI_ERROR_MESSAGE")
-  function UIErrorsFrame:AddMessage(text) self.__lines = self.__lines or {} self.__lines[#self.__lines + 1] = text end
+  function UIErrorsFrame:ShouldDisplayMessageType(messageType) return messageType ~= 99 end
+  function UIErrorsFrame:AddMessage(text, r, g, b, a, id) self.__lines = self.__lines or {} self.__lines[#self.__lines + 1] = { text, id } end
+  UIErrorsFrame:SetScript("OnEvent", function(self, event, messageType, message)
+    if type(message) == "string" and self:ShouldDisplayMessageType(messageType, message) then self:AddMessage(message, 1, 0.1, 0.1, 1, messageType) __sounds = (__sounds or 0) + 1 end
+  end)
 `;
 
 it("at a merchant: repair with your own gold, sell junk", () => {
@@ -1166,21 +1523,73 @@ it("at a merchant: repair with your own gold, sell junk", () => {
   expect(bare.eval("return ns.GetModule('Merchant').Noisy('x')"), "a client without these calls does nothing").toBe(false);
 });
 
-it("the error line drops what the action bar already shows", () => {
+it("the error line drops what the action bar already shows, and the rest takes the game's own path", () => {
   const addon = loggedIn(MERCHANT_ENV);
-  expect(addon.eval("return UIErrorsFrame:IsEventRegistered('UI_ERROR_MESSAGE')"), "ForeverUI takes over the error line").toBe(false);
+  expect(addon.eval("return UIErrorsFrame:IsEventRegistered('UI_ERROR_MESSAGE')"), "the game's own handler keeps the event").toBe(true);
   addon.fire("UI_ERROR_MESSAGE", 51, "TEST-ONLY not ready");
   addon.fire("UI_ERROR_MESSAGE", 52, "TEST-ONLY Out of range");
+  addon.fire("UI_ERROR_MESSAGE", 52, "TEST-ONLY Out of range");
+  addon.fire("UI_ERROR_MESSAGE", 99, "TEST-ONLY Blacklisted by the game");
   addon.fire("UI_ERROR_MESSAGE", 53);
-  expect(addon.eval("return UIErrorsFrame.__lines"), "noise is dropped, useful errors stay").toEqual(["TEST-ONLY Out of range"]);
+  expect(addon.eval("return UIErrorsFrame.__lines"), "noise is dropped, useful errors stay under their type as the line's ID (so repeats refresh), the game's own blacklist still applies").toEqual([["TEST-ONLY Out of range", 52], ["TEST-ONLY Out of range", 52]]);
+  expect(addon.eval("return __sounds"), "and the game's handler still ran for what showed (sounds)").toBe(2);
+  expect(addon.eval("return UIErrorsFrame:ShouldDisplayMessageType(7, { __secret = true })"), "a message the client hides is never compared, and shown the game's way").toBe(true);
   const none = loggedIn("UIErrorsFrame = nil");
-  expect(none.eval("return ns.GetModule('Merchant').settings.errors"), "no error line on this client: nothing to take over").toBe(true);
+  expect(none.eval("return ns.GetModule('Merchant').settings.errors"), "no error line on this client: nothing to filter").toBe(true);
+  const old = loggedIn(MERCHANT_ENV + "UIErrorsFrame.ShouldDisplayMessageType = nil");
+  expect(old.eval("return UIErrorsFrame.ShouldDisplayMessageType == nil"), "an error line without that question is left alone").toBe(true);
 });
 
 it("a Sort button on the combined bag, where the client can sort", () => {
   const addon = loggedIn(UI_ENV + "C_Container = { SortBags = function() __sorted = true end }");
   expect(addon.eval('local b = ns.GetModule("Bags").sort b:GetScript("OnClick")(b) return __sorted'), "Sort sorts your bags").toBe(true);
   expect(loggedIn(UI_ENV + "C_Container = nil").eval('return ns.GetModule("Bags").sort == nil'), "no sort call, no button").toBe(true);
+});
+
+// TEST-ONLY game search row of the combined bag: the search box and the game's own sort button.
+const SORT_ROW_ENV = `
+  C_Container = { SortBags = function() end }
+  BagItemSearchBox = CreateFrame("EditBox", "BagItemSearchBox", ContainerFrameCombinedBags)
+  BagItemAutoSortButton = CreateFrame("Button", "BagItemAutoSortButton", ContainerFrameCombinedBags)
+`;
+
+it("the bag's Sort button sits beside the search box and the game's own sort button stays hidden", () => {
+  const addon = loggedIn(UI_ENV + SORT_ROW_ENV);
+  const sort = addon.eval('local p = ns.GetModule("Bags").sort.__points.LEFT return { p.rel == BagItemSearchBox, p.relPoint, p.x }');
+  expect(sort, "right of the search box, 6 px off it").toEqual([true, "RIGHT", 6]);
+  expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "the game's own button is hidden at login").toBe(false);
+  addon.eval("BagItemAutoSortButton:Show()");
+  expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "and the game showing it again (each search row update) hides it again").toBe(false);
+  const bare = loggedIn(UI_ENV + "C_Container = { SortBags = function() end }");
+  expect(bare.eval('local p = ns.GetModule("Bags").sort.__points.TOPRIGHT return { p.x, p.y }'), "without a search box it takes the game's sort spot").toEqual([-9, -34]);
+});
+
+it("a context overlay is left alone so the game's search dimming shows", () => {
+  const addon = loggedIn(UI_ENV);
+  addon.eval("__item.ItemContextOverlay = __item:CreateTexture() __item.fuiSkinned = nil ContainerFrameCombinedBags:Hide() ContainerFrameCombinedBags:Show()");
+  expect(addon.eval("return __item.ItemContextOverlay:GetAlpha()"), "its alpha is the game's, not faded to 0").toBe(1);
+});
+
+// TEST-ONLY client CVars with the player's own bag choice ("0": separate bags) in them.
+const CVAR_ENV = `
+  __cvars = { combinedBags = "0" }
+  C_CVar.GetCVar = function(k) return __cvars[k] end
+`;
+
+it("bags: the combined CVar is set once per change of the setting, and given back when the module is switched off", () => {
+  const addon = loggedIn(UI_ENV + CVAR_ENV);
+  expect(addon.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied, ns.Settings('Bags').prior }"), "first login: turned on, the player's own value kept").toEqual(["1", true, "0"]);
+  const later = loggedIn(UI_ENV + CVAR_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { Bags = { applied = true, prior = '0' } }" });
+  expect(later.eval("return __cvars.combinedBags"), "a later login leaves the player's choice (separate bags) alone").toBe("0");
+  const off = loggedIn(UI_ENV + "__cvars = { combinedBags = '1' } C_CVar.GetCVar = function(k) return __cvars[k] end", { savedVariables: "ForeverUIDB.profiles.Default = { Bags = { combined = false, applied = true, prior = '0' } }" });
+  expect(off.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied }"), "turning the setting off sets it once, to separate bags").toEqual(["0", false]);
+  addon.eval("ns.SetModuleEnabled('Bags', false)");
+  expect(addon.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied == nil, ns.Settings('Bags').prior == nil }"), "switching the module off puts the player's value back").toEqual(["0", true, true]);
+  addon.eval("__cvars.combinedBags = '1' ns.SetModuleEnabled('Bags', false)");
+  expect(addon.eval("return __cvars.combinedBags"), "and a second time touches nothing").toBe("1");
+  const blind = loggedIn(UI_ENV);
+  blind.eval("ns.SetModuleEnabled('Bags', false)");
+  expect(blind.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied == nil }"), "a client that can't read the CVar has nothing to give back").toEqual(["1", true]);
 });
 
 it("nameplates: a gold ! by units your quests need", () => {
@@ -1315,6 +1724,39 @@ it("Edit Mode shows ForeverUI's handles too, with a note under its window", () =
   expect(state().slice(0, 3), "the switch under General turns it off").toEqual([false, 0, false]);
 });
 
+// TEST-ONLY Edit Mode systems (P2.18): each named game frame gets a Selection (shown to begin with) and
+// the HighlightSystem method Edit Mode calls on every system it shows, which shows that Selection.
+const SYSTEMS_ENV = `
+  function __system(name, noSelection)
+    local f = _G[name] or CreateFrame("Frame", name, UIParent)
+    if not noSelection then f.Selection = CreateFrame("Frame", nil, f) end
+    function f:HighlightSystem() if self.Selection then self.Selection:Show() end end
+    return f
+  end
+  for _, name in ipairs({ "MainMenuBar", "PlayerFrame", "PlayerCastingBarFrame", "CompactRaidFrameContainer", "StatusTrackingBarManager", "ObjectiveTrackerFrame", "EncounterBar" }) do __system(name) end
+  __system("PetFrame", true)
+  PetFrame:UnregisterAllEvents()
+`;
+
+// Whether each named system's Edit Mode handle is shown after Edit Mode highlights every system.
+const handles = (addon) => addon.eval(`local out = {}
+  for _, name in ipairs({ "MainMenuBar", "PlayerFrame", "PlayerCastingBarFrame", "CompactRaidFrameContainer", "StatusTrackingBarManager", "ObjectiveTrackerFrame", "EncounterBar" }) do
+    _G[name]:HighlightSystem() out[#out + 1] = _G[name].Selection:IsShown() end
+  return out`);
+
+it("Edit Mode: a game frame ForeverUI hides or replaces gets no handle, every other system keeps its own", () => {
+  const addon = loggedIn(UNITS_ENV + TIDY_ENV + RAID_ENV + SYSTEMS_ENV);
+  expect(addon.eval("return { MainMenuBar.Selection:IsShown(), PlayerFrame.Selection:IsShown(), EncounterBar.Selection:IsShown() }"), "the handle of a frame is hidden as soon as ForeverUI hides it; one it leaves alone is untouched").toEqual([false, false, true]);
+  expect(handles(addon), "action bars, unit frames, cast bar, raid frames, XP bar and the game's quest tracker (ForeverUI's is on): none shows; the encounter bar does").toEqual([false, false, false, false, false, false, true]);
+  expect(addon.eval("local ok = pcall(PetFrame.HighlightSystem, PetFrame) return ok"), "a replaced system with no Selection is fine").toBe(true);
+  const own = loggedIn(UNITS_ENV + TIDY_ENV + RAID_ENV + SYSTEMS_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { QuestTracker = { own = false } }" });
+  expect(handles(own)[5], "with ForeverUI's tracker off, the game's tracker keeps its handle").toBe(true);
+  const kept = loggedIn(UNITS_ENV + TIDY_ENV + RAID_ENV + SYSTEMS_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { ActionBars = { hideBlizzard = false }, UnitFrames = { hideBlizzard = false } }" });
+  expect(handles(kept).slice(0, 2), "with the game's bars and unit frames kept, their handles stay").toEqual([true, true]);
+  const plain = loggedIn(UNITS_ENV + TIDY_ENV + RAID_ENV + SYSTEMS_ENV + "hooksecurefunc = nil");
+  expect(plain.eval("return PlayerFrame.Selection:IsShown()"), "a client without hooksecurefunc leaves handles alone").toBe(true);
+});
+
 it("the game's tools: one hint when the Cooldown Manager is off", () => {
   // A client whose Cooldown Manager is available (or not) and switched on (or not).
   const env = (enabled, available = "true") => `C_CooldownViewer = { IsCooldownViewerAvailable = function() return ${available} end }
@@ -1353,10 +1795,17 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   addon.eval("BagsBar:SetSize(50, 20) ns.PausePins(false)");
   expect(addon.eval("return { ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }"), "and never shrinks below its default").toEqual([132, 36]);
   expect(addon.eval("return { BagsBar:GetScale(), ForeverUI_BagStrip:GetAlpha(), ForeverUI_BagStrip.__points.BOTTOMRIGHT.x, ForeverUI_BagStrip.__points.BOTTOMRIGHT.y }"), "bags sit small, always shown, just above the menu on its right edge").toEqual([0.7, 1, -16, 20 + 36 + 6]);
-  expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "which is out of sight until the mouse is over it").toBe(0);
-  addon.hover("ForeverUI_MenuStrip");
-  expect(addon.eval("return ForeverUI_MenuStrip:GetAlpha()"), "and shows with the mouse over it").toBe(1);
-  expect(addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p.rel == ForeverUI_QuestTracker, ObjectiveTrackerFrame:GetHeight() }"), "the quest tracker sits under the info strip, no taller than its spot").toEqual([true, 248]);
+  expect(addon.eval("local s = ForeverUI_MenuStrip return { s:GetAlpha(), s.__mouseMotion == nil }"), "the menu strip is always shown by default (P2.18), nothing watching the mouse").toEqual([1, true]);
+  expect(addon.eval("return { ForeverUI_QuestTracker:GetWidth(), ForeverUI_QuestTracker:GetHeight(), next(ObjectiveTrackerFrame.__points) == nil }"), "ForeverUI's tracker is on: its spot is made (260 by 248) and the game's tracker is not pinned").toEqual([260, 248, true]);
+});
+
+it("menu strip: the game's tracker is pinned into the spot only while ForeverUI's own tracker is off", () => {
+  // Where the game's tracker is anchored: whether on the spot, and its height.
+  const pinned = (addon) => addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p ~= nil and p.rel == ForeverUI_QuestTracker, ObjectiveTrackerFrame:GetHeight() }");
+  const saved = (profile) => ({ savedVariables: `ForeverUIDB.profiles.Default = ${profile}` });
+  expect(pinned(loggedIn(UI_ENV + TIDY_ENV, saved("{ QuestTracker = { own = false } }"))), "ForeverUI's tracker off: the game's sits under the info strip, no taller than its spot").toEqual([true, 248]);
+  expect(pinned(loggedIn(UI_ENV + TIDY_ENV, saved("{ QuestTracker = { own = true } }"))), "ForeverUI's tracker on: one owner only, the game's is not pinned").toEqual([false, 0]);
+  expect(pinned(loggedIn(UI_ENV + TIDY_ENV, saved("{ modules = { QuestTracker = false } }"))), "the tracker module switched off altogether: the game's is pinned again").toEqual([true, 248]);
 });
 
 it("the game's extras: a protected frame is hidden once, out of combat, with no Show hook", () => {
@@ -1428,8 +1877,8 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
   expect(layers, "a tile's name, role and status sit above the incoming-heal and shield bars, under the status marks").toEqual([true, true, true]);
 });
 
-it("menu strip: shown by the mouse entering and leaving it and its buttons, with nothing polling", () => {
-  const addon = strips();
+it("menu strip: set to mouseover, shown by the mouse entering and leaving it and its buttons, with nothing polling", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: 'ForeverUIDB.profiles.Default = { MenuStrip = { menu = "mouseover" } }' });
   // The menu strip's alpha.
   const alpha = () => addon.eval("return ForeverUI_MenuStrip:GetAlpha()");
   expect(addon.eval("local s = ForeverUI_MenuStrip return { s:GetScript('OnUpdate') == nil, s.__mouseMotion, s.__mouseClick }"), "no OnUpdate; the strip feels the mouse but lets clicks through").toEqual([true, true, false]);
@@ -1603,7 +2052,7 @@ const TRACKER_ENV = `
 `;
 
 it("the quest tracker in the ForeverUI look: flat headers, brass lines, theme arrows and font", () => {
-  const addon = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV);
+  const addon = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { QuestTracker = { own = false } }" });
   const head = addon.eval(`local h = ObjectiveTrackerFrame.Header
     return { h.Background.__alpha, h.Glow.__alpha, h.MinimizeButton.normal.__alpha, h.Text.__font ~= nil, #ns.GetModule("MenuStrip").rules }`);
   expect(head, "header art and the game's button fade; the title takes the theme font; each header gets a brass line").toEqual([0, 0, 0, true, 2]);
@@ -1618,7 +2067,9 @@ it("the quest tracker in the ForeverUI look: flat headers, brass lines, theme ar
   expect(addon.eval("return ns.GetModule('MenuStrip').rules[2].__vertexColor[3]"), "the lines follow the accent").toBe(0.3);
   addon.eval("ObjectiveTrackerFrame.modules[2] = { Header = __header(ObjectiveTrackerFrame) } ObjectiveTrackerFrame:Update()");
   expect(addon.eval("return ObjectiveTrackerFrame.modules[2].Header.fuiHeader"), "a section the game adds later is styled on its next update").toBe(true);
-  const off = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { trackerLook = false } }" });
+  const own = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV);
+  expect(own.eval("return { ObjectiveTrackerFrame.Header.fuiHeader == nil, ObjectiveTrackerLineFont.font == nil, #ns.GetModule('MenuStrip').rules }"), "with ForeverUI's own tracker on, the game's tracker is not skinned").toEqual([true, true, 0]);
+  const off = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { QuestTracker = { own = false }, MenuStrip = { trackerLook = false } }" });
   expect(off.eval("return { ObjectiveTrackerFrame.Header.fuiHeader == nil, ObjectiveTrackerLineFont.font == nil }"), "switched off, the tracker stays the game's").toEqual([true, true]);
   expect(loggedIn(UI_ENV).eval("return ns.GetModule('MenuStrip').rules ~= nil"), "a client without the tracker loads cleanly").toBe(true);
 });
@@ -1662,6 +2113,19 @@ it("game windows in the ForeverUI look: framed windows, popups, breath bar, and 
   addon.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
   expect(windowState(addon, "PlayerSpellsFrame"), "the spellbook is skinned when it loads").toMatchObject({ art: 0, panel: true });
   addon.fire("ADDON_LOADED", "TEST-ONLY_SomethingElse");
+});
+
+it("game windows: the quest and gossip windows are skinned only when ForeverUI's quest dialog is off", () => {
+  const env = WINDOWS_ENV + '__window("QuestFrame") __window("GossipFrame")';
+  const on = loggedIn(env);
+  on.eval("MerchantFrame:Show() QuestFrame:Show() GossipFrame:Show()");
+  expect([windowState(on, "QuestFrame").panel, windowState(on, "GossipFrame").panel, windowState(on, "MerchantFrame").panel], "with the dialog on the game's never show: left alone, other windows skinned").toEqual([false, false, true]);
+  expect(on.eval("return QuestFrame.fuiWindow == nil and GossipFrame.fuiWindow == nil"), "and not even hooked").toBe(true);
+  for (const saved of ["ForeverUIDB.profiles = { Default = { QuestDialog = { dialog = false } } }", "ForeverUIDB.profiles = { Default = { modules = { QuestDialog = false } } }"]) {
+    const off = loggedIn(env, { savedVariables: saved });
+    off.eval("QuestFrame:Show() GossipFrame:Show()");
+    expect([windowState(off, "QuestFrame"), windowState(off, "GossipFrame")], "with the dialog off they are the game's windows again, skinned").toMatchObject([{ art: 0, panel: true }, { art: 0, panel: true }]);
+  }
 });
 
 it("game windows: switched off they stay the game's, and missing windows are fine", () => {

@@ -9,6 +9,12 @@
 --
 -- A binding is { key, action, value, spellID, rank }: a spell is cast by name
 -- (its highest rank) unless a rank was picked, then by that rank's spell id.
+-- Hover keys click the frame's virtual button fui<i> (SetBindingClick), so the
+-- frame needs no extra click registration: SecureUnitButton_OnClick (the unit
+-- button template) acts on whichever phase the button is registered for and
+-- ignores ActionButtonUseKeyDown, so registering AnyDown as well would cast
+-- twice (key down and key up); the raid buttons stay AnyUp.
+--
 -- Bindings are per character and per specialization. Everything here sets
 -- secure attributes and secure enter/leave snippets, so it only changes out
 -- of combat; in combat, the bindings you set earlier keep working. Hover keys
@@ -222,7 +228,10 @@ local function spellValue(b)
   return b.rank and b.spellID or b.value
 end
 
--- Sets type and spell/macro text for a binding, with the attribute suffix
+-- Sets type and spell/macro text for a binding, with the attribute prefix
+-- ("ctrl-" for a mouse binding, "*" for a hover key: SecureButton_GetModifiedAttribute
+-- looks up <modifiers>type-fui3, then *type-fui3, never the bare type-fui3, so a
+-- hover key bound with Shift held only finds the "*" form) and the suffix
 -- ("2" for mouse button 2, "-fui3" for a hover key's virtual button).
 local function setAction(f, prefix, suffix, b)
   setAttr(f, prefix .. "type" .. suffix, TYPES[b.action])

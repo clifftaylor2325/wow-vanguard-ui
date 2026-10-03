@@ -174,6 +174,27 @@ function ns.EditModeMovers(edit, open)
   editNote(edit):SetShown(open and unlocked)
 end
 
+-- The game's frames ForeverUI hides or replaces (set): Edit Mode gets no handle for them.
+local replaced = {}
+
+-- Hides a replaced frame's Edit Mode handle (runs after the game highlights the frame).
+local function hideHandle(frame)
+  if type(frame.Selection) == "table" then frame.Selection:Hide() end
+end
+
+-- Notes that ForeverUI hides or replaces one of the game's frames, so Edit Mode shows no
+-- handle or selection for it. Edit Mode highlights a system through its HighlightSystem
+-- method (on entering, from its check boxes, and when another system is selected), so the
+-- handle is hidden from a post-hook on that method: nothing Edit Mode reads is written, and
+-- its own code runs untouched. A frame that isn't an Edit Mode system is left alone.
+function ns.EditModeReplaced(frame)
+  if type(frame) ~= "table" or replaced[frame] or type(frame.HighlightSystem) ~= "function" then return end
+  if type(hooksecurefunc) ~= "function" then return end
+  replaced[frame] = true
+  hooksecurefunc(frame, "HighlightSystem", hideHandle)
+  hideHandle(frame)
+end
+
 -- While the game's Edit Mode window is open, pins pause and ForeverUI's handles
 -- show; when it closes, everything goes back to its ForeverUI spot.
 local function watchEditMode()

@@ -2,8 +2,8 @@
 -- ("[12] Title" in its difficulty color, a check when ready to turn in) and
 -- the chosen quest on the right: its text, objectives and rewards, with
 -- Track, Share, Abandon (through the game's own confirmation) and Map.
--- The game's quest log key opens it (and /fui quests); the tracker's titles
--- open it on that quest.
+-- The game's quest log key and micro button open it (and /fui quests); the
+-- tracker's titles open it on that quest.
 
 local ADDON, ns = ...
 
@@ -150,6 +150,19 @@ local function addToggle()
   QL.toggle:SetScript("OnClick", QL.Toggle)
 end
 
+-- The game's own quest log toggle ran (its micro button, or anything else that
+-- calls it): open or close this log, and put away the game's window it just opened.
+function QL.OnGameToggle()
+  QL.Toggle()
+  local map = _G.WorldMapFrame
+  if type(map) == "table" and map:IsShown() and type(HideUIPanel) == "function" then HideUIPanel(map) end
+end
+
+-- Makes the game's quest log toggle (the micro button) open this log too.
+local function hookGameToggle()
+  if type(hooksecurefunc) == "function" and type(_G.ToggleQuestLog) == "function" then hooksecurefunc("ToggleQuestLog", QL.OnGameToggle) end
+end
+
 -- Re-renders the log, if it is still open.
 local function refreshIfOpen()
   if QL.frame:IsShown() then QL.Refresh() end
@@ -170,5 +183,6 @@ function QL.Enable(settings)
     QL.BindKeys()
     ns.On("UPDATE_BINDINGS", QL.BindKeys)
   end
+  hookGameToggle()
   ns.On("QUEST_LOG_UPDATE", refreshSoon)
 end

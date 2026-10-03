@@ -237,6 +237,9 @@ it("an old profile keeps its right-edge bar on Always; a fresh enable gets On mo
   // A new profile's fresh enable is checked in "the right-edge bars start off and show on mouseover when turned on".
 });
 
+// ACTIONS_ENV's three bars of twelve buttons hold three actions: the other 33 slots are empty.
+const EMPTY_SLOTS = 33;
+
 it("In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone", () => {
   const addon = loggedIn(ACTIONS_ENV);
   setBarOption(addon, 2, "Visibility", '"combat"');
@@ -251,13 +254,13 @@ it("In combat bars show during a drag out of combat; a drag that starts in comba
   setCombat(addon, true);
   addon.fire("ACTIONBAR_SHOWGRID");
   addon.fire("ACTIONBAR_HIDEGRID");
-  expect(addon.eval("return __regs") === 0 && addon.eval("return ns.QueuedCount()") === 0, "a drag that starts in combat changes no driver and queues nothing").toBeTruthy();
+  expect(addon.eval("return __regs") === 0 && addon.eval("return ns.QueuedCount()") === EMPTY_SLOTS, "a drag that starts in combat changes no driver and queues only the empty slots' mouse, one entry each").toBeTruthy();
   setCombat(addon, false);
   expect(addon.eval("return __regs") === 0 && barVis(addon).driver === "[combat] show; hide", "not even after combat ends").toBeTruthy();
   addon.fire("ACTIONBAR_SHOWGRID");
   setCombat(addon, true);
   addon.fire("ACTIONBAR_HIDEGRID");
-  expect(barVis(addon).driver === "show" && addon.eval("return ns.QueuedCount()") === 1, "a drag that ends after combat starts restores the driver once combat ends").toBeTruthy();
+  expect(barVis(addon).driver === "show" && addon.eval("return ns.QueuedCount()") === EMPTY_SLOTS + 1, "a drag that ends after combat starts restores the driver once combat ends (and the empty slots' mouse)").toBeTruthy();
   setCombat(addon, false);
   expect(barVis(addon).driver === "[combat] show; hide", "and then it does").toBeTruthy();
 });
@@ -276,7 +279,7 @@ it("mouseover bars are revealed during a drag and restored after", () => {
   addon.eval("ForeverUI_Bar2.__mouseOver = true");
   addon.fire("ACTIONBAR_HIDEGRID");
   expect(barVis(addon).alpha === 1, "unless the mouse is still over the bar").toBeTruthy();
-  expect(addon.eval("return __shows") === 0 && addon.eval("return ns.QueuedCount()") === 0 && barVis(addon).driver === "show", "alpha only: no Show or Hide, nothing queued, driver unchanged").toBeTruthy();
+  expect(addon.eval("return __shows") === 0 && addon.eval("return ns.QueuedCount()") === EMPTY_SLOTS && barVis(addon).driver === "show", "alpha only: no Show or Hide, driver unchanged; only the empty slots' mouse waits").toBeTruthy();
 });
 
 it("Hidden bar bindings stay intact", () => {
@@ -425,4 +428,115 @@ it("the game's hidden action buttons are silenced, and one cooldown event refres
   expect([addon.eval("return __cooldowns > 0"), addon.eval("return ForeverUI_Bar1Button1.cooldown.__cooldown")], "ACTIONBAR_UPDATE_COOLDOWN does, and the sweep shows it").toEqual([true, [10, 30]]);
   const kept = loggedIn(ACTIONS_ENV + GAME_BUTTONS, { savedVariables: "ForeverUIDB.profiles = { Default = { ActionBars = { hideBlizzard = false } } }" });
   expect(kept.eval('return ActionButton1:IsEventRegistered("ACTIONBAR_UPDATE_COOLDOWN")'), "with the game's bars kept, its buttons keep their events").toBe(true);
+});
+
+// The tooltip's owner name, the slot it shows, its first line, and whether it is up.
+const tip = (addon) => addon.eval("local o = GameTooltip:GetOwner() return { owner = o and o:GetName(), action = GameTooltip.__action, line = GameTooltip.__lines and GameTooltip.__lines[1].text, shown = GameTooltip:IsShown() }");
+
+it("action buttons show their action's tooltip on hover and hide it on leave", () => {
+  const addon = loggedIn();
+  addon.world.setAction(1, { id: 133 });
+  addon.hover("ForeverUI_Bar1Button1");
+  expect(tip(addon), "hovering slot 1 shows Fireball's tooltip, owned by the button").toEqual({ owner: "ForeverUI_Bar1Button1", action: 1, line: "Fireball", shown: true });
+  expect(addon.eval("return type(ForeverUI_Bar1Button1.UpdateTooltip)"), "the client can refresh it through UpdateTooltip").toBe("function");
+  addon.world.setAction(1, { id: 116 });
+  addon.eval("ForeverUI_Bar1Button1:UpdateTooltip()");
+  expect(tip(addon), "the refresh shows what is in the slot now").toEqual({ owner: "ForeverUI_Bar1Button1", action: 1, line: "Frostbolt", shown: true });
+  addon.hover(null);
+  expect([tip(addon).shown, addon.eval("return ForeverUI_Bar1Button1.UpdateTooltip")], "leaving hides the tooltip and drops the refresh").toEqual([false, null]);
+  addon.hover("ForeverUI_Bar1Button2");
+  expect([tip(addon).action, tip(addon).shown, addon.eval("return ForeverUI_Bar1Button2.UpdateTooltip")], "an empty slot shows no tooltip").toEqual([2, false, null]);
+});
+
+it("a paged bar 1 button's tooltip is for the slot it shows now, not its action attribute", () => {
+  const addon = loggedIn(NO_SNIPPETS);
+  addon.world.setAction(1, { id: 133 });
+  addon.world.setAction(73, { id: 118 });
+  addon.eval("ForeverUI_Bar1:SetAttribute('actionpage', '7')");
+  addon.hover("ForeverUI_Bar1Button1");
+  expect([addon.eval("return ForeverUI_Bar1Button1:GetAttribute('action')"), tip(addon)], "page 7 shows slot 73's Polymorph though the attribute still says 1").toEqual([1, { owner: "ForeverUI_Bar1Button1", action: 73, line: "Polymorph", shown: true }]);
+});
+
+it("the mouseover fade still follows hovering an action button", () => {
+  const addon = loggedIn();
+  addon.world.setAction(61, { id: 133 });
+  addon.eval("local AB = ns.GetModule('ActionBars') ns.Settings('ActionBars').bars[2].visibility = 'mouseover' AB.ApplyVisibility(2)");
+  expect(addon.eval("return ForeverUI_Bar2:GetAlpha()"), "bar 2 starts faded out").toBe(0);
+  addon.hover("ForeverUI_Bar2Button1");
+  expect([addon.eval("return ForeverUI_Bar2:GetAlpha()"), tip(addon).owner], "hovering one of its buttons shows the bar and a tooltip").toEqual([1, "ForeverUI_Bar2Button1"]);
+});
+
+it("action buttons cast on yourself, your focus or the mouseover with the game's modifiers", () => {
+  const addon = loggedIn();
+  const attrs = addon.eval(`local out = {}
+    for _, name in ipairs({ "ForeverUI_Bar1Button1", "ForeverUI_Bar1Button12", "ForeverUI_Bar3Button7" }) do
+      local b = _G[name]
+      out[#out + 1] = { b:GetAttribute("checkselfcast"), b:GetAttribute("checkfocuscast"), b:GetAttribute("checkmouseovercast"), b:GetAttribute("type") }
+    end
+    return out`);
+  expect(attrs, "every button turns the three cast checks on, as the game's buttons do, and still uses its action").toEqual(Array(3).fill([true, true, true, "action"]));
+});
+
+it("bag, equipment, form, macro and charge events refresh the buttons they change", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  addon.eval("__actions[2].count = 9 __actions[3].usable = true");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect([button(addon, 1, 2).count, button(addon, 1, 3).color.slice(0, 3)], "BAG_UPDATE_DELAYED re-counts and re-checks usability").toEqual(["9", [1, 1, 1]]);
+  addon.eval("__actions[2].count = 7");
+  addon.fire("UNIT_INVENTORY_CHANGED", "target");
+  expect(button(addon, 1, 2).count, "another unit's inventory changes nothing").toBe("9");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  expect(button(addon, 1, 2).count, "your own inventory re-counts").toBe("7");
+  addon.eval("__actions[2].count = 6 __actions[1].tex = 'TEST-ONLY-EQUIPPED'");
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 13, false);
+  expect([button(addon, 1, 2).count, button(addon, 1, 1).icon], "an equipment change re-counts and repaints icons").toEqual(["6", "TEST-ONLY-EQUIPPED"]);
+  for (const [event, tex] of [["UPDATE_SHAPESHIFT_FORM", "TEST-ONLY-FORM"], ["UPDATE_MACROS", "TEST-ONLY-MACRO"], ["SPELL_UPDATE_ICON", "TEST-ONLY-MORPH"]]) {
+    addon.eval(`__actions[1].tex = '${tex}'`);
+    addon.fire(event);
+    expect(button(addon, 1, 1).icon, `${event} repaints the icon`).toBe(tex);
+  }
+  addon.eval("__actions[2].count = 2");
+  addon.fire("SPELL_UPDATE_CHARGES");
+  expect(button(addon, 1, 2).count, "SPELL_UPDATE_CHARGES re-counts").toBe("2");
+});
+
+// Whether button i of bar 1 takes the mouse, and its alpha.
+const takesMouse = (addon, i) => addon.eval(`return ForeverUI_Bar1Button${i}.__mouse`);
+const alphaOf = (addon, i) => addon.eval(`return ForeverUI_Bar1Button${i}:GetAlpha()`);
+
+it("empty slots take no mouse, so blank bar space passes clicks through; a drag turns it back on", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  expect([takesMouse(addon, 1), takesMouse(addon, 4)], "a slot with an action takes the mouse; an empty one doesn't").toEqual([true, false]);
+  addon.fire("ACTIONBAR_SHOWGRID");
+  expect([takesMouse(addon, 4), alphaOf(addon, 4)], "picking up a spell or item shows the empty slots and lets you drop onto them").toEqual([true, 1]);
+  addon.fire("ACTIONBAR_HIDEGRID");
+  expect([takesMouse(addon, 4), alphaOf(addon, 4), takesMouse(addon, 1)], "dropping it hides them and takes the mouse off again").toEqual([false, 0, true]);
+  addon.eval('__actions[4] = { tex = "TEST-ONLY-DROPPED", count = 0, usable = true }');
+  addon.fire("ACTIONBAR_SLOT_CHANGED", 4);
+  expect(takesMouse(addon, 4), "a slot that gets an action takes the mouse").toBe(true);
+  addon.eval("__actions[4] = nil");
+  addon.fire("ACTIONBAR_SLOT_CHANGED", 4);
+  expect(takesMouse(addon, 4), "and loses it when the action is taken away").toBe(false);
+});
+
+it("in combat an empty slot's mouse waits for the fight to end, one entry per button, the last state winning", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  setCombat(addon, true);
+  addon.eval('__actions[4] = { tex = "TEST-ONLY-DROPPED", count = 0, usable = true }');
+  addon.fire("ACTIONBAR_SLOT_CHANGED", 4);
+  const queued = addon.eval("return ns.QueuedCount()");
+  expect([alphaOf(addon, 4), takesMouse(addon, 4)], "a slot filled in combat shows at once (alpha is allowed); its mouse waits").toEqual([1, false]);
+  addon.eval("__actions[4] = nil");
+  addon.fire("ACTIONBAR_SLOT_CHANGED", 4);
+  addon.eval('__actions[4] = { tex = "TEST-ONLY-AGAIN", count = 0, usable = true }');
+  addon.fire("ACTIONBAR_SLOT_CHANGED", 4);
+  expect(addon.eval("return ns.QueuedCount()"), "emptied and filled again, the button still has one queued entry").toBe(queued);
+  setCombat(addon, false);
+  expect(takesMouse(addon, 4), "after the fight the last state applies: filled, so it takes the mouse").toBe(true);
+  setCombat(addon, true);
+  addon.eval("__actions[4] = nil");
+  addon.fire("ACTIONBAR_SLOT_CHANGED", 4);
+  expect([alphaOf(addon, 4), takesMouse(addon, 4)], "a slot emptied in combat hides at once and keeps its mouse until the fight ends").toEqual([0, true]);
+  setCombat(addon, false);
+  expect(takesMouse(addon, 4), "then it lets clicks through").toBe(false);
 });

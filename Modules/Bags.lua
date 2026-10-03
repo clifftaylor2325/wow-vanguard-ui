@@ -1,5 +1,5 @@
--- Bags: turns on the client's combined bag (one window for every bag) and
--- restyles it and the bank: flat themed panels, template art faded, square
+-- Bags: turns on the client's combined bag (one window for every bag) when
+-- the module's setting says so, and restyles it and the bank: flat themed panels, template art faded, square
 -- item slots with thin borders in each item's quality color, and the search
 -- boxes in the theme. The windows and their item buttons stay the client's
 -- own, so using, dragging, searching and sorting items work exactly as
@@ -13,20 +13,43 @@ local BG = ns.Module("Bags", {
   defaults = { combined = true, bank = true },
 })
 
--- Item button regions whose art is faded (the icon and texts stay).
-local ITEM_ART = { "NormalTexture", "IconBorder", "ItemContextOverlay" }
+-- Item button regions whose art is faded (the icon and texts stay). Not the
+-- context overlay: the game dims items that don't match a search with it.
+local ITEM_ART = { "NormalTexture", "IconBorder" }
 
 -- The client's combined bag window, or nil if it doesn't have one.
 local function combinedFrame()
   return _G.ContainerFrameCombinedBags
 end
 
--- Turns on the combined bag setting, if this client has it.
-local function useCombined()
-  local set = C_CVar and C_CVar.SetCVar or SetCVar
-  if type(set) == "function" then
-    pcall(set, "combinedBags", "1")
-  end
+-- The client's CVar function by name (C_CVar's, or the old global), or nil.
+local function cvarCall(name)
+  local fn = C_CVar and C_CVar[name] or _G[name]
+  return type(fn) == "function" and fn or nil
+end
+
+-- Sets the combinedBags CVar to value (a failing call is ignored).
+local function setCombinedCVar(value)
+  local set = cvarCall("SetCVar")
+  if set then pcall(set, "combinedBags", value) end
+end
+
+-- Applies the combined setting to the client once: the first time, and again
+-- only when the setting changes, so the player's own choice in the game's
+-- options stands between. The player's value from before is kept for Disable.
+local function syncCombined(settings)
+  if settings.applied == settings.combined then return end
+  local get = cvarCall("GetCVar")
+  if settings.applied == nil and get then settings.prior = get("combinedBags") end
+  settings.applied = settings.combined
+  setCombinedCVar(settings.combined and "1" or "0")
+end
+
+-- The module switched off (Core/Modules.lua): the player's own bag layout comes back.
+function BG.Disable(settings)
+  if settings.applied == nil then return end
+  if settings.prior ~= nil then setCombinedCVar(settings.prior) end
+  settings.applied, settings.prior = nil, nil
 end
 
 -- Whether any of r, g, b is a secret (never compared).
@@ -118,20 +141,42 @@ local function watchBank()
   end
 end
 
--- A Sort button at the top of the window, if the client can sort bags.
+-- The game's own sort button, kept hidden (the game shows it on every update
+-- of the bag's search row) because ForeverUI's Sort takes its place.
+local function hideGameSort()
+  local game = _G.BagItemAutoSortButton
+  if type(game) ~= "table" then return end
+  game:Hide()
+  if type(hooksecurefunc) == "function" then hooksecurefunc(game, "Show", game.Hide) end
+end
+
+-- Puts the Sort button on the search row: right of the search box, or where the
+-- game's own sort button sat when the client has no such box.
+local function placeSort(frame)
+  local box = _G.BagItemSearchBox
+  if type(box) == "table" then
+    BG.sort:SetPoint("LEFT", box, "RIGHT", 6, 0)
+  else
+    BG.sort:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -9, -34)
+  end
+end
+
+-- A Sort button beside the search box, if the client can sort bags; the game's own is hidden.
 function BG.AddSort(frame)
   local sort = C_Container and C_Container.SortBags
   if type(sort) ~= "function" or BG.sort then return end
   BG.sort = ns.DialogButton(frame, "Sort", 52)
   BG.sort:SetHeight(20)
-  BG.sort:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -30, -6)
+  placeSort(frame)
   BG.sort:SetScript("OnClick", function() sort() end)
+  hideGameSort()
 end
 
--- Module entry point (Core/Modules.lua): combined bags on, the window skinned
--- on every show, and slots the game adds (a bag swapped in) when it fills them.
+-- Module entry point (Core/Modules.lua): the combined setting applied to the
+-- client when it changes, the window skinned on every show, and slots the game
+-- adds (a bag swapped in) when it fills them.
 function BG.Enable(settings)
-  if settings.combined then useCombined() end
+  syncCombined(settings)
   if settings.bank then watchBank() end
   local frame = combinedFrame()
   if not frame then return end

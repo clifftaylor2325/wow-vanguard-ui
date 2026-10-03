@@ -23,6 +23,8 @@ GW.FRAMED = {
 }
 GW.POPUPS = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }
 GW.TIMERS = { "MirrorTimer1", "MirrorTimer2", "MirrorTimer3" }
+-- The windows ForeverUI's quest dialog stands in for: the game never shows them while it is on, so they are not skinned.
+GW.QUEST_WINDOWS = { QuestFrame = true, GossipFrame = true }
 -- Windows that load with their own part of the game: addon name -> window names.
 GW.ON_DEMAND = {
   Blizzard_PlayerSpells = { "PlayerSpellsFrame" }, Blizzard_TimeManager = { "TimeManagerFrame" },
@@ -44,6 +46,8 @@ GW.EXTRA_BUTTONS = { MailFrame = { "OpenAllMail" } }
 -- The character pane's gear slots (Character<slot>Slot; each button's ID is its inventory slot).
 GW.SLOTS = { "Head", "Neck", "Shoulder", "Back", "Chest", "Wrist", "Hands", "Waist", "Legs", "Feet",
   "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged" }
+-- The game menu's header plate: the three textures behind its title.
+GW.MENU_PLATE = { "LeftBG", "RightBG", "CenterBG" }
 -- A window's art pieces that are faded out, where it has them.
 GW.ART = { "NineSlice", "Bg", "TopTileStreaks", "PortraitContainer", "Border", "Inset" }
 
@@ -112,6 +116,46 @@ local function watchContainer()
   box.fuiWindow = true
   skinContainerTimers()
   if type(box.SetupTimer) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(box, "SetupTimer", skinContainerTimers) end
+end
+
+-- The game menu -------------------------------------------------------------------------------
+
+-- One game menu button in the theme, once: the menu takes its buttons from a
+-- pool (made again on every InitButtons, reused ones keep the look), and
+-- ForeverUI's own button is made from the same template.
+function GW.SkinMenuButton(button)
+  if button.fuiMenuSkinned then return end
+  button.fuiMenuSkinned = true
+  T.Button(button)
+end
+
+-- The menu's header: the plate behind the title hidden, the title in the theme font, inside the panel.
+local function dressMenuHeader(menu)
+  local header = menu.Header
+  if type(header) ~= "table" then return end
+  for _, key in ipairs(GW.MENU_PLATE) do
+    if type(header[key]) == "table" then header[key]:Hide() end
+  end
+  if type(header.Text) == "table" then T.Text(header.Text, "heading", false) end
+  header:SetPoint("TOP", menu, "TOP", 0, -8)
+end
+
+-- Skins the buttons the menu has now (read-only on its pool, which the game owns), ForeverUI's own, and the header.
+function GW.SkinMenu(menu)
+  local pool = menu.buttonPool
+  if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
+    for button in pool:EnumerateActive() do GW.SkinMenuButton(button) end
+  end
+  if ns.gameMenuButton then GW.SkinMenuButton(ns.gameMenuButton) end
+  dressMenuHeader(menu)
+end
+
+-- The menu builds its buttons again each time it opens: skin them after each build.
+local function watchGameMenu()
+  local menu = _G.GameMenuFrame
+  if type(menu) ~= "table" or type(hooksecurefunc) ~= "function" or type(menu.InitButtons) ~= "function" then return end
+  hooksecurefunc(menu, "InitButtons", GW.SkinMenu)
+  GW.SkinMenu(menu)
 end
 
 -- Readable text ------------------------------------------------------------------------------
@@ -184,10 +228,16 @@ end
 
 -- Hooking -------------------------------------------------------------------------------------
 
--- Skins a window now and every time it shows (once hooked).
+-- Whether ForeverUI's quest dialog is on in place of this game window (QuestDialog loads before this module).
+local function replaced(name)
+  local dialog = ns.GetModule("QuestDialog")
+  return GW.QUEST_WINDOWS[name] == true and dialog ~= nil and dialog.frame ~= nil
+end
+
+-- Skins a window now and every time it shows (once hooked); not one the quest dialog replaces.
 local function watch(name, skin)
   local frame = _G[name]
-  if type(frame) ~= "table" or not frame.HookScript or frame.fuiWindow then return end
+  if type(frame) ~= "table" or not frame.HookScript or frame.fuiWindow or replaced(name) then return end
   frame.fuiWindow = true
   skin(frame)
   frame:HookScript("OnShow", skin)
@@ -206,6 +256,7 @@ end
 -- Watches the framed windows (those loaded now and later) and keeps their text readable.
 local function watchWindows()
   watchAll(GW.FRAMED, GW.Skin)
+  watchGameMenu()
   for _, names in pairs(GW.ON_DEMAND) do watchAll(names, GW.Skin) end
   ns.On("ADDON_LOADED", onLoaded)
   keepTextReadable()

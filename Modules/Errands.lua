@@ -1,6 +1,6 @@
 -- The errands of leveling, done for you:
 --   * Train all: a button on the trainer's window that learns everything you
---     can afford, one at a time, and says what it cost;
+--     can afford, in one click, and says what it cost;
 --   * keep stocked: a list of items and how many to carry (/fui stock); a
 --     merchant who sells them tops you up, a stack at a time, while you can pay;
 --   * flight timer: each flight's time is saved by route, and the next flight
@@ -16,7 +16,7 @@ local ER = ns.Module("Errands", {
   defaults = { trainAll = true, stock = true, flightTimer = true, stockList = {}, flights = {} },
 })
 
-ER.TRAIN_STEPS, ER.TRAIN_EVERY, ER.BUY_EVERY = 30, 0.3, 0.2
+ER.TRAIN_STEPS, ER.BUY_EVERY = 30, 0.2
 ER.FLIGHT_POLL, ER.FLIGHT_MAX, ER.TAKEOFF_WAIT = 0.5, 3600, 10
 ER.BAR_W, ER.BAR_H = 200, 14
 
@@ -47,22 +47,33 @@ end
 
 -- Train all ----------------------------------------------------------------------------------
 
--- The trainer's services you can learn now, as { index, cost }.
+-- Whether trainer service i can be learned now. The game's own order of
+-- GetTrainerServiceInfo's results is name, kind, ...; an older client's is name, rank, kind.
+local function available(i)
+  local _, second, third = ask("GetTrainerServiceInfo", i)
+  return not ns.IsSecret(second) and not ns.IsSecret(third) and (second == "available" or third == "available")
+end
+
+-- A service's name, to tell it from the others as the list re-indexes under the buying.
+local function serviceName(i)
+  local name = ask("GetTrainerServiceInfo", i)
+  return type(name) == "string" and name or tostring(i)
+end
+
+-- The trainer's services you can learn now, as { index, cost, name }.
 function ER.Trainable()
   local out = {}
   for i = 1, ns.PlainNumber(ask("GetNumTrainerServices")) or 0 do
-    local _, _, kind = ask("GetTrainerServiceInfo", i)
-    if not ns.IsSecret(kind) and kind == "available" then
-      out[#out + 1] = { index = i, cost = ns.PlainNumber(ask("GetTrainerServiceCost", i)) or 0 }
-    end
+    if available(i) then out[#out + 1] = { index = i, cost = ns.PlainNumber(ask("GetTrainerServiceCost", i)) or 0, name = serviceName(i) } end
   end
   return out
 end
 
--- The first service you can afford, or nil.
-local function nextAffordable()
+-- The first service you can afford, or nil. With a run: not one it already bought, and
+-- with what it has spent counted off (the game updates your money and the list a moment later).
+local function nextAffordable(run)
   for _, s in ipairs(ER.Trainable()) do
-    if s.cost <= cash() then return s end
+    if not (run and run.done[s.name]) and s.cost <= cash() - (run and run.spent or 0) then return s end
   end
 end
 
@@ -72,34 +83,28 @@ function ER.UpdateTrainButton()
   if not b then return end
   for _, s in ipairs(list) do total = total + s.cost end
   b.text:SetText(#list > 0 and string.format("Train all (%d) · %s", #list, money(total)) or "Train all")
-  if ER.training == nil and nextAffordable() then b:Enable() else b:Disable() end
+  if nextAffordable() then b:Enable() else b:Disable() end
   b:SetShown(ER.settings.trainAll)
 end
 
--- Training ended: say what it cost, and refresh the button.
-function ER.FinishTraining()
-  local run = ER.training
-  ER.training = nil
+-- Learns the next affordable service not yet bought in this click; false when
+-- there is none (or the trainer closed, combat started, or the step cap is reached).
+local function trainOne(run)
+  local s = nextAffordable(run)
+  if not s or not ER.trainerOpen or ns.InCombat() or run.count >= ER.TRAIN_STEPS then return false end
+  ask("BuyTrainerService", s.index)
+  run.done[s.name], run.count, run.spent = true, run.count + 1, run.spent + s.cost
+  return true
+end
+
+-- The Train all button was clicked: learn everything affordable in a loop inside
+-- the click (a purchase needs one), re-reading the list each time, and say what it cost.
+function ER.TrainAll()
+  if ns.InCombat() then return end
+  local run = { done = {}, count = 0, spent = 0 }
+  while trainOne(run) do end
   if run.count > 0 then ns.Chat(string.format("Trained %d skill(s) for %s.", run.count, money(run.spent))) end
   ER.UpdateTrainButton()
-end
-
--- Learns one affordable service, then the next shortly after, until none is
--- left (or the trainer closed, combat started, or the step cap is reached).
-function ER.TrainNext()
-  local run, s = ER.training, nextAffordable()
-  if not run then return end
-  if not s or not ER.trainerOpen or ns.InCombat() or run.steps >= ER.TRAIN_STEPS then return ER.FinishTraining() end
-  ask("BuyTrainerService", s.index)
-  run.steps, run.count, run.spent = run.steps + 1, run.count + 1, run.spent + s.cost
-  later(ER.TRAIN_EVERY, ER.TrainNext)
-end
-
--- The Train all button was clicked: start learning (not in combat).
-local function startTraining()
-  if ER.training or ns.InCombat() then return end
-  ER.training = { steps = 0, count = 0, spent = 0 }
-  ER.TrainNext()
 end
 
 -- Adds the Train all button to the game's trainer window, once that window exists.
@@ -108,7 +113,7 @@ function ER.AddTrainButton()
   if ER.trainButton or type(frame) ~= "table" then return end
   local b, train = ns.DialogButton(frame, "Train all", 170), _G.ClassTrainerTrainButton
   if type(train) == "table" then b:SetPoint("RIGHT", train, "LEFT", -4, 0) else b:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 6) end
-  b:SetScript("OnClick", startTraining)
+  b:SetScript("OnClick", ER.TrainAll)
   ER.trainButton = b
   ER.UpdateTrainButton()
 end
@@ -192,14 +197,14 @@ local function wanted(i)
   return math.max(0, goal - have), id
 end
 
--- What this merchant can sell toward your list: { index, id, need, unit price } per item.
+-- What this merchant can sell toward your list: { index, id, need, unit price, stack } per item.
 function ER.Orders()
   local out = {}
   for i = 1, ns.PlainNumber(ask("GetMerchantNumItems")) or 0 do
     local need, id = wanted(i)
     local price, stack, left = merchantInfo(i)
     price, stack = ns.PlainNumber(price), math.max(ns.PlainNumber(stack) or 1, 1)
-    if need > 0 and price and ns.PlainNumber(left) ~= 0 then out[#out + 1] = { index = i, id = id, need = need, unit = price / stack } end
+    if need > 0 and price and ns.PlainNumber(left) ~= 0 then out[#out + 1] = { index = i, id = id, need = need, unit = price / stack, stack = stack } end
   end
   return out
 end
@@ -212,11 +217,16 @@ local function record(run, order, count, cost)
   if order.need <= 0 then table.remove(run.orders, 1) end
 end
 
--- Buys the next chunk (a stack at most) of the first order if you can pay; false when done.
+-- A purchase count rounded up to whole merchant stacks (ammo sells 200 at a time).
+local function wholeStacks(count, stack)
+  return math.ceil(count / stack) * stack
+end
+
+-- Buys the next chunk (a stack at most, in whole merchant stacks) of the first order if you can pay; false when done.
 local function buyChunk(run)
   local order = run.orders[1]
   if not order then return false end
-  local count = math.min(order.need, math.max(ns.PlainNumber(ask("GetMerchantItemMaxStack", order.index)) or 1, 1))
+  local count = wholeStacks(math.min(order.need, math.max(ns.PlainNumber(ask("GetMerchantItemMaxStack", order.index)) or 1, 1)), order.stack)
   local cost = math.ceil(order.unit * count)
   if cost > cash() then return false end
   ask("BuyMerchantItem", order.index, count)

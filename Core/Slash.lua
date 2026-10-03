@@ -168,13 +168,14 @@ local function skinsCommand(rest)
   chat(string.format("Skin for %s %s. /reload to apply.", name, state == "on" and "on" or "off"))
 end
 
--- /fui profile <name>: switch, creating it if new, and offer the reload.
+-- /fui profile <name>: stage the switch, creating the profile if new, and offer the reload that applies it.
 local function useProfile(name)
   if not ns.ValidProfileName(name) then
     return chat("Profile names are 1-32 letters, digits, spaces, - or _.")
   end
   ns.UseProfile(name)
-  ns.OfferReload("This character now uses profile " .. name .. ".")
+  if not ns.PendingProfileName() then return chat("This character already uses profile " .. name .. ".") end
+  ns.OfferReload("This character will use profile " .. name .. " after the reload.")
 end
 
 -- profile subcommands: new, copy, delete, reset.
@@ -195,7 +196,8 @@ local PROFILE_ACTIONS = {
 -- /fui profile [new|copy|delete <name> | reset | <name>]
 local function profileCommand(rest)
   if rest == "" then
-    return chat("Profile: " .. ns.ProfileName() .. "   (all: " .. table.concat(ns.ProfileNames(), ", ") .. ")")
+    local later = ns.PendingProfileName() and ("; " .. ns.PendingProfileName() .. " after a reload") or ""
+    return chat("Profile: " .. ns.ProfileName() .. later .. "   (all: " .. table.concat(ns.ProfileNames(), ", ") .. ")")
   end
   local action, name = rest:match("^(%S+)%s*(.-)$")
   local handler = PROFILE_ACTIONS[action:lower()]

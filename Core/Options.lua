@@ -186,7 +186,7 @@ O.MODULE_INFO = {
   RaidTools = { "Raid tools", "For the leader and assistants: ready check, pull timer, role check, target icons and world markers." },
   ClickCast = { "Click casting", "Cast on a frame with a click or a hover key." },
   ActionBars = { "Action bars", "Eight bars with their own size, layout and visibility." },
-  SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, and the vehicle exit." },
+  SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, places the pet and stance bars, and adds the vehicle exit." },
   Minimap = { "Minimap", "A square minimap with the zone and coordinates." },
   InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo and the time, under the minimap, your XP and gold per hour while you level, and your DPS if you like." },
   AfkScreen = { "AFK screen", "While you're away, the screen dims to a card with your character, zone, time away and XP." },
@@ -297,6 +297,7 @@ local function actionBarRows()
     check("Red when out of range", setting("ActionBars", "rangeTint")),
     check("Hide the default bars", setting("ActionBars", "hideBlizzard", true)),
     check("Restyle the pet, stance and extra action buttons (reload)", skinSpecial()),
+    check("Pet and stance bars in their own movable spots (reload)", setting("SpecialBars", "place", true)),
     check("Vehicle exit button (reload)", setting("SpecialBars", "vehicleExit", true)),
     { "text", "Empty slots stay hidden until you drag a spell or item onto the bars." },
   }
@@ -387,7 +388,7 @@ local function moreRows()
     check("Coordinates under the minimap", setting("Minimap", "coords", true)),
     check("Chat background", setting("Chat", "background", true)), check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
     { "cycle", "Chat text size (follows Text size)", ns.GetModule("Chat").SIZES, chatSizeSetting() },
-    check("Combined bag", setting("Bags", "combined", true)), check("Bank in the ForeverUI look (reload)", setting("Bags", "bank", true)),
+    check("Combined bag (reload)", setting("Bags", "combined", true)), check("Bank in the ForeverUI look (reload)", setting("Bags", "bank", true)),
   }
 end
 
@@ -497,11 +498,18 @@ local function profileListRows()
   return rows
 end
 
+-- "This character uses Default." or, with a switch staged, what it uses until the reload and after it.
+local function currentProfileText()
+  local later = ns.PendingProfileName()
+  if not later then return "This character uses " .. ns.ProfileName() .. "." end
+  return "This character uses " .. ns.ProfileName() .. " until you reload, then " .. later .. "."
+end
+
 -- Profiles, part one: which profile, export/import, reset.
 local function currentProfileRows()
   return {
     { "header", "Profile" },
-    { "text", function() return "This character uses " .. ns.ProfileName() .. "." end },
+    { "text", currentProfileText },
     { "button", "Export profile", function() ns.ShowText("ForeverUI export  Ctrl+C to copy", ns.ExportProfile()) end },
     { "button", "Import", function() ns.ImportDialog() end },
     { "button", "Reset profile", function() ns.ResetProfile(); O.NeedReload() end },
@@ -514,7 +522,7 @@ local function specRows()
   return {
     { "header", "Specialization" },
     { "text", specText },
-    { "button", "Use this profile for this spec", function() ns.SetSpecProfile(ns.ProfileName()); O.Refresh() end },
+    { "button", "Use this profile for this spec", function() ns.SetSpecProfile(ns.SelectedProfileName()); O.Refresh() end },
     { "button", "Stop spec switching", function() ns.SetSpecProfile(nil); O.Refresh() end },
   }
 end

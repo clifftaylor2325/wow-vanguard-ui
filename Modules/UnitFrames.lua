@@ -447,6 +447,7 @@ local function hideBlizzard(name)
   f:UnregisterAllEvents()
   f:Hide()
   f:SetParent(hiddenParent)
+  ns.EditModeReplaced(f)
 end
 -- Shared with modules that replace other game frames (PlayerAuras).
 UF.HideBlizzard = hideBlizzard
