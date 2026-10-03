@@ -77,6 +77,38 @@ it("bags and bank: item quality borders, the search boxes and the bank in the th
   expect(borderOf(off, "__bankItems[1]") == null, "switched off, the bank stays the game's").toBe(true);
 });
 
+// TEST-ONLY spies counting the theme's painting calls, and a bag window the game fills with UpdateItems.
+const BAG_SPY_ENV = `
+  __paint = { Panel = 0, FadeRegions = 0, SetBorder = 0 }
+  function ContainerFrameCombinedBags:UpdateItems() end
+`;
+// Wraps the theme's painting calls in counters (after login, so the addon's own calls go through them).
+const BAG_SPIES = `for name in pairs(__paint) do local real = ns.Theme[name] ns.Theme[name] = function(...) __paint[name] = __paint[name] + 1 return real(...) end end`;
+// The painting counts so far, then reset.
+const painted = (addon) => addon.eval("local c = { __paint.Panel, __paint.FadeRegions, __paint.SetBorder } for k in pairs(__paint) do __paint[k] = 0 end return c");
+
+it("bags: each slot is skinned once, the window on show, a border only when its color changes", () => {
+  const addon = loggedIn(UI_ENV + GEAR_ENV + BAG_SPY_ENV);
+  addon.eval(BAG_SPIES);
+  addon.eval("ContainerFrameCombinedBags:Show()");
+  expect(painted(addon), "opening paints the window and its one slot, and fades the window and the new search box").toEqual([2, 2, 0]);
+  addon.fire("BAG_UPDATE_DELAYED");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect(painted(addon), "bag updates while open repaint nothing").toEqual([0, 0, 0]);
+  addon.eval(`__new = CreateFrame("Button", nil, ContainerFrameCombinedBags) __new.IconBorder = __new:CreateTexture()
+    ContainerFrameCombinedBags.EnumerateValidItems = function() return ipairs({ __item, __new }) end
+    ContainerFrameCombinedBags:UpdateItems()`);
+  expect([painted(addon), addon.eval("return __new.fuiSkinned"), borderOf(addon, "__new") !== undefined], "a slot the game adds is skinned when it fills the slots, the old one is left alone").toEqual([[1, 0, 0], true, true]);
+  addon.eval("for _ = 1, 3 do __item.IconBorder:SetVertexColor(0.1, 0.4, 1) end");
+  expect([painted(addon)[2], borderOf(addon, "__item")], "the same quality color three times: one repaint").toEqual([1, [0.1, 0.4, 1, 1]]);
+  addon.eval("__item.IconBorder:Hide() __item.IconBorder:Hide() __item.IconBorder:SetVertexColor(0.1, 0.4, 1)");
+  expect(painted(addon)[2], "back to the theme's border once, then the color again").toBe(2);
+  addon.eval("local s = { __secret = true } for _ = 1, 2 do __item.IconBorder:SetVertexColor(s, s, s) end __item.IconBorder:SetVertexColor(0.1, 0.4, 1)");
+  expect(painted(addon)[2], "a secret color is never compared: every call repaints, and so does the next plain color").toBe(3);
+  addon.eval("ContainerFrameCombinedBags:Hide() ContainerFrameCombinedBags:Show()");
+  expect(painted(addon), "reopening fades and panels the window again, no slot").toEqual([1, 1, 0]);
+});
+
 it("character pane durability, the mail's Open All button", () => {
   const addon = loggedIn(UNITS_ENV + UI_ENV + STRIP_ENV + GEAR_ENV);
   // A gear slot's durability label: shown, text and color.

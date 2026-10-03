@@ -29,18 +29,42 @@ local function useCombined()
   end
 end
 
+-- Whether any of r, g, b is a secret (never compared).
+local function anySecret(r, g, b)
+  return ns.IsSecret(r) or ns.IsSecret(g) or ns.IsSecret(b)
+end
+
+-- Whether the slot's border already shows r, g, b (nil r: the theme's border).
+local function unchanged(button, r, g, b)
+  local last = button.fuiBorder
+  if last == nil or anySecret(r, g, b) then return false end
+  if r == nil then return last == false end
+  return last ~= false and last[1] == r and last[2] == g and last[3] == b
+end
+
+-- Paints the slot's border r, g, b (nil r: the theme's), only when that is a change.
+local function paintQuality(button, r, g, b)
+  if unchanged(button, r, g, b) then return end
+  local rgb = r ~= nil and { r, g, b } or nil
+  T.SetBorder(button, rgb)
+  button.fuiBorder = rgb or false
+  if anySecret(r, g, b) then button.fuiBorder = nil end
+end
+
 -- Puts the item's quality color (the game sets it on its own border, which is
 -- faded here) on ForeverUI's border instead; no quality, the theme's border.
 local function followQuality(button)
   local border = button.IconBorder
-  if type(border) ~= "table" or button.fuiQuality or type(hooksecurefunc) ~= "function" then return end
-  button.fuiQuality = true
-  hooksecurefunc(border, "SetVertexColor", function(_, r, g, b) T.SetBorder(button, { r, g, b }) end)
-  hooksecurefunc(border, "Hide", function() T.SetBorder(button, nil) end)
+  if type(border) ~= "table" or type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(border, "SetVertexColor", function(_, r, g, b) paintQuality(button, r, g, b) end)
+  hooksecurefunc(border, "Hide", function() paintQuality(button, nil) end)
 end
 
--- Fades an item button's slot art and gives it a thin border in its quality color.
+-- Fades an item button's slot art and gives it a thin border in its quality
+-- color. Once per button: the game reuses its buttons and never undoes this.
 local function skinItem(button)
+  if button.fuiSkinned then return end
+  button.fuiSkinned = true
   for _, key in ipairs(ITEM_ART) do
     local region = button[key] or (button["Get" .. key] and button["Get" .. key](button))
     if type(region) == "table" and region.SetAlpha then region:SetAlpha(0) end
@@ -51,15 +75,15 @@ local function skinItem(button)
   followQuality(button)
 end
 
--- Every item button the window shows right now (a bag window's, or the bank panel's pool).
-local function items(frame)
-  local out, pool = {}, frame.itemButtonPool
+-- Skins every item button the window shows right now (a bag window's, or the
+-- bank panel's pool) that isn't skinned yet.
+local function skinItems(frame)
+  local pool = frame.itemButtonPool
   if type(frame.EnumerateValidItems) == "function" then
-    for _, button in frame:EnumerateValidItems() do out[#out + 1] = button end
+    for _, button in frame:EnumerateValidItems() do skinItem(button) end
   elseif type(pool) == "table" and type(pool.EnumerateActive) == "function" then
-    for button in pool:EnumerateActive() do out[#out + 1] = button end
+    for button in pool:EnumerateActive() do skinItem(button) end
   end
-  return out
 end
 
 -- The game's item search box in the theme, where it has one.
@@ -68,21 +92,19 @@ local function skinSearch(name)
   if type(box) == "table" and box.SetText then T.EditBox(box) end
 end
 
--- Skins the window and its current item buttons. Safe to repeat: slots
--- change as bags are swapped, and painting is idempotent.
+-- Skins the window and its item buttons, on every show (the window's art is
+-- faded again in case the game restored it; slots already skinned are skipped).
 function BG.SkinWindow(frame)
   T.FadeRegions(frame)
   if frame.NineSlice then T.FadeRegions(frame.NineSlice) end
   T.Panel(frame, { shadow = true })
-  for _, button in ipairs(items(frame)) do
-    skinItem(button)
-  end
+  skinItems(frame)
   skinSearch("BagItemSearchBox")
 end
 
 -- The bank's current tab: its item buttons in the theme (the window itself is skinned on show).
 function BG.SkinBankItems()
-  for _, button in ipairs(items(_G.BankPanel)) do skinItem(button) end
+  skinItems(_G.BankPanel)
   skinSearch("BankItemSearchBox")
 end
 
@@ -106,15 +128,16 @@ function BG.AddSort(frame)
   BG.sort:SetScript("OnClick", function() sort() end)
 end
 
--- Module entry point (Core/Modules.lua): combined bags on, skin on every show.
+-- Module entry point (Core/Modules.lua): combined bags on, the window skinned
+-- on every show, and slots the game adds (a bag swapped in) when it fills them.
 function BG.Enable(settings)
   if settings.combined then useCombined() end
   if settings.bank then watchBank() end
   local frame = combinedFrame()
-  if not frame then
-    return
-  end
+  if not frame then return end
   BG.AddSort(frame)
   frame:HookScript("OnShow", BG.SkinWindow)
-  ns.On("BAG_UPDATE_DELAYED", function() if frame:IsShown() then BG.SkinWindow(frame) end end)
+  if type(frame.UpdateItems) == "function" and type(hooksecurefunc) == "function" then
+    hooksecurefunc(frame, "UpdateItems", skinItems)
+  end
 end
