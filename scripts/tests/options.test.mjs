@@ -201,24 +201,19 @@ it("choice fallback, key capture and the mouse wheel", () => {
   expect(fallback === "a", "a choice that is not in the list wraps to the first").toBeTruthy();
   addon.eval('ns.Options.Show("clickcast")');
   const captured = addon.eval(`
-    __click("Set key")
-    local cap, cycle
-    for _, w in ipairs(__wfgStub.frames) do
-      if w.capturing then cap = w end
-      if w.caption == "Action" then cycle = w end
-    end
+    local W, CC, got, action = ns.Widgets, ns.GetModule("ClickCast"), nil, "spell"
+    -- TEST-ONLY widgets: a key capture and an action cycle, as a page would build them.
+    local cap = W.KeyCapture(UIParent, "Set key", function(k) got = CC.KeyText(k) end)
+    local cycle = W.Cycle(UIParent, "Action", { { "spell", "Spell" }, { "macro", "Macro" } }, function() return action end, function(v) action = v end)
+    cap:GetScript("OnClick")(cap)
     cap:GetScript("OnKeyDown")(cap, "F")
-    local key = "F"
-    for _, w in ipairs(__wfgStub.frames) do if w.keyText and w.keyText:GetText() ~= "" then key = w.keyText:GetText() end end
-    __click("Set key")
-    for _, w in ipairs(__wfgStub.frames) do if w.capturing then cap = w end end
+    local key = got
+    cap:GetScript("OnClick")(cap)
     cap:GetScript("OnKeyDown")(cap, "ESCAPE")
     local cancelled = cap.capturing == false
-    __click("Set key")
-    for _, w in ipairs(__wfgStub.frames) do if w.capturing then cap = w end end
+    cap:GetScript("OnClick")(cap)
     cap:GetScript("OnMouseWheel")(cap, -1)
-    local wheel = ""
-    for _, w in ipairs(__wfgStub.frames) do if w.keyText then wheel = w.keyText:GetText() end end
+    local wheel = got
     cycle:GetScript("OnClick")(cycle)
     local stepped = cycle.text:GetText()
     local calls = 0
