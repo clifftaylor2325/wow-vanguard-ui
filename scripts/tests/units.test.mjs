@@ -192,6 +192,23 @@ it("power ticks: the five-second rule after a mana spell", () => {
   expect(spark(addon)[0], "a client that can't say what a spell costs: no spark").toBe(false);
 });
 
+it("power ticks: the spark moves on one anchor, as tall as the bar, with no anchors cleared per frame", () => {
+  const addon = loggedIn(UNITS_ENV + TICKS_ENV);
+  addon.eval(`local PT = ns.GetModule('PowerTicks')
+    PT.bar:SetWidth(200)
+    __clears, __sets = 0, 0
+    local set = PT.spark.SetPoint
+    -- TEST-ONLY spies: the spark's anchor calls.
+    PT.spark.ClearAllPoints = function() __clears = __clears + 1 end
+    PT.spark.SetPoint = function(...) __sets = __sets + 1 return set(...) end`);
+  addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90001);
+  addon.eval("for i = 1, 10 do __wfgStub.update(0.25) end");
+  const out = addon.eval(`local PT = ns.GetModule('PowerTicks') local n = 0 for _ in pairs(PT.spark.__points) do n = n + 1 end
+    return { __clears, __sets, n, PT.spark:GetHeight() == PT.bar:GetHeight() and PT.bar:GetHeight() > 0 }`);
+  expect(out, "the start and 10 frames: 11 moves of its one anchor, none cleared; as tall as the bar").toEqual([0, 11, 1, true]);
+  expect(spark(addon), "and it is where the sweep is (halfway after 2.5 s)").toEqual([true, 100, true]);
+});
+
 it("power ticks: energy every two seconds, and forms switch", () => {
   const addon = loggedIn(UNITS_ENV + TICKS_ENV + "__ptype = 3");
   addon.eval("ns.GetModule('PowerTicks').bar:SetWidth(200)");

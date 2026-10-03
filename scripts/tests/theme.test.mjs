@@ -170,3 +170,20 @@ it("text roles, sheen and shadows", () => {
   expect(parts.sheen === 1 && isTok(addon, parts.sheenColor, "sheen"), "and a sheen one pixel inside its top edge").toBeTruthy();
   expect(addon.eval("local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.__parent == ForeverUI_Options and w.__texture and w.__texture:find('Shadow') then n = n + 1 end end return n") === 8, "the options window casts a shadow").toBeTruthy();
 });
+
+it("fading a frame's art: template textures go, ForeverUI's own parts and kept ones stay, call after call", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local T = ns.Theme
+    local a = CreateFrame("Frame", nil, UIParent)
+    local art1, art2, keep, label = a:CreateTexture(), a:CreateTexture(), a:CreateTexture(), a:CreateFontString()
+    T.Panel(a)
+    T.FadeRegions(a, { [keep] = true })
+    local faded = 0 for _, r in ipairs({ a:GetRegions() }) do if r:GetAlpha() == 0 then faded = faded + 1 end end
+    art1:SetAlpha(1)
+    local b = CreateFrame("Frame", nil, UIParent)
+    local other = b:CreateTexture()
+    T.FadeRegions(b)
+    T.FadeRegions(CreateFrame("Frame", nil, UIParent))
+    return { faded, art2:GetAlpha(), keep:GetAlpha(), label:GetAlpha(), other:GetAlpha(), art1:GetAlpha() }`);
+  expect(out, "only the two template textures fade; a later call on another frame touches only that frame's").toEqual([2, 0, 1, 1, 0, 1]);
+});

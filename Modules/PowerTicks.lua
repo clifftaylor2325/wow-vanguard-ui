@@ -29,19 +29,19 @@ function PT.Fraction(now)
   if gone < length then return gone / length end
 end
 
--- Moves the spark along the bar; it hides, and the timer stops, once a sweep is over.
+-- Moves the spark along the bar (one anchor, moved in place each frame); it
+-- hides, and the timer stops, once a sweep is over.
 function PT.Tick()
   local at = PT.Fraction(GetTime())
   PT.spark:SetShown(at ~= nil)
   if not at then PT.driver:SetScript("OnUpdate", nil) return end
-  PT.spark:ClearAllPoints()
   PT.spark:SetPoint("TOP", PT.bar, "TOPLEFT", at * PT.bar:GetWidth(), 0)
-  PT.spark:SetPoint("BOTTOM", PT.bar, "BOTTOMLEFT", at * PT.bar:GetWidth(), 0)
 end
 
--- Starts a sweep from now.
+-- Starts a sweep from now; the spark is as tall as the bar.
 function PT.Start()
   PT.from = GetTime()
+  PT.spark:SetHeight(PT.bar:GetHeight())
   PT.driver:SetScript("OnUpdate", PT.Tick)
   PT.Tick()
 end

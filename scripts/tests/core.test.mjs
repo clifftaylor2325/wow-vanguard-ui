@@ -678,6 +678,19 @@ it("events: a game handler that fails inside a failing handler keeps the record,
   expect(addon.eval('ns.Try("TEST-ONLY again", error, "second") return __calls'), "the next failure is forwarded again (the guard did not stay set)").toBe(2);
 });
 
+it("secret checks: the client's check is chosen once and called bare, with no pcall per value", () => {
+  const addon = loggedIn(`__asked = 0
+    -- TEST-ONLY check: counts each question.
+    issecretvalue = function(v) __asked = __asked + 1 return type(v) == "table" and v.__secret == true end`);
+  const out = addon.eval(`local calls, raw = 0, pcall
+    __asked = 0
+    pcall = function(...) calls = calls + 1 return raw(...) end
+    local answers = { ns.IsSecret({ __secret = true }), ns.IsSecret(5), ns.PlainNumber(7) }
+    pcall = raw
+    return { calls, __asked, answers }`);
+  expect(out, "three values asked: three calls to the client's check, none through pcall").toEqual([0, 3, [true, false, 7]]);
+});
+
 // TEST-ONLY unit-event listener: notes "event:unit:arg" for each event it hears; __took() hands the notes over.
 const NOTE_LUA = `
   __heard = {}
