@@ -24,15 +24,21 @@ end
 
 -- One profile ------------------------------------------------------------------------------
 
--- Use, Copy here and Delete, right to left (none on the profile in use).
-local function addProfileButtons(r, name)
-  if name == ns.ProfileName() then return end
+-- Delete and Copy here, right to left: they change settings for good, so they ask first.
+local function addEditButtons(r, name)
   r.delete = W.Danger(r, "Delete", function() ns.DeleteProfile(name) O.RebuildPage("profiles") end, SMALL)
   r.delete:SetPoint("RIGHT", -8, 0)
   r.copy = W.Danger(r, "Copy here", function() ns.CopyProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL)
   r.copy:SetPoint("RIGHT", r.delete, "LEFT", -6, 0)
+end
+
+-- Use, Copy here and Delete, right to left. None on the profile that will be in use after the reload;
+-- the one running until then (when a switch is staged) only gets Use, to take the switch back.
+local function addProfileButtons(r, name)
+  if name == ns.SelectedProfileName() then return end
+  if name ~= ns.ProfileName() then addEditButtons(r, name) end
   r.use = W.Primary(r, "Use", function() ns.UseProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL)
-  r.use:SetPoint("RIGHT", r.copy, "LEFT", -6, 0)
+  if r.copy then r.use:SetPoint("RIGHT", r.copy, "LEFT", -6, 0) else r.use:SetPoint("RIGHT", -8, 0) end
 end
 
 -- A row with a caption on the left.
@@ -45,17 +51,24 @@ local function captioned(parent, width, text, color)
   return r
 end
 
+-- A profile's name, marked when it is in use, in use until the reload, or the one that takes over then.
+local function profileLabel(name)
+  if name == ns.PendingProfileName() then return name .. "  (after reload)" end
+  if name ~= ns.ProfileName() then return name end
+  return name .. (ns.PendingProfileName() and "  (in use until reload)" or "  (in use)")
+end
+
 -- One profile: its name (marked when it's the one in use) and its buttons.
 local function profileRow(parent, row, width)
   local name = row[2]
-  local r = captioned(parent, width, name == ns.ProfileName() and (name .. "  (in use)") or name)
+  local r = captioned(parent, width, profileLabel(name))
   addProfileButtons(r, name)
   return r
 end
 
 -- A new profile ----------------------------------------------------------------------------
 
--- Makes the named profile and switches to it (on reload), or says why it can't.
+-- Makes the named profile and stages the switch to it (it applies on reload), or says why it can't.
 local function create(r)
   local name = r.input:GetText()
   if not ns.NewProfile(name) then

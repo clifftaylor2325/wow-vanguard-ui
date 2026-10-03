@@ -448,6 +448,16 @@ export const STRIPS_ENV = `
   CreateFrame("Button", "EJMicroButton", MicroMenuContainer)
 `;
 
+// TEST-ONLY pet and stance bars, as the client has them, with the game's Edit Mode spot.
+export const SPECIAL_BARS_ENV = `
+  PetActionBar = CreateFrame("Frame", "PetActionBar", UIParent)
+  PetActionBar:SetSize(509, 43)
+  PetActionBar:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+  StanceBar = CreateFrame("Frame", "StanceBar", UIParent)
+  StanceBar:SetSize(30, 30)
+  StanceBar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 0)
+`;
+
 // TEST-ONLY client whose AuraContainer has every engine method except `name`.
 export const lacking = (name) => `
   local real = CreateFrame

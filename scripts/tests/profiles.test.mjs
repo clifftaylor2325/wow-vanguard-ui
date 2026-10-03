@@ -54,7 +54,7 @@ it("export and import", () => {
   const dst = loggedIn(RETAIL);
   dst.slash("import");
   dst.eval(`ForeverUI_TextEdit:SetText(${JSON.stringify(text)}); ForeverUI_TextDialog.primary:GetScript("OnClick")(ForeverUI_TextDialog.primary)`);
-  expect(dst.eval("return ForeverUICharDB.profile") === "Imported", "a whole-profile import becomes a new profile this character uses").toBeTruthy();
+  expect(dst.eval("return { ForeverUICharDB.profile, ForeverUICharDB.pendingProfile }"), "a whole-profile import becomes a new profile this character uses after the reload").toEqual(["Default", "Imported"]);
   expect(dst.eval("return ForeverUIDB.profiles.Imported.positions.uf_player.x") === 1 && dst.eval("return ForeverUIDB.profiles.Imported.theme.accent[1]") === 1, "with every setting").toBeTruthy();
   expect(dst.eval("return ForeverUI_Reload:IsShown()") && /Reload/.test(dst.eval("return ForeverUI_Reload.accept.text:GetText()")), "and a reload is offered").toBeTruthy();
   dst.eval('ReloadUI = function() __reloaded = true end; ForeverUI_Reload.accept:GetScript("OnClick")(ForeverUI_Reload.accept)');
@@ -102,7 +102,7 @@ it("spec profiles", () => {
   expect(relog.eval("return ForeverUICharDB.profile") === "Healer" && relog.eval("return select(2, ns.Theme.Accent())") === 1, "logging in as that spec uses its profile before modules load").toBeTruthy();
   relog.eval("__spec = 1; ForeverUICharDB.specProfiles[1] = 'Default'");
   relog.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
-  expect(relog.eval("return ForeverUICharDB.profile") === "Default" && relog.eval("return ForeverUI_Reload:IsShown()") === true, "changing spec switches profile and offers a reload").toBeTruthy();
+  expect([relog.eval("return ForeverUICharDB.profile"), relog.eval("return ForeverUICharDB.pendingProfile"), relog.eval("return ForeverUI_Reload:IsShown()")], "changing spec stages its profile and offers a reload").toEqual(["Healer", "Default", true]);
   addon.slash("spec off");
   expect(addon.eval("return ForeverUICharDB.specProfiles[2]") === null, "/fui spec off stops switching").toBeTruthy();
 });
@@ -121,7 +121,7 @@ it("profile copy, empty export and a taken import name", () => {
     ForeverUIDB.profiles.Imported = {}
     return ns.ImportProfile(text)
   `);
-  expect(/Imported 2/.test(imported) && addon.eval("return ForeverUICharDB.profile") === "Imported 2", "a second whole-profile import takes the next free name").toBeTruthy();
+  expect(/Imported 2/.test(imported) && addon.eval("return ForeverUICharDB.pendingProfile") === "Imported 2", "a second whole-profile import takes the next free name").toBeTruthy();
 });
 
 it("a profile string with an unterminated quote", () => {
@@ -135,4 +135,51 @@ it("a profile string with an unterminated quote", () => {
     return why
   `);
   expect(/can't be read/.test(err), "an unterminated string inside a profile string is refused").toBeTruthy();
+});
+
+// TEST-ONLY saved variables: Raid has its own accent, Default does not; a switch to Raid was staged last session.
+const STAGED = 'ForeverUIDB = { version = 1, profiles = { Default = {}, Raid = { theme = { accent = { 0, 1, 0 } } } } }\nForeverUICharDB = { profile = "Default", pendingProfile = "Raid" }';
+
+it("a staged profile switch applies at the next load, and until then the running profile is the one edited", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  const before = addon.eval("local t = ns.Settings('theme') return { t == ns.Profile().theme, ns.ProfileName() }");
+  addon.slash("profile Raid");
+  expect(addon.eval("return { ns.ProfileName(), ns.SelectedProfileName(), ns.PendingProfileName(), ns.Settings('theme') == ns.Profile().theme, ForeverUI_Reload:IsShown() }"), "staging changes neither the running profile nor its cached tables, and offers the reload")
+    .toEqual(["Default", "Raid", "Raid", true, true]);
+  addon.slash("accent ff8000");
+  expect(addon.eval("return { ForeverUIDB.profiles.Default.theme ~= nil, ForeverUIDB.profiles.Raid.theme == nil }"), "an accent change lands in the profile on screen, not the staged one").toEqual([true, true]);
+  expect(before, "the cache held the running profile before staging").toEqual([true, "Default"]);
+  addon.clearChat();
+  addon.slash("profile");
+  expect(chatHas(addon, /Profile: Default; Raid after a reload {3}\(all: Default, Raid\)/), "/fui profile says what comes after the reload").toBeTruthy();
+  addon.slash("profile Default");
+  expect([addon.eval("return ns.PendingProfileName()"), chatHas(addon, /already uses profile Default/)], "choosing the running profile again takes the switch back").toEqual([null, true]);
+  const next = createAddon({ savedVariables: STAGED });
+  next.login();
+  expect(next.eval("return { ForeverUICharDB.profile, ForeverUICharDB.pendingProfile == nil, ns.ProfileName(), ns.SelectedProfileName(), (select(2, ns.Theme.Accent())) }"), "the next load applies it, clears it, and modules get the staged profile's tables")
+    .toEqual(["Raid", true, "Raid", "Raid", 1]);
+  expect(next.eval("return ns.Settings('theme') == ForeverUIDB.profiles.Raid.theme"), "the settings cache hands out the new profile's tables").toBe(true);
+});
+
+it("a staged profile that no longer exists is created empty when it is applied", () => {
+  const addon = createAddon({ savedVariables: 'ForeverUIDB = { version = 1, profiles = { Default = {} } }\nForeverUICharDB = { profile = "Default", pendingProfile = "Gone" }' });
+  addon.login();
+  expect(addon.eval("return { ns.ProfileName(), ForeverUIDB.profiles.Gone ~= nil }"), "the switch still happens, onto an empty profile").toEqual(["Gone", true]);
+});
+
+it("the spec change events stage the spec's profile, whatever they pass", () => {
+  const env = "GetSpecialization = function() return __spec end __spec = 2";
+  const addon = createAddon({ savedVariables: 'ForeverUIDB = { version = 1, profiles = { Default = {}, Healer = {} } }\nForeverUICharDB = { profile = "Default", specProfiles = { [2] = "Healer" } }' });
+  addon.eval(env);
+  addon.login();
+  expect(addon.eval("return { ForeverUICharDB.profile, ForeverUICharDB.pendingProfile == nil }"), "login applies the spec's profile at once").toEqual(["Healer", true]);
+  addon.eval("__spec = 1 ForeverUICharDB.specProfiles[1] = 'Default'");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "target");
+  expect(addon.eval("return ForeverUICharDB.pendingProfile"), "another unit's spec change is ignored").toBe(null);
+  addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 1, 2);
+  expect([addon.eval("return ForeverUICharDB.pendingProfile"), addon.eval("return ForeverUI_Reload:IsShown()")], "ACTIVE_TALENT_GROUP_CHANGED passes group numbers and still stages the profile").toEqual(["Default", true]);
+  addon.eval("__spec = 2");
+  addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 2, 1);
+  expect(addon.eval("return ForeverUICharDB.pendingProfile"), "changing back to the running profile's spec takes the switch back").toBe(null);
 });

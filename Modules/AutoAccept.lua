@@ -41,6 +41,7 @@ function AA.OnResurrect(_, who)
   AcceptResurrect()
   closePrompt("RESURRECT")
   closePrompt("RESURRECT_NO_SICKNESS")
+  closePrompt("RESURRECT_NO_TIMER")
   ns.Chat("Accepted a resurrection from " .. plain(who, "someone") .. ".")
 end
 

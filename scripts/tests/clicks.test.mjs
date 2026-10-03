@@ -18,6 +18,11 @@ it("click casting", () => {
   expect(b.t === "spell" && b.s === "TEST-ONLY Renew", "Ctrl + Right click on a raid frame casts the spell (ctrl-type2 / ctrl-spell2)").toBeTruthy();
   expect(b.ht === "spell" && b.hs === "TEST-ONLY Flash Heal" && b.mt === "macro" && /@mouseover/.test(b.mx), "hover keys click virtual buttons that cast the spell or run the macro").toBeTruthy();
   expect(/SetBindingClick\(true, "SHIFT-1", self, "fui2"\)/.test(b.enter) && /"MOUSEWHEELUP", self, "fui3"/.test(b.enter), "entering a frame binds the hover keys to it").toBeTruthy();
+  // The game's lookup for <prefix>type<suffix>: the prefixed name, then "*", then the bare name (the order SecureButton_GetModifiedAttribute uses).
+  const lookup = (prefix, name, suffix) => addon.eval(`local b = ForeverUI_RaidUnitButton1
+    return b:GetAttribute(${JSON.stringify(prefix + name + suffix)}) or b:GetAttribute(${JSON.stringify("*" + name + suffix)}) or b:GetAttribute(${JSON.stringify(name)})`);
+  expect(["", "shift-", "ctrl-shift-"].map((held) => lookup(held, "spell", "-fui2")), "a hover key finds its spell whatever modifiers are held").toEqual(Array(3).fill("TEST-ONLY Flash Heal"));
+  expect(addon.eval('return ForeverUI_RaidUnitButton1:GetAttribute("type-fui2")'), "no unprefixed hover attribute is left behind").toBe(null);
   expect(!/BUTTON2/.test(b.enter), "mouse bindings aren't key bindings").toBeTruthy();
   expect(b.leave === "self:ClearBindings()" && b.hide === "self:ClearBindings()", "leaving or hiding the frame releases the keys").toBeTruthy();
   addon.eval(`${CC}.Remove("ctrl-BUTTON2")`);

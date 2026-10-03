@@ -131,7 +131,7 @@ local function closeGame()
   call(CloseQuest)
 end
 
--- The player closed the dialog (Goodbye, Escape): the NPC talk ends too.
+-- The player closed the dialog (Goodbye, Escape): the NPC talk ends too (see QD.OnHide).
 function QD.Close()
   QD.frame:Hide()
 end
@@ -143,9 +143,13 @@ function QD.Quiet()
   QD.quiet = false
 end
 
--- The dialog hid: unless the game hid it, end the talk.
+-- The dialog hid: the talk ends only when the player closed it (Goodbye, Escape).
+-- Not when the game ended the talk (QD.Quiet), and not when the whole UI went
+-- away (Alt-Z hides UIParent, which runs OnHide on its children): the dialog is
+-- still marked shown then, so it comes back with the UI and the talk goes on.
 function QD.OnHide()
-  if not QD.quiet then closeGame() end
+  if QD.quiet or QD.frame:IsShown() then return end
+  closeGame()
 end
 
 -- Pages ----------------------------------------------------------------------------------------

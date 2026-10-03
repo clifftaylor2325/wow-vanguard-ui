@@ -10,6 +10,9 @@ local T = ns.Theme
 local QP = ns.QuestParts
 local QD = ns.GetModule("QuestDialog")
 
+-- The body's gaps: around its content, above the objectives, above the numbered lines.
+local BODY_PAD, OBJECTIVES_GAP, LINES_GAP = 2, 8, 10
+
 -- Building -------------------------------------------------------------------------------------
 
 -- The NPC's portrait, name, and the quest title along the top.
@@ -26,12 +29,6 @@ local function addHeader(f)
   f.crest:SetPoint("TOPRIGHT", f, "TOPRIGHT", -12, -6)
 end
 
--- Scrolls the body by the mouse wheel, within its range.
-local function onWheel(scroll, delta)
-  local range = ns.PlainNumber(scroll:GetVerticalScrollRange()) or 0
-  scroll:SetVerticalScroll(math.max(0, math.min(range, (scroll:GetVerticalScroll() or 0) - delta * 24)))
-end
-
 -- A text in the body, the body's width, wrapping.
 local function bodyText(child, color)
   local fs = T.Text(child:CreateFontString(nil, "OVERLAY"), "label", color)
@@ -40,15 +37,21 @@ local function bodyText(child, color)
   return fs
 end
 
--- The scrolling body: the text, the objectives under it, then the numbered lines.
-local function addBody(f)
+-- The scroll frame for the body (the wheel scrolls it) and the child its contents sit on.
+local function addScroll(f)
   f.scroll = CreateFrame("ScrollFrame", nil, f)
   f.scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -60)
   f.scroll:SetSize(QD.W - 24, QD.BODY_H)
-  f.scroll:SetScript("OnMouseWheel", onWheel)
+  f.scroll:EnableMouseWheel(true)
+  f.scroll:SetScript("OnMouseWheel", QP.Wheel)
   f.child = CreateFrame("Frame", nil, f.scroll)
   f.child:SetSize(QD.W - 24, QD.BODY_H)
   f.scroll:SetScrollChild(f.child)
+end
+
+-- The scrolling body: the text, the objectives under it, then the numbered lines.
+local function addBody(f)
+  addScroll(f)
   f.text, f.objectives = bodyText(f.child, "text"), bodyText(f.child, "text2")
   f.text:SetPoint("TOPLEFT", f.child, "TOPLEFT", 4, -2)
   f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -8)
@@ -107,12 +110,22 @@ local function renderLines(f, lines)
   end
 end
 
--- The text and objectives, then the lines; scrolled back to the top.
+-- Sizes the body's scroll child to what is in it (the text, the objectives under
+-- it, then the lines), never shorter than the view, so the wheel can reach it all.
+local function fitBody(f, lineCount)
+  local h = BODY_PAD + f.text:GetStringHeight()
+  if f.objectives:IsShown() then h = h + OBJECTIVES_GAP + f.objectives:GetStringHeight() end
+  if lineCount > 0 then h = h + LINES_GAP + lineCount * QP.LINE_H end
+  f.child:SetHeight(math.max(QD.BODY_H, h + BODY_PAD))
+end
+
+-- The text and objectives, then the lines; sized to fit and scrolled back to the top.
 local function renderBody(f, p)
   f.text:SetText(QP.Plain(p.text))
   f.objectives:SetShown(p.objectives ~= nil)
   f.objectives:SetText(p.objectives and ("Objectives:  " .. QP.Plain(p.objectives)) or "")
   renderLines(f, p.lines)
+  fitBody(f, #(p.lines or {}))
   f.scroll:SetVerticalScroll(0)
 end
 

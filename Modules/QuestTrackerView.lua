@@ -1,7 +1,8 @@
 -- The quest tracker's look (Modules/QuestTracker.lua gathers the quests): a
 -- "Quests" header with the count, a brass line and a collapse arrow; a block
 -- per quest; "+3 more" when they don't all fit; and the quest items as the
--- game's secure item buttons beside their quests (placed out of combat).
+-- game's secure item buttons beside their quests (placed out of combat), each with
+-- its cooldown, a red tint out of range and the game's tooltip.
 
 local ADDON, ns = ...
 
@@ -9,7 +10,7 @@ local T = ns.Theme
 local QP = ns.QuestParts
 local QT = ns.GetModule("QuestTracker")
 
-QT.HEADER, QT.TITLE, QT.LINE, QT.GAP, QT.ITEM, QT.MAX_ITEMS = 22, 16, 14, 6, 22, 8
+QT.HEADER, QT.TITLE, QT.LINE, QT.GAP, QT.ITEM, QT.MAX_ITEMS, QT.RANGE_EVERY = 22, 16, 14, 6, 22, 8, 0.25
 QT.items, QT.shown = {}, {}
 
 -- Building -------------------------------------------------------------------------------------
@@ -147,7 +148,10 @@ local function showMore(f, hidden, y)
   f.more:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -y)
 end
 
--- Redraws the tracker from the quests you watch.
+-- Redraws the tracker from the quests you watch (also in combat, so counts keep
+-- up with a fight), then places the quest items: those are secure buttons that
+-- can't be moved in combat, so they keep their places until combat ends and one
+-- keyed placement runs then, however many redraws asked for it.
 function QT.Refresh()
   local f, quests = QT.frame, QT.Quests()
   f.count:SetText(#quests > 0 and tostring(#quests) or "")
@@ -163,6 +167,64 @@ end
 
 -- Item buttons ---------------------------------------------------------------------------------
 
+-- A quest item's place in the log, for the button showing it (nil when the log no longer has it).
+local function indexOf(b)
+  return b.questID and QT.LogIndex(b.questID)
+end
+
+-- Draws an item's cooldown: the swipe while one runs, nothing otherwise (hidden numbers go straight to the widget).
+local function paintCooldown(b, start, duration)
+  if ns.IsSecret(start) or ns.IsSecret(duration) then return b.cooldown:SetCooldown(start, duration) end
+  if type(start) == "number" and type(duration) == "number" and duration > 0 then b.cooldown:SetCooldown(start, duration) else b.cooldown:Clear() end
+end
+
+-- Shows the game's cooldown for the button's quest item (a child frame: fine in combat).
+function QT.UpdateCooldown(b)
+  local index = indexOf(b)
+  if index and type(GetQuestLogSpecialItemCooldown) == "function" then return paintCooldown(b, GetQuestLogSpecialItemCooldown(index)) end
+  b.cooldown:Clear()
+end
+
+-- Every shown item button's cooldown (the bags' cooldowns changed).
+function QT.UpdateCooldowns()
+  for _, b in ipairs(QT.items) do
+    if b:IsShown() then QT.UpdateCooldown(b) end
+  end
+end
+
+-- Tints the item's icon red while it is out of range of its target (the game says 0 out of range, 1 in range, nothing when it has no range).
+function QT.UpdateRange(b)
+  local index = indexOf(b)
+  local range = index and type(IsQuestLogSpecialItemInRange) == "function" and IsQuestLogSpecialItemInRange(index)
+  T.Tint(b.icon, not ns.IsSecret(range) and range == 0 and "outOfRange" or "white")
+end
+
+-- The game's tooltip for the quest item.
+function QT.ItemTooltip(b)
+  local tip, index = GameTooltip, indexOf(b)
+  if not index or not tip or type(tip.SetQuestLogSpecialItem) ~= "function" then return end
+  tip:SetOwner(b, "ANCHOR_RIGHT")
+  tip:SetQuestLogSpecialItem(index)
+  tip:Show()
+end
+
+-- One frame of a button: the range check, a few times a second.
+local function rangeTick(b, dt)
+  b.fuiWait = (b.fuiWait or 0) - dt
+  if b.fuiWait > 0 then return end
+  b.fuiWait = QT.RANGE_EVERY
+  QT.UpdateRange(b)
+end
+
+-- The button's cooldown swipe over the icon, its tooltip and its range check.
+local function wireItem(b)
+  b.cooldown = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
+  b.cooldown:SetAllPoints()
+  b:SetScript("OnEnter", QT.ItemTooltip)
+  b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+  b:SetScript("OnUpdate", rangeTick)
+end
+
 -- Item button i (made the first time): the game's secure button that uses an item. It sits on
 -- UIParent, not in the tracker, so the tracker can hide in combat without touching it.
 local function itemButton(i)
@@ -173,29 +235,59 @@ local function itemButton(i)
   b.icon = T.Crop(b:CreateTexture(nil, "ARTWORK"))
   b.icon:SetPoint("TOPLEFT", 2, -2)
   b.icon:SetPoint("BOTTOMRIGHT", -2, 2)
+  wireItem(b)
   QT.items[i] = b
   return b
 end
 
--- Gives item button n a quest's item and puts it beside the quest's block.
-local function placeItem(n, shown)
-  local b = itemButton(n)
+-- The button for a quest's item: the one it had before, else a free one, else a new one.
+local function buttonFor(id)
+  for _, b in ipairs(QT.items) do
+    if b.questID == id then return b end
+  end
+  for _, b in ipairs(QT.items) do
+    if b.questID == nil then return b end
+  end
+  return itemButton(#QT.items + 1)
+end
+
+-- Gives a button a quest's item and puts it beside the quest's block.
+local function placeItem(b, shown)
+  b.questID = shown.quest.id
   b:SetAttribute("type", "item")
   b:SetAttribute("item", shown.quest.item.link)
   b.icon:SetTexture(shown.quest.item.texture)
   b:ClearAllPoints()
   b:SetPoint("TOPRIGHT", shown.block, "TOPLEFT", -4, 0)
   b:Show()
+  QT.UpdateCooldown(b)
+  QT.UpdateRange(b)
 end
 
--- Puts each shown quest's item beside it (secure buttons: only out of combat).
-function QT.PlaceItems()
-  for _, b in ipairs(QT.items) do b:Hide() end
-  local n = 0
+-- The shown quests that have an item (as many as there are buttons for), and their ids as a set.
+local function itemQuests()
+  local list, ids = {}, {}
   for _, shown in ipairs(QT.shown) do
-    if shown.quest.item and n < QT.MAX_ITEMS then
-      n = n + 1
-      placeItem(n, shown)
+    if shown.quest.item and #list < QT.MAX_ITEMS then
+      list[#list + 1] = shown
+      ids[shown.quest.id] = true
     end
   end
+  return list, ids
+end
+
+-- Hides every item button, and frees those whose quest no longer has an item showing.
+local function release(ids)
+  for _, b in ipairs(QT.items) do
+    b:Hide()
+    if not ids[b.questID] then b.questID = nil end
+  end
+end
+
+-- Puts each shown quest's item beside it. Each quest keeps its own button while it
+-- has an item showing (secure buttons: this runs only out of combat).
+function QT.PlaceItems()
+  local list, ids = itemQuests()
+  release(ids)
+  for _, shown in ipairs(list) do placeItem(buttonFor(shown.quest.id), shown) end
 end

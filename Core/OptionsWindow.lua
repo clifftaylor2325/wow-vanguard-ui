@@ -286,7 +286,7 @@ end
 
 -- The profile picker: picking one switches on reload.
 local function profileDropdown(parent)
-  return W.Dropdown(parent, profileChoices, ns.ProfileName, function(v) ns.UseProfile(v); O.NeedReload(); O.RebuildPage("profiles") end, 150)
+  return W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) ns.UseProfile(v); O.NeedReload(); O.RebuildPage("profiles") end, 150)
 end
 
 -- Enter in the search box: opens the first page that matches and jumps to the row.

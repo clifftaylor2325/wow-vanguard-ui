@@ -373,16 +373,53 @@ local function addRegions(b)
   T.Tint(b:GetCheckedTexture(), "checked")
 end
 
--- Secure attributes and scripts: click to use, drag to move actions.
-local function wireButton(b, action, index)
+-- The mouse came over a button: the tooltip of the action in the slot it shows
+-- now (b.action follows bar 1's page, the action attribute may not), and the
+-- client's UpdateTooltip hook refreshes it while it stays up. An empty slot shows none.
+local function showTooltip(b)
+  GameTooltip_SetDefaultAnchor(GameTooltip, b)
+  if GameTooltip:SetAction(b.action) then
+    b.UpdateTooltip = showTooltip
+    GameTooltip:Show()
+  else
+    b.UpdateTooltip = nil
+    GameTooltip:Hide()
+  end
+end
+
+-- The mouse left a button: its tooltip goes.
+local function hideTooltip(b)
+  b.UpdateTooltip = nil
+  GameTooltip:Hide()
+end
+
+-- Secure attributes: click to use the action in a slot, and, as the game's own
+-- buttons do, cast on yourself, your focus or the unit under the mouse while
+-- the self-cast, focus-cast or mouseover-cast modifier is held.
+local function wireAttributes(b, action, index)
   b:SetAttribute("type", "action")
   b:SetAttribute("action", action)
   b:SetAttribute("index", index)
+  b:SetAttribute("checkselfcast", true)
+  b:SetAttribute("checkfocuscast", true)
+  b:SetAttribute("checkmouseovercast", true)
+end
+
+-- Scripts: click on either edge of the press, drag to move actions, the tooltip.
+local function wireScripts(b)
   b:RegisterForClicks("AnyUp", "AnyDown")
   b:RegisterForDrag("LeftButton", "RightButton")
   b:SetScript("OnDragStart", onDragStart)
   b:SetScript("OnReceiveDrag", onReceiveDrag)
   b:SetScript("OnAttributeChanged", onAttributeChanged)
+  b:SetScript("OnEnter", showTooltip)
+  b:SetScript("OnLeave", hideTooltip)
+end
+
+-- Secure attributes and scripts of a button.
+local function wireButton(b, action, index)
+  wireAttributes(b, action, index)
+  wireScripts(b)
 end
 
 -- One secure action button on a bar (sized and placed by AB.LayoutBar).
@@ -501,6 +538,7 @@ local function hideBlizzard(name)
   hiddenParent = hiddenParent or CreateFrame("Frame")
   hiddenParent:Hide()
   f:SetParent(hiddenParent)
+  ns.EditModeReplaced(f)
 end
 
 -- Silences the game's action buttons (hidden with their bars), so they stop
@@ -572,6 +610,23 @@ local function pollRange()
   end)
 end
 
+-- What you carry or wear changed: item counts, and whether an item can be used.
+local function refreshCarried()
+  each(updateCount)
+  each(updateUsable)
+end
+
+-- An icon may have changed (a form's attack icon, a macro, a spell that morphs).
+local function refreshIcons()
+  each(updateIcon)
+end
+
+-- Equipment changed: icons of equipped items, then counts and usability.
+local function onEquipment()
+  refreshIcons()
+  refreshCarried()
+end
+
 -- Event -> what it refreshes.
 local EVENTS = {
   -- One handler per event; most refresh one part of every button.
@@ -583,6 +638,14 @@ local EVENTS = {
   ACTIONBAR_UPDATE_USABLE = function() each(updateUsable) end,
   SPELL_UPDATE_USABLE = function() each(updateUsable) end,
   ACTIONBAR_UPDATE_STATE = function() each(updateChecked) end,
+  -- What the game's own buttons also follow: items you carry or wear, forms,
+  -- macros, and spells whose icon or charges change.
+  BAG_UPDATE_DELAYED = refreshCarried,
+  PLAYER_EQUIPMENT_CHANGED = onEquipment,
+  UPDATE_SHAPESHIFT_FORM = refreshIcons,
+  UPDATE_MACROS = refreshIcons,
+  SPELL_UPDATE_ICON = refreshIcons,
+  SPELL_UPDATE_CHARGES = function() each(updateCount) end,
   UPDATE_BINDINGS = function() ns.OutOfCombat(AB.ApplyBindings) end,
   ACTION_RANGE_CHECK_UPDATE = onRangeUpdate,
   SPELL_ACTIVATION_OVERLAY_GLOW_SHOW = onOverlay(true),
@@ -612,4 +675,5 @@ function AB.Enable(settings)
     ns.On(event, fn)
   end
   if settings.rangeTint and not rangeEvents() then pollRange() end
+  ns.OnUnit("UNIT_INVENTORY_CHANGED", refreshCarried, "player")
 end

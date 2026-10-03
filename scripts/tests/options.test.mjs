@@ -74,8 +74,8 @@ it("options window: nav, search, controls, footer", () => {
     local d = ForeverUI_Options.profile d:GetScript("OnClick")(d)
     local texts = {} for i, b in ipairs(ForeverUI_Menu.items) do if b:IsShown() then texts[#texts + 1] = b.text:GetText() end end
     ForeverUI_Menu.items[2]:GetScript("OnClick")(ForeverUI_Menu.items[2])
-    return { texts = texts, now = ns.ProfileName() }`);
-  expect(profiles.texts.length === 2 && profiles.now === "TEST-ONLY Healer", "the header's profile dropdown lists profiles and switches (on reload)").toBeTruthy();
+    return { texts = texts, now = ns.SelectedProfileName(), running = ns.ProfileName() }`);
+  expect(profiles.texts.length === 2 && profiles.now === "TEST-ONLY Healer" && profiles.running === "Default", "the header's profile dropdown lists profiles and stages the switch (on reload)").toBeTruthy();
 });
 
 it("options slider, search, scroll, special bars and profile switch", () => {
@@ -136,13 +136,20 @@ it("options: profiles in the window", () => {
   profileButton(addon, "TEST-ONLY Healer", "copy");
   expect(addon.eval("return ForeverUIDB.profiles.Default.Chat.background"), "Copy here (asked twice) copies that profile's settings over this one").toBe(false);
   profileButton(addon, "TEST-ONLY Healer", "use");
-  expect([addon.eval("return ns.ProfileName()"), profileRow(addon, "TEST-ONLY Healer")[0], addon.eval("return ForeverUI_Options.reload:IsShown()")], "Use switches (on reload)").toEqual(["TEST-ONLY Healer", "TEST-ONLY Healer  (in use)", true]);
+  expect([addon.eval("return ns.ProfileName()"), addon.eval("return ns.SelectedProfileName()"), profileRow(addon, "TEST-ONLY Healer"), addon.eval("return ForeverUI_Options.reload:IsShown()")], "Use stages the switch (it applies on reload): the profile on screen stays, the chosen one is marked and has no buttons")
+    .toEqual(["Default", "TEST-ONLY Healer", ["TEST-ONLY Healer  (after reload)", false, false, false], true]);
+  expect(profileRow(addon, "Default"), "the profile running until then can only be taken back with Use").toEqual(["Default  (in use until reload)", true, false, false]);
+  expect(addon.eval('return ns.DeleteProfile("TEST-ONLY Healer")'), "the staged profile can't be deleted").toBe(false);
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.use and w.label.__text == "Default  (in use until reload)" and w:IsVisible() then w.use:GetScript("OnClick")(w.use) end end');
+  expect([addon.eval("return ns.PendingProfileName()"), profileRow(addon, "Default")[0]], "Use on the running profile takes the switch back").toEqual([null, "Default  (in use)"]);
+  profileButton(addon, "TEST-ONLY Healer", "use");
   // The new-profile row: types a name and presses Create (or Enter); returns the row's caption.
   const create = (name, enter) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.input and w.create and w:IsVisible() then
     w.input:SetText("${name}") local b = ${enter ? "w.input" : "w.create"} b:GetScript(${enter ? '"OnEnterPressed"' : '"OnClick"'})(b) return w.label.__text end end`);
   expect(create("TEST-ONLY Bad/Name"), "a bad name says why").toBe("Name taken or not allowed");
   create("TEST-ONLY Leveling", true);
-  expect([addon.eval("return ns.ProfileName()"), profileRow(addon, "TEST-ONLY Leveling")[0]], "a good name makes the profile and switches to it").toEqual(["TEST-ONLY Leveling", "TEST-ONLY Leveling  (in use)"]);
+  expect([addon.eval("return ns.SelectedProfileName()"), profileRow(addon, "TEST-ONLY Leveling")[0], profileRow(addon, "TEST-ONLY Healer")[0]], "a good name makes the profile and stages the switch to it").toEqual(["TEST-ONLY Leveling", "TEST-ONLY Leveling  (after reload)", "TEST-ONLY Healer"]);
+  expect(addon.texts("This character uses Default until you reload, then TEST-ONLY Leveling.").length, "and the page says what is used until then").toBe(1);
   addon.eval('ns.Options.Hide() ns.Options.RebuildPage("profiles")');
   expect(addon.eval("return ForeverUI_Options:IsShown()"), "rebuilding a page while the window is closed doesn't open it").toBe(false);
 });

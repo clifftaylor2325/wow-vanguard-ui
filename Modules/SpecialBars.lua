@@ -1,10 +1,13 @@
 -- The client's own pet, stance and extra action buttons in the ForeverUI
 -- look, and a vehicle exit button.
 --
--- The pet bar, stance bar and extra action button stay the client's (you
--- place them in Edit Mode); rebuilding them is where UI addons most often
--- cause "action blocked" errors. This module only restyles them: template
--- art faded, the icon cropped, a thin themed border.
+-- The pet bar, stance bar and extra action button stay the client's;
+-- rebuilding them is where UI addons most often cause "action blocked"
+-- errors. This module restyles them (template art faded, the icon cropped, a
+-- thin themed border; the active stance, the attack flash and the auto-cast
+-- mark kept) and gives the pet and stance bars a spot of their own to move
+-- in unlock mode, clear of ForeverUI's stacked bars (the game's own spot for
+-- them is under Edit Mode's control and lies over those bars).
 --
 -- The vehicle exit button is ForeverUI's own: a secure button running
 -- /leavevehicle, shown by the client only while you can leave, and movable
@@ -15,7 +18,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local SB = ns.Module("SpecialBars", {
-  defaults = { skinPet = true, skinStance = true, skinExtra = true, vehicleExit = true },
+  defaults = { skinPet = true, skinStance = true, skinExtra = true, vehicleExit = true, place = true },
 })
 
 -- Button name prefixes and how many of each, per bar.
@@ -30,11 +33,23 @@ local function iconOf(b)
   return b.icon or b.Icon or _G[(b:GetName() or "") .. "Icon"]
 end
 
--- Restyles one client button: art faded (icon kept), icon cropped, themed border.
+-- The textures the client shows by state, which fading the template art must
+-- leave: the icon, the checked texture (the active stance or pet stance), the
+-- attack flash and the auto-cast mark (where the template has one).
+function SB.KeepSet(b)
+  local keep = {}
+  local parts = { iconOf(b), b.GetCheckedTexture and b:GetCheckedTexture(), b.Flash, b.AutoCastable }
+  for i = 1, 4 do
+    if parts[i] then keep[parts[i]] = true end
+  end
+  return keep
+end
+
+-- Restyles one client button: art faded (state textures kept), icon cropped, themed border.
 function SB.Skin(b)
   if type(b) ~= "table" or b.fuiSkinned then return end
   local icon = iconOf(b)
-  T.FadeRegions(b, icon and { [icon] = true } or nil)
+  T.FadeRegions(b, SB.KeepSet(b))
   if icon and icon.SetTexCoord then icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
   T.Panel(b, { noBg = true })
   b.fuiSkinned = true
@@ -47,6 +62,32 @@ local function skinAll(settings)
       for i = 1, def[2] do SB.Skin(_G[def[1] .. i]) end
     end
   end
+end
+
+-- The pet and stance bars: the game's frame, then its mover's key, label,
+-- default spot (bottom left, above the chat and below the raid frames, where
+-- the Centered layout has room) and the spot's size: a row of ten 30-unit
+-- buttons for the pet, about six forms for the stance bar (it grows to the right).
+SB.SPOTS = {
+  { "PetActionBar", "petbar", "Pet bar", { "BOTTOMLEFT", "BOTTOMLEFT", 8, 224 }, 320, 32 },
+  { "StanceBar", "stancebar", "Stance bar", { "BOTTOMLEFT", "BOTTOMLEFT", 8, 262 }, 200, 32 },
+}
+
+-- Puts one of the game's bars on its spot, its bottom left corner on the spot's.
+local function seat(bar, holder)
+  bar:ClearAllPoints()
+  bar:SetPoint("BOTTOMLEFT", holder, "BOTTOMLEFT", 0, 0)
+end
+
+-- A movable spot for one of the game's bars, with the bar kept on it (the game
+-- puts it back where Edit Mode says; the pin undoes that). A client without the bar skips it.
+local function placeBar(spot)
+  local bar = _G[spot[1]]
+  if type(bar) ~= "table" or not bar.SetPoint then return end
+  local holder = CreateFrame("Frame", "ForeverUI_" .. spot[1] .. "Spot", UIParent)
+  holder:SetSize(spot[5], spot[6])
+  ns.Mover(holder, spot[2], spot[3], spot[4])
+  ns.Pin(bar, function(f) seat(f, holder) end)
 end
 
 -- A centered label in the theme font.
@@ -74,6 +115,7 @@ end
 function SB.Enable(settings)
   ns.OutOfCombat(function()
     skinAll(settings)
+    if settings.place then for _, spot in ipairs(SB.SPOTS) do placeBar(spot) end end
     if settings.vehicleExit then SB.exit = vehicleExit() end
   end)
 end

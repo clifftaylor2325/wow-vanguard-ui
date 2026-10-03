@@ -446,11 +446,15 @@ local function membership(header, s)
   RegisterAttributeDriver(header, "state-visibility", s.showInParty and "[group:raid] show; [group:party] show; hide" or "[group:raid] show; hide")
 end
 
--- Creates all 40 buttons now, out of combat (shown briefly with a negative start index).
+-- Creates all 40 buttons now, out of combat (shown briefly with a negative start index, then back as
+-- it was: a header the visibility driver hid stays hidden). Call it once the header is configured
+-- (membership), so the first SecureGroupHeader_Update it triggers sees the final attributes.
 local function precreate(header)
+  local shown = header:IsShown()
   header:SetAttribute("startingIndex", 1 - MAX_UNITS)
   header:Show()
   header:SetAttribute("startingIndex", 1)
+  header:SetShown(shown)
 end
 
 -- The secure group header, its button template and setup hook.
@@ -498,6 +502,7 @@ local function hideBlizzard(name)
   hiddenParent:Hide()
   if f.UnregisterAllEvents then f:UnregisterAllEvents() end
   f:SetParent(hiddenParent)
+  ns.EditModeReplaced(f)
 end
 
 -- Sizing and placing the grid ------------------------------------------------------------
@@ -542,8 +547,8 @@ end
 local function build(s)
   RF.holder, RF.header = holder(s), createHeader(s)
   RF.Fit()
-  precreate(RF.header)
   membership(RF.header, s)
+  precreate(RF.header)
   ns.Client.WhenSnippetsKnown(function(worked) if worked == false then RF.WithoutSnippets() end end)
   if s.hideBlizzard then
     for _, name in ipairs(BLIZZARD_FRAMES) do hideBlizzard(name) end

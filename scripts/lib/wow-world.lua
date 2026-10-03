@@ -1275,18 +1275,34 @@ local function tooltipLines(tip)
   function tip:ClearLines() self.__lines = {} end
 end
 
--- GameTooltip: a hidden frame with the methods the addon calls, recorded.
-local function tooltipFrame()
-  local tip = stub.newWidget("Frame", "GameTooltip", UIParent)
-  tip:Hide()
-  tooltipLines(tip)
-  -- What the tooltip was set to: a unit, an equipped item, a link or an item id.
+-- The tooltip's action methods.
+local function tooltipAction(tip)
+  -- An action slot's tooltip, as the client fills it: true when the slot holds an action.
+  function tip:SetAction(slot)
+    self.__action = slot
+    self.__lines = { { text = actionOf(slot).name } }
+    return HasAction(slot)
+  end
+end
+
+-- The tooltip's setters, recorded so tests can read what it shows.
+local function tooltipSetters(tip)
+  -- What the tooltip was set to: a unit, an equipped item, a link, an item or a spell id.
   function tip:SetUnit(unit) self.__unit = unit self.__lines = { { text = UnitName(unit) } } end
   function tip:SetInventoryItem(unit, slot) self.__item = { unit = unit, slot = slot } end
   function tip:SetHyperlink(link) self.__link = link end
   function tip:SetItemByID(id) self.__itemId = id end
   function tip:SetSpellByID(id) self.__spellId = id self.__lines = { { text = (world.spells[id] or {}).name } } end
   function tip:GetItem() return self.__itemName, self.__itemLink end
+end
+
+-- GameTooltip: a hidden frame with the methods the addon calls, recorded.
+local function tooltipFrame()
+  local tip = stub.newWidget("Frame", "GameTooltip", UIParent)
+  tip:Hide()
+  tooltipLines(tip)
+  tooltipAction(tip)
+  tooltipSetters(tip)
   return tip
 end
 
@@ -1304,6 +1320,9 @@ local function blizzardFrames()
 end
 
 blizzardFrames()
+
+-- The client's default tooltip anchor: owned by the frame, placed by the game.
+function GameTooltip_SetDefaultAnchor(tooltip, parent) tooltip:SetOwner(parent, "ANCHOR_NONE") end
 
 -- Resets the world to its defaults (units, actions, bags, quests) without touching frames.
 function world.reset()
