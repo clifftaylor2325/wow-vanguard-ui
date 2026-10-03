@@ -5,17 +5,31 @@
 
 local ADDON, ns = ...
 
-local queue = {}
+-- The work waiting for combat to end, in order; keyed maps a key to its slot in queue.
+local queue, keyed = {}, {}
 
 -- True while the client forbids changes to protected frames.
 function ns.InCombat()
   return type(InCombatLockdown) == "function" and InCombatLockdown() == true
 end
 
--- Runs fn now, or right after combat ends. Queued work runs in order, once.
-function ns.OutOfCombat(fn)
+-- Queues fn: a new key (or none) takes the next slot, a key already queued
+-- gets its slot's function replaced, so the order of first calls holds.
+local function enqueue(fn, key)
+  local slot = key ~= nil and keyed[key]
+  if not slot then
+    slot = #queue + 1
+    if key ~= nil then keyed[key] = slot end
+  end
+  queue[slot] = fn
+end
+
+-- Runs fn now, or right after combat ends. Queued work runs in order, once; a
+-- call with a key replaces the work queued under that key, in its place (the
+-- latest wins, the first call's position stays). A key is held until combat ends.
+function ns.OutOfCombat(fn, key)
   if ns.InCombat() then
-    queue[#queue + 1] = fn
+    enqueue(fn, key)
   else
     fn()
   end
@@ -54,7 +68,7 @@ function ns.AurasSecret()
   return not ok or ns.IsSecret(secret) or secret == true
 end
 
--- How many functions are waiting for combat to end.
+-- How many distinct pieces of work are waiting for combat to end.
 function ns.QueuedCount()
   return #queue
 end
@@ -62,7 +76,7 @@ end
 -- Runs queued work; one failing function is reported (see ns.Report) and the rest still run.
 local function flush()
   local pending = queue
-  queue = {}
+  queue, keyed = {}, {}
   for _, fn in ipairs(pending) do
     ns.Try("after-combat update", fn)
   end

@@ -80,6 +80,67 @@ it("combat queue", () => {
   expect(addon.eval("return __ran") === 2, "out of combat, work runs at once").toBeTruthy();
 });
 
+it("combat queue: a key replaces its entry, in place", () => {
+  const addon = loggedIn();
+  addon.eval("__wfgStub.inCombat = true __n = 0 for i = 1, 50 do ns.OutOfCombat(function() __n = __n + i end, 'k') end");
+  expect(addon.eval("return ns.QueuedCount()"), "50 calls with one key queue one entry").toBe(1);
+  setCombat(addon, false);
+  expect([addon.eval("return __n"), addon.eval("return ns.QueuedCount()")], "the latest closure runs, once").toEqual([50, 0]);
+  addon.eval(`__wfgStub.inCombat = true __o = {}
+    ns.OutOfCombat(function() __o[#__o + 1] = 'a' end)
+    ns.OutOfCombat(function() __o[#__o + 1] = 'b1' end, 'k')
+    ns.OutOfCombat(function() __o[#__o + 1] = 'c' end)
+    ns.OutOfCombat(function() __o[#__o + 1] = 'b2' end, 'k')`);
+  expect(addon.eval("return ns.QueuedCount()"), "unkeyed calls still append, a repeated key does not").toBe(3);
+  setCombat(addon, false);
+  expect(addon.eval("return __o"), "a replaced key keeps its slot").toEqual(["a", "b2", "c"]);
+  addon.eval("__wfgStub.inCombat = true ns.OutOfCombat(function() __n = 100 end, 'k')");
+  expect(addon.eval("return ns.QueuedCount()"), "after the flush the same key queues afresh").toBe(1);
+  setCombat(addon, false);
+  addon.eval("ns.OutOfCombat(function() __n = __n + 1 end, 'k')");
+  expect([addon.eval("return __n"), addon.eval("return ns.QueuedCount()")], "out of combat a keyed call runs at once").toEqual([101, 0]);
+});
+
+// TEST-ONLY pin: the game's hooksecurefunc (a post-hook on a table's method) and a frame ForeverUI pins.
+const PIN_ENV = `
+  hooksecurefunc = function(a, b, c) local orig = a[b] a[b] = function(...) local r = orig(...) c(...) return r end end
+  __pinTarget = CreateFrame("Frame", "ForeverUI_PinTest", UIParent)
+  __calls, __boom = 0, false
+  ns.Pin(__pinTarget, function(f)
+    __calls = __calls + 1
+    if __boom then error("boom") end
+    f:ClearAllPoints() f:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+  end)
+`;
+// The pinned test frame's anchor point name, and how often its pin ran.
+const pinPoint = (addon) => addon.eval("local n = next(__pinTarget.__points) return next(__pinTarget.__points, n) == nil and n or 'several'");
+const pinCalls = (addon) => addon.eval("return __calls");
+
+it("pins: a throwing apply is reported and the pin keeps working", () => {
+  const addon = loggedIn(PIN_ENV);
+  expect([addon.eval("return __pinTarget.fuiPinned"), pinCalls(addon), pinPoint(addon)], "the pin is hooked and applied at registration").toEqual([true, 1, "CENTER"]);
+  addon.eval("__boom = true __pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 1, 1)");
+  expect(addon.eval("return __pinTarget.fuiPinning"), "the flag clears after a failing apply").toBe(false);
+  expect(addon.eval("return ns.errors[#ns.errors].text"), "the failure is kept for /fui errors under the frame's name").toMatch(/^pin ForeverUI_PinTest: .*boom/);
+  addon.eval("__boom = false __pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 2, 2)");
+  expect([pinCalls(addon), pinPoint(addon)], "the next move of the frame is put back").toEqual([3, "CENTER"]);
+  addon.eval("__boom = true __pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 3, 3) __pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 4, 4)");
+  expect(addon.eval("local n, c = 0 for _, e in ipairs(ns.errors) do if e.text:find('^pin ForeverUI_PinTest') then n, c = n + 1, e.count end end return { n, c }"), "a repeating failure is one entry with a count").toEqual([1, 3]);
+  const plain = loggedIn(`hooksecurefunc = function() end __bare = CreateFrame("Frame", nil, UIParent) ns.Pin(__bare, function() error("bare") end)`);
+  expect(plain.eval("for _, e in ipairs(ns.errors) do if e.text:find('^pin ') then return e.text end end"), "a frame with no name is reported as 'frame'").toMatch(/^pin frame: .*bare/);
+});
+
+it("pins: any number of game moves in combat leave one pending pin", () => {
+  const addon = loggedIn(PIN_ENV);
+  setCombat(addon, true);
+  addon.eval("for i = 1, 50 do __pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', i, i) end");
+  expect([addon.eval("return ns.QueuedCount()"), pinCalls(addon), pinPoint(addon)], "50 moves queue one pin and run nothing in combat").toEqual([1, 1, "several"]);
+  addon.eval("ns.PausePins(true) ns.PausePins(false)");
+  expect(addon.eval("return ns.QueuedCount()"), "ending a pause in combat joins the same entry").toBe(1);
+  setCombat(addon, false);
+  expect([addon.eval("return ns.QueuedCount()"), pinCalls(addon), pinPoint(addon)], "after combat the pin runs once and puts the frame back").toEqual([0, 2, "CENTER"]);
+});
+
 it("theme", () => {
   const addon = loggedIn();
   const colors = addon.eval(`
