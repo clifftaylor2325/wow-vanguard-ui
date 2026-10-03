@@ -1660,29 +1660,67 @@ it("flight timer: the first flight is timed, the next counts down", () => {
   expect(bare.eval("return ForeverUI_FlightTimer == nil and ns.GetModule('Errands').settings ~= nil"), "a client without taxi calls loads cleanly").toBe(true);
 });
 
-// TEST-ONLY game menu that builds its buttons each time it opens, as the game's does.
-const GAME_MENU_ENV = `
-  hooksecurefunc = function(t, name, fn) local orig = t[name] t[name] = function(...) orig(...) fn(...) end end
+// TEST-ONLY model of the Forever game menu: pooled buttons numbered from 1 by InitButtons on every
+// show, then a layout that orders the shown children by layoutIndex (LayoutFrame.lua).
+const FOREVER_MENU_ENV = `
+  HideUIPanel = function(f) f:Hide() end
+  hooksecurefunc = function() __hooked = true end
+  __calls = { AddButton = 0, AddSection = 0, MarkDirty = 0 }
   GameMenuFrame = CreateFrame("Frame", "GameMenuFrame", UIParent) GameMenuFrame:Hide()
-  function GameMenuFrame:InitButtons() self.buttons = { { "Options" }, "section", { "Log Out" } } end
-  function GameMenuFrame:AddSection() self.buttons[#self.buttons + 1] = "section" end
-  function GameMenuFrame:AddButton(text, fn) self.buttons[#self.buttons + 1] = { text, fn } end
-  GameMenuFrame:SetScript("OnShow", function(self) self:InitButtons() end)
+  GameMenuFrame.buttonTemplate = "GameMenuFrameButtonTemplate"
+  function GameMenuFrame:Reset()
+    self.nextLayoutIndex = 1
+    for _, c in ipairs({ self:GetChildren() }) do
+      if c.layoutIndex and c.layoutIndex >= 1 then c:Hide() c.layoutIndex = nil end
+    end
+  end
+  function GameMenuFrame:AddButton(text, fn)
+    __calls.AddButton = __calls.AddButton + 1
+    local b = CreateFrame("Button", nil, self, self.buttonTemplate)
+    b:SetText(text) b:SetScript("OnClick", fn)
+    b.layoutIndex = self.nextLayoutIndex self.nextLayoutIndex = self.nextLayoutIndex + 1
+    return b
+  end
+  function GameMenuFrame:AddSection() __calls.AddSection = __calls.AddSection + 1 end
+  function GameMenuFrame:InitButtons()
+    self:Reset() self:AddButton("Options", function() end) self:AddSection() self:AddButton("Return to Game", function() end)
+  end
+  function GameMenuFrame:MarkDirty() __calls.MarkDirty = __calls.MarkDirty + 1 end
+  function GameMenuFrame:Layout()
+    local kids = {}
+    for _, c in ipairs({ self:GetChildren() }) do if c:IsShown() and c.layoutIndex then kids[#kids + 1] = c end end
+    table.sort(kids, function(a, b) return a.layoutIndex < b.layoutIndex end)
+    self.order = {}
+    for i, c in ipairs(kids) do self.order[i] = c:GetText() or c.text:GetText() end
+  end
+  GameMenuFrame:SetScript("OnShow", function(self) self:InitButtons() self:Layout() end)
 `;
 
 it("a ForeverUI button on the game menu opens the options", () => {
-  const addon = loggedIn(GAME_MENU_ENV);
+  const addon = loggedIn(FOREVER_MENU_ENV);
+  expect(addon.eval("return { __calls.AddButton, __calls.AddSection, __calls.MarkDirty, __hooked == nil }"), "no AddButton or AddSection, no InitButtons hook, one MarkDirty").toEqual([0, 0, 1, true]);
+  expect(addon.eval("local b = ns.gameMenuButton return { b.layoutIndex, b.bottomPadding, b:GetParent() == GameMenuFrame, b.__template, b:GetText(), b:IsShown() }"), "the menu's own template, first index, section gap under it").toEqual([0, 20, true, "GameMenuFrameButtonTemplate", "ForeverUI", true]);
   addon.eval("GameMenuFrame:Show()");
-  expect(addon.eval("local b = GameMenuFrame.buttons return { #b, b[#b - 1], b[#b][1] }"), "at the end of the menu, in its own section").toEqual([5, "section", "ForeverUI"]);
+  expect(addon.eval("return GameMenuFrame.order"), "first in the menu, above Options").toEqual(["ForeverUI", "Options", "Return to Game"]);
+  expect(addon.eval("local m = math.huge for _, c in ipairs({ GameMenuFrame:GetChildren() }) do if c ~= ns.gameMenuButton and c.layoutIndex then m = math.min(m, c.layoutIndex) end end return ns.gameMenuButton.layoutIndex < m"), "lower than every pooled button's layoutIndex").toBe(true);
   addon.eval("GameMenuFrame:Hide() GameMenuFrame:Show()");
-  expect(addon.eval("return #GameMenuFrame.buttons"), "once each time the menu is built").toBe(5);
-  addon.eval("local b = GameMenuFrame.buttons b[#b][2]()");
+  expect(addon.eval("local n = 0 for _, c in ipairs({ GameMenuFrame:GetChildren() }) do if c:GetText() == 'ForeverUI' then n = n + 1 end end return { GameMenuFrame.order[1], n, __calls.AddButton }"), "still first on the next open, one button, AddButton only from the game").toEqual(["ForeverUI", 1, 4]);
+  addon.eval("ns.gameMenuButton:GetScript('OnClick')(ns.gameMenuButton)");
   expect(addon.eval("return { GameMenuFrame:IsShown(), ForeverUI_Options and ForeverUI_Options:IsShown() or ns.Options.current ~= nil }"), "clicking it closes the menu and opens the options").toEqual([false, true]);
   const old = loggedIn("GameMenuFrame = CreateFrame('Frame', 'GameMenuFrame', UIParent)");
-  expect(old.eval("local b = ns.gameMenuButton return { b.text:GetText(), b.__points.TOP.rel == GameMenuFrame }"), "an older menu gets a themed button just under it").toEqual(["ForeverUI", true]);
+  expect(old.eval("local b = ns.gameMenuButton return { b.text:GetText(), b.__points.TOP.rel == GameMenuFrame, b.layoutIndex == nil }"), "an older menu gets a themed button just under it, not laid out").toEqual(["ForeverUI", true, true]);
   old.eval("HideUIPanel = function(f) f:Hide() end ns.gameMenuButton.__scripts.OnClick()");
   expect(old.eval("return GameMenuFrame:IsShown()"), "which closes the menu too").toBe(false);
   expect(loggedIn("").eval("return ns.gameMenuButton == nil"), "no game menu, nothing added").toBe(true);
+});
+
+it("game menu button: falls back, or goes without what the menu lacks", () => {
+  const broken = loggedIn(FOREVER_MENU_ENV + 'GameMenuFrame.buttonTemplate = "NoSuchTemplate"');
+  expect(broken.eval("local b = ns.gameMenuButton return { b.text:GetText(), b.__points.TOP.rel == GameMenuFrame, ns.errors[#ns.errors].text:match('^GameMenu:') ~= nil }"), "a template that can't be built: themed button under the menu, one logged error").toEqual(["ForeverUI", true, true]);
+  const plain = loggedIn(FOREVER_MENU_ENV + "GameMenuFrame.buttonTemplate = nil");
+  expect(plain.eval("GameMenuFrame:Show() local b = ns.gameMenuButton return { b.text:GetText(), b.layoutIndex, b:GetWidth(), GameMenuFrame.order[1] }"), "a layout menu without a template gets a themed button, still first").toEqual(["ForeverUI", 0, 200, "ForeverUI"]);
+  const clean = loggedIn(FOREVER_MENU_ENV + "GameMenuFrame.MarkDirty = nil");
+  expect(clean.eval("GameMenuFrame:Show() local n = 0 for _, e in ipairs(ns.errors) do if e.text:match('^GameMenu:') then n = n + 1 end end return { GameMenuFrame.order[1], n }"), "a layout menu without MarkDirty still gets the button first, no GameMenu error").toEqual(["ForeverUI", 0]);
 });
 
 // TEST-ONLY boss: one boss in the fight, and the game's boss frame holder (an Edit Mode frame,
