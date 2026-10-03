@@ -116,7 +116,7 @@ local function createHeader()
   header:SetAttribute("fui-height", MT.H)
   -- Called by MT.INIT (CallMethod) with the new tile's name.
   header.initialConfigFunction = function(_, name) MT.Setup(_G[name]) end
-  header:SetAttribute("initialConfigFunction", MT.INIT)
+  if ns.Client.ProbeSnippets() ~= false then header:SetAttribute("initialConfigFunction", MT.INIT) end
   layout(header)
   return header
 end
@@ -137,6 +137,22 @@ local function build()
   MT.header:SetPoint("TOPLEFT", holder, "TOPLEFT")
   precreate(MT.header)
   if type(RegisterAttributeDriver) == "function" then RegisterAttributeDriver(MT.header, "state-visibility", "[group:raid] show; hide") end
+  ns.Client.WhenSnippetsKnown(function(worked) if worked == false then MT.WithoutSnippets() end end)
+end
+
+-- Sets up the tiles the header made without its init snippet (out of combat).
+function MT.SetupTiles()
+  ns.Client.SetupHeaderButtons(MT.header, MT.Setup)
+end
+
+-- The main tank header on a client that can't run snippets: the header copies
+-- the clicks, the tiles are made (again) and set up from here, now and on every
+-- roster change, out of combat.
+function MT.WithoutSnippets()
+  ns.Client.HeaderWithoutSnippets(MT.header)
+  precreate(MT.header)
+  MT.SetupTiles()
+  ns.On("GROUP_ROSTER_UPDATE", function() ns.OutOfCombat(MT.SetupTiles, "maintanktiles") end)
 end
 
 -- Module entry point (Core/Modules.lua): secure frames are made out of combat.

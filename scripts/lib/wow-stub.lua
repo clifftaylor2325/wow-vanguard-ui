@@ -194,6 +194,9 @@ function methods:GetAtlas() return self.__atlas end
 function methods:SetColorTexture(r, g, b, a) self.__color = { r, g, b, a or 1 } end
 function methods:SetVertexColor(r, g, b, a) self.__vertexColor = { r, g, b, a or 1 } end
 function methods:SetAlpha(a) self.__alpha = a end
+-- A frame's ID (0 until set, as in the client; secure action buttons read it to page).
+function methods:SetID(id) self.__frameID = id end
+function methods:GetID() return self.__frameID or 0 end
 -- Records which clicks cancel an engine aura button's aura.
 function methods:SetCancelAuraButtons(buttons) self.__cancelButtons = buttons end
 -- Records the (possibly hidden) boolean a region's alpha follows.

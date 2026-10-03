@@ -226,6 +226,12 @@ For every failed step, paste all of this (steps below say "If it fails, paste:" 
 - Expect: the spell is cast on that unit. [After P0.11: if `/fui status` says `secure snippets: no`, hover keys are off on purpose and only mouse bindings work; paste that status line.]
 - If it fails, paste: `/fui binds`, `/fui status` and `/fui errors`.
 
+### 10.3 Bar 1 pages with stances and forms
+
+- Do: on a warrior, druid or rogue, change stance, form or stealth out of combat, then again in a fight; also press Shift+2 and Shift+1.
+- Expect: bar 1's icons change with each stance, form or stealth and with Shift+number, in and out of combat, and the button casts what it shows. This holds whether `/fui status` says `secure snippets: yes` or `no` (with `no`, bar 1 pages through the game's own page attribute).
+- If it fails, paste: your class, what you changed, what the bar showed, `/fui status` and `/fui errors`.
+
 ## 11. AFK
 
 ### 11.1 AFK card

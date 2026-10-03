@@ -384,7 +384,7 @@ it("secure snippets: a client whose snippets fail to compile turns hover keys of
   expect(addon.eval("return ns.Client.has.secureSnippets"), "the probe answers no").toBe(false);
   expect(snippetLines(addon), "one chat line at login").toBe(1);
   expect(addon.chat().find((l) => /secure snippets/.test(l)), "it carries the probe's error in the same line").toMatch(/\(probe: .*TEST-ONLY: snippets do not compile\)$/);
-  expect(addon.chat().find((l) => /secure snippets/.test(l)), "it names the consequence").toMatch(/hover keys are off; bar paging, bar visibility and the raid frames may not work/);
+  expect(addon.chat().find((l) => /secure snippets/.test(l)), "it names the consequence").toMatch(/hover keys are off; bar 1 pages and the raid frames are set up without them/);
   addon.eval('local CC = ns.GetModule("ClickCast") CC.Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew") CC.Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") __spawn(1, "raid1")');
   expect(addon.eval('return ForeverUI_RaidUnitButton1:GetAttribute("ctrl-type2")'), "mouse bindings are still set").toBe("spell");
   expect(addon.eval('return ForeverUI_RaidUnitButton1:GetAttribute("type-fui2")'), "and so is the inert virtual button").toBe("spell");
@@ -424,6 +424,21 @@ it("secure snippets: logging in during a fight defers the probe, and it runs bef
   expect(chatHas(addon, /secure snippets: yes/), "and /fui status then says yes").toBe(true);
   addon.eval('ns.GetModule("ClickCast").Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") __spawn(1, "raid1")');
   expect(addon.eval("return ForeverUI_RaidUnitButton1.__wraps.OnLeave"), "and click casting wraps the frame").toBe("self:ClearBindings()");
+});
+
+it("secure snippets: what waits for the probe's answer runs once, after the fight, and one that fails does not stop the rest", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE });
+  setCombat(addon, true);
+  addon.login();
+  addon.eval(`__answers = {}
+    ns.Client.WhenSnippetsKnown(function() error("TEST-ONLY waiter broke") end)
+    ns.Client.WhenSnippetsKnown(function(worked) __answers[#__answers + 1] = worked end)`);
+  expect(addon.eval("return #__answers"), "in the fight, before the probe, nothing runs").toBe(0);
+  setCombat(addon, false);
+  expect(addon.eval("return __answers"), "after it, the waiter gets the answer once").toEqual([true]);
+  expect(addon.eval('for _, e in ipairs(ns.errors) do if e.text:find("TEST-ONLY waiter broke", 1, true) then return e.text end end'), "the failing one is reported").toMatch(/^secure snippet fallback: .*TEST-ONLY waiter broke/);
+  addon.eval("ns.Client.WhenSnippetsKnown(function(worked) __answers[#__answers + 1] = worked end)");
+  expect(addon.eval("return __answers"), "a later caller is answered at once").toEqual([true, true]);
 });
 
 it("/fui errors: what ForeverUI caught this session", () => {
