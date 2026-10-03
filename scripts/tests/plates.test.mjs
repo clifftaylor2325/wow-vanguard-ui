@@ -4,7 +4,8 @@ import { expect, it } from "vitest";
 import { CLICK_LUA, PLATE_ENV, UNITS_ENV, isTok, loggedIn, plate, setCombat, tok, unitEvents } from "./helpers.mjs";
 
 it("a nameplate first drawn in combat gets the client's aura container after the fight", () => {
-  const addon = loggedIn(UNITS_ENV + PLATE_ENV + "__units.nameplate2 = nil");
+  // No plate frames built ahead, so the plate is drawn in the fight.
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + "__units.nameplate2 = nil ns.GetModule('Nameplates').POOL = 0");
   setCombat(addon, true);
   addon.eval("__units.nameplate2 = __units.party1");
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
@@ -20,6 +21,44 @@ it("a nameplate first drawn in combat gets the client's aura container after the
   old.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
   setCombat(old, false);
   expect(old.eval("return __plates.nameplate2.fui.debuffsOnEngine"), "a client without the container keeps the fallback").toBe(false);
+});
+
+// TEST-ONLY plates nameplate<from>..nameplate<to>, each a hostile like the target.
+const morePlates = (from, to) => `for i = ${from}, ${to} do
+    local p = CreateFrame("Frame", nil, UIParent)
+    p.UnitFrame, p.IsForbidden = CreateFrame("Frame", nil, p), function() return false end
+    __plates["nameplate" .. i], __units["nameplate" .. i] = p, __units.target
+  end`;
+
+it("nameplate frames are built ahead at login, so a pull of 30 plates builds none", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV);
+  expect(addon.eval("return #ns.GetModule('Nameplates').pool"), "40 built ahead, two taken by the plates on screen at login").toBe(38);
+  addon.eval(morePlates(4, 33));
+  const before = addon.eval("return #__wfgStub.frames");
+  for (let i = 4; i <= 33; i++) addon.fire("NAME_PLATE_UNIT_ADDED", `nameplate${i}`);
+  expect(addon.eval("return #__wfgStub.frames") - before, "30 plates added: no new frame").toBe(0);
+  const p = addon.eval(`local plate = __plates.nameplate20 local f = plate.fui local at = f.__points.CENTER
+    return { f:IsVisible(), f:GetParent() == plate, at.rel == plate, f.events.__unitEvents.UNIT_HEALTH[1], #ns.GetModule('Nameplates').pool }`);
+  expect(p, "each frame moved onto its plate, shown, listening for its unit").toEqual([true, true, true, "nameplate20", 8]);
+  addon.eval(morePlates(34, 42));
+  for (let i = 34; i <= 42; i++) addon.fire("NAME_PLATE_UNIT_ADDED", `nameplate${i}`);
+  expect(addon.eval("return { #ns.GetModule('Nameplates').pool, __plates.nameplate42.fui:IsVisible() }"), "past the pool, a plate still gets a frame").toEqual([0, true]);
+  expect(loggedIn(UNITS_ENV).eval("return #ns.GetModule('Nameplates').pool"), "a client without addon nameplates builds none").toBe(0);
+});
+
+it("a fallback debuff row put away after a fight is reused by the next plate drawn in one", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + "ns.GetModule('Nameplates').POOL = 0");
+  addon.eval(morePlates(5, 6));
+  setCombat(addon, true);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate5");
+  addon.eval("__row = __plates.nameplate5.fui.debuffs");
+  setCombat(addon, false);
+  expect(addon.eval("return { #ns.GetModule('Nameplates').spare, __plates.nameplate5.fui.debuffsOnEngine }"), "after the fight the plate gets the engine row and the fallback row is kept").toEqual([1, true]);
+  setCombat(addon, true);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate6");
+  const row = addon.eval(`local f = __plates.nameplate6.fui local at = __row.frame.__points.BOTTOMLEFT
+    return { f.debuffs == __row, __row.frame:GetParent() == f, at.rel == f, at.relPoint, __row.frame:IsShown(), __row.unit, #ns.GetModule('Nameplates').spare }`);
+  expect(row, "the next plate drawn in a fight takes it, over its own frame, on its unit").toEqual([true, true, true, "TOPLEFT", true, "nameplate6", 0]);
 });
 
 it("nameplates", () => {
