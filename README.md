@@ -27,6 +27,7 @@ Written from scratch. It contains no code, art or fonts from other UI addons.
   - Empty slots stay hidden until you drag a spell or item, so a new character sees no empty squares.
   - Hover a button for its action's tooltip, in the game's default spot; it follows the page bar 1 is on, and an empty slot shows none.
   - The game's self-cast, focus-cast and mouseover-cast options work on these buttons as on the game's own.
+  - Counts, icons and usability follow what you carry and wear (bags, equipment), your form, macro edits and spell charges, so a stack you use up or a form that changes an icon updates at once.
   - Each bar has its own number of buttons, buttons per row, button size, and visibility: Always, On mouseover (seen only while the mouse is over it), In combat, or Hidden. While you drag a spell or item, On mouseover and In combat bars show too (In combat bars only when the drag starts out of combat).
   - Hidden bars keep their keys: the bar isn't drawn, but a bound key still casts, like a keybind-only bar. A Hidden bottom bar keeps its row in the stack (leaving a gap), because bars can't be re-stacked during combat.
   - The right-edge bars (4 and 5) start off; turned on, they show on mouseover. Profiles that already had them on keep them on Always.
