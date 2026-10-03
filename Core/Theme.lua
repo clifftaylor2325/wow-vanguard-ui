@@ -230,19 +230,27 @@ local function scaleOf(frame)
   return type(s) == "number" and s > 0 and s or 1
 end
 
--- How long one screen pixel is in a frame's units, so a border of this size
--- is exactly one pixel at any UI scale. Uses the client's PixelUtil when present.
-function T.Pixel(frame)
-  local scale, util = scaleOf(frame), _G.PixelUtil
-  if type(util) == "table" and type(util.GetNearestPixelSize) == "function" then
-    return util.GetNearestPixelSize(1, scale, 1)
+-- One screen pixel in UI units at scale 1 (768 / screen height): the client's own
+-- factor when PixelUtil has it, else worked out from the screen height.
+local function pixelFactor()
+  local util = _G.PixelUtil
+  if type(util) == "table" and type(util.GetPixelToUIUnitFactor) == "function" then
+    local factor = util.GetPixelToUIUnitFactor()
+    if type(factor) == "number" and factor > 0 then return factor end
   end
-  return 768 / screenHeight() / scale
+  return 768 / screenHeight()
+end
+
+-- How long one screen pixel is in a frame's units, so a border of this size is
+-- exactly one pixel at any UI scale. Never rounded to whole UI units: the client's
+-- GetNearestPixelSize(1, scale, 1) would give 2 px at 1440p and 3 px at 4K.
+function T.Pixel(frame)
+  return pixelFactor() / scaleOf(frame)
 end
 
 -- The UI scale that makes one UI unit one screen pixel (768 / screen height).
 function T.PixelPerfectScale()
-  return 768 / screenHeight()
+  return pixelFactor()
 end
 
 -- How many screen pixels one UI unit covers at the current UI scale (1 at pixel-perfect scale).
