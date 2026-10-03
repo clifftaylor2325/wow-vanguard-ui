@@ -191,12 +191,13 @@ function W.CloseMenu()
   if menu then menu:Hide() end
 end
 
+-- A long menu (more than this many choices) is laid out in columns of this many.
+local MENU_ROWS = 14
+
 -- One item in the menu: its text, a check on the current choice.
-local function menuItem(i)
+local function menuItem()
   local b = CreateFrame("Button", nil, menu)
   b:SetHeight(22)
-  b:SetPoint("TOPLEFT", 1, -1 - (i - 1) * 22)
-  b:SetPoint("TOPRIGHT", -1, -1 - (i - 1) * 22)
   flat(b, "HIGHLIGHT", "hover"):SetAllPoints()
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label")
   b.text:SetPoint("LEFT", 8, 0)
@@ -211,14 +212,23 @@ local function menuFrame()
   menu = T.Panel(CreateFrame("Frame", "ForeverUI_Menu", UIParent), { raised = true, shadow = true })
   menu:SetFrameStrata("FULLSCREEN_DIALOG")
   menu:EnableMouse(true)
+  menu:SetClampedToScreen(true)
   menu.items = {}
   menu:Hide()
   return menu
 end
 
+-- Puts menu item i in its row and column; each column is width wide.
+local function placeItem(b, i, width)
+  local column, line = math.floor((i - 1) / MENU_ROWS), (i - 1) % MENU_ROWS
+  b:ClearAllPoints()
+  b:SetPoint("TOPLEFT", 1 + column * width, -1 - line * 22)
+  b:SetWidth(width - 2)
+end
+
 -- Fills menu item i with a choice; picking it runs pick(value) and closes the menu.
 local function fillItem(i, choice, current, pick)
-  menu.items[i] = menu.items[i] or menuItem(i)
+  menu.items[i] = menu.items[i] or menuItem()
   local b = menu.items[i]
   b.text:SetText(choice[2])
   T.Color(b.text, choice[1] == current and "accent" or "text")
@@ -227,13 +237,14 @@ local function fillItem(i, choice, current, pick)
   b:Show()
 end
 
--- Opens the menu under a dropdown with its choices.
+-- Opens the menu under a dropdown with its choices (in columns of MENU_ROWS when there are more).
 local function openMenu(d)
   menuFrame()
   local choices = type(d.choices) == "function" and d.choices() or d.choices
-  for i, choice in ipairs(choices) do fillItem(i, choice, d.get(), d.set) end
+  for i, choice in ipairs(choices) do fillItem(i, choice, d.get(), d.set) placeItem(menu.items[i], i, d:GetWidth()) end
   for i = #choices + 1, #menu.items do menu.items[i]:Hide() end
-  menu:SetSize(d:GetWidth(), #choices * 22 + 2)
+  local columns = math.max(1, math.ceil(#choices / MENU_ROWS))
+  menu:SetSize(d:GetWidth() * columns, math.min(#choices, MENU_ROWS) * 22 + 2)
   menu:ClearAllPoints()
   menu:SetPoint("TOPLEFT", d, "BOTTOMLEFT", 0, -2)
   menu.owner = d

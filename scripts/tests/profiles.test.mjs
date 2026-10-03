@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { RETAIL, chatHas, loggedIn } from "./helpers.mjs";
+import { RETAIL, UI_ENV, chatHas, loggedIn } from "./helpers.mjs";
 
 it("profile strings", () => {
   const addon = loggedIn();
@@ -182,4 +182,18 @@ it("the spec change events stage the spec's profile, whatever they pass", () => 
   addon.eval("__spec = 2");
   addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 2, 1);
   expect(addon.eval("return ForeverUICharDB.pendingProfile"), "changing back to the running profile's spec takes the switch back").toBe(null);
+});
+
+it("a frame's scale and opacity travel with the profile: export, import and a staged switch", () => {
+  const src = loggedIn(UI_ENV);
+  src.eval('ns.SetMoverScale("minimap", 1.25) ns.SetMoverAlpha("minimap", 0.75)');
+  const text = src.eval("return ns.ExportProfile()");
+  const dst = loggedIn(UI_ENV);
+  dst.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(dst.eval("return ForeverUIDB.profiles.Imported.positions.minimap"), "the imported profile has them").toEqual({ scale: 1.25, alpha: 0.75 });
+  expect(dst.eval("return { ns.MoverLook('minimap') }"), "the running profile keeps its own until the reload").toEqual([1, 1]);
+  const next = createAddon({ savedVariables: 'ForeverUIDB = { version = 1, setupDone = true, profiles = { Default = {}, Raid = { positions = { minimap = { scale = 1.5, alpha = 0.5 } } } } }\nForeverUICharDB = { profile = "Default", pendingProfile = "Raid" }' });
+  next.eval(UI_ENV);
+  next.login();
+  expect(next.eval("local f = ns.MoverFrame('minimap') return { f:GetScale(), f:GetAlpha() }"), "the staged profile's scale and opacity apply at the next load").toEqual([1.5, 0.5]);
 });
