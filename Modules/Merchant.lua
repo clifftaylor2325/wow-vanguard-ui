@@ -4,7 +4,8 @@
 --     left is tried again a few times);
 --   * drop the error messages that only repeat what the action bar already
 --     shows (ability not ready, not enough rage or energy, no target...).
---     Errors you can act on (out of range, not enough mana, bags full) stay.
+--     Errors you can act on (out of range, not enough mana, bags full) stay,
+--     and still go through the client's own error line.
 
 local ADDON, ns = ...
 
@@ -87,14 +88,18 @@ function MC.Noisy(message)
   return false
 end
 
--- Takes over the client's error line: the rest of its errors show as before, in red.
+-- Makes the client's own error line decline the noisy errors. Its handler stays
+-- (per-type lines that refresh instead of stacking, throttling, flashing, sounds):
+-- it asks the frame whether each message may show, and that answer is filtered here.
 local function filterErrors()
   local frame = _G.UIErrorsFrame
-  if type(frame) ~= "table" or not frame.UnregisterEvent then return end
-  frame:UnregisterEvent("UI_ERROR_MESSAGE")
-  ns.On("UI_ERROR_MESSAGE", function(_, _, message)
-    if type(message) == "string" and not MC.Noisy(message) then frame:AddMessage(message, 1, 0.1, 0.1) end
-  end)
+  if type(frame) ~= "table" or type(frame.ShouldDisplayMessageType) ~= "function" then return end
+  local allowed = frame.ShouldDisplayMessageType
+  -- The client's answer, unless the message is noise.
+  frame.ShouldDisplayMessageType = function(self, messageType, message)
+    if not ns.IsSecret(message) and MC.Noisy(message) then return false end
+    return allowed(self, messageType, message)
+  end
 end
 
 -- Module entry point (Core/Modules.lua).

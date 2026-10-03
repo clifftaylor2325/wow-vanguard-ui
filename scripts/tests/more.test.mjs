@@ -1447,8 +1447,14 @@ const MERCHANT_ENV = `
     UseContainerItem = function(bag, slot) __used[#__used + 1] = slot if __sticky > 0 then __sticky = __sticky - 1 else __bag[slot] = nil end end }
   C_Timer = { After = function(_, fn) fn() end }
   ERR_ABILITY_COOLDOWN = "TEST-ONLY not ready"
+  -- The game's own error line: its handler asks ShouldDisplayMessageType (type 99 is on the game's blacklist),
+  -- shows the message under its type as the line's ID, and plays the type's sound.
   UIErrorsFrame = CreateFrame("Frame", "UIErrorsFrame", UIParent) UIErrorsFrame:RegisterEvent("UI_ERROR_MESSAGE")
-  function UIErrorsFrame:AddMessage(text) self.__lines = self.__lines or {} self.__lines[#self.__lines + 1] = text end
+  function UIErrorsFrame:ShouldDisplayMessageType(messageType) return messageType ~= 99 end
+  function UIErrorsFrame:AddMessage(text, r, g, b, a, id) self.__lines = self.__lines or {} self.__lines[#self.__lines + 1] = { text, id } end
+  UIErrorsFrame:SetScript("OnEvent", function(self, event, messageType, message)
+    if type(message) == "string" and self:ShouldDisplayMessageType(messageType, message) then self:AddMessage(message, 1, 0.1, 0.1, 1, messageType) __sounds = (__sounds or 0) + 1 end
+  end)
 `;
 
 it("at a merchant: repair with your own gold, sell junk", () => {
@@ -1475,15 +1481,21 @@ it("at a merchant: repair with your own gold, sell junk", () => {
   expect(bare.eval("return ns.GetModule('Merchant').Noisy('x')"), "a client without these calls does nothing").toBe(false);
 });
 
-it("the error line drops what the action bar already shows", () => {
+it("the error line drops what the action bar already shows, and the rest takes the game's own path", () => {
   const addon = loggedIn(MERCHANT_ENV);
-  expect(addon.eval("return UIErrorsFrame:IsEventRegistered('UI_ERROR_MESSAGE')"), "ForeverUI takes over the error line").toBe(false);
+  expect(addon.eval("return UIErrorsFrame:IsEventRegistered('UI_ERROR_MESSAGE')"), "the game's own handler keeps the event").toBe(true);
   addon.fire("UI_ERROR_MESSAGE", 51, "TEST-ONLY not ready");
   addon.fire("UI_ERROR_MESSAGE", 52, "TEST-ONLY Out of range");
+  addon.fire("UI_ERROR_MESSAGE", 52, "TEST-ONLY Out of range");
+  addon.fire("UI_ERROR_MESSAGE", 99, "TEST-ONLY Blacklisted by the game");
   addon.fire("UI_ERROR_MESSAGE", 53);
-  expect(addon.eval("return UIErrorsFrame.__lines"), "noise is dropped, useful errors stay").toEqual(["TEST-ONLY Out of range"]);
+  expect(addon.eval("return UIErrorsFrame.__lines"), "noise is dropped, useful errors stay under their type as the line's ID (so repeats refresh), the game's own blacklist still applies").toEqual([["TEST-ONLY Out of range", 52], ["TEST-ONLY Out of range", 52]]);
+  expect(addon.eval("return __sounds"), "and the game's handler still ran for what showed (sounds)").toBe(2);
+  expect(addon.eval("return UIErrorsFrame:ShouldDisplayMessageType(7, { __secret = true })"), "a message the client hides is never compared, and shown the game's way").toBe(true);
   const none = loggedIn("UIErrorsFrame = nil");
-  expect(none.eval("return ns.GetModule('Merchant').settings.errors"), "no error line on this client: nothing to take over").toBe(true);
+  expect(none.eval("return ns.GetModule('Merchant').settings.errors"), "no error line on this client: nothing to filter").toBe(true);
+  const old = loggedIn(MERCHANT_ENV + "UIErrorsFrame.ShouldDisplayMessageType = nil");
+  expect(old.eval("return UIErrorsFrame.ShouldDisplayMessageType == nil"), "an error line without that question is left alone").toBe(true);
 });
 
 it("a Sort button on the combined bag, where the client can sort", () => {
