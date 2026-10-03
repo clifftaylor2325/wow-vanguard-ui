@@ -132,15 +132,15 @@ Ranked by player value against the table-stakes list in section 1. Sizes are rou
 - [ ] **P3.2 Per-element scale and opacity.** Every `ns.Mover` frame gets `scale` and `alpha` in its saved position, editable from the mover popover (`Core/MoverPopover.lua`) and the options rows. Size M.
 - [ ] **P3.3 Visibility conditions.** Action bars have Always/Mouseover/In combat/Hidden (`Modules/ActionBarLayout.lua`). Generalise to a small checklist (combat, mouseover, in group, in raid, in instance, vehicle, resting) compiled to a macro-conditional driver string, and offer it on action bars, the info strip, data bars and the menu strip. Size M.
 - [ ] **P3.4 Keybind mode.** Hover a button and press a key to bind (`SetBinding`/`SetBindingClick` out of combat, `SaveBindings`), with the current key drawn on the button (`b.HotKey` text already exists in Blizzard's template; ForeverUI's buttons need their own hotkey text if absent). Size M.
-- [ ] **P3.5 Shared fonts and textures. [DECIDE: bundling LibSharedMedia-3.0 and LibStub]** The README promises no code from other UI addons; LibSharedMedia is a library (MIT-like licence), not a UI addon. If approved: register ForeverUI's font and three bar textures with LSM, read LSM's lists for the Font and Bar texture pickers (`Core/Options.lua` general page), fall back to the built-ins when LSM is absent. If declined: add 3-4 more generated bar textures (flat, gloss, striped, minimal) in `scripts/lib/media-sources.mjs` and a second font weight. Size M.
-- [ ] **P3.6 Masque support. [DECIDE]** If Masque is loaded, hand action buttons, pet/stance buttons and aura icons to a Masque group and skip ForeverUI's own button skin; otherwise unchanged. Size M.
+- [ ] **P3.5 Shared fonts and textures. [Owner: yes, bundle LibSharedMedia-3.0 and LibStub]** The README promises no code from other UI addons; LibSharedMedia is a library (MIT-like licence), not a UI addon. If approved: register ForeverUI's font and three bar textures with LSM, read LSM's lists for the Font and Bar texture pickers (`Core/Options.lua` general page), fall back to the built-ins when LSM is absent. If declined: add 3-4 more generated bar textures (flat, gloss, striped, minimal) in `scripts/lib/media-sources.mjs` and a second font weight. Size M.
+- [ ] **P3.6 Masque support. [Owner: yes]** If Masque is loaded, hand action buttons, pet/stance buttons and aura icons to a Masque group and skip ForeverUI's own button skin; otherwise unchanged. Size M.
 - [ ] **P3.7 Profiles on Wago; import applies scale.** The export string exists (`Core/Profiles.lua:52-93`). Add a "UI scale and resolution" block to the export, an "apply UI scale?" prompt on import, and publish 2-3 official profiles (1080p damage, 1440p healing, ultrawide) once in-game verified. Size S.
 - [ ] **P3.8 Chat basics.** Check `Modules/Chat.lua` and add what is missing from the table stakes: timestamps (option, `BetterDate` format), short channel names (`[2. Trade]` → `[T]`), class-coloured names where the client exposes them, a mouse-wheel-to-top/bottom with Ctrl. Skip anything that would read secret chat payloads in instances. Size M.
 - [ ] **P3.9 Vanilla convenience module gaps.** The addon already has ammo, pet happiness, weapon enchants, five-second rule, energy ticks, swing timer, auto repair/sell, keep stocked, Train all, flight timer, quest automation. Add: a warlock soul-shard counter on the info strip (`C_Container` scan on `BAG_UPDATE_DELAYED`), a rare-spawn alert from `VIGNETTE_MINIMAP_UPDATED` (sound + chat line, out of combat), a hardcore death notice styling (Forever has Hardcore mode), and a "defer to Questie" switch: when the Questie addon is loaded, ForeverUI's tracker and quest dialog stay off by default and only the skin applies. Size M.
-- [ ] **P3.10 Blizzard click-cast bindings. [DECIDE]** 12.x has a built-in Click Cast Bindings system (`ClickBindingFrame`). Offer "Use the game's click bindings" as an alternative to ForeverUI's own click-cast module (which also sidesteps the secure-snippet risk from P0.11). Size S.
+- [ ] **P3.10 Blizzard click-cast bindings. [Owner: yes, offer it]** 12.x has a built-in Click Cast Bindings system (`ClickBindingFrame`). Offer "Use the game's click bindings" as an alternative to ForeverUI's own click-cast module (which also sidesteps the secure-snippet risk from P0.11). Size S.
 - [ ] **P3.11 Cooldown Manager and damage meter: skin more, replace less.** `Modules/GameTools.lua` positions and skins both. Add: a toggle to show the Cooldown Manager's "essential" row between the unit frames with ForeverUI's icon borders and timer font; a damage-meter "last fight DPS" badge already exists on the info strip — add a "your rank" line when `C_DamageMeter` exposes it. All field names are unverified: implement behind `ns.Client.has` flags. [VERIFY IN GAME] Size M.
 - [ ] **P3.12 Error badge.** Show a small count on the addons button (and in the options footer) when `/fui errors` has entries this session, instead of relying on the player typing the command. Size S.
-- [ ] **P3.13 Bag categories. [DECIDE, later]** AdiBags/Baganator-style sections (equipment, consumables, quest, trade goods, junk) inside the combined bag. Large; only after P0-P2 are merged. Size L.
+- [ ] **P3.13 Bag categories. [Owner: yes, in P3]** AdiBags/Baganator-style sections (equipment, consumables, quest, trade goods, junk) inside the combined bag. Large; only after P0-P2 are merged. Size L.
 - [ ] **P3.14 Edit Mode layout export of ForeverUI positions.** Edit Mode layouts are shareable strings in 12.x; include ForeverUI's mover positions in `/fui export` already — add import/export of the Edit Mode layout name to switch with the profile. Size S.
 
 Deliberately not planned: aura "smart filters", execute-range or health-threshold indicators, per-NPC nameplate logic, threat maths beyond `UnitThreatSituation`, WeakAuras-style triggers, addon comms in instances. The 12.x secret-value rules make these impossible or unreliable, and competing suites dropped them.
@@ -171,6 +171,14 @@ Observed from the Playwright previews (`npm run preview`; the geometry and colou
 3. Bundle LibSharedMedia/LibStub (P3.5) and support Masque (P3.6)?
 4. Which Blizzard systems may Edit Mode own when ForeverUI replaces them (P2.18)?
 5. Can you run the smoke test (P0.13) in the Forever beta before P1 lands, and paste `/fui errors` output?
+
+**Owner's answers (2026-10-03):**
+1. Keep the 10-line function rule as it is, everywhere.
+2. Keep the 100 % coverage floor, everywhere.
+3. Yes: bundle LibSharedMedia-3.0 and LibStub (P3.5), and support Masque (P3.6).
+4. ForeverUI owns the game frames it replaces; they leave Edit Mode (done in P2.18).
+5. Not yet; P3 goes ahead without the smoke test.
+Also approved: P3.10 (offer the game's click bindings) and P3.13 (bag categories, in P3).
 
 ---
 
