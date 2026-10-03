@@ -529,6 +529,43 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   expect(questLog(addon).title, "the log's next update chooses the first quest showing").toBe("[3] TEST-ONLY Far");
 });
 
+// The quest log's two scroll areas: each child's height, how far it scrolls, and where it is.
+const logScrolls = (addon) => addon.eval(`local f = ForeverUI_QuestLog
+  return { list = { f.list:GetHeight(), f.listScroll:GetVerticalScrollRange(), f.listScroll:GetVerticalScroll() },
+    detail = { f.detail:GetHeight(), f.detailScroll:GetVerticalScrollRange(), f.detailScroll:GetVerticalScroll() } }`);
+
+// Turns one of the quest log's scroll areas ("listScroll" or "detailScroll") by one wheel step of this delta.
+const wheelLog = (addon, which, delta) => addon.eval(`local s = ForeverUI_QuestLog.${which} s.__scripts.OnMouseWheel(s, ${delta})`);
+
+it("quest log: a long list and long quest text scroll, a short one does not", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("ns.GetModule('QuestLog').Open()");
+  expect(logScrolls(addon), "five lines and a short text fit the 356 px views: nothing to scroll").toEqual({ list: [356, 0, 0], detail: [356, 0, 0] });
+  addon.eval(`for i = 1, 20 do local id = 91000 + i
+    __log[#__log + 1] = { questID = id }
+    __quests[id] = { index = #__log, title = "TEST-ONLY Many " .. i, level = 5, dist = i, objectives = {} } end
+    GetQuestLogQuestText = function() return "TEST-ONLY " .. string.rep("word ", 300) end`);
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(logScrolls(addon), "25 lines of 20 px make the list 500 px; the wolves' 1510 characters, objectives, a row of rewards and the money line make the details 516 px").toEqual({ list: [500, 144, 0], detail: [516, 160, 0] });
+  wheelLog(addon, "listScroll", -1);
+  expect(logScrolls(addon).list[2], "the wheel scrolls the list a step").toBe(24);
+  wheelLog(addon, "listScroll", -50);
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(logScrolls(addon).list[2], "it stops at the end of the list, and a redraw keeps the place").toBe(144);
+  logLine(addon, 4);
+  expect(logScrolls(addon).list, "folding the Hills away shortens the list; the scroll comes back inside it").toEqual([356, 0, 0]);
+  wheelLog(addon, "detailScroll", -3);
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(logScrolls(addon).detail, "the details scroll too, and the same quest redrawn keeps its place").toEqual([516, 160, 72]);
+  logLine(addon, 3);
+  expect(logScrolls(addon).detail, "another quest starts at the top, with its own height (no objectives or rewards)").toEqual([434, 78, 0]);
+  wheelLog(addon, "detailScroll", -100);
+  expect(logScrolls(addon).detail[2], "the wheel stops at the end of the details").toBe(78);
+});
+
 // TEST-ONLY counters: how often the tracker and the quest log rebuild (__rebuilds.tracker, __rebuilds.log).
 const COUNT_REBUILDS = `__rebuilds = { tracker = 0, log = 0 }
   local QT, QL = ns.GetModule("QuestTracker"), ns.GetModule("QuestLog")

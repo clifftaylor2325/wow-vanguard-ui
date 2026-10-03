@@ -11,6 +11,9 @@ local QL = ns.GetModule("QuestLog")
 
 QL.W, QL.H, QL.LIST_W, QL.PER_ROW = 640, 440, 230, 2
 
+-- The gaps on the details side: under the title, under the text, above the reward cards, around the money line.
+local TITLE_GAP, TEXT_GAP, REWARDS_GAP, MONEY_GAP = 8, 10, 12, 6
+
 -- Building ----------------------------------------------------------------------------------------
 
 -- A scrolling area on the window: its scroll frame and the child its contents sit on.
@@ -21,8 +24,16 @@ local function scrollArea(f, x, w)
   local child = CreateFrame("Frame", nil, scroll)
   child:SetSize(w, QL.H - 84)
   scroll:SetScrollChild(child)
-  scroll:SetScript("OnMouseWheel", function(self, delta) self:SetVerticalScroll(math.max(0, (self:GetVerticalScroll() or 0) - delta * 24)) end)
+  scroll:EnableMouseWheel(true)
+  scroll:SetScript("OnMouseWheel", QP.Wheel)
   return scroll, child
+end
+
+-- Sizes a scroll area's child to its contents (never shorter than the view) and
+-- keeps the scroll inside the new range (a zone folded away shortens the list).
+local function fitScroll(scroll, child, height)
+  child:SetHeight(math.max(height, scroll:GetHeight()))
+  scroll:SetVerticalScroll(math.min(scroll:GetVerticalScroll() or 0, child:GetHeight() - scroll:GetHeight()))
 end
 
 -- The title, the quest count and the close button along the top.
@@ -116,10 +127,12 @@ function QL.Refresh()
   local f, first = QL.frame, nil
   f.count:SetText(QL.Count() .. " quests")
   f.lines.Reset()
-  for i, e in ipairs(QL.Entries()) do
+  local entries = QL.Entries()
+  for i, e in ipairs(entries) do
     paintEntry(f, i, e)
     first = first or e.id
   end
+  fitScroll(f.listScroll, f.list, #entries * QP.LINE_H)
   QL.Select(QL.selected or first)
 end
 
@@ -162,16 +175,31 @@ local function markChosen(f)
   end
 end
 
--- Shows a quest on the details side (or nothing, when it's gone from the log).
-function QL.Select(id)
-  local f, d = QL.frame, id and QL.Details(id)
-  QL.selected, QL.details = d and id or nil, d
-  markChosen(f)
-  f.detail:SetShown(d ~= nil)
-  renderButtons(f, d)
-  if not d then return end
+-- How tall the details side's contents are: title, text, objectives, reward rows and the money line, with their gaps.
+local function detailHeight(f, d)
+  local rows = math.ceil(#d.rewards / QL.PER_ROW)
+  local h = f.questTitle:GetStringHeight() + TITLE_GAP + f.text:GetStringHeight() + TEXT_GAP + f.objectives:GetStringHeight() + REWARDS_GAP
+  return h + rows * (QP.CARD_H + QP.GAP) + MONEY_GAP + f.money:GetStringHeight() + MONEY_GAP
+end
+
+-- Fills the details side with a quest and sizes its scroll to fit.
+local function renderDetails(f, d)
   f.questTitle:SetText(QP.Titled(d.level, d.title))
   f.text:SetText(QP.Plain(d.text))
   f.objectives:SetText(objectivesText(d))
   renderRewards(f, d)
+  fitScroll(f.detailScroll, f.detail, detailHeight(f, d))
+end
+
+-- Shows a quest on the details side (or nothing, when it's gone from the log).
+-- Another quest starts at the top; the same one, redrawn, keeps its scroll.
+function QL.Select(id)
+  local f, d = QL.frame, id and QL.Details(id)
+  local changed = id ~= QL.selected
+  QL.selected, QL.details = d and id or nil, d
+  if changed then f.detailScroll:SetVerticalScroll(0) end
+  markChosen(f)
+  f.detail:SetShown(d ~= nil)
+  renderButtons(f, d)
+  if d then renderDetails(f, d) end
 end
