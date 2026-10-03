@@ -2,7 +2,9 @@
 // stub (scripts/lib/wow-stub.lua). One case per it(), same checks as before.
 
 import { afterAll, expect, it } from "vitest";
-import { createAddon } from "./lib/lua-harness.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { createAddon, root } from "./lib/lua-harness.mjs";
 import { dumpHits } from "./lib/lua-coverage.mjs";
 import { luaValue } from "./lib/lua-emit.mjs";
 
@@ -40,7 +42,7 @@ function loggedIn(extra = "", { firstRun = false, savedVariables = "" } = {}) {
 }
 
 // Whether any chat line matches re.
-const chatHas = (addon, re) => addon.chat().some((line) => re.test(line));
+const chatHas = (addon, re) => Array.from(addon.chat()).some((line) => re.test(line));
 
 it("saved variables", () => {
   expect(createAddon().eval("return next(ns.Profile()) == nil"), "before ADDON_LOADED the profile is empty").toBe(true);
@@ -332,6 +334,36 @@ it("slash", () => {
   addon.clearChat();
   addon.slash("bogus");
   expect(chatHas(addon, /Unknown command/), "unknown commands say so").toBeTruthy();
+});
+
+// The owner's checklist, as text.
+const smokeText = () => fs.readFileSync(path.join(root, "docs", "SMOKE-TEST.md"), "utf8");
+
+// Every distinct command word that follows "/fui " in the text, in order of first use.
+const fuiWords = (text) => [...new Set([...text.matchAll(/\/fui ([a-z]+)/g)].map((m) => m[1]))];
+
+// How many lines of the text start with this label (the checklist's "- Do:" lines and so on).
+const lineCount = (text, label) => text.split("\n").filter((l) => l.startsWith(label)).length;
+
+it("smoke-test checklist: every /fui command it names is real", () => {
+  const words = fuiWords(smokeText());
+  expect(words).toEqual(expect.arrayContaining(["status", "errors", "setup", "unlock", "lock", "profile", "import", "export", "binds", "reset", "frames", "quests"]));
+  const addon = loggedIn();
+  const unknown = words.filter((word) => {
+    addon.clearChat();
+    addon.slash(word);
+    return chatHas(addon, /Unknown command/);
+  });
+  expect(unknown).toEqual([]);
+});
+
+it("smoke-test checklist: every step has its Do, Expect and paste lines", () => {
+  const text = smokeText();
+  const steps = lineCount(text, "### ");
+  expect(lineCount(text, "- Do:")).toBe(steps);
+  expect(lineCount(text, "- Expect:")).toBe(steps);
+  expect(lineCount(text, "- If it fails, paste:")).toBe(steps);
+  expect(steps).toBeGreaterThanOrEqual(30);
 });
 
 // TEST-ONLY units. A secret is a table: Lua errors on arithmetic or
