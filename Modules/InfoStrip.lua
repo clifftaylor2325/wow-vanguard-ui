@@ -1,6 +1,6 @@
 -- A strip of numbers under the minimap, up to four rows:
 --   durability (orange at 25% or less, red at 10% or less) · free bag slots · fps and latency
---   gold · ammo (hunters, warriors, rogues) · clock
+--   gold · ammo (hunters, warriors, rogues) or soul shards (warlocks) · clock
 --   leveling: XP per hour · time to level · gold per hour this session
 --   your damage per second in the last fight (off until you turn it on)
 -- Each block reads the client when its event fires (fps, latency and the
@@ -16,7 +16,7 @@ local V = ns.Visibility
 
 local IS = ns.Module("InfoStrip", {
   defaults = {
-    durability = true, bags = true, system = true, gold = true, ammo = true, clock = true,
+    durability = true, bags = true, system = true, gold = true, ammo = true, clock = true, shards = true,
     xprate = true, leveltime = true, goldrate = true, dps = false,
   },
 })
@@ -26,6 +26,8 @@ IS.WIDTH, IS.ROW = 182, 16
 IS.BLOCKS = {
   durability = { 1, "LEFT" }, bags = { 1, "CENTER" }, system = { 1, "RIGHT" },
   gold = { 2, "LEFT" }, ammo = { 2, "CENTER" }, clock = { 2, "RIGHT" },
+  -- Soul shards share ammo's place: no class carries both.
+  shards = { 2, "CENTER" },
   xprate = { 3, "LEFT" }, leveltime = { 3, "CENTER" }, goldrate = { 3, "RIGHT" },
   dps = { 4, "LEFT" },
 }
@@ -37,6 +39,9 @@ IS.RATES = { "xprate", "leveltime", "goldrate" }
 IS.AMMO_CLASSES = { HUNTER = true, WARRIOR = true, ROGUE = true }
 -- The ammo inventory slot, and the equipment slots durability reads.
 IS.AMMO_SLOT, IS.LAST_SLOT = 0, 19
+-- The Soul Shard item (vanilla's, 6265), and the last bag counted: the reagent bag
+-- (Enum.BagIndex.ReagentBag), where Forever lets shards go.
+IS.SHARD_ITEMS, IS.LAST_BAG = { [6265] = true }, 5
 
 -- Values -------------------------------------------------------------------------------------
 
@@ -77,6 +82,23 @@ function IS.FreeSlots()
   local total = 0
   for bag = 0, 4 do total = total + (ns.PlainNumber(free(bag)) or 0) end
   return total
+end
+
+-- How many soul shards one bag slot's item is (0 for anything else or a hidden item).
+local function shardsIn(item)
+  if type(item) ~= "table" or ns.IsSecret(item.itemID) or not IS.SHARD_ITEMS[item.itemID] then return 0 end
+  return ns.PlainNumber(item.stackCount) or 1
+end
+
+-- Soul shards across your bags and the reagent bag, or nil when the client can't say.
+function IS.SoulShards()
+  local info, slots = C_Container and C_Container.GetContainerItemInfo, C_Container and C_Container.GetContainerNumSlots
+  if type(info) ~= "function" or type(slots) ~= "function" then return nil end
+  local n = 0
+  for bag = 0, IS.LAST_BAG do
+    for slot = 1, ns.PlainNumber(slots(bag)) or 0 do n = n + shardsIn(info(bag, slot)) end
+  end
+  return n
 end
 
 -- Copper as "12g 34s 7c" (no gold part under a gold).
@@ -210,6 +232,14 @@ function IS.TEXT.ammo()
   if ns.IsSecret(class) or not IS.AMMO_CLASSES[class] then return nil end
   local n = ns.PlainNumber(ask("GetInventoryItemCount", "player", IS.AMMO_SLOT)) or 0
   if n > 0 or class == "HUNTER" then return "ammo " .. n, n == 0 and "bad" or "text" end
+end
+
+-- Your soul shards, for warlocks (none is red).
+function IS.TEXT.shards()
+  local _, class = UnitClass("player")
+  if ns.IsSecret(class) or class ~= "WARLOCK" then return nil end
+  local n = IS.SoulShards()
+  if n then return "shards " .. n, n == 0 and "bad" or "text" end
 end
 
 -- The time.
@@ -365,7 +395,7 @@ end
 -- Repaints each block when its event fires.
 local function watch()
   for event, key in pairs(IS.EVENTS) do ns.On(event, function() IS.Paint(key) end) end
-  ns.On("BAG_UPDATE_DELAYED", function() IS.Paint("ammo") end)
+  ns.On("BAG_UPDATE_DELAYED", function() IS.Paint("ammo") IS.Paint("shards") end)
   ns.On("PLAYER_MONEY", function() IS.Paint("goldrate") end)
   ns.On("PLAYER_XP_UPDATE", onXP)
   ns.On("PLAYER_LEVEL_UP", IS.PaintRates)

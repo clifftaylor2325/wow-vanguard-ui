@@ -230,7 +230,7 @@ O.MODULE_INFO = {
   ActionBars = { "Action bars", "Eight bars with their own size, layout and visibility." },
   SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, places the pet and stance bars, and adds the vehicle exit." },
   Minimap = { "Minimap", "A square minimap with the zone and coordinates." },
-  InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo and the time, under the minimap, your XP and gold per hour while you level, and your DPS if you like." },
+  InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo or soul shards and the time, under the minimap, your XP and gold per hour while you level, and your DPS if you like." },
   AfkScreen = { "AFK screen", "While you're away, the screen dims to a card with your character, zone, time away and XP." },
   MenuStrip = { "Menu and quest tracker", "The game's menu buttons (as ForeverUI icons) and bag buttons in a corner strip, and the quest tracker under the info strip." },
   Chat = { "Chat", "Themed chat windows and tabs." },
@@ -243,7 +243,7 @@ O.MODULE_INFO = {
   QuestTracker = { "Quest tracker", "Your watched quests under the info strip: levels in difficulty colors, objectives, quest items, nearest first if you like." },
   QuestLog = { "Quest log", "Your quests by zone, each quest's text, objectives and rewards, with Track, Share, Abandon and Map." },
   QuestAuto = { "Quest automation", "Accept, turn in, pick the best-selling reward, skip chatter; each off until switched on." },
-  GameAlerts = { "Game alerts", "Loss of control and the talking head in the ForeverUI look, each in a spot you can move." },
+  GameAlerts = { "Game alerts", "Loss of control and the talking head in the ForeverUI look, each in a spot you can move; Hardcore death notices restyled; a rare nearby announced if you like." },
   Errands = { "Errands", "Train all at a trainer, keep items stocked from merchants, and time your flights." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
   Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the ForeverUI look." },
@@ -417,6 +417,8 @@ local function gameToolRows()
     check("Place them to fit the layout; off leaves them to Edit Mode (reload)", setting("GameTools", "place", true)),
     check("Loss of control in the ForeverUI look, above your character (reload)", setting("GameAlerts", "lossOfControl", true)),
     { "cycle", "Talking head (reload)", { { "move", "ForeverUI look, top center" }, { "hide", "Hidden" }, { "game", "The game's" } }, setting("GameAlerts", "talkingHead", true) },
+    check("Hardcore death notices in the ForeverUI look (reload)", setting("GameAlerts", "hardcore", true)),
+    check("A rare nearby: a sound and a chat line, out of combat", setting("GameAlerts", "rares")),
   }
 end
 
@@ -492,6 +494,7 @@ local function stripRows()
     check("Durability", stripSetting("durability")), check("Free bag slots", stripSetting("bags")),
     check("Frame rate and latency", stripSetting("system")), check("Gold", stripSetting("gold")),
     check("Ammo (hunters, warriors, rogues)", stripSetting("ammo")), check("Clock", stripSetting("clock")),
+    check("Soul shards (warlocks)", stripSetting("shards")),
     check("XP per hour this session", stripSetting("xprate")), check("Time to the next level", stripSetting("leveltime")),
     check("Gold per hour this session", stripSetting("goldrate")),
     check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")),

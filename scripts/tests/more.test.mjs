@@ -959,6 +959,69 @@ it("game alerts: a talking head that loads later is restyled once when its part 
   expect(addon.eval("return ForeverUI_TalkingHeadFrameSpot == __spot"), "a second load event makes no second spot").toBe(true);
 });
 
+// TEST-ONLY raid warning frame: one message line the game reuses (as its pool does), numbered as messages come.
+const WARNING_ENV = `
+  GameFontNormalHuge = "GameFontNormalHuge"
+  RaidWarningFrame = CreateFrame("Frame", "RaidWarningFrame", UIParent)
+  RaidWarningFrame.line, RaidWarningFrame.counter = RaidWarningFrame:CreateFontString(), 0
+  function RaidWarningFrame:AddMessage(text) self.counter = self.counter + 1 self.line:SetText(text) self.line:SetTextColor(1, 0.2, 0.2) self.line.messageOrder = self.counter end
+  function RaidWarningFrame:GetSortedMessages() return { self:CreateFontString(), self.line } end
+  RaidWarningFrame:RegisterEvent("HARDCORE_DEATHS") RaidWarningFrame:RegisterEvent("CHAT_MSG_RAID_WARNING")
+  RaidWarningFrame:SetScript("OnEvent", function(self, event, text) self:AddMessage(text) end)
+`;
+
+it("game alerts: Hardcore death notices take the theme font and red; a reused line gets the game's font back", () => {
+  const addon = loggedIn(WARNING_ENV);
+  // The message line: its font face, color, the game font object it was given, and the death mark.
+  const line = () => addon.eval("local l = RaidWarningFrame.line return { font = l.__font and l.__font[1], color = l.__textColor, template = l.__template or false, death = l.fuiDeath or false }");
+  addon.fire("HARDCORE_DEATHS", "TEST-ONLY Bob has fallen.");
+  const death = line();
+  expect([death.font, isTok(addon, death.color, "bad"), death.death], "a death notice: the theme's title font, the theme's red").toEqual([addon.eval('local f = UIParent:CreateFontString() ns.Theme.ApplyRole(f, "title") return f.__font[1]'), true, true]);
+  addon.fire("CHAT_MSG_RAID_WARNING", "TEST-ONLY Pull in 5");
+  expect([line().template, line().death], "the next raid warning on that line: the game's font again").toEqual(["GameFontNormalHuge", false]);
+  addon.fire("CHAT_MSG_RAID_WARNING", "TEST-ONLY Again");
+  expect(line().template, "a line that was never a death notice is left as it is").toBe("GameFontNormalHuge");
+  const off = loggedIn(WARNING_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { GameAlerts = { hardcore = false } } }" });
+  off.fire("HARDCORE_DEATHS", "TEST-ONLY Bob has fallen.");
+  expect(off.eval("return RaidWarningFrame.line.__font == nil"), "switched off: the game's own look").toBe(true);
+  expect(loggedIn("RaidWarningFrame = CreateFrame('Frame', 'RaidWarningFrame', UIParent)").eval("return ns.GetModule('GameAlerts').settings.hardcore"), "a frame without the game's message list is left alone").toBe(true);
+});
+
+// TEST-ONLY minimap marks: a rare, a treasure, a dead rare, a rare with a hidden name, a rare elite.
+const VIGNETTE_ENV = `
+  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  __vignettes = {
+    rare = { name = "TEST-ONLY Rare", atlasName = "VignetteKill", isDead = false }, chest = { name = "TEST-ONLY Chest", atlasName = "VignetteLoot" },
+    dead = { name = "TEST-ONLY Dead", atlasName = "VignetteKill", isDead = true }, hidden = { name = { __secret = true }, atlasName = "VignetteKill" },
+    elite = { name = "TEST-ONLY Elite", atlasName = "VignetteKillElite" },
+  }
+  C_VignetteInfo = { GetVignetteInfo = function(guid) return __vignettes[guid] end }
+`;
+
+it("game alerts: a rare nearby is announced with a sound and a chat line, out of combat, once (off until switched on)", () => {
+  const addon = loggedIn(VIGNETTE_ENV + CLICK_LUA);
+  // Rare lines in chat so far.
+  const rares = () => addon.chat().filter((l) => /Rare nearby/.test(l));
+  addon.fire("VIGNETTE_MINIMAP_UPDATED", "rare", true);
+  expect(rares(), "off until you switch it on").toEqual([]);
+  addon.slash("");
+  addon.eval('__click("Bars, map, chat")');
+  expect(addon.eval('return __click("A rare nearby")'), "the switch is under Bars, map, chat").toBe(true);
+  addon.fire("VIGNETTE_MINIMAP_UPDATED", "rare", true);
+  addon.fire("VIGNETTE_MINIMAP_UPDATED", "rare", true);
+  expect([rares().length, /Rare nearby: TEST-ONLY Rare$/.test(rares()[0]), addon.eval("return __wfgWorld.sounds[#__wfgWorld.sounds]")], "one line and the raid warning sound, once per rare").toEqual([1, true, "RAID_WARNING"]);
+  for (const guid of ["chest", "dead", "hidden", "nothing"]) addon.fire("VIGNETTE_MINIMAP_UPDATED", guid, true);
+  addon.fire("VIGNETTE_MINIMAP_UPDATED", "elite", false);
+  addon.eval('__wfgStub.fire("VIGNETTE_MINIMAP_UPDATED", { __secret = true }, true)');
+  expect(rares().length, "a treasure, a dead rare, a hidden name, an unknown mark, one leaving the map, a hidden mark: nothing").toBe(1);
+  setCombat(addon, true);
+  addon.fire("VIGNETTE_MINIMAP_UPDATED", "elite", true);
+  expect(rares().length, "not in a fight").toBe(1);
+  setCombat(addon, false);
+  addon.fire("VIGNETTE_MINIMAP_UPDATED", "elite", true);
+  expect(rares().length, "a rare elite after the fight").toBe(2);
+});
+
 // TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
 const DPS_ENV = `
   __dps = { combatSources = { { isLocalPlayer = false, amountPerSecond = 999 }, { isLocalPlayer = true, amountPerSecond = 1234.5 } } }
@@ -1133,6 +1196,27 @@ it("the info strip: ammo, and clients that can't answer", () => {
   expect(block(hunter, "ammo").shown, "a hidden class shows nothing").toBe(false);
   const bare = loggedIn(UNITS_ENV + "GetMoney = function() return { __secret = true } end GetInventoryItemDurability = nil C_Container = nil GetFramerate = nil GetNetStats = nil");
   expect(["durability", "bags", "system", "gold", "clock"].map((k) => block(bare, k).shown), "no answer, no block").toEqual([false, false, false, false, false]);
+});
+
+it("the info strip: a warlock's soul shards, across the bags and the reagent bag", () => {
+  const SHARDS = `__units.player.class = "WARLOCK" issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+    __wfgWorld.bags[1][3] = { itemID = 6265 } __wfgWorld.bags[2][1] = { itemID = 2589, count = 5 }
+    __wfgWorld.bags[5], __wfgWorld.bagSizes[5] = { [2] = { itemID = 6265, count = 2 } }, 4
+`;
+  const addon = loggedIn(UNITS_ENV + SHARDS + CLICK_LUA);
+  expect([block(addon, "shards").text, block(addon, "ammo").shown], "three shards (one in a bag, two in the reagent bag), where ammo would be").toEqual(["shards 3", false]);
+  addon.eval("__wfgWorld.bags[1][3] = nil __wfgWorld.bags[5][2] = nil");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect(block(addon, "shards").text === "shards 0" && isTok(addon, block(addon, "shards").color, "bad"), "none left is red").toBe(true);
+  addon.eval("__wfgWorld.bags[1][3] = { itemID = { __secret = true } }");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect(block(addon, "shards").text, "a hidden item doesn't count").toBe("shards 0");
+  addon.slash("");
+  addon.eval('__click("Bars, map, chat")');
+  expect(addon.eval('return __click("Soul shards (warlocks)")') && block(addon, "shards").shown, "a switch turns it off at once").toBe(false);
+  expect(block(loggedIn(UNITS_ENV + SHARDS + "C_Container.GetContainerItemInfo = nil"), "shards").shown, "a client that can't list bag items shows nothing").toBe(false);
+  expect(block(loggedIn(UNITS_ENV), "shards").shown, "a mage carries no shards").toBe(false);
+  expect(block(loggedIn(UNITS_ENV + 'UnitClass = function() return "x", { __secret = true } end'), "shards").shown, "a hidden class shows nothing").toBe(false);
 });
 
 // TEST-ONLY trainer: two services you can learn (5s and 20s), one you can't yet, one learned; 22s on hand.
