@@ -545,3 +545,15 @@ export const AFK_ENV = `
   UnitXPMax = function() return 1000 end
   date = function() return "21:04" end
 `;
+
+// Who hears a unit event: `subs`, the units each ns.OnUnit subscription asked
+// the client for (one "a,b" entry per subscription, sorted, space-separated),
+// and `plain`, how many frames take the event for every unit.
+export const unitEvents = (addon, event) => addon.eval(`local subs, plain = {}, 0
+  for _, w in ipairs(__wfgStub.frames) do
+    local units = w.__unitEvents and w.__unitEvents["${event}"]
+    if w.__events["${event}"] and not units then plain = plain + 1 end
+    if w.__events["${event}"] and units and w.fuiHandler then subs[#subs + 1] = table.concat(units, ",") end
+  end
+  table.sort(subs)
+  return { subs = table.concat(subs, " "), plain = plain }`);

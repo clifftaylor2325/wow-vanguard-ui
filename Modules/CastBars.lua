@@ -216,13 +216,21 @@ local function onCast(event, unit)
   CB.Update(unit)
 end
 
--- Module entry point (Core/Modules.lua).
-function CB.Enable(settings)
-  for unit in pairs(LAYOUT) do
-    if settings[unit] then CB.bars[unit] = createBar(unit) end
+-- Builds the bars switched on (yours, your target's, your focus's); returns their units.
+local function createBars(settings)
+  local units = {}
+  for _, unit in ipairs({ "player", "target", "focus" }) do
+    if settings[unit] then CB.bars[unit], units[#units + 1] = createBar(unit), unit end
   end
+  return units
+end
+
+-- Module entry point (Core/Modules.lua). Cast events come only for the units
+-- with a bar (the client sends every nameplate's casts to whoever asks for all).
+function CB.Enable(settings)
+  local units = createBars(settings)
   if settings.hideBlizzard then ns.OutOfCombat(function() for _, n in ipairs(BLIZZARD) do hideBlizzard(n) end end) end
-  for _, e in ipairs(CAST_EVENTS) do ns.On(e, onCast) end
+  ns.OnUnit(CAST_EVENTS, onCast, unpack(units))
   ns.On("PLAYER_TARGET_CHANGED", function() CB.Update("target") end)
   ns.On("PLAYER_FOCUS_CHANGED", function() CB.Update("focus") end)
   ns.On("PLAYER_ENTERING_WORLD", function() for unit in pairs(CB.bars) do CB.Update(unit) end end)

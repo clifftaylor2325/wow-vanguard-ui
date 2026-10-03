@@ -127,7 +127,8 @@ local function addDebuffs(f)
   f.debuffsOnEngine = ns.Auras.Backend() == ns.AuraEngine
 end
 
--- Our frame on a client nameplate: health bar, texts, debuffs, cast bar.
+-- Our frame on a client nameplate: health bar, texts, debuffs, cast bar, and
+-- its own unit events (ns.SetUnits points them at the plate's unit).
 local function build(plate)
   local s = NP.settings
   local f = CreateFrame("StatusBar", nil, plate)
@@ -137,7 +138,7 @@ local function build(plate)
   addTexts(f)
   addDebuffs(f)
   if s.castBar then addCastBar(f, s) end
-  table.insert(NP.built, f)
+  f.events, NP.built[#NP.built + 1] = ns.OnUnit(NP.UNIT_EVENTS, NP.OnUnitEvent), f
   return f
 end
 
@@ -220,6 +221,7 @@ local function onAdded(_, unit)
   hideDefault(plate)
   NP.plates[unit] = plate.fui
   plate.fui.unit = unit
+  ns.SetUnits(plate.fui.events, unit)
   plate.fui:Show()
   refresh(plate.fui, unit)
 end
@@ -227,16 +229,8 @@ end
 -- A nameplate went away: forget it (the client reuses the plate).
 local function onRemoved(_, unit)
   local f = NP.plates[unit]
-  if f then f:Hide(); f.unit = nil; f.debuffs:SetUnit(nil) end
+  if f then f:Hide(); f.unit = nil; f.debuffs:SetUnit(nil); ns.SetUnits(f.events) end
   NP.plates[unit] = nil
-end
-
--- Runs fn(frame, unit) for one unit's plate, if we drew on it.
-local function forUnit(fn)
-  return function(_, unit)
-    local f = NP.plates[unit]
-    if f then fn(f, unit) end
-  end
 end
 
 -- After a login or reload: pick up the plates already on screen.
@@ -247,12 +241,32 @@ local function scan()
   end
 end
 
+-- Shows the unit's cast under its plate, where the plate has a cast bar.
+local function showCast(f, unit)
+  if f.cast then CB.Show(f.cast, unit) end
+end
+
+-- A plate's unit event -> what it repaints on that plate. Each plate asks the
+-- client for its own unit's events only (ns.OnUnit), so 30 plates don't each
+-- hear the other 29 (or the raid's).
+local UNIT_HANDLERS = {
+  UNIT_HEALTH = NP.Update, UNIT_MAXHEALTH = NP.Update, UNIT_NAME_UPDATE = NP.Update,
+  UNIT_FACTION = NP.Update, UNIT_THREAT_LIST_UPDATE = NP.Update, UNIT_LEVEL = NP.Update,
+}
+for _, event in ipairs(CB.EVENTS) do UNIT_HANDLERS[event] = showCast end
+NP.UNIT_EVENTS = {}
+for event in pairs(UNIT_HANDLERS) do table.insert(NP.UNIT_EVENTS, event) end
+
+-- A unit event for a plate's unit: repaint what it changed on that plate.
+function NP.OnUnitEvent(event, unit)
+  local f = NP.plates[unit]
+  if f then UNIT_HANDLERS[event](f, unit) end
+end
+
 -- Event -> handler.
 local EVENTS = {
   PLAYER_ENTERING_WORLD = scan,
   NAME_PLATE_UNIT_ADDED = onAdded, NAME_PLATE_UNIT_REMOVED = onRemoved,
-  UNIT_HEALTH = forUnit(NP.Update), UNIT_MAXHEALTH = forUnit(NP.Update), UNIT_NAME_UPDATE = forUnit(NP.Update),
-  UNIT_FACTION = forUnit(NP.Update), UNIT_THREAT_LIST_UPDATE = forUnit(NP.Update), UNIT_LEVEL = forUnit(NP.Update),
   PLAYER_TARGET_CHANGED = function() each(NP.Update) end, RAID_TARGET_UPDATE = function() each(NP.Update) end,
   -- Your new level changes how hard every unit is for you.
   PLAYER_LEVEL_UP = function() each(NP.Update) end,
@@ -261,14 +275,10 @@ local EVENTS = {
   QUEST_LOG_UPDATE = function() each(NP.PaintQuest) end,
 }
 
--- A cast event: show it on that unit's plate.
-local onCast = forUnit(function(f, unit) if f.cast then CB.Show(f.cast, unit) end end)
-
 -- Module entry point (Core/Modules.lua).
 function NP.Enable(settings)
   NP.settings = settings
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
-  for _, event in ipairs(CB.EVENTS) do ns.On(event, onCast) end
 end
 
 -- Options ------------------------------------------------------------------------------------

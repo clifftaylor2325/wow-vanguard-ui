@@ -114,11 +114,6 @@ function CB.UpdateMana()
   T.SetBarValue(CB.mana, UnitPower("player", CB.MANA))
 end
 
--- A power or form event: only yours matters.
-local function onPower(_, unit)
-  if unit == nil or unit == "player" then CB.UpdateMana() end
-end
-
 -- Enabling -----------------------------------------------------------------------------------
 
 -- Shamans: build the totem row out of combat (after the unit frames) and follow totems.
@@ -128,10 +123,11 @@ local function enableTotems(settings)
   ns.On("PLAYER_ENTERING_WORLD", CB.UpdateTotems)
 end
 
--- Druids: build the mana bar out of combat and follow mana and forms.
+-- Druids: build the mana bar out of combat and follow your mana and forms (only yours).
 local function enableMana(settings)
   ns.OutOfCombat(function() if UF.frames.player then buildMana(UF.frames.player, settings.manaHeight) end end)
-  for _, e in ipairs({ "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UPDATE_SHAPESHIFT_FORM" }) do ns.On(e, onPower) end
+  ns.OnUnit({ "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER" }, CB.UpdateMana, "player")
+  ns.On("UPDATE_SHAPESHIFT_FORM", CB.UpdateMana)
 end
 
 -- Module entry point (Core/Modules.lua): each class gets only its own bar.

@@ -67,15 +67,6 @@ local function engineDispel(b)
   end
 end
 
--- On the fallback: the tile's own wash and edge, painted on each refresh.
-local function legacyDispel(b)
-  b.dispel = CreateFrame("Frame", nil, b)
-  b.dispel:SetAllPoints()
-  b.dispel:SetFrameLevel(b:GetFrameLevel() + 10)
-  b.dispel.wash, b.dispel.edges = RA.DispelParts(b.dispel, b)
-  b.dispel:Hide()
-end
-
 -- Paints the fallback wash and edge for the first debuff you can dispel, or hides them.
 local function paintDispel(b, unit)
   local aura = RA.settings.dispel and ns.Auras.Get(unit, 1, RA.DISPELLABLE)
@@ -85,6 +76,28 @@ local function paintDispel(b, unit)
   b.dispel.wash:SetVertexColor(r, g, bl, 0.35)
   b.dispel.wash:Show()
   for _, t in ipairs(b.dispel.edges) do t:SetVertexColor(r, g, bl); t:Show() end
+end
+
+-- Repaints a tile's fallback highlight, if it has one.
+local function repaint(b, unit)
+  if b.dispel then paintDispel(b, unit) end
+end
+
+-- UNIT_AURA: repaint the fallback highlight on the tile showing that unit.
+local function onAura(_, unit)
+  RF.ForUnit(unit, repaint)
+end
+
+-- On the fallback: the tile's own wash and edge, painted on each refresh.
+-- Only these need UNIT_AURA here (the rows follow their own units), so it is
+-- registered with the first one.
+local function legacyDispel(b)
+  ns.On("UNIT_AURA", onAura)
+  b.dispel = CreateFrame("Frame", nil, b)
+  b.dispel:SetAllPoints()
+  b.dispel:SetFrameLevel(b:GetFrameLevel() + 10)
+  b.dispel.wash, b.dispel.edges = RA.DispelParts(b.dispel, b)
+  b.dispel:Hide()
 end
 
 -- Containers -------------------------------------------------------------------------------
@@ -141,15 +154,6 @@ local function update(b, unit)
   if b.dispel then paintDispel(b, unit) end
 end
 
--- Repaints a tile's fallback highlight, if it has one.
-local function repaint(b, unit)
-  if b.dispel then paintDispel(b, unit) end
-end
-
--- UNIT_AURA: repaint the fallback highlight on the tile showing that unit.
-local function onAura(_, unit)
-  RF.ForUnit(unit, repaint)
-end
 
 -- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new).
 function RA.Enable(settings)
@@ -157,5 +161,4 @@ function RA.Enable(settings)
   for _, b in ipairs(RF.buttons) do setup(b) end
   table.insert(RF.setupHooks, setup)
   table.insert(RF.updateHooks, update)
-  ns.On("UNIT_AURA", onAura)
 end
