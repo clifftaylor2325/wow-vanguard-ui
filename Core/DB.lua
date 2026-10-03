@@ -89,6 +89,11 @@ function ns.Profile()
 end
 
 local migrations = {}
+-- Settings tables a migration has already run on (weak, so a replaced table is collected).
+local migrated = setmetatable({}, { __mode = "k" })
+-- key -> { t = the table ns.Settings filled, defaults = the defaults it was filled from }.
+local cache = {}
+local profileListeners = {}
 
 -- Registers fn(saved) to upgrade the settings table `key` as older versions
 -- saved it. It runs on the saved table before defaults are filled in, so it
@@ -97,12 +102,29 @@ function ns.Migrate(key, fn)
   migrations[key] = fn
 end
 
--- The settings table `key` in the active profile, upgraded (ns.Migrate), with defaults filled in.
+-- Registers fn() to run whenever the active profile's settings are switched, copied, reset or imported.
+function ns.OnProfileChanged(fn)
+  profileListeners[#profileListeners + 1] = fn
+end
+
+-- Tells every ns.OnProfileChanged listener that the active profile's settings changed.
+function ns.ProfileChanged()
+  for _, fn in ipairs(profileListeners) do fn() end
+end
+
+-- Forgets the remembered settings tables, so the next ns.Settings call fills each again.
+ns.OnProfileChanged(function() cache = {} end)
+
+-- The settings table `key` in the active profile, upgraded (ns.Migrate) once per table, with
+-- defaults filled in. Remembered while the profile still holds that table (a write that replaces
+-- it is seen at once), so the colour lookups on every bar update don't refill it.
 function ns.Settings(key, defaults)
-  local profile = ns.Profile()
+  local profile, hit = ns.Profile(), cache[key]
+  if hit and profile[key] == hit.t and (defaults == nil or defaults == hit.defaults) then return hit.t end
   local saved = type(profile[key]) == "table" and profile[key] or {}
-  if migrations[key] then migrations[key](saved) end
-  profile[key] = fill(saved, defaults or {})
+  if migrations[key] and not migrated[saved] then migrations[key](saved) migrated[saved] = true end
+  profile[key] = ns.Fill(saved, defaults or {})
+  cache[key] = { t = profile[key], defaults = defaults }
   return profile[key]
 end
 
@@ -110,6 +132,7 @@ end
 function ns.UseProfile(name)
   ForeverUIDB.profiles[name] = ForeverUIDB.profiles[name] or {}
   ForeverUICharDB.profile = name
+  ns.ProfileChanged()
 end
 
 -- Profile names, sorted.

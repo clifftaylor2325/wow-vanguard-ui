@@ -736,6 +736,12 @@ function T.SetAccent(r, g, b)
   T.Refresh()
 end
 
+-- Puts the accent back to its default (brass) and repaints.
+function T.ResetAccent()
+  T.Settings().accent = ns.Copy(DEFAULTS.accent)
+  T.Refresh()
+end
+
 -- Puts every theme setting back to its default and repaints.
 function T.Reset()
   ns.Profile().theme = nil
