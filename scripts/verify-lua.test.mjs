@@ -4325,6 +4325,18 @@ it("the engine probe refuses an AuraContainer without AddAuraGroup", () => {
   expect(chatHas(addon, /auras on the fallback/), "/fui status says so").toBe(true);
 });
 
+// TEST-ONLY client whose AuraContainer has every engine method except `name`.
+const lacking = (name) => `
+  local real = CreateFrame
+  CreateFrame = function(kind, ...) local f = real(kind, ...) if kind == "AuraContainer" then f[${JSON.stringify(name)}] = false end return f end
+`;
+
+it.each(["AddAuraGroup", "SetUnit", "SetEnabled", "UpdateAllAuras"])("the engine probe refuses an AuraContainer without %s", (name) => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS + lacking(name));
+  expect(addon.eval("return ns.AuraEngine.Available()"), "a frame missing one method is no engine").toBe(false);
+  expect(addon.eval(`for _, e in ipairs(ns.errors) do if e.text:find("${PROBE_WHERE}", 1, true) then return e.text end end`)).toBe(`${PROBE_WHERE}: the client's AuraContainer has no ${name}`);
+});
+
 it("a container the client refuses after the probe retires the engine for the session", () => {
   const off = { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { FrameAuras = false, PlayerAuras = false } } } }" };
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS + REFUSING_ENV, off);
@@ -4352,6 +4364,30 @@ it("raid tiles built after the engine retires get the fallback highlight", () =>
     return { legacy = b.debuffRow.groups ~= nil, highlight = b.dispel ~= nil, backend = ns.Auras.BackendName(), first = b.debuffRow.groups[1].icons[1].icon.__texture }`);
   expect(b, "the tile's rows are fallback containers with the fallback's dispel highlight").toEqual({ legacy: true, highlight: true, backend: "fallback", first: "TEST-ONLY-CURSE" });
   expect(errorsWith(addon, REFUSED_WHERE), "one refusal at login, and no other container tried the engine").toEqual([1, 1]);
+});
+
+// TEST-ONLY client whose AuraContainer anchored at the bottom right (the raid HoT row) refuses its layout.
+const HOT_REFUSING_ENV = `
+  local real = CreateFrame
+  CreateFrame = function(kind, ...) local f = real(kind, ...)
+    if kind == "AuraContainer" then
+      local anchor = f.SetFlowLayoutAnchorPoint
+      f.SetFlowLayoutAnchorPoint = function(self, point, ...) if point == "BOTTOMRIGHT" then self.SetFlowLayoutMaximumLineSize = function() error("TEST-ONLY: HoT row refused") end end return anchor(self, point, ...) end
+    end
+    return f
+  end
+`;
+
+it("a raid tile whose second container is refused keeps one dispel highlight", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV + HOT_REFUSING_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  const b = addon.eval(`local b = ForeverUI_RaidUnitButton1
+    return { debuffs = b.debuffRow.frame.__kind, hots = b.hotRow.groups ~= nil, highlight = b.dispel ~= nil, available = ns.AuraEngine.Available(),
+      registered = #b.debuffRow.frame.__groups[1].buttons[1].__dispel }`);
+  expect(b, "the debuff row stays on the engine with the client's highlight, and the tile adds no second one").toEqual({ debuffs: "AuraContainer", hots: true, highlight: false, available: false, registered: 9 });
+  expect(errorsWith(addon, REFUSED_WHERE), "the HoT row was refused once").toEqual([1, 1]);
+  addon.eval('__spawn(2, "raid1")');
+  expect(addon.eval("return ForeverUI_RaidUnitButton2.dispel ~= nil"), "tiles built after the retirement use the fallback highlight").toBe(true);
 });
 
 it("aura colors and stacks when the client hides the values", () => {
