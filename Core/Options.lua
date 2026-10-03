@@ -388,7 +388,7 @@ local function moreRows()
     check("Coordinates under the minimap", setting("Minimap", "coords", true)),
     check("Chat background", setting("Chat", "background", true)), check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
     { "cycle", "Chat text size (follows Text size)", ns.GetModule("Chat").SIZES, chatSizeSetting() },
-    check("Combined bag", setting("Bags", "combined", true)), check("Bank in the ForeverUI look (reload)", setting("Bags", "bank", true)),
+    check("Combined bag (reload)", setting("Bags", "combined", true)), check("Bank in the ForeverUI look (reload)", setting("Bags", "bank", true)),
   }
 end
 

@@ -1436,6 +1436,52 @@ it("a Sort button on the combined bag, where the client can sort", () => {
   expect(loggedIn(UI_ENV + "C_Container = nil").eval('return ns.GetModule("Bags").sort == nil'), "no sort call, no button").toBe(true);
 });
 
+// TEST-ONLY game search row of the combined bag: the search box and the game's own sort button.
+const SORT_ROW_ENV = `
+  C_Container = { SortBags = function() end }
+  BagItemSearchBox = CreateFrame("EditBox", "BagItemSearchBox", ContainerFrameCombinedBags)
+  BagItemAutoSortButton = CreateFrame("Button", "BagItemAutoSortButton", ContainerFrameCombinedBags)
+`;
+
+it("the bag's Sort button sits beside the search box and the game's own sort button stays hidden", () => {
+  const addon = loggedIn(UI_ENV + SORT_ROW_ENV);
+  const sort = addon.eval('local p = ns.GetModule("Bags").sort.__points.LEFT return { p.rel == BagItemSearchBox, p.relPoint, p.x }');
+  expect(sort, "right of the search box, 6 px off it").toEqual([true, "RIGHT", 6]);
+  expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "the game's own button is hidden at login").toBe(false);
+  addon.eval("BagItemAutoSortButton:Show()");
+  expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "and the game showing it again (each search row update) hides it again").toBe(false);
+  const bare = loggedIn(UI_ENV + "C_Container = { SortBags = function() end }");
+  expect(bare.eval('local p = ns.GetModule("Bags").sort.__points.TOPRIGHT return { p.x, p.y }'), "without a search box it takes the game's sort spot").toEqual([-9, -34]);
+});
+
+it("a context overlay is left alone so the game's search dimming shows", () => {
+  const addon = loggedIn(UI_ENV);
+  addon.eval("__item.ItemContextOverlay = __item:CreateTexture() __item.fuiSkinned = nil ContainerFrameCombinedBags:Hide() ContainerFrameCombinedBags:Show()");
+  expect(addon.eval("return __item.ItemContextOverlay:GetAlpha()"), "its alpha is the game's, not faded to 0").toBe(1);
+});
+
+// TEST-ONLY client CVars with the player's own bag choice ("0": separate bags) in them.
+const CVAR_ENV = `
+  __cvars = { combinedBags = "0" }
+  C_CVar.GetCVar = function(k) return __cvars[k] end
+`;
+
+it("bags: the combined CVar is set once per change of the setting, and given back when the module is switched off", () => {
+  const addon = loggedIn(UI_ENV + CVAR_ENV);
+  expect(addon.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied, ns.Settings('Bags').prior }"), "first login: turned on, the player's own value kept").toEqual(["1", true, "0"]);
+  const later = loggedIn(UI_ENV + CVAR_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { Bags = { applied = true, prior = '0' } }" });
+  expect(later.eval("return __cvars.combinedBags"), "a later login leaves the player's choice (separate bags) alone").toBe("0");
+  const off = loggedIn(UI_ENV + "__cvars = { combinedBags = '1' } C_CVar.GetCVar = function(k) return __cvars[k] end", { savedVariables: "ForeverUIDB.profiles.Default = { Bags = { combined = false, applied = true, prior = '0' } }" });
+  expect(off.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied }"), "turning the setting off sets it once, to separate bags").toEqual(["0", false]);
+  addon.eval("ns.SetModuleEnabled('Bags', false)");
+  expect(addon.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied == nil, ns.Settings('Bags').prior == nil }"), "switching the module off puts the player's value back").toEqual(["0", true, true]);
+  addon.eval("__cvars.combinedBags = '1' ns.SetModuleEnabled('Bags', false)");
+  expect(addon.eval("return __cvars.combinedBags"), "and a second time touches nothing").toBe("1");
+  const blind = loggedIn(UI_ENV);
+  blind.eval("ns.SetModuleEnabled('Bags', false)");
+  expect(blind.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied == nil }"), "a client that can't read the CVar has nothing to give back").toEqual(["1", true]);
+});
+
 it("nameplates: a gold ! by units your quests need", () => {
   const env = "__related = { nameplate1 = true, nameplate2 = { __secret = true } } C_QuestLog = { UnitIsRelatedToActiveQuest = function(unit) return __related[unit] end }";
   const addon = loggedIn(UNITS_ENV + PLATE_ENV + CLICK_LUA + env);
