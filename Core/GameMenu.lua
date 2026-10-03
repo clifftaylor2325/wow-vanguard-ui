@@ -1,9 +1,14 @@
 -- A "ForeverUI" button on the game menu (Escape), so the options are a click
--- away without typing /fui. The game builds its menu buttons each time the
--- menu opens; ForeverUI adds its own at the end, in its own section. A client
--- whose menu can't take new buttons gets a themed button just under the menu.
+-- away without typing /fui. The button is ForeverUI's own child of the menu,
+-- laid out first by the menu's own layout (layoutIndex 0), above the game's
+-- buttons. A menu without that layout gets a themed button just under it.
 
 local ADDON, ns = ...
+
+-- Sorts before the menu's own buttons, which the game numbers from 1 (MainMenuFrameTemplates.lua).
+local FIRST = 0
+-- The gap under the button: the menu's own section gap (MainMenuFrameMixin:AddSection's default).
+local SECTION_GAP = 20
 
 -- Closes the game menu and opens ForeverUI's options.
 function ns.OpenFromGameMenu()
@@ -12,10 +17,23 @@ function ns.OpenFromGameMenu()
   ns.Options.Show()
 end
 
--- Adds the button as the game builds its menu (the menu clears its buttons each time).
-local function addToMenu(menu)
-  if type(menu.AddSection) == "function" then menu:AddSection() end
-  menu:AddButton("ForeverUI", ns.OpenFromGameMenu)
+-- A button that looks like the menu's own when the menu names their template, else a themed one.
+local function menuButton(menu)
+  local template = menu.buttonTemplate
+  if type(template) ~= "string" then return ns.DialogButton(menu, "ForeverUI", 200) end
+  local b = CreateFrame("Button", nil, menu, template)
+  b:SetText("ForeverUI")
+  return b
+end
+
+-- ForeverUI's button first in a menu that lays its children out by layoutIndex, with a section gap under it.
+local function addFirst(menu)
+  local b = menuButton(menu)
+  b.layoutIndex = FIRST
+  b.bottomPadding = SECTION_GAP
+  b:SetScript("OnClick", ns.OpenFromGameMenu)
+  ns.gameMenuButton = b
+  if type(menu.MarkDirty) == "function" then menu:MarkDirty() end
 end
 
 -- A themed button just under a menu that can't take new buttons.
@@ -26,13 +44,12 @@ local function addBelow(menu)
   ns.gameMenuButton = b
 end
 
--- Puts the button on the game menu, the way this client's menu allows.
+-- Puts the button on the game menu: first in a menu with a Layout method; any other menu,
+-- or one whose button could not be built, gets the themed button under it.
 local function addButton()
   local menu = _G.GameMenuFrame
   if type(menu) ~= "table" then return end
-  if type(menu.AddButton) == "function" and type(menu.InitButtons) == "function" and type(hooksecurefunc) == "function" then
-    return hooksecurefunc(menu, "InitButtons", addToMenu)
-  end
+  if type(menu.Layout) == "function" and ns.Try("GameMenu", addFirst, menu) then return end
   addBelow(menu)
 end
 

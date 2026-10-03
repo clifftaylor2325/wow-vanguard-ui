@@ -210,6 +210,7 @@ return {
   templates = {
     BackdropTemplate = { backdrop = true },
     UIPanelButtonTemplate = { kind = "Button" },
+    GameMenuFrameButtonTemplate = { kind = "Button" },
     UIPanelCloseButton = { kind = "Button" },
     UIPanelScrollFrameTemplate = { kind = "ScrollFrame" },
     SecureUnitButtonTemplate = { kind = "Button" },
