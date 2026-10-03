@@ -187,3 +187,81 @@ it("fading a frame's art: template textures go, ForeverUI's own parts and kept o
     return { faded, art2:GetAlpha(), keep:GetAlpha(), label:GetAlpha(), other:GetAlpha(), art1:GetAlpha() }`);
   expect(out, "only the two template textures fade; a later call on another frame touches only that frame's").toEqual([2, 0, 1, 1, 0, 1]);
 });
+
+// TEST-ONLY: opens the options row's dropdown with this caption, and reads what its menu shows.
+const DROPDOWN_LUA = `
+  function __dropdown(caption)
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.dropdown and w.label:GetText() == caption and w:IsVisible() then w.dropdown:GetScript("OnClick")(w.dropdown) return w end
+    end
+  end
+  function __menuTexts()
+    local out = {}
+    for _, b in ipairs(ForeverUI_Menu.items) do if b:IsShown() then out[#out + 1] = b.text:GetText() end end
+    return out
+  end
+  function __pick(text)
+    for _, b in ipairs(ForeverUI_Menu.items) do if b:IsShown() and b.text:GetText() == text then b:GetScript("OnClick")(b) return true end end
+  end
+`;
+// TEST-ONLY media another addon shares through LibSharedMedia-3.0.
+const SHARED_LUA = `local lsm = LibStub("LibSharedMedia-3.0")
+  lsm:Register("font", "TEST-ONLY Font", [[Interface\\AddOns\\TestOnly\\Font.ttf]])
+  lsm:Register("statusbar", "TEST-ONLY Bar", [[Interface\\AddOns\\TestOnly\\Bar]])`;
+
+it("shared media: the bundled LibSharedMedia-3.0 carries ForeverUI's font and bars, and the pickers offer what other addons share", () => {
+  const FIRA = "Interface\\AddOns\\ForeverUI\\Media\\Fonts\\FiraSansCondensed-";
+  const addon = loggedIn(CLICK_LUA + DROPDOWN_LUA + SHARED_LUA);
+  expect(addon.eval(`local lsm = LibStub("LibSharedMedia-3.0")
+    return { LibStub.minors["LibSharedMedia-3.0"], LibStub.minors["CallbackHandler-1.0"], lsm:Fetch("font", "ForeverUI Fira Sans"), lsm:Fetch("font", "ForeverUI Fira Sans SemiBold"),
+      lsm:Fetch("statusbar", "ForeverUI Forever"), lsm:Fetch("statusbar", "ForeverUI Soft"), lsm:Fetch("statusbar", "ForeverUI Flat") }`), "the libraries load, and ForeverUI shares its font's two weights and its three bar textures")
+    .toEqual([8020003, 8, FIRA + "Medium.ttf", FIRA + "SemiBold.ttf", "Interface\\AddOns\\ForeverUI\\Media\\Textures\\Bar", "Interface\\AddOns\\ForeverUI\\Media\\Textures\\BarSoft", "Interface\\Buttons\\WHITE8X8"]);
+  addon.eval('ns.Options.Show("general") __dropdown("Font")');
+  const fonts = addon.eval("return __menuTexts()");
+  expect([fonts.slice(0, 2), fonts.includes("TEST-ONLY Font"), fonts.includes("Friz Quadrata TT"), fonts.some((f) => /^ForeverUI/.test(f))], "the Font picker: the built-ins first, then every shared font but ForeverUI's own")
+    .toEqual([["Fira Sans Condensed", "the game's font"], true, true, false]);
+  addon.eval('__pick("TEST-ONLY Font")');
+  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (ForeverUI_Options.title:GetFont()), ForeverUI_Options.reload:IsShown() }"), "picking a shared font uses it for all text at once, no reload")
+    .toEqual(["Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", false]);
+  addon.eval('__dropdown("Bar texture")');
+  const bars = addon.eval("return __menuTexts()");
+  expect([bars.slice(0, 3), bars.includes("TEST-ONLY Bar"), bars.includes("Blizzard"), bars.some((b) => /^ForeverUI/.test(b))], "the Bar texture picker: Forever, Soft, Flat, then every shared bar texture but ForeverUI's own")
+    .toEqual([["Forever", "Soft", "Flat"], true, true, false]);
+  addon.eval('__pick("TEST-ONLY Bar")');
+  expect(addon.eval("return { ns.Theme.BarTexture(), ForeverUI_Options.reload:IsShown() }"), "picking a shared bar texture uses it (on reload, as the built-ins)").toEqual(["Interface\\AddOns\\TestOnly\\Bar", true]);
+  expect(addon.eval('ns.Theme.Settings().barTexture = "Blizzard" return ns.Theme.BarTexture()'), "the game's bars LibSharedMedia lists work too").toBe("Interface\\TargetingFrame\\UI-StatusBar");
+});
+
+it("shared media: a name no longer shared, or no LibSharedMedia at all, falls back to the built-ins", () => {
+  const FIRA = "Interface\\AddOns\\ForeverUI\\Media\\Fonts\\FiraSansCondensed-";
+  const addon = loggedIn(CLICK_LUA + DROPDOWN_LUA);
+  addon.eval('ns.Theme.Settings().font = "TEST-ONLY Gone" ns.Theme.Settings().barTexture = "TEST-ONLY Gone" ns.Options.Show("general")');
+  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), ns.Theme.BarTexture(), __dropdown('Font').dropdown.text:GetText() }"), "a font or bar whose addon is gone: Fira Sans Condensed and the Forever bars, and the picker says so")
+    .toEqual([FIRA + "Medium.ttf", FIRA + "SemiBold.ttf", "Interface\\AddOns\\ForeverUI\\Media\\Textures\\Bar", "Fira Sans Condensed"]);
+  const bare = loggedIn('LibStub = nil');
+  expect(bare.eval(`local T = ns.Theme
+    T.Settings().font = "Friz Quadrata TT" T.Settings().barTexture = "Blizzard"
+    local out = { T.SharedMedia() == nil, #T.SharedChoices("font", { { "", "TEST-ONLY" } }), (T.Font()), T.BarTexture() }
+    T.Settings().font = [[Interface\\AddOns\\TestOnly\\Old.ttf]]
+    out[5] = (T.Font())
+    return out`), "without the library: only the built-ins, shared names fall back, and a font path from older settings still works")
+    .toEqual([true, 1, FIRA + "Medium.ttf", "Interface\\AddOns\\ForeverUI\\Media\\Textures\\Bar", "Interface\\AddOns\\TestOnly\\Old.ttf"]);
+});
+
+it("a long dropdown shows 16 choices at once, scrolls with the wheel and opens at the current choice", () => {
+  const addon = loggedIn(CLICK_LUA + DROPDOWN_LUA + `local lsm = LibStub("LibSharedMedia-3.0")
+    for i = 1, 40 do lsm:Register("font", string.format("TEST-ONLY Font %02d", i), [[Interface\\AddOns\\TestOnly\\Font.ttf]]) end`);
+  addon.eval('ns.Options.Show("general") __dropdown("Font")');
+  const total = addon.eval('return #ns.Theme.SharedChoices("font", { {}, {} })');
+  // The first choice the menu shows.
+  const first = () => addon.eval("return __menuTexts()[1]");
+  expect([addon.eval("return #__menuTexts()"), addon.eval("return ForeverUI_Menu:GetHeight()"), first()], "16 of the choices, from the top").toEqual([16, 16 * 22 + 2, "Fira Sans Condensed"]);
+  addon.wheel("ForeverUI_Menu", -3);
+  expect(first(), "the wheel scrolls down a choice per step").toBe("2002 Bold");
+  addon.wheel("ForeverUI_Menu", -100);
+  expect([first(), addon.eval("return __menuTexts()[16]")], "and stops at the end of the list").toEqual([addon.eval(`return ns.Theme.SharedChoices("font", { {}, {} })[${total - 15}][2]`), "TEST-ONLY Font 40"]);
+  addon.wheel("ForeverUI_Menu", 100);
+  expect(first(), "and at the top").toBe("Fira Sans Condensed");
+  addon.eval('ns.Theme.Settings().font = "TEST-ONLY Font 10" ns.Widgets.CloseMenu() __dropdown("Font")');
+  expect(addon.eval("local t = __menuTexts() return { t[16], ForeverUI_Menu.items[16].check:IsShown() }"), "a menu opens scrolled to show the current choice, checked").toEqual(["TEST-ONLY Font 10", true]);
+});

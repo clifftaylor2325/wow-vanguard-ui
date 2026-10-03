@@ -185,25 +185,52 @@ end
 -- Dropdown -----------------------------------------------------------------------------------
 
 local menu
+-- The most items a dropdown menu shows at once; the mouse wheel scrolls a
+-- longer list (every font other addons share, say).
+local MENU_ROWS = 16
 
 -- Hides the open dropdown menu.
 function W.CloseMenu()
   if menu then menu:Hide() end
 end
 
--- A long menu (more than this many choices) is laid out in columns of this many.
-local MENU_ROWS = 14
-
 -- One item in the menu: its text, a check on the current choice.
-local function menuItem()
+local function menuItem(i)
   local b = CreateFrame("Button", nil, menu)
   b:SetHeight(22)
+  b:SetPoint("TOPLEFT", 1, -1 - (i - 1) * 22)
+  b:SetPoint("TOPRIGHT", -1, -1 - (i - 1) * 22)
   flat(b, "HIGHLIGHT", "hover"):SetAllPoints()
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label")
   b.text:SetPoint("LEFT", 8, 0)
   b.check = icon(b, "Check", 12, "accent")
   b.check:SetPoint("RIGHT", -6, 0)
   return b
+end
+
+-- Fills menu item i with a choice; picking it runs pick(value) and closes the menu.
+local function fillItem(i, choice, current, pick)
+  menu.items[i] = menu.items[i] or menuItem(i)
+  local b = menu.items[i]
+  b.text:SetText(choice[2])
+  T.Color(b.text, choice[1] == current and "accent" or "text")
+  b.check:SetShown(choice[1] == current)
+  b:SetScript("OnClick", function() W.CloseMenu(); pick(choice[1]) end)
+  b:Show()
+end
+
+-- Fills the menu's items from its choices, from the one after menu.offset.
+local function fillMenu()
+  local d, shown = menu.owner, math.min(#menu.choices, MENU_ROWS)
+  for i = 1, shown do fillItem(i, menu.choices[menu.offset + i], d.get(), d.set) end
+  for i = shown + 1, #menu.items do menu.items[i]:Hide() end
+  menu:SetSize(d:GetWidth(), shown * 22 + 2)
+end
+
+-- Scrolls a long menu one item per wheel step, within its list.
+local function scrollMenu(_, delta)
+  menu.offset = math.max(0, math.min(#menu.choices - MENU_ROWS, menu.offset - delta))
+  fillMenu()
 end
 
 -- The shared menu frame, built once: a raised panel above everything.
@@ -213,41 +240,30 @@ local function menuFrame()
   menu:SetFrameStrata("FULLSCREEN_DIALOG")
   menu:EnableMouse(true)
   menu:SetClampedToScreen(true)
+  menu:EnableMouseWheel(true)
+  menu:SetScript("OnMouseWheel", scrollMenu)
   menu.items = {}
   menu:Hide()
   return menu
 end
 
--- Puts menu item i in its row and column; each column is width wide.
-local function placeItem(b, i, width)
-  local column, line = math.floor((i - 1) / MENU_ROWS), (i - 1) % MENU_ROWS
-  b:ClearAllPoints()
-  b:SetPoint("TOPLEFT", 1 + column * width, -1 - line * 22)
-  b:SetWidth(width - 2)
+-- How far a menu starts scrolled: enough to show the current choice.
+local function startOffset(choices, current)
+  for i, c in ipairs(choices) do
+    if c[1] == current then return math.max(0, i - MENU_ROWS) end
+  end
+  return 0
 end
 
--- Fills menu item i with a choice; picking it runs pick(value) and closes the menu.
-local function fillItem(i, choice, current, pick)
-  menu.items[i] = menu.items[i] or menuItem()
-  local b = menu.items[i]
-  b.text:SetText(choice[2])
-  T.Color(b.text, choice[1] == current and "accent" or "text")
-  b.check:SetShown(choice[1] == current)
-  b:SetScript("OnClick", function() W.CloseMenu(); pick(choice[1]) end)
-  b:Show()
-end
-
--- Opens the menu under a dropdown with its choices (in columns of MENU_ROWS when there are more).
+-- Opens the menu under a dropdown with its choices (scrolled to the current one).
 local function openMenu(d)
   menuFrame()
-  local choices = type(d.choices) == "function" and d.choices() or d.choices
-  for i, choice in ipairs(choices) do fillItem(i, choice, d.get(), d.set) placeItem(menu.items[i], i, d:GetWidth()) end
-  for i = #choices + 1, #menu.items do menu.items[i]:Hide() end
-  local columns = math.max(1, math.ceil(#choices / MENU_ROWS))
-  menu:SetSize(d:GetWidth() * columns, math.min(#choices, MENU_ROWS) * 22 + 2)
+  menu.owner = d
+  menu.choices = type(d.choices) == "function" and d.choices() or d.choices
+  menu.offset = startOffset(menu.choices, d.get())
+  fillMenu()
   menu:ClearAllPoints()
   menu:SetPoint("TOPLEFT", d, "BOTTOMLEFT", 0, -2)
-  menu.owner = d
   menu:Show()
 end
 

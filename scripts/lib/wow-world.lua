@@ -126,6 +126,12 @@ Enum = {
 STANDARD_TEXT_FONT = "Fonts\\FRIZQT__.TTF"
 UISpecialFrames = {}
 
+-- securecallfunction: calls fn with the arguments (the bundled
+-- CallbackHandler-1.0 dispatches callbacks through it).
+function securecallfunction(fn, ...)
+  return fn(...)
+end
+
 -- hooksecurefunc: runs fn after the function, as FrameXML does. A global name
 -- hooks _G; a missing function is left alone.
 function hooksecurefunc(t, name, fn)

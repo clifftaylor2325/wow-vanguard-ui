@@ -13,12 +13,13 @@ import { checkSource, sourceFiles as listSources } from "./lib/code-quality.mjs"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-// Vendored code is kept as upstream wrote it.
+// Vendored code is kept as upstream wrote it: the shared libraries in Libs/.
 const EXCLUDE = new Set();
+const VENDORED = "Libs/";
 
 // The Lua and JS files this repo owns, new ones included.
 function sourceFiles() {
-  return listSources(root).filter((f) => !EXCLUDE.has(f));
+  return listSources(root).filter((f) => !EXCLUDE.has(f) && !f.startsWith(VENDORED));
 }
 
 // Prints problems (or a per-file summary) and returns how many there were.
