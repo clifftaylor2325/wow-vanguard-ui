@@ -257,7 +257,7 @@ end
 -- Arrow keys nudge the selected handle (Shift: 10 px); other keys pass through.
 local function onKeyDown(h, key)
   local dir = NUDGE[key]
-  h:SetPropagateKeyboardInput(not (dir and selected == h.mover))
+  if ns.Client.Has("keyPropagate") then h:SetPropagateKeyboardInput(not (dir and selected == h.mover)) end
   if dir and selected == h.mover then
     local step = IsShiftKeyDown and IsShiftKeyDown() and 10 or 1
     ns.Nudge(h.mover.key, dir[1] * step, dir[2] * step)

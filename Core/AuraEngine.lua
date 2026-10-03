@@ -55,6 +55,7 @@ function E.Available()
   if ns.InCombat() then return false end
   if C_AddOns and type(C_AddOns.LoadAddOn) == "function" then pcall(C_AddOns.LoadAddOn, "Blizzard_AuraContainer") end
   probed = (ns.Try("aura containers (using ForeverUI's own icons)", makeProbe))
+  ns.Client.has.auraContainer = probed
   return probed
 end
 
@@ -203,6 +204,7 @@ end
 local function retire(frame, parent, spec, unit)
   if frame then frame:Hide() end
   probed = false
+  ns.Client.has.auraContainer = false
   return ns.AuraLegacy.Create(parent, spec, unit)
 end
 

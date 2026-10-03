@@ -25,7 +25,7 @@ local HELP = {
   "quests               open or close ForeverUI's quest log (the game's quest log key does too)",
   "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
   "binds                this spec's click-casting and hover-key bindings (set them in /fui > Click casting)",
-  "status               version, profile, modules, skins, work waiting on combat",
+  "status               version, profile, modules, skins, work waiting on combat, what the client has",
   "factionart           which of the game's own faction pictures this client has",
   "errors [clear]       the errors ForeverUI caught this session, with stacks and counts (for a bug report); clear empties the list",
 }
@@ -290,6 +290,7 @@ local function statusCommand()
   chat(string.format("ForeverUI %s  ·  profile %s  ·  %d/%d modules on", version(), ns.ProfileName(), enabled, #ns.ModuleNames()))
   chat(string.format("%d skinned addon(s)  ·  %d painted frame(s)  ·  %d change(s) waiting on combat", #ns.SkinList(), T.PaintedCount(), ns.QueuedCount()))
   chat(clientLine())
+  chat(ns.Client.Line())
   chat(textLine())
 end
 

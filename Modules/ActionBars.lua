@@ -342,9 +342,9 @@ end
 -- The client's cooldown numbers in the theme's font (they show when the game's
 -- "Show numbers for cooldowns" option is on), not for the last second and a half.
 local function themeCountdown(cd)
-  local fs = cd:GetCountdownFontString()
+  local fs = ns.Client.Has("countdownText") and cd:GetCountdownFontString()
   if fs then T.Text(fs, "cooldown", "white") end
-  cd:SetMinimumCountdownDuration(1500)
+  if ns.Client.Has("cooldownMin") then cd:SetMinimumCountdownDuration(1500) end
 end
 
 -- The icon, count, hotkey, cooldown and checked highlight on a button.

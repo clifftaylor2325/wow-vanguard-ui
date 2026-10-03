@@ -396,8 +396,7 @@ end
 -- Sets a bar's value, eased by the client when it can and smoothing is on.
 -- The client does the easing, so hidden values work the same way.
 function T.SetBarValue(bar, value)
-  local ease = Enum and Enum.StatusBarInterpolation
-  if T.Settings().smoothBars and ease and ease.ExponentialEaseOut then return bar:SetValue(value, ease.ExponentialEaseOut) end
+  if T.Settings().smoothBars and ns.Client.Has("barEase") then return bar:SetValue(value, Enum.StatusBarInterpolation.ExponentialEaseOut) end
   bar:SetValue(value)
 end
 

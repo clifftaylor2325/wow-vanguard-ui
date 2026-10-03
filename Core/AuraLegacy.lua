@@ -19,7 +19,7 @@ ns.AuraLegacy = L
 -- The client's countdown numbers on an icon, in the theme's font (timer icons only).
 function A.Countdown(cd, size)
   cd:SetHideCountdownNumbers(false)
-  local fs = cd:GetCountdownFontString()
+  local fs = ns.Client.Has("countdownText") and cd:GetCountdownFontString()
   if fs then T.Text(fs, size >= 20 and "auraTimer" or "auraTimerSmall", "white") end
 end
 

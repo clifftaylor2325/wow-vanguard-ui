@@ -185,7 +185,7 @@ local function wire(f)
   f:EnableMouse(true)
   f:SetScript("OnMouseDown", AFK.Dismiss)
   f:SetScript("OnKeyDown", AFK.Dismiss)
-  ns.OutOfCombat(function() f:EnableKeyboard(true) f:SetPropagateKeyboardInput(true) end)
+  ns.OutOfCombat(function() f:EnableKeyboard(true) if ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(true) end end)
   f:SetScript("OnUpdate", function(_, dt)
     elapsed = elapsed + dt
     if elapsed >= 1 then elapsed = 0 AFK.Tick() end
