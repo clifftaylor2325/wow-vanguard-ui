@@ -40,11 +40,10 @@ local function spellID(name)
   if type(GetSpellInfo) == "function" then return select(7, GetSpellInfo(name)) end
 end
 
--- Gives an older spell binding (name only) its spell id, once, so the grid can show its icon.
+-- Gives a spell binding that has no spell id (an older one, or a typed name) the id the
+-- client knows for its name, so the grid can show its icon and tooltip.
 local function upgrade(b)
-  if b.action == "spell" and b.spellID == nil and b.upgraded == nil then
-    b.spellID, b.upgraded = spellID(b.value), true
-  end
+  if b.action == "spell" and b.spellID == nil then b.spellID = spellID(b.value) end
 end
 
 -- This character's bindings for a spec (the current one by default), created empty.
@@ -87,7 +86,7 @@ function CC.Add(key, action, value, id, rank)
   if err then return false, err end
   CC.Remove(key)
   local list = CC.Bindings()
-  list[#list + 1] = { key = key, action = action, value = value, spellID = id, rank = rank, upgraded = true }
+  list[#list + 1] = { key = key, action = action, value = value, spellID = id, rank = rank }
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
   return true
 end
@@ -133,7 +132,7 @@ function CC.CopyToSpec(spec)
   local from, to = CC.Bindings(), CC.Bindings(spec)
   for i = #to, 1, -1 do to[i] = nil end
   for i, b in ipairs(from) do
-    to[i] = { key = b.key, action = b.action, value = b.value, spellID = b.spellID, rank = b.rank, upgraded = true }
+    to[i] = { key = b.key, action = b.action, value = b.value, spellID = b.spellID, rank = b.rank }
   end
 end
 
