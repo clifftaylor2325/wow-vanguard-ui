@@ -249,10 +249,15 @@ function UF.UpdatePower(f)
   f.power:SetStatusBarColor(UF.PowerColor(unit))
 end
 
+-- The level asked about for a ?? unit (UnitLevel -1: a boss, or one far above you): so far
+-- above yours that the client answers with its hardest color, not the trivial gray -1 would get.
+UF.SKULL_LEVEL = 999
+
 -- r, g, b for how hard a unit is for you (the client's level color), or nil when it can't say.
 function UF.LevelColor(unit)
   local get = _G.GetCreatureDifficultyColor
   local level = ns.PlainNumber(type(UnitLevel) == "function" and UnitLevel(unit) or nil)
+  if level and level < 1 then level = UF.SKULL_LEVEL end
   local c = type(get) == "function" and level and get(level)
   if c then return c.r, c.g, c.b end
 end
