@@ -203,3 +203,18 @@ it("nameplates show levels in the difficulty color", () => {
   addon.eval('__click("Nameplates")');
   expect(addon.eval('return __click("Levels, colored") and __plates.nameplate1.fui.level:GetText()'), "switched off, the levels clear at once").toBe("");
 });
+
+it("NP.RefreshAll repaints every plate on screen from the settings as they are now", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + LEVELS_ENV);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
+  // Both plates' level texts.
+  const levels = () => addon.eval("return { __plates.nameplate1.fui.level:GetText(), __plates.nameplate2.fui.level:GetText() }");
+  expect(levels(), "levels on").toEqual(["12", "14"]);
+  addon.eval("ns.Settings('Nameplates').level = false");
+  expect(levels(), "a setting written alone repaints nothing").toEqual(["12", "14"]);
+  addon.eval("ns.GetModule('Nameplates').RefreshAll()");
+  expect(levels(), "RefreshAll clears both").toEqual(["", ""]);
+  addon.eval("ns.Settings('Nameplates').level = true ns.GetModule('Nameplates').RefreshAll()");
+  expect(levels(), "and paints them back").toEqual(["12", "14"]);
+});
