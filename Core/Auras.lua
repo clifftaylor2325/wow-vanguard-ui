@@ -168,24 +168,26 @@ local function texts(f, cd, size, timer)
 end
 
 -- The 1 px theme edge around an icon, on a frame of our own (so a theme
--- repaint never touches a client-owned button).
-local function frameEdge(f)
+-- repaint never touches a client-owned button); no edge when Masque skins it.
+local function frameEdge(f, masque)
   local skin = CreateFrame("Frame", nil, f)
   skin:SetAllPoints()
+  if ns.Masque.Group(masque) then return skin end
   return T.Panel(skin, { noBg = true })
 end
 
 -- Dresses an icon frame (an engine button or one of ours). style: size, debuff
--- (type-colored edge), dim (desaturated: others' auras), timer. Returns its parts.
+-- (type-colored edge), dim (desaturated: others' auras), timer, masque (the
+-- Masque group that skins it, when Masque is loaded). Returns its parts.
 function A.Dress(f, style)
   f:SetSize(style.size, style.size)
   local px = T.Pixel(f)
-  local skin = frameEdge(f)
+  local skin = frameEdge(f, style.masque)
   local icon = T.Snap(T.Crop(f:CreateTexture(nil, "ARTWORK")))
-  icon:SetPoint("TOPLEFT", px, -px); icon:SetPoint("BOTTOMRIGHT", -px, px)
-  icon:SetDesaturated(style.dim == true)
+  icon:SetPoint("TOPLEFT", px, -px); icon:SetPoint("BOTTOMRIGHT", -px, px); icon:SetDesaturated(style.dim == true)
   local cd = sweep(f, px)
   local count, clock = texts(f, cd, style.size, style.timer)
+  ns.Masque.Add(style.masque, f, { Icon = icon, Cooldown = cd, Count = count }, "Aura")
   return { icon = icon, cooldown = cd, count = count, timer = clock, ring = style.debuff and ring(skin, px) or nil }
 end
 
@@ -193,7 +195,7 @@ end
 
 -- The icon style for one group of a container spec.
 function A.Style(spec, def)
-  return { size = def.size, debuff = def.debuff, dim = def.dim, pandemic = def.pandemic, register = def.register, timer = spec.timer, mouse = spec.mouse, cancel = spec.cancel }
+  return { size = def.size, debuff = def.debuff, dim = def.dim, pandemic = def.pandemic, register = def.register, timer = spec.timer, mouse = spec.mouse, cancel = spec.cancel, masque = spec.masque }
 end
 
 -- The backend in use: the engine when the client has AuraContainer, else the
