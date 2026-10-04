@@ -372,6 +372,16 @@ function T.ShowGlow(glow, on, color)
   end
 end
 
+-- Resizes a glow ring (T.Glow) to a whole number of screen pixels wide at
+-- frame's scale now (call again when its scale changes).
+function T.SizeGlow(glow, frame, pixels)
+  local size = pixels * T.Pixel(frame)
+  for i, t in ipairs(glow) do
+    if not SHADOW_PIECES[i].w then t:SetHeight(size) end
+    if not SHADOW_PIECES[i].h then t:SetWidth(size) end
+  end
+end
+
 -- Bars ---------------------------------------------------------------------------------------
 
 -- The status bar texture the setting picks: the bundled Bar (Forever), the
@@ -633,7 +643,7 @@ end
 -- over a bright bar, such as raid frame names).
 T.ROLES = {
   title = { 15, true }, heading = { 13, true }, name = { 12, true }, cell = { 11, true },
-  label = { 12 }, number = { 12 }, small = { 10 }, tiny = { 9 }, world = { 10, true, "OUTLINE" },
+  label = { 12 }, number = { 12 }, small = { 10 }, tiny = { 9 }, world = { 11, true, "OUTLINE" },
   barName = { 11, true, "OUTLINE" }, barSmall = { 10, false, "OUTLINE" },
   -- Aura icons: stack counts, and the timer on larger and smaller icons.
   cooldown = { 14, true, "OUTLINE" }, auraCount = { 10, true, "OUTLINE" }, auraTimer = { 11, true, "OUTLINE" }, auraTimerSmall = { 9, true, "OUTLINE" },
