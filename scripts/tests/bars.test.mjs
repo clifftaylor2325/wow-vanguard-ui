@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { ACTIONS_ENV, SETUP_DONE, UNITS_ENV, bars, button, key, loggedIn, overlaps, setCombat } from "./helpers.mjs";
+import { ACTIONS_ENV, SETUP_DONE, UNITS_ENV, bars, button, chatHas, key, loggedIn, overlaps, setCombat } from "./helpers.mjs";
 
 it("action bars", () => {
   const addon = loggedIn(ACTIONS_ENV);
@@ -539,4 +539,74 @@ it("in combat an empty slot's mouse waits for the fight to end, one entry per bu
   expect([alphaOf(addon, 4), takesMouse(addon, 4)], "a slot emptied in combat hides at once and keeps its mouse until the fight ends").toEqual([0, true]);
   setCombat(addon, false);
   expect(takesMouse(addon, 4), "then it lets clicks through").toBe(false);
+});
+
+// TEST-ONLY key bindings the game keeps (in the world's table): SetBinding moves a key to a
+// command (nil unbinds it), SaveBindings records the set it saved, and the keybind banner
+// records whether a key goes on to the game.
+const BIND_ENV = `
+  SetBinding = function(key, command)
+    for _, keys in pairs(__wfgWorld.bindings) do for i = #keys, 1, -1 do if keys[i] == key then table.remove(keys, i) end end end
+    if command then __wfgWorld.bindings[command] = __wfgWorld.bindings[command] or {} table.insert(__wfgWorld.bindings[command], key) end
+    return true
+  end
+  GetCurrentBindingSet = function() return 2 end
+  SaveBindings = function(set) __savedSet = set end
+`;
+
+// The keybind banner: shown, whether the last key went on to the game, and whether the hover mark shows.
+const binder = (addon) => addon.eval(`local f = ForeverUI_KeybindMode
+  return { shown = f:IsShown(), passed = f.__passed == true, mark = f.mark:IsShown() }`);
+
+// The keys bound to a command.
+const boundTo = (addon, command) => addon.eval(`return table.concat(__wfgWorld.bindings.${command} or {}, ",")`);
+
+it("keybind mode: hover a button and press a key to bind it; a modifier alone waits; Escape leaves", () => {
+  const addon = loggedIn(BIND_ENV);
+  addon.slash("keybind");
+  addon.eval("ForeverUI_KeybindMode.SetPropagateKeyboardInput = function(self, v) self.__passed = v end");
+  expect(binder(addon), "/fui keybind shows the banner").toMatchObject({ shown: true, mark: false });
+  expect(addon.eval("return ForeverUI_Bar1Button4:GetAlpha()"), "empty slots show, so they can be bound").toBe(1);
+  addon.key("ForeverUI_KeybindMode", "Q");
+  expect([binder(addon).passed, boundTo(addon, "ACTIONBUTTON4")], "a key with no button under the mouse goes on to the game").toEqual([true, ""]);
+  addon.hover("ForeverUI_Bar1Button4");
+  expect(binder(addon).mark, "the button under the mouse is marked").toBe(true);
+  addon.key("ForeverUI_KeybindMode", "LSHIFT");
+  expect([binder(addon).passed, boundTo(addon, "ACTIONBUTTON4")], "Shift alone binds nothing (and stays with the mode)").toEqual([false, ""]);
+  addon.keys({ shift: true });
+  addon.key("ForeverUI_KeybindMode", "Q");
+  addon.keys({ shift: false });
+  expect([boundTo(addon, "ACTIONBUTTON4"), addon.eval("return __savedSet")], "Shift-Q is bound to the button's command and saved in the set in use").toEqual(["SHIFT-Q", 2]);
+  expect([addon.eval("return ForeverUI_Bar1Button4.hotkey:GetText()"), addon.eval("return __wfgWorld.overrides['SHIFT-Q'].target")], "the hotkey shows it, and the key clicks the button").toEqual(["SQ", "ForeverUI_Bar1Button4:LeftButton"]);
+  expect(chatHas(addon, /SHIFT-Q bound to Bar 1 button 4\.$/), "chat says so").toBe(true);
+  addon.hover("ForeverUI_Bar1Button1");
+  addon.keys({ alt: true, ctrl: true });
+  addon.key("ForeverUI_KeybindMode", "F");
+  addon.keys({ alt: false, ctrl: false });
+  expect([boundTo(addon, "ACTIONBUTTON1"), addon.eval("return GetBindingAction('1')")], "the new key replaces the button's old one").toEqual(["ALT-CTRL-F", ""]);
+  addon.hover(null);
+  expect(binder(addon).mark, "leaving the button drops the mark").toBe(false);
+  addon.key("ForeverUI_KeybindMode", "ESCAPE");
+  expect([binder(addon).shown, binder(addon).passed, addon.eval("return ForeverUI_Bar1Button5:GetAlpha()")], "Escape leaves (and doesn't open the game menu); empty slots hide again").toEqual([false, false, 0]);
+});
+
+it("keybind mode: out of combat only, ends when a fight starts; from the options; needs the bars", () => {
+  const addon = loggedIn(BIND_ENV);
+  addon.slash("keybind");
+  addon.slash("keybind");
+  expect(addon.eval("return ForeverUI_KeybindMode:IsShown()"), "/fui keybind again leaves").toBe(false);
+  addon.slash("keybind");
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(addon.eval("return ForeverUI_KeybindMode:IsShown()"), "a fight ends it").toBe(false);
+  addon.slash("keybind");
+  expect([addon.eval("return ForeverUI_KeybindMode:IsShown()"), chatHas(addon, /Keybind mode waits until you're out of combat\.$/)], "and it can't start in one").toEqual([false, true]);
+  expect(addon.eval("return ns.GetModule('ActionBars').BindKey(ForeverUI_Bar1Button2, 'TEST-ONLY-K')"), "no binding changes in combat").toBe(false);
+  addon.key("ForeverUI_KeybindMode", "Q");
+  setCombat(addon, false);
+  addon.eval('for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then for _, r in ipairs(p.rows()) do if r[2] == "Keybind mode" then r[3]() end end end end');
+  expect(addon.eval("return ForeverUI_KeybindMode:IsShown()"), "the Keybind mode button on the Action bars page starts it").toBe(true);
+  const off = loggedIn(BIND_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { ActionBars = false } } } }" });
+  off.slash("keybind");
+  expect([off.eval("return ForeverUI_KeybindMode == nil"), chatHas(off, /Keybind mode needs ForeverUI.s action bars/)], "without the bars it says why").toEqual([true, true]);
 });

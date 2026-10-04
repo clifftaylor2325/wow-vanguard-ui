@@ -58,6 +58,7 @@ Modules/MainTanks.lua
 Modules/PartyExtras.lua
 Modules/ActionBars.lua
 Modules/ActionBarLayout.lua
+Modules/ActionBarKeybinds.lua
 Modules/SpecialBars.lua
 Modules/Minimap.lua
 Modules/MinimapButtons.lua

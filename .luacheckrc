@@ -42,4 +42,6 @@ read_globals = {
   "CHAT_FRAME_TEXTURES",
   -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.
   "IsInInstance", "SecureCmdOptionParse",
+  -- P3.4 Keybind mode: binding a key to a button's command and saving it in the binding set in use.
+  "SetBinding", "SaveBindings", "GetCurrentBindingSet",
 }
