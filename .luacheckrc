@@ -69,4 +69,6 @@ read_globals = {
   "IsInRaid", "IsResting",
   -- F6 Auction helper: the auction house API and the game's auction house window.
   "C_AuctionHouse", "AuctionHouseFrame",
+  -- F6 Auction helper, sell card: the item on the cursor.
+  "C_Cursor",
 }

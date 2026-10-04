@@ -349,3 +349,132 @@ it("/fui ah list and add", () => {
   addon.slash("ah list Twenty-first");
   expect(chatHas(addon, /Shopping list/), "refused past the cap, nothing listed").toBe(false);
 });
+
+// Sell ---------------------------------------------------------------------------------------
+
+// TEST-ONLY bags: 20 Strange Dust (a commodity) in bag 0 slot 1, a blade (an item) in slot 2,
+// and the game's names for the auction lengths.
+const BAGS = `${DUSTS}
+  __wfgWorld.items[9999] = { name = "TEST-ONLY Blade", icon = "TEST-ONLY-BLADE", level = 25, suffix = 7 }
+  __wfgWorld.bags[0][1] = { itemID = 10940, count = 20 }
+  __wfgWorld.bags[0][2] = { itemID = 9999, count = 1 }
+  AUCTION_DURATION_ONE, AUCTION_DURATION_TWO = "TEST-ONLY 12 Hours", "TEST-ONLY 24 Hours"`;
+
+// Competing dust: 100 and 120 a unit, and your own at 95.
+const DUST_UP = `__wfgWorld.ah.commodities[10940] = { { unitPrice = 100, quantity = 5 }, { unitPrice = 120, quantity = 3 },
+  { unitPrice = 95, quantity = 2, containsOwnerItem = true } }`;
+
+const CARD = `${HELPER}.sellCard`;
+
+// Drops the item in bag 0 `slot` on the sell slot (picked up first), and answers its price check with `event`.
+function dropAndAnswer(addon, slot, event, payload) {
+  addon.eval(`__wfgWorld.cursor = { type = "item", id = 0, bag = 0, slot = ${slot} }`);
+  addon.click(`${CARD}.slot`);
+  addon.fire(event, payload);
+}
+
+// The sell card's values (cheapest now, 7-day low, deposit, your price), its icon, and whether Post works.
+const card = (addon) => addon.eval(`local c = ${CARD} local v = {}
+  for i, l in ipairs(c.lines) do v[i] = l.value:GetText() end
+  return { v, c.icon:GetTexture() or false, c.post:IsEnabled() }`);
+
+// The restricted calls so far, as [fn, clicked, args...] (an item location as "bag:slot").
+const restrictedLog = (addon) => list(addon.eval(`local out = {}
+  for i, c in ipairs(__wfgWorld.ah.restricted) do
+    local row = { c.fn, c.clicked }
+    for j = 1, 5 do local a = c.args[j] row[#row + 1] = type(a) == "table" and (a.bagID .. ":" .. a.slotIndex) or (a == nil and "nil" or a) end
+    out[i] = row
+  end
+  return out`));
+
+// A Lua list as a JS array (an empty Lua table comes back as {}).
+const list = (v) => (Array.isArray(v) ? v : []);
+
+it("the sell card suggests an undercut", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP);
+  dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  const q = addon.eval("local q = __wfgWorld.ah.queries[1] return { q.fn, q.args[1].itemID, q.args[1].itemLevel, q.args[3] }");
+  expect(q, "a sell search for the dust, owner listings apart").toEqual(["SendSellSearchQuery", 10940, 0, true]);
+  expect(card(addon), "cheapest 100 (your 95 left out); 1 silver under, but not under 1 silver; deposit for 20").toEqual([["1s 0c", "none", "3s 0c · TEST-ONLY 12 Hours", "1s 0c"], "TEST-ONLY-DUST", true]);
+  const prices = [1, 3, 4].map((i) => { addon.click(`${CARD}.undercut.segments[${i}]`); return card(addon)[0][3]; });
+  expect(prices, "copper, percent, match").toEqual(["99c", "99c", "1s 0c"]);
+  expect(addon.eval("return ns.Settings('AuctionHelper').undercut"), "the rule is the setting").toBe("match");
+  addon.eval("__wfgWorld.ah.copper = false __wfgWorld.ah.deposit = 7");
+  addon.click(`${CARD}.undercut.segments[1]`);
+  expect(card(addon)[0].slice(2), "no copper on this client: whole silver up, deposit too").toEqual(["2s 0c · TEST-ONLY 12 Hours", "1s 0c"]);
+});
+
+it("posting calls the right function from a click, never from a timer", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP);
+  dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon), "the stack of 20 at 1s a unit, for the first length").toEqual([["PostCommodity", true, "0:1", 1, 20, 100, "nil"]]);
+  expect(card(addon), "the card is empty again").toEqual([["", "", "", ""], false, false]);
+  addon.advance(5);
+  addon.world.fireAuctionEvents({ itemID: 10940 }, 10940);
+  addon.advance(5);
+  expect(restrictedLog(addon).length, "nothing more without a click").toBe(1);
+  addon.eval("SetCVar('auctionHouseDurationDropdown', 2) __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 }, { buyoutAmount = 9000, quantity = 2 }, { minBid = 10, quantity = 1 }, { buyoutAmount = 10, quantity = 0 } }");
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  addon.advance(1);
+  addon.world.postFromBag(0, 2);
+  addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect(card(addon)[0], "an item: 4500 each for the pair is cheapest").toEqual(["45s 0c", "none", "30c · TEST-ONLY 24 Hours", "44s 0c"]);
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon)[1], "one blade, buyout only, for the second length").toEqual(["PostItem", true, "0:2", 2, 1, "nil", 4400]);
+  expect(addon.eval("return __wfgWorld.ah.postItem.slotIndex"), "the game's own SetPostItem still ran").toBe(2);
+});
+
+it("a true return waits for the game's confirmation", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.needsConfirm = true __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.click(`${CARD}.post`);
+  expect([chatHas(addon, /The game wants this price confirmed/), card(addon)[1]], "says so and keeps the item").toEqual([true, "TEST-ONLY-BLADE"]);
+  addon.world.fireAuctionEvents({ itemID: 9999 }, 9999);
+  addon.advance(5);
+  expect(restrictedLog(addon).map((c) => c[0]), "posted once, never confirmed by the addon").toEqual(["PostItem"]);
+});
+
+it("the addon never writes into the game's auction window", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP);
+  // The window's own fields (not the stub's), sorted.
+  const fields = () => addon.eval("local out = {} for k in pairs(AuctionHouseFrame) do if type(k) == 'string' and k:sub(1, 2) ~= '__' then out[#out + 1] = k end end table.sort(out) return out");
+  const before = fields();
+  dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.click(`${CARD}.post`);
+  addon.world.postFromBag(0, 2);
+  addon.world.fireAuctionEvents({ itemID: 9999 }, 9999);
+  addon.world.closeAuctionHouse();
+  expect(fields(), "the same fields: only SetPostItem, post-hooked").toEqual(before);
+});
+
+it("what the sell card won't take, and when it can't post", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.items[777] = { name = 'TEST-ONLY Bound', noAuction = true } __wfgWorld.bags[0][3] = { itemID = 777 } __wfgWorld.bags[0][4] = { itemID = 4242 }");
+  addon.click(`${CARD}.slot`);
+  for (const slot of [3, 4, 9]) addon.world.postFromBag(0, slot);
+  expect([card(addon)[1], addon.eval("return #__wfgWorld.ah.queries")], "nothing on the cursor, a bound item, one the client doesn't know, an empty slot").toEqual([false, 0]);
+  addon.eval("__wfgWorld.ah.ready = false");
+  dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  expect([card(addon)[0], card(addon)[2], addon.eval("return __wfgWorld.cursor")], "nothing up, no 7-day low: no price, no Post; the cursor emptied").toEqual([["none up", "none", "3s 0c · TEST-ONLY 12 Hours", ""], false, null]);
+  addon.eval(`ns.AuctionPrices.Record(10940, 300, __now) ${HELPER}.PaintSell()`);
+  expect([card(addon)[0][3], card(addon)[2]], "the 7-day low gives a price; Post waits for the game").toEqual(["2s 0c", false]);
+  addon.eval(`${HELPER}.Post()`);
+  addon.eval("__wfgWorld.ah.ready = true");
+  addon.fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY");
+  expect([card(addon)[2], restrictedLog(addon).length], "ready again: Post works (nothing was posted while it wasn't)").toEqual([true, 0]);
+});
+
+it("hidden numbers and stray results", () => {
+  const addon = atAuctionHouse(BAGS + `__wfgWorld.ah.commodities[10940] = { { unitPrice = __wfgWorld.secret(1), quantity = 5 }, { unitPrice = 400, quantity = 1 } }
+    C_AuctionHouse.CalculateCommodityDeposit = function() return __wfgWorld.secret(1) end
+    C_Item.GetStackCount = function() return __wfgWorld.secret(20) end
+    SetCVar("auctionHouseDurationDropdown", 7)`);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 555);
+  expect(card(addon)[0][0], "results for another item aren't the card's").toBe("...");
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  expect([card(addon)[0], addon.eval("return #ns.errors")], "the hidden price skipped, no deposit shown, no error").toEqual([["4s 0c", "none", "", "3s 0c"], 0]);
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon)[0], "a hidden stack size posts one; an unknown length is the first").toEqual(["PostCommodity", true, "0:1", 1, 1, 300, "nil"]);
+});
