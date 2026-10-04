@@ -336,8 +336,10 @@ const SCENES = [
     before: `__units.player.class = "ROGUE" __units.player.power = 40 __units.player.maxpower = 100 __units.player.ptype = "ENERGY"
       UnitPowerType = function(unit) local x = __units[unit] if x and x.ptype == "ENERGY" then return 3, "ENERGY" end return 0, "MANA" end
       C_SwingTimer = {} Enum.PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 }` },
-  { name: "foreverui-menu", caption: "Bottom-right with the mouse over the bar: the bags over the game's menu buttons on framed slots (the game's icons stand in as colored squares), each bag's fill and the backpack's free count, an empty bag slot, a full bag in red; the game's damage meter above, the Cooldown Manager row between the unit frames, and the quest tracker's flat headers (TEST-ONLY buttons, bags, meter, cooldowns and quests)",
-    lua: "function ForeverUI_MenuStrip:IsMouseOver() return true end ForeverUI_MenuStrip:SetAlpha(1)",
+  { name: "foreverui-menu", caption: "Bottom-right with the mouse over the bar: the bags over the game's menu buttons on framed slots (the game's icons stand in as colored squares), each bag's fill and the backpack's free count, an empty bag slot, a full bag in red; the game's damage meter above, Fight history's bars under it (the latest in the accent, a hidden fight's slot empty), the Cooldown Manager row between the unit frames, and the quest tracker's flat headers (TEST-ONLY buttons, bags, meter, cooldowns and quests)",
+    lua: `function ForeverUI_MenuStrip:IsMouseOver() return true end ForeverUI_MenuStrip:SetAlpha(1)
+      local FH = ns.GetModule("FightHistory") FH.settings.strip = true
+      for i, d in ipairs({ 180, 412, 0, 455, 290, 520, 260, 470 }) do FH.fights[i] = { duration = 60, dps = d > 0 and d or nil } end FH.Paint()`,
     before: `MicroMenuContainer = CreateFrame("Frame", "MicroMenuContainer", UIParent) MicroMenuContainer:SetSize(9 * 27 + 5, 40)
       for i, name in ipairs({ "Character", "PlayerSpells", "Talent", "Achievement", "QuestLog", "Guild", "LFD", "Collections", "MainMenu" }) do
         local b = CreateFrame("Button", name .. "MicroButton", MicroMenuContainer) b:SetSize(32, 40) b:SetPoint("LEFT", (i - 1) * 27, 0)
