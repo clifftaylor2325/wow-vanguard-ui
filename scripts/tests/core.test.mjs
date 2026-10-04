@@ -199,6 +199,15 @@ it("slash", () => {
   expect(chatHas(addon, /Unknown command/), "unknown commands say so").toBeTruthy();
 });
 
+it("/fui stock with the Errands module off says so instead of failing", () => {
+  const addon = loggedIn("", { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { Errands = false } } }" });
+  for (const command of ["stock", "stock item:90011 5", "stock clear"]) {
+    addon.clearChat();
+    addon.slash(command);
+    expect(Array.from(addon.chat()), "/fui " + command).toEqual([expect.stringMatching(/Errands are off \(\/fui > Modules\)\.$/)]);
+  }
+});
+
 // The chat lines printed by one /fui command, without the colored "ForeverUI:" prefix.
 const said = (addon, command) => {
   addon.clearChat();

@@ -335,6 +335,13 @@ local function errorsCommand(rest)
   for _, e in ipairs(ns.errors) do printError(e) end
 end
 
+-- /fui stock: the Errands module's stock list, which exists only while that module is on.
+local function stockCommand(rest)
+  local ER = ns.GetModule("Errands")
+  if not ER.settings then return chat("ForeverUI's Errands are off (/fui > Modules).") end
+  ER.StockCommand(rest)
+end
+
 local COMMANDS = {
   -- /fui help
   help = function() printLines(HELP) end,
@@ -364,7 +371,7 @@ local COMMANDS = {
   keybind = function() ns.GetModule("ActionBars").ToggleKeybindMode() end,
   copy = function() ns.GetModule("ChatExtras").ShowCopy() end,
   quests = function() local QL = ns.GetModule("QuestLog") if QL.frame then QL.Toggle() else ns.Chat("ForeverUI's quest log is off (/fui > Quests).") end end,
-  stock = function(rest) ns.GetModule("Errands").StockCommand(rest) end,
+  stock = stockCommand,
   factionart = function() ns.FactionArt.Report() end,
   status = statusCommand,
   errors = errorsCommand,
