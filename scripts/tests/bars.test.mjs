@@ -53,38 +53,43 @@ it("reagent and item counts show even at 0 and 1", () => {
   expect(count(4), "a hidden answer counts as not used up").toBe("");
 });
 
+it("counts show on a client without the deprecated GetActionCount (C_ActionBar.GetActionUseCount)", () => {
+  const addon = loggedIn(ACTIONS_ENV + "GetActionCount = nil C_ActionBar.GetActionUseCount = function(slot) return (__actions[slot] or {}).count or 0 end");
+  expect([button(addon, 1, 2).count, button(addon, 1, 1).count], "a stack of 5 shows 5; nothing to count shows nothing").toEqual(["5", ""]);
+});
+
 it("action bars stack with bar 1 on top", () => {
   const addon = loggedIn(ACTIONS_ENV);
-  expect(JSON.stringify(stackY(addon)) === JSON.stringify([100, 62, 24, false, false, false, false, false]), `bar 3 at the bottom, bar 1 on top (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
+  expect(JSON.stringify(stackY(addon)) === JSON.stringify([104, 64, 24, false, false, false, false, false]), `bar 3 at the bottom, bar 1 on top (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
   const six = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [6] = { enabled = true } } } } } }" });
   const y6 = stackY(six);
-  expect(y6[5] === 24 && y6[2] === 62 && y6[0] === 138, `turning on bar 6 puts it underneath; bar 1 stays on top (got ${JSON.stringify(y6)})`).toBeTruthy();
+  expect(y6[5] === 24 && y6[2] === 64 && y6[0] === 144, `turning on bar 6 puts it underneath; bar 1 stays on top (got ${JSON.stringify(y6)})`).toBeTruthy();
 });
 
 it("action bar stack follows button size and rows", () => {
   const big = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { size = 44 } } } }" });
   expect(JSON.stringify(stackY(big).slice(0, 3)) === JSON.stringify([116, 70, 24]), "bigger buttons stack without overlapping").toBeTruthy();
   const two = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [3] = { perRow = 6 } } } } } }" });
-  expect(JSON.stringify(stackY(two).slice(0, 3)) === JSON.stringify([138, 100, 24]), "a two-row bar pushes the bars above it up by its height").toBeTruthy();
+  expect(JSON.stringify(stackY(two).slice(0, 3)) === JSON.stringify([144, 104, 24]), "a two-row bar pushes the bars above it up by its height").toBeTruthy();
 });
 
 it("a moved action bar keeps its spot until reset", () => {
   const moved = loggedIn(ACTIONS_ENV, { savedVariables: 'ForeverUIDB = { profiles = { Default = { positions = { bar1 = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 40 } } } } }' });
   expect(stackY(moved)[0] === 40, "a position you saved wins").toBeTruthy();
   moved.slash("reset all");
-  expect(stackY(moved)[0] === 100, "/fui reset all puts bar 1 back on top").toBeTruthy();
+  expect(stackY(moved)[0] === 104, "/fui reset all puts bar 1 back on top").toBeTruthy();
 });
 
 it("the bottom stack follows per-bar size and rows, live", () => {
   const addon = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [2] = { size = 48 } } } } } }" });
-  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([112, 62, 24]), `a bar's own button size sets its row height (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
+  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([114, 64, 24]), `a bar's own button size sets its row height (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
   // Bar n's frame: its bottom offset on screen.
   const frameY = (n) => addon.eval(`return ForeverUI_Bar${n}.__points.BOTTOM.y`);
   addon.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 6 AB.SettingChanged(3, "perRow")');
-  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([150, 100, 24]) && frameY(1) === 150 && frameY(2) === 100, "changing a bar's buttons per row re-stacks at once: bar 1 stays on top, nothing overlaps").toBeTruthy();
+  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([154, 104, 24]) && frameY(1) === 154 && frameY(2) === 104, "changing a bar's buttons per row re-stacks at once: bar 1 stays on top, nothing overlaps").toBeTruthy();
   setCombat(addon, true);
   addon.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].size = 48 AB.SettingChanged(3, "size")');
-  expect(frameY(1) === 150, "in combat the stack waits (secure frames don't move)").toBeTruthy();
+  expect(frameY(1) === 154, "in combat the stack waits (secure frames don't move)").toBeTruthy();
   setCombat(addon, false);
   expect(frameY(2) === 124 && frameY(1) === 174, "and re-stacks when combat ends").toBeTruthy();
   addon.eval('ns.SetMoverPoint("bar1", "BOTTOM", "BOTTOM", 0, 300) ns.Unlock() local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 12 AB.SettingChanged(3, "perRow") ns.SetMoverDefault("TEST-ONLY missing", { "CENTER", "CENTER", 0, 0 })');
@@ -213,7 +218,7 @@ it("the right-edge bars start off and show on mouseover when turned on", () => {
   const bar4 = barVis(on, 4);
   expect(bar4.driver === "show" && bar4.alpha === 0 && bar4.mouse === true, "turned on, bar 4 is faded out until the mouse is over it").toBeTruthy();
   const second = on.eval("local _, _, _, x, y = ForeverUI_Bar4Button2:GetPoint(1) return { x, y }");
-  expect(second[0] === 0 && second[1] === -38, "one button per row, as before").toBeTruthy();
+  expect(second[0] === 0 && second[1] === -40, "one button per row, as before").toBeTruthy();
 });
 
 // TEST-ONLY profile saved before bars had a visibility setting: bar 4 was on
@@ -300,8 +305,8 @@ it("action bar layout: per-bar buttons, rows and size, deferred in combat", () =
     local _, _, _, x, y = b7:GetPoint(1)
     return { w = bar:GetWidth(), h = bar:GetHeight(), x7 = x, y7 = y, size = b7:GetWidth(), shown12 = ForeverUI_Bar2Button12:IsShown() }`);
   const before = lay();
-  expect(JSON.stringify(before) === JSON.stringify({ w: 454, h: 36, x7: 228, y7: 0, size: 36, shown12: true }), `bar 2 starts as one row of 12 at the shared 36 px (got ${JSON.stringify(before)})`).toBeTruthy();
-  expect(getBarOption(addon, 2, "Button size") === 36 && addon.eval("return __overrides.F12") === "ForeverUI_Bar2Button12:LeftButton", "its size row reads the shared size; button 12 has its key").toBeTruthy();
+  expect(JSON.stringify(before) === JSON.stringify({ w: 478, h: 38, x7: 240, y7: 0, size: 38, shown12: true }), `bar 2 starts as one row of 12 at the shared 38 px (got ${JSON.stringify(before)})`).toBeTruthy();
+  expect(getBarOption(addon, 2, "Button size") === 38 && addon.eval("return __overrides.F12") === "ForeverUI_Bar2Button12:LeftButton", "its size row reads the shared size; button 12 has its key").toBeTruthy();
   setCombat(addon, true);
   setBarOption(addon, 2, "Buttons per row", 6);
   setBarOption(addon, 2, "Buttons", 10);
@@ -311,7 +316,7 @@ it("action bar layout: per-bar buttons, rows and size, deferred in combat", () =
   const after = lay();
   expect(JSON.stringify(after) === JSON.stringify({ w: 250, h: 82, x7: 0, y7: -42, size: 40, shown12: false }), `then bar 2 is two rows of 6 at 40 px, showing 10 buttons (got ${JSON.stringify(after)})`).toBeTruthy();
   expect(addon.eval("return __overrides.F12") === null && getBarOption(addon, 2, "Button size") === 40, "a hidden button gives up its key; the bar keeps its own size").toBeTruthy();
-  expect(addon.eval("return ForeverUI_Bar3Button1:GetWidth()") === 36, "other bars keep theirs").toBeTruthy();
+  expect(addon.eval("return ForeverUI_Bar3Button1:GetWidth()") === 38, "other bars keep theirs").toBeTruthy();
 });
 
 it("action button cooldowns, the C_ActionBar API and range polling", () => {
@@ -609,4 +614,22 @@ it("keybind mode: out of combat only, ends when a fight starts; from the options
   const off = loggedIn(BIND_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { ActionBars = false } } } }" });
   off.slash("keybind");
   expect([off.eval("return ForeverUI_KeybindMode == nil"), chatHas(off, /Keybind mode needs ForeverUI.s action bars/)], "without the bars it says why").toEqual([true, true]);
+});
+
+// TEST-ONLY reading of a macro-conditional driver, as the client reads it: the value of the first
+// clause one of whose [...] groups has every condition in `holds` (a clause with no group always matches).
+const driverValue = (driver, holds) => {
+  for (const clause of driver.split(";")) {
+    const groups = clause.match(/\[[^\]]*\]/g) || [];
+    const met = groups.length === 0 || groups.some((g) => g.slice(1, -1).split(",").every((c) => holds.includes(c.trim())));
+    if (met) return clause.replace(/\[[^\]]*\]/g, "").trim();
+  }
+  return null;
+};
+
+it("bar 1 pages like the game's main bar: a Shift+number page wins over a stance, form or stealth bar", () => {
+  const driver = loggedIn(ACTIONS_ENV).eval('return ns.GetModule("ActionBars").PAGE_DRIVER');
+  expect([driverValue(driver, []), driverValue(driver, ["bonusbar:1"]), driverValue(driver, ["bonusbar:3"])], "page 1, and on page 1 a stance's or form's own page").toEqual(["1", "7", "9"]);
+  expect([driverValue(driver, ["bonusbar:1", "bar:2"]), driverValue(driver, ["bonusbar:3", "bar:6"])], "in a stance or form, Shift+2 and Shift+6 show pages 2 and 6, as the game's main bar does").toEqual(["2", "6"]);
+  expect([driverValue(driver, ["vehicleui", "bar:2"]), driverValue(driver, ["overridebar", "bar:3"]), driverValue(driver, ["shapeshift", "bar:4", "bonusbar:1"])], "a vehicle, override or temporary shapeshift bar still wins").toEqual(["12", "14", "13"]);
 });

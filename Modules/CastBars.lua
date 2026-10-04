@@ -21,7 +21,7 @@ local LAYOUT = {
   -- Yours: centered just above the action bars, between the player and target frames.
   player = { w = 220, h = 18, point = { "BOTTOM", "BOTTOM", 0, 146 } },
   -- The target's sits over its buff row (Modules/FrameAuras.lua), the focus's over the focus frame.
-  target = { w = 220, h = 16, point = { "BOTTOM", "BOTTOM", 240, 259 } },
+  target = { w = 240, h = 16, point = { "BOTTOM", "BOTTOM", 240, 257 } },
   focus = { w = 160, h = 14, point = { "BOTTOM", "BOTTOM", -270, 324 } },
 }
 -- The default sizes and points, for layouts placed around them (Core/Setup.lua).
@@ -118,12 +118,20 @@ local function showLatency(bar, startMS, endMS, channel)
   if bar.lag:IsShown() then bar.lag:SetWidth(bar:GetWidth() * math.min(1, lag / (endMS - startMS))) end
 end
 
+-- How the client's timer fills the bar: at once (no easing), by the time gone for a
+-- cast and by the time left for a channel, so a channel empties as it does on plain
+-- times. Its default is the time gone (SimpleStatusBarAPIDocumentation, SetTimerDuration).
+local function timerArgs(channel)
+  local dirs, ease = Enum and Enum.StatusBarTimerDirection, Enum and Enum.StatusBarInterpolation
+  return ease and ease.Immediate, dirs and (channel and dirs.RemainingTime or dirs.ElapsedTime)
+end
+
 -- Starts the bar's timing: the client's own timer where it can, else plain times on each frame.
 local function startTiming(bar, unit, startMS, endMS, channel)
   local duration = castDuration(unit, channel)
   CB.ClearSeconds(bar.time)
   showLatency(bar, startMS, endMS, channel)
-  if duration and bar.SetTimerDuration and pcall(bar.SetTimerDuration, bar, duration) then
+  if duration and bar.SetTimerDuration and pcall(bar.SetTimerDuration, bar, duration, timerArgs(channel)) then
     return bar:SetScript("OnUpdate", nil)
   end
   bar:SetMinMaxValues(0, 1)
@@ -245,10 +253,18 @@ local FINISH = {
   UNIT_SPELLCAST_INTERRUPTED = "Interrupted", UNIT_SPELLCAST_FAILED = "Failed",
 }
 
+-- How an ending event says the cast went. A channel's stop names who interrupted
+-- it (nil when it ran its course; a hidden name is still someone), as the
+-- client's own cast bar reads it (CastingBarFrame.lua, UNIT_SPELLCAST_CHANNEL_STOP).
+local function finishReason(event, interruptedBy)
+  if event == "UNIT_SPELLCAST_CHANNEL_STOP" and type(interruptedBy) ~= "nil" then return "Interrupted" end
+  return FINISH[event]
+end
+
 -- A cast event for one of our units: an end flashes the bar, anything else refreshes it.
-local function onCast(event, unit)
+local function onCast(event, unit, _, _, interruptedBy)
   local bar = CB.bars[unit]
-  if bar and FINISH[event] and not casting(unit) then return CB.Finish(bar, FINISH[event]) end
+  if bar and FINISH[event] and not casting(unit) then return CB.Finish(bar, finishReason(event, interruptedBy)) end
   CB.Update(unit)
 end
 

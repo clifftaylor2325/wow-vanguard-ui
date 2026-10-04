@@ -12,16 +12,33 @@ local QD = ns.GetModule("QuestDialog")
 
 -- The body's gaps: around its content, above the objectives, above the numbered lines.
 local BODY_PAD, OBJECTIVES_GAP, LINES_GAP = 2, 8, 10
+-- The panel's fixed parts: the header above the body, the gap above the reward
+-- cards, the footer (money and buttons) under them; and where the text starts
+-- across (the body's 12 plus the text's 4), which the cards and money line up with.
+local HEADER_H, CARDS_GAP, FOOTER_H, INSET = 60, 8, 44, 16
 
 -- Building -------------------------------------------------------------------------------------
 
+-- The NPC's portrait on an inset square that frames it, with a quest mark on
+-- the square instead when there is no portrait to draw (see paintPortrait).
+local function addPortrait(f)
+  local box = T.Panel(CreateFrame("Frame", nil, f), { inset = true, noSheen = true })
+  box:SetSize(40, 40)
+  box:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -10)
+  f.portrait = box:CreateTexture(nil, "ARTWORK")
+  f.portrait:SetPoint("TOPLEFT", box, "TOPLEFT", 1, -1)
+  f.portrait:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", -1, 1)
+  f.placeholder = QP.Square(box:CreateTexture(nil, "ARTWORK"), 24)
+  f.placeholder:SetTexture(T.Icon("Quests"))
+  f.placeholder:SetPoint("CENTER", box, "CENTER", 0, 0)
+  f.portraitBox = box
+end
+
 -- The NPC's portrait, name, and the quest title along the top.
 local function addHeader(f)
-  f.portrait = f:CreateTexture(nil, "ARTWORK")
-  f.portrait:SetSize(40, 40)
-  f.portrait:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -10)
+  addPortrait(f)
   f.npc = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading", "text")
-  f.npc:SetPoint("TOPLEFT", f.portrait, "TOPRIGHT", 10, -2)
+  f.npc:SetPoint("TOPLEFT", f.portraitBox, "TOPRIGHT", 10, -2)
   f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "gold")
   f.title:SetPoint("TOPLEFT", f.npc, "BOTTOMLEFT", 0, -4)
   -- Your faction's crest, faint, behind the top-right corner.
@@ -40,12 +57,12 @@ end
 -- The scroll frame for the body (the wheel scrolls it) and the child its contents sit on.
 local function addScroll(f)
   f.scroll = CreateFrame("ScrollFrame", nil, f)
-  f.scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -60)
-  f.scroll:SetSize(QD.W - 24, QD.BODY_H)
+  f.scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -HEADER_H)
+  f.scroll:SetSize(QD.W - 24, QD.MAX_H - HEADER_H - FOOTER_H)
   f.scroll:EnableMouseWheel(true)
   f.scroll:SetScript("OnMouseWheel", QP.Wheel)
   f.child = CreateFrame("Frame", nil, f.scroll)
-  f.child:SetSize(QD.W - 24, QD.BODY_H)
+  f.child:SetSize(QD.W - 24, QD.MAX_H - HEADER_H - FOOTER_H)
   f.scroll:SetScrollChild(f.child)
 end
 
@@ -57,26 +74,35 @@ local function addBody(f)
   f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -8)
 end
 
--- The reward cards' row, the money and XP line, and the buttons along the bottom.
+-- The reward cards under the text (their left edge on the text's), the money
+-- and XP line, and the buttons along the bottom.
 local function addFooter(f)
   f.rewards = CreateFrame("Frame", nil, f)
-  f.rewards:SetPoint("TOPLEFT", f.scroll, "BOTTOMLEFT", 0, -8)
-  f.rewards:SetSize(QD.W - 24, 2 * QP.CARD_H + QP.GAP)
+  f.rewards:SetPoint("TOPLEFT", f.scroll, "BOTTOMLEFT", INSET - 12, -CARDS_GAP)
+  f.rewards:SetSize(QD.PER_ROW * (QP.CARD_W + QP.GAP) - QP.GAP, QP.CARD_H)
   f.lines, f.cards = QP.Pool(f.child, QP.Line), QP.Pool(f.rewards, QP.Card)
   f.money = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "gold")
-  f.money:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 14, 16)
+  f.money:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", INSET, 16)
   f.primary = ns.DialogButton(f, "", 120)
   f.primary:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 10)
   f.secondary = ns.DialogButton(f, "", 100)
   f.secondary:SetPoint("RIGHT", f.primary, "LEFT", -8, 0)
 end
 
--- Builds the dialog (hidden), movable, closed by Escape.
+-- The dialog's default spot: centered, a little above the focus cast bar's
+-- default spot (the top of the cluster around your character), so the panel
+-- grows upward clear of your frames, the cast bars and the action bars.
+function QD.DefaultPoint()
+  local cast = ns.GetModule("CastBars").LAYOUT.focus
+  return { "BOTTOM", "BOTTOM", 0, cast.point[4] + cast.h + 8 }
+end
+
+-- Builds the dialog (hidden, at its greatest height until a page sizes it), movable, closed by Escape.
 function QD.Build()
   local f = T.Panel(CreateFrame("Frame", "ForeverUI_QuestDialog", UIParent), { alpha = 0.96, shadow = true })
-  f:SetSize(QD.W, QD.H)
+  f:SetSize(QD.W, QD.MAX_H)
   f:SetFrameStrata("DIALOG")
-  ns.Mover(f, "questdialog", "Quest dialog", { "BOTTOM", "BOTTOM", 0, 250 })
+  ns.Mover(f, "questdialog", "Quest dialog", QD.DefaultPoint())
   addHeader(f)
   addBody(f)
   addFooter(f)
@@ -110,23 +136,22 @@ local function renderLines(f, lines)
   end
 end
 
--- Sizes the body's scroll child to what is in it (the text, the objectives under
--- it, then the lines), never shorter than the view, so the wheel can reach it all.
-local function fitBody(f, lineCount)
+-- How tall the body's contents are: the text, the objectives under it, then the lines.
+local function bodyHeight(f, lineCount)
   local h = BODY_PAD + f.text:GetStringHeight()
   if f.objectives:IsShown() then h = h + OBJECTIVES_GAP + f.objectives:GetStringHeight() end
   if lineCount > 0 then h = h + LINES_GAP + lineCount * QP.LINE_H end
-  f.child:SetHeight(math.max(QD.BODY_H, h + BODY_PAD))
+  return h + BODY_PAD
 end
 
--- The text and objectives, then the lines; sized to fit and scrolled back to the top.
+-- The text and objectives, then the lines, scrolled back to the top; returns how tall they are.
 local function renderBody(f, p)
   f.text:SetText(QP.Plain(p.text))
   f.objectives:SetShown(p.objectives ~= nil)
   f.objectives:SetText(p.objectives and ("Objectives:  " .. QP.Plain(p.objectives)) or "")
   renderLines(f, p.lines)
-  fitBody(f, #(p.lines or {}))
   f.scroll:SetVerticalScroll(0)
+  return bodyHeight(f, #(p.lines or {}))
 end
 
 -- One reward card's clicks and tooltip.
@@ -145,23 +170,36 @@ local function pageItems(p)
   return out
 end
 
--- Sizes the dialog to its reward rows (none on a gossip page).
-local function fitHeight(f, count)
+-- How tall the reward cards' rows are with the gap above them (none on a page without rewards).
+local function cardsHeight(count)
   local rows = math.ceil(count / QD.PER_ROW)
-  f:SetHeight(QD.H - (2 - math.min(rows, 2)) * (QP.CARD_H + QP.GAP))
+  if rows == 0 then return 0 end
+  return CARDS_GAP + rows * QP.CARD_H + (rows - 1) * QP.GAP
 end
 
--- The reward cards, three to a row.
+-- The reward cards, three to a row, from the text's left edge; returns how many.
 local function renderCards(f, p)
   f.cards.Reset()
-  fitHeight(f, #pageItems(p))
-  for n, item in ipairs(pageItems(p)) do
+  local items = pageItems(p)
+  for n, item in ipairs(items) do
     local c, col, row = f.cards.Next(), (n - 1) % QD.PER_ROW, math.floor((n - 1) / QD.PER_ROW)
     c:SetPoint("TOPLEFT", f.rewards, "TOPLEFT", col * (QP.CARD_W + QP.GAP), -row * (QP.CARD_H + QP.GAP))
     QP.PaintCard(c, item)
     wireCard(c)
     QD.MarkCard(c, false)
   end
+  return #items
+end
+
+-- Sizes the panel to its page, between its least and greatest height: the body
+-- gets what the header, the cards and the footer leave (at least its contents'
+-- height while the panel stays under its greatest), and the wheel scrolls the rest.
+local function fitPanel(f, content, cards)
+  local fixed = HEADER_H + cards + FOOTER_H
+  local view = math.max(QD.MIN_H - fixed, math.min(content, QD.MAX_H - fixed))
+  f.scroll:SetHeight(view)
+  f.child:SetHeight(math.max(view, content))
+  f:SetHeight(fixed + view)
 end
 
 -- A button from { label, action, enabled } (enabled unless false), or hidden for nil.
@@ -172,14 +210,24 @@ local function renderButton(b, spec)
   if spec[3] == false then b:Disable() else b:Enable() end
 end
 
--- Everything on a page.
+-- The NPC's portrait when the client can draw one (it has the call, and there
+-- is an NPC: not for a quest started from an item), else the quest mark in the accent.
+local function paintPortrait(f)
+  local drawn = type(SetPortraitTexture) == "function" and QD.Call(UnitExists, "npc") == true
+  if drawn then SetPortraitTexture(f.portrait, "npc") end
+  f.portrait:SetShown(drawn)
+  f.placeholder:SetShown(not drawn)
+  T.Tint(f.placeholder, "accent")
+end
+
+-- Everything on a page, the panel sized to it.
 function QD.Render(p)
   local f = QD.frame
-  if type(SetPortraitTexture) == "function" then SetPortraitTexture(f.portrait, "npc") end
+  paintPortrait(f)
   f.npc:SetText(QP.Plain(QD.Call(UnitName, "npc")))
   f.title:SetText(QP.Plain(p.title))
-  renderBody(f, p)
-  renderCards(f, p)
+  local content = renderBody(f, p)
+  fitPanel(f, content, cardsHeight(renderCards(f, p)))
   f.money:SetText(p.money or "")
   renderButton(f.primary, p.primary)
   renderButton(f.secondary, p.secondary)

@@ -30,8 +30,14 @@ V.CONDITIONS = {
 }
 -- The choices of a visibility row; "custom" is the checklist.
 V.MODES = { { "always", "Always" }, { "mouseover", "On mouseover" }, { "combat", "In combat" }, { "hidden", "Hidden" }, { "custom", "When checked below" } }
--- The modes that are one condition of the checklist (Always is none; Hidden is not a checklist).
-V.PRESETS = { mouseover = { mouseover = true }, combat = { combat = true } }
+-- The menu bar's choices: those, and Auto-hide (shown at login and under the
+-- mouse, then faded V.LINGER seconds after the mouse leaves).
+V.MENU_MODES = { V.MODES[1], V.MODES[2], { "autohide", "Auto-hide after 10 s" }, V.MODES[3], V.MODES[4], V.MODES[5] }
+-- The modes that are one condition of the checklist (Always is none; Hidden is
+-- not a checklist). Auto-hide is On mouseover with a linger.
+V.PRESETS = { mouseover = { mouseover = true }, combat = { combat = true }, autohide = { mouseover = true } }
+-- How long an Auto-hide frame stays after the login and after the mouse leaves it (seconds).
+V.LINGER = 10
 -- Frames whose drivers are registered again on a zone change, -> how.
 V.tracked = {}
 
@@ -94,10 +100,52 @@ end
 -- Applying -------------------------------------------------------------------------------------
 
 -- 1 unless the frame fades and the mouse isn't over it (nor is it revealed, as
--- action bars are while you drag a spell), else 0.
+-- action bars are while you drag a spell, nor lingering after Auto-hide), else 0.
 function V.Alpha(frame)
-  if frame.fuiState ~= "fade" or frame.fuiHover or frame.fuiReveal then return 1 end
+  if frame.fuiState ~= "fade" or frame.fuiHover or frame.fuiReveal or frame.fuiLingering then return 1 end
   return 0
+end
+
+-- Keeps an Auto-hide frame shown for V.LINGER seconds from now (a later call
+-- restarts the wait), then lets it fade. Without the client's timer it just fades.
+function V.Linger(frame)
+  local token = (frame.fuiLingerCount or 0) + 1
+  frame.fuiLingerCount = token
+  frame.fuiLingering = type(C_Timer) == "table" and type(C_Timer.After) == "function" or nil
+  if frame.fuiLingering then C_Timer.After(V.LINGER, function() V.EndLinger(frame, token) end) end
+  V.Refresh(frame)
+end
+
+-- The wait that started as `token` is over: the frame fades, unless a later wait replaced it.
+function V.EndLinger(frame, token)
+  if frame.fuiLingerCount ~= token then return end
+  frame.fuiLingering = nil
+  V.Refresh(frame)
+end
+
+-- Fades a plain (never secure) frame out `seconds` from now with T.FadeOut,
+-- unless a later call restarted the wait (the token pattern of V.Linger), as
+-- the Instance prep card and the Chat watch toast do each time they show.
+-- Without the client's timer the frame stays until it is closed.
+function ns.AutoHide(frame, seconds)
+  local token = (frame.fuiAutoHideCount or 0) + 1
+  frame.fuiAutoHideCount = token
+  if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return end
+  C_Timer.After(seconds, function()
+    if frame.fuiAutoHideCount == token then T.FadeOut(frame) end
+  end)
+end
+
+-- Where you are, as the client's instance type (IsInInstance's second
+-- return): "party" (a dungeon), "raid", "pvp" (a battleground), "arena",
+-- "scenario"; "none" outside an instance, and also when the client can't say
+-- (no IsInInstance, a hidden or empty type). Never secret, never nil, so
+-- callers compare it freely; Instance prep and Situations build on it.
+function ns.Where()
+  if type(IsInInstance) ~= "function" then return "none" end
+  local inside, kind = IsInInstance()
+  if inside ~= true or ns.IsSecret(kind) or type(kind) ~= "string" or kind == "" then return "none" end
+  return kind
 end
 
 -- Whether the frame's state shows it, and whether it fades with the mouse.
@@ -132,9 +180,11 @@ function V.ApplyNow(frame, mode, when, secure)
   if not frame.fuiStateString then frame:HookScript("OnAttributeChanged", onAttribute) end
   frame.fuiStateString, frame.fuiState = state, V.Parse(state)
   frame.fuiInstance = V.Mode(mode) ~= "hidden" and V.Checked(mode, when).instance == true
+  frame.fuiAutoHide = V.Mode(mode) == "autohide"
   if secure then RegisterStateDriver(frame, "visibility", V.Driver(state)) end
   RegisterStateDriver(frame, "fuivis", state)
   if frame.fuiHoverRoot then motion(frame) end
+  if frame.fuiAutoHide then return V.Linger(frame) end
   V.Refresh(frame)
 end
 
@@ -161,10 +211,11 @@ local function hoverEnter(f)
 end
 
 -- The mouse left: the frame fades unless the mouse is still over it (moving
--- between its buttons crosses the frame itself).
+-- between its buttons crosses the frame itself); an Auto-hide frame lingers first.
 local function hoverLeave(f)
   local frame = f.fuiHoverOf
   frame.fuiHover = frame.fuiHoverRoot:IsMouseOver() == true
+  if frame.fuiAutoHide and not frame.fuiHover then return V.Linger(frame) end
   V.Refresh(frame)
 end
 
@@ -206,10 +257,11 @@ function V.Toggle(acc, key)
 end
 
 -- The options rows for a visibility setting kept in tbl()[modeKey], its checklist
--- in tbl()[whenKey]: the mode, then the checklist. after() applies a change.
-function V.Rows(caption, tbl, modeKey, whenKey, after, initial)
+-- in tbl()[whenKey]: the mode (one of modes, V.MODES unless given), then the
+-- checklist. after() applies a change.
+function V.Rows(caption, tbl, modeKey, whenKey, after, initial, modes)
   local acc = { tbl = tbl, modeKey = modeKey, whenKey = whenKey, after = after }
-  return { "cycle", caption, V.MODES, function() return V.Mode(tbl()[modeKey]) end,
+  return { "cycle", caption, modes or V.MODES, function() return V.Mode(tbl()[modeKey]) end,
     function(v) tbl()[modeKey] = v after() end, initial }, { "showwhen", "Show when", acc }
 end
 
@@ -237,6 +289,15 @@ local function chip(r, c)
   return s
 end
 
+-- Lines the chips up one pixel apart from the row's right edge, inset by the
+-- same 8 as every other row's control, so the last one stays clear of the card's border.
+local function placeChips(r)
+  for i, s in ipairs(r.chips) do
+    local after = r.chips[i + 1]
+    if after then s:SetPoint("RIGHT", after, "LEFT", -1, 0) else s:SetPoint("RIGHT", r, "RIGHT", -8, 0) end
+  end
+end
+
 -- The checklist row: its caption, then a chip per condition along the right edge.
 local function checklistRow(parent, row, width)
   local r = CreateFrame("Frame", nil, parent)
@@ -246,7 +307,7 @@ local function checklistRow(parent, row, width)
   r.label:SetText(row[2])
   r.acc, r.chips, r.Refresh = row[3], {}, refreshChips
   for i = #V.CONDITIONS, 1, -1 do table.insert(r.chips, 1, chip(r, V.CONDITIONS[i])) end
-  for i, s in ipairs(r.chips) do s:SetPoint("RIGHT", r.chips[i + 1] or r, r.chips[i + 1] and "LEFT" or "RIGHT", -1, 0) end
+  placeChips(r)
   r:Refresh()
   return r
 end

@@ -130,3 +130,24 @@ it("inspectors: a frame's snapshot, text search and the top-level screen", () =>
     expect(f.rect.left >= 0 && f.rect.bottom >= 0 && f.rect.right <= 1920 && f.rect.top <= 1080, `${f.name} stays on screen`).toBe(true);
   }
 });
+
+it("the auction house: queries recorded, restricted calls logged with the click that made them, 0-based replicate rows", () => {
+  const addon = createAddon();
+  addon.eval(`__wfgWorld.items[2589].commodity = true __wfgWorld.bags[0][1] = { itemID = 2589, count = 5 }
+    __wfgWorld.ah.replicate = { { itemID = 2589, count = 5, buyoutPrice = 500 }, { itemID = 2589, count = 1, buyoutPrice = 90 } }
+    __b = CreateFrame("Button", "TESTONLY_Post", UIParent)
+    __b:SetScript("OnClick", function() C_AuctionHouse.PostCommodity(ItemLocation:CreateFromBagAndSlot(0, 1), 1, 5, 99) end)`);
+  addon.world.openAuctionHouse();
+  expect(addon.eval("return { AuctionHouseFrame:IsShown(), C_AuctionHouse.GetNumReplicateItems() }"), "the window opened").toEqual([true, 2]);
+  expect(addon.eval("return { select(3, C_AuctionHouse.GetReplicateItemInfo(1)), select(10, C_AuctionHouse.GetReplicateItemInfo(1)), select(17, C_AuctionHouse.GetReplicateItemInfo(0)) }"), "row 1 is the second listing: count, buyout, itemID").toEqual([1, 90, 2589]);
+  expect(addon.world.get("ah.reads"), "each read counted").toBe(3);
+  const loc = "ItemLocation:CreateFromBagAndSlot(0, 1)";
+  expect(addon.eval(`local l = ${loc} return { l:IsValid(), C_AuctionHouse.GetItemCommodityStatus(l), C_AuctionHouse.GetItemKeyFromItem(l).itemID, C_Item.GetStackCount(l) }`), "a commodity in bag 0 slot 1").toEqual([true, 2, 2589, 5]);
+  addon.eval("C_AuctionHouse.SendBrowseQuery({ searchString = 'TEST-ONLY' }) C_AuctionHouse.CancelAuction(7)");
+  addon.click("TESTONLY_Post");
+  expect(addon.eval("local q = __wfgWorld.ah.queries[1] return { q.fn, q.args[1].searchString }"), "a query is only recorded").toEqual(["SendBrowseQuery", "TEST-ONLY"]);
+  const log = addon.eval("local out = {} for i, c in ipairs(__wfgWorld.ah.restricted) do out[i] = { c.fn, c.clicked, c.path:find('rawClick') ~= nil } end return out");
+  expect(log, "the cancel came from no click, the post from the button's click (its path runs through the click)").toEqual([["CancelAuction", false, false], ["PostCommodity", true, true]]);
+  addon.world.closeAuctionHouse();
+  expect(addon.eval("return AuctionHouseFrame:IsShown()")).toBe(false);
+});

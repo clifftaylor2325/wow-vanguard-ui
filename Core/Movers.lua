@@ -16,6 +16,8 @@ local NUDGE = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 
 local movers, order = {}, {}
 local unlocked = false
 local selected
+-- Text after every handle's label (Situations: " · recording Raid"), or "".
+local suffix = ""
 
 -- Unlock-mode options (grid, gridSize, snap, editMode) in the active profile.
 function ns.MoverOptions()
@@ -43,18 +45,28 @@ end
 ns.MOVER_SCALE = { min = 0.5, max = 2 }
 ns.MOVER_ALPHA = { min = 0.1, max = 1 }
 
+-- A saved scale or opacity kept to its range; 1 when it isn't a number (a hand-edited profile string).
+local function within(v, range)
+  v = tonumber(v)
+  return v and math.max(range.min, math.min(range.max, v)) or 1
+end
+
 -- A mover's saved scale and opacity: 1 and 1 unless set.
 function ns.MoverLook(key)
   local p = saved()[key]
   if type(p) ~= "table" then return 1, 1 end
-  return tonumber(p.scale) or 1, tonumber(p.alpha) or 1
+  return within(p.scale, ns.MOVER_SCALE), within(p.alpha, ns.MOVER_ALPHA)
 end
 
--- The point to use for a mover: saved, else its default.
+-- The nine anchor points a saved position may name.
+local POINTS = { TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true, RIGHT = true, BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true }
+
+-- The point to use for a mover: saved (when it names a real point; offsets
+-- that aren't numbers read as 0), else its default.
 local function pointFor(m)
   local p = saved()[m.key]
-  if type(p) == "table" and p.point then
-    return p.point, p.relPoint or p.point, p.x or 0, p.y or 0
+  if type(p) == "table" and POINTS[p.point] then
+    return p.point, POINTS[p.relPoint] and p.relPoint or p.point, tonumber(p.x) or 0, tonumber(p.y) or 0
   end
   return m.default[1], m.default[2], m.default[3], m.default[4]
 end
@@ -337,7 +349,8 @@ function ns.ShowCoords(m)
     return
   end
   local point, _, x, y = pointFor(m)
-  m.handle.label:SetText(m == selected and string.format("%s\n%s %d, %d", m.label, point, x, y) or m.label)
+  local label = m.label .. suffix
+  m.handle.label:SetText(m == selected and string.format("%s\n%s %d, %d", label, point, x, y) or label)
 end
 
 -- Selects a handle for arrow-key nudging (and deselects the previous one).
@@ -388,8 +401,14 @@ local function createHandle(m)
   h.label = h:CreateFontString(nil, "OVERLAY")
   h.label:SetPoint("CENTER")
   T.Text(h.label, "small")
-  h.label:SetText(m.label)
+  h.label:SetText(m.label .. suffix)
   return h
+end
+
+-- Sets the text after every handle's label (nil for none), and relabels the handles there are now.
+function ns.SetMoverSuffix(text)
+  suffix = text or ""
+  for _, m in pairs(movers) do ns.ShowCoords(m) end
 end
 
 -- The handle for a mover, created on first use; sized and placed over its frame.

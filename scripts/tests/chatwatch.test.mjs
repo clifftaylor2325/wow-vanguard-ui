@@ -1,0 +1,182 @@
+// chatwatch: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// Modules/ChatWatch.lua: phrases watched for in chat ring the whisper sound and
+// show a toast you click to whisper the sender.
+
+import { expect, it } from "vitest";
+import { CLICK_LUA, isTok, loggedIn } from "./helpers.mjs";
+
+// TEST-ONLY sound kit and the game's whisper call, recorded.
+const WATCH_ENV = `
+  SOUNDKIT = { TELL_MESSAGE = 3081 }
+  __tells = {}
+  ChatFrameUtil = { SendTell = function(name) table.insert(__tells, name) end }
+`;
+
+// An addon watching for "lfm" (and any other phrases given).
+function watching(...phrases) {
+  const addon = loggedIn(WATCH_ENV + CLICK_LUA);
+  for (const p of ["LFM", ...phrases]) addon.slash(`watch add ${p}`);
+  return addon;
+}
+
+let nextLine = 1;
+// A chat line as the client sends it: the event, text, sender, then the payload with a fresh line ID (or the one given).
+const say = (addon, event, text, sender, lineID = nextLine++) =>
+  addon.fire(`CHAT_MSG_${event}`, text, sender, "Common", "2. Trade - City", "", "", 2, 2, "Trade - City", 7, lineID, "Player-1-0001");
+
+// TEST-ONLY Lua for say() when the text or sender must be a secret: fires straight from Lua.
+const sayLua = (addon, text, sender) => addon.eval(`__wfgStub.fire("CHAT_MSG_CHANNEL", ${text}, ${sender}, "Common", "2. Trade", "", "", 2, 2, "Trade", 7, ${nextLine++}, "g")`);
+
+// How many alert sounds have played.
+const rings = (addon) => addon.eval("local n = 0 for _, s in ipairs(__wfgWorld.sounds) do if s == 3081 then n = n + 1 end end return n");
+
+// The toast: shown, sender, line.
+const toast = (addon) => addon.eval("local f = ForeverUI_ChatWatchToast return { f:IsShown(), f.sender:GetText(), f.line:GetText() }");
+
+it("chat watch: a watched phrase in Trade rings the whisper sound and shows a toast with the sender", () => {
+  const addon = watching();
+  expect(addon.eval("return ns.Settings('ChatWatch').phrases"), "stored lower-case").toEqual(["lfm"]);
+  say(addon, "CHANNEL", "LFM Deadmines need a healer", "Healbot");
+  expect(rings(addon), "the whisper sound (3081)").toBe(1);
+  expect(toast(addon), "the toast, with the sender and the line").toEqual([true, "Healbot", "LFM Deadmines need a healer"]);
+  expect(isTok(addon, addon.eval("return ForeverUI_ChatWatchToast.sender.__textColor"), "accent"), "the sender in the accent").toBe(true);
+  addon.advance(8.5);
+  expect(toast(addon)[0], "gone after 8 s").toBe(false);
+});
+
+it("chat watch: matching ignores case and links' codes; unticked channels are not watched", () => {
+  const addon = watching("WTS Devilsaur");
+  say(addon, "YELL", "lfm zf", "Tankadin");
+  expect(rings(addon), "yell is watched by default, any case").toBe(1);
+  say(addon, "SAY", "LFM ST", "Someone");
+  say(addon, "GUILD", "LFM BRD", "Guildie");
+  expect(rings(addon), "say and guild are off by default").toBe(1);
+  addon.advance(3);
+  say(addon, "CHANNEL", "WTS |cff1eff00|Hitem:15062::::::::60:::::|h[Devilsaur Leggings]|h|r cheap", "Seller");
+  expect([rings(addon), toast(addon)[1]], "a phrase running into a link's name").toEqual([2, "Seller"]);
+  addon.eval('local get, set = ns.GetModule("ChatWatch").ChannelSetting("party", "raid") set(true)');
+  addon.advance(3);
+  say(addon, "RAID_LEADER", "LFM after this", "Leader");
+  expect([rings(addon), addon.eval("return ns.Settings('ChatWatch').channels.raid")], "Party and raid switches both").toEqual([3, true]);
+  addon.advance(3);
+  say(addon, "WHISPER", "lfm?", "Friend");
+  expect(rings(addon), "whispers are off by default").toBe(3);
+});
+
+it("chat watch: hidden chat (dungeons, raids, encounters) is skipped without an error", () => {
+  const addon = watching();
+  sayLua(addon, "__wfgWorld.secret()", '"Healbot"');
+  sayLua(addon, '"LFM"', "__wfgWorld.secret()");
+  sayLua(addon, "nil", '"Healbot"');
+  expect([rings(addon), toast(addon)[0], addon.eval("return #ns.errors")], "no sound, no toast, no errors").toEqual([0, false, 0]);
+});
+
+it("chat watch: one alert per line, and per sender and phrase every 30 s", () => {
+  const addon = watching("wts");
+  say(addon, "CHANNEL", "LFM UBRS", "Healbot", 500);
+  say(addon, "CHANNEL", "LFM UBRS", "Healbot", 500);
+  expect(rings(addon), "the same line (by its ID) rings once").toBe(1);
+  addon.advance(3);
+  say(addon, "CHANNEL", "LFM UBRS still", "Healbot");
+  expect(rings(addon), "the same sender and phrase stays quiet for 30 s").toBe(1);
+  say(addon, "CHANNEL", "WTS potions", "Healbot");
+  say(addon, "CHANNEL", "LFM MC", "Raidlead");
+  expect([rings(addon), toast(addon)[1]], "another phrase or sender rings, at most once every 2 s; the toast shows the newest").toEqual([2, "Raidlead"]);
+  addon.advance(31);
+  say(addon, "CHANNEL", "LFM UBRS last call", "Healbot");
+  expect(rings(addon), "released after 30 s").toBe(3);
+  addon.eval("local CW = ns.GetModule('ChatWatch') CW.MAX_LINES = 2 CW.lines, CW.lineCount = {}, 0");
+  say(addon, "CHANNEL", "nothing", "A", 1);
+  say(addon, "CHANNEL", "nothing", "A", 2);
+  say(addon, "CHANNEL", "nothing", "A", 3);
+  expect(addon.eval("local CW = ns.GetModule('ChatWatch') return { CW.lineCount, CW.lines[3] == true, CW.lines[1] == nil }"), "the seen lines start over past the cap").toEqual([1, true, true]);
+});
+
+it("chat watch: your own lines don't ring; clicking the toast whispers the sender", () => {
+  const addon = watching();
+  say(addon, "CHANNEL", "LFM DM", "Tester");
+  say(addon, "CHANNEL", "LFM DM", "Tester-Realm");
+  expect(rings(addon), "your own lines, with or without the realm").toBe(0);
+  say(addon, "CHANNEL", "LFM DM", "Healbot-Realm");
+  addon.click("ForeverUI_ChatWatchToast");
+  expect([addon.eval("return __tells"), toast(addon)[0]], "a click whispers the sender and puts the toast away").toEqual([["Healbot-Realm"], false]);
+  say(addon, "CHANNEL", "LFM SM", "Other");
+  addon.click("ForeverUI_ChatWatchToast", "RightButton");
+  expect([addon.eval("return #__tells"), toast(addon)[0]], "a right-click only dismisses").toEqual([1, false]);
+  addon.eval("ChatFrameUtil = nil ChatFrame_SendTell = function(name) table.insert(__tells, 'old:' .. name) end ns.GetModule('ChatWatch').Whisper('Healbot')");
+  addon.eval("ChatFrame_SendTell = nil ns.GetModule('ChatWatch').Whisper('Healbot')");
+  expect(addon.eval("return __tells"), "the older whisper call, or nothing without one").toEqual(["Healbot-Realm", "old:Healbot"]);
+  addon.eval("__wfgWorld.units.player.name = __wfgWorld.secret()");
+  addon.advance(3);
+  say(addon, "CHANNEL", "LFM RFC", "Tester");
+  expect(rings(addon), "a hidden own name: the line counts").toBe(2);
+});
+
+it("chat watch: the sound and the toast can each be switched off", () => {
+  const addon = watching();
+  addon.eval("ns.Settings('ChatWatch').sound = false");
+  say(addon, "CHANNEL", "LFM", "A");
+  expect([rings(addon), toast(addon)[0]], "toast without sound").toEqual([0, true]);
+  addon.eval("ns.Settings('ChatWatch').sound = true ns.Settings('ChatWatch').toast = false ns.GetModule('ChatWatch').HideToast()");
+  say(addon, "CHANNEL", "LFM", "B");
+  expect([rings(addon), toast(addon)[0]], "sound without toast").toEqual([1, false]);
+});
+
+it("chat watch: /fui watch adds, lists, removes and clears; at most 20 phrases of 40 characters", () => {
+  const addon = watching();
+  // The last chat line.
+  const last = () => addon.chat().at(-1);
+  addon.slash("watch lfm");
+  expect(last(), "an unknown verb: the usage").toMatch(/Usage: \/fui watch/);
+  addon.slash("watch add lfm");
+  expect(last(), "a phrase already watched").toMatch(/Already watching for "lfm"/);
+  addon.slash("watch add   ");
+  expect(last(), "nothing typed").toMatch(/Type a phrase/);
+  addon.slash(`watch add ${"x".repeat(41)}`);
+  expect(last(), "too long").toMatch(/at most 40 characters/);
+  for (let i = 2; i <= 20; i++) addon.slash(`watch add phrase ${i}`);
+  addon.slash("watch add one too many");
+  expect([last(), addon.eval("return #ns.Settings('ChatWatch').phrases")], "the 21st is refused").toEqual([expect.stringMatching(/at most 20 phrases/), 20]);
+  addon.slash("watch list");
+  expect(last(), "the list").toMatch(/Watching chat for: lfm, phrase 2, .*phrase 20$/);
+  addon.slash("watch remove LFM");
+  expect(last(), "removed, any case").toMatch(/No longer watching for "lfm"/);
+  addon.slash("watch remove lfm");
+  expect(last(), "not there").toMatch(/Not watching for "lfm"/);
+  addon.slash("watch clear");
+  addon.slash("watch");
+  expect(last(), "cleared: none").toMatch(/Chat watch has no phrases\. \/fui watch add/);
+});
+
+it("chat watch: the options add a phrase from a dialog, list a Remove button per phrase, and switch channels", () => {
+  const addon = watching();
+  addon.eval('ns.Options.Show("more")');
+  expect(addon.find("^Remove: lfm$").text, "a Remove button for the phrase").toBe("Remove: lfm");
+  addon.eval('__click("Add a phrase")');
+  expect(addon.frame("ForeverUI_TextDialog").visible, "Add a phrase asks for it").toBe(true);
+  addon.type("ForeverUI_TextEdit", "  WTS Arcanite ");
+  addon.click("ForeverUI_TextDialog.primary");
+  expect([addon.frame("ForeverUI_TextDialog").visible, addon.find("^Remove: wts arcanite$").text], "added: the dialog closes and the page lists it").toEqual([false, "Remove: wts arcanite"]);
+  addon.eval('__click("Add a phrase")');
+  addon.type("ForeverUI_TextEdit", "lfm");
+  addon.click("ForeverUI_TextDialog.primary");
+  expect(addon.frame("ForeverUI_TextDialog").visible, "refused: the dialog stays").toBe(true);
+  addon.eval('__click("Remove: lfm")');
+  expect(addon.eval("return ns.Settings('ChatWatch').phrases"), "Remove takes it off").toEqual(["wts arcanite"]);
+  addon.eval('__click("Party and raid")');
+  addon.eval('__click("Say")');
+  addon.eval('__click("Sound")');
+  const s = addon.eval("local s = ns.Settings('ChatWatch') return { s.channels.party, s.channels.raid, s.channels.say, s.sound }");
+  expect(s, "the switches set the profile").toEqual([true, true, true, false]);
+});
+
+it("chat watch: no chat filter is added, and the module off listens to nothing", () => {
+  const on = watching();
+  const off = loggedIn(WATCH_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { modules = { ChatWatch = false } }" });
+  // How many chat filters are registered for the chat events Chat watch reads.
+  const filters = (addon) => addon.eval("local n = 0 for event in pairs(ns.GetModule('ChatWatch').EVENTS) do n = n + #(__wfgWorld.chatFilters[event] or {}) end return n");
+  expect(filters(on), "the same filters as without Chat watch").toBe(filters(off));
+  off.slash("watch add lfm");
+  say(off, "CHANNEL", "LFM", "Healbot");
+  expect([rings(off), off.eval("return ForeverUI_ChatWatchToast == nil")], "off: nothing rings, no toast is built").toEqual([0, true]);
+});

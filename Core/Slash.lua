@@ -22,8 +22,14 @@ local HELP = {
   "import               paste a string from /fui export",
   "spec [profile|off]   use a profile whenever you're in this specialization",
   "copy                 the recent chat as plain text, ready to copy",
+  "situation [record <name>|stop|clear [name]|list]   Situations: record a layout and settings for solo, party, raid, pvp, instance or resting",
+  "watch [add|remove <phrase>|list|clear]   Chat watch: phrases that ring a sound and show a toast when said in chat",
   "quests               open or close ForeverUI's quest log (the game's quest log key does too)",
   "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
+  "fights               your DPS, length and place in each fight this session, newest first",
+  "vendors [clear]      how many merchants ForeverUI remembers (for tooltips and the stock list); clear forgets them",
+  "prep [want <kind> <n>] the Instance prep card now: what you're short of; want sets how many food, bandages, potions, ammo or shards",
+  "ah [list <name>|add <list> <item>|scan|prices clear]  shopping lists (pick or make one, add an item: a link, an ID or a name); scan the auction house (while it's open); forget the prices",
   "binds                this spec's click-casting and hover-key bindings (set them in /fui > Click casting)",
   "keybind              keybind mode: hover an action button and press a key to bind it; Escape leaves",
   "status               version, profile, modules, skins, work waiting on combat, what the client has",
@@ -335,6 +341,13 @@ local function errorsCommand(rest)
   for _, e in ipairs(ns.errors) do printError(e) end
 end
 
+-- /fui stock: the Errands module's stock list, which exists only while that module is on.
+local function stockCommand(rest)
+  local ER = ns.GetModule("Errands")
+  if not ER.settings then return chat("ForeverUI's Errands are off (/fui > Modules).") end
+  ER.StockCommand(rest)
+end
+
 local COMMANDS = {
   -- /fui help
   help = function() printLines(HELP) end,
@@ -364,7 +377,13 @@ local COMMANDS = {
   keybind = function() ns.GetModule("ActionBars").ToggleKeybindMode() end,
   copy = function() ns.GetModule("ChatExtras").ShowCopy() end,
   quests = function() local QL = ns.GetModule("QuestLog") if QL.frame then QL.Toggle() else ns.Chat("ForeverUI's quest log is off (/fui > Quests).") end end,
-  stock = function(rest) ns.GetModule("Errands").StockCommand(rest) end,
+  stock = stockCommand,
+  fights = function() ns.GetModule("FightHistory").Command() end,
+  vendors = function(rest) ns.GetModule("VendorMemory").Command(rest) end,
+  prep = function(rest) ns.GetModule("InstancePrep").Command(rest) end,
+  watch = function(rest) ns.GetModule("ChatWatch").Command(rest) end,
+  situation = function(rest) ns.GetModule("Situations").Command(rest) end,
+  ah = function(rest) ns.GetModule("AuctionHelper").Command(rest) end,
   factionart = function() ns.FactionArt.Report() end,
   status = statusCommand,
   errors = errorsCommand,

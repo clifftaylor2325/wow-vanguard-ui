@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { staleMedia } from "./build-media.mjs";
 import { fontFacts } from "./lib/truetype.mjs";
 import { crest, crestNames } from "./lib/media-crests.mjs";
+import { ICONS } from "./lib/media-sources.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -105,6 +106,32 @@ function crestsCredited() {
   for (const name of crestNames()) expect(credits, `${name}.svg needs a credit line`).toContain(`\`${name}.svg\``);
 }
 
+// Line icons made only of level and upright strokes: at 16 px every pixel
+// they touch must be fully covered, none half (P4.2).
+const SQUARE_ICONS = ["General", "Modules", "UnitFrames", "RaidFrames", "Healing", "ActionBars", "Nameplates", "Spellbook", "Professions", "Quests", "Collections"];
+
+// An icon's alpha at 16 px: the 32 px image averaged over 2 x 2 blocks, as the GPU draws it at half size.
+function at16(name) {
+  const img = ICONS[name]();
+  return Array.from({ length: 256 }, (_, i) => {
+    const x = (i % 16) * 2;
+    const y = Math.floor(i / 16) * 2;
+    return [0, 1, 32, 33].reduce((sum, d) => sum + img.px[(y * 32 + x + d) * 4 + 3], 0) / 4;
+  });
+}
+
+// Icons that are all straight strokes have no half-covered pixels at 16 px.
+function squareIconsCrisp() {
+  const soft = SQUARE_ICONS.map((name) => [name, at16(name).filter((a) => a > 0.02 && a < 0.98).length]);
+  expect(soft.filter(([, n]) => n > 0)).toEqual([]);
+}
+
+// A straight stroke is two pixels wide at 16 px: the General icon's top slider is rows 2 and 3.
+function strokeIsTwoPixels() {
+  const a = at16("General");
+  expect([1, 2, 3, 4].map((row) => Math.round(a[row * 16 + 2] * 100) / 100)).toEqual([0, 1, 1, 0]);
+}
+
 describe(
   "media",
   // Generated art, then digits, glyphs and the license for each weight.
@@ -117,6 +144,8 @@ describe(
     it("Media/Fonts/OFL.txt must hold the font license", oflLicense);
     it("faction crests rasterize from their SVGs", crestsRasterize);
     it("faction crest sources are credited", crestsCredited);
+    it("icons of straight strokes are crisp at 16 px", squareIconsCrisp);
+    it("icon strokes are two pixels wide at 16 px", strokeIsTwoPixels);
   },
 );
 

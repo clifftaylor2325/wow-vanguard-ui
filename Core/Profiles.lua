@@ -68,16 +68,23 @@ local function withDisplay(profile)
   return data
 end
 
--- The export string for the whole profile ("profile", with the UI scale and screen it
--- was made on) or one module's settings.
-function ns.ExportProfile(scope)
-  scope = scope or "profile"
+-- The export string for scope, from the profile's tables as they are now.
+local function encode(scope)
   local profile = ns.Profile()
   local data = scope == "profile" and withDisplay(profile) or profile[scope]
   if type(data) ~= "table" then
     return nil, "nothing saved for " .. scope .. " yet"
   end
   return S.Encode(scope, data)
+end
+
+-- The export string for the whole profile ("profile", with the UI scale and screen it
+-- was made on) or one module's settings: the profile's own values, with any active
+-- Situations override taken out for the export (ns.OwnValues, Modules/Situations.lua).
+function ns.ExportProfile(scope)
+  scope = scope or "profile"
+  if ns.OwnValues then return ns.OwnValues(encode, scope) end
+  return encode(scope)
 end
 
 -- A profile name that isn't taken yet, from base ("Imported", "Imported 2", ...).

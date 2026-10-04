@@ -25,11 +25,11 @@ local CLASSIFICATION = { elite = "gold", rareelite = "accent", rare = "text2", w
 -- line, and the focus sits above the player (its debuffs under it, its cast
 -- bar over it; Modules/CastBars.lua).
 local LAYOUT = {
-  { key = "player", unit = "player", w = 220, h = 38, label = "Player", point = { "BOTTOM", "BOTTOM", -240, 196 } },
-  { key = "target", unit = "target", w = 220, h = 38, label = "Target", point = { "BOTTOM", "BOTTOM", 240, 196 } },
-  { key = "targettarget", unit = "targettarget", w = 120, h = 24, label = "Target of target", point = { "BOTTOM", "BOTTOM", 416, 196 } },
+  { key = "player", unit = "player", w = 240, h = 36, label = "Player", point = { "BOTTOM", "BOTTOM", -240, 196 } },
+  { key = "target", unit = "target", w = 240, h = 36, label = "Target", point = { "BOTTOM", "BOTTOM", 240, 196 } },
+  { key = "targettarget", unit = "targettarget", w = 120, h = 24, label = "Target of target", point = { "BOTTOM", "BOTTOM", 426, 196 } },
   { key = "focus", unit = "focus", w = 160, h = 30, label = "Focus", point = { "BOTTOM", "BOTTOM", -270, 290 } },
-  { key = "pet", unit = "pet", w = 120, h = 24, label = "Pet", point = { "BOTTOM", "BOTTOM", -416, 196 } },
+  { key = "pet", unit = "pet", w = 120, h = 24, label = "Pet", point = { "BOTTOM", "BOTTOM", -426, 196 } },
 }
 UF.LAYOUT = LAYOUT
 local PARTY_SIZE = 4
@@ -249,10 +249,15 @@ function UF.UpdatePower(f)
   f.power:SetStatusBarColor(UF.PowerColor(unit))
 end
 
+-- The level asked about for a ?? unit (UnitLevel -1: a boss, or one far above you): so far
+-- above yours that the client answers with its hardest color, not the trivial gray -1 would get.
+UF.SKULL_LEVEL = 999
+
 -- r, g, b for how hard a unit is for you (the client's level color), or nil when it can't say.
 function UF.LevelColor(unit)
   local get = _G.GetCreatureDifficultyColor
   local level = ns.PlainNumber(type(UnitLevel) == "function" and UnitLevel(unit) or nil)
+  if level and level < 1 then level = UF.SKULL_LEVEL end
   local c = type(get) == "function" and level and get(level)
   if c then return c.r, c.g, c.b end
 end

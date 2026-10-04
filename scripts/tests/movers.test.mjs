@@ -58,6 +58,15 @@ const BOX = `
   ns.Mover(__box, "box", "TEST-ONLY box", { "BOTTOM", "BOTTOM", 0, 100 })
 `;
 
+it("a mover's watcher hears when that mover is moved or reset, and only then", () => {
+  const addon = loggedIn(BOX + `ns.Mover(CreateFrame("Frame", nil, UIParent), "TESTONLY-other", "TEST-ONLY other", { "BOTTOM", "BOTTOM", 0, 0 })
+    __heard = {} ns.WatchMover('box', function(key) __heard[#__heard + 1] = key end)`);
+  addon.eval("ns.SetMoverPoint('box', 'BOTTOM', 'BOTTOM', 40, 100) ns.ResetMovers('box')");
+  expect(addon.eval("return __heard"), "moved, then reset: told twice, with its key").toEqual(["box", "box"]);
+  addon.eval("ns.SetMoverPoint('TESTONLY-other', 'BOTTOM', 'BOTTOM', 0, 0)");
+  expect(addon.eval("return #__heard"), "another mover's change is not its business").toBe(2);
+});
+
 // The box on screen: its scale, alpha, rect (screen pixels: center x, bottom, width) and saved entry.
 const box = (addon) => {
   const r = addon.frame("TESTONLY_Box").rect;
@@ -112,4 +121,15 @@ it("per-frame scale: dragging a scaled handle, and combat", () => {
   expect([addon.eval("return __box:GetScale()"), addon.eval("return (ns.MoverLook('box'))")], "in combat the scale is saved and waits").toEqual([1.5, 0.5]);
   setCombat(addon, false);
   expect(addon.eval("return __box:GetScale()"), "and applies when combat ends").toBe(0.5);
+});
+
+it("a damaged saved position (a hand-edited profile string) falls back to the default spot instead of failing the module", () => {
+  const clean = loggedIn().eval("return { ns.MoverPoint('uf_player') }");
+  const addon = loggedIn(BOX, { savedVariables: `ForeverUIDB.profiles = { Default = { positions = {
+    uf_player = { point = 5, x = "TEST-ONLY" }, uf_target = { point = "TEST-ONLY", relPoint = 7, scale = 0, alpha = "TEST-ONLY" } } } }` });
+  expect(addon.eval("return { ns.GetModule('UnitFrames').enabled, #ns.errors }"), "the unit frames still load, with nothing to report").toEqual([true, 0]);
+  expect(addon.eval("return { ns.MoverPoint('uf_player') }"), "a point that isn't one leaves the default").toEqual(clean);
+  expect(addon.eval("return { ns.MoverLook('uf_target') }"), "a scale out of range is kept to it, an opacity that isn't a number is 1").toEqual([0.5, 1]);
+  addon.eval('ns.Profile().positions.box = { point = "TOPLEFT", relPoint = "TEST-ONLY", x = "12", y = {} } ns.SetMoverDefault("box", { "BOTTOM", "BOTTOM", 0, 100 })');
+  expect(addon.eval("return { ns.MoverPoint('box') }"), "a good point keeps; a bad relative point is the point; offsets that aren't numbers read as numbers or 0").toEqual(["TOPLEFT", "TOPLEFT", 12, 0]);
 });

@@ -77,8 +77,8 @@ end
 -- the Centered layout has room) and the spot's size: a row of ten 30-unit
 -- buttons for the pet, about six forms for the stance bar (it grows to the right).
 SB.SPOTS = {
-  { "PetActionBar", "petbar", "Pet bar", { "BOTTOMLEFT", "BOTTOMLEFT", 8, 224 }, 320, 32 },
-  { "StanceBar", "stancebar", "Stance bar", { "BOTTOMLEFT", "BOTTOMLEFT", 8, 262 }, 200, 32 },
+  { "PetActionBar", "petbar", "Pet bar", { "BOTTOMLEFT", "BOTTOMLEFT", 8, 250 }, 320, 32 },
+  { "StanceBar", "stancebar", "Stance bar", { "BOTTOMLEFT", "BOTTOMLEFT", 8, 288 }, 200, 32 },
 }
 
 -- Puts one of the game's bars on its spot, its bottom left corner on the spot's.

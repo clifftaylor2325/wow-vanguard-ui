@@ -1,7 +1,7 @@
 -- Nameplates in the ForeverUI look: a flat health bar in the unit's class
 -- or reaction color (or its threat color while you have aggro), the name
 -- above it with its level (colored by how hard it is for you), your debuffs over the name, the raid target icon to the left,
--- a cast bar under it, an accent border on your target, and a gold "!" by the
+-- a cast bar under it, an accent border and glow on your target, and a gold "!" by the
 -- name of units your quests need (when the client says so plainly).
 --
 -- ForeverUI draws its own frame on each nameplate the client gives it and
@@ -27,6 +27,8 @@ local ICON = 18
 NP.MARKER = 8
 -- The quest mark's size (a "!" right of the name).
 NP.QUEST = 12
+-- How many screen pixels the accent glow around your target's plate reaches out.
+NP.GLOW = 2
 
 NP.plates = {}
 -- Every frame we built for a plate (the client reuses plates, so each keeps one).
@@ -78,8 +80,10 @@ end
 
 -- Building ---------------------------------------------------------------------------------
 
--- An accent diamond just right of the plate, shown on your target's plate.
+-- An accent diamond just right of the plate and an accent glow around it,
+-- shown on your target's plate.
 local function addMarker(f)
+  f.glow = T.Glow(f, NP.GLOW)
   f.marker = T.Snap(f:CreateTexture(nil, "OVERLAY"))
   f.marker:SetTexture(T.Texture("Diamond"))
   f.marker:SetSize(NP.MARKER, NP.MARKER)
@@ -235,24 +239,26 @@ function NP.UpdateIcon(f, unit)
   RS.PaintIcon(f.raidIcon, RS.RaidIcon(unit))
 end
 
--- Your target's accent border and marker. The border is repainted only when
--- the plate's target state or its scale (the pixel size of the edge) changed
--- since it was last painted, or when `force` says the theme did.
+-- Your target's accent border, glow and marker. They are repainted only when
+-- the plate's target state or its scale (the pixel size of the edge and the
+-- glow) changed since they were last painted, or when `force` says the theme did.
 function NP.UpdateTarget(f, unit, force)
   local target, scale = NP.settings.targetBorder and isTarget(unit) or false, f:GetEffectiveScale()
   if not force and target == f.fuiTarget and scale == f.fuiScale then return end
   f.fuiTarget, f.fuiScale = target, scale
   T.SetBorder(f, target and { T.Accent() } or nil)
+  T.SizeGlow(f.glow, f, NP.GLOW)
+  T.ShowGlow(f.glow, target)
   f.marker:SetShown(target)
   if target then T.Tint(f.marker, "accent") end
 end
 
--- Repaints a plate's target border and marker whatever its state (the accent changed).
+-- Repaints a plate's target border, glow and marker whatever its state (the accent changed).
 local function repaintTarget(f, unit)
   NP.UpdateTarget(f, unit, true)
 end
 
--- Health bar, color, name and level, raid icon, and your target's border and marker.
+-- Health bar, color, name and level, raid icon, and your target's border, glow and marker.
 function NP.Update(f, unit)
   NP.UpdateHealth(f, unit)
   NP.UpdateColor(f, unit)
@@ -282,6 +288,12 @@ end
 -- Runs fn(frame, unit) for every plate we drew on.
 local function each(fn)
   for unit, f in pairs(NP.plates) do fn(f, unit) end
+end
+
+-- Repaints everything on every plate on screen, as a live setting changed (levels,
+-- threat colors, the target border, quest marks): the options and Situations call it.
+function NP.RefreshAll()
+  each(refresh)
 end
 
 -- Events -----------------------------------------------------------------------------------
@@ -364,7 +376,7 @@ local function setting(key, reload)
   return function() return ns.Settings("Nameplates", NP.defaults)[key] end,
     function(v)
       ns.Settings("Nameplates", NP.defaults)[key] = v
-      if reload then ns.Options.NeedReload() else each(refresh) end
+      if reload then ns.Options.NeedReload() else NP.RefreshAll() end
     end, NP.defaults[key]
 end
 
@@ -375,7 +387,7 @@ function NP.OptionRows()
     { "text", "Turn the whole module off under Modules to keep the default plates." },
     { "check", "Levels, colored by how hard the unit is for you", setting("level") },
     { "check", "Threat colors while you have aggro", setting("threat") },
-    { "check", "Accent border and marker on your target", setting("targetBorder") }, { "check", "Cast bar", setting("castBar", true) },
+    { "check", "Accent border, glow and marker on your target", setting("targetBorder") }, { "check", "Cast bar", setting("castBar", true) },
     { "check", "A gold ! by units your quests need", setting("questMarks") },
     { "cycle", "Your debuffs shown", { { 0, "none" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", true) },
     { "check", "Timer numbers on your debuffs (reload)", setting("timers", true) },

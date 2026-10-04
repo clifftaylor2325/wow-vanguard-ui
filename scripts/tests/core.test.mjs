@@ -11,7 +11,7 @@ it("saved variables", () => {
   expect(createAddon().eval("return next(ns.Profile()) == nil"), "before ADDON_LOADED the profile is empty").toBe(true);
   const addon = loggedIn("", { firstRun: true });
   const sv = addon.savedVariables();
-  expect(sv.account.version === 1 && typeof sv.account.profiles === "object", "fresh install creates ForeverUIDB").toBeTruthy();
+  expect(sv.account.version === 2 && typeof sv.account.profiles === "object", "fresh install creates ForeverUIDB").toBeTruthy();
   expect(sv.char.profile === "Default", "a new character uses the Default profile").toBeTruthy();
   const kept = loggedIn("", { savedVariables: 'ForeverUIDB = { profiles = { Main = { theme = { accent = { 1, 0, 0 } } } } }\nForeverUICharDB = { profile = "Main" }' });
   expect(kept.eval("return select(1, ns.Theme.Accent())") === 1, "the character's saved profile is used").toBeTruthy();
@@ -32,6 +32,13 @@ it("wrong-typed saved values are replaced by their defaults", () => {
   expect(addon.eval("return ns.Theme.Settings().font"), "a right-typed scalar is kept").toBe("client");
   expect(addon.eval("return ns.MoverOptions().gridSize"), "a boolean for a number gets the default").toBe(32);
   expect(addon.eval('local c = ns.Copy({ a = 1, b = { c = "x" } }) return { c.a, c.b.c }'), "ns.Copy still copies every key").toEqual([1, "x"]);
+});
+
+it("a damaged account file: a profile that isn't a table, or a name that isn't a name, is dropped at load", () => {
+  const addon = loggedIn("", { savedVariables: 'ForeverUIDB.profiles = { Default = "TEST-ONLY", Raid = 5, [1] = {}, Main = { theme = { font = "client" } } }' });
+  expect(addon.eval("return { type(ns.Profile()), ns.GetModule('UnitFrames').enabled, #ns.errors }"), "the active profile is a table again and every module loads").toEqual(["table", true, 0]);
+  expect(addon.eval("return ns.ProfileNames()"), "the profile list holds the good ones only").toEqual(["Default", "Main"]);
+  expect(addon.eval("return ForeverUIDB.profiles.Main.theme.font"), "a good profile is kept as it was").toBe("client");
 });
 
 it("settings tables are filled once per profile and key", () => {
@@ -61,14 +68,14 @@ it("settings tables are filled once per profile and key", () => {
 it("the account file's version is read and upgraded", () => {
   const spy = "__mig = {} local real = ns.MigrateDB ns.MigrateDB = function(from, to) __mig[#__mig + 1] = { from, to } return real(from, to) end";
   const stamped = loggedIn(spy, { savedVariables: "ForeverUIDB.version = nil" });
-  expect(stamped.eval("return __mig"), "a file without a stamp is upgraded from 0").toEqual([[0, 1]]);
-  expect(stamped.eval("return ForeverUIDB.version"), "and stamped").toBe(1);
+  expect(stamped.eval("return __mig"), "a file without a stamp is upgraded from 0").toEqual([[0, 2]]);
+  expect(stamped.eval("return ForeverUIDB.version"), "and stamped").toBe(2);
   expect(loggedIn(spy).eval("return __mig"), "a current file runs nothing").toEqual({});
   const newer = loggedIn(spy, { savedVariables: "ForeverUIDB.version = 7" });
   expect(newer.eval("return __mig"), "a newer addon's file is left alone").toEqual({});
   expect(newer.eval("return ForeverUIDB.version"), "and never downgraded").toBe(7);
   const fresh = loggedIn(spy, { firstRun: true });
-  expect(fresh.eval("return { #__mig, ForeverUIDB.version }"), "a fresh install is stamped without an upgrade").toEqual([0, 1]);
+  expect(fresh.eval("return { #__mig, ForeverUIDB.version }"), "a fresh install is stamped without an upgrade").toEqual([0, 2]);
   expect(fresh.eval('ns.UpgradeDB(2, function(db) db.marker = "a" end) ns.UpgradeDB(3, function(db) db.marker = db.marker .. "b" end) ns.UpgradeDB(4, function() error("boom") end) local ok = ns.MigrateDB(1, 3) return { ok, ForeverUIDB.marker, ForeverUIDB.version }'), "registered steps run in order and stamp each").toEqual([true, "ab", 3]);
   expect(fresh.eval("local n = #ns.errors local ok = ns.MigrateDB(3, 4) return { ok, ForeverUIDB.version, #ns.errors - n }"), "a failing step is logged, stops the chain and leaves the stamp for a retry").toEqual([false, 3, 1]);
   expect(fresh.eval("return ns.MigrateDB(3, 1)"), "a target below the stamp has nothing to run").toBe(true);
@@ -81,7 +88,7 @@ it("a failing first upgrade step on an unstamped file is retried at the next log
     expect(addon.eval("return ForeverUIDB.version"), "the stamp stays at 0 so the step runs again: " + bad).toBe(0);
   }
   const ok = loggedIn('ns.UpgradeDB(1, function(db) db.ran = true end)', { savedVariables: "ForeverUIDB.version = nil" });
-  expect(ok.eval("return { ForeverUIDB.ran, ForeverUIDB.version }"), "a step that works runs once and stamps").toEqual([true, 1]);
+  expect(ok.eval("return { ForeverUIDB.ran, ForeverUIDB.version }"), "a step that works runs once and stamps").toEqual([true, 2]);
 });
 
 it("modules", () => {
@@ -97,6 +104,17 @@ it("modules", () => {
   expect(addon.eval("return __off") === null, "a module turned off in the profile is not enabled").toBeTruthy();
   addon.slash("disable Good");
   expect(addon.eval("return ns.ModuleEnabled('Good')") === false, "/fui disable turns a module off").toBeTruthy();
+});
+
+it("modules: a module whose saved settings fail to upgrade is reported, and the modules after it still load", () => {
+  const addon = loggedIn(`
+    ns.Migrate("TESTONLY_Broken", function(saved) return saved.layout >= 2 end)
+    ns.Module("TESTONLY_Broken", { defaults = {}, Enable = function() __broken = true end })
+    ns.Module("TESTONLY_After", { Enable = function() __after = true end })
+  `, { savedVariables: 'ForeverUIDB.profiles = { Default = { TESTONLY_Broken = { layout = "TEST-ONLY" }, DataBars = { layout = "TEST-ONLY" } } }' });
+  expect(addon.eval("return { __broken == nil, __after, ns.GetModule('TESTONLY_Broken').enabled, ns.GetModule('TESTONLY_After').enabled }"), "the broken module is off, the next one loads").toEqual([true, true, false, true]);
+  expect(addon.eval("return { ns.GetModule('DataBars').enabled, ns.GetModule('Tooltips').enabled, ns.GetModule('ClickCast').enabled }"), "a damaged DataBars table stops DataBars only").toEqual([false, true, true]);
+  expect(addon.eval("local t = {} for _, e in ipairs(ns.errors) do t[#t + 1] = e.text:match('^[^:]+') end return t"), "each failure is reported under its module").toEqual(["module DataBars", "module TESTONLY_Broken"]);
 });
 
 it("combat queue", () => {
@@ -186,6 +204,15 @@ it("slash", () => {
   addon.clearChat();
   addon.slash("bogus");
   expect(chatHas(addon, /Unknown command/), "unknown commands say so").toBeTruthy();
+});
+
+it("/fui stock with the Errands module off says so instead of failing", () => {
+  const addon = loggedIn("", { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { Errands = false } } }" });
+  for (const command of ["stock", "stock item:90011 5", "stock clear"]) {
+    addon.clearChat();
+    addon.slash(command);
+    expect(Array.from(addon.chat()), "/fui " + command).toEqual([expect.stringMatching(/Errands are off \(\/fui > Modules\)\.$/)]);
+  }
 });
 
 // The chat lines printed by one /fui command, without the colored "ForeverUI:" prefix.
@@ -842,7 +869,7 @@ const NEWER_ENV = `
 `;
 
 it("Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line", () => {
-  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + NEWER_ENV);
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + NEWER_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
   expect(isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneSanctuary"), "the zone name takes its PvP color from C_PvP").toBe(true);
   addon.eval("__pvp = { __secret = true } ns.GetModule('Minimap').UpdateZone()");
   expect(isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "gold"), "a hidden answer is plain gold").toBe(true);

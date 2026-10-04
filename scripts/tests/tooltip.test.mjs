@@ -78,6 +78,18 @@ it("item tooltips show what the stack sells for, unless the client already does"
   expect(old.eval('return __showItem("item:90001", 2)[1].text'), "a client without the tooltip data API: the old script").toBe("Sells for 0s 50c");
 });
 
+it("item tooltips: other modules' lines come after the tooltip's own, and one that fails doesn't stop the rest", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV);
+  addon.eval(`local TT = ns.GetModule("Tooltips")
+    TT.AddItemLines(function(tt, link) tt:AddLine("TEST-ONLY first " .. link) end)
+    TT.AddItemLines(function() error("TEST-ONLY broken line") end)
+    TT.AddItemLines(function(tt) tt:AddLine("TEST-ONLY last") end)`);
+  const lines = addon.eval('local out = {} for i, l in ipairs(__showItem("item:90001", 2)) do out[i] = l.text end return out');
+  expect(lines, "the sell price, then each added line with the item's link, past the one that failed").toEqual(["Sells for 0s 50c", "TEST-ONLY first item:90001", "TEST-ONLY last"]);
+  expect(addon.eval("return ns.errors[#ns.errors].text"), "the failure is caught for /fui errors").toMatch(/TEST-ONLY broken line/);
+  expect(addon.eval("return #__showItem({ __secret = true }, 1)"), "a hidden link: no lines at all").toBe(0);
+});
+
 it("item tooltips: how many you have, and the item ID when asked", () => {
   const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV + "C_Item.GetItemCount = function(link, bank) if link == 'item:90002' then return 3, 3 end return bank and 12 or 7 end");
   expect(addon.eval('local l = __showItem("item:90002", 1) return l[1].text'), "all in your bags").toBe("You have 3");

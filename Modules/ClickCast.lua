@@ -186,11 +186,21 @@ local function modifierText(mods)
   return #out > 0 and (table.concat(out, " + ") .. " + ") or ""
 end
 
+-- A binding key split into its modifiers ("CTRL-SHIFT-", in binding order) and the
+-- key itself, which may be the minus key ("SHIFT--" is Shift and "-").
+local function splitKey(key)
+  local mods, base = "", key
+  for _, m in ipairs({ "ALT-", "CTRL-", "SHIFT-", "META-" }) do
+    if #base > #m and base:sub(1, #m) == m then mods, base = mods .. m, base:sub(#m + 1) end
+  end
+  return mods, base
+end
+
 -- A binding key for people: "Ctrl + Right click", "Shift + Q (hover)".
 function CC.KeyText(key)
   local prefix, n = CC.MouseParts(key)
   if prefix then return modifierText(prefix) .. MOUSE_NAMES[n] end
-  local mods, base = key:match("^(.-%-?)([^%-]+)$")
+  local mods, base = splitKey(key)
   local names = { MOUSEWHEELUP = "Wheel up", MOUSEWHEELDOWN = "Wheel down" }
   return modifierText(mods) .. (names[base] or base) .. " (hover)"
 end

@@ -178,28 +178,44 @@ local function enum(kind, key)
   return t and t[key] or nil
 end
 
--- The current (or last) fight's damage per second list from the game's damage
--- meter, top first; nil in combat and wherever the client keeps it hidden.
-local function dpsSources()
+-- The current (or last) fight's damage per second session from the game's damage
+-- meter, and the session type it was asked with; nil in combat and wherever the client keeps it hidden.
+local function dpsSession()
   local get = C_DamageMeter and C_DamageMeter.GetCombatSessionFromType
   local kind, what = enum("DamageMeterSessionType", "Current"), enum("DamageMeterType", "Dps")
   if type(get) ~= "function" or kind == nil or what == nil or ns.InCombat() then return nil end
   local session = get(kind, what)
-  if type(session) ~= "table" or ns.IsSecret(session) or type(session.combatSources) ~= "table" then return nil end
-  return session.combatSources
+  if type(session) ~= "table" or ns.IsSecret(session) then return nil end
+  return session, kind
+end
+
+-- That session's list of lines, top first; nil where there's none.
+local function dpsSources()
+  local session = dpsSession()
+  if session and type(session.combatSources) == "table" then return session.combatSources end
 end
 
 -- Your line in that list, its place in it and how many lines it has (nil without yours).
-local function myLine()
+-- Fight history (Modules/FightHistory.lua) reads it too.
+function IS.MyLine()
   local sources = dpsSources()
   for i, source in ipairs(sources or {}) do
     if source.isLocalPlayer == true then return source, i, #sources end
   end
 end
 
+-- How long the current (or last) fight lasted, in seconds: the session's own figure,
+-- else the meter's; nil in combat, when hidden, or when the client can't say.
+function IS.FightSeconds()
+  local session, kind = dpsSession()
+  if not session then return nil end
+  local seconds = C_DamageMeter.GetSessionDurationSeconds
+  return ns.PlainNumber(session.durationSeconds) or (type(seconds) == "function" and ns.PlainNumber(seconds(kind)) or nil)
+end
+
 -- Your damage per second in the current (or last) fight; nil in combat and where it's hidden.
 function IS.DPS()
-  local line = myLine()
+  local line = IS.MyLine()
   return line and ns.PlainNumber(line.amountPerSecond)
 end
 
@@ -207,7 +223,7 @@ end
 -- client has no rank field: the game's own meter numbers its lines in the list's order.
 function IS.Rank()
   if not (ns.Client.Has("damageMeter") and ns.Client.Has("meterEnums")) then return nil end
-  local line, place, count = myLine()
+  local line, place, count = IS.MyLine()
   if line then return place, count end
 end
 

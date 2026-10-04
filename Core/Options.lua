@@ -121,6 +121,12 @@ local function themeSetting(key)
   return function() return T.Settings()[key] end, function(v) T.Settings()[key] = v; O.NeedReload() end
 end
 
+-- get/set for a theme setting that applies on reload, shown at once in the General page's sample.
+local function previewedSetting(key)
+  local get, set = themeSetting(key)
+  return get, function(v) set(v); T.Refresh() end
+end
+
 -- get/set for a theme setting that applies at once (font, text size): every
 -- styled text is re-fonted. Setting the same value again does nothing, so
 -- dragging a slider only re-fonts when the value moves.
@@ -188,7 +194,7 @@ end
 local function barRows()
   return {
     { "header", "Bars" },
-    { "cycle", "Bar texture", T.SharedChoices("statusbar", BAR_TEXTURES), themeSetting("barTexture") },
+    { "cycle", "Bar texture", T.SharedChoices("statusbar", BAR_TEXTURES), previewedSetting("barTexture") },
     check("Smooth health and power bars", function() return T.Settings().smoothBars end, function(v) T.Settings().smoothBars = v end),
     check("Soft shadows under frames (reload)", themeSetting("hudShadow")),
   }
@@ -232,11 +238,12 @@ O.MODULE_INFO = {
   Minimap = { "Minimap", "A square minimap with the zone and coordinates." },
   InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo or soul shards and the time, under the minimap, your XP and gold per hour while you level, and your DPS and its place if you like." },
   AfkScreen = { "AFK screen", "While you're away, the screen dims to a card with your character, zone, time away and XP." },
-  MenuStrip = { "Menu and quest tracker", "The game's menu buttons (as ForeverUI icons) and bag buttons in a corner strip, and the quest tracker under the info strip." },
+  MenuStrip = { "Menu and quest tracker", "The game's bag and menu buttons on framed slots in one corner bar, and the quest tracker under the info strip." },
   Chat = { "Chat", "Themed chat windows and tabs." },
   Bags = { "Bags", "One combined bag, in sections by kind of item, with a Sort button." },
   Merchant = { "Merchant helpers", "Repair, sell gray items, and a quieter error line." },
   ChatExtras = { "Chat extras", "Clickable web links in chat, and a Copy button for the recent chat." },
+  ChatWatch = { "Chat watch", "A sound and a toast when a phrase you watch for is said in chat; click to whisper." },
   MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map." },
   AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels (each off until you switch it on)." },
   QuestDialog = { "Quest dialog", "Talking to quest givers in ForeverUI's own dialog: numbered lines, reward cards, keys 1-9 and Space." },
@@ -245,11 +252,16 @@ O.MODULE_INFO = {
   QuestAuto = { "Quest automation", "Accept, turn in, pick the best-selling reward, skip chatter; each off until switched on." },
   GameAlerts = { "Game alerts", "Loss of control and the talking head in the ForeverUI look, each in a spot you can move; Hardcore death notices restyled; a rare nearby announced if you like." },
   Errands = { "Errands", "Train all at a trainer, keep items stocked from merchants, and time your flights." },
+  InstancePrep = { "Instance prep", "A checklist of what's low (ammo, reagents, food, bandages, potions, your stock list) when you enter an instance or a ready check starts." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
+  FightHistory = { "Fight history", "Your DPS and place in each fight this session, as a strip of bars under the damage meter (off until switched on)." },
   Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the ForeverUI look." },
   DataBars = { "XP and reputation", "Thin experience and reputation bars." },
   Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },
+  VendorMemory = { "Vendor memory", "Remembers what each merchant sells; tooltips and the stock list say where to buy." },
+  AuctionHelper = { "Auction helper", "Shopping lists, a sell card that suggests an undercut and posts, prices in tooltips from your scans, and an undercut check on your auctions." },
   Nameplates = { "Nameplates", "Flat plates with levels, your debuffs, casts and threat." },
+  Situations = { "Situations", "Different frame spots and settings for solo, party, raid, PvP, instance and resting, applied out of combat." },
 }
 
 -- One module's switch, with its name and what it does (applies on reload).
@@ -408,6 +420,17 @@ local function windowRows()
   }
 end
 
+-- The auction helper: its panel, tooltip prices, the sell card's undercut and the scan button.
+local function auctionRows()
+  return {
+    { "header", "Auction house" },
+    check("ForeverUI panel beside the auction house (lists, sell helper, scan)", setting("AuctionHelper", "panel")),
+    check("Auction prices in tooltips (from your scans)", setting("AuctionHelper", "tooltip")),
+    { "cycle", "Undercut by", { { "copper", "1 copper" }, { "silver", "1 silver" }, { "percent", "1 %" }, { "match", "Match" } }, setting("AuctionHelper", "undercut") },
+    check("Scan button (one scan every 15 minutes)", setting("AuctionHelper", "scanButton")),
+  }
+end
+
 -- get/set for showing the game's Cooldown Manager, which turns it on or off at once.
 local function cooldownManagerSetting()
   return liveSetting("GameTools", "essential", function() ns.GetModule("GameTools").SetCooldownManager(moduleSettings("GameTools").essential) end)
@@ -428,17 +451,17 @@ local function gameToolRows()
 end
 
 -- The visibility rows (Core/Visibility.lua) of a module's frame, applied at once
--- (when the module runs); unset, the setting is Always.
-local function visibilityRows(caption, module, modeKey, whenKey)
+-- (when the module runs); unset, the setting is Always. modes: its choices (V.MODES unless given).
+local function visibilityRows(caption, module, modeKey, whenKey, modes)
   return ns.Visibility.Rows(caption, function() return moduleSettings(module) end, modeKey, whenKey, function()
     local m = ns.GetModule(module)
     if m.enabled then m.ApplyVisibility() end
-  end, "always")
+  end, "always", modes)
 end
 
 -- The game's extras: minimap buttons, the menu strip and the quest tracker (after a reload).
 local function gamePartRows()
-  local menuVisibility, menuWhen = visibilityRows("Game menu buttons", "MenuStrip", "menu", "menuWhen")
+  local menuVisibility, menuWhen = visibilityRows("Bags and game menu", "MenuStrip", "menu", "menuWhen", ns.Visibility.MENU_MODES)
   return {
     { "header", "The game's extras" },
     check("Tracking, mail and difficulty on the minimap's corners (reload)", setting("Minimap", "icons", true)),
@@ -497,10 +520,21 @@ local function stripSetting(key)
   return liveSetting("InfoStrip", key, function() ns.GetModule("InfoStrip").UpdateAll() end)
 end
 
--- The info strip under the minimap: one switch per block.
+-- Fight history under the damage meter: its switch (applied at once) and its visibility.
+local function fightRows()
+  local FH = ns.GetModule("FightHistory")
+  local fightVisibility, fightWhen = visibilityRows("Fight history visibility", "FightHistory", "visibility", "showWhen")
+  return {
+    { "header", "Fight history" },
+    check("Sparkline of your DPS in the last 20 fights, under the damage meter", liveSetting("FightHistory", "strip", function() if FH.enabled then FH.Paint() end end)),
+    fightVisibility, fightWhen,
+  }
+end
+
+-- The info strip under the minimap: one switch per block, then Fight history.
 local function stripRows()
   local stripVisibility, stripWhen = visibilityRows("Strip visibility", "InfoStrip", "visibility", "showWhen")
-  return {
+  return append({
     { "header", "Strip under the minimap" }, stripVisibility, stripWhen,
     check("Durability", stripSetting("durability")), check("Free bag slots", stripSetting("bags")),
     check("Frame rate and latency", stripSetting("system")), check("Gold", stripSetting("gold")),
@@ -508,7 +542,7 @@ local function stripRows()
     check("Soul shards (warlocks)", stripSetting("shards")), check("XP per hour this session", stripSetting("xprate")),
     check("Time to the next level", stripSetting("leveltime")), check("Gold per hour this session", stripSetting("goldrate")),
     check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")), check("Your place in the last fight's DPS, in a group", stripSetting("rank")),
-  }
+  }, fightRows())
 end
 
 -- At a merchant, and the error line.
@@ -542,6 +576,25 @@ local function chatRows()
   }
 end
 
+-- Chat watch's switches: the channels it reads, its sound and its toast.
+local function chatWatchSwitches(CW)
+  return {
+    check("Numbered channels (General, Trade, LFG)", CW.ChannelSetting("channel")),
+    check("Say", CW.ChannelSetting("say")), check("Yell", CW.ChannelSetting("yell")), check("Guild", CW.ChannelSetting("guild")),
+    check("Party and raid", CW.ChannelSetting("party", "raid")), check("Whispers", CW.ChannelSetting("whisper")),
+    check("Sound", setting("ChatWatch", "sound")), check("Toast", setting("ChatWatch", "toast")),
+  }
+end
+
+-- Chat watch: add a phrase, a Remove button per phrase, then the switches.
+local function chatWatchRows()
+  local CW = ns.GetModule("ChatWatch")
+  local rows = { { "header", "Chat watch" }, { "text", "Phrases to watch for: a sound and a toast when one is said; click the toast to whisper." },
+    { "button", "Add a phrase", function() ns.AskText("Watch for", CW.AddFromDialog, "Add") end } }
+  for _, p in ipairs(moduleSettings("ChatWatch").phrases) do rows[#rows + 1] = { "button", "Remove: " .. p, function() CW.Remove(p) end } end
+  return append(rows, chatWatchSwitches(CW))
+end
+
 -- The minimap drawer and the auto-accept switches.
 local function comfortRows()
   return {
@@ -562,9 +615,33 @@ local function errandRows()
   }
 end
 
+-- Vendor memory: where items are sold, in their tooltips.
+local function vendorRows()
+  return {
+    check("Where an item is sold (merchants you've visited)", setting("VendorMemory", "tooltip")),
+    check("Remember what merchants sell", setting("VendorMemory", "remember")),
+  }
+end
+
+-- Instance prep's sliders: how long the card stays (seconds), and the durability warning (percent).
+local PREP_SECONDS = { min = 5, max = 60, step = 5, format = function(v) return string.format("%d s", v) end }
+local PREP_PERCENT = { min = 10, max = 90, step = 5, format = function(v) return string.format("%d%%", v) end }
+
+-- Instance prep: when the checklist card shows, how long it stays, and the durability warning.
+local function prepRows()
+  return {
+    { "header", "Instance prep" },
+    check("Checklist when you enter a dungeon or raid (only when something is low)", setting("InstancePrep", "onEnter")),
+    check("Checklist on a ready check", setting("InstancePrep", "onReadyCheck")),
+    { "slider", "Hide after", PREP_SECONDS, setting("InstancePrep", "hideAfter") },
+    { "slider", "Durability warning under", PREP_PERCENT, setting("InstancePrep", "durability") },
+    { "text", "Wanted amounts: /fui prep want <food|bandages|potions|ammo|shards> <n>; items from /fui stock are checked too." },
+  }
+end
+
 -- Tooltips: where they sit and what they add.
 local function tooltipRows()
-  return {
+  return append({
     { "header", "Tooltips" },
     { "cycle", "Tooltip position", { { "corner", "corner (movable)" }, { "cursor", "at the cursor" }, { "default", "client default" } }, setting("Tooltips", "anchor") },
     check("Border in the unit's class color", setting("Tooltips", "classBorder")),
@@ -572,7 +649,7 @@ local function tooltipRows()
     check("What an item sells for (when the game doesn't say)", setting("Tooltips", "sellPrice")),
     check("How many of an item you have", setting("Tooltips", "itemCount")), check("Item IDs", setting("Tooltips", "itemID")),
     check("Hide unit tooltips in combat", setting("Tooltips", "hideInCombat")),
-  }
+  }, vendorRows())
 end
 
 -- The Bars, map, chat page: your buffs, bars and map, the strip, merchants, tooltips.
@@ -581,10 +658,11 @@ local function morePageRows()
   append(rows, stripRows())
   append(rows, gamePartRows())
   append(rows, windowRows())
+  append(rows, auctionRows())
   append(rows, gameToolRows())
   append(rows, merchantRows())
-  append(rows, errandRows())
-  append(append(rows, chatRows()), comfortRows())
+  append(append(rows, errandRows()), prepRows())
+  append(append(append(rows, chatRows()), chatWatchRows()), comfortRows())
   return append(rows, tooltipRows())
 end
 

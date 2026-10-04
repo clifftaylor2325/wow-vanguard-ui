@@ -74,9 +74,10 @@ end
 -- Buff watch -------------------------------------------------------------------------------
 
 -- The watched buff names from the settings: your own list if you set one, else your class's defaults.
+-- Read through ns.Settings, so the options page works while this module is off.
 local function readNames()
   local names = {}
-  for name in (RH.settings.buffs or ""):gmatch("[^,]+") do
+  for name in (ns.Settings("RaidHealing", RH.defaults).buffs or ""):gmatch("[^,]+") do
     names[#names + 1] = name:match("^%s*(.-)%s*$")
   end
   if #names > 0 then return names end

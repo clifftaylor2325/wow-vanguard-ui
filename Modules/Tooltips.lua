@@ -4,7 +4,8 @@
 -- can sit in a movable corner, follow the cursor, or stay where the client
 -- puts it, and unit tooltips can be hidden in combat. Item tooltips show what
 -- the item sells for (the stack's worth, unless the client already shows it),
--- how many you have (bags and bank), and optionally the item's ID.
+-- how many you have (bags and bank), and optionally the item's ID; other modules
+-- add their own item lines after those (TT.AddItemLines).
 --
 -- Written for WoW Forever. Every client call is looked up when used. The
 -- tooltip's text is never read: in Midnight some of it is hidden from
@@ -150,7 +151,17 @@ local function addID(tt, link)
   if id then tt:AddLine("Item ID " .. id, T.RGB("text2")) end
 end
 
--- An item tooltip was filled in: add the switched-on lines.
+-- Other modules' item lines, each fn(tt, link), run in the order added after the tooltip's own.
+TT.itemLines = {}
+
+-- Adds fn(tt, link) to every item tooltip, after ForeverUI's own lines: the shared
+-- extension point (Vendor memory's "Sold by", auction prices). link is a plain item link.
+function TT.AddItemLines(fn)
+  TT.itemLines[#TT.itemLines + 1] = fn
+end
+
+-- An item tooltip was filled in: add the switched-on lines, then other modules' (one
+-- that fails is reported and doesn't stop the rest).
 function TT.OnItem(tt)
   if not tt.GetItem then return end
   local _, link = tt:GetItem()
@@ -158,6 +169,7 @@ function TT.OnItem(tt)
   if TT.settings.sellPrice then addPrice(tt, link) end
   if TT.settings.itemCount then addCount(tt, link) end
   if TT.settings.itemID then addID(tt, link) end
+  for _, fn in ipairs(TT.itemLines) do ns.Try("tooltip lines", fn, tt, link) end
 end
 
 -- Hooks ------------------------------------------------------------------------------------
