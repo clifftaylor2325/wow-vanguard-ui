@@ -206,6 +206,7 @@ ForeverUI moves little and quietly. Every fade goes through the theme (`T.FadeIn
 | Setup wizard opens, or comes back after a fight | fade in | 0.12 s | - (waits for the fight to end) | Reduce motion |
 | AFK screen appears | fade in | 0.4 s | - (never opens in a fight) | Reduce motion |
 | AFK screen goes (you are back, a click or key, a fight starts) | fade out | 0.2 s | 0.15 s | Reduce motion |
+| Instance prep card shows, then goes after Hide after (20 s) or its close button | fade in / fade out | 0.12 s | - (never opens in a fight; closes in 0.12 s) | Reduce motion |
 | Cast bar ends | flash: the bar fills, green for a finished cast, red with the reason (Interrupted, Failed) | held while it fades | held while it fades | Reduce motion (the bar hides at once) |
 | Cast bar ends, then | fade out | 0.35 s | 0.15 s | Reduce motion |
 | Bars and strips on mouseover or conditions (action bars, the menu and bag strips, ...) | alpha 0 / 1 | instant | instant | - (no animation) |
