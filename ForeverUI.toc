@@ -78,6 +78,7 @@ Modules/InfoStrip.lua
 Modules/MenuStrip.lua
 Modules/Merchant.lua
 Modules/Errands.lua
+Modules/InstancePrep.lua
 Modules/AutoAccept.lua
 Modules/QuestDialogParts.lua
 Modules/QuestDialog.lua

@@ -158,8 +158,9 @@ function raidRect(addon, spot, n, sw, sh) {
   return { l, b: holder.b, r: l + w, t: holder.b + h };
 }
 
-// Windows that open over the HUD for a moment, so they're left out of the overlap check.
-const FLOATING = new Set(["questlog", "lossofcontrol", "talkinghead"]);
+// Windows that open over the HUD for a moment, so they're left out of the overlap check
+// (the Instance prep card shows at an instance's door or a ready check and fades after 20 s).
+const FLOATING = new Set(["questlog", "lossofcontrol", "talkinghead", "prepcard"]);
 
 // The quest dialog (at its greatest height) must clear the cluster around your character
 // in the centered layouts; it may cover the group frames above it while you talk to an NPC.

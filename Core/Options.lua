@@ -251,6 +251,7 @@ O.MODULE_INFO = {
   QuestAuto = { "Quest automation", "Accept, turn in, pick the best-selling reward, skip chatter; each off until switched on." },
   GameAlerts = { "Game alerts", "Loss of control and the talking head in the ForeverUI look, each in a spot you can move; Hardcore death notices restyled; a rare nearby announced if you like." },
   Errands = { "Errands", "Train all at a trainer, keep items stocked from merchants, and time your flights." },
+  InstancePrep = { "Instance prep", "A checklist of what's low (ammo, reagents, food, bandages, potions, your stock list) when you enter an instance or a ready check starts." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
   FightHistory = { "Fight history", "Your DPS and place in each fight this session, as a strip of bars under the damage meter (off until switched on)." },
   Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the ForeverUI look." },
@@ -589,6 +590,22 @@ local function vendorRows()
   }
 end
 
+-- Instance prep's sliders: how long the card stays (seconds), and the durability warning (percent).
+local PREP_SECONDS = { min = 5, max = 60, step = 5, format = function(v) return string.format("%d s", v) end }
+local PREP_PERCENT = { min = 10, max = 90, step = 5, format = function(v) return string.format("%d%%", v) end }
+
+-- Instance prep: when the checklist card shows, how long it stays, and the durability warning.
+local function prepRows()
+  return {
+    { "header", "Instance prep" },
+    check("Checklist when you enter a dungeon or raid (only when something is low)", setting("InstancePrep", "onEnter")),
+    check("Checklist on a ready check", setting("InstancePrep", "onReadyCheck")),
+    { "slider", "Hide after", PREP_SECONDS, setting("InstancePrep", "hideAfter") },
+    { "slider", "Durability warning under", PREP_PERCENT, setting("InstancePrep", "durability") },
+    { "text", "Wanted amounts: /fui prep want <food|bandages|potions|ammo|shards> <n>; items from /fui stock are checked too." },
+  }
+end
+
 -- Tooltips: where they sit and what they add.
 local function tooltipRows()
   return append({
@@ -610,7 +627,7 @@ local function morePageRows()
   append(rows, windowRows())
   append(rows, gameToolRows())
   append(rows, merchantRows())
-  append(rows, errandRows())
+  append(append(rows, errandRows()), prepRows())
   append(append(rows, chatRows()), comfortRows())
   return append(rows, tooltipRows())
 end
