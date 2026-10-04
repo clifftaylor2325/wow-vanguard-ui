@@ -1,8 +1,14 @@
 -- Auction helper: a ForeverUI panel docked to the left of the game's auction
--- house window. "Scan the auction house" (once every 15 minutes, the game's
--- own limit for a whole-house query) reads every listing and records each
--- item's cheapest unit price (Modules/AuctionPrices.lua), which item tooltips
--- then show everywhere.
+-- house window.
+--   * Shop: named shopping lists (items by ID or by name); "Search list" runs
+--     the list's searches one after another (one in flight, at most 60 a
+--     minute) and each row shows the item's cheapest price per unit and how
+--     many are up; clicking a row shows that item in the game's own list, so
+--     buying stays in the game's hands.
+--   * Scan: "Scan the auction house" (once every 15 minutes, the game's own
+--     limit for a whole-house query) reads every listing and records each
+--     item's cheapest unit price (Modules/AuctionPrices.lua), which item
+--     tooltips then show everywhere.
 --
 -- The game's auction house is the modern one (C_AuctionHouse) on WoW Forever.
 -- Nothing here touches the game's auction frames: the panel only anchors to
@@ -19,6 +25,13 @@ local AH = ns.Module("AuctionHelper", { defaults = { panel = true, tooltip = tru
 -- to the window; where the scan card starts (down from the panel's top) and its height.
 AH.SCAN_GAP, AH.SCAN_ROWS = 900, 400
 AH.WIDTH, AH.PAD, AH.GAP, AH.SCAN_Y, AH.SCAN_H = 280, 8, 4, -354, 168
+-- Searches: seconds between two (at most 60 a minute), and how long one waits for its results.
+AH.SEND_GAP, AH.FALLBACK = 1, 2
+-- The shop card: where it starts and its height, its rows (how many, from where, how tall).
+AH.SHOP_Y, AH.SHOP_H, AH.SHOP_ROWS, AH.SHOP_ROWS_Y, AH.ROW_H = -8, 196, 6, -74, 20
+-- Shopping lists: how many, entries per list, the list "+ Add" starts, the dropdown's "New list..." value.
+AH.MAX_LISTS, AH.MAX_ENTRIES, AH.DEFAULT_LIST, AH.NEW = 20, 50, "Shopping", "\1new"
+AH.UNKNOWN_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 
 -- Helpers ------------------------------------------------------------------------------------
 
@@ -49,6 +62,283 @@ local function card(f, title, y, h)
   return c
 end
 
+-- Searches -----------------------------------------------------------------------------------
+
+-- Sends one search: a list entry (an item ID by its item key, a name by text), or an item to
+-- open in the game's own list; always cheapest first.
+function AH.Send(s)
+  local api = C_AuctionHouse
+  if s.open then return api.SearchForItemKeys({ s.open }, AH.SORTS) end
+  if type(s.entry) == "number" then return api.SearchForItemKeys({ api.MakeItemKey(s.entry) }, AH.SORTS) end
+  api.SendBrowseQuery({ searchString = s.entry, sorts = AH.SORTS, filters = {}, itemClassFilters = {} })
+end
+
+-- Waits until AH.SEND_GAP has passed since the last search, then tries the next (one timer at a time).
+local function sendLater(wait)
+  if AH.waiting then return end
+  AH.waiting = true
+  C_Timer.After(wait, function() AH.waiting = false AH.Next() end)
+end
+
+-- Sends the next queued search: one in flight at a time, and AH.SEND_GAP seconds apart (at most
+-- 60 a minute, well under the client's 100). The one after follows its results, or AH.FALLBACK seconds.
+function AH.Next()
+  if AH.pending or #AH.queue == 0 or not AH.open then return end
+  local wait = AH.lastSent + AH.SEND_GAP - GetTime()
+  if wait > 0 then return sendLater(wait) end
+  local s = table.remove(AH.queue, 1)
+  AH.pending, AH.lastSent = s, GetTime()
+  AH.Send(s)
+  C_Timer.After(AH.FALLBACK, function() if AH.pending == s then AH.Done() end end)
+end
+
+-- Queues a search (first in line when asked) and sends it if nothing is in flight.
+function AH.Queue(search, first)
+  table.insert(AH.queue, first and 1 or #AH.queue + 1, search)
+  AH.Next()
+end
+
+-- The search in flight is answered (or gave up waiting): count a list entry, and send the next.
+function AH.Done()
+  local s = AH.pending
+  AH.pending = nil
+  if s.entry and AH.progress then AH.progress.done = AH.progress.done + 1 end
+  AH.PaintShop()
+  AH.Next()
+end
+
+-- Shopping lists -----------------------------------------------------------------------------
+
+-- How many shopping lists there are.
+local function countLists(store)
+  local n = 0
+  for _ in pairs(store.lists) do n = n + 1 end
+  return n
+end
+
+-- The shopping list in use: its name and entries (nil when there's none yet).
+function AH.CurrentList()
+  local store = AP.Store()
+  local list = store.list and store.lists[store.list]
+  if list then return store.list, list end
+end
+
+-- Makes (or picks) the shopping list `name` and shows it; false for no name, or a new list past AH.MAX_LISTS.
+function AH.NewList(name)
+  local store = AP.Store()
+  name = (name or ""):match("^%s*(.-)%s*$")
+  if name == "" then return false end
+  if not store.lists[name] and countLists(store) >= AH.MAX_LISTS then return ns.Chat("ForeverUI keeps at most 20 shopping lists.") end
+  store.lists[name], store.list = store.lists[name] or {}, name
+  ns.HideText()
+  AH.PaintShop()
+  return true
+end
+
+-- An entry from what was typed: the item ID in a link or a bare number, else the name (nil for nothing).
+function AH.ParseEntry(text)
+  text = (text or ""):match("^%s*(.-)%s*$")
+  local id = tonumber(text:match("item:(%d+)") or text:match("^%d+$"))
+  if id then return id end
+  if text ~= "" then return text end
+end
+
+-- Adds an item (a link, an ID or a name) to a list: the one named, else the one in use, else "Shopping".
+function AH.AddEntry(text, listName)
+  local entry, store = AH.ParseEntry(text), AP.Store()
+  local name = listName or store.list or AH.DEFAULT_LIST
+  if not entry or not AH.NewList(name) then return end
+  local list = store.lists[name]
+  if #list >= AH.MAX_ENTRIES then return ns.Chat("A shopping list holds at most 50 items.") end
+  list[#list + 1] = entry
+  AH.PaintShop()
+end
+
+-- Takes entry i off a list.
+function AH.RemoveEntry(listName, i)
+  local list = AP.Store().lists[listName]
+  if list and list[i] ~= nil then table.remove(list, i) end
+  AH.PaintShop()
+end
+
+-- Drops the queued searches of one kind ("entry", "sell"...).
+local function dropQueued(kind)
+  local kept = {}
+  for _, s in ipairs(AH.queue) do if not s[kind] then kept[#kept + 1] = s end end
+  AH.queue = kept
+end
+
+-- Search list: every entry of the list in use, one search at a time.
+function AH.SearchList()
+  local _, list = AH.CurrentList()
+  if not list or #list == 0 then return ns.Chat("Add items to a shopping list first (+ Add, or /fui ah add <list> <item>).") end
+  dropQueued("entry")
+  AH.found, AH.progress = {}, { done = 0, total = #list }
+  for _, entry in ipairs(list) do AH.Queue({ entry = entry }) end
+  AH.PaintShop()
+end
+
+-- Results ------------------------------------------------------------------------------------
+
+-- A browse result as a row's data, or nil when the client hides its price or count.
+local function resultRow(r)
+  local price, qty = ns.PlainNumber(r.minPrice), ns.PlainNumber(r.totalQuantity)
+  if price and qty then return { key = r.itemKey, price = price, qty = qty } end
+end
+
+-- Whether a browse result is the entry's item: its ID, or its name (in any case).
+local function matches(entry, r)
+  if type(entry) == "number" then return r.itemKey.itemID == entry end
+  local info = C_AuctionHouse.GetItemKeyInfo(r.itemKey)
+  return info ~= nil and type(info.itemName) == "string" and info.itemName:lower() == entry:lower()
+end
+
+-- An entry's row: the result that is its item, else the first (results come cheapest first);
+-- false when nothing (readable) is up.
+function AH.BestResult(entry, results)
+  for _, r in ipairs(results) do
+    if matches(entry, r) then return resultRow(r) or false end
+  end
+  return results[1] and resultRow(results[1]) or false
+end
+
+-- Browse results: the list entry in flight takes its row; an item opened in the game's list is done.
+local function onBrowse()
+  local s = AH.pending
+  if not (s and (s.entry or s.open)) then return end
+  if s.entry then AH.found[s.entry] = AH.BestResult(s.entry, C_AuctionHouse.GetBrowseResults()) end
+  AH.Done()
+end
+
+-- The shop card -------------------------------------------------------------------------------
+
+-- What a row shows for an entry: the item's name and icon from its result, else from what the
+-- client knows of an item ID, else the name typed.
+local function entryLook(entry, found)
+  local info = found and C_AuctionHouse.GetItemKeyInfo(found.key)
+  if info then return info.itemName, info.iconFileID end
+  if type(entry) ~= "number" then return entry, AH.UNKNOWN_ICON end
+  local name, _, _, _, _, _, _, _, _, icon = C_Item.GetItemInfo(entry)
+  return name or ("item " .. entry), icon or AH.UNKNOWN_ICON
+end
+
+-- A row for one entry: the item, how many are up and the cheapest price per unit ("none up"
+-- after a search found nothing); hidden past the list's end.
+local function paintRow(r, entry)
+  r:SetShown(entry ~= nil)
+  if entry == nil then return end
+  local found = AH.found[entry]
+  local name, icon = entryLook(entry, found)
+  r.entry = entry
+  r.name:SetText(name)
+  r.icon:SetTexture(icon)
+  r.price:SetText(found and AP.Money(found.price) or (found == false and "none up" or ""))
+  r.qty:SetText(found and ("x " .. found.qty) or "")
+end
+
+-- The shop card: the list picked, the search's progress ("12 of 50") and a row per entry from the scroll offset.
+function AH.PaintShop()
+  local c, p = AH.shopCard, AH.progress
+  if not c then return end
+  local _, list = AH.CurrentList()
+  c.lists:Refresh()
+  c.progress:SetText(p and string.format("%d of %d", p.done, p.total) or "")
+  for i, r in ipairs(c.rows) do
+    r.index = c.offset + i
+    paintRow(r, list and list[r.index])
+  end
+end
+
+-- A row clicked: left opens its item in the game's own list (buying stays in the game's hands),
+-- right takes the entry off the list.
+function AH.ClickRow(r, button)
+  if button == "RightButton" then return AH.RemoveEntry((AH.CurrentList()), r.index) end
+  local found = AH.found[r.entry]
+  if found then AH.Queue({ open = found.key }, true) end
+end
+
+-- The mouse wheel over the rows scrolls them.
+local function scrollShop(c, delta)
+  local _, list = AH.CurrentList()
+  c.offset = math.max(0, math.min(#(list or {}) - #c.rows, c.offset - delta))
+  AH.PaintShop()
+end
+
+-- A string of a row in a text role and color, at the row's right edge less x.
+local function rowText(r, role, color, x)
+  local fs = T.Text(r:CreateFontString(nil, "OVERLAY"), role, color)
+  fs:SetPoint("RIGHT", x, 0)
+  return fs
+end
+
+-- A row's icon (16 px), name, count and price.
+local function rowParts(r)
+  r.icon = T.Crop(r:CreateTexture(nil, "ARTWORK"))
+  r.icon:SetSize(16, 16)
+  r.icon:SetPoint("LEFT", 2, 0)
+  r.name = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
+  r.name:SetPoint("LEFT", r.icon, "RIGHT", 4, 0)
+  r.name:SetPoint("RIGHT", r, "RIGHT", -124, 0)
+  r.name:SetWordWrap(false)
+  r.price, r.qty = rowText(r, "number", "gold", -2), rowText(r, "small", "text2", -78)
+end
+
+-- Result row i of a card, AH.ROW_H tall from y, with a hover wash; it takes both mouse buttons.
+local function row(c, i, y, onClick)
+  local r = CreateFrame("Button", nil, c)
+  r:SetHeight(AH.ROW_H)
+  r:SetPoint("TOPLEFT", 0, y - (i - 1) * AH.ROW_H)
+  r:SetPoint("TOPRIGHT", 0, y - (i - 1) * AH.ROW_H)
+  W.Flat(r, "HIGHLIGHT", "hover"):SetAllPoints()
+  r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  r:SetScript("OnClick", onClick)
+  return r
+end
+
+-- The dropdown's choices: the lists by name, then "New list...".
+local function listChoices()
+  local out = {}
+  for name in pairs(AP.Store().lists) do out[#out + 1] = { name, name } end
+  table.sort(out, function(a, b) return a[1] < b[1] end)
+  out[#out + 1] = { AH.NEW, "New list..." }
+  return out
+end
+
+-- A list picked in the dropdown: that one (from its top), or a name asked for a new one.
+local function pickList(v)
+  if v == AH.NEW then return ns.AskText("New shopping list", AH.NewList, "Create") end
+  AP.Store().list = v
+  AH.shopCard.offset = 0
+  AH.PaintShop()
+end
+
+-- The shop card's progress line, and its rows, scrolled by the mouse wheel.
+local function shopRows(c)
+  c.progress = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  c.progress:SetPoint("LEFT", c.search, "RIGHT", 8, 0)
+  c.rows, c.offset = {}, 0
+  for i = 1, AH.SHOP_ROWS do
+    c.rows[i] = row(c, i, AH.SHOP_ROWS_Y, AH.ClickRow)
+    rowParts(c.rows[i])
+  end
+  c:EnableMouseWheel(true)
+  c:SetScript("OnMouseWheel", scrollShop)
+end
+
+-- The shop card: the list dropdown, + Add, Search list with its progress line, and the rows.
+local function buildShop(f)
+  local c = card(f, "Shop", AH.SHOP_Y, AH.SHOP_H)
+  c.lists = W.Dropdown(c, listChoices, function() return AP.Store().list end, pickList, 180)
+  c.lists:SetPoint("TOPLEFT", 0, -20)
+  c.add = W.Button(c, "+ Add", function() ns.AskText("Add to list", function(text) AH.AddEntry(text) end, "Add") end, 76)
+  c.add:SetPoint("TOPRIGHT", 0, -19)
+  c.search = W.Button(c, "Search list", function() AH.SearchList() end, 120)
+  c.search:SetPoint("TOPLEFT", 0, -46)
+  c.rule:Hide()
+  AH.shopCard = c
+  shopRows(c)
+end
+
 -- The panel ----------------------------------------------------------------------------------
 
 -- The scan card: the scan button and when the last scan was.
@@ -69,6 +359,7 @@ function AH.Build()
   f:SetPoint("BOTTOMRIGHT", AuctionHouseFrame, "BOTTOMLEFT", -AH.GAP, 0)
   f:EnableMouse(true)
   AH.frame = f
+  buildShop(f)
   buildScan(f)
   return f
 end
@@ -79,12 +370,13 @@ function AH.OnShow()
   if not AH.settings.panel or type(AuctionHouseFrame) ~= "table" then return end
   local f = AH.frame or AH.Build()
   f:Show()
+  AH.PaintShop()
   AH.PaintScan()
 end
 
--- The auction house closed: the panel hides and a scan in progress stops.
+-- The auction house closed: the panel hides, and searches waiting and a scan in progress stop.
 function AH.OnClosed()
-  AH.open, AH.scan = false, nil
+  AH.open, AH.scan, AH.pending, AH.queue, AH.progress = false, nil, nil, {}, nil
   AH.walker:Hide()
   if AH.frame then AH.frame:Hide() end
 end
@@ -152,8 +444,37 @@ end
 
 -- Slash command ------------------------------------------------------------------------------
 
--- /fui ah's words: scan, and prices clear.
+-- A list's entries by name, for chat.
+local function entryNames(list)
+  local names = {}
+  for i, entry in ipairs(list) do names[i] = (entryLook(entry)) end
+  return table.concat(names, ", ")
+end
+
+-- /fui ah list [name]: picks (or makes) a list, and says what's on the list in use.
+function AH.ListCommand(arg)
+  if arg ~= "" and not AH.NewList(arg) then return end
+  local name, list = AH.CurrentList()
+  if not name then return ns.Chat("No shopping lists yet: /fui ah list <name> makes one.") end
+  ns.Chat(string.format("Shopping list %s (%d): %s", name, #list, #list > 0 and entryNames(list) or "empty"))
+end
+
+-- /fui ah add <list> <item>: the list is the longest list name the words start with, else the first word.
+function AH.AddCommand(arg)
+  local best
+  for name in pairs(AP.Store().lists) do
+    if arg:sub(1, #name + 1) == name .. " " and #name > #(best or "") then best = name end
+  end
+  local list = best or arg:match("^(%S+)") or ""
+  AH.AddEntry(arg:sub(#list + 2), list)
+end
+
+-- /fui ah's words: list, add, scan, and prices clear.
 AH.COMMANDS = {
+  -- Picks or makes a list.
+  list = function(arg) AH.ListCommand(arg) end,
+  -- Adds to a list.
+  add = function(arg) AH.AddCommand(arg) end,
   -- Scans the auction house.
   scan = function() AH.StartScan() end,
   -- Forgets every price.
@@ -169,10 +490,10 @@ AH.COMMANDS = {
 function AH.Status()
   local store = AP.Store()
   local last = store.lastScan > 0 and AP.Ago(store.lastScan) or "never"
-  ns.Chat(string.format("Auction prices for %d item(s); last scan: %s. /fui ah scan (at the auction house), /fui ah prices clear.", store.count, last))
+  ns.Chat(string.format("Auction prices for %d item(s); last scan: %s. /fui ah list <name>, add <list> <item>, scan (at the auction house), prices clear.", store.count, last))
 end
 
--- /fui ah [scan|prices clear].
+-- /fui ah [list <name>|add <list> <item>|scan|prices clear].
 function AH.Command(rest)
   if not AH.settings then return ns.Chat("The auction helper is off (/fui > Modules).") end
   local word, arg = (rest or ""):match("^(%S*)%s*(.-)%s*$")
@@ -181,15 +502,25 @@ function AH.Command(rest)
   AH.Status()
 end
 
+-- The helper's state: searches sorted cheapest first, nothing queued or found, and the scan's frame walker.
+function AH.Start()
+  local order = Enum.AuctionHouseSortOrder
+  AH.SORTS = { { sortOrder = order and order.Price or 0, reverseSort = false } }
+  AH.queue, AH.found, AH.lastSent = {}, {}, -AH.SEND_GAP
+  AH.walker = CreateFrame("Frame")
+  AH.walker:Hide()
+  AH.walker:SetScript("OnUpdate", AH.ScanStep)
+end
+
 -- Module entry point (Core/Modules.lua): prices in tooltips, and the panel at the auction house.
 function AH.Enable(settings)
   AH.settings = settings
   AP.Enable(settings)
   if type(C_AuctionHouse) ~= "table" then return end
-  AH.walker = CreateFrame("Frame")
-  AH.walker:Hide()
-  AH.walker:SetScript("OnUpdate", AH.ScanStep)
+  AH.Start()
   on("AUCTION_HOUSE_SHOW", function() ns.Soon("auctionhelper", AH.OnShow) end)
   on("AUCTION_HOUSE_CLOSED", AH.OnClosed)
   on("REPLICATE_ITEM_LIST_UPDATE", onReplicate)
+  on("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", onBrowse)
+  on("ITEM_KEY_ITEM_INFO_RECEIVED", function() AH.PaintShop() end)
 end

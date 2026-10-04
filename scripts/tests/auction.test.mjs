@@ -195,3 +195,157 @@ it("no auction house on this client: the module still starts, builds nothing and
   expect([addon.frame("ForeverUI_AuctionPanel"), addon.eval("return #ns.errors")], "no panel, no error").toEqual([null, 0]);
   expect(addon.eval('return __showItem("item:2589")[1][1]'), "saved prices still in tooltips").toBe("AH: 90c (today)");
 });
+
+// Shop ---------------------------------------------------------------------------------------
+
+// TEST-ONLY dusts: Strange Dust (a commodity) and a pouch named like it.
+const DUSTS = `__wfgWorld.items[10940] = { name = "Strange Dust", icon = "TEST-ONLY-DUST", commodity = true }
+  __wfgWorld.items[10941] = { name = "Strange Dust Pouch", icon = "TEST-ONLY-POUCH" }`;
+
+// A shopping list `name` (made and picked) holding entries, given as a Lua list.
+const makeList = (addon, name, entries) => addon.eval(`local AH = ${HELPER} AH.NewList("${name}") for _, e in ipairs(${entries}) do AH.AddEntry(e) end`);
+
+// The queries sent, as "fn:what" (a browse's search text, else the first item key's itemID).
+const sent = (addon) => addon.eval(`local out = {}
+  for i, q in ipairs(__wfgWorld.ah.queries) do
+    local a = q.args[1]
+    out[i] = q.fn .. ":" .. tostring(type(a) == "table" and (a.searchString or a.itemID or (a[1] and a[1].itemID)) or "")
+  end
+  return out`);
+
+// Shop row i: [shown, name, price, count, icon].
+const shopRow = (addon, i) => addon.eval(`local r = ${HELPER}.shopCard.rows[${i}]
+  return { r:IsShown(), r.name:GetText() or false, r.price:GetText() or false, r.qty:GetText() or false, r.icon:GetTexture() or false }`);
+
+// The shop card's progress line.
+const progress = (addon) => addon.eval(`return ${HELPER}.shopCard.progress:GetText()`);
+
+it("a list search runs one query at a time within the limit", () => {
+  const addon = atAuctionHouse(DUSTS);
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Soul Dust", "Vision Dust" }');
+  addon.click(`${HELPER}.shopCard.search`);
+  expect([sent(addon), progress(addon)], "the first search only").toEqual([["SendBrowseQuery:Strange Dust"], "0 of 3"]);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect([sent(addon).length, progress(addon)], "answered: the next waits a second after the last").toEqual([1, "1 of 3"]);
+  addon.advance(1);
+  expect(sent(addon), "then goes").toEqual(["SendBrowseQuery:Strange Dust", "SendBrowseQuery:Soul Dust"]);
+  addon.advance(2);
+  expect([sent(addon).length, progress(addon)], "no answer: after 2 seconds the third goes anyway").toEqual([3, "2 of 3"]);
+  expect(addon.eval("local q = __wfgWorld.ah.queries[1].args[1] return { q.sorts[1].sortOrder, q.sorts[1].reverseSort }"), "cheapest first").toEqual([0, false]);
+});
+
+it("never more than 60 searches a minute, a second apart", () => {
+  const addon = atAuctionHouse(`__sentAt = {} local raw = C_AuctionHouse.SendBrowseQuery
+    C_AuctionHouse.SendBrowseQuery = function(q) table.insert(__sentAt, GetTime()) raw(q) end`);
+  addon.eval(`for i = 1, 70 do ${HELPER}.Queue({ entry = "TEST-ONLY " .. i }) end`);
+  for (let i = 0; i < 239; i++) {
+    addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+    addon.update(0.25);
+  }
+  const at = addon.eval("return __sentAt");
+  const gaps = at.slice(1).map((t, i) => t - at[i]);
+  expect([at.length, Math.min(...gaps) >= 1 - 1e-9], "60 in the minute, each at least a second after the last").toEqual([60, true]);
+});
+
+it("result rows show name, cheapest price and quantity; a click shows the item in the game's own list", () => {
+  const addon = atAuctionHouse(DUSTS);
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "TEST-ONLY Nothing" }');
+  addon.eval(`__wfgWorld.ah.browse = { { itemKey = { itemID = 10941 }, minPrice = 900, totalQuantity = 3 },
+    { itemKey = { itemID = 10940 }, minPrice = 1250, totalQuantity = 240 } }`);
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.eval("__wfgWorld.ah.browse = {}");
+  addon.advance(1);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(shopRow(addon, 1), "the result named like the entry, not the cheaper pouch").toEqual([true, "Strange Dust", "12s 50c", "x 240", "TEST-ONLY-DUST"]);
+  expect(shopRow(addon, 2).slice(0, 4), "nothing up").toEqual([true, "TEST-ONLY Nothing", "none up", ""]);
+  expect(shopRow(addon, 3)[0], "no third entry").toBe(false);
+  addon.advance(1);
+  addon.click(`${HELPER}.shopCard.rows[1]`);
+  addon.click(`${HELPER}.shopCard.rows[2]`);
+  expect(sent(addon).at(-1), "the game's own list is asked for that item's key (its browse list shows it)").toBe("SearchForItemKeys:10940");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect([shopRow(addon, 1)[2], addon.eval(`return ${HELPER}.pending == nil`)], "the row keeps its price; nothing waits").toEqual(["12s 50c", true]);
+});
+
+it("entries by item link, ID or name; right-click removes one; the wheel scrolls", () => {
+  const addon = atAuctionHouse(DUSTS);
+  makeList(addon, "TEST-ONLY Mats", '{ "|cffffffff|Hitem:2589::::|h[Linen Cloth]|h|r", "99999", "  ", "Soul Dust", "a", "b", "c", "d" }');
+  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats']"), "a link and a number become IDs; a blank is skipped").toEqual([2589, 99999, "Soul Dust", "a", "b", "c", "d"]);
+  expect(shopRow(addon, 1).slice(1), "an ID the client knows").toEqual(["Linen Cloth", "", "", "Interface\\Icons\\INV_Fabric_Linen_01"]);
+  expect(shopRow(addon, 2).slice(1), "one it doesn't").toEqual(["item 99999", "", "", "Interface\\Icons\\INV_Misc_QuestionMark"]);
+  addon.click(`${HELPER}.shopCard.search`);
+  expect(sent(addon), "an ID searches by its item key").toEqual(["SearchForItemKeys:2589"]);
+  addon.wheel(`${HELPER}.shopCard.rows[1]`, -1);
+  expect(shopRow(addon, 1)[1], "scrolled one down").toBe("item 99999");
+  addon.wheel(`${HELPER}.shopCard.rows[1]`, -5);
+  expect([shopRow(addon, 1)[1], shopRow(addon, 6)[1]], "no further than the last").toEqual(["item 99999", "d"]);
+  addon.click(`${HELPER}.shopCard.rows[1]`, "RightButton");
+  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats']"), "right-click removed it").toEqual([2589, "Soul Dust", "a", "b", "c", "d"]);
+});
+
+it("item names the client hasn't loaded yet, and a hidden price", () => {
+  const addon = atAuctionHouse(DUSTS + " __wfgWorld.items[10940].pending = true");
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Soul Dust" }');
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 1250, totalQuantity = 240 } }");
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(shopRow(addon, 1).slice(1, 3), "the first result, under the name typed").toEqual(["Strange Dust", "12s 50c"]);
+  addon.eval("__wfgWorld.items[10940].pending = nil __wfgWorld.items[10940].name = 'TEST-ONLY Strange Dust'");
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 10940);
+  expect(shopRow(addon, 1)[1], "repainted once the name is in").toBe("TEST-ONLY Strange Dust");
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 1 }, minPrice = __wfgWorld.secret(5), totalQuantity = 2 } }");
+  addon.advance(1);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect([shopRow(addon, 2)[2], addon.eval("return #ns.errors")], "a hidden price: nothing to show, no error").toEqual(["none up", 0]);
+});
+
+it("shopping lists: the dropdown picks or makes one, + Add adds, and the caps hold", () => {
+  const addon = atAuctionHouse();
+  expect(addon.eval(`local c = {} for i, x in ipairs(${HELPER}.shopCard.lists.choices()) do c[i] = x[2] end return c`), "no lists yet").toEqual(["New list..."]);
+  addon.click(`${HELPER}.shopCard.add`);
+  addon.type("ForeverUI_TextEdit", "Strange Dust");
+  addon.click("ForeverUI_TextDialog.primary");
+  expect([addon.eval("return ForeverUIDB.ah.lists.Shopping"), addon.frame("ForeverUI_TextDialog").visible], "+ Add with no list makes Shopping").toEqual([["Strange Dust"], false]);
+  addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.NEW)`);
+  addon.type("ForeverUI_TextEdit", "  TEST-ONLY B  ");
+  addon.click("ForeverUI_TextDialog.primary");
+  expect(addon.eval(`local c = {} for i, x in ipairs(${HELPER}.shopCard.lists.choices()) do c[i] = x[2] end return { c, ${HELPER}.shopCard.lists.text:GetText() }`), "made and picked").toEqual([["Shopping", "TEST-ONLY B", "New list..."], "TEST-ONLY B"]);
+  addon.eval(`${HELPER}.shopCard.lists.set("Shopping")`);
+  expect(shopRow(addon, 1)[1], "picked back").toBe("Strange Dust");
+  addon.eval(`for i = 3, 21 do ${HELPER}.NewList("TEST-ONLY " .. i) end for i = 1, 51 do ${HELPER}.AddEntry("x" .. i, "Shopping") end`);
+  expect(addon.eval("local n = 0 for _ in pairs(ForeverUIDB.ah.lists) do n = n + 1 end return { n, #ForeverUIDB.ah.lists.Shopping }"), "20 lists, 50 entries").toEqual([20, 50]);
+  expect([chatHas(addon, /at most 20 shopping lists/), chatHas(addon, /holds at most 50 items/)], "says why").toEqual([true, true]);
+  expect(addon.eval(`return ${HELPER}.NewList("   ")`), "no name, no list").toBe(false);
+});
+
+it("Search list needs entries; closing the auction house drops the searches waiting", () => {
+  const addon = atAuctionHouse();
+  addon.click(`${HELPER}.shopCard.search`);
+  expect(chatHas(addon, /Add items to a shopping list first/), "nothing to search").toBe(true);
+  makeList(addon, "TEST-ONLY Mats", '{ "a", "b", "c" }');
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.world.closeAuctionHouse();
+  addon.advance(5);
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  addon.advance(5);
+  expect([sent(addon).length, progress(addon)], "only the one sent before closing").toEqual([1, ""]);
+});
+
+it("/fui ah list and add", () => {
+  const addon = loggedIn(AH_ENV);
+  addon.slash("ah list");
+  expect(chatHas(addon, /No shopping lists yet/), "none").toBe(true);
+  addon.slash("ah list TEST-ONLY Mats");
+  addon.slash("ah add TEST-ONLY Mats Strange Dust");
+  addon.slash("ah add Herbs 2589");
+  addon.slash("ah list TEST-ONLY Mats");
+  addon.slash("ah list Herbs");
+  addon.slash("ah list Empty");
+  expect([chatHas(addon, /Shopping list TEST-ONLY Mats \(1\): Strange Dust$/), chatHas(addon, /Shopping list Herbs \(1\): Linen Cloth$/), chatHas(addon, /Shopping list Empty \(0\): empty$/)], "each list").toEqual([true, true, true]);
+  addon.eval("for i = 1, 20 do ForeverUIDB.ah.lists['TEST-ONLY ' .. i] = {} end");
+  addon.clearChat();
+  addon.slash("ah list Twenty-first");
+  expect(chatHas(addon, /Shopping list/), "refused past the cap, nothing listed").toBe(false);
+});
