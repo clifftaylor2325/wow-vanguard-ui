@@ -20,11 +20,18 @@
 -- of combat; in combat, the bindings you set earlier keep working. Hover keys
 -- need secure snippets: when the client can't compile them (Core/Client.lua
 -- probes it), they are off and the mouse bindings still work.
+--
+-- "Use the game's click bindings" (off by default) turns all of this off on
+-- clients with the game's own system (C_ClickBindings): the frames are
+-- SecureUnitButtonTemplate buttons, whose SecureUnitButton_OnClick runs the
+-- game's binding for a click, so with ForeverUI's attributes and snippets
+-- cleared the game's bindings (set in its Click Casting window) work on the
+-- raid and unit frames. ForeverUI's bindings are kept for switching back.
 
 local ADDON, ns = ...
 
 local CC = ns.Module("ClickCast", {
-  defaults = { unitFrames = false },
+  defaults = { unitFrames = false, useGame = false },
 })
 
 local MOUSE_NAMES = { "Left click", "Right click", "Middle click", "Button 4", "Button 5" }
@@ -252,11 +259,17 @@ function CC.EnterSnippet(bindings)
   return table.concat(lines, "\n")
 end
 
+-- Takes the hover-key snippets off a frame, and any keys they bound while the pointer was over it.
+local function unwrap(f)
+  if not f.fuiWrapped then return end
+  for _, script in ipairs({ "OnEnter", "OnLeave", "OnHide" }) do SecureHandlerUnwrapScript(f, script) end
+  ClearOverrideBindings(f)
+  f.fuiWrapped = false
+end
+
 -- (Re)wraps the frame's enter, leave and hide scripts with the hover-key snippets.
 local function wrap(f, enter)
-  if f.fuiWrapped then
-    for _, script in ipairs({ "OnEnter", "OnLeave", "OnHide" }) do SecureHandlerUnwrapScript(f, script) end
-  end
+  unwrap(f)
   SecureHandlerWrapScript(f, "OnEnter", CC.handler, enter)
   SecureHandlerWrapScript(f, "OnLeave", CC.handler, "self:ClearBindings()")
   SecureHandlerWrapScript(f, "OnHide", CC.handler, "self:ClearBindings()")
@@ -269,10 +282,17 @@ function CC.SnippetsOn()
   return probe == nil or probe() ~= false
 end
 
--- Applies the current spec's bindings to one frame.
+-- Whether the game's own click bindings are used instead of ForeverUI's: switched
+-- on, on a client that has them (C_ClickBindings, which SecureUnitButton_OnClick reads).
+function CC.UsesGame()
+  return CC.settings ~= nil and CC.settings.useGame == true and type(C_ClickBindings) == "table"
+end
+
+-- Applies the current spec's bindings to one frame, or (using the game's click bindings) clears ForeverUI's.
 function CC.ApplyFrame(f)
-  local bindings = CC.Bindings()
   clearAttrs(f)
+  if CC.UsesGame() then return unwrap(f) end
+  local bindings = CC.Bindings()
   for i, b in ipairs(bindings) do
     local prefix, n = CC.MouseParts(b.key)
     if prefix then setAction(f, prefix, n, b) else setAction(f, "*", "-fui" .. i, b) end
@@ -303,8 +323,15 @@ local function registerFrames(settings)
   for _, f in pairs(ns.GetModule("UnitFrames").frames) do CC.Register(f) end
 end
 
+-- Switches between the game's click bindings and ForeverUI's (applied out of combat).
+function CC.SetUseGame(on)
+  CC.settings.useGame = on
+  ns.OutOfCombat(CC.ApplyAll, "clickcast")
+end
+
 -- Module entry point (Core/Modules.lua): a secure handler, the frames, spec changes.
 function CC.Enable(settings)
+  CC.settings = settings
   CC.handler = CreateFrame("Frame", "ForeverUI_ClickCastHandler", UIParent, "SecureHandlerBaseTemplate")
   ns.OutOfCombat(function() registerFrames(settings) end)
   -- A new spec has its own bindings: apply them (spec changes happen out of combat).

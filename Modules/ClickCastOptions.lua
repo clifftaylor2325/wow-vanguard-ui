@@ -658,6 +658,7 @@ end
 -- The line over the grid: whose bindings, or the combat notice while a fight is on.
 local function title()
   if ns.InCombat() then return "In combat: changes are kept and apply when the fight ends." end
+  if CC.UsesGame() then return "The game's click bindings are in use (below): these are kept for when you switch back." end
   local spec = ns.SpecIndex()
   local whose = spec and ("spec " .. spec .. " on this character") or "this character"
   return "Bindings for " .. whose .. ". Click a cell to pick a spell, right-click to clear, or drop a spell on it."
@@ -695,9 +696,38 @@ local ROWS = {
   { "check", "Also on your player, target and focus frames (reload)", unitFramesOn, setUnitFrames },
 }
 
--- The page's rows (built again after the modifier columns change).
+-- Whether the game's click bindings are switched on.
+local function useGameOn()
+  return ns.Settings("ClickCast", CC.defaults).useGame
+end
+
+-- Switches to the game's click bindings or back (out of combat), then re-reads the page.
+local function setUseGame(on)
+  if CC.settings then CC.SetUseGame(on) else ns.Settings("ClickCast", CC.defaults).useGame = on end
+  changed()
+end
+
+-- Opens the game's own Click Casting window (it loads on demand).
+local function openGameBindings()
+  if type(ToggleClickBindingFrame) ~= "function" then return ns.Chat("This client has no click bindings window.") end
+  O.Hide()
+  ToggleClickBindingFrame()
+end
+
+-- The page's rows on a client with the game's click bindings: ForeverUI's, then the switch to the game's.
+local WITH_GAME = {}
+for _, row in ipairs(ROWS) do WITH_GAME[#WITH_GAME + 1] = row end
+for _, row in ipairs({
+  { "header", "The game's click bindings" },
+  { "text", "The game has click casting of its own (its Click Casting window). Switched on, it works on the raid and unit frames and ForeverUI's bindings and hover keys above rest." },
+  { "check", "Use the game's click bindings instead", useGameOn, setUseGame, false },
+  { "button", "Open the game's click bindings", openGameBindings },
+}) do WITH_GAME[#WITH_GAME + 1] = row end
+
+-- The page's rows (built again after the modifier columns change); the game's
+-- click bindings are offered where the client has them.
 local function rows()
-  return ROWS
+  return type(C_ClickBindings) == "table" and WITH_GAME or ROWS
 end
 
 O.AddPage({ key = PAGE, title = "Click casting", icon = "ClickCasting", order = 46, rows = rows })
