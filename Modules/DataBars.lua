@@ -10,7 +10,7 @@ local T = ns.Theme
 local V = ns.Visibility
 
 local DB = ns.Module("DataBars", {
-  defaults = { width = 454, height = 6, xp = true, reputation = true, text = "hover" },
+  defaults = { width = 478, height = 6, xp = true, reputation = true, text = "hover" },
 })
 
 -- Profiles saved before the Centered layout hold the old size (476 x 10) as

@@ -27,18 +27,18 @@ S.LAYOUTS = {
 -- top center, clear of all of it.
 S.CLASSIC = {
   uf_player = { "TOPLEFT", "TOPLEFT", 20, -40 }, uf_pet = { "TOPLEFT", "TOPLEFT", 20, -84 },
-  uf_target = { "TOPLEFT", "TOPLEFT", 250, -40 }, uf_targettarget = { "TOPLEFT", "TOPLEFT", 480, -47 },
-  cast_target = { "TOPLEFT", "TOPLEFT", 250, -108 },
-  cast_focus = { "TOPLEFT", "TOPLEFT", 480, -76 }, uf_focus = { "TOPLEFT", "TOPLEFT", 480, -94 },
+  uf_target = { "TOPLEFT", "TOPLEFT", 270, -40 }, uf_targettarget = { "TOPLEFT", "TOPLEFT", 520, -46 },
+  cast_target = { "TOPLEFT", "TOPLEFT", 270, -108 },
+  cast_focus = { "TOPLEFT", "TOPLEFT", 520, -76 }, uf_focus = { "TOPLEFT", "TOPLEFT", 520, -94 },
   raid = { "BOTTOMLEFT", "BOTTOMLEFT", 20, 330 }, uf_party1 = { "TOPLEFT", "TOPLEFT", 20, -310 },
   partyextras = { "TOPLEFT", "TOPLEFT", 190, -310 }, uf_boss1 = { "TOPRIGHT", "TOPRIGHT", -290, -200 },
-  raidtools = { "TOP", "TOP", 60, -120 }, maintanks = { "TOP", "TOP", 60, -196 },
+  raidtools = { "TOP", "TOP", 100, -120 }, maintanks = { "TOP", "TOP", 100, -196 },
 }
 -- Screen presets, in display order, for the screen each is made for (w x h pixels): the UI
 -- scale (the game's own UI scale, whose slider runs 0.65 to 1.15; it sizes the unit frames,
 -- whose layouts are drawn in UI units), the action button size, the raid tile size and the text size.
 S.SCREENS = {
-  { key = "1080", text = "1080p", w = 1920, h = 1080, ui = 0.8, button = 36, tile = { 100, 48 }, textScale = 1 },
+  { key = "1080", text = "1080p", w = 1920, h = 1080, ui = 0.8, button = 38, tile = { 100, 48 }, textScale = 1 },
   { key = "1440", text = "1440p", w = 2560, h = 1440, ui = 0.7, button = 38, tile = { 110, 48 }, textScale = 1.05 },
   { key = "4k", text = "4K", w = 3840, h = 2160, ui = 0.65, button = 38, tile = { 110, 48 }, textScale = 1.1 },
   { key = "ultrawide", text = "Ultrawide", w = 3440, h = 1440, ui = 0.7, button = 38, tile = { 110, 48 }, textScale = 1.05 },

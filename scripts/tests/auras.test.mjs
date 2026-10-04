@@ -155,7 +155,7 @@ it("target and focus auras", () => {
   expect(t.buffs.groups[0].icon === "BUFF-A" && t.debuffs.groups[1].timer === false, "buffs above; no timer numbers by default (the sweep shows time left)").toBeTruthy();
   const f = frameRows(addon, "focus");
   expect(f.buffs == null && f.debuffs.groups[1].icon === "MY-DOT", "the focus shows your debuffs only").toBeTruthy();
-  expect(addon.eval("return ForeverUI_target.debuffs.frame.__flowLine") === 220, "the row wraps at the frame's width").toBeTruthy();
+  expect(addon.eval("return ForeverUI_target.debuffs.frame.__flowLine") === 240, "the row wraps at the frame's width").toBeTruthy();
   addon.eval('__frameAuras.HELPFUL = {}');
   addon.fire("PLAYER_TARGET_CHANGED");
   expect(frameRows(addon, "target").buffs.groups[0].icon === false, "a new target reads its auras again").toBeTruthy();

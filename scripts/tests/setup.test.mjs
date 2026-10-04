@@ -109,8 +109,8 @@ it("setup layouts: Like the game's puts your frames at the top left; another lay
   const home = spots();
   expect(addon.eval('return __click("Like the game\'s") and ForeverUI_Setup.pages[1].hint:GetText()'), "picking it says what it does").toMatch(/top left as the game has them/);
   setupClick(addon, "next");
-  expect(spots(), "player at the top left, focus beside the target of target, party and raid down the left, bosses on the right").toEqual([["TOPLEFT", "TOPLEFT", 20, -40], ["TOPLEFT", "TOPLEFT", 480, -94], ["BOTTOMLEFT", "BOTTOMLEFT", 20, 330], ["TOPRIGHT", "TOPRIGHT", -290, -200]]);
-  expect(addon.eval("return ForeverUIDB.profiles.Default.positions.maintanks"), "frames not built yet get their spot saved for later").toEqual({ point: "TOP", relPoint: "TOP", x: 60, y: -196 });
+  expect(spots(), "player at the top left, focus beside the target of target, party and raid down the left, bosses on the right").toEqual([["TOPLEFT", "TOPLEFT", 20, -40], ["TOPLEFT", "TOPLEFT", 520, -94], ["BOTTOMLEFT", "BOTTOMLEFT", 20, 330], ["TOPRIGHT", "TOPRIGHT", -290, -200]]);
+  expect(addon.eval("return ForeverUIDB.profiles.Default.positions.maintanks"), "frames not built yet get their spot saved for later").toEqual({ point: "TOP", relPoint: "TOP", x: 100, y: -196 });
   for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
   addon.slash("setup");
   addon.eval('__click("Centered: healing")');
@@ -133,7 +133,7 @@ function rectAt([point, relPoint, x, y], w, h, sw, sh) {
 // (Modules/ComboPoints.lua: 5 pips of 14 + 3; Modules/FrameAuras.lua: buffs 18, debuffs 22 with crowd control).
 const ATTACHED = {
   combo: ["uf_player", "above", 2, 85, 14], targetBuffs: ["uf_target", "above", 3, 160, 18],
-  targetDebuffs: ["uf_target", "below", 3, 220, 22], focusDebuffs: ["uf_focus", "below", 3, 160, 20],
+  targetDebuffs: ["uf_target", "below", 3, 240, 22], focusDebuffs: ["uf_focus", "below", 3, 160, 20],
 };
 
 // Every built mover's [point, relPoint, x, y, w, h, scale], read from the addon: the
@@ -319,11 +319,22 @@ it("Centered layout: compact raid grid, one-time migrations, a strip with nothin
   addon.fire("GROUP_ROSTER_UPDATE");
   expect(grid()[0], "compact off: always full size").toBe(1);
   const old = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { spacing = 4 }, DataBars = { width = 476, height = 10 } } } }" });
-  expect(old.eval("local p = ForeverUIDB.profiles.Default return { p.ActionBars.spacing, p.DataBars.width, p.DataBars.height }"), "a profile saved with the old sizes moves to the new ones").toEqual([2, 454, 6]);
+  expect(old.eval("local p = ForeverUIDB.profiles.Default return { p.ActionBars.spacing, p.DataBars.width, p.DataBars.height }"), "a profile saved with the old sizes moves to the new ones").toEqual([2, 478, 6]);
   old.eval("local p = ForeverUIDB.profiles.Default p.ActionBars.spacing = 4 p.DataBars.width = 476 p.DataBars.height = 10");
   expect(old.eval("local s = ns.Settings('ActionBars', ns.GetModule('ActionBars').defaults) local d = ns.Settings('DataBars', ns.GetModule('DataBars').defaults) return { s.spacing, d.width, d.height }"), "but only once: picking those sizes again keeps them").toEqual([4, 476, 10]);
   const strip = loggedIn(UNITS_ENV + STRIP_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { InfoStrip = { durability = false, bags = false, system = false, gold = false, ammo = false, clock = false } } }" });
   expect(strip.eval("return ForeverUI_InfoStrip:IsShown()"), "a strip with every block off isn't drawn as an empty box").toBe(false);
   const chatFree = loggedIn(UI_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Chat = { place = false } } }" });
   expect(chatFree.eval("return ChatFrame1.__points.BOTTOMLEFT == nil"), "with Keep chat in its spot off, chat stays where the game puts it").toBe(true);
+});
+
+it("default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 px buttons; a saved profile keeps its sizes", () => {
+  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV);
+  // The player frame's size and name size, bar 1's button size, the XP bar's width and the 1080p preset's buttons.
+  const sizes = (a) => a.eval(`return { ForeverUI_player:GetWidth(), ForeverUI_player:GetHeight(), select(2, ForeverUI_player.name:GetFont()),
+    ForeverUI_Bar1Button1:GetWidth(), ns.Settings("DataBars").width, ns.Setup.ScreenPreset("1080").button }`);
+  expect(sizes(addon), "a new profile: the plan's 1080p sizes, and the 1080p preset agrees").toEqual([240, 36, 12, 38, 478, 38]);
+  const old = loggedIn(ACTIONS_ENV + UNITS_ENV, { savedVariables: 'ForeverUIDB = { profiles = { Default = { ActionBars = { size = 36 }, DataBars = { width = 454, layout = 2 }, positions = { uf_player = { point = "BOTTOM", relPoint = "BOTTOM", x = -250, y = 180 } } } } }' });
+  expect(sizes(old).slice(3, 5), "a profile that saved the old button size and bar width keeps them").toEqual([36, 454]);
+  expect(old.eval("return { ns.MoverPoint('uf_player') }"), "and a frame it moved stays put").toEqual(["BOTTOM", "BOTTOM", -250, 180]);
 });
