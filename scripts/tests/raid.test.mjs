@@ -288,3 +288,15 @@ it("the hidden default raid frames are silenced", () => {
     out[#out + 1] = { f:IsEventRegistered("GROUP_ROSTER_UPDATE"), f:GetParent():IsShown() } end return out`),
     "the manager and the container: hidden away, and no longer listening").toEqual([[false, false], [false, false]]);
 });
+
+it("raid tools: a burst of roster events in combat queues one update of the bar, not one per event", () => {
+  const addon = loggedIn(UNITS_ENV + "IsInGroup = function() return true end IsInRaid = function() return __inRaid end UnitIsGroupLeader = function() return true end __inRaid = false");
+  setCombat(addon, true);
+  addon.eval("__inRaid = true __shows = 0 local show = ForeverUI_RaidTools.SetShown ForeverUI_RaidTools.SetShown = function(...) __shows = __shows + 1 return show(...) end");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  const once = addon.eval("return ns.QueuedCount()");
+  for (let i = 0; i < 39; i++) addon.fire("GROUP_ROSTER_UPDATE");
+  expect(addon.eval("return ns.QueuedCount()"), "the waiting work is no more after 40 events than after one").toBe(once);
+  setCombat(addon, false);
+  expect([addon.eval("return __shows"), addon.eval("return ForeverUI_RaidTools.actions.Raid:IsShown()")], "after the fight the bar is updated once, for the raid").toEqual([1, false]);
+});
