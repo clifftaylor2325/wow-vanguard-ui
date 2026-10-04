@@ -30,6 +30,9 @@ T.CRESTS = { Alliance = { "lorc-crossed-swords", "allianceCrest" }, Horde = { "l
 T.HEADING_ROLES = { title = true, heading = true }
 -- Clients whose script the bundled font doesn't cover use the game's font.
 local CLIENT_FONT_LOCALES = { koKR = true, zhCN = true, zhTW = true }
+-- Clients whose script the faction look's heading fonts (Cinzel, Metamorphous:
+-- Latin only) don't cover keep Fira Sans for headings: Russian names and titles.
+local LATIN_HEADING_MISSING = { ruRU = true }
 
 -- A texture from Media/Textures (Bar, Shadow, Glow, Stripes, LogoLeft, ...).
 function T.Texture(name) return T.MEDIA .. "Textures\\" .. name end
@@ -178,10 +181,14 @@ local function clientFont()
   return STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
 end
 
+-- The client's locale ("enUS", "ruRU", ...), or "" when it can't say.
+local function locale()
+  return type(GetLocale) == "function" and GetLocale() or ""
+end
+
 -- True when the game's font must be used: chosen, or a Korean or Chinese client.
 local function useClientFont(s)
-  local locale = type(GetLocale) == "function" and GetLocale() or ""
-  return s.font == "client" or CLIENT_FONT_LOCALES[locale] == true
+  return s.font == "client" or CLIENT_FONT_LOCALES[locale()] == true
 end
 
 -- The font a chosen name stands for: a font shared through LibSharedMedia
@@ -816,10 +823,11 @@ function T.Faction()
   return faction ~= "none" and faction or nil
 end
 
--- The faction's heading font, or nil (look off, no faction, another font chosen, or a client using the game's font).
+-- The faction's heading font, or nil (look off, no faction, another font chosen, a client using
+-- the game's font, or one whose script the heading fonts lack).
 function T.HeadingFont()
   local s, faction = T.Settings(), T.Faction()
-  if not faction or s.font ~= "" or useClientFont(s) then return nil end
+  if not faction or s.font ~= "" or useClientFont(s) or LATIN_HEADING_MISSING[locale()] then return nil end
   return T.FONTS[faction:lower()]
 end
 
