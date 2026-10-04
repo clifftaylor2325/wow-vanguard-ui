@@ -9,7 +9,8 @@
 --     the card takes the item the game's window is given) and it shows the
 --     cheapest price someone else asks now, the 7-day low from your scans,
 --     the deposit, and the price to ask (undercut by 1 copper, 1 silver, 1 %,
---     or matched); Post lists it, from the button's click only.
+--     or matched); a form sets the quantity, stack size, stacks, a typed
+--     price, a bid and the length; Post puts up one stack per click only.
 --   * Your auctions: "Check undercuts" asks for your auctions, checks each
 --     item's price now, and marks the ones someone else asks less for; each
 --     row's Cancel (its cost on hover) cancels that auction, from the click only.
@@ -39,9 +40,9 @@ local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 local AH = ns.Module("AuctionHelper", { defaults = { panel = true, tooltip = true, undercut = "silver", scanButton = true } })
 
 -- Seconds between scans, listings read per frame of a scan; the panel's width, padding and gap
--- to the window; where the scan card starts (down from the panel's top) and its height.
+-- to the window; the scan card's height (it starts under the sell card, AH.ScanY).
 AH.SCAN_GAP, AH.SCAN_ROWS = 900, 400
-AH.WIDTH, AH.PAD, AH.GAP, AH.SCAN_Y, AH.SCAN_H = 280, 8, 4, -354, 168
+AH.WIDTH, AH.PAD, AH.GAP, AH.SCAN_H = 280, 8, 4, 168
 -- Searches: seconds between two (at most 60 a minute), and how long one waits for its results.
 AH.SEND_GAP, AH.FALLBACK = 1, 2
 -- A result row's height (the shop's rows and your auctions'), and the icon of an item the client doesn't know.
@@ -163,9 +164,22 @@ end
 
 -- The panel ----------------------------------------------------------------------------------
 
+-- Where the scan card starts (down from the panel's top): under the sell card, however tall it is.
+function AH.ScanY()
+  return AH.SELL_Y - AH.SELL_H - AH.PAD
+end
+
+-- The panel's size: AH.WIDTH wide, as tall as the auction house window, or as its cards when they
+-- need more (it then reaches below the window), and kept on the screen.
+local function size(f)
+  f:SetWidth(AH.WIDTH)
+  f:SetHeight(math.max(AuctionHouseFrame:GetHeight(), AH.SCAN_H - AH.ScanY() + AH.PAD))
+  f:SetClampedToScreen(true)
+end
+
 -- The scan card: the scan button and when the last scan was, Check undercuts and your auctions.
 local function buildScan(f)
-  local c = AH.Card(f, "Scan and your auctions", AH.SCAN_Y, AH.SCAN_H)
+  local c = AH.Card(f, "Scan and your auctions", AH.ScanY(), AH.SCAN_H)
   c.scan = W.Button(c, "Scan the auction house", function() AH.StartScan() end, 150)
   c.scan:SetPoint("TOPLEFT", 0, -20)
   c.last = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
@@ -174,12 +188,12 @@ local function buildScan(f)
   AH.BuildOwned(c)
 end
 
--- The panel beside the auction house window (as tall as it), built the first time the window shows.
+-- The panel beside the auction house window (from its top, at least as tall as it), built the
+-- first time the window shows.
 function AH.Build()
   local f = T.Panel(CreateFrame("Frame", "ForeverUI_AuctionPanel", UIParent), { shadow = true })
-  f:SetWidth(AH.WIDTH)
+  size(f)
   f:SetPoint("TOPRIGHT", AuctionHouseFrame, "TOPLEFT", -AH.GAP, 0)
-  f:SetPoint("BOTTOMRIGHT", AuctionHouseFrame, "BOTTOMLEFT", -AH.GAP, 0)
   f:EnableMouse(true)
   AH.frame = f
   AH.BuildShop(f)
@@ -373,9 +387,9 @@ local function listen()
   on("REPLICATE_ITEM_LIST_UPDATE", onReplicate)
   on("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", AH.OnBrowse)
   on("ITEM_KEY_ITEM_INFO_RECEIVED", function() AH.PaintShop() end)
-  on("ITEM_SEARCH_RESULTS_UPDATED", AH.OnSearchResults)
-  on("COMMODITY_SEARCH_RESULTS_UPDATED", AH.OnSearchResults)
-  on("AUCTION_HOUSE_THROTTLED_SYSTEM_READY", function() AH.PaintSell() end)
+  for _, e in ipairs({ "ITEM_SEARCH_RESULTS_UPDATED", "COMMODITY_SEARCH_RESULTS_UPDATED" }) do on(e, AH.OnSearchResults) end
+  -- The sell card again when the game is ready for a post, or a stack left the bags.
+  for _, e in ipairs({ "AUCTION_HOUSE_THROTTLED_SYSTEM_READY", "BAG_UPDATE_DELAYED" }) do on(e, function() AH.PaintSell() end) end
   AH.ListenOwned(on)
 end
 

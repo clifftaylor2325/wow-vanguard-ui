@@ -420,13 +420,14 @@ local function windowRows()
   }
 end
 
--- The auction helper: its panel, tooltip prices, the sell card's undercut, the scan button and checking your auctions again.
+-- The auction helper: its panel, tooltip prices, the sell card's undercut and length, the scan button and checking your auctions again.
 local function auctionRows()
   return {
     { "header", "Auction house" },
     check("ForeverUI panel beside the auction house (lists, sell helper, scan)", setting("AuctionHelper", "panel")),
     check("Auction prices in tooltips (from your scans)", setting("AuctionHelper", "tooltip")),
     { "cycle", "Undercut by", { { "copper", "1 copper" }, { "silver", "1 silver" }, { "percent", "1 %" }, { "match", "Match" } }, setting("AuctionHelper", "undercut") },
+    { "cycle", "Auction length", ns.GetModule("AuctionHelper").DurationChoices(true), setting("AuctionHelper", "duration") },
     check("Scan button (one scan every 15 minutes)", setting("AuctionHelper", "scanButton")),
     check("Check your auctions for undercuts again after each post and cancel", setting("AuctionHelper", "recheck")),
   }

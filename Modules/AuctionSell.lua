@@ -2,15 +2,19 @@
 -- the search queue, the scan and the slash commands): the sell slot and the
 -- item it takes (TakeItem, TakeCursor, or the game's own sell frame), the
 -- price check's results (Cheapest), the undercut rules and the price to ask
--- (Suggest), the auction length (Duration), the deposit, and Post; and the
--- stack presets for vanilla (StackPreset).
+-- (Suggest), and the form: quantity and stack size (each with Max; the stack
+-- size starts at the vanilla preset for the item's class, StackPreset), the
+-- number of stacks, a price typed per unit or per stack, a bid for items, and
+-- the auction length (Duration). Post puts up one stack per click and loads
+-- the next ("posted 3 of 10"); Skip passes a stack, Stop ends the sale.
 --
 -- Standing rules here: PostItem and PostCommodity run only inside Post's
--- click; the only hook is a post-hook on the game's SetPostItem that reads
--- the item it was given, and nothing writes into the game's auction frames;
--- price checks go through AH.Queue (one in flight, at most 60 a minute);
--- every price and quantity goes through ns.PlainNumber before arithmetic;
--- and both paths work: a commodity's whole stack, or an item one at a time.
+-- click, one call per click; the only hook is a post-hook on the game's
+-- SetPostItem that reads the item it was given, and nothing writes into the
+-- game's auction frames; price checks go through AH.Queue (one in flight, at
+-- most 60 a minute); every price and quantity goes through ns.PlainNumber
+-- before arithmetic; and both paths work: a commodity at a unit price, or an
+-- item (each auction one item) with a buyout and an optional bid.
 
 local ADDON, ns = ...
 
@@ -18,8 +22,15 @@ local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
 
 -- The sell card: where it starts and its height, and its lines.
-AH.SELL_Y, AH.SELL_H = -210, 136
+AH.SELL_Y, AH.SELL_H = -210, 246
 AH.SELL_LINES = { "Cheapest now", "7-day low", "Deposit", "Your price" }
+-- The form: where its rows start (down from the card's top) and how far apart they are.
+AH.FORM_Y, AH.FORM_ROW = -110, 26
+-- Coins in copper, for a typed price ("1g 50s").
+AH.COINS = { g = 10000, s = 100, c = 1 }
+-- The sell card's settings: the auction length a new item starts with ("last": the last one
+-- used; or 1 to 3), and lastDuration, the last one picked on the card (none at first).
+AH.defaults.duration = "last"
 -- Enum.ItemCommodityStatus's Item and Commodity (AuctionHouseDocumentation.lua); the game's
 -- names for the three auction lengths (AUCTION_DURATION_ONE...).
 AH.ITEM, AH.COMMODITY, AH.DURATIONS = 1, 2, { "ONE", "TWO", "THREE" }
@@ -71,31 +82,118 @@ AH.UNDERCUT = {
   match = function(p) return p end,
 }
 
--- The price to ask: the cheapest now (else the 7-day low) less the undercut, at least 1 copper;
--- nil with neither. Without copper prices it rounds up to whole silver, as the game's sell frame does.
-function AH.Suggest(cheapest, low7)
-  local base = cheapest or low7
-  if not base then return nil end
-  local price = math.max(1, (AH.UNDERCUT[AH.settings.undercut] or AH.UNDERCUT.silver)(base))
+-- A price as the game takes it: at least 1 copper, and in whole silver (rounded up) on a client
+-- without copper prices, as the game's sell frame does.
+local function forGame(price)
+  price = math.max(1, price)
   if not C_AuctionHouse.SupportsCopperValues() then price = math.ceil(price / 100) * 100 end
   return price
 end
 
--- The auction length the game's sell frame last used (its CVar, 1 to 3), and the game's name for it.
-function AH.Duration()
-  local d = tonumber(GetCVar("auctionHouseDurationDropdown") or "")
-  d = d and d >= 1 and d <= 3 and math.floor(d) or 1
-  return d, _G["AUCTION_DURATION_" .. AH.DURATIONS[d]] or ("duration " .. d)
+-- The price to ask: the cheapest now (else the 7-day low) less the undercut; nil with neither.
+function AH.Suggest(cheapest, low7)
+  local base = cheapest or low7
+  if not base then return nil end
+  return forGame((AH.UNDERCUT[AH.settings.undercut] or AH.UNDERCUT.silver)(base))
 end
 
--- The deposit for posting the card's item for duration d (rounded up to silver without copper prices), or nil.
-local function deposit(s, d)
-  local api = C_AuctionHouse
-  local copper = s.commodity and api.CalculateCommodityDeposit(s.id, d, s.qty) or api.CalculateItemDeposit(s.loc, d, s.qty)
+-- The unit price the card's item goes up at: the one typed, else the suggestion (nil: none yet).
+function AH.SellPrice(s)
+  if s.unit then return forGame(s.unit) end
+  return AH.Suggest(s.cheapest, AP.Low7(s.id))
+end
+
+-- A price typed as "1g 50s 25c" (any of the three, spaces optional) or a bare number of copper;
+-- nil for nothing, zero or anything else.
+function AH.ParseMoney(text)
+  local t, total = (text or ""):lower():gsub("%s+", ""), 0
+  if t:match("^%d+$") then t = t .. "c" end
+  local rest = t:gsub("(%d+)([gsc])", function(n, coin) total = total + tonumber(n) * AH.COINS[coin] return "" end)
+  return rest == "" and total > 0 and total or nil
+end
+
+-- Auction lengths ----------------------------------------------------------------------------
+
+-- The game's name for auction length d (AUCTION_DURATION_ONE...), or "duration d" without one.
+function AH.DurationName(d)
+  return _G["AUCTION_DURATION_" .. AH.DURATIONS[d]] or ("duration " .. d)
+end
+
+-- The three auction lengths as choices, by the game's names; "Last used" first when asked for.
+function AH.DurationChoices(withLast)
+  local out = withLast and { { "last", "Last used" } } or {}
+  for d = 1, 3 do out[#out + 1] = { d, AH.DurationName(d) } end
+  return out
+end
+
+-- The length a new item starts with: the one set under Auction length, or the last used (picked
+-- on the card, else the one the game's own sell frame last used, its CVar).
+local function defaultDuration()
+  local set = AH.settings
+  if set.duration ~= "last" then return set.duration end
+  return set.lastDuration or GetCVar("auctionHouseDurationDropdown")
+end
+
+-- The auction length for the card's sale s (1 to 3: picked on the card, else the default; 1 for
+-- anything else), and the game's name for it.
+function AH.Duration(s)
+  local d = tonumber(s and s.duration or defaultDuration() or "")
+  d = d and d >= 1 and d <= 3 and math.floor(d) or 1
+  return d, AH.DurationName(d)
+end
+
+-- A length picked on the card: the item on it goes up for that long, and it is the last used.
+function AH.PickDuration(d)
+  if AH.sell then AH.sell.duration = d end
+  AH.settings.lastDuration = d
+  AH.PaintSell()
+end
+
+-- Stacks -------------------------------------------------------------------------------------
+
+-- How many units the next stack holds: the stack size, or what's left when that's less.
+local function stackSize(s)
+  return math.min(s.stack, s.qty - s.done)
+end
+
+-- How many stacks the sale makes in all: the ones posted or skipped, and those still to go.
+function AH.StackCount(s)
+  return s.passed + math.ceil(math.max(0, s.qty - s.done) / s.stack)
+end
+
+-- The bag slot's item when it is the sale's (the same item ID, level and suffix) and not locked
+-- (an item locks while the house takes it): its location, else nil.
+local function holds(s, bag, slot)
+  local info = bag and C_Container.GetContainerItemInfo(bag, slot)
+  if not (info and ns.PlainNumber(info.itemID) == s.id and not info.isLocked) then return nil end
+  local loc = ItemLocation:CreateFromBagAndSlot(bag, slot)
+  local key = C_AuctionHouse.GetItemKeyFromItem(loc)
+  if key and key.itemLevel == s.key.itemLevel and key.itemSuffix == s.key.itemSuffix then return loc end
+end
+
+-- Where the sale's item is now: its own slot while it's still there, else the first bag slot
+-- that holds it (the next stack, once the one before went up); nil when none does.
+function AH.SellLocation(s)
+  local found = holds(s, s.loc:GetBagAndSlot())
+  for bag = 0, 4 do
+    for slot = 1, found and 0 or ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do found = found or holds(s, bag, slot) end
+  end
+  s.loc = found or s.loc
+  return found
+end
+
+-- The deposit for the next stack for length d (rounded up to silver without copper prices), or nil.
+local function deposit(s, d, loc)
+  local api, n = C_AuctionHouse, stackSize(s)
+  if not loc or n < 1 then return nil end
+  local copper
+  if s.commodity then copper = api.CalculateCommodityDeposit(s.id, d, n) else copper = api.CalculateItemDeposit(loc, d, n) end
   copper = ns.PlainNumber(copper)
   if copper and not api.SupportsCopperValues() then copper = math.ceil(copper / 100) * 100 end
   return copper
 end
+
+-- Price checks -------------------------------------------------------------------------------
 
 -- One result's unit price: a commodity's unit price, an item's buyout over its quantity; nil
 -- for your own listing, one with only a bid, or a number the client hides.
@@ -119,16 +217,26 @@ function AH.Cheapest(commodity, key)
   return best
 end
 
+-- The sale -----------------------------------------------------------------------------------
+
+-- A new sale for an item taken onto the card: how many can go up (GetAvailablePostCount), the
+-- quantity (a commodity's whole stack, an item one), the preset stack size, nothing posted yet.
+local function newSale(loc, key, commodity)
+  local max = math.max(1, ns.PlainNumber(C_AuctionHouse.GetAvailablePostCount(loc)) or 1)
+  local qty = commodity and ns.PlainNumber(C_Item.GetStackCount(loc)) or 1
+  return { loc = loc, key = key, id = key.itemID, commodity = commodity, max = max, qty = math.max(1, math.min(qty, max)),
+    stack = AH.StackPreset(key.itemID), passed = 0, posted = 0, done = 0, search = C_AuctionHouse.MakeItemKey(key.itemID) }
+end
+
 -- Puts an item on the sell card (when the house takes it and the client knows whether it's a
--- commodity: a commodity sells the stack, an item one at a time) and checks its price now.
+-- commodity) and checks its price now.
 function AH.TakeItem(loc)
   local api = C_AuctionHouse
   if not (AH.sellCard and loc and loc:IsValid() and api.IsSellItemValid(loc, false)) then return end
   local status = api.GetItemCommodityStatus(loc)
   if status ~= AH.ITEM and status ~= AH.COMMODITY then return end
-  local key, commodity = api.GetItemKeyFromItem(loc), status == AH.COMMODITY
-  AH.sell = { loc = loc, id = key.itemID, commodity = commodity, qty = commodity and ns.PlainNumber(C_Item.GetStackCount(loc)) or 1 }
-  AH.Queue({ sell = api.MakeItemKey(key.itemID), card = true }, true)
+  AH.sell, AH.sellStatus = newSale(loc, api.GetItemKeyFromItem(loc), status == AH.COMMODITY), nil
+  AH.Queue({ sell = AH.sell.search, card = true }, true)
   AH.PaintSell()
 end
 
@@ -154,45 +262,154 @@ function AH.OnSearchResults(event, arg)
   AH.PaintSell()
 end
 
+-- A whole number typed into one of the form's boxes, kept between lo and hi; nil for anything else.
+local function typedCount(text, lo, hi)
+  local n = tonumber(text)
+  return n and math.max(lo, math.min(hi, math.floor(n))) or nil
+end
+
+-- What typing in each of the form's boxes does to the sale s, from the text typed.
+AH.FORM = {
+  -- The quantity to put up in all (at most what can go up).
+  qty = function(s, text) s.qty = typedCount(text, 1, s.max) or s.qty end,
+  -- Units per auction.
+  stack = function(s, text) s.stack = typedCount(text, 1, s.max) or s.stack end,
+  -- How many stacks: the quantity becomes that many stacks (at most what can go up).
+  stacks = function(s, text) local n = typedCount(text, 1, s.max) if n then s.qty = math.min(s.max, n * s.stack) end end,
+  -- The price, per unit or per (full) stack by the toggle; nothing readable goes back to the suggestion.
+  price = function(s, text) local p = AH.ParseMoney(text) s.unit = p and (AH.perStack and math.floor(p / s.stack) or p) end,
+  -- A bid per item (items only); nothing for none.
+  bid = function(s, text) s.bid = AH.ParseMoney(text) end,
+}
+
+-- What each Max button sets on the sale s.
+AH.MAX = {
+  -- The quantity: all that can go up.
+  qty = function(s) s.qty = s.max end,
+  -- The stack size: the whole quantity in one.
+  stack = function(s) s.stack = s.qty end,
+}
+
+-- Something typed into the form's box `name` (or its Max clicked, with `max`): the sale takes it.
+function AH.TypeForm(name, text, max)
+  if not AH.sell then return end
+  if max then AH.MAX[name](AH.sell) else AH.FORM[name](AH.sell, text) end
+  AH.PaintSell()
+end
+
+-- The price box's toggle: a price typed there is per unit or per (full) stack.
+function AH.TogglePerStack()
+  AH.perStack = not AH.perStack
+  AH.PaintSell()
+end
+
+-- Posting ------------------------------------------------------------------------------------
+
+-- The unit price the next stack goes up at, when Post can put it up: a sale with units left and
+-- a price (and a bid under it), its item in the bags, and the game's message throttle ready.
+function AH.PostPrice(s)
+  local price = s and s.qty > s.done and AH.SellPrice(s)
+  if not price or (s.bid and s.bid >= price) or not AH.SellLocation(s) then return nil end
+  if C_AuctionHouse.IsThrottledMessageSystemReady() then return price end
+end
+
+-- A stack went up, or was skipped: on to the next; after the last, the card empties and its line
+-- keeps the count.
+function AH.NextStack(s, n)
+  s.passed, s.done = s.passed + 1, s.done + n
+  AH.sellStatus = string.format("posted %d of %d", s.posted, AH.StackCount(s))
+  if s.done >= s.qty then AH.sell = nil end
+  AH.PaintSell()
+end
+
+-- Post (the button's click, never a timer or an event): puts the next stack up, one restricted
+-- call per click. A true answer means the game wants the post confirmed: that is the game's to
+-- ask, so the card says so and keeps the stack.
+function AH.Post()
+  local s = AH.sell
+  local price = AH.PostPrice(s)
+  if not price then return end
+  local api, loc, d, n = C_AuctionHouse, AH.SellLocation(s), AH.Duration(s), stackSize(s)
+  local confirm
+  if s.commodity then confirm = api.PostCommodity(loc, d, n, price) else confirm = api.PostItem(loc, d, n, s.bid, price) end
+  if confirm then return ns.Chat("The game wants this price confirmed: list it from the game's own Sell tab.") end
+  s.posted = s.posted + 1
+  AH.NextStack(s, n)
+end
+
+-- Skip: the next stack stays in the bags; on to the one after.
+function AH.SkipStack()
+  local s = AH.sell
+  if s and s.qty > s.done then AH.NextStack(s, stackSize(s)) end
+end
+
+-- Stop: the sale ends here; the card empties and its line keeps the count.
+function AH.StopSelling()
+  local s = AH.sell
+  if s then AH.sellStatus = string.format("posted %d of %d", s.posted, AH.StackCount(s)) end
+  AH.sell = nil
+  AH.PaintSell()
+end
+
+-- The sell card --------------------------------------------------------------------------------
+
 -- Copper as money text, or `none` without a value.
 local function money(copper, none)
   return copper and AP.Money(copper) or none
 end
 
--- The sell card's lines for its item: the cheapest now ("none up" after a search found none),
--- the 7-day low, the deposit with the duration, and the price it will ask (nil: unknown).
+-- The sell card's lines for its sale: the cheapest now ("none up" after a search found none),
+-- the 7-day low, the next stack's deposit with the length, and the unit price it will ask.
 local function sellValues(s)
-  local low7, d, label = AP.Low7(s.id), AH.Duration()
-  local price, dep = AH.Suggest(s.cheapest, low7), deposit(s, d)
+  local d, label = AH.Duration(s)
+  local price, dep = AH.SellPrice(s), deposit(s, d, AH.SellLocation(s))
   local now = money(s.cheapest, s.searched and "none up" or "...")
-  return { now, money(low7, "none"), dep and (AP.Money(dep) .. " · " .. label) or "", money(price, "") }, price
+  return { now, money(AP.Low7(s.id), "none"), dep and (AP.Money(dep) .. " · " .. label) or "", money(price, "") }
 end
 
--- The sell card: the item's icon and lines, and Post, which works only with a price while the
--- game's message throttle is ready.
+-- A button on or off.
+local function enable(b, on)
+  if on then b:Enable() else b:Disable() end
+end
+
+-- A form box shows a value (blank for none), unless it has the typing.
+local function show(box, value)
+  if not box:HasFocus() then box:SetText(value and tostring(value) or "") end
+end
+
+-- The form's boxes for the sale s (or nil): quantity, stack size, stacks, the price (per unit or
+-- per stack by the toggle) and the bid, shown for an item only.
+local function paintBoxes(c, s)
+  local price = s and AH.SellPrice(s)
+  show(c.qty, s and s.qty)
+  show(c.stack, s and s.stack)
+  show(c.stacks, s and AH.StackCount(s))
+  show(c.price, price and AP.Money(price * (AH.perStack and s.stack or 1)))
+  show(c.bid, s and s.bid and AP.Money(s.bid))
+  c.bid:SetShown(s ~= nil and not s.commodity)
+end
+
+-- The form for the sale s (or nil): its boxes, the toggle, the length, the count ("posted 3 of
+-- 10", kept after the last stack or Stop), and Skip and Stop while there is a sale.
+local function paintForm(c, s)
+  paintBoxes(c, s)
+  c.perStack.text:SetText(AH.perStack and "per stack" or "per unit")
+  c.length:Refresh()
+  c.status:SetText(s and string.format("posted %d of %d", s.posted, AH.StackCount(s)) or AH.sellStatus or "")
+  enable(c.skip, s ~= nil)
+  enable(c.stop, s ~= nil)
+end
+
+-- The sell card: the item's icon and lines, the form, and Post, which works only when the next
+-- stack can go up (AH.PostPrice).
 function AH.PaintSell()
   local c, s = AH.sellCard, AH.sell
   if not c then return end
-  local values, price = {}, nil
-  if s then values, price = sellValues(s) end
+  local values = s and sellValues(s) or {}
   c.icon:SetTexture(s and C_Item.GetItemIcon(s.loc) or nil)
   for i, line in ipairs(c.lines) do line.value:SetText(values[i] or "") end
-  local ready = price ~= nil and C_AuctionHouse.IsThrottledMessageSystemReady()
-  if ready then c.post:Enable() else c.post:Disable() end
-end
-
--- Post (the button's click, never a timer or an event): lists the card's item at the suggested
--- price for the game's duration. A true answer means the game wants the post confirmed: that is
--- the game's to ask, so the card says so and keeps the item.
-function AH.Post()
-  local s = AH.sell
-  local price = s and AH.Suggest(s.cheapest, AP.Low7(s.id))
-  if not price or not C_AuctionHouse.IsThrottledMessageSystemReady() then return end
-  local d, api, confirm = AH.Duration(), C_AuctionHouse
-  if s.commodity then confirm = api.PostCommodity(s.loc, d, s.qty, price) else confirm = api.PostItem(s.loc, d, 1, nil, price) end
-  if confirm then return ns.Chat("The game wants this price confirmed: list it from the game's own Sell tab.") end
-  AH.sell = nil
-  AH.PaintSell()
+  paintForm(c, s)
+  enable(c.post, AH.PostPrice(s) ~= nil)
 end
 
 -- The sell card's lines: a label on the left of the space beside the slot, its value on the right.
@@ -227,14 +444,71 @@ local function undercutRow(c)
   c.undercut:SetPoint("TOPLEFT", 0, -78)
 end
 
--- The sell card: the slot, its lines, the undercut rule and Post.
+-- The form's box `name`: `label` on its left (lw wide), the box `width` wide at x on form row
+-- `row`; typing in it goes to AH.TypeForm.
+local function field(c, name, label, x, row, lw, width)
+  local e = W.Input(c, width)
+  e:SetHeight(22)
+  e:SetPoint("TOPLEFT", x + lw, AH.FORM_Y - (row - 1) * AH.FORM_ROW)
+  e.label = T.Text(e:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  e.label:SetPoint("RIGHT", e, "LEFT", -4, 0)
+  e.label:SetText(label)
+  e:SetScript("OnTextChanged", function(self, user) if user then AH.TypeForm(name, self:GetText()) end end)
+  c[name] = e
+end
+
+-- A Max button after the form's box `name`.
+local function maxButton(c, name)
+  local b = W.Button(c, "Max", function() AH.TypeForm(name, nil, true) end, 36)
+  b:SetHeight(22)
+  b:SetPoint("LEFT", c[name], "RIGHT", 2, 0)
+  c[name .. "Max"] = b
+end
+
+-- The form under the undercut rule: quantity and stack size, each with Max; the number of stacks
+-- and the bid; the price with its per unit / per stack toggle.
+local function sellForm(c)
+  field(c, "qty", "Quantity", 0, 1, 52, 40)
+  maxButton(c, "qty")
+  field(c, "stack", "Stack", 134, 1, 36, 40)
+  maxButton(c, "stack")
+  field(c, "stacks", "Stacks", 0, 2, 52, 40)
+  field(c, "bid", "Bid", 134, 2, 36, 76)
+  field(c, "price", "Price", 0, 3, 52, 110)
+  c.perStack = W.Button(c, "per unit", function() AH.TogglePerStack() end, 70)
+  c.perStack:SetHeight(22)
+  c.perStack:SetPoint("LEFT", c.price, "RIGHT", 4, 0)
+end
+
+-- The auction length: the game's three, as segments.
+local function lengthRow(c)
+  c.length = W.Choice(c, "", AH.DurationChoices(), function() return (AH.Duration(AH.sell)) end,
+    function(d) AH.PickDuration(d) end, AH.WIDTH - 2 * AH.PAD)
+  c.length:SetPoint("TOPLEFT", 0, AH.FORM_Y - 3 * AH.FORM_ROW)
+end
+
+-- The posting line: the count on the left; Skip, Stop and Post on the right.
+local function postRow(c)
+  local y = AH.FORM_Y - 3 * AH.FORM_ROW - 32
+  c.post = W.Primary(c, "Post", function() AH.Post() end, 60)
+  c.post:SetPoint("TOPRIGHT", 0, y)
+  c.stop = W.Button(c, "Stop", function() AH.StopSelling() end, 44)
+  c.stop:SetPoint("RIGHT", c.post, "LEFT", -4, 0)
+  c.skip = W.Button(c, "Skip", function() AH.SkipStack() end, 44)
+  c.skip:SetPoint("RIGHT", c.stop, "LEFT", -4, 0)
+  c.status = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  c.status:SetPoint("TOPLEFT", 0, y - 6)
+end
+
+-- The sell card: the slot, its lines, the undercut rule, the form, the length and the posting line.
 function AH.BuildSell(f)
   local c = AH.Card(f, "Sell", AH.SELL_Y, AH.SELL_H)
+  AH.sellCard = c
   sellSlot(c)
   sellLines(c)
   undercutRow(c)
-  c.post = W.Primary(c, "Post", function() AH.Post() end, 120)
-  c.post:SetPoint("TOPRIGHT", 0, -110)
-  AH.sellCard = c
+  sellForm(c)
+  lengthRow(c)
+  postRow(c)
   hooksecurefunc(AuctionHouseFrame, "SetPostItem", function(_, loc) AH.TakeItem(loc) end)
 end

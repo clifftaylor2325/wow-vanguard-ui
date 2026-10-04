@@ -71,7 +71,7 @@ Sizes: S under a day of lane time, M one to two, L more. Each is one commit with
 
 ### Phase A: selling and cancelling parity (the biggest hole)
 
-- [ ] **A1 Sell form** (L): quantity, stack size with Max, number of stacks, a price box that accepts the suggestion or a typed price, per unit or per stack, bid for items, and a duration picker (1–3, labels from the game, "remember last"). Posting stays one click per stack; after each post the next stack loads and a "posted 3 of 10" line counts. Stop and skip buttons.
+- [x] **A1 Sell form** (L): quantity, stack size with Max, number of stacks, a price box that accepts the suggestion or a typed price, per unit or per stack, bid for items, and a duration picker (1–3, labels from the game, "remember last"). Posting stays one click per stack; after each post the next stack loads and a "posted 3 of 10" line counts. Stop and skip buttons.
 - [ ] **A2 Current listings on the sell card** (M): the sell search's rows (price, quantity, time left, yours marked), scrollable, click a row to take its price. Read beyond the first page with `RequestMoreCommoditySearchResults`/`RequestMoreItemSearchResults`.
 - [ ] **A3 Vendor floor and warnings** (S): warn in the accent-red when the price is under the vendor sell price, and an option "never post under vendor price".
 - [x] **A4 Cancel next undercut** (S): one button that cancels the first undercut auction on each click and advances; a count "3 undercut" after the check; optional re-check after each post.

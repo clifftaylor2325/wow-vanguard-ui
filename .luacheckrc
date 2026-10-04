@@ -74,5 +74,6 @@ read_globals = {
   -- C1 Auction prices: the realm you're on, so each realm and faction keeps its own prices.
   "GetRealmName", "GetNormalizedRealmName",
   -- A5 Auction helper, your auctions: an expired auction's item found in the bags, for Relist.
+  -- A1 Auction helper, sell form: a bag slot's item location, for the next stack.
   "ItemLocation",
 }
