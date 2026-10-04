@@ -166,8 +166,10 @@ EventRegistry = {
   end,
 }
 
--- Events the client knows: anything the addon registers, unless a test lists some as invalid.
-world.invalidEvents = {}
+-- Events the client knows: anything the addon registers, unless listed here (or by a test) as invalid.
+-- LEARNED_SPELL_IN_TAB is gone from Forever (11.0 renamed it LEARNED_SPELL_IN_SKILL_LINE:
+-- Blizzard_Deprecated/11_0_0_SpellBookAPITransitionGuide.lua, SpellBookDocumentation.lua).
+world.invalidEvents = { LEARNED_SPELL_IN_TAB = true }
 C_EventUtils = {
   -- Whether the client knows an event.
   IsEventValid = function(event) return world.invalidEvents[event] ~= true end,
