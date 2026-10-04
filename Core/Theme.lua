@@ -947,6 +947,8 @@ end
 local SOUNDS = {
   on = "IG_MAINMENU_OPTION_CHECKBOX_ON", off = "IG_MAINMENU_OPTION_CHECKBOX_OFF",
   page = "IG_CHARACTER_INFO_TAB", open = "IG_MAINMENU_OPEN", close = "IG_MAINMENU_CLOSE",
+  -- An alert you asked for (Chat watch): the whisper sound (Mainline/SoundKitConstants.lua, 3081).
+  alert = "TELL_MESSAGE",
 }
 
 -- Plays one of the client's own interface sounds, unless sounds are off.
