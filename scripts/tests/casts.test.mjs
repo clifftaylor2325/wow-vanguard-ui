@@ -103,6 +103,22 @@ it("cast timing from the client's duration object", () => {
   expect(addon.eval('return ForeverUI_CastBar_player:GetScript("OnUpdate")') === null, "and then does not tick the bar itself").toBeTruthy();
 });
 
+it("on the client's timer a channel empties and a cast fills, as without it", () => {
+  const addon = loggedIn(CAST_ENV + `
+    -- TEST-ONLY: the client's timer directions, duration objects, and bars that take them (noting the direction asked for).
+    Enum.StatusBarTimerDirection = { ElapsedTime = 0, RemainingTime = 1 }
+    UnitCastingDuration = function() return { __duration = true } end
+    UnitChannelDuration = function() return { __duration = true } end
+    __dirs = {}`);
+  addon.eval(`for _, unit in ipairs({ "player", "target" }) do
+      _G["ForeverUI_CastBar_" .. unit].SetTimerDuration = function(_, _, _, dir) __dirs[unit] = dir return true end
+    end`);
+  addon.eval('__casts.player = { kind = "cast", start = 1000, finish = 2000 } __casts.target = { kind = "channel", start = 1000, finish = 5000 }');
+  addon.fire("UNIT_SPELLCAST_START", "player");
+  addon.fire("UNIT_SPELLCAST_CHANNEL_START", "target");
+  expect(addon.eval("return { __dirs.player, __dirs.target }"), "a cast by the time gone (fills), a channel by the time left (empties)").toEqual([0, 1]);
+});
+
 it("cast bars: spark, seconds left, latency and the uninterruptible edge", () => {
   const addon = loggedIn(CAST_ENV + 'GetNetStats = function() return 0, 0, 40, 150 end');
   addon.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
