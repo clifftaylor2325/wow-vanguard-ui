@@ -1,6 +1,7 @@
 -- Profile management on top of Core/DB.lua: new, copy, delete and reset,
--- export/import strings (Core/Serialize.lua), and profiles that follow your
--- specialization. Profile changes apply on reload; ForeverUI offers one.
+-- export/import strings (Core/Serialize.lua), profiles that follow your
+-- specialization, and the game's Edit Mode layout that goes with a profile.
+-- Profile changes apply on reload; ForeverUI offers one.
 -- Loaded before Core/Modules.lua so the spec profile is chosen at login
 -- before any module reads its settings.
 
@@ -210,3 +211,93 @@ end
 ns.On("PLAYER_SPECIALIZATION_CHANGED", function(_, unit) if unit == nil or unit == "player" then onSpecChanged() end end)
 -- ACTIVE_TALENT_GROUP_CHANGED passes (current, previous) group numbers, no unit: always the player's.
 ns.On("ACTIVE_TALENT_GROUP_CHANGED", onSpecChanged)
+
+-- Edit Mode layout -------------------------------------------------------------------------
+-- A profile remembers the name of the game's Edit Mode layout in use (profile.editMode.layout,
+-- so it is in the profile's export string too). When a character loads a profile other than
+-- the one it last ran, ForeverUI switches Edit Mode to that layout, out of combat, if this
+-- account has a layout of that name. Edit Mode's layouts are read through its own manager
+-- (EditModeManagerFrame: the presets first, then the account's and the character's), and the
+-- switch is the client's C_EditMode.SetActiveLayout, as Edit Mode's layout menu does it.
+
+-- The game's Edit Mode manager, when it has the methods ForeverUI reads; else nil.
+local function editModeManager()
+  local f = _G.EditModeManagerFrame
+  if type(f) == "table" and type(f.GetLayouts) == "function" and type(f.GetActiveLayoutInfo) == "function" then return f end
+end
+
+-- The name of the Edit Mode layout in use, or nil (no Edit Mode, or its layouts aren't loaded yet).
+function ns.EditModeLayout()
+  local f = editModeManager()
+  local info = f and f:GetActiveLayoutInfo()
+  return type(info) == "table" and info.layoutName or nil
+end
+
+-- The position of the layout called name in Edit Mode's list, or nil when this account has none.
+local function layoutIndex(f, name)
+  for i, info in ipairs(f:GetLayouts() or {}) do
+    if type(info) == "table" and info.layoutName == name then return i end
+  end
+end
+
+-- The active profile's Edit Mode settings: { layout = name }.
+local function editModeSettings()
+  return ns.Settings("editMode")
+end
+
+local layoutsSeen, switching = false, false
+
+-- Remembers the layout in use in the active profile (not while a switch to the profile's own waits for combat to end).
+local function rememberLayout()
+  if switching then return end
+  editModeSettings().layout = ns.EditModeLayout()
+end
+
+-- Switches Edit Mode to the layout at index, out of combat, and says so.
+local function switchLayout(index, name)
+  switching = true
+  ns.OutOfCombat(function()
+    switching = false
+    C_EditMode.SetActiveLayout(index)
+    ns.Chat("Edit Mode layout " .. name .. ", from profile " .. ns.ProfileName() .. ".")
+  end)
+end
+
+-- True when the client can switch Edit Mode's layout.
+local function canSwitch()
+  return type(C_EditMode) == "table" and type(C_EditMode.SetActiveLayout) == "function"
+end
+
+-- The profile's layout, when this character has just loaded the profile (it ran another one
+-- last time), the profile names a layout other than the one in use and the client can switch; else nil.
+local function layoutToLoad()
+  local last = ForeverUICharDB.editModeProfile
+  ForeverUICharDB.editModeProfile = ns.ProfileName()
+  local name = editModeSettings().layout
+  if last == nil or last == ns.ProfileName() or type(name) ~= "string" or name == ns.EditModeLayout() then return nil end
+  return canSwitch() and name or nil
+end
+
+-- The first time this session Edit Mode has its layouts: switch to the profile's layout when the
+-- profile was just loaded (a missing one is reported and stays remembered); afterwards, and
+-- otherwise, remember the layout in use.
+local function onLayouts()
+  if layoutsSeen then return rememberLayout() end
+  layoutsSeen = true
+  local name = layoutToLoad()
+  local index = name and layoutIndex(editModeManager(), name)
+  if index then return switchLayout(index, name) end
+  if name then return ns.Chat("Profile " .. ns.ProfileName() .. " uses Edit Mode layout " .. name .. ", which this account doesn't have.") end
+  rememberLayout()
+end
+
+-- Follows Edit Mode's layouts from a post-hook on its manager's UpdateLayoutInfo (it runs
+-- whenever the layouts load or change); when they loaded before login, starts now.
+local function watchLayouts()
+  local f = editModeManager()
+  if not f or type(f.UpdateLayoutInfo) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(f, "UpdateLayoutInfo", onLayouts)
+  if ns.EditModeLayout() then onLayouts() end
+end
+-- (Registered after the spec profile's login handler, so the profile is settled first.)
+ns.On("PLAYER_LOGIN", watchLayouts)
