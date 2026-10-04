@@ -96,7 +96,7 @@ The state colours (`good`, `warn`, `bad`) are kept apart from every preset, so a
 | `"client"` | The game's font (`STANDARD_TEXT_FONT`). Korean and Chinese clients always use it, whatever the setting. |
 | any other name | A font shared through LibSharedMedia (the Font picker lists them after the two built-ins). If the addon that shared it is gone, Fira Sans Condensed comes back. A font path from older settings still works. |
 
-ForeverUI shares its own fonts through LibSharedMedia as "ForeverUI Fira Sans" and "ForeverUI Fira Sans SemiBold" (western and Russian clients). The faction look swaps the font of the `title` and `heading` roles only: Cinzel SemiBold for Alliance, Metamorphous for Horde, and only while the Font setting is Fira Sans and the client uses it. The font and text size apply at once (every role-styled string is re-fonted).
+ForeverUI shares its own fonts through LibSharedMedia as "ForeverUI Fira Sans" and "ForeverUI Fira Sans SemiBold" (western and Russian clients). The faction look swaps the font of the `title` and `heading` roles only: Cinzel SemiBold for Alliance, Metamorphous for Horde, and only while the Font setting is Fira Sans and the client uses it (not on Russian clients: Cinzel and Metamorphous have no Cyrillic). The font and text size apply at once (every role-styled string is re-fonted).
 
 ### Text roles
 

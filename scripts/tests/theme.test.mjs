@@ -265,3 +265,15 @@ it("a long dropdown shows 16 choices at once, scrolls with the wheel and opens a
   addon.eval('ns.Theme.Settings().font = "TEST-ONLY Font 10" ns.Widgets.CloseMenu() __dropdown("Font")');
   expect(addon.eval("local t = __menuTexts() return { t[16], ForeverUI_Menu.items[16].check:IsShown() }"), "a menu opens scrolled to show the current choice, checked").toEqual(["TEST-ONLY Font 10", true]);
 });
+
+it("the faction look on a Russian client keeps Fira Sans for headings (the faction fonts have no Cyrillic); the crest stays", () => {
+  const faction = 'UnitFactionGroup = function() return __faction end __faction = "Alliance" ';
+  const addon = loggedIn(faction + 'GetLocale = function() return "ruRU" end');
+  // A new heading string's font file, and whether the options window's crest shows.
+  const look = (a) => a.eval(`ns.Options.Show("general") local fs = ns.Theme.Text(UIParent:CreateFontString(), "heading")
+    return { fs.__font[1]:match("[^\\\\]+$"), ForeverUI_Options.crest:IsShown() }`);
+  expect(look(addon), "Alliance on ruRU: Fira Sans SemiBold headings, the crest shown").toEqual(["FiraSansCondensed-SemiBold.ttf", true]);
+  addon.eval('__faction = "Horde" ns.Theme.Refresh()');
+  expect(look(addon)[0], "Horde on ruRU too").toBe("FiraSansCondensed-SemiBold.ttf");
+  expect(look(loggedIn(faction + 'GetLocale = function() return "deDE" end'))[0], "a German client gets Cinzel (it has the Latin accents)").toBe("Cinzel-SemiBold.ttf");
+});
