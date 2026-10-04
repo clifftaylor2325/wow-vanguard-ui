@@ -82,11 +82,11 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/package.mjs
-      - name: Zip is valid and holds every TOC file and Media/
+      - name: Zip is valid and holds every TOC file, Media/ and the libraries' licenses
         run: |
           zip=$(ls dist/*.zip)
           unzip -t "$zip"
-          expected=$(( $(grep -cvE '^\s*(#|$)' ForeverUI.toc) + $(git ls-files Media | wc -l) + 2 ))
+          expected=$(( $(grep -cvE '^\s*(#|$)' ForeverUI.toc) + $(git ls-files Media | wc -l) + $(git ls-files Libs | grep -vc '\.lua$') + 2 ))
           actual=$(unzip -Z1 "$zip" | wc -l)
           echo "files: $actual (expected $expected)"
           test "$actual" -eq "$expected"

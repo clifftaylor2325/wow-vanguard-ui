@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { RETAIL, chatHas, loggedIn } from "./helpers.mjs";
+import { RETAIL, UI_ENV, chatHas, loggedIn, setCombat } from "./helpers.mjs";
 
 it("profile strings", () => {
   const addon = loggedIn();
@@ -56,6 +56,9 @@ it("export and import", () => {
   dst.eval(`ForeverUI_TextEdit:SetText(${JSON.stringify(text)}); ForeverUI_TextDialog.primary:GetScript("OnClick")(ForeverUI_TextDialog.primary)`);
   expect(dst.eval("return { ForeverUICharDB.profile, ForeverUICharDB.pendingProfile }"), "a whole-profile import becomes a new profile this character uses after the reload").toEqual(["Default", "Imported"]);
   expect(dst.eval("return ForeverUIDB.profiles.Imported.positions.uf_player.x") === 1 && dst.eval("return ForeverUIDB.profiles.Imported.theme.accent[1]") === 1, "with every setting").toBeTruthy();
+  expect(dst.eval("return ForeverUI_Question:IsShown() and ForeverUI_Question.title:GetText()"), "it asks about the UI scale the profile was made at first").toBe("This profile was made at UI scale 100% on a 1920 x 1080 screen (yours: 100%). Use its UI scale?");
+  dst.eval('ForeverUI_Question.no:GetScript("OnClick")(ForeverUI_Question.no)');
+  expect(dst.eval("return ForeverUI_Question:IsShown() == false and GetCVar('uiScale') == nil"), "No leaves the UI scale alone").toBe(true);
   expect(dst.eval("return ForeverUI_Reload:IsShown()") && /Reload/.test(dst.eval("return ForeverUI_Reload.accept.text:GetText()")), "and a reload is offered").toBeTruthy();
   dst.eval('ReloadUI = function() __reloaded = true end; ForeverUI_Reload.accept:GetScript("OnClick")(ForeverUI_Reload.accept)');
   expect(dst.eval("return __reloaded") === true, "Reload reloads the UI").toBeTruthy();
@@ -182,4 +185,102 @@ it("the spec change events stage the spec's profile, whatever they pass", () => 
   addon.eval("__spec = 2");
   addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 2, 1);
   expect(addon.eval("return ForeverUICharDB.pendingProfile"), "changing back to the running profile's spec takes the switch back").toBe(null);
+});
+
+it("a frame's scale and opacity travel with the profile: export, import and a staged switch", () => {
+  const src = loggedIn(UI_ENV);
+  src.eval('ns.SetMoverScale("minimap", 1.25) ns.SetMoverAlpha("minimap", 0.75)');
+  const text = src.eval("return ns.ExportProfile()");
+  const dst = loggedIn(UI_ENV);
+  dst.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(dst.eval("return ForeverUIDB.profiles.Imported.positions.minimap"), "the imported profile has them").toEqual({ scale: 1.25, alpha: 0.75 });
+  expect(dst.eval("return { ns.MoverLook('minimap') }"), "the running profile keeps its own until the reload").toEqual([1, 1]);
+  const next = createAddon({ savedVariables: 'ForeverUIDB = { version = 1, setupDone = true, profiles = { Default = {}, Raid = { positions = { minimap = { scale = 1.5, alpha = 0.5 } } } } }\nForeverUICharDB = { profile = "Default", pendingProfile = "Raid" }' });
+  next.eval(UI_ENV);
+  next.login();
+  expect(next.eval("local f = ns.MoverFrame('minimap') return { f:GetScale(), f:GetAlpha() }"), "the staged profile's scale and opacity apply at the next load").toEqual([1.5, 0.5]);
+});
+
+// Pastes a string into /fui import and clicks Import.
+const importText = (addon, text) => {
+  addon.slash("import");
+  addon.eval(`ForeverUI_TextEdit:SetText(${JSON.stringify(text)}) ForeverUI_TextDialog.primary:GetScript("OnClick")(ForeverUI_TextDialog.primary)`);
+};
+
+it("profile strings carry the UI scale and screen; importing one asks whether to use its UI scale", () => {
+  const src = loggedIn("__wfgStub.setScreen(2560, 1440) UIParent:SetScale(0.7)");
+  const text = src.eval("return ns.ExportProfile()");
+  expect(src.eval(`local _, data = ns.Serialize.Decode(${JSON.stringify(text)}) return data.display`), "a whole-profile string has the UI scale and screen it was made on").toEqual({ uiScale: 0.7, width: 2560, height: 1440 });
+  expect(src.eval("return ns.Profile().display"), "without adding them to the profile itself").toBe(null);
+  src.slash("accent ff8000");
+  expect(src.eval(`local _, data = ns.Serialize.Decode(ns.ExportProfile("theme")) return data.display == nil`), "a module's string has none").toBe(true);
+  const dst = loggedIn();
+  importText(dst, text);
+  expect(dst.eval("return ForeverUI_Question.title:GetText()"), "the question names the scale and screen, and yours").toBe("This profile was made at UI scale 70% on a 2560 x 1440 screen (yours: 100%). Use its UI scale?");
+  expect(dst.eval("return ForeverUI_Reload == nil or not ForeverUI_Reload:IsShown()"), "the reload waits for the answer").toBe(true);
+  dst.eval('ForeverUI_Question.yes:GetScript("OnClick")(ForeverUI_Question.yes)');
+  expect(dst.eval("return { GetCVar('useUiScale'), GetCVar('uiScale'), ForeverUI_Reload:IsShown(), ForeverUIDB.profiles.Imported.display == nil }"), "Use it sets the game's UI scale, then the reload is offered; the block isn't kept in the profile").toEqual(["1", "0.7", true, true]);
+  const old = dst.eval('return ns.Serialize.Encode("profile", { theme = { reduceMotion = true }, display = { uiScale = "TEST-ONLY" } })');
+  dst.eval("ForeverUI_Reload:Hide()");
+  importText(dst, old);
+  expect(dst.eval("return { ForeverUI_Question:IsShown(), ForeverUI_Reload:IsShown(), ForeverUIDB.profiles['Imported 2'].display == nil }"), "a string with no usable UI scale goes straight to the reload").toEqual([false, true, true]);
+  expect(dst.eval("return ns.DisplayQuestion({ uiScale = 0.8 })"), "a block with no screen size leaves it out").toBe("This profile was made at UI scale 80% (yours: 100%). Use its UI scale?");
+});
+
+// TEST-ONLY Edit Mode: its manager lists the presets, then the account's layouts; the
+// layouts load when UpdateLayoutInfo first runs; C_EditMode switches and reloads them.
+const EDIT_MODE_ENV = `
+  __layouts = { { layoutName = "Modern" }, { layoutName = "Classic" }, { layoutName = "TEST-ONLY Raid" } }
+  __active = 1
+  EditModeManagerFrame = CreateFrame("Frame", "EditModeManagerFrame", UIParent)
+  function EditModeManagerFrame:GetLayouts() return __layouts end
+  function EditModeManagerFrame:GetActiveLayoutInfo() return __loaded and __layouts[__active] or nil end
+  function EditModeManagerFrame:UpdateLayoutInfo() __loaded = true end
+  C_EditMode = { SetActiveLayout = function(i) __active = i EditModeManagerFrame:UpdateLayoutInfo() end }
+`;
+
+// A character logging in with these saved variables and Edit Mode; Lua in before runs before login.
+function editModeLogin(saved, before = "") {
+  const addon = createAddon({ savedVariables: `ForeverUIDB = { version = 1, setupDone = true, profiles = { Default = {}, Raid = { editMode = { layout = "TEST-ONLY Raid" } } } }\n${saved}` });
+  addon.eval(EDIT_MODE_ENV + before);
+  addon.login();
+  return addon;
+}
+
+// The layout in use, the one the running profile remembers, and the profile this character last ran.
+const layouts = (addon) => addon.eval("return { ns.EditModeLayout() or 'none', ns.Profile().editMode and ns.Profile().editMode.layout or 'none', ForeverUICharDB.editModeProfile or 'none' }");
+
+it("the Edit Mode layout goes with the profile: remembered, exported, and switched to when the profile loads", () => {
+  const fresh = editModeLogin('ForeverUICharDB = { profile = "Default" }');
+  expect(layouts(fresh), "before Edit Mode has its layouts, nothing is read").toEqual(["none", "none", "none"]);
+  fresh.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(layouts(fresh), "once it has them, the profile remembers the layout in use, and switches nothing").toEqual(["Modern", "Modern", "Default"]);
+  fresh.eval("C_EditMode.SetActiveLayout(3)");
+  expect(layouts(fresh), "picking another layout in Edit Mode is remembered").toEqual(["TEST-ONLY Raid", "TEST-ONLY Raid", "Default"]);
+  expect(fresh.eval("local _, data = ns.Serialize.Decode(ns.ExportProfile()) return data.editMode.layout"), "and it is in the profile's string").toBe("TEST-ONLY Raid");
+  const switched = editModeLogin('ForeverUICharDB = { profile = "Default", pendingProfile = "Raid", editModeProfile = "Default" }');
+  switched.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(layouts(switched), "loading another profile switches Edit Mode to its layout").toEqual(["TEST-ONLY Raid", "TEST-ONLY Raid", "Raid"]);
+  expect(chatHas(switched, /Edit Mode layout TEST-ONLY Raid, from profile Raid\./), "and says so").toBe(true);
+  const shared = editModeLogin('ForeverUICharDB = { profile = "Raid", editModeProfile = "Raid" }', "__loaded = true");
+  expect(layouts(shared), "the profile it ran last time switches nothing (another character may share it); layouts loaded before login are read at login").toEqual(["Modern", "Modern", "Raid"]);
+});
+
+it("the Edit Mode layout: one this account lacks, combat, and a client without Edit Mode", () => {
+  const missing = editModeLogin('ForeverUICharDB = { profile = "Raid", editModeProfile = "Default" }', '__layouts[3] = nil');
+  missing.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(layouts(missing), "a layout this account doesn't have is kept in the profile").toEqual(["Modern", "TEST-ONLY Raid", "Raid"]);
+  expect(chatHas(missing, /uses Edit Mode layout TEST-ONLY Raid, which this account doesn't have/), "and the player is told").toBe(true);
+  const fight = editModeLogin('ForeverUICharDB = { profile = "Raid", editModeProfile = "Default" }');
+  setCombat(fight, true);
+  fight.eval("EditModeManagerFrame:UpdateLayoutInfo() EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(layouts(fight), "in combat the switch waits, and the layout in use isn't remembered over the profile's").toEqual(["Modern", "TEST-ONLY Raid", "Raid"]);
+  setCombat(fight, false);
+  expect(layouts(fight), "it switches when combat ends").toEqual(["TEST-ONLY Raid", "TEST-ONLY Raid", "Raid"]);
+  const none = loggedIn("EditModeManagerFrame = CreateFrame('Frame', 'EditModeManagerFrame', UIParent)");
+  expect(none.eval("return { ns.EditModeLayout() == nil, ns.Profile().editMode == nil }"), "without Edit Mode's layout methods nothing is read or saved").toEqual([true, true]);
+  const noSwitch = editModeLogin('ForeverUICharDB = { profile = "Raid", editModeProfile = "Default" }', "C_EditMode = nil __loaded = true");
+  expect(layouts(noSwitch), "without the client's switch, the layout in use stays and is remembered").toEqual(["Modern", "Modern", "Raid"]);
+  const unhooked = editModeLogin('ForeverUICharDB = { profile = "Raid", editModeProfile = "Default" }', "hooksecurefunc = nil __loaded = true");
+  expect(layouts(unhooked), "without hooks nothing is followed").toEqual(["Modern", "TEST-ONLY Raid", "Default"]);
 });

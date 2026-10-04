@@ -12,6 +12,11 @@
 ## X-License: MIT
 ## X-Website: https://github.com/clifftaylor2325/wow-forever-ui
 
+# Shared libraries, unmodified (licenses beside them in Libs/).
+Libs/LibStub/LibStub.lua
+Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
+Libs/LibSharedMedia-3.0/LibSharedMedia-3.0.lua
+
 Core/Events.lua
 Core/DB.lua
 Core/Combat.lua
@@ -20,11 +25,13 @@ Core/Serialize.lua
 Core/Profiles.lua
 Core/Modules.lua
 Core/Theme.lua
+Core/SharedMedia.lua
 Core/Dialog.lua
 Core/Auras.lua
 Core/AuraLegacy.lua
 Core/AuraEngine.lua
 Core/Skin.lua
+Core/Masque.lua
 Core/Layout.lua
 Core/Grid.lua
 Core/Movers.lua
@@ -33,12 +40,14 @@ Core/Controls.lua
 Core/MoverPopover.lua
 Core/Options.lua
 Core/OptionsWindow.lua
+Core/ErrorBadge.lua
 Core/OptionsProfiles.lua
 Core/Setup.lua
 Core/FactionArt.lua
 Core/Slash.lua
 Core/Perf.lua
 Core/GameMenu.lua
+Core/Visibility.lua
 Modules/UnitFrames.lua
 Modules/CastBars.lua
 Modules/FrameAuras.lua
@@ -57,12 +66,14 @@ Modules/MainTanks.lua
 Modules/PartyExtras.lua
 Modules/ActionBars.lua
 Modules/ActionBarLayout.lua
+Modules/ActionBarKeybinds.lua
 Modules/SpecialBars.lua
 Modules/Minimap.lua
 Modules/MinimapButtons.lua
 Modules/Chat.lua
 Modules/ChatExtras.lua
 Modules/Bags.lua
+Modules/BagSections.lua
 Modules/InfoStrip.lua
 Modules/MenuStrip.lua
 Modules/Merchant.lua

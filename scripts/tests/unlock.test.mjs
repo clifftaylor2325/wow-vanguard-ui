@@ -68,3 +68,24 @@ it("unlock popover: anchor, offsets, reset", () => {
   addon.slash("lock");
   expect(addon.eval("return ForeverUI_MoverPopover:IsShown()") === false, "locking closes the popover").toBeTruthy();
 });
+
+// Types a value into one of the popover's boxes and presses Enter.
+const typeInto = (addon, box, text) => addon.eval(`local b = ForeverUI_MoverPopover.${box} b:SetText("${text}") b:GetScript("OnEnterPressed")(b)`);
+
+it("unlock popover: scale and opacity in percent", () => {
+  const addon = loggedIn(UI_ENV);
+  addon.slash("unlock");
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "minimap" then __h = w end end __h:GetScript("OnMouseDown")(__h, "RightButton")');
+  // The popover's Scale and Opacity boxes, and the minimap holder's scale and alpha.
+  const look = () => addon.eval("local p, f = ForeverUI_MoverPopover, ns.MoverFrame('minimap') return { p.scale:GetText(), p.alpha:GetText(), f:GetScale(), f:GetAlpha() }");
+  expect(look(), "they start at 100%").toEqual(["100", "100", 1, 1]);
+  typeInto(addon, "scale", "150");
+  typeInto(addon, "alpha", "40");
+  expect(look(), "typing a percent sets the frame's scale and opacity").toEqual(["150", "40", 1.5, 0.4]);
+  expect(addon.eval("return { __h:GetScale(), ForeverUIDB.profiles.Default.positions.minimap.scale }"), "the handle follows, and it is saved").toEqual([1.5, 1.5]);
+  typeInto(addon, "scale", "TEST-ONLY");
+  typeInto(addon, "alpha", "500");
+  expect(look(), "a bad number is ignored and a big one stops at 100%").toEqual(["150", "100", 1.5, 1]);
+  addon.eval("ForeverUI_MoverPopover.reset:GetScript('OnClick')(ForeverUI_MoverPopover.reset)");
+  expect(look(), "Reset puts the scale and opacity back").toEqual(["100", "100", 1, 1]);
+});

@@ -2,7 +2,8 @@
 -- unlock shows a labeled handle over each, plus a grid. Drag a handle and
 -- it snaps to nearby frame edges and the screen center; click one and the
 -- arrow keys nudge it (Shift: 10 px). Positions are saved per profile
--- against the nearest screen edge, so they hold across resolutions.
+-- against the nearest screen edge, so they hold across resolutions, with
+-- each frame's own scale and opacity (right-click a handle to set them).
 
 local ADDON, ns = ...
 
@@ -21,9 +22,32 @@ function ns.MoverOptions()
   return ns.Settings("movers", DEFAULTS)
 end
 
--- Saved positions in the active profile: key -> { point, relPoint, x, y }.
+-- Saved positions in the active profile: key -> { point, relPoint, x, y, scale, alpha }
+-- (offsets in UIParent's units; scale and opacity left out while they are 1).
 local function saved()
   return ns.Settings("positions")
+end
+
+-- A mover's saved entry, made empty when there is none, so a move keeps the
+-- scale and opacity and a size change keeps the point.
+local function entry(key)
+  local p = saved()[key]
+  if type(p) ~= "table" then
+    p = {}
+    saved()[key] = p
+  end
+  return p
+end
+
+-- The scale and opacity a mover's frame may have (the popover and the options keep to them).
+ns.MOVER_SCALE = { min = 0.5, max = 2 }
+ns.MOVER_ALPHA = { min = 0.1, max = 1 }
+
+-- A mover's saved scale and opacity: 1 and 1 unless set.
+function ns.MoverLook(key)
+  local p = saved()[key]
+  if type(p) ~= "table" then return 1, 1 end
+  return tonumber(p.scale) or 1, tonumber(p.alpha) or 1
 end
 
 -- The point to use for a mover: saved, else its default.
@@ -35,16 +59,52 @@ local function pointFor(m)
   return m.default[1], m.default[2], m.default[3], m.default[4]
 end
 
--- Anchors a frame (or a mover handle) at the mover's point on UIParent.
+-- Anchors a frame (or a mover handle) at the mover's point on UIParent. The offsets
+-- are saved in UIParent's units and a frame's own are its scale's, so they are
+-- divided by it: a scaled frame keeps its anchor point where it is and grows around it.
 local function anchor(frame, m)
   local point, relPoint, x, y = pointFor(m)
+  local s = frame:GetScale() or 1
   frame:ClearAllPoints()
-  frame:SetPoint(point, UIParent, relPoint, x, y)
+  frame:SetPoint(point, UIParent, relPoint, x / s, y / s)
 end
 
--- Puts a mover's frame at its point; protected frames wait for combat to end.
+-- Draws a mover's frame at its opacity times the alpha its module last gave it.
+local function fade(m)
+  local f = m.frame
+  f.fuiFading = true
+  f:SetAlpha(m.ownAlpha * select(2, ns.MoverLook(m.key)))
+  f.fuiFading = false
+end
+
+-- From the first opacity other than 1 on, an alpha the frame's module sets (a
+-- bar fading out on mouseover, say) is kept and multiplied by the opacity, so
+-- the module's fades still work. A hidden (secret) alpha is left as it is.
+local function watchAlpha(m)
+  m.ownAlpha = m.frame:GetAlpha() or 1
+  if type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(m.frame, "SetAlpha", function(f, a)
+    if f.fuiFading or ns.PlainNumber(a) == nil then return end
+    m.ownAlpha = a
+    fade(m)
+  end)
+end
+
+-- Sets a mover's frame to its saved scale and opacity.
+local function applyLook(m)
+  local scale, alpha = ns.MoverLook(m.key)
+  m.frame:SetScale(scale)
+  if alpha == 1 and not m.ownAlpha then return end
+  if not m.ownAlpha then watchAlpha(m) end
+  fade(m)
+end
+
+-- Puts a mover's frame at its point, scale and opacity; protected frames wait for combat to end.
 local function place(m)
-  ns.OutOfCombat(function() anchor(m.frame, m) end)
+  ns.OutOfCombat(function()
+    applyLook(m)
+    anchor(m.frame, m)
+  end)
 end
 
 -- Registers a placeable frame. default = { point, relPoint, x, y } on UIParent.
@@ -85,9 +145,10 @@ end
 
 -- Saving ------------------------------------------------------------------------------
 
--- Saves a position for a mover, moves its frame, and keeps its handle on it.
+-- Saves a position for a mover (keeping its scale and opacity), moves its frame, and keeps its handle on it.
 local function savePosition(m, point, relPoint, x, y)
-  saved()[m.key] = { point = point, relPoint = relPoint, x = x, y = y }
+  local p = entry(m.key)
+  p.point, p.relPoint, p.x, p.y = point, relPoint, x, y
   place(m)
   if m.handle then
     anchor(m.handle, m)
@@ -215,14 +276,15 @@ function ns.SetMoverPoint(key, point, relPoint, x, y)
   savePosition(movers[key], point, relPoint or point, x, y)
 end
 
--- A frame's rect as { left, bottom, w, h } in its own scale, or nil if the
--- client can't say (not laid out yet).
+-- A frame's rect as { left, bottom, w, h } in UIParent's units (its own times
+-- its scale), or nil if the client can't say (not laid out yet).
 local function rectOf(f)
   local left, bottom = f:GetLeft(), f:GetBottom()
   if not left or not bottom then
     return nil
   end
-  return { left = left, bottom = bottom, w = f:GetWidth() or 0, h = f:GetHeight() or 0 }
+  local s = f:GetScale() or 1
+  return { left = left * s, bottom = bottom * s, w = (f:GetWidth() or 0) * s, h = (f:GetHeight() or 0) * s }
 end
 
 -- Rects of every other showing handle, for snapping.
@@ -235,15 +297,10 @@ local function otherRects(m)
   return out
 end
 
--- The screen size in a handle's scale.
-local function screenSize(h)
-  local s = h:GetScale() or 1
-  return (UIParent:GetWidth() or 0) / s, (UIParent:GetHeight() or 0) / s
-end
-
--- Where a dropped handle goes: snapped (if on), anchored to the nearest edge.
+-- Where a dropped handle goes: snapped (if on), anchored to the nearest edge,
+-- all in UIParent's units.
 local function dropPosition(h, r)
-  local sw, sh = screenSize(h)
+  local sw, sh = UIParent:GetWidth() or 0, UIParent:GetHeight() or 0
   local left, bottom = r.left, r.bottom
   if ns.MoverOptions().snap then
     left, bottom = L.Snap(left, bottom, r.w, r.h, otherRects(h.mover), sw, sh)
@@ -253,7 +310,7 @@ local function dropPosition(h, r)
 end
 
 -- Drag stop: saves where the handle was dropped. Without geometry (frame not
--- laid out) it keeps the point the client reports.
+-- laid out) it keeps the point the client reports (in the handle's scale).
 local function onDragStop(h)
   h:StopMovingOrSizing()
   local r = rectOf(h)
@@ -261,7 +318,8 @@ local function onDragStop(h)
     return savePosition(h.mover, dropPosition(h, r))
   end
   local point, _, relPoint, x, y = h:GetPoint(1)
-  if point then savePosition(h.mover, point, relPoint, x, y) end
+  local s = h:GetScale() or 1
+  if point then savePosition(h.mover, point, relPoint, x * s, y * s) end
 end
 
 -- Nudges a mover by dx, dy pixels from where it is saved.
@@ -344,6 +402,31 @@ local function handleFor(m)
   return m.handle
 end
 
+-- Scale and opacity ---------------------------------------------------------------------
+
+-- Saves a mover's scale or opacity (field "scale" or "alpha", to the hundredth,
+-- clamped to range; 1 is saved as unset) and applies it, its handle following.
+local function setLook(key, field, value, range)
+  local m = movers[key]
+  if not m or type(value) ~= "number" then return end
+  value = math.max(range.min, math.min(range.max, math.floor(value * 100 + 0.5) / 100))
+  entry(key)[field] = value ~= 1 and value or nil
+  place(m)
+  if m.handle then handleFor(m) end
+  changed(key)
+  if ns.OnMoverMoved then ns.OnMoverMoved(key) end
+end
+
+-- Sets a mover's scale (0.5 to 2); its frame grows or shrinks around its anchor point.
+function ns.SetMoverScale(key, scale)
+  setLook(key, "scale", scale, ns.MOVER_SCALE)
+end
+
+-- Sets a mover's opacity (0.1 to 1).
+function ns.SetMoverAlpha(key, alpha)
+  setLook(key, "alpha", alpha, ns.MOVER_ALPHA)
+end
+
 -- Lock / unlock -----------------------------------------------------------------------
 
 -- Shows every handle and the grid (not with noGrid). Refused in combat.
@@ -376,14 +459,20 @@ function ns.Unlocked()
   return unlocked
 end
 
--- Forgets a saved position (or all with "all") and puts frames back. Returns how many.
+-- Forgets one mover's saved position, scale and opacity and puts its frame (and handle) back.
+local function resetOne(k)
+  saved()[k] = nil
+  place(movers[k])
+  if movers[k].handle then handleFor(movers[k]) end
+  changed(k)
+end
+
+-- Forgets a saved position, scale and opacity (or all with "all") and puts frames back. Returns how many.
 function ns.ResetMovers(key)
   local n = 0
   for _, k in ipairs(order) do
     if key == "all" or key == k then
-      saved()[k] = nil
-      place(movers[k])
-      changed(k)
+      resetOne(k)
       n = n + 1
     end
   end

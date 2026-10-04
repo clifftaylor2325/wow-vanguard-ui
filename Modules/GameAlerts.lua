@@ -2,7 +2,11 @@
 --   * loss of control (stunned, feared, silenced...): a flat panel with its
 --     icon and text in the theme, centered a little above your character;
 --   * the talking head (an NPC speaking during a quest): a flat panel at the
---     top center, or hidden if you'd rather not see it.
+--     top center, or hidden if you'd rather not see it;
+--   * Hardcore death notices (the game shows them in its raid warning frame)
+--     in the theme font and its red;
+--   * a rare nearby (off until switched on): a sound and one chat line when a
+--     rare's mark comes onto the minimap, out of combat, once per rare.
 -- Both stay the game's own frames: ForeverUI restyles them and gives each a
 -- spot you can move with /fui unlock (Edit Mode still wins while it's open).
 
@@ -10,7 +14,7 @@ local ADDON, ns = ...
 
 local T = ns.Theme
 
-local GA = ns.Module("GameAlerts", { defaults = { lossOfControl = true, talkingHead = "move" } })
+local GA = ns.Module("GameAlerts", { defaults = { lossOfControl = true, talkingHead = "move", hardcore = true, rares = false } })
 
 -- Each alert's mover: key, label, default point, and the spot's size.
 GA.SPOTS = {
@@ -78,6 +82,67 @@ local function talkingHead(choice)
   ns.OutOfCombat(function() place("TalkingHeadFrame") end)
 end
 
+-- Hardcore death notices ----------------------------------------------------------------------
+
+-- The raid warning frame's newest message (the game numbers them as they come).
+local function newestWarning(frame)
+  local newest
+  for _, fs in ipairs(frame:GetSortedMessages()) do
+    if not newest or (fs.messageOrder or 0) > (newest.messageOrder or 0) then newest = fs end
+  end
+  return newest
+end
+
+-- A message was added: a line the game reuses after a death notice gets its own font back.
+function GA.OnWarning(frame)
+  local fs = newestWarning(frame)
+  if not (fs and fs.fuiDeath) then return end
+  fs.fuiDeath = nil
+  fs:SetFontObject(_G.GameFontNormalHuge)
+end
+
+-- The game showed a Hardcore death notice: it takes the theme's title font and its red (the
+-- game still grows the line to its own height as it fades in).
+function GA.OnWarningEvent(frame, event)
+  local fs = event == "HARDCORE_DEATHS" and newestWarning(frame)
+  if not fs then return end
+  fs.fuiDeath = true
+  T.ApplyRole(fs, "title")
+  T.Color(fs, "bad")
+end
+
+-- Restyles the game's Hardcore death notices (HARDCORE_DEATHS, shown by its raid warning frame).
+local function watchDeaths()
+  local f = _G.RaidWarningFrame
+  if type(f) ~= "table" or type(f.GetSortedMessages) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(f, "AddMessage", GA.OnWarning)
+  f:HookScript("OnEvent", GA.OnWarningEvent)
+end
+
+-- Rares nearby -----------------------------------------------------------------------------------
+
+-- Minimap marks of rares (and rare elites); treasures and the rest have others.
+GA.RARE_ATLAS = { VignetteKill = true, VignetteKillElite = true }
+-- The rares already announced this session, by their mark's GUID.
+GA.seenRares = {}
+
+-- The rare a minimap mark shows (its name), or nil for another mark, a dead one or a hidden one.
+function GA.RareName(guid)
+  local info = C_VignetteInfo.GetVignetteInfo(guid)
+  if type(info) ~= "table" or ns.IsSecret(info.atlasName) or ns.IsSecret(info.name) then return nil end
+  if GA.RARE_ATLAS[info.atlasName] and info.isDead ~= true then return info.name end
+end
+
+-- A mark came onto (or left) the minimap: a rare's, out of combat and new, is announced.
+function GA.OnVignette(_, guid, onMinimap)
+  if not GA.settings.rares or onMinimap ~= true or ns.IsSecret(guid) or GA.seenRares[guid] or ns.InCombat() then return end
+  local name = GA.RareName(guid)
+  if not name then return end
+  GA.seenRares[guid] = true
+  PlaySound(SOUNDKIT.RAID_WARNING)
+  ns.Chat("Rare nearby: " .. name)
+end
+
 -- The talking head's part of the game loaded: it can be restyled now.
 function GA.OnLoaded(_, addon)
   if addon == "Blizzard_TalkingHeadUI" then talkingHead(GA.settings.talkingHead) end
@@ -87,6 +152,8 @@ end
 function GA.Enable(settings)
   GA.settings = settings
   ns.On("ADDON_LOADED", GA.OnLoaded)
+  if type(C_VignetteInfo) == "table" then ns.On("VIGNETTE_MINIMAP_UPDATED", GA.OnVignette) end
+  if settings.hardcore then watchDeaths() end
   local loc = _G.LossOfControlFrame
   if settings.lossOfControl and type(loc) == "table" then
     GA.SkinLossOfControl(loc)

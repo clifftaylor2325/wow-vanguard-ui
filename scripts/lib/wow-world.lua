@@ -126,6 +126,12 @@ Enum = {
 STANDARD_TEXT_FONT = "Fonts\\FRIZQT__.TTF"
 UISpecialFrames = {}
 
+-- securecallfunction: calls fn with the arguments (the bundled
+-- CallbackHandler-1.0 dispatches callbacks through it).
+function securecallfunction(fn, ...)
+  return fn(...)
+end
+
 -- hooksecurefunc: runs fn after the function, as FrameXML does. A global name
 -- hooks _G; a missing function is left alone.
 function hooksecurefunc(t, name, fn)
@@ -945,15 +951,16 @@ C_SwingTimer = {
 
 -- Items, bags and money ------------------------------------------------------------------------
 -- world.bags[bag] = { [slot] = item }, item = { itemID, name, icon, count,
--- quality, link, sellPrice, junk }. world.items[itemID] gives GetItemInfo.
+-- quality, link, sellPrice, junk }. world.items[itemID] gives GetItemInfo
+-- (and GetItemInfoInstant: classID, subClassID; quest = true for a quest item).
 
 world.money = 123456
 world.bags = { [0] = {}, {}, {}, {}, {} }
 world.bagSizes = { [0] = 16, 16, 16, 16, 16 }
 world.items = {
-  [6948] = { name = "Hearthstone", icon = "Interface\\Icons\\INV_Misc_Rune_01", quality = 1, sellPrice = 0 },
-  [159] = { name = "Refreshing Spring Water", icon = "Interface\\Icons\\INV_Drink_07", quality = 1, sellPrice = 5 },
-  [2589] = { name = "Linen Cloth", icon = "Interface\\Icons\\INV_Fabric_Linen_01", quality = 1, sellPrice = 13 },
+  [6948] = { name = "Hearthstone", icon = "Interface\\Icons\\INV_Misc_Rune_01", quality = 1, sellPrice = 0, classID = 15, subClassID = 0 },
+  [159] = { name = "Refreshing Spring Water", icon = "Interface\\Icons\\INV_Drink_07", quality = 1, sellPrice = 5, classID = 0, subClassID = 5 },
+  [2589] = { name = "Linen Cloth", icon = "Interface\\Icons\\INV_Fabric_Linen_01", quality = 1, sellPrice = 13, classID = 7, subClassID = 5 },
 }
 
 -- Copper in the purse.
@@ -975,6 +982,12 @@ function C_Item.GetItemInfo(key)
   if not item then return nil end
   local link = "|cffffffff|Hitem:" .. id .. "|h[" .. item.name .. "]|h|r"
   return item.name, link, item.quality or 1, item.level or 1, 1, item.type or "Miscellaneous", item.subType or "Junk", item.stack or 20, item.equipLoc or "", item.icon, item.sellPrice or 0, 15, 0, 0, 0, 0, item.quality == 0
+end
+-- itemID, type, subType, equipLoc, icon, classID, subClassID of a known item (nothing for one the client doesn't know).
+function C_Item.GetItemInfoInstant(key)
+  local id, item = itemOf(key)
+  if not item then return end
+  return id, item.type or "Miscellaneous", item.subType or "Junk", item.equipLoc or "", item.icon, item.classID or 15, item.subClassID or 0
 end
 -- How many of an item are in the bags.
 function C_Item.GetItemCount(key)
@@ -1007,6 +1020,12 @@ C_Container = {
     if not it then return nil end
     local _, link, quality, _, _, _, _, _, _, icon = C_Item.GetItemInfo(it.itemID)
     return { iconFileID = it.icon or icon, stackCount = it.count or 1, quality = it.quality or quality, hyperlink = it.link or link, itemID = it.itemID, hasNoValue = (world.items[it.itemID] or {}).sellPrice == 0, isLocked = false }
+  end,
+  -- Whether a slot holds a quest item (the item's quest = true) and the quest it starts (questID).
+  GetContainerItemQuestInfo = function(bag, slot)
+    local it = (world.bags[bag] or {})[slot]
+    local item = it and world.items[it.itemID] or {}
+    return { isQuestItem = item.quest == true, questID = item.questID, isActive = false }
   end,
   -- Uses (sells, at a merchant) an item; recorded.
   UseContainerItem = function(bag, slot) world.usedItems = world.usedItems or {} table.insert(world.usedItems, { bag, slot }) end,

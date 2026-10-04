@@ -205,6 +205,72 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   expect(off.eval("return next(__filters) == nil"), "links switched off: no filters").toBe(true);
 });
 
+// TEST-ONLY chat windows as the game has them: TransformMessages rewrites the
+// lines a window holds, the wheel can jump, temporary windows join CHAT_FRAMES.
+const CHAT_LINES_ENV = `
+  CHAT_FRAMES = { "ChatFrame1", "ChatFrame2" }
+  for i = 1, 2 do
+    local f = _G["ChatFrame" .. i]
+    f.TransformMessages = function(self, pred, transform)
+      for n, m in ipairs(self.__messages or {}) do if pred(m) then self.__messages[n] = transform(m, 1, 1, 1) end end
+    end
+    f.ScrollToTop = function() __scrolled = "top" end
+    f.ScrollToBottom = function() __scrolled = "bottom" end
+  end
+  local open = FCF_OpenTemporaryWindow
+  FCF_OpenTemporaryWindow = function(name) local f = open(name) CHAT_FRAMES[#CHAT_FRAMES + 1] = f:GetName() return f end
+`;
+// The last line chat window i holds.
+const lastLine = (addon, i = 1) => addon.eval(`local m = ChatFrame${i}.__messages return m[#m]`);
+
+it("chat: short channel names, live, never reading hidden lines", () => {
+  const addon = loggedIn(UI_ENV + CHAT_LINES_ENV);
+  const trade = "|Hchannel:channel:2|h[2. Trade - City]|h [TEST-ONLY Name]: wts";
+  addon.eval(`ChatFrame1:AddMessage("${trade}")`);
+  expect(lastLine(addon), "off by default: the game's channel names").toBe(trade);
+  addon.eval("ns.GetModule('ChatExtras').settings.shortChannels = true");
+  addon.eval(`ChatFrame1:AddMessage({ __secret = true }) ChatFrame1:AddMessage("${trade}")`);
+  expect([lastLine(addon), addon.eval("return issecretvalue(ChatFrame1.__messages[#ChatFrame1.__messages - 1])")], "switched on: [2. Trade - City] becomes [T], the link kept; a hidden line stays as it was")
+    .toEqual(["|Hchannel:channel:2|h[T]|h [TEST-ONLY Name]: wts", true]);
+  // A line with one channel tag, as the shortener leaves it.
+  const short = (label) => addon.eval(`return ns.GetModule('ChatExtras').ShortChannels("|Hchannel:X|h[${label}]|h hi")`);
+  expect(["Guild", "Raid Leader", "5. LookingForGroup", "1. General - TEST-ONLY Vale", "6. testonly"].map(short), "the capitals of the name, or its first letter")
+    .toEqual(["|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[RL]|h hi", "|Hchannel:X|h[LFG]|h hi", "|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[t]|h hi"]);
+  expect(addon.eval('ChatFrame2:AddMessage("plain TEST-ONLY line") local m = ChatFrame2.__messages return m[#m]'), "a line without a channel tag is left alone").toBe("plain TEST-ONLY line");
+  addon.eval('FCF_OpenTemporaryWindow("TestOnly")');
+  expect(addon.eval("return ChatFrameTempTestOnly.fuiWatched"), "a whisper window that opens later is followed too").toBe(true);
+});
+
+it("chat: Ctrl + mouse wheel jumps to the top or bottom", () => {
+  const addon = loggedIn(UI_ENV + CHAT_LINES_ENV);
+  // The wheel over the main chat window, then where it jumped (or "none").
+  const wheel = (delta) => { addon.eval("__scrolled = nil"); addon.wheel("ChatFrame1", delta); return addon.eval('return __scrolled or "none"'); };
+  expect(wheel(1), "without Ctrl the wheel is the game's").toBe("none");
+  addon.keys({ ctrl: true });
+  expect([wheel(1), wheel(-1)], "with Ctrl: up to the top, down to the bottom").toEqual(["top", "bottom"]);
+  addon.eval("ns.GetModule('ChatExtras').settings.ctrlScroll = false");
+  expect(wheel(1), "switched off, nothing jumps").toBe("none");
+});
+
+it("chat: the game's timestamps and class-colored names, from /fui", () => {
+  const addon = loggedIn(UI_ENV + CLICK_LUA + `C_CVar = nil
+    TIMESTAMP_FORMAT_HHMM_24HR, TIMESTAMP_FORMAT_HHMM_AMPM = "%H:%M ", "%I:%M %p "
+    TimeUtil = { BetterDate = function(format) return "TEST-ONLY " .. format end }
+    time = function() return 1292426852 end`);
+  expect(addon.eval("return ns.GetModule('ChatExtras').TimestampChoices()"), "off, then each format this client has, shown as the game shows it")
+    .toEqual([["none", "Off"], ["%H:%M ", "TEST-ONLY %H:%M "], ["%I:%M %p ", "TEST-ONLY %I:%M %p "]]);
+  addon.eval('ns.Options.Show("more")');
+  addon.eval('__click("Chat timestamps")');
+  expect(addon.eval('return GetCVar("showTimestamps")'), "the row sets the game's own timestamp setting").toBe("%H:%M ");
+  addon.eval('__click("Class-colored names")');
+  expect(addon.eval('return GetCVar("chatClassColorOverride")'), "the game's class-color setting: from per chat type to always").toBe("0");
+  addon.eval('__click("Class-colored names")');
+  expect(addon.eval('return GetCVar("chatClassColorOverride")'), "then never").toBe("1");
+  const bare = loggedIn('TimeUtil = nil TIMESTAMP_FORMAT_HHMM = "%I:%M " C_CVar = nil GetCVar = nil SetCVar = nil');
+  expect(bare.eval(`local CX = ns.GetModule("ChatExtras") local get, set = CX.CVarSetting("showTimestamps", function(v) return v or "none" end)
+    set("%I:%M ") return { get(), CX.TimestampChoices()[2][2] }`), "a client without CVars or the game's formatter: nothing breaks, the format shows as it is").toEqual(["none", "%I:%M "]);
+});
+
 // TEST-ONLY addon minimap buttons (the LibDBIcon kind) and one that isn't.
 const DRAWER_ENV = `
   hooksecurefunc = function(t, name, fn) if type(t) == "string" then return end local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
@@ -893,6 +959,69 @@ it("game alerts: a talking head that loads later is restyled once when its part 
   expect(addon.eval("return ForeverUI_TalkingHeadFrameSpot == __spot"), "a second load event makes no second spot").toBe(true);
 });
 
+// TEST-ONLY raid warning frame: one message line the game reuses (as its pool does), numbered as messages come.
+const WARNING_ENV = `
+  GameFontNormalHuge = "GameFontNormalHuge"
+  RaidWarningFrame = CreateFrame("Frame", "RaidWarningFrame", UIParent)
+  RaidWarningFrame.line, RaidWarningFrame.counter = RaidWarningFrame:CreateFontString(), 0
+  function RaidWarningFrame:AddMessage(text) self.counter = self.counter + 1 self.line:SetText(text) self.line:SetTextColor(1, 0.2, 0.2) self.line.messageOrder = self.counter end
+  function RaidWarningFrame:GetSortedMessages() return { self:CreateFontString(), self.line } end
+  RaidWarningFrame:RegisterEvent("HARDCORE_DEATHS") RaidWarningFrame:RegisterEvent("CHAT_MSG_RAID_WARNING")
+  RaidWarningFrame:SetScript("OnEvent", function(self, event, text) self:AddMessage(text) end)
+`;
+
+it("game alerts: Hardcore death notices take the theme font and red; a reused line gets the game's font back", () => {
+  const addon = loggedIn(WARNING_ENV);
+  // The message line: its font face, color, the game font object it was given, and the death mark.
+  const line = () => addon.eval("local l = RaidWarningFrame.line return { font = l.__font and l.__font[1], color = l.__textColor, template = l.__template or false, death = l.fuiDeath or false }");
+  addon.fire("HARDCORE_DEATHS", "TEST-ONLY Bob has fallen.");
+  const death = line();
+  expect([death.font, isTok(addon, death.color, "bad"), death.death], "a death notice: the theme's title font, the theme's red").toEqual([addon.eval('local f = UIParent:CreateFontString() ns.Theme.ApplyRole(f, "title") return f.__font[1]'), true, true]);
+  addon.fire("CHAT_MSG_RAID_WARNING", "TEST-ONLY Pull in 5");
+  expect([line().template, line().death], "the next raid warning on that line: the game's font again").toEqual(["GameFontNormalHuge", false]);
+  addon.fire("CHAT_MSG_RAID_WARNING", "TEST-ONLY Again");
+  expect(line().template, "a line that was never a death notice is left as it is").toBe("GameFontNormalHuge");
+  const off = loggedIn(WARNING_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { GameAlerts = { hardcore = false } } }" });
+  off.fire("HARDCORE_DEATHS", "TEST-ONLY Bob has fallen.");
+  expect(off.eval("return RaidWarningFrame.line.__font == nil"), "switched off: the game's own look").toBe(true);
+  expect(loggedIn("RaidWarningFrame = CreateFrame('Frame', 'RaidWarningFrame', UIParent)").eval("return ns.GetModule('GameAlerts').settings.hardcore"), "a frame without the game's message list is left alone").toBe(true);
+});
+
+// TEST-ONLY minimap marks: a rare, a treasure, a dead rare, a rare with a hidden name, a rare elite.
+const VIGNETTE_ENV = `
+  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  __vignettes = {
+    rare = { name = "TEST-ONLY Rare", atlasName = "VignetteKill", isDead = false }, chest = { name = "TEST-ONLY Chest", atlasName = "VignetteLoot" },
+    dead = { name = "TEST-ONLY Dead", atlasName = "VignetteKill", isDead = true }, hidden = { name = { __secret = true }, atlasName = "VignetteKill" },
+    elite = { name = "TEST-ONLY Elite", atlasName = "VignetteKillElite" },
+  }
+  C_VignetteInfo = { GetVignetteInfo = function(guid) return __vignettes[guid] end }
+`;
+
+it("game alerts: a rare nearby is announced with a sound and a chat line, out of combat, once (off until switched on)", () => {
+  const addon = loggedIn(VIGNETTE_ENV + CLICK_LUA);
+  // Rare lines in chat so far.
+  const rares = () => addon.chat().filter((l) => /Rare nearby/.test(l));
+  addon.fire("VIGNETTE_MINIMAP_UPDATED", "rare", true);
+  expect(rares(), "off until you switch it on").toEqual([]);
+  addon.slash("");
+  addon.eval('__click("Bars, map, chat")');
+  expect(addon.eval('return __click("A rare nearby")'), "the switch is under Bars, map, chat").toBe(true);
+  addon.fire("VIGNETTE_MINIMAP_UPDATED", "rare", true);
+  addon.fire("VIGNETTE_MINIMAP_UPDATED", "rare", true);
+  expect([rares().length, /Rare nearby: TEST-ONLY Rare$/.test(rares()[0]), addon.eval("return __wfgWorld.sounds[#__wfgWorld.sounds]")], "one line and the raid warning sound, once per rare").toEqual([1, true, "RAID_WARNING"]);
+  for (const guid of ["chest", "dead", "hidden", "nothing"]) addon.fire("VIGNETTE_MINIMAP_UPDATED", guid, true);
+  addon.fire("VIGNETTE_MINIMAP_UPDATED", "elite", false);
+  addon.eval('__wfgStub.fire("VIGNETTE_MINIMAP_UPDATED", { __secret = true }, true)');
+  expect(rares().length, "a treasure, a dead rare, a hidden name, an unknown mark, one leaving the map, a hidden mark: nothing").toBe(1);
+  setCombat(addon, true);
+  addon.fire("VIGNETTE_MINIMAP_UPDATED", "elite", true);
+  expect(rares().length, "not in a fight").toBe(1);
+  setCombat(addon, false);
+  addon.fire("VIGNETTE_MINIMAP_UPDATED", "elite", true);
+  expect(rares().length, "a rare elite after the fight").toBe(2);
+});
+
 // TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
 const DPS_ENV = `
   __dps = { combatSources = { { isLocalPlayer = false, amountPerSecond = 999 }, { isLocalPlayer = true, amountPerSecond = 1234.5 } } }
@@ -925,6 +1054,26 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
   const bare = loggedIn(UNITS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { InfoStrip = { dps = true } } }" });
   bare.fire("PLAYER_REGEN_ENABLED");
   expect(block(bare, "dps").shown, "a client without the damage meter shows nothing").toBe(false);
+});
+
+it("the info strip: your place in the last fight's DPS, in a group", () => {
+  const addon = loggedIn(UNITS_ENV + DPS_ENV + CLICK_LUA);
+  expect(block(addon, "rank").shown, "off until you turn it on").toBe(false);
+  addon.slash("");
+  addon.eval('__click("Bars, map, chat")');
+  addon.eval(`__click("Your place in the last fight's DPS")`);
+  expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "text2"), addon.eval("return ForeverUI_InfoStrip:GetHeight()")], "second of two, on the fourth row").toEqual(["#2 of 2", true, 68]);
+  addon.eval("__dps.combatSources = { __dps.combatSources[2], __dps.combatSources[1], { isLocalPlayer = false } }");
+  addon.fire("PLAYER_REGEN_ENABLED");
+  expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "gold")], "at the top of three, in gold").toEqual(["#1 of 3", true]);
+  // Ends a fight after lua and says whether the place shows.
+  const shown = (lua) => { addon.eval(lua); addon.fire("DAMAGE_METER_RESET"); return block(addon, "rank").shown; };
+  expect([shown("__dps.combatSources = { __dps.combatSources[1] }"), shown("__dps.combatSources = { { isLocalPlayer = false }, { isLocalPlayer = false } }"), shown("__dps = { __secret = true }")],
+    "alone, not in the list, or a hidden fight: nothing shows").toEqual([false, false, false]);
+  const bare = loggedIn(UNITS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { InfoStrip = { rank = true } } }" });
+  bare.eval("Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } } C_DamageMeter = { GetCombatSessionFromType = function() __asked = true return { combatSources = { { isLocalPlayer = true }, {} } } end }");
+  bare.fire("PLAYER_REGEN_ENABLED");
+  expect([block(bare, "rank").shown, bare.eval("return __asked == nil")], "a client whose meter had no enums at login is not asked").toEqual([false, true]);
 });
 
 // TEST-ONLY group extras: a raid tank (raid1) targeting the boar, and a party pet targeting nothing.
@@ -1067,6 +1216,27 @@ it("the info strip: ammo, and clients that can't answer", () => {
   expect(block(hunter, "ammo").shown, "a hidden class shows nothing").toBe(false);
   const bare = loggedIn(UNITS_ENV + "GetMoney = function() return { __secret = true } end GetInventoryItemDurability = nil C_Container = nil GetFramerate = nil GetNetStats = nil");
   expect(["durability", "bags", "system", "gold", "clock"].map((k) => block(bare, k).shown), "no answer, no block").toEqual([false, false, false, false, false]);
+});
+
+it("the info strip: a warlock's soul shards, across the bags and the reagent bag", () => {
+  const SHARDS = `__units.player.class = "WARLOCK" issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+    __wfgWorld.bags[1][3] = { itemID = 6265 } __wfgWorld.bags[2][1] = { itemID = 2589, count = 5 }
+    __wfgWorld.bags[5], __wfgWorld.bagSizes[5] = { [2] = { itemID = 6265, count = 2 } }, 4
+`;
+  const addon = loggedIn(UNITS_ENV + SHARDS + CLICK_LUA);
+  expect([block(addon, "shards").text, block(addon, "ammo").shown], "three shards (one in a bag, two in the reagent bag), where ammo would be").toEqual(["shards 3", false]);
+  addon.eval("__wfgWorld.bags[1][3] = nil __wfgWorld.bags[5][2] = nil");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect(block(addon, "shards").text === "shards 0" && isTok(addon, block(addon, "shards").color, "bad"), "none left is red").toBe(true);
+  addon.eval("__wfgWorld.bags[1][3] = { itemID = { __secret = true } }");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect(block(addon, "shards").text, "a hidden item doesn't count").toBe("shards 0");
+  addon.slash("");
+  addon.eval('__click("Bars, map, chat")');
+  expect(addon.eval('return __click("Soul shards (warlocks)")') && block(addon, "shards").shown, "a switch turns it off at once").toBe(false);
+  expect(block(loggedIn(UNITS_ENV + SHARDS + "C_Container.GetContainerItemInfo = nil"), "shards").shown, "a client that can't list bag items shows nothing").toBe(false);
+  expect(block(loggedIn(UNITS_ENV), "shards").shown, "a mage carries no shards").toBe(false);
+  expect(block(loggedIn(UNITS_ENV + 'UnitClass = function() return "x", { __secret = true } end'), "shards").shown, "a hidden class shows nothing").toBe(false);
 });
 
 // TEST-ONLY trainer: two services you can learn (5s and 20s), one you can't yet, one learned; 22s on hand.
@@ -1755,6 +1925,36 @@ it("Edit Mode: a game frame ForeverUI hides or replaces gets no handle, every ot
   expect(handles(kept).slice(0, 2), "with the game's bars and unit frames kept, their handles stay").toEqual([true, true]);
   const plain = loggedIn(UNITS_ENV + TIDY_ENV + RAID_ENV + SYSTEMS_ENV + "hooksecurefunc = nil");
   expect(plain.eval("return PlayerFrame.Selection:IsShown()"), "a client without hooksecurefunc leaves handles alone").toBe(true);
+});
+
+// TEST-ONLY: a client with the Cooldown Manager (switched off), and a cooldown on the essential row's item.
+const CDM_ENV = `C_CooldownViewer = { IsCooldownViewerAvailable = function() return true end }
+  local i = EssentialCooldownViewer.items[1] i.Cooldown = CreateFrame("Cooldown", nil, i)
+`;
+
+it("the game's tools: a switch shows the Cooldown Manager's essential row between the frames, timers in the theme font", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + CDM_ENV + CLICK_LUA);
+  const timer = addon.eval("local fs = EssentialCooldownViewer.items[1].Cooldown:GetCountdownFontString() return { fs.__font[2], fs.__font[3] }");
+  expect(timer, "the cooldown timer in the theme's timer font").toEqual([addon.eval('return ns.Theme.RoleSize("cooldown")'), "OUTLINE"]);
+  expect(addon.eval('return GetCVar("cooldownViewerEnabled") == nil'), "off by default: the game's setting is left alone").toBe(true);
+  addon.slash("");
+  addon.eval('__click("Bars, map, chat")');
+  addon.eval(`__click("Show the game's Cooldown Manager")`);
+  expect(addon.eval('return GetCVar("cooldownViewerEnabled")'), "ticked: the game's Cooldown Manager is on").toBe("1");
+  addon.eval(`__click("Show the game's Cooldown Manager")`);
+  expect(addon.eval('return GetCVar("cooldownViewerEnabled")'), "unticked: off again").toBe("0");
+  const on = loggedIn(UNITS_ENV + TOOLS_ENV + CDM_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { GameTools = { essential = true } } }" });
+  expect([on.eval('return GetCVar("cooldownViewerEnabled")'), chatHas(on, /Cooldown Manager is off/), on.eval("return EssentialCooldownViewer.__points.CENTER.rel == ForeverUI_EssentialCooldownViewerSpot")],
+    "switched on at login: on, no hint, the essential row on its spot between the frames").toEqual(["1", false, true]);
+  const screen = on.screen();
+  expect(screen.map((f) => f.name)).toEqual(expect.arrayContaining(["ForeverUI_EssentialCooldownViewerSpot", "ForeverUI_player", "ForeverUI_target"]));
+  const bad = [];
+  // A game frame filling its own spot (ForeverUI_<name>Spot) is meant to cover it.
+  const ownSpot = (a, b) => b.name === `ForeverUI_${a.name}Spot` || a.name === `ForeverUI_${b.name}Spot`;
+  for (const a of screen) for (const b of screen) if (a.name < b.name && !ownSpot(a, b) && a.rect.left < b.rect.right && b.rect.left < a.rect.right && a.rect.bottom < b.rect.top && b.rect.bottom < a.rect.top) bad.push(`${a.name} x ${b.name}`);
+  expect(bad, "with it on, nothing in the layout covers anything else").toEqual([]);
+  const old = loggedIn(UNITS_ENV + TOOLS_ENV + "C_CooldownViewer = nil\n", { savedVariables: "ForeverUIDB.profiles = { Default = { GameTools = { essential = true } } }" });
+  expect(old.eval('return GetCVar("cooldownViewerEnabled") == nil'), "a client without the Cooldown Manager is left alone").toBe(true);
 });
 
 it("the game's tools: one hint when the Cooldown Manager is off", () => {

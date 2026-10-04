@@ -185,6 +185,9 @@ end
 -- Dropdown -----------------------------------------------------------------------------------
 
 local menu
+-- The most items a dropdown menu shows at once; the mouse wheel scrolls a
+-- longer list (every font other addons share, say).
+local MENU_ROWS = 16
 
 -- Hides the open dropdown menu.
 function W.CloseMenu()
@@ -205,17 +208,6 @@ local function menuItem(i)
   return b
 end
 
--- The shared menu frame, built once: a raised panel above everything.
-local function menuFrame()
-  if menu then return menu end
-  menu = T.Panel(CreateFrame("Frame", "ForeverUI_Menu", UIParent), { raised = true, shadow = true })
-  menu:SetFrameStrata("FULLSCREEN_DIALOG")
-  menu:EnableMouse(true)
-  menu.items = {}
-  menu:Hide()
-  return menu
-end
-
 -- Fills menu item i with a choice; picking it runs pick(value) and closes the menu.
 local function fillItem(i, choice, current, pick)
   menu.items[i] = menu.items[i] or menuItem(i)
@@ -227,16 +219,51 @@ local function fillItem(i, choice, current, pick)
   b:Show()
 end
 
--- Opens the menu under a dropdown with its choices.
+-- Fills the menu's items from its choices, from the one after menu.offset.
+local function fillMenu()
+  local d, shown = menu.owner, math.min(#menu.choices, MENU_ROWS)
+  for i = 1, shown do fillItem(i, menu.choices[menu.offset + i], d.get(), d.set) end
+  for i = shown + 1, #menu.items do menu.items[i]:Hide() end
+  menu:SetSize(d:GetWidth(), shown * 22 + 2)
+end
+
+-- Scrolls a long menu one item per wheel step, within its list.
+local function scrollMenu(_, delta)
+  menu.offset = math.max(0, math.min(#menu.choices - MENU_ROWS, menu.offset - delta))
+  fillMenu()
+end
+
+-- The shared menu frame, built once: a raised panel above everything.
+local function menuFrame()
+  if menu then return menu end
+  menu = T.Panel(CreateFrame("Frame", "ForeverUI_Menu", UIParent), { raised = true, shadow = true })
+  menu:SetFrameStrata("FULLSCREEN_DIALOG")
+  menu:EnableMouse(true)
+  menu:SetClampedToScreen(true)
+  menu:EnableMouseWheel(true)
+  menu:SetScript("OnMouseWheel", scrollMenu)
+  menu.items = {}
+  menu:Hide()
+  return menu
+end
+
+-- How far a menu starts scrolled: enough to show the current choice.
+local function startOffset(choices, current)
+  for i, c in ipairs(choices) do
+    if c[1] == current then return math.max(0, i - MENU_ROWS) end
+  end
+  return 0
+end
+
+-- Opens the menu under a dropdown with its choices (scrolled to the current one).
 local function openMenu(d)
   menuFrame()
-  local choices = type(d.choices) == "function" and d.choices() or d.choices
-  for i, choice in ipairs(choices) do fillItem(i, choice, d.get(), d.set) end
-  for i = #choices + 1, #menu.items do menu.items[i]:Hide() end
-  menu:SetSize(d:GetWidth(), #choices * 22 + 2)
+  menu.owner = d
+  menu.choices = type(d.choices) == "function" and d.choices() or d.choices
+  menu.offset = startOffset(menu.choices, d.get())
+  fillMenu()
   menu:ClearAllPoints()
   menu:SetPoint("TOPLEFT", d, "BOTTOMLEFT", 0, -2)
-  menu.owner = d
   menu:Show()
 end
 

@@ -22,6 +22,11 @@ table.maxn = table.maxn or function(t)
   return n
 end
 string.gfind = string.gfind or string.gmatch
+-- 5.1's getfenv: every function the addon and its libraries load runs in the
+-- global table (the bundled LibSharedMedia-3.0 reads getfenv(0)).
+getfenv = getfenv or function() return _G end
+-- The game's bit library (LibSharedMedia-3.0 reads bit.band).
+bit = bit or { band = function(a, b) return a & b end }
 
 -- A whole float as the integer 5.1 would print; anything else as is.
 local function wholeNumber(v)

@@ -7,7 +7,7 @@ local chat = ns.Chat
 
 local HELP = {
   "A from-scratch UI suite. /fui opens the options window; /fui <command>:",
-  "setup                first-run setup again: layout, look, then move things",
+  "setup                first-run setup again: layout, screen, look, then move things",
   "unlock | lock        drag handles on every ForeverUI frame; click one, then arrow keys nudge (Shift: 10 px)",
   "reset <frame|all>    put a frame (or every frame) back at its default spot",
   "frames               list the movable frames",
@@ -25,6 +25,7 @@ local HELP = {
   "quests               open or close ForeverUI's quest log (the game's quest log key does too)",
   "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
   "binds                this spec's click-casting and hover-key bindings (set them in /fui > Click casting)",
+  "keybind              keybind mode: hover an action button and press a key to bind it; Escape leaves",
   "status               version, profile, modules, skins, work waiting on combat, what the client has",
   "factionart           which of the game's own faction pictures this client has",
   "errors [clear]       the errors ForeverUI caught this session, with stacks and counts (for a bug report); clear empties the list",
@@ -212,13 +213,14 @@ local function exportCommand(rest)
   ns.ShowText("ForeverUI export (" .. (rest ~= "" and rest or "profile " .. ns.ProfileName()) .. ")  Ctrl+C to copy", text)
 end
 
--- /fui import: a box to paste into.
+-- /fui import: a box to paste into. A whole profile that carries its UI scale asks
+-- whether to use it first; then the reload is offered.
 local function importCommand()
   ns.AskText("Paste a ForeverUI string, then Import", function(text)
-    local done, err = ns.ImportProfile(text)
-    if not done then return chat("Import failed: " .. err .. ".") end
+    local done, detail = ns.ImportProfile(text)
+    if not done then return chat("Import failed: " .. detail .. ".") end
     ns.HideText()
-    ns.OfferReload(done)
+    ns.OfferDisplay(detail, function() ns.OfferReload(done) end)
   end)
 end
 
@@ -228,6 +230,7 @@ ns.ImportDialog = importCommand
 local function bindsCommand()
   local CC = ns.GetModule("ClickCast")
   local list = CC and CC.Bindings() or {}
+  if CC and CC.UsesGame() then chat("The game's click bindings are in use; ForeverUI's below rest until you switch back.") end
   chat(#list == 0 and "No click-casting bindings for this spec. /fui > Click casting to add some." or "Click casting (this spec):")
   for _, b in ipairs(list) do
     chat("  " .. CC.KeyText(b.key) .. "  ->  " .. CC.ActionText(b))
@@ -358,6 +361,7 @@ local COMMANDS = {
   import = importCommand,
   spec = specCommand,
   binds = bindsCommand,
+  keybind = function() ns.GetModule("ActionBars").ToggleKeybindMode() end,
   copy = function() ns.GetModule("ChatExtras").ShowCopy() end,
   quests = function() local QL = ns.GetModule("QuestLog") if QL.frame then QL.Toggle() else ns.Chat("ForeverUI's quest log is off (/fui > Quests).") end end,
   stock = function(rest) ns.GetModule("Errands").StockCommand(rest) end,

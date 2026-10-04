@@ -3,14 +3,15 @@
 -- item slots with thin borders in each item's quality color, and the search
 -- boxes in the theme. The windows and their item buttons stay the client's
 -- own, so using, dragging, searching and sorting items work exactly as
--- before; this module only changes how they look.
+-- before; this module only changes how they look, and (Modules/BagSections.lua)
+-- where the combined bag's slots sit: in sections by kind of item.
 
 local ADDON, ns = ...
 
 local T = ns.Theme
 
 local BG = ns.Module("Bags", {
-  defaults = { combined = true, bank = true },
+  defaults = { combined = true, bank = true, sections = true },
 })
 
 -- Item button regions whose art is faded (the icon and texts stay). Not the
@@ -173,8 +174,8 @@ function BG.AddSort(frame)
 end
 
 -- Module entry point (Core/Modules.lua): the combined setting applied to the
--- client when it changes, the window skinned on every show, and slots the game
--- adds (a bag swapped in) when it fills them.
+-- client when it changes, the window skinned on every show, slots the game
+-- adds (a bag swapped in) when it fills them, and its slots in sections.
 function BG.Enable(settings)
   syncCombined(settings)
   if settings.bank then watchBank() end
@@ -185,4 +186,5 @@ function BG.Enable(settings)
   if type(frame.UpdateItems) == "function" and type(hooksecurefunc) == "function" then
     hooksecurefunc(frame, "UpdateItems", skinItems)
   end
+  BG.WatchSections(frame)
 end

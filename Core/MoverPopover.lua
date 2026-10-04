@@ -1,6 +1,6 @@
 -- Unlock mode's popover: right-click a frame's handle to set the screen
--- point it's anchored to and its exact offsets, or put it back where it
--- started. Changes save at once, like dragging does.
+-- point it's anchored to, its exact offsets, its scale and its opacity, or
+-- put it back as it started. Changes save at once, like dragging does.
 
 local ADDON, ns = ...
 
@@ -15,12 +15,20 @@ local POINTS = {
 
 local popover
 
--- Fills the popover from the mover's saved point and offsets.
+-- A number rounded to a whole one, as text.
+local function whole(v)
+  return tostring(math.floor(v + 0.5))
+end
+
+-- Fills the popover from the mover's saved point, offsets, scale and opacity (as percents).
 local function refresh()
   local point, _, x, y = ns.MoverPoint(popover.key)
+  local scale, alpha = ns.MoverLook(popover.key)
   popover.anchor:Refresh()
-  popover.x:SetText(tostring(math.floor(x + 0.5)))
-  popover.y:SetText(tostring(math.floor(y + 0.5)))
+  popover.x:SetText(whole(x))
+  popover.y:SetText(whole(y))
+  popover.scale:SetText(whole(scale * 100))
+  popover.alpha:SetText(whole(alpha * 100))
   popover.title:SetText(popover.label .. "  ·  " .. point)
 end
 
@@ -29,6 +37,15 @@ local function applyOffset(box)
   local v = tonumber(box:GetText() or "")
   local point, relPoint, x, y = ns.MoverPoint(popover.key)
   if v then ns.SetMoverPoint(popover.key, point, relPoint, box == popover.x and v or x, box == popover.y and v or y) end
+  box:ClearFocus()
+  refresh()
+end
+
+-- Saves a percent typed into the Scale or Opacity box (Enter): the box's setter
+-- clamps it to the allowed range; a bad number is ignored.
+local function applyPercent(box)
+  local v = tonumber(box:GetText() or "")
+  if v then box.apply(popover.key, v / 100) end
   box:ClearFocus()
   refresh()
 end
@@ -47,26 +64,36 @@ local function caption(text, y)
   return fs
 end
 
--- A number box on the right of a row at y; Enter saves it.
-local function offsetBox(y)
+-- A number box on the right of a row at y; Enter saves it (with onEnter).
+local function numberBox(y, onEnter)
   local box = W.Input(popover, 80)
   box:SetPoint("TOPRIGHT", -12, -y + 4)
-  box:SetScript("OnEnterPressed", applyOffset)
+  box:SetScript("OnEnterPressed", onEnter)
   return box
 end
 
--- The rows: anchor point, X and Y offsets.
+-- A percent box (scale or opacity) on a row at y; apply(key, value) saves it.
+local function percentBox(text, y, apply)
+  caption(text, y)
+  local box = numberBox(y, applyPercent)
+  box.apply = apply
+  return box
+end
+
+-- The rows: anchor point, X and Y offsets, scale and opacity.
 local function addRows()
   caption("Anchor", 42)
   popover.anchor = W.Dropdown(popover, POINTS, function() return (ns.MoverPoint(popover.key)) end, applyPoint, 130)
   popover.anchor:SetPoint("TOPRIGHT", -12, -38)
   caption("X offset", 74)
-  popover.x = offsetBox(74)
+  popover.x = numberBox(74, applyOffset)
   caption("Y offset", 104)
-  popover.y = offsetBox(104)
+  popover.y = numberBox(104, applyOffset)
+  popover.scale = percentBox("Scale %", 134, ns.SetMoverScale)
+  popover.alpha = percentBox("Opacity %", 164, ns.SetMoverAlpha)
 end
 
--- Reset (to the frame's default place) and Done.
+-- Reset (to the frame's default place, scale and opacity) and Done.
 local function addButtons()
   popover.done = W.Primary(popover, "Done", function() ns.CloseMoverPopover() end, 80)
   popover.done:SetPoint("BOTTOMRIGHT", -12, 12)
@@ -77,7 +104,7 @@ end
 -- The popover, built once: a raised panel over everything, kept on screen.
 local function build()
   popover = T.Panel(CreateFrame("Frame", "ForeverUI_MoverPopover", UIParent), { raised = true, shadow = true })
-  popover:SetSize(250, 176)
+  popover:SetSize(250, 236)
   popover:SetFrameStrata("FULLSCREEN_DIALOG")
   popover:SetClampedToScreen(true)
   popover:EnableMouse(true)

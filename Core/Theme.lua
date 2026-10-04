@@ -184,13 +184,20 @@ local function useClientFont(s)
   return s.font == "client" or CLIENT_FONT_LOCALES[locale] == true
 end
 
+-- The font a chosen name stands for: a font shared through LibSharedMedia
+-- (Core/SharedMedia.lua), a font path (older settings), or nil (its addon is gone).
+local function chosenFont(name)
+  return T.SharedPath("font", name) or (name:find("\\", 1, true) and name) or nil
+end
+
 -- The UI font path (bold: the SemiBold weight) and outline flag. Settings:
 -- font "" is the bundled Fira Sans Condensed, "client" the game's font,
--- anything else a font path.
+-- anything else a shared font's name; a name no longer shared falls back to Fira.
 function T.Font(bold)
   local s = T.Settings()
   if useClientFont(s) then return clientFont(), s.outline end
-  if s.font ~= "" then return s.font, s.outline end
+  local chosen = s.font ~= "" and chosenFont(s.font)
+  if chosen then return chosen, s.outline end
   return bold and T.FONTS.bold or T.FONTS.regular, s.outline
 end
 
@@ -368,12 +375,13 @@ end
 -- Bars ---------------------------------------------------------------------------------------
 
 -- The status bar texture the setting picks: the bundled Bar (Forever), the
--- calmer BarSoft (Soft), or flat.
+-- calmer BarSoft (Soft), flat, or a bar texture shared through LibSharedMedia
+-- by name (Forever when that name is no longer shared).
 function T.BarTexture()
   local pick = T.Settings().barTexture
   if pick == "flat" then return T.WHITE end
   if pick == "soft" then return T.Texture("BarSoft") end
-  return T.Texture("Bar")
+  return pick ~= "forever" and T.SharedPath("statusbar", pick) or T.Texture("Bar")
 end
 
 -- A soft spark (Media/Textures/Spark) on a bar's top layer, width units wide,
