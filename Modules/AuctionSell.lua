@@ -2,7 +2,8 @@
 -- the search queue, the scan and the slash commands): the sell slot and the
 -- item it takes (TakeItem, TakeCursor, or the game's own sell frame), the
 -- price check's results (Cheapest), the undercut rules and the price to ask
--- (Suggest), the auction length (Duration), the deposit, and Post.
+-- (Suggest), the auction length (Duration), the deposit, and Post; and the
+-- stack presets for vanilla (StackPreset).
 --
 -- Standing rules here: PostItem and PostCommodity run only inside Post's
 -- click; the only hook is a post-hook on the game's SetPostItem that reads
@@ -24,6 +25,36 @@ AH.SELL_LINES = { "Cheapest now", "7-day low", "Deposit", "Your price" }
 AH.ITEM, AH.COMMODITY, AH.DURATIONS = 1, 2, { "ONE", "TWO", "THREE" }
 -- The undercut rules as the sell card's segments.
 AH.UNDERCUT_CHOICES = { { "copper", "1c" }, { "silver", "1s" }, { "percent", "1%" }, { "match", "Match" } }
+
+-- Stack presets for vanilla: how many units go up in one auction by default, by item class and
+-- subclass ("class:subclass", as C_Item.GetItemInfoInstant gives them; Enum.ItemClass and
+-- Enum.ItemConsumableSubclass in ItemConstantsDocumentation.lua; the trade goods subclasses are not
+-- in the documentation, so they are the client's numbers: 5 cloth, 6 leather, 7 metal and stone,
+-- 9 herb). Cloth, ore, herbs 20, potions 5 and food 20 are the plan's "how vanilla players buy"
+-- (docs/handoff/AUCTION-PLAN.md, section 4); bars and leather (20) go with the other trade goods,
+-- elixirs, flasks and scrolls (5) with potions. Anything else goes up one at a time (AH.STACK_DEFAULT).
+AH.STACK_PRESETS = {
+  ["7:5"] = 20, -- Cloth: Linen to Runecloth, Mooncloth, Felcloth.
+  ["7:6"] = 20, -- Leather and hides.
+  ["7:7"] = 20, -- Metal and stone: ore, bars and stone.
+  ["7:9"] = 20, -- Herbs.
+  ["0:1"] = 5, -- Potions.
+  ["0:2"] = 5, -- Elixirs.
+  ["0:3"] = 5, -- Flasks.
+  ["0:4"] = 5, -- Scrolls.
+  ["0:5"] = 20, -- Food and drink.
+}
+AH.STACK_DEFAULT = 1
+
+-- Stack presets ------------------------------------------------------------------------------
+
+-- The preset stack size for an item (an ID or a link): its class and subclass's, else
+-- AH.STACK_DEFAULT (also for an item the client doesn't know, or a class it hides).
+function AH.StackPreset(item)
+  local _, _, _, _, _, class, sub = C_Item.GetItemInfoInstant(item)
+  class, sub = ns.PlainNumber(class), ns.PlainNumber(sub)
+  return class and sub and AH.STACK_PRESETS[class .. ":" .. sub] or AH.STACK_DEFAULT
+end
 
 -- Selling ------------------------------------------------------------------------------------
 

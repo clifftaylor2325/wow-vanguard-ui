@@ -608,6 +608,21 @@ it("hidden numbers and stray results", () => {
   expect(restrictedLog(addon)[0], "a hidden stack size posts one; an unknown length is the first").toEqual(["PostCommodity", true, "0:1", 1, 1, 300, "nil"]);
 });
 
+it("stack presets for vanilla: by item class and subclass, else one", () => {
+  const addon = loggedIn(AH_ENV + `
+    __wfgWorld.items[9001] = { name = "TEST-ONLY Potion", classID = 0, subClassID = 1 }
+    __wfgWorld.items[9002] = { name = "TEST-ONLY Elixir", classID = 0, subClassID = 2 }
+    __wfgWorld.items[9003] = { name = "TEST-ONLY Flask", classID = 0, subClassID = 3 }
+    __wfgWorld.items[9004] = { name = "TEST-ONLY Scroll", classID = 0, subClassID = 4 }
+    __wfgWorld.items[9005] = { name = "TEST-ONLY Leather", classID = 7, subClassID = 6 }
+    __wfgWorld.items[9006] = { name = "TEST-ONLY Ore", classID = 7, subClassID = 7 }
+    __wfgWorld.items[9007] = { name = "TEST-ONLY Herb", classID = 7, subClassID = 9 }
+    __wfgWorld.items[9008] = { name = "TEST-ONLY Dust", classID = 7, subClassID = 12 }
+    __wfgWorld.items[9009] = { name = "TEST-ONLY Hidden", classID = __wfgWorld.secret(7), subClassID = 5 }`);
+  const presets = addon.eval(`local out = {} for i, id in ipairs({ 2589, 159, 9001, 9002, 9003, 9004, 9005, 9006, 9007, 9008, 6948, 4242, 9009, "item:2589" }) do out[i] = ${HELPER}.StackPreset(id) end return out`);
+  expect(presets, "cloth, food, potion, elixir, flask, scroll, leather, ore, herb 20/5; dust, a hearthstone, an unknown item, a hidden class 1; a link works").toEqual([20, 20, 5, 5, 5, 5, 20, 20, 20, 1, 1, 1, 1, 20]);
+});
+
 // Your auctions ------------------------------------------------------------------------------
 
 // TEST-ONLY auctions of yours: 5 dust at 1s 50c a unit, a blade at 40s, and three the check
