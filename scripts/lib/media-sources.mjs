@@ -93,25 +93,51 @@ export const TEXTURES = {
 
 // Icons -------------------------------------------------------------------------------------
 
-// Menu and control icons as shapes on a 16-unit grid (drawn at 32 px, shown at 16).
+// An icon's stroke, in grid units: two pixels where icons are shown (16 px).
+const STROKE = 2;
+
+// Straight strokes through points, STROKE wide (or w). A level or upright
+// segment is a box with square ends, so with its points on whole grid units
+// it covers whole pixels at 16 px instead of smearing across two; a slanted
+// one is a round-capped line.
+function crisp(points, closed = false, w = STROKE) {
+  const pts = closed ? [...points, points[0]] : points;
+  return pts.slice(1).map(([x1, y1], i) => {
+    const [x0, y0] = pts[i];
+    if (x0 !== x1 && y0 !== y1) return line(x0, y0, x1, y1, w);
+    return box(Math.min(x0, x1) - w / 2, Math.min(y0, y1) - w / 2, Math.max(x0, x1) + w / 2, Math.max(y0, y1) + w / 2);
+  });
+}
+
+// A rectangle's outline through its corners, square-cornered (see crisp).
+function rect(x0, y0, x1, y1, w = STROKE) {
+  return crisp([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], true, w);
+}
+
+// Menu and control icons as shapes on a 16-unit grid (drawn at 32 px, shown
+// at 16, where one unit is one pixel). Straight strokes are two units wide on
+// whole units, so they cover whole pixels; slanted ones run half a unit off the
+// grid, which lands each step of a 45-degree stroke on whole pixels too.
 const ICON_SHAPES = {
-  General: [line(2, 4, 14, 4), line(2, 8, 14, 8), line(2, 12, 14, 12), box(9.5, 2.5, 11.5, 5.5), box(4.5, 6.5, 6.5, 9.5), box(11.5, 10.5, 13.5, 13.5)],
-  Modules: [frame(2.5, 2.5, 7, 7), frame(9, 2.5, 13.5, 7), frame(2.5, 9, 7, 13.5), frame(9, 9, 13.5, 13.5)],
-  UnitFrames: [frame(1.5, 4.5, 14.5, 9.5), box(3, 6, 10, 8), line(1.5, 12, 10.5, 12)],
-  RaidFrames: [[2.5, 6], [7, 10.5], [11.5, 14.5]].flatMap(([y0, y1]) => [frame(1.5, y0, 6.5, y1, 1.2), frame(9.5, y0, 14.5, y1, 1.2)]),
-  Healing: [path([[6, 1.5], [10, 1.5], [10, 6], [14.5, 6], [14.5, 10], [10, 10], [10, 14.5], [6, 14.5], [6, 10], [1.5, 10], [1.5, 6], [6, 6]], 1.5, true)],
-  ClickCasting: [frame(4, 1.5, 12, 14.5, 1.5, 4), line(8, 1.5, 8, 6.5), line(4, 6.5, 12, 6.5)],
-  ActionBars: [frame(1.5, 5.5, 5.5, 9.5, 1.3), frame(6, 5.5, 10, 9.5, 1.3), frame(10.5, 5.5, 14.5, 9.5, 1.3), line(1.5, 12.5, 14.5, 12.5)],
-  Nameplates: [line(4, 3.5, 12, 3.5), frame(1.5, 6.5, 14.5, 10.5), box(3, 8, 9, 9), line(1.5, 13, 10.5, 13)],
-  Tooltips: [path([[1.5, 2.5], [14.5, 2.5], [14.5, 11.5], [8, 11.5], [5, 14.5], [5, 11.5], [1.5, 11.5]], 1.5, true), line(4, 5.5, 12, 5.5, 1.3), line(4, 8, 9, 8, 1.3)],
-  Map: [path([[8, 1.5], [14.5, 8], [8, 14.5], [1.5, 8]], 1.5, true), poly([[8, 5], [11, 8], [8, 11], [7, 8]])],
-  Profiles: [ring(8, 5, 3), path(arc(8, 15, 6, 5.5, 0, 180))],
-  Move: [line(8, 1.5, 8, 14.5), line(1.5, 8, 14.5, 8), ...[[8, 1.5, 0, 1], [8, 14.5, 0, -1], [1.5, 8, 1, 0], [14.5, 8, -1, 0]].flatMap(arrowHead)],
-  Close: [line(3.5, 3.5, 12.5, 12.5, 1.8), line(12.5, 3.5, 3.5, 12.5, 1.8)],
-  Check: [path([[3, 8.5], [6.5, 12], [13, 4.5]], 2)],
-  Down: [path([[4, 6], [8, 10], [12, 6]], 1.8)],
-  Right: [path([[6, 4], [10, 8], [6, 12]], 1.8)],
-  Search: [ring(7, 7, 4.5), line(10.3, 10.3, 14, 14, 1.8)],
+  // Three sliders and their knobs.
+  General: [crisp([[2, 3], [14, 3]]), crisp([[2, 8], [14, 8]]), crisp([[2, 13], [14, 13]]), box(9, 1, 12, 5), box(4, 6, 7, 10), box(10, 11, 13, 15)],
+  Modules: [rect(2, 2, 6, 6), rect(10, 2, 14, 6), rect(2, 10, 6, 14), rect(10, 10, 14, 14)],
+  UnitFrames: [rect(2, 4, 14, 10), box(4, 6, 10, 8), crisp([[2, 13], [10, 13]])],
+  // Six tiles: too many for two-pixel sides in 16 px, so one-pixel ones.
+  RaidFrames: [[1, 4], [6, 9], [11, 14]].flatMap(([y0, y1]) => [rect(1.5, y0 + 0.5, 6.5, y1 + 0.5, 1), rect(9.5, y0 + 0.5, 14.5, y1 + 0.5, 1)]),
+  Healing: [crisp([[6, 2], [10, 2], [10, 6], [14, 6], [14, 10], [10, 10], [10, 14], [6, 14], [6, 10], [2, 10], [2, 6], [6, 6]], true)],
+  ClickCasting: [frame(4, 2, 12, 14, STROKE, 3), crisp([[8, 2], [8, 7]]), crisp([[4, 7], [12, 7]])],
+  ActionBars: [box(1, 4, 5, 8), box(6, 4, 10, 8), box(11, 4, 15, 8), crisp([[2, 12], [14, 12]])],
+  Nameplates: [crisp([[5, 3], [11, 3]]), rect(2, 6, 14, 11), box(4, 8, 10, 9), crisp([[2, 14], [10, 14]])],
+  Tooltips: [crisp([[2, 2], [14, 2], [14, 11], [8, 11], [5, 14], [5, 11], [2, 11]], true), box(4, 4, 12, 6), box(4, 7, 9, 9)],
+  Map: [path([[8, 2.5], [13.5, 8], [8, 13.5], [2.5, 8]], STROKE, true), poly([[8, 5], [11, 8], [8, 11], [7, 8]])],
+  Profiles: [ring(8, 4, 2, STROKE), path(arc(8, 15, 6, 6, 0, 180), STROKE)],
+  Move: [crisp([[8, 2], [8, 14]]), crisp([[2, 8], [14, 8]]), ...[[8, 1.5, 0, 1], [8, 14.5, 0, -1], [1.5, 8, 1, 0], [14.5, 8, -1, 0]].flatMap(arrowHead)],
+  Close: [line(3.5, 4, 11.5, 12, STROKE), line(12.5, 4, 4.5, 12, STROKE)],
+  Check: [path([[3, 8.5], [6.5, 12], [13, 5.5]], STROKE)],
+  Down: [path([[4, 6.5], [8, 10.5], [12, 6.5]], STROKE)],
+  Right: [path([[6.5, 4], [10.5, 8], [6.5, 12]], STROKE)],
+  Search: [ring(7, 7, 4, STROKE), line(10.5, 10.5, 14, 14, STROKE)],
   // Raid marks, filled so they read at 10 px: a tank's shield, a healer's cross,
   // the leader's crown and three dots for a ready check still waiting.
   RoleTank: [poly([[2.5, 2], [13.5, 2], [13.5, 7.5], [12.3, 10.6], [8, 14.5], [3.7, 10.6], [2.5, 7.5]])],
@@ -138,35 +164,35 @@ function dot(cx, cy, r) {
 function cog() {
   const teeth = Array.from({ length: 8 }, (_, i) => {
     const a = (i * 45 * Math.PI) / 180;
-    return line(8 + 4.5 * Math.cos(a), 8 + 4.5 * Math.sin(a), 8 + 6.8 * Math.cos(a), 8 + 6.8 * Math.sin(a), 2.2);
+    return line(8 + 4.5 * Math.cos(a), 8 + 4.5 * Math.sin(a), 8 + 6.8 * Math.cos(a), 8 + 6.8 * Math.sin(a), STROKE);
   });
-  return [ring(8, 8, 3.8, 2), ...teeth];
+  return [ring(8, 8, 4, STROKE), ...teeth];
 }
 
 // The micro menu glyphs (Modules/MenuStrip.lua), on the same 16-unit grid.
 const MENU_SHAPES = {
   Character: [dot(8, 4.4, 2.8), poly(arc(8, 15, 5.5, 6.5, 0, 180))],
-  Spellbook: [frame(3, 2, 13, 14.5, 1.4, 1), line(5.6, 2, 5.6, 14.5, 1.2), line(7.6, 6, 11, 6, 1.2)],
-  Talents: [line(8, 13, 8, 8.5, 1.5), line(8, 8.5, 4, 3.5, 1.5), line(8, 8.5, 12, 3.5, 1.5), dot(4, 3.5, 1.8), dot(12, 3.5, 1.8), dot(8, 13, 1.8)],
-  Professions: [box(2.5, 2.5, 13.5, 6.5, 0.6), line(8, 6.5, 8, 14.5, 2.2)],
+  Spellbook: [rect(3, 2, 13, 14), crisp([[6, 2], [6, 14]]), box(8, 5, 11, 7)],
+  Talents: [crisp([[8, 7], [8, 12]]), line(8, 7.5, 4, 3.5, STROKE), line(8, 7.5, 12, 3.5, STROKE), dot(4, 3, 2), dot(12, 3, 2), dot(8, 13, 2)],
+  Professions: [box(2, 2, 14, 6), crisp([[8, 6], [8, 14]])],
   Achievements: [star(8, 8.6, 6.8)],
-  Quests: [line(8, 2.5, 8, 10, 2.6), dot(8, 13.2, 1.4)],
+  Quests: [crisp([[8, 2], [8, 10]]), box(7, 12, 9, 14)],
   Social: [dot(5.2, 5, 2.2), dot(11, 5.6, 1.9), poly(arc(5.2, 14.5, 4, 5.5, 0, 180)), poly(arc(11.2, 14.5, 3.4, 4.6, 0, 180))],
-  Group: [path(arc(8, 8, 6.5, 4.8, 0, 180), 1.5), path(arc(8, 8, 6.5, 4.8, 180, 360), 1.5), dot(8, 8, 2.3)],
-  Collections: [box(1.5, 3, 14.5, 6.5, 0.5), frame(2.5, 6.5, 13.5, 14, 1.4), line(8, 6.5, 8, 14, 1.4)],
-  Journal: [path([[1.5, 4], [8, 5.5], [14.5, 4], [14.5, 13], [8, 14.5], [1.5, 13]], 1.4, true), line(8, 5.5, 8, 14.5, 1.4)],
-  Shop: [ring(8, 8, 5.6, 1.5), dot(8, 8, 2.2)],
+  Group: [path(arc(8, 8, 6, 4.5, 0, 180), STROKE), path(arc(8, 8, 6, 4.5, 180, 360), STROKE), dot(8, 8, 2)],
+  Collections: [box(1, 2, 15, 6), rect(3, 6, 13, 14), crisp([[8, 6], [8, 14]])],
+  Journal: [crisp([[2, 3], [8, 5], [14, 3], [14, 12], [8, 14], [2, 12]], true), crisp([[8, 5], [8, 14]])],
+  Shop: [ring(8, 8, 6, STROKE), dot(8, 8, 2)],
   MenuCog: cog(),
   // Housing: a house outline with a door.
-  House: [path([[2, 7.5], [8, 2], [14, 7.5]], 1.6), path([[3.5, 6.5], [3.5, 14], [12.5, 14], [12.5, 6.5]], 1.5), box(6.6, 9.5, 9.4, 14, 0.4)],
-  Help: [path([...arc(8, 6, 3.5, 3.5, 180, -60, 10), [8, 10.5]], 1.8), dot(8, 13.4, 1.2)],
+  House: [line(2, 8, 8, 2, STROKE), line(8, 2, 14, 8, STROKE), crisp([[4, 7], [4, 14], [12, 14], [12, 7]]), box(7, 10, 9, 14)],
+  Help: [path([...arc(8, 6, 3.5, 3.5, 180, -60, 10), [8, 10]], STROKE), box(7, 12, 9, 14)],
   // Legacy: an hourglass (a frame top and bottom, the two glass halves, sand at the bottom).
-  Legacy: [line(3, 2, 13, 2, 1.4), line(3, 14, 13, 14, 1.4), path([[4.5, 2], [11.5, 2], [8, 8], [4.5, 2]], 1.3, true), path([[8, 8], [11.5, 14], [4.5, 14], [8, 8]], 1.3, true), box(6.2, 11.6, 9.8, 13.3, 0.3)],
+  Legacy: [crisp([[3, 2], [13, 2]]), crisp([[3, 14], [13, 14]]), line(4.5, 3, 8, 8, STROKE), line(11.5, 3, 8, 8, STROKE), line(8, 8, 4.5, 13, STROKE), line(8, 8, 11.5, 13, STROKE), poly([[5, 13], [11, 13], [8, 10]])],
 };
 
 // The two strokes of an arrow head at (x, y) pointing against (dx, dy).
 function arrowHead([x, y, dx, dy]) {
-  return [line(x, y, x + 2 * dx + 2 * dy, y + 2 * dy + 2 * dx, 1.4), line(x, y, x + 2 * dx - 2 * dy, y + 2 * dy - 2 * dx, 1.4)];
+  return [line(x, y, x + 2 * dx + 2 * dy, y + 2 * dy + 2 * dx, STROKE), line(x, y, x + 2 * dx - 2 * dy, y + 2 * dy - 2 * dx, STROKE)];
 }
 
 // Name (under Media/Icons) -> the image it holds.
