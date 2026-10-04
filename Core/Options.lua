@@ -121,6 +121,12 @@ local function themeSetting(key)
   return function() return T.Settings()[key] end, function(v) T.Settings()[key] = v; O.NeedReload() end
 end
 
+-- get/set for a theme setting that applies on reload, shown at once in the General page's sample.
+local function previewedSetting(key)
+  local get, set = themeSetting(key)
+  return get, function(v) set(v); T.Refresh() end
+end
+
 -- get/set for a theme setting that applies at once (font, text size): every
 -- styled text is re-fonted. Setting the same value again does nothing, so
 -- dragging a slider only re-fonts when the value moves.
@@ -188,7 +194,7 @@ end
 local function barRows()
   return {
     { "header", "Bars" },
-    { "cycle", "Bar texture", T.SharedChoices("statusbar", BAR_TEXTURES), themeSetting("barTexture") },
+    { "cycle", "Bar texture", T.SharedChoices("statusbar", BAR_TEXTURES), previewedSetting("barTexture") },
     check("Smooth health and power bars", function() return T.Settings().smoothBars end, function(v) T.Settings().smoothBars = v end),
     check("Soft shadows under frames (reload)", themeSetting("hudShadow")),
   }

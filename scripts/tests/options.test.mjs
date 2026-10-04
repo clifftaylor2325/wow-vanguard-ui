@@ -1,7 +1,7 @@
 // options: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, button, calls, chatHas, key, loggedIn, marks, tooltip } from "./helpers.mjs";
+import { CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, button, calls, chatHas, isTok, key, loggedIn, marks, setCombat, tooltip } from "./helpers.mjs";
 
 it("options window", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
@@ -188,11 +188,11 @@ it("options: search reads each page's rows once per opening; a rebuilt page leav
   reads();
   const rows = addon.eval("return ns.Options.RowCount()");
   for (const text of ["h", "he", "hea", "heal"]) addon.eval(`ns.Options.Search("${text}")`);
-  expect([reads(), addon.eval("return ns.Options.matched.profiles")], "four keystrokes read each page's rows once, and still find a profile's name").toEqual([[1, 1], true]);
+  expect([reads(), addon.eval("return ns.Options.matched.profiles")], "opening the window read every page's rows once (for the nav's Changed dots), so four keystrokes read none, and still find a profile's name").toEqual([[0, 0], true]);
   addon.eval('ns.Options.RebuildPage("profiles")');
   expect([addon.eval("return ns.Options.RowCount()"), reads()], "a rebuilt page replaces its rows: the row list is the same length, the profiles page read again to build it").toEqual([rows, [0, 1]]);
   addon.eval('ns.NewProfile("TEST-ONLY Tank") ns.Options.RebuildPage("profiles") ns.Options.Search("tank")');
-  expect([addon.eval("return ns.Options.RowCount()"), addon.eval("return ns.Options.matched.profiles"), reads()], "a new profile: one more row, found by the search; only the rebuilt page is read again (to build it, then to search it)").toEqual([rows + 1, true, [0, 2]]);
+  expect([addon.eval("return ns.Options.RowCount()"), addon.eval("return ns.Options.matched.profiles"), reads()], "a new profile: one more row, found by the search; only the rebuilt page is read again, once (to build it, mark its dot and search it)").toEqual([rows + 1, true, [0, 1]]);
   addon.eval('ns.Options.Search("tan")');
   expect(reads(), "the next keystroke reads nothing").toEqual([0, 0]);
   addon.eval('ns.Options.Hide() ForeverUI_Options:Hide() ns.Options.Show() ns.Options.Search("tan")');
@@ -291,6 +291,111 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   expect(addon.eval("return { GameTooltip.__owner == __dot, GameTooltip:IsShown(), GameTooltip.__tip }"), "hovering the dot says what it does").toEqual([true, true, "Changed from the default. Click to put it back."]);
   addon.eval("__dot:GetScript('OnLeave')(__dot)");
   expect(addon.eval("return GameTooltip:IsShown()"), "and the tooltip goes when the mouse leaves").toBe(false);
+});
+
+// The nav entries whose "Changed" dot shows, sorted.
+const dotted = (addon) => {
+  const out = addon.eval("local out = {} for k, b in pairs(ForeverUI_Options.nav) do if b.changed:IsShown() then out[#out + 1] = k end end table.sort(out) return out");
+  return Array.isArray(out) ? out : [];
+};
+
+it("options: a dot on the nav marks each page with changed settings, as rows change and are put back", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, { savedVariables: "ForeverUIDB.profiles = { Default = { Nameplates = { width = 160 } } }" });
+  addon.slash("");
+  expect(dotted(addon), "on opening, only the page with a saved change (a nameplate width) is marked, though it isn't built yet").toEqual(["nameplates"]);
+  expect(isTok(addon, addon.eval("return ForeverUI_Options.nav.nameplates.changed.__vertexColor"), "accent"), "the dot is in the accent").toBe(true);
+  addon.eval('__click("Unit frames") __click("Show health numbers")');
+  expect(dotted(addon), "changing a row marks its page at once").toEqual(["nameplates", "unitframes"]);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() and w:IsVisible() then __dot = w.reset end end __dot:GetScript("OnClick")(__dot)`);
+  expect(dotted(addon), "putting the row back with its own dot clears the page's").toEqual(["nameplates"]);
+  addon.eval('__click("Nameplates") __click("Width") __click("Width")');
+  expect([addon.eval("return ns.Settings('Nameplates').width"), dotted(addon)], "stepping the width back to its default clears it too").toEqual([addon.eval("return ns.GetModule('Nameplates').defaults.width"), []]);
+});
+
+// Presses a key on the options window: { the page shown, whether the key went on to the game }.
+const press = (addon, k) => {
+  addon.key("ForeverUI_Options", k);
+  return addon.eval("return { ns.Options.current, ForeverUI_Options.__passed }");
+};
+
+// The keyboard's row on the options window: its caption, whether its wash shows, and whether it is inside the page's view.
+const keyRow = (addon) => addon.eval(`local w, view = ForeverUI_Options.focusRow
+  for _, x in ipairs(__wfgStub.frames) do if x.fadeTop and x:IsVisible() then view = x end end
+  if not w then return false end
+  local top = view:GetVerticalScroll() or 0
+  return { w.caption, w.found:IsShown(), w.pageY >= top and w.pageY + w:GetHeight() <= top + view:GetHeight() }`);
+
+it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other keys and typing go on to the game", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // TEST-ONLY spies on the window's keyboard calls.
+  addon.eval("local f = ForeverUI_Options f.SetPropagateKeyboardInput = function(self, v) self.__passed = v end f.EnableKeyboard = function(self, on) self.__kb = on end f:Hide() ns.Options.Show('general')");
+  const order = addon.eval("local list = {} for _, p in ipairs(ns.Options.PAGES) do list[#list + 1] = p end table.sort(list, function(a, b) return (a.order or 70) < (b.order or 70) end) local out = {} for i, p in ipairs(list) do out[i] = p.key end return out");
+  expect([order[0], addon.eval("return ForeverUI_Options.__kb")], "General is first, and the open window takes the keyboard").toEqual(["general", true]);
+  expect(press(addon, "DOWN"), "Down opens the next page, and the key stops there").toEqual([order[1], false]);
+  expect(press(addon, "UP")[0], "Up goes back").toBe("general");
+  expect(press(addon, "UP")[0], "and from the first page wraps to the last").toBe(order[order.length - 1]);
+  press(addon, "DOWN");
+  expect(press(addon, "W"), "a key it doesn't use goes on to the game: you can still walk").toEqual(["general", true]);
+  expect(press(addon, "SPACE")[1], "so do Space and Enter until a row has the keyboard").toBe(true);
+  press(addon, "TAB");
+  expect(keyRow(addon), "Tab marks the first row that does something (the sample and the swatches are skipped)").toEqual(["Font", true, true]);
+  press(addon, "TAB");
+  expect(keyRow(addon)[0], "Tab again: the next").toBe("Text size");
+  addon.keys({ shift: true });
+  press(addon, "TAB");
+  press(addon, "TAB");
+  addon.keys({ shift: false });
+  const last = keyRow(addon);
+  expect([last[0], last[2], addon.eval("return ForeverUI_Options.found:IsShown()")], "Shift-Tab goes back, and past the first wraps to the last row, scrolled into view").toEqual([addon.eval("local rows = {} for _, w in ipairs(__wfgStub.frames) do if w.card and w:IsVisible() and w:GetObjectType() == 'Button' then rows[#rows + 1] = w end end table.sort(rows, function(a, b) return a.pageY < b.pageY end) return rows[#rows].caption"), true, true]);
+  press(addon, "TAB");
+  expect(keyRow(addon), "and Tab from the last wraps to the first, scrolled back up").toEqual(["Font", true, true]);
+  const font = addon.eval("return ns.Theme.Settings().font");
+  expect([press(addon, "ENTER")[1], addon.eval("return ns.Theme.Settings().font") !== font], "Enter presses the row (it steps the font), and stops there").toEqual([false, true]);
+  addon.eval("GetCurrentKeyBoardFocus = function() return ForeverUI_Options.search end");
+  expect(press(addon, "DOWN"), "while you type in the search (or any box), every key is yours").toEqual(["general", true]);
+  addon.eval("GetCurrentKeyBoardFocus = nil");
+  press(addon, "DOWN");
+  expect(keyRow(addon), "a new page starts without a keyboard row").toBe(false);
+  addon.eval('ns.Options.current = "nowhere"');
+  expect(press(addon, "TAB"), "a page with no rows (none built): Tab has nothing to mark").toEqual(["nowhere", false]);
+  addon.eval("ns.Options.Show('general')");
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.eval("ForeverUI_Options.__passed = 'TEST-ONLY unset'");
+  expect([addon.eval("return ForeverUI_Options.__kb"), press(addon, "W")[1]], "a fight takes the keyboard back (keys can't be passed on in combat)").toEqual([false, "TEST-ONLY unset"]);
+  addon.eval("ns.Options.Show('more')");
+  expect(addon.eval("return ForeverUI_Options.__kb"), "and opening a page in combat doesn't take it").toBe(false);
+  setCombat(addon, false);
+  expect(addon.eval("return ForeverUI_Options.__kb"), "after the fight the open window has it again").toBe(true);
+  addon.eval("ForeverUI_Options:Hide()");
+  expect(addon.eval("return ForeverUI_Options.__kb"), "closed, it takes no keys at all").toBe(false);
+  setCombat(addon, true);
+  setCombat(addon, false);
+  expect(addon.eval("return ForeverUI_Options.__kb"), "and a fight ending while it is closed doesn't change that").toBe(false);
+});
+
+it("options: the General page's sample unit frame and button follow the accent, font, text size and bar texture as they change", () => {
+  const addon = loggedIn(CLICK_LUA + `LibStub("LibSharedMedia-3.0"):Register("statusbar", "TEST-ONLY Bar", [[Interface\\AddOns\\TestOnly\\Bar]])`);
+  addon.eval('ns.Options.Show("general")');
+  // The sample: bar textures, the name's font and size, the glow's color, and its texts.
+  const sample = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.unit and w.button and w:IsVisible() then
+    local u, b = w.unit, w.button local font, size = u.name:GetFont()
+    return { u.health:GetStatusBarTexture():GetTexture(), u.power:GetStatusBarTexture():GetTexture(), font, size, b.glow[1].__vertexColor, b.glow[1]:IsShown(),
+      u.name:GetText(), u.value:GetText(), b.hotkey:GetText(), b.count:GetText() } end end`);
+  const first = sample();
+  expect([first[0], first[1], first[3], first.slice(5)], "a unit frame with the Forever bars, the name at 13, and a button with its key, count and glow")
+    .toEqual(["Interface\\AddOns\\ForeverUI\\Media\\Textures\\Bar", "Interface\\AddOns\\ForeverUI\\Media\\Textures\\Bar", 13, [true, "<name>", "72%", "1", "5"]]);
+  expect(isTok(addon, first[4], "accent"), "the glow is in the accent").toBe(true);
+  addon.eval("ns.Theme.SetAccent(ns.Theme.PRESETS.fel[1], ns.Theme.PRESETS.fel[2], ns.Theme.PRESETS.fel[3])");
+  expect(sample()[4].slice(0, 3), "a new accent shows at once").toEqual(addon.eval("return ns.Theme.PRESETS.fel").slice(0, 3));
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.label and w.label.__text == "Text size" and w:IsVisible() then w.set(1.3) w:Refresh() end end`);
+  expect(sample()[3], "so does the text size (13 at 130%)").toBe(17);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Font" and w:IsVisible() then w.dropdown.set("client") end end`);
+  expect(sample()[2], "and the font").toBe(addon.eval("return STANDARD_TEXT_FONT or 'Fonts\\\\FRIZQT__.TTF'"));
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Bar texture" and w:IsVisible() then w.dropdown.set("TEST-ONLY Bar") end end`);
+  expect([sample().slice(0, 2), addon.eval("return ForeverUI_Options.reload:IsShown()")], "a bar texture shared through LibSharedMedia shows on the sample at once (the HUD takes it on reload)")
+    .toEqual([["Interface\\AddOns\\TestOnly\\Bar", "Interface\\AddOns\\TestOnly\\Bar"], true]);
 });
 
 // TEST-ONLY client hooks and fonts: hooks run after the client function, as hooksecurefunc does.
