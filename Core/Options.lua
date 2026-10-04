@@ -252,6 +252,7 @@ O.MODULE_INFO = {
   GameAlerts = { "Game alerts", "Loss of control and the talking head in the ForeverUI look, each in a spot you can move; Hardcore death notices restyled; a rare nearby announced if you like." },
   Errands = { "Errands", "Train all at a trainer, keep items stocked from merchants, and time your flights." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
+  FightHistory = { "Fight history", "Your DPS and place in each fight this session, as a strip of bars under the damage meter (off until switched on)." },
   Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the ForeverUI look." },
   DataBars = { "XP and reputation", "Thin experience and reputation bars." },
   Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },
@@ -503,10 +504,21 @@ local function stripSetting(key)
   return liveSetting("InfoStrip", key, function() ns.GetModule("InfoStrip").UpdateAll() end)
 end
 
--- The info strip under the minimap: one switch per block.
+-- Fight history under the damage meter: its switch (applied at once) and its visibility.
+local function fightRows()
+  local FH = ns.GetModule("FightHistory")
+  local fightVisibility, fightWhen = visibilityRows("Fight history visibility", "FightHistory", "visibility", "showWhen")
+  return {
+    { "header", "Fight history" },
+    check("Sparkline of your DPS in the last 20 fights, under the damage meter", liveSetting("FightHistory", "strip", function() if FH.enabled then FH.Paint() end end)),
+    fightVisibility, fightWhen,
+  }
+end
+
+-- The info strip under the minimap: one switch per block, then Fight history.
 local function stripRows()
   local stripVisibility, stripWhen = visibilityRows("Strip visibility", "InfoStrip", "visibility", "showWhen")
-  return {
+  return append({
     { "header", "Strip under the minimap" }, stripVisibility, stripWhen,
     check("Durability", stripSetting("durability")), check("Free bag slots", stripSetting("bags")),
     check("Frame rate and latency", stripSetting("system")), check("Gold", stripSetting("gold")),
@@ -514,7 +526,7 @@ local function stripRows()
     check("Soul shards (warlocks)", stripSetting("shards")), check("XP per hour this session", stripSetting("xprate")),
     check("Time to the next level", stripSetting("leveltime")), check("Gold per hour this session", stripSetting("goldrate")),
     check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")), check("Your place in the last fight's DPS, in a group", stripSetting("rank")),
-  }
+  }, fightRows())
 end
 
 -- At a merchant, and the error line.
