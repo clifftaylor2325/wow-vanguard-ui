@@ -436,9 +436,15 @@ it("item names the client hasn't loaded yet, and a hidden price", () => {
   expect([shopRow(addon, 2)[2], addon.eval("return #ns.errors")], "a hidden price: nothing to show, no error").toEqual(["none up", 0]);
 });
 
+// The shop dropdown's choices, by their text.
+const choices = (addon) => addon.eval(`local c = {} for i, x in ipairs(${HELPER}.shopCard.lists.choices()) do c[i] = x[2] end return c`);
+
+// The dropdown's actions on the list in use, after the lists and "New list...".
+const LIST_ACTIONS = ["Rename list...", "Duplicate list", "Delete list...", "Export list...", "Import..."];
+
 it("shopping lists: the dropdown picks or makes one, + Add adds, and the caps hold", () => {
   const addon = atAuctionHouse();
-  expect(addon.eval(`local c = {} for i, x in ipairs(${HELPER}.shopCard.lists.choices()) do c[i] = x[2] end return c`), "no lists yet").toEqual(["New list..."]);
+  expect(choices(addon), "no lists yet: make one or import").toEqual(["New list...", "Import..."]);
   addon.click(`${HELPER}.shopCard.add`);
   addon.type("ForeverUI_TextEdit", "Strange Dust");
   addon.click("ForeverUI_TextDialog.primary");
@@ -446,7 +452,7 @@ it("shopping lists: the dropdown picks or makes one, + Add adds, and the caps ho
   addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.NEW)`);
   addon.type("ForeverUI_TextEdit", "  TEST-ONLY B  ");
   addon.click("ForeverUI_TextDialog.primary");
-  expect(addon.eval(`local c = {} for i, x in ipairs(${HELPER}.shopCard.lists.choices()) do c[i] = x[2] end return { c, ${HELPER}.shopCard.lists.text:GetText() }`), "made and picked").toEqual([["Shopping", "TEST-ONLY B", "New list..."], "TEST-ONLY B"]);
+  expect([choices(addon), addon.eval(`return ${HELPER}.shopCard.lists.text:GetText()`)], "made and picked").toEqual([["Shopping", "TEST-ONLY B", "New list...", ...LIST_ACTIONS], "TEST-ONLY B"]);
   addon.eval(`${HELPER}.shopCard.lists.set("Shopping")`);
   expect(shopRow(addon, 1)[1], "picked back").toBe("Strange Dust");
   addon.eval(`for i = 3, 21 do ${HELPER}.NewList("TEST-ONLY " .. i) end for i = 1, 51 do ${HELPER}.AddEntry("x" .. i, "Shopping") end`);
@@ -484,6 +490,92 @@ it("/fui ah list and add", () => {
   addon.clearChat();
   addon.slash("ah list Twenty-first");
   expect(chatHas(addon, /Shopping list/), "refused past the cap, nothing listed").toBe(false);
+});
+
+// The text dialog: whether it shows, its title and its text.
+const textDialog = (addon) => addon.eval("local f = ForeverUI_TextDialog return { f:IsShown(), f.title:GetText(), f.edit:GetText() }");
+
+// Types text into the text dialog and clicks its primary button.
+function answerText(addon, text) {
+  addon.type("ForeverUI_TextEdit", text);
+  addon.click("ForeverUI_TextDialog.primary");
+}
+
+// The yes/no question: whether it shows, and its text.
+const question = (addon) => addon.eval("local f = ForeverUI_Question return { f:IsShown(), f.title:GetText() }");
+
+it("list management from the dropdown: rename, duplicate, export, and delete after asking", () => {
+  const addon = atAuctionHouse(DUSTS);
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "2589" }');
+  // Picks a dropdown value.
+  const pick = (v) => addon.eval(`${HELPER}.shopCard.lists.set(${v})`);
+  pick(`${HELPER}.RENAME`);
+  expect(textDialog(addon).slice(0, 2), "asks for the new name").toEqual([true, "Rename TEST-ONLY Mats"]);
+  answerText(addon, "  TEST-ONLY Herbs ");
+  expect([choices(addon)[0], addon.eval("return { ForeverUIDB.ah.list, ForeverUIDB.ah.lists['TEST-ONLY Mats'] == nil }"), textDialog(addon)[0]], "renamed, still in use, the box closed").toEqual(["TEST-ONLY Herbs", ["TEST-ONLY Herbs", true], false]);
+  pick(`${HELPER}.COPY`);
+  pick('"TEST-ONLY Herbs"');
+  pick(`${HELPER}.COPY`);
+  expect(choices(addon).slice(0, 3), "copies, each with a free name").toEqual(["TEST-ONLY Herbs", "TEST-ONLY Herbs copy", "TEST-ONLY Herbs copy 2"]);
+  expect([addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Herbs copy 2']"), shopRow(addon, 1)[1], chatHas(addon, /Copied TEST-ONLY Herbs to TEST-ONLY Herbs copy 2\./)], "the same items, and the copy is in use").toEqual([["Strange Dust", 2589], "Strange Dust", true]);
+  pick(`${HELPER}.RENAME`);
+  answerText(addon, "TEST-ONLY Herbs");
+  expect([chatHas(addon, /already a shopping list named TEST-ONLY Herbs\./), addon.eval("return ForeverUIDB.ah.list")], "a name in use is refused").toEqual([true, "TEST-ONLY Herbs copy 2"]);
+  addon.click("ForeverUI_TextDialog.close");
+  pick(`${HELPER}.EXPORT`);
+  expect(textDialog(addon), "one item per line, ready to copy").toEqual([true, "Shopping list TEST-ONLY Herbs copy 2 (Ctrl+C copies it)", "Strange Dust\n2589"]);
+  pick(`${HELPER}.DELETE`);
+  expect(question(addon), "asks first").toEqual([true, "Delete the shopping list TEST-ONLY Herbs copy 2 (2 items)?"]);
+  addon.click("ForeverUI_Question.no");
+  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Herbs copy 2'] ~= nil"), "No keeps it").toBe(true);
+  pick(`${HELPER}.DELETE`);
+  addon.click("ForeverUI_Question.yes");
+  expect([choices(addon).slice(0, 2), addon.eval("return ForeverUIDB.ah.list"), chatHas(addon, /Deleted the shopping list TEST-ONLY Herbs copy 2\./)], "gone; the first list left is in use").toEqual([["TEST-ONLY Herbs", "TEST-ONLY Herbs copy"], "TEST-ONLY Herbs", true]);
+  addon.eval(`${HELPER}.DeleteList("TEST-ONLY Herbs copy") ${HELPER}.DeleteList("TEST-ONLY Nothing")`);
+  expect(addon.eval("return ForeverUIDB.ah.list"), "deleting another list leaves the one in use").toBe("TEST-ONLY Herbs");
+  addon.eval(`for i = 1, 19 do ${HELPER}.NewList("TEST-ONLY " .. i) end ${HELPER}.NewList("TEST-ONLY Herbs") ${HELPER}.DuplicateList()`);
+  expect(addon.eval("return { ForeverUIDB.ah.lists['TEST-ONLY Herbs copy'] == nil, ForeverUIDB.ah.list }"), "no copy past 20 lists").toEqual([true, "TEST-ONLY Herbs"]);
+  addon.eval(`${HELPER}.DeleteList("TEST-ONLY Herbs") for i = 1, 19 do ${HELPER}.DeleteList("TEST-ONLY " .. i) end`);
+  expect([choices(addon), addon.eval("return ForeverUIDB.ah.list")], "the last one deleted: no list in use").toEqual([["New list...", "Import..."], null]);
+});
+
+it("import: plain lines and Auctionator's strings, within the caps", () => {
+  const addon = atAuctionHouse(DUSTS);
+  addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.IMPORT)`);
+  expect(textDialog(addon).slice(0, 2), "no list in use: into Shopping").toEqual([true, "Import into Shopping (names, IDs, links, or a shopping list string)"]);
+  answerText(addon, "Linen Cloth\n 2589 \r\n|cffffffff|Hitem:10940::::|h[Strange Dust]|h|r\n\n   \n");
+  expect([addon.eval("return { ForeverUIDB.ah.list, ForeverUIDB.ah.lists.Shopping }"), textDialog(addon)[0], chatHas(addon, /Imported 3 item\(s\) into Shopping\.$/)], "a name, an ID and a link; blanks skipped").toEqual([["Shopping", ["Linen Cloth", 2589, 10940]], false, true]);
+  addon.eval(`${HELPER}.AskImport()`);
+  answerText(addon, '"Strange Dust";;0;0;;;;;;;;#;;^Soul Dust;1;60^ ^"";x^  "Vision Dust"  ');
+  expect(addon.eval("return ForeverUIDB.ah.lists.Shopping"), "each term's first field; an empty name skipped").toEqual(["Linen Cloth", 2589, 10940, "Strange Dust", "Soul Dust", "Vision Dust"]);
+  expect(chatHas(addon, /Imported 3 item\(s\) into Shopping\. 6 other search field\(s\) ignored: ForeverUI takes each item's name\.$/), "says how many fields it ignored").toBe(true);
+  addon.eval(`for i = 1, 43 do ${HELPER}.AddEntry("x" .. i) end ${HELPER}.Import("a\\nb\\nc", "Shopping")`);
+  expect([addon.eval("return #ForeverUIDB.ah.lists.Shopping"), chatHas(addon, /Imported 1 item\(s\) into Shopping\. 2 didn't fit \(a list holds at most 50\)\.$/)], "50 at most").toEqual([50, true]);
+  addon.eval(`for i = 1, 19 do ${HELPER}.NewList("TEST-ONLY " .. i) end ${HELPER}.Import("a", "TEST-ONLY 21")`);
+  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY 21'] == nil"), "no new list past 20").toBe(true);
+});
+
+it("/fui ah rename, duplicate, delete, export and import act on the list in use", () => {
+  const addon = loggedIn(AH_ENV);
+  for (const word of ["rename TEST-ONLY X", "duplicate", "delete", "export"]) addon.slash(`ah ${word}`);
+  expect(addon.chat().filter((l) => /Pick a shopping list first/.test(l)).length, "no list in use yet").toBe(4);
+  addon.slash("ah list TEST-ONLY Mats");
+  addon.slash("ah add TEST-ONLY Mats Strange Dust");
+  addon.slash("ah rename");
+  expect(chatHas(addon, /\/fui ah rename <new name> renames the shopping list in use\./), "a name is needed").toBe(true);
+  addon.slash("ah rename TEST-ONLY Herbs");
+  addon.slash("ah duplicate");
+  expect(addon.eval("return { ForeverUIDB.ah.list, ForeverUIDB.ah.lists['TEST-ONLY Herbs copy'] }"), "renamed, then copied").toEqual(["TEST-ONLY Herbs copy", ["Strange Dust"]]);
+  addon.slash("ah export");
+  expect(textDialog(addon)[2], "exported").toBe("Strange Dust");
+  addon.slash("ah import");
+  answerText(addon, "Soul Dust");
+  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Herbs copy']"), "imported into it").toEqual(["Strange Dust", "Soul Dust"]);
+  addon.slash("ah delete");
+  addon.click("ForeverUI_Question.yes");
+  expect(addon.eval("return { ForeverUIDB.ah.list, ForeverUIDB.ah.lists['TEST-ONLY Herbs copy'] == nil }"), "deleted after asking").toEqual(["TEST-ONLY Herbs", true]);
+  addon.slash("ah");
+  expect(chatHas(addon, /rename <name>, duplicate, delete, export, import, scan/), "the help names them").toBe(true);
 });
 
 // Sell ---------------------------------------------------------------------------------------
