@@ -255,6 +255,28 @@ it("closing the auction house stops a scan", () => {
   addon.update(0.01);
   addon.fire("REPLICATE_ITEM_LIST_UPDATE");
   expect(addon.eval(`return { ${HELPER}.scan == nil, ns.AuctionPrices.House().prices[2589] == nil, __wfgWorld.ah.reads }`), "nothing recorded, no more reads").toEqual([true, true, 400]);
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect(lastLine(addon), "the cut-short scan doesn't count").toBe("no scan yet");
+  addon.click(SCAN_BUTTON);
+  expect(addon.eval("return #__wfgWorld.ah.queries"), "so a new one starts at once").toBe(2);
+});
+
+it("a finished scan spends the 15 minutes from its start, and your own listings are left out", () => {
+  const addon = atAuctionHouse();
+  addon.eval(`__wfgWorld.ah.replicate = { { itemID = 2589, count = 1, buyoutPrice = 50, owner = "Tester" },
+    { itemID = 2589, count = 2, buyoutPrice = 60, ownerFullName = "Tester-ForeverTest" },
+    { itemID = 2589, count = 1, buyoutPrice = 70, owner = __wfgWorld.secret("Tester") },
+    { itemID = 2589, count = 4, buyoutPrice = 400, owner = "TEST-ONLY Rival", ownerFullName = "TEST-ONLY Rival-ForeverTest" },
+    { itemID = 2589, count = 1, buyoutPrice = 90 }, { itemID = 2592, count = 1, buyoutPrice = 30, owner = "Tester" } }`);
+  addon.click(SCAN_BUTTON);
+  addon.eval("__now = __now + 120");
+  addon.fire("REPLICATE_ITEM_LIST_UPDATE");
+  addon.update(0.01);
+  const p = addon.eval("local p = ns.AuctionPrices.House().prices return { p[2589].min, p[2589].listings, p[2589].qtys[math.floor(__now / 86400)], p[2592] == nil }");
+  expect(p, "yours (by name, by full name) left out; a hidden seller and an unnamed one count").toEqual([70, 3, 6, true]);
+  expect(chatHas(addon, /Auction house scanned: 6 listings, prices for 1 items\. 3 of them were yours and are left out\./), "says so").toBe(true);
+  expect([addon.eval("return ns.AuctionPrices.House().lastScan"), lastLine(addon)], "the 15 minutes run from the start").toEqual([1790000000, "last scan 2 min ago"]);
 });
 
 it("switches: no panel, no scan button; nothing at all in combat", () => {

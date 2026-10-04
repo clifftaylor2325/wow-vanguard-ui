@@ -44,11 +44,17 @@ end
 -- The auction house you use: your realm's normalized name (as in "Name-Realm", the same on every
 -- character) and your faction, as "Realm-Alliance", "Realm-Horde" or "Realm-none".
 function AP.HouseKey()
-  return (GetNormalizedRealmName() or GetRealmName()) .. "-" .. ns.FactionArt.Faction()
+  return AP.Realm() .. "-" .. ns.FactionArt.Faction()
+end
+
+-- Your realm's normalized name (no spaces or hyphens), else its name as the client shows it.
+function AP.Realm()
+  return GetNormalizedRealmName() or GetRealmName()
 end
 
 -- This realm and faction's prices: { prices = { [itemID] = an item }, count (items priced),
--- lastScan }. An item is { min, t (the cheapest unit price when last seen, and when),
+-- lastScan }. An item is { min, t (the cheapest unit price when last seen, and when), listings
+-- (how many listings the last scan counted),
 -- days = { [day] = that day's low }, qtys = { [day] = units up }, markets = { [day] = market value } };
 -- a day's units and market value are the last seen that day. Prices of older versions have days only.
 function AP.House()
@@ -112,14 +118,14 @@ function AP.Summary(prices)
 end
 
 -- Notes an item seen at time t: its cheapest unit price (now, and the low of t's day), and the
--- units up and market value when given (t's day keeps the last seen). A new item past
--- AP.MAX_ITEMS evicts the items priced longest ago.
-function AP.Record(itemID, unitPrice, t, qty, market)
+-- units up and market value when given (t's day keeps the last seen), and how many listings
+-- (the item keeps the last count). A new item past AP.MAX_ITEMS evicts the items priced longest ago.
+function AP.Record(itemID, unitPrice, t, qty, market, listings)
   local house, day = AP.House(), AP.Day(t)
   local p = house.prices[itemID]
   if not p then p = {} house.prices[itemID] = p house.count = house.count + 1 end
   ns.Fill(p, { days = {}, qtys = {}, markets = {} })
-  p.min, p.t = unitPrice, t
+  p.min, p.t, p.listings = unitPrice, t, listings or p.listings
   p.days[day] = math.min(p.days[day] or unitPrice, unitPrice)
   p.qtys[day], p.markets[day] = qty or p.qtys[day], market or p.markets[day]
   if house.count > AP.MAX_ITEMS then AP.Evict() end
