@@ -75,7 +75,7 @@ Sizes: S under a day of lane time, M one to two, L more. Each is one commit with
 - [ ] **A2 Current listings on the sell card** (M): the sell search's rows (price, quantity, time left, yours marked), scrollable, click a row to take its price. Read beyond the first page with `RequestMoreCommoditySearchResults`/`RequestMoreItemSearchResults`.
 - [ ] **A3 Vendor floor and warnings** (S): warn in the accent-red when the price is under the vendor sell price, and an option "never post under vendor price".
 - [x] **A4 Cancel next undercut** (S): one button that cancels the first undercut auction on each click and advances; a count "3 undercut" after the check; optional re-check after each post.
-- [ ] **A5 Sold and expired rows** (S): show status from `OwnedAuctionInfo.status` and the expiry events; a "relist" shortcut that adds the item to the sell queue when it returns to the bag.
+- [x] **A5 Sold and expired rows** (S): show status from `OwnedAuctionInfo.status` and the expiry events; a "relist" shortcut that adds the item to the sell queue when it returns to the bag.
 
 ### Phase B: shopping parity
 

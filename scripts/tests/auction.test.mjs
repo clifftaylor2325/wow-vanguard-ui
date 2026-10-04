@@ -642,7 +642,7 @@ it("undercut check marks the undercut auction and Cancel is per click", () => {
   const addon = atAuctionHouse(BAGS + OWNED);
   checkUndercuts(addon);
   expect(sent(addon), "your auctions, then each item once").toEqual(["QueryOwnedAuctions:", "SendSellSearchQuery:10940", "SendSellSearchQuery:9999"]);
-  expect([ownedRow(addon, 1), ownedRow(addon, 2), ownedRow(addon, 3)[0]], "the dust is undercut (1s 20c against your 1s 50c), the blade isn't").toEqual([[true, "Strange Dust", "1s 50c", true], [true, "TEST-ONLY Blade", "40s 0c", false], false]);
+  expect([ownedRow(addon, 1), ownedRow(addon, 2), ownedRow(addon, 3), ownedRow(addon, 4)[0]], "the dust is undercut (1s 20c against your 1s 50c), the blade isn't; the sold blade shows as sold").toEqual([[true, "Strange Dust", "1s 50c", true], [true, "TEST-ONLY Blade", "40s 0c", false], [true, "TEST-ONLY Blade", "sold · 40s 0c", false], false]);
   expect(isTok(addon, addon.eval(`return ${SCAN_CARD}.owned[1].mark.__vertexColor`), "bad"), "the mark is red").toBe(true);
   addon.hover(`${SCAN_CARD}.owned[1].cancel`);
   expect(addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out"), "what cancelling costs").toEqual(["Cancel this auction", "Costs 1s 0c"]);
@@ -650,7 +650,7 @@ it("undercut check marks the undercut auction and Cancel is per click", () => {
   addon.click(`${SCAN_CARD}.owned[1].cancel`);
   expect(restrictedLog(addon), "cancelled once, from the click").toEqual([["CancelAuction", true, 501, "nil", "nil", "nil", "nil"]]);
   addon.fire("AUCTION_CANCELED", 501);
-  expect([ownedRow(addon, 1)[1], ownedRow(addon, 2)[0]], "its row goes").toEqual(["TEST-ONLY Blade", false]);
+  expect([ownedRow(addon, 1)[1], ownedRow(addon, 2)[2], ownedRow(addon, 3)[0]], "its row goes").toEqual(["TEST-ONLY Blade", "sold · 40s 0c", false]);
 });
 
 it("restricted calls run only inside a click", () => {
@@ -682,7 +682,7 @@ it("your auctions: refused cancels, scrolling, unknown names, hidden costs, and 
   addon.hover(`${SCAN_CARD}.owned[1].cancel`);
   expect([restrictedLog(addon).length, addon.eval("return #GameTooltip.__lines")], "the game won't cancel it; no cost shown when hidden").toEqual([0, 1]);
   addon.wheel(`${SCAN_CARD}.owned[1]`, -5);
-  expect([ownedRow(addon, 1)[2], ownedRow(addon, 4)[0]], "scrolled to the end: 6 auctions, 4 rows").toEqual(["90c", true]);
+  expect([ownedRow(addon, 1)[2], ownedRow(addon, 4)[0]], "scrolled to the end: 7 auctions (one sold), 4 rows").toEqual(["90c", true]);
 });
 
 // Two more dust auctions of yours: 2 at 1s 30c a unit (undercut by the 1s 20c up) and 2 at 1s 10c (not).
@@ -724,7 +724,7 @@ it("Cancel next undercut cancels one undercut auction per click, then says none 
   addon.eval("for i = #__wfgWorld.ah.owned, 1, -1 do local id = __wfgWorld.ah.owned[i].auctionID if id == 501 or id == 506 then table.remove(__wfgWorld.ah.owned, i) end end");
   addon.world.fireAuctionEvents({ itemID: 10940 }, 0);
   expect(restrictedLog(addon).length, "a click on it disabled, timers and every auction house event: nothing more").toBe(2);
-  expect([ownedRow(addon, 1)[1], ownedRow(addon, 2).slice(1), nextState(addon)], "the blade and the dust at 1s 10c are left").toEqual(["TEST-ONLY Blade", ["Strange Dust", "1s 10c", false], ["none undercut", false]]);
+  expect([ownedRow(addon, 1)[1], ownedRow(addon, 3).slice(1), nextState(addon)], "the blade and the dust at 1s 10c are left (and the sold blade)").toEqual(["TEST-ONLY Blade", ["Strange Dust", "1s 10c", false], ["none undercut", false]]);
   expect(addon.eval("local n = 0 for _, c in ipairs(__wfgWorld.ah.restricted) do if c.path:find('AuctionOwned.lua') then n = n + 1 end end return n"), "both made by the button").toBe(2);
 });
 
@@ -766,4 +766,70 @@ it("with check again on, each post and each cancel checks your auctions again, t
   addon.world.closeAuctionHouse();
   addon.fire("AUCTION_CANCELED", 502);
   expect(list(queued()), "not while the house is closed").toEqual([]);
+});
+
+// Your auctions after some sold: 5 dust at 1s 50c a unit and a blade at 40s (both sold on their
+// buyout), a blade sold on a 3s bid, a sold blade whose price the client hides, and a blade up at 45s.
+const SOLD = `__wfgWorld.ah.owned = {
+  { auctionID = 701, itemKey = { itemID = 10940 }, status = 1, quantity = 5, buyoutAmount = 150 },
+  { auctionID = 702, itemKey = { itemID = 9999 }, status = 1, quantity = 1, buyoutAmount = 4000 },
+  { auctionID = 703, itemKey = { itemID = 9999 }, status = 1, quantity = 1, bidAmount = 300 },
+  { auctionID = 704, itemKey = { itemID = 9999 }, status = 1, quantity = 1, buyoutAmount = __wfgWorld.secret(1) },
+  { auctionID = 705, itemKey = { itemID = 9999 }, status = 0, quantity = 1, buyoutAmount = 4500 } }`;
+
+// Owned row i as the player sees it: [shown, name, price column, its color token (one of good, gold,
+// text2), Cancel shown, Relist shown, Relist works].
+const ownedLook = (addon, i) => {
+  const r = `${SCAN_CARD}.owned[${i}]`;
+  const color = addon.frame(`${r}.price`).textColor;
+  const token = ["good", "gold", "text2"].find((t) => isTok(addon, color, t)) || "other";
+  return addon.eval(`local r = ${r} return { r:IsShown(), r.name:GetText() or false, r.price:GetText() or false, "${token}", r.cancel:IsShown(), r.relist:IsShown(), r.relist:IsEnabled() }`);
+};
+
+it("sold rows show the amount, and are neither cancelled nor counted as undercut", () => {
+  const addon = atAuctionHouse(BAGS + SOLD + "__wfgWorld.ah.items[9999] = { { buyoutAmount = 100, quantity = 1 } }");
+  addon.click(`${SCAN_CARD}.check`);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.advance(1);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.advance(1);
+  addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect([1, 2, 3, 4].map((i) => ownedLook(addon, i)), "the dust's 5 at 1s 50c, the blade's buyout, the bid; the hidden price left out").toEqual([
+    [true, "Strange Dust", "sold · 7s 50c", "good", false, false, false],
+    [true, "TEST-ONLY Blade", "sold · 40s 0c", "good", false, false, false],
+    [true, "TEST-ONLY Blade", "sold · 3s 0c", "good", false, false, false],
+    [true, "TEST-ONLY Blade", "45s 0c", "gold", true, false, false],
+  ]);
+  expect([addon.eval(`return ${SCAN_CARD}.owned[2].mark:IsShown()`), ownedRow(addon, 4)[3], nextState(addon)], "only the blade still up is undercut (1s up)").toEqual([false, true, ["1 undercut", true]]);
+  addon.fire("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", 4, "TEST-ONLY A buyer has been found", 705);
+  expect([ownedLook(addon, 4), nextState(addon)], "the game says it sold: no more Cancel, nothing to cancel next").toEqual([[true, "TEST-ONLY Blade", "sold · 45s 0c", "good", false, false, false], ["none undercut", false]]);
+  addon.fire("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", 4, "TEST-ONLY no auction");
+  addon.fire("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", 0, "TEST-ONLY bid placed", 701);
+  addon.fire("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", 4, "TEST-ONLY not yours", 999);
+  expect([ownedLook(addon, 1)[2], addon.eval("return #ns.errors")], "other notices change nothing").toEqual(["sold · 7s 50c", 0]);
+});
+
+it("an expired auction says it's coming back by mail; once it is in the bags, Relist puts it on the sell card", () => {
+  const addon = atAuctionHouse(BAGS + OWNED + "__wfgWorld.bags[0][2] = nil");
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.fire("AUCTION_HOUSE_AUCTIONS_EXPIRED", 502);
+  expect(ownedLook(addon, 2), "expired: by mail, Relist waits for it").toEqual([true, "TEST-ONLY Blade", "expired · by mail", "text2", false, true, false]);
+  addon.click(`${SCAN_CARD}.owned[2].relist`);
+  addon.eval(`${HELPER}.Relist(502) ${HELPER}.Relist(999)`);
+  expect([card(addon)[1], list(sent(addon))], "nothing to put on the card yet").toEqual([false, []]);
+  addon.eval("table.remove(__wfgWorld.ah.owned, 2)");
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  expect([ownedLook(addon, 2)[2], ownedLook(addon, 3)[2]], "the game drops it from its list; the row stays, at the end").toEqual(["sold · 40s 0c", "expired · by mail"]);
+  addon.fire("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", 5, "TEST-ONLY expired", 501);
+  expect(ownedLook(addon, 1).slice(2), "the game's notice that one ran out (other dust is in the bags)").toEqual(["expired · in bags", "text2", false, true, true]);
+  addon.world.closeAuctionHouse();
+  addon.eval("__wfgWorld.bags[1][4] = { itemID = 9999, count = 1 }");
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect(ownedLook(addon, 3), "after the mailbox: back in the bags, Relist works").toEqual([true, "TEST-ONLY Blade", "expired · in bags", "text2", false, true, true]);
+  addon.advance(1);
+  addon.click(`${SCAN_CARD}.owned[3].relist`);
+  expect([card(addon)[1], sent(addon), ownedRow(addon, 3)[0]], "the blade from bag 1 is on the sell card, its price checked; the row goes").toEqual(["TEST-ONLY-BLADE", ["SendSellSearchQuery:9999"], false]);
+  expect(addon.eval(`local s = ${HELPER}.sell return { s.loc.bagID, s.loc.slotIndex }`), "the bag slot it found").toEqual([1, 4]);
+  expect(restrictedLog(addon).length, "relisting posts nothing by itself").toBe(0);
 });
