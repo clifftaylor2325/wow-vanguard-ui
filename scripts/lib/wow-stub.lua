@@ -224,6 +224,9 @@ function methods:SetMouseMotionEnabled(on) self.__mouseMotion = on == true end
 -- Whether clicks land on the frame (false lets them through to what's under it).
 function methods:SetMouseClickEnabled(on) self.__mouseClick = on == true end
 function methods:IsMouseOver() return self.__mouseOver == true end
+-- The mouse wheel: whether the frame takes it (a frame with an OnMouseWheel script does too, as in game).
+function methods:EnableMouseWheel(on) self.__mouseWheel = on ~= false end
+function methods:IsMouseWheelEnabled() return self.__mouseWheel == true or self.__scripts.OnMouseWheel ~= nil end
 -- Moving (recorded for the mover tests).
 function methods:StartMoving() self.__moving = true end
 function methods:StopMovingOrSizing() self.__moving = false end
@@ -738,9 +741,13 @@ function stub.hover(frame)
   end
 end
 
--- Scrolls the mouse wheel over a frame (delta 1 up, -1 down).
+-- Scrolls the mouse wheel over a frame (delta 1 up, -1 down). As in game, it
+-- goes to the frame if it takes the wheel, else to the nearest parent that does
+-- (a row inside a scroll view scrolls the view); nothing takes it otherwise.
 function stub.wheel(frame, delta)
-  runScript(frame, "OnMouseWheel", delta or 1)
+  local f = frame
+  while f and not f:IsMouseWheelEnabled() do f = f.__parent end
+  if f then runScript(f, "OnMouseWheel", delta or 1) end
 end
 
 -- Presses a key on a frame: OnKeyDown then OnKeyUp.
