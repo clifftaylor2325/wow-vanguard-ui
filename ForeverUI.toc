@@ -98,6 +98,7 @@ Modules/DataBars.lua
 Modules/Tooltips.lua
 Modules/VendorMemory.lua
 Modules/Nameplates.lua
+Modules/Situations.lua
 Modules/ClickCast.lua
 Modules/ClickCastSpells.lua
 Modules/ClickCastOptions.lua

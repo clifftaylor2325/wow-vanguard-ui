@@ -16,6 +16,8 @@ local NUDGE = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 
 local movers, order = {}, {}
 local unlocked = false
 local selected
+-- Text after every handle's label (Situations: " · recording Raid"), or "".
+local suffix = ""
 
 -- Unlock-mode options (grid, gridSize, snap, editMode) in the active profile.
 function ns.MoverOptions()
@@ -347,7 +349,8 @@ function ns.ShowCoords(m)
     return
   end
   local point, _, x, y = pointFor(m)
-  m.handle.label:SetText(m == selected and string.format("%s\n%s %d, %d", m.label, point, x, y) or m.label)
+  local label = m.label .. suffix
+  m.handle.label:SetText(m == selected and string.format("%s\n%s %d, %d", label, point, x, y) or label)
 end
 
 -- Selects a handle for arrow-key nudging (and deselects the previous one).
@@ -398,8 +401,14 @@ local function createHandle(m)
   h.label = h:CreateFontString(nil, "OVERLAY")
   h.label:SetPoint("CENTER")
   T.Text(h.label, "small")
-  h.label:SetText(m.label)
+  h.label:SetText(m.label .. suffix)
   return h
+end
+
+-- Sets the text after every handle's label (nil for none), and relabels the handles there are now.
+function ns.SetMoverSuffix(text)
+  suffix = text or ""
+  for _, m in pairs(movers) do ns.ShowCoords(m) end
 end
 
 -- The handle for a mover, created on first use; sized and placed over its frame.
