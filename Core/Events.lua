@@ -32,6 +32,23 @@ ns.MAX_ERRORS = 20
 local byText = {}  -- error text -> its entry in ns.errors
 local printed = {}  -- error text -> true once chat has heard of it; not dropped with the entry
 local forwarding = false  -- while the game's handler has an error of ours
+local watchers = {}  -- told the count when the kept errors change (Core/ErrorBadge.lua)
+
+-- Runs fn(count) on the frame after the kept errors change: an error kept, the list cleared.
+function ns.OnErrorsChanged(fn)
+  watchers[#watchers + 1] = fn
+end
+
+-- Tells every watcher how many errors are kept now.
+local function tellWatchers()
+  for _, fn in ipairs(watchers) do fn(#ns.errors) end
+end
+
+-- The kept errors changed: the watchers hear on the next frame (never from
+-- inside the error being handled), once however many come in that frame.
+local function errorsChanged()
+  if ns.Soon then ns.Soon("errorwatchers", tellWatchers) end
+end
 
 -- The call stack as text, from `level` frames up (1 = this function); "" when the client can't say.
 local function stack(level)
@@ -49,6 +66,7 @@ local function keep(text, stackText)
   local e = { text = text, count = 0, stack = stackText }
   byText[text], ns.errors[#ns.errors + 1] = e, e
   if #ns.errors > ns.MAX_ERRORS then byText[table.remove(ns.errors, 1).text] = nil end
+  errorsChanged()
   return e
 end
 
@@ -99,6 +117,7 @@ end
 -- Forgets every caught error (/fui errors clear).
 function ns.ClearErrors()
   ns.errors, byText, printed = {}, {}, {}
+  errorsChanged()
 end
 
 -- The `where` of the ns.Try under way (nil outside one), for its message handler.

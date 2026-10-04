@@ -865,3 +865,33 @@ it("Forever fixes: the newer calls for zone color, pet moods, breath bars, the m
   noBuild.slash("status");
   expect(chatHas(noBuild, /Client WoW Forever {2}· {2}auras/), "a client that can't say its build just leaves it out").toBe(true);
 });
+
+it("the error badge: a count on the addons button and in the options footer, gone at zero", () => {
+  const addon = loggedIn('AddonCompartmentFrame = CreateFrame("Frame", "AddonCompartmentFrame", UIParent)');
+  // Both badges: the addons button's count and shown state, the footer's text and shown state.
+  const badges = () => addon.eval(`local f = ForeverUI_OptionsErrors return { ForeverUI_ErrorBadge:IsShown(), ForeverUI_ErrorBadge.text:GetText() or "",
+    f and f:IsShown() or false, f and f.text:GetText() or "" }`);
+  expect(badges(), "no errors: no badge").toEqual([false, "0", false, ""]);
+  addon.eval('ns.Report("TEST-ONLY site", "TEST-ONLY failure")');
+  expect(badges()[0], "the badge waits for the next frame, never drawn from inside the error").toBe(false);
+  addon.advance(0.5);
+  expect(badges().slice(0, 2), "one error: 1 on the addons button").toEqual([true, "1"]);
+  addon.eval('ns.Report("TEST-ONLY site", "TEST-ONLY failure") ns.Report("TEST-ONLY site", "TEST-ONLY other")');
+  addon.advance(0.5);
+  addon.eval("ns.Options.Show()");
+  expect(badges(), "the same error again counts once; a new one makes 2, in the footer too").toEqual([true, "2", true, "2 errors caught this session: click to list them"]);
+  addon.clearChat();
+  addon.click("ForeverUI_OptionsErrors");
+  expect(chatHas(addon, /2 error\(s\) caught this session/), "clicking the footer line lists them (/fui errors)").toBe(true);
+  addon.slash("errors clear");
+  addon.advance(0.5);
+  expect(badges(), "/fui errors clear: both badges go").toEqual([false, "0", false, "0 errors caught this session: click to list them"]);
+  addon.eval('ns.Report("TEST-ONLY site", "TEST-ONLY failure")');
+  addon.advance(0.5);
+  expect(badges().slice(0, 3), "and come back with the next error").toEqual([true, "1", true]);
+  const plain = loggedIn("AddonCompartmentFrame = nil");
+  plain.eval('ns.Report("TEST-ONLY site", "TEST-ONLY failure")');
+  plain.advance(0.5);
+  plain.eval("ns.Options.Show()");
+  expect(plain.eval('return { ForeverUI_ErrorBadge == nil, ForeverUI_OptionsErrors.text:GetText() }'), "a client without the addons button: the footer still counts").toEqual([true, "1 error caught this session: click to list them"]);
+});

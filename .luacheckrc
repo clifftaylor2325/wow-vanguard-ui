@@ -53,4 +53,6 @@ read_globals = {
   "C_VignetteInfo",
   -- P3.10 Click casting: the game's click bindings and its Click Casting window.
   "C_ClickBindings", "ToggleClickBindingFrame",
+  -- P3.12 Error badge: the game's addons button by the minimap.
+  "AddonCompartmentFrame",
 }
