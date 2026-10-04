@@ -67,4 +67,6 @@ read_globals = {
   "ChatFrameUtil", "ChatFrame_SendTell",
   -- F5 Situations: whether you're in a raid, and resting.
   "IsInRaid", "IsResting",
+  -- F6 Auction helper: the auction house API and the game's auction house window.
+  "C_AuctionHouse", "AuctionHouseFrame",
 }

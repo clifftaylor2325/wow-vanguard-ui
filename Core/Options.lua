@@ -259,6 +259,7 @@ O.MODULE_INFO = {
   DataBars = { "XP and reputation", "Thin experience and reputation bars." },
   Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },
   VendorMemory = { "Vendor memory", "Remembers what each merchant sells; tooltips and the stock list say where to buy." },
+  AuctionHelper = { "Auction helper", "Shopping lists, a sell card that suggests an undercut and posts, prices in tooltips from your scans, and an undercut check on your auctions." },
   Nameplates = { "Nameplates", "Flat plates with levels, your debuffs, casts and threat." },
   Situations = { "Situations", "Different frame spots and settings for solo, party, raid, PvP, instance and resting, applied out of combat." },
 }
@@ -416,6 +417,16 @@ local function windowRows()
     check("Popups (reload)", setting("Windows", "popups", true)),
     check("Breath and fatigue bars (reload)", setting("Windows", "timers", true)),
     check("Durability on the character pane's gear (reload)", setting("Windows", "durability", true)),
+  }
+end
+
+-- The auction helper: its panel, tooltip prices and scan button.
+local function auctionRows()
+  return {
+    { "header", "Auction house" },
+    check("ForeverUI panel beside the auction house (lists, sell helper, scan)", setting("AuctionHelper", "panel")),
+    check("Auction prices in tooltips (from your scans)", setting("AuctionHelper", "tooltip")),
+    check("Scan button (one scan every 15 minutes)", setting("AuctionHelper", "scanButton")),
   }
 end
 
@@ -646,6 +657,7 @@ local function morePageRows()
   append(rows, stripRows())
   append(rows, gamePartRows())
   append(rows, windowRows())
+  append(rows, auctionRows())
   append(rows, gameToolRows())
   append(rows, merchantRows())
   append(append(rows, errandRows()), prepRows())
