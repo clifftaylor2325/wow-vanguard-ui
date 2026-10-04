@@ -505,9 +505,8 @@ local function stripRows()
     check("Durability", stripSetting("durability")), check("Free bag slots", stripSetting("bags")),
     check("Frame rate and latency", stripSetting("system")), check("Gold", stripSetting("gold")),
     check("Ammo (hunters, warriors, rogues)", stripSetting("ammo")), check("Clock", stripSetting("clock")),
-    check("Soul shards (warlocks)", stripSetting("shards")),
-    check("XP per hour this session", stripSetting("xprate")), check("Time to the next level", stripSetting("leveltime")),
-    check("Gold per hour this session", stripSetting("goldrate")),
+    check("Soul shards (warlocks)", stripSetting("shards")), check("XP per hour this session", stripSetting("xprate")),
+    check("Time to the next level", stripSetting("leveltime")), check("Gold per hour this session", stripSetting("goldrate")),
     check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")), check("Your place in the last fight's DPS, in a group", stripSetting("rank")),
   }
 end
