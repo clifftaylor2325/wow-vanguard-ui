@@ -65,4 +65,6 @@ read_globals = {
   "GetMerchantItemID", "GetZoneText", "GetSubZoneText",
   -- F4 Chat watch: the game's whisper call, and its older name.
   "ChatFrameUtil", "ChatFrame_SendTell",
+  -- F5 Situations: whether you're in a raid, and resting.
+  "IsInRaid", "IsResting",
 }

@@ -260,6 +260,7 @@ O.MODULE_INFO = {
   Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },
   VendorMemory = { "Vendor memory", "Remembers what each merchant sells; tooltips and the stock list say where to buy." },
   Nameplates = { "Nameplates", "Flat plates with levels, your debuffs, casts and threat." },
+  Situations = { "Situations", "Different frame spots and settings for solo, party, raid, PvP, instance and resting, applied out of combat." },
 }
 
 -- One module's switch, with its name and what it does (applies on reload).
