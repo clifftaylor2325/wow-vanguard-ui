@@ -251,6 +251,34 @@ it("setup look: accent swatches and the raid frame style apply at once", () => {
   addon.eval("local b = ForeverUI_Setup.pages[3].styles[2] b:GetScript('OnClick')(b)");
   expect(addon.eval("return ns.Settings('RaidFrames').look"), "a style button sets the raid frame style").toBe("dark");
   expect(borderOf(addon, "ForeverUI_Setup.pages[3].styles[2]"), "the chosen style is outlined").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  const captions = addon.eval("local out = {} for i, b in ipairs(ForeverUI_Setup.pages[3].styles) do out[i] = { b.text:GetText(), b.text.__textColor } end return out");
+  expect(captions.map(([t, c]) => [t, ...c.slice(0, 3)]), "each tile's short name under it, the chosen one in the accent")
+    .toEqual([["Softened", ...tok(addon, "text").slice(0, 3)], ["Dark", ...tok(addon, "accent").slice(0, 3)], ["Bright", ...tok(addon, "text").slice(0, 3)]]);
+});
+
+// The style tiles on setup's Look step: each one's size, bar color and fill, and its name's text and color.
+const styleTiles = (addon) => addon.eval(`local out = {}
+  for i, b in ipairs(ForeverUI_Setup.pages[3].styles) do
+    local c, t = b.bar.__barColor, b.name.__textColor
+    out[i] = { b:GetWidth(), b:GetHeight(), { c[1], c[2], c[3] }, b.bar:GetValue(), b.name:GetText(), { t[1], t[2], t[3] } }
+  end
+  return out`);
+
+it("setup look: each raid frame style is a small raid tile drawn in that style, in your class color", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
+  setupClick(addon, "next");
+  setupClick(addon, "next");
+  expect(addon.eval("return ForeverUI_Setup.caption:GetText()"), "Look is step 3 of 4").toBe("Step 3 of 4 · Look");
+  const mage = [0.25, 0.78, 0.92];
+  const soft = addon.eval(`return { ns.GetModule("RaidFrames").Soften(${mage.join(", ")}) }`);
+  const [white, dark] = [tok(addon, "text").slice(0, 3), tok(addon, "darkBar").slice(0, 3)];
+  expect(styleTiles(addon), "softened and bright class bars with light names; a dark bar with the name in the class color").toEqual([
+    [100, 48, soft, 0.75, "<name>", white], [100, 48, dark, 0.75, "<name>", mage], [100, 48, mage, 0.75, "<name>", white]]);
+  expect(addon.eval("local p = ForeverUI_Setup.pages[3] local a, b = p.styles[1], p.styles[2] return { select(4, b:GetPoint(1)) - select(4, a:GetPoint(1)), a.text:GetText() }"), "side by side, 16 apart").toEqual([116, "Softened"]);
+  addon.eval("local b = ForeverUI_Setup.pages[3].styles[3] b:GetScript('OnClick')(b)");
+  expect([addon.eval("return ns.Settings('RaidFrames').look"), borderOf(addon, "ForeverUI_Setup.pages[3].styles[3]")], "clicking the bright tile picks it").toEqual(["class", tok(addon, "accent").slice(0, 3).concat(1)]);
+  setupClick(addon, "next");
+  expect(addon.eval("return ForeverUI_Setup.caption:GetText()"), "then Move things is step 4 of 4").toBe("Step 4 of 4 · Move things");
 });
 
 // The screen step's choices (their labels) and the hint under them.

@@ -46,8 +46,11 @@ S.SCREENS = {
 -- The client's UI scale range (its Graphics settings slider).
 S.UI_SCALE = { min = 0.65, max = 1.15 }
 
--- Raid frame styles: the Raid page's Style choices.
-S.STYLES = { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }
+-- Raid frame styles: the Raid page's Style choices, and the short name under each style's tile in setup.
+S.STYLES = { { "soft", "Class colors, softened", "Softened" }, { "dark", "Dark, class-colored names", "Dark" },
+  { "class", "Class colors, bright", "Bright" } }
+-- The style tiles on the Look step: a raid tile's default size, side by side this far apart.
+local TILE_W, TILE_H, TILE_GAP = 100, 48, 16
 
 local frame
 local state = { step = 1, layout = S.LAYOUTS[1].key, screen = "keep", paused = false, reload = false }
@@ -227,13 +230,27 @@ local function markChoice(page, value)
   end
 end
 
--- Re-marks the chosen layout and screen (and shows their hints), accent and style.
+-- Draws a style tile as the raid frames draw that style, in your class color: a softened or
+-- bright bar with a light name, or a dark bar with the name in the class color.
+local function paintTile(b)
+  local r, g, bl = ns.GetModule("UnitFrames").HealthColor("player")
+  b.name:SetText(UnitName("player"))
+  if b.value == "dark" then
+    T.BarColor(b.bar, "darkBar")
+    return b.name:SetTextColor(r, g, bl)
+  end
+  if b.value == "soft" then r, g, bl = ns.GetModule("RaidFrames").Soften(r, g, bl) end
+  b.bar:SetStatusBarColor(r, g, bl)
+  T.Color(b.name, "text")
+end
+
+-- Re-marks the chosen layout and screen (and shows their hints), accent and style (its tiles redrawn).
 local function refresh()
   local look = frame.pages[3]
   markChoice(frame.pages[1], state.layout)
   markChoice(frame.pages[2], state.screen)
   for _, s in ipairs(look.swatches) do mark(s, isAccent(s.rgb)) end
-  for _, b in ipairs(look.styles) do mark(b, b.value == raidSettings().look) end
+  for _, b in ipairs(look.styles) do mark(b, b.value == raidSettings().look) paintTile(b) end
   T.Color(frame.caption, "accent")
 end
 
@@ -289,13 +306,37 @@ local function screenPage(page)
   choicePage(page, "Sizes for your screen. You can change them later in /fui.", screenChoices(), "screen")
 end
 
--- The raid frame style buttons under the accent swatches.
+-- A style tile's health bar, three quarters full, one pixel inside the border, with your name over it.
+local function tileBar(b)
+  local px = T.Pixel(b)
+  b.bar = T.StyleBar(CreateFrame("StatusBar", nil, b))
+  b.bar:SetPoint("TOPLEFT", px, -px)
+  b.bar:SetPoint("BOTTOMRIGHT", -px, px)
+  b.bar:SetMinMaxValues(0, 1)
+  b.bar:SetValue(0.75)
+  b.name = T.Text(b.bar:CreateFontString(nil, "OVERLAY"), "barName")
+  b.name:SetPoint("TOP", 0, -6)
+end
+
+-- One raid frame style as a small raid tile drawn in it, with its short name under it;
+-- picking it sets the style at once.
+local function styleTile(page, i, s)
+  local b = T.Panel(CreateFrame("Button", nil, page))
+  b:SetSize(TILE_W, TILE_H)
+  b:SetPoint("TOPLEFT", (i - 1) * (TILE_W + TILE_GAP), -82)
+  b.value = s[1]
+  tileBar(b)
+  b.text = text(page, "small", "text", s[3])
+  b.text:SetPoint("TOP", b, "BOTTOM", 0, -4)
+  b:SetScript("OnClick", function() S.SetStyle(s[1]); refresh() end)
+  return b
+end
+
+-- The raid frame styles under the accent swatches: a tile drawn in each, side by side.
 local function stylePicker(page)
   text(page, "label", "text", "Raid frame style"):SetPoint("TOPLEFT", 0, -62)
   page.styles = {}
-  for i, s in ipairs(S.STYLES) do
-    page.styles[i] = choice(page, s[2], s[1], -82 - (i - 1) * 30, function() S.SetStyle(s[1]); refresh() end)
-  end
+  for i, s in ipairs(S.STYLES) do page.styles[i] = styleTile(page, i, s) end
 end
 
 -- One accent swatch, with a check when chosen: picking it sets the accent at once.
