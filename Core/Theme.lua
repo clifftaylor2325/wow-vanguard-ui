@@ -887,22 +887,45 @@ local function activeFader(frame)
   return not T.Settings().reduceMotion and fader(frame) or nil
 end
 
--- Shows a frame, fading it in (0.12 s by default) unless motion is off.
--- Only for frames that aren't protected: animations never move secure frames.
+-- The longest a fade lasts in combat, in seconds: mid-fight nothing lingers
+-- on screen or keeps you waiting on it (docs/THEME.md, Motion and sound).
+T.COMBAT_FADE = 0.15
+-- True from a fight's PLAYER_REGEN_DISABLED, which comes just before the
+-- client's combat lockdown starts, until PLAYER_REGEN_ENABLED.
+local fighting = false
+
+-- How long a fade lasts: seconds (0.12 by default), at most T.COMBAT_FADE in combat.
+function T.FadeTime(seconds)
+  local t = seconds or 0.12
+  if fighting or ns.InCombat() then return math.min(t, T.COMBAT_FADE) end
+  return t
+end
+
+-- A fight started or ended: fades are capped while it lasts.
+local function onFight(event)
+  fighting = event == "PLAYER_REGEN_DISABLED"
+end
+ns.On("PLAYER_REGEN_DISABLED", onFight)
+ns.On("PLAYER_REGEN_ENABLED", onFight)
+
+-- Shows a frame, fading it in (0.12 s by default, at most 0.15 s in combat)
+-- unless motion is off. Only for frames that aren't protected: animations
+-- never move secure frames.
 function T.FadeIn(frame, seconds)
   local f = activeFader(frame)
   frame:Show()
   if not f then return frame:SetAlpha(1) end
-  playFade(f, 0, 1, seconds or 0.12, function() frame:SetAlpha(1) end)
+  playFade(f, 0, 1, T.FadeTime(seconds), function() frame:SetAlpha(1) end)
 end
 
--- Fades a frame out, then hides it (and runs done); at once when motion is off.
+-- Fades a frame out (as long as T.FadeIn), then hides it (and runs done); at
+-- once when motion is off.
 function T.FadeOut(frame, seconds, done)
   local f = activeFader(frame)
   -- Hides the frame, restores its alpha for next time, and tells the caller.
   local finish = function() frame:Hide() frame:SetAlpha(1) if done then done() end end
   if not f or not frame:IsShown() then return finish() end
-  playFade(f, 1, 0, seconds or 0.12, finish)
+  playFade(f, 1, 0, T.FadeTime(seconds), finish)
 end
 
 -- Stops a fade in progress and leaves the frame fully visible.

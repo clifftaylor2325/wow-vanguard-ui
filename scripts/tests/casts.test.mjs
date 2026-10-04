@@ -1,7 +1,7 @@
 // casts: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { FAKE_FADES, bars, isTok, loggedIn, spark, unitEvents } from "./helpers.mjs";
+import { FAKE_FADES, bars, isTok, loggedIn, setCombat, spark, unitEvents } from "./helpers.mjs";
 
 // TEST-ONLY casts: __casts[unit] = { kind = "cast"|"channel", start, finish, shielded }.
 const CAST_ENV = `
@@ -70,6 +70,22 @@ it("cast bar flashes on finish and interrupt", () => {
   addon.eval('__casts.player = { kind = "cast", start = 1000, finish = 3000 }');
   addon.fire("UNIT_SPELLCAST_START", "player");
   expect(isTok(addon, castBar(addon, "player").color, "cast") && castBar(addon, "player").text === "TEST-ONLY Spell", "a new cast replaces the flash at once").toBeTruthy();
+});
+
+it("a finished cast fades in 0.35 s, and in 0.15 s in combat", () => {
+  const addon = loggedIn(CAST_ENV + FAKE_FADES);
+  addon.eval("__fakeFader(ForeverUI_CastBar_player)");
+  // Casts and finishes a spell on the player's bar; returns how long its fade was set to last.
+  const finish = () => {
+    addon.eval('__fades = {} __casts.player = { kind = "cast", start = 1000, finish = 3000 }');
+    addon.fire("UNIT_SPELLCAST_START", "player");
+    addon.eval("__casts.player = nil");
+    addon.fire("UNIT_SPELLCAST_STOP", "player");
+    return addon.eval("local d = __fades[1].duration __finishFades() return d");
+  };
+  expect(finish(), "out of combat").toBe(0.35);
+  setCombat(addon, true);
+  expect(finish(), "in combat the fade is cut to 0.15 s").toBe(0.15);
 });
 
 it("cast timing from the client's duration object", () => {

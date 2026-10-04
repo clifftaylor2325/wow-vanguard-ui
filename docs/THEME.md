@@ -190,6 +190,48 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `reduceMotion` | off | General → Motion and sound → Reduce motion | at once |
 | `sounds` | on | General → Motion and sound → Interface sounds | at once |
 
+## Motion and sound
+
+ForeverUI moves little and quietly. Every fade goes through the theme (`T.FadeIn`, `T.FadeOut`, `T.StopFade`): an alpha animation on frames that are not protected (never a secure frame), 0.12 s unless the caller asks for another length. **In combat no fade lasts longer than 0.15 s** (`T.COMBAT_FADE`, applied by `T.FadeTime`): combat counts from the fight's `PLAYER_REGEN_DISABLED` (which comes just before the client's lockdown) until `PLAYER_REGEN_ENABLED`. **Reduce motion** (General → Motion and sound, off by default) turns every fade into an instant show or hide. **Interface sounds** (on by default) turns ForeverUI's own interface sounds off. Everything else that changes on screen does so at once, without animation.
+
+### Fades and flashes
+
+| What | Kind | Out of combat | In combat | Turned off by |
+| --- | --- | --- | --- | --- |
+| Options window (`/fui`) opens | fade in | 0.12 s | 0.12 s | Reduce motion |
+| Options window closes | fade out | 0.12 s | 0.12 s | Reduce motion |
+| Options page change | stops a fade in progress; the page appears at once | - | - | - |
+| Unlock mode: a frame's popover (right-click a handle) opens / closes | fade in / out | 0.12 s | closes in 0.12 s (a fight ends unlock mode) | Reduce motion |
+| Setup wizard opens, or comes back after a fight | fade in | 0.12 s | - (waits for the fight to end) | Reduce motion |
+| AFK screen appears | fade in | 0.4 s | - (never opens in a fight) | Reduce motion |
+| AFK screen goes (you are back, a click or key, a fight starts) | fade out | 0.2 s | 0.15 s | Reduce motion |
+| Cast bar ends | flash: the bar fills, green for a finished cast, red with the reason (Interrupted, Failed) | held while it fades | held while it fades | Reduce motion (the bar hides at once) |
+| Cast bar ends, then | fade out | 0.35 s | 0.15 s | Reduce motion |
+| Bars and strips on mouseover or conditions (action bars, the menu and bag strips, ...) | alpha 0 / 1 | instant | instant | - (no animation) |
+| Raid tiles out of range | alpha 40 % | instant | instant | Fade players out of range (Raid frames) |
+| Health and power bars | the client eases the value (`ExponentialEaseOut`) | the client's easing | the client's easing | Smooth health and power bars |
+| Action button proc glow | the accent glow ring shows while the game highlights the spell | static, no animation | static | - |
+| Aura and cooldown sweeps | the dark sweep, no edge line and no end flash (bling) | the aura's duration | the aura's duration | - |
+| Micro menu buttons | the game's own alert flash (kept on the strip) | the game's | the game's | - (the game's) |
+| Stance and pet bars | the game's attack flash and auto-cast mark (kept) | the game's | the game's | - (the game's) |
+
+Sparks (cast bars, power ticks, the swing timer) move with what they show; they are not fades and Reduce motion leaves them.
+
+### Sounds
+
+All are the client's own interface sounds (`SOUNDKIT`), played with `T.Sound` unless noted.
+
+| When | Sound | Turned off by |
+| --- | --- | --- |
+| The options window opens | `IG_MAINMENU_OPEN` | Interface sounds |
+| The options window closes | `IG_MAINMENU_CLOSE` | Interface sounds |
+| Another options page opens | `IG_CHARACTER_INFO_TAB` | Interface sounds |
+| A switch is turned on in the options, a visibility condition is ticked or unticked, a click-cast starter layout is applied | `IG_MAINMENU_OPTION_CHECKBOX_ON` | Interface sounds |
+| A switch is turned off in the options, or a row's reset dot is clicked | `IG_MAINMENU_OPTION_CHECKBOX_OFF` | Interface sounds |
+| A rare shows up on the minimap (out of combat, once per rare) | `RAID_WARNING`, with one chat line | "A rare nearby: a sound and a chat line" (off by default; not Interface sounds, since it is an alert you asked for) |
+
+The game's own sounds (error messages, the micro menu, windows ForeverUI restyles) stay the game's.
+
 ## Where the plan and the code differ
 
 The work plan (P4.1) described the theme from an earlier review. The code is what ships, so this page follows it:
