@@ -77,6 +77,51 @@ it("raid frames: a dark style chosen before 'look' carries over", () => {
   expect(s.look === "dark" && s.style == null, "style = dark becomes look = dark, and the old key goes").toBeTruthy();
 });
 
+// The tank's tile: its top line (shown, color, height in screen pixels) and its
+// status text (font size in tile units, size on screen, justification, text).
+const TILE_LOOK = `local b = ForeverUI_RaidUnitButton1 local t, fs = b.topLine, b.status local _, size = fs:GetFont()
+  return { line = t:IsShown(), color = t.__vertexColor or false, px = t:GetHeight() / ns.Theme.Pixel(b), size = size,
+    onScreen = size * b:GetEffectiveScale() / UIParent:GetEffectiveScale(), justify = fs.__justifyH, text = fs:GetText() }`;
+
+it("raid tiles: a class-colored top line in the softened look, and missing health that stays readable on a 40-player grid", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + "__members = 5 GetNumGroupMembers = function() return __members end");
+  addon.eval('__spawn(1, "raid1") __spawn(3, "raid3")');
+  // The tank's tile now (TILE_LOOK).
+  const tile = () => addon.eval(TILE_LOOK);
+  // A number to three places, for sizes worked out in fractions of a pixel.
+  const r3 = (n) => Math.round(n * 1000) / 1000;
+  let t = tile();
+  expect([t.line, t.color, r3(t.px)], "the softened look: a 1 px line in the tank's own (unsoftened) class color").toEqual([true, [0.78, 0.61, 0.43, 1], 1]);
+  expect(addon.frame("ForeverUI_RaidUnitButton1.topLine").rect.top, "along the top of the health bar").toBe(addon.frame("ForeverUI_RaidUnitButton1.health").rect.top);
+  expect(addon.eval("local t = ForeverUI_RaidUnitButton1.topLine return { t:GetParent() == ForeverUI_RaidUnitButton1.health, t.__layer, t.__sublevel }"),
+    "on the health bar, one sublevel under the aggro strip, which covers it while the player has aggro").toEqual([true, "OVERLAY", -1]);
+  expect([t.size, t.justify, t.text], "a 10-player grid: the missing health at its usual size, under the name").toEqual([10, "CENTER", "-700"]);
+  // The grid fitted to n players: the status size in tile units and on screen, its justification, the line's pixels.
+  const fit = (n) => { addon.eval(`__members = ${n}`); addon.fire("GROUP_ROSTER_UPDATE"); t = tile(); return [r3(t.size), r3(t.onScreen), t.justify, r3(t.px)]; };
+  expect(fit(25), "25 players (drawn at 80%): 9 px on screen, beside the name, the line still 1 px").toEqual([11.25, 9, "RIGHT", 1]);
+  expect(fit(40), "40 players (drawn at 72%): still 9 px on screen").toEqual([12.5, 9, "RIGHT", 1]);
+  expect(t.text, "with the missing health in it").toBe("-700");
+  setCombat(addon, true);
+  addon.eval("ns.Theme.Settings().textScale = 1.2 ns.Theme.Refresh() __units.raid1.hp = { __secret = true }");
+  addon.fire("UNIT_HEALTH", "raid1");
+  t = tile();
+  expect([r3(t.size), t.text], "a text size change in a fight keeps the size until the fight ends; hidden health shows no number").toEqual([12.5, ""]);
+  setCombat(addon, false);
+  expect(r3(tile().onScreen), "then the text size applies (the smallest text is 11 at 120%)").toBe(11);
+  addon.eval("ns.Theme.Settings().textScale = 1 ns.Theme.Refresh()");
+  expect(fit(10).slice(0, 3), "back to 10 players: full size again").toEqual([10, 10, "CENTER"]);
+  for (const look of ["dark", "class"]) {
+    addon.eval(`ForeverUIDB.profiles.Default.RaidFrames.look = "${look}" ns.GetModule("RaidFrames").UpdateAll()`);
+    expect(tile().line, `no top line in the ${look} look`).toBe(false);
+  }
+  const tall = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { RaidFrames = { height = 56 } } } }" });
+  tall.eval('__spawn(1, "raid1")');
+  expect(tall.eval(TILE_LOOK).size, "a taller tile: bigger missing-health text").toBe(12);
+  const short = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { RaidFrames = { height = 36 } } } }" });
+  short.eval('__spawn(1, "raid1")');
+  expect(short.eval(TILE_LOOK).size, "a shorter one: never under the smallest text").toBe(9);
+});
+
 // TEST-ONLY: a client whose secure snippets fail to compile (the probe's call throws).
 const NO_SNIPPETS = 'SecureHandlerExecute = function() error("TEST-ONLY: snippets do not compile") end\n';
 
