@@ -118,12 +118,20 @@ local function showLatency(bar, startMS, endMS, channel)
   if bar.lag:IsShown() then bar.lag:SetWidth(bar:GetWidth() * math.min(1, lag / (endMS - startMS))) end
 end
 
+-- How the client's timer fills the bar: at once (no easing), by the time gone for a
+-- cast and by the time left for a channel, so a channel empties as it does on plain
+-- times. Its default is the time gone (SimpleStatusBarAPIDocumentation, SetTimerDuration).
+local function timerArgs(channel)
+  local dirs, ease = Enum and Enum.StatusBarTimerDirection, Enum and Enum.StatusBarInterpolation
+  return ease and ease.Immediate, dirs and (channel and dirs.RemainingTime or dirs.ElapsedTime)
+end
+
 -- Starts the bar's timing: the client's own timer where it can, else plain times on each frame.
 local function startTiming(bar, unit, startMS, endMS, channel)
   local duration = castDuration(unit, channel)
   CB.ClearSeconds(bar.time)
   showLatency(bar, startMS, endMS, channel)
-  if duration and bar.SetTimerDuration and pcall(bar.SetTimerDuration, bar, duration) then
+  if duration and bar.SetTimerDuration and pcall(bar.SetTimerDuration, bar, duration, timerArgs(channel)) then
     return bar:SetScript("OnUpdate", nil)
   end
   bar:SetMinMaxValues(0, 1)
