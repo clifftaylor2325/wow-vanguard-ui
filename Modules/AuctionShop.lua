@@ -107,8 +107,10 @@ function AH.BestResult(entry, results)
   return results[1] and resultRow(results[1]) or false
 end
 
--- Browse results: the list entry in flight takes its row; an item opened in the game's list is done.
+-- Browse results: their prices feed the price store (any browse, the game's too); the list entry
+-- in flight takes its row; an item opened in the game's list is done.
 function AH.OnBrowse()
+  AP.RecordBrowse(C_AuctionHouse.GetBrowseResults())
   local s = AH.pending
   if not (s and (s.entry or s.open)) then return end
   if s.entry then AH.found[s.entry] = AH.BestResult(s.entry, C_AuctionHouse.GetBrowseResults()) end

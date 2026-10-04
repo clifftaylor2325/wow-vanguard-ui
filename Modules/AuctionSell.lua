@@ -109,12 +109,14 @@ function AH.TakeCursor()
   AH.TakeItem(loc)
 end
 
--- Search results for an item: the price check in flight (the sell card's, or your auctions') takes the cheapest.
+-- Search results for an item: the price check in flight (the sell card's, or your auctions') takes the
+-- cheapest, which also feeds the price store.
 function AH.OnSearchResults(event, arg)
   local s, commodity = AH.pending, event == "COMMODITY_SEARCH_RESULTS_UPDATED"
   local id = type(arg) == "table" and arg.itemID or arg
   if not (s and s.sell and s.sell.itemID == id) then return end
   local cheapest = AH.Cheapest(commodity, s.sell)
+  AP.RecordSeen(id, cheapest)
   if s.card and AH.sell and AH.sell.id == id then AH.sell.cheapest, AH.sell.searched = cheapest, true end
   if s.check then AH.MarkUndercuts(id, cheapest, commodity) end
   AH.Done()
