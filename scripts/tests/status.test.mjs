@@ -75,3 +75,20 @@ it("range ticker: only while the raid frames show, no repeat questions, no repai
   addon.eval("ForeverUI_Raid:Show() __wfgStub.advance(0.25)");
   expect(rangeCalls(addon).range, "shown again, the checks resume").toBe(2);
 });
+
+it("ready check: a new check started while the last one's answers linger keeps its answers up", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + STATUS_ENV);
+  addon.eval('__spawn(1, "raid1"); __spawn(3, "raid3")');
+  addon.eval('__status.ready = { raid1 = "ready", raid3 = "ready" }');
+  addon.fire("READY_CHECK");
+  addon.fire("READY_CHECK_FINISHED");
+  addon.eval("__wfgStub.advance(2)");
+  expect(marks(addon, 1).ready !== false, "the answers linger after the check ends").toBe(true);
+  addon.eval('__status.ready = { raid1 = "ready", raid3 = "waiting" }');
+  addon.fire("READY_CHECK");
+  addon.eval("__wfgStub.advance(5)");
+  expect([/Icons\\Waiting$/.test(marks(addon, 3).ready), marks(addon, 3).status], "the old check's timer doesn't clear the new check").toEqual([true, false]);
+  addon.fire("READY_CHECK_FINISHED");
+  addon.eval("__wfgStub.advance(6.5)");
+  expect([marks(addon, 3).ready, marks(addon, 3).status], "the new check's answers go a few seconds after it ends").toEqual([false, true]);
+});
