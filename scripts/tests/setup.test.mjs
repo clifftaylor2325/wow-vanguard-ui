@@ -200,7 +200,7 @@ function layoutProblems(rects, sw, sh) {
 
 // The whole HUD logged in on a new account, party pets and targets on, the info strip
 // at its tallest (with the leveling and DPS rows) and the bag and menu bar at its
-// laid-out size (398.8 wide, 68 tall: the bags row over the menu row).
+// laid-out size (404 wide, 68 tall: the bags row over the menu row's 14 slots).
 function wholeHud() {
   const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + SPECIAL_BARS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
   addon.eval("ForeverUI_InfoStrip:SetHeight(68)");
@@ -228,7 +228,7 @@ function problemsAt(addon, layout, sw, sh, label) {
 it("setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", () => {
   const addon = wholeHud();
   expect(addon.eval("return ChatFrame1.__points.BOTTOMLEFT ~= nil"), "chat sits in its layout spot").toBe(true);
-  expect(moverSpots(addon).menustrip.slice(4, 6).map((n) => Math.round(n * 10) / 10), "the bag and menu bar is as laid out").toEqual([398.8, 68]);
+  expect(moverSpots(addon).menustrip.slice(4, 6).map((n) => Math.round(n * 10) / 10), "the bag and menu bar hugs its 14 menu slots").toEqual([404, 68]);
   expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras", "petbar", "stancebar", "chat", "questdialog"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
   expect(moverSpots(addon).questdialog.slice(3, 6), "the quest dialog is checked at its greatest size, 8 px over the focus cast bar").toEqual([346, 560, 360]);
   for (const layout of ["damage", "healing", "classic"]) {

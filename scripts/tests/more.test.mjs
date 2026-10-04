@@ -2015,8 +2015,10 @@ const MENU = 28 / 27, BAGS = 28 / 47;
 const r3 = (n) => Math.round(n * 1000) / 1000;
 // The bag and menu bar's width and height.
 const barSize = (addon) => addon.eval("return { ForeverUI_MenuStrip:GetWidth(), ForeverUI_MenuStrip:GetHeight() }").map(r3);
-// The bar's width around a micro menu w units wide (its end buttons reach past their slots), inside its margins.
-const menuBarW = (w) => r3((w - 32) * MENU + 24 + 16);
+// The bar's width around a longer row of n slots: the slots, their 4-pixel gaps, and an 8-pixel margin each side.
+const barW = (n) => (n > 0 ? n * 28 - 4 : 0) + 16;
+// The bar's width around a micro menu w units wide: the game lays its buttons 27 units apart, 5 overlapping.
+const menuBarW = (w) => barW(Math.round((w - 5) / 27));
 
 it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip, quest tracker", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV);
@@ -2036,9 +2038,9 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   expect(pinned(addon, "MinimapCluster.Tracking", overlay), "when the game moves one back, it returns to its corner").toEqual([true, "BOTTOMLEFT"]);
   expect([pinned(addon, "BagsBar", "ForeverUI_MenuStrip"), pinned(addon, "MicroMenuContainer", "ForeverUI_MenuStrip")], "the bag bar and the micro menu ride in one bar, each at its row's right end").toEqual([[true, "RIGHT"], [true, "RIGHT"]]);
   addon.eval("BagsBar:SetSize(600, 45) ns.PausePins(false)");
-  expect(barSize(addon), "a bag bar wider than the bar grows it, its slots inside an 8-unit margin (two rows tall)").toEqual([r3((600 - 45) * BAGS + 24 + 16), 68]);
+  expect(barSize(addon), "a bag bar 600 units wide holds 13 bags: the bar hugs their slots inside an 8-unit margin (two rows tall)").toEqual([barW(13), 68]);
   addon.eval("BagsBar:SetSize(50, 20) ns.PausePins(false)");
-  expect([...barSize(addon), addon.eval("return ForeverUI_BagStrip == nil")], "never narrower than its default, and no separate bag strip").toEqual([300, 68, true]);
+  expect([...barSize(addon), addon.eval("return ForeverUI_BagStrip == nil")], "one bag: the bar shrinks to hug its one slot, and there is no separate bag strip").toEqual([barW(1), 68, true]);
   expect(addon.eval("local s = ForeverUI_MenuStrip return { s:GetAlpha(), s.__mouseMotion == nil }"), "the bar is always shown by default (P2.18), nothing watching the mouse").toEqual([1, true]);
   expect(addon.eval("return { ForeverUI_QuestTracker:GetWidth(), ForeverUI_QuestTracker:GetHeight(), next(ObjectiveTrackerFrame.__points) == nil }"), "ForeverUI's tracker is on: its spot is made (260 by 248) and the game's tracker is not pinned").toEqual([260, 248, true]);
 });
@@ -2139,26 +2141,26 @@ it("menu strip: set to mouseover, shown by the mouse entering and leaving it and
   expect(alpha(), "leaving a button while still over the strip keeps it shown").toBe(1);
 });
 
-it("bag and menu bar: the bars' own frame art is hidden, the key ring gets a smaller slot and no fill", () => {
+it("bag and menu bar: the bars' own frame art is hidden, the key ring gets a full slot and no fill", () => {
   const addon = strips();
   expect(addon.eval("return { MicroMenu.BorderArt.__alpha, MicroMenu.BackgroundArt.__alpha, BagsBar.BorderArt.__alpha }"), "the brass box is faded").toEqual([0, 0, 0]);
-  const ring = addon.eval("local b = KeyRingButton return { b.icon.__alpha, b.icon.__points.TOPLEFT.rel == b.fuiSlot, b.icon.__texCoord[1] > 0, b.fuiSlot.__width, b.fuiFill == nil }");
-  expect([ring[0], ring[1], ring[2], r3(ring[3] * BAGS), ring[4]], "the key ring: its icon cropped in a slot as wide as its place allows (35 units less the gap), no fill").toEqual([1, true, true, r3(35 * BAGS - 4), true]);
+  const ring = addon.eval("local b = KeyRingButton return { b.icon.__alpha, b.icon.__points.TOPLEFT.rel == b.fuiSlot, b.icon.__texCoord[1] > 0, b.fuiSlot.__width, b.fuiFill == nil, b:GetWidth() }");
+  expect([ring[0], ring[1], ring[2], r3(ring[3] * BAGS), ring[4], ring[5]], "the key ring: widened from 33 to a bag's 45 units, its icon cropped in a full 24-pixel slot, no fill").toEqual([1, true, true, 24, true, 45]);
   const off = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
   expect(off.eval("return { MicroMenu.BorderArt.__alpha, KeyRingButton.fuiSlot ~= nil }"), "with or without the line icons, the frame art goes and the key ring is framed").toEqual([0, true]);
 });
 
-// Where a seated bar's RIGHT point sits on the bag and menu bar: { x, y } in screen units.
-const seatOf = (addon, bar, scale) => addon.eval(`local p = ${bar}.__points.RIGHT return { p.rel == ForeverUI_MenuStrip, p.relPoint, p.x, p.y }`).map((v, i) => (i > 1 ? r3(v * scale) : v));
+// Where a seated bar's RIGHT point sits on its row's anchor (row k of the bar): { x, y } in screen units.
+const seatOf = (addon, bar, k, scale) => addon.eval(`local p = ${bar}.__points.RIGHT return { p.rel == ns.GetModule("MenuStrip").ROWS[${k}].anchor, p.relPoint, p.x, p.y }`).map((v, i) => (i > 1 ? r3(v * scale) : v));
 
 it("bag and menu bar: the rows re-fit when the game lays the bars out or resizes them", () => {
   const addon = strips();
-  expect(barSize(addon), "before the game lays them out, the bar has its least width, two rows of 24-pixel slots and a gap tall, inside 8-pixel margins").toEqual([300, 68]);
+  expect(barSize(addon), "before the game lays them out, the bar is its margins only, two rows of 24-pixel slots and a gap tall").toEqual([16, 68]);
   addon.eval("MicroMenuContainer:Layout()");
   expect(barSize(addon), "the bar grows around the laid-out micro menu").toEqual([menuBarW(378), 68]);
-  // Each row's last slot sits at the bar's right margin (its button reaches past it by half the difference), its middle on the row's.
-  expect(seatOf(addon, "MicroMenuContainer", MENU), "the menu: the lower row, 48 pixels below the top").toEqual([true, "TOPRIGHT", r3((32 * MENU - 24) / 2 - 8), -48]);
-  expect(seatOf(addon, "BagsBar", BAGS), "the bags: the upper row, 20 pixels below the top").toEqual([true, "TOPRIGHT", r3((45 * BAGS - 24) / 2 - 8), -20]);
+  // Each row's last slot sits at its anchor (its button reaches past it by half the difference), its middle on the row's.
+  expect(seatOf(addon, "MicroMenuContainer", 2, MENU), "the menu: the lower row, 48 pixels below the top").toEqual([true, "TOPRIGHT", r3((32 * MENU - 24) / 2), -48]);
+  expect(seatOf(addon, "BagsBar", 1, BAGS), "the bags: the upper row, 20 pixels below the top").toEqual([true, "TOPRIGHT", r3((45 * BAGS - 24) / 2), -20]);
   addon.eval("BagsBar:SetScale(1) BagsBar:Layout()");
   expect([barSize(addon)[0], r3(addon.eval("return BagsBar:GetScale()"))], "a narrower bag row leaves the bar as wide as the menu, and the game's reset of the bag bar's scale is undone").toEqual([menuBarW(378), r3(BAGS)]);
   addon.eval("MicroMenuContainer:SetSize(500, 40) MicroMenuContainer.__scripts.OnSizeChanged(MicroMenuContainer, 500, 40)");
@@ -2167,6 +2169,52 @@ it("bag and menu bar: the rows re-fit when the game lays the bars out or resizes
   expect(isTok(addon, addon.eval("return ns.GetModule('MenuStrip').divider.__vertexColor"), "accent"), "in the accent").toBe(true);
   addon.eval("ns.Theme.SetAccent(0.1, 0.9, 0.2)");
   expect(addon.eval("return ns.GetModule('MenuStrip').divider.__vertexColor"), "which it follows").toEqual([0.1, 0.9, 0.2, 1]);
+});
+
+// TEST-ONLY bars laid out as the game lays them out: nine menu buttons 27 units apart (32 wide,
+// overlapping by 5) from the micro menu's left, and the bags right to left from the bag bar's
+// right edge, 2 units apart, the key ring last at its 33 units.
+const GAME_BARS_ENV = `
+  MicroMenuContainer:SetSize(9 * 27 + 5, 40)
+  for i, name in ipairs({ "Character", "PlayerSpells", "Talent", "Achievement", "QuestLog", "Guild", "LFD", "Collections", "MainMenu" }) do
+    local b = CreateFrame("Button", name .. "MicroButton", MicroMenuContainer) b:SetSize(32, 40) b:SetPoint("LEFT", MicroMenuContainer, "LEFT", (i - 1) * 27, 0)
+  end
+  BagsBar:SetSize(5 * 47 + 33, 45)
+  local prev
+  for i, name in ipairs({ "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot", "KeyRingButton" }) do
+    local b = CreateFrame("Button", name, BagsBar) b:SetSize(i == 6 and 33 or 45, 45) b.icon = b:CreateTexture()
+    if prev then b:SetPoint("RIGHT", prev, "LEFT", -2, 0) else b:SetPoint("RIGHT", BagsBar, "RIGHT") end
+    prev = b
+  end
+`;
+
+// Every slot's screen rect (left, bottom, right, top, to three places) in a row (1 bags, 2 menu), left to right.
+const slotRects = (addon, k) => addon.eval(`local MS, out = ns.GetModule("MenuStrip"), {}
+  for i, b in ipairs(MS.slotted) do if b.fuiRow == MS.ROWS[${k}] then out[#out + 1] = i end end return out`)
+  .map((i) => addon.frame(`ns.GetModule("MenuStrip").slotted[${i}].fuiSlot`).rect)
+  .map((r) => [r.left, r.bottom, r.right, r.top].map(r3)).sort((a, b) => a[0] - b[0]);
+
+it("bag and menu bar: the bar hugs its slots, one size, one baseline per row, one pair of edges", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + GAME_BARS_ENV);
+  const bar = addon.frame("ForeverUI_MenuStrip").rect;
+  const bags = slotRects(addon, 1), menu = slotRects(addon, 2);
+  expect([bags.length, menu.length], "six bag slots (the key ring with them) over nine menu slots").toEqual([6, 9]);
+  expect([...bags, ...menu].every((r) => r3(r[2] - r[0]) === 24 && r3(r[3] - r[1]) === 24), "every slot is 24 pixels square, the key ring's too").toBe(true);
+  // The left edges' steps along a row.
+  const steps = (row) => row.slice(1).map((r, i) => r3(r[0] - row[i][0]));
+  expect([steps(bags), steps(menu)], "each row steps one slot and a 4-pixel gap at a time").toEqual([Array(5).fill(28), Array(8).fill(28)]);
+  expect([new Set(bags.map((r) => r[1])).size, new Set(menu.map((r) => r[1])).size], "each row on one baseline").toEqual([1, 1]);
+  const pad = [r3(menu[0][0] - bar.left), r3(bar.right - menu[8][2]), r3(menu[0][1] - bar.bottom), r3(bar.top - bags[0][3])];
+  expect(pad, "the same 8-pixel padding on all four sides: the menu row spans the bar, the bags sit on top").toEqual([8, 8, 8, 8]);
+  expect([r3(bags[0][0] - menu[0][0]), r3(menu[8][2] - bags[5][2])], "the shorter bag row is centered over the menu row (3 slots' room each side)").toEqual([42, 42]);
+  expect(r3(bags[0][1] - menu[0][3]), "a 4-pixel gap between the rows").toBe(4);
+  const line = addon.frame("ns.GetModule('MenuStrip').divider").rect;
+  expect([r3(line.left), r3(line.right)], "the divider runs under the slots only, edge to edge with the longer row").toEqual([menu[0][0], menu[8][2]]);
+  expect(line.bottom >= menu[0][3] && line.top <= bags[0][1], "between the rows").toBe(true);
+  expect([r3(bar.right), r3(bar.bottom), r3(bar.right - bar.left)], "the bar keeps its bottom-right corner, 16 and 20 in from the screen's").toEqual([1904, 20, barW(9)]);
+  addon.eval("MicroMenuContainer:SetSize(14 * 27 + 5, 40) MicroMenuContainer.__scripts.OnSizeChanged(MicroMenuContainer)");
+  const wide = addon.frame("ForeverUI_MenuStrip").rect;
+  expect([r3(wide.right), r3(wide.right - wide.left)], "fourteen menu buttons: the bar grows to the left only").toEqual([1904, barW(14)]);
 });
 
 it("bag and menu bar: one mover keeps the menu strip's saved spot; the bag strip's spot and the line icons are dropped once", () => {
@@ -2183,7 +2231,7 @@ it("bag and menu bar: one mover keeps the menu strip's saved spot; the bag strip
 it("bag and menu bar: no re-fit while pins are paused or in combat, and one queued entry per bar", () => {
   const addon = strips();
   addon.eval("ns.PausePins(true) __menuW = 600 MicroMenuContainer:Layout()");
-  expect(barSize(addon)[0], "Edit Mode open: the bar waits").toBe(300);
+  expect(barSize(addon)[0], "Edit Mode open: the bar waits").toBe(barW(0));
   addon.eval("ns.PausePins(false)");
   expect(barSize(addon)[0], "and fits when it closes").toBe(menuBarW(600));
   setCombat(addon, true);
