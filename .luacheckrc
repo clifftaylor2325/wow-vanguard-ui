@@ -57,4 +57,6 @@ read_globals = {
   "AddonCompartmentFrame",
   -- P3.14 Profiles: switching the game's Edit Mode layout with the profile.
   "C_EditMode",
+  -- P4.7 Options keys: the box that has the typing (the window leaves keys alone while you type).
+  "GetCurrentKeyBoardFocus",
 }
