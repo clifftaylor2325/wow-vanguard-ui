@@ -1767,7 +1767,7 @@ it("the bag's Sort button sits beside the search box and the game's own sort but
   addon.eval("BagItemAutoSortButton:Show()");
   expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "and the game showing it again (each search row update) hides it again").toBe(false);
   const bare = loggedIn(UI_ENV + "C_Container = { SortBags = function() end }");
-  expect(bare.eval('local p = ns.GetModule("Bags").sort.__points.TOPRIGHT return { p.x, p.y }'), "without a search box it takes the game's sort spot").toEqual([-9, -34]);
+  expect(bare.eval('local p = ns.GetModule("Bags").sort.__points.TOPRIGHT return { p.x, p.y }'), "without a search box it takes the game's sort spot, the bag's 12 px padding inside the right edge").toEqual([-12, -34]);
 });
 
 it("a context overlay is left alone so the game's search dimming shows", () => {
