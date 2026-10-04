@@ -22,6 +22,14 @@ it("motion: fades, reduce motion, sounds", () => {
   expect(addon.eval("return #__sounds") === 0, "Interface sounds can be turned off").toBeTruthy();
 });
 
+it("motion: the alert sound is the game's whisper sound, and Interface sounds turns it off", () => {
+  const addon = loggedIn("SOUNDKIT = { TELL_MESSAGE = 3081 } __sounds = {} PlaySound = function(k) table.insert(__sounds, k) end");
+  addon.eval('ns.Theme.Sound("alert")');
+  expect(addon.eval("return __sounds"), "TELL_MESSAGE (3081)").toEqual([3081]);
+  addon.eval('ns.Theme.Settings().sounds = false ns.Theme.Sound("alert")');
+  expect(addon.eval("return #__sounds"), "nothing more with Interface sounds off").toBe(1);
+});
+
 it("motion: no fade lasts more than 0.15 s in combat", () => {
   const addon = loggedIn(FAKE_FADES);
   // Fades TEST_Fade in (out when out is true) over seconds and returns how long the fade was set to last.

@@ -189,3 +189,29 @@ it("menu bar: Auto-hide shows it at login and under the mouse, and fades it 10 s
   const noTimer = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + "C_Timer = nil", autohide);
   expect(noTimer.eval("return ForeverUI_MenuStrip:GetAlpha()"), "a client without timers: it fades as On mouseover does").toBe(0);
 });
+
+it("ns.AutoHide fades a frame out after its time, and a later call restarts the wait", () => {
+  const addon = loggedIn();
+  // Whether TEST_AutoHide is shown.
+  const shown = () => addon.eval("return TEST_AutoHide:IsShown()");
+  addon.eval('local f = CreateFrame("Frame", "TEST_AutoHide", UIParent) f:Show() ns.AutoHide(f, 5)');
+  addon.advance(4);
+  expect(shown(), "still up before its time").toBe(true);
+  addon.eval("ns.AutoHide(TEST_AutoHide, 5)");
+  addon.advance(2);
+  expect(shown(), "the first wait's end is ignored once a later call restarted it").toBe(true);
+  addon.advance(3.5);
+  expect(shown(), "faded out when the later wait ends").toBe(false);
+  addon.eval("TEST_AutoHide:Show() C_Timer = nil ns.AutoHide(TEST_AutoHide, 5)");
+  addon.advance(6);
+  expect(shown(), "without the client's timer it stays until closed").toBe(true);
+});
+
+it("ns.Where is the client's instance type, or none outside one or when the client can't say", () => {
+  const addon = loggedIn();
+  // ns.Where() with IsInInstance returning the given Lua values (null: the client has no IsInInstance).
+  const where = (ret) => addon.eval(`IsInInstance = ${ret === null ? "nil" : `function() return ${ret} end`} return ns.Where()`);
+  expect([where("true, 'party'"), where("true, 'raid'"), where("true, 'pvp'"), where("true, 'arena'")], "dungeon, raid, battleground, arena").toEqual(["party", "raid", "pvp", "arena"]);
+  expect([where("false, 'none'"), where(null), where("true, __wfgWorld.secret()"), where("true, ''"), where("true, nil")], "outside, no client call, a hidden, empty or missing type")
+    .toEqual(["none", "none", "none", "none", "none"]);
+});

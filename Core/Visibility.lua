@@ -123,6 +123,31 @@ function V.EndLinger(frame, token)
   V.Refresh(frame)
 end
 
+-- Fades a plain (never secure) frame out `seconds` from now with T.FadeOut,
+-- unless a later call restarted the wait (the token pattern of V.Linger), as
+-- the Instance prep card and the Chat watch toast do each time they show.
+-- Without the client's timer the frame stays until it is closed.
+function ns.AutoHide(frame, seconds)
+  local token = (frame.fuiAutoHideCount or 0) + 1
+  frame.fuiAutoHideCount = token
+  if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return end
+  C_Timer.After(seconds, function()
+    if frame.fuiAutoHideCount == token then T.FadeOut(frame) end
+  end)
+end
+
+-- Where you are, as the client's instance type (IsInInstance's second
+-- return): "party" (a dungeon), "raid", "pvp" (a battleground), "arena",
+-- "scenario"; "none" outside an instance, and also when the client can't say
+-- (no IsInInstance, a hidden or empty type). Never secret, never nil, so
+-- callers compare it freely; Instance prep and Situations build on it.
+function ns.Where()
+  if type(IsInInstance) ~= "function" then return "none" end
+  local inside, kind = IsInInstance()
+  if inside ~= true or ns.IsSecret(kind) or type(kind) ~= "string" or kind == "" then return "none" end
+  return kind
+end
+
 -- Whether the frame's state shows it, and whether it fades with the mouse.
 function V.Shows(frame) return frame.fuiState ~= "hide" end
 function V.Fades(frame) return frame.fuiStateString ~= nil and frame.fuiStateString:find("fade") ~= nil end
