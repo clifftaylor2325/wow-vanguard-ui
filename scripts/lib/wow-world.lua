@@ -1041,7 +1041,8 @@ function GetInventoryItemTexture(_, slot) local it = world.inventory[slot] retur
 function GetInventoryItemCount(_, slot) return world.inventory[slot] and 1 or 0 end
 function GetInventoryItemDurability(slot) local it = world.inventory[slot] if not it then return nil end return it.durability or 100, it.maxDurability or 100 end
 
--- Merchants: world.merchant = { items = { { name, icon, price, stack, left, link } }, repair = cost }.
+-- Merchants: world.merchant = { items = { { name, icon, price, stack, left, link, itemID } }, repair = cost },
+-- and the merchant you talk to is the "npc" unit: world.units.npc = { name = ... }.
 world.merchant = nil
 -- The merchant API, read from world.merchant.
 function GetMerchantNumItems() return world.merchant and #world.merchant.items or 0 end
@@ -1054,6 +1055,7 @@ function GetMerchantItemInfo(i)
 end
 -- Links, stacks, buying and repairing at the merchant.
 function GetMerchantItemLink(i) local it = world.merchant and world.merchant.items[i] return it and (it.link or "|Hitem:" .. (it.itemID or 0) .. "|h[" .. it.name .. "]|h") end
+function GetMerchantItemID(i) local it = world.merchant and world.merchant.items[i] return it and it.itemID end
 function GetMerchantItemMaxStack(i) local it = world.merchant and world.merchant.items[i] return it and it.maxStack or 20 end
 function BuyMerchantItem(i, n) world.bought = world.bought or {} table.insert(world.bought, { i, n or 1 }) end
 function CanMerchantRepair() return world.merchant ~= nil and world.merchant.repair ~= nil end
@@ -1223,6 +1225,7 @@ world.zone = { name = "Elwynn Forest", sub = "Goldshire", pvp = "friendly", mapI
 -- Zone names and PvP status from world.zone.
 function GetMinimapZoneText() return world.zone.sub or world.zone.name end
 function GetRealZoneText() return world.zone.name end
+function GetZoneText() return world.zone.name end
 function GetSubZoneText() return world.zone.sub or "" end
 function GetZonePVPInfo() return world.zone.pvp end
 C_PvP = { GetZonePVPInfo = viaGlobal("GetZonePVPInfo") }

@@ -61,4 +61,6 @@ read_globals = {
   "GetCurrentKeyBoardFocus",
   -- Bug hunt, swing timer: your weapons' speeds, for a swing a weapon swap restarts.
   "UnitAttackSpeed",
+  -- F2 Vendor memory: a merchant item's ID, and the zone and subzone you're in.
+  "GetMerchantItemID", "GetZoneText", "GetSubZoneText",
 }

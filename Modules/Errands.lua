@@ -148,13 +148,21 @@ local function itemName(id)
   return "item " .. id
 end
 
--- Prints the stock list.
+-- " — sold by Thomas Miller (Elwynn Forest, Goldshire)": where Vendor memory last saw
+-- the item sold, or "" (never seen, or Vendor memory is off).
+local function soldBy(id)
+  local VM = ns.GetModule("VendorMemory")
+  local list = VM and VM.enabled and VM.Where(id)
+  return list and (" — sold by " .. VM.Text(list[1])) or ""
+end
+
+-- Prints the stock list, with where to buy each item when that's known.
 local function listStock()
   local ids = {}
   for id in pairs(ER.settings.stockList) do ids[#ids + 1] = id end
   if #ids == 0 then return ns.Chat("Your stock list is empty. /fui stock <item> <amount> adds one.") end
   table.sort(ids)
-  for _, id in ipairs(ids) do ns.Chat(string.format("Keep %d × %s", ER.settings.stockList[id], itemName(id))) end
+  for _, id in ipairs(ids) do ns.Chat(string.format("Keep %d × %s", ER.settings.stockList[id], itemName(id)) .. soldBy(id)) end
 end
 
 -- Sets how many of an item to keep (0 takes it off the list).
