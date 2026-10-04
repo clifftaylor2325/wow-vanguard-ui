@@ -122,3 +122,14 @@ it("per-frame scale: dragging a scaled handle, and combat", () => {
   setCombat(addon, false);
   expect(addon.eval("return __box:GetScale()"), "and applies when combat ends").toBe(0.5);
 });
+
+it("a damaged saved position (a hand-edited profile string) falls back to the default spot instead of failing the module", () => {
+  const clean = loggedIn().eval("return { ns.MoverPoint('uf_player') }");
+  const addon = loggedIn(BOX, { savedVariables: `ForeverUIDB.profiles = { Default = { positions = {
+    uf_player = { point = 5, x = "TEST-ONLY" }, uf_target = { point = "TEST-ONLY", relPoint = 7, scale = 0, alpha = "TEST-ONLY" } } } }` });
+  expect(addon.eval("return { ns.GetModule('UnitFrames').enabled, #ns.errors }"), "the unit frames still load, with nothing to report").toEqual([true, 0]);
+  expect(addon.eval("return { ns.MoverPoint('uf_player') }"), "a point that isn't one leaves the default").toEqual(clean);
+  expect(addon.eval("return { ns.MoverLook('uf_target') }"), "a scale out of range is kept to it, an opacity that isn't a number is 1").toEqual([0.5, 1]);
+  addon.eval('ns.Profile().positions.box = { point = "TOPLEFT", relPoint = "TEST-ONLY", x = "12", y = {} } ns.SetMoverDefault("box", { "BOTTOM", "BOTTOM", 0, 100 })');
+  expect(addon.eval("return { ns.MoverPoint('box') }"), "a good point keeps; a bad relative point is the point; offsets that aren't numbers read as numbers or 0").toEqual(["TOPLEFT", "TOPLEFT", 12, 0]);
+});
