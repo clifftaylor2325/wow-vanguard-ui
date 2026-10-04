@@ -53,6 +53,11 @@ it("reagent and item counts show even at 0 and 1", () => {
   expect(count(4), "a hidden answer counts as not used up").toBe("");
 });
 
+it("counts show on a client without the deprecated GetActionCount (C_ActionBar.GetActionUseCount)", () => {
+  const addon = loggedIn(ACTIONS_ENV + "GetActionCount = nil C_ActionBar.GetActionUseCount = function(slot) return (__actions[slot] or {}).count or 0 end");
+  expect([button(addon, 1, 2).count, button(addon, 1, 1).count], "a stack of 5 shows 5; nothing to count shows nothing").toEqual(["5", ""]);
+});
+
 it("action bars stack with bar 1 on top", () => {
   const addon = loggedIn(ACTIONS_ENV);
   expect(JSON.stringify(stackY(addon)) === JSON.stringify([104, 64, 24, false, false, false, false, false]), `bar 3 at the bottom, bar 1 on top (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();

@@ -183,11 +183,19 @@ local function usesUp(action)
   return false
 end
 
+-- A slot's use count: C_ActionBar.GetActionUseCount, else the older global
+-- (on Forever only loaded with the game's deprecation fallbacks).
+local function useCount(slot)
+  local fn = C_ActionBar and C_ActionBar.GetActionUseCount
+  if type(fn) == "function" then return fn(slot) end
+  return call("GetActionCount", slot)
+end
+
 -- Charges or item count: always for something that gets used up (so running
 -- out shows 0, as the game's buttons do), otherwise only above 1. A hidden
 -- count shows nothing.
 local function updateCount(b)
-  local count = ns.PlainNumber(call("GetActionCount", b.action))
+  local count = ns.PlainNumber(useCount(b.action))
   local shown = count ~= nil and (count > 1 or usesUp(b.action))
   b.count:SetText(shown and tostring(count) or "")
 end
