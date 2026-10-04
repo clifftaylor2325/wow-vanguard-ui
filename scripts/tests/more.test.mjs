@@ -402,22 +402,27 @@ it("quest dialog: turning in, picking a reward, closing, and handing the windows
 // The quest dialog's body scroll: its child's height, how far it can scroll, and where it is.
 const bodyScroll = (addon) => addon.eval(`local f = ForeverUI_QuestDialog return { f.child:GetHeight(), f.scroll:GetVerticalScrollRange(), f.scroll:GetVerticalScroll() }`);
 
+// The quest dialog's height and its body's view height.
+const panelHeights = (addon) => addon.eval("local f = ForeverUI_QuestDialog return { f:GetHeight(), f.scroll:GetHeight() }");
+
 // Turns the quest dialog's body scroll by one wheel step of this delta.
 const wheelBody = (addon, delta) => addon.eval(`local s = ForeverUI_QuestDialog.scroll s.__scripts.OnMouseWheel(s, ${delta})`);
 
 it("quest dialog: a long greeting or quest text scrolls, a short one does not", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.fire("GOSSIP_SHOW");
-  expect(bodyScroll(addon), "a short greeting fits the 132 px body: nothing to scroll").toEqual([132, 0, 0]);
+  expect(bodyScroll(addon), "a short greeting (14 px) and three numbered lines (60 px) fit the body: nothing to scroll").toEqual([88, 0, 0]);
+  expect(panelHeights(addon), "the panel is sized to them: the 60 px header, the 88 px body and the 44 px footer").toEqual([192, 88]);
   wheelBody(addon, -1);
   expect(bodyScroll(addon)[2], "the wheel stays at the top when there is no range").toBe(0);
   addon.eval('__greeting = "TEST-ONLY " .. string.rep("word ", 400)');
   addon.fire("GOSSIP_SHOW");
-  expect(bodyScroll(addon), "2010 characters wrap to 24 lines (336 px) plus three numbered lines (60 px): the child grows to hold them").toEqual([410, 278, 0]);
+  expect(panelHeights(addon), "2010 characters wrap to 24 lines (336 px): the panel stops at its greatest height (360), the body's view at 256").toEqual([360, 256]);
+  expect(bodyScroll(addon), "the child holds the text and the three lines (410 px), and the wheel can reach the 154 px past the view").toEqual([410, 154, 0]);
   wheelBody(addon, -1);
   expect(bodyScroll(addon)[2], "the wheel scrolls down a step").toBe(24);
   wheelBody(addon, -50);
-  expect(bodyScroll(addon)[2], "and stops at the end of the content").toBe(278);
+  expect(bodyScroll(addon)[2], "and stops at the end of the content").toBe(154);
   wheelBody(addon, 100);
   expect(bodyScroll(addon)[2], "and at the top going back").toBe(0);
   wheelBody(addon, -1);
@@ -425,7 +430,38 @@ it("quest dialog: a long greeting or quest text scrolls, a short one does not", 
   expect(bodyScroll(addon)[2], "a new page starts at the top").toBe(0);
   addon.eval('GetQuestText = function() return "TEST-ONLY " .. string.rep("word ", 300) end');
   addon.fire("QUEST_DETAIL");
-  expect(bodyScroll(addon), "a quest's text and its objectives (24 + 14 px lines) count too, and no numbered lines").toEqual([278, 146, 0]);
+  expect([panelHeights(addon), bodyScroll(addon)], "a quest's text and its objectives (24 + 14 px lines) count too; a row of reward cards (8 + 36 px) leaves the body 212 px").toEqual([[360, 212], [278, 66, 0]]);
+});
+
+it("quest dialog: sized to its page, above the cast bars, cards under the text, a quest mark without a portrait", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("QUEST_DETAIL");
+  // A frame's rect on the screen.
+  const rect = (ref) => addon.frame(ref).rect;
+  expect(addon.eval("return { ns.MoverPoint('questdialog') }"), "by default it sits centered, 8 px above the focus cast bar's top (324 + 14)").toEqual(["BOTTOM", "BOTTOM", 0, 346]);
+  const castTops = ["player", "target", "focus"].map((u) => rect(`ForeverUI_CastBar_${u}`).top);
+  expect(castTops.every((top) => rect("ForeverUI_QuestDialog").bottom > top), "every cast bar is below the dialog").toBe(true);
+  expect(panelHeights(addon), "a short quest: the text and objectives (40 px) and a row of cards (44 px) between the header and footer").toEqual([188, 40]);
+  expect([addon.eval("return ForeverUI_QuestDialog.cards[1]:GetLeft() - ForeverUI_QuestDialog.text:GetLeft()"), addon.eval("return ForeverUI_QuestDialog.money:GetLeft() - ForeverUI_QuestDialog.text:GetLeft()")], "the cards and the money line start where the text does").toEqual([0, 0]);
+  addon.eval("for i = 1, 4 do __rewards[#__rewards + 1] = __rewards[1] end");
+  addon.fire("QUEST_DETAIL");
+  expect([panelHeights(addon)[0], addon.eval("return ForeverUI_QuestDialog.cards[4]:GetTop() - ForeverUI_QuestDialog.cards[1]:GetBottom()")], "seven items: three rows (8 + 3 x 36 + 2 x 4 px), the fourth card on the second row").toEqual([268, -4]);
+  addon.eval("__greeting, __avail, __active, __options = '', {}, {}, {}");
+  addon.fire("GOSSIP_SHOW");
+  expect(panelHeights(addon), "an NPC with nothing to say still gets the least height (160), the body taking the rest").toEqual([160, 56]);
+  // The portrait and the quest mark shown, and the mark's texture.
+  const portrait = () => addon.eval("local f = ForeverUI_QuestDialog return { f.portrait:IsShown(), f.placeholder:IsShown(), f.placeholder:GetTexture() }");
+  expect(portrait(), "talking to an NPC: its portrait").toEqual([true, false, "Interface\\AddOns\\ForeverUI\\Media\\Icons\\Quests"]);
+  addon.eval("__npc = false");
+  addon.fire("QUEST_DETAIL");
+  expect(portrait().slice(0, 2), "a quest from an item has no NPC to draw: the quest mark instead").toEqual([false, true]);
+  expect(isTok(addon, addon.eval("return ForeverUI_QuestDialog.placeholder.__vertexColor"), "accent"), "in the accent").toBe(true);
+  addon.eval("__npc = true SetPortraitTexture = nil");
+  addon.fire("QUEST_DETAIL");
+  expect(portrait().slice(0, 2), "and so does a client without the portrait call").toEqual([false, true]);
+  const moved = loggedIn(QUEST_ENV, { savedVariables: 'ForeverUIDB.profiles = { Default = { positions = { questdialog = { point = "TOP", relPoint = "TOP", x = 40, y = -120 } } } }' });
+  moved.fire("GOSSIP_SHOW");
+  expect(moved.eval("local p, _, rp, x, y = ForeverUI_QuestDialog:GetPoint() return { p, rp, x, y }"), "a spot the player saved stays").toEqual(["TOP", "TOP", 40, -120]);
 });
 
 it("quest dialog: hiding the whole UI keeps the conversation open; closing it ends it", () => {
