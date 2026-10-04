@@ -1112,6 +1112,23 @@ it("the info strip: your place in the last fight's DPS, in a group", () => {
   expect([block(bare, "rank").shown, bare.eval("return __asked == nil")], "a client whose meter had no enums at login is not asked").toEqual([false, true]);
 });
 
+it("the info strip's fight reads, shared with Fight history: your line and the fight's length", () => {
+  const addon = loggedIn("Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1 }");
+  // Your line's DPS, its place and the list's length, and the fight's seconds (false for none).
+  const read = () => addon.eval("local IS = ns.GetModule('InfoStrip') local line, place, count = IS.MyLine() return { line and line.amountPerSecond or false, place or false, count or false, IS.FightSeconds() or false }");
+  expect(read(), "no fight yet: nothing").toEqual([false, false, false, false]);
+  addon.eval("__wfgWorld.damageSession = { combatSources = { { isLocalPlayer = false, amountPerSecond = 500 }, { isLocalPlayer = true, amountPerSecond = 412 } }, durationSeconds = 83 }");
+  expect(read(), "second of two at 412, in an 83 s fight").toEqual([412, 2, 2, 83]);
+  addon.eval("__wfgWorld.damageSession.durationSeconds = nil __wfgWorld.damageSeconds = 61");
+  expect(read()[3], "the meter's own figure when the session has none").toBe(61);
+  addon.eval("__wfgWorld.damageSession.durationSeconds = __wfgWorld.secret(83) __wfgWorld.damageSeconds = __wfgWorld.secret(83)");
+  expect(read()[3], "a hidden length is not read").toBe(false);
+  addon.eval("__wfgWorld.damageSession.durationSeconds = nil C_DamageMeter.GetSessionDurationSeconds = nil");
+  expect(read()[3], "a client without the meter's figure").toBe(false);
+  setCombat(addon, true);
+  expect(read(), "in a fight nothing is read").toEqual([false, false, false, false]);
+});
+
 // TEST-ONLY group extras: a raid tank (raid1) targeting the boar, and a party pet targeting nothing.
 const GROUP_EXTRAS_ENV = `
   RegisterAttributeDriver = function(frame, attr, driver) frame.__drivers = frame.__drivers or {}; frame.__drivers[attr] = driver end
