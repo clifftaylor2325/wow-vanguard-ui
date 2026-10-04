@@ -233,10 +233,17 @@ it("a hidden number skips its listing without an error", () => {
   expect(addon.eval("return { ns.AuctionPrices.House().prices[2589].min, #ns.errors }"), "only the plain listing counts").toEqual([150, 0]);
 });
 
-it("the panel docks left of the auction house window, as tall as it, and goes with it", () => {
+it("the panel docks left of the auction house window, at least as tall as it, with every card inside, and goes with it", () => {
   const addon = atAuctionHouse();
   const [panel, window] = [addon.frame("ForeverUI_AuctionPanel"), addon.frame("AuctionHouseFrame")];
-  expect([panel.visible, panel.rect.right, panel.rect.top, panel.rect.height, panel.rect.width], "4 px left of the window").toEqual([true, window.rect.left - 4, window.rect.top, 538, 280]);
+  const height = addon.eval(`local AH = ${HELPER} return AH.SCAN_H - AH.ScanY() + AH.PAD`);
+  expect([panel.visible, panel.rect.right, panel.rect.top, panel.rect.height, panel.rect.width], "4 px left of the window, from its top, as tall as its cards need").toEqual([true, window.rect.left - 4, window.rect.top, Math.max(538, height), 280]);
+  const cards = addon.eval(`local AH, out = ${HELPER}, {}
+    for i, c in ipairs({ AH.shopCard, AH.sellCard, AH.scanCard }) do out[i] = { c:GetTop(), c:GetBottom() } end return out`);
+  const bottom = panel.rect.bottom;
+  expect(cards.every(([, b]) => b >= bottom + 8), "every card ends inside the panel's padding").toBe(true);
+  expect([cards[0][1] > cards[1][0], cards[1][1] > cards[2][0]], "the cards don't overlap: shop over sell over scan").toEqual([true, true]);
+  expect(addon.eval(`local c = ${HELPER}.sellCard return { c.post:GetBottom() >= c:GetBottom(), c.status:GetBottom() >= c:GetBottom(), c.length:GetBottom() > c.post:GetTop() }`), "the sell form fits its card, rows apart").toEqual([true, true, true]);
   addon.world.closeAuctionHouse();
   expect(addon.frame("ForeverUI_AuctionPanel").visible, "hidden on close").toBe(false);
   addon.world.openAuctionHouse();
@@ -522,6 +529,7 @@ const list = (v) => (Array.isArray(v) ? v : []);
 it("the sell card suggests an undercut", () => {
   const addon = atAuctionHouse(BAGS + DUST_UP);
   dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.click(`${CARD}.stackMax`);
   const q = addon.eval("local q = __wfgWorld.ah.queries[1] return { q.fn, q.args[1].itemID, q.args[1].itemLevel, q.args[3] }");
   expect(q, "a sell search for the dust, owner listings apart").toEqual(["SendSellSearchQuery", 10940, 0, true]);
   expect(card(addon), "cheapest 100 (your 95 left out), which the 7-day low now has too; 1 silver under, but not under 1 silver; deposit for 20").toEqual([["1s 0c", "1s 0c", "3s 0c · TEST-ONLY 12 Hours", "1s 0c"], "TEST-ONLY-DUST", true]);
@@ -536,8 +544,9 @@ it("the sell card suggests an undercut", () => {
 it("posting calls the right function from a click, never from a timer", () => {
   const addon = atAuctionHouse(BAGS + DUST_UP);
   dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.click(`${CARD}.stackMax`);
   addon.click(`${CARD}.post`);
-  expect(restrictedLog(addon), "the stack of 20 at 1s a unit, for the first length").toEqual([["PostCommodity", true, "0:1", 1, 20, 100, "nil"]]);
+  expect(restrictedLog(addon), "the stack of 20 (in one: the stack size's Max) at 1s a unit, for the first length").toEqual([["PostCommodity", true, "0:1", 1, 20, 100, "nil"]]);
   expect(card(addon), "the card is empty again").toEqual([["", "", "", ""], false, false]);
   addon.advance(5);
   addon.world.fireAuctionEvents({ itemID: 10940 }, 10940);
@@ -585,6 +594,7 @@ it("what the sell card won't take, and when it can't post", () => {
   expect([card(addon)[1], addon.eval("return #__wfgWorld.ah.queries")], "nothing on the cursor, a bound item, one the client doesn't know, an empty slot").toEqual([false, 0]);
   addon.eval("__wfgWorld.ah.ready = false");
   dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.click(`${CARD}.stackMax`);
   expect([card(addon)[0], card(addon)[2], addon.eval("return __wfgWorld.cursor")], "nothing up, no 7-day low: no price, no Post; the cursor emptied").toEqual([["none up", "none", "3s 0c · TEST-ONLY 12 Hours", ""], false, null]);
   addon.eval(`ns.AuctionPrices.Record(10940, 300, __now) ${HELPER}.PaintSell()`);
   expect([card(addon)[0][3], card(addon)[2]], "the 7-day low gives a price; Post waits for the game").toEqual(["2s 0c", false]);
@@ -621,6 +631,115 @@ it("stack presets for vanilla: by item class and subclass, else one", () => {
     __wfgWorld.items[9009] = { name = "TEST-ONLY Hidden", classID = __wfgWorld.secret(7), subClassID = 5 }`);
   const presets = addon.eval(`local out = {} for i, id in ipairs({ 2589, 159, 9001, 9002, 9003, 9004, 9005, 9006, 9007, 9008, 6948, 4242, 9009, "item:2589" }) do out[i] = ${HELPER}.StackPreset(id) end return out`);
   expect(presets, "cloth, food, potion, elixir, flask, scroll, leather, ore, herb 20/5; dust, a hearthstone, an unknown item, a hidden class 1; a link works").toEqual([20, 20, 5, 5, 5, 5, 20, 20, 20, 1, 1, 1, 1, 20]);
+});
+
+// TEST-ONLY linen as a commodity: 20 in bag 0 slot 3, 20 in bag 1 slot 1 and 5 in bag 1 slot 2; someone asks 2s a unit.
+const LINEN_BAGS = `__wfgWorld.items[2589].commodity = true
+  __wfgWorld.bags[0][3] = { itemID = 2589, count = 20 }
+  __wfgWorld.bags[1][1] = { itemID = 2589, count = 20 }
+  __wfgWorld.bags[1][2] = { itemID = 2589, count = 5 }
+  __wfgWorld.ah.commodities[2589] = { { unitPrice = 200, quantity = 10 } }`;
+
+// The sell form: [quantity, stack size, stacks, price box, bid box, bid shown, toggle, count line].
+const form = (addon) => addon.eval(`local c = ${CARD}
+  return { c.qty:GetText(), c.stack:GetText(), c.stacks:GetText(), c.price:GetText(), c.bid:GetText(), c.bid:IsShown(), c.perStack.text:GetText(), c.status:GetText() }`);
+
+it("the sell form: quantity and stack size with Max, the preset stack, one stack posted per click and the next loaded", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS);
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  expect(form(addon), "the dropped stack, cloth's preset of 20: one stack; no bid for a commodity").toEqual(["20", "20", "1", "1s 0c", "", false, "per unit", "posted 0 of 1"]);
+  addon.click(`${CARD}.qtyMax`);
+  expect(form(addon).slice(0, 3), "Max: all 45 in the bags, three stacks").toEqual(["45", "20", "3"]);
+  addon.click(`${CARD}.post`);
+  expect([restrictedLog(addon), form(addon)[7]], "the first stack of 20, from the click").toEqual([[["PostCommodity", true, "0:3", 1, 20, 100, "nil"]], "posted 1 of 3"]);
+  addon.eval("__wfgWorld.bags[0][3] = nil");
+  addon.click(`${CARD}.post`);
+  addon.eval("__wfgWorld.bags[1][1] = nil");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect(card(addon)[0][2], "the deposit is the next stack's: the last 5").toBe("75c · TEST-ONLY 12 Hours");
+  addon.advance(5);
+  expect(restrictedLog(addon).length, "a timer posts nothing").toBe(2);
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).map((c) => [c[0], c[1], c[2], c[4]]), "each stack from the next bag slot, one call per click").toEqual([["PostCommodity", true, "0:3", 20], ["PostCommodity", true, "1:1", 20], ["PostCommodity", true, "1:2", 5]]);
+  expect([card(addon), form(addon)[7]], "all up: the card empties and the line keeps the count").toEqual([[["", "", "", ""], false, false], "posted 3 of 3"]);
+  addon.click(`${CARD}.post`);
+  addon.world.fireAuctionEvents({ itemID: 2589 }, 2589);
+  expect(restrictedLog(addon).length, "nothing left to post; events post nothing").toBe(3);
+});
+
+it("the sell form: typed counts and prices, per unit or per stack, Skip and Stop", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS);
+  addon.type(`${CARD}.qty`, "12");
+  expect(addon.eval(`return { ${HELPER}.sell == nil, #ns.errors }`), "nothing on the card: typing does nothing").toEqual([true, 0]);
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.type(`${CARD}.qty`, "999");
+  addon.type(`${CARD}.stack`, "10");
+  expect(form(addon).slice(0, 3), "at most what can go up; stacks of 10").toEqual(["45", "10", "5"]);
+  addon.type(`${CARD}.qty`, "TEST-ONLY");
+  addon.type(`${CARD}.stacks`, "2");
+  expect(form(addon).slice(0, 3), "a word changes nothing; two stacks make 20").toEqual(["20", "10", "2"]);
+  addon.type(`${CARD}.price`, "1g 2s 3c");
+  expect([form(addon)[3], card(addon)[0][3]], "a typed price per unit").toEqual(["1g 2s 3c", "1g 2s 3c"]);
+  addon.click(`${CARD}.perStack`);
+  expect([form(addon)[3], form(addon)[6]], "per stack: the box shows a stack's price").toEqual(["10g 20s 30c", "per stack"]);
+  addon.type(`${CARD}.price`, "5s");
+  expect(card(addon)[0][3], "5s for a stack of 10 is 50c a unit").toBe("50c");
+  addon.click(`${CARD}.perStack`);
+  addon.type(`${CARD}.price`, "150");
+  expect(card(addon)[0][3], "a bare number is copper").toBe("1s 50c");
+  for (const text of ["", "12x", "0"]) {
+    addon.type(`${CARD}.price`, text);
+    expect(card(addon)[0][3], `"${text}": back to the suggestion`).toBe("1s 0c");
+  }
+  addon.click(`${CARD}.skip`);
+  expect([form(addon)[7], restrictedLog(addon).length], "Skip passes a stack without posting it").toEqual(["posted 0 of 2", 0]);
+  addon.click(`${CARD}.post`);
+  expect([restrictedLog(addon)[0][4], card(addon)[1], form(addon)[7]], "the second stack goes up, and that's all").toEqual([10, false, "posted 1 of 2"]);
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.click(`${CARD}.stop`);
+  expect([card(addon)[1], form(addon)[7], addon.eval(`return { ${CARD}.stop:IsEnabled(), ${CARD}.skip:IsEnabled() }`)], "Stop empties the card").toEqual([false, "posted 0 of 1", [false, false]]);
+  addon.click(`${CARD}.stackMax`);
+  addon.eval(`${HELPER}.SkipStack() ${HELPER}.StopSelling()`);
+  expect(addon.eval("return #ns.errors"), "Max, Skip and Stop with nothing on the card do nothing").toBe(0);
+});
+
+it("the sell form: an item's bid, and the auction length picked, remembered or fixed", () => {
+  const addon = atAuctionHouse(BAGS + "AUCTION_DURATION_THREE = 'TEST-ONLY 48 Hours' __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect(form(addon).slice(0, 6), "an item: one, one at a time, a bid box").toEqual(["1", "1", "1", "49s 0c", "", true]);
+  addon.type(`${CARD}.bid`, "50s");
+  expect(card(addon)[2], "a bid at or over the buyout: no Post").toBe(false);
+  addon.type(`${CARD}.bid`, "10s");
+  addon.click(`${CARD}.length`);
+  addon.click(`${CARD}.length`);
+  expect([card(addon)[0][2], card(addon)[2]], "the length picked on the card").toEqual(["45c · TEST-ONLY 48 Hours", true]);
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon)[0], "the blade, for 48 hours, with a 10s bid and a 49s buyout").toEqual(["PostItem", true, "0:2", 3, 1, 1000, 4900]);
+  addon.eval("__wfgWorld.bags[0][2] = { itemID = 9999, count = 1 }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect([card(addon)[0][2], addon.eval("return ns.Settings('AuctionHelper').lastDuration")], "the next item starts at the last length used").toEqual(["45c · TEST-ONLY 48 Hours", 3]);
+  addon.eval("ns.Settings('AuctionHelper').duration = 2");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect(card(addon)[0][2], "a fixed length under Auction length").toBe("30c · TEST-ONLY 24 Hours");
+  const choices = addon.eval(`local out = {} for i, c in ipairs(${HELPER}.DurationChoices(true)) do out[i] = c[2] end return out`);
+  expect(choices, "the option's choices: last used, then the game's names").toEqual(["Last used", "TEST-ONLY 12 Hours", "TEST-ONLY 24 Hours", "TEST-ONLY 48 Hours"]);
+});
+
+it("the next stack is the same item: another variant or a locked slot is passed over", () => {
+  const addon = atAuctionHouse(BAGS + `__wfgWorld.bags[1][1] = { itemID = 9999, count = 1 } __wfgWorld.bags[1][2] = { itemID = 9999, count = 1 }
+    __wfgWorld.bags[1][3] = { itemID = 9999, count = 1 } __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }
+    local key, info = C_AuctionHouse.GetItemKeyFromItem, C_Container.GetContainerItemInfo
+    C_AuctionHouse.GetItemKeyFromItem = function(loc) local k = key(loc) if loc.bagID == 1 and loc.slotIndex == 1 then k.itemSuffix = 99 end return k end
+    C_Container.GetContainerItemInfo = function(bag, slot) local i = info(bag, slot) if i and bag == 1 and slot == 2 then i.isLocked = true end return i end`);
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.click(`${CARD}.qtyMax`);
+  addon.click(`${CARD}.post`);
+  addon.eval("__wfgWorld.bags[0][2] = nil");
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).map((c) => c[2]), "the blade in bag 0, then the one in bag 1 slot 3").toEqual(["0:2", "1:3"]);
+  addon.eval("__wfgWorld.bags[1][3] = nil");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect([card(addon)[2], card(addon)[0][2], form(addon)[7]], "none left in the bags (the card follows the bags): no Post, no deposit").toEqual([false, "", "posted 2 of 4"]);
 });
 
 // Your auctions ------------------------------------------------------------------------------

@@ -1411,11 +1411,12 @@ function C_AuctionHouse.GetCommoditySearchResultInfo(id, i) return (world.ah.com
 function C_AuctionHouse.GetNumReplicateItems() return #world.ah.replicate end
 function C_AuctionHouse.GetOwnedAuctions() return world.ah.owned end
 function C_AuctionHouse.GetNumOwnedAuctions() return #world.ah.owned end
--- Selling: whether the house takes an item, commodity or item, its key, how many can go up, and the deposit.
+-- Selling: whether the house takes an item, commodity or item, its key, how many can go up (every one of
+-- the item in the bags, as the game's sell frame's Max offers), and the deposit.
 function C_AuctionHouse.IsSellItemValid(loc) local it = itemAtLocation(loc) return it ~= nil and (world.items[it.itemID] or {}).noAuction ~= true end
 function C_AuctionHouse.GetItemCommodityStatus(loc) return commodityStatus(loc) end
 function C_AuctionHouse.GetItemKeyFromItem(loc) local id = C_Item.GetItemID(loc) local item = world.items[id] or {} return itemKey(id, item.level, item.suffix) end
-function C_AuctionHouse.GetAvailablePostCount(loc) return C_Item.GetStackCount(loc) end
+function C_AuctionHouse.GetAvailablePostCount(loc) local id = C_Item.GetItemID(loc) return id and C_Item.GetItemCount(id) or 0 end
 function C_AuctionHouse.CalculateItemDeposit(_, duration, quantity) return world.ah.deposit * duration * quantity end
 function C_AuctionHouse.CalculateCommodityDeposit(_, duration, quantity) return world.ah.deposit * duration * quantity end
 -- The message throttle, copper prices, and cancelling one of your auctions.
