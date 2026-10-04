@@ -170,6 +170,16 @@ it("unit frames on WoW Forever: levels, health percent, classification", () => {
   expect(retail.eval("return ForeverUI_player.level == nil") === true && retail.eval("return ForeverUI_player.healthText:GetText()") === "900", "elsewhere: no level, health as a value").toBeTruthy();
 });
 
+it("a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest", () => {
+  const addon = loggedIn(FOREVER_ENV, NO_RAID);
+  addon.world.setUnit("target", { name: "TEST-ONLY Skull", hp: 1, maxhp: 1, reaction: 2, level: -1 });
+  addon.world.setUnit("focus", { name: "TEST-ONLY Big", hp: 1, maxhp: 1, reaction: 2, level: 70 });
+  addon.fire("PLAYER_FOCUS_CHANGED");
+  const t = addon.eval("local t, f = ForeverUI_target.level, ForeverUI_focus.level return { t:GetText(), t.__textColor, f.__textColor }");
+  expect(t[0], "the level reads ??").toBe("??");
+  expect(t[1], "in the color the client gives a unit five or more levels above you").toEqual(t[2]);
+});
+
 it("combo points for rogues and druids", () => {
   const addon = loggedIn(UNITS_ENV + `__units.player.class = "ROGUE" __cp = 3
     GetComboPoints = function(unit, target) return __cp end`, NO_RAID);
