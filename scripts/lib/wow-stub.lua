@@ -281,6 +281,9 @@ end
 -- Textures: desaturation, recorded.
 function methods:SetDesaturated(on) self.__desaturated = on == true end
 
+-- Frames: where clicks are taken, inset from each edge (left, right, top, bottom), recorded.
+function methods:SetHitRectInsets(l, r, t, b) self.__hitInsets = { l, r, t, b } end
+
 -- Buttons: the click types registered, as given.
 function methods:RegisterForClicks(...) self.__clicks = { ... } end
 

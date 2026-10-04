@@ -36,6 +36,8 @@ for i, w in ipairs(__wfgStub.frames) do
     checkedTexture = w.__parent ~= nil and w.__parent.__checkedTexture == w or nil,
     barFill = w.__parent ~= nil and w.__parent.__barTexture == w or nil,
     noWrap = w.__noWrap,
+    -- How large it is drawn against the screen (a frame drawn at SetScale 0.6 is 0.6).
+    escale = (tonumber(w:GetEffectiveScale()) or 1) / UIParent:GetEffectiveScale(),
   }
 end
 return out`;

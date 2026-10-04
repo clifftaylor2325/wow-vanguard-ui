@@ -336,15 +336,22 @@ const SCENES = [
     before: `__units.player.class = "ROGUE" __units.player.power = 40 __units.player.maxpower = 100 __units.player.ptype = "ENERGY"
       UnitPowerType = function(unit) local x = __units[unit] if x and x.ptype == "ENERGY" then return 3, "ENERGY" end return 0, "MANA" end
       C_SwingTimer = {} Enum.PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 }` },
-  { name: "foreverui-menu", caption: "Bottom-right with the mouse over the menu: the game's menu buttons as ForeverUI line icons, the bag buttons in their own strip, the game's damage meter above them, and the Cooldown Manager row between the unit frames, and the quest tracker's flat headers (TEST-ONLY buttons, meter, cooldowns and quests)",
+  { name: "foreverui-menu", caption: "Bottom-right with the mouse over the bar: the bags over the game's menu buttons on framed slots (the game's icons stand in as colored squares), each bag's fill and the backpack's free count, an empty bag slot, a full bag in red; the game's damage meter above, the Cooldown Manager row between the unit frames, and the quest tracker's flat headers (TEST-ONLY buttons, bags, meter, cooldowns and quests)",
     lua: "function ForeverUI_MenuStrip:IsMouseOver() return true end ForeverUI_MenuStrip:SetAlpha(1)",
-    before: `MicroMenuContainer = CreateFrame("Frame", "MicroMenuContainer", UIParent) MicroMenuContainer:SetSize(198, 28)
+    before: `MicroMenuContainer = CreateFrame("Frame", "MicroMenuContainer", UIParent) MicroMenuContainer:SetSize(9 * 27 + 5, 40)
       for i, name in ipairs({ "Character", "PlayerSpells", "Talent", "Achievement", "QuestLog", "Guild", "LFD", "Collections", "MainMenu" }) do
-        local b = CreateFrame("Button", name .. "MicroButton", MicroMenuContainer) b:SetSize(22, 28) b:SetPoint("LEFT", (i - 1) * 22, 0)
-        local art = b:CreateTexture(nil, "ARTWORK") art:SetAllPoints() art:SetColorTexture(0.55, 0.12, 0.1, 1) end
-      BagsBar = CreateFrame("Frame", "BagsBar", UIParent) BagsBar:SetSize(176, 40)
-      for i, name in ipairs({ "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot" }) do
-        local b = CreateFrame("Button", name, BagsBar) b:SetSize(i == 1 and 40 or 32, i == 1 and 40 or 32) b:SetPoint("RIGHT", BagsBar, "RIGHT", i == 1 and 0 or -42 - (i - 2) * 34, 0)
+        local b = CreateFrame("Button", name .. "MicroButton", MicroMenuContainer) b:SetSize(32, 40) b:SetPoint("LEFT", (i - 1) * 27, 0)
+        b.Background = b:CreateTexture(nil, "BACKGROUND") b.Background:SetAllPoints() b.Background:SetColorTexture(0.55, 0.12, 0.1, 1)
+        local art = b:CreateTexture(nil, "ARTWORK") art:SetSize(20, 20) art:SetPoint("CENTER") art:SetColorTexture(0.25 + i * 0.07, 0.55, 0.85 - i * 0.06, 1) end
+      BagsBar = CreateFrame("Frame", "BagsBar", UIParent) BagsBar:SetSize(5 * 47 + 33, 45)
+      __space = { [0] = { 16, 5 }, [1] = { 14, 9 }, [2] = { 10, 0 }, [3] = { 0, 0 }, [4] = { 12, 6 } }
+      C_Container = C_Container or {}
+      C_Container.GetContainerNumSlots = function(bag) return (__space[bag] or { 0 })[1] end
+      C_Container.GetContainerNumFreeSlots = function(bag) return (__space[bag] or { 0, 0 })[2], 0 end
+      for i, name in ipairs({ "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot", "KeyRingButton" }) do
+        local b = CreateFrame("Button", name, BagsBar) b:SetSize(i == 6 and 33 or 45, 45) b:SetPoint("RIGHT", BagsBar, "RIGHT", -(i - 1) * 47, 0)
+        b.bag = i - 1 function b:GetBagID() return self.bag end
+        if i == 6 then b.GetBagID = nil end
         b.icon = b:CreateTexture(nil, "ARTWORK") b.icon:SetAllPoints() b.icon:SetColorTexture(0.42, 0.3, 0.16, 1)
         local art = b:CreateTexture(nil, "OVERLAY") art:SetAllPoints() art:SetColorTexture(0.55, 0.12, 0.1, 0.6) end
       DamageMeter = CreateFrame("Frame", "DamageMeter", UIParent) DamageMeter:SetSize(400, 200) DamageMeter:SetPoint("TOPLEFT")
@@ -501,7 +508,7 @@ const SCENES = [
 ];
 
 // Setup has run on this TEST-ONLY account, so it only shows in the scenes that open it.
-const SAVED = "ForeverUIDB = { version = 1, profiles = {}, setupDone = true }";
+const SAVED = "ForeverUIDB = { version = 2, profiles = {}, setupDone = true }";
 
 for (const scene of SCENES) {
   const addon = createAddon({ savedVariables: SAVED });

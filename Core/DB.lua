@@ -26,7 +26,9 @@ function ns.Copy(t)
   return fill({}, t)
 end
 
-local DB_VERSION = 1
+-- The account file's version. 2: the menu buttons' line icons off and the bag
+-- strip's position gone, once (Modules/MenuStrip.lua registers the step).
+local DB_VERSION = 2
 local upgrades = {}
 
 -- Registers fn(ForeverUIDB) that brings the account file up to `version`; steps run once, in version order.

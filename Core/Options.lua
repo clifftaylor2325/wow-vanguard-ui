@@ -238,7 +238,7 @@ O.MODULE_INFO = {
   Minimap = { "Minimap", "A square minimap with the zone and coordinates." },
   InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo or soul shards and the time, under the minimap, your XP and gold per hour while you level, and your DPS and its place if you like." },
   AfkScreen = { "AFK screen", "While you're away, the screen dims to a card with your character, zone, time away and XP." },
-  MenuStrip = { "Menu and quest tracker", "The game's menu buttons (as ForeverUI icons) and bag buttons in a corner strip, and the quest tracker under the info strip." },
+  MenuStrip = { "Menu and quest tracker", "The game's bag and menu buttons on framed slots in one corner bar, and the quest tracker under the info strip." },
   Chat = { "Chat", "Themed chat windows and tabs." },
   Bags = { "Bags", "One combined bag, in sections by kind of item, with a Sort button." },
   Merchant = { "Merchant helpers", "Repair, sell gray items, and a quieter error line." },
@@ -434,17 +434,17 @@ local function gameToolRows()
 end
 
 -- The visibility rows (Core/Visibility.lua) of a module's frame, applied at once
--- (when the module runs); unset, the setting is Always.
-local function visibilityRows(caption, module, modeKey, whenKey)
+-- (when the module runs); unset, the setting is Always. modes: its choices (V.MODES unless given).
+local function visibilityRows(caption, module, modeKey, whenKey, modes)
   return ns.Visibility.Rows(caption, function() return moduleSettings(module) end, modeKey, whenKey, function()
     local m = ns.GetModule(module)
     if m.enabled then m.ApplyVisibility() end
-  end, "always")
+  end, "always", modes)
 end
 
 -- The game's extras: minimap buttons, the menu strip and the quest tracker (after a reload).
 local function gamePartRows()
-  local menuVisibility, menuWhen = visibilityRows("Game menu buttons", "MenuStrip", "menu", "menuWhen")
+  local menuVisibility, menuWhen = visibilityRows("Bags and game menu", "MenuStrip", "menu", "menuWhen", ns.Visibility.MENU_MODES)
   return {
     { "header", "The game's extras" },
     check("Tracking, mail and difficulty on the minimap's corners (reload)", setting("Minimap", "icons", true)),

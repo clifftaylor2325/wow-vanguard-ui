@@ -2009,6 +2009,15 @@ it("the game's tools: one hint when the Cooldown Manager is off", () => {
   "not when it's on, not available yet, the client can't say, or ForeverUI leaves it alone").toEqual([false, false, false, false, false]);
 });
 
+// The bag and menu bar's rows' scales: each puts its buttons one 24-unit slot and a 4-unit gap apart.
+const MENU = 28 / 27, BAGS = 28 / 47;
+// A number to three places (sizes worked out in fractions of a unit).
+const r3 = (n) => Math.round(n * 1000) / 1000;
+// The bag and menu bar's width and height.
+const barSize = (addon) => addon.eval("return { ForeverUI_MenuStrip:GetWidth(), ForeverUI_MenuStrip:GetHeight() }").map(r3);
+// The bar's width around a micro menu w units wide (its end buttons reach past their slots), inside its margins.
+const menuBarW = (w) => r3((w - 32) * MENU + 24 + 16);
+
 it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip, quest tracker", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV);
   expect(["DurabilityFrame", "TimeManagerClockButton", "GameTimeFrame"].map((n) => putAway(addon, n)), "the game's durability figure, clock and calendar button are put away").toEqual([true, true, true]);
@@ -2025,13 +2034,12 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
     "tracking, mail and the addon compartment sit on the map's corners").toEqual([[true, "BOTTOMLEFT"], [true, "TOPRIGHT"], [true, "BOTTOMRIGHT"]]);
   addon.eval('MinimapCluster.Tracking:ClearAllPoints() MinimapCluster.Tracking:SetPoint("CENTER", UIParent, "CENTER", 0, 0)');
   expect(pinned(addon, "MinimapCluster.Tracking", overlay), "when the game moves one back, it returns to its corner").toEqual([true, "BOTTOMLEFT"]);
-  expect([pinned(addon, "MicroMenuContainer", "ForeverUI_MenuStrip"), pinned(addon, "BagsBar", "ForeverUI_BagStrip")], "the micro menu and the bag bar each get their own strip, centered in it").toEqual([[true, "CENTER"], [true, "CENTER"]]);
-  addon.eval("BagsBar:SetSize(300, 40) ns.PausePins(false)");
-  expect(addon.eval("return { ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }"), "a bag bar wider than the strip grows it, with a margin around it (36 tall at least)").toEqual([300 * 0.7 + 12, 36]);
+  expect([pinned(addon, "BagsBar", "ForeverUI_MenuStrip"), pinned(addon, "MicroMenuContainer", "ForeverUI_MenuStrip")], "the bag bar and the micro menu ride in one bar, each at its row's right end").toEqual([[true, "RIGHT"], [true, "RIGHT"]]);
+  addon.eval("BagsBar:SetSize(600, 45) ns.PausePins(false)");
+  expect(barSize(addon), "a bag bar wider than the bar grows it, its slots inside an 8-unit margin (two rows tall)").toEqual([r3((600 - 45) * BAGS + 24 + 16), 68]);
   addon.eval("BagsBar:SetSize(50, 20) ns.PausePins(false)");
-  expect(addon.eval("return { ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }"), "and never shrinks below its default").toEqual([132, 36]);
-  expect(addon.eval("return { BagsBar:GetScale(), ForeverUI_BagStrip:GetAlpha(), ForeverUI_BagStrip.__points.BOTTOMRIGHT.x, ForeverUI_BagStrip.__points.BOTTOMRIGHT.y }"), "bags sit small, always shown, just above the menu on its right edge").toEqual([0.7, 1, -16, 20 + 36 + 6]);
-  expect(addon.eval("local s = ForeverUI_MenuStrip return { s:GetAlpha(), s.__mouseMotion == nil }"), "the menu strip is always shown by default (P2.18), nothing watching the mouse").toEqual([1, true]);
+  expect([...barSize(addon), addon.eval("return ForeverUI_BagStrip == nil")], "never narrower than its default, and no separate bag strip").toEqual([300, 68, true]);
+  expect(addon.eval("local s = ForeverUI_MenuStrip return { s:GetAlpha(), s.__mouseMotion == nil }"), "the bar is always shown by default (P2.18), nothing watching the mouse").toEqual([1, true]);
   expect(addon.eval("return { ForeverUI_QuestTracker:GetWidth(), ForeverUI_QuestTracker:GetHeight(), next(ObjectiveTrackerFrame.__points) == nil }"), "ForeverUI's tracker is on: its spot is made (260 by 248) and the game's tracker is not pinned").toEqual([260, 248, true]);
 });
 
@@ -2068,29 +2076,29 @@ it("the game's extras: each switch off leaves the game's frame alone, and missin
 });
 
 it("Round Four leftovers: menu glyphs, a target diamond, raid names above incoming heals", () => {
-  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + CLICK_LUA);
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + CLICK_LUA, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
   // A menu button's state: its icon, the icon's color, its faded art and kept flash, the icon's width.
   const glyph = (name) => addon.eval(`local b = ${name} local art
     for _, r in ipairs({ b:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
     return { tex = b.fuiGlyph and b.fuiGlyph.__texture, color = b.fuiGlyph and b.fuiGlyph.__vertexColor, art = art, normal = b.normal.__alpha, flash = b.Flash.__alpha or 1, w = b.fuiGlyph and b.fuiGlyph.__width }`);
   const char = glyph("CharacterMicroButton");
-  expect(/Icons\\Character$/.test(char.tex) && /Icons\\MenuCog$/.test(glyph("MainMenuMicroButton").tex), "each menu button gets its ForeverUI icon (a client without the rest is fine)").toBeTruthy();
-  expect(char.art === 0 && char.normal === 0 && char.flash === 1 && Math.abs(char.w - 16 / 0.8) < 1e-9, "the game's art is faded but its alert flash stays; the icon is 16 screen pixels").toBeTruthy();
+  expect(/Icons\\Character$/.test(char.tex) && /Icons\\MenuCog$/.test(glyph("MainMenuMicroButton").tex), "switched on, each menu button gets its ForeverUI icon (a client without the rest is fine)").toBeTruthy();
+  expect([char.art, char.normal, char.flash, r3(char.w * MENU)], "the game's art is faded but its alert flash stays; the icon is 20 screen pixels").toEqual([0, 0, 1, 20]);
   expect(isTok(addon, char.color, "text"), "the icon is text").toBeTruthy();
-  const face = addon.eval("local f = CharacterMicroButton.fuiFace return { f.__width, f.__height, f.__points.CENTER ~= nil, CharacterMicroButton.fuiGlyph:GetParent() == f }");
-  expect(face, "each button's face is a centered 24-unit square (a gap between neighbors), the icon on it").toEqual([24, 24, true, true]);
+  const slot = addon.eval("local s = CharacterMicroButton.fuiSlot return { s.__width, s.__height, s.__points.CENTER ~= nil, CharacterMicroButton.fuiGlyph:GetParent() == s }");
+  expect([r3(slot[0] * MENU), r3(slot[1] * MENU), slot[2], slot[3]], "each button sits on a centered 24-pixel slot (a 4-pixel gap to its neighbors), the icon on it").toEqual([24, 24, true, true]);
   const bag = addon.eval(`local b = MainMenuBarBackpackButton local art
     for _, r in ipairs({ b:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
-    return { art, b.icon.__alpha, b.icon.__texCoord[1] > 0, b.icon.__points.TOPLEFT.x }`);
-  expect(bag, "bag buttons: the game's art faded, the bag icon kept, cropped and inset in a thin border").toEqual([0, 1, true, 4]);
+    return { art, b.icon.__alpha, b.icon.__texCoord[1] > 0, b.icon.__points.TOPLEFT.rel == b.fuiSlot, b.icon.__points.TOPLEFT.x }`);
+  expect([...bag.slice(0, 4), r3(bag[4] * BAGS)], "bag buttons: the game's art faded, the bag icon kept, cropped and inset 2 pixels in its slot").toEqual([0, 1, true, true, 2]);
   addon.eval("CharacterMicroButton:Disable()");
   expect(isTok(addon, glyph("CharacterMicroButton").color, "muted"), "and muted while the button is disabled").toBeTruthy();
   addon.eval("CharacterMicroButton:Enable()");
   expect(isTok(addon, glyph("CharacterMicroButton").color, "text"), "back to text when it's enabled again").toBeTruthy();
   addon.eval('ns.Options.Show("more")');
   expect(addon.eval('return __click("ForeverUI icons on the menu buttons") and ForeverUIDB.profiles.Default.MenuStrip.glyphs'), "the switch is on the page").toBe(false);
-  const plain = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
-  expect(plain.eval("return CharacterMicroButton.fuiGlyph == nil and CharacterMicroButton.normal.__alpha == nil"), "switched off, the game's menu art stays").toBe(true);
+  const plain = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV);
+  expect(plain.eval("return { CharacterMicroButton.fuiGlyph == nil, CharacterMicroButton.normal.__alpha == nil, CharacterMicroButton.fuiSlot ~= nil }"), "by default the game's own icon stays, on its slot").toEqual([true, true, true]);
 
   const plates = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV);
   plates.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
@@ -2131,92 +2139,112 @@ it("menu strip: set to mouseover, shown by the mouse entering and leaving it and
   expect(alpha(), "leaving a button while still over the strip keeps it shown").toBe(1);
 });
 
-it("menu and bag strips: the bars' own frame art is hidden, the key ring is skinned", () => {
+it("bag and menu bar: the bars' own frame art is hidden, the key ring gets a smaller slot and no fill", () => {
   const addon = strips();
   expect(addon.eval("return { MicroMenu.BorderArt.__alpha, MicroMenu.BackgroundArt.__alpha, BagsBar.BorderArt.__alpha }"), "the brass box is faded").toEqual([0, 0, 0]);
-  expect(addon.eval("return { KeyRingButton.fuiBag, KeyRingButton.icon.__alpha, KeyRingButton.icon.__points.TOPLEFT.x, KeyRingButton.icon.__texCoord[1] > 0 }"), "the key ring gets the bag look").toEqual([true, 1, 4, true]);
-  const off = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
-  expect(off.eval("return { MicroMenu.BorderArt.__alpha, KeyRingButton.fuiBag == nil }"), "the frame art goes with or without the glyphs; the key ring keeps the game's look without them").toEqual([0, true]);
+  const ring = addon.eval("local b = KeyRingButton return { b.icon.__alpha, b.icon.__points.TOPLEFT.rel == b.fuiSlot, b.icon.__texCoord[1] > 0, b.fuiSlot.__width, b.fuiFill == nil }");
+  expect([ring[0], ring[1], ring[2], r3(ring[3] * BAGS), ring[4]], "the key ring: its icon cropped in a slot as wide as its place allows (35 units less the gap), no fill").toEqual([1, true, true, r3(35 * BAGS - 4), true]);
+  const off = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
+  expect(off.eval("return { MicroMenu.BorderArt.__alpha, KeyRingButton.fuiSlot ~= nil }"), "with or without the line icons, the frame art goes and the key ring is framed").toEqual([0, true]);
 });
 
-// The bag strip's x and y offsets at a point name.
-const bagXY = (addon, point) => addon.eval(`local p = ForeverUI_BagStrip.__points.${point} return { p.x, p.y }`);
+// Where a seated bar's RIGHT point sits on the bag and menu bar: { x, y } in screen units.
+const seatOf = (addon, bar, scale) => addon.eval(`local p = ${bar}.__points.RIGHT return { p.rel == ForeverUI_MenuStrip, p.relPoint, p.x, p.y }`).map((v, i) => (i > 1 ? r3(v * scale) : v));
 
-// The two strips' sizes, and the bag strip's x offset at a point name.
-const stripSizes = (addon) => addon.eval("return { ForeverUI_MenuStrip:GetWidth(), ForeverUI_MenuStrip:GetHeight(), ForeverUI_BagStrip:GetWidth(), ForeverUI_BagStrip:GetHeight() }");
-
-it("menu and bag strips: they re-fit when the game lays the bars out or resizes them", () => {
+it("bag and menu bar: the rows re-fit when the game lays the bars out or resizes them", () => {
   const addon = strips();
-  expect(stripSizes(addon), "before the game lays them out, the strips have their default sizes").toEqual([300, 36, 132, 36]);
+  expect(barSize(addon), "before the game lays them out, the bar has its least width, two rows of 24-pixel slots and a gap tall, inside 8-pixel margins").toEqual([300, 68]);
   addon.eval("MicroMenuContainer:Layout()");
-  expect(stripSizes(addon).slice(0, 2), "the menu strip grows around the laid-out micro menu, 36 tall").toEqual([378 * 0.8 + 12, 36]);
-  expect(bagXY(addon, "BOTTOMRIGHT"), "and the bag strip sits just above it, on the same right edge").toEqual([-16, 20 + 36 + 6]);
+  expect(barSize(addon), "the bar grows around the laid-out micro menu").toEqual([menuBarW(378), 68]);
+  // Each row's last slot sits at the bar's right margin (its button reaches past it by half the difference), its middle on the row's.
+  expect(seatOf(addon, "MicroMenuContainer", MENU), "the menu: the lower row, 48 pixels below the top").toEqual([true, "TOPRIGHT", r3((32 * MENU - 24) / 2 - 8), -48]);
+  expect(seatOf(addon, "BagsBar", BAGS), "the bags: the upper row, 20 pixels below the top").toEqual([true, "TOPRIGHT", r3((45 * BAGS - 24) / 2 - 8), -20]);
   addon.eval("BagsBar:SetScale(1) BagsBar:Layout()");
-  expect(stripSizes(addon).slice(2), "the bag strip grows around the laid-out bag bar, 36 tall").toEqual([266 * 0.7 + 12, 36]);
-  expect(addon.eval("return BagsBar:GetScale()"), "the game's reset of the bag bar's scale is undone").toBe(0.7);
+  expect([barSize(addon)[0], r3(addon.eval("return BagsBar:GetScale()"))], "a narrower bag row leaves the bar as wide as the menu, and the game's reset of the bag bar's scale is undone").toEqual([menuBarW(378), r3(BAGS)]);
   addon.eval("MicroMenuContainer:SetSize(500, 40) MicroMenuContainer.__scripts.OnSizeChanged(MicroMenuContainer, 500, 40)");
-  expect(stripSizes(addon)[0], "a size change alone re-fits the menu strip").toBe(500 * 0.8 + 12);
-  expect(bagXY(addon, "BOTTOMRIGHT"), "and keeps the bag strip just above it").toEqual([-16, 20 + stripSizes(addon)[1] + 6]);
+  expect(barSize(addon)[0], "a size change alone re-fits the bar").toBe(menuBarW(500));
+  expect(addon.eval("local d = ns.GetModule('MenuStrip').divider local p = d.__points.LEFT return { p.relPoint, p.x, p.y, d.__points.RIGHT.x, d:GetHeight() }"), "a one-pixel accent line between the rows, across the bar inside its margins").toEqual(["TOPLEFT", 8, -34, -8, addon.eval("return ns.Theme.Pixel(ForeverUI_MenuStrip)")]);
+  expect(isTok(addon, addon.eval("return ns.GetModule('MenuStrip').divider.__vertexColor"), "accent"), "in the accent").toBe(true);
+  addon.eval("ns.Theme.SetAccent(0.1, 0.9, 0.2)");
+  expect(addon.eval("return ns.GetModule('MenuStrip').divider.__vertexColor"), "which it follows").toEqual([0.1, 0.9, 0.2, 1]);
 });
 
-// The bag strip's x offset at a point name (nil when it has no such point).
-const bagX = (addon, point) => addon.eval(`local p = ForeverUI_BagStrip.__points.${point} return p and p.x`);
-
-it("menu and bag strips: a saved bag position wins; the default follows the menu strip's spot", () => {
-  const addon = strips();
-  addon.eval("ns.SetMoverPoint('bagstrip', 'BOTTOMLEFT', 'BOTTOMLEFT', 10, 10) MicroMenuContainer:Layout()");
-  expect([bagX(addon, "BOTTOMLEFT"), bagX(addon, "BOTTOMRIGHT")], "a bag strip the player moved stays there through a re-fit").toEqual([10, null]);
-  addon.eval("ns.ResetMovers('bagstrip')");
-  expect(bagXY(addon, "BOTTOMRIGHT"), "and Reset puts it at the computed default").toEqual([-16, 20 + 36 + 6]);
-  addon.eval("ns.SetMoverPoint('menustrip', 'BOTTOMLEFT', 'BOTTOMLEFT', 400, 20) MicroMenuContainer:Layout()");
-  expect(bagXY(addon, "BOTTOMLEFT"), "a menu strip on the left: the bags line up on its left edge, above it").toEqual([400, 20 + 36 + 6]);
-  addon.eval("ns.SetMoverPoint('menustrip', 'BOTTOM', 'BOTTOM', 40, 20) MicroMenuContainer:Layout()");
-  expect(bagXY(addon, "BOTTOM"), "centered: centered over it").toEqual([40, 20 + 36 + 6]);
-  addon.eval("ns.SetMoverPoint('menustrip', 'TOPRIGHT', 'TOPRIGHT', -16, -40) MicroMenuContainer:Layout()");
-  expect(bagXY(addon, "TOPRIGHT"), "a top anchor: the bag strip's top is its height and a gap above the menu strip's").toEqual([-16, -40 + 36 + 6]);
-  addon.eval("ns.SetMoverPoint('menustrip', 'RIGHT', 'RIGHT', -16, 0) MicroMenuContainer:Layout()");
-  expect(bagXY(addon, "RIGHT"), "a middle anchor: centers a strip's half-heights and a gap apart").toEqual([-16, 36 + 6]);
+it("bag and menu bar: one mover keeps the menu strip's saved spot; the bag strip's spot and the line icons are dropped once", () => {
+  const spots = 'positions = { menustrip = { point = "BOTTOMLEFT", relPoint = "BOTTOMLEFT", x = 400, y = 20 }, bagstrip = { point = "BOTTOMLEFT", relPoint = "BOTTOMLEFT", x = 10, y = 10 } }';
+  const old = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { firstRun: true, savedVariables: `ForeverUIDB = { version = 1, setupDone = true, profiles = { Default = { MenuStrip = { glyphs = true }, ${spots} } } }` });
+  const saved = old.eval("local p = ForeverUIDB.profiles.Default return { ForeverUIDB.version, p.MenuStrip.glyphs, p.positions.bagstrip == nil, p.positions.menustrip.x }");
+  expect(saved, "an older file: the game's icons again and the bag strip's spot gone, the menu strip's kept").toEqual([2, false, true, 400]);
+  expect(old.eval("local p = ForeverUI_MenuStrip.__points.BOTTOMLEFT return { p.x, p.y, CharacterMicroButton.fuiGlyph == nil }"), "the bar stands where the menu strip was, with the game's icons").toEqual([400, 20, true]);
+  expect(old.eval("local keys = {} for _, m in ipairs(ns.MoverList()) do keys[m.key] = m.label end return { keys.menustrip, keys.bagstrip == nil }"), "one mover for the bar").toEqual(["Bags and game menu", true]);
+  const now = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
+  expect(now.eval("return CharacterMicroButton.fuiGlyph ~= nil"), "line icons switched on after the upgrade stay on").toBe(true);
 });
 
-it("menu and bag strips: moving or resetting the menu strip moves the bag strip's default at once, with no re-fit", () => {
-  const addon = strips();
-  addon.eval("MicroMenuContainer:Layout()");
-  addon.eval("ns.SetMoverPoint('menustrip', 'BOTTOMRIGHT', 'BOTTOMRIGHT', -216, 20)");
-  expect(bagXY(addon, "BOTTOMRIGHT"), "a drag of the menu strip carries the bag strip's default along").toEqual([-216, 20 + 36 + 6]);
-  addon.eval("ns.ResetMovers('menustrip')");
-  expect(bagXY(addon, "BOTTOMRIGHT"), "and Reset brings it back").toEqual([-16, 20 + 36 + 6]);
-  addon.eval("ns.SetMoverPoint('bagstrip', 'BOTTOMLEFT', 'BOTTOMLEFT', 10, 10) ns.SetMoverPoint('menustrip', 'BOTTOMRIGHT', 'BOTTOMRIGHT', -216, 20)");
-  expect(bagX(addon, "BOTTOMLEFT"), "a bag strip the player placed stays where it is").toBe(10);
-  expect(addon.eval("local n = 0 ns.WatchMover('nothing', function() n = n + 1 end) ns.SetMoverPoint('menustrip', 'BOTTOM', 'BOTTOM', 0, 20) return n"), "a watcher is told of its own mover only").toBe(0);
-});
-
-it("menu and bag strips: no re-fit while pins are paused or in combat, and one queued entry per bar", () => {
+it("bag and menu bar: no re-fit while pins are paused or in combat, and one queued entry per bar", () => {
   const addon = strips();
   addon.eval("ns.PausePins(true) __menuW = 600 MicroMenuContainer:Layout()");
-  expect(stripSizes(addon)[0], "Edit Mode open: the strip waits").toBe(300);
+  expect(barSize(addon)[0], "Edit Mode open: the bar waits").toBe(300);
   addon.eval("ns.PausePins(false)");
-  expect(stripSizes(addon)[0], "and fits when it closes").toBe(600 * 0.8 + 12);
+  expect(barSize(addon)[0], "and fits when it closes").toBe(menuBarW(600));
   setCombat(addon, true);
   addon.eval("__menuW = 400 MicroMenuContainer:Layout()");
   const queued = addon.eval("return ns.QueuedCount()");
   addon.eval("for _ = 1, 50 do MicroMenuContainer:Layout() end");
-  expect([stripSizes(addon)[0], addon.eval("return ns.QueuedCount()")], "in combat nothing changes, and 50 more Layout calls queue nothing more").toEqual([600 * 0.8 + 12, queued]);
+  expect([barSize(addon)[0], addon.eval("return ns.QueuedCount()")], "in combat nothing changes, and 50 more Layout calls queue nothing more").toEqual([menuBarW(600), queued]);
   setCombat(addon, false);
-  expect(stripSizes(addon)[0], "after combat the strip fits").toBe(400 * 0.8 + 12);
+  expect(barSize(addon)[0], "after combat the bar fits").toBe(menuBarW(400));
   const plain = loggedIn(UI_ENV + 'CreateFrame("Frame", "MicroMenuContainer", UIParent) function MicroMenuContainer:Layout() end');
   expect(plain.eval("return { MicroMenuContainer:GetParent() == ForeverUI_MenuStrip, MicroMenuContainer.__scripts.OnSizeChanged ~= nil }"), "a client without hooksecurefunc still pins and watches the size").toEqual([true, true]);
 });
 
-it("menu and bag strips: glyphs are 16 screen pixels on a square face, accent under the mouse", () => {
+it("bag and menu bar: slots are 24 screen pixels, take the clicks, and light up under the mouse", () => {
   const addon = strips();
-  // The glyph's screen size, whether it is square, and the face's size and centering.
-  const look = () => addon.eval(`local b = CharacterMicroButton local rel = b:GetEffectiveScale() / UIParent:GetEffectiveScale()
-    return { b.fuiGlyph.__width * rel, b.fuiGlyph.__height == b.fuiGlyph.__width, b.fuiFace.__width, b.fuiFace.__height, b.fuiFace.__points.CENTER ~= nil }`);
-  expect(look(), "16 screen pixels, square, on a centered 24-unit face").toEqual([16, true, 24, 24, true]);
+  // A button's slot: its side and the button's hit insets in screen pixels, its frame level against the button's, and its accent edge's color.
+  const slot = (name, scale) => addon.eval(`local b = ${name} local s = b.fuiSlot local e
+    for _, w in ipairs(__wfgStub.frames) do if w.__parent == s and w.__layer == "BORDER" and w.__sublevel == 0 and w.__vertexColor and w.__vertexColor[1] > 0 then e = w.__vertexColor end end
+    return { s.__width, b.__hitInsets and b.__hitInsets[3] or 0, s:GetFrameLevel() < b:GetFrameLevel(), e }`).map((v, i) => (i < 2 ? r3(v * scale) : v));
+  const char = slot("CharacterMicroButton", MENU);
+  expect(char.slice(0, 3), "a menu slot: 24 pixels, the 40-unit button taking clicks on the slot only, drawn under the button").toEqual([24, r3((40 * MENU - 24) / 2), true]);
+  expect(isTok(addon, char[3], "accent"), "its inner edge is the accent").toBe(true);
+  expect(slot("MainMenuBarBackpackButton", BAGS).slice(0, 3), "a bag slot: the same 24 pixels").toEqual([24, r3((45 * BAGS - 24) / 2), true]);
+  const accent = addon.eval("return { ns.Theme.Accent() }");
+  addon.eval("CharacterMicroButton.__scripts.OnEnter(CharacterMicroButton)");
+  const lit = slot("CharacterMicroButton", MENU)[3];
+  expect([0, 1, 2].every((i) => lit[i] > accent[i]), "the mouse over it: the edge brightens").toBe(true);
+  addon.eval("CharacterMicroButton.__scripts.OnMouseDown(CharacterMicroButton)");
+  const held = slot("CharacterMicroButton", MENU)[3];
+  expect([0, 1, 2].every((i) => held[i] < accent[i]), "held down: it darkens").toBe(true);
+  addon.eval("CharacterMicroButton.__mouseOver = true CharacterMicroButton.__scripts.OnMouseUp(CharacterMicroButton)");
+  expect(slot("CharacterMicroButton", MENU)[3], "let go over it: bright again").toEqual(lit);
+  addon.eval("CharacterMicroButton.__mouseOver = false CharacterMicroButton.__scripts.OnMouseUp(CharacterMicroButton)");
+  expect(isTok(addon, slot("CharacterMicroButton", MENU)[3], "accent"), "let go elsewhere: back to the accent").toBe(true);
+  addon.eval("CharacterMicroButton.__scripts.OnLeave(CharacterMicroButton)");
+  expect(isTok(addon, slot("CharacterMicroButton", MENU)[3], "accent"), "and when the mouse leaves").toBe(true);
+  addon.eval("ns.Theme.SetAccent(0.2, 0.4, 0.6)");
+  expect(slot("CharacterMicroButton", MENU)[3], "the edge follows a new accent").toEqual([0.2, 0.4, 0.6, 1]);
+  const bevel = addon.eval(`local s, out = CharacterMicroButton.fuiSlot, {}
+    for _, w in ipairs(__wfgStub.frames) do if w.__parent == s and w.__layer == "BORDER" and w.__sublevel == 1 then out[w.__points.TOPLEFT and "top" or "bottom"] = w.__vertexColor end end
+    return out`);
+  expect([isTok(addon, bevel.top, "sheen"), isTok(addon, bevel.bottom, "shade")], "a bevel: a light line along the top, a dark one along the bottom").toEqual([true, true]);
+  expect(addon.eval("return { CharacterMicroButton.Background.__alpha, CharacterMicroButton.normal.__alpha == nil, CharacterMicroButton.Flash.__alpha == nil }"), "the game's background plate goes; its icon and alert flash stay").toEqual([0, true, true]);
+  addon.eval("CharacterMicroButton:Disable()");
+  expect(addon.eval("return CharacterMicroButton.normal.__desaturated"), "a disabled button's icon is grey").toBe(true);
+  addon.eval("CharacterMicroButton:Enable()");
+  expect(addon.eval("return CharacterMicroButton.normal.__desaturated"), "and in color again when enabled").toBe(false);
   addon.eval("CharacterMicroButton:SetScale(0.5) MicroMenuContainer:Layout()");
-  expect(addon.eval("return CharacterMicroButton.fuiGlyph.__width"), "a smaller menu: the glyph is capped at the face and re-sized by the re-fit").toBe(24);
-  expect(addon.eval("return EJMicroButton.fuiFace.__width"), "a button with no size yet gets a 24-unit face").toBe(24);
-  // The glyph's current color.
+  expect(r3(addon.eval("return CharacterMicroButton.fuiSlot.__width") * MENU * 0.5), "a smaller button: its slot shrinks to its place in the row, re-sized by the re-fit").toBe(r3(27 * MENU * 0.5 - 4));
+  expect(r3(addon.eval("return EJMicroButton.fuiSlot.__width") * MENU), "a button with no size yet gets a full slot").toBe(24);
+});
+
+it("bag and menu bar: line icons are 20 screen pixels on their slot, accent under the mouse", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
+  // The line icon's screen size and whether it is square and centered on the slot.
+  const look = () => addon.eval(`local b = CharacterMicroButton local rel = b:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    return { b.fuiGlyph.__width * rel, b.fuiGlyph.__height == b.fuiGlyph.__width, b.fuiGlyph.__points.CENTER.rel == b.fuiSlot }`);
+  expect([r3(look()[0]), look()[1], look()[2]], "20 screen pixels, square, centered on the slot").toEqual([20, true, true]);
+  addon.eval("CharacterMicroButton:SetScale(0.5) MicroMenuContainer:Layout()");
+  expect(r3(look()[0]), "a smaller menu: the icon stays inside its smaller slot").toBe(r3(27 * MENU * 0.5 - 4 - 4));
+  // The line icon's current color.
   const color = () => addon.eval("return CharacterMicroButton.fuiGlyph.__vertexColor");
   expect(isTok(addon, color(), "text"), "text at rest").toBe(true);
   addon.eval("CharacterMicroButton.__scripts.OnEnter(CharacterMicroButton)");
@@ -2227,7 +2255,42 @@ it("menu and bag strips: glyphs are 16 screen pixels on a square face, accent un
   expect(isTok(addon, color(), "accent"), "enabled again under the mouse: accent").toBe(true);
   addon.eval("CharacterMicroButton.__scripts.OnLeave(CharacterMicroButton)");
   expect(isTok(addon, color(), "text"), "text once the mouse leaves").toBe(true);
-  expect(addon.eval("return MainMenuBarBackpackButton:GetWidth() * BagsBar:GetEffectiveScale() / UIParent:GetEffectiveScale()"), "bag buttons are 31.5 screen pixels").toBe(45 * 0.7);
+  expect(r3(addon.eval("return MainMenuBarBackpackButton:GetWidth() * BagsBar:GetEffectiveScale() / UIParent:GetEffectiveScale()")), "bag buttons sit one slot and a gap apart (28 screen pixels with their padding)").toBe(r3(45 * BAGS));
+});
+
+// TEST-ONLY bags: the backpack (16 slots, 4 free), bag 1 empty (no bag in it), bag 2 full,
+// bag 3 a soul bag (20 slots, 5 free, family 256); their buttons, with the game's bag IDs.
+const BAGS_ENV = `
+  __space = { [0] = { 16, 4, 0 }, [1] = { 0, 0 }, [2] = { 10, 0, 0 }, [3] = { 20, 5, 256 }, [4] = { 0, 0 } }
+  C_Container.GetContainerNumSlots = function(bag) return (__space[bag] or { 0 })[1] end
+  C_Container.GetContainerNumFreeSlots = function(bag) local s = __space[bag] or { 0, 0 } return s[2], s[3] end
+  for i = 0, 2 do
+    local b = CreateFrame("Button", "CharacterBag" .. i .. "Slot", BagsBar) b:SetSize(45, 45)
+    b.icon = b:CreateTexture() b.bag = i + 1
+    function b:GetBagID() return self.bag end
+  end
+`;
+
+it("bag and menu bar: each bag's slot shows how full it is, the backpack how many slots are free", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + BAGS_ENV);
+  // A bag button's fill (shown, width in screen pixels, color), its icon's alpha and greyness, and the backpack's count and its size on screen.
+  const bag = (name) => addon.eval(`local b = ${name} local f = b.fuiFill
+    return { f:IsShown(), (f.__width or 0) * ${BAGS}, f.__vertexColor or false, b.fuiIcon.__alpha, b.fuiIcon.__desaturated == true }`).map((v, i) => (i === 1 ? r3(v) : v));
+  const pack = bag("MainMenuBarBackpackButton");
+  expect([pack[0], pack[1], isTok(addon, pack[2], "accent")], "the backpack, 12 of 16 slots used: a fill three quarters of the 20-pixel icon wide, in the accent").toEqual([true, 15, true]);
+  const empty = bag("CharacterBag0Slot");
+  expect([empty[0], empty[3], empty[4]], "no bag in the slot: no fill, the game's empty-slot art faint and grey").toEqual([false, 0.35, true]);
+  const full = bag("CharacterBag1Slot");
+  expect([full[0], full[1], isTok(addon, full[2], "bad"), full[3], full[4]], "a full bag: a full-width fill in red").toEqual([true, 20, true, 1, false]);
+  expect(r3(bag("CharacterBag2Slot")[1]), "a soul bag fills by its own slots (15 of 20)").toBe(15);
+  // The backpack's free count and its font size on screen.
+  const count = () => addon.eval("local fs = ns.GetModule('MenuStrip').free local _, size = fs:GetFont() return { fs:GetText(), size * MainMenuBarBackpackButton:GetEffectiveScale() / UIParent:GetEffectiveScale() }");
+  expect([count()[0], r3(count()[1])], "the backpack: 4 free (the soul bag's free slots hold only shards), at the theme's count size on screen").toEqual(["4", addon.eval('return ns.Theme.RoleSize("auraCount")')]);
+  addon.eval("__space[0][2] = 0 __space[1] = { 12, 12, 0 }");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect([bag("MainMenuBarBackpackButton")[1], bag("CharacterBag0Slot").slice(0, 1), bag("CharacterBag0Slot")[3], count()[0]], "the bags change: the backpack's fill is full, a new empty bag shows in color with no fill, 12 free").toEqual([20, [false], 1, "12"]);
+  const bare = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + "C_Container = nil");
+  expect(bare.eval("return { ns.GetModule('MenuStrip').free:GetText(), MainMenuBarBackpackButton.fuiFill:IsShown() }"), "a client that can't count bag slots shows no count and no fill").toEqual(["", false]);
 });
 
 // TEST-ONLY quest and gossip windows that color their text for parchment (dark brown), as the game does.
