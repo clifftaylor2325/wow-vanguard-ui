@@ -467,3 +467,15 @@ it("text that fits: chat size, tooltip fonts, the status line, name width", () =
   const units = loggedIn(UNITS_ENV);
   expect(units.eval("local p = ForeverUI_player.name.__points.RIGHT return p.rel == ForeverUI_player.healthText and p.relPoint"), "a unit's name stops short of its health text").toBe("LEFT");
 });
+
+// TEST-ONLY: the Healing page's buff list editor (its box and Save), or nil.
+const BUFF_EDITOR = "for _, w in ipairs(__wfgStub.frames) do if w.input and w.save and w:IsVisible() then __editor = w end end";
+
+it("options: the Healing page opens and saves its buff list with the raid heals module switched off", () => {
+  const addon = loggedIn("", { savedVariables: "ForeverUIDB.profiles.Default = { modules = { RaidHealing = false } }" });
+  addon.eval('ns.Options.Show("healing")');
+  addon.eval(BUFF_EDITOR);
+  expect(addon.eval("return __editor.input:GetText()"), "the buff list shows the mage's usual buffs").toBe("Arcane Intellect, Arcane Brilliance");
+  addon.eval('__editor.input:SetText("TEST-ONLY Aura") __editor.save:GetScript("OnClick")(__editor.save)');
+  expect([addon.eval("return ForeverUIDB.profiles.Default.RaidHealing.buffs"), addon.eval("__editor:Refresh() return __editor.input:GetText()")], "Save keeps the typed list").toEqual(["TEST-ONLY Aura", "TEST-ONLY Aura"]);
+});
