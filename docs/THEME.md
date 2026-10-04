@@ -100,19 +100,19 @@ ForeverUI shares its own fonts through LibSharedMedia as "ForeverUI Fira Sans" a
 
 ### Text roles
 
-`T.Text(fs, role, color)` sets the font, size, shadow or outline, and a colour token (`text` unless given; `false` keeps the colour). Sizes are at Text size 100 %; the Text size slider (General → Look, 70 % to 130 % in steps of 5 %, also set by the setup wizard's screen presets) multiplies them, rounded to whole points (`T.ScaledSize`). Roles without an outline get a 1 px drop shadow in `textShadow`; outlined roles get no shadow.
+`T.Text(fs, role, color)` sets the font, size, shadow or outline, and a colour token (`text` unless given; `false` keeps the colour). Sizes are at Text size 100 %; the Text size slider (General → Look, 70 % to 130 % in steps of 5 %, also set by the setup wizard's screen presets) multiplies them, rounded to whole points (`T.ScaledSize`). Roles without an outline get a 1 px drop shadow in `textShadow`; outlined roles get no shadow. `T.TextSize(fs, size)` draws a styled string at a size of its own, worked out from the roles' sizes (`T.RoleSize`), and keeps it when text is refreshed (raid tile deficits follow the tile's scale this way, never below `tiny`).
 
 | Role | Size (70 % - 130 %) | Weight | Outline | Used for |
 | --- | --- | --- | --- | --- |
 | `title` | 15 (11 - 20) | SemiBold | - | Window titles: options, setup, quest log, AFK card, alerts. |
 | `heading` | 13 (9 - 17) | SemiBold | - | Section headings, dialog titles, the quest dialog and tracker headers. |
-| `name` | 13 (9 - 17) | SemiBold | - | Unit frame names and levels, the options window's preview bar, click-cast tiles. |
+| `name` | 12 (8 - 16) | SemiBold | - | Unit frame names and levels, the options window's preview bar, click-cast tiles. |
 | `cell` | 11 (8 - 14) | SemiBold | - | Bag section headers. |
 | `label` | 12 (8 - 16) | Medium | - | Body text, control labels, options nav items. |
 | `number` | 12 (8 - 16) | Medium | - | Health and power values, counters, timers on frames. |
 | `small` | 10 (7 - 13) | Medium | - | Secondary lines: bar text, the info strip, hints, keybinds. |
 | `tiny` | 9 (6 - 12) | Medium | - | The error badge. |
-| `world` | 10 (7 - 13) | SemiBold | OUTLINE | Text drawn in the world: nameplate names. |
+| `world` | 11 (8 - 14) | SemiBold | OUTLINE | Text drawn in the world: nameplate names. |
 | `barName` | 11 (8 - 14) | SemiBold | OUTLINE | Names over a bright bar (raid tiles). |
 | `barSmall` | 10 (7 - 13) | Medium | OUTLINE | Small text over a bar (raid tile status, the damage meter, the flight timer). |
 | `cooldown` | 14 (10 - 18) | SemiBold | OUTLINE | Cooldown numbers on action buttons and the Cooldown Manager. |
@@ -143,7 +143,8 @@ The theme has no spacing tokens: each layout keeps its sizes as constants in its
 | `T.Button(button)` | An `inset` panel, the template's art faded out, and a `hover` wash. |
 | `T.EditBox(box)` | An `inset` panel, the template's art faded out. |
 | `T.CloseButton(button)` | The Close icon (12 x 12) in `text2`, a `hover` wash, the template's art faded out. |
-| `T.Glow(frame, size)` / `T.ShowGlow(glow, on, color)` | A soft ring around a frame (default 8 units; action buttons use 6), hidden until shown, in the accent unless a token is given. Action buttons glow for a spell the game highlights. |
+| `T.Glow(frame, size)` / `T.ShowGlow(glow, on, color)` | A soft ring around a frame (default 8 units; action buttons use 6), hidden until shown, in the accent unless a token is given. Action buttons glow for a spell the game highlights. `T.SizeGlow(glow, frame, pixels)` sizes a ring to whole screen pixels at the frame's scale (the nameplate target glow is 2 px). |
+| `T.Slot(frame)` / `T.SlotState(frame, state)` | A slot tile (the bag and menu bar): a raised fill, a one-pixel border with a one-pixel accent edge inside it, a light line along the top and a dark one along the bottom (a bevel), and a small soft shadow. The accent edge brightens for `"hover"` and darkens for `"pressed"`. |
 | `T.Logo(parent, size)` | The two linked diamonds: left in the accent, right in `text`. |
 | `T.Crest(parent, size, layer, alpha)` | The faction crest in its token colour, hidden while the faction look is off. |
 
@@ -236,7 +237,7 @@ The game's own sounds (error messages, the micro menu, windows ForeverUI restyle
 
 The work plan (P4.1) described the theme from an earlier review. The code is what ships, so this page follows it:
 
-- **Text sizes.** The plan says "title 14 … tiny 9". The code has `title` 15, `heading` and `name` 13, `label` and `number` 12, `cell` 11, `small` 10, `tiny` 9, plus the outlined roles (`world`, `barName`, `barSmall`, `cooldown`, `auraCount`, `auraTimer`, `auraTimerSmall`) and `chat`.
+- **Text sizes.** The plan says "title 14 … tiny 9". The code has `title` 15, `heading` 13, `name`, `label` and `number` 12, `cell` 11, `small` 10, `tiny` 9, plus the outlined roles (`world`, `barName`, `barSmall`, `cooldown`, `auraCount`, `auraTimer`, `auraTimerSmall`) and `chat`.
 - **Spacing grid.** The plan speaks of a 4/8 px grid. The code has no spacing tokens and uses mostly even offsets (2 to 16); the 4 px steps above are the rule for new work, not a description of every existing layout.
 - **Bar textures.** The plan names "bar textures" generally. The code has three built-ins (Forever, Soft, Flat) and, since P3.5, every bar texture shared through LibSharedMedia; it also shares its own bars and fonts under the "ForeverUI ..." names.
 - **Fonts.** Besides Fira Sans Condensed and the game's font, the Font picker lists LibSharedMedia fonts (P3.5), and the faction look adds Cinzel and Metamorphous for titles and headings.
