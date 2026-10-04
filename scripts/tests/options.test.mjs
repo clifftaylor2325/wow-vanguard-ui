@@ -236,6 +236,31 @@ it("choice fallback, key capture and the mouse wheel", () => {
   expect(addon.eval("return ns.Settings('ClickCast').unitFrames") === true, "the switch turns it on").toBeTruthy();
 });
 
+// The visible slider row whose caption starts with this text, as Lua.
+const sliderRow = (text) => `(function() for _, w in ipairs(__wfgStub.frames) do
+  if w.track and w.label and w.label.__text:sub(1, #"${text}") == "${text}" and w:IsVisible() then return w end end end)()`;
+
+it("options: a frame's scale and opacity from the Layout card; a long menu scrolls", () => {
+  const addon = loggedIn(UI_ENV + CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  const first = addon.eval("return ns.MoverList()[1].key");
+  expect(addon.eval(`return ${sliderRow("Its scale")}.get()`), "the sliders show the first frame's scale until one is picked").toBe(1);
+  addon.eval(`local r = ${sliderRow("Its scale")} r.set(1.5) r:Refresh()`);
+  expect(addon.eval(`return { ns.MoverLook("${first}") }`), "the scale slider sets that frame's scale").toEqual([1.5, 1]);
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Frame to size" then __d = w.dropdown end end __d:GetScript("OnClick")(__d)');
+  const menu = addon.eval("local n = 0 for _, b in ipairs(ForeverUI_Menu.items) do if b:IsShown() then n = n + 1 end end return { n, ForeverUI_Menu:GetWidth(), ForeverUI_Menu:GetHeight(), ns.Widgets ~= nil }");
+  const count = addon.eval('local c = __d.choices if type(c) == "function" then c = c() end return #c');
+  expect(count, "every frame is a choice").toBeGreaterThan(16);
+  expect(menu.slice(0, 3), "a long list shows 16 rows at a time, one column wide").toEqual([16, 180, 16 * 22 + 2]);
+  addon.eval('for _ = 1, 60 do for _, b in ipairs(ForeverUI_Menu.items) do if b:IsShown() and b.text:GetText() == "Minimap" then b:GetScript("OnClick")(b) return end end ForeverUI_Menu:GetScript("OnMouseWheel")(ForeverUI_Menu, -1) end');
+  expect(addon.eval(`return ${sliderRow("Its scale")}.get()`), "picking another frame re-reads the sliders").toBe(1);
+  addon.eval(`local r = ${sliderRow("Its opacity")} r.set(0.5) r:Refresh()`);
+  expect(addon.eval("return { ns.MoverLook('minimap') }"), "the opacity slider sets the picked frame's opacity").toEqual([1, 0.5]);
+  expect(addon.eval(`return { ${sliderRow("Its opacity")}.reset:IsShown(), ${sliderRow("Its opacity")}.value:GetText() }`), "a changed one shows the reset dot, as a percent").toEqual([true, "50%"]);
+  addon.eval('__click("Reset all positions")');
+  expect(addon.eval(`return { ns.MoverLook("${first}") }`).concat(addon.eval(`return ${sliderRow("Its opacity")}.get()`)), "Reset all positions puts every scale and opacity back").toEqual([1, 1, 1]);
+});
+
 // The reset dot on the visible row whose caption starts with this text: { shown, has a dot }.
 const resetDot = (addon, text) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
   if w.label and type(w.label.__text) == "string" and w.label.__text:sub(1, #"${text}") == "${text}" and w:IsVisible() then

@@ -57,3 +57,38 @@ it("click-casting validation, labels and unit frames", () => {
   const frames = addon.eval(`local n = 0 for _ in pairs(ns.GetModule("UnitFrames").frames) do n = n + 1 end return n`);
   expect(addon.eval(`return #${CC}.frames`) >= frames && frames > 0, "unit frames are registered when that setting is on").toBeTruthy();
 });
+
+it("the game's click bindings: ForeverUI's own step aside out of combat, and come back", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + `C_ClickBindings = {}
+    ToggleClickBindingFrame = function() __gameWindow = (__gameWindow or 0) + 1 end`);
+  const CC = 'ns.GetModule("ClickCast")';
+  addon.eval(`${CC}.Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew") ${CC}.Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") __spawn(1, "raid1")
+    ForeverUI_RaidUnitButton1:SetAttribute("*type1", "target") ForeverUI_RaidUnitButton1:SetAttribute("*type2", "togglemenu")`);
+  // The raid button's click-casting state: ForeverUI's attributes and snippet, and the frame's own target and menu
+  // clicks (RF.INIT sets them in the header's snippet, which the test client doesn't run, so they are set above).
+  const state = () => addon.eval(`local b = ForeverUI_RaidUnitButton1 return { b:GetAttribute("ctrl-type2") or "none", b:GetAttribute("*type-fui2") or "none",
+    b.fuiWrapped == true, b:GetAttribute("*type1"), b:GetAttribute("*type2") }`);
+  expect(state(), "off by default: ForeverUI's bindings").toEqual(["spell", "spell", true, "target", "togglemenu"]);
+  addon.eval('ns.Options.Show("clickcast")');
+  expect(addon.texts("THE GAME'S CLICK BINDINGS").length, "the page offers the game's click bindings").toBe(1);
+  addon.eval("__wfgStub.inCombat = true");
+  addon.eval('__click("Use the game\'s click bindings")');
+  expect([addon.eval(`return ${CC}.UsesGame()`), state()[0]], "switched on in combat: it waits for the fight to end").toEqual([true, "spell"]);
+  addon.eval("__wfgStub.inCombat = false");
+  addon.fire("PLAYER_REGEN_ENABLED");
+  expect(state(), "then ForeverUI's attributes and hover snippets go; the target and menu clicks the game's bindings use stay").toEqual(["none", "none", false, "target", "togglemenu"]);
+  expect(addon.texts("The game's click bindings are in use (below): these are kept for when you switch back.").length, "the page says ForeverUI's bindings rest").toBe(1);
+  addon.slash("binds");
+  expect(chatHas(addon, /The game's click bindings are in use/) && chatHas(addon, /Shift \+ 1 \(hover\)  ->  TEST-ONLY Flash Heal/), "/fui binds says so, and still lists ForeverUI's").toBe(true);
+  addon.eval('__click("Open the game\'s click bindings")');
+  expect(addon.eval("return { __gameWindow, ForeverUI_Options:IsShown() }"), "the button opens the game's Click Casting window").toEqual([1, false]);
+  addon.eval('ToggleClickBindingFrame = nil ns.Options.Show("clickcast")');
+  addon.clearChat();
+  addon.eval('__click("Open the game\'s click bindings")');
+  expect(chatHas(addon, /no click bindings window/), "a client without that window says so").toBe(true);
+  addon.eval(`__click("Use the game's click bindings")`);
+  expect(state(), "switched off: ForeverUI's bindings are back").toEqual(["spell", "spell", true, "target", "togglemenu"]);
+  const old = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + "C_ClickBindings = nil ToggleClickBindingFrame = nil", { savedVariables: "ForeverUIDB.profiles = { Default = { ClickCast = { useGame = true } } }" });
+  old.eval('ns.GetModule("ClickCast").Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew") __spawn(1, "raid1") ns.Options.Show("clickcast")');
+  expect([old.eval('return ForeverUI_RaidUnitButton1:GetAttribute("ctrl-type2")'), old.texts("THE GAME'S CLICK BINDINGS").length], "a client without the game's click bindings keeps ForeverUI's, and the page doesn't offer them").toEqual(["spell", 0]);
+});

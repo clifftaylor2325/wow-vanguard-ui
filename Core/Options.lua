@@ -79,6 +79,30 @@ local function moverOption(key)
   return function() return ns.MoverOptions()[key] end, function(v) ns.MoverOptions()[key] = v end
 end
 
+-- The frame whose scale and opacity the Layout card's sliders set (the first mover until one is picked).
+local function sizedMover()
+  local list = ns.MoverList()
+  return O.sizedMover or (list[1] and list[1].key)
+end
+
+-- Every movable frame as a { key, label } choice.
+local function moverChoices()
+  local out = {}
+  for i, m in ipairs(ns.MoverList()) do out[i] = { m.key, m.label } end
+  return out
+end
+
+-- get/set for which frame the sliders size; picking one re-reads the sliders.
+local function pickMover()
+  return sizedMover, function(key) O.sizedMover = key; O.Refresh() end
+end
+
+-- get/set for the picked frame's scale (look = 1) or opacity (look = 2), applied at once; the default is 1.
+local function moverLook(look, setter)
+  return function() return (select(look, ns.MoverLook(sizedMover()))) end,
+    function(v) local key = sizedMover() if key then setter(key, v) end end, 1
+end
+
 -- Page rows ---------------------------------------------------------------------------
 
 -- A check row: { "check", label, get, set, default }.
@@ -108,10 +132,19 @@ local function liveThemeSetting(key)
   end
 end
 
+-- The built-in fonts and bar textures; the pickers add what LibSharedMedia shares.
 local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", "the game's font" } }
 -- The faction look: by your character's faction, or off.
 local FACTION_LOOK = { { "auto", "By your faction" }, { "off", "Off" } }
 local BAR_TEXTURES = { { "forever", "Forever" }, { "soft", "Soft" }, { "flat", "Flat" } }
+-- A share as a percent.
+local function percent(v)
+  return string.format("%d%%", math.floor(v * 100 + 0.5))
+end
+
+-- A frame's scale (50% to 200%) and opacity (10% to 100%), in steps of 5.
+local MOVER_SCALES = { min = ns.MOVER_SCALE.min, max = ns.MOVER_SCALE.max, step = 0.05, format = percent }
+local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step = 0.05, format = percent }
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
@@ -121,7 +154,7 @@ local function lookRows()
     { "header", "Look" },
     { "preview" },
     { "swatches" },
-    { "cycle", "Font", FONT_CHOICES, liveThemeSetting("font") },
+    { "cycle", "Font", T.SharedChoices("font", FONT_CHOICES), liveThemeSetting("font") },
     { "slider", "Text size", TEXT_SIZES, liveThemeSetting("textScale") }, { "cycle", "Faction look: crest and heading font", FACTION_LOOK, liveThemeSetting("faction") },
     check("Pixel-perfect scale (crisp 1-pixel lines)", function() return T.Settings().pixelScale end,
       function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end),
@@ -137,8 +170,17 @@ local function layoutRows()
     check("Show a grid while moving", moverOption("grid")),
     check("Snap to other frames", moverOption("snap")),
     check("Show these handles in the game's Edit Mode too", moverOption("editMode")),
-    { "text", "While moving frames, right-click one for its exact anchor and offsets." },
-    { "button", "Reset all positions", function() ns.ResetMovers("all") end },
+    { "text", "While moving frames, right-click one for its exact anchor, offsets, scale and opacity." },
+  }
+end
+
+-- General, part three: one frame's scale and opacity, and resetting every frame.
+local function sizeRows()
+  return {
+    { "cycle", "Frame to size", moverChoices(), pickMover() },
+    { "slider", "Its scale", MOVER_SCALES, moverLook(1, ns.SetMoverScale) },
+    { "slider", "Its opacity", MOVER_ALPHAS, moverLook(2, ns.SetMoverAlpha) },
+    { "button", "Reset all positions", function() ns.ResetMovers("all"); O.Refresh() end },
   }
 end
 
@@ -146,7 +188,7 @@ end
 local function barRows()
   return {
     { "header", "Bars" },
-    { "cycle", "Bar texture", BAR_TEXTURES, themeSetting("barTexture") },
+    { "cycle", "Bar texture", T.SharedChoices("statusbar", BAR_TEXTURES), themeSetting("barTexture") },
     check("Smooth health and power bars", function() return T.Settings().smoothBars end, function(v) T.Settings().smoothBars = v end),
     check("Soft shadows under frames (reload)", themeSetting("hudShadow")),
   }
@@ -161,9 +203,9 @@ local function motionRows()
   }
 end
 
--- General: look, bars, motion and layout.
+-- General: look, bars, motion, layout and frame sizes.
 local function generalRows()
-  return append(append(append(lookRows(), barRows()), motionRows()), layoutRows())
+  return append(append(append(append(lookRows(), barRows()), motionRows()), layoutRows()), sizeRows())
 end
 
 -- Each module's name in the window and what it does (and what it needs, if anything).
@@ -188,11 +230,11 @@ O.MODULE_INFO = {
   ActionBars = { "Action bars", "Eight bars with their own size, layout and visibility." },
   SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, places the pet and stance bars, and adds the vehicle exit." },
   Minimap = { "Minimap", "A square minimap with the zone and coordinates." },
-  InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo and the time, under the minimap, your XP and gold per hour while you level, and your DPS if you like." },
+  InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo or soul shards and the time, under the minimap, your XP and gold per hour while you level, and your DPS and its place if you like." },
   AfkScreen = { "AFK screen", "While you're away, the screen dims to a card with your character, zone, time away and XP." },
   MenuStrip = { "Menu and quest tracker", "The game's menu buttons (as ForeverUI icons) and bag buttons in a corner strip, and the quest tracker under the info strip." },
   Chat = { "Chat", "Themed chat windows and tabs." },
-  Bags = { "Bags", "One combined bag, with a Sort button." },
+  Bags = { "Bags", "One combined bag, in sections by kind of item, with a Sort button." },
   Merchant = { "Merchant helpers", "Repair, sell gray items, and a quieter error line." },
   ChatExtras = { "Chat extras", "Clickable web links in chat, and a Copy button for the recent chat." },
   MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map." },
@@ -201,7 +243,7 @@ O.MODULE_INFO = {
   QuestTracker = { "Quest tracker", "Your watched quests under the info strip: levels in difficulty colors, objectives, quest items, nearest first if you like." },
   QuestLog = { "Quest log", "Your quests by zone, each quest's text, objectives and rewards, with Track, Share, Abandon and Map." },
   QuestAuto = { "Quest automation", "Accept, turn in, pick the best-selling reward, skip chatter; each off until switched on." },
-  GameAlerts = { "Game alerts", "Loss of control and the talking head in the ForeverUI look, each in a spot you can move." },
+  GameAlerts = { "Game alerts", "Loss of control and the talking head in the ForeverUI look, each in a spot you can move; Hardcore death notices restyled; a rare nearby announced if you like." },
   Errands = { "Errands", "Train all at a trainer, keep items stocked from merchants, and time your flights." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
   Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the ForeverUI look." },
@@ -289,7 +331,13 @@ local function skinSpecial()
   end
 end
 
--- Action bars, shared: locking, range tint, the default bars, the client's special buttons.
+-- Keybind mode (Modules/ActionBarKeybinds.lua): the options window steps aside for it.
+local function keybindMode()
+  O.Hide()
+  ns.GetModule("ActionBars").KeybindMode(true)
+end
+
+-- Action bars, shared: locking, range tint, the default bars, the client's special buttons, keybind mode.
 local function actionBarRows()
   return {
     { "header", "Action bars" },
@@ -299,14 +347,10 @@ local function actionBarRows()
     check("Restyle the pet, stance and extra action buttons (reload)", skinSpecial()),
     check("Pet and stance bars in their own movable spots (reload)", setting("SpecialBars", "place", true)),
     check("Vehicle exit button (reload)", setting("SpecialBars", "vehicleExit", true)),
-    { "text", "Empty slots stay hidden until you drag a spell or item onto the bars." },
+    { "text", "Empty slots stay hidden until you drag a spell or item onto the bars." }, { "button", "Keybind mode", keybindMode },
   }
 end
 
--- When a bar is seen. "On mouseover" shows it only while the mouse is over it;
--- On mouseover and In combat bars also show while you drag a spell or item.
--- "Hidden" doesn't draw the bar, but its keys still cast (a keybind-only bar).
-local BAR_VISIBILITY = { { "always", "Always" }, { "mouseover", "On mouseover" }, { "combat", "In combat" }, { "hidden", "Hidden" } }
 -- Buttons on a bar, and per row: 1 to 12.
 local BAR_BUTTONS = { min = 1, max = 12, step = 1 }
 -- Button size: 24 to 48 px in steps of 2.
@@ -318,13 +362,23 @@ local function barTitle(n)
   return (AB and AB.RightEdge(n)) and ("Bar " .. n .. ", right edge") or ("Bar " .. n)
 end
 
+-- When bar n is seen (Core/Visibility.lua): Always, On mouseover (only while the
+-- mouse is over it), In combat, Hidden, or while a condition checked below holds.
+-- Bars shown on mouseover or on conditions also show while you drag a spell or
+-- item. "Hidden" doesn't draw the bar, but its keys still cast (a keybind-only bar).
+local function barVisibilityRows(n)
+  return ns.Visibility.Rows("Visibility", function() return moduleSettings("ActionBars").bars[n] end,
+    "visibility", "showWhen", function() barChanged(n, "visibility") end)
+end
+
 -- One action bar's card: on/off, visibility, button count, per row and size.
 local function oneBarRows(n)
+  local visibility, showWhen = barVisibilityRows(n)
   return {
-    { "header", barTitle(n) },
-    check("Show bar " .. n, barSetting(n)),
-    { "cycle", "Visibility", BAR_VISIBILITY, barOption(n, "visibility") },
+    { "header", barTitle(n) }, check("Show bar " .. n, barSetting(n)),
+    visibility,
     { "text", "Hidden bars keep their keys: a bound key still casts." },
+    showWhen,
     { "slider", "Buttons", BAR_BUTTONS, barOption(n, "buttons") },
     { "slider", "Buttons per row", BAR_BUTTONS, barOption(n, "perRow") },
     { "slider", "Button size", BAR_SIZES, barSizeOption(n) },
@@ -354,42 +408,73 @@ local function windowRows()
   }
 end
 
+-- get/set for showing the game's Cooldown Manager, which turns it on or off at once.
+local function cooldownManagerSetting()
+  return liveSetting("GameTools", "essential", function() ns.GetModule("GameTools").SetCooldownManager(moduleSettings("GameTools").essential) end)
+end
+
 -- The game's own tools: the Cooldown Manager and the damage meter (after a reload).
 local function gameToolRows()
   return {
     { "header", "The game's tools" },
-    check("Cooldown Manager in the ForeverUI look (reload)", setting("GameTools", "cooldowns", true)),
+    check("Show the game's Cooldown Manager: its essential row between your frames", cooldownManagerSetting()), check("Cooldown Manager in the ForeverUI look (reload)", setting("GameTools", "cooldowns", true)),
     check("Damage meter in the ForeverUI look (reload)", setting("GameTools", "meter", true)),
     check("Place them to fit the layout; off leaves them to Edit Mode (reload)", setting("GameTools", "place", true)),
     check("Loss of control in the ForeverUI look, above your character (reload)", setting("GameAlerts", "lossOfControl", true)),
     { "cycle", "Talking head (reload)", { { "move", "ForeverUI look, top center" }, { "hide", "Hidden" }, { "game", "The game's" } }, setting("GameAlerts", "talkingHead", true) },
+    check("Hardcore death notices in the ForeverUI look (reload)", setting("GameAlerts", "hardcore", true)),
+    check("A rare nearby: a sound and a chat line, out of combat", setting("GameAlerts", "rares")),
   }
+end
+
+-- The visibility rows (Core/Visibility.lua) of a module's frame, applied at once
+-- (when the module runs); unset, the setting is Always.
+local function visibilityRows(caption, module, modeKey, whenKey)
+  return ns.Visibility.Rows(caption, function() return moduleSettings(module) end, modeKey, whenKey, function()
+    local m = ns.GetModule(module)
+    if m.enabled then m.ApplyVisibility() end
+  end, "always")
 end
 
 -- The game's extras: minimap buttons, the menu strip and the quest tracker (after a reload).
 local function gamePartRows()
+  local menuVisibility, menuWhen = visibilityRows("Game menu buttons", "MenuStrip", "menu", "menuWhen")
   return {
     { "header", "The game's extras" },
     check("Tracking, mail and difficulty on the minimap's corners (reload)", setting("Minimap", "icons", true)),
-    { "cycle", "Game menu buttons (reload)", { { "mouseover", "On mouseover" }, { "always", "Always" } }, setting("MenuStrip", "menu", true) },
+    menuVisibility, menuWhen,
     check("ForeverUI icons on the menu buttons (reload)", setting("MenuStrip", "glyphs", true)),
     check("Quest tracker under the info strip (reload)", setting("MenuStrip", "tracker", true)),
     check("Quest tracker in the ForeverUI look (reload)", setting("MenuStrip", "trackerLook", true)),
   }
 end
 
--- XP and reputation bars, minimap, chat and bags.
-local function moreRows()
+-- XP and reputation bars: which, their numbers, and when they're seen.
+local function dataBarRows()
+  local barsVisibility, barsWhen = visibilityRows("XP and reputation bars", "DataBars", "visibility", "showWhen")
   return {
     { "header", "XP and reputation" },
     check("Experience bar", setting("DataBars", "xp", true)), check("Reputation bar", setting("DataBars", "reputation", true)),
     { "cycle", "Numbers", { { "hover", "on hover" }, { "always", "always" } }, setting("DataBars", "text", true) },
+    barsVisibility, barsWhen,
+  }
+end
+
+-- Minimap, chat and bags.
+local function moreRows()
+  return {
     { "header", "Minimap, chat, bags" },
     check("Coordinates under the minimap", setting("Minimap", "coords", true)),
     check("Chat background", setting("Chat", "background", true)), check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
     { "cycle", "Chat text size (follows Text size)", ns.GetModule("Chat").SIZES, chatSizeSetting() },
     check("Combined bag (reload)", setting("Bags", "combined", true)), check("Bank in the ForeverUI look (reload)", setting("Bags", "bank", true)),
   }
+end
+
+-- The combined bag's sections, laid out (or back to the plain grid) at once.
+local function bagRows()
+  return { check("Combined bag in sections: equipment, consumables, quest items, junk",
+    liveSetting("Bags", "sections", function() ns.GetModule("Bags").SectionsChanged() end)) }
 end
 
 -- get/set for the weapon enchant cells, which show or hide at once.
@@ -414,14 +499,15 @@ end
 
 -- The info strip under the minimap: one switch per block.
 local function stripRows()
+  local stripVisibility, stripWhen = visibilityRows("Strip visibility", "InfoStrip", "visibility", "showWhen")
   return {
-    { "header", "Strip under the minimap" },
+    { "header", "Strip under the minimap" }, stripVisibility, stripWhen,
     check("Durability", stripSetting("durability")), check("Free bag slots", stripSetting("bags")),
     check("Frame rate and latency", stripSetting("system")), check("Gold", stripSetting("gold")),
     check("Ammo (hunters, warriors, rogues)", stripSetting("ammo")), check("Clock", stripSetting("clock")),
-    check("XP per hour this session", stripSetting("xprate")), check("Time to the next level", stripSetting("leveltime")),
-    check("Gold per hour this session", stripSetting("goldrate")),
-    check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")),
+    check("Soul shards (warlocks)", stripSetting("shards")), check("XP per hour this session", stripSetting("xprate")),
+    check("Time to the next level", stripSetting("leveltime")), check("Gold per hour this session", stripSetting("goldrate")),
+    check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")), check("Your place in the last fight's DPS, in a group", stripSetting("rank")),
   }
 end
 
@@ -435,12 +521,31 @@ local function merchantRows()
   }
 end
 
--- Chat extras, the minimap drawer and the auto-accept switches.
-local function comfortRows()
+-- The game's class-colored names in chat: always, never, or as each chat type is set.
+local CLASS_NAMES = { { "0", "Always" }, { "1", "Never" }, { "2", "As each chat type is set" } }
+-- chatClassColorOverride: "0" and "1" force class colors on or off; anything else leaves them to each chat type.
+local function classNameChoice(v) return (v == "0" or v == "1") and v or "2" end
+-- showTimestamps: "none" (or unset) is off, anything else a time format.
+local function timestampChoice(v) return v or "none" end
+
+-- Chat: the extras, and the game's own timestamp and class-color settings.
+local function chatRows()
+  local CX = ns.GetModule("ChatExtras")
   return {
-    { "header", "Chat, minimap and prompts" },
+    { "header", "Chat" },
     check("Clickable web links in chat (reload)", setting("ChatExtras", "links", true)),
     check("Copy button over the chat (reload)", setting("ChatExtras", "copy", true)),
+    check("Short channel names: [2. Trade] shows as [T]", setting("ChatExtras", "shortChannels")),
+    check("Ctrl + mouse wheel jumps to the top or bottom of chat", setting("ChatExtras", "ctrlScroll")),
+    { "cycle", "Chat timestamps (the game's setting)", CX.TimestampChoices(), CX.CVarSetting("showTimestamps", timestampChoice) },
+    { "cycle", "Class-colored names in chat (the game's setting)", CLASS_NAMES, CX.CVarSetting("chatClassColorOverride", classNameChoice) },
+  }
+end
+
+-- The minimap drawer and the auto-accept switches.
+local function comfortRows()
+  return {
+    { "header", "Minimap and prompts" },
     check("Gather addon minimap buttons into a drawer (reload)", setting("MinimapButtons", "drawer", true)),
     check("Accept summons (out of combat)", setting("AutoAccept", "summons")),
     check("Accept resurrections", setting("AutoAccept", "resurrect")), check("Decline duels", setting("AutoAccept", "duels")),
@@ -472,14 +577,14 @@ end
 
 -- The Bars, map, chat page: your buffs, bars and map, the strip, merchants, tooltips.
 local function morePageRows()
-  local rows = append(playerAuraRows(), moreRows())
+  local rows = append(append(append(playerAuraRows(), dataBarRows()), moreRows()), bagRows())
   append(rows, stripRows())
   append(rows, gamePartRows())
   append(rows, windowRows())
   append(rows, gameToolRows())
   append(rows, merchantRows())
   append(rows, errandRows())
-  append(rows, comfortRows())
+  append(append(rows, chatRows()), comfortRows())
   return append(rows, tooltipRows())
 end
 

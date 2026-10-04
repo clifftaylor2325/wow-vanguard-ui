@@ -18,6 +18,8 @@ local PA = ns.Module("PlayerAuras", {
 })
 
 PA.GAP = 4
+-- The Masque group your buffs, debuffs and weapon enchants are in, when Masque is loaded (Core/Masque.lua).
+PA.MASQUE = "Buffs and debuffs"
 -- The game's frames this replaces.
 PA.BLIZZARD = { "BuffFrame", "DebuffFrame" }
 -- Weapon slot name (Enum.WeaponSlot) and inventory slot, in cell order from the right.
@@ -28,7 +30,7 @@ PA.WEAPONS = { { "MainHand", 16 }, { "OffHand", 17 }, { "Ranged", 18 } }
 -- Buffs from the top-right corner, growing left and down; debuffs start a new row after them.
 function PA.Spec(holder, s)
   return { point = { "TOPRIGHT", holder, "TOPRIGHT", 0, 0 }, grow = "LEFT", growY = "DOWN",
-    lineSize = s.perRow * (s.size + PA.GAP), gap = PA.GAP, timer = s.timers, cancel = true,
+    lineSize = s.perRow * (s.size + PA.GAP), gap = PA.GAP, timer = s.timers, cancel = true, masque = PA.MASQUE,
     groups = { { filter = "HELPFUL", max = s.buffs, size = s.size },
       { filter = "HARMFUL", max = s.debuffs, size = s.size, debuff = true, newLine = true } } }
 end
@@ -89,7 +91,7 @@ end
 -- One enchant cell, dressed like the buffs, with the client's countdown numbers.
 local function enchantCell(holder, i, size)
   local c = CreateFrame("Frame", nil, holder)
-  local parts = A.Dress(c, { size = size })
+  local parts = A.Dress(c, { size = size, masque = PA.MASQUE })
   c.icon, c.cooldown = parts.icon, parts.cooldown
   A.Countdown(c.cooldown, size)
   c:SetPoint("TOPRIGHT", holder, "TOPRIGHT", -(i - 1) * (size + PA.GAP), 0)

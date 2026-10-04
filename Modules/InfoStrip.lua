@@ -1,21 +1,24 @@
 -- A strip of numbers under the minimap, up to four rows:
 --   durability (orange at 25% or less, red at 10% or less) · free bag slots · fps and latency
---   gold · ammo (hunters, warriors, rogues) · clock
+--   gold · ammo (hunters, warriors, rogues) or soul shards (warlocks) · clock
 --   leveling: XP per hour · time to level · gold per hour this session
---   your damage per second in the last fight (off until you turn it on)
+--   your damage per second in the last fight, and your place in it in a group
+--   (each off until you turn it on)
 -- Each block reads the client when its event fires (fps, latency and the
 -- clock once a second on one shared timer), shows only where the client
 -- can answer, and sets its text only when it changed. Values the client
--- hides show nothing.
+-- hides show nothing. The strip is seen always unless its visibility setting
+-- says otherwise (Core/Visibility.lua): on mouseover, in combat, hidden, or on a checklist.
 
 local ADDON, ns = ...
 
 local T = ns.Theme
+local V = ns.Visibility
 
 local IS = ns.Module("InfoStrip", {
   defaults = {
-    durability = true, bags = true, system = true, gold = true, ammo = true, clock = true,
-    xprate = true, leveltime = true, goldrate = true, dps = false,
+    durability = true, bags = true, system = true, gold = true, ammo = true, clock = true, shards = true,
+    xprate = true, leveltime = true, goldrate = true, dps = false, rank = false,
   },
 })
 
@@ -24,8 +27,10 @@ IS.WIDTH, IS.ROW = 182, 16
 IS.BLOCKS = {
   durability = { 1, "LEFT" }, bags = { 1, "CENTER" }, system = { 1, "RIGHT" },
   gold = { 2, "LEFT" }, ammo = { 2, "CENTER" }, clock = { 2, "RIGHT" },
+  -- Soul shards share ammo's place: no class carries both.
+  shards = { 2, "CENTER" },
   xprate = { 3, "LEFT" }, leveltime = { 3, "CENTER" }, goldrate = { 3, "RIGHT" },
-  dps = { 4, "LEFT" },
+  dps = { 4, "LEFT" }, rank = { 4, "RIGHT" },
 }
 -- The session's rates wait this long (seconds) before showing: early numbers jump about.
 IS.SETTLE = 60
@@ -35,6 +40,9 @@ IS.RATES = { "xprate", "leveltime", "goldrate" }
 IS.AMMO_CLASSES = { HUNTER = true, WARRIOR = true, ROGUE = true }
 -- The ammo inventory slot, and the equipment slots durability reads.
 IS.AMMO_SLOT, IS.LAST_SLOT = 0, 19
+-- The Soul Shard item (vanilla's, 6265), and the last bag counted: the reagent bag
+-- (Enum.BagIndex.ReagentBag), where Forever lets shards go.
+IS.SHARD_ITEMS, IS.LAST_BAG = { [6265] = true }, 5
 
 -- Values -------------------------------------------------------------------------------------
 
@@ -75,6 +83,23 @@ function IS.FreeSlots()
   local total = 0
   for bag = 0, 4 do total = total + (ns.PlainNumber(free(bag)) or 0) end
   return total
+end
+
+-- How many soul shards one bag slot's item is (0 for anything else or a hidden item).
+local function shardsIn(item)
+  if type(item) ~= "table" or ns.IsSecret(item.itemID) or not IS.SHARD_ITEMS[item.itemID] then return 0 end
+  return ns.PlainNumber(item.stackCount) or 1
+end
+
+-- Soul shards across your bags and the reagent bag, or nil when the client can't say.
+function IS.SoulShards()
+  local info, slots = C_Container and C_Container.GetContainerItemInfo, C_Container and C_Container.GetContainerNumSlots
+  if type(info) ~= "function" or type(slots) ~= "function" then return nil end
+  local n = 0
+  for bag = 0, IS.LAST_BAG do
+    for slot = 1, ns.PlainNumber(slots(bag)) or 0 do n = n + shardsIn(info(bag, slot)) end
+  end
+  return n
 end
 
 -- Copper as "12g 34s 7c" (no gold part under a gold).
@@ -153,17 +178,37 @@ local function enum(kind, key)
   return t and t[key] or nil
 end
 
--- Your damage per second in the current (or last) fight, from the game's damage
--- meter; nil in combat and wherever the client keeps it hidden.
-function IS.DPS()
+-- The current (or last) fight's damage per second list from the game's damage
+-- meter, top first; nil in combat and wherever the client keeps it hidden.
+local function dpsSources()
   local get = C_DamageMeter and C_DamageMeter.GetCombatSessionFromType
   local kind, what = enum("DamageMeterSessionType", "Current"), enum("DamageMeterType", "Dps")
   if type(get) ~= "function" or kind == nil or what == nil or ns.InCombat() then return nil end
   local session = get(kind, what)
-  if type(session) ~= "table" or ns.IsSecret(session) then return nil end
-  for _, source in ipairs(session.combatSources or {}) do
-    if source.isLocalPlayer == true then return ns.PlainNumber(source.amountPerSecond) end
+  if type(session) ~= "table" or ns.IsSecret(session) or type(session.combatSources) ~= "table" then return nil end
+  return session.combatSources
+end
+
+-- Your line in that list, its place in it and how many lines it has (nil without yours).
+local function myLine()
+  local sources = dpsSources()
+  for i, source in ipairs(sources or {}) do
+    if source.isLocalPlayer == true then return source, i, #sources end
   end
+end
+
+-- Your damage per second in the current (or last) fight; nil in combat and where it's hidden.
+function IS.DPS()
+  local line = myLine()
+  return line and ns.PlainNumber(line.amountPerSecond)
+end
+
+-- Your place in the last fight's damage per second and how many were listed, or nil. The
+-- client has no rank field: the game's own meter numbers its lines in the list's order.
+function IS.Rank()
+  if not (ns.Client.Has("damageMeter") and ns.Client.Has("meterEnums")) then return nil end
+  local line, place, count = myLine()
+  if line then return place, count end
 end
 
 -- True at the level cap, where XP stops.
@@ -210,6 +255,14 @@ function IS.TEXT.ammo()
   if n > 0 or class == "HUNTER" then return "ammo " .. n, n == 0 and "bad" or "text" end
 end
 
+-- Your soul shards, for warlocks (none is red).
+function IS.TEXT.shards()
+  local _, class = UnitClass("player")
+  if ns.IsSecret(class) or class ~= "WARLOCK" then return nil end
+  local n = IS.SoulShards()
+  if n then return "shards " .. n, n == 0 and "bad" or "text" end
+end
+
 -- The time.
 function IS.TEXT.clock()
   local t = ask("date", "%H:%M")
@@ -242,6 +295,12 @@ function IS.TEXT.dps()
   if dps and dps > 0 then return ns.GetModule("DataBars").Short(math.floor(dps)) .. " dps", "text" end
 end
 
+-- Your place in the last fight's damage, in a group ("#2 of 5"; gold at the top).
+function IS.TEXT.rank()
+  local place, count = IS.Rank()
+  if place and count > 1 then return string.format("#%d of %d", place, count), place == 1 and "gold" or "text2" end
+end
+
 -- Showing -----------------------------------------------------------------------------------
 
 -- The lowest row with a block showing (0 when nothing shows).
@@ -253,11 +312,11 @@ local function rowsShown()
   return rows
 end
 
--- Hides the strip while it has nothing to show (no empty box on screen), and
--- grows it to a third (or fourth) row only while a block there shows.
+-- Hides the strip while it has nothing to show (no empty box on screen) or its
+-- visibility hides it, and grows it to a third (or fourth) row only while a block there shows.
 local function fitRows()
   local rows = rowsShown()
-  IS.frame:SetShown(rows > 0)
+  IS.frame:SetShown(rows > 0 and V.Shows(IS.frame))
   IS.frame:SetHeight(IS.ROW * math.max(rows, 2) + 4)
 end
 
@@ -307,6 +366,21 @@ local function ticker(frame)
   end)
 end
 
+-- Applies the strip's visibility setting: now, or when combat ends (the client's
+-- state driver shows or hides it from then on, and it fades on mouseover).
+function IS.ApplyVisibility()
+  ns.OutOfCombat(function() V.ApplyNow(IS.frame, IS.settings.visibility, IS.settings.showWhen) end, IS.frame)
+end
+
+-- Follows the strip's visibility from the start: the mouse over it, the state's
+-- changes (fitRows shows or hides it), and zone changes for In an instance.
+local function watchVisibility(f)
+  f.fuiOnState = fitRows
+  V.WatchHover(f)
+  V.Track(f, IS.ApplyVisibility)
+  IS.ApplyVisibility()
+end
+
 -- The movable strip, just under the minimap.
 local function build()
   local f = T.HudPanel(CreateFrame("Frame", "ForeverUI_InfoStrip", UIParent))
@@ -317,6 +391,7 @@ local function build()
   for key in pairs(IS.BLOCKS) do IS.texts[key] = addText(f, key) end
   ticker(f)
   IS.UpdateAll()
+  watchVisibility(f)
 end
 
 -- Event -> the block it repaints.
@@ -347,13 +422,13 @@ end
 -- Repaints each block when its event fires.
 local function watch()
   for event, key in pairs(IS.EVENTS) do ns.On(event, function() IS.Paint(key) end) end
-  ns.On("BAG_UPDATE_DELAYED", function() IS.Paint("ammo") end)
+  ns.On("BAG_UPDATE_DELAYED", function() IS.Paint("ammo") IS.Paint("shards") end)
   ns.On("PLAYER_MONEY", function() IS.Paint("goldrate") end)
   ns.On("PLAYER_XP_UPDATE", onXP)
   ns.On("PLAYER_LEVEL_UP", IS.PaintRates)
   ns.On("PLAYER_ENTERING_WORLD", IS.UpdateAll)
   -- Your DPS is readable once a fight ends (and gone when the meter resets).
-  for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "DAMAGE_METER_RESET" }) do ns.On(event, function() IS.Paint("dps") end) end
+  for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "DAMAGE_METER_RESET" }) do ns.On(event, function() IS.Paint("dps") IS.Paint("rank") end) end
 end
 
 -- Module entry point (Core/Modules.lua).

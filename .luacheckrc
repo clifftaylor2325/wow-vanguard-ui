@@ -2,7 +2,8 @@
 -- addon may set are listed exactly, so a missing `local` fails.
 std = "lua51"
 max_line_length = false
-exclude_files = { "node_modules/", "scripts/" }
+-- Libs/ holds the shared libraries, unmodified as upstream wrote them.
+exclude_files = { "node_modules/", "scripts/", "Libs/" }
 
 -- Every addon file starts `local ADDON, ns = ...`; not all use ADDON.
 ignore = { "211/ADDON" }
@@ -40,4 +41,20 @@ read_globals = {
   "GetQuestLogSpecialItemCooldown", "IsQuestLogSpecialItemInRange",
   -- P2.8 Chat: the game's list of chat window art names.
   "CHAT_FRAME_TEXTURES",
+  -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.
+  "IsInInstance", "SecureCmdOptionParse",
+  -- P3.4 Keybind mode: binding a key to a button's command and saving it in the binding set in use.
+  "SetBinding", "SaveBindings", "GetCurrentBindingSet",
+  -- P3.5 Shared media: the bundled libraries' loader (Libs/LibStub).
+  "LibStub",
+  -- P3.8 Chat: the game's time formatter and clock (chat timestamps), its chat windows list.
+  "TimeUtil", "time", "CHAT_FRAMES",
+  -- P3.9 GameAlerts: rare spawns from the minimap's vignettes.
+  "C_VignetteInfo",
+  -- P3.10 Click casting: the game's click bindings and its Click Casting window.
+  "C_ClickBindings", "ToggleClickBindingFrame",
+  -- P3.12 Error badge: the game's addons button by the minimap.
+  "AddonCompartmentFrame",
+  -- P3.14 Profiles: switching the game's Edit Mode layout with the profile.
+  "C_EditMode",
 }

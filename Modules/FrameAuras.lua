@@ -16,6 +16,9 @@ local FA = ns.Module("FrameAuras", {
   defaults = { onlyMine = true, debuffs = 8, buffs = 8, size = 20, timers = false },
 })
 
+-- The Masque group the target and focus auras are in, when Masque is loaded (Core/Masque.lua).
+FA.MASQUE = "Target and focus auras"
+
 -- Specs ----------------------------------------------------------------------------------
 
 -- The debuff groups: crowd control, yours, then others' (none with onlyMine).
@@ -30,13 +33,13 @@ end
 -- The debuff row under a frame, wrapping at its width.
 function FA.DebuffSpec(f, s, size)
   return { point = { "TOPLEFT", f, "BOTTOMLEFT", 0, -3 }, grow = "RIGHT", growY = "DOWN", lineSize = f:GetWidth(),
-    gap = 2, timer = s.timers, groups = debuffGroups(s, size) }
+    gap = 2, timer = s.timers, masque = FA.MASQUE, groups = debuffGroups(s, size) }
 end
 
 -- The buff row above a frame, wrapping at its width.
 function FA.BuffSpec(f, s)
   return { point = { "BOTTOMLEFT", f, "TOPLEFT", 0, 3 }, grow = "RIGHT", growY = "UP", lineSize = f:GetWidth(),
-    gap = 2, timer = s.timers, groups = { { filter = "HELPFUL", max = s.buffs, size = s.size - 2 } } }
+    gap = 2, timer = s.timers, masque = FA.MASQUE, groups = { { filter = "HELPFUL", max = s.buffs, size = s.size - 2 } } }
 end
 
 -- Building ---------------------------------------------------------------------------

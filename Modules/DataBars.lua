@@ -1,11 +1,13 @@
 -- Data bars: experience (with rested XP) and the reputation you're
 -- watching, as thin themed bars you can move in unlock mode. Hover a bar
 -- for the numbers; the XP bar hides at max level, the reputation bar when
--- no faction is watched.
+-- no faction is watched. Both are seen always unless their visibility setting
+-- says otherwise (Core/Visibility.lua): on mouseover, in combat, hidden, or on a checklist.
 
 local ADDON, ns = ...
 
 local T = ns.Theme
+local V = ns.Visibility
 
 local DB = ns.Module("DataBars", {
   defaults = { width = 454, height = 6, xp = true, reputation = true, text = "hover" },
@@ -107,6 +109,7 @@ local function createBar(key, label, point, settings)
   bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "small")
   bar.text:SetPoint("CENTER")
   wireText(bar, settings.text)
+  V.WatchHover(bar)
   ns.Mover(bar, key, label, point)
   return bar
 end
@@ -123,10 +126,10 @@ end
 
 -- Updating -------------------------------------------------------------------------------
 
--- Fills the XP bar, or hides it at max level.
+-- Fills the XP bar, or hides it at max level (or while its visibility hides it).
 function DB.UpdateXP()
   local bar, xp = DB.xpBar, DB.XP()
-  bar:SetShown(xp ~= nil)
+  bar:SetShown(xp ~= nil and V.Shows(bar))
   if not xp then return end
   bar:SetMinMaxValues(0, xp.max)
   bar:SetValue(xp.cur)
@@ -135,10 +138,11 @@ function DB.UpdateXP()
   bar.text:SetText(DB.XPText(xp))
 end
 
--- Fills the reputation bar in its standing color, or hides it with no watched faction.
+-- Fills the reputation bar in its standing color, or hides it with no watched
+-- faction (or while its visibility hides it).
 function DB.UpdateReputation()
   local bar, rep = DB.repBar, DB.Reputation()
-  bar:SetShown(rep ~= nil)
+  bar:SetShown(rep ~= nil and V.Shows(bar))
   if not rep then return end
   bar:SetMinMaxValues(0, rep.max)
   bar:SetValue(rep.cur)
@@ -149,6 +153,7 @@ end
 -- The XP bar with its rested overlay, kept current.
 local function enableXP(settings)
   DB.xpBar = createBar("xpbar", "Experience", { "BOTTOM", "BOTTOM", 0, 4 }, settings)
+  DB.xpBar.fuiOnState = DB.UpdateXP
   addRested(DB.xpBar)
   for _, e in ipairs({ "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD" }) do ns.On(e, DB.UpdateXP) end
   DB.UpdateXP()
@@ -157,6 +162,7 @@ end
 -- The reputation bar for the watched faction, kept current.
 local function enableReputation(settings)
   DB.repBar = createBar("repbar", "Reputation", { "BOTTOM", "BOTTOM", 0, 12 }, settings)
+  DB.repBar.fuiOnState = DB.UpdateReputation
   for _, e in ipairs({ "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" }) do ns.On(e, DB.UpdateReputation) end
   DB.UpdateReputation()
 end
@@ -186,10 +192,21 @@ function DB.Suppress(name)
   hooksecurefunc(f, "SetShown", f.Hide)
 end
 
+-- Applies the bars' visibility setting (one for both): now, or when combat ends
+-- (registering a state driver is), and again on zone changes for In an instance.
+function DB.ApplyVisibility()
+  for _, bar in pairs({ DB.xpBar, DB.repBar }) do
+    V.Track(bar, DB.ApplyVisibility)
+    ns.OutOfCombat(function() V.ApplyNow(bar, DB.settings.visibility, DB.settings.showWhen) end, bar)
+  end
+end
+
 -- Module entry point (Core/Modules.lua). Data bars aren't protected, so no combat wait.
 function DB.Enable(settings)
+  DB.settings = settings
   if settings.xp then enableXP(settings) end
   if settings.reputation then enableReputation(settings) end
+  DB.ApplyVisibility()
   if not (settings.xp or settings.reputation) then return end
   for _, name in ipairs(DB.BLIZZARD) do DB.Suppress(name) end
 end

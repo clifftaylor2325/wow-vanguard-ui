@@ -1,5 +1,5 @@
--- Two themed dialogs: a text box for export/import strings (chat can't hold
--- them), and a reload prompt. One of each is built on first use and reused.
+-- Three themed dialogs: a text box for export/import strings (chat can't hold
+-- them), a yes/no question, and a reload prompt. One of each is built on first use and reused.
 -- Also the reload button itself: the WoW Forever client blocks ReloadUI()
 -- from addon code, even inside a click, so a reload button carries a secure
 -- action button overlay that runs a /reload macro (see ns.ReloadButton).
@@ -8,7 +8,7 @@ local ADDON, ns = ...
 
 local T = ns.Theme
 
-local box, reload
+local box, reload, question
 
 -- A themed button on a dialog.
 local function button(parent, label, width)
@@ -90,6 +90,30 @@ end
 -- Hides the text dialog.
 function ns.HideText()
   if box then box:Hide() end
+end
+
+-- Question ----------------------------------------------------------------------------
+
+-- Builds the question dialog once: the question, a primary Yes and a No.
+local function questionDialog()
+  if question then return question end
+  question = dialog("ForeverUI_Question", 360, 110)
+  question.title:SetWidth(336)
+  question.yes = button(question, "Yes")
+  question.yes:SetPoint("BOTTOMRIGHT", -12, 12)
+  question.no = button(question, "No")
+  question.no:SetPoint("RIGHT", question.yes, "LEFT", -8, 0)
+  return question
+end
+
+-- Asks a yes/no question: the yes button (labelled yes) runs onYes, No runs onNo; either closes it.
+function ns.Ask(text, yes, onYes, onNo)
+  local f = questionDialog()
+  f.title:SetText(text)
+  f.yes.text:SetText(yes)
+  f.yes:SetScript("OnClick", function() f:Hide() onYes() end)
+  f.no:SetScript("OnClick", function() f:Hide() onNo() end)
+  f:Show()
 end
 
 -- Reload ------------------------------------------------------------------------------

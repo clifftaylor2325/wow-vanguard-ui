@@ -30,7 +30,8 @@ try {
   process.exit(1);
 }
 
-const luaFiles = tocFiles().filter((file) => file.endsWith(".lua"));
+// The addon's own Lua; the vendored libraries in Libs/ are not counted.
+const luaFiles = tocFiles().filter((file) => file.endsWith(".lua") && !file.startsWith("Libs/"));
 const report = coverageReport(root, luaFiles);
 const floor = JSON.parse(fs.readFileSync(path.join(root, "scripts/lua-coverage-floor.json"), "utf8")).lines;
 fs.writeFileSync(path.join(root, "coverage/lua-coverage.json"), `${JSON.stringify(report, null, 2)}\n`);

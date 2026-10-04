@@ -9,21 +9,24 @@ const setupClick = (addon, which) => addon.eval(`local b = ForeverUI_Setup.${whi
 // The setup wizard's state: the step showing (0 while closed), the account flag, and whether frames are unlocked.
 const setupState = (addon) => addon.eval("return { step = ns.Setup.Step() or 0, done = ForeverUIDB.setupDone == true, unlocked = ns.Unlocked() }");
 
-it("first-run setup: once per account, three clicks with the defaults", () => {
+it("first-run setup: once per account, four clicks with the defaults", () => {
   const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
   expect(setupState(addon), "a new account opens setup at step 1").toEqual({ step: 1, done: false, unlocked: false });
-  expect(addon.eval("return ForeverUI_Setup.caption:GetText()"), "the caption names the step").toBe("Step 1 of 3 · Layout");
+  expect(addon.eval("return ForeverUI_Setup.caption:GetText()"), "the caption names the step").toBe("Step 1 of 4 · Layout");
   expect(addon.eval("return ForeverUI_Setup.back:IsShown()"), "there is no Back on the first step").toBe(false);
   expect(addon.eval("return UISpecialFrames[#UISpecialFrames]"), "Escape closes setup").toBe("ForeverUI_Setup");
   setupClick(addon, "next");
-  expect(setupState(addon).step === 2 && addon.eval("return ForeverUI_Setup.back:IsShown()"), "Next goes to Look, which has Back").toBe(true);
+  expect(setupState(addon).step === 2 && addon.eval("return ForeverUI_Setup.back:IsShown()"), "Next goes to Screen, which has Back").toBe(true);
+  expect(addon.eval("return ForeverUI_Setup.caption:GetText()"), "the second step is the screen").toBe("Step 2 of 4 · Screen");
   setupClick(addon, "next");
-  expect(setupState(addon), "the last step unlocks the frames").toEqual({ step: 3, done: false, unlocked: true });
+  expect(addon.eval("return { GetCVar('useUiScale'), GetCVar('uiScale') }"), "leaving it applies this screen's preset (1080p): UI scale 80%").toEqual(["1", "0.8"]);
+  setupClick(addon, "next");
+  expect(setupState(addon), "the last step unlocks the frames").toEqual({ step: 4, done: false, unlocked: true });
   expect(addon.eval("return ForeverUI_Setup.next.text:GetText()"), "the last step's button is Done").toBe("Done");
   setupClick(addon, "next");
   expect(setupState(addon), "Done closes setup, locks the frames and remembers that setup ran").toEqual({ step: 0, done: true, unlocked: false });
-  const kept = addon.eval("return { raid = ForeverUIDB.profiles.Default.positions.raid == nil, look = ns.Settings('RaidFrames').look, brass = select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1] }");
-  expect(kept, "the defaults change no position, style or accent").toEqual({ raid: true, look: "soft", brass: true });
+  const kept = addon.eval("return { raid = ForeverUIDB.profiles.Default.positions.raid == nil, look = ns.Settings('RaidFrames').look, brass = select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1], reload = ForeverUI_Reload == nil }");
+  expect(kept, "the defaults change no position, style or accent, and need no reload").toEqual({ raid: true, look: "soft", brass: true, reload: true });
   const again = loggedIn("", { firstRun: true, savedVariables: "ForeverUIDB = { setupDone = true }" });
   expect(again.eval("return ForeverUI_Setup == nil"), "setup does not open again on this account").toBe(true);
 });
@@ -37,13 +40,12 @@ it("first-run setup waits for combat and steps aside in a fight", () => {
   expect(addon.eval("return ns.QueuedCount()"), "asking again in combat queues nothing more").toBe(queued);
   setCombat(addon, false);
   expect(setupState(addon).step, "setup opens once combat ends").toBe(1);
-  setupClick(addon, "next");
-  setupClick(addon, "next");
+  for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
   addon.eval("__wfgStub.inCombat = true");
   addon.fire("PLAYER_REGEN_DISABLED");
   expect(setupState(addon), "a fight hides setup and locks the frames, without finishing it").toEqual({ step: 0, done: false, unlocked: false });
   setCombat(addon, false);
-  expect(setupState(addon), "after the fight setup comes back on the same step, frames unlocked").toEqual({ step: 3, done: false, unlocked: true });
+  expect(setupState(addon), "after the fight setup comes back on the same step, frames unlocked").toEqual({ step: 4, done: false, unlocked: true });
   addon.slash("setup");
   expect(setupState(addon), "/fui setup starts again at step 1 and locks the frames").toEqual({ step: 1, done: false, unlocked: false });
 });
@@ -74,16 +76,14 @@ it("setup layouts: Healing puts the raid frames under the character and turns cl
   setupClick(addon, "next");
   expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing centers the raid frames above your frames").toEqual(["BOTTOM", "BOTTOM", 0, 342]);
   expect(addon.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "click casting and the raid frames are on").toBe(true);
-  setupClick(addon, "next");
-  setupClick(addon, "next");
+  for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
   expect(addon.eval("return ForeverUI_Reload == nil"), "nothing was off, so no reload is offered").toBe(true);
   const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { ClickCast = false, RaidFrames = false } } } }" });
   off.eval('__click("Centered: healing")');
   setupClick(off, "next");
   expect(off.eval("return ForeverUIDB.profiles.Default.positions.raid"), "without raid frames built, the spot is saved for next time").toEqual({ point: "BOTTOM", relPoint: "BOTTOM", x: 0, y: 342 });
   expect(off.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "Healing turns click casting and the raid frames on").toBe(true);
-  setupClick(off, "next");
-  setupClick(off, "next");
+  for (let i = 0; i < 3; i += 1) setupClick(off, "next");
   expect(off.eval("return ForeverUI_Reload:IsShown() and ForeverUI_Reload.title:GetText()"), "a module that was off offers a reload at the end").toMatch(/Setup turned on a module that was off/);
 });
 
@@ -91,7 +91,7 @@ it("setup layouts: Damage and tanking restores ForeverUI's defaults, undoing Hea
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   const home = addon.eval("return { ns.MoverPoint('raid') }");
   addon.eval('__click("Centered: healing")');
-  for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
+  for (let i = 0; i < 4; i += 1) setupClick(addon, "next");
   expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing moved the raid frames").not.toEqual(home);
   addon.slash("setup");
   setupClick(addon, "next");
@@ -111,8 +111,7 @@ it("setup layouts: Like the game's puts your frames at the top left; another lay
   setupClick(addon, "next");
   expect(spots(), "player at the top left, focus beside the target of target, party and raid down the left, bosses on the right").toEqual([["TOPLEFT", "TOPLEFT", 20, -40], ["TOPLEFT", "TOPLEFT", 480, -94], ["BOTTOMLEFT", "BOTTOMLEFT", 20, 330], ["TOPRIGHT", "TOPRIGHT", -290, -200]]);
   expect(addon.eval("return ForeverUIDB.profiles.Default.positions.maintanks"), "frames not built yet get their spot saved for later").toEqual({ point: "TOP", relPoint: "TOP", x: 60, y: -196 });
-  setupClick(addon, "next");
-  setupClick(addon, "next");
+  for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
   addon.slash("setup");
   addon.eval('__click("Centered: healing")');
   setupClick(addon, "next");
@@ -137,11 +136,12 @@ const ATTACHED = {
   targetDebuffs: ["uf_target", "below", 3, 220, 22], focusDebuffs: ["uf_focus", "below", 3, 160, 20],
 };
 
-// Every built mover's [point, relPoint, x, y, w, h], read from the addon.
+// Every built mover's [point, relPoint, x, y, w, h, scale], read from the addon: the
+// size on screen (its own size times its scale; the offsets are already in screen units).
 const moverSpots = (addon) => addon.eval(`local out = {}
   for _, m in ipairs(ns.MoverList()) do
     local f, p, rp, x, y = ns.MoverFrame(m.key), ns.MoverPoint(m.key)
-    if f then out[m.key] = { p, rp, x, y, f:GetWidth(), f:GetHeight() } end
+    if f then local s = f:GetScale() out[m.key] = { p, rp, x, y, f:GetWidth() * s, f:GetHeight() * s, s } end
   end
   return out`);
 
@@ -167,14 +167,16 @@ const ONLY_WITH = { maintanks: [6, 40], partyextras: [1, 5] };
 // Whether a mover's part is on screen with n players (the raid grid is drawn on its own).
 const onScreen = (key, n) => key !== "raid" && !FLOATING.has(key) && (!ONLY_WITH[key] || (n >= ONLY_WITH[key][0] && n <= ONLY_WITH[key][1]));
 
+// A row riding on a part's rect p (scaled with its frame by s): above or below it.
+const attachedRect = (p, s, [, side, gap, w, h]) => (side === "above"
+  ? { l: p.l, b: p.t + gap * s, r: p.l + w * s, t: p.t + (gap + h) * s }
+  : { l: p.l, b: p.b - (gap + h) * s, r: p.l + w * s, t: p.b - gap * s });
+
 // Every part's rect on an sw x sh screen with n players in the group (0: solo, no grid).
 function layoutRects(addon, n, sw, sh) {
   const spots = moverSpots(addon), out = {};
   for (const [key, spot] of Object.entries(spots)) if (onScreen(key, n)) out[key] = rectAt(spot.slice(0, 4), spot[4], spot[5], sw, sh);
-  for (const [key, [parent, side, gap, w, h]] of Object.entries(ATTACHED)) {
-    const p = out[parent];
-    if (p) out[key] = side === "above" ? { l: p.l, b: p.t + gap, r: p.l + w, t: p.t + gap + h } : { l: p.l, b: p.b - gap - h, r: p.l + w, t: p.b - gap };
-  }
+  for (const [key, row] of Object.entries(ATTACHED)) if (out[row[0]]) out[key] = attachedRect(out[row[0]], spots[row[0]][6], row);
   if (n > 0) out.raid = raidRect(addon, spots.raid, n, sw, sh);
   // Chat is a mover: its tabs (22 tall) ride above the window.
   if (out.chat) out.chat.t += 22;
@@ -189,40 +191,113 @@ function layoutProblems(rects, sw, sh) {
   return bad;
 }
 
-it("setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", () => {
+// The whole HUD logged in on a new account, party pets and targets on, the info strip
+// at its tallest (with the leveling and DPS rows) and the menu and bag strips at their
+// laid-out sizes (314.4 and 198.2 wide, 36 tall).
+function wholeHud() {
   const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + SPECIAL_BARS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
+  addon.eval("ForeverUI_InfoStrip:SetHeight(68)");
+  addon.eval("MicroMenuContainer:Layout() BagsBar:Layout()");
+  return addon;
+}
+
+// Overlaps and parts off an sw x sh screen, for each raid growth and group size (solo, 5, 25, 40).
+function problemsAt(addon, sw, sh, label) {
+  const bad = [];
+  for (const grow of ["columns", "rows"]) {
+    addon.eval(`ns.GetModule("RaidFrames").settings.layout = "${grow}"`);
+    for (const n of [0, 5, 25, 40]) for (const p of layoutProblems(layoutRects(addon, n, sw, sh), sw, sh)) bad.push(`${label}, groups as ${grow}, ${n} players: ${p}`);
+  }
+  return bad;
+}
+
+it("setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", () => {
+  const addon = wholeHud();
   expect(addon.eval("return ChatFrame1.__points.BOTTOMLEFT ~= nil"), "chat sits in its layout spot").toBe(true);
-  addon.eval("ForeverUI_InfoStrip:SetHeight(68)"); // the info strip at its tallest, with the leveling and DPS rows
-  addon.eval("MicroMenuContainer:Layout() BagsBar:Layout()"); // the menu and bag strips at their laid-out sizes (314.4 and 198.2 wide, 36 tall)
-  expect(moverSpots(addon).bagstrip.slice(4), "the bag strip is as laid out").toEqual([266 * 0.7 + 12, 36]);
+  expect(moverSpots(addon).bagstrip.slice(4, 6), "the bag strip is as laid out").toEqual([266 * 0.7 + 12, 36]);
   expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras", "petbar", "stancebar", "chat"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
   for (const layout of ["damage", "healing", "classic"]) {
     addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
-    for (const grow of ["columns", "rows"]) {
-      addon.eval(`ns.GetModule("RaidFrames").settings.layout = "${grow}"`);
-      for (const [sw, sh] of [[1365, 768], [1920, 1080]]) {
-        for (const n of [0, 5, 25, 40]) {
-          const rects = layoutRects(addon, n, sw, sh);
-          // The bag strip sits above the menu strip, so the pair is no wider than the menu strip and clears the bars at 1365.
-          expect(layoutProblems(rects, sw, sh), `${layout}, groups as ${grow}, ${sw}x${sh}, ${n} players`).toEqual([]);
-        }
-      }
-    }
+    // The bag strip sits above the menu strip, so the pair is no wider than the menu strip and clears the bars at 1365.
+    for (const [sw, sh] of [[1365, 768], [1920, 1080]]) expect(problemsAt(addon, sw, sh, `${layout}, ${sw}x${sh}`)).toEqual([]);
   }
   expect(addon.eval("return { ns.Setup.HealingPoint() }")[0], "Healing centers the grid above the focus cast bar").toEqual(["BOTTOM", "BOTTOM", 0, 342]);
+});
+
+it("setup screens: with each screen preset, nothing overlaps or leaves its own screen, in every layout, solo to 40-man", () => {
+  const addon = wholeHud();
+  const presets = addon.eval("local out = {} for i, p in ipairs(ns.Setup.SCREENS) do out[i] = { p.key, p.w, p.h, p.ui } end return out");
+  expect(presets.map((p) => p[0]), "1080p, 1440p, 4K and ultrawide").toEqual(["1080", "1440", "4k", "ultrawide"]);
+  for (const [key, w, h, ui] of presets) {
+    // The screen in UI units at the preset's UI scale: 768 tall at scale 1.
+    const sw = (768 * w) / h / ui, sh = 768 / ui;
+    for (const layout of ["damage", "healing", "classic"]) {
+      addon.eval(`ns.Setup.ApplyLayout("${layout}") ns.Setup.ApplyScreen("${key}")`);
+      expect(problemsAt(addon, sw, sh, `${key} (${Math.round(sw)}x${Math.round(sh)}), ${layout}`)).toEqual([]);
+    }
+  }
+  expect(addon.eval("return { ns.GetModule('ActionBars').settings.size, ns.GetModule('RaidFrames').settings.width, ns.Theme.Settings().textScale }"), "the last preset (ultrawide) set the buttons, tiles and text").toEqual([38, 110, 1.05]);
 });
 
 it("setup look: accent swatches and the raid frame style apply at once", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
   setupClick(addon, "next");
-  expect(borderOf(addon, "ForeverUI_Setup.pages[2].swatches[1]"), "the current accent (brass) is outlined").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
-  addon.eval("local s = ForeverUI_Setup.pages[2].swatches[2] s:GetScript('OnClick')(s)");
+  setupClick(addon, "next");
+  expect(borderOf(addon, "ForeverUI_Setup.pages[3].swatches[1]"), "the current accent (brass) is outlined").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  addon.eval("local s = ForeverUI_Setup.pages[3].swatches[2] s:GetScript('OnClick')(s)");
   expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]"), "the second swatch sets the arcane accent").toBe(true);
-  expect(borderOf(addon, "ForeverUI_Setup.pages[2].swatches[1]"), "brass is no longer outlined").toEqual(tok(addon, "edge").slice(0, 4));
-  expect(addon.eval("local p = ForeverUI_Setup.pages[2] return { p.swatches[1].check:IsShown(), p.swatches[2].check:IsShown() }"), "the check moves to the chosen swatch").toEqual([false, true]);
-  addon.eval("local b = ForeverUI_Setup.pages[2].styles[2] b:GetScript('OnClick')(b)");
+  expect(borderOf(addon, "ForeverUI_Setup.pages[3].swatches[1]"), "brass is no longer outlined").toEqual(tok(addon, "edge").slice(0, 4));
+  expect(addon.eval("local p = ForeverUI_Setup.pages[3] return { p.swatches[1].check:IsShown(), p.swatches[2].check:IsShown() }"), "the check moves to the chosen swatch").toEqual([false, true]);
+  addon.eval("local b = ForeverUI_Setup.pages[3].styles[2] b:GetScript('OnClick')(b)");
   expect(addon.eval("return ns.Settings('RaidFrames').look"), "a style button sets the raid frame style").toBe("dark");
-  expect(borderOf(addon, "ForeverUI_Setup.pages[2].styles[2]"), "the chosen style is outlined").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  expect(borderOf(addon, "ForeverUI_Setup.pages[3].styles[2]"), "the chosen style is outlined").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+});
+
+// The screen step's choices (their labels) and the hint under them.
+const screenPage = (addon) => addon.eval("local p = ForeverUI_Setup.pages[2] local out = {} for i, b in ipairs(p.choices) do out[i] = b.text:GetText() end return { out, p.hint:GetText() }");
+
+// What the screen presets set: the UI scale settings, the shared button size, bar 1's buttons, the raid tile size, the text size and pixel-perfect scale.
+const screenSizes = (addon) => addon.eval(`local AB, RF, t = ns.GetModule("ActionBars"), ns.Settings("RaidFrames"), ns.Theme.Settings()
+  return { GetCVar("useUiScale") or "unset", GetCVar("uiScale") or "unset", AB.settings.size, ForeverUI_Bar1Button1:GetWidth(), RF.width, RF.height, t.textScale, t.pixelScale }`);
+
+it("setup screen: this screen's preset is picked; Keep changes nothing; a preset sets the UI scale, buttons, tiles and text", () => {
+  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(2560, 1440)", { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { theme = { pixelScale = true } } } }" });
+  setupClick(addon, "next");
+  const [labels, hint] = screenPage(addon);
+  expect(labels, "four presets, this screen's marked, then Keep").toEqual(["1080p (1920 x 1080)", "1440p (2560 x 1440)  ·  your screen", "4K (3840 x 2160)", "Ultrawide (3440 x 1440)", "Keep my current sizes"]);
+  expect(borderOf(addon, "ForeverUI_Setup.pages[2].choices[2]"), "and picked, outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  expect(hint, "the hint says what it sets").toBe("UI scale 70%, action buttons 38 px, raid tiles 110 x 48, text 105%.");
+  const before = screenSizes(addon);
+  addon.eval('__click("Keep my current sizes")');
+  expect(screenPage(addon)[1], "Keep says it changes nothing").toMatch(/^Changes nothing/);
+  setupClick(addon, "next");
+  expect(screenSizes(addon), "and it doesn't").toEqual(before);
+  setupClick(addon, "back");
+  addon.eval('__click("1440p")');
+  setupClick(addon, "next");
+  expect(screenSizes(addon), "1440p: UI scale 70%, 38 px buttons laid out at once, 110 x 48 tiles, text 105%, pixel-perfect scale off").toEqual(["1", "0.7", 38, 38, 110, 48, 1.05, false]);
+  setupClick(addon, "next");
+  setupClick(addon, "next");
+  expect(addon.eval("return ForeverUI_Reload:IsShown() and ForeverUI_Reload.title:GetText()"), "new tile sizes offer a reload at the end").toMatch(/^The new raid tile size shows after a reload/);
+});
+
+it("setup screen: which preset fits which screen, and the UI scale setting", () => {
+  const addon = loggedIn();
+  // The preset picked for a w x h screen.
+  const detect = (w, h) => addon.eval(`__wfgStub.setScreen(${w}, ${h}) return ns.Setup.DetectScreen()`);
+  expect([detect(1920, 1080), detect(1920, 1200), detect(2560, 1440), detect(3840, 2160), detect(3440, 1440), detect(2560, 1080), detect(1366, 768)], "by height, ultrawide by shape, small screens kept").toEqual(["1080", "1080", "1440", "4k", "ultrawide", "ultrawide", "keep"]);
+  expect(addon.eval("GetPhysicalScreenSize = nil return ns.Setup.DetectScreen()"), "a client that can't say keeps the sizes").toBe("keep");
+  addon.eval("ns.SetUIScale(0.5)");
+  expect(addon.eval("return GetCVar('uiScale')"), "the UI scale keeps to the game's own range (65% to 115%)").toBe("0.65");
+  addon.eval("ns.SetUIScale(2) ns.Setup.ApplyScreen('keep') ns.SetUIScale('big')");
+  expect(addon.eval("return GetCVar('uiScale')"), "Keep and a bad value change nothing").toBe("1.15");
+  setCombat(addon, true);
+  addon.eval("ns.SetUIScale(0.9)");
+  expect(addon.eval("return GetCVar('uiScale')"), "in combat it waits").toBe("1.15");
+  setCombat(addon, false);
+  expect(addon.eval("return GetCVar('uiScale')"), "and applies when combat ends").toBe("0.9");
+  addon.eval("C_CVar = nil SetCVar = nil ns.SetUIScale(1)");
+  expect(addon.eval("return GetCVar('uiScale')"), "a client without the setting is left alone").toBe("0.9");
 });
 
 it("Centered layout: compact raid grid, one-time migrations, a strip with nothing to show", () => {

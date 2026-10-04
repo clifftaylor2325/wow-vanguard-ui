@@ -1,7 +1,8 @@
 -- The game's always-on extras, put where they don't clutter the screen:
 --   * the micro menu (character, spellbook, talents, ...) and the bag bar,
---     in two small strips in the bottom-right corner, always shown (or only
---     while the mouse is over them, if you prefer);
+--     in two small strips in the bottom-right corner, always shown (the menu
+--     strip's visibility can also be on mouseover, in combat, hidden or a
+--     checklist of conditions: Core/Visibility.lua);
 --   * the quest tracker's spot, under the info strip on the right, no taller than
 --     it. ForeverUI's own tracker (Modules/QuestTracker.lua) fills it; only when that
 --     is off is the game's tracker pinned into it and skinned here (one owner).
@@ -15,6 +16,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local V = ns.Visibility
 
 local MS = ns.Module("MenuStrip", { defaults = { menu = "always", tracker = true, glyphs = true, trackerLook = true } })
 
@@ -96,31 +98,21 @@ local function pinInto(name, strip, scale, minWidth, after)
   watchBar(f)
 end
 
--- The mouse came over the menu strip or one of its buttons: the strip shows.
-local function stripEnter()
-  MS.strip:SetAlpha(1)
+-- Applies the menu strip's visibility setting (Always, On mouseover, In combat,
+-- Hidden or a checklist): now, or when combat ends. The client's secure state
+-- driver shows and hides it; on mouseover it fades by alpha, from the mouse's
+-- own enter and leave events on it and the micro menu's buttons (nothing polls),
+-- feeling the mouse but letting clicks through.
+function MS.ApplyVisibility()
+  ns.OutOfCombat(function() V.ApplyNow(MS.strip, MS.settings.menu, MS.settings.menuWhen, true) end, MS.strip)
 end
 
--- The mouse left the strip or one of its buttons: the strip hides unless the
--- mouse is still over it (moving between buttons crosses the strip itself).
-local function stripLeave()
-  MS.strip:SetAlpha(MS.strip:IsMouseOver() and 1 or 0)
-end
-
--- Follows the mouse entering and leaving a frame and every frame inside it.
-local function watchHover(f)
-  f:HookScript("OnEnter", stripEnter)
-  f:HookScript("OnLeave", stripLeave)
-  for _, child in ipairs({ f:GetChildren() }) do watchHover(child) end
-end
-
--- Shows the strip while the mouse is over it or its buttons, from the mouse's own
--- enter and leave events (nothing polls): the strip takes mouse motion but lets
--- clicks through, and every frame in it (the micro menu's buttons) reports too.
-local function watchMouse(strip)
-  strip:SetMouseMotionEnabled(true)
-  strip:SetMouseClickEnabled(false)
-  watchHover(strip)
+-- Follows the menu strip's visibility from the start: the mouse over it and the
+-- frames in it, and zone changes for In an instance.
+local function watchVisibility(strip)
+  V.WatchHover(strip)
+  V.Track(strip, MS.ApplyVisibility)
+  MS.ApplyVisibility()
 end
 
 -- Fades the bars' own border and background art, whichever of it this client has.
@@ -315,7 +307,7 @@ local function buildStrip(settings)
   MS.FadeArt()
   buildBags(settings)
   if settings.glyphs then skinGlyphs() end
-  if settings.menu == "mouseover" then watchMouse(MS.strip) MS.strip:SetAlpha(0) end
+  watchVisibility(MS.strip)
 end
 
 -- The quest tracker -------------------------------------------------------------------------
@@ -428,6 +420,7 @@ end
 
 -- Module entry point (Core/Modules.lua): out of combat, since some of these hold secure buttons.
 function MS.Enable(settings)
+  MS.settings = settings
   ns.OutOfCombat(function()
     buildStrip(settings)
     if settings.tracker then buildTracker() end

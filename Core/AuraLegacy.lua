@@ -28,7 +28,7 @@ end
 function A.Icon(parent, size, style)
   style = style or { size = size }
   local f = CreateFrame("Frame", nil, parent)
-  local parts = A.Dress(f, { size = size, debuff = style.debuff, dim = style.dim })
+  local parts = A.Dress(f, { size = size, debuff = style.debuff, dim = style.dim, masque = style.masque })
   f.icon, f.cooldown, f.count, f.ring = parts.icon, parts.cooldown, parts.count, parts.ring
   if style.timer then A.Countdown(f.cooldown, size) end
   f:Hide()
