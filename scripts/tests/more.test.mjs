@@ -1,7 +1,7 @@
 // more: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { AFK_ENV, CLICK_LUA, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, isTok, key, later, loggedIn, marks, pinned, plate, putAway, raidButton, setCombat, strips } from "./helpers.mjs";
+import { AFK_ENV, CLICK_LUA, FAKE_FADES, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, isTok, key, later, loggedIn, marks, pinned, plate, putAway, raidButton, setCombat, strips } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -2457,6 +2457,15 @@ it("the AFK screen: a dimmed screen and a card while you're away", () => {
   addon.eval("__afk = false");
   addon.fire("PLAYER_FLAGS_CHANGED", "player");
   expect(afk().shown, "back: it goes").toBe(false);
+});
+
+it("the AFK screen fades in over 0.4 s and, when a fight starts, out in 0.15 s", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + FAKE_FADES);
+  addon.eval("__fakeFader(ForeverUI_AfkScreen) __afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  expect(addon.eval("local d = __fades[1].duration __finishFades() return d"), "away: the screen fades in slowly").toBe(0.4);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(addon.eval("return __fades[1].duration"), "a fight puts it away quickly (0.2 s outside one)").toBe(0.15);
 });
 
 it("the AFK screen: clicks, keys and fights put it away; what the client can't say is left out", () => {
