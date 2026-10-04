@@ -48,8 +48,10 @@ local function placeAxis(i, vertical, size, half)
   return i
 end
 
--- Shows the grid with lines every `size` pixels.
+-- Shows the grid with lines every `size` pixels, kept to /fui grid's 8-256 (a
+-- saved size of 0 from a hand-edited profile would never finish drawing).
 function ns.ShowGrid(size)
+  size = math.max(8, math.min(256, tonumber(size) or 32))
   local f = gridFrame()
   local i = placeAxis(1, true, size, (UIParent:GetWidth() or 0) / 2)
   i = placeAxis(i, false, size, (UIParent:GetHeight() or 0) / 2)
