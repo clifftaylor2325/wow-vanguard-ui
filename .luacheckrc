@@ -47,4 +47,6 @@ read_globals = {
   "SetBinding", "SaveBindings", "GetCurrentBindingSet",
   -- P3.5 Shared media: the bundled libraries' loader (Libs/LibStub).
   "LibStub",
+  -- P3.8 Chat: the game's time formatter and clock (chat timestamps), its chat windows list.
+  "TimeUtil", "time", "CHAT_FRAMES",
 }
