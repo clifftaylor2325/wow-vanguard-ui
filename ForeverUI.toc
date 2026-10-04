@@ -94,6 +94,7 @@ Modules/GameAlerts.lua
 Modules/AfkScreen.lua
 Modules/DataBars.lua
 Modules/Tooltips.lua
+Modules/VendorMemory.lua
 Modules/Nameplates.lua
 Modules/ClickCast.lua
 Modules/ClickCastSpells.lua

@@ -256,6 +256,7 @@ O.MODULE_INFO = {
   Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the ForeverUI look." },
   DataBars = { "XP and reputation", "Thin experience and reputation bars." },
   Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },
+  VendorMemory = { "Vendor memory", "Remembers what each merchant sells; tooltips and the stock list say where to buy." },
   Nameplates = { "Nameplates", "Flat plates with levels, your debuffs, casts and threat." },
 }
 
@@ -580,9 +581,17 @@ local function errandRows()
   }
 end
 
+-- Vendor memory: where items are sold, in their tooltips.
+local function vendorRows()
+  return {
+    check("Where an item is sold (merchants you've visited)", setting("VendorMemory", "tooltip")),
+    check("Remember what merchants sell", setting("VendorMemory", "remember")),
+  }
+end
+
 -- Tooltips: where they sit and what they add.
 local function tooltipRows()
-  return {
+  return append({
     { "header", "Tooltips" },
     { "cycle", "Tooltip position", { { "corner", "corner (movable)" }, { "cursor", "at the cursor" }, { "default", "client default" } }, setting("Tooltips", "anchor") },
     check("Border in the unit's class color", setting("Tooltips", "classBorder")),
@@ -590,7 +599,7 @@ local function tooltipRows()
     check("What an item sells for (when the game doesn't say)", setting("Tooltips", "sellPrice")),
     check("How many of an item you have", setting("Tooltips", "itemCount")), check("Item IDs", setting("Tooltips", "itemID")),
     check("Hide unit tooltips in combat", setting("Tooltips", "hideInCombat")),
-  }
+  }, vendorRows())
 end
 
 -- The Bars, map, chat page: your buffs, bars and map, the strip, merchants, tooltips.
