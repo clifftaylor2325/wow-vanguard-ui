@@ -58,11 +58,20 @@ local function savedVersion()
   return type(ForeverUIDB.version) == "number" and ForeverUIDB.version or 0
 end
 
+-- Drops the profiles a damaged (hand-edited) file holds under a name that isn't a string, or that aren't tables:
+-- every reader of a profile indexes it, and the profile list sorts the names.
+local function dropBrokenProfiles(profiles)
+  for name, profile in pairs(profiles) do
+    if type(name) ~= "string" or type(profile) ~= "table" then profiles[name] = nil end
+  end
+end
+
 -- Creates or repairs the saved tables, and upgrades an older account file.
 -- Runs at ADDON_LOADED, when WoW has restored them.
 local function initDB()
   local from = savedVersion()
   ForeverUIDB = fill(type(ForeverUIDB) == "table" and ForeverUIDB or {}, { profiles = {} })
+  dropBrokenProfiles(ForeverUIDB.profiles)
   ForeverUIDB.version = from or DB_VERSION
   if from and from < DB_VERSION then ns.MigrateDB(from, DB_VERSION) end
   ForeverUICharDB = fill(type(ForeverUICharDB) == "table" and ForeverUICharDB or {}, { profile = DEFAULT_PROFILE })

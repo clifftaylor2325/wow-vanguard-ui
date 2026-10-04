@@ -34,6 +34,13 @@ it("wrong-typed saved values are replaced by their defaults", () => {
   expect(addon.eval('local c = ns.Copy({ a = 1, b = { c = "x" } }) return { c.a, c.b.c }'), "ns.Copy still copies every key").toEqual([1, "x"]);
 });
 
+it("a damaged account file: a profile that isn't a table, or a name that isn't a name, is dropped at load", () => {
+  const addon = loggedIn("", { savedVariables: 'ForeverUIDB.profiles = { Default = "TEST-ONLY", Raid = 5, [1] = {}, Main = { theme = { font = "client" } } }' });
+  expect(addon.eval("return { type(ns.Profile()), ns.GetModule('UnitFrames').enabled, #ns.errors }"), "the active profile is a table again and every module loads").toEqual(["table", true, 0]);
+  expect(addon.eval("return ns.ProfileNames()"), "the profile list holds the good ones only").toEqual(["Default", "Main"]);
+  expect(addon.eval("return ForeverUIDB.profiles.Main.theme.font"), "a good profile is kept as it was").toBe("client");
+});
+
 it("settings tables are filled once per profile and key", () => {
   // TEST-ONLY spies: count ns.Fill calls, a migration's runs and profile-change notices.
   const addon = loggedIn(`__fills, __migs, __changes = 0, 0, 0
