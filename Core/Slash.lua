@@ -230,6 +230,7 @@ ns.ImportDialog = importCommand
 local function bindsCommand()
   local CC = ns.GetModule("ClickCast")
   local list = CC and CC.Bindings() or {}
+  if CC and CC.UsesGame() then chat("The game's click bindings are in use; ForeverUI's below rest until you switch back.") end
   chat(#list == 0 and "No click-casting bindings for this spec. /fui > Click casting to add some." or "Click casting (this spec):")
   for _, b in ipairs(list) do
     chat("  " .. CC.KeyText(b.key) .. "  ->  " .. CC.ActionText(b))

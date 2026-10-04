@@ -51,4 +51,6 @@ read_globals = {
   "TimeUtil", "time", "CHAT_FRAMES",
   -- P3.9 GameAlerts: rare spawns from the minimap's vignettes.
   "C_VignetteInfo",
+  -- P3.10 Click casting: the game's click bindings and its Click Casting window.
+  "C_ClickBindings", "ToggleClickBindingFrame",
 }
