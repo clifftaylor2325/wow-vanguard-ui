@@ -9,6 +9,9 @@
 -- in unlock mode, clear of ForeverUI's stacked bars (the game's own spot for
 -- them is under Edit Mode's control and lies over those bars).
 --
+-- With Masque loaded, the pet, stance and extra buttons are handed to Masque
+-- (one group) instead of restyled (Core/Masque.lua).
+--
 -- The vehicle exit button is ForeverUI's own: a secure button running
 -- /leavevehicle, shown by the client only while you can leave, and movable
 -- in unlock mode.
@@ -45,14 +48,19 @@ function SB.KeepSet(b)
   return keep
 end
 
--- Restyles one client button: art faded (state textures kept), icon cropped, themed border.
+-- The Masque group of the pet, stance and extra buttons, when Masque is loaded.
+SB.MASQUE = "Pet, stance and extra buttons"
+
+-- Restyles one client button: art faded (state textures kept), icon cropped,
+-- themed border; or hands it to Masque (which finds the game button's regions).
 function SB.Skin(b)
   if type(b) ~= "table" or b.fuiSkinned then return end
+  b.fuiSkinned = true
+  if ns.Masque.Add(SB.MASQUE, b) then return end
   local icon = iconOf(b)
   T.FadeRegions(b, SB.KeepSet(b))
   if icon and icon.SetTexCoord then icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
   T.Panel(b, { noBg = true })
-  b.fuiSkinned = true
 end
 
 -- Restyles every button of the bars switched on.

@@ -10,6 +10,7 @@
 -- Each bar has its own button count, row length, button size and
 -- visibility; empty slots stay invisible unless you are dragging a spell
 -- or item (Modules/ActionBarLayout.lua). The right-edge bars start off.
+-- With Masque loaded, Masque skins the buttons instead (Core/Masque.lua).
 
 local ADDON, ns = ...
 
@@ -94,6 +95,8 @@ local KEY_SHORT = {
 
 AB.buttons = {}
 AB.bars = {}
+-- The Masque group the action buttons are in, when Masque is loaded.
+AB.MASQUE = "Action bars"
 
 -- Whether bar n sits on the right edge of the screen (bars 4 and 5; the
 -- stacked bottom bars have no fixed point).
@@ -422,13 +425,21 @@ local function wireButton(b, action, index)
   wireScripts(b)
 end
 
--- One secure action button on a bar (sized and placed by AB.LayoutBar).
+-- Hands a button and its regions to Masque, when it is loaded.
+local function addToMasque(b)
+  local regions = { Icon = b.icon, Cooldown = b.cooldown, Count = b.count, HotKey = b.hotkey, Checked = b:GetCheckedTexture() }
+  ns.Masque.Add(AB.MASQUE, b, regions, "Action")
+end
+
+-- One secure action button on a bar (sized and placed by AB.LayoutBar), in
+-- ForeverUI's button skin, or Masque's when it is loaded.
 local function createButton(bar, n, index, def)
   local name = string.format("ForeverUI_Bar%dButton%d", n, index)
   local b = CreateFrame("CheckButton", name, bar, "SecureActionButtonTemplate")
   b.binding, b.fuiBar = def.bind .. index, bar
-  T.Button(b)
+  if not ns.Masque.Group(AB.MASQUE) then T.Button(b) end
   addRegions(b)
+  addToMasque(b)
   wireButton(b, def.slot + index - 1, index)
   AB.buttons[#AB.buttons + 1] = b
   return b
