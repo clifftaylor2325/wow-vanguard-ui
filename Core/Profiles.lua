@@ -50,11 +50,29 @@ end
 
 -- Export / import ------------------------------------------------------------------------
 
--- The export string for the whole profile ("profile") or one module's settings.
+-- The UI scale and screen this profile was made on, for the export's "display" block:
+-- { uiScale (rounded to the hundredth), width, height } (width and height 0 when the client can't say).
+function ns.DisplayBlock()
+  local get, w, h = _G.GetPhysicalScreenSize, 0, 0
+  if type(get) == "function" then w, h = get() end
+  local scale = UIParent and UIParent:GetScale() or 1
+  return { uiScale = math.floor(scale * 100 + 0.5) / 100, width = tonumber(w) or 0, height = tonumber(h) or 0 }
+end
+
+-- The whole profile for export: its settings, plus the display block beside them.
+local function withDisplay(profile)
+  local data = {}
+  for k, v in pairs(profile) do data[k] = v end
+  data.display = ns.DisplayBlock()
+  return data
+end
+
+-- The export string for the whole profile ("profile", with the UI scale and screen it
+-- was made on) or one module's settings.
 function ns.ExportProfile(scope)
   scope = scope or "profile"
   local profile = ns.Profile()
-  local data = scope == "profile" and profile or profile[scope]
+  local data = scope == "profile" and withDisplay(profile) or profile[scope]
   if type(data) ~= "table" then
     return nil, "nothing saved for " .. scope .. " yet"
   end
@@ -71,17 +89,27 @@ local function freeName(base)
   return name
 end
 
--- A whole imported profile: saved under a free name, and this character switches to it on reload.
+-- The display block taken out of an imported profile when its UI scale is a usable number, else nil.
+local function takeDisplay(data)
+  local display = data.display
+  data.display = nil
+  local scale = type(display) == "table" and tonumber(display.uiScale)
+  return scale and scale > 0 and display or nil
+end
+
+-- A whole imported profile: saved under a free name (without its display block, which
+-- comes back second), and this character switches to it on reload.
 local function importWhole(data)
-  local name = freeName("Imported")
+  local name, display = freeName("Imported"), takeDisplay(data)
   ForeverUIDB.profiles[name] = data
   ns.UseProfile(name)
-  return "Imported as profile " .. name .. "; this character will use it after a reload."
+  return "Imported as profile " .. name .. "; this character will use it after a reload.", display
 end
 
 -- Applies an import string. A whole profile becomes a new profile this
 -- character switches to; a module's settings replace that module's in the
--- active profile. Returns a description of what changed, or nil and why not.
+-- active profile. Returns a description of what changed (and, for a whole profile
+-- that carries one, its display block), or nil and why not.
 function ns.ImportProfile(text)
   local scope, data = S.Decode(text)
   if not scope then
@@ -93,6 +121,27 @@ function ns.ImportProfile(text)
     return "Imported " .. scope .. " settings into profile " .. ns.ProfileName() .. "."
   end
   return importWhole(data)
+end
+
+-- " on a w x h screen" from a display block, or "" when it has no usable size.
+local function screenText(display)
+  local w, h = tonumber(display.width) or 0, tonumber(display.height) or 0
+  if w <= 0 or h <= 0 then return "" end
+  return string.format(" on a %d x %d screen", math.floor(w), math.floor(h))
+end
+
+-- The question asked after importing a profile that carries its UI scale.
+function ns.DisplayQuestion(display)
+  local screen, mine = screenText(display), ns.DisplayBlock()
+  return string.format("This profile was made at UI scale %d%%%s (yours: %d%%). Use its UI scale?",
+    math.floor(display.uiScale * 100 + 0.5), screen, math.floor(mine.uiScale * 100 + 0.5))
+end
+
+-- After a whole-profile import that carries its UI scale: asks whether to apply that
+-- scale (ns.SetUIScale, out of combat), then runs after() either way.
+function ns.OfferDisplay(display, after)
+  if not display then return after() end
+  ns.Ask(ns.DisplayQuestion(display), "Use it", function() ns.SetUIScale(display.uiScale) after() end, after)
 end
 
 -- Specialization -------------------------------------------------------------------------

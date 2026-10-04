@@ -213,13 +213,14 @@ local function exportCommand(rest)
   ns.ShowText("ForeverUI export (" .. (rest ~= "" and rest or "profile " .. ns.ProfileName()) .. ")  Ctrl+C to copy", text)
 end
 
--- /fui import: a box to paste into.
+-- /fui import: a box to paste into. A whole profile that carries its UI scale asks
+-- whether to use it first; then the reload is offered.
 local function importCommand()
   ns.AskText("Paste a ForeverUI string, then Import", function(text)
-    local done, err = ns.ImportProfile(text)
-    if not done then return chat("Import failed: " .. err .. ".") end
+    local done, detail = ns.ImportProfile(text)
+    if not done then return chat("Import failed: " .. detail .. ".") end
     ns.HideText()
-    ns.OfferReload(done)
+    ns.OfferDisplay(detail, function() ns.OfferReload(done) end)
   end)
 end
 

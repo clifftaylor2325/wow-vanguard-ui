@@ -56,6 +56,9 @@ it("export and import", () => {
   dst.eval(`ForeverUI_TextEdit:SetText(${JSON.stringify(text)}); ForeverUI_TextDialog.primary:GetScript("OnClick")(ForeverUI_TextDialog.primary)`);
   expect(dst.eval("return { ForeverUICharDB.profile, ForeverUICharDB.pendingProfile }"), "a whole-profile import becomes a new profile this character uses after the reload").toEqual(["Default", "Imported"]);
   expect(dst.eval("return ForeverUIDB.profiles.Imported.positions.uf_player.x") === 1 && dst.eval("return ForeverUIDB.profiles.Imported.theme.accent[1]") === 1, "with every setting").toBeTruthy();
+  expect(dst.eval("return ForeverUI_Question:IsShown() and ForeverUI_Question.title:GetText()"), "it asks about the UI scale the profile was made at first").toBe("This profile was made at UI scale 100% on a 1920 x 1080 screen (yours: 100%). Use its UI scale?");
+  dst.eval('ForeverUI_Question.no:GetScript("OnClick")(ForeverUI_Question.no)');
+  expect(dst.eval("return ForeverUI_Question:IsShown() == false and GetCVar('uiScale') == nil"), "No leaves the UI scale alone").toBe(true);
   expect(dst.eval("return ForeverUI_Reload:IsShown()") && /Reload/.test(dst.eval("return ForeverUI_Reload.accept.text:GetText()")), "and a reload is offered").toBeTruthy();
   dst.eval('ReloadUI = function() __reloaded = true end; ForeverUI_Reload.accept:GetScript("OnClick")(ForeverUI_Reload.accept)');
   expect(dst.eval("return __reloaded") === true, "Reload reloads the UI").toBeTruthy();
@@ -196,4 +199,30 @@ it("a frame's scale and opacity travel with the profile: export, import and a st
   next.eval(UI_ENV);
   next.login();
   expect(next.eval("local f = ns.MoverFrame('minimap') return { f:GetScale(), f:GetAlpha() }"), "the staged profile's scale and opacity apply at the next load").toEqual([1.5, 0.5]);
+});
+
+// Pastes a string into /fui import and clicks Import.
+const importText = (addon, text) => {
+  addon.slash("import");
+  addon.eval(`ForeverUI_TextEdit:SetText(${JSON.stringify(text)}) ForeverUI_TextDialog.primary:GetScript("OnClick")(ForeverUI_TextDialog.primary)`);
+};
+
+it("profile strings carry the UI scale and screen; importing one asks whether to use its UI scale", () => {
+  const src = loggedIn("__wfgStub.setScreen(2560, 1440) UIParent:SetScale(0.7)");
+  const text = src.eval("return ns.ExportProfile()");
+  expect(src.eval(`local _, data = ns.Serialize.Decode(${JSON.stringify(text)}) return data.display`), "a whole-profile string has the UI scale and screen it was made on").toEqual({ uiScale: 0.7, width: 2560, height: 1440 });
+  expect(src.eval("return ns.Profile().display"), "without adding them to the profile itself").toBe(null);
+  src.slash("accent ff8000");
+  expect(src.eval(`local _, data = ns.Serialize.Decode(ns.ExportProfile("theme")) return data.display == nil`), "a module's string has none").toBe(true);
+  const dst = loggedIn();
+  importText(dst, text);
+  expect(dst.eval("return ForeverUI_Question.title:GetText()"), "the question names the scale and screen, and yours").toBe("This profile was made at UI scale 70% on a 2560 x 1440 screen (yours: 100%). Use its UI scale?");
+  expect(dst.eval("return ForeverUI_Reload == nil or not ForeverUI_Reload:IsShown()"), "the reload waits for the answer").toBe(true);
+  dst.eval('ForeverUI_Question.yes:GetScript("OnClick")(ForeverUI_Question.yes)');
+  expect(dst.eval("return { GetCVar('useUiScale'), GetCVar('uiScale'), ForeverUI_Reload:IsShown(), ForeverUIDB.profiles.Imported.display == nil }"), "Use it sets the game's UI scale, then the reload is offered; the block isn't kept in the profile").toEqual(["1", "0.7", true, true]);
+  const old = dst.eval('return ns.Serialize.Encode("profile", { theme = { reduceMotion = true }, display = { uiScale = "TEST-ONLY" } })');
+  dst.eval("ForeverUI_Reload:Hide()");
+  importText(dst, old);
+  expect(dst.eval("return { ForeverUI_Question:IsShown(), ForeverUI_Reload:IsShown(), ForeverUIDB.profiles['Imported 2'].display == nil }"), "a string with no usable UI scale goes straight to the reload").toEqual([false, true, true]);
+  expect(dst.eval("return ns.DisplayQuestion({ uiScale = 0.8 })"), "a block with no screen size leaves it out").toBe("This profile was made at UI scale 80% (yours: 100%). Use its UI scale?");
 });
