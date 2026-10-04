@@ -26,10 +26,11 @@ local MS = ns.Module("MenuStrip", { defaults = { menu = "always", tracker = true
 
 -- A slot's side and the gap between slots: screen pixels at UI scale 1, on the theme's 4 px grid.
 MS.TILE, MS.GAP = 24, 4
--- The space between the bar's edge and its slots, and between a slot's edge and its icon (pixels).
+-- The space between the bar's edge and its slots (the same on all four sides),
+-- and between a slot's edge and its icon (pixels).
 MS.MARGIN, MS.INSET = 8, 2
--- The bar's least width, and its height: two rows of slots and a gap, inside the margin.
-MS.WIDTH = 300
+-- The bar's height: two rows of slots and a gap, inside the margin. Its width
+-- hugs the longer row (MS.FitStrip).
 MS.HEIGHT = 2 * MS.TILE + MS.GAP + 2 * MS.MARGIN
 -- ForeverUI's line icons' side (pixels at UI scale 1), when they're switched on.
 MS.GLYPH_PX = 20
@@ -105,25 +106,38 @@ local function overhang(row)
 end
 
 -- Seats one of the game's bars in its row: drawn at the row's scale, its last
--- slot at the bar's right margin, its middle on the row's.
+-- slot's right edge on the row's anchor (which MS.FitStrip places), its middle on the row's.
 local function seat(f, row)
   f:SetParent(MS.strip)
   f:SetScale(row.scale)
   f:ClearAllPoints()
-  f:SetPoint("RIGHT", MS.strip, "TOPRIGHT", (overhang(row) - MS.MARGIN) / row.scale, -row.y / row.scale)
+  f:SetPoint("RIGHT", row.anchor, "TOPRIGHT", overhang(row) / row.scale, -row.y / row.scale)
 end
 
--- How wide a row's slots are (pixels); 0 for a bar the client lacks.
-local function rowWidth(row)
+-- How many buttons the game laid out in a row (from its bar's width); 0 for a bar the client lacks.
+local function rowCount(row)
   local f = _G[row.bar]
   if type(f) ~= "table" or f:GetParent() ~= MS.strip then return 0 end
-  return math.max(0, (f:GetWidth() or 0) * row.scale - 2 * overhang(row))
+  return math.max(0, math.floor(((f:GetWidth() or 0) + row.pad) / (row.button + row.pad) + 0.5))
 end
 
--- Sizes the bar around its two rows, never narrower than MS.WIDTH.
+-- How wide a row's slots are (pixels): its slots and the gaps between them.
+function MS.RowWidth(row)
+  local n = rowCount(row)
+  return n > 0 and n * MS.TILE + (n - 1) * MS.GAP or 0
+end
+
+-- Sizes the bar to hug its rows, MS.MARGIN on every side, and places each
+-- row's anchor: the longer row spans the bar inside the margin, the shorter
+-- one is centered under or over it (on the same 4-pixel gaps). The bar's
+-- mover keeps its corner, so it grows away from it.
 function MS.FitStrip()
-  local w = math.max(rowWidth(MS.ROWS[1]), rowWidth(MS.ROWS[2]))
-  MS.strip:SetSize(math.max(MS.WIDTH, w + 2 * MS.MARGIN), MS.HEIGHT)
+  local w1, w2 = MS.RowWidth(MS.ROWS[1]), MS.RowWidth(MS.ROWS[2])
+  local w = math.max(w1, w2)
+  MS.strip:SetSize(w + 2 * MS.MARGIN, MS.HEIGHT)
+  for i, row in ipairs(MS.ROWS) do
+    row.anchor:SetPoint("TOPRIGHT", MS.strip, "TOPRIGHT", -MS.MARGIN - (w - (i == 1 and w1 or w2)) / 2, 0)
+  end
 end
 
 -- Runs a pinned bar's placement again after the game resized it or laid it out
@@ -139,9 +153,11 @@ local function watchBar(f)
   if type(f.Layout) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(f, "Layout", MS.Refit) end
 end
 
--- Pins one of the game's bars into its row, then fits the bar and the slots
--- around it, now and at every re-fit.
+-- Pins one of the game's bars into its row (on the row's own anchor, a frame
+-- of ours the bar is fitted around), then fits the bar and the slots around
+-- it, now and at every re-fit.
 local function pinInto(row)
+  row.anchor = CreateFrame("Frame", nil, MS.strip)
   local f = _G[row.bar]
   if type(f) ~= "table" or not f.SetPoint then return end
   ns.Pin(f, function(bar)
@@ -158,7 +174,8 @@ function MS.PaintDivider()
   MS.divider:SetHeight(T.Pixel(MS.strip))
 end
 
--- The thin accent line between the bags row and the menu row, across the bar.
+-- The thin accent line between the bags row and the menu row, under the
+-- slots only: inside the bar's margin, which the bar hugs its rows with.
 local function addDivider(strip)
   local y = -(MS.MARGIN + MS.TILE + MS.GAP / 2)
   MS.divider = T.Snap(strip:CreateTexture(nil, "ARTWORK"))
@@ -217,7 +234,7 @@ local function fadeStates(b)
 end
 
 -- A slot's side in screen pixels: the button's place in its row less a gap,
--- at most MS.TILE (the key ring, narrower than a bag, gets a smaller slot).
+-- at most MS.TILE (every button in a row has the same place: see fitBag).
 local function slotPixels(b)
   local side = math.min(b:GetWidth(), b:GetHeight())
   if side <= 0 then side = b.fuiRow.button end
@@ -403,6 +420,16 @@ local function bagIcon(b)
   return type(icon) == "table" and icon.SetTexCoord and icon or nil
 end
 
+-- A bag button's icon, shown and cropped; and a button narrower than a bag
+-- (Forever's key ring, 33 units to a bag's 45) widened to a bag's width, so it
+-- gets the same slot at the same pitch. The game anchors each bag button's
+-- right edge, so it grows away from its neighbor.
+local function fitBag(b, icon)
+  b.fuiIcon = T.Crop(icon)
+  icon:SetAlpha(1)
+  if b:GetWidth() < MS.ROWS[1].button then b:SetWidth(MS.ROWS[1].button) end
+end
+
 -- One of the game's bag buttons on a slot: its art faded, the bag's icon
 -- cropped inside the slot, a fill along the bottom (not on the key ring) and
 -- the slot's edge following the mouse. Once per button.
@@ -411,9 +438,8 @@ function MS.SkinBag(b)
   if b.fuiSlot or not icon then return end
   T.FadeRegions(b, alerts(b))
   fadeStates(b)
+  fitBag(b, icon)
   addSlot(b, MS.ROWS[1])
-  b.fuiIcon = T.Crop(icon)
-  icon:SetAlpha(1)
   if not MS.NO_FILL[b:GetName() or ""] and type(b.GetBagID) == "function" then addFill(b) end
   slotStates(b)
   sizeSlot(b)
@@ -436,12 +462,13 @@ end
 -- rows of slots, with the accent line between them.
 local function buildStrip()
   MS.strip = T.HudPanel(CreateFrame("Frame", "ForeverUI_MenuStrip", UIParent), { inset = true })
-  MS.strip:SetSize(MS.WIDTH, MS.HEIGHT)
+  MS.strip:SetSize(2 * MS.MARGIN, MS.HEIGHT)
   ns.Mover(MS.strip, "menustrip", "Bags and game menu", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 20 })
   addDivider(MS.strip)
   for _, row in ipairs(MS.ROWS) do pinInto(row) end
   MS.FadeArt()
   skinButtons()
+  MS.FitStrip()
   watchVisibility(MS.strip)
 end
 
