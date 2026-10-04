@@ -245,10 +245,18 @@ local FINISH = {
   UNIT_SPELLCAST_INTERRUPTED = "Interrupted", UNIT_SPELLCAST_FAILED = "Failed",
 }
 
+-- How an ending event says the cast went. A channel's stop names who interrupted
+-- it (nil when it ran its course; a hidden name is still someone), as the
+-- client's own cast bar reads it (CastingBarFrame.lua, UNIT_SPELLCAST_CHANNEL_STOP).
+local function finishReason(event, interruptedBy)
+  if event == "UNIT_SPELLCAST_CHANNEL_STOP" and type(interruptedBy) ~= "nil" then return "Interrupted" end
+  return FINISH[event]
+end
+
 -- A cast event for one of our units: an end flashes the bar, anything else refreshes it.
-local function onCast(event, unit)
+local function onCast(event, unit, _, _, interruptedBy)
   local bar = CB.bars[unit]
-  if bar and FINISH[event] and not casting(unit) then return CB.Finish(bar, FINISH[event]) end
+  if bar and FINISH[event] and not casting(unit) then return CB.Finish(bar, finishReason(event, interruptedBy)) end
   CB.Update(unit)
 end
 

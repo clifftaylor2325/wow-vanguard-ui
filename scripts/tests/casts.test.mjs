@@ -175,3 +175,20 @@ it("cast bars ask the client for their own units' casts only", () => {
   const some = loggedIn(CAST_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { CastBars = { player = false, focus = false } } }" });
   expect(unitEvents(some, "UNIT_SPELLCAST_STOP").subs, "only the units whose bars are on").toBe("target");
 });
+
+it("a channel the client stops with an interrupter flashes red, one it lets run out flashes green", () => {
+  const addon = loggedIn(CAST_ENV + FAKE_FADES);
+  addon.eval("__fakeFader(ForeverUI_CastBar_target)");
+  // Channels on the target, then the client stops it (CHANNEL_STOP: unit, castGUID, spellID, interruptedBy); the bar after.
+  const stop = (interruptedBy) => {
+    addon.eval('__finishFades() __casts.target = { kind = "channel", start = 1000, finish = 5000 }');
+    addon.fire("UNIT_SPELLCAST_CHANNEL_START", "target");
+    addon.eval("__casts.target = nil");
+    addon.fire("UNIT_SPELLCAST_CHANNEL_STOP", "target", "TEST-ONLY-Cast", 10, interruptedBy);
+    const b = castBar(addon, "target");
+    return [b.shown, isTok(addon, b.color, "bad") ? "red" : isTok(addon, b.color, "good") ? "green" : "other", b.text];
+  };
+  expect(stop("TEST-ONLY-Player-Kicker"), "kicked: red, and it says so").toEqual([true, "red", "Interrupted"]);
+  expect(stop(addon.world.secret(1)), "an interrupter the client hides is still one").toEqual([true, "red", "Interrupted"]);
+  expect(stop(null), "a channel that ran its course").toEqual([true, "green", "TEST-ONLY Spell"]);
+});
