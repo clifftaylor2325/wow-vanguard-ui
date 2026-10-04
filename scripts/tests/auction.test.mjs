@@ -684,3 +684,86 @@ it("your auctions: refused cancels, scrolling, unknown names, hidden costs, and 
   addon.wheel(`${SCAN_CARD}.owned[1]`, -5);
   expect([ownedRow(addon, 1)[2], ownedRow(addon, 4)[0]], "scrolled to the end: 6 auctions, 4 rows").toEqual(["90c", true]);
 });
+
+// Two more dust auctions of yours: 2 at 1s 30c a unit (undercut by the 1s 20c up) and 2 at 1s 10c (not).
+const MORE_DUST = `table.insert(__wfgWorld.ah.owned, { auctionID = 506, itemKey = { itemID = 10940 }, status = 0, quantity = 2, buyoutAmount = 130 })
+  table.insert(__wfgWorld.ah.owned, { auctionID = 507, itemKey = { itemID = 10940 }, status = 0, quantity = 2, buyoutAmount = 110 })`;
+
+const CANCEL_NEXT = `${SCAN_CARD}.cancelNext`;
+
+// The line under your auctions, and whether Cancel next undercut works.
+const nextState = (addon) => addon.eval(`local c = ${SCAN_CARD} return { c.summary:GetText(), c.cancelNext:IsEnabled() }`);
+
+// The tooltip's lines.
+const tipLines = (addon) => addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out");
+
+it("Cancel next undercut cancels one undercut auction per click, then says none are left", () => {
+  const addon = atAuctionHouse(BAGS + OWNED + MORE_DUST);
+  expect(nextState(addon), "before a check: no line, nothing to cancel").toEqual(["", false]);
+  addon.click(`${SCAN_CARD}.check`);
+  expect(nextState(addon), "asking for your auctions").toEqual(["checking...", false]);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.advance(1);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  expect(nextState(addon), "the dust is checked, the blade not yet").toEqual(["checking...", true]);
+  addon.advance(1);
+  addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect(nextState(addon), "the dust at 1s 50c and at 1s 30c (1s 20c is up), not the one at 1s 10c").toEqual(["2 undercut", true]);
+  addon.hover(CANCEL_NEXT);
+  expect(tipLines(addon), "which auction goes next, and what that costs").toEqual(["Cancel Strange Dust", "Costs 1s 0c"]);
+  addon.hover(null);
+  addon.click(CANCEL_NEXT);
+  expect([restrictedLog(addon), nextState(addon)], "the first, from the click; one left").toEqual([[["CancelAuction", true, 501, "nil", "nil", "nil", "nil"]], ["1 undercut", true]]);
+  addon.click(CANCEL_NEXT);
+  expect(restrictedLog(addon).map((c) => c[2]), "the next click takes the next one, before the game has answered the first").toEqual([501, 506]);
+  expect([nextState(addon), isTok(addon, addon.frame(`${CANCEL_NEXT}.text`).textColor, "muted")], "none left: it says so and stops").toEqual([["none undercut", false], true]);
+  addon.click(CANCEL_NEXT);
+  addon.fire("AUCTION_CANCELED", 501);
+  addon.fire("AUCTION_CANCELED", 506);
+  addon.advance(5);
+  addon.eval("for i = #__wfgWorld.ah.owned, 1, -1 do local id = __wfgWorld.ah.owned[i].auctionID if id == 501 or id == 506 then table.remove(__wfgWorld.ah.owned, i) end end");
+  addon.world.fireAuctionEvents({ itemID: 10940 }, 0);
+  expect(restrictedLog(addon).length, "a click on it disabled, timers and every auction house event: nothing more").toBe(2);
+  expect([ownedRow(addon, 1)[1], ownedRow(addon, 2).slice(1), nextState(addon)], "the blade and the dust at 1s 10c are left").toEqual(["TEST-ONLY Blade", ["Strange Dust", "1s 10c", false], ["none undercut", false]]);
+  expect(addon.eval("local n = 0 for _, c in ipairs(__wfgWorld.ah.restricted) do if c.path:find('AuctionOwned.lua') then n = n + 1 end end return n"), "both made by the button").toBe(2);
+});
+
+it("Cancel next undercut skips an auction the game won't cancel; the line waits for a check that never answers", () => {
+  const addon = atAuctionHouse(BAGS + OWNED + MORE_DUST + "__wfgWorld.ah.noCancel[501] = true");
+  addon.click(`${SCAN_CARD}.check`);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.advance(1);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.advance(4);
+  expect(nextState(addon), "the blade's check gave up: soon after, the line still says how many").toEqual(["2 undercut", true]);
+  addon.click(CANCEL_NEXT);
+  expect([restrictedLog(addon).map((c) => c[2]), nextState(addon)], "501 can't be cancelled, so 506 goes; 501 still counts").toEqual([[506], ["1 undercut", false]]);
+  addon.eval("__wfgWorld.ah.owned = {}");
+  addon.click(`${SCAN_CARD}.check`);
+  addon.advance(1);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  expect([nextState(addon), list(ownedRow(addon, 1))[0]], "no auctions: none undercut at once").toEqual([["none undercut", false], false]);
+});
+
+it("with check again on, each post and each cancel checks your auctions again, through the queue", () => {
+  const addon = atAuctionHouse(BAGS + OWNED);
+  checkUndercuts(addon);
+  addon.advance(1);
+  addon.fire("AUCTION_HOUSE_AUCTION_CREATED", 601);
+  addon.fire("AUCTION_CANCELED", 502);
+  expect([sent(addon).length, addon.eval("return ns.Settings('AuctionHelper').recheck")], "off by default: nothing more asked").toEqual([3, false]);
+  addon.eval("ns.Settings('AuctionHelper').recheck = true");
+  addon.fire("AUCTION_HOUSE_AUCTION_CREATED", 601);
+  expect(sent(addon).at(-1), "a post: your auctions asked for again").toBe("QueryOwnedAuctions:");
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  expect([ownedRow(addon, 1)[3], nextState(addon)], "the dust keeps its mark while it's checked again").toEqual([true, ["checking...", true]]);
+  addon.fire("AUCTION_CANCELED", 501);
+  // The searches waiting, by kind.
+  const queued = () => addon.eval(`local out = {} for i, s in ipairs(${HELPER}.queue) do out[i] = s.owned and "owned" or s.check and "check" or "other" end return out`);
+  expect(queued(), "a cancel: the checks waiting are dropped for one new check").toEqual(["owned"]);
+  addon.advance(1);
+  expect([sent(addon).length, sent(addon).at(-1)], "sent a second after the last search").toEqual([5, "QueryOwnedAuctions:"]);
+  addon.world.closeAuctionHouse();
+  addon.fire("AUCTION_CANCELED", 502);
+  expect(list(queued()), "not while the house is closed").toEqual([]);
+});

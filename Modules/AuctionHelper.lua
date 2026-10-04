@@ -376,8 +376,7 @@ local function listen()
   on("ITEM_SEARCH_RESULTS_UPDATED", AH.OnSearchResults)
   on("COMMODITY_SEARCH_RESULTS_UPDATED", AH.OnSearchResults)
   on("AUCTION_HOUSE_THROTTLED_SYSTEM_READY", function() AH.PaintSell() end)
-  on("OWNED_AUCTIONS_UPDATED", AH.OnOwned)
-  on("AUCTION_CANCELED", AH.OnCanceled)
+  AH.ListenOwned(on)
 end
 
 -- Module entry point (Core/Modules.lua): prices in tooltips, and the panel at the auction house.
