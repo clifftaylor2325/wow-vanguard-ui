@@ -246,8 +246,12 @@ end
 
 -- Events -----------------------------------------------------------------------------------
 
+-- Ready checks seen so far: a finished check's linger timer clears only if no newer check began.
+RS.readyChecks = 0
+
 -- A ready check started or someone answered: show the answers.
-local function onReadyCheck()
+local function onReadyCheck(event)
+  if event == "READY_CHECK" then RS.readyChecks = RS.readyChecks + 1 end
   RS.readyRunning = true
   each(updateCenter)
 end
@@ -258,10 +262,12 @@ local function clearReady()
   each(updateCenter)
 end
 
--- The check ended: leave the answers up a few seconds, then clear them.
+-- The check ended: leave the answers up a few seconds, then clear them
+-- (unless another check has started by then).
 local function onReadyFinished()
-  if type(C_Timer) == "table" and type(C_Timer.After) == "function" then return C_Timer.After(READY_LINGER, clearReady) end
-  clearReady()
+  if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return clearReady() end
+  local check = RS.readyChecks
+  C_Timer.After(READY_LINGER, function() if RS.readyChecks == check then clearReady() end end)
 end
 
 -- Refreshes a tile's center marks, if it has them.
