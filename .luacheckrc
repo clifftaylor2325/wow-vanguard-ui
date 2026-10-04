@@ -55,4 +55,6 @@ read_globals = {
   "C_ClickBindings", "ToggleClickBindingFrame",
   -- P3.12 Error badge: the game's addons button by the minimap.
   "AddonCompartmentFrame",
+  -- P3.14 Profiles: switching the game's Edit Mode layout with the profile.
+  "C_EditMode",
 }

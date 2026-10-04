@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { RETAIL, UI_ENV, chatHas, loggedIn } from "./helpers.mjs";
+import { RETAIL, UI_ENV, chatHas, loggedIn, setCombat } from "./helpers.mjs";
 
 it("profile strings", () => {
   const addon = loggedIn();
@@ -225,4 +225,62 @@ it("profile strings carry the UI scale and screen; importing one asks whether to
   importText(dst, old);
   expect(dst.eval("return { ForeverUI_Question:IsShown(), ForeverUI_Reload:IsShown(), ForeverUIDB.profiles['Imported 2'].display == nil }"), "a string with no usable UI scale goes straight to the reload").toEqual([false, true, true]);
   expect(dst.eval("return ns.DisplayQuestion({ uiScale = 0.8 })"), "a block with no screen size leaves it out").toBe("This profile was made at UI scale 80% (yours: 100%). Use its UI scale?");
+});
+
+// TEST-ONLY Edit Mode: its manager lists the presets, then the account's layouts; the
+// layouts load when UpdateLayoutInfo first runs; C_EditMode switches and reloads them.
+const EDIT_MODE_ENV = `
+  __layouts = { { layoutName = "Modern" }, { layoutName = "Classic" }, { layoutName = "TEST-ONLY Raid" } }
+  __active = 1
+  EditModeManagerFrame = CreateFrame("Frame", "EditModeManagerFrame", UIParent)
+  function EditModeManagerFrame:GetLayouts() return __layouts end
+  function EditModeManagerFrame:GetActiveLayoutInfo() return __loaded and __layouts[__active] or nil end
+  function EditModeManagerFrame:UpdateLayoutInfo() __loaded = true end
+  C_EditMode = { SetActiveLayout = function(i) __active = i EditModeManagerFrame:UpdateLayoutInfo() end }
+`;
+
+// A character logging in with these saved variables and Edit Mode; Lua in before runs before login.
+function editModeLogin(saved, before = "") {
+  const addon = createAddon({ savedVariables: `ForeverUIDB = { version = 1, setupDone = true, profiles = { Default = {}, Raid = { editMode = { layout = "TEST-ONLY Raid" } } } }\n${saved}` });
+  addon.eval(EDIT_MODE_ENV + before);
+  addon.login();
+  return addon;
+}
+
+// The layout in use, the one the running profile remembers, and the profile this character last ran.
+const layouts = (addon) => addon.eval("return { ns.EditModeLayout() or 'none', ns.Profile().editMode and ns.Profile().editMode.layout or 'none', ForeverUICharDB.editModeProfile or 'none' }");
+
+it("the Edit Mode layout goes with the profile: remembered, exported, and switched to when the profile loads", () => {
+  const fresh = editModeLogin('ForeverUICharDB = { profile = "Default" }');
+  expect(layouts(fresh), "before Edit Mode has its layouts, nothing is read").toEqual(["none", "none", "none"]);
+  fresh.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(layouts(fresh), "once it has them, the profile remembers the layout in use, and switches nothing").toEqual(["Modern", "Modern", "Default"]);
+  fresh.eval("C_EditMode.SetActiveLayout(3)");
+  expect(layouts(fresh), "picking another layout in Edit Mode is remembered").toEqual(["TEST-ONLY Raid", "TEST-ONLY Raid", "Default"]);
+  expect(fresh.eval("local _, data = ns.Serialize.Decode(ns.ExportProfile()) return data.editMode.layout"), "and it is in the profile's string").toBe("TEST-ONLY Raid");
+  const switched = editModeLogin('ForeverUICharDB = { profile = "Default", pendingProfile = "Raid", editModeProfile = "Default" }');
+  switched.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(layouts(switched), "loading another profile switches Edit Mode to its layout").toEqual(["TEST-ONLY Raid", "TEST-ONLY Raid", "Raid"]);
+  expect(chatHas(switched, /Edit Mode layout TEST-ONLY Raid, from profile Raid\./), "and says so").toBe(true);
+  const shared = editModeLogin('ForeverUICharDB = { profile = "Raid", editModeProfile = "Raid" }', "__loaded = true");
+  expect(layouts(shared), "the profile it ran last time switches nothing (another character may share it); layouts loaded before login are read at login").toEqual(["Modern", "Modern", "Raid"]);
+});
+
+it("the Edit Mode layout: one this account lacks, combat, and a client without Edit Mode", () => {
+  const missing = editModeLogin('ForeverUICharDB = { profile = "Raid", editModeProfile = "Default" }', '__layouts[3] = nil');
+  missing.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(layouts(missing), "a layout this account doesn't have is kept in the profile").toEqual(["Modern", "TEST-ONLY Raid", "Raid"]);
+  expect(chatHas(missing, /uses Edit Mode layout TEST-ONLY Raid, which this account doesn't have/), "and the player is told").toBe(true);
+  const fight = editModeLogin('ForeverUICharDB = { profile = "Raid", editModeProfile = "Default" }');
+  setCombat(fight, true);
+  fight.eval("EditModeManagerFrame:UpdateLayoutInfo() EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(layouts(fight), "in combat the switch waits, and the layout in use isn't remembered over the profile's").toEqual(["Modern", "TEST-ONLY Raid", "Raid"]);
+  setCombat(fight, false);
+  expect(layouts(fight), "it switches when combat ends").toEqual(["TEST-ONLY Raid", "TEST-ONLY Raid", "Raid"]);
+  const none = loggedIn("EditModeManagerFrame = CreateFrame('Frame', 'EditModeManagerFrame', UIParent)");
+  expect(none.eval("return { ns.EditModeLayout() == nil, ns.Profile().editMode == nil }"), "without Edit Mode's layout methods nothing is read or saved").toEqual([true, true]);
+  const noSwitch = editModeLogin('ForeverUICharDB = { profile = "Raid", editModeProfile = "Default" }', "C_EditMode = nil __loaded = true");
+  expect(layouts(noSwitch), "without the client's switch, the layout in use stays and is remembered").toEqual(["Modern", "Modern", "Raid"]);
+  const unhooked = editModeLogin('ForeverUICharDB = { profile = "Raid", editModeProfile = "Default" }', "hooksecurefunc = nil __loaded = true");
+  expect(layouts(unhooked), "without hooks nothing is followed").toEqual(["Modern", "TEST-ONLY Raid", "Default"]);
 });
