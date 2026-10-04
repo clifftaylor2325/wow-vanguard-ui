@@ -404,7 +404,7 @@ it("result rows show name, cheapest price and quantity; a click shows the item i
   expect([shopRow(addon, 1)[2], addon.eval(`return ${HELPER}.pending == nil`)], "the row keeps its price; nothing waits").toEqual(["12s 50c", true]);
 });
 
-it("entries by item link, ID or name; right-click removes one; the wheel scrolls", () => {
+it("entries by item link, ID or name; Remove on the right-click menu; the wheel scrolls", () => {
   const addon = atAuctionHouse(DUSTS);
   makeList(addon, "TEST-ONLY Mats", '{ "|cffffffff|Hitem:2589::::|h[Linen Cloth]|h|r", "99999", "  ", "Soul Dust", "a", "b", "c", "d" }');
   expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats']"), "a link and a number become IDs; a blank is skipped").toEqual([2589, 99999, "Soul Dust", "a", "b", "c", "d"]);
@@ -417,20 +417,22 @@ it("entries by item link, ID or name; right-click removes one; the wheel scrolls
   addon.wheel(`${HELPER}.shopCard.rows[1]`, -5);
   expect([shopRow(addon, 1)[1], shopRow(addon, 6)[1]], "no further than the last").toEqual(["item 99999", "d"]);
   addon.click(`${HELPER}.shopCard.rows[1]`, "RightButton");
-  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats']"), "right-click removed it").toEqual([2589, "Soul Dust", "a", "b", "c", "d"]);
+  expect(addon.eval("local out = {} for i, b in ipairs(ForeverUI_Menu.items) do if b:IsShown() then out[i] = b.text:GetText() end end return out"), "the row's menu").toEqual(["Filters...", "Remove"]);
+  addon.click("ForeverUI_Menu.items[2]");
+  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats']"), "Remove took it off").toEqual([2589, "Soul Dust", "a", "b", "c", "d"]);
 });
 
 it("item names the client hasn't loaded yet, and a hidden price", () => {
-  const addon = atAuctionHouse(DUSTS + " __wfgWorld.items[10940].pending = true");
+  const addon = atAuctionHouse(DUSTS + " __wfgWorld.items[10940].pending = true __wfgWorld.items[11083] = { name = 'Soul Dust' }");
   makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Soul Dust" }');
   addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 1250, totalQuantity = 240 } }");
   addon.click(`${HELPER}.shopCard.search`);
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
-  expect(shopRow(addon, 1).slice(1, 3), "the first result, under the name typed").toEqual(["Strange Dust", "12s 50c"]);
+  expect(shopRow(addon, 1).slice(1, 3), "its name isn't in: the row waits, under the name typed").toEqual(["Strange Dust", ""]);
   addon.eval("__wfgWorld.items[10940].pending = nil __wfgWorld.items[10940].name = 'TEST-ONLY Strange Dust'");
   addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 10940);
-  expect(shopRow(addon, 1)[1], "repainted once the name is in").toBe("TEST-ONLY Strange Dust");
-  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 1 }, minPrice = __wfgWorld.secret(5), totalQuantity = 2 } }");
+  expect(shopRow(addon, 1).slice(1, 3), "matched once the name is in (it contains the one typed)").toEqual(["TEST-ONLY Strange Dust", "12s 50c"]);
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 11083 }, minPrice = __wfgWorld.secret(5), totalQuantity = 2 } }");
   addon.advance(1);
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
   expect([shopRow(addon, 2)[2], addon.eval("return #ns.errors")], "a hidden price: nothing to show, no error").toEqual(["none up", 0]);
@@ -492,6 +494,102 @@ it("/fui ah list and add", () => {
   expect(chatHas(addon, /Shopping list/), "refused past the cap, nothing listed").toBe(false);
 });
 
+// The filter dialog's fields: shown, title, exact switch, level boxes, quality and max price.
+const filterDialog = (addon) => addon.eval(`local d = ForeverUI_AuctionFilters
+  return { d:IsShown(), d.title:GetText(), d.draft.exact, d.minLevel:GetText(), d.maxLevel:GetText(), d.quality.dropdown.text:GetText(), d.price:GetText() }`);
+
+// Opens the filter dialog of shop row i from its right-click menu.
+function openFilters(addon, i) {
+  addon.click(`${HELPER}.shopCard.rows[${i}]`, "RightButton");
+  addon.click("ForeverUI_Menu.items[1]");
+}
+
+// The browse query sent last: its text, filters, and level range.
+const lastBrowse = (addon) => addon.eval(`local q for _, x in ipairs(__wfgWorld.ah.queries) do if x.fn == "SendBrowseQuery" then q = x.args[1] end end
+  return { q.searchString, q.filters, q.minLevel or false, q.maxLevel or false }`);
+
+it("search filters: exact name, levels and quality go in the browse query; a max price hides dearer results", () => {
+  const addon = atAuctionHouse(DUSTS + " __wfgWorld.items[10940].quality = 2 __wfgWorld.items[10941].quality = 2");
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust" }');
+  openFilters(addon, 1);
+  expect(filterDialog(addon), "a plain entry: nothing set").toEqual([true, "Filters: Strange Dust", false, "", "", "Any", ""]);
+  addon.click("ForeverUI_AuctionFilters.exact");
+  addon.type("ForeverUI_AuctionFilters.minLevel", "10");
+  addon.type("ForeverUI_AuctionFilters.maxLevel", "20.5");
+  addon.eval("ForeverUI_AuctionFilters.quality.dropdown.set(2)");
+  addon.type("ForeverUI_AuctionFilters.price", "1g 50s");
+  addon.click("ForeverUI_AuctionFilters.save");
+  const saved = addon.eval("local e = ForeverUIDB.ah.lists['TEST-ONLY Mats'][1] return { e.term, e.exact, e.minLevel, e.maxLevel, e.quality, e.maxPrice }");
+  expect([saved, addon.frame("ForeverUI_AuctionFilters").visible], "saved on the entry; the dialog closes").toEqual([["Strange Dust", true, 10, 20, 2, 15000], false]);
+  addon.eval(`__wfgWorld.ah.browse = { { itemKey = { itemID = 10941 }, minPrice = 900, totalQuantity = 3 }, { itemKey = { itemID = 10940 }, minPrice = 20000, totalQuantity = 4 } }`);
+  addon.click(`${HELPER}.shopCard.search`);
+  expect(lastBrowse(addon), "ExactMatch (5), Uncommon (8) and the level range").toEqual(["Strange Dust", [5, 8], 10, 20]);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(shopRow(addon, 1).slice(1, 3), "the pouch isn't the exact name, the dust is over 1g 50s: none up").toEqual(["Strange Dust", "none up"]);
+  addon.eval(`__wfgWorld.ah.browse[2].minPrice = 14000`);
+  addon.advance(1);
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(shopRow(addon, 1).slice(1, 3), "under the max: shown").toEqual(["Strange Dust", "1g 40s 0c"]);
+  openFilters(addon, 1);
+  expect(filterDialog(addon), "the dialog shows what's set").toEqual([true, "Filters: Strange Dust", true, "10", "20", "Uncommon", "1g 50s 0c"]);
+  addon.type("ForeverUI_AuctionFilters.price", "lots");
+  addon.click("ForeverUI_AuctionFilters.cancel");
+  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats'][1].maxPrice"), "Cancel keeps them").toBe(15000);
+  openFilters(addon, 1);
+  addon.click("ForeverUI_AuctionFilters.exact");
+  for (const box of ["minLevel", "maxLevel", "price"]) addon.type(`ForeverUI_AuctionFilters.${box}`, "");
+  addon.eval(`ForeverUI_AuctionFilters.quality.dropdown.set(${HELPER}.ANY)`);
+  addon.click("ForeverUI_AuctionFilters.save");
+  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats']"), "every filter cleared: a plain name again").toEqual(["Strange Dust"]);
+  addon.advance(1);
+  addon.click(`${HELPER}.shopCard.search`);
+  expect(lastBrowse(addon), "no filters, no levels").toEqual(["Strange Dust", {}, false, false]);
+});
+
+it("a name matches only itself or a name containing it, never an unrelated result", () => {
+  const addon = atAuctionHouse(DUSTS + ` __wfgWorld.items[2589] = { name = "Linen Cloth", quality = 1 } __wfgWorld.items[4306] = { name = "TEST-ONLY Silk Bolt", pending = true }`);
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Vision Dust", "silk", "2589" }');
+  addon.eval(`local AH = ${HELPER} local list = ForeverUIDB.ah.lists['TEST-ONLY Mats'] list[4] = { term = 2589, maxPrice = 50 }`);
+  // Answers the search in flight with browse results, and lets the next go.
+  const answer = (browse) => {
+    addon.eval(`__wfgWorld.ah.browse = ${browse}`);
+    addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+    addon.advance(1);
+  };
+  addon.click(`${HELPER}.shopCard.search`);
+  answer("{ { itemKey = { itemID = 2589 }, minPrice = 10, totalQuantity = 9 }, { itemKey = { itemID = 10941 }, minPrice = 900, totalQuantity = 3 } }");
+  answer("{ { itemKey = { itemID = 2589 }, minPrice = 10, totalQuantity = 9 } }");
+  answer("{ { itemKey = { itemID = 4306 }, minPrice = 700, totalQuantity = 2 }, { itemKey = { itemID = 2589 }, minPrice = 10, totalQuantity = 9 } }");
+  answer("{ { itemKey = { itemID = 2589 }, minPrice = 60, totalQuantity = 9 } }");
+  expect([1, 2, 3, 4].map((i) => shopRow(addon, i).slice(1, 4)), "the pouch contains the name; linen is no dust; silk waits for its name; an ID over its max").toEqual([
+    ["Strange Dust Pouch", "9s 0c", "x 3"], ["Vision Dust", "none up", ""], ["silk", "", ""], ["Linen Cloth", "none up", ""]]);
+  expect(sent(addon)[3], "an ID entry with a max price still searches by its item key").toBe("SearchForItemKeys:2589");
+  addon.eval("__wfgWorld.items[4306].pending = nil");
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 4306);
+  expect(shopRow(addon, 3).slice(1, 3), "its name came in and contains silk").toEqual(["TEST-ONLY Silk Bolt", "7s 0c"]);
+  // An entry's best price among the silk bolt alone (false: no match).
+  const best = (entry) => addon.eval(`local r = ${HELPER}.BestResult(${entry}, { { itemKey = { itemID = 4306 }, minPrice = 700, totalQuantity = 2 } }) return r and r.price or r`);
+  expect([best('{ term = "Silk", quality = 3 }'), best('{ term = "Silk", quality = 1 }'), best('{ term = "Silk", exact = true }')], "another quality, or not the exact name, doesn't match").toEqual([false, 700, false]);
+});
+
+it("filters travel: exact names export in quotes, import as exact, and copies have their own", () => {
+  const addon = atAuctionHouse(DUSTS);
+  makeList(addon, "TEST-ONLY Mats", '{ "Soul Dust" }');
+  addon.eval(`${HELPER}.Import('"Strange Dust";;0^"2589"', "TEST-ONLY Mats")`);
+  expect(addon.eval("local l = ForeverUIDB.ah.lists['TEST-ONLY Mats'] return { l[2].term, l[2].exact, l[3] }"), "quotes: an exact name (an ID stays an ID)").toEqual(["Strange Dust", true, 2589]);
+  addon.eval(`${HELPER}.ExportList()`);
+  expect(addon.eval("return ForeverUI_TextDialog.edit:GetText()"), "exported with its quotes").toBe('Soul Dust\n"Strange Dust"\n2589');
+  addon.eval(`${HELPER}.DuplicateList() ForeverUIDB.ah.lists['TEST-ONLY Mats copy'][2].exact = false`);
+  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats'][2].exact"), "the copy's filters are its own").toBe(true);
+  addon.eval(`${HELPER}.EditFilters("TEST-ONLY Mats", 9) ${HELPER}.EditFilters("TEST-ONLY Mats", 3)`);
+  expect(filterDialog(addon).slice(0, 2), "no entry 9; an ID entry by its item's name").toEqual([true, "Filters: Linen Cloth"]);
+  addon.eval(`ForeverUIDB.ah.lists['TEST-ONLY Mats'][3] = nil ${HELPER}.SaveFilters()`);
+  expect([addon.eval("return #ForeverUIDB.ah.lists['TEST-ONLY Mats']"), addon.frame("ForeverUI_AuctionFilters").visible], "its entry gone meanwhile: nothing saved").toEqual([2, false]);
+  const prices = addon.eval(`local out = {} for i, t in ipairs({ "2.5", "75s 20c", " 3G 4s ", "12c", "0", "-1", "abc", "5x", "1g abc", "" }) do out[i] = ${HELPER}.ParseMoney(t) or false end return out`);
+  expect(prices, "gold as a number, or g/s/c amounts").toEqual([25000, 7520, 30400, 12, false, false, false, false, false, false]);
+});
+
 // The text dialog: whether it shows, its title and its text.
 const textDialog = (addon) => addon.eval("local f = ForeverUI_TextDialog return { f:IsShown(), f.title:GetText(), f.edit:GetText() }");
 
@@ -547,7 +645,7 @@ it("import: plain lines and Auctionator's strings, within the caps", () => {
   expect([addon.eval("return { ForeverUIDB.ah.list, ForeverUIDB.ah.lists.Shopping }"), textDialog(addon)[0], chatHas(addon, /Imported 3 item\(s\) into Shopping\.$/)], "a name, an ID and a link; blanks skipped").toEqual([["Shopping", ["Linen Cloth", 2589, 10940]], false, true]);
   addon.eval(`${HELPER}.AskImport()`);
   answerText(addon, '"Strange Dust";;0;0;;;;;;;;#;;^Soul Dust;1;60^ ^"";x^  "Vision Dust"  ');
-  expect(addon.eval("return ForeverUIDB.ah.lists.Shopping"), "each term's first field; an empty name skipped").toEqual(["Linen Cloth", 2589, 10940, "Strange Dust", "Soul Dust", "Vision Dust"]);
+  expect(addon.eval("return ForeverUIDB.ah.lists.Shopping"), "each term's first field (in quotes: an exact name); an empty name skipped").toEqual(["Linen Cloth", 2589, 10940, { term: "Strange Dust", exact: true }, "Soul Dust", { term: "Vision Dust", exact: true }]);
   expect(chatHas(addon, /Imported 3 item\(s\) into Shopping\. 6 other search field\(s\) ignored: ForeverUI takes each item's name\.$/), "says how many fields it ignored").toBe(true);
   addon.eval(`for i = 1, 43 do ${HELPER}.AddEntry("x" .. i) end ${HELPER}.Import("a\\nb\\nc", "Shopping")`);
   expect([addon.eval("return #ForeverUIDB.ah.lists.Shopping"), chatHas(addon, /Imported 1 item\(s\) into Shopping\. 2 didn't fit \(a list holds at most 50\)\.$/)], "50 at most").toEqual([50, true]);

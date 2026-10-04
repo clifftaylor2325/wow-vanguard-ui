@@ -110,17 +110,16 @@ end
 
 -- Searches -----------------------------------------------------------------------------------
 
--- Sends one search: a list entry (an item ID by its item key, a name by text), an item to open
--- in the game's own list, an item's price check (a sell search), the next page of its listings, or
--- your auctions; always cheapest first.
+-- Sends one search: an item to open in the game's own list, an item's price check (a sell search),
+-- the next page of its listings, your auctions, or the shop's (Modules/AuctionShop.lua: a list
+-- entry); always cheapest first.
 function AH.Send(s)
   local api = C_AuctionHouse
   if s.sell then return api.SendSellSearchQuery(s.sell, AH.SORTS, true) end
   if s.more then return AH.RequestMore(s) end
   if s.owned then return api.QueryOwnedAuctions(AH.SORTS) end
   if s.open then return api.SearchForItemKeys({ s.open }, AH.SORTS) end
-  if type(s.entry) == "number" then return api.SearchForItemKeys({ api.MakeItemKey(s.entry) }, AH.SORTS) end
-  api.SendBrowseQuery({ searchString = s.entry, sorts = AH.SORTS, filters = {}, itemClassFilters = {} })
+  AH.SendShop(s)
 end
 
 -- Waits until AH.SEND_GAP has passed since the last search, then tries the next (one timer at a time).
@@ -391,7 +390,7 @@ local function listen()
   on("AUCTION_HOUSE_CLOSED", AH.OnClosed)
   on("REPLICATE_ITEM_LIST_UPDATE", onReplicate)
   on("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", AH.OnBrowse)
-  on("ITEM_KEY_ITEM_INFO_RECEIVED", function() AH.PaintShop() end)
+  AH.ListenShop(on)
   for _, e in ipairs(AH.SEARCH_EVENTS) do on(e, AH.OnSearchResults) end
   -- The sell card again when the game is ready for a post, or a stack left the bags.
   for _, e in ipairs({ "AUCTION_HOUSE_THROTTLED_SYSTEM_READY", "BAG_UPDATE_DELAYED" }) do on(e, function() AH.PaintSell() end) end

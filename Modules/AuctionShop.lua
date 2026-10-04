@@ -1,6 +1,7 @@
 -- Auction helper, the Shop card (Modules/AuctionHelper.lua holds the panel,
 -- the search queue, the scan and the slash commands): named shopping lists
--- and their entries (an item ID or a name), managed from the dropdown or
+-- and their entries (an item ID or a name, with filters: exact name, level,
+-- quality and a max price, set from a row's right-click menu), managed from the dropdown or
 -- /fui ah (rename, duplicate, delete with a confirm, export as text, import
 -- plain lines or Auctionator's `^`/`;` strings), Search list, which runs the
 -- list's searches one after another, each entry's best result, and the
@@ -22,6 +23,15 @@ AH.SHOP_Y, AH.SHOP_H, AH.SHOP_ROWS, AH.SHOP_ROWS_Y = -8, 196, 6, -74
 AH.MAX_LISTS, AH.MAX_ENTRIES, AH.DEFAULT_LIST, AH.NEW = 20, 50, "Shopping", "\1new"
 -- The dropdown's other actions on the list in use (values no list name can have).
 AH.RENAME, AH.COPY, AH.DELETE, AH.IMPORT, AH.EXPORT = "\1rename", "\1copy", "\1delete", "\1import", "\1export"
+-- Enum.AuctionHouseFilter's ExactMatch and PoorQuality (AuctionHouseEnumsDocumentation.lua): the
+-- quality filters run on from PoorQuality in Enum.ItemQuality's order (Poor 0 ... Legendary 5).
+AH.EXACT_FILTER, AH.QUALITY_FILTER = 5, 6
+-- The qualities a filter can ask for, as { Enum.ItemQuality, name }, after "Any".
+AH.ANY, AH.QUALITIES = "any", { { "any", "Any" }, { 0, "Poor" }, { 1, "Common" }, { 2, "Uncommon" }, { 3, "Rare" }, { 4, "Epic" }, { 5, "Legendary" } }
+-- A shop row's right-click menu; the filter dialog's width.
+AH.ROW_CHOICES, AH.FILTER_W = { { "filters", "Filters..." }, { "remove", "Remove" } }, 280
+-- Copper in one of each money unit typed into a max price.
+AH.MONEY_UNITS = { g = 10000, s = 100, c = 1 }
 -- What chat says when an action needs a list and there's none in use.
 AH.NO_LIST = "Pick a shopping list first (the Shop card's dropdown, or /fui ah list <name>)."
 
@@ -32,6 +42,19 @@ local function countLists(store)
   local n = 0
   for _ in pairs(store.lists) do n = n + 1 end
   return n
+end
+
+-- Entries whose browse results wait for an item's name (matched again when it comes in).
+AH.unnamed = {}
+
+-- A list's entries by its name (nil when there's no such list).
+function AH.ListByName(name)
+  return AP.Store().lists[name]
+end
+
+-- The name of the list on the card, as AH.ListByName takes it.
+function AH.ListKey()
+  return AP.Store().list
 end
 
 -- The shopping list in use: its name and entries (nil when there's none yet).
@@ -51,6 +74,21 @@ function AH.NewList(name)
   ns.HideText()
   AH.PaintShop()
   return true
+end
+
+-- An entry's search term (an item ID or a name) and its filters (nil for a plain entry): an entry
+-- with filters is { term, exact, minLevel, maxLevel, quality, maxPrice }, a plain one just its term.
+function AH.Term(entry)
+  if type(entry) == "table" then return entry.term, entry end
+  return entry
+end
+
+-- A copy of an entry (its own filters table), for another list.
+local function copyEntry(entry)
+  if type(entry) ~= "table" then return entry end
+  local out = {}
+  for k, v in pairs(entry) do out[k] = v end
+  return out
 end
 
 -- An entry from what was typed: the item ID in a link or a bare number, else the name (nil for nothing).
@@ -74,7 +112,7 @@ end
 
 -- Takes entry i off a list.
 function AH.RemoveEntry(listName, i)
-  local list = AP.Store().lists[listName]
+  local list = AH.ListByName(listName)
   if list and list[i] ~= nil then table.remove(list, i) end
   AH.PaintShop()
 end
@@ -150,14 +188,16 @@ function AH.DuplicateList()
   if not name then return ns.Chat(AH.NO_LIST) end
   local new = copyName(store, name)
   if not AH.NewList(new) then return end
-  for i, entry in ipairs(list) do store.lists[new][i] = entry end
+  for i, entry in ipairs(list) do store.lists[new][i] = copyEntry(entry) end
   ns.Chat(string.format("Copied %s to %s.", name, new))
   AH.PaintShop()
 end
 
--- An entry as a line of export text: its item ID or its name.
+-- An entry as a line of export text: its item ID or its name, in quotes for an exact name.
 function AH.EntryText(entry)
-  return tostring(entry)
+  local term, f = AH.Term(entry)
+  if f and f.exact then return '"' .. term .. '"' end
+  return tostring(term)
 end
 
 -- Shows the list in use as text to copy (Ctrl+C), one item per line.
@@ -179,7 +219,9 @@ function AH.ImportTerm(term)
   end
   local name = trim(fields[1])
   local quoted = name:match('^"(.*)"$')
-  return AH.ParseEntry(quoted or name), ignored
+  local entry = AH.ParseEntry(quoted or name)
+  if quoted and type(entry) == "string" then entry = { term = entry, exact = true } end
+  return entry, ignored
 end
 
 -- An import's entries and how many fields were ignored: Auctionator's terms (`^` between terms,
@@ -248,7 +290,7 @@ function AH.SearchList()
   local _, list = AH.CurrentList()
   if not list or #list == 0 then return ns.Chat("Add items to a shopping list first (+ Add, or /fui ah add <list> <item>).") end
   AH.DropQueued("entry")
-  AH.found, AH.progress = {}, { done = 0, total = #list }
+  AH.found, AH.unnamed, AH.progress = {}, {}, { done = 0, total = #list }
   for _, entry in ipairs(list) do AH.Queue({ entry = entry }) end
   AH.PaintShop()
 end
@@ -261,20 +303,69 @@ local function resultRow(r)
   if price and qty then return { key = r.itemKey, price = price, qty = qty } end
 end
 
--- Whether a browse result is the entry's item: its ID, or its name (in any case).
-local function matches(entry, r)
-  if type(entry) == "number" then return r.itemKey.itemID == entry end
-  local info = C_AuctionHouse.GetItemKeyInfo(r.itemKey)
-  return info ~= nil and type(info.itemName) == "string" and info.itemName:lower() == entry:lower()
+-- The browse query for a name: its filters (exact match, one quality) and level range.
+local function browseQuery(term, f)
+  f = f or {}
+  local filters = {}
+  if f.exact then filters[#filters + 1] = AH.EXACT_FILTER end
+  if f.quality then filters[#filters + 1] = AH.QUALITY_FILTER + f.quality end
+  return { searchString = term, sorts = AH.SORTS, filters = filters, itemClassFilters = {}, minLevel = f.minLevel, maxLevel = f.maxLevel }
 end
 
--- An entry's row: the result that is its item, else the first (results come cheapest first);
--- false when nothing (readable) is up.
+-- Sends the shop's search: a list entry (an item ID by its item key, a name by text with its filters).
+function AH.SendShop(s)
+  local api, term, f = C_AuctionHouse, AH.Term(s.entry)
+  if type(term) == "number" then return api.SearchForItemKeys({ api.MakeItemKey(term) }, AH.SORTS) end
+  api.SendBrowseQuery(browseQuery(term, f))
+end
+
+-- Whether browse result r is a name entry's item on a pass (1: the same name; 2: a name containing
+-- it, unless exact) and of its quality; nil while the client hasn't the result's name yet.
+local function nameMatches(term, f, r, pass)
+  local info = C_AuctionHouse.GetItemKeyInfo(r.itemKey)
+  local name = info and type(info.itemName) == "string" and info.itemName:lower()
+  if not name then return nil end
+  if f and f.quality and info.quality ~= f.quality then return false end
+  if pass == 1 then return name == term:lower() end
+  return not (f and f.exact) and name:find(term:lower(), 1, true) ~= nil
+end
+
+-- Whether browse result r is the entry's item on a pass: its item ID (first pass), else by name.
+local function matches(term, f, r, pass)
+  if type(term) == "number" then return pass == 1 and r.itemKey.itemID == term end
+  return nameMatches(term, f, r, pass)
+end
+
+-- A result row the entry takes: readable and not above its max price.
+local function affordable(row, f)
+  return row ~= nil and not (f and f.maxPrice and row.price > f.maxPrice)
+end
+
+-- An entry's row: the cheapest result that is its item (the same name first, then one containing it),
+-- readable and within its max price; false when there's none, nil while a result's name isn't in yet.
 function AH.BestResult(entry, results)
-  for _, r in ipairs(results) do
-    if matches(entry, r) then return resultRow(r) or false end
+  local term, f = AH.Term(entry)
+  local unnamed = false
+  for pass = 1, 2 do
+    for _, r in ipairs(results) do
+      local m, row = matches(term, f, r, pass), resultRow(r)
+      if m == nil then unnamed = true elseif m and affordable(row, f) then return row end
+    end
   end
-  return results[1] and resultRow(results[1]) or false
+  if not unnamed then return false end
+end
+
+-- An entry's browse results: its row, or (while a result's name isn't in yet) kept to match again.
+function AH.TakeBrowse(entry, results)
+  local best = AH.BestResult(entry, results)
+  AH.found[entry] = best
+  AH.unnamed[entry] = best == nil and results or nil
+end
+
+-- Item names came in: the entries waiting on them are matched again, and the card repainted.
+function AH.OnItemInfo()
+  for entry, results in pairs(AH.unnamed) do AH.TakeBrowse(entry, results) end
+  AH.PaintShop()
 end
 
 -- Browse results: their prices feed the price store (any browse, the game's too); the list entry
@@ -283,8 +374,14 @@ function AH.OnBrowse()
   AP.RecordBrowse(C_AuctionHouse.GetBrowseResults())
   local s = AH.pending
   if not (s and (s.entry or s.open)) then return end
-  if s.entry then AH.found[s.entry] = AH.BestResult(s.entry, C_AuctionHouse.GetBrowseResults()) end
+  if s.entry then AH.TakeBrowse(s.entry, C_AuctionHouse.GetBrowseResults()) end
   AH.Done()
+end
+
+-- The auction house events the shop follows besides browse results (on: Modules/AuctionHelper.lua's,
+-- which ignores them in combat).
+function AH.ListenShop(on)
+  on("ITEM_KEY_ITEM_INFO_RECEIVED", function() AH.OnItemInfo() end)
 end
 
 -- The shop card -------------------------------------------------------------------------------
@@ -292,11 +389,11 @@ end
 -- What a row shows for an entry: the item's name and icon from its result, else from what the
 -- client knows of an item ID, else the name typed.
 function AH.EntryLook(entry, found)
-  local info = found and C_AuctionHouse.GetItemKeyInfo(found.key)
+  local info, term = found and C_AuctionHouse.GetItemKeyInfo(found.key), AH.Term(entry)
   if info then return info.itemName, info.iconFileID end
-  if type(entry) ~= "number" then return entry, AH.UNKNOWN_ICON end
-  local name, _, _, _, _, _, _, _, _, icon = C_Item.GetItemInfo(entry)
-  return name or ("item " .. entry), icon or AH.UNKNOWN_ICON
+  if type(term) ~= "number" then return term, AH.UNKNOWN_ICON end
+  local name, _, _, _, _, _, _, _, _, icon = C_Item.GetItemInfo(term)
+  return name or ("item " .. term), icon or AH.UNKNOWN_ICON
 end
 
 -- A row for one entry: the item, how many are up and the cheapest price per unit ("none up"
@@ -327,9 +424,9 @@ function AH.PaintShop()
 end
 
 -- A row clicked: left opens its item in the game's own list (buying stays in the game's hands),
--- right takes the entry off the list.
+-- right opens the row's menu (Filters..., Remove) under it.
 function AH.ClickRow(r, button)
-  if button == "RightButton" then return AH.RemoveEntry((AH.CurrentList()), r.index) end
+  if button == "RightButton" then return AH.RowMenu(r) end
   local found = AH.found[r.entry]
   if found then AH.Queue({ open = found.key }, true) end
 end
@@ -372,6 +469,136 @@ local function pickList(v)
   AH.PaintShop()
 end
 
+-- Filters -----------------------------------------------------------------------------------
+
+-- Copper from a typed price: "1g 50s", "75s 20c", "12c" or a bare number of gold ("2.5"); nil for
+-- nothing, nothing above zero, or text that isn't money.
+function AH.ParseMoney(text)
+  text = trim(text):lower()
+  local gold, copper = tonumber(text), 0
+  if gold then return gold > 0 and math.floor(gold * 10000 + 0.5) or nil end
+  local rest = text:gsub("(%d+)%s*([gsc])", function(n, unit) copper = copper + tonumber(n) * AH.MONEY_UNITS[unit] return "" end)
+  if copper > 0 and trim(rest) == "" then return copper end
+end
+
+-- A level typed into a box: a whole number from 1, else nil.
+local function typedLevel(box)
+  local n = tonumber(box:GetText() or "")
+  if n and n >= 1 then return math.floor(n) end
+end
+
+-- The dialog's entry: its term with what the dialog says, or the bare term without any filter.
+local function filteredEntry(d)
+  local quality = d.draft.quality ~= AH.ANY and d.draft.quality or nil
+  local f = { term = d.term, exact = d.draft.exact or nil, quality = quality, maxPrice = AH.ParseMoney(d.price:GetText()),
+    minLevel = typedLevel(d.minLevel), maxLevel = typedLevel(d.maxLevel) }
+  if f.exact or f.quality or f.maxPrice or f.minLevel or f.maxLevel then return f end
+  return d.term
+end
+
+-- Save: the entry takes the dialog's filters (its old row is searched again next time).
+function AH.SaveFilters()
+  local d = AH.filterDialog
+  local list = AH.ListByName(d.listName)
+  if list and list[d.index] ~= nil then list[d.index] = filteredEntry(d) end
+  d:Hide()
+  AH.PaintShop()
+end
+
+-- A caption on the left of the filter dialog at y.
+local function filterCaption(d, text, y)
+  local fs = T.Text(d:CreateFontString(nil, "OVERLAY"), "label")
+  fs:SetPoint("TOPLEFT", 20, y)
+  fs:SetText(text)
+  return fs
+end
+
+-- A box on the filter dialog, its right edge x from the dialog's right, at y.
+local function filterBox(d, width, x, y)
+  local box = W.Input(d, width)
+  box:SetPoint("TOPRIGHT", x, y)
+  return box
+end
+
+-- The filter dialog's rows: exact name, level from and to, quality and max price.
+local function filterRows(d)
+  d.exact = W.Check(d, "Exact name only", function() return d.draft.exact end, function(v) d.draft.exact = v end, AH.FILTER_W - 24)
+  d.exact:SetPoint("TOPLEFT", 12, -36)
+  filterCaption(d, "Level", -74)
+  d.minLevel, d.maxLevel = filterBox(d, 44, -90, -70), filterBox(d, 44, -20, -70)
+  filterCaption(d, "to", -74):SetPoint("TOPLEFT", AH.FILTER_W - 80, -74)
+  d.quality = W.Choice(d, "Quality", AH.QUALITIES, function() return d.draft.quality end, function(v) d.draft.quality = v end, AH.FILTER_W - 24)
+  d.quality:SetPoint("TOPLEFT", 12, -96)
+  filterCaption(d, "Max price", -134)
+  d.price = filterBox(d, 120, -20, -130)
+end
+
+-- The filter dialog's draft (what its switch and choice show), title, and Save and Cancel at the bottom right.
+local function filterFrame(d)
+  d.draft = { exact = false, quality = AH.ANY }
+  d.title = T.Text(d:CreateFontString(nil, "OVERLAY"), "heading")
+  d.title:SetPoint("TOPLEFT", 12, -12)
+  d.save = W.Primary(d, "Save", function() AH.SaveFilters() end, 80)
+  d.save:SetPoint("BOTTOMRIGHT", -12, 12)
+  d.cancel = W.Button(d, "Cancel", function() d:Hide() end, 80)
+  d.cancel:SetPoint("RIGHT", d.save, "LEFT", -8, 0)
+end
+
+-- The filter dialog, built once: a raised panel over the auction house, with Save and Cancel.
+local function buildFilters()
+  local d = T.Panel(CreateFrame("Frame", "ForeverUI_AuctionFilters", UIParent), { raised = true, shadow = true })
+  d:SetSize(AH.FILTER_W, 200)
+  d:SetFrameStrata("DIALOG")
+  d:SetClampedToScreen(true)
+  d:EnableMouse(true)
+  filterFrame(d)
+  filterRows(d)
+  d:Hide()
+  AH.filterDialog = d
+  return d
+end
+
+-- Fills the filter dialog from an entry's filters.
+local function fillFilters(d, entry)
+  local term, f = AH.Term(entry)
+  f = f or {}
+  d.term, d.draft = term, { exact = f.exact == true, quality = f.quality or AH.ANY }
+  d.title:SetText("Filters: " .. (AH.EntryLook(entry)))
+  d.minLevel:SetText(f.minLevel and tostring(f.minLevel) or "")
+  d.maxLevel:SetText(f.maxLevel and tostring(f.maxLevel) or "")
+  d.price:SetText(f.maxPrice and AP.Money(f.maxPrice) or "")
+  d.exact:Refresh()
+  d.quality:Refresh()
+end
+
+-- Opens the filter dialog for entry i of a list, beside the shop panel.
+function AH.EditFilters(listName, i)
+  local d, list = AH.filterDialog or buildFilters(), AH.ListByName(listName)
+  if not (list and list[i] ~= nil) then return end
+  d.listName, d.index = listName, i
+  fillFilters(d, list[i])
+  d:ClearAllPoints()
+  d:SetPoint("TOPLEFT", AH.frame or UIParent, "TOPRIGHT", 8, 0)
+  d:Show()
+end
+
+-- A choice in a row's menu: its filters, or off the list.
+function AH.RowAction(v)
+  local c = AH.shopCard
+  if v == "remove" then return AH.RemoveEntry(AH.ListKey(), c.menuIndex) end
+  AH.EditFilters(AH.ListKey(), c.menuIndex)
+end
+
+-- A row's menu (the dropdown menu's, opened by a hidden dropdown under the row).
+function AH.RowMenu(r)
+  local d = AH.shopCard.rowMenu
+  AH.shopCard.menuIndex = r.index
+  W.CloseMenu()
+  d:ClearAllPoints()
+  d:SetPoint("BOTTOMLEFT", r, "BOTTOMLEFT", 22, 0)
+  d:GetScript("OnClick")(d)
+end
+
 -- The shop card's progress line, and its rows, scrolled by the mouse wheel.
 local function shopRows(c)
   c.progress = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
@@ -385,16 +612,24 @@ local function shopRows(c)
   c:SetScript("OnMouseWheel", scrollShop)
 end
 
--- The shop card: the list dropdown, + Add, Search list with its progress line, and the rows.
-function AH.BuildShop(f)
-  local c = AH.Card(f, "Shop", AH.SHOP_Y, AH.SHOP_H)
+-- The shop card's controls: the list dropdown, + Add and Search list.
+local function shopControls(c)
   c.lists = W.Dropdown(c, listChoices, function() return AP.Store().list end, pickList, 180)
   c.lists:SetPoint("TOPLEFT", 0, -20)
   c.add = W.Button(c, "+ Add", function() ns.AskText("Add to list", function(text) AH.AddEntry(text) end, "Add") end, 76)
   c.add:SetPoint("TOPRIGHT", 0, -19)
   c.search = W.Button(c, "Search list", function() AH.SearchList() end, 120)
   c.search:SetPoint("TOPLEFT", 0, -46)
+end
+
+-- The shop card: the list dropdown, + Add, Search list with its progress line, the rows, and a
+-- row's menu (a hidden dropdown that opens the dropdown menu under the row right-clicked).
+function AH.BuildShop(f)
+  local c = AH.Card(f, "Shop", AH.SHOP_Y, AH.SHOP_H)
+  shopControls(c)
   c.rule:Hide()
   AH.shopCard = c
   shopRows(c)
+  c.rowMenu = W.Dropdown(c, AH.ROW_CHOICES, function() end, AH.RowAction, 120)
+  c.rowMenu:Hide()
 end
