@@ -76,7 +76,7 @@ it("the spell catalog folds ranks and sorts the spellbook into healer groups", (
   addon.world.learn(596, { name: "Prayer of Healing", rank: 1, helpful: true });
   expect(addon.eval(`return #${CS}.Groups().heals`), "learning a spell rebuilds the catalog").toBe(6);
   addon.eval('C_SpellBook.GetNumSpellBookSkillLines = function() return 2 end');
-  addon.fire("LEARNED_SPELL_IN_TAB");
+  addon.fire("LEARNED_SPELL_IN_SKILL_LINE");
   expect(addon.eval(`return #${CS}.Catalog().spells`), "a skill line the client won't describe is skipped").toBe(12);
   addon.eval("C_Spell.GetSpellInfo = nil");
   addon.fire("PLAYER_ENTERING_WORLD");
@@ -89,6 +89,15 @@ it("the spell catalog folds ranks and sorts the spellbook into healer groups", (
   expect(addon.eval(`return ${CS}.ClassName()`), "without UnitClass the button still has a name").toBe("Class");
   addon.eval('UnitClass = function() return nil, 42 end');
   expect(addon.eval(`return ${CS}.PlayerClass()`), "a non-string class token is ignored").toBe(null);
+});
+
+it("the spell catalog listens for new spells by an event Forever has, so login reports no error", () => {
+  const addon = priest();
+  expect(addon.eval('local out = "" for _, e in ipairs(ns.errors) do out = out .. e.text .. ";" end return out'), "no 'not on this client' report at login").toBe("");
+  expect(addon.eval(`return #${CS}.Catalog().spells`)).toBe(11);
+  addon.eval('C_SpellBook.GetNumSpellBookSkillLines = function() return 0 end');
+  addon.fire("LEARNED_SPELL_IN_SKILL_LINE");
+  expect(addon.eval(`return #${CS}.Catalog().spells`), "a spell learned into a skill line rebuilds the catalog").toBe(0);
 });
 
 it("bindings carry spell ids and ranks, move, copy, export and import", () => {

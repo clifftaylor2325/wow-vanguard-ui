@@ -222,5 +222,5 @@ end
 
 -- The spellbook changed: rebuild the catalog next time it's read.
 ns.On("SPELLS_CHANGED", CS.Invalidate)
-ns.On("LEARNED_SPELL_IN_TAB", CS.Invalidate)
+ns.On("LEARNED_SPELL_IN_SKILL_LINE", CS.Invalidate)
 ns.On("PLAYER_ENTERING_WORLD", CS.Invalidate)
