@@ -330,7 +330,13 @@ local function skinSpecial()
   end
 end
 
--- Action bars, shared: locking, range tint, the default bars, the client's special buttons.
+-- Keybind mode (Modules/ActionBarKeybinds.lua): the options window steps aside for it.
+local function keybindMode()
+  O.Hide()
+  ns.GetModule("ActionBars").KeybindMode(true)
+end
+
+-- Action bars, shared: locking, range tint, the default bars, the client's special buttons, keybind mode.
 local function actionBarRows()
   return {
     { "header", "Action bars" },
@@ -340,7 +346,7 @@ local function actionBarRows()
     check("Restyle the pet, stance and extra action buttons (reload)", skinSpecial()),
     check("Pet and stance bars in their own movable spots (reload)", setting("SpecialBars", "place", true)),
     check("Vehicle exit button (reload)", setting("SpecialBars", "vehicleExit", true)),
-    { "text", "Empty slots stay hidden until you drag a spell or item onto the bars." },
+    { "text", "Empty slots stay hidden until you drag a spell or item onto the bars." }, { "button", "Keybind mode", keybindMode },
   }
 end
 
