@@ -287,6 +287,21 @@ it("the starter layout, hover keys with collision notes, and the test tile", () 
   expect(addon.eval('return __click("Clear all")') && addon.eval(`return #${CC}.Bindings()`)).toBe(0);
 });
 
+it("the minus key can be a hover key: its name reads, with or without a modifier", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  const tile = widget(addon, "w.result ~= nil and w.bar ~= nil");
+  addon.hover(tile);
+  addon.key(tile, "-");
+  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`), "pressing minus over the test tile").toBe("- -> nothing bound");
+  addon.hover(null);
+  addon.eval(`${CC}.Add("-", "spell", "Renew", 139) ${CC}.Add("CTRL-SHIFT--", "target")`);
+  addon.eval("ns.Options.Refresh()");
+  expect(addon.eval('local out = {} for _, w in ipairs(__wfgStub.frames) do if w.keyText and w.remove and w:IsShown() then out[#out + 1] = w.keyText:GetText() end end return out'),
+    "both rows name their key").toEqual(["-", "Ctrl + Shift + -"]);
+  expect(addon.eval(`return ${CC}.KeyText("SHIFT--") .. "|" .. ${CC}.KeyText("ALT-MOUSEWHEELUP") .. "|" .. ${CC}.KeyText("META-Q")`)).toBe("Shift + - (hover)|Alt + Wheel up (hover)|Q (hover)");
+});
+
 it("sharing: export, import, copy to another spec, and the combat notice", () => {
   const addon = priest("__wfgWorld.spec = 1 GetNumSpecializations = function() return __specs end __specs = 2", { savedVariables: WITH_FRAMES });
   addon.eval(`${CC}.Add("BUTTON2", "spell", "Renew", 139)`);
