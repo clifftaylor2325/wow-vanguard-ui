@@ -64,7 +64,8 @@ function fontStyle(f) {
 // A DOM node for a font string: font size, color, alignment, width and text.
 function fontNode(f) {
   const el = document.createElement("div");
-  el.className = "fs";
+  // An OUTLINE font flag draws a 1 px black ring around the glyphs, as the client does.
+  el.className = /OUTLINE/.test(f.fontFlags || "") ? "fs outline" : "fs";
   Object.assign(el.style, fontStyle(f));
   el.style.textAlign = { CENTER: "center", RIGHT: "right" }[f.justifyH] || "left";
   if (f.width) el.style.width = `${f.width}px`;
