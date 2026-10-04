@@ -540,7 +540,7 @@ it("restricted calls run only inside a click", () => {
   }
   expect(after.map((c) => [c[0], c[1]]), "a post and a cancel, each from a click").toEqual([["PostCommodity", true], ["CancelAuction", true]]);
   expect(restrictedLog(addon), "timers and every auction house event add nothing").toEqual(after);
-  expect(addon.eval("local n = 0 for _, c in ipairs(__wfgWorld.ah.restricted) do if c.path:find('AuctionHelper.lua') then n = n + 1 end end return n"), "both made by the helper's buttons").toBe(2);
+  expect(addon.eval("local n = 0 for _, c in ipairs(__wfgWorld.ah.restricted) do if c.path:find('AuctionSell.lua') or c.path:find('AuctionOwned.lua') then n = n + 1 end end return n"), "both made by the helper's buttons").toBe(2);
 });
 
 it("your auctions: refused cancels, scrolling, unknown names, hidden costs, and updates the game sends", () => {
