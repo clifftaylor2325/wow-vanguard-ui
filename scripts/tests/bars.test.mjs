@@ -610,3 +610,21 @@ it("keybind mode: out of combat only, ends when a fight starts; from the options
   off.slash("keybind");
   expect([off.eval("return ForeverUI_KeybindMode == nil"), chatHas(off, /Keybind mode needs ForeverUI.s action bars/)], "without the bars it says why").toEqual([true, true]);
 });
+
+// TEST-ONLY reading of a macro-conditional driver, as the client reads it: the value of the first
+// clause one of whose [...] groups has every condition in `holds` (a clause with no group always matches).
+const driverValue = (driver, holds) => {
+  for (const clause of driver.split(";")) {
+    const groups = clause.match(/\[[^\]]*\]/g) || [];
+    const met = groups.length === 0 || groups.some((g) => g.slice(1, -1).split(",").every((c) => holds.includes(c.trim())));
+    if (met) return clause.replace(/\[[^\]]*\]/g, "").trim();
+  }
+  return null;
+};
+
+it("bar 1 pages like the game's main bar: a Shift+number page wins over a stance, form or stealth bar", () => {
+  const driver = loggedIn(ACTIONS_ENV).eval('return ns.GetModule("ActionBars").PAGE_DRIVER');
+  expect([driverValue(driver, []), driverValue(driver, ["bonusbar:1"]), driverValue(driver, ["bonusbar:3"])], "page 1, and on page 1 a stance's or form's own page").toEqual(["1", "7", "9"]);
+  expect([driverValue(driver, ["bonusbar:1", "bar:2"]), driverValue(driver, ["bonusbar:3", "bar:6"])], "in a stance or form, Shift+2 and Shift+6 show pages 2 and 6, as the game's main bar does").toEqual(["2", "6"]);
+  expect([driverValue(driver, ["vehicleui", "bar:2"]), driverValue(driver, ["overridebar", "bar:3"]), driverValue(driver, ["shapeshift", "bar:4", "bonusbar:1"])], "a vehicle, override or temporary shapeshift bar still wins").toEqual(["12", "14", "13"]);
+});
