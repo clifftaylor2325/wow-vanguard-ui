@@ -99,6 +99,17 @@ it("modules", () => {
   expect(addon.eval("return ns.ModuleEnabled('Good')") === false, "/fui disable turns a module off").toBeTruthy();
 });
 
+it("modules: a module whose saved settings fail to upgrade is reported, and the modules after it still load", () => {
+  const addon = loggedIn(`
+    ns.Migrate("TESTONLY_Broken", function(saved) return saved.layout >= 2 end)
+    ns.Module("TESTONLY_Broken", { defaults = {}, Enable = function() __broken = true end })
+    ns.Module("TESTONLY_After", { Enable = function() __after = true end })
+  `, { savedVariables: 'ForeverUIDB.profiles = { Default = { TESTONLY_Broken = { layout = "TEST-ONLY" }, DataBars = { layout = "TEST-ONLY" } } }' });
+  expect(addon.eval("return { __broken == nil, __after, ns.GetModule('TESTONLY_Broken').enabled, ns.GetModule('TESTONLY_After').enabled }"), "the broken module is off, the next one loads").toEqual([true, true, false, true]);
+  expect(addon.eval("return { ns.GetModule('DataBars').enabled, ns.GetModule('Tooltips').enabled, ns.GetModule('ClickCast').enabled }"), "a damaged DataBars table stops DataBars only").toEqual([false, true, true]);
+  expect(addon.eval("local t = {} for _, e in ipairs(ns.errors) do t[#t + 1] = e.text:match('^[^:]+') end return t"), "each failure is reported under its module").toEqual(["module DataBars", "module TESTONLY_Broken"]);
+});
+
 it("combat queue", () => {
   const addon = loggedIn();
   addon.eval("__wfgStub.inCombat = true; ns.OutOfCombat(function() __ran = (__ran or 0) + 1 end)");
