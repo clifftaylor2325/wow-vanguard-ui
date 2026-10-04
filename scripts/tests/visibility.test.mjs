@@ -148,9 +148,44 @@ it("menu strip: its Always/On mouseover setting is the visibility setting; In co
   // The menu strip's secure driver, alpha and mouse motion.
   const menu = () => addon.eval("local s = ForeverUI_MenuStrip return { s.__states.visibility, s:GetAlpha(), s.__mouseMotion == true }");
   expect(menu(), "Always by default").toEqual(["show", 1, false]);
-  expect(setRow(addon, "Game menu buttons", '"combat"'), "the row applies at once").toBe(true);
+  expect(setRow(addon, "Bags and game menu", '"combat"'), "the row applies at once").toBe(true);
   expect(menu(), "In combat: the client shows and hides it").toEqual(["[combat] show; hide", 1, false]);
-  setRow(addon, "Game menu buttons", '"mouseover"');
+  setRow(addon, "Bags and game menu", '"mouseover"');
   expect(menu(), "On mouseover, now without a reload").toEqual(["show", 0, true]);
   expect(addon.eval("return ForeverUIDB.profiles.Default.MenuStrip.menu"), "saved where it always was").toBe("mouseover");
+});
+
+it("menu bar: Auto-hide shows it at login and under the mouse, and fades it 10 s after the mouse leaves", () => {
+  const autohide = { savedVariables: 'ForeverUIDB.profiles.Default = { MenuStrip = { menu = "autohide" } }' };
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, autohide);
+  // The bar's alpha.
+  const alpha = () => addon.eval("return ForeverUI_MenuStrip:GetAlpha()");
+  expect([alpha(), addon.eval("return ForeverUI_MenuStrip.__states.visibility")], "shown at login; its secure driver always shows (it fades by alpha)").toEqual([1, "show"]);
+  addon.advance(9.5);
+  expect(alpha(), "still shown at 9.5 s (the test clock moves in quarter seconds)").toBe(1);
+  addon.advance(0.5);
+  expect(alpha(), "faded 10 s after login").toBe(0);
+  addon.hover("CharacterMicroButton");
+  expect(alpha(), "the mouse over it: shown").toBe(1);
+  addon.hover(null);
+  addon.advance(5);
+  expect(alpha(), "the mouse gone: still shown for a while").toBe(1);
+  addon.hover("CharacterMicroButton");
+  addon.hover(null);
+  addon.advance(6);
+  expect(alpha(), "leaving again starts the 10 s over").toBe(1);
+  addon.advance(4.1);
+  expect(alpha(), "then it fades").toBe(0);
+  const modes = addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "more" then
+    for _, row in ipairs(p.rows()) do if row[2] == "Bags and game menu" then local out = {} for i, m in ipairs(row[3]) do out[i] = m[2] end return out end end
+  end end`);
+  expect(modes, "the bar's own choices put Auto-hide after On mouseover").toEqual(["Always", "On mouseover", "Auto-hide after 10 s", "In combat", "Hidden", "When checked below"]);
+  setRow(addon, "Bags and game menu", '"always"');
+  expect(alpha(), "back to Always: shown, with no wait running").toBe(1);
+  setRow(addon, "Bags and game menu", '"autohide"');
+  expect(alpha(), "Auto-hide picked in the options: shown now").toBe(1);
+  addon.advance(10.1);
+  expect(alpha(), "and faded 10 s later").toBe(0);
+  const noTimer = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + "C_Timer = nil", autohide);
+  expect(noTimer.eval("return ForeverUI_MenuStrip:GetAlpha()"), "a client without timers: it fades as On mouseover does").toBe(0);
 });

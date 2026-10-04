@@ -11,7 +11,7 @@ it("saved variables", () => {
   expect(createAddon().eval("return next(ns.Profile()) == nil"), "before ADDON_LOADED the profile is empty").toBe(true);
   const addon = loggedIn("", { firstRun: true });
   const sv = addon.savedVariables();
-  expect(sv.account.version === 1 && typeof sv.account.profiles === "object", "fresh install creates ForeverUIDB").toBeTruthy();
+  expect(sv.account.version === 2 && typeof sv.account.profiles === "object", "fresh install creates ForeverUIDB").toBeTruthy();
   expect(sv.char.profile === "Default", "a new character uses the Default profile").toBeTruthy();
   const kept = loggedIn("", { savedVariables: 'ForeverUIDB = { profiles = { Main = { theme = { accent = { 1, 0, 0 } } } } }\nForeverUICharDB = { profile = "Main" }' });
   expect(kept.eval("return select(1, ns.Theme.Accent())") === 1, "the character's saved profile is used").toBeTruthy();
@@ -61,14 +61,14 @@ it("settings tables are filled once per profile and key", () => {
 it("the account file's version is read and upgraded", () => {
   const spy = "__mig = {} local real = ns.MigrateDB ns.MigrateDB = function(from, to) __mig[#__mig + 1] = { from, to } return real(from, to) end";
   const stamped = loggedIn(spy, { savedVariables: "ForeverUIDB.version = nil" });
-  expect(stamped.eval("return __mig"), "a file without a stamp is upgraded from 0").toEqual([[0, 1]]);
-  expect(stamped.eval("return ForeverUIDB.version"), "and stamped").toBe(1);
+  expect(stamped.eval("return __mig"), "a file without a stamp is upgraded from 0").toEqual([[0, 2]]);
+  expect(stamped.eval("return ForeverUIDB.version"), "and stamped").toBe(2);
   expect(loggedIn(spy).eval("return __mig"), "a current file runs nothing").toEqual({});
   const newer = loggedIn(spy, { savedVariables: "ForeverUIDB.version = 7" });
   expect(newer.eval("return __mig"), "a newer addon's file is left alone").toEqual({});
   expect(newer.eval("return ForeverUIDB.version"), "and never downgraded").toBe(7);
   const fresh = loggedIn(spy, { firstRun: true });
-  expect(fresh.eval("return { #__mig, ForeverUIDB.version }"), "a fresh install is stamped without an upgrade").toEqual([0, 1]);
+  expect(fresh.eval("return { #__mig, ForeverUIDB.version }"), "a fresh install is stamped without an upgrade").toEqual([0, 2]);
   expect(fresh.eval('ns.UpgradeDB(2, function(db) db.marker = "a" end) ns.UpgradeDB(3, function(db) db.marker = db.marker .. "b" end) ns.UpgradeDB(4, function() error("boom") end) local ok = ns.MigrateDB(1, 3) return { ok, ForeverUIDB.marker, ForeverUIDB.version }'), "registered steps run in order and stamp each").toEqual([true, "ab", 3]);
   expect(fresh.eval("local n = #ns.errors local ok = ns.MigrateDB(3, 4) return { ok, ForeverUIDB.version, #ns.errors - n }"), "a failing step is logged, stops the chain and leaves the stamp for a retry").toEqual([false, 3, 1]);
   expect(fresh.eval("return ns.MigrateDB(3, 1)"), "a target below the stamp has nothing to run").toBe(true);
@@ -81,7 +81,7 @@ it("a failing first upgrade step on an unstamped file is retried at the next log
     expect(addon.eval("return ForeverUIDB.version"), "the stamp stays at 0 so the step runs again: " + bad).toBe(0);
   }
   const ok = loggedIn('ns.UpgradeDB(1, function(db) db.ran = true end)', { savedVariables: "ForeverUIDB.version = nil" });
-  expect(ok.eval("return { ForeverUIDB.ran, ForeverUIDB.version }"), "a step that works runs once and stamps").toEqual([true, 1]);
+  expect(ok.eval("return { ForeverUIDB.ran, ForeverUIDB.version }"), "a step that works runs once and stamps").toEqual([true, 2]);
 });
 
 it("modules", () => {
@@ -842,7 +842,7 @@ const NEWER_ENV = `
 `;
 
 it("Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line", () => {
-  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + NEWER_ENV);
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + NEWER_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
   expect(isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneSanctuary"), "the zone name takes its PvP color from C_PvP").toBe(true);
   addon.eval("__pvp = { __secret = true } ns.GetModule('Minimap').UpdateZone()");
   expect(isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "gold"), "a hidden answer is plain gold").toBe(true);

@@ -352,9 +352,10 @@ local function ring(frame, look)
   return pieces
 end
 
--- A soft shadow around frame, behind everything else on it.
-local function shadow(frame)
-  return ring(frame, { texture = "Shadow", size = SHADOW_SIZE, layer = "BACKGROUND", sublevel = -8 })
+-- A soft shadow around frame, behind everything else on it: SHADOW_SIZE
+-- units, or `size` when it is a number (a slot's is smaller).
+local function shadow(frame, size)
+  return ring(frame, { texture = "Shadow", size = type(size) == "number" and size or SHADOW_SIZE, layer = "BACKGROUND", sublevel = -8 })
 end
 
 -- A glow ring around frame (hidden until T.ShowGlow), size units wide.
@@ -487,7 +488,7 @@ local function repaint(frame, entry)
     sizeEdges(p.edges, frame)
   end
   if p.sheen then placeSheen(p.sheen, frame) end
-  if entry.paint then entry.paint(entry) end
+  if entry.paint then entry.paint(entry, frame) end
 end
 
 -- The parts opts ask for: background, edges, sheen (with a background) and shadow.
@@ -497,7 +498,7 @@ local function makeParts(frame, opts)
   if parts.bg then parts.bg:SetAllPoints() end
   parts.edges = not opts.noBorder and edges(frame) or nil
   parts.sheen = parts.bg and not opts.noSheen and sheen(frame) or nil
-  parts.shadow = opts.shadow and shadow(frame) or nil
+  parts.shadow = opts.shadow and shadow(frame, opts.shadow) or nil
   return parts
 end
 
@@ -565,6 +566,77 @@ function T.EditBox(box)
   end
   repaint(box, entry)
   return box
+end
+
+-- How far a slot's soft shadow reaches (units): small, so a row of slots keeps its gaps.
+T.SLOT_SHADOW = 3
+-- How a slot's accent edge changes with the button's state: toward white
+-- (more than 0: the mouse is over it) or toward black (less: it is pressed).
+T.SLOT_STATES = { hover = 0.4, pressed = -0.45 }
+-- Where each side of a ring one pixel inside a frame's border is anchored: { point, x, y } in pixels.
+local INNER = {
+  top = { { "TOPLEFT", 1, -1 }, { "TOPRIGHT", -1, -1 } }, bottom = { { "BOTTOMLEFT", 1, 1 }, { "BOTTOMRIGHT", -1, 1 } },
+  left = { { "TOPLEFT", 1, -1 }, { "BOTTOMLEFT", 1, 1 } }, right = { { "TOPRIGHT", -1, -1 }, { "BOTTOMRIGHT", -1, 1 } },
+}
+
+-- r, g, b of the accent moved `amount` of the way toward white (amount > 0) or black (amount < 0).
+local function shadeAccent(amount)
+  local r, g, b = T.Accent()
+  local to, k = amount > 0 and 1 or 0, math.abs(amount)
+  return r + (to - r) * k, g + (to - g) * k, b + (to - b) * k
+end
+
+-- Places a ring of edge textures one pixel inside frame's border, one pixel thick.
+local function placeInner(e, frame)
+  local px = T.Pixel(frame)
+  for side, points in pairs(INNER) do
+    e[side]:ClearAllPoints()
+    for _, p in ipairs(points) do e[side]:SetPoint(p[1], p[2] * px, p[3] * px) end
+  end
+  sizeEdges(e, frame)
+end
+
+-- Places a one-pixel bevel line two pixels inside frame's top or bottom edge (side "TOP" or "BOTTOM").
+local function placeBevel(t, frame, side)
+  local px = T.Pixel(frame)
+  local y = (side == "TOP" and -2 or 2) * px
+  t:ClearAllPoints()
+  t:SetPoint(side .. "LEFT", 2 * px, y)
+  t:SetPoint(side .. "RIGHT", -2 * px, y)
+  t:SetHeight(px)
+end
+
+-- Paints a slot's accent edge (for its state) and its bevel, at the frame's pixel size.
+local function paintSlot(entry, frame)
+  local p = entry.parts
+  placeInner(p.inner, frame)
+  colorEdges(p.inner, shadeAccent(T.SLOT_STATES[entry.opts.state] or 0))
+  placeBevel(p.lit, frame, "TOP")
+  placeBevel(p.dim, frame, "BOTTOM")
+  T.Tint(p.lit, "sheen")
+  T.Tint(p.dim, "shade")
+end
+
+-- A slot tile for a button (the bag and menu bar): a raised slate fill, a
+-- one-pixel border with a one-pixel accent edge inside it, a light line along
+-- the top and a dark one along the bottom inside that (a bevel), and a small
+-- soft shadow. The accent edge follows the accent and T.SlotState.
+function T.Slot(frame)
+  local entry = painted[frame]
+  if not entry then
+    entry = base(frame, "slot", { raised = true, noSheen = true, shadow = T.SLOT_SHADOW })
+    entry.parts.inner, entry.parts.lit, entry.parts.dim = edges(frame), solid(frame, "BORDER", 1), solid(frame, "BORDER", 1)
+    entry.paint = paintSlot
+  end
+  repaint(frame, entry)
+  return frame
+end
+
+-- Sets a slot's state ("hover", "pressed", or nil for neither) and repaints its accent edge.
+function T.SlotState(frame, state)
+  local entry = painted[frame]
+  entry.opts.state = state
+  repaint(frame, entry)
 end
 
 -- The painted close glyph: the Close icon in the secondary text color.
