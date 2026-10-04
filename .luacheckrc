@@ -63,4 +63,6 @@ read_globals = {
   "UnitAttackSpeed",
   -- F2 Vendor memory: a merchant item's ID, and the zone and subzone you're in.
   "GetMerchantItemID", "GetZoneText", "GetSubZoneText",
+  -- F4 Chat watch: the game's whisper call, and its older name.
+  "ChatFrameUtil", "ChatFrame_SendTell",
 }

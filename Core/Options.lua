@@ -243,6 +243,7 @@ O.MODULE_INFO = {
   Bags = { "Bags", "One combined bag, in sections by kind of item, with a Sort button." },
   Merchant = { "Merchant helpers", "Repair, sell gray items, and a quieter error line." },
   ChatExtras = { "Chat extras", "Clickable web links in chat, and a Copy button for the recent chat." },
+  ChatWatch = { "Chat watch", "A sound and a toast when a phrase you watch for is said in chat; click to whisper." },
   MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map." },
   AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels (each off until you switch it on)." },
   QuestDialog = { "Quest dialog", "Talking to quest givers in ForeverUI's own dialog: numbered lines, reward cards, keys 1-9 and Space." },
@@ -562,6 +563,25 @@ local function chatRows()
   }
 end
 
+-- Chat watch's switches: the channels it reads, its sound and its toast.
+local function chatWatchSwitches(CW)
+  return {
+    check("Numbered channels (General, Trade, LFG)", CW.ChannelSetting("channel")),
+    check("Say", CW.ChannelSetting("say")), check("Yell", CW.ChannelSetting("yell")), check("Guild", CW.ChannelSetting("guild")),
+    check("Party and raid", CW.ChannelSetting("party", "raid")), check("Whispers", CW.ChannelSetting("whisper")),
+    check("Sound", setting("ChatWatch", "sound")), check("Toast", setting("ChatWatch", "toast")),
+  }
+end
+
+-- Chat watch: add a phrase, a Remove button per phrase, then the switches.
+local function chatWatchRows()
+  local CW = ns.GetModule("ChatWatch")
+  local rows = { { "header", "Chat watch" }, { "text", "Phrases to watch for: a sound and a toast when one is said; click the toast to whisper." },
+    { "button", "Add a phrase", function() ns.AskText("Watch for", CW.AddFromDialog, "Add") end } }
+  for _, p in ipairs(moduleSettings("ChatWatch").phrases) do rows[#rows + 1] = { "button", "Remove: " .. p, function() CW.Remove(p) end } end
+  return append(rows, chatWatchSwitches(CW))
+end
+
 -- The minimap drawer and the auto-accept switches.
 local function comfortRows()
   return {
@@ -628,7 +648,7 @@ local function morePageRows()
   append(rows, gameToolRows())
   append(rows, merchantRows())
   append(append(rows, errandRows()), prepRows())
-  append(append(rows, chatRows()), comfortRows())
+  append(append(append(rows, chatRows()), chatWatchRows()), comfortRows())
   return append(rows, tooltipRows())
 end
 
