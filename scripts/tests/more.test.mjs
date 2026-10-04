@@ -1056,6 +1056,26 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
   expect(block(bare, "dps").shown, "a client without the damage meter shows nothing").toBe(false);
 });
 
+it("the info strip: your place in the last fight's DPS, in a group", () => {
+  const addon = loggedIn(UNITS_ENV + DPS_ENV + CLICK_LUA);
+  expect(block(addon, "rank").shown, "off until you turn it on").toBe(false);
+  addon.slash("");
+  addon.eval('__click("Bars, map, chat")');
+  addon.eval(`__click("Your place in the last fight's DPS")`);
+  expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "text2"), addon.eval("return ForeverUI_InfoStrip:GetHeight()")], "second of two, on the fourth row").toEqual(["#2 of 2", true, 68]);
+  addon.eval("__dps.combatSources = { __dps.combatSources[2], __dps.combatSources[1], { isLocalPlayer = false } }");
+  addon.fire("PLAYER_REGEN_ENABLED");
+  expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "gold")], "at the top of three, in gold").toEqual(["#1 of 3", true]);
+  // Ends a fight after lua and says whether the place shows.
+  const shown = (lua) => { addon.eval(lua); addon.fire("DAMAGE_METER_RESET"); return block(addon, "rank").shown; };
+  expect([shown("__dps.combatSources = { __dps.combatSources[1] }"), shown("__dps.combatSources = { { isLocalPlayer = false }, { isLocalPlayer = false } }"), shown("__dps = { __secret = true }")],
+    "alone, not in the list, or a hidden fight: nothing shows").toEqual([false, false, false]);
+  const bare = loggedIn(UNITS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { InfoStrip = { rank = true } } }" });
+  bare.eval("Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } } C_DamageMeter = { GetCombatSessionFromType = function() __asked = true return { combatSources = { { isLocalPlayer = true }, {} } } end }");
+  bare.fire("PLAYER_REGEN_ENABLED");
+  expect([block(bare, "rank").shown, bare.eval("return __asked == nil")], "a client whose meter had no enums at login is not asked").toEqual([false, true]);
+});
+
 // TEST-ONLY group extras: a raid tank (raid1) targeting the boar, and a party pet targeting nothing.
 const GROUP_EXTRAS_ENV = `
   RegisterAttributeDriver = function(frame, attr, driver) frame.__drivers = frame.__drivers or {}; frame.__drivers[attr] = driver end
@@ -1905,6 +1925,36 @@ it("Edit Mode: a game frame ForeverUI hides or replaces gets no handle, every ot
   expect(handles(kept).slice(0, 2), "with the game's bars and unit frames kept, their handles stay").toEqual([true, true]);
   const plain = loggedIn(UNITS_ENV + TIDY_ENV + RAID_ENV + SYSTEMS_ENV + "hooksecurefunc = nil");
   expect(plain.eval("return PlayerFrame.Selection:IsShown()"), "a client without hooksecurefunc leaves handles alone").toBe(true);
+});
+
+// TEST-ONLY: a client with the Cooldown Manager (switched off), and a cooldown on the essential row's item.
+const CDM_ENV = `C_CooldownViewer = { IsCooldownViewerAvailable = function() return true end }
+  local i = EssentialCooldownViewer.items[1] i.Cooldown = CreateFrame("Cooldown", nil, i)
+`;
+
+it("the game's tools: a switch shows the Cooldown Manager's essential row between the frames, timers in the theme font", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + CDM_ENV + CLICK_LUA);
+  const timer = addon.eval("local fs = EssentialCooldownViewer.items[1].Cooldown:GetCountdownFontString() return { fs.__font[2], fs.__font[3] }");
+  expect(timer, "the cooldown timer in the theme's timer font").toEqual([addon.eval('return ns.Theme.RoleSize("cooldown")'), "OUTLINE"]);
+  expect(addon.eval('return GetCVar("cooldownViewerEnabled") == nil'), "off by default: the game's setting is left alone").toBe(true);
+  addon.slash("");
+  addon.eval('__click("Bars, map, chat")');
+  addon.eval(`__click("Show the game's Cooldown Manager")`);
+  expect(addon.eval('return GetCVar("cooldownViewerEnabled")'), "ticked: the game's Cooldown Manager is on").toBe("1");
+  addon.eval(`__click("Show the game's Cooldown Manager")`);
+  expect(addon.eval('return GetCVar("cooldownViewerEnabled")'), "unticked: off again").toBe("0");
+  const on = loggedIn(UNITS_ENV + TOOLS_ENV + CDM_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { GameTools = { essential = true } } }" });
+  expect([on.eval('return GetCVar("cooldownViewerEnabled")'), chatHas(on, /Cooldown Manager is off/), on.eval("return EssentialCooldownViewer.__points.CENTER.rel == ForeverUI_EssentialCooldownViewerSpot")],
+    "switched on at login: on, no hint, the essential row on its spot between the frames").toEqual(["1", false, true]);
+  const screen = on.screen();
+  expect(screen.map((f) => f.name)).toEqual(expect.arrayContaining(["ForeverUI_EssentialCooldownViewerSpot", "ForeverUI_player", "ForeverUI_target"]));
+  const bad = [];
+  // A game frame filling its own spot (ForeverUI_<name>Spot) is meant to cover it.
+  const ownSpot = (a, b) => b.name === `ForeverUI_${a.name}Spot` || a.name === `ForeverUI_${b.name}Spot`;
+  for (const a of screen) for (const b of screen) if (a.name < b.name && !ownSpot(a, b) && a.rect.left < b.rect.right && b.rect.left < a.rect.right && a.rect.bottom < b.rect.top && b.rect.bottom < a.rect.top) bad.push(`${a.name} x ${b.name}`);
+  expect(bad, "with it on, nothing in the layout covers anything else").toEqual([]);
+  const old = loggedIn(UNITS_ENV + TOOLS_ENV + "C_CooldownViewer = nil\n", { savedVariables: "ForeverUIDB.profiles = { Default = { GameTools = { essential = true } } }" });
+  expect(old.eval('return GetCVar("cooldownViewerEnabled") == nil'), "a client without the Cooldown Manager is left alone").toBe(true);
 });
 
 it("the game's tools: one hint when the Cooldown Manager is off", () => {

@@ -230,7 +230,7 @@ O.MODULE_INFO = {
   ActionBars = { "Action bars", "Eight bars with their own size, layout and visibility." },
   SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, places the pet and stance bars, and adds the vehicle exit." },
   Minimap = { "Minimap", "A square minimap with the zone and coordinates." },
-  InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo or soul shards and the time, under the minimap, your XP and gold per hour while you level, and your DPS if you like." },
+  InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo or soul shards and the time, under the minimap, your XP and gold per hour while you level, and your DPS and its place if you like." },
   AfkScreen = { "AFK screen", "While you're away, the screen dims to a card with your character, zone, time away and XP." },
   MenuStrip = { "Menu and quest tracker", "The game's menu buttons (as ForeverUI icons) and bag buttons in a corner strip, and the quest tracker under the info strip." },
   Chat = { "Chat", "Themed chat windows and tabs." },
@@ -408,11 +408,16 @@ local function windowRows()
   }
 end
 
+-- get/set for showing the game's Cooldown Manager, which turns it on or off at once.
+local function cooldownManagerSetting()
+  return liveSetting("GameTools", "essential", function() ns.GetModule("GameTools").SetCooldownManager(moduleSettings("GameTools").essential) end)
+end
+
 -- The game's own tools: the Cooldown Manager and the damage meter (after a reload).
 local function gameToolRows()
   return {
     { "header", "The game's tools" },
-    check("Cooldown Manager in the ForeverUI look (reload)", setting("GameTools", "cooldowns", true)),
+    check("Show the game's Cooldown Manager: its essential row between your frames", cooldownManagerSetting()), check("Cooldown Manager in the ForeverUI look (reload)", setting("GameTools", "cooldowns", true)),
     check("Damage meter in the ForeverUI look (reload)", setting("GameTools", "meter", true)),
     check("Place them to fit the layout; off leaves them to Edit Mode (reload)", setting("GameTools", "place", true)),
     check("Loss of control in the ForeverUI look, above your character (reload)", setting("GameAlerts", "lossOfControl", true)),
@@ -497,7 +502,7 @@ local function stripRows()
     check("Soul shards (warlocks)", stripSetting("shards")),
     check("XP per hour this session", stripSetting("xprate")), check("Time to the next level", stripSetting("leveltime")),
     check("Gold per hour this session", stripSetting("goldrate")),
-    check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")),
+    check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")), check("Your place in the last fight's DPS, in a group", stripSetting("rank")),
   }
 end
 

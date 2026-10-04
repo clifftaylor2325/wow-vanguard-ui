@@ -2,7 +2,9 @@
 -- Centered layout:
 --   * the Cooldown Manager's rows sit in the gap between the player and
 --     target frames, above the swing timer, with square icons in thin borders
---     and their numbers in the theme font;
+--     and their numbers (charges, stacks, cooldown timers) in the theme font;
+--     one switch (off by default) turns the game's Cooldown Manager on, so its
+--     essential row shows there without a trip to the game's options;
 --   * the damage meter sits in the bottom-right corner above the menu strip,
 --     on a flat panel with theme bars and text.
 -- Each one stays the game's own (Edit Mode settings, what it tracks, how it
@@ -15,7 +17,7 @@ local ADDON, ns = ...
 
 local T = ns.Theme
 
-local GT = ns.Module("GameTools", { defaults = { cooldowns = true, meter = true, place = true, cdmHint = true } })
+local GT = ns.Module("GameTools", { defaults = { cooldowns = true, meter = true, place = true, cdmHint = true, essential = false } })
 
 -- Each placed frame's mover: key, label, default point, and the spot's size
 -- (UI units; the rows fit the 260-unit gap between the unit frames).
@@ -80,6 +82,13 @@ local function frameIcon(item, icon)
   icon:SetPoint("BOTTOMRIGHT", item, "BOTTOMRIGHT", -px, px)
 end
 
+-- An item's cooldown timer numbers in the theme's timer font (where the client hands them over).
+local function themeTimer(item)
+  local cd = item.Cooldown
+  local fs = type(cd) == "table" and ns.Client.Has("countdownText") and cd:GetCountdownFontString()
+  if fs then T.Text(fs, "cooldown", "white") end
+end
+
 -- One cooldown or buff item in the theme: icon cropped and framed (a buff bar
 -- gets the theme's bar instead), its numbers in the theme font. Once per item.
 function GT.SkinItem(item)
@@ -90,6 +99,7 @@ function GT.SkinItem(item)
   if type(item.Bar) == "table" then T.StyleBar(item.Bar)
   elseif type(icon) == "table" and icon.SetPoint then frameIcon(item, icon) end
   for _, fs in ipairs(GT.Texts(item)) do T.Text(fs, item.Bar and "barSmall" or "auraCount", false) end
+  if not item.Bar then themeTimer(item) end
 end
 
 -- Every item a cooldown row shows right now, in the theme.
@@ -170,9 +180,18 @@ function GT.Hint(settings)
   ns.Chat(GT.HINT)
 end
 
+-- Turns the game's Cooldown Manager on or off (its own setting, the one its
+-- Options checkbox sets), where the client has one; out of combat.
+function GT.SetCooldownManager(on)
+  local set = C_CVar and C_CVar.SetCVar
+  if not ns.Client.Has("cooldownViewer") or type(set) ~= "function" then return end
+  ns.OutOfCombat(function() set("cooldownViewerEnabled", on and "1" or "0") end, "cooldownmanager")
+end
+
 -- Module entry point (Core/Modules.lua): style what's switched on, then place
 -- it (out of combat: the cooldown rows are laid out by the game's frame manager).
 function GT.Enable(settings)
+  if settings.essential then GT.SetCooldownManager(true) end
   if settings.cooldowns then ns.On("PLAYER_ENTERING_WORLD", function() GT.Hint(settings) end) end
   if settings.cooldowns then for _, name in ipairs(GT.VIEWERS) do watchViewer(name) end end
   if settings.meter then watchMeter() end
