@@ -1247,6 +1247,8 @@ C_CooldownViewer = {
 C_DamageMeter = {
   -- The last fight's session, when a test sets world.damageSession.
   GetCombatSessionFromType = function() return world.damageSession end,
+  -- How long the last fight lasted, when a test sets world.damageSeconds.
+  GetSessionDurationSeconds = function() return world.damageSeconds end,
 }
 
 -- Chat and the game's frames ----------------------------------------------------------------------
