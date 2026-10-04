@@ -24,6 +24,8 @@ local RF = ns.Module("RaidFrames", {
 
 -- Group size -> how large the grid is drawn when compact: up to 10 full size, up to 25 at 80%, more at 72%.
 RF.COMPACT = { { 10, 1 }, { 25, 0.8 }, { 40, 0.72 } }
+-- How large the grid is drawn now (RF.Fit sets it).
+RF.tileScale = 1
 
 local MAX_UNITS = 40
 -- The class color's share of a softened bar; the rest is the panel color.
@@ -107,6 +109,15 @@ function RF.Soften(r, g, b)
   return r * SOFT + pr * (1 - SOFT), g * SOFT + pg * (1 - SOFT), b * SOFT + pb * (1 - SOFT)
 end
 
+-- The status line's font size in tile units, for a tile h tall drawn at scale:
+-- the barSmall role grown or shrunk with the tile's height (against the
+-- default) and the grid's scale, but never under the theme's smallest text
+-- (tiny) on screen, so the missing health on a 40-player grid stays readable.
+function RF.StatusSize(h, scale)
+  local onScreen = math.floor(T.RoleSize("barSmall") * h / RF.defaults.height * scale + 0.5)
+  return math.max(T.RoleSize("tiny"), onScreen) / scale
+end
+
 -- Updating ---------------------------------------------------------------------------------
 
 -- The accent as an { r, g, b } for a tile's edge: it reads the current accent
@@ -182,13 +193,23 @@ local function tileUnit(b)
   return nil
 end
 
--- Everything on one tile: name, role, health, power, edge and every module's
--- part (RF.updateHooks). For a roster change, a new tile, or a setting.
+-- The 1 px line in the unit's class color along the tile's top, in the
+-- softened look only (softened, close class colors such as shaman and mage
+-- blues read alike). Its class doesn't change with health, so it is painted here only.
+local function paintTopLine(b, unit)
+  local on = RF.settings.look == "soft"
+  b.topLine:SetShown(on)
+  if on then b.topLine:SetVertexColor(unitFrames().HealthColor(unit)) end
+end
+
+-- Everything on one tile: name, role, health, power, edge, top line and every
+-- module's part (RF.updateHooks). For a roster change, a new tile, or a setting.
 function RF.Update(b)
   local unit = tileUnit(b)
   if not unit then return end
   b.name:SetText(UnitName(unit))
   updateRole(b, unit)
+  paintTopLine(b, unit)
   updateHealth(b, unit)
   RF.UpdatePower(b, unit)
   RF.PaintEdge(b, unit)
@@ -276,30 +297,35 @@ local function strip(w, h)
   return icon, per, h - 1 - RF.POWER - 1 - icon
 end
 
--- The name row and status line: status under the name when it fits above the
--- icon strip, else at the right of the name row. The fifth field is its justification.
-local function textZones(z, w, top)
-  local nameH, statusH = lineHeight("barName"), lineHeight("barSmall")
-  if top - (4 + nameH) >= statusH then
-    z.name, z.status = { 4, 4, w - 20, nameH }, { 4, 4 + nameH, w - 8, statusH, "CENTER" }
+-- The name row and status line (its text `size` tall, a pixel of air each
+-- side): status under the name when it fits above the icon strip, else at the
+-- right of the name row, no taller than the room above the strip. The fifth
+-- field is its justification; z.statusSize is the size it ends up with.
+local function textZones(z, w, top, size)
+  local nameH = lineHeight("barName")
+  if top - (4 + nameH) >= size + 2 then
+    z.name, z.status = { 4, 4, w - 20, nameH }, { 4, 4 + nameH, w - 8, size + 2, "CENTER" }
   else
-    z.name, z.status = { 4, 4, w - 52, nameH }, { w - 44, 4, 28, statusH, "RIGHT" }
+    size = math.min(size, top - 6)
+    z.name, z.status = { 4, 4, w - 52, nameH }, { w - 44, 4, 28, size + 2, "RIGHT" }
   end
+  z.statusSize = size
 end
 
--- Every zone of a w x h tile.
-function RF.Zones(w, h)
+-- Every zone of a w x h tile, drawn at scale (1 when not given): the status
+-- text keeps a readable size on screen (RF.StatusSize), so the texts make room for it.
+function RF.Zones(w, h, scale)
   local icon, per, top = strip(w, h)
   local rowW = per * (icon + 1) - 1
   local z = { icon = icon, per = per, missing = { w - 3 - CORNER, 3, CORNER, CORNER }, power = { 1, h - 1 - RF.POWER, w - 2, RF.POWER } }
   z.debuffs, z.hots = { 2, top, rowW, icon }, { w - 2 - rowW, top, rowW, icon }
-  textZones(z, w, top)
+  textZones(z, w, top, RF.StatusSize(h, scale or 1))
   return z
 end
 
--- The zones of the tiles at the set size.
+-- The zones of the tiles at the set size and the grid's current scale.
 function RF.TileZones()
-  return RF.Zones(RF.settings.width, RF.settings.height)
+  return RF.Zones(RF.settings.width, RF.settings.height, RF.tileScale)
 end
 
 -- Building ---------------------------------------------------------------------------------
@@ -318,23 +344,53 @@ local function addRoleMark(b, z)
   end
 end
 
--- Top row: the role mark, then the name, which stops at its zone's edge and
--- ends in "..." when it's too long (outlined over the bar).
+-- Top row: the role mark, then the name, which stops at its zone's edge
+-- (placeTexts) and ends in "..." when it's too long (outlined over the bar).
 local function addTopRow(b, z)
   addRoleMark(b, z)
   b.name = T.Text(b.texts:CreateFontString(nil, "OVERLAY"), "barName")
   b.name:SetPoint("TOPLEFT", b.role, "TOPRIGHT", 3, 1)
-  b.name:SetPoint("TOPRIGHT", b, "TOPLEFT", z.name[1] + z.name[3], -z.name[2])
   b.name:SetJustifyH("LEFT")
   b.name:SetWordWrap(false)
 end
 
--- The status line: Dead / Offline or the missing health.
-local function addStatus(b, z)
-  b.status = T.Text(b.texts:CreateFontString(nil, "OVERLAY"), "barSmall", "text2")
+-- The class-colored line along the health bar's top (sized by placeTexts,
+-- painted by paintTopLine), under the aggro strip (Modules/RaidHealing.lua),
+-- which covers it while the player has aggro.
+local function addTopLine(b)
+  b.topLine = T.Snap(b.health:CreateTexture(nil, "OVERLAY", nil, -1))
+  b.topLine:SetTexture(T.WHITE)
+  b.topLine:SetPoint("TOPLEFT", b.health, "TOPLEFT")
+  b.topLine:SetPoint("TOPRIGHT", b.health, "TOPRIGHT")
+  b.topLine:Hide()
+end
+
+-- Lays a tile's texts out in its zones: where the name stops, the status
+-- line's spot, width, justification and size, and the top line one screen
+-- pixel tall at the grid's scale. Again whenever that scale changes.
+local function placeTexts(b, z)
+  b.name:SetPoint("TOPRIGHT", b, "TOPLEFT", z.name[1] + z.name[3], -z.name[2])
+  b.status:ClearAllPoints()
   b.status:SetPoint("TOPLEFT", b, "TOPLEFT", z.status[1], -z.status[2])
   b.status:SetWidth(z.status[3])
   b.status:SetJustifyH(z.status[5])
+  T.TextSize(b.status, z.statusSize)
+  b.topLine:SetHeight(T.Pixel(b))
+end
+
+-- The tile's texts: the top row, the status line (Dead / Offline or the
+-- missing health) and the top line, laid out in their zones.
+local function addTexts(b, z)
+  addTopRow(b, z)
+  b.status = T.Text(b.texts:CreateFontString(nil, "OVERLAY"), "barSmall", "text2")
+  addTopLine(b)
+  placeTexts(b, z)
+end
+
+-- Lays every tile's texts out again for the grid's current scale (out of combat).
+function RF.PlaceAllTexts()
+  local z = RF.TileZones()
+  for _, b in ipairs(RF.buttons) do placeTexts(b, z) end
 end
 
 -- The layer above everything on the tile (auras included) for marks, and a
@@ -374,8 +430,7 @@ local function addParts(b)
   b.health:SetPoint("TOPLEFT", px, -px)
   b.health:SetPoint("BOTTOMRIGHT", -px, px)
   addTextLayer(b)
-  addTopRow(b, z)
-  addStatus(b, z)
+  addTexts(b, z)
   addPower(b)
   addOverlay(b)
 end
@@ -523,14 +578,17 @@ local function headerPoint()
   return point:find("LEFT") and "BOTTOMLEFT" or point:find("RIGHT") and "BOTTOMRIGHT" or "BOTTOM"
 end
 
--- Scales the grid to the group's size and pins it to the holder (out of combat).
+-- Scales the grid to the group's size, pins it to the holder and lays the
+-- tiles' texts out for that scale (out of combat).
 function RF.Fit()
   if not RF.header then return end
   local n = type(GetNumGroupMembers) == "function" and ns.PlainNumber(GetNumGroupMembers()) or 0
   ns.OutOfCombat(function()
-    RF.header:SetScale(RF.Scale(n or 0))
+    RF.tileScale = RF.Scale(n or 0)
+    RF.header:SetScale(RF.tileScale)
     RF.header:ClearAllPoints()
     RF.header:SetPoint(headerPoint(), RF.holder, headerPoint())
+    RF.PlaceAllTexts()
   end, "raidfit")
 end
 
@@ -581,4 +639,6 @@ function RF.Enable(settings)
   for e, fn in pairs(UNIT_EVENTS) do ns.On(e, fn) end
   for e, part in pairs(TILE_EVENTS) do ns.On(e, function() RF.EachTile(RF[part]) end) end
   for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD" }) do ns.On(e, RF.RosterChanged) end
+  -- A new text size or UI scale: the texts' sizes and the top line's pixel follow.
+  T.OnChanged(function() ns.OutOfCombat(RF.PlaceAllTexts, "raidtexts") end)
 end

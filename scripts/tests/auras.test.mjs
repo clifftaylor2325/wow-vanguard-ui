@@ -110,11 +110,13 @@ it("raid tile zones never overlap", () => {
     for _, scale in ipairs({ 1, 1.2 }) do
       ns.Theme.Settings().textScale = scale
       for _, size in ipairs({ { 72, 36 }, { 90, 40 }, { 100, 48 }, { 125, 60 } }) do
-        local z = RF.Zones(size[1], size[2])
-        for i, a in ipairs(names) do
-          if not inside(z[a], size[1], size[2]) then out[#out + 1] = a .. " leaves the tile at " .. size[1] .. "x" .. size[2] end
-          for j = i + 1, #names do
-            if hit(z[a], z[names[j]]) then out[#out + 1] = a .. "/" .. names[j] .. " at " .. size[1] .. "x" .. size[2] .. " scale " .. scale end
+        for _, grid in ipairs({ 1, 0.8, 0.72 }) do
+          local z, at = RF.Zones(size[1], size[2], grid), size[1] .. "x" .. size[2] .. " text scale " .. scale .. " grid " .. grid
+          for i, a in ipairs(names) do
+            if not inside(z[a], size[1], size[2]) then out[#out + 1] = a .. " leaves the tile at " .. at end
+            for j = i + 1, #names do
+              if hit(z[a], z[names[j]]) then out[#out + 1] = a .. "/" .. names[j] .. " at " .. at end
+            end
           end
         end
       end

@@ -654,6 +654,8 @@ T.ROLES = {
 -- Every font string styled with a role: string -> role name. Weak, so text
 -- that gets collected doesn't stay; T.RefreshText re-fonts them all.
 local styled = setmetatable({}, { __mode = "k" })
+-- Styled strings drawn at a size of their own (T.TextSize): string -> size. Weak too.
+local sizes = setmetatable({}, { __mode = "k" })
 
 -- A size after the text scale setting.
 function T.ScaledSize(size)
@@ -686,9 +688,17 @@ function T.ApplyRole(fs, role)
   local r = T.ROLES[role]
   local path, outline = T.Font(r[2])
   if T.HEADING_ROLES[role] then path = T.HeadingFont() or path end
-  fs:SetFont(path, roleSize(r), r[3] or outline)
+  fs:SetFont(path, sizes[fs] or roleSize(r), r[3] or outline)
   fs:SetShadowOffset(r[3] and 0 or 1, r[3] and 0 or -1)
   fs:SetShadowColor(T.RGB("textShadow"))
+end
+
+-- Draws a font string styled with a role at a size of its own, which the
+-- caller works out from the roles' sizes (T.RoleSize); kept when the text is
+-- refreshed. nil puts the role's size back.
+function T.TextSize(fs, size)
+  sizes[fs] = size
+  T.ApplyRole(fs, styled[fs])
 end
 
 -- Re-fonts every string styled with a role (after a font or text size change).
