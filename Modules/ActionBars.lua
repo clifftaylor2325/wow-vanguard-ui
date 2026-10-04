@@ -57,11 +57,12 @@ local BARS = {
 -- The bottom stack starts this far up (over the data bars); the bars sit BAR_GAP apart.
 local STACK_BASE, BAR_GAP = 24, 2
 
--- Bar 1's page for each state: vehicle/possess, override, shapeshift,
--- dragonriding, class bonus bars (stances, stealth, forms), then Shift+number pages.
-AB.PAGE_DRIVER = "[vehicleui][possessbar] 12; [overridebar] 14; [shapeshift] 13; [bonusbar:5] 11; "
-  .. "[bonusbar:1] 7; [bonusbar:2] 8; [bonusbar:3] 9; [bonusbar:4] 10; "
-  .. "[bar:2] 2; [bar:3] 3; [bar:4] 4; [bar:5] 5; [bar:6] 6; 1"
+-- Bar 1's page for each state: vehicle/possess, override, shapeshift, then
+-- Shift+number pages, then (on page 1 only, as the game's main bar does)
+-- dragonriding and the class bonus bars (stances, stealth, forms).
+AB.PAGE_DRIVER = "[vehicleui][possessbar] 12; [overridebar] 14; [shapeshift] 13; "
+  .. "[bar:2] 2; [bar:3] 3; [bar:4] 4; [bar:5] 5; [bar:6] 6; "
+  .. "[bonusbar:5] 11; [bonusbar:1] 7; [bonusbar:2] 8; [bonusbar:3] 9; [bonusbar:4] 10; 1"
 
 -- Runs in the secure environment when the page changes: re-points each button.
 AB.ON_PAGE = [[
