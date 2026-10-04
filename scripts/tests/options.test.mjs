@@ -420,13 +420,13 @@ it("options: the General page's sample unit frame and button follow the accent, 
     return { u.health:GetStatusBarTexture():GetTexture(), u.power:GetStatusBarTexture():GetTexture(), font, size, b.glow[1].__vertexColor, b.glow[1]:IsShown(),
       u.name:GetText(), u.value:GetText(), b.hotkey:GetText(), b.count:GetText() } end end`);
   const first = sample();
-  expect([first[0], first[1], first[3], first.slice(5)], "a unit frame with the Forever bars, the name at 13, and a button with its key, count and glow")
-    .toEqual(["Interface\\AddOns\\ForeverUI\\Media\\Textures\\Bar", "Interface\\AddOns\\ForeverUI\\Media\\Textures\\Bar", 13, [true, "<name>", "72%", "1", "5"]]);
+  expect([first[0], first[1], first[3], first.slice(5)], "a unit frame with the Forever bars, the name at 12, and a button with its key, count and glow")
+    .toEqual(["Interface\\AddOns\\ForeverUI\\Media\\Textures\\Bar", "Interface\\AddOns\\ForeverUI\\Media\\Textures\\Bar", 12, [true, "<name>", "72%", "1", "5"]]);
   expect(isTok(addon, first[4], "accent"), "the glow is in the accent").toBe(true);
   addon.eval("ns.Theme.SetAccent(ns.Theme.PRESETS.fel[1], ns.Theme.PRESETS.fel[2], ns.Theme.PRESETS.fel[3])");
   expect(sample()[4].slice(0, 3), "a new accent shows at once").toEqual(addon.eval("return ns.Theme.PRESETS.fel").slice(0, 3));
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.label and w.label.__text == "Text size" and w:IsVisible() then w.set(1.3) w:Refresh() end end`);
-  expect(sample()[3], "so does the text size (13 at 130%)").toBe(17);
+  expect(sample()[3], "so does the text size (12 at 130%)").toBe(16);
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Font" and w:IsVisible() then w.dropdown.set("client") end end`);
   expect(sample()[2], "and the font").toBe(addon.eval("return STANDARD_TEXT_FONT or 'Fonts\\\\FRIZQT__.TTF'"));
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Bar texture" and w:IsVisible() then w.dropdown.set("TEST-ONLY Bar") end end`);
