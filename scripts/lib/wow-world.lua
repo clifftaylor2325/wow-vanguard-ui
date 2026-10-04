@@ -1254,6 +1254,223 @@ C_DamageMeter = {
   GetSessionDurationSeconds = function() return world.damageSeconds end,
 }
 
+-- The auction house --------------------------------------------------------------------------------
+-- C_AuctionHouse as Blizzard_APIDocumentationGenerated/AuctionHouseDocumentation.lua has it, with
+-- the ItemLocation and C_Cursor stand-ins it takes. The test is the server: what a query would
+-- bring back sits in world.ah, a query is only recorded (world.ah.queries, { fn, args }), and the
+-- test fires the result event itself (world.fireAuctionEvents fires every one).
+--   browse = { BrowseResultInfo, ... }                items[itemID] = { ItemSearchResultInfo, ... }
+--   commodities[itemID] = { CommoditySearchResultInfo, ... }
+--   replicate = { { count, buyoutPrice, itemID, ... }, ... }  rows by GetReplicateItemInfo's return
+--     names, read 0-based as the client's; world.ah.reads counts the reads
+--   owned = { OwnedAuctionInfo, ... }; ready and copper (true unless set false); needsConfirm (a
+--   post the client wants confirmed); deposit (copper per item per duration step); cancelCost;
+--   noCancel[auctionID]; browseFull (false: more browse results to ask for).
+-- The calls the client restricts to a hardware event (HasRestrictions: PostItem, PostCommodity,
+-- ConfirmPostItem, ConfirmPostCommodity, CancelAuction, PlaceBid, StartCommoditiesPurchase) are
+-- logged in world.ah.restricted as { fn, args, clicked, path }: clicked says whether a click was
+-- running (stub.click), path is the Lua stack that made the call.
+-- world.items[id].commodity = true makes an item a commodity, .noAuction one the house won't take,
+-- .pending one whose item key info the client hasn't loaded yet.
+
+Enum.ItemCommodityStatus = { Unknown = 0, Item = 1, Commodity = 2 }
+Enum.AuctionHouseSortOrder = { Price = 0, Name = 1, Level = 2, Bid = 3, Buyout = 4, TimeRemaining = 5 }
+Enum.AuctionStatus = { Active = 0, Sold = 1 }
+
+-- A fresh auction house with nothing listed.
+local function emptyAuctionHouse()
+  return { browse = {}, items = {}, commodities = {}, replicate = {}, owned = {}, queries = {}, restricted = {},
+    reads = 0, deposit = 15, cancelCost = 0, noCancel = {} }
+end
+world.ah = emptyAuctionHouse()
+
+-- Clicks are hardware events: stub.hardware counts the clicks running now.
+stub.hardware = 0
+local rawClick = stub.click
+-- A click, counted while it runs.
+function stub.click(...)
+  stub.hardware = stub.hardware + 1
+  rawClick(...)
+  stub.hardware = stub.hardware - 1
+end
+
+-- A query the addon may send at any time: recorded as { fn, args }.
+local function query(name)
+  return function(...) table.insert(world.ah.queries, { fn = name, args = { ... } }) end
+end
+
+-- A restricted call: logged with whether a click was running and the code path that made it;
+-- a post answers world.ah.needsConfirm (true: the client wants the post confirmed).
+local function restricted(name)
+  return function(...)
+    table.insert(world.ah.restricted, { fn = name, args = { ... }, clicked = stub.hardware > 0, path = debug.traceback("", 2) })
+    if name == "PostItem" or name == "PostCommodity" then return world.ah.needsConfirm == true end
+  end
+end
+
+-- ItemLocation (Blizzard_ObjectAPI/Mainline/ItemLocation.lua): a bag and slot in world.bags.
+ItemLocation = {}
+local itemLocationMixin = {}
+-- Its bag and slot, whether it names one, forgetting it, and whether an item is there.
+function itemLocationMixin:GetBagAndSlot() return self.bagID, self.slotIndex end
+function itemLocationMixin:IsBagAndSlot() return self.bagID ~= nil and self.slotIndex ~= nil end
+function itemLocationMixin:Clear() self.bagID, self.slotIndex = nil, nil end
+function itemLocationMixin:IsValid() return C_Item.DoesItemExist(self) end
+-- The location of a bag slot.
+function ItemLocation:CreateFromBagAndSlot(bag, slot)
+  return setmetatable({ bagID = bag, slotIndex = slot }, { __index = itemLocationMixin })
+end
+
+-- The bag entry at a location, or nil.
+local function itemAtLocation(loc)
+  local bag, slot = loc and loc.bagID, loc and loc.slotIndex
+  return bag and (world.bags[bag] or {})[slot] or nil
+end
+-- C_Item's location calls: whether an item is there, its ID, stack size and icon.
+function C_Item.DoesItemExist(loc) return itemAtLocation(loc) ~= nil end
+function C_Item.GetItemID(loc) local it = itemAtLocation(loc) return it and it.itemID end
+function C_Item.GetStackCount(loc) local it = itemAtLocation(loc) return it and (it.count or 1) or 0 end
+function C_Item.GetItemIcon(loc) local it = itemAtLocation(loc) return it and (world.items[it.itemID] or {}).icon end
+
+C_Cursor = {
+  -- The item on the cursor when it was picked up from a bag slot (world.cursor = { type = "item", id, bag, slot }).
+  GetCursorItem = function()
+    local c = world.cursor
+    if c and c.type == "item" and c.bag then return ItemLocation:CreateFromBagAndSlot(c.bag, c.slot) end
+  end,
+}
+
+-- An item key, as MakeItemKey and GetItemKeyFromItem give one.
+local function itemKey(id, level, suffix)
+  return { itemID = id, itemLevel = level or 0, itemSuffix = suffix or 0, battlePetSpeciesID = 0 }
+end
+
+-- What the house knows about an item key: nil for an item the client hasn't loaded yet.
+local function itemKeyInfo(key)
+  local item = world.items[key.itemID]
+  if not item or item.pending then return nil end
+  return { itemID = key.itemID, battlePetSpeciesID = 0, itemName = item.name, quality = item.quality or 1,
+    iconFileID = item.icon, isPet = false, isCommodity = item.commodity == true, isEquipment = false }
+end
+
+-- An item location's Enum.ItemCommodityStatus: unknown (no item there, or one the client doesn't know), item or commodity.
+local function commodityStatus(loc)
+  local it = itemAtLocation(loc)
+  local item = it and world.items[it.itemID]
+  if not item then return Enum.ItemCommodityStatus.Unknown end
+  return item.commodity and Enum.ItemCommodityStatus.Commodity or Enum.ItemCommodityStatus.Item
+end
+
+-- GetReplicateItemInfo's 18 returns, by name, in order.
+local REPLICATE = { "name", "texture", "count", "qualityID", "usable", "level", "levelType", "minBid", "minIncrement",
+  "buyoutPrice", "bidAmount", "highBidder", "bidderFullName", "owner", "ownerFullName", "saleStatus", "itemID", "hasAllInfo" }
+
+-- Replicate list row `index` (0-based, as the client's) as GetReplicateItemInfo's 18 returns; every read is counted.
+local function replicateInfo(index)
+  world.ah.reads = world.ah.reads + 1
+  local row = world.ah.replicate[index + 1]
+  if not row then return nil end
+  local out = {}
+  for i, field in ipairs(REPLICATE) do out[i] = row[field] end
+  return unpack(out, 1, #REPLICATE)
+end
+
+C_AuctionHouse = {
+  -- Queries, recorded; the test answers by firing the result event.
+  SendBrowseQuery = query("SendBrowseQuery"), SearchForItemKeys = query("SearchForItemKeys"),
+  SendSearchQuery = query("SendSearchQuery"), SendSellSearchQuery = query("SendSellSearchQuery"),
+  QueryOwnedAuctions = query("QueryOwnedAuctions"), ReplicateItems = query("ReplicateItems"),
+  RequestMoreBrowseResults = query("RequestMoreBrowseResults"), CloseAuctionHouse = query("CloseAuctionHouse"),
+  -- Restricted to a hardware event: logged with the code path.
+  PostItem = restricted("PostItem"), PostCommodity = restricted("PostCommodity"),
+  ConfirmPostItem = restricted("ConfirmPostItem"), ConfirmPostCommodity = restricted("ConfirmPostCommodity"),
+  CancelAuction = restricted("CancelAuction"), PlaceBid = restricted("PlaceBid"),
+  StartCommoditiesPurchase = restricted("StartCommoditiesPurchase"),
+  GetReplicateItemInfo = replicateInfo,
+}
+
+-- Browse results, and whether all of them are in.
+function C_AuctionHouse.GetBrowseResults() return world.ah.browse end
+function C_AuctionHouse.HasFullBrowseResults() return world.ah.browseFull ~= false end
+-- Item keys, and what the house knows about one.
+function C_AuctionHouse.MakeItemKey(id, level, suffix) return itemKey(id, level, suffix) end
+function C_AuctionHouse.GetItemKeyInfo(key) return itemKeyInfo(key) end
+-- Item search results for an item key (by its itemID), and commodity results for an itemID.
+function C_AuctionHouse.GetNumItemSearchResults(key) return #(world.ah.items[key.itemID] or {}) end
+function C_AuctionHouse.GetItemSearchResultInfo(key, i) return (world.ah.items[key.itemID] or {})[i] end
+function C_AuctionHouse.GetNumCommoditySearchResults(id) return #(world.ah.commodities[id] or {}) end
+function C_AuctionHouse.GetCommoditySearchResultInfo(id, i) return (world.ah.commodities[id] or {})[i] end
+-- The replicate list's size, and your auctions.
+function C_AuctionHouse.GetNumReplicateItems() return #world.ah.replicate end
+function C_AuctionHouse.GetOwnedAuctions() return world.ah.owned end
+function C_AuctionHouse.GetNumOwnedAuctions() return #world.ah.owned end
+-- Selling: whether the house takes an item, commodity or item, its key, how many can go up, and the deposit.
+function C_AuctionHouse.IsSellItemValid(loc) local it = itemAtLocation(loc) return it ~= nil and (world.items[it.itemID] or {}).noAuction ~= true end
+function C_AuctionHouse.GetItemCommodityStatus(loc) return commodityStatus(loc) end
+function C_AuctionHouse.GetItemKeyFromItem(loc) local id = C_Item.GetItemID(loc) local item = world.items[id] or {} return itemKey(id, item.level, item.suffix) end
+function C_AuctionHouse.GetAvailablePostCount(loc) return C_Item.GetStackCount(loc) end
+function C_AuctionHouse.CalculateItemDeposit(_, duration, quantity) return world.ah.deposit * duration * quantity end
+function C_AuctionHouse.CalculateCommodityDeposit(_, duration, quantity) return world.ah.deposit * duration * quantity end
+-- The message throttle, copper prices, and cancelling one of your auctions.
+function C_AuctionHouse.IsThrottledMessageSystemReady() return world.ah.ready ~= false end
+function C_AuctionHouse.SupportsCopperValues() return world.ah.copper ~= false end
+function C_AuctionHouse.CanCancelAuction(id) return world.ah.noCancel[id] ~= true end
+function C_AuctionHouse.GetCancelCost() return world.ah.cancelCost end
+
+-- Every auction house event (the documentation's LiteralNames).
+world.AH_EVENTS = {
+  "AUCTION_CANCELED", "AUCTION_HOUSE_AUCTION_CREATED", "AUCTION_HOUSE_AUCTIONS_EXPIRED", "AUCTION_HOUSE_BROWSE_FAILURE",
+  "AUCTION_HOUSE_BROWSE_RESULTS_ADDED", "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", "AUCTION_HOUSE_CLOSED", "AUCTION_HOUSE_DISABLED",
+  "AUCTION_HOUSE_FAVORITES_UPDATED", "AUCTION_HOUSE_ITEM_DELIVERY_DELAY_UPDATE", "AUCTION_HOUSE_NEW_BID_RECEIVED",
+  "AUCTION_HOUSE_NEW_RESULTS_RECEIVED", "AUCTION_HOUSE_POST_ERROR", "AUCTION_HOUSE_POST_WARNING", "AUCTION_HOUSE_PURCHASE_COMPLETED",
+  "AUCTION_HOUSE_SCRIPT_DEPRECATED", "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_SHOW_COMMODITY_WON_NOTIFICATION", "AUCTION_HOUSE_SHOW_ERROR",
+  "AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", "AUCTION_HOUSE_SHOW_NOTIFICATION", "AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED",
+  "AUCTION_HOUSE_THROTTLED_MESSAGE_QUEUED", "AUCTION_HOUSE_THROTTLED_MESSAGE_RESPONSE_RECEIVED", "AUCTION_HOUSE_THROTTLED_MESSAGE_SENT",
+  "AUCTION_HOUSE_THROTTLED_SYSTEM_READY", "AUCTION_MULTISELL_FAILURE", "AUCTION_MULTISELL_START", "AUCTION_MULTISELL_UPDATE",
+  "BID_ADDED", "BIDS_UPDATED", "COMMODITY_PRICE_UNAVAILABLE", "COMMODITY_PRICE_UPDATED", "COMMODITY_PURCHASE_FAILED",
+  "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASED", "COMMODITY_SEARCH_RESULTS_ADDED", "COMMODITY_SEARCH_RESULTS_RECEIVED",
+  "COMMODITY_SEARCH_RESULTS_UPDATED", "EXTRA_BROWSE_INFO_RECEIVED", "ITEM_KEY_ITEM_INFO_RECEIVED", "ITEM_PURCHASED",
+  "ITEM_SEARCH_RESULTS_ADDED", "ITEM_SEARCH_RESULTS_UPDATED", "OWNED_AUCTION_BIDDER_INFO_RECEIVED", "OWNED_AUCTIONS_UPDATED",
+  "REPLICATE_ITEM_LIST_UPDATE",
+}
+-- The events whose payload is an item key (the rest get an ID: an itemID or an auction's).
+local KEY_EVENTS = { AUCTION_HOUSE_NEW_RESULTS_RECEIVED = true, ITEM_SEARCH_RESULTS_ADDED = true, ITEM_SEARCH_RESULTS_UPDATED = true }
+
+-- Fires every auction house event once, with `key` (an item key) or `id` as its payload.
+function world.fireAuctionEvents(key, id)
+  for _, event in ipairs(world.AH_EVENTS) do stub.fire(event, KEY_EVENTS[event] and key or id) end
+end
+
+-- The game's auction house window, made the first time the house opens (Blizzard_AuctionHouseUI
+-- loads on demand), 800 x 538 at the center, with the SetPostItem a bag click calls.
+local function auctionHouseFrame()
+  if AuctionHouseFrame then return AuctionHouseFrame end
+  local f = stub.newWidget("Frame", "AuctionHouseFrame", UIParent)
+  f:SetSize(800, 538)
+  f:SetPoint("CENTER")
+  -- The item a bag click (or the game's sell frame) puts up for sale: recorded in world.ah.postItem.
+  function f:SetPostItem(loc) world.ah.postItem = loc end
+  stub.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI")
+  return f
+end
+
+-- The player talks to an auctioneer: the window shows and AUCTION_HOUSE_SHOW fires.
+function world.openAuctionHouse()
+  auctionHouseFrame():Show()
+  stub.fire("AUCTION_HOUSE_SHOW")
+end
+
+-- The auction house closes: AUCTION_HOUSE_CLOSED fires and the window hides.
+function world.closeAuctionHouse()
+  stub.fire("AUCTION_HOUSE_CLOSED")
+  if AuctionHouseFrame then AuctionHouseFrame:Hide() end
+end
+
+-- A bag item clicked with the auction house open: the game hands its location to the window's SetPostItem.
+function world.postFromBag(bag, slot)
+  AuctionHouseFrame:SetPostItem(ItemLocation:CreateFromBagAndSlot(bag, slot))
+end
+
 -- Chat and the game's frames ----------------------------------------------------------------------
 
 world.chatFilters = {}
@@ -1355,5 +1572,6 @@ function world.reset()
   world.units = { player = defaultPlayer() }
   world.actions, world.quests, world.npc, world.merchant, world.trainer = {}, {}, nil, nil, nil
   world.cursor, world.timers, world.book = nil, {}, {}
+  world.ah = emptyAuctionHouse()
   refreshWatches()
 end
