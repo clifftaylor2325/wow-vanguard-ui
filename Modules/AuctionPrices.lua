@@ -1,8 +1,10 @@
--- Auction prices: the cheapest unit price of every item up at the auction
--- house when you last scanned it (Auction helper's "Scan the auction house"),
--- kept per realm and faction (each has its own auction house) with each day's
--- low for two weeks, so item tooltips can say "AH: 12s 50c (today)" and the
--- sell card can show the lowest price of the last 7 days. The auction house
+-- Auction prices: the cheapest unit price, the units up and the market value
+-- (AP.Summary) of every item at the auction house when you last scanned it
+-- (Auction helper's "Scan the auction house"), kept per realm and faction
+-- (each has its own auction house) with each day's values for 30 days, so
+-- item tooltips can say "AH: 12s 50c · market 14s 0c (today)" (and what a
+-- stack comes to) and the sell card can show the lowest price of the last 7
+-- days. The auction house
 -- keeps no price history of its own (its item info has no prices), so this is
 -- the only one there is. A price not seen for 30 days is dropped at login (and
 -- a realm and faction left with none), and past AP.MAX_ITEMS items in one
@@ -15,9 +17,11 @@ local T = ns.Theme
 local AP = {}
 ns.AuctionPrices = AP
 
--- Items priced at most, and the share of them a prune keeps (6000 -> 5400); days of lows
--- kept per item; days a price is kept; seconds in a day.
-AP.MAX_ITEMS, AP.KEEP, AP.DAYS, AP.MAX_AGE, AP.DAY = 6000, 0.9, 14, 30, 86400
+-- Items priced at most per house, and the share of them a prune keeps (6000 -> 5400); days of
+-- values kept per item; days a price is kept; seconds in a day.
+AP.MAX_ITEMS, AP.KEEP, AP.DAYS, AP.MAX_AGE, AP.DAY = 6000, 0.9, 30, 30, 86400
+-- The share of an item's units (per cent) its market value is taken over: the cheapest 15 %.
+AP.MARKET_PCT = 15
 
 -- The wall clock in seconds (0 when the client can't say).
 function AP.Now()
@@ -43,8 +47,10 @@ function AP.HouseKey()
   return (GetNormalizedRealmName() or GetRealmName()) .. "-" .. ns.FactionArt.Faction()
 end
 
--- This realm and faction's prices: { prices = { [itemID] = { min, t, days = { [day] = copper } } },
--- count (items priced), lastScan }.
+-- This realm and faction's prices: { prices = { [itemID] = an item }, count (items priced),
+-- lastScan }. An item is { min, t (the cheapest unit price when last seen, and when),
+-- days = { [day] = that day's low }, qtys = { [day] = units up }, markets = { [day] = market value } };
+-- a day's units and market value are the last seen that day. Prices of older versions have days only.
 function AP.House()
   local houses, key = AP.Store().houses, AP.HouseKey()
   houses[key] = ns.Fill(type(houses[key]) == "table" and houses[key] or {}, { prices = {}, count = 0, lastScan = 0 })
@@ -76,15 +82,47 @@ end
 
 -- Recording ----------------------------------------------------------------------------------
 
--- Notes an item's cheapest unit price at time t: its price now, and the low of t's day.
--- A new item past AP.MAX_ITEMS evicts the items priced longest ago.
-function AP.Record(itemID, unitPrice, t)
-  local store, day = AP.House(), AP.Day(t)
-  local p = store.prices[itemID]
-  if not p then p = { days = {} } store.prices[itemID] = p store.count = store.count + 1 end
+-- The prices listed, cheapest first, and how many units there are in all.
+local function byPrice(prices)
+  local sorted, units = {}, 0
+  for price, n in pairs(prices) do sorted[#sorted + 1] = price units = units + n end
+  table.sort(sorted)
+  return sorted, units
+end
+
+-- The quantity-weighted mean unit price of the cheapest `want` units, rounded down.
+local function meanOfCheapest(sorted, prices, want)
+  local sum, got = 0, 0
+  for _, price in ipairs(sorted) do
+    local take = math.min(prices[price], want - got)
+    sum, got = sum + take * price, got + take
+    if got >= want then break end
+  end
+  return math.floor(sum / got)
+end
+
+-- One item's listings summed up (prices = { [unit price] = units listed at it }, at least one
+-- unit): its cheapest unit price, its units, and its market value. The market value is the
+-- quantity-weighted mean unit price of the cheapest AP.MARKET_PCT % of the units (rounded up, so
+-- at least one): the price the cheap end of the supply sits at, which one undercutter's single
+-- unit doesn't set and a few dear listings don't lift.
+function AP.Summary(prices)
+  local sorted, units = byPrice(prices)
+  return sorted[1], units, meanOfCheapest(sorted, prices, math.ceil(units * AP.MARKET_PCT / 100))
+end
+
+-- Notes an item seen at time t: its cheapest unit price (now, and the low of t's day), and the
+-- units up and market value when given (t's day keeps the last seen). A new item past
+-- AP.MAX_ITEMS evicts the items priced longest ago.
+function AP.Record(itemID, unitPrice, t, qty, market)
+  local house, day = AP.House(), AP.Day(t)
+  local p = house.prices[itemID]
+  if not p then p = {} house.prices[itemID] = p house.count = house.count + 1 end
+  ns.Fill(p, { days = {}, qtys = {}, markets = {} })
   p.min, p.t = unitPrice, t
   p.days[day] = math.min(p.days[day] or unitPrice, unitPrice)
-  if store.count > AP.MAX_ITEMS then AP.Evict() end
+  p.qtys[day], p.markets[day] = qty or p.qtys[day], market or p.markets[day]
+  if house.count > AP.MAX_ITEMS then AP.Evict() end
 end
 
 -- Forgets the items priced longest ago, down to AP.KEEP of AP.MAX_ITEMS.
@@ -97,10 +135,12 @@ function AP.Evict()
   store.count = math.min(#ids, keep)
 end
 
--- Drops an item's day lows older than AP.DAYS days before today.
+-- Drops an item's day values (lows, units, market values) older than AP.DAYS days before today.
 local function trimDays(p, today)
-  for day in pairs(p.days) do
-    if day <= today - AP.DAYS then p.days[day] = nil end
+  for _, byDay in ipairs({ p.days, p.qtys or {}, p.markets or {} }) do
+    for day in pairs(byDay) do
+      if day <= today - AP.DAYS then byDay[day] = nil end
+    end
   end
 end
 
@@ -141,10 +181,23 @@ function AP.Ago(t)
   return days == 1 and "yesterday" or days .. " days ago"
 end
 
--- An item tooltip's line: "AH: 12s 50c (today)", the cheapest unit price at the last scan that saw it.
+-- n units at the cheapest price, and at the market value unless it's unknown or the same:
+-- "12s 50c · market 14s 0c".
+local function priceText(low, market, n)
+  local text = AP.Money(low * n)
+  if market and market ~= low then text = text .. " · market " .. AP.Money(market * n) end
+  return text
+end
+
+-- An item tooltip's lines: "AH: 12s 50c · market 14s 0c (today)", the cheapest unit price and the
+-- market value when a scan last saw it, and over a stack (Tooltips' count of the button under
+-- the tooltip) the stack's worth at both, "AH x20: 2g 50s 0c · market 2g 80s 0c".
 function AP.Line(tt, link)
   local p = AP.settings.tooltip and AP.House().prices[tonumber(link:match("item:(%d+)"))]
-  if p then tt:AddLine(string.format("AH: %s (%s)", AP.Money(p.min), AP.Ago(p.t)), T.RGB("text2")) end
+  if not p then return end
+  local market, n = p.markets and p.markets[AP.Day(p.t)], ns.GetModule("Tooltips").StackOf(tt)
+  tt:AddLine(string.format("AH: %s (%s)", priceText(p.min, market, 1), AP.Ago(p.t)), T.RGB("text2"))
+  if n > 1 then tt:AddLine(string.format("AH x%d: %s", n, priceText(p.min, market, n)), T.RGB("text2")) end
 end
 
 -- Starts with Auction helper's settings: the account-wide prices of older versions moved to this

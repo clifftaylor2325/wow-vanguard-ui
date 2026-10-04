@@ -88,7 +88,7 @@ Sizes: S under a day of lane time, M one to two, L more. Each is one commit with
 
 - [x] **C1 Realm and faction scoping** (M): key the store by `GetRealmName()` + faction (or the connected-realm ID), with a one-time migration of today's account-wide prices into the current realm's table.
 - [ ] **C2 Searches feed the database** (S): every browse, sell and item search result records min price and quantity for its item, so prices grow between scans.
-- [ ] **C3 Richer history** (M): per day keep low, quantity and a quantity-weighted market value; keep 30 days; tooltips show "AH: low 12s · market 14s (today)" and stack totals when hovering a stack.
+- [x] **C3 Richer history** (M): per day keep low, quantity and a quantity-weighted market value; keep 30 days; tooltips show "AH: low 12s · market 14s (today)" and stack totals when hovering a stack.
 - [ ] **C4 Scan fixes** (S): exclude own listings from the minimum; don't spend the 15 minutes on an aborted scan; count listings per item.
 
 ### Phase D: tooltips, crafting and the API
