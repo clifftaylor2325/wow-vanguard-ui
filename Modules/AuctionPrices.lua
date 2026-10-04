@@ -1,10 +1,11 @@
 -- Auction prices: the cheapest unit price, the units up and the market value
 -- (AP.Summary) of every item at the auction house when you last scanned it
--- (Auction helper's "Scan the auction house"), kept per realm and faction
--- (each has its own auction house) with each day's values for 30 days, so
--- item tooltips can say "AH: 12s 50c · market 14s 0c (today)" (and what a
--- stack comes to) and the sell card can show the lowest price of the last 7
--- days. The auction house
+-- (Auction helper's "Scan the auction house"), and the cheapest price each
+-- search since has seen (AP.RecordSeen, AP.RecordBrowse), kept per realm and
+-- faction (each has its own auction house) with each day's values for 30
+-- days, so item tooltips can say "AH: 12s 50c · market 14s 0c (today)" (and
+-- what a stack comes to) and the sell card can show the lowest price of the
+-- last 7 days. The auction house
 -- keeps no price history of its own (its item info has no prices), so this is
 -- the only one there is. A price not seen for 30 days is dropped at login (and
 -- a realm and faction left with none), and past AP.MAX_ITEMS items in one
@@ -129,6 +130,36 @@ function AP.Record(itemID, unitPrice, t, qty, market, listings)
   p.days[day] = math.min(p.days[day] or unitPrice, unitPrice)
   p.qtys[day], p.markets[day] = qty or p.qtys[day], market or p.markets[day]
   if house.count > AP.MAX_ITEMS then AP.Evict() end
+end
+
+-- A price a search saw (not a whole scan): the item's last-seen price and that day's low, never
+-- its units or market value (one search sees only part of the supply, so the scan's stay); nothing
+-- without a plain item ID and price. t defaults to now.
+function AP.RecordSeen(itemID, unitPrice, t)
+  itemID, unitPrice = ns.PlainNumber(itemID), ns.PlainNumber(unitPrice)
+  if itemID and unitPrice and unitPrice > 0 then AP.Record(itemID, unitPrice, t or AP.Now()) end
+end
+
+-- A browse result's item ID and price per unit, or nil: left out when it may hold a listing of
+-- yours (containsOwnerItem, or hidden), when a number is hidden, and unless the house says its
+-- price is per unit (a commodity) or per item that doesn't stack (equipment); the price of any
+-- other item may be a stack's, and its sell search or a scan prices it per unit instead.
+local function browsePrice(r)
+  local key, mine = r.itemKey, r.containsOwnerItem
+  if ns.IsSecret(mine) or mine then return nil end
+  local info, id, price = C_AuctionHouse.GetItemKeyInfo(key), ns.PlainNumber(key.itemID), ns.PlainNumber(r.minPrice)
+  if info and (info.isCommodity or info.isEquipment) and id and price then return id, price end
+end
+
+-- Browse results (the shop's searches and the game's own browse list): each item's cheapest price,
+-- the lowest of its item keys, through AP.RecordSeen.
+function AP.RecordBrowse(results, t)
+  local low = {}
+  for _, r in ipairs(results or {}) do
+    local id, price = browsePrice(r)
+    if id and (not low[id] or price < low[id]) then low[id] = price end
+  end
+  for id, price in pairs(low) do AP.RecordSeen(id, price, t) end
 end
 
 -- Forgets the items priced longest ago, down to AP.KEEP of AP.MAX_ITEMS.

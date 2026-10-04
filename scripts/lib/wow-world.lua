@@ -1278,7 +1278,7 @@ C_DamageMeter = {
 -- logged in world.ah.restricted as { fn, args, clicked, path }: clicked says whether a click was
 -- running (stub.click), path is the Lua stack that made the call.
 -- world.items[id].commodity = true makes an item a commodity, .noAuction one the house won't take,
--- .pending one whose item key info the client hasn't loaded yet.
+-- .pending one whose item key info the client hasn't loaded yet, .equipment one the house calls equipment.
 
 Enum.ItemCommodityStatus = { Unknown = 0, Item = 1, Commodity = 2 }
 Enum.AuctionHouseSortOrder = { Price = 0, Name = 1, Level = 2, Bid = 3, Buyout = 4, TimeRemaining = 5 }
@@ -1357,7 +1357,7 @@ local function itemKeyInfo(key)
   local item = world.items[key.itemID]
   if not item or item.pending then return nil end
   return { itemID = key.itemID, battlePetSpeciesID = 0, itemName = item.name, quality = item.quality or 1,
-    iconFileID = item.icon, isPet = false, isCommodity = item.commodity == true, isEquipment = false }
+    iconFileID = item.icon, isPet = false, isCommodity = item.commodity == true, isEquipment = item.equipment == true }
 end
 
 -- An item location's Enum.ItemCommodityStatus: unknown (no item there, or one the client doesn't know), item or commodity.

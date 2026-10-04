@@ -524,7 +524,7 @@ it("the sell card suggests an undercut", () => {
   dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
   const q = addon.eval("local q = __wfgWorld.ah.queries[1] return { q.fn, q.args[1].itemID, q.args[1].itemLevel, q.args[3] }");
   expect(q, "a sell search for the dust, owner listings apart").toEqual(["SendSellSearchQuery", 10940, 0, true]);
-  expect(card(addon), "cheapest 100 (your 95 left out); 1 silver under, but not under 1 silver; deposit for 20").toEqual([["1s 0c", "none", "3s 0c · TEST-ONLY 12 Hours", "1s 0c"], "TEST-ONLY-DUST", true]);
+  expect(card(addon), "cheapest 100 (your 95 left out), which the 7-day low now has too; 1 silver under, but not under 1 silver; deposit for 20").toEqual([["1s 0c", "1s 0c", "3s 0c · TEST-ONLY 12 Hours", "1s 0c"], "TEST-ONLY-DUST", true]);
   const prices = [1, 3, 4].map((i) => { addon.click(`${CARD}.undercut.segments[${i}]`); return card(addon)[0][3]; });
   expect(prices, "copper, percent, match").toEqual(["99c", "99c", "1s 0c"]);
   expect(addon.eval("return ns.Settings('AuctionHelper').undercut"), "the rule is the setting").toBe("match");
@@ -549,7 +549,7 @@ it("posting calls the right function from a click, never from a timer", () => {
   addon.advance(1);
   addon.world.postFromBag(0, 2);
   addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
-  expect(card(addon)[0], "an item: 4500 each for the pair is cheapest").toEqual(["45s 0c", "none", "30c · TEST-ONLY 24 Hours", "44s 0c"]);
+  expect(card(addon)[0], "an item: 4500 each for the pair is cheapest, and the 7-day low").toEqual(["45s 0c", "45s 0c", "30c · TEST-ONLY 24 Hours", "44s 0c"]);
   addon.click(`${CARD}.post`);
   expect(restrictedLog(addon)[1], "one blade, buyout only, for the second length").toEqual(["PostItem", true, "0:2", 2, 1, "nil", 4400]);
   expect(addon.eval("return __wfgWorld.ah.postItem.slotIndex"), "the game's own SetPostItem still ran").toBe(2);
@@ -603,7 +603,7 @@ it("hidden numbers and stray results", () => {
   dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 555);
   expect(card(addon)[0][0], "results for another item aren't the card's").toBe("...");
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
-  expect([card(addon)[0], addon.eval("return #ns.errors")], "the hidden price skipped, no deposit shown, no error").toEqual([["4s 0c", "none", "", "3s 0c"], 0]);
+  expect([card(addon)[0], addon.eval("return #ns.errors")], "the hidden price skipped (the 7-day low takes the plain one), no deposit shown, no error").toEqual([["4s 0c", "4s 0c", "", "3s 0c"], 0]);
   addon.click(`${CARD}.post`);
   expect(restrictedLog(addon)[0], "a hidden stack size posts one; an unknown length is the first").toEqual(["PostCommodity", true, "0:1", 1, 1, 300, "nil"]);
 });
@@ -832,4 +832,50 @@ it("an expired auction says it's coming back by mail; once it is in the bags, Re
   expect([card(addon)[1], sent(addon), ownedRow(addon, 3)[0]], "the blade from bag 1 is on the sell card, its price checked; the row goes").toEqual(["TEST-ONLY-BLADE", ["SendSellSearchQuery:9999"], false]);
   expect(addon.eval(`local s = ${HELPER}.sell return { s.loc.bagID, s.loc.slotIndex }`), "the bag slot it found").toEqual([1, 4]);
   expect(restrictedLog(addon).length, "relisting posts nothing by itself").toBe(0);
+});
+
+// Searches feed the price store ---------------------------------------------------------------
+
+// Item `id`'s stored values: [last-seen price, today's low, today's units, today's market] (false for none).
+const stored = (addon, id) => addon.eval(`local p, d = ns.AuctionPrices.House().prices[${id}], math.floor(__now / 86400)
+  if not p then return false end
+  return { p.min, p.days[d] or false, p.qtys[d] or false, p.markets[d] or false }`);
+
+it("browse results record each trusted item's cheapest price, the game's own browses too", () => {
+  const addon = atAuctionHouse(`${DUSTS}
+    __wfgWorld.items[9998] = { name = "TEST-ONLY Helm", equipment = true }
+    __wfgWorld.items[10942] = { name = "TEST-ONLY Mine", commodity = true }
+    __wfgWorld.items[10943] = { name = "TEST-ONLY Late", commodity = true, pending = true }`);
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust" }');
+  addon.eval(`__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 1250, totalQuantity = 240 },
+    { itemKey = { itemID = 10940, itemLevel = 5 }, minPrice = 1100, totalQuantity = 3 }, { itemKey = { itemID = 10941 }, minPrice = 900, totalQuantity = 3 },
+    { itemKey = { itemID = 9998 }, minPrice = 5000, totalQuantity = 1 }, { itemKey = { itemID = 10942 }, minPrice = 10, totalQuantity = 1, containsOwnerItem = true },
+    { itemKey = { itemID = 10942 }, minPrice = 20, totalQuantity = 1, containsOwnerItem = __wfgWorld.secret(false) },
+    { itemKey = { itemID = 10943 }, minPrice = 30, totalQuantity = 1 }, { itemKey = { itemID = 10940 }, minPrice = __wfgWorld.secret(5), totalQuantity = 1 } }`);
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(stored(addon, 10940), "a commodity: its lowest item key, no units or market").toEqual([1100, 1100, false, false]);
+  expect(stored(addon, 9998), "equipment: priced per item").toEqual([5000, 5000, false, false]);
+  expect([stored(addon, 10941), stored(addon, 10942), stored(addon, 10943)], "a stackable item, a result with yours (or hidden), an item not loaded: none").toEqual([false, false, false]);
+  addon.eval("__now = __now + 60 __wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 1300, totalQuantity = 9 } }");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(stored(addon, 10940), "a browse the game made: the last-seen price moves, the day's low stays").toEqual([1300, 1100, false, false]);
+});
+
+it("a sell search and an owned check record the price; a scan keeps the units and market value", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP);
+  addon.eval(`__wfgWorld.ah.replicate = { { itemID = 10940, count = 10, buyoutPrice = 1500 }, { itemID = 10940, count = 10, buyoutPrice = 2000 } }`);
+  addon.click(SCAN_BUTTON);
+  addon.fire("REPLICATE_ITEM_LIST_UPDATE");
+  addon.update(0.01);
+  expect(stored(addon, 10940), "the scan: low 150, 20 units, market of the cheapest 3").toEqual([150, 150, 20, 150]);
+  addon.advance(1);
+  dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  expect(stored(addon, 10940), "the sell search's 100 (your 95 left out): last seen and the day's low; units and market stay the scan's").toEqual([100, 100, 20, 150]);
+  expect(addon.eval('local l = __showItem("item:10940") return l[#l][1]'), "the tooltip's last line").toBe("AH: 1s 0c · market 1s 50c (today)");
+  const owned = atAuctionHouse(BAGS + OWNED);
+  checkUndercuts(owned);
+  expect([stored(owned, 10940), stored(owned, 9999)], "the owned check: 120 (your 150 left out), and the blade's 5000").toEqual([[120, 120, false, false], [5000, 5000, false, false]]);
+  owned.eval("ns.AuctionPrices.RecordSeen(10940, __wfgWorld.secret(1)) ns.AuctionPrices.RecordSeen(10940, 0) ns.AuctionPrices.RecordSeen(10940, nil)");
+  expect(stored(owned, 10940), "a hidden, zero or missing price records nothing").toEqual([120, 120, false, false]);
 });
