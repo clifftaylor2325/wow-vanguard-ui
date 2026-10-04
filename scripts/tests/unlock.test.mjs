@@ -89,3 +89,15 @@ it("unlock popover: scale and opacity in percent", () => {
   addon.eval("ForeverUI_MoverPopover.reset:GetScript('OnClick')(ForeverUI_MoverPopover.reset)");
   expect(look(), "Reset puts the scale and opacity back").toEqual(["100", "100", 1, 1]);
 });
+
+it("a grid size from a hand-edited profile string is kept to 8-256 px, so unlocking can't freeze the game", () => {
+  const addon = loggedIn("UIParent:SetSize(1920, 1080)", { savedVariables: "ForeverUIDB.profiles = { Default = { movers = { gridSize = 1 } } }" });
+  addon.slash("unlock");
+  expect(addon.eval("return ns.GridLineCount()"), "1 px draws as 8 px (241 + 135 lines), not 3002 lines").toBe(376);
+  addon.slash("lock");
+  addon.eval("ns.MoverOptions().gridSize = 0");
+  addon.slash("unlock");
+  expect(addon.eval("return ns.GridLineCount()"), "0 px (a loop that never ends) draws as 8 px too").toBe(376);
+  addon.eval("ns.ShowGrid(1000)");
+  expect(addon.eval("return ns.GridLineCount()"), "and above 256 px as 256 (7 + 5 lines)").toBe(12);
+});

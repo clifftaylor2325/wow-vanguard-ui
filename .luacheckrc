@@ -57,4 +57,18 @@ read_globals = {
   "AddonCompartmentFrame",
   -- P3.14 Profiles: switching the game's Edit Mode layout with the profile.
   "C_EditMode",
+  -- P4.7 Options keys: the box that has the typing (the window leaves keys alone while you type).
+  "GetCurrentKeyBoardFocus",
+  -- Bug hunt, swing timer: your weapons' speeds, for a swing a weapon swap restarts.
+  "UnitAttackSpeed",
+  -- F2 Vendor memory: a merchant item's ID, and the zone and subzone you're in.
+  "GetMerchantItemID", "GetZoneText", "GetSubZoneText",
+  -- F4 Chat watch: the game's whisper call, and its older name.
+  "ChatFrameUtil", "ChatFrame_SendTell",
+  -- F5 Situations: whether you're in a raid, and resting.
+  "IsInRaid", "IsResting",
+  -- F6 Auction helper: the auction house API and the game's auction house window.
+  "C_AuctionHouse", "AuctionHouseFrame",
+  -- F6 Auction helper, sell card: the item on the cursor.
+  "C_Cursor",
 }

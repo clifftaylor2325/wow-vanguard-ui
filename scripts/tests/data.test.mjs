@@ -6,7 +6,7 @@ import { DATA_ENV, bars, loggedIn } from "./helpers.mjs";
 it("data bars", () => {
   const addon = loggedIn(DATA_ENV);
   const b = bars(addon);
-  expect(b.xp === 12300 && b.xpMax === 40000 && Math.abs(b.rested - 454 * 17300 / 40000) < 1e-9, "XP bar with rested overlay out to XP + rested").toBeTruthy();
+  expect(b.xp === 12300 && b.xpMax === 40000 && Math.abs(b.rested - 478 * 17300 / 40000) < 1e-9, "XP bar with rested overlay out to XP + rested").toBeTruthy();
   expect(b.xpText === "Level 42  12.3K / 40.0K (30%)  rested 5.0K", `XP text (got ${b.xpText})`).toBeTruthy();
   expect(b.xpTextShown === false, "text shows on hover only by default").toBeTruthy();
   addon.eval("ForeverUI_xpbar:GetScript('OnEnter')(ForeverUI_xpbar)");

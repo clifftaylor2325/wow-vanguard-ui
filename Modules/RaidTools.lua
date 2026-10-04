@@ -133,13 +133,14 @@ end
 -- Showing --------------------------------------------------------------------------------
 
 -- Shows the bar to the leader and assistants in a group (and "Raid" only to a
--- party's leader). Waits for the end of combat: the bar holds secure buttons.
+-- party's leader). Waits for the end of combat (the bar holds secure buttons),
+-- once however many group events come in the fight.
 function RT.Update()
   ns.OutOfCombat(function()
     local raid = RT.bar.actions.Raid
     RT.bar:SetShown(RT.CanLead())
     if raid then raid:SetShown(not yes("IsInRaid") and yes("UnitIsGroupLeader", "player")) end
-  end)
+  end, "raidtools")
 end
 
 -- The movable bar: three rows (calls, target icons, world markers).

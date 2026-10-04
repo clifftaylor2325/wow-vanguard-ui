@@ -1,7 +1,8 @@
 -- Bag sections (part of the Bags module): the combined bag's own item buttons
 -- laid out in sections, as AdiBags and Baganator do: quest items, equipment,
 -- consumables, trade goods, the rest, junk and the empty slots, each under a
--- header in the theme, packed side by side where they fit. The buttons stay
+-- header in the theme, packed side by side where they fit, with the window's
+-- padding (Bags.PAD) around them and the money line. The buttons stay
 -- the game's, so using, dragging, search dimming, quality borders and item
 -- tooltips work as before; only where they sit changes. Item buttons are
 -- protected: they move only out of combat, and a change in combat waits for
@@ -12,14 +13,16 @@ local ADDON, ns = ...
 local T = ns.Theme
 local BG = ns.GetModule("Bags")
 
--- The game's slot size, spacing and columns in the combined bag (Blizzard_UIPanels_Game ContainerFrame.lua).
-local SLOT, GAP, COLS = 37, 5, 10
--- The width of the game's ten columns: the sections fill the same width.
-local ROW_W = COLS * SLOT + (COLS - 1) * GAP
--- A header's height, the space between sections side by side and between
--- their rows, and a section's narrowest width in columns (room for its header).
-local HEAD, SIDE_GAP, SHELF_GAP, MIN_COLS = 16, 12, 6, 2
--- The game's grid sits this far above the money row (its GetInitialItemAnchor).
+-- The space between the game's slots (ITEM_SPACING_X and _Y in
+-- Blizzard_UIPanels_Game Mainline/ContainerFrame.lua, which Forever loads). The
+-- grid's columns and width are the window's own (GetColumns, CalculateWidth).
+local GAP = 5
+-- On the theme's 4 px grid: the space under a header's text, above its slots;
+-- between sections side by side; above a header, under the section before it
+-- (more than under the header, so a header reads with its own slots); and a
+-- section's narrowest width in columns (room for its header).
+local HEAD_GAP, SIDE_GAP, SHELF_GAP, MIN_COLS = 4, 12, 12, 2
+-- The game's grid sits this far above the money line (its GetInitialItemAnchor).
 local ABOVE_MONEY = 4
 
 -- The sections, in the order they're shown.
@@ -106,55 +109,71 @@ function BG.Group(buttons)
   return ordered(bySection), table.concat(keys, ",")
 end
 
+-- The game's grid in this window: its columns, its width (the window's own
+-- width less the game's padding), the slot size that fills that width, and
+-- how far below the window's top it starts (under the title and search row).
+local function gridOf(frame)
+  local cols, w = frame:GetColumns(), frame:CalculateWidth() - frame:GetPaddingWidth()
+  return { cols = cols, w = w, slot = (w - (cols - 1) * GAP) / cols, top = frame:GetPaddingHeight() }
+end
+
 -- A section's width and height in pixels: its columns (at least room for the
 -- header) by its rows, plus the header.
-local function blockSize(n)
-  local cols, rows = math.max(MIN_COLS, math.min(n, COLS)), math.ceil(n / COLS)
-  return cols * SLOT + (cols - 1) * GAP, HEAD + rows * SLOT + (rows - 1) * GAP
+local function blockSize(n, g)
+  local cols, rows = math.max(MIN_COLS, math.min(n, g.cols)), math.ceil(n / g.cols)
+  return cols * g.slot + (cols - 1) * GAP, g.head + rows * g.slot + (rows - 1) * GAP
 end
 
 -- Gives each section its spot (x, y from the top left of the slot area):
--- side by side while they fit the width, then on a new row. Returns the height used.
-local function shelve(list)
+-- side by side while they fit the grid's width, then on a new row. Returns the height used.
+local function shelve(list, g)
   local x, y, rowH = 0, 0, 0
   for _, s in ipairs(list) do
-    local w, h = blockSize(#s.buttons)
-    if x > 0 and x + w > ROW_W then x, y, rowH = 0, y + rowH + SHELF_GAP, 0 end
+    local w, h = blockSize(#s.buttons, g)
+    if x > 0 and x + w > g.w then x, y, rowH = 0, y + rowH + SHELF_GAP, 0 end
     s.x, s.y, s.w = x, y, w
     x, rowH = x + w + SIDE_GAP, math.max(rowH, h)
   end
   return y + rowH
 end
 
--- The height of the game's own grid of n slots.
-local function gridHeight(n)
-  local rows = math.ceil(n / COLS)
-  return rows * SLOT + (rows - 1) * GAP
-end
-
--- Puts a widget at x, y from the slot area's top left, which sits top pixels
--- above the money row (the bottom stays where the game's grid ends).
-local function put(widget, frame, x, y, top)
+-- Puts a widget at x, y from the slot area's top left: the padding inside the
+-- window's left edge, under the game's title and search row.
+local function put(widget, frame, g, x, y)
   widget:ClearAllPoints()
-  widget:SetPoint("TOPLEFT", frame.MoneyFrame, "TOPRIGHT", x - ROW_W, top - y)
+  widget:SetPoint("TOPLEFT", frame, "TOPLEFT", BG.PAD + x, -(g.top + y))
 end
 
 -- A section's slots, row by row under its header.
-local function placeSlots(frame, s, top)
+local function placeSlots(frame, s, g)
   for i, button in ipairs(s.buttons) do
-    local col, row = (i - 1) % COLS, math.floor((i - 1) / COLS)
-    put(button, frame, s.x + col * (SLOT + GAP), s.y + HEAD + row * (SLOT + GAP), top)
+    local col, row = (i - 1) % g.cols, math.floor((i - 1) / g.cols)
+    put(button, frame, g, s.x + col * (g.slot + GAP), s.y + g.head + row * (g.slot + GAP))
   end
 end
 
--- A section's header (made once per section) over its slots, in the accent.
-local function placeHeader(frame, s, top)
+-- A section's header (made once per section) with its label, in the accent.
+local function headerOf(frame, s)
   local fs = BG.headers[s.key] or T.Text(frame:CreateFontString(nil, "OVERLAY"), "cell", "accent")
   BG.headers[s.key] = fs
   fs:SetText(s.label)
+  return fs
+end
+
+-- A header line's height: the tallest header's text as drawn (at least its
+-- font size, should the client not have measured it yet), and the space under it.
+local function headHeight(frame, list)
+  local h = T.RoleSize("cell")
+  for _, s in ipairs(list) do h = math.max(h, headerOf(frame, s):GetStringHeight()) end
+  return math.ceil(h) + HEAD_GAP
+end
+
+-- A section's header over its slots, as wide as its section.
+local function placeHeader(frame, s, g)
+  local fs = BG.headers[s.key]
   fs:SetWidth(s.w)
   fs:SetJustifyH("LEFT")
-  put(fs, frame, s.x, s.y, top)
+  put(fs, frame, g, s.x, s.y)
   fs:Show()
 end
 
@@ -163,26 +182,64 @@ function BG.HideHeaders()
   for _, fs in pairs(BG.headers) do fs:Hide() end
 end
 
--- Lays the sections out: slots and headers placed, and the window's height
--- fitted to them (the game's height for its grid of n slots, less that grid).
-function BG.Place(frame, list, n)
-  local height = shelve(list)
-  local top = ABOVE_MONEY + height
-  BG.HideHeaders()
-  for _, s in ipairs(list) do
-    placeSlots(frame, s, top)
-    placeHeader(frame, s, top)
-  end
-  frame:SetHeight(frame:CalculateHeight() - gridHeight(n) + height)
+-- The bag's bottom row: the currency tracker when the game shows one under
+-- the money line (the money line sits on it), else the money line.
+local function bottomRow(frame)
+  local _, rel = frame.MoneyFrame:GetPoint(1)
+  if rel and rel ~= frame then return rel end
+  return frame.MoneyFrame
 end
 
--- The game's plain grid back (sections switched off): its own size and layout.
+-- While the sections show, the money line (with the currency tracker under it)
+-- sits the padding inside the window's sides and bottom, as the slots do.
+function BG.PadMoney(frame)
+  if not frame.fuiSections then return end
+  local row = bottomRow(frame)
+  row:ClearAllPoints()
+  row:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", BG.PAD, BG.PAD)
+  row:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -BG.PAD, BG.PAD)
+end
+
+-- The height of the bag's bottom rows: the money line, and when the currency
+-- tracker shows under it, the tracker and the game's space between them.
+local function bottomHeight(frame)
+  local money, row = frame.MoneyFrame, bottomRow(frame)
+  if row == money then return money:GetHeight() end
+  local _, _, _, _, y = money:GetPoint(1)
+  return money:GetHeight() + y + row:GetHeight()
+end
+
+-- The window fitted to the sections: the grid's width with the padding each
+-- side; the title and search row, the sections, the game's space above the
+-- money line, the bottom rows and the padding under them. Then the search row fitted.
+local function fitWindow(frame, g, height)
+  BG.PadMoney(frame)
+  frame:SetSize(g.w + 2 * BG.PAD, g.top + height + ABOVE_MONEY + bottomHeight(frame) + BG.PAD)
+  BG.FitSearch(frame)
+end
+
+-- Lays the sections out: slots and headers placed, and the window fitted to them.
+function BG.Place(frame, list)
+  local g = gridOf(frame)
+  g.head = headHeight(frame, list)
+  local height = shelve(list, g)
+  BG.HideHeaders()
+  for _, s in ipairs(list) do
+    placeSlots(frame, s, g)
+    placeHeader(frame, s, g)
+  end
+  fitWindow(frame, g, height)
+end
+
+-- The game's plain grid back (sections switched off): its own money line, size and layout.
 function BG.PlainBag(frame)
   BG.HideHeaders()
   if not frame.fuiSections then return end
   frame.fuiSections = nil
+  frame:UpdateCurrencyFrames()
   frame:UpdateFrameSize()
   frame:UpdateItemLayout()
+  BG.FitSearch(frame)
 end
 
 -- Sections in the open bag window (when switched on); a layout already
@@ -194,7 +251,7 @@ function BG.LayOutSections(frame)
   local list, sig = BG.Group(buttons)
   if sig == frame.fuiSections then return end
   frame.fuiSections = sig
-  BG.Place(frame, list, #buttons)
+  BG.Place(frame, list)
 end
 
 -- Lays the sections out now, or once combat ends (the item buttons are
@@ -235,20 +292,30 @@ local function itemAPI()
     and type(C_Item) == "table" and type(C_Item.GetItemInfoInstant) == "function"
 end
 
+-- The bag window's calls the sections use (ContainerFrameCombinedBagsMixin).
+local FRAME_CALLS = {
+  "UpdateItemLayout", "UpdateItems", "UpdateFrameSize", "UpdateCurrencyFrames",
+  "CalculateWidth", "GetPaddingWidth", "GetPaddingHeight", "GetColumns",
+}
+
 -- Whether the client's bag window can be laid out in sections.
 local function canSection(frame)
-  return itemAPI() and type(hooksecurefunc) == "function" and type(frame.MoneyFrame) == "table"
-    and type(frame.UpdateItemLayout) == "function" and type(frame.UpdateItems) == "function"
-    and type(frame.UpdateFrameSize) == "function" and type(frame.CalculateHeight) == "function"
+  if not (itemAPI() and type(hooksecurefunc) == "function" and type(frame.MoneyFrame) == "table") then return false end
+  for _, name in ipairs(FRAME_CALLS) do
+    if type(frame[name]) ~= "function" then return false end
+  end
+  return true
 end
 
 -- Sections in the combined bag window (Bags.Enable): after the game lays out
--- its grid or fills its slots, and when an item's info arrives, the sections are laid out again.
+-- its grid or fills its slots, and when an item's info arrives, the sections are
+-- laid out again; when the game puts its money line back, it gets the padding again.
 function BG.WatchSections(frame)
   if not canSection(frame) then return end
   BG.sectionFrame = frame
   hooksecurefunc(frame, "UpdateItemLayout", BG.AfterGameLayout)
   hooksecurefunc(frame, "UpdateItems", BG.QueueSections)
+  hooksecurefunc(frame, "UpdateCurrencyFrames", BG.PadMoney)
   ns.On("ITEM_DATA_LOAD_RESULT", itemLoaded)
   T.OnChanged(paintHeaders)
 end

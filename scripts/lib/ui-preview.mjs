@@ -31,11 +31,13 @@ for i, w in ipairs(__wfgStub.frames) do
     borderColor = w.__borderColor, texture = w.__texture, color = w.__color,
     vertexColor = w.__vertexColor, alpha = w.__alpha, rotation = w.__rotation, texCoord = w.__texCoord,
     strata = w.__strata, scrollChild = ref(w.__scrollChild), clips = w.__clips,
-    fontSize = w.__font and w.__font[2], fontPath = w.__font and w.__font[1], value = w.__value, min = w.__min, max = w.__max,
+    fontSize = w.__font and w.__font[2], fontPath = w.__font and w.__font[1], fontFlags = w.__font and w.__font[3], value = w.__value, min = w.__min, max = w.__max,
     barColor = w.__barColor, barTexture = w.__barTexture and w.__barTexture.__texture, messages = w.__messages, checked = w.__checked,
     checkedTexture = w.__parent ~= nil and w.__parent.__checkedTexture == w or nil,
     barFill = w.__parent ~= nil and w.__parent.__barTexture == w or nil,
     noWrap = w.__noWrap,
+    -- How large it is drawn against the screen (a frame drawn at SetScale 0.6 is 0.6).
+    escale = (tonumber(w:GetEffectiveScale()) or 1) / UIParent:GetEffectiveScale(),
   }
 end
 return out`;
@@ -85,6 +87,7 @@ const PAGE_CSS = `
       radial-gradient(ellipse at 80% 100%, #23301f 0%, transparent 55%),
       linear-gradient(#34465e 0%, #5d6f7c 45%, #3d4a35 62%, #232c1d 100%)}
   .fs{white-space:pre-wrap;text-shadow:1px 1px 0 #000;overflow-wrap:break-word}
+  .fs.outline{text-shadow:-1px -1px 0 #000,0 -1px 0 #000,1px -1px 0 #000,-1px 0 0 #000,1px 0 0 #000,-1px 1px 0 #000,0 1px 0 #000,1px 1px 0 #000}
   .backdrop{box-sizing:border-box;border:3px solid #6c6c6c;border-radius:5px;
     box-shadow:inset 0 0 0 1px rgba(0,0,0,.6),0 2px 10px rgba(0,0,0,.5)}
   .close{box-sizing:border-box;margin:6px;width:20px!important;height:20px!important;border-radius:3px;

@@ -1,7 +1,7 @@
 // casts: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { FAKE_FADES, bars, isTok, loggedIn, spark, unitEvents } from "./helpers.mjs";
+import { FAKE_FADES, bars, isTok, loggedIn, setCombat, spark, unitEvents } from "./helpers.mjs";
 
 // TEST-ONLY casts: __casts[unit] = { kind = "cast"|"channel", start, finish, shielded }.
 const CAST_ENV = `
@@ -72,6 +72,22 @@ it("cast bar flashes on finish and interrupt", () => {
   expect(isTok(addon, castBar(addon, "player").color, "cast") && castBar(addon, "player").text === "TEST-ONLY Spell", "a new cast replaces the flash at once").toBeTruthy();
 });
 
+it("a finished cast fades in 0.35 s, and in 0.15 s in combat", () => {
+  const addon = loggedIn(CAST_ENV + FAKE_FADES);
+  addon.eval("__fakeFader(ForeverUI_CastBar_player)");
+  // Casts and finishes a spell on the player's bar; returns how long its fade was set to last.
+  const finish = () => {
+    addon.eval('__fades = {} __casts.player = { kind = "cast", start = 1000, finish = 3000 }');
+    addon.fire("UNIT_SPELLCAST_START", "player");
+    addon.eval("__casts.player = nil");
+    addon.fire("UNIT_SPELLCAST_STOP", "player");
+    return addon.eval("local d = __fades[1].duration __finishFades() return d");
+  };
+  expect(finish(), "out of combat").toBe(0.35);
+  setCombat(addon, true);
+  expect(finish(), "in combat the fade is cut to 0.15 s").toBe(0.15);
+});
+
 it("cast timing from the client's duration object", () => {
   const addon = loggedIn(CAST_ENV);
   addon.eval(`
@@ -85,6 +101,22 @@ it("cast timing from the client's duration object", () => {
   addon.fire("UNIT_SPELLCAST_START", "player");
   expect(addon.eval("return __timer") === true, "a cast uses the client's duration object when the bar accepts one").toBeTruthy();
   expect(addon.eval('return ForeverUI_CastBar_player:GetScript("OnUpdate")') === null, "and then does not tick the bar itself").toBeTruthy();
+});
+
+it("on the client's timer a channel empties and a cast fills, as without it", () => {
+  const addon = loggedIn(CAST_ENV + `
+    -- TEST-ONLY: the client's timer directions, duration objects, and bars that take them (noting the direction asked for).
+    Enum.StatusBarTimerDirection = { ElapsedTime = 0, RemainingTime = 1 }
+    UnitCastingDuration = function() return { __duration = true } end
+    UnitChannelDuration = function() return { __duration = true } end
+    __dirs = {}`);
+  addon.eval(`for _, unit in ipairs({ "player", "target" }) do
+      _G["ForeverUI_CastBar_" .. unit].SetTimerDuration = function(_, _, _, dir) __dirs[unit] = dir return true end
+    end`);
+  addon.eval('__casts.player = { kind = "cast", start = 1000, finish = 2000 } __casts.target = { kind = "channel", start = 1000, finish = 5000 }');
+  addon.fire("UNIT_SPELLCAST_START", "player");
+  addon.fire("UNIT_SPELLCAST_CHANNEL_START", "target");
+  expect(addon.eval("return { __dirs.player, __dirs.target }"), "a cast by the time gone (fills), a channel by the time left (empties)").toEqual([0, 1]);
 });
 
 it("cast bars: spark, seconds left, latency and the uninterruptible edge", () => {
@@ -158,4 +190,21 @@ it("cast bars ask the client for their own units' casts only", () => {
   expect(addon.eval("return __updates[1]"), "the focus's does").toBe("focus");
   const some = loggedIn(CAST_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { CastBars = { player = false, focus = false } } }" });
   expect(unitEvents(some, "UNIT_SPELLCAST_STOP").subs, "only the units whose bars are on").toBe("target");
+});
+
+it("a channel the client stops with an interrupter flashes red, one it lets run out flashes green", () => {
+  const addon = loggedIn(CAST_ENV + FAKE_FADES);
+  addon.eval("__fakeFader(ForeverUI_CastBar_target)");
+  // Channels on the target, then the client stops it (CHANNEL_STOP: unit, castGUID, spellID, interruptedBy); the bar after.
+  const stop = (interruptedBy) => {
+    addon.eval('__finishFades() __casts.target = { kind = "channel", start = 1000, finish = 5000 }');
+    addon.fire("UNIT_SPELLCAST_CHANNEL_START", "target");
+    addon.eval("__casts.target = nil");
+    addon.fire("UNIT_SPELLCAST_CHANNEL_STOP", "target", "TEST-ONLY-Cast", 10, interruptedBy);
+    const b = castBar(addon, "target");
+    return [b.shown, isTok(addon, b.color, "bad") ? "red" : isTok(addon, b.color, "good") ? "green" : "other", b.text];
+  };
+  expect(stop("TEST-ONLY-Player-Kicker"), "kicked: red, and it says so").toEqual([true, "red", "Interrupted"]);
+  expect(stop(addon.world.secret(1)), "an interrupter the client hides is still one").toEqual([true, "red", "Interrupted"]);
+  expect(stop(null), "a channel that ran its course").toEqual([true, "green", "TEST-ONLY Spell"]);
 });

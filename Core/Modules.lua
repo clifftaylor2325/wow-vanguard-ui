@@ -40,9 +40,14 @@ function ns.SetModuleEnabled(name, on)
   if not on and def and def.Disable then ns.Try("disable " .. name, def.Disable, ns.Settings(name, def.defaults)) end
 end
 
--- Enables one module; a failure is reported (see ns.Report) instead of stopping the others.
+-- Reads a module's settings (running its ns.Migrate upgrade) and builds it.
+local function build(def)
+  return def.Enable(ns.Settings(def.name, def.defaults))
+end
+
+-- Enables one module; a failure, in its settings' upgrade too, is reported (see ns.Report) instead of stopping the others.
 local function enable(def)
-  def.enabled = (ns.Try("module " .. def.name, def.Enable, ns.Settings(def.name, def.defaults)))
+  def.enabled = (ns.Try("module " .. def.name, build, def))
 end
 
 ns.On("PLAYER_LOGIN", function()

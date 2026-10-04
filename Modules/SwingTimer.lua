@@ -18,7 +18,8 @@ local SW = ns.Module("SwingTimer", { defaults = { show = "auto" } })
 SW.CLASSES = { WARRIOR = true, ROGUE = true, HUNTER = true }
 
 SW.WIDTH, SW.ROW, SW.GAP = 220, 10, 2
--- Swing type name (Enum.PlayerSwingType) -> row order and color token.
+-- Swing type name (Enum.PlayerSwingType) -> row order and color token. The order is
+-- also that of UnitAttackSpeed's returns (main hand, off hand, ranged).
 SW.KINDS = { { "MainHand", "accent" }, { "OffHand", "text2" }, { "Ranged", "focus" } }
 
 -- Rows ----------------------------------------------------------------------------------------
@@ -69,6 +70,17 @@ function SW.Stop()
   for _, r in pairs(SW.rows) do r.live = false r:Hide() end
 end
 
+-- Your weapons changed: a swing under way starts over at the new weapon's speed,
+-- as the game's own swing timer does (Blizzard_SwingTimer.lua, WEAPON_SLOT_CHANGED);
+-- a hand left without a weapon, or whose speed the client hides, stops.
+function SW.OnWeapons()
+  local speeds = { UnitAttackSpeed("player") }
+  for kind, r in pairs(SW.rows) do
+    local length = r.live and ns.PlainNumber(speeds[r.hand])
+    if length and length > 0 then SW.OnSwing(nil, length, kind) elseif r.live then r.live = false r:Hide() end
+  end
+end
+
 -- Building ----------------------------------------------------------------------------------
 
 -- The movable holder, centered above your cast bar, and a row per swing type.
@@ -79,7 +91,7 @@ local function build()
   SW.rows = {}
   for i, kind in ipairs(SW.KINDS) do
     local id = Enum.PlayerSwingType[kind[1]]
-    if id ~= nil then SW.rows[id] = row(SW.holder, i, kind[2]) end
+    if id ~= nil then SW.rows[id] = row(SW.holder, i, kind[2]) SW.rows[id].hand = i end
   end
 end
 
@@ -97,4 +109,5 @@ function SW.Enable(settings)
   build()
   ns.On("PLAYER_SWING", SW.OnSwing)
   ns.On("PLAYER_DEAD", SW.Stop)
+  ns.On("WEAPON_SLOT_CHANGED", SW.OnWeapons)
 end

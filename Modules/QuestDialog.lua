@@ -1,6 +1,7 @@
--- ForeverUI's quest dialog: talking to a quest giver opens a wide panel at the
--- bottom center instead of the game's quest and gossip windows. It shows the
--- NPC's portrait and name, the text, numbered lines for quests and gossip
+-- ForeverUI's quest dialog: talking to a quest giver opens a panel sized to
+-- what it says, just above the frames around your character, instead of the
+-- game's quest and gossip windows. It shows the NPC's portrait (a quest mark
+-- when there is none to draw) and name, the text, numbered lines for quests and gossip
 -- (click one, or press its number), reward cards with quality borders, and
 -- the main button (Space presses it; Escape says goodbye).
 --
@@ -14,7 +15,9 @@ local QP = ns.QuestParts
 
 local QD = ns.Module("QuestDialog", { defaults = { dialog = true } })
 
-QD.W, QD.H, QD.BODY_H, QD.PER_ROW = 560, 330, 132, 3
+-- The panel's width, its least and greatest height (it is sized to what the page
+-- holds; a longer text scrolls), and the reward cards in a row.
+QD.W, QD.MIN_H, QD.MAX_H, QD.PER_ROW = 560, 160, 360, 3
 -- The game's windows and the events this dialog takes from them.
 QD.TAKEN = {
   QuestFrame = { "QUEST_GREETING", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_FINISHED" },

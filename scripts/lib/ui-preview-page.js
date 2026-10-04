@@ -57,17 +57,18 @@ const fontFamily = (file) => {
 // A font string's size, line height, color and family.
 function fontStyle(f) {
   const [templateSize, color] = FONTS[f.template] || FONTS.GameFontNormal;
-  const size = f.fontSize || templateSize;
+  const size = (f.fontSize || templateSize) * (f.escale || 1);
   return { fontSize: `${size}px`, lineHeight: `${Math.round(size * 1.2)}px`, color: rgba(f.textColor || color), fontFamily: fontFamily(f.fontPath) };
 }
 
 // A DOM node for a font string: font size, color, alignment, width and text.
 function fontNode(f) {
   const el = document.createElement("div");
-  el.className = "fs";
+  // An OUTLINE font flag draws a 1 px black ring around the glyphs, as the client does.
+  el.className = /OUTLINE/.test(f.fontFlags || "") ? "fs outline" : "fs";
   Object.assign(el.style, fontStyle(f));
   el.style.textAlign = { CENTER: "center", RIGHT: "right" }[f.justifyH] || "left";
-  if (f.width) el.style.width = `${f.width}px`;
+  if (f.width) el.style.width = `${f.width * (f.escale || 1)}px`;
   if (f.noWrap) Object.assign(el.style, { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" });
   el.innerHTML = wowText(f.text);
   return el;
@@ -79,7 +80,7 @@ function measure(ctx, f, measured) {
   Object.assign(el.style, { position: "absolute", visibility: "hidden" });
   ctx.stage.appendChild(el);
   const box = el.getBoundingClientRect();
-  ctx.natural.set(f.id, { width: f.width || box.width, height: f.text ? box.height : 0 });
+  ctx.natural.set(f.id, { width: f.width ? f.width * (f.escale || 1) : box.width, height: f.text ? box.height : 0 });
   if (f.text) measured[f.id] = box.height;
   el.remove();
 }
@@ -106,11 +107,12 @@ function pointOn(rr, rp) {
 }
 
 // Horizontal and vertical edges one anchor pins: [["L"|"R"|"C", x]], [["T"|"B"|"C", y]].
-function anchorEdges(ctx, p) {
+// Offsets are in the frame's own units, so they grow and shrink with its scale s.
+function anchorEdges(ctx, p, s) {
   const at = pointOn(rectOf(ctx, ctx.byId.get(p.rel)), p.relPoint || p.point);
   const h = p.point.includes("LEFT") ? "L" : p.point.includes("RIGHT") ? "R" : "C";
   const v = p.point.startsWith("TOP") ? "T" : p.point.startsWith("BOTTOM") ? "B" : "C";
-  return { h: [h, at.x + (p.x || 0)], v: [v, at.y - (p.y || 0)] };
+  return { h: [h, at.x + (p.x || 0) * s], v: [v, at.y - (p.y || 0) * s] };
 }
 
 // Start and extent along one axis from the pinned edges; unpinned sides use the asked extent.
@@ -124,12 +126,14 @@ function solve(list, extent, lo, hi) {
   return [(c ? c[1] : 0) - extent / 2, extent];
 }
 
-// Resolves a frame's anchors into a rect.
+// Resolves a frame's anchors into a rect, at its scale (font strings are measured at it already).
 function anchoredRect(ctx, f) {
-  const edges = pointsOf(ctx, f).map((p) => anchorEdges(ctx, p));
+  const s = f.escale || 1;
+  const edges = pointsOf(ctx, f).map((p) => anchorEdges(ctx, p, s));
   const { width, height } = size(ctx, f);
-  const [left, w] = solve(edges.map((e) => e.h), width, "L", "R");
-  const [top, h] = solve(edges.map((e) => e.v), height, "T", "B");
+  const k = f.kind === "FontString" ? 1 : s;
+  const [left, w] = solve(edges.map((e) => e.h), width * k, "L", "R");
+  const [top, h] = solve(edges.map((e) => e.v), height * k, "T", "B");
   return { left, top, width: w, height: h };
 }
 

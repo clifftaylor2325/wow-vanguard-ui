@@ -77,9 +77,7 @@ it("nameplates", () => {
     return { unit = c.__unit, timer = b.__durationText ~= nil, mouse = b.__mouse, sort = c.__groups[1].opts.sortMethod, point = c.__points.BOTTOMLEFT.relPoint }`);
   expect(row.unit === "nameplate1" && row.timer && row.mouse === false && row.point === "TOPLEFT", "a row over the plate that follows its unit, with timers, letting clicks through").toBeTruthy();
   expect(same(one.edge, accent), "your target gets an accent border (over the fill)").toBeTruthy();
-  expect(addon.eval(`local f = __plates.nameplate1.fui
-    for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and type(w.__texture) == "string" and w.__texture:find("Glow$") then return true end end
-    return f.glow ~= nil`), "and no glow: the border is enough").toBe(false);
+  expect(addon.eval("return __plates.nameplate1.fui.glow[1]:IsShown()"), "and an accent glow around it").toBe(true);
   expect(plate(addon, "nameplate3").drawn === false && plate(addon, "nameplate3").default === true, "a plate kept from addons is left alone").toBeTruthy();
   addon.eval("__plates.nameplate1.UnitFrame:Show()");
   expect(plate(addon, "nameplate1").default === false, "the default frame stays hidden").toBeTruthy();
@@ -152,6 +150,34 @@ it("nameplates repaint only what an event changed, and the border only when the 
   expect(plate(addon, "nameplate2").edge.slice(0, 3), "a new accent repaints your target's border").toEqual([0.1, 0.9, 0.2]);
 });
 
+it("your target's plate glows 2 px in the accent, names are outlined world text, the cast icon is as tall as its bar", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV);
+  // A plate's glow: shown, its tint, and its left and top sides' widths in screen pixels.
+  const glow = (unit) => addon.eval(`local f = __plates.${unit}.fui local px = ns.Theme.Pixel(f)
+    return { f.glow[1]:IsShown(), f.glow[5].__vertexColor or false, f.glow[7]:GetWidth() / px, f.glow[5]:GetHeight() / px }`);
+  const [shown, tint, left, top] = glow("nameplate1");
+  expect([shown, tint], "your target's plate: a glow in the accent").toEqual([true, tok(addon, "accent")]);
+  expect([left, top].map((n) => Math.round(n * 1000) / 1000), "2 screen pixels wide").toEqual([2, 2]);
+  expect(glow("nameplate2")[0], "another plate: no glow").toBe(false);
+  addon.eval("__plates.nameplate1:SetScale(1.5)");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(Math.round(glow("nameplate1")[2] * 1000) / 1000, "a plate drawn at another scale keeps a 2 px glow").toBe(2);
+  addon.eval("ns.Theme.SetAccent(0.1, 0.9, 0.2)");
+  expect(glow("nameplate1")[1], "the glow follows a new accent").toEqual([0.1, 0.9, 0.2, 1]);
+  const name = addon.frame("__plates.nameplate1.fui.name").font;
+  expect([name.size, name.flags, addon.eval('return ns.Theme.RoleSize("world")')], "the name: outlined 11 px world text").toEqual([11, "OUTLINE", 11]);
+  const cast = addon.frame("__plates.nameplate1.fui.cast").rect;
+  const icon = addon.frame("__plates.nameplate1.fui.cast.icon").rect;
+  const bar = addon.frame("__plates.nameplate1.fui").rect;
+  expect([icon.width, icon.height, icon.left], "the cast icon: as tall as the cast bar, square, at the plate's left edge").toEqual([cast.height, cast.height, bar.left]);
+  addon.slash("");
+  addon.eval('__click("Nameplates")');
+  addon.eval('__click("Accent border, glow and marker on your target")');
+  expect(glow("nameplate1")[0], "switched off, the glow goes at once").toBe(false);
+  const tall = loggedIn(UNITS_ENV + PLATE_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { Nameplates = { height = 14 } } } }" });
+  expect(tall.frame("__plates.nameplate1.fui.cast.icon").rect.height, "taller plates: a taller cast icon").toBe(14);
+});
+
 // TEST-ONLY levels: the boar is level 12 (a yellow, even fight), the friend 14 (no color from the client).
 const LEVELS_ENV = `
   UnitLevel = function(unit) return ({ target = 12, nameplate1 = 12, party1 = 14, nameplate2 = 14 })[unit] or 10 end
@@ -176,4 +202,19 @@ it("nameplates show levels in the difficulty color", () => {
   addon.slash("");
   addon.eval('__click("Nameplates")');
   expect(addon.eval('return __click("Levels, colored") and __plates.nameplate1.fui.level:GetText()'), "switched off, the levels clear at once").toBe("");
+});
+
+it("NP.RefreshAll repaints every plate on screen from the settings as they are now", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + LEVELS_ENV);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
+  // Both plates' level texts.
+  const levels = () => addon.eval("return { __plates.nameplate1.fui.level:GetText(), __plates.nameplate2.fui.level:GetText() }");
+  expect(levels(), "levels on").toEqual(["12", "14"]);
+  addon.eval("ns.Settings('Nameplates').level = false");
+  expect(levels(), "a setting written alone repaints nothing").toEqual(["12", "14"]);
+  addon.eval("ns.GetModule('Nameplates').RefreshAll()");
+  expect(levels(), "RefreshAll clears both").toEqual(["", ""]);
+  addon.eval("ns.Settings('Nameplates').level = true ns.GetModule('Nameplates').RefreshAll()");
+  expect(levels(), "and paints them back").toEqual(["12", "14"]);
 });

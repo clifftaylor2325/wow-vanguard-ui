@@ -30,6 +30,9 @@ T.CRESTS = { Alliance = { "lorc-crossed-swords", "allianceCrest" }, Horde = { "l
 T.HEADING_ROLES = { title = true, heading = true }
 -- Clients whose script the bundled font doesn't cover use the game's font.
 local CLIENT_FONT_LOCALES = { koKR = true, zhCN = true, zhTW = true }
+-- Clients whose script the faction look's heading fonts (Cinzel, Metamorphous:
+-- Latin only) don't cover keep Fira Sans for headings: Russian names and titles.
+local LATIN_HEADING_MISSING = { ruRU = true }
 
 -- A texture from Media/Textures (Bar, Shadow, Glow, Stripes, LogoLeft, ...).
 function T.Texture(name) return T.MEDIA .. "Textures\\" .. name end
@@ -178,10 +181,14 @@ local function clientFont()
   return STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
 end
 
+-- The client's locale ("enUS", "ruRU", ...), or "" when it can't say.
+local function locale()
+  return type(GetLocale) == "function" and GetLocale() or ""
+end
+
 -- True when the game's font must be used: chosen, or a Korean or Chinese client.
 local function useClientFont(s)
-  local locale = type(GetLocale) == "function" and GetLocale() or ""
-  return s.font == "client" or CLIENT_FONT_LOCALES[locale] == true
+  return s.font == "client" or CLIENT_FONT_LOCALES[locale()] == true
 end
 
 -- The font a chosen name stands for: a font shared through LibSharedMedia
@@ -352,9 +359,10 @@ local function ring(frame, look)
   return pieces
 end
 
--- A soft shadow around frame, behind everything else on it.
-local function shadow(frame)
-  return ring(frame, { texture = "Shadow", size = SHADOW_SIZE, layer = "BACKGROUND", sublevel = -8 })
+-- A soft shadow around frame, behind everything else on it: SHADOW_SIZE
+-- units, or `size` when it is a number (a slot's is smaller).
+local function shadow(frame, size)
+  return ring(frame, { texture = "Shadow", size = type(size) == "number" and size or SHADOW_SIZE, layer = "BACKGROUND", sublevel = -8 })
 end
 
 -- A glow ring around frame (hidden until T.ShowGlow), size units wide.
@@ -369,6 +377,16 @@ function T.ShowGlow(glow, on, color)
   for _, t in ipairs(glow) do
     t:SetShown(on == true)
     if on then T.Tint(t, color or "accent") end
+  end
+end
+
+-- Resizes a glow ring (T.Glow) to a whole number of screen pixels wide at
+-- frame's scale now (call again when its scale changes).
+function T.SizeGlow(glow, frame, pixels)
+  local size = pixels * T.Pixel(frame)
+  for i, t in ipairs(glow) do
+    if not SHADOW_PIECES[i].w then t:SetHeight(size) end
+    if not SHADOW_PIECES[i].h then t:SetWidth(size) end
   end
 end
 
@@ -477,7 +495,7 @@ local function repaint(frame, entry)
     sizeEdges(p.edges, frame)
   end
   if p.sheen then placeSheen(p.sheen, frame) end
-  if entry.paint then entry.paint(entry) end
+  if entry.paint then entry.paint(entry, frame) end
 end
 
 -- The parts opts ask for: background, edges, sheen (with a background) and shadow.
@@ -487,7 +505,7 @@ local function makeParts(frame, opts)
   if parts.bg then parts.bg:SetAllPoints() end
   parts.edges = not opts.noBorder and edges(frame) or nil
   parts.sheen = parts.bg and not opts.noSheen and sheen(frame) or nil
-  parts.shadow = opts.shadow and shadow(frame) or nil
+  parts.shadow = opts.shadow and shadow(frame, opts.shadow) or nil
   return parts
 end
 
@@ -555,6 +573,77 @@ function T.EditBox(box)
   end
   repaint(box, entry)
   return box
+end
+
+-- How far a slot's soft shadow reaches (units): small, so a row of slots keeps its gaps.
+T.SLOT_SHADOW = 3
+-- How a slot's accent edge changes with the button's state: toward white
+-- (more than 0: the mouse is over it) or toward black (less: it is pressed).
+T.SLOT_STATES = { hover = 0.4, pressed = -0.45 }
+-- Where each side of a ring one pixel inside a frame's border is anchored: { point, x, y } in pixels.
+local INNER = {
+  top = { { "TOPLEFT", 1, -1 }, { "TOPRIGHT", -1, -1 } }, bottom = { { "BOTTOMLEFT", 1, 1 }, { "BOTTOMRIGHT", -1, 1 } },
+  left = { { "TOPLEFT", 1, -1 }, { "BOTTOMLEFT", 1, 1 } }, right = { { "TOPRIGHT", -1, -1 }, { "BOTTOMRIGHT", -1, 1 } },
+}
+
+-- r, g, b of the accent moved `amount` of the way toward white (amount > 0) or black (amount < 0).
+local function shadeAccent(amount)
+  local r, g, b = T.Accent()
+  local to, k = amount > 0 and 1 or 0, math.abs(amount)
+  return r + (to - r) * k, g + (to - g) * k, b + (to - b) * k
+end
+
+-- Places a ring of edge textures one pixel inside frame's border, one pixel thick.
+local function placeInner(e, frame)
+  local px = T.Pixel(frame)
+  for side, points in pairs(INNER) do
+    e[side]:ClearAllPoints()
+    for _, p in ipairs(points) do e[side]:SetPoint(p[1], p[2] * px, p[3] * px) end
+  end
+  sizeEdges(e, frame)
+end
+
+-- Places a one-pixel bevel line two pixels inside frame's top or bottom edge (side "TOP" or "BOTTOM").
+local function placeBevel(t, frame, side)
+  local px = T.Pixel(frame)
+  local y = (side == "TOP" and -2 or 2) * px
+  t:ClearAllPoints()
+  t:SetPoint(side .. "LEFT", 2 * px, y)
+  t:SetPoint(side .. "RIGHT", -2 * px, y)
+  t:SetHeight(px)
+end
+
+-- Paints a slot's accent edge (for its state) and its bevel, at the frame's pixel size.
+local function paintSlot(entry, frame)
+  local p = entry.parts
+  placeInner(p.inner, frame)
+  colorEdges(p.inner, shadeAccent(T.SLOT_STATES[entry.opts.state] or 0))
+  placeBevel(p.lit, frame, "TOP")
+  placeBevel(p.dim, frame, "BOTTOM")
+  T.Tint(p.lit, "sheen")
+  T.Tint(p.dim, "shade")
+end
+
+-- A slot tile for a button (the bag and menu bar): a raised slate fill, a
+-- one-pixel border with a one-pixel accent edge inside it, a light line along
+-- the top and a dark one along the bottom inside that (a bevel), and a small
+-- soft shadow. The accent edge follows the accent and T.SlotState.
+function T.Slot(frame)
+  local entry = painted[frame]
+  if not entry then
+    entry = base(frame, "slot", { raised = true, noSheen = true, shadow = T.SLOT_SHADOW })
+    entry.parts.inner, entry.parts.lit, entry.parts.dim = edges(frame), solid(frame, "BORDER", 1), solid(frame, "BORDER", 1)
+    entry.paint = paintSlot
+  end
+  repaint(frame, entry)
+  return frame
+end
+
+-- Sets a slot's state ("hover", "pressed", or nil for neither) and repaints its accent edge.
+function T.SlotState(frame, state)
+  local entry = painted[frame]
+  entry.opts.state = state
+  repaint(frame, entry)
 end
 
 -- The painted close glyph: the Close icon in the secondary text color.
@@ -632,8 +721,8 @@ end
 -- outline instead of a shadow (world text such as nameplates, and text drawn
 -- over a bright bar, such as raid frame names).
 T.ROLES = {
-  title = { 15, true }, heading = { 13, true }, name = { 13, true }, cell = { 11, true },
-  label = { 12 }, number = { 12 }, small = { 10 }, tiny = { 9 }, world = { 10, true, "OUTLINE" },
+  title = { 15, true }, heading = { 13, true }, name = { 12, true }, cell = { 11, true },
+  label = { 12 }, number = { 12 }, small = { 10 }, tiny = { 9 }, world = { 11, true, "OUTLINE" },
   barName = { 11, true, "OUTLINE" }, barSmall = { 10, false, "OUTLINE" },
   -- Aura icons: stack counts, and the timer on larger and smaller icons.
   cooldown = { 14, true, "OUTLINE" }, auraCount = { 10, true, "OUTLINE" }, auraTimer = { 11, true, "OUTLINE" }, auraTimerSmall = { 9, true, "OUTLINE" },
@@ -644,6 +733,8 @@ T.ROLES = {
 -- Every font string styled with a role: string -> role name. Weak, so text
 -- that gets collected doesn't stay; T.RefreshText re-fonts them all.
 local styled = setmetatable({}, { __mode = "k" })
+-- Styled strings drawn at a size of their own (T.TextSize): string -> size. Weak too.
+local sizes = setmetatable({}, { __mode = "k" })
 
 -- A size after the text scale setting.
 function T.ScaledSize(size)
@@ -676,9 +767,17 @@ function T.ApplyRole(fs, role)
   local r = T.ROLES[role]
   local path, outline = T.Font(r[2])
   if T.HEADING_ROLES[role] then path = T.HeadingFont() or path end
-  fs:SetFont(path, roleSize(r), r[3] or outline)
+  fs:SetFont(path, sizes[fs] or roleSize(r), r[3] or outline)
   fs:SetShadowOffset(r[3] and 0 or 1, r[3] and 0 or -1)
   fs:SetShadowColor(T.RGB("textShadow"))
+end
+
+-- Draws a font string styled with a role at a size of its own, which the
+-- caller works out from the roles' sizes (T.RoleSize); kept when the text is
+-- refreshed. nil puts the role's size back.
+function T.TextSize(fs, size)
+  sizes[fs] = size
+  T.ApplyRole(fs, styled[fs])
 end
 
 -- Re-fonts every string styled with a role (after a font or text size change).
@@ -724,10 +823,11 @@ function T.Faction()
   return faction ~= "none" and faction or nil
 end
 
--- The faction's heading font, or nil (look off, no faction, another font chosen, or a client using the game's font).
+-- The faction's heading font, or nil (look off, no faction, another font chosen, a client using
+-- the game's font, or one whose script the heading fonts lack).
 function T.HeadingFont()
   local s, faction = T.Settings(), T.Faction()
-  if not faction or s.font ~= "" or useClientFont(s) then return nil end
+  if not faction or s.font ~= "" or useClientFont(s) or LATIN_HEADING_MISSING[locale()] then return nil end
   return T.FONTS[faction:lower()]
 end
 
@@ -795,22 +895,45 @@ local function activeFader(frame)
   return not T.Settings().reduceMotion and fader(frame) or nil
 end
 
--- Shows a frame, fading it in (0.12 s by default) unless motion is off.
--- Only for frames that aren't protected: animations never move secure frames.
+-- The longest a fade lasts in combat, in seconds: mid-fight nothing lingers
+-- on screen or keeps you waiting on it (docs/THEME.md, Motion and sound).
+T.COMBAT_FADE = 0.15
+-- True from a fight's PLAYER_REGEN_DISABLED, which comes just before the
+-- client's combat lockdown starts, until PLAYER_REGEN_ENABLED.
+local fighting = false
+
+-- How long a fade lasts: seconds (0.12 by default), at most T.COMBAT_FADE in combat.
+function T.FadeTime(seconds)
+  local t = seconds or 0.12
+  if fighting or ns.InCombat() then return math.min(t, T.COMBAT_FADE) end
+  return t
+end
+
+-- A fight started or ended: fades are capped while it lasts.
+local function onFight(event)
+  fighting = event == "PLAYER_REGEN_DISABLED"
+end
+ns.On("PLAYER_REGEN_DISABLED", onFight)
+ns.On("PLAYER_REGEN_ENABLED", onFight)
+
+-- Shows a frame, fading it in (0.12 s by default, at most 0.15 s in combat)
+-- unless motion is off. Only for frames that aren't protected: animations
+-- never move secure frames.
 function T.FadeIn(frame, seconds)
   local f = activeFader(frame)
   frame:Show()
   if not f then return frame:SetAlpha(1) end
-  playFade(f, 0, 1, seconds or 0.12, function() frame:SetAlpha(1) end)
+  playFade(f, 0, 1, T.FadeTime(seconds), function() frame:SetAlpha(1) end)
 end
 
--- Fades a frame out, then hides it (and runs done); at once when motion is off.
+-- Fades a frame out (as long as T.FadeIn), then hides it (and runs done); at
+-- once when motion is off.
 function T.FadeOut(frame, seconds, done)
   local f = activeFader(frame)
   -- Hides the frame, restores its alpha for next time, and tells the caller.
   local finish = function() frame:Hide() frame:SetAlpha(1) if done then done() end end
   if not f or not frame:IsShown() then return finish() end
-  playFade(f, 1, 0, seconds or 0.12, finish)
+  playFade(f, 1, 0, T.FadeTime(seconds), finish)
 end
 
 -- Stops a fade in progress and leaves the frame fully visible.
@@ -824,6 +947,8 @@ end
 local SOUNDS = {
   on = "IG_MAINMENU_OPTION_CHECKBOX_ON", off = "IG_MAINMENU_OPTION_CHECKBOX_OFF",
   page = "IG_CHARACTER_INFO_TAB", open = "IG_MAINMENU_OPEN", close = "IG_MAINMENU_CLOSE",
+  -- An alert you asked for (Chat watch): the whisper sound (Mainline/SoundKitConstants.lua, 3081).
+  alert = "TELL_MESSAGE",
 }
 
 -- Plays one of the client's own interface sounds, unless sounds are off.

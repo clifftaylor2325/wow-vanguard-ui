@@ -109,8 +109,8 @@ it("setup layouts: Like the game's puts your frames at the top left; another lay
   const home = spots();
   expect(addon.eval('return __click("Like the game\'s") and ForeverUI_Setup.pages[1].hint:GetText()'), "picking it says what it does").toMatch(/top left as the game has them/);
   setupClick(addon, "next");
-  expect(spots(), "player at the top left, focus beside the target of target, party and raid down the left, bosses on the right").toEqual([["TOPLEFT", "TOPLEFT", 20, -40], ["TOPLEFT", "TOPLEFT", 480, -94], ["BOTTOMLEFT", "BOTTOMLEFT", 20, 330], ["TOPRIGHT", "TOPRIGHT", -290, -200]]);
-  expect(addon.eval("return ForeverUIDB.profiles.Default.positions.maintanks"), "frames not built yet get their spot saved for later").toEqual({ point: "TOP", relPoint: "TOP", x: 60, y: -196 });
+  expect(spots(), "player at the top left, focus beside the target of target, party and raid down the left, bosses on the right").toEqual([["TOPLEFT", "TOPLEFT", 20, -40], ["TOPLEFT", "TOPLEFT", 520, -94], ["BOTTOMLEFT", "BOTTOMLEFT", 20, 330], ["TOPRIGHT", "TOPRIGHT", -290, -200]]);
+  expect(addon.eval("return ForeverUIDB.profiles.Default.positions.maintanks"), "frames not built yet get their spot saved for later").toEqual({ point: "TOP", relPoint: "TOP", x: 100, y: -196 });
   for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
   addon.slash("setup");
   addon.eval('__click("Centered: healing")');
@@ -133,7 +133,7 @@ function rectAt([point, relPoint, x, y], w, h, sw, sh) {
 // (Modules/ComboPoints.lua: 5 pips of 14 + 3; Modules/FrameAuras.lua: buffs 18, debuffs 22 with crowd control).
 const ATTACHED = {
   combo: ["uf_player", "above", 2, 85, 14], targetBuffs: ["uf_target", "above", 3, 160, 18],
-  targetDebuffs: ["uf_target", "below", 3, 220, 22], focusDebuffs: ["uf_focus", "below", 3, 160, 20],
+  targetDebuffs: ["uf_target", "below", 3, 240, 22], focusDebuffs: ["uf_focus", "below", 3, 160, 20],
 };
 
 // Every built mover's [point, relPoint, x, y, w, h, scale], read from the addon: the
@@ -158,8 +158,17 @@ function raidRect(addon, spot, n, sw, sh) {
   return { l, b: holder.b, r: l + w, t: holder.b + h };
 }
 
-// Windows that open over the HUD for a moment (talking to an NPC), so they're left out of the overlap check.
-const FLOATING = new Set(["questdialog", "questlog", "lossofcontrol", "talkinghead"]);
+// Windows that open over the HUD for a moment, so they're left out of the overlap check
+// (the Instance prep card shows at an instance's door or a ready check and fades after 20 s;
+// the Chat watch toast shows for 8 s when a watched phrase is said).
+const FLOATING = new Set(["questlog", "lossofcontrol", "talkinghead", "prepcard", "chatwatch"]);
+
+// The quest dialog (at its greatest height) must clear the cluster around your character
+// in the centered layouts; it may cover the group frames above it while you talk to an NPC.
+// Like the game's has no cluster there (your frames are at the top left), so it isn't checked there.
+const DIALOG_MAY_COVER = new Set(["raid", "maintanks", "partyextras"]);
+// Whether a pair is the quest dialog over a group frame.
+const dialogMayCover = (a, c) => (a === "questdialog" && DIALOG_MAY_COVER.has(c)) || (c === "questdialog" && DIALOG_MAY_COVER.has(a));
 
 // Parts that show only with some group sizes [fewest, most]: main tanks in a raid, party pets and targets in a party.
 const ONLY_WITH = { maintanks: [6, 40], partyextras: [1, 5] };
@@ -186,14 +195,14 @@ function layoutRects(addon, n, sw, sh) {
 // Problems on one screen: pairs that overlap and parts off screen.
 function layoutProblems(rects, sw, sh) {
   const keys = Object.keys(rects), bad = [];
-  keys.forEach((a, i) => keys.slice(i + 1).forEach((c) => { if (overlaps(rects[a], rects[c])) bad.push(`${a} / ${c}`); }));
+  keys.forEach((a, i) => keys.slice(i + 1).forEach((c) => { if (overlaps(rects[a], rects[c]) && !dialogMayCover(a, c)) bad.push(`${a} / ${c}`); }));
   keys.forEach((k) => { const r = rects[k]; if (r.l < 0 || r.b < 0 || r.r > sw || r.t > sh) bad.push(`${k} off screen`); });
   return bad;
 }
 
 // The whole HUD logged in on a new account, party pets and targets on, the info strip
-// at its tallest (with the leveling and DPS rows) and the menu and bag strips at their
-// laid-out sizes (314.4 and 198.2 wide, 36 tall).
+// at its tallest (with the leveling and DPS rows) and the bag and menu bar at its
+// laid-out size (404 wide, 68 tall: the bags row over the menu row's 14 slots).
 function wholeHud() {
   const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + SPECIAL_BARS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
   addon.eval("ForeverUI_InfoStrip:SetHeight(68)");
@@ -201,12 +210,19 @@ function wholeHud() {
   return addon;
 }
 
-// Overlaps and parts off an sw x sh screen, for each raid growth and group size (solo, 5, 25, 40).
-function problemsAt(addon, sw, sh, label) {
+// Every part's rect in a layout preset: the quest dialog only in the centered ones.
+function presetRects(addon, layout, n, sw, sh) {
+  const rects = layoutRects(addon, n, sw, sh);
+  if (layout === "classic") delete rects.questdialog;
+  return rects;
+}
+
+// Overlaps and parts off an sw x sh screen in a layout preset, for each raid growth and group size (solo, 5, 25, 40).
+function problemsAt(addon, layout, sw, sh, label) {
   const bad = [];
   for (const grow of ["columns", "rows"]) {
     addon.eval(`ns.GetModule("RaidFrames").settings.layout = "${grow}"`);
-    for (const n of [0, 5, 25, 40]) for (const p of layoutProblems(layoutRects(addon, n, sw, sh), sw, sh)) bad.push(`${label}, groups as ${grow}, ${n} players: ${p}`);
+    for (const n of [0, 5, 25, 40]) for (const p of layoutProblems(presetRects(addon, layout, n, sw, sh), sw, sh)) bad.push(`${label}, groups as ${grow}, ${n} players: ${p}`);
   }
   return bad;
 }
@@ -214,12 +230,13 @@ function problemsAt(addon, sw, sh, label) {
 it("setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", () => {
   const addon = wholeHud();
   expect(addon.eval("return ChatFrame1.__points.BOTTOMLEFT ~= nil"), "chat sits in its layout spot").toBe(true);
-  expect(moverSpots(addon).bagstrip.slice(4, 6), "the bag strip is as laid out").toEqual([266 * 0.7 + 12, 36]);
-  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras", "petbar", "stancebar", "chat"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
+  expect(moverSpots(addon).menustrip.slice(4, 6).map((n) => Math.round(n * 10) / 10), "the bag and menu bar hugs its 14 menu slots").toEqual([404, 68]);
+  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "fighthistory", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras", "petbar", "stancebar", "chat", "questdialog"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
+  expect(moverSpots(addon).questdialog.slice(3, 6), "the quest dialog is checked at its greatest size, 8 px over the focus cast bar").toEqual([346, 560, 360]);
   for (const layout of ["damage", "healing", "classic"]) {
     addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
-    // The bag strip sits above the menu strip, so the pair is no wider than the menu strip and clears the bars at 1365.
-    for (const [sw, sh] of [[1365, 768], [1920, 1080]]) expect(problemsAt(addon, sw, sh, `${layout}, ${sw}x${sh}`)).toEqual([]);
+    // The bags ride over the menu in one bar, so it is no wider than the menu row and clears the bars at 1365.
+    for (const [sw, sh] of [[1365, 768], [1920, 1080]]) expect(problemsAt(addon, layout, sw, sh, `${layout}, ${sw}x${sh}`)).toEqual([]);
   }
   expect(addon.eval("return { ns.Setup.HealingPoint() }")[0], "Healing centers the grid above the focus cast bar").toEqual(["BOTTOM", "BOTTOM", 0, 342]);
 });
@@ -233,7 +250,7 @@ it("setup screens: with each screen preset, nothing overlaps or leaves its own s
     const sw = (768 * w) / h / ui, sh = 768 / ui;
     for (const layout of ["damage", "healing", "classic"]) {
       addon.eval(`ns.Setup.ApplyLayout("${layout}") ns.Setup.ApplyScreen("${key}")`);
-      expect(problemsAt(addon, sw, sh, `${key} (${Math.round(sw)}x${Math.round(sh)}), ${layout}`)).toEqual([]);
+      expect(problemsAt(addon, layout, sw, sh, `${key} (${Math.round(sw)}x${Math.round(sh)}), ${layout}`)).toEqual([]);
     }
   }
   expect(addon.eval("return { ns.GetModule('ActionBars').settings.size, ns.GetModule('RaidFrames').settings.width, ns.Theme.Settings().textScale }"), "the last preset (ultrawide) set the buttons, tiles and text").toEqual([38, 110, 1.05]);
@@ -251,6 +268,34 @@ it("setup look: accent swatches and the raid frame style apply at once", () => {
   addon.eval("local b = ForeverUI_Setup.pages[3].styles[2] b:GetScript('OnClick')(b)");
   expect(addon.eval("return ns.Settings('RaidFrames').look"), "a style button sets the raid frame style").toBe("dark");
   expect(borderOf(addon, "ForeverUI_Setup.pages[3].styles[2]"), "the chosen style is outlined").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  const captions = addon.eval("local out = {} for i, b in ipairs(ForeverUI_Setup.pages[3].styles) do out[i] = { b.text:GetText(), b.text.__textColor } end return out");
+  expect(captions.map(([t, c]) => [t, ...c.slice(0, 3)]), "each tile's short name under it, the chosen one in the accent")
+    .toEqual([["Softened", ...tok(addon, "text").slice(0, 3)], ["Dark", ...tok(addon, "accent").slice(0, 3)], ["Bright", ...tok(addon, "text").slice(0, 3)]]);
+});
+
+// The style tiles on setup's Look step: each one's size, bar color and fill, and its name's text and color.
+const styleTiles = (addon) => addon.eval(`local out = {}
+  for i, b in ipairs(ForeverUI_Setup.pages[3].styles) do
+    local c, t = b.bar.__barColor, b.name.__textColor
+    out[i] = { b:GetWidth(), b:GetHeight(), { c[1], c[2], c[3] }, b.bar:GetValue(), b.name:GetText(), { t[1], t[2], t[3] } }
+  end
+  return out`);
+
+it("setup look: each raid frame style is a small raid tile drawn in that style, in your class color", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
+  setupClick(addon, "next");
+  setupClick(addon, "next");
+  expect(addon.eval("return ForeverUI_Setup.caption:GetText()"), "Look is step 3 of 4").toBe("Step 3 of 4 · Look");
+  const mage = [0.25, 0.78, 0.92];
+  const soft = addon.eval(`return { ns.GetModule("RaidFrames").Soften(${mage.join(", ")}) }`);
+  const [white, dark] = [tok(addon, "text").slice(0, 3), tok(addon, "darkBar").slice(0, 3)];
+  expect(styleTiles(addon), "softened and bright class bars with light names; a dark bar with the name in the class color").toEqual([
+    [100, 48, soft, 0.75, "<name>", white], [100, 48, dark, 0.75, "<name>", mage], [100, 48, mage, 0.75, "<name>", white]]);
+  expect(addon.eval("local p = ForeverUI_Setup.pages[3] local a, b = p.styles[1], p.styles[2] return { select(4, b:GetPoint(1)) - select(4, a:GetPoint(1)), a.text:GetText() }"), "side by side, 16 apart").toEqual([116, "Softened"]);
+  addon.eval("local b = ForeverUI_Setup.pages[3].styles[3] b:GetScript('OnClick')(b)");
+  expect([addon.eval("return ns.Settings('RaidFrames').look"), borderOf(addon, "ForeverUI_Setup.pages[3].styles[3]")], "clicking the bright tile picks it").toEqual(["class", tok(addon, "accent").slice(0, 3).concat(1)]);
+  setupClick(addon, "next");
+  expect(addon.eval("return ForeverUI_Setup.caption:GetText()"), "then Move things is step 4 of 4").toBe("Step 4 of 4 · Move things");
 });
 
 // The screen step's choices (their labels) and the hint under them.
@@ -319,11 +364,22 @@ it("Centered layout: compact raid grid, one-time migrations, a strip with nothin
   addon.fire("GROUP_ROSTER_UPDATE");
   expect(grid()[0], "compact off: always full size").toBe(1);
   const old = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { spacing = 4 }, DataBars = { width = 476, height = 10 } } } }" });
-  expect(old.eval("local p = ForeverUIDB.profiles.Default return { p.ActionBars.spacing, p.DataBars.width, p.DataBars.height }"), "a profile saved with the old sizes moves to the new ones").toEqual([2, 454, 6]);
+  expect(old.eval("local p = ForeverUIDB.profiles.Default return { p.ActionBars.spacing, p.DataBars.width, p.DataBars.height }"), "a profile saved with the old sizes moves to the new ones").toEqual([2, 478, 6]);
   old.eval("local p = ForeverUIDB.profiles.Default p.ActionBars.spacing = 4 p.DataBars.width = 476 p.DataBars.height = 10");
   expect(old.eval("local s = ns.Settings('ActionBars', ns.GetModule('ActionBars').defaults) local d = ns.Settings('DataBars', ns.GetModule('DataBars').defaults) return { s.spacing, d.width, d.height }"), "but only once: picking those sizes again keeps them").toEqual([4, 476, 10]);
   const strip = loggedIn(UNITS_ENV + STRIP_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { InfoStrip = { durability = false, bags = false, system = false, gold = false, ammo = false, clock = false } } }" });
   expect(strip.eval("return ForeverUI_InfoStrip:IsShown()"), "a strip with every block off isn't drawn as an empty box").toBe(false);
   const chatFree = loggedIn(UI_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Chat = { place = false } } }" });
   expect(chatFree.eval("return ChatFrame1.__points.BOTTOMLEFT == nil"), "with Keep chat in its spot off, chat stays where the game puts it").toBe(true);
+});
+
+it("default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 px buttons; a saved profile keeps its sizes", () => {
+  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV);
+  // The player frame's size and name size, bar 1's button size, the XP bar's width and the 1080p preset's buttons.
+  const sizes = (a) => a.eval(`return { ForeverUI_player:GetWidth(), ForeverUI_player:GetHeight(), select(2, ForeverUI_player.name:GetFont()),
+    ForeverUI_Bar1Button1:GetWidth(), ns.Settings("DataBars").width, ns.Setup.ScreenPreset("1080").button }`);
+  expect(sizes(addon), "a new profile: the plan's 1080p sizes, and the 1080p preset agrees").toEqual([240, 36, 12, 38, 478, 38]);
+  const old = loggedIn(ACTIONS_ENV + UNITS_ENV, { savedVariables: 'ForeverUIDB = { profiles = { Default = { ActionBars = { size = 36 }, DataBars = { width = 454, layout = 2 }, positions = { uf_player = { point = "BOTTOM", relPoint = "BOTTOM", x = -250, y = 180 } } } } }' });
+  expect(sizes(old).slice(3, 5), "a profile that saved the old button size and bar width keeps them").toEqual([36, 454]);
+  expect(old.eval("return { ns.MoverPoint('uf_player') }"), "and a frame it moved stays put").toEqual(["BOTTOM", "BOTTOM", -250, 180]);
 });

@@ -2,8 +2,10 @@
 -- a choice (segments, or a dropdown when the choices don't fit), a slider
 -- and a search box. Each row is a full-width button with the caption on
 -- the left (row.label) and the control on the right; clicking the caption
--- does the obvious thing (flip the switch, step to the next choice). Every
--- row has :Refresh() to re-read its value.
+-- does the obvious thing (flip the switch, step to the next choice). The
+-- mouse wheel never changes a value: over a row it scrolls the page (the
+-- rows don't take it, so it goes on to the page's scroll view). Every row
+-- has :Refresh() to re-read its value.
 
 local ADDON, ns = ...
 
@@ -351,16 +353,9 @@ local function stepOrWrap(r)
   end
 end
 
--- The wheel steps the value either way; clicking the caption steps up (wrapping).
-local function wireSteps(r)
-  r:EnableMouseWheel(true)
-  r:SetScript("OnMouseWheel", function(self, delta) stepBy(self, delta > 0 and 1 or -1) end)
-  r:SetScript("OnClick", stepOrWrap)
-end
-
 -- A slider row for a number from min to max in steps; format(v) is its
--- text. Clicking the caption steps up (wrapping to min), the wheel steps
--- either way.
+-- text. Clicking the caption steps up (wrapping to min); dragging along the
+-- track sets it. The wheel over it scrolls the page, as over any row.
 function W.Slider(parent, caption, opts, get, set, width)
   local r = row(parent, caption, width)
   r.min, r.max, r.step, r.format = opts.min, opts.max, opts.step, opts.format or tostring
@@ -368,7 +363,7 @@ function W.Slider(parent, caption, opts, get, set, width)
   addTrack(r)
   r.value = T.Text(r:CreateFontString(nil, "OVERLAY"), "number", "text2")
   r.value:SetPoint("RIGHT", -8, 0)
-  wireSteps(r)
+  r:SetScript("OnClick", stepOrWrap)
   r:Refresh()
   return r
 end

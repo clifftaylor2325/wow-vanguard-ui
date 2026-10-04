@@ -14,6 +14,12 @@ local BG = ns.Module("Bags", {
   defaults = { combined = true, bank = true, sections = true },
 })
 
+-- The combined bag's inner padding: its slots, section headers, Sort button and
+-- money line sit this far inside the window's edges (on the theme's 4 px grid).
+BG.PAD = 12
+-- The Sort button's width and the space between it and the search box.
+local SORT_W, SORT_GAP = 52, 6
+
 -- Item button regions whose art is faded (the icon and texts stay). Not the
 -- context overlay: the game dims items that don't match a search with it.
 local ITEM_ART = { "NormalTexture", "IconBorder" }
@@ -152,25 +158,42 @@ local function hideGameSort()
 end
 
 -- Puts the Sort button on the search row: right of the search box, or where the
--- game's own sort button sat when the client has no such box.
+-- game's own sort button sat (the padding inside the right edge) when the client has no such box.
 local function placeSort(frame)
   local box = _G.BagItemSearchBox
   if type(box) == "table" then
-    BG.sort:SetPoint("LEFT", box, "RIGHT", 6, 0)
+    BG.sort:SetPoint("LEFT", box, "RIGHT", SORT_GAP, 0)
   else
-    BG.sort:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -9, -34)
+    BG.sort:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -BG.PAD, -34)
   end
+end
+
+-- Narrows the game's search box (it keeps the game's left edge, clear of the
+-- bag's portrait) so Sort, right of it, ends the padding inside the window's right edge.
+function BG.FitSearch(frame)
+  local box = _G.BagItemSearchBox
+  if not BG.sort or type(box) ~= "table" or box:GetParent() ~= frame then return end
+  local _, _, _, left = box:GetPoint(1)
+  box:SetWidth(frame:GetWidth() - BG.PAD - SORT_W - SORT_GAP - (left or 0))
+end
+
+-- The search box fitted each time the game sets up the bag's search row (it
+-- gives the box its own width then), when the client has that call.
+local function watchSearchRow(frame)
+  if type(frame.UpdateSearchBox) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(frame, "UpdateSearchBox", BG.FitSearch)
 end
 
 -- A Sort button beside the search box, if the client can sort bags; the game's own is hidden.
 function BG.AddSort(frame)
   local sort = C_Container and C_Container.SortBags
   if type(sort) ~= "function" or BG.sort then return end
-  BG.sort = ns.DialogButton(frame, "Sort", 52)
+  BG.sort = ns.DialogButton(frame, "Sort", SORT_W)
   BG.sort:SetHeight(20)
   placeSort(frame)
   BG.sort:SetScript("OnClick", function() sort() end)
   hideGameSort()
+  watchSearchRow(frame)
 end
 
 -- Module entry point (Core/Modules.lua): the combined setting applied to the

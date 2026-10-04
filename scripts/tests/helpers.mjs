@@ -24,7 +24,7 @@ export const RETAIL = "__wfgWorld.build.interface = 120007\n";
 
 // An account that has finished first-run setup, so the wizard stays shut in
 // cases about other things (a case's own ForeverUIDB replaces it).
-export const SETUP_DONE = "ForeverUIDB = { version = 1, profiles = {}, setupDone = true }\n";
+export const SETUP_DONE = "ForeverUIDB = { version = 2, profiles = {}, setupDone = true }\n";
 
 // A logged-in addon; extra Lua runs before login (e.g. a module or a skin).
 // firstRun: a brand-new account (no SavedVariables unless given), so setup opens.
@@ -414,12 +414,14 @@ export const putAway = (addon, path) => addon.eval(`local f = ${path} return f:G
 // A frame's parent check and its single anchor point name.
 export const pinned = (addon, path, parent) => addon.eval(`local f = ${path} local p = next(f.__points) return { f:GetParent() == ${parent}, p }`);
 
-// TEST-ONLY micro menu buttons in the game's micro menu: their art, a normal
-// texture the game swaps atlases on, and an alert flash.
+// TEST-ONLY micro menu buttons in the game's micro menu: their background plate,
+// art, a normal texture the game swaps atlases on, and an alert flash; the
+// backpack button with its bag ID.
 export const MICRO_ENV = `
   function __micro(name)
     local b = CreateFrame("Button", name, MicroMenuContainer)
     b:SetSize(32, 40)
+    b.Background = b:CreateTexture(nil, "BACKGROUND")
     b:CreateTexture(nil, "ARTWORK"):SetTexture("TEST-ONLY-ART")
     b.normal = b:CreateTexture(nil, "ARTWORK")
     b.GetNormalTexture = function(self) return self.normal end
@@ -429,6 +431,7 @@ export const MICRO_ENV = `
   __micro("CharacterMicroButton") __micro("MainMenuMicroButton")
   __bag = CreateFrame("Button", "MainMenuBarBackpackButton", BagsBar) __bag:SetSize(40, 40)
   __bag.icon = __bag:CreateTexture() __bag.icon:SetAllPoints() __bag:CreateTexture(nil, "OVERLAY"):SetTexture("TEST-ONLY-ART")
+  function __bag:GetBagID() return 0 end
 `;
 
 // Strips under the Forever-like bars; extra is more Lua to run first.
@@ -497,6 +500,8 @@ export const QUEST_ENV = `
   UISpecialFrames = {}
   issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
   UnitName = function(unit) if unit == "npc" then return "TEST-ONLY Farmer" end return "<name>" end
+  __npc = true
+  UnitExists = (function(old) return function(unit) if unit == "npc" then return __npc end return old(unit) end end)(UnitExists)
   SetPortraitTexture = function(t, unit) t.__portrait = unit end
   GetQuestDifficultyColor = function(level) return { r = level > 10 and 1 or 0.25, g = 0.75, b = 0.25 } end
   C_Item = { GetItemQualityColor = function() return 0, 0.44, 0.87 end, GetItemInfo = function(link) return "x", link, 1, 1, 1, "", "", 1, "", "", __prices[link] end }

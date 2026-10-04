@@ -1,7 +1,9 @@
 -- The options window: a header bar (logo, search, profile, close), icon
--- navigation on the left, the current page as cards of setting rows (it
--- scrolls when long), and a footer that says when a reload is needed. Pages
--- and their rows come from Core/Options.lua and modules' own pages.
+-- navigation on the left (a dot marks pages with changed settings), the
+-- current page as cards of setting rows (it scrolls when long), and a footer
+-- that says when a reload is needed. Up and Down walk the pages, Tab and
+-- Shift-Tab the rows, Enter or Space presses the row. Pages and their rows
+-- come from Core/Options.lua and modules' own pages.
 
 local ADDON, ns = ...
 
@@ -10,7 +12,7 @@ local T, W, O = ns.Theme, ns.Widgets, ns.Options
 local WIDTH, HEIGHT, NAV_WIDTH, BAR = 780, 560, 176, 40
 local CARD_WIDTH, PAD = WIDTH - NAV_WIDTH - 40, 10
 -- Height of each row kind (modules add theirs with O.AddRowKind).
-local ROW_HEIGHT = { check = 28, cycle = 28, slider = 28, swatches = 30, button = 32, text = 20, preview = 44, module = 40 }
+local ROW_HEIGHT = { check = 28, cycle = 28, slider = 28, swatches = 30, button = 32, text = 20, preview = 52, module = 40 }
 -- Row kinds laid out edge to edge in a card (the rest are indented).
 local FULL_WIDTH = { check = true, cycle = true, slider = true, swatches = true, module = true }
 -- Where a row kind keeps its setter; the setting's default, if the row has one, comes right after it.
@@ -21,6 +23,8 @@ local pages, widgets = {}, {}
 -- Each page's rows as the search reads them, kept while the window is open (O.RebuildPage drops a page's).
 local rowCache = {}
 local needsReload = false
+-- True while every row is being refreshed at once (the nav's dots are marked once after).
+local quiet = false
 
 -- Rows ---------------------------------------------------------------------------------------
 
@@ -49,25 +53,74 @@ local function addSwatches(r)
   end
 end
 
--- A live sample: a unit bar with the bar texture and the bundled font.
+-- A bar on the sample unit frame, h tall, at value (of 100).
+local function sampleBar(f, h, value)
+  local bar = CreateFrame("StatusBar", nil, f)
+  bar:SetHeight(h)
+  bar:SetMinMaxValues(0, 100)
+  bar:SetValue(value)
+  return bar
+end
+
+-- The sample unit frame: health on top with the name and health text, power along the bottom.
+local function sampleUnit(r)
+  local f = T.HudPanel(CreateFrame("Frame", nil, r))
+  f:SetSize(220, 36)
+  f:SetPoint("LEFT", 8, 0)
+  f.health, f.power = sampleBar(f, 26, 72), sampleBar(f, 7, 60)
+  f.health:SetPoint("TOPLEFT", 1, -1)
+  f.health:SetPoint("TOPRIGHT", -1, -1)
+  f.power:SetPoint("BOTTOMLEFT", 1, 1)
+  f.power:SetPoint("BOTTOMRIGHT", -1, 1)
+  return f
+end
+
+-- The sample unit frame's name (left) and health (right).
+local function sampleTexts(f)
+  f.name = T.Text(f.health:CreateFontString(nil, "OVERLAY"), "name")
+  f.name:SetPoint("LEFT", 4, 0)
+  f.value = T.Text(f.health:CreateFontString(nil, "OVERLAY"), "number")
+  f.value:SetPoint("RIGHT", -4, 0)
+end
+
+-- The sample action button: an icon, its key and count, and an accent glow (a spell that procced).
+local function sampleButton(r)
+  local b = T.Button(CreateFrame("Button", nil, r))
+  b:SetSize(36, 36)
+  b:SetPoint("LEFT", r.unit, "RIGHT", 16, 0)
+  b.icon = T.Crop(b:CreateTexture(nil, "ARTWORK"))
+  b.icon:SetPoint("TOPLEFT", 1, -1)
+  b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+  b.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+  b.hotkey, b.count = T.Text(b:CreateFontString(nil, "OVERLAY"), "small", "text2"), T.Text(b:CreateFontString(nil, "OVERLAY"), "small", "white")
+  b.glow = T.Glow(b, 6)
+  return b
+end
+
+-- A live sample in the current theme (accent, font, text size, bar texture):
+-- a unit frame and an action button, as the HUD draws them.
 local function previewRow(parent, width)
   local r = CreateFrame("Frame", nil, parent)
   r:SetSize(width, ROW_HEIGHT.preview)
-  r.bar = T.Panel(CreateFrame("StatusBar", nil, r), { shadow = true })
-  r.bar:SetSize(220, 26)
-  r.bar:SetPoint("LEFT", 8, 0)
-  T.StyleBar(r.bar)
-  r.bar:SetMinMaxValues(0, 100)
-  r.bar:SetValue(72)
-  r.bar.name = T.Text(r.bar:CreateFontString(nil, "OVERLAY"), "name")
+  r.unit = sampleUnit(r)
+  sampleTexts(r.unit)
+  r.button = sampleButton(r)
+  r.button.hotkey:SetPoint("TOPRIGHT", -2, -2)
+  r.button.count:SetPoint("BOTTOMRIGHT", -2, 2)
   return r
 end
 
--- Fills the sample: its colors and texts follow the theme.
+-- Fills the sample from the theme as it is now: the bar texture, the bars' colors, the texts and the glow.
 local function refreshPreview(r)
-  T.BarColor(r.bar, "friendly")
-  r.bar.name:SetPoint("LEFT", 6, 0)
-  r.bar.name:SetText("<name>  72%")
+  local u, b = r.unit, r.button
+  for _, bar in ipairs({ u.health, u.power }) do T.StyleBar(bar) end
+  T.BarColor(u.health, "friendly")
+  T.BarColor(u.power, "mana")
+  u.name:SetText("<name>")
+  u.value:SetText("72%")
+  b.hotkey:SetText("1")
+  b.count:SetText("5")
+  T.ShowGlow(b.glow, true)
 end
 
 -- A module's switch: its name, and under it what the module does, in small muted text.
@@ -126,6 +179,18 @@ local function resetDot(w, set, initial)
   return d
 end
 
+-- Whether a row with a default holds another value now.
+local function rowChanged(row)
+  local at = SETTER_AT[row[1]]
+  local initial = at and row[at + 1]
+  return initial ~= nil and row[at - 1]() ~= initial
+end
+
+-- A row changed or was reset: its page's nav dot follows (unless every row is being refreshed).
+local function rowRefreshed(w)
+  if not quiet and w.card then O.MarkChanged(w.card.child.pageKey) end
+end
+
 -- Gives a row with a default its reset dot, shown while the setting differs from the default.
 local function markChanges(w, row)
   local at = SETTER_AT[row[1]]
@@ -133,8 +198,8 @@ local function markChanges(w, row)
   if initial == nil then return end
   w.reset = resetDot(w, row[at], initial)
   local refresh = w.Refresh
-  -- The row's own refresh, then the dot: shown while changed, in the current accent.
-  w.Refresh = function(self) refresh(self) self.reset:SetShown(row[at - 1]() ~= initial) T.Tint(self.reset.mark, "accent") end
+  -- The row's own refresh, then the dot: shown while changed, in the current accent; then the page's dot.
+  w.Refresh = function(self) refresh(self) self.reset:SetShown(rowChanged(row)) T.Tint(self.reset.mark, "accent") rowRefreshed(self) end
   w:Refresh()
 end
 
@@ -164,8 +229,8 @@ local function placeRows(card, rows, y, cardY)
   for _, row in ipairs(rows) do
     local full = FULL_WIDTH[row[1]]
     local w = BUILDERS[row[1]](card, row, CARD_WIDTH - 8)
-    markChanges(w, row)
     w.card, w.caption, w.pageY = card, row[2], cardY + y
+    markChanges(w, row)
     w:SetPoint("TOPLEFT", card, "TOPLEFT", full and 4 or PAD + 2, -y)
     widgets[#widgets + 1] = w
     y = y + (ROW_HEIGHT[row[1]] or 28)
@@ -237,6 +302,7 @@ end
 -- The two edges, on a layer above the page's rows; the wheel scrolls the page.
 local function addEdges(view)
   view:EnableMouseWheel(true)
+  view:SetScript("OnMouseWheel", onWheel)
   local holder = CreateFrame("Frame", nil, view)
   holder:SetAllPoints(view)
   holder:SetFrameLevel(view:GetFrameLevel() + 10)
@@ -248,8 +314,17 @@ end
 -- Stacks a page's cards down its scroll child and sizes the child to fit.
 local function placeCards(child, rows)
   local y = 0
+  quiet = true
   for _, spec in ipairs(groupRows(rows)) do y = y + buildCard(child, spec, y) + PAD end
+  quiet = false
   child:SetHeight(math.max(1, y - PAD))
+end
+
+-- A page's rows, read once per opening of the window (for its nav dot, the
+-- search and building it) rather than per search keystroke.
+local function rowsOf(page)
+  rowCache[page.key] = rowCache[page.key] or page.rows()
+  return rowCache[page.key]
 end
 
 -- A page: a scroll view right of the nav holding its cards.
@@ -259,10 +334,10 @@ local function buildPage(page)
   view:SetPoint("BOTTOMRIGHT", -26, BAR + 12)
   view.child = CreateFrame("Frame", nil, view)
   view.child:SetWidth(CARD_WIDTH)
+  view.child.pageKey = page.key
   view:SetScrollChild(view.child)
-  placeCards(view.child, page.rows())
+  placeCards(view.child, rowsOf(page))
   addEdges(view)
-  view:SetScript("OnMouseWheel", onWheel)
   return view
 end
 
@@ -368,6 +443,9 @@ local function fillNavItem(b, page)
   b.text:SetPoint("LEFT", b.icon, "RIGHT", 9, 0)
   b.text:SetText(page.title)
   b:SetScript("OnClick", function() O.Show(page.key) end)
+  b.changed = W.Flat(b, "OVERLAY", "accent")
+  b.changed:SetSize(4, 4)
+  b.changed:SetPoint("RIGHT", -12, 0)
 end
 
 -- Pages in nav order.
@@ -414,6 +492,73 @@ local function addNav(f)
   addNavItems(f)
 end
 
+-- Keys -----------------------------------------------------------------------------------------
+
+-- Opens the page before (dir -1) or after (dir 1) the current one in the nav, wrapping.
+local function stepPage(dir)
+  local list, at = navOrder(), 1
+  for i, page in ipairs(list) do
+    if page.key == O.current then at = i end
+  end
+  O.Show(list[(at - 1 + dir) % #list + 1].key)
+end
+
+-- The current page's rows that do something when pressed (switches, choices, sliders, buttons), top to bottom.
+local function pressableRows()
+  local view, out = pages[O.current], {}
+  for _, w in ipairs(widgets) do
+    local button = w.GetObjectType and w:GetObjectType() == "Button"
+    if view and button and w.card.child == view.child and w:IsVisible() then out[#out + 1] = w end
+  end
+  return out
+end
+
+-- Scrolls the current page just enough to show a row.
+local function scrollToRow(view, w)
+  local top, h = view:GetVerticalScroll() or 0, view:GetHeight()
+  if w.pageY < top then scrollTo(view, w.pageY - 8) end
+  if w.pageY + w:GetHeight() > top + h then scrollTo(view, w.pageY + w:GetHeight() - h + 8) end
+end
+
+-- Moves the keyboard's row to the next (dir 1) or previous (dir -1) one, wrapping, marked and in view.
+local function stepRow(dir)
+  local rows, at = pressableRows(), 0
+  if #rows == 0 then return end
+  for i, w in ipairs(rows) do
+    if w == window.focusRow then at = i end
+  end
+  if at == 0 and dir < 0 then at = 1 end
+  window.focusRow = rows[(at - 1 + dir) % #rows + 1]
+  O.MarkRow(window.focusRow)
+  scrollToRow(pages[O.current], window.focusRow)
+end
+
+-- What a key does in the window; true when it used it.
+local function useKey(key)
+  if key == "UP" or key == "DOWN" then stepPage(key == "UP" and -1 or 1) return true end
+  if key == "TAB" then stepRow(IsShiftKeyDown and IsShiftKeyDown() and -1 or 1) return true end
+  local w = window.focusRow
+  if not ((key == "ENTER" or key == "SPACE") and w) then return false end
+  w:GetScript("OnClick")(w, "LeftButton")
+  return true
+end
+
+-- A key while the window is open: the ones it uses stop here, every other one
+-- goes on to the game; none is used while a box (search, a value) has the typing.
+local function onKey(f, key)
+  local typing = type(GetCurrentKeyBoardFocus) == "function" and GetCurrentKeyBoardFocus() ~= nil
+  local used = not typing and useKey(key)
+  if not ns.InCombat() and ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(not used) end
+end
+
+-- Takes the keyboard while shown and out of combat (it can't pass keys on in a fight), never while hidden.
+local function wireKeys(f)
+  f:SetScript("OnKeyDown", onKey)
+  f:SetScript("OnHide", function(self) self:EnableKeyboard(false) self.focusRow = nil end)
+  ns.On("PLAYER_REGEN_DISABLED", function() f:EnableKeyboard(false) end)
+  ns.On("PLAYER_REGEN_ENABLED", function() f:EnableKeyboard(f:IsShown()) end)
+end
+
 -- Building and showing -----------------------------------------------------------------------
 
 -- Lets the window be dragged around by its header.
@@ -454,6 +599,7 @@ local function build()
   addNav(window)
   addThumb(window)
   makeMovable(window)
+  wireKeys(window)
 end
 
 -- Marks a change that applies on reload, and shows the reload notice.
@@ -462,12 +608,14 @@ function O.NeedReload()
   if window then window.reload:SetShown(true) window.notice:SetShown(true) end
 end
 
--- Re-reads every widget's value (after a change elsewhere, e.g. a profile switch).
+-- Re-reads every widget's value (after a change elsewhere, e.g. a profile switch), then marks the nav's dots.
 function O.Refresh()
+  quiet = true
   for _, w in ipairs(widgets) do
     if w.Refresh then w:Refresh() end
   end
-  if window then window.profile:Refresh() window.reload:Refresh() end
+  quiet = false
+  if window then window.profile:Refresh() window.reload:Refresh() O.MarkChanged() end
 end
 
 -- Marks the current page's nav entry (accent rail, wash, text and icon) and dims pages the search misses.
@@ -499,24 +647,47 @@ local function appear(previous)
   if pages[O.current] then scrollTo(pages[O.current], pages[O.current]:GetVerticalScroll() or 0) end
 end
 
+-- The window takes the keyboard (out of combat); a new page starts without a keyboard row.
+local function takeKeys(previous)
+  if previous ~= O.current then window.focusRow = nil end
+  window:EnableKeyboard(not ns.InCombat())
+end
+
+-- Shows the reload notice and button while a change needs a reload.
+local function showReloadNotice()
+  window.reload:SetShown(needsReload)
+  window.notice:SetShown(needsReload)
+end
+
 -- Opens the window on a page (default: the last one shown, or General).
 function O.Show(key)
   if not window then build() end
   local previous = window:IsShown() and O.current
   if not previous then rowCache = {} end
   O.current = key or O.current or "general"
+  takeKeys(previous)
   showPage()
   markNav(O.current)
-  window.reload:SetShown(needsReload)
-  window.notice:SetShown(needsReload)
+  showReloadNotice()
   O.Refresh()
   appear(previous)
 end
 
--- A page's rows, built once per opening of the window rather than per search keystroke.
-local function rowsOf(page)
-  rowCache[page.key] = rowCache[page.key] or page.rows()
-  return rowCache[page.key]
+-- Whether any of a page's settings differs from its default.
+local function pageChanged(page)
+  for _, row in ipairs(rowsOf(page)) do
+    if rowChanged(row) then return true end
+  end
+  return false
+end
+
+-- Shows the "Changed" dot on the nav entry of the page with this key (every page without one)
+-- while that page has a setting changed from its default, in the current accent.
+function O.MarkChanged(key)
+  for _, page in ipairs(O.PAGES) do
+    local b = window.nav[page.key]
+    if b and (key == nil or key == page.key) then b.changed:SetShown(pageChanged(page)) T.Tint(b.changed, "accent") end
+  end
 end
 
 -- Whether a page's title or any row's caption contains the (lower-case) text.
@@ -555,8 +726,8 @@ local function firstRow(view, text)
   end
 end
 
--- Marks a found row with an accent wash (the last one found loses its mark).
-local function markFound(w)
+-- Marks a row (found by search, or the keyboard's) with an accent wash (the last one marked loses its mark).
+function O.MarkRow(w)
   if window.found then window.found:Hide() end
   w.found = w.found or W.Flat(w, "BACKGROUND", "accent")
   w.found:SetAllPoints()
@@ -571,7 +742,7 @@ function O.JumpTo(text)
   local w = view and firstRow(view, (text or ""):lower())
   if not w then return end
   scrollTo(view, w.pageY - 40)
-  markFound(w)
+  O.MarkRow(w)
 end
 
 -- Filters the nav by search text: pages that don't match fade; Enter opens the first match.
