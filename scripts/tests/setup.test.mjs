@@ -158,8 +158,15 @@ function raidRect(addon, spot, n, sw, sh) {
   return { l, b: holder.b, r: l + w, t: holder.b + h };
 }
 
-// Windows that open over the HUD for a moment (talking to an NPC), so they're left out of the overlap check.
-const FLOATING = new Set(["questdialog", "questlog", "lossofcontrol", "talkinghead"]);
+// Windows that open over the HUD for a moment, so they're left out of the overlap check.
+const FLOATING = new Set(["questlog", "lossofcontrol", "talkinghead"]);
+
+// The quest dialog (at its greatest height) must clear the cluster around your character
+// in the centered layouts; it may cover the group frames above it while you talk to an NPC.
+// Like the game's has no cluster there (your frames are at the top left), so it isn't checked there.
+const DIALOG_MAY_COVER = new Set(["raid", "maintanks", "partyextras"]);
+// Whether a pair is the quest dialog over a group frame.
+const dialogMayCover = (a, c) => (a === "questdialog" && DIALOG_MAY_COVER.has(c)) || (c === "questdialog" && DIALOG_MAY_COVER.has(a));
 
 // Parts that show only with some group sizes [fewest, most]: main tanks in a raid, party pets and targets in a party.
 const ONLY_WITH = { maintanks: [6, 40], partyextras: [1, 5] };
@@ -186,7 +193,7 @@ function layoutRects(addon, n, sw, sh) {
 // Problems on one screen: pairs that overlap and parts off screen.
 function layoutProblems(rects, sw, sh) {
   const keys = Object.keys(rects), bad = [];
-  keys.forEach((a, i) => keys.slice(i + 1).forEach((c) => { if (overlaps(rects[a], rects[c])) bad.push(`${a} / ${c}`); }));
+  keys.forEach((a, i) => keys.slice(i + 1).forEach((c) => { if (overlaps(rects[a], rects[c]) && !dialogMayCover(a, c)) bad.push(`${a} / ${c}`); }));
   keys.forEach((k) => { const r = rects[k]; if (r.l < 0 || r.b < 0 || r.r > sw || r.t > sh) bad.push(`${k} off screen`); });
   return bad;
 }
@@ -201,12 +208,19 @@ function wholeHud() {
   return addon;
 }
 
-// Overlaps and parts off an sw x sh screen, for each raid growth and group size (solo, 5, 25, 40).
-function problemsAt(addon, sw, sh, label) {
+// Every part's rect in a layout preset: the quest dialog only in the centered ones.
+function presetRects(addon, layout, n, sw, sh) {
+  const rects = layoutRects(addon, n, sw, sh);
+  if (layout === "classic") delete rects.questdialog;
+  return rects;
+}
+
+// Overlaps and parts off an sw x sh screen in a layout preset, for each raid growth and group size (solo, 5, 25, 40).
+function problemsAt(addon, layout, sw, sh, label) {
   const bad = [];
   for (const grow of ["columns", "rows"]) {
     addon.eval(`ns.GetModule("RaidFrames").settings.layout = "${grow}"`);
-    for (const n of [0, 5, 25, 40]) for (const p of layoutProblems(layoutRects(addon, n, sw, sh), sw, sh)) bad.push(`${label}, groups as ${grow}, ${n} players: ${p}`);
+    for (const n of [0, 5, 25, 40]) for (const p of layoutProblems(presetRects(addon, layout, n, sw, sh), sw, sh)) bad.push(`${label}, groups as ${grow}, ${n} players: ${p}`);
   }
   return bad;
 }
@@ -215,11 +229,12 @@ it("setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI 
   const addon = wholeHud();
   expect(addon.eval("return ChatFrame1.__points.BOTTOMLEFT ~= nil"), "chat sits in its layout spot").toBe(true);
   expect(moverSpots(addon).bagstrip.slice(4, 6), "the bag strip is as laid out").toEqual([266 * 0.7 + 12, 36]);
-  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras", "petbar", "stancebar", "chat"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
+  expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras", "petbar", "stancebar", "chat", "questdialog"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
+  expect(moverSpots(addon).questdialog.slice(3, 6), "the quest dialog is checked at its greatest size, 8 px over the focus cast bar").toEqual([346, 560, 360]);
   for (const layout of ["damage", "healing", "classic"]) {
     addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
     // The bag strip sits above the menu strip, so the pair is no wider than the menu strip and clears the bars at 1365.
-    for (const [sw, sh] of [[1365, 768], [1920, 1080]]) expect(problemsAt(addon, sw, sh, `${layout}, ${sw}x${sh}`)).toEqual([]);
+    for (const [sw, sh] of [[1365, 768], [1920, 1080]]) expect(problemsAt(addon, layout, sw, sh, `${layout}, ${sw}x${sh}`)).toEqual([]);
   }
   expect(addon.eval("return { ns.Setup.HealingPoint() }")[0], "Healing centers the grid above the focus cast bar").toEqual(["BOTTOM", "BOTTOM", 0, 342]);
 });
@@ -233,7 +248,7 @@ it("setup screens: with each screen preset, nothing overlaps or leaves its own s
     const sw = (768 * w) / h / ui, sh = 768 / ui;
     for (const layout of ["damage", "healing", "classic"]) {
       addon.eval(`ns.Setup.ApplyLayout("${layout}") ns.Setup.ApplyScreen("${key}")`);
-      expect(problemsAt(addon, sw, sh, `${key} (${Math.round(sw)}x${Math.round(sh)}), ${layout}`)).toEqual([]);
+      expect(problemsAt(addon, layout, sw, sh, `${key} (${Math.round(sw)}x${Math.round(sh)}), ${layout}`)).toEqual([]);
     }
   }
   expect(addon.eval("return { ns.GetModule('ActionBars').settings.size, ns.GetModule('RaidFrames').settings.width, ns.Theme.Settings().textScale }"), "the last preset (ultrawide) set the buttons, tiles and text").toEqual([38, 110, 1.05]);

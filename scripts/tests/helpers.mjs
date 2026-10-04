@@ -497,6 +497,8 @@ export const QUEST_ENV = `
   UISpecialFrames = {}
   issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
   UnitName = function(unit) if unit == "npc" then return "TEST-ONLY Farmer" end return "<name>" end
+  __npc = true
+  UnitExists = (function(old) return function(unit) if unit == "npc" then return __npc end return old(unit) end end)(UnitExists)
   SetPortraitTexture = function(t, unit) t.__portrait = unit end
   GetQuestDifficultyColor = function(level) return { r = level > 10 and 1 or 0.25, g = 0.75, b = 0.25 } end
   C_Item = { GetItemQualityColor = function() return 0, 0.44, 0.87 end, GetItemInfo = function(link) return "x", link, 1, 1, 1, "", "", 1, "", "", __prices[link] end }
