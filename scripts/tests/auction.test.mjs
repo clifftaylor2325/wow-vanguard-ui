@@ -51,9 +51,9 @@ const lastLine = (addon) => addon.eval(`return ${HELPER}.scanCard.last:GetText()
 it("a scan records each item's cheapest unit price and the day's low", () => {
   const addon = atAuctionHouse();
   scan(addon, LINEN);
-  const p = addon.eval("local p = ForeverUIDB.ah.prices[2589] return { p.min, p.t, p.days[math.floor(__now / 86400)] }");
+  const p = addon.eval("local p = ns.AuctionPrices.House().prices[2589] return { p.min, p.t, p.days[math.floor(__now / 86400)] }");
   expect(p, "90 a unit beats 500 for 5, today").toEqual([90, 1790000000, 90]);
-  expect(addon.eval("return { ForeverUIDB.ah.prices[159] == nil, ForeverUIDB.ah.count }"), "a listing without a buyout is skipped").toEqual([true, 1]);
+  expect(addon.eval("return { ns.AuctionPrices.House().prices[159] == nil, ns.AuctionPrices.House().count }"), "a listing without a buyout is skipped").toEqual([true, 1]);
   expect(chatHas(addon, /Auction house scanned: 3 listings, prices for 1 items\./), "says what it read").toBe(true);
   expect(addon.eval("return __wfgWorld.ah.queries[1].fn"), "one whole-house query").toBe("ReplicateItems");
   expect(lastLine(addon), "the line under the button").toBe("last scan 0 min ago");
@@ -85,7 +85,7 @@ it("one frame of a scan reads at most 400 listings", () => {
     reads.push([addon.world.get("ah.reads"), lastLine(addon)]);
   }
   expect(reads, "400, 400, then the last 200; the line counts them").toEqual([[400, "scanning 400 of 1000"], [400, "scanning 800 of 1000"], [200, "last scan 0 min ago"], [0, "last scan 0 min ago"]]);
-  expect(addon.eval("return { ForeverUIDB.ah.count, ForeverUIDB.ah.prices[90001].min }"), "7 items, each at its cheapest").toEqual([7, 1001]);
+  expect(addon.eval("return { ns.AuctionPrices.House().count, ns.AuctionPrices.House().prices[90001].min }"), "7 items, each at its cheapest").toEqual([7, 1001]);
 });
 
 it("the tooltip line says what an item went for, and when", () => {
@@ -96,9 +96,9 @@ it("the tooltip line says what an item went for, and when", () => {
   expect(addon.eval('return #__showItem("item:159")'), "no line for an item no scan priced").toBe(0);
   addon.eval("__now = __now + 86400");
   expect(addon.eval('return __showItem("item:2589")[1][1]')).toBe("AH: 90c (yesterday)");
-  addon.eval("__now = __now + 2 * 86400 ForeverUIDB.ah.prices[2589].min = 123456");
+  addon.eval("__now = __now + 2 * 86400 ns.AuctionPrices.House().prices[2589].min = 123456");
   expect(addon.eval('return __showItem("item:2589")[1][1]'), "gold, silver and copper").toBe("AH: 12g 34s 56c (3 days ago)");
-  addon.eval("ForeverUIDB.ah.prices[2589].min = 1250");
+  addon.eval("ns.AuctionPrices.House().prices[2589].min = 1250");
   expect(addon.eval('return __showItem("item:2589")[1][1]'), "silver and copper").toBe("AH: 12s 50c (3 days ago)");
   addon.eval("ns.Settings('AuctionHelper').tooltip = false");
   expect(addon.eval('return #__showItem("item:2589")'), "the switch turns it off").toBe(0);
@@ -110,20 +110,76 @@ it("pruning and caps: old prices go at login, and past the cap the oldest items 
     [1] = { min = 5, t = 1790000000 - 31 * ${day}, days = {} },
     [2] = { min = 6, t = 1790000000 - ${day}, days = { [math.floor(1790000000 / ${day}) - 20] = 1, [math.floor(1790000000 / ${day}) - 1] = 6 } } } }`;
   const addon = loggedIn(AH_ENV, { savedVariables: saved });
-  const kept = addon.eval("local p = ForeverUIDB.ah.prices local n = 0 for _ in pairs(p[2].days) do n = n + 1 end return { p[1] == nil, n, ForeverUIDB.ah.count }");
+  const kept = addon.eval("local p = ns.AuctionPrices.House().prices local n = 0 for _ in pairs(p[2].days) do n = n + 1 end return { p[1] == nil, n, ns.AuctionPrices.House().count }");
   expect(kept, "the 31-day-old price is gone, and the other's 20-day-old low").toEqual([true, 1, 1]);
   expect(addon.eval("return ns.AuctionPrices.Low7(2)"), "the 7-day low").toBe(6);
-  addon.eval("ForeverUIDB.ah.prices, ForeverUIDB.ah.count = {}, 0 local AP = ns.AuctionPrices AP.MAX_ITEMS = 10 for i = 1, 10 do AP.Record(100 + i, i, 1790000000 + i) end");
-  expect(addon.eval("return ForeverUIDB.ah.count"), "at the cap").toBe(10);
+  addon.eval("ns.AuctionPrices.House().prices, ns.AuctionPrices.House().count = {}, 0 local AP = ns.AuctionPrices AP.MAX_ITEMS = 10 for i = 1, 10 do AP.Record(100 + i, i, 1790000000 + i) end");
+  expect(addon.eval("return ns.AuctionPrices.House().count"), "at the cap").toBe(10);
   addon.eval("ns.AuctionPrices.Record(200, 7, 1790000100)");
-  const after = addon.eval("local p = ForeverUIDB.ah.prices return { ForeverUIDB.ah.count, p[101] == nil, p[102] == nil, p[103] ~= nil, p[200] ~= nil }");
+  const after = addon.eval("local p = ns.AuctionPrices.House().prices return { ns.AuctionPrices.House().count, p[101] == nil, p[102] == nil, p[103] ~= nil, p[200] ~= nil }");
   expect(after, "the 11th item keeps the newest 9: the two oldest go").toEqual([9, true, true, true, true]);
+});
+
+// Realms and factions ------------------------------------------------------------------------
+
+// The saved houses, as "key:count" sorted by key.
+const houses = (addon) => addon.eval(`local out = {}
+  for key, h in pairs(ForeverUIDB.ah.houses) do out[#out + 1] = key .. ":" .. h.count end
+  table.sort(out) return out`);
+
+// An older version's account-wide store: Linen Cloth at 90c, a scan 10 minutes ago, and a list.
+const ACCOUNT_WIDE = `ForeverUIDB.ah = { count = 1, lastScan = 1790000000 - 600, list = "Shopping", lists = { Shopping = { 2589 } },
+  prices = { [2589] = { min = 90, t = 1790000000, days = { [math.floor(1790000000 / 86400)] = 90 } } } }`;
+
+it("the account-wide prices move into this realm and faction once; the lists stay account-wide", () => {
+  const addon = atAuctionHouse("", { savedVariables: ACCOUNT_WIDE });
+  expect(houses(addon), "one house: the realm's normalized name and the faction").toEqual(["ForeverTest-Alliance:1"]);
+  expect(addon.eval("local ah = ForeverUIDB.ah return { ah.prices == nil, ah.count == nil, ah.lastScan == nil, ah.lists.Shopping[1] }"), "the old fields are gone, the list is where it was").toEqual([true, true, true, 2589]);
+  expect([addon.eval('return __showItem("item:2589")[1][1]'), lastLine(addon)], "the tooltip and the last scan carry over").toEqual(["AH: 90c (today)", "last scan 10 min ago"]);
+  addon.eval("ns.AuctionPrices.Migrate() ns.AuctionPrices.Prune(__now)");
+  expect(houses(addon), "a second run moves nothing more").toEqual(["ForeverTest-Alliance:1"]);
+  addon.eval("__wfgWorld.realm = 'Other-Realm Two'");
+  expect([addon.eval('return #__showItem("item:2589")'), addon.eval("return ns.AuctionPrices.Low7(2589)")], "another realm has no price for it").toEqual([0, null]);
+  addon.click(SCAN_BUTTON);
+  expect(addon.eval("return #__wfgWorld.ah.queries"), "and its own 15 minutes: it scans at once").toBe(1);
+});
+
+it("each realm and faction keeps its own prices and its own cap", () => {
+  const addon = atAuctionHouse();
+  scan(addon, LINEN);
+  addon.eval(`__wfgWorld.units.player.faction = 'Horde' ${HELPER}.PaintScan()`);
+  expect([addon.eval('return #__showItem("item:2589")'), lastLine(addon)], "a Horde character on the realm sees none of it").toEqual([0, "no scan yet"]);
+  scan(addon, "{ { itemID = 2589, count = 1, buyoutPrice = 40 } }");
+  addon.eval("__wfgWorld.realm = 'Second Realm'");
+  addon.eval("local AP = ns.AuctionPrices AP.MAX_ITEMS = 10 for i = 1, 11 do AP.Record(100 + i, i, __now + i) end");
+  expect(houses(addon), "the cap holds per house; the others keep theirs").toEqual(["ForeverTest-Alliance:1", "ForeverTest-Horde:1", "SecondRealm-Horde:9"]);
+  addon.eval("__wfgWorld.realm = 'Forever Test'");
+  expect(addon.eval('return __showItem("item:2589")[1][1]'), "the Horde price").toBe("AH: 40c (today)");
+  addon.eval("__wfgWorld.units.player.faction = 'Alliance'");
+  expect(addon.eval('return __showItem("item:2589")[1][1]'), "back on the Alliance side: its own").toBe("AH: 90c (today)");
+  addon.slash("ah prices clear");
+  expect(list(houses(addon)), "prices clear forgets every house").toEqual([]);
+});
+
+it("migration keeps the newer price of each item; login forgets stale and broken houses", () => {
+  const t = 1790000000;
+  const saved = `ForeverUIDB.ah = { houses = {
+      ["ForeverTest-Alliance"] = { count = 2, lastScan = ${t}, prices = { [1] = { min = 5, t = ${t}, days = {} }, [2] = { min = 6, t = ${t - 100}, days = {} } } },
+      ["Old-Horde"] = { count = 1, lastScan = 0, prices = { [1] = { min = 1, t = ${t - 31 * 86400}, days = {} } } },
+      ["Broken-Alliance"] = { prices = 7 }, ["Junk"] = 5 },
+    lastScan = ${t - 600}, prices = { [1] = { min = 50, t = ${t - 100}, days = {} }, [2] = { min = 60, t = ${t}, days = {} }, [3] = "junk" } }`;
+  const addon = loggedIn(AH_ENV, { savedVariables: saved });
+  const p = addon.eval("local p = ns.AuctionPrices.House().prices return { p[1].min, p[2].min, p[3] == nil, ns.AuctionPrices.House().lastScan }");
+  expect(p, "the house's newer 5, the old store's newer 60, no junk; the later scan time").toEqual([5, 60, true, t]);
+  expect(houses(addon), "a house not seen for 30 days and the broken ones are gone").toEqual(["ForeverTest-Alliance:2"]);
+  const neutral = loggedIn(AH_ENV + "__wfgWorld.units.player.faction = 'Neutral' GetNormalizedRealmName = function() return nil end", { savedVariables: ACCOUNT_WIDE });
+  expect(houses(neutral), "no side yet, and no normalized name: the realm's own name and 'none'").toEqual(["Forever Test-none:1"]);
 });
 
 it("a hidden number skips its listing without an error", () => {
   const addon = atAuctionHouse();
   scan(addon, "{ { itemID = 2589, count = __wfgWorld.secret(1), buyoutPrice = 90 }, { itemID = 2589, count = 2, buyoutPrice = 300 } }");
-  expect(addon.eval("return { ForeverUIDB.ah.prices[2589].min, #ns.errors }"), "only the plain listing counts").toEqual([150, 0]);
+  expect(addon.eval("return { ns.AuctionPrices.House().prices[2589].min, #ns.errors }"), "only the plain listing counts").toEqual([150, 0]);
 });
 
 it("the panel docks left of the auction house window, as tall as it, and goes with it", () => {
@@ -147,7 +203,7 @@ it("closing the auction house stops a scan", () => {
   addon.world.closeAuctionHouse();
   addon.update(0.01);
   addon.fire("REPLICATE_ITEM_LIST_UPDATE");
-  expect(addon.eval(`return { ${HELPER}.scan == nil, ForeverUIDB.ah.prices[2589] == nil, __wfgWorld.ah.reads }`), "nothing recorded, no more reads").toEqual([true, true, 400]);
+  expect(addon.eval(`return { ${HELPER}.scan == nil, ns.AuctionPrices.House().prices[2589] == nil, __wfgWorld.ah.reads }`), "nothing recorded, no more reads").toEqual([true, true, 400]);
 });
 
 it("switches: no panel, no scan button; nothing at all in combat", () => {

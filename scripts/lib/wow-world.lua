@@ -49,6 +49,13 @@ function GetBuildInfo()
   return b.version, b.build, b.date, b.interface
 end
 
+-- The realm you're on (a test may change it).
+world.realm = "Forever Test"
+-- Its name (ConnectionDocumentation.lua's GetRealmName).
+function GetRealmName() return world.realm end
+-- Its name without spaces or hyphens (PlayerScriptDocumentation.lua's GetNormalizedRealmName).
+function GetNormalizedRealmName() return (world.realm:gsub("[ %-]", "")) end
+
 -- The locale, frame rate, latency and screen size a test may change.
 function GetLocale() return world.locale end
 function GetFramerate() return 60 end

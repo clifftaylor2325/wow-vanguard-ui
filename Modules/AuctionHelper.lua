@@ -211,7 +211,7 @@ end
 
 -- "last scan 12 min ago", "scanning 400 of 12000", or "no scan yet"; the button with its switch.
 function AH.PaintScan()
-  local c, s, last = AH.scanCard, AH.scan, AP.Store().lastScan
+  local c, s, last = AH.scanCard, AH.scan, AP.House().lastScan
   if not c then return end
   c.scan:SetShown(AH.settings.scanButton)
   if s then return c.last:SetText(string.format("scanning %d of %d", s.next, s.total or 0)) end
@@ -221,12 +221,12 @@ end
 -- Asks the house for every listing (ReplicateItems), at most once every AH.SCAN_GAP seconds; the
 -- rows are read once REPLICATE_ITEM_LIST_UPDATE says they're in.
 function AH.StartScan()
-  local wait = AP.Store().lastScan + AH.SCAN_GAP - AP.Now()
+  local wait = AP.House().lastScan + AH.SCAN_GAP - AP.Now()
   AH.PaintScan()
   if not AH.open then return ns.Chat("Open the auction house to scan it.") end
   if AH.scan or wait > 0 then return ns.Chat(string.format("One auction house scan every 15 minutes: the next in %d min.", math.ceil(wait / 60))) end
   AH.scan = { next = 0, best = {} }
-  AP.Store().lastScan = AP.Now()
+  AP.House().lastScan = AP.Now()
   C_AuctionHouse.ReplicateItems()
   AH.PaintScan()
 end
@@ -303,18 +303,17 @@ AH.COMMANDS = {
   add = function(arg) AH.AddCommand(arg) end,
   -- Scans the auction house.
   scan = function() AH.StartScan() end,
-  -- Forgets every price.
+  -- Forgets every price (of every realm and faction).
   prices = function(arg)
     if arg ~= "clear" then return AH.Status() end
-    local store = AP.Store()
-    store.prices, store.count = {}, 0
+    AP.Store().houses = {}
     ns.Chat("Forgot every auction price.")
   end,
 }
 
--- What the helper knows: how many prices, and the last scan.
+-- What the helper knows: how many prices on this realm and faction, and the last scan there.
 function AH.Status()
-  local store = AP.Store()
+  local store = AP.House()
   local last = store.lastScan > 0 and AP.Ago(store.lastScan) or "never"
   ns.Chat(string.format("Auction prices for %d item(s); last scan: %s. /fui ah list <name>, add <list> <item>, scan (at the auction house), prices clear.", store.count, last))
 end

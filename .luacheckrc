@@ -71,4 +71,6 @@ read_globals = {
   "C_AuctionHouse", "AuctionHouseFrame",
   -- F6 Auction helper, sell card: the item on the cursor.
   "C_Cursor",
+  -- C1 Auction prices: the realm you're on, so each realm and faction keeps its own prices.
+  "GetRealmName", "GetNormalizedRealmName",
 }
