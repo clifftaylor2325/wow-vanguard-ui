@@ -340,7 +340,7 @@ function AH.AddCommand(arg)
   AH.AddEntry(arg:sub(#list + 2), list)
 end
 
--- /fui ah's words: list, add, scan, and prices clear.
+-- /fui ah's words: list, add, scan, and prices clear (Modules/AuctionShop.lua adds the list in use's words).
 AH.COMMANDS = {
   -- Picks or makes a list.
   list = function(arg) AH.ListCommand(arg) end,
@@ -360,10 +360,10 @@ AH.COMMANDS = {
 function AH.Status()
   local store = AP.House()
   local last = store.lastScan > 0 and AP.Ago(store.lastScan) or "never"
-  ns.Chat(string.format("Auction prices for %d item(s); last scan: %s. /fui ah list <name>, add <list> <item>, scan (at the auction house), prices clear.", store.count, last))
+  ns.Chat(string.format("Auction prices for %d item(s); last scan: %s. /fui ah list <name>, add <list> <item>, rename <name>, duplicate, delete, export, import, scan (at the auction house), prices clear.", store.count, last))
 end
 
--- /fui ah [list <name>|add <list> <item>|scan|prices clear].
+-- /fui ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|scan|prices clear].
 function AH.Command(rest)
   if not AH.settings then return ns.Chat("The auction helper is off (/fui > Modules).") end
   local word, arg = (rest or ""):match("^(%S*)%s*(.-)%s*$")

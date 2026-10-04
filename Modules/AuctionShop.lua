@@ -1,6 +1,8 @@
 -- Auction helper, the Shop card (Modules/AuctionHelper.lua holds the panel,
 -- the search queue, the scan and the slash commands): named shopping lists
--- and their entries (an item ID or a name), Search list, which runs the
+-- and their entries (an item ID or a name), managed from the dropdown or
+-- /fui ah (rename, duplicate, delete with a confirm, export as text, import
+-- plain lines or Auctionator's `^`/`;` strings), Search list, which runs the
 -- list's searches one after another, each entry's best result, and the
 -- card's rows; clicking a row shows its item in the game's own list.
 --
@@ -18,6 +20,10 @@ local AH = ns.GetModule("AuctionHelper")
 AH.SHOP_Y, AH.SHOP_H, AH.SHOP_ROWS, AH.SHOP_ROWS_Y = -8, 196, 6, -74
 -- Shopping lists: how many, entries per list, the list "+ Add" starts, the dropdown's "New list..." value.
 AH.MAX_LISTS, AH.MAX_ENTRIES, AH.DEFAULT_LIST, AH.NEW = 20, 50, "Shopping", "\1new"
+-- The dropdown's other actions on the list in use (values no list name can have).
+AH.RENAME, AH.COPY, AH.DELETE, AH.IMPORT, AH.EXPORT = "\1rename", "\1copy", "\1delete", "\1import", "\1export"
+-- What chat says when an action needs a list and there's none in use.
+AH.NO_LIST = "Pick a shopping list first (the Shop card's dropdown, or /fui ah list <name>)."
 
 -- Shopping lists -----------------------------------------------------------------------------
 
@@ -72,6 +78,170 @@ function AH.RemoveEntry(listName, i)
   if list and list[i] ~= nil then table.remove(list, i) end
   AH.PaintShop()
 end
+
+-- List management ----------------------------------------------------------------------------
+
+-- Text without the spaces around it.
+local function trim(text)
+  return (text or ""):match("^%s*(.-)%s*$")
+end
+
+-- The name of the list in use when it's one of the named lists (nil otherwise).
+local function listInUse()
+  local store = AP.Store()
+  if store.list and store.lists[store.list] then return store.list end
+end
+
+-- The first list by name (nil when there's none left).
+local function firstList(store)
+  local first
+  for name in pairs(store.lists) do
+    if not first or name < first then first = name end
+  end
+  return first
+end
+
+-- Renames the list in use; false for no list or no name, nil for a name another list has.
+function AH.RenameList(name)
+  local store, old = AP.Store(), listInUse()
+  name = trim(name)
+  if not old or name == "" then return false end
+  if store.lists[name] and name ~= old then return ns.Chat("There's already a shopping list named " .. name .. ".") end
+  local list = store.lists[old]
+  store.lists[old] = nil
+  store.lists[name], store.list = list, name
+  ns.HideText()
+  AH.PaintShop()
+  return true
+end
+
+-- Deletes a list; the first list left (by name) is the one in use if it was.
+function AH.DeleteList(name)
+  local store = AP.Store()
+  if not store.lists[name] then return end
+  store.lists[name] = nil
+  if store.list == name then store.list = firstList(store) end
+  if AH.shopCard then AH.shopCard.offset = 0 end
+  ns.Chat("Deleted the shopping list " .. name .. ".")
+  AH.PaintShop()
+end
+
+-- Asks before deleting the list in use (Delete or No).
+function AH.AskDelete()
+  local name = listInUse()
+  if not name then return ns.Chat(AH.NO_LIST) end
+  local question = string.format("Delete the shopping list %s (%d items)?", name, #AP.Store().lists[name])
+  ns.Ask(question, "Delete", function() AH.DeleteList(name) end, function() end)
+end
+
+-- A name no list has yet: "<name> copy", then "<name> copy 2" and on.
+local function copyName(store, name)
+  local new, n = name .. " copy", 1
+  while store.lists[new] do
+    n = n + 1
+    new = string.format("%s copy %d", name, n)
+  end
+  return new
+end
+
+-- Copies the list in use into a new list, which is then the one in use (within AH.MAX_LISTS).
+function AH.DuplicateList()
+  local store, name, list = AP.Store(), AH.CurrentList()
+  if not name then return ns.Chat(AH.NO_LIST) end
+  local new = copyName(store, name)
+  if not AH.NewList(new) then return end
+  for i, entry in ipairs(list) do store.lists[new][i] = entry end
+  ns.Chat(string.format("Copied %s to %s.", name, new))
+  AH.PaintShop()
+end
+
+-- An entry as a line of export text: its item ID or its name.
+function AH.EntryText(entry)
+  return tostring(entry)
+end
+
+-- Shows the list in use as text to copy (Ctrl+C), one item per line.
+function AH.ExportList()
+  local name, list = AH.CurrentList()
+  if not name then return ns.Chat(AH.NO_LIST) end
+  local lines = {}
+  for i, entry in ipairs(list) do lines[i] = AH.EntryText(entry) end
+  ns.ShowText(string.format("Shopping list %s (Ctrl+C copies it)", name), table.concat(lines, "\n"))
+end
+
+-- One imported term: its entry from the first field (nil for none; in quotes, the exact name),
+-- and how many of its other fields say something (ignored).
+function AH.ImportTerm(term)
+  local fields, ignored = {}, 0
+  for field in (term .. ";"):gmatch("([^;]*);") do fields[#fields + 1] = field end
+  for i = 2, #fields do
+    if fields[i]:match("%S") then ignored = ignored + 1 end
+  end
+  local name = trim(fields[1])
+  local quoted = name:match('^"(.*)"$')
+  return AH.ParseEntry(quoted or name), ignored
+end
+
+-- An import's entries and how many fields were ignored: Auctionator's terms (`^` between terms,
+-- `;` between fields) or plain lines (item names, IDs or links), or both.
+function AH.ParseImport(text)
+  local entries, ignored = {}, 0
+  local terms = (text or ""):gsub("%^", "\n")
+  for term in terms:gmatch("[^\r\n]+") do
+    local entry, n = AH.ImportTerm(term)
+    entries[#entries + 1] = entry
+    ignored = ignored + n
+  end
+  return entries, ignored
+end
+
+-- Says what an import brought: how many came in, how many didn't fit, how many fields were ignored.
+local function importSaid(name, added, full, ignored)
+  local out = string.format("Imported %d item(s) into %s.", added, name)
+  if full > 0 then out = out .. string.format(" %d didn't fit (a list holds at most 50).", full) end
+  if ignored > 0 then out = out .. string.format(" %d other search field(s) ignored: ForeverUI takes each item's name.", ignored) end
+  ns.Chat(out)
+end
+
+-- Adds an import's items to a list (made and picked if it's new), as far as AH.MAX_ENTRIES goes.
+function AH.Import(text, name)
+  local entries, ignored = AH.ParseImport(text)
+  if not AH.NewList(name) then return end
+  local list, added = AP.Store().lists[name], 0
+  for _, entry in ipairs(entries) do
+    if #list < AH.MAX_ENTRIES then list[#list + 1], added = entry, added + 1 end
+  end
+  importSaid(name, added, #entries - added, ignored)
+  AH.PaintShop()
+end
+
+-- The import box, for the list in use (else Shopping).
+function AH.AskImport()
+  local name = listInUse() or AH.DEFAULT_LIST
+  ns.AskText("Import into " .. name .. " (names, IDs, links, or a shopping list string)", function(text) AH.Import(text, name) end, "Import")
+end
+
+-- The rename box, for the list in use.
+function AH.AskRename()
+  local name = listInUse()
+  if not name then return ns.Chat(AH.NO_LIST) end
+  ns.AskText("Rename " .. name, AH.RenameList, "Rename")
+end
+
+-- /fui ah's words for the list in use (list and add are in Modules/AuctionHelper.lua).
+-- rename <name>: renames it.
+AH.COMMANDS.rename = function(arg)
+  if not listInUse() then return ns.Chat(AH.NO_LIST) end
+  if AH.RenameList(arg) == false then ns.Chat("/fui ah rename <new name> renames the shopping list in use.") end
+end
+-- duplicate: copies it to a new list.
+AH.COMMANDS.duplicate = function() AH.DuplicateList() end
+-- delete: deletes it, after asking.
+AH.COMMANDS.delete = function() AH.AskDelete() end
+-- export: shows it as text to copy.
+AH.COMMANDS.export = function() AH.ExportList() end
+-- import: the box to paste items into it.
+AH.COMMANDS.import = function() AH.AskImport() end
 
 -- Search list: every entry of the list in use, one search at a time.
 function AH.SearchList()
@@ -171,18 +341,32 @@ local function scrollShop(c, delta)
   AH.PaintShop()
 end
 
--- The dropdown's choices: the lists by name, then "New list...".
+-- The dropdown's choices: the lists by name, "New list...", the actions on the list in use, and Import.
 local function listChoices()
   local out = {}
   for name in pairs(AP.Store().lists) do out[#out + 1] = { name, name } end
   table.sort(out, function(a, b) return a[1] < b[1] end)
   out[#out + 1] = { AH.NEW, "New list..." }
+  if listInUse() then
+    for _, c in ipairs({ { AH.RENAME, "Rename list..." }, { AH.COPY, "Duplicate list" }, { AH.DELETE, "Delete list..." }, { AH.EXPORT, "Export list..." } }) do out[#out + 1] = c end
+  end
+  out[#out + 1] = { AH.IMPORT, "Import..." }
   return out
 end
 
--- A list picked in the dropdown: that one (from its top), or a name asked for a new one.
+-- The dropdown's actions, by value.
+AH.LIST_ACTIONS = {
+  [AH.NEW] = function() ns.AskText("New shopping list", AH.NewList, "Create") end,
+  [AH.RENAME] = function() AH.AskRename() end,
+  [AH.COPY] = function() AH.DuplicateList() end,
+  [AH.DELETE] = function() AH.AskDelete() end,
+  [AH.EXPORT] = function() AH.ExportList() end,
+  [AH.IMPORT] = function() AH.AskImport() end,
+}
+
+-- A choice in the dropdown: an action, or a list picked (shown from its top).
 local function pickList(v)
-  if v == AH.NEW then return ns.AskText("New shopping list", AH.NewList, "Create") end
+  if AH.LIST_ACTIONS[v] then return AH.LIST_ACTIONS[v]() end
   AP.Store().list = v
   AH.shopCard.offset = 0
   AH.PaintShop()
