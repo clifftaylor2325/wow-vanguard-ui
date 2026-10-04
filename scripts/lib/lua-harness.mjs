@@ -247,7 +247,11 @@ function lifecycle(addon) {
 //   addQuest(quest), openNpc(data)
 //   learn(id, fields)              a spell in the spellbook: { name, icon, rank, helpful, passive, offSpec }
 //   forgetAll()                    an empty spellbook
-const WORLD_CALLS = ["unit", "setUnit", "removeUnit", "combat", "addAura", "removeAura", "setAction", "addQuest", "openNpc", "learn", "forgetAll"];
+//   openAuctionHouse(), closeAuctionHouse()   the auction house window and its events
+//   postFromBag(bag, slot)         a bag item clicked with the auction house open (its SetPostItem)
+//   fireAuctionEvents(key, id)     every auction house event once
+const WORLD_CALLS = ["unit", "setUnit", "removeUnit", "combat", "addAura", "removeAura", "setAction", "addQuest", "openNpc", "learn", "forgetAll",
+  "openAuctionHouse", "closeAuctionHouse", "postFromBag", "fireAuctionEvents"];
 
 // The world: what the game API reports, from JS.
 function worldApi(addon) {
