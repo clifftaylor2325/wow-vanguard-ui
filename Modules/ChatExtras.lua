@@ -2,7 +2,10 @@
 --   * web addresses in chat become links in the accent color; clicking one
 --     opens a box with the address selected, ready to copy (Ctrl+C);
 --   * a small Copy button over the main chat window (and /fui copy) opens the
---     recent chat as plain text, ready to copy.
+--     recent chat as plain text, ready to copy;
+--   * short channel names: "[2. Trade - City]" shows as "[T]", "[Guild]" as "[G]";
+--   * Ctrl + mouse wheel jumps to the top or the bottom of a chat window;
+--   * the game's own timestamp and class-colored name settings, offered in /fui.
 -- Chat text the game hides from addons (in instances) is never read or
 -- changed: those lines pass through as they are and are left out of the copy.
 
@@ -10,7 +13,7 @@ local ADDON, ns = ...
 
 local T = ns.Theme
 
-local CX = ns.Module("ChatExtras", { defaults = { links = true, copy = true } })
+local CX = ns.Module("ChatExtras", { defaults = { links = true, copy = true, shortChannels = false, ctrlScroll = true } })
 
 -- The chat message events whose text may hold a web address.
 CX.EVENTS = {
@@ -99,8 +102,96 @@ local function addCopyButton()
   CX.copyButton:SetScript("OnClick", CX.ShowCopy)
 end
 
+-- Short channel names ---------------------------------------------------------------------
+
+-- A channel's short name: the capitals of its name, without the number and the
+-- zone ("2. Trade - City" -> "T", "LookingForGroup" -> "LFG", "Raid Leader" -> "RL");
+-- a name with no capital letters keeps its first letter.
+function CX.ShortName(label)
+  local name = label:gsub("^%d+%.%s*", ""):gsub("%s+%-%s+.*$", "")
+  local caps = name:gsub("[^%u]", "")
+  return caps ~= "" and caps or name:match("^[\1-\127\194-\244][\128-\191]*") or name
+end
+
+-- A chat line with each channel tag shortened ("|Hchannel:...|h[2. Trade - City]|h"
+-- -> "...|h[T]|h"), the link kept so clicking the tag still opens the channel.
+-- Text the game hides from addons is returned as it is.
+function CX.ShortChannels(text)
+  if ns.IsSecret(text) or type(text) ~= "string" then return text end
+  return (text:gsub("(|Hchannel:[^|]+|h)%[([^%]]+)%](|h)", function(link, label, close) return link .. "[" .. CX.ShortName(label) .. "]" .. close end))
+end
+
+-- The line a window just added, with its channel tags short: the game's own
+-- TransformMessages rewrites it (no addon code runs inside the game's chat handler).
+local function shortenAdded(frame, text)
+  if not CX.settings.shortChannels or ns.IsSecret(text) or type(text) ~= "string" then return end
+  local short = CX.ShortChannels(text)
+  if short == text then return end
+  frame:TransformMessages(function(message) return not ns.IsSecret(message) and message == text end, function(_, ...) return short, ... end)
+end
+
+-- Ctrl + wheel: the top of the window (wheel up) or the bottom (wheel down), after the game's own scroll.
+local function jump(frame, delta)
+  if not CX.settings.ctrlScroll or not IsControlKeyDown() then return end
+  if delta > 0 then frame:ScrollToTop() else frame:ScrollToBottom() end
+end
+
+-- Follows a chat window's new lines and wheel, once per window.
+local function watchWindow(frame)
+  if type(frame) ~= "table" or frame.fuiWatched then return end
+  frame.fuiWatched = true
+  if type(frame.TransformMessages) == "function" then hooksecurefunc(frame, "AddMessage", shortenAdded) end
+  frame:HookScript("OnMouseWheel", jump)
+end
+
+-- Follows every chat window, the temporary ones (whispers) too.
+function CX.WatchWindows()
+  for i = 1, NUM_CHAT_WINDOWS or 10 do watchWindow(_G["ChatFrame" .. i]) end
+  for _, name in ipairs(CHAT_FRAMES or {}) do watchWindow(_G[name]) end
+end
+
+-- The game's chat settings ------------------------------------------------------------------
+
+-- The client's CVar function by name (C_CVar's, or the old global), or nil.
+local function cvarCall(name)
+  local fn = C_CVar and C_CVar[name] or _G[name]
+  return type(fn) == "function" and fn or nil
+end
+
+-- get/set for one of the game's own chat settings (a CVar), read and written
+-- straight through so the game's options and ForeverUI's agree; read(value)
+-- turns the stored value into a choice. A failing call is ignored.
+function CX.CVarSetting(name, read)
+  return function() local get = cvarCall("GetCVar") return read(get and get(name)) end,
+    function(v) local set = cvarCall("SetCVar") if set then pcall(set, name, v) end end
+end
+
+-- The game's timestamp formats as choices, each shown as the time it would print.
+local TIMESTAMP_FORMATS = { "HHMM_24HR", "HHMMSS_24HR", "HHMM", "HHMMSS", "HHMM_AMPM", "HHMMSS_AMPM" }
+-- 15:27:32 on 15 Dec 2010, the sample the game's own options show.
+local SAMPLE = { year = 2010, month = 12, day = 15, hour = 15, min = 27, sec = 32 }
+
+-- How a timestamp format prints the sample time (the game's own formatter), or the format itself.
+local function sampleText(format)
+  if type(TimeUtil) ~= "table" or type(TimeUtil.BetterDate) ~= "function" or type(time) ~= "function" then return format end
+  return TimeUtil.BetterDate(format, time(SAMPLE))
+end
+
+-- The choices for the game's chat timestamps: off, then each format this client has.
+function CX.TimestampChoices()
+  local out = { { "none", "Off" } }
+  for _, key in ipairs(TIMESTAMP_FORMATS) do
+    local format = _G["TIMESTAMP_FORMAT_" .. key]
+    if type(format) == "string" then out[#out + 1] = { format, sampleText(format) } end
+  end
+  return out
+end
+
 -- Module entry point (Core/Modules.lua).
 function CX.Enable(settings)
+  CX.settings = settings
   if settings.links then watchLinks() end
   if settings.copy then addCopyButton() end
+  CX.WatchWindows()
+  if type(hooksecurefunc) == "function" and type(FCF_OpenTemporaryWindow) == "function" then hooksecurefunc("FCF_OpenTemporaryWindow", CX.WatchWindows) end
 end

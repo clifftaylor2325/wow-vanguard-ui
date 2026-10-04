@@ -508,12 +508,31 @@ local function merchantRows()
   }
 end
 
--- Chat extras, the minimap drawer and the auto-accept switches.
-local function comfortRows()
+-- The game's class-colored names in chat: always, never, or as each chat type is set.
+local CLASS_NAMES = { { "0", "Always" }, { "1", "Never" }, { "2", "As each chat type is set" } }
+-- chatClassColorOverride: "0" and "1" force class colors on or off; anything else leaves them to each chat type.
+local function classNameChoice(v) return (v == "0" or v == "1") and v or "2" end
+-- showTimestamps: "none" (or unset) is off, anything else a time format.
+local function timestampChoice(v) return v or "none" end
+
+-- Chat: the extras, and the game's own timestamp and class-color settings.
+local function chatRows()
+  local CX = ns.GetModule("ChatExtras")
   return {
-    { "header", "Chat, minimap and prompts" },
+    { "header", "Chat" },
     check("Clickable web links in chat (reload)", setting("ChatExtras", "links", true)),
     check("Copy button over the chat (reload)", setting("ChatExtras", "copy", true)),
+    check("Short channel names: [2. Trade] shows as [T]", setting("ChatExtras", "shortChannels")),
+    check("Ctrl + mouse wheel jumps to the top or bottom of chat", setting("ChatExtras", "ctrlScroll")),
+    { "cycle", "Chat timestamps (the game's setting)", CX.TimestampChoices(), CX.CVarSetting("showTimestamps", timestampChoice) },
+    { "cycle", "Class-colored names in chat (the game's setting)", CLASS_NAMES, CX.CVarSetting("chatClassColorOverride", classNameChoice) },
+  }
+end
+
+-- The minimap drawer and the auto-accept switches.
+local function comfortRows()
+  return {
+    { "header", "Minimap and prompts" },
     check("Gather addon minimap buttons into a drawer (reload)", setting("MinimapButtons", "drawer", true)),
     check("Accept summons (out of combat)", setting("AutoAccept", "summons")),
     check("Accept resurrections", setting("AutoAccept", "resurrect")), check("Decline duels", setting("AutoAccept", "duels")),
@@ -552,7 +571,7 @@ local function morePageRows()
   append(rows, gameToolRows())
   append(rows, merchantRows())
   append(rows, errandRows())
-  append(rows, comfortRows())
+  append(append(rows, chatRows()), comfortRows())
   return append(rows, tooltipRows())
 end
 

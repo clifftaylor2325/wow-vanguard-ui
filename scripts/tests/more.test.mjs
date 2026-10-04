@@ -205,6 +205,72 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   expect(off.eval("return next(__filters) == nil"), "links switched off: no filters").toBe(true);
 });
 
+// TEST-ONLY chat windows as the game has them: TransformMessages rewrites the
+// lines a window holds, the wheel can jump, temporary windows join CHAT_FRAMES.
+const CHAT_LINES_ENV = `
+  CHAT_FRAMES = { "ChatFrame1", "ChatFrame2" }
+  for i = 1, 2 do
+    local f = _G["ChatFrame" .. i]
+    f.TransformMessages = function(self, pred, transform)
+      for n, m in ipairs(self.__messages or {}) do if pred(m) then self.__messages[n] = transform(m, 1, 1, 1) end end
+    end
+    f.ScrollToTop = function() __scrolled = "top" end
+    f.ScrollToBottom = function() __scrolled = "bottom" end
+  end
+  local open = FCF_OpenTemporaryWindow
+  FCF_OpenTemporaryWindow = function(name) local f = open(name) CHAT_FRAMES[#CHAT_FRAMES + 1] = f:GetName() return f end
+`;
+// The last line chat window i holds.
+const lastLine = (addon, i = 1) => addon.eval(`local m = ChatFrame${i}.__messages return m[#m]`);
+
+it("chat: short channel names, live, never reading hidden lines", () => {
+  const addon = loggedIn(UI_ENV + CHAT_LINES_ENV);
+  const trade = "|Hchannel:channel:2|h[2. Trade - City]|h [TEST-ONLY Name]: wts";
+  addon.eval(`ChatFrame1:AddMessage("${trade}")`);
+  expect(lastLine(addon), "off by default: the game's channel names").toBe(trade);
+  addon.eval("ns.GetModule('ChatExtras').settings.shortChannels = true");
+  addon.eval(`ChatFrame1:AddMessage({ __secret = true }) ChatFrame1:AddMessage("${trade}")`);
+  expect([lastLine(addon), addon.eval("return issecretvalue(ChatFrame1.__messages[#ChatFrame1.__messages - 1])")], "switched on: [2. Trade - City] becomes [T], the link kept; a hidden line stays as it was")
+    .toEqual(["|Hchannel:channel:2|h[T]|h [TEST-ONLY Name]: wts", true]);
+  // A line with one channel tag, as the shortener leaves it.
+  const short = (label) => addon.eval(`return ns.GetModule('ChatExtras').ShortChannels("|Hchannel:X|h[${label}]|h hi")`);
+  expect(["Guild", "Raid Leader", "5. LookingForGroup", "1. General - TEST-ONLY Vale", "6. testonly"].map(short), "the capitals of the name, or its first letter")
+    .toEqual(["|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[RL]|h hi", "|Hchannel:X|h[LFG]|h hi", "|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[t]|h hi"]);
+  expect(addon.eval('ChatFrame2:AddMessage("plain TEST-ONLY line") local m = ChatFrame2.__messages return m[#m]'), "a line without a channel tag is left alone").toBe("plain TEST-ONLY line");
+  addon.eval('FCF_OpenTemporaryWindow("TestOnly")');
+  expect(addon.eval("return ChatFrameTempTestOnly.fuiWatched"), "a whisper window that opens later is followed too").toBe(true);
+});
+
+it("chat: Ctrl + mouse wheel jumps to the top or bottom", () => {
+  const addon = loggedIn(UI_ENV + CHAT_LINES_ENV);
+  // The wheel over the main chat window, then where it jumped (or "none").
+  const wheel = (delta) => { addon.eval("__scrolled = nil"); addon.wheel("ChatFrame1", delta); return addon.eval('return __scrolled or "none"'); };
+  expect(wheel(1), "without Ctrl the wheel is the game's").toBe("none");
+  addon.keys({ ctrl: true });
+  expect([wheel(1), wheel(-1)], "with Ctrl: up to the top, down to the bottom").toEqual(["top", "bottom"]);
+  addon.eval("ns.GetModule('ChatExtras').settings.ctrlScroll = false");
+  expect(wheel(1), "switched off, nothing jumps").toBe("none");
+});
+
+it("chat: the game's timestamps and class-colored names, from /fui", () => {
+  const addon = loggedIn(UI_ENV + CLICK_LUA + `C_CVar = nil
+    TIMESTAMP_FORMAT_HHMM_24HR, TIMESTAMP_FORMAT_HHMM_AMPM = "%H:%M ", "%I:%M %p "
+    TimeUtil = { BetterDate = function(format) return "TEST-ONLY " .. format end }
+    time = function() return 1292426852 end`);
+  expect(addon.eval("return ns.GetModule('ChatExtras').TimestampChoices()"), "off, then each format this client has, shown as the game shows it")
+    .toEqual([["none", "Off"], ["%H:%M ", "TEST-ONLY %H:%M "], ["%I:%M %p ", "TEST-ONLY %I:%M %p "]]);
+  addon.eval('ns.Options.Show("more")');
+  addon.eval('__click("Chat timestamps")');
+  expect(addon.eval('return GetCVar("showTimestamps")'), "the row sets the game's own timestamp setting").toBe("%H:%M ");
+  addon.eval('__click("Class-colored names")');
+  expect(addon.eval('return GetCVar("chatClassColorOverride")'), "the game's class-color setting: from per chat type to always").toBe("0");
+  addon.eval('__click("Class-colored names")');
+  expect(addon.eval('return GetCVar("chatClassColorOverride")'), "then never").toBe("1");
+  const bare = loggedIn('TimeUtil = nil TIMESTAMP_FORMAT_HHMM = "%I:%M " C_CVar = nil GetCVar = nil SetCVar = nil');
+  expect(bare.eval(`local CX = ns.GetModule("ChatExtras") local get, set = CX.CVarSetting("showTimestamps", function(v) return v or "none" end)
+    set("%I:%M ") return { get(), CX.TimestampChoices()[2][2] }`), "a client without CVars or the game's formatter: nothing breaks, the format shows as it is").toEqual(["none", "%I:%M "]);
+});
+
 // TEST-ONLY addon minimap buttons (the LibDBIcon kind) and one that isn't.
 const DRAWER_ENV = `
   hooksecurefunc = function(t, name, fn) if type(t) == "string" then return end local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end

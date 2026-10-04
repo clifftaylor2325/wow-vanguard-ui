@@ -154,8 +154,8 @@ local MINIMAP = {
 
 local SCROLLING_MESSAGE_FRAME = {
   "AddMessage", "Clear", "GetFading", "GetMaxLines", "GetNumMessages",
-  "ScrollDown", "ScrollToBottom", "ScrollUp", "SetFading", "SetMaxLines",
-  "SetTimeVisible",
+  "ScrollDown", "ScrollToBottom", "ScrollToTop", "ScrollUp", "SetFading", "SetMaxLines",
+  "SetTimeVisible", "TransformMessages",
 }
 
 -- BackdropTemplateMixin. Only frames created with "BackdropTemplate" (or a
