@@ -290,6 +290,12 @@ local function each(fn)
   for unit, f in pairs(NP.plates) do fn(f, unit) end
 end
 
+-- Repaints everything on every plate on screen, as a live setting changed (levels,
+-- threat colors, the target border, quest marks): the options and Situations call it.
+function NP.RefreshAll()
+  each(refresh)
+end
+
 -- Events -----------------------------------------------------------------------------------
 
 -- A nameplate appeared: draw on it (once per plate, with a frame built ahead) and fill it in.
@@ -370,7 +376,7 @@ local function setting(key, reload)
   return function() return ns.Settings("Nameplates", NP.defaults)[key] end,
     function(v)
       ns.Settings("Nameplates", NP.defaults)[key] = v
-      if reload then ns.Options.NeedReload() else each(refresh) end
+      if reload then ns.Options.NeedReload() else NP.RefreshAll() end
     end, NP.defaults[key]
 end
 
