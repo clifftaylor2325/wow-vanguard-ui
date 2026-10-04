@@ -632,7 +632,7 @@ end
 -- outline instead of a shadow (world text such as nameplates, and text drawn
 -- over a bright bar, such as raid frame names).
 T.ROLES = {
-  title = { 15, true }, heading = { 13, true }, name = { 13, true }, cell = { 11, true },
+  title = { 15, true }, heading = { 13, true }, name = { 12, true }, cell = { 11, true },
   label = { 12 }, number = { 12 }, small = { 10 }, tiny = { 9 }, world = { 10, true, "OUTLINE" },
   barName = { 11, true, "OUTLINE" }, barSmall = { 10, false, "OUTLINE" },
   -- Aura icons: stack counts, and the timer on larger and smaller icons.

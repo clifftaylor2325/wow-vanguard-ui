@@ -20,12 +20,12 @@ local T = ns.Theme
 local GT = ns.Module("GameTools", { defaults = { cooldowns = true, meter = true, place = true, cdmHint = true, essential = false } })
 
 -- Each placed frame's mover: key, label, default point, and the spot's size
--- (UI units; the rows fit the 260-unit gap between the unit frames).
+-- (UI units; the rows fit the 240-unit gap between the unit frames).
 GT.SPOTS = {
   EssentialCooldownViewer = { "cdm_essential", "Cooldowns", { "BOTTOM", "BOTTOM", 0, 210 }, 236, 32 },
   UtilityCooldownViewer = { "cdm_utility", "Utility cooldowns", { "BOTTOM", "BOTTOM", 0, 248 }, 206, 24 },
   BuffIconCooldownViewer = { "cdm_buffs", "Tracked buffs", { "BOTTOM", "BOTTOM", 0, 278 }, 206, 24 },
-  DamageMeter = { "damagemeter", "Damage meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 104 }, 310, 78 },
+  DamageMeter = { "damagemeter", "Damage meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 104 }, 300, 78 },
 }
 -- The Cooldown Manager's rows, in the order they're placed (the buff bars are styled only).
 GT.VIEWERS = { "EssentialCooldownViewer", "UtilityCooldownViewer", "BuffIconCooldownViewer", "BuffBarCooldownViewer" }

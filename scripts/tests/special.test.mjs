@@ -48,10 +48,10 @@ const anchorOf = (addon, bar) => addon.eval(`local p, rel, rp = ${bar}:GetPoint(
 
 it("the pet and stance bars sit on movers of their own, kept there when the game re-places them", () => {
   const addon = loggedIn(SPECIAL_BARS_ENV);
-  expect([addon.eval('return { ns.MoverPoint("petbar") }'), addon.eval('return { ns.MoverPoint("stancebar") }')], "defaults at the bottom left, one above the other").toEqual([["BOTTOMLEFT", "BOTTOMLEFT", 8, 224], ["BOTTOMLEFT", "BOTTOMLEFT", 8, 262]]);
+  expect([addon.eval('return { ns.MoverPoint("petbar") }'), addon.eval('return { ns.MoverPoint("stancebar") }')], "defaults at the bottom left, one above the other").toEqual([["BOTTOMLEFT", "BOTTOMLEFT", 8, 250], ["BOTTOMLEFT", "BOTTOMLEFT", 8, 288]]);
   expect(addon.eval("return { ForeverUI_PetActionBarSpot:GetWidth(), ForeverUI_PetActionBarSpot:GetHeight(), ForeverUI_StanceBarSpot:GetWidth(), ForeverUI_StanceBarSpot:GetHeight() }"), "each mover is as big as its bar's row of buttons").toEqual([320, 32, 200, 32]);
   expect([anchorOf(addon, "PetActionBar"), anchorOf(addon, "StanceBar")], "the bars hang from their spots' bottom left corners").toEqual([["BOTTOMLEFT", "ForeverUI_PetActionBarSpot", "BOTTOMLEFT"], ["BOTTOMLEFT", "ForeverUI_StanceBarSpot", "BOTTOMLEFT"]]);
-  expect(addon.eval("local f = ns.MoverFrame('petbar') local l, b = f:GetLeft(), f:GetBottom() return { l, b }"), "the pet bar's spot is where its mover says").toEqual([8, 224]);
+  expect(addon.eval("local f = ns.MoverFrame('petbar') local l, b = f:GetLeft(), f:GetBottom() return { l, b }"), "the pet bar's spot is where its mover says").toEqual([8, 250]);
   addon.eval('PetActionBar:ClearAllPoints() PetActionBar:SetPoint("CENTER", UIParent, "CENTER", 0, 0)'); // Edit Mode lays the bar out again
   expect(anchorOf(addon, "PetActionBar"), "the game moving the bar puts it back on its spot").toEqual(["BOTTOMLEFT", "ForeverUI_PetActionBarSpot", "BOTTOMLEFT"]);
   addon.eval('ns.SetMoverPoint("stancebar", "BOTTOM", "BOTTOM", 100, 400)');

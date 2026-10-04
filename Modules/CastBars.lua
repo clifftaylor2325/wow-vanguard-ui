@@ -21,7 +21,7 @@ local LAYOUT = {
   -- Yours: centered just above the action bars, between the player and target frames.
   player = { w = 220, h = 18, point = { "BOTTOM", "BOTTOM", 0, 146 } },
   -- The target's sits over its buff row (Modules/FrameAuras.lua), the focus's over the focus frame.
-  target = { w = 220, h = 16, point = { "BOTTOM", "BOTTOM", 240, 259 } },
+  target = { w = 240, h = 16, point = { "BOTTOM", "BOTTOM", 240, 257 } },
   focus = { w = 160, h = 14, point = { "BOTTOM", "BOTTOM", -270, 324 } },
 }
 -- The default sizes and points, for layouts placed around them (Core/Setup.lua).

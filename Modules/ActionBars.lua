@@ -21,7 +21,7 @@ local AB = ns.Module("ActionBars", {
     hideBlizzard = true,
     lockButtons = true,
     rangeTint = true,
-    size = 36,
+    size = 38,
     spacing = 2,
     -- Per bar: on/off, buttons shown, buttons per row, and visibility
     -- (always, mouseover, combat or hidden). A bar's own `size` wins over
