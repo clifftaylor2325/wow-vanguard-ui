@@ -114,8 +114,9 @@ function TT.SellPrice(link)
   if price and price > 0 then return price end
 end
 
--- How many the item button under the tooltip holds (1 when it can't say).
-local function stackOf(tt)
+-- How many the item button under the tooltip holds (1 when it can't say); auction prices use
+-- it for their stack line too.
+function TT.StackOf(tt)
   local owner = tt.GetOwner and tt:GetOwner()
   local count = type(owner) == "table" and ns.PlainNumber(owner.count)
   return count and count > 1 and count or 1
@@ -126,7 +127,7 @@ local function addPrice(tt, link)
   local price = (tonumber(tt.shownMoneyFrames) or 0) == 0 and TT.SellPrice(link)
   if not price then return end
   local r, g, b = T.RGB("text2")
-  tt:AddDoubleLine("Sells for", ns.GetModule("InfoStrip").Money(price * stackOf(tt)), r, g, b, T.RGB("gold"))
+  tt:AddDoubleLine("Sells for", ns.GetModule("InfoStrip").Money(price * TT.StackOf(tt)), r, g, b, T.RGB("gold"))
 end
 
 -- How many you have (in your bags and bank), or nil when none or the client can't say.

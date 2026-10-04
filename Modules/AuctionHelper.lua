@@ -15,8 +15,8 @@
 --     row's Cancel (its cost on hover) cancels that auction, from the click only.
 --   * Scan: "Scan the auction house" (once every 15 minutes, the game's own
 --     limit for a whole-house query) reads every listing and records each
---     item's cheapest unit price (Modules/AuctionPrices.lua), which item
---     tooltips then show everywhere.
+--     item's cheapest unit price, units up and market value
+--     (Modules/AuctionPrices.lua), which item tooltips then show everywhere.
 --
 -- The module is one table over four files, loaded in this order: this one
 -- holds the panel and its build order, the search queue and its throttle,
@@ -225,7 +225,7 @@ function AH.StartScan()
   AH.PaintScan()
   if not AH.open then return ns.Chat("Open the auction house to scan it.") end
   if AH.scan or wait > 0 then return ns.Chat(string.format("One auction house scan every 15 minutes: the next in %d min.", math.ceil(wait / 60))) end
-  AH.scan = { next = 0, best = {} }
+  AH.scan = { next = 0, items = {} }
   AP.House().lastScan = AP.Now()
   C_AuctionHouse.ReplicateItems()
   AH.PaintScan()
@@ -238,14 +238,14 @@ local function onReplicate()
   AH.walker:Show()
 end
 
--- Listing i (0-based): its unit price (buyout over count) against its item's cheapest so far;
--- skipped without a buyout or when the client hides a number.
+-- Listing i (0-based): its units at its unit price (buyout over count) join its item's listings
+-- (s.items[itemID] = { [unit price] = units }); skipped without a buyout or when the client hides a number.
 function AH.ScanRow(s, i)
   local _, _, count, _, _, _, _, _, _, buyout, _, _, _, _, _, _, id = C_AuctionHouse.GetReplicateItemInfo(i)
   count, buyout, id = ns.PlainNumber(count), ns.PlainNumber(buyout), ns.PlainNumber(id)
   if not (count and buyout and id) or count < 1 or buyout < 1 then return end
-  local unit = math.floor(buyout / count)
-  s.best[id] = math.min(s.best[id] or unit, unit)
+  local unit, prices = math.floor(buyout / count), s.items[id] or {}
+  prices[unit], s.items[id] = (prices[unit] or 0) + count, prices
 end
 
 -- One frame of the scan: the next AH.SCAN_ROWS listings; after the last, the prices are recorded.
@@ -258,10 +258,14 @@ function AH.ScanStep()
   if s.next >= s.total then AH.FinishScan() end
 end
 
--- The whole list is read: each item's cheapest unit price goes in the price store.
+-- The whole list is read: each item's cheapest unit price, units up and market value go in the price store.
 function AH.FinishScan()
   local s, now, n = AH.scan, AP.Now(), 0
-  for id, unit in pairs(s.best) do AP.Record(id, unit, now) n = n + 1 end
+  for id, prices in pairs(s.items) do
+    local low, units, market = AP.Summary(prices)
+    AP.Record(id, low, now, units, market)
+    n = n + 1
+  end
   AH.scan = nil
   AH.walker:Hide()
   ns.Chat(string.format("Auction house scanned: %d listings, prices for %d items.", s.total, n))
