@@ -120,7 +120,7 @@ if ForeverUI and ForeverUI.RegisterSkin then
 end
 ```
 
-The callback runs once at login, or immediately if the addon registers after login. Errors in it are reported and don't break anything else. Painted frames follow `/fui accent` changes live, and their borders stay one screen pixel at any UI scale (`S.Pixel(frame)` gives that size). `S.RGB(name)` returns any theme color; the names are in `Core/Theme.lua`. `S.apiVersion` is 1; the API only grows.
+The callback runs once at login, or immediately if the addon registers after login. Errors in it are reported and don't break anything else. Painted frames follow `/fui accent` changes live, and their borders stay one screen pixel at any UI scale (`S.Pixel(frame)` gives that size). `S.RGB(name)` returns any theme color; the names, text roles and the rest of the look are listed in `docs/THEME.md` (from `Core/Theme.lua`). `S.apiVersion` is 1; the API only grows.
 
 ## Development
 
