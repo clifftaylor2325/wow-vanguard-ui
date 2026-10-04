@@ -104,7 +104,7 @@ Sizes: S under a day of lane time, M one to two, L more. Each is one commit with
 - [ ] **E3 Chat watch price lines** (S): auction price beside a WTS/WTB line's item in the toast.
 - [ ] **E4 Buy lists from Instance prep and Keep stocked** (S): shortfalls become a shopping list with wanted quantities; the shop shows "cheapest 8".
 - [ ] **E5 Sales ledger** (L): from sold-auction mail and the auction events; "Your history" on the sell card; auction gold on the info strip.
-- [ ] **E6 Stack presets for vanilla** (S): default stack sizes by category; part of A1's form.
+- [x] **E6 Stack presets for vanilla** (S): default stack sizes by category; part of A1's form.
 
 ### Phase 0: split the module first
 
