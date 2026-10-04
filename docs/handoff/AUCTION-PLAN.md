@@ -108,7 +108,7 @@ Sizes: S under a day of lane time, M one to two, L more. Each is one commit with
 
 ### Phase 0: split the module first
 
-- [ ] **S0 Split AuctionHelper.lua** (S): move the shop, sell and owned-auctions code into `Modules/AuctionShop.lua`, `Modules/AuctionSell.lua` and `Modules/AuctionOwned.lua` (the panel, queue, throttle and scan stay in `AuctionHelper.lua`), with no change in behaviour and every test passing unchanged, so the phases below can run in parallel without editing the same file.
+- [x] **S0 Split AuctionHelper.lua** (S): move the shop, sell and owned-auctions code into `Modules/AuctionShop.lua`, `Modules/AuctionSell.lua` and `Modules/AuctionOwned.lua` (the panel, queue, throttle and scan stay in `AuctionHelper.lua`), with no change in behaviour and every test passing unchanged, so the phases below can run in parallel without editing the same file.
 
 ### Order
 
