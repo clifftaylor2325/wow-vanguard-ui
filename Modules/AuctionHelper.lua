@@ -10,6 +10,9 @@
 --     cheapest price someone else asks now, the 7-day low from your scans,
 --     the deposit, and the price to ask (undercut by 1 copper, 1 silver, 1 %,
 --     or matched); Post lists it, from the button's click only.
+--   * Your auctions: "Check undercuts" asks for your auctions, checks each
+--     item's price now, and marks the ones someone else asks less for; each
+--     row's Cancel (its cost on hover) cancels that auction, from the click only.
 --   * Scan: "Scan the auction house" (once every 15 minutes, the game's own
 --     limit for a whole-house query) reads every listing and records each
 --     item's cheapest unit price (Modules/AuctionPrices.lua), which item
@@ -18,8 +21,8 @@
 -- The game's auction house is the modern one (C_AuctionHouse) on WoW Forever.
 -- Nothing here touches the game's auction frames: the panel only anchors to
 -- the window, and the only hook is a post-hook on its SetPostItem that reads
--- the item it was given. Posting runs only inside the Post button's click,
--- and a post the game wants confirmed is left to the game. Every price and
+-- the item it was given. Posting and cancelling run only inside a button's
+-- click, and a post the game wants confirmed is left to the game. Every price and
 -- quantity goes through ns.PlainNumber before any arithmetic, and events are
 -- ignored in combat (the house closes then).
 
@@ -48,6 +51,8 @@ AH.SELL_LINES = { "Cheapest now", "7-day low", "Deposit", "Your price" }
 AH.ITEM, AH.COMMODITY, AH.DURATIONS = 1, 2, { "ONE", "TWO", "THREE" }
 -- The undercut rules as the sell card's segments.
 AH.UNDERCUT_CHOICES = { { "copper", "1c" }, { "silver", "1s" }, { "percent", "1%" }, { "match", "Match" } }
+-- Your auctions: rows under the scan line (how many, from where), and Enum.AuctionStatus.Active.
+AH.OWNED_ROWS, AH.OWNED_ROWS_Y, AH.ACTIVE = 4, -64, 0
 
 -- Helpers ------------------------------------------------------------------------------------
 
@@ -81,10 +86,11 @@ end
 -- Searches -----------------------------------------------------------------------------------
 
 -- Sends one search: a list entry (an item ID by its item key, a name by text), an item to open
--- in the game's own list, or an item's price check (a sell search); always cheapest first.
+-- in the game's own list, an item's price check (a sell search) or your auctions; always cheapest first.
 function AH.Send(s)
   local api = C_AuctionHouse
   if s.sell then return api.SendSellSearchQuery(s.sell, AH.SORTS, true) end
+  if s.owned then return api.QueryOwnedAuctions(AH.SORTS) end
   if s.open then return api.SearchForItemKeys({ s.open }, AH.SORTS) end
   if type(s.entry) == "number" then return api.SearchForItemKeys({ api.MakeItemKey(s.entry) }, AH.SORTS) end
   api.SendBrowseQuery({ searchString = s.entry, sorts = AH.SORTS, filters = {}, itemClassFilters = {} })
@@ -440,13 +446,14 @@ function AH.TakeCursor()
   AH.TakeItem(loc)
 end
 
--- Search results for an item: the price check in flight (the sell card's) takes the cheapest.
+-- Search results for an item: the price check in flight (the sell card's, or your auctions') takes the cheapest.
 local function onSearchResults(event, arg)
-  local s = AH.pending
+  local s, commodity = AH.pending, event == "COMMODITY_SEARCH_RESULTS_UPDATED"
   local id = type(arg) == "table" and arg.itemID or arg
   if not (s and s.sell and s.sell.itemID == id) then return end
-  local cheapest = AH.Cheapest(event == "COMMODITY_SEARCH_RESULTS_UPDATED", s.sell)
+  local cheapest = AH.Cheapest(commodity, s.sell)
   if s.card and AH.sell and AH.sell.id == id then AH.sell.cheapest, AH.sell.searched = cheapest, true end
+  if s.check then AH.MarkUndercuts(id, cheapest, commodity) end
   AH.Done()
   AH.PaintSell()
 end
@@ -536,16 +543,146 @@ local function buildSell(f)
   hooksecurefunc(AuctionHouseFrame, "SetPostItem", function(_, loc) AH.TakeItem(loc) end)
 end
 
+-- Your auctions ------------------------------------------------------------------------------
+
+-- One of your auctions as a row's data, or nil (sold, no buyout, or a number the client hides).
+-- Its price per unit: the buyout for a commodity (priced per unit), else the buyout over the quantity.
+local function ownedAuction(a)
+  local buyout, qty, id = ns.PlainNumber(a.buyoutAmount), ns.PlainNumber(a.quantity), ns.PlainNumber(a.auctionID)
+  if a.status ~= AH.ACTIVE or not (buyout and qty and id) or qty < 1 then return nil end
+  local info = C_AuctionHouse.GetItemKeyInfo(a.itemKey)
+  local unit = info and info.isCommodity and buyout or math.floor(buyout / qty)
+  return { id = id, key = a.itemKey, buyout = buyout, qty = qty, unit = unit }
+end
+
+-- Your active auctions with a buyout.
+function AH.ReadOwned()
+  local out = {}
+  for _, a in ipairs(C_AuctionHouse.GetOwnedAuctions() or {}) do out[#out + 1] = ownedAuction(a) end
+  return out
+end
+
+-- Check undercuts: asks for your auctions (their prices are checked when they come in).
+function AH.CheckUndercuts()
+  AH.Queue({ owned = true })
+end
+
+-- Your auctions came in: kept and shown; after Check undercuts, each item's price is checked.
+local function onOwned()
+  local s, seen = AH.pending, {}
+  AH.owned = AH.ReadOwned()
+  AH.PaintOwned()
+  if not (s and s.owned) then return end
+  for _, a in ipairs(AH.owned) do
+    if not seen[a.key.itemID] then seen[a.key.itemID] = true AH.Queue({ sell = C_AuctionHouse.MakeItemKey(a.key.itemID), check = true }) end
+  end
+  AH.Done()
+end
+
+-- An item's price check answered: each of your auctions of it is undercut when someone else
+-- asks less per unit (a commodity's buyout is per unit, an item's per auction).
+function AH.MarkUndercuts(id, cheapest, commodity)
+  for _, a in ipairs(AH.owned) do
+    if a.key.itemID == id then
+      a.unit = commodity and a.buyout or math.floor(a.buyout / a.qty)
+      a.undercut = cheapest ~= nil and cheapest < a.unit
+    end
+  end
+  AH.PaintOwned()
+end
+
+-- Cancel (the row's click, never a timer or an event): cancels one of your auctions if the game allows it.
+function AH.Cancel(id)
+  if id and C_AuctionHouse.CanCancelAuction(id) then C_AuctionHouse.CancelAuction(id) end
+end
+
+-- An auction was cancelled: its row goes.
+local function onCanceled(_, id)
+  for i, a in ipairs(AH.owned) do
+    if a.id == id then table.remove(AH.owned, i) break end
+  end
+  AH.PaintOwned()
+end
+
+-- Cancel's tooltip: what cancelling costs.
+local function cancelTip(b)
+  local cost = ns.PlainNumber(C_AuctionHouse.GetCancelCost(b:GetParent().id))
+  GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
+  GameTooltip:SetText("Cancel this auction")
+  if cost then GameTooltip:AddLine("Costs " .. AP.Money(cost), T.RGB("text2")) end
+  GameTooltip:Show()
+end
+
+-- An auction's row: a red mark when undercut, the item, your price per unit, and Cancel.
+local function paintOwnedRow(r, a)
+  r:SetShown(a ~= nil)
+  if not a then return end
+  local info = C_AuctionHouse.GetItemKeyInfo(a.key)
+  r.id = a.id
+  r.mark:SetShown(a.undercut == true)
+  r.icon:SetTexture(info and info.iconFileID or AH.UNKNOWN_ICON)
+  r.name:SetText(info and info.itemName or ("item " .. a.key.itemID))
+  r.price:SetText(a.unit and AP.Money(a.unit) or "")
+end
+
+-- Your auctions under the scan card, from the scroll offset.
+function AH.PaintOwned()
+  local c = AH.scanCard
+  if not c then return end
+  for i, r in ipairs(c.owned) do paintOwnedRow(r, AH.owned[c.offset + i]) end
+end
+
+-- An auction row's Cancel, with what cancelling costs on hover.
+local function cancelButton(r)
+  local b = W.Button(r, "Cancel", function(self) AH.Cancel(self:GetParent().id) end, 60)
+  b:SetHeight(18)
+  b:SetPoint("RIGHT", 0, 0)
+  b:SetScript("OnEnter", cancelTip)
+  b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  return b
+end
+
+-- An auction row's parts: the undercut mark, icon, name, price and Cancel.
+local function ownedParts(r)
+  r.mark = W.Flat(r, "ARTWORK", "bad")
+  r.mark:SetSize(6, 6)
+  r.mark:SetPoint("LEFT", 0, 0)
+  rowParts(r)
+  r.icon:SetPoint("LEFT", 10, 0)
+  r.price:SetPoint("RIGHT", -64, 0)
+  r.cancel = cancelButton(r)
+end
+
+-- The wheel over your auctions scrolls them.
+local function scrollOwned(c, delta)
+  c.offset = math.max(0, math.min(#AH.owned - #c.owned, c.offset - delta))
+  AH.PaintOwned()
+end
+
+-- Check undercuts and the rows of your auctions under the scan line.
+local function ownedRows(c)
+  c.check = W.Button(c, "Check undercuts", function() AH.CheckUndercuts() end, 120)
+  c.check:SetPoint("TOPRIGHT", 0, -20)
+  c.owned, c.offset = {}, 0
+  for i = 1, AH.OWNED_ROWS do
+    c.owned[i] = row(c, i, AH.OWNED_ROWS_Y)
+    ownedParts(c.owned[i])
+  end
+  c:EnableMouseWheel(true)
+  c:SetScript("OnMouseWheel", scrollOwned)
+end
+
 -- The panel ----------------------------------------------------------------------------------
 
--- The scan card: the scan button and when the last scan was.
+-- The scan card: the scan button and when the last scan was, Check undercuts and your auctions.
 local function buildScan(f)
-  local c = card(f, "Scan", AH.SCAN_Y, AH.SCAN_H)
+  local c = card(f, "Scan and your auctions", AH.SCAN_Y, AH.SCAN_H)
   c.scan = W.Button(c, "Scan the auction house", function() AH.StartScan() end, 150)
   c.scan:SetPoint("TOPLEFT", 0, -20)
   c.last = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
   c.last:SetPoint("TOPLEFT", 0, -50)
   AH.scanCard = c
+  ownedRows(c)
 end
 
 -- The panel beside the auction house window (as tall as it), built the first time the window shows.
@@ -571,6 +708,7 @@ function AH.OnShow()
   AH.PaintShop()
   AH.PaintSell()
   AH.PaintScan()
+  AH.PaintOwned()
 end
 
 -- The auction house closed: the panel hides, and searches waiting and a scan in progress stop.
@@ -705,7 +843,7 @@ end
 function AH.Start()
   local order = Enum.AuctionHouseSortOrder
   AH.SORTS = { { sortOrder = order and order.Price or 0, reverseSort = false } }
-  AH.queue, AH.found, AH.lastSent = {}, {}, -AH.SEND_GAP
+  AH.queue, AH.found, AH.owned, AH.lastSent = {}, {}, {}, -AH.SEND_GAP
   AH.walker = CreateFrame("Frame")
   AH.walker:Hide()
   AH.walker:SetScript("OnUpdate", AH.ScanStep)
@@ -721,6 +859,8 @@ local function listen()
   on("ITEM_SEARCH_RESULTS_UPDATED", onSearchResults)
   on("COMMODITY_SEARCH_RESULTS_UPDATED", onSearchResults)
   on("AUCTION_HOUSE_THROTTLED_SYSTEM_READY", function() AH.PaintSell() end)
+  on("OWNED_AUCTIONS_UPDATED", onOwned)
+  on("AUCTION_CANCELED", onCanceled)
 end
 
 -- Module entry point (Core/Modules.lua): prices in tooltips, and the panel at the auction house.

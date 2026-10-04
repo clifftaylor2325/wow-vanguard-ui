@@ -478,3 +478,80 @@ it("hidden numbers and stray results", () => {
   addon.click(`${CARD}.post`);
   expect(restrictedLog(addon)[0], "a hidden stack size posts one; an unknown length is the first").toEqual(["PostCommodity", true, "0:1", 1, 1, 300, "nil"]);
 });
+
+// Your auctions ------------------------------------------------------------------------------
+
+// TEST-ONLY auctions of yours: 5 dust at 1s 50c a unit, a blade at 40s, and three the check
+// leaves out (sold, bid only, a hidden buyout).
+const OWNED = `__wfgWorld.ah.owned = {
+  { auctionID = 501, itemKey = { itemID = 10940 }, status = 0, quantity = 5, buyoutAmount = 150 },
+  { auctionID = 502, itemKey = { itemID = 9999 }, status = 0, quantity = 1, buyoutAmount = 4000 },
+  { auctionID = 503, itemKey = { itemID = 9999 }, status = 1, quantity = 1, buyoutAmount = 4000 },
+  { auctionID = 504, itemKey = { itemID = 9999 }, status = 0, quantity = 1, bidAmount = 300 },
+  { auctionID = 505, itemKey = { itemID = 9999 }, status = 0, quantity = 1, buyoutAmount = __wfgWorld.secret(1) } }
+  __wfgWorld.ah.commodities[10940] = { { unitPrice = 120, quantity = 7 }, { unitPrice = 150, quantity = 5, containsOwnerItem = true } }
+  __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }
+  __wfgWorld.ah.cancelCost = 100`;
+
+const SCAN_CARD = `${HELPER}.scanCard`;
+
+// Owned row i: [shown, name, price, undercut mark shown].
+const ownedRow = (addon, i) => addon.eval(`local r = ${SCAN_CARD}.owned[${i}]
+  return { r:IsShown(), r.name:GetText() or false, r.price:GetText() or false, r.mark:IsShown() }`);
+
+// Check undercuts, the auctions arriving, and each price check answered a second apart.
+function checkUndercuts(addon) {
+  addon.click(`${SCAN_CARD}.check`);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.advance(1);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.advance(1);
+  addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+}
+
+it("undercut check marks the undercut auction and Cancel is per click", () => {
+  const addon = atAuctionHouse(BAGS + OWNED);
+  checkUndercuts(addon);
+  expect(sent(addon), "your auctions, then each item once").toEqual(["QueryOwnedAuctions:", "SendSellSearchQuery:10940", "SendSellSearchQuery:9999"]);
+  expect([ownedRow(addon, 1), ownedRow(addon, 2), ownedRow(addon, 3)[0]], "the dust is undercut (1s 20c against your 1s 50c), the blade isn't").toEqual([[true, "Strange Dust", "1s 50c", true], [true, "TEST-ONLY Blade", "40s 0c", false], false]);
+  expect(isTok(addon, addon.eval(`return ${SCAN_CARD}.owned[1].mark.__vertexColor`), "bad"), "the mark is red").toBe(true);
+  addon.hover(`${SCAN_CARD}.owned[1].cancel`);
+  expect(addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out"), "what cancelling costs").toEqual(["Cancel this auction", "Costs 1s 0c"]);
+  addon.hover(null);
+  addon.click(`${SCAN_CARD}.owned[1].cancel`);
+  expect(restrictedLog(addon), "cancelled once, from the click").toEqual([["CancelAuction", true, 501, "nil", "nil", "nil", "nil"]]);
+  addon.fire("AUCTION_CANCELED", 501);
+  expect([ownedRow(addon, 1)[1], ownedRow(addon, 2)[0]], "its row goes").toEqual(["TEST-ONLY Blade", false]);
+});
+
+it("restricted calls run only inside a click", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP + OWNED.replace("__wfgWorld.ah.commodities[10940] = {", "__wfgWorld.ah.unused = {"));
+  dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.click(`${CARD}.post`);
+  addon.advance(1);
+  checkUndercuts(addon);
+  addon.click(`${SCAN_CARD}.owned[2].cancel`);
+  const after = restrictedLog(addon);
+  for (let i = 0; i < 3; i++) {
+    addon.advance(3);
+    addon.world.fireAuctionEvents({ itemID: 10940 }, 501);
+    addon.world.openAuctionHouse();
+    addon.update(0);
+  }
+  expect(after.map((c) => [c[0], c[1]]), "a post and a cancel, each from a click").toEqual([["PostCommodity", true], ["CancelAuction", true]]);
+  expect(restrictedLog(addon), "timers and every auction house event add nothing").toEqual(after);
+  expect(addon.eval("local n = 0 for _, c in ipairs(__wfgWorld.ah.restricted) do if c.path:find('AuctionHelper.lua') then n = n + 1 end end return n"), "both made by the helper's buttons").toBe(2);
+});
+
+it("your auctions: refused cancels, scrolling, unknown names, hidden costs, and updates the game sends", () => {
+  const addon = atAuctionHouse(BAGS + OWNED + `__wfgWorld.ah.noCancel[501] = true __wfgWorld.ah.cancelCost = __wfgWorld.secret(1)
+    __wfgWorld.items[9999].pending = true
+    for i = 1, 4 do table.insert(__wfgWorld.ah.owned, { auctionID = 600 + i, itemKey = { itemID = 10940 }, status = 0, quantity = 1, buyoutAmount = 90 }) end`);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  expect([ownedRow(addon, 1), ownedRow(addon, 2).slice(1, 3), list(sent(addon))], "shown when the game sends them, nothing checked").toEqual([[true, "Strange Dust", "1s 50c", false], ["item 9999", "40s 0c"], []]);
+  addon.click(`${SCAN_CARD}.owned[1].cancel`);
+  addon.hover(`${SCAN_CARD}.owned[1].cancel`);
+  expect([restrictedLog(addon).length, addon.eval("return #GameTooltip.__lines")], "the game won't cancel it; no cost shown when hidden").toEqual([0, 1]);
+  addon.wheel(`${SCAN_CARD}.owned[1]`, -5);
+  expect([ownedRow(addon, 1)[2], ownedRow(addon, 4)[0]], "scrolled to the end: 6 auctions, 4 rows").toEqual(["90c", true]);
+});

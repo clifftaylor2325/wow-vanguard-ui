@@ -507,6 +507,30 @@ const SCENES = [
     CC.Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew") CC.Add("shift-BUTTON1", "spell", "TEST-ONLY Shield")
     CC.Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") CC.Add("MOUSEWHEELUP", "macro", "/cast [@mouseover] TEST-ONLY Heal")
     ns.Options.Show("clickcast")` },
+  { name: "foreverui-auction", caption: "Auction helper beside the game's auction house window: a shopping list searched (prices per unit, how many are up), the sell card with a stack of dust, the last scan, and your auctions with one undercut (TEST-ONLY items and listings)",
+    lua: `time = function() return 1790000000 end
+      ForeverUIDB.ah = { lastScan = 1790000000 - 720, count = 1, prices = { [10940] = { min = 110, t = 1790000000, days = { [20717] = 105 } } },
+        list = "Enchanting mats", lists = { ["Enchanting mats"] = { "Strange Dust", "Soul Dust", 10998, "Vision Dust" } } }
+      local W = __wfgWorld
+      W.items[10940] = { name = "Strange Dust", icon = "TEST-ONLY-DUST", commodity = true }
+      W.items[11083] = { name = "Soul Dust", icon = "TEST-ONLY-DUST2", commodity = true }
+      W.items[10998] = { name = "Lesser Astral Essence", icon = "TEST-ONLY-ESS", commodity = true }
+      W.items[9999] = { name = "TEST-ONLY Blade of the Hunt", icon = "TEST-ONLY-BLADE" }
+      W.bags[0][1] = { itemID = 10940, count = 20 }
+      AUCTION_DURATION_ONE = "12 Hours"
+      W.openAuctionHouse()
+      __wfgStub.update(0)
+      local AH = ns.GetModule("AuctionHelper")
+      AH.found = { ["Strange Dust"] = { key = { itemID = 10940 }, price = 1250, qty = 240 }, ["Soul Dust"] = { key = { itemID = 11083 }, price = 4800, qty = 35 },
+        [10998] = { key = { itemID = 10998 }, price = 21500, qty = 12 }, ["Vision Dust"] = false }
+      AH.progress = { done = 4, total = 4 }
+      AH.PaintShop()
+      W.ah.commodities[10940] = { { unitPrice = 120, quantity = 30 } }
+      W.cursor = { type = "item", id = 10940, bag = 0, slot = 1 }
+      AH.TakeCursor()
+      __wfgStub.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940)
+      AH.owned = { { id = 1, key = { itemID = 10940 }, buyout = 150, qty = 20, unit = 150, undercut = true }, { id = 2, key = { itemID = 9999 }, buyout = 45000, qty = 1, unit = 45000, undercut = false } }
+      AH.PaintOwned()` },
 ];
 
 // Setup has run on this TEST-ONLY account, so it only shows in the scenes that open it.
