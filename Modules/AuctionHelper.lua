@@ -218,15 +218,22 @@ function AH.PaintScan()
   c.last:SetText(last > 0 and string.format("last scan %d min ago", math.floor((AP.Now() - last) / 60)) or "no scan yet")
 end
 
--- Asks the house for every listing (ReplicateItems), at most once every AH.SCAN_GAP seconds; the
--- rows are read once REPLICATE_ITEM_LIST_UPDATE says they're in.
+-- A new scan: where the walk is, each item's listings and how many, your listings left out (and
+-- your name, alone and as "Name-Realm", to know them by), and when it started.
+local function newScan()
+  local me = UnitName("player")
+  return { next = 0, items = {}, listings = {}, mine = 0, me = me, meFull = string.format("%s-%s", tostring(me), AP.Realm()), started = AP.Now() }
+end
+
+-- Asks the house for every listing (ReplicateItems), at most once every AH.SCAN_GAP seconds (only a
+-- finished scan counts: one cut short by closing the house doesn't); the rows are read once
+-- REPLICATE_ITEM_LIST_UPDATE says they're in.
 function AH.StartScan()
   local wait = AP.House().lastScan + AH.SCAN_GAP - AP.Now()
   AH.PaintScan()
   if not AH.open then return ns.Chat("Open the auction house to scan it.") end
   if AH.scan or wait > 0 then return ns.Chat(string.format("One auction house scan every 15 minutes: the next in %d min.", math.ceil(wait / 60))) end
-  AH.scan = { next = 0, items = {} }
-  AP.House().lastScan = AP.Now()
+  AH.scan = newScan()
   C_AuctionHouse.ReplicateItems()
   AH.PaintScan()
 end
@@ -238,14 +245,24 @@ local function onReplicate()
   AH.walker:Show()
 end
 
+-- Whether a listing is yours: GetReplicateItemInfo names its seller (owner, and ownerFullName as
+-- "Name-Realm"); a seller the client hides or hasn't loaded yet isn't you.
+local function isMine(s, owner, ownerFull)
+  if ns.IsSecret(owner) or ns.IsSecret(ownerFull) then return false end
+  return (owner ~= nil and owner == s.me) or (ownerFull ~= nil and ownerFull == s.meFull)
+end
+
 -- Listing i (0-based): its units at its unit price (buyout over count) join its item's listings
--- (s.items[itemID] = { [unit price] = units }); skipped without a buyout or when the client hides a number.
+-- (s.items[itemID] = { [unit price] = units }) and its count; skipped without a buyout or when
+-- the client hides a number, and counted apart when it's yours.
 function AH.ScanRow(s, i)
-  local _, _, count, _, _, _, _, _, _, buyout, _, _, _, _, _, _, id = C_AuctionHouse.GetReplicateItemInfo(i)
+  local _, _, count, _, _, _, _, _, _, buyout, _, _, _, owner, ownerFull, _, id = C_AuctionHouse.GetReplicateItemInfo(i)
   count, buyout, id = ns.PlainNumber(count), ns.PlainNumber(buyout), ns.PlainNumber(id)
   if not (count and buyout and id) or count < 1 or buyout < 1 then return end
+  if isMine(s, owner, ownerFull) then s.mine = s.mine + 1 return end
   local unit, prices = math.floor(buyout / count), s.items[id] or {}
   prices[unit], s.items[id] = (prices[unit] or 0) + count, prices
+  s.listings[id] = (s.listings[id] or 0) + 1
 end
 
 -- One frame of the scan: the next AH.SCAN_ROWS listings; after the last, the prices are recorded.
@@ -258,17 +275,25 @@ function AH.ScanStep()
   if s.next >= s.total then AH.FinishScan() end
 end
 
--- The whole list is read: each item's cheapest unit price, units up and market value go in the price store.
-function AH.FinishScan()
-  local s, now, n = AH.scan, AP.Now(), 0
+-- Each item's cheapest unit price, units up, market value and listings go in the price store; how many items.
+local function recordScan(s, now)
+  local n = 0
   for id, prices in pairs(s.items) do
     local low, units, market = AP.Summary(prices)
-    AP.Record(id, low, now, units, market)
+    AP.Record(id, low, now, units, market, s.listings[id])
     n = n + 1
   end
-  AH.scan = nil
+  return n
+end
+
+-- The whole list is read: the prices are recorded, and the 15 minutes run from the scan's start.
+function AH.FinishScan()
+  local s = AH.scan
+  local n = recordScan(s, AP.Now())
+  AP.House().lastScan, AH.scan = s.started, nil
   AH.walker:Hide()
-  ns.Chat(string.format("Auction house scanned: %d listings, prices for %d items.", s.total, n))
+  local yours = s.mine > 0 and string.format(" %d of them were yours and are left out.", s.mine) or ""
+  ns.Chat(string.format("Auction house scanned: %d listings, prices for %d items.%s", s.total, n, yours))
   AH.PaintScan()
 end
 
