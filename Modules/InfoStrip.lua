@@ -2,7 +2,8 @@
 --   durability (orange at 25% or less, red at 10% or less) · free bag slots · fps and latency
 --   gold · ammo (hunters, warriors, rogues) or soul shards (warlocks) · clock
 --   leveling: XP per hour · time to level · gold per hour this session
---   your damage per second in the last fight (off until you turn it on)
+--   your damage per second in the last fight, and your place in it in a group
+--   (each off until you turn it on)
 -- Each block reads the client when its event fires (fps, latency and the
 -- clock once a second on one shared timer), shows only where the client
 -- can answer, and sets its text only when it changed. Values the client
@@ -17,7 +18,7 @@ local V = ns.Visibility
 local IS = ns.Module("InfoStrip", {
   defaults = {
     durability = true, bags = true, system = true, gold = true, ammo = true, clock = true, shards = true,
-    xprate = true, leveltime = true, goldrate = true, dps = false,
+    xprate = true, leveltime = true, goldrate = true, dps = false, rank = false,
   },
 })
 
@@ -29,7 +30,7 @@ IS.BLOCKS = {
   -- Soul shards share ammo's place: no class carries both.
   shards = { 2, "CENTER" },
   xprate = { 3, "LEFT" }, leveltime = { 3, "CENTER" }, goldrate = { 3, "RIGHT" },
-  dps = { 4, "LEFT" },
+  dps = { 4, "LEFT" }, rank = { 4, "RIGHT" },
 }
 -- The session's rates wait this long (seconds) before showing: early numbers jump about.
 IS.SETTLE = 60
@@ -177,17 +178,37 @@ local function enum(kind, key)
   return t and t[key] or nil
 end
 
--- Your damage per second in the current (or last) fight, from the game's damage
--- meter; nil in combat and wherever the client keeps it hidden.
-function IS.DPS()
+-- The current (or last) fight's damage per second list from the game's damage
+-- meter, top first; nil in combat and wherever the client keeps it hidden.
+local function dpsSources()
   local get = C_DamageMeter and C_DamageMeter.GetCombatSessionFromType
   local kind, what = enum("DamageMeterSessionType", "Current"), enum("DamageMeterType", "Dps")
   if type(get) ~= "function" or kind == nil or what == nil or ns.InCombat() then return nil end
   local session = get(kind, what)
-  if type(session) ~= "table" or ns.IsSecret(session) then return nil end
-  for _, source in ipairs(session.combatSources or {}) do
-    if source.isLocalPlayer == true then return ns.PlainNumber(source.amountPerSecond) end
+  if type(session) ~= "table" or ns.IsSecret(session) or type(session.combatSources) ~= "table" then return nil end
+  return session.combatSources
+end
+
+-- Your line in that list, its place in it and how many lines it has (nil without yours).
+local function myLine()
+  local sources = dpsSources()
+  for i, source in ipairs(sources or {}) do
+    if source.isLocalPlayer == true then return source, i, #sources end
   end
+end
+
+-- Your damage per second in the current (or last) fight; nil in combat and where it's hidden.
+function IS.DPS()
+  local line = myLine()
+  return line and ns.PlainNumber(line.amountPerSecond)
+end
+
+-- Your place in the last fight's damage per second and how many were listed, or nil. The
+-- client has no rank field: the game's own meter numbers its lines in the list's order.
+function IS.Rank()
+  if not (ns.Client.Has("damageMeter") and ns.Client.Has("meterEnums")) then return nil end
+  local line, place, count = myLine()
+  if line then return place, count end
 end
 
 -- True at the level cap, where XP stops.
@@ -272,6 +293,12 @@ end
 function IS.TEXT.dps()
   local dps = IS.DPS()
   if dps and dps > 0 then return ns.GetModule("DataBars").Short(math.floor(dps)) .. " dps", "text" end
+end
+
+-- Your place in the last fight's damage, in a group ("#2 of 5"; gold at the top).
+function IS.TEXT.rank()
+  local place, count = IS.Rank()
+  if place and count > 1 then return string.format("#%d of %d", place, count), place == 1 and "gold" or "text2" end
 end
 
 -- Showing -----------------------------------------------------------------------------------
@@ -401,7 +428,7 @@ local function watch()
   ns.On("PLAYER_LEVEL_UP", IS.PaintRates)
   ns.On("PLAYER_ENTERING_WORLD", IS.UpdateAll)
   -- Your DPS is readable once a fight ends (and gone when the meter resets).
-  for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "DAMAGE_METER_RESET" }) do ns.On(event, function() IS.Paint("dps") end) end
+  for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "DAMAGE_METER_RESET" }) do ns.On(event, function() IS.Paint("dps") IS.Paint("rank") end) end
 end
 
 -- Module entry point (Core/Modules.lua).
