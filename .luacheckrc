@@ -59,4 +59,6 @@ read_globals = {
   "C_EditMode",
   -- P4.7 Options keys: the box that has the typing (the window leaves keys alone while you type).
   "GetCurrentKeyBoardFocus",
+  -- Bug hunt, swing timer: your weapons' speeds, for a swing a weapon swap restarts.
+  "UnitAttackSpeed",
 }

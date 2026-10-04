@@ -299,6 +299,22 @@ it("swing timer: a row per hand, from the client's own swings", () => {
   expect(swings(addon)[2][0], "dying clears the rows").toBe(false);
 });
 
+it("swing timer: a weapon swap restarts a swing under way at the new weapon's speed", () => {
+  // TEST-ONLY weapon speeds: main hand, off hand, ranged.
+  const addon = loggedIn(UNITS_ENV + SWING_ENV + "__speeds = { 2.6, 1.4 } UnitAttackSpeed = function() return unpack(__speeds) end");
+  addon.fire("PLAYER_SWING", 2.6, 0);
+  addon.fire("PLAYER_SWING", 1.4, 1);
+  addon.eval("__wfgStub.advance(1) __speeds = { 3.8 }");
+  addon.fire("WEAPON_SLOT_CHANGED");
+  const after = swings(addon);
+  expect(after[0], "the main hand starts over, timed by the new two-hander (as the game's own swing timer does)").toEqual([true, 0, 3.8, "3.8"]);
+  expect(after[1][0], "the off hand, now empty, stops").toBe(false);
+  expect(after[2][0], "a hand that wasn't swinging stays hidden").toBe(false);
+  addon.eval("__speeds = { { __secret = true } }");
+  addon.fire("WEAPON_SLOT_CHANGED");
+  expect(swings(addon)[0][0], "a speed the client hides: no guess, the row stops").toBe(false);
+});
+
 it("swing timer: who sees it", () => {
   // Whether a login with this setup and these saved settings builds the swing rows.
   const wanted = (env, saved) => loggedIn(UNITS_ENV + env, saved ? { savedVariables: saved } : undefined).eval("return ns.GetModule('SwingTimer').rows ~= nil");
