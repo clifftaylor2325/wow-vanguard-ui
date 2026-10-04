@@ -78,7 +78,7 @@ is fine when no call covers a case.
 | --- | --- |
 | `click(ref, button = "LeftButton")` | PreClick, OnMouseDown, OnMouseUp, OnClick, PostClick on a frame. |
 | `hover(ref)` / `hover(null)` | The mouse onto a frame (OnEnter, `IsMouseOver`), or off everything (OnLeave). |
-| `wheel(ref, delta)`, `key(ref, key)` | OnMouseWheel, OnKeyDown. |
+| `wheel(ref, delta)`, `key(ref, key)` | OnMouseWheel (on the frame, or the nearest parent that takes the wheel, as in game), OnKeyDown. |
 | `drag(ref, point, x, y)` | Drags a frame to a point on the screen and drops it. |
 | `type(ref, text)`, `enter(ref)` | An edit box's text (OnTextChanged), and Enter in it (OnEnterPressed). |
 | `keys({ shift: true })` | Modifier keys held (`IsShiftKeyDown()`...). |

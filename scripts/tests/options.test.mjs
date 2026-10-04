@@ -64,9 +64,9 @@ it("options window: nav, search, controls, footer", () => {
   expect(dd.shown && dd.count === 3 && dd.value === "cursor" && dd.closed && dd.text === "at the cursor", "a dropdown opens a menu of its choices; picking one sets it and closes the menu").toBeTruthy();
   addon.eval('ns.Options.Show("general")');
   const slider = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.value and w.label:GetText() == "Text size" then
-      w:GetScript("OnMouseWheel")(w, -1)
+      w.set(0.95) w:Refresh()
       return { v = ns.Theme.Settings().textScale, text = w.value:GetText() } end end`);
-  expect(Math.abs(slider.v - 0.95) < 1e-9 && slider.text === "95%", "the Text size slider steps by 5% with the wheel and shows the value").toBeTruthy();
+  expect(Math.abs(slider.v - 0.95) < 1e-9 && slider.text === "95%", "the Text size slider sets 95% and shows the value").toBeTruthy();
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.hex then w.hex:SetText("#5aa2f0") w.hex:GetScript("OnEnterPressed")(w.hex) end end`);
   expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]") === true, "typing a hex color in the accent box sets it").toBeTruthy();
   expect(addon.eval("return ForeverUI_Options.notice:IsShown() and ForeverUI_Options.reload:IsShown()") === true, "a reload-only change shows the notice and the Reload now button").toBeTruthy();
@@ -291,6 +291,42 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   expect(addon.eval("return { GameTooltip.__owner == __dot, GameTooltip:IsShown(), GameTooltip.__tip }"), "hovering the dot says what it does").toEqual([true, true, "Changed from the default. Click to put it back."]);
   addon.eval("__dot:GetScript('OnLeave')(__dot)");
   expect(addon.eval("return GameTooltip:IsShown()"), "and the tooltip goes when the mouse leaves").toBe(false);
+});
+
+// The visible options page's scroll view, as Lua.
+const PAGE_VIEW = "(function() for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and w:IsVisible() then return w end end end)()";
+
+// The visible row whose caption is this text, as Lua.
+const rowNamed = (text) => `(function() for _, w in ipairs(__wfgStub.frames) do
+  if w.label and w.label.__text == "${text}" and w:IsVisible() then return w end end end)()`;
+
+it("options: the mouse wheel over a slider, a choice or a switch scrolls the page and never changes the value", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("actionbars")');
+  // TEST-ONLY page taller than its view, so the wheel has somewhere to go.
+  addon.eval(`local v = ${PAGE_VIEW} v.__height, v.__scrollChild.__height = 200, 1200`);
+  // Turns the wheel over a row; returns bar 1's buttons, buttons per row and visibility, and the page's scroll.
+  const wheelOver = (caption, delta) => {
+    addon.wheel(addon.eval(`return ${rowNamed(caption)}.__id`), delta);
+    return addon.eval(`local one = ns.Settings("ActionBars").bars[1] return { one.buttons, one.perRow, one.visibility, ${PAGE_VIEW}:GetVerticalScroll() }`);
+  };
+  expect(wheelOver("Buttons", -1), "down over the Buttons slider: the count stays, the page scrolls a notch (40)").toEqual([12, 12, "always", 40]);
+  expect(wheelOver("Buttons per row", -1), "over Buttons per row: the same").toEqual([12, 12, "always", 80]);
+  expect(wheelOver("Visibility", -1), "over a choice: the page scrolls, the choice stays").toEqual([12, 12, "always", 120]);
+  expect(wheelOver("Show bar 6", -1)[3], "over a switch: the page scrolls").toBe(160);
+  expect(wheelOver("Buttons", 1), "up scrolls back").toEqual([12, 12, "always", 120]);
+  expect(addon.eval(`return { ${rowNamed("Buttons")}:IsMouseWheelEnabled(), ${rowNamed("Visibility")}:IsMouseWheelEnabled(), ${PAGE_VIEW}:IsMouseWheelEnabled() }`), "no value row takes the wheel; the page does").toEqual([false, false, true]);
+  addon.eval(`local r = ${rowNamed("Buttons")} r:GetScript("OnClick")(r)`);
+  expect(addon.eval("return ns.Settings('ActionBars').bars[1].buttons"), "a click on the caption still changes it (12 wraps to 1)").toBe(1);
+});
+
+it("options: Bar 1's Show when chips sit inside the card, inset like every other row's control", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("actionbars")');
+  const fit = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.chips and w:IsVisible() then
+    local first, last, card = w.chips[1], w.chips[#w.chips], w.card
+    return { last.text:GetText(), card:GetRight() - last:GetRight(), first:GetLeft() - w.label:GetRight() > 8 } end end`);
+  expect(fit, "Resting, the last chip, ends 12 inside the card's edge (as the other rows' controls), and the first chip clears the caption").toEqual(["Resting", 12, true]);
 });
 
 // The nav entries whose "Changed" dot shows, sorted.

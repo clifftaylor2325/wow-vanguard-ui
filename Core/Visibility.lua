@@ -264,6 +264,15 @@ local function chip(r, c)
   return s
 end
 
+-- Lines the chips up one pixel apart from the row's right edge, inset by the
+-- same 8 as every other row's control, so the last one stays clear of the card's border.
+local function placeChips(r)
+  for i, s in ipairs(r.chips) do
+    local after = r.chips[i + 1]
+    if after then s:SetPoint("RIGHT", after, "LEFT", -1, 0) else s:SetPoint("RIGHT", r, "RIGHT", -8, 0) end
+  end
+end
+
 -- The checklist row: its caption, then a chip per condition along the right edge.
 local function checklistRow(parent, row, width)
   local r = CreateFrame("Frame", nil, parent)
@@ -273,7 +282,7 @@ local function checklistRow(parent, row, width)
   r.label:SetText(row[2])
   r.acc, r.chips, r.Refresh = row[3], {}, refreshChips
   for i = #V.CONDITIONS, 1, -1 do table.insert(r.chips, 1, chip(r, V.CONDITIONS[i])) end
-  for i, s in ipairs(r.chips) do s:SetPoint("RIGHT", r.chips[i + 1] or r, r.chips[i + 1] and "LEFT" or "RIGHT", -1, 0) end
+  placeChips(r)
   r:Refresh()
   return r
 end
