@@ -49,6 +49,13 @@ function GetBuildInfo()
   return b.version, b.build, b.date, b.interface
 end
 
+-- The realm you're on (a test may change it).
+world.realm = "Forever Test"
+-- Its name (ConnectionDocumentation.lua's GetRealmName).
+function GetRealmName() return world.realm end
+-- Its name without spaces or hyphens (PlayerScriptDocumentation.lua's GetNormalizedRealmName).
+function GetNormalizedRealmName() return (world.realm:gsub("[ %-]", "")) end
+
 -- The locale, frame rate, latency and screen size a test may change.
 function GetLocale() return world.locale end
 function GetFramerate() return 60 end
@@ -1265,13 +1272,15 @@ C_DamageMeter = {
 --     names, read 0-based as the client's; world.ah.reads counts the reads
 --   owned = { OwnedAuctionInfo, ... }; ready and copper (true unless set false); needsConfirm (a
 --   post the client wants confirmed); deposit (copper per item per duration step); cancelCost;
---   noCancel[auctionID]; browseFull (false: more browse results to ask for).
+--   noCancel[auctionID]; browseFull (false: more browse results to ask for); more[itemID] (true: another
+--   page of that item's search results to ask for); searchFull (false: more of any item or commodity
+--   search results to ask for).
 -- The calls the client restricts to a hardware event (HasRestrictions: PostItem, PostCommodity,
 -- ConfirmPostItem, ConfirmPostCommodity, CancelAuction, PlaceBid, StartCommoditiesPurchase) are
 -- logged in world.ah.restricted as { fn, args, clicked, path }: clicked says whether a click was
 -- running (stub.click), path is the Lua stack that made the call.
 -- world.items[id].commodity = true makes an item a commodity, .noAuction one the house won't take,
--- .pending one whose item key info the client hasn't loaded yet.
+-- .pending one whose item key info the client hasn't loaded yet, .equipment one the house calls equipment.
 
 Enum.ItemCommodityStatus = { Unknown = 0, Item = 1, Commodity = 2 }
 Enum.AuctionHouseSortOrder = { Price = 0, Name = 1, Level = 2, Bid = 3, Buyout = 4, TimeRemaining = 5 }
@@ -1280,7 +1289,7 @@ Enum.AuctionStatus = { Active = 0, Sold = 1 }
 -- A fresh auction house with nothing listed.
 local function emptyAuctionHouse()
   return { browse = {}, items = {}, commodities = {}, replicate = {}, owned = {}, queries = {}, restricted = {},
-    reads = 0, deposit = 15, cancelCost = 0, noCancel = {} }
+    reads = 0, deposit = 15, cancelCost = 0, noCancel = {}, more = {} }
 end
 world.ah = emptyAuctionHouse()
 
@@ -1350,7 +1359,7 @@ local function itemKeyInfo(key)
   local item = world.items[key.itemID]
   if not item or item.pending then return nil end
   return { itemID = key.itemID, battlePetSpeciesID = 0, itemName = item.name, quality = item.quality or 1,
-    iconFileID = item.icon, isPet = false, isCommodity = item.commodity == true, isEquipment = false }
+    iconFileID = item.icon, isPet = false, isCommodity = item.commodity == true, isEquipment = item.equipment == true }
 end
 
 -- An item location's Enum.ItemCommodityStatus: unknown (no item there, or one the client doesn't know), item or commodity.
@@ -1381,6 +1390,7 @@ C_AuctionHouse = {
   SendSearchQuery = query("SendSearchQuery"), SendSellSearchQuery = query("SendSellSearchQuery"),
   QueryOwnedAuctions = query("QueryOwnedAuctions"), ReplicateItems = query("ReplicateItems"),
   RequestMoreBrowseResults = query("RequestMoreBrowseResults"), CloseAuctionHouse = query("CloseAuctionHouse"),
+  RequestMoreCommoditySearchResults = query("RequestMoreCommoditySearchResults"), RequestMoreItemSearchResults = query("RequestMoreItemSearchResults"),
   -- Restricted to a hardware event: logged with the code path.
   PostItem = restricted("PostItem"), PostCommodity = restricted("PostCommodity"),
   ConfirmPostItem = restricted("ConfirmPostItem"), ConfirmPostCommodity = restricted("ConfirmPostCommodity"),
@@ -1400,15 +1410,20 @@ function C_AuctionHouse.GetNumItemSearchResults(key) return #(world.ah.items[key
 function C_AuctionHouse.GetItemSearchResultInfo(key, i) return (world.ah.items[key.itemID] or {})[i] end
 function C_AuctionHouse.GetNumCommoditySearchResults(id) return #(world.ah.commodities[id] or {}) end
 function C_AuctionHouse.GetCommoditySearchResultInfo(id, i) return (world.ah.commodities[id] or {})[i] end
+-- Whether every result of a search is in: world.ah.more[itemID] = true (another page of that item's
+-- results) or world.ah.searchFull = false (more for any search) says there's more to ask for.
+function C_AuctionHouse.HasFullCommoditySearchResults(id) return world.ah.more[id] ~= true and world.ah.searchFull ~= false end
+function C_AuctionHouse.HasFullItemSearchResults(key) return world.ah.more[key and key.itemID] ~= true and world.ah.searchFull ~= false end
 -- The replicate list's size, and your auctions.
 function C_AuctionHouse.GetNumReplicateItems() return #world.ah.replicate end
 function C_AuctionHouse.GetOwnedAuctions() return world.ah.owned end
 function C_AuctionHouse.GetNumOwnedAuctions() return #world.ah.owned end
--- Selling: whether the house takes an item, commodity or item, its key, how many can go up, and the deposit.
+-- Selling: whether the house takes an item, commodity or item, its key, how many can go up (every one of
+-- the item in the bags, as the game's sell frame's Max offers), and the deposit.
 function C_AuctionHouse.IsSellItemValid(loc) local it = itemAtLocation(loc) return it ~= nil and (world.items[it.itemID] or {}).noAuction ~= true end
 function C_AuctionHouse.GetItemCommodityStatus(loc) return commodityStatus(loc) end
 function C_AuctionHouse.GetItemKeyFromItem(loc) local id = C_Item.GetItemID(loc) local item = world.items[id] or {} return itemKey(id, item.level, item.suffix) end
-function C_AuctionHouse.GetAvailablePostCount(loc) return C_Item.GetStackCount(loc) end
+function C_AuctionHouse.GetAvailablePostCount(loc) local id = C_Item.GetItemID(loc) return id and C_Item.GetItemCount(id) or 0 end
 function C_AuctionHouse.CalculateItemDeposit(_, duration, quantity) return world.ah.deposit * duration * quantity end
 function C_AuctionHouse.CalculateCommodityDeposit(_, duration, quantity) return world.ah.deposit * duration * quantity end
 -- The message throttle, copper prices, and cancelling one of your auctions.
