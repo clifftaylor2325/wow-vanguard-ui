@@ -4,8 +4,8 @@
 headless WoW client written for the tests: a Lua 5.1-faithful VM (fengari with
 5.1 shims), the frame API with real layout, a world model behind the game API,
 and input. Each `scripts/tests/<area>.test.mjs` file is one area of the addon
-and runs in parallel with the others under Vitest, one worker per core
-(`VITEST_MAX_WORKERS=n` caps it); a worker compiles each Lua file once and
+and runs in parallel with the others under Vitest, one worker per core and
+per 2 GB of memory (`VITEST_MAX_WORKERS=n` sets it); a worker compiles each Lua file once and
 loads every later addon from the compiled chunks.
 
 Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
