@@ -1486,6 +1486,116 @@ function world.postFromBag(bag, slot)
   AuctionHouseFrame:SetPostItem(ItemLocation:CreateFromBagAndSlot(bag, slot))
 end
 
+-- The mailbox --------------------------------------------------------------------------------------
+-- world.mail = { mail, ... }, the inbox in order: { sender, subject, money, daysLeft, itemCount,
+-- firstItemQuantity, firstItemLink, invoice = { type ("seller", "seller_temp_invoice", "buyer"),
+-- itemName, playerName, bid, buyout, deposit, consignment, count } }, read by the globals
+-- Blizzard_MailFrame/MailFrame.lua calls (GetInboxNumItems, GetInboxHeaderInfo, GetInboxInvoiceInfo);
+-- world.openMailbox() fires MAIL_SHOW and MAIL_INBOX_UPDATE (MailInfoDocumentation.lua).
+world.mail = {}
+
+-- How many mails are in the inbox, and how many there are in all.
+function GetInboxNumItems() return #world.mail, #world.mail end
+-- A mail's header: packageIcon, stationeryIcon, sender, subject, money, CODAmount, daysLeft, itemCount,
+-- wasRead, wasReturned, textCreated, canReply, isGM, firstItemQuantity, firstItemLink (nothing for none).
+function GetInboxHeaderInfo(i)
+  local m = world.mail[i]
+  if not m then return nil end
+  return nil, nil, m.sender, m.subject, m.money or 0, 0, m.daysLeft or 30, m.itemCount, false, false, false, true, false, m.firstItemQuantity, m.firstItemLink
+end
+-- An invoice's invoiceType, itemName, playerName, bid, buyout, deposit, consignment, moneyDelay, etaHour,
+-- etaMin, count, commerceAuction (nothing for a mail that isn't one).
+function GetInboxInvoiceInfo(i)
+  local v = (world.mail[i] or {}).invoice
+  if not v then return nil end
+  return v.type, v.itemName, v.playerName, v.bid, v.buyout, v.deposit, v.consignment, 0, 0, 0, v.count, false
+end
+
+-- The player opens the mailbox: MAIL_SHOW, then the inbox arrives (MAIL_INBOX_UPDATE).
+function world.openMailbox()
+  stub.fire("MAIL_SHOW")
+  stub.fire("MAIL_INBOX_UPDATE")
+end
+
+-- Professions -------------------------------------------------------------------------------------
+-- world.professions = { { name, skillLine, profession (an Enum.Profession), rank, maxRank }, ... }:
+-- your two primary professions, as GetProfessions gives them (prof1, prof2; first aid, fishing and
+-- cooking aren't modelled), with GetProfessionInfo's returns and C_TradeSkillUI's ProfessionInfo for a
+-- skill line, as Blizzard_ProfessionsBook/Camelot/Blizzard_ProfessionsBook.lua reads them
+-- (ProfessionConstantsDocumentation.lua, TradeSkillUIDocumentation.lua).
+
+Enum.Profession = { FirstAid = 0, Blacksmithing = 1, Leatherworking = 2, Alchemy = 3, Herbalism = 4, Cooking = 5, Mining = 6,
+  Tailoring = 7, Engineering = 8, Enchanting = 9, Fishing = 10, Skinning = 11, Jewelcrafting = 12, Inscription = 13, Archaeology = 14 }
+world.professions = {}
+
+-- prof1, prof2 (indices into world.professions; nil for none), then first aid, fishing and cooking (nil).
+function GetProfessions()
+  return world.professions[1] and 1 or nil, world.professions[2] and 2 or nil
+end
+-- name, texture, rank, maxRank, numSpells, spellOffset, skillLine of a profession index.
+function GetProfessionInfo(index)
+  local p = world.professions[index]
+  if not p then return nil end
+  return p.name, p.icon, p.rank or 1, p.maxRank or 75, 1, 0, p.skillLine
+end
+C_TradeSkillUI = C_TradeSkillUI or {}
+-- A skill line's ProfessionInfo: its profession when it is one of yours, else none named.
+function C_TradeSkillUI.GetProfessionInfoBySkillLineID(skillLine)
+  for _, p in ipairs(world.professions) do
+    if p.skillLine == skillLine then return { profession = p.profession, professionID = skillLine, professionName = p.name, skillLevel = p.rank or 1, maxSkillLevel = p.maxRank or 75 } end
+  end
+  return { professionID = skillLine, professionName = "", skillLevel = 0, maxSkillLevel = 0 }
+end
+
+-- The profession window (Blizzard_Professions, which Forever loads on TRADE_SKILL_SHOW:
+-- Blizzard_Game/Mainline/EventImplementation.lua's HandleTradeSkillShow calls ShowProfessionsFrame,
+-- Blizzard_Professions/Blizzard_Professions_Bootstrap.lua). ProfessionsFrame (673 x 594,
+-- Camelot/Blizzard_ProfessionsFrame.xml) holds CraftingPage.SchematicForm, whose Init(recipeInfo)
+-- shows a recipe (Blizzard_ProfessionsCrafting.lua's SelectRecipe calls it).
+-- world.recipes[recipeID] = a CraftingRecipeSchematic (TradeSkillUITypesDocumentation.lua):
+-- { recipeID, name, outputItemID, quantityMin, quantityMax, reagentSlotSchematics = { { reagents =
+-- { { itemID } }, quantityRequired, reagentType } } }, as C_TradeSkillUI.GetRecipeSchematic gives it.
+
+Enum.CraftingReagentType = { Modifying = 0, Basic = 1, Finishing = 2, Automatic = 3 }
+world.recipes = {}
+
+-- A recipe's schematic (nil for one the world doesn't have).
+function C_TradeSkillUI.GetRecipeSchematic(recipeID) return world.recipes[recipeID] end
+
+-- The window, made the first time a profession opens, with its crafting page's recipe form.
+local function professionsFrame()
+  if ProfessionsFrame then return ProfessionsFrame end
+  local f = stub.newWidget("Frame", "ProfessionsFrame", UIParent)
+  f:SetSize(673, 594)
+  f:SetPoint("TOPLEFT", 16, -116)
+  f.CraftingPage = stub.newWidget("Frame", nil, f)
+  f.CraftingPage:SetAllPoints()
+  f.CraftingPage.SchematicForm = stub.newWidget("Frame", nil, f.CraftingPage)
+  -- Shows a recipe (its recipeInfo kept, as the game's GetRecipeInfo returns it).
+  function f.CraftingPage.SchematicForm:Init(recipeInfo) self.currentRecipeInfo = recipeInfo end
+  stub.fire("ADDON_LOADED", "Blizzard_Professions")
+  return f
+end
+
+-- A profession opens (TRADE_SKILL_SHOW, the window shows) on a recipe, if one is given.
+function world.openProfession(recipeID)
+  local f = professionsFrame()
+  stub.fire("TRADE_SKILL_SHOW")
+  f:Show()
+  if recipeID then world.selectRecipe(recipeID) end
+end
+
+-- A recipe picked in the list: the form is given it.
+function world.selectRecipe(recipeID)
+  ProfessionsFrame.CraftingPage.SchematicForm:Init({ recipeID = recipeID, learned = true })
+end
+
+-- The window closes: TRADE_SKILL_CLOSE fires and it hides.
+function world.closeProfession()
+  stub.fire("TRADE_SKILL_CLOSE")
+  if ProfessionsFrame then ProfessionsFrame:Hide() end
+end
+
 -- Chat and the game's frames ----------------------------------------------------------------------
 
 world.chatFilters = {}
@@ -1588,5 +1698,7 @@ function world.reset()
   world.actions, world.quests, world.npc, world.merchant, world.trainer = {}, {}, nil, nil, nil
   world.cursor, world.timers, world.book = nil, {}, {}
   world.ah = emptyAuctionHouse()
+  world.professions, world.recipes = {}, {}
+  world.mail = {}
   refreshWatches()
 end

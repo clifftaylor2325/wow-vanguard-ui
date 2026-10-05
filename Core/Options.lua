@@ -420,18 +420,27 @@ local function windowRows()
   }
 end
 
--- The auction helper: its panel, tooltip prices, the sell card's undercut, length and vendor floor, the scan button and checking your auctions again.
-local function auctionRows()
+-- The auction helper's scan, auction check, disenchant, crafting and deals rows.
+local function auctionScanRows()
   return {
+    check("Scan button (one scan every 15 minutes)", setting("AuctionHelper", "scanButton")),
+    check("Check your auctions for undercuts again after each post and cancel", setting("AuctionHelper", "recheck")),
+    check("Disenchant values in tooltips (on for enchanters until you choose)", ns.AuctionPrices.DisenchantSetting()),
+    check("Crafting costs and profit beside the profession window", setting("AuctionHelper", "crafting")),
+    check("Deals card: listings under the 7-day market or vendor price", liveSetting("AuctionHelper", "deals", function() ns.GetModule("AuctionHelper").PaintDeals() end)),
+  }
+end
+
+-- The auction helper: its panel, tooltip prices, the sell card's undercut, length and vendor floor, then the scan rows.
+local function auctionRows()
+  return append({
     { "header", "Auction house" },
     check("ForeverUI panel beside the auction house (lists, sell helper, scan)", setting("AuctionHelper", "panel")),
     check("Auction prices in tooltips (from your scans)", setting("AuctionHelper", "tooltip")),
     { "cycle", "Undercut by", { { "copper", "1 copper" }, { "silver", "1 silver" }, { "percent", "1 %" }, { "match", "Match" } }, setting("AuctionHelper", "undercut") },
     { "cycle", "Auction length", ns.GetModule("AuctionHelper").DurationChoices(true), setting("AuctionHelper", "duration") },
     check("Never post under vendor price", setting("AuctionHelper", "vendorFloor")),
-    check("Scan button (one scan every 15 minutes)", setting("AuctionHelper", "scanButton")),
-    check("Check your auctions for undercuts again after each post and cancel", setting("AuctionHelper", "recheck")),
-  }
+  }, auctionScanRows())
 end
 
 -- get/set for showing the game's Cooldown Manager, which turns it on or off at once.
@@ -534,6 +543,11 @@ local function fightRows()
   }
 end
 
+-- The info strip's auction sales (the sales ledger, Modules/AuctionLedger.lua): off until switched on.
+local function ledgerRows()
+  return { check("Your auction sales this session", stripSetting("ahgold")) }
+end
+
 -- The info strip under the minimap: one switch per block, then Fight history.
 local function stripRows()
   local stripVisibility, stripWhen = visibilityRows("Strip visibility", "InfoStrip", "visibility", "showWhen")
@@ -545,7 +559,7 @@ local function stripRows()
     check("Soul shards (warlocks)", stripSetting("shards")), check("XP per hour this session", stripSetting("xprate")),
     check("Time to the next level", stripSetting("leveltime")), check("Gold per hour this session", stripSetting("goldrate")),
     check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")), check("Your place in the last fight's DPS, in a group", stripSetting("rank")),
-  }, fightRows())
+  }, append(ledgerRows(), fightRows()))
 end
 
 -- At a merchant, and the error line.
@@ -579,13 +593,14 @@ local function chatRows()
   }
 end
 
--- Chat watch's switches: the channels it reads, its sound and its toast.
+-- Chat watch's switches: the channels it reads, its sound, its toast and the toast's auction price.
 local function chatWatchSwitches(CW)
   return {
     check("Numbered channels (General, Trade, LFG)", CW.ChannelSetting("channel")),
     check("Say", CW.ChannelSetting("say")), check("Yell", CW.ChannelSetting("yell")), check("Guild", CW.ChannelSetting("guild")),
     check("Party and raid", CW.ChannelSetting("party", "raid")), check("Whispers", CW.ChannelSetting("whisper")),
     check("Sound", setting("ChatWatch", "sound")), check("Toast", setting("ChatWatch", "toast")),
+    check("Auction price of a linked item on the toast", setting("ChatWatch", "prices")),
   }
 end
 

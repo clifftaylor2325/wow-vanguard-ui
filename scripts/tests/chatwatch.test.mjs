@@ -180,3 +180,53 @@ it("chat watch: no chat filter is added, and the module off listens to nothing",
   say(off, "CHANNEL", "LFM", "Healbot");
   expect([rings(off), off.eval("return ForeverUI_ChatWatchToast == nil")], "off: nothing rings, no toast is built").toEqual([0, true]);
 });
+
+// A WTS line linking Strange Dust (no auction price) and then Linen Cloth (12s 50c on this realm and faction).
+const WTS_LINE = "WTS |cffffffff|Hitem:10940::::|h[Strange Dust]|h|r and |cffffffff|Hitem:2589::::|h[Linen Cloth]|h|r";
+
+// The toast's price text, its color, and the right edges of the line, the price and the toast.
+const priceLook = (addon) => {
+  const [toastRect, line, price] = ["ForeverUI_ChatWatchToast", "ForeverUI_ChatWatchToast.line", "ForeverUI_ChatWatchToast.price"].map((r) => addon.frame(r));
+  return { text: price.text, color: price.textColor, lineRight: line.rect.right, priceLeft: price.rect.left, priceRight: price.rect.right, toastRight: toastRect.rect.right };
+};
+
+it("chat watch: a line linking an item with an auction price shows it beside the line, the line untouched", () => {
+  const addon = watching("wts");
+  addon.eval("ns.AuctionPrices.Record(2589, 1250, 1790000000)");
+  say(addon, "CHANNEL", WTS_LINE, "Seller");
+  const look = priceLook(addon);
+  expect([look.text, isTok(addon, look.color, "gold"), toast(addon)[2]], "the first linked item with a price; the line as it was sent").toEqual(["AH 12s 50c", true, WTS_LINE]);
+  expect([look.priceRight, look.lineRight], "the price at the toast's edge, the line ending 6 px before it").toEqual([look.toastRight - 8, look.priceLeft - 6]);
+  say(addon, "CHANNEL", "WTS |cffffffff|Hitem:10940::::|h[Strange Dust]|h|r cheap", "Other");
+  const plain = priceLook(addon);
+  expect([plain.text, plain.lineRight], "no priced item: no price, the line to the toast's edge again").toEqual(["", plain.toastRight - 8]);
+  addon.eval('ns.Options.Show("more")');
+  addon.eval('__click("Auction price of a linked item")');
+  say(addon, "CHANNEL", WTS_LINE, "Third");
+  expect([priceLook(addon).text, addon.eval("return ns.Settings('ChatWatch').prices")], "switched off in the Chat watch options").toEqual(["", false]);
+  addon.eval("ns.Settings('ChatWatch').prices = true");
+  expect(addon.eval(`local CW = ns.GetModule("ChatWatch") return { CW.PriceText(__wfgWorld.secret()) == nil, CW.PriceText("item:2589 [Linen Cloth]") == nil, CW.PriceText("${WTS_LINE.replace(/"/g, '\\"')}") }`), "a hidden line is never read; text without a link has no price").toEqual([true, true, "AH 12s 50c"]);
+  addon.eval("__wfgWorld.units.player.faction = 'Horde'");
+  expect(addon.eval(`return ns.GetModule("ChatWatch").PriceText("${WTS_LINE}") == nil`), "the other faction's house has no price for it").toBe(true);
+});
+
+it("chat watch: another module's alert uses the same toast and sound, even with Chat watch off; its click runs its own action", () => {
+  const off = loggedIn(WATCH_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { ChatWatch = false } } }" });
+  // Rings an alert from another module (TEST-ONLY), counting the clicks it hears of in __ran.
+  const notify = (addon) => addon.eval('__ran = __ran or 0 ns.GetModule("ChatWatch").Notify("TEST-ONLY Title", "TEST-ONLY line", "1g", function() __ran = __ran + 1 end)');
+  expect(off.frame("ForeverUI_ChatWatchToast"), "Chat watch off: no toast yet").toBe(null);
+  notify(off);
+  expect([toast(off), off.eval("return ForeverUI_ChatWatchToast.price:GetText()"), rings(off)], "the toast is made for it, with the sound").toEqual([[true, "TEST-ONLY Title", "TEST-ONLY line"], "1g", 1]);
+  notify(off);
+  expect(rings(off), "at most one sound every 2 seconds").toBe(1);
+  off.click("ForeverUI_ChatWatchToast");
+  expect([off.eval("return __ran"), off.eval("return #__tells"), toast(off)[0]], "a click runs its action, whispers no one, and puts it away").toEqual([1, 0, false]);
+  notify(off);
+  off.click("ForeverUI_ChatWatchToast", "RightButton");
+  expect([off.eval("return __ran"), toast(off)[0]], "right-click only puts it away").toEqual([1, false]);
+  const on = watching();
+  notify(on);
+  say(on, "CHANNEL", "LFM Deadmines", "Healbot");
+  on.click("ForeverUI_ChatWatchToast");
+  expect([on.eval("return __ran"), on.eval("return __tells")], "a chat line's toast after it whispers the sender, not the alert's action").toEqual([0, ["Healbot"]]);
+});

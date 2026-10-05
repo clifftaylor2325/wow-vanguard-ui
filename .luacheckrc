@@ -12,7 +12,8 @@ globals = {
   -- SavedVariables (ForeverUI.toc)
   "ForeverUIDB",
   "ForeverUICharDB",
-  -- Public API table and slash command
+  -- Public API table and slash command. ForeverUI holds the skin API (Core/Skin.lua) and
+  -- ForeverUI.API.v1, the auction prices for other addons (Modules/AuctionAPI.lua).
   "ForeverUI",
   "SLASH_FOREVERUI1",
   "SLASH_FOREVERUI2",
@@ -76,4 +77,11 @@ read_globals = {
   -- A5 Auction helper, your auctions: an expired auction's item found in the bags, for Relist.
   -- A1 Auction helper, sell form: a bag slot's item location, for the next stack.
   "ItemLocation",
+  -- D1 Auction prices, disenchant values: whether you know Enchanting (your professions' skill lines).
+  "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI",
+  -- E5 Auction ledger: the inbox's auction mail (Blizzard_MailFrame/MailFrame.lua), and the game's
+  -- "Auction expired" subject line.
+  "GetInboxNumItems", "GetInboxHeaderInfo", "GetInboxInvoiceInfo", "AUCTION_EXPIRED_MAIL_SUBJECT",
+  -- D2 Auction helper, crafting costs: the game's profession window (Blizzard_Professions).
+  "ProfessionsFrame",
 }

@@ -2,7 +2,8 @@
 --   durability (orange at 25% or less, red at 10% or less) · free bag slots · fps and latency
 --   gold · ammo (hunters, warriors, rogues) or soul shards (warlocks) · clock
 --   leveling: XP per hour · time to level · gold per hour this session
---   your damage per second in the last fight, and your place in it in a group
+--   your damage per second in the last fight, and your place in it in a group,
+--   and what your auction sales came to this session (Modules/AuctionLedger.lua)
 --   (each off until you turn it on)
 -- Each block reads the client when its event fires (fps, latency and the
 -- clock once a second on one shared timer), shows only where the client
@@ -18,7 +19,7 @@ local V = ns.Visibility
 local IS = ns.Module("InfoStrip", {
   defaults = {
     durability = true, bags = true, system = true, gold = true, ammo = true, clock = true, shards = true,
-    xprate = true, leveltime = true, goldrate = true, dps = false, rank = false,
+    xprate = true, leveltime = true, goldrate = true, dps = false, rank = false, ahgold = false,
   },
 })
 
@@ -31,6 +32,8 @@ IS.BLOCKS = {
   shards = { 2, "CENTER" },
   xprate = { 3, "LEFT" }, leveltime = { 3, "CENTER" }, goldrate = { 3, "RIGHT" },
   dps = { 4, "LEFT" }, rank = { 4, "RIGHT" },
+  -- Auction sales sit between them (neither is on by default).
+  ahgold = { 4, "CENTER" },
 }
 -- The session's rates wait this long (seconds) before showing: early numbers jump about.
 IS.SETTLE = 60
@@ -315,6 +318,12 @@ end
 function IS.TEXT.rank()
   local place, count = IS.Rank()
   if place and count > 1 then return string.format("#%d of %d", place, count), place == 1 and "gold" or "text2" end
+end
+
+-- What your auction sales noted this session came to ("AH +12g 5s"; the sales ledger, Modules/AuctionLedger.lua).
+function IS.TEXT.ahgold()
+  local copper = ns.AuctionLedger.SessionSales()
+  if copper > 0 then return "AH +" .. IS.ShortMoney(copper), "gold" end
 end
 
 -- Showing -----------------------------------------------------------------------------------

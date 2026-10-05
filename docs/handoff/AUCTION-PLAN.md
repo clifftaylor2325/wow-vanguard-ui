@@ -93,17 +93,17 @@ Sizes: S under a day of lane time, M one to two, L more. Each is one commit with
 
 ### Phase D: tooltips, crafting and the API
 
-- [ ] **D1 Disenchant values** (M): vanilla's disenchant tables by item level and quality (the fixed vanilla tables, marked unverified until checked in game), priced from the database; a tooltip line and a column on the sell card.
-- [ ] **D2 Crafting info** (M): in the profession window, reagent cost and profit from the database, and "add reagents to a shopping list" (which also joins Keep-stocked).
-- [ ] **D3 An API** (S): `ForeverUI.API.v1` with `GetAuctionPriceByItemID/Link`, `GetVendorPriceByItemID/Link`, `GetDisenchantPriceByItemID/Link`, `RegisterForDBUpdate`, `MultiSearch`, `CreateShoppingList`/`AlterShoppingListItems`, mirroring Auctionator's names so addons written for it can switch with a one-line shim.
+- [x] **D1 Disenchant values** (M): vanilla's disenchant tables by item level and quality (the fixed vanilla tables, marked unverified until checked in game), priced from the database; a tooltip line and a column on the sell card.
+- [x] **D2 Crafting info** (M): in the profession window, reagent cost and profit from the database, and "add reagents to a shopping list" (which also joins Keep-stocked).
+- [x] **D3 An API** (S): `ForeverUI.API.v1` with `GetAuctionPriceByItemID/Link`, `GetVendorPriceByItemID/Link`, `GetDisenchantPriceByItemID/Link`, `RegisterForDBUpdate`, `MultiSearch`, `CreateShoppingList`/`AlterShoppingListItems`, mirroring Auctionator's names so addons written for it can switch with a one-line shim.
 
 ### Phase E: beyond Auctionator
 
-- [ ] **E1 Deals card** (M): listings under the 7-day low or under vendor price, after any scan or search.
-- [ ] **E2 Price alerts** (M): target prices on shopping entries; sound and toast through the Chat-watch toast.
-- [ ] **E3 Chat watch price lines** (S): auction price beside a WTS/WTB line's item in the toast.
-- [ ] **E4 Buy lists from Instance prep and Keep stocked** (S): shortfalls become a shopping list with wanted quantities; the shop shows "cheapest 8".
-- [ ] **E5 Sales ledger** (L): from sold-auction mail and the auction events; "Your history" on the sell card; auction gold on the info strip.
+- [x] **E1 Deals card** (M): listings under the 7-day low or under vendor price, after any scan or search.
+- [x] **E2 Price alerts** (M): target prices on shopping entries; sound and toast through the Chat-watch toast.
+- [x] **E3 Chat watch price lines** (S): auction price beside a WTS/WTB line's item in the toast.
+- [x] **E4 Buy lists from Instance prep and Keep stocked** (S): shortfalls become a shopping list with wanted quantities; the shop shows "cheapest 8".
+- [x] **E5 Sales ledger** (L): from sold-auction mail and the auction events; "Your history" on the sell card; auction gold on the info strip.
 - [x] **E6 Stack presets for vanilla** (S): default stack sizes by category; part of A1's form.
 
 ### Phase 0: split the module first

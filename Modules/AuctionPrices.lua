@@ -10,6 +10,8 @@
 -- the only one there is. A price not seen for 30 days is dropped at login (and
 -- a realm and faction left with none), and past AP.MAX_ITEMS items in one
 -- house the ones priced longest ago go. Shopping lists stay account-wide.
+-- From these prices it also works out what disenchanting a piece of gear is
+-- worth (AP.Disenchant, vanilla's disenchanting tables), for a tooltip line.
 
 local ADDON, ns = ...
 
@@ -118,9 +120,34 @@ function AP.Summary(prices)
   return sorted[1], units, meanOfCheapest(sorted, prices, math.ceil(units * AP.MARKET_PCT / 100))
 end
 
+-- What hears of new prices (AP.OnChange): functions called with no arguments.
+AP.listeners = {}
+
+-- Adds fn() to the functions told that prices were recorded: once on the next frame however many
+-- were (a whole scan is one call), so other addons (ForeverUI.API.v1.RegisterForDBUpdate) can refresh.
+function AP.OnChange(fn)
+  AP.listeners[#AP.listeners + 1] = fn
+end
+
+-- Tells every listener, in the order added.
+local function tellListeners()
+  for _, fn in ipairs(AP.listeners) do fn() end
+end
+
+-- What hears of each price as it is recorded (AP.OnSeen): functions called with the item ID, its
+-- cheapest unit price and the time.
+AP.seenListeners = {}
+
+-- Adds fn(itemID, unitPrice, t) to the functions told of each price recorded, at once (a scan
+-- calls it for every item): Auction helper's deals and price alerts.
+function AP.OnSeen(fn)
+  AP.seenListeners[#AP.seenListeners + 1] = fn
+end
+
 -- Notes an item seen at time t: its cheapest unit price (now, and the low of t's day), and the
 -- units up and market value when given (t's day keeps the last seen), and how many listings
--- (the item keeps the last count). A new item past AP.MAX_ITEMS evicts the items priced longest ago.
+-- (the item keeps the last count). A new item past AP.MAX_ITEMS evicts the items priced longest
+-- ago. The listeners hear of it on the next frame, AP.OnSeen's at once.
 function AP.Record(itemID, unitPrice, t, qty, market, listings)
   local house, day = AP.House(), AP.Day(t)
   local p = house.prices[itemID]
@@ -130,6 +157,8 @@ function AP.Record(itemID, unitPrice, t, qty, market, listings)
   p.days[day] = math.min(p.days[day] or unitPrice, unitPrice)
   p.qtys[day], p.markets[day] = qty or p.qtys[day], market or p.markets[day]
   if house.count > AP.MAX_ITEMS then AP.Evict() end
+  ns.Soon("auction prices changed", tellListeners)
+  for _, fn in ipairs(AP.seenListeners) do fn(itemID, unitPrice, t) end
 end
 
 -- A price a search saw (not a whole scan): the item's last-seen price and that day's low, never
@@ -237,11 +266,136 @@ function AP.Line(tt, link)
   if n > 1 then tt:AddLine(string.format("AH x%d: %s", n, priceText(p.min, market, n)), T.RGB("text2")) end
 end
 
+-- Disenchanting -----------------------------------------------------------------------------
+
+-- Enum.ItemClass's Weapon and Armor (ItemConstantsDocumentation.lua).
+AP.WEAPON, AP.ARMOR = 2, 4
+
+-- What disenchanting gives, by item quality (2 green, 3 blue, 4 epic), as item level bands
+-- { from, to, outcomes }; an outcome is { material's item ID, chance in per cent, least, most,
+-- the chance for a weapon when it differs }. Greens give mostly dust (armour) or mostly essence
+-- (weapons) and sometimes a shard; blues a shard; epics shards or Nexus Crystals.
+-- UNVERIFIED: written from vanilla's well-known disenchanting tables as players publish them, not
+-- from game data (the Forever UI source has none); check the bands, chances and quantities in game.
+AP.DISENCHANT = {
+  [2] = {
+    { 5, 15, { { 10940, 80, 1, 2, 20 }, { 10938, 20, 1, 2, 80 } } },
+    { 16, 20, { { 10940, 75, 2, 3, 20 }, { 10939, 20, 1, 2, 75 }, { 10978, 5, 1, 1 } } },
+    { 21, 25, { { 10940, 75, 4, 6, 20 }, { 10998, 15, 1, 2, 70 }, { 10978, 10, 1, 1 } } },
+    { 26, 30, { { 11083, 75, 1, 2, 20 }, { 11082, 20, 1, 2, 75 }, { 11084, 5, 1, 1 } } },
+    { 31, 35, { { 11083, 75, 2, 5, 20 }, { 11134, 20, 1, 2, 75 }, { 11138, 5, 1, 1 } } },
+    { 36, 40, { { 11137, 75, 1, 2, 20 }, { 11135, 20, 1, 2, 75 }, { 11139, 5, 1, 1 } } },
+    { 41, 45, { { 11137, 75, 2, 5, 20 }, { 11174, 20, 1, 2, 75 }, { 11177, 5, 1, 1 } } },
+    { 46, 50, { { 11176, 75, 1, 2, 20 }, { 11175, 20, 1, 2, 75 }, { 11178, 5, 1, 1 } } },
+    { 51, 55, { { 11176, 75, 2, 5, 20 }, { 16202, 20, 1, 2, 75 }, { 14343, 5, 1, 1 } } },
+    { 56, 60, { { 16204, 75, 1, 2, 20 }, { 16203, 20, 1, 2, 75 }, { 14344, 5, 1, 1 } } },
+    { 61, 65, { { 16204, 75, 2, 5, 20 }, { 16203, 20, 2, 3, 75 }, { 14344, 5, 1, 1 } } },
+  },
+  [3] = {
+    { 11, 25, { { 10978, 100, 1, 1 } } },
+    { 26, 30, { { 11084, 100, 1, 1 } } },
+    { 31, 35, { { 11138, 100, 1, 1 } } },
+    { 36, 40, { { 11139, 100, 1, 1 } } },
+    { 41, 45, { { 11177, 100, 1, 1 } } },
+    { 46, 50, { { 11178, 100, 1, 1 } } },
+    { 51, 55, { { 14343, 100, 1, 1 } } },
+    { 56, 65, { { 14344, 99.5, 1, 1 }, { 20725, 0.5, 1, 1 } } },
+  },
+  [4] = {
+    { 40, 45, { { 11177, 100, 2, 4 } } },
+    { 46, 50, { { 11178, 100, 2, 4 } } },
+    { 51, 55, { { 14343, 100, 2, 4 } } },
+    { 56, 60, { { 20725, 100, 1, 1 } } },
+    { 61, 94, { { 20725, 100, 1, 2 } } },
+  },
+}
+
+-- A material's worth per unit: its market value on the day it was last seen, else its cheapest
+-- price then; nil when it was never priced on this realm and faction.
+function AP.Worth(itemID)
+  local p = AP.House().prices[itemID]
+  return p and (p.markets and p.markets[AP.Day(p.t)] or p.min)
+end
+
+-- The outcomes of the band an item level falls in, in a quality's table (nil: none).
+local function band(bands, level)
+  for _, b in ipairs(bands or {}) do
+    if level >= b[1] and level <= b[2] then return b[3] end
+  end
+end
+
+-- What disenchanting an item gives, and whether it's a weapon: weapons and armour (classID from
+-- C_Item.GetItemInfoInstant) of green quality or better, by item level (C_Item.GetItemInfo); nil
+-- for anything else, and for an item the client hasn't loaded or hides.
+local function outcomes(item)
+  local classID = ns.PlainNumber((select(6, C_Item.GetItemInfoInstant(item))))
+  local _, _, quality, level = C_Item.GetItemInfo(item)
+  quality, level = ns.PlainNumber(quality), ns.PlainNumber(level)
+  if not (quality and level) or (classID ~= AP.WEAPON and classID ~= AP.ARMOR) then return nil end
+  return band(AP.DISENCHANT[quality], level), classID == AP.WEAPON
+end
+
+-- What disenchanting an item (an ID or a link) is worth on average, in copper, rounded down: over
+-- its outcomes, chance x average quantity x the material's worth (AP.Worth). A material never
+-- priced adds nothing; nil when none is priced or the item doesn't disenchant.
+function AP.Disenchant(item)
+  local list, weapon = outcomes(item)
+  local value, priced = 0, false
+  for _, o in ipairs(list or {}) do
+    local worth = AP.Worth(o[1])
+    if worth then value, priced = value + (weapon and o[5] or o[2]) / 100 * (o[3] + o[4]) / 2 * worth, true end
+  end
+  return priced and math.floor(value) or nil
+end
+
+-- True when a profession (an index GetProfessions gives) is Enchanting: GetProfessionInfo's
+-- seventh return is its skill line, and C_TradeSkillUI.GetProfessionInfoBySkillLineID says which
+-- profession that is (as Blizzard_ProfessionsBook/Camelot/Blizzard_ProfessionsBook.lua reads them).
+local function isEnchanting(index)
+  local skillLine = index and select(7, GetProfessionInfo(index))
+  local info = skillLine and C_TradeSkillUI.GetProfessionInfoBySkillLineID(skillLine)
+  return type(info) == "table" and info.profession == (Enum.Profession or {}).Enchanting
+end
+
+-- True when one of your two professions is Enchanting; false where the client can't say.
+function AP.HasEnchanting()
+  if type(GetProfessions) ~= "function" or type(C_TradeSkillUI) ~= "table" then return false end
+  local first, second = GetProfessions()
+  return isEnchanting(first) or isEnchanting(second)
+end
+
+-- Whether tooltips show disenchant values: the Auction house switch, which until you set it
+-- follows whether you know Enchanting.
+function AP.DisenchantOn()
+  local on = ns.Settings("AuctionHelper").disenchant
+  if on == nil then return AP.HasEnchanting() end
+  return on
+end
+
+-- get/set for the options' disenchant switch, and its default (on for an enchanter).
+function AP.DisenchantSetting()
+  return AP.DisenchantOn, function(v) ns.Settings("AuctionHelper").disenchant = v end, AP.HasEnchanting()
+end
+
+-- Copper as a rough figure, for an estimate: "1g 20s" once there's gold (no copper), else as AP.Money.
+function AP.Rough(copper)
+  if copper < 10000 then return AP.Money(copper) end
+  return string.format("%dg %ds", math.floor(copper / 10000), math.floor(copper / 100) % 100)
+end
+
+-- "Disenchant: ~1g 20s" on an item tooltip, for gear that disenchants into materials priced here,
+-- while the switch is on.
+function AP.DisenchantLine(tt, link)
+  local value = AP.DisenchantOn() and AP.Disenchant(link)
+  if value then tt:AddLine("Disenchant: ~" .. AP.Rough(value), T.RGB("text2")) end
+end
+
 -- Starts with Auction helper's settings: the account-wide prices of older versions moved to this
--- realm and faction (once), old prices pruned, and the tooltip line added.
+-- realm and faction (once), old prices pruned, and the tooltip lines (prices, disenchant value) added.
 function AP.Enable(settings)
   AP.settings = settings
   AP.Migrate()
   AP.Prune(AP.Now())
   ns.GetModule("Tooltips").AddItemLines(AP.Line)
+  ns.GetModule("Tooltips").AddItemLines(AP.DisenchantLine)
 end

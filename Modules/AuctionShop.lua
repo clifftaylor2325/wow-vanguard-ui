@@ -342,6 +342,7 @@ function AH.SearchList()
   if not list or #list == 0 then return ns.Chat("Add items to a shopping list first (+ Add, or /fui ah add <list> <item>).") end
   if AH.ListKey() ~= AH.RECENT then for _, entry in ipairs(list) do AH.Remember(entry) end end
   AH.DropQueued("entry")
+  AH.DropQueued("cost")
   AH.found, AH.unnamed, AH.progress = {}, {}, { done = 0, total = #list }
   for _, entry in ipairs(list) do AH.Queue({ entry = entry }) end
   AH.PaintShop()
@@ -369,6 +370,7 @@ end
 function AH.SendShop(s)
   local api, term, f = C_AuctionHouse, AH.Term(s.entry)
   if s.listings then return api.SendSearchQuery(s.listings, AH.SORTS, false) end
+  if s.cost then return api.SendSearchQuery(s.cost.key, AH.SORTS, false) end
   if type(term) == "number" then return api.SearchForItemKeys({ api.MakeItemKey(term) }, AH.SORTS) end
   api.SendBrowseQuery(browseQuery(term, f))
 end
@@ -409,11 +411,14 @@ function AH.BestResult(entry, results)
   if not unnamed then return false end
 end
 
--- An entry's browse results: its row, or (while a result's name isn't in yet) kept to match again.
+-- An entry's browse results: its row, or (while a result's name isn't in yet) kept to match again;
+-- a row found may ring the entry's price alert (Modules/AuctionAlerts.lua).
 function AH.TakeBrowse(entry, results)
   local best = AH.BestResult(entry, results)
   AH.found[entry] = best
   AH.unnamed[entry] = best == nil and results or nil
+  AH.QueueCost(entry, best)
+  AH.EntryFound(entry, best)
 end
 
 -- Item names came in: the entries waiting on them are matched again, and the card repainted.
@@ -665,6 +670,7 @@ local function paintRow(r, entry)
   r.icon:SetTexture(icon)
   r.price:SetText(found and AP.Money(found.price) or (found == false and "none up" or ""))
   r.qty:SetText(found and ("x " .. found.qty) or "")
+  AH.PaintCost(r, entry)
 end
 
 -- The shop card: the list picked, the search's progress ("12 of 50") and a row per entry from the scroll offset.
@@ -753,12 +759,14 @@ local function typedLevel(box)
   if n and n >= 1 then return math.floor(n) end
 end
 
--- The dialog's entry: its term with what the dialog says, or the bare term without any filter.
+-- The dialog's entry: its term with what the dialog says (the price alert only with a max price),
+-- or the bare term without any filter.
 local function filteredEntry(d)
   local quality = d.draft.quality ~= AH.ANY and d.draft.quality or nil
   local f = { term = d.term, exact = d.draft.exact or nil, quality = quality, maxPrice = AH.ParseMoney(d.price:GetText()),
-    minLevel = typedLevel(d.minLevel), maxLevel = typedLevel(d.maxLevel) }
-  if f.exact or f.quality or f.maxPrice or f.minLevel or f.maxLevel then return f end
+    minLevel = typedLevel(d.minLevel), maxLevel = typedLevel(d.maxLevel), want = d.want }
+  f.alert = f.maxPrice and d.draft.alert or nil
+  if f.exact or f.quality or f.maxPrice or f.minLevel or f.maxLevel or f.want then return f end
   return d.term
 end
 
@@ -786,7 +794,8 @@ local function filterBox(d, width, x, y)
   return box
 end
 
--- The filter dialog's rows: exact name, level from and to, quality and max price.
+-- The filter dialog's rows: exact name, level from and to, quality, max price and the price alert
+-- at it (Modules/AuctionAlerts.lua).
 local function filterRows(d)
   d.exact = W.Check(d, "Exact name only", function() return d.draft.exact end, function(v) d.draft.exact = v end, AH.FILTER_W - 24)
   d.exact:SetPoint("TOPLEFT", 12, -36)
@@ -797,6 +806,7 @@ local function filterRows(d)
   d.quality:SetPoint("TOPLEFT", 12, -96)
   filterCaption(d, "Max price", -134)
   d.price = filterBox(d, 120, -20, -130)
+  AH.AlertRow(d)
 end
 
 -- The filter dialog's draft (what its switch and choice show), title, and Save and Cancel at the bottom right.
@@ -813,7 +823,7 @@ end
 -- The filter dialog, built once: a raised panel over the auction house, with Save and Cancel.
 local function buildFilters()
   local d = T.Panel(CreateFrame("Frame", "ForeverUI_AuctionFilters", UIParent), { raised = true, shadow = true })
-  d:SetSize(AH.FILTER_W, 200)
+  d:SetSize(AH.FILTER_W, 228)
   d:SetFrameStrata("DIALOG")
   d:SetClampedToScreen(true)
   d:EnableMouse(true)
@@ -828,13 +838,14 @@ end
 local function fillFilters(d, entry)
   local term, f = AH.Term(entry)
   f = f or {}
-  d.term, d.draft = term, { exact = f.exact == true, quality = f.quality or AH.ANY }
+  d.term, d.draft, d.want = term, { exact = f.exact == true, quality = f.quality or AH.ANY, alert = f.alert == true }, f.want
   d.title:SetText("Filters: " .. (AH.EntryLook(entry)))
   d.minLevel:SetText(f.minLevel and tostring(f.minLevel) or "")
   d.maxLevel:SetText(f.maxLevel and tostring(f.maxLevel) or "")
   d.price:SetText(f.maxPrice and AP.Money(f.maxPrice) or "")
   d.exact:Refresh()
   d.quality:Refresh()
+  d.alert:Refresh()
 end
 
 -- Opens the filter dialog for entry i of a list, beside the shop panel.
@@ -963,7 +974,7 @@ local function buildView(c)
   c.view = f
 end
 
--- The shop card's controls: the list dropdown, + Add and Search list.
+-- The shop card's controls: the list dropdown, + Add, Search list and Restock (Modules/AuctionRestock.lua).
 local function shopControls(c)
   c.lists = W.Dropdown(c.body, listChoices, function() return AP.Store().list end, pickList, 180)
   c.lists:SetPoint("TOPLEFT", 0, -20)
@@ -971,6 +982,7 @@ local function shopControls(c)
   c.add:SetPoint("TOPRIGHT", 0, -19)
   c.search = W.Button(c.body, "Search list", function() AH.SearchList() end, 120)
   c.search:SetPoint("TOPLEFT", 0, -46)
+  AH.BuildRestock(c)
 end
 
 -- The shop card: the list dropdown, + Add, Search list with its progress line and the rows (in
