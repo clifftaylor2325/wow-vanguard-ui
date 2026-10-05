@@ -742,6 +742,76 @@ it("the next stack is the same item: another variant or a locked slot is passed 
   expect([card(addon)[2], card(addon)[0][2], form(addon)[7]], "none left in the bags (the card follows the bags): no Post, no deposit").toEqual([false, "", "posted 2 of 4"]);
 });
 
+// TEST-ONLY linen up now: someone's at 2s (2 hours left), yours at 2s 50c, someone's at 3s (20
+// minutes left), and one with a hidden price.
+const LINEN_UP = `__wfgWorld.ah.commodities[2589] = { { unitPrice = 200, quantity = 10, timeLeftSeconds = 7200 },
+  { unitPrice = 250, quantity = 5, timeLeftSeconds = 7200, containsOwnerItem = true },
+  { unitPrice = 300, quantity = 4, timeLeftSeconds = 1200 }, { unitPrice = __wfgWorld.secret(1), quantity = 1 } }`;
+
+// Listing row i: [shown, price, how many, time left, your mark shown].
+const listingRow = (addon, i) => addon.eval(`local r = ${CARD}.listings[${i}]
+  return { r:IsShown(), r.price:GetText() or false, r.qty:GetText() or false, r.time:GetText() or false, r.mark:IsShown() }`);
+
+it("the sell card lists what's up now: price each, how many, time left, yours marked; a click takes a price", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS + LINEN_UP);
+  expect(addon.eval(`return ${CARD}.listHead:IsShown()`), "nothing on the card: no header").toBe(false);
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  const rows = [1, 2, 3].map((i) => listingRow(addon, i));
+  expect(rows, "cheapest first; the hidden price left out").toEqual([[true, "2s 0c", "x 10", "2 h", false], [true, "2s 50c", "x 5", "2 h", true], [true, "3s 0c", "x 4", "20 min", false]]);
+  expect([listingRow(addon, 4)[0], addon.eval(`return ${CARD}.listHead:IsShown()`)], "three rows, and the header").toEqual([false, true]);
+  expect(isTok(addon, addon.eval(`return ${CARD}.listings[2].mark.__vertexColor`), "accent"), "yours marked in the accent").toBe(true);
+  addon.click(`${CARD}.listings[3]`);
+  expect(card(addon)[0][3], "someone's 3s, less the undercut (1 silver)").toBe("2s 0c");
+  addon.click(`${CARD}.listings[2]`);
+  expect(card(addon)[0][3], "your own 2s 50c, as it is").toBe("2s 50c");
+  addon.click(`${CARD}.undercut.segments[1]`);
+  addon.click(`${CARD}.listings[1]`);
+  expect([card(addon)[0][3], form(addon)[3]], "2s less 1 copper, in the price box too").toEqual(["1s 99c", "1s 99c"]);
+  addon.click(`${CARD}.stop`);
+  addon.click(`${CARD}.listings[1]`);
+  expect([listingRow(addon, 1)[0], addon.eval("return #ns.errors")], "no sale: no rows, a click does nothing").toEqual([false, 0]);
+});
+
+it("the listings scroll, and near the end the next page comes through the search queue", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS + `__wfgWorld.ah.commodities[2589] = {}
+    for i = 1, 6 do __wfgWorld.ah.commodities[2589][i] = { unitPrice = 100 * i, quantity = i } end
+    __wfgWorld.ah.more[2589] = true`);
+  addon.wheel(`${CARD}.list`, -1);
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.wheel(`${CARD}.listings[1]`, -1);
+  addon.wheel(`${CARD}.listings[1]`, -1);
+  expect([listingRow(addon, 1)[1], listingRow(addon, 4)[1], sent(addon)], "scrolled to the end: the next page waits a second after the last search").toEqual(["3s 0c", "6s 0c", ["SendSellSearchQuery:2589"]]);
+  addon.advance(1);
+  addon.wheel(`${CARD}.listings[1]`, -1);
+  expect(sent(addon), "asked once, through the queue").toEqual(["SendSellSearchQuery:2589", "RequestMoreCommoditySearchResults:"]);
+  expect(addon.eval("return __wfgWorld.ah.queries[2].args[1]"), "for the linen").toBe(2589);
+  addon.eval("for i = 7, 8 do __wfgWorld.ah.commodities[2589][i] = { unitPrice = 100 * i, quantity = i } end __wfgWorld.ah.more[2589] = nil");
+  addon.fire("COMMODITY_SEARCH_RESULTS_ADDED", 2589);
+  addon.wheel(`${CARD}.listings[1]`, -5);
+  addon.advance(5);
+  expect([listingRow(addon, 4)[1], sent(addon).length], "the page is in; all of it: nothing more asked").toEqual(["8s 0c", 2]);
+  addon.wheel(`${CARD}.listings[1]`, 10);
+  expect(listingRow(addon, 1)[1], "back to the top").toBe("1s 0c");
+});
+
+it("an item's listings: the game's words for time left, a page more by item key, bid-only ones left out", () => {
+  const addon = atAuctionHouse(BAGS + `TIME_LEFT_SHORT, TIME_LEFT_MEDIUM, TIME_LEFT_LONG, TIME_LEFT_VERY_LONG = "TEST-ONLY Short", "TEST-ONLY Medium", "TEST-ONLY Long", "TEST-ONLY Very long"
+    __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1, timeLeft = 0 }, { buyoutAmount = 6000, quantity = 1, timeLeft = 3 },
+      { minBid = 100, quantity = 1, timeLeft = 2 }, { buyoutAmount = 7000, quantity = 1, timeLeft = 1 }, { buyoutAmount = 8000, quantity = 1, timeLeft = 2 },
+      { buyoutAmount = 9000, quantity = 1, timeLeft = 9 }, { buyoutAmount = 9500, quantity = 1, timeLeftSeconds = 30 } }
+    __wfgWorld.ah.more[9999] = true`);
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect([1, 2, 3, 4].map((i) => listingRow(addon, i).slice(1, 4)), "by band").toEqual([["50s 0c", "x 1", "TEST-ONLY Short"], ["60s 0c", "x 1", "TEST-ONLY Very long"], ["70s 0c", "x 1", "TEST-ONLY Medium"], ["80s 0c", "x 1", "TEST-ONLY Long"]]);
+  addon.advance(1);
+  addon.wheel(`${CARD}.listings[1]`, -5);
+  expect([listingRow(addon, 3)[3], listingRow(addon, 4)[3]], "a band the game doesn't name: nothing; seconds: at least a minute").toEqual(["", "1 min"]);
+  expect(sent(addon).at(-1), "the next page by the item's key").toBe("RequestMoreItemSearchResults:9999");
+  addon.eval("__wfgWorld.ah.more[9999] = nil table.insert(__wfgWorld.ah.items[9999], { buyoutAmount = 9900, quantity = 1, timeLeft = 3 })");
+  addon.fire("ITEM_SEARCH_RESULTS_ADDED", { itemID: 9999 });
+  addon.wheel(`${CARD}.listings[1]`, -5);
+  expect(listingRow(addon, 4)[1], "the page is in").toBe("99s 0c");
+});
+
 // Your auctions ------------------------------------------------------------------------------
 
 // TEST-ONLY auctions of yours: 5 dust at 1s 50c a unit, a blade at 40s, and three the check
