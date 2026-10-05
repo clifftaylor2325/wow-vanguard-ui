@@ -474,11 +474,11 @@ end
 
 -- The quest tracker -------------------------------------------------------------------------
 
--- Whether Vanguard's own quest tracker is on (it hides the game's tracker, which then has
--- no business being pinned or skinned here).
+-- Whether Vanguard's own quest tracker shows (it hides the game's tracker, which then has
+-- no business being pinned or skinned here); not while Questie's tracker has the job.
 function MS.OwnTracker()
   local qt = ns.GetModule("QuestTracker")
-  return qt ~= nil and ns.ModuleEnabled("QuestTracker") and ns.Settings("QuestTracker", qt.defaults).own == true
+  return qt ~= nil and ns.ModuleEnabled("QuestTracker") and qt.Shows(ns.Settings("QuestTracker", qt.defaults))
 end
 
 -- The tracker's spot under the info strip, and the game's tracker pinned into it

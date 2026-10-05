@@ -1,0 +1,103 @@
+// inventory: other characters' bags and bank (Modules/Inventory.lua) in the TEST-ONLY headless client.
+
+import { expect, it } from "vitest";
+import { chatHas, loggedIn } from "./helpers.mjs";
+
+// TEST-ONLY bags: 5 linen in the backpack and 3 in bag 1, one other item; a bank of two
+// bought tabs (bags 6 and 7) holding 4 linen; and a tooltip that records its lines.
+const BAGS_ENV = `
+  __wfgWorld.bags = { [0] = { [1] = { itemID = 2589, count = 5 } }, { [2] = { itemID = 2589, count = 3 }, [3] = { itemID = 118 } }, {}, {}, {} }
+  __wfgWorld.bags[6] = { [1] = { itemID = 2589, count = 4 } }
+  __wfgWorld.bags[7] = {}
+  __wfgWorld.bagSizes[6], __wfgWorld.bagSizes[7] = 8, 8
+  Enum.BankType = { Character = 0, Account = 2 }
+  C_Bank = { FetchPurchasedBankTabData = function(kind) if kind == 0 then return { { ID = 6 }, { ID = 7 } } end end }
+  __tt = {}
+  function __tt:AddLine(text, r, g, b) self.lines[#self.lines + 1] = { text, { r, g, b } } end
+  function __tt:AddDoubleLine(left, right, lr, lg, lb, rr, rg, rb) self.lines[#self.lines + 1] = { left .. " " .. right, { lr, lg, lb } } end
+  function __tip(link) __tt.lines = {} ns.GetModule("Inventory").AddLines(__tt, link) local out = {} for i, l in ipairs(__tt.lines) do out[i] = l[1] end return out end
+`;
+
+// This character's record (Tester, a mage on Forever Test, Alliance).
+const mine = (addon) => addon.eval('return VanguardDB.inventory["Forever Test - Alliance"].Tester');
+
+it("inventory: the bags are read at login and half a second after they change, the bank while it's open", () => {
+  const addon = loggedIn(BAGS_ENV);
+  expect([mine(addon).bags, mine(addon).class], "bags counted by item at login, with the class").toEqual([{ 2589: 8, 118: 1 }, "MAGE"]);
+  expect(mine(addon).bank, "the bank isn't read until it's open").toEqual({});
+  addon.eval("__wfgWorld.bags[0][1].count = 10");
+  addon.fire("BAG_UPDATE_DELAYED");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect(mine(addon).bags[2589], "not read at once").toBe(8);
+  addon.advance(0.6, 0.1);
+  expect(mine(addon).bags[2589], "read once the changes settle").toBe(13);
+  addon.fire("BANKFRAME_OPENED");
+  expect(mine(addon).bank, "the bank's bought tabs, read when it opens").toEqual({ 2589: 4 });
+  addon.eval("__wfgWorld.bags[7][1] = { itemID = 118, count = 2 }");
+  addon.fire("PLAYERBANKSLOTS_CHANGED");
+  addon.advance(0.6, 0.1);
+  expect(mine(addon).bank, "and as it changes while open").toEqual({ 2589: 4, 118: 2 });
+  addon.fire("BANKFRAME_CLOSED");
+  addon.eval("__wfgWorld.bags[6][1] = nil");
+  addon.fire("BAG_UPDATE_DELAYED");
+  addon.advance(0.6, 0.1);
+  expect(mine(addon).bank, "shut: the last reading is kept").toEqual({ 2589: 4, 118: 2 });
+  const bare = loggedIn();
+  expect(bare.eval("return #ns.GetModule('Inventory').BankBags()"), "a client without bank tabs: no bank containers").toBe(0);
+});
+
+// TEST-ONLY saved characters on this realm and side: two with linen (one with a class),
+// one without any, a broken entry, and the logged-in character itself.
+const ALTS = `VanguardDB.inventory = { ["Forever Test - Alliance"] = {
+  Alpha = { class = "WARRIOR", bags = { [2589] = 5 }, bank = { [2589] = 3 } },
+  Bravo = { bags = { [2589] = 2 } },
+  Charlie = { class = "ROGUE", bags = { [118] = 1 }, bank = {} },
+  Broken = true,
+}, ["Other Realm - Horde"] = { Zed = { bags = { [2589] = 99 } } } }`;
+
+it("inventory: item tooltips list who else has it, in their class color, then the total", () => {
+  const addon = loggedIn(BAGS_ENV, { savedVariables: ALTS });
+  addon.eval("C_Item.GetItemCount = function() return 8 end");
+  expect(addon.eval('return __tip("item:2589:0:0")'), "each other character here with it, by name, then everyone's total").toEqual(["Alpha 8 (bank 3)", "Bravo 2", "Total 18"]);
+  expect(addon.eval('__tip("item:2589") local c = RAID_CLASS_COLORS.WARRIOR return { __tt.lines[1][2][1] == c.r, __tt.lines[2][2][1] == ns.Theme.RGB("text") }'), "a known class in its color, else the text color").toEqual([true, true]);
+  expect(addon.eval('return { #__tip("item:999"), #__tip("TEST-ONLY not a link") }'), "nobody else has it, or no item id: no lines").toEqual([0, 0]);
+  addon.eval("ns.GetModule('Inventory').settings.alts = false");
+  expect(addon.eval('return #__tip("item:2589")'), "switched off: no lines").toBe(0);
+  expect(addon.eval("local IV = ns.GetModule('Inventory') for _, fn in ipairs(ns.GetModule('Tooltips').itemLines) do if fn == IV.AddLines then return true end end"), "added to every item tooltip").toBe(true);
+});
+
+it("inventory: a crowd of characters is cut to six names", () => {
+  let crowd = "";
+  for (let i = 1; i <= 8; i += 1) crowd += `Alt${i} = { bags = { [2589] = 1 } }, `;
+  const addon = loggedIn(BAGS_ENV, { savedVariables: `VanguardDB.inventory = { ["Forever Test - Alliance"] = { ${crowd} } }` });
+  addon.eval("C_Item.GetItemCount = function() return 0 end");
+  const lines = addon.eval('return __tip("item:2589")');
+  expect([lines.length, lines[5], lines[6], lines[7]], "six names, how many more, and the total of all eight").toEqual([8, "Alt6 1", "+2 more", "Total 8"]);
+});
+
+it("inventory: /vg inventory lists, forgets one, or forgets them all", () => {
+  const addon = loggedIn(BAGS_ENV, { savedVariables: ALTS });
+  addon.slash("inventory");
+  expect([chatHas(addon, /Characters remembered here: 5\./), chatHas(addon, /^.*Tester: bags read today/)], "how many, and when each was read").toEqual([true, true]);
+  addon.slash("inventory forget alpha");
+  expect([chatHas(addon, /Forgot Alpha's bags and bank\./), addon.eval('return VanguardDB.inventory["Forever Test - Alliance"].Alpha == nil')], "any case").toEqual([true, true]);
+  addon.slash("inventory forget Nobody");
+  expect(chatHas(addon, /No character called Nobody is remembered here\./), "an unknown name").toBe(true);
+  addon.slash("inventory clear");
+  expect([chatHas(addon, /Forgot every character's bags and bank\./), addon.eval("return VanguardDB.inventory == nil")], "clear forgets every realm").toEqual([true, true]);
+  addon.clearChat();
+  addon.slash("inventory");
+  expect(chatHas(addon, /No characters remembered here yet\./), "then nobody is listed").toBe(true);
+});
+
+it("inventory: a client that can't say your name or read bags stores nothing and breaks nothing", () => {
+  const addon = loggedIn("C_Container = { GetContainerNumFreeSlots = function() return 0 end }");
+  expect([mine(addon).bags, addon.eval("return #ns.errors")], "no bags read, no error").toEqual([{}, 0]);
+  const nameless = addon.eval(`local IV, real = ns.GetModule("Inventory"), UnitName
+    UnitName = function() return nil end
+    local record, before = IV.Mine(), 0
+    UnitName = real
+    for _ in pairs(IV.Characters()) do before = before + 1 end
+    return { kept = before, bags = record.bags }`);
+  expect(nameless, "no name: a record kept nowhere").toEqual({ kept: 1, bags: {} });
+});
