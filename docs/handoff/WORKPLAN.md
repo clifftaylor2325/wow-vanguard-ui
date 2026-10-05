@@ -33,8 +33,8 @@ Every `file:line` below is as of `619d5c9`; if a line has moved, grep for the id
 | `npm ci` | install (Node 20 or 22) |
 | `npm test` | Vitest, all suites once |
 | `npm run quality` | the code-quality scan (10-line rule, comments, colours) |
-| `npm run verify` | `npm test` + `npm run quality` (what CI runs) |
-| `npm run coverage` | Lua line coverage, fails below the floor |
+| `npm run verify` | `npm test` + `npm run quality` |
+| `npm run coverage` | every test with Lua line coverage, fails below the floor (CI runs this, then `npm run quality`) |
 | `npm run lint` | luacheck (optional locally; CI runs it) |
 | `npm run preview` | Playwright renders `preview/*.png` of the layout and options window |
 | `npm run package` | `dist/ForeverUI-<version>.zip` from committed files |

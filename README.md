@@ -145,9 +145,9 @@ The callback runs once at login, or immediately if the addon registers after log
 ```bash
 npm install
 npm test          # JS and Lua harness tests under Vitest, once (vitest run, no watch), then a per-area Lua harness summary
-npm run verify    # npm test (real addon Lua in a TEST-ONLY headless WoW client, and the JS tests), then the code-quality scan; CI runs this
+npm run verify    # npm test (real addon Lua in a TEST-ONLY headless WoW client, and the JS tests), then the code-quality scan
                   # (functions of 10 lines or fewer, all documented; colors only from Core/Theme.lua)
-npm run coverage  # line coverage of the addon Lua; fails below scripts/lua-coverage-floor.json
+npm run coverage  # every test with line coverage of the addon Lua; fails below scripts/lua-coverage-floor.json. CI runs this, then npm run quality
 npm run lint      # luacheck
 npm run media     # regenerate Media/Textures and Media/Icons from scripts/lib/media-sources.mjs
 npm run package   # dist/ForeverUI-<version>.zip from committed files
