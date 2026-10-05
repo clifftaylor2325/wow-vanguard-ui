@@ -102,6 +102,7 @@ Modules/AuctionAlerts.lua
 Modules/AuctionAPI.lua
 Modules/AuctionLedger.lua
 Modules/GameTools.lua
+Modules/BossDocks.lua
 Modules/FightHistory.lua
 Modules/GameAlerts.lua
 Modules/AfkScreen.lua
