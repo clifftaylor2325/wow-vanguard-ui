@@ -4,7 +4,8 @@
 -- quality and a max price, set from a row's right-click menu), managed from the dropdown or
 -- /fui ah (rename, duplicate, delete with a confirm, export as text, import
 -- plain lines or Auctionator's `^`/`;` strings), Search list, which runs the
--- list's searches one after another, each entry's best result, and the
+-- list's searches one after another (the last 20 terms searched are kept,
+-- account-wide, as the Recent pseudo-list), each entry's best result, and the
 -- card's rows; clicking a row shows its item in the game's own list.
 --
 -- Standing rules here: every search goes through AH.Queue (one in flight,
@@ -32,6 +33,8 @@ AH.ANY, AH.QUALITIES = "any", { { "any", "Any" }, { 0, "Poor" }, { 1, "Common" }
 AH.ROW_CHOICES, AH.FILTER_W = { { "filters", "Filters..." }, { "remove", "Remove" } }, 280
 -- Copper in one of each money unit typed into a max price.
 AH.MONEY_UNITS = { g = 10000, s = 100, c = 1 }
+-- The Recent pseudo-list: its dropdown value, and how many searched terms it keeps.
+AH.RECENT, AH.MAX_RECENT = "\1recent", 20
 -- What chat says when an action needs a list and there's none in use.
 AH.NO_LIST = "Pick a shopping list first (the Shop card's dropdown, or /fui ah list <name>)."
 
@@ -47,8 +50,16 @@ end
 -- Entries whose browse results wait for an item's name (matched again when it comes in).
 AH.unnamed = {}
 
--- A list's entries by its name (nil when there's no such list).
+-- The terms searched last, newest first (ForeverUIDB.ah.recent, kept for the account).
+function AH.Recent()
+  local store = AP.Store()
+  store.recent = type(store.recent) == "table" and store.recent or {}
+  return store.recent
+end
+
+-- A list's entries by its name, Recent's by AH.RECENT (nil when there's no such list).
 function AH.ListByName(name)
+  if name == AH.RECENT then return AH.Recent() end
   return AP.Store().lists[name]
 end
 
@@ -60,6 +71,7 @@ end
 -- The shopping list in use: its name and entries (nil when there's none yet).
 function AH.CurrentList()
   local store = AP.Store()
+  if store.list == AH.RECENT then return "Recent", AH.Recent() end
   local list = store.list and store.lists[store.list]
   if list then return store.list, list end
 end
@@ -99,10 +111,11 @@ function AH.ParseEntry(text)
   if text ~= "" then return text end
 end
 
--- Adds an item (a link, an ID or a name) to a list: the one named, else the one in use, else "Shopping".
+-- Adds an item (a link, an ID or a name) to a list: the one named, else the one in use (not Recent),
+-- else "Shopping".
 function AH.AddEntry(text, listName)
   local entry, store = AH.ParseEntry(text), AP.Store()
-  local name = listName or store.list or AH.DEFAULT_LIST
+  local name = listName or (store.lists[store.list or ""] and store.list) or AH.DEFAULT_LIST
   if not entry or not AH.NewList(name) then return end
   local list = store.lists[name]
   if #list >= AH.MAX_ENTRIES then return ns.Chat("A shopping list holds at most 50 items.") end
@@ -164,8 +177,16 @@ function AH.DeleteList(name)
   AH.PaintShop()
 end
 
--- Asks before deleting the list in use (Delete or No).
+-- Asks before forgetting the recent searches (Clear or No).
+local function askClearRecent()
+  local recent = AH.Recent()
+  local question = string.format("Clear the %d recent searches?", #recent)
+  ns.Ask(question, "Clear", function() AP.Store().recent = {} AH.PaintShop() end, function() end)
+end
+
+-- Asks before deleting the list in use (Delete or No); on Recent, before clearing it.
 function AH.AskDelete()
+  if AH.ListKey() == AH.RECENT then return askClearRecent() end
   local name = listInUse()
   if not name then return ns.Chat(AH.NO_LIST) end
   local question = string.format("Delete the shopping list %s (%d items)?", name, #AP.Store().lists[name])
@@ -284,11 +305,29 @@ AH.COMMANDS.delete = function() AH.AskDelete() end
 AH.COMMANDS.export = function() AH.ExportList() end
 -- import: the box to paste items into it.
 AH.COMMANDS.import = function() AH.AskImport() end
+-- recent: Recent in use, and what's on it.
+AH.COMMANDS.recent = function()
+  AP.Store().list = AH.RECENT
+  AH.PaintShop()
+  AH.ListCommand("")
+end
 
--- Search list: every entry of the list in use, one search at a time.
+-- Keeps a searched term first in Recent (once, whatever its case), at most AH.MAX_RECENT of them.
+function AH.Remember(entry)
+  local recent, key = AH.Recent(), AH.EntryText(entry):lower()
+  for i = #recent, 1, -1 do
+    if AH.EntryText(recent[i]):lower() == key then table.remove(recent, i) end
+  end
+  table.insert(recent, 1, copyEntry(entry))
+  for i = #recent, AH.MAX_RECENT + 1, -1 do recent[i] = nil end
+end
+
+-- Search list: every entry of the list in use, one search at a time (each kept in Recent, unless
+-- it's Recent that is searched).
 function AH.SearchList()
   local _, list = AH.CurrentList()
   if not list or #list == 0 then return ns.Chat("Add items to a shopping list first (+ Add, or /fui ah add <list> <item>).") end
+  if AH.ListKey() ~= AH.RECENT then for _, entry in ipairs(list) do AH.Remember(entry) end end
   AH.DropQueued("entry")
   AH.found, AH.unnamed, AH.progress = {}, {}, { done = 0, total = #list }
   for _, entry in ipairs(list) do AH.Queue({ entry = entry }) end
@@ -438,15 +477,22 @@ local function scrollShop(c, delta)
   AH.PaintShop()
 end
 
--- The dropdown's choices: the lists by name, "New list...", the actions on the list in use, and Import.
+-- The actions on the list in use: a list's, or Recent's (no rename; Delete clears it).
+local function listActions()
+  if listInUse() then return { { AH.RENAME, "Rename list..." }, { AH.COPY, "Duplicate list" }, { AH.DELETE, "Delete list..." }, { AH.EXPORT, "Export list..." } } end
+  if AH.ListKey() == AH.RECENT then return { { AH.COPY, "Duplicate list" }, { AH.EXPORT, "Export list..." }, { AH.DELETE, "Clear recent..." } } end
+  return {}
+end
+
+-- The dropdown's choices: the lists by name, Recent (once something was searched), "New list...",
+-- the actions on the list in use, and Import.
 local function listChoices()
   local out = {}
   for name in pairs(AP.Store().lists) do out[#out + 1] = { name, name } end
   table.sort(out, function(a, b) return a[1] < b[1] end)
+  if #AH.Recent() > 0 or AH.ListKey() == AH.RECENT then out[#out + 1] = { AH.RECENT, "Recent" } end
   out[#out + 1] = { AH.NEW, "New list..." }
-  if listInUse() then
-    for _, c in ipairs({ { AH.RENAME, "Rename list..." }, { AH.COPY, "Duplicate list" }, { AH.DELETE, "Delete list..." }, { AH.EXPORT, "Export list..." } }) do out[#out + 1] = c end
-  end
+  for _, c in ipairs(listActions()) do out[#out + 1] = c end
   out[#out + 1] = { AH.IMPORT, "Import..." }
   return out
 end
