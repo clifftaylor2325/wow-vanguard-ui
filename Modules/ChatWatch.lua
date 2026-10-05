@@ -4,6 +4,7 @@
 -- click it to whisper the sender, right-click to put it away. When the line
 -- links an item the auction house has a price for (Modules/AuctionPrices.lua,
 -- this realm and faction), the toast shows it beside the line: "AH 12s 50c".
+-- Other modules put their own alerts on the same toast with CW.Notify.
 -- Chat is read through ns.On only, never a chat message filter, so no line
 -- is changed or hidden. In dungeons, raids and other places where the game
 -- hides chat from addons (its text and sender come secret), a line is
@@ -89,13 +90,17 @@ function CW.OnChat(event, text, sender, ...)
   if phrase and fresh(sender, phrase, GetTime()) then CW.Alert(sender, text, phrase) end
 end
 
--- A phrase was said: the alert sound (at most every CW.SOUND_GAP seconds) and the toast, as switched on.
-function CW.Alert(sender, text, phrase)
+-- The alert sound, at most every CW.SOUND_GAP seconds (a phrase's and other modules' alerts alike).
+local function ring()
   local now = GetTime()
-  if CW.settings.sound and now - (CW.lastSound or -CW.SOUND_GAP) >= CW.SOUND_GAP then
-    CW.lastSound = now
-    T.Sound("alert")
-  end
+  if now - (CW.lastSound or -CW.SOUND_GAP) < CW.SOUND_GAP then return end
+  CW.lastSound = now
+  T.Sound("alert")
+end
+
+-- A phrase was said: the alert sound and the toast, as switched on.
+function CW.Alert(sender, text, phrase)
+  if CW.settings.sound then ring() end
   if CW.settings.toast then CW.ShowToast(sender, text, phrase) end
 end
 
@@ -130,7 +135,7 @@ end
 -- price beside it; it goes after CW.LINGER seconds.
 function CW.ShowToast(sender, text)
   local f = CW.toast
-  f.fuiSender = sender
+  f.fuiSender, f.fuiClick = sender, nil
   f.sender:SetText(sender)
   f.line:SetText(text)
   fitLine(f, CW.PriceText(text))
@@ -143,9 +148,10 @@ function CW.HideToast()
   T.FadeOut(CW.toast)
 end
 
--- A click on the toast: left whispers the sender, right just dismisses it.
+-- A click on the toast: left whispers the sender (or, on another module's alert, does what it
+-- asked for), right just dismisses it.
 function CW.OnToastClick(f, button)
-  if button ~= "RightButton" then CW.Whisper(f.fuiSender) end
+  if button ~= "RightButton" then (f.fuiClick or CW.Whisper)(f.fuiSender) end
   CW.HideToast()
 end
 
@@ -181,6 +187,21 @@ local function buildToast()
   f:Hide()
   CW.toast = f
   ns.Mover(f, "chatwatch", "Chat alert", { "TOP", "TOP", 0, -160 })
+end
+
+-- Another module's alert (Auction helper's price alerts) with the alert sound, on the same toast,
+-- built here when Chat watch is off: a title in the sender's place, a line with a price beside it
+-- (or none), and onClick, what a left click does (right-click puts it away). It goes after CW.LINGER seconds.
+function CW.Notify(title, text, price, onClick)
+  if not CW.toast then buildToast() end
+  local f = CW.toast
+  ring()
+  f.fuiSender, f.fuiClick = nil, onClick
+  f.sender:SetText(title)
+  f.line:SetText(text)
+  fitLine(f, price)
+  T.FadeIn(f)
+  ns.AutoHide(f, CW.LINGER)
 end
 
 -- Phrases ----------------------------------------------------------------------------------------

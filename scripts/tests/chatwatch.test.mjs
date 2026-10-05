@@ -209,3 +209,24 @@ it("chat watch: a line linking an item with an auction price shows it beside the
   addon.eval("__wfgWorld.units.player.faction = 'Horde'");
   expect(addon.eval(`return ns.GetModule("ChatWatch").PriceText("${WTS_LINE}") == nil`), "the other faction's house has no price for it").toBe(true);
 });
+
+it("chat watch: another module's alert uses the same toast and sound, even with Chat watch off; its click runs its own action", () => {
+  const off = loggedIn(WATCH_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { ChatWatch = false } } }" });
+  // Rings an alert from another module (TEST-ONLY), counting the clicks it hears of in __ran.
+  const notify = (addon) => addon.eval('__ran = __ran or 0 ns.GetModule("ChatWatch").Notify("TEST-ONLY Title", "TEST-ONLY line", "1g", function() __ran = __ran + 1 end)');
+  expect(off.frame("ForeverUI_ChatWatchToast"), "Chat watch off: no toast yet").toBe(null);
+  notify(off);
+  expect([toast(off), off.eval("return ForeverUI_ChatWatchToast.price:GetText()"), rings(off)], "the toast is made for it, with the sound").toEqual([[true, "TEST-ONLY Title", "TEST-ONLY line"], "1g", 1]);
+  notify(off);
+  expect(rings(off), "at most one sound every 2 seconds").toBe(1);
+  off.click("ForeverUI_ChatWatchToast");
+  expect([off.eval("return __ran"), off.eval("return #__tells"), toast(off)[0]], "a click runs its action, whispers no one, and puts it away").toEqual([1, 0, false]);
+  notify(off);
+  off.click("ForeverUI_ChatWatchToast", "RightButton");
+  expect([off.eval("return __ran"), toast(off)[0]], "right-click only puts it away").toEqual([1, false]);
+  const on = watching();
+  notify(on);
+  say(on, "CHANNEL", "LFM Deadmines", "Healbot");
+  on.click("ForeverUI_ChatWatchToast");
+  expect([on.eval("return __ran"), on.eval("return __tells")], "a chat line's toast after it whispers the sender, not the alert's action").toEqual([0, ["Healbot"]]);
+});
