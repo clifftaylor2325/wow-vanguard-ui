@@ -253,6 +253,7 @@ O.MODULE_INFO = {
   GameAlerts = { "Game alerts", "Loss of control and the talking head in the Vanguard look, each in a spot you can move; Hardcore death notices restyled; a rare nearby announced if you like." },
   Errands = { "Errands", "Train all at a trainer, keep items stocked from merchants, and time your flights." },
   InstancePrep = { "Instance prep", "A checklist of what's low (ammo, reagents, food, bandages, potions, your stock list) when you enter an instance or a ready check starts." },
+  BossDocks = { "Boss mod docks", "Two spots you can move for boss mods' timer bars; /vg dock lines up Deadly Boss Mods' bars with them." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
   FightHistory = { "Fight history", "Your DPS and place in each fight this session, as a strip of bars under the damage meter (off until switched on)." },
   Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the Vanguard look." },
@@ -670,6 +671,14 @@ local function tooltipRows()
   }, vendorRows())
 end
 
+-- Boss mods: a button to line their bars up with Vanguard's spots, only while one is loaded.
+local function bossDockRows()
+  local BD = ns.GetModule("BossDocks")
+  if not (BD.HasDBM() or BD.HasBigWigs()) then return {} end
+  return { { "header", "Boss mods" }, { "button", "Line up boss mod bars with the Boss timers spots", BD.Command },
+    { "text", "Move the Boss timers spots with /vg unlock first. Deadly Boss Mods' bars move at once; for BigWigs, chat says where to drag them." } }
+end
+
 -- The Bars, map, chat page: your buffs, bars and map, the strip, merchants, tooltips.
 local function morePageRows()
   local rows = append(append(append(playerAuraRows(), dataBarRows()), moreRows()), bagRows())
@@ -677,7 +686,7 @@ local function morePageRows()
   append(rows, gamePartRows())
   append(rows, windowRows())
   append(rows, auctionRows())
-  append(rows, gameToolRows())
+  append(append(rows, gameToolRows()), bossDockRows())
   append(rows, merchantRows())
   append(append(rows, errandRows()), prepRows())
   append(append(append(rows, chatRows()), chatWatchRows()), comfortRows())
