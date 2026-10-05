@@ -95,6 +95,7 @@ Modules/AuctionHelper.lua
 Modules/AuctionShop.lua
 Modules/AuctionSell.lua
 Modules/AuctionOwned.lua
+Modules/AuctionAPI.lua
 Modules/GameTools.lua
 Modules/FightHistory.lua
 Modules/GameAlerts.lua

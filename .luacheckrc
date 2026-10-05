@@ -12,7 +12,8 @@ globals = {
   -- SavedVariables (ForeverUI.toc)
   "ForeverUIDB",
   "ForeverUICharDB",
-  -- Public API table and slash command
+  -- Public API table and slash command. ForeverUI holds the skin API (Core/Skin.lua) and
+  -- ForeverUI.API.v1, the auction prices for other addons (Modules/AuctionAPI.lua).
   "ForeverUI",
   "SLASH_FOREVERUI1",
   "SLASH_FOREVERUI2",
