@@ -145,7 +145,7 @@ end
 
 -- The movable bar: three rows (calls, target icons, world markers).
 local function build()
-  local bar = T.HudPanel(CreateFrame("Frame", "ForeverUI_RaidTools", UIParent))
+  local bar = T.HudPanel(CreateFrame("Frame", "Vanguard_RaidTools", UIParent))
   bar.list = {}
   bar:SetSize(2 * RT.PAD + 9 * RT.ICON + 8 * RT.GAP, 2 * RT.PAD + 3 * RT.ICON + 2 * RT.GAP)
   ns.Mover(bar, "raidtools", "Raid tools", { "TOPLEFT", "TOPLEFT", 186, -20 })

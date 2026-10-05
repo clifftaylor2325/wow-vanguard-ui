@@ -3,7 +3,7 @@
 Paste the block below as the first message of a Claude Code session opened in a clone of `clifftaylor2325/wow-forever-ui` (a cheaper model and lower effort are fine; the plan carries the context). Replace `<PHASE>` with the phase you want done, e.g. `P0`.
 
 ```text
-You are working in the ForeverUI repository (a World of Warcraft addon for WoW Forever, written in Lua 5.1 with a Node/Vitest test harness). Your instructions are in docs/handoff/WORKPLAN.md. Read that file in full before doing anything else, then read README.md.
+You are working in the Vanguard repository (a World of Warcraft addon for WoW Forever, written in Lua 5.1 with a Node/Vitest test harness). Your instructions are in docs/handoff/WORKPLAN.md. Read that file in full before doing anything else, then read README.md.
 
 Carry out phase <PHASE> of the work plan, task by task, in order, following section 0 ("How to work") exactly:
 - Work on the branch the plan names for the phase. One task = one commit, subject "<task id> <area>: <change>".
@@ -21,5 +21,5 @@ When the phase is complete, open one pull request for the branch with: the list 
 
 - Run one phase per session; P0 first. P1 is the heaviest; P2 tasks are mostly independent and can be split across two sessions if a session runs long.
 - Answer the five questions in section 7 of the work plan before starting P3/P4.
-- After P0 merges, run `docs/SMOKE-TEST.md` in the Forever beta and paste `/fui errors` and `/fui status` output into the next session's first message. In-game findings should be added to the plan as new tasks before P1.
+- After P0 merges, run `docs/SMOKE-TEST.md` in the Forever beta and paste `/vg errors` and `/vg status` output into the next session's first message. In-game findings should be added to the plan as new tasks before P1.
 - Line numbers in the plan are from commit `619d5c9`; they drift as commits land. The plan quotes identifiers next to each line so the model can grep.

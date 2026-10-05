@@ -4,7 +4,7 @@
 --   * ready check answers in the middle while a check runs
 --   * a marker on dead players someone is resurrecting
 --   * a crown for the group leader, a smaller mark for assistants
--- The ready check, leader and assist marks are ForeverUI's own icons in
+-- The ready check, leader and assist marks are Vanguard's own icons in
 -- theme colors; the missing-health text steps aside while a center mark shows.
 --
 -- Written for WoW Forever. Every client call is looked up when used, so a

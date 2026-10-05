@@ -85,7 +85,7 @@ end
 
 -- The movable holder, centered above your cast bar, and a row per swing type.
 local function build()
-  SW.holder = CreateFrame("Frame", "ForeverUI_SwingTimer", UIParent)
+  SW.holder = CreateFrame("Frame", "Vanguard_SwingTimer", UIParent)
   SW.holder:SetSize(SW.WIDTH, 3 * SW.ROW + 2 * SW.GAP)
   ns.Mover(SW.holder, "swing", "Swing timer", { "BOTTOM", "BOTTOM", 0, 170 })
   SW.rows = {}

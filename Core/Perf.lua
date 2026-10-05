@@ -1,4 +1,4 @@
--- /fui perf: what ForeverUI costs, from the game's own counters. Memory is
+-- /vg perf: what Vanguard costs, from the game's own counters. Memory is
 -- always counted; CPU time needs the game's script profiling (the
 -- scriptProfile setting: on after a reload, and it slows every addon a little
 -- while it's on). Every counter is looked up when used, so a client without
@@ -9,7 +9,7 @@ local ADDON, ns = ...
 local P = {}
 ns.Perf = P
 
--- How often /fui perf watch prints (seconds), and how many functions the busiest list shows.
+-- How often /vg perf watch prints (seconds), and how many functions the busiest list shows.
 P.EVERY, P.TOP = 60, 10
 
 -- The CPU total at the last report and when it was taken, for the change since.
@@ -27,7 +27,7 @@ function P.Profiling()
   return get ~= nil and tostring(get("scriptProfile")) == "1"
 end
 
--- ForeverUI's memory in KB, or nil when the client can't say.
+-- Vanguard's memory in KB, or nil when the client can't say.
 function P.Memory()
   local update, get = api("UpdateAddOnMemoryUsage"), api("GetAddOnMemoryUsage")
   if not get then return nil end
@@ -35,7 +35,7 @@ function P.Memory()
   return ns.PlainNumber(get(ADDON))
 end
 
--- ForeverUI's CPU time in ms since profiling started, or nil (profiling off, or no counter).
+-- Vanguard's CPU time in ms since profiling started, or nil (profiling off, or no counter).
 function P.CPU()
   local update, get = api("UpdateAddOnCPUUsage"), api("GetAddOnCPUUsage")
   if not get or not P.Profiling() then return nil end
@@ -56,7 +56,7 @@ end
 
 -- Why there's no CPU number: profiling is off, it starts at the next reload, or the client has no counter.
 local function noCpuText(cpu)
-  if not P.Profiling() then return "CPU off (/fui perf cpu turns the game's profiling on)" end
+  if not P.Profiling() then return "CPU off (/vg perf cpu turns the game's profiling on)" end
   if cpu == 0 then return "CPU: profiling starts after a reload" end
   return "CPU: the client has no counter"
 end
@@ -74,7 +74,7 @@ local function addFunctions(list, prefix, t)
   end
 end
 
--- Every named function of ForeverUI: the namespace's, the theme's and each module's.
+-- Every named function of Vanguard: the namespace's, the theme's and each module's.
 local function namedFunctions()
   local list = {}
   addFunctions(list, "ns.", ns)
@@ -103,7 +103,7 @@ function P.Top()
   return list
 end
 
--- Prints ForeverUI's CPU and memory now; with top, also its busiest functions.
+-- Prints Vanguard's CPU and memory now; with top, also its busiest functions.
 function P.Report(top)
   local cpu, now = P.CPU(), api("GetTime") and GetTime() or 0
   local cpuPart = (cpu and cpu > 0) and cpuText(cpu, now) or noCpuText(cpu)
@@ -112,32 +112,32 @@ function P.Report(top)
   for i, f in ipairs(P.Top()) do ns.Chat(string.format("  %d. %s  %.1f ms", i, f[1], f[2])) end
 end
 
--- /fui perf cpu: turns the game's script profiling on or off; it takes effect at the next reload.
+-- /vg perf cpu: turns the game's script profiling on or off; it takes effect at the next reload.
 function P.ToggleProfiling()
   local set = (C_CVar and C_CVar.SetCVar) or api("SetCVar")
   if not set then return ns.Chat("This client can't switch script profiling.") end
   local on = not P.Profiling()
   set("scriptProfile", on and "1" or "0")
-  ns.OfferReload(on and "CPU profiling starts after a reload; it slows every addon a little, so /fui perf cpu again when you're done."
+  ns.OfferReload(on and "CPU profiling starts after a reload; it slows every addon a little, so /vg perf cpu again when you're done."
     or "CPU profiling stops after a reload.")
 end
 
--- /fui perf watch: prints the report line every P.EVERY seconds, until asked again.
+-- /vg perf watch: prints the report line every P.EVERY seconds, until asked again.
 function P.Watch()
   if P.ticker then
     P.ticker:Cancel()
     P.ticker = nil
-    return ns.Chat("Stopped printing ForeverUI's CPU and memory.")
+    return ns.Chat("Stopped printing Vanguard's CPU and memory.")
   end
   if not (C_Timer and C_Timer.NewTicker) then return ns.Chat("This client has no timers to print with.") end
   P.ticker = C_Timer.NewTicker(P.EVERY, function() P.Report(false) end)
-  ns.Chat(string.format("Printing ForeverUI's CPU and memory every %d s; /fui perf watch again stops.", P.EVERY))
+  ns.Chat(string.format("Printing Vanguard's CPU and memory every %d s; /vg perf watch again stops.", P.EVERY))
 end
 
--- /fui perf [cpu|watch]: the report now (with the busiest functions), profiling on or off, or the timed report.
+-- /vg perf [cpu|watch]: the report now (with the busiest functions), profiling on or off, or the timed report.
 function P.Command(rest)
   if rest == "cpu" then return P.ToggleProfiling() end
   if rest == "watch" then return P.Watch() end
-  if rest ~= "" then return ns.Chat("Usage: /fui perf [cpu | watch]") end
+  if rest ~= "" then return ns.Chat("Usage: /vg perf [cpu | watch]") end
   P.Report(true)
 end

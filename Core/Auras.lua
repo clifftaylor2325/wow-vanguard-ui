@@ -6,7 +6,7 @@
 -- it on one of two backends:
 --   * the engine (Core/AuraEngine.lua): the client's own AuraContainer, which
 --     reads, sorts, lays out and times the auras itself, hidden values and all;
---   * the fallback (Core/AuraLegacy.lua): ForeverUI's own icons, for a client
+--   * the fallback (Core/AuraLegacy.lua): Vanguard's own icons, for a client
 --     without AuraContainer.
 -- Both dress every icon the same way (A.Dress): a 1 px edge, the icon inset
 -- and cropped, a dark sweep that empties as time runs out, stacks above the
@@ -207,7 +207,7 @@ function A.Backend()
   return not ns.InCombat() and ns.AuraEngine.Available() and ns.AuraEngine or ns.AuraLegacy
 end
 
--- "engine" or "fallback", for /fui status.
+-- "engine" or "fallback", for /vg status.
 function A.BackendName()
   return A.Backend() == ns.AuraEngine and "engine" or "fallback"
 end

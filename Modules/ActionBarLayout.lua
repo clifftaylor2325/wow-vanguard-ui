@@ -49,7 +49,7 @@ end
 
 -- Sizes and places every button; shows the first `buttons`, hides the rest.
 local function layoutButtons(bar, s, size)
-  for i, b in ipairs(bar.fuiButtons) do
+  for i, b in ipairs(bar.vgButtons) do
     b:SetSize(size, size)
     placeButton(b, i, s.perRow, size + AB.settings.spacing)
     b:SetShown(i <= s.buttons)
@@ -93,7 +93,7 @@ end
 function AB.UpdateAlpha(n)
   local bar = AB.bars[n]
   if not bar then return end
-  bar.fuiReveal = AB.grid
+  bar.vgReveal = AB.grid
   bar:SetAlpha(V.Alpha(bar))
 end
 
@@ -134,24 +134,24 @@ end
 
 -- The mouse came over a bar or one of its buttons: show it if it fades.
 local function onEnter(frame)
-  local bar = frame.fuiBar or frame
-  bar.fuiHover = true
-  AB.UpdateAlpha(bar.fuiIndex)
+  local bar = frame.vgBar or frame
+  bar.vgHover = true
+  AB.UpdateAlpha(bar.vgIndex)
 end
 
 -- The mouse left a bar or button: fade the bar unless the mouse is still
 -- over it (moving between buttons crosses the bar itself).
 local function onLeave(frame)
-  local bar = frame.fuiBar or frame
-  bar.fuiHover = bar:IsMouseOver() == true
-  AB.UpdateAlpha(bar.fuiIndex)
+  local bar = frame.vgBar or frame
+  bar.vgHover = bar:IsMouseOver() == true
+  AB.UpdateAlpha(bar.vgIndex)
 end
 
 -- Watches the mouse over a bar and its buttons for mouseover fading.
 function AB.WatchHover(bar)
   bar:SetScript("OnEnter", onEnter)
   bar:SetScript("OnLeave", onLeave)
-  for _, b in ipairs(bar.fuiButtons) do
+  for _, b in ipairs(bar.vgButtons) do
     b:HookScript("OnEnter", onEnter)
     b:HookScript("OnLeave", onLeave)
   end
@@ -167,8 +167,8 @@ end
 function AB.UpdateEmpty(b)
   local seen = (b.hasAction or AB.grid) and true or false
   b:SetAlpha(seen and 1 or 0)
-  if b.fuiSeen == seen then return end
-  b.fuiSeen = seen
+  if b.vgSeen == seen then return end
+  b.vgSeen = seen
   ns.OutOfCombat(function() b:EnableMouse(seen) end, b)
 end
 
@@ -193,7 +193,7 @@ end
 -- mouseover bar revealed for a drag stays shown only if the mouse is on it.
 local function refreshBarAlpha()
   for n, bar in pairs(AB.bars) do
-    bar.fuiHover = bar:IsMouseOver() == true
+    bar.vgHover = bar:IsMouseOver() == true
     AB.UpdateAlpha(n)
   end
 end

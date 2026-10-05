@@ -6,7 +6,7 @@ import { CLICK_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
 // TEST-ONLY: the client's damage meter enums (the world has the meter but not these).
 const METER_ENV = "Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1 }\n";
 // A profile with the strip switched on.
-const STRIP_ON = { savedVariables: "ForeverUIDB.profiles = { Default = { FightHistory = { strip = true } } }" };
+const STRIP_ON = { savedVariables: "VanguardDB.profiles = { Default = { FightHistory = { strip = true } } }" };
 
 // The meter's session for a TEST-ONLY fight: you at `dps` (a Lua expression) in place `place` of `n`, lasting `seconds`.
 function setFight(addon, dps, seconds, place = 1, n = 1) {
@@ -38,7 +38,7 @@ const tooltip = (addon) => addon.eval(`local tt, lines = GameTooltip, {}
 
 // Each bar: [shown, height, its vertex colour].
 const barsOf = (addon) => addon.eval(`local out = {}
-  for i, b in ipairs(ForeverUI_FightHistory.bars) do out[i] = { b:IsShown(), b:GetHeight(), b.__vertexColor or false } end
+  for i, b in ipairs(Vanguard_FightHistory.bars) do out[i] = { b:IsShown(), b:GetHeight(), b.__vertexColor or false } end
   return out`);
 
 it("a fight is recorded half a second after combat ends, with its length, your DPS, place and the list's size", () => {
@@ -95,11 +95,11 @@ it("the strip is off by default; switched on, the latest bar is in the accent an
   const addon = loggedIn(METER_ENV + CLICK_LUA);
   fight(addon, 200, 30);
   fight(addon, 100, 30);
-  expect(addon.frame("ForeverUI_FightHistory").visible, "off until you turn it on, though the fights are kept").toBe(false);
+  expect(addon.frame("Vanguard_FightHistory").visible, "off until you turn it on, though the fights are kept").toBe(false);
   addon.slash("");
   addon.eval('__click("Bars, map, chat")');
   expect(addon.eval('return __click("Sparkline of your DPS in the last 20 fights")'), "the switch is on the strip's section").toBe(true);
-  expect(addon.frame("ForeverUI_FightHistory").visible, "on at once").toBe(true);
+  expect(addon.frame("Vanguard_FightHistory").visible, "on at once").toBe(true);
   const bars = barsOf(addon);
   expect(bars.slice(0, 3).map((b) => [b[0], b[1]]), "the 200 fight is 10 tall, the 100 one 5; no third").toEqual([[true, 10], [true, 5], [false, 0]]);
   expect([isTok(addon, bars[0][2], "muted"), isTok(addon, bars[1][2], "accent")], "the latest in the accent, the rest muted").toEqual([true, true]);
@@ -111,34 +111,34 @@ it("the strip is off by default; switched on, the latest bar is in the accent an
 
 it("the strip's visibility setting hides it, and an empty history shows nothing", () => {
   const addon = loggedIn(METER_ENV, STRIP_ON);
-  expect(addon.frame("ForeverUI_FightHistory").visible, "no fights yet: no empty box").toBe(false);
+  expect(addon.frame("Vanguard_FightHistory").visible, "no fights yet: no empty box").toBe(false);
   fight(addon, 100, 30);
-  expect(addon.frame("ForeverUI_FightHistory").visible, "a fight: it shows").toBe(true);
+  expect(addon.frame("Vanguard_FightHistory").visible, "a fight: it shows").toBe(true);
   addon.eval("local FH = ns.GetModule('FightHistory') FH.settings.visibility = 'hidden' FH.ApplyVisibility()");
-  expect(addon.frame("ForeverUI_FightHistory").visible, "Hidden hides it").toBe(false);
+  expect(addon.frame("Vanguard_FightHistory").visible, "Hidden hides it").toBe(false);
 });
 
-it("the tooltip and /fui fights list the fights, newest first", () => {
+it("the tooltip and /vg fights list the fights, newest first", () => {
   const addon = loggedIn(METER_ENV, STRIP_ON);
   addon.slash("fights");
   expect(chatHas(addon, /No fights recorded this session yet\./), "none yet").toBe(true);
   fight(addon, 412, 83, 2, 5);
   fight(addon, "__wfgWorld.secret(1)", 9);
   fight(addon, 1500, 125, 1, 1);
-  addon.hover("ForeverUI_FightHistory");
+  addon.hover("Vanguard_FightHistory");
   expect(tooltip(addon), "a title, then the fights").toEqual([true, "ANCHOR_TOP", [["Fight history", false], ["#1  2:05", "1.5K dps"], ["#2  0:09", "no dps"], ["#3  1:23", "412 dps  #2 of 5"]]]);
-  expect(addon.eval("return ForeverUI_FightHistory.wash:IsShown()"), "a hover wash while the mouse is over it").toBe(true);
+  expect(addon.eval("return Vanguard_FightHistory.wash:IsShown()"), "a hover wash while the mouse is over it").toBe(true);
   addon.hover(null);
-  expect([tooltip(addon)[0], addon.eval("return ForeverUI_FightHistory.wash:IsShown()")], "both go with the mouse").toEqual([false, false]);
+  expect([tooltip(addon)[0], addon.eval("return Vanguard_FightHistory.wash:IsShown()")], "both go with the mouse").toEqual([false, false]);
   addon.slash("fights");
   const lines = addon.chat().slice(-4).map((l) => l.replace(/^.*?: /, ""));
-  expect(lines.some((l) => /#1 {2}2:05 {2}1\.5K dps$/.test(l)) && lines.some((l) => /#3 {2}1:23 {2}412 dps {2}#2 of 5$/.test(l)), "/fui fights prints the same lines").toBe(true);
+  expect(lines.some((l) => /#1 {2}2:05 {2}1\.5K dps$/.test(l)) && lines.some((l) => /#3 {2}1:23 {2}412 dps {2}#2 of 5$/.test(l)), "/vg fights prints the same lines").toBe(true);
 });
 
 it("a client without the damage meter: the module loads, records nothing and shows nothing", () => {
   const addon = loggedIn("C_DamageMeter = nil", STRIP_ON);
   fight(addon, 100, 30);
-  expect([fights(addon), addon.frame("ForeverUI_FightHistory").visible, addon.eval("return #ns.errors")]).toEqual([[], false, 0]);
+  expect([fights(addon), addon.frame("Vanguard_FightHistory").visible, addon.eval("return #ns.errors")]).toEqual([[], false, 0]);
 });
 
 it("a client without timers reads the fight as combat ends", () => {

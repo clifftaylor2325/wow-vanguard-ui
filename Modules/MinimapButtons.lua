@@ -38,8 +38,8 @@ end
 
 -- Takes one addon button into the drawer, kept in its cell when the addon moves it again.
 local function gather(b)
-  if b.fuiGathered then return end
-  b.fuiGathered = true
+  if b.vgGathered then return end
+  b.vgGathered = true
   MB.buttons[#MB.buttons + 1] = b
   local n = #MB.buttons
   b:SetParent(MB.drawer)
@@ -59,7 +59,7 @@ end
 
 -- The drawer: a panel beside the minimap's left edge, shut until the toggle opens it.
 local function buildDrawer(map)
-  MB.drawer = T.HudPanel(CreateFrame("Frame", "ForeverUI_MinimapDrawer", map))
+  MB.drawer = T.HudPanel(CreateFrame("Frame", "Vanguard_MinimapDrawer", map))
   MB.drawer:SetPoint("TOPRIGHT", map, "TOPLEFT", -4, 0)
   MB.drawer:SetFrameStrata("MEDIUM")
   MB.drawer:Hide()
@@ -67,7 +67,7 @@ end
 
 -- The "..." toggle on the map's left edge (hidden until a button is gathered).
 local function buildToggle(map)
-  local t = T.Button(CreateFrame("Button", "ForeverUI_MinimapDrawerToggle", map))
+  local t = T.Button(CreateFrame("Button", "Vanguard_MinimapDrawerToggle", map))
   t:SetSize(16, 16)
   t:SetPoint("LEFT", map, "LEFT", 2, 0)
   t:SetFrameLevel((map:GetFrameLevel() or 1) + 5)
@@ -79,7 +79,7 @@ local function buildToggle(map)
   MB.toggle = t
 end
 
--- Builds the drawer beside ForeverUI's minimap and gathers (now, and once more a little later).
+-- Builds the drawer beside Vanguard's minimap and gathers (now, and once more a little later).
 local function build()
   local map = ns.MoverFrame("minimap")
   if type(map) ~= "table" or type(Minimap) ~= "table" then return end

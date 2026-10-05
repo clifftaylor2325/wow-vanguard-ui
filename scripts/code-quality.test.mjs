@@ -197,7 +197,7 @@ describe(
 
 // A new file nobody has added to git yet is checked too; ignored and deleted ones aren't.
 it("the scan covers new files, not ignored or deleted ones", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fui-quality-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vg-quality-"));
   // Runs git in the scratch repo.
   const git = (...args) => execFileSync("git", args, { cwd: dir, stdio: "pipe" });
   git("init", "-q");

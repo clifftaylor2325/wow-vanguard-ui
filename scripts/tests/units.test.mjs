@@ -1,4 +1,4 @@
-// units: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// units: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
@@ -6,7 +6,7 @@ import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_E
 
 // A frame's state for the unit-frame tests.
 const ufState = (addon, key) => addon.eval(`
-  local f = ForeverUI_${key}
+  local f = Vanguard_${key}
   return { shown = f:IsShown(), watched = f.__watched == true, unit = f:GetAttribute("unit"),
     type1 = f:GetAttribute("*type1"), type2 = f:GetAttribute("*type2"),
     hp = f.health.__value, max = f.health.__max, color = f.health.__barColor,
@@ -75,27 +75,27 @@ it("unit frames wait for combat", () => {
   const addon = createAddon();
   addon.eval(UNITS_ENV + "__wfgStub.inCombat = true");
   addon.login();
-  expect(addon.eval("return ForeverUI_player") === null, "no secure frames are built in combat").toBeTruthy();
+  expect(addon.eval("return Vanguard_player") === null, "no secure frames are built in combat").toBeTruthy();
   addon.eval("__wfgStub.inCombat = false");
   addon.fire("PLAYER_REGEN_ENABLED");
-  expect(addon.eval("return ForeverUI_player ~= nil") === true, "they are built when combat ends").toBeTruthy();
+  expect(addon.eval("return Vanguard_player ~= nil") === true, "they are built when combat ends").toBeTruthy();
 });
 
 it("unit frame health text settings apply at once", () => {
   const addon = loggedIn(RETAIL + UNITS_ENV + CLICK_LUA + "UnitHealthPercent = function() return 90 end CurveConstants = { ScaleTo100 = 1 }");
   addon.slash("");
   addon.eval('__click("Unit frames")');
-  expect(addon.eval('return __click("Show health numbers") and ForeverUI_player.healthText:GetText()'), "turning health numbers off clears them at once").toBe("");
-  expect(addon.eval("return ForeverUI_Options.reload:IsShown()"), "with no reload").toBe(false);
+  expect(addon.eval('return __click("Show health numbers") and Vanguard_player.healthText:GetText()'), "turning health numbers off clears them at once").toBe("");
+  expect(addon.eval("return Vanguard_Options.reload:IsShown()"), "with no reload").toBe(false);
   addon.eval('__click("Show health numbers")');
-  expect(addon.eval('return __click("Health as") and ForeverUI_player.healthText:GetText()'), "switching to percent shows it at once").toMatch(/%$/);
-  expect(addon.eval('return __click("Shaman totems") and ForeverUIDB.profiles.Default.ClassBars.totems'), "the totem switch is on the page (after a reload)").toBe(false);
-  expect(addon.eval('return __click("Druid mana") and ForeverUIDB.profiles.Default.ClassBars.druidMana'), "and the druid mana switch").toBe(false);
+  expect(addon.eval('return __click("Health as") and Vanguard_player.healthText:GetText()'), "switching to percent shows it at once").toMatch(/%$/);
+  expect(addon.eval('return __click("Shaman totems") and VanguardDB.profiles.Default.ClassBars.totems'), "the totem switch is on the page (after a reload)").toBe(false);
+  expect(addon.eval('return __click("Druid mana") and VanguardDB.profiles.Default.ClassBars.druidMana'), "and the druid mana switch").toBe(false);
 });
 
 it("class bars: totems for shamans, mana in forms for druids", () => {
   const addon = loggedIn(UNITS_ENV + TOTEMS_ENV);
-  expect(addon.eval('local CB = ns.GetModule("ClassBars") return { #CB.cells, select(2, CB.totems:GetPoint()) == ForeverUI_player }'), "a shaman gets four totem cells under the player frame").toEqual([4, true]);
+  expect(addon.eval('local CB = ns.GetModule("ClassBars") return { #CB.cells, select(2, CB.totems:GetPoint()) == Vanguard_player }'), "a shaman gets four totem cells under the player frame").toEqual([4, true]);
   expect(totemCell(addon, 1), "a totem that is down shows its icon, its sweep and the client's numbers").toMatchObject({ alpha: 1, icon: "TEST-ONLY-ICON-Totem", sweep: [100, 120], numbers: true, type2: "destroytotem", slot: 1 });
   expect(totemCell(addon, 2).alpha, "an empty slot is see-through (cells are secure, so alpha, not Hide)").toBe(0);
   addon.eval('GetTotemDuration = function(slot) return { __duration = slot } end __totems[2] = { true, "TEST-ONLY Totem 2", 200, 60, "TEST-ONLY-ICON-Two" }');
@@ -108,9 +108,9 @@ it("class bars: totems for shamans, mana in forms for druids", () => {
   addon.eval("__totems[1] = { { __secret = true }, 'x', { __secret = true }, { __secret = true }, 'TEST-ONLY-ICON-Totem' }");
   addon.fire("PLAYER_TOTEM_UPDATE");
   expect(totemCell(addon, 1), "a hidden answer goes to the client's alpha-from-boolean; the cell keeps its alpha").toMatchObject({ alpha: 1, follows: { __secret: true } });
-  const off = loggedIn(UNITS_ENV + TOTEMS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { ClassBars = { totems = false } } }" });
+  const off = loggedIn(UNITS_ENV + TOTEMS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ClassBars = { totems = false } } }" });
   expect(off.eval('return ns.GetModule("ClassBars").cells == nil'), "totems can be turned off").toBe(true);
-  const noFrames = loggedIn(UNITS_ENV + TOTEMS_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { UnitFrames = false } } }" });
+  const noFrames = loggedIn(UNITS_ENV + TOTEMS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { UnitFrames = false } } }" });
   expect(noFrames.eval('return ns.GetModule("ClassBars").cells == nil'), "no player frame (the game's own shows its totems), no row").toBe(true);
   const early = loggedIn(UNITS_ENV + TOTEMS_ENV + "GetTotemInfo = nil");
   expect(early.eval('ns.GetModule("ClassBars").UpdateTotems() return ns.GetModule("ClassBars").cells[1].__alpha'), "no totem call on this client: cells stay as built").toBe(null);
@@ -150,7 +150,7 @@ it("unit frames on WoW Forever: levels, health percent, classification", () => {
     __units.focus = { name = "TEST-ONLY Focus", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA", reaction = 5 }`, NO_RAID);
   addon.fire("PLAYER_TARGET_CHANGED");
   addon.fire("PLAYER_FOCUS_CHANGED");
-  const f = addon.eval(`local p, t, fo = ForeverUI_player, ForeverUI_target, ForeverUI_focus
+  const f = addon.eval(`local p, t, fo = Vanguard_player, Vanguard_target, Vanguard_focus
     return { level = p.level:GetText(), color = p.level.__textColor, boss = t.level:GetText(), hidden = fo.level:GetText(), hiddenColor = fo.level.__textColor,
       health = p.healthText:GetText(), mark = t.class:IsShown() and t.class.__vertexColor, rare = fo.class.__vertexColor, playerMark = p.class }`);
   expect(f.level === "60" && f.color[1] === 0.1 && f.boss === "??" && f.hidden === "", "the level left of the name, colored by difficulty; ?? for a boss; nothing when hidden").toBeTruthy();
@@ -159,15 +159,15 @@ it("unit frames on WoW Forever: levels, health percent, classification", () => {
   expect(isTok(addon, f.mark, "bad") && isTok(addon, f.rare, "text2") && f.playerMark == null, "a diamond marks bosses, rares and elites on the target and focus").toBeTruthy();
   addon.eval("UnitLevel = function(unit) return unit == 'player' and 61 or 12 end");
   addon.fire("UNIT_LEVEL", "player");
-  expect(addon.eval("return ForeverUI_player.level:GetText()"), "when you level, your frame shows the new level").toBe("61");
+  expect(addon.eval("return Vanguard_player.level:GetText()"), "when you level, your frame shows the new level").toBe("61");
   addon.eval("UnitLevel = function(unit) return unit == 'player' and 62 or 14 end");
   addon.fire("PLAYER_LEVEL_UP", 62);
-  expect(addon.eval("return { ForeverUI_player.level:GetText(), ForeverUI_target.level:GetText() }"), "a level-up refreshes every frame (their level colors are relative to yours)").toEqual(["62", "14"]);
+  expect(addon.eval("return { Vanguard_player.level:GetText(), Vanguard_target.level:GetText() }"), "a level-up refreshes every frame (their level colors are relative to yours)").toEqual(["62", "14"]);
   addon.eval("UnitHealthPercent = function() error('TEST-ONLY') end");
   addon.fire("UNIT_HEALTH", "player");
-  expect(addon.eval("return ForeverUI_player.healthText:GetText()") === "900", "if the client's percent fails, the value shows").toBeTruthy();
+  expect(addon.eval("return Vanguard_player.healthText:GetText()") === "900", "if the client's percent fails, the value shows").toBeTruthy();
   const retail = loggedIn(RETAIL + UNITS_ENV, NO_RAID);
-  expect(retail.eval("return ForeverUI_player.level == nil") === true && retail.eval("return ForeverUI_player.healthText:GetText()") === "900", "elsewhere: no level, health as a value").toBeTruthy();
+  expect(retail.eval("return Vanguard_player.level == nil") === true && retail.eval("return Vanguard_player.healthText:GetText()") === "900", "elsewhere: no level, health as a value").toBeTruthy();
 });
 
 it("a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest", () => {
@@ -175,7 +175,7 @@ it("a ?? (boss or far higher) level reads in the hardest difficulty color, not t
   addon.world.setUnit("target", { name: "TEST-ONLY Skull", hp: 1, maxhp: 1, reaction: 2, level: -1 });
   addon.world.setUnit("focus", { name: "TEST-ONLY Big", hp: 1, maxhp: 1, reaction: 2, level: 70 });
   addon.fire("PLAYER_FOCUS_CHANGED");
-  const t = addon.eval("local t, f = ForeverUI_target.level, ForeverUI_focus.level return { t:GetText(), t.__textColor, f.__textColor }");
+  const t = addon.eval("local t, f = Vanguard_target.level, Vanguard_focus.level return { t:GetText(), t.__textColor, f.__textColor }");
   expect(t[0], "the level reads ??").toBe("??");
   expect(t[1], "in the color the client gives a unit five or more levels above you").toEqual(t[2]);
 });
@@ -200,14 +200,14 @@ it("combo points for rogues and druids", () => {
   expect(druid.eval('local CP = ns.GetModule("ComboPoints") return CP.bar:IsShown() and CP.Count()') === 2, "without the older call, your combo-point power is read").toBeTruthy();
   const mage = loggedIn(UNITS_ENV, NO_RAID);
   expect(mage.eval('return ns.GetModule("ComboPoints").bar') === null, "other classes build nothing").toBeTruthy();
-  const noFrames = loggedIn(UNITS_ENV + '__units.player.class = "ROGUE"', { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { UnitFrames = false, RaidFrames = false } } } }" });
+  const noFrames = loggedIn(UNITS_ENV + '__units.player.class = "ROGUE"', { savedVariables: "VanguardDB = { profiles = { Default = { modules = { UnitFrames = false, RaidFrames = false } } } }" });
   expect(noFrames.eval('local CP = ns.GetModule("ComboPoints") CP.Update() return CP.bar') === null, "no player frame, no pips").toBeTruthy();
 });
 
 it("power ticks: the five-second rule after a mana spell", () => {
   const addon = loggedIn(UNITS_ENV + TICKS_ENV);
   addon.eval("ns.GetModule('PowerTicks').bar:SetWidth(200)");
-  expect(addon.eval("local PT = ns.GetModule('PowerTicks') return { PT.mode, PT.spark:GetParent() == ForeverUI_player.power }"), "a mana user gets the mana spark on the player frame's power bar").toEqual(["mana", true]);
+  expect(addon.eval("local PT = ns.GetModule('PowerTicks') return { PT.mode, PT.spark:GetParent() == Vanguard_player.power }"), "a mana user gets the mana spark on the player frame's power bar").toEqual(["mana", true]);
   expect(spark(addon), "no spark before a cast").toEqual([false, -1, false]);
   addon.fire("UNIT_SPELLCAST_SUCCEEDED", "target", "x", 90001);
   addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90002);
@@ -273,14 +273,14 @@ it("power ticks: switches, and no player frame", () => {
   addon.slash("");
   addon.eval('__click("Unit frames")');
   expect(addon.eval('return __click("Five-second rule") and ns.GetModule("PowerTicks").mode'), "the mana spark switches off at once").toBe(null);
-  expect(addon.eval('return __click("Energy tick") and ForeverUIDB.profiles.Default.PowerTicks.energy'), "the energy switch is on the page").toBe(false);
-  const off = loggedIn(UNITS_ENV + TICKS_ENV + "__ptype = 3", { savedVariables: "ForeverUIDB.profiles = { Default = { PowerTicks = { energy = false } } }" });
+  expect(addon.eval('return __click("Energy tick") and VanguardDB.profiles.Default.PowerTicks.energy'), "the energy switch is on the page").toBe(false);
+  const off = loggedIn(UNITS_ENV + TICKS_ENV + "__ptype = 3", { savedVariables: "VanguardDB.profiles = { Default = { PowerTicks = { energy = false } } }" });
   expect(off.eval("return ns.GetModule('PowerTicks').mode"), "energy switched off: no spark").toBe(null);
-  const noFrames = loggedIn(UNITS_ENV + TICKS_ENV + CLICK_LUA, { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { UnitFrames = false } } }" });
+  const noFrames = loggedIn(UNITS_ENV + TICKS_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { modules = { UnitFrames = false } } }" });
   expect(noFrames.eval("return ns.GetModule('PowerTicks').spark == nil"), "no player frame, no spark").toBe(true);
   noFrames.slash("");
   noFrames.eval('__click("Unit frames")');
-  expect(noFrames.eval('return __click("Five-second rule") and ForeverUIDB.profiles.Default.PowerTicks.mana'), "the switch still saves").toBe(false);
+  expect(noFrames.eval('return __click("Five-second rule") and VanguardDB.profiles.Default.PowerTicks.mana'), "the switch still saves").toBe(false);
 });
 
 // Each swing row: shown, its fill (value of max) and its seconds left.
@@ -303,7 +303,7 @@ it("swing timer: a row per hand, from the client's own swings", () => {
   addon.fire("PLAYER_SWING", 2, 7);
   expect(swings(addon)[0][1], "a hidden or empty length, or an unknown hand, changes nothing").toBe(1.5);
   addon.eval("__wfgStub.advance(2)");
-  expect([swings(addon)[0][0], addon.eval("return ForeverUI_SwingTimer.__scripts.OnUpdate == nil")], "once every swing has landed the timer stops").toEqual([false, true]);
+  expect([swings(addon)[0][0], addon.eval("return Vanguard_SwingTimer.__scripts.OnUpdate == nil")], "once every swing has landed the timer stops").toEqual([false, true]);
   addon.fire("PLAYER_SWING", 2, 2);
   addon.fire("PLAYER_DEAD");
   expect(swings(addon)[2][0], "dying clears the rows").toBe(false);
@@ -329,8 +329,8 @@ it("swing timer: who sees it", () => {
   // Whether a login with this setup and these saved settings builds the swing rows.
   const wanted = (env, saved) => loggedIn(UNITS_ENV + env, saved ? { savedVariables: saved } : undefined).eval("return ns.GetModule('SwingTimer').rows ~= nil");
   expect(wanted(SWING_ENV.replace("WARRIOR", "MAGE")), "a mage doesn't, by default").toBe(false);
-  expect(wanted(SWING_ENV.replace("WARRIOR", "MAGE"), "ForeverUIDB.profiles = { Default = { SwingTimer = { show = 'always' } } }"), "unless it's set to always").toBe(true);
-  expect(wanted(SWING_ENV, "ForeverUIDB.profiles = { Default = { SwingTimer = { show = 'never' } } }"), "never is never").toBe(false);
+  expect(wanted(SWING_ENV.replace("WARRIOR", "MAGE"), "VanguardDB.profiles = { Default = { SwingTimer = { show = 'always' } } }"), "unless it's set to always").toBe(true);
+  expect(wanted(SWING_ENV, "VanguardDB.profiles = { Default = { SwingTimer = { show = 'never' } } }"), "never is never").toBe(false);
   expect(wanted(SWING_ENV.replace('"WARRIOR"', '{ __secret = true }')), "a hidden class: no timer").toBe(false);
   expect(wanted(SWING_ENV.replace("C_SwingTimer = {}", "C_SwingTimer = nil")), "a client without swings: no timer").toBe(false);
   expect(wanted(SWING_ENV + "Enum.PlayerSwingType = nil"), "or without swing types").toBe(false);
@@ -339,7 +339,7 @@ it("swing timer: who sees it", () => {
   const addon = loggedIn(UNITS_ENV + SWING_ENV + CLICK_LUA);
   addon.slash("");
   addon.eval('__click("Unit frames")');
-  expect(addon.eval('return __click("Swing timer") and ForeverUIDB.profiles.Default.SwingTimer.show'), "the switch is on the page").toBe("always");
+  expect(addon.eval('return __click("Swing timer") and VanguardDB.profiles.Default.SwingTimer.show'), "the switch is on the page").toBe("always");
 });
 
 // TEST-ONLY threat and pet: threat on the target and your pet's mood.
@@ -353,7 +353,7 @@ const EXTRAS_ENV = `
 it("threat on your target and your pet's happiness", () => {
   const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + CLICK_LUA);
   // The threat text above the target frame: its text and color.
-  const threat = () => addon.eval("local UX = ns.GetModule('UnitExtras') return { UX.threat:GetText(), UX.threat.__textColor, select(2, UX.threat:GetPoint()) == ForeverUI_target }");
+  const threat = () => addon.eval("local UX = ns.GetModule('UnitExtras') return { UX.threat:GetText(), UX.threat.__textColor, select(2, UX.threat:GetPoint()) == Vanguard_target }");
   expect(threat(), "under aggro, your share shows above the target frame in the secondary color").toEqual(["42%", tok(addon, "text2"), true]);
   addon.eval("__threatInfo = { true, 3, 100 }");
   addon.fire("UNIT_THREAT_SITUATION_UPDATE", "player");
@@ -379,8 +379,8 @@ it("threat on your target and your pet's happiness", () => {
   expect(addon.eval("return ns.GetModule('UnitExtras').Happiness()"), "a client without moods has none").toBe(null);
   addon.slash("");
   addon.eval('__click("Unit frames")');
-  expect(addon.eval('return __click("Your threat on your target") and ForeverUIDB.profiles.Default.UnitExtras.threat'), "the threat switch is on the page").toBe(false);
-  expect(addon.eval('return __click("happiness") and ForeverUIDB.profiles.Default.UnitExtras.happiness'), "and the pet's").toBe(false);
+  expect(addon.eval('return __click("Your threat on your target") and VanguardDB.profiles.Default.UnitExtras.threat'), "the threat switch is on the page").toBe(false);
+  expect(addon.eval('return __click("happiness") and VanguardDB.profiles.Default.UnitExtras.happiness'), "and the pet's").toBe(false);
 });
 
 it("unit events: combo points, the druid's mana, power ticks and threat ask the client for your own units only", () => {
@@ -408,7 +408,7 @@ it("threat and happiness only where the client and settings allow", () => {
   const built = (env, saved) => loggedIn(UNITS_ENV + env, saved ? { savedVariables: saved } : undefined)
     .eval("local UX = ns.GetModule('UnitExtras') return { UX.threat ~= nil, UX.happy ~= nil }");
   expect(built("UnitThreatSituation = nil UnitDetailedThreatSituation = nil C_PetInfo = nil GetPetHappiness = nil"), "a client without either builds neither").toEqual([false, false]);
-  expect(built(EXTRAS_ENV, "ForeverUIDB.profiles = { Default = { UnitExtras = { threat = false, happiness = false } } }"), "both can be switched off").toEqual([false, false]);
-  expect(built(EXTRAS_ENV, "ForeverUIDB.profiles = { Default = { modules = { UnitFrames = false } } }"), "no unit frames, nothing to add to").toEqual([false, false]);
+  expect(built(EXTRAS_ENV, "VanguardDB.profiles = { Default = { UnitExtras = { threat = false, happiness = false } } }"), "both can be switched off").toEqual([false, false]);
+  expect(built(EXTRAS_ENV, "VanguardDB.profiles = { Default = { modules = { UnitFrames = false } } }"), "no unit frames, nothing to add to").toEqual([false, false]);
   expect(loggedIn(UNITS_ENV + EXTRAS_ENV).eval("return ns.GetModule('UnitExtras').Threat ~= nil"), "the module loads").toBe(true);
 });

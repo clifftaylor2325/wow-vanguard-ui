@@ -238,7 +238,7 @@ end
 -- The shared menu frame, built once: a raised panel above everything.
 local function menuFrame()
   if menu then return menu end
-  menu = T.Panel(CreateFrame("Frame", "ForeverUI_Menu", UIParent), { raised = true, shadow = true })
+  menu = T.Panel(CreateFrame("Frame", "Vanguard_Menu", UIParent), { raised = true, shadow = true })
   menu:SetFrameStrata("FULLSCREEN_DIALOG")
   menu:EnableMouse(true)
   menu:SetClampedToScreen(true)

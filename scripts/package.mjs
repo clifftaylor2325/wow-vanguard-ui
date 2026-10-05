@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Build the release zip: dist/ForeverUI-<version>.zip holding a
-// ForeverUI/ folder with the TOC, every file it loads, Media/ (art, fonts
+// Build the release zip: dist/Vanguard-<version>.zip holding a
+// Vanguard/ folder with the TOC, every file it loads, Media/ (art, fonts
 // and the font license), the shared libraries' licenses in Libs/ and LICENSE.
 //
 //   node scripts/package.mjs [--ref HEAD] [--out dist]
@@ -15,7 +15,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 // No npm dependencies: packaging runs without npm ci.
-const ADDON = "ForeverUI";
+const ADDON = "Vanguard";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 // The value after --name, or the fallback.

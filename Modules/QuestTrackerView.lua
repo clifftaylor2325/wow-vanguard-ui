@@ -72,7 +72,7 @@ end
 
 -- A spot of its own, when the menu strip hasn't made one.
 local function ownSpot()
-  local spot = CreateFrame("Frame", "ForeverUI_QuestTracker", UIParent)
+  local spot = CreateFrame("Frame", "Vanguard_QuestTracker", UIParent)
   spot:SetSize(QT.W, QT.H)
   ns.Mover(spot, "questtracker", "Quest tracker", { "TOPRIGHT", "TOPRIGHT", -12, -276 })
   return spot
@@ -80,7 +80,7 @@ end
 
 -- Builds the tracker over its spot.
 function QT.Build(spot)
-  local f = CreateFrame("Frame", "ForeverUI_QuestTrackerFrame", spot or ownSpot())
+  local f = CreateFrame("Frame", "Vanguard_QuestTrackerFrame", spot or ownSpot())
   f:SetAllPoints()
   addHeader(f)
   addToggle(f)
@@ -210,9 +210,9 @@ end
 
 -- One frame of a button: the range check, a few times a second.
 local function rangeTick(b, dt)
-  b.fuiWait = (b.fuiWait or 0) - dt
-  if b.fuiWait > 0 then return end
-  b.fuiWait = QT.RANGE_EVERY
+  b.vgWait = (b.vgWait or 0) - dt
+  if b.vgWait > 0 then return end
+  b.vgWait = QT.RANGE_EVERY
   QT.UpdateRange(b)
 end
 
@@ -229,7 +229,7 @@ end
 -- UIParent, not in the tracker, so the tracker can hide in combat without touching it.
 local function itemButton(i)
   if QT.items[i] then return QT.items[i] end
-  local b = T.Button(CreateFrame("Button", "ForeverUI_QuestItem" .. i, UIParent, "SecureActionButtonTemplate"))
+  local b = T.Button(CreateFrame("Button", "Vanguard_QuestItem" .. i, UIParent, "SecureActionButtonTemplate"))
   b:SetSize(QT.ITEM, QT.ITEM)
   b:RegisterForClicks("AnyUp", "AnyDown")
   b.icon = T.Crop(b:CreateTexture(nil, "ARTWORK"))

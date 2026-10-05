@@ -1,6 +1,6 @@
-# Testing ForeverUI without the game
+# Testing Vanguard without the game
 
-`npm test` runs the addon's real Lua (every file `ForeverUI.toc` loads) inside a
+`npm test` runs the addon's real Lua (every file `Vanguard.toc` loads) inside a
 headless WoW client written for the tests: a Lua 5.1-faithful VM (fengari with
 5.1 shims), the frame API with real layout, a world model behind the game API,
 and input. Each `scripts/tests/<area>.test.mjs` file is one area of the addon
@@ -29,10 +29,10 @@ import { loggedIn } from "./helpers.mjs";
 it("targeting a hostile shows the target frame", () => {
   const addon = loggedIn();                                      // the addon, logged in on a finished-setup account
   addon.world.setUnit("target", { name: "Defias Pillager", hp: 640, maxhp: 800, reaction: 2 });
-  expect(addon.frame("ForeverUI_target.health")).toMatchObject({ visible: true, value: 640, max: 800 });
+  expect(addon.frame("Vanguard_target.health")).toMatchObject({ visible: true, value: 640, max: 800 });
   expect(addon.texts("Defias Pillager").length).toBe(1);
   addon.world.removeUnit("target");
-  expect(addon.frame("ForeverUI_target").visible).toBe(false);
+  expect(addon.frame("Vanguard_target").visible).toBe(false);
 });
 ```
 
@@ -89,10 +89,10 @@ is fine when no call covers a case.
 | `type(ref, text)`, `enter(ref)` | An edit box's text (OnTextChanged), and Enter in it (OnEnterPressed). |
 | `keys({ shift: true })` | Modifier keys held (`IsShiftKeyDown()`...). |
 | `mouse(x, y)` | The cursor at screen pixels (`GetCursorPosition`). |
-| `slash("unlock")`, `chat()` | A `/fui` command, and the chat lines the addon printed. |
+| `slash("unlock")`, `chat()` | A `/vg` command, and the chat lines the addon printed. |
 | `fire(event, ...)`, `update(dt)`, `advance(seconds)` | A raw event, one OnUpdate, or the clock forward (timers and OnUpdates run). |
 
-A frame `ref` is a global name with optional fields (`"ForeverUI_player.health"`),
+A frame `ref` is a global name with optional fields (`"Vanguard_player.health"`),
 a `ns` path (`"ns.GetModule('Minimap').frame"`) or a widget id from a snapshot.
 
 ### Inspecting

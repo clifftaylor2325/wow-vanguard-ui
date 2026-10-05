@@ -1,7 +1,7 @@
 -- First-run setup: a four-step wizard (layout, screen, look, move things). It
--- opens once per account (ForeverUIDB.setupDone), never in combat (it waits for
+-- opens once per account (VanguardDB.setupDone), never in combat (it waits for
 -- combat to end, and steps aside if a fight starts while it is open), and
--- /fui setup opens it again. With the defaults, Next, Next, Next, Done finishes it.
+-- /vg setup opens it again. With the defaults, Next, Next, Next, Done finishes it.
 
 local ADDON, ns = ...
 
@@ -74,7 +74,7 @@ local function place(key, p)
   if key == "raid" then ns.GetModule("RaidFrames").Fit() end
 end
 
--- Puts everything a preset moves back at ForeverUI's defaults, so picking
+-- Puts everything a preset moves back at Vanguard's defaults, so picking
 -- Damage and tanking undoes Healing and Like the game's.
 local function restoreDefaults()
   for key in pairs(S.CLASSIC) do
@@ -94,7 +94,7 @@ end
 
 -- What each layout changes.
 local APPLY = {
-  -- Damage and tanking: ForeverUI's defaults.
+  -- Damage and tanking: Vanguard's defaults.
   damage = restoreDefaults,
   -- Healing: party and raid centered above your frames, click casting on.
   healing = function()
@@ -155,7 +155,7 @@ function S.ScreenPreset(key)
 end
 
 -- Sets the game's UI scale (clamped to its own slider's range), out of combat: the client's
--- uiScale and useUiScale settings, as its Graphics options set them. ForeverUI's
+-- uiScale and useUiScale settings, as its Graphics options set them. Vanguard's
 -- pixel-perfect scale is switched off, since it would replace this one.
 function ns.SetUIScale(scale)
   local set = (C_CVar and C_CVar.SetCVar) or _G.SetCVar
@@ -287,7 +287,7 @@ end
 
 -- Step 1: a button per layout, then the chosen one's hint.
 local function layoutPage(page)
-  choicePage(page, "How do you mostly play? You can change it all later in /fui.", S.LAYOUTS, "layout")
+  choicePage(page, "How do you mostly play? You can change it all later in /vg.", S.LAYOUTS, "layout")
 end
 
 -- The screen choices: each preset (the one for this screen marked), then Keep.
@@ -303,7 +303,7 @@ end
 
 -- Step 2: a button per screen preset and Keep, then the chosen one's hint.
 local function screenPage(page)
-  choicePage(page, "Sizes for your screen. You can change them later in /fui.", screenChoices(), "screen")
+  choicePage(page, "Sizes for your screen. You can change them later in /vg.", screenChoices(), "screen")
 end
 
 -- A style tile's health bar, three quarters full, one pixel inside the border, with your name over it.
@@ -362,7 +362,7 @@ end
 -- Step 4: how to move frames (they are unlocked while this step shows).
 local function movePage(page)
   local lines = { "Your frames are unlocked: drag a handle to move that frame.",
-    "Click a handle, then the arrow keys nudge it (Shift: 10 px).", "Done locks them. /fui unlock moves them any time." }
+    "Click a handle, then the arrow keys nudge it (Shift: 10 px).", "Done locks them. /vg unlock moves them any time." }
   for i, line in ipairs(lines) do
     text(page, "label", i == 1 and "text" or "text2", line):SetPoint("TOPLEFT", 0, -(i - 1) * 22)
   end
@@ -370,7 +370,7 @@ end
 
 -- The title, the step caption under it, and your faction's crest left of the close button.
 local function addTitle(f)
-  f.title = text(f, "title", "text", "Set up ForeverUI")
+  f.title = text(f, "title", "text", "Set up Vanguard")
   f.title:SetPoint("TOPLEFT", PAD, -14)
   f.caption = text(f, "small", "accent", "")
   f.caption:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -4)
@@ -380,7 +380,7 @@ end
 
 -- The window: a floating panel with a title and the step caption.
 local function window()
-  local f = T.Panel(CreateFrame("Frame", "ForeverUI_Setup", UIParent), { alpha = 0.98, shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_Setup", UIParent), { alpha = 0.98, shadow = true })
   f:SetSize(WIDTH, HEIGHT)
   f:SetPoint("CENTER")
   f:SetFrameStrata("DIALOG")
@@ -412,7 +412,7 @@ end
 local function finished()
   if state.paused then return end
   if ns.Unlocked() then ns.Lock() end
-  ForeverUIDB.setupDone = true
+  VanguardDB.setupDone = true
   local why = reloadReason()
   if why then ns.OfferReload(why) end
   state.reload, state.retile = false, false
@@ -437,7 +437,7 @@ local function build()
   controls(f)
   addPages(f)
   f:SetScript("OnHide", finished)
-  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "ForeverUI_Setup") end
+  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_Setup") end
   return f
 end
 
@@ -511,5 +511,5 @@ ns.On("PLAYER_REGEN_ENABLED", resume)
 
 -- The first login on this account opens setup (after the modules have built).
 ns.On("PLAYER_LOGIN", function()
-  if not ForeverUIDB.setupDone then S.Open() end
+  if not VanguardDB.setupDone then S.Open() end
 end)

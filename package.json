@@ -1,8 +1,8 @@
 {
-  "name": "wow-forever-ui",
+  "name": "vanguard",
   "private": true,
   "type": "module",
-  "description": "ForeverUI: a from-scratch UI suite for WoW Forever.",
+  "description": "Vanguard: a from-scratch UI suite for WoW Forever.",
   "scripts": {
     "test": "vitest run",
     "verify": "npm test && npm run quality",

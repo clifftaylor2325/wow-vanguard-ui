@@ -52,7 +52,7 @@ it("missing lines print as ranges", () => {
 });
 
 it("a missing hits file fails", () => {
-  const file = path.join(os.tmpdir(), `fui-hits-missing-${process.pid}.json`);
+  const file = path.join(os.tmpdir(), `vg-hits-missing-${process.pid}.json`);
   fs.rmSync(file, { force: true });
   expect(() => loadHits(file)).toThrow(/Lua coverage hits file is missing/);
 });

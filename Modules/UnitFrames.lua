@@ -81,7 +81,7 @@ function UF.HealthColor(unit)
   return c[1], c[2], c[3]
 end
 
--- Power types with a ForeverUI color; others use the client's PowerBarColor.
+-- Power types with a Vanguard color; others use the client's PowerBarColor.
 local POWER_TOKENS = { MANA = "mana", RAGE = "rage", ENERGY = "energy", FOCUS = "focus" }
 
 -- r, g, b for a unit's power bar (mana, rage, energy...).
@@ -198,7 +198,7 @@ local function addLevel(f)
   f.name:SetPoint("LEFT", f.level, "RIGHT", 4, 0)
 end
 
--- A small diamond (the ForeverUI mark) over the top-right corner: elite, rare or boss.
+-- A small diamond (the Vanguard mark) over the top-right corner: elite, rare or boss.
 local function addClassMark(f)
   f.class = T.Snap(f.health:CreateTexture(nil, "OVERLAY"))
   f.class:SetTexture(T.Texture("LogoLeft"))
@@ -219,7 +219,7 @@ end
 
 -- Creates one unit frame (a secure unit button) with its bars and texts.
 local function createUnitFrame(key, unit, w, h, settings)
-  local f = CreateFrame("Button", "ForeverUI_" .. key, UIParent, "SecureUnitButtonTemplate")
+  local f = CreateFrame("Button", "Vanguard_" .. key, UIParent, "SecureUnitButtonTemplate")
   f.unit, f.key = unit, key
   f:SetSize(w, h)
   makeSecure(f, unit)
@@ -330,8 +330,8 @@ end
 -- than at the last look (a secret answer counts as a change); notes what it saw.
 local function identityChanged(f)
   local guid, name, level = UnitGUID(f.unit), UnitName(f.unit), UnitLevel(f.unit)
-  local seen = f.fuiSeen or {}
-  f.fuiSeen = seen
+  local seen = f.vgSeen or {}
+  f.vgSeen = seen
   if isSecret(guid) or isSecret(name) or isSecret(level) then seen[1] = nil return true end
   local changed = seen[1] == nil or seen[1] ~= guid or seen[2] ~= name or seen[3] ~= level
   seen[1], seen[2], seen[3] = guid, name, level
@@ -457,8 +457,8 @@ end
 -- Shared with modules that replace other game frames (PlayerAuras).
 UF.HideBlizzard = hideBlizzard
 
--- Hides the game's frames ForeverUI replaces, the boss holder and buttons too when
--- ForeverUI draws bosses. Runs from build, so out of combat, with no Show hook.
+-- Hides the game's frames Vanguard replaces, the boss holder and buttons too when
+-- Vanguard draws bosses. Runs from build, so out of combat, with no Show hook.
 local function hideReplaced(settings)
   for _, name in ipairs(BLIZZARD_FRAMES) do hideBlizzard(name) end
   if not settings.boss then return end

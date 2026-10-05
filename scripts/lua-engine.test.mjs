@@ -8,7 +8,7 @@ import { createAddon } from "./lib/lua-harness.mjs";
 
 // A logged-in addon on a finished-setup account.
 const loggedIn = () => {
-  const addon = createAddon({ savedVariables: "ForeverUIDB = { version = 1, profiles = {}, setupDone = true }" });
+  const addon = createAddon({ savedVariables: "VanguardDB = { version = 1, profiles = {}, setupDone = true }" });
   addon.login();
   return addon;
 };
@@ -117,15 +117,15 @@ it("input: clicks, hover, the wheel and keys reach the frame's scripts", () => {
 it("inspectors: a frame's snapshot, text search and the top-level screen", () => {
   const addon = loggedIn();
   addon.world.setUnit("target", { name: "TEST-ONLY Pillager", hp: 640, maxhp: 800, reaction: 2 });
-  const target = addon.frame("ForeverUI_target");
+  const target = addon.frame("Vanguard_target");
   expect(target).toMatchObject({ kind: "Button", visible: true, attributes: { unit: "target" } });
   expect(target.rect.width).toBeGreaterThan(0);
-  expect(addon.frame("ForeverUI_target.health")).toMatchObject({ kind: "StatusBar", value: 640, max: 800 });
+  expect(addon.frame("Vanguard_target.health")).toMatchObject({ kind: "StatusBar", value: 640, max: 800 });
   expect(addon.texts("TEST-ONLY Pillager").length, "the name is drawn once").toBe(1);
   expect(addon.find("Pillager").kind).toBe("FontString");
   expect(addon.frame("TESTONLY_Nope")).toBe(null);
   const screen = addon.screen();
-  expect(screen.map((f) => f.name)).toContain("ForeverUI_player");
+  expect(screen.map((f) => f.name)).toContain("Vanguard_player");
   for (const f of screen) {
     expect(f.rect.left >= 0 && f.rect.bottom >= 0 && f.rect.right <= 1920 && f.rect.top <= 1080, `${f.name} stays on screen`).toBe(true);
   }

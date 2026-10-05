@@ -1,4 +1,4 @@
-// visibility: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// visibility: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 // Core/Visibility.lua: visibility settings compiled to macro-conditional state drivers,
 // on the action bars, the info strip, the data bars and the menu strip.
 
@@ -28,16 +28,16 @@ it("a visibility setting compiles to one macro-conditional state; the old four m
 });
 
 // Bar n's secure visibility driver, state driver, state, alpha and mouse.
-const bar = (addon, n = 2) => addon.eval(`local b = ForeverUI_Bar${n}
-  return { driver = b.__states.visibility, state = b.__states.fuivis, now = b.fuiState, alpha = b:GetAlpha(), mouse = b.__mouse == true }`);
+const bar = (addon, n = 2) => addon.eval(`local b = Vanguard_Bar${n}
+  return { driver = b.__states.visibility, state = b.__states.vgvis, now = b.vgState, alpha = b:GetAlpha(), mouse = b.__mouse == true }`);
 
 // The visibility settings of bar n as saved.
-const saved = (addon, n = 2) => addon.eval(`local b = ForeverUIDB.profiles.Default.ActionBars.bars[${n}] return { b.visibility or "none", b.showWhen or {} }`);
+const saved = (addon, n = 2) => addon.eval(`local b = VanguardDB.profiles.Default.ActionBars.bars[${n}] return { b.visibility or "none", b.showWhen or {} }`);
 
 // TEST-ONLY: clicks the chip `label` on bar n's checklist row (the options window open on the action bar page).
 const chip = (addon, n, label) => addon.eval(`
   for _, w in ipairs(__wfgStub.frames) do
-    if w.chips and w.acc.tbl() == ForeverUIDB.profiles.Default.ActionBars.bars[${n}] then
+    if w.chips and w.acc.tbl() == VanguardDB.profiles.Default.ActionBars.bars[${n}] then
       for _, s in ipairs(w.chips) do if s.text:GetText() == "${label}" then s:GetScript("OnClick")(s) end end
       local lit = {} for _, s in ipairs(w.chips) do if s.fill:IsShown() then lit[#lit + 1] = s.text:GetText() end end
       return table.concat(lit, ",")
@@ -59,19 +59,19 @@ it("action bars: the checklist row in the options sets a bar's conditions, and t
     return rows[2].dropdown.text:GetText()`), "bar 2's Visibility row says so").toBe("In combat");
   chip(addon, 2, "Mouseover");
   expect(bar(addon), "In combat or on mouseover: always shown, faded out of combat").toMatchObject({ driver: "show", state: "[combat] show; fade", now: "fade", alpha: 0, mouse: true });
-  addon.eval('ForeverUI_Bar2:SetAttribute("state-fuivis", "show")');
+  addon.eval('Vanguard_Bar2:SetAttribute("state-vgvis", "show")');
   expect(bar(addon).alpha, "the client says combat started: the bar shows").toBe(1);
-  addon.eval('ForeverUI_Bar2:SetAttribute("state-fuivis", "fade")');
+  addon.eval('Vanguard_Bar2:SetAttribute("state-vgvis", "fade")');
   expect(bar(addon).alpha, "combat ended: faded again").toBe(0);
-  addon.eval("local b = ForeverUI_Bar2Button1 b:GetScript('OnEnter')(b)");
+  addon.eval("local b = Vanguard_Bar2Button1 b:GetScript('OnEnter')(b)");
   expect(bar(addon).alpha, "until the mouse is over it").toBe(1);
-  addon.eval('ForeverUI_Bar2:SetAttribute("TEST-ONLY-other", 1)');
+  addon.eval('Vanguard_Bar2:SetAttribute("TEST-ONLY-other", 1)');
   expect(bar(addon).now, "other attributes leave the state alone").toBe("fade");
 });
 
 it("action bars: a bar shown on a checklist shows while you drag a spell, and follows instances on zone changes", () => {
   const addon = loggedIn(ACTIONS_ENV + "IsInInstance = function() return __inside == true, 'none' end",
-    { savedVariables: 'ForeverUIDB.profiles.Default = { ActionBars = { bars = { [2] = { enabled = true, buttons = 12, perRow = 12, visibility = "custom", showWhen = { instance = true, raid = true } } } } }' });
+    { savedVariables: 'VanguardDB.profiles.Default = { ActionBars = { bars = { [2] = { enabled = true, buttons = 12, perRow = 12, visibility = "custom", showWhen = { instance = true, raid = true } } } } }' });
   expect(bar(addon).driver, "outside an instance: in a raid only").toBe("[group:raid] show; hide");
   addon.fire("ACTIONBAR_SHOWGRID");
   expect(bar(addon).driver, "picking up a spell shows it").toBe("show");
@@ -91,13 +91,13 @@ it("action bars: a bar shown on a checklist shows while you drag a spell, and fo
 
 it("the state the client reports at registration comes from its own parser when it has one", () => {
   const addon = loggedIn(ACTIONS_ENV + '__parsed = {} SecureCmdOptionParse = function(s) __parsed[s] = true return "show" end',
-    { savedVariables: 'ForeverUIDB.profiles.Default = { ActionBars = { bars = { [2] = { enabled = true, buttons = 12, perRow = 12, visibility = "combat" } } } }' });
+    { savedVariables: 'VanguardDB.profiles.Default = { ActionBars = { bars = { [2] = { enabled = true, buttons = 12, perRow = 12, visibility = "combat" } } } }' });
   expect([bar(addon).now, addon.eval('return __parsed["[combat] show; hide"]')], "the client's answer for the bar's state").toEqual(["show", true]);
 });
 
 // The info strip's state, shown flag, alpha and mouse motion.
-const strip = (addon) => addon.eval(`local f = ForeverUI_InfoStrip
-  return { state = f.__states.fuivis, shown = f:IsShown(), alpha = f:GetAlpha(), motion = f.__mouseMotion == true, click = f.__mouseClick }`);
+const strip = (addon) => addon.eval(`local f = Vanguard_InfoStrip
+  return { state = f.__states.vgvis, shown = f:IsShown(), alpha = f:GetAlpha(), motion = f.__mouseMotion == true, click = f.__mouseClick }`);
 
 // TEST-ONLY: runs the setter of the row `label` on the "more" options page with a Lua value.
 const setRow = (addon, label, lua) => addon.eval(`
@@ -111,11 +111,11 @@ it("info strip: Always by default; in combat, on mouseover or hidden from its op
   expect(strip(addon), "shown always, nothing watching the mouse").toMatchObject({ state: "show", shown: true, alpha: 1, motion: false });
   expect(setRow(addon, "Strip visibility", '"combat"'), "the strip's Visibility row").toBe(true);
   expect(strip(addon), "In combat: hidden out of combat").toMatchObject({ state: "[combat] show; hide", shown: false });
-  addon.eval('ForeverUI_InfoStrip:SetAttribute("state-fuivis", "show")');
+  addon.eval('Vanguard_InfoStrip:SetAttribute("state-vgvis", "show")');
   expect(strip(addon).shown, "shown when the client says combat started").toBe(true);
   setRow(addon, "Strip visibility", '"mouseover"');
   expect(strip(addon), "On mouseover: faded, feeling the mouse but not its clicks").toMatchObject({ shown: true, alpha: 0, motion: true, click: false });
-  addon.hover("ForeverUI_InfoStrip");
+  addon.hover("Vanguard_InfoStrip");
   expect(strip(addon).alpha, "the mouse over it shows it").toBe(1);
   addon.hover(null);
   expect(strip(addon).alpha, "and leaving fades it").toBe(0);
@@ -128,39 +128,39 @@ it("info strip: Always by default; in combat, on mouseover or hidden from its op
 });
 
 it("data bars: one visibility for both; a hidden bar stays hidden at max level", () => {
-  const addon = loggedIn(DATA_ENV, { savedVariables: 'ForeverUIDB.profiles.Default = { DataBars = { visibility = "custom", showWhen = { resting = true } } }' });
+  const addon = loggedIn(DATA_ENV, { savedVariables: 'VanguardDB.profiles.Default = { DataBars = { visibility = "custom", showWhen = { resting = true } } }' });
   // Both bars shown, and their state.
-  const shown = () => addon.eval("return { ForeverUI_xpbar:IsShown(), ForeverUI_repbar:IsShown(), ForeverUI_xpbar.__states.fuivis }");
+  const shown = () => addon.eval("return { Vanguard_xpbar:IsShown(), Vanguard_repbar:IsShown(), Vanguard_xpbar.__states.vgvis }");
   expect(shown(), "only while resting").toEqual([false, false, "[resting] show; hide"]);
-  addon.eval('ForeverUI_xpbar:SetAttribute("state-fuivis", "show") ForeverUI_repbar:SetAttribute("state-fuivis", "show")');
+  addon.eval('Vanguard_xpbar:SetAttribute("state-vgvis", "show") Vanguard_repbar:SetAttribute("state-vgvis", "show")');
   expect(shown().slice(0, 2), "resting: both show").toEqual([true, true]);
   addon.eval("__maxLevel = true");
   addon.fire("PLAYER_XP_UPDATE");
   expect(shown()[0], "the XP bar still hides at max level").toBe(false);
   setRow(addon, "XP and reputation bars", '"always"');
   expect(shown(), "Always, from the options").toEqual([false, true, "show"]);
-  const repOnly = loggedIn(DATA_ENV, { savedVariables: 'ForeverUIDB.profiles.Default = { DataBars = { xp = false, visibility = "hidden" } }' });
-  expect(repOnly.eval("return { ForeverUI_xpbar == nil, ForeverUI_repbar:IsShown() }"), "with the XP bar off, the reputation bar still gets its setting").toEqual([true, false]);
+  const repOnly = loggedIn(DATA_ENV, { savedVariables: 'VanguardDB.profiles.Default = { DataBars = { xp = false, visibility = "hidden" } }' });
+  expect(repOnly.eval("return { Vanguard_xpbar == nil, Vanguard_repbar:IsShown() }"), "with the XP bar off, the reputation bar still gets its setting").toEqual([true, false]);
 });
 
 it("menu strip: its Always/On mouseover setting is the visibility setting; In combat drives the strip securely", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV);
   // The menu strip's secure driver, alpha and mouse motion.
-  const menu = () => addon.eval("local s = ForeverUI_MenuStrip return { s.__states.visibility, s:GetAlpha(), s.__mouseMotion == true }");
+  const menu = () => addon.eval("local s = Vanguard_MenuStrip return { s.__states.visibility, s:GetAlpha(), s.__mouseMotion == true }");
   expect(menu(), "Always by default").toEqual(["show", 1, false]);
   expect(setRow(addon, "Bags and game menu", '"combat"'), "the row applies at once").toBe(true);
   expect(menu(), "In combat: the client shows and hides it").toEqual(["[combat] show; hide", 1, false]);
   setRow(addon, "Bags and game menu", '"mouseover"');
   expect(menu(), "On mouseover, now without a reload").toEqual(["show", 0, true]);
-  expect(addon.eval("return ForeverUIDB.profiles.Default.MenuStrip.menu"), "saved where it always was").toBe("mouseover");
+  expect(addon.eval("return VanguardDB.profiles.Default.MenuStrip.menu"), "saved where it always was").toBe("mouseover");
 });
 
 it("menu bar: Auto-hide shows it at login and under the mouse, and fades it 10 s after the mouse leaves", () => {
-  const autohide = { savedVariables: 'ForeverUIDB.profiles.Default = { MenuStrip = { menu = "autohide" } }' };
+  const autohide = { savedVariables: 'VanguardDB.profiles.Default = { MenuStrip = { menu = "autohide" } }' };
   const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, autohide);
   // The bar's alpha.
-  const alpha = () => addon.eval("return ForeverUI_MenuStrip:GetAlpha()");
-  expect([alpha(), addon.eval("return ForeverUI_MenuStrip.__states.visibility")], "shown at login; its secure driver always shows (it fades by alpha)").toEqual([1, "show"]);
+  const alpha = () => addon.eval("return Vanguard_MenuStrip:GetAlpha()");
+  expect([alpha(), addon.eval("return Vanguard_MenuStrip.__states.visibility")], "shown at login; its secure driver always shows (it fades by alpha)").toEqual([1, "show"]);
   addon.advance(9.5);
   expect(alpha(), "still shown at 9.5 s (the test clock moves in quarter seconds)").toBe(1);
   addon.advance(0.5);
@@ -187,7 +187,7 @@ it("menu bar: Auto-hide shows it at login and under the mouse, and fades it 10 s
   addon.advance(10.1);
   expect(alpha(), "and faded 10 s later").toBe(0);
   const noTimer = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + "C_Timer = nil", autohide);
-  expect(noTimer.eval("return ForeverUI_MenuStrip:GetAlpha()"), "a client without timers: it fades as On mouseover does").toBe(0);
+  expect(noTimer.eval("return Vanguard_MenuStrip:GetAlpha()"), "a client without timers: it fades as On mouseover does").toBe(0);
 });
 
 it("ns.AutoHide fades a frame out after its time, and a later call restarts the wait", () => {

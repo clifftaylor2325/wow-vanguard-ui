@@ -39,7 +39,7 @@ local function missing(frame)
 end
 
 -- Makes a probe container and puts it away; an error names the first method
--- it lacks (level 0: the message alone, for /fui errors).
+-- it lacks (level 0: the message alone, for /vg errors).
 local function makeProbe()
   local probe = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
   local lack = missing(probe)
@@ -54,7 +54,7 @@ function E.Available()
   if probed ~= nil then return probed end
   if ns.InCombat() then return false end
   if C_AddOns and type(C_AddOns.LoadAddOn) == "function" then pcall(C_AddOns.LoadAddOn, "Blizzard_AuraContainer") end
-  probed = (ns.Try("aura containers (using ForeverUI's own icons)", makeProbe))
+  probed = (ns.Try("aura containers (using Vanguard's own icons)", makeProbe))
   ns.Client.has.auraContainer = probed
   return probed
 end
@@ -191,7 +191,7 @@ Container.__index = Container
 local function fill(frame, spec, unit)
   layout(frame, spec)
   -- A filter token this client doesn't know is refused: that group is left out, not the rest.
-  for i, def in ipairs(spec.groups) do ns.Try("aura filter " .. def.filter, frame.AddAuraGroup, frame, "fui" .. i, def.filter, groupOptions(spec, def)) end
+  for i, def in ipairs(spec.groups) do ns.Try("aura filter " .. def.filter, frame.AddAuraGroup, frame, "vg" .. i, def.filter, groupOptions(spec, def)) end
   local c = setmetatable({ frame = frame }, Container)
   c:SetUnit(unit)
   return c
@@ -208,8 +208,8 @@ local function retire(frame, parent, spec, unit)
   return ns.AuraLegacy.Create(parent, spec, unit)
 end
 
--- The /fui errors label of a refused container; the probe's own is different, so the two read apart.
-local REFUSED = "aura container (switching to ForeverUI's own icons)"
+-- The /vg errors label of a refused container; the probe's own is different, so the two read apart.
+local REFUSED = "aura container (switching to Vanguard's own icons)"
 
 -- An engine container at spec.point with the spec's groups, showing `unit`'s
 -- auras; one the client refuses is built by the fallback instead (see retire).

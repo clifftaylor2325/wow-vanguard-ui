@@ -153,18 +153,18 @@ it("an event's sale and the mail about it are one record, the mail's figures sta
 
 it("the ledger is kept per realm and faction, capped, and old records go at login", () => {
   const old = 1790000000 - 91 * 86400;
-  const saved = `ForeverUIDB.ah = { ledgers = {
+  const saved = `VanguardDB.ah = { ledgers = {
     ["ForeverTest-Alliance"] = { records = { { kind = "sold", id = 9999, name = "TEST-ONLY Blade", qty = 1, amount = 100, t = ${old} },
       { kind = "sold", id = 9999, name = "TEST-ONLY Blade", qty = 1, amount = 200, t = 1790000000 - 86400 }, "TEST-ONLY broken" },
       open = { [1] = { t = 1790000000 - 4 * 86400 }, [2] = { t = 1790000000 - 3600 }, [3] = "TEST-ONLY broken" } },
     ["ForeverTest-Horde"] = { records = { { kind = "sold", qty = 1, amount = 1, t = ${old} } }, open = {} },
     ["Elsewhere-Horde"] = "TEST-ONLY broken", ["Other-Horde"] = { records = {} } } }`;
   const addon = loggedIn(ENV, { savedVariables: saved });
-  expect(addon.eval(`local out = {} for k, b in pairs(ForeverUIDB.ah.ledgers) do local n = 0 for _ in pairs(b.open) do n = n + 1 end out[#out + 1] = k .. ":" .. #b.records .. ":" .. n end table.sort(out) return out`),
+  expect(addon.eval(`local out = {} for k, b in pairs(VanguardDB.ah.ledgers) do local n = 0 for _ in pairs(b.open) do n = n + 1 end out[#out + 1] = k .. ":" .. #b.records .. ":" .. n end table.sort(out) return out`),
     "older than 90 days, an auction seen up 4 days ago and anything broken go; a house left empty is forgotten").toEqual(["ForeverTest-Alliance:1:1"]);
   addon.eval("__wfgWorld.units.player.faction = 'Horde'");
   addon.eval("ns.AuctionLedger.Note({ kind = 'cancelled', id = 9999, name = 'TEST-ONLY Blade', qty = 1, auction = 7, t = __now })");
-  expect([records(addon).length, addon.eval("return #ForeverUIDB.ah.ledgers['ForeverTest-Alliance'].records")], "the Horde's own ledger").toEqual([1, 1]);
+  expect([records(addon).length, addon.eval("return #VanguardDB.ah.ledgers['ForeverTest-Alliance'].records")], "the Horde's own ledger").toEqual([1, 1]);
   addon.eval("ns.AuctionLedger.MAX = 3 for i = 1, 5 do ns.AuctionLedger.Note({ kind = 'cancelled', id = 9999, qty = 1, auction = 100 + i, t = __now + i }) end");
   expect(records(addon).map((r) => r[5]), "past the cap the oldest go").toEqual([103, 104, 105]);
   addon.eval("ns.AuctionPrices.Store().houses = {}");
@@ -230,7 +230,7 @@ it("the history's toggle sits on the card's heading line, and the history in the
 });
 
 it("the info strip's auction sales: this session's, off until switched on, from the options", () => {
-  const before = `ForeverUIDB.ah = { ledgers = { ["ForeverTest-Alliance"] = { records = { { kind = "sold", id = 9999, qty = 1, amount = 70000, auction = 1, t = 1790000000 - 600 } }, open = {} } } }`;
+  const before = `VanguardDB.ah = { ledgers = { ["ForeverTest-Alliance"] = { records = { { kind = "sold", id = 9999, qty = 1, amount = 70000, auction = 1, t = 1790000000 - 600 } }, open = {} } } }`;
   const addon = atAuctionHouse(CLICK_LUA, { savedVariables: before });
   // The strip's auction sales block: [shown, text].
   const block = () => addon.eval("local fs = ns.GetModule('InfoStrip').texts.ahgold return { fs:IsShown(), fs:GetText() or false }");
@@ -242,13 +242,13 @@ it("the info strip's auction sales: this session's, off until switched on, from 
   expect(isTok(addon, addon.frame("ns.GetModule('InfoStrip').texts.ahgold").textColor, "gold"), "in gold").toBe(true);
   addon.eval(`ns.AuctionLedger.Note({ kind = "sold", id = 9999, qty = 1, amount = 125000, auction = 3, t = __now })
     ns.AuctionLedger.Note({ kind = "expired", id = 9999, qty = 1, auction = 4, t = __now })`);
-  expect([block()[1], addon.eval("return ForeverUI_InfoStrip:GetHeight()")], "a new sale counts at once, on the fourth row; an expiry adds nothing").toEqual(["AH +12g 90s", 68]);
+  expect([block()[1], addon.eval("return Vanguard_InfoStrip:GetHeight()")], "a new sale counts at once, on the fourth row; an expiry adds nothing").toEqual(["AH +12g 90s", 68]);
   addon.eval("ns.AuctionLedger.Book().records = {} ns.GetModule('InfoStrip').Paint('ahgold')");
   expect(block()[0], "no sales: hidden").toBe(false);
 });
 
 it("with the auction helper off, nothing is noted and the strip shows nothing", () => {
-  const addon = loggedIn(ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { AuctionHelper = false }, InfoStrip = { ahgold = true } } }" });
+  const addon = loggedIn(ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { AuctionHelper = false }, InfoStrip = { ahgold = true } } }" });
   addon.eval(`__wfgWorld.mail = { ${invoice("Linen Cloth", 2000, 20)} }`);
   addon.world.openMailbox();
   expect([addon.eval("return ns.AuctionLedger.SessionSales()"), addon.eval("return ns.GetModule('InfoStrip').texts.ahgold:IsShown()")], "no ledger, no block").toEqual([0, false]);

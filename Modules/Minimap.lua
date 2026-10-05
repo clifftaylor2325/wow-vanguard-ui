@@ -46,7 +46,7 @@ local FADE = {
 }
 
 -- Addons that place icons around the minimap (LibDBIcon and others) ask
--- this global for its shape; ForeverUI's minimap is square.
+-- this global for its shape; Vanguard's minimap is square.
 function GetMinimapShape()
   return "SQUARE"
 end
@@ -187,7 +187,7 @@ end
 
 -- The themed holder the minimap moves into.
 local function createHolder(size)
-  local holder = CreateFrame("Frame", "ForeverUI_Minimap", UIParent)
+  local holder = CreateFrame("Frame", "Vanguard_Minimap", UIParent)
   holder:SetSize(size + 2, size + 2)
   T.HudPanel(holder)
   ns.Mover(holder, "minimap", "Minimap", { "TOPRIGHT", "TOPRIGHT", -12, -12 })

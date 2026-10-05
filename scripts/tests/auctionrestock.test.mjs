@@ -43,7 +43,7 @@ function mage({ closed = false, extra = "", savedVariables } = {}) {
 
 // The Restock list's entries as [term, want].
 const restock = (addon) => {
-  const out = addon.eval(`local out = {} for i, e in ipairs(ForeverUIDB.ah.lists.Restock or {}) do out[i] = { e.term, e.want } end return out`);
+  const out = addon.eval(`local out = {} for i, e in ipairs(VanguardDB.ah.lists.Restock or {}) do out[i] = { e.term, e.want } end return out`);
   return Array.isArray(out) ? out : [];
 };
 
@@ -75,7 +75,7 @@ it("the Restock list holds what Instance prep and Keep stocked are short of, wit
   expect(addon.eval(`return ${PREP}.card.buy:IsShown()`), "the prep card offers Buy list").toBe(true);
   addon.click(`${PREP}.card.buy`);
   expect(restock(addon), "8 more runes, 20 powder (the portals are packed), 7 cloth and 2 blades").toEqual([[17031, 8], [17020, 20], [2589, 7], [9999, 2]]);
-  expect(addon.eval("return ForeverUIDB.ah.list"), "and it's the list in use").toBe("Restock");
+  expect(addon.eval("return VanguardDB.ah.list"), "and it's the list in use").toBe("Restock");
   expect(chatHas(addon, /Shopping list Restock: TEST-ONLY Rune of Teleportation x8, TEST-ONLY Arcane Powder x20, Linen Cloth x7, TEST-ONLY Blade x2\./), "chat says what's on it").toBe(true);
   expect(chatHas(addon, /At the auction house, Search list on the Shop card shows what the cheapest of each come to\./), "and where to search it").toBe(true);
   expect(addon.eval("return #__wfgWorld.ah.queries"), "nothing searched away from the auction house").toBe(0);
@@ -86,25 +86,25 @@ it("the Restock list holds what Instance prep and Keep stocked are short of, wit
   addon.slash("prep");
   expect(addon.eval(`return ${PREP}.card.buy:IsShown()`), "nothing to buy: no Buy list").toBe(false);
   addon.slash("ah restock");
-  expect(chatHas(addon, /Nothing to restock: your class's reagents and your Keep-stocked items \(\/fui stock\) are all in your bags\./), "says so").toBe(true);
+  expect(chatHas(addon, /Nothing to restock: your class's reagents and your Keep-stocked items \(\/vg stock\) are all in your bags\./), "says so").toBe(true);
   expect(restock(addon).length, "the old list stays").toBe(4);
 });
 
 it("the prep card's Buy list waits for the Auction helper, and an ammo row is no item to buy", () => {
-  const off = loggedIn(RESTOCK_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { AuctionHelper = false } } }" });
+  const off = loggedIn(RESTOCK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { AuctionHelper = false } } }" });
   off.world.setUnit("player", { class: "MAGE", level: 60 });
   off.slash("prep");
-  expect([off.frame("ForeverUI_PrepCard").visible, off.eval(`return ${PREP}.card.buy:IsShown()`)], "runes short, but the helper is off").toEqual([true, false]);
+  expect([off.frame("Vanguard_PrepCard").visible, off.eval(`return ${PREP}.card.buy:IsShown()`)], "runes short, but the helper is off").toEqual([true, false]);
   const hunter = loggedIn(RESTOCK_ENV + "GetInventoryItemCount = function() return 120 end");
   hunter.world.setUnit("player", { class: "HUNTER", level: 60 });
   hunter.slash("prep");
   expect([hunter.texts("Ammo").length, hunter.eval(`return ${PREP}.card.buy:IsShown()`)], "ammo is short, but it's no one item").toEqual([1, false]);
-  const noPrep = loggedIn(RESTOCK_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { InstancePrep = false } } }" });
+  const noPrep = loggedIn(RESTOCK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { InstancePrep = false } } }" });
   noPrep.world.setUnit("player", { class: "MAGE", level: 60 });
   noPrep.slash("stock 2589 4");
   noPrep.slash("ah restock");
   expect(restock(noPrep), "Instance prep off: Keep stocked alone").toEqual([[2589, 4]]);
-  noPrep.eval("for i = 1, 20 do ForeverUIDB.ah.lists['TEST-ONLY ' .. i] = {} end ForeverUIDB.ah.lists.Restock = nil");
+  noPrep.eval("for i = 1, 20 do VanguardDB.ah.lists['TEST-ONLY ' .. i] = {} end VanguardDB.ah.lists.Restock = nil");
   noPrep.slash("ah restock");
   expect([restock(noPrep), chatHas(noPrep, /at most 20 shopping lists/)], "no room for the list: nothing made").toEqual([[], true]);
 });
@@ -140,7 +140,7 @@ it("fewer up than wanted shows in the warning colour; an item's listings are bou
     __wfgWorld.ah.items[9999] = { { buyoutAmount = 3000, quantity = 3 }, { buyoutAmount = 500, quantity = 1, containsOwnerItem = true },
       { buyoutAmount = 1200, quantity = 1, containsOwnerItem = __wfgWorld.secret(false) }, { minBid = 10, quantity = 1 }, { buyoutAmount = 4000, quantity = 1 } }` });
   addon.eval(`${HELPER}.MakeRestock()`);
-  addon.eval(`ForeverUIDB.ah.lists.Restock = { ForeverUIDB.ah.lists.Restock[3], ForeverUIDB.ah.lists.Restock[4] } ${HELPER}.SearchList()`);
+  addon.eval(`VanguardDB.ah.lists.Restock = { VanguardDB.ah.lists.Restock[3], VanguardDB.ah.lists.Restock[4] } ${HELPER}.SearchList()`);
   browse(addon, 2589);
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
   addon.advance(1);
@@ -155,12 +155,12 @@ it("fewer up than wanted shows in the warning colour; an item's listings are bou
 it("a max price leaves dearer listings out; filters stay when the list is made again and when they're saved", () => {
   const addon = mage({ extra: POWDER });
   addon.eval(`${HELPER}.MakeRestock() ${HELPER}.EditFilters("Restock", 2)`);
-  addon.type("ForeverUI_AuctionFilters.price", "11s");
-  addon.click("ForeverUI_AuctionFilters.save");
-  expect(addon.eval("local e = ForeverUIDB.ah.lists.Restock[2] return { e.term, e.want, e.maxPrice }"), "saving filters keeps the wanted amount").toEqual([17020, 20, 1100]);
+  addon.type("Vanguard_AuctionFilters.price", "11s");
+  addon.click("Vanguard_AuctionFilters.save");
+  expect(addon.eval("local e = VanguardDB.ah.lists.Restock[2] return { e.term, e.want, e.maxPrice }"), "saving filters keeps the wanted amount").toEqual([17020, 20, 1100]);
   addon.eval("__carry(17020, 5)");
   addon.slash("ah restock");
-  expect(addon.eval("local e = ForeverUIDB.ah.lists.Restock[2] return { e.term, e.want, e.maxPrice }"), "made again: the new amount, the filter kept").toEqual([17020, 15, 1100]);
+  expect(addon.eval("local e = VanguardDB.ah.lists.Restock[2] return { e.term, e.want, e.maxPrice }"), "made again: the new amount, the filter kept").toEqual([17020, 15, 1100]);
   browse(addon, 17031);
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 17031);
   addon.advance(1);
