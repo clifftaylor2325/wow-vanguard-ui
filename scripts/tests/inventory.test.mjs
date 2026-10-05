@@ -89,3 +89,15 @@ it("inventory: /vg inventory lists, forgets one, or forgets them all", () => {
   addon.slash("inventory");
   expect(chatHas(addon, /No characters remembered here yet\./), "then nobody is listed").toBe(true);
 });
+
+it("inventory: a client that can't say your name or read bags stores nothing and breaks nothing", () => {
+  const addon = loggedIn("C_Container = { GetContainerNumFreeSlots = function() return 0 end }");
+  expect([mine(addon).bags, addon.eval("return #ns.errors")], "no bags read, no error").toEqual([{}, 0]);
+  const nameless = addon.eval(`local IV, real = ns.GetModule("Inventory"), UnitName
+    UnitName = function() return nil end
+    local record, before = IV.Mine(), 0
+    UnitName = real
+    for _ in pairs(IV.Characters()) do before = before + 1 end
+    return { kept = before, bags = record.bags }`);
+  expect(nameless, "no name: a record kept nowhere").toEqual({ kept: 1, bags: {} });
+});
