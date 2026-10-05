@@ -123,9 +123,9 @@ Every feature is a module made with `ns.Module(name, { defaults = ... })`, with 
 
 ### F6 LibDataBroker readouts on the info strip (`work/f6-broker`) — size M
 
-- [ ] **F6.1 [DECIDE] Bundle LibDataBroker-1.1.** It's a tiny public-domain library like the ones in `Libs/`; the owner approves bundling it unmodified (same as LibSharedMedia in WORKPLAN P3.5). Add it to `Libs/`, the TOC, the README credits.
-- [ ] **F6.2 Host feeds.** `Modules/InfoStrip.lua` gets an optional fifth row of broker feeds: options list every data source registered with LibDataBroker (type `data source`) with a checkbox each; a chosen feed shows its icon and `text`, updates on the library's attribute-changed callback, shows its `OnTooltipShow`/`OnEnter` tooltip on hover and passes `OnClick`. Launchers (type `launcher`) stay in the minimap drawer.
-- [ ] **F6.3 Tests.** A fake feed appears, updates, and disappears when unchecked; nothing breaks without the library.
+- [x] **F6.1 [DECIDE] Bundle LibDataBroker-1.1.** It's a tiny public-domain library like the ones in `Libs/`; the owner approves bundling it unmodified (same as LibSharedMedia in WORKPLAN P3.5). Add it to `Libs/`, the TOC, the README credits.
+- [x] **F6.2 Host feeds.** `Modules/InfoStrip.lua` gets an optional fifth row of broker feeds: options list every data source registered with LibDataBroker (type `data source`) with a checkbox each; a chosen feed shows its icon and `text`, updates on the library's attribute-changed callback, shows its `OnTooltipShow`/`OnEnter` tooltip on hover and passes `OnClick`. Launchers (type `launcher`) stay in the minimap drawer.
+- [x] **F6.3 Tests.** A fake feed appears, updates, and disappears when unchecked; nothing breaks without the library.
 
 ### F7 Faster auto-loot (`work/f7-loot`) — size S
 
