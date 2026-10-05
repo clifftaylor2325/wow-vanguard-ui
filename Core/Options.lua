@@ -420,7 +420,7 @@ local function windowRows()
   }
 end
 
--- The auction helper: its panel, tooltip prices, the sell card's undercut, length and vendor floor, the scan button and checking your auctions again.
+-- The auction helper: its panel, tooltip prices, the sell card's undercut, length and vendor floor, the scan button, checking your auctions again and disenchant values.
 local function auctionRows()
   return {
     { "header", "Auction house" },
@@ -431,6 +431,7 @@ local function auctionRows()
     check("Never post under vendor price", setting("AuctionHelper", "vendorFloor")),
     check("Scan button (one scan every 15 minutes)", setting("AuctionHelper", "scanButton")),
     check("Check your auctions for undercuts again after each post and cancel", setting("AuctionHelper", "recheck")),
+    check("Disenchant values in tooltips (on for enchanters until you choose)", ns.AuctionPrices.DisenchantSetting()),
   }
 end
 

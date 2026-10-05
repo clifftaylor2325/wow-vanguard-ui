@@ -2,7 +2,7 @@
 // (Modules/AuctionPrices.lua), at the TEST-ONLY auction house of the headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY: a wall clock (a test moves __now), the tooltip data API the Tooltips module
 // hooks, and a way to show an item's tooltip (the client's own price shown, so only the added
@@ -1520,4 +1520,53 @@ it("a sell search and an owned check record the price; a scan keeps the units an
   expect([stored(owned, 10940), stored(owned, 9999)], "the owned check: 120 (your 150 left out), and the blade's 5000").toEqual([[120, 120, false, false], [5000, 5000, false, false]]);
   owned.eval("ns.AuctionPrices.RecordSeen(10940, __wfgWorld.secret(1)) ns.AuctionPrices.RecordSeen(10940, 0) ns.AuctionPrices.RecordSeen(10940, nil)");
   expect(stored(owned, 10940), "a hidden, zero or missing price records nothing").toEqual([120, 120, false, false]);
+});
+
+// Disenchant values ----------------------------------------------------------------------------
+
+// TEST-ONLY gear (item level 18 unless said): green armour and a green weapon, a blue at 60, an
+// epic at 58, and what doesn't disenchant: a green trade good, white armour, green armour at 3,
+// green armour whose quality the client hides.
+const GEAR = `
+  local function gear(id, classID, quality, level) __wfgWorld.items[id] = { name = "TEST-ONLY Gear " .. id, classID = classID, quality = quality, level = level } end
+  gear(9101, 4, 2, 18) gear(9102, 2, 2, 18) gear(9103, 4, 3, 60) gear(9104, 2, 4, 58)
+  gear(9105, 7, 2, 18) gear(9106, 4, 1, 18) gear(9107, 4, 2, 3) gear(9108, 4, __wfgWorld.secret(2), 18)`;
+// Strange Dust's market is 1s, Greater Magic Essence has a low of 10s only, a Large Brilliant Shard
+// went for 3g; the greens' shard and Nexus Crystals have no price.
+const MATS = "ns.AuctionPrices.Record(10940, 80, __now, 10, 100) ns.AuctionPrices.Record(10939, 1000, __now) ns.AuctionPrices.Record(14344, 30000, __now)";
+// TEST-ONLY professions: Tailoring, and Enchanting second.
+const ENCHANTER = "__wfgWorld.professions = { { name = 'Tailoring', skillLine = 197, profession = 7 }, { name = 'Enchanting', skillLine = 333, profession = 9 } }";
+
+// The tooltip lines of item `id`, as text.
+const tipOf = (addon, id) => list(addon.eval(`local out = {} for i, l in ipairs(__showItem("item:${id}")) do out[i] = l[1] end return out`));
+
+it("disenchant values: chance x average quantity x each material's market (else its low), for gear only", () => {
+  const addon = loggedIn(AH_ENV + GEAR);
+  addon.eval(MATS);
+  expect(addon.eval("return { ns.AuctionPrices.Disenchant('item:9101'), ns.AuctionPrices.Disenchant(9102) }"), "armour: 75 % of 2.5 dust at 1s, 20 % of 1.5 essence at 10s; a weapon the other way round").toEqual([487, 1175]);
+  expect([tipOf(addon, 9101), addon.eval("return ns.AuctionPrices.HasEnchanting()")], "not an enchanter: no line by default").toEqual([[], false]);
+  addon.eval(ENCHANTER);
+  const [line] = addon.eval('return __showItem("item:9101")');
+  expect([line[0], isTok(addon, line[1], "text2")], "an enchanter (the second profession) sees it, in text2").toEqual(["Disenchant: ~4s 87c", true]);
+  expect([tipOf(addon, 9102), tipOf(addon, 9103)], "the weapon; the blue's shard (99.5 %) in gold and silver").toEqual([["Disenchant: ~11s 75c"], ["Disenchant: ~2g 98s"]]);
+  const none = [9104, 9105, 9106, 9107, 9108, 4242].map((id) => tipOf(addon, id).length);
+  expect([none, addon.eval("return #ns.errors")], "unpriced crystals, a trade good, white, too low, a hidden quality, unknown: no line").toEqual([[0, 0, 0, 0, 0, 0], 0]);
+  addon.eval("ns.AuctionPrices.Record(9101, 5000, __now)");
+  expect(tipOf(addon, 9101), "under the auction price").toEqual(["AH: 50s 0c (today)", "Disenchant: ~4s 87c"]);
+});
+
+it("disenchant values: the switch is on for enchanters until set, in the Auction house options", () => {
+  const addon = loggedIn(AH_ENV + GEAR + CLICK_LUA);
+  addon.eval(MATS);
+  expect(addon.eval("local get, set, default = ns.AuctionPrices.DisenchantSetting() return { get(), default }"), "off for a non-enchanter").toEqual([false, false]);
+  addon.eval('ns.Options.Show("more")');
+  addon.eval('__click("Disenchant values in tooltips")');
+  expect([addon.eval("return ns.Settings('AuctionHelper').disenchant"), tipOf(addon, 9101)], "ticked: on without Enchanting").toEqual([true, ["Disenchant: ~4s 87c"]]);
+  addon.eval(ENCHANTER);
+  addon.eval("local _, set = ns.AuctionPrices.DisenchantSetting() set(false)");
+  expect(tipOf(addon, 9101), "unticked: off even for an enchanter").toEqual([]);
+  addon.eval("ns.Settings('AuctionHelper').disenchant = nil");
+  expect([tipOf(addon, 9101), addon.eval("return select(3, ns.AuctionPrices.DisenchantSetting())")], "not set: follows Enchanting again").toEqual([["Disenchant: ~4s 87c"], true]);
+  addon.eval("C_TradeSkillUI = nil");
+  expect(addon.eval("return ns.AuctionPrices.HasEnchanting()"), "a client that can't say: not an enchanter").toBe(false);
 });

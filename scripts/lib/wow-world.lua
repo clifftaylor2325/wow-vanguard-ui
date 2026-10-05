@@ -1486,6 +1486,36 @@ function world.postFromBag(bag, slot)
   AuctionHouseFrame:SetPostItem(ItemLocation:CreateFromBagAndSlot(bag, slot))
 end
 
+-- Professions -------------------------------------------------------------------------------------
+-- world.professions = { { name, skillLine, profession (an Enum.Profession), rank, maxRank }, ... }:
+-- your two primary professions, as GetProfessions gives them (prof1, prof2; first aid, fishing and
+-- cooking aren't modelled), with GetProfessionInfo's returns and C_TradeSkillUI's ProfessionInfo for a
+-- skill line, as Blizzard_ProfessionsBook/Camelot/Blizzard_ProfessionsBook.lua reads them
+-- (ProfessionConstantsDocumentation.lua, TradeSkillUIDocumentation.lua).
+
+Enum.Profession = { FirstAid = 0, Blacksmithing = 1, Leatherworking = 2, Alchemy = 3, Herbalism = 4, Cooking = 5, Mining = 6,
+  Tailoring = 7, Engineering = 8, Enchanting = 9, Fishing = 10, Skinning = 11, Jewelcrafting = 12, Inscription = 13, Archaeology = 14 }
+world.professions = {}
+
+-- prof1, prof2 (indices into world.professions; nil for none), then first aid, fishing and cooking (nil).
+function GetProfessions()
+  return world.professions[1] and 1 or nil, world.professions[2] and 2 or nil
+end
+-- name, texture, rank, maxRank, numSpells, spellOffset, skillLine of a profession index.
+function GetProfessionInfo(index)
+  local p = world.professions[index]
+  if not p then return nil end
+  return p.name, p.icon, p.rank or 1, p.maxRank or 75, 1, 0, p.skillLine
+end
+C_TradeSkillUI = C_TradeSkillUI or {}
+-- A skill line's ProfessionInfo: its profession when it is one of yours, else none named.
+function C_TradeSkillUI.GetProfessionInfoBySkillLineID(skillLine)
+  for _, p in ipairs(world.professions) do
+    if p.skillLine == skillLine then return { profession = p.profession, professionID = skillLine, professionName = p.name, skillLevel = p.rank or 1, maxSkillLevel = p.maxRank or 75 } end
+  end
+  return { professionID = skillLine, professionName = "", skillLevel = 0, maxSkillLevel = 0 }
+end
+
 -- Chat and the game's frames ----------------------------------------------------------------------
 
 world.chatFilters = {}
@@ -1588,5 +1618,6 @@ function world.reset()
   world.actions, world.quests, world.npc, world.merchant, world.trainer = {}, {}, nil, nil, nil
   world.cursor, world.timers, world.book = nil, {}, {}
   world.ah = emptyAuctionHouse()
+  world.professions = {}
   refreshWatches()
 end

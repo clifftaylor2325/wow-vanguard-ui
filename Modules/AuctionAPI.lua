@@ -83,6 +83,26 @@ function API.GetVendorPriceByItemLink(callerID, itemLink)
   return vendorPrice(itemLink)
 end
 
+-- What disenchanting an item is worth on average (AP.Disenchant), or nil; none before the saved
+-- variables are loaded.
+local function disenchantPrice(item)
+  return type(ForeverUIDB) == "table" and AP.Disenchant(item) or nil
+end
+
+-- What disenchanting an item is worth on average by its ID, in copper: each material's chance x
+-- average quantity x its market value (else its cheapest price) here; nil for an item that
+-- doesn't disenchant (weapons and armour, green or better) or whose materials were never priced.
+function API.GetDisenchantPriceByItemID(callerID, itemID)
+  check("GetDisenchantPriceByItemID", callerID, "itemID", itemID, "number")
+  return disenchantPrice(itemID)
+end
+
+-- The disenchant value of an item by its link (see GetDisenchantPriceByItemID).
+function API.GetDisenchantPriceByItemLink(callerID, itemLink)
+  check("GetDisenchantPriceByItemLink", callerID, "itemLink", itemLink, "string")
+  return disenchantPrice(itemLink)
+end
+
 -- callback() runs (with no arguments) on the frame after prices are recorded: once after a whole
 -- scan, and after each search that saw a price. One that fails is reported by ForeverUI (/fui
 -- errors) and doesn't stop the others.
