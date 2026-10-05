@@ -86,6 +86,7 @@ it("waypoints: /way is left to another addon, /vg way always works, and the swit
 
 it("waypoints: the world map shows your coordinates and the cursor's, ten times a second", () => {
   const addon = loggedIn(MAP_ENV + WORLD_MAP_ENV);
+  // The coordinates line's text.
   const line = () => addon.eval("return Vanguard_MapCoords and ns.GetModule('Waypoints').mapLine:GetText()");
   addon.update(0.2);
   expect(line(), "you and the cursor").toBe("You 45.7, 12.3     Cursor 40.0, 52.5");
