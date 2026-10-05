@@ -104,15 +104,72 @@ local function hasMethod(w, key)
   return rawget(w, "__backdrop_mixin") == true and API.backdrop[key] == true
 end
 
+-- What a key resolves to on a widget: the stub method, a no-op, or false for nil.
+local function resolve(w, key)
+  if type(key) ~= "string" or key:sub(1, 2) == "__" or not hasMethod(w, key) then
+    return false
+  end
+  return methods[key] or noop
+end
+
+-- Resolved keys per widget kind (and per kind with the backdrop mixin), so
+-- a method call looks a name up once per kind, not on every call.
+local resolved, resolvedBackdrop = {}, {}
+local function cacheFor(w)
+  local store = rawget(w, "__backdrop_mixin") == true and resolvedBackdrop or resolved
+  local cache = store[w.__kind]
+  if not cache then
+    cache = {}
+    store[w.__kind] = cache
+  end
+  return cache
+end
+
+-- A method added later (the layout and world files add theirs) empties the caches.
+setmetatable(methods, { __newindex = function(t, key, fn) rawset(t, key, fn) resolved, resolvedBackdrop = {}, {} end })
+
 local widgetMeta = {
   -- Resolves a method name to the stub method, a no-op, or nil.
   __index = function(w, key)
-    if type(key) ~= "string" or key:sub(1, 2) == "__" or not hasMethod(w, key) then
-      return nil
+    local cache = cacheFor(w)
+    local found = cache[key]
+    if found == nil then
+      found = resolve(w, key)
+      cache[key] = found
     end
-    return methods[key] or noop
+    return found or nil
   end,
 }
+
+-- Each widget's regions and child frames, kept in creation order, so
+-- GetRegions and GetChildren need not scan every widget there is.
+local childrenOf = setmetatable({}, { __mode = "k" })
+local function byId(a, b) return a.__id < b.__id end
+local function attach(parent, w)
+  if not parent then return end
+  local list = childrenOf[parent]
+  if not list then
+    list = {}
+    childrenOf[parent] = list
+  end
+  list[#list + 1] = w
+  if #list > 1 and list[#list - 1].__id > w.__id then table.sort(list, byId) end
+end
+local function detach(parent, w)
+  local list = parent and childrenOf[parent]
+  if not list then return end
+  for i, c in ipairs(list) do
+    if c == w then table.remove(list, i) return end
+  end
+end
+
+-- The widgets in a set, in creation order.
+local function inOrder(set)
+  local out = {}
+  for w in pairs(set) do out[#out + 1] = w end
+  table.sort(out, byId)
+  return out
+end
 
 -- The internal state of a fresh widget.
 local function widgetState(kind, name, parent, template, layer)
@@ -127,6 +184,7 @@ local function newWidget(kind, name, parent, template, layer)
   local w = setmetatable(widgetState(kind, name, parent, template, layer), widgetMeta)
   stub.frames[#stub.frames + 1] = w
   w.__id = #stub.frames
+  attach(parent, w)
   if name then
     _G[name] = w
   end
@@ -314,6 +372,7 @@ function methods:HookScript(name, fn)
     if old then old(...) end
     return fn(...)
   end
+  if name == "OnUpdate" then stub.updaters[self] = true end
 end
 
 -- Fonts on font strings, edit boxes and chat frames: recorded and read back.
@@ -338,8 +397,8 @@ function methods:SetWordWrap(on) self.__noWrap = not on end
 -- A frame's regions: its textures and font strings, in creation order.
 function methods:GetRegions()
   local out = {}
-  for _, w in ipairs(stub.frames) do
-    if w.__parent == self and (w.__kind == "Texture" or w.__kind == "FontString") then out[#out + 1] = w end
+  for _, w in ipairs(childrenOf[self] or out) do
+    if w.__kind == "Texture" or w.__kind == "FontString" then out[#out + 1] = w end
   end
   return unpack(out)
 end
@@ -366,13 +425,17 @@ function methods:SetStatusBarColor(r, g, b, a) self.__barColor = { r, g, b, a or
 
 -- Registers a unit event: delivered only when its first argument is one of the units.
 function methods:RegisterUnitEvent(event, ...)
-  self.__events[event] = true
+  self:RegisterEvent(event)
   self.__unitEvents = self.__unitEvents or {}
   self.__unitEvents[event] = { ... }
 end
 
 -- Reparents a region (the preview and tests read __parent).
-function methods:SetParent(parent) self.__parent = parent end
+function methods:SetParent(parent)
+  detach(self.__parent, self)
+  self.__parent = parent
+  attach(parent, self)
+end
 
 -- Strata and scroll child.
 function methods:SetFrameStrata(s) self.__strata = s end
@@ -448,13 +511,36 @@ function methods:SetScript(name, fn)
     error(self.__kind .. " doesn't have a \"" .. tostring(name) .. "\" script", 2)
   end
   self.__scripts[name] = fn
+  if name == "OnUpdate" then stub.updaters[self] = fn and true or nil end
 end
 
 -- Scripts, events, text, rotation, attributes and identity: recorded and read back.
 function methods:GetScript(name) return self.__scripts[name] end
-function methods:RegisterEvent(event) self.__events[event] = true end
-function methods:UnregisterEvent(event) self.__events[event] = nil end
-function methods:UnregisterAllEvents() self.__events = {}; self.__unitEvents = nil end
+-- The frames registered for each event, so firing one visits only them.
+stub.listeners = {}
+-- The frames with an OnUpdate script, so a frame tick visits only them.
+stub.updaters = {}
+local function listen(frame, event, on)
+  local set = stub.listeners[event]
+  if not set then
+    set = {}
+    stub.listeners[event] = set
+  end
+  set[frame] = on or nil
+end
+function methods:RegisterEvent(event)
+  self.__events[event] = true
+  listen(self, event, true)
+end
+function methods:UnregisterEvent(event)
+  self.__events[event] = nil
+  listen(self, event, false)
+end
+function methods:UnregisterAllEvents()
+  for event in pairs(self.__events) do listen(self, event, false) end
+  self.__events = {}
+  self.__unitEvents = nil
+end
 function methods:IsEventRegistered(event) return self.__events[event] == true end
 function methods:SetText(text) self.__text = text end
 function methods:GetText() return self.__text end
@@ -477,8 +563,8 @@ function methods:GetParent() return self.__parent end
 -- The frames parented to this one (not its textures or font strings), as the client returns them.
 function methods:GetChildren()
   local out = {}
-  for _, w in ipairs(stub.frames) do
-    if w.__parent == self and w.__kind ~= "Texture" and w.__kind ~= "FontString" then out[#out + 1] = w end
+  for _, w in ipairs(childrenOf[self] or out) do
+    if w.__kind ~= "Texture" and w.__kind ~= "FontString" then out[#out + 1] = w end
   end
   return unpack(out)
 end
@@ -663,9 +749,9 @@ local function wants(frame, event, unit)
   return false
 end
 
--- Fires an event at every frame registered for it.
+-- Fires an event at every frame registered for it, in creation order.
 function stub.fire(event, ...)
-  for _, frame in ipairs(stub.frames) do
+  for _, frame in ipairs(inOrder(stub.listeners[event] or {})) do
     local onEvent = frame.__scripts.OnEvent
     if onEvent and wants(frame, event, ...) then
       onEvent(frame, event, ...)
@@ -673,10 +759,10 @@ function stub.fire(event, ...)
   end
 end
 
--- Moves the clock by `elapsed` and runs one OnUpdate on each shown frame.
+-- Moves the clock by `elapsed` and runs one OnUpdate on each shown frame, in creation order.
 function stub.update(elapsed)
   stub.now = stub.now + elapsed
-  for _, frame in ipairs(stub.frames) do
+  for _, frame in ipairs(inOrder(stub.updaters)) do
     local onUpdate = frame.__scripts.OnUpdate
     if frame.__shown and onUpdate then
       onUpdate(frame, elapsed)
