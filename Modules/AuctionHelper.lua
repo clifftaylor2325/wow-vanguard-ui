@@ -24,7 +24,8 @@
 -- holds the panel and its build order, the search queue and its throttle,
 -- event routing, the scan, the slash commands and Enable;
 -- Modules/AuctionShop.lua the Shop card, Modules/AuctionSell.lua the Sell
--- card and Modules/AuctionOwned.lua your auctions.
+-- card and Modules/AuctionOwned.lua your auctions. Modules/AuctionLedger.lua
+-- adds the sales ledger and the sell card's Your history.
 --
 -- The game's auction house is the modern one (C_AuctionHouse) on WoW Forever.
 -- Nothing here touches the game's auction frames: the panel only anchors to
@@ -413,6 +414,7 @@ local function listen()
   -- The sell card again when the game is ready for a post, or a stack left the bags.
   for _, e in ipairs({ "AUCTION_HOUSE_THROTTLED_SYSTEM_READY", "BAG_UPDATE_DELAYED" }) do on(e, function() AH.PaintSell() end) end
   AH.ListenOwned(on)
+  AH.ListenLedger(on)
 end
 
 -- Module entry point (Core/Modules.lua): prices in tooltips, and the panel at the auction house.

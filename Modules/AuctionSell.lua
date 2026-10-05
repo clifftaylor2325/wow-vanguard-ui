@@ -520,6 +520,7 @@ function AH.PaintSell()
   paintListings(c, s)
   paintPriceLine(c, s)
   enable(c.post, AH.PostPrice(s) ~= nil)
+  AH.PaintHistory(c, s)
 end
 
 -- The sell card's lines: a label on the left of the space beside the slot, its value on the right.
@@ -655,7 +656,7 @@ local function listingRows(c)
   c.list:SetScript("OnMouseWheel", scrollListings)
 end
 
--- The listings' headers and rows.
+-- The listings' headers and rows, and Your history in their place (Modules/AuctionLedger.lua).
 local function listings(c)
   listingRows(c)
   listHeader(c.listHead, "Up now, each", "LEFT", 10)
@@ -666,6 +667,7 @@ local function listings(c)
     c.listings[i] = AH.Row(c.list, i, -14, function(r) AH.ClickListing(r) end)
     listingParts(c.listings[i])
   end
+  AH.BuildHistory(c)
 end
 
 -- The sell card: the slot, its lines, the undercut rule, the form, the length, the posting line

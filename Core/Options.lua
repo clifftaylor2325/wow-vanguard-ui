@@ -541,6 +541,11 @@ local function fightRows()
   }
 end
 
+-- The info strip's auction sales (the sales ledger, Modules/AuctionLedger.lua): off until switched on.
+local function ledgerRows()
+  return { check("Your auction sales this session", stripSetting("ahgold")) }
+end
+
 -- The info strip under the minimap: one switch per block, then Fight history.
 local function stripRows()
   local stripVisibility, stripWhen = visibilityRows("Strip visibility", "InfoStrip", "visibility", "showWhen")
@@ -552,7 +557,7 @@ local function stripRows()
     check("Soul shards (warlocks)", stripSetting("shards")), check("XP per hour this session", stripSetting("xprate")),
     check("Time to the next level", stripSetting("leveltime")), check("Gold per hour this session", stripSetting("goldrate")),
     check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")), check("Your place in the last fight's DPS, in a group", stripSetting("rank")),
-  }, fightRows())
+  }, append(ledgerRows(), fightRows()))
 end
 
 -- At a merchant, and the error line.

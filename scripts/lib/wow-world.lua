@@ -1486,6 +1486,37 @@ function world.postFromBag(bag, slot)
   AuctionHouseFrame:SetPostItem(ItemLocation:CreateFromBagAndSlot(bag, slot))
 end
 
+-- The mailbox --------------------------------------------------------------------------------------
+-- world.mail = { mail, ... }, the inbox in order: { sender, subject, money, daysLeft, itemCount,
+-- firstItemQuantity, firstItemLink, invoice = { type ("seller", "seller_temp_invoice", "buyer"),
+-- itemName, playerName, bid, buyout, deposit, consignment, count } }, read by the globals
+-- Blizzard_MailFrame/MailFrame.lua calls (GetInboxNumItems, GetInboxHeaderInfo, GetInboxInvoiceInfo);
+-- world.openMailbox() fires MAIL_SHOW and MAIL_INBOX_UPDATE (MailInfoDocumentation.lua).
+world.mail = {}
+
+-- How many mails are in the inbox, and how many there are in all.
+function GetInboxNumItems() return #world.mail, #world.mail end
+-- A mail's header: packageIcon, stationeryIcon, sender, subject, money, CODAmount, daysLeft, itemCount,
+-- wasRead, wasReturned, textCreated, canReply, isGM, firstItemQuantity, firstItemLink (nothing for none).
+function GetInboxHeaderInfo(i)
+  local m = world.mail[i]
+  if not m then return nil end
+  return nil, nil, m.sender, m.subject, m.money or 0, 0, m.daysLeft or 30, m.itemCount, false, false, false, true, false, m.firstItemQuantity, m.firstItemLink
+end
+-- An invoice's invoiceType, itemName, playerName, bid, buyout, deposit, consignment, moneyDelay, etaHour,
+-- etaMin, count, commerceAuction (nothing for a mail that isn't one).
+function GetInboxInvoiceInfo(i)
+  local v = (world.mail[i] or {}).invoice
+  if not v then return nil end
+  return v.type, v.itemName, v.playerName, v.bid, v.buyout, v.deposit, v.consignment, 0, 0, 0, v.count, false
+end
+
+-- The player opens the mailbox: MAIL_SHOW, then the inbox arrives (MAIL_INBOX_UPDATE).
+function world.openMailbox()
+  stub.fire("MAIL_SHOW")
+  stub.fire("MAIL_INBOX_UPDATE")
+end
+
 -- Professions -------------------------------------------------------------------------------------
 -- world.professions = { { name, skillLine, profession (an Enum.Profession), rank, maxRank }, ... }:
 -- your two primary professions, as GetProfessions gives them (prof1, prof2; first aid, fishing and
@@ -1619,5 +1650,6 @@ function world.reset()
   world.cursor, world.timers, world.book = nil, {}, {}
   world.ah = emptyAuctionHouse()
   world.professions = {}
+  world.mail = {}
   refreshWatches()
 end
