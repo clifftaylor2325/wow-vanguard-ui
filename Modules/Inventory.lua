@@ -82,7 +82,7 @@ end
 function IV.Scan()
   IV.pending = false
   local mine = IV.Mine()
-  mine.bags, mine.updated = countIn(IV.BAGS), ns.GetModule("AuctionPrices").Now()
+  mine.bags, mine.updated = countIn(IV.BAGS), ns.AuctionPrices.Now()
   if IV.bankOpen then mine.bank = countIn(IV.BankBags()) end
 end
 
@@ -175,7 +175,7 @@ end
 local function readLine(name)
   local record = IV.Characters()[name]
   local updated = type(record) == "table" and record.updated or 0
-  return name .. ": bags read " .. ns.GetModule("AuctionPrices").Ago(updated)
+  return name .. ": bags read " .. ns.AuctionPrices.Ago(updated)
 end
 
 -- /vg inventory: each character remembered here and when their bags were last read;
