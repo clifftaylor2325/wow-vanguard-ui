@@ -51,11 +51,17 @@ function UP.Weights()
   return out, kind
 end
 
--- The weights changed (role, a command, login): score items afresh.
+-- The weights changed (role, a command, login): items are scored afresh, with the
+-- weights read again when next needed (not on the event itself).
 function UP.Changed()
   if not UP.settings then return end
-  UP.current, UP.kind = UP.Weights()
-  UP.scores = {}
+  UP.current, UP.kind, UP.scores = nil, nil, {}
+end
+
+-- The weights in use and their kind, read now if they changed since.
+function UP.Current()
+  if not UP.current then UP.current, UP.kind = UP.Weights() end
+  return UP.current, UP.kind
 end
 
 -- Scoring ---------------------------------------------------------------------------------
@@ -72,7 +78,7 @@ end
 
 -- An item's score with the weights in use, remembered until they change.
 local function score(link)
-  if not UP.scores[link] then UP.scores[link] = UP.Score(link, UP.current) end
+  if not UP.scores[link] then UP.scores[link] = UP.Score(link, (UP.Current())) end
   return UP.scores[link]
 end
 
@@ -190,11 +196,16 @@ local function markBagSafely(frame)
   ns.Try("upgrade arrows", UP.MarkBag, frame)
 end
 
--- What you wear or your role changed: score afresh and mark the combined bag again if it's open.
+-- What you wear changed: mark the combined bag again if it's open.
 function UP.OnGearChanged()
-  UP.Changed()
   local bag = _G.ContainerFrameCombinedBags
   if bag and bag:IsShown() then UP.MarkBag(bag) end
+end
+
+-- Your group role changed: new weights, and the bag marked again.
+function UP.OnRolesChanged()
+  UP.Changed()
+  UP.OnGearChanged()
 end
 
 -- /vg weights -----------------------------------------------------------------------------
@@ -221,8 +232,16 @@ local function setWeight(stat, value)
   if not W.STATS[short] or not n then return ns.Chat("Use /vg weights set <stat> <number>; stats: " .. statNames() .. ".") end
   UP.settings.weights[UP.kind] = UP.settings.weights[UP.kind] or {}
   UP.settings.weights[UP.kind][short] = n
-  UP.Changed()
   ns.Chat(string.format("%s is worth %s for %s now.", short, n, UP.kind))
+  UP.Changed()
+end
+
+-- Puts the kind in use back to its default weights.
+local function resetWeights()
+  local kind = UP.kind
+  UP.settings.weights[kind] = nil
+  UP.Changed()
+  ns.Chat("Weights for " .. kind .. " are back to the defaults.")
 end
 
 -- Applies a pasted weights string to the kind it was made for; false and why when it can't.
@@ -249,10 +268,11 @@ end
 
 -- /vg weights [set <stat> <n>|reset|export|import].
 function UP.Command(rest)
+  UP.Current()
   local word, a, b = (rest or ""):match("^%s*(%S*)%s*(%S*)%s*(%S*)")
   word = word:lower()
   if word == "set" then return setWeight(a, b) end
-  if word == "reset" then UP.settings.weights[UP.kind] = nil UP.Changed() return ns.Chat("Weights for " .. UP.kind .. " are back to the defaults.") end
+  if word == "reset" then return resetWeights() end
   if word == "export" then return ns.ShowText("Vanguard weights (" .. UP.kind .. ")  Ctrl+C to copy", ns.Serialize.Encode("weights", { kind = UP.kind, weights = UP.current })) end
   if word == "import" then return importDialog() end
   ns.Chat(string.format("Weights for %s (role %s): %s", UP.kind, UP.Role(), weightsText(UP.current)))
@@ -267,5 +287,5 @@ function UP.Enable(settings)
   local bag = _G.ContainerFrameCombinedBags
   if bag and type(hooksecurefunc) == "function" then hooksecurefunc(bag, "UpdateItems", markBagSafely) end
   ns.On("PLAYER_EQUIPMENT_CHANGED", UP.OnGearChanged)
-  ns.On("PLAYER_ROLES_ASSIGNED", UP.OnGearChanged)
+  ns.On("PLAYER_ROLES_ASSIGNED", UP.OnRolesChanged)
 end
