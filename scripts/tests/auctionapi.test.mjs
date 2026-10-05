@@ -48,6 +48,7 @@ const sent = (addon) => {
 const listOf = (addon, name) => addon.eval(`return ForeverUIDB.ah.lists["${name}"]`);
 
 const NAMES = ["AlterShoppingListItems", "CreateShoppingList", "GetAuctionPriceByItemID", "GetAuctionPriceByItemLink",
+  "GetDisenchantPriceByItemID", "GetDisenchantPriceByItemLink",
   "GetVendorPriceByItemID", "GetVendorPriceByItemLink", "MultiSearch", "MultiSearchExact", "RegisterForDBUpdate"];
 
 it("ForeverUI.API.v1 has Auctionator's function names, and every one wants a callerID string", () => {
@@ -60,7 +61,9 @@ it("ForeverUI.API.v1 has Auctionator's function names, and every one wants a cal
   expect(addon.eval("return __call('MultiSearch', nil, {})[2]"), "no callerID").toMatch(/MultiSearch: callerID must be a string, got nil$/);
   const where = addon.eval("local ok, err = pcall(function() local p = ForeverUI.API.v1.GetAuctionPriceByItemID('TEST-ONLY Addon', '2589') return p end) return err");
   expect(where, "the error names the caller's line (not ForeverUI's), and the argument").toMatch(/^eval:\d+: ForeverUI\.API\.v1\.GetAuctionPriceByItemID: itemID must be a number, got string$/);
-  const wrong = [["GetAuctionPriceByItemLink", "2589", "itemLink must be a string, got number"], ["GetVendorPriceByItemID", "'x'", "itemID must be a number, got string"],
+  const wrong = [["GetAuctionPriceByItemLink", "2589", "itemLink must be a string, got number"],
+    ["GetDisenchantPriceByItemID", "'9101'", "itemID must be a number, got string"], ["GetDisenchantPriceByItemLink", "9101", "itemLink must be a string, got number"],
+["GetVendorPriceByItemID", "'x'", "itemID must be a number, got string"],
     ["GetVendorPriceByItemLink", "{}", "itemLink must be a string, got table"], ["RegisterForDBUpdate", "'x'", "callback must be a function, got string"],
     ["MultiSearch", "'Strange Dust'", "terms must be a table, got string"], ["MultiSearchExact", "nil", "terms must be a table, got nil"],
     ["CreateShoppingList", "5, {}", "listName must be a string, got number"], ["CreateShoppingList", "'L'", "items must be a table, got nil"],
@@ -91,6 +94,18 @@ it("vendor prices by item ID and link, from the client's item info", () => {
   expect(call(addon, "GetVendorPriceByItemID", "'TEST-ONLY Addon', 4242"), "an item the client hasn't loaded").toBe(null);
   addon.eval("__wfgWorld.items[10940].sellPrice = __wfgWorld.secret(4)");
   expect(call(addon, "GetVendorPriceByItemID", "'TEST-ONLY Addon', 10940"), "a hidden price").toBe(null);
+});
+
+it("disenchant prices by item ID and link, whether or not you know Enchanting", () => {
+  const addon = withApi(`__wfgWorld.items[9101] = { name = "TEST-ONLY Gloves", classID = 4, quality = 2, level = 18 }
+    __wfgWorld.items[9102] = { name = "TEST-ONLY Sword", classID = 2, quality = 2, level = 18 }`);
+  expect(call(addon, "GetDisenchantPriceByItemID", "'TEST-ONLY Addon', 9101"), "no material priced yet").toBe(null);
+  addon.eval("ns.AuctionPrices.Record(10940, 80, __now, 10, 100) ns.AuctionPrices.Record(10939, 1000, __now)");
+  expect(call(addon, "GetDisenchantPriceByItemID", "'TEST-ONLY Addon', 9101"), "75 % of 2.5 dust at 1s, 20 % of 1.5 essence at 10s").toBe(487);
+  expect(call(addon, "GetDisenchantPriceByItemLink", "'TEST-ONLY Addon', '|cff1eff00|Hitem:9102::::|h[TEST-ONLY Sword]|h|r'"), "a weapon by link: mostly essence").toBe(1175);
+  expect(call(addon, "GetDisenchantPriceByItemID", "'TEST-ONLY Addon', 2589"), "cloth doesn't disenchant").toBe(null);
+  addon.eval("ForeverUIDB = nil");
+  expect(call(addon, "GetDisenchantPriceByItemID", "'TEST-ONLY Addon', 9101"), "before the saved variables load: none").toBe(null);
 });
 
 it("RegisterForDBUpdate: callbacks run once on the frame after a scan, and after a search records a price", () => {

@@ -22,6 +22,8 @@ local price = api and api.GetAuctionPriceByItemID("MyAddon", 2589)
 | `GetAuctionPriceByItemLink(callerID, itemLink)` | The same, by an item link (or an `"item:2589"` string). |
 | `GetVendorPriceByItemID(callerID, itemID)` | What a merchant pays for one (0 for an item with no value), or `nil` while the game hasn't loaded the item. |
 | `GetVendorPriceByItemLink(callerID, itemLink)` | The same, by an item link. |
+| `GetDisenchantPriceByItemID(callerID, itemID)` | What disenchanting one is worth on average: for each material vanilla's disenchanting tables give for its quality and item level, chance x average quantity x the material's market value (else its cheapest price). `nil` for anything but weapons and armour of green quality or better, or when none of its materials has a price. The tables are not yet checked in game. |
+| `GetDisenchantPriceByItemLink(callerID, itemLink)` | The same, by an item link. |
 
 ## Being told about new prices
 

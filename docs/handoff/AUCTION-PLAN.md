@@ -93,7 +93,7 @@ Sizes: S under a day of lane time, M one to two, L more. Each is one commit with
 
 ### Phase D: tooltips, crafting and the API
 
-- [ ] **D1 Disenchant values** (M): vanilla's disenchant tables by item level and quality (the fixed vanilla tables, marked unverified until checked in game), priced from the database; a tooltip line and a column on the sell card.
+- [x] **D1 Disenchant values** (M): vanilla's disenchant tables by item level and quality (the fixed vanilla tables, marked unverified until checked in game), priced from the database; a tooltip line and a column on the sell card.
 - [ ] **D2 Crafting info** (M): in the profession window, reagent cost and profit from the database, and "add reagents to a shopping list" (which also joins Keep-stocked).
 - [x] **D3 An API** (S): `ForeverUI.API.v1` with `GetAuctionPriceByItemID/Link`, `GetVendorPriceByItemID/Link`, `GetDisenchantPriceByItemID/Link`, `RegisterForDBUpdate`, `MultiSearch`, `CreateShoppingList`/`AlterShoppingListItems`, mirroring Auctionator's names so addons written for it can switch with a one-line shim.
 
