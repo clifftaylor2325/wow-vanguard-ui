@@ -250,8 +250,9 @@ function lifecycle(addon) {
 //   openAuctionHouse(), closeAuctionHouse()   the auction house window and its events
 //   postFromBag(bag, slot)         a bag item clicked with the auction house open (its SetPostItem)
 //   fireAuctionEvents(key, id)     every auction house event once
+//   openMailbox()                  the mailbox opens: MAIL_SHOW, then the inbox (world.mail) arrives
 const WORLD_CALLS = ["unit", "setUnit", "removeUnit", "combat", "addAura", "removeAura", "setAction", "addQuest", "openNpc", "learn", "forgetAll",
-  "openAuctionHouse", "closeAuctionHouse", "postFromBag", "fireAuctionEvents"];
+  "openAuctionHouse", "closeAuctionHouse", "postFromBag", "fireAuctionEvents", "openMailbox"];
 
 // The world: what the game API reports, from JS.
 function worldApi(addon) {

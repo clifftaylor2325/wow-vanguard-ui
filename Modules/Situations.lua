@@ -30,7 +30,7 @@ SI.KINDS = { pvp = "pvp", arena = "pvp", party = "instance", raid = "instance" }
 -- The settings an override may hold: each module's keys that its apply functions
 -- (run once after the writes) re-read at once. Keys that need a reload are left out.
 SI.LIVE = {
-  InfoStrip = { keys = { "visibility", "showWhen", "durability", "bags", "system", "gold", "ammo", "clock", "shards", "xprate", "leveltime", "goldrate", "dps", "rank" }, apply = { "ApplyVisibility", "UpdateAll" } },
+  InfoStrip = { keys = { "visibility", "showWhen", "durability", "bags", "system", "gold", "ammo", "clock", "shards", "xprate", "leveltime", "goldrate", "dps", "rank", "ahgold" }, apply = { "ApplyVisibility", "UpdateAll" } },
   MenuStrip = { keys = { "menu", "menuWhen" }, apply = { "ApplyVisibility" } },
   DataBars = { keys = { "visibility", "showWhen" }, apply = { "ApplyVisibility" } },
   Nameplates = { keys = { "level", "threat", "targetBorder", "questMarks" }, apply = { "RefreshAll" } },
