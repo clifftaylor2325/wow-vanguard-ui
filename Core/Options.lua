@@ -420,13 +420,14 @@ local function windowRows()
   }
 end
 
--- The auction helper's scan, auction check, disenchant and crafting rows.
+-- The auction helper's scan, auction check, disenchant, crafting and deals rows.
 local function auctionScanRows()
   return {
     check("Scan button (one scan every 15 minutes)", setting("AuctionHelper", "scanButton")),
     check("Check your auctions for undercuts again after each post and cancel", setting("AuctionHelper", "recheck")),
     check("Disenchant values in tooltips (on for enchanters until you choose)", ns.AuctionPrices.DisenchantSetting()),
     check("Crafting costs and profit beside the profession window", setting("AuctionHelper", "crafting")),
+    check("Deals card: listings under the 7-day market or vendor price", liveSetting("AuctionHelper", "deals", function() ns.GetModule("AuctionHelper").PaintDeals() end)),
   }
 end
 
