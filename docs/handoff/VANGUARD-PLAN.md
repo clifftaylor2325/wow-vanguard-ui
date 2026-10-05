@@ -129,8 +129,8 @@ Every feature is a module made with `ns.Module(name, { defaults = ... })`, with 
 
 ### F7 Faster auto-loot (`work/f7-loot`) — size S
 
-- [ ] **F7.1 Loot.** In `Modules/AutoAccept.lua` or a new `Modules/Loot.lua`: on `LOOT_READY`, if the game's auto-loot setting (or its modifier key) applies, take every slot at once with `LootSlot(i)` for `i = GetNumLootItems(), 1, -1`, skipping slots that need a roll or a bind-on-pickup confirmation (leave those to the game's popups). Off by default. Check the event and functions exist in the `forever` UI source first.
-- [ ] **F7.2 Tests.** Slots taken in reverse order, nothing taken with auto-loot off, the loot window still opens for skipped slots. **[VERIFY IN GAME]**.
+- [x] **F7.1 Loot.** In `Modules/AutoAccept.lua` or a new `Modules/Loot.lua`: on `LOOT_READY`, if the game's auto-loot setting (or its modifier key) applies, take every slot at once with `LootSlot(i)` for `i = GetNumLootItems(), 1, -1`, skipping slots that need a roll or a bind-on-pickup confirmation (leave those to the game's popups). Off by default. Check the event and functions exist in the `forever` UI source first.
+- [x] **F7.2 Tests.** Slots taken in reverse order, nothing taken with auto-loot off, the loot window still opens for skipped slots. **[VERIFY IN GAME]**.
 
 ---
 
