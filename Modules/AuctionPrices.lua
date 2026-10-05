@@ -118,9 +118,24 @@ function AP.Summary(prices)
   return sorted[1], units, meanOfCheapest(sorted, prices, math.ceil(units * AP.MARKET_PCT / 100))
 end
 
+-- What hears of new prices (AP.OnChange): functions called with no arguments.
+AP.listeners = {}
+
+-- Adds fn() to the functions told that prices were recorded: once on the next frame however many
+-- were (a whole scan is one call), so other addons (ForeverUI.API.v1.RegisterForDBUpdate) can refresh.
+function AP.OnChange(fn)
+  AP.listeners[#AP.listeners + 1] = fn
+end
+
+-- Tells every listener, in the order added.
+local function tellListeners()
+  for _, fn in ipairs(AP.listeners) do fn() end
+end
+
 -- Notes an item seen at time t: its cheapest unit price (now, and the low of t's day), and the
 -- units up and market value when given (t's day keeps the last seen), and how many listings
--- (the item keeps the last count). A new item past AP.MAX_ITEMS evicts the items priced longest ago.
+-- (the item keeps the last count). A new item past AP.MAX_ITEMS evicts the items priced longest
+-- ago. The listeners hear of it on the next frame.
 function AP.Record(itemID, unitPrice, t, qty, market, listings)
   local house, day = AP.House(), AP.Day(t)
   local p = house.prices[itemID]
@@ -130,6 +145,7 @@ function AP.Record(itemID, unitPrice, t, qty, market, listings)
   p.days[day] = math.min(p.days[day] or unitPrice, unitPrice)
   p.qtys[day], p.markets[day] = qty or p.qtys[day], market or p.markets[day]
   if house.count > AP.MAX_ITEMS then AP.Evict() end
+  ns.Soon("auction prices changed", tellListeners)
 end
 
 -- A price a search saw (not a whole scan): the item's last-seen price and that day's low, never
