@@ -13,14 +13,22 @@
 #    It asks once for your Windows password, for the service.
 #
 # Running it again is safe: an already registered runner is left as it is
-# (the token is then unused), the tools are refreshed and the service restarted.
-# To register afresh, run C:\actions-runner\config.cmd remove first.
+# (the token is then unused), the tools are refreshed and its service restarted.
+# To register afresh, run <folder>\config.cmd remove first.
+#
+# The second runner, which takes only the UI preview job so it runs while the
+# first runner runs the tests (a fresh token, the same command plus):
+#
+#      -Name CLIFF-preview -Folder C:\actions-runner-preview -Labels preview
 
 param(
   [string] $Token,
-  [string] $Repository = "clifftaylor2325/wow-forever-ui",
+  [string] $Repository = "clifftaylor2325/wow-vanguard-ui",
   [string] $Folder = "C:\actions-runner",
-  [string] $Name = $env:COMPUTERNAME
+  [string] $Name = $env:COMPUTERNAME,
+  # Labels instead of the default self-hosted, Windows, X64: "preview" makes a
+  # runner the preview job's only home and keeps the tests job off it.
+  [string] $Labels = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -61,7 +69,7 @@ Install-Runner
 
 # Registers the runner with GitHub and installs it as a service under this
 # account, unless it is registered already (the .runner file config.cmd
-# writes): then a rerun only refreshes the tools and restarts the service
+# writes): then a rerun only refreshes the tools and restarts its service
 # (which stops a job it is running; GitHub then shows that run as failed).
 # config.cmd asks for the account's password itself, so it never appears on
 # a command line.
@@ -69,18 +77,19 @@ $account = "$env:USERDOMAIN\$env:USERNAME"
 Write-Host ""
 if (Test-Path "$Folder\.runner") {
   Write-Host "the runner is already registered; restarting its service so it sees the tools' PATH"
-  Get-Service -Name "actions.runner.*" | Restart-Service
+  Get-Service -Name "actions.runner.*.$Name" | Restart-Service
 } else {
   if (-not $Token) { throw "The runner is not registered yet: pass -Token <the token from Settings -> Actions -> Runners -> New self-hosted runner>." }
   Write-Host "registering runner '$Name' for $Repository as a service under $account"
   Push-Location $Folder
   try {
-    & .\config.cmd --url "https://github.com/$Repository" --token $Token --name $Name --replace --runasservice --windowslogonaccount $account
+    $labelArgs = if ($Labels) { @("--no-default-labels", "--labels", $Labels) } else { @() }
+    & .\config.cmd --url "https://github.com/$Repository" --token $Token --name $Name --replace --runasservice --windowslogonaccount $account @labelArgs
     if ($LASTEXITCODE -ne 0) { throw "config.cmd failed with exit code $LASTEXITCODE" }
   } finally { Pop-Location }
 }
 
-$service = Get-Service -Name "actions.runner.*" -ErrorAction SilentlyContinue | Select-Object -First 1
+$service = Get-Service -Name "actions.runner.*.$Name" -ErrorAction SilentlyContinue | Select-Object -First 1
 Write-Host ""
 if ($service) {
   Write-Host "service $($service.Name) is $($service.Status)."
