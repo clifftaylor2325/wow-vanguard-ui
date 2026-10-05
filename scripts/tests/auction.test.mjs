@@ -673,7 +673,47 @@ it("/fui ah rename, duplicate, delete, export and import act on the list in use"
   addon.click("ForeverUI_Question.yes");
   expect(addon.eval("return { ForeverUIDB.ah.list, ForeverUIDB.ah.lists['TEST-ONLY Herbs copy'] == nil }"), "deleted after asking").toEqual(["TEST-ONLY Herbs", true]);
   addon.slash("ah");
-  expect(chatHas(addon, /rename <name>, duplicate, delete, export, import, scan/), "the help names them").toBe(true);
+  expect(chatHas(addon, /rename <name>, duplicate, delete, export, import, /), "the help names them").toBe(true);
+});
+
+it("Recent: the last 20 terms searched, newest first, kept for the account", () => {
+  const addon = atAuctionHouse(DUSTS, { savedVariables: 'ForeverUIDB.ah = { recent = { "TEST-ONLY Old" } }' });
+  expect([choices(addon), addon.eval(`return ${HELPER}.shopCard.lists.text:GetText()`)], "kept from before: Recent in the dropdown").toEqual([["Recent", "New list...", "Import..."], "Recent"]);
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Soul Dust", "2589" }');
+  addon.click(`${HELPER}.shopCard.search`);
+  expect(addon.eval("return ForeverUIDB.ah.recent"), "each term searched, the last first").toEqual([2589, "Soul Dust", "Strange Dust", "TEST-ONLY Old"]);
+  addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.RECENT)`);
+  expect([choices(addon), [1, 2, 3, 4].map((i) => shopRow(addon, i)[1])], "Recent in use: its rows, and what can be done with it").toEqual([["TEST-ONLY Mats", "Recent", "New list...", "Duplicate list", "Export list...", "Clear recent...", "Import..."], ["Linen Cloth", "Soul Dust", "Strange Dust", "TEST-ONLY Old"]]);
+  addon.advance(5);
+  addon.click(`${HELPER}.shopCard.search`);
+  expect([addon.eval("return ForeverUIDB.ah.recent[1]"), progress(addon)], "searching Recent leaves its order").toEqual([2589, "0 of 4"]);
+  addon.click(`${HELPER}.shopCard.rows[4]`, "RightButton");
+  addon.click("ForeverUI_Menu.items[2]");
+  expect(addon.eval("return #ForeverUIDB.ah.recent"), "Remove works on Recent").toBe(3);
+  addon.eval(`${HELPER}.AddEntry("TEST-ONLY New")`);
+  expect(addon.eval("return { ForeverUIDB.ah.list, ForeverUIDB.ah.lists.Shopping, ForeverUIDB.ah.lists['\\1recent'] == nil }"), "+ Add on Recent adds to Shopping").toEqual(["Shopping", ["TEST-ONLY New"], true]);
+  addon.eval(`local AH = ${HELPER} AH.Remember("soul dust") AH.Remember({ term = "Soul Dust", exact = true }) for i = 1, 25 do AH.Remember("TEST-ONLY " .. i) end`);
+  const recent = addon.eval("return ForeverUIDB.ah.recent");
+  expect([recent.length, recent[0], recent[19]], "20 at most; the same term once, whatever its case").toEqual([20, "TEST-ONLY 25", "TEST-ONLY 6"]);
+  addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.RECENT) ${HELPER}.shopCard.lists.set(${HELPER}.COPY)`);
+  expect(addon.eval("return { ForeverUIDB.ah.list, #ForeverUIDB.ah.lists['Recent copy'] }"), "copied into a list of its own").toEqual(["Recent copy", 20]);
+  addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.RECENT) ${HELPER}.shopCard.lists.set(${HELPER}.DELETE)`);
+  expect(question(addon), "clearing asks first").toEqual([true, "Clear the 20 recent searches?"]);
+  addon.click("ForeverUI_Question.yes");
+  expect([addon.eval("return #ForeverUIDB.ah.recent"), choices(addon).includes("Recent")], "cleared; still in use, so still listed").toEqual([0, true]);
+  addon.eval(`${HELPER}.shopCard.lists.set("Shopping")`);
+  expect(choices(addon).includes("Recent"), "empty and not in use: not listed").toBe(false);
+});
+
+it("/fui ah recent shows Recent", () => {
+  const addon = loggedIn(AH_ENV, { savedVariables: 'ForeverUIDB.ah = { recent = "TEST-ONLY broken" }' });
+  addon.slash("ah recent");
+  expect(chatHas(addon, /Shopping list Recent \(0\): empty$/), "a broken saved value is an empty Recent").toBe(true);
+  addon.eval("ForeverUIDB.ah.recent = { 2589, 'Soul Dust' }");
+  addon.slash("ah recent");
+  expect([chatHas(addon, /Shopping list Recent \(2\): Linen Cloth, Soul Dust$/), addon.eval("return ForeverUIDB.ah.list")], "its items, and it's in use").toEqual([true, "\u0001recent"]);
+  addon.slash("ah");
+  expect(chatHas(addon, /import, recent, scan/), "the help names it").toBe(true);
 });
 
 // Sell ---------------------------------------------------------------------------------------
