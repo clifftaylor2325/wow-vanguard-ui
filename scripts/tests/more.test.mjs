@@ -624,6 +624,16 @@ const questItems = (addon) => addon.eval(`local out = {}
 // The tracker's block titles, top to bottom.
 const blockTitles = (addon) => tracker(addon).blocks.map((b) => b[0]);
 
+it("quest tracker: with Questie loaded, Questie's tracker shows instead unless Vanguard's is picked", () => {
+  const QUESTIE = 'C_AddOns.IsAddOnLoaded = function(name) return name == "Vanguard" or name == "Questie" end\n';
+  const questie = loggedIn(QUESTIE + TRACK_ENV);
+  expect([questie.eval("return Vanguard_QuestTrackerFrame == nil"), questie.eval("return ns.GetModule('MenuStrip').OwnTracker()")], "Questie's tracker has the job: Vanguard's isn't built, and the game's isn't hidden").toEqual([true, false]);
+  const ours = loggedIn(QUESTIE + TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { withQuestie = 'vanguard' } } }" });
+  expect([tracker(ours).shown, ours.eval("return ns.GetModule('MenuStrip').OwnTracker()")], "Vanguard's picked: it shows as usual").toEqual([true, true]);
+  const without = loggedIn(TRACK_ENV);
+  expect(tracker(without).shown, "no Questie: Vanguard's shows").toBe(true);
+});
+
 it("quest tracker: each quest keeps its own item button; in combat counts update and the items wait", () => {
   const addon = loggedIn(TRACK_ENV);
   addon.eval("__quests[90054] = { index = 4, title = 'TEST-ONLY Boar', level = 9, dist = 50, item = 'item:90062', objectives = {} } __watches[4] = 90054");
