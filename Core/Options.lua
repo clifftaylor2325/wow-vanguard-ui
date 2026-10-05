@@ -580,13 +580,14 @@ local function chatRows()
   }
 end
 
--- Chat watch's switches: the channels it reads, its sound and its toast.
+-- Chat watch's switches: the channels it reads, its sound, its toast and the toast's auction price.
 local function chatWatchSwitches(CW)
   return {
     check("Numbered channels (General, Trade, LFG)", CW.ChannelSetting("channel")),
     check("Say", CW.ChannelSetting("say")), check("Yell", CW.ChannelSetting("yell")), check("Guild", CW.ChannelSetting("guild")),
     check("Party and raid", CW.ChannelSetting("party", "raid")), check("Whispers", CW.ChannelSetting("whisper")),
     check("Sound", setting("ChatWatch", "sound")), check("Toast", setting("ChatWatch", "toast")),
+    check("Auction price of a linked item on the toast", setting("ChatWatch", "prices")),
   }
 end
 

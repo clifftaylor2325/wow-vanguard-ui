@@ -1,7 +1,9 @@
 -- Chat watch: phrases you watch for ("lfm", "wts devilsaur") in the channels
 -- you tick. When a line says one, the whisper sound plays and a small toast
 -- shows the sender and the line at the top of the screen for a few seconds;
--- click it to whisper the sender, right-click to put it away.
+-- click it to whisper the sender, right-click to put it away. When the line
+-- links an item the auction house has a price for (Modules/AuctionPrices.lua,
+-- this realm and faction), the toast shows it beside the line: "AH 12s 50c".
 -- Chat is read through ns.On only, never a chat message filter, so no line
 -- is changed or hidden. In dungeons, raids and other places where the game
 -- hides chat from addons (its text and sender come secret), a line is
@@ -13,7 +15,7 @@ local T = ns.Theme
 
 local CW = ns.Module("ChatWatch", {
   defaults = {
-    phrases = {}, sound = true, toast = true,
+    phrases = {}, sound = true, toast = true, prices = true,
     channels = { channel = true, say = false, yell = true, guild = false, party = false, raid = false, whisper = false },
   },
 })
@@ -106,12 +108,32 @@ function CW.Whisper(name)
   if type(tell) == "function" and type(name) == "string" then tell(name) end
 end
 
--- Shows the toast for a line: the sender in the accent, the line under it; it goes after CW.LINGER seconds.
+-- "AH 12s 50c": the auction price (the cheapest unit price last seen on this realm and faction) of
+-- the first item the line links that has one, or nil: prices switched off, a hidden line, no priced
+-- item. Only the links' item IDs are read; the line itself is never changed.
+function CW.PriceText(text)
+  if not CW.settings.prices or ns.IsSecret(text) or type(text) ~= "string" then return nil end
+  local prices = ns.AuctionPrices.House().prices
+  for id in text:gmatch("|Hitem:(%d+)") do
+    local p = prices[tonumber(id)]
+    if p then return "AH " .. ns.AuctionPrices.Money(p.min) end
+  end
+end
+
+-- The line's right edge: just before the price when there is one, else the toast's edge.
+local function fitLine(f, price)
+  f.price:SetText(price or "")
+  if price then f.line:SetPoint("RIGHT", f.price, "LEFT", -6, 0) else f.line:SetPoint("RIGHT", -8, 0) end
+end
+
+-- Shows the toast for a line: the sender in the accent, the line under it with an item's auction
+-- price beside it; it goes after CW.LINGER seconds.
 function CW.ShowToast(sender, text)
   local f = CW.toast
   f.fuiSender = sender
   f.sender:SetText(sender)
   f.line:SetText(text)
+  fitLine(f, CW.PriceText(text))
   T.FadeIn(f)
   ns.AutoHide(f, CW.LINGER)
 end
@@ -140,6 +162,13 @@ local function toastText(f)
   f.line:SetWordWrap(false)
 end
 
+-- The price beside the line, at the toast's right edge (anchored under the sender, as the line is,
+-- so the line can end at the price's left).
+local function toastPrice(f)
+  f.price = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "gold")
+  f.price:SetPoint("TOPRIGHT", f.sender, "BOTTOMRIGHT", 0, -4)
+end
+
 -- The toast: an accent-edged panel you can move (/fui unlock), hidden until a phrase is said.
 local function buildToast()
   local f = CreateFrame("Button", "ForeverUI_ChatWatchToast", UIParent)
@@ -148,6 +177,7 @@ local function buildToast()
   f:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   f:SetScript("OnClick", CW.OnToastClick)
   toastText(f)
+  toastPrice(f)
   f:Hide()
   CW.toast = f
   ns.Mover(f, "chatwatch", "Chat alert", { "TOP", "TOP", 0, -160 })
