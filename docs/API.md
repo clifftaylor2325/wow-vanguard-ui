@@ -1,0 +1,43 @@
+# ForeverUI.API.v1: auction prices for other addons
+
+ForeverUI keeps auction prices per realm and faction (from the Auction helper's scans and from every search at the auction house) and hands them to other addons through `ForeverUI.API.v1`. Its function names and argument order are those of Auctionator's v1 API, as ForeverUI's auction plan lists them (Auctionator's own source was not read when this was written), so an addon written for Auctionator can switch with a one-line shim:
+
+```lua
+-- ## OptionalDeps: ForeverUI
+local api = (Auctionator and Auctionator.API and Auctionator.API.v1) or (ForeverUI and ForeverUI.API and ForeverUI.API.v1)
+local price = api and api.GetAuctionPriceByItemID("MyAddon", 2589)
+```
+
+## Rules
+
+- Every function takes your addon's name first (`callerID`, a string). A call without one, or with another argument of the wrong type, raises an error at your line that says which argument, for example `ForeverUI.API.v1.MultiSearch: terms must be a table, got string`.
+- Prices are in copper, for the realm and faction of the character logged in. A function returns `nil` when it knows no price.
+- `v1` only grows: functions are added, never changed or removed.
+
+## Prices
+
+| Function | Returns |
+| --- | --- |
+| `GetAuctionPriceByItemID(callerID, itemID)` | The cheapest price per unit last seen at the auction house, by a scan or a search, or `nil` (never seen, or not for 30 days). |
+| `GetAuctionPriceByItemLink(callerID, itemLink)` | The same, by an item link (or an `"item:2589"` string). |
+| `GetVendorPriceByItemID(callerID, itemID)` | What a merchant pays for one (0 for an item with no value), or `nil` while the game hasn't loaded the item. |
+| `GetVendorPriceByItemLink(callerID, itemLink)` | The same, by an item link. |
+| `GetDisenchantPriceByItemID(callerID, itemID)` | What disenchanting one is worth on average: for each material vanilla's disenchanting tables give for its quality and item level, chance x average quantity x the material's market value (else its cheapest price). `nil` for anything but weapons and armour of green quality or better, or when none of its materials has a price. The tables are not yet checked in game. |
+| `GetDisenchantPriceByItemLink(callerID, itemLink)` | The same, by an item link. |
+
+## Being told about new prices
+
+`RegisterForDBUpdate(callerID, callback)`: `callback()` runs, with no arguments, on the frame after prices are recorded: once after a whole scan, and after each search that saw a price. A callback that errors is reported in ForeverUI's error list (`/fui errors`) and does not stop the others.
+
+## Shopping lists and searches
+
+Search strings are item names, as you would type them in the game's search box. In Auctionator's form, `name;field;field...`, only the name is read (quotes around it are dropped); an item link or an item ID written as text works too. A string that is blank, and anything that isn't a string, is left out. A list holds at most 50 entries and there are at most 20 lists (ForeverUI's caps); they are the player's lists, shown on the Shop card at the auction house.
+
+| Function | Does |
+| --- | --- |
+| `MultiSearch(callerID, terms)` | At the open auction house: the terms become the list "`callerID` search" (made, or replaced), which the Shop card picks and searches one term at a time (one search in flight, at most one a second). Returns `true` when queued, `false` when the auction house is closed, no term is usable or the list can't be made. |
+| `MultiSearchExact(callerID, terms)` | The same, each name matched exactly: a name the game knows an item by is searched by that item's ID, so only that item comes back. |
+| `CreateShoppingList(callerID, listName, terms)` | Makes the list (replacing one of that name). Returns `true`, or `false` for a blank name or a new list past 20. Works with the auction house closed. |
+| `AlterShoppingListItems(callerID, listName, terms)` | Replaces the entries of an existing list. Returns `false` when there is no list of that name. |
+
+Nothing in the API posts, buys, bids or cancels: those stay with the player's clicks.
