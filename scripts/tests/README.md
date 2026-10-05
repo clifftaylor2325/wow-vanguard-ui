@@ -4,7 +4,9 @@
 headless WoW client written for the tests: a Lua 5.1-faithful VM (fengari with
 5.1 shims), the frame API with real layout, a world model behind the game API,
 and input. Each `scripts/tests/<area>.test.mjs` file is one area of the addon
-and runs in parallel with the others under Vitest.
+and runs in parallel with the others under Vitest, one worker per core; a
+worker compiles each Lua file once and loads every later addon from the
+compiled chunks.
 
 Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
 
@@ -123,7 +125,8 @@ game.
 - A case asserts on what the player would see (visible, text, rect, color),
   not on how the addon got there; internal fields (`w.__shown`) are for the
   predicates in `frames()`.
-- Coverage of the addon's Lua is enforced (`npm run coverage`): a new feature
-  comes with the scenario that exercises it.
+- Coverage of the addon's Lua is enforced (`npm run coverage`, which runs
+  every test with coverage on and is what CI runs): a new feature comes with
+  the scenario that exercises it.
 - `npm run quality` applies to the tests too: every function has a comment
   above it and at most 10 lines of body code.

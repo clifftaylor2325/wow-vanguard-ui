@@ -4,8 +4,12 @@
 // that holds an instruction, except two the compiler adds that can never
 // run: each function's implicit final `return` (the `end` line) when it
 // always returns early, and the `return` after a tail call. Executed lines
-// come from a line hook on every Lua state the harness creates. Only chunks named "@<file>" for files in `files` count,
-// so the WoW stub, test code and SavedVariables never do.
+// come from a line hook on every Lua state the harness creates. The hook
+// runs on every line reached, so it does the least it can: it notes the line
+// on the running function's compiled prototype and returns. The prototypes
+// are folded into per-chunk sets when the hits are read. Only chunks named
+// "@<file>" for files in `files` count, so the WoW stub, test code and
+// SavedVariables never do.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -13,7 +17,10 @@ import fengari from "fengari";
 
 const { lua, lauxlib, to_luastring, to_jsstring } = fengari;
 
+// Chunk name ("@<file>") -> the lines executed in it.
 const executed = new Map();
+// The compiled prototypes that have hits not yet folded into `executed`.
+const protos = [];
 
 const OP_TAILCALL = 37;
 const OP_RETURN = 38;
@@ -43,22 +50,46 @@ export function executableLines(source, chunkName) {
   return protoLines(L.stack[L.top - 1].value.p, new Set());
 }
 
-// Records the line just reached, for addon chunks only.
+// Records the line just reached on the running function's prototype. The
+// line hook only fires inside Lua functions, so the prototype is always there.
 function onLine(L, ar) {
-  lua.lua_getinfo(L, to_luastring("S"), ar);
-  const source = to_jsstring(ar.source);
-  if (!source.startsWith("@")) return;
-  if (!executed.has(source)) executed.set(source, new Set());
-  executed.get(source).add(ar.currentline);
+  const p = ar.i_ci.func.value.p;
+  let hits = p.__wfgHits;
+  if (!hits) {
+    hits = p.__wfgHits = new Set();
+    protos.push(p);
+  }
+  hits.add(ar.currentline);
+}
+
+// The chunk name a prototype was compiled from, or null when stripped.
+function sourceOf(p) {
+  return p.source ? to_jsstring(p.source.getstr()) : null;
+}
+
+// Moves the prototypes' hits into `executed`, keeping only addon-style chunk names.
+function fold() {
+  for (const p of protos) {
+    const source = sourceOf(p);
+    if (source && source.startsWith("@")) {
+      if (!executed.has(source)) executed.set(source, new Set());
+      const lines = executed.get(source);
+      for (const line of p.__wfgHits) lines.add(line);
+    }
+    p.__wfgHits.clear();
+  }
+  protos.length = 0;
 }
 
 // The lines recorded so far for a chunk ("@<file>").
 export function hitLines(chunkName) {
+  fold();
   return executed.get(chunkName) ?? new Set();
 }
 
 // Writes recorded hits so a parent process can apply the coverage floor.
 export function dumpHits(file) {
+  fold();
   const out = {};
   for (const [name, lines] of executed) out[name] = [...lines];
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -77,6 +108,7 @@ function mergeHits(file) {
 // Loads the hits workers dumped: one file, or every .json in a directory.
 // A missing file or an empty directory is a failure, not a pass.
 export function loadHits(target) {
+  fold();
   executed.clear();
   const isDir = fs.existsSync(target) && fs.statSync(target).isDirectory();
   const files = isDir ? fs.readdirSync(target).filter((f) => f.endsWith(".json")).map((f) => path.join(target, f)) : [target];
@@ -99,6 +131,7 @@ function fileCoverage(root, file) {
 
 // Coverage of every file, plus the totals.
 export function coverageReport(root, files) {
+  fold();
   const perFile = files.map((file) => fileCoverage(root, file));
   const total = perFile.reduce((n, f) => n + f.total, 0);
   const covered = perFile.reduce((n, f) => n + f.covered, 0);

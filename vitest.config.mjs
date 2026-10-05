@@ -1,3 +1,4 @@
+import os from "node:os";
 import { configDefaults, defineConfig } from "vitest/config";
 import { luaSummaryReporter } from "./scripts/lib/lua-summary-reporter.mjs";
 
@@ -11,6 +12,10 @@ export default defineConfig({
     include: ["scripts/**/*.test.mjs"],
     setupFiles: ["scripts/tests/setup.mjs"],
     reporters: [...configDefaults.reporters, luaSummaryReporter()],
+    // One worker per core. Vitest's default keeps a core free for its main
+    // process, which has nothing to do while the workers run the Lua harness;
+    // on a two-core CI runner that default ran the files one at a time.
+    maxWorkers: os.availableParallelism(),
     // A Lua harness case loads the whole addon, often several times; with
     // coverage counting every line hit that can pass Vitest's 5 s default.
     testTimeout: 30_000,

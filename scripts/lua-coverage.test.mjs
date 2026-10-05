@@ -46,6 +46,30 @@ it("the hook runs without breaking the chunk", () => {
   expect(lua.lua_pcall(L, 0, 1, 0)).toBe(lua.LUA_OK);
 });
 
+it("one hook records each chunk's lines under its own name, including a chunk loaded from a binary", () => {
+  const L = lauxlib.luaL_newstate();
+  lualib.luaL_openlibs(L);
+  attachCoverage(L);
+  // Two source chunks run under one hook.
+  lauxlib.luaL_loadbuffer(L, to_luastring("local a = 1\nlocal b = 2\nreturn a + b"), null, to_luastring("@TEST-ONLY-one.lua"));
+  expect(lua.lua_pcall(L, 0, 1, 0)).toBe(lua.LUA_OK);
+  lauxlib.luaL_loadbuffer(L, to_luastring("local x = 1\n\n\nreturn x"), null, to_luastring("@TEST-ONLY-two.lua"));
+  expect(lua.lua_pcall(L, 0, 1, 0)).toBe(lua.LUA_OK);
+  expect([...hitLines("@TEST-ONLY-one.lua")].sort()).toEqual([1, 2, 3]);
+  expect([...hitLines("@TEST-ONLY-two.lua")].sort()).toEqual([1, 4]);
+  // A chunk compiled, dumped and loaded back as a binary keeps its name and lines.
+  lauxlib.luaL_loadbuffer(L, to_luastring("local y = 5\nreturn y"), null, to_luastring("@TEST-ONLY-dumped.lua"));
+  const parts = [];
+  lua.lua_dump(L, (_, bytes, size) => { parts.push(bytes.slice(0, size)); return 0; }, null, 0);
+  lua.lua_pop(L, 1);
+  const bytes = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  parts.reduce((offset, p) => { bytes.set(p, offset); return offset + p.length; }, 0);
+  expect(lauxlib.luaL_loadbufferx(L, bytes, null, to_luastring("@TEST-ONLY-dumped.lua"), to_luastring("b"))).toBe(lua.LUA_OK);
+  expect(lua.lua_pcall(L, 0, 1, 0)).toBe(lua.LUA_OK);
+  expect([...hitLines("@TEST-ONLY-dumped.lua")].sort()).toEqual([1, 2]);
+  expect(hitLines("@TEST-ONLY-one.lua").size, "earlier chunks keep their lines after later ones fold").toBe(3);
+});
+
 it("missing lines print as ranges", () => {
   expect(lineRanges([1, 2, 3, 7, 9, 10])).toBe("1-3,7,9-10");
   expect(lineRanges([])).toBe("");
