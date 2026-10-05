@@ -69,6 +69,7 @@ Modules/ActionBarLayout.lua
 Modules/ActionBarKeybinds.lua
 Modules/SpecialBars.lua
 Modules/Minimap.lua
+Modules/Waypoints.lua
 Modules/MinimapButtons.lua
 Modules/Chat.lua
 Modules/ChatExtras.lua
