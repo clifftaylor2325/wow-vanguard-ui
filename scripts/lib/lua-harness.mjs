@@ -1,7 +1,8 @@
 // Run the real addon Lua under Node (fengari, Lua 5.3) inside a TEST-ONLY
 // headless client: the widget stub (wow-stub.lua), its layout (wow-layout.lua)
 // and the game world (wow-world.lua). Files load in TOC order with the same
-// (ADDON, ns) varargs WoW passes.
+// (ADDON, ns) varargs WoW passes. A worker compiles each file once and loads
+// every later addon from the compiled chunks (see chunkCache).
 //
 // createAddon() gives a loaded addon with drivers (fire, update, advance,
 // slash, chat), a lifecycle (login, savedVariables), the world (units,
@@ -26,13 +27,57 @@ export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 // Lua 5.1 fidelity for `..`: the game prints a whole float as "3", fengari
 // (5.3) as "3.0". Concatenation converts through this one function, which
 // wow-stub.lua cannot reach, so it is patched here; tostring and
-// string.format are shimmed in the stub.
-const rawToString = lobject.luaO_tostring;
-lobject.luaO_tostring = function (L, obj) {
-  rawToString(L, obj);
-  const s = obj.jsstring();
-  if (/^-?\d+\.0$/.test(s)) obj.setsvalue(lstring.luaS_new(L, to_luastring(s.slice(0, -2))));
-};
+// string.format are shimmed in the stub. Vitest evaluates this module once
+// per test file while fengari itself is shared by the worker, so the patch
+// marks itself and is applied once.
+if (!lobject.luaO_tostring.__wfgPatched) {
+  const rawToString = lobject.luaO_tostring;
+  lobject.luaO_tostring = function (L, obj) {
+    rawToString(L, obj);
+    const s = obj.jsstring();
+    if (/^-?\d+\.0$/.test(s)) obj.setsvalue(lstring.luaS_new(L, to_luastring(s.slice(0, -2))));
+  };
+  lobject.luaO_tostring.__wfgPatched = true;
+}
+
+// Compiled chunks, so a worker parses each Lua file once however many
+// addons its test file loads: file -> { stamp, bytes } with the bytes from
+// lua_dump (line info kept, so tracebacks and coverage read as from source).
+// It lives on globalThis because Vitest evaluates this module once per test file.
+const chunkCache = (globalThis[Symbol.for("foreverui.chunks")] ??= new Map());
+
+// A file's cache stamp: its modification time and size, so an edit recompiles it.
+function stampOf(file) {
+  const stat = fs.statSync(file);
+  return `${stat.mtimeMs}:${stat.size}`;
+}
+
+// The binary chunk of the compiled function on top of the stack (lua_dump, line info kept).
+function dumpTop(L) {
+  const parts = [];
+  lua.lua_dump(L, (L, bytes, size) => { parts.push(bytes.slice(0, size)); return 0; }, null, 0);
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let offset = 0;
+  for (const p of parts) { out.set(p, offset); offset += p.length; }
+  return out;
+}
+
+// Pushes the compiled chunk of a Lua file, from the cache when the file is
+// unchanged, else by parsing it (and caching the result). Errors throw.
+export function pushFileChunk(L, file, chunkName) {
+  const stamp = stampOf(file);
+  const cached = chunkCache.get(file);
+  if (cached && cached.stamp === stamp) {
+    if (lauxlib.luaL_loadbufferx(L, cached.bytes, null, to_luastring(chunkName), to_luastring("b")) !== lua.LUA_OK) throwTop(L, chunkName);
+    return;
+  }
+  const source = fs.readFileSync(file, "utf8");
+  if (lauxlib.luaL_loadbuffer(L, to_luastring(source), null, to_luastring(chunkName)) !== lua.LUA_OK) throwTop(L, chunkName);
+  chunkCache.set(file, { stamp, bytes: dumpTop(L) });
+}
+
+// Whether a file's compiled chunk is in the cache (for the harness's own tests).
+export const hasCachedChunk = (file) => chunkCache.has(file);
 
 // The addon's files in TOC load order.
 export function tocFiles() {
@@ -139,15 +184,27 @@ function traceback(L) {
   return 1;
 }
 
-// Loads and runs a chunk, leaving nresults on the stack. Errors throw with a traceback.
-function run(L, source, chunkName, withAddonArgs, nresults) {
+// Runs the chunk that `push` leaves on the stack, with the traceback handler
+// under it, leaving nresults. Errors throw with a traceback.
+function runPushed(L, push, chunkName, withAddonArgs, nresults) {
   lua.lua_pushjsfunction(L, traceback);
   const base = lua.lua_gettop(L);
-  const status = lauxlib.luaL_loadbuffer(L, to_luastring(source), null, to_luastring(chunkName));
-  if (status !== lua.LUA_OK) throwTop(L, chunkName);
+  push();
   const nargs = withAddonArgs ? pushAddonArgs(L) : 0;
   if (lua.lua_pcall(L, nargs, nresults, base) !== lua.LUA_OK) throwTop(L, chunkName);
   lua.lua_remove(L, base);
+}
+
+// Loads and runs Lua source, leaving nresults on the stack.
+function run(L, source, chunkName, withAddonArgs, nresults) {
+  runPushed(L, () => {
+    if (lauxlib.luaL_loadbuffer(L, to_luastring(source), null, to_luastring(chunkName)) !== lua.LUA_OK) throwTop(L, chunkName);
+  }, chunkName, withAddonArgs, nresults);
+}
+
+// Loads and runs a Lua file through the chunk cache, leaving nresults on the stack.
+function runFile(L, file, chunkName, withAddonArgs, nresults) {
+  runPushed(L, () => pushFileChunk(L, file, chunkName), chunkName, withAddonArgs, nresults);
 }
 
 // A fresh Lua state with the standard libraries.
@@ -173,7 +230,7 @@ export function readLuaGlobals(source, names) {
 
 // Runs one of the client's Lua files (scripts/lib/<name>) as "@<name>".
 function runLib(L, name, nresults = 0) {
-  run(L, fs.readFileSync(path.join(root, "scripts/lib", name), "utf8"), `@${name}`, false, nresults);
+  runFile(L, path.join(root, "scripts/lib", name), `@${name}`, false, nresults);
 }
 
 // Loads the widget API list, the WoW stub, its layout, the world, and an empty addon namespace.
@@ -189,7 +246,7 @@ function loadStub(L) {
 // Loads every TOC file in order, then the SavedVariables source if any.
 function loadAddon(L, savedVariables) {
   for (const file of tocFiles()) {
-    run(L, fs.readFileSync(path.join(root, file), "utf8"), `@${file}`, true, 0);
+    runFile(L, path.join(root, file), `@${file}`, true, 0);
   }
   if (savedVariables) run(L, savedVariables, "=SavedVariables", false, 0);
 }
