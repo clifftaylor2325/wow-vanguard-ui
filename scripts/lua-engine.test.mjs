@@ -3,8 +3,14 @@
 // 5.1 fidelity, layout, the world's events, timers, input and inspectors.
 // Each case loads the addon, as every scenario does.
 
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import fengari from "fengari";
 import { expect, it } from "vitest";
-import { createAddon } from "./lib/lua-harness.mjs";
+import { createAddon, hasCachedChunk, pushFileChunk, root, tocFiles } from "./lib/lua-harness.mjs";
+
+const { lua, lauxlib, lualib } = fengari;
 
 // A logged-in addon on a finished-setup account.
 const loggedIn = () => {
@@ -25,6 +31,39 @@ it("a Lua error carries a traceback naming the addon file", () => {
   expect(() => addon.eval("ns.Theme.RGB(nil .. 'x')")).toThrow(/eval:2: attempt to concatenate/);
   expect(() => addon.eval("ns.Try('TEST-ONLY', function() local t = nil; return t.x end) return ns.errors[#ns.errors]")).not.toThrow();
   expect(addon.eval("return ns.errors[#ns.errors].text")).toMatch(/TEST-ONLY: eval:2: attempt to index/);
+  expect(() => addon.eval("ns.Theme.RGB({})")).toThrow(/Core\/Theme\.lua:\d+:/);
+});
+
+it("a worker compiles each addon file once: the second addon loads from the chunk cache, with file names intact", () => {
+  createAddon();
+  expect(tocFiles().every((file) => hasCachedChunk(path.join(root, file))), "every TOC file is cached after one load").toBe(true);
+  const addon = createAddon();
+  expect(() => addon.eval("ns.Theme.RGB({})"), "an error in a cached chunk still names its file and line").toThrow(/Core\/Theme\.lua:\d+:/);
+  expect(addon.eval('return debug.getinfo(ns.Theme.RGB, "S").source'), "a cached function knows its source").toBe("@Core/Theme.lua");
+});
+
+it("an edited file is compiled again, an unchanged one served from the cache", () => {
+  const file = path.join(os.tmpdir(), `fui-chunk-${process.pid}.lua`);
+  fs.writeFileSync(file, "return 1");
+  // Loads the file as "@TEST-ONLY-cache.lua" in a bare state and returns its result.
+  const load = () => {
+    const L = lauxlib.luaL_newstate();
+    lualib.luaL_openlibs(L);
+    pushFileChunk(L, file, "@TEST-ONLY-cache.lua");
+    expect(lua.lua_pcall(L, 0, 1, 0)).toBe(lua.LUA_OK);
+    return lua.lua_tonumber(L, -1);
+  };
+  expect(load()).toBe(1);
+  expect(hasCachedChunk(file)).toBe(true);
+  expect(load(), "the cached chunk gives the same result").toBe(1);
+  fs.writeFileSync(file, "return 22");
+  const later = new Date(Date.now() + 5000);
+  fs.utimesSync(file, later, later);
+  expect(load(), "a new modification time means a new compile").toBe(22);
+  fs.writeFileSync(file, "return (");
+  fs.utimesSync(file, new Date(later.getTime() + 5000), new Date(later.getTime() + 5000));
+  expect(load, "a syntax error names the chunk").toThrow(/TEST-ONLY-cache\.lua/);
+  fs.rmSync(file, { force: true });
 });
 
 it("layout: anchors, sizes and scale resolve to screen rects as the client lays them out", () => {

@@ -1,8 +1,14 @@
 name: verify
 
-# Pull requests only.
+# Pull requests only, and not for changes to the docs alone. The jobs run on
+# the owner's self-hosted Windows runner (scripts/ci/setup-windows-runner.ps1
+# installs its tools), so they bill no Actions minutes; one runner runs one
+# job at a time, so the checks are one job and the preview another.
 on:
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
 
 permissions:
   contents: read
@@ -11,51 +17,44 @@ concurrency:
   group: verify-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    # Git for Windows' bash, so the same snippets run here and on a Linux
+    # box. Each job's first step puts Git's bin folder first on PATH: a
+    # plain "bash" otherwise finds C:\Windows\System32\bash.exe, WSL's
+    # launcher, which fails on a PC without a WSL distribution.
+    shell: bash
+
 jobs:
   verify:
-    # npm run verify is npm test (every Vitest suite, once) plus the code-quality scan.
-    name: npm run verify (Node ${{ matrix.node }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [20, 22]
+    # Every Vitest suite once (the Lua harness and the JS tests), with line
+    # coverage of the addon's own Lua: a failing test fails the run, and so
+    # does coverage below the floor in scripts/lua-coverage-floor.json (only
+    # goes up; 100 is the goal). Then the code-quality scan, luacheck, Lua
+    # 5.1 syntax (the game runs Lua 5.1; the test harness, fengari, is Lua
+    # 5.3), and the release zip's contents.
+    name: Tests, coverage and checks
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-          cache: npm
-      - run: npm ci
-      - run: npm run verify
-
-  coverage:
-    # Line coverage of the addon's own Lua under the test harness. Fails
-    # below the floor in scripts/lua-coverage-floor.json (only goes up; 100 is the goal).
-    name: Lua coverage
-    runs-on: ubuntu-latest
-    steps:
+      - name: Git Bash ahead of WSL's bash
+        shell: powershell
+        run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+      - name: The runner's tools
+        run: |
+          for tool in luacheck luac5.1; do
+            command -v "$tool" >/dev/null || { echo "$tool is not on PATH: run scripts/ci/setup-windows-runner.ps1 on the runner"; exit 1; }
+          done
+          luacheck --version && luac5.1 -v
       - run: npm ci
       - run: npm run coverage
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: lua-coverage
-          path: coverage/lua-coverage.json
-
-  lua51:
-    # The game runs Lua 5.1; the test harness (fengari) is Lua 5.3.
-    name: Lua 5.1 syntax
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq lua5.1
-      - name: Compile every file the TOC loads
+      - run: npm run quality
+      - run: luacheck --no-color .
+      - name: Lua 5.1 syntax of every file the TOC loads
         run: |
           status=0
           while IFS= read -r file; do
@@ -64,46 +63,35 @@ jobs:
             luac5.1 -p "$file" || status=1
           done < Vanguard.toc
           exit $status
-
-  lint:
-    name: luacheck
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq lua-check
-      - run: luacheck --no-color .
-
-  package:
-    name: Release zip builds
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: node scripts/package.mjs
-      - name: Zip is valid and holds every TOC file, Media/ and the libraries' licenses
+      - name: Release zip builds and holds every file it should
         run: |
-          zip=$(ls dist/*.zip)
-          unzip -t "$zip"
-          expected=$(( $(grep -cvE '^\s*(#|$)' Vanguard.toc) + $(git ls-files Media | wc -l) + $(git ls-files Libs | grep -vc '\.lua$') + 2 ))
-          actual=$(unzip -Z1 "$zip" | wc -l)
-          echo "files: $actual (expected $expected)"
-          test "$actual" -eq "$expected"
+          rm -rf dist
+          node scripts/package.mjs
+          node scripts/check-zip.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lua-coverage
+          path: coverage/lua-coverage.json
 
   preview:
     # A screenshot of the default layout from the addon's real Lua (art
     # approximated), so a UI change can be reviewed from the run's artifacts.
+    # Chromium stays in the runner's Playwright cache, so the install is a
+    # no-op after the first run.
     name: UI preview
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 20
     steps:
+      - name: Git Bash ahead of WSL's bash
+        shell: powershell
+        run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - run: npm ci
-      - run: npm install -g playwright@1.56.1 && playwright install --with-deps chromium
+      - run: npm install -g playwright@1.56.1 && playwright install chromium
       - run: npm run preview
       - uses: actions/upload-artifact@v4
         with:
