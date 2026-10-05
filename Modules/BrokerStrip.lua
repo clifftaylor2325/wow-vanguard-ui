@@ -1,6 +1,7 @@
 -- Broker strip: other addons' data feeds (LibDataBroker data sources: gold
--- trackers, durability, guild counts and the like) in a thin strip at the top
--- center of the screen, the way Titan Panel shows them. Pick which feeds show
+-- trackers, durability, guild counts and the like) in a thin strip along the
+-- top edge, left of center (clear of the frames that start 20 px down), the
+-- way Titan Panel shows them. Pick which feeds show
 -- under Bars, map, chat (up to MAX, in the order picked); each slot shows the
 -- feed's icon and text, its own tooltip on hover, and passes clicks to it.
 -- Launchers (minimap-style buttons) stay in the minimap drawer.
@@ -15,7 +16,7 @@ local T = ns.Theme
 local BS = ns.Module("BrokerStrip", { defaults = { feeds = {} } })
 
 -- How many feeds show at most, each slot's width, and the strip's height.
-BS.MAX, BS.SLOT_W, BS.H = 4, 120, 20
+BS.MAX, BS.SLOT_W, BS.H = 4, 120, 14
 
 -- Feeds -------------------------------------------------------------------------------------
 
@@ -89,7 +90,7 @@ local function makeSlot(i)
   b:SetSize(BS.SLOT_W, BS.H)
   b:SetPoint("LEFT", BS.frame, "LEFT", 4 + (i - 1) * BS.SLOT_W, 0)
   b.icon = b:CreateTexture(nil, "ARTWORK")
-  b.icon:SetSize(14, 14)
+  b.icon:SetSize(12, 12)
   b.icon:SetPoint("LEFT", b, "LEFT", 2, 0)
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "small", "text")
   b.text:SetPoint("LEFT", b.icon, "RIGHT", 4, 0)
@@ -145,12 +146,12 @@ function BS.Hook()
   BS.Layout()
 end
 
--- Module entry point (Core/Modules.lua): the strip at the top center, its slots, and the feeds.
+-- Module entry point (Core/Modules.lua): the strip on the top edge, its slots, and the feeds.
 function BS.Enable(settings)
   BS.settings = settings
   BS.frame = T.HudPanel(CreateFrame("Frame", "Vanguard_BrokerStrip", UIParent))
   BS.frame:SetSize(BS.SLOT_W + 8, BS.H + 4)
-  ns.Mover(BS.frame, "brokerstrip", "Broker strip", { "TOP", "TOP", 0, -4 })
+  ns.Mover(BS.frame, "brokerstrip", "Broker strip", { "TOP", "TOP", -200, 0 })
   BS.slots = {}
   for i = 1, BS.MAX do BS.slots[i] = wireSlot(makeSlot(i)) end
   BS.Layout()
