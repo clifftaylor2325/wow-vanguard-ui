@@ -92,6 +92,9 @@ Modules/QuestLogView.lua
 Modules/Windows.lua
 Modules/AuctionPrices.lua
 Modules/AuctionHelper.lua
+Modules/AuctionShop.lua
+Modules/AuctionSell.lua
+Modules/AuctionOwned.lua
 Modules/GameTools.lua
 Modules/FightHistory.lua
 Modules/GameAlerts.lua

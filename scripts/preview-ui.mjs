@@ -509,8 +509,9 @@ const SCENES = [
     ns.Options.Show("clickcast")` },
   { name: "foreverui-auction", caption: "Auction helper beside the game's auction house window: a shopping list searched (prices per unit, how many are up), the sell card with a stack of dust, the last scan, and your auctions with one undercut (TEST-ONLY items and listings)",
     lua: `time = function() return 1790000000 end
-      ForeverUIDB.ah = { lastScan = 1790000000 - 720, count = 1, prices = { [10940] = { min = 110, t = 1790000000, days = { [20717] = 105 } } },
-        list = "Enchanting mats", lists = { ["Enchanting mats"] = { "Strange Dust", "Soul Dust", 10998, "Vision Dust" } } }
+      ForeverUIDB.ah = { list = "Enchanting mats", lists = { ["Enchanting mats"] = { "Strange Dust", "Soul Dust", 10998, "Vision Dust" } } }
+      local house = ns.AuctionPrices.House()
+      house.lastScan, house.count, house.prices = 1790000000 - 720, 1, { [10940] = { min = 110, t = 1790000000, days = { [20717] = 105 } } }
       local W = __wfgWorld
       W.items[10940] = { name = "Strange Dust", icon = "TEST-ONLY-DUST", commodity = true }
       W.items[11083] = { name = "Soul Dust", icon = "TEST-ONLY-DUST2", commodity = true }
