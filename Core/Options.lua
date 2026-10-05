@@ -420,19 +420,25 @@ local function windowRows()
   }
 end
 
--- The auction helper: its panel, tooltip prices, the sell card's undercut, length and vendor floor, the scan button, checking your auctions again and disenchant values.
-local function auctionRows()
+-- The auction helper's scan, auction check and disenchant rows.
+local function auctionScanRows()
   return {
+    check("Scan button (one scan every 15 minutes)", setting("AuctionHelper", "scanButton")),
+    check("Check your auctions for undercuts again after each post and cancel", setting("AuctionHelper", "recheck")),
+    check("Disenchant values in tooltips (on for enchanters until you choose)", ns.AuctionPrices.DisenchantSetting()),
+  }
+end
+
+-- The auction helper: its panel, tooltip prices, the sell card's undercut, length and vendor floor, then the scan rows.
+local function auctionRows()
+  return append({
     { "header", "Auction house" },
     check("ForeverUI panel beside the auction house (lists, sell helper, scan)", setting("AuctionHelper", "panel")),
     check("Auction prices in tooltips (from your scans)", setting("AuctionHelper", "tooltip")),
     { "cycle", "Undercut by", { { "copper", "1 copper" }, { "silver", "1 silver" }, { "percent", "1 %" }, { "match", "Match" } }, setting("AuctionHelper", "undercut") },
     { "cycle", "Auction length", ns.GetModule("AuctionHelper").DurationChoices(true), setting("AuctionHelper", "duration") },
     check("Never post under vendor price", setting("AuctionHelper", "vendorFloor")),
-    check("Scan button (one scan every 15 minutes)", setting("AuctionHelper", "scanButton")),
-    check("Check your auctions for undercuts again after each post and cancel", setting("AuctionHelper", "recheck")),
-    check("Disenchant values in tooltips (on for enchanters until you choose)", ns.AuctionPrices.DisenchantSetting()),
-  }
+  }, auctionScanRows())
 end
 
 -- get/set for showing the game's Cooldown Manager, which turns it on or off at once.
