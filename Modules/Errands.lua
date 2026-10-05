@@ -1,7 +1,7 @@
 -- The errands of leveling, done for you:
 --   * Train all: a button on the trainer's window that learns everything you
 --     can afford, in one click, and says what it cost;
---   * keep stocked: a list of items and how many to carry (/fui stock); a
+--   * keep stocked: a list of items and how many to carry (/vg stock); a
 --     merchant who sells them tops you up, a stack at a time, while you can pay;
 --   * flight timer: each flight's time is saved by route, and the next flight
 --     on that route shows a bar counting down to landing.
@@ -160,7 +160,7 @@ end
 local function listStock()
   local ids = {}
   for id in pairs(ER.settings.stockList) do ids[#ids + 1] = id end
-  if #ids == 0 then return ns.Chat("Your stock list is empty. /fui stock <item> <amount> adds one.") end
+  if #ids == 0 then return ns.Chat("Your stock list is empty. /vg stock <item> <amount> adds one.") end
   table.sort(ids)
   for _, id in ipairs(ids) do ns.Chat(string.format("Keep %d × %s", ER.settings.stockList[id], itemName(id)) .. soldBy(id)) end
 end
@@ -172,13 +172,13 @@ local function setStock(id, amount)
   ns.Chat(itemName(id) .. " is off your stock list.")
 end
 
--- /fui stock [<item> <amount> | clear]: list, set or clear the stock list.
+-- /vg stock [<item> <amount> | clear]: list, set or clear the stock list.
 function ER.StockCommand(rest)
   rest = rest or ""
   if rest == "" then return listStock() end
   if rest == "clear" then ER.settings.stockList = {} return ns.Chat("Your stock list is empty.") end
   local id, amount = ER.ItemID(rest), tonumber(rest:match("%s(%d+)%s*$"))
-  if not (id and amount) then return ns.Chat("Usage: /fui stock <shift-click an item> <amount>  (0 removes it)") end
+  if not (id and amount) then return ns.Chat("Usage: /vg stock <shift-click an item> <amount>  (0 removes it)") end
   setStock(id, amount)
 end
 
@@ -314,7 +314,7 @@ end
 
 -- The movable flight bar, above the cluster, hidden until a flight.
 local function buildBar()
-  local bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", "ForeverUI_FlightTimer", UIParent)), "accent")
+  local bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", "Vanguard_FlightTimer", UIParent)), "accent")
   T.HudPanel(bar)
   bar:SetSize(ER.BAR_W, ER.BAR_H)
   ns.Mover(bar, "flighttimer", "Flight timer", { "BOTTOM", "BOTTOM", 0, 312 })

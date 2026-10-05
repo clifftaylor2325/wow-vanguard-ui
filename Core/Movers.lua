@@ -1,4 +1,4 @@
--- Movers: every ForeverUI frame that can be placed registers here. /fui
+-- Movers: every Vanguard frame that can be placed registers here. /vg
 -- unlock shows a labeled handle over each, plus a grid. Drag a handle and
 -- it snaps to nearby frame edges and the screen center; click one and the
 -- arrow keys nudge it (Shift: 10 px). Positions are saved per profile
@@ -84,9 +84,9 @@ end
 -- Draws a mover's frame at its opacity times the alpha its module last gave it.
 local function fade(m)
   local f = m.frame
-  f.fuiFading = true
+  f.vgFading = true
   f:SetAlpha(m.ownAlpha * select(2, ns.MoverLook(m.key)))
-  f.fuiFading = false
+  f.vgFading = false
 end
 
 -- From the first opacity other than 1 on, an alpha the frame's module sets (a
@@ -96,7 +96,7 @@ local function watchAlpha(m)
   m.ownAlpha = m.frame:GetAlpha() or 1
   if type(hooksecurefunc) ~= "function" then return end
   hooksecurefunc(m.frame, "SetAlpha", function(f, a)
-    if f.fuiFading or ns.PlainNumber(a) == nil then return end
+    if f.vgFading or ns.PlainNumber(a) == nil then return end
     m.ownAlpha = a
     fade(m)
   end)
@@ -178,39 +178,39 @@ end
 
 -- Pinning the game's frames ------------------------------------------------------------------
 
--- Every frame ForeverUI pins (weak keys, so a frame that goes away doesn't stay).
+-- Every frame Vanguard pins (weak keys, so a frame that goes away doesn't stay).
 local pinned = setmetatable({}, { __mode = "k" })
 
 -- Runs a frame's pin, flagged so its own SetPoint calls aren't seen as the
 -- game's. A pin that fails is reported (ns.Try) and the flag is cleared all the same.
 local function applyPin(frame)
-  frame.fuiPinning = true
-  ns.Try("pin " .. (frame:GetName() or "frame"), frame.fuiPin, frame)
-  frame.fuiPinning = false
+  frame.vgPinning = true
+  ns.Try("pin " .. (frame:GetName() or "frame"), frame.vgPin, frame)
+  frame.vgPinning = false
 end
 
 -- Queues a frame's pin for after combat, one entry per frame however often the
 -- game moves it; nothing happens while pins are paused (Edit Mode open).
 local function runPin(frame)
   if ns.pinsPaused then return end
-  ns.OutOfCombat(frame.fuiRun, frame)
+  ns.OutOfCombat(frame.vgRun, frame)
 end
 
--- Keeps one of the game's frames where ForeverUI put it: apply(frame) runs now
+-- Keeps one of the game's frames where Vanguard put it: apply(frame) runs now
 -- (after combat if in it) and again whenever the game moves the frame back
 -- (Edit Mode re-anchors some of its frames when it lays out).
 function ns.Pin(frame, apply)
-  frame.fuiPin = apply
-  frame.fuiRun = frame.fuiRun or function() applyPin(frame) end
+  frame.vgPin = apply
+  frame.vgRun = frame.vgRun or function() applyPin(frame) end
   pinned[frame] = true
   runPin(frame)
-  if frame.fuiPinned or type(hooksecurefunc) ~= "function" then return end
-  frame.fuiPinned = true
-  hooksecurefunc(frame, "SetPoint", function(self) if not self.fuiPinning then runPin(self) end end)
+  if frame.vgPinned or type(hooksecurefunc) ~= "function" then return end
+  frame.vgPinned = true
+  hooksecurefunc(frame, "SetPoint", function(self) if not self.vgPinning then runPin(self) end end)
 end
 
 -- Pauses every pin (so the game's Edit Mode can move its frames freely), or
--- ends the pause and puts every pinned frame back in its ForeverUI spot.
+-- ends the pause and puts every pinned frame back in its Vanguard spot.
 function ns.PausePins(paused)
   ns.pinsPaused = paused == true
   if ns.pinsPaused then return end
@@ -219,13 +219,13 @@ end
 
 -- Edit Mode ---------------------------------------------------------------------------
 
--- ForeverUI's frames move with their own handles, so Edit Mode shows those too.
-ns.EDIT_NOTE = "The labeled handles are ForeverUI's frames: drag them here too (right-click one for more)."
+-- Vanguard's frames move with their own handles, so Edit Mode shows those too.
+ns.EDIT_NOTE = "The labeled handles are Vanguard's frames: drag them here too (right-click one for more)."
 
 -- The note under Edit Mode's window, made on first use (it shows and hides with that window).
 local function editNote(edit)
   if ns.editNote then return ns.editNote end
-  local note = T.Panel(CreateFrame("Frame", "ForeverUI_EditModeNote", edit), { accent = true })
+  local note = T.Panel(CreateFrame("Frame", "Vanguard_EditModeNote", edit), { accent = true })
   note:SetSize(320, 36)
   note:SetPoint("TOP", edit, "BOTTOM", 0, -6)
   note.text = T.Text(note:CreateFontString(nil, "OVERLAY"), "small")
@@ -235,9 +235,9 @@ local function editNote(edit)
   return note
 end
 
--- Edit Mode opened: ForeverUI's handles show too (without the grid: the game
+-- Edit Mode opened: Vanguard's handles show too (without the grid: the game
 -- draws its own), with the note, unless that's switched off. It closed: they
--- hide, unless /fui unlock had them up already.
+-- hide, unless /vg unlock had them up already.
 function ns.EditModeMovers(edit, open)
   if open and not unlocked and ns.MoverOptions().editMode then ns.editUnlocked = ns.Unlock(true) end
   if not open and ns.editUnlocked then
@@ -247,7 +247,7 @@ function ns.EditModeMovers(edit, open)
   editNote(edit):SetShown(open and unlocked)
 end
 
--- The game's frames ForeverUI hides or replaces (set): Edit Mode gets no handle for them.
+-- The game's frames Vanguard hides or replaces (set): Edit Mode gets no handle for them.
 local replaced = {}
 
 -- Hides a replaced frame's Edit Mode handle (runs after the game highlights the frame).
@@ -255,7 +255,7 @@ local function hideHandle(frame)
   if type(frame.Selection) == "table" then frame.Selection:Hide() end
 end
 
--- Notes that ForeverUI hides or replaces one of the game's frames, so Edit Mode shows no
+-- Notes that Vanguard hides or replaces one of the game's frames, so Edit Mode shows no
 -- handle or selection for it. Edit Mode highlights a system through its HighlightSystem
 -- method (on entering, from its check boxes, and when another system is selected), so the
 -- handle is hidden from a post-hook on that method: nothing Edit Mode reads is written, and
@@ -268,8 +268,8 @@ function ns.EditModeReplaced(frame)
   hideHandle(frame)
 end
 
--- While the game's Edit Mode window is open, pins pause and ForeverUI's handles
--- show; when it closes, everything goes back to its ForeverUI spot.
+-- While the game's Edit Mode window is open, pins pause and Vanguard's handles
+-- show; when it closes, everything goes back to its Vanguard spot.
 local function watchEditMode()
   local edit = _G.EditModeManagerFrame
   if type(edit) ~= "table" or not edit.HookScript then return end
@@ -511,6 +511,6 @@ end
 ns.On("PLAYER_REGEN_DISABLED", function()
   if unlocked then
     ns.Lock()
-    ns.Chat("Locked for combat. /fui unlock again afterwards.")
+    ns.Chat("Locked for combat. /vg unlock again afterwards.")
   end
 end)

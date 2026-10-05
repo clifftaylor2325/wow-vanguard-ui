@@ -81,14 +81,14 @@ function CB.ShowSeconds(fs, seconds)
   local t = seconds * 10 + 0.5
   local key = math.floor(t)
   if key == t then key = -key - 1 end
-  if key == fs.fuiTenth then return end
-  fs.fuiTenth = key
+  if key == fs.vgTenth then return end
+  fs.vgTenth = key
   fs:SetText(string.format("%.1f", seconds))
 end
 
 -- Clears a font string CB.ShowSeconds writes to, so the next call writes again.
 function CB.ClearSeconds(fs)
-  fs.fuiTenth = nil
+  fs.vgTenth = nil
   fs:SetText("")
 end
 
@@ -152,8 +152,8 @@ end
 function CB.Show(bar, unit)
   local name, icon, startMS, endMS, shielded, channel = CB.Cast(unit)
   local cast = type(name) ~= "nil"
-  if not cast and bar.fuiFinishing then return end
-  if cast then bar.fuiFinishing = nil T.StopFade(bar) end
+  if not cast and bar.vgFinishing then return end
+  if cast then bar.vgFinishing = nil T.StopFade(bar) end
   bar:SetShown(cast)
   if not cast then return bar:SetScript("OnUpdate", nil) end
   paintCast(bar, name, icon, shielded, channel)
@@ -163,14 +163,14 @@ end
 -- A cast ended on a showing bar: flash it full (good: green; otherwise red
 -- with the reason), then fade it out. A new cast cancels the flash.
 function CB.Finish(bar, reason)
-  if not bar:IsShown() or bar.fuiFinishing then return end
-  bar.fuiFinishing = true
+  if not bar:IsShown() or bar.vgFinishing then return end
+  bar.vgFinishing = true
   bar:SetScript("OnUpdate", nil)
   bar:SetMinMaxValues(0, 1)
   bar:SetValue(1)
   T.BarColor(bar, reason == "good" and "good" or "bad")
   if reason ~= "good" then bar.text:SetText(reason) end
-  T.FadeOut(bar, 0.35, function() bar.fuiFinishing = nil end)
+  T.FadeOut(bar, 0.35, function() bar.vgFinishing = nil end)
 end
 
 -- Shows the unit's cast on its own bar (player, target, focus), if it has one.
@@ -218,7 +218,7 @@ end
 -- A themed cast bar for a unit, hidden until it casts; movable.
 local function createBar(unit)
   local def = LAYOUT[unit]
-  local bar = CB.Build(CreateFrame("StatusBar", "ForeverUI_CastBar_" .. unit, UIParent), def.w, def.h)
+  local bar = CB.Build(CreateFrame("StatusBar", "Vanguard_CastBar_" .. unit, UIParent), def.w, def.h)
   bar.unit = unit
   ns.Mover(bar, "cast_" .. unit, unit:sub(1, 1):upper() .. unit:sub(2) .. " cast bar", def.point)
   return bar

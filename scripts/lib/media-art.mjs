@@ -1,4 +1,4 @@
-// Drawing for ForeverUI's artwork, in plain math: the same source gives the
+// Drawing for Vanguard's artwork, in plain math: the same source gives the
 // same bytes on any machine, so CI can check the committed files are current.
 // Images are straight-alpha RGBA floats; shapes are drawn with 4x4
 // supersampling. Writers: 32-bit TGA for the game, PNG for the preview.

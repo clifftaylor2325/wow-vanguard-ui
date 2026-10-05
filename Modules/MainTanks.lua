@@ -19,8 +19,8 @@ MT.POLL = 0.2
 -- clicks, then the insecure setup below via CallMethod.
 MT.INIT = [[
   local header = self:GetParent()
-  self:SetWidth(header:GetAttribute("fui-width"))
-  self:SetHeight(header:GetAttribute("fui-height"))
+  self:SetWidth(header:GetAttribute("vg-width"))
+  self:SetHeight(header:GetAttribute("vg-height"))
   self:SetAttribute("*type1", "target")
   self:SetAttribute("*type2", "togglemenu")
   header:CallMethod("initialConfigFunction", self:GetName())
@@ -110,10 +110,10 @@ end
 
 -- The secure group header, its tile template and setup hook.
 local function createHeader()
-  local header = CreateFrame("Frame", "ForeverUI_MainTanks", UIParent, "SecureGroupHeaderTemplate")
+  local header = CreateFrame("Frame", "Vanguard_MainTanks", UIParent, "SecureGroupHeaderTemplate")
   header:SetAttribute("template", "SecureUnitButtonTemplate")
-  header:SetAttribute("fui-width", MT.W)
-  header:SetAttribute("fui-height", MT.H)
+  header:SetAttribute("vg-width", MT.W)
+  header:SetAttribute("vg-height", MT.H)
   -- Called by MT.INIT (CallMethod) with the new tile's name.
   header.initialConfigFunction = function(_, name) MT.Setup(_G[name]) end
   if ns.Client.ProbeSnippets() ~= false then header:SetAttribute("initialConfigFunction", MT.INIT) end
@@ -130,7 +130,7 @@ end
 
 -- The movable holder (room for four tiles and their target lines), the header pinned in it.
 local function build()
-  local holder = CreateFrame("Frame", "ForeverUI_MainTanksHolder", UIParent)
+  local holder = CreateFrame("Frame", "Vanguard_MainTanksHolder", UIParent)
   holder:SetSize(MT.W + 6 + MT.TARGET_W, MT.MAX * (MT.H + MT.GAP) - MT.GAP)
   ns.Mover(holder, "maintanks", "Main tanks", { "TOPLEFT", "TOPLEFT", 400, -20 })
   MT.holder, MT.header = holder, createHeader()

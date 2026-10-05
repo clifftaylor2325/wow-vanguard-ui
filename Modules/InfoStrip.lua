@@ -400,7 +400,7 @@ end
 -- Follows the strip's visibility from the start: the mouse over it, the state's
 -- changes (fitRows shows or hides it), and zone changes for In an instance.
 local function watchVisibility(f)
-  f.fuiOnState = fitRows
+  f.vgOnState = fitRows
   V.WatchHover(f)
   V.Track(f, IS.ApplyVisibility)
   IS.ApplyVisibility()
@@ -408,7 +408,7 @@ end
 
 -- The movable strip, just under the minimap.
 local function build()
-  local f = T.HudPanel(CreateFrame("Frame", "ForeverUI_InfoStrip", UIParent))
+  local f = T.HudPanel(CreateFrame("Frame", "Vanguard_InfoStrip", UIParent))
   IS.frame = f
   f:SetSize(IS.WIDTH, IS.ROW * 2 + 4)
   ns.Mover(f, "infostrip", "Info strip", { "TOPRIGHT", "TOPRIGHT", -12, -200 })

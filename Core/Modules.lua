@@ -1,6 +1,6 @@
 -- Modules: each feature (unit frames, action bars, ...) registers itself here
 -- and is enabled at PLAYER_LOGIN unless the profile turns it off. A module
--- that errors is reported (chat, /fui errors, the game's error handler) and
+-- that errors is reported (chat, /vg errors, the game's error handler) and
 -- skipped; the others still load.
 
 local ADDON, ns = ...

@@ -1,6 +1,6 @@
 -- Fight history: your damage per second in each fight this session, as a thin
 -- strip of up to 20 bars under the game's damage meter (the latest in the
--- accent), with a tooltip listing the fights, and /fui fights. Each fight is
+-- accent), with a tooltip listing the fights, and /vg fights. Each fight is
 -- read from the game's damage meter half a second after combat ends (never in
 -- combat), through the info strip's reads; a figure the client hides is kept as
 -- an empty slot, so the count stays right. The strip is off until switched on,
@@ -116,7 +116,7 @@ function FH.Tooltip(f)
   GameTooltip:Show()
 end
 
--- /fui fights: each fight this session, newest first.
+-- /vg fights: each fight this session, newest first.
 function FH.Command()
   local lines = FH.Lines()
   if #lines == 0 then return ns.Chat("No fights recorded this session yet.") end
@@ -153,7 +153,7 @@ end
 
 -- Follows the strip's visibility from the start: its state's changes repaint it.
 local function watchVisibility(f)
-  f.fuiOnState = FH.Paint
+  f.vgOnState = FH.Paint
   V.WatchHover(f)
   V.Track(f, FH.ApplyVisibility)
   FH.ApplyVisibility()
@@ -161,7 +161,7 @@ end
 
 -- The movable strip, just under the damage meter.
 local function build()
-  local f = T.HudPanel(CreateFrame("Frame", "ForeverUI_FightHistory", UIParent))
+  local f = T.HudPanel(CreateFrame("Frame", "Vanguard_FightHistory", UIParent))
   FH.frame = f
   f:SetSize(FH.WIDTH, FH.HEIGHT)
   ns.Mover(f, "fighthistory", "Fight history", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 89 })

@@ -19,7 +19,10 @@ concurrency:
 
 defaults:
   run:
-    # Git for Windows' bash, so the same snippets run here and on a Linux box.
+    # Git for Windows' bash, so the same snippets run here and on a Linux
+    # box. Each job's first step puts Git's bin folder first on PATH: a
+    # plain "bash" otherwise finds C:\Windows\System32\bash.exe, WSL's
+    # launcher, which fails on a PC without a WSL distribution.
     shell: bash
 
 jobs:
@@ -34,6 +37,9 @@ jobs:
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 20
     steps:
+      - name: Git Bash ahead of WSL's bash
+        shell: powershell
+        run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -55,7 +61,7 @@ jobs:
             file="${file%$'\r'}"
             case "$file" in ''|'#'*) continue ;; esac
             luac5.1 -p "$file" || status=1
-          done < ForeverUI.toc
+          done < Vanguard.toc
           exit $status
       - name: Release zip builds and holds every file it should
         run: |
@@ -77,6 +83,9 @@ jobs:
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 20
     steps:
+      - name: Git Bash ahead of WSL's bash
+        shell: powershell
+        run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:

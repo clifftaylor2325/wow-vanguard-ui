@@ -1,4 +1,4 @@
-// theme: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// theme: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { CLICK_LUA, button, chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
@@ -20,11 +20,11 @@ it("theme", () => {
     for _, w in ipairs(__wfgStub.frames) do
       if w.__parent == TestPanel and w.__layer == "BORDER" then return w.__vertexColor end
     end`);
-  expect(edge[0] === 1 && Math.abs(edge[1] - 128 / 255) < 1e-9 && edge[2] === 0, "/fui accent repaints painted frames live").toBeTruthy();
+  expect(edge[0] === 1 && Math.abs(edge[1] - 128 / 255) < 1e-9 && edge[2] === 0, "/vg accent repaints painted frames live").toBeTruthy();
   addon.slash("accent nope");
-  expect(chatHas(addon, /Usage: \/fui accent/), "a bad accent shows usage").toBeTruthy();
+  expect(chatHas(addon, /Usage: \/vg accent/), "a bad accent shows usage").toBeTruthy();
   addon.slash("theme reset");
-  expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1]") === true, "/fui theme reset restores the default accent (brass)").toBeTruthy();
+  expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1]") === true, "/vg theme reset restores the default accent (brass)").toBeTruthy();
 });
 
 it("widgets", () => {
@@ -81,7 +81,7 @@ it("theme tokens and pixel-perfect borders", () => {
   expect(addon.eval('return ns.Theme.Hex("white")') === "ffffffff", "Hex gives the escape-code form").toBeTruthy();
   addon.eval('ns.Chat("TEST-ONLY line")');
   const last = addon.chat().at(-1);
-  expect(last.startsWith("|c" + addon.eval('return ns.Theme.Hex("accent")') + "ForeverUI:|r"), `chat lines start with ForeverUI: in the accent (got ${last})`).toBeTruthy();
+  expect(last.startsWith("|c" + addon.eval('return ns.Theme.Hex("accent")') + "Vanguard:|r"), `chat lines start with Vanguard: in the accent (got ${last})`).toBeTruthy();
   addon.eval('ns.Options.Show("general")');
   setCombat(addon, true);
   addon.eval('__click("Pixel-perfect scale")');
@@ -89,7 +89,7 @@ it("theme tokens and pixel-perfect borders", () => {
   setCombat(addon, false);
   expect(Math.abs(addon.eval("return UIParent:GetScale()") - 768 / 1440) < 1e-9, "then UIParent gets 768 / screen height").toBeTruthy();
   addon.eval('__click("Pixel-perfect scale")');
-  expect(addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "turning it off offers a reload (the client's scale comes back)").toBeTruthy();
+  expect(addon.eval("return Vanguard_Options.reload:IsShown()") === true, "turning it off offers a reload (the client's scale comes back)").toBeTruthy();
 });
 
 it("one-pixel borders at every resolution and UI scale", () => {
@@ -120,22 +120,22 @@ it("one-pixel borders at every resolution and UI scale", () => {
 });
 
 it("bundled font and logo", () => {
-  const FIRA = "Interface\\AddOns\\ForeverUI\\Media\\Fonts\\FiraSansCondensed-";
+  const FIRA = "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-";
   const addon = loggedIn(CLICK_LUA);
   expect(addon.eval("return (ns.Theme.Font())") === FIRA + "Medium.ttf", "the bundled Fira Sans Condensed is the default font").toBeTruthy();
   expect(addon.eval("return (ns.Theme.Font(true))") === FIRA + "SemiBold.ttf", "bold asks for its SemiBold weight").toBeTruthy();
   addon.eval('ns.Options.Show("general")');
   expect(addon.eval('return __click("Font")') && addon.eval("return (ns.Theme.Font())") === "Fonts\\FRIZQT__.TTF", "the Font option switches to the game's font").toBeTruthy();
-  expect([addon.eval("return ForeverUI_Options.title:GetFont()"), addon.eval("return ForeverUI_Options.reload:IsShown()")], "a font change re-fonts the text already on screen, with no reload").toEqual(["Fonts\\FRIZQT__.TTF", false]);
+  expect([addon.eval("return Vanguard_Options.title:GetFont()"), addon.eval("return Vanguard_Options.reload:IsShown()")], "a font change re-fonts the text already on screen, with no reload").toEqual(["Fonts\\FRIZQT__.TTF", false]);
   const korean = loggedIn('GetLocale = function() return "koKR" end');
   expect(korean.eval("return (ns.Theme.Font())") === "Fonts\\FRIZQT__.TTF", "Korean and Chinese clients keep the game's font (Fira has no Hangul or Han)").toBeTruthy();
-  const logo = addon.eval(`local l = ForeverUI_Options.logo
+  const logo = addon.eval(`local l = Vanguard_Options.logo
     local out = {}
     for _, w in ipairs(__wfgStub.frames) do if w.__parent == l then out[#out + 1] = { tex = w.__texture, color = w.__vertexColor } end end
     return out`);
   expect(logo.length === 2 && logo.every((t) => /Media\\Textures\\Logo(Left|Right)$/.test(t.tex)), "the options title has the two-part logo").toBeTruthy();
   addon.slash("accent fel");
-  const left = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__parent == ForeverUI_Options.logo and w.__texture:find("Left") then return w.__vertexColor end end`);
+  const left = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__parent == Vanguard_Options.logo and w.__texture:find("Left") then return w.__vertexColor end end`);
   expect(isTok(addon, left, "accent"), "the logo's left diamond follows the accent live").toBeTruthy();
 });
 
@@ -154,7 +154,7 @@ it("text roles, sheen and shadows", () => {
   expect(addon.eval('return (pcall(ns.Theme.Text, UIParent:CreateFontString(), "TEST-ONLY-nope"))') === false, "an unknown role is an error").toBeTruthy();
   addon.eval('__old = ns.Theme.Text(UIParent:CreateFontString(), "label", "muted") ns.Options.Show("general")');
   addon.eval('__click("Text size")');
-  expect(fs("label").font[1] === 13 && addon.eval("return ForeverUI_Options.reload:IsShown()") === false, "Text size scales every role (110%: 12 -> 13) at once, no reload").toBeTruthy();
+  expect(fs("label").font[1] === 13 && addon.eval("return Vanguard_Options.reload:IsShown()") === false, "Text size scales every role (110%: 12 -> 13) at once, no reload").toBeTruthy();
   expect(addon.eval("return { select(2, __old:GetFont()), __old.__textColor == nil }"), "text already on screen is re-sized too, its color kept").toEqual([13, false]);
   const parts = addon.eval(`local f = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })
     local out = { shadow = 0, sheen = 0 }
@@ -168,10 +168,10 @@ it("text roles, sheen and shadows", () => {
   expect(parts.shadow === 8 && parts.tc?.length === 4, "a shadowed panel gets eight shadow pieces cut from Media/Textures/Shadow").toBeTruthy();
   expect([parts.shifted ?? false, parts.snapped], "the shadow sits flush around the panel (no drop, so no gap under it), pixel-snapped").toEqual([false, true]);
   expect(parts.sheen === 1 && isTok(addon, parts.sheenColor, "sheen"), "and a sheen one pixel inside its top edge").toBeTruthy();
-  expect(addon.eval("local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.__parent == ForeverUI_Options and w.__texture and w.__texture:find('Shadow') then n = n + 1 end end return n") === 8, "the options window casts a shadow").toBeTruthy();
+  expect(addon.eval("local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.__parent == Vanguard_Options and w.__texture and w.__texture:find('Shadow') then n = n + 1 end end return n") === 8, "the options window casts a shadow").toBeTruthy();
 });
 
-it("fading a frame's art: template textures go, ForeverUI's own parts and kept ones stay, call after call", () => {
+it("fading a frame's art: template textures go, Vanguard's own parts and kept ones stay, call after call", () => {
   const addon = loggedIn();
   const out = addon.eval(`local T = ns.Theme
     local a = CreateFrame("Frame", nil, UIParent)
@@ -197,11 +197,11 @@ const DROPDOWN_LUA = `
   end
   function __menuTexts()
     local out = {}
-    for _, b in ipairs(ForeverUI_Menu.items) do if b:IsShown() then out[#out + 1] = b.text:GetText() end end
+    for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() then out[#out + 1] = b.text:GetText() end end
     return out
   end
   function __pick(text)
-    for _, b in ipairs(ForeverUI_Menu.items) do if b:IsShown() and b.text:GetText() == text then b:GetScript("OnClick")(b) return true end end
+    for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() and b.text:GetText() == text then b:GetScript("OnClick")(b) return true end end
   end
 `;
 // TEST-ONLY media another addon shares through LibSharedMedia-3.0.
@@ -209,35 +209,35 @@ const SHARED_LUA = `local lsm = LibStub("LibSharedMedia-3.0")
   lsm:Register("font", "TEST-ONLY Font", [[Interface\\AddOns\\TestOnly\\Font.ttf]])
   lsm:Register("statusbar", "TEST-ONLY Bar", [[Interface\\AddOns\\TestOnly\\Bar]])`;
 
-it("shared media: the bundled LibSharedMedia-3.0 carries ForeverUI's font and bars, and the pickers offer what other addons share", () => {
-  const FIRA = "Interface\\AddOns\\ForeverUI\\Media\\Fonts\\FiraSansCondensed-";
+it("shared media: the bundled LibSharedMedia-3.0 carries Vanguard's font and bars, and the pickers offer what other addons share", () => {
+  const FIRA = "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-";
   const addon = loggedIn(CLICK_LUA + DROPDOWN_LUA + SHARED_LUA);
   expect(addon.eval(`local lsm = LibStub("LibSharedMedia-3.0")
-    return { LibStub.minors["LibSharedMedia-3.0"], LibStub.minors["CallbackHandler-1.0"], lsm:Fetch("font", "ForeverUI Fira Sans"), lsm:Fetch("font", "ForeverUI Fira Sans SemiBold"),
-      lsm:Fetch("statusbar", "ForeverUI Forever"), lsm:Fetch("statusbar", "ForeverUI Soft"), lsm:Fetch("statusbar", "ForeverUI Flat") }`), "the libraries load, and ForeverUI shares its font's two weights and its three bar textures")
-    .toEqual([8020003, 8, FIRA + "Medium.ttf", FIRA + "SemiBold.ttf", "Interface\\AddOns\\ForeverUI\\Media\\Textures\\Bar", "Interface\\AddOns\\ForeverUI\\Media\\Textures\\BarSoft", "Interface\\Buttons\\WHITE8X8"]);
+    return { LibStub.minors["LibSharedMedia-3.0"], LibStub.minors["CallbackHandler-1.0"], lsm:Fetch("font", "Vanguard Fira Sans"), lsm:Fetch("font", "Vanguard Fira Sans SemiBold"),
+      lsm:Fetch("statusbar", "Vanguard"), lsm:Fetch("statusbar", "Vanguard Soft"), lsm:Fetch("statusbar", "Vanguard Flat") }`), "the libraries load, and Vanguard shares its font's two weights and its three bar textures")
+    .toEqual([8020003, 8, FIRA + "Medium.ttf", FIRA + "SemiBold.ttf", "Interface\\AddOns\\Vanguard\\Media\\Textures\\Bar", "Interface\\AddOns\\Vanguard\\Media\\Textures\\BarSoft", "Interface\\Buttons\\WHITE8X8"]);
   addon.eval('ns.Options.Show("general") __dropdown("Font")');
   const fonts = addon.eval("return __menuTexts()");
-  expect([fonts.slice(0, 2), fonts.includes("TEST-ONLY Font"), fonts.includes("Friz Quadrata TT"), fonts.some((f) => /^ForeverUI/.test(f))], "the Font picker: the built-ins first, then every shared font but ForeverUI's own")
+  expect([fonts.slice(0, 2), fonts.includes("TEST-ONLY Font"), fonts.includes("Friz Quadrata TT"), fonts.some((f) => /^Vanguard/.test(f))], "the Font picker: the built-ins first, then every shared font but Vanguard's own")
     .toEqual([["Fira Sans Condensed", "the game's font"], true, true, false]);
   addon.eval('__pick("TEST-ONLY Font")');
-  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (ForeverUI_Options.title:GetFont()), ForeverUI_Options.reload:IsShown() }"), "picking a shared font uses it for all text at once, no reload")
+  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (Vanguard_Options.title:GetFont()), Vanguard_Options.reload:IsShown() }"), "picking a shared font uses it for all text at once, no reload")
     .toEqual(["Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", false]);
   addon.eval('__dropdown("Bar texture")');
   const bars = addon.eval("return __menuTexts()");
-  expect([bars.slice(0, 3), bars.includes("TEST-ONLY Bar"), bars.includes("Blizzard"), bars.some((b) => /^ForeverUI/.test(b))], "the Bar texture picker: Forever, Soft, Flat, then every shared bar texture but ForeverUI's own")
-    .toEqual([["Forever", "Soft", "Flat"], true, true, false]);
+  expect([bars.slice(0, 3), bars.includes("TEST-ONLY Bar"), bars.includes("Blizzard"), bars.slice(3).some((b) => /^Vanguard/.test(b))], "the Bar texture picker: Vanguard, Soft, Flat, then every shared bar texture but Vanguard's own")
+    .toEqual([["Vanguard", "Soft", "Flat"], true, true, false]);
   addon.eval('__pick("TEST-ONLY Bar")');
-  expect(addon.eval("return { ns.Theme.BarTexture(), ForeverUI_Options.reload:IsShown() }"), "picking a shared bar texture uses it (on reload, as the built-ins)").toEqual(["Interface\\AddOns\\TestOnly\\Bar", true]);
+  expect(addon.eval("return { ns.Theme.BarTexture(), Vanguard_Options.reload:IsShown() }"), "picking a shared bar texture uses it (on reload, as the built-ins)").toEqual(["Interface\\AddOns\\TestOnly\\Bar", true]);
   expect(addon.eval('ns.Theme.Settings().barTexture = "Blizzard" return ns.Theme.BarTexture()'), "the game's bars LibSharedMedia lists work too").toBe("Interface\\TargetingFrame\\UI-StatusBar");
 });
 
 it("shared media: a name no longer shared, or no LibSharedMedia at all, falls back to the built-ins", () => {
-  const FIRA = "Interface\\AddOns\\ForeverUI\\Media\\Fonts\\FiraSansCondensed-";
+  const FIRA = "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-";
   const addon = loggedIn(CLICK_LUA + DROPDOWN_LUA);
   addon.eval('ns.Theme.Settings().font = "TEST-ONLY Gone" ns.Theme.Settings().barTexture = "TEST-ONLY Gone" ns.Options.Show("general")');
-  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), ns.Theme.BarTexture(), __dropdown('Font').dropdown.text:GetText() }"), "a font or bar whose addon is gone: Fira Sans Condensed and the Forever bars, and the picker says so")
-    .toEqual([FIRA + "Medium.ttf", FIRA + "SemiBold.ttf", "Interface\\AddOns\\ForeverUI\\Media\\Textures\\Bar", "Fira Sans Condensed"]);
+  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), ns.Theme.BarTexture(), __dropdown('Font').dropdown.text:GetText() }"), "a font or bar whose addon is gone: Fira Sans Condensed and the Vanguard bars, and the picker says so")
+    .toEqual([FIRA + "Medium.ttf", FIRA + "SemiBold.ttf", "Interface\\AddOns\\Vanguard\\Media\\Textures\\Bar", "Fira Sans Condensed"]);
   const bare = loggedIn('LibStub = nil');
   expect(bare.eval(`local T = ns.Theme
     T.Settings().font = "Friz Quadrata TT" T.Settings().barTexture = "Blizzard"
@@ -245,7 +245,7 @@ it("shared media: a name no longer shared, or no LibSharedMedia at all, falls ba
     T.Settings().font = [[Interface\\AddOns\\TestOnly\\Old.ttf]]
     out[5] = (T.Font())
     return out`), "without the library: only the built-ins, shared names fall back, and a font path from older settings still works")
-    .toEqual([true, 1, FIRA + "Medium.ttf", "Interface\\AddOns\\ForeverUI\\Media\\Textures\\Bar", "Interface\\AddOns\\TestOnly\\Old.ttf"]);
+    .toEqual([true, 1, FIRA + "Medium.ttf", "Interface\\AddOns\\Vanguard\\Media\\Textures\\Bar", "Interface\\AddOns\\TestOnly\\Old.ttf"]);
 });
 
 it("a long dropdown shows 16 choices at once, scrolls with the wheel and opens at the current choice", () => {
@@ -255,15 +255,15 @@ it("a long dropdown shows 16 choices at once, scrolls with the wheel and opens a
   const total = addon.eval('return #ns.Theme.SharedChoices("font", { {}, {} })');
   // The first choice the menu shows.
   const first = () => addon.eval("return __menuTexts()[1]");
-  expect([addon.eval("return #__menuTexts()"), addon.eval("return ForeverUI_Menu:GetHeight()"), first()], "16 of the choices, from the top").toEqual([16, 16 * 22 + 2, "Fira Sans Condensed"]);
-  addon.wheel("ForeverUI_Menu", -3);
+  expect([addon.eval("return #__menuTexts()"), addon.eval("return Vanguard_Menu:GetHeight()"), first()], "16 of the choices, from the top").toEqual([16, 16 * 22 + 2, "Fira Sans Condensed"]);
+  addon.wheel("Vanguard_Menu", -3);
   expect(first(), "the wheel scrolls down a choice per step").toBe("2002 Bold");
-  addon.wheel("ForeverUI_Menu", -100);
+  addon.wheel("Vanguard_Menu", -100);
   expect([first(), addon.eval("return __menuTexts()[16]")], "and stops at the end of the list").toEqual([addon.eval(`return ns.Theme.SharedChoices("font", { {}, {} })[${total - 15}][2]`), "TEST-ONLY Font 40"]);
-  addon.wheel("ForeverUI_Menu", 100);
+  addon.wheel("Vanguard_Menu", 100);
   expect(first(), "and at the top").toBe("Fira Sans Condensed");
   addon.eval('ns.Theme.Settings().font = "TEST-ONLY Font 10" ns.Widgets.CloseMenu() __dropdown("Font")');
-  expect(addon.eval("local t = __menuTexts() return { t[16], ForeverUI_Menu.items[16].check:IsShown() }"), "a menu opens scrolled to show the current choice, checked").toEqual(["TEST-ONLY Font 10", true]);
+  expect(addon.eval("local t = __menuTexts() return { t[16], Vanguard_Menu.items[16].check:IsShown() }"), "a menu opens scrolled to show the current choice, checked").toEqual(["TEST-ONLY Font 10", true]);
 });
 
 it("the faction look on a Russian client keeps Fira Sans for headings (the faction fonts have no Cyrillic); the crest stays", () => {
@@ -271,7 +271,7 @@ it("the faction look on a Russian client keeps Fira Sans for headings (the facti
   const addon = loggedIn(faction + 'GetLocale = function() return "ruRU" end');
   // A new heading string's font file, and whether the options window's crest shows.
   const look = (a) => a.eval(`ns.Options.Show("general") local fs = ns.Theme.Text(UIParent:CreateFontString(), "heading")
-    return { fs.__font[1]:match("[^\\\\]+$"), ForeverUI_Options.crest:IsShown() }`);
+    return { fs.__font[1]:match("[^\\\\]+$"), Vanguard_Options.crest:IsShown() }`);
   expect(look(addon), "Alliance on ruRU: Fira Sans SemiBold headings, the crest shown").toEqual(["FiraSansCondensed-SemiBold.ttf", true]);
   addon.eval('__faction = "Horde" ns.Theme.Refresh()');
   expect(look(addon)[0], "Horde on ruRU too").toBe("FiraSansCondensed-SemiBold.ttf");

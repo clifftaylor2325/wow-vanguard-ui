@@ -1,8 +1,8 @@
--- ForeverUI's quest log: a window with your quests by zone on the left
+-- Vanguard's quest log: a window with your quests by zone on the left
 -- ("[12] Title" in its difficulty color, a check when ready to turn in) and
 -- the chosen quest on the right: its text, objectives and rewards, with
 -- Track, Share, Abandon (through the game's own confirmation) and Map.
--- The game's quest log key and micro button open it (and /fui quests); the
+-- The game's quest log key and micro button open it (and /vg quests); the
 -- tracker's titles open it on that quest.
 
 local ADDON, ns = ...
@@ -139,14 +139,14 @@ function QL.BindKeys()
   ns.OutOfCombat(function()
     ClearOverrideBindings(QL.toggle)
     for _, key in ipairs({ call(GetBindingKey, "TOGGLEQUESTLOG") }) do
-      SetOverrideBindingClick(QL.toggle, false, key, "ForeverUI_QuestLogToggle")
+      SetOverrideBindingClick(QL.toggle, false, key, "Vanguard_QuestLogToggle")
     end
   end)
 end
 
 -- The button the quest log key clicks.
 local function addToggle()
-  QL.toggle = CreateFrame("Button", "ForeverUI_QuestLogToggle", UIParent)
+  QL.toggle = CreateFrame("Button", "Vanguard_QuestLogToggle", UIParent)
   QL.toggle:SetScript("OnClick", QL.Toggle)
 end
 

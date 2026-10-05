@@ -1,4 +1,4 @@
-// unlock: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// unlock: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { UI_ENV, UP, key, loggedIn } from "./helpers.mjs";
@@ -21,7 +21,7 @@ it("unlock mode", () => {
   addon.eval(`local h = ns.MoverHandleForTest("b"); h.__left, h.__bottom = 500, 900`);
   drop("a", 601, 900);
   // Mover a's saved [point, x, y].
-  const saved = () => addon.eval("local p = ForeverUIDB.profiles.Default.positions.a; return { p.point, p.x, p.y }");
+  const saved = () => addon.eval("local p = VanguardDB.profiles.Default.positions.a; return { p.point, p.x, p.y }");
   expect(JSON.stringify(saved()) === JSON.stringify(["TOP", -310, -160]), `a drop snaps to the other handle and anchors to the nearest edge (got ${JSON.stringify(saved())})`).toBeTruthy();
   addon.eval(`local h = ns.MoverHandleForTest("a"); h:GetScript("OnMouseDown")(h)`);
   addon.eval(`local h = ns.MoverHandleForTest("a"); h:GetScript("OnKeyDown")(h, "LEFT")`);
@@ -30,20 +30,20 @@ it("unlock mode", () => {
   expect(JSON.stringify(saved()) === JSON.stringify(["TOP", -311, -150]), "Shift nudges 10 px").toBeTruthy();
   expect(/TOP -311, -150/.test(addon.eval(`return ns.MoverHandleForTest("a").label:GetText()`)), "the selected handle shows its point and offsets").toBeTruthy();
   addon.slash("grid 64");
-  expect(addon.eval("return ns.GridLineCount()") === 48, "/fui grid 64 redraws the grid (31 + 17)").toBeTruthy();
+  expect(addon.eval("return ns.GridLineCount()") === 48, "/vg grid 64 redraws the grid (31 + 17)").toBeTruthy();
   addon.slash("grid off");
-  expect(addon.eval("return ns.GridLineCount()") === 0, "/fui grid off hides it").toBeTruthy();
+  expect(addon.eval("return ns.GridLineCount()") === 0, "/vg grid off hides it").toBeTruthy();
   addon.slash("snap off");
   drop("a", 601, 900);
   expect(saved()[0] === "TOP" && saved()[1] === -309, `with snapping off, the drop stays where it was (got ${JSON.stringify(saved())})`).toBeTruthy();
   addon.slash("lock");
-  expect(addon.eval(`return ns.MoverHandleForTest("a"):IsShown()`) === false, "/fui lock hides the handles").toBeTruthy();
+  expect(addon.eval(`return ns.MoverHandleForTest("a"):IsShown()`) === false, "/vg lock hides the handles").toBeTruthy();
 });
 
 it("accent presets", () => {
   const addon = loggedIn();
   addon.slash("accent void");
-  expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.void[1]") === true, "/fui accent void sets the void preset").toBeTruthy();
+  expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.void[1]") === true, "/vg accent void sets the void preset").toBeTruthy();
   addon.slash("accent blue");
   expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]") === true, "the old preset names still work (blue is arcane)").toBeTruthy();
   addon.slash("accent #3D9EFF");
@@ -54,44 +54,44 @@ it("unlock popover: anchor, offsets, reset", () => {
   const addon = loggedIn(UI_ENV);
   addon.slash("unlock");
   addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "minimap" then __h = w end end __h:GetScript("OnMouseDown")(__h, "RightButton")');
-  expect(addon.eval("return ForeverUI_MoverPopover:IsShown()") === true, "right-clicking a handle opens its popover").toBeTruthy();
-  addon.eval('local p = ForeverUI_MoverPopover p.x:SetText("123") p.x:GetScript("OnEnterPressed")(p.x)');
+  expect(addon.eval("return Vanguard_MoverPopover:IsShown()") === true, "right-clicking a handle opens its popover").toBeTruthy();
+  addon.eval('local p = Vanguard_MoverPopover p.x:SetText("123") p.x:GetScript("OnEnterPressed")(p.x)');
   expect(addon.eval('return select(3, ns.MoverPoint("minimap"))') === 123, "typing an X offset saves it").toBeTruthy();
-  addon.eval('local d = ForeverUI_MoverPopover.anchor d:GetScript("OnClick")(d) ForeverUI_Menu.items[5]:GetScript("OnClick")(ForeverUI_Menu.items[5])');
+  addon.eval('local d = Vanguard_MoverPopover.anchor d:GetScript("OnClick")(d) Vanguard_Menu.items[5]:GetScript("OnClick")(Vanguard_Menu.items[5])');
   const p = addon.eval('return { ns.MoverPoint("minimap") }');
   expect(p[0] === "CENTER" && p[2] === 0 && p[3] === 0, "picking an anchor moves the frame to that screen point with no offset").toBeTruthy();
-  expect(addon.eval("return ForeverUI_MoverPopover.x:GetText()") === "0", "the boxes follow").toBeTruthy();
+  expect(addon.eval("return Vanguard_MoverPopover.x:GetText()") === "0", "the boxes follow").toBeTruthy();
   addon.eval("ns.Nudge('minimap', 5, 0)");
-  expect(addon.eval("return ForeverUI_MoverPopover.x:GetText()") === "5", "arrow-key nudges update the popover").toBeTruthy();
-  addon.eval("ForeverUI_MoverPopover.reset:GetScript('OnClick')(ForeverUI_MoverPopover.reset)");
+  expect(addon.eval("return Vanguard_MoverPopover.x:GetText()") === "5", "arrow-key nudges update the popover").toBeTruthy();
+  addon.eval("Vanguard_MoverPopover.reset:GetScript('OnClick')(Vanguard_MoverPopover.reset)");
   expect(addon.eval('return select(1, ns.MoverPoint("minimap"))') !== "CENTER", "Reset puts the frame back where it started").toBeTruthy();
   addon.slash("lock");
-  expect(addon.eval("return ForeverUI_MoverPopover:IsShown()") === false, "locking closes the popover").toBeTruthy();
+  expect(addon.eval("return Vanguard_MoverPopover:IsShown()") === false, "locking closes the popover").toBeTruthy();
 });
 
 // Types a value into one of the popover's boxes and presses Enter.
-const typeInto = (addon, box, text) => addon.eval(`local b = ForeverUI_MoverPopover.${box} b:SetText("${text}") b:GetScript("OnEnterPressed")(b)`);
+const typeInto = (addon, box, text) => addon.eval(`local b = Vanguard_MoverPopover.${box} b:SetText("${text}") b:GetScript("OnEnterPressed")(b)`);
 
 it("unlock popover: scale and opacity in percent", () => {
   const addon = loggedIn(UI_ENV);
   addon.slash("unlock");
   addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "minimap" then __h = w end end __h:GetScript("OnMouseDown")(__h, "RightButton")');
   // The popover's Scale and Opacity boxes, and the minimap holder's scale and alpha.
-  const look = () => addon.eval("local p, f = ForeverUI_MoverPopover, ns.MoverFrame('minimap') return { p.scale:GetText(), p.alpha:GetText(), f:GetScale(), f:GetAlpha() }");
+  const look = () => addon.eval("local p, f = Vanguard_MoverPopover, ns.MoverFrame('minimap') return { p.scale:GetText(), p.alpha:GetText(), f:GetScale(), f:GetAlpha() }");
   expect(look(), "they start at 100%").toEqual(["100", "100", 1, 1]);
   typeInto(addon, "scale", "150");
   typeInto(addon, "alpha", "40");
   expect(look(), "typing a percent sets the frame's scale and opacity").toEqual(["150", "40", 1.5, 0.4]);
-  expect(addon.eval("return { __h:GetScale(), ForeverUIDB.profiles.Default.positions.minimap.scale }"), "the handle follows, and it is saved").toEqual([1.5, 1.5]);
+  expect(addon.eval("return { __h:GetScale(), VanguardDB.profiles.Default.positions.minimap.scale }"), "the handle follows, and it is saved").toEqual([1.5, 1.5]);
   typeInto(addon, "scale", "TEST-ONLY");
   typeInto(addon, "alpha", "500");
   expect(look(), "a bad number is ignored and a big one stops at 100%").toEqual(["150", "100", 1.5, 1]);
-  addon.eval("ForeverUI_MoverPopover.reset:GetScript('OnClick')(ForeverUI_MoverPopover.reset)");
+  addon.eval("Vanguard_MoverPopover.reset:GetScript('OnClick')(Vanguard_MoverPopover.reset)");
   expect(look(), "Reset puts the scale and opacity back").toEqual(["100", "100", 1, 1]);
 });
 
 it("a grid size from a hand-edited profile string is kept to 8-256 px, so unlocking can't freeze the game", () => {
-  const addon = loggedIn("UIParent:SetSize(1920, 1080)", { savedVariables: "ForeverUIDB.profiles = { Default = { movers = { gridSize = 1 } } }" });
+  const addon = loggedIn("UIParent:SetSize(1920, 1080)", { savedVariables: "VanguardDB.profiles = { Default = { movers = { gridSize = 1 } } }" });
   addon.slash("unlock");
   expect(addon.eval("return ns.GridLineCount()"), "1 px draws as 8 px (241 + 135 lines), not 3002 lines").toBe(376);
   addon.slash("lock");

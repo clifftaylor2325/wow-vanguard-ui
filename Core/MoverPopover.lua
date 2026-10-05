@@ -103,7 +103,7 @@ end
 
 -- The popover, built once: a raised panel over everything, kept on screen.
 local function build()
-  popover = T.Panel(CreateFrame("Frame", "ForeverUI_MoverPopover", UIParent), { raised = true, shadow = true })
+  popover = T.Panel(CreateFrame("Frame", "Vanguard_MoverPopover", UIParent), { raised = true, shadow = true })
   popover:SetSize(250, 236)
   popover:SetFrameStrata("FULLSCREEN_DIALOG")
   popover:SetClampedToScreen(true)

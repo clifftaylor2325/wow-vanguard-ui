@@ -2,7 +2,7 @@
 -- the search queue, the scan and the slash commands): named shopping lists
 -- and their entries (an item ID or a name, with filters: exact name, level,
 -- quality and a max price, set from a row's right-click menu), managed from the dropdown or
--- /fui ah (rename, duplicate, delete with a confirm, export as text, import
+-- /vg ah (rename, duplicate, delete with a confirm, export as text, import
 -- plain lines or Auctionator's `^`/`;` strings), Search list, which runs the
 -- list's searches one after another (the last 20 terms searched are kept,
 -- account-wide, as the Recent pseudo-list), each entry's best result, and the
@@ -49,7 +49,7 @@ AH.MONEY_UNITS = { g = 10000, s = 100, c = 1 }
 -- The Recent pseudo-list: its dropdown value, and how many searched terms it keeps.
 AH.RECENT, AH.MAX_RECENT = "\1recent", 20
 -- What chat says when an action needs a list and there's none in use.
-AH.NO_LIST = "Pick a shopping list first (the Shop card's dropdown, or /fui ah list <name>)."
+AH.NO_LIST = "Pick a shopping list first (the Shop card's dropdown, or /vg ah list <name>)."
 
 -- Shopping lists -----------------------------------------------------------------------------
 
@@ -63,7 +63,7 @@ end
 -- Entries whose browse results wait for an item's name (matched again when it comes in).
 AH.unnamed = {}
 
--- The terms searched last, newest first (ForeverUIDB.ah.recent, kept for the account).
+-- The terms searched last, newest first (VanguardDB.ah.recent, kept for the account).
 function AH.Recent()
   local store = AP.Store()
   store.recent = type(store.recent) == "table" and store.recent or {}
@@ -94,7 +94,7 @@ function AH.NewList(name)
   local store = AP.Store()
   name = (name or ""):match("^%s*(.-)%s*$")
   if name == "" then return false end
-  if not store.lists[name] and countLists(store) >= AH.MAX_LISTS then return ns.Chat("ForeverUI keeps at most 20 shopping lists.") end
+  if not store.lists[name] and countLists(store) >= AH.MAX_LISTS then return ns.Chat("Vanguard keeps at most 20 shopping lists.") end
   store.lists[name], store.list = store.lists[name] or {}, name
   ns.HideText()
   AH.PaintShop()
@@ -275,7 +275,7 @@ end
 local function importSaid(name, added, full, ignored)
   local out = string.format("Imported %d item(s) into %s.", added, name)
   if full > 0 then out = out .. string.format(" %d didn't fit (a list holds at most 50).", full) end
-  if ignored > 0 then out = out .. string.format(" %d other search field(s) ignored: ForeverUI takes each item's name.", ignored) end
+  if ignored > 0 then out = out .. string.format(" %d other search field(s) ignored: Vanguard takes each item's name.", ignored) end
   ns.Chat(out)
 end
 
@@ -304,11 +304,11 @@ function AH.AskRename()
   ns.AskText("Rename " .. name, AH.RenameList, "Rename")
 end
 
--- /fui ah's words for the list in use (list and add are in Modules/AuctionHelper.lua).
+-- /vg ah's words for the list in use (list and add are in Modules/AuctionHelper.lua).
 -- rename <name>: renames it.
 AH.COMMANDS.rename = function(arg)
   if not listInUse() then return ns.Chat(AH.NO_LIST) end
-  if AH.RenameList(arg) == false then ns.Chat("/fui ah rename <new name> renames the shopping list in use.") end
+  if AH.RenameList(arg) == false then ns.Chat("/vg ah rename <new name> renames the shopping list in use.") end
 end
 -- duplicate: copies it to a new list.
 AH.COMMANDS.duplicate = function() AH.DuplicateList() end
@@ -339,7 +339,7 @@ end
 -- it's Recent that is searched).
 function AH.SearchList()
   local _, list = AH.CurrentList()
-  if not list or #list == 0 then return ns.Chat("Add items to a shopping list first (+ Add, or /fui ah add <list> <item>).") end
+  if not list or #list == 0 then return ns.Chat("Add items to a shopping list first (+ Add, or /vg ah add <list> <item>).") end
   if AH.ListKey() ~= AH.RECENT then for _, entry in ipairs(list) do AH.Remember(entry) end end
   AH.DropQueued("entry")
   AH.DropQueued("cost")
@@ -822,7 +822,7 @@ end
 
 -- The filter dialog, built once: a raised panel over the auction house, with Save and Cancel.
 local function buildFilters()
-  local d = T.Panel(CreateFrame("Frame", "ForeverUI_AuctionFilters", UIParent), { raised = true, shadow = true })
+  local d = T.Panel(CreateFrame("Frame", "Vanguard_AuctionFilters", UIParent), { raised = true, shadow = true })
   d:SetSize(AH.FILTER_W, 228)
   d:SetFrameStrata("DIALOG")
   d:SetClampedToScreen(true)

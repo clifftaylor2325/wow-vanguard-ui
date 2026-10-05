@@ -1,4 +1,4 @@
-// bagsections: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// bagsections: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { CLICK_LUA, UI_ENV, borderOf, isTok, loggedIn, setCombat } from "./helpers.mjs";
@@ -123,7 +123,7 @@ const openFilled = (sizes, counts, extra = "") => {
   return addon;
 };
 
-// The padding ForeverUI keeps inside the bag window.
+// The padding Vanguard keeps inside the bag window.
 const PAD = 12;
 // How far inside the bag window each shown slot, section header, the search
 // box, Sort and the money line lie, at the least: { left, right, top, bottom } in px.
@@ -248,14 +248,14 @@ it("a switch under Bars, map, chat gives back the plain combined bag at once, an
   addon.eval("__openBag()");
   addon.slash("");
   addon.eval('__click("Bars, map, chat")');
-  expect(addon.eval('return __click("Combined bag in sections") and ForeverUIDB.profiles.Default.Bags.sections'), "the switch is on the page").toBe(false);
+  expect(addon.eval('return __click("Combined bag in sections") and VanguardDB.profiles.Default.Bags.sections'), "the switch is on the page").toBe(false);
   expect([headers(addon), spot(addon, "b0s1"), height(addon)], "switched off: the game's grid and height, no headers").toEqual([[], [343, 75], 186]);
   addon.eval("ContainerFrameCombinedBags:UpdateItems() ContainerFrameCombinedBags:Hide() __openBag()");
   expect([headers(addon), spot(addon, "b0s1")], "and it stays plain as the bag fills and opens").toEqual([[], [343, 75]]);
   addon.eval('__click("Combined bag in sections")');
   expect([headers(addon).length, spot(addon, "b0s1"), height(addon)], "switched on: sections at once").toEqual([7, [12, 160], 233]);
   addon.eval('ContainerFrameCombinedBags:Hide() __click("Combined bag in sections") __click("Combined bag in sections")');
-  expect(addon.eval("return ContainerFrameCombinedBags.fuiSections == nil"), "switched off and on while closed: laid out at the next opening").toBe(true);
+  expect(addon.eval("return ContainerFrameCombinedBags.vgSections == nil"), "switched off and on while closed: laid out at the next opening").toBe(true);
 });
 
 it("a client without the bag window's layout calls keeps the plain combined bag", () => {
@@ -325,7 +325,7 @@ it("the money line keeps the padding when the game puts it back, and sits on the
 });
 
 it("with sections off the game's plain grid is as it was, and Sort fits beside the search box there too", () => {
-  const addon = loggedIn(BAG_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Bags = { sections = false } } }" });
+  const addon = loggedIn(BAG_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Bags = { sections = false } } }" });
   addon.eval("__openBag()");
   const money = addon.eval("local f = ContainerFrameCombinedBags return { f.MoneyFrame:GetLeft() - f:GetLeft(), f:GetWidth(), f:GetHeight() }");
   expect([headers(addon), spot(addon, "b0s1"), money], "the game's grid, money line, width and height").toEqual([[], [343, 75], [8, 430, 186]]);

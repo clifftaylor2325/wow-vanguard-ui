@@ -3,10 +3,10 @@
 
 local ADDON, ns = ...
 
--- "ForeverUI:" in the accent color (plain until the theme has loaded).
+-- "Vanguard:" in the accent color (plain until the theme has loaded).
 local function chatPrefix()
   local T = ns.Theme
-  return T and T.Paint("ForeverUI:", "accent") .. " " or "ForeverUI: "
+  return T and T.Paint("Vanguard:", "accent") .. " " or "Vanguard: "
 end
 
 -- Prints one line to the default chat frame, prefixed with the addon name.
@@ -17,13 +17,13 @@ function ns.Chat(msg)
 end
 
 -- Caught errors ------------------------------------------------------------------------------
--- A failure ForeverUI catches (a module that fails to load, a handler that
+-- A failure Vanguard catches (a module that fails to load, a handler that
 -- throws, an icon the client refuses) must not stop the rest, but it shouldn't
 -- vanish either. ns.Report keeps one entry per distinct error text, newest
 -- last: { text = "where: message", count = how often, stack = the call stack
 -- the first time }; the oldest goes past MAX_ERRORS. The first time an error
 -- text is seen it is printed to chat, once per session however many other
--- errors have pushed it out of the list since (/fui errors clear starts over);
+-- errors have pushed it out of the list since (/vg errors clear starts over);
 -- every time, it goes to the game's own error
 -- handler (the Lua error popup, or an error addon) when the client has one.
 
@@ -103,7 +103,7 @@ local function record(where, err, level)
   local e = byText[text] or keep(text, stack(level))
   if not printed[text] then
     printed[text] = true
-    ns.Chat(text .. "  (once per error; /fui errors has the stack)")
+    ns.Chat(text .. "  (once per error; /vg errors has the stack)")
   end
   e.count = e.count + 1
   return text
@@ -114,7 +114,7 @@ function ns.Report(where, err)
   forward(record(where, err, 4))
 end
 
--- Forgets every caught error (/fui errors clear).
+-- Forgets every caught error (/vg errors clear).
 function ns.ClearErrors()
   ns.errors, byText, printed = {}, {}, {}
   errorsChanged()
@@ -195,7 +195,7 @@ local function label(event)
   return text
 end
 
--- Each handler runs under ns.Try: a failure is reported (/fui errors, the
+-- Each handler runs under ns.Try: a failure is reported (/vg errors, the
 -- game's handler) and does not stop the others, so one broken module can't
 -- take the rest down at PLAYER_LOGIN.
 frame:SetScript("OnEvent", function(_, event, ...)
@@ -250,8 +250,8 @@ end
 
 -- A subscription's OnEvent: its handler under ns.Try, for its own units only.
 local function onUnitEvent(sub, event, unit, ...)
-  if sub.fuiPlain and not sub.fuiUnits[unit] then return end
-  ns.Try(label(event), sub.fuiHandler, event, unit, ...)
+  if sub.vgPlain and not sub.vgUnits[unit] then return end
+  ns.Try(label(event), sub.vgHandler, event, unit, ...)
 end
 
 -- The events this client has, from one name or a list (one it lacks is skipped and noted).
@@ -267,10 +267,10 @@ end
 function ns.SetUnits(sub, unit1, unit2, unit3)
   sub:UnregisterAllEvents()
   -- A unit as a key; a number stands in for a missing one (no event names a number).
-  sub.fuiUnits = { [unit1 or 1] = true, [unit2 or 2] = true, [unit3 or 3] = true }
+  sub.vgUnits = { [unit1 or 1] = true, [unit2 or 2] = true, [unit3 or 3] = true }
   if unit1 == nil then return end
-  for _, event in ipairs(sub.fuiEvents) do
-    if sub.fuiPlain then sub:RegisterEvent(event) else sub:RegisterUnitEvent(event, unit1, unit2, unit3) end
+  for _, event in ipairs(sub.vgEvents) do
+    if sub.vgPlain then sub:RegisterEvent(event) else sub:RegisterUnitEvent(event, unit1, unit2, unit3) end
   end
 end
 
@@ -279,8 +279,8 @@ end
 -- Returns the subscription, for ns.SetUnits.
 function ns.OnUnit(events, fn, unit1, unit2, unit3)
   local sub = CreateFrame("Frame")
-  sub.fuiEvents, sub.fuiHandler = knownEvents(events), fn
-  sub.fuiPlain = type(sub.RegisterUnitEvent) ~= "function"
+  sub.vgEvents, sub.vgHandler = knownEvents(events), fn
+  sub.vgPlain = type(sub.RegisterUnitEvent) ~= "function"
   sub:SetScript("OnEvent", onUnitEvent)
   ns.SetUnits(sub, unit1, unit2, unit3)
   return sub

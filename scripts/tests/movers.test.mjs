@@ -1,4 +1,4 @@
-// movers: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// movers: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { chatHas, loggedIn, setCombat } from "./helpers.mjs";
@@ -16,12 +16,12 @@ it("movers", () => {
   addon.slash("snap off");
   const handle = "ns.MoverHandleForTest()";
   addon.eval(`function ns.MoverHandleForTest() for _, w in ipairs(__wfgStub.frames) do if w.mover then return w end end end`);
-  expect(addon.eval(`return ${handle}:IsShown()`) === true, "/fui unlock shows a handle").toBeTruthy();
+  expect(addon.eval(`return ${handle}:IsShown()`) === true, "/vg unlock shows a handle").toBeTruthy();
   addon.eval(`local h = ${handle}; h:GetScript("OnDragStart")(h); h:ClearAllPoints(); h:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 10, -20); h:GetScript("OnDragStop")(h)`);
   expect(JSON.stringify(point()) === JSON.stringify(["TOPLEFT", "TOPLEFT", 10, -20]), "dropping a handle moves its frame").toBeTruthy();
-  expect(addon.eval("return ForeverUIDB.profiles.Default.positions.player.x") === 10, "the position is saved in the profile").toBeTruthy();
+  expect(addon.eval("return VanguardDB.profiles.Default.positions.player.x") === 10, "the position is saved in the profile").toBeTruthy();
   addon.slash("reset player");
-  expect(point()[0] === "CENTER", "/fui reset puts the frame back").toBeTruthy();
+  expect(point()[0] === "CENTER", "/vg reset puts the frame back").toBeTruthy();
   addon.fire("PLAYER_REGEN_DISABLED");
   expect(addon.eval(`return ${handle}:IsShown()`) === false, "entering combat locks").toBeTruthy();
   addon.eval("__wfgStub.inCombat = true");
@@ -71,7 +71,7 @@ it("a mover's watcher hears when that mover is moved or reset, and only then", (
 const box = (addon) => {
   const r = addon.frame("TESTONLY_Box").rect;
   return { scale: addon.eval("return __box:GetScale()"), alpha: addon.eval("return __box:GetAlpha()"), x: r.left + r.width / 2, bottom: r.bottom, width: r.width,
-    saved: addon.eval("return ForeverUIDB.profiles.Default.positions.box") };
+    saved: addon.eval("return VanguardDB.profiles.Default.positions.box") };
 };
 
 it("per-frame scale and opacity: saved with the position, anchored where it was, reset to 1", () => {
@@ -95,7 +95,7 @@ it("per-frame scale and opacity: saved with the position, anchored where it was,
   expect(box(addon).saved, "1 is saved as unset").toEqual({ point: "BOTTOM", relPoint: "BOTTOM", x: 5, y: 100 });
   addon.eval('ns.SetMoverScale("box", 1.2) ns.SetMoverAlpha("box", 0.6)');
   addon.slash("reset box");
-  expect(box(addon), "/fui reset puts the place, scale and opacity back").toEqual({ scale: 1, alpha: 1, x: 960, bottom: 100, width: 200, saved: null });
+  expect(box(addon), "/vg reset puts the place, scale and opacity back").toEqual({ scale: 1, alpha: 1, x: 960, bottom: 100, width: 200, saved: null });
   addon.eval("__box:SetAlpha(0.25)");
   expect(box(addon).alpha, "at opacity 1 the module's own alpha shows as it is").toBe(0.25);
 });
@@ -125,7 +125,7 @@ it("per-frame scale: dragging a scaled handle, and combat", () => {
 
 it("a damaged saved position (a hand-edited profile string) falls back to the default spot instead of failing the module", () => {
   const clean = loggedIn().eval("return { ns.MoverPoint('uf_player') }");
-  const addon = loggedIn(BOX, { savedVariables: `ForeverUIDB.profiles = { Default = { positions = {
+  const addon = loggedIn(BOX, { savedVariables: `VanguardDB.profiles = { Default = { positions = {
     uf_player = { point = 5, x = "TEST-ONLY" }, uf_target = { point = "TEST-ONLY", relPoint = 7, scale = 0, alpha = "TEST-ONLY" } } } }` });
   expect(addon.eval("return { ns.GetModule('UnitFrames').enabled, #ns.errors }"), "the unit frames still load, with nothing to report").toEqual([true, 0]);
   expect(addon.eval("return { ns.MoverPoint('uf_player') }"), "a point that isn't one leaves the default").toEqual(clean);

@@ -376,7 +376,7 @@ end
 local function addTitle(f)
   f.title = T.Text(f.header:CreateFontString(nil, "OVERLAY"), "title")
   f.title:SetPoint("LEFT", f.logo, "RIGHT", 6, 0)
-  f.title:SetText("ForeverUI")
+  f.title:SetText("Vanguard")
   f.crest = T.Crest(f.header, 20, "OVERLAY")
   f.crest:SetPoint("LEFT", f.title, "RIGHT", 8, 0)
 end
@@ -413,7 +413,7 @@ local function addFooter(f)
   f.footer = bar(f, "BOTTOM")
   f.version = T.Text(f.footer:CreateFontString(nil, "OVERLAY"), "small", "muted")
   f.version:SetPoint("LEFT", 12, 0)
-  f.version:SetText(version() and ("ForeverUI " .. version() .. "  ·  /fui") or "ForeverUI  ·  /fui")
+  f.version:SetText(version() and ("Vanguard " .. version() .. "  ·  /vg") or "Vanguard  ·  /vg")
   f.reload = ns.ReloadButton(W.Primary(f.footer, "Reload now", nil, 110))
   f.reload:SetPoint("RIGHT", -10, 0)
   f.notice = T.Text(f.footer:CreateFontString(nil, "OVERLAY"), "label", "warn")
@@ -580,12 +580,12 @@ end
 
 -- The window frame: centered, above other windows, closes with Escape.
 local function windowFrame()
-  local f = T.Panel(CreateFrame("Frame", "ForeverUI_Options", UIParent), { alpha = 0.98, shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = 0.98, shadow = true })
   f:SetSize(WIDTH, HEIGHT)
   f:SetPoint("CENTER")
   f:SetFrameStrata("DIALOG")
   f:EnableMouse(true)
-  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "ForeverUI_Options") end
+  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_Options") end
   return f
 end
 

@@ -1,4 +1,4 @@
--- The game's pop-up alerts in the ForeverUI look, and where they fit:
+-- The game's pop-up alerts in the Vanguard look, and where they fit:
 --   * loss of control (stunned, feared, silenced...): a flat panel with its
 --     icon and text in the theme, centered a little above your character;
 --   * the talking head (an NPC speaking during a quest): a flat panel at the
@@ -7,8 +7,8 @@
 --     in the theme font and its red;
 --   * a rare nearby (off until switched on): a sound and one chat line when a
 --     rare's mark comes onto the minimap, out of combat, once per rare.
--- Both stay the game's own frames: ForeverUI restyles them and gives each a
--- spot you can move with /fui unlock (Edit Mode still wins while it's open).
+-- Both stay the game's own frames: Vanguard restyles them and gives each a
+-- spot you can move with /vg unlock (Edit Mode still wins while it's open).
 
 local ADDON, ns = ...
 
@@ -30,7 +30,7 @@ GA.LOC_ART = { "blackBg", "RedLineTop", "RedLineBottom" }
 local function place(name)
   local f, spot = _G[name], GA.SPOTS[name]
   if type(f) ~= "table" or not f.SetPoint then return end
-  local holder = CreateFrame("Frame", "ForeverUI_" .. name .. "Spot", UIParent)
+  local holder = CreateFrame("Frame", "Vanguard_" .. name .. "Spot", UIParent)
   holder:SetSize(spot[4], spot[5])
   ns.Mover(holder, spot[1], spot[2], spot[3])
   ns.Pin(f, function(frame) ns.GetModule("GameTools").Fit(frame, holder, false) end)
@@ -96,8 +96,8 @@ end
 -- A message was added: a line the game reuses after a death notice gets its own font back.
 function GA.OnWarning(frame)
   local fs = newestWarning(frame)
-  if not (fs and fs.fuiDeath) then return end
-  fs.fuiDeath = nil
+  if not (fs and fs.vgDeath) then return end
+  fs.vgDeath = nil
   fs:SetFontObject(_G.GameFontNormalHuge)
 end
 
@@ -106,7 +106,7 @@ end
 function GA.OnWarningEvent(frame, event)
   local fs = event == "HARDCORE_DEATHS" and newestWarning(frame)
   if not fs then return end
-  fs.fuiDeath = true
+  fs.vgDeath = true
   T.ApplyRole(fs, "title")
   T.Color(fs, "bad")
 end

@@ -1,4 +1,4 @@
-// auctionapi: ForeverUI.API.v1 (Modules/AuctionAPI.lua), the auction prices, shopping lists and
+// auctionapi: Vanguard.API.v1 (Modules/AuctionAPI.lua), the auction prices, shopping lists and
 // searches other addons call, at the TEST-ONLY auction house of the headless client.
 
 import { expect, it } from "vitest";
@@ -13,7 +13,7 @@ const API_ENV = `
   __wfgWorld.items[10940] = { name = "Strange Dust", icon = "TEST-ONLY-DUST", commodity = true, sellPrice = 4 }
   __wfgWorld.items[10941] = { name = "Strange Dust Pouch", icon = "TEST-ONLY-POUCH", sellPrice = 0 }
   function __call(fn, ...)
-    local ok, out = pcall(ForeverUI.API.v1[fn], ...)
+    local ok, out = pcall(Vanguard.API.v1[fn], ...)
     return { ok, out }
   end
 `;
@@ -31,7 +31,7 @@ function withApi(extra = "", { closed = false, savedVariables } = {}) {
 }
 
 // Calls API function `fn` with Lua argument text `args`; its single result (null for nil).
-const call = (addon, fn, args) => addon.eval(`return ForeverUI.API.v1.${fn}(${args})`);
+const call = (addon, fn, args) => addon.eval(`return Vanguard.API.v1.${fn}(${args})`);
 
 // The queries sent, as "fn:what" (a browse's search text, else the first item key's itemID).
 const sent = (addon) => {
@@ -45,22 +45,22 @@ const sent = (addon) => {
 };
 
 // A shopping list's entries, or null.
-const listOf = (addon, name) => addon.eval(`return ForeverUIDB.ah.lists["${name}"]`);
+const listOf = (addon, name) => addon.eval(`return VanguardDB.ah.lists["${name}"]`);
 
 const NAMES = ["AlterShoppingListItems", "CreateShoppingList", "GetAuctionPriceByItemID", "GetAuctionPriceByItemLink",
   "GetDisenchantPriceByItemID", "GetDisenchantPriceByItemLink",
   "GetVendorPriceByItemID", "GetVendorPriceByItemLink", "MultiSearch", "MultiSearchExact", "RegisterForDBUpdate"];
 
-it("ForeverUI.API.v1 has Auctionator's function names, and every one wants a callerID string", () => {
+it("Vanguard.API.v1 has Auctionator's function names, and every one wants a callerID string", () => {
   const addon = withApi();
-  expect(addon.eval("local out = {} for k, v in pairs(ForeverUI.API.v1) do if type(v) == 'function' then out[#out + 1] = k end end table.sort(out) return out")).toEqual(NAMES);
+  expect(addon.eval("local out = {} for k, v in pairs(Vanguard.API.v1) do if type(v) == 'function' then out[#out + 1] = k end end table.sort(out) return out")).toEqual(NAMES);
   for (const fn of NAMES) {
     const [ok, err] = addon.eval(`return __call("${fn}", 42, 2589)`);
-    expect([fn, ok, err.replace(/^.*?: (?=ForeverUI)/, "")], "a number for callerID").toEqual([fn, false, `ForeverUI.API.v1.${fn}: callerID must be a string, got number`]);
+    expect([fn, ok, err.replace(/^.*?: (?=Vanguard)/, "")], "a number for callerID").toEqual([fn, false, `Vanguard.API.v1.${fn}: callerID must be a string, got number`]);
   }
   expect(addon.eval("return __call('MultiSearch', nil, {})[2]"), "no callerID").toMatch(/MultiSearch: callerID must be a string, got nil$/);
-  const where = addon.eval("local ok, err = pcall(function() local p = ForeverUI.API.v1.GetAuctionPriceByItemID('TEST-ONLY Addon', '2589') return p end) return err");
-  expect(where, "the error names the caller's line (not ForeverUI's), and the argument").toMatch(/^eval:\d+: ForeverUI\.API\.v1\.GetAuctionPriceByItemID: itemID must be a number, got string$/);
+  const where = addon.eval("local ok, err = pcall(function() local p = Vanguard.API.v1.GetAuctionPriceByItemID('TEST-ONLY Addon', '2589') return p end) return err");
+  expect(where, "the error names the caller's line (not Vanguard's), and the argument").toMatch(/^eval:\d+: Vanguard\.API\.v1\.GetAuctionPriceByItemID: itemID must be a number, got string$/);
   const wrong = [["GetAuctionPriceByItemLink", "2589", "itemLink must be a string, got number"],
     ["GetDisenchantPriceByItemID", "'9101'", "itemID must be a number, got string"], ["GetDisenchantPriceByItemLink", "9101", "itemLink must be a string, got number"],
 ["GetVendorPriceByItemID", "'x'", "itemID must be a number, got string"],
@@ -82,7 +82,7 @@ it("auction prices by item ID and link: this realm and faction's cheapest unit p
   expect([call(addon, "GetAuctionPriceByItemID", "'TEST-ONLY Addon', 159"), call(addon, "GetAuctionPriceByItemLink", "'TEST-ONLY Addon', 'no link'")], "never seen, and no item in the text").toEqual([null, null]);
   addon.eval("__wfgWorld.units.player.faction = 'Horde'");
   expect(call(addon, "GetAuctionPriceByItemID", "'TEST-ONLY Addon', 2589"), "the other faction's house has none").toBe(null);
-  addon.eval("ForeverUIDB = nil");
+  addon.eval("VanguardDB = nil");
   expect(call(addon, "GetAuctionPriceByItemID", "'TEST-ONLY Addon', 2589"), "before the saved variables load: none, and no error").toBe(null);
 });
 
@@ -104,16 +104,16 @@ it("disenchant prices by item ID and link, whether or not you know Enchanting", 
   expect(call(addon, "GetDisenchantPriceByItemID", "'TEST-ONLY Addon', 9101"), "75 % of 2.5 dust at 1s, 20 % of 1.5 essence at 10s").toBe(487);
   expect(call(addon, "GetDisenchantPriceByItemLink", "'TEST-ONLY Addon', '|cff1eff00|Hitem:9102::::|h[TEST-ONLY Sword]|h|r'"), "a weapon by link: mostly essence").toBe(1175);
   expect(call(addon, "GetDisenchantPriceByItemID", "'TEST-ONLY Addon', 2589"), "cloth doesn't disenchant").toBe(null);
-  addon.eval("ForeverUIDB = nil");
+  addon.eval("VanguardDB = nil");
   expect(call(addon, "GetDisenchantPriceByItemID", "'TEST-ONLY Addon', 9101"), "before the saved variables load: none").toBe(null);
 });
 
 it("RegisterForDBUpdate: callbacks run once on the frame after a scan, and after a search records a price", () => {
   const addon = withApi(`__wfgWorld.ah.commodities[10940] = { { unitPrice = 100, quantity = 5 } }
     __wfgWorld.bags[0][1] = { itemID = 10940, count = 20 }`);
-  addon.eval(`__heard = {} ForeverUI.API.v1.RegisterForDBUpdate("TEST-ONLY A", function(...) table.insert(__heard, "A" .. select("#", ...)) end)
-    ForeverUI.API.v1.RegisterForDBUpdate("TEST-ONLY Broken", function() error("TEST-ONLY broken") end)
-    ForeverUI.API.v1.RegisterForDBUpdate("TEST-ONLY B", function() table.insert(__heard, "B") end)`);
+  addon.eval(`__heard = {} Vanguard.API.v1.RegisterForDBUpdate("TEST-ONLY A", function(...) table.insert(__heard, "A" .. select("#", ...)) end)
+    Vanguard.API.v1.RegisterForDBUpdate("TEST-ONLY Broken", function() error("TEST-ONLY broken") end)
+    Vanguard.API.v1.RegisterForDBUpdate("TEST-ONLY B", function() table.insert(__heard, "B") end)`);
   // What the callbacks have heard, in order.
   const heard = () => { const h = addon.eval("return __heard"); return Array.isArray(h) ? h : []; };
   addon.eval("__wfgWorld.ah.replicate = { { itemID = 2589, count = 5, buyoutPrice = 500 }, { itemID = 10940, count = 1, buyoutPrice = 90 }, { itemID = 2592, count = 2, buyoutPrice = 60 } }");
@@ -122,7 +122,7 @@ it("RegisterForDBUpdate: callbacks run once on the frame after a scan, and after
   addon.update(0.01);
   addon.update(0.01);
   expect(heard(), "the scan recorded 3 items: each callback once, with no arguments, the broken one between them reported").toEqual(["A0", "B"]);
-  expect([chatHas(addon, /ForeverUI\.API\.v1 update for TEST-ONLY Broken: .*TEST-ONLY broken/), addon.eval("return #ns.errors")], "reported").toEqual([true, 1]);
+  expect([chatHas(addon, /Vanguard\.API\.v1 update for TEST-ONLY Broken: .*TEST-ONLY broken/), addon.eval("return #ns.errors")], "reported").toEqual([true, 1]);
   addon.advance(1);
   addon.eval("__wfgWorld.cursor = { type = 'item', id = 0, bag = 0, slot = 1 }");
   addon.click(`${HELPER}.sellCard.slot`);
@@ -165,25 +165,25 @@ it("MultiSearchExact searches a name the client knows by its item ID", () => {
   expect(call(addon, "MultiSearchExact", "'TEST-ONLY Addon', { '\"Strange Dust\"', 'TEST-ONLY Unknown', '2589' }"), "queued").toBe(true);
   expect(listOf(addon, "TEST-ONLY Addon search"), "a known name by ID, an unknown one by name, an ID as it is").toEqual([10940, "TEST-ONLY Unknown", 2589]);
   expect(sent(addon), "only that item comes back").toEqual(["SearchForItemKeys:10940"]);
-  const noPanel = withApi("", { savedVariables: "ForeverUIDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
+  const noPanel = withApi("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
   expect([call(noPanel, "MultiSearchExact", "'TEST-ONLY Addon', { 'Strange Dust' }"), sent(noPanel)], "without the panel the search still runs").toEqual([true, ["SearchForItemKeys:10940"]]);
-  const off = withApi("", { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { AuctionHelper = false } } }" });
+  const off = withApi("", { savedVariables: "VanguardDB.profiles = { Default = { modules = { AuctionHelper = false } } }" });
   expect([call(off, "MultiSearch", "'TEST-ONLY Addon', { 'Strange Dust' }"), sent(off)], "with the helper off, nothing").toEqual([false, []]);
 });
 
 it("CreateShoppingList makes or replaces a list; AlterShoppingListItems changes one that exists; the caps hold", () => {
   const addon = withApi("", { closed: true });
   expect(call(addon, "CreateShoppingList", "'TEST-ONLY Addon', '  TEST-ONLY Mats ', { 'Strange Dust', '\"Linen Cloth\";1;60', '' }"), "made, with the house closed").toBe(true);
-  expect([listOf(addon, "TEST-ONLY Mats"), addon.eval("return ForeverUIDB.ah.list")], "named without the spaces; the list in use is left alone").toEqual([["Strange Dust", "Linen Cloth"], null]);
+  expect([listOf(addon, "TEST-ONLY Mats"), addon.eval("return VanguardDB.ah.list")], "named without the spaces; the list in use is left alone").toEqual([["Strange Dust", "Linen Cloth"], null]);
   expect(call(addon, "CreateShoppingList", "'TEST-ONLY Addon', 'TEST-ONLY Mats', { 'Soul Dust' }"), "made again").toBe(true);
   expect(listOf(addon, "TEST-ONLY Mats"), "replaced").toEqual(["Soul Dust"]);
   expect(call(addon, "AlterShoppingListItems", "'TEST-ONLY Addon', 'TEST-ONLY Mats', { 'Vision Dust', '2589', 2590 }"), "altered").toBe(true);
   expect(listOf(addon, "TEST-ONLY Mats"), "its entries replaced (a number left out: terms are strings)").toEqual(["Vision Dust", 2589]);
   expect([call(addon, "AlterShoppingListItems", "'TEST-ONLY Addon', 'TEST-ONLY None', { 'x' }"), listOf(addon, "TEST-ONLY None")], "no such list: nothing made").toEqual([false, null]);
   expect(call(addon, "CreateShoppingList", "'TEST-ONLY Addon', '   ', { 'x' }"), "no name").toBe(false);
-  addon.eval("local t = {} for i = 1, 60 do t[i] = 'x' .. i end ForeverUI.API.v1.CreateShoppingList('TEST-ONLY Addon', 'TEST-ONLY Long', t)");
-  expect(addon.eval("return #ForeverUIDB.ah.lists['TEST-ONLY Long']"), "at most 50 entries").toBe(50);
-  addon.eval("for i = 3, 20 do ForeverUIDB.ah.lists['TEST-ONLY ' .. i] = {} end");
+  addon.eval("local t = {} for i = 1, 60 do t[i] = 'x' .. i end Vanguard.API.v1.CreateShoppingList('TEST-ONLY Addon', 'TEST-ONLY Long', t)");
+  expect(addon.eval("return #VanguardDB.ah.lists['TEST-ONLY Long']"), "at most 50 entries").toBe(50);
+  addon.eval("for i = 3, 20 do VanguardDB.ah.lists['TEST-ONLY ' .. i] = {} end");
   expect([call(addon, "CreateShoppingList", "'TEST-ONLY Addon', 'TEST-ONLY 21st', {}"), call(addon, "CreateShoppingList", "'TEST-ONLY Addon', 'TEST-ONLY Mats', { 'Arcane Crystal' }")], "at 20 lists no new one; an existing one is still replaced").toEqual([false, true]);
 });
 

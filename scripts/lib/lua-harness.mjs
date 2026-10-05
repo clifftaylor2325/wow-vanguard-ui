@@ -21,7 +21,7 @@ import { attachCoverage } from "./lua-coverage.mjs";
 
 const { lua, lauxlib, lualib, to_luastring, to_jsstring } = fengari;
 
-export const ADDON = "ForeverUI";
+export const ADDON = "Vanguard";
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 // Lua 5.1 fidelity for `..`: the game prints a whole float as "3", fengari
@@ -271,8 +271,8 @@ function drivers(addon) {
     update: (elapsed) => addon.eval(`__wfgStub.update(${Number(elapsed)})`),
     // Advances the clock in frames so throttled OnUpdate drivers tick.
     advance: (seconds, step = 0.25) => addon.eval(`__wfgStub.advance(${Number(seconds)}, ${Number(step)})`),
-    // Runs /fui <msg>.
-    slash: (msg) => addon.eval(`SlashCmdList.FOREVERUI(${luaString(msg)})`),
+    // Runs /vg <msg>.
+    slash: (msg) => addon.eval(`SlashCmdList.VANGUARD(${luaString(msg)})`),
     // Chat lines so far; clearChat forgets them.
     chat: () => { const lines = addon.eval("return __wfgStub.chat"); return Array.isArray(lines) ? lines : []; },
     clearChat: () => addon.eval("__wfgStub.clearChat()"),
@@ -289,7 +289,7 @@ function lifecycle(addon) {
       addon.fire("PLAYER_ENTERING_WORLD", true, false);
     },
     // The account and character SavedVariables tables.
-    savedVariables: () => ({ account: addon.eval("return ForeverUIDB"), char: addon.eval("return ForeverUICharDB") }),
+    savedVariables: () => ({ account: addon.eval("return VanguardDB"), char: addon.eval("return VanguardCharDB") }),
   };
 }
 
@@ -327,7 +327,7 @@ function worldApi(addon) {
   return api;
 }
 
-// Lua for a frame by global name with optional fields ("ForeverUI_player.health"),
+// Lua for a frame by global name with optional fields ("Vanguard_player.health"),
 // a `ns` path (ns.GetModule("X").frame) or a widget id.
 function frameRef(ref) {
   if (typeof ref === "number") return `__wfgStub.frames[${ref}]`;

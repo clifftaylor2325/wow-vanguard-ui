@@ -1,4 +1,4 @@
--- The fallback aura backend: ForeverUI's own icons, for a client without the
+-- The fallback aura backend: Vanguard's own icons, for a client without the
 -- engine's AuraContainer (Core/AuraEngine.lua). Each container reads its
 -- unit's auras through the client's filters on UNIT_AURA, fills its groups in
 -- order (an aura an earlier group shows is skipped) and flows the icons into
@@ -79,7 +79,7 @@ end
 -- One group's icon: its size, and whether it starts a new row (the group's first, when asked), kept on it for the layout.
 local function groupIcon(frame, spec, def, i)
   local icon = A.Icon(frame, def.size, A.Style(spec, def))
-  icon.fuiSize, icon.fuiNewLine = def.size, i == 1 and def.newLine
+  icon.vgSize, icon.vgNewLine = def.size, i == 1 and def.newLine
   return icon
 end
 
@@ -181,8 +181,8 @@ end
 local function place(c)
   local f, x, y, lineH = c.flow, 0, 0, 0
   for _, icon in ipairs(shown) do
-    local size = icon.fuiSize
-    if x > 0 and (icon.fuiNewLine or (f.line and x + size > f.line)) then x, y, lineH = 0, y + lineH + f.gap, 0 end
+    local size = icon.vgSize
+    if x > 0 and (icon.vgNewLine or (f.line and x + size > f.line)) then x, y, lineH = 0, y + lineH + f.gap, 0 end
     icon:ClearAllPoints()
     icon:SetPoint(f.anchor, c.frame, f.anchor, x * f.dx, y * f.dy)
     x, lineH = x + size + f.gap, math.max(lineH, size)

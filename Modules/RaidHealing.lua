@@ -7,7 +7,7 @@
 -- missing one just switches that feature off. Heal prediction uses the
 -- client's calculator where it has one (it may hand back hidden values,
 -- which go straight to the bars), else the older incoming-heals call.
--- Buffs are watched by name: defaults per class, editable in /fui > Healing
+-- Buffs are watched by name: defaults per class, editable in /vg > Healing
 -- (check the defaults against your client's spell names).
 
 local ADDON, ns = ...

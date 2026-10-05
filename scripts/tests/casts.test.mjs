@@ -1,4 +1,4 @@
-// casts: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// casts: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { FAKE_FADES, bars, isTok, loggedIn, setCombat, spark, unitEvents } from "./helpers.mjs";
@@ -19,7 +19,7 @@ const CAST_ENV = `
 `;
 
 // A cast bar's state.
-const castBar = (addon, unit) => addon.eval(`local b = ForeverUI_CastBar_${unit}
+const castBar = (addon, unit) => addon.eval(`local b = Vanguard_CastBar_${unit}
   return { shown = b:IsShown(), value = b.__value, color = b.__barColor, text = b.text:GetText(), icon = b.icon.__texture }`);
 
 it("cast bars", () => {
@@ -51,7 +51,7 @@ it("cast bars", () => {
 
 it("cast bar flashes on finish and interrupt", () => {
   const addon = loggedIn(CAST_ENV + FAKE_FADES);
-  addon.eval("__fakeFader(ForeverUI_CastBar_player)");
+  addon.eval("__fakeFader(Vanguard_CastBar_player)");
   addon.eval('__casts.player = { kind = "cast", start = 1000, finish = 3000 }');
   addon.fire("UNIT_SPELLCAST_START", "player");
   addon.eval("__casts.player = nil");
@@ -74,7 +74,7 @@ it("cast bar flashes on finish and interrupt", () => {
 
 it("a finished cast fades in 0.35 s, and in 0.15 s in combat", () => {
   const addon = loggedIn(CAST_ENV + FAKE_FADES);
-  addon.eval("__fakeFader(ForeverUI_CastBar_player)");
+  addon.eval("__fakeFader(Vanguard_CastBar_player)");
   // Casts and finishes a spell on the player's bar; returns how long its fade was set to last.
   const finish = () => {
     addon.eval('__fades = {} __casts.player = { kind = "cast", start = 1000, finish = 3000 }');
@@ -94,13 +94,13 @@ it("cast timing from the client's duration object", () => {
     -- TEST-ONLY duration object for the player's cast.
     UnitCastingDuration = function() return { __duration = true } end
     -- TEST-ONLY bar that accepts a duration object.
-    ForeverUI_CastBar_player.SetTimerDuration = function() __timer = true return true end
+    Vanguard_CastBar_player.SetTimerDuration = function() __timer = true return true end
     -- TEST-ONLY cast the duration object is applied to.
     __casts.player = { kind = "cast", start = 1000, finish = 2000, shielded = false }
   `);
   addon.fire("UNIT_SPELLCAST_START", "player");
   expect(addon.eval("return __timer") === true, "a cast uses the client's duration object when the bar accepts one").toBeTruthy();
-  expect(addon.eval('return ForeverUI_CastBar_player:GetScript("OnUpdate")') === null, "and then does not tick the bar itself").toBeTruthy();
+  expect(addon.eval('return Vanguard_CastBar_player:GetScript("OnUpdate")') === null, "and then does not tick the bar itself").toBeTruthy();
 });
 
 it("on the client's timer a channel empties and a cast fills, as without it", () => {
@@ -111,7 +111,7 @@ it("on the client's timer a channel empties and a cast fills, as without it", ()
     UnitChannelDuration = function() return { __duration = true } end
     __dirs = {}`);
   addon.eval(`for _, unit in ipairs({ "player", "target" }) do
-      _G["ForeverUI_CastBar_" .. unit].SetTimerDuration = function(_, _, _, dir) __dirs[unit] = dir return true end
+      _G["Vanguard_CastBar_" .. unit].SetTimerDuration = function(_, _, _, dir) __dirs[unit] = dir return true end
     end`);
   addon.eval('__casts.player = { kind = "cast", start = 1000, finish = 2000 } __casts.target = { kind = "channel", start = 1000, finish = 5000 }');
   addon.fire("UNIT_SPELLCAST_START", "player");
@@ -124,7 +124,7 @@ it("cast bars: spark, seconds left, latency and the uninterruptible edge", () =>
   addon.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
   addon.fire("UNIT_SPELLCAST_START", "player");
   addon.eval("__wfgStub.update(1)");
-  const b = addon.eval(`local b = ForeverUI_CastBar_player
+  const b = addon.eval(`local b = Vanguard_CastBar_player
     return { time = b.time:GetText(), lag = b.lag:IsShown() and b.lag.__width, width = b:GetWidth(), spark = b.spark.__points.TOP.relPoint,
       sparkTex = b.spark.__texture, blend = b.spark.__blend, sparkW = b.spark.__width }`);
   expect(b.time === "2.0", "the seconds left, at the bar's right").toBeTruthy();
@@ -132,18 +132,18 @@ it("cast bars: spark, seconds left, latency and the uninterruptible edge", () =>
   expect(b.spark === "TOPRIGHT" && /Textures\\Spark$/.test(b.sparkTex) && b.blend === "ADD" && b.sparkW === 8, "a soft spark (added light) rides the fill's edge").toBeTruthy();
   addon.eval('__casts.target = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000, shielded = true }');
   addon.fire("UNIT_SPELLCAST_START", "target");
-  const t = addon.eval(`local b = ForeverUI_CastBar_target local edge
+  const t = addon.eval(`local b = Vanguard_CastBar_target local edge
     for _, w in ipairs(__wfgStub.frames) do if w.__parent == b and w.__layer == "OVERLAY" and w.__sublevel == 7 then edge = w.__vertexColor break end end
     return { lag = b.lag:IsShown(), edge = edge }`);
   expect(t.lag === false && isTok(addon, t.edge, "shielded"), "no latency on others' bars; a cast you can't interrupt gets a gray edge").toBeTruthy();
   const noStats = loggedIn(CAST_ENV + "GetNetStats = nil");
   noStats.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
   noStats.fire("UNIT_SPELLCAST_START", "player");
-  expect(noStats.eval("return ForeverUI_CastBar_player.lag:IsShown()") === false, "no latency shade where the client can't say").toBeTruthy();
+  expect(noStats.eval("return Vanguard_CastBar_player.lag:IsShown()") === false, "no latency shade where the client can't say").toBeTruthy();
   const homeOnly = loggedIn(CAST_ENV + "GetNetStats = function() return 0, 0, 60, { __secret = true } end");
   homeOnly.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
   homeOnly.fire("UNIT_SPELLCAST_START", "player");
-  expect(homeOnly.eval("return ForeverUI_CastBar_player.lag.__width") === homeOnly.eval("return ForeverUI_CastBar_player:GetWidth()") * 60 / 3000, "home latency when world latency is hidden").toBeTruthy();
+  expect(homeOnly.eval("return Vanguard_CastBar_player.lag.__width") === homeOnly.eval("return Vanguard_CastBar_player:GetWidth()") * 60 / 3000, "home latency when world latency is hidden").toBeTruthy();
 });
 
 it("cast bars read a cast as values and write the seconds left only when they read differently", () => {
@@ -161,7 +161,7 @@ it("cast bars read a cast as values and write the seconds left only when they re
     __formats = 0
     for i = 1, 30 do
       __wfgStub.update(0.01)
-      texts[i] = ForeverUI_CastBar_player.time:GetText()
+      texts[i] = Vanguard_CastBar_player.time:GetText()
       wanted[i] = __rawFormat("%.1f", math.max(0, 1003000 - GetTime() * 1000) / 1000)
       if wanted[i] ~= wanted[i - 1] then changes = changes + 1 end
     end
@@ -169,7 +169,7 @@ it("cast bars read a cast as values and write the seconds left only when they re
   expect(out.texts, "every frame the seconds left read as before").toEqual(out.wanted);
   expect(out.changes, "30 frames over 0.3 s cross four tenths").toBe(4);
   expect([out.formats >= 4, out.formats <= 5], "formatted once per tenth (and once more on a frame that lands on a half tenth), not 30 times").toEqual([true, true]);
-  const seconds = addon.eval(`local CB, fs = ns.GetModule("CastBars"), ForeverUI_CastBar_target.time
+  const seconds = addon.eval(`local CB, fs = ns.GetModule("CastBars"), Vanguard_CastBar_target.time
     local out = {}
     for _, s in ipairs({ 1.31, 1.28, 1.26, 1.25, 1.24, 1.16 }) do __formats = 0 CB.ShowSeconds(fs, s) out[#out + 1] = { fs:GetText(), string.format("%.1f", s), __formats - 1 } end
     return out`);
@@ -188,13 +188,13 @@ it("cast bars ask the client for their own units' casts only", () => {
   expect(addon.eval("return #__updates"), "a nameplate's or a party member's cast never reaches the cast bars").toBe(0);
   addon.fire("UNIT_SPELLCAST_START", "focus");
   expect(addon.eval("return __updates[1]"), "the focus's does").toBe("focus");
-  const some = loggedIn(CAST_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { CastBars = { player = false, focus = false } } }" });
+  const some = loggedIn(CAST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { CastBars = { player = false, focus = false } } }" });
   expect(unitEvents(some, "UNIT_SPELLCAST_STOP").subs, "only the units whose bars are on").toBe("target");
 });
 
 it("a channel the client stops with an interrupter flashes red, one it lets run out flashes green", () => {
   const addon = loggedIn(CAST_ENV + FAKE_FADES);
-  addon.eval("__fakeFader(ForeverUI_CastBar_target)");
+  addon.eval("__fakeFader(Vanguard_CastBar_target)");
   // Channels on the target, then the client stops it (CHANNEL_STOP: unit, castGUID, spellID, interruptedBy); the bar after.
   const stop = (interruptedBy) => {
     addon.eval('__finishFades() __casts.target = { kind = "channel", start = 1000, finish = 5000 }');
