@@ -10,7 +10,7 @@
 ## AddonCompartmentFunc: Vanguard_OnAddonCompartmentClick
 ## X-Flavor: forever
 ## X-License: MIT
-## X-Website: https://github.com/clifftaylor2325/wow-forever-ui
+## X-Website: https://github.com/clifftaylor2325/wow-vanguard-ui
 
 # Shared libraries, unmodified (licenses beside them in Libs/).
 Libs/LibStub/LibStub.lua
