@@ -364,12 +364,11 @@ local function browseQuery(term, f)
   return { searchString = term, sorts = AH.SORTS, filters = filters, itemClassFilters = {}, minLevel = f.minLevel, maxLevel = f.maxLevel }
 end
 
--- Sends the shop's search: a list entry (an item ID by its item key, a name by text with its filters).
+-- Sends the shop's search: an item's listings for the view, or a list entry (an item ID by its
+-- item key, a name by text with its filters). The view's further pages go through AH.Send.
 function AH.SendShop(s)
   local api, term, f = C_AuctionHouse, AH.Term(s.entry)
   if s.listings then return api.SendSearchQuery(s.listings, AH.SORTS, false) end
-  if s.more and s.commodity then return api.RequestMoreCommoditySearchResults(s.more.itemID) end
-  if s.more then return api.RequestMoreItemSearchResults(s.more) end
   if type(term) == "number" then return api.SearchForItemKeys({ api.MakeItemKey(term) }, AH.SORTS) end
   api.SendBrowseQuery(browseQuery(term, f))
 end
@@ -433,20 +432,18 @@ function AH.OnBrowse()
   AH.Done()
 end
 
--- The auction house events the shop follows besides browse results (on: Modules/AuctionHelper.lua's,
--- which ignores them in combat).
+-- The auction house events the shop follows besides browse results and item search results
+-- (on: Modules/AuctionHelper.lua's, which ignores them in combat; AH.OnSearchEvent hands the
+-- search results to AH.OnListings).
 function AH.ListenShop(on)
   on("ITEM_KEY_ITEM_INFO_RECEIVED", function() AH.OnItemInfo() end)
-  for _, event in ipairs({ "ITEM_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_ADDED", "COMMODITY_SEARCH_RESULTS_UPDATED", "COMMODITY_SEARCH_RESULTS_ADDED" }) do
-    on(event, AH.OnListings)
-  end
   on("AUCTION_HOUSE_CLOSED", function() AH.view = nil end)
 end
 
 -- Listings ------------------------------------------------------------------------------------
 
--- A time-left band as the game names it ("" for none).
-local function bandText(band)
+-- A time-left band as the game names it, or ours ("" for none); the sell card's listings use it too.
+function AH.BandText(band)
   local b = band and AH.TIME_BANDS[band]
   if not b then return "" end
   return _G[b[1]] or b[2]
@@ -463,7 +460,7 @@ end
 local function itemListing(r)
   local buyout, qty, band = ns.PlainNumber(r.buyoutAmount), ns.PlainNumber(r.quantity), ns.PlainNumber(r.timeLeft)
   if not (buyout and qty) or qty < 1 then return nil end
-  return { price = math.floor(buyout / qty), qty = qty, time = band or 0, timeText = bandText(band) }
+  return { price = math.floor(buyout / qty), qty = qty, time = band or 0, timeText = AH.BandText(band) }
 end
 
 -- A commodity listing as a row: its unit price, quantity and seconds left; nil for a hidden number.
@@ -498,7 +495,7 @@ local function sortListings(v)
 end
 
 -- Reads every listing of the view's item the client has, sorted.
-function AH.ReadListings(v)
+function AH.ReadView(v)
   local api, rows = C_AuctionHouse, {}
   local n = v.commodity and api.GetNumCommoditySearchResults(v.key.itemID) or api.GetNumItemSearchResults(v.key)
   for i = 1, ns.PlainNumber(n) or 0 do rows[#rows + 1] = listing(v, i) end
@@ -506,16 +503,16 @@ function AH.ReadListings(v)
   sortListings(v)
 end
 
--- Search results for an item: the view's item is read again; the view's search in flight is done.
-function AH.OnListings(event, arg)
-  local v, s = AH.view, AH.pending
-  local id = type(arg) == "table" and arg.itemID or arg
+-- Search results for item id (AH.OnSearchEvent): the view's item is read again; the search s in
+-- flight is done when it is the view's (its listings, or a page of them).
+function AH.OnListings(event, id, s)
+  local v = AH.view
   if v and v.key.itemID == id then
     v.commodity = event:find("COMMODITY", 1, true) ~= nil
-    AH.ReadListings(v)
+    AH.ReadView(v)
     AH.PaintShop()
   end
-  local key = s and (s.listings or s.more)
+  local key = s and (s.listings or s.page)
   if key and key.itemID == id then AH.Done() end
 end
 
@@ -524,14 +521,14 @@ end
 local function moreIfNear(v)
   if v.commodity == nil or v.full or v.asked or v.offset + AH.VIEW_ROWS < #v.rows - 2 then return end
   v.asked = true
-  AH.Queue({ more = v.key, commodity = v.commodity })
+  AH.Queue({ page = v.key, commodity = v.commodity })
 end
 
 -- Opens the results view for an item key: every listing, searched first in line.
 function AH.OpenListings(key, f)
   AH.view = { key = key, rows = {}, sort = "price", reverse = false, offset = 0, mark = 1, maxPrice = f and f.maxPrice }
   AH.DropQueued("listings")
-  AH.DropQueued("more")
+  AH.DropQueued("page")
   AH.Queue({ listings = key }, true)
   AH.PaintShop()
 end
@@ -540,7 +537,7 @@ end
 function AH.CloseListings()
   AH.view = nil
   AH.DropQueued("listings")
-  AH.DropQueued("more")
+  AH.DropQueued("page")
   AH.PaintShop()
 end
 
