@@ -117,9 +117,9 @@ Every feature is a module made with `ns.Module(name, { defaults = ... })`, with 
 
 ### F5 Docking spots for boss timers and warnings (`work/f5-docks`) — size S
 
-- [ ] **F5.1 Anchors.** Two movers (`ns.Mover`) in the Centered layout: "Boss timers" (`Vanguard_BossBarsAnchor`, above the right side of the action bars) and "Boss warnings" (`Vanguard_BossWarningsAnchor`, upper middle of the screen). They're empty frames with a label shown only in unlock mode.
-- [ ] **F5.2 Hand-off.** When DBM or BigWigs is loaded, a "Line up DBM/BigWigs bars with Vanguard" button (options, and `/vg dock`) moves their bars to the anchors once, using only their public settings APIs; check each addon's current source for the supported way to set bar positions, and if none exists, show the anchor's exact coordinates in a popup instead. Never move their frames every frame or hook their code.
-- [ ] **F5.3 Tests.** Anchors exist and save with the profile; the button is hidden when neither addon is loaded. **[VERIFY IN GAME]** with DBM and BigWigs Forever builds.
+- [x] **F5.1 Anchors.** Two movers (`ns.Mover`) in the Centered layout: "Boss timers" (`Vanguard_BossBarsAnchor`, above the right side of the action bars) and "Boss warnings" (`Vanguard_BossWarningsAnchor`, upper middle of the screen). They're empty frames with a label shown only in unlock mode.
+- [x] **F5.2 Hand-off.** When DBM or BigWigs is loaded, a "Line up DBM/BigWigs bars with Vanguard" button (options, and `/vg dock`) moves their bars to the anchors once, using only their public settings APIs; check each addon's current source for the supported way to set bar positions, and if none exists, show the anchor's exact coordinates in a popup instead. Never move their frames every frame or hook their code.
+- [x] **F5.3 Tests.** Anchors exist and save with the profile; the button is hidden when neither addon is loaded. **[VERIFY IN GAME]** with DBM and BigWigs Forever builds.
 
 ### F6 LibDataBroker readouts on the info strip (`work/f6-broker`) — size M
 
