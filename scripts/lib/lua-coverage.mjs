@@ -20,7 +20,10 @@ const { lua, lauxlib, to_luastring, to_jsstring } = fengari;
 // Chunk name ("@<file>") -> the lines executed in it.
 const executed = new Map();
 // The compiled prototypes that have hits not yet folded into `executed`.
+// A prototype keeps its last closure, and through it the Lua state, alive,
+// so they are folded (and let go) early: on every new state, and past this many.
 const protos = [];
+const FOLD_AT = 20000;
 
 const OP_TAILCALL = 37;
 const OP_RETURN = 38;
@@ -56,6 +59,7 @@ function onLine(L, ar) {
   const p = ar.i_ci.func.value.p;
   let hits = p.__wfgHits;
   if (!hits) {
+    if (protos.length >= FOLD_AT) fold();
     hits = p.__wfgHits = new Set();
     protos.push(p);
   }
@@ -76,7 +80,7 @@ function fold() {
       const lines = executed.get(source);
       for (const line of p.__wfgHits) lines.add(line);
     }
-    p.__wfgHits.clear();
+    p.__wfgHits = undefined;
   }
   protos.length = 0;
 }
@@ -116,8 +120,9 @@ export function loadHits(target) {
   for (const file of files) mergeHits(file);
 }
 
-// Starts recording executed lines in a Lua state.
+// Starts recording executed lines in a Lua state (and lets go of the last one's prototypes).
 export function attachCoverage(L) {
+  fold();
   lua.lua_sethook(L, onLine, lua.LUA_MASKLINE, 0);
 }
 

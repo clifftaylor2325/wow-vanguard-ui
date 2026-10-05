@@ -115,6 +115,7 @@ end
 -- Resolved keys per widget kind (and per kind with the backdrop mixin), so
 -- a method call looks a name up once per kind, not on every call.
 local resolved, resolvedBackdrop = {}, {}
+-- The cache a widget's keys resolve through.
 local function cacheFor(w)
   local store = rawget(w, "__backdrop_mixin") == true and resolvedBackdrop or resolved
   local cache = store[w.__kind]
@@ -144,7 +145,9 @@ local widgetMeta = {
 -- Each widget's regions and child frames, kept in creation order, so
 -- GetRegions and GetChildren need not scan every widget there is.
 local childrenOf = setmetatable({}, { __mode = "k" })
+-- Creation order, for sorting.
 local function byId(a, b) return a.__id < b.__id end
+-- Adds w to its parent's list, keeping creation order.
 local function attach(parent, w)
   if not parent then return end
   local list = childrenOf[parent]
@@ -155,6 +158,7 @@ local function attach(parent, w)
   list[#list + 1] = w
   if #list > 1 and list[#list - 1].__id > w.__id then table.sort(list, byId) end
 end
+-- Takes w out of its parent's list.
 local function detach(parent, w)
   local list = parent and childrenOf[parent]
   if not list then return end
@@ -520,6 +524,7 @@ function methods:GetScript(name) return self.__scripts[name] end
 stub.listeners = {}
 -- The frames with an OnUpdate script, so a frame tick visits only them.
 stub.updaters = {}
+-- Puts a frame on (or takes it off) an event's list.
 local function listen(frame, event, on)
   local set = stub.listeners[event]
   if not set then
@@ -528,19 +533,23 @@ local function listen(frame, event, on)
   end
   set[frame] = on or nil
 end
+-- Event registration, as the client keeps it per frame.
 function methods:RegisterEvent(event)
   self.__events[event] = true
   listen(self, event, true)
 end
+-- One event off.
 function methods:UnregisterEvent(event)
   self.__events[event] = nil
   listen(self, event, false)
 end
+-- Every event off, unit filters included.
 function methods:UnregisterAllEvents()
   for event in pairs(self.__events) do listen(self, event, false) end
   self.__events = {}
   self.__unitEvents = nil
 end
+-- Whether the frame listens for an event; text and rotation fields.
 function methods:IsEventRegistered(event) return self.__events[event] == true end
 function methods:SetText(text) self.__text = text end
 function methods:GetText() return self.__text end

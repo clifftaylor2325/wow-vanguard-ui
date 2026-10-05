@@ -1,8 +1,11 @@
 name: verify
 
-# Pull requests only.
+# Pull requests only, and not for changes to the docs alone.
 on:
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
 
 permissions:
   contents: read
@@ -35,14 +38,19 @@ jobs:
           name: lua-coverage
           path: coverage/lua-coverage.json
 
-  lua51:
-    # The game runs Lua 5.1; the test harness (fengari) is Lua 5.3.
-    name: Lua 5.1 syntax
+  checks:
+    # The static checks in one job, so they share a checkout and one apt
+    # install: luacheck; the game runs Lua 5.1 (the test harness, fengari, is
+    # Lua 5.3), so every file the TOC loads must compile under luac5.1; and
+    # the release zip builds and holds every file it should.
+    name: Lua checks and release zip
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq lua5.1
-      - name: Compile every file the TOC loads
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq lua-check lua5.1
+      - name: luacheck
+        run: luacheck --no-color .
+      - name: Lua 5.1 syntax of every file the TOC loads
         run: |
           status=0
           while IFS= read -r file; do
@@ -51,24 +59,11 @@ jobs:
             luac5.1 -p "$file" || status=1
           done < ForeverUI.toc
           exit $status
-
-  lint:
-    name: luacheck
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq lua-check
-      - run: luacheck --no-color .
-
-  package:
-    name: Release zip builds
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node scripts/package.mjs
+      - name: Release zip builds
+        run: node scripts/package.mjs
       - name: Zip is valid and holds every TOC file, Media/ and the libraries' licenses
         run: |
           zip=$(ls dist/*.zip)
