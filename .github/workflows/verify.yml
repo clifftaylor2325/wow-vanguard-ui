@@ -1,6 +1,9 @@
 name: verify
 
-# Pull requests only, and not for changes to the docs alone.
+# Pull requests only, and not for changes to the docs alone. The jobs run on
+# the owner's self-hosted Windows runner (scripts/ci/setup-windows-runner.ps1
+# installs its tools), so they bill no Actions minutes; one runner runs one
+# job at a time, so the checks are one job and the preview another.
 on:
   pull_request:
     paths-ignore:
@@ -14,42 +17,37 @@ concurrency:
   group: verify-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    # Git for Windows' bash, so the same snippets run here and on a Linux box.
+    shell: bash
+
 jobs:
-  tests:
+  verify:
     # Every Vitest suite once (the Lua harness and the JS tests), with line
     # coverage of the addon's own Lua: a failing test fails the run, and so
     # does coverage below the floor in scripts/lua-coverage-floor.json (only
-    # goes up; 100 is the goal). Then the code-quality scan. This is npm run
-    # verify with coverage on, in one run of the suite instead of two.
-    name: Tests and Lua coverage
-    runs-on: ubuntu-latest
+    # goes up; 100 is the goal). Then the code-quality scan, luacheck, Lua
+    # 5.1 syntax (the game runs Lua 5.1; the test harness, fengari, is Lua
+    # 5.3), and the release zip's contents.
+    name: Tests, coverage and checks
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+      - name: The runner's tools
+        run: |
+          for tool in luacheck luac5.1; do
+            command -v "$tool" >/dev/null || { echo "$tool is not on PATH: run scripts/ci/setup-windows-runner.ps1 on the runner"; exit 1; }
+          done
+          luacheck --version && luac5.1 -v
       - run: npm ci
       - run: npm run coverage
       - run: npm run quality
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: lua-coverage
-          path: coverage/lua-coverage.json
-
-  checks:
-    # The static checks in one job, so they share a checkout and one apt
-    # install: luacheck; the game runs Lua 5.1 (the test harness, fengari, is
-    # Lua 5.3), so every file the TOC loads must compile under luac5.1; and
-    # the release zip builds and holds every file it should.
-    name: Lua checks and release zip
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq lua-check lua5.1
-      - name: luacheck
-        run: luacheck --no-color .
+      - run: luacheck --no-color .
       - name: Lua 5.1 syntax of every file the TOC loads
         run: |
           status=0
@@ -59,39 +57,32 @@ jobs:
             luac5.1 -p "$file" || status=1
           done < ForeverUI.toc
           exit $status
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Release zip builds
-        run: node scripts/package.mjs
-      - name: Zip is valid and holds every TOC file, Media/ and the libraries' licenses
+      - name: Release zip builds and holds every file it should
         run: |
-          zip=$(ls dist/*.zip)
-          unzip -t "$zip"
-          expected=$(( $(grep -cvE '^\s*(#|$)' ForeverUI.toc) + $(git ls-files Media | wc -l) + $(git ls-files Libs | grep -vc '\.lua$') + 2 ))
-          actual=$(unzip -Z1 "$zip" | wc -l)
-          echo "files: $actual (expected $expected)"
-          test "$actual" -eq "$expected"
+          rm -rf dist
+          node scripts/package.mjs
+          node scripts/check-zip.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lua-coverage
+          path: coverage/lua-coverage.json
 
   preview:
     # A screenshot of the default layout from the addon's real Lua (art
     # approximated), so a UI change can be reviewed from the run's artifacts.
+    # Chromium stays in the runner's Playwright cache, so the install is a
+    # no-op after the first run.
     name: UI preview
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - run: npm ci
-      # The browser download is kept between runs; the install step then
-      # only puts its system packages in place.
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-1.56.1-${{ runner.os }}
-      - run: npm install -g playwright@1.56.1 && playwright install --with-deps chromium
+      - run: npm install -g playwright@1.56.1 && playwright install chromium
       - run: npm run preview
       - uses: actions/upload-artifact@v4
         with:
