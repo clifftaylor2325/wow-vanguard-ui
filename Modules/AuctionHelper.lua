@@ -112,15 +112,23 @@ end
 -- Searches -----------------------------------------------------------------------------------
 
 -- Sends one search: an item to open in the game's own list, an item's price check (a sell search),
--- the next page of its listings, your auctions, or the shop's (Modules/AuctionShop.lua: a list
--- entry); always cheapest first.
+-- the next page of an item's listings (the sell card's: more, the shop's view's: page), your
+-- auctions, or the shop's (Modules/AuctionShop.lua: a list entry, an item's listings); always
+-- cheapest first.
 function AH.Send(s)
-  local api = C_AuctionHouse
+  local api, page = C_AuctionHouse, s.more or s.page
   if s.sell then return api.SendSellSearchQuery(s.sell, AH.SORTS, true) end
-  if s.more then return AH.RequestMore(s) end
+  if page then return AH.RequestMore(s.commodity, page) end
   if s.owned then return api.QueryOwnedAuctions(AH.SORTS) end
   if s.open then return api.SearchForItemKeys({ s.open }, AH.SORTS) end
   AH.SendShop(s)
+end
+
+-- Asks the house for the next page of an item's listings: a commodity's by its itemID, an item's by its key.
+function AH.RequestMore(commodity, key)
+  local api = C_AuctionHouse
+  if commodity then return api.RequestMoreCommoditySearchResults(key.itemID) end
+  api.RequestMoreItemSearchResults(key)
 end
 
 -- Waits until AH.SEND_GAP has passed since the last search, then tries the next (one timer at a time).
@@ -385,6 +393,15 @@ end
 -- An item's search results: a search answered (UPDATED), or a further page of it (ADDED).
 AH.SEARCH_EVENTS = { "ITEM_SEARCH_RESULTS_UPDATED", "COMMODITY_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_ADDED", "COMMODITY_SEARCH_RESULTS_ADDED" }
 
+-- An item's search results go to the shop's view and to the sell card, both against the search in
+-- flight when they came: only the one whose search it is (their kinds differ) marks it done, which
+-- may send the next search at once.
+function AH.OnSearchEvent(event, arg)
+  local s, id = AH.pending, type(arg) == "table" and arg.itemID or arg
+  AH.OnListings(event, id, s)
+  AH.OnSearchResults(event, id, s)
+end
+
 -- The auction house's events the helper follows (none in combat).
 local function listen()
   on("AUCTION_HOUSE_SHOW", function() ns.Soon("auctionhelper", AH.OnShow) end)
@@ -392,7 +409,7 @@ local function listen()
   on("REPLICATE_ITEM_LIST_UPDATE", onReplicate)
   on("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", AH.OnBrowse)
   AH.ListenShop(on)
-  for _, e in ipairs(AH.SEARCH_EVENTS) do on(e, AH.OnSearchResults) end
+  for _, e in ipairs(AH.SEARCH_EVENTS) do on(e, AH.OnSearchEvent) end
   -- The sell card again when the game is ready for a post, or a stack left the bags.
   for _, e in ipairs({ "AUCTION_HOUSE_THROTTLED_SYSTEM_READY", "BAG_UPDATE_DELAYED" }) do on(e, function() AH.PaintSell() end) end
   AH.ListenOwned(on)

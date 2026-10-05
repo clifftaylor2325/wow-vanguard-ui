@@ -28,8 +28,6 @@ AH.SELL_LINES = { "Cheapest now", "7-day low", "Deposit", "Your price" }
 AH.FORM_Y, AH.FORM_ROW = -110, 26
 -- The listings under the form: where they start, and how many rows show.
 AH.LIST_Y, AH.LIST_ROWS = -250, 4
--- Enum.AuctionHouseTimeLeftBand (AuctionHouseEnumsDocumentation.lua) by the game's words for it (TIME_LEFT_SHORT...).
-AH.TIME_BANDS = { [0] = "SHORT", "MEDIUM", "LONG", "VERY_LONG" }
 -- Coins in copper, for a typed price ("1g 50s").
 AH.COINS = { g = 10000, s = 100, c = 1 }
 -- The sell card's settings: the auction length a new item starts with ("last": the last one
@@ -110,9 +108,10 @@ function AH.SellPrice(s)
   return AH.Suggest(s.cheapest, AP.Low7(s.id))
 end
 
--- A price typed as "1g 50s 25c" (any of the three, spaces optional) or a bare number of copper;
--- nil for nothing, zero or anything else.
-function AH.ParseMoney(text)
+-- A price typed on the sell form as "1g 50s 25c" (any of the three, spaces optional) or a bare
+-- number of copper; nil for nothing, zero or anything else. (The shop's max price, AH.ParseMoney,
+-- reads a bare number as gold.)
+function AH.ParsePrice(text)
   local t, total = (text or ""):lower():gsub("%s+", ""), 0
   if t:match("^%d+$") then t = t .. "c" end
   local rest = t:gsub("(%d+)([gsc])", function(n, coin) total = total + tonumber(n) * AH.COINS[coin] return "" end)
@@ -232,13 +231,12 @@ function AH.Cheapest(commodity, key)
   return best
 end
 
--- A listing's time left: hours or minutes from its seconds, else the game's words for its band
--- (TIME_LEFT_SHORT...), else nothing.
+-- A listing's time left: hours or minutes from its seconds, else its band as the shop's view
+-- names it (AH.BandText: the game's words, TIME_LEFT_SHORT...), else nothing.
 function AH.TimeLeft(r)
   local secs = ns.PlainNumber(r.timeLeftSeconds)
   if secs then return secs >= 3600 and math.floor(secs / 3600) .. " h" or math.max(1, math.ceil(secs / 60)) .. " min" end
-  local band = AH.TIME_BANDS[ns.PlainNumber(r.timeLeft)]
-  return band and _G["TIME_LEFT_" .. band] or ""
+  return AH.BandText(ns.PlainNumber(r.timeLeft))
 end
 
 -- The listings up for an item, cheapest first: each one's unit price, quantity, time left and
@@ -260,20 +258,13 @@ local function hasFull(s)
 end
 
 -- The sale's listings and cheapest price, from its item's search results.
-function AH.ReadListings(s, commodity, cheapest)
+function AH.ReadSale(s, commodity, cheapest)
   s.cheapest, s.searched = cheapest, true
   s.rows, s.full = AH.Listings(commodity, s.search), hasFull(s)
 end
 
--- Asks the house for the next page of an item's listings (a queued search, AH.Send: one in
--- flight, at most 60 a minute).
-function AH.RequestMore(q)
-  local api = C_AuctionHouse
-  if q.commodity then return api.RequestMoreCommoditySearchResults(q.more.itemID) end
-  api.RequestMoreItemSearchResults(q.more)
-end
-
--- Near the end of the listings, with more on the house: the next page is queued (one at a time).
+-- Near the end of the listings, with more on the house: the next page is queued (a "more" search,
+-- one at a time; AH.Send asks for it with AH.RequestMore).
 local function askMore(s)
   if s.full ~= false or (AH.pending and AH.pending.more) then return end
   AH.DropQueued("more")
@@ -312,17 +303,16 @@ function AH.TakeCursor()
   AH.TakeItem(loc)
 end
 
--- Search results for an item (a search answered, or a further page of it): the search in flight
--- takes them: the sell card its listings and the cheapest, your auctions' check the cheapest; the
--- cheapest also feeds the price store.
-function AH.OnSearchResults(event, arg)
-  local s, commodity = AH.pending, event:find("^COMMODITY") ~= nil
-  local id = type(arg) == "table" and arg.itemID or arg
+-- Search results for item id (a search answered, or a further page of it; AH.OnSearchEvent): the
+-- search s in flight takes them when it is a price check or a page of the sell card's: the sell card
+-- its listings and the cheapest, your auctions' check the cheapest; the cheapest also feeds the price store.
+function AH.OnSearchResults(event, id, s)
+  local commodity = event:find("^COMMODITY") ~= nil
   local key = s and (s.sell or s.more)
   if not (key and key.itemID == id) then return end
   local cheapest = AH.Cheapest(commodity, key)
   AP.RecordSeen(id, cheapest)
-  if (s.card or s.more) and AH.sell and AH.sell.id == id then AH.ReadListings(AH.sell, commodity, cheapest) end
+  if (s.card or s.more) and AH.sell and AH.sell.id == id then AH.ReadSale(AH.sell, commodity, cheapest) end
   if s.check then AH.MarkUndercuts(id, cheapest, commodity) end
   AH.Done()
   AH.PaintSell()
@@ -343,9 +333,9 @@ AH.FORM = {
   -- How many stacks: the quantity becomes that many stacks (at most what can go up).
   stacks = function(s, text) local n = typedCount(text, 1, s.max) if n then s.qty = math.min(s.max, n * s.stack) end end,
   -- The price, per unit or per (full) stack by the toggle; nothing readable goes back to the suggestion.
-  price = function(s, text) local p = AH.ParseMoney(text) s.unit = p and (AH.perStack and math.floor(p / s.stack) or p) end,
+  price = function(s, text) local p = AH.ParsePrice(text) s.unit = p and (AH.perStack and math.floor(p / s.stack) or p) end,
   -- A bid per item (items only); nothing for none.
-  bid = function(s, text) s.bid = AH.ParseMoney(text) end,
+  bid = function(s, text) s.bid = AH.ParsePrice(text) end,
 }
 
 -- What each Max button sets on the sale s.

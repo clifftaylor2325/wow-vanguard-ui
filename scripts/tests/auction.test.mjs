@@ -1187,6 +1187,34 @@ it("an item's listings: the game's words for time left, a page more by item key,
   expect(listingRow(addon, 4)[1], "the page is in").toBe("99s 0c");
 });
 
+it("the shop's view and the sell card share the search events: each search and each page reaches its own card", () => {
+  const addon = atAuctionHouse(BAGS + DUST_LISTINGS + " __wfgWorld.ah.more[10940] = true");
+  dustFound(addon);
+  addon.click(`${HELPER}.shopCard.rows[1]`);
+  dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  // How many listings the sell card holds.
+  const saleRows = () => addon.eval(`return #${HELPER}.sell.rows`);
+  // The kind of the search in flight, or false.
+  const pending = () => addon.eval(`local s = ${HELPER}.pending return s and (s.listings and "listings" or s.sell and "sell" or s.page and "page" or s.more and "more") or false`);
+  expect([view(addon)[3][0][0], listingRow(addon, 1)[0], pending(), sent(addon).slice(-1)], "the view's search answered; the sell card's waits its second").toEqual(["12s 50c", false, false, ["SendSearchQuery:10940"]]);
+  addon.advance(1);
+  expect(pending(), "then the sell card's price check").toBe("sell");
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  expect([saleRows(), card(addon)[0][0], pending()], "it reaches the sell card").toEqual([8, "12s 50c", false]);
+  addon.advance(1);
+  addon.wheel(`${HELPER}.shopCard.view`, -1);
+  addon.wheel(`${CARD}.listings[1]`, -5);
+  expect([pending(), addon.eval(`return #${HELPER}.queue`), sent(addon).slice(-1)], "the view's page in flight, the sell card's queued behind it").toEqual(["page", 1, ["RequestMoreCommoditySearchResults:"]]);
+  addon.eval("table.insert(__wfgWorld.ah.commodities[10940], { unitPrice = 1000, quantity = 4, timeLeftSeconds = 600 }) __wfgWorld.ah.more[10940] = nil");
+  addon.fire("COMMODITY_SEARCH_RESULTS_ADDED", 10940);
+  addon.wheel(`${HELPER}.shopCard.view`, 10);
+  expect([view(addon)[3][0][0], saleRows(), card(addon)[0][0], pending()], "the page reaches the view, not the sell card").toEqual(["10s 0c", 8, "12s 50c", false]);
+  addon.advance(1);
+  expect([pending(), sent(addon).filter((x) => x.startsWith("RequestMore")).length], "then the sell card's page").toEqual(["more", 2]);
+  addon.fire("COMMODITY_SEARCH_RESULTS_ADDED", 10940);
+  expect([saleRows(), card(addon)[0][0], pending(), addon.eval("return #ns.errors")], "it reaches the sell card").toEqual([9, "10s 0c", false, 0]);
+});
+
 // The price line: [label, value, label in "bad", value in "bad"].
 const priceLine = (addon) => {
   const [label, value, labelColor, valueColor] = addon.eval(`local l = ${CARD}.lines[4] return { l:GetText(), l.value:GetText(), l.__textColor, l.value.__textColor }`);
