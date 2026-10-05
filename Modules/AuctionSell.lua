@@ -35,6 +35,9 @@ AH.COINS = { g = 10000, s = 100, c = 1 }
 -- The sell card's settings: the auction length a new item starts with ("last": the last one
 -- used; or 1 to 3), and lastDuration, the last one picked on the card (none at first).
 AH.defaults.duration = "last"
+-- And whether Post refuses a price under the item's vendor sell price (on: a sale that loses to
+-- the vendor is never what you meant).
+AH.defaults.vendorFloor = true
 -- Enum.ItemCommodityStatus's Item and Commodity (AuctionHouseDocumentation.lua); the game's
 -- names for the three auction lengths (AUCTION_DURATION_ONE...).
 AH.ITEM, AH.COMMODITY, AH.DURATIONS = 1, 2, { "ONE", "TWO", "THREE" }
@@ -374,13 +377,30 @@ function AH.ClickListing(r)
   AH.PaintSell()
 end
 
+-- Vendor floor --------------------------------------------------------------------------------
+
+-- An item's vendor sell price per unit (C_Item.GetItemInfo's sellPrice), or nil when the client
+-- doesn't know it yet, hides it, or the vendor won't buy it.
+function AH.VendorPrice(id)
+  local price = ns.PlainNumber((select(11, C_Item.GetItemInfo(id))))
+  return price and price > 0 and price or nil
+end
+
+-- Whether a unit price is under the sale's item's vendor sell price.
+function AH.UnderVendor(s, price)
+  local vendor = AH.VendorPrice(s.id)
+  return price ~= nil and vendor ~= nil and price < vendor
+end
+
 -- Posting ------------------------------------------------------------------------------------
 
 -- The unit price the next stack goes up at, when Post can put it up: a sale with units left and
--- a price (and a bid under it), its item in the bags, and the game's message throttle ready.
+-- a price (and a bid under it; not under the vendor's with "Never post under vendor price"), its
+-- item in the bags, and the game's message throttle ready.
 function AH.PostPrice(s)
   local price = s and s.qty > s.done and AH.SellPrice(s)
   if not price or (s.bid and s.bid >= price) or not AH.SellLocation(s) then return nil end
+  if AH.settings.vendorFloor and AH.UnderVendor(s, price) then return nil end
   if C_AuctionHouse.IsThrottledMessageSystemReady() then return price end
 end
 
@@ -471,6 +491,14 @@ local function paintForm(c, s)
   enable(c.stop, s ~= nil)
 end
 
+-- The price line: in red, and saying so, while the price is under the item's vendor sell price.
+local function paintPriceLine(c, s)
+  local line, under = c.lines[#c.lines], s ~= nil and AH.UnderVendor(s, AH.SellPrice(s))
+  line:SetText(under and "Under vendor price" or AH.SELL_LINES[#AH.SELL_LINES])
+  T.Color(line, under and "bad" or "text2")
+  T.Color(line.value, under and "bad" or "accent")
+end
+
 -- A listing's row: its price per unit, how many, the time left, and a mark when it's yours.
 local function paintListing(r, l)
   r:SetShown(l ~= nil)
@@ -489,7 +517,8 @@ local function paintListings(c, s)
   for i, r in ipairs(c.listings) do paintListing(r, rows[c.listOffset + i]) end
 end
 
--- The sell card: the item's icon and lines, the form, the listings, and Post, which works only
+-- The sell card: the item's icon and lines (the price line red under the vendor's), the form,
+-- the listings, and Post, which works only
 -- when the next stack can go up (AH.PostPrice).
 function AH.PaintSell()
   local c, s = AH.sellCard, AH.sell
@@ -499,6 +528,7 @@ function AH.PaintSell()
   for i, line in ipairs(c.lines) do line.value:SetText(values[i] or "") end
   paintForm(c, s)
   paintListings(c, s)
+  paintPriceLine(c, s)
   enable(c.post, AH.PostPrice(s) ~= nil)
 end
 

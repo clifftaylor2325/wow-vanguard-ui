@@ -812,6 +812,41 @@ it("an item's listings: the game's words for time left, a page more by item key,
   expect(listingRow(addon, 4)[1], "the page is in").toBe("99s 0c");
 });
 
+// The price line: [label, value, label in "bad", value in "bad"].
+const priceLine = (addon) => {
+  const [label, value, labelColor, valueColor] = addon.eval(`local l = ${CARD}.lines[4] return { l:GetText(), l.value:GetText(), l.__textColor, l.value.__textColor }`);
+  return [label, value, isTok(addon, labelColor, "bad"), isTok(addon, valueColor, "bad")];
+};
+
+it("vendor floor: the price line turns red under the vendor's price, and Post waits unless the option is off", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS);
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  expect([priceLine(addon), card(addon)[2]], "1s a unit is over linen's 13c").toEqual([["Your price", "1s 0c", false, false], true]);
+  addon.type(`${CARD}.price`, "12");
+  expect([priceLine(addon), card(addon)[2]], "12c is under it: red, and no Post").toEqual([["Under vendor price", "12c", true, true], false]);
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).length, "nothing posted").toBe(0);
+  addon.type(`${CARD}.price`, "13");
+  expect([priceLine(addon), card(addon)[2]], "at the vendor's price: fine").toEqual([["Your price", "13c", false, false], true]);
+  addon.eval("ns.Settings('AuctionHelper').vendorFloor = false");
+  addon.type(`${CARD}.price`, "11");
+  expect([priceLine(addon)[2], card(addon)[2]], "the option off: still red, but Post works").toEqual([true, true]);
+  addon.click(`${CARD}.post`);
+  expect([restrictedLog(addon)[0].slice(0, 6), priceLine(addon)], "posted at 11c; the card empties").toEqual([["PostCommodity", true, "0:3", 1, 20, 11], ["Your price", "", false, false]]);
+});
+
+it("vendor floor: an item the vendor won't buy, or a hidden vendor price, is never under", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS + "__wfgWorld.items[2589].sellPrice = __wfgWorld.secret(13) __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.type(`${CARD}.price`, "1");
+  expect([priceLine(addon)[2], card(addon)[2], addon.eval("return #ns.errors")], "hidden: not red, Post works, no error").toEqual([false, true, 0]);
+  addon.advance(1);
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.type(`${CARD}.price`, "1");
+  expect([priceLine(addon)[2], card(addon)[2]], "no vendor price (0): never under").toEqual([false, true]);
+  expect(addon.eval(`return ${HELPER}.VendorPrice(424242)`), "an item the client doesn't know").toBe(null);
+});
+
 // Your auctions ------------------------------------------------------------------------------
 
 // TEST-ONLY auctions of yours: 5 dust at 1s 50c a unit, a blade at 40s, and three the check
