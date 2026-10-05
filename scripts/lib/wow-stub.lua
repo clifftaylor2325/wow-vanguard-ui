@@ -126,8 +126,24 @@ local function cacheFor(w)
   return cache
 end
 
--- A method added later (the layout and world files add theirs) empties the caches.
-setmetatable(methods, { __newindex = function(t, key, fn) rawset(t, key, fn) resolved, resolvedBackdrop = {}, {} end })
+-- Empties the caches: a method added later (the layout and world files add
+-- theirs), or a test editing the widget API list (an older client).
+local function forgetResolved()
+  resolved, resolvedBackdrop = {}, {}
+end
+-- A new stub method: stored, and the caches start over.
+local function addMethod(t, key, fn) rawset(t, key, fn) forgetResolved() end
+setmetatable(methods, { __newindex = addMethod })
+
+-- A set from the widget API list behind a proxy, so an edit to it reaches
+-- the caches; reads see the set as it is.
+local function watched(store)
+  -- The write goes to the set, and the caches start over.
+  local function edit(_, key, v) store[key] = v forgetResolved() end
+  return setmetatable({}, { __index = store, __newindex = edit })
+end
+for kind, store in pairs(API.methods) do API.methods[kind] = watched(store) end
+API.backdrop = watched(API.backdrop)
 
 local widgetMeta = {
   -- Resolves a method name to the stub method, a no-op, or nil.
