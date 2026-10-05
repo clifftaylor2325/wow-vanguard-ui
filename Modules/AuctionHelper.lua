@@ -111,10 +111,12 @@ end
 -- Searches -----------------------------------------------------------------------------------
 
 -- Sends one search: a list entry (an item ID by its item key, a name by text), an item to open
--- in the game's own list, an item's price check (a sell search) or your auctions; always cheapest first.
+-- in the game's own list, an item's price check (a sell search), the next page of its listings, or
+-- your auctions; always cheapest first.
 function AH.Send(s)
   local api = C_AuctionHouse
   if s.sell then return api.SendSellSearchQuery(s.sell, AH.SORTS, true) end
+  if s.more then return AH.RequestMore(s) end
   if s.owned then return api.QueryOwnedAuctions(AH.SORTS) end
   if s.open then return api.SearchForItemKeys({ s.open }, AH.SORTS) end
   if type(s.entry) == "number" then return api.SearchForItemKeys({ api.MakeItemKey(s.entry) }, AH.SORTS) end
@@ -380,6 +382,9 @@ function AH.Start()
   AH.walker:SetScript("OnUpdate", AH.ScanStep)
 end
 
+-- An item's search results: a search answered (UPDATED), or a further page of it (ADDED).
+AH.SEARCH_EVENTS = { "ITEM_SEARCH_RESULTS_UPDATED", "COMMODITY_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_ADDED", "COMMODITY_SEARCH_RESULTS_ADDED" }
+
 -- The auction house's events the helper follows (none in combat).
 local function listen()
   on("AUCTION_HOUSE_SHOW", function() ns.Soon("auctionhelper", AH.OnShow) end)
@@ -387,7 +392,7 @@ local function listen()
   on("REPLICATE_ITEM_LIST_UPDATE", onReplicate)
   on("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", AH.OnBrowse)
   on("ITEM_KEY_ITEM_INFO_RECEIVED", function() AH.PaintShop() end)
-  for _, e in ipairs({ "ITEM_SEARCH_RESULTS_UPDATED", "COMMODITY_SEARCH_RESULTS_UPDATED" }) do on(e, AH.OnSearchResults) end
+  for _, e in ipairs(AH.SEARCH_EVENTS) do on(e, AH.OnSearchResults) end
   -- The sell card again when the game is ready for a post, or a stack left the bags.
   for _, e in ipairs({ "AUCTION_HOUSE_THROTTLED_SYSTEM_READY", "BAG_UPDATE_DELAYED" }) do on(e, function() AH.PaintSell() end) end
   AH.ListenOwned(on)

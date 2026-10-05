@@ -22,10 +22,14 @@ local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
 
 -- The sell card: where it starts and its height, and its lines.
-AH.SELL_Y, AH.SELL_H = -210, 246
+AH.SELL_Y, AH.SELL_H = -210, 346
 AH.SELL_LINES = { "Cheapest now", "7-day low", "Deposit", "Your price" }
 -- The form: where its rows start (down from the card's top) and how far apart they are.
 AH.FORM_Y, AH.FORM_ROW = -110, 26
+-- The listings under the form: where they start, and how many rows show.
+AH.LIST_Y, AH.LIST_ROWS = -250, 4
+-- Enum.AuctionHouseTimeLeftBand (AuctionHouseEnumsDocumentation.lua) by the game's words for it (TIME_LEFT_SHORT...).
+AH.TIME_BANDS = { [0] = "SHORT", "MEDIUM", "LONG", "VERY_LONG" }
 -- Coins in copper, for a typed price ("1g 50s").
 AH.COINS = { g = 10000, s = 100, c = 1 }
 -- The sell card's settings: the auction length a new item starts with ("last": the last one
@@ -195,10 +199,20 @@ end
 
 -- Price checks -------------------------------------------------------------------------------
 
+-- An item's search results as the house sent them (cheapest first): the commodity results for
+-- its itemID, or the item results for its key.
+local function results(commodity, key)
+  local api, out = C_AuctionHouse, {}
+  local n = commodity and api.GetNumCommoditySearchResults(key.itemID) or api.GetNumItemSearchResults(key)
+  for i = 1, ns.PlainNumber(n) or 0 do
+    out[#out + 1] = commodity and api.GetCommoditySearchResultInfo(key.itemID, i) or api.GetItemSearchResultInfo(key, i)
+  end
+  return out
+end
+
 -- One result's unit price: a commodity's unit price, an item's buyout over its quantity; nil
--- for your own listing, one with only a bid, or a number the client hides.
-local function unitPrice(r, commodity)
-  if not r or r.containsOwnerItem then return nil end
+-- for one with only a bid, or a number the client hides.
+local function resultUnit(r, commodity)
   if commodity then return ns.PlainNumber(r.unitPrice) end
   local buyout, qty = ns.PlainNumber(r.buyoutAmount), ns.PlainNumber(r.quantity)
   return buyout and qty and qty > 0 and math.floor(buyout / qty) or nil
@@ -207,14 +221,60 @@ end
 -- The cheapest unit price someone else asks for an item now (your listings left out), or nil:
 -- from the commodity results or the item results, whichever the search brought.
 function AH.Cheapest(commodity, key)
-  local api, best = C_AuctionHouse, nil
-  local n = commodity and api.GetNumCommoditySearchResults(key.itemID) or api.GetNumItemSearchResults(key)
-  for i = 1, ns.PlainNumber(n) or 0 do
-    local r = commodity and api.GetCommoditySearchResultInfo(key.itemID, i) or api.GetItemSearchResultInfo(key, i)
-    local unit = unitPrice(r, commodity)
+  local best
+  for _, r in ipairs(results(commodity, key)) do
+    local unit = not r.containsOwnerItem and resultUnit(r, commodity)
     if unit and (not best or unit < best) then best = unit end
   end
   return best
+end
+
+-- A listing's time left: hours or minutes from its seconds, else the game's words for its band
+-- (TIME_LEFT_SHORT...), else nothing.
+function AH.TimeLeft(r)
+  local secs = ns.PlainNumber(r.timeLeftSeconds)
+  if secs then return secs >= 3600 and math.floor(secs / 3600) .. " h" or math.max(1, math.ceil(secs / 60)) .. " min" end
+  local band = AH.TIME_BANDS[ns.PlainNumber(r.timeLeft)]
+  return band and _G["TIME_LEFT_" .. band] or ""
+end
+
+-- The listings up for an item, cheapest first: each one's unit price, quantity, time left and
+-- whether it's yours; one without a buyout, or with a number the client hides, is left out.
+function AH.Listings(commodity, key)
+  local out = {}
+  for _, r in ipairs(results(commodity, key)) do
+    local unit, qty = resultUnit(r, commodity), ns.PlainNumber(r.quantity)
+    if unit and qty then out[#out + 1] = { unit = unit, qty = qty, time = AH.TimeLeft(r), mine = r.containsOwnerItem == true } end
+  end
+  return out
+end
+
+-- Whether the house has sent every listing of the sale's item (no further page to ask for).
+local function hasFull(s)
+  local api = C_AuctionHouse
+  if s.commodity then return api.HasFullCommoditySearchResults(s.id) ~= false end
+  return api.HasFullItemSearchResults(s.search) ~= false
+end
+
+-- The sale's listings and cheapest price, from its item's search results.
+function AH.ReadListings(s, commodity, cheapest)
+  s.cheapest, s.searched = cheapest, true
+  s.rows, s.full = AH.Listings(commodity, s.search), hasFull(s)
+end
+
+-- Asks the house for the next page of an item's listings (a queued search, AH.Send: one in
+-- flight, at most 60 a minute).
+function AH.RequestMore(q)
+  local api = C_AuctionHouse
+  if q.commodity then return api.RequestMoreCommoditySearchResults(q.more.itemID) end
+  api.RequestMoreItemSearchResults(q.more)
+end
+
+-- Near the end of the listings, with more on the house: the next page is queued (one at a time).
+local function askMore(s)
+  if s.full ~= false or (AH.pending and AH.pending.more) then return end
+  AH.DropQueued("more")
+  AH.Queue({ more = s.search, commodity = s.commodity })
 end
 
 -- The sale -----------------------------------------------------------------------------------
@@ -236,6 +296,7 @@ function AH.TakeItem(loc)
   local status = api.GetItemCommodityStatus(loc)
   if status ~= AH.ITEM and status ~= AH.COMMODITY then return end
   AH.sell, AH.sellStatus = newSale(loc, api.GetItemKeyFromItem(loc), status == AH.COMMODITY), nil
+  AH.sellCard.listOffset = 0
   AH.Queue({ sell = AH.sell.search, card = true }, true)
   AH.PaintSell()
 end
@@ -248,15 +309,17 @@ function AH.TakeCursor()
   AH.TakeItem(loc)
 end
 
--- Search results for an item: the price check in flight (the sell card's, or your auctions') takes the
--- cheapest, which also feeds the price store.
+-- Search results for an item (a search answered, or a further page of it): the search in flight
+-- takes them: the sell card its listings and the cheapest, your auctions' check the cheapest; the
+-- cheapest also feeds the price store.
 function AH.OnSearchResults(event, arg)
-  local s, commodity = AH.pending, event == "COMMODITY_SEARCH_RESULTS_UPDATED"
+  local s, commodity = AH.pending, event:find("^COMMODITY") ~= nil
   local id = type(arg) == "table" and arg.itemID or arg
-  if not (s and s.sell and s.sell.itemID == id) then return end
-  local cheapest = AH.Cheapest(commodity, s.sell)
+  local key = s and (s.sell or s.more)
+  if not (key and key.itemID == id) then return end
+  local cheapest = AH.Cheapest(commodity, key)
   AP.RecordSeen(id, cheapest)
-  if s.card and AH.sell and AH.sell.id == id then AH.sell.cheapest, AH.sell.searched = cheapest, true end
+  if (s.card or s.more) and AH.sell and AH.sell.id == id then AH.ReadListings(AH.sell, commodity, cheapest) end
   if s.check then AH.MarkUndercuts(id, cheapest, commodity) end
   AH.Done()
   AH.PaintSell()
@@ -300,6 +363,14 @@ end
 -- The price box's toggle: a price typed there is per unit or per (full) stack.
 function AH.TogglePerStack()
   AH.perStack = not AH.perStack
+  AH.PaintSell()
+end
+
+-- A listing clicked: its price becomes the card's, less the undercut rule unless it's yours.
+function AH.ClickListing(r)
+  local s, l = AH.sell, r.listing
+  if not (s and l) then return end
+  s.unit = l.mine and l.unit or (AH.UNDERCUT[AH.settings.undercut] or AH.UNDERCUT.silver)(l.unit)
   AH.PaintSell()
 end
 
@@ -400,8 +471,26 @@ local function paintForm(c, s)
   enable(c.stop, s ~= nil)
 end
 
--- The sell card: the item's icon and lines, the form, and Post, which works only when the next
--- stack can go up (AH.PostPrice).
+-- A listing's row: its price per unit, how many, the time left, and a mark when it's yours.
+local function paintListing(r, l)
+  r:SetShown(l ~= nil)
+  r.listing = l
+  if not l then return end
+  r.price:SetText(AP.Money(l.unit))
+  r.qty:SetText("x " .. l.qty)
+  r.time:SetText(l.time)
+  r.mark:SetShown(l.mine)
+end
+
+-- The sale's listings under the form, from the scroll offset, with their header while there are any.
+local function paintListings(c, s)
+  local rows = s and s.rows or {}
+  c.listHead:SetShown(#rows > 0)
+  for i, r in ipairs(c.listings) do paintListing(r, rows[c.listOffset + i]) end
+end
+
+-- The sell card: the item's icon and lines, the form, the listings, and Post, which works only
+-- when the next stack can go up (AH.PostPrice).
 function AH.PaintSell()
   local c, s = AH.sellCard, AH.sell
   if not c then return end
@@ -409,6 +498,7 @@ function AH.PaintSell()
   c.icon:SetTexture(s and C_Item.GetItemIcon(s.loc) or nil)
   for i, line in ipairs(c.lines) do line.value:SetText(values[i] or "") end
   paintForm(c, s)
+  paintListings(c, s)
   enable(c.post, AH.PostPrice(s) ~= nil)
 end
 
@@ -500,7 +590,66 @@ local function postRow(c)
   c.status:SetPoint("TOPLEFT", 0, y - 6)
 end
 
--- The sell card: the slot, its lines, the undercut rule, the form, the length and the posting line.
+-- The wheel over the listings scrolls them; near the end, with more on the house, the next page is asked for.
+local function scrollListings(c, delta)
+  local s = AH.sell
+  if not s then return end
+  local card = c:GetParent()
+  card.listOffset = math.max(0, math.min(#(s.rows or {}) - AH.LIST_ROWS, card.listOffset - delta))
+  if card.listOffset + AH.LIST_ROWS >= #(s.rows or {}) - 1 then askMore(s) end
+  AH.PaintSell()
+end
+
+-- A listing row's parts: the mark for yours, the price per unit, how many and the time left.
+local function listingParts(r)
+  r.mark = W.Flat(r, "ARTWORK", "accent")
+  r.mark:SetSize(6, 6)
+  r.mark:SetPoint("LEFT", 0, 0)
+  r.price = T.Text(r:CreateFontString(nil, "OVERLAY"), "number", "gold")
+  r.price:SetPoint("LEFT", 10, 0)
+  r.qty = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  r.qty:SetPoint("RIGHT", -70, 0)
+  r.time = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  r.time:SetPoint("RIGHT", -2, 0)
+end
+
+-- One of the listings' column headers, at a point of the header line.
+local function listHeader(head, text, point, x)
+  local fs = T.Text(head:CreateFontString(nil, "OVERLAY"), "small", "muted")
+  fs:SetPoint(point, x, 0)
+  fs:SetText(text)
+end
+
+-- The listings under the posting line: the column headers, then AH.LIST_ROWS rows (a click takes
+-- a row's price), which the wheel scrolls.
+local function listingRows(c)
+  c.list = CreateFrame("Frame", nil, c)
+  c.list:SetPoint("TOPLEFT", 0, AH.LIST_Y)
+  c.list:SetPoint("TOPRIGHT", 0, AH.LIST_Y)
+  c.list:SetHeight(14 + AH.LIST_ROWS * AH.ROW_H)
+  c.listHead = CreateFrame("Frame", nil, c.list)
+  c.listHead:SetPoint("TOPLEFT")
+  c.listHead:SetPoint("TOPRIGHT")
+  c.listHead:SetHeight(14)
+  c.list:EnableMouseWheel(true)
+  c.list:SetScript("OnMouseWheel", scrollListings)
+end
+
+-- The listings' headers and rows.
+local function listings(c)
+  listingRows(c)
+  listHeader(c.listHead, "Up now, each", "LEFT", 10)
+  listHeader(c.listHead, "Qty", "RIGHT", -70)
+  listHeader(c.listHead, "Time left", "RIGHT", -2)
+  c.listings, c.listOffset = {}, 0
+  for i = 1, AH.LIST_ROWS do
+    c.listings[i] = AH.Row(c.list, i, -14, function(r) AH.ClickListing(r) end)
+    listingParts(c.listings[i])
+  end
+end
+
+-- The sell card: the slot, its lines, the undercut rule, the form, the length, the posting line
+-- and the listings.
 function AH.BuildSell(f)
   local c = AH.Card(f, "Sell", AH.SELL_Y, AH.SELL_H)
   AH.sellCard = c
@@ -510,5 +659,6 @@ function AH.BuildSell(f)
   sellForm(c)
   lengthRow(c)
   postRow(c)
+  listings(c)
   hooksecurefunc(AuctionHouseFrame, "SetPostItem", function(_, loc) AH.TakeItem(loc) end)
 end
