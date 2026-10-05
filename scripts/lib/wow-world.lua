@@ -1547,6 +1547,55 @@ function C_TradeSkillUI.GetProfessionInfoBySkillLineID(skillLine)
   return { professionID = skillLine, professionName = "", skillLevel = 0, maxSkillLevel = 0 }
 end
 
+-- The profession window (Blizzard_Professions, which Forever loads on TRADE_SKILL_SHOW:
+-- Blizzard_Game/Mainline/EventImplementation.lua's HandleTradeSkillShow calls ShowProfessionsFrame,
+-- Blizzard_Professions/Blizzard_Professions_Bootstrap.lua). ProfessionsFrame (673 x 594,
+-- Camelot/Blizzard_ProfessionsFrame.xml) holds CraftingPage.SchematicForm, whose Init(recipeInfo)
+-- shows a recipe (Blizzard_ProfessionsCrafting.lua's SelectRecipe calls it).
+-- world.recipes[recipeID] = a CraftingRecipeSchematic (TradeSkillUITypesDocumentation.lua):
+-- { recipeID, name, outputItemID, quantityMin, quantityMax, reagentSlotSchematics = { { reagents =
+-- { { itemID } }, quantityRequired, reagentType } } }, as C_TradeSkillUI.GetRecipeSchematic gives it.
+
+Enum.CraftingReagentType = { Modifying = 0, Basic = 1, Finishing = 2, Automatic = 3 }
+world.recipes = {}
+
+-- A recipe's schematic (nil for one the world doesn't have).
+function C_TradeSkillUI.GetRecipeSchematic(recipeID) return world.recipes[recipeID] end
+
+-- The window, made the first time a profession opens, with its crafting page's recipe form.
+local function professionsFrame()
+  if ProfessionsFrame then return ProfessionsFrame end
+  local f = stub.newWidget("Frame", "ProfessionsFrame", UIParent)
+  f:SetSize(673, 594)
+  f:SetPoint("TOPLEFT", 16, -116)
+  f.CraftingPage = stub.newWidget("Frame", nil, f)
+  f.CraftingPage:SetAllPoints()
+  f.CraftingPage.SchematicForm = stub.newWidget("Frame", nil, f.CraftingPage)
+  -- Shows a recipe (its recipeInfo kept, as the game's GetRecipeInfo returns it).
+  function f.CraftingPage.SchematicForm:Init(recipeInfo) self.currentRecipeInfo = recipeInfo end
+  stub.fire("ADDON_LOADED", "Blizzard_Professions")
+  return f
+end
+
+-- A profession opens (TRADE_SKILL_SHOW, the window shows) on a recipe, if one is given.
+function world.openProfession(recipeID)
+  local f = professionsFrame()
+  stub.fire("TRADE_SKILL_SHOW")
+  f:Show()
+  if recipeID then world.selectRecipe(recipeID) end
+end
+
+-- A recipe picked in the list: the form is given it.
+function world.selectRecipe(recipeID)
+  ProfessionsFrame.CraftingPage.SchematicForm:Init({ recipeID = recipeID, learned = true })
+end
+
+-- The window closes: TRADE_SKILL_CLOSE fires and it hides.
+function world.closeProfession()
+  stub.fire("TRADE_SKILL_CLOSE")
+  if ProfessionsFrame then ProfessionsFrame:Hide() end
+end
+
 -- Chat and the game's frames ----------------------------------------------------------------------
 
 world.chatFilters = {}
@@ -1649,7 +1698,7 @@ function world.reset()
   world.actions, world.quests, world.npc, world.merchant, world.trainer = {}, {}, nil, nil, nil
   world.cursor, world.timers, world.book = nil, {}, {}
   world.ah = emptyAuctionHouse()
-  world.professions = {}
+  world.professions, world.recipes = {}, {}
   world.mail = {}
   refreshWatches()
 end
