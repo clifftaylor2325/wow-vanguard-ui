@@ -3,7 +3,9 @@
 -- /fui prep: ammo (hunters), soul shards (warlocks), your class's reagents,
 -- food and drink, bandages, potions, worn gear, and the Keep-stocked items
 -- (/fui stock) you carry fewer of than the list says. The card fades after
--- Hide after seconds (ns.AutoHide), or at once from its close button.
+-- Hide after seconds (ns.AutoHide), or at once from its close button. Its
+-- Buy list button turns what's short that you can buy (PR.BuyRows) into the
+-- Auction helper's Restock shopping list (Modules/AuctionRestock.lua).
 -- Every count the client hides skips its row, never compared; nothing is
 -- checked in combat, and /fui prep in combat waits for the fight to end.
 
@@ -101,11 +103,12 @@ end
 
 -- Rows ----------------------------------------------------------------------------------------
 
--- A row for something short ({ label, value = "have / want" }), or nil when
--- you have enough or the count is hidden (a hidden count is never compared).
-local function short(label, have, want)
+-- A row for something short ({ label, value = "have / want", and for an item
+-- you can buy its id and how many more you need }), or nil when you have
+-- enough or the count is hidden (a hidden count is never compared).
+local function short(label, have, want, id)
   have = ns.PlainNumber(have)
-  if have and want and have < want then return { label = label, value = have .. " / " .. want } end
+  if have and want and have < want then return { label = label, value = have .. " / " .. want, id = id, need = want - have } end
 end
 
 -- Your class (MAGE, PRIEST...) and level, or nil and 0 for what the client hides.
@@ -121,7 +124,7 @@ function PR.ReagentRows()
   if class == "HUNTER" then rows[#rows + 1] = short("Ammo", ask("GetInventoryItemCount", "player", IS.AMMO_SLOT), want.ammo) end
   if class == "WARLOCK" then rows[#rows + 1] = short("Soul shards", IS.SoulShards(), want.shards) end
   for _, r in ipairs(PR.REAGENTS[class] or {}) do
-    if level >= r[4] and level <= (r[5] or level) then rows[#rows + 1] = short(r[3], count(r[1]), r[2]) end
+    if level >= r[4] and level <= (r[5] or level) then rows[#rows + 1] = short(r[3], count(r[1]), r[2], r[1]) end
   end
   return rows
 end
@@ -140,7 +143,7 @@ function PR.StockRows()
   local list = ER.settings and ER.settings.stockList or {}
   for id in pairs(list) do ids[#ids + 1] = id end
   table.sort(ids)
-  for _, id in ipairs(ids) do rows[#rows + 1] = short(itemName(id), count(id), list[id]) end
+  for _, id in ipairs(ids) do rows[#rows + 1] = short(itemName(id), count(id), list[id], id) end
   return rows
 end
 
@@ -157,6 +160,21 @@ function PR.Rows()
   rows[#rows + 1] = durabilityRow()
   for _, r in ipairs(PR.StockRows()) do rows[#rows + 1] = r end
   return rows
+end
+
+-- What's short that you can buy, as { id, need } in the card's order: your class's reagents
+-- (while Instance prep is on) and the Keep-stocked items under their count; an item on both
+-- needs the larger amount. Ammo, soul shards, food, bandages and potions are kinds of item, not
+-- one item, so they're left out. The Auction helper's Restock list is made from these.
+function PR.BuyRows()
+  local rows, out, seen = PR.settings and PR.ReagentRows() or {}, {}, {}
+  for _, r in ipairs(PR.StockRows()) do rows[#rows + 1] = r end
+  for _, r in ipairs(rows) do
+    local had = r.id and seen[r.id]
+    if had then had.need = math.max(had.need, r.need) end
+    if r.id and not had then seen[r.id] = { id = r.id, need = r.need } out[#out + 1] = seen[r.id] end
+  end
+  return out
 end
 
 -- The card --------------------------------------------------------------------------------------
@@ -190,9 +208,19 @@ local function paintRow(r, row)
   r.value:SetText(row.value)
 end
 
--- Puts rows on the card ("Everything's packed." when there are none) and sizes it to fit.
+-- Whether the card offers Buy list: a row is an item you can buy, and the Auction helper is on.
+local function canBuy(rows)
+  for _, r in ipairs(rows) do
+    if r.id then return ns.GetModule("AuctionHelper").settings ~= nil end
+  end
+  return false
+end
+
+-- Puts rows on the card ("Everything's packed." when there are none), with Buy list when one
+-- can be bought, and sizes it to fit.
 function PR.Paint(rows)
   local card = PR.card
+  card.buy:SetShown(canBuy(rows))
   for i = #card.rows + 1, #rows do card.rows[i] = rowFrame(i) end
   for i, r in ipairs(card.rows) do paintRow(r, rows[i]) end
   card.packed:SetShown(#rows == 0)
@@ -213,6 +241,15 @@ local function cardParts(f)
   f.packed:SetText("Everything's packed.")
 end
 
+-- The card's Buy list button, left of the close button: what's short that you can buy becomes the
+-- Auction helper's Restock shopping list (Modules/AuctionRestock.lua). Hidden until PR.Paint shows it.
+local function buyButton(f)
+  f.buy = W.Button(f, "Buy list", function() ns.GetModule("AuctionHelper").Restock() end, 64)
+  f.buy:SetHeight(20)
+  f.buy:SetPoint("TOPRIGHT", -26, -5)
+  f.buy:Hide()
+end
+
 -- The card: a floating panel you can move (/fui unlock), hidden until called up.
 local function buildCard()
   local f = CreateFrame("Frame", "ForeverUI_PrepCard", UIParent)
@@ -220,6 +257,7 @@ local function buildCard()
   f:SetSize(PR.WIDTH, PR.TOP + PR.ROW + PR.PAD)
   f.rows = {}
   cardParts(f)
+  buyButton(f)
   f:Hide()
   PR.card = f
   ns.Mover(f, "prepcard", "Instance prep", { "CENTER", "CENTER", 0, 180 })
