@@ -96,7 +96,7 @@ please report what breaks.
 
 ## Install
 
-Download `Vanguard-<version>.zip` from the [latest release](https://github.com/clifftaylor2325/wow-forever-ui/releases/latest) and unzip the `Vanguard` folder into `World of Warcraft/_retail_/Interface/AddOns/` (your Forever client's AddOns folder).
+Download `Vanguard-<version>.zip` from the [latest release](https://github.com/clifftaylor2325/wow-vanguard-ui/releases/latest) and unzip the `Vanguard` folder into `World of Warcraft/_retail_/Interface/AddOns/` (your Forever client's AddOns folder).
 
 ## Commands
 
