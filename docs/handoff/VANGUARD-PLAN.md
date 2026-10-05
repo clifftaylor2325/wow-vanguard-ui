@@ -111,9 +111,9 @@ Every feature is a module made with `ns.Module(name, { defaults = ... })`, with 
 
 ### F4 Questie coexistence (`work/f4-questie`) — size S, mostly in-game checking
 
-- [ ] **F4.1 Read, don't copy.** Questie is GPLv3; read its source to learn which frames and hooks it uses for the quest tracker, quest log and map, but copy no code. Note the frame names in the commit body.
-- [ ] **F4.2 Who owns the tracker.** New setting under the quest tracker options: "With Questie: use Vanguard's tracker / use Questie's" (default: Questie's when Questie is loaded). Questie's choice → `Modules/QuestTracker.lua` leaves the game's tracker alone (no `Suppress("ObjectiveTrackerFrame")`, line 128) and doesn't build its own; and if Questie's tracker frame exists, skin it with the theme panel (the same primitives `Core/Skin.lua` hands out). Same for the quest log if Questie adds to the game's quest log.
-- [ ] **F4.3 Tests and in-game check.** Stub tests for both settings with and without Questie loaded. **[VERIFY IN GAME]** with Questie's Forever build installed: no doubled trackers, Questie's map icons show, no errors in `/vg errors`.
+- [x] **F4.1 Read, don't copy.** Questie is GPLv3; read its source to learn which frames and hooks it uses for the quest tracker, quest log and map, but copy no code. Note the frame names in the commit body.
+- [x] **F4.2 Who owns the tracker.** New setting under the quest tracker options: "With Questie: use Vanguard's tracker / use Questie's" (default: Questie's when Questie is loaded). Questie's choice → `Modules/QuestTracker.lua` leaves the game's tracker alone (no `Suppress("ObjectiveTrackerFrame")`, line 128) and doesn't build its own; and if Questie's tracker frame exists, skin it with the theme panel (the same primitives `Core/Skin.lua` hands out). Same for the quest log if Questie adds to the game's quest log.
+- [x] **F4.3 Tests and in-game check.** Stub tests for both settings with and without Questie loaded. **[VERIFY IN GAME]** with Questie's Forever build installed: no doubled trackers, Questie's map icons show, no errors in `/vg errors`.
 
 ### F5 Docking spots for boss timers and warnings (`work/f5-docks`) — size S
 

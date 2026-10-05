@@ -777,6 +777,7 @@ local function questRows()
     check("Vanguard's quest log on the quest log key (reload)", setting("QuestLog", "own", true)),
     { "header", "Quest tracker" },
     check("Vanguard's quest tracker under the info strip (reload)", setting("QuestTracker", "own", true)),
+    { "cycle", "With Questie loaded (reload)", { { "questie", "Questie's tracker" }, { "vanguard", "Vanguard's tracker" } }, setting("QuestTracker", "withQuestie", true) },
     { "cycle", "Order", { { "game", "As the game orders them" }, { "nearest", "Nearest first" } }, liveSetting("QuestTracker", "order", function() ns.GetModule("QuestTracker").ApplyOrder() end) },
   }
 end
