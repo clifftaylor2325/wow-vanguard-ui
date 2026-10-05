@@ -1,4 +1,4 @@
--- luacheck config for ForeverUI's Lua. The game runs Lua 5.1. Globals the
+-- luacheck config for Vanguard's Lua. The game runs Lua 5.1. Globals the
 -- addon may set are listed exactly, so a missing `local` fails.
 std = "lua51"
 max_line_length = false
@@ -9,32 +9,37 @@ exclude_files = { "node_modules/", "scripts/", "Libs/" }
 ignore = { "211/ADDON" }
 
 globals = {
-  -- SavedVariables (ForeverUI.toc)
-  "ForeverUIDB",
-  "ForeverUICharDB",
-  -- Public API table and slash command. ForeverUI holds the skin API (Core/Skin.lua) and
-  -- ForeverUI.API.v1, the auction prices for other addons (Modules/AuctionAPI.lua).
-  "ForeverUI",
-  "SLASH_FOREVERUI1",
-  "SLASH_FOREVERUI2",
+  -- SavedVariables (Vanguard.toc)
+  "VanguardDB",
+  "VanguardCharDB",
+  -- Public API table and slash command. Vanguard holds the skin API (Core/Skin.lua) and
+  -- Vanguard.API.v1, the auction prices for other addons (Modules/AuctionAPI.lua).
+  "Vanguard",
+  "SLASH_VANGUARD1",
+  "SLASH_VANGUARD2",
+  -- /way, when no other addon has it (Modules/Waypoints.lua)
+  "SLASH_VANGUARDWAY1",
   -- Minimap shape for addons that place icons around it (Modules/Minimap.lua)
   "GetMinimapShape",
   -- Addon compartment click handler named in the TOC (Core/Options.lua)
-  "ForeverUI_OnAddonCompartmentClick",
+  "Vanguard_OnAddonCompartmentClick",
   SlashCmdList = { other_fields = true },
 }
 
 -- WoW API the addon reads. Add a name only when the addon starts using it.
 read_globals = {
+  "UiMapPoint", "C_SuperTrack", "hash_SlashCmdList",
+  "C_Bank",
+  "GetInventoryItemLink", "C_PlayerInfo",
   "AbbreviateNumbers", "GetTime", "UnitCastingInfo", "UnitChannelInfo", "AuraUtil", "CreateUnitHealPredictionCalculator", "GetThreatStatusColor", "UnitGetDetailedHealPrediction", "UnitGetIncomingHeals", "UnitGetTotalAbsorbs", "UnitThreatSituation", "C_ActionBar", "C_AddOns", "C_CVar", "C_Reputation", "C_Spell", "C_UnitAuras", "C_Timer", "GetLocale", "GetCursorPosition", "Enum", "GetActionInfo", "SOUNDKIT", "PlaySound", "ClearCursor", "GetCursorInfo", "GetSpellInfo", "C_SpecializationInfo", "GetSpecialization", "ReloadUI", "GetXPExhaustion", "IsPlayerAtEffectiveMaxLevel", "IsXPUserDisabled", "UnitLevel", "UnitXP", "UnitXPMax", "C_Map", "FCF_OpenTemporaryWindow", "FCF_Tab_OnClick", "GetMinimapZoneText", "GetZonePVPInfo", "Minimap", "NUM_CHAT_WINDOWS", "SELECTED_CHAT_FRAME", "SecureHandlerExecute", "SecureHandlerUnwrapScript", "SecureHandlerWrapScript", "SetCVar", "UISpecialFrames", "hooksecurefunc", "ClearOverrideBindings", "GetBindingKey", "CreateFrame", "DEFAULT_CHAT_FRAME", "debugstack", "geterrorhandler", "CallErrorHandler",
   "GetAddOnMetadata", "GetBuildInfo", "GetNetStats", "UnitClassification", "C_SpellBook", "GetBindingAction", "GetNumSpecializations", "UnitLevel", "GetCreatureDifficultyColor", "GetComboPoints", "C_Secrets", "CreateColor", "AnchorUtil", "AuraContainerSortMethod", "C_CurveUtil", "C_StringUtil", "InCombatLockdown", "IsAltKeyDown", "IsControlKeyDown", "IsShiftKeyDown", "PowerBarColor", "RAID_CLASS_COLORS",
   "RegisterAttributeDriver", "RegisterStateDriver", "UnregisterStateDriver", "UnitGroupRolesAssigned", "UnitIsUnit", "RegisterUnitWatch", "SetOverrideBindingClick", "STANDARD_TEXT_FONT", "UIParent", "UnitClass",
   "UnitExists", "UnitHealth", "UnitHealthMax", "UnitIsConnected",
   "UnitIsDeadOrGhost", "UnitIsPlayer", "UnitName", "UnitPower", "UnitPowerMax",
-  "UnitPowerType", "UnitReaction", "issecretvalue", "GetTotemInfo", "GetTotemDuration", "C_EventUtils", "C_Item", "GetInventoryItemTexture", "GameTooltip", "C_Container", "C_MerchantFrame", "CanMerchantRepair", "GetRepairAllCost", "RepairAllItems", "GetMoney", "UIErrorsFrame", "C_SwingTimer", "GetPetHappiness", "C_PetInfo", "C_PvP", "HideUIPanel", "C_Texture", "UnitFactionGroup", "C_CooldownViewer", "C_DamageMeter", "AcceptQuest", "AcknowledgeAutoAcceptQuest", "C_GossipInfo", "CloseQuest", "CompleteQuest", "DeclineQuest", "GetActiveLevel", "GetActiveTitle", "GetAvailableLevel", "GetAvailableTitle", "GetGreetingText", "GetNumActiveQuests", "GetNumAvailableQuests", "GetNumQuestChoices", "GetNumQuestItems", "GetNumQuestRewards", "GetObjectiveText", "GetProgressText", "GetQuestDifficultyColor", "GetQuestItemInfo", "GetQuestItemLink", "GetQuestReward", "GetQuestText", "GetRewardMoney", "GetRewardText", "GetRewardXP", "GetTitleText", "IsQuestCompletable", "QuestGetAutoAccept", "SelectActiveQuest", "SelectAvailableQuest", "SetPortraitTexture", "GetQuestID", "C_QuestInfoSystem", "C_QuestLog", "GetQuestLogSpecialItemInfo", "QuestMapFrame_OpenToQuestDetails", "GetNumQuestLogChoices", "GetQuestLogChoiceInfo", "GetNumQuestLogRewards", "GetQuestLogRewardInfo", "GetQuestLogRewardMoney", "GetQuestLogRewardXP", "GetQuestLogQuestText", "QuestLogPushQuest", "StaticPopup_Show", "GetBindingKey", "SetOverrideBindingClick", "ClearOverrideBindings", "IsInGroup", "ChatFrame_AddMessageEventFilter", "C_SummonInfo", "AcceptResurrect", "CancelDuel", "StaticPopup_Hide", "EventRegistry", "GetInventoryItemDurability", "GetPartyAssignment", "PixelUtil", "C_PartyInfo", "SetRaidTarget", "CanBeRaidTarget", "GetNumGroupMembers",
+  "UnitPowerType", "UnitReaction", "issecretvalue", "GetTotemInfo", "GetTotemDuration", "C_EventUtils", "C_Item", "GetInventoryItemTexture", "GameTooltip", "C_Container", "C_MerchantFrame", "CanMerchantRepair", "GetRepairAllCost", "RepairAllItems", "GetMoney", "UIErrorsFrame", "C_SwingTimer", "GetPetHappiness", "C_PetInfo", "C_PvP", "HideUIPanel", "C_Texture", "UnitFactionGroup", "C_CooldownViewer", "C_DamageMeter", "AcceptQuest", "AcknowledgeAutoAcceptQuest", "C_GossipInfo", "CloseQuest", "CompleteQuest", "DeclineQuest", "GetActiveLevel", "GetActiveTitle", "GetAvailableLevel", "GetAvailableTitle", "GetGreetingText", "GetNumActiveQuests", "GetNumAvailableQuests", "GetNumQuestChoices", "GetNumQuestItems", "GetNumQuestRewards", "GetObjectiveText", "GetProgressText", "GetQuestDifficultyColor", "GetQuestItemInfo", "GetQuestItemLink", "GetQuestReward", "GetQuestText", "GetRewardMoney", "GetRewardText", "GetRewardXP", "GetTitleText", "IsQuestCompletable", "QuestGetAutoAccept", "SelectActiveQuest", "SelectAvailableQuest", "SetPortraitTexture", "GetQuestID", "C_QuestInfoSystem", "C_QuestLog", "GetQuestLogSpecialItemInfo", "QuestMapFrame_OpenToQuestDetails", "GetNumQuestLogChoices", "GetQuestLogChoiceInfo", "GetNumQuestLogRewards", "GetQuestLogRewardInfo", "GetQuestLogRewardMoney", "GetQuestLogRewardXP", "GetQuestLogQuestText", "QuestLogPushQuest", "StaticPopup_Show", "GetBindingKey", "SetOverrideBindingClick", "ClearOverrideBindings", "IsInGroup", "ChatFrame_AddMessageEventFilter", "C_SummonInfo", "AcceptResurrect", "CancelDuel", "GetNumLootItems", "GetLootSlotInfo", "LootSlot", "StaticPopup_Hide", "EventRegistry", "GetInventoryItemDurability", "GetPartyAssignment", "PixelUtil", "C_PartyInfo", "SetRaidTarget", "CanBeRaidTarget", "GetNumGroupMembers",
   -- Target of target identity and the minimap's still-standing check (P1.13).
   "UnitGUID", "UnitPosition",
-  -- /fui perf: the game's CPU and memory counters (P1.14).
+  -- /vg perf: the game's CPU and memory counters (P1.14).
   "GetCVar", "GetAddOnCPUUsage", "UpdateAddOnCPUUsage", "GetAddOnMemoryUsage", "UpdateAddOnMemoryUsage", "GetFunctionCPUUsage",
   -- Action button tooltips: the client's default anchor (P2.3).
   "GameTooltip_SetDefaultAnchor",

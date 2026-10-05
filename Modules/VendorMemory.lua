@@ -1,8 +1,8 @@
 -- Vendor memory: what each merchant you visit sells, remembered for the whole
 -- account, so item tooltips can say "Sold by Thomas Miller (Elwynn Forest,
 -- Goldshire)" (with " · limited stock" when the merchant carries only a few),
--- and the Keep stocked list (/fui stock) can say where to buy. Up to three
--- merchants per item, the one seen last first; /fui vendors says how many are
+-- and the Keep stocked list (/vg stock) can say where to buy. Up to three
+-- merchants per item, the one seen last first; /vg vendors says how many are
 -- remembered (clear forgets them). Nothing is read in combat, and a name or
 -- zone the client hides is skipped.
 
@@ -30,10 +30,10 @@ local function plainText(text)
   return text
 end
 
--- The account-wide store: ForeverUIDB.vendors = { items = { [itemID] = { entry, ... } }, count = items }.
+-- The account-wide store: VanguardDB.vendors = { items = { [itemID] = { entry, ... } }, count = items }.
 function VM.Store()
-  ForeverUIDB.vendors = ns.Fill(type(ForeverUIDB.vendors) == "table" and ForeverUIDB.vendors or {}, { items = {}, count = 0 })
-  return ForeverUIDB.vendors
+  VanguardDB.vendors = ns.Fill(type(VanguardDB.vendors) == "table" and VanguardDB.vendors or {}, { items = {}, count = 0 })
+  return VanguardDB.vendors
 end
 
 -- Reading the merchant -----------------------------------------------------------------------
@@ -138,11 +138,11 @@ local function merchantCount(store)
   return n
 end
 
--- /fui vendors [clear]: how many merchants are remembered, or forget them all.
+-- /vg vendors [clear]: how many merchants are remembered, or forget them all.
 function VM.Command(rest)
-  if rest == "clear" then ForeverUIDB.vendors = nil return ns.Chat("Forgot every merchant.") end
+  if rest == "clear" then VanguardDB.vendors = nil return ns.Chat("Forgot every merchant.") end
   local store = VM.Store()
-  ns.Chat(string.format("%d merchant(s) remembered, selling %d item(s). /fui vendors clear forgets them.", merchantCount(store), store.count))
+  ns.Chat(string.format("%d merchant(s) remembered, selling %d item(s). /vg vendors clear forgets them.", merchantCount(store), store.count))
 end
 
 -- A merchant opened or its list changed: remember it once the burst of events is over.

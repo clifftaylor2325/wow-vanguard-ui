@@ -1,4 +1,4 @@
--- The client's own pet, stance and extra action buttons in the ForeverUI
+-- The client's own pet, stance and extra action buttons in the Vanguard
 -- look, and a vehicle exit button.
 --
 -- The pet bar, stance bar and extra action button stay the client's;
@@ -6,13 +6,13 @@
 -- errors. This module restyles them (template art faded, the icon cropped, a
 -- thin themed border; the active stance, the attack flash and the auto-cast
 -- mark kept) and gives the pet and stance bars a spot of their own to move
--- in unlock mode, clear of ForeverUI's stacked bars (the game's own spot for
+-- in unlock mode, clear of Vanguard's stacked bars (the game's own spot for
 -- them is under Edit Mode's control and lies over those bars).
 --
 -- With Masque loaded, the pet, stance and extra buttons are handed to Masque
 -- (one group) instead of restyled (Core/Masque.lua).
 --
--- The vehicle exit button is ForeverUI's own: a secure button running
+-- The vehicle exit button is Vanguard's own: a secure button running
 -- /leavevehicle, shown by the client only while you can leave, and movable
 -- in unlock mode.
 
@@ -54,8 +54,8 @@ SB.MASQUE = "Pet, stance and extra buttons"
 -- Restyles one client button: art faded (state textures kept), icon cropped,
 -- themed border; or hands it to Masque (which finds the game button's regions).
 function SB.Skin(b)
-  if type(b) ~= "table" or b.fuiSkinned then return end
-  b.fuiSkinned = true
+  if type(b) ~= "table" or b.vgSkinned then return end
+  b.vgSkinned = true
   if ns.Masque.Add(SB.MASQUE, b) then return end
   local icon = iconOf(b)
   T.FadeRegions(b, SB.KeepSet(b))
@@ -92,7 +92,7 @@ end
 local function placeBar(spot)
   local bar = _G[spot[1]]
   if type(bar) ~= "table" or not bar.SetPoint then return end
-  local holder = CreateFrame("Frame", "ForeverUI_" .. spot[1] .. "Spot", UIParent)
+  local holder = CreateFrame("Frame", "Vanguard_" .. spot[1] .. "Spot", UIParent)
   holder:SetSize(spot[5], spot[6])
   ns.Mover(holder, spot[2], spot[3], spot[4])
   ns.Pin(bar, function(f) seat(f, holder) end)
@@ -108,7 +108,7 @@ end
 
 -- The vehicle exit: a secure /leavevehicle button the client shows only while you can leave.
 local function vehicleExit()
-  local b = T.Button(CreateFrame("Button", "ForeverUI_VehicleExit", UIParent, "SecureActionButtonTemplate"))
+  local b = T.Button(CreateFrame("Button", "Vanguard_VehicleExit", UIParent, "SecureActionButtonTemplate"))
   b:SetSize(36, 36)
   b:SetAttribute("type", "macro")
   b:SetAttribute("macrotext", "/leavevehicle")

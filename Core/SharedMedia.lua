@@ -1,5 +1,5 @@
 -- Shared fonts and bar textures through LibSharedMedia-3.0 (bundled in Libs/
--- and loaded first by the TOC): ForeverUI shares its own font and bar
+-- and loaded first by the TOC): Vanguard shares its own font and bar
 -- textures with other addons, and the Font and Bar texture pickers offer
 -- what other addons share. Every call works without the library: then only
 -- the built-ins are offered, and a saved name falls back to them.
@@ -8,10 +8,10 @@ local ADDON, ns = ...
 
 local T = ns.Theme
 
--- ForeverUI's own media under its LibSharedMedia names: media type -> name -> path.
+-- Vanguard's own media under its LibSharedMedia names: media type -> name -> path.
 T.SHARED_MEDIA = {
-  font = { ["ForeverUI Fira Sans"] = T.FONTS.regular, ["ForeverUI Fira Sans SemiBold"] = T.FONTS.bold },
-  statusbar = { ["ForeverUI Forever"] = T.Texture("Bar"), ["ForeverUI Soft"] = T.Texture("BarSoft"), ["ForeverUI Flat"] = T.WHITE },
+  font = { ["Vanguard Fira Sans"] = T.FONTS.regular, ["Vanguard Fira Sans SemiBold"] = T.FONTS.bold },
+  statusbar = { ["Vanguard"] = T.Texture("Bar"), ["Vanguard Soft"] = T.Texture("BarSoft"), ["Vanguard Flat"] = T.WHITE },
 }
 
 -- LibSharedMedia-3.0, or nil when it isn't loaded.
@@ -27,7 +27,7 @@ function T.SharedPath(kind, name)
 end
 
 -- A picker's choices: the built-ins ({ value, text }), then every name shared
--- for the media type, ForeverUI's own left out (the built-ins are those).
+-- for the media type, Vanguard's own left out (the built-ins are those).
 function T.SharedChoices(kind, builtIns)
   local list, lsm = {}, T.SharedMedia()
   for _, c in ipairs(builtIns) do list[#list + 1] = c end
@@ -37,7 +37,7 @@ function T.SharedChoices(kind, builtIns)
   return list
 end
 
--- Shares ForeverUI's font (it has Latin, Greek and Cyrillic, so western and
+-- Shares Vanguard's font (it has Latin, Greek and Cyrillic, so western and
 -- Russian clients) and its three bar textures.
 local function share(lsm)
   local scripts = lsm.LOCALE_BIT_western + lsm.LOCALE_BIT_ruRU

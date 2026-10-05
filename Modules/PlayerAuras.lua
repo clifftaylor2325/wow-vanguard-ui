@@ -131,7 +131,7 @@ end
 
 -- The movable holder left of the minimap, the container and the enchant cells.
 local function build(s)
-  PA.holder = CreateFrame("Frame", "ForeverUI_PlayerAuras", UIParent)
+  PA.holder = CreateFrame("Frame", "Vanguard_PlayerAuras", UIParent)
   PA.holder:SetSize(s.perRow * (s.size + PA.GAP), s.size)
   ns.Mover(PA.holder, "playerauras", "Your buffs and debuffs", { "TOPRIGHT", "TOPRIGHT", -210, -14 })
   PA.auras = A.Container(PA.holder, PA.Spec(PA.holder, s), "player")

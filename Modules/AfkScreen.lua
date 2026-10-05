@@ -152,7 +152,7 @@ end
 
 -- The full-screen frame over the UI, dimmed.
 local function dimmer()
-  local f = CreateFrame("Frame", "ForeverUI_AfkScreen", UIParent)
+  local f = CreateFrame("Frame", "Vanguard_AfkScreen", UIParent)
   f:SetAllPoints(UIParent)
   f:SetFrameStrata("FULLSCREEN_DIALOG")
   f.dim = T.Tint(f:CreateTexture(nil, "BACKGROUND"), "shade", 0.75)

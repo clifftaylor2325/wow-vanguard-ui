@@ -1,7 +1,7 @@
--- Auction prices for other addons: ForeverUI.API.v1, a table of functions
+-- Auction prices for other addons: Vanguard.API.v1, a table of functions
 -- with the names and argument order of Auctionator's v1 API (as
 -- docs/handoff/AUCTION-PLAN.md lists them; its source was not read), so an
--- addon written for Auctionator can read ForeverUI's prices with a one-line
+-- addon written for Auctionator can read Vanguard's prices with a one-line
 -- shim. docs/API.md documents it for addon authors.
 --
 -- Every function takes the calling addon's name first (callerID, a string);
@@ -17,15 +17,15 @@ local AP = ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
 
 local API = {}
-ForeverUI.API = { v1 = API }
+Vanguard.API = { v1 = API }
 ns.API = API
 
 -- Checking calls -----------------------------------------------------------------------------
 
--- Raises "ForeverUI.API.v1.<fn>: <what> must be a <want>" at the line that called the API
+-- Raises "Vanguard.API.v1.<fn>: <what> must be a <want>" at the line that called the API
 -- (four levels up: here, check, the API function, its caller).
 local function fail(fn, what, want, got)
-  error(string.format("ForeverUI.API.v1.%s: %s must be a %s, got %s", fn, what, want, type(got)), 4)
+  error(string.format("Vanguard.API.v1.%s: %s must be a %s, got %s", fn, what, want, type(got)), 4)
 end
 
 -- Checks an API call's callerID (a string) and one more argument (v, of type want).
@@ -38,7 +38,7 @@ end
 
 -- This realm and faction's prices, or none before the saved variables are loaded.
 local function prices()
-  return type(ForeverUIDB) == "table" and AP.House().prices or {}
+  return type(VanguardDB) == "table" and AP.House().prices or {}
 end
 
 -- The item ID in an item link (or "item:2589" string), or nil.
@@ -86,7 +86,7 @@ end
 -- What disenchanting an item is worth on average (AP.Disenchant), or nil; none before the saved
 -- variables are loaded.
 local function disenchantPrice(item)
-  return type(ForeverUIDB) == "table" and AP.Disenchant(item) or nil
+  return type(VanguardDB) == "table" and AP.Disenchant(item) or nil
 end
 
 -- What disenchanting an item is worth on average by its ID, in copper: each material's chance x
@@ -104,11 +104,11 @@ function API.GetDisenchantPriceByItemLink(callerID, itemLink)
 end
 
 -- callback() runs (with no arguments) on the frame after prices are recorded: once after a whole
--- scan, and after each search that saw a price. One that fails is reported by ForeverUI (/fui
+-- scan, and after each search that saw a price. One that fails is reported by Vanguard (/vg
 -- errors) and doesn't stop the others.
 function API.RegisterForDBUpdate(callerID, callback)
   check("RegisterForDBUpdate", callerID, "callback", callback, "function")
-  AP.OnChange(function() ns.Try("ForeverUI.API.v1 update for " .. callerID, callback) end)
+  AP.OnChange(function() ns.Try("Vanguard.API.v1 update for " .. callerID, callback) end)
 end
 
 -- Shopping lists and searches ----------------------------------------------------------------

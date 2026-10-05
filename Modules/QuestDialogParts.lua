@@ -1,4 +1,4 @@
--- Parts shared by ForeverUI's quest windows (the quest dialog, and the quest
+-- Parts shared by Vanguard's quest windows (the quest dialog, and the quest
 -- log): numbered lines for quests and gossip, and reward cards with the
 -- item's icon, count and name in a border of its quality color.
 
@@ -105,7 +105,15 @@ function QP.QualityColor(quality)
   if r then return { r, g, b } end
 end
 
--- Fills a card from { name, texture, count, quality } and shows it.
+-- Functions run on every card as it's painted, each fn(card, item) (Modules/Upgrades.lua marks upgrades).
+QP.cardHooks = {}
+
+-- Adds fn(card, item) to run on every reward card as it's painted.
+function QP.OnPaintCard(fn)
+  QP.cardHooks[#QP.cardHooks + 1] = fn
+end
+
+-- Fills a card from { name, texture, count, quality, link } and shows it.
 function QP.PaintCard(c, item)
   c.icon:SetTexture(item.texture)
   c.name:SetText(QP.Plain(item.name))
@@ -113,6 +121,7 @@ function QP.PaintCard(c, item)
   c.count:SetText(count and count > 1 and count or "")
   T.SetBorder(c, QP.QualityColor(item.quality))
   c.item = item
+  for _, fn in ipairs(QP.cardHooks) do ns.Try("reward card", fn, c, item) end
   c:Show()
 end
 

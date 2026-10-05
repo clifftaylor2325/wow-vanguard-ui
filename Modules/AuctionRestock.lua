@@ -4,7 +4,7 @@
 -- PR.BuyRows: your class's reagents and the Keep-stocked items under their
 -- count) becomes the Restock shopping list, each item with how many you need
 -- (an entry's want). Restock on the Shop card, Buy list on the Instance prep
--- card and /fui ah restock make it; at the auction house it is searched at
+-- card and /vg ah restock make it; at the auction house it is searched at
 -- once. An entry with a wanted amount is searched as any other, then its
 -- item's listings are read (one more search through the same queue) and its
 -- row says what the cheapest of that many come to, "8 for 1g 20s 0c", in the
@@ -58,7 +58,7 @@ end
 -- top); nil when nothing you can buy is short, false when there's no room for another list.
 function AH.MakeRestock()
   local rows, store = ns.GetModule("InstancePrep").BuyRows(), AP.Store()
-  if #rows == 0 then return ns.Chat("Nothing to restock: your class's reagents and your Keep-stocked items (/fui stock) are all in your bags.") end
+  if #rows == 0 then return ns.Chat("Nothing to restock: your class's reagents and your Keep-stocked items (/vg stock) are all in your bags.") end
   local entries = restockEntries(rows, store.lists[AH.RESTOCK] or {})
   if not AH.NewList(AH.RESTOCK) then return false end
   store.lists[AH.RESTOCK] = entries
@@ -68,7 +68,7 @@ function AH.MakeRestock()
   return true
 end
 
--- Restock (the Shop card's button, Instance prep's Buy list, /fui ah restock): the list made, and
+-- Restock (the Shop card's button, Instance prep's Buy list, /vg ah restock): the list made, and
 -- searched at once while the auction house is open (else chat says where to search it).
 function AH.Restock()
   if not AH.MakeRestock() then return end
@@ -76,7 +76,7 @@ function AH.Restock()
   ns.Chat("At the auction house, Search list on the Shop card shows what the cheapest of each come to.")
 end
 
--- /fui ah restock: the Restock list made (and searched at the auction house).
+-- /vg ah restock: the Restock list made (and searched at the auction house).
 AH.COMMANDS.restock = function() AH.Restock() end
 
 -- Pricing the wanted amount ------------------------------------------------------------------

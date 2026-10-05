@@ -1,12 +1,13 @@
 -- Small conveniences, each off until you switch it on:
 --   * accept summons (out of combat), and say who summoned you where;
 --   * accept resurrections, and say who brought you back;
---   * decline duel requests, and say whose.
+--   * decline duel requests, and say whose;
+--   * faster auto-loot: when the game auto-loots, take every slot at once.
 -- Each uses the game's own answer to its prompt and closes the prompt.
 
 local ADDON, ns = ...
 
-local AA = ns.Module("AutoAccept", { defaults = { summons = false, resurrect = false, duels = false } })
+local AA = ns.Module("AutoAccept", { defaults = { summons = false, resurrect = false, duels = false, loot = false } })
 
 -- Calls a function from C_SummonInfo, else the global of that name; nil when neither exists.
 local function summon(name, ...)
@@ -53,10 +54,26 @@ function AA.OnDuel(_, who)
   ns.Chat("Declined a duel from " .. plain(who, "someone") .. ".")
 end
 
+-- Takes one loot slot, unless the game has locked it (an item still being rolled
+-- for, or one you may not take); the game's loot window keeps those.
+local function takeSlot(slot)
+  local locked = select(6, GetLootSlotInfo(slot))
+  if not locked then LootSlot(slot) end
+end
+
+-- Loot is ready: when the game is auto-looting (its setting, or its key held),
+-- take every slot at once, last first, instead of one at a time. A slot that
+-- needs a bind-on-pickup answer still brings up the game's prompt.
+function AA.OnLootReady(_, autoloot)
+  if not AA.settings.loot or not autoloot or type(GetNumLootItems) ~= "function" then return end
+  for slot = GetNumLootItems(), 1, -1 do takeSlot(slot) end
+end
+
 -- Module entry point (Core/Modules.lua): each switch is read when its prompt comes.
 function AA.Enable(settings)
   AA.settings = settings
   ns.On("CONFIRM_SUMMON", AA.OnSummon)
   ns.On("RESURRECT_REQUEST", AA.OnResurrect)
   ns.On("DUEL_REQUESTED", AA.OnDuel)
+  ns.On("LOOT_READY", AA.OnLootReady)
 end

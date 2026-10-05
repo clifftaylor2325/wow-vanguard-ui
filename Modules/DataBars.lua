@@ -102,7 +102,7 @@ end
 
 -- A themed status bar with centered text, movable as `key`.
 local function createBar(key, label, point, settings)
-  local bar = CreateFrame("StatusBar", "ForeverUI_" .. key, UIParent)
+  local bar = CreateFrame("StatusBar", "Vanguard_" .. key, UIParent)
   bar:SetSize(settings.width, settings.height)
   T.StyleBar(bar)
   T.HudPanel(bar, { inset = true })
@@ -153,7 +153,7 @@ end
 -- The XP bar with its rested overlay, kept current.
 local function enableXP(settings)
   DB.xpBar = createBar("xpbar", "Experience", { "BOTTOM", "BOTTOM", 0, 4 }, settings)
-  DB.xpBar.fuiOnState = DB.UpdateXP
+  DB.xpBar.vgOnState = DB.UpdateXP
   addRested(DB.xpBar)
   for _, e in ipairs({ "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD" }) do ns.On(e, DB.UpdateXP) end
   DB.UpdateXP()
@@ -162,7 +162,7 @@ end
 -- The reputation bar for the watched faction, kept current.
 local function enableReputation(settings)
   DB.repBar = createBar("repbar", "Reputation", { "BOTTOM", "BOTTOM", 0, 12 }, settings)
-  DB.repBar.fuiOnState = DB.UpdateReputation
+  DB.repBar.vgOnState = DB.UpdateReputation
   for _, e in ipairs({ "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" }) do ns.On(e, DB.UpdateReputation) end
   DB.UpdateReputation()
 end
@@ -182,8 +182,8 @@ end
 -- hidden once, out of combat.
 function DB.Suppress(name)
   local f = _G[name]
-  if type(f) ~= "table" or not f.Hide or f.fuiSuppressed then return end
-  f.fuiSuppressed = true
+  if type(f) ~= "table" or not f.Hide or f.vgSuppressed then return end
+  f.vgSuppressed = true
   ns.EditModeReplaced(f)
   if protected(f) then return ns.OutOfCombat(function() f:Hide() end, f) end
   f:Hide()

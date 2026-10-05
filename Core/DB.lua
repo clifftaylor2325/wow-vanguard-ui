@@ -1,4 +1,4 @@
--- SavedVariables: ForeverUIDB holds named profiles; ForeverUICharDB picks
+-- SavedVariables: VanguardDB holds named profiles; VanguardCharDB picks
 -- which profile this character uses. Every module keeps its settings in
 -- its own table inside the active profile.
 
@@ -31,7 +31,7 @@ end
 local DB_VERSION = 2
 local upgrades = {}
 
--- Registers fn(ForeverUIDB) that brings the account file up to `version`; steps run once, in version order.
+-- Registers fn(VanguardDB) that brings the account file up to `version`; steps run once, in version order.
 function ns.UpgradeDB(version, fn)
   upgrades[version] = fn
 end
@@ -39,8 +39,8 @@ end
 -- Runs the upgrade step for version v under ns.Try and stamps it; false when the step failed (the stamp is left so the next login retries).
 local function upgradeStep(v)
   local fn = upgrades[v]
-  if fn and not ns.Try("DB upgrade " .. v, fn, ForeverUIDB) then return false end
-  ForeverUIDB.version = v
+  if fn and not ns.Try("DB upgrade " .. v, fn, VanguardDB) then return false end
+  VanguardDB.version = v
   return true
 end
 
@@ -54,8 +54,8 @@ end
 
 -- The saved account file's version: 0 for a file saved before a version was stamped, nil for a fresh install.
 local function savedVersion()
-  if type(ForeverUIDB) ~= "table" then return nil end
-  return type(ForeverUIDB.version) == "number" and ForeverUIDB.version or 0
+  if type(VanguardDB) ~= "table" then return nil end
+  return type(VanguardDB.version) == "number" and VanguardDB.version or 0
 end
 
 -- Drops the profiles a damaged (hand-edited) file holds under a name that isn't a string, or that aren't tables:
@@ -70,13 +70,13 @@ end
 -- Runs at ADDON_LOADED, when WoW has restored them.
 local function initDB()
   local from = savedVersion()
-  ForeverUIDB = fill(type(ForeverUIDB) == "table" and ForeverUIDB or {}, { profiles = {} })
-  dropBrokenProfiles(ForeverUIDB.profiles)
-  ForeverUIDB.version = from or DB_VERSION
+  VanguardDB = fill(type(VanguardDB) == "table" and VanguardDB or {}, { profiles = {} })
+  dropBrokenProfiles(VanguardDB.profiles)
+  VanguardDB.version = from or DB_VERSION
   if from and from < DB_VERSION then ns.MigrateDB(from, DB_VERSION) end
-  ForeverUICharDB = fill(type(ForeverUICharDB) == "table" and ForeverUICharDB or {}, { profile = DEFAULT_PROFILE })
+  VanguardCharDB = fill(type(VanguardCharDB) == "table" and VanguardCharDB or {}, { profile = DEFAULT_PROFILE })
   ns.ApplyPendingProfile()
-  ForeverUIDB.profiles[ForeverUICharDB.profile] = ForeverUIDB.profiles[ForeverUICharDB.profile] or {}
+  VanguardDB.profiles[VanguardCharDB.profile] = VanguardDB.profiles[VanguardCharDB.profile] or {}
 end
 
 ns.On("ADDON_LOADED", function(_, name)
@@ -87,17 +87,17 @@ end)
 
 -- The active profile's name.
 function ns.ProfileName()
-  return ForeverUICharDB and ForeverUICharDB.profile or DEFAULT_PROFILE
+  return VanguardCharDB and VanguardCharDB.profile or DEFAULT_PROFILE
 end
 
 -- The active profile table (empty before ADDON_LOADED).
 function ns.Profile()
-  if type(ForeverUIDB) ~= "table" then
+  if type(VanguardDB) ~= "table" then
     return {}
   end
   local name = ns.ProfileName()
-  ForeverUIDB.profiles[name] = ForeverUIDB.profiles[name] or {}
-  return ForeverUIDB.profiles[name]
+  VanguardDB.profiles[name] = VanguardDB.profiles[name] or {}
+  return VanguardDB.profiles[name]
 end
 
 local migrations = {}
@@ -145,26 +145,26 @@ end
 -- the profile changed. Runs at ADDON_LOADED (the first load after the switch) and at login for a spec's
 -- profile, both before any module reads its settings.
 function ns.ApplyPendingProfile()
-  local name = ForeverUICharDB.pendingProfile
-  ForeverUICharDB.pendingProfile = nil
-  if type(name) ~= "string" or name == ForeverUICharDB.profile then return false end
-  ForeverUIDB.profiles[name] = ForeverUIDB.profiles[name] or {}
-  ForeverUICharDB.profile = name
+  local name = VanguardCharDB.pendingProfile
+  VanguardCharDB.pendingProfile = nil
+  if type(name) ~= "string" or name == VanguardCharDB.profile then return false end
+  VanguardDB.profiles[name] = VanguardDB.profiles[name] or {}
+  VanguardCharDB.profile = name
   ns.ProfileChanged()
   return true
 end
 
 -- Stages a switch to a profile (created empty if new). The running modules keep the active profile's
--- tables until the reload, so ForeverUICharDB.profile and the settings cache stay as they are (a drag
+-- tables until the reload, so VanguardCharDB.profile and the settings cache stay as they are (a drag
 -- or an accent change still lands in the profile on screen); ns.ApplyPendingProfile applies it.
 function ns.UseProfile(name)
-  ForeverUIDB.profiles[name] = ForeverUIDB.profiles[name] or {}
-  ForeverUICharDB.pendingProfile = name ~= ForeverUICharDB.profile and name or nil
+  VanguardDB.profiles[name] = VanguardDB.profiles[name] or {}
+  VanguardCharDB.pendingProfile = name ~= VanguardCharDB.profile and name or nil
 end
 
 -- The profile staged for the next reload, or nil.
 function ns.PendingProfileName()
-  return ForeverUICharDB and ForeverUICharDB.pendingProfile or nil
+  return VanguardCharDB and VanguardCharDB.pendingProfile or nil
 end
 
 -- The profile this character will use after the next reload: the staged one, else the active one.
@@ -175,7 +175,7 @@ end
 -- Profile names, sorted.
 function ns.ProfileNames()
   local names = {}
-  for name in pairs(ForeverUIDB and ForeverUIDB.profiles or {}) do
+  for name in pairs(VanguardDB and VanguardDB.profiles or {}) do
     names[#names + 1] = name
   end
   table.sort(names)

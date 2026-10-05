@@ -1,8 +1,8 @@
--- The error badge: how many errors ForeverUI caught this session (the
--- entries /fui errors lists), as a small count on the addons button by the
+-- The error badge: how many errors Vanguard caught this session (the
+-- entries /vg errors lists), as a small count on the addons button by the
 -- minimap and as a line in the options window's footer, so nobody has to type
 -- the command to find out. Both follow every newly caught error and
--- /fui errors clear; with no errors there is no badge.
+-- /vg errors clear; with no errors there is no badge.
 
 local ADDON, ns = ...
 
@@ -18,7 +18,7 @@ end
 
 -- The count on the addons button's top-right corner: a small square in the bad color.
 local function buttonBadge(button)
-  local b = CreateFrame("Frame", "ForeverUI_ErrorBadge", button)
+  local b = CreateFrame("Frame", "Vanguard_ErrorBadge", button)
   b:SetSize(14, 14)
   b:SetPoint("CENTER", button, "TOPRIGHT", -3, -3)
   b:SetFrameLevel(button:GetFrameLevel() + 5)
@@ -43,14 +43,14 @@ function EB.Update()
   show(EB.footer, n, errorsText(n) .. " caught this session: click to list them")
 end
 
--- The footer line, right of the version: the count in the bad color; a click lists the errors in chat (/fui errors).
+-- The footer line, right of the version: the count in the bad color; a click lists the errors in chat (/vg errors).
 function EB.Footer(window)
-  local b = CreateFrame("Button", "ForeverUI_OptionsErrors", window.footer)
+  local b = CreateFrame("Button", "Vanguard_OptionsErrors", window.footer)
   b:SetSize(260, 20)
   b:SetPoint("LEFT", window.version, "RIGHT", 16, 0)
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "small", "bad")
   b.text:SetPoint("LEFT")
-  b:SetScript("OnClick", function() SlashCmdList.FOREVERUI("errors") end)
+  b:SetScript("OnClick", function() SlashCmdList.VANGUARD("errors") end)
   EB.footer = b
   EB.Update()
 end

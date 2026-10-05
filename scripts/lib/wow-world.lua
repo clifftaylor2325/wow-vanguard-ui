@@ -85,14 +85,14 @@ SOUNDKIT = setmetatable({}, { __index = function(_, k) return k end })
 function ReloadUI() world.reloads = world.reloads + 1 end
 
 -- Addon metadata comes from the TOC the harness read.
-world.addons = { ForeverUI = { Version = "0.3.0", Title = "ForeverUI" } }
+world.addons = { Vanguard = { Version = "0.3.0", Title = "Vanguard" } }
 -- A TOC field of an addon.
 function GetAddOnMetadata(name, field) return (world.addons[name] or {})[field] end
 C_AddOns = {
   GetAddOnMetadata = viaGlobal("GetAddOnMetadata"),
   -- Loading a Blizzard addon: true for the ones the world lists as loadable.
   LoadAddOn = function(name) return world.loadable and world.loadable[name] == true, nil end,
-  IsAddOnLoaded = function(name) return name == "ForeverUI" end,
+  IsAddOnLoaded = function(name) return name == "Vanguard" end,
 }
 
 -- Modifier keys: whatever a test puts in world.keys.

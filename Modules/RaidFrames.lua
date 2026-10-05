@@ -38,8 +38,8 @@ local BLIZZARD_FRAMES = { "CompactRaidFrameManager", "CompactRaidFrameContainer"
 -- and default clicks, then the insecure setup below via CallMethod.
 RF.INIT = [[
   local header = self:GetParent()
-  self:SetWidth(header:GetAttribute("fui-width"))
-  self:SetHeight(header:GetAttribute("fui-height"))
+  self:SetWidth(header:GetAttribute("vg-width"))
+  self:SetHeight(header:GetAttribute("vg-height"))
   self:SetAttribute("*type1", "target")
   self:SetAttribute("*type2", "togglemenu")
   header:CallMethod("initialConfigFunction", self:GetName())
@@ -514,10 +514,10 @@ end
 
 -- The secure group header, its button template and setup hook.
 local function createHeader(s)
-  local header = CreateFrame("Frame", "ForeverUI_Raid", UIParent, "SecureGroupHeaderTemplate")
+  local header = CreateFrame("Frame", "Vanguard_Raid", UIParent, "SecureGroupHeaderTemplate")
   header:SetAttribute("template", "SecureUnitButtonTemplate")
-  header:SetAttribute("fui-width", s.width)
-  header:SetAttribute("fui-height", s.height)
+  header:SetAttribute("vg-width", s.width)
+  header:SetAttribute("vg-height", s.height)
   -- Called by RF.INIT (CallMethod) with the new button's name.
   header.initialConfigFunction = function(_, name) RF.Setup(_G[name]) end
   if ns.Client.ProbeSnippets() ~= false then header:SetAttribute("initialConfigFunction", RF.INIT) end
@@ -595,7 +595,7 @@ end
 -- The movable holder, where the grid starts: one group's size (a column of
 -- five tall, or a row of five wide).
 local function holder(s)
-  local f, five = CreateFrame("Frame", "ForeverUI_RaidHolder", UIParent), 5 * (s.width + s.spacing) - s.spacing
+  local f, five = CreateFrame("Frame", "Vanguard_RaidHolder", UIParent), 5 * (s.width + s.spacing) - s.spacing
   if s.layout == "rows" then f:SetSize(five, s.height) else f:SetSize(s.width, 5 * (s.height + s.spacing) - s.spacing) end
   ns.Mover(f, "raid", "Raid frames", { "BOTTOM", "BOTTOM", -240, 344 })
   return f

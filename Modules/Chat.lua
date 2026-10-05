@@ -1,4 +1,4 @@
--- Chat: every chat window, tab and edit box in the ForeverUI look. The
+-- Chat: every chat window, tab and edit box in the Vanguard look. The
 -- windows get a flat panel and the theme font, tabs lose their art and show
 -- the accent on the selected one, and the edit box becomes a themed input.
 -- Chat text is Small, Medium or Large, scaled by the Text size setting (so
@@ -16,7 +16,7 @@ local CH = ns.Module("Chat", {
 
 -- The main chat window's spot in the Centered layout: bottom-left, under the
 -- unit frames and left of the action bars, with room for its tabs above it
--- (it fits at any UI scale). x, y, width, height. It is a mover (/fui unlock);
+-- (it fits at any UI scale). x, y, width, height. It is a mover (/vg unlock);
 -- the size is set once, and after that the game's layout and the player rule it.
 CH.SPOT = { 16, 20, 420, 140 }
 

@@ -1,4 +1,4 @@
-// motion: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// motion: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { CLICK_LUA, FAKE_FADES, loggedIn, setCombat } from "./helpers.mjs";

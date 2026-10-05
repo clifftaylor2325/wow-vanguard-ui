@@ -1,7 +1,7 @@
 -- Profile management on top of Core/DB.lua: new, copy, delete and reset,
 -- export/import strings (Core/Serialize.lua), profiles that follow your
 -- specialization, and the game's Edit Mode layout that goes with a profile.
--- Profile changes apply on reload; ForeverUI offers one.
+-- Profile changes apply on reload; Vanguard offers one.
 -- Loaded before Core/Modules.lua so the spec profile is chosen at login
 -- before any module reads its settings.
 
@@ -16,36 +16,36 @@ end
 
 -- Creates an empty profile. false if the name is taken or invalid.
 function ns.NewProfile(name)
-  if not ns.ValidProfileName(name) or ForeverUIDB.profiles[name] then
+  if not ns.ValidProfileName(name) or VanguardDB.profiles[name] then
     return false
   end
-  ForeverUIDB.profiles[name] = {}
+  VanguardDB.profiles[name] = {}
   return true
 end
 
 -- Copies another profile's settings over the active one.
 function ns.CopyProfile(from)
-  local source = ForeverUIDB.profiles[from]
+  local source = VanguardDB.profiles[from]
   if not source or from == ns.ProfileName() then
     return false
   end
-  ForeverUIDB.profiles[ns.ProfileName()] = ns.Copy(source)
+  VanguardDB.profiles[ns.ProfileName()] = ns.Copy(source)
   ns.ProfileChanged()
   return true
 end
 
 -- Deletes a profile (never the active or the staged one); characters or specs using it fall back to Default.
 function ns.DeleteProfile(name)
-  if not ForeverUIDB.profiles[name] or name == ns.ProfileName() or name == ns.SelectedProfileName() then
+  if not VanguardDB.profiles[name] or name == ns.ProfileName() or name == ns.SelectedProfileName() then
     return false
   end
-  ForeverUIDB.profiles[name] = nil
+  VanguardDB.profiles[name] = nil
   return true
 end
 
 -- Clears every setting in the active profile back to defaults.
 function ns.ResetProfile()
-  ForeverUIDB.profiles[ns.ProfileName()] = {}
+  VanguardDB.profiles[ns.ProfileName()] = {}
   ns.ProfileChanged()
 end
 
@@ -90,7 +90,7 @@ end
 -- A profile name that isn't taken yet, from base ("Imported", "Imported 2", ...).
 local function freeName(base)
   local name, n = base, 1
-  while ForeverUIDB.profiles[name] do
+  while VanguardDB.profiles[name] do
     n = n + 1
     name = base .. " " .. n
   end
@@ -109,7 +109,7 @@ end
 -- comes back second), and this character switches to it on reload.
 local function importWhole(data)
   local name, display = freeName("Imported"), takeDisplay(data)
-  ForeverUIDB.profiles[name] = data
+  VanguardDB.profiles[name] = data
   ns.UseProfile(name)
   return "Imported as profile " .. name .. "; this character will use it after a reload.", display
 end
@@ -174,8 +174,8 @@ end
 
 -- This character's spec -> profile map.
 local function specMap()
-  ForeverUICharDB.specProfiles = type(ForeverUICharDB.specProfiles) == "table" and ForeverUICharDB.specProfiles or {}
-  return ForeverUICharDB.specProfiles
+  VanguardCharDB.specProfiles = type(VanguardCharDB.specProfiles) == "table" and VanguardCharDB.specProfiles or {}
+  return VanguardCharDB.specProfiles
 end
 
 -- Uses a profile for a spec (the current one when spec is nil); nil profile stops that.
@@ -189,7 +189,7 @@ end
 -- The profile a spec uses, if one is set and still exists.
 function ns.SpecProfile(spec)
   local name = specMap()[spec or ns.SpecIndex() or 0]
-  return name and ForeverUIDB.profiles[name] and name or nil
+  return name and VanguardDB.profiles[name] and name or nil
 end
 
 -- Stages the current spec's profile (and applies it now when `now`, which is only safe before modules
@@ -222,12 +222,12 @@ ns.On("ACTIVE_TALENT_GROUP_CHANGED", onSpecChanged)
 -- Edit Mode layout -------------------------------------------------------------------------
 -- A profile remembers the name of the game's Edit Mode layout in use (profile.editMode.layout,
 -- so it is in the profile's export string too). When a character loads a profile other than
--- the one it last ran, ForeverUI switches Edit Mode to that layout, out of combat, if this
+-- the one it last ran, Vanguard switches Edit Mode to that layout, out of combat, if this
 -- account has a layout of that name. Edit Mode's layouts are read through its own manager
 -- (EditModeManagerFrame: the presets first, then the account's and the character's), and the
 -- switch is the client's C_EditMode.SetActiveLayout, as Edit Mode's layout menu does it.
 
--- The game's Edit Mode manager, when it has the methods ForeverUI reads; else nil.
+-- The game's Edit Mode manager, when it has the methods Vanguard reads; else nil.
 local function editModeManager()
   local f = _G.EditModeManagerFrame
   if type(f) == "table" and type(f.GetLayouts) == "function" and type(f.GetActiveLayoutInfo) == "function" then return f end
@@ -278,8 +278,8 @@ end
 -- The profile's layout, when this character has just loaded the profile (it ran another one
 -- last time), the profile names a layout other than the one in use and the client can switch; else nil.
 local function layoutToLoad()
-  local last = ForeverUICharDB.editModeProfile
-  ForeverUICharDB.editModeProfile = ns.ProfileName()
+  local last = VanguardCharDB.editModeProfile
+  VanguardCharDB.editModeProfile = ns.ProfileName()
   local name = editModeSettings().layout
   if last == nil or last == ns.ProfileName() or type(name) ~= "string" or name == ns.EditModeLayout() then return nil end
   return canSwitch() and name or nil

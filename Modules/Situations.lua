@@ -401,7 +401,7 @@ SI.UNKNOWN = "Situations: solo, party, raid, pvp, instance or resting."
 local function record(name)
   if not SI.LABELS[name] then return ns.Chat(SI.UNKNOWN) end
   if not SI.StartRecording(name) then return ns.Chat("Recording waits until combat ends.") end
-  ns.Chat("Recording for " .. SI.LABELS[name] .. ": move frames (/fui unlock) and change settings, then /fui situation stop.")
+  ns.Chat("Recording for " .. SI.LABELS[name] .. ": move frames (/vg unlock) and change settings, then /vg situation stop.")
 end
 
 -- Stops recording from a command or the options, and says what was kept.
@@ -420,14 +420,14 @@ local function clear(name)
   ns.Chat("Cleared the overrides for " .. SI.LABELS[name] .. ".")
 end
 
--- /fui situation [record <name> | stop | clear [name] | list].
+-- /vg situation [record <name> | stop | clear [name] | list].
 function SI.Command(rest)
   local verb, arg = (rest or ""):lower():match("^(%S*)%s*(.-)$")
   if verb == "record" then return record(arg) end
   if verb == "stop" then return stop() end
   if verb == "clear" then return clear(arg) end
   if verb == "" or verb == "list" then return SI.List() end
-  ns.Chat("Usage: /fui situation [record <name> | stop | clear [name] | list]")
+  ns.Chat("Usage: /vg situation [record <name> | stop | clear [name] | list]")
 end
 
 -- The Record for choice: the situation being recorded, or "off".

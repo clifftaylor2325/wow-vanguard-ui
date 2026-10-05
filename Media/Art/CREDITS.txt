@@ -1,4 +1,4 @@
-ForeverUI faction crests
+Vanguard faction crests
 
 lorc-crossed-swords.tga  "Crossed swords" by Lorc (http://lorcblog.blogspot.com)
 lorc-crossed-axes.tga    "Crossed axes" by Lorc (http://lorcblog.blogspot.com)
@@ -8,4 +8,4 @@ licensed under Creative Commons Attribution 3.0 Unported
 (https://creativecommons.org/licenses/by/3.0/).
 
 Changes: the black background square is removed and each glyph is rasterized
-to a 64x64 white image whose alpha is the glyph, so ForeverUI can tint it.
+to a 64x64 white image whose alpha is the glyph, so Vanguard can tint it.
