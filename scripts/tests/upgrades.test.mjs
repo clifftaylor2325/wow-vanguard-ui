@@ -78,6 +78,7 @@ it("upgrades: weights go out and come back as a string", () => {
   addon.slash("weights import");
   addon.eval(`Vanguard_TextEdit:SetText(${JSON.stringify(text)}) Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
   expect([chatHas(addon, /Imported weights for strength\./), addon.eval("return (ns.GetModule('Upgrades').Current()).HIT")], "import puts them back").toEqual([true, 3]);
+  // UP.Import of a Lua string expression: { ok, why }.
   const bad = (lua) => addon.eval(`local ok, why = ns.GetModule("Upgrades").Import(${lua}) return { ok, why }`);
   expect(bad('"garbage"'), "not a string at all").toEqual([false, "not a Vanguard profile string"]);
   expect(bad('ns.Serialize.Encode("profile", {})'), "a profile string").toEqual([false, "not a weights string"]);
@@ -101,6 +102,7 @@ const BAG_ENV = `
 
 it("upgrades: arrows on upgrades in the combined bag and on quest rewards", () => {
   const addon = loggedIn(GEAR_ENV + BAG_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Bags = false } } }" });
+  // Whether each of the three bag buttons shows its arrow.
   const arrows = () => addon.eval("local out = {} for i = 1, 3 do local a = __buttons[i].vgUpgrade out[i] = a ~= nil and a:IsShown() end return out");
   addon.eval("ContainerFrameCombinedBags:UpdateItems()");
   expect(arrows(), "the better bracers only").toEqual([true, false, false]);
@@ -112,6 +114,7 @@ it("upgrades: arrows on upgrades in the combined bag and on quest rewards", () =
   expect(arrows(), "a closed bag isn't marked until it updates").toEqual([false, false, false]);
   addon.eval("ns.GetModule('Upgrades').settings.bags = false ContainerFrameCombinedBags:UpdateItems()");
   expect(arrows(), "switched off").toEqual([false, false, false]);
+  // Paints a reward card for a link (a Lua expression); whether its arrow shows.
   const card = (link) => addon.eval(`local QP = ns.QuestParts local c = __card or QP.Card(UIParent) __card = c
     QP.PaintCard(c, { name = "TEST-ONLY Reward", texture = 1, count = 1, quality = 2, link = ${link} }) return c.vgUpgrade ~= nil and c.vgUpgrade:IsShown()`);
   expect([card("__link(2)"), card("nil")], "a reward that's an upgrade gets the arrow; one with no link doesn't").toEqual([true, false]);
