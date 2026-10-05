@@ -507,7 +507,7 @@ const SCENES = [
     CC.Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew") CC.Add("shift-BUTTON1", "spell", "TEST-ONLY Shield")
     CC.Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") CC.Add("MOUSEWHEELUP", "macro", "/cast [@mouseover] TEST-ONLY Heal")
     ns.Options.Show("clickcast")` },
-  { name: "foreverui-auction", caption: "Auction helper beside the game's auction house window: a shopping list searched (prices per unit, how many are up), the sell card with a stack of dust, the last scan, and your auctions with one undercut (TEST-ONLY items and listings)",
+  { name: "foreverui-auction", caption: "Auction helper beside the game's auction house window: a shopping list searched (prices per unit, how many are up), the sell card with a stack of dust, the last scan, and your auctions with one undercut; right of the window, the Deals card with two deals (TEST-ONLY items and listings)",
     lua: `time = function() return 1790000000 end
       ForeverUIDB.ah = { list = "Enchanting mats", lists = { ["Enchanting mats"] = { "Strange Dust", "Soul Dust", 10998, "Vision Dust" } } }
       local house = ns.AuctionPrices.House()
@@ -531,7 +531,11 @@ const SCENES = [
       AH.TakeCursor()
       __wfgStub.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940)
       AH.owned = { { id = 1, key = { itemID = 10940 }, buyout = 150, qty = 20, unit = 150, undercut = true }, { id = 2, key = { itemID = 9999 }, buyout = 45000, qty = 1, unit = 45000, undercut = false } }
-      AH.PaintOwned()` },
+      AH.PaintOwned()
+      house.prices[11083] = { min = 5200, t = 1790000000, days = { [20716] = 5000 }, markets = { [20716] = 5000, [20715] = 5400 } }
+      ns.AuctionPrices.RecordSeen(11083, 3300)
+      ns.AuctionPrices.RecordSeen(2589, 9)
+      __wfgStub.update(0.01)` },
 ];
 
 // Setup has run on this TEST-ONLY account, so it only shows in the scenes that open it.

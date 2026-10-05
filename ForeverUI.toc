@@ -97,6 +97,7 @@ Modules/AuctionRestock.lua
 Modules/AuctionCrafting.lua
 Modules/AuctionSell.lua
 Modules/AuctionOwned.lua
+Modules/AuctionDeals.lua
 Modules/AuctionAPI.lua
 Modules/AuctionLedger.lua
 Modules/GameTools.lua

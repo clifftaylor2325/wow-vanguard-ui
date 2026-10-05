@@ -1570,3 +1570,80 @@ it("disenchant values: the switch is on for enchanters until set, in the Auction
   addon.eval("C_TradeSkillUI = nil");
   expect(addon.eval("return ns.AuctionPrices.HasEnchanting()"), "a client that can't say: not an enchanter").toBe(false);
 });
+
+// Deals ----------------------------------------------------------------------------------------
+
+const DEALS = `${HELPER}.dealsFrame`;
+// Today, as the price store counts days, at the TEST-ONLY clock.
+const TODAY = Math.floor(1790000000 / 86400);
+
+// Saved prices of Strange Dust on this realm and faction: its low of yesterday, `low`, and more
+// fields (Lua) when given.
+const dustHistory = (low, fields = "") => `ForeverUIDB.ah = { houses = { ["ForeverTest-Alliance"] = { count = 1, lastScan = 0, prices = {
+  [10940] = { min = ${low}, t = 1790000000 - 86400, days = { [${TODAY - 1}] = ${low} } ${fields} } } } } }`;
+
+// Deal row i: [shown, name, price, how far under].
+const dealRow = (addon, i) => addon.eval(`local r = ${DEALS}.card.rows[${i}] return { r:IsShown(), r.name:GetText() or false, r.price:GetText() or false, r.qty:GetText() or false }`);
+
+// The Deals card: [shown, its count, the line shown while there are none].
+const dealsCard = (addon) => [addon.frame("ForeverUI_AuctionDeals").visible, ...addon.eval(`local c = ${DEALS}.card return { c.count:GetText(), c.status:GetText() }`)];
+
+it("deals: a scan lists what's under 70 % of the 7-day market or under vendor price, best first, right of the window", () => {
+  const markets = `, markets = { [${TODAY - 1}] = 1200, [${TODAY - 2}] = 1000, [${TODAY - 8}] = 9000 }`;
+  const addon = atAuctionHouse(DUSTS, { savedVariables: dustHistory(1000, markets) });
+  const [deals, window] = [addon.frame("ForeverUI_AuctionDeals"), addon.frame("AuctionHouseFrame")];
+  expect([deals.rect.left, deals.rect.top, deals.rect.width, deals.rect.height, deals.rect.right <= 1920], "4 px right of the window, from its top, on the screen").toEqual([window.rect.right + 4, window.rect.top, 280, 196, true]);
+  expect([dealsCard(addon), dealRow(addon, 1)[0]], "none yet").toEqual([[true, "", "None yet: a scan or a search finds them."], false]);
+  scan(addon, `{ { itemID = 10940, count = 1, buyoutPrice = 500 }, { itemID = 10940, count = 30, buyoutPrice = 39000 },
+    { itemID = 2589, count = 5, buyoutPrice = 50 }, { itemID = 159, count = 1, buyoutPrice = 100 } }`);
+  expect(addon.eval("return ns.GetModule('AuctionHelper').Market7(10940, __now)"), "the dust's 7-day market: 12s, 10s and today's 11s 40c (8 days ago left out)").toBe(1113);
+  expect([1, 2, 3].map((i) => dealRow(addon, i)), "linen under its 13c vendor price first, then dust 55 % under its market; water isn't a deal").toEqual([
+    [true, "Linen Cloth", "10c", "< vendor"], [true, "Strange Dust", "5s 0c", "-55 %"], [false, false, false, false]]);
+  expect([dealsCard(addon), isTok(addon, addon.eval(`return ${DEALS}.card.rows[2].qty.__textColor`), "good")], "the count; how far under in good").toEqual([[true, "2 found", ""], true]);
+  addon.hover(`${DEALS}.card.rows[2]`);
+  expect(tipLines(addon), "what the dust was judged against").toEqual(["Strange Dust", "7-day market: 11s 13c", "Click to show it in the auction house's list."]);
+  addon.hover(`${DEALS}.card.rows[1]`);
+  expect(tipLines(addon), "the linen's market, and the vendor's price it is under").toEqual(["Linen Cloth", "7-day market: 10c", "Vendor price: 13c", "Click to show it in the auction house's list."]);
+  addon.hover(null);
+  expect(addon.eval("return GameTooltip:IsShown()"), "gone with the mouse").toBe(false);
+  addon.click(`${DEALS}.card.rows[1]`);
+  expect([sent(addon).at(-1), restrictedLog(addon)], "a click shows it in the game's own list; nothing is bought").toEqual(["SearchForItemKeys:2589", []]);
+});
+
+it("deals: each search judges its item again; a low before today stands in for a market; closing forgets them", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP + CLICK_LUA, { savedVariables: dustHistory(150) });
+  dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.update(0.01);
+  expect(dealRow(addon, 1), "the sell search's 1s (your 95c left out) is a third under yesterday's 1s 50c").toEqual([true, "Strange Dust", "1s 0c", "-33 %"]);
+  addon.hover(`${DEALS}.card.rows[1]`);
+  expect(tipLines(addon)[1], "judged against").toBe("Lowest of the 6 days before: 1s 50c");
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 180, totalQuantity = 5 } }");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.update(0.01);
+  expect([dealsCard(addon), dealRow(addon, 1)[0]], "a browse sees it at 1s 80c now: no longer a deal").toEqual([[true, "", "None yet: a scan or a search finds them."], false]);
+  addon.eval(`local AP = ns.AuctionPrices for i = 1, 10 do AP.Record(50000 + i, 1000, __now - 86400) end
+    for i = 1, 10 do AP.RecordSeen(50000 + i, 1000 - 10 * i) end`);
+  addon.update(0.01);
+  expect([dealsCard(addon)[1], dealRow(addon, 1).slice(1), dealRow(addon, 8)[1]], "ten deals, furthest under first, eight rows").toEqual(["10 found", ["item 50010", "9s 0c", "-10 %"], "item 50003"]);
+  addon.wheel(`${DEALS}.card.rows[1]`, -1);
+  expect(dealRow(addon, 1)[1], "the wheel scrolls").toBe("item 50009");
+  addon.wheel(`${DEALS}.card.rows[1]`, -5);
+  expect([dealRow(addon, 1)[1], dealRow(addon, 8)[1]], "no further than the last").toEqual(["item 50008", "item 50001"]);
+  addon.wheel(`${DEALS}.card.rows[1]`, 9);
+  expect(dealRow(addon, 1)[1], "nor above the first").toBe("item 50010");
+  addon.world.closeAuctionHouse();
+  addon.eval("ns.AuctionPrices.RecordSeen(50001, 1)");
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect(dealsCard(addon), "a new visit starts with none; nothing is judged while the house is closed").toEqual([true, "", "None yet: a scan or a search finds them."]);
+  addon.eval('ns.Options.Show("more") __click("Deals card")');
+  addon.eval("ns.AuctionPrices.RecordSeen(50001, 1)");
+  expect([addon.eval("return ns.Settings('AuctionHelper').deals"), addon.frame("ForeverUI_AuctionDeals").visible, addon.eval(`return next(${HELPER}.deals) == nil`)], "switched off under Auction house: the card goes at once, nothing is judged").toEqual([false, false, true]);
+});
+
+it("deals: with the panel off nothing is built, and a deal found paints nothing", () => {
+  const addon = atAuctionHouse("", { savedVariables: "ForeverUIDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
+  addon.eval("ns.AuctionPrices.RecordSeen(2589, 5)");
+  addon.update(0.01);
+  expect([addon.frame("ForeverUI_AuctionDeals"), addon.eval(`return ${HELPER}.deals[2589].price`), addon.eval("return #ns.errors")], "no card, the deal kept, no error").toEqual([null, 5, 0]);
+});

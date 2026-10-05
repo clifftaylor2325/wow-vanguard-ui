@@ -20,13 +20,14 @@
 --     item's cheapest unit price, units up and market value
 --     (Modules/AuctionPrices.lua), which item tooltips then show everywhere.
 --
--- The module is one table over four files, loaded in this order: this one
+-- The module is one table over five files, loaded in this order: this one
 -- holds the panel and its build order, the search queue and its throttle,
 -- event routing, the scan, the slash commands and Enable;
 -- Modules/AuctionShop.lua the Shop card, Modules/AuctionSell.lua the Sell
 -- card and Modules/AuctionOwned.lua your auctions. Modules/AuctionLedger.lua
--- adds the sales ledger and the sell card's Your history, and
--- Modules/AuctionRestock.lua the Restock buy list on the Shop card.
+-- adds the sales ledger and the sell card's Your history,
+-- Modules/AuctionRestock.lua the Restock buy list on the Shop card, and
+-- Modules/AuctionDeals.lua the Deals card, docked right of the window.
 --
 -- The game's auction house is the modern one (C_AuctionHouse) on WoW Forever.
 -- Nothing here touches the game's auction frames: the panel only anchors to
@@ -211,6 +212,7 @@ function AH.Build()
   AH.BuildShop(f)
   AH.BuildSell(f)
   buildScan(f)
+  AH.BuildDeals(f)
   return f
 end
 
@@ -224,6 +226,7 @@ function AH.OnShow()
   AH.PaintSell()
   AH.PaintScan()
   AH.PaintOwned()
+  AH.PaintDeals()
 end
 
 -- The auction house closed: the panel hides, and searches waiting and a scan in progress stop.
@@ -417,6 +420,7 @@ local function listen()
   for _, e in ipairs({ "AUCTION_HOUSE_THROTTLED_SYSTEM_READY", "BAG_UPDATE_DELAYED" }) do on(e, function() AH.PaintSell() end) end
   AH.ListenOwned(on)
   AH.ListenLedger(on)
+  AH.ListenDeals(on)
 end
 
 -- Module entry point (Core/Modules.lua): prices in tooltips, and the panel at the auction house.
