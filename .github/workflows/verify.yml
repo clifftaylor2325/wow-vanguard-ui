@@ -79,8 +79,10 @@ jobs:
     # approximated), so a UI change can be reviewed from the run's artifacts.
     # Chromium stays in the runner's Playwright cache, so the install is a
     # no-op after the first run.
+    # It runs on the owner's second runner (labelled "preview", without the
+    # default labels), so it goes alongside the tests job instead of after it.
     name: UI preview
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [preview]
     timeout-minutes: 20
     steps:
       - name: Git Bash ahead of WSL's bash
