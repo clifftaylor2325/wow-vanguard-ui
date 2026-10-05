@@ -56,15 +56,15 @@ it("waypoints: /way reads guide coordinates, names zones, and points the game's 
 
 it("waypoints: lines it can't use say why and set nothing", () => {
   const addon = loggedIn(MAP_ENV);
-  expect([way(addon, "somewhere nice"), chatHas(addon, /give the coordinates as x y/)], "no coordinates").toEqual([[], true]);
-  expect([way(addon, "45 120"), chatHas(addon, /give the coordinates/)], "a number past 100 isn't a coordinate").toEqual([[], true]);
-  expect([way(addon, "TEST-ONLY D 30 30"), chatHas(addon, /no zone called TEST-ONLY D\./)], "a start two names share").toEqual([[], true]);
-  expect([way(addon, "Narnia 30 30"), chatHas(addon, /no zone called Narnia/)], "a name nothing has").toEqual([[], true]);
-  expect([way(addon, "TEST-ONLY Duskwood 30 30"), chatHas(addon, /Can't put a waypoint on TEST-ONLY Duskwood/)], "a map that can't hold one").toEqual([[], true]);
-  expect([way(addon, "#99 30 30"), chatHas(addon, /Can't put a waypoint on map 99/)], "an id the client doesn't know").toEqual([[], true]);
+  expect([way(addon, "somewhere nice"), chatHas(addon, /give the coordinates as x y/)], "no coordinates").toEqual([{}, true]);
+  expect([way(addon, "45 120"), chatHas(addon, /give the coordinates/)], "a number past 100 isn't a coordinate").toEqual([{}, true]);
+  expect([way(addon, "TEST-ONLY D 30 30"), chatHas(addon, /no zone called TEST-ONLY D\./)], "a start two names share").toEqual([{}, true]);
+  expect([way(addon, "Narnia 30 30"), chatHas(addon, /no zone called Narnia/)], "a name nothing has").toEqual([{}, true]);
+  expect([way(addon, "TEST-ONLY Duskwood 30 30"), chatHas(addon, /Can't put a waypoint on TEST-ONLY Duskwood/)], "a map that can't hold one").toEqual([{}, true]);
+  expect([way(addon, "#99 30 30"), chatHas(addon, /Can't put a waypoint on map 99/)], "an id the client doesn't know").toEqual([{}, true]);
   addon.eval("__playerMap = nil");
-  expect([way(addon, "30 30"), chatHas(addon, /won't say which map you're on/)], "where the game won't say the map").toEqual([[], true]);
-  expect([way(addon, "TEST-ONLY Duskwood 30 30"), chatHas(addon, /no zone called/)], "nor find a zone by name").toEqual([[], true]);
+  expect([way(addon, "30 30"), chatHas(addon, /won't say which map you're on/)], "where the game won't say the map").toEqual([{}, true]);
+  expect([way(addon, "TEST-ONLY Duskwood 30 30"), chatHas(addon, /no zone called/)], "nor find a zone by name").toEqual([{}, true]);
   const bare = loggedIn();
   bare.slash("way 45 61");
   expect(chatHas(bare, /no map waypoints/), "a client without user waypoints says so").toBe(true);
