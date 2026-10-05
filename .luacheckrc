@@ -17,6 +17,8 @@ globals = {
   "Vanguard",
   "SLASH_VANGUARD1",
   "SLASH_VANGUARD2",
+  -- /way, when no other addon has it (Modules/Waypoints.lua)
+  "SLASH_VANGUARDWAY1",
   -- Minimap shape for addons that place icons around it (Modules/Minimap.lua)
   "GetMinimapShape",
   -- Addon compartment click handler named in the TOC (Core/Options.lua)
@@ -26,6 +28,7 @@ globals = {
 
 -- WoW API the addon reads. Add a name only when the addon starts using it.
 read_globals = {
+  "UiMapPoint", "C_SuperTrack", "hash_SlashCmdList",
   "AbbreviateNumbers", "GetTime", "UnitCastingInfo", "UnitChannelInfo", "AuraUtil", "CreateUnitHealPredictionCalculator", "GetThreatStatusColor", "UnitGetDetailedHealPrediction", "UnitGetIncomingHeals", "UnitGetTotalAbsorbs", "UnitThreatSituation", "C_ActionBar", "C_AddOns", "C_CVar", "C_Reputation", "C_Spell", "C_UnitAuras", "C_Timer", "GetLocale", "GetCursorPosition", "Enum", "GetActionInfo", "SOUNDKIT", "PlaySound", "ClearCursor", "GetCursorInfo", "GetSpellInfo", "C_SpecializationInfo", "GetSpecialization", "ReloadUI", "GetXPExhaustion", "IsPlayerAtEffectiveMaxLevel", "IsXPUserDisabled", "UnitLevel", "UnitXP", "UnitXPMax", "C_Map", "FCF_OpenTemporaryWindow", "FCF_Tab_OnClick", "GetMinimapZoneText", "GetZonePVPInfo", "Minimap", "NUM_CHAT_WINDOWS", "SELECTED_CHAT_FRAME", "SecureHandlerExecute", "SecureHandlerUnwrapScript", "SecureHandlerWrapScript", "SetCVar", "UISpecialFrames", "hooksecurefunc", "ClearOverrideBindings", "GetBindingKey", "CreateFrame", "DEFAULT_CHAT_FRAME", "debugstack", "geterrorhandler", "CallErrorHandler",
   "GetAddOnMetadata", "GetBuildInfo", "GetNetStats", "UnitClassification", "C_SpellBook", "GetBindingAction", "GetNumSpecializations", "UnitLevel", "GetCreatureDifficultyColor", "GetComboPoints", "C_Secrets", "CreateColor", "AnchorUtil", "AuraContainerSortMethod", "C_CurveUtil", "C_StringUtil", "InCombatLockdown", "IsAltKeyDown", "IsControlKeyDown", "IsShiftKeyDown", "PowerBarColor", "RAID_CLASS_COLORS",
   "RegisterAttributeDriver", "RegisterStateDriver", "UnregisterStateDriver", "UnitGroupRolesAssigned", "UnitIsUnit", "RegisterUnitWatch", "SetOverrideBindingClick", "STANDARD_TEXT_FONT", "UIParent", "UnitClass",

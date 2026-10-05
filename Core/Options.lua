@@ -236,6 +236,7 @@ O.MODULE_INFO = {
   ActionBars = { "Action bars", "Eight bars with their own size, layout and visibility." },
   SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, places the pet and stance bars, and adds the vehicle exit." },
   Minimap = { "Minimap", "A square minimap with the zone and coordinates." },
+  Waypoints = { "Waypoints", "/way puts a waypoint on the map for the game's arrow; your and the cursor's coordinates on the world map." },
   InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo or soul shards and the time, under the minimap, your XP and gold per hour while you level, and your DPS and its place if you like." },
   AfkScreen = { "AFK screen", "While you're away, the screen dims to a card with your character, zone, time away and XP." },
   MenuStrip = { "Menu and quest tracker", "The game's bag and menu buttons on framed slots in one corner bar, and the quest tracker under the info strip." },
@@ -499,7 +500,8 @@ end
 local function moreRows()
   return {
     { "header", "Minimap, chat, bags" },
-    check("Coordinates under the minimap", setting("Minimap", "coords", true)),
+    check("Coordinates under the minimap", setting("Minimap", "coords", true)), check("Coordinates on the world map (reload)", setting("Waypoints", "mapCoords", true)),
+    check("/way sets map waypoints, unless another addon has it (reload)", setting("Waypoints", "slash", true)),
     check("Chat background", setting("Chat", "background", true)), check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
     { "cycle", "Chat text size (follows Text size)", ns.GetModule("Chat").SIZES, chatSizeSetting() },
     check("Combined bag (reload)", setting("Bags", "combined", true)), check("Bank in the Vanguard look (reload)", setting("Bags", "bank", true)),
