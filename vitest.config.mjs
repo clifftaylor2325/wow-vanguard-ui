@@ -20,6 +20,9 @@ export default defineConfig({
     maxWorkers: Number(process.env.VITEST_MAX_WORKERS) || os.availableParallelism(),
     // A Lua harness case loads the whole addon, often several times; with
     // coverage counting every line hit that can pass Vitest's 5 s default.
-    testTimeout: 30_000,
+    // In CI (the self-hosted runner sets CI) the limit is 2 minutes: the
+    // first run there timed out the first case of several files at 30 s
+    // while every worker started at once on a shared desktop.
+    testTimeout: process.env.CI ? 120_000 : 30_000,
   },
 });
