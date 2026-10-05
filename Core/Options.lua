@@ -258,6 +258,7 @@ O.MODULE_INFO = {
   Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the Vanguard look." },
   DataBars = { "XP and reputation", "Thin experience and reputation bars." },
   Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },
+  Upgrades = { "Gear upgrades", "Compares gear with what you wear by stat weights for your class and role: a tooltip line, and arrows in the bag and on quest rewards." },
   VendorMemory = { "Vendor memory", "Remembers what each merchant sells; tooltips and the stock list say where to buy." },
   AuctionHelper = { "Auction helper", "Shopping lists, a sell card that suggests an undercut and posts, prices in tooltips from your scans, and an undercut check on your auctions." },
   Nameplates = { "Nameplates", "Flat plates with levels, your debuffs, casts and threat." },
@@ -670,6 +671,18 @@ local function tooltipRows()
   }, vendorRows())
 end
 
+-- Gear upgrades: the role the weights are for, and where upgrades show.
+local function upgradeRows()
+  local roles = { { "auto", "your group role (damage when none)" }, { "damage", "damage" }, { "tank", "tank" }, { "healer", "healer" } }
+  return {
+    { "header", "Gear upgrades" },
+    { "cycle", "Weigh stats for", roles, liveSetting("Upgrades", "role", function() ns.GetModule("Upgrades").Changed() end) },
+    check("Upgrade or downgrade on item tooltips", setting("Upgrades", "tooltip")),
+    check("Arrow on upgrades in the combined bag", setting("Upgrades", "bags")), check("Arrow on quest rewards that are upgrades", setting("Upgrades", "quests")),
+    { "text", "/vg weights shows the stat weights in use; set <stat> <n>, reset, export and import change or share them." },
+  }
+end
+
 -- The Bars, map, chat page: your buffs, bars and map, the strip, merchants, tooltips.
 local function morePageRows()
   local rows = append(append(append(playerAuraRows(), dataBarRows()), moreRows()), bagRows())
@@ -681,7 +694,7 @@ local function morePageRows()
   append(rows, merchantRows())
   append(append(rows, errandRows()), prepRows())
   append(append(append(rows, chatRows()), chatWatchRows()), comfortRows())
-  return append(rows, tooltipRows())
+  return append(append(rows, tooltipRows()), upgradeRows())
 end
 
 -- "Spec 2 uses Healer." or why there's no spec profile.
