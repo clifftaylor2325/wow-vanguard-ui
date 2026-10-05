@@ -1647,3 +1647,77 @@ it("deals: with the panel off nothing is built, and a deal found paints nothing"
   addon.update(0.01);
   expect([addon.frame("ForeverUI_AuctionDeals"), addon.eval(`return ${HELPER}.deals[2589].price`), addon.eval("return #ns.errors")], "no card, the deal kept, no error").toEqual([null, 5, 0]);
 });
+
+// Price alerts ---------------------------------------------------------------------------------
+
+// TEST-ONLY: the alert sound's kit.
+const ALERT_ENV = " SOUNDKIT = { TELL_MESSAGE = 3081 } ";
+
+// The toast: [shown, title, line, price].
+const alertToast = (addon) => addon.eval("local f = ForeverUI_ChatWatchToast return { f:IsShown(), f.sender:GetText() or false, f.line:GetText() or false, f.price:GetText() or false }");
+
+// How many times the alert sound (3081) has played.
+const alertRings = (addon) => addon.eval("local n = 0 for _, s in ipairs(__wfgWorld.sounds) do if s == 3081 then n = n + 1 end end return n");
+
+// Searches the list again with Strange Dust up at `price`, a second after the last search, and lets the frame end.
+function dustAt(addon, price) {
+  addon.advance(1);
+  addon.eval(`__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = ${price}, totalQuantity = 5 } }`);
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.update(0.01);
+}
+
+it("price alerts: the filter dialog's switch alerts at the max price; a search at or under it rings once per drop", () => {
+  const addon = atAuctionHouse(DUSTS + ALERT_ENV);
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust" }');
+  openFilters(addon, 1);
+  expect(addon.eval("local d = ForeverUI_AuctionFilters return { d.alert.label:GetText(), d.draft.alert == true }"), "the switch under the max price, off").toEqual(["Alert at or under the max price", false]);
+  addon.click("ForeverUI_AuctionFilters.alert");
+  addon.click("ForeverUI_AuctionFilters.save");
+  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats'][1]"), "no max price: nothing to alert at, a plain entry").toBe("Strange Dust");
+  openFilters(addon, 1);
+  addon.click("ForeverUI_AuctionFilters.alert");
+  addon.type("ForeverUI_AuctionFilters.price", "1g");
+  addon.click("ForeverUI_AuctionFilters.save");
+  expect(addon.eval("local e = ForeverUIDB.ah.lists['TEST-ONLY Mats'][1] return { e.term, e.maxPrice, e.alert }"), "kept with the max price").toEqual(["Strange Dust", 10000, true]);
+  openFilters(addon, 1);
+  expect(addon.eval("return ForeverUI_AuctionFilters.draft.alert"), "the dialog shows it on").toBe(true);
+  addon.click("ForeverUI_AuctionFilters.cancel");
+  dustAt(addon, 12000);
+  expect([alertRings(addon), alertToast(addon)[0]], "over the max price: nothing").toEqual([0, false]);
+  dustAt(addon, 9000);
+  expect([alertRings(addon), alertToast(addon)], "under it: one sound, one toast (the browse and the shop's row are one alert)").toEqual([1, [true, "Price alert", "Strange Dust (max 1g 0s 0c)", "90s 0c"]]);
+  addon.advance(3);
+  dustAt(addon, 9000);
+  dustAt(addon, 9500);
+  expect(alertRings(addon), "the same price again, or dearer: no alert").toBe(1);
+  dustAt(addon, 8000);
+  expect([alertRings(addon), alertToast(addon)[3]], "cheaper than when it alerted: again").toEqual([2, "80s 0c"]);
+  addon.advance(1);
+  addon.click("ForeverUI_ChatWatchToast");
+  expect([sent(addon).at(-1), restrictedLog(addon), alertToast(addon)[0]], "a click on the toast shows the item in the game's list; nothing is bought").toEqual(["SearchForItemKeys:10940", [], false]);
+});
+
+it("price alerts: a scan or any search rings for named lists' entries by ID or name, several on one toast", () => {
+  const lists = `ForeverUIDB.ah = { list = "TEST-ONLY Mats", recent = { { term = 9999, maxPrice = 99999, alert = true } }, lists = { ["TEST-ONLY Mats"] = {
+    { term = 2589, maxPrice = 20, alert = true }, { term = "dust", maxPrice = 600, alert = true, quality = 1 }, { term = "Soul Dust", exact = true, maxPrice = 1, alert = true },
+    { term = "pouch", maxPrice = 99999, alert = true, maxLevel = 0 }, { term = "TEST-ONLY", maxPrice = 99999, alert = true, minLevel = 2 }, { term = 159, maxPrice = 1000 }, "TEST-ONLY Plain" } } }`;
+  const addon = atAuctionHouse(DUSTS + ALERT_ENV + `__wfgWorld.items[10941].quality = 2 __wfgWorld.items[11083] = { name = "Soul Dust", commodity = true }
+    __wfgWorld.items[9999] = { name = "TEST-ONLY Blade" }`, { savedVariables: lists });
+  scan(addon, `{ { itemID = 2589, count = 1, buyoutPrice = 15 }, { itemID = 10940, count = 1, buyoutPrice = 500 }, { itemID = 10941, count = 1, buyoutPrice = 100 },
+    { itemID = 11083, count = 1, buyoutPrice = 550 }, { itemID = 9999, count = 1, buyoutPrice = 5 }, { itemID = 159, count = 1, buyoutPrice = 1 }, { itemID = 77777, count = 1, buyoutPrice = 1 } }`);
+  expect([alertRings(addon), alertToast(addon)], "linen by ID, two dusts by name; not the pouch (another quality), the blade (only on Recent, and under level 2), water (no alert), an unknown item").toEqual([1,
+    [true, "3 price alerts", "Linen Cloth, Strange Dust, Soul Dust", ""]]);
+  addon.advance(3);
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 11083 }, minPrice = 400, totalQuantity = 2 } }");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.update(0.01);
+  expect([alertRings(addon), alertToast(addon).slice(1)], "the game's own browse sees soul dust cheaper").toEqual([2, ["Price alert", "Soul Dust (max 6s 0c)", "4s 0c"]]);
+  const queries = sent(addon).length;
+  addon.world.closeAuctionHouse();
+  addon.eval("ns.AuctionPrices.RecordSeen(2589, 1)");
+  addon.update(0.01);
+  addon.click("ForeverUI_ChatWatchToast");
+  expect([alertRings(addon), sent(addon).length], "the house closed: nothing alerts, and the toast's click searches nothing").toEqual([2, queries]);
+});

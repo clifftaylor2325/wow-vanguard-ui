@@ -536,6 +536,16 @@ const SCENES = [
       ns.AuctionPrices.RecordSeen(11083, 3300)
       ns.AuctionPrices.RecordSeen(2589, 9)
       __wfgStub.update(0.01)` },
+  { name: "foreverui-auction-alert", caption: "A price alert: a shopping list item's filters with the alert at its max price, and the Chat watch toast when a search sees it under that price (TEST-ONLY items and listings)",
+    lua: `time = function() return 1790000000 end
+      SOUNDKIT = { TELL_MESSAGE = 3081 }
+      ForeverUIDB.ah = { list = "Enchanting mats", lists = { ["Enchanting mats"] = { { term = "Strange Dust", maxPrice = 1000, alert = true } } } }
+      __wfgWorld.items[10940] = { name = "Strange Dust", icon = "TEST-ONLY-DUST", commodity = true }
+      __wfgWorld.openAuctionHouse()
+      __wfgStub.update(0)
+      ns.AuctionPrices.RecordSeen(10940, 850)
+      __wfgStub.update(0.01)
+      ns.GetModule("AuctionHelper").EditFilters("Enchanting mats", 1)` },
 ];
 
 // Setup has run on this TEST-ONLY account, so it only shows in the scenes that open it.

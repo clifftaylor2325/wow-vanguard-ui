@@ -100,7 +100,7 @@ Sizes: S under a day of lane time, M one to two, L more. Each is one commit with
 ### Phase E: beyond Auctionator
 
 - [x] **E1 Deals card** (M): listings under the 7-day low or under vendor price, after any scan or search.
-- [ ] **E2 Price alerts** (M): target prices on shopping entries; sound and toast through the Chat-watch toast.
+- [x] **E2 Price alerts** (M): target prices on shopping entries; sound and toast through the Chat-watch toast.
 - [x] **E3 Chat watch price lines** (S): auction price beside a WTS/WTB line's item in the toast.
 - [x] **E4 Buy lists from Instance prep and Keep stocked** (S): shortfalls become a shopping list with wanted quantities; the shop shows "cheapest 8".
 - [x] **E5 Sales ledger** (L): from sold-auction mail and the auction events; "Your history" on the sell card; auction gold on the info strip.
