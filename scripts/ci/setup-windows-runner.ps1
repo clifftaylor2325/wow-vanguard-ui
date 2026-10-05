@@ -4,8 +4,9 @@
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\ci\setup-windows-runner.ps1
 #
-# Register the runner itself first (GitHub -> Settings -> Actions -> Runners ->
-# New self-hosted runner -> Windows x64), as a service under your own account.
+# install-windows-runner.ps1 runs this as part of the one-command install;
+# on its own it only installs the tools (register the runner separately:
+# GitHub -> Settings -> Actions -> Runners -> New self-hosted runner).
 # Safe to run again: everything already in place is skipped.
 
 $ErrorActionPreference = "Stop"
