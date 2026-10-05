@@ -91,7 +91,7 @@ function QD.Items(kind, count)
   local out = {}
   for i = 1, ns.PlainNumber(count) or 0 do
     local name, texture, n, quality = call(GetQuestItemInfo, kind, i)
-    out[#out + 1] = { kind = kind, index = i, name = name, texture = texture, count = n, quality = quality }
+    out[#out + 1] = { kind = kind, index = i, name = name, texture = texture, count = n, quality = quality, link = call(GetQuestItemLink, kind, i) }
   end
   return out
 end
