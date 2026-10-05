@@ -180,3 +180,32 @@ it("chat watch: no chat filter is added, and the module off listens to nothing",
   say(off, "CHANNEL", "LFM", "Healbot");
   expect([rings(off), off.eval("return ForeverUI_ChatWatchToast == nil")], "off: nothing rings, no toast is built").toEqual([0, true]);
 });
+
+// A WTS line linking Strange Dust (no auction price) and then Linen Cloth (12s 50c on this realm and faction).
+const WTS_LINE = "WTS |cffffffff|Hitem:10940::::|h[Strange Dust]|h|r and |cffffffff|Hitem:2589::::|h[Linen Cloth]|h|r";
+
+// The toast's price text, its color, and the right edges of the line, the price and the toast.
+const priceLook = (addon) => {
+  const [toastRect, line, price] = ["ForeverUI_ChatWatchToast", "ForeverUI_ChatWatchToast.line", "ForeverUI_ChatWatchToast.price"].map((r) => addon.frame(r));
+  return { text: price.text, color: price.textColor, lineRight: line.rect.right, priceLeft: price.rect.left, priceRight: price.rect.right, toastRight: toastRect.rect.right };
+};
+
+it("chat watch: a line linking an item with an auction price shows it beside the line, the line untouched", () => {
+  const addon = watching("wts");
+  addon.eval("ns.AuctionPrices.Record(2589, 1250, 1790000000)");
+  say(addon, "CHANNEL", WTS_LINE, "Seller");
+  const look = priceLook(addon);
+  expect([look.text, isTok(addon, look.color, "gold"), toast(addon)[2]], "the first linked item with a price; the line as it was sent").toEqual(["AH 12s 50c", true, WTS_LINE]);
+  expect([look.priceRight, look.lineRight], "the price at the toast's edge, the line ending 6 px before it").toEqual([look.toastRight - 8, look.priceLeft - 6]);
+  say(addon, "CHANNEL", "WTS |cffffffff|Hitem:10940::::|h[Strange Dust]|h|r cheap", "Other");
+  const plain = priceLook(addon);
+  expect([plain.text, plain.lineRight], "no priced item: no price, the line to the toast's edge again").toEqual(["", plain.toastRight - 8]);
+  addon.eval('ns.Options.Show("more")');
+  addon.eval('__click("Auction price of a linked item")');
+  say(addon, "CHANNEL", WTS_LINE, "Third");
+  expect([priceLook(addon).text, addon.eval("return ns.Settings('ChatWatch').prices")], "switched off in the Chat watch options").toEqual(["", false]);
+  addon.eval("ns.Settings('ChatWatch').prices = true");
+  expect(addon.eval(`local CW = ns.GetModule("ChatWatch") return { CW.PriceText(__wfgWorld.secret()) == nil, CW.PriceText("item:2589 [Linen Cloth]") == nil, CW.PriceText("${WTS_LINE.replace(/"/g, '\\"')}") }`), "a hidden line is never read; text without a link has no price").toEqual([true, true, "AH 12s 50c"]);
+  addon.eval("__wfgWorld.units.player.faction = 'Horde'");
+  expect(addon.eval(`return ns.GetModule("ChatWatch").PriceText("${WTS_LINE}") == nil`), "the other faction's house has no price for it").toBe(true);
+});
