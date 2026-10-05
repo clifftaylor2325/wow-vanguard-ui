@@ -25,7 +25,8 @@
 -- event routing, the scan, the slash commands and Enable;
 -- Modules/AuctionShop.lua the Shop card, Modules/AuctionSell.lua the Sell
 -- card and Modules/AuctionOwned.lua your auctions. Modules/AuctionLedger.lua
--- adds the sales ledger and the sell card's Your history.
+-- adds the sales ledger and the sell card's Your history, and
+-- Modules/AuctionRestock.lua the Restock buy list on the Shop card.
 --
 -- The game's auction house is the modern one (C_AuctionHouse) on WoW Forever.
 -- Nothing here touches the game's auction frames: the panel only anchors to
@@ -168,7 +169,7 @@ end
 function AH.Done()
   local s = AH.pending
   AH.pending = nil
-  if s.entry and AH.progress then AH.progress.done = AH.progress.done + 1 end
+  if (s.entry or s.cost) and AH.progress then AH.progress.done = AH.progress.done + 1 end
   AH.PaintShop()
   AH.Next()
 end
@@ -369,10 +370,10 @@ AH.COMMANDS = {
 function AH.Status()
   local store = AP.House()
   local last = store.lastScan > 0 and AP.Ago(store.lastScan) or "never"
-  ns.Chat(string.format("Auction prices for %d item(s); last scan: %s. /fui ah list <name>, add <list> <item>, rename <name>, duplicate, delete, export, import, recent, scan (at the auction house), prices clear.", store.count, last))
+  ns.Chat(string.format("Auction prices for %d item(s); last scan: %s. /fui ah list <name>, add <list> <item>, rename <name>, duplicate, delete, export, import, recent, scan (at the auction house), prices clear, restock.", store.count, last))
 end
 
--- /fui ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|scan|prices clear].
+-- /fui ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|restock|scan|prices clear].
 function AH.Command(rest)
   if not AH.settings then return ns.Chat("The auction helper is off (/fui > Modules).") end
   local word, arg = (rest or ""):match("^(%S*)%s*(.-)%s*$")
@@ -401,6 +402,7 @@ function AH.OnSearchEvent(event, arg)
   local s, id = AH.pending, type(arg) == "table" and arg.itemID or arg
   AH.OnListings(event, id, s)
   AH.OnSearchResults(event, id, s)
+  AH.OnCostResults(event, id, s)
 end
 
 -- The auction house's events the helper follows (none in combat).

@@ -93,6 +93,7 @@ Modules/Windows.lua
 Modules/AuctionPrices.lua
 Modules/AuctionHelper.lua
 Modules/AuctionShop.lua
+Modules/AuctionRestock.lua
 Modules/AuctionSell.lua
 Modules/AuctionOwned.lua
 Modules/AuctionAPI.lua

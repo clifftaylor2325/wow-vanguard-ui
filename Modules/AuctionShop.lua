@@ -342,6 +342,7 @@ function AH.SearchList()
   if not list or #list == 0 then return ns.Chat("Add items to a shopping list first (+ Add, or /fui ah add <list> <item>).") end
   if AH.ListKey() ~= AH.RECENT then for _, entry in ipairs(list) do AH.Remember(entry) end end
   AH.DropQueued("entry")
+  AH.DropQueued("cost")
   AH.found, AH.unnamed, AH.progress = {}, {}, { done = 0, total = #list }
   for _, entry in ipairs(list) do AH.Queue({ entry = entry }) end
   AH.PaintShop()
@@ -369,6 +370,7 @@ end
 function AH.SendShop(s)
   local api, term, f = C_AuctionHouse, AH.Term(s.entry)
   if s.listings then return api.SendSearchQuery(s.listings, AH.SORTS, false) end
+  if s.cost then return api.SendSearchQuery(s.cost.key, AH.SORTS, false) end
   if type(term) == "number" then return api.SearchForItemKeys({ api.MakeItemKey(term) }, AH.SORTS) end
   api.SendBrowseQuery(browseQuery(term, f))
 end
@@ -414,6 +416,7 @@ function AH.TakeBrowse(entry, results)
   local best = AH.BestResult(entry, results)
   AH.found[entry] = best
   AH.unnamed[entry] = best == nil and results or nil
+  AH.QueueCost(entry, best)
 end
 
 -- Item names came in: the entries waiting on them are matched again, and the card repainted.
@@ -665,6 +668,7 @@ local function paintRow(r, entry)
   r.icon:SetTexture(icon)
   r.price:SetText(found and AP.Money(found.price) or (found == false and "none up" or ""))
   r.qty:SetText(found and ("x " .. found.qty) or "")
+  AH.PaintCost(r, entry)
 end
 
 -- The shop card: the list picked, the search's progress ("12 of 50") and a row per entry from the scroll offset.
@@ -757,8 +761,8 @@ end
 local function filteredEntry(d)
   local quality = d.draft.quality ~= AH.ANY and d.draft.quality or nil
   local f = { term = d.term, exact = d.draft.exact or nil, quality = quality, maxPrice = AH.ParseMoney(d.price:GetText()),
-    minLevel = typedLevel(d.minLevel), maxLevel = typedLevel(d.maxLevel) }
-  if f.exact or f.quality or f.maxPrice or f.minLevel or f.maxLevel then return f end
+    minLevel = typedLevel(d.minLevel), maxLevel = typedLevel(d.maxLevel), want = d.want }
+  if f.exact or f.quality or f.maxPrice or f.minLevel or f.maxLevel or f.want then return f end
   return d.term
 end
 
@@ -829,6 +833,7 @@ local function fillFilters(d, entry)
   local term, f = AH.Term(entry)
   f = f or {}
   d.term, d.draft = term, { exact = f.exact == true, quality = f.quality or AH.ANY }
+  d.want = f.want
   d.title:SetText("Filters: " .. (AH.EntryLook(entry)))
   d.minLevel:SetText(f.minLevel and tostring(f.minLevel) or "")
   d.maxLevel:SetText(f.maxLevel and tostring(f.maxLevel) or "")
@@ -963,7 +968,7 @@ local function buildView(c)
   c.view = f
 end
 
--- The shop card's controls: the list dropdown, + Add and Search list.
+-- The shop card's controls: the list dropdown, + Add, Search list and Restock (Modules/AuctionRestock.lua).
 local function shopControls(c)
   c.lists = W.Dropdown(c.body, listChoices, function() return AP.Store().list end, pickList, 180)
   c.lists:SetPoint("TOPLEFT", 0, -20)
@@ -971,6 +976,7 @@ local function shopControls(c)
   c.add:SetPoint("TOPRIGHT", 0, -19)
   c.search = W.Button(c.body, "Search list", function() AH.SearchList() end, 120)
   c.search:SetPoint("TOPLEFT", 0, -46)
+  AH.BuildRestock(c)
 end
 
 -- The shop card: the list dropdown, + Add, Search list with its progress line and the rows (in
