@@ -1,7 +1,10 @@
 -- Profile strings: plain settings tables (strings, numbers, booleans and
--- nested tables) to text and back, for /fui export and /fui import.
+-- nested tables) to text and back, for /vg export and /vg import.
 --
---   FUI1:<scope>:<checksum>:<base64 of the serialized table>
+--   VG1:<scope>:<checksum>:<base64 of the serialized table>
+--
+-- Strings made before the rename (ForeverUI 0.3.0 and earlier) start FUI1:
+-- instead, with the same body; they still import.
 --
 -- The parser reads only this grammar; nothing pasted is ever run as code.
 -- The checksum catches a string cut off in the paste.
@@ -193,16 +196,22 @@ end
 
 -- Public -----------------------------------------------------------------------------------
 
--- A settings table as a FUI1 string for scope ("profile" or a module name).
+-- A settings table as a VG1 string for scope ("profile" or a module name).
 function S.Encode(scope, data)
   local body = S.Base64(write(data, 0) or "{}")
-  return string.format("FUI1:%s:%s:%s", scope, S.Checksum(body), body)
+  return string.format("VG1:%s:%s:%s", scope, S.Checksum(body), body)
 end
 
--- A FUI1 string back to scope and settings table, or nil and a reason.
+-- The pasted text without whitespace, an old FUI1 prefix read as VG1.
+local function pasted(text)
+  local s = (text or ""):gsub("%s", "")
+  return (s:gsub("^FUI1:", "VG1:"))
+end
+
+-- A VG1 (or older FUI1) string back to scope and settings table, or nil and a reason.
 function S.Decode(text)
-  local scope, sum, body = (text or ""):gsub("%s", ""):match("^FUI1:([%w_]+):(%x%x%x%x):(.+)$")
-  if not scope then return nil, "not a ForeverUI profile string" end
+  local scope, sum, body = pasted(text):match("^VG1:([%w_]+):(%x%x%x%x):(.+)$")
+  if not scope then return nil, "not a Vanguard profile string" end
   if S.Checksum(body) ~= sum then return nil, "the string is incomplete (was it cut off when pasting?)" end
   local raw = S.Unbase64(body)
   if not raw then return nil, "the string is damaged" end

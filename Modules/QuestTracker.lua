@@ -1,4 +1,4 @@
--- ForeverUI's quest tracker, in the tracker's spot under the info strip
+-- Vanguard's quest tracker, in the tracker's spot under the info strip
 -- (Modules/MenuStrip.lua makes the spot): each quest you watch as a block,
 --   * "[12] Title" in its difficulty color ("Ready to turn in" when done),
 --   * its objectives, gray until each is done, then green,
@@ -8,14 +8,25 @@
 -- Quests are in the game's order, or nearest first. The game's objective
 -- tracker is hidden in place while this one shows (it's an Edit Mode frame).
 -- In combat the text still updates; the item buttons are secure, so they stay put
--- and are placed once, when combat ends.
+-- and are placed once, when combat ends. With Questie loaded, Questie's own
+-- tracker shows instead (unless the With Questie setting picks Vanguard's), so
+-- there are never two.
 
 local ADDON, ns = ...
 
-local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game" } })
+local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game", withQuestie = "questie" } })
 
 QT.W, QT.H, QT.SORT_EVERY = 260, 248, 1
 QT.EVENTS = { "QUEST_WATCH_LIST_CHANGED", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_REMOVED", "PLAYER_ENTERING_WORLD" }
+
+-- Whether Vanguard's tracker shows with these settings: it's on, and Questie (when it's
+-- loaded) isn't set to show its own tracker instead.
+function QT.Shows(settings)
+  if not settings.own then return false end
+  local loaded = C_AddOns and C_AddOns.IsAddOnLoaded
+  local questie = type(loaded) == "function" and loaded("Questie")
+  return not (questie and settings.withQuestie == "questie")
+end
 
 -- Calls a C_QuestLog function by name, if this client has it.
 local function questLog(name, ...)
@@ -87,7 +98,7 @@ end
 
 -- Actions --------------------------------------------------------------------------------------
 
--- A title was clicked: left opens the quest (ForeverUI's quest log, else the game's map); right stops watching it.
+-- A title was clicked: left opens the quest (Vanguard's quest log, else the game's map); right stops watching it.
 function QT.OnTitle(id, button)
   if button == "RightButton" then return questLog("RemoveQuestWatch", id) end
   local log = ns.GetModule("QuestLog")
@@ -132,7 +143,7 @@ end
 -- Module entry point (Core/Modules.lua): after the menu strip has made the tracker's spot.
 function QT.Enable(settings)
   QT.settings = settings
-  if not settings.own then return end
+  if not QT.Shows(settings) then return end
   ns.OutOfCombat(build)
   for _, event in ipairs(QT.EVENTS) do ns.On(event, refreshSoon) end
   ns.On("BAG_UPDATE_COOLDOWN", QT.UpdateCooldowns)

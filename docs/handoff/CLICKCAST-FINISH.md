@@ -9,7 +9,7 @@ Design: `docs/design/CLICK-CASTING.md` (branch `docs/ellesmereui-gap-analysis`).
 - `Modules/ClickCastSpells.lua` (new): spellbook catalog via `C_SpellBook`, ranks folded, groups by a per-class
   name table, starter layouts. `Modules/ClickCast.lua`: `spellID`/`rank` on bindings, `focus`/`assist`, `Move`,
   `Clear`, `ApplyLayout`, `CopyToSpec`, `Export`/`Import`, `Collision`; hover-key attributes use the `*` prefix.
-  `Modules/ClickCastOptions.lua`: rewritten page (grid, picker, hover keys, test tile, share). `ForeverUI.toc`
+  `Modules/ClickCastOptions.lua`: rewritten page (grid, picker, hover keys, test tile, share). `Vanguard.toc`
   loads `ClickCastSpells.lua` between the two. `Core/Dialog.lua` (`ns.AskText` label), `Core/Widgets.lua`
   (`W.MODIFIER_KEYS`, `W.MOUSE_BUTTONS`), `.luacheckrc` (`C_SpellBook`, `GetBindingAction`, `GetNumSpecializations`).
 - Harness: `scripts/lib/wow-world.lua` (`C_SpellBook` over `world.book`, `world.learn`/`forgetAll`,
@@ -40,14 +40,14 @@ changed file. **Not run:** the other 23 test files, the JS half of `npm run qual
 
 ## In-game smoke test (Forever client), then update the README/design if an answer differs
 
-- `/fui` → Click casting: the grid shows; click a cell → the picker lists your spells in groups with icons; the
+- `/vg` → Click casting: the grid shows; click a cell → the picker lists your spells in groups with icons; the
   rank chevron shows on spells with more than one rank; pick a rank → the cell says "(Rank n)".
 - Hover a raid frame and use a mouse cell: casts the highest rank. Use a rank cell: casts that rank. **If a rank
   cell does nothing**, the secure `spell` attribute does not take a numeric id on Forever: in
   `Modules/ClickCast.lua` `spellValue()`, return `b.value .. "(Rank " .. b.rank .. ")"` instead of `b.spellID`,
   and update the design doc §6 Q1 and this file.
 - If every spell lands in "Other", `C_Spell.IsSpellHelpful` is missing or the class table misses your names:
-  check `/fui errors`, then the names in `CLASSES` in `ClickCastSpells.lua` against your spellbook.
+  check `/vg errors`, then the names in `CLASSES` in `ClickCastSpells.lua` against your spellbook.
 - Add key → press Shift+Q → pick → hover a frame and press Shift+Q: casts. Without secure snippets (beta bug)
   the section shows the note and mouse bindings still work.
 - "<Class> healing layout" fills the grid; unlearned spells show the name with no icon and bind once learned.

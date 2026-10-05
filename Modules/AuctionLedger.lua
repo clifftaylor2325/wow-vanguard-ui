@@ -1,7 +1,7 @@
 -- Auction helper, the sales ledger (Modules/AuctionHelper.lua holds the panel,
 -- the search queue and the event routing): what became of your auctions, each
 -- sale (when, the item, how many, for how much), expiry and cancel, kept per
--- realm and faction beside the prices (ForeverUIDB.ah.ledgers["Realm-Faction"],
+-- realm and faction beside the prices (VanguardDB.ah.ledgers["Realm-Faction"],
 -- next to Modules/AuctionPrices.lua's houses), at most AL.MAX records each and
 -- for AL.MAX_AGE days. It hears of them two ways and counts each once:
 --   * the auction events: your auctions list (OWNED_AUCTIONS_UPDATED: a sold

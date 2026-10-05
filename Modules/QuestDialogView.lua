@@ -99,7 +99,7 @@ end
 
 -- Builds the dialog (hidden, at its greatest height until a page sizes it), movable, closed by Escape.
 function QD.Build()
-  local f = T.Panel(CreateFrame("Frame", "ForeverUI_QuestDialog", UIParent), { alpha = 0.96, shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_QuestDialog", UIParent), { alpha = 0.96, shadow = true })
   f:SetSize(QD.W, QD.MAX_H)
   f:SetFrameStrata("DIALOG")
   ns.Mover(f, "questdialog", "Quest dialog", QD.DefaultPoint())
@@ -117,7 +117,7 @@ function QD.Wire(f)
   f:SetScript("OnKeyDown", QD.OnKey)
   f.primary:SetScript("OnClick", QD.Press)
   f.secondary:SetScript("OnClick", function() QD.page.secondary[2]() end)
-  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "ForeverUI_QuestDialog") end
+  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_QuestDialog") end
 end
 
 -- Drawing --------------------------------------------------------------------------------------

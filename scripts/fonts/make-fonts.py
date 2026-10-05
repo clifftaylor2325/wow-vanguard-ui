@@ -1,4 +1,4 @@
-"""Builds ForeverUI's two font files from the upstream Fira Sans Condensed.
+"""Builds Vanguard's two font files from the upstream Fira Sans Condensed.
 
 Run by hand when updating the font (needs Python 3 and fonttools):
 

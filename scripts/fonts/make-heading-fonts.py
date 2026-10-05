@@ -4,7 +4,7 @@ updating them; needs Python 3 and fonttools):
     python3 scripts/fonts/make-heading-fonts.py
 
   * Cinzel (Alliance): the variable font pinned to SemiBold (600) and
-    limited to the glyphs ForeverUI keeps, as Media/Fonts/Cinzel-SemiBold.ttf.
+    limited to the glyphs Vanguard keeps, as Media/Fonts/Cinzel-SemiBold.ttf.
     Cinzel has no Reserved Font Name, so a changed copy may keep its name.
   * Metamorphous (Horde): copied unchanged, because its license reserves the
     name "Metamorphous" for unmodified copies.

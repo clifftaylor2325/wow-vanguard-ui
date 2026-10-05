@@ -66,7 +66,7 @@ end
 
 -- Whether the slot's border already shows r, g, b (nil r: the theme's border).
 local function unchanged(button, r, g, b)
-  local last = button.fuiBorder
+  local last = button.vgBorder
   if last == nil or anySecret(r, g, b) then return false end
   if r == nil then return last == false end
   return last ~= false and last[1] == r and last[2] == g and last[3] == b
@@ -77,12 +77,12 @@ local function paintQuality(button, r, g, b)
   if unchanged(button, r, g, b) then return end
   local rgb = r ~= nil and { r, g, b } or nil
   T.SetBorder(button, rgb)
-  button.fuiBorder = rgb or false
-  if anySecret(r, g, b) then button.fuiBorder = nil end
+  button.vgBorder = rgb or false
+  if anySecret(r, g, b) then button.vgBorder = nil end
 end
 
 -- Puts the item's quality color (the game sets it on its own border, which is
--- faded here) on ForeverUI's border instead; no quality, the theme's border.
+-- faded here) on Vanguard's border instead; no quality, the theme's border.
 local function followQuality(button)
   local border = button.IconBorder
   if type(border) ~= "table" or type(hooksecurefunc) ~= "function" then return end
@@ -93,8 +93,8 @@ end
 -- Fades an item button's slot art and gives it a thin border in its quality
 -- color. Once per button: the game reuses its buttons and never undoes this.
 local function skinItem(button)
-  if button.fuiSkinned then return end
-  button.fuiSkinned = true
+  if button.vgSkinned then return end
+  button.vgSkinned = true
   for _, key in ipairs(ITEM_ART) do
     local region = button[key] or (button["Get" .. key] and button["Get" .. key](button))
     if type(region) == "table" and region.SetAlpha then region:SetAlpha(0) end
@@ -149,7 +149,7 @@ local function watchBank()
 end
 
 -- The game's own sort button, kept hidden (the game shows it on every update
--- of the bag's search row) because ForeverUI's Sort takes its place.
+-- of the bag's search row) because Vanguard's Sort takes its place.
 local function hideGameSort()
   local game = _G.BagItemAutoSortButton
   if type(game) ~= "table" then return end

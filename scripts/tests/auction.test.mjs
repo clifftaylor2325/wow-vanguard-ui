@@ -106,7 +106,7 @@ it("the tooltip line says what an item went for, and when", () => {
 
 it("pruning and caps: old prices go at login, and past the cap the oldest items go", () => {
   const day = 86400;
-  const saved = `ForeverUIDB.ah = { count = 2, prices = {
+  const saved = `VanguardDB.ah = { count = 2, prices = {
     [1] = { min = 5, t = 1790000000 - 31 * ${day}, days = {} },
     [2] = { min = 6, t = 1790000000 - ${day}, days = { [math.floor(1790000000 / ${day}) - 30] = 1, [math.floor(1790000000 / ${day}) - 1] = 6 } } } }`;
   const addon = loggedIn(AH_ENV, { savedVariables: saved });
@@ -159,7 +159,7 @@ it("history: 30 days of values are kept, older ones go at login, and older versi
   const today = Math.floor(1790000000 / 86400);
   // A by-day table with value v 29, 30 and 45 days back.
   const byDay = (v) => `{ [${today - 29}] = ${v}, [${today - 30}] = ${v}, [${today - 45}] = ${v} }`;
-  const saved = `ForeverUIDB.ah = { houses = { ["ForeverTest-Alliance"] = { count = 2, lastScan = 0, prices = {
+  const saved = `VanguardDB.ah = { houses = { ["ForeverTest-Alliance"] = { count = 2, lastScan = 0, prices = {
     [2589] = { min = 90, t = 1790000000, days = ${byDay(90)}, qtys = ${byDay(4)}, markets = ${byDay(95)} },
     [2592] = { min = 70, t = 1790000000, days = { [${today}] = 70 } } } } } }`;
   const addon = atAuctionHouse("", { savedVariables: saved });
@@ -175,17 +175,17 @@ it("history: 30 days of values are kept, older ones go at login, and older versi
 
 // The saved houses, as "key:count" sorted by key.
 const houses = (addon) => addon.eval(`local out = {}
-  for key, h in pairs(ForeverUIDB.ah.houses) do out[#out + 1] = key .. ":" .. h.count end
+  for key, h in pairs(VanguardDB.ah.houses) do out[#out + 1] = key .. ":" .. h.count end
   table.sort(out) return out`);
 
 // An older version's account-wide store: Linen Cloth at 90c, a scan 10 minutes ago, and a list.
-const ACCOUNT_WIDE = `ForeverUIDB.ah = { count = 1, lastScan = 1790000000 - 600, list = "Shopping", lists = { Shopping = { 2589 } },
+const ACCOUNT_WIDE = `VanguardDB.ah = { count = 1, lastScan = 1790000000 - 600, list = "Shopping", lists = { Shopping = { 2589 } },
   prices = { [2589] = { min = 90, t = 1790000000, days = { [math.floor(1790000000 / 86400)] = 90 } } } }`;
 
 it("the account-wide prices move into this realm and faction once; the lists stay account-wide", () => {
   const addon = atAuctionHouse("", { savedVariables: ACCOUNT_WIDE });
   expect(houses(addon), "one house: the realm's normalized name and the faction").toEqual(["ForeverTest-Alliance:1"]);
-  expect(addon.eval("local ah = ForeverUIDB.ah return { ah.prices == nil, ah.count == nil, ah.lastScan == nil, ah.lists.Shopping[1] }"), "the old fields are gone, the list is where it was").toEqual([true, true, true, 2589]);
+  expect(addon.eval("local ah = VanguardDB.ah return { ah.prices == nil, ah.count == nil, ah.lastScan == nil, ah.lists.Shopping[1] }"), "the old fields are gone, the list is where it was").toEqual([true, true, true, 2589]);
   expect([addon.eval('return __showItem("item:2589")[1][1]'), lastLine(addon)], "the tooltip and the last scan carry over").toEqual(["AH: 90c (today)", "last scan 10 min ago"]);
   addon.eval("ns.AuctionPrices.Migrate() ns.AuctionPrices.Prune(__now)");
   expect(houses(addon), "a second run moves nothing more").toEqual(["ForeverTest-Alliance:1"]);
@@ -214,7 +214,7 @@ it("each realm and faction keeps its own prices and its own cap", () => {
 
 it("migration keeps the newer price of each item; login forgets stale and broken houses", () => {
   const t = 1790000000;
-  const saved = `ForeverUIDB.ah = { houses = {
+  const saved = `VanguardDB.ah = { houses = {
       ["ForeverTest-Alliance"] = { count = 2, lastScan = ${t}, prices = { [1] = { min = 5, t = ${t}, days = {} }, [2] = { min = 6, t = ${t - 100}, days = {} } } },
       ["Old-Horde"] = { count = 1, lastScan = 0, prices = { [1] = { min = 1, t = ${t - 31 * 86400}, days = {} } } },
       ["Broken-Alliance"] = { prices = 7 }, ["Junk"] = 5 },
@@ -235,7 +235,7 @@ it("a hidden number skips its listing without an error", () => {
 
 it("the panel docks left of the auction house window, at least as tall as it, with every card inside, and goes with it", () => {
   const addon = atAuctionHouse();
-  const [panel, window] = [addon.frame("ForeverUI_AuctionPanel"), addon.frame("AuctionHouseFrame")];
+  const [panel, window] = [addon.frame("Vanguard_AuctionPanel"), addon.frame("AuctionHouseFrame")];
   const height = addon.eval(`local AH = ${HELPER} return AH.SCAN_H - AH.ScanY() + AH.PAD`);
   expect([panel.visible, panel.rect.right, panel.rect.top, panel.rect.height, panel.rect.width], "4 px left of the window, from its top, as tall as its cards need").toEqual([true, window.rect.left - 4, window.rect.top, Math.max(538, height), 280]);
   const cards = addon.eval(`local AH, out = ${HELPER}, {}
@@ -245,10 +245,10 @@ it("the panel docks left of the auction house window, at least as tall as it, wi
   expect([cards[0][1] > cards[1][0], cards[1][1] > cards[2][0]], "the cards don't overlap: shop over sell over scan").toEqual([true, true]);
   expect(addon.eval(`local c = ${HELPER}.sellCard return { c.post:GetBottom() >= c:GetBottom(), c.status:GetBottom() >= c:GetBottom(), c.length:GetBottom() > c.post:GetTop() }`), "the sell form fits its card, rows apart").toEqual([true, true, true]);
   addon.world.closeAuctionHouse();
-  expect(addon.frame("ForeverUI_AuctionPanel").visible, "hidden on close").toBe(false);
+  expect(addon.frame("Vanguard_AuctionPanel").visible, "hidden on close").toBe(false);
   addon.world.openAuctionHouse();
   addon.update(0);
-  expect([addon.frame("ForeverUI_AuctionPanel").visible, addon.frames('w.__name == "ForeverUI_AuctionPanel"').length], "shown again, built once").toEqual([true, 1]);
+  expect([addon.frame("Vanguard_AuctionPanel").visible, addon.frames('w.__name == "Vanguard_AuctionPanel"').length], "shown again, built once").toEqual([true, 1]);
   expect(lastLine(addon), "before any scan").toBe("no scan yet");
 });
 
@@ -287,18 +287,18 @@ it("a finished scan spends the 15 minutes from its start, and your own listings 
 });
 
 it("switches: no panel, no scan button; nothing at all in combat", () => {
-  const off = atAuctionHouse("", { savedVariables: "ForeverUIDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
-  expect(off.frame("ForeverUI_AuctionPanel"), "no panel").toBe(null);
-  const noButton = atAuctionHouse("", { savedVariables: "ForeverUIDB.profiles = { Default = { AuctionHelper = { scanButton = false } } }" });
+  const off = atAuctionHouse("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
+  expect(off.frame("Vanguard_AuctionPanel"), "no panel").toBe(null);
+  const noButton = atAuctionHouse("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { scanButton = false } } }" });
   expect(noButton.eval(`return ${SCAN_BUTTON}:IsShown()`), "no scan button").toBe(false);
   const fight = loggedIn(AH_ENV);
   setCombat(fight, true);
   fight.world.openAuctionHouse();
   fight.update(0);
-  expect(fight.frame("ForeverUI_AuctionPanel"), "ignored in combat").toBe(null);
+  expect(fight.frame("Vanguard_AuctionPanel"), "ignored in combat").toBe(null);
 });
 
-it("/fui ah says what it knows, scans at the auction house, and forgets prices", () => {
+it("/vg ah says what it knows, scans at the auction house, and forgets prices", () => {
   const addon = loggedIn(AH_ENV);
   addon.slash("ah scan");
   expect(chatHas(addon, /Open the auction house to scan it\./), "away from the auction house").toBe(true);
@@ -316,7 +316,7 @@ it("/fui ah says what it knows, scans at the auction house, and forgets prices",
   addon.slash("ah prices clear");
   addon.slash("ah");
   expect([chatHas(addon, /Forgot every auction price\./), chatHas(addon, /Auction prices for 0 item\(s\)/)], "forgotten").toEqual([true, true]);
-  const off = loggedIn(AH_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { AuctionHelper = false } } }" });
+  const off = loggedIn(AH_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { AuctionHelper = false } } }" });
   off.slash("ah");
   expect(chatHas(off, /The auction helper is off/), "module off").toBe(true);
   const fresh = loggedIn(AH_ENV);
@@ -325,10 +325,10 @@ it("/fui ah says what it knows, scans at the auction house, and forgets prices",
 });
 
 it("no auction house on this client: the module still starts, builds nothing and doesn't fail", () => {
-  const addon = loggedIn(AH_ENV + "C_AuctionHouse = nil", { savedVariables: "ForeverUIDB.ah = { prices = { [2589] = { min = 90, t = 1790000000, days = {} } }, count = 1 }" });
+  const addon = loggedIn(AH_ENV + "C_AuctionHouse = nil", { savedVariables: "VanguardDB.ah = { prices = { [2589] = { min = 90, t = 1790000000, days = {} } }, count = 1 }" });
   addon.world.openAuctionHouse();
   addon.update(0);
-  expect([addon.frame("ForeverUI_AuctionPanel"), addon.eval("return #ns.errors")], "no panel, no error").toEqual([null, 0]);
+  expect([addon.frame("Vanguard_AuctionPanel"), addon.eval("return #ns.errors")], "no panel, no error").toEqual([null, 0]);
   expect(addon.eval('return __showItem("item:2589")[1][1]'), "saved prices still in tooltips").toBe("AH: 90c (today)");
 });
 
@@ -409,7 +409,7 @@ it("result rows show name, cheapest price and quantity; a click opens the item's
 it("entries by item link, ID or name; Remove on the right-click menu; the wheel scrolls", () => {
   const addon = atAuctionHouse(DUSTS);
   makeList(addon, "TEST-ONLY Mats", '{ "|cffffffff|Hitem:2589::::|h[Linen Cloth]|h|r", "99999", "  ", "Soul Dust", "a", "b", "c", "d" }');
-  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats']"), "a link and a number become IDs; a blank is skipped").toEqual([2589, 99999, "Soul Dust", "a", "b", "c", "d"]);
+  expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Mats']"), "a link and a number become IDs; a blank is skipped").toEqual([2589, 99999, "Soul Dust", "a", "b", "c", "d"]);
   expect(shopRow(addon, 1).slice(1), "an ID the client knows").toEqual(["Linen Cloth", "", "", "Interface\\Icons\\INV_Fabric_Linen_01"]);
   expect(shopRow(addon, 2).slice(1), "one it doesn't").toEqual(["item 99999", "", "", "Interface\\Icons\\INV_Misc_QuestionMark"]);
   addon.click(`${HELPER}.shopCard.search`);
@@ -419,9 +419,9 @@ it("entries by item link, ID or name; Remove on the right-click menu; the wheel 
   addon.wheel(`${HELPER}.shopCard.rows[1]`, -5);
   expect([shopRow(addon, 1)[1], shopRow(addon, 6)[1]], "no further than the last").toEqual(["item 99999", "d"]);
   addon.click(`${HELPER}.shopCard.rows[1]`, "RightButton");
-  expect(addon.eval("local out = {} for i, b in ipairs(ForeverUI_Menu.items) do if b:IsShown() then out[i] = b.text:GetText() end end return out"), "the row's menu").toEqual(["Filters...", "Remove"]);
-  addon.click("ForeverUI_Menu.items[2]");
-  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats']"), "Remove took it off").toEqual([2589, "Soul Dust", "a", "b", "c", "d"]);
+  expect(addon.eval("local out = {} for i, b in ipairs(Vanguard_Menu.items) do if b:IsShown() then out[i] = b.text:GetText() end end return out"), "the row's menu").toEqual(["Filters...", "Remove"]);
+  addon.click("Vanguard_Menu.items[2]");
+  expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Mats']"), "Remove took it off").toEqual([2589, "Soul Dust", "a", "b", "c", "d"]);
 });
 
 it("item names the client hasn't loaded yet, and a hidden price", () => {
@@ -450,17 +450,17 @@ it("shopping lists: the dropdown picks or makes one, + Add adds, and the caps ho
   const addon = atAuctionHouse();
   expect(choices(addon), "no lists yet: make one or import").toEqual(["New list...", "Import..."]);
   addon.click(`${HELPER}.shopCard.add`);
-  addon.type("ForeverUI_TextEdit", "Strange Dust");
-  addon.click("ForeverUI_TextDialog.primary");
-  expect([addon.eval("return ForeverUIDB.ah.lists.Shopping"), addon.frame("ForeverUI_TextDialog").visible], "+ Add with no list makes Shopping").toEqual([["Strange Dust"], false]);
+  addon.type("Vanguard_TextEdit", "Strange Dust");
+  addon.click("Vanguard_TextDialog.primary");
+  expect([addon.eval("return VanguardDB.ah.lists.Shopping"), addon.frame("Vanguard_TextDialog").visible], "+ Add with no list makes Shopping").toEqual([["Strange Dust"], false]);
   addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.NEW)`);
-  addon.type("ForeverUI_TextEdit", "  TEST-ONLY B  ");
-  addon.click("ForeverUI_TextDialog.primary");
+  addon.type("Vanguard_TextEdit", "  TEST-ONLY B  ");
+  addon.click("Vanguard_TextDialog.primary");
   expect([choices(addon), addon.eval(`return ${HELPER}.shopCard.lists.text:GetText()`)], "made and picked").toEqual([["Shopping", "TEST-ONLY B", "New list...", ...LIST_ACTIONS], "TEST-ONLY B"]);
   addon.eval(`${HELPER}.shopCard.lists.set("Shopping")`);
   expect(shopRow(addon, 1)[1], "picked back").toBe("Strange Dust");
   addon.eval(`for i = 3, 21 do ${HELPER}.NewList("TEST-ONLY " .. i) end for i = 1, 51 do ${HELPER}.AddEntry("x" .. i, "Shopping") end`);
-  expect(addon.eval("local n = 0 for _ in pairs(ForeverUIDB.ah.lists) do n = n + 1 end return { n, #ForeverUIDB.ah.lists.Shopping }"), "20 lists, 50 entries").toEqual([20, 50]);
+  expect(addon.eval("local n = 0 for _ in pairs(VanguardDB.ah.lists) do n = n + 1 end return { n, #VanguardDB.ah.lists.Shopping }"), "20 lists, 50 entries").toEqual([20, 50]);
   expect([chatHas(addon, /at most 20 shopping lists/), chatHas(addon, /holds at most 50 items/)], "says why").toEqual([true, true]);
   expect(addon.eval(`return ${HELPER}.NewList("   ")`), "no name, no list").toBe(false);
 });
@@ -479,7 +479,7 @@ it("Search list needs entries; closing the auction house drops the searches wait
   expect([sent(addon).length, progress(addon)], "only the one sent before closing").toEqual([1, ""]);
 });
 
-it("/fui ah list and add", () => {
+it("/vg ah list and add", () => {
   const addon = loggedIn(AH_ENV);
   addon.slash("ah list");
   expect(chatHas(addon, /No shopping lists yet/), "none").toBe(true);
@@ -490,20 +490,20 @@ it("/fui ah list and add", () => {
   addon.slash("ah list Herbs");
   addon.slash("ah list Empty");
   expect([chatHas(addon, /Shopping list TEST-ONLY Mats \(1\): Strange Dust$/), chatHas(addon, /Shopping list Herbs \(1\): Linen Cloth$/), chatHas(addon, /Shopping list Empty \(0\): empty$/)], "each list").toEqual([true, true, true]);
-  addon.eval("for i = 1, 20 do ForeverUIDB.ah.lists['TEST-ONLY ' .. i] = {} end");
+  addon.eval("for i = 1, 20 do VanguardDB.ah.lists['TEST-ONLY ' .. i] = {} end");
   addon.clearChat();
   addon.slash("ah list Twenty-first");
   expect(chatHas(addon, /Shopping list/), "refused past the cap, nothing listed").toBe(false);
 });
 
 // The filter dialog's fields: shown, title, exact switch, level boxes, quality and max price.
-const filterDialog = (addon) => addon.eval(`local d = ForeverUI_AuctionFilters
+const filterDialog = (addon) => addon.eval(`local d = Vanguard_AuctionFilters
   return { d:IsShown(), d.title:GetText(), d.draft.exact, d.minLevel:GetText(), d.maxLevel:GetText(), d.quality.dropdown.text:GetText(), d.price:GetText() }`);
 
 // Opens the filter dialog of shop row i from its right-click menu.
 function openFilters(addon, i) {
   addon.click(`${HELPER}.shopCard.rows[${i}]`, "RightButton");
-  addon.click("ForeverUI_Menu.items[1]");
+  addon.click("Vanguard_Menu.items[1]");
 }
 
 // The browse query sent last: its text, filters, and level range.
@@ -515,14 +515,14 @@ it("search filters: exact name, levels and quality go in the browse query; a max
   makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust" }');
   openFilters(addon, 1);
   expect(filterDialog(addon), "a plain entry: nothing set").toEqual([true, "Filters: Strange Dust", false, "", "", "Any", ""]);
-  addon.click("ForeverUI_AuctionFilters.exact");
-  addon.type("ForeverUI_AuctionFilters.minLevel", "10");
-  addon.type("ForeverUI_AuctionFilters.maxLevel", "20.5");
-  addon.eval("ForeverUI_AuctionFilters.quality.dropdown.set(2)");
-  addon.type("ForeverUI_AuctionFilters.price", "1g 50s");
-  addon.click("ForeverUI_AuctionFilters.save");
-  const saved = addon.eval("local e = ForeverUIDB.ah.lists['TEST-ONLY Mats'][1] return { e.term, e.exact, e.minLevel, e.maxLevel, e.quality, e.maxPrice }");
-  expect([saved, addon.frame("ForeverUI_AuctionFilters").visible], "saved on the entry; the dialog closes").toEqual([["Strange Dust", true, 10, 20, 2, 15000], false]);
+  addon.click("Vanguard_AuctionFilters.exact");
+  addon.type("Vanguard_AuctionFilters.minLevel", "10");
+  addon.type("Vanguard_AuctionFilters.maxLevel", "20.5");
+  addon.eval("Vanguard_AuctionFilters.quality.dropdown.set(2)");
+  addon.type("Vanguard_AuctionFilters.price", "1g 50s");
+  addon.click("Vanguard_AuctionFilters.save");
+  const saved = addon.eval("local e = VanguardDB.ah.lists['TEST-ONLY Mats'][1] return { e.term, e.exact, e.minLevel, e.maxLevel, e.quality, e.maxPrice }");
+  expect([saved, addon.frame("Vanguard_AuctionFilters").visible], "saved on the entry; the dialog closes").toEqual([["Strange Dust", true, 10, 20, 2, 15000], false]);
   addon.eval(`__wfgWorld.ah.browse = { { itemKey = { itemID = 10941 }, minPrice = 900, totalQuantity = 3 }, { itemKey = { itemID = 10940 }, minPrice = 20000, totalQuantity = 4 } }`);
   addon.click(`${HELPER}.shopCard.search`);
   expect(lastBrowse(addon), "ExactMatch (5), Uncommon (8) and the level range").toEqual(["Strange Dust", [5, 8], 10, 20]);
@@ -535,15 +535,15 @@ it("search filters: exact name, levels and quality go in the browse query; a max
   expect(shopRow(addon, 1).slice(1, 3), "under the max: shown").toEqual(["Strange Dust", "1g 40s 0c"]);
   openFilters(addon, 1);
   expect(filterDialog(addon), "the dialog shows what's set").toEqual([true, "Filters: Strange Dust", true, "10", "20", "Uncommon", "1g 50s 0c"]);
-  addon.type("ForeverUI_AuctionFilters.price", "lots");
-  addon.click("ForeverUI_AuctionFilters.cancel");
-  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats'][1].maxPrice"), "Cancel keeps them").toBe(15000);
+  addon.type("Vanguard_AuctionFilters.price", "lots");
+  addon.click("Vanguard_AuctionFilters.cancel");
+  expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Mats'][1].maxPrice"), "Cancel keeps them").toBe(15000);
   openFilters(addon, 1);
-  addon.click("ForeverUI_AuctionFilters.exact");
-  for (const box of ["minLevel", "maxLevel", "price"]) addon.type(`ForeverUI_AuctionFilters.${box}`, "");
-  addon.eval(`ForeverUI_AuctionFilters.quality.dropdown.set(${HELPER}.ANY)`);
-  addon.click("ForeverUI_AuctionFilters.save");
-  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats']"), "every filter cleared: a plain name again").toEqual(["Strange Dust"]);
+  addon.click("Vanguard_AuctionFilters.exact");
+  for (const box of ["minLevel", "maxLevel", "price"]) addon.type(`Vanguard_AuctionFilters.${box}`, "");
+  addon.eval(`Vanguard_AuctionFilters.quality.dropdown.set(${HELPER}.ANY)`);
+  addon.click("Vanguard_AuctionFilters.save");
+  expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Mats']"), "every filter cleared: a plain name again").toEqual(["Strange Dust"]);
   addon.advance(1);
   addon.click(`${HELPER}.shopCard.search`);
   expect(lastBrowse(addon), "no filters, no levels").toEqual(["Strange Dust", {}, false, false]);
@@ -552,7 +552,7 @@ it("search filters: exact name, levels and quality go in the browse query; a max
 it("a name matches only itself or a name containing it, never an unrelated result", () => {
   const addon = atAuctionHouse(DUSTS + ` __wfgWorld.items[2589] = { name = "Linen Cloth", quality = 1 } __wfgWorld.items[4306] = { name = "TEST-ONLY Silk Bolt", pending = true }`);
   makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Vision Dust", "silk", "2589" }');
-  addon.eval(`local AH = ${HELPER} local list = ForeverUIDB.ah.lists['TEST-ONLY Mats'] list[4] = { term = 2589, maxPrice = 50 }`);
+  addon.eval(`local AH = ${HELPER} local list = VanguardDB.ah.lists['TEST-ONLY Mats'] list[4] = { term = 2589, maxPrice = 50 }`);
   // Answers the search in flight with browse results, and lets the next go.
   const answer = (browse) => {
     addon.eval(`__wfgWorld.ah.browse = ${browse}`);
@@ -579,30 +579,30 @@ it("filters travel: exact names export in quotes, import as exact, and copies ha
   const addon = atAuctionHouse(DUSTS);
   makeList(addon, "TEST-ONLY Mats", '{ "Soul Dust" }');
   addon.eval(`${HELPER}.Import('"Strange Dust";;0^"2589"', "TEST-ONLY Mats")`);
-  expect(addon.eval("local l = ForeverUIDB.ah.lists['TEST-ONLY Mats'] return { l[2].term, l[2].exact, l[3] }"), "quotes: an exact name (an ID stays an ID)").toEqual(["Strange Dust", true, 2589]);
+  expect(addon.eval("local l = VanguardDB.ah.lists['TEST-ONLY Mats'] return { l[2].term, l[2].exact, l[3] }"), "quotes: an exact name (an ID stays an ID)").toEqual(["Strange Dust", true, 2589]);
   addon.eval(`${HELPER}.ExportList()`);
-  expect(addon.eval("return ForeverUI_TextDialog.edit:GetText()"), "exported with its quotes").toBe('Soul Dust\n"Strange Dust"\n2589');
-  addon.eval(`${HELPER}.DuplicateList() ForeverUIDB.ah.lists['TEST-ONLY Mats copy'][2].exact = false`);
-  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats'][2].exact"), "the copy's filters are its own").toBe(true);
+  expect(addon.eval("return Vanguard_TextDialog.edit:GetText()"), "exported with its quotes").toBe('Soul Dust\n"Strange Dust"\n2589');
+  addon.eval(`${HELPER}.DuplicateList() VanguardDB.ah.lists['TEST-ONLY Mats copy'][2].exact = false`);
+  expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Mats'][2].exact"), "the copy's filters are its own").toBe(true);
   addon.eval(`${HELPER}.EditFilters("TEST-ONLY Mats", 9) ${HELPER}.EditFilters("TEST-ONLY Mats", 3)`);
   expect(filterDialog(addon).slice(0, 2), "no entry 9; an ID entry by its item's name").toEqual([true, "Filters: Linen Cloth"]);
-  addon.eval(`ForeverUIDB.ah.lists['TEST-ONLY Mats'][3] = nil ${HELPER}.SaveFilters()`);
-  expect([addon.eval("return #ForeverUIDB.ah.lists['TEST-ONLY Mats']"), addon.frame("ForeverUI_AuctionFilters").visible], "its entry gone meanwhile: nothing saved").toEqual([2, false]);
+  addon.eval(`VanguardDB.ah.lists['TEST-ONLY Mats'][3] = nil ${HELPER}.SaveFilters()`);
+  expect([addon.eval("return #VanguardDB.ah.lists['TEST-ONLY Mats']"), addon.frame("Vanguard_AuctionFilters").visible], "its entry gone meanwhile: nothing saved").toEqual([2, false]);
   const prices = addon.eval(`local out = {} for i, t in ipairs({ "2.5", "75s 20c", " 3G 4s ", "12c", "0", "-1", "abc", "5x", "1g abc", "" }) do out[i] = ${HELPER}.ParseMoney(t) or false end return out`);
   expect(prices, "gold as a number, or g/s/c amounts").toEqual([25000, 7520, 30400, 12, false, false, false, false, false, false]);
 });
 
 // The text dialog: whether it shows, its title and its text.
-const textDialog = (addon) => addon.eval("local f = ForeverUI_TextDialog return { f:IsShown(), f.title:GetText(), f.edit:GetText() }");
+const textDialog = (addon) => addon.eval("local f = Vanguard_TextDialog return { f:IsShown(), f.title:GetText(), f.edit:GetText() }");
 
 // Types text into the text dialog and clicks its primary button.
 function answerText(addon, text) {
-  addon.type("ForeverUI_TextEdit", text);
-  addon.click("ForeverUI_TextDialog.primary");
+  addon.type("Vanguard_TextEdit", text);
+  addon.click("Vanguard_TextDialog.primary");
 }
 
 // The yes/no question: whether it shows, and its text.
-const question = (addon) => addon.eval("local f = ForeverUI_Question return { f:IsShown(), f.title:GetText() }");
+const question = (addon) => addon.eval("local f = Vanguard_Question return { f:IsShown(), f.title:GetText() }");
 
 it("list management from the dropdown: rename, duplicate, export, and delete after asking", () => {
   const addon = atAuctionHouse(DUSTS);
@@ -612,31 +612,31 @@ it("list management from the dropdown: rename, duplicate, export, and delete aft
   pick(`${HELPER}.RENAME`);
   expect(textDialog(addon).slice(0, 2), "asks for the new name").toEqual([true, "Rename TEST-ONLY Mats"]);
   answerText(addon, "  TEST-ONLY Herbs ");
-  expect([choices(addon)[0], addon.eval("return { ForeverUIDB.ah.list, ForeverUIDB.ah.lists['TEST-ONLY Mats'] == nil }"), textDialog(addon)[0]], "renamed, still in use, the box closed").toEqual(["TEST-ONLY Herbs", ["TEST-ONLY Herbs", true], false]);
+  expect([choices(addon)[0], addon.eval("return { VanguardDB.ah.list, VanguardDB.ah.lists['TEST-ONLY Mats'] == nil }"), textDialog(addon)[0]], "renamed, still in use, the box closed").toEqual(["TEST-ONLY Herbs", ["TEST-ONLY Herbs", true], false]);
   pick(`${HELPER}.COPY`);
   pick('"TEST-ONLY Herbs"');
   pick(`${HELPER}.COPY`);
   expect(choices(addon).slice(0, 3), "copies, each with a free name").toEqual(["TEST-ONLY Herbs", "TEST-ONLY Herbs copy", "TEST-ONLY Herbs copy 2"]);
-  expect([addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Herbs copy 2']"), shopRow(addon, 1)[1], chatHas(addon, /Copied TEST-ONLY Herbs to TEST-ONLY Herbs copy 2\./)], "the same items, and the copy is in use").toEqual([["Strange Dust", 2589], "Strange Dust", true]);
+  expect([addon.eval("return VanguardDB.ah.lists['TEST-ONLY Herbs copy 2']"), shopRow(addon, 1)[1], chatHas(addon, /Copied TEST-ONLY Herbs to TEST-ONLY Herbs copy 2\./)], "the same items, and the copy is in use").toEqual([["Strange Dust", 2589], "Strange Dust", true]);
   pick(`${HELPER}.RENAME`);
   answerText(addon, "TEST-ONLY Herbs");
-  expect([chatHas(addon, /already a shopping list named TEST-ONLY Herbs\./), addon.eval("return ForeverUIDB.ah.list")], "a name in use is refused").toEqual([true, "TEST-ONLY Herbs copy 2"]);
-  addon.click("ForeverUI_TextDialog.close");
+  expect([chatHas(addon, /already a shopping list named TEST-ONLY Herbs\./), addon.eval("return VanguardDB.ah.list")], "a name in use is refused").toEqual([true, "TEST-ONLY Herbs copy 2"]);
+  addon.click("Vanguard_TextDialog.close");
   pick(`${HELPER}.EXPORT`);
   expect(textDialog(addon), "one item per line, ready to copy").toEqual([true, "Shopping list TEST-ONLY Herbs copy 2 (Ctrl+C copies it)", "Strange Dust\n2589"]);
   pick(`${HELPER}.DELETE`);
   expect(question(addon), "asks first").toEqual([true, "Delete the shopping list TEST-ONLY Herbs copy 2 (2 items)?"]);
-  addon.click("ForeverUI_Question.no");
-  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Herbs copy 2'] ~= nil"), "No keeps it").toBe(true);
+  addon.click("Vanguard_Question.no");
+  expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Herbs copy 2'] ~= nil"), "No keeps it").toBe(true);
   pick(`${HELPER}.DELETE`);
-  addon.click("ForeverUI_Question.yes");
-  expect([choices(addon).slice(0, 2), addon.eval("return ForeverUIDB.ah.list"), chatHas(addon, /Deleted the shopping list TEST-ONLY Herbs copy 2\./)], "gone; the first list left is in use").toEqual([["TEST-ONLY Herbs", "TEST-ONLY Herbs copy"], "TEST-ONLY Herbs", true]);
+  addon.click("Vanguard_Question.yes");
+  expect([choices(addon).slice(0, 2), addon.eval("return VanguardDB.ah.list"), chatHas(addon, /Deleted the shopping list TEST-ONLY Herbs copy 2\./)], "gone; the first list left is in use").toEqual([["TEST-ONLY Herbs", "TEST-ONLY Herbs copy"], "TEST-ONLY Herbs", true]);
   addon.eval(`${HELPER}.DeleteList("TEST-ONLY Herbs copy") ${HELPER}.DeleteList("TEST-ONLY Nothing")`);
-  expect(addon.eval("return ForeverUIDB.ah.list"), "deleting another list leaves the one in use").toBe("TEST-ONLY Herbs");
+  expect(addon.eval("return VanguardDB.ah.list"), "deleting another list leaves the one in use").toBe("TEST-ONLY Herbs");
   addon.eval(`for i = 1, 19 do ${HELPER}.NewList("TEST-ONLY " .. i) end ${HELPER}.NewList("TEST-ONLY Herbs") ${HELPER}.DuplicateList()`);
-  expect(addon.eval("return { ForeverUIDB.ah.lists['TEST-ONLY Herbs copy'] == nil, ForeverUIDB.ah.list }"), "no copy past 20 lists").toEqual([true, "TEST-ONLY Herbs"]);
+  expect(addon.eval("return { VanguardDB.ah.lists['TEST-ONLY Herbs copy'] == nil, VanguardDB.ah.list }"), "no copy past 20 lists").toEqual([true, "TEST-ONLY Herbs"]);
   addon.eval(`${HELPER}.DeleteList("TEST-ONLY Herbs") for i = 1, 19 do ${HELPER}.DeleteList("TEST-ONLY " .. i) end`);
-  expect([choices(addon), addon.eval("return ForeverUIDB.ah.list")], "the last one deleted: no list in use").toEqual([["New list...", "Import..."], null]);
+  expect([choices(addon), addon.eval("return VanguardDB.ah.list")], "the last one deleted: no list in use").toEqual([["New list...", "Import..."], null]);
 });
 
 it("import: plain lines and Auctionator's strings, within the caps", () => {
@@ -644,76 +644,76 @@ it("import: plain lines and Auctionator's strings, within the caps", () => {
   addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.IMPORT)`);
   expect(textDialog(addon).slice(0, 2), "no list in use: into Shopping").toEqual([true, "Import into Shopping (names, IDs, links, or a shopping list string)"]);
   answerText(addon, "Linen Cloth\n 2589 \r\n|cffffffff|Hitem:10940::::|h[Strange Dust]|h|r\n\n   \n");
-  expect([addon.eval("return { ForeverUIDB.ah.list, ForeverUIDB.ah.lists.Shopping }"), textDialog(addon)[0], chatHas(addon, /Imported 3 item\(s\) into Shopping\.$/)], "a name, an ID and a link; blanks skipped").toEqual([["Shopping", ["Linen Cloth", 2589, 10940]], false, true]);
+  expect([addon.eval("return { VanguardDB.ah.list, VanguardDB.ah.lists.Shopping }"), textDialog(addon)[0], chatHas(addon, /Imported 3 item\(s\) into Shopping\.$/)], "a name, an ID and a link; blanks skipped").toEqual([["Shopping", ["Linen Cloth", 2589, 10940]], false, true]);
   addon.eval(`${HELPER}.AskImport()`);
   answerText(addon, '"Strange Dust";;0;0;;;;;;;;#;;^Soul Dust;1;60^ ^"";x^  "Vision Dust"  ');
-  expect(addon.eval("return ForeverUIDB.ah.lists.Shopping"), "each term's first field (in quotes: an exact name); an empty name skipped").toEqual(["Linen Cloth", 2589, 10940, { term: "Strange Dust", exact: true }, "Soul Dust", { term: "Vision Dust", exact: true }]);
-  expect(chatHas(addon, /Imported 3 item\(s\) into Shopping\. 6 other search field\(s\) ignored: ForeverUI takes each item's name\.$/), "says how many fields it ignored").toBe(true);
+  expect(addon.eval("return VanguardDB.ah.lists.Shopping"), "each term's first field (in quotes: an exact name); an empty name skipped").toEqual(["Linen Cloth", 2589, 10940, { term: "Strange Dust", exact: true }, "Soul Dust", { term: "Vision Dust", exact: true }]);
+  expect(chatHas(addon, /Imported 3 item\(s\) into Shopping\. 6 other search field\(s\) ignored: Vanguard takes each item's name\.$/), "says how many fields it ignored").toBe(true);
   addon.eval(`for i = 1, 43 do ${HELPER}.AddEntry("x" .. i) end ${HELPER}.Import("a\\nb\\nc", "Shopping")`);
-  expect([addon.eval("return #ForeverUIDB.ah.lists.Shopping"), chatHas(addon, /Imported 1 item\(s\) into Shopping\. 2 didn't fit \(a list holds at most 50\)\.$/)], "50 at most").toEqual([50, true]);
+  expect([addon.eval("return #VanguardDB.ah.lists.Shopping"), chatHas(addon, /Imported 1 item\(s\) into Shopping\. 2 didn't fit \(a list holds at most 50\)\.$/)], "50 at most").toEqual([50, true]);
   addon.eval(`for i = 1, 19 do ${HELPER}.NewList("TEST-ONLY " .. i) end ${HELPER}.Import("a", "TEST-ONLY 21")`);
-  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY 21'] == nil"), "no new list past 20").toBe(true);
+  expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY 21'] == nil"), "no new list past 20").toBe(true);
 });
 
-it("/fui ah rename, duplicate, delete, export and import act on the list in use", () => {
+it("/vg ah rename, duplicate, delete, export and import act on the list in use", () => {
   const addon = loggedIn(AH_ENV);
   for (const word of ["rename TEST-ONLY X", "duplicate", "delete", "export"]) addon.slash(`ah ${word}`);
   expect(addon.chat().filter((l) => /Pick a shopping list first/.test(l)).length, "no list in use yet").toBe(4);
   addon.slash("ah list TEST-ONLY Mats");
   addon.slash("ah add TEST-ONLY Mats Strange Dust");
   addon.slash("ah rename");
-  expect(chatHas(addon, /\/fui ah rename <new name> renames the shopping list in use\./), "a name is needed").toBe(true);
+  expect(chatHas(addon, /\/vg ah rename <new name> renames the shopping list in use\./), "a name is needed").toBe(true);
   addon.slash("ah rename TEST-ONLY Herbs");
   addon.slash("ah duplicate");
-  expect(addon.eval("return { ForeverUIDB.ah.list, ForeverUIDB.ah.lists['TEST-ONLY Herbs copy'] }"), "renamed, then copied").toEqual(["TEST-ONLY Herbs copy", ["Strange Dust"]]);
+  expect(addon.eval("return { VanguardDB.ah.list, VanguardDB.ah.lists['TEST-ONLY Herbs copy'] }"), "renamed, then copied").toEqual(["TEST-ONLY Herbs copy", ["Strange Dust"]]);
   addon.slash("ah export");
   expect(textDialog(addon)[2], "exported").toBe("Strange Dust");
   addon.slash("ah import");
   answerText(addon, "Soul Dust");
-  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Herbs copy']"), "imported into it").toEqual(["Strange Dust", "Soul Dust"]);
+  expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Herbs copy']"), "imported into it").toEqual(["Strange Dust", "Soul Dust"]);
   addon.slash("ah delete");
-  addon.click("ForeverUI_Question.yes");
-  expect(addon.eval("return { ForeverUIDB.ah.list, ForeverUIDB.ah.lists['TEST-ONLY Herbs copy'] == nil }"), "deleted after asking").toEqual(["TEST-ONLY Herbs", true]);
+  addon.click("Vanguard_Question.yes");
+  expect(addon.eval("return { VanguardDB.ah.list, VanguardDB.ah.lists['TEST-ONLY Herbs copy'] == nil }"), "deleted after asking").toEqual(["TEST-ONLY Herbs", true]);
   addon.slash("ah");
   expect(chatHas(addon, /rename <name>, duplicate, delete, export, import, /), "the help names them").toBe(true);
 });
 
 it("Recent: the last 20 terms searched, newest first, kept for the account", () => {
-  const addon = atAuctionHouse(DUSTS, { savedVariables: 'ForeverUIDB.ah = { recent = { "TEST-ONLY Old" } }' });
+  const addon = atAuctionHouse(DUSTS, { savedVariables: 'VanguardDB.ah = { recent = { "TEST-ONLY Old" } }' });
   expect([choices(addon), addon.eval(`return ${HELPER}.shopCard.lists.text:GetText()`)], "kept from before: Recent in the dropdown").toEqual([["Recent", "New list...", "Import..."], "Recent"]);
   makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Soul Dust", "2589" }');
   addon.click(`${HELPER}.shopCard.search`);
-  expect(addon.eval("return ForeverUIDB.ah.recent"), "each term searched, the last first").toEqual([2589, "Soul Dust", "Strange Dust", "TEST-ONLY Old"]);
+  expect(addon.eval("return VanguardDB.ah.recent"), "each term searched, the last first").toEqual([2589, "Soul Dust", "Strange Dust", "TEST-ONLY Old"]);
   addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.RECENT)`);
   expect([choices(addon), [1, 2, 3, 4].map((i) => shopRow(addon, i)[1])], "Recent in use: its rows, and what can be done with it").toEqual([["TEST-ONLY Mats", "Recent", "New list...", "Duplicate list", "Export list...", "Clear recent...", "Import..."], ["Linen Cloth", "Soul Dust", "Strange Dust", "TEST-ONLY Old"]]);
   addon.advance(5);
   addon.click(`${HELPER}.shopCard.search`);
-  expect([addon.eval("return ForeverUIDB.ah.recent[1]"), progress(addon)], "searching Recent leaves its order").toEqual([2589, "0 of 4"]);
+  expect([addon.eval("return VanguardDB.ah.recent[1]"), progress(addon)], "searching Recent leaves its order").toEqual([2589, "0 of 4"]);
   addon.click(`${HELPER}.shopCard.rows[4]`, "RightButton");
-  addon.click("ForeverUI_Menu.items[2]");
-  expect(addon.eval("return #ForeverUIDB.ah.recent"), "Remove works on Recent").toBe(3);
+  addon.click("Vanguard_Menu.items[2]");
+  expect(addon.eval("return #VanguardDB.ah.recent"), "Remove works on Recent").toBe(3);
   addon.eval(`${HELPER}.AddEntry("TEST-ONLY New")`);
-  expect(addon.eval("return { ForeverUIDB.ah.list, ForeverUIDB.ah.lists.Shopping, ForeverUIDB.ah.lists['\\1recent'] == nil }"), "+ Add on Recent adds to Shopping").toEqual(["Shopping", ["TEST-ONLY New"], true]);
+  expect(addon.eval("return { VanguardDB.ah.list, VanguardDB.ah.lists.Shopping, VanguardDB.ah.lists['\\1recent'] == nil }"), "+ Add on Recent adds to Shopping").toEqual(["Shopping", ["TEST-ONLY New"], true]);
   addon.eval(`local AH = ${HELPER} AH.Remember("soul dust") AH.Remember({ term = "Soul Dust", exact = true }) for i = 1, 25 do AH.Remember("TEST-ONLY " .. i) end`);
-  const recent = addon.eval("return ForeverUIDB.ah.recent");
+  const recent = addon.eval("return VanguardDB.ah.recent");
   expect([recent.length, recent[0], recent[19]], "20 at most; the same term once, whatever its case").toEqual([20, "TEST-ONLY 25", "TEST-ONLY 6"]);
   addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.RECENT) ${HELPER}.shopCard.lists.set(${HELPER}.COPY)`);
-  expect(addon.eval("return { ForeverUIDB.ah.list, #ForeverUIDB.ah.lists['Recent copy'] }"), "copied into a list of its own").toEqual(["Recent copy", 20]);
+  expect(addon.eval("return { VanguardDB.ah.list, #VanguardDB.ah.lists['Recent copy'] }"), "copied into a list of its own").toEqual(["Recent copy", 20]);
   addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.RECENT) ${HELPER}.shopCard.lists.set(${HELPER}.DELETE)`);
   expect(question(addon), "clearing asks first").toEqual([true, "Clear the 20 recent searches?"]);
-  addon.click("ForeverUI_Question.yes");
-  expect([addon.eval("return #ForeverUIDB.ah.recent"), choices(addon).includes("Recent")], "cleared; still in use, so still listed").toEqual([0, true]);
+  addon.click("Vanguard_Question.yes");
+  expect([addon.eval("return #VanguardDB.ah.recent"), choices(addon).includes("Recent")], "cleared; still in use, so still listed").toEqual([0, true]);
   addon.eval(`${HELPER}.shopCard.lists.set("Shopping")`);
   expect(choices(addon).includes("Recent"), "empty and not in use: not listed").toBe(false);
 });
 
-it("/fui ah recent shows Recent", () => {
-  const addon = loggedIn(AH_ENV, { savedVariables: 'ForeverUIDB.ah = { recent = "TEST-ONLY broken" }' });
+it("/vg ah recent shows Recent", () => {
+  const addon = loggedIn(AH_ENV, { savedVariables: 'VanguardDB.ah = { recent = "TEST-ONLY broken" }' });
   addon.slash("ah recent");
   expect(chatHas(addon, /Shopping list Recent \(0\): empty$/), "a broken saved value is an empty Recent").toBe(true);
-  addon.eval("ForeverUIDB.ah.recent = { 2589, 'Soul Dust' }");
+  addon.eval("VanguardDB.ah.recent = { 2589, 'Soul Dust' }");
   addon.slash("ah recent");
-  expect([chatHas(addon, /Shopping list Recent \(2\): Linen Cloth, Soul Dust$/), addon.eval("return ForeverUIDB.ah.list")], "its items, and it's in use").toEqual([true, "\u0001recent"]);
+  expect([chatHas(addon, /Shopping list Recent \(2\): Linen Cloth, Soul Dust$/), addon.eval("return VanguardDB.ah.list")], "its items, and it's in use").toEqual([true, "\u0001recent"]);
   addon.slash("ah");
   expect(chatHas(addon, /import, recent, scan/), "the help names it").toBe(true);
 });
@@ -775,7 +775,7 @@ it("the view reads further pages as it scrolls, shows time-left bands and leaves
     table.insert(__wfgWorld.ah.items[9999], { minBid = 10, quantity = 1, timeLeft = 0 })
     table.insert(__wfgWorld.ah.items[9999], { buyoutAmount = 99000, quantity = 1, timeLeft = 9 })`);
   makeList(addon, "TEST-ONLY Gear", "{ \"9999\" }");
-  addon.eval("ForeverUIDB.ah.lists['TEST-ONLY Gear'][1] = { term = 9999, maxPrice = 50000 }");
+  addon.eval("VanguardDB.ah.lists['TEST-ONLY Gear'][1] = { term = 9999, maxPrice = 50000 }");
   addon.click(`${HELPER}.shopCard.rows[1]`);
   addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   expect(view(addon)[3].map((r) => [r[0], r[2]]), "an item's buyout, its band by the game's name or ours; bid only and over 5g left out").toEqual([
@@ -793,7 +793,7 @@ it("the view reads further pages as it scrolls, shows time-left bands and leaves
   addon.advance(2);
   expect(sent(addon).filter((x) => x.startsWith("RequestMore")).length, "all in: no more asked").toBe(1);
   addon.click(`${HELPER}.shopCard.view.back`);
-  addon.eval(`ForeverUIDB.ah.lists['TEST-ONLY Gear'][2] = 'TEST-ONLY Unsearched' ${HELPER}.PaintShop()`);
+  addon.eval(`VanguardDB.ah.lists['TEST-ONLY Gear'][2] = 'TEST-ONLY Unsearched' ${HELPER}.PaintShop()`);
   addon.click(`${HELPER}.shopCard.rows[2]`);
   expect(view(addon)[0], "a name not searched yet opens nothing").toBe(false);
 });
@@ -1579,19 +1579,19 @@ const TODAY = Math.floor(1790000000 / 86400);
 
 // Saved prices of Strange Dust on this realm and faction: its low of yesterday, `low`, and more
 // fields (Lua) when given.
-const dustHistory = (low, fields = "") => `ForeverUIDB.ah = { houses = { ["ForeverTest-Alliance"] = { count = 1, lastScan = 0, prices = {
+const dustHistory = (low, fields = "") => `VanguardDB.ah = { houses = { ["ForeverTest-Alliance"] = { count = 1, lastScan = 0, prices = {
   [10940] = { min = ${low}, t = 1790000000 - 86400, days = { [${TODAY - 1}] = ${low} } ${fields} } } } } }`;
 
 // Deal row i: [shown, name, price, how far under].
 const dealRow = (addon, i) => addon.eval(`local r = ${DEALS}.card.rows[${i}] return { r:IsShown(), r.name:GetText() or false, r.price:GetText() or false, r.qty:GetText() or false }`);
 
 // The Deals card: [shown, its count, the line shown while there are none].
-const dealsCard = (addon) => [addon.frame("ForeverUI_AuctionDeals").visible, ...addon.eval(`local c = ${DEALS}.card return { c.count:GetText(), c.status:GetText() }`)];
+const dealsCard = (addon) => [addon.frame("Vanguard_AuctionDeals").visible, ...addon.eval(`local c = ${DEALS}.card return { c.count:GetText(), c.status:GetText() }`)];
 
 it("deals: a scan lists what's under 70 % of the 7-day market or under vendor price, best first, right of the window", () => {
   const markets = `, markets = { [${TODAY - 1}] = 1200, [${TODAY - 2}] = 1000, [${TODAY - 8}] = 9000 }`;
   const addon = atAuctionHouse(DUSTS, { savedVariables: dustHistory(1000, markets) });
-  const [deals, window] = [addon.frame("ForeverUI_AuctionDeals"), addon.frame("AuctionHouseFrame")];
+  const [deals, window] = [addon.frame("Vanguard_AuctionDeals"), addon.frame("AuctionHouseFrame")];
   expect([deals.rect.left, deals.rect.top, deals.rect.width, deals.rect.height, deals.rect.right <= 1920], "4 px right of the window, from its top, on the screen").toEqual([window.rect.right + 4, window.rect.top, 280, 196, true]);
   expect([dealsCard(addon), dealRow(addon, 1)[0]], "none yet").toEqual([[true, "", "None yet: a scan or a search finds them."], false]);
   scan(addon, `{ { itemID = 10940, count = 1, buyoutPrice = 500 }, { itemID = 10940, count = 30, buyoutPrice = 39000 },
@@ -1638,14 +1638,14 @@ it("deals: each search judges its item again; a low before today stands in for a
   expect(dealsCard(addon), "a new visit starts with none; nothing is judged while the house is closed").toEqual([true, "", "None yet: a scan or a search finds them."]);
   addon.eval('ns.Options.Show("more") __click("Deals card")');
   addon.eval("ns.AuctionPrices.RecordSeen(50001, 1)");
-  expect([addon.eval("return ns.Settings('AuctionHelper').deals"), addon.frame("ForeverUI_AuctionDeals").visible, addon.eval(`return next(${HELPER}.deals) == nil`)], "switched off under Auction house: the card goes at once, nothing is judged").toEqual([false, false, true]);
+  expect([addon.eval("return ns.Settings('AuctionHelper').deals"), addon.frame("Vanguard_AuctionDeals").visible, addon.eval(`return next(${HELPER}.deals) == nil`)], "switched off under Auction house: the card goes at once, nothing is judged").toEqual([false, false, true]);
 });
 
 it("deals: with the panel off nothing is built, and a deal found paints nothing", () => {
-  const addon = atAuctionHouse("", { savedVariables: "ForeverUIDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
+  const addon = atAuctionHouse("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
   addon.eval("ns.AuctionPrices.RecordSeen(2589, 5)");
   addon.update(0.01);
-  expect([addon.frame("ForeverUI_AuctionDeals"), addon.eval(`return ${HELPER}.deals[2589].price`), addon.eval("return #ns.errors")], "no card, the deal kept, no error").toEqual([null, 5, 0]);
+  expect([addon.frame("Vanguard_AuctionDeals"), addon.eval(`return ${HELPER}.deals[2589].price`), addon.eval("return #ns.errors")], "no card, the deal kept, no error").toEqual([null, 5, 0]);
 });
 
 // Price alerts ---------------------------------------------------------------------------------
@@ -1654,7 +1654,7 @@ it("deals: with the panel off nothing is built, and a deal found paints nothing"
 const ALERT_ENV = " SOUNDKIT = { TELL_MESSAGE = 3081 } ";
 
 // The toast: [shown, title, line, price].
-const alertToast = (addon) => addon.eval("local f = ForeverUI_ChatWatchToast return { f:IsShown(), f.sender:GetText() or false, f.line:GetText() or false, f.price:GetText() or false }");
+const alertToast = (addon) => addon.eval("local f = Vanguard_ChatWatchToast return { f:IsShown(), f.sender:GetText() or false, f.line:GetText() or false, f.price:GetText() or false }");
 
 // How many times the alert sound (3081) has played.
 const alertRings = (addon) => addon.eval("local n = 0 for _, s in ipairs(__wfgWorld.sounds) do if s == 3081 then n = n + 1 end end return n");
@@ -1672,18 +1672,18 @@ it("price alerts: the filter dialog's switch alerts at the max price; a search a
   const addon = atAuctionHouse(DUSTS + ALERT_ENV);
   makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust" }');
   openFilters(addon, 1);
-  expect(addon.eval("local d = ForeverUI_AuctionFilters return { d.alert.label:GetText(), d.draft.alert == true }"), "the switch under the max price, off").toEqual(["Alert at or under the max price", false]);
-  addon.click("ForeverUI_AuctionFilters.alert");
-  addon.click("ForeverUI_AuctionFilters.save");
-  expect(addon.eval("return ForeverUIDB.ah.lists['TEST-ONLY Mats'][1]"), "no max price: nothing to alert at, a plain entry").toBe("Strange Dust");
+  expect(addon.eval("local d = Vanguard_AuctionFilters return { d.alert.label:GetText(), d.draft.alert == true }"), "the switch under the max price, off").toEqual(["Alert at or under the max price", false]);
+  addon.click("Vanguard_AuctionFilters.alert");
+  addon.click("Vanguard_AuctionFilters.save");
+  expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Mats'][1]"), "no max price: nothing to alert at, a plain entry").toBe("Strange Dust");
   openFilters(addon, 1);
-  addon.click("ForeverUI_AuctionFilters.alert");
-  addon.type("ForeverUI_AuctionFilters.price", "1g");
-  addon.click("ForeverUI_AuctionFilters.save");
-  expect(addon.eval("local e = ForeverUIDB.ah.lists['TEST-ONLY Mats'][1] return { e.term, e.maxPrice, e.alert }"), "kept with the max price").toEqual(["Strange Dust", 10000, true]);
+  addon.click("Vanguard_AuctionFilters.alert");
+  addon.type("Vanguard_AuctionFilters.price", "1g");
+  addon.click("Vanguard_AuctionFilters.save");
+  expect(addon.eval("local e = VanguardDB.ah.lists['TEST-ONLY Mats'][1] return { e.term, e.maxPrice, e.alert }"), "kept with the max price").toEqual(["Strange Dust", 10000, true]);
   openFilters(addon, 1);
-  expect(addon.eval("return ForeverUI_AuctionFilters.draft.alert"), "the dialog shows it on").toBe(true);
-  addon.click("ForeverUI_AuctionFilters.cancel");
+  expect(addon.eval("return Vanguard_AuctionFilters.draft.alert"), "the dialog shows it on").toBe(true);
+  addon.click("Vanguard_AuctionFilters.cancel");
   dustAt(addon, 12000);
   expect([alertRings(addon), alertToast(addon)[0]], "over the max price: nothing").toEqual([0, false]);
   dustAt(addon, 9000);
@@ -1695,12 +1695,12 @@ it("price alerts: the filter dialog's switch alerts at the max price; a search a
   dustAt(addon, 8000);
   expect([alertRings(addon), alertToast(addon)[3]], "cheaper than when it alerted: again").toEqual([2, "80s 0c"]);
   addon.advance(1);
-  addon.click("ForeverUI_ChatWatchToast");
+  addon.click("Vanguard_ChatWatchToast");
   expect([sent(addon).at(-1), restrictedLog(addon), alertToast(addon)[0]], "a click on the toast shows the item in the game's list; nothing is bought").toEqual(["SearchForItemKeys:10940", [], false]);
 });
 
 it("price alerts: a scan or any search rings for named lists' entries by ID or name, several on one toast", () => {
-  const lists = `ForeverUIDB.ah = { list = "TEST-ONLY Mats", recent = { { term = 9999, maxPrice = 99999, alert = true } }, lists = { ["TEST-ONLY Mats"] = {
+  const lists = `VanguardDB.ah = { list = "TEST-ONLY Mats", recent = { { term = 9999, maxPrice = 99999, alert = true } }, lists = { ["TEST-ONLY Mats"] = {
     { term = 2589, maxPrice = 20, alert = true }, { term = "dust", maxPrice = 600, alert = true, quality = 1 }, { term = "Soul Dust", exact = true, maxPrice = 1, alert = true },
     { term = "pouch", maxPrice = 99999, alert = true, maxLevel = 0 }, { term = "TEST-ONLY", maxPrice = 99999, alert = true, minLevel = 2 }, { term = 159, maxPrice = 1000 }, "TEST-ONLY Plain" } } }`;
   const addon = atAuctionHouse(DUSTS + ALERT_ENV + `__wfgWorld.items[10941].quality = 2 __wfgWorld.items[11083] = { name = "Soul Dust", commodity = true }
@@ -1718,6 +1718,6 @@ it("price alerts: a scan or any search rings for named lists' entries by ID or n
   addon.world.closeAuctionHouse();
   addon.eval("ns.AuctionPrices.RecordSeen(2589, 1)");
   addon.update(0.01);
-  addon.click("ForeverUI_ChatWatchToast");
+  addon.click("Vanguard_ChatWatchToast");
   expect([alertRings(addon), sent(addon).length], "the house closed: nothing alerts, and the toast's click searches nothing").toEqual([2, queries]);
 });

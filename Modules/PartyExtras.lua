@@ -12,7 +12,7 @@ PX.W, PX.H, PX.GAP, PX.ROWS = 90, 16, 2, 4
 
 -- One secure unit tile at row i, column col (0 = pet, 1 = target).
 local function tile(holder, unit, i, col)
-  local b = CreateFrame("Button", "ForeverUI_" .. unit, holder, "SecureUnitButtonTemplate")
+  local b = CreateFrame("Button", "Vanguard_" .. unit, holder, "SecureUnitButtonTemplate")
   b:SetSize(PX.W, PX.H)
   b:SetPoint("TOPLEFT", holder, "TOPLEFT", col * (PX.W + 4), -(i - 1) * (PX.H + PX.GAP))
   b:SetAttribute("unit", unit)
@@ -25,7 +25,7 @@ end
 
 -- The movable column, shown only in a party (a secure state driver, so it follows the group in combat too).
 local function build()
-  local holder = CreateFrame("Frame", "ForeverUI_PartyExtras", UIParent, "SecureHandlerStateTemplate")
+  local holder = CreateFrame("Frame", "Vanguard_PartyExtras", UIParent, "SecureHandlerStateTemplate")
   holder:SetSize(2 * PX.W + 4, PX.ROWS * (PX.H + PX.GAP) - PX.GAP)
   ns.Mover(holder, "partyextras", "Party pets and targets", { "BOTTOM", "BOTTOM", -240, 606 })
   PX.tiles = {}

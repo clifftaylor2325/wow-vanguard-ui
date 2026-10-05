@@ -1,5 +1,5 @@
--- A "ForeverUI" button on the game menu (Escape), so the options are a click
--- away without typing /fui. The button is ForeverUI's own child of the menu,
+-- A "Vanguard" button on the game menu (Escape), so the options are a click
+-- away without typing /vg. The button is Vanguard's own child of the menu,
 -- laid out first by the menu's own layout (layoutIndex 0), above the game's
 -- buttons. A menu without that layout gets a themed button just under it.
 
@@ -10,7 +10,7 @@ local FIRST = 0
 -- The gap under the button: the menu's own section gap (MainMenuFrameMixin:AddSection's default).
 local SECTION_GAP = 20
 
--- Closes the game menu and opens ForeverUI's options.
+-- Closes the game menu and opens Vanguard's options.
 function ns.OpenFromGameMenu()
   local menu = _G.GameMenuFrame
   if type(HideUIPanel) == "function" then HideUIPanel(menu) else menu:Hide() end
@@ -20,13 +20,13 @@ end
 -- A button that looks like the menu's own when the menu names their template, else a themed one.
 local function menuButton(menu)
   local template = menu.buttonTemplate
-  if type(template) ~= "string" then return ns.DialogButton(menu, "ForeverUI", 200) end
+  if type(template) ~= "string" then return ns.DialogButton(menu, "Vanguard", 200) end
   local b = CreateFrame("Button", nil, menu, template)
-  b:SetText("ForeverUI")
+  b:SetText("Vanguard")
   return b
 end
 
--- ForeverUI's button first in a menu that lays its children out by layoutIndex, with a section gap under it.
+-- Vanguard's button first in a menu that lays its children out by layoutIndex, with a section gap under it.
 local function addFirst(menu)
   local b = menuButton(menu)
   b.layoutIndex = FIRST
@@ -38,7 +38,7 @@ end
 
 -- A themed button just under a menu that can't take new buttons.
 local function addBelow(menu)
-  local b = ns.DialogButton(menu, "ForeverUI", 144)
+  local b = ns.DialogButton(menu, "Vanguard", 144)
   b:SetPoint("TOP", menu, "BOTTOM", 0, -4)
   b:SetScript("OnClick", ns.OpenFromGameMenu)
   ns.gameMenuButton = b

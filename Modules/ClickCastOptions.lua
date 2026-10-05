@@ -272,7 +272,7 @@ end
 -- Builds the picker once: a raised panel with the search, the rows and the more line.
 local function pickerFrame()
   if picker then return picker end
-  picker = T.Panel(CreateFrame("Frame", "ForeverUI_SpellPicker", UIParent), { raised = true, shadow = true })
+  picker = T.Panel(CreateFrame("Frame", "Vanguard_SpellPicker", UIParent), { raised = true, shadow = true })
   picker:SetSize(280, 34 + PICKER_ROWS * ROW_H + 22)
   picker:SetFrameStrata("FULLSCREEN_DIALOG")
   picker:EnableMouse(true)
@@ -452,7 +452,7 @@ end
 local function keysNote(count)
   if count == 0 then return "No hover keys yet. Add one, press the key, pick the spell." end
   local extra = count - MAX_KEYS
-  return extra > 0 and ("+" .. extra .. " more (/fui binds)") or ""
+  return extra > 0 and ("+" .. extra .. " more (/vg binds)") or ""
 end
 
 -- Re-reads the hover-key rows and the line under them.
@@ -714,12 +714,12 @@ local function openGameBindings()
   ToggleClickBindingFrame()
 end
 
--- The page's rows on a client with the game's click bindings: ForeverUI's, then the switch to the game's.
+-- The page's rows on a client with the game's click bindings: Vanguard's, then the switch to the game's.
 local WITH_GAME = {}
 for _, row in ipairs(ROWS) do WITH_GAME[#WITH_GAME + 1] = row end
 for _, row in ipairs({
   { "header", "The game's click bindings" },
-  { "text", "The game has click casting of its own (its Click Casting window). Switched on, it works on the raid and unit frames and ForeverUI's bindings and hover keys above rest." },
+  { "text", "The game has click casting of its own (its Click Casting window). Switched on, it works on the raid and unit frames and Vanguard's bindings and hover keys above rest." },
   { "check", "Use the game's click bindings instead", useGameOn, setUseGame, false },
   { "button", "Open the game's click bindings", openGameBindings },
 }) do WITH_GAME[#WITH_GAME + 1] = row end

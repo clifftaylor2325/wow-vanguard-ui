@@ -135,7 +135,7 @@ end
 -- price beside it; it goes after CW.LINGER seconds.
 function CW.ShowToast(sender, text)
   local f = CW.toast
-  f.fuiSender, f.fuiClick = sender, nil
+  f.vgSender, f.vgClick = sender, nil
   f.sender:SetText(sender)
   f.line:SetText(text)
   fitLine(f, CW.PriceText(text))
@@ -151,7 +151,7 @@ end
 -- A click on the toast: left whispers the sender (or, on another module's alert, does what it
 -- asked for), right just dismisses it.
 function CW.OnToastClick(f, button)
-  if button ~= "RightButton" then (f.fuiClick or CW.Whisper)(f.fuiSender) end
+  if button ~= "RightButton" then (f.vgClick or CW.Whisper)(f.vgSender) end
   CW.HideToast()
 end
 
@@ -175,9 +175,9 @@ local function toastPrice(f)
   f.price:SetPoint("TOPRIGHT", f.sender, "BOTTOMRIGHT", 0, -4)
 end
 
--- The toast: an accent-edged panel you can move (/fui unlock), hidden until a phrase is said.
+-- The toast: an accent-edged panel you can move (/vg unlock), hidden until a phrase is said.
 local function buildToast()
-  local f = CreateFrame("Button", "ForeverUI_ChatWatchToast", UIParent)
+  local f = CreateFrame("Button", "Vanguard_ChatWatchToast", UIParent)
   T.Panel(f, { accent = true, shadow = true })
   f:SetSize(CW.WIDTH, CW.HEIGHT)
   f:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -196,7 +196,7 @@ function CW.Notify(title, text, price, onClick)
   if not CW.toast then buildToast() end
   local f = CW.toast
   ring()
-  f.fuiSender, f.fuiClick = nil, onClick
+  f.vgSender, f.vgClick = nil, onClick
   f.sender:SetText(title)
   f.line:SetText(text)
   fitLine(f, price)
@@ -258,18 +258,18 @@ end
 -- Prints the watched phrases.
 local function list()
   local all = phrases()
-  if #all == 0 then return ns.Chat("Chat watch has no phrases. /fui watch add <phrase> adds one.") end
+  if #all == 0 then return ns.Chat("Chat watch has no phrases. /vg watch add <phrase> adds one.") end
   ns.Chat("Watching chat for: " .. table.concat(all, ", "))
 end
 
--- /fui watch [add <phrase> | remove <phrase> | list | clear].
+-- /vg watch [add <phrase> | remove <phrase> | list | clear].
 function CW.Command(rest)
   local verb, arg = (rest or ""):match("^(%S*)%s*(.-)$")
   if verb == "add" then return CW.Add(arg) end
   if verb == "remove" then return CW.Remove(arg) end
   if verb == "clear" then ns.Settings("ChatWatch", CW.defaults).phrases = {} phrasesChanged() return ns.Chat("Chat watch has no phrases now.") end
   if verb == "" or verb == "list" then return list() end
-  ns.Chat("Usage: /fui watch [add <phrase> | remove <phrase> | list | clear]")
+  ns.Chat("Usage: /vg watch [add <phrase> | remove <phrase> | list | clear]")
 end
 
 -- get/set (and the default) for one channel switch; more keys follow the first (Party and raid).

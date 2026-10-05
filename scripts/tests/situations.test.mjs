@@ -1,4 +1,4 @@
-// situations: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// situations: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 // Modules/Situations.lua: a different layout and settings for solo, party, raid,
 // PvP, instance and resting, recorded with the frames' and settings' own
 // controls and applied out of combat as you move between situations.
@@ -20,7 +20,7 @@ const RAID_OVERRIDE = `{ positions = { infostrip = { point = "TOP", relPoint = "
 
 // Saved variables whose profile `name` (Default unless given) has the raid override; more Lua after it.
 const saved = (more = "", name = "Default") =>
-  `ForeverUIDB = { version = 2, setupDone = true, profiles = { ${name} = { Situations = { overrides = { raid = ${RAID_OVERRIDE} } } } } }\n${more}`;
+  `VanguardDB = { version = 2, setupDone = true, profiles = { ${name} = { Situations = { overrides = { raid = ${RAID_OVERRIDE} } } } } }\n${more}`;
 
 // A logged-in addon with SIT_ENV, the click helper and saved variables; the first apply has run.
 function situated(savedVariables = "", extra = "") {
@@ -54,13 +54,13 @@ it("situations: joining a raid applies its override; leaving puts the base back 
   expect(spot(addon), "solo: the info strip at its default spot").toEqual(HOME);
   raid(addon);
   expect(spot(addon), "in a raid: the raid's spot").toEqual(["TOP", "TOP", 0, -60]);
-  expect(addon.eval("return ForeverUI_InfoStrip:GetScale()"), "and its scale").toBe(0.8);
+  expect(addon.eval("return Vanguard_InfoStrip:GetScale()"), "and its scale").toBe(0.8);
   expect(dps(addon), "the DPS block switched on").toBe(true);
   expect(addon.eval("return ns.GetModule('InfoStrip').texts.dps ~= nil"), "the strip repainted its blocks").toBe(true);
   expect(addon.eval("return { ns.GetModule('Nameplates').settings.width, ns.GetModule('Nameplates').settings.castBar }"), "keys outside the allowlist are not applied").toEqual([130, true]);
   raid(addon, false);
   expect(spot(addon), "out of the raid: back at the default spot").toEqual(HOME);
-  expect(addon.eval("return ForeverUI_InfoStrip:GetScale()"), "at its own scale").toBe(1);
+  expect(addon.eval("return Vanguard_InfoStrip:GetScale()"), "at its own scale").toBe(1);
   expect([savedSpot(addon), dps(addon)], "the profile holds its own values, not the override's").toEqual([null, false]);
   expect(addon.eval("return ns.Settings('Situations').overrides.raid.positions.infostrip.point"), "the override is kept for next time").toBe("TOP");
 });
@@ -70,7 +70,7 @@ it("situations: the profile on disk never holds an override (logout puts the bas
   raid(addon);
   expect(savedSpot(addon), "while the override is on, the mover's setter holds its spot").toMatchObject({ point: "TOP", scale: 0.8 });
   addon.fire("PLAYER_LOGOUT");
-  const profile = addon.eval("return ForeverUIDB.profiles.Default");
+  const profile = addon.eval("return VanguardDB.profiles.Default");
   expect([profile.positions.infostrip ?? null, profile.InfoStrip.dps], "at logout the profile gets its own values back").toEqual([null, false]);
   expect(profile.Situations.overrides.raid.settings.InfoStrip.dps, "with the override still saved as an override").toBe(true);
 });
@@ -131,7 +131,7 @@ it("situations: recording keeps only what the player changed, with the frames' a
   expect(addon.eval("return ns.GetModule('Nameplates').settings.castBar"), "a setting outside the allowlist stays the player's own change").toBe(false);
   expect(addon.eval("return __handle('infostrip').label:GetText()"), "the handles' labels lose the suffix").toBe("Info strip");
   raid(addon);
-  expect([spot(addon)[0], dps(addon), addon.eval("return ForeverUI_InfoStrip:GetAlpha()")], "joining a raid applies the recording").toEqual([dropped.point, true, 0.66]);
+  expect([spot(addon)[0], dps(addon), addon.eval("return Vanguard_InfoStrip:GetAlpha()")], "joining a raid applies the recording").toEqual([dropped.point, true, 0.66]);
 });
 
 it("situations: recording over an override starts from it; nothing changed clears it; refusals", () => {
@@ -166,7 +166,7 @@ it("situations: in combat the apply waits for combat to end", () => {
 });
 
 it("situations: a profile change puts the base back into its tables, forgets it and applies the new profile's override", () => {
-  const other = `ForeverUIDB.profiles.Other = { Situations = { overrides = { raid = { positions = { infostrip = { point = "CENTER", relPoint = "CENTER", x = 10, y = 20 } }, settings = { MenuStrip = { menu = "hidden" } } } } } }`;
+  const other = `VanguardDB.profiles.Other = { Situations = { overrides = { raid = { positions = { infostrip = { point = "CENTER", relPoint = "CENTER", x = 10, y = 20 } }, settings = { MenuStrip = { menu = "hidden" } } } } } }`;
   const addon = situated(saved(other));
   raid(addon);
   addon.eval("__oldPositions, __oldStrip = ns.Settings('positions'), ns.Settings('InfoStrip')");
@@ -194,18 +194,18 @@ it("situations: the same tables told of a change get their base back and the ove
 });
 
 it("situations: the staged profile switch applies the other profile's override at the next login", () => {
-  const addon = situated(saved(`ForeverUIDB.profiles.Other = {}`));
+  const addon = situated(saved(`VanguardDB.profiles.Other = {}`));
   raid(addon);
   addon.slash("profile Other");
   expect(spot(addon), "a staged switch changes nothing until the reload").toEqual(["TOP", "TOP", 0, -60]);
   addon.fire("PLAYER_LOGOUT");
-  expect(addon.eval("return { ForeverUIDB.profiles.Default.positions.infostrip == nil, ForeverUICharDB.pendingProfile }"), "Default is saved with its own spot; Other waits").toEqual([true, "Other"]);
-  const next = situated(saved(`ForeverUICharDB = { profile = "Default", pendingProfile = "Other" }`, "Other"), "__wfgWorld.units.raid1 = { name = 'TEST-ONLY Ally' }");
+  expect(addon.eval("return { VanguardDB.profiles.Default.positions.infostrip == nil, VanguardCharDB.pendingProfile }"), "Default is saved with its own spot; Other waits").toEqual([true, "Other"]);
+  const next = situated(saved(`VanguardCharDB = { profile = "Default", pendingProfile = "Other" }`, "Other"), "__wfgWorld.units.raid1 = { name = 'TEST-ONLY Ally' }");
   expect([next.eval("return ns.ProfileName()"), spot(next)], "the next login: Other, in a raid, with its override").toEqual(["Other", ["TOP", "TOP", 0, -60]]);
 });
 
 it("situations: a frame reset to its default while recording is overridden back to the default", () => {
-  const addon = situated(`ForeverUIDB = { version = 2, setupDone = true, profiles = { Default = { positions = { infostrip = { point = "LEFT", relPoint = "LEFT", x = 20, y = 0 } } } } }`);
+  const addon = situated(`VanguardDB = { version = 2, setupDone = true, profiles = { Default = { positions = { infostrip = { point = "LEFT", relPoint = "LEFT", x = 20, y = 0 } } } } }`);
   addon.slash("situation record raid");
   addon.slash("reset infostrip");
   addon.slash("situation stop");
@@ -222,18 +222,18 @@ it("situations: a recording in progress at logout is saved, and the profile keep
   addon.slash("situation record raid");
   addon.eval("ns.SetMoverScale('infostrip', 1.25)");
   addon.fire("PLAYER_LOGOUT");
-  expect(addon.eval("return { next(ForeverUIDB.profiles.Default.positions.infostrip or {}) == nil, ns.Settings('Situations').overrides.raid.positions.infostrip.scale }"), "the scale is the override's, not the profile's").toEqual([true, 1.25]);
+  expect(addon.eval("return { next(VanguardDB.profiles.Default.positions.infostrip or {}) == nil, ns.Settings('Situations').overrides.raid.positions.infostrip.scale }"), "the scale is the override's, not the profile's").toEqual([true, 1.25]);
 });
 
 it("situations: switched off, clearing, unknown frames and modules that aren't running", () => {
-  const extra = `ForeverUIDB.profiles.Default.modules = { DataBars = false }
-    ForeverUIDB.profiles.Default.Situations.overrides.party = { positions = { nosuch = { point = "TOP" } }, settings = { DataBars = { visibility = "hidden" }, Chat = { background = false } } }`;
+  const extra = `VanguardDB.profiles.Default.modules = { DataBars = false }
+    VanguardDB.profiles.Default.Situations.overrides.party = { positions = { nosuch = { point = "TOP" } }, settings = { DataBars = { visibility = "hidden" }, Chat = { background = false } } }`;
   const addon = situated(saved(extra));
   addon.world.setUnit("party1", { name: "TEST-ONLY Friend" });
   addon.advance(0.5);
   expect(addon.eval("return { ns.GetModule('Situations').applied, ns.Settings('DataBars').visibility == nil, ns.Settings('Chat').background }"), "a frame not on screen and a module not running are skipped").toEqual(["party", true, true]);
   addon.slash("situation clear");
-  expect([addon.eval("return ns.Settings('Situations').overrides.party"), chatHas(addon, /Cleared the overrides for Party\.$/)], "/fui situation clear: the active one").toEqual([null, true]);
+  expect([addon.eval("return ns.Settings('Situations').overrides.party"), chatHas(addon, /Cleared the overrides for Party\.$/)], "/vg situation clear: the active one").toEqual([null, true]);
   addon.slash("situation clear moon");
   expect(chatHas(addon, /Situations: solo, party/), "an unknown one").toBe(true);
   addon.world.removeUnit("party1");
@@ -242,14 +242,14 @@ it("situations: switched off, clearing, unknown frames and modules that aren't r
   expect(spot(addon), "switched off: no override").toEqual(HOME);
 });
 
-it("situations: /fui situation list prints where you are and every override", () => {
+it("situations: /vg situation list prints where you are and every override", () => {
   const addon = situated(saved());
   addon.slash("situation list");
   expect(chatHas(addon, /Now: Solo · no overrides$/), "where you are").toBe(true);
   expect(chatHas(addon, /Raid: 2 overrides \(1 frame, info strip\)$/), "the raid's override, counting only what it may set").toBe(true);
   addon.slash("situation");
   addon.slash("situation dance");
-  expect(chatHas(addon, /Usage: \/fui situation/), "anything else: usage").toBe(true);
+  expect(chatHas(addon, /Usage: \/vg situation/), "anything else: usage").toBe(true);
   addon.slash("help");
   expect(chatHas(addon, /situation \[record/), "the help lists it").toBe(true);
 });

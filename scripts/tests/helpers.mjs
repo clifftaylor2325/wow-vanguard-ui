@@ -23,8 +23,8 @@ export function setCombat(addon, on) {
 export const RETAIL = "__wfgWorld.build.interface = 120007\n";
 
 // An account that has finished first-run setup, so the wizard stays shut in
-// cases about other things (a case's own ForeverUIDB replaces it).
-export const SETUP_DONE = "ForeverUIDB = { version = 2, profiles = {}, setupDone = true }\n";
+// cases about other things (a case's own VanguardDB replaces it).
+export const SETUP_DONE = "VanguardDB = { version = 2, profiles = {}, setupDone = true }\n";
 
 // A logged-in addon; extra Lua runs before login (e.g. a module or a skin).
 // firstRun: a brand-new account (no SavedVariables unless given), so setup opens.
@@ -69,7 +69,7 @@ export const UNITS_ENV = `
 `;
 
 // Saved variables with the raid frames module off (so UnitFrames builds its own party frames).
-export const NO_RAID = { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { RaidFrames = false } } } }" };
+export const NO_RAID = { savedVariables: "VanguardDB = { profiles = { Default = { modules = { RaidFrames = false } } } }" };
 
 // TEST-ONLY action slots and bindings. Slot 3's cooldown is secret.
 export const ACTIONS_ENV = `
@@ -102,7 +102,7 @@ export const ACTIONS_ENV = `
 
 // One action button's state.
 export const button = (addon, bar, i) => addon.eval(`
-  local b = ForeverUI_Bar${bar}Button${i}
+  local b = Vanguard_Bar${bar}Button${i}
   return { action = b:GetAttribute("action"), type = b:GetAttribute("type"), icon = b.icon.__texture,
     shown = b.icon:IsShown(), count = b.count:GetText(), hotkey = b.hotkey:GetText(),
     color = b.icon.__vertexColor, checked = b:GetChecked(), cooldown = b.cooldown.__cooldown }`);
@@ -137,7 +137,7 @@ export const UI_ENV = `
 `;
 
 // Presses a key on the quest dialog.
-export const key = (addon, k) => addon.eval(`ForeverUI_QuestDialog.__scripts.OnKeyDown(ForeverUI_QuestDialog, "${k}")`);
+export const key = (addon, k) => addon.eval(`Vanguard_QuestDialog.__scripts.OnKeyDown(Vanguard_QuestDialog, "${k}")`);
 
 // The game calls made so far (then forgets them).
 export const calls = (addon) => { const c = addon.eval("local c = __calls __calls = {} return c"); return Array.isArray(c) ? c : []; };
@@ -173,7 +173,7 @@ export const DATA_ENV = `
 `;
 
 // The data bars' state.
-export const bars = (addon) => addon.eval(`local x, r = ForeverUI_xpbar, ForeverUI_repbar
+export const bars = (addon) => addon.eval(`local x, r = Vanguard_xpbar, Vanguard_repbar
   return { xpShown = x:IsShown(), xp = x.__value, xpMax = x.__max, rested = x.rested.__width, xpText = x.text:GetText(), xpTextShown = x.text:IsShown(),
     repShown = r:IsShown(), rep = r.__value, repMax = r.__max, repColor = r.__barColor, repText = r.text:GetText() }`);
 
@@ -206,15 +206,15 @@ export const RAID_ENV = `
   RegisterAttributeDriver = function(frame, attr, driver) frame.__drivers = frame.__drivers or {}; frame.__drivers[attr] = driver end
   CompactRaidFrameContainer = CreateFrame("Frame", "CompactRaidFrameContainer", UIParent)
   function __spawn(i, unit)
-    local b = CreateFrame("Button", "ForeverUI_RaidUnitButton" .. i, ForeverUI_Raid, "SecureUnitButtonTemplate")
-    ForeverUI_Raid.initialConfigFunction(ForeverUI_Raid, b:GetName())
+    local b = CreateFrame("Button", "Vanguard_RaidUnitButton" .. i, Vanguard_Raid, "SecureUnitButtonTemplate")
+    Vanguard_Raid.initialConfigFunction(Vanguard_Raid, b:GetName())
     b:SetAttribute("unit", unit)
     return b
   end
 `;
 
 // One raid button's state.
-export const raidButton = (addon, i) => addon.eval(`local b = ForeverUI_RaidUnitButton${i}
+export const raidButton = (addon, i) => addon.eval(`local b = Vanguard_RaidUnitButton${i}
   return { hp = b.health.__value, max = b.health.__max, color = b.health.__barColor, name = b.name:GetText(), role = b.role:IsShown() and b.role.__texture,
     roleW = b.role.__width, nameAfter = b.name.__points.TOPLEFT.rel == b.role, status = b.status:GetText() }`);
 
@@ -241,7 +241,7 @@ export const HEALING_ENV = `
 `;
 
 // Raid button i's healer extras.
-export const healing = (addon, i) => addon.eval(`local b = ForeverUI_RaidUnitButton${i}
+export const healing = (addon, i) => addon.eval(`local b = Vanguard_RaidUnitButton${i}
   return { heal = b.heal:IsShown() and b.heal.__value, healMax = b.heal.__max, shield = b.shield.__value,
     threat = b.threat:IsShown() and b.threat.__vertexColor, missing = b.missing:IsShown() and b.missing.__texture }`);
 
@@ -254,7 +254,7 @@ export const FOREVER_ENV = `
 `;
 
 // Raid button i's status marks.
-export const marks = (addon, i) => addon.eval(`local b = ForeverUI_RaidUnitButton${i}
+export const marks = (addon, i) => addon.eval(`local b = Vanguard_RaidUnitButton${i}
   local function tex(t) return t:IsShown() and t.__texture end
   return { icon = b.raidIcon:IsShown() and b.raidIcon.__texCoord, ready = tex(b.ready), readyColor = b.ready.__vertexColor, rez = b.rez:IsShown(),
     leader = tex(b.leader), leaderColor = b.leader.__vertexColor, leaderShadow = b.leader.shadow:IsShown(), status = b.status:IsShown(), alpha = b.__alpha }`);
@@ -262,7 +262,7 @@ export const marks = (addon, i) => addon.eval(`local b = ForeverUI_RaidUnitButto
 // The default tooltip's state.
 export const tooltip = (addon) => addon.eval(`local tt = GameTooltip
   return { shown = tt:IsShown(), nine = tt.NineSlice.__alpha, name = GameTooltipTextLeft1.__textColor,
-    lines = tt.__lines, count = #tt.__lines, anchor = tt.__anchor, point = select(2, tt:GetPoint(1)) == ForeverUI_TooltipAnchor }`);
+    lines = tt.__lines, count = #tt.__lines, anchor = tt.__anchor, point = select(2, tt:GetPoint(1)) == Vanguard_TooltipAnchor }`);
 
 // TEST-ONLY nameplates: nameplate1 is the hostile target (hidden health), nameplate2 a friend,
 // nameplate3 a plate the client keeps from addons.
@@ -288,7 +288,7 @@ export const PLATE_ENV = `
 `;
 
 // One nameplate's state.
-export const plate = (addon, unit) => addon.eval(`local p = __plates.${unit} local f = p.fui
+export const plate = (addon, unit) => addon.eval(`local p = __plates.${unit} local f = p.vg
   if not f then return { drawn = false, default = p.UnitFrame:IsShown() } end
   local edge for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "OVERLAY" and w.__sublevel == 7 then edge = w.__vertexColor break end end
   return { drawn = f:IsShown(), default = p.UnitFrame:IsShown(), hp = f.__value, color = f.__barColor, name = f.name:GetText(),
@@ -394,7 +394,7 @@ export const SWING_ENV = `
   Enum.PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 }
 `;
 
-// TEST-ONLY client frames ForeverUI tidies away: the game's XP bar, durability figure, clock and calendar
+// TEST-ONLY client frames Vanguard tidies away: the game's XP bar, durability figure, clock and calendar
 // button, minimap buttons, micro menu, bag bar and quest tracker. hooksecurefunc hooks methods too, as in game.
 export const TIDY_ENV = `
   hooksecurefunc = function(a, b, c)
@@ -568,7 +568,7 @@ export const unitEvents = (addon, event) => addon.eval(`local subs, plain = {}, 
   for _, w in ipairs(__wfgStub.frames) do
     local units = w.__unitEvents and w.__unitEvents["${event}"]
     if w.__events["${event}"] and not units then plain = plain + 1 end
-    if w.__events["${event}"] and units and w.fuiHandler then subs[#subs + 1] = table.concat(units, ",") end
+    if w.__events["${event}"] and units and w.vgHandler then subs[#subs + 1] = table.concat(units, ",") end
   end
   table.sort(subs)
   return { subs = table.concat(subs, " "), plain = plain }`);

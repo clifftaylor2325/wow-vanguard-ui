@@ -1,5 +1,5 @@
--- /fui factionart: which of the game's own faction pictures this client has.
--- ForeverUI never copies Blizzard's faction art; this only checks what the
+-- /vg factionart: which of the game's own faction pictures this client has.
+-- Vanguard never copies Blizzard's faction art; this only checks what the
 -- client already ships, so the faction look can point at it where it exists
 -- (and use the open-licensed crests where it doesn't).
 

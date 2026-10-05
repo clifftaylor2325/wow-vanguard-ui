@@ -1,4 +1,4 @@
--- ForeverUI's quest dialog: talking to a quest giver opens a panel sized to
+-- Vanguard's quest dialog: talking to a quest giver opens a panel sized to
 -- what it says, just above the frames around your character, instead of the
 -- game's quest and gossip windows. It shows the NPC's portrait (a quest mark
 -- when there is none to draw) and name, the text, numbered lines for quests and gossip
@@ -91,7 +91,7 @@ function QD.Items(kind, count)
   local out = {}
   for i = 1, ns.PlainNumber(count) or 0 do
     local name, texture, n, quality = call(GetQuestItemInfo, kind, i)
-    out[#out + 1] = { kind = kind, index = i, name = name, texture = texture, count = n, quality = quality }
+    out[#out + 1] = { kind = kind, index = i, name = name, texture = texture, count = n, quality = quality, link = call(GetQuestItemLink, kind, i) }
   end
   return out
 end

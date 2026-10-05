@@ -183,7 +183,7 @@ end
 -- The Deals card, built with the panel (its child, so it shows and hides with it) and docked right
 -- of the auction house window, from its top, as wide as the panel; the wheel scrolls it.
 function AH.BuildDeals(panel)
-  local f = T.Panel(CreateFrame("Frame", "ForeverUI_AuctionDeals", panel), { shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_AuctionDeals", panel), { shadow = true })
   f:SetSize(AH.WIDTH, 2 * AH.PAD - AH.DEAL_ROWS_Y + AH.DEAL_ROWS * AH.ROW_H)
   f:SetPoint("TOPLEFT", AuctionHouseFrame, "TOPRIGHT", AH.GAP, 0)
   f:EnableMouse(true)

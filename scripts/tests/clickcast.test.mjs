@@ -46,13 +46,13 @@ const pickerRow = (addon, text) => widget(addon, `w.item ~= nil and w.chevron ~=
 const chevron = (addon, row) => widget(addon, `w.__parent == __wfgStub.frames[${row}] and w.text ~= nil and type(w.text.__text) == "string" and w.text.__text:sub(1, 5) == "Ranks"`);
 
 // The text dialog's primary button (Bind or Import), clicked.
-const confirm = (addon) => addon.eval('local f = ForeverUI_TextDialog f.primary:GetScript("OnClick")(f.primary)');
+const confirm = (addon) => addon.eval('local f = Vanguard_TextDialog f.primary:GetScript("OnClick")(f.primary)');
 
 // The texts drawn inside a widget, as a list.
 const textsIn = (addon, id) => addon.eval(`local out = {} for _, c in ipairs(__wfgStub.frames) do if c.__parent == __wfgStub.frames[${id}] and type(c.__text) == "string" and c:IsShown() then out[#out + 1] = c.__text end end return out`);
 
 // Saved variables with click casting on the unit frames too, so bindings have frames to land on.
-const WITH_FRAMES = "ForeverUIDB = { profiles = { Default = { ClickCast = { unitFrames = true } } } }";
+const WITH_FRAMES = "VanguardDB = { profiles = { Default = { ClickCast = { unitFrames = true } } } }";
 
 // The current spec's bindings as { key: "action:value:spellID:rank" }.
 const bindings = (addon) => addon.eval(`local out = {} for _, b in ipairs(${CC}.Bindings()) do out[b.key] = b.action .. ":" .. tostring(b.value) .. ":" .. tostring(b.spellID) .. ":" .. tostring(b.rank) end return out`);
@@ -103,7 +103,7 @@ it("the spell catalog listens for new spells by an event Forever has, so login r
 it("bindings carry spell ids and ranks, move, copy, export and import", () => {
   const addon = priest("__wfgWorld.spec = 1", {
     // TEST-ONLY saved bindings from an older version: a spell by name only; click casting on the unit frames too.
-    savedVariables: WITH_FRAMES + ' ForeverUICharDB = { clickcast = { [1] = { { key = "BUTTON4", action = "spell", value = "Renew" } } } }',
+    savedVariables: WITH_FRAMES + ' VanguardCharDB = { clickcast = { [1] = { { key = "BUTTON4", action = "spell", value = "Renew" } } } }',
   });
   expect(bindings(addon).BUTTON4, "an old name-only binding gets its spell id once").toBe("spell:Renew:139:nil");
   addon.eval(`${CC}.Add("ctrl-BUTTON2", "spell", "Flash Heal", 2061, 1) ${CC}.Add("shift-BUTTON1", "spell", "Flash Heal", 9472) ${CC}.Add("BUTTON5", "focus") ${CC}.Add("SHIFT-Q", "assist")`);
@@ -111,7 +111,7 @@ it("bindings carry spell ids and ranks, move, copy, export and import", () => {
   const attrs = (lua) => addon.eval(`local f = ${CC}.frames[1] return ${lua}`);
   expect(attrs('f:GetAttribute("ctrl-spell2")'), "a picked rank casts by its spell id").toBe(2061);
   expect(attrs('f:GetAttribute("shift-spell1")'), "no rank casts by name, so a new rank applies by itself").toBe("Flash Heal");
-  expect(attrs('f:GetAttribute("type5") .. "/" .. f:GetAttribute("*type-fui5")'), "hover keys use the * prefix so modified presses find them").toBe("focus/assist");
+  expect(attrs('f:GetAttribute("type5") .. "/" .. f:GetAttribute("*type-vg5")'), "hover keys use the * prefix so modified presses find them").toBe("focus/assist");
   expect(addon.eval(`return ${CC}.ActionText(${CC}.Binding("ctrl-BUTTON2")) .. "|" .. ${CC}.ActionText(${CC}.Binding("BUTTON5")) .. "|" .. ${CC}.ActionText(${CC}.Binding("SHIFT-Q"))`)).toBe("Flash Heal (Rank 1)|Focus|Assist");
   addon.eval(`${CC}.Move("ctrl-BUTTON2", "BUTTON5") ${CC}.Move("BUTTON4", "BUTTON4") ${CC}.Move("nope", "BUTTON4")`);
   expect(bindings(addon)).toMatchObject({ BUTTON5: "spell:Flash Heal:2061:1", "ctrl-BUTTON2": "focus:nil:nil:nil" });
@@ -119,12 +119,12 @@ it("bindings carry spell ids and ranks, move, copy, export and import", () => {
   addon.eval(`${CC}.CopyToSpec(2)`);
   expect(addon.eval(`return #${CC}.Bindings(2), ${CC}.Bindings(2)[1].key`)).toBe(5);
   const text = addon.eval(`return ${CC}.Export()`);
-  expect(/^FUI1:clickcast:/.test(text)).toBe(true);
+  expect(/^VG1:clickcast:/.test(text)).toBe(true);
   addon.eval(`${CC}.Clear()`);
   expect(addon.eval(`return #${CC}.Bindings(), ${CC}.frames[1]:GetAttribute("type5")`)).toBe(0);
   expect(addon.eval(`return ${CC}.Import(${JSON.stringify(text)})`), "importing brings them back").toBe(5);
   expect(bindings(addon).BUTTON5).toBe("spell:Flash Heal:2061:1");
-  expect(addon.eval(`local n, err = ${CC}.Import("garbage") return err`)).toBe("not a ForeverUI profile string");
+  expect(addon.eval(`local n, err = ${CC}.Import("garbage") return err`)).toBe("not a Vanguard profile string");
   expect(addon.eval(`local n, err = ${CC}.Import(ns.Serialize.Encode("profile", { a = 1 })) return err`)).toBe("not a click-casting string");
   const odd = addon.eval(`return ns.Serialize.Encode("clickcast", { bindings = { { key = 1 }, { key = "BUTTON4", action = "target" } } })`);
   expect(addon.eval(`return ${CC}.Import(${JSON.stringify(odd)})`), "malformed entries are skipped").toBe(1);
@@ -148,11 +148,11 @@ it("the grid picks spells from the spellbook, with ranks, drops and clears", () 
   addon.eval('ns.Options.Show("clickcast")');
   expect(addon.frames("w.key ~= nil and w.iconFrame ~= nil and w.empty ~= nil").length, "five mouse buttons by four modifiers").toBe(20);
   addon.click(cell(addon, "ctrl-BUTTON2"));
-  expect(addon.frame("ForeverUI_SpellPicker").visible, "clicking a cell opens the picker").toBe(true);
+  expect(addon.frame("Vanguard_SpellPicker").visible, "clicking a cell opens the picker").toBe(true);
   expect(addon.texts("HEALS").length === 1 && addon.texts("ACTIONS").length === 0, "groups are headed; the actions are further down").toBe(true);
   addon.click(pickerRow(addon, "Flash Heal"));
   expect(bindings(addon)["ctrl-BUTTON2"], "picking a spell binds its highest rank by name").toBe("spell:Flash Heal:9472:nil");
-  expect(addon.frame("ForeverUI_SpellPicker").visible).toBe(false);
+  expect(addon.frame("Vanguard_SpellPicker").visible).toBe(false);
   addon.click(cell(addon, "ctrl-BUTTON2"));
   addon.click(chevron(addon, pickerRow(addon, "Flash Heal")));
   expect(addon.texts("Rank 1").length, "the chevron opens the ranks").toBe(1);
@@ -164,16 +164,16 @@ it("the grid picks spells from the spellbook, with ranks, drops and clears", () 
   addon.click(cell(addon, "ctrl-BUTTON2"));
   addon.click(chevron(addon, pickerRow(addon, "Flash Heal")));
   expect(addon.texts("Rank 1").length, "the chevron closes them again").toBe(0);
-  addon.type("ForeverUI_SpellPicker.search", "ren");
+  addon.type("Vanguard_SpellPicker.search", "ren");
   expect(addon.texts("Flash Heal").length === 0 && pickerRow(addon, "Renew") !== undefined, "the search narrows the list").toBe(true);
-  addon.type("ForeverUI_SpellPicker.search", "");
-  addon.wheel("ForeverUI_SpellPicker", -1);
-  expect(addon.eval("return ForeverUI_SpellPicker.offset"), "the wheel scrolls the list").toBe(3);
+  addon.type("Vanguard_SpellPicker.search", "");
+  addon.wheel("Vanguard_SpellPicker", -1);
+  expect(addon.eval("return Vanguard_SpellPicker.offset"), "the wheel scrolls the list").toBe(3);
   expect(addon.texts("scroll for more").length).toBe(1);
-  addon.wheel("ForeverUI_SpellPicker", 5);
-  expect(addon.eval("return ForeverUI_SpellPicker.offset"), "and stops at the top").toBe(0);
+  addon.wheel("Vanguard_SpellPicker", 5);
+  expect(addon.eval("return Vanguard_SpellPicker.offset"), "and stops at the top").toBe(0);
   addon.click(widget(addon, 'w.item ~= nil and w.chevron ~= nil and w:IsShown() and w.item.header ~= nil'));
-  expect(addon.frame("ForeverUI_SpellPicker").visible, "a header does nothing").toBe(true);
+  expect(addon.frame("Vanguard_SpellPicker").visible, "a header does nothing").toBe(true);
   addon.hover(pickerRow(addon, "Renew"));
   expect(addon.eval("return GameTooltip.__spellId"), "hovering a spell shows its tooltip").toBe(139);
   addon.hover(widget(addon, 'w.item ~= nil and w.chevron ~= nil and w:IsShown() and w.item.header ~= nil'));
@@ -201,30 +201,30 @@ it("the picker's actions, macros and typed names; the extra modifier columns", (
   const addon = priest();
   addon.eval('ns.Options.Show("clickcast")');
   addon.click(cell(addon, "shift-BUTTON2"));
-  addon.wheel("ForeverUI_SpellPicker", -9);
+  addon.wheel("Vanguard_SpellPicker", -9);
   addon.click(pickerRow(addon, "Target"));
   expect(bindings(addon)["shift-BUTTON2"]).toBe("target:nil:nil:nil");
   addon.click(cell(addon, "shift-BUTTON2"));
-  addon.wheel("ForeverUI_SpellPicker", -9);
+  addon.wheel("Vanguard_SpellPicker", -9);
   addon.click(pickerRow(addon, "Macro..."));
-  expect(addon.frame("ForeverUI_TextDialog").visible && addon.texts("Bind").length === 1, "Macro... asks in the text dialog").toBe(true);
-  addon.type("ForeverUI_TextEdit", "/cast [@mouseover] TEST-ONLY Heal");
+  expect(addon.frame("Vanguard_TextDialog").visible && addon.texts("Bind").length === 1, "Macro... asks in the text dialog").toBe(true);
+  addon.type("Vanguard_TextEdit", "/cast [@mouseover] TEST-ONLY Heal");
   confirm(addon);
   expect(bindings(addon)["shift-BUTTON2"]).toBe("macro:/cast [@mouseover] TEST-ONLY Heal:nil:nil");
-  expect(addon.frame("ForeverUI_TextDialog").visible).toBe(false);
+  expect(addon.frame("Vanguard_TextDialog").visible).toBe(false);
   addon.click(cell(addon, "shift-BUTTON2"));
-  addon.wheel("ForeverUI_SpellPicker", -9);
+  addon.wheel("Vanguard_SpellPicker", -9);
   addon.click(pickerRow(addon, "Type a spell name..."));
-  addon.type("ForeverUI_TextEdit", "  TEST-ONLY Unknown  ");
+  addon.type("Vanguard_TextEdit", "  TEST-ONLY Unknown  ");
   confirm(addon);
   expect(bindings(addon)["shift-BUTTON2"], "a typed name is trimmed and bound as it is").toBe("spell:TEST-ONLY Unknown:nil:nil");
   expect(textsIn(addon, widget(addon, `w.__parent == __wfgStub.frames[${cell(addon, "shift-BUTTON2")}] and w.letter ~= nil`)), "a spell without an icon shows its initial").toContain("T");
   addon.click(cell(addon, "shift-BUTTON2"));
-  addon.wheel("ForeverUI_SpellPicker", -9);
+  addon.wheel("Vanguard_SpellPicker", -9);
   addon.click(pickerRow(addon, "Macro..."));
-  addon.type("ForeverUI_TextEdit", "   ");
+  addon.type("Vanguard_TextEdit", "   ");
   confirm(addon);
-  expect(addon.frame("ForeverUI_TextDialog").visible, "an empty macro isn't bound and the dialog stays").toBe(true);
+  expect(addon.frame("Vanguard_TextDialog").visible, "an empty macro isn't bound and the dialog stays").toBe(true);
   addon.eval("ns.HideText()");
   addon.eval('__click("More modifiers")');
   expect(addon.frames("w.key ~= nil and w.iconFrame ~= nil and w.empty ~= nil and w:IsVisible()").length, "three more columns").toBe(35);
@@ -245,7 +245,7 @@ it("the starter layout, hover keys with collision notes, and the test tile", () 
   addon.keys({ shift: true });
   addon.key(add, "Q");
   addon.keys({ shift: false });
-  expect(addon.frame("ForeverUI_SpellPicker").visible, "a pressed key opens the picker").toBe(true);
+  expect(addon.frame("Vanguard_SpellPicker").visible, "a pressed key opens the picker").toBe(true);
   addon.click(pickerRow(addon, "Renew"));
   expect(bindings(addon)["SHIFT-Q"]).toBe("spell:Renew:139:nil");
   expect(addon.texts("Shift + Q").length, "the row names the key without the (hover) tail").toBe(1);
@@ -257,7 +257,7 @@ it("the starter layout, hover keys with collision notes, and the test tile", () 
   expect(addon.texts("That's a mouse button: it lives in the grid above.").length).toBe(1);
   for (let i = 1; i <= 9; i++) addon.eval(`${CC}.Add("F${i}", "target")`);
   addon.eval("ns.Options.Refresh()");
-  expect(addon.texts("+3 more (/fui binds)").length, "rows past the list are counted").toBe(1);
+  expect(addon.texts("+3 more (/vg binds)").length, "rows past the list are counted").toBe(1);
   addon.eval(`${CC}.Remove("SHIFT-Q")`);
   const q = widget(addon, 'w.key == "1" and w.remove ~= nil and w.keyText ~= nil');
   addon.eval(`__wfgStub.frames[${q}].remove:GetScript("OnClick")()`);
@@ -307,17 +307,17 @@ it("sharing: export, import, copy to another spec, and the combat notice", () =>
   addon.eval(`${CC}.Add("BUTTON2", "spell", "Renew", 139)`);
   addon.eval('ns.Options.Show("clickcast")');
   addon.eval('__click("Export")');
-  expect(/^FUI1:clickcast:/.test(addon.eval("return ForeverUI_TextEdit:GetText()")), "Export shows the string to copy").toBe(true);
-  const text = addon.eval("return ForeverUI_TextEdit:GetText()");
+  expect(/^VG1:clickcast:/.test(addon.eval("return Vanguard_TextEdit:GetText()")), "Export shows the string to copy").toBe(true);
+  const text = addon.eval("return Vanguard_TextEdit:GetText()");
   addon.eval("ns.HideText()");
   addon.clearChat();
   addon.eval('__click("Import")');
-  addon.type("ForeverUI_TextEdit", "nonsense");
+  addon.type("Vanguard_TextEdit", "nonsense");
   confirm(addon);
-  expect(chatHas(addon, /Can't import: not a ForeverUI profile string\./)).toBe(true);
-  addon.type("ForeverUI_TextEdit", text);
+  expect(chatHas(addon, /Can't import: not a Vanguard profile string\./)).toBe(true);
+  addon.type("Vanguard_TextEdit", text);
   confirm(addon);
-  expect(chatHas(addon, /Imported 1 click-casting bindings\./) && !addon.frame("ForeverUI_TextDialog").visible).toBe(true);
+  expect(chatHas(addon, /Imported 1 click-casting bindings\./) && !addon.frame("Vanguard_TextDialog").visible).toBe(true);
   const copy = widget(addon, 'w.choices ~= nil and w.text ~= nil and w.text.__text == "Copy to spec..."');
   expect(addon.frame(copy).visible, "with specs, Copy to spec shows").toBe(true);
   addon.clearChat();
@@ -333,11 +333,11 @@ it("sharing: export, import, copy to another spec, and the combat notice", () =>
   addon.click(cell(addon, "alt-BUTTON3"));
   addon.world.combat(false);
   expect(addon.eval(`return ${CC}.frames[1]:GetAttribute("type5")`), "the fight ends: the change applies and the page re-reads").toBe("togglemenu");
-  expect(addon.frame("ForeverUI_SpellPicker").visible, "an open picker follows the bindings").toBe(true);
+  expect(addon.frame("Vanguard_SpellPicker").visible, "an open picker follows the bindings").toBe(true);
 });
 
 it("without specializations the page speaks of this character", () => {
-  const addon = priest("", { savedVariables: "ForeverUIDB = { profiles = { Default = { ClickCast = { unitFrames = true } } } }" });
+  const addon = priest("", { savedVariables: "VanguardDB = { profiles = { Default = { ClickCast = { unitFrames = true } } } }" });
   addon.eval('ns.Options.Show("clickcast")');
   expect(addon.frames('w.__kind == "FontString" and w:IsVisible() and type(w.__text) == "string" and w.__text:find("Bindings for this character", 1, true)').length).toBe(1);
   expect(addon.eval(`return #${CC}.frames > 0`), "unit frames join when that setting is on").toBe(true);

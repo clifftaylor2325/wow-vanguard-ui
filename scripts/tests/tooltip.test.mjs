@@ -1,4 +1,4 @@
-// tooltip: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// tooltip: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { UNITS_ENV, calls, isTok, loggedIn, tooltip } from "./helpers.mjs";
@@ -25,7 +25,7 @@ const TOOLTIP_ENV = `
 it("tooltips", () => {
   const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV);
   let t = tooltip(addon);
-  expect(t.nine === 0 && addon.eval("return GameTooltip.fuiSkinned") === true, "the default art is hidden under a flat panel").toBeTruthy();
+  expect(t.nine === 0 && addon.eval("return GameTooltip.vgSkinned") === true, "the default art is hidden under a flat panel").toBeTruthy();
   expect(addon.eval("return GameTooltipStatusBar.__barTexture ~= nil"), "the health bar gets a flat texture").toBeTruthy();
   addon.eval("__showUnit('target')");
   t = tooltip(addon);
@@ -44,9 +44,9 @@ it("tooltips", () => {
   addon.eval("__hooks.GameTooltip_SetDefaultAnchor(GameTooltip, UIParent)");
   t = tooltip(addon);
   expect(t.anchor === "ANCHOR_NONE" && t.point === true, "the default tooltip goes to the movable corner").toBeTruthy();
-  addon.eval('ForeverUIDB.profiles.Default.Tooltips.anchor = "cursor"; __hooks.GameTooltip_SetDefaultAnchor(GameTooltip, UIParent)');
+  addon.eval('VanguardDB.profiles.Default.Tooltips.anchor = "cursor"; __hooks.GameTooltip_SetDefaultAnchor(GameTooltip, UIParent)');
   expect(tooltip(addon).anchor === "ANCHOR_CURSOR", "or follows the cursor").toBeTruthy();
-  addon.eval("ForeverUIDB.profiles.Default.Tooltips.hideInCombat = true; __wfgStub.inCombat = true; __showUnit('target')");
+  addon.eval("VanguardDB.profiles.Default.Tooltips.hideInCombat = true; __wfgStub.inCombat = true; __showUnit('target')");
   expect(tooltip(addon).shown === false, "unit tooltips can hide in combat").toBeTruthy();
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.tooltip") === true, "the tooltip corner is movable").toBeTruthy();
 });
@@ -72,7 +72,7 @@ it("item tooltips show what the stack sells for, unless the client already does"
   expect(line.text === "Sells for 5s 0c" && isTok(addon, line.left, "text2") && isTok(addon, line.right, "gold"), "a stack of 20 at 25c each, the price in gold").toBe(true);
   expect(addon.eval('return __showItem("item:90001", nil)[1].text'), "a single item").toBe("Sells for 0s 25c");
   expect(addon.eval('return { #__showItem("item:90002", 1), #__showItem("item:90003", 1), #__showItem({ __secret = true }, 1), #__showItem("item:90001", 1, 1) }'), "no value, not cached yet, hidden, or the client's own price: no line").toEqual([0, 0, 0, 0]);
-  addon.eval("ForeverUIDB.profiles.Default.Tooltips.sellPrice = false");
+  addon.eval("VanguardDB.profiles.Default.Tooltips.sellPrice = false");
   expect(addon.eval('return #__showItem("item:90001", 1)'), "the switch turns it off").toBe(0);
   const old = loggedIn(UNITS_ENV + TOOLTIP_ENV.replace("TooltipDataProcessor =", "__noProcessor =") + "GameTooltip.HasScript = function() return true end" + ITEM_TIP_ENV);
   expect(old.eval('return __showItem("item:90001", 2)[1].text'), "a client without the tooltip data API: the old script").toBe("Sells for 0s 50c");
@@ -86,7 +86,7 @@ it("item tooltips: other modules' lines come after the tooltip's own, and one th
     TT.AddItemLines(function(tt) tt:AddLine("TEST-ONLY last") end)`);
   const lines = addon.eval('local out = {} for i, l in ipairs(__showItem("item:90001", 2)) do out[i] = l.text end return out');
   expect(lines, "the sell price, then each added line with the item's link, past the one that failed").toEqual(["Sells for 0s 50c", "TEST-ONLY first item:90001", "TEST-ONLY last"]);
-  expect(addon.eval("return ns.errors[#ns.errors].text"), "the failure is caught for /fui errors").toMatch(/TEST-ONLY broken line/);
+  expect(addon.eval("return ns.errors[#ns.errors].text"), "the failure is caught for /vg errors").toMatch(/TEST-ONLY broken line/);
   expect(addon.eval("return #__showItem({ __secret = true }, 1)"), "a hidden link: no lines at all").toBe(0);
 });
 
@@ -94,8 +94,8 @@ it("item tooltips: how many you have, and the item ID when asked", () => {
   const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV + "C_Item.GetItemCount = function(link, bank) if link == 'item:90002' then return 3, 3 end return bank and 12 or 7 end");
   expect(addon.eval('local l = __showItem("item:90002", 1) return l[1].text'), "all in your bags").toBe("You have 3");
   expect(addon.eval('local l = __showItem("item:90001", 1) return { l[2].text, #l }'), "some in the bank; no ID line by default").toEqual(["You have 12 (5 in the bank)", 2]);
-  addon.eval("ForeverUIDB.profiles.Default.Tooltips.itemID = true ForeverUIDB.profiles.Default.Tooltips.itemCount = false");
+  addon.eval("VanguardDB.profiles.Default.Tooltips.itemID = true VanguardDB.profiles.Default.Tooltips.itemCount = false");
   expect(addon.eval('local l = __showItem("item:90002", 1) return l[#l].text'), "the ID line, when switched on").toBe("Item ID 90002");
-  addon.eval("C_Item.GetItemCount = function() return 0, 0 end ForeverUIDB.profiles.Default.Tooltips.itemCount = true ForeverUIDB.profiles.Default.Tooltips.itemID = false");
+  addon.eval("C_Item.GetItemCount = function() return 0, 0 end VanguardDB.profiles.Default.Tooltips.itemCount = true VanguardDB.profiles.Default.Tooltips.itemID = false");
   expect(addon.eval('return #__showItem("item:90002", 1)'), "none of it: no count line").toBe(0);
 });

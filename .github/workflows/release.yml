@@ -1,7 +1,7 @@
 name: release
 
 # Publish a GitHub release with the addon zip attached, either by pushing a
-# tag like v0.3.0 (matching ## Version in ForeverUI.toc) or by running
+# tag like v0.3.0 (matching ## Version in Vanguard.toc) or by running
 # this workflow from the Actions tab on main, which tags the commit
 # v<TOC version> itself.
 on:
@@ -25,7 +25,7 @@ jobs:
           cache: npm
       - name: Tag matches the TOC version
         run: |
-          toc=$(sed -n 's/^## Version:[[:space:]]*//p' ForeverUI.toc | tr -d '\r')
+          toc=$(sed -n 's/^## Version:[[:space:]]*//p' Vanguard.toc | tr -d '\r')
           if [ "$GITHUB_EVENT_NAME" = "push" ]; then
             test "v$toc" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME but TOC says $toc"; exit 1; }
           else
@@ -41,7 +41,7 @@ jobs:
       - run: luacheck --no-color .
       - name: Lua 5.1 syntax
         run: |
-          grep -vE '^\s*(#|$)' ForeverUI.toc | tr -d '\r' | xargs -n1 luac5.1 -p
+          grep -vE '^\s*(#|$)' Vanguard.toc | tr -d '\r' | xargs -n1 luac5.1 -p
       - run: node scripts/package.mjs --ref "$GITHUB_SHA"
       - name: Publish
         env:

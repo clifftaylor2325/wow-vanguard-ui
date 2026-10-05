@@ -73,7 +73,7 @@ export function resolveWowDir(io, flag, env) {
   return flag || env.WOW_FOREVER_DIR || readConfig(io).wowDir || null;
 }
 
-// A backup name for an installed copy, e.g. ForeverUI.backup-20261027-1530.
+// A backup name for an installed copy, e.g. Vanguard.backup-20261027-1530.
 export function backupName(dest, now) {
   const stamp = now.toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 13);
   return `${dest}.backup-${stamp}`;

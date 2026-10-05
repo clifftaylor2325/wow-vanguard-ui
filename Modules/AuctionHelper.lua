@@ -1,4 +1,4 @@
--- Auction helper: a ForeverUI panel docked to the left of the game's auction
+-- Auction helper: a Vanguard panel docked to the left of the game's auction
 -- house window.
 --   * Shop: named shopping lists (items by ID or by name); "Search list" runs
 --     the list's searches one after another (one in flight, at most 60 a
@@ -204,7 +204,7 @@ end
 -- The panel beside the auction house window (from its top, at least as tall as it), built the
 -- first time the window shows.
 function AH.Build()
-  local f = T.Panel(CreateFrame("Frame", "ForeverUI_AuctionPanel", UIParent), { shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_AuctionPanel", UIParent), { shadow = true })
   size(f)
   f:SetPoint("TOPRIGHT", AuctionHouseFrame, "TOPLEFT", -AH.GAP, 0)
   f:EnableMouse(true)
@@ -335,15 +335,15 @@ local function entryNames(list)
   return table.concat(names, ", ")
 end
 
--- /fui ah list [name]: picks (or makes) a list, and says what's on the list in use.
+-- /vg ah list [name]: picks (or makes) a list, and says what's on the list in use.
 function AH.ListCommand(arg)
   if arg ~= "" and not AH.NewList(arg) then return end
   local name, list = AH.CurrentList()
-  if not name then return ns.Chat("No shopping lists yet: /fui ah list <name> makes one.") end
+  if not name then return ns.Chat("No shopping lists yet: /vg ah list <name> makes one.") end
   ns.Chat(string.format("Shopping list %s (%d): %s", name, #list, #list > 0 and entryNames(list) or "empty"))
 end
 
--- /fui ah add <list> <item>: the list is the longest list name the words start with, else the first word.
+-- /vg ah add <list> <item>: the list is the longest list name the words start with, else the first word.
 function AH.AddCommand(arg)
   local best
   for name in pairs(AP.Store().lists) do
@@ -353,7 +353,7 @@ function AH.AddCommand(arg)
   AH.AddEntry(arg:sub(#list + 2), list)
 end
 
--- /fui ah's words: list, add, scan, and prices clear (Modules/AuctionShop.lua adds the list in use's words).
+-- /vg ah's words: list, add, scan, and prices clear (Modules/AuctionShop.lua adds the list in use's words).
 AH.COMMANDS = {
   -- Picks or makes a list.
   list = function(arg) AH.ListCommand(arg) end,
@@ -373,12 +373,12 @@ AH.COMMANDS = {
 function AH.Status()
   local store = AP.House()
   local last = store.lastScan > 0 and AP.Ago(store.lastScan) or "never"
-  ns.Chat(string.format("Auction prices for %d item(s); last scan: %s. /fui ah list <name>, add <list> <item>, rename <name>, duplicate, delete, export, import, recent, scan (at the auction house), prices clear, restock.", store.count, last))
+  ns.Chat(string.format("Auction prices for %d item(s); last scan: %s. /vg ah list <name>, add <list> <item>, rename <name>, duplicate, delete, export, import, recent, scan (at the auction house), prices clear, restock.", store.count, last))
 end
 
--- /fui ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|restock|scan|prices clear].
+-- /vg ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|restock|scan|prices clear].
 function AH.Command(rest)
-  if not AH.settings then return ns.Chat("The auction helper is off (/fui > Modules).") end
+  if not AH.settings then return ns.Chat("The auction helper is off (/vg > Modules).") end
   local word, arg = (rest or ""):match("^(%S*)%s*(.-)%s*$")
   local fn = AH.COMMANDS[word:lower()]
   if fn then return fn(arg) end

@@ -8,7 +8,7 @@
 --   "[combat] show; fade"                 also shown while the mouse is over it
 -- The client runs it as a state driver (RegisterStateDriver), in combat too,
 -- without secure snippets: secure frames get it as their "visibility" driver
--- (fade counts as shown), and every frame gets it as the "fuivis" state, whose
+-- (fade counts as shown), and every frame gets it as the "vgvis" state, whose
 -- changes come back through OnAttributeChanged. "fade" fades the frame by
 -- alpha until the mouse is over it, since mouseover is not a macro condition;
 -- alpha is safe in combat. "In an instance" is not one either: it is read when
@@ -102,24 +102,24 @@ end
 -- 1 unless the frame fades and the mouse isn't over it (nor is it revealed, as
 -- action bars are while you drag a spell, nor lingering after Auto-hide), else 0.
 function V.Alpha(frame)
-  if frame.fuiState ~= "fade" or frame.fuiHover or frame.fuiReveal or frame.fuiLingering then return 1 end
+  if frame.vgState ~= "fade" or frame.vgHover or frame.vgReveal or frame.vgLingering then return 1 end
   return 0
 end
 
 -- Keeps an Auto-hide frame shown for V.LINGER seconds from now (a later call
 -- restarts the wait), then lets it fade. Without the client's timer it just fades.
 function V.Linger(frame)
-  local token = (frame.fuiLingerCount or 0) + 1
-  frame.fuiLingerCount = token
-  frame.fuiLingering = type(C_Timer) == "table" and type(C_Timer.After) == "function" or nil
-  if frame.fuiLingering then C_Timer.After(V.LINGER, function() V.EndLinger(frame, token) end) end
+  local token = (frame.vgLingerCount or 0) + 1
+  frame.vgLingerCount = token
+  frame.vgLingering = type(C_Timer) == "table" and type(C_Timer.After) == "function" or nil
+  if frame.vgLingering then C_Timer.After(V.LINGER, function() V.EndLinger(frame, token) end) end
   V.Refresh(frame)
 end
 
 -- The wait that started as `token` is over: the frame fades, unless a later wait replaced it.
 function V.EndLinger(frame, token)
-  if frame.fuiLingerCount ~= token then return end
-  frame.fuiLingering = nil
+  if frame.vgLingerCount ~= token then return end
+  frame.vgLingering = nil
   V.Refresh(frame)
 end
 
@@ -128,11 +128,11 @@ end
 -- the Instance prep card and the Chat watch toast do each time they show.
 -- Without the client's timer the frame stays until it is closed.
 function ns.AutoHide(frame, seconds)
-  local token = (frame.fuiAutoHideCount or 0) + 1
-  frame.fuiAutoHideCount = token
+  local token = (frame.vgAutoHideCount or 0) + 1
+  frame.vgAutoHideCount = token
   if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return end
   C_Timer.After(seconds, function()
-    if frame.fuiAutoHideCount == token then T.FadeOut(frame) end
+    if frame.vgAutoHideCount == token then T.FadeOut(frame) end
   end)
 end
 
@@ -149,26 +149,26 @@ function ns.Where()
 end
 
 -- Whether the frame's state shows it, and whether it fades with the mouse.
-function V.Shows(frame) return frame.fuiState ~= "hide" end
-function V.Fades(frame) return frame.fuiStateString ~= nil and frame.fuiStateString:find("fade") ~= nil end
+function V.Shows(frame) return frame.vgState ~= "hide" end
+function V.Fades(frame) return frame.vgStateString ~= nil and frame.vgStateString:find("fade") ~= nil end
 
 -- Paints the frame's alpha and tells its owner the state (to show or hide it).
 function V.Refresh(frame)
   frame:SetAlpha(V.Alpha(frame))
-  if frame.fuiOnState then frame.fuiOnState(frame) end
+  if frame.vgOnState then frame.vgOnState(frame) end
 end
 
--- The client changed the frame's "fuivis" state: note it and repaint.
+-- The client changed the frame's "vgvis" state: note it and repaint.
 local function onAttribute(frame, name, value)
-  if name ~= "state-fuivis" then return end
-  frame.fuiState = value
+  if name ~= "state-vgvis" then return end
+  frame.vgState = value
   V.Refresh(frame)
 end
 
 -- Lets a frame feel the mouse (not its clicks) while it fades with it.
 local function motion(frame)
-  if frame.fuiMotion or not V.Fades(frame) then return end
-  frame.fuiMotion = true
+  if frame.vgMotion or not V.Fades(frame) then return end
+  frame.vgMotion = true
   frame:SetMouseMotionEnabled(true)
   frame:SetMouseClickEnabled(false)
 end
@@ -177,14 +177,14 @@ end
 -- with secure, its visibility driver too; onState(frame) runs on every change.
 function V.ApplyNow(frame, mode, when, secure)
   local state = V.State(mode, when)
-  if not frame.fuiStateString then frame:HookScript("OnAttributeChanged", onAttribute) end
-  frame.fuiStateString, frame.fuiState = state, V.Parse(state)
-  frame.fuiInstance = V.Mode(mode) ~= "hidden" and V.Checked(mode, when).instance == true
-  frame.fuiAutoHide = V.Mode(mode) == "autohide"
+  if not frame.vgStateString then frame:HookScript("OnAttributeChanged", onAttribute) end
+  frame.vgStateString, frame.vgState = state, V.Parse(state)
+  frame.vgInstance = V.Mode(mode) ~= "hidden" and V.Checked(mode, when).instance == true
+  frame.vgAutoHide = V.Mode(mode) == "autohide"
   if secure then RegisterStateDriver(frame, "visibility", V.Driver(state)) end
-  RegisterStateDriver(frame, "fuivis", state)
-  if frame.fuiHoverRoot then motion(frame) end
-  if frame.fuiAutoHide then return V.Linger(frame) end
+  RegisterStateDriver(frame, "vgvis", state)
+  if frame.vgHoverRoot then motion(frame) end
+  if frame.vgAutoHide then return V.Linger(frame) end
   V.Refresh(frame)
 end
 
@@ -197,7 +197,7 @@ end
 -- A zone change: frames that check In an instance get their drivers again.
 local function onZone()
   for frame, reapply in pairs(V.tracked) do
-    if frame.fuiInstance then ns.OutOfCombat(reapply, frame) end
+    if frame.vgInstance then ns.OutOfCombat(reapply, frame) end
   end
 end
 ns.On("PLAYER_ENTERING_WORLD", onZone)
@@ -205,23 +205,23 @@ ns.On("ZONE_CHANGED_NEW_AREA", onZone)
 
 -- The mouse came over the frame or a frame in it.
 local function hoverEnter(f)
-  local frame = f.fuiHoverOf
-  frame.fuiHover = true
+  local frame = f.vgHoverOf
+  frame.vgHover = true
   V.Refresh(frame)
 end
 
 -- The mouse left: the frame fades unless the mouse is still over it (moving
 -- between its buttons crosses the frame itself); an Auto-hide frame lingers first.
 local function hoverLeave(f)
-  local frame = f.fuiHoverOf
-  frame.fuiHover = frame.fuiHoverRoot:IsMouseOver() == true
-  if frame.fuiAutoHide and not frame.fuiHover then return V.Linger(frame) end
+  local frame = f.vgHoverOf
+  frame.vgHover = frame.vgHoverRoot:IsMouseOver() == true
+  if frame.vgAutoHide and not frame.vgHover then return V.Linger(frame) end
   V.Refresh(frame)
 end
 
 -- Follows the mouse over a frame and every frame inside it (nothing polls).
 local function hookHover(f, frame)
-  f.fuiHoverOf = frame
+  f.vgHoverOf = frame
   f:HookScript("OnEnter", hoverEnter)
   f:HookScript("OnLeave", hoverLeave)
   for _, child in ipairs({ f:GetChildren() }) do hookHover(child, frame) end
@@ -229,7 +229,7 @@ end
 
 -- Watches the mouse over frame and the frames in it, for fading on mouseover.
 function V.WatchHover(frame)
-  frame.fuiHoverRoot = frame
+  frame.vgHoverRoot = frame
   hookHover(frame, frame)
 end
 
