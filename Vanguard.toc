@@ -76,6 +76,7 @@ Modules/ChatWatch.lua
 Modules/Bags.lua
 Modules/BagSections.lua
 Modules/InfoStrip.lua
+Modules/BrokerStrip.lua
 Modules/MenuStrip.lua
 Modules/Merchant.lua
 Modules/Errands.lua

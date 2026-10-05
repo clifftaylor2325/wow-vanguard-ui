@@ -236,6 +236,7 @@ O.MODULE_INFO = {
   ActionBars = { "Action bars", "Eight bars with their own size, layout and visibility." },
   SpecialBars = { "Pet, stance and extra buttons", "Restyles the game's special buttons, places the pet and stance bars, and adds the vehicle exit." },
   Minimap = { "Minimap", "A square minimap with the zone and coordinates." },
+  BrokerStrip = { "Broker strip", "Other addons' data feeds (LibDataBroker) at the top center, the ones you pick." },
   InfoStrip = { "Info strip", "Durability, bag slots, fps, gold, ammo or soul shards and the time, under the minimap, your XP and gold per hour while you level, and your DPS and its place if you like." },
   AfkScreen = { "AFK screen", "While you're away, the screen dims to a card with your character, zone, time away and XP." },
   MenuStrip = { "Menu and quest tracker", "The game's bag and menu buttons on framed slots in one corner bar, and the quest tracker under the info strip." },
@@ -670,10 +671,20 @@ local function tooltipRows()
   }, vendorRows())
 end
 
+-- Other addons' data feeds for the broker strip: one switch per feed, while any addon shares one.
+local function brokerRows()
+  local BS = ns.GetModule("BrokerStrip")
+  local sources, rows = BS.Sources(), { { "header", "Data from other addons" } }
+  if #sources == 0 then return { rows[1], { "text", "No addon shares data through LibDataBroker right now." } } end
+  rows[2] = { "text", "Picked feeds show in the broker strip at the top center (up to " .. BS.MAX .. ", in the order picked)." }
+  for _, name in ipairs(sources) do rows[#rows + 1] = check(name, function() return BS.Chosen(name) end, function(v) BS.Choose(name, v) end) end
+  return rows
+end
+
 -- The Bars, map, chat page: your buffs, bars and map, the strip, merchants, tooltips.
 local function morePageRows()
   local rows = append(append(append(playerAuraRows(), dataBarRows()), moreRows()), bagRows())
-  append(rows, stripRows())
+  append(append(rows, stripRows()), brokerRows())
   append(rows, gamePartRows())
   append(rows, windowRows())
   append(rows, auctionRows())
