@@ -383,7 +383,7 @@ it("never more than 60 searches a minute, a second apart", () => {
   expect([at.length, Math.min(...gaps) >= 1 - 1e-9], "60 in the minute, each at least a second after the last").toEqual([60, true]);
 });
 
-it("result rows show name, cheapest price and quantity; a click shows the item in the game's own list", () => {
+it("result rows show name, cheapest price and quantity; a click opens the item's listings", () => {
   const addon = atAuctionHouse(DUSTS);
   makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "TEST-ONLY Nothing" }');
   addon.eval(`__wfgWorld.ah.browse = { { itemKey = { itemID = 10941 }, minPrice = 900, totalQuantity = 3 },
@@ -397,11 +397,13 @@ it("result rows show name, cheapest price and quantity; a click shows the item i
   expect(shopRow(addon, 2).slice(0, 4), "nothing up").toEqual([true, "TEST-ONLY Nothing", "none up", ""]);
   expect(shopRow(addon, 3)[0], "no third entry").toBe(false);
   addon.advance(1);
-  addon.click(`${HELPER}.shopCard.rows[1]`);
   addon.click(`${HELPER}.shopCard.rows[2]`);
-  expect(sent(addon).at(-1), "the game's own list is asked for that item's key (its browse list shows it)").toBe("SearchForItemKeys:10940");
-  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
-  expect([shopRow(addon, 1)[2], addon.eval(`return ${HELPER}.pending == nil`)], "the row keeps its price; nothing waits").toEqual(["12s 50c", true]);
+  expect(sent(addon).length, "nothing found: nothing opens").toBe(2);
+  addon.click(`${HELPER}.shopCard.rows[1]`);
+  expect(sent(addon).at(-1), "the item's listings are searched by the key its row found").toBe("SendSearchQuery:10940");
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.click(`${HELPER}.shopCard.view.back`);
+  expect([shopRow(addon, 1)[2], addon.eval(`return ${HELPER}.pending == nil`)], "back: the row keeps its price; nothing waits").toEqual(["12s 50c", true]);
 });
 
 it("entries by item link, ID or name; Remove on the right-click menu; the wheel scrolls", () => {
@@ -714,6 +716,149 @@ it("/fui ah recent shows Recent", () => {
   expect([chatHas(addon, /Shopping list Recent \(2\): Linen Cloth, Soul Dust$/), addon.eval("return ForeverUIDB.ah.list")], "its items, and it's in use").toEqual([true, "\u0001recent"]);
   addon.slash("ah");
   expect(chatHas(addon, /import, recent, scan/), "the help names it").toBe(true);
+});
+
+// The results view: shown, the item's name, the status line, and its rows shown as [price, quantity, time left, marked].
+const view = (addon) => addon.eval(`local f = ${HELPER}.shopCard.view local rows = {}
+  for i, r in ipairs(f.rows) do if r:IsShown() then rows[i] = { r.cells.price:GetText(), r.cells.qty:GetText(), r.cells.time:GetText(), r.mark:IsShown() } end end
+  return { f:IsShown(), f.name:GetText() or false, f.status:GetText() or false, rows }`);
+
+// Eight TEST-ONLY dust listings (unit price, quantity, seconds left) and one with a hidden price.
+const DUST_LISTINGS = `__wfgWorld.ah.commodities[10940] = {
+  { unitPrice = 1300, quantity = 200, timeLeftSeconds = 40000 }, { unitPrice = 1250, quantity = 20, timeLeftSeconds = 3000 },
+  { unitPrice = 1399, quantity = 5, timeLeftSeconds = 100000 }, { unitPrice = __wfgWorld.secret(1), quantity = 1 },
+  { unitPrice = 1450, quantity = 1, timeLeftSeconds = 7200 }, { unitPrice = 1500, quantity = 60 },
+  { unitPrice = 1990, quantity = 12, timeLeftSeconds = 9000 }, { unitPrice = 2500, quantity = 3, timeLeftSeconds = 30 },
+  { unitPrice = 1250, quantity = 7, timeLeftSeconds = 600 } }`;
+
+// A list with Strange Dust searched (found up at 12s 50c).
+function dustFound(addon) {
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust" }');
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 1250, totalQuantity = 290 } }");
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.advance(1);
+}
+
+it("a shop row opens every listing of its item in place of the rows; columns sort; Back returns", () => {
+  const addon = atAuctionHouse(DUSTS + DUST_LISTINGS);
+  dustFound(addon);
+  addon.click(`${HELPER}.shopCard.rows[1]`);
+  const q = addon.eval("local q = __wfgWorld.ah.queries[#__wfgWorld.ah.queries] return { q.fn, q.args[1].itemID, q.args[2][1].sortOrder, q.args[3] }");
+  expect(q, "the item's own search, cheapest first, through the queue").toEqual(["SendSearchQuery", 10940, 0, false]);
+  expect([view(addon).slice(0, 3), addon.eval(`return ${HELPER}.shopCard.body:IsShown()`)], "the view in place of the rows, searching").toEqual([[true, "Strange Dust", "searching..."], false]);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  expect(view(addon), "cheapest first, the hidden price left out, six rows").toEqual([true, "Strange Dust", "", [
+    ["12s 50c", "7", "10 min", true], ["12s 50c", "20", "50 min", false], ["13s 0c", "200", "11 h", false],
+    ["13s 99c", "5", "27 h", false], ["14s 50c", "1", "2 h", false], ["15s 0c", "60", "", false]]]);
+  expect(addon.eval(`return ${HELPER}.pending == nil`), "its search is answered").toBe(true);
+  addon.click(`${HELPER}.shopCard.view.heads[2]`);
+  expect(view(addon)[3].map((r) => r[1]), "by quantity").toEqual(["1", "3", "5", "7", "12", "20"]);
+  addon.click(`${HELPER}.shopCard.view.heads[2]`);
+  expect([view(addon)[3].map((r) => r[1]), addon.eval(`return ${HELPER}.shopCard.view.arrow:GetRotation()`)], "again: most first, the arrow turned").toEqual([["200", "60", "20", "12", "7", "5"], 0]);
+  addon.click(`${HELPER}.shopCard.view.heads[3]`);
+  expect(view(addon)[3].map((r) => r[2]), "by time left (none first)").toEqual(["", "1 min", "10 min", "50 min", "2 h", "2 h"]);
+  addon.wheel(`${HELPER}.shopCard.view.rows[1]`, -5);
+  expect(view(addon)[3].map((r) => r[2]), "the wheel scrolls to the end").toEqual(["10 min", "50 min", "2 h", "2 h", "11 h", "27 h"]);
+  addon.advance(1);
+  addon.click(`${HELPER}.shopCard.view.rows[2]`);
+  expect([sent(addon).at(-1), restrictedLog(addon)], "a listing opens its item in the game's own list; nothing is bought").toEqual(["SearchForItemKeys:10940", []]);
+  addon.click(`${HELPER}.shopCard.view.back`);
+  expect([view(addon)[0], addon.eval(`return ${HELPER}.shopCard.body:IsShown()`), shopRow(addon, 1)[1]], "Back: the rows again").toEqual([false, true, "Strange Dust"]);
+});
+
+it("the view reads further pages as it scrolls, shows time-left bands and leaves out what's over the max price", () => {
+  const addon = atAuctionHouse(BAGS + `TIME_LEFT_LONG = "TEST-ONLY Long"
+    __wfgWorld.ah.searchFull = false
+    __wfgWorld.ah.items[9999] = {}
+    for i = 1, 8 do __wfgWorld.ah.items[9999][i] = { buyoutAmount = 1000 * i, quantity = 1, timeLeft = i % 4 } end
+    table.insert(__wfgWorld.ah.items[9999], { minBid = 10, quantity = 1, timeLeft = 0 })
+    table.insert(__wfgWorld.ah.items[9999], { buyoutAmount = 99000, quantity = 1, timeLeft = 9 })`);
+  makeList(addon, "TEST-ONLY Gear", "{ \"9999\" }");
+  addon.eval("ForeverUIDB.ah.lists['TEST-ONLY Gear'][1] = { term = 9999, maxPrice = 50000 }");
+  addon.click(`${HELPER}.shopCard.rows[1]`);
+  addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect(view(addon)[3].map((r) => [r[0], r[2]]), "an item's buyout, its band by the game's name or ours; bid only and over 5g left out").toEqual([
+    ["10s 0c", "Medium"], ["20s 0c", "TEST-ONLY Long"], ["30s 0c", "Very long"], ["40s 0c", "Short"], ["50s 0c", "Medium"], ["60s 0c", "TEST-ONLY Long"]]);
+  addon.wheel(`${HELPER}.shopCard.view`, -1);
+  addon.advance(1);
+  expect(sent(addon).slice(-1)[0], "near the end: the next page, through the queue").toBe("RequestMoreItemSearchResults:9999");
+  addon.wheel(`${HELPER}.shopCard.view`, 1);
+  addon.advance(1);
+  expect(sent(addon).filter((x) => x.startsWith("RequestMore")).length, "asked once until it comes").toBe(1);
+  addon.eval("__wfgWorld.ah.items[9999][11] = { buyoutAmount = 500, quantity = 1, timeLeft = 3 } __wfgWorld.ah.searchFull = true");
+  addon.fire("ITEM_SEARCH_RESULTS_ADDED", { itemID: 9999 });
+  expect([view(addon)[3][0][0], addon.eval(`return ${HELPER}.pending == nil`)], "the new page sorted in; the request done").toEqual(["5s 0c", true]);
+  addon.wheel(`${HELPER}.shopCard.view`, -5);
+  addon.advance(2);
+  expect(sent(addon).filter((x) => x.startsWith("RequestMore")).length, "all in: no more asked").toBe(1);
+  addon.click(`${HELPER}.shopCard.view.back`);
+  addon.eval(`ForeverUIDB.ah.lists['TEST-ONLY Gear'][2] = 'TEST-ONLY Unsearched' ${HELPER}.PaintShop()`);
+  addon.click(`${HELPER}.shopCard.rows[2]`);
+  expect(view(addon)[0], "a name not searched yet opens nothing").toBe(false);
+});
+
+it("a commodity view asks for more with the commodity call; an empty answer says none up; closing drops it", () => {
+  const addon = atAuctionHouse(DUSTS + DUST_LISTINGS + " __wfgWorld.ah.searchFull = false");
+  dustFound(addon);
+  addon.click(`${HELPER}.shopCard.rows[1]`);
+  addon.wheel(`${HELPER}.shopCard.view`, -1);
+  addon.advance(2);
+  expect(sent(addon).some((x) => x.startsWith("RequestMore")), "nothing asked before the first answer").toBe(false);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 555);
+  addon.wheel(`${HELPER}.shopCard.view`, -2);
+  addon.advance(1);
+  expect(addon.eval("local q = __wfgWorld.ah.queries[#__wfgWorld.ah.queries] return { q.fn, q.args[1] }"), "the commodity's next page").toEqual(["RequestMoreCommoditySearchResults", 10940]);
+  addon.eval("__wfgWorld.ah.commodities[10940] = {}");
+  addon.fire("COMMODITY_SEARCH_RESULTS_ADDED", 10940);
+  expect(view(addon).slice(2), "nothing left: none up").toEqual(["none up", {}]);
+  addon.world.closeAuctionHouse();
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect([view(addon)[0], shopRow(addon, 1)[0]], "a new visit starts on the rows").toEqual([false, true]);
+});
+
+it("keys: Up and Down mark a listing, Enter opens it, only while the mouse is over the view; other keys go on", () => {
+  const addon = atAuctionHouse(DUSTS + DUST_LISTINGS);
+  dustFound(addon);
+  addon.click(`${HELPER}.shopCard.rows[1]`);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.eval(`local f = ${HELPER}.shopCard.view f.SetPropagateKeyboardInput = function(self, v) self.__passed = v end f.EnableKeyboard = function(self, on) self.__kb = on end`);
+  // Whether the view has the keyboard, and whether its last key went on to the game.
+  const kb = () => addon.eval(`local f = ${HELPER}.shopCard.view return { f.__kb == true, f.__passed }`);
+  // Presses a key on the view, as the client does while it has the keyboard.
+  const press = (key) => addon.key(`${HELPER}.shopCard.view`, key);
+  addon.hover(`${HELPER}.shopCard.view.rows[1]`);
+  expect(kb()[0], "the mouse over a listing: the view takes the keys").toBe(true);
+  press("DOWN");
+  expect([view(addon)[3][1][3], kb()[1]], "Down marks the next; the key stops here").toEqual([true, false]);
+  press("UP");
+  press("UP");
+  expect(view(addon)[3][0][3], "Up, not past the first").toBe(true);
+  for (let i = 0; i < 7; i++) press("DOWN");
+  expect([view(addon)[3].map((r) => r[0]), view(addon)[3].at(-1)], "Down past the sixth scrolls; not past the last, which is marked").toEqual([["13s 0c", "13s 99c", "14s 50c", "15s 0c", "19s 90c", "25s 0c"], ["25s 0c", "3", "1 min", true]]);
+  addon.advance(1);
+  press("ENTER");
+  expect(sent(addon).at(-1), "Enter opens the marked one in the game's list").toBe("SearchForItemKeys:10940");
+  press("W");
+  expect(kb()[1], "a key the view doesn't use goes on to the game").toBe(true);
+  addon.eval("GetCurrentKeyBoardFocus = function() return ns.GetModule('AuctionHelper').frame end");
+  press("DOWN");
+  expect([view(addon)[3].at(-1)[3], kb()[1]], "while a box has the typing, keys go on").toEqual([true, true]);
+  addon.eval("GetCurrentKeyBoardFocus = function() return nil end");
+  addon.hover(null);
+  expect(kb()[0], "the mouse left: the keys are the game's").toBe(false);
+  addon.hover(`${HELPER}.shopCard.view`);
+  addon.hover(`${HELPER}.shopCard.view.rows[2]`);
+  expect(kb()[0], "from the view onto a row: still the view's").toBe(true);
+  setCombat(addon, true);
+  addon.hover(`${HELPER}.shopCard.view`);
+  press("DOWN");
+  expect([kb()[0], kb()[1]], "in combat: never takes the keys, never sets their passing").toEqual([false, true]);
+  setCombat(addon, false);
+  addon.eval(`${HELPER}.shopCard.view:Hide()`);
+  expect(kb()[0], "hidden: none").toBe(false);
 });
 
 // Sell ---------------------------------------------------------------------------------------
