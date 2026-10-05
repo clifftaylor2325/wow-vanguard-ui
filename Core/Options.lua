@@ -751,7 +751,7 @@ local function currentProfileRows()
     { "text", currentProfileText },
     { "button", "Export profile", function() ns.ShowText("Vanguard export  Ctrl+C to copy", ns.ExportProfile()) end },
     { "button", "Import", function() ns.ImportDialog() end },
-    { "button", "Reset profile", function() ns.ResetProfile(); O.NeedReload() end },
+    { "button", "Reset profile", function() if ns.ResetProfile() then O.NeedReload() else ns.Chat(ns.SwitchWaitingNote()) end end },
   }
 end
 

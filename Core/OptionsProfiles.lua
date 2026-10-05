@@ -24,10 +24,12 @@ end
 
 -- One profile ------------------------------------------------------------------------------
 
--- Delete and Copy here, right to left: they change settings for good, so they ask first.
+-- Delete and Copy here, right to left: they change settings for good, so they ask first. No Copy here
+-- while a switch waits for the reload (which profile it would copy into is unclear until then).
 local function addEditButtons(r, name)
   r.delete = W.Danger(r, "Delete", function() ns.DeleteProfile(name) O.RebuildPage("profiles") end, SMALL)
   r.delete:SetPoint("RIGHT", -8, 0)
+  if ns.PendingProfileName() then return end
   r.copy = W.Danger(r, "Copy here", function() ns.CopyProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL)
   r.copy:SetPoint("RIGHT", r.delete, "LEFT", -6, 0)
 end
@@ -38,7 +40,8 @@ local function addProfileButtons(r, name)
   if name == ns.SelectedProfileName() then return end
   if name ~= ns.ProfileName() then addEditButtons(r, name) end
   r.use = W.Primary(r, "Use", function() ns.UseProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL)
-  if r.copy then r.use:SetPoint("RIGHT", r.copy, "LEFT", -6, 0) else r.use:SetPoint("RIGHT", -8, 0) end
+  local left = r.copy or r.delete
+  if left then r.use:SetPoint("RIGHT", left, "LEFT", -6, 0) else r.use:SetPoint("RIGHT", -8, 0) end
 end
 
 -- A row with a caption on the left.

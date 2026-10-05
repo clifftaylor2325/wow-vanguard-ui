@@ -5,6 +5,9 @@
 local ADDON, ns = ...
 
 local DEFAULT_PROFILE = "Default"
+ns.DEFAULT_PROFILE = DEFAULT_PROFILE
+-- A profile this character used or had staged that was deleted on another character since; said at login.
+local lostProfile
 
 -- Copies every missing or wrong-typed key of defaults into t (recursing into
 -- tables); returns t. A default fixes its key's type: a saved value of another
@@ -66,6 +69,14 @@ local function dropBrokenProfiles(profiles)
   end
 end
 
+-- The profile this character saved, or Default when it is gone (deleted on another character since),
+-- remembering the lost name for the login message.
+local function stillThere(name)
+  if VanguardDB.profiles[name] then return name end
+  if type(name) == "string" and name ~= DEFAULT_PROFILE then lostProfile = name end
+  return DEFAULT_PROFILE
+end
+
 -- Creates or repairs the saved tables, and upgrades an older account file.
 -- Runs at ADDON_LOADED, when WoW has restored them.
 local function initDB()
@@ -76,6 +87,7 @@ local function initDB()
   if from and from < DB_VERSION then ns.MigrateDB(from, DB_VERSION) end
   VanguardCharDB = fill(type(VanguardCharDB) == "table" and VanguardCharDB or {}, { profile = DEFAULT_PROFILE })
   ns.ApplyPendingProfile()
+  VanguardCharDB.profile = stillThere(VanguardCharDB.profile)
   VanguardDB.profiles[VanguardCharDB.profile] = VanguardDB.profiles[VanguardCharDB.profile] or {}
 end
 
@@ -83,6 +95,13 @@ ns.On("ADDON_LOADED", function(_, name)
   if name == ADDON then
     initDB()
   end
+end)
+
+-- At login, says which profile was deleted on another character, and the one this character uses instead.
+ns.On("PLAYER_LOGIN", function()
+  if not lostProfile then return end
+  ns.Chat("Profile " .. lostProfile .. " was deleted on another character; this character uses " .. ns.ProfileName() .. ".")
+  lostProfile = nil
 end)
 
 -- The active profile's name.
@@ -140,15 +159,15 @@ function ns.Settings(key, defaults)
   return profile[key]
 end
 
--- Makes the profile staged by ns.UseProfile the active one (created empty if missing) and tells the
--- ns.OnProfileChanged listeners, so the settings cache hands out its tables from now on. Returns true if
--- the profile changed. Runs at ADDON_LOADED (the first load after the switch) and at login for a spec's
--- profile, both before any module reads its settings.
+-- Makes the profile staged by ns.UseProfile the active one and tells the ns.OnProfileChanged listeners,
+-- so the settings cache hands out its tables from now on. Returns true if the profile changed. A staged
+-- profile deleted on another character since is dropped (the login message says so). Runs at ADDON_LOADED
+-- (the first load after the switch) and at login for a spec's profile, both before any module reads its settings.
 function ns.ApplyPendingProfile()
   local name = VanguardCharDB.pendingProfile
   VanguardCharDB.pendingProfile = nil
   if type(name) ~= "string" or name == VanguardCharDB.profile then return false end
-  VanguardDB.profiles[name] = VanguardDB.profiles[name] or {}
+  if not VanguardDB.profiles[name] then lostProfile = name return false end
   VanguardCharDB.profile = name
   ns.ProfileChanged()
   return true

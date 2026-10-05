@@ -23,10 +23,17 @@ function ns.NewProfile(name)
   return true
 end
 
--- Copies another profile's settings over the active one.
+-- While a switch waits for the reload, the note saying copy and reset must wait too (which profile they
+-- would change is unclear until then); nil otherwise.
+function ns.SwitchWaitingNote()
+  local pending = ns.PendingProfileName()
+  return pending and ("Profile " .. pending .. " takes over after the reload. Reload first, then copy or reset.") or nil
+end
+
+-- Copies another profile's settings over the active one. Refused (false) while a switch waits for the reload.
 function ns.CopyProfile(from)
   local source = VanguardDB.profiles[from]
-  if not source or from == ns.ProfileName() then
+  if not source or from == ns.ProfileName() or ns.PendingProfileName() then
     return false
   end
   VanguardDB.profiles[ns.ProfileName()] = ns.Copy(source)
@@ -43,10 +50,12 @@ function ns.DeleteProfile(name)
   return true
 end
 
--- Clears every setting in the active profile back to defaults.
+-- Clears every setting in the active profile back to defaults. Refused (false) while a switch waits for the reload.
 function ns.ResetProfile()
+  if ns.PendingProfileName() then return false end
   VanguardDB.profiles[ns.ProfileName()] = {}
   ns.ProfileChanged()
+  return true
 end
 
 -- Export / import ------------------------------------------------------------------------
@@ -186,10 +195,11 @@ function ns.SetSpecProfile(profile, spec)
   return true
 end
 
--- The profile a spec uses, if one is set and still exists.
+-- The profile a spec uses, if one is set: Default when that profile was deleted since.
 function ns.SpecProfile(spec)
   local name = specMap()[spec or ns.SpecIndex() or 0]
-  return name and VanguardDB.profiles[name] and name or nil
+  if not name then return nil end
+  return VanguardDB.profiles[name] and name or ns.DEFAULT_PROFILE
 end
 
 -- Stages the current spec's profile (and applies it now when `now`, which is only safe before modules

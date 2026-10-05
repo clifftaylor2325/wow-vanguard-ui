@@ -165,10 +165,34 @@ it("a staged profile switch applies at the next load, and until then the running
   expect(next.eval("return ns.Settings('theme') == VanguardDB.profiles.Raid.theme"), "the settings cache hands out the new profile's tables").toBe(true);
 });
 
-it("a staged profile that no longer exists is created empty when it is applied", () => {
-  const addon = createAddon({ savedVariables: 'VanguardDB = { version = 1, profiles = { Default = {} } }\nVanguardCharDB = { profile = "Default", pendingProfile = "Gone" }' });
-  addon.login();
-  expect(addon.eval("return { ns.ProfileName(), VanguardDB.profiles.Gone ~= nil }"), "the switch still happens, onto an empty profile").toEqual(["Gone", true]);
+it("a profile deleted on another character: the character falls back to Default, a staged switch to it is dropped", () => {
+  const staged = createAddon({ savedVariables: 'VanguardDB = { version = 1, profiles = { Default = {}, Main = {} } }\nVanguardCharDB = { profile = "Main", pendingProfile = "Gone" }' });
+  staged.login();
+  expect([staged.eval("return { ns.ProfileName(), ns.PendingProfileName() == nil, VanguardDB.profiles.Gone == nil }"), chatHas(staged, /Profile Gone was deleted on another character; this character uses Main\./)],
+    "the switch is dropped (not recreated empty), the running profile stays, and the player is told").toEqual([["Main", true, true], true]);
+  const used = createAddon({ savedVariables: 'VanguardDB = { version = 1, profiles = { Default = { theme = { accent = { 0, 1, 0 } } } } }\nVanguardCharDB = { profile = "Raid" }' });
+  used.login();
+  expect([used.eval("return { ns.ProfileName(), VanguardDB.profiles.Raid == nil, (select(2, ns.Theme.Accent())) }"), chatHas(used, /Profile Raid was deleted on another character; this character uses Default\./)],
+    "the character runs Default with Default's settings, and is told").toEqual([["Default", true, 1], true]);
+  const fresh = createAddon({ savedVariables: "VanguardCharDB = { profile = 7 }" });
+  fresh.login();
+  expect([fresh.eval("return { ns.ProfileName(), VanguardDB.profiles.Default ~= nil }"), chatHas(fresh, /was deleted/)], "a new account file or a damaged name: Default, quietly").toEqual([["Default", true], false]);
+  const spec = createAddon({ savedVariables: 'VanguardDB = { version = 1, profiles = { Default = {}, Main = {} } }\nVanguardCharDB = { profile = "Main", specProfiles = { [2] = "Healer" } }' });
+  spec.eval("GetSpecialization = function() return 2 end");
+  spec.login();
+  expect([spec.eval("return ns.SpecProfile()"), spec.eval("return ns.ProfileName()")], "a spec whose profile was deleted uses Default").toEqual(["Default", "Default"]);
+});
+
+it("while a profile switch waits for the reload, copy and reset change nothing and say why", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  addon.eval("VanguardDB.profiles.Raid.theme = { accent = { 0, 1, 0 } } VanguardDB.profiles.Default.theme = { accent = { 1, 0, 0 } }");
+  addon.slash("profile new Healer");
+  addon.slash("profile Healer");
+  addon.slash("profile copy Raid");
+  addon.slash("profile reset");
+  expect([addon.eval("return VanguardDB.profiles.Default.theme.accent[1]"), addon.eval("return ns.CopyProfile('Raid')"), addon.eval("return ns.ResetProfile()")], "the running profile is untouched").toEqual([1, false, false]);
+  expect(addon.chat().filter((l) => /Profile Healer takes over after the reload\. Reload first, then copy or reset\./.test(l)).length, "both commands say why").toBe(2);
 });
 
 it("the spec change events stage the spec's profile, whatever they pass", () => {

@@ -122,6 +122,16 @@ const profileRow = (addon, name) => addon.eval(`for _, w in ipairs(__wfgStub.fra
 const profileButton = (addon, name, button) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
   if w.label and w.label.__text == "${name}" and w.card and w:IsVisible() then local b = w.${button} b:GetScript("OnClick")(b) return b.text.__text end end`);
 
+it("options: while a profile switch waits for the reload, no Copy here, and Reset profile says why", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.NewProfile("TEST-ONLY Raid") ns.NewProfile("TEST-ONLY Healer") VanguardDB.profiles.Default.Chat = { background = false } ns.UseProfile("TEST-ONLY Raid") ns.Options.Show("profiles")');
+  expect(profileRow(addon, "TEST-ONLY Healer"), "another profile can be used or deleted, not copied here").toEqual(["TEST-ONLY Healer", true, false, true]);
+  addon.eval('__click("Reset profile")');
+  expect([addon.eval("return VanguardDB.profiles.Default.Chat.background"), chatHas(addon, /TEST-ONLY Raid takes over after the reload\. Reload first/)], "Reset profile changes nothing and says why").toEqual([false, true]);
+  addon.eval('ns.UseProfile("Default") ns.Options.Show("profiles") __click("Reset profile")');
+  expect([addon.eval("return VanguardDB.profiles.Default.Chat"), addon.eval("return Vanguard_Options.reload:IsShown()")], "with no switch waiting it resets and offers the reload").toEqual([null, true]);
+});
+
 it("options: profiles in the window", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.NewProfile("TEST-ONLY Healer") ns.NewProfile("TEST-ONLY Tank") ns.Options.Show("profiles")');

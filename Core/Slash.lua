@@ -59,7 +59,7 @@ local function unlockCommand()
   if ns.Unlock() then
     chat("Unlocked: drag the handles. /vg lock when done.")
   else
-    chat("Not in combat. Try again once combat ends.")
+    chat("Can't unlock in combat. Try again once combat ends.")
   end
 end
 
@@ -189,19 +189,27 @@ local function useProfile(name)
   ns.OfferReload("This character will use profile " .. name .. " after the reload.")
 end
 
+-- While a profile switch waits for the reload, says copy and reset must wait too; true then.
+local function switchWaiting()
+  local note = ns.SwitchWaitingNote()
+  if note then chat(note) end
+  return note ~= nil
+end
+
 -- profile subcommands: new, copy, delete, reset.
 local PROFILE_ACTIONS = {
   -- /vg profile new <name>
   new = function(name) chat(ns.NewProfile(name) and ("Created profile " .. name .. ".") or "That name is taken or not allowed.") end,
   -- /vg profile copy <from>
   copy = function(name)
+    if switchWaiting() then return end
     if not ns.CopyProfile(name) then return chat("No other profile called " .. name .. ".") end
     ns.OfferReload("Copied " .. name .. " into " .. ns.ProfileName() .. ".")
   end,
   -- /vg profile delete <name>
   delete = function(name) chat(ns.DeleteProfile(name) and ("Deleted profile " .. name .. ".") or "Can't delete that one (missing, or in use).") end,
   -- /vg profile reset
-  reset = function() ns.ResetProfile(); ns.OfferReload("Profile " .. ns.ProfileName() .. " is back to defaults.") end,
+  reset = function() if switchWaiting() then return end ns.ResetProfile(); ns.OfferReload("Profile " .. ns.ProfileName() .. " is back to defaults.") end,
 }
 
 -- /vg profile [new|copy|delete <name> | reset | <name>]

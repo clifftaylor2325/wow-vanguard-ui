@@ -52,7 +52,7 @@ it("/vg unlock waits for combat to end, then shows the movers", () => {
   addon.world.combat(true);
   addon.clearChat();
   addon.slash("unlock");
-  expect(addon.chat().join("\n")).toMatch(/Not in combat\. Try again once combat ends\./);
+  expect(addon.chat().join("\n")).toMatch(/Can't unlock in combat\. Try again once combat ends\./);
   expect(addon.frames("w.mover ~= nil and w:IsShown()").length, "nothing moves in combat").toBe(0);
   addon.world.combat(false);
   addon.slash("unlock");
