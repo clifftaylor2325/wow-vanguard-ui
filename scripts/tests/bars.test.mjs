@@ -1,4 +1,4 @@
-// bars: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// bars: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
@@ -6,7 +6,7 @@ import { ACTIONS_ENV, SETUP_DONE, UNITS_ENV, bars, button, chatHas, key, loggedI
 
 it("action bars", () => {
   const addon = loggedIn(ACTIONS_ENV);
-  const bars = addon.eval("local out = {} for n = 1, 8 do out[n] = _G['ForeverUI_Bar' .. n] ~= nil end return out");
+  const bars = addon.eval("local out = {} for n = 1, 8 do out[n] = _G['Vanguard_Bar' .. n] ~= nil end return out");
   expect(JSON.stringify(bars) === JSON.stringify([true, true, true, false, false, false, false, false]), "bars 1-3 on by default; the right-edge bars 4-5 and bars 6-8 off").toBeTruthy();
   const b1 = button(addon, 1, 1);
   expect(b1.type === "action" && b1.action === 1 && b1.icon === "TEST-ONLY-A", "bar 1 button 1 is secure action slot 1 with its icon").toBeTruthy();
@@ -20,10 +20,10 @@ it("action bars", () => {
   expect(button(addon, 1, 4).shown === false, "an empty slot hides its icon").toBeTruthy();
   expect(button(addon, 2, 1).action === 61 && button(addon, 2, 1).hotkey === "CM4", "bar 2 is slots 61-72 on MULTIACTIONBAR1; CTRL-BUTTON4 shows CM4").toBeTruthy();
   const o = addon.eval("return __overrides");
-  expect(o["1"] === "ForeverUI_Bar1Button1:LeftButton" && o["SHIFT-2"] === "ForeverUI_Bar1Button2:LeftButton", "default bindings click the ForeverUI buttons").toBeTruthy();
-  expect(o["CTRL-BUTTON4"] === "ForeverUI_Bar2Button1:LeftButton", "bar 2 bindings too").toBeTruthy();
-  expect(/\[vehicleui\]/.test(addon.eval("return ForeverUI_Bar1.__states.page")), "bar 1 has a secure page driver").toBeTruthy();
-  expect(addon.eval("return ForeverUI_Bar2.__states.page") === null, "other bars don't page").toBeTruthy();
+  expect(o["1"] === "Vanguard_Bar1Button1:LeftButton" && o["SHIFT-2"] === "Vanguard_Bar1Button2:LeftButton", "default bindings click the Vanguard buttons").toBeTruthy();
+  expect(o["CTRL-BUTTON4"] === "Vanguard_Bar2Button1:LeftButton", "bar 2 bindings too").toBeTruthy();
+  expect(/\[vehicleui\]/.test(addon.eval("return Vanguard_Bar1.__states.page")), "bar 1 has a secure page driver").toBeTruthy();
+  expect(addon.eval("return Vanguard_Bar2.__states.page") === null, "other bars don't page").toBeTruthy();
   expect(addon.eval("return MainMenuBar:GetParent():IsShown()") === false, "the default main bar is hidden").toBeTruthy();
   const movers = addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key end return out");
   expect(["bar1", "bar2", "bar3"].every((k) => movers.includes(k)), "every bar is movable").toBeTruthy();
@@ -46,7 +46,7 @@ it("reagent and item counts show even at 0 and 1", () => {
     IsConsumableAction = function(slot) return (__actions[slot] or {}).reagent end
     IsStackableAction = function(slot) return (__actions[slot] or {}).stack == true end`);
   // The count text on bar 1's button n.
-  const count = (n) => addon.eval(`return ForeverUI_Bar1Button${n}.count:GetText()`);
+  const count = (n) => addon.eval(`return Vanguard_Bar1Button${n}.count:GetText()`);
   expect(count(1), "a spell out of its reagent shows 0").toBe("0");
   expect(count(2), "the last potion shows 1").toBe("1");
   expect(count(3), "a plain action with one charge shows nothing").toBe("");
@@ -61,30 +61,30 @@ it("counts show on a client without the deprecated GetActionCount (C_ActionBar.G
 it("action bars stack with bar 1 on top", () => {
   const addon = loggedIn(ACTIONS_ENV);
   expect(JSON.stringify(stackY(addon)) === JSON.stringify([104, 64, 24, false, false, false, false, false]), `bar 3 at the bottom, bar 1 on top (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
-  const six = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [6] = { enabled = true } } } } } }" });
+  const six = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { bars = { [6] = { enabled = true } } } } } }" });
   const y6 = stackY(six);
   expect(y6[5] === 24 && y6[2] === 64 && y6[0] === 144, `turning on bar 6 puts it underneath; bar 1 stays on top (got ${JSON.stringify(y6)})`).toBeTruthy();
 });
 
 it("action bar stack follows button size and rows", () => {
-  const big = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { size = 44 } } } }" });
+  const big = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { size = 44 } } } }" });
   expect(JSON.stringify(stackY(big).slice(0, 3)) === JSON.stringify([116, 70, 24]), "bigger buttons stack without overlapping").toBeTruthy();
-  const two = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [3] = { perRow = 6 } } } } } }" });
+  const two = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { bars = { [3] = { perRow = 6 } } } } } }" });
   expect(JSON.stringify(stackY(two).slice(0, 3)) === JSON.stringify([144, 104, 24]), "a two-row bar pushes the bars above it up by its height").toBeTruthy();
 });
 
 it("a moved action bar keeps its spot until reset", () => {
-  const moved = loggedIn(ACTIONS_ENV, { savedVariables: 'ForeverUIDB = { profiles = { Default = { positions = { bar1 = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 40 } } } } }' });
+  const moved = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { positions = { bar1 = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 40 } } } } }' });
   expect(stackY(moved)[0] === 40, "a position you saved wins").toBeTruthy();
   moved.slash("reset all");
-  expect(stackY(moved)[0] === 104, "/fui reset all puts bar 1 back on top").toBeTruthy();
+  expect(stackY(moved)[0] === 104, "/vg reset all puts bar 1 back on top").toBeTruthy();
 });
 
 it("the bottom stack follows per-bar size and rows, live", () => {
-  const addon = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [2] = { size = 48 } } } } } }" });
+  const addon = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { bars = { [2] = { size = 48 } } } } } }" });
   expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([114, 64, 24]), `a bar's own button size sets its row height (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
   // Bar n's frame: its bottom offset on screen.
-  const frameY = (n) => addon.eval(`return ForeverUI_Bar${n}.__points.BOTTOM.y`);
+  const frameY = (n) => addon.eval(`return Vanguard_Bar${n}.__points.BOTTOM.y`);
   addon.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 6 AB.SettingChanged(3, "perRow")');
   expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([154, 104, 24]) && frameY(1) === 154 && frameY(2) === 104, "changing a bar's buttons per row re-stacks at once: bar 1 stays on top, nothing overlaps").toBeTruthy();
   setCombat(addon, true);
@@ -101,7 +101,7 @@ it("action bar paging and events", () => {
   const addon = loggedIn(ACTIONS_ENV);
   // Run the secure page snippet the way the client would, with a minimal restricted env.
   addon.eval(`
-    local bar = ForeverUI_Bar1
+    local bar = Vanguard_Bar1
     local snippet = assert(loadstring and loadstring(ns.GetModule("ActionBars").ON_PAGE) or load(ns.GetModule("ActionBars").ON_PAGE, "page", "t", setmetatable({}, { __index = _G })))
     local kids = {}
     for _, w in ipairs(__wfgStub.frames) do if w.__parent == bar then kids[#kids + 1] = w end end
@@ -119,17 +119,17 @@ it("action bar paging and events", () => {
   expect(addon.eval("return __overrides.Q") === null, "binding changes wait for combat to end").toBeTruthy();
   addon.eval("__wfgStub.inCombat = false");
   addon.fire("PLAYER_REGEN_ENABLED");
-  expect(addon.eval("return __overrides.Q") === "ForeverUI_Bar1Button3:LeftButton" && button(addon, 1, 3).hotkey === "Q", "then they apply").toBeTruthy();
+  expect(addon.eval("return __overrides.Q") === "Vanguard_Bar1Button3:LeftButton" && button(addon, 1, 3).hotkey === "Q", "then they apply").toBeTruthy();
 });
 
 it("action bar dragging", () => {
   const addon = loggedIn(ACTIONS_ENV);
   // Starts a drag on bar 1 button 2; returns the slot picked up, if any.
-  const drag = () => addon.eval("local b = ForeverUI_Bar1Button2; b:GetScript('OnDragStart')(b); return __picked");
+  const drag = () => addon.eval("local b = Vanguard_Bar1Button2; b:GetScript('OnDragStart')(b); return __picked");
   expect(drag() === null, "locked buttons don't drag without Shift").toBeTruthy();
   addon.eval("IsShiftKeyDown = function() return true end");
   expect(drag() === 2, "Shift-drag picks the action up").toBeTruthy();
-  addon.eval("local b = ForeverUI_Bar2Button5; b:GetScript('OnReceiveDrag')(b)");
+  addon.eval("local b = Vanguard_Bar2Button5; b:GetScript('OnReceiveDrag')(b)");
   expect(addon.eval("return __placed") === 65, "dropping onto a button places the action in its slot").toBeTruthy();
 });
 
@@ -154,7 +154,7 @@ const getBarOption = (addon, n, label) => addon.eval(`
   end`);
 
 // Bar 2's secure visibility driver, alpha, and whether it takes the mouse.
-const barVis = (addon, n = 2) => addon.eval(`local bar = ForeverUI_Bar${n}
+const barVis = (addon, n = 2) => addon.eval(`local bar = Vanguard_Bar${n}
   return { driver = bar.__states.visibility, alpha = bar:GetAlpha(), mouse = bar.__mouse }`);
 
 it("action bar visibility: each mode's state driver and mouseover alpha", () => {
@@ -169,28 +169,28 @@ it("action bar visibility: each mode's state driver and mouseover alpha", () => 
   setBarOption(addon, 2, "Visibility", '"mouseover"');
   expect(barVis(addon).alpha === 0 && barVis(addon).mouse === true, "a mouseover bar starts faded out and takes the mouse").toBeTruthy();
   // TEST-ONLY: count every Show, Hide and SetShown on bar 2 from here on.
-  addon.eval("__shows = 0 local bar = ForeverUI_Bar2 bar.Show = function() __shows = __shows + 1 end bar.Hide = bar.Show bar.SetShown = bar.Show");
+  addon.eval("__shows = 0 local bar = Vanguard_Bar2 bar.Show = function() __shows = __shows + 1 end bar.Hide = bar.Show bar.SetShown = bar.Show");
   setCombat(addon, true);
-  addon.eval("local b = ForeverUI_Bar2Button3 b:GetScript('OnEnter')(b)");
+  addon.eval("local b = Vanguard_Bar2Button3 b:GetScript('OnEnter')(b)");
   expect(barVis(addon).alpha === 1, "hovering a button fades the bar in, in combat too").toBeTruthy();
-  addon.eval("ForeverUI_Bar2.__mouseOver = true local b = ForeverUI_Bar2Button3 b:GetScript('OnLeave')(b)");
+  addon.eval("Vanguard_Bar2.__mouseOver = true local b = Vanguard_Bar2Button3 b:GetScript('OnLeave')(b)");
   expect(barVis(addon).alpha === 1, "moving off a button while still over the bar keeps it shown").toBeTruthy();
-  addon.eval("ForeverUI_Bar2.__mouseOver = false local bar = ForeverUI_Bar2 bar:GetScript('OnLeave')(bar)");
+  addon.eval("Vanguard_Bar2.__mouseOver = false local bar = Vanguard_Bar2 bar:GetScript('OnLeave')(bar)");
   expect(barVis(addon).alpha === 0, "leaving the bar fades it out").toBeTruthy();
-  addon.eval("local bar = ForeverUI_Bar2 bar:GetScript('OnEnter')(bar)");
+  addon.eval("local bar = Vanguard_Bar2 bar:GetScript('OnEnter')(bar)");
   expect(barVis(addon).alpha === 1 && addon.eval("return __shows") === 0, "mouseover only changes alpha: never Show, Hide or SetShown").toBeTruthy();
   setBarOption(addon, 2, "Visibility", '"combat"');
   expect(barVis(addon).driver === "show", "a visibility change made in combat waits").toBeTruthy();
   setCombat(addon, false);
   expect(barVis(addon).driver === "[combat] show; hide", "and applies when combat ends").toBeTruthy();
-  addon.eval('ForeverUIDB.profiles.Default.ActionBars.bars[2].visibility = "TEST-ONLY-unknown" ns.GetModule("ActionBars").ApplyVisibility(2)');
+  addon.eval('VanguardDB.profiles.Default.ActionBars.bars[2].visibility = "TEST-ONLY-unknown" ns.GetModule("ActionBars").ApplyVisibility(2)');
   expect(barVis(addon).driver === "show" && barVis(addon).alpha === 1, "an unknown visibility counts as Always").toBeTruthy();
 });
 
 it("action bar empty slots hide until the grid shows", () => {
   const addon = loggedIn(ACTIONS_ENV + '__actions[5] = { tex = { __secret = true }, count = 0, usable = true }');
   // Button i of bar n's alpha.
-  const alpha = (n, i) => addon.eval(`return ForeverUI_Bar${n}Button${i}:GetAlpha()`);
+  const alpha = (n, i) => addon.eval(`return Vanguard_Bar${n}Button${i}:GetAlpha()`);
   expect(alpha(1, 1) === 1 && alpha(1, 4) === 0 && alpha(2, 2) === 0, "buttons with an action show; empty slots are invisible (no empty squares at level 1)").toBeTruthy();
   expect(alpha(1, 5) === 1, "a secret icon counts as an action").toBeTruthy();
   addon.fire("ACTIONBAR_SHOWGRID");
@@ -200,30 +200,30 @@ it("action bar empty slots hide until the grid shows", () => {
   addon.fire("ACTIONBAR_HIDEGRID");
   expect(alpha(1, 4) === 1 && alpha(1, 6) === 0 && alpha(2, 2) === 0, "dropping it (ACTIONBAR_HIDEGRID) hides the empty slots again; the filled one stays").toBeTruthy();
   setCombat(addon, true);
-  addon.eval("ForeverUI_Bar1Button2:SetAttribute('action', 74)");
+  addon.eval("Vanguard_Bar1Button2:SetAttribute('action', 74)");
   expect(alpha(1, 2) === 0, "a slot that turns empty when bar 1 pages in combat hides at once (alpha, no waiting)").toBeTruthy();
 });
 
 it("the right-edge bars start off and show on mouseover when turned on", () => {
   const addon = loggedIn(ACTIONS_ENV);
-  const s = addon.eval("local b = ForeverUIDB.profiles.Default.ActionBars.bars return { b[4].enabled, b[5].enabled, b[4].visibility, b[5].visibility }");
-  expect(s[0] === false && s[1] === false && addon.eval("return ForeverUI_Bar4 == nil and ForeverUI_Bar5 == nil") === true, "bars 4 and 5 start off; nothing is built for them").toBeTruthy();
+  const s = addon.eval("local b = VanguardDB.profiles.Default.ActionBars.bars return { b[4].enabled, b[5].enabled, b[4].visibility, b[5].visibility }");
+  expect(s[0] === false && s[1] === false && addon.eval("return Vanguard_Bar4 == nil and Vanguard_Bar5 == nil") === true, "bars 4 and 5 start off; nothing is built for them").toBeTruthy();
   expect(s[2] === "mouseover" && s[3] === "mouseover" && getBarOption(addon, 4, "Visibility") === "mouseover", "and are set to On mouseover for when they are turned on").toBeTruthy();
   const titles = addon.eval('local out = {} for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then for _, r in ipairs(p.rows()) do if r[1] == "header" then out[#out + 1] = r[2] end end end end return out');
   expect(titles.includes("Bar 4, right edge") && titles.includes("Bar 5, right edge") && titles.includes("Bar 1"), `each bar has its own card; the right-edge ones say so (got ${titles})`).toBeTruthy();
-  expect(setBarOption(addon, 4, "Show bar 4", "true") && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.bars[4].enabled") === true, "Show bar 4 turns it on (after a reload)").toBeTruthy();
-  const saved4 = addon.eval("local b = ForeverUIDB.profiles.Default.ActionBars.bars[4] return { b.enabled, b.visibility, b.buttons, b.perRow }");
+  expect(setBarOption(addon, 4, "Show bar 4", "true") && addon.eval("return VanguardDB.profiles.Default.ActionBars.bars[4].enabled") === true, "Show bar 4 turns it on (after a reload)").toBeTruthy();
+  const saved4 = addon.eval("local b = VanguardDB.profiles.Default.ActionBars.bars[4] return { b.enabled, b.visibility, b.buttons, b.perRow }");
   expect(JSON.stringify(saved4) === JSON.stringify([true, "mouseover", 12, 1]), `a fresh enable is saved with On mouseover (got ${JSON.stringify(saved4)})`).toBeTruthy();
-  const on = loggedIn(ACTIONS_ENV, { savedVariables: 'ForeverUIDB = { profiles = { Default = { ActionBars = { bars = { [4] = { enabled = true, visibility = "mouseover", buttons = 12, perRow = 1 } } } } } }' });
+  const on = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { ActionBars = { bars = { [4] = { enabled = true, visibility = "mouseover", buttons = 12, perRow = 1 } } } } } }' });
   const bar4 = barVis(on, 4);
   expect(bar4.driver === "show" && bar4.alpha === 0 && bar4.mouse === true, "turned on, bar 4 is faded out until the mouse is over it").toBeTruthy();
-  const second = on.eval("local _, _, _, x, y = ForeverUI_Bar4Button2:GetPoint(1) return { x, y }");
+  const second = on.eval("local _, _, _, x, y = Vanguard_Bar4Button2:GetPoint(1) return { x, y }");
   expect(second[0] === 0 && second[1] === -40, "one button per row, as before").toBeTruthy();
 });
 
 // TEST-ONLY profile saved before bars had a visibility setting: bar 4 was on
 // (the old default), bar 5 had been turned off.
-const OLD_BARS_PROFILE = `ForeverUIDB = { profiles = { Default = { ActionBars = { size = 36, spacing = 4, bars = {
+const OLD_BARS_PROFILE = `VanguardDB = { profiles = { Default = { ActionBars = { size = 36, spacing = 4, bars = {
   { enabled = true, buttons = 12, perRow = 12 }, { enabled = true, buttons = 12, perRow = 12 }, { enabled = true, buttons = 12, perRow = 12 },
   { enabled = true, buttons = 12, perRow = 1 }, { enabled = false, buttons = 12, perRow = 1 },
   { enabled = false, buttons = 12, perRow = 12 }, { enabled = false, buttons = 12, perRow = 12 }, { enabled = false, buttons = 12, perRow = 12 } } } } } }`;
@@ -236,7 +236,7 @@ it("an old profile keeps its right-edge bar on Always; a fresh enable gets On mo
   expect(getBarOption(old, 5, "Visibility") === "mouseover", "bar 5, off in the old profile, is set to On mouseover for when it is turned on").toBeTruthy();
   setBarOption(old, 5, "Show bar 5", "true");
   // Each read goes through ns.Settings, so the upgrade runs again on what is now saved.
-  const saved5 = old.eval("local b = ForeverUIDB.profiles.Default.ActionBars.bars[5] return { b.enabled, b.visibility }");
+  const saved5 = old.eval("local b = VanguardDB.profiles.Default.ActionBars.bars[5] return { b.enabled, b.visibility }");
   expect(saved5[0] === true && saved5[1] === "mouseover" && getBarOption(old, 5, "Visibility") === "mouseover", "turning bar 5 on fresh saves On mouseover, and the upgrade leaves it (it has a saved visibility)").toBeTruthy();
   expect(getBarOption(old, 4, "Visibility") === "always", "bar 4 stays Always").toBeTruthy();
   // A new profile's fresh enable is checked in "the right-edge bars start off and show on mouseover when turned on".
@@ -274,14 +274,14 @@ it("mouseover bars are revealed during a drag and restored after", () => {
   const addon = loggedIn(ACTIONS_ENV);
   setBarOption(addon, 2, "Visibility", '"mouseover"');
   // TEST-ONLY: count every Show, Hide and SetShown on bar 2 from here on.
-  addon.eval("__shows = 0 local bar = ForeverUI_Bar2 bar.Show = function() __shows = __shows + 1 end bar.Hide = bar.Show bar.SetShown = bar.Show");
+  addon.eval("__shows = 0 local bar = Vanguard_Bar2 bar.Show = function() __shows = __shows + 1 end bar.Hide = bar.Show bar.SetShown = bar.Show");
   setCombat(addon, true);
   addon.fire("ACTIONBAR_SHOWGRID");
   expect(barVis(addon).alpha === 1, "picking up a spell reveals the mouseover bar, in combat too").toBeTruthy();
   addon.fire("ACTIONBAR_HIDEGRID");
   expect(barVis(addon).alpha === 0, "dropping it fades the bar out again").toBeTruthy();
   addon.fire("ACTIONBAR_SHOWGRID");
-  addon.eval("ForeverUI_Bar2.__mouseOver = true");
+  addon.eval("Vanguard_Bar2.__mouseOver = true");
   addon.fire("ACTIONBAR_HIDEGRID");
   expect(barVis(addon).alpha === 1, "unless the mouse is still over the bar").toBeTruthy();
   expect(addon.eval("return __shows") === 0 && addon.eval("return ns.QueuedCount()") === EMPTY_SLOTS && barVis(addon).driver === "show", "alpha only: no Show or Hide, driver unchanged; only the empty slots' mouse waits").toBeTruthy();
@@ -291,9 +291,9 @@ it("Hidden bar bindings stay intact", () => {
   const addon = loggedIn(ACTIONS_ENV);
   setBarOption(addon, 2, "Visibility", '"hidden"');
   expect(barVis(addon).driver === "hide", "a Hidden bar isn't drawn").toBeTruthy();
-  expect(addon.eval("return __overrides['CTRL-BUTTON4']") === "ForeverUI_Bar2Button1:LeftButton", "but its key still clicks its button").toBeTruthy();
+  expect(addon.eval("return __overrides['CTRL-BUTTON4']") === "Vanguard_Bar2Button1:LeftButton", "but its key still clicks its button").toBeTruthy();
   addon.fire("UPDATE_BINDINGS");
-  expect(addon.eval("return __overrides['CTRL-BUTTON4']") === "ForeverUI_Bar2Button1:LeftButton", "also after the bindings are rebuilt").toBeTruthy();
+  expect(addon.eval("return __overrides['CTRL-BUTTON4']") === "Vanguard_Bar2Button1:LeftButton", "also after the bindings are rebuilt").toBeTruthy();
   const help = addon.eval('local page for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then page = p end end local rows = page.rows() for i, r in ipairs(rows) do if r[2] == "Visibility" then return rows[i + 1] end end');
   expect(help[0] === "text" && /keys.*still casts/.test(help[1]), `the Visibility row's help text says so (got ${JSON.stringify(help)})`).toBeTruthy();
 });
@@ -301,12 +301,12 @@ it("Hidden bar bindings stay intact", () => {
 it("action bar layout: per-bar buttons, rows and size, deferred in combat", () => {
   const addon = loggedIn(ACTIONS_ENV + '__binds.MULTIACTIONBAR1BUTTON12 = { "F12" }');
   // Bar 2's size, button 7's offset and size, and whether button 12 shows.
-  const lay = () => addon.eval(`local bar, b7 = ForeverUI_Bar2, ForeverUI_Bar2Button7
+  const lay = () => addon.eval(`local bar, b7 = Vanguard_Bar2, Vanguard_Bar2Button7
     local _, _, _, x, y = b7:GetPoint(1)
-    return { w = bar:GetWidth(), h = bar:GetHeight(), x7 = x, y7 = y, size = b7:GetWidth(), shown12 = ForeverUI_Bar2Button12:IsShown() }`);
+    return { w = bar:GetWidth(), h = bar:GetHeight(), x7 = x, y7 = y, size = b7:GetWidth(), shown12 = Vanguard_Bar2Button12:IsShown() }`);
   const before = lay();
   expect(JSON.stringify(before) === JSON.stringify({ w: 478, h: 38, x7: 240, y7: 0, size: 38, shown12: true }), `bar 2 starts as one row of 12 at the shared 38 px (got ${JSON.stringify(before)})`).toBeTruthy();
-  expect(getBarOption(addon, 2, "Button size") === 38 && addon.eval("return __overrides.F12") === "ForeverUI_Bar2Button12:LeftButton", "its size row reads the shared size; button 12 has its key").toBeTruthy();
+  expect(getBarOption(addon, 2, "Button size") === 38 && addon.eval("return __overrides.F12") === "Vanguard_Bar2Button12:LeftButton", "its size row reads the shared size; button 12 has its key").toBeTruthy();
   setCombat(addon, true);
   setBarOption(addon, 2, "Buttons per row", 6);
   setBarOption(addon, 2, "Buttons", 10);
@@ -316,7 +316,7 @@ it("action bar layout: per-bar buttons, rows and size, deferred in combat", () =
   const after = lay();
   expect(JSON.stringify(after) === JSON.stringify({ w: 250, h: 82, x7: 0, y7: -42, size: 40, shown12: false }), `then bar 2 is two rows of 6 at 40 px, showing 10 buttons (got ${JSON.stringify(after)})`).toBeTruthy();
   expect(addon.eval("return __overrides.F12") === null && getBarOption(addon, 2, "Button size") === 40, "a hidden button gives up its key; the bar keeps its own size").toBeTruthy();
-  expect(addon.eval("return ForeverUI_Bar3Button1:GetWidth()") === 38, "other bars keep theirs").toBeTruthy();
+  expect(addon.eval("return Vanguard_Bar3Button1:GetWidth()") === 38, "other bars keep theirs").toBeTruthy();
 });
 
 it("action button cooldowns, the C_ActionBar API and range polling", () => {
@@ -325,17 +325,17 @@ it("action button cooldowns, the C_ActionBar API and range polling", () => {
     C_ActionBar = nil
     UnitExists = function() return false end`);
   addon.update(0.25);
-  expect(addon.eval("return ForeverUI_Bar1Button1.outOfRange") === false, "without range events, buttons are polled and an unknown range is not red").toBeTruthy();
+  expect(addon.eval("return Vanguard_Bar1Button1.outOfRange") === false, "without range events, buttons are polled and an unknown range is not red").toBeTruthy();
   addon.eval(`
     C_ActionBar = { GetActionTexture = function() return "TEST-ONLY-CAPI" end }
-    ns.GetModule("ActionBars").UpdateButton(ForeverUI_Bar1Button1)
+    ns.GetModule("ActionBars").UpdateButton(Vanguard_Bar1Button1)
   `);
-  expect(addon.eval("return ForeverUI_Bar1Button1.icon.__texture") === "TEST-ONLY-CAPI", "C_ActionBar is used when it has the call").toBeTruthy();
+  expect(addon.eval("return Vanguard_Bar1Button1.icon.__texture") === "TEST-ONLY-CAPI", "C_ActionBar is used when it has the call").toBeTruthy();
   addon.eval(`
     -- TEST-ONLY cooldown duration object.
     GetActionCooldownDuration = function() return { __duration = true } end
     -- TEST-ONLY sweep that records the duration object.
-    ForeverUI_Bar1Button1.cooldown.SetCooldownFromDurationObject = function() __obj = true return true end
+    Vanguard_Bar1Button1.cooldown.SetCooldownFromDurationObject = function() __obj = true return true end
   `);
   addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
   expect(addon.eval("return __obj") === true, "a cooldown duration object is passed straight to the sweep").toBeTruthy();
@@ -345,7 +345,7 @@ it("action button cooldowns, the C_ActionBar API and range polling", () => {
     GetActionCooldown = function() return { startTime = 5, duration = 2 } end
   `);
   addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
-  const cd = addon.eval("return ForeverUI_Bar1Button1.cooldown.__cooldown");
+  const cd = addon.eval("return Vanguard_Bar1Button1.cooldown.__cooldown");
   expect(cd[0] === 5 && cd[1] === 2, "a cooldown given as a table uses its start and duration").toBeTruthy();
 });
 
@@ -367,31 +367,31 @@ it("a dropped spell named by GetSpellInfo", () => {
 
 it("action bar cooldown numbers in the theme's font", () => {
   const addon = loggedIn(UNITS_ENV + ACTIONS_ENV);
-  const cd = addon.eval(`local cd = ForeverUI_Bar1Button1.cooldown local fs = cd:GetCountdownFontString() return { font = fs.__font, color = fs.__textColor }`);
+  const cd = addon.eval(`local cd = Vanguard_Bar1Button1.cooldown local fs = cd:GetCountdownFontString() return { font = fs.__font, color = fs.__textColor }`);
   expect(cd.font[0].includes("SemiBold") && cd.font[1] === 14, "the client's countdown numbers use the theme's bold font").toBeTruthy();
 });
 
 // TEST-ONLY: a client whose secure snippets fail to compile (the probe's call throws).
 const NO_SNIPPETS = 'SecureHandlerExecute = function() error("TEST-ONLY: snippets do not compile") end\n';
 // The slot bar 1's button i shows (its action attribute keeps page 1's slot without snippets).
-const shownSlot = (addon, i) => addon.eval(`return ForeverUI_Bar1Button${i}.action`);
+const shownSlot = (addon, i) => addon.eval(`return Vanguard_Bar1Button${i}.action`);
 
 it("bar 1 pages without secure snippets: the driver sets the bar's own actionpage, the buttons read it", () => {
   const addon = loggedIn(ACTIONS_ENV + NO_SNIPPETS);
   const PAGE_DRIVER = addon.eval('return ns.GetModule("ActionBars").PAGE_DRIVER');
-  expect(addon.eval("local b = ForeverUI_Bar1 return { b.__drivers.actionpage, b.__states == nil or b.__states.page == nil, b:GetAttribute('_onstate-page') == nil }"),
+  expect(addon.eval("local b = Vanguard_Bar1 return { b.__drivers.actionpage, b.__states == nil or b.__states.page == nil, b:GetAttribute('_onstate-page') == nil }"),
     "an attribute driver on actionpage replaces the state driver and its snippet").toEqual([PAGE_DRIVER, true, true]);
-  expect(addon.eval("local b = ForeverUI_Bar1Button3 return { b:GetID(), b:GetAttribute('useparent-actionpage') }"), "each button has its index as its ID and reads the page from the bar").toEqual([3, true]);
+  expect(addon.eval("local b = Vanguard_Bar1Button3 return { b:GetID(), b:GetAttribute('useparent-actionpage') }"), "each button has its index as its ID and reads the page from the bar").toEqual([3, true]);
   expect(shownSlot(addon, 1), "until the driver sets a page, the button shows its own slot").toBe(1);
-  addon.eval("ForeverUI_Bar1:SetAttribute('actionpage', '7')");
+  addon.eval("Vanguard_Bar1:SetAttribute('actionpage', '7')");
   expect([shownSlot(addon, 1), button(addon, 1, 1).icon, shownSlot(addon, 3)], "page 7 (a stance): the buttons show slots 73 and 75").toEqual([73, "TEST-ONLY-PAGE7", 75]);
-  addon.eval("ForeverUI_Bar1:SetAttribute('TEST-ONLY', 1)");
+  addon.eval("Vanguard_Bar1:SetAttribute('TEST-ONLY', 1)");
   expect(shownSlot(addon, 1), "another attribute changes nothing").toBe(73);
-  expect(addon.eval("local b = ForeverUI_Bar2Button3 return { b:GetID(), ForeverUI_Bar2.__drivers == nil or ForeverUI_Bar2.__drivers.actionpage == nil }"), "the other bars keep their fixed slots").toEqual([0, true]);
-  addon.eval('ns.GetModule("ActionBars").PageWithoutSnippets(ForeverUI_Bar1)');
+  expect(addon.eval("local b = Vanguard_Bar2Button3 return { b:GetID(), Vanguard_Bar2.__drivers == nil or Vanguard_Bar2.__drivers.actionpage == nil }"), "the other bars keep their fixed slots").toEqual([0, true]);
+  addon.eval('ns.GetModule("ActionBars").PageWithoutSnippets(Vanguard_Bar1)');
   const refreshes = addon.eval(`local AB = ns.GetModule("ActionBars") local n, update = 0, AB.UpdateButton
     AB.UpdateButton = function(b) n = n + 1 return update(b) end
-    ForeverUI_Bar1:SetAttribute("actionpage", "8") AB.UpdateButton = update return n`);
+    Vanguard_Bar1:SetAttribute("actionpage", "8") AB.UpdateButton = update return n`);
   expect(refreshes, "switching twice hooks the bar once: a page change refreshes each of the 12 buttons once").toBe(12);
 });
 
@@ -402,13 +402,13 @@ it("bar 1 without secure snippets, found out after a login in a fight: the snipp
   addon.login();
   setCombat(addon, false);
   expect(addon.eval("return ns.Client.has.secureSnippets"), "the probe answered after the fight").toBe(false);
-  expect(addon.eval("local b = ForeverUI_Bar1 return { b.__drivers and b.__drivers.actionpage ~= nil, b.__states == nil or b.__states.page == nil, b:GetAttribute('_onstate-page') == nil, ForeverUI_Bar1Button1:GetID() }"),
+  expect(addon.eval("local b = Vanguard_Bar1 return { b.__drivers and b.__drivers.actionpage ~= nil, b.__states == nil or b.__states.page == nil, b:GetAttribute('_onstate-page') == nil, Vanguard_Bar1Button1:GetID() }"),
     "bar 1 then pages without the snippet").toEqual([true, true, true, 1]);
 });
 
 it("bar 1 with secure snippets keeps the snippet paging", () => {
   const addon = loggedIn(ACTIONS_ENV);
-  expect(addon.eval("local b = ForeverUI_Bar1 return { b.__states.page ~= nil, b:GetAttribute('_onstate-page') ~= nil, b.__drivers == nil or b.__drivers.actionpage == nil, ForeverUI_Bar1Button1:GetID() }"),
+  expect(addon.eval("local b = Vanguard_Bar1 return { b.__states.page ~= nil, b:GetAttribute('_onstate-page') ~= nil, b.__drivers == nil or b.__drivers.actionpage == nil, Vanguard_Bar1Button1:GetID() }"),
     "the state driver and its snippet, buttons without IDs").toEqual([true, true, true, 0]);
 });
 
@@ -430,8 +430,8 @@ it("the game's hidden action buttons are silenced, and one cooldown event refres
   expect(addon.eval("return __cooldowns"), "SPELL_UPDATE_COOLDOWN no longer re-reads every button's cooldown").toBe(0);
   addon.eval("__actions[1].cd = { 10, 30 }");
   addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
-  expect([addon.eval("return __cooldowns > 0"), addon.eval("return ForeverUI_Bar1Button1.cooldown.__cooldown")], "ACTIONBAR_UPDATE_COOLDOWN does, and the sweep shows it").toEqual([true, [10, 30]]);
-  const kept = loggedIn(ACTIONS_ENV + GAME_BUTTONS, { savedVariables: "ForeverUIDB.profiles = { Default = { ActionBars = { hideBlizzard = false } } }" });
+  expect([addon.eval("return __cooldowns > 0"), addon.eval("return Vanguard_Bar1Button1.cooldown.__cooldown")], "ACTIONBAR_UPDATE_COOLDOWN does, and the sweep shows it").toEqual([true, [10, 30]]);
+  const kept = loggedIn(ACTIONS_ENV + GAME_BUTTONS, { savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { hideBlizzard = false } } }" });
   expect(kept.eval('return ActionButton1:IsEventRegistered("ACTIONBAR_UPDATE_COOLDOWN")'), "with the game's bars kept, its buttons keep their events").toBe(true);
 });
 
@@ -441,40 +441,40 @@ const tip = (addon) => addon.eval("local o = GameTooltip:GetOwner() return { own
 it("action buttons show their action's tooltip on hover and hide it on leave", () => {
   const addon = loggedIn();
   addon.world.setAction(1, { id: 133 });
-  addon.hover("ForeverUI_Bar1Button1");
-  expect(tip(addon), "hovering slot 1 shows Fireball's tooltip, owned by the button").toEqual({ owner: "ForeverUI_Bar1Button1", action: 1, line: "Fireball", shown: true });
-  expect(addon.eval("return type(ForeverUI_Bar1Button1.UpdateTooltip)"), "the client can refresh it through UpdateTooltip").toBe("function");
+  addon.hover("Vanguard_Bar1Button1");
+  expect(tip(addon), "hovering slot 1 shows Fireball's tooltip, owned by the button").toEqual({ owner: "Vanguard_Bar1Button1", action: 1, line: "Fireball", shown: true });
+  expect(addon.eval("return type(Vanguard_Bar1Button1.UpdateTooltip)"), "the client can refresh it through UpdateTooltip").toBe("function");
   addon.world.setAction(1, { id: 116 });
-  addon.eval("ForeverUI_Bar1Button1:UpdateTooltip()");
-  expect(tip(addon), "the refresh shows what is in the slot now").toEqual({ owner: "ForeverUI_Bar1Button1", action: 1, line: "Frostbolt", shown: true });
+  addon.eval("Vanguard_Bar1Button1:UpdateTooltip()");
+  expect(tip(addon), "the refresh shows what is in the slot now").toEqual({ owner: "Vanguard_Bar1Button1", action: 1, line: "Frostbolt", shown: true });
   addon.hover(null);
-  expect([tip(addon).shown, addon.eval("return ForeverUI_Bar1Button1.UpdateTooltip")], "leaving hides the tooltip and drops the refresh").toEqual([false, null]);
-  addon.hover("ForeverUI_Bar1Button2");
-  expect([tip(addon).action, tip(addon).shown, addon.eval("return ForeverUI_Bar1Button2.UpdateTooltip")], "an empty slot shows no tooltip").toEqual([2, false, null]);
+  expect([tip(addon).shown, addon.eval("return Vanguard_Bar1Button1.UpdateTooltip")], "leaving hides the tooltip and drops the refresh").toEqual([false, null]);
+  addon.hover("Vanguard_Bar1Button2");
+  expect([tip(addon).action, tip(addon).shown, addon.eval("return Vanguard_Bar1Button2.UpdateTooltip")], "an empty slot shows no tooltip").toEqual([2, false, null]);
 });
 
 it("a paged bar 1 button's tooltip is for the slot it shows now, not its action attribute", () => {
   const addon = loggedIn(NO_SNIPPETS);
   addon.world.setAction(1, { id: 133 });
   addon.world.setAction(73, { id: 118 });
-  addon.eval("ForeverUI_Bar1:SetAttribute('actionpage', '7')");
-  addon.hover("ForeverUI_Bar1Button1");
-  expect([addon.eval("return ForeverUI_Bar1Button1:GetAttribute('action')"), tip(addon)], "page 7 shows slot 73's Polymorph though the attribute still says 1").toEqual([1, { owner: "ForeverUI_Bar1Button1", action: 73, line: "Polymorph", shown: true }]);
+  addon.eval("Vanguard_Bar1:SetAttribute('actionpage', '7')");
+  addon.hover("Vanguard_Bar1Button1");
+  expect([addon.eval("return Vanguard_Bar1Button1:GetAttribute('action')"), tip(addon)], "page 7 shows slot 73's Polymorph though the attribute still says 1").toEqual([1, { owner: "Vanguard_Bar1Button1", action: 73, line: "Polymorph", shown: true }]);
 });
 
 it("the mouseover fade still follows hovering an action button", () => {
   const addon = loggedIn();
   addon.world.setAction(61, { id: 133 });
   addon.eval("local AB = ns.GetModule('ActionBars') ns.Settings('ActionBars').bars[2].visibility = 'mouseover' AB.ApplyVisibility(2)");
-  expect(addon.eval("return ForeverUI_Bar2:GetAlpha()"), "bar 2 starts faded out").toBe(0);
-  addon.hover("ForeverUI_Bar2Button1");
-  expect([addon.eval("return ForeverUI_Bar2:GetAlpha()"), tip(addon).owner], "hovering one of its buttons shows the bar and a tooltip").toEqual([1, "ForeverUI_Bar2Button1"]);
+  expect(addon.eval("return Vanguard_Bar2:GetAlpha()"), "bar 2 starts faded out").toBe(0);
+  addon.hover("Vanguard_Bar2Button1");
+  expect([addon.eval("return Vanguard_Bar2:GetAlpha()"), tip(addon).owner], "hovering one of its buttons shows the bar and a tooltip").toEqual([1, "Vanguard_Bar2Button1"]);
 });
 
 it("action buttons cast on yourself, your focus or the mouseover with the game's modifiers", () => {
   const addon = loggedIn();
   const attrs = addon.eval(`local out = {}
-    for _, name in ipairs({ "ForeverUI_Bar1Button1", "ForeverUI_Bar1Button12", "ForeverUI_Bar3Button7" }) do
+    for _, name in ipairs({ "Vanguard_Bar1Button1", "Vanguard_Bar1Button12", "Vanguard_Bar3Button7" }) do
       local b = _G[name]
       out[#out + 1] = { b:GetAttribute("checkselfcast"), b:GetAttribute("checkfocuscast"), b:GetAttribute("checkmouseovercast"), b:GetAttribute("type") }
     end
@@ -506,8 +506,8 @@ it("bag, equipment, form, macro and charge events refresh the buttons they chang
 });
 
 // Whether button i of bar 1 takes the mouse, and its alpha.
-const takesMouse = (addon, i) => addon.eval(`return ForeverUI_Bar1Button${i}.__mouse`);
-const alphaOf = (addon, i) => addon.eval(`return ForeverUI_Bar1Button${i}:GetAlpha()`);
+const takesMouse = (addon, i) => addon.eval(`return Vanguard_Bar1Button${i}.__mouse`);
+const alphaOf = (addon, i) => addon.eval(`return Vanguard_Bar1Button${i}:GetAlpha()`);
 
 it("empty slots take no mouse, so blank bar space passes clicks through; a drag turns it back on", () => {
   const addon = loggedIn(ACTIONS_ENV);
@@ -560,7 +560,7 @@ const BIND_ENV = `
 `;
 
 // The keybind banner: shown, whether the last key went on to the game, and whether the hover mark shows.
-const binder = (addon) => addon.eval(`local f = ForeverUI_KeybindMode
+const binder = (addon) => addon.eval(`local f = Vanguard_KeybindMode
   return { shown = f:IsShown(), passed = f.__passed == true, mark = f.mark:IsShown() }`);
 
 // The keys bound to a command.
@@ -569,51 +569,51 @@ const boundTo = (addon, command) => addon.eval(`return table.concat(__wfgWorld.b
 it("keybind mode: hover a button and press a key to bind it; a modifier alone waits; Escape leaves", () => {
   const addon = loggedIn(BIND_ENV);
   addon.slash("keybind");
-  addon.eval("ForeverUI_KeybindMode.SetPropagateKeyboardInput = function(self, v) self.__passed = v end");
-  expect(binder(addon), "/fui keybind shows the banner").toMatchObject({ shown: true, mark: false });
-  expect(addon.eval("return ForeverUI_Bar1Button4:GetAlpha()"), "empty slots show, so they can be bound").toBe(1);
-  addon.key("ForeverUI_KeybindMode", "Q");
+  addon.eval("Vanguard_KeybindMode.SetPropagateKeyboardInput = function(self, v) self.__passed = v end");
+  expect(binder(addon), "/vg keybind shows the banner").toMatchObject({ shown: true, mark: false });
+  expect(addon.eval("return Vanguard_Bar1Button4:GetAlpha()"), "empty slots show, so they can be bound").toBe(1);
+  addon.key("Vanguard_KeybindMode", "Q");
   expect([binder(addon).passed, boundTo(addon, "ACTIONBUTTON4")], "a key with no button under the mouse goes on to the game").toEqual([true, ""]);
-  addon.hover("ForeverUI_Bar1Button4");
+  addon.hover("Vanguard_Bar1Button4");
   expect(binder(addon).mark, "the button under the mouse is marked").toBe(true);
-  addon.key("ForeverUI_KeybindMode", "LSHIFT");
+  addon.key("Vanguard_KeybindMode", "LSHIFT");
   expect([binder(addon).passed, boundTo(addon, "ACTIONBUTTON4")], "Shift alone binds nothing (and stays with the mode)").toEqual([false, ""]);
   addon.keys({ shift: true });
-  addon.key("ForeverUI_KeybindMode", "Q");
+  addon.key("Vanguard_KeybindMode", "Q");
   addon.keys({ shift: false });
   expect([boundTo(addon, "ACTIONBUTTON4"), addon.eval("return __savedSet")], "Shift-Q is bound to the button's command and saved in the set in use").toEqual(["SHIFT-Q", 2]);
-  expect([addon.eval("return ForeverUI_Bar1Button4.hotkey:GetText()"), addon.eval("return __wfgWorld.overrides['SHIFT-Q'].target")], "the hotkey shows it, and the key clicks the button").toEqual(["SQ", "ForeverUI_Bar1Button4:LeftButton"]);
+  expect([addon.eval("return Vanguard_Bar1Button4.hotkey:GetText()"), addon.eval("return __wfgWorld.overrides['SHIFT-Q'].target")], "the hotkey shows it, and the key clicks the button").toEqual(["SQ", "Vanguard_Bar1Button4:LeftButton"]);
   expect(chatHas(addon, /SHIFT-Q bound to Bar 1 button 4\.$/), "chat says so").toBe(true);
-  addon.hover("ForeverUI_Bar1Button1");
+  addon.hover("Vanguard_Bar1Button1");
   addon.keys({ alt: true, ctrl: true });
-  addon.key("ForeverUI_KeybindMode", "F");
+  addon.key("Vanguard_KeybindMode", "F");
   addon.keys({ alt: false, ctrl: false });
   expect([boundTo(addon, "ACTIONBUTTON1"), addon.eval("return GetBindingAction('1')")], "the new key replaces the button's old one").toEqual(["ALT-CTRL-F", ""]);
   addon.hover(null);
   expect(binder(addon).mark, "leaving the button drops the mark").toBe(false);
-  addon.key("ForeverUI_KeybindMode", "ESCAPE");
-  expect([binder(addon).shown, binder(addon).passed, addon.eval("return ForeverUI_Bar1Button5:GetAlpha()")], "Escape leaves (and doesn't open the game menu); empty slots hide again").toEqual([false, false, 0]);
+  addon.key("Vanguard_KeybindMode", "ESCAPE");
+  expect([binder(addon).shown, binder(addon).passed, addon.eval("return Vanguard_Bar1Button5:GetAlpha()")], "Escape leaves (and doesn't open the game menu); empty slots hide again").toEqual([false, false, 0]);
 });
 
 it("keybind mode: out of combat only, ends when a fight starts; from the options; needs the bars", () => {
   const addon = loggedIn(BIND_ENV);
   addon.slash("keybind");
   addon.slash("keybind");
-  expect(addon.eval("return ForeverUI_KeybindMode:IsShown()"), "/fui keybind again leaves").toBe(false);
+  expect(addon.eval("return Vanguard_KeybindMode:IsShown()"), "/vg keybind again leaves").toBe(false);
   addon.slash("keybind");
   setCombat(addon, true);
   addon.fire("PLAYER_REGEN_DISABLED");
-  expect(addon.eval("return ForeverUI_KeybindMode:IsShown()"), "a fight ends it").toBe(false);
+  expect(addon.eval("return Vanguard_KeybindMode:IsShown()"), "a fight ends it").toBe(false);
   addon.slash("keybind");
-  expect([addon.eval("return ForeverUI_KeybindMode:IsShown()"), chatHas(addon, /Keybind mode waits until you're out of combat\.$/)], "and it can't start in one").toEqual([false, true]);
-  expect(addon.eval("return ns.GetModule('ActionBars').BindKey(ForeverUI_Bar1Button2, 'TEST-ONLY-K')"), "no binding changes in combat").toBe(false);
-  addon.key("ForeverUI_KeybindMode", "Q");
+  expect([addon.eval("return Vanguard_KeybindMode:IsShown()"), chatHas(addon, /Keybind mode waits until you're out of combat\.$/)], "and it can't start in one").toEqual([false, true]);
+  expect(addon.eval("return ns.GetModule('ActionBars').BindKey(Vanguard_Bar1Button2, 'TEST-ONLY-K')"), "no binding changes in combat").toBe(false);
+  addon.key("Vanguard_KeybindMode", "Q");
   setCombat(addon, false);
   addon.eval('for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then for _, r in ipairs(p.rows()) do if r[2] == "Keybind mode" then r[3]() end end end end');
-  expect(addon.eval("return ForeverUI_KeybindMode:IsShown()"), "the Keybind mode button on the Action bars page starts it").toBe(true);
-  const off = loggedIn(BIND_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { ActionBars = false } } } }" });
+  expect(addon.eval("return Vanguard_KeybindMode:IsShown()"), "the Keybind mode button on the Action bars page starts it").toBe(true);
+  const off = loggedIn(BIND_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { modules = { ActionBars = false } } } }" });
   off.slash("keybind");
-  expect([off.eval("return ForeverUI_KeybindMode == nil"), chatHas(off, /Keybind mode needs ForeverUI.s action bars/)], "without the bars it says why").toEqual([true, true]);
+  expect([off.eval("return Vanguard_KeybindMode == nil"), chatHas(off, /Keybind mode needs Vanguard.s action bars/)], "without the bars it says why").toEqual([true, true]);
 });
 
 // TEST-ONLY reading of a macro-conditional driver, as the client reads it: the value of the first

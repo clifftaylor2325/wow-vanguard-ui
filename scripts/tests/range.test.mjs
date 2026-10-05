@@ -1,4 +1,4 @@
-// range: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// range: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { ACTIONS_ENV, button, isTok, loggedIn } from "./helpers.mjs";

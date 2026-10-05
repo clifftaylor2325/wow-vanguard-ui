@@ -1,4 +1,4 @@
--- Parts shared by ForeverUI's quest windows (the quest dialog, and the quest
+-- Parts shared by Vanguard's quest windows (the quest dialog, and the quest
 -- log): numbered lines for quests and gossip, and reward cards with the
 -- item's icon, count and name in a border of its quality color.
 

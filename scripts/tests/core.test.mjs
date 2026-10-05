@@ -1,4 +1,4 @@
-// core: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// core: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import fs from "node:fs";
@@ -11,16 +11,16 @@ it("saved variables", () => {
   expect(createAddon().eval("return next(ns.Profile()) == nil"), "before ADDON_LOADED the profile is empty").toBe(true);
   const addon = loggedIn("", { firstRun: true });
   const sv = addon.savedVariables();
-  expect(sv.account.version === 2 && typeof sv.account.profiles === "object", "fresh install creates ForeverUIDB").toBeTruthy();
+  expect(sv.account.version === 2 && typeof sv.account.profiles === "object", "fresh install creates VanguardDB").toBeTruthy();
   expect(sv.char.profile === "Default", "a new character uses the Default profile").toBeTruthy();
-  const kept = loggedIn("", { savedVariables: 'ForeverUIDB = { profiles = { Main = { theme = { accent = { 1, 0, 0 } } } } }\nForeverUICharDB = { profile = "Main" }' });
+  const kept = loggedIn("", { savedVariables: 'VanguardDB = { profiles = { Main = { theme = { accent = { 1, 0, 0 } } } } }\nVanguardCharDB = { profile = "Main" }' });
   expect(kept.eval("return select(1, ns.Theme.Accent())") === 1, "the character's saved profile is used").toBeTruthy();
   expect(kept.eval("return ns.Theme.Settings().panel[4]") === 0.94, "missing theme settings get defaults").toBeTruthy();
 });
 
 it("wrong-typed saved values are replaced by their defaults", () => {
   const addon = loggedIn("", {
-    savedVariables: `ForeverUIDB.profiles = { Default = { theme = { textScale = "large", pixelScale = "yes", accent = "arcane", font = "client",
+    savedVariables: `VanguardDB.profiles = { Default = { theme = { textScale = "large", pixelScale = "yes", accent = "arcane", font = "client",
       panel = { "x", 0.1, 0.1, 0.94 } }, movers = { gridSize = true } } }`,
   });
   expect(addon.eval("return ns.Theme.Settings().textScale"), "a word for a number scale gets the default").toBe(1);
@@ -35,10 +35,10 @@ it("wrong-typed saved values are replaced by their defaults", () => {
 });
 
 it("a damaged account file: a profile that isn't a table, or a name that isn't a name, is dropped at load", () => {
-  const addon = loggedIn("", { savedVariables: 'ForeverUIDB.profiles = { Default = "TEST-ONLY", Raid = 5, [1] = {}, Main = { theme = { font = "client" } } }' });
+  const addon = loggedIn("", { savedVariables: 'VanguardDB.profiles = { Default = "TEST-ONLY", Raid = 5, [1] = {}, Main = { theme = { font = "client" } } }' });
   expect(addon.eval("return { type(ns.Profile()), ns.GetModule('UnitFrames').enabled, #ns.errors }"), "the active profile is a table again and every module loads").toEqual(["table", true, 0]);
   expect(addon.eval("return ns.ProfileNames()"), "the profile list holds the good ones only").toEqual(["Default", "Main"]);
-  expect(addon.eval("return ForeverUIDB.profiles.Main.theme.font"), "a good profile is kept as it was").toBe("client");
+  expect(addon.eval("return VanguardDB.profiles.Main.theme.font"), "a good profile is kept as it was").toBe("client");
 });
 
 it("settings tables are filled once per profile and key", () => {
@@ -49,10 +49,10 @@ it("settings tables are filled once per profile and key", () => {
     ns.Migrate("TESTONLY", function(saved) __migs = __migs + 1 end)
     ns.OnProfileChanged(function() __changes = __changes + 1 end)`);
   addon.eval("__fills = 0");
-  expect(addon.eval("local a, b = ns.Theme.Settings(), ns.Settings('theme') return { a == b, a == ForeverUIDB.profiles.Default.theme, __fills }"), "a second lookup returns the same table without filling it").toEqual([true, true, 0]);
-  expect(addon.eval("ns.Theme.Settings().sounds = false ForeverUIDB.profiles.Default.theme.smoothBars = false return { ForeverUIDB.profiles.Default.theme.sounds, ns.Theme.Settings().smoothBars, __fills }"), "writes through the cached table and the saved one are the same writes").toEqual([false, false, 0]);
-  expect(addon.eval("local old = ns.Theme.Settings() ns.UseProfile('Raid') return { ns.Theme.Settings() == old, old == ForeverUIDB.profiles.Default.theme, ForeverUICharDB.profile, ForeverUICharDB.pendingProfile, __fills, __changes }"), "a staged profile switch leaves the cache handing out the running profile's table").toEqual([true, true, "Default", "Raid", 0, 0]);
-  expect(addon.eval("local old = ns.Theme.Settings() ns.ApplyPendingProfile() local new = ns.Theme.Settings() return { new ~= old, new == ForeverUIDB.profiles.Raid.theme, new.sounds, __fills, ns.Theme.Settings() == new, __fills, __changes }"), "once the profile is applied it is a new table, filled once").toEqual([true, true, true, 1, true, 1, 1]);
+  expect(addon.eval("local a, b = ns.Theme.Settings(), ns.Settings('theme') return { a == b, a == VanguardDB.profiles.Default.theme, __fills }"), "a second lookup returns the same table without filling it").toEqual([true, true, 0]);
+  expect(addon.eval("ns.Theme.Settings().sounds = false VanguardDB.profiles.Default.theme.smoothBars = false return { VanguardDB.profiles.Default.theme.sounds, ns.Theme.Settings().smoothBars, __fills }"), "writes through the cached table and the saved one are the same writes").toEqual([false, false, 0]);
+  expect(addon.eval("local old = ns.Theme.Settings() ns.UseProfile('Raid') return { ns.Theme.Settings() == old, old == VanguardDB.profiles.Default.theme, VanguardCharDB.profile, VanguardCharDB.pendingProfile, __fills, __changes }"), "a staged profile switch leaves the cache handing out the running profile's table").toEqual([true, true, "Default", "Raid", 0, 0]);
+  expect(addon.eval("local old = ns.Theme.Settings() ns.ApplyPendingProfile() local new = ns.Theme.Settings() return { new ~= old, new == VanguardDB.profiles.Raid.theme, new.sounds, __fills, ns.Theme.Settings() == new, __fills, __changes }"), "once the profile is applied it is a new table, filled once").toEqual([true, true, true, 1, true, 1, 1]);
   expect(addon.eval("ns.Profile().theme = { accent = { 0, 1, 0 } } local t = ns.Theme.Settings() return { t == ns.Profile().theme, t.accent[2], t.panel[4], __fills }"), "a write that replaces the saved table is seen without a notice").toEqual([true, 1, 0.94, 2]);
   expect(addon.eval("local a = ns.Settings('TESTONLY', { x = 1 }) local b = ns.Settings('TESTONLY', { y = 2 }) local c = ns.Settings('TESTONLY') return { a == b, b == c, c.x, c.y, __fills, __migs }"), "other defaults fill the same table again; none reuses it").toEqual([true, true, 1, 2, 4, 1]);
   expect(addon.eval("local a = ns.Settings('TESTONLY') ns.ProfileChanged() local b = ns.Settings('TESTONLY') return { a == b, __fills, __migs, __changes }"), "a notice refills the table, but its migration ran once").toEqual([true, 5, 1, 2]);
@@ -62,33 +62,33 @@ it("settings tables are filled once per profile and key", () => {
   expect(addon.eval(`local text = ns.ExportProfile('theme') ns.Theme.Settings().accent = { 1, 1, 1 } ns.ImportProfile(text) return { __changes, ns.Theme.Settings().accent[1] == ns.Theme.PRESETS.brass[1] }`), "a module import notifies and is used").toEqual([5, true]);
   addon.slash("accent ff0000");
   addon.slash("accent reset");
-  expect(addon.eval("return { ns.Theme.Accent() == ns.Theme.PRESETS.brass[1], ns.Theme.Settings().accent[4] }"), "/fui accent reset puts the default accent into the cached table").toEqual([true, 1]);
+  expect(addon.eval("return { ns.Theme.Accent() == ns.Theme.PRESETS.brass[1], ns.Theme.Settings().accent[4] }"), "/vg accent reset puts the default accent into the cached table").toEqual([true, 1]);
 });
 
 it("the account file's version is read and upgraded", () => {
   const spy = "__mig = {} local real = ns.MigrateDB ns.MigrateDB = function(from, to) __mig[#__mig + 1] = { from, to } return real(from, to) end";
-  const stamped = loggedIn(spy, { savedVariables: "ForeverUIDB.version = nil" });
+  const stamped = loggedIn(spy, { savedVariables: "VanguardDB.version = nil" });
   expect(stamped.eval("return __mig"), "a file without a stamp is upgraded from 0").toEqual([[0, 2]]);
-  expect(stamped.eval("return ForeverUIDB.version"), "and stamped").toBe(2);
+  expect(stamped.eval("return VanguardDB.version"), "and stamped").toBe(2);
   expect(loggedIn(spy).eval("return __mig"), "a current file runs nothing").toEqual({});
-  const newer = loggedIn(spy, { savedVariables: "ForeverUIDB.version = 7" });
+  const newer = loggedIn(spy, { savedVariables: "VanguardDB.version = 7" });
   expect(newer.eval("return __mig"), "a newer addon's file is left alone").toEqual({});
-  expect(newer.eval("return ForeverUIDB.version"), "and never downgraded").toBe(7);
+  expect(newer.eval("return VanguardDB.version"), "and never downgraded").toBe(7);
   const fresh = loggedIn(spy, { firstRun: true });
-  expect(fresh.eval("return { #__mig, ForeverUIDB.version }"), "a fresh install is stamped without an upgrade").toEqual([0, 2]);
-  expect(fresh.eval('ns.UpgradeDB(2, function(db) db.marker = "a" end) ns.UpgradeDB(3, function(db) db.marker = db.marker .. "b" end) ns.UpgradeDB(4, function() error("boom") end) local ok = ns.MigrateDB(1, 3) return { ok, ForeverUIDB.marker, ForeverUIDB.version }'), "registered steps run in order and stamp each").toEqual([true, "ab", 3]);
-  expect(fresh.eval("local n = #ns.errors local ok = ns.MigrateDB(3, 4) return { ok, ForeverUIDB.version, #ns.errors - n }"), "a failing step is logged, stops the chain and leaves the stamp for a retry").toEqual([false, 3, 1]);
+  expect(fresh.eval("return { #__mig, VanguardDB.version }"), "a fresh install is stamped without an upgrade").toEqual([0, 2]);
+  expect(fresh.eval('ns.UpgradeDB(2, function(db) db.marker = "a" end) ns.UpgradeDB(3, function(db) db.marker = db.marker .. "b" end) ns.UpgradeDB(4, function() error("boom") end) local ok = ns.MigrateDB(1, 3) return { ok, VanguardDB.marker, VanguardDB.version }'), "registered steps run in order and stamp each").toEqual([true, "ab", 3]);
+  expect(fresh.eval("local n = #ns.errors local ok = ns.MigrateDB(3, 4) return { ok, VanguardDB.version, #ns.errors - n }"), "a failing step is logged, stops the chain and leaves the stamp for a retry").toEqual([false, 3, 1]);
   expect(fresh.eval("return ns.MigrateDB(3, 1)"), "a target below the stamp has nothing to run").toBe(true);
 });
 
 it("a failing first upgrade step on an unstamped file is retried at the next login", () => {
   const boom = 'ns.UpgradeDB(1, function() error("boom") end)';
-  for (const bad of ["ForeverUIDB.version = nil", 'ForeverUIDB.version = "old"']) {
+  for (const bad of ["VanguardDB.version = nil", 'VanguardDB.version = "old"']) {
     const addon = loggedIn(boom, { savedVariables: bad });
-    expect(addon.eval("return ForeverUIDB.version"), "the stamp stays at 0 so the step runs again: " + bad).toBe(0);
+    expect(addon.eval("return VanguardDB.version"), "the stamp stays at 0 so the step runs again: " + bad).toBe(0);
   }
-  const ok = loggedIn('ns.UpgradeDB(1, function(db) db.ran = true end)', { savedVariables: "ForeverUIDB.version = nil" });
-  expect(ok.eval("return { ForeverUIDB.ran, ForeverUIDB.version }"), "a step that works runs once and stamps").toEqual([true, 2]);
+  const ok = loggedIn('ns.UpgradeDB(1, function(db) db.ran = true end)', { savedVariables: "VanguardDB.version = nil" });
+  expect(ok.eval("return { VanguardDB.ran, VanguardDB.version }"), "a step that works runs once and stamps").toEqual([true, 2]);
 });
 
 it("modules", () => {
@@ -96,14 +96,14 @@ it("modules", () => {
     ns.Module("Good", { defaults = { size = 3 }, Enable = function(s) __size = s.size end })
     ns.Module("Bad", { Enable = function() error("boom") end })
     ns.Module("Off", { Enable = function() __off = true end })
-  `, { savedVariables: 'ForeverUIDB = { profiles = { Default = { modules = { Off = false } } } }' });
+  `, { savedVariables: 'VanguardDB = { profiles = { Default = { modules = { Off = false } } } }' });
   expect(addon.eval("return __size") === 3, "a module is enabled with its defaults").toBeTruthy();
-  expect(chatHas(addon, /module Bad: .*boom  \(once per error; \/fui errors has the stack\)/), "a failing module is reported once to chat").toBeTruthy();
+  expect(chatHas(addon, /module Bad: .*boom  \(once per error; \/vg errors has the stack\)/), "a failing module is reported once to chat").toBeTruthy();
   expect(addon.eval("for _, e in ipairs(ns.errors) do if e.text:find('module Bad: ') then return e.count end end"), "and kept with a count").toBe(1);
   expect(addon.eval("return ns.GetModule('Bad').enabled") === false, "a failing module is marked not enabled").toBeTruthy();
   expect(addon.eval("return __off") === null, "a module turned off in the profile is not enabled").toBeTruthy();
   addon.slash("disable Good");
-  expect(addon.eval("return ns.ModuleEnabled('Good')") === false, "/fui disable turns a module off").toBeTruthy();
+  expect(addon.eval("return ns.ModuleEnabled('Good')") === false, "/vg disable turns a module off").toBeTruthy();
 });
 
 it("modules: a module whose saved settings fail to upgrade is reported, and the modules after it still load", () => {
@@ -111,7 +111,7 @@ it("modules: a module whose saved settings fail to upgrade is reported, and the 
     ns.Migrate("TESTONLY_Broken", function(saved) return saved.layout >= 2 end)
     ns.Module("TESTONLY_Broken", { defaults = {}, Enable = function() __broken = true end })
     ns.Module("TESTONLY_After", { Enable = function() __after = true end })
-  `, { savedVariables: 'ForeverUIDB.profiles = { Default = { TESTONLY_Broken = { layout = "TEST-ONLY" }, DataBars = { layout = "TEST-ONLY" } } }' });
+  `, { savedVariables: 'VanguardDB.profiles = { Default = { TESTONLY_Broken = { layout = "TEST-ONLY" }, DataBars = { layout = "TEST-ONLY" } } }' });
   expect(addon.eval("return { __broken == nil, __after, ns.GetModule('TESTONLY_Broken').enabled, ns.GetModule('TESTONLY_After').enabled }"), "the broken module is off, the next one loads").toEqual([true, true, false, true]);
   expect(addon.eval("return { ns.GetModule('DataBars').enabled, ns.GetModule('Tooltips').enabled, ns.GetModule('ClickCast').enabled }"), "a damaged DataBars table stops DataBars only").toEqual([false, true, true]);
   expect(addon.eval("local t = {} for _, e in ipairs(ns.errors) do t[#t + 1] = e.text:match('^[^:]+') end return t"), "each failure is reported under its module").toEqual(["module DataBars", "module TESTONLY_Broken"]);
@@ -156,10 +156,10 @@ const pinCalls = (addon) => addon.eval("return __calls");
 // The pinned test frame's anchor point name ("several" when it has more than one).
 const pinPoint = (addon) => addon.eval("local n = next(__pinTarget.__points) return next(__pinTarget.__points, n) == nil and n or 'several'");
 
-// TEST-ONLY pin: the game's hooksecurefunc (a post-hook on a table's method) and a frame ForeverUI pins.
+// TEST-ONLY pin: the game's hooksecurefunc (a post-hook on a table's method) and a frame Vanguard pins.
 const PIN_ENV = `
   hooksecurefunc = function(a, b, c) local orig = a[b] a[b] = function(...) local r = orig(...) c(...) return r end end
-  __pinTarget = CreateFrame("Frame", "ForeverUI_PinTest", UIParent)
+  __pinTarget = CreateFrame("Frame", "Vanguard_PinTest", UIParent)
   __calls, __boom = 0, false
   ns.Pin(__pinTarget, function(f)
     __calls = __calls + 1
@@ -170,14 +170,14 @@ const PIN_ENV = `
 
 it("pins: a throwing apply is reported and the pin keeps working", () => {
   const addon = loggedIn(PIN_ENV);
-  expect([addon.eval("return __pinTarget.fuiPinned"), pinCalls(addon), pinPoint(addon)], "the pin is hooked and applied at registration").toEqual([true, 1, "CENTER"]);
+  expect([addon.eval("return __pinTarget.vgPinned"), pinCalls(addon), pinPoint(addon)], "the pin is hooked and applied at registration").toEqual([true, 1, "CENTER"]);
   addon.eval("__boom = true __pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 1, 1)");
-  expect(addon.eval("return __pinTarget.fuiPinning"), "the flag clears after a failing apply").toBe(false);
-  expect(addon.eval("return ns.errors[#ns.errors].text"), "the failure is kept for /fui errors under the frame's name").toMatch(/^pin ForeverUI_PinTest: .*boom/);
+  expect(addon.eval("return __pinTarget.vgPinning"), "the flag clears after a failing apply").toBe(false);
+  expect(addon.eval("return ns.errors[#ns.errors].text"), "the failure is kept for /vg errors under the frame's name").toMatch(/^pin Vanguard_PinTest: .*boom/);
   addon.eval("__boom = false __pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 2, 2)");
   expect([pinCalls(addon), pinPoint(addon)], "the next move of the frame is put back").toEqual([3, "CENTER"]);
   addon.eval("__boom = true __pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 3, 3) __pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 4, 4)");
-  expect(addon.eval("local n, c = 0 for _, e in ipairs(ns.errors) do if e.text:find('^pin ForeverUI_PinTest') then n, c = n + 1, e.count end end return { n, c }"), "a repeating failure is one entry with a count").toEqual([1, 3]);
+  expect(addon.eval("local n, c = 0 for _, e in ipairs(ns.errors) do if e.text:find('^pin Vanguard_PinTest') then n, c = n + 1, e.count end end return { n, c }"), "a repeating failure is one entry with a count").toEqual([1, 3]);
   const plain = loggedIn(`hooksecurefunc = function() end __bare = CreateFrame("Frame", nil, UIParent) ns.Pin(__bare, function() error("bare") end)`);
   expect(plain.eval("for _, e in ipairs(ns.errors) do if e.text:find('^pin ') then return e.text end end"), "a frame with no name is reported as 'frame'").toMatch(/^pin frame: .*bare/);
 });
@@ -196,52 +196,52 @@ it("pins: any number of game moves in combat leave one pending pin", () => {
 it("slash", () => {
   const addon = loggedIn();
   addon.slash("help");
-  expect(chatHas(addon, /unlock \| lock/), "/fui help lists commands").toBeTruthy();
+  expect(chatHas(addon, /unlock \| lock/), "/vg help lists commands").toBeTruthy();
   addon.slash("status");
-  expect(chatHas(addon, /profile Default/), "/fui status shows the profile").toBeTruthy();
+  expect(chatHas(addon, /profile Default/), "/vg status shows the profile").toBeTruthy();
   addon.slash("profile Raid");
-  expect(addon.eval("return { ForeverUICharDB.profile, ForeverUICharDB.pendingProfile }"), "/fui profile stages this character's switch until the reload").toEqual(["Default", "Raid"]);
+  expect(addon.eval("return { VanguardCharDB.profile, VanguardCharDB.pendingProfile }"), "/vg profile stages this character's switch until the reload").toEqual(["Default", "Raid"]);
   addon.clearChat();
   addon.slash("bogus");
   expect(chatHas(addon, /Unknown command/), "unknown commands say so").toBeTruthy();
 });
 
-it("/fui stock with the Errands module off says so instead of failing", () => {
-  const addon = loggedIn("", { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { Errands = false } } }" });
+it("/vg stock with the Errands module off says so instead of failing", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { modules = { Errands = false } } }" });
   for (const command of ["stock", "stock item:90011 5", "stock clear"]) {
     addon.clearChat();
     addon.slash(command);
-    expect(Array.from(addon.chat()), "/fui " + command).toEqual([expect.stringMatching(/Errands are off \(\/fui > Modules\)\.$/)]);
+    expect(Array.from(addon.chat()), "/vg " + command).toEqual([expect.stringMatching(/Errands are off \(\/vg > Modules\)\.$/)]);
   }
 });
 
-// The chat lines printed by one /fui command, without the colored "ForeverUI:" prefix.
+// The chat lines printed by one /vg command, without the colored "Vanguard:" prefix.
 const said = (addon, command) => {
   addon.clearChat();
   addon.slash(command);
-  return Array.from(addon.chat()).map((line) => line.replace(/^.*ForeverUI:\S*\s/, ""));
+  return Array.from(addon.chat()).map((line) => line.replace(/^.*Vanguard:\S*\s/, ""));
 };
 
-it("/fui perf: says what it can without the game's counters", () => {
+it("/vg perf: says what it can without the game's counters", () => {
   const addon = loggedIn("GetCVar = nil C_CVar = nil SetCVar = nil C_Timer = nil");
-  expect(said(addon, "perf"), "no profiling setting and no memory counter: it says so, and lists nothing").toEqual(["CPU off (/fui perf cpu turns the game's profiling on)  ·  memory: the client can't say"]);
+  expect(said(addon, "perf"), "no profiling setting and no memory counter: it says so, and lists nothing").toEqual(["CPU off (/vg perf cpu turns the game's profiling on)  ·  memory: the client can't say"]);
   expect(said(addon, "perf cpu"), "no way to switch profiling").toEqual(["This client can't switch script profiling."]);
   expect(said(addon, "perf watch"), "no timers to print with").toEqual(["This client has no timers to print with."]);
-  expect(said(addon, "perf bogus"), "anything else: the usage").toEqual(["Usage: /fui perf [cpu | watch]"]);
+  expect(said(addon, "perf bogus"), "anything else: the usage").toEqual(["Usage: /vg perf [cpu | watch]"]);
 });
 
-// TEST-ONLY counters: ForeverUI's CPU total (__cpu ms) and memory (2048 KB), each refreshed by its Update call (counted).
+// TEST-ONLY counters: Vanguard's CPU total (__cpu ms) and memory (2048 KB), each refreshed by its Update call (counted).
 const PERF_ENV = `
   __cpu, __updates = 0, { cpu = 0, mem = 0 }
   UpdateAddOnCPUUsage = function() __updates.cpu = __updates.cpu + 1 end
-  GetAddOnCPUUsage = function(name) return name == "ForeverUI" and __cpu or 0 end
+  GetAddOnCPUUsage = function(name) return name == "Vanguard" and __cpu or 0 end
   UpdateAddOnMemoryUsage = function() __updates.mem = __updates.mem + 1 end
-  GetAddOnMemoryUsage = function(name) return name == "ForeverUI" and 2048 or 0 end
+  GetAddOnMemoryUsage = function(name) return name == "Vanguard" and 2048 or 0 end
 `;
 
-it("/fui perf: CPU and memory with the change since the last report, the busiest functions, profiling and the watch", () => {
+it("/vg perf: CPU and memory with the change since the last report, the busiest functions, profiling and the watch", () => {
   const addon = loggedIn(PERF_ENV);
-  expect(said(addon, "perf"), "profiling off: memory only").toEqual(["CPU off (/fui perf cpu turns the game's profiling on)  ·  memory 2.0 MB"]);
+  expect(said(addon, "perf"), "profiling off: memory only").toEqual(["CPU off (/vg perf cpu turns the game's profiling on)  ·  memory 2.0 MB"]);
   addon.eval("ns.OfferReload = function(why) __reload = why end");
   said(addon, "perf cpu");
   expect(addon.eval("return { GetCVar('scriptProfile'), __reload:find('starts after a reload') ~= nil }"), "perf cpu turns profiling on, with a reload offered").toEqual(["1", true]);
@@ -256,12 +256,12 @@ it("/fui perf: CPU and memory with the change since the last report, the busiest
   addon.eval("__cpu = 150");
   addon.advance(60, 5);
   expect(said(addon, "perf")[0], "the change since the last report, and its rate").toBe("CPU 150.0 ms in all, +30.0 ms in the last 60 s (0.50 ms/s)  ·  memory 2.0 MB");
-  expect(said(addon, "perf watch"), "watch says how often it prints").toEqual(["Printing ForeverUI's CPU and memory every 60 s; /fui perf watch again stops."]);
+  expect(said(addon, "perf watch"), "watch says how often it prints").toEqual(["Printing Vanguard's CPU and memory every 60 s; /vg perf watch again stops."]);
   addon.clearChat();
   addon.eval("__cpu = 156");
   addon.advance(60, 5);
   expect(Array.from(addon.chat()).length, "a minute later: one line, no function list").toBe(1);
-  expect(said(addon, "perf watch"), "asked again, it stops").toEqual(["Stopped printing ForeverUI's CPU and memory."]);
+  expect(said(addon, "perf watch"), "asked again, it stops").toEqual(["Stopped printing Vanguard's CPU and memory."]);
   addon.advance(120, 5);
   expect(Array.from(addon.chat()).length, "and prints nothing more").toBe(1);
   addon.eval("GetAddOnCPUUsage = nil");
@@ -270,14 +270,14 @@ it("/fui perf: CPU and memory with the change since the last report, the busiest
   expect(addon.eval("return { GetCVar('scriptProfile'), __reload }"), "perf cpu again turns it off").toEqual(["0", "CPU profiling stops after a reload."]);
 });
 
-// Every distinct command word that follows "/fui " in the text, in order of first use.
-const fuiWords = (text) => [...new Set([...text.matchAll(/\/fui ([a-z]+)/g)].map((m) => m[1]))];
+// Every distinct command word that follows "/vg " in the text, in order of first use.
+const vgWords = (text) => [...new Set([...text.matchAll(/\/vg ([a-z]+)/g)].map((m) => m[1]))];
 
 // The owner's checklist, as text.
 const smokeText = () => fs.readFileSync(path.join(root, "docs", "SMOKE-TEST.md"), "utf8");
 
-it("smoke-test checklist: every /fui command it names is real", () => {
-  const words = fuiWords(smokeText());
+it("smoke-test checklist: every /vg command it names is real", () => {
+  const words = vgWords(smokeText());
   expect(words).toEqual(expect.arrayContaining(["status", "errors", "setup", "unlock", "lock", "profile", "import", "export", "binds", "reset", "frames", "quests"]));
   const addon = loggedIn();
   const unknown = words.filter((word) => {
@@ -324,10 +324,10 @@ it("WoW Forever client: interface, hidden auras, no specializations", () => {
   setCombat(addon, false);
   expect(healing(addon, 1).missing === "TEST-ONLY-ICON-Arcane Intellect", "leaving combat looks at every buff again").toBeTruthy();
   addon.slash("status");
-  expect(chatHas(addon, /Client WoW Forever {2}· {2}build 1\.16\.0 \(TEST-ONLY\) {2}· {2}auras on the engine {2}· {2}aura values readable/), "/fui status names the client, its build and the aura state").toBeTruthy();
+  expect(chatHas(addon, /Client WoW Forever {2}· {2}build 1\.16\.0 \(TEST-ONLY\) {2}· {2}auras on the engine {2}· {2}aura values readable/), "/vg status names the client, its build and the aura state").toBeTruthy();
   expect(chatHas(addon, /aura values readable {2}· {2}secure snippets: yes/), "and whether secure snippets work").toBe(true);
   addon.slash("spec Default");
-  expect(chatHas(addon, /no specializations/), "/fui spec explains there are no specializations").toBeTruthy();
+  expect(chatHas(addon, /no specializations/), "/vg spec explains there are no specializations").toBeTruthy();
   addon.eval('ns.Options.Show("profiles")');
   expect(shownText(addon, "YOUR PROFILES") && !shownText(addon, "SPECIALIZATION"), "the Profiles page has no spec section").toBeTruthy();
   // The names are read once per login (or list change), so a paladin is a new login here.
@@ -339,7 +339,7 @@ it("a retail client is not WoW Forever and keeps its aura state readable", () =>
   const addon = loggedIn('GetBuildInfo = function() return "12.0.7", "TEST-ONLY", "Sep 1 2026", 120007 end');
   expect(addon.eval("return ns.IsForever()") === false && addon.eval("return ns.AurasSecret()") === false, "120007 is retail; no C_Secrets means readable").toBeTruthy();
   addon.slash("status");
-  expect(chatHas(addon, /Client Retail/), "/fui status says Retail").toBeTruthy();
+  expect(chatHas(addon, /Client Retail/), "/vg status says Retail").toBeTruthy();
 });
 
 // The reload overlay on a button as [type, macro, key-down, sits above the button, template, clicks], or false.
@@ -351,7 +351,7 @@ const reloadOverlay = (addon, path) => addon.eval(`local b = ${path} local o = b
 function nextSession(addon, extra = "") {
   addon.fire("PLAYER_LOGOUT");
   const sv = addon.savedVariables();
-  const next = createAddon({ savedVariables: `ForeverUIDB = ${luaValue(sv.account)}\nForeverUICharDB = ${luaValue(sv.char)}\n` });
+  const next = createAddon({ savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n` });
   if (extra) next.eval(extra);
   next.login();
   return next;
@@ -372,7 +372,7 @@ it("a session: what you set in one login comes back in the next", () => {
   expect(next.eval("return ns.ModuleEnabled('Minimap')"), "a module turned off stays off").toBe(false);
   expect(next.eval('return { ns.Settings("UnitFrames").healthFormat, ns.Settings("RaidFrames").look }'), "module settings are kept").toEqual(["percent", "dark"]);
   expect(next.eval('return { ns.MoverPoint("uf_player") }'), "a moved frame stays where you put it").toEqual(["TOPLEFT", "TOPLEFT", 40, -60]);
-  expect(next.eval("return ForeverUI_Setup == nil or not ForeverUI_Setup:IsShown()"), "setup doesn't come back").toBe(true);
+  expect(next.eval("return Vanguard_Setup == nil or not Vanguard_Setup:IsShown()"), "setup doesn't come back").toBe(true);
   const third = nextSession(next, UNITS_ENV + RAID_ENV + CLICK_LUA);
   expect(third.eval("return ns.ProfileName()"), "and it holds for a third session").toBe("TEST-ONLY Alt");
 });
@@ -389,11 +389,11 @@ const CLIENT_FULL_ENV = `
   C_SwingTimer = {}
 `;
 
-it("client capability probe: what this client has, and /fui status says so", () => {
+it("client capability probe: what this client has, and /vg status says so", () => {
   const full = loggedIn(UNITS_ENV + CLIENT_FULL_ENV);
   expect(full.eval("return ns.Client.has"), "a client with everything: every flag is true").toEqual({ ...Object.fromEntries(CLIENT_KEYS.map((k) => [k, true])), secureSnippets: true });
   full.slash("status");
-  expect(chatHas(full, /Client has: auraContainer, pixelUtil, eventValid, barEase, cooldownObject, cooldownMin, countdownText, keyPropagate, damageMeter, cooldownViewer, swingTimer, meterEnums {2}· {2}lacks: none/), "/fui status lists them in a fixed order").toBe(true);
+  expect(chatHas(full, /Client has: auraContainer, pixelUtil, eventValid, barEase, cooldownObject, cooldownMin, countdownText, keyPropagate, damageMeter, cooldownViewer, swingTimer, meterEnums {2}· {2}lacks: none/), "/vg status lists them in a fixed order").toBe(true);
   const bare = loggedIn();
   expect(bare.eval("return ns.Client.has"), "the default test world: its namespaces are found, the widget flags come from the widget list, what it lacks is false").toEqual({
     auraContainer: true, pixelUtil: false, eventValid: true, barEase: false, cooldownObject: true, cooldownMin: true, countdownText: true,
@@ -426,28 +426,28 @@ it("client capability probe: every flag off, every module still enables", () => 
     local d = ns.GetModule(n) if d.Enable and ns.ModuleEnabled(n) and d.enabled ~= true then out[#out + 1] = n end end return out`);
   const baseline = loggedIn(UNITS_ENV + ACTIONS_ENV + TOTEMS_ENV + ENGINE_ENV);
   expect(notEnabled(addon), "every module enables as it does on a client with the calls").toEqual(notEnabled(baseline));
-  expect(addon.eval("return ForeverUI_Bar1Button1.cooldown.__countdown == nil"), "an action button asks for no cooldown number font").toBe(true);
+  expect(addon.eval("return Vanguard_Bar1Button1.cooldown.__countdown == nil"), "an action button asks for no cooldown number font").toBe(true);
   expect(totemCell(addon, 1), "a totem is timed by its start and length").toMatchObject({ sweep: [100, 120] });
   expect(totemCell(addon, 1).object, "and is given no duration object").toBeUndefined();
   expect(addon.eval(`local b = CreateFrame("StatusBar") ns.Theme.Settings().smoothBars = true ns.Theme.SetBarValue(b, 5) return { v = b:GetValue(), ease = b.__ease or "none" }`), "a bar is set without easing").toEqual({ v: 5, ease: "none" });
   // The texts of the errors an addon has caught.
   // An empty Lua table comes back as {} in the headless client, so read the values either way.
   const errs = (a) => Object.values(a.eval("local o = {} for _, e in ipairs(ns.errors) do o[#o + 1] = e.text end return o"));
-  expect(errs(addon).filter((e) => !errs(baseline).includes(e)), "the missing aura container is the one thing reported more").toEqual([expect.stringMatching(/^aura containers \(using ForeverUI's own icons\): .*unknown frame type AuraContainer$/)]);
+  expect(errs(addon).filter((e) => !errs(baseline).includes(e)), "the missing aura container is the one thing reported more").toEqual([expect.stringMatching(/^aura containers \(using Vanguard's own icons\): .*unknown frame type AuraContainer$/)]);
   expect(addon.eval(`local h
     UIParent:SetSize(1920, 1080)
     local f = CreateFrame("Frame", nil, UIParent) f:SetSize(100, 20)
     ns.Mover(f, "a", "A", { "CENTER", "CENTER", 0, 0 }) ns.Unlock()
     for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "a" then h = w end end
     h:GetScript("OnMouseDown")(h) h:GetScript("OnKeyDown")(h, "UP")
-    local p = ForeverUIDB.profiles.Default.positions.a
+    local p = VanguardDB.profiles.Default.positions.a
     return p and p.y`), "unlock mode: the arrow keys still nudge").toBe(1);
   const quest = loggedIn(QUEST_ENV + CLIENT_NONE_ENV);
   key(quest, "ESCAPE");
-  expect(quest.eval("return ns.ModuleEnabled('QuestDialogView') and ForeverUI_QuestDialog ~= nil"), "the quest dialog takes keys without propagation").toBe(true);
+  expect(quest.eval("return ns.ModuleEnabled('QuestDialogView') and Vanguard_QuestDialog ~= nil"), "the quest dialog takes keys without propagation").toBe(true);
   const afk = loggedIn(UNITS_ENV + AFK_ENV + CLIENT_NONE_ENV);
-  afk.eval("ForeverUI_AfkScreen.__scripts.OnKeyDown(ForeverUI_AfkScreen, 'ENTER')");
-  expect(afk.eval("return ForeverUI_AfkScreen ~= nil and ns.GetModule('AfkScreen').enabled"), "the away screen is built and put away by a key").toBe(true);
+  afk.eval("Vanguard_AfkScreen.__scripts.OnKeyDown(Vanguard_AfkScreen, 'ENTER')");
+  expect(afk.eval("return Vanguard_AfkScreen ~= nil and ns.GetModule('AfkScreen').enabled"), "the away screen is built and put away by a key").toBe(true);
 });
 
 it("client capability probe: in a fight the aura container waits; first use probes early", () => {
@@ -458,7 +458,7 @@ it("client capability probe: in a fight the aura container waits; first use prob
   expect([combat.eval("return ns.Client.has.auraContainer"), combat.eval("return ns.Client.has.cooldownMin"), combat.eval("return ns.Client.probed")], "logged in during a fight: the plain frames are probed, the aura container waits").toEqual([null, true, true]);
   expect(combat.eval("return ns.Client.Has('auraContainer')"), "a flag still waiting reads as false").toBe(false);
   combat.slash("status");
-  expect(chatHas(combat, /lacks: auraContainer\?/), "and /fui status marks it as not yet known").toBe(true);
+  expect(chatHas(combat, /lacks: auraContainer\?/), "and /vg status marks it as not yet known").toBe(true);
   setCombat(combat, false);
   expect(combat.eval("return ns.Client.has.auraContainer"), "after the fight it is asked").toBe(true);
   const early = createAddon({ savedVariables: SETUP_DONE });
@@ -471,15 +471,15 @@ it("client capability probe: in a fight the aura container waits; first use prob
 // How many lines of chat mention secure snippets (or the probe's own error report, "secure snippet probe: ...").
 const snippetLines = (addon) => addon.chat().filter((l) => /secure snippet/.test(l)).length;
 
-it("secure snippets: a client that compiles them keeps hover keys and says so in /fui status", () => {
+it("secure snippets: a client that compiles them keeps hover keys and says so in /vg status", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + "GetSpecialization = function() return 1 end");
   expect(addon.eval("return ns.Client.has.secureSnippets"), "the stub runs the probe's snippet, so the flag is true").toBe(true);
-  expect(addon.eval('return ForeverUI_SnippetProbe:GetAttribute("fuiprobe")'), "the probe frame got the attribute the snippet wrote").toBe("ok");
+  expect(addon.eval('return Vanguard_SnippetProbe:GetAttribute("vgprobe")'), "the probe frame got the attribute the snippet wrote").toBe("ok");
   expect(snippetLines(addon), "nothing is said at login").toBe(0);
   addon.eval('ns.GetModule("ClickCast").Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") __spawn(1, "raid1")');
-  expect(addon.eval("return ForeverUI_RaidUnitButton1.__wraps.OnEnter"), "hover keys are wrapped").toMatch(/SetBindingClick\(true, "SHIFT-1", self, "fui1"\)/);
+  expect(addon.eval("return Vanguard_RaidUnitButton1.__wraps.OnEnter"), "hover keys are wrapped").toMatch(/SetBindingClick\(true, "SHIFT-1", self, "vg1"\)/);
   addon.slash("status");
-  expect(chatHas(addon, /secure snippets: yes/), "/fui status says yes").toBe(true);
+  expect(chatHas(addon, /secure snippets: yes/), "/vg status says yes").toBe(true);
 });
 
 // The caught errors that came from the snippet probe.
@@ -495,15 +495,15 @@ it("secure snippets: a client whose snippets fail to compile turns hover keys of
   expect(addon.chat().find((l) => /secure snippets/.test(l)), "it carries the probe's error in the same line").toMatch(/\(probe: .*TEST-ONLY: snippets do not compile\)$/);
   expect(addon.chat().find((l) => /secure snippets/.test(l)), "it names the consequence").toMatch(/hover keys are off; bar 1 pages and the raid frames are set up without them/);
   addon.eval('local CC = ns.GetModule("ClickCast") CC.Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew") CC.Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") __spawn(1, "raid1")');
-  expect(addon.eval('return ForeverUI_RaidUnitButton1:GetAttribute("ctrl-type2")'), "mouse bindings are still set").toBe("spell");
-  expect(addon.eval('return ForeverUI_RaidUnitButton1:GetAttribute("*type-fui2")'), "and so is the inert virtual button").toBe("spell");
+  expect(addon.eval('return Vanguard_RaidUnitButton1:GetAttribute("ctrl-type2")'), "mouse bindings are still set").toBe("spell");
+  expect(addon.eval('return Vanguard_RaidUnitButton1:GetAttribute("*type-vg2")'), "and so is the inert virtual button").toBe("spell");
   expect(addon.eval("return __wraps"), "no SecureHandlerWrapScript call").toBe(0);
-  expect(addon.eval("return ForeverUI_RaidUnitButton1.fuiWrapped"), "the frame is not marked wrapped").toBe(null);
+  expect(addon.eval("return Vanguard_RaidUnitButton1.vgWrapped"), "the frame is not marked wrapped").toBe(null);
   expect(addon.eval("return ns.Client.ProbeSnippets()"), "asking again answers the same").toBe(false);
   expect(snippetLines(addon), "and does not warn again").toBe(1);
   expect(probeErrors(addon).n, "the error is in the one warning, not reported to chat a second time").toBe(0);
   addon.slash("status");
-  expect(chatHas(addon, /secure snippets: no \(hover keys off\)/), "/fui status says no, and what it costs").toBe(true);
+  expect(chatHas(addon, /secure snippets: no \(hover keys off\)/), "/vg status says no, and what it costs").toBe(true);
 });
 
 it("secure snippets: a snippet that runs but writes nothing, and a client without the handler API, count as no", () => {
@@ -513,7 +513,7 @@ it("secure snippets: a snippet that runs but writes nothing, and a client withou
   expect(probeErrors(silent).n, "without an error entry: nothing threw").toBe(0);
   const missing = loggedIn("SecureHandlerExecute = nil");
   expect(missing.eval("return ns.Client.has.secureSnippets"), "no API, no snippets").toBe(false);
-  expect(missing.eval("return ForeverUI_SnippetProbe"), "and no probe frame was made").toBe(null);
+  expect(missing.eval("return Vanguard_SnippetProbe"), "and no probe frame was made").toBe(null);
   expect(snippetLines(missing), "one warning").toBe(1);
 });
 
@@ -524,15 +524,15 @@ it("secure snippets: logging in during a fight defers the probe, and it runs bef
   addon.login();
   expect(addon.eval("return ns.Client.has.secureSnippets"), "not probed in a fight").toBe(null);
   addon.slash("status");
-  expect(snippetLines(addon), "/fui status says nothing about snippets before the probe ran").toBe(0);
+  expect(snippetLines(addon), "/vg status says nothing about snippets before the probe ran").toBe(0);
   expect(addon.eval("return ns.Client.ProbeSnippets()"), "asking in a fight does not probe either").toBe(null);
   setCombat(addon, false);
   expect(addon.eval("return ns.Client.has.secureSnippets"), "after the fight it is asked").toBe(true);
   addon.clearChat();
   addon.slash("status");
-  expect(chatHas(addon, /secure snippets: yes/), "and /fui status then says yes").toBe(true);
+  expect(chatHas(addon, /secure snippets: yes/), "and /vg status then says yes").toBe(true);
   addon.eval('ns.GetModule("ClickCast").Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") __spawn(1, "raid1")');
-  expect(addon.eval("return ForeverUI_RaidUnitButton1.__wraps.OnLeave"), "and click casting wraps the frame").toBe("self:ClearBindings()");
+  expect(addon.eval("return Vanguard_RaidUnitButton1.__wraps.OnLeave"), "and click casting wraps the frame").toBe("self:ClearBindings()");
 });
 
 it("secure snippets: what waits for the probe's answer runs once, after the fight, and one that fails does not stop the rest", () => {
@@ -550,7 +550,7 @@ it("secure snippets: what waits for the probe's answer runs once, after the figh
   expect(addon.eval("return __answers"), "a later caller is answered at once").toEqual([true, true]);
 });
 
-it("/fui errors: what ForeverUI caught this session", () => {
+it("/vg errors: what Vanguard caught this session", () => {
   const addon = loggedIn();
   addon.eval("ns.ClearErrors()");
   addon.slash("errors");
@@ -558,7 +558,7 @@ it("/fui errors: what ForeverUI caught this session", () => {
   const broken = loggedIn(`__wfgStub.noAuraContainer = true
     local M = ns.Module("TEST-ONLY Broken", {}) function M.Enable() error("TEST-ONLY boom") end`);
   broken.slash("errors");
-  expect(chatHas(broken, /\d+ error\(s\) caught this session \(\d+ in all\), newest last/) && chatHas(broken, /aura containers \(using ForeverUI's own icons\)/) && chatHas(broken, /module TEST-ONLY Broken: .*TEST-ONLY boom  \(x1\)/), "a module that failed and a missing aura container are both listed").toBe(true);
+  expect(chatHas(broken, /\d+ error\(s\) caught this session \(\d+ in all\), newest last/) && chatHas(broken, /aura containers \(using Vanguard's own icons\)/) && chatHas(broken, /module TEST-ONLY Broken: .*TEST-ONLY boom  \(x1\)/), "a module that failed and a missing aura container are both listed").toBe(true);
   broken.eval('for i = 1, 25 do ns.Report("TEST-ONLY", i) end');
   expect(broken.eval("return { #ns.errors, ns.errors[1].text }"), "only the last 20 distinct errors are kept").toEqual([20, "TEST-ONLY: 6"]);
   broken.eval('ns.Report("TEST-ONLY", 1)');
@@ -567,7 +567,7 @@ it("/fui errors: what ForeverUI caught this session", () => {
   broken.eval("ns.ClearErrors()");
   broken.clearChat();
   broken.eval('ns.Report("TEST-ONLY", 1)');
-  expect(broken.chat().filter((l) => /TEST-ONLY: 1  \(once per error/.test(l)).length, "/fui errors clear starts the session's chat lines over").toBe(1);
+  expect(broken.chat().filter((l) => /TEST-ONLY: 1  \(once per error/.test(l)).length, "/vg errors clear starts the session's chat lines over").toBe(1);
 });
 
 // The game's error handler and debugstack as a client has them, recording what each was given.
@@ -582,7 +582,7 @@ it("caught errors: one entry per distinct error, counted, with its stack, told o
   addon.eval('ns.ClearErrors() __handled = {} ns.Report("TEST-ONLY site", "boom") ns.Report("TEST-ONLY site", "boom")');
   expect(addon.eval("return { #ns.errors, ns.errors[1].text, ns.errors[1].count }"), "the same error twice is one entry with count 2").toEqual([1, "TEST-ONLY site: boom", 2]);
   expect(addon.eval("return ns.errors[1].stack"), "with the stack read from ns.Report's caller").toBe("TEST-ONLY stack level 4\nTEST-ONLY frame 2");
-  expect(addon.chat().filter((l) => /TEST-ONLY site: boom/.test(l)), "chat hears about it once").toEqual([expect.stringMatching(/TEST-ONLY site: boom  \(once per error; \/fui errors has the stack\)$/)]);
+  expect(addon.chat().filter((l) => /TEST-ONLY site: boom/.test(l)), "chat hears about it once").toEqual([expect.stringMatching(/TEST-ONLY site: boom  \(once per error; \/vg errors has the stack\)$/)]);
   expect(addon.eval("return __handled"), "the game's handler gets the labelled text every time").toEqual(["TEST-ONLY site: boom", "TEST-ONLY site: boom"]);
   expect(addon.eval("return { ns.Try('TEST-ONLY try', function(a) error('bad ' .. a) end, 'x') }"), "ns.Try returns what pcall would on a failure").toEqual([false, expect.stringMatching(/bad x$/)]);
   expect(addon.eval("return ns.errors[#ns.errors].stack"), "and its stack is read inside xpcall's handler, before the frames unwind").toBe("TEST-ONLY stack level 4\nTEST-ONLY frame 2");
@@ -621,7 +621,7 @@ it("caught errors: without debugstack or an error handler (this stub), and a hid
   addon.clearChat();
   addon.slash("errors");
   const lines = addon.chat();
-  expect(lines[0], "the header names the version, an unknown interface version and the counts").toMatch(/ ForeverUI \S+  ·  interface \?  ·  1 error\(s\) caught this session \(1 in all\), newest last:$/);
+  expect(lines[0], "the header names the version, an unknown interface version and the counts").toMatch(/ Vanguard \S+  ·  interface \?  ·  1 error\(s\) caught this session \(1 in all\), newest last:$/);
   expect(lines[1], "then the client line").toMatch(/ Client Retail  ·  auras on the/);
   expect(lines.slice(2), "then the error with its count and no stack lines").toEqual([expect.stringMatching(/TEST-ONLY bare: x  \(x1\)$/)]);
   const secret = loggedIn('issecretvalue = function(v) return type(v) == "table" and v.__secret == true end');
@@ -645,7 +645,7 @@ it("caught errors: an after-combat update that fails is reported and the rest st
   expect(chatHas(addon, /after-combat update: .*TEST-ONLY late/), "and told").toBe(true);
 });
 
-it("/fui errors: counts, build, interface version and the aura backend, then clear", () => {
+it("/vg errors: counts, build, interface version and the aura backend, then clear", () => {
   const addon = loggedIn(FOREVER_ENV + ERRORS_ENV);
   addon.eval('ns.ClearErrors() ns.Report("TEST-ONLY twice", "x") ns.Report("TEST-ONLY twice", "x") ns.Report("TEST-ONLY once", "y")');
   addon.clearChat();
@@ -668,23 +668,23 @@ const SECURE_RELOAD = ["macro", "/reload", false, true, "SecureActionButtonTempl
 it("reload buttons: a /reload macro overlay, since the Forever client blocks ReloadUI()", () => {
   const addon = loggedIn(FOREVER_ENV + "ReloadUI = function() __reloaded = true end");
   addon.eval('ns.OfferReload("TEST-ONLY change.")');
-  expect(addon.eval("return ForeverUI_Reload:IsShown() and ForeverUI_Reload.title:GetText()"), "a reload is offered with its reason").toBe("TEST-ONLY change. Reload the UI now to apply it?");
-  expect(reloadOverlay(addon, "ForeverUI_Reload.accept"), "Reload carries a secure action button overlay with a /reload macro, run on mouse-up, above the button").toEqual(SECURE_RELOAD);
-  addon.eval('local a = ForeverUI_Reload.accept a:SetScript("OnEnter", function() __hover = "in" end) a:SetScript("OnLeave", function() __hover = "out" end)');
-  addon.eval("local o = ForeverUI_Reload.accept.reloadOverlay o:GetScript('OnEnter')(o)");
+  expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "a reload is offered with its reason").toBe("TEST-ONLY change. Reload the UI now to apply it?");
+  expect(reloadOverlay(addon, "Vanguard_Reload.accept"), "Reload carries a secure action button overlay with a /reload macro, run on mouse-up, above the button").toEqual(SECURE_RELOAD);
+  addon.eval('local a = Vanguard_Reload.accept a:SetScript("OnEnter", function() __hover = "in" end) a:SetScript("OnLeave", function() __hover = "out" end)');
+  addon.eval("local o = Vanguard_Reload.accept.reloadOverlay o:GetScript('OnEnter')(o)");
   expect(addon.eval("return __hover"), "hovering the overlay lights the button under it").toBe("in");
-  addon.eval("local o = ForeverUI_Reload.accept.reloadOverlay o:GetScript('OnLeave')(o)");
+  addon.eval("local o = Vanguard_Reload.accept.reloadOverlay o:GetScript('OnLeave')(o)");
   expect(addon.eval("return __hover"), "and leaving it lets go").toBe("out");
-  addon.eval("local a = ForeverUI_Reload.accept a:SetScript('OnEnter', nil) a.reloadOverlay:GetScript('OnEnter')(a.reloadOverlay)");
-  addon.eval("ForeverUI_Reload.cancel:GetScript('OnClick')(ForeverUI_Reload.cancel)");
-  expect(addon.eval("return ForeverUI_Reload:IsShown()"), "Later closes it").toBe(false);
+  addon.eval("local a = Vanguard_Reload.accept a:SetScript('OnEnter', nil) a.reloadOverlay:GetScript('OnEnter')(a.reloadOverlay)");
+  addon.eval("Vanguard_Reload.cancel:GetScript('OnClick')(Vanguard_Reload.cancel)");
+  expect(addon.eval("return Vanguard_Reload:IsShown()"), "Later closes it").toBe(false);
   setCombat(addon, true);
   addon.slash("");
-  expect(reloadOverlay(addon, "ForeverUI_Options.reload"), "a reload button built in combat has no overlay yet").toBe(false);
-  addon.eval("ForeverUI_Options.reload:GetScript('OnClick')(ForeverUI_Options.reload)");
+  expect(reloadOverlay(addon, "Vanguard_Options.reload"), "a reload button built in combat has no overlay yet").toBe(false);
+  addon.eval("Vanguard_Options.reload:GetScript('OnClick')(Vanguard_Options.reload)");
   expect(addon.eval("return __reloaded") === null && chatHas(addon, /Type \/reload in chat/), "clicked then, it says to type /reload (ReloadUI would be blocked)").toBe(true);
   setCombat(addon, false);
-  expect(reloadOverlay(addon, "ForeverUI_Options.reload"), "the overlay arrives when combat ends, as the same secure button").toEqual(SECURE_RELOAD)
+  expect(reloadOverlay(addon, "Vanguard_Options.reload"), "the overlay arrives when combat ends, as the same secure button").toEqual(SECURE_RELOAD)
   expect(addon.eval("local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.__template == 'InsecureActionButtonTemplate' then n = n + 1 end end return n"), "no reload button is left on the insecure template").toBe(0);
 });
 
@@ -829,26 +829,26 @@ it("slash commands for frames, accent, grid, theme, modules, skins, profile and 
     C_AddOns = { GetAddOnMetadata = function() return "0.3.0" end }
   `);
   // TEST-ONLY skin name. The slash assertion matches this exact string.
-  addon.eval('ForeverUI.RegisterSkin("TESTONLY", function() end)');
+  addon.eval('Vanguard.RegisterSkin("TESTONLY", function() end)');
   addon.slash("frames");
-  expect(chatHas(addon, /Movable frames:/), "/fui frames lists movers").toBeTruthy();
+  expect(chatHas(addon, /Movable frames:/), "/vg frames lists movers").toBeTruthy();
   addon.slash("accent reset");
-  expect(chatHas(addon, /Accent back to default/), "/fui accent reset clears a custom accent").toBeTruthy();
+  expect(chatHas(addon, /Accent back to default/), "/vg accent reset clears a custom accent").toBeTruthy();
   addon.slash("grid 1");
-  expect(chatHas(addon, /Usage: \/fui grid/), "a grid size outside 8-256 is refused").toBeTruthy();
+  expect(chatHas(addon, /Usage: \/vg grid/), "a grid size outside 8-256 is refused").toBeTruthy();
   addon.slash("theme");
-  expect(chatHas(addon, /Usage: \/fui theme reset/), "/fui theme without reset is refused").toBeTruthy();
+  expect(chatHas(addon, /Usage: \/vg theme reset/), "/vg theme without reset is refused").toBeTruthy();
   addon.slash("modules");
-  expect(chatHas(addon, /UnitFrames/), "/fui modules lists modules").toBeTruthy();
+  expect(chatHas(addon, /UnitFrames/), "/vg modules lists modules").toBeTruthy();
   // TEST-ONLY module name that does not exist.
   addon.slash("enable NoSuch");
   expect(chatHas(addon, /No module called NoSuch/), "an unknown module is refused").toBeTruthy();
   addon.slash("skins TESTONLY on");
-  expect(chatHas(addon, /Skin for TESTONLY on/), "/fui skins on stores the choice").toBeTruthy();
+  expect(chatHas(addon, /Skin for TESTONLY on/), "/vg skins on stores the choice").toBeTruthy();
   addon.slash("profile");
-  expect(chatHas(addon, /Profile: Default/), "/fui profile with no name shows the current profile").toBeTruthy();
+  expect(chatHas(addon, /Profile: Default/), "/vg profile with no name shows the current profile").toBeTruthy();
   addon.slash("spec");
-  expect(chatHas(addon, /Spec 2 uses the character's profile/), "/fui spec with no name shows that no spec profile is set").toBeTruthy();
+  expect(chatHas(addon, /Spec 2 uses the character's profile/), "/vg spec with no name shows that no spec profile is set").toBeTruthy();
 });
 
 // TEST-ONLY WoW Forever calls: only the newer C_ functions and frames, none of the older globals.
@@ -869,13 +869,13 @@ const NEWER_ENV = `
 `;
 
 it("Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line", () => {
-  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + NEWER_ENV, { savedVariables: "ForeverUIDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + NEWER_ENV, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
   expect(isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneSanctuary"), "the zone name takes its PvP color from C_PvP").toBe(true);
   addon.eval("__pvp = { __secret = true } ns.GetModule('Minimap').UpdateZone()");
   expect(isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "gold"), "a hidden answer is plain gold").toBe(true);
   expect(addon.eval("local f = QueueStatusButton local p = f.__points.BOTTOMRIGHT return { f:GetParent() == ns.GetModule('Minimap').overlay, p.y, f:GetScale() }"), "the group finder eye sits small on the map's bottom-right, above the compartment").toEqual([true, 26, 0.6]);
   expect(putAway(addon, "ExpansionLandingPageMinimapButton"), "the expansion button is put away").toBe(true);
-  expect(/Icons\\House$/.test(addon.eval("return HousingMicroButton.fuiGlyph.__texture")), "the housing button gets the house icon").toBe(true);
+  expect(/Icons\\House$/.test(addon.eval("return HousingMicroButton.vgGlyph.__texture")), "the housing button gets the house icon").toBe(true);
   // Whether the breath bar container's i-th timer has the theme's bar texture.
   const barStyled = (i) => addon.eval(`return __timers[${i}].StatusBar:GetStatusBarTexture() ~= nil`);
   expect(barStyled(1), "a breath bar the container already holds is styled").toBe(true);
@@ -883,7 +883,7 @@ it("Forever fixes: the newer calls for zone color, pet moods, breath bars, the m
   expect(barStyled(2), "and so is one it sets up later").toBe(true);
   const pets = loggedIn(UNITS_ENV + "C_PetInfo = { GetPetHappiness = function() return 3 end }");
   expect(pets.eval("local d = ns.GetModule('UnitExtras').happy return d and d:IsShown()"), "the pet's mood comes from C_PetInfo").toBe(true);
-  // The /fui status client line for a WoW Forever client reporting this build (or no build call at all).
+  // The /vg status client line for a WoW Forever client reporting this build (or no build call at all).
   const status = (build) => { const a = loggedIn(FOREVER_ENV + (build ? `GetBuildInfo = function() return "1.60.1", "${build}", "Sep 1 2026", 16001 end` : "")); a.slash("status"); return a; };
   expect(chatHas(status("69893"), /build 1\.60\.1 \(69893\) {2}· {2}update the game: this build loses settings at every launch/), "a build before the fix says to update").toBe(true);
   expect(chatHas(status("70009"), /update the game/), "a fixed build doesn't").toBe(false);
@@ -896,7 +896,7 @@ it("Forever fixes: the newer calls for zone color, pet moods, breath bars, the m
 it("the error badge: a count on the addons button and in the options footer, gone at zero", () => {
   const addon = loggedIn('AddonCompartmentFrame = CreateFrame("Frame", "AddonCompartmentFrame", UIParent)');
   // Both badges: the addons button's count and shown state, the footer's text and shown state.
-  const badges = () => addon.eval(`local f = ForeverUI_OptionsErrors return { ForeverUI_ErrorBadge:IsShown(), ForeverUI_ErrorBadge.text:GetText() or "",
+  const badges = () => addon.eval(`local f = Vanguard_OptionsErrors return { Vanguard_ErrorBadge:IsShown(), Vanguard_ErrorBadge.text:GetText() or "",
     f and f:IsShown() or false, f and f.text:GetText() or "" }`);
   expect(badges(), "no errors: no badge").toEqual([false, "0", false, ""]);
   addon.eval('ns.Report("TEST-ONLY site", "TEST-ONLY failure")');
@@ -908,11 +908,11 @@ it("the error badge: a count on the addons button and in the options footer, gon
   addon.eval("ns.Options.Show()");
   expect(badges(), "the same error again counts once; a new one makes 2, in the footer too").toEqual([true, "2", true, "2 errors caught this session: click to list them"]);
   addon.clearChat();
-  addon.click("ForeverUI_OptionsErrors");
-  expect(chatHas(addon, /2 error\(s\) caught this session/), "clicking the footer line lists them (/fui errors)").toBe(true);
+  addon.click("Vanguard_OptionsErrors");
+  expect(chatHas(addon, /2 error\(s\) caught this session/), "clicking the footer line lists them (/vg errors)").toBe(true);
   addon.slash("errors clear");
   addon.advance(0.5);
-  expect(badges(), "/fui errors clear: both badges go").toEqual([false, "0", false, "0 errors caught this session: click to list them"]);
+  expect(badges(), "/vg errors clear: both badges go").toEqual([false, "0", false, "0 errors caught this session: click to list them"]);
   addon.eval('ns.Report("TEST-ONLY site", "TEST-ONLY failure")');
   addon.advance(0.5);
   expect(badges().slice(0, 3), "and come back with the next error").toEqual([true, "1", true]);
@@ -920,5 +920,5 @@ it("the error badge: a count on the addons button and in the options footer, gon
   plain.eval('ns.Report("TEST-ONLY site", "TEST-ONLY failure")');
   plain.advance(0.5);
   plain.eval("ns.Options.Show()");
-  expect(plain.eval('return { ForeverUI_ErrorBadge == nil, ForeverUI_OptionsErrors.text:GetText() }'), "a client without the addons button: the footer still counts").toEqual([true, "1 error caught this session: click to list them"]);
+  expect(plain.eval('return { Vanguard_ErrorBadge == nil, Vanguard_OptionsErrors.text:GetText() }'), "a client without the addons button: the footer still counts").toEqual([true, "1 error caught this session: click to list them"]);
 });

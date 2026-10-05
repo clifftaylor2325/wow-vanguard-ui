@@ -2,7 +2,7 @@
 // wow-stub.lua) in a browser page. Layout (points, sizes, text, colors,
 // bar values, show/hide) comes from the addon. Blizzard art, spell icons,
 // the map and the game font are not available here, so they are approximations.
-// ForeverUI's own art and fonts (Media/) are real: drawn from their sources.
+// Vanguard's own art and fonts (Media/) are real: drawn from their sources.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -47,13 +47,13 @@ export function dumpFrames(addon) {
   return addon.eval(DUMP_LUA) || [];
 }
 
-// ForeverUI's fonts as @font-face rules, so previews use the real typeface.
+// Vanguard's fonts as @font-face rules, so previews use the real typeface.
 function fontFaces() {
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "Media", "Fonts");
   const files = { Medium: "FiraSansCondensed-Medium", SemiBold: "FiraSansCondensed-SemiBold", Cinzel: "Cinzel-SemiBold", Metamorphous: "Metamorphous-Regular" };
   return Object.entries(files).map(([name, file]) => {
     const data = fs.readFileSync(path.join(dir, `${file}.ttf`)).toString("base64");
-    return `@font-face{font-family:"FUI-${name}";src:url(data:font/ttf;base64,${data})}`;
+    return `@font-face{font-family:"VG-${name}";src:url(data:font/ttf;base64,${data})}`;
   }).join("");
 }
 
@@ -64,7 +64,7 @@ function baseColor(img) {
   return [img.px[best * 4], img.px[best * 4 + 1], img.px[best * 4 + 2]];
 }
 
-// ForeverUI's art as { url (PNG data URI), rgb }, keyed like the game path ("Textures\\Bar").
+// Vanguard's art as { url (PNG data URI), rgb }, keyed like the game path ("Textures\\Bar").
 function mediaUris() {
   return Object.fromEntries(Object.entries(MEDIA).map(([rel, make]) => {
     const img = make();

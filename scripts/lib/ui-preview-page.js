@@ -48,10 +48,10 @@ const strataOf = (ctx, f) => STRATA[[f, ...ancestors(ctx, f)].find((w) => w.stra
 // The nearest ancestor that clips it: a scroll frame, or a frame with SetClipsChildren(true).
 const scrollParent = (ctx, f) => ancestors(ctx, f).find((w) => w.kind === "ScrollFrame" || w.clips) || null;
 
-// The page font for a font file: ForeverUI's bundled weights, else the default.
+// The page font for a font file: Vanguard's bundled weights, else the default.
 const fontFamily = (file) => {
   const f = file || "";
-  return /Cinzel/.test(f) ? '"FUI-Cinzel"' : /Metamorphous/.test(f) ? '"FUI-Metamorphous"' : /SemiBold/.test(f) ? '"FUI-SemiBold"' : /FiraSans/.test(f) ? '"FUI-Medium"' : "";
+  return /Cinzel/.test(f) ? '"VG-Cinzel"' : /Metamorphous/.test(f) ? '"VG-Metamorphous"' : /SemiBold/.test(f) ? '"VG-SemiBold"' : /FiraSans/.test(f) ? '"VG-Medium"' : "";
 };
 
 // A font string's size, line height, color and family.
@@ -204,7 +204,7 @@ function styleArt(el, f) {
   stylePlaceholder(el, f);
 }
 
-// ForeverUI's art by game path ("Textures\\Bar"), set for each draw.
+// Vanguard's art by game path ("Textures\\Bar"), set for each draw.
 let MEDIA = {};
 
 // CSS mask size and position that show only texcoords [left, right, top, bottom] of an image.
@@ -225,8 +225,8 @@ function styleMedia(el, f, art) {
   Object.assign(el.style, { backgroundColor: rgba(color), ...mask, webkitMaskImage: mask.maskImage, webkitMaskSize: size, webkitMaskPosition: position });
 }
 
-// The preview art ({ url, rgb }) for one of ForeverUI's textures, if the path is one.
-const mediaUrl = (texture) => MEDIA[(/ForeverUI\\Media\\(.+)$/.exec(texture || "") || [])[1]];
+// The preview art ({ url, rgb }) for one of Vanguard's textures, if the path is one.
+const mediaUrl = (texture) => MEDIA[(/Vanguard\\Media\\(.+)$/.exec(texture || "") || [])[1]];
 
 // A texture node: flat color (a color texture, or tinted WHITE8X8), the arrow shape, or a dashed placeholder for game art.
 function textureNode(f) {
@@ -242,7 +242,7 @@ function textureNode(f) {
   return el;
 }
 
-// A file texture: ForeverUI's own art (tinted), or a stand-in for game art.
+// A file texture: Vanguard's own art (tinted), or a stand-in for game art.
 function styleImage(el, f) {
   const url = mediaUrl(f.texture);
   if (url) styleMedia(el, f, url);

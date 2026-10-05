@@ -3,7 +3,7 @@
 -- propagation, the damage meter and the like); each is asked once per session,
 -- at ADDON_LOADED or on the first ns.Client.Has(key), and kept in ns.Client.has.
 -- Modules ask Has(key) before a cosmetic call, so a client without it still builds
--- every module, and /fui status lists what was found. Read it inside functions
+-- every module, and /vg status lists what was found. Read it inside functions
 -- only: files before this one in the TOC load first.
 
 local ADDON, ns = ...
@@ -11,7 +11,7 @@ local ADDON, ns = ...
 local C = { has = {} }
 ns.Client = C
 
--- The keys, in the order /fui status prints them.
+-- The keys, in the order /vg status prints them.
 C.KEYS = {
   "auraContainer", "pixelUtil", "eventValid", "barEase", "cooldownObject", "cooldownMin",
   "countdownText", "keyPropagate", "damageMeter", "cooldownViewer", "swingTimer", "meterEnums",
@@ -98,7 +98,7 @@ local function names(want)
   return #out > 0 and table.concat(out, ", ") or "none"
 end
 
--- The /fui status line: what the client has and what it lacks.
+-- The /vg status line: what the client has and what it lacks.
 function C.Line()
   C.Probe()
   return string.format("Client has: %s  ·  lacks: %s", names(true), names(false))
@@ -115,13 +115,13 @@ end)
 -- once; has.secureSnippets is true or false after that, and nil until then.
 
 -- The one-line write the restricted environment must compile (self is the frame).
-local PROBE_SNIPPET = "self:SetAttribute('fuiprobe', 'ok')"
+local PROBE_SNIPPET = "self:SetAttribute('vgprobe', 'ok')"
 
 -- Makes the probe frame, runs the snippet on it; true only when the attribute came back.
 local function runSnippetProbe()
-  local f = CreateFrame("Frame", "ForeverUI_SnippetProbe", UIParent, "SecureHandlerAttributeTemplate")
+  local f = CreateFrame("Frame", "Vanguard_SnippetProbe", UIParent, "SecureHandlerAttributeTemplate")
   SecureHandlerExecute(f, PROBE_SNIPPET)
-  return f:GetAttribute("fuiprobe") == "ok"
+  return f:GetAttribute("vgprobe") == "ok"
 end
 
 -- Whether this client compiles secure snippets, and the error text when the probe threw: a missing API, an error or a write that never lands all count as no.
@@ -184,7 +184,7 @@ C.HEADER_CLICKS = { ["*type1"] = "target", ["*type2"] = "togglemenu" }
 
 -- Turns a header's init snippet off and has the header copy the clicks onto each new button.
 function C.HeaderWithoutSnippets(header)
-  header.fuiNoSnippets = true
+  header.vgNoSnippets = true
   header:SetAttribute("initialConfigFunction", nil)
   header:SetAttribute("_initialAttributeNames", "*type1,*type2")
   for name, value in pairs(C.HEADER_CLICKS) do header:SetAttribute("_initialAttribute-" .. name, value) end
@@ -192,8 +192,8 @@ end
 
 -- One button of a header without snippets: its size and clicks, then setup(button). Once.
 local function setupHeaderButton(header, b, setup)
-  b.fuiHeaderSetup = true
-  b:SetSize(header:GetAttribute("fui-width"), header:GetAttribute("fui-height"))
+  b.vgHeaderSetup = true
+  b:SetSize(header:GetAttribute("vg-width"), header:GetAttribute("vg-height"))
   for name, value in pairs(C.HEADER_CLICKS) do b:SetAttribute(name, value) end
   setup(b)
 end
@@ -201,9 +201,9 @@ end
 -- Sets up every unit button a header without snippets has made and not set up
 -- yet (its children named <header>UnitButtonN); out of combat only.
 function C.SetupHeaderButtons(header, setup)
-  if not header or not header.fuiNoSnippets or ns.InCombat() then return end
+  if not header or not header.vgNoSnippets or ns.InCombat() then return end
   local prefix = "^" .. header:GetName() .. "UnitButton"
   for _, b in ipairs({ header:GetChildren() }) do
-    if not b.fuiHeaderSetup and (b:GetName() or ""):find(prefix) then setupHeaderButton(header, b, setup) end
+    if not b.vgHeaderSetup and (b:GetName() or ""):find(prefix) then setupHeaderButton(header, b, setup) end
   end
 end

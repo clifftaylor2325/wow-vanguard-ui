@@ -1,4 +1,4 @@
-// fallbacks: what ForeverUI does where a client lacks an API, a frame isn't
+// fallbacks: what Vanguard does where a client lacks an API, a frame isn't
 // laid out yet, or queued work fails. The headless client has these APIs and
 // real layout, so each case takes one away.
 

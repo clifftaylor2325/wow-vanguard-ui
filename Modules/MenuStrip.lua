@@ -6,12 +6,12 @@
 --     after the mouse leaves it, show in combat, stay hidden, or follow a
 --     checklist of conditions (Core/Visibility.lua);
 --   * the quest tracker's spot, under the info strip on the right, no taller than
---     it. ForeverUI's own tracker (Modules/QuestTracker.lua) fills it; only when that
+--     it. Vanguard's own tracker (Modules/QuestTracker.lua) fills it; only when that
 --     is off is the game's tracker pinned into it and skinned here (one owner).
 -- The buttons keep working as the game's own, with the game's icons and alert
 -- flashes, each on a slot tile; a bag's slot shows how full the bag is (red
 -- when full) and the backpack's how many slots your bags have free.
--- ForeverUI's line icons on the menu buttons are a switch away.
+-- Vanguard's line icons on the menu buttons are a switch away.
 -- The bars stay where they're put when the game lays out its own frames again
 -- (ns.Pin), re-fit whenever the game resizes or re-lays them out, hide the
 -- bars' own frame art (the brass box), and a client without one of these frames
@@ -32,7 +32,7 @@ MS.MARGIN, MS.INSET = 8, 2
 -- The bar's height: two rows of slots and a gap, inside the margin. Its width
 -- hugs the longer row (MS.FitStrip).
 MS.HEIGHT = 2 * MS.TILE + MS.GAP + 2 * MS.MARGIN
--- ForeverUI's line icons' side (pixels at UI scale 1), when they're switched on.
+-- Vanguard's line icons' side (pixels at UI scale 1), when they're switched on.
 MS.GLYPH_PX = 20
 -- How faint an empty bag slot's icon is (the game's empty bag-slot art, in grey).
 MS.EMPTY_ALPHA = 0.35
@@ -61,7 +61,7 @@ MS.BAG_EVENTS = { "BAG_UPDATE_DELAYED", "BAG_CONTAINER_UPDATE", "PLAYER_ENTERING
 -- The bars' own frame art on Forever (the brass box), faded: the bar's panel is the only frame.
 MS.BAR_ART = { MicroMenu = { "BorderArt", "BackgroundArt" }, BagsBar = { "BorderArt" } }
 
--- The game's menu buttons -> ForeverUI's line icon for each (shown when switched on). A client without one skips it.
+-- The game's menu buttons -> Vanguard's line icon for each (shown when switched on). A client without one skips it.
 MS.GLYPHS = {
   CharacterMicroButton = T.Icon("Character"), PlayerSpellsMicroButton = T.Icon("Spellbook"),
   SpellbookMicroButton = T.Icon("Spellbook"), TalentMicroButton = T.Icon("Talents"),
@@ -75,13 +75,13 @@ MS.GLYPHS = {
 MS.ALERTS = { "Flash", "FlashBorder", "FlashContent" }
 -- A menu button's own background plates, faded: its slot is its background.
 MS.MENU_ART = { "Background", "PushedBackground" }
--- The button state textures (faded under ForeverUI's icons, greyed while disabled).
+-- The button state textures (faded under Vanguard's icons, greyed while disabled).
 local STATES = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }
 -- Every button on a slot, and the bag buttons with a fill.
 MS.slotted, MS.filled = {}, {}
 
 -- Account file version 2 (Core/DB.lua): the game's icons are the menu buttons'
--- default again, so profiles saved with ForeverUI's (every profile, since the
+-- default again, so profiles saved with Vanguard's (every profile, since the
 -- defaults are written into saved tables) go back to the game's, once; and the
 -- bag strip's own position goes, since the bags now ride in the menu's bar.
 local function upgradeMenu(db)
@@ -143,8 +143,8 @@ end
 -- Runs a pinned bar's placement again after the game resized it or laid it out
 -- again; through the pin, so pauses, combat and the pinning flag are honored.
 function MS.Refit(bar)
-  if bar.fuiPinning or type(bar.fuiPin) ~= "function" then return end
-  ns.Pin(bar, bar.fuiPin)
+  if bar.vgPinning or type(bar.vgPin) ~= "function" then return end
+  ns.Pin(bar, bar.vgPin)
 end
 
 -- Re-fits the bar whenever the game changes a row's size or lays it out again.
@@ -237,8 +237,8 @@ end
 -- at most MS.TILE (every button in a row has the same place: see fitBag).
 local function slotPixels(b)
   local side = math.min(b:GetWidth(), b:GetHeight())
-  if side <= 0 then side = b.fuiRow.button end
-  return math.min(MS.TILE, (side + b.fuiRow.pad) * relScale(b) - MS.GAP)
+  if side <= 0 then side = b.vgRow.button end
+  return math.min(MS.TILE, (side + b.vgRow.pad) * relScale(b) - MS.GAP)
 end
 
 -- Lets a button take clicks on its slot only, so the menu row's tall buttons
@@ -250,25 +250,25 @@ end
 
 -- Fits a texture inside a button's slot, MS.INSET in from its edge.
 local function inset(b, t)
-  local d = b.fuiInset
+  local d = b.vgInset
   t:ClearAllPoints()
-  t:SetPoint("TOPLEFT", b.fuiSlot, "TOPLEFT", d, -d)
-  t:SetPoint("BOTTOMRIGHT", b.fuiSlot, "BOTTOMRIGHT", -d, d)
+  t:SetPoint("TOPLEFT", b.vgSlot, "TOPLEFT", d, -d)
+  t:SetPoint("BOTTOMRIGHT", b.vgSlot, "BOTTOMRIGHT", -d, d)
 end
 
 -- The fill along a bag's icon bottom, MS.FILL pixels thick, and on the
 -- backpack the free count just above it, at its text size on screen.
 local function placeFill(b, rel)
-  b.fuiFill:SetHeight(MS.FILL / rel)
-  if not b.fuiFree then return end
-  b.fuiFree:SetPoint("BOTTOMRIGHT", b.fuiIcon, "BOTTOMRIGHT", 0, MS.FILL / rel)
-  T.TextSize(b.fuiFree, T.RoleSize("auraCount") / rel)
+  b.vgFill:SetHeight(MS.FILL / rel)
+  if not b.vgFree then return end
+  b.vgFree:SetPoint("BOTTOMRIGHT", b.vgIcon, "BOTTOMRIGHT", 0, MS.FILL / rel)
+  T.TextSize(b.vgFree, T.RoleSize("auraCount") / rel)
 end
 
 -- Sizes a line icon: MS.GLYPH_PX on screen, never past the slot's inset.
 local function sizeGlyph(b, side)
-  local g = math.min(MS.GLYPH_PX / relScale(b), side - 2 * b.fuiInset)
-  b.fuiGlyph:SetSize(g, g)
+  local g = math.min(MS.GLYPH_PX / relScale(b), side - 2 * b.vgInset)
+  b.vgGlyph:SetSize(g, g)
 end
 
 -- Sizes a button's slot for its scale now: the slot, where the button takes
@@ -276,12 +276,12 @@ end
 local function sizeSlot(b)
   local rel = relScale(b)
   local side = slotPixels(b) / rel
-  b.fuiSlot:SetSize(side, side)
-  b.fuiInset = MS.INSET / rel
+  b.vgSlot:SetSize(side, side)
+  b.vgInset = MS.INSET / rel
   hitSlot(b, side)
-  if b.fuiIcon then inset(b, b.fuiIcon) end
-  if b.fuiGlyph then sizeGlyph(b, side) end
-  if b.fuiFill then placeFill(b, rel) end
+  if b.vgIcon then inset(b, b.vgIcon) end
+  if b.vgGlyph then sizeGlyph(b, side) end
+  if b.vgFill then placeFill(b, rel) end
 end
 
 -- Sizes every slot again (the bars' scale or the text size changed).
@@ -295,17 +295,17 @@ local function addSlot(b, row)
   local slot = T.Slot(CreateFrame("Frame", nil, b))
   slot:SetPoint("CENTER", b, "CENTER")
   slot:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
-  b.fuiSlot, b.fuiRow = slot, row
+  b.vgSlot, b.vgRow = slot, row
   MS.slotted[#MS.slotted + 1] = b
 end
 
 -- The slot's accent edge follows the mouse: brighter while it's over the
 -- button, darker while the button is held down.
 local function slotStates(b)
-  b:HookScript("OnEnter", function(self) T.SlotState(self.fuiSlot, "hover") end)
-  b:HookScript("OnLeave", function(self) T.SlotState(self.fuiSlot, nil) end)
-  b:HookScript("OnMouseDown", function(self) T.SlotState(self.fuiSlot, "pressed") end)
-  b:HookScript("OnMouseUp", function(self) T.SlotState(self.fuiSlot, self:IsMouseOver() and "hover" or nil) end)
+  b:HookScript("OnEnter", function(self) T.SlotState(self.vgSlot, "hover") end)
+  b:HookScript("OnLeave", function(self) T.SlotState(self.vgSlot, nil) end)
+  b:HookScript("OnMouseDown", function(self) T.SlotState(self.vgSlot, "pressed") end)
+  b:HookScript("OnMouseUp", function(self) T.SlotState(self.vgSlot, self:IsMouseOver() and "hover" or nil) end)
 end
 
 -- Menu buttons --------------------------------------------------------------------------------
@@ -313,12 +313,12 @@ end
 -- Tints a button's line icon: muted while the button is disabled, else accent
 -- while the mouse is over it, else text.
 local function paintGlyph(b)
-  T.Tint(b.fuiGlyph, not b:IsEnabled() and "muted" or (b.fuiHover and "accent" or "text"))
+  T.Tint(b.vgGlyph, not b:IsEnabled() and "muted" or (b.vgHover and "accent" or "text"))
 end
 
 -- Notes whether the mouse is over a button and repaints its line icon.
 local function hover(b, over)
-  b.fuiHover = over
+  b.vgHover = over
   paintGlyph(b)
 end
 
@@ -329,26 +329,26 @@ local function paintEnabled(b)
     local t = b[get] and b[get](b)
     if t then t:SetDesaturated(off) end
   end
-  if b.fuiGlyph then paintGlyph(b) end
+  if b.vgGlyph then paintGlyph(b) end
 end
 
--- ForeverUI's line icon in the middle of the slot instead of the game's (whose
+-- Vanguard's line icon in the middle of the slot instead of the game's (whose
 -- art is faded, its alerts kept), lit in the accent under the mouse.
 local function addGlyph(b, icon)
   T.FadeRegions(b, alerts(b))
   fadeStates(b)
-  b.fuiGlyph = T.Snap(b.fuiSlot:CreateTexture(nil, "OVERLAY"))
-  b.fuiGlyph:SetTexture(icon)
-  b.fuiGlyph:SetPoint("CENTER", b.fuiSlot, "CENTER")
+  b.vgGlyph = T.Snap(b.vgSlot:CreateTexture(nil, "OVERLAY"))
+  b.vgGlyph:SetTexture(icon)
+  b.vgGlyph:SetPoint("CENTER", b.vgSlot, "CENTER")
   b:HookScript("OnEnter", function(self) hover(self, true) end)
   b:HookScript("OnLeave", function(self) hover(self, false) end)
 end
 
 -- One of the game's menu buttons on a slot: its own background plates faded,
--- the game's icon and alerts kept (or ForeverUI's line icon, switched on),
+-- the game's icon and alerts kept (or Vanguard's line icon, switched on),
 -- greyed while disabled, the slot's edge following the mouse. Once per button.
 function MS.SkinButton(b, icon)
-  if b.fuiSlot then return end
+  if b.vgSlot then return end
   for _, key in ipairs(MS.MENU_ART) do if type(b[key]) == "table" then b[key]:SetAlpha(0) end end
   addSlot(b, MS.ROWS[2])
   if MS.settings.glyphs then addGlyph(b, icon) end
@@ -386,12 +386,12 @@ end
 local function paintBag(b)
   local total, free = MS.BagSpace(b:GetBagID())
   if not total then return end
-  b.fuiIcon:SetDesaturated(total == 0)
-  b.fuiIcon:SetAlpha(total == 0 and MS.EMPTY_ALPHA or 1)
-  b.fuiFill:SetShown(total > free)
+  b.vgIcon:SetDesaturated(total == 0)
+  b.vgIcon:SetAlpha(total == 0 and MS.EMPTY_ALPHA or 1)
+  b.vgFill:SetShown(total > free)
   if total <= free then return end
-  b.fuiFill:SetWidth((b.fuiSlot:GetWidth() - 2 * b.fuiInset) * (total - free) / total)
-  T.Tint(b.fuiFill, free == 0 and "bad" or "accent")
+  b.vgFill:SetWidth((b.vgSlot:GetWidth() - 2 * b.vgInset) * (total - free) / total)
+  T.Tint(b.vgFill, free == 0 and "bad" or "accent")
 end
 
 -- Every bag's fill and the backpack's free count, now (after the bags changed).
@@ -404,14 +404,14 @@ end
 -- A bag's fill along its icon's bottom (sized and painted later), and on the
 -- backpack the free count.
 local function addFill(b)
-  b.fuiFill = T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
-  b.fuiFill:SetTexture(T.WHITE)
-  b.fuiFill:SetPoint("BOTTOMLEFT", b.fuiIcon, "BOTTOMLEFT")
-  b.fuiFill:Hide()
+  b.vgFill = T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
+  b.vgFill:SetTexture(T.WHITE)
+  b.vgFill:SetPoint("BOTTOMLEFT", b.vgIcon, "BOTTOMLEFT")
+  b.vgFill:Hide()
   MS.filled[#MS.filled + 1] = b
   if b ~= _G.MainMenuBarBackpackButton then return end
-  b.fuiFree = T.Text(b:CreateFontString(nil, "OVERLAY"), "auraCount")
-  MS.free = b.fuiFree
+  b.vgFree = T.Text(b:CreateFontString(nil, "OVERLAY"), "auraCount")
+  MS.free = b.vgFree
 end
 
 -- A bag button's icon texture, by key or by the game's global name.
@@ -425,7 +425,7 @@ end
 -- gets the same slot at the same pitch. The game anchors each bag button's
 -- right edge, so it grows away from its neighbor.
 local function fitBag(b, icon)
-  b.fuiIcon = T.Crop(icon)
+  b.vgIcon = T.Crop(icon)
   icon:SetAlpha(1)
   if b:GetWidth() < MS.ROWS[1].button then b:SetWidth(MS.ROWS[1].button) end
 end
@@ -435,7 +435,7 @@ end
 -- the slot's edge following the mouse. Once per button.
 function MS.SkinBag(b)
   local icon = bagIcon(b)
-  if b.fuiSlot or not icon then return end
+  if b.vgSlot or not icon then return end
   T.FadeRegions(b, alerts(b))
   fadeStates(b)
   fitBag(b, icon)
@@ -461,7 +461,7 @@ end
 -- The bar in the bottom-right corner: the game's bag bar and micro menu in two
 -- rows of slots, with the accent line between them.
 local function buildStrip()
-  MS.strip = T.HudPanel(CreateFrame("Frame", "ForeverUI_MenuStrip", UIParent), { inset = true })
+  MS.strip = T.HudPanel(CreateFrame("Frame", "Vanguard_MenuStrip", UIParent), { inset = true })
   MS.strip:SetSize(2 * MS.MARGIN, MS.HEIGHT)
   ns.Mover(MS.strip, "menustrip", "Bags and game menu", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 20 })
   addDivider(MS.strip)
@@ -474,7 +474,7 @@ end
 
 -- The quest tracker -------------------------------------------------------------------------
 
--- Whether ForeverUI's own quest tracker is on (it hides the game's tracker, which then has
+-- Whether Vanguard's own quest tracker is on (it hides the game's tracker, which then has
 -- no business being pinned or skinned here).
 function MS.OwnTracker()
   local qt = ns.GetModule("QuestTracker")
@@ -482,9 +482,9 @@ function MS.OwnTracker()
 end
 
 -- The tracker's spot under the info strip, and the game's tracker pinned into it
--- unless ForeverUI's own tracker is on.
+-- unless Vanguard's own tracker is on.
 local function buildTracker()
-  MS.trackerSpot = CreateFrame("Frame", "ForeverUI_QuestTracker", UIParent)
+  MS.trackerSpot = CreateFrame("Frame", "Vanguard_QuestTracker", UIParent)
   MS.trackerSpot:SetSize(MS.TRACKER_W, MS.TRACKER_H)
   ns.Mover(MS.trackerSpot, "questtracker", "Quest tracker", { "TOPRIGHT", "TOPRIGHT", -12, -276 })
   local tracker = _G.ObjectiveTrackerFrame
@@ -523,7 +523,7 @@ end
 
 -- Shows a header's collapse arrow: Down while open, Right while collapsed.
 function MS.PaintArrow(header, collapsed)
-  header.fuiArrow:SetTexture(T.Icon(collapsed and "Right" or "Down"))
+  header.vgArrow:SetTexture(T.Icon(collapsed and "Right" or "Down"))
 end
 
 -- A header's collapse button: the game's art faded, the theme's arrow drawn on
@@ -531,9 +531,9 @@ end
 local function skinToggle(header)
   local b = header.MinimizeButton
   fadeStates(b)
-  header.fuiArrow = T.Tint(T.Snap(b:CreateTexture(nil, "OVERLAY")), "text2")
-  header.fuiArrow:SetSize(12, 12)
-  header.fuiArrow:SetPoint("CENTER", b, "CENTER")
+  header.vgArrow = T.Tint(T.Snap(b:CreateTexture(nil, "OVERLAY")), "text2")
+  header.vgArrow:SetSize(12, 12)
+  header.vgArrow:SetPoint("CENTER", b, "CENTER")
   MS.PaintArrow(header, false)
   if type(header.SetCollapsed) == "function" then hooksecurefunc(header, "SetCollapsed", MS.PaintArrow) end
 end
@@ -541,8 +541,8 @@ end
 -- One tracker header in the theme: its art faded, a flat band with an accent
 -- line along the bottom, its title in the heading font (its color kept). Once.
 function MS.SkinHeader(header)
-  if header.fuiHeader then return end
-  header.fuiHeader = true
+  if header.vgHeader then return end
+  header.vgHeader = true
   for _, key in ipairs(MS.HEADER_ART) do if type(header[key]) == "table" then header[key]:SetAlpha(0) end end
   T.HudPanel(header, { inset = true, alpha = 0.6 })
   addRule(header)
@@ -568,7 +568,7 @@ function MS.TrackerFonts()
   end
 end
 
--- The quest tracker in the ForeverUI look, kept up as the game adds sections
+-- The quest tracker in the Vanguard look, kept up as the game adds sections
 -- and as Text size or the accent changes.
 local function lookTracker()
   local tracker = _G.ObjectiveTrackerFrame

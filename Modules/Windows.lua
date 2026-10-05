@@ -1,4 +1,4 @@
--- The game's own windows in the ForeverUI look: character, merchant, mail,
+-- The game's own windows in the Vanguard look: character, merchant, mail,
 -- quest, gossip, trade, loot and roll windows, friends, the dressing room,
 -- the flight map, books and letters, the game menu, the ready check, popups,
 -- the windows that load later (spellbook, auction house, professions,
@@ -23,7 +23,7 @@ GW.FRAMED = {
 }
 GW.POPUPS = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }
 GW.TIMERS = { "MirrorTimer1", "MirrorTimer2", "MirrorTimer3" }
--- The windows ForeverUI's quest dialog stands in for: the game never shows them while it is on, so they are not skinned.
+-- The windows Vanguard's quest dialog stands in for: the game never shows them while it is on, so they are not skinned.
 GW.QUEST_WINDOWS = { QuestFrame = true, GossipFrame = true }
 -- Windows that load with their own part of the game: addon name -> window names.
 GW.ON_DEMAND = {
@@ -112,8 +112,8 @@ end
 -- again each time it sets one up (it makes them as they're needed).
 local function watchContainer()
   local box = _G.MirrorTimerContainer
-  if type(box) ~= "table" or not box.GetChildren or box.fuiWindow then return end
-  box.fuiWindow = true
+  if type(box) ~= "table" or not box.GetChildren or box.vgWindow then return end
+  box.vgWindow = true
   skinContainerTimers()
   if type(box.SetupTimer) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(box, "SetupTimer", skinContainerTimers) end
 end
@@ -122,10 +122,10 @@ end
 
 -- One game menu button in the theme, once: the menu takes its buttons from a
 -- pool (made again on every InitButtons, reused ones keep the look), and
--- ForeverUI's own button is made from the same template.
+-- Vanguard's own button is made from the same template.
 function GW.SkinMenuButton(button)
-  if button.fuiMenuSkinned then return end
-  button.fuiMenuSkinned = true
+  if button.vgMenuSkinned then return end
+  button.vgMenuSkinned = true
   T.Button(button)
 end
 
@@ -140,7 +140,7 @@ local function dressMenuHeader(menu)
   header:SetPoint("TOP", menu, "TOP", 0, -8)
 end
 
--- Skins the buttons the menu has now (read-only on its pool, which the game owns), ForeverUI's own, and the header.
+-- Skins the buttons the menu has now (read-only on its pool, which the game owns), Vanguard's own, and the header.
 function GW.SkinMenu(menu)
   local pool = menu.buttonPool
   if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
@@ -213,7 +213,7 @@ local function after(owner, name, fn)
 end
 
 -- Keeps quest and gossip text readable: the game recolors it for parchment as
--- each page shows, so ForeverUI's colors go on after it does, every time.
+-- each page shows, so Vanguard's colors go on after it does, every time.
 local function keepTextReadable()
   after(nil, "QuestFrame_SetTextColor", function(fs) T.Color(fs, "text") end)
   after(nil, "QuestFrame_SetTitleTextColor", function(fs) T.Color(fs, "gold") end)
@@ -228,7 +228,7 @@ end
 
 -- Hooking -------------------------------------------------------------------------------------
 
--- Whether ForeverUI's quest dialog is on in place of this game window (QuestDialog loads before this module).
+-- Whether Vanguard's quest dialog is on in place of this game window (QuestDialog loads before this module).
 local function replaced(name)
   local dialog = ns.GetModule("QuestDialog")
   return GW.QUEST_WINDOWS[name] == true and dialog ~= nil and dialog.frame ~= nil
@@ -237,8 +237,8 @@ end
 -- Skins a window now and every time it shows (once hooked); not one the quest dialog replaces.
 local function watch(name, skin)
   local frame = _G[name]
-  if type(frame) ~= "table" or not frame.HookScript or frame.fuiWindow or replaced(name) then return end
-  frame.fuiWindow = true
+  if type(frame) ~= "table" or not frame.HookScript or frame.vgWindow or replaced(name) then return end
+  frame.vgWindow = true
   skin(frame)
   frame:HookScript("OnShow", skin)
 end
@@ -266,11 +266,11 @@ end
 
 -- A gear slot's durability label (made once), along the slot's bottom edge.
 local function slotLabel(button)
-  if not button.fuiDurability then
-    button.fuiDurability = T.Text(button:CreateFontString(nil, "OVERLAY"), "auraCount", false)
-    button.fuiDurability:SetPoint("BOTTOM", button, "BOTTOM", 0, 2)
+  if not button.vgDurability then
+    button.vgDurability = T.Text(button:CreateFontString(nil, "OVERLAY"), "auraCount", false)
+    button.vgDurability:SetPoint("BOTTOM", button, "BOTTOM", 0, 2)
   end
-  return button.fuiDurability
+  return button.vgDurability
 end
 
 -- One slot's durability as "62%" in the info strip's colors; hidden at full,

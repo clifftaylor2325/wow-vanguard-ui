@@ -1,9 +1,9 @@
--- Keybind mode (/fui keybind, or Keybind mode on the Action bars page): hover
--- one of ForeverUI's action buttons and press a key to bind it, as the game's
+-- Keybind mode (/vg keybind, or Keybind mode on the Action bars page): hover
+-- one of Vanguard's action buttons and press a key to bind it, as the game's
 -- own quick keybind mode does. The key is bound to the button's game command
 -- (ACTIONBUTTON1, MULTIACTIONBAR1BUTTON1, ...) in place of the keys it had, and
 -- saved in the binding set in use (account or character), so it stays bound
--- without ForeverUI too; the button's hotkey text shows it at once.
+-- without Vanguard too; the button's hotkey text shows it at once.
 --
 -- Escape leaves; a modifier pressed alone (Shift, Ctrl, Alt) waits for the key it
 -- goes with; a key pressed with no button under the mouse goes on to the game.
@@ -29,7 +29,7 @@ end
 
 -- "Bar 2 button 5" for a button.
 local function buttonLabel(b)
-  return string.format("Bar %d button %d", b.fuiBar.fuiIndex, b:GetAttribute("index"))
+  return string.format("Bar %d button %d", b.vgBar.vgIndex, b:GetAttribute("index"))
 end
 
 -- Binds key to the button's command in place of its keys, saves the binding
@@ -66,7 +66,7 @@ end
 
 -- The mode's banner at the top center, built on first use; it takes the keyboard.
 local function build()
-  local f = T.Panel(CreateFrame("Frame", "ForeverUI_KeybindMode", UIParent), { raised = true, shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_KeybindMode", UIParent), { raised = true, shadow = true })
   f:SetSize(460, 40) f:SetPoint("TOP", UIParent, "TOP", 0, -120)
   f:SetFrameStrata("DIALOG")
   f.text = T.Text(f:CreateFontString(nil, "OVERLAY"), "label")
@@ -96,8 +96,8 @@ end
 -- Follows the mouse over every action button (once).
 local function hookButtons()
   for _, b in ipairs(AB.buttons) do
-    if not b.fuiBindHooked then
-      b.fuiBindHooked = true
+    if not b.vgBindHooked then
+      b.vgBindHooked = true
       b:HookScript("OnEnter", onEnter)
       b:HookScript("OnLeave", onLeave)
     end
@@ -106,7 +106,7 @@ end
 
 -- Whether the mode can start now; says why not in chat.
 local function canStart()
-  if #AB.buttons == 0 then ns.Chat("Keybind mode needs ForeverUI's action bars (/fui > Modules).") return false end
+  if #AB.buttons == 0 then ns.Chat("Keybind mode needs Vanguard's action bars (/vg > Modules).") return false end
   if ns.InCombat() then ns.Chat("Keybind mode waits until you're out of combat.") return false end
   return true
 end
@@ -123,7 +123,7 @@ function AB.KeybindMode(on)
   if not on then ns.Chat("Keybind mode off.") end
 end
 
--- /fui keybind: on, or off again.
+-- /vg keybind: on, or off again.
 function AB.ToggleKeybindMode()
   AB.KeybindMode(not AB.binding)
 end

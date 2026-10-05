@@ -1,4 +1,4 @@
-// options: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// options: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, button, calls, chatHas, isTok, key, loggedIn, marks, setCombat, tooltip } from "./helpers.mjs";
@@ -6,16 +6,16 @@ import { CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, button, calls, ch
 it("options window", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
   addon.slash("");
-  expect(addon.eval("return ForeverUI_Options:IsShown()") === true, "/fui opens the options window").toBeTruthy();
-  expect(addon.eval("return ForeverUI_Options.reload:IsShown()") === false, "no reload button until something needs one").toBeTruthy();
+  expect(addon.eval("return Vanguard_Options:IsShown()") === true, "/vg opens the options window").toBeTruthy();
+  expect(addon.eval("return Vanguard_Options.reload:IsShown()") === false, "no reload button until something needs one").toBeTruthy();
   addon.eval("for _, w in ipairs(__wfgStub.frames) do if w.fill and w.__parent and w.__parent.hex and w.__scripts.OnClick then __swatches = (__swatches or 0) + 1 if __swatches == 2 then w.__scripts.OnClick(w) end end end");
   expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]") === true, "the second swatch (arcane) sets the accent at once").toBeTruthy();
   expect(addon.eval('return __click("Snap to other frames")') && addon.eval("return ns.MoverOptions().snap") === false, "the snap check box turns snapping off").toBeTruthy();
   expect(addon.eval('return __click("Action bars")'), "the nav switches pages").toBeTruthy();
-  expect(addon.eval('return __click("Show bar 6")') && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.bars[6].enabled") === true, "check boxes change settings").toBeTruthy();
-  expect(addon.eval("return ForeverUI_Options.reload:IsShown()") === true, "a change that needs a reload shows the Reload button").toBeTruthy();
-  expect(addon.eval('return __click("Visibility")') && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.bars[1].visibility") === "mouseover", "cycle buttons step through choices").toBeTruthy();
-  expect(addon.eval('return __click("Button size")') && addon.eval("return ForeverUIDB.profiles.Default.ActionBars.bars[1].size") === 40, "a bar's size slider starts at the shared size and steps by 2").toBeTruthy();
+  expect(addon.eval('return __click("Show bar 6")') && addon.eval("return VanguardDB.profiles.Default.ActionBars.bars[6].enabled") === true, "check boxes change settings").toBeTruthy();
+  expect(addon.eval("return Vanguard_Options.reload:IsShown()") === true, "a change that needs a reload shows the Reload button").toBeTruthy();
+  expect(addon.eval('return __click("Visibility")') && addon.eval("return VanguardDB.profiles.Default.ActionBars.bars[1].visibility") === "mouseover", "cycle buttons step through choices").toBeTruthy();
+  expect(addon.eval('return __click("Button size")') && addon.eval("return VanguardDB.profiles.Default.ActionBars.bars[1].size") === 40, "a bar's size slider starts at the shared size and steps by 2").toBeTruthy();
   addon.eval('__click("Modules")');
   // The Modules page's row for unit frames: its description, and clicking it.
   const moduleRow = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.desc and w.label.__text == "Unit frames" and w:IsVisible() then
@@ -23,44 +23,44 @@ it("options window", () => {
   expect(moduleRow, "each module has a name and a line on what it does").toMatch(/^Player, target/);
   expect(addon.eval("return ns.ModuleEnabled('UnitFrames')"), "modules can be turned off").toBe(false);
   addon.eval('__click("Profiles")');
-  expect(addon.eval('return __click("Export profile")') && addon.eval("return ForeverUI_TextEdit:GetText():sub(1, 5)") === "FUI1:", "Export profile shows the string").toBeTruthy();
-  expect(addon.eval('return __click("Use this profile for this spec")') && addon.eval("return ForeverUICharDB.specProfiles[1]") === "Default", "the spec button maps this spec").toBeTruthy();
-  addon.eval('ReloadUI = function() __reloaded = true end; ForeverUI_Options.reload:GetScript("OnClick")(ForeverUI_Options.reload)');
+  expect(addon.eval('return __click("Export profile")') && addon.eval("return Vanguard_TextEdit:GetText():sub(1, 4)") === "VG1:", "Export profile shows the string").toBeTruthy();
+  expect(addon.eval('return __click("Use this profile for this spec")') && addon.eval("return VanguardCharDB.specProfiles[1]") === "Default", "the spec button maps this spec").toBeTruthy();
+  addon.eval('ReloadUI = function() __reloaded = true end; Vanguard_Options.reload:GetScript("OnClick")(Vanguard_Options.reload)');
   expect(addon.eval("return __reloaded") === true, "Reload UI reloads").toBeTruthy();
   addon.slash("options");
-  expect(addon.eval("return ForeverUI_Options:IsShown()") === false, "/fui options toggles it closed").toBeTruthy();
-  addon.eval('ForeverUI_OnAddonCompartmentClick("ForeverUI", "RightButton")');
+  expect(addon.eval("return Vanguard_Options:IsShown()") === false, "/vg options toggles it closed").toBeTruthy();
+  addon.eval('Vanguard_OnAddonCompartmentClick("Vanguard", "RightButton")');
   expect(addon.eval("return ns.Unlocked()") === true, "right-clicking the addons button toggles moving frames").toBeTruthy();
-  addon.eval('ForeverUI_OnAddonCompartmentClick("ForeverUI", "LeftButton")');
-  expect(addon.eval("return ForeverUI_Options:IsShown()") === true, "left-clicking it opens the options").toBeTruthy();
+  addon.eval('Vanguard_OnAddonCompartmentClick("Vanguard", "LeftButton")');
+  expect(addon.eval("return Vanguard_Options:IsShown()") === true, "left-clicking it opens the options").toBeTruthy();
 });
 
 it("options window: nav, search, controls, footer", () => {
   const addon = loggedIn(CLICK_LUA + "GetAddOnMetadata = function(_, key) return key == 'Version' and 'TEST-ONLY-9.9' or nil end");
   addon.eval('ns.Options.Show("general")');
   const nav = addon.eval(`local out = {}
-    for k, b in pairs(ForeverUI_Options.nav) do out[k] = { icon = b.icon.__texture, rail = b.rail:IsShown(), text = b.text:GetText() } end
+    for k, b in pairs(Vanguard_Options.nav) do out[k] = { icon = b.icon.__texture, rail = b.rail:IsShown(), text = b.text:GetText() } end
     return out`);
   expect(/Icons\\General$/.test(nav.general.icon) && /Icons\\Healing$/.test(nav.healing.icon), "every nav entry has its icon").toBeTruthy();
   expect(nav.general.rail === true && nav.raid.rail === false, "the current page gets the accent rail").toBeTruthy();
-  expect(addon.eval("return ForeverUI_Options.notice:IsShown() or ForeverUI_Options.reload:IsShown()") === false, "no reload notice until something needs one").toBeTruthy();
-  expect(/TEST-ONLY-9\.9/.test(addon.eval("return ForeverUI_Options.version:GetText()")), "the footer shows the version").toBeTruthy();
+  expect(addon.eval("return Vanguard_Options.notice:IsShown() or Vanguard_Options.reload:IsShown()") === false, "no reload notice until something needs one").toBeTruthy();
+  expect(/TEST-ONLY-9\.9/.test(addon.eval("return Vanguard_Options.version:GetText()")), "the footer shows the version").toBeTruthy();
   addon.eval('ns.Options.Search("dispel")');
-  expect(addon.eval("return ForeverUI_Options.nav.raid:GetAlpha()") === 1 && addon.eval("return ForeverUI_Options.nav.general:GetAlpha()") === 0.35, "search dims pages without a match").toBeTruthy();
-  addon.eval('ForeverUI_Options.search:GetScript("OnEnterPressed")(ForeverUI_Options.search)');
+  expect(addon.eval("return Vanguard_Options.nav.raid:GetAlpha()") === 1 && addon.eval("return Vanguard_Options.nav.general:GetAlpha()") === 0.35, "search dims pages without a match").toBeTruthy();
+  addon.eval('Vanguard_Options.search:GetScript("OnEnterPressed")(Vanguard_Options.search)');
   expect(addon.eval("return ns.Options.current") === "raid", "Enter in the search opens the first match").toBeTruthy();
   addon.eval('ns.Options.Search("")');
-  expect(addon.eval("return ForeverUI_Options.nav.general:GetAlpha()") === 1, "clearing the search brings every page back").toBeTruthy();
+  expect(addon.eval("return Vanguard_Options.nav.general:GetAlpha()") === 1, "clearing the search brings every page back").toBeTruthy();
   addon.eval('ns.Options.Show("more")');
   const seg = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.segments and w.label:GetText() == "Numbers" then
-      w.segments[2]:GetScript("OnClick")(w.segments[2]) return { value = ForeverUIDB.profiles.Default.DataBars.text, on = w.segments[2].fill:IsShown(), off = w.segments[1].fill:IsShown() } end end`);
+      w.segments[2]:GetScript("OnClick")(w.segments[2]) return { value = VanguardDB.profiles.Default.DataBars.text, on = w.segments[2].fill:IsShown(), off = w.segments[1].fill:IsShown() } end end`);
   expect(seg.value === "always" && seg.on === true && seg.off === false, "clicking a segment picks it and lights it").toBeTruthy();
   const dd = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.label:GetText() == "Tooltip position" then
       w.dropdown:GetScript("OnClick")(w.dropdown)
-      local m = ForeverUI_Menu
+      local m = Vanguard_Menu
       local shown = m:IsShown()
       m.items[2]:GetScript("OnClick")(m.items[2])
-      return { shown = shown, count = #m.items, value = ForeverUIDB.profiles.Default.Tooltips.anchor, closed = not m:IsShown(), text = w.dropdown.text:GetText() } end end`);
+      return { shown = shown, count = #m.items, value = VanguardDB.profiles.Default.Tooltips.anchor, closed = not m:IsShown(), text = w.dropdown.text:GetText() } end end`);
   expect(dd.shown && dd.count === 3 && dd.value === "cursor" && dd.closed && dd.text === "at the cursor", "a dropdown opens a menu of its choices; picking one sets it and closes the menu").toBeTruthy();
   addon.eval('ns.Options.Show("general")');
   const slider = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.value and w.label:GetText() == "Text size" then
@@ -69,11 +69,11 @@ it("options window: nav, search, controls, footer", () => {
   expect(Math.abs(slider.v - 0.95) < 1e-9 && slider.text === "95%", "the Text size slider sets 95% and shows the value").toBeTruthy();
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.hex then w.hex:SetText("#5aa2f0") w.hex:GetScript("OnEnterPressed")(w.hex) end end`);
   expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]") === true, "typing a hex color in the accent box sets it").toBeTruthy();
-  expect(addon.eval("return ForeverUI_Options.notice:IsShown() and ForeverUI_Options.reload:IsShown()") === true, "a reload-only change shows the notice and the Reload now button").toBeTruthy();
-  const profiles = addon.eval(`ns.CreateProfile = ns.CreateProfile ForeverUIDB.profiles["TEST-ONLY Healer"] = {}
-    local d = ForeverUI_Options.profile d:GetScript("OnClick")(d)
-    local texts = {} for i, b in ipairs(ForeverUI_Menu.items) do if b:IsShown() then texts[#texts + 1] = b.text:GetText() end end
-    ForeverUI_Menu.items[2]:GetScript("OnClick")(ForeverUI_Menu.items[2])
+  expect(addon.eval("return Vanguard_Options.notice:IsShown() and Vanguard_Options.reload:IsShown()") === true, "a reload-only change shows the notice and the Reload now button").toBeTruthy();
+  const profiles = addon.eval(`ns.CreateProfile = ns.CreateProfile VanguardDB.profiles["TEST-ONLY Healer"] = {}
+    local d = Vanguard_Options.profile d:GetScript("OnClick")(d)
+    local texts = {} for i, b in ipairs(Vanguard_Menu.items) do if b:IsShown() then texts[#texts + 1] = b.text:GetText() end end
+    Vanguard_Menu.items[2]:GetScript("OnClick")(Vanguard_Menu.items[2])
     return { texts = texts, now = ns.SelectedProfileName(), running = ns.ProfileName() }`);
   expect(profiles.texts.length === 2 && profiles.now === "TEST-ONLY Healer" && profiles.running === "Default", "the header's profile dropdown lists profiles and stages the switch (on reload)").toBeTruthy();
 });
@@ -96,9 +96,9 @@ it("options slider, search, scroll, special bars and profile switch", () => {
     __wfgStub.update(0.05)
     row.track:GetScript("OnMouseUp")()
     local dragged = row.get()
-    ForeverUI_Options.search:SetText("")
-    ForeverUI_Options.search:GetScript("OnTextChanged")(ForeverUI_Options.search)
-    local hint = ForeverUI_Options.search.hint:IsShown()
+    Vanguard_Options.search:SetText("")
+    Vanguard_Options.search:GetScript("OnTextChanged")(Vanguard_Options.search)
+    local hint = Vanguard_Options.search.hint:IsShown()
     for _, w in ipairs(__wfgStub.frames) do
       if w.__scrollChild and w.__scripts.OnMouseWheel then
         -- TEST-ONLY page taller than its view, so the wheel can scroll.
@@ -110,7 +110,7 @@ it("options slider, search, scroll, special bars and profile switch", () => {
   `);
   expect(scale.wrapped === 0.7 && Math.abs(scale.dragged - 1) < 1e-9 && scale.hint === true, "a slider wraps at the max, drags with the cursor, and the search hint shows while empty").toBeTruthy();
   expect(addon.eval('ns.Options.Show("actionbars") return __click("Restyle the pet, stance and extra action buttons (reload)")') === true, "the special-bars switch is on the action bar page").toBeTruthy();
-  expect(addon.eval("return ForeverUIDB.profiles.Default.SpecialBars.skinPet") === false, "it turns pet, stance and extra bars off together").toBeTruthy();
+  expect(addon.eval("return VanguardDB.profiles.Default.SpecialBars.skinPet") === false, "it turns pet, stance and extra bars off together").toBeTruthy();
 });
 
 // The visible profile row for a name: its caption and which buttons it has.
@@ -128,15 +128,15 @@ it("options: profiles in the window", () => {
   expect(profileRow(addon, "Default"), "the profile in use is marked and has no buttons").toEqual(["Default  (in use)", false, false, false]);
   expect(profileRow(addon, "TEST-ONLY Healer"), "every other profile can be used, copied here or deleted").toEqual(["TEST-ONLY Healer", true, true, true]);
   expect(profileButton(addon, "TEST-ONLY Tank", "delete"), "Delete asks first").toBe("Sure?");
-  expect(addon.eval('return ForeverUIDB.profiles["TEST-ONLY Tank"] ~= nil'), "and deletes nothing yet").toBe(true);
+  expect(addon.eval('return VanguardDB.profiles["TEST-ONLY Tank"] ~= nil'), "and deletes nothing yet").toBe(true);
   profileButton(addon, "TEST-ONLY Tank", "delete");
-  expect([addon.eval('return ForeverUIDB.profiles["TEST-ONLY Tank"] == nil'), profileRow(addon, "TEST-ONLY Tank")], "the second click deletes it, and the page rebuilds without it").toEqual([true, null]);
-  addon.eval('ForeverUIDB.profiles["TEST-ONLY Healer"].Chat = { background = false }');
+  expect([addon.eval('return VanguardDB.profiles["TEST-ONLY Tank"] == nil'), profileRow(addon, "TEST-ONLY Tank")], "the second click deletes it, and the page rebuilds without it").toEqual([true, null]);
+  addon.eval('VanguardDB.profiles["TEST-ONLY Healer"].Chat = { background = false }');
   profileButton(addon, "TEST-ONLY Healer", "copy");
   profileButton(addon, "TEST-ONLY Healer", "copy");
-  expect(addon.eval("return ForeverUIDB.profiles.Default.Chat.background"), "Copy here (asked twice) copies that profile's settings over this one").toBe(false);
+  expect(addon.eval("return VanguardDB.profiles.Default.Chat.background"), "Copy here (asked twice) copies that profile's settings over this one").toBe(false);
   profileButton(addon, "TEST-ONLY Healer", "use");
-  expect([addon.eval("return ns.ProfileName()"), addon.eval("return ns.SelectedProfileName()"), profileRow(addon, "TEST-ONLY Healer"), addon.eval("return ForeverUI_Options.reload:IsShown()")], "Use stages the switch (it applies on reload): the profile on screen stays, the chosen one is marked and has no buttons")
+  expect([addon.eval("return ns.ProfileName()"), addon.eval("return ns.SelectedProfileName()"), profileRow(addon, "TEST-ONLY Healer"), addon.eval("return Vanguard_Options.reload:IsShown()")], "Use stages the switch (it applies on reload): the profile on screen stays, the chosen one is marked and has no buttons")
     .toEqual(["Default", "TEST-ONLY Healer", ["TEST-ONLY Healer  (after reload)", false, false, false], true]);
   expect(profileRow(addon, "Default"), "the profile running until then can only be taken back with Use").toEqual(["Default  (in use until reload)", true, false, false]);
   expect(addon.eval('return ns.DeleteProfile("TEST-ONLY Healer")'), "the staged profile can't be deleted").toBe(false);
@@ -151,17 +151,17 @@ it("options: profiles in the window", () => {
   expect([addon.eval("return ns.SelectedProfileName()"), profileRow(addon, "TEST-ONLY Leveling")[0], profileRow(addon, "TEST-ONLY Healer")[0]], "a good name makes the profile and stages the switch to it").toEqual(["TEST-ONLY Leveling", "TEST-ONLY Leveling  (after reload)", "TEST-ONLY Healer"]);
   expect(addon.texts("This character uses Default until you reload, then TEST-ONLY Leveling.").length, "and the page says what is used until then").toBe(1);
   addon.eval('ns.Options.Hide() ns.Options.RebuildPage("profiles")');
-  expect(addon.eval("return ForeverUI_Options:IsShown()"), "rebuilding a page while the window is closed doesn't open it").toBe(false);
+  expect(addon.eval("return Vanguard_Options:IsShown()"), "rebuilding a page while the window is closed doesn't open it").toBe(false);
 });
 
 it("options: search jumps to the row, and the page edges fade", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.slash("");
   // Types into the search box and presses Enter.
-  const search = (text) => addon.eval(`local s = ForeverUI_Options.search s:SetText("${text}") s:GetScript("OnTextChanged")(s) s:GetScript("OnEnterPressed")(s)`);
+  const search = (text) => addon.eval(`local s = Vanguard_Options.search s:SetText("${text}") s:GetScript("OnTextChanged")(s) s:GetScript("OnEnterPressed")(s)`);
   search("swing timer");
   // The current page and the found row: page key, its caption, the page's scroll, the wash shown.
-  const found = () => addon.eval(`local f = ForeverUI_Options.found local w for _, x in ipairs(__wfgStub.frames) do if x.found == f and f then w = x end end
+  const found = () => addon.eval(`local f = Vanguard_Options.found local w for _, x in ipairs(__wfgStub.frames) do if x.found == f and f then w = x end end
     return { ns.Options.current, w and w.caption, f ~= nil and f:IsShown() }`);
   expect(found(), "Enter opens the first page that matches and marks the row").toEqual(["modules", "Swing timer", true]);
   search("bars, map");
@@ -195,7 +195,7 @@ it("options: search reads each page's rows once per opening; a rebuilt page leav
   expect([addon.eval("return ns.Options.RowCount()"), addon.eval("return ns.Options.matched.profiles"), reads()], "a new profile: one more row, found by the search; only the rebuilt page is read again, once (to build it, mark its dot and search it)").toEqual([rows + 1, true, [0, 1]]);
   addon.eval('ns.Options.Search("tan")');
   expect(reads(), "the next keystroke reads nothing").toEqual([0, 0]);
-  addon.eval('ns.Options.Hide() ForeverUI_Options:Hide() ns.Options.Show() ns.Options.Search("tan")');
+  addon.eval('ns.Options.Hide() Vanguard_Options:Hide() ns.Options.Show() ns.Options.Search("tan")');
   expect(reads(), "opening the window again reads the rows afresh").toEqual([1, 1]);
 });
 
@@ -248,11 +248,11 @@ it("options: a frame's scale and opacity from the Layout card; a long menu scrol
   addon.eval(`local r = ${sliderRow("Its scale")} r.set(1.5) r:Refresh()`);
   expect(addon.eval(`return { ns.MoverLook("${first}") }`), "the scale slider sets that frame's scale").toEqual([1.5, 1]);
   addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Frame to size" then __d = w.dropdown end end __d:GetScript("OnClick")(__d)');
-  const menu = addon.eval("local n = 0 for _, b in ipairs(ForeverUI_Menu.items) do if b:IsShown() then n = n + 1 end end return { n, ForeverUI_Menu:GetWidth(), ForeverUI_Menu:GetHeight(), ns.Widgets ~= nil }");
+  const menu = addon.eval("local n = 0 for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() then n = n + 1 end end return { n, Vanguard_Menu:GetWidth(), Vanguard_Menu:GetHeight(), ns.Widgets ~= nil }");
   const count = addon.eval('local c = __d.choices if type(c) == "function" then c = c() end return #c');
   expect(count, "every frame is a choice").toBeGreaterThan(16);
   expect(menu.slice(0, 3), "a long list shows 16 rows at a time, one column wide").toEqual([16, 180, 16 * 22 + 2]);
-  addon.eval('for _ = 1, 60 do for _, b in ipairs(ForeverUI_Menu.items) do if b:IsShown() and b.text:GetText() == "Minimap" then b:GetScript("OnClick")(b) return end end ForeverUI_Menu:GetScript("OnMouseWheel")(ForeverUI_Menu, -1) end');
+  addon.eval('for _ = 1, 60 do for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() and b.text:GetText() == "Minimap" then b:GetScript("OnClick")(b) return end end Vanguard_Menu:GetScript("OnMouseWheel")(Vanguard_Menu, -1) end');
   expect(addon.eval(`return ${sliderRow("Its scale")}.get()`), "picking another frame re-reads the sliders").toBe(1);
   addon.eval(`local r = ${sliderRow("Its opacity")} r.set(0.5) r:Refresh()`);
   expect(addon.eval("return { ns.MoverLook('minimap') }"), "the opacity slider sets the picked frame's opacity").toEqual([1, 0.5]);
@@ -275,7 +275,7 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   expect(resetDot(addon, "Show health numbers"), "changed: the dot shows").toEqual([true, true]);
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then __dot = w.reset end end
     __dot:GetScript("OnEnter")(__dot) __dot:GetScript("OnLeave")(__dot) __dot:GetScript("OnClick")(__dot)`);
-  expect([addon.eval("return ForeverUIDB.profiles.Default.UnitFrames.healthText"), ...resetDot(addon, "Show health numbers")], "clicking it puts the default back and hides it").toEqual([true, false, true]);
+  expect([addon.eval("return VanguardDB.profiles.Default.UnitFrames.healthText"), ...resetDot(addon, "Show health numbers")], "clicking it puts the default back and hides it").toEqual([true, false, true]);
   expect(resetDot(addon, "Health as"), "a default that depends on the client has no dot").toEqual([false, false]);
   addon.eval('__click("General")');
   expect(resetDot(addon, "Snap to other frames"), "a setting with no default has no dot").toEqual([false, false]);
@@ -331,15 +331,15 @@ it("options: Bar 1's Show when chips sit inside the card, inset like every other
 
 // The nav entries whose "Changed" dot shows, sorted.
 const dotted = (addon) => {
-  const out = addon.eval("local out = {} for k, b in pairs(ForeverUI_Options.nav) do if b.changed:IsShown() then out[#out + 1] = k end end table.sort(out) return out");
+  const out = addon.eval("local out = {} for k, b in pairs(Vanguard_Options.nav) do if b.changed:IsShown() then out[#out + 1] = k end end table.sort(out) return out");
   return Array.isArray(out) ? out : [];
 };
 
 it("options: a dot on the nav marks each page with changed settings, as rows change and are put back", () => {
-  const addon = loggedIn(UNITS_ENV + CLICK_LUA, { savedVariables: "ForeverUIDB.profiles = { Default = { Nameplates = { width = 160 } } }" });
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { Nameplates = { width = 160 } } }" });
   addon.slash("");
   expect(dotted(addon), "on opening, only the page with a saved change (a nameplate width) is marked, though it isn't built yet").toEqual(["nameplates"]);
-  expect(isTok(addon, addon.eval("return ForeverUI_Options.nav.nameplates.changed.__vertexColor"), "accent"), "the dot is in the accent").toBe(true);
+  expect(isTok(addon, addon.eval("return Vanguard_Options.nav.nameplates.changed.__vertexColor"), "accent"), "the dot is in the accent").toBe(true);
   addon.eval('__click("Unit frames") __click("Show health numbers")');
   expect(dotted(addon), "changing a row marks its page at once").toEqual(["nameplates", "unitframes"]);
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() and w:IsVisible() then __dot = w.reset end end __dot:GetScript("OnClick")(__dot)`);
@@ -350,12 +350,12 @@ it("options: a dot on the nav marks each page with changed settings, as rows cha
 
 // Presses a key on the options window: { the page shown, whether the key went on to the game }.
 const press = (addon, k) => {
-  addon.key("ForeverUI_Options", k);
-  return addon.eval("return { ns.Options.current, ForeverUI_Options.__passed }");
+  addon.key("Vanguard_Options", k);
+  return addon.eval("return { ns.Options.current, Vanguard_Options.__passed }");
 };
 
 // The keyboard's row on the options window: its caption, whether its wash shows, and whether it is inside the page's view.
-const keyRow = (addon) => addon.eval(`local w, view = ForeverUI_Options.focusRow
+const keyRow = (addon) => addon.eval(`local w, view = Vanguard_Options.focusRow
   for _, x in ipairs(__wfgStub.frames) do if x.fadeTop and x:IsVisible() then view = x end end
   if not w then return false end
   local top = view:GetVerticalScroll() or 0
@@ -365,9 +365,9 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');
   // TEST-ONLY spies on the window's keyboard calls.
-  addon.eval("local f = ForeverUI_Options f.SetPropagateKeyboardInput = function(self, v) self.__passed = v end f.EnableKeyboard = function(self, on) self.__kb = on end f:Hide() ns.Options.Show('general')");
+  addon.eval("local f = Vanguard_Options f.SetPropagateKeyboardInput = function(self, v) self.__passed = v end f.EnableKeyboard = function(self, on) self.__kb = on end f:Hide() ns.Options.Show('general')");
   const order = addon.eval("local list = {} for _, p in ipairs(ns.Options.PAGES) do list[#list + 1] = p end table.sort(list, function(a, b) return (a.order or 70) < (b.order or 70) end) local out = {} for i, p in ipairs(list) do out[i] = p.key end return out");
-  expect([order[0], addon.eval("return ForeverUI_Options.__kb")], "General is first, and the open window takes the keyboard").toEqual(["general", true]);
+  expect([order[0], addon.eval("return Vanguard_Options.__kb")], "General is first, and the open window takes the keyboard").toEqual(["general", true]);
   expect(press(addon, "DOWN"), "Down opens the next page, and the key stops there").toEqual([order[1], false]);
   expect(press(addon, "UP")[0], "Up goes back").toBe("general");
   expect(press(addon, "UP")[0], "and from the first page wraps to the last").toBe(order[order.length - 1]);
@@ -383,12 +383,12 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   press(addon, "TAB");
   addon.keys({ shift: false });
   const last = keyRow(addon);
-  expect([last[0], last[2], addon.eval("return ForeverUI_Options.found:IsShown()")], "Shift-Tab goes back, and past the first wraps to the last row, scrolled into view").toEqual([addon.eval("local rows = {} for _, w in ipairs(__wfgStub.frames) do if w.card and w:IsVisible() and w:GetObjectType() == 'Button' then rows[#rows + 1] = w end end table.sort(rows, function(a, b) return a.pageY < b.pageY end) return rows[#rows].caption"), true, true]);
+  expect([last[0], last[2], addon.eval("return Vanguard_Options.found:IsShown()")], "Shift-Tab goes back, and past the first wraps to the last row, scrolled into view").toEqual([addon.eval("local rows = {} for _, w in ipairs(__wfgStub.frames) do if w.card and w:IsVisible() and w:GetObjectType() == 'Button' then rows[#rows + 1] = w end end table.sort(rows, function(a, b) return a.pageY < b.pageY end) return rows[#rows].caption"), true, true]);
   press(addon, "TAB");
   expect(keyRow(addon), "and Tab from the last wraps to the first, scrolled back up").toEqual(["Font", true, true]);
   const font = addon.eval("return ns.Theme.Settings().font");
   expect([press(addon, "ENTER")[1], addon.eval("return ns.Theme.Settings().font") !== font], "Enter presses the row (it steps the font), and stops there").toEqual([false, true]);
-  addon.eval("GetCurrentKeyBoardFocus = function() return ForeverUI_Options.search end");
+  addon.eval("GetCurrentKeyBoardFocus = function() return Vanguard_Options.search end");
   expect(press(addon, "DOWN"), "while you type in the search (or any box), every key is yours").toEqual(["general", true]);
   addon.eval("GetCurrentKeyBoardFocus = nil");
   press(addon, "DOWN");
@@ -398,17 +398,17 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   addon.eval("ns.Options.Show('general')");
   setCombat(addon, true);
   addon.fire("PLAYER_REGEN_DISABLED");
-  addon.eval("ForeverUI_Options.__passed = 'TEST-ONLY unset'");
-  expect([addon.eval("return ForeverUI_Options.__kb"), press(addon, "W")[1]], "a fight takes the keyboard back (keys can't be passed on in combat)").toEqual([false, "TEST-ONLY unset"]);
+  addon.eval("Vanguard_Options.__passed = 'TEST-ONLY unset'");
+  expect([addon.eval("return Vanguard_Options.__kb"), press(addon, "W")[1]], "a fight takes the keyboard back (keys can't be passed on in combat)").toEqual([false, "TEST-ONLY unset"]);
   addon.eval("ns.Options.Show('more')");
-  expect(addon.eval("return ForeverUI_Options.__kb"), "and opening a page in combat doesn't take it").toBe(false);
+  expect(addon.eval("return Vanguard_Options.__kb"), "and opening a page in combat doesn't take it").toBe(false);
   setCombat(addon, false);
-  expect(addon.eval("return ForeverUI_Options.__kb"), "after the fight the open window has it again").toBe(true);
-  addon.eval("ForeverUI_Options:Hide()");
-  expect(addon.eval("return ForeverUI_Options.__kb"), "closed, it takes no keys at all").toBe(false);
+  expect(addon.eval("return Vanguard_Options.__kb"), "after the fight the open window has it again").toBe(true);
+  addon.eval("Vanguard_Options:Hide()");
+  expect(addon.eval("return Vanguard_Options.__kb"), "closed, it takes no keys at all").toBe(false);
   setCombat(addon, true);
   setCombat(addon, false);
-  expect(addon.eval("return ForeverUI_Options.__kb"), "and a fight ending while it is closed doesn't change that").toBe(false);
+  expect(addon.eval("return Vanguard_Options.__kb"), "and a fight ending while it is closed doesn't change that").toBe(false);
 });
 
 it("options: the General page's sample unit frame and button follow the accent, font, text size and bar texture as they change", () => {
@@ -420,8 +420,8 @@ it("options: the General page's sample unit frame and button follow the accent, 
     return { u.health:GetStatusBarTexture():GetTexture(), u.power:GetStatusBarTexture():GetTexture(), font, size, b.glow[1].__vertexColor, b.glow[1]:IsShown(),
       u.name:GetText(), u.value:GetText(), b.hotkey:GetText(), b.count:GetText() } end end`);
   const first = sample();
-  expect([first[0], first[1], first[3], first.slice(5)], "a unit frame with the Forever bars, the name at 12, and a button with its key, count and glow")
-    .toEqual(["Interface\\AddOns\\ForeverUI\\Media\\Textures\\Bar", "Interface\\AddOns\\ForeverUI\\Media\\Textures\\Bar", 12, [true, "<name>", "72%", "1", "5"]]);
+  expect([first[0], first[1], first[3], first.slice(5)], "a unit frame with the Vanguard bars, the name at 12, and a button with its key, count and glow")
+    .toEqual(["Interface\\AddOns\\Vanguard\\Media\\Textures\\Bar", "Interface\\AddOns\\Vanguard\\Media\\Textures\\Bar", 12, [true, "<name>", "72%", "1", "5"]]);
   expect(isTok(addon, first[4], "accent"), "the glow is in the accent").toBe(true);
   addon.eval("ns.Theme.SetAccent(ns.Theme.PRESETS.fel[1], ns.Theme.PRESETS.fel[2], ns.Theme.PRESETS.fel[3])");
   expect(sample()[4].slice(0, 3), "a new accent shows at once").toEqual(addon.eval("return ns.Theme.PRESETS.fel").slice(0, 3));
@@ -430,7 +430,7 @@ it("options: the General page's sample unit frame and button follow the accent, 
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Font" and w:IsVisible() then w.dropdown.set("client") end end`);
   expect(sample()[2], "and the font").toBe(addon.eval("return STANDARD_TEXT_FONT or 'Fonts\\\\FRIZQT__.TTF'"));
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Bar texture" and w:IsVisible() then w.dropdown.set("TEST-ONLY Bar") end end`);
-  expect([sample().slice(0, 2), addon.eval("return ForeverUI_Options.reload:IsShown()")], "a bar texture shared through LibSharedMedia shows on the sample at once (the HUD takes it on reload)")
+  expect([sample().slice(0, 2), addon.eval("return Vanguard_Options.reload:IsShown()")], "a bar texture shared through LibSharedMedia shows on the sample at once (the HUD takes it on reload)")
     .toEqual([["Interface\\AddOns\\TestOnly\\Bar", "Interface\\AddOns\\TestOnly\\Bar"], true]);
 });
 
@@ -452,30 +452,30 @@ it("text that fits: chat size, tooltip fonts, the status line, name width", () =
   addon.eval("ns.Theme.Settings().textScale = 0.7 ns.Theme.Refresh()");
   expect(sizes(), "Text size shrinks chat and tooltips at once (70%)").toEqual([8, 8, 10]);
   addon.eval("FCF_SetChatWindowFontSize(nil, ChatFrame1, 18)");
-  expect(sizes()[0], "the game's own chat size menu can't undo ForeverUI's size").toBe(8);
+  expect(sizes()[0], "the game's own chat size menu can't undo Vanguard's size").toBe(8);
   addon.slash("");
   addon.eval('__click("Bars, map, chat")');
-  expect(addon.eval('return __click("Chat text size") and ForeverUIDB.profiles.Default.Chat.textSize'), "the chat size is on the options page").toBe(14);
+  expect(addon.eval('return __click("Chat text size") and VanguardDB.profiles.Default.Chat.textSize'), "the chat size is on the options page").toBe(14);
   expect(sizes()[0], "and Large applies at once (14 at 70%)").toBe(10);
-  addon.eval('ForeverUIDB.profiles.Default.Chat.textSize = "game" FCF_SetChatWindowFontSize(nil, ChatFrame1, 18)');
+  addon.eval('VanguardDB.profiles.Default.Chat.textSize = "game" FCF_SetChatWindowFontSize(nil, ChatFrame1, 18)');
   expect(sizes()[0], "set to the game's chat setting, chat keeps the size the game's menu picked").toBe(18);
   addon.slash("status");
-  expect(chatHas(addon, /UI scale 1\.00 {2}· {2}text 70% {2}· {2}chat 18 \(about \d+ px on this screen\)/), "/fui status shows the UI scale, Text size and chat size").toBe(true);
-  const noChat = loggedIn(UI_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { Chat = false } } }" });
+  expect(chatHas(addon, /UI scale 1\.00 {2}· {2}text 70% {2}· {2}chat 18 \(about \d+ px on this screen\)/), "/vg status shows the UI scale, Text size and chat size").toBe(true);
+  const noChat = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Chat = false } } }" });
   noChat.slash("status");
   expect(chatHas(noChat, /chat 12 \(about/), "with the chat module off, the status line shows the default size").toBe(true);
   const units = loggedIn(UNITS_ENV);
-  expect(units.eval("local p = ForeverUI_player.name.__points.RIGHT return p.rel == ForeverUI_player.healthText and p.relPoint"), "a unit's name stops short of its health text").toBe("LEFT");
+  expect(units.eval("local p = Vanguard_player.name.__points.RIGHT return p.rel == Vanguard_player.healthText and p.relPoint"), "a unit's name stops short of its health text").toBe("LEFT");
 });
 
 // TEST-ONLY: the Healing page's buff list editor (its box and Save), or nil.
 const BUFF_EDITOR = "for _, w in ipairs(__wfgStub.frames) do if w.input and w.save and w:IsVisible() then __editor = w end end";
 
 it("options: the Healing page opens and saves its buff list with the raid heals module switched off", () => {
-  const addon = loggedIn("", { savedVariables: "ForeverUIDB.profiles.Default = { modules = { RaidHealing = false } }" });
+  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { modules = { RaidHealing = false } }" });
   addon.eval('ns.Options.Show("healing")');
   addon.eval(BUFF_EDITOR);
   expect(addon.eval("return __editor.input:GetText()"), "the buff list shows the mage's usual buffs").toBe("Arcane Intellect, Arcane Brilliance");
   addon.eval('__editor.input:SetText("TEST-ONLY Aura") __editor.save:GetScript("OnClick")(__editor.save)');
-  expect([addon.eval("return ForeverUIDB.profiles.Default.RaidHealing.buffs"), addon.eval("__editor:Refresh() return __editor.input:GetText()")], "Save keeps the typed list").toEqual(["TEST-ONLY Aura", "TEST-ONLY Aura"]);
+  expect([addon.eval("return VanguardDB.profiles.Default.RaidHealing.buffs"), addon.eval("__editor:Refresh() return __editor.input:GetText()")], "Save keeps the typed list").toEqual(["TEST-ONLY Aura", "TEST-ONLY Aura"]);
 });

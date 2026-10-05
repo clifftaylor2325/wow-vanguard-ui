@@ -1,12 +1,12 @@
--- The public skin API: other addons hand ForeverUI their frames and get the
--- ForeverUI look. Registered callbacks run once at PLAYER_LOGIN (or at once
+-- The public skin API: other addons hand Vanguard their frames and get the
+-- Vanguard look. Registered callbacks run once at PLAYER_LOGIN (or at once
 -- if registered later) with S, the theme primitives. A callback that errors
--- is reported (chat, /fui errors, the game's error handler) and never breaks
--- ForeverUI or other skins.
+-- is reported (chat, /vg errors, the game's error handler) and never breaks
+-- Vanguard or other skins.
 --
---   ## OptionalDeps: ForeverUI
---   if ForeverUI and ForeverUI.RegisterSkin then
---     ForeverUI.RegisterSkin("MyAddon", function(S) S.Panel(MyFrame) end)
+--   ## OptionalDeps: Vanguard
+--   if Vanguard and Vanguard.RegisterSkin then
+--     Vanguard.RegisterSkin("MyAddon", function(S) S.Panel(MyFrame) end)
 --   end
 
 local ADDON, ns = ...
@@ -37,7 +37,7 @@ local S = {
 local skins, order = {}, {}
 local loggedIn = false
 
--- Whether skinning is on for an addon (on unless /fui skins <name> off).
+-- Whether skinning is on for an addon (on unless /vg skins <name> off).
 local function skinEnabled(name)
   return ns.Settings("skins")[name] ~= false
 end
@@ -53,12 +53,12 @@ local function runSkin(name)
   entry.error = not ok and tostring(err) or nil
 end
 
-ForeverUI = ForeverUI or {}
-ns.Public = ForeverUI
-ForeverUI.apiVersion = S.apiVersion
+Vanguard = Vanguard or {}
+ns.Public = Vanguard
+Vanguard.apiVersion = S.apiVersion
 
 -- Registers a skin callback for an addon. The first registration of a name wins.
-function ForeverUI.RegisterSkin(name, fn)
+function Vanguard.RegisterSkin(name, fn)
   if type(name) ~= "string" or type(fn) ~= "function" or skins[name] then
     return false
   end

@@ -1,4 +1,4 @@
--- luacheck config for ForeverUI's Lua. The game runs Lua 5.1. Globals the
+-- luacheck config for Vanguard's Lua. The game runs Lua 5.1. Globals the
 -- addon may set are listed exactly, so a missing `local` fails.
 std = "lua51"
 max_line_length = false
@@ -9,18 +9,18 @@ exclude_files = { "node_modules/", "scripts/", "Libs/" }
 ignore = { "211/ADDON" }
 
 globals = {
-  -- SavedVariables (ForeverUI.toc)
-  "ForeverUIDB",
-  "ForeverUICharDB",
-  -- Public API table and slash command. ForeverUI holds the skin API (Core/Skin.lua) and
-  -- ForeverUI.API.v1, the auction prices for other addons (Modules/AuctionAPI.lua).
-  "ForeverUI",
-  "SLASH_FOREVERUI1",
-  "SLASH_FOREVERUI2",
+  -- SavedVariables (Vanguard.toc)
+  "VanguardDB",
+  "VanguardCharDB",
+  -- Public API table and slash command. Vanguard holds the skin API (Core/Skin.lua) and
+  -- Vanguard.API.v1, the auction prices for other addons (Modules/AuctionAPI.lua).
+  "Vanguard",
+  "SLASH_VANGUARD1",
+  "SLASH_VANGUARD2",
   -- Minimap shape for addons that place icons around it (Modules/Minimap.lua)
   "GetMinimapShape",
   -- Addon compartment click handler named in the TOC (Core/Options.lua)
-  "ForeverUI_OnAddonCompartmentClick",
+  "Vanguard_OnAddonCompartmentClick",
   SlashCmdList = { other_fields = true },
 }
 
@@ -34,7 +34,7 @@ read_globals = {
   "UnitPowerType", "UnitReaction", "issecretvalue", "GetTotemInfo", "GetTotemDuration", "C_EventUtils", "C_Item", "GetInventoryItemTexture", "GameTooltip", "C_Container", "C_MerchantFrame", "CanMerchantRepair", "GetRepairAllCost", "RepairAllItems", "GetMoney", "UIErrorsFrame", "C_SwingTimer", "GetPetHappiness", "C_PetInfo", "C_PvP", "HideUIPanel", "C_Texture", "UnitFactionGroup", "C_CooldownViewer", "C_DamageMeter", "AcceptQuest", "AcknowledgeAutoAcceptQuest", "C_GossipInfo", "CloseQuest", "CompleteQuest", "DeclineQuest", "GetActiveLevel", "GetActiveTitle", "GetAvailableLevel", "GetAvailableTitle", "GetGreetingText", "GetNumActiveQuests", "GetNumAvailableQuests", "GetNumQuestChoices", "GetNumQuestItems", "GetNumQuestRewards", "GetObjectiveText", "GetProgressText", "GetQuestDifficultyColor", "GetQuestItemInfo", "GetQuestItemLink", "GetQuestReward", "GetQuestText", "GetRewardMoney", "GetRewardText", "GetRewardXP", "GetTitleText", "IsQuestCompletable", "QuestGetAutoAccept", "SelectActiveQuest", "SelectAvailableQuest", "SetPortraitTexture", "GetQuestID", "C_QuestInfoSystem", "C_QuestLog", "GetQuestLogSpecialItemInfo", "QuestMapFrame_OpenToQuestDetails", "GetNumQuestLogChoices", "GetQuestLogChoiceInfo", "GetNumQuestLogRewards", "GetQuestLogRewardInfo", "GetQuestLogRewardMoney", "GetQuestLogRewardXP", "GetQuestLogQuestText", "QuestLogPushQuest", "StaticPopup_Show", "GetBindingKey", "SetOverrideBindingClick", "ClearOverrideBindings", "IsInGroup", "ChatFrame_AddMessageEventFilter", "C_SummonInfo", "AcceptResurrect", "CancelDuel", "StaticPopup_Hide", "EventRegistry", "GetInventoryItemDurability", "GetPartyAssignment", "PixelUtil", "C_PartyInfo", "SetRaidTarget", "CanBeRaidTarget", "GetNumGroupMembers",
   -- Target of target identity and the minimap's still-standing check (P1.13).
   "UnitGUID", "UnitPosition",
-  -- /fui perf: the game's CPU and memory counters (P1.14).
+  -- /vg perf: the game's CPU and memory counters (P1.14).
   "GetCVar", "GetAddOnCPUUsage", "UpdateAddOnCPUUsage", "GetAddOnMemoryUsage", "UpdateAddOnMemoryUsage", "GetFunctionCPUUsage",
   -- Action button tooltips: the client's default anchor (P2.3).
   "GameTooltip_SetDefaultAnchor",

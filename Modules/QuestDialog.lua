@@ -1,4 +1,4 @@
--- ForeverUI's quest dialog: talking to a quest giver opens a panel sized to
+-- Vanguard's quest dialog: talking to a quest giver opens a panel sized to
 -- what it says, just above the frames around your character, instead of the
 -- game's quest and gossip windows. It shows the NPC's portrait (a quest mark
 -- when there is none to draw) and name, the text, numbered lines for quests and gossip

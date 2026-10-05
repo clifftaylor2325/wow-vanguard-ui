@@ -1,13 +1,13 @@
 -- Instance prep: a checklist card of what you're short of, at the door of a
 -- dungeon or raid (only when something is low), on a ready check, or with
--- /fui prep: ammo (hunters), soul shards (warlocks), your class's reagents,
+-- /vg prep: ammo (hunters), soul shards (warlocks), your class's reagents,
 -- food and drink, bandages, potions, worn gear, and the Keep-stocked items
--- (/fui stock) you carry fewer of than the list says. The card fades after
+-- (/vg stock) you carry fewer of than the list says. The card fades after
 -- Hide after seconds (ns.AutoHide), or at once from its close button. Its
 -- Buy list button turns what's short that you can buy (PR.BuyRows) into the
 -- Auction helper's Restock shopping list (Modules/AuctionRestock.lua).
 -- Every count the client hides skips its row, never compared; nothing is
--- checked in combat, and /fui prep in combat waits for the fight to end.
+-- checked in combat, and /vg prep in combat waits for the fight to end.
 
 local ADDON, ns = ...
 
@@ -32,7 +32,7 @@ PR.CONSUMABLE, PR.SUBCLASS = 0, { [1] = "potions", [5] = "food", [7] = "bandages
 PR.CONSUMABLES = { { "food", "Food & drink" }, { "bandages", "Bandages" }, { "potions", "Potions" } }
 -- The bags one scan reads: the backpack, four bags and the reagent bag.
 PR.LAST_BAG = 5
--- What /fui prep want can set.
+-- What /vg prep want can set.
 PR.WANTS = { food = true, bandages = true, potions = true, ammo = true, shards = true }
 
 -- Class reagents: { itemID, want, name, minLevel, maxLevel }. A row shows
@@ -40,7 +40,7 @@ PR.WANTS = { food = true, bandages = true, potions = true, ammo = true, shards =
 -- when there is one (a higher rank's reagent takes over). Warlocks get the
 -- soul shard row and hunters the ammo row instead.
 -- UNVERIFIED: these item IDs are from the classic database; they are not in
--- the Forever UI source. Check each class with /fui prep in game.
+-- the Forever UI source. Check each class with /vg prep in game.
 PR.REAGENTS = {
   MAGE = { { 17031, 10, "Rune of Teleportation", 20 }, { 17032, 5, "Rune of Portals", 40 }, { 17020, 20, "Arcane Powder", 56 } },
   PRIEST = { { 17028, 20, "Holy Candle", 48, 59 }, { 17029, 20, "Sacred Candle", 56 } },
@@ -137,7 +137,7 @@ local function itemName(id)
   return "item " .. id
 end
 
--- The Keep-stocked items (Errands, /fui stock) you carry fewer of than the list says, by item ID.
+-- The Keep-stocked items (Errands, /vg stock) you carry fewer of than the list says, by item ID.
 function PR.StockRows()
   local ER, rows, ids = ns.GetModule("Errands"), {}, {}
   local list = ER.settings and ER.settings.stockList or {}
@@ -250,9 +250,9 @@ local function buyButton(f)
   f.buy:Hide()
 end
 
--- The card: a floating panel you can move (/fui unlock), hidden until called up.
+-- The card: a floating panel you can move (/vg unlock), hidden until called up.
 local function buildCard()
-  local f = CreateFrame("Frame", "ForeverUI_PrepCard", UIParent)
+  local f = CreateFrame("Frame", "Vanguard_PrepCard", UIParent)
   T.Panel(f, { shadow = true })
   f:SetSize(PR.WIDTH, PR.TOP + PR.ROW + PR.PAD)
   f.rows = {}
@@ -266,7 +266,7 @@ end
 -- Showing ---------------------------------------------------------------------------------------
 
 -- Shows the card with what's short, fading it out after Hide after seconds.
--- Nothing short: forced (a ready check, /fui prep) it says "Everything's
+-- Nothing short: forced (a ready check, /vg prep) it says "Everything's
 -- packed."; otherwise (at the door) it stays away.
 function PR.Show(force)
   local rows = PR.Rows()
@@ -293,18 +293,18 @@ function PR.OnReadyCheck()
   if PR.settings.onReadyCheck and not ns.InCombat() then PR.Show(true) end
 end
 
--- /fui prep want <key> <n>: how many of food, bandages, potions, ammo or shards to carry.
+-- /vg prep want <key> <n>: how many of food, bandages, potions, ammo or shards to carry.
 local function setWant(rest)
   local key, n = rest:match("^want%s+(%a+)%s+(%d+)%s*$")
-  if not (key and PR.WANTS[key]) then return ns.Chat("Usage: /fui prep want <food|bandages|potions|ammo|shards> <n>") end
+  if not (key and PR.WANTS[key]) then return ns.Chat("Usage: /vg prep want <food|bandages|potions|ammo|shards> <n>") end
   PR.settings.want[key] = tonumber(n)
   ns.Chat(string.format("Instance prep wants %d %s.", tonumber(n), key))
 end
 
--- /fui prep [want <key> <n>]: the card now (after the fight, in one), or a wanted amount.
+-- /vg prep [want <key> <n>]: the card now (after the fight, in one), or a wanted amount.
 function PR.Command(rest)
   rest = rest or ""
-  if not PR.settings then return ns.Chat("Instance prep is off (/fui > Modules).") end
+  if not PR.settings then return ns.Chat("Instance prep is off (/vg > Modules).") end
   if rest:match("^want") then return setWant(rest) end
   ns.OutOfCombat(function() PR.Show(true) end, "prep")
 end

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Writes ForeverUI's artwork (scripts/lib/media-sources.mjs) to Media/ as TGA.
+// Writes Vanguard's artwork (scripts/lib/media-sources.mjs) to Media/ as TGA.
 //
 //   node scripts/build-media.mjs          write every file
 //   node scripts/build-media.mjs --check  fail if a committed file is missing or out of date

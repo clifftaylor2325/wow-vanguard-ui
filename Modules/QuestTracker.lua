@@ -1,4 +1,4 @@
--- ForeverUI's quest tracker, in the tracker's spot under the info strip
+-- Vanguard's quest tracker, in the tracker's spot under the info strip
 -- (Modules/MenuStrip.lua makes the spot): each quest you watch as a block,
 --   * "[12] Title" in its difficulty color ("Ready to turn in" when done),
 --   * its objectives, gray until each is done, then green,
@@ -87,7 +87,7 @@ end
 
 -- Actions --------------------------------------------------------------------------------------
 
--- A title was clicked: left opens the quest (ForeverUI's quest log, else the game's map); right stops watching it.
+-- A title was clicked: left opens the quest (Vanguard's quest log, else the game's map); right stops watching it.
 function QT.OnTitle(id, button)
   if button == "RightButton" then return questLog("RemoveQuestWatch", id) end
   local log = ns.GetModule("QuestLog")

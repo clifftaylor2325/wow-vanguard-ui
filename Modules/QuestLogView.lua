@@ -82,7 +82,7 @@ end
 
 -- Builds the window (hidden), movable, closed by Escape.
 function QL.Build()
-  local f = T.Panel(CreateFrame("Frame", "ForeverUI_QuestLog", UIParent), { alpha = 0.97, shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_QuestLog", UIParent), { alpha = 0.97, shadow = true })
   f:SetSize(QL.W, QL.H)
   f:SetFrameStrata("HIGH")
   ns.Mover(f, "questlog", "Quest log", { "CENTER", "CENTER", -200, 40 })
@@ -98,7 +98,7 @@ end
 function QL.Finish(f)
   for i, spec in ipairs(QL.BUTTONS) do addButton(f, spec, (i - 1) * 96) end
   f:Hide()
-  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "ForeverUI_QuestLog") end
+  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_QuestLog") end
 end
 
 -- The list ----------------------------------------------------------------------------------------

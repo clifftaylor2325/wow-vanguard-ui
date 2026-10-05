@@ -1,4 +1,4 @@
-# ForeverUI theme spec ("Slate & Brass")
+# Vanguard theme spec ("Slate & Brass")
 
 This is the reference every style change cites. It is written from `Core/Theme.lua` (and `Core/SharedMedia.lua`, `scripts/lib/media-sources.mjs`) as they are, not from the work plan's notes: where the two disagree, the code is what ships and this page follows the code (see [Where the plan and the code differ](#where-the-plan-and-the-code-differ)). If you change a token, a role or a primitive, change this page in the same commit.
 
@@ -7,9 +7,9 @@ The look in one line: flat dark slate panels, one-screen-pixel borders, one acce
 ## Rules
 
 - **Colours and font sizes live only in `Core/Theme.lua`.** Modules ask for a colour by token name (`T.RGB`, `T.Color`, `T.Tint`, `T.BarColor`, `T.Paint`, `T.Hex`) and for text by role (`T.Text(fs, role)`). `scripts/lib/code-quality.mjs` fails the build on a colour setter called with numbers, a 0-1 colour table, a written-out `|cff......` escape, or a `:SetFont(path, <number>)` outside the theme.
-- **Every painted frame follows live changes.** `T.Panel`, `T.Button`, `T.EditBox`, `T.CloseButton`, `T.Logo` and `T.Crest` remember what they painted; `T.Refresh()` (run by `/fui accent`, the accent swatches, a font or text-size change, a UI scale change) repaints them and re-fonts every string styled with a role. Anything coloured by hand registers with `T.OnChanged(fn)`.
+- **Every painted frame follows live changes.** `T.Panel`, `T.Button`, `T.EditBox`, `T.CloseButton`, `T.Logo` and `T.Crest` remember what they painted; `T.Refresh()` (run by `/vg accent`, the accent swatches, a font or text-size change, a UI scale change) repaints them and re-fonts every string styled with a role. Anything coloured by hand registers with `T.OnChanged(fn)`.
 - **Primitives are idempotent.** Calling one again on the same frame repaints it; it never adds a second border.
-- **Other addons get the same tools** through the Skin API (`ForeverUI.RegisterSkin`, `Core/Skin.lua`): `S.Panel`, `S.Button`, `S.EditBox`, `S.CloseButton`, `S.FadeRegions`, `S.SetFont`, `S.Text`, `S.Color`, `S.RGB`, `S.Tint`, `S.BarColor`, `S.Pixel`, `S.Accent`, `S.PanelColor`, `S.Font`, `S.OnChanged`.
+- **Other addons get the same tools** through the Skin API (`Vanguard.RegisterSkin`, `Core/Skin.lua`): `S.Panel`, `S.Button`, `S.EditBox`, `S.CloseButton`, `S.FadeRegions`, `S.SetFont`, `S.Text`, `S.Color`, `S.RGB`, `S.Tint`, `S.BarColor`, `S.Pixel`, `S.Accent`, `S.PanelColor`, `S.Font`, `S.OnChanged`.
 
 ## Colour tokens
 
@@ -19,12 +19,12 @@ The look in one line: flat dark slate panels, one-screen-pixel borders, one acce
 
 | Token | Default | Setting | Role |
 | --- | --- | --- | --- |
-| `accent` | `d9a441` (brass) | `accent` | The one highlight colour: selected nav items, focus and target edges, glows, links, header rules, the logo's left diamond, the minimap's corner diamonds. Changed by `/fui accent`, the swatches under General → Look, or the hex box beside them. |
+| `accent` | `d9a441` (brass) | `accent` | The one highlight colour: selected nav items, focus and target edges, glows, links, header rules, the logo's left diamond, the minimap's corner diamonds. Changed by `/vg accent`, the swatches under General → Look, or the hex box beside them. |
 | `panel` | `12151b` at 0.94 | `panel` | The fill of every panel (`T.Panel`, `T.HudPanel`). Softened raid bars mix their class colour into it. |
 | `inset` | `07080b` at 0.95 | `inset` | The darker fill of buttons, edit boxes and inset panels (`opts.inset`). |
 | `edge` | `000000` | `border` | Every one-pixel border unless a frame sets its own (`T.SetBorder`) or asks for the accent (`opts.accent`). |
 
-`panel`, `inset` and `border` have no control in the options window: they are kept in the profile (and its export string) and go back to these defaults with `/fui theme reset`.
+`panel`, `inset` and `border` have no control in the options window: they are kept in the profile (and its export string) and go back to these defaults with `/vg theme reset`.
 
 ### Fixed tokens
 
@@ -74,7 +74,7 @@ Colours that are not tokens on purpose: class colours come from the client (`RAI
 
 ## Accent presets
 
-`T.PRESET_ORDER` is the order of the swatches under General → Look and in the setup wizard; `/fui accent <name>` takes the same names, any `rrggbb` or `#rrggbb`, or `reset`.
+`T.PRESET_ORDER` is the order of the swatches under General → Look and in the setup wizard; `/vg accent <name>` takes the same names, any `rrggbb` or `#rrggbb`, or `reset`.
 
 | Preset | Hex | Older name that still works |
 | --- | --- | --- |
@@ -96,7 +96,7 @@ The state colours (`good`, `warn`, `bad`) are kept apart from every preset, so a
 | `"client"` | The game's font (`STANDARD_TEXT_FONT`). Korean and Chinese clients always use it, whatever the setting. |
 | any other name | A font shared through LibSharedMedia (the Font picker lists them after the two built-ins). If the addon that shared it is gone, Fira Sans Condensed comes back. A font path from older settings still works. |
 
-ForeverUI shares its own fonts through LibSharedMedia as "ForeverUI Fira Sans" and "ForeverUI Fira Sans SemiBold" (western and Russian clients). The faction look swaps the font of the `title` and `heading` roles only: Cinzel SemiBold for Alliance, Metamorphous for Horde, and only while the Font setting is Fira Sans and the client uses it (not on Russian clients: Cinzel and Metamorphous have no Cyrillic). The font and text size apply at once (every role-styled string is re-fonted).
+Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and "Vanguard Fira Sans SemiBold" (western and Russian clients). The faction look swaps the font of the `title` and `heading` roles only: Cinzel SemiBold for Alliance, Metamorphous for Horde, and only while the Font setting is Fira Sans and the client uses it (not on Russian clients: Cinzel and Metamorphous have no Cyrillic). The font and text size apply at once (every role-styled string is re-fonted).
 
 ### Text roles
 
@@ -156,12 +156,12 @@ The theme has no spacing tokens: each layout keeps its sizes as constants in its
 
 | Setting `barTexture` | Texture | Look |
 | --- | --- | --- |
-| `"forever"` (default) | `Media/Textures/Bar` | A bright top line, then a gentle darkening to the bottom (grayscale 256 x 32, tinted by the bar colour). |
+| `"vanguard"` (default; `"forever"` before 0.4.0, read as `"vanguard"`) | `Media/Textures/Bar` | A bright top line, then a gentle darkening to the bottom (grayscale 256 x 32, tinted by the bar colour). |
 | `"soft"` | `Media/Textures/BarSoft` | No top line, only a slight darkening: calmer and flatter. |
 | `"flat"` | `WHITE8X8` | A solid colour. |
-| any other name | A status bar texture shared through LibSharedMedia | Listed in the Bar texture picker after the three built-ins; if the addon that shared it is gone, Forever comes back. |
+| any other name | A status bar texture shared through LibSharedMedia | Listed in the Bar texture picker after the three built-ins; if the addon that shared it is gone, the Vanguard bar comes back. |
 
-ForeverUI shares its three bars through LibSharedMedia as "ForeverUI Forever", "ForeverUI Soft" and "ForeverUI Flat". The bar texture applies on reload. `T.StyleBar(bar)` gives a bar the texture; `T.SetBarValue(bar, value)` lets the client ease the change ("Smooth health and power bars", on by default, where the client has `StatusBarInterpolation`); `T.Spark(bar, width)` adds the soft additive spark (cast bars 8 wide in `white` at 0.8, power ticks 6 wide in `spark`). Shields are drawn with `Media/Textures/Stripes` in `shield`; the raid tile dispel wash with `Media/Textures/Fade`.
+Vanguard shares its three bars through LibSharedMedia as "Vanguard", "Vanguard Soft" and "Vanguard Flat". The bar texture applies on reload. `T.StyleBar(bar)` gives a bar the texture; `T.SetBarValue(bar, value)` lets the client ease the change ("Smooth health and power bars", on by default, where the client has `StatusBarInterpolation`); `T.Spark(bar, width)` adds the soft additive spark (cast bars 8 wide in `white` at 0.8, power ticks 6 wide in `spark`). Shields are drawn with `Media/Textures/Stripes` in `shield`; the raid tile dispel wash with `Media/Textures/Fade`.
 
 ## Icons
 
@@ -174,18 +174,18 @@ ForeverUI shares its three bars through LibSharedMedia as "ForeverUI Forever", "
 
 ## Theme settings
 
-All in the profile's `theme` table (`T.Settings()`), exported with the profile; `/fui theme reset` (or Reset theme under General → Look) puts them all back.
+All in the profile's `theme` table (`T.Settings()`), exported with the profile; `/vg theme reset` (or Reset theme under General → Look) puts them all back.
 
 | Setting | Default | Control | Applies |
 | --- | --- | --- | --- |
-| `accent` | brass | swatches, hex box, `/fui accent` | at once |
+| `accent` | brass | swatches, hex box, `/vg accent` | at once |
 | `panel`, `inset`, `border` | see tokens | none | at once (`T.Refresh`) |
 | `font` | `""` (Fira Sans Condensed) | General → Look → Font | at once |
 | `outline` | `""` | none | at once |
 | `textScale` | 1 | General → Look → Text size (70 % - 130 %) | at once |
 | `faction` | `"auto"` | General → Look → Faction look | at once |
 | `pixelScale` | off | General → Look → Pixel-perfect scale | on: at once, out of combat; off: on reload |
-| `barTexture` | `"forever"` | General → Bars → Bar texture | on reload |
+| `barTexture` | `"vanguard"` | General → Bars → Bar texture | on reload |
 | `smoothBars` | on | General → Bars → Smooth health and power bars | at once |
 | `hudShadow` | off | General → Bars → Soft shadows under frames | on reload |
 | `reduceMotion` | off | General → Motion and sound → Reduce motion | at once |
@@ -193,13 +193,13 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 
 ## Motion and sound
 
-ForeverUI moves little and quietly. Every fade goes through the theme (`T.FadeIn`, `T.FadeOut`, `T.StopFade`): an alpha animation on frames that are not protected (never a secure frame), 0.12 s unless the caller asks for another length. **In combat no fade lasts longer than 0.15 s** (`T.COMBAT_FADE`, applied by `T.FadeTime`): combat counts from the fight's `PLAYER_REGEN_DISABLED` (which comes just before the client's lockdown) until `PLAYER_REGEN_ENABLED`. **Reduce motion** (General → Motion and sound, off by default) turns every fade into an instant show or hide. **Interface sounds** (on by default) turns ForeverUI's own interface sounds off. Everything else that changes on screen does so at once, without animation.
+Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`, `T.FadeOut`, `T.StopFade`): an alpha animation on frames that are not protected (never a secure frame), 0.12 s unless the caller asks for another length. **In combat no fade lasts longer than 0.15 s** (`T.COMBAT_FADE`, applied by `T.FadeTime`): combat counts from the fight's `PLAYER_REGEN_DISABLED` (which comes just before the client's lockdown) until `PLAYER_REGEN_ENABLED`. **Reduce motion** (General → Motion and sound, off by default) turns every fade into an instant show or hide. **Interface sounds** (on by default) turns Vanguard's own interface sounds off. Everything else that changes on screen does so at once, without animation.
 
 ### Fades and flashes
 
 | What | Kind | Out of combat | In combat | Turned off by |
 | --- | --- | --- | --- | --- |
-| Options window (`/fui`) opens | fade in | 0.12 s | 0.12 s | Reduce motion |
+| Options window (`/vg`) opens | fade in | 0.12 s | 0.12 s | Reduce motion |
 | Options window closes | fade out | 0.12 s | 0.12 s | Reduce motion |
 | Options page change | stops a fade in progress; the page appears at once | - | - | - |
 | Unlock mode: a frame's popover (right-click a handle) opens / closes | fade in / out | 0.12 s | closes in 0.12 s (a fight ends unlock mode) | Reduce motion |
@@ -235,7 +235,7 @@ All are the client's own interface sounds (`SOUNDKIT`), played with `T.Sound` un
 | A phrase you watch for is said in chat (Chat watch, at most once every 2 s) | `TELL_MESSAGE` (`T.Sound("alert")`) | Interface sounds, and Chat watch's Sound switch |
 | A shopping list item is up at or under its max price (Auction helper's price alerts, sharing Chat watch's 2 s gap) | `TELL_MESSAGE` (`T.Sound("alert")`) | Interface sounds, and the item's alert switch |
 
-The game's own sounds (error messages, the micro menu, windows ForeverUI restyles) stay the game's.
+The game's own sounds (error messages, the micro menu, windows Vanguard restyles) stay the game's.
 
 ## Where the plan and the code differ
 
@@ -243,7 +243,7 @@ The work plan (P4.1) described the theme from an earlier review. The code is wha
 
 - **Text sizes.** The plan says "title 14 … tiny 9". The code has `title` 15, `heading` 13, `name`, `label` and `number` 12, `cell` 11, `small` 10, `tiny` 9, plus the outlined roles (`world`, `barName`, `barSmall`, `cooldown`, `auraCount`, `auraTimer`, `auraTimerSmall`) and `chat`.
 - **Spacing grid.** The plan speaks of a 4/8 px grid. The code has no spacing tokens and uses mostly even offsets (2 to 16); the 4 px steps above are the rule for new work, not a description of every existing layout.
-- **Bar textures.** The plan names "bar textures" generally. The code has three built-ins (Forever, Soft, Flat) and, since P3.5, every bar texture shared through LibSharedMedia; it also shares its own bars and fonts under the "ForeverUI ..." names.
+- **Bar textures.** The plan names "bar textures" generally. The code has three built-ins (Vanguard, Soft, Flat) and, since P3.5, every bar texture shared through LibSharedMedia; it also shares its own bars and fonts under the "Vanguard ..." names.
 - **Fonts.** Besides Fira Sans Condensed and the game's font, the Font picker lists LibSharedMedia fonts (P3.5), and the faction look adds Cinzel and Metamorphous for titles and headings.
 - **Accents.** The plan's five presets match the code (brass, arcane, fel, void, ember); the code also accepts any hex colour and the older names bronze, blue, green, purple and red.
 - **Default sizes** of unit frames, raid tiles, action buttons, the menu strip and windows are not theme tokens; they live in each module and the setup wizard's screen presets (`Core/Setup.lua`), and are described in the README.

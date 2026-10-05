@@ -70,7 +70,7 @@ function pathComparison() {
 
 // Backup names use the fixed clock.
 function backupNameDated() {
-  expect(L.backupName("/x/ForeverUI", io.now())).toBe("/x/ForeverUI.backup-20261027-1530");
+  expect(L.backupName("/x/Vanguard", io.now())).toBe("/x/Vanguard.backup-20261027-1530");
 }
 
 // An empty slot links, and linking again is a no-op.
