@@ -12,12 +12,15 @@ export default defineConfig({
     include: ["scripts/**/*.test.mjs"],
     setupFiles: ["scripts/tests/setup.mjs"],
     reporters: [...configDefaults.reporters, luaSummaryReporter()],
-    // One worker per core. Vitest's default keeps a core free for its main
-    // process, which has nothing to do while the workers run the Lua harness;
-    // on a two-core CI runner that default ran the files one at a time.
-    // VITEST_MAX_WORKERS caps it (the self-hosted runner's .env can set it so
-    // a run leaves cores for the game).
-    maxWorkers: Number(process.env.VITEST_MAX_WORKERS) || os.availableParallelism(),
+    // One worker per core, and per 2 GB of memory. Vitest's default keeps a
+    // core free for its main process, which has nothing to do while the
+    // workers run the Lua harness; on a two-core CI runner that default ran
+    // the files one at a time. A worker with coverage on holds about 500 MB
+    // and grows with the file, so on the owner's runner (16 logical cores,
+    // 16 GB) 16 workers paged and ran about five times slower each.
+    // VITEST_MAX_WORKERS overrides it (the runner's .env can set it so a run
+    // leaves room for the game).
+    maxWorkers: Number(process.env.VITEST_MAX_WORKERS) || Math.max(1, Math.min(os.availableParallelism(), Math.floor(os.totalmem() / 2 ** 31))),
     // A Lua harness case loads the whole addon, often several times; with
     // coverage counting every line hit that can pass Vitest's 5 s default.
     // In CI (the self-hosted runner sets CI) the limit is 2 minutes: the
