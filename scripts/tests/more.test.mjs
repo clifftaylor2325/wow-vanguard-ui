@@ -320,6 +320,28 @@ it("auto-accept: summons, resurrections and duels, each off until switched on", 
   expect(on.eval("return #__answers"), "no summons in combat").toBe(0);
 });
 
+// TEST-ONLY loot window: three slots, the second locked (being rolled for); every slot taken is recorded.
+const LOOT_ENV = `
+  __looted = {}
+  GetNumLootItems = function() return 3 end
+  GetLootSlotInfo = function(slot) return "TEST-ONLY icon", "TEST-ONLY item", 1, nil, 2, slot == 2 end
+  LootSlot = function(slot) __looted[#__looted + 1] = slot end
+`;
+
+it("faster auto-loot: every unlocked slot at once while the game auto-loots, off until switched on", () => {
+  const off = loggedIn(LOOT_ENV);
+  off.fire("LOOT_READY", true);
+  expect(off.eval("return #__looted"), "off by default: the game loots as usual").toBe(0);
+  const on = loggedIn(LOOT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { AutoAccept = { loot = true } } }" });
+  on.fire("LOOT_READY", false);
+  expect(on.eval("return #__looted"), "not auto-looting (the window opens to pick): nothing taken").toBe(0);
+  on.fire("LOOT_READY", true);
+  expect(on.eval("return __looted"), "auto-looting: the last slot first, the locked one left").toEqual([3, 1]);
+  const bare = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { AutoAccept = { loot = true } } }" });
+  bare.fire("LOOT_READY", true);
+  expect(bare.eval("return GetNumLootItems == nil"), "a client without the loot functions is left alone").toBe(true);
+});
+
 // The quest dialog's state: shown, header, body, lines, cards, money and buttons.
 const dialog = (addon) => addon.eval(`local f = Vanguard_QuestDialog
   local lines, cards = {}, {}

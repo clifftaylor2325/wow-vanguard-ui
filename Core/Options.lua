@@ -245,7 +245,7 @@ O.MODULE_INFO = {
   ChatExtras = { "Chat extras", "Clickable web links in chat, and a Copy button for the recent chat." },
   ChatWatch = { "Chat watch", "A sound and a toast when a phrase you watch for is said in chat; click to whisper." },
   MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map." },
-  AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels (each off until you switch it on)." },
+  AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels, loot faster (each off until you switch it on)." },
   QuestDialog = { "Quest dialog", "Talking to quest givers in Vanguard's own dialog: numbered lines, reward cards, keys 1-9 and Space." },
   QuestTracker = { "Quest tracker", "Your watched quests under the info strip: levels in difficulty colors, objectives, quest items, nearest first if you like." },
   QuestLog = { "Quest log", "Your quests by zone, each quest's text, objectives and rewards, with Track, Share, Abandon and Map." },
@@ -620,6 +620,7 @@ local function comfortRows()
     check("Gather addon minimap buttons into a drawer (reload)", setting("MinimapButtons", "drawer", true)),
     check("Accept summons (out of combat)", setting("AutoAccept", "summons")),
     check("Accept resurrections", setting("AutoAccept", "resurrect")), check("Decline duels", setting("AutoAccept", "duels")),
+    check("Faster auto-loot (when the game's auto-loot is on)", setting("AutoAccept", "loot")),
   }
 end
 
