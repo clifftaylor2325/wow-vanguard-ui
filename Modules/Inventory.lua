@@ -29,15 +29,17 @@ IV.MAX_NAMES = 6
 -- This realm and side's characters: VanguardDB.inventory["<realm> - <faction>"] = { [name] = record },
 -- where a record is { class, bags = { [itemID] = count }, bank = { ... }, updated = time read }.
 function IV.Characters()
-  local key = (GetRealmName() or "?") .. " - " .. (UnitFactionGroup("player") or "?")
+  local realm = type(GetRealmName) == "function" and GetRealmName() or "?"
+  local key = realm .. " - " .. (type(UnitFactionGroup) == "function" and UnitFactionGroup("player") or "?")
   VanguardDB.inventory = type(VanguardDB.inventory) == "table" and VanguardDB.inventory or {}
   VanguardDB.inventory[key] = type(VanguardDB.inventory[key]) == "table" and VanguardDB.inventory[key] or {}
   return VanguardDB.inventory[key]
 end
 
--- This character's record, made if new.
+-- This character's record, made if new (a record kept nowhere when the client won't say your name).
 function IV.Mine()
   local chars, name = IV.Characters(), UnitName("player")
+  if type(name) ~= "string" or ns.IsSecret(name) then return { bags = {}, bank = {} } end
   local _, class = UnitClass("player")
   chars[name] = type(chars[name]) == "table" and chars[name] or { bags = {}, bank = {} }
   chars[name].class = class
@@ -46,9 +48,17 @@ end
 
 -- Reading ---------------------------------------------------------------------------------
 
--- itemID -> count over a list of containers.
+-- The client's slot count and slot reader, or nil when it lacks either.
+local function containerApi()
+  local api = type(C_Container) == "table" and C_Container or {}
+  if type(api.GetContainerNumSlots) ~= "function" or type(api.GetContainerItemInfo) ~= "function" then return nil end
+  return api.GetContainerNumSlots, api.GetContainerItemInfo
+end
+
+-- itemID -> count over a list of containers (none when the client can't say).
 local function countIn(bags)
-  local counts, slots, info = {}, C_Container.GetContainerNumSlots, C_Container.GetContainerItemInfo
+  local counts, slots, info = {}, containerApi()
+  if not slots then return counts end
   for _, bag in ipairs(bags) do
     for slot = 1, ns.PlainNumber(slots(bag)) or 0 do
       local it = info(bag, slot)
