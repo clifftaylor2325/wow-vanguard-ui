@@ -1,10 +1,10 @@
--- Nameplates in the ForeverUI look: a flat health bar in the unit's class
+-- Nameplates in the Vanguard look: a flat health bar in the unit's class
 -- or reaction color (or its threat color while you have aggro), the name
 -- above it with its level (colored by how hard it is for you), your debuffs over the name, the raid target icon to the left,
 -- a cast bar under it, an accent border and glow on your target, and a gold "!" by the
 -- name of units your quests need (when the client says so plainly).
 --
--- ForeverUI draws its own frame on each nameplate the client gives it and
+-- Vanguard draws its own frame on each nameplate the client gives it and
 -- hides the default one; the client still places, sizes and stacks the
 -- plates. Plates the client keeps from addons (forbidden ones, such as
 -- friendly plates in some instances) are left as they are.
@@ -203,8 +203,8 @@ local function hideDefault(plate)
   local uf = plate.UnitFrame
   if type(uf) ~= "table" or not uf.Hide then return end
   uf:Hide()
-  if not uf.fuiHooked then
-    uf.fuiHooked = true
+  if not uf.vgHooked then
+    uf.vgHooked = true
     uf:HookScript("OnShow", uf.Hide)
   end
 end
@@ -244,8 +244,8 @@ end
 -- glow) changed since they were last painted, or when `force` says the theme did.
 function NP.UpdateTarget(f, unit, force)
   local target, scale = NP.settings.targetBorder and isTarget(unit) or false, f:GetEffectiveScale()
-  if not force and target == f.fuiTarget and scale == f.fuiScale then return end
-  f.fuiTarget, f.fuiScale = target, scale
+  if not force and target == f.vgTarget and scale == f.vgScale then return end
+  f.vgTarget, f.vgScale = target, scale
   T.SetBorder(f, target and { T.Accent() } or nil)
   T.SizeGlow(f.glow, f, NP.GLOW)
   T.ShowGlow(f.glow, target)
@@ -302,13 +302,13 @@ end
 local function onAdded(_, unit)
   local plate = NP.PlateFor(unit)
   if not plate then return end
-  plate.fui = plate.fui or claim(plate)
+  plate.vg = plate.vg or claim(plate)
   hideDefault(plate)
-  NP.plates[unit] = plate.fui
-  plate.fui.unit = unit
-  ns.SetUnits(plate.fui.events, unit)
-  plate.fui:Show()
-  refresh(plate.fui, unit)
+  NP.plates[unit] = plate.vg
+  plate.vg.unit = unit
+  ns.SetUnits(plate.vg.events, unit)
+  plate.vg:Show()
+  refresh(plate.vg, unit)
 end
 
 -- A nameplate went away: forget it (the client reuses the plate).

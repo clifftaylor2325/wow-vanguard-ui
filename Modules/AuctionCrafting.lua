@@ -1,10 +1,10 @@
 -- Auction helper, crafting costs: beside the game's profession window, a
--- ForeverUI panel prices the recipe on display from the auction prices
+-- Vanguard panel prices the recipe on display from the auction prices
 -- (Modules/AuctionPrices.lua): each reagent's cost (its count x its worth:
 -- the market value on the day it was last seen, else its cheapest price,
 -- AP.Worth), what they come to, what the crafted item fetches (its worth x
 -- the average number made) and the profit, before the house's cut. Add
--- reagents raises Keep stocked (Errands' stockList, /fui stock) to what the
+-- reagents raises Keep stocked (Errands' stockList, /vg stock) to what the
 -- crafts typed beside it need, so a merchant who sells one tops you up, and
 -- makes the Restock shopping list of what's short (Modules/AuctionRestock.lua).
 --
@@ -158,7 +158,7 @@ end
 -- of what's short (and searched at the auction house).
 function CR.AddReagents()
   local data, ER = CR.data, ns.GetModule("Errands")
-  if not ER.settings then return ns.Chat("Keep stocked is part of Errands, which is off (/fui > Modules).") end
+  if not ER.settings then return ns.Chat("Keep stocked is part of Errands, which is off (/vg > Modules).") end
   local n = crafts(CR.frame.crafts)
   ns.Chat(string.format("Keep stocked for %d x %s: %s.", n, data.name or "this recipe", keepStocked(ER.settings.stockList, data, n)))
   AH.Restock()
@@ -210,7 +210,7 @@ end
 -- The panel, built the first time a recipe is priced: right of the profession window, past its side
 -- tabs, with the recipe's name, a row per reagent (CR.ROWS at most), the totals and Add reagents.
 function CR.Build()
-  local f = T.Panel(CreateFrame("Frame", "ForeverUI_CraftingPanel", UIParent), { shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_CraftingPanel", UIParent), { shadow = true })
   f:SetWidth(CR.WIDTH)
   f:SetPoint("TOPLEFT", ProfessionsFrame, "TOPRIGHT", CR.GAP, 0)
   heading(f)

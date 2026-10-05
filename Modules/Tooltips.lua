@@ -1,4 +1,4 @@
--- Tooltips in the ForeverUI look: a flat panel instead of the default art,
+-- Tooltips in the Vanguard look: a flat panel instead of the default art,
 -- a border in the class (or reaction) color of the unit you're looking at,
 -- the unit's name in that color, and a "Target:" line. The default tooltip
 -- can sit in a movable corner, follow the cursor, or stay where the client
@@ -27,8 +27,8 @@ TT.FONTS = { GameTooltipHeaderText = { 14, true }, GameTooltipText = { 12 }, Gam
 
 -- Flat panel on one tooltip, its default art hidden (alpha only, so the client's layout is untouched).
 local function skin(tt)
-  if type(tt) ~= "table" or tt.fuiSkinned then return end
-  tt.fuiSkinned = true
+  if type(tt) ~= "table" or tt.vgSkinned then return end
+  tt.vgSkinned = true
   T.Panel(tt, { alpha = 0.94, shadow = true })
   if tt.NineSlice then tt.NineSlice:SetAlpha(0) end
 end
@@ -155,7 +155,7 @@ end
 -- Other modules' item lines, each fn(tt, link), run in the order added after the tooltip's own.
 TT.itemLines = {}
 
--- Adds fn(tt, link) to every item tooltip, after ForeverUI's own lines: the shared
+-- Adds fn(tt, link) to every item tooltip, after Vanguard's own lines: the shared
 -- extension point (Vendor memory's "Sold by", auction prices). link is a plain item link.
 function TT.AddItemLines(fn)
   TT.itemLines[#TT.itemLines + 1] = fn
@@ -205,7 +205,7 @@ end
 
 -- The movable corner frame the tooltip sits in (unlock mode shows it).
 local function buildCorner()
-  TT.corner = CreateFrame("Frame", "ForeverUI_TooltipAnchor", UIParent)
+  TT.corner = CreateFrame("Frame", "Vanguard_TooltipAnchor", UIParent)
   TT.corner:SetSize(180, 56)
   ns.Mover(TT.corner, "tooltip", "Tooltip", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 186 })
 end

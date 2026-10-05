@@ -1,4 +1,4 @@
-// ForeverUI's artwork, as code: every file under Media/Textures and
+// Vanguard's artwork, as code: every file under Media/Textures and
 // Media/Icons is made here, and the faction crests under Media/Art come from
 // their SVGs (scripts/lib/media-crests.mjs); scripts/build-media.mjs writes them.
 // Textures are white or grayscale so the addon tints them with theme colors;

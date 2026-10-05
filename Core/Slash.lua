@@ -1,4 +1,4 @@
--- /fui (and /foreverui): unlock/lock, positions, theme, modules, profiles.
+-- /vg (and /vanguard): unlock/lock, positions, theme, modules, profiles.
 
 local ADDON, ns = ...
 
@@ -6,36 +6,36 @@ local T = ns.Theme
 local chat = ns.Chat
 
 local HELP = {
-  "A from-scratch UI suite. /fui opens the options window; /fui <command>:",
+  "A from-scratch UI suite. /vg opens the options window; /vg <command>:",
   "setup                first-run setup again: layout, screen, look, then move things",
-  "unlock | lock        drag handles on every ForeverUI frame; click one, then arrow keys nudge (Shift: 10 px)",
+  "unlock | lock        drag handles on every Vanguard frame; click one, then arrow keys nudge (Shift: 10 px)",
   "reset <frame|all>    put a frame (or every frame) back at its default spot",
   "frames               list the movable frames",
   "grid [size|on|off]   the unlock-mode grid; snap on|off   snapping while dragging",
   "accent <rrggbb|name> set the accent color (brass, arcane, fel, void, ember); accent reset",
   "theme reset          every theme setting back to default",
   "modules              list modules; enable|disable <module> (then /reload)",
-  "skins                addons skinned through ForeverUI.RegisterSkin; skins <addon> on|off",
+  "skins                addons skinned through Vanguard.RegisterSkin; skins <addon> on|off",
   "profile [name]       show profiles, or switch this character to one",
   "profile new|copy|delete <name>, profile reset   manage profiles",
   "export [module]      copy the profile (or one module's settings) as a string",
-  "import               paste a string from /fui export",
+  "import               paste a string from /vg export",
   "spec [profile|off]   use a profile whenever you're in this specialization",
   "copy                 the recent chat as plain text, ready to copy",
   "situation [record <name>|stop|clear [name]|list]   Situations: record a layout and settings for solo, party, raid, pvp, instance or resting",
   "watch [add|remove <phrase>|list|clear]   Chat watch: phrases that ring a sound and show a toast when said in chat",
-  "quests               open or close ForeverUI's quest log (the game's quest log key does too)",
+  "quests               open or close Vanguard's quest log (the game's quest log key does too)",
   "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
   "fights               your DPS, length and place in each fight this session, newest first",
-  "vendors [clear]      how many merchants ForeverUI remembers (for tooltips and the stock list); clear forgets them",
+  "vendors [clear]      how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them",
   "prep [want <kind> <n>] the Instance prep card now: what you're short of; want sets how many food, bandages, potions, ammo or shards",
   "ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|scan|prices clear]  shopping lists (pick or make one, add an item: a link, an ID or a name; rename, copy, delete, export or import the list in use; recent: the last 20 items searched); scan the auction house (while it's open); forget the prices",
-  "binds                this spec's click-casting and hover-key bindings (set them in /fui > Click casting)",
+  "binds                this spec's click-casting and hover-key bindings (set them in /vg > Click casting)",
   "keybind              keybind mode: hover an action button and press a key to bind it; Escape leaves",
   "status               version, profile, modules, skins, work waiting on combat, what the client has",
   "factionart           which of the game's own faction pictures this client has",
-  "errors [clear]       the errors ForeverUI caught this session, with stacks and counts (for a bug report); clear empties the list",
-  "perf [cpu|watch]     ForeverUI's CPU and memory now; cpu turns the game's CPU profiling on or off (reload); watch prints them every minute",
+  "errors [clear]       the errors Vanguard caught this session, with stacks and counts (for a bug report); clear empties the list",
+  "perf [cpu|watch]     Vanguard's CPU and memory now; cpu turns the game's CPU profiling on or off (reload); watch prints them every minute",
 }
 
 -- Prints each line.
@@ -50,29 +50,29 @@ local function onOff(on)
   return on and T.Paint("on", "good") or T.Paint("off", "muted")
 end
 
--- /fui unlock
+-- /vg unlock
 local function unlockCommand()
   if ns.Unlock() then
-    chat("Unlocked: drag the handles. /fui lock when done.")
+    chat("Unlocked: drag the handles. /vg lock when done.")
   else
     chat("Not in combat. Try again once combat ends.")
   end
 end
 
--- /fui lock
+-- /vg lock
 local function lockCommand()
   ns.Lock()
   chat("Locked.")
 end
 
--- /fui reset <frame|all>
+-- /vg reset <frame|all>
 local function resetCommand(rest)
   local key = rest ~= "" and rest or "all"
   local n = ns.ResetMovers(key)
-  chat(n > 0 and string.format("Reset %d frame(s).", n) or ("No frame called " .. key .. ". /fui frames lists them."))
+  chat(n > 0 and string.format("Reset %d frame(s).", n) or ("No frame called " .. key .. ". /vg frames lists them."))
 end
 
--- /fui frames
+-- /vg frames
 local function framesCommand()
   local list = ns.MoverList()
   chat(#list == 0 and "No movable frames yet (enable a module)." or "Movable frames:")
@@ -81,20 +81,20 @@ local function framesCommand()
   end
 end
 
--- /fui accent reset
+-- /vg accent reset
 local function resetAccent()
   T.ResetAccent()
   chat("Accent back to default.")
 end
 
--- /fui accent <rrggbb> | reset
+-- /vg accent <rrggbb> | reset
 local function accentCommand(rest)
   if rest == "reset" then
     return resetAccent()
   end
   local r, g, b = T.ParseColor(rest:lower())
   if not r then
-    return chat("Usage: /fui accent rrggbb | brass | arcane | fel | void | ember")
+    return chat("Usage: /vg accent rrggbb | brass | arcane | fel | void | ember")
   end
   T.SetAccent(r, g, b)
   chat("Accent set to " .. rest:lower() .. ".")
@@ -106,7 +106,7 @@ local function refreshGrid()
   if ns.Unlocked() and o.grid then ns.ShowGrid(o.gridSize) else ns.HideGrid() end
 end
 
--- /fui grid [size|on|off]
+-- /vg grid [size|on|off]
 local function gridCommand(rest)
   local o, size = ns.MoverOptions(), tonumber(rest)
   if size and size >= 8 and size <= 256 then
@@ -114,29 +114,29 @@ local function gridCommand(rest)
   elseif rest == "on" or rest == "off" or rest == "" then
     o.grid = rest == "on" or (rest == "" and not o.grid)
   else
-    return chat("Usage: /fui grid [8-256 | on | off]")
+    return chat("Usage: /vg grid [8-256 | on | off]")
   end
   refreshGrid()
   chat(o.grid and string.format("Grid on, every %d px.", o.gridSize) or "Grid off.")
 end
 
--- /fui snap on|off
+-- /vg snap on|off
 local function snapCommand(rest)
   local o = ns.MoverOptions()
   o.snap = rest == "on" or (rest == "" and not o.snap)
   chat(o.snap and "Snapping on." or "Snapping off.")
 end
 
--- /fui theme reset
+-- /vg theme reset
 local function themeCommand(rest)
   if rest ~= "reset" then
-    return chat("Usage: /fui theme reset")
+    return chat("Usage: /vg theme reset")
   end
   T.Reset()
   chat("Theme back to defaults.")
 end
 
--- /fui modules
+-- /vg modules
 local function modulesCommand()
   local names = ns.ModuleNames()
   chat(#names == 0 and "No modules yet." or "Modules (enable|disable <module>, then /reload):")
@@ -145,11 +145,11 @@ local function modulesCommand()
   end
 end
 
--- /fui enable|disable <module>
+-- /vg enable|disable <module>
 local function setModule(on)
   return function(rest)
     if not ns.GetModule(rest) then
-      return chat("No module called " .. rest .. ". /fui modules lists them.")
+      return chat("No module called " .. rest .. ". /vg modules lists them.")
     end
     ns.SetModuleEnabled(rest, on)
     chat(string.format("%s %s. /reload to apply.", rest, on and "enabled" or "disabled"))
@@ -165,7 +165,7 @@ local function listSkins()
   end
 end
 
--- /fui skins [<addon> on|off]
+-- /vg skins [<addon> on|off]
 local function skinsCommand(rest)
   local name, state = rest:match("^(%S+)%s+(%S+)$")
   if not name then
@@ -175,7 +175,7 @@ local function skinsCommand(rest)
   chat(string.format("Skin for %s %s. /reload to apply.", name, state == "on" and "on" or "off"))
 end
 
--- /fui profile <name>: stage the switch, creating the profile if new, and offer the reload that applies it.
+-- /vg profile <name>: stage the switch, creating the profile if new, and offer the reload that applies it.
 local function useProfile(name)
   if not ns.ValidProfileName(name) then
     return chat("Profile names are 1-32 letters, digits, spaces, - or _.")
@@ -187,20 +187,20 @@ end
 
 -- profile subcommands: new, copy, delete, reset.
 local PROFILE_ACTIONS = {
-  -- /fui profile new <name>
+  -- /vg profile new <name>
   new = function(name) chat(ns.NewProfile(name) and ("Created profile " .. name .. ".") or "That name is taken or not allowed.") end,
-  -- /fui profile copy <from>
+  -- /vg profile copy <from>
   copy = function(name)
     if not ns.CopyProfile(name) then return chat("No other profile called " .. name .. ".") end
     ns.OfferReload("Copied " .. name .. " into " .. ns.ProfileName() .. ".")
   end,
-  -- /fui profile delete <name>
+  -- /vg profile delete <name>
   delete = function(name) chat(ns.DeleteProfile(name) and ("Deleted profile " .. name .. ".") or "Can't delete that one (missing, or in use).") end,
-  -- /fui profile reset
+  -- /vg profile reset
   reset = function() ns.ResetProfile(); ns.OfferReload("Profile " .. ns.ProfileName() .. " is back to defaults.") end,
 }
 
--- /fui profile [new|copy|delete <name> | reset | <name>]
+-- /vg profile [new|copy|delete <name> | reset | <name>]
 local function profileCommand(rest)
   if rest == "" then
     local later = ns.PendingProfileName() and ("; " .. ns.PendingProfileName() .. " after a reload") or ""
@@ -212,17 +212,17 @@ local function profileCommand(rest)
   useProfile(rest)
 end
 
--- /fui export [module]
+-- /vg export [module]
 local function exportCommand(rest)
   local text, err = ns.ExportProfile(rest ~= "" and rest or nil)
   if not text then return chat("Nothing to export: " .. err .. ".") end
-  ns.ShowText("ForeverUI export (" .. (rest ~= "" and rest or "profile " .. ns.ProfileName()) .. ")  Ctrl+C to copy", text)
+  ns.ShowText("Vanguard export (" .. (rest ~= "" and rest or "profile " .. ns.ProfileName()) .. ")  Ctrl+C to copy", text)
 end
 
--- /fui import: a box to paste into. A whole profile that carries its UI scale asks
+-- /vg import: a box to paste into. A whole profile that carries its UI scale asks
 -- whether to use it first; then the reload is offered.
 local function importCommand()
-  ns.AskText("Paste a ForeverUI string, then Import", function(text)
+  ns.AskText("Paste a Vanguard string, then Import", function(text)
     local done, detail = ns.ImportProfile(text)
     if not done then return chat("Import failed: " .. detail .. ".") end
     ns.HideText()
@@ -232,18 +232,18 @@ end
 
 ns.ImportDialog = importCommand
 
--- /fui binds: this spec's click-casting bindings, one per line.
+-- /vg binds: this spec's click-casting bindings, one per line.
 local function bindsCommand()
   local CC = ns.GetModule("ClickCast")
   local list = CC and CC.Bindings() or {}
-  if CC and CC.UsesGame() then chat("The game's click bindings are in use; ForeverUI's below rest until you switch back.") end
-  chat(#list == 0 and "No click-casting bindings for this spec. /fui > Click casting to add some." or "Click casting (this spec):")
+  if CC and CC.UsesGame() then chat("The game's click bindings are in use; Vanguard's below rest until you switch back.") end
+  chat(#list == 0 and "No click-casting bindings for this spec. /vg > Click casting to add some." or "Click casting (this spec):")
   for _, b in ipairs(list) do
     chat("  " .. CC.KeyText(b.key) .. "  ->  " .. CC.ActionText(b))
   end
 end
 
--- /fui spec [profile|off]
+-- /vg spec [profile|off]
 local function specCommand(rest)
   if not ns.HasSpecs() then return chat("This client has no specializations, so profiles don't switch by spec.") end
   local spec = ns.SpecIndex()
@@ -251,7 +251,7 @@ local function specCommand(rest)
   if rest == "" then
     return chat(string.format("Spec %d uses %s.", spec, ns.SpecProfile(spec) or "the character's profile (no spec profile set)"))
   end
-  if rest ~= "off" and not ForeverUIDB.profiles[rest] then return chat("No profile called " .. rest .. ". /fui profile new " .. rest .. " first.") end
+  if rest ~= "off" and not VanguardDB.profiles[rest] then return chat("No profile called " .. rest .. ". /vg profile new " .. rest .. " first.") end
   ns.SetSpecProfile(rest ~= "off" and rest or nil, spec)
   chat(rest == "off" and "This spec no longer switches profiles." or ("Spec " .. spec .. " now uses profile " .. rest .. "."))
 end
@@ -299,13 +299,13 @@ local function textLine()
     UIParent:GetScale(), percent, size, math.floor(size * T.PixelsPerUnit() + 0.5))
 end
 
--- /fui status
+-- /vg status
 local function statusCommand()
   local enabled = 0
   for _, name in ipairs(ns.ModuleNames()) do
     enabled = enabled + (ns.ModuleEnabled(name) and 1 or 0)
   end
-  chat(string.format("ForeverUI %s  ·  profile %s  ·  %d/%d modules on", version(), ns.ProfileName(), enabled, #ns.ModuleNames()))
+  chat(string.format("Vanguard %s  ·  profile %s  ·  %d/%d modules on", version(), ns.ProfileName(), enabled, #ns.ModuleNames()))
   chat(string.format("%d skinned addon(s)  ·  %d painted frame(s)  ·  %d change(s) waiting on combat", #ns.SkinList(), T.PaintedCount(), ns.QueuedCount()))
   chat(clientLine())
   chat(ns.Client.Line())
@@ -331,30 +331,30 @@ local function printError(e)
   for line in e.stack:gmatch("[^\n]+") do chat("    " .. line) end
 end
 
--- /fui errors [clear]: the errors ForeverUI caught this session, newest last, with
+-- /vg errors [clear]: the errors Vanguard caught this session, newest last, with
 -- the version, client and aura backend a bug report needs; clear empties the list.
 local function errorsCommand(rest)
   if rest == "clear" then ns.ClearErrors() return chat("Cleared.") end
   if #ns.errors == 0 then return chat("No errors caught this session.") end
-  chat(string.format("ForeverUI %s  ·  interface %s  ·  %d error(s) caught this session (%d in all), newest last:", version(), interfaceText(), #ns.errors, occurrences()))
+  chat(string.format("Vanguard %s  ·  interface %s  ·  %d error(s) caught this session (%d in all), newest last:", version(), interfaceText(), #ns.errors, occurrences()))
   chat(clientLine())
   for _, e in ipairs(ns.errors) do printError(e) end
 end
 
--- /fui stock: the Errands module's stock list, which exists only while that module is on.
+-- /vg stock: the Errands module's stock list, which exists only while that module is on.
 local function stockCommand(rest)
   local ER = ns.GetModule("Errands")
-  if not ER.settings then return chat("ForeverUI's Errands are off (/fui > Modules).") end
+  if not ER.settings then return chat("Vanguard's Errands are off (/vg > Modules).") end
   ER.StockCommand(rest)
 end
 
 local COMMANDS = {
-  -- /fui help
+  -- /vg help
   help = function() printLines(HELP) end,
-  -- /fui options (also /fui with nothing after it)
+  -- /vg options (also /vg with nothing after it)
   options = function() ns.Options.Toggle() end,
   config = function() ns.Options.Toggle() end,
-  -- /fui setup: the first-run wizard again (after combat, if in it)
+  -- /vg setup: the first-run wizard again (after combat, if in it)
   setup = function() ns.Setup.Open() end,
   unlock = unlockCommand,
   move = unlockCommand,
@@ -376,7 +376,7 @@ local COMMANDS = {
   binds = bindsCommand,
   keybind = function() ns.GetModule("ActionBars").ToggleKeybindMode() end,
   copy = function() ns.GetModule("ChatExtras").ShowCopy() end,
-  quests = function() local QL = ns.GetModule("QuestLog") if QL.frame then QL.Toggle() else ns.Chat("ForeverUI's quest log is off (/fui > Quests).") end end,
+  quests = function() local QL = ns.GetModule("QuestLog") if QL.frame then QL.Toggle() else ns.Chat("Vanguard's quest log is off (/vg > Quests).") end end,
   stock = stockCommand,
   fights = function() ns.GetModule("FightHistory").Command() end,
   vendors = function(rest) ns.GetModule("VendorMemory").Command(rest) end,
@@ -390,16 +390,16 @@ local COMMANDS = {
   perf = function(rest) ns.Perf.Command(rest) end,
 }
 
--- /fui entry point: no arguments opens the options window.
+-- /vg entry point: no arguments opens the options window.
 local function handleSlash(msg)
   local cmd, rest = (msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
   if cmd == "" then
     return ns.Options.Toggle()
   end
-  local handler = COMMANDS[cmd:lower()] or function() chat("Unknown command. /fui help") end
+  local handler = COMMANDS[cmd:lower()] or function() chat("Unknown command. /vg help") end
   handler(rest)
 end
 
-SLASH_FOREVERUI1 = "/fui"
-SLASH_FOREVERUI2 = "/foreverui"
-SlashCmdList["FOREVERUI"] = handleSlash
+SLASH_VANGUARD1 = "/vg"
+SLASH_VANGUARD2 = "/vanguard"
+SlashCmdList["VANGUARD"] = handleSlash

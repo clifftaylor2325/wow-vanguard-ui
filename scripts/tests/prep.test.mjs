@@ -1,6 +1,6 @@
-// prep: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// prep: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 // Modules/InstancePrep.lua: the checklist card of what's short, at a dungeon or
-// raid's door, on a ready check, or with /fui prep.
+// raid's door, on a ready check, or with /vg prep.
 
 import { expect, it } from "vitest";
 import { CLICK_LUA, isTok, loggedIn, setCombat } from "./helpers.mjs";
@@ -45,7 +45,7 @@ const rows = (addon) => {
 };
 
 // Whether the card is on screen.
-const shown = (addon) => addon.frame("ForeverUI_PrepCard").visible;
+const shown = (addon) => addon.frame("Vanguard_PrepCard").visible;
 
 // Walks into a dungeon (or out of one with inside false): PLAYER_ENTERING_WORLD with the instance set.
 const enter = (addon, inside = true, kind = "party", id = 389) => {
@@ -56,7 +56,7 @@ const enter = (addon, inside = true, kind = "party", id = 389) => {
 it("prep: low ammo and soul shards show as have / want in red", () => {
   const hunter = character("HUNTER", 60, { extra: "__ammo = 120" });
   hunter.slash("prep");
-  expect(shown(hunter), "/fui prep shows the card").toBe(true);
+  expect(shown(hunter), "/vg prep shows the card").toBe(true);
   expect(rows(hunter), "the ammo row").toEqual([["Ammo", "120 / 400"]]);
   expect(isTok(hunter, hunter.eval("return ns.GetModule('InstancePrep').card.rows[1].value.__textColor"), "bad"), "the count is red").toBe(true);
   expect(hunter.eval("return ns.GetModule('InstancePrep').card:GetHeight()"), "the card fits its one row").toBe(32 + 18 + 8);
@@ -66,12 +66,12 @@ it("prep: low ammo and soul shards show as have / want in red", () => {
   expect(rows(warlock), "a warlock's shards (and no ammo row)").toEqual([["Soul shards", "3 / 10"]]);
 });
 
-it("prep: nothing short keeps the card away at the door; /fui prep says everything's packed", () => {
+it("prep: nothing short keeps the card away at the door; /vg prep says everything's packed", () => {
   const addon = character("WARRIOR", 60);
   enter(addon);
   expect(shown(addon), "a dungeon with nothing short: no card").toBe(false);
   addon.slash("prep");
-  expect(shown(addon), "/fui prep shows it anyway").toBe(true);
+  expect(shown(addon), "/vg prep shows it anyway").toBe(true);
   expect(addon.texts("Everything's packed.").length, "with the packed line").toBe(1);
   expect(isTok(addon, addon.eval("return ns.GetModule('InstancePrep').card.packed.__textColor"), "good"), "in green").toBe(true);
   expect(rows(addon), "and no rows").toEqual([]);
@@ -134,7 +134,7 @@ it("prep: a hidden count skips its row without an error", () => {
   expect(addon.texts("Everything's packed.").length, "a hidden class has no class rows").toBe(1);
 });
 
-it("prep: nothing is checked in combat, and /fui prep waits for the fight to end", () => {
+it("prep: nothing is checked in combat, and /vg prep waits for the fight to end", () => {
   const addon = character("MAGE", 60);
   setCombat(addon, true);
   enter(addon);
@@ -142,7 +142,7 @@ it("prep: nothing is checked in combat, and /fui prep waits for the fight to end
   addon.slash("prep");
   expect(shown(addon), "nothing in combat").toBe(false);
   setCombat(addon, false);
-  expect(shown(addon), "/fui prep shows when the fight ends").toBe(true);
+  expect(shown(addon), "/vg prep shows when the fight ends").toBe(true);
   expect(rows(addon).map((r) => r[0]), "a mage at 60 is short of runes and powder").toEqual(["Rune of Teleportation", "Rune of Portals", "Arcane Powder"]);
 });
 
@@ -177,13 +177,13 @@ it("prep: a ready check shows the card, packed or not, unless switched off", () 
   expect(shown(addon), "switched off").toBe(false);
 });
 
-it("prep: /fui prep want sets the wanted amounts; the options page has the section", () => {
+it("prep: /vg prep want sets the wanted amounts; the options page has the section", () => {
   const addon = character("WARRIOR", 60);
   addon.slash("prep want food 30");
   expect(addon.eval("return ns.Settings('InstancePrep').want.food"), "food wanted").toBe(30);
   expect(addon.chat().at(-1), "said in chat").toMatch(/Instance prep wants 30 food\.$/);
   addon.slash("prep want gold 3");
-  expect(addon.chat().at(-1), "an unknown kind: the usage").toMatch(/Usage: \/fui prep want/);
+  expect(addon.chat().at(-1), "an unknown kind: the usage").toMatch(/Usage: \/vg prep want/);
   addon.slash("prep");
   expect(rows(addon), "the new amount counts").toEqual([["Food & drink", "20 / 30"]]);
   addon.eval('ns.Options.Show("more")');
@@ -192,7 +192,7 @@ it("prep: /fui prep want sets the wanted amounts; the options page has the secti
   expect(addon.find("^50%%$").text, "the durability warning, in percent").toBe("50%");
   addon.eval('__click("Checklist on a ready check")');
   expect(addon.eval("return ns.Settings('InstancePrep').onReadyCheck"), "a switch sets the profile").toBe(false);
-  const off = loggedIn("", { savedVariables: "ForeverUIDB.profiles.Default = { modules = { InstancePrep = false } }" });
+  const off = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { modules = { InstancePrep = false } }" });
   off.slash("prep");
   expect(off.chat().at(-1), "the module off").toMatch(/Instance prep is off/);
 });

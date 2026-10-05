@@ -1,4 +1,4 @@
-// auras: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// auras: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
@@ -19,7 +19,7 @@ const AURA_ENV = `
 `;
 
 // Raid button 1's aura rows as the client's containers hold them.
-const indicators = (addon) => addon.eval(`local b = ForeverUI_RaidUnitButton1
+const indicators = (addon) => addon.eval(`local b = Vanguard_RaidUnitButton1
   local d, h = b.debuffRow.frame, b.hotRow.frame
   local first = d.__groups[1].buttons[1]
   local out = { dispel = { filter = d.__groups[1].filter, max = d.__groups[1].opts.maxFrameCount, shown = first.__shown, icon = first.__icon.__texture,
@@ -43,10 +43,10 @@ it("raid indicators", () => {
   expect(i.hots.pandemic === 1 && i.hots.timer == null, "HoTs light in their refresh window; no timer numbers on raid icons").toBeTruthy();
   expect(i.mouse === false && i.unit === "raid1" && i.rowsShown, "icons let clicks through to the tile, and follow its unit").toBeTruthy();
   expect(i.dPoint[0] === 2 && i.dPoint[1] === -43 && i.hPoint[0] === 98 && i.hPoint[1] === -43, "debuffs sit bottom left and HoTs bottom right, above the power bar").toBeTruthy();
-  expect(addon.eval("return ForeverUI_RaidUnitButton3.debuffRow.frame.__shown") === false, "the offline show no auras").toBeTruthy();
-  addon.eval('ForeverUI_RaidUnitButton1:SetAttribute("unit", "raid2")');
-  expect(addon.eval("return ForeverUI_RaidUnitButton1.debuffRow.frame.__unit") === "raid2", "a roster change points the rows at the new unit").toBeTruthy();
-  const b1 = "ForeverUI_RaidUnitButton1";
+  expect(addon.eval("return Vanguard_RaidUnitButton3.debuffRow.frame.__shown") === false, "the offline show no auras").toBeTruthy();
+  addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", "raid2")');
+  expect(addon.eval("return Vanguard_RaidUnitButton1.debuffRow.frame.__unit") === "raid2", "a roster change points the rows at the new unit").toBeTruthy();
+  const b1 = "Vanguard_RaidUnitButton1";
   addon.eval(`${b1}:GetScript("OnEnter")(${b1})`);
   const hover = addon.eval(`return ${b1}.hover:IsShown()`);
   addon.eval(`${b1}:GetScript("OnLeave")(${b1})`);
@@ -59,20 +59,20 @@ it("raid indicators", () => {
   addon.eval("UnitIsUnit = function() return false end");
   addon.fire("PLAYER_TARGET_CHANGED");
   expect(!isTok(addon, edgeOf(), "accent"), "and loses it when you target someone else").toBeTruthy();
-  expect(isTok(addon, addon.eval("return ForeverUI_RaidUnitButton3.health.__barColor"), "darkBar"), "the offline get a dark bar").toBeTruthy();
+  expect(isTok(addon, addon.eval("return Vanguard_RaidUnitButton3.health.__barColor"), "darkBar"), "the offline get a dark bar").toBeTruthy();
 });
 
 it("a client that won't drive the dispel highlight never shows it uncolored", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + "Enum.CustomAuraButtonDispelTypeTextureStyle = nil");
   addon.eval('__spawn(1, "raid1")');
-  const out = addon.eval(`local first = ForeverUI_RaidUnitButton1.debuffRow.frame.__groups[1].buttons[1]
+  const out = addon.eval(`local first = Vanguard_RaidUnitButton1.debuffRow.frame.__groups[1].buttons[1]
     local shown = 0 for _, w in ipairs(__wfgStub.frames) do if w.__parent == first and w.__kind == "Texture" and w.__texture and w.__texture:find("Fade") and w.__shown then shown = shown + 1 end end
     return { regs = #first.__dispel, icon = first.__shown, washes = shown }`);
   expect(out.icon === true && out.regs === 0 && out.washes === 0, "the debuff icon still shows; the unregistered wash stays hidden").toBeTruthy();
 });
 
 it("raid auras listen for UNIT_AURA only on the fallback, where they paint the highlight themselves", () => {
-  const noHealing = { savedVariables: "ForeverUIDB.profiles = { Default = { modules = { RaidHealing = false } } }" };
+  const noHealing = { savedVariables: "VanguardDB.profiles = { Default = { modules = { RaidHealing = false } } }" };
   const engine = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV, noHealing);
   engine.eval('__spawn(1, "raid1")');
   expect(unitEvents(engine, "UNIT_AURA").plain, "on the client's engine nothing takes every unit's UNIT_AURA").toBe(0);
@@ -85,7 +85,7 @@ it("raid indicators on the fallback", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + "__wfgStub.noAuraContainer = true");
   addon.eval('__spawn(1, "raid1")');
   // Button 1's fallback highlight and icons.
-  const state = () => addon.eval(`local b = ForeverUI_RaidUnitButton1 local g = b.debuffRow.groups
+  const state = () => addon.eval(`local b = Vanguard_RaidUnitButton1 local g = b.debuffRow.groups
     return { shown = b.dispel:IsShown(), wash = b.dispel.wash.__vertexColor, edge = b.dispel.edges[1].__vertexColor,
       first = g[1].icons[1].icon.__texture, other = g[2].icons[1]:IsShown() and g[2].icons[1].icon.__texture, dup = g[2].icons[2]:IsShown(),
       hot = b.hotRow.groups[1].icons[1].icon.__texture, hotCd = b.hotRow.groups[1].icons[1].cooldown.__cooldown, hidden = b.hotRow.groups[1].icons[2].cooldown.__cooldown }`);
@@ -138,7 +138,7 @@ const FRAME_AURAS = `
 `;
 
 // A frame's aura rows, as the client's containers hold them.
-const frameRows = (addon, key) => addon.eval(`local f = ForeverUI_${key}
+const frameRows = (addon, key) => addon.eval(`local f = Vanguard_${key}
   local function row(c) if not c then return nil end local p = c.frame.__points[c.frame.__flowAnchor] local out = { point = { point = p.point, relPoint = p.relPoint }, groups = {} }
     for g, grp in ipairs(c.frame.__groups) do local b = grp.buttons[1]
       out.groups[g] = { filter = grp.filter, max = grp.opts.maxFrameCount, icon = b and b.__shown and b.__icon.__texture or false,
@@ -157,11 +157,11 @@ it("target and focus auras", () => {
   expect(t.buffs.groups[0].icon === "BUFF-A" && t.debuffs.groups[1].timer === false, "buffs above; no timer numbers by default (the sweep shows time left)").toBeTruthy();
   const f = frameRows(addon, "focus");
   expect(f.buffs == null && f.debuffs.groups[1].icon === "MY-DOT", "the focus shows your debuffs only").toBeTruthy();
-  expect(addon.eval("return ForeverUI_target.debuffs.frame.__flowLine") === 240, "the row wraps at the frame's width").toBeTruthy();
+  expect(addon.eval("return Vanguard_target.debuffs.frame.__flowLine") === 240, "the row wraps at the frame's width").toBeTruthy();
   addon.eval('__frameAuras.HELPFUL = {}');
   addon.fire("PLAYER_TARGET_CHANGED");
   expect(frameRows(addon, "target").buffs.groups[0].icon === false, "a new target reads its auras again").toBeTruthy();
-  const all = loggedIn(UNITS_ENV + FRAME_AURAS, { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { RaidFrames = false }, FrameAuras = { onlyMine = false, timers = true } } } }" });
+  const all = loggedIn(UNITS_ENV + FRAME_AURAS, { savedVariables: "VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, FrameAuras = { onlyMine = false, timers = true } } } }" });
   all.fire("PLAYER_FOCUS_CHANGED");
   const others = frameRows(all, "focus").debuffs.groups[2];
   expect(others.icon === "ANY-DEBUFF" && others.dim === true && others.max === 8, "with onlyMine off, others' debuffs show too, dimmed").toBeTruthy();
@@ -294,11 +294,11 @@ it("your buffs: the enchant switch, and clients without enchant info", () => {
   addon.eval('__click("Bars, map, chat")');
   expect(addon.eval('return __click("Weapon enchants in front")') && playerAuras(addon).cells[0].shown, "turning enchants off hides them at once").toBe(false);
   expect(playerAuras(addon).x, "and the buffs take the corner").toBe(0);
-  expect(addon.eval('return __click("Icon size") and ForeverUIDB.profiles.Default.PlayerAuras.size'), "the icon size is on the page").toBe(36);
+  expect(addon.eval('return __click("Icon size") and VanguardDB.profiles.Default.PlayerAuras.size'), "the icon size is on the page").toBe(36);
   const bare = loggedIn(UNITS_ENV + ENGINE_ENV + "GameTooltip = nil");
   expect(bare.eval("local PA = ns.GetModule('PlayerAuras') local c = PA.cells[1] c:GetScript('OnEnter')(c) c:GetScript('OnLeave')(c) return #PA.Enchants()"), "no enchant info on this client: no cells, and no tooltip to show").toBe(0);
   const old = loggedIn(UNITS_ENV + WEAPONS_ENV + "__wfgStub.noAuraContainer = true");
-  expect(old.eval('return ns.GetModule("PlayerAuras").auras.frame.__kind'), "without the client's containers, ForeverUI's own icons").toBe("Frame");
+  expect(old.eval('return ns.GetModule("PlayerAuras").auras.frame.__kind'), "without the client's containers, Vanguard's own icons").toBe("Frame");
   const combat = createAddon({ savedVariables: SETUP_DONE });
   combat.eval(UNITS_ENV + WEAPONS_ENV + `C_EventUtils = { IsEventValid = function(e) return e ~= "WEAPON_ENCHANT_CHANGED" end }
     __caught = {} local keep = ns.Report ns.Report = function(where, err) __caught[#__caught + 1] = where .. ": " .. err keep(where, err) end`);
@@ -319,7 +319,7 @@ it("aura container timer options a client refuses, and the engine probe", () => 
   expect(noColor.formatter && !noColor.color, "a refused color keeps the formatter").toBeTruthy();
   const bare = opts("{ textColor = true, textFormatter = true }");
   expect(!bare.formatter && !bare.color, "a refused formatter falls back to the client's own text").toBeTruthy();
-  const fresh = loggedIn(UNITS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { FrameAuras = false, PlayerAuras = false } } } }" });
+  const fresh = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { modules = { FrameAuras = false, PlayerAuras = false } } } }" });
   expect(fresh.eval("__wfgStub.inCombat = true return ns.AuraEngine.Available()") === false, "the probe waits for the end of combat").toBeTruthy();
   expect(fresh.eval("__wfgStub.inCombat = false return ns.AuraEngine.Available()") === true, "then asks once").toBeTruthy();
   const bareClient = loggedIn(UNITS_ENV + CONTAINER_AURAS);
@@ -337,7 +337,7 @@ it("aura containers without the engine (the fallback)", () => {
       ring = g1.icons[2].ring[1].__vertexColor, ringShown = g1.icons[2].ring[1].__shown, dim = g2.icons[1].icon.__desaturated,
       numbers = g1.icons[1].cooldown.__hideNumbers, font = g1.icons[1].cooldown.__countdown.__font ~= nil,
       p1 = pos(g1.icons[1]), p2 = pos(g1.icons[2]), p3 = pos(g2.icons[1]), events = __c.frame.__events.UNIT_AURA }`);
-  expect(c.backend === "fallback", "without AuraContainer, ForeverUI's own icons are used").toBeTruthy();
+  expect(c.backend === "fallback", "without AuraContainer, Vanguard's own icons are used").toBeTruthy();
   expect(c.filter === "HARMFUL", "'!' tokens are dropped for the older reads").toBeTruthy();
   expect(c.mine[0] === "MY-DOT" && c.mine[1] === "MY-CURSE" && c.theirs === "THEIR-DOT" && c.dup === false, "an aura an earlier group shows isn't shown twice").toBeTruthy();
   expect(c.count === "3*", "stacks use the client's display count (it formats hidden counts)").toBeTruthy();
@@ -446,13 +446,13 @@ it("the raid dispel highlight reads through the stripped filter on the fallback"
   addon.eval('__spawn(1, "raid1")');
   setCombat(addon, true);
   addon.fire("UNIT_AURA", "raid1");
-  expect(addon.eval("return ForeverUI_RaidUnitButton1.dispel:IsShown()"), "the highlight is painted from the HARMFUL read").toBe(true);
-  expect(isTok(addon, addon.eval("return ForeverUI_RaidUnitButton1.dispel.edges[1].__vertexColor"), "magic")).toBe(true);
+  expect(addon.eval("return Vanguard_RaidUnitButton1.dispel:IsShown()"), "the highlight is painted from the HARMFUL read").toBe(true);
+  expect(isTok(addon, addon.eval("return Vanguard_RaidUnitButton1.dispel.edges[1].__vertexColor"), "magic")).toBe(true);
   expect(addon.eval('return ns.Auras.Filter("HARMFUL|RAID")')).toBe("HARMFUL");
   expect(addon.eval('local k = 0 for _, e in ipairs(ns.errors) do if e.text:find("aura filter HARMFUL|RAID", 1, true) then k = k + e.count end end return k'), "one report").toBe(1);
 });
 
-const PROBE_WHERE = "aura containers (using ForeverUI's own icons)";
+const PROBE_WHERE = "aura containers (using Vanguard's own icons)";
 
 // The number of caught errors whose text holds `text`, and the count of the first of them.
 const errorsWith = (addon, text) => addon.eval(`local n, count = 0, 0
@@ -474,10 +474,10 @@ it("the engine probe refuses an AuraContainer without AddAuraGroup", () => {
   expect(errorsWith(addon, PROBE_WHERE), "the probe answered once, in one entry").toEqual([1, 1]);
   expect(addon.eval(`for _, e in ipairs(ns.errors) do if e.text:find("${PROBE_WHERE}", 1, true) then return e.text end end`), "which names the missing method").toMatch(/: the client's AuraContainer has no AddAuraGroup$/);
   addon.slash("status");
-  expect(chatHas(addon, /auras on the fallback/), "/fui status says so").toBe(true);
+  expect(chatHas(addon, /auras on the fallback/), "/vg status says so").toBe(true);
 });
 
-const REFUSED_WHERE = "aura container (switching to ForeverUI's own icons)";
+const REFUSED_WHERE = "aura container (switching to Vanguard's own icons)";
 
 // TEST-ONLY client whose AuraContainer has every method, but whose SetUnit errors.
 const REFUSING_ENV = `
@@ -486,7 +486,7 @@ const REFUSING_ENV = `
 `;
 
 it("a container the client refuses after the probe retires the engine for the session", () => {
-  const off = { savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { FrameAuras = false, PlayerAuras = false } } } }" };
+  const off = { savedVariables: "VanguardDB = { profiles = { Default = { modules = { FrameAuras = false, PlayerAuras = false } } } }" };
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS + REFUSING_ENV, off);
   expect(addon.eval("return ns.AuraEngine.Available()"), "the probe sees the methods, so the engine is in").toBe(true);
   const c = addon.eval(`__c = ns.Auras.Container(UIParent, __spec, "target")
@@ -495,9 +495,9 @@ it("a container the client refuses after the probe retires the engine for the se
   expect(c, "the refused container is built by the fallback, and the engine is retired").toEqual({ kind: "Frame", available: false, backend: "fallback", icon: "MY-DOT", hidden: true });
   expect(addon.eval("return ns.Client.has.auraContainer"), "a retired engine no longer counts as a capability of the client").toBe(false);
   addon.slash("status");
-  expect(chatHas(addon, /Client has: [^·]*· {2}lacks: auraContainer(,|$)/), "/fui status lists the aura container as lacking").toBe(true);
+  expect(chatHas(addon, /Client has: [^·]*· {2}lacks: auraContainer(,|$)/), "/vg status lists the aura container as lacking").toBe(true);
   expect(chatHas(addon, /Client has: [^·]*auraContainer[^·]*·/), "and no longer under what the client has").toBe(false);
-  expect(addon.eval("return ns.errors[#ns.errors].text"), "the refusal is kept under its own label").toMatch(/^aura container \(switching to ForeverUI's own icons\): .*TEST-ONLY: SetUnit refused$/);
+  expect(addon.eval("return ns.errors[#ns.errors].text"), "the refusal is kept under its own label").toMatch(/^aura container \(switching to Vanguard's own icons\): .*TEST-ONLY: SetUnit refused$/);
   expect(addon.eval('return ns.Auras.Container(UIParent, __spec, "target").frame.__kind'), "the next container goes straight to the fallback").toBe("Frame");
   expect(errorsWith(addon, REFUSED_WHERE), "and the engine is never tried again: one entry, seen once").toEqual([1, 1]);
   addon.eval("__c:SetUnit(nil) __c:Refresh()");
@@ -512,7 +512,7 @@ it("a container the client refuses after the probe retires the engine for the se
 it("raid tiles built after the engine retires get the fallback highlight", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV + REFUSING_ENV);
   addon.eval('__spawn(1, "raid1")');
-  const b = addon.eval(`local b = ForeverUI_RaidUnitButton1
+  const b = addon.eval(`local b = Vanguard_RaidUnitButton1
     return { legacy = b.debuffRow.groups ~= nil, highlight = b.dispel ~= nil, backend = ns.Auras.BackendName(), first = b.debuffRow.groups[1].icons[1].icon.__texture }`);
   expect(b, "the tile's rows are fallback containers with the fallback's dispel highlight").toEqual({ legacy: true, highlight: true, backend: "fallback", first: "TEST-ONLY-CURSE" });
   expect(errorsWith(addon, REFUSED_WHERE), "one refusal at login, and no other container tried the engine").toEqual([1, 1]);
@@ -533,13 +533,13 @@ const HOT_REFUSING_ENV = `
 it("a raid tile whose second container is refused keeps one dispel highlight", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV + HOT_REFUSING_ENV);
   addon.eval('__spawn(1, "raid1")');
-  const b = addon.eval(`local b = ForeverUI_RaidUnitButton1
+  const b = addon.eval(`local b = Vanguard_RaidUnitButton1
     return { debuffs = b.debuffRow.frame.__kind, hots = b.hotRow.groups ~= nil, highlight = b.dispel ~= nil, available = ns.AuraEngine.Available(),
       registered = #b.debuffRow.frame.__groups[1].buttons[1].__dispel }`);
   expect(b, "the debuff row stays on the engine with the client's highlight, and the tile adds no second one").toEqual({ debuffs: "AuraContainer", hots: true, highlight: false, available: false, registered: 9 });
   expect(errorsWith(addon, REFUSED_WHERE), "the HoT row was refused once").toEqual([1, 1]);
   addon.eval('__spawn(2, "raid1")');
-  expect(addon.eval("return ForeverUI_RaidUnitButton2.dispel ~= nil"), "tiles built after the retirement use the fallback highlight").toBe(true);
+  expect(addon.eval("return Vanguard_RaidUnitButton2.dispel ~= nil"), "tiles built after the retirement use the fallback highlight").toBe(true);
 });
 
 it("aura colors and stacks when the client hides the values", () => {

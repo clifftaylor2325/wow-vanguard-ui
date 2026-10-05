@@ -266,7 +266,7 @@ end
 -- A button's action slot: on bar 1 without snippets, its ID on the page the
 -- bar's driver last set; else the slot its action attribute names.
 function AB.ActionSlot(b)
-  local page = b.fuiBar and b.fuiBar.fuiPaged and b.fuiBar.fuiPage
+  local page = b.vgBar and b.vgBar.vgPaged and b.vgBar.vgPage
   if page then return (page - 1) * AB.MAX_BUTTONS + b:GetID() end
   return b:GetAttribute("action")
 end
@@ -441,11 +441,11 @@ local function addToMasque(b)
 end
 
 -- One secure action button on a bar (sized and placed by AB.LayoutBar), in
--- ForeverUI's button skin, or Masque's when it is loaded.
+-- Vanguard's button skin, or Masque's when it is loaded.
 local function createButton(bar, n, index, def)
-  local name = string.format("ForeverUI_Bar%dButton%d", n, index)
+  local name = string.format("Vanguard_Bar%dButton%d", n, index)
   local b = CreateFrame("CheckButton", name, bar, "SecureActionButtonTemplate")
-  b.binding, b.fuiBar = def.bind .. index, bar
+  b.binding, b.vgBar = def.bind .. index, bar
   if not ns.Masque.Group(AB.MASQUE) then T.Button(b) end
   addRegions(b)
   addToMasque(b)
@@ -484,8 +484,8 @@ end
 -- The bar's actionpage changed (bar 1 without snippets): its buttons show that page's slots.
 function AB.OnBarPage(bar, name, value)
   if name ~= "actionpage" then return end
-  bar.fuiPage = tonumber(value)
-  for _, b in ipairs(bar.fuiButtons) do AB.UpdateButton(b) end
+  bar.vgPage = tonumber(value)
+  for _, b in ipairs(bar.vgButtons) do AB.UpdateButton(b) end
 end
 
 -- Bar 1 on a client that can't run secure snippets: the driver sets the bar's
@@ -493,11 +493,11 @@ end
 -- from the bar when clicked, so stances, forms and Shift+number still page in
 -- a fight. Out of combat (ns.Client.WhenSnippetsKnown); undoes the snippet paging.
 function AB.PageWithoutSnippets(bar)
-  if bar.fuiPaged then return end
-  bar.fuiPaged = true
+  if bar.vgPaged then return end
+  bar.vgPaged = true
   UnregisterStateDriver(bar, "page")
   bar:SetAttribute("_onstate-page", nil)
-  for i, b in ipairs(bar.fuiButtons) do b:SetID(i) b:SetAttribute("useparent-actionpage", true) end
+  for i, b in ipairs(bar.vgButtons) do b:SetID(i) b:SetAttribute("useparent-actionpage", true) end
   bar:HookScript("OnAttributeChanged", AB.OnBarPage)
   RegisterAttributeDriver(bar, "actionpage", AB.PAGE_DRIVER)
 end
@@ -506,7 +506,7 @@ end
 -- that can't run snippets, through its own actionpage (decided once the probe answers).
 local function addPaging(bar)
   ns.Client.WhenSnippetsKnown(function(worked) if worked == false then AB.PageWithoutSnippets(bar) end end)
-  if bar.fuiPaged then return end
+  if bar.vgPaged then return end
   bar:SetAttribute("_onstate-page", AB.ON_PAGE)
   RegisterStateDriver(bar, "page", AB.PAGE_DRIVER)
 end
@@ -515,9 +515,9 @@ end
 -- many as the bar's settings ask for), movable in unlock mode, starting at
 -- `point` (its place in the bottom stack, or its fixed default).
 local function createBar(n, def, point)
-  local bar = CreateFrame("Frame", "ForeverUI_Bar" .. n, UIParent, "SecureHandlerStateTemplate")
-  bar.fuiIndex, bar.fuiButtons = n, {}
-  for i = 1, AB.MAX_BUTTONS do bar.fuiButtons[i] = createButton(bar, n, i, def) end
+  local bar = CreateFrame("Frame", "Vanguard_Bar" .. n, UIParent, "SecureHandlerStateTemplate")
+  bar.vgIndex, bar.vgButtons = n, {}
+  for i = 1, AB.MAX_BUTTONS do bar.vgButtons[i] = createButton(bar, n, i, def) end
   AB.bars[n] = bar
   AB.LayoutBar(n)
   if n == 1 then addPaging(bar) end
@@ -531,7 +531,7 @@ end
 
 local bindingOwner
 
--- Points every default action binding at the matching ForeverUI button
+-- Points every default action binding at the matching Vanguard button
 -- (only buttons the bar's layout shows). Override bindings are cleared and
 -- rebuilt; protected, so out of combat.
 function AB.ApplyBindings()

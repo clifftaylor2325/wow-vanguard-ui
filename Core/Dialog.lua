@@ -39,10 +39,10 @@ end
 
 -- The scrolling multi-line edit box inside the text dialog.
 local function addEditBox(f)
-  local scroll = CreateFrame("ScrollFrame", "ForeverUI_TextScroll", f, "UIPanelScrollFrameTemplate")
+  local scroll = CreateFrame("ScrollFrame", "Vanguard_TextScroll", f, "UIPanelScrollFrameTemplate")
   scroll:SetPoint("TOPLEFT", 12, -34)
   scroll:SetPoint("BOTTOMRIGHT", -30, 44)
-  f.edit = T.EditBox(CreateFrame("EditBox", "ForeverUI_TextEdit", scroll))
+  f.edit = T.EditBox(CreateFrame("EditBox", "Vanguard_TextEdit", scroll))
   f.edit:SetMultiLine(true)
   f.edit:SetAutoFocus(false)
   f.edit:SetWidth(460)
@@ -53,7 +53,7 @@ end
 -- Builds the text dialog once: title, text area, primary and close buttons.
 local function textBox()
   if box then return box end
-  box = dialog("ForeverUI_TextDialog", 520, 320)
+  box = dialog("Vanguard_TextDialog", 520, 320)
   addEditBox(box)
   box.primary = button(box, "Import")
   box.primary:SetPoint("BOTTOMRIGHT", -12, 12)
@@ -97,7 +97,7 @@ end
 -- Builds the question dialog once: the question, a primary Yes and a No.
 local function questionDialog()
   if question then return question end
-  question = dialog("ForeverUI_Question", 360, 110)
+  question = dialog("Vanguard_Question", 360, 110)
   question.title:SetWidth(336)
   question.yes = button(question, "Yes")
   question.yes:SetPoint("BOTTOMRIGHT", -12, 12)
@@ -161,7 +161,7 @@ end
 -- Builds the reload dialog once: the reason, a Reload button and Later.
 local function reloadDialog()
   if reload then return reload end
-  reload = dialog("ForeverUI_Reload", 360, 110)
+  reload = dialog("Vanguard_Reload", 360, 110)
   reload.title:SetWidth(336)
   reload.accept = ns.ReloadButton(button(reload, "Reload"))
   reload.accept:SetPoint("BOTTOMRIGHT", -12, 12)

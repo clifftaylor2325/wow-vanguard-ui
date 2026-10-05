@@ -48,7 +48,7 @@ local function placeAxis(i, vertical, size, half)
   return i
 end
 
--- Shows the grid with lines every `size` pixels, kept to /fui grid's 8-256 (a
+-- Shows the grid with lines every `size` pixels, kept to /vg grid's 8-256 (a
 -- saved size of 0 from a hand-edited profile would never finish drawing).
 function ns.ShowGrid(size)
   size = math.max(8, math.min(256, tonumber(size) or 32))
@@ -68,7 +68,7 @@ function ns.HideGrid()
   end
 end
 
--- How many grid lines are showing (for tests and /fui status).
+-- How many grid lines are showing (for tests and /vg status).
 function ns.GridLineCount()
   local n = 0
   for _, t in ipairs(lines) do

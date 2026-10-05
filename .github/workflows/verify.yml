@@ -62,7 +62,7 @@ jobs:
             file="${file%$'\r'}"
             case "$file" in ''|'#'*) continue ;; esac
             luac5.1 -p "$file" || status=1
-          done < ForeverUI.toc
+          done < Vanguard.toc
           exit $status
 
   lint:
@@ -86,7 +86,7 @@ jobs:
         run: |
           zip=$(ls dist/*.zip)
           unzip -t "$zip"
-          expected=$(( $(grep -cvE '^\s*(#|$)' ForeverUI.toc) + $(git ls-files Media | wc -l) + $(git ls-files Libs | grep -vc '\.lua$') + 2 ))
+          expected=$(( $(grep -cvE '^\s*(#|$)' Vanguard.toc) + $(git ls-files Media | wc -l) + $(git ls-files Libs | grep -vc '\.lua$') + 2 ))
           actual=$(unzip -Z1 "$zip" | wc -l)
           echo "files: $actual (expected $expected)"
           test "$actual" -eq "$expected"

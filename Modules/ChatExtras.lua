@@ -1,11 +1,11 @@
 -- Chat extras:
 --   * web addresses in chat become links in the accent color; clicking one
 --     opens a box with the address selected, ready to copy (Ctrl+C);
---   * a small Copy button over the main chat window (and /fui copy) opens the
+--   * a small Copy button over the main chat window (and /vg copy) opens the
 --     recent chat as plain text, ready to copy;
 --   * short channel names: "[2. Trade - City]" shows as "[T]", "[Guild]" as "[G]";
 --   * Ctrl + mouse wheel jumps to the top or the bottom of a chat window;
---   * the game's own timestamp and class-colored name settings, offered in /fui.
+--   * the game's own timestamp and class-colored name settings, offered in /vg.
 -- Chat text the game hides from addons (in instances) is never read or
 -- changed: those lines pass through as they are and are left out of the copy.
 
@@ -25,7 +25,7 @@ CX.EVENTS = {
 CX.PATTERNS = { "%f[%S]https?://[^%s|]+", "%f[%S]www%.[^%s|]+" }
 CX.COPY_LINES = 100
 -- The link's prefix: the game hands "addon:" links to addons instead of the item tooltip.
-local PREFIX = "addon:ForeverUI:url:"
+local PREFIX = "addon:Vanguard:url:"
 
 -- Links -----------------------------------------------------------------------------------
 
@@ -138,8 +138,8 @@ end
 
 -- Follows a chat window's new lines and wheel, once per window.
 local function watchWindow(frame)
-  if type(frame) ~= "table" or frame.fuiWatched then return end
-  frame.fuiWatched = true
+  if type(frame) ~= "table" or frame.vgWatched then return end
+  frame.vgWatched = true
   if type(frame.TransformMessages) == "function" then hooksecurefunc(frame, "AddMessage", shortenAdded) end
   frame:HookScript("OnMouseWheel", jump)
 end
@@ -159,7 +159,7 @@ local function cvarCall(name)
 end
 
 -- get/set for one of the game's own chat settings (a CVar), read and written
--- straight through so the game's options and ForeverUI's agree; read(value)
+-- straight through so the game's options and Vanguard's agree; read(value)
 -- turns the stored value into a choice. A failing call is ignored.
 function CX.CVarSetting(name, read)
   return function() local get = cvarCall("GetCVar") return read(get and get(name)) end,

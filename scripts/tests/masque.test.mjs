@@ -1,11 +1,11 @@
-// masque: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// masque: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 // Core/Masque.lua: with Masque loaded, buttons and aura icons go to Masque groups.
 
 import { expect, it } from "vitest";
 import { loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY LibStub and Masque: groups record the buttons handed to them; the
-// theme records which frames get ForeverUI's button skin and panels.
+// theme records which frames get Vanguard's button skin and panels.
 const MASQUE_ENV = `
   __groups = {}
   local Masque = {}
@@ -18,7 +18,7 @@ const MASQUE_ENV = `
   LibStub = setmetatable({}, { __call = function(_, name, silent) __silent = silent if name == "Masque" then return Masque end end })
 `;
 
-// TEST-ONLY game pet and stance buttons, and a record of ForeverUI's own skins.
+// TEST-ONLY game pet and stance buttons, and a record of Vanguard's own skins.
 const SKINS_ENV = `
   for _, name in ipairs({ "PetActionButton1", "StanceButton1" }) do
     local b = CreateFrame("CheckButton", name, UIParent)
@@ -39,15 +39,15 @@ const group = (addon, name, frame) => addon.eval(`local g = __groups["${name}"]
   return { count = #g.buttons, addon = g.addon, kind = found and found.kind or "none", has = found ~= nil,
     icon = found and found.regions and found.regions.Icon == ${frame}.icon, hotkey = found and found.regions and found.regions.HotKey == ${frame}.hotkey }`);
 
-// Whether an aura icon frame has ForeverUI's theme edge (a painted child frame).
+// Whether an aura icon frame has Vanguard's theme edge (a painted child frame).
 const edged = (addon, frame) => addon.eval(`for _, c in ipairs({ ${frame}:GetChildren() }) do if __panelled[c] then return true end end return false`);
 
-it("with Masque loaded, action, pet and stance buttons and aura icons go to Masque groups, without ForeverUI's skin", () => {
+it("with Masque loaded, action, pet and stance buttons and aura icons go to Masque groups, without Vanguard's skin", () => {
   const addon = loggedIn(MASQUE_ENV + SKINS_ENV);
   addon.world.addAura("player", { name: "TEST-ONLY Buff", duration: 0, icon: "TEST-ONLY-ICON" });
-  const bar = group(addon, "Action bars", "ForeverUI_Bar1Button1");
-  expect(bar, "every action button, with its icon and hotkey, as an action button of ForeverUI's").toMatchObject({ count: 36, addon: "ForeverUI", kind: "Action", has: true, icon: true, hotkey: true });
-  expect(addon.eval("return __buttoned[ForeverUI_Bar1Button1] == nil and __silent == true"), "ForeverUI's button skin is skipped; Masque is asked for silently").toBe(true);
+  const bar = group(addon, "Action bars", "Vanguard_Bar1Button1");
+  expect(bar, "every action button, with its icon and hotkey, as an action button of Vanguard's").toMatchObject({ count: 36, addon: "Vanguard", kind: "Action", has: true, icon: true, hotkey: true });
+  expect(addon.eval("return __buttoned[Vanguard_Bar1Button1] == nil and __silent == true"), "Vanguard's button skin is skipped; Masque is asked for silently").toBe(true);
   const special = addon.eval('local g = __groups["Pet, stance and extra buttons"] return { #g.buttons, g.buttons[1].regions == nil, PetActionButton1.art.__alpha == nil, __panelled[PetActionButton1] == nil }');
   expect(special, "the game's pet and stance buttons, regions found by Masque, not restyled").toEqual([2, true, true, true]);
   const auras = addon.eval('local g = __groups["Buffs and debuffs"] local e = g.buttons[#g.buttons] return { #g.buttons > #ns.GetModule("PlayerAuras").cells, e.kind, e.regions.Icon ~= nil, e.regions.Cooldown ~= nil }');
@@ -59,10 +59,10 @@ it("with Masque loaded, action, pet and stance buttons and aura icons go to Masq
 
 it("without Masque (or without LibStub) nothing changes", () => {
   const plain = loggedIn(SKINS_ENV);
-  expect(plain.eval("return { __buttoned[ForeverUI_Bar1Button1] == true, PetActionButton1.fuiSkinned == true, PetActionButton1.art.__alpha, ns.Masque.Lib() == nil }"), "ForeverUI's skins, as before").toEqual([true, true, 0, true]);
+  expect(plain.eval("return { __buttoned[Vanguard_Bar1Button1] == true, PetActionButton1.vgSkinned == true, PetActionButton1.art.__alpha, ns.Masque.Lib() == nil }"), "Vanguard's skins, as before").toEqual([true, true, 0, true]);
   plain.world.addAura("player", { name: "TEST-ONLY Buff", duration: 0, icon: "TEST-ONLY-ICON" });
   expect(plain.eval('local PA = ns.GetModule("PlayerAuras") local c = PA.cells[1] for _, ch in ipairs({ c:GetChildren() }) do if __panelled[ch] then return true end end return false'), "aura icons keep the theme edge").toBe(true);
   const noMasque = loggedIn('LibStub = function() return nil end' + SKINS_ENV);
-  expect(noMasque.eval("return { ns.Masque.Lib() == nil, ns.Masque.Group('Action bars') == nil, ns.Masque.Add('Action bars', ForeverUI_Bar1Button1), __buttoned[ForeverUI_Bar1Button1] == true }"), "LibStub without Masque: the same").toEqual([true, true, false, true]);
+  expect(noMasque.eval("return { ns.Masque.Lib() == nil, ns.Masque.Group('Action bars') == nil, ns.Masque.Add('Action bars', Vanguard_Bar1Button1), __buttoned[Vanguard_Bar1Button1] == true }"), "LibStub without Masque: the same").toEqual([true, true, false, true]);
   expect(edged(noMasque, "ns.GetModule('PlayerAuras').cells[1]"), "weapon enchant cells keep their edge too").toBe(true);
 });

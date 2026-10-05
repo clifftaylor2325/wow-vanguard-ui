@@ -1,6 +1,6 @@
 # Art sources and credits
 
-Open-licensed art that ForeverUI may build from. Nothing here ships to players
+Open-licensed art that Vanguard may build from. Nothing here ships to players
 as-is: `scripts/build-media.mjs` rasterizes the crests the faction look uses
 into `Media/Art/` (which then ships, with `Media/Art/CREDITS.txt`), and the
 heading fonts are only bundled once one is picked.
@@ -50,7 +50,7 @@ From https://github.com/google/fonts (ofl/).
 
 ## Not used
 
-Blizzard's own faction emblems are the game's trademarked art, so ForeverUI
-never copies them. `/fui factionart` only checks which of the client's own
+Blizzard's own faction emblems are the game's trademarked art, so Vanguard
+never copies them. `/vg factionart` only checks which of the client's own
 faction pictures exist, so a later build can point at them where the game
 already has them.

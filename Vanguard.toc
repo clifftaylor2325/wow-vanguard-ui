@@ -1,13 +1,13 @@
 ## Interface: 16001, 120007
-## Title: ForeverUI
+## Title: Vanguard
 ## Notes: A from-scratch UI suite for WoW Forever: theme, movers, unit frames, action bars, minimap, chat, bags.
 ## Author: clifftaylor2325
-## Version: 0.3.0
-## SavedVariables: ForeverUIDB
-## SavedVariablesPerCharacter: ForeverUICharDB
+## Version: 0.4.0
+## SavedVariables: VanguardDB
+## SavedVariablesPerCharacter: VanguardCharDB
 ## DefaultState: enabled
-## IconTexture: Interface\AddOns\ForeverUI\Media\Textures\Icon
-## AddonCompartmentFunc: ForeverUI_OnAddonCompartmentClick
+## IconTexture: Interface\AddOns\Vanguard\Media\Textures\Icon
+## AddonCompartmentFunc: Vanguard_OnAddonCompartmentClick
 ## X-Flavor: forever
 ## X-License: MIT
 ## X-Website: https://github.com/clifftaylor2325/wow-forever-ui

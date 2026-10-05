@@ -1,4 +1,4 @@
--- The ForeverUI look ("Slate & Brass"): flat dark panels, 1px borders,
+-- The Vanguard look ("Slate & Brass"): flat dark panels, 1px borders,
 -- one accent color and one font. Primitives take a frame and paint it; each
 -- is idempotent (a second call just repaints) and every painted frame
 -- follows live color changes. Textures are solid colors (WHITE8X8), so
@@ -15,8 +15,8 @@ ns.Theme = T
 
 T.WHITE = "Interface\\Buttons\\WHITE8X8"
 
--- ForeverUI's own art and fonts (made by scripts/build-media.mjs and scripts/fonts).
-T.MEDIA = "Interface\\AddOns\\ForeverUI\\Media\\"
+-- Vanguard's own art and fonts (made by scripts/build-media.mjs and scripts/fonts).
+T.MEDIA = "Interface\\AddOns\\Vanguard\\Media\\"
 T.FONTS = {
   regular = T.MEDIA .. "Fonts\\FiraSansCondensed-Medium.ttf",
   bold = T.MEDIA .. "Fonts\\FiraSansCondensed-SemiBold.ttf",
@@ -89,7 +89,7 @@ for name, v in pairs(TOKENS) do
   T.TOKENS[name] = type(v) == "table" and fromHex(v[1], v[2]) or fromHex(v)
 end
 
--- Accent presets for /fui accent and the options swatches, in display order.
+-- Accent presets for /vg accent and the options swatches, in display order.
 T.PRESET_ORDER = { "brass", "arcane", "fel", "void", "ember" }
 T.PRESETS = {
   brass = fromHex("d9a441"), arcane = fromHex("5aa2f0"), fel = fromHex("5bcb7e"),
@@ -107,7 +107,7 @@ local DEFAULTS = {
   outline = "",
   pixelScale = false,
   textScale = 1,
-  barTexture = "forever",
+  barTexture = "vanguard",
   -- Soft shadows under HUD frames (unit frames, bars, minimap); floating windows always have one.
   hudShadow = false,
   smoothBars = true,
@@ -129,6 +129,13 @@ function T.Settings()
   return ns.Settings("theme", DEFAULTS)
 end
 
+-- Profiles saved or exported before the rename (ForeverUI 0.3.0 and earlier)
+-- call the bundled bar style "forever"; it is "vanguard" now.
+local function renamedBarStyle(saved)
+  if saved.barTexture == "forever" then saved.barTexture = "vanguard" end
+end
+ns.Migrate("theme", renamedBarStyle)
+
 -- r, g, b of the accent color.
 function T.Accent()
   local c = T.Settings().accent
@@ -148,7 +155,7 @@ local SETTING_TOKENS = { accent = "accent", panel = "panel", inset = "inset", ed
 function T.RGB(name)
   local key = SETTING_TOKENS[name]
   local c = key and T.Settings()[key] or T.TOKENS[name]
-  if not c then error("ForeverUI: no color named " .. tostring(name), 2) end
+  if not c then error("Vanguard: no color named " .. tostring(name), 2) end
   return c[1], c[2], c[3], c[4] or 1
 end
 
@@ -392,14 +399,14 @@ end
 
 -- Bars ---------------------------------------------------------------------------------------
 
--- The status bar texture the setting picks: the bundled Bar (Forever), the
+-- The status bar texture the setting picks: the bundled Bar (Vanguard), the
 -- calmer BarSoft (Soft), flat, or a bar texture shared through LibSharedMedia
--- by name (Forever when that name is no longer shared).
+-- by name (Vanguard when that name is no longer shared).
 function T.BarTexture()
   local pick = T.Settings().barTexture
   if pick == "flat" then return T.WHITE end
   if pick == "soft" then return T.Texture("BarSoft") end
-  return pick ~= "forever" and T.SharedPath("statusbar", pick) or T.Texture("Bar")
+  return pick ~= "vanguard" and T.SharedPath("statusbar", pick) or T.Texture("Bar")
 end
 
 -- A soft spark (Media/Textures/Spark) on a bar's top layer, width units wide,
@@ -434,10 +441,10 @@ local function colorEdges(e, r, g, b, a)
 end
 
 -- Scratch tables for T.FadeRegions, reused by every call (and emptied after,
--- so they hold no frame): ForeverUI's own parts, and the frame's regions.
+-- so they hold no frame): Vanguard's own parts, and the frame's regions.
 local ownScratch, regionScratch, NO_PARTS = {}, {}, {}
 
--- The textures ForeverUI painted on a frame (its panel, border, sheen,
+-- The textures Vanguard painted on a frame (its panel, border, sheen,
 -- shadow...), so fading the game's art again leaves them alone.
 local function ownParts(frame)
   local entry = painted[frame]
@@ -455,7 +462,7 @@ local function gather(i, region, ...)
   return gather(i + 1, ...)
 end
 
--- Alpha-out a frame's texture regions (template art), except ForeverUI's own
+-- Alpha-out a frame's texture regions (template art), except Vanguard's own
 -- painted parts and any in keep. Never hides; safe to run again on every show.
 function T.FadeRegions(frame, keep)
   local own = ownParts(frame)
@@ -689,7 +696,7 @@ local function logoHalf(f, half, sublevel)
   return t
 end
 
--- The ForeverUI mark (two linked diamonds) at size x size; follows the accent live.
+-- The Vanguard mark (two linked diamonds) at size x size; follows the accent live.
 function T.Logo(parent, size)
   local f = CreateFrame("Frame", nil, parent)
   f:SetSize(size, size)
@@ -755,7 +762,7 @@ end
 -- color (a name; "text" by default; false leaves the color alone).
 function T.Text(fs, role, color)
   local r = T.ROLES[role]
-  if not r then error("ForeverUI: no text role named " .. tostring(role), 2) end
+  if not r then error("Vanguard: no text role named " .. tostring(role), 2) end
   styled[fs] = role
   T.ApplyRole(fs, role)
   if color ~= false then T.Color(fs, color or "text") end
@@ -837,14 +844,14 @@ function T.PaintCrest(t)
   t:SetShown(crest ~= nil)
   if not crest then return end
   t:SetTexture(T.MEDIA .. "Art\\" .. crest[1])
-  T.Tint(t, crest[2], t.fuiAlpha)
+  T.Tint(t, crest[2], t.vgAlpha)
 end
 
 -- A size x size crest on a frame (at an optional alpha), following the faction look as it changes.
 function T.Crest(parent, size, layer, alpha)
   local t = parent:CreateTexture(nil, layer or "ARTWORK")
   t:SetSize(size, size)
-  t.fuiAlpha = alpha
+  t.vgAlpha = alpha
   crests[t] = true
   T.PaintCrest(t)
   return t
@@ -872,12 +879,12 @@ end
 
 -- A frame's alpha animation (made once), or false when the client can't animate it.
 local function fader(frame)
-  if frame.fuiFader ~= nil then return frame.fuiFader end
+  if frame.vgFader ~= nil then return frame.vgFader end
   local group = frame.CreateAnimationGroup and frame:CreateAnimationGroup()
   local alpha = group and group.CreateAnimation and group:CreateAnimation("Alpha")
   if alpha then group:SetToFinalAlpha(true) end
-  frame.fuiFader = alpha and { group = group, alpha = alpha } or false
-  return frame.fuiFader
+  frame.vgFader = alpha and { group = group, alpha = alpha } or false
+  return frame.vgFader
 end
 
 -- Plays an alpha change from -> to over seconds, then runs done.
@@ -938,7 +945,7 @@ end
 
 -- Stops a fade in progress and leaves the frame fully visible.
 function T.StopFade(frame)
-  local f = frame.fuiFader
+  local f = frame.vgFader
   if f then f.group:SetScript("OnFinished", nil) f.group:Stop() end
   frame:SetAlpha(1)
 end
@@ -1004,7 +1011,7 @@ function T.ParseHex(text)
   return tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255
 end
 
--- How many frames are painted (for /fui status and tests).
+-- How many frames are painted (for /vg status and tests).
 function T.PaintedCount()
   local n = 0
   for _ in pairs(painted) do

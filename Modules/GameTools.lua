@@ -1,4 +1,4 @@
--- The game's own new tools in the ForeverUI look, and placed to fit the
+-- The game's own new tools in the Vanguard look, and placed to fit the
 -- Centered layout:
 --   * the Cooldown Manager's rows sit in the gap between the player and
 --     target frames, above the swing timer, with square icons in thin borders
@@ -8,8 +8,8 @@
 --   * the damage meter sits in the bottom-right corner above the menu strip,
 --     on a flat panel with theme bars and text.
 -- Each one stays the game's own (Edit Mode settings, what it tracks, how it
--- counts); ForeverUI only restyles it and gives it a spot you can move with
--- /fui unlock. While Edit Mode is open, ForeverUI stands aside (Core/Movers.lua
+-- counts); Vanguard only restyles it and gives it a spot you can move with
+-- /vg unlock. While Edit Mode is open, Vanguard stands aside (Core/Movers.lua
 -- pauses every pin) and puts things back when it closes. A client without
 -- one of these tools simply has nothing to style.
 
@@ -45,7 +45,7 @@ end
 local function place(name)
   local f, spot = _G[name], GT.SPOTS[name]
   if type(f) ~= "table" or not f.SetPoint or not spot then return end
-  local holder = CreateFrame("Frame", "ForeverUI_" .. name .. "Spot", UIParent)
+  local holder = CreateFrame("Frame", "Vanguard_" .. name .. "Spot", UIParent)
   holder:SetSize(spot[4], spot[5])
   ns.Mover(holder, spot[1], spot[2], spot[3])
   ns.Pin(f, function(frame) GT.Fit(frame, holder, name == "DamageMeter") end)
@@ -92,8 +92,8 @@ end
 -- One cooldown or buff item in the theme: icon cropped and framed (a buff bar
 -- gets the theme's bar instead), its numbers in the theme font. Once per item.
 function GT.SkinItem(item)
-  if item.fuiSkinned then return end
-  item.fuiSkinned = true
+  if item.vgSkinned then return end
+  item.vgSkinned = true
   local icon = iconOf(item)
   if type(icon) == "table" and icon.SetTexCoord then T.Crop(icon) end
   if type(item.Bar) == "table" then T.StyleBar(item.Bar)
@@ -124,8 +124,8 @@ end
 -- name and amount in the theme font, its icon cropped. Once per line.
 function GT.SkinEntry(entry)
   local bar = entry.StatusBar
-  if entry.fuiSkinned or type(bar) ~= "table" then return end
-  entry.fuiSkinned = true
+  if entry.vgSkinned or type(bar) ~= "table" then return end
+  entry.vgSkinned = true
   T.StyleBar(bar)
   for _, region in ipairs(bar.BackgroundRegions or {}) do region:SetAlpha(0) end
   T.HudPanel(bar, { inset = true })
@@ -143,8 +143,8 @@ end
 -- One meter window in the theme: its header art faded, a flat panel, its
 -- lines restyled whenever the list redraws. Once per window.
 function GT.SkinWindow(win)
-  if win.fuiSkinned then return end
-  win.fuiSkinned = true
+  if win.vgSkinned then return end
+  win.vgSkinned = true
   if type(win.Header) == "table" then win.Header:SetAlpha(0) end
   T.HudPanel(win, { alpha = 0.9 })
   skinLines(win)
@@ -163,7 +163,7 @@ local function watchMeter()
 end
 
 -- Where to turn the Cooldown Manager on, said once when it's off.
-GT.HINT = "The game's Cooldown Manager is off. Turn it on in Options > Gameplay Enhancements > Enable Cooldown Manager, and ForeverUI places it between your frames."
+GT.HINT = "The game's Cooldown Manager is off. Turn it on in Options > Gameplay Enhancements > Enable Cooldown Manager, and Vanguard places it between your frames."
 
 -- True when this client has the Cooldown Manager but it's switched off.
 function GT.CooldownsOff()

@@ -1,34 +1,34 @@
-// setup: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// setup: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { ACTIONS_ENV, CLICK_LUA, MICRO_ENV, RAID_ENV, SPECIAL_BARS_ENV, STRIPS_ENV, STRIP_ENV, SWING_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, UP, block, borderOf, button, chatHas, healing, key, later, loggedIn, overlaps, pinned, setCombat, strips, tok, tooltip } from "./helpers.mjs";
 
 // Clicks one of the setup wizard's buttons (next, back or close) as the player would.
-const setupClick = (addon, which) => addon.eval(`local b = ForeverUI_Setup.${which} b:GetScript("OnClick")(b, "LeftButton")`);
+const setupClick = (addon, which) => addon.eval(`local b = Vanguard_Setup.${which} b:GetScript("OnClick")(b, "LeftButton")`);
 
 // The setup wizard's state: the step showing (0 while closed), the account flag, and whether frames are unlocked.
-const setupState = (addon) => addon.eval("return { step = ns.Setup.Step() or 0, done = ForeverUIDB.setupDone == true, unlocked = ns.Unlocked() }");
+const setupState = (addon) => addon.eval("return { step = ns.Setup.Step() or 0, done = VanguardDB.setupDone == true, unlocked = ns.Unlocked() }");
 
 it("first-run setup: once per account, four clicks with the defaults", () => {
   const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
   expect(setupState(addon), "a new account opens setup at step 1").toEqual({ step: 1, done: false, unlocked: false });
-  expect(addon.eval("return ForeverUI_Setup.caption:GetText()"), "the caption names the step").toBe("Step 1 of 4 · Layout");
-  expect(addon.eval("return ForeverUI_Setup.back:IsShown()"), "there is no Back on the first step").toBe(false);
-  expect(addon.eval("return UISpecialFrames[#UISpecialFrames]"), "Escape closes setup").toBe("ForeverUI_Setup");
+  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "the caption names the step").toBe("Step 1 of 4 · Layout");
+  expect(addon.eval("return Vanguard_Setup.back:IsShown()"), "there is no Back on the first step").toBe(false);
+  expect(addon.eval("return UISpecialFrames[#UISpecialFrames]"), "Escape closes setup").toBe("Vanguard_Setup");
   setupClick(addon, "next");
-  expect(setupState(addon).step === 2 && addon.eval("return ForeverUI_Setup.back:IsShown()"), "Next goes to Screen, which has Back").toBe(true);
-  expect(addon.eval("return ForeverUI_Setup.caption:GetText()"), "the second step is the screen").toBe("Step 2 of 4 · Screen");
+  expect(setupState(addon).step === 2 && addon.eval("return Vanguard_Setup.back:IsShown()"), "Next goes to Screen, which has Back").toBe(true);
+  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "the second step is the screen").toBe("Step 2 of 4 · Screen");
   setupClick(addon, "next");
   expect(addon.eval("return { GetCVar('useUiScale'), GetCVar('uiScale') }"), "leaving it applies this screen's preset (1080p): UI scale 80%").toEqual(["1", "0.8"]);
   setupClick(addon, "next");
   expect(setupState(addon), "the last step unlocks the frames").toEqual({ step: 4, done: false, unlocked: true });
-  expect(addon.eval("return ForeverUI_Setup.next.text:GetText()"), "the last step's button is Done").toBe("Done");
+  expect(addon.eval("return Vanguard_Setup.next.text:GetText()"), "the last step's button is Done").toBe("Done");
   setupClick(addon, "next");
   expect(setupState(addon), "Done closes setup, locks the frames and remembers that setup ran").toEqual({ step: 0, done: true, unlocked: false });
-  const kept = addon.eval("return { raid = ForeverUIDB.profiles.Default.positions.raid == nil, look = ns.Settings('RaidFrames').look, brass = select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1], reload = ForeverUI_Reload == nil }");
+  const kept = addon.eval("return { raid = VanguardDB.profiles.Default.positions.raid == nil, look = ns.Settings('RaidFrames').look, brass = select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1], reload = Vanguard_Reload == nil }");
   expect(kept, "the defaults change no position, style or accent, and need no reload").toEqual({ raid: true, look: "soft", brass: true, reload: true });
-  const again = loggedIn("", { firstRun: true, savedVariables: "ForeverUIDB = { setupDone = true }" });
-  expect(again.eval("return ForeverUI_Setup == nil"), "setup does not open again on this account").toBe(true);
+  const again = loggedIn("", { firstRun: true, savedVariables: "VanguardDB = { setupDone = true }" });
+  expect(again.eval("return Vanguard_Setup == nil"), "setup does not open again on this account").toBe(true);
 });
 
 it("first-run setup waits for combat and steps aside in a fight", () => {
@@ -47,47 +47,47 @@ it("first-run setup waits for combat and steps aside in a fight", () => {
   setCombat(addon, false);
   expect(setupState(addon), "after the fight setup comes back on the same step, frames unlocked").toEqual({ step: 4, done: false, unlocked: true });
   addon.slash("setup");
-  expect(setupState(addon), "/fui setup starts again at step 1 and locks the frames").toEqual({ step: 1, done: false, unlocked: false });
+  expect(setupState(addon), "/vg setup starts again at step 1 and locks the frames").toEqual({ step: 1, done: false, unlocked: false });
 });
 
-it("/fui setup reopens setup; Back and the close button", () => {
+it("/vg setup reopens setup; Back and the close button", () => {
   const addon = loggedIn();
   addon.slash("help");
-  expect(chatHas(addon, /setup\s+first-run setup again/), "/fui help lists setup").toBe(true);
+  expect(chatHas(addon, /setup\s+first-run setup again/), "/vg help lists setup").toBe(true);
   addon.slash("setup");
-  expect(setupState(addon).step, "/fui setup opens it on an account that finished setup").toBe(1);
+  expect(setupState(addon).step, "/vg setup opens it on an account that finished setup").toBe(1);
   setupClick(addon, "next");
   setupClick(addon, "back");
   expect(setupState(addon).step, "Back returns to the previous step").toBe(1);
   setupClick(addon, "close");
   expect(setupState(addon), "the close button ends setup").toEqual({ step: 0, done: true, unlocked: false });
-  const upgraded = loggedIn("", { firstRun: true, savedVariables: 'ForeverUIDB = { version = 1, profiles = { Default = { theme = { reduceMotion = true } } } }' });
+  const upgraded = loggedIn("", { firstRun: true, savedVariables: 'VanguardDB = { version = 1, profiles = { Default = { theme = { reduceMotion = true } } } }' });
   expect(setupState(upgraded).step, "an account from before setup existed sees it once").toBe(1);
-  upgraded.eval("ForeverUI_Setup:Hide()");
+  upgraded.eval("Vanguard_Setup:Hide()");
   expect(setupState(upgraded), "Escape (the client hides the frame) ends setup too").toEqual({ step: 0, done: true, unlocked: false });
 });
 
 it("setup layouts: Healing puts the raid frames under the character and turns click casting on", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
-  const layouts = addon.eval("local out = {} for i, b in ipairs(ForeverUI_Setup.pages[1].choices) do out[i] = b.text:GetText() end return out");
+  const layouts = addon.eval("local out = {} for i, b in ipairs(Vanguard_Setup.pages[1].choices) do out[i] = b.text:GetText() end return out");
   expect(layouts, "there are three layouts, damage and tanking first").toEqual(["Centered: damage and tanking", "Centered: healing", "Like the game's"]);
-  expect(addon.eval('return __click("Centered: healing")') && addon.eval("return ForeverUI_Setup.pages[1].hint:GetText()"), "picking Healing shows what it does").toMatch(/click casting on/);
-  expect(borderOf(addon, "ForeverUI_Setup.pages[1].choices[2]"), "the chosen layout is outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  expect(addon.eval('return __click("Centered: healing")') && addon.eval("return Vanguard_Setup.pages[1].hint:GetText()"), "picking Healing shows what it does").toMatch(/click casting on/);
+  expect(borderOf(addon, "Vanguard_Setup.pages[1].choices[2]"), "the chosen layout is outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
   setupClick(addon, "next");
   expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing centers the raid frames above your frames").toEqual(["BOTTOM", "BOTTOM", 0, 342]);
   expect(addon.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "click casting and the raid frames are on").toBe(true);
   for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
-  expect(addon.eval("return ForeverUI_Reload == nil"), "nothing was off, so no reload is offered").toBe(true);
-  const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { modules = { ClickCast = false, RaidFrames = false } } } }" });
+  expect(addon.eval("return Vanguard_Reload == nil"), "nothing was off, so no reload is offered").toBe(true);
+  const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: "VanguardDB = { profiles = { Default = { modules = { ClickCast = false, RaidFrames = false } } } }" });
   off.eval('__click("Centered: healing")');
   setupClick(off, "next");
-  expect(off.eval("return ForeverUIDB.profiles.Default.positions.raid"), "without raid frames built, the spot is saved for next time").toEqual({ point: "BOTTOM", relPoint: "BOTTOM", x: 0, y: 342 });
+  expect(off.eval("return VanguardDB.profiles.Default.positions.raid"), "without raid frames built, the spot is saved for next time").toEqual({ point: "BOTTOM", relPoint: "BOTTOM", x: 0, y: 342 });
   expect(off.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "Healing turns click casting and the raid frames on").toBe(true);
   for (let i = 0; i < 3; i += 1) setupClick(off, "next");
-  expect(off.eval("return ForeverUI_Reload:IsShown() and ForeverUI_Reload.title:GetText()"), "a module that was off offers a reload at the end").toMatch(/Setup turned on a module that was off/);
+  expect(off.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "a module that was off offers a reload at the end").toMatch(/Setup turned on a module that was off/);
 });
 
-it("setup layouts: Damage and tanking restores ForeverUI's defaults, undoing Healing", () => {
+it("setup layouts: Damage and tanking restores Vanguard's defaults, undoing Healing", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   const home = addon.eval("return { ns.MoverPoint('raid') }");
   addon.eval('__click("Centered: healing")');
@@ -96,10 +96,10 @@ it("setup layouts: Damage and tanking restores ForeverUI's defaults, undoing Hea
   addon.slash("setup");
   setupClick(addon, "next");
   expect(addon.eval("return { ns.MoverPoint('raid') }"), "re-running setup with the default layout puts the raid frames back").toEqual(home);
-  expect(addon.eval("return ForeverUIDB.profiles.Default.positions.raid == nil"), "and forgets the saved spot").toBe(true);
-  const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: 'ForeverUIDB = { profiles = { Default = { modules = { RaidFrames = false }, positions = { raid = { point = "TOP", relPoint = "CENTER", x = 0, y = -200 } } } } }' });
+  expect(addon.eval("return VanguardDB.profiles.Default.positions.raid == nil"), "and forgets the saved spot").toBe(true);
+  const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: 'VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, positions = { raid = { point = "TOP", relPoint = "CENTER", x = 0, y = -200 } } } } }' });
   setupClick(off, "next");
-  expect(off.eval("return ForeverUIDB.profiles.Default.positions.raid == nil"), "without raid frames built, the saved spot is cleared for next time").toBe(true);
+  expect(off.eval("return VanguardDB.profiles.Default.positions.raid == nil"), "without raid frames built, the saved spot is cleared for next time").toBe(true);
 });
 
 it("setup layouts: Like the game's puts your frames at the top left; another layout puts them back", () => {
@@ -107,16 +107,16 @@ it("setup layouts: Like the game's puts your frames at the top left; another lay
   // Where the player, focus, raid and boss frames are now.
   const spots = () => addon.eval("return { { ns.MoverPoint('uf_player') }, { ns.MoverPoint('uf_focus') }, { ns.MoverPoint('raid') }, { ns.MoverPoint('uf_boss1') } }");
   const home = spots();
-  expect(addon.eval('return __click("Like the game\'s") and ForeverUI_Setup.pages[1].hint:GetText()'), "picking it says what it does").toMatch(/top left as the game has them/);
+  expect(addon.eval('return __click("Like the game\'s") and Vanguard_Setup.pages[1].hint:GetText()'), "picking it says what it does").toMatch(/top left as the game has them/);
   setupClick(addon, "next");
   expect(spots(), "player at the top left, focus beside the target of target, party and raid down the left, bosses on the right").toEqual([["TOPLEFT", "TOPLEFT", 20, -40], ["TOPLEFT", "TOPLEFT", 520, -94], ["BOTTOMLEFT", "BOTTOMLEFT", 20, 330], ["TOPRIGHT", "TOPRIGHT", -290, -200]]);
-  expect(addon.eval("return ForeverUIDB.profiles.Default.positions.maintanks"), "frames not built yet get their spot saved for later").toEqual({ point: "TOP", relPoint: "TOP", x: 100, y: -196 });
+  expect(addon.eval("return VanguardDB.profiles.Default.positions.maintanks"), "frames not built yet get their spot saved for later").toEqual({ point: "TOP", relPoint: "TOP", x: 100, y: -196 });
   for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
   addon.slash("setup");
   addon.eval('__click("Centered: healing")');
   setupClick(addon, "next");
   expect(spots().slice(0, 2).concat([spots()[3]]), "Healing puts the frames back first").toEqual([home[0], home[1], home[3]]);
-  expect([addon.eval("return ForeverUIDB.profiles.Default.positions.uf_player == nil"), spots()[2]], "and then places only the raid").toEqual([true, ["BOTTOM", "BOTTOM", 0, 342]]);
+  expect([addon.eval("return VanguardDB.profiles.Default.positions.uf_player == nil"), spots()[2]], "and then places only the raid").toEqual([true, ["BOTTOM", "BOTTOM", 0, 342]]);
 });
 
 // Where a point name sits across and up a rect (0 = left or bottom, 1 = right or top).
@@ -204,8 +204,8 @@ function layoutProblems(rects, sw, sh) {
 // at its tallest (with the leveling and DPS rows) and the bag and menu bar at its
 // laid-out size (404 wide, 68 tall: the bags row over the menu row's 14 slots).
 function wholeHud() {
-  const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + SPECIAL_BARS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
-  addon.eval("ForeverUI_InfoStrip:SetHeight(68)");
+  const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + SPECIAL_BARS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: "VanguardDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
+  addon.eval("Vanguard_InfoStrip:SetHeight(68)");
   addon.eval("MicroMenuContainer:Layout() BagsBar:Layout()");
   return addon;
 }
@@ -260,22 +260,22 @@ it("setup look: accent swatches and the raid frame style apply at once", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
   setupClick(addon, "next");
   setupClick(addon, "next");
-  expect(borderOf(addon, "ForeverUI_Setup.pages[3].swatches[1]"), "the current accent (brass) is outlined").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
-  addon.eval("local s = ForeverUI_Setup.pages[3].swatches[2] s:GetScript('OnClick')(s)");
+  expect(borderOf(addon, "Vanguard_Setup.pages[3].swatches[1]"), "the current accent (brass) is outlined").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  addon.eval("local s = Vanguard_Setup.pages[3].swatches[2] s:GetScript('OnClick')(s)");
   expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]"), "the second swatch sets the arcane accent").toBe(true);
-  expect(borderOf(addon, "ForeverUI_Setup.pages[3].swatches[1]"), "brass is no longer outlined").toEqual(tok(addon, "edge").slice(0, 4));
-  expect(addon.eval("local p = ForeverUI_Setup.pages[3] return { p.swatches[1].check:IsShown(), p.swatches[2].check:IsShown() }"), "the check moves to the chosen swatch").toEqual([false, true]);
-  addon.eval("local b = ForeverUI_Setup.pages[3].styles[2] b:GetScript('OnClick')(b)");
+  expect(borderOf(addon, "Vanguard_Setup.pages[3].swatches[1]"), "brass is no longer outlined").toEqual(tok(addon, "edge").slice(0, 4));
+  expect(addon.eval("local p = Vanguard_Setup.pages[3] return { p.swatches[1].check:IsShown(), p.swatches[2].check:IsShown() }"), "the check moves to the chosen swatch").toEqual([false, true]);
+  addon.eval("local b = Vanguard_Setup.pages[3].styles[2] b:GetScript('OnClick')(b)");
   expect(addon.eval("return ns.Settings('RaidFrames').look"), "a style button sets the raid frame style").toBe("dark");
-  expect(borderOf(addon, "ForeverUI_Setup.pages[3].styles[2]"), "the chosen style is outlined").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
-  const captions = addon.eval("local out = {} for i, b in ipairs(ForeverUI_Setup.pages[3].styles) do out[i] = { b.text:GetText(), b.text.__textColor } end return out");
+  expect(borderOf(addon, "Vanguard_Setup.pages[3].styles[2]"), "the chosen style is outlined").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  const captions = addon.eval("local out = {} for i, b in ipairs(Vanguard_Setup.pages[3].styles) do out[i] = { b.text:GetText(), b.text.__textColor } end return out");
   expect(captions.map(([t, c]) => [t, ...c.slice(0, 3)]), "each tile's short name under it, the chosen one in the accent")
     .toEqual([["Softened", ...tok(addon, "text").slice(0, 3)], ["Dark", ...tok(addon, "accent").slice(0, 3)], ["Bright", ...tok(addon, "text").slice(0, 3)]]);
 });
 
 // The style tiles on setup's Look step: each one's size, bar color and fill, and its name's text and color.
 const styleTiles = (addon) => addon.eval(`local out = {}
-  for i, b in ipairs(ForeverUI_Setup.pages[3].styles) do
+  for i, b in ipairs(Vanguard_Setup.pages[3].styles) do
     local c, t = b.bar.__barColor, b.name.__textColor
     out[i] = { b:GetWidth(), b:GetHeight(), { c[1], c[2], c[3] }, b.bar:GetValue(), b.name:GetText(), { t[1], t[2], t[3] } }
   end
@@ -285,32 +285,32 @@ it("setup look: each raid frame style is a small raid tile drawn in that style, 
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
   setupClick(addon, "next");
   setupClick(addon, "next");
-  expect(addon.eval("return ForeverUI_Setup.caption:GetText()"), "Look is step 3 of 4").toBe("Step 3 of 4 · Look");
+  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "Look is step 3 of 4").toBe("Step 3 of 4 · Look");
   const mage = [0.25, 0.78, 0.92];
   const soft = addon.eval(`return { ns.GetModule("RaidFrames").Soften(${mage.join(", ")}) }`);
   const [white, dark] = [tok(addon, "text").slice(0, 3), tok(addon, "darkBar").slice(0, 3)];
   expect(styleTiles(addon), "softened and bright class bars with light names; a dark bar with the name in the class color").toEqual([
     [100, 48, soft, 0.75, "<name>", white], [100, 48, dark, 0.75, "<name>", mage], [100, 48, mage, 0.75, "<name>", white]]);
-  expect(addon.eval("local p = ForeverUI_Setup.pages[3] local a, b = p.styles[1], p.styles[2] return { select(4, b:GetPoint(1)) - select(4, a:GetPoint(1)), a.text:GetText() }"), "side by side, 16 apart").toEqual([116, "Softened"]);
-  addon.eval("local b = ForeverUI_Setup.pages[3].styles[3] b:GetScript('OnClick')(b)");
-  expect([addon.eval("return ns.Settings('RaidFrames').look"), borderOf(addon, "ForeverUI_Setup.pages[3].styles[3]")], "clicking the bright tile picks it").toEqual(["class", tok(addon, "accent").slice(0, 3).concat(1)]);
+  expect(addon.eval("local p = Vanguard_Setup.pages[3] local a, b = p.styles[1], p.styles[2] return { select(4, b:GetPoint(1)) - select(4, a:GetPoint(1)), a.text:GetText() }"), "side by side, 16 apart").toEqual([116, "Softened"]);
+  addon.eval("local b = Vanguard_Setup.pages[3].styles[3] b:GetScript('OnClick')(b)");
+  expect([addon.eval("return ns.Settings('RaidFrames').look"), borderOf(addon, "Vanguard_Setup.pages[3].styles[3]")], "clicking the bright tile picks it").toEqual(["class", tok(addon, "accent").slice(0, 3).concat(1)]);
   setupClick(addon, "next");
-  expect(addon.eval("return ForeverUI_Setup.caption:GetText()"), "then Move things is step 4 of 4").toBe("Step 4 of 4 · Move things");
+  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "then Move things is step 4 of 4").toBe("Step 4 of 4 · Move things");
 });
 
 // The screen step's choices (their labels) and the hint under them.
-const screenPage = (addon) => addon.eval("local p = ForeverUI_Setup.pages[2] local out = {} for i, b in ipairs(p.choices) do out[i] = b.text:GetText() end return { out, p.hint:GetText() }");
+const screenPage = (addon) => addon.eval("local p = Vanguard_Setup.pages[2] local out = {} for i, b in ipairs(p.choices) do out[i] = b.text:GetText() end return { out, p.hint:GetText() }");
 
 // What the screen presets set: the UI scale settings, the shared button size, bar 1's buttons, the raid tile size, the text size and pixel-perfect scale.
 const screenSizes = (addon) => addon.eval(`local AB, RF, t = ns.GetModule("ActionBars"), ns.Settings("RaidFrames"), ns.Theme.Settings()
-  return { GetCVar("useUiScale") or "unset", GetCVar("uiScale") or "unset", AB.settings.size, ForeverUI_Bar1Button1:GetWidth(), RF.width, RF.height, t.textScale, t.pixelScale }`);
+  return { GetCVar("useUiScale") or "unset", GetCVar("uiScale") or "unset", AB.settings.size, Vanguard_Bar1Button1:GetWidth(), RF.width, RF.height, t.textScale, t.pixelScale }`);
 
 it("setup screen: this screen's preset is picked; Keep changes nothing; a preset sets the UI scale, buttons, tiles and text", () => {
-  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(2560, 1440)", { firstRun: true, savedVariables: "ForeverUIDB = { profiles = { Default = { theme = { pixelScale = true } } } }" });
+  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(2560, 1440)", { firstRun: true, savedVariables: "VanguardDB = { profiles = { Default = { theme = { pixelScale = true } } } }" });
   setupClick(addon, "next");
   const [labels, hint] = screenPage(addon);
   expect(labels, "four presets, this screen's marked, then Keep").toEqual(["1080p (1920 x 1080)", "1440p (2560 x 1440)  ·  your screen", "4K (3840 x 2160)", "Ultrawide (3440 x 1440)", "Keep my current sizes"]);
-  expect(borderOf(addon, "ForeverUI_Setup.pages[2].choices[2]"), "and picked, outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  expect(borderOf(addon, "Vanguard_Setup.pages[2].choices[2]"), "and picked, outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
   expect(hint, "the hint says what it sets").toBe("UI scale 70%, action buttons 38 px, raid tiles 110 x 48, text 105%.");
   const before = screenSizes(addon);
   addon.eval('__click("Keep my current sizes")');
@@ -323,7 +323,7 @@ it("setup screen: this screen's preset is picked; Keep changes nothing; a preset
   expect(screenSizes(addon), "1440p: UI scale 70%, 38 px buttons laid out at once, 110 x 48 tiles, text 105%, pixel-perfect scale off").toEqual(["1", "0.7", 38, 38, 110, 48, 1.05, false]);
   setupClick(addon, "next");
   setupClick(addon, "next");
-  expect(addon.eval("return ForeverUI_Reload:IsShown() and ForeverUI_Reload.title:GetText()"), "new tile sizes offer a reload at the end").toMatch(/^The new raid tile size shows after a reload/);
+  expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "new tile sizes offer a reload at the end").toMatch(/^The new raid tile size shows after a reload/);
 });
 
 it("setup screen: which preset fits which screen, and the UI scale setting", () => {
@@ -350,7 +350,7 @@ it("Centered layout: compact raid grid, one-time migrations, a strip with nothin
   const RF = "ns.GetModule('RaidFrames')";
   expect(addon.eval(`return { ${RF}.Scale(5), ${RF}.Scale(25), ${RF}.Scale(40), ${RF}.Scale(60) }`), "full size up to 10, 80% up to 25, 72% above").toEqual([1, 0.8, 0.72, 0.72]);
   // The grid's scale and the point it's pinned to on the holder.
-  const grid = () => addon.eval("local p = ForeverUI_Raid.__points return { ForeverUI_Raid:GetScale(), p.BOTTOMLEFT and 'left' or p.BOTTOMRIGHT and 'right' or p.BOTTOM and 'center' }");
+  const grid = () => addon.eval("local p = Vanguard_Raid.__points return { Vanguard_Raid:GetScale(), p.BOTTOMLEFT and 'left' or p.BOTTOMRIGHT and 'right' or p.BOTTOM and 'center' }");
   expect(grid(), "a party is full size, growing up from just above the player frame").toEqual([1, "center"]);
   addon.eval("__members = 40");
   addon.fire("GROUP_ROSTER_UPDATE");
@@ -363,23 +363,23 @@ it("Centered layout: compact raid grid, one-time migrations, a strip with nothin
   addon.eval(`${RF}.settings.compact = false`);
   addon.fire("GROUP_ROSTER_UPDATE");
   expect(grid()[0], "compact off: always full size").toBe(1);
-  const old = loggedIn(ACTIONS_ENV, { savedVariables: "ForeverUIDB = { profiles = { Default = { ActionBars = { spacing = 4 }, DataBars = { width = 476, height = 10 } } } }" });
-  expect(old.eval("local p = ForeverUIDB.profiles.Default return { p.ActionBars.spacing, p.DataBars.width, p.DataBars.height }"), "a profile saved with the old sizes moves to the new ones").toEqual([2, 478, 6]);
-  old.eval("local p = ForeverUIDB.profiles.Default p.ActionBars.spacing = 4 p.DataBars.width = 476 p.DataBars.height = 10");
+  const old = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { spacing = 4 }, DataBars = { width = 476, height = 10 } } } }" });
+  expect(old.eval("local p = VanguardDB.profiles.Default return { p.ActionBars.spacing, p.DataBars.width, p.DataBars.height }"), "a profile saved with the old sizes moves to the new ones").toEqual([2, 478, 6]);
+  old.eval("local p = VanguardDB.profiles.Default p.ActionBars.spacing = 4 p.DataBars.width = 476 p.DataBars.height = 10");
   expect(old.eval("local s = ns.Settings('ActionBars', ns.GetModule('ActionBars').defaults) local d = ns.Settings('DataBars', ns.GetModule('DataBars').defaults) return { s.spacing, d.width, d.height }"), "but only once: picking those sizes again keeps them").toEqual([4, 476, 10]);
-  const strip = loggedIn(UNITS_ENV + STRIP_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { InfoStrip = { durability = false, bags = false, system = false, gold = false, ammo = false, clock = false } } }" });
-  expect(strip.eval("return ForeverUI_InfoStrip:IsShown()"), "a strip with every block off isn't drawn as an empty box").toBe(false);
-  const chatFree = loggedIn(UI_ENV, { savedVariables: "ForeverUIDB.profiles = { Default = { Chat = { place = false } } }" });
+  const strip = loggedIn(UNITS_ENV + STRIP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { durability = false, bags = false, system = false, gold = false, ammo = false, clock = false } } }" });
+  expect(strip.eval("return Vanguard_InfoStrip:IsShown()"), "a strip with every block off isn't drawn as an empty box").toBe(false);
+  const chatFree = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { place = false } } }" });
   expect(chatFree.eval("return ChatFrame1.__points.BOTTOMLEFT == nil"), "with Keep chat in its spot off, chat stays where the game puts it").toBe(true);
 });
 
 it("default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 px buttons; a saved profile keeps its sizes", () => {
   const addon = loggedIn(ACTIONS_ENV + UNITS_ENV);
   // The player frame's size and name size, bar 1's button size, the XP bar's width and the 1080p preset's buttons.
-  const sizes = (a) => a.eval(`return { ForeverUI_player:GetWidth(), ForeverUI_player:GetHeight(), select(2, ForeverUI_player.name:GetFont()),
-    ForeverUI_Bar1Button1:GetWidth(), ns.Settings("DataBars").width, ns.Setup.ScreenPreset("1080").button }`);
+  const sizes = (a) => a.eval(`return { Vanguard_player:GetWidth(), Vanguard_player:GetHeight(), select(2, Vanguard_player.name:GetFont()),
+    Vanguard_Bar1Button1:GetWidth(), ns.Settings("DataBars").width, ns.Setup.ScreenPreset("1080").button }`);
   expect(sizes(addon), "a new profile: the plan's 1080p sizes, and the 1080p preset agrees").toEqual([240, 36, 12, 38, 478, 38]);
-  const old = loggedIn(ACTIONS_ENV + UNITS_ENV, { savedVariables: 'ForeverUIDB = { profiles = { Default = { ActionBars = { size = 36 }, DataBars = { width = 454, layout = 2 }, positions = { uf_player = { point = "BOTTOM", relPoint = "BOTTOM", x = -250, y = 180 } } } } }' });
+  const old = loggedIn(ACTIONS_ENV + UNITS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { ActionBars = { size = 36 }, DataBars = { width = 454, layout = 2 }, positions = { uf_player = { point = "BOTTOM", relPoint = "BOTTOM", x = -250, y = 180 } } } } }' });
   expect(sizes(old).slice(3, 5), "a profile that saved the old button size and bar width keeps them").toEqual([36, 454]);
   expect(old.eval("return { ns.MoverPoint('uf_player') }"), "and a frame it moved stays put").toEqual(["BOTTOM", "BOTTOM", -250, 180]);
 });

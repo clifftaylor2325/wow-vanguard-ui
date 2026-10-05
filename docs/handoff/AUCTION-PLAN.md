@@ -1,17 +1,17 @@
 # Auction helper: gap analysis against Auctionator, and the work plan
 
-Date: 2026-10-04. ForeverUI at `bfef4e2` (main, after PR #81). Auctionator: the TheMouseNest/Auctionator addon (retail/"mainline" code path, which is what WoW Forever's modern auction house runs).
+Date: 2026-10-04. Vanguard at `bfef4e2` (main, after PR #81). Auctionator: the TheMouseNest/Auctionator addon (retail/"mainline" code path, which is what WoW Forever's modern auction house runs).
 
 ## How this was gathered, and what it rests on
 
-- **ForeverUI side:** read line by line from `Modules/AuctionHelper.lua` (873 lines), `Modules/AuctionPrices.lua`, the options, slash and README entries, the 28 tests in `scripts/tests/auction.test.mjs`, and the `C_AuctionHouse` model in the test harness. Every claim about our side is from the code.
+- **Vanguard side:** read line by line from `Modules/AuctionHelper.lua` (873 lines), `Modules/AuctionPrices.lua`, the options, slash and README entries, the 28 tests in `scripts/tests/auction.test.mjs`, and the `C_AuctionHouse` model in the test harness. Every claim about our side is from the code.
 - **Auctionator side:** its repository could not be read from this environment (github.com, its API, archive host, CDN mirrors and the addon sites are all denied by the network policy). The feature list below comes from its published documentation and guides reached through web search, marked **[doc]**, and from my prior knowledge of its source layout and behaviour, marked **[prior]**. Anything marked [prior] should be re-checked against the code once github.com is allowed; the shape is right, the exact option names may differ.
 
 Sources reached: the search-result pages for Auctionator's wiki API documentation, the Warcraft Tavern and NoobToBoss guides, CurseForge release notes (3.0.9, 3.1.5, 9.1.4, 9.1.6) and the Wago listing, plus the shopping-list how-to posts (Auction House Addict, Power Word: Gold).
 
 ## 1. Side by side
 
-| Area | Auctionator | ForeverUI today | Gap |
+| Area | Auctionator | Vanguard today | Gap |
 |---|---|---|---|
 | **Where it lives** | Its own tabs inside the auction house window (Shopping, Selling, Cancelling; Buying on Classic) [doc] | A 280 px panel docked left of the window with three stacked cards (Shop, Sell, Scan and your auctions) | Different shape, not a gap: ours fits the theme and never writes into Blizzard's frames. The cards are small (6 shop rows, 4 owned rows). |
 | **Shopping lists** | Many named lists; create, rename, delete; import and export as strings (`^` between terms, `;` between fields) [doc]; "Recent searches" list [prior] | Up to 20 lists of 50 entries; create and add; right-click removes an entry. No rename, delete, import, export or recents. | **List management and import/export missing.** |
@@ -26,7 +26,7 @@ Sources reached: the search-result pages for Auctionator's wiki API documentatio
 | **Selling: posting flow** | Enter posts; posts needing confirmation go through the game's popup because the form is Blizzard's [prior] | Post button only; when the game asks for confirmation the card says "list it from the game's own Sell tab" (the game's popup cannot confirm an addon post). | Confirmation is a real limit of posting from our own card; it needs an in-game check of how often the warning fires on Forever. |
 | **Cancelling** | List of your auctions with sort; "Undercut scan" marks undercut ones; "Cancel undercut" cancels the next undercut each click, with a keyboard shortcut [doc] | "Check undercuts" marks them; Cancel per row. No "cancel next undercut", no shortcut, no sold/expired rows, no summary. | **No one-click-per-cancel flow across all undercut auctions.** |
 | **Crafting info** | Reagent cost and profit in the profession window, plus "add reagents to shopping list" [doc/prior] | None. | **Missing.** |
-| **Config** | Its own settings panel: tooltips, shopping, selling, cancelling, UI, shortcuts [doc]; `/auctionator`, `/atr` | Four rows under Bars, map, chat; `/fui ah ...` | Thin, but ForeverUI's options window is the right home. |
+| **Config** | Its own settings panel: tooltips, shopping, selling, cancelling, UI, shortcuts [doc]; `/auctionator`, `/atr` | Four rows under Bars, map, chat; `/vg ah ...` | Thin, but Vanguard's options window is the right home. |
 | **API for other addons** | `Auctionator.API.v1`: GetAuctionPriceByItemID/Link, GetVendorPriceByItemID/Link, GetDisenchantPriceByItemID/Link, RegisterForDBUpdate, MultiSearch/MultiSearchExact, ConvertToSearchString, shopping-list management [doc] | None. Other addons (bag addons, crafting helpers) can't read our prices. | **Missing**, and it matters: Forever addon authors will write against Auctionator's API first. |
 | **Game versions and languages** | Retail, Classic Era, Cataclysm/MoP Classic; many locales [doc] | Forever only; English only. | Out of scope for a UI suite. |
 | **Safety** | Standard addon practice | Restricted calls only inside clicks (tested); never writes into Blizzard's frames (tested); every number through the secret-value guard; 60 searches a minute. | Ours is stricter. Keep it. |
@@ -57,7 +57,7 @@ Parity makes ours a themed Auctionator. Exceeding it means doing things Auctiona
 1. **Deals.** After any scan or list search, listings priced under the item's 7-day low (or under its vendor sell price) surface in a "Deals" card: name, price, how far under, and a click that opens the game's listing. Auctionator has no deal finder; TSM's needs a subscription. Vanilla's market is thin enough that this is useful every visit.
 2. **Price alerts.** A per-item target price on a shopping entry ("Arcane Crystal under 20g"). Every scan or search that sees a listing under target plays the alert sound and shows a Chat-watch-style toast. Auctionator has nothing like it.
 3. **Chat watch meets the auction house.** A "WTS" line in Trade that names an item we have a price for gets the toast line "AH: 12s 50c · they ask 10s": the player sees at a glance whether the trade offer beats the auction house. Nobody has this because nobody ships both halves.
-4. **Instance prep and Keep-stocked buy lists.** One button on the prep card and in `/fui stock` turns the shortfalls into a shopping list and, at the auction house, searches it with the wanted quantities, so "I'm short 8 Greater Fire Protection Potions" becomes a search that shows the cheapest 8.
+4. **Instance prep and Keep-stocked buy lists.** One button on the prep card and in `/vg stock` turns the shortfalls into a shopping list and, at the auction house, searches it with the wanted quantities, so "I'm short 8 Greater Fire Protection Potions" becomes a search that shows the cheapest 8.
 5. **A sales ledger.** Sold-auction mail (the game's "Auction successful" messages) and `AUCTION_HOUSE_AUCTION_CREATED`/`AUCTION_CANCELED` give a per-item record of what you listed, what sold, for how much and when; it feeds "Your history" on the sell card and a gold-from-auctions figure on the info strip beside gold per hour. Auctionator's posting history is listings only, not sales.
 6. **Market value and age, not just the low.** Per item, a quantity-weighted market value from the scan (the price a chunk of the supply sits at, not the one undercutter), shown as "low / market" in tooltips with the data's age. It makes the undercut rule smarter: "match the market, never the outlier".
 
@@ -95,7 +95,7 @@ Sizes: S under a day of lane time, M one to two, L more. Each is one commit with
 
 - [x] **D1 Disenchant values** (M): vanilla's disenchant tables by item level and quality (the fixed vanilla tables, marked unverified until checked in game), priced from the database; a tooltip line and a column on the sell card.
 - [x] **D2 Crafting info** (M): in the profession window, reagent cost and profit from the database, and "add reagents to a shopping list" (which also joins Keep-stocked).
-- [x] **D3 An API** (S): `ForeverUI.API.v1` with `GetAuctionPriceByItemID/Link`, `GetVendorPriceByItemID/Link`, `GetDisenchantPriceByItemID/Link`, `RegisterForDBUpdate`, `MultiSearch`, `CreateShoppingList`/`AlterShoppingListItems`, mirroring Auctionator's names so addons written for it can switch with a one-line shim.
+- [x] **D3 An API** (S): `Vanguard.API.v1` with `GetAuctionPriceByItemID/Link`, `GetVendorPriceByItemID/Link`, `GetDisenchantPriceByItemID/Link`, `RegisterForDBUpdate`, `MultiSearch`, `CreateShoppingList`/`AlterShoppingListItems`, mirroring Auctionator's names so addons written for it can switch with a one-line shim.
 
 ### Phase E: beyond Auctionator
 

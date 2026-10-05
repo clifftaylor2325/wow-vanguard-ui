@@ -1,4 +1,4 @@
-// Checks ForeverUI's media: generated art matches its sources, the fonts
+// Checks Vanguard's media: generated art matches its sources, the fonts
 // have tabular digits and the scripts the addon promises, the font license
 // ships next to them, and every Media file the Lua names exists.
 
@@ -68,7 +68,7 @@ function oflLicense() {
 // Media files named in the addon's Lua and TOC, as repo paths.
 function namedMedia() {
   const files = [];
-  const lua = ["ForeverUI.toc", ...fs.readdirSync(path.join(root, "Core")).map((f) => `Core/${f}`), ...fs.readdirSync(path.join(root, "Modules")).map((f) => `Modules/${f}`)];
+  const lua = ["Vanguard.toc", ...fs.readdirSync(path.join(root, "Core")).map((f) => `Core/${f}`), ...fs.readdirSync(path.join(root, "Modules")).map((f) => `Modules/${f}`)];
   for (const f of lua) {
     const src = fs.readFileSync(path.join(root, f), "utf8");
     for (const m of src.matchAll(/T\.(Texture|Icon)\("(\w+)"\)/g)) files.push(`Media/${m[1] === "Icon" ? "Icons" : "Textures"}/${m[2]}.tga`);

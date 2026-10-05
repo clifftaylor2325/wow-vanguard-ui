@@ -1,16 +1,16 @@
-# ForeverUI.API.v1: auction prices for other addons
+# Vanguard.API.v1: auction prices for other addons
 
-ForeverUI keeps auction prices per realm and faction (from the Auction helper's scans and from every search at the auction house) and hands them to other addons through `ForeverUI.API.v1`. Its function names and argument order are those of Auctionator's v1 API, as ForeverUI's auction plan lists them (Auctionator's own source was not read when this was written), so an addon written for Auctionator can switch with a one-line shim:
+Vanguard keeps auction prices per realm and faction (from the Auction helper's scans and from every search at the auction house) and hands them to other addons through `Vanguard.API.v1`. Its function names and argument order are those of Auctionator's v1 API, as Vanguard's auction plan lists them (Auctionator's own source was not read when this was written), so an addon written for Auctionator can switch with a one-line shim:
 
 ```lua
--- ## OptionalDeps: ForeverUI
-local api = (Auctionator and Auctionator.API and Auctionator.API.v1) or (ForeverUI and ForeverUI.API and ForeverUI.API.v1)
+-- ## OptionalDeps: Vanguard
+local api = (Auctionator and Auctionator.API and Auctionator.API.v1) or (Vanguard and Vanguard.API and Vanguard.API.v1)
 local price = api and api.GetAuctionPriceByItemID("MyAddon", 2589)
 ```
 
 ## Rules
 
-- Every function takes your addon's name first (`callerID`, a string). A call without one, or with another argument of the wrong type, raises an error at your line that says which argument, for example `ForeverUI.API.v1.MultiSearch: terms must be a table, got string`.
+- Every function takes your addon's name first (`callerID`, a string). A call without one, or with another argument of the wrong type, raises an error at your line that says which argument, for example `Vanguard.API.v1.MultiSearch: terms must be a table, got string`.
 - Prices are in copper, for the realm and faction of the character logged in. A function returns `nil` when it knows no price.
 - `v1` only grows: functions are added, never changed or removed.
 
@@ -27,11 +27,11 @@ local price = api and api.GetAuctionPriceByItemID("MyAddon", 2589)
 
 ## Being told about new prices
 
-`RegisterForDBUpdate(callerID, callback)`: `callback()` runs, with no arguments, on the frame after prices are recorded: once after a whole scan, and after each search that saw a price. A callback that errors is reported in ForeverUI's error list (`/fui errors`) and does not stop the others.
+`RegisterForDBUpdate(callerID, callback)`: `callback()` runs, with no arguments, on the frame after prices are recorded: once after a whole scan, and after each search that saw a price. A callback that errors is reported in Vanguard's error list (`/vg errors`) and does not stop the others.
 
 ## Shopping lists and searches
 
-Search strings are item names, as you would type them in the game's search box. In Auctionator's form, `name;field;field...`, only the name is read (quotes around it are dropped); an item link or an item ID written as text works too. A string that is blank, and anything that isn't a string, is left out. A list holds at most 50 entries and there are at most 20 lists (ForeverUI's caps); they are the player's lists, shown on the Shop card at the auction house.
+Search strings are item names, as you would type them in the game's search box. In Auctionator's form, `name;field;field...`, only the name is read (quotes around it are dropped); an item link or an item ID written as text works too. A string that is blank, and anything that isn't a string, is left out. A list holds at most 50 entries and there are at most 20 lists (Vanguard's caps); they are the player's lists, shown on the Shop card at the auction house.
 
 | Function | Does |
 | --- | --- |

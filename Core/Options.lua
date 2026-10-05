@@ -1,4 +1,4 @@
--- The options pages (/fui, or the addons button by the minimap): a page
+-- The options pages (/vg, or the addons button by the minimap): a page
 -- per area, as tables of rows. Core/OptionsWindow.lua builds the window
 -- from them. Most changes apply at once; the ones that rebuild frames
 -- light up the reload notice.
@@ -142,7 +142,7 @@ end
 local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", "the game's font" } }
 -- The faction look: by your character's faction, or off.
 local FACTION_LOOK = { { "auto", "By your faction" }, { "off", "Off" } }
-local BAR_TEXTURES = { { "forever", "Forever" }, { "soft", "Soft" }, { "flat", "Flat" } }
+local BAR_TEXTURES = { { "vanguard", "Vanguard" }, { "soft", "Soft" }, { "flat", "Flat" } }
 -- A share as a percent.
 local function percent(v)
   return string.format("%d%%", math.floor(v * 100 + 0.5))
@@ -246,16 +246,16 @@ O.MODULE_INFO = {
   ChatWatch = { "Chat watch", "A sound and a toast when a phrase you watch for is said in chat; click to whisper." },
   MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map." },
   AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels (each off until you switch it on)." },
-  QuestDialog = { "Quest dialog", "Talking to quest givers in ForeverUI's own dialog: numbered lines, reward cards, keys 1-9 and Space." },
+  QuestDialog = { "Quest dialog", "Talking to quest givers in Vanguard's own dialog: numbered lines, reward cards, keys 1-9 and Space." },
   QuestTracker = { "Quest tracker", "Your watched quests under the info strip: levels in difficulty colors, objectives, quest items, nearest first if you like." },
   QuestLog = { "Quest log", "Your quests by zone, each quest's text, objectives and rewards, with Track, Share, Abandon and Map." },
   QuestAuto = { "Quest automation", "Accept, turn in, pick the best-selling reward, skip chatter; each off until switched on." },
-  GameAlerts = { "Game alerts", "Loss of control and the talking head in the ForeverUI look, each in a spot you can move; Hardcore death notices restyled; a rare nearby announced if you like." },
+  GameAlerts = { "Game alerts", "Loss of control and the talking head in the Vanguard look, each in a spot you can move; Hardcore death notices restyled; a rare nearby announced if you like." },
   Errands = { "Errands", "Train all at a trainer, keep items stocked from merchants, and time your flights." },
   InstancePrep = { "Instance prep", "A checklist of what's low (ammo, reagents, food, bandages, potions, your stock list) when you enter an instance or a ready check starts." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
   FightHistory = { "Fight history", "Your DPS and place in each fight this session, as a strip of bars under the damage meter (off until switched on)." },
-  Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the ForeverUI look." },
+  Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the Vanguard look." },
   DataBars = { "XP and reputation", "Thin experience and reputation bars." },
   Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },
   VendorMemory = { "Vendor memory", "Remembers what each merchant sells; tooltips and the stock list say where to buy." },
@@ -409,7 +409,7 @@ local function chatSizeSetting()
   return liveSetting("Chat", "textSize", function() local CH = ns.GetModule("Chat") if CH.settings then CH.Refresh() end end)
 end
 
--- The game's own windows in the ForeverUI look (after a reload).
+-- The game's own windows in the Vanguard look (after a reload).
 local function windowRows()
   return {
     { "header", "Game windows" },
@@ -435,7 +435,7 @@ end
 local function auctionRows()
   return append({
     { "header", "Auction house" },
-    check("ForeverUI panel beside the auction house (lists, sell helper, scan)", setting("AuctionHelper", "panel")),
+    check("Vanguard panel beside the auction house (lists, sell helper, scan)", setting("AuctionHelper", "panel")),
     check("Auction prices in tooltips (from your scans)", setting("AuctionHelper", "tooltip")),
     { "cycle", "Undercut by", { { "copper", "1 copper" }, { "silver", "1 silver" }, { "percent", "1 %" }, { "match", "Match" } }, setting("AuctionHelper", "undercut") },
     { "cycle", "Auction length", ns.GetModule("AuctionHelper").DurationChoices(true), setting("AuctionHelper", "duration") },
@@ -452,12 +452,12 @@ end
 local function gameToolRows()
   return {
     { "header", "The game's tools" },
-    check("Show the game's Cooldown Manager: its essential row between your frames", cooldownManagerSetting()), check("Cooldown Manager in the ForeverUI look (reload)", setting("GameTools", "cooldowns", true)),
-    check("Damage meter in the ForeverUI look (reload)", setting("GameTools", "meter", true)),
+    check("Show the game's Cooldown Manager: its essential row between your frames", cooldownManagerSetting()), check("Cooldown Manager in the Vanguard look (reload)", setting("GameTools", "cooldowns", true)),
+    check("Damage meter in the Vanguard look (reload)", setting("GameTools", "meter", true)),
     check("Place them to fit the layout; off leaves them to Edit Mode (reload)", setting("GameTools", "place", true)),
-    check("Loss of control in the ForeverUI look, above your character (reload)", setting("GameAlerts", "lossOfControl", true)),
-    { "cycle", "Talking head (reload)", { { "move", "ForeverUI look, top center" }, { "hide", "Hidden" }, { "game", "The game's" } }, setting("GameAlerts", "talkingHead", true) },
-    check("Hardcore death notices in the ForeverUI look (reload)", setting("GameAlerts", "hardcore", true)),
+    check("Loss of control in the Vanguard look, above your character (reload)", setting("GameAlerts", "lossOfControl", true)),
+    { "cycle", "Talking head (reload)", { { "move", "Vanguard look, top center" }, { "hide", "Hidden" }, { "game", "The game's" } }, setting("GameAlerts", "talkingHead", true) },
+    check("Hardcore death notices in the Vanguard look (reload)", setting("GameAlerts", "hardcore", true)),
     check("A rare nearby: a sound and a chat line, out of combat", setting("GameAlerts", "rares")),
   }
 end
@@ -478,9 +478,9 @@ local function gamePartRows()
     { "header", "The game's extras" },
     check("Tracking, mail and difficulty on the minimap's corners (reload)", setting("Minimap", "icons", true)),
     menuVisibility, menuWhen,
-    check("ForeverUI icons on the menu buttons (reload)", setting("MenuStrip", "glyphs", true)),
+    check("Vanguard icons on the menu buttons (reload)", setting("MenuStrip", "glyphs", true)),
     check("Quest tracker under the info strip (reload)", setting("MenuStrip", "tracker", true)),
-    check("Quest tracker in the ForeverUI look (reload)", setting("MenuStrip", "trackerLook", true)),
+    check("Quest tracker in the Vanguard look (reload)", setting("MenuStrip", "trackerLook", true)),
   }
 end
 
@@ -502,7 +502,7 @@ local function moreRows()
     check("Coordinates under the minimap", setting("Minimap", "coords", true)),
     check("Chat background", setting("Chat", "background", true)), check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
     { "cycle", "Chat text size (follows Text size)", ns.GetModule("Chat").SIZES, chatSizeSetting() },
-    check("Combined bag (reload)", setting("Bags", "combined", true)), check("Bank in the ForeverUI look (reload)", setting("Bags", "bank", true)),
+    check("Combined bag (reload)", setting("Bags", "combined", true)), check("Bank in the Vanguard look (reload)", setting("Bags", "bank", true)),
   }
 end
 
@@ -628,7 +628,7 @@ local function errandRows()
   return {
     { "header", "Errands" },
     check("Train all button at trainers", setting("Errands", "trainAll")),
-    check("Keep items stocked from merchants (/fui stock)", setting("Errands", "stock")),
+    check("Keep items stocked from merchants (/vg stock)", setting("Errands", "stock")),
     check("Flight timer (reload)", setting("Errands", "flightTimer", true)),
   }
 end
@@ -653,7 +653,7 @@ local function prepRows()
     check("Checklist on a ready check", setting("InstancePrep", "onReadyCheck")),
     { "slider", "Hide after", PREP_SECONDS, setting("InstancePrep", "hideAfter") },
     { "slider", "Durability warning under", PREP_PERCENT, setting("InstancePrep", "durability") },
-    { "text", "Wanted amounts: /fui prep want <food|bandages|potions|ammo|shards> <n>; items from /fui stock are checked too." },
+    { "text", "Wanted amounts: /vg prep want <food|bandages|potions|ammo|shards> <n>; items from /vg stock are checked too." },
   }
 end
 
@@ -711,7 +711,7 @@ local function currentProfileRows()
   return {
     { "header", "Profile" },
     { "text", currentProfileText },
-    { "button", "Export profile", function() ns.ShowText("ForeverUI export  Ctrl+C to copy", ns.ExportProfile()) end },
+    { "button", "Export profile", function() ns.ShowText("Vanguard export  Ctrl+C to copy", ns.ExportProfile()) end },
     { "button", "Import", function() ns.ImportDialog() end },
     { "button", "Reset profile", function() ns.ResetProfile(); O.NeedReload() end },
   }
@@ -773,10 +773,10 @@ end
 local function questRows()
   return {
     { "header", "Quest windows" },
-    check("ForeverUI's quest dialog at the bottom center (reload)", setting("QuestDialog", "dialog", true)),
-    check("ForeverUI's quest log on the quest log key (reload)", setting("QuestLog", "own", true)),
+    check("Vanguard's quest dialog at the bottom center (reload)", setting("QuestDialog", "dialog", true)),
+    check("Vanguard's quest log on the quest log key (reload)", setting("QuestLog", "own", true)),
     { "header", "Quest tracker" },
-    check("ForeverUI's quest tracker under the info strip (reload)", setting("QuestTracker", "own", true)),
+    check("Vanguard's quest tracker under the info strip (reload)", setting("QuestTracker", "own", true)),
     { "cycle", "Order", { { "game", "As the game orders them" }, { "nearest", "Nearest first" } }, liveSetting("QuestTracker", "order", function() ns.GetModule("QuestTracker").ApplyOrder() end) },
   }
 end
@@ -808,7 +808,7 @@ function O.AddPage(page)
 end
 
 -- The addons button by the minimap: left-click options, right-click move frames.
-function ForeverUI_OnAddonCompartmentClick(_, button)
+function Vanguard_OnAddonCompartmentClick(_, button)
   if button == "RightButton" then
     if ns.Unlocked() then ns.Lock() else ns.Unlock() end
   else

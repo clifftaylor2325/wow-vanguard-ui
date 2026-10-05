@@ -37,11 +37,11 @@ function AP.Day(t)
   return math.floor(t / AP.DAY)
 end
 
--- The account's auction data: ForeverUIDB.ah = { lists (Auction helper's shopping lists, for every
+-- The account's auction data: VanguardDB.ah = { lists (Auction helper's shopping lists, for every
 -- character), list (the one in use), houses = { ["Realm-Faction"] = a house, see AP.House } }.
 function AP.Store()
-  ForeverUIDB.ah = ns.Fill(type(ForeverUIDB.ah) == "table" and ForeverUIDB.ah or {}, { lists = {}, houses = {} })
-  return ForeverUIDB.ah
+  VanguardDB.ah = ns.Fill(type(VanguardDB.ah) == "table" and VanguardDB.ah or {}, { lists = {}, houses = {} })
+  return VanguardDB.ah
 end
 
 -- The auction house you use: your realm's normalized name (as in "Name-Realm", the same on every
@@ -67,7 +67,7 @@ function AP.House()
 end
 
 -- Once: the prices kept for the whole account before they were kept per realm and faction
--- (ForeverUIDB.ah.prices and lastScan) move into this realm and faction's house; an item the
+-- (VanguardDB.ah.prices and lastScan) move into this realm and faction's house; an item the
 -- house already has keeps whichever was seen last. AP.Prune recounts.
 function AP.Migrate()
   local store = AP.Store()
@@ -124,7 +124,7 @@ end
 AP.listeners = {}
 
 -- Adds fn() to the functions told that prices were recorded: once on the next frame however many
--- were (a whole scan is one call), so other addons (ForeverUI.API.v1.RegisterForDBUpdate) can refresh.
+-- were (a whole scan is one call), so other addons (Vanguard.API.v1.RegisterForDBUpdate) can refresh.
 function AP.OnChange(fn)
   AP.listeners[#AP.listeners + 1] = fn
 end

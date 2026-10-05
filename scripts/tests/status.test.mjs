@@ -1,4 +1,4 @@
-// status: ForeverUI's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// status: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { RAID_ENV, UNITS_ENV, isTok, loggedIn, marks } from "./helpers.mjs";
@@ -28,8 +28,8 @@ it("raid status marks", () => {
   expect(marks(addon, 3).alpha === 1, "range is re-checked on a timer").toBeTruthy();
   addon.eval("__status.range.raid3 = { __secret = true }");
   addon.eval("__wfgStub.advance(0.25)");
-  expect(addon.eval("return ForeverUI_RaidUnitButton3.__alphaFromBoolean.__secret"), "a hidden range goes to the client's alpha-from-boolean").toBe(true);
-  addon.eval("ForeverUI_RaidUnitButton3.SetAlphaFromBoolean = false __wfgStub.advance(0.25)");
+  expect(addon.eval("return Vanguard_RaidUnitButton3.__alphaFromBoolean.__secret"), "a hidden range goes to the client's alpha-from-boolean").toBe(true);
+  addon.eval("Vanguard_RaidUnitButton3.SetAlphaFromBoolean = false __wfgStub.advance(0.25)");
   expect(marks(addon, 3).alpha === 1, "a hidden range never fades on a client without alpha-from-boolean").toBeTruthy();
   expect(marks(addon, 1).status === true, "the status text shows while nothing covers the center").toBeTruthy();
   addon.eval('__status.ready = { raid1 = "ready", raid3 = "waiting" }');
@@ -48,7 +48,7 @@ it("raid status marks", () => {
   addon.eval("__status.icon.raid1 = { __secret = true }");
   addon.fire("RAID_TARGET_UPDATE");
   expect(marks(addon, 1).icon === false, "a hidden raid icon shows nothing").toBeTruthy();
-  addon.eval('ForeverUIDB.profiles.Default.RaidStatus.leader = false; ns.GetModule("RaidStatus").UpdateAll()');
+  addon.eval('VanguardDB.profiles.Default.RaidStatus.leader = false; ns.GetModule("RaidStatus").UpdateAll()');
   expect(marks(addon, 1).leader === false, "each mark can be turned off").toBeTruthy();
 });
 
@@ -57,7 +57,7 @@ const RANGE_COUNT = `__rangeCalls, __isUnitCalls, __alphaCalls = 0, 0, 0
   local inRange, isUnit = UnitInRange, UnitIsUnit
   UnitInRange = function(...) __rangeCalls = __rangeCalls + 1 return inRange(...) end
   UnitIsUnit = function(...) __isUnitCalls = __isUnitCalls + 1 return isUnit(...) end
-  for i = 1, 3 do local b = _G["ForeverUI_RaidUnitButton" .. i] local set = b.SetAlpha b.SetAlpha = function(...) __alphaCalls = __alphaCalls + 1 return set(...) end end`;
+  for i = 1, 3 do local b = _G["Vanguard_RaidUnitButton" .. i] local set = b.SetAlpha b.SetAlpha = function(...) __alphaCalls = __alphaCalls + 1 return set(...) end end`;
 
 // The range ticker's calls since the last look (then forgets them): { range, isUnit, alpha }.
 const rangeCalls = (addon) => addon.eval("local c = { range = __rangeCalls, isUnit = __isUnitCalls, alpha = __alphaCalls } __rangeCalls, __isUnitCalls, __alphaCalls = 0, 0, 0 return c");
@@ -70,9 +70,9 @@ it("range ticker: only while the raid frames show, no repeat questions, no repai
   expect(rangeCalls(addon), "a tick asks the range of the two others, never asks again who you are, and repaints nothing unchanged").toEqual({ range: 2, isUnit: 0, alpha: 0 });
   addon.eval("__status.range.raid1 = false __wfgStub.advance(0.25)");
   expect([rangeCalls(addon).alpha, marks(addon, 1).alpha], "a change of range repaints that tile only").toEqual([1, 0.4]);
-  addon.eval("ForeverUI_Raid:Hide() __wfgStub.advance(1)");
+  addon.eval("Vanguard_Raid:Hide() __wfgStub.advance(1)");
   expect(rangeCalls(addon), "while the raid frames are hidden, no range checks at all").toEqual({ range: 0, isUnit: 0, alpha: 0 });
-  addon.eval("ForeverUI_Raid:Show() __wfgStub.advance(0.25)");
+  addon.eval("Vanguard_Raid:Show() __wfgStub.advance(0.25)");
   expect(rangeCalls(addon).range, "shown again, the checks resume").toBe(2);
 });
 

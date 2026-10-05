@@ -9,7 +9,7 @@
 --
 -- A binding is { key, action, value, spellID, rank }: a spell is cast by name
 -- (its highest rank) unless a rank was picked, then by that rank's spell id.
--- Hover keys click the frame's virtual button fui<i> (SetBindingClick), so the
+-- Hover keys click the frame's virtual button vg<i> (SetBindingClick), so the
 -- frame needs no extra click registration: SecureUnitButton_OnClick (the unit
 -- button template) acts on whichever phase the button is registered for and
 -- ignores ActionButtonUseKeyDown, so registering AnyDown as well would cast
@@ -24,9 +24,9 @@
 -- "Use the game's click bindings" (off by default) turns all of this off on
 -- clients with the game's own system (C_ClickBindings): the frames are
 -- SecureUnitButtonTemplate buttons, whose SecureUnitButton_OnClick runs the
--- game's binding for a click, so with ForeverUI's attributes and snippets
+-- game's binding for a click, so with Vanguard's attributes and snippets
 -- cleared the game's bindings (set in its Click Casting window) work on the
--- raid and unit frames. ForeverUI's bindings are kept for switching back.
+-- raid and unit frames. Vanguard's bindings are kept for switching back.
 
 local ADDON, ns = ...
 
@@ -62,10 +62,10 @@ end
 -- This character's bindings for a spec (the current one by default), created empty.
 function CC.Bindings(spec)
   spec = spec or ns.SpecIndex() or 0
-  ForeverUICharDB.clickcast = type(ForeverUICharDB.clickcast) == "table" and ForeverUICharDB.clickcast or {}
-  ForeverUICharDB.clickcast[spec] = ForeverUICharDB.clickcast[spec] or {}
-  for _, b in ipairs(ForeverUICharDB.clickcast[spec]) do upgrade(b) end
-  return ForeverUICharDB.clickcast[spec]
+  VanguardCharDB.clickcast = type(VanguardCharDB.clickcast) == "table" and VanguardCharDB.clickcast or {}
+  VanguardCharDB.clickcast[spec] = VanguardCharDB.clickcast[spec] or {}
+  for _, b in ipairs(VanguardCharDB.clickcast[spec]) do upgrade(b) end
+  return VanguardCharDB.clickcast[spec]
 end
 
 -- The current spec's binding for a key, or nil.
@@ -228,13 +228,13 @@ end
 -- Sets an attribute and remembers it, so the next apply can clear it.
 local function setAttr(f, name, value)
   f:SetAttribute(name, value)
-  f.fuiAttrs[#f.fuiAttrs + 1] = name
+  f.vgAttrs[#f.vgAttrs + 1] = name
 end
 
 -- Clears the attributes the last apply set.
 local function clearAttrs(f)
-  for _, name in ipairs(f.fuiAttrs or {}) do f:SetAttribute(name, nil) end
-  f.fuiAttrs = {}
+  for _, name in ipairs(f.vgAttrs or {}) do f:SetAttribute(name, nil) end
+  f.vgAttrs = {}
 end
 
 -- The secure "type" for an action.
@@ -247,9 +247,9 @@ end
 
 -- Sets type and spell/macro text for a binding, with the attribute prefix
 -- ("ctrl-" for a mouse binding, "*" for a hover key: SecureButton_GetModifiedAttribute
--- looks up <modifiers>type-fui3, then *type-fui3, never the bare type-fui3, so a
+-- looks up <modifiers>type-vg3, then *type-vg3, never the bare type-vg3, so a
 -- hover key bound with Shift held only finds the "*" form) and the suffix
--- ("2" for mouse button 2, "-fui3" for a hover key's virtual button).
+-- ("2" for mouse button 2, "-vg3" for a hover key's virtual button).
 local function setAction(f, prefix, suffix, b)
   setAttr(f, prefix .. "type" .. suffix, TYPES[b.action])
   if b.action == "spell" then setAttr(f, prefix .. "spell" .. suffix, spellValue(b)) end
@@ -257,13 +257,13 @@ local function setAction(f, prefix, suffix, b)
 end
 
 -- The secure snippet run on entering a frame: bind each hover key to a
--- click on the frame's virtual button fui<i>. Built from the bindings; no
+-- click on the frame's virtual button vg<i>. Built from the bindings; no
 -- player input ends up in it except keys, which are quoted.
 function CC.EnterSnippet(bindings)
   local lines = { "self:ClearBindings()" }
   for i, b in ipairs(bindings) do
     if not CC.MouseParts(b.key) then
-      lines[#lines + 1] = string.format("self:SetBindingClick(true, %q, self, %q)", b.key, "fui" .. i)
+      lines[#lines + 1] = string.format("self:SetBindingClick(true, %q, self, %q)", b.key, "vg" .. i)
     end
   end
   return table.concat(lines, "\n")
@@ -271,10 +271,10 @@ end
 
 -- Takes the hover-key snippets off a frame, and any keys they bound while the pointer was over it.
 local function unwrap(f)
-  if not f.fuiWrapped then return end
+  if not f.vgWrapped then return end
   for _, script in ipairs({ "OnEnter", "OnLeave", "OnHide" }) do SecureHandlerUnwrapScript(f, script) end
   ClearOverrideBindings(f)
-  f.fuiWrapped = false
+  f.vgWrapped = false
 end
 
 -- (Re)wraps the frame's enter, leave and hide scripts with the hover-key snippets.
@@ -283,7 +283,7 @@ local function wrap(f, enter)
   SecureHandlerWrapScript(f, "OnEnter", CC.handler, enter)
   SecureHandlerWrapScript(f, "OnLeave", CC.handler, "self:ClearBindings()")
   SecureHandlerWrapScript(f, "OnHide", CC.handler, "self:ClearBindings()")
-  f.fuiWrapped = true
+  f.vgWrapped = true
 end
 
 -- Whether this client compiles secure snippets (probed on first use, Core/Client.lua); without the probe, assume yes.
@@ -292,20 +292,20 @@ function CC.SnippetsOn()
   return probe == nil or probe() ~= false
 end
 
--- Whether the game's own click bindings are used instead of ForeverUI's: switched
+-- Whether the game's own click bindings are used instead of Vanguard's: switched
 -- on, on a client that has them (C_ClickBindings, which SecureUnitButton_OnClick reads).
 function CC.UsesGame()
   return CC.settings ~= nil and CC.settings.useGame == true and type(C_ClickBindings) == "table"
 end
 
--- Applies the current spec's bindings to one frame, or (using the game's click bindings) clears ForeverUI's.
+-- Applies the current spec's bindings to one frame, or (using the game's click bindings) clears Vanguard's.
 function CC.ApplyFrame(f)
   clearAttrs(f)
   if CC.UsesGame() then return unwrap(f) end
   local bindings = CC.Bindings()
   for i, b in ipairs(bindings) do
     local prefix, n = CC.MouseParts(b.key)
-    if prefix then setAction(f, prefix, n, b) else setAction(f, "*", "-fui" .. i, b) end
+    if prefix then setAction(f, prefix, n, b) else setAction(f, "*", "-vg" .. i, b) end
   end
   if CC.SnippetsOn() then wrap(f, CC.EnterSnippet(bindings)) end
 end
@@ -333,7 +333,7 @@ local function registerFrames(settings)
   for _, f in pairs(ns.GetModule("UnitFrames").frames) do CC.Register(f) end
 end
 
--- Switches between the game's click bindings and ForeverUI's (applied out of combat).
+-- Switches between the game's click bindings and Vanguard's (applied out of combat).
 function CC.SetUseGame(on)
   CC.settings.useGame = on
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
@@ -342,7 +342,7 @@ end
 -- Module entry point (Core/Modules.lua): a secure handler, the frames, spec changes.
 function CC.Enable(settings)
   CC.settings = settings
-  CC.handler = CreateFrame("Frame", "ForeverUI_ClickCastHandler", UIParent, "SecureHandlerBaseTemplate")
+  CC.handler = CreateFrame("Frame", "Vanguard_ClickCastHandler", UIParent, "SecureHandlerBaseTemplate")
   ns.OutOfCombat(function() registerFrames(settings) end)
   -- A new spec has its own bindings: apply them (spec changes happen out of combat).
   local function reapply() ns.OutOfCombat(CC.ApplyAll, "clickcast") end
