@@ -6,12 +6,16 @@
 -- plain lines or Auctionator's `^`/`;` strings), Search list, which runs the
 -- list's searches one after another (the last 20 terms searched are kept,
 -- account-wide, as the Recent pseudo-list), each entry's best result, and the
--- card's rows; clicking a row shows its item in the game's own list.
+-- card's rows; clicking a row opens the results view in their place: every
+-- listing of that item (unit price, quantity, time left; each column sorts),
+-- further pages read as you scroll, Up/Down and Enter while the mouse is
+-- over it, and a listing clicked shows its item in the game's own list.
 --
 -- Standing rules here: every search goes through AH.Queue (one in flight,
 -- at most 60 a minute); every price and count goes through ns.PlainNumber
--- before arithmetic; buying stays in the game's hands (a row only opens its
--- item in the game's list), and nothing writes into the game's auction frames.
+-- before arithmetic; buying stays in the game's hands (a row or a listing
+-- only opens its item in the game's list; nothing here buys), and nothing
+-- writes into the game's auction frames.
 
 local ADDON, ns = ...
 
@@ -29,6 +33,15 @@ AH.RENAME, AH.COPY, AH.DELETE, AH.IMPORT, AH.EXPORT = "\1rename", "\1copy", "\1d
 AH.EXACT_FILTER, AH.QUALITY_FILTER = 5, 6
 -- The qualities a filter can ask for, as { Enum.ItemQuality, name }, after "Any".
 AH.ANY, AH.QUALITIES = "any", { { "any", "Any" }, { 0, "Poor" }, { 1, "Common" }, { 2, "Uncommon" }, { 3, "Rare" }, { 4, "Epic" }, { 5, "Legendary" } }
+-- The results view: its rows (how many, from where in the view) and its columns, as
+-- { sort key, heading, left edge, width, side the text keeps to }.
+AH.VIEW_ROWS, AH.VIEW_ROWS_Y = 6, -48
+AH.VIEW_COLUMNS = { { "price", "Unit price", 0, 100, "RIGHT" }, { "qty", "Quantity", 100, 60, "RIGHT" }, { "time", "Time left", 172, 92, "LEFT" } }
+-- Enum.AuctionHouseTimeLeftBand (Short 0 ... VeryLong 3) as the game's names (TIME_LEFT_SHORT...) and
+-- ours when the client has none.
+AH.TIME_BANDS = { [0] = { "TIME_LEFT_SHORT", "Short" }, [1] = { "TIME_LEFT_MEDIUM", "Medium" }, [2] = { "TIME_LEFT_LONG", "Long" }, [3] = { "TIME_LEFT_VERY_LONG", "Very long" } }
+-- The colors of a listing's cells, by column.
+AH.CELL_COLORS = { price = "gold", qty = "text", time = "text2" }
 -- A shop row's right-click menu; the filter dialog's width.
 AH.ROW_CHOICES, AH.FILTER_W = { { "filters", "Filters..." }, { "remove", "Remove" } }, 280
 -- Copper in one of each money unit typed into a max price.
@@ -354,6 +367,9 @@ end
 -- Sends the shop's search: a list entry (an item ID by its item key, a name by text with its filters).
 function AH.SendShop(s)
   local api, term, f = C_AuctionHouse, AH.Term(s.entry)
+  if s.listings then return api.SendSearchQuery(s.listings, AH.SORTS, false) end
+  if s.more and s.commodity then return api.RequestMoreCommoditySearchResults(s.more.itemID) end
+  if s.more then return api.RequestMoreItemSearchResults(s.more) end
   if type(term) == "number" then return api.SearchForItemKeys({ api.MakeItemKey(term) }, AH.SORTS) end
   api.SendBrowseQuery(browseQuery(term, f))
 end
@@ -421,6 +437,211 @@ end
 -- which ignores them in combat).
 function AH.ListenShop(on)
   on("ITEM_KEY_ITEM_INFO_RECEIVED", function() AH.OnItemInfo() end)
+  for _, event in ipairs({ "ITEM_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_ADDED", "COMMODITY_SEARCH_RESULTS_UPDATED", "COMMODITY_SEARCH_RESULTS_ADDED" }) do
+    on(event, AH.OnListings)
+  end
+  on("AUCTION_HOUSE_CLOSED", function() AH.view = nil end)
+end
+
+-- Listings ------------------------------------------------------------------------------------
+
+-- A time-left band as the game names it ("" for none).
+local function bandText(band)
+  local b = band and AH.TIME_BANDS[band]
+  if not b then return "" end
+  return _G[b[1]] or b[2]
+end
+
+-- Seconds left as "12 h" or "35 min".
+local function secondsText(secs)
+  if secs >= 3600 then return string.format("%d h", math.floor(secs / 3600)) end
+  return string.format("%d min", math.max(1, math.floor(secs / 60)))
+end
+
+-- An item listing as a row: its buyout over its quantity, and its time-left band; nil with only a
+-- bid, or a number the client hides.
+local function itemListing(r)
+  local buyout, qty, band = ns.PlainNumber(r.buyoutAmount), ns.PlainNumber(r.quantity), ns.PlainNumber(r.timeLeft)
+  if not (buyout and qty) or qty < 1 then return nil end
+  return { price = math.floor(buyout / qty), qty = qty, time = band or 0, timeText = bandText(band) }
+end
+
+-- A commodity listing as a row: its unit price, quantity and seconds left; nil for a hidden number.
+local function commodityListing(r)
+  local unit, qty, secs = ns.PlainNumber(r.unitPrice), ns.PlainNumber(r.quantity), ns.PlainNumber(r.timeLeftSeconds)
+  if not (unit and qty) then return nil end
+  return { price = unit, qty = qty, time = secs or 0, timeText = secs and secondsText(secs) or "" }
+end
+
+-- Listing i of the view's item as a row, or nil (unreadable, or above the entry's max price).
+local function listing(v, i)
+  local api = C_AuctionHouse
+  local r = v.commodity and api.GetCommoditySearchResultInfo(v.key.itemID, i) or api.GetItemSearchResultInfo(v.key, i)
+  local row = r and (v.commodity and commodityListing(r) or itemListing(r))
+  if row and not (v.maxPrice and row.price > v.maxPrice) then return row end
+end
+
+-- Whether every listing of the view's item is in.
+local function hasFull(v)
+  if v.commodity then return C_AuctionHouse.HasFullCommoditySearchResults(v.key.itemID) end
+  return C_AuctionHouse.HasFullItemSearchResults(v.key)
+end
+
+-- Sorts the view's rows by its column (between equals the cheapest, then the fewest, first),
+-- reversed when asked.
+local function sortListings(v)
+  table.sort(v.rows, function(a, b)
+    if a[v.sort] == b[v.sort] then return a.price < b.price or (a.price == b.price and a.qty < b.qty) end
+    if v.reverse then return a[v.sort] > b[v.sort] end
+    return a[v.sort] < b[v.sort]
+  end)
+end
+
+-- Reads every listing of the view's item the client has, sorted.
+function AH.ReadListings(v)
+  local api, rows = C_AuctionHouse, {}
+  local n = v.commodity and api.GetNumCommoditySearchResults(v.key.itemID) or api.GetNumItemSearchResults(v.key)
+  for i = 1, ns.PlainNumber(n) or 0 do rows[#rows + 1] = listing(v, i) end
+  v.rows, v.full, v.asked, v.searched = rows, hasFull(v), false, true
+  sortListings(v)
+end
+
+-- Search results for an item: the view's item is read again; the view's search in flight is done.
+function AH.OnListings(event, arg)
+  local v, s = AH.view, AH.pending
+  local id = type(arg) == "table" and arg.itemID or arg
+  if v and v.key.itemID == id then
+    v.commodity = event:find("COMMODITY", 1, true) ~= nil
+    AH.ReadListings(v)
+    AH.PaintShop()
+  end
+  local key = s and (s.listings or s.more)
+  if key and key.itemID == id then AH.Done() end
+end
+
+-- Asks for the next page of listings (through the queue, once at a time) when the view is near its
+-- last row and the client has more.
+local function moreIfNear(v)
+  if v.commodity == nil or v.full or v.asked or v.offset + AH.VIEW_ROWS < #v.rows - 2 then return end
+  v.asked = true
+  AH.Queue({ more = v.key, commodity = v.commodity })
+end
+
+-- Opens the results view for an item key: every listing, searched first in line.
+function AH.OpenListings(key, f)
+  AH.view = { key = key, rows = {}, sort = "price", reverse = false, offset = 0, mark = 1, maxPrice = f and f.maxPrice }
+  AH.DropQueued("listings")
+  AH.DropQueued("more")
+  AH.Queue({ listings = key }, true)
+  AH.PaintShop()
+end
+
+-- Back: the shop's rows again, and the view's searches dropped.
+function AH.CloseListings()
+  AH.view = nil
+  AH.DropQueued("listings")
+  AH.DropQueued("more")
+  AH.PaintShop()
+end
+
+-- Sorts by a column; the same column again turns the order round.
+function AH.SortListings(column)
+  local v = AH.view
+  v.reverse = v.sort == column and not v.reverse
+  v.sort, v.offset, v.mark = column, 0, 1
+  sortListings(v)
+  AH.PaintShop()
+end
+
+-- Marks listing i (kept within the rows, scrolled into view) for the keyboard.
+function AH.MarkListing(i)
+  local v = AH.view
+  v.mark = math.max(1, math.min(#v.rows, i))
+  if v.mark <= v.offset then v.offset = v.mark - 1 end
+  if v.mark > v.offset + AH.VIEW_ROWS then v.offset = v.mark - AH.VIEW_ROWS end
+  moreIfNear(v)
+  AH.PaintShop()
+end
+
+-- A listing opened (clicked, or Enter on the marked one): its item in the game's own list, to buy there.
+function AH.OpenListing(i)
+  local v = AH.view
+  if not v.rows[i] then return end
+  v.mark = i
+  AH.Queue({ open = v.key }, true)
+  AH.PaintShop()
+end
+
+-- The wheel over the view scrolls its rows (and asks for more near the end).
+local function scrollListings(_, delta)
+  local v = AH.view
+  v.offset = math.max(0, math.min(#v.rows - AH.VIEW_ROWS, v.offset - delta))
+  moreIfNear(v)
+  AH.PaintShop()
+end
+
+-- What a key does in the view; true when it used it (Up, Down, Enter).
+local function useListingKey(key)
+  local v = AH.view
+  if key == "UP" or key == "DOWN" then AH.MarkListing(v.mark + (key == "UP" and -1 or 1)) return true end
+  if key == "ENTER" and v.rows[v.mark] then AH.OpenListing(v.mark) return true end
+  return false
+end
+
+-- A key while the view has the keyboard: the ones it uses stop here, every other one goes on to the
+-- game; none is used while a box has the typing (the options window's way).
+local function onListingKey(f, key)
+  local typing = type(GetCurrentKeyBoardFocus) == "function" and GetCurrentKeyBoardFocus() ~= nil
+  local used = not typing and AH.view ~= nil and useListingKey(key)
+  if not ns.InCombat() and ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(not used) end
+end
+
+-- The view takes the keyboard while the mouse is over it, out of combat, and lets it go otherwise.
+local function focusKeys(v, on)
+  v:EnableKeyboard(on and not ns.InCombat())
+end
+
+-- The sort arrow beside the sorted column's heading: up for low first, down for high first.
+local function paintArrow(f, v)
+  local h = f.heads[v.sort]
+  local right = h.side == "RIGHT"
+  f.arrow:ClearAllPoints()
+  f.arrow:SetPoint(right and "RIGHT" or "LEFT", h.text, right and "LEFT" or "RIGHT", right and -2 or 2, 0)
+  f.arrow:SetRotation(v.reverse and 0 or math.pi)
+end
+
+-- The view's head: its item, the sorted column's heading in the accent, and "searching..." or
+-- "none up" while there's no listing to show.
+local function paintViewHead(f, v)
+  local info = C_AuctionHouse.GetItemKeyInfo(v.key)
+  f.icon:SetTexture(info and info.iconFileID or AH.UNKNOWN_ICON)
+  f.name:SetText(info and info.itemName or ("item " .. v.key.itemID))
+  f.status:SetText(#v.rows > 0 and "" or (v.searched and "none up" or "searching..."))
+  for _, h in ipairs(f.heads) do T.Color(h.text, h.column == v.sort and "accent" or "text2") end
+  paintArrow(f, v)
+end
+
+-- A listing's row: unit price, quantity and time left, marked when it's the keyboard's.
+local function paintListing(r, v, i)
+  local l = v.rows[i]
+  r:SetShown(l ~= nil)
+  if not l then return end
+  r.index = i
+  r.cells.price:SetText(AP.Money(l.price))
+  r.cells.qty:SetText(tostring(l.qty))
+  r.cells.time:SetText(l.timeText)
+  r.mark:SetShown(i == v.mark)
+  r.wash:SetShown(i == v.mark)
+end
+
+-- The results view in place of the shop's rows while it's open (else the rows and their controls).
+function AH.PaintListings()
+  local c, v = AH.shopCard, AH.view
+  c.body:SetShown(v == nil)
+  c.view:SetShown(v ~= nil)
+  if not v then return end
+  paintViewHead(c.view, v)
+  for i, r in ipairs(c.view.rows) do paintListing(r, v, v.offset + i) end
 end
 
 -- The shop card -------------------------------------------------------------------------------
@@ -460,14 +681,16 @@ function AH.PaintShop()
     r.index = c.offset + i
     paintRow(r, list and list[r.index])
   end
+  AH.PaintListings()
 end
 
--- A row clicked: left opens its item in the game's own list (buying stays in the game's hands),
--- right opens the row's menu (Filters..., Remove) under it.
+-- A row clicked: left opens the results view for its item (the one its search found, or an item
+-- ID's own), right opens the row's menu (Filters..., Remove) under it.
 function AH.ClickRow(r, button)
   if button == "RightButton" then return AH.RowMenu(r) end
-  local found = AH.found[r.entry]
-  if found then AH.Queue({ open = found.key }, true) end
+  local found, term, f = AH.found[r.entry], AH.Term(r.entry)
+  local key = found and found.key or (type(term) == "number" and C_AuctionHouse.MakeItemKey(term))
+  if key then AH.OpenListings(key, f) end
 end
 
 -- The mouse wheel over the rows scrolls them.
@@ -647,35 +870,124 @@ end
 
 -- The shop card's progress line, and its rows, scrolled by the mouse wheel.
 local function shopRows(c)
-  c.progress = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  c.progress = T.Text(c.body:CreateFontString(nil, "OVERLAY"), "small", "text2")
   c.progress:SetPoint("LEFT", c.search, "RIGHT", 8, 0)
   c.rows, c.offset = {}, 0
   for i = 1, AH.SHOP_ROWS do
-    c.rows[i] = AH.Row(c, i, AH.SHOP_ROWS_Y, AH.ClickRow)
+    c.rows[i] = AH.Row(c.body, i, AH.SHOP_ROWS_Y, AH.ClickRow)
     AH.RowParts(c.rows[i])
   end
   c:EnableMouseWheel(true)
   c:SetScript("OnMouseWheel", scrollShop)
 end
 
+-- A column's heading in the view: its name, sorting by it on a click.
+local function columnHead(f, col)
+  local h = CreateFrame("Button", nil, f)
+  h:SetPoint("TOPLEFT", col[3], -30)
+  h:SetSize(col[4], 16)
+  h.column, h.side = col[1], col[5]
+  h.text = T.Text(h:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  h.text:SetPoint(col[5], col[5] == "RIGHT" and -2 or 2, 0)
+  h.text:SetText(col[2])
+  h:SetScript("OnClick", function() AH.SortListings(col[1]) end)
+  return h
+end
+
+-- A listing row's cell for a column: price in gold numbers, quantity in text, time left in text2.
+local function listingCell(r, col)
+  local role, color = col[1] == "price" and "number" or "small", AH.CELL_COLORS[col[1]]
+  local fs = T.Text(r:CreateFontString(nil, "OVERLAY"), role, color)
+  fs:SetPoint(col[5], r, "LEFT", col[5] == "RIGHT" and col[3] + col[4] - 2 or col[3] + 2, 0)
+  return fs
+end
+
+-- A listing's row in the view: a cell per column, the keyboard's mark (an accent edge and a wash),
+-- and the keys taken while the mouse is over it.
+local function listingRow(f, i)
+  local r = AH.Row(f, i, AH.VIEW_ROWS_Y, function(self) AH.OpenListing(self.index) end)
+  r.wash, r.mark, r.cells = W.Flat(r, "BACKGROUND", "hover"), W.Flat(r, "ARTWORK", "accent"), {}
+  r.wash:SetAllPoints()
+  r.mark:SetPoint("TOPLEFT")
+  r.mark:SetPoint("BOTTOMLEFT")
+  r.mark:SetWidth(2)
+  for _, col in ipairs(AH.VIEW_COLUMNS) do r.cells[col[1]] = listingCell(r, col) end
+  r:SetScript("OnEnter", function() focusKeys(f, true) end)
+  r:SetScript("OnLeave", function() focusKeys(f, f:IsMouseOver()) end)
+  return r
+end
+
+-- The view's top line: Back, then the item's icon and name.
+local function viewTop(f)
+  f.back = W.Button(f, "Back", function() AH.CloseListings() end, 60)
+  f.back:SetPoint("TOPLEFT")
+  f.icon = T.Crop(f:CreateTexture(nil, "ARTWORK"))
+  f.icon:SetSize(16, 16)
+  f.icon:SetPoint("LEFT", f.back, "RIGHT", 8, 0)
+  f.name = T.Text(f:CreateFontString(nil, "OVERLAY"), "label")
+  f.name:SetPoint("LEFT", f.icon, "RIGHT", 4, 0)
+  f.name:SetPoint("RIGHT", f, "RIGHT", 0, 0)
+  f.name:SetWordWrap(false)
+end
+
+-- The column headings (by sort key too) with the sort arrow, the status line and the rows.
+local function viewTable(f)
+  f.heads, f.rows = {}, {}
+  for i, col in ipairs(AH.VIEW_COLUMNS) do
+    f.heads[i] = columnHead(f, col)
+    f.heads[col[1]] = f.heads[i]
+  end
+  f.arrow = W.IconTexture(f, "Down", 10, "accent")
+  f.status = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  f.status:SetPoint("TOPLEFT", 4, AH.VIEW_ROWS_Y - 4)
+  for i = 1, AH.VIEW_ROWS do f.rows[i] = listingRow(f, i) end
+end
+
+-- The keys and the wheel: the view has the keyboard while the mouse is over it, never once hidden.
+local function viewInput(f)
+  f:EnableMouse(true)
+  f:EnableMouseWheel(true)
+  f:SetScript("OnMouseWheel", scrollListings)
+  f:SetScript("OnKeyDown", onListingKey)
+  f:SetScript("OnEnter", function(self) focusKeys(self, true) end)
+  f:SetScript("OnLeave", function(self) focusKeys(self, self:IsMouseOver()) end)
+  f:SetScript("OnHide", function(self) self:EnableKeyboard(false) end)
+end
+
+-- The results view, in place of the shop's rows and controls (under the card's heading), hidden until a row opens it.
+local function buildView(c)
+  local f = CreateFrame("Frame", nil, c)
+  f:SetPoint("TOPLEFT", 0, -20)
+  f:SetPoint("BOTTOMRIGHT")
+  viewTop(f)
+  viewTable(f)
+  viewInput(f)
+  f:Hide()
+  c.view = f
+end
+
 -- The shop card's controls: the list dropdown, + Add and Search list.
 local function shopControls(c)
-  c.lists = W.Dropdown(c, listChoices, function() return AP.Store().list end, pickList, 180)
+  c.lists = W.Dropdown(c.body, listChoices, function() return AP.Store().list end, pickList, 180)
   c.lists:SetPoint("TOPLEFT", 0, -20)
-  c.add = W.Button(c, "+ Add", function() ns.AskText("Add to list", function(text) AH.AddEntry(text) end, "Add") end, 76)
+  c.add = W.Button(c.body, "+ Add", function() ns.AskText("Add to list", function(text) AH.AddEntry(text) end, "Add") end, 76)
   c.add:SetPoint("TOPRIGHT", 0, -19)
-  c.search = W.Button(c, "Search list", function() AH.SearchList() end, 120)
+  c.search = W.Button(c.body, "Search list", function() AH.SearchList() end, 120)
   c.search:SetPoint("TOPLEFT", 0, -46)
 end
 
--- The shop card: the list dropdown, + Add, Search list with its progress line, the rows, and a
--- row's menu (a hidden dropdown that opens the dropdown menu under the row right-clicked).
+-- The shop card: the list dropdown, + Add, Search list with its progress line and the rows (in
+-- c.body, which the results view takes the place of), a row's menu (a hidden dropdown that opens
+-- the dropdown menu under the row right-clicked), and the results view.
 function AH.BuildShop(f)
   local c = AH.Card(f, "Shop", AH.SHOP_Y, AH.SHOP_H)
+  c.body = CreateFrame("Frame", nil, c)
+  c.body:SetAllPoints()
   shopControls(c)
   c.rule:Hide()
   AH.shopCard = c
   shopRows(c)
   c.rowMenu = W.Dropdown(c, AH.ROW_CHOICES, function() end, AH.RowAction, 120)
   c.rowMenu:Hide()
+  buildView(c)
 end

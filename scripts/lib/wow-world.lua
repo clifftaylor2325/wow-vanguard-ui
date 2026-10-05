@@ -1273,7 +1273,8 @@ C_DamageMeter = {
 --   owned = { OwnedAuctionInfo, ... }; ready and copper (true unless set false); needsConfirm (a
 --   post the client wants confirmed); deposit (copper per item per duration step); cancelCost;
 --   noCancel[auctionID]; browseFull (false: more browse results to ask for); more[itemID] (true: another
---   page of an item's search results to ask for).
+--   page of that item's search results to ask for); searchFull (false: more of any item or commodity
+--   search results to ask for).
 -- The calls the client restricts to a hardware event (HasRestrictions: PostItem, PostCommodity,
 -- ConfirmPostItem, ConfirmPostCommodity, CancelAuction, PlaceBid, StartCommoditiesPurchase) are
 -- logged in world.ah.restricted as { fn, args, clicked, path }: clicked says whether a click was
@@ -1409,9 +1410,10 @@ function C_AuctionHouse.GetNumItemSearchResults(key) return #(world.ah.items[key
 function C_AuctionHouse.GetItemSearchResultInfo(key, i) return (world.ah.items[key.itemID] or {})[i] end
 function C_AuctionHouse.GetNumCommoditySearchResults(id) return #(world.ah.commodities[id] or {}) end
 function C_AuctionHouse.GetCommoditySearchResultInfo(id, i) return (world.ah.commodities[id] or {})[i] end
--- Whether every result of a search is in (world.ah.more[itemID] = true: another page to ask for).
-function C_AuctionHouse.HasFullCommoditySearchResults(id) return world.ah.more[id] ~= true end
-function C_AuctionHouse.HasFullItemSearchResults(key) return world.ah.more[key.itemID] ~= true end
+-- Whether every result of a search is in: world.ah.more[itemID] = true (another page of that item's
+-- results) or world.ah.searchFull = false (more for any search) says there's more to ask for.
+function C_AuctionHouse.HasFullCommoditySearchResults(id) return world.ah.more[id] ~= true and world.ah.searchFull ~= false end
+function C_AuctionHouse.HasFullItemSearchResults(key) return world.ah.more[key and key.itemID] ~= true and world.ah.searchFull ~= false end
 -- The replicate list's size, and your auctions.
 function C_AuctionHouse.GetNumReplicateItems() return #world.ah.replicate end
 function C_AuctionHouse.GetOwnedAuctions() return world.ah.owned end

@@ -3,8 +3,9 @@
 --   * Shop: named shopping lists (items by ID or by name); "Search list" runs
 --     the list's searches one after another (one in flight, at most 60 a
 --     minute) and each row shows the item's cheapest price per unit and how
---     many are up; clicking a row shows that item in the game's own list, so
---     buying stays in the game's hands.
+--     many are up; clicking a row lists that item's auctions, and clicking
+--     one shows the item in the game's own list, so buying stays in the
+--     game's hands.
 --   * Sell: drop an item on the card (or pick one in the game's sell frame:
 --     the card takes the item the game's window is given) and it shows the
 --     cheapest price someone else asks now, the 7-day low from your scans,

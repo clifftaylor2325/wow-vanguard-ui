@@ -81,7 +81,7 @@ Sizes: S under a day of lane time, M one to two, L more. Each is one commit with
 
 - [x] **B1 List management and import/export** (M): rename, delete, duplicate; export a list as text; import plain names, item IDs and Auctionator's `^`/`;` format (name and exact-match, level and quality fields; unsupported fields ignored and said so).
 - [x] **B2 Search filters** (M): per entry, exact match, min/max level, quality, and a max price; the browse query carries `filters` and `minLevel`/`maxLevel`, and the exact-match flag uses `Enum.AuctionHouseFilter.ExactMatch`. Fixes the wrong-item fallback: a name entry matches only exact or contains-name results.
-- [ ] **B3 Per-auction results** (L): clicking a shop row opens a second card (or replaces the shop rows) with every listing for that item from `SendSearchQuery`, sortable by unit price, quantity and time left, reading further pages on scroll; a row click still hands the game its listing for the buy. Keyboard: Up/Down rows, Enter to search.
+- [x] **B3 Per-auction results** (L): clicking a shop row opens a second card (or replaces the shop rows) with every listing for that item from `SendSearchQuery`, sortable by unit price, quantity and time left, reading further pages on scroll; a row click still hands the game its listing for the buy. Keyboard: Up/Down rows, Enter to search.
 - [x] **B4 Recent searches** (S): the last 20 searched terms as a "Recent" pseudo-list.
 
 ### Phase C: the price database
