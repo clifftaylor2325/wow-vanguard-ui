@@ -168,8 +168,9 @@ end
 
 -- Marks a bag item button: the arrow when the item in it is an upgrade.
 local function markButton(button)
-  if type(button.GetBagID) ~= "function" then return end
-  local info = C_Container and C_Container.GetContainerItemInfo(button:GetBagID(), button:GetID())
+  local read = type(C_Container) == "table" and C_Container.GetContainerItemInfo
+  if type(button.GetBagID) ~= "function" or type(read) ~= "function" then return end
+  local info = read(button:GetBagID(), button:GetID())
   setArrow(button, UP.settings.bags and isUpgrade(info and info.hyperlink))
 end
 
