@@ -107,6 +107,7 @@ Modules/GameAlerts.lua
 Modules/AfkScreen.lua
 Modules/DataBars.lua
 Modules/Tooltips.lua
+Modules/Inventory.lua
 Modules/VendorMemory.lua
 Modules/Nameplates.lua
 Modules/Situations.lua

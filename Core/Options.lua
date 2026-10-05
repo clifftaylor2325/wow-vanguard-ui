@@ -258,6 +258,7 @@ O.MODULE_INFO = {
   Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the Vanguard look." },
   DataBars = { "XP and reputation", "Thin experience and reputation bars." },
   Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },
+  Inventory = { "Inventory", "Remembers your characters' bags and bank; item tooltips say who else has the item." },
   VendorMemory = { "Vendor memory", "Remembers what each merchant sells; tooltips and the stock list say where to buy." },
   AuctionHelper = { "Auction helper", "Shopping lists, a sell card that suggests an undercut and posts, prices in tooltips from your scans, and an undercut check on your auctions." },
   Nameplates = { "Nameplates", "Flat plates with levels, your debuffs, casts and threat." },
@@ -666,6 +667,7 @@ local function tooltipRows()
     check("Show who the unit is targeting", setting("Tooltips", "targetLine")),
     check("What an item sells for (when the game doesn't say)", setting("Tooltips", "sellPrice")),
     check("How many of an item you have", setting("Tooltips", "itemCount")), check("Item IDs", setting("Tooltips", "itemID")),
+    check("How many your other characters have (here, same side)", setting("Inventory", "alts")),
     check("Hide unit tooltips in combat", setting("Tooltips", "hideInCombat")),
   }, vendorRows())
 end
