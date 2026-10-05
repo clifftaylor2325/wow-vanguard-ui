@@ -1,6 +1,6 @@
 # Vanguard plan: rebrand ForeverUI, then add seven features (handoff)
 
-Repos: `clifftaylor2325/wow-forever-ui` (the addon) and `clifftaylor2325/wow-forever-ui-site` (the player website).
+Repos: `clifftaylor2325/wow-vanguard-ui` (the addon) and `clifftaylor2325/wow-vanguard-ui-site` (the player website); renamed from `wow-forever-ui` and `wow-forever-ui-site` after the plan was carried out (GitHub redirects the old names).
 Written on 2026-10-05 against addon commit `ea4fa52` (v0.3.0, after PR #109). If a `file:line` below has moved, grep for the identifier quoted next to it.
 This file is written so that a model with less context can carry it out. Section 0 of `docs/handoff/WORKPLAN.md` ("How to work") applies here too, word for word, except where section 0 below overrides it.
 
