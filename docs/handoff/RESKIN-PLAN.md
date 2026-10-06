@@ -239,7 +239,7 @@ Inventory: design §5.3. Group `system`.
 - [x] **S3.2 Addon list, chat config, nameplates tutorial.** `AddonList` (`GW.Skin`; its rows' `Backdrop` not touched),
   `ChatConfigFrame` (outer frame + every child whose name ends in `Backdrop`/`Background`: fade and inset panel),
   `NamePlatesTutorial` (`GW.Skin`). Size S.
-- [ ] **S3.3 Edit Mode windows.** `EditModeManagerFrame` (`Border` faded, `T.Panel` with shadow; `Title`/`LayoutLabel`
+- [x] **S3.3 Edit Mode windows.** `EditModeManagerFrame` (`Border` faded, `T.Panel` with shadow; `Title`/`LayoutLabel`
   theme font; buttons `T.Button`; the Vanguard note under it from `Core/Movers.lua` must still show: test it),
   `EditModeSystemSettingsDialog`, `EditModeLayoutDialog`, `EditModeImportLayoutDialog`, `EditModeImportLayoutLinkDialog`,
   `EditModeUnsavedChangesDialog` (`Border` faded, panel, buttons). **[VERIFY IN GAME]**: open Edit Mode, move a Blizzard
