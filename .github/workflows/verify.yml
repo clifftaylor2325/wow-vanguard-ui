@@ -1,9 +1,15 @@
 name: verify
 
-# Pull requests only, and not for changes to the docs alone. The jobs run on
-# the owner's self-hosted Windows runner (scripts/ci/setup-windows-runner.ps1
-# installs its tools), so they bill no Actions minutes; one runner runs one
-# job at a time, so the checks are one job and the preview another.
+# The pull-request gate, built to finish in about a minute on the owner's
+# self-hosted Windows runner (scripts/ci/setup-windows-runner.ps1 installs
+# its tools, so it bills no Actions minutes): the code-quality scan,
+# luacheck, Lua 5.1 syntax (the game runs Lua 5.1; the test harness,
+# fengari, is Lua 5.3), the JS tests plus one Lua smoke test (npm run
+# test:quick), and the release zip's contents. The full Lua harness with
+# the coverage floor, and the UI preview, take minutes on that PC, so they
+# run in full-suite.yml: after a merge to main, nightly, from the Actions
+# tab, or on a pull request carrying the "full-tests" label. Not for
+# changes to the docs alone.
 on:
   pull_request:
     paths-ignore:
@@ -20,27 +26,28 @@ concurrency:
 defaults:
   run:
     # Git for Windows' bash, so the same snippets run here and on a Linux
-    # box. Each job's first step puts Git's bin folder first on PATH: a
+    # box. The job's first step puts Git's bin folder first on PATH: a
     # plain "bash" otherwise finds C:\Windows\System32\bash.exe, WSL's
     # launcher, which fails on a PC without a WSL distribution.
     shell: bash
 
 jobs:
-  verify:
-    # Every Vitest suite once (the Lua harness and the JS tests), with line
-    # coverage of the addon's own Lua: a failing test fails the run, and so
-    # does coverage below the floor in scripts/lua-coverage-floor.json (only
-    # goes up; 100 is the goal). Then the code-quality scan, luacheck, Lua
-    # 5.1 syntax (the game runs Lua 5.1; the test harness, fengari, is Lua
-    # 5.3), and the release zip's contents.
-    name: Tests, coverage and checks
+  quick:
+    name: Quick checks
     runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: 20
+    timeout-minutes: 5
     steps:
       - name: Git Bash ahead of WSL's bash
         shell: powershell
         run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin"
       - uses: actions/checkout@v4
+        with:
+          # node_modules stays from the last run on this runner (the next
+          # step cleans everything else), so npm ci runs only when
+          # package-lock.json changed: it took 25 s from cold.
+          clean: false
+      - name: Clean the checkout, keeping node_modules
+        run: git clean -ffdx -e node_modules
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -50,8 +57,16 @@ jobs:
             command -v "$tool" >/dev/null || { echo "$tool is not on PATH: run scripts/ci/setup-windows-runner.ps1 on the runner"; exit 1; }
           done
           luacheck --version && luac5.1 -v
-      - run: npm ci
-      - run: npm run coverage
+      - name: npm ci, unless node_modules already matches package-lock.json
+        run: |
+          stamp=node_modules/.package-lock.sha256
+          want="$(node --version) $(sha256sum package-lock.json | cut -d' ' -f1)"
+          if [ "$(cat "$stamp" 2>/dev/null)" = "$want" ]; then
+            echo "node_modules matches package-lock.json; npm ci skipped"
+          else
+            npm ci
+            echo "$want" > "$stamp"
+          fi
       - run: npm run quality
       - run: luacheck --no-color .
       - name: Lua 5.1 syntax of every file the TOC loads
@@ -63,40 +78,10 @@ jobs:
             luac5.1 -p "$file" || status=1
           done < Vanguard.toc
           exit $status
+      - name: JS tests and the Lua smoke test
+        run: npm run test:quick
       - name: Release zip builds and holds every file it should
         run: |
           rm -rf dist
           node scripts/package.mjs
           node scripts/check-zip.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: lua-coverage
-          path: coverage/lua-coverage.json
-
-  preview:
-    # A screenshot of the default layout from the addon's real Lua (art
-    # approximated), so a UI change can be reviewed from the run's artifacts.
-    # Chromium stays in the runner's Playwright cache, so the install is a
-    # no-op after the first run.
-    # It runs on the owner's second runner (labelled "preview", without the
-    # default labels), so it goes alongside the tests job instead of after it.
-    name: UI preview
-    runs-on: [preview]
-    timeout-minutes: 20
-    steps:
-      - name: Git Bash ahead of WSL's bash
-        shell: powershell
-        run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin"
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm ci
-      - run: npm install -g playwright@1.56.1 && playwright install chromium
-      - run: npm run preview
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ui-preview
-          path: preview/*.png
-          if-no-files-found: error

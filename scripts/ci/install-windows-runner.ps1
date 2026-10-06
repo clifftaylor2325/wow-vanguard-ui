@@ -16,8 +16,11 @@
 # (the token is then unused), the tools are refreshed and its service restarted.
 # To register afresh, run <folder>\config.cmd remove first.
 #
-# The second runner, which takes only the UI preview job so it runs while the
-# first runner runs the tests (a fresh token, the same command plus):
+# A second runner with only the "preview" label (no workflow targets it today:
+# full-suite.yml runs its jobs one after the other on the first runner, and
+# verify.yml is the quick gate; point full-suite.yml at it once it is picking
+# up jobs, so the gate never waits behind a full run). A fresh token, the same
+# command plus:
 #
 #      -Name CLIFF-preview -Folder C:\actions-runner-preview -Labels preview
 
@@ -26,8 +29,8 @@ param(
   [string] $Repository = "clifftaylor2325/wow-vanguard-ui",
   [string] $Folder = "C:\actions-runner",
   [string] $Name = $env:COMPUTERNAME,
-  # Labels instead of the default self-hosted, Windows, X64: "preview" makes a
-  # runner the preview job's only home and keeps the tests job off it.
+  # Labels instead of the default self-hosted, Windows, X64: a runner with
+  # only "preview" never takes a job that asks for the defaults.
   [string] $Labels = ""
 )
 
