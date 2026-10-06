@@ -164,10 +164,13 @@ The callback runs once at login, or immediately if the addon registers after log
 ```bash
 npm install
 npm test          # JS and Lua harness tests under Vitest, once (vitest run, no watch), then a per-area Lua harness summary
+npm run test:quick # the JS tests and one Lua smoke test (about 10 s): what a pull request's CI runs
 npm run verify    # npm test (real addon Lua in a TEST-ONLY headless WoW client, and the JS tests), then the code-quality scan
                   # (functions of 10 lines or fewer, all documented; colors only from Core/Theme.lua)
-npm run coverage  # every test with line coverage of the addon Lua; fails below scripts/lua-coverage-floor.json. CI runs this, then npm run quality
-                  # (CI is the owner's self-hosted Windows runner: scripts/ci/install-windows-runner.ps1 -Token <token> sets one up)
+npm run coverage  # every test with line coverage of the addon Lua; fails below scripts/lua-coverage-floor.json (100%)
+                  # CI runs it after a merge to main, nightly, and on a pull request labelled full-tests; a pull request's own
+                  # check is the static checks plus npm run test:quick, in about a minute (CI is the owner's self-hosted
+                  # Windows runner: scripts/ci/install-windows-runner.ps1 -Token <token> sets one up)
 npm run lint      # luacheck
 npm run media     # regenerate Media/Textures and Media/Icons from scripts/lib/media-sources.mjs
 npm run package   # dist/Vanguard-<version>.zip from committed files
@@ -188,7 +191,7 @@ npm run preview   # preview/*.png: the default layout and the options window (ne
 
 **Testing the addon:** `scripts/tests/<area>.test.mjs` play the addon's real Lua in a headless client built for the tests (`scripts/lib/wow-*.lua`): Lua 5.1 semantics, frames with real layout on a 1920x1080 screen, a world model (units, auras, actions, quests, combat, timers) behind the game API, and mouse and keyboard input. A test sets up the world, acts as the player would, and asserts on what the addon drew. The guide is [scripts/tests/README.md](scripts/tests/README.md).
 
-**Code quality:** every function has a comment on the line above it and at most 10 lines of body code; `npm run verify` and CI enforce it. The shared libraries in `Libs/` stay exactly as upstream wrote them, so the scan, luacheck and the coverage count leave them out.
+**Code quality:** every function has a comment on the line above it and at most 10 lines of body code; `npm run verify` and CI enforce it on every pull request. The shared libraries in `Libs/` stay exactly as upstream wrote them, so the scan, luacheck and the coverage count leave them out.
 
 ## License
 
