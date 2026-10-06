@@ -345,7 +345,7 @@ Inventory: design §5.6. No new group: each change lives under its module's own 
 - [x] **S6.5 Fonts on the HUD text.** `T.FontObjects` on `ErrorFont` (the `UIErrorsFrame` line, next to
   `Modules/Merchant.lua:95`), `ZoneTextFont`, `SubZoneTextFont`, `PVPInfoTextFont`, `PVPArenaTextString`'s font, each
   only if the object exists. Size S.
-- [ ] **S6.6 Smoke lines.** Toggle the game's swing timer, mind-control an enemy (priest), craft something, enter a zone.
+- [x] **S6.6 Smoke lines.** Toggle the game's swing timer, mind-control an enemy (priest), craft something, enter a zone.
   Size S.
 
 ---
