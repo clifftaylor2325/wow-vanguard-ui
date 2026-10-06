@@ -209,9 +209,18 @@ local function motionRows()
   }
 end
 
--- General: look, bars, motion, layout and frame sizes.
+-- General, feedback: the in-game form (Core/Feedback.lua).
+local function feedbackRows()
+  return {
+    { "header", "Feedback" },
+    { "text", "A bug or an idea: the form asks what vanguardui.com/feedback asks, then makes one block to paste there (/vg feedback does the same)." },
+    { "button", "Send feedback", function() O.Hide(); ns.Feedback.Open() end },
+  }
+end
+
+-- General: look, bars, motion, layout, frame sizes and feedback.
 local function generalRows()
-  return append(append(append(append(lookRows(), barRows()), motionRows()), layoutRows()), sizeRows())
+  return append(append(append(append(append(lookRows(), barRows()), motionRows()), layoutRows()), sizeRows()), feedbackRows())
 end
 
 -- Each module's name in the window and what it does (and what it needs, if anything).

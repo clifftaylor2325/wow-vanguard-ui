@@ -40,6 +40,7 @@ local HELP = {
   "factionart           which of the game's own faction pictures this client has",
   "errors [clear]       the errors Vanguard caught this session, with stacks and counts (for a bug report); clear empties the list",
   "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
+  "feedback [bug|feature]   a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)",
   "perf [cpu|watch]     Vanguard's CPU and memory now; cpu turns the game's CPU profiling on or off (reload); watch prints them every minute",
 }
 
@@ -430,6 +431,11 @@ local function reportCommand()
   ns.ShowText("Vanguard report: Ctrl+C, then paste at vanguardui.com/feedback", ns.ReportText())
 end
 
+-- /vg feedback [bug|feature]: the feedback form (Core/Feedback.lua), on that kind when one is given.
+local function feedbackCommand(rest)
+  ns.Feedback.Open(rest)
+end
+
 -- /vg stock: the Errands module's stock list, which exists only while that module is on.
 local function stockCommand(rest)
   local ER = ns.GetModule("Errands")
@@ -481,6 +487,7 @@ local COMMANDS = {
   status = statusCommand,
   errors = errorsCommand,
   report = reportCommand,
+  feedback = feedbackCommand,
   perf = function(rest) ns.Perf.Command(rest) end,
 }
 
