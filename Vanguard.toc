@@ -45,6 +45,7 @@ Core/OptionsProfiles.lua
 Core/Setup.lua
 Core/FactionArt.lua
 Core/Slash.lua
+Core/Feedback.lua
 Core/Perf.lua
 Core/GameMenu.lua
 Core/Visibility.lua
