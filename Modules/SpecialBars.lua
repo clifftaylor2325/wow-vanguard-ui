@@ -1,5 +1,5 @@
--- The client's own pet, stance and extra action buttons in the Vanguard
--- look, and a vehicle exit button.
+-- The client's own pet, stance, possess (mind control) and extra action
+-- buttons in the Vanguard look, and a vehicle exit button.
 --
 -- The pet bar, stance bar and extra action button stay the client's;
 -- rebuilding them is where UI addons most often cause "action blocked"
@@ -21,13 +21,15 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local SB = ns.Module("SpecialBars", {
-  defaults = { skinPet = true, skinStance = true, skinExtra = true, vehicleExit = true, place = true },
+  defaults = { skinPet = true, skinStance = true, skinPossess = true, skinExtra = true, vehicleExit = true, place = true },
 })
 
 -- Button name prefixes and how many of each, per bar.
 local BUTTONS = {
   skinPet = { "PetActionButton", 10 },
   skinStance = { "StanceButton", 10 },
+  -- The possess bar's two buttons while you mind-control (PossessActionBar, NUM_POSSESS_SLOTS).
+  skinPossess = { "PossessButton", 2 },
   skinExtra = { "ExtraActionButton", 1 },
 }
 
