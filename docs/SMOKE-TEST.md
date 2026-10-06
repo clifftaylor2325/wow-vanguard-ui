@@ -286,6 +286,54 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the map is the game's own again; the other groups' windows keep the Vanguard look.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 14.2.1 Open a letter
+
+- Do: at a mailbox, open a letter that has text and, if you can, one with an attachment or money (an auction invoice works).
+- Expect: the letter window is a flat panel with no parchment behind the text; the text is light and any headings gold; Reply, Delete, Cancel and Report Spam are flat buttons; the attachment and money buttons have a thin border in the item's quality color; open a second letter and the text is still light.
+- If it fails, paste: a screenshot of the open letter and `/vg errors`.
+
+### 14.2.2 Guild window and its pages
+
+- Do: open the guild window (the Guild or Social menu button, or `J`), then click each page: Chat, Roster, Guild Info, the benefits page, then the maximize/minimize button.
+- Expect: every page shows on flat dark panels (list, roster, chat, benefits, info) with no marble or portrait art; the stream dropdown is a flat button; the maximize and minimize buttons still show their symbol; switching pages keeps the look; the side tabs are still the game's.
+- If it fails, paste: a screenshot of the page that looks wrong and `/vg errors`.
+
+### 14.2.3 Guild dialogs
+
+- Do: from the guild window open the guild log, the news filters, the settings dialog (as a guild leader) and the invite manager; have someone invite you to a guild if you can.
+- Expect: each is a flat panel; text buttons (Close, Accept, Cancel) keep their words and are not covered by an X; the settings dialog's name boxes are dark input boxes.
+- If it fails, paste: a screenshot of the dialog and `/vg errors`.
+
+### 14.2.4 Channels window and a channel dialog
+
+- Do: type `/join test`, then open the channels window (the chat channels button, or `O`) and click Create Channel.
+- Expect: the channels window and the create-channel dialog are flat panels with themed buttons and input boxes, and you are in the channel.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.2.5 Invite a friend
+
+- Do: open the friends list, click Add Friend, type a character name; then, if you can, send a Battle.net battletag request and open Friends of Friends.
+- Expect: the add-friend window is a flat panel; its name box and buttons are themed and still work; the Battle.net invite and Friends of Friends windows are flat panels.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.2.6 Guild registrar and petition
+
+- Do: visit a guild registrar and read the greeting, click to buy a charter; open a charter you hold or are asked to sign, and open the tabard designer from the tabard vendor.
+- Expect: the registrar, petition and tabard windows are flat panels with no parchment; the registrar text, charter names and signatures are light, the headings gold; the tabard model and its colour choices look as the game draws them.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.2.7 Role check popup
+
+- Do: in a group, as leader, start a role check (the raid tools, or the group menu's Initiate Role Poll); also queue for a dungeon and let an invite popup show if you can.
+- Expect: the role poll popup is a flat panel with themed Accept and close buttons; the role buttons still show their icons and still check when clicked; the dungeon invite popup looks the same.
+- If it fails, paste: a screenshot and `/vg errors`. [Needs the game: tagged VERIFY IN GAME.]
+
+### 14.2.8 Raid tab
+
+- Do: in a party, open the raid tab (the friends window's Raid tab), then convert to a raid and look again.
+- Expect: the eight group boxes are flat panels, the member buttons are flat and keep each name's class colour, Raid Info and Convert to Raid are themed buttons; nothing changes while you are in combat and it catches up after.
+- If it fails, paste: a screenshot of the tab and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.
