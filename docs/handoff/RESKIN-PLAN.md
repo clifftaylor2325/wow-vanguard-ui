@@ -371,7 +371,7 @@ Inventory: design §5.8. Group `tabs`. Depends on `T.Tab` and `T.ScrollBar` (S0)
   panel). The gear slots keep their durability labels from `Modules/Windows.lua:268`. Size M.
 - [x] **S7.4 Scroll bars.** On every registered window on show: any child or `parentKey` named `ScrollBar`, and
   `.ScrollBox`'s paired bar, through `T.ScrollBar`. Size S.
-- [ ] **S7.5 Docs and smoke lines.** README sub-bullet for `tabs`; smoke-test lines: click every tab on the character
+- [x] **S7.5 Docs and smoke lines.** README sub-bullet for `tabs`; smoke-test lines: click every tab on the character
   pane, friends, mail, merchant, spellbook; scroll the reputation list. Size S.
 
 ---
