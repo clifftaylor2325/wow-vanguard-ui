@@ -153,7 +153,7 @@ and `scripts/tests/windows-{social,town,system,map,menus,tabs,pvp}.test.mjs`.
 Files: `Modules/WindowsSocial.lua`, `scripts/tests/windows-social.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.1. Group `social`.
 
-- [ ] **S1.1 Open mail.** `GW.Add("social", "framed", { "OpenMailFrame" }, GW.SkinOpenMail)`: `GW.Skin`, then the
+- [x] **S1.1 Open mail.** `GW.Add("social", "framed", { "OpenMailFrame" }, GW.SkinOpenMail)`: `GW.Skin`, then the
   parchment faded (`OpenStationeryBackgroundLeft`, `OpenStationeryBackgroundRight`; `_G` lookups, each optional),
   `OpenMailBodyText` (a `SimpleHTML`) light per tag as `GW.LightItemText` (`Modules/Windows.lua:198`) does, re-applied
   after `OpenMailFrame:Update()` (`hooksecurefunc(OpenMailFrame, "Update", …)`, guarded), `GW.AddButtons("OpenMailFrame",
