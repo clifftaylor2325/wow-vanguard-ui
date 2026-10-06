@@ -310,7 +310,7 @@ own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, nu
   because of an AddOn". If an action is blocked, drop this task and record it. Test: the stub's `world.trigger("MenuProxy.OnShow", frame)`
   (`scripts/lib/wow-world.lua:164`) paints the frame; a second trigger paints nothing new; without `EventRegistry`
   nothing errors. Size M.
-- [ ] **S5.2 Legacy dropdowns.** `DropDownList1-3`: on `OnShow`, `Backdrop` and `MenuBackdrop` (child frames) to alpha 0,
+- [x] **S5.2 Legacy dropdowns.** `DropDownList1-3`: on `OnShow`, `Backdrop` and `MenuBackdrop` (child frames) to alpha 0,
   `Border` faded, `T.Tooltip(list)`; the list buttons' highlight kept. Size S.
 - [ ] **S5.3 More tooltips.** `Modules/Tooltips.lua`, `TT.NAMES` (:22): append `ItemRefShoppingTooltip1`,
   `ItemRefShoppingTooltip2`, `GameNoHeaderTooltip`, `GameSmallHeaderTooltip`, `BuffFrameTooltip`, `QuickKeybindTooltip`,

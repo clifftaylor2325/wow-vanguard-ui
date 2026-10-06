@@ -73,3 +73,39 @@ it("12.x menus: with the menus group off they stay the game's; a client without 
     expect(bare.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'"), `${env}: nothing errors`).toBe("none");
   }
 });
+
+// TEST-ONLY old dropdown lists as UIDropDownListTemplate builds them on Forever
+// (Blizzard_SharedXML/Mainline/UIDropDownMenuTemplates.xml): <list>Backdrop (parentKey Border, a dark
+// dialog border), <list>MenuBackdrop (a tooltip backdrop with a NineSlice) and <list>Button1 with its
+// highlight. DropDownList2 has none of the backdrops.
+const DROPDOWN_ENV = `
+  for i = 1, 2 do
+    local list = CreateFrame("Button", "DropDownList" .. i, UIParent)
+    local button = CreateFrame("Button", "DropDownList" .. i .. "Button1", list)
+    button.TestOnlyHighlight = button:CreateTexture(nil, "HIGHLIGHT")
+    list:Hide()
+  end
+  DropDownList1.Border = CreateFrame("Frame", "DropDownList1Backdrop", DropDownList1)
+  local menu = CreateFrame("Frame", "DropDownList1MenuBackdrop", DropDownList1)
+  menu.NineSlice = CreateFrame("Frame", nil, menu)
+`;
+
+// A dropdown list's state after it shows: its backdrops' alpha (1 when never set), whether Vanguard painted a panel on
+// it, its first button's highlight and own regions, and how many frames are painted.
+const dropdownState = (addon, name) => addon.eval(`local list = ${name} list:Show()
+  local panel = 0 for _, r in ipairs({ list:GetRegions() }) do if r.__alpha ~= 0 then panel = panel + 1 end end
+  local backdrop, menu, button = _G["${name}Backdrop"], _G["${name}MenuBackdrop"], _G["${name}Button1"]
+  return { backdrop = backdrop and (backdrop.__alpha or 1), menu = menu and (menu.__alpha or 1), panel = panel > 0,
+    button = select("#", button:GetRegions()), highlight = button.TestOnlyHighlight.__alpha == nil, painted = ns.Theme.PaintedCount() }`);
+
+it("old dropdown lists: both backdrops faded, a tooltip panel behind, the buttons and their highlight the game's", () => {
+  const addon = loggedIn(DROPDOWN_ENV);
+  const first = dropdownState(addon, "DropDownList1");
+  expect(first, "the backdrops faded, a panel, the button untouched").toMatchObject({ backdrop: 0, menu: 0, panel: true, button: 1, highlight: true });
+  addon.eval("DropDownList1:Hide()");
+  expect(dropdownState(addon, "DropDownList1").painted, "showing again paints nothing more").toBe(first.painted);
+  expect(dropdownState(addon, "DropDownList2"), "a list without backdrops is still panelled").toMatchObject({ panel: true, button: 1, highlight: true });
+  expect(addon.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'"), "nothing errors").toBe("none");
+  const off = loggedIn(DROPDOWN_ENV, MENUS_OFF);
+  expect(dropdownState(off, "DropDownList1"), "with the menus group off: the game's").toMatchObject({ backdrop: 1, menu: 1, panel: false });
+});
