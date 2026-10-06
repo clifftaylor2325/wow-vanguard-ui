@@ -340,7 +340,8 @@ const LEGACY_ENV = WINDOWS_ENV + `
 `;
 
 it("legacy system: the window in the theme, its page backgrounds faded and its panes panelled, tabs and tree nodes untouched", () => {
-  const addon = loggedIn(LEGACY_ENV);
+  // The tabs group (Modules/WindowsTabs.lua) dresses the Legacy tabs and indicators; off here, so this case sees only the map group's skin.
+  const addon = loggedIn(LEGACY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
   addon.eval("__legacy()");
   expect(addon.eval("return LegacySystemFrame.vgWindow == nil"), "nothing is touched until the part of the game loads").toBe(true);
   addon.fire("ADDON_LOADED", "Blizzard_LegacySystem");
