@@ -27,7 +27,7 @@ it("movers", () => {
   addon.eval("__wfgStub.inCombat = true");
   addon.clearChat();
   addon.slash("unlock");
-  expect(chatHas(addon, /Not in combat/), "unlock is refused in combat").toBeTruthy();
+  expect(chatHas(addon, /In combat\. Try again once combat ends\./), "unlock is refused in combat, and says so").toBeTruthy();
 });
 
 it("layout", () => {
