@@ -23,18 +23,21 @@ function ns.NewProfile(name)
   return true
 end
 
--- Copies another profile's settings over the active one.
+-- Copies another profile's settings over the one this character uses after the next reload: the
+-- active one, or the one staged while a switch waits (so the profile running until then is never
+-- overwritten). Returns the name copied into, or false.
 function ns.CopyProfile(from)
-  local source = VanguardDB.profiles[from]
-  if not source or from == ns.ProfileName() then
+  local source, into = VanguardDB.profiles[from], ns.SelectedProfileName()
+  if not source or from == into then
     return false
   end
-  VanguardDB.profiles[ns.ProfileName()] = ns.Copy(source)
-  ns.ProfileChanged()
-  return true
+  VanguardDB.profiles[into] = ns.Copy(source)
+  if into == ns.ProfileName() then ns.ProfileChanged() end
+  return into
 end
 
--- Deletes a profile (never the active or the staged one); characters or specs using it fall back to Default.
+-- Deletes a profile (never the active or the staged one). A character using it, or with it staged,
+-- falls back to Default at its next load (Core/DB.lua); a spec set to it uses the character's profile.
 function ns.DeleteProfile(name)
   if not VanguardDB.profiles[name] or name == ns.ProfileName() or name == ns.SelectedProfileName() then
     return false

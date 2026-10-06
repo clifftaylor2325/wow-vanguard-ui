@@ -39,6 +39,7 @@ local HELP = {
   "status               version, profile, modules, skins, work waiting on combat, what the client has",
   "factionart           which of the game's own faction pictures this client has",
   "errors [clear]       the errors Vanguard caught this session, with stacks and counts (for a bug report); clear empties the list",
+  "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
   "perf [cpu|watch]     Vanguard's CPU and memory now; cpu turns the game's CPU profiling on or off (reload); watch prints them every minute",
 }
 
@@ -59,7 +60,7 @@ local function unlockCommand()
   if ns.Unlock() then
     chat("Unlocked: drag the handles. /vg lock when done.")
   else
-    chat("Not in combat. Try again once combat ends.")
+    chat("In combat. Try again once combat ends.")
   end
 end
 
@@ -195,8 +196,9 @@ local PROFILE_ACTIONS = {
   new = function(name) chat(ns.NewProfile(name) and ("Created profile " .. name .. ".") or "That name is taken or not allowed.") end,
   -- /vg profile copy <from>
   copy = function(name)
-    if not ns.CopyProfile(name) then return chat("No other profile called " .. name .. ".") end
-    ns.OfferReload("Copied " .. name .. " into " .. ns.ProfileName() .. ".")
+    local into = ns.CopyProfile(name)
+    if not into then return chat("No other profile called " .. name .. ".") end
+    ns.OfferReload("Copied " .. name .. " into " .. into .. ".")
   end,
   -- /vg profile delete <name>
   delete = function(name) chat(ns.DeleteProfile(name) and ("Deleted profile " .. name .. ".") or "Can't delete that one (missing, or in use).") end,
@@ -303,13 +305,18 @@ local function textLine()
     UIParent:GetScale(), percent, size, math.floor(size * T.PixelsPerUnit() + 0.5))
 end
 
--- /vg status
-local function statusCommand()
+-- How many modules are on.
+local function modulesOn()
   local enabled = 0
   for _, name in ipairs(ns.ModuleNames()) do
     enabled = enabled + (ns.ModuleEnabled(name) and 1 or 0)
   end
-  chat(string.format("Vanguard %s  ·  profile %s  ·  %d/%d modules on", version(), ns.ProfileName(), enabled, #ns.ModuleNames()))
+  return enabled
+end
+
+-- /vg status
+local function statusCommand()
+  chat(string.format("Vanguard %s  ·  profile %s  ·  %d/%d modules on", version(), ns.ProfileName(), modulesOn(), #ns.ModuleNames()))
   chat(string.format("%d skinned addon(s)  ·  %d painted frame(s)  ·  %d change(s) waiting on combat", #ns.SkinList(), T.PaintedCount(), ns.QueuedCount()))
   chat(clientLine())
   chat(ns.Client.Line())
@@ -343,6 +350,84 @@ local function errorsCommand(rest)
   chat(string.format("Vanguard %s  ·  interface %s  ·  %d error(s) caught this session (%d in all), newest last:", version(), interfaceText(), #ns.errors, occurrences()))
   chat(clientLine())
   for _, e in ipairs(ns.errors) do printError(e) end
+end
+
+-- /vg report ----------------------------------------------------------------------------
+
+-- The most a report holds, in characters, so it fits the feedback form's report box.
+local REPORT_MAX = 8000
+-- The most stack lines a report keeps for one error.
+local REPORT_STACK = 8
+
+-- Text without the game's color codes (|cAARRGGBB and |r), which a pasted report can't use.
+local function plain(text)
+  return (tostring(text):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+end
+
+-- The modules turned off, by name ("none" when every one is on).
+local function modulesOff()
+  local off = {}
+  for _, name in ipairs(ns.ModuleNames()) do
+    if not ns.ModuleEnabled(name) then off[#off + 1] = name end
+  end
+  return #off > 0 and table.concat(off, ", ") or "none"
+end
+
+-- The skinned addons, each marked "(off)" or "(failed)" where it is ("none" when there are none).
+local function skinsText()
+  local out = {}
+  for _, skin in ipairs(ns.SkinList()) do
+    out[#out + 1] = skin.name .. (not skin.enabled and " (off)" or skin.error and " (failed)" or "")
+  end
+  return #out > 0 and table.concat(out, ", ") or "none"
+end
+
+-- "Screen 1920x1080", or "Screen size unknown" when the client can't say.
+local function screenLine()
+  local d = ns.DisplayBlock()
+  return d.width > 0 and string.format("Screen %dx%d", d.width, d.height) or "Screen size unknown"
+end
+
+-- The report's lines before the errors: the same facts /vg status and /vg errors print.
+local function reportHead()
+  return { "### Vanguard report v1 ###",
+    string.format("Vanguard %s  ·  interface %s  ·  profile %s  ·  %d/%d modules on", version(), interfaceText(), ns.ProfileName(), modulesOn(), #ns.ModuleNames()),
+    clientLine(), ns.Client.Line(), textLine(), screenLine(), "Modules off: " .. modulesOff(), "Skins: " .. skinsText(),
+    string.format("Errors: %d (%d in all)", #ns.errors, occurrences()) }
+end
+
+-- One caught error for the report: "[i] text  (xN)", then (when `stack`) up to REPORT_STACK stack lines, indented.
+local function errorLines(i, e, stack)
+  local out = { string.format("[%d] %s  (x%d)", i, e.text, e.count) }
+  for line in (stack and tostring(e.stack) or ""):gmatch("[^\n]+") do
+    if #out <= REPORT_STACK then out[#out + 1] = "    " .. line end
+  end
+  return out
+end
+
+-- The report with the caught errors from `first` on (newest last), each with its stack when `stacks`.
+local function reportText(first, stacks)
+  local lines = reportHead()
+  for i = first, #ns.errors do
+    for _, line in ipairs(errorLines(i, ns.errors[i], stacks)) do lines[#lines + 1] = line end
+  end
+  lines[#lines + 1] = "### end ###"
+  return plain(table.concat(lines, "\n"))
+end
+
+-- The whole /vg report text, at most REPORT_MAX characters: the stacks go first, then the oldest errors.
+function ns.ReportText()
+  local text = reportText(1, true)
+  for first = 1, #ns.errors do
+    if #text <= REPORT_MAX then return text end
+    text = reportText(first, false)
+  end
+  return text
+end
+
+-- /vg report: one block, selected for copying, to paste into the feedback form on vanguardui.com.
+local function reportCommand()
+  ns.ShowText("Vanguard report: Ctrl+C, then paste at vanguardui.com/feedback", ns.ReportText())
 end
 
 -- /vg stock: the Errands module's stock list, which exists only while that module is on.
@@ -395,6 +480,7 @@ local COMMANDS = {
   factionart = function() ns.FactionArt.Report() end,
   status = statusCommand,
   errors = errorsCommand,
+  report = reportCommand,
   perf = function(rest) ns.Perf.Command(rest) end,
 }
 

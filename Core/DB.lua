@@ -66,6 +66,14 @@ local function dropBrokenProfiles(profiles)
   end
 end
 
+-- The character's profile as it loads: a staged switch applies, and a profile that was deleted
+-- (on another character, since this one last loaded) falls back to Default instead of coming back empty.
+local function chooseProfile()
+  ns.ApplyPendingProfile()
+  if not VanguardDB.profiles[VanguardCharDB.profile] then VanguardCharDB.profile = DEFAULT_PROFILE end
+  VanguardDB.profiles[VanguardCharDB.profile] = VanguardDB.profiles[VanguardCharDB.profile] or {}
+end
+
 -- Creates or repairs the saved tables, and upgrades an older account file.
 -- Runs at ADDON_LOADED, when WoW has restored them.
 local function initDB()
@@ -75,8 +83,7 @@ local function initDB()
   VanguardDB.version = from or DB_VERSION
   if from and from < DB_VERSION then ns.MigrateDB(from, DB_VERSION) end
   VanguardCharDB = fill(type(VanguardCharDB) == "table" and VanguardCharDB or {}, { profile = DEFAULT_PROFILE })
-  ns.ApplyPendingProfile()
-  VanguardDB.profiles[VanguardCharDB.profile] = VanguardDB.profiles[VanguardCharDB.profile] or {}
+  chooseProfile()
 end
 
 ns.On("ADDON_LOADED", function(_, name)
@@ -140,15 +147,15 @@ function ns.Settings(key, defaults)
   return profile[key]
 end
 
--- Makes the profile staged by ns.UseProfile the active one (created empty if missing) and tells the
--- ns.OnProfileChanged listeners, so the settings cache hands out its tables from now on. Returns true if
--- the profile changed. Runs at ADDON_LOADED (the first load after the switch) and at login for a spec's
--- profile, both before any module reads its settings.
+-- Makes the profile staged by ns.UseProfile the active one and tells the ns.OnProfileChanged listeners,
+-- so the settings cache hands out its tables from now on. A staged profile that was deleted since (on
+-- another character) is dropped, not made again empty. Returns true if the profile changed. Runs at
+-- ADDON_LOADED (the first load after the switch) and at login for a spec's profile, both before any
+-- module reads its settings.
 function ns.ApplyPendingProfile()
   local name = VanguardCharDB.pendingProfile
   VanguardCharDB.pendingProfile = nil
-  if type(name) ~= "string" or name == VanguardCharDB.profile then return false end
-  VanguardDB.profiles[name] = VanguardDB.profiles[name] or {}
+  if type(name) ~= "string" or name == VanguardCharDB.profile or not VanguardDB.profiles[name] then return false end
   VanguardCharDB.profile = name
   ns.ProfileChanged()
   return true
