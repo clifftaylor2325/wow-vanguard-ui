@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { ACTIONS_ENV, SETUP_DONE, SPECIAL_BARS_ENV, loggedIn, setCombat } from "./helpers.mjs";
+import { ACTIONS_ENV, CLICK_LUA, SETUP_DONE, SPECIAL_BARS_ENV, UI_ENV, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY pet buttons with the template art the client makes (a background and the state textures), a stance and an extra action button.
 const BUTTONS_ENV = `
@@ -96,4 +96,12 @@ it("the pet and stance bars are placed after combat, and left to Edit Mode when 
   expect([off.eval('return ns.MoverPoint("petbar") == nil'), off.eval("return { PetActionBar:GetPoint() }")[0]], "with placing off there are no movers and the bars stay where Edit Mode puts them").toEqual([true, "CENTER"]);
   const none = loggedIn();
   expect(none.eval('return ns.MoverPoint("petbar") == nil and ns.MoverPoint("stancebar") == nil'), "a client without the bars has nothing to place").toBe(true);
+});
+
+it("options: one switch restyles the pet, stance, possess and extra buttons", () => {
+  const addon = loggedIn(UI_ENV + CLICK_LUA);
+  addon.slash("");
+  addon.eval('__click("Action bars")');
+  addon.eval('__click("Restyle the pet, stance, possess and extra action buttons (reload)")');
+  expect(addon.eval("local s = VanguardDB.profiles.Default.SpecialBars return { s.skinPet, s.skinStance, s.skinPossess, s.skinExtra }"), "all four off together").toEqual([false, false, false, false]);
 });
