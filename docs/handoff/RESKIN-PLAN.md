@@ -312,7 +312,7 @@ own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, nu
   nothing errors. Size M.
 - [x] **S5.2 Legacy dropdowns.** `DropDownList1-3`: on `OnShow`, `Backdrop` and `MenuBackdrop` (child frames) to alpha 0,
   `Border` faded, `T.Tooltip(list)`; the list buttons' highlight kept. Size S.
-- [ ] **S5.3 More tooltips.** `Modules/Tooltips.lua`, `TT.NAMES` (:22): append `ItemRefShoppingTooltip1`,
+- [x] **S5.3 More tooltips.** `Modules/Tooltips.lua`, `TT.NAMES` (:22): append `ItemRefShoppingTooltip1`,
   `ItemRefShoppingTooltip2`, `GameNoHeaderTooltip`, `GameSmallHeaderTooltip`, `BuffFrameTooltip`, `QuickKeybindTooltip`,
   `SettingsTooltip`, `PartyMemberBuffTooltip`, `AutoCompleteBox`; each skipped when the client lacks it (the loop already
   does). `LFGBrowseSearchEntryTooltip` is S4's. Test (`tooltip.test.mjs`): the new names are skinned when present. Size S.
