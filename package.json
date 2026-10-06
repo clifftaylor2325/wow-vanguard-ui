@@ -1,6 +1,7 @@
 {
   "name": "vanguard",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "description": "Vanguard: a from-scratch UI suite for WoW Forever.",
   "scripts": {
