@@ -334,3 +334,143 @@ it("click bindings: skinned when their addon loads, with the three buttons and t
   bare.eval("ClickBindingFrame:Show()");
   expect(bare.eval("return __errors('Windows')"), "a window without the buttons or the backdrop").toBe("none");
 });
+
+// TEST-ONLY: the help window, the report window (a layout frame with an inset plate and a screenshot box), and the help
+// ticket status (with its icon, and a button with a backdrop).
+const HELP_ENV = BUTTON_FRAME_ENV + `
+  __buttonFrame("HelpFrame")
+  local report = __frame("ReportFrame") __sub(report, "Border") __text(report, "TitleText") __sub(report, "CloseButton", "Button")
+  __sub(report, "ReportButton", "Button") __sub(report, "ScreenshotReportingFrame") __sub(report.ScreenshotReportingFrame, "TakeScreenshotButton", "Button")
+  local ticket = __frame("TicketStatusFrame")
+  TicketStatusFrameIcon = ticket:CreateTexture(nil, "ARTWORK")
+  TicketStatusFrameButton = CreateFrame("Button", "TicketStatusFrameButton", ticket) __sub(TicketStatusFrameButton, "NineSlice")
+`;
+
+it("help window, report window and ticket status in the theme, the ticket icon kept", () => {
+  const addon = loggedIn(HELP_ENV);
+  addon.eval("HelpFrame:Show() ReportFrame:Show() TicketStatusFrame:Show()");
+  expect(frameState(addon, "HelpFrame"), "help: the window skin").toMatchObject({ art: 0, nine: 0, panel: true, x: 0, title: true });
+  expect(addon.eval(`local r = ReportFrame
+    return { __faded(r), r.Border.__alpha, __panelled(r), r.TitleText:GetFont() ~= nil, r.CloseButton.__piece.__alpha, __panelled(r.ReportButton), __panelled(r.ScreenshotReportingFrame.TakeScreenshotButton) }`),
+    "report: art and Border faded, panel, title, close, Report and screenshot buttons").toEqual([0, 0, true, true, 0, true, true]);
+  expect(addon.eval(`local marked = 0 for _, r in ipairs({ ReportFrame:GetRegions() }) do if r.ignoreInLayout then marked = marked + 1 end end
+    return { marked > 0, ReportFrame.Border.ignoreInLayout == nil }`), "the report window's panel pieces stay out of its layout").toEqual([true, true]);
+  expect(addon.eval(`return { __faded(TicketStatusFrame), TicketStatusFrameIcon.__alpha ~= 0, __panelled(TicketStatusFrame), TicketStatusFrameButton.NineSlice.__piece.__alpha }`),
+    "ticket status: art faded, the ticket icon kept, a panel, its button's backdrop faded").toEqual([0, true, true, 0]);
+  const painted = frameState(addon, "HelpFrame").painted;
+  addon.eval("HelpFrame:Hide() HelpFrame:Show() ReportFrame:Hide() ReportFrame:Show() TicketStatusFrame:Hide() TicketStatusFrame:Show()");
+  expect(frameState(addon, "HelpFrame").painted, "showing them again paints nothing new").toBe(painted);
+  const off = loggedIn(HELP_ENV, SWITCH_OFF);
+  off.eval("HelpFrame:Show() ReportFrame:Show() TicketStatusFrame:Show()");
+  expect([frameState(off, "HelpFrame").panel, off.eval("return __panelled(ReportFrame)"), off.eval("return __faded(TicketStatusFrame)")], "switched off").toEqual([false, false, null]);
+  const bare = loggedIn(SYSTEM_ENV + '__frame("HelpFrame") __frame("ReportFrame") __frame("TicketStatusFrame")');
+  bare.eval("HelpFrame:Show() ReportFrame:Show() TicketStatusFrame:Show()");
+  expect(bare.eval("return __errors('Windows')"), "windows without their parts").toBe("none");
+});
+
+// TEST-ONLY: the report-cheating dialog (a named title, a comment box, a named Cancel button), the splash window (art, a
+// header, two close buttons) and the colour picker with the opacity window (a wheel and swatch that must stay as they are).
+const DIALOGS_ENV = BUTTON_FRAME_ENV + `
+  local cheat = __frame("ReportCheatingDialog") __sub(cheat, "Border") __sub(cheat, "reportButton", "Button") __sub(cheat, "CommentFrame")
+  ReportCheatingDialogTitle = cheat:CreateFontString("ReportCheatingDialogTitle", "ARTWORK")
+  CreateFrame("Button", "ReportCheatingDialogCancelButton", cheat):CreateTexture()
+  local splash = __frame("SplashFrame") __sub(splash, "TopCloseButton", "Button") __sub(splash, "BottomCloseButton", "Button")
+  splash.LeftTexture = splash:CreateTexture(nil, "BACKGROUND")
+  local picker = __frame("ColorPickerFrame") __sub(picker, "Border") __sub(picker, "Header") __text(picker.Header, "Text")
+  __sub(picker, "Footer") __sub(picker.Footer, "CancelButton", "Button") __sub(picker.Footer, "OkayButton", "Button")
+  __sub(picker, "Content") __sub(picker.Content, "HexBox", "EditBox") __sub(picker.Content, "ColorPicker") __sub(picker.Content, "Swatch")
+  local opacity = __frame("OpacityFrame") __sub(opacity, "Border")
+`;
+
+it("report-cheating dialog, splash window, colour picker and opacity window", () => {
+  const addon = loggedIn(DIALOGS_ENV);
+  addon.eval("ReportCheatingDialog:Show() SplashFrame:Show() ColorPickerFrame:Show() OpacityFrame:Show()");
+  expect(addon.eval(`local d = ReportCheatingDialog
+    return { __faded(d), d.Border.__alpha, __panelled(d), ReportCheatingDialogTitle:GetFont() ~= nil, __panelled(d.reportButton), __panelled(ReportCheatingDialogCancelButton), __panelled(d.CommentFrame) }`),
+    "report cheating: art and Border faded, panel, named title themed, report and Cancel buttons, comment box an inset panel").toEqual([0, 0, true, true, true, true, true]);
+  expect(addon.eval(`local s = SplashFrame
+    return { s.LeftTexture.__alpha ~= 0, __faded(s) ~= 0, s.vgBack ~= nil and __panelled(s.vgBack), __panelled(s.BottomCloseButton), s.TopCloseButton.__piece.__alpha }`),
+    "splash: its art is kept (nothing faded), the panel is on a frame behind it, the buttons themed").toEqual([true, true, true, true, 0]);
+  expect(addon.eval(`local c = ColorPickerFrame
+    return { __faded(c), c.Border.__alpha, __faded(c.Header), c.Header.Text:GetFont() ~= nil, __panelled(c), __panelled(c.Footer.CancelButton), __panelled(c.Footer.OkayButton), __panelled(c.Content.HexBox) }`),
+    "colour picker: art, Border and header plate faded, a panel, title, buttons and hex box themed").toEqual([0, 0, 0, true, true, true, true, true]);
+  expect(addon.eval(`local c = ColorPickerFrame.Content return { c.ColorPicker.__piece.__alpha ~= 0, c.Swatch.__piece.__alpha ~= 0 }`), "the wheel and swatch are untouched").toEqual([true, true]);
+  expect(addon.eval("return { OpacityFrame.Border.__alpha, __panelled(OpacityFrame) }"), "opacity window: Border faded, a panel").toEqual([0, true]);
+});
+
+// The report-cheating, splash and picker windows with their switch off, and with parts missing.
+it("report-cheating dialog, splash window and colour picker: switched off, and a client without their parts", () => {
+  const off = loggedIn(DIALOGS_ENV, SWITCH_OFF);
+  off.eval("ReportCheatingDialog:Show() SplashFrame:Show() ColorPickerFrame:Show() OpacityFrame:Show()");
+  expect(off.eval("return { __faded(ReportCheatingDialog) ~= 0, SplashFrame.vgBack == nil, __faded(ColorPickerFrame) ~= 0, __faded(OpacityFrame) ~= 0 }"), "the game's own windows").toEqual([true, true, true, true]);
+  const bare = loggedIn(SYSTEM_ENV + '__frame("ReportCheatingDialog") __frame("SplashFrame") __frame("ColorPickerFrame") __frame("OpacityFrame")');
+  bare.eval("ReportCheatingDialog:Show() SplashFrame:Show() ColorPickerFrame:Show() OpacityFrame:Show()");
+  expect(bare.eval("return __errors('Windows')"), "windows without their parts load cleanly").toBe("none");
+  const twice = loggedIn(DIALOGS_ENV);
+  twice.eval("SplashFrame:Show() ColorPickerFrame:Show()");
+  const before = twice.eval("return ns.Theme.PaintedCount()");
+  twice.eval("SplashFrame:Hide() SplashFrame:Show() ColorPickerFrame:Hide() ColorPickerFrame:Show()");
+  expect(twice.eval("return ns.Theme.PaintedCount()"), "a second show paints nothing new (the splash's back panel is made once)").toBe(before);
+});
+
+// TEST-ONLY: the death recap window (its border pieces and background, X close, Close button), and the combat log's filter bar
+// (a black strip, with filter buttons the game makes later).
+const RECAP_ENV = SYSTEM_ENV + `
+  function __recap()
+    local f = __frame("DeathRecapFrame") __sub(f, "CloseXButton", "Button") __sub(f, "CloseButton", "Button") __text(f, "Title")
+    f.ScrollBox = CreateFrame("Frame", nil, f) f.ScrollBox.__row = __art(f.ScrollBox)
+  end
+  function __logBar()
+    local f = __frame("CombatLogQuickButtonFrame_Custom")
+    function __quickButton(i) local b = CreateFrame("Button", "CombatLogQuickButtonFrameButton" .. i, f) __art(b) return b end
+    function Blizzard_CombatLog_QuickButton_OnClick(id) __quickButton(4) end
+    return f
+  end
+`;
+
+it("death recap: skinned when its addon loads, the rows left as the game draws them", () => {
+  const addon = loggedIn(RECAP_ENV);
+  addon.eval("__recap()");
+  expect(addon.eval("return DeathRecapFrame.vgWindow"), "not hooked before its part of the game loads").toBeNull();
+  addon.fire("ADDON_LOADED", "Blizzard_DeathRecap");
+  addon.eval("DeathRecapFrame:Show()");
+  expect(addon.eval(`local f = DeathRecapFrame
+    return { __faded(f), __panelled(f), f.Title:GetFont() ~= nil, f.CloseXButton.__piece.__alpha, __panelled(f.CloseButton), f.ScrollBox.__row.__alpha ~= 0 }`),
+    "art faded, panel, title, the X close and the Close button themed, the list's rows untouched").toEqual([0, true, true, 0, true, true]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("DeathRecapFrame:Hide() DeathRecapFrame:Show()");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "a second show paints nothing new").toBe(painted);
+  const off = loggedIn(RECAP_ENV, SWITCH_OFF);
+  off.eval("__recap()");
+  off.fire("ADDON_LOADED", "Blizzard_DeathRecap");
+  off.eval("DeathRecapFrame:Show()");
+  expect(off.eval("return __faded(DeathRecapFrame)"), "switched off").toBeNull();
+  const bare = loggedIn(SYSTEM_ENV + '__frame("DeathRecapFrame")');
+  bare.fire("ADDON_LOADED", "Blizzard_DeathRecap");
+  bare.eval("DeathRecapFrame:Show()");
+  expect(bare.eval("return __errors('Windows')"), "a window without its parts").toBe("none");
+});
+
+it("combat log bar: a panel, its filter buttons themed as the game makes them", () => {
+  const addon = loggedIn(RECAP_ENV);
+  addon.eval("__logBar() __quickButton(1) __quickButton(2)");
+  addon.fire("ADDON_LOADED", "Blizzard_CombatLog");
+  const bar = "CombatLogQuickButtonFrame_Custom";
+  expect(addon.eval(`return { __faded(${bar}), __panelled(${bar}), __panelled(CombatLogQuickButtonFrameButton1), __panelled(CombatLogQuickButtonFrameButton2) }`),
+    "strip faded, an inset panel, the buttons that exist themed").toEqual([0, true, true, true]);
+  addon.eval(`__quickButton(3) ${bar}:Hide() ${bar}:Show()`);
+  expect(addon.eval("return __panelled(CombatLogQuickButtonFrameButton3)"), "a button made later is themed when the bar shows").toBe(true);
+  addon.eval(`Blizzard_CombatLog_QuickButton_OnClick(1)`);
+  expect(addon.eval("return __panelled(CombatLogQuickButtonFrameButton4)"), "and when a filter is picked").toBe(true);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval(`${bar}:Hide() ${bar}:Show()`);
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "showing again paints nothing new").toBe(painted);
+  const off = loggedIn(RECAP_ENV, SWITCH_OFF);
+  off.eval("__logBar() __quickButton(1)");
+  off.fire("ADDON_LOADED", "Blizzard_CombatLog");
+  expect(off.eval(`return { __faded(${bar}) ~= 0, __faded(CombatLogQuickButtonFrameButton1) ~= 0 }`), "switched off").toEqual([true, true]);
+  const bare = loggedIn(SYSTEM_ENV + '__frame("CombatLogQuickButtonFrame_Custom")');
+  bare.fire("ADDON_LOADED", "Blizzard_CombatLog");
+  bare.eval("CombatLogQuickButtonFrame_Custom:Show()");
+  expect(bare.eval("return __errors('Windows')"), "a bar without buttons or the click function").toBe("none");
+});

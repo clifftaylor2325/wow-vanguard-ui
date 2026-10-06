@@ -237,3 +237,87 @@ GW.Add("system", "framed", { "QuickKeybindFrame" }, GW.SkinQuickKeybind)
 GW.Add("system", "framed", { "CooldownViewerSettings" }, GW.SkinCooldownSettings)
 GW.Add("system", "framed", { "CooldownViewerLayoutDialog", "CooldownViewerImportLayoutDialog" }, GW.SkinEditDialog)
 GW.Add("system", "onDemand", "Blizzard_ClickBindingUI", { "ClickBindingFrame" }, GW.SkinClickBinding)
+
+-- Help, report, splash, colour picker, death recap, combat log bar ---------------------------
+
+-- The report window (a ResizeLayoutFrame, so its panel stays out of the layout): the inset plates
+-- and watermark faded, Border faded, the title and close button, the Report and screenshot buttons.
+GW.SkinReport = skinner({
+  layout = true, art = { "Border" }, titles = { "TitleText" }, close = { "CloseButton" },
+  buttons = { "ReportButton", "ScreenshotReportingFrame.TakeScreenshotButton" },
+})
+
+-- The help ticket status: the frame's art faded except the ticket icon, a panel, and its button's backdrop faded.
+function GW.SkinTicketStatus(frame)
+  local icon = _G.TicketStatusFrameIcon
+  T.FadeRegions(frame, type(icon) == "table" and { [icon] = true } or nil)
+  T.Panel(frame, { shadow = true })
+  local button = _G.TicketStatusFrameButton
+  if type(button) == "table" and type(button.NineSlice) == "table" then fadeRegions(button.NineSlice) end
+end
+
+-- The report-cheating dialog: the window skin, its comment box an inset panel, and its title (a named string).
+local reportCheating = withWindowSkin({ buttons = { "reportButton" }, fade = { "CommentFrame" }, insets = { "CommentFrame" } })
+-- Skins the dialog, and its title in the theme font.
+function GW.SkinReportCheating(frame)
+  reportCheating(frame)
+  local title = _G.ReportCheatingDialogTitle
+  if type(title) == "table" then heading(title) end
+end
+GW.AddButtons("ReportCheatingDialog", { "ReportCheatingDialogCancelButton" })
+
+-- The splash window (what's new): its big art stays; a panel goes behind it, on a child frame one
+-- level below the window so it draws under the art, and its two close buttons and buttons are themed.
+function GW.SkinSplash(frame)
+  if not frame.vgBack then
+    frame.vgBack = CreateFrame("Frame", nil, frame)
+    frame.vgBack:SetAllPoints(frame)
+    frame.vgBack:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
+  end
+  T.Panel(frame.vgBack, { shadow = true })
+  dress(frame, { close = { "TopCloseButton" }, buttons = { "BottomCloseButton" } })
+end
+
+-- The colour picker: Border and header plate faded, a panel, the title, Cancel/Okay and the hex box
+-- themed. The wheel, value and alpha bars and the swatches are untouched.
+GW.SkinColorPicker = skinner({
+  art = { "Border" }, fade = { "Header" }, titles = { "Header.Text" },
+  buttons = { "Footer.CancelButton", "Footer.OkayButton" }, edits = { "Content.HexBox" },
+})
+-- The opacity slider window: Border faded, a panel (the slider is the game's).
+GW.SkinOpacity = skinner({ art = { "Border" } })
+
+-- The death recap window: its border pieces, background and divider faded (the rows keep the game's
+-- look), a panel, the title, the X close button and the Close push button.
+GW.SkinDeathRecap = skinner({ titles = { "Title" }, close = { "CloseXButton" }, buttons = { "CloseButton" } })
+
+-- Themes the combat log bar's filter buttons (the game makes them as it needs them).
+local function dressQuickButtons()
+  local i = 1
+  while type(_G["CombatLogQuickButtonFrameButton" .. i]) == "table" do
+    T.Button(_G["CombatLogQuickButtonFrameButton" .. i])
+    i = i + 1
+  end
+end
+
+-- The combat log's filter bar: its black strip faded, an inset panel, its filter buttons themed now
+-- and whenever the game shows or refreshes the bar or picks a filter (that is when it makes buttons).
+function GW.SkinCombatLogBar(frame)
+  T.FadeRegions(frame)
+  T.Panel(frame, { inset = true })
+  dressQuickButtons()
+  if frame.vgQuickButtons or type(hooksecurefunc) ~= "function" then return end
+  frame.vgQuickButtons = true
+  for _, script in ipairs({ "OnShow", "OnEvent" }) do frame:HookScript(script, dressQuickButtons) end
+  if type(_G.Blizzard_CombatLog_QuickButton_OnClick) == "function" then hooksecurefunc("Blizzard_CombatLog_QuickButton_OnClick", dressQuickButtons) end
+end
+
+GW.Add("system", "framed", { "HelpFrame" })
+GW.Add("system", "framed", { "TicketStatusFrame" }, GW.SkinTicketStatus)
+GW.Add("system", "framed", { "ReportFrame" }, GW.SkinReport)
+GW.Add("system", "framed", { "ReportCheatingDialog" }, GW.SkinReportCheating)
+GW.Add("system", "framed", { "SplashFrame" }, GW.SkinSplash)
+GW.Add("system", "framed", { "ColorPickerFrame" }, GW.SkinColorPicker)
+GW.Add("system", "framed", { "OpacityFrame" }, GW.SkinOpacity)
+GW.Add("system", "onDemand", "Blizzard_DeathRecap", { "DeathRecapFrame" }, GW.SkinDeathRecap)
+GW.Add("system", "onDemand", "Blizzard_CombatLog", { "CombatLogQuickButtonFrame_Custom" }, GW.SkinCombatLogBar)
