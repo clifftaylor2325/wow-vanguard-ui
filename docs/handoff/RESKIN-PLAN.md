@@ -201,7 +201,7 @@ Inventory: design §5.2. Group `town`.
   `FilterDropdown` via `T.Button`, each row on acquire (`ClassTrainerFrame.ScrollBox:RegisterCallback(ScrollBoxListMixin.Event.OnAcquiredFrame, …)`
   guarded; keep `selectedTex`, `disabledBG`, `lock`, `icon`; fade the row's `Left/Middle/Right/Bg` art; `name`/`subText`
   in the theme font). Vanguard's Train all button (`Modules/Errands.lua:112`) is already themed; don't move it. Size M.
-- [ ] **S2.3 Side dress-up, stack split, coin pickup.** `SideDressUpFrame` (`BGTopLeft`, `BGBottomLeft`, `$parentTop`,
+- [x] **S2.3 Side dress-up, stack split, coin pickup.** `SideDressUpFrame` (`BGTopLeft`, `BGBottomLeft`, `$parentTop`,
   `$parentBackgroundTop`, `$parentBackgroundBot` faded; `ControlFrame` buttons `T.Button`), `StackSplitFrame`
   (`SingleItemSplitBackground`, `MultiItemSplitBackground`, `FrameGlow` faded; the four buttons `T.Button`;
   `StackSplitText` theme font), `CoinPickupFrame` (textures faded, `CoinPickupOkayButton`/`CoinPickupCancelButton`).

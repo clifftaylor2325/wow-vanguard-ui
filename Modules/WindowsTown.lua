@@ -18,6 +18,27 @@ local function keyButtons(frame, keys)
   end
 end
 
+-- Themes each button named in names that this client has.
+local function namedButtons(names)
+  for _, name in ipairs(names) do
+    local button = _G[name]
+    if type(button) == "table" and button.GetRegions then T.Button(button) end
+  end
+end
+
+-- Gives a texture back its alpha (a button's glyph, which T.Button faded with the rest of its art).
+local function showTexture(texture)
+  if type(texture) == "table" and texture.SetAlpha then texture:SetAlpha(1) end
+end
+
+-- A button whose arrow is its normal and disabled texture (the money arrows): a theme button that keeps its arrow.
+local function arrowButton(button)
+  if type(button) ~= "table" or not button.GetRegions then return end
+  T.Button(button)
+  showTexture(button.GetNormalTexture and button:GetNormalTexture())
+  showTexture(button.GetDisabledTexture and button:GetDisabledTexture())
+end
+
 -- Puts the theme font (colour left as the game set it) on each font string of a frame named in keys.
 local function keyFonts(frame, keys, role)
   for _, key in ipairs(keys) do
@@ -139,3 +160,66 @@ end
 
 GW.AddButtons("ClassTrainerFrame", { "ClassTrainerTrainButton" })
 GW.Add("town", "onDemand", "Blizzard_TrainerUI", { "ClassTrainerFrame" }, GW.SkinTrainer)
+
+-- Dress-up, stack split, coin pickup ----------------------------------------------------------------
+
+-- The side dress-up window's art: parts by key, and the textures the game names.
+local DRESSUP_ART = { "BGTopLeft", "BGBottomLeft" }
+local DRESSUP_NAMED = { "SideDressUpFrameTop", "SideDressUpFrameBackgroundTop", "SideDressUpFrameBackgroundBot" }
+-- The model's control buttons (zoom, rotate, reset): their icon is the part that stays.
+local MODEL_CONTROLS = { "zoomInButton", "zoomOutButton", "rotateLeftButton", "rotateRightButton", "resetButton" }
+-- The stack split window's art (the money plates, and its glow).
+local SPLIT_ART = { "SingleItemSplitBackground", "MultiItemSplitBackground", "FrameGlow" }
+-- The coin pickup window's coin icons (kept) and its buttons.
+local COIN_ICONS = { "CoinPickupGoldIcon", "CoinPickupSilverIcon", "CoinPickupCopperIcon" }
+local COIN_BUTTONS = { "CoinPickupOkayButton", "CoinPickupCancelButton" }
+
+-- The model scene's zoom, rotate and reset buttons as theme buttons that keep their icons.
+local function styleModelControls(scene)
+  local box = type(scene) == "table" and scene.ControlFrame
+  if type(box) ~= "table" then return end
+  for _, key in ipairs(MODEL_CONTROLS) do
+    local button = box[key]
+    if type(button) == "table" and button.GetRegions then
+      T.Button(button)
+      showTexture(button.Icon)
+    end
+  end
+end
+
+-- The side dress-up window (beside the auction house and merchant): the window skin, the game's
+-- plates faded, the Reset and model buttons in the theme.
+function GW.SkinSideDressUp(frame)
+  GW.Skin(frame)
+  GW.FadeParts(frame, DRESSUP_ART)
+  GW.FadeNamed(DRESSUP_NAMED)
+  keyButtons(frame, { "ResetButton" })
+  styleModelControls(frame.ModelScene)
+end
+
+-- The stack split window: the window skin, its money plates and glow faded, the arrows keep their
+-- arrow, Okay and Cancel in the theme, the amount in the theme font.
+function GW.SkinStackSplit(frame)
+  GW.Skin(frame)
+  fadeWhole(frame, SPLIT_ART)
+  keyButtons(frame, { "OkayButton", "CancelButton" })
+  arrowButton(frame.LeftButton)
+  arrowButton(frame.RightButton)
+  keyFonts(frame, { "StackSplitText", "StackItemCountText" }, "number")
+end
+
+-- The coins window the money frame opens: a panel, its plate faded (the coin icons stay), the buttons themed.
+function GW.SkinCoinPickup(frame)
+  T.Panel(frame, { shadow = true })
+  local keep = {}
+  for _, name in ipairs(COIN_ICONS) do keep[_G[name] or false] = true end
+  T.FadeRegions(frame, keep)
+  namedButtons(COIN_BUTTONS)
+  arrowButton(_G.CoinPickupLeftButton)
+  arrowButton(_G.CoinPickupRightButton)
+  namedFonts({ "CoinPickupText" }, "number")
+end
+
+GW.Add("town", "popups", { "SideDressUpFrame" }, GW.SkinSideDressUp)
+GW.Add("town", "popups", { "StackSplitFrame" }, GW.SkinStackSplit)
+GW.Add("town", "popups", { "CoinPickupFrame" }, GW.SkinCoinPickup)
