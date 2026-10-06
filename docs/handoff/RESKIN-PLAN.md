@@ -232,28 +232,28 @@ Inventory: design §5.2. Group `town`.
 Files: `Modules/WindowsSystem.lua`, `scripts/tests/windows-system.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.3. Group `system`.
 
-- [ ] **S3.1 Game options.** `SettingsPanel`: `NineSlice`, `Bg` faded; `T.Panel` with shadow; `ClosePanelButton`
+- [x] **S3.1 Game options.** `SettingsPanel`: `NineSlice`, `Bg` faded; `T.Panel` with shadow; `ClosePanelButton`
   (`T.CloseButton`), `ApplyButton`, `CloseButton` (`T.Button`), `SearchBox` (`T.EditBox`), `GameTab`/`AddOnsTab`
   (`T.Tab`); `CategoryList` and `SettingsList` inset panels; `Container`/`SettingsCanvas` left to their pages. Fonts via `T.FontObjects({ SettingsListHeader… })` only if those font objects exist on
   Forever (check `Blizzard_Settings_Shared`); otherwise none. Re-skin on `OnShow`. Size M.
-- [ ] **S3.2 Addon list, chat config, nameplates tutorial.** `AddonList` (`GW.Skin`; its rows' `Backdrop` not touched),
+- [x] **S3.2 Addon list, chat config, nameplates tutorial.** `AddonList` (`GW.Skin`; its rows' `Backdrop` not touched),
   `ChatConfigFrame` (outer frame + every child whose name ends in `Backdrop`/`Background`: fade and inset panel),
   `NamePlatesTutorial` (`GW.Skin`). Size S.
-- [ ] **S3.3 Edit Mode windows.** `EditModeManagerFrame` (`Border` faded, `T.Panel` with shadow; `Title`/`LayoutLabel`
+- [x] **S3.3 Edit Mode windows.** `EditModeManagerFrame` (`Border` faded, `T.Panel` with shadow; `Title`/`LayoutLabel`
   theme font; buttons `T.Button`; the Vanguard note under it from `Core/Movers.lua` must still show: test it),
   `EditModeSystemSettingsDialog`, `EditModeLayoutDialog`, `EditModeImportLayoutDialog`, `EditModeImportLayoutLinkDialog`,
   `EditModeUnsavedChangesDialog` (`Border` faded, panel, buttons). **[VERIFY IN GAME]**: open Edit Mode, move a Blizzard
   frame, save; nothing reports a blocked action. Size M.
-- [ ] **S3.4 Keybinding, Cooldown Manager settings, click bindings.** `QuickKeybindFrame` (panel behind its banner),
+- [x] **S3.4 Keybinding, Cooldown Manager settings, click bindings.** `QuickKeybindFrame` (panel behind its banner),
   `CooldownViewerSettings` (`GW.Skin`), `CooldownViewerLayoutDialog`/`CooldownViewerImportLayoutDialog`,
   `GW.Add("system", "onDemand", "Blizzard_ClickBindingUI", { "ClickBindingFrame" })`. Size S.
-- [ ] **S3.5 Help, report, splash, colour picker, death recap, combat log bar.** `HelpFrame`, `TicketStatusFrame`,
+- [x] **S3.5 Help, report, splash, colour picker, death recap, combat log bar.** `HelpFrame`, `TicketStatusFrame`,
   `ReportFrame`, `ReportCheatingDialog`, `SplashFrame` (panel behind, art kept), `ColorPickerFrame` + `OpacityFrame`
   (`Border`/`Header` faded, panel, buttons; the wheel and swatch untouched),
   `GW.Add("system", "onDemand", "Blizzard_DeathRecap", { "DeathRecapFrame" })`,
   `GW.Add("system", "onDemand", "Blizzard_CombatLog", { "CombatLogQuickButtonFrame_Custom" })` (panel, its filter
   buttons `T.Button`). Size S.
-- [ ] **S3.6 Docs and smoke lines.** README sub-bullet for `system`; smoke-test lines: Escape → Options, Edit Mode,
+- [x] **S3.6 Docs and smoke lines.** README sub-bullet for `system`; smoke-test lines: Escape → Options, Edit Mode,
   AddOns, `/stopwatch`, the help button, a death on a test character for the recap. Size S.
 
 ---
