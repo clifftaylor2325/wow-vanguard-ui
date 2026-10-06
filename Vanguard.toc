@@ -9,7 +9,7 @@
 ## IconTexture: Interface\AddOns\Vanguard\Media\Textures\Icon
 ## AddonCompartmentFunc: Vanguard_OnAddonCompartmentClick
 ## X-Flavor: forever
-## X-License: MIT
+## X-License: All Rights Reserved
 ## X-Website: https://github.com/clifftaylor2325/wow-vanguard-ui
 
 # Shared libraries, unmodified (licenses beside them in Libs/).
