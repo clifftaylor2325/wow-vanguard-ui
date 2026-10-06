@@ -60,3 +60,48 @@ end
 
 GW.Add("social", "framed", { "OpenMailFrame" }, GW.SkinOpenMail)
 GW.AddButtons("OpenMailFrame", { "OpenMailReplyButton", "OpenMailDeleteButton", "OpenMailCancelButton", "OpenMailReportSpamButton" })
+
+-- Guild window ----------------------------------------------------------------------------------
+
+-- The guild window's panes (parentKeys); each has art to fade and, mostly, an InsetFrame.
+GW.GUILD_PANES = { "CommunitiesList", "MemberList", "Chat", "GuildBenefitsFrame", "GuildDetailsFrame" }
+
+-- Fades a frame's own textures and its NineSlice (a part's art), by alpha.
+local function fadeFrameArt(frame)
+  if type(frame) ~= "table" or not frame.GetRegions then return end
+  T.FadeRegions(frame)
+  if type(frame.NineSlice) == "table" and frame.NineSlice.GetRegions then T.FadeRegions(frame.NineSlice) end
+end
+
+-- One pane in the theme: its art faded and an inset panel behind it (on its InsetFrame when
+-- it has one, else on the pane itself).
+local function dressPane(pane)
+  if type(pane) ~= "table" or not pane.GetRegions then return end
+  fadeFrameArt(pane)
+  local inset = type(pane.InsetFrame) == "table" and pane.InsetFrame.GetRegions and pane.InsetFrame or pane
+  fadeFrameArt(inset)
+  T.Panel(inset, { inset = true, noSheen = true })
+end
+
+-- The maximize and minimize buttons: their glyph is their art, so they get a flat inset panel behind it
+-- (T.Button would fade the glyph away).
+local function dressMaxMin(box)
+  if type(box) ~= "table" then return end
+  for _, key in ipairs({ "MaximizeButton", "MinimizeButton" }) do
+    local button = box[key]
+    if type(button) == "table" and button.CreateTexture then T.Panel(button, { inset = true, noSheen = true }) end
+  end
+end
+
+-- The guild window: the window skin, the portrait art faded, each pane and the stream
+-- dropdown dressed; again whenever the game switches pages (SetDisplayMode). The side tabs are the tabs stream's.
+function GW.SkinGuildWindow(frame)
+  GW.Skin(frame)
+  GW.FadeParts(frame, { "PortraitOverlay" })
+  for _, key in ipairs(GW.GUILD_PANES) do dressPane(frame[key]) end
+  dressMaxMin(frame.MaximizeMinimizeFrame)
+  if type(frame.StreamDropdown) == "table" and frame.StreamDropdown.CreateTexture then T.Button(frame.StreamDropdown) end
+  after(frame, "SetDisplayMode", GW.SkinGuildWindow)
+end
+
+GW.Add("social", "framed", { "CommunitiesFrame" }, GW.SkinGuildWindow)

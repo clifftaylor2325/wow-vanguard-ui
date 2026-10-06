@@ -160,7 +160,7 @@ Inventory: design §5.1. Group `social`.
   { "OpenMailReplyButton", "OpenMailDeleteButton", "OpenMailCancelButton", "OpenMailReportSpamButton" })`; the letter,
   money and attachment item buttons get the bags' quality border through `ns.GetModule("Bags").SkinItem` (exported by
   S0.9). Size S.
-- [ ] **S1.2 Guild window.** `CommunitiesFrame` with `GW.Skin`; `MaximizeMinimizeFrame`'s button via `T.Button`;
+- [x] **S1.2 Guild window.** `CommunitiesFrame` with `GW.Skin`; `MaximizeMinimizeFrame`'s button via `T.Button`;
   `PortraitOverlay` faded; `GuildBenefitsFrame`, `GuildDetailsFrame`, `MemberList`, `Chat` and `CommunitiesList` art
   faded with inset panels; `StreamDropdown` via `T.Button`. Side tabs are S7's (leave them). Re-skin on
   `CommunitiesFrameMixin:OnShow` and after `SetDisplayMode` (hooksecurefunc on the frame, guarded). Size M.

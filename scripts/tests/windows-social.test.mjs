@@ -66,3 +66,55 @@ it("open mail: a client without the body text, the stationery, the items or the 
   odd.eval("OpenMailFrame:Show()");
   expect([windowErrors(addon), windowErrors(odd), addon.eval("return #ns.errors")], "no errors").toEqual(["none", "none", 0]);
 });
+
+// Guild window -------------------------------------------------------------------------------------
+
+// The guild window the way the game builds it: portrait overlay, panes with inset frames, a stream dropdown, a max/min pair.
+const GUILD_ENV = WINDOWS_ENV + `
+  local f = __window("CommunitiesFrame")
+  f.PortraitOverlay = CreateFrame("Frame", nil, f) f.PortraitOverlay.Emblem = f.PortraitOverlay:CreateTexture()
+  for _, key in ipairs({ "CommunitiesList", "MemberList", "Chat" }) do
+    local pane = CreateFrame("Frame", nil, f) pane.Art = pane:CreateTexture() f[key] = pane
+    pane.InsetFrame = CreateFrame("Frame", nil, pane) pane.InsetFrame.Bg = pane.InsetFrame:CreateTexture()
+    pane.InsetFrame.NineSlice = CreateFrame("Frame", nil, pane.InsetFrame) pane.InsetFrame.NineSlice.Edge = pane.InsetFrame.NineSlice:CreateTexture()
+  end
+  for _, key in ipairs({ "GuildBenefitsFrame", "GuildDetailsFrame" }) do
+    local pane = CreateFrame("Frame", nil, f) pane.Art = pane:CreateTexture() f[key] = pane
+  end
+  f.MaximizeMinimizeFrame = CreateFrame("Frame", nil, f)
+  f.MaximizeMinimizeFrame.MaximizeButton = CreateFrame("Button", nil, f.MaximizeMinimizeFrame)
+  f.MaximizeMinimizeFrame.MinimizeButton = CreateFrame("Button", nil, f.MaximizeMinimizeFrame)
+  f.StreamDropdown = CreateFrame("Button", nil, f) f.StreamDropdown.Arrow = f.StreamDropdown:CreateTexture()
+  __modes = 0
+  function f:SetDisplayMode() __modes = __modes + 1 f.CommunitiesList.Art:SetAlpha(1) end
+`;
+
+it("guild window: panes faded and panelled, portrait art faded, dropdown and max/min dressed, skinned again on a page switch", () => {
+  const addon = loggedIn(GUILD_ENV);
+  addon.eval("CommunitiesFrame:Show()");
+  expect(windowState(addon, "CommunitiesFrame")).toMatchObject({ art: 0, nine: 0, panel: true, title: true });
+  expect(addon.eval(`local f = CommunitiesFrame
+    return { f.PortraitOverlay.Emblem.__alpha, f.CommunitiesList.Art.__alpha, f.CommunitiesList.InsetFrame.Bg.__alpha, f.MemberList.InsetFrame.NineSlice.Edge.__alpha,
+      f.Chat.InsetFrame.Bg.__alpha, f.GuildBenefitsFrame.Art.__alpha, f.GuildDetailsFrame.Art.__alpha, f.StreamDropdown.Arrow.__alpha }`), "the game's art faded").toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+  expect(addon.eval(`local f = CommunitiesFrame
+    local function painted(x) for _, r in ipairs({ x:GetRegions() }) do if r.__alpha ~= 0 then return true end end return false end
+    return { painted(f.CommunitiesList.InsetFrame), painted(f.MemberList.InsetFrame), painted(f.GuildBenefitsFrame), painted(f.StreamDropdown),
+      painted(f.MaximizeMinimizeFrame.MaximizeButton), painted(f.MaximizeMinimizeFrame.MinimizeButton) }`), "inset panels, a themed dropdown and flat max/min buttons").toEqual([true, true, true, true, true, true]);
+  addon.eval("CommunitiesFrame:SetDisplayMode(2)");
+  expect(addon.eval("return { __modes, CommunitiesFrame.CommunitiesList.Art.__alpha }"), "a page switch is skinned again").toEqual([1, 0]);
+});
+
+it("guild window: a second show paints nothing more, the switch off leaves the game's, missing parts load cleanly", () => {
+  const addon = loggedIn(GUILD_ENV);
+  addon.eval("CommunitiesFrame:Show()");
+  const painted = windowState(addon, "CommunitiesFrame").painted;
+  addon.eval("CommunitiesFrame:Hide() CommunitiesFrame:Show() CommunitiesFrame:SetDisplayMode(3)");
+  expect(windowState(addon, "CommunitiesFrame").painted, "painting again piles up nothing").toBe(painted);
+  const off = loggedIn(GUILD_ENV, OFF);
+  off.eval("CommunitiesFrame:Show()");
+  expect([windowState(off, "CommunitiesFrame").art !== 0, off.eval("return CommunitiesFrame.vgWindow == nil")], "with the group off").toEqual([true, true]);
+  const bare = loggedIn(WINDOWS_ENV + `__window("CommunitiesFrame") CommunitiesFrame.Chat = {} CommunitiesFrame.StreamDropdown = {} CommunitiesFrame.MaximizeMinimizeFrame = {}
+    CommunitiesFrame.MemberList = CreateFrame("Frame", nil, CommunitiesFrame) CommunitiesFrame.MemberList.InsetFrame = {}`);
+  bare.eval("CommunitiesFrame:Show()");
+  expect([windowErrors(bare), bare.eval("return #ns.errors")], "a client with parts missing").toEqual(["none", 0]);
+});
