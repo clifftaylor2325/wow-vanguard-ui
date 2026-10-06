@@ -106,15 +106,18 @@ end
 
 GW.Add("social", "framed", { "CommunitiesFrame" }, GW.SkinGuildWindow)
 
--- Guild dialogs ---------------------------------------------------------------------------------
+-- Dialogs -----------------------------------------------------------------------------------------
 
--- The art the guild dialogs draw behind them (translucent frames, dark dialog borders).
-GW.GUILD_DIALOG_ART = { "NineSlice", "Bg", "BG", "Border", "Background" }
+-- The art the social dialogs draw behind them (translucent frames, dark dialog borders, headers, list borders).
+GW.SOCIAL_DIALOG_ART = { "NineSlice", "Bg", "BG", "Border", "Background", "Header", "ScrollFrameBorder" }
 -- Their push buttons by parentKey, and by the name suffix the game gives them ($parentAcceptButton).
-GW.GUILD_DIALOG_BUTTONS = { "Accept", "Cancel", "Delete", "Close", "Copy", "LinkToChat", "GenerateLinkButton", "ChangeAvatarButton", "ContextButton" }
-GW.GUILD_DIALOG_NAMED = { "AcceptButton" }
+GW.SOCIAL_DIALOG_BUTTONS = {
+  "Accept", "Cancel", "Delete", "Close", "Copy", "LinkToChat", "GenerateLinkButton", "ChangeAvatarButton", "ContextButton",
+  "OKButton", "SendButton", "CancelButton", "SendRequestButton", "FriendsDropdown",
+}
+GW.SOCIAL_DIALOG_NAMED = { "AcceptButton" }
 -- Their edit boxes by parentKey.
-GW.GUILD_DIALOG_BOXES = { "NameEdit", "ShortNameEdit" }
+GW.SOCIAL_DIALOG_BOXES = { "NameEdit", "ShortNameEdit", "Name", "Password" }
 
 -- Fades one art part named key: a texture, or a frame with its own textures and NineSlice.
 local function fadeKey(frame, key)
@@ -137,23 +140,23 @@ local function dressKeys(frame, keys, need, skin)
   end
 end
 
--- The parts a guild dialog may have, each only if it has it: title, close control, push buttons, edit boxes.
+-- The parts a social dialog may have, each only if it has it: title, close control, push buttons, edit boxes.
 local function dressDialogParts(frame, name)
   if type(frame.Title) == "table" and frame.Title.SetFont then T.Text(frame.Title, "heading", false) end
   dressClose(frame.CloseButton or (name and _G[name .. "CloseButton"]))
-  dressKeys(frame, GW.GUILD_DIALOG_BUTTONS, "CreateTexture", T.Button)
-  dressKeys(frame, GW.GUILD_DIALOG_BOXES, "SetText", T.EditBox)
-  for _, suffix in ipairs(GW.GUILD_DIALOG_NAMED) do
+  dressKeys(frame, GW.SOCIAL_DIALOG_BUTTONS, "CreateTexture", T.Button)
+  dressKeys(frame, GW.SOCIAL_DIALOG_BOXES, "SetText", T.EditBox)
+  for _, suffix in ipairs(GW.SOCIAL_DIALOG_NAMED) do
     local button = name and _G[name .. suffix]
     if type(button) == "table" and button.CreateTexture then T.Button(button) end
   end
 end
 
--- A guild dialog: its art faded, a flat panel with a soft shadow, its parts themed. (Not GW.Skin: the log and
+-- A social dialog: its art faded, a flat panel with a soft shadow, its parts themed. (Not GW.Skin: the log and
 -- text-edit dialogs have a text "Close" button named $parentCloseButton, which must not get the close glyph.)
-function GW.SkinGuildDialog(frame)
+function GW.SkinSocialDialog(frame)
   T.FadeRegions(frame)
-  for _, key in ipairs(GW.GUILD_DIALOG_ART) do fadeKey(frame, key) end
+  for _, key in ipairs(GW.SOCIAL_DIALOG_ART) do fadeKey(frame, key) end
   T.Panel(frame, { shadow = true })
   dressDialogParts(frame, frame.GetName and frame:GetName())
 end
@@ -161,6 +164,28 @@ end
 GW.Add("social", "framed", {
   "CommunitiesGuildLogFrame", "CommunitiesGuildNewsFiltersFrame", "CommunitiesGuildTextEditFrame", "GuildInviteFrame",
   "CommunitiesSettingsDialog", "CommunitiesAvatarPickerDialog", "CommunitiesTicketManagerDialog",
-}, GW.SkinGuildDialog)
+}, GW.SkinSocialDialog)
 -- The rename window is a ButtonFrameTemplate: the window skin does it all.
 GW.Add("social", "framed", { "GuildRenameFrame" })
+
+-- Channels and friends dialogs ------------------------------------------------------------------
+
+-- The add-friend window's boxes and buttons are named by the game, not parented by key.
+GW.ADD_FRIEND_BOXES = { "AddFriendNameEditBox" }
+GW.ADD_FRIEND_BUTTONS = { "AddFriendEntryFrameAcceptButton", "AddFriendEntryFrameCancelButton" }
+
+-- The add-friend window: the dialog skin, its edit boxes as T.EditBox and its buttons themed.
+function GW.SkinAddFriend(frame)
+  GW.SkinSocialDialog(frame)
+  for _, name in ipairs(GW.ADD_FRIEND_BOXES) do
+    if type(_G[name]) == "table" and _G[name].SetText then T.EditBox(_G[name]) end
+  end
+  for _, name in ipairs(GW.ADD_FRIEND_BUTTONS) do
+    if type(_G[name]) == "table" and _G[name].CreateTexture then T.Button(_G[name]) end
+  end
+end
+
+-- The channels window is a ButtonFrameTemplate; the dialogs are dialog frames.
+GW.Add("social", "framed", { "ChannelFrame" })
+GW.Add("social", "framed", { "CreateChannelPopup", "FriendsFriendsFrame", "BattleNetInviteFrame" }, GW.SkinSocialDialog)
+GW.Add("social", "framed", { "AddFriendFrame" }, GW.SkinAddFriend)

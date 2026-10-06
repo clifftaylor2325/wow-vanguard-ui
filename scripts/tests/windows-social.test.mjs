@@ -187,3 +187,60 @@ it("guild dialogs: a client without them, or with their parts missing, loads cle
   odd.eval("CommunitiesSettingsDialog:Show()");
   expect([windowErrors(bare), windowErrors(odd), odd.eval("return #ns.errors")]).toEqual(["none", "none", 0]);
 });
+
+// Channels and friends dialogs -------------------------------------------------------------------------
+
+// The channels window and the friends dialogs as the game builds them: a button-frame window, dialogs with a
+// border frame, headers, named edit boxes and buttons.
+const FRIENDS_ENV = DIALOG_ENV + `
+  __window("ChannelFrame")
+  local pop = __dialog("CreateChannelPopup")
+  pop.Header = CreateFrame("Frame", nil, pop) pop.Header.Art = pop.Header:CreateTexture()
+  pop.BG = CreateFrame("Frame", nil, pop) pop.BG.Art = pop.BG:CreateTexture()
+  pop.Name = CreateFrame("EditBox", nil, pop) pop.Name.Art = pop.Name:CreateTexture()
+  pop.Password = CreateFrame("EditBox", nil, pop) pop.OKButton = CreateFrame("Button", nil, pop) pop.OKButton.Art = pop.OKButton:CreateTexture()
+  pop.CloseButton = CreateFrame("Button", nil, pop)
+  local ff = __dialog("FriendsFriendsFrame")
+  ff.Border = CreateFrame("Frame", nil, ff) ff.Border.Art = ff.Border:CreateTexture()
+  ff.ScrollFrameBorder = CreateFrame("Frame", nil, ff) ff.ScrollFrameBorder.Art = ff.ScrollFrameBorder:CreateTexture()
+  ff.FriendsDropdown = CreateFrame("Button", nil, ff) ff.FriendsDropdown.Art = ff.FriendsDropdown:CreateTexture()
+  ff.SendRequestButton = CreateFrame("Button", nil, ff)
+  ff.CloseButton = CreateFrame("Button", nil, ff) ff.CloseButton:SetText("Close")
+  local bn = __dialog("BattleNetInviteFrame") bn.SendButton = CreateFrame("Button", nil, bn) bn.CancelButton = CreateFrame("Button", nil, bn)
+  local af = __dialog("AddFriendFrame") af.Border = CreateFrame("Frame", nil, af) af.Border.Art = af.Border:CreateTexture()
+  af.CloseButton = CreateFrame("Button", nil, af)
+  AddFriendNameEditBox = CreateFrame("EditBox", "AddFriendNameEditBox", af) AddFriendNameEditBox.Art = AddFriendNameEditBox:CreateTexture()
+  for _, n in ipairs({ "AddFriendEntryFrameAcceptButton", "AddFriendEntryFrameCancelButton" }) do
+    local b = CreateFrame("Button", n, af) b.Art = b:CreateTexture()
+  end
+`;
+
+it("channels and friends dialogs: the window and each dialog skinned, borders faded, edit boxes and buttons themed", () => {
+  const addon = loggedIn(FRIENDS_ENV);
+  addon.eval("ChannelFrame:Show()");
+  expect(windowState(addon, "ChannelFrame")).toMatchObject({ art: 0, nine: 0, panel: true, title: true });
+  for (const name of ["CreateChannelPopup", "FriendsFriendsFrame", "BattleNetInviteFrame", "AddFriendFrame"]) addon.eval(`${name}:Show()`);
+  expect(addon.eval(`local p, f, a = CreateChannelPopup, FriendsFriendsFrame, AddFriendFrame
+    return { p.Header.Art.__alpha, p.BG.Art.__alpha, p.Name.Art.__alpha, p.OKButton.Art.__alpha, f.Border.Art.__alpha, f.ScrollFrameBorder.Art.__alpha,
+      f.FriendsDropdown.Art.__alpha, a.Border.Art.__alpha, AddFriendNameEditBox.Art.__alpha, AddFriendEntryFrameAcceptButton.Art.__alpha, AddFriendEntryFrameCancelButton.Art.__alpha }`),
+  "the game's art faded").toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  expect(addon.eval(`local function themed(x) for _, r in ipairs({ x:GetRegions() }) do if r.__alpha ~= 0 then return true end end return false end
+    return { themed(AddFriendNameEditBox), themed(AddFriendEntryFrameAcceptButton), themed(CreateChannelPopup.Name), themed(CreateChannelPopup.OKButton),
+      themed(FriendsFriendsFrame.SendRequestButton), themed(FriendsFriendsFrame.CloseButton), themed(BattleNetInviteFrame.SendButton), themed(AddFriendFrame), themed(BattleNetInviteFrame) }`),
+  "edit boxes and buttons themed, each dialog panelled").toEqual([true, true, true, true, true, true, true, true, true]);
+});
+
+it("channels and friends dialogs: a second show paints nothing more, the switch off leaves them the game's, missing parts load cleanly", () => {
+  const addon = loggedIn(FRIENDS_ENV);
+  const names = ["ChannelFrame", "CreateChannelPopup", "FriendsFriendsFrame", "BattleNetInviteFrame", "AddFriendFrame"];
+  for (const name of names) addon.eval(`${name}:Show()`);
+  const painted = windowState(addon, "ChannelFrame").painted;
+  for (const name of names) addon.eval(`${name}:Hide() ${name}:Show()`);
+  expect(windowState(addon, "ChannelFrame").painted, "painting again piles up nothing").toBe(painted);
+  const off = loggedIn(FRIENDS_ENV, OFF);
+  for (const name of names) off.eval(`${name}:Show()`);
+  expect(off.eval(`local n = 0 for _, name in ipairs({ ${names.map((d) => `"${d}"`).join(", ")} }) do if _G[name].vgWindow == nil then n = n + 1 end end return n`), "none hooked").toBe(5);
+  const bare = loggedIn(`AddFriendFrame = CreateFrame("Frame", "AddFriendFrame", UIParent) AddFriendNameEditBox = {} AddFriendEntryFrameAcceptButton = {}`);
+  bare.eval("AddFriendFrame:Show()");
+  expect([windowErrors(bare), bare.eval("return #ns.errors")], "a client without the dialog's named parts").toEqual(["none", 0]);
+});
