@@ -209,7 +209,7 @@ it("side tabs: a window without the parts, or a tab the client refuses, loads cl
   expect(bare.eval("return ns.errors[1] == nil"), "no ModeTabs, no tabs, an icon-less check button").toBe(true);
   const refuses = loggedIn(WINDOWS_ENV + SIDE_ENV + `__window("CommunitiesFrame") __right(CommunitiesFrame, "RosterTab")
     CommunitiesFrame.ChatTab = __right(CommunitiesFrame, "ChatTab") CommunitiesFrame.ChatTab.HookScript = function() error("TEST-ONLY: no such script") end`);
-  expect(refuses.eval("return { __sideState(CommunitiesFrame.RosterTab).art, #ns.errors }"), "the failing tab is reported, the next one still dressed").toEqual([0, 1]);
+  expect(refuses.eval("return { __sideState(CommunitiesFrame.ChatTab).art, __sideState(CommunitiesFrame.RosterTab).art, #ns.errors }"), "a tab whose HookScript refuses a script is still dressed (T.Tab guards its hooks), so is the next, nothing reported").toEqual([0, 0, 0]);
 });
 
 // TEST-ONLY character pane parts, shaped like the Camelot pane's: scroll boxes of list rows (a header
@@ -407,6 +407,6 @@ it("scroll bars: only on registered windows whose groups are on; a bar that isn'
   expect(gameOwn.eval("return __barState(TestOnlyList.ScrollBar)[1]"), "the window left to the game keeps them").toBe(-1);
   const odd = loggedIn(env + `TestOnlyList.ScrollBar = CreateFrame("Frame", nil, TestOnlyList)`);
   expect(odd.eval("TestOnlyList:Show() return #ns.errors"), "a ScrollBar with no thumb (an old scroll frame's) is left alone").toBe(0);
-  const unregistered = loggedIn(env + `__window("CommunitiesFrame") __bar(CommunitiesFrame, "ScrollBar")`);
-  expect(unregistered.eval("CommunitiesFrame:Show() return __barState(CommunitiesFrame.ScrollBar)[1]"), "a window only the side tabs know by name has its bars left alone").toBe(-1);
+  const groupOff = loggedIn(env + `__window("CommunitiesFrame") __bar(CommunitiesFrame, "ScrollBar")`, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { social = false } } }" });
+  expect(groupOff.eval("CommunitiesFrame:Show() return __barState(CommunitiesFrame.ScrollBar)[1]"), "a window whose own group is off (the guild window, social) keeps the game's bars").toBe(-1);
 });
