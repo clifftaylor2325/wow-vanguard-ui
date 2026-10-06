@@ -28,8 +28,6 @@ AH.SELL_LINES = { "Cheapest now", "7-day low", "Deposit", "Your price" }
 AH.FORM_Y, AH.FORM_ROW = -110, 26
 -- The listings under the form: where they start, and how many rows show.
 AH.LIST_Y, AH.LIST_ROWS = -250, 4
--- Coins in copper, for a typed price ("1g 50s").
-AH.COINS = { g = 10000, s = 100, c = 1 }
 -- The sell card's settings: the auction length a new item starts with ("last": the last one
 -- used; or 1 to 3), and lastDuration, the last one picked on the card (none at first).
 AH.defaults.duration = "last"
@@ -106,16 +104,6 @@ end
 function AH.SellPrice(s)
   if s.unit then return forGame(s.unit) end
   return AH.Suggest(s.cheapest, AP.Low7(s.id))
-end
-
--- A price typed on the sell form as "1g 50s 25c" (any of the three, spaces optional) or a bare
--- number of copper; nil for nothing, zero or anything else. (The shop's max price, AH.ParseMoney,
--- reads a bare number as gold.)
-function AH.ParsePrice(text)
-  local t, total = (text or ""):lower():gsub("%s+", ""), 0
-  if t:match("^%d+$") then t = t .. "c" end
-  local rest = t:gsub("(%d+)([gsc])", function(n, coin) total = total + tonumber(n) * AH.COINS[coin] return "" end)
-  return rest == "" and total > 0 and total or nil
 end
 
 -- Auction lengths ----------------------------------------------------------------------------
@@ -333,9 +321,9 @@ AH.FORM = {
   -- How many stacks: the quantity becomes that many stacks (at most what can go up).
   stacks = function(s, text) local n = typedCount(text, 1, s.max) if n then s.qty = math.min(s.max, n * s.stack) end end,
   -- The price, per unit or per (full) stack by the toggle; nothing readable goes back to the suggestion.
-  price = function(s, text) local p = AH.ParsePrice(text) s.unit = p and (AH.perStack and math.floor(p / s.stack) or p) end,
+  price = function(s, text) local p = AH.ParseMoney(text) s.unit = p and (AH.perStack and math.floor(p / s.stack) or p) end,
   -- A bid per item (items only); nothing for none.
-  bid = function(s, text) s.bid = AH.ParsePrice(text) end,
+  bid = function(s, text) s.bid = AH.ParseMoney(text) end,
 }
 
 -- What each Max button sets on the sale s.
