@@ -153,36 +153,36 @@ and `scripts/tests/windows-{social,town,system,map,menus,tabs,pvp}.test.mjs`.
 Files: `Modules/WindowsSocial.lua`, `scripts/tests/windows-social.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.1. Group `social`.
 
-- [ ] **S1.1 Open mail.** `GW.Add("social", "framed", { "OpenMailFrame" }, GW.SkinOpenMail)`: `GW.Skin`, then the
+- [x] **S1.1 Open mail.** `GW.Add("social", "framed", { "OpenMailFrame" }, GW.SkinOpenMail)`: `GW.Skin`, then the
   parchment faded (`OpenStationeryBackgroundLeft`, `OpenStationeryBackgroundRight`; `_G` lookups, each optional),
   `OpenMailBodyText` (a `SimpleHTML`) light per tag as `GW.LightItemText` (`Modules/Windows.lua:198`) does, re-applied
   after `OpenMailFrame:Update()` (`hooksecurefunc(OpenMailFrame, "Update", …)`, guarded), `GW.AddButtons("OpenMailFrame",
   { "OpenMailReplyButton", "OpenMailDeleteButton", "OpenMailCancelButton", "OpenMailReportSpamButton" })`; the letter,
   money and attachment item buttons get the bags' quality border through `ns.GetModule("Bags").SkinItem` (exported by
   S0.9). Size S.
-- [ ] **S1.2 Guild window.** `CommunitiesFrame` with `GW.Skin`; `MaximizeMinimizeFrame`'s button via `T.Button`;
+- [x] **S1.2 Guild window.** `CommunitiesFrame` with `GW.Skin`; `MaximizeMinimizeFrame`'s button via `T.Button`;
   `PortraitOverlay` faded; `GuildBenefitsFrame`, `GuildDetailsFrame`, `MemberList`, `Chat` and `CommunitiesList` art
   faded with inset panels; `StreamDropdown` via `T.Button`. Side tabs are S7's (leave them). Re-skin on
   `CommunitiesFrameMixin:OnShow` and after `SetDisplayMode` (hooksecurefunc on the frame, guarded). Size M.
-- [ ] **S1.3 Guild dialogs.** `CommunitiesGuildLogFrame`, `CommunitiesGuildNewsFiltersFrame`, `CommunitiesGuildTextEditFrame`,
+- [x] **S1.3 Guild dialogs.** `CommunitiesGuildLogFrame`, `CommunitiesGuildNewsFiltersFrame`, `CommunitiesGuildTextEditFrame`,
   `GuildInviteFrame`, `CommunitiesSettingsDialog`, `CommunitiesAvatarPickerDialog`, `CommunitiesTicketManagerDialog`,
   `GuildRenameFrame`: `GW.Skin` each (`Bg`/`Border`/`BG` parts faded where `GW.ART` doesn't already list them, with
   `GW.SkinWith({ ... })` from S0). Size S.
-- [ ] **S1.4 Channels and friends dialogs.** `ChannelFrame`, `CreateChannelPopup`, `FriendsFriendsFrame`, `AddFriendFrame`,
+- [x] **S1.4 Channels and friends dialogs.** `ChannelFrame`, `CreateChannelPopup`, `FriendsFriendsFrame`, `AddFriendFrame`,
   `BattleNetInviteFrame`: `GW.Skin`; `AddFriendFrame`'s edit boxes via `T.EditBox`. Size S.
-- [ ] **S1.5 Guild creation.** `GuildRegistrarFrame`, `PetitionFrame`, `TabardFrame`: `GW.Skin`;
+- [x] **S1.5 Guild creation.** `GuildRegistrarFrame`, `PetitionFrame`, `TabardFrame`: `GW.Skin`;
   `GuildRegistrarText`, `GuildRegistrarPurchaseText`, `PetitionFrameCharterTitle`, `PetitionFrameMemberTitle`
   light/gold after `GuildRegistrar_OnShow`/`PetitionFrame_Update` (hooksecurefunc, guarded); the tabard model and
   its colour swatches untouched. Size S.
-- [ ] **S1.6 Role poll and invite popups.** `RolePollPopup`, `LFGInvitePopup`: `Border` faded, `T.Panel` with shadow,
+- [x] **S1.6 Role poll and invite popups.** `RolePollPopup`, `LFGInvitePopup`: `Border` faded, `T.Panel` with shadow,
   `CloseButton`/`acceptButton`/decline buttons themed, the role buttons' checked art kept (only their frame art faded).
   Registered as `"popups"` kind under `social`. **[VERIFY IN GAME]**: start a role check from the raid tools; the popup
   shows themed and the role buttons still check. Size S.
-- [ ] **S1.7 Raid tab.** `GW.Add("social", "onDemand", "Blizzard_RaidUI", { "RaidFrame" }, GW.SkinRaidTab)`: the eight
+- [x] **S1.7 Raid tab.** `GW.Add("social", "onDemand", "Blizzard_RaidUI", { "RaidFrame" }, GW.SkinRaidTab)`: the eight
   `RaidGroup<n>` boxes (their title textures faded, inset panel), `RaidGroupButton1-40` as `T.Button` with the class
   colour the game sets on the name kept; `RaidFrameRaidInfoButton`, `RaidFrameConvertToRaidButton`, `RaidFrameAllAssistCheckButton`
   themed. `RaidParentFrame` registered as framed for clients that use it. Size M.
-- [ ] **S1.8 Docs and smoke lines.** The README sub-bullet for `social`; smoke-test lines: open a letter, open the
+- [x] **S1.8 Docs and smoke lines.** The README sub-bullet for `social`; smoke-test lines: open a letter, open the
   guild window and each of its pages, `/join test`, invite a friend, visit a guild registrar; each with what you should
   see and what to paste if it fails. Size S.
 
