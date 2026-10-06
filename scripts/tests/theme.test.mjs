@@ -320,6 +320,14 @@ it("game tabs: art faded, icon kept, a panel, and an accent line that follows th
     tab:SetTabSelected(false)
     return { on, __line(tab):IsShown() }`);
   expect(systemTab, "a tab-system tab follows SetTabSelected, not its enabled state").toEqual([true, false]);
+  const frameTab = addon.eval(`
+    local tab = __tab({ "Background", "SelectedTexture" }, "Frame")
+    function tab:HookScript(name, fn) if name == "OnEnable" or name == "OnDisable" then error("Frame doesn't have a " .. name .. " script") end end
+    function tab:SetChecked(on) end
+    ns.Theme.Tab(tab) tab:SetChecked(true)
+    return __line(tab):IsShown()`);
+  expect(frameTab, "a side tab that is a Frame (no OnEnable script) still follows SetChecked").toBe(true);
+  expect(addon.eval("return #ns.errors"), "and nothing is reported").toBe(0);
   const bare = addon.eval("local b = CreateFrame('Button', nil, UIParent) ns.Theme.Tab(b) return __line(b) ~= nil");
   expect(bare, "a button with none of the parts is panelled, nothing errors").toBe(true);
   addon.eval("__panelTab:Disable() ns.Theme.SetAccent(0.1, 0.2, 0.3)");

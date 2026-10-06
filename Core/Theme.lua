@@ -688,7 +688,7 @@ end
 -- TabSystemButtonTemplate, LargeSideTabButtonTemplate), faded by T.Tab.
 T.TAB_ART = {
   "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive", "LeftHighlight", "MiddleHighlight",
-  "RightHighlight", "Background", "SelectedTexture", "HighlightTexture", "Mask", "TabGlow",
+  "RightHighlight", "Background", "SelectedTexture", "HighlightTexture", "TabGlow",
   "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow",
 }
 
@@ -721,9 +721,11 @@ local function onTabChecked(button, checked)
 end
 
 -- Follows the three ways the game selects a tab: enabling, SetChecked, SetTabSelected.
+-- Side tabs (LargeSideTabButtonTemplate) are Frames, which have no OnEnable or
+-- OnDisable script, and hooking a script a widget lacks is an error: hence the pcalls.
 local function watchTab(button)
-  button:HookScript("OnEnable", repaintTab)
-  button:HookScript("OnDisable", repaintTab)
+  pcall(button.HookScript, button, "OnEnable", repaintTab)
+  pcall(button.HookScript, button, "OnDisable", repaintTab)
   if type(hooksecurefunc) ~= "function" then return end
   if type(button.SetChecked) == "function" then hooksecurefunc(button, "SetChecked", onTabChecked) end
   if type(button.SetTabSelected) == "function" then hooksecurefunc(button, "SetTabSelected", repaintTab) end
