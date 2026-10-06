@@ -159,3 +159,14 @@ end
 GW.AddButtons("QuestLogPopupDetailFrame", { "QuestLogPopupDetailFrameAbandonButton", "QuestLogPopupDetailFrameShareButton", "QuestLogPopupDetailFrameTrackButton" })
 GW.Add("map", "framed", { "QuestMapFrame" }, GW.SkinQuestMap)
 GW.Add("map", "framed", { "QuestLogPopupDetailFrame" }, GW.SkinQuestPopup)
+
+-- Battlefield map -----------------------------------------------------------------------------
+
+-- The battlefield map (loads on demand): its ornate border as the map border (an edge and shadow
+-- only, as the border sits over the map), and its tab, the strip that moves it, as a flat button.
+function GW.SkinBattlefieldMap(map)
+  GW.SkinMapBorder(map.BorderFrame)
+  skinFlatButton(_G.BattlefieldMapTab)
+end
+
+GW.Add("map", "onDemand", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" }, GW.SkinBattlefieldMap)
