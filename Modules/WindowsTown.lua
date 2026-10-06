@@ -223,3 +223,24 @@ end
 GW.Add("town", "popups", { "SideDressUpFrame" }, GW.SkinSideDressUp)
 GW.Add("town", "popups", { "StackSplitFrame" }, GW.SkinStackSplit)
 GW.Add("town", "popups", { "CoinPickupFrame" }, GW.SkinCoinPickup)
+
+-- Separate bag windows ------------------------------------------------------------------------------
+
+-- The item buttons a separate bag window shows now, in the Bags module's item look (it skips buttons already done).
+local function skinBagItems(frame)
+  if type(frame.EnumerateValidItems) ~= "function" then return end
+  for _, button in frame:EnumerateValidItems() do ns.GetModule("Bags").SkinItem(button) end
+end
+
+-- One of the separate bag windows (shown when Combined bags is off): the Bags module's window skin, and
+-- its items again each time the game fills the bag. Nothing when the Bags module is switched off.
+function GW.SkinBagWindow(frame)
+  local bags = ns.GetModule("Bags")
+  if not (bags and ns.ModuleEnabled("Bags")) then return end
+  bags.SkinWindow(frame)
+  if frame.vgBagItems or type(frame.UpdateItems) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  frame.vgBagItems = true
+  hooksecurefunc(frame, "UpdateItems", skinBagItems)
+end
+
+GW.Add("town", "framed", { "ContainerFrame1", "ContainerFrame2", "ContainerFrame3", "ContainerFrame4", "ContainerFrame5", "ContainerFrame6", "ContainerFrame7" }, GW.SkinBagWindow)

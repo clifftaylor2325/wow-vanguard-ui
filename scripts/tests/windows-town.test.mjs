@@ -186,3 +186,47 @@ it("S2.3 side dress-up, stack split and coin pickup: group off leaves them the g
   bare.eval("SideDressUpFrame:Show() StackSplitFrame:Show() CoinPickupFrame:Show()");
   expect([bare.eval("return StackSplitFrame.vgWindow"), windowErrors(bare)], "windows without their parts").toEqual([true, "none"]);
 });
+
+// TEST-ONLY separate bag windows (ContainerFrame1-7): a window per bag, each holding item buttons the way
+// the game's ContainerFrameMixin hands them out (EnumerateValidItems) and refilling them in UpdateItems.
+const BAGS_ENV = `${WINDOWS_ENV}
+  function __bag(name, slots)
+    local f = __window(name) f.items = {}
+    for i = 1, slots do
+      local b = CreateFrame("Button", nil, f) b.icon = b:CreateTexture() b.IconBorder = b:CreateTexture() f.items[i] = b
+    end
+    function f:EnumerateValidItems() return ipairs(self.items) end
+    function f:UpdateItems() end
+    return f
+  end
+  __bag("ContainerFrame1", 2) __bag("ContainerFrame2", 1)
+`;
+
+// How many of a bag window's item buttons have the Bags module's item look.
+const skinnedItems = (addon, name) => addon.eval(`local n = 0 for _, b in ipairs(${name}.items) do if b.vgSkinned then n = n + 1 end end return n`);
+
+it("S2.4 separate bag windows: with Combined bags off the window and its items take the Bags look", () => {
+  const addon = loggedIn(BAGS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Bags = { combined = false } } }" });
+  addon.eval("ContainerFrame1:Show()");
+  const first = windowState(addon, "ContainerFrame1");
+  expect([first.art, first.panel, skinnedItems(addon, "ContainerFrame1")], "the window skinned and both item slots done").toEqual([0, true, 2]);
+  addon.eval("local b = CreateFrame('Button', nil, ContainerFrame1) b.icon = b:CreateTexture() b.IconBorder = b:CreateTexture() table.insert(ContainerFrame1.items, b) ContainerFrame1:UpdateItems()");
+  expect(skinnedItems(addon, "ContainerFrame1"), "a slot the game adds is dressed when it fills the bag").toBe(3);
+  addon.eval("ContainerFrame1:Hide() ContainerFrame1:Show() ContainerFrame2:Show()");
+  expect([windowState(addon, "ContainerFrame2").panel, skinnedItems(addon, "ContainerFrame2")], "another bag too").toEqual([true, 1]);
+  const painted = windowState(addon, "ContainerFrame2").painted;
+  addon.eval("ContainerFrame1:Hide() ContainerFrame1:Show() ContainerFrame1:UpdateItems()");
+  expect(windowState(addon, "ContainerFrame2").painted, "showing and refilling again paints nothing more").toBe(painted);
+});
+
+it("S2.4 separate bag windows: the Bags module or the town group off leaves them the game's; a bag without item calls is fine", () => {
+  const noBags = loggedIn(BAGS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Bags = false } } }" });
+  noBags.eval("ContainerFrame1:Show()");
+  expect([windowState(noBags, "ContainerFrame1").art !== 0, skinnedItems(noBags, "ContainerFrame1"), noBags.eval("return ContainerFrame1.vgBagItems == nil")], "Bags off: nothing").toEqual([true, 0, true]);
+  const off = loggedIn(BAGS_ENV, { savedVariables: OFF });
+  off.eval("ContainerFrame1:Show()");
+  expect([windowState(off, "ContainerFrame1").art !== 0, skinnedItems(off, "ContainerFrame1")], "town off: nothing").toEqual([true, 0]);
+  const bare = loggedIn(`${WINDOWS_ENV} __window("ContainerFrame3").UpdateItems = function() end local f = __window("ContainerFrame4") f.UpdateItems = function() end f.EnumerateValidItems = function() return ipairs({}) end`);
+  bare.eval("ContainerFrame3:Show() ContainerFrame3:UpdateItems() ContainerFrame4:Show() ContainerFrame4:UpdateItems()");
+  expect([windowState(bare, "ContainerFrame3").panel, windowErrors(bare)], "windows without the item calls are skinned, no error").toEqual([true, "none"]);
+});
