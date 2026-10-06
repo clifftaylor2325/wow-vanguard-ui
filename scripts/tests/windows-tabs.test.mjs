@@ -354,3 +354,59 @@ it("character pane: a list that loads later (the currencies' addon) is dressed w
   addon.fire("ADDON_LOADED", "Blizzard_TokenUI");
   expect(addon.eval("return { __a(__tokenHeader.banner), #ns.errors }"), "dressed once it has").toEqual([0, 0]);
 });
+
+// TEST-ONLY scroll bars shaped like the game's MinimalScrollBar (a Track holding the Thumb, arrow
+// buttons), and a reader for a bar's state: track art and thumb art faded, a panel on the thumb.
+const BARS_ENV = PANE_ENV + `
+  function __bar(parent, key)
+    local bar = CreateFrame("Frame", nil, parent)
+    bar.Track = CreateFrame("Frame", nil, bar)
+    bar.Track.Begin = __art(bar.Track)
+    bar.Track.Thumb = CreateFrame("Button", nil, bar.Track)
+    bar.Track.Thumb.Middle = __art(bar.Track.Thumb)
+    bar.Back, bar.Forward = CreateFrame("Button", nil, bar), CreateFrame("Button", nil, bar)
+    if key then parent[key] = bar end
+    return bar
+  end
+  function __barState(bar) return { __a(bar.Track.Begin), __a(bar.Track.Thumb.Middle), __panel(bar.Track.Thumb), bar.Back.vgArrow ~= nil } end
+  __window("TestOnlyList")
+  __bar(TestOnlyList, "ScrollBar")
+  TestOnlyList.Pane = CreateFrame("Frame", nil, TestOnlyList)
+  TestOnlyList.Pane.ScrollBox = CreateFrame("Frame", nil, TestOnlyList.Pane)
+  __bar(TestOnlyList.Pane, "ScrollBar")
+  -- a ScrollBox whose paired bar sits on the box's own parent, outside the window's frames
+  __holder = CreateFrame("Frame", nil, UIParent) __bar(__holder, "ScrollBar")
+  TestOnlyList.Mapped = CreateFrame("Frame", nil, TestOnlyList)
+  TestOnlyList.Mapped.ScrollBox = CreateFrame("Frame", nil, __holder)
+  TestOnlyList.Far = CreateFrame("Frame", nil, TestOnlyList)
+  TestOnlyList.Far.One = CreateFrame("Frame", nil, TestOnlyList.Far)
+  TestOnlyList.Far.One.Two = CreateFrame("Frame", nil, TestOnlyList.Far.One)
+  TestOnlyList.Far.One.Two.Three = CreateFrame("Frame", nil, TestOnlyList.Far.One.Two)
+  TestOnlyList.Far.One.Two.Three.Four = CreateFrame("Frame", nil, TestOnlyList.Far.One.Two.Three)
+  __bar(TestOnlyList.Far.One.Two.Three.Four, "ScrollBar")
+  ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyList" })
+`;
+
+it("scroll bars: a window's ScrollBar key and the bar paired with a ScrollBox are in the theme, a second show paints nothing more", () => {
+  const addon = loggedIn(BARS_ENV);
+  const bars = () => addon.eval("return { __barState(TestOnlyList.ScrollBar), __barState(TestOnlyList.Pane.ScrollBar) }");
+  expect(bars(), "the window's own bar and the pane's, paired with its ScrollBox: track and thumb art faded, the thumb panelled, arrows drawn").toEqual([[0, 0, true, true], [0, 0, true, true]]);
+  expect(addon.eval("return __barState(__holder.ScrollBar)"), "and the bar on a ScrollBox's own parent").toEqual([0, 0, true, true]);
+  expect(addon.eval("return __barState(TestOnlyList.Far.One.Two.Three.Four.ScrollBar)[1]"), "a bar nested deeper than the search goes is the game's").toBe(-1);
+  addon.eval("TestOnlyList:Show()");
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("TestOnlyList:Hide() TestOnlyList:Show()");
+  expect(addon.eval("return { ns.Theme.PaintedCount(), #ns.errors }"), "painted once").toEqual([painted, 0]);
+});
+
+it("scroll bars: only on registered windows whose groups are on; a bar that isn't one of the game's is left alone", () => {
+  const env = BARS_ENV;
+  const off = loggedIn(env, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
+  expect(off.eval("return __barState(TestOnlyList.ScrollBar)[1]"), "tabs off: the game's bars").toBe(-1);
+  const gameOwn = loggedIn(env, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  expect(gameOwn.eval("return __barState(TestOnlyList.ScrollBar)[1]"), "the window left to the game keeps them").toBe(-1);
+  const odd = loggedIn(env + `TestOnlyList.ScrollBar = CreateFrame("Frame", nil, TestOnlyList)`);
+  expect(odd.eval("TestOnlyList:Show() return #ns.errors"), "a ScrollBar with no thumb (an old scroll frame's) is left alone").toBe(0);
+  const unregistered = loggedIn(env + `__window("CommunitiesFrame") __bar(CommunitiesFrame, "ScrollBar")`);
+  expect(unregistered.eval("CommunitiesFrame:Show() return __barState(CommunitiesFrame.ScrollBar)[1]"), "a window only the side tabs know by name has its bars left alone").toBe(-1);
+});

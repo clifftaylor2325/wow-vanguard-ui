@@ -31,6 +31,9 @@ GW.SIDE_TABS = {
   "ChatTab", "RosterTab", "GuildBenefitsTab", "GuildInfoTab", "GuildPreferredPlaySettingsTab",
   "LegacyTreeTab", "LegacyChallengeTab", "LegacyRewardTrackTab", "ListingTab", "BrowsingTab", "WhoListingTab",
 }
+-- How many frames deep inside a registered window its scroll bars are looked for (a bar is a ScrollBar
+-- key on a frame; the lists and panes of the windows keep theirs within a few levels).
+GW.SCROLL_DEPTH = 4
 -- The windows already dressed (a window is hooked once).
 local dressed = setmetatable({}, { __mode = "k" })
 
@@ -273,12 +276,43 @@ local function dressInside(frame)
   frame:HookScript("OnShow", run)
 end
 
--- Dresses a window's tabs now and every time it shows, once per window, and what it holds inside.
+-- Scroll bars -----------------------------------------------------------------------------------
+
+-- The scroll bar of a frame that holds a ScrollBox: the ScrollBar key beside it (the game pairs them as
+-- siblings), taken from the box's parent when that is not the frame itself.
+local function pairedBar(frame)
+  local box = frame.ScrollBox
+  local parent = type(box) == "table" and box.GetParent and box:GetParent()
+  return type(parent) == "table" and parent.ScrollBar or nil
+end
+
+-- One scroll bar in the theme, if there is one.
+local function dressBar(bar)
+  if type(bar) == "table" then T.ScrollBar(bar) end
+end
+
+-- Puts the scroll bars of a frame and of the frames inside it (depth levels down) in the theme: its
+-- ScrollBar key, and the bar paired with its ScrollBox. A bar that is not one of the game's 12.x
+-- scroll bars (an old scroll frame's slider) is left alone by T.ScrollBar itself.
+function GW.DressBars(frame, depth)
+  dressBar(frame.ScrollBar)
+  dressBar(pairedBar(frame))
+  if depth <= 0 or not frame.GetChildren then return end
+  for _, child in ipairs({ frame:GetChildren() }) do GW.DressBars(child, depth - 1) end
+end
+
+-- What runs when a window shows: its tabs, and its scroll bars if it is a registered window.
+function GW.DressWindow(frame)
+  GW.DressTabs(frame)
+  if GW.REGISTERED[frame:GetName() or ""] then ns.Try("scroll bars", GW.DressBars, frame, GW.SCROLL_DEPTH) end
+end
+
+-- Dresses a window's tabs and scroll bars now and every time it shows, once per window, and what it holds inside.
 local function dress(frame)
   if type(frame) ~= "table" or not frame.HookScript or dressed[frame] then return end
   dressed[frame] = true
-  GW.DressTabs(frame)
-  frame:HookScript("OnShow", GW.DressTabs)
+  GW.DressWindow(frame)
+  frame:HookScript("OnShow", GW.DressWindow)
   watchSystems(frame)
   dressInside(frame)
 end
