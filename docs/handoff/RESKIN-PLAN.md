@@ -342,7 +342,7 @@ Inventory: design §5.6. No new group: each change lives under its module's own 
   theme font; on `OnShow`, once. Size S.
 - [x] **S6.4 Possess bar.** `Modules/SpecialBars.lua`: add `skinPossess = { "PossessButton", 2 }` beside `skinPet` (:28),
   default on, through `SB.Skin` (:56). Size S.
-- [ ] **S6.5 Fonts on the HUD text.** `T.FontObjects` on `ErrorFont` (the `UIErrorsFrame` line, next to
+- [x] **S6.5 Fonts on the HUD text.** `T.FontObjects` on `ErrorFont` (the `UIErrorsFrame` line, next to
   `Modules/Merchant.lua:95`), `ZoneTextFont`, `SubZoneTextFont`, `PVPInfoTextFont`, `PVPArenaTextString`'s font, each
   only if the object exists. Size S.
 - [ ] **S6.6 Smoke lines.** Toggle the game's swing timer, mind-control an enemy (priest), craft something, enter a zone.
