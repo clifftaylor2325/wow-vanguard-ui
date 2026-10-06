@@ -109,7 +109,7 @@ it("options slider, search, scroll, special bars and profile switch", () => {
     return { wrapped = wrapped, dragged = dragged, hint = hint }
   `);
   expect(scale.wrapped === 0.7 && Math.abs(scale.dragged - 1) < 1e-9 && scale.hint === true, "a slider wraps at the max, drags with the cursor, and the search hint shows while empty").toBeTruthy();
-  expect(addon.eval('ns.Options.Show("actionbars") return __click("Restyle the pet, stance and extra action buttons (reload)")') === true, "the special-bars switch is on the action bar page").toBeTruthy();
+  expect(addon.eval('ns.Options.Show("actionbars") return __click("Restyle the pet, stance, possess and extra action buttons (reload)")') === true, "the special-bars switch is on the action bar page").toBeTruthy();
   expect(addon.eval("return VanguardDB.profiles.Default.SpecialBars.skinPet") === false, "it turns pet, stance and extra bars off together").toBeTruthy();
 });
 
