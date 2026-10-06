@@ -6,9 +6,11 @@
 --     shows (ability not ready, not enough rage or energy, no target...).
 --     Errors you can act on (out of range, not enough mana, bags full) stay,
 --     and still go through the client's own error line.
+--   * the error line, and the zone names shown as you enter a place, in the theme font.
 
 local ADDON, ns = ...
 
+local T = ns.Theme
 local MC = ns.Module("Merchant", { defaults = { repair = true, junk = true, errors = true } })
 
 MC.RETRIES, MC.RETRY_AFTER = 3, 0.3
@@ -102,9 +104,29 @@ local function filterErrors()
   end
 end
 
+-- HUD text ----------------------------------------------------------------------------------
+
+-- The game's font objects for its text on the HUD, at the game's own sizes (scaled by Text
+-- size): the error line, and the zone, subzone and PvP lines (PVPArenaTextString's too).
+MC.FONTS = { ErrorFont = { 16, true }, ZoneTextFont = { 32, true }, SubZoneTextFont = { 26, true }, PVPInfoTextFont = { 22, true } }
+
+-- The HUD text in the theme font, with the theme's drop shadow in place of the game's
+-- thick outline so it reads over the world. A font object the client lacks is skipped.
+function MC.ThemeFonts()
+  T.FontObjects(MC.FONTS)
+  for name in pairs(MC.FONTS) do
+    local font = _G[name]
+    if type(font) == "table" and font.SetShadowOffset then
+      font:SetShadowOffset(1, -1)
+      font:SetShadowColor(T.RGB("textShadow"))
+    end
+  end
+end
+
 -- Module entry point (Core/Modules.lua).
 function MC.Enable(settings)
   MC.settings = settings
   ns.On("MERCHANT_SHOW", onMerchant)
   if settings.errors then filterErrors() end
+  MC.ThemeFonts()
 end
