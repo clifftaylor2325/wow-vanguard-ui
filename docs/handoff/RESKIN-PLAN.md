@@ -316,7 +316,7 @@ own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, nu
   `ItemRefShoppingTooltip2`, `GameNoHeaderTooltip`, `GameSmallHeaderTooltip`, `BuffFrameTooltip`, `QuickKeybindTooltip`,
   `SettingsTooltip`, `PartyMemberBuffTooltip`, `AutoCompleteBox`; each skipped when the client lacks it (the loop already
   does). `LFGBrowseSearchEntryTooltip` is S4's. Test (`tooltip.test.mjs`): the new names are skinned when present. Size S.
-- [ ] **S5.4 Docs and smoke lines.** README sub-bullet for `menus`; smoke-test lines: the unit menu, the tracking menu,
+- [x] **S5.4 Docs and smoke lines.** README sub-bullet for `menus`; smoke-test lines: the unit menu, the tracking menu,
   a dropdown in the auction house, the buff tooltip. Size S.
 
 ---
