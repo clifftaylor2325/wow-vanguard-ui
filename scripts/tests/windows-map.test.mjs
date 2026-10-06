@@ -412,3 +412,102 @@ it("queue status: switched off it stays the game's; a client without a pool, ent
   noHook.eval("QueueStatusFrame:Show()");
   for (const addon of [bare, sparse, noHook]) expect(addon.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return ''"), "no errors").toBe("");
 });
+
+// TEST-ONLY calendar, shaped like Blizzard_Calendar's XML: the frame with its template edge, weekday and month textures
+// (and the two it keeps: the selected weekday's glow and the last day's shadow), the close and month buttons, 42 day buttons (a parchment
+// normal texture, an event texture and a date frame each), and the seven dialogs (a Border, a Header plate, their close
+// and push buttons, the holiday's art, the create dialog's icon and its text boxes). Made when the game loads the part.
+const CALENDAR_ENV = WINDOWS_ENV + `
+  function __calendar()
+    local f = CreateFrame("Frame", "CalendarFrame", UIParent)
+    f:Hide()
+    for _, name in ipairs({ "CalendarFrameTopLeftTexture", "CalendarWeekday1Background", "CalendarMonthBackground", "CalendarWeekdaySelectedTexture", "CalendarLastDayDarkTexture" }) do
+      _G[name] = f:CreateTexture(nil, "BACKGROUND")
+    end
+    CreateFrame("Button", "CalendarCloseButton", f):CreateTexture()
+    for _, name in ipairs({ "CalendarPrevMonthButton", "CalendarNextMonthButton" }) do
+      local b = CreateFrame("Button", name, f)
+      b.art, b.icon, b.off = b:CreateTexture(), b:CreateTexture(), b:CreateTexture()
+      b.GetNormalTexture = function(self) return self.icon end
+      b.GetDisabledTexture = function(self) return self.off end
+    end
+    for i = 1, 42 do
+      local b = CreateFrame("Button", "CalendarDayButton" .. i, f)
+      b.parchment, b.event = b:CreateTexture(), b:CreateTexture()
+      b.GetNormalTexture = function(self) return self.parchment end
+    end
+  end
+  function __calendarDialogs()
+    for _, name in ipairs({ "CalendarViewHolidayFrame", "CalendarViewRaidFrame", "CalendarViewEventFrame", "CalendarCreateEventFrame", "CalendarMassInviteFrame", "CalendarEventPickerFrame", "CalendarTexturePickerFrame" }) do
+      local d = __window(name)
+      d.Border = CreateFrame("Frame", nil, d) d.Border:CreateTexture()
+      d.Header = CreateFrame("Frame", nil, d)
+      for _, key in ipairs({ "LeftBG", "RightBG", "CenterBG" }) do d.Header[key] = d.Header:CreateTexture() end
+      d.Header.Text = d.Header:CreateFontString(nil, "OVERLAY")
+    end
+    CalendarViewHolidayFrame.Texture = CalendarViewHolidayFrame:CreateTexture() CalendarViewHolidayFrame.Texture:SetAlpha(0.4)
+    _G.CalendarCreateEventIcon = CalendarCreateEventFrame:CreateTexture()
+    for _, name in ipairs({ "CalendarViewHolidayCloseButton", "CalendarViewEventCloseButton", "CalendarCreateEventCloseButton", "CalendarMassInviteCloseButton",
+      "CalendarViewEventAcceptButton", "CalendarCreateEventCreateButton", "CalendarEventPickerCloseButton", "CalendarTexturePickerAcceptButton" }) do
+      local b = CreateFrame("Button", name, CalendarViewEventFrame) b:CreateTexture()
+    end
+    for _, name in ipairs({ "CalendarCreateEventTitleEdit", "CalendarMassInviteMinLevelEdit" }) do
+      local e = CreateFrame("EditBox", name, CalendarCreateEventFrame) e:CreateTexture()
+    end
+  end
+`;
+
+// A calendar part's alpha (by Lua expression), or "nil" for a part this client lacks.
+const calAlpha = (addon, expr) => addon.eval(`local p = ${expr} return p and p:GetAlpha() or "nil"`);
+
+it("calendar: the window's art is faded but the weekday glow and last-day shadow, the month buttons and day grid are dressed, the event textures kept", () => {
+  const addon = loggedIn(CALENDAR_ENV);
+  addon.eval("__calendar()");
+  addon.fire("ADDON_LOADED", "Blizzard_Calendar");
+  addon.eval("CalendarFrame:Show()");
+  expect(["CalendarFrameTopLeftTexture", "CalendarWeekday1Background", "CalendarMonthBackground"].map(n => calAlpha(addon, `_G.${n}`)), "the template textures are faded").toEqual([0, 0, 0]);
+  expect(["CalendarWeekdaySelectedTexture", "CalendarLastDayDarkTexture"].map(n => calAlpha(addon, `_G.${n}`)), "the glow and the shadow stay").toEqual([1, 1]);
+  expect(fills(addon, "CalendarFrame"), "the frame has a panel fill").toBe(1);
+  expect(addon.eval("return CalendarCloseButton:GetRegions():GetAlpha()"), "the close button's art is gone").toBe(0);
+  expect(addon.eval("local p, n = CalendarPrevMonthButton, CalendarNextMonthButton return { p.art:GetAlpha(), p.icon:GetAlpha(), p.off:GetAlpha(), n.art:GetAlpha(), n.icon:GetAlpha() }"), "the month buttons keep their icon and lose the template art").toEqual([0, 1, 1, 0, 1]);
+  expect([fills(addon, "CalendarPrevMonthButton"), fills(addon, "CalendarNextMonthButton")], "and are flat tiles").toEqual([1, 1]);
+  expect(addon.eval("local gone, event = 0, 0 for i = 1, 42 do local b = _G['CalendarDayButton' .. i] if b.parchment:GetAlpha() == 0 then gone = gone + 1 end if b.event:GetAlpha() == 1 then event = event + 1 end end return { gone, event }"), "all 42 days lose the parchment and keep the event texture").toEqual([42, 42]);
+  expect([fills(addon, "CalendarDayButton1"), fills(addon, "CalendarDayButton42")], "each day is an inset panel").toEqual([1, 1]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("CalendarFrame:Hide() CalendarFrame:Show()");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(painted);
+});
+
+it("calendar: the seven dialogs are skinned, with their headers, buttons and text boxes dressed and their pictures kept", () => {
+  const addon = loggedIn(CALENDAR_ENV);
+  addon.eval("__calendar() __calendarDialogs()");
+  addon.fire("ADDON_LOADED", "Blizzard_Calendar");
+  const names = ["CalendarViewHolidayFrame", "CalendarViewRaidFrame", "CalendarViewEventFrame", "CalendarCreateEventFrame", "CalendarMassInviteFrame", "CalendarEventPickerFrame", "CalendarTexturePickerFrame"];
+  for (const name of names) addon.eval(`${name}:Show()`);
+  for (const name of names) {
+    expect(windowState(addon, name), `${name}: art faded, a panel painted`).toMatchObject({ art: 0, nine: 0, portrait: 0, panel: true, title: true });
+    expect(addon.eval(`local d = ${name} return { d.Border:GetAlpha(), (d.Border:GetRegions()):GetAlpha(), d.Header.LeftBG:GetAlpha(), d.Header.RightBG:GetAlpha(), d.Header.CenterBG:GetAlpha(), d.Header.Text:GetFont() ~= nil }`), `${name}: the border and the header plate are faded, the title in the theme font`).toEqual([0, 0, 0, 0, 0, true]);
+  }
+  expect([calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "the holiday's art and the create dialog's icon are left as the game has them").toEqual([0.4, 1]);
+  expect(["CalendarViewHolidayCloseButton", "CalendarViewEventCloseButton", "CalendarCreateEventCloseButton", "CalendarMassInviteCloseButton"].map(n => fills(addon, n)), "the close buttons are drawn in the theme").toEqual([1, 1, 1, 1]);
+  expect(["CalendarViewEventAcceptButton", "CalendarCreateEventCreateButton", "CalendarEventPickerCloseButton", "CalendarTexturePickerAcceptButton"].map(n => fills(addon, n)), "the push buttons are flat buttons").toEqual([2, 2, 2, 2]);
+  expect(["CalendarCreateEventTitleEdit", "CalendarMassInviteMinLevelEdit"].map(n => calAlpha(addon, `(_G.${n}:GetRegions())`)), "the text boxes' template art is faded").toEqual([0, 0]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("CalendarCreateEventFrame:Hide() CalendarCreateEventFrame:Show() CalendarViewHolidayFrame:Hide() CalendarViewHolidayFrame:Show()");
+  expect([addon.eval("return ns.Theme.PaintedCount()"), calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "a second show paints nothing new and keeps the pictures").toEqual([painted, 0.4, 1]);
+});
+
+it("calendar: switched off it stays the game's; a client missing the window, its buttons or its dialogs' parts loads cleanly", () => {
+  const off = loggedIn(CALENDAR_ENV, MAP_OFF);
+  off.eval("__calendar() __calendarDialogs()");
+  off.fire("ADDON_LOADED", "Blizzard_Calendar");
+  off.eval("CalendarFrame:Show() CalendarViewEventFrame:Show()");
+  expect([calAlpha(off, "_G.CalendarFrameTopLeftTexture"), off.eval("return CalendarDayButton1.parchment:GetAlpha()"), off.eval("return CalendarViewEventFrame.Border:GetAlpha()"), off.eval("return CalendarFrame.vgWindow == nil")], "not hooked, art left").toEqual([1, 1, 1, true]);
+  const bare = loggedIn(WINDOWS_ENV + `
+    CreateFrame("Frame", "CalendarFrame", UIParent):Hide() CalendarPrevMonthButton = {} CalendarDayButton1 = CreateFrame("Button", "CalendarDayButton1", CalendarFrame)
+    local d = CreateFrame("Frame", "CalendarViewRaidFrame", UIParent) d.Header = {} d:Hide()
+    CreateFrame("Frame", "CalendarCreateEventFrame", UIParent):Hide() CalendarCreateEventTitleEdit = {} CalendarViewEventFrame = {}`);
+  bare.fire("ADDON_LOADED", "Blizzard_Calendar");
+  bare.eval("CalendarFrame:Show() CalendarViewRaidFrame:Show() CalendarCreateEventFrame:Show()");
+  expect(bare.eval("return #ns.errors"), "no month buttons, day textures, header parts or text boxes: no errors").toBe(0);
+});

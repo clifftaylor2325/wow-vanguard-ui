@@ -286,7 +286,7 @@ Inventory: design §5.4. Group `map`.
   in the commit body. Size M.
 - [x] **S4.6 Queue status.** `QueueStatusFrame` via `T.Tooltip` on `OnShow`; its `QueueStatusFrame` entries' art faded.
   Size S.
-- [ ] **S4.7 Calendar, first pass.** `GW.Add("map", "onDemand", "Blizzard_Calendar", { "CalendarFrame", … })`: the
+- [x] **S4.7 Calendar, first pass.** `GW.Add("map", "onDemand", "Blizzard_Calendar", { "CalendarFrame", … })`: the
   outer frame's corner/edge textures (`CalendarFrame` `$parentTopLeft`…) faded, `T.Panel` with shadow, `CalendarCloseButton`,
   the month buttons, the day grid buttons' `Backdrop`-like textures faded with an inset panel each, the seven dialogs
   (`CalendarViewHolidayFrame`, `CalendarViewRaidFrame`, `CalendarViewEventFrame`, `CalendarCreateEventFrame`,
