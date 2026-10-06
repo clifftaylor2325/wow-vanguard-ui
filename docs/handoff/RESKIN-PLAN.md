@@ -253,7 +253,7 @@ Inventory: design §5.3. Group `system`.
   `GW.Add("system", "onDemand", "Blizzard_DeathRecap", { "DeathRecapFrame" })`,
   `GW.Add("system", "onDemand", "Blizzard_CombatLog", { "CombatLogQuickButtonFrame_Custom" })` (panel, its filter
   buttons `T.Button`). Size S.
-- [ ] **S3.6 Docs and smoke lines.** README sub-bullet for `system`; smoke-test lines: Escape → Options, Edit Mode,
+- [x] **S3.6 Docs and smoke lines.** README sub-bullet for `system`; smoke-test lines: Escape → Options, Edit Mode,
   AddOns, `/stopwatch`, the help button, a death on a test character for the recap. Size S.
 
 ---

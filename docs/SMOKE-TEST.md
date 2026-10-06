@@ -385,6 +385,40 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 - Do: die and look at the return-to-graveyard button; open the addon list (`/addons` or the game menu) and change an addon that is out of date, if one is; trigger a message box (for example `/run BasicMessageDialog.Text:SetText("test") BasicMessageDialog:Show()`).
 - Expect: the graveyard button is a flat button with its icon and text (nothing changes while you are in combat); the addon confirmation and the message box are flat panels with flat buttons, not full-screen dimmers of a different shade.
+### 14.4.1 Game options
+
+- Do: press Escape, click Options. Look at the window, click through Game and AddOns, type in the search box, change a setting, click Apply, then Close.
+- Expect: a flat slate panel with the theme's close button; the Game and AddOns tabs with an accent line under the one you are on; the category list and the settings list on darker panels; flat Apply and Close buttons and search box. Every settings page still draws and works, and the title is still readable.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
+### 14.4.2 Edit Mode
+
+- Do: press Escape, click Edit Mode. Look, click a Blizzard frame (say the chat window) so its settings dialog opens, change a setting, click Revert on the dialog, click Save in the main window, then close Edit Mode.
+- Expect: Edit Mode's window and its settings dialog on flat panels with the theme's buttons and title; Vanguard's note (`The labeled handles are Vanguard's frames...`) still sits under the main window; the settings dialog still resizes to its settings; Save works and nothing reports a blocked action (`/vg errors` empty, no "Interface action failed because of an AddOn" popup). Open the layout menu and pick New layout, Import layout and close without saving: their dialogs match.
+- If it fails, paste: a screenshot while Edit Mode is open and `/vg errors`.
+
+### 14.4.3 Addon list and chat settings
+
+- Do: press Escape, click AddOns (or open the AddOns tab from the game menu), type in its search box, then close it. Right-click a chat tab and choose Settings, click through two categories, then Okay.
+- Expect: both windows on flat panels with themed buttons and search box; the addon rows keep the game's look; in the chat settings the category list and the settings area sit on darker boxes, and every check box and color swatch still works.
+- If it fails, paste: a screenshot of each window and `/vg errors`.
+
+### 14.4.4 Keybinding, Cooldown Manager settings and click bindings
+
+- Do: press Escape, click Options, Keybindings, then Quick Keybind Mode; press Escape to leave it. Open the Cooldown Manager settings from the game's Options (Gameplay Enhancements). Open the click-casting page in Vanguard's options and click its button that opens the game's click binding window (or open it from the spellbook).
+- Expect: the quick keybind banner on a flat panel with its three buttons themed (the text stays white); the Cooldown Manager settings window and the click binding window on flat panels with themed buttons, search box and list background; the keybind mode still binds keys.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
+### 14.4.5 Help, report and colour picker
+
+- Do: press Escape, click Support (or the help button), look, close it. Open a color swatch (Chat Settings, any color swatch), drag in the wheel, then click Cancel. Right-click a player in a group and open Report if you can.
+- Expect: the help window, the report window and the color picker on flat panels with themed buttons; the color wheel, the value and alpha bars and the swatches look exactly as the game draws them, and picking a color still works. If you have an open support ticket, its small status box keeps its icon.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.4.6 Death recap and the combat log bar
+
+- Do: on a test character, die to a mob and click the Death Recap button on the release popup. Then open the Combat tab of your chat and click two of its filter buttons.
+- Expect: the death recap on a flat panel with a themed Close button and title and the damage rows as the game draws them; the combat log's filter bar on a darker strip with flat filter buttons, still switching filters when clicked.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ## When you are done
