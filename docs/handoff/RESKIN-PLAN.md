@@ -232,7 +232,7 @@ Inventory: design §5.2. Group `town`.
 Files: `Modules/WindowsSystem.lua`, `scripts/tests/windows-system.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.3. Group `system`.
 
-- [ ] **S3.1 Game options.** `SettingsPanel`: `NineSlice`, `Bg` faded; `T.Panel` with shadow; `ClosePanelButton`
+- [x] **S3.1 Game options.** `SettingsPanel`: `NineSlice`, `Bg` faded; `T.Panel` with shadow; `ClosePanelButton`
   (`T.CloseButton`), `ApplyButton`, `CloseButton` (`T.Button`), `SearchBox` (`T.EditBox`), `GameTab`/`AddOnsTab`
   (`T.Tab`); `CategoryList` and `SettingsList` inset panels; `Container`/`SettingsCanvas` left to their pages. Fonts via `T.FontObjects({ SettingsListHeader… })` only if those font objects exist on
   Forever (check `Blizzard_Settings_Shared`); otherwise none. Re-skin on `OnShow`. Size M.
