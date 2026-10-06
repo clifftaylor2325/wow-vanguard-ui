@@ -333,6 +333,59 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: in a party, open the raid tab (the friends window's Raid tab), then convert to a raid and look again.
 - Expect: the eight group boxes are flat panels, the member buttons are flat and keep each name's class colour, Raid Info and Convert to Raid are themed buttons; nothing changes while you are in combat and it catches up after.
 - If it fails, paste: a screenshot of the tab and `/vg errors`.
+### 14.3.1 Stable (a hunter)
+
+- Do: with a hunter, talk to a stable master.
+- Expect: the stable window is a flat dark panel; the pet model sits on a dark box without the game's frame; the pet experience bar is a flat bar; the Purchase button and the pet slot captions are in the Vanguard font; clicking a stabled pet and Purchase still work.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.3.2 Trainer
+
+- Do: talk to your class trainer; open the filter; click a skill; collapse and expand a category if the list has them; click Train.
+- Expect: flat panel, no parchment behind the list, each row has no plate but keeps its icon, name, requirements and cost; the selected row shows the game's highlight; the filter button works (note whether its arrow is visible); Train works and Vanguard's Train all sits beside it.
+- If it fails, paste: a screenshot with a row selected, and `/vg errors`.
+
+### 14.3.3 Shift-click a stack
+
+- Do: shift-click a stack of items in a bag, then use the arrows, type a number and press Okay; open the side dress-up window by control-clicking an item at a merchant or the auction house.
+- Expect: the stack split window is a small flat panel with the amount in the Vanguard font and visible arrows; Okay and Cancel are Vanguard buttons and work; the dress-up window is flat with a Reset button.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.3.4 Coins from the money frame
+
+- Do: click your gold in the backpack's money line (a plain click picks coins up and opens the amount window).
+- Expect: the coin amount window is a flat panel; its coin icon and arrows are visible; Okay and Cancel work.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.3.5 Separate bags
+
+- Do: in the game's options turn Combined bags off (or Vanguard's setting under Bags), `/reload`, and open each bag with its bag button.
+- Expect: every bag window is a flat panel and each item slot is a square with a thin border in the item's quality color; the bag still sorts, searches and holds items as before.
+- If it fails, paste: a screenshot of two open bags and `/vg errors`.
+
+### 14.3.6 Master loot (in a group)
+
+- Do: in a group set to master looter, kill something and right-click an item to assign it (the player list), then close it.
+- Expect: the candidate list is a flat panel with flat player buttons in class colors; selecting a name assigns the item; the loot history window (the group loot history button, if your client has it) is flat with a working close button.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.3.7 Macros and icon pickers
+
+- Do: type `/macro`, click Change Name/Icon; open the equipment manager and make a new set (its icon picker); open the guild bank's tab icon picker if you have one.
+- Expect: the macro window and each icon picker are flat panels; the name box is a dark input box; the icon grid, the selected icon and Okay and Cancel work.
+- If it fails, paste: a screenshot of the picker and `/vg errors`.
+
+### 14.3.8 Stopwatch
+
+- Do: type `/stopwatch`; press play, pause and reset; close it.
+- Expect: a small flat panel with a title, the time digits and visible play and reset pictures; the three buttons work.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.3.9 Small dialogs
+
+- Do: die and look at the return-to-graveyard button; open the addon list (`/addons` or the game menu) and change an addon that is out of date, if one is; trigger a message box (for example `/run BasicMessageDialog.Text:SetText("test") BasicMessageDialog:Show()`).
+- Expect: the graveyard button is a flat button with its icon and text (nothing changes while you are in combat); the addon confirmation and the message box are flat panels with flat buttons, not full-screen dimmers of a different shade.
+- If it fails, paste: a screenshot and `/vg errors`.
 
 ## When you are done
 
