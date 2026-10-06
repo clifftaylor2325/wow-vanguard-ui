@@ -1060,8 +1060,10 @@ it("the sell form: typed counts and prices, per unit or per stack, Skip and Stop
   addon.type(`${CARD}.price`, "5s");
   expect(card(addon)[0][3], "5s for a stack of 10 is 50c a unit").toBe("50c");
   addon.click(`${CARD}.perStack`);
-  addon.type(`${CARD}.price`, "150");
-  expect(card(addon)[0][3], "a bare number is copper").toBe("1s 50c");
+  addon.type(`${CARD}.price`, "1.5");
+  expect(card(addon)[0][3], "a bare number is gold, as in the shop's max price").toBe("1g 50s 0c");
+  addon.type(`${CARD}.price`, "150c");
+  expect(card(addon)[0][3], "copper takes its c").toBe("1s 50c");
   for (const text of ["", "12x", "0"]) {
     addon.type(`${CARD}.price`, text);
     expect(card(addon)[0][3], `"${text}": back to the suggestion`).toBe("1s 0c");
@@ -1225,14 +1227,14 @@ it("vendor floor: the price line turns red under the vendor's price, and Post wa
   const addon = atAuctionHouse(BAGS + LINEN_BAGS);
   dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
   expect([priceLine(addon), card(addon)[2]], "1s a unit is over linen's 13c").toEqual([["Your price", "1s 0c", false, false], true]);
-  addon.type(`${CARD}.price`, "12");
+  addon.type(`${CARD}.price`, "12c");
   expect([priceLine(addon), card(addon)[2]], "12c is under it: red, and no Post").toEqual([["Under vendor price", "12c", true, true], false]);
   addon.click(`${CARD}.post`);
   expect(restrictedLog(addon).length, "nothing posted").toBe(0);
-  addon.type(`${CARD}.price`, "13");
+  addon.type(`${CARD}.price`, "13c");
   expect([priceLine(addon), card(addon)[2]], "at the vendor's price: fine").toEqual([["Your price", "13c", false, false], true]);
   addon.eval("ns.Settings('AuctionHelper').vendorFloor = false");
-  addon.type(`${CARD}.price`, "11");
+  addon.type(`${CARD}.price`, "11c");
   expect([priceLine(addon)[2], card(addon)[2]], "the option off: still red, but Post works").toEqual([true, true]);
   addon.click(`${CARD}.post`);
   expect([restrictedLog(addon)[0].slice(0, 6), priceLine(addon)], "posted at 11c; the card empties").toEqual([["PostCommodity", true, "0:3", 1, 20, 11], ["Your price", "", false, false]]);
@@ -1241,11 +1243,11 @@ it("vendor floor: the price line turns red under the vendor's price, and Post wa
 it("vendor floor: an item the vendor won't buy, or a hidden vendor price, is never under", () => {
   const addon = atAuctionHouse(BAGS + LINEN_BAGS + "__wfgWorld.items[2589].sellPrice = __wfgWorld.secret(13) __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
   dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
-  addon.type(`${CARD}.price`, "1");
+  addon.type(`${CARD}.price`, "1c");
   expect([priceLine(addon)[2], card(addon)[2], addon.eval("return #ns.errors")], "hidden: not red, Post works, no error").toEqual([false, true, 0]);
   addon.advance(1);
   dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
-  addon.type(`${CARD}.price`, "1");
+  addon.type(`${CARD}.price`, "1c");
   expect([priceLine(addon)[2], card(addon)[2]], "no vendor price (0): never under").toEqual([false, true]);
   expect(addon.eval(`return ${HELPER}.VendorPrice(424242)`), "an item the client doesn't know").toBe(null);
 });
