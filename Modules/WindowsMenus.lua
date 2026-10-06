@@ -51,3 +51,21 @@ function GW.WatchMenus()
 end
 
 GW.WatchMenus()
+
+-- The old dropdown lists (UIDropDownMenu) ---------------------------------------------------
+
+-- The three levels of the old dropdown menu some panels still use (UIDropDownListTemplate).
+GW.DROPDOWN_LISTS = { "DropDownList1", "DropDownList2", "DropDownList3" }
+
+-- One old dropdown list in the theme: both of its backdrops faded (<list>Backdrop, the dark dialog
+-- border also kept as .Border, and <list>MenuBackdrop, the tooltip one; the game shows one or the
+-- other by Show/Hide, so their alpha stays), a tooltip panel behind it. Its buttons and their
+-- highlight are the game's.
+function GW.SkinDropDownList(list)
+  local name = list:GetName() or ""
+  GW.FadeNamed({ name .. "Backdrop", name .. "MenuBackdrop" })
+  if type(list.Border) == "table" and list.Border.SetAlpha then list.Border:SetAlpha(0) end
+  T.Tooltip(list)
+end
+
+GW.Add("menus", "framed", GW.DROPDOWN_LISTS, GW.SkinDropDownList)
