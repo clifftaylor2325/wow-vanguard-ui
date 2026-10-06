@@ -101,10 +101,13 @@ Download `Vanguard-<version>.zip` from the [latest release](https://github.com/c
 ## Commands
 
 ```
-/vg               the options window (also: left-click the addons button by the minimap)
+/vg               the options window (also: left-click the addons button by the minimap; /vanguard, /vg options and /vg config do the same)
+/vg help          every command with a line on what it does
 /vg setup         the first-run setup again: layout, screen, look, then move things
-/vg unlock | lock drag handles on every Vanguard frame (also: right-click the addons button)
+/vg unlock | lock drag handles on every Vanguard frame (also: right-click the addons button); /vg move is unlock
 /vg reset <frame|all>
+/vg frames        the frames you can move
+/vg grid [size|on|off]          the unlock-mode grid; /vg snap on|off   snapping while dragging
 /vg accent <rrggbb|brass|arcane|fel|void|ember> | reset      /vg theme reset
 /vg modules       the list of modules; /vg enable|disable <module>, then /reload
 /vg skins         addons skinned through the API; skins <addon> on|off
@@ -113,13 +116,22 @@ Download `Vanguard-<version>.zip` from the [latest release](https://github.com/c
 /vg spec [profile|off]          use a profile whenever you're in this specialization
 /vg binds                       this spec's click-casting and hover-key bindings
 /vg keybind                     keybind mode: hover an action button and press a key to bind it; Escape leaves
+/vg copy                        the recent chat as plain text, ready to copy
+/vg quests                      open or close Vanguard's quest log
+/vg stock [<item> <n>]          items to keep in your bags; a merchant tops them up (0 removes, clear empties)
+/vg inventory [forget <name>|clear]   your characters remembered here and when their bags were read
+/vg weights [set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role
+/vg way [zone] x y [title]      a waypoint the game's arrow points to; /vg way clear removes it
+/vg dock                        line up Deadly Boss Mods' bars with the Boss timers spots; for BigWigs, where to drag its bars
+/vg factionart                  which of the game's own faction pictures this client has
 /vg fights                      your DPS, length and place in each fight this session, newest first
 /vg vendors [clear]             how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them
 /vg prep [want <kind> <n>]      the Instance prep card now; want sets how many food, bandages, potions, ammo or shards to carry
 /vg watch [add|remove <phrase>|list|clear]   Chat watch's phrases: add one, remove one, list them, or clear them all
 /vg situation [record <name>|stop|clear [name]|list]   Situations: record an override for solo, party, raid, pvp, instance or resting, stop and save it, clear one (the active one without a name), or list them
 /vg ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|restock|scan|prices clear]   auction prices from your scans: how many and when; pick or make a shopping list and say what's on it; add an item (a link, an ID or a name) to a list; rename, copy, delete (after asking), export or import the list in use; show the Recent list; make the Restock list of what you're short of (searched at the auction house); scan the auction house (while it's open); forget the prices
-/vg status
+/vg status                      version, profile, modules, skins, work waiting on combat, what the client has
+/vg report                      one block to copy for a bug report (what /vg status and /vg errors say), ready to paste at vanguardui.com/feedback
 /vg errors [clear]              what Vanguard caught going wrong this session: the version, client and aura backend, then each distinct error once with how often it happened and its stack (paste it in a bug report; clear empties the list). An error is printed to chat the first time it happens and handed to the game's error popup or your error addon every time; an error in one module, skin, event handler or after-combat update is kept here and doesn't stop the others
 /vg perf [cpu|watch]            what Vanguard costs: its CPU time (in all, and since the last report) and memory now, and its ten busiest functions; cpu turns the game's script profiling on or off (after a reload; it slows every addon a little, so turn it off when done); watch prints the line every minute until asked again
 ```
