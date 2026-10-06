@@ -59,3 +59,67 @@ it("S2.1 the pet stable: its group switched off leaves it the game's; a client w
   bare.eval("PetStableFrame:Show()");
   expect([bare.eval("return PetStableFrame.vgWindow"), windowErrors(bare)], "a window without the parts is skinned, no error").toEqual([true, "none"]);
 });
+
+// TEST-ONLY trainer (Blizzard_TrainerUI, loads on demand): the window, its list as the game's ScrollBox hands out rows.
+const TRAINER_ENV = `${WINDOWS_ENV}
+  ScrollBoxListMixin = { Event = { OnAcquiredFrame = "OnAcquiredFrame" } }
+  function __trainer()
+    local f = __window("ClassTrainerFrame")
+    f.BG = f:CreateTexture() f.BG:SetTexture("TEST-ONLY-ART2") f:CreateTexture("ClassTrainerFrameMoneyBg")
+    f.bottomInset = CreateFrame("Frame", nil, f) f.bottomInset.NineSlice = CreateFrame("Frame", nil, f.bottomInset)
+    f.FilterDropdown = CreateFrame("Button", nil, f)
+    CreateFrame("Button", "ClassTrainerTrainButton", f)
+    local box = { rows = {}, callbacks = {} }
+    function box:RegisterCallback(event, fn, owner) self.callbacks[event] = { fn, owner } end
+    function box:ForEachFrame(fn) for _, row in ipairs(self.rows) do fn(row) end end
+    f.ScrollBox = box
+    return f
+  end
+  -- A row as the game acquires it: a skill row (plate, name, requirements) or a category row (plate pieces).
+  function __row(box, category)
+    local row = CreateFrame("Button", nil, UIParent)
+    row.plate = row:CreateTexture() row.GetNormalTexture = function() return row.plate end
+    if category then
+      row.LeftPiece, row.RightPiece, row.CenterPiece = row:CreateTexture(), row:CreateTexture(), row:CreateTexture()
+    else
+      row.name, row.subText, row.nameSubText = row:CreateFontString(), row:CreateFontString(), row:CreateFontString()
+      row.selectedTex, row.icon = row:CreateTexture(), row:CreateTexture()
+    end
+    return row
+  end
+`;
+
+it("S2.2 the trainer: window, filter and train buttons themed, rows dressed as the list acquires them", () => {
+  const addon = loggedIn(TRAINER_ENV + "local box = __trainer().ScrollBox table.insert(box.rows, __row(box))");
+  addon.fire("ADDON_LOADED", "Blizzard_TrainerUI");
+  addon.eval("ClassTrainerFrame:Show()");
+  const first = windowState(addon, "ClassTrainerFrame");
+  expect(first, "the window skin").toMatchObject({ art: 0, nine: 0, panel: true, title: true });
+  const f = "ClassTrainerFrame";
+  expect(alphas(addon, `${f}.BG`, "ClassTrainerFrameMoneyBg", `${f}.bottomInset.NineSlice`), "backdrop, money plate and inset art faded").toEqual([0, 0, 0]);
+  expect(dressed(addon, `${f}.bottomInset`, `${f}.FilterDropdown`, "ClassTrainerTrainButton"), "inset panel, filter and Train buttons themed").toEqual([true, true, true]);
+  expect(addon.eval(`local row = ${f}.ScrollBox.rows[1] return { row.plate:GetAlpha(), row.name:GetFont() ~= nil, row.subText:GetFont() ~= nil, row.selectedTex:GetAlpha(), row.icon:GetAlpha() }`), "the row that was there: plate faded, texts in the theme font, the selected mark and icon kept").toEqual([0, true, true, 1, 1]);
+  addon.eval(`local box = ${f}.ScrollBox local skill, head = __row(box), __row(box, true)
+    local cb = box.callbacks.OnAcquiredFrame cb[1](cb[2], skill) cb[1](cb[2], head) cb[1](cb[2], nil) box.skill, box.head = skill, head`);
+  expect(addon.eval(`local b = ${f}.ScrollBox return { b.skill.plate:GetAlpha(), b.skill.name:GetFont() ~= nil, b.head.plate:GetAlpha(), b.head.LeftPiece:GetAlpha(), b.head.CenterPiece:GetAlpha() }`), "rows acquired later: a skill row and a category row").toEqual([0, true, 0, 0, 0]);
+  addon.eval(`${f}:Hide() ${f}:Show()`);
+  expect([windowState(addon, f).painted, addon.eval(`local n = 0 for _ in pairs(${f}.ScrollBox.callbacks) do n = n + 1 end return n`)], "a second show paints nothing more and watches the list once").toEqual([first.painted, 1]);
+});
+
+it("S2.2 the trainer: group off leaves it the game's; a trainer without a list or mixin loads cleanly", () => {
+  const off = loggedIn(TRAINER_ENV + "__trainer()", { savedVariables: OFF });
+  off.fire("ADDON_LOADED", "Blizzard_TrainerUI");
+  off.eval("ClassTrainerFrame:Show()");
+  expect([windowState(off, "ClassTrainerFrame").art !== 0, off.eval("return ClassTrainerFrame.ScrollBox.callbacks.OnAcquiredFrame == nil")], "not hooked").toEqual([true, true]);
+  const bare = loggedIn('CreateFrame("Frame", "ClassTrainerFrame", UIParent):Hide()');
+  bare.fire("ADDON_LOADED", "Blizzard_TrainerUI");
+  bare.eval("ClassTrainerFrame:Show()");
+  const plain = loggedIn(TRAINER_ENV + "__trainer() ScrollBoxListMixin = nil");
+  plain.fire("ADDON_LOADED", "Blizzard_TrainerUI");
+  const noEvent = loggedIn(TRAINER_ENV + "__trainer() ScrollBoxListMixin.Event = nil");
+  noEvent.fire("ADDON_LOADED", "Blizzard_TrainerUI");
+  const noCallbacks = loggedIn(TRAINER_ENV + "__trainer() ClassTrainerFrame.ScrollBox = {}");
+  noCallbacks.fire("ADDON_LOADED", "Blizzard_TrainerUI");
+  expect([bare, plain, noEvent, noCallbacks].map(windowErrors), "none of them reports an error").toEqual(["none", "none", "none", "none"]);
+  expect(plain.eval("return ClassTrainerFrame.ScrollBox.callbacks.OnAcquiredFrame == nil"), "no list events without the game's mixin").toBe(true);
+});

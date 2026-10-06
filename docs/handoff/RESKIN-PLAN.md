@@ -196,7 +196,7 @@ Inventory: design §5.2. Group `town`.
 - [x] **S2.1 Stable.** `PetStableFrame`: `GW.Skin` plus `Background`, `Border`, `PetModelSceneShadow`, `PetShadow` faded,
   `Inset` as `GW.ART` handles it, `expBar` via `T.StyleBar`, `purchaseButton` via `T.Button`, `levelText`, `loyaltyLevel`,
   `diet`, `Text` in the theme font. Size S.
-- [ ] **S2.2 Trainer.** `GW.Add("town", "onDemand", "Blizzard_TrainerUI", { "ClassTrainerFrame" }, GW.SkinTrainer)`:
+- [x] **S2.2 Trainer.** `GW.Add("town", "onDemand", "Blizzard_TrainerUI", { "ClassTrainerFrame" }, GW.SkinTrainer)`:
   `GW.Skin`, `BG` and `bottomInset` faded with an inset panel, `GW.AddButtons("ClassTrainerFrame", { "ClassTrainerTrainButton" })`,
   `FilterDropdown` via `T.Button`, each row on acquire (`ClassTrainerFrame.ScrollBox:RegisterCallback(ScrollBoxListMixin.Event.OnAcquiredFrame, …)`
   guarded; keep `selectedTex`, `disabledBG`, `lock`, `icon`; fade the row's `Left/Middle/Right/Bg` art; `name`/`subText`
