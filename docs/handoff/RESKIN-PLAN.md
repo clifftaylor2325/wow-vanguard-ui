@@ -263,36 +263,36 @@ Inventory: design §5.3. Group `system`.
 Files: `Modules/WindowsMap.lua`, `scripts/tests/windows-map.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.4. Group `map`.
 
-- [ ] **S4.1 World map.** `WorldMapFrame`: `GW.Skin` applied to `WorldMapFrame.BorderFrame` (it carries the
+- [x] **S4.1 World map.** `WorldMapFrame`: `GW.Skin` applied to `WorldMapFrame.BorderFrame` (it carries the
   `NineSlice`, `TitleContainer`, `CloseButton`, `MaximizeMinimizeFrame`), `Underlay` and the four vignettes faded,
   `NavBar` (made in Lua on load, `Blizzard_WorldMap.lua:343`: `overlay` faded, `homeButton`, `overflow` and the crumb
   buttons via `T.Button`), `SidePanelToggle` (`:349`) buttons, `Tutorial` button. Keep `ScrollContainer` and every map canvas untouched. Re-skin on `OnShow` and after
   `WorldMapFrame:SynchronizeDisplayState` (hooksecurefunc, guarded) because minimising rebuilds the border. The
   coordinate line from `Modules/Waypoints.lua:162` must still sit along the bottom: test it. Size M.
-- [ ] **S4.2 Quest log inside the map.** Only when Vanguard's quest log is off (`ns.GetModule("QuestLog")` nil or its
+- [x] **S4.2 Quest log inside the map.** Only when Vanguard's quest log is off (`ns.GetModule("QuestLog")` nil or its
   setting off, as `Modules/Windows.lua:232` `replaced` does for the quest dialog): `QuestMapFrame` (`DetailsFrame`,
   `QuestsFrame` art faded, inset panels; their scroll bars are S7's), `QuestLogPopupDetailFrame` (`GW.Skin`). Size S.
-- [ ] **S4.3 Battlefield map.** `GW.Add("map", "onDemand", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" })` with
+- [x] **S4.3 Battlefield map.** `GW.Add("map", "onDemand", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" })` with
   the same `BorderFrame` treatment; `BattlefieldMapTab` via `T.Button`. Size S.
-- [ ] **S4.4 Vanilla group finder.** `GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame",
+- [x] **S4.4 Vanilla group finder.** `GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame",
   "LFGListingFrame", "LFGBrowseFrame" })`: `LFGParentFrame` gets `T.Panel` with shadow, `$parentCloseButton`
   (`T.CloseButton`), its `$parentPortrait` faded; the two child frames' `NineSlice`/`Bg` faded (no close button of their
   own); `LFGBrowseSearchEntryTooltip` via `T.Tooltip`; the listing's edit boxes `T.EditBox`, its buttons `T.Button`;
   `Tab1-3` are S7's. Size M.
-- [ ] **S4.5 Legacy system.** `GW.Add("map", "onDemand", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)`:
+- [x] **S4.5 Legacy system.** `GW.Add("map", "onDemand", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)`:
   `GW.Skin`; `TreePage`, `ChallengesPage`, `RewardTrackPage` background art faded with inset panels (the trees'
   `TalentFrameBaseTemplate` art: `Background`, `BottomBar`, side art; the node buttons untouched); `TabIndicators` and
   the three tabs are S7's. **[DECIDE]** (design §6.1) the tracker; this task assumes (c), the window only, and says so
   in the commit body. Size M.
-- [ ] **S4.6 Queue status.** `QueueStatusFrame` via `T.Tooltip` on `OnShow`; its `QueueStatusFrame` entries' art faded.
+- [x] **S4.6 Queue status.** `QueueStatusFrame` via `T.Tooltip` on `OnShow`; its `QueueStatusFrame` entries' art faded.
   Size S.
-- [ ] **S4.7 Calendar, first pass.** `GW.Add("map", "onDemand", "Blizzard_Calendar", { "CalendarFrame", … })`: the
+- [x] **S4.7 Calendar, first pass.** `GW.Add("map", "onDemand", "Blizzard_Calendar", { "CalendarFrame", … })`: the
   outer frame's corner/edge textures (`CalendarFrame` `$parentTopLeft`…) faded, `T.Panel` with shadow, `CalendarCloseButton`,
   the month buttons, the day grid buttons' `Backdrop`-like textures faded with an inset panel each, the seven dialogs
   (`CalendarViewHolidayFrame`, `CalendarViewRaidFrame`, `CalendarViewEventFrame`, `CalendarCreateEventFrame`,
   `CalendarMassInviteFrame`, `CalendarEventPickerFrame`, `CalendarTexturePickerFrame`) with `GW.Skin`. Event icons kept.
   Can be dropped if it runs long: say so in the PR. Size L.
-- [ ] **S4.8 Docs and smoke lines.** README sub-bullet for `map`; smoke-test lines: `M`, minimise/maximise the map,
+- [x] **S4.8 Docs and smoke lines.** README sub-bullet for `map`; smoke-test lines: `M`, minimise/maximise the map,
   the finder eye, the Legacy button on the menu bar, `/calendar`. Size S.
 
 ---
