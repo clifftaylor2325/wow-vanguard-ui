@@ -105,3 +105,57 @@ end
 
 GW.Add("map", "framed", { "WorldMapFrame" }, GW.SkinWorldMap)
 GW.Add("map", "onDemand", "Blizzard_WorldMap", { "WorldMapFrame" }, GW.SkinWorldMap)
+
+-- Quest log inside the map -------------------------------------------------------------------
+
+-- The parts of the quest details panel whose art is faded (the rewards tile and the buttons' strip included).
+GW.QUEST_DETAIL_ART = { "Bg", "SealMaterialBG", "BorderFrame", "BackFrame" }
+-- The details panel's push buttons.
+GW.QUEST_DETAIL_BUTTONS = { "AbandonButton", "ShareButton", "TrackButton" }
+
+-- Whether Vanguard's own quest log is on, standing in for the game's quest panel (it is built only when on).
+local function ownQuestLog()
+  local log = ns.GetModule("QuestLog")
+  return log ~= nil and log.frame ~= nil
+end
+
+-- The quest list's panel: its ornate border, scroll background and edge faded, an inset panel.
+local function skinQuestList(list)
+  if not isFrame(list) then return end
+  GW.FadeParts(list, { "BorderFrame" })
+  if type(list.ScrollFrame) == "table" then GW.FadeParts(list.ScrollFrame, { "Background", "Edge" }) end
+  T.Panel(list, { inset = true, noSheen = true })
+end
+
+-- The details panel's buttons (abandon, share, track, back) flat.
+local function skinDetailButtons(details)
+  for _, key in ipairs(GW.QUEST_DETAIL_BUTTONS) do skinFlatButton(details[key]) end
+  if type(details.BackFrame) == "table" then skinFlatButton(details.BackFrame.BackButton) end
+end
+
+-- One quest's details: the art faded (the rewards' tile too), an inset panel, the buttons flat.
+local function skinQuestDetails(details)
+  if not isFrame(details) then return end
+  GW.FadeParts(details, GW.QUEST_DETAIL_ART)
+  if type(details.RewardsFrameContainer) == "table" then GW.FadeParts(details.RewardsFrameContainer, { "RewardsFrame" }) end
+  T.Panel(details, { inset = true, noSheen = true })
+  skinDetailButtons(details)
+end
+
+-- The quest panel in the world map, when Vanguard's own quest log is off (the tabs and scroll bars are
+-- other streams'): the list and the details of one quest. Left alone while Vanguard's log is on.
+function GW.SkinQuestMap(panel)
+  if ownQuestLog() then return end
+  local list = panel.QuestsFrame
+  skinQuestList(list)
+  skinQuestDetails(panel.DetailsFrame or (type(list) == "table" and list.DetailsFrame))
+end
+
+-- The quest details window (the game's pop-out of one quest): the window skin, when Vanguard's log is off.
+function GW.SkinQuestPopup(frame)
+  if not ownQuestLog() then GW.Skin(frame) end
+end
+
+GW.AddButtons("QuestLogPopupDetailFrame", { "QuestLogPopupDetailFrameAbandonButton", "QuestLogPopupDetailFrameShareButton", "QuestLogPopupDetailFrameTrackButton" })
+GW.Add("map", "framed", { "QuestMapFrame" }, GW.SkinQuestMap)
+GW.Add("map", "framed", { "QuestLogPopupDetailFrame" }, GW.SkinQuestPopup)

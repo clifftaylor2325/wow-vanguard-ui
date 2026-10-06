@@ -151,3 +151,62 @@ it("world map: switched off it stays the game's; a client missing parts or the m
   sparse.eval("WorldMapFrame:Show()");
   for (const addon of [bare, sparse]) expect(addon.eval("return #ns.errors"), "no errors without the parts").toBe(0);
 });
+
+// Vanguard's own quest log switched off, so the game's quest panel is the one in use.
+const OWN_LOG_OFF = "VanguardDB.profiles = { Default = { QuestLog = { own = false } } }";
+
+// TEST-ONLY quest panel in the map, shaped like Blizzard's QuestMapFrame.xml: the list (QuestsFrame with its ornate
+// BorderFrame and scroll background and edge) holding the details of one quest (its Bg, borders, rewards tile and
+// buttons), and the pop-out QuestLogPopupDetailFrame (a ButtonFrameTemplate window with three push buttons).
+const QUEST_MAP_ENV = WINDOWS_ENV + `
+  local panel = CreateFrame("Frame", "QuestMapFrame", UIParent) panel:Hide()
+  local list = CreateFrame("Frame", nil, panel) panel.QuestsFrame = list
+  list.BorderFrame = CreateFrame("Frame", nil, list) list.BorderFrame:CreateTexture()
+  list.ScrollFrame = CreateFrame("ScrollFrame", nil, list)
+  list.ScrollFrame.Background, list.ScrollFrame.Edge = list.ScrollFrame:CreateTexture(), list.ScrollFrame:CreateTexture()
+  local details = CreateFrame("Frame", nil, list) list.DetailsFrame = details
+  details.Bg, details.SealMaterialBG = details:CreateTexture(), details:CreateTexture()
+  details.BorderFrame = CreateFrame("Frame", nil, details) details.BorderFrame:CreateTexture()
+  details.BackFrame = CreateFrame("Frame", nil, details) details.BackFrame:CreateTexture()
+  details.BackFrame.BackButton = CreateFrame("Button", nil, details.BackFrame) details.BackFrame.BackButton:CreateTexture()
+  details.RewardsFrameContainer = CreateFrame("Frame", nil, details)
+  details.RewardsFrameContainer.RewardsFrame = CreateFrame("Frame", nil, details.RewardsFrameContainer)
+  details.RewardsFrameContainer.RewardsFrame:CreateTexture()
+  for _, key in ipairs({ "AbandonButton", "ShareButton", "TrackButton" }) do details[key] = CreateFrame("Button", nil, details) details[key]:CreateTexture() end
+  __window("QuestLogPopupDetailFrame")
+  for _, key in ipairs({ "Abandon", "Share", "Track" }) do CreateFrame("Button", "QuestLogPopupDetailFrame" .. key .. "Button", QuestLogPopupDetailFrame) end
+`;
+
+// The quest panel's parts' alphas, in a fixed order, and its painted count.
+const questPanel = (addon) => addon.eval(`local p, d = QuestMapFrame, QuestMapFrame.QuestsFrame.DetailsFrame
+  local function a(f) return (select(1, f:GetRegions())):GetAlpha() end
+  return { list = p.QuestsFrame.BorderFrame:GetRegions():GetAlpha(), scroll = p.QuestsFrame.ScrollFrame.Background:GetAlpha(), edge = p.QuestsFrame.ScrollFrame.Edge:GetAlpha(),
+    bg = d.Bg:GetAlpha(), seal = d.SealMaterialBG:GetAlpha(), border = a(d.BorderFrame), strip = a(d.BackFrame), rewards = a(d.RewardsFrameContainer.RewardsFrame),
+    buttons = { a(d.AbandonButton), a(d.ShareButton), a(d.TrackButton), a(d.BackFrame.BackButton) }, painted = ns.Theme.PaintedCount() }`);
+
+it("quest panel in the map: with Vanguard's quest log off, the list, the details and the pop-out window are in the theme", () => {
+  const addon = loggedIn(QUEST_MAP_ENV, { savedVariables: OWN_LOG_OFF });
+  addon.eval("QuestMapFrame:Show() QuestLogPopupDetailFrame:Show()");
+  const first = questPanel(addon);
+  expect(first, "the ornate borders, backgrounds, rewards tile and the buttons' art are faded").toMatchObject({
+    list: 0, scroll: 0, edge: 0, bg: 0, seal: 0, border: 0, strip: 0, rewards: 0, buttons: [0, 0, 0, 0] });
+  expect([fills(addon, "QuestMapFrame.QuestsFrame"), fills(addon, "QuestMapFrame.QuestsFrame.DetailsFrame")], "the list and the details each get an inset panel").toEqual([1, 1]);
+  expect(windowState(addon, "QuestLogPopupDetailFrame"), "the pop-out is a window in the theme").toMatchObject({ art: 0, nine: 0, panel: true, title: true });
+  expect(["Abandon", "Share", "Track"].map((b) => fills(addon, `QuestLogPopupDetailFrame${b}Button`)), "its three buttons are themed (a fill and a hover wash each)").toEqual([2, 2, 2]);
+  addon.eval("QuestMapFrame:Hide() QuestMapFrame:Show() QuestLogPopupDetailFrame:Hide() QuestLogPopupDetailFrame:Show()");
+  expect(questPanel(addon).painted, "showing them again paints nothing new").toBe(first.painted);
+});
+
+it("quest panel in the map: left the game's while Vanguard's quest log is on, or the group is off", () => {
+  const own = loggedIn(QUEST_MAP_ENV);
+  own.eval("QuestMapFrame:Show() QuestLogPopupDetailFrame:Show()");
+  expect([questPanel(own).bg, questPanel(own).list, windowState(own, "QuestLogPopupDetailFrame").panel], "Vanguard's log is the quest log: the game's panels are untouched").toEqual([1, 1, false]);
+  const off = loggedIn(QUEST_MAP_ENV, { savedVariables: OWN_LOG_OFF.replace("QuestLog = { own = false }", "QuestLog = { own = false }, Windows = { map = false }") });
+  off.eval("QuestMapFrame:Show() QuestLogPopupDetailFrame:Show()");
+  expect([questPanel(off).bg, off.eval("return QuestMapFrame.vgWindow == nil and QuestLogPopupDetailFrame.vgWindow == nil")], "with the map group off they are not even hooked").toEqual([1, true]);
+  const sparse = loggedIn(`CreateFrame("Frame", "QuestMapFrame", UIParent).QuestsFrame = {} CreateFrame("Frame", "QuestLogPopupDetailFrame", UIParent)`, { savedVariables: OWN_LOG_OFF });
+  sparse.eval("QuestMapFrame:Show() QuestLogPopupDetailFrame:Show()");
+  const partial = loggedIn(`local p = CreateFrame("Frame", "QuestMapFrame", UIParent) p.DetailsFrame = CreateFrame("Frame", nil, p) p.DetailsFrame.BackFrame = {}`, { savedVariables: OWN_LOG_OFF });
+  partial.eval("QuestMapFrame:Show()");
+  for (const addon of [sparse, partial]) expect(addon.eval("return #ns.errors"), "a client with fewer parts loads cleanly").toBe(0);
+});
