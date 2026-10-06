@@ -230,3 +230,41 @@ it("S2.4 separate bag windows: the Bags module or the town group off leaves them
   bare.eval("ContainerFrame3:Show() ContainerFrame3:UpdateItems() ContainerFrame4:Show() ContainerFrame4:UpdateItems()");
   expect([windowState(bare, "ContainerFrame3").panel, windowErrors(bare)], "windows without the item calls are skinned, no error").toEqual([true, "none"]);
 });
+
+// TEST-ONLY master looter window and group loot history. MasterLooterFrame_UpdatePlayers makes the player
+// buttons as the game does: named player<column * 10 + row>, with gaps when a column has fewer than ten rows.
+const LOOT_ENV = `${WINDOWS_ENV}
+  local m = __window("MasterLooterFrame")
+  m.Item = CreateFrame("Frame", nil, m)
+  for _, key in ipairs({ "NameBorderLeft", "NameBorderRight", "NameBorderMid", "IconBorder" }) do m.Item[key] = m.Item:CreateTexture() end
+  m.HighlightFrame = CreateFrame("Frame", nil, m)
+  m.player1 = CreateFrame("Button", nil, m)
+  function MasterLooterFrame_UpdatePlayers() m.player11 = m.player11 or CreateFrame("Button", nil, m) end
+  local h = __window("GroupLootHistoryFrame") h.ClosePanelButton = CreateFrame("Button", nil, h)
+`;
+
+it("S2.5 loot dialogs: master looter and loot history skinned, player buttons themed as the game lists them", () => {
+  const addon = loggedIn(LOOT_ENV);
+  addon.eval("MasterLooterFrame:Show() GroupLootHistoryFrame:Show()");
+  const first = windowState(addon, "MasterLooterFrame");
+  expect(first, "the master looter window skin").toMatchObject({ art: 0, nine: 0, panel: true, title: true });
+  expect(windowState(addon, "GroupLootHistoryFrame"), "the history window skin").toMatchObject({ art: 0, panel: true });
+  const m = "MasterLooterFrame";
+  expect(alphas(addon, `${m}.Item.NameBorderLeft`, `${m}.Item.NameBorderMid`, `${m}.HighlightFrame`), "the name plate and glow faded").toEqual([0, 0, 0]);
+  expect(alphas(addon, `${m}.Item.IconBorder`), "the item's quality ring stays").toEqual([1]);
+  expect(dressed(addon, `${m}.player1`, "GroupLootHistoryFrame.ClosePanelButton"), "a player button and the history close button themed").toEqual([true, true]);
+  addon.eval("MasterLooterFrame_UpdatePlayers()");
+  expect(dressed(addon, `${m}.player11`), "a player button the game makes when it lists candidates").toEqual([true]);
+  const painted = windowState(addon, m).painted;
+  addon.eval(`${m}:Hide() ${m}:Show() MasterLooterFrame_UpdatePlayers()`);
+  expect(windowState(addon, m).painted, "showing and listing again paints nothing more").toBe(painted);
+});
+
+it("S2.5 loot dialogs: group off leaves them the game's; a window without its parts or the game's list call loads cleanly", () => {
+  const off = loggedIn(LOOT_ENV, { savedVariables: OFF });
+  off.eval("MasterLooterFrame:Show() GroupLootHistoryFrame:Show()");
+  expect([windowState(off, "MasterLooterFrame").art !== 0, windowState(off, "GroupLootHistoryFrame").art !== 0, off.eval("return MasterLooterFrame.vgPlayers == nil")], "not hooked").toEqual([true, true, true]);
+  const bare = loggedIn('CreateFrame("Frame", "MasterLooterFrame", UIParent):Hide() CreateFrame("Frame", "GroupLootHistoryFrame", UIParent):Hide()');
+  bare.eval("MasterLooterFrame:Show() GroupLootHistoryFrame:Show()");
+  expect([bare.eval("return MasterLooterFrame.vgWindow"), windowErrors(bare)], "bare windows: skinned, no list hook, no error").toEqual([true, "none"]);
+});

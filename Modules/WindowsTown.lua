@@ -244,3 +244,42 @@ function GW.SkinBagWindow(frame)
 end
 
 GW.Add("town", "framed", { "ContainerFrame1", "ContainerFrame2", "ContainerFrame3", "ContainerFrame4", "ContainerFrame5", "ContainerFrame6", "ContainerFrame7" }, GW.SkinBagWindow)
+
+-- Loot dialogs --------------------------------------------------------------------------------------
+
+-- How many player buttons the master looter window can hold (the game's MAX_RAID_MEMBERS); they are
+-- player1 ... player40 and, with several columns of fewer than ten rows, not numbered without gaps.
+local MASTER_PLAYERS = 40
+-- The loot plate behind the item's name in the master looter window (the icon and its quality ring stay).
+local MASTER_ART = { "NameBorderLeft", "NameBorderRight", "NameBorderMid" }
+
+-- The master looter window's player buttons (the game makes them as it lists the candidates) as theme buttons.
+local function dressMasterPlayers()
+  local frame = _G.MasterLooterFrame
+  if type(frame) ~= "table" then return end
+  for i = 1, MASTER_PLAYERS do
+    local button = frame["player" .. i]
+    if type(button) == "table" and button.GetRegions then T.Button(button) end
+  end
+end
+
+-- The master looter window (a child of the loot window): the window skin, the item's name plate and the
+-- highlight glow faded, and each player button themed now and whenever the game lists the candidates.
+function GW.SkinMasterLooter(frame)
+  GW.Skin(frame)
+  if type(frame.Item) == "table" then fadeWhole(frame.Item, MASTER_ART) end
+  fadeWhole(frame, { "HighlightFrame" })
+  dressMasterPlayers()
+  if frame.vgPlayers or type(_G.MasterLooterFrame_UpdatePlayers) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  frame.vgPlayers = true
+  hooksecurefunc("MasterLooterFrame_UpdatePlayers", dressMasterPlayers)
+end
+
+-- The group loot history window: the window skin, and its close button (named ClosePanelButton there).
+function GW.SkinLootHistory(frame)
+  GW.Skin(frame)
+  if type(frame.ClosePanelButton) == "table" then T.CloseButton(frame.ClosePanelButton) end
+end
+
+GW.Add("town", "framed", { "MasterLooterFrame" }, GW.SkinMasterLooter)
+GW.Add("town", "framed", { "GroupLootHistoryFrame" }, GW.SkinLootHistory)
