@@ -303,3 +303,49 @@ it("guild creation: a second show paints nothing more, the switch off leaves the
   bare.eval("PetitionFrame:Show() TabardFrame:Show()");
   expect([windowErrors(bare), bare.eval("return #ns.errors")], "no texts, no game functions, no buttons").toEqual(["none", 0]);
 });
+
+// Role poll and invite popups -----------------------------------------------------------------------------
+
+// The role poll and dungeon invite popups: a dialog border, a close button, role buttons with an icon and a check, accept/decline.
+const POPUP_ENV = WINDOWS_ENV + `
+  for _, n in ipairs({ "RolePollPopup", "LFGInvitePopup" }) do
+    local f = CreateFrame("Frame", n, UIParent) f:Hide()
+    f.Border = CreateFrame("Frame", nil, f) f.Border.Art = f.Border:CreateTexture()
+    f.Border.NineSlice = CreateFrame("Frame", nil, f.Border) f.Border.NineSlice.Edge = f.Border.NineSlice:CreateTexture()
+    for _, role in ipairs({ "Tank", "Healer", "DPS" }) do
+      local b = CreateFrame("Button", n .. "RoleButton" .. role, f) b.icon = b:CreateTexture() b:SetNormalTexture("TEST-ONLY-ICON")
+      b.checkButton = CreateFrame("CheckButton", nil, b) b.checkButton.Check = b.checkButton:CreateTexture()
+    end
+    for _, k in ipairs({ "Accept", "Decline" }) do local b = CreateFrame("Button", n .. k .. "Button", f) b.Art = b:CreateTexture() end
+  end
+  RolePollPopup.CloseButton = CreateFrame("Button", "RolePollPopupCloseButton", RolePollPopup)
+  RolePollPopup.acceptButton = RolePollPopupAcceptButton
+`;
+
+it("role poll and invite popups: border faded, panel painted, close and accept buttons themed, role buttons untouched", () => {
+  const addon = loggedIn(POPUP_ENV);
+  for (const name of ["RolePollPopup", "LFGInvitePopup"]) {
+    addon.eval(`${name}:Show()`);
+    expect(addon.eval(`local f = ${name}
+      local panel = false for _, r in ipairs({ f:GetRegions() }) do if r.__alpha ~= 0 then panel = true end end
+      local accept, decline = _G["${name}AcceptButton"], _G["${name}DeclineButton"]
+      local tank = _G["${name}RoleButtonTank"]
+      return { f.Border.Art.__alpha, f.Border.NineSlice.Edge.__alpha, panel, accept.Art.__alpha, decline.Art.__alpha,
+        tank.icon.__alpha ~= 0, tank.checkButton.Check.__alpha ~= 0 }`), name).toEqual([0, 0, true, 0, 0, true, true]);
+  }
+  expect(addon.eval(`local glyph = false for _, r in ipairs({ RolePollPopupCloseButton:GetRegions() }) do if r.__texture and tostring(r.__texture):find("Close") then glyph = true end end return glyph`), "the close button wears the theme's X").toBe(true);
+});
+
+it("role poll and invite popups: a second show paints nothing more, the switch off leaves them the game's, missing parts load cleanly", () => {
+  const addon = loggedIn(POPUP_ENV);
+  addon.eval("RolePollPopup:Show() LFGInvitePopup:Show()");
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("RolePollPopup:Hide() RolePollPopup:Show() LFGInvitePopup:Hide() LFGInvitePopup:Show()");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "painting again piles up nothing").toBe(painted);
+  const off = loggedIn(POPUP_ENV, OFF);
+  off.eval("RolePollPopup:Show() LFGInvitePopup:Show()");
+  expect(off.eval("return { RolePollPopup.vgWindow == nil, LFGInvitePopup.Border.Art.__alpha ~= 0 }"), "left the game's").toEqual([true, true]);
+  const bare = loggedIn(`CreateFrame("Frame", "RolePollPopup", UIParent) RolePollPopup.Border = {} RolePollPopup.CloseButton = {} RolePollPopupAcceptButton = {}`);
+  bare.eval("RolePollPopup:Show()");
+  expect([windowErrors(bare), bare.eval("return #ns.errors")], "a popup with parts missing").toEqual(["none", 0]);
+});
