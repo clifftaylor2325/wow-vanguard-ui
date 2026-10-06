@@ -1,21 +1,24 @@
-MIT License
+Copyright (c) 2026 Clifton Taylor. All rights reserved.
 
-Copyright (c) 2026 clifftaylor2325
+Vanguard, an addon for World of Warcraft, and everything in this repository
+that its author made (its code, art, text and documentation) are the
+copyright holder's property. You may download Vanguard and use it in your own
+game client. You may not copy, modify, redistribute, publish, sublicense or
+sell it, in whole or in part, without the copyright holder's written
+permission.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Releases up to and including v0.4.0 were published under the MIT License;
+copies of those releases stay available under its terms.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Third-party files keep their own licenses and are not covered by this notice:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+- Media/Fonts: Fira Sans Condensed, Cinzel and Metamorphous, under the SIL
+  Open Font License 1.1 (Media/Fonts/OFL.txt, OFL-Cinzel.txt,
+  OFL-Metamorphous.txt).
+- Libs/LibSharedMedia-3.0: GNU LGPL 2.1 (Libs/LibSharedMedia-3.0/LICENSE.txt).
+- Libs/CallbackHandler-1.0: the Ace3 BSD-style license
+  (Libs/CallbackHandler-1.0/LICENSE.txt).
+- Libs/LibStub: public domain (stated in Libs/LibStub/LibStub.lua).
+- Media/Art/lorc-crossed-swords.tga and lorc-crossed-axes.tga: "Crossed
+  swords" and "Crossed axes" by Lorc, from game-icons.net, under Creative
+  Commons Attribution 3.0 Unported (Media/Art/CREDITS.txt).
