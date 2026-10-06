@@ -244,3 +244,62 @@ it("channels and friends dialogs: a second show paints nothing more, the switch 
   bare.eval("AddFriendFrame:Show()");
   expect([windowErrors(bare), bare.eval("return #ns.errors")], "a client without the dialog's named parts").toEqual(["none", 0]);
 });
+
+// Guild creation ---------------------------------------------------------------------------------------
+
+// The registrar, petition and tabard windows with their texts, buttons and game functions (the functions
+// recolor the texts dark, as the game does for its parchment).
+const CREATION_ENV = WINDOWS_ENV + `
+  for _, n in ipairs({ "GuildRegistrarFrame", "PetitionFrame", "TabardFrame" }) do __window(n) end
+  GuildRegistrarFrame.Bg = GuildRegistrarFrame:CreateTexture()
+  __texts = { "GuildRegistrarText", "GuildRegistrarPurchaseText", "PetitionFrameCharterName", "PetitionFrameCharterTitle", "PetitionFrameMemberTitle", "PetitionFrameMemberName3" }
+  for _, n in ipairs(__texts) do _G[n] = PetitionFrame:CreateFontString(n, "ARTWORK") end
+  for _, n in ipairs({ "GuildRegistrarFrameGoodbyeButton", "GuildRegistrarFramePurchaseButton", "PetitionFrameSignButton", "TabardFrameAcceptButton" }) do
+    local b = CreateFrame("Button", n, UIParent) b.Art = b:CreateTexture()
+  end
+  GuildRegistrarFrameEditBox = CreateFrame("EditBox", "GuildRegistrarFrameEditBox", GuildRegistrarFrame) GuildRegistrarFrameEditBox.Art = GuildRegistrarFrameEditBox:CreateTexture()
+  __redraws = 0
+  function __dark() for _, n in ipairs(__texts) do _G[n]:SetTextColor(0.2, 0.1, 0) end end
+  function GuildRegistrar_OnShow() __redraws = __redraws + 1 __dark() end
+  function PetitionFrame_Update() __redraws = __redraws + 1 __dark() end
+`;
+
+// The creation windows' names.
+const CREATION = ["GuildRegistrarFrame", "PetitionFrame", "TabardFrame"];
+
+it("guild creation: the three windows skinned, their texts light and gold, again after the game recolors them", () => {
+  const addon = loggedIn(CREATION_ENV);
+  for (const name of CREATION) {
+    addon.eval(`${name}:Show()`);
+    expect(windowState(addon, name), name).toMatchObject({ art: 0, nine: 0, panel: true, title: true });
+  }
+  expect(addon.eval("return GuildRegistrarFrame.Bg.__alpha"), "the parchment faded").toBe(0);
+  // Whether a font string wears the theme color token (r, g, b of the text color).
+  const color = (n) => addon.eval(`local c = ${n}.__textColor return { c[1], c[2], c[3] }`);
+  const text = addon.eval('return { ns.Theme.RGB("text") }').slice(0, 3);
+  const gold = addon.eval('return { ns.Theme.RGB("gold") }').slice(0, 3);
+  expect(color("GuildRegistrarText"), "registrar text light").toEqual(text);
+  expect(color("PetitionFrameCharterTitle"), "petition headings gold").toEqual(gold);
+  addon.eval("GuildRegistrar_OnShow() PetitionFrame_Update()");
+  expect([color("GuildRegistrarPurchaseText"), color("PetitionFrameMemberTitle"), color("PetitionFrameMemberName3")], "light again after the game's redraw").toEqual([text, gold, text]);
+  expect(addon.eval("return __redraws"), "the game's functions still run").toBe(2);
+  expect(addon.eval(`local function themed(x) for _, r in ipairs({ x:GetRegions() }) do if r.__alpha ~= 0 then return true end end return false end
+    return { GuildRegistrarFrameGoodbyeButton.Art.__alpha, PetitionFrameSignButton.Art.__alpha, TabardFrameAcceptButton.Art.__alpha, GuildRegistrarFrameEditBox.Art.__alpha,
+      themed(GuildRegistrarFramePurchaseButton), themed(GuildRegistrarFrameEditBox) }`), "buttons and the name box themed").toEqual([0, 0, 0, 0, true, true]);
+});
+
+it("guild creation: a second show paints nothing more, the switch off leaves them the game's, a client without the texts loads cleanly", () => {
+  const addon = loggedIn(CREATION_ENV);
+  for (const name of CREATION) addon.eval(`${name}:Show()`);
+  const painted = windowState(addon, "PetitionFrame").painted;
+  for (const name of CREATION) addon.eval(`${name}:Hide() ${name}:Show()`);
+  addon.eval("PetitionFrame_Update()");
+  expect(windowState(addon, "PetitionFrame").painted, "painting again piles up nothing").toBe(painted);
+  const off = loggedIn(CREATION_ENV, OFF);
+  for (const name of CREATION) off.eval(`${name}:Show()`);
+  off.eval("PetitionFrame_Update()");
+  expect(off.eval("return { GuildRegistrarFrame.vgWindow == nil, PetitionFrameCharterTitle.__textColor[1] }"), "left the game's, its texts dark").toEqual([true, 0.2]);
+  const bare = loggedIn(WINDOWS_ENV + `__window("PetitionFrame") __window("TabardFrame") GuildRegistrarFrameEditBox = {}`);
+  bare.eval("PetitionFrame:Show() TabardFrame:Show()");
+  expect([windowErrors(bare), bare.eval("return #ns.errors")], "no texts, no game functions, no buttons").toEqual(["none", 0]);
+});
