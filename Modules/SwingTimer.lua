@@ -5,11 +5,14 @@
 -- module exists only where it does (C_SwingTimer). A row fills as the next
 -- swing comes round, shows the seconds left, and hides once it lands.
 -- Anything the client hides is treated as no information, never guessed.
+-- The game's own swing timer (Blizzard_SwingTimer, shown with its "showSwingTimer"
+-- setting) is hidden while this one is on, and drawn in the theme while it is off.
 
 local ADDON, ns = ...
 
 local T = ns.Theme
 local CB = ns.GetModule("CastBars")
+local UF = ns.GetModule("UnitFrames")
 
 -- show: "auto" (the classes that live by auto-attack), "always" or "never".
 local SW = ns.Module("SwingTimer", { defaults = { show = "auto" } })
@@ -21,6 +24,11 @@ SW.WIDTH, SW.ROW, SW.GAP = 220, 10, 2
 -- Swing type name (Enum.PlayerSwingType) -> row order and color token. The order is
 -- also that of UnitAttackSpeed's returns (main hand, off hand, ranged).
 SW.KINDS = { { "MainHand", "accent" }, { "OffHand", "text2" }, { "Ranged", "focus" } }
+-- The game's own swing bars, in SW.KINDS order (Blizzard_SwingTimer.xml), and the art on each
+-- that the theme fades (the game sets its alpha again for its out-of-range look).
+SW.BLIZZARD = { "SwingTimerMainHandFrame", "SwingTimerOffHandFrame", "SwingTimerRangedFrame" }
+SW.GAME_ART = { "Background", "Border" }
+SW.GAME_LABELS = { "TypeLabel", "TimeLabel" }
 
 -- Rows ----------------------------------------------------------------------------------------
 
@@ -81,6 +89,50 @@ function SW.OnWeapons()
   end
 end
 
+-- The game's swing timer ---------------------------------------------------------------------
+
+-- Fades a game swing bar's background and frame art (alpha only).
+local function fadeGameArt(frame)
+  for _, key in ipairs(SW.GAME_ART) do
+    if type(frame[key]) == "table" and frame[key].SetAlpha then frame[key]:SetAlpha(0) end
+  end
+end
+
+-- A game swing bar's fill in the theme: the theme's bar texture in its row's color on a
+-- flat inset panel, its labels in the theme font (the game keeps their color), the label's shadow hidden.
+local function dressGameBar(bar, color)
+  T.BarColor(T.StyleBar(bar), color)
+  T.HudPanel(bar, { inset = true })
+  for _, key in ipairs(SW.GAME_LABELS) do
+    if type(bar[key]) == "table" and bar[key].SetFont then T.Text(bar[key], "small", false) end
+  end
+  if type(bar.TypeLabelShadow) == "table" and bar.TypeLabelShadow.Hide then bar.TypeLabelShadow:Hide() end
+end
+
+-- Dresses one of the game's swing bars, once; its art is faded again each time it shows
+-- and after the game redraws its range look. A bar without its fill is left alone.
+local function skinGameBar(frame, color)
+  if frame.vgSkinned or type(frame.StatusBar) ~= "table" or not frame.StatusBar.SetStatusBarTexture then return end
+  frame.vgSkinned = true
+  dressGameBar(frame.StatusBar, color)
+  fadeGameArt(frame)
+  frame:HookScript("OnShow", fadeGameArt)
+  if type(hooksecurefunc) == "function" and type(frame.ApplyRangePresentation) == "function" then hooksecurefunc(frame, "ApplyRangePresentation", fadeGameArt) end
+end
+
+-- The game's swing bars in the theme (Vanguard's timer is off): each this client has.
+function SW.SkinGameBars()
+  for i, name in ipairs(SW.BLIZZARD) do
+    local frame = _G[name]
+    if type(frame) == "table" and frame.HookScript then skinGameBar(frame, SW.KINDS[i][2]) end
+  end
+end
+
+-- Hides the game's swing bars for good, as the unit frames hide the game's (UF.HideBlizzard).
+function SW.HideGameBars()
+  for _, name in ipairs(SW.BLIZZARD) do UF.HideBlizzard(name) end
+end
+
 -- Building ----------------------------------------------------------------------------------
 
 -- The movable holder, centered above your cast bar, and a row per swing type.
@@ -103,9 +155,11 @@ function SW.Wanted(settings)
   return not ns.IsSecret(class) and SW.CLASSES[class] == true
 end
 
--- Module entry point (Core/Modules.lua).
+-- Module entry point (Core/Modules.lua): Vanguard's timer and the game's hidden (out of
+-- combat), or the game's in the theme when Vanguard's isn't wanted.
 function SW.Enable(settings)
-  if not SW.Wanted(settings) then return end
+  if not SW.Wanted(settings) then return SW.SkinGameBars() end
+  ns.OutOfCombat(SW.HideGameBars)
   build()
   ns.On("PLAYER_SWING", SW.OnSwing)
   ns.On("PLAYER_DEAD", SW.Stop)

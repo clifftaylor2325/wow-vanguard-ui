@@ -328,24 +328,24 @@ Files: `Modules/SwingTimer.lua`, `Modules/PlayerAuras.lua`, `Modules/CastBars.lu
 the "Combat timers"/"Your buffs"/"Action bars" README bullets (one sentence each), own smoke-test subsection.
 Inventory: design §5.6. No new group: each change lives under its module's own settings.
 
-- [ ] **S6.1 The game's swing timers.** `Modules/SwingTimer.lua`: while `SW.Wanted` (:99) is true, hide
+- [x] **S6.1 The game's swing timers.** `Modules/SwingTimer.lua`: while `SW.Wanted` (:99) is true, hide
   `SwingTimerMainHandFrame`, `SwingTimerOffHandFrame`, `SwingTimerRangedFrame` the way `UF.HideBlizzard`
   (`Modules/UnitFrames.lua:458`) does (they are not secure; out of combat all the same); while it is false, skin them:
   `StatusBar` via `T.StyleBar`, `Background`/`Border` faded, `TimeLabel`/`TypeLabel` theme font, `TypeLabelShadow`
   hidden. The game shows them only with the `showSwingTimer` CVar on, so a stub test defines the frames and checks both
   paths. **[VERIFY IN GAME]** with the CVar on. Size S.
-- [ ] **S6.2 The other aura frames.** `Modules/PlayerAuras.lua`, `PA.BLIZZARD` (:24): append `ExternalDefensivesFrame`,
+- [x] **S6.2 The other aura frames.** `Modules/PlayerAuras.lua`, `PA.BLIZZARD` (:24): append `ExternalDefensivesFrame`,
   `DeadlyDebuffFrame`; `UF.HideBlizzard` skips a missing one already. README: "your buffs and debuffs (and the external
   defensives and deadly debuff frames of newer clients)". Size S.
-- [ ] **S6.3 The crafting cast bar.** `Modules/CastBars.lua`: skin `OverlayPlayerCastingBarFrame` (not hidden: it is the
+- [x] **S6.3 The crafting cast bar.** `Modules/CastBars.lua`: skin `OverlayPlayerCastingBarFrame` (not hidden: it is the
   bar over the professions window while crafting): `T.StyleBar`, its `Border`/`Background`/`Flash` faded, `Text` in the
   theme font; on `OnShow`, once. Size S.
-- [ ] **S6.4 Possess bar.** `Modules/SpecialBars.lua`: add `skinPossess = { "PossessButton", 2 }` beside `skinPet` (:28),
+- [x] **S6.4 Possess bar.** `Modules/SpecialBars.lua`: add `skinPossess = { "PossessButton", 2 }` beside `skinPet` (:28),
   default on, through `SB.Skin` (:56). Size S.
-- [ ] **S6.5 Fonts on the HUD text.** `T.FontObjects` on `ErrorFont` (the `UIErrorsFrame` line, next to
+- [x] **S6.5 Fonts on the HUD text.** `T.FontObjects` on `ErrorFont` (the `UIErrorsFrame` line, next to
   `Modules/Merchant.lua:95`), `ZoneTextFont`, `SubZoneTextFont`, `PVPInfoTextFont`, `PVPArenaTextString`'s font, each
   only if the object exists. Size S.
-- [ ] **S6.6 Smoke lines.** Toggle the game's swing timer, mind-control an enemy (priest), craft something, enter a zone.
+- [x] **S6.6 Smoke lines.** Toggle the game's swing timer, mind-control an enemy (priest), craft something, enter a zone.
   Size S.
 
 ---

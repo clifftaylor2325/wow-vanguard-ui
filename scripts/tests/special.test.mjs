@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { ACTIONS_ENV, SETUP_DONE, SPECIAL_BARS_ENV, loggedIn, setCombat } from "./helpers.mjs";
+import { ACTIONS_ENV, CLICK_LUA, SETUP_DONE, SPECIAL_BARS_ENV, UI_ENV, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY pet buttons with the template art the client makes (a background and the state textures), a stance and an extra action button.
 const BUTTONS_ENV = `
@@ -43,6 +43,32 @@ it("pet and stance buttons keep the textures the client shows by state", () => {
   expect(addon.eval("return ExtraActionButton1:GetCheckedTexture() == nil and ExtraActionButton1.vgSkinned"), "a button with no checked texture is still restyled").toBe(true);
 });
 
+// TEST-ONLY the possess bar's two buttons (PossessButtonTemplate: a secure small action button) with their slot art.
+const POSSESS_ENV = `
+  for i = 1, 2 do
+    local b = CreateFrame("CheckButton", "PossessButton" .. i, UIParent)
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.slotArt = b:CreateTexture(nil, "BACKGROUND")
+    b:SetCheckedTexture("TEST-ONLY-CHECKED")
+  end`;
+
+it("the possess bar's buttons are restyled too, out of combat, and can be left alone", () => {
+  const fight = createAddon({ savedVariables: SETUP_DONE });
+  fight.eval(ACTIONS_ENV + POSSESS_ENV);
+  setCombat(fight, true);
+  fight.login();
+  expect(fight.eval("return PossessButton1.vgSkinned == nil"), "not in a fight").toBe(true);
+  setCombat(fight, false);
+  const after = fight.eval("local b = PossessButton2 return { b.vgSkinned, b.slotArt.__alpha, b.icon.__alpha == nil, b:GetCheckedTexture().__alpha == nil, ns.Theme.PaintedCount() }");
+  expect(after.slice(0, 4), "when it ends: art faded, icon and checked texture kept").toEqual([true, 0, true, true]);
+  fight.eval('ns.GetModule("SpecialBars").Skin(PossessButton2)');
+  expect(fight.eval("return ns.Theme.PaintedCount()"), "skinning again paints nothing more").toBe(after[4]);
+  const off = loggedIn(ACTIONS_ENV + POSSESS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { SpecialBars = { skinPossess = false } } }" });
+  expect(off.eval("return PossessButton1.vgSkinned == nil and PossessButton1.slotArt.__alpha == nil"), "switched off: the game's own").toBe(true);
+  const one = loggedIn(ACTIONS_ENV + 'CreateFrame("CheckButton", "PossessButton1", UIParent)');
+  expect([one.eval("return PossessButton1.vgSkinned"), one.eval("return #ns.errors")], "a client with one bare button (or none) loads cleanly").toEqual([true, 0]);
+});
+
 // The bar's anchor: its point, the name of the frame it hangs from and that frame's point.
 const anchorOf = (addon, bar) => addon.eval(`local p, rel, rp = ${bar}:GetPoint() return { p, rel:GetName(), rp }`);
 
@@ -70,4 +96,12 @@ it("the pet and stance bars are placed after combat, and left to Edit Mode when 
   expect([off.eval('return ns.MoverPoint("petbar") == nil'), off.eval("return { PetActionBar:GetPoint() }")[0]], "with placing off there are no movers and the bars stay where Edit Mode puts them").toEqual([true, "CENTER"]);
   const none = loggedIn();
   expect(none.eval('return ns.MoverPoint("petbar") == nil and ns.MoverPoint("stancebar") == nil'), "a client without the bars has nothing to place").toBe(true);
+});
+
+it("options: one switch restyles the pet, stance, possess and extra buttons", () => {
+  const addon = loggedIn(UI_ENV + CLICK_LUA);
+  addon.slash("");
+  addon.eval('__click("Action bars")');
+  addon.eval('__click("Restyle the pet, stance, possess and extra action buttons (reload)")');
+  expect(addon.eval("local s = VanguardDB.profiles.Default.SpecialBars return { s.skinPet, s.skinStance, s.skinPossess, s.skinExtra }"), "all four off together").toEqual([false, false, false, false]);
 });

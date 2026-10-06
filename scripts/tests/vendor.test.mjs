@@ -126,3 +126,28 @@ it("/vg stock says where to buy, /vg vendors counts and clear forgets", () => {
   off.slash("stock");
   expect(chatHas(off, /Keep 20 × TEST-ONLY Bread$/), "switched off, the stock list doesn't say").toBe(true);
 });
+
+// TEST-ONLY the game's font objects for its HUD text (GameFontStyles.xml), as font strings the stub can read back.
+const HUD_FONTS_ENV = `
+  local holder = CreateFrame("Frame")
+  for _, name in ipairs({ "ErrorFont", "ZoneTextFont", "SubZoneTextFont", "PVPInfoTextFont" }) do
+    _G[name] = holder:CreateFontString() _G[name]:SetFont("TEST-ONLY-FRIZQT", 10, "THICK")
+  end
+`;
+
+// Each HUD font object's path is the bold theme font, its size, and its shadow offset.
+const hudFonts = (addon) => addon.eval(`local out = {}
+  for _, name in ipairs({ "ErrorFont", "ZoneTextFont", "SubZoneTextFont", "PVPInfoTextFont" }) do
+    local path, size = _G[name]:GetFont() out[#out + 1] = { path == ns.Theme.Font(true), size, _G[name].__shadowOffset }
+  end return out`);
+
+it("the error line and the zone text in the theme font, kept after a Text size change", () => {
+  const addon = loggedIn(HUD_FONTS_ENV);
+  expect(hudFonts(addon), "the theme font at the game's sizes, with the theme's shadow").toEqual([[true, 16, [1, -1]], [true, 32, [1, -1]], [true, 26, [1, -1]], [true, 22, [1, -1]]]);
+  addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
+  expect(hudFonts(addon).map((f) => f[1]), "re-applied at the new Text size").toEqual([24, 48, 39, 33]);
+  const off = loggedIn(HUD_FONTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Merchant = false } } }" });
+  expect(off.eval("return { ErrorFont:GetFont() }"), "with the module off they are the game's").toEqual(["TEST-ONLY-FRIZQT", 10, "THICK"]);
+  const some = loggedIn('ZoneTextFont = CreateFrame("Frame"):CreateFontString()');
+  expect([some.eval("return select(2, ZoneTextFont:GetFont())"), some.eval("return #ns.errors")], "a client with only some of them gets those, and loads cleanly").toEqual([32, 0]);
+});

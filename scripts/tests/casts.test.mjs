@@ -208,3 +208,39 @@ it("a channel the client stops with an interrupter flashes red, one it lets run 
   expect(stop(addon.world.secret(1)), "an interrupter the client hides is still one").toEqual([true, "red", "Interrupted"]);
   expect(stop(null), "a channel that ran its course").toEqual([true, "green", "TEST-ONLY Spell"]);
 });
+
+// TEST-ONLY the game's overlay cast bar (CastingBarFrame.xml): its art, finish flash and text, and the
+// two calls that redraw it (the fill's atlas at each cast's start and end, and the finish flash).
+const OVERLAY_ENV = `
+  local b = CreateFrame("StatusBar", "OverlayPlayerCastingBarFrame", UIParent)
+  for _, key in ipairs({ "Border", "Background", "TextBorder", "DropShadow", "Flash" }) do b[key] = b:CreateTexture(nil, "BACKGROUND") end
+  b.Text = b:CreateFontString(nil, "OVERLAY")
+  b:SetStatusBarTexture("TEST-ONLY-ATLAS")
+  function b:UpdateBarFillTexture(full) self:SetStatusBarTexture(full and "TEST-ONLY-FULL" or "TEST-ONLY-FILLING") self:SetStatusBarColor(1, 1, 1) end
+  function b:PlayFadeAnim() end
+  b:Hide()
+`;
+
+// The overlay bar as drawn: its art's alphas, fill texture and color, flash shown, text font, painted count.
+const overlay = (addon) => addon.eval(`local b = OverlayPlayerCastingBarFrame
+  return { art = { b.Border.__alpha, b.Background.__alpha, b.TextBorder.__alpha, b.DropShadow.__alpha }, fill = b:GetStatusBarTexture().__texture,
+    color = b.__barColor, flash = b.Flash:IsShown(), font = b.Text:GetFont() == ns.Theme.Font(), shown = b:IsShown(), painted = ns.Theme.PaintedCount() }`);
+
+it("the game's crafting cast bar stays, drawn in the theme, through every cast", () => {
+  const addon = loggedIn(OVERLAY_ENV);
+  addon.eval("OverlayPlayerCastingBarFrame:UpdateBarFillTexture(false) OverlayPlayerCastingBarFrame:Show()");
+  const shown = overlay(addon);
+  expect([shown.shown, shown.art, shown.fill, shown.font], "shown as the game shows it, art faded, the theme's bar and font").toEqual([true, [0, 0, 0, 0], addon.eval("return ns.Theme.BarTexture()"), true]);
+  expect(isTok(addon, shown.color, "cast"), "in the cast color").toBe(true);
+  addon.eval("local b = OverlayPlayerCastingBarFrame b:UpdateBarFillTexture(true) b.Flash:Show() b:PlayFadeAnim()");
+  const done = overlay(addon);
+  expect([isTok(addon, done.color, "good"), done.fill, done.flash], "a full bar goes green in the theme's bar, the game's finish flash hidden").toEqual([true, addon.eval("return ns.Theme.BarTexture()"), false]);
+  addon.eval("OverlayPlayerCastingBarFrame:Hide() OverlayPlayerCastingBarFrame.Border:SetAlpha(1) OverlayPlayerCastingBarFrame:Show()");
+  const again = overlay(addon);
+  expect([again.art[0], again.painted], "a second show fades the art again and paints nothing more").toEqual([0, shown.painted]);
+  const off = loggedIn(OVERLAY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { CastBars = false } } }" });
+  off.eval("OverlayPlayerCastingBarFrame:Show()");
+  expect([overlay(off).fill, overlay(off).art[0]], "with cast bars off it is the game's own").toEqual(["TEST-ONLY-ATLAS", undefined]);
+  const bare = loggedIn('CreateFrame("StatusBar", "OverlayPlayerCastingBarFrame", UIParent)');
+  expect([bare.eval("return OverlayPlayerCastingBarFrame.vgSkinned"), bare.eval("return #ns.errors"), loggedIn().eval("return #ns.errors")], "a bar without its parts, or a client without the bar, loads cleanly").toEqual([true, 0, 0]);
+});

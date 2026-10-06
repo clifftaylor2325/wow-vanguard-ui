@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, ENGINE_ENV, NO_RAID, RAID_ENV, SETUP_DONE, UNITS_ENV, button, chatHas, isTok, key, lacking, loggedIn, setCombat, tooltip, unitEvents } from "./helpers.mjs";
+import { CLICK_LUA, ENGINE_ENV, NO_RAID, RAID_ENV, SETUP_DONE, UNITS_ENV, button, chatHas, isTok, key, lacking, loggedIn, putAway, setCombat, tooltip, unitEvents } from "./helpers.mjs";
 
 // TEST-ONLY auras by unit and filter. raid1: a Magic debuff and two of your HoTs.
 const AURA_ENV = `
@@ -286,6 +286,16 @@ it("your buffs and debuffs replace the game's, with weapon enchants in front", (
   expect(addon.eval("return { GameTooltip.__owner == ns.GetModule('PlayerAuras').cells[1], GameTooltip.__item, GameTooltip:IsShown() }"), "hovering a cell shows the weapon").toEqual([true, 16, true]);
   addon.eval("local c = ns.GetModule('PlayerAuras').cells[1] c:GetScript('OnLeave')(c) c = ns.GetModule('PlayerAuras').cells[2] c:GetScript('OnEnter')(c)");
   expect(addon.eval("return GameTooltip:IsShown()"), "and leaving hides it; an empty cell shows nothing").toBe(false);
+});
+
+it("your buffs: the game's external defensives and deadly debuff frames go with its buff frames", () => {
+  // TEST-ONLY the newer companions of the buff frames (Blizzard_BuffFrame on camelot and retail clients).
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + `
+    ExternalDefensivesFrame = CreateFrame("Frame", "ExternalDefensivesFrame", UIParent) ExternalDefensivesFrame:RegisterEvent("UNIT_AURA")
+    DeadlyDebuffFrame = CreateFrame("Frame", "DeadlyDebuffFrame", UIParent)`);
+  expect([putAway(addon, "ExternalDefensivesFrame"), putAway(addon, "DeadlyDebuffFrame"), addon.eval("return ExternalDefensivesFrame:IsEventRegistered('UNIT_AURA')")], "both put away, with no events").toEqual([true, true, false]);
+  const older = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV);
+  expect([putAway(older, "BuffFrame"), older.eval("return #ns.errors")], "a client without them hides its buff frames and loads cleanly").toEqual([true, 0]);
 });
 
 it("your buffs: the enchant switch, and clients without enchant info", () => {
