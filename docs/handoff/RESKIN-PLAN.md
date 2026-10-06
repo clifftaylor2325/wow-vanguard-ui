@@ -170,7 +170,7 @@ Inventory: design §5.1. Group `social`.
   `GW.SkinWith({ ... })` from S0). Size S.
 - [x] **S1.4 Channels and friends dialogs.** `ChannelFrame`, `CreateChannelPopup`, `FriendsFriendsFrame`, `AddFriendFrame`,
   `BattleNetInviteFrame`: `GW.Skin`; `AddFriendFrame`'s edit boxes via `T.EditBox`. Size S.
-- [ ] **S1.5 Guild creation.** `GuildRegistrarFrame`, `PetitionFrame`, `TabardFrame`: `GW.Skin`;
+- [x] **S1.5 Guild creation.** `GuildRegistrarFrame`, `PetitionFrame`, `TabardFrame`: `GW.Skin`;
   `GuildRegistrarText`, `GuildRegistrarPurchaseText`, `PetitionFrameCharterTitle`, `PetitionFrameMemberTitle`
   light/gold after `GuildRegistrar_OnShow`/`PetitionFrame_Update` (hooksecurefunc, guarded); the tabard model and
   its colour swatches untouched. Size S.

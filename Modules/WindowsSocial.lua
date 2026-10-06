@@ -189,3 +189,34 @@ end
 GW.Add("social", "framed", { "ChannelFrame" })
 GW.Add("social", "framed", { "CreateChannelPopup", "FriendsFriendsFrame", "BattleNetInviteFrame" }, GW.SkinSocialDialog)
 GW.Add("social", "framed", { "AddFriendFrame" }, GW.SkinAddFriend)
+
+-- Guild creation --------------------------------------------------------------------------------
+
+-- The registrar's and the petition's body texts (the game colors them dark for its parchment) and headings.
+GW.CREATION_BODY = {
+  "GuildRegistrarText", "GuildRegistrarPurchaseText", "PetitionFrameCharterName", "PetitionFrameMasterName", "PetitionFrameInstructions",
+}
+for i = 1, 9 do GW.CREATION_BODY[#GW.CREATION_BODY + 1] = "PetitionFrameMemberName" .. i end
+GW.CREATION_HEADS = { "PetitionFrameCharterTitle", "PetitionFrameMasterTitle", "PetitionFrameMemberTitle" }
+-- The game functions that set those texts; the look goes on again after each.
+GW.CREATION_REDRAWS = { "GuildRegistrar_OnShow", "GuildRegistrar_ShowPurchaseFrame", "PetitionFrame_Update" }
+
+-- The registrar and petition texts in light body text with gold headings.
+function GW.LightCreationText()
+  GW.PaintNamed(GW.CREATION_BODY, "text")
+  GW.PaintNamed(GW.CREATION_HEADS, "gold")
+end
+
+-- A guild creation window: the window skin, its texts light, its name box themed; the texts again
+-- after each game call that sets them. The tabard's model and colour pickers are left as the game's.
+function GW.SkinGuildCreation(frame)
+  GW.Skin(frame)
+  GW.LightCreationText()
+  for _, name in ipairs(GW.CREATION_REDRAWS) do after(_G, name, GW.LightCreationText) end
+  if type(_G.GuildRegistrarFrameEditBox) == "table" and _G.GuildRegistrarFrameEditBox.SetText then T.EditBox(_G.GuildRegistrarFrameEditBox) end
+end
+
+GW.Add("social", "framed", { "GuildRegistrarFrame", "PetitionFrame", "TabardFrame" }, GW.SkinGuildCreation)
+GW.AddButtons("GuildRegistrarFrame", { "GuildRegistrarFrameGoodbyeButton", "GuildRegistrarFrameCancelButton", "GuildRegistrarFramePurchaseButton" })
+GW.AddButtons("PetitionFrame", { "PetitionFrameCancelButton", "PetitionFrameSignButton", "PetitionFrameRequestButton", "PetitionFrameRenameButton" })
+GW.AddButtons("TabardFrame", { "TabardFrameAcceptButton", "TabardFrameCancelButton" })
