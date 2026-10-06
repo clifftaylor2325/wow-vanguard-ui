@@ -279,7 +279,7 @@ Inventory: design §5.4. Group `map`.
   (`T.CloseButton`), its `$parentPortrait` faded; the two child frames' `NineSlice`/`Bg` faded (no close button of their
   own); `LFGBrowseSearchEntryTooltip` via `T.Tooltip`; the listing's edit boxes `T.EditBox`, its buttons `T.Button`;
   `Tab1-3` are S7's. Size M.
-- [ ] **S4.5 Legacy system.** `GW.Add("map", "onDemand", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)`:
+- [x] **S4.5 Legacy system.** `GW.Add("map", "onDemand", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)`:
   `GW.Skin`; `TreePage`, `ChallengesPage`, `RewardTrackPage` background art faded with inset panels (the trees'
   `TalentFrameBaseTemplate` art: `Background`, `BottomBar`, side art; the node buttons untouched); `TabIndicators` and
   the three tabs are S7's. **[DECIDE]** (design §6.1) the tracker; this task assumes (c), the window only, and says so

@@ -317,3 +317,52 @@ it("group finder: switched off it stays the game's; a client missing parts of it
   bare.eval("LFGParentFrame:Show() LFGListingFrame:Show() LFGBrowseFrame:Show() LFGBrowseSearchEntryTooltip:Show()");
   expect(bare.eval("return #ns.errors"), "bare frames: no errors").toBe(0);
 });
+
+// TEST-ONLY Legacy system window, shaped like Blizzard_LegacySystem's XML: a portrait frame with three pages (each with its
+// Background, the tree's divider frame and node button, the challenges' two panes and divider), the side tabs and their
+// indicators. Made when the game loads the part.
+const LEGACY_ENV = WINDOWS_ENV + `
+  function __legacy()
+    local f = __window("LegacySystemFrame")
+    for _, key in ipairs({ "TreePage", "ChallengesPage", "RewardTrackPage" }) do
+      local page = CreateFrame("Frame", nil, f) f[key] = page
+      page.Background = page:CreateTexture()
+    end
+    local tree, chal = f.TreePage, f.ChallengesPage
+    tree.VerticalDivider = CreateFrame("Frame", nil, tree) tree.VerticalDivider.VerticalDivider = tree.VerticalDivider:CreateTexture()
+    tree.LegacyTreeTraitPanel = CreateFrame("Frame", nil, tree) tree.LegacyTreeTraitPanel.ButtonsParent = CreateFrame("Frame", nil, tree.LegacyTreeTraitPanel)
+    tree.Node = CreateFrame("Button", nil, tree.LegacyTreeTraitPanel.ButtonsParent) tree.Node:CreateTexture()
+    chal.VerticalDivider = CreateFrame("Frame", nil, chal) chal.VerticalDivider:CreateTexture()
+    chal.CategoryList, chal.DetailPane = CreateFrame("Frame", nil, chal), CreateFrame("Frame", nil, chal)
+    f.LegacyTreeTab = CreateFrame("Frame", nil, f) f.LegacyTreeTab:CreateTexture()
+    f.TabIndicators = CreateFrame("Frame", nil, f) f.TabIndicators:CreateTexture()
+  end
+`;
+
+it("legacy system: the window in the theme, its page backgrounds faded and its panes panelled, tabs and tree nodes untouched", () => {
+  const addon = loggedIn(LEGACY_ENV);
+  addon.eval("__legacy()");
+  expect(addon.eval("return LegacySystemFrame.vgWindow == nil"), "nothing is touched until the part of the game loads").toBe(true);
+  addon.fire("ADDON_LOADED", "Blizzard_LegacySystem");
+  addon.eval("LegacySystemFrame:Show()");
+  const first = windowState(addon, "LegacySystemFrame");
+  expect(first, "the window's art is faded, a panel painted, the title in the theme font").toMatchObject({ art: 0, nine: 0, portrait: 0, insetNine: 0, panel: true, title: true });
+  expect(addon.eval("local f = LegacySystemFrame return { f.TreePage.Background:GetAlpha(), f.ChallengesPage.Background:GetAlpha(), f.RewardTrackPage.Background:GetAlpha(), (f.TreePage.VerticalDivider:GetRegions()):GetAlpha(), (f.ChallengesPage.VerticalDivider:GetRegions()):GetAlpha() }"), "the three page backgrounds and both dividers are faded").toEqual([0, 0, 0, 0, 0]);
+  expect([fills(addon, "LegacySystemFrame.ChallengesPage.CategoryList"), fills(addon, "LegacySystemFrame.ChallengesPage.DetailPane")], "the challenge panes are inset panels").toEqual([1, 1]);
+  expect(addon.eval("local f = LegacySystemFrame return { (f.LegacyTreeTab:GetRegions()):GetAlpha(), (f.TabIndicators:GetRegions()):GetAlpha(), (f.TreePage.Node:GetRegions()):GetAlpha(), tostring(f.TreePage.Node.vgWindow) }"), "the tabs, their indicators and the tree's node buttons are left to the game").toEqual([1, 1, 1, "nil"]);
+  expect(fills(addon, "LegacySystemFrame.TreePage.LegacyTreeTraitPanel"), "the tree's panel is not covered, so it does not hide the close button's corner").toBe(0);
+  addon.eval("LegacySystemFrame:Hide() LegacySystemFrame:Show()");
+  expect(windowState(addon, "LegacySystemFrame"), "showing it again paints nothing new").toMatchObject({ panel: true, painted: first.painted });
+});
+
+it("legacy system: switched off it stays the game's; a client missing its pages loads cleanly", () => {
+  const off = loggedIn(LEGACY_ENV, MAP_OFF);
+  off.eval("__legacy()");
+  off.fire("ADDON_LOADED", "Blizzard_LegacySystem");
+  off.eval("LegacySystemFrame:Show()");
+  expect([windowState(off, "LegacySystemFrame").art !== 0, off.eval("return LegacySystemFrame.TreePage.Background:GetAlpha()"), off.eval("return LegacySystemFrame.vgWindow == nil")], "not hooked, art left").toEqual([true, 1, true]);
+  const bare = loggedIn(WINDOWS_ENV + `__window("LegacySystemFrame") LegacySystemFrame.TreePage = {} LegacySystemFrame.ChallengesPage = CreateFrame("Frame", nil, LegacySystemFrame)`);
+  bare.fire("ADDON_LOADED", "Blizzard_LegacySystem");
+  bare.eval("LegacySystemFrame:Show()");
+  expect(bare.eval("return #ns.errors"), "no pages, or bare ones: no errors").toBe(0);
+});
