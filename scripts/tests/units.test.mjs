@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, button, isTok, key, later, loggedIn, marks, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
 
 // A frame's state for the unit-frame tests.
 const ufState = (addon, key) => addon.eval(`
@@ -340,6 +340,53 @@ it("swing timer: who sees it", () => {
   addon.slash("");
   addon.eval('__click("Unit frames")');
   expect(addon.eval('return __click("Swing timer") and VanguardDB.profiles.Default.SwingTimer.show'), "the switch is on the page").toBe("always");
+});
+
+// TEST-ONLY the game's own swing bars (Blizzard_SwingTimer.xml): background and frame art, a fill
+// with its two labels and the label's shadow, and the range look that sets the art's alpha again.
+const GAME_SWING_ENV = `
+  for _, hand in ipairs({ "MainHand", "OffHand", "Ranged" }) do
+    local f = CreateFrame("Frame", "SwingTimer" .. hand .. "Frame", UIParent)
+    f.Background, f.Border = f:CreateTexture(nil, "BACKGROUND"), f:CreateTexture(nil, "BACKGROUND")
+    f.StatusBar = CreateFrame("StatusBar", nil, f)
+    f.StatusBar.TypeLabelShadow = f.StatusBar:CreateTexture(nil, "OVERLAY")
+    f.StatusBar.TypeLabel, f.StatusBar.TimeLabel = f.StatusBar:CreateFontString(nil, "OVERLAY"), f.StatusBar:CreateFontString(nil, "OVERLAY")
+    f.ApplyRangePresentation = function(self) self.Background:SetAlpha(0.4) self.Border:SetAlpha(0.4) end
+    f:RegisterEvent("PLAYER_ENTERING_WORLD")
+  end
+`;
+
+// One game swing bar as drawn: art alphas, fill texture and color, label font, shadow shown, panel.
+const gameSwing = (addon, hand) => addon.eval(`local f = SwingTimer${hand}Frame local bar = f.StatusBar
+  return { bg = f.Background.__alpha, border = f.Border.__alpha, texture = bar:GetStatusBarTexture() and bar:GetStatusBarTexture().__texture,
+    color = bar.__barColor, font = bar.TimeLabel:GetFont() == ns.Theme.Font(), shadow = bar.TypeLabelShadow:IsShown(), painted = ns.Theme.PaintedCount() }`);
+
+it("swing timer: the game's own bars are put away while Vanguard's is on, out of combat", () => {
+  const addon = loggedIn(UNITS_ENV + SWING_ENV + GAME_SWING_ENV);
+  expect(["MainHand", "OffHand", "Ranged"].map((h) => putAway(addon, `SwingTimer${h}Frame`)), "all three hidden, as the game's unit frames are").toEqual([true, true, true]);
+  expect(addon.eval("return SwingTimerMainHandFrame:IsEventRegistered('PLAYER_ENTERING_WORLD') or SwingTimerMainHandFrame.vgSkinned == true"), "no events, and not dressed").toBe(false);
+  const fight = createAddon({ savedVariables: SETUP_DONE });
+  fight.eval(UNITS_ENV + SWING_ENV + GAME_SWING_ENV);
+  setCombat(fight, true);
+  fight.login();
+  expect(putAway(fight, "SwingTimerMainHandFrame"), "in a fight they wait").toBe(false);
+  setCombat(fight, false);
+  expect(putAway(fight, "SwingTimerMainHandFrame"), "and go when it ends").toBe(true);
+  expect(fight.eval("return #ns.errors"), "nothing errors").toBe(0);
+});
+
+it("swing timer: with Vanguard's off, the game's own bars are drawn in the theme", () => {
+  const addon = loggedIn(UNITS_ENV + SWING_ENV + GAME_SWING_ENV, { savedVariables: "VanguardDB.profiles = { Default = { SwingTimer = { show = 'never' } } }" });
+  const main = gameSwing(addon, "MainHand");
+  expect([main.bg, main.border, main.texture, main.font, main.shadow], "art faded, the theme's bar and font, the label's shadow gone").toEqual([0, 0, addon.eval("return ns.Theme.BarTexture()"), true, false]);
+  expect(isTok(addon, main.color, "accent") && isTok(addon, gameSwing(addon, "OffHand").color, "text2") && isTok(addon, gameSwing(addon, "Ranged").color, "focus"), "each hand in its row's color, as Vanguard's rows").toBe(true);
+  expect(putAway(addon, "SwingTimerMainHandFrame"), "the game's bars stay the game's").toBe(false);
+  addon.eval("SwingTimerMainHandFrame:ApplyRangePresentation() SwingTimerMainHandFrame:Hide() SwingTimerMainHandFrame:Show()");
+  const again = gameSwing(addon, "MainHand");
+  expect([again.bg, again.border, again.painted], "the range look and a second show fade the art again, painting nothing more").toEqual([0, 0, main.painted]);
+  const bare = loggedIn(UNITS_ENV + SWING_ENV + 'CreateFrame("Frame", "SwingTimerMainHandFrame", UIParent) SwingTimerOffHandFrame = CreateFrame("Frame", nil, UIParent) SwingTimerOffHandFrame.StatusBar = CreateFrame("StatusBar", nil, SwingTimerOffHandFrame)', { savedVariables: "VanguardDB.profiles = { Default = { SwingTimer = { show = 'never' } } }" });
+  expect([bare.eval("return SwingTimerMainHandFrame.vgSkinned == nil and SwingTimerOffHandFrame.vgSkinned"), bare.eval("return #ns.errors")], "a bar without its fill is left alone; one without labels, art or range look is still dressed").toEqual([true, 0]);
+  expect(loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { SwingTimer = { show = 'never' } } }" }).eval("return #ns.errors"), "a client without the game's swing timer loads cleanly").toBe(0);
 });
 
 // TEST-ONLY threat and pet: threat on the target and your pet's mood.
