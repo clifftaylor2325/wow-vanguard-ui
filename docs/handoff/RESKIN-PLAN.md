@@ -174,7 +174,7 @@ Inventory: design §5.1. Group `social`.
   `GuildRegistrarText`, `GuildRegistrarPurchaseText`, `PetitionFrameCharterTitle`, `PetitionFrameMemberTitle`
   light/gold after `GuildRegistrar_OnShow`/`PetitionFrame_Update` (hooksecurefunc, guarded); the tabard model and
   its colour swatches untouched. Size S.
-- [ ] **S1.6 Role poll and invite popups.** `RolePollPopup`, `LFGInvitePopup`: `Border` faded, `T.Panel` with shadow,
+- [x] **S1.6 Role poll and invite popups.** `RolePollPopup`, `LFGInvitePopup`: `Border` faded, `T.Panel` with shadow,
   `CloseButton`/`acceptButton`/decline buttons themed, the role buttons' checked art kept (only their frame art faded).
   Registered as `"popups"` kind under `social`. **[VERIFY IN GAME]**: start a role check from the raid tools; the popup
   shows themed and the role buttons still check. Size S.

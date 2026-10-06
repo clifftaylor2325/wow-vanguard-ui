@@ -220,3 +220,26 @@ GW.Add("social", "framed", { "GuildRegistrarFrame", "PetitionFrame", "TabardFram
 GW.AddButtons("GuildRegistrarFrame", { "GuildRegistrarFrameGoodbyeButton", "GuildRegistrarFrameCancelButton", "GuildRegistrarFramePurchaseButton" })
 GW.AddButtons("PetitionFrame", { "PetitionFrameCancelButton", "PetitionFrameSignButton", "PetitionFrameRequestButton", "PetitionFrameRenameButton" })
 GW.AddButtons("TabardFrame", { "TabardFrameAcceptButton", "TabardFrameCancelButton" })
+
+-- Role poll and invite popups -------------------------------------------------------------------
+
+-- The popups' push buttons: by parentKey, and by the suffix the game names them with ($parentAcceptButton).
+GW.POPUP_BUTTON_KEYS = { "acceptButton" }
+GW.POPUP_BUTTON_NAMES = { "AcceptButton", "DeclineButton" }
+
+-- The role poll and the dungeon invite popups: the dialog border faded, a flat panel with a soft shadow, the
+-- close and accept/decline buttons themed. The role buttons keep their art (it is their role icon and check).
+function GW.SkinRolePopup(frame)
+  local name = frame.GetName and frame:GetName()
+  T.FadeRegions(frame)
+  fadeKey(frame, "Border")
+  T.Panel(frame, { shadow = true })
+  dressClose(frame.CloseButton)
+  dressKeys(frame, GW.POPUP_BUTTON_KEYS, "CreateTexture", T.Button)
+  for _, suffix in ipairs(GW.POPUP_BUTTON_NAMES) do
+    local button = name and _G[name .. suffix]
+    if type(button) == "table" and button.CreateTexture then T.Button(button) end
+  end
+end
+
+GW.Add("social", "popups", { "RolePollPopup", "LFGInvitePopup" }, GW.SkinRolePopup)
