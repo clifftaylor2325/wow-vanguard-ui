@@ -292,7 +292,7 @@ Inventory: design §5.4. Group `map`.
   (`CalendarViewHolidayFrame`, `CalendarViewRaidFrame`, `CalendarViewEventFrame`, `CalendarCreateEventFrame`,
   `CalendarMassInviteFrame`, `CalendarEventPickerFrame`, `CalendarTexturePickerFrame`) with `GW.Skin`. Event icons kept.
   Can be dropped if it runs long: say so in the PR. Size L.
-- [ ] **S4.8 Docs and smoke lines.** README sub-bullet for `map`; smoke-test lines: `M`, minimise/maximise the map,
+- [x] **S4.8 Docs and smoke lines.** README sub-bullet for `map`; smoke-test lines: `M`, minimise/maximise the map,
   the finder eye, the Legacy button on the menu bar, `/calendar`. Size S.
 
 ---
