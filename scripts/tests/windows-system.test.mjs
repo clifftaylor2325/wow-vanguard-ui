@@ -16,7 +16,9 @@ const SYSTEM_ENV = `
   function __text(parent, key) parent[key] = parent:CreateFontString(nil, "OVERLAY") return parent[key] end
   function __faded(f) for _, r in ipairs({ f:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then return r.__alpha end end end
   function __panelled(f)
-    for _, r in ipairs({ f:GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then return true end end
+    for _, r in ipairs({ f:GetRegions() }) do
+      if r:GetObjectType() == "Texture" and r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then return true end
+    end
     return false
   end
   function __errors(word) for _, e in ipairs(ns.errors) do if e.text:find(word) then return e.text end end return "none" end
@@ -169,4 +171,82 @@ it("chat settings: the outer window, its header plate, the boxes under it and th
   const bare = loggedIn(BUTTON_FRAME_ENV + '__buttonFrame("ChatConfigFrame")');
   bare.eval("ChatConfigFrame:Show()");
   expect(bare.eval("return __errors('Windows')"), "a window without a header, boxes or buttons").toBe("none");
+});
+
+// TEST-ONLY: Edit Mode's windows (Blizzard_EditMode): the manager (Border, Title, LayoutLabel, buttons), the system
+// settings dialog (a Buttons box the game adds extra buttons to), and the four layout dialogs.
+const EDIT_ENV = SYSTEM_ENV + `
+  local manager = __frame("EditModeManagerFrame")
+  __sub(manager, "Border") __text(manager, "Title") __text(manager, "LayoutLabel")
+  for _, k in ipairs({ "CloseButton", "SaveChangesButton", "RevertAllChangesButton" }) do __sub(manager, k, "Button") end
+  local dialog = __frame("EditModeSystemSettingsDialog")
+  __sub(dialog, "Border") __text(dialog, "Title") __sub(dialog, "CloseButton", "Button") __sub(dialog, "Buttons")
+  __sub(dialog.Buttons, "RevertChangesButton", "Button")
+  function dialog:UpdateExtraButtons() __sub(self.Buttons, "Extra" .. (self.extras or 0), "Button") self.extras = (self.extras or 0) + 1 end
+  for _, name in ipairs({ "EditModeLayoutDialog", "EditModeImportLayoutDialog", "EditModeImportLayoutLinkDialog", "EditModeUnsavedChangesDialog" }) do
+    local d = __frame(name) __sub(d, "Border") __text(d, "Title")
+    for _, k in ipairs({ "AcceptButton", "CancelButton", "SaveAndProceedButton", "ProceedButton" }) do __sub(d, k, "Button") end
+    __sub(d, "LayoutNameEditBox", "EditBox")
+  end
+`;
+
+// A part's state in the Edit Mode windows: art faded, panelled, title in the theme font.
+const editState = (addon, name) => addon.eval(`local f = ${name}
+  return { art = __faded(f), border = f.Border.__alpha, panel = __panelled(f), title = f.Title:GetFont() ~= nil, painted = ns.Theme.PaintedCount() }`);
+
+it("Edit Mode window: skinned, its panel kept out of the game's layout, and Vanguard's note still shows", () => {
+  const addon = loggedIn(EDIT_ENV);
+  addon.eval("EditModeManagerFrame:Show()");
+  const first = editState(addon, "EditModeManagerFrame");
+  expect(first, "Border and art faded, a panel, title in the theme font").toMatchObject({ art: 0, border: 0, panel: true, title: true });
+  expect(addon.eval(`local m = EditModeManagerFrame
+    return { m.LayoutLabel:GetFont() ~= nil, __panelled(m.SaveChangesButton), __panelled(m.RevertAllChangesButton), m.CloseButton.__piece.__alpha }`),
+    "the layout label, Save and Revert buttons and close button themed").toEqual([true, true, true, 0]);
+  expect(addon.eval(`local m, marked, own = EditModeManagerFrame, 0, 0
+    for _, piece in ipairs({ m.Border, m.SaveChangesButton, m.CloseButton }) do if piece.ignoreInLayout then own = own + 1 end end
+    for _, r in ipairs({ m:GetRegions() }) do if r.ignoreInLayout then marked = marked + 1 end end
+    return { marked > 0, own }`), "the panel's pieces are marked ignoreInLayout; the game's own parts are not").toEqual([true, 0]);
+  expect(addon.eval("return { Vanguard_EditModeNote ~= nil and Vanguard_EditModeNote:IsShown(), Vanguard_EditModeNote.text:GetText() == ns.EDIT_NOTE, Vanguard_EditModeNote.__points.TOP.rel == EditModeManagerFrame, Vanguard_EditModeNote.ignoreInLayout == nil }"),
+    "Vanguard's Edit Mode note still shows under the window, with its text, and is left alone").toEqual([true, true, true, true]);
+  addon.eval("EditModeManagerFrame:Hide() EditModeManagerFrame:Show()");
+  expect(editState(addon, "EditModeManagerFrame").painted, "showing it again paints nothing new").toBe(first.painted);
+  addon.eval("EditModeManagerFrame:Hide()");
+  expect(addon.eval("return Vanguard_EditModeNote:IsShown()"), "and the note hides with the window").toBe(false);
+});
+
+it("Edit Mode window: switched off it stays the game's (the note still shows), and a bare client is fine", () => {
+  const off = loggedIn(EDIT_ENV, SWITCH_OFF);
+  off.eval("EditModeManagerFrame:Show()");
+  expect([editState(off, "EditModeManagerFrame").art, off.eval("return Vanguard_EditModeNote:IsShown()")], "the game's art; Vanguard's note is independent of the skin").toEqual([undefined, true]);
+  const bare = loggedIn(SYSTEM_ENV + '__frame("EditModeManagerFrame") __frame("EditModeSystemSettingsDialog")');
+  bare.eval("EditModeManagerFrame:Show() EditModeSystemSettingsDialog:Show()");
+  expect([bare.eval("return __faded(EditModeManagerFrame)"), bare.eval("return __errors('Windows')")], "windows without their parts: skinned, no error").toEqual([0, "none"]);
+});
+
+it("Edit Mode system settings: the dialog, its Revert button, and the extra buttons the game adds later", () => {
+  const addon = loggedIn(EDIT_ENV);
+  addon.eval("EditModeSystemSettingsDialog:Show()");
+  expect(editState(addon, "EditModeSystemSettingsDialog"), "skinned like the manager").toMatchObject({ art: 0, border: 0, panel: true, title: true });
+  const d = "EditModeSystemSettingsDialog";
+  expect(addon.eval(`return { __panelled(${d}.Buttons.RevertChangesButton), ${d}.CloseButton.__piece.__alpha }`), "Revert and close themed").toEqual([true, 0]);
+  addon.eval(`${d}:UpdateExtraButtons()`);
+  expect(addon.eval(`return __panelled(${d}.Buttons.Extra0)`), "an extra button the game adds is themed as it is added").toBe(true);
+  addon.eval(`${d}:Hide() ${d}:Show()`);
+  addon.eval(`${d}:UpdateExtraButtons()`);
+  expect(addon.eval(`return { __panelled(${d}.Buttons.Extra1), #({ ${d}:GetChildren() }) > 0 }`), "a second show hooks once, a later button is still themed").toEqual([true, true]);
+});
+
+it("Edit Mode dialogs: layout, import, import link and unsaved changes get the panel, buttons and name box", () => {
+  const addon = loggedIn(EDIT_ENV);
+  for (const name of ["EditModeLayoutDialog", "EditModeImportLayoutDialog", "EditModeImportLayoutLinkDialog", "EditModeUnsavedChangesDialog"]) {
+    addon.eval(`${name}:Show()`);
+    expect(editState(addon, name), `${name}: art faded, panel, title`).toMatchObject({ art: 0, border: 0, panel: true, title: true });
+    expect(addon.eval(`return { __panelled(${name}.AcceptButton), __panelled(${name}.CancelButton), __panelled(${name}.LayoutNameEditBox) }`), `${name}: buttons and name box themed`).toEqual([true, true, true]);
+    const painted = editState(addon, name).painted;
+    addon.eval(`${name}:Hide() ${name}:Show()`);
+    expect(editState(addon, name).painted, `${name}: a second show paints nothing new`).toBe(painted);
+  }
+  const off = loggedIn(EDIT_ENV, SWITCH_OFF);
+  off.eval("EditModeLayoutDialog:Show()");
+  expect(editState(off, "EditModeLayoutDialog").panel, "switched off: the game's dialog").toBe(false);
 });

@@ -76,12 +76,32 @@ local function dress(frame, spec)
   end
 end
 
+-- The frame's regions and child frames, as a set.
+local function members(frame)
+  local set = {}
+  for _, r in ipairs({ frame:GetRegions() }) do set[r] = true end
+  for _, c in ipairs({ frame:GetChildren() }) do set[c] = true end
+  return set
+end
+
+-- Paints the flat panel with a shadow. On one of the game's layout frames (spec.layout: Edit
+-- Mode's windows resize themselves from every child region, and the shadow reaches past the
+-- edge) the pieces the panel adds are marked ignoreInLayout, so Layout() leaves them out.
+local function paint(frame, spec)
+  local before = spec.layout and members(frame)
+  T.Panel(frame, { shadow = true })
+  if not before then return end
+  for piece in pairs(members(frame)) do
+    if not before[piece] then piece.ignoreInLayout = true end
+  end
+end
+
 -- Builds a skin from a spec: the frame's own textures faded, a flat panel with a shadow
 -- (unless spec.panel is false), then the spec's parts dressed. Runs again on every show.
 local function skinner(spec)
   return function(frame)
     T.FadeRegions(frame)
-    if spec.panel ~= false then T.Panel(frame, { shadow = true }) end
+    if spec.panel ~= false then paint(frame, spec) end
     dress(frame, spec)
   end
 end
@@ -149,3 +169,45 @@ GW.AddButtons("ChatConfigFrame", {
 GW.Add("system", "framed", { "AddonList" }, GW.SkinAddonList)
 GW.Add("system", "framed", { "ChatConfigFrame" }, GW.SkinChatConfig)
 GW.Add("system", "framed", { "NamePlatesTutorial" }, GW.SkinNamePlatesTutorial)
+
+-- Edit Mode windows ---------------------------------------------------------------------------
+
+-- Edit Mode's main window (a ResizeLayoutFrame): Border faded, the title and layout label in the
+-- theme font, the close and the Save and Revert buttons themed. Vanguard's note under it
+-- (Core/Movers.lua) is its own child frame and is left as it is.
+GW.SkinEditMode = skinner({
+  layout = true, art = { "Border" }, titles = { "Title", "LayoutLabel" }, close = { "CloseButton" },
+  buttons = { "SaveChangesButton", "RevertAllChangesButton" },
+})
+
+-- The other Edit Mode dialogs: Border faded, the title in the theme font, their name box and buttons themed.
+GW.SkinEditDialog = skinner({
+  art = { "Border" }, titles = { "Title" }, edits = { "LayoutNameEditBox" },
+  buttons = { "AcceptButton", "CancelButton", "SaveAndProceedButton", "ProceedButton" },
+})
+
+-- The buttons in a system's settings dialog (its Revert button, and the extra ones a system adds), themed.
+local function dressExtraButtons(dialog)
+  local box = dialog.Buttons
+  if type(box) ~= "table" or not box.GetChildren then return end
+  for _, child in ipairs({ box:GetChildren() }) do
+    if child.GetObjectType and child:GetObjectType() == "Button" then T.Button(child) end
+  end
+end
+
+-- A system's settings dialog (also a ResizeLayoutFrame): Border faded, title and close button.
+local editSettings = skinner({ layout = true, art = { "Border" }, titles = { "Title" }, close = { "CloseButton" } })
+-- The dialog's skin, and its buttons, again whenever the game rebuilds the extra ones (UpdateExtraButtons).
+function GW.SkinEditSettings(dialog)
+  editSettings(dialog)
+  dressExtraButtons(dialog)
+  if dialog.vgExtraButtons or type(dialog.UpdateExtraButtons) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  dialog.vgExtraButtons = true
+  hooksecurefunc(dialog, "UpdateExtraButtons", dressExtraButtons)
+end
+
+GW.Add("system", "framed", { "EditModeManagerFrame" }, GW.SkinEditMode)
+GW.Add("system", "framed", { "EditModeSystemSettingsDialog" }, GW.SkinEditSettings)
+GW.Add("system", "framed", {
+  "EditModeLayoutDialog", "EditModeImportLayoutDialog", "EditModeImportLayoutLinkDialog", "EditModeUnsavedChangesDialog",
+}, GW.SkinEditDialog)
