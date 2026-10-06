@@ -206,7 +206,7 @@ Inventory: design §5.2. Group `town`.
   (`SingleItemSplitBackground`, `MultiItemSplitBackground`, `FrameGlow` faded; the four buttons `T.Button`;
   `StackSplitText` theme font), `CoinPickupFrame` (textures faded, `CoinPickupOkayButton`/`CoinPickupCancelButton`).
   All three as `"popups"` kind. Size S.
-- [ ] **S2.4 Separate bag windows.** When `ContainerFrameCombinedBags` is off: hook `OnShow` on `ContainerFrame1-7`
+- [x] **S2.4 Separate bag windows.** When `ContainerFrameCombinedBags` is off: hook `OnShow` on `ContainerFrame1-7`
   (those that exist) to `ns.GetModule("Bags").SkinWindow` (`Modules/Bags.lua:127`) and hooksecurefunc each frame's
   `UpdateItems` to its item skin (as `BG.Enable` :202 does for the combined bag). Registered under `town` but it also
   respects the Bags module being on. Test: with `combined = false`, showing `ContainerFrame1` skins it and its items;
