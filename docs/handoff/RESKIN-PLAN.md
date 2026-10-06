@@ -272,7 +272,7 @@ Inventory: design §5.4. Group `map`.
 - [x] **S4.2 Quest log inside the map.** Only when Vanguard's quest log is off (`ns.GetModule("QuestLog")` nil or its
   setting off, as `Modules/Windows.lua:232` `replaced` does for the quest dialog): `QuestMapFrame` (`DetailsFrame`,
   `QuestsFrame` art faded, inset panels; their scroll bars are S7's), `QuestLogPopupDetailFrame` (`GW.Skin`). Size S.
-- [ ] **S4.3 Battlefield map.** `GW.Add("map", "onDemand", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" })` with
+- [x] **S4.3 Battlefield map.** `GW.Add("map", "onDemand", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" })` with
   the same `BorderFrame` treatment; `BattlefieldMapTab` via `T.Button`. Size S.
 - [ ] **S4.4 Vanilla group finder.** `GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame",
   "LFGListingFrame", "LFGBrowseFrame" })`: `LFGParentFrame` gets `T.Panel` with shadow, `$parentCloseButton`

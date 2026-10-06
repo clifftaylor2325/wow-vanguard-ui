@@ -210,3 +210,47 @@ it("quest panel in the map: left the game's while Vanguard's quest log is on, or
   partial.eval("QuestMapFrame:Show()");
   for (const addon of [sparse, partial]) expect(addon.eval("return #ns.errors"), "a client with fewer parts loads cleanly").toBe(0);
 });
+
+// TEST-ONLY battlefield map, shaped like Blizzard_BattlefieldMap.xml: the tab (three tab textures and its label), the map
+// frame with its canvas and an ornate eight-piece BorderFrame holding a close button. Made when the game loads the part.
+const BATTLEFIELD_ENV = `
+  function __battlefieldMap()
+    local tab = CreateFrame("Button", "BattlefieldMapTab", UIParent)
+    for _, key in ipairs({ "Left", "Middle", "Right" }) do tab[key] = tab:CreateTexture() end
+    tab.Text = tab:CreateFontString(nil, "OVERLAY")
+    local map = CreateFrame("Frame", "BattlefieldMapFrame", UIParent) map:Hide()
+    map.ScrollContainer = CreateFrame("Frame", nil, map) map.ScrollContainer:CreateTexture():SetTexture("TEST-ONLY-CANVAS")
+    local border = CreateFrame("Frame", nil, map) map.BorderFrame = border
+    for _, key in ipairs({ "TopLeft", "TopRight", "BottomLeft", "BottomRight", "Top", "Bottom", "Left", "Right" }) do border[key] = border:CreateTexture() end
+    border.CloseButton = CreateFrame("Button", nil, border) border.CloseButton:CreateTexture()
+  end
+`;
+
+it("battlefield map: its border and tab in the theme once the game loads it, the canvas left alone", () => {
+  const addon = loggedIn(BATTLEFIELD_ENV);
+  addon.fire("ADDON_LOADED", "TEST-ONLY_SomethingElse");
+  addon.eval("__battlefieldMap()");
+  expect(addon.eval("return BattlefieldMapFrame.vgWindow == nil"), "nothing is touched until the part of the game loads").toBe(true);
+  addon.fire("ADDON_LOADED", "Blizzard_BattlefieldMap");
+  addon.eval("BattlefieldMapFrame:Show()");
+  expect(addon.eval("local b = BattlefieldMapFrame.BorderFrame local out = {} for _, k in ipairs({ 'TopLeft', 'TopRight', 'BottomLeft', 'BottomRight', 'Top', 'Bottom', 'Left', 'Right' }) do out[#out + 1] = b[k]:GetAlpha() end return out"), "the ornate border's eight pieces are faded").toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+  expect([fills(addon, "BattlefieldMapFrame.BorderFrame"), addon.eval("return select('#', BattlefieldMapFrame.BorderFrame:GetRegions()) > 8")], "an edge is painted over the map but no fill, which would hide it").toEqual([0, true]);
+  expect(addon.eval("local c = BattlefieldMapFrame.BorderFrame.CloseButton return select('#', c:GetRegions()) > 1"), "the close button is the theme's").toBe(true);
+  expect(addon.eval("local t = BattlefieldMapTab return { t.Left:GetAlpha(), t.Middle:GetAlpha(), t.Right:GetAlpha(), t.Text:GetAlpha() }"), "the tab's art is faded, its label kept").toEqual([0, 0, 0, 1]);
+  expect([fills(addon, "BattlefieldMapTab"), alpha(addon, "BattlefieldMapFrame.ScrollContainer")], "the tab is a flat button, the canvas the game's").toEqual([2, 1]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("BattlefieldMapFrame:Hide() BattlefieldMapFrame:Show()");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(painted);
+});
+
+it("battlefield map: switched off it stays the game's; a client without the tab or border is fine", () => {
+  const off = loggedIn(BATTLEFIELD_ENV, MAP_OFF);
+  off.eval("__battlefieldMap()");
+  off.fire("ADDON_LOADED", "Blizzard_BattlefieldMap");
+  off.eval("BattlefieldMapFrame:Show()");
+  expect([off.eval("return BattlefieldMapFrame.vgWindow == nil"), off.eval("return BattlefieldMapTab.Left:GetAlpha()")], "not hooked, art left").toEqual([true, 1]);
+  const bare = loggedIn(`CreateFrame("Frame", "BattlefieldMapFrame", UIParent)`);
+  bare.fire("ADDON_LOADED", "Blizzard_BattlefieldMap");
+  bare.eval("BattlefieldMapFrame:Show()");
+  expect(bare.eval("return #ns.errors"), "no border, no tab: no errors").toBe(0);
+});
