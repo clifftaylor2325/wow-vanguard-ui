@@ -461,6 +461,35 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: have another player cast a defensive spell on you (a paladin's Blessing of Protection or Blessing of Sacrifice, say).
 - Expect: it shows in Vanguard's buff row only; the game's external defensives frame (an extra icon near the buffs) never shows.
 - If it fails, paste: a screenshot and `/vg errors`.
+### 14.8.1 Character pane side tabs
+
+- Do: press C, then click each side tab in turn (Character, Reputation, Skills, Honor, Currency, Statistics).
+- Expect: each tab is a flat dark tile with its icon still showing (none blank), a thin accent line on the selected tab only that moves with every click, and a faint wash under the mouse. [Needs in game: the tab art is faded by T.Tab, including its icon mask; if an icon is missing, paste a screenshot.]
+- If it fails, paste: a screenshot of the pane with the tabs, the tab that is wrong and `/vg errors`.
+
+### 14.8.2 Tabs on the other windows
+
+- Do: open the friends window (O) and click each tab; at a mailbox click Inbox and Send Mail; at a merchant click Merchant and Buyback; inspect another player and click each tab; open the spellbook (P) and click its tabs and its category tabs; open the guild window and click its side tabs; open the group finder and the Legacy window and click their tabs.
+- Expect: every tab is a flat dark tile with its text, the accent line is on the selected tab only and follows every click, tabs that the game shows later (a new profession, talents after learning them) look the same, and every tab still switches its page.
+- If it fails, paste: which window and tab, a screenshot and `/vg errors`.
+
+### 14.8.3 Inside the character pane
+
+- Do: on the Reputation tab look at the list and click a header; on Skills look at a skill and click it; on Currency click a header; on the Character tab scroll the stats; hover a gear slot's flyout arrow (the equipment flyout) and look at the Honor tab.
+- Expect: reputation and skill bars sit in a flat dark box with the game's colored fill unchanged, headers are flat buttons that keep their plus/minus icon and still open and close, the stat category titles sit in flat boxes, the flyout is a flat panel with item borders in quality colors, the honor tab's ring and badge show (only its decoration is dimmed), and each gear slot still shows its durability percent.
+- If it fails, paste: a screenshot of the tab that is wrong and `/vg errors`.
+
+### 14.8.4 Scroll bars
+
+- Do: on the Reputation tab drag the scroll bar's thumb, click its arrows and mouse over the thumb; then scroll the friends list and the quest or mail list if they have bars.
+- Expect: a flat track, a raised thumb that takes the accent edge under the mouse, flat arrows with the theme's arrow, and the list scrolls as before. [Windows whose scroll bars are not the game's newer ones keep their own.]
+- If it fails, paste: a screenshot of the bar and `/vg errors`.
+
+### 14.8.5 Switch
+
+- Do: under `/vg` → Bars, map, chat → Game windows untick "Tab buttons and the inside of the character pane", `/reload`, open the character pane and the friends window.
+- Expect: the tabs, the pane's lists and the scroll bars are the game's own again; the windows keep their Vanguard panels.
+- If it fails, paste: a screenshot and `/vg errors`.
 
 ## When you are done
 
