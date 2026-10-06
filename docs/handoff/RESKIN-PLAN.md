@@ -328,7 +328,7 @@ Files: `Modules/SwingTimer.lua`, `Modules/PlayerAuras.lua`, `Modules/CastBars.lu
 the "Combat timers"/"Your buffs"/"Action bars" README bullets (one sentence each), own smoke-test subsection.
 Inventory: design §5.6. No new group: each change lives under its module's own settings.
 
-- [ ] **S6.1 The game's swing timers.** `Modules/SwingTimer.lua`: while `SW.Wanted` (:99) is true, hide
+- [x] **S6.1 The game's swing timers.** `Modules/SwingTimer.lua`: while `SW.Wanted` (:99) is true, hide
   `SwingTimerMainHandFrame`, `SwingTimerOffHandFrame`, `SwingTimerRangedFrame` the way `UF.HideBlizzard`
   (`Modules/UnitFrames.lua:458`) does (they are not secure; out of combat all the same); while it is false, skin them:
   `StatusBar` via `T.StyleBar`, `Background`/`Border` faded, `TimeLabel`/`TypeLabel` theme font, `TypeLabelShadow`
