@@ -268,3 +268,59 @@ it("S2.5 loot dialogs: group off leaves them the game's; a window without its pa
   bare.eval("MasterLooterFrame:Show() GroupLootHistoryFrame:Show()");
   expect([bare.eval("return MasterLooterFrame.vgWindow"), windowErrors(bare)], "bare windows: skinned, no list hook, no error").toEqual([true, "none"]);
 });
+
+// TEST-ONLY icon picker popup (IconSelectorPopupFrameTemplate): the frame with its header box and parts.
+const PICKER_ENV = `${WINDOWS_ENV}${ARROWS_ENV}
+  function __picker(name)
+    local f = __window(name) f.BG = f:CreateTexture()
+    local box = CreateFrame("Frame", nil, f) f.BorderBox = box
+    box.NineSlice = CreateFrame("Frame", nil, box) box.NineSlice:CreateTexture()
+    box.SelectedIconArea = CreateFrame("Frame", nil, box)
+    box.IconSelectorEditBox = CreateFrame("EditBox", nil, box) box.IconSelectorEditBox:CreateTexture()
+    box.OkayButton, box.CancelButton = CreateFrame("Button", nil, box), CreateFrame("Button", nil, box)
+    return f
+  end
+`;
+
+// TEST-ONLY macro window and stopwatch.
+const MACRO_ENV = `${PICKER_ENV}
+  __window("MacroFrame") __picker("MacroPopupFrame") __picker("GuildBankPopupFrame") __picker("GearManagerPopupFrame")
+  for _, n in ipairs({ "MacroEditButton", "MacroCancelButton", "MacroSaveButton", "MacroDeleteButton", "MacroNewButton", "MacroExitButton" }) do CreateFrame("Button", n, MacroFrame) end
+  local w = __window("StopwatchFrame")
+  local tab = CreateFrame("Frame", "StopwatchTabFrame", w) tab.art = tab:CreateTexture() tab:CreateFontString("StopwatchTitle", "BACKGROUND")
+  CreateFrame("Button", "StopwatchCloseButton", tab) __arrow(w, "StopwatchPlayPauseButton") __arrow(w, "StopwatchResetButton")
+  __window("InspectRecipeFrame")
+`;
+
+it("S2.6 macro, icon pickers, stopwatch, recipe inspection: skinned when their part of the game loads", () => {
+  const addon = loggedIn(MACRO_ENV);
+  for (const part of ["Blizzard_MacroUI", "Blizzard_GuildBankUI", "Blizzard_TimeManager", "Blizzard_Professions"]) addon.fire("ADDON_LOADED", part);
+  addon.eval("for _, n in ipairs({ 'MacroFrame', 'MacroPopupFrame', 'GuildBankPopupFrame', 'GearManagerPopupFrame', 'StopwatchFrame', 'InspectRecipeFrame' }) do _G[n]:Show() end");
+  const shown = ["MacroFrame", "MacroPopupFrame", "GuildBankPopupFrame", "GearManagerPopupFrame", "StopwatchFrame", "InspectRecipeFrame"].map((n) => windowState(addon, n));
+  expect(shown.map((s) => [s.art, s.panel]), "each is faded and has a panel").toEqual(Array(6).fill([0, true]));
+  expect(dressed(addon, "MacroEditButton", "MacroExitButton"), "the macro window's loose buttons themed").toEqual([true, true]);
+  for (const n of ["MacroPopupFrame", "GuildBankPopupFrame", "GearManagerPopupFrame"]) {
+    expect(addon.eval(`local b = ${n}.BorderBox return { ${n}.BG:GetAlpha(), b.NineSlice:GetAlpha(), select('#', b.SelectedIconArea:GetRegions()) > 0, select('#', b.IconSelectorEditBox:GetRegions()) > 1, select('#', b.OkayButton:GetRegions()) > 0, select('#', b.CancelButton:GetRegions()) > 0 }`), `${n}: BG and border faded, icon area inset, name box and buttons themed`).toEqual([0, 0, true, true, true, true]);
+  }
+  expect(alphas(addon, "StopwatchTabFrame.art", "StopwatchPlayPauseButton.up", "StopwatchResetButton.off"), "the title tab's art faded, the play and reset pictures kept").toEqual([0, 1, 1]);
+  expect(dressed(addon, "StopwatchCloseButton", "StopwatchPlayPauseButton", "StopwatchResetButton"), "its three buttons themed").toEqual([true, true, true]);
+  expect(addon.eval("return StopwatchTitle:GetFont() ~= nil"), "the title in the theme font").toBe(true);
+  const painted = windowState(addon, "StopwatchFrame").painted;
+  addon.eval("for _, n in ipairs({ 'MacroFrame', 'MacroPopupFrame', 'StopwatchFrame' }) do _G[n]:Hide() _G[n]:Show() end");
+  expect(windowState(addon, "StopwatchFrame").painted, "showing them again paints nothing more").toBe(painted);
+});
+
+it("S2.6 macro, icon pickers, stopwatch, recipe inspection: group off leaves them the game's; bare windows load cleanly", () => {
+  const off = loggedIn(MACRO_ENV, { savedVariables: OFF });
+  for (const part of ["Blizzard_MacroUI", "Blizzard_TimeManager"]) off.fire("ADDON_LOADED", part);
+  off.eval("MacroPopupFrame:Show() StopwatchFrame:Show() GearManagerPopupFrame:Show()");
+  expect(["MacroPopupFrame", "StopwatchFrame", "GearManagerPopupFrame"].map((n) => windowState(off, n).art !== 0), "art left").toEqual([true, true, true]);
+  const bare = loggedIn('for _, n in ipairs({ "MacroPopupFrame", "GuildBankPopupFrame", "GearManagerPopupFrame", "StopwatchFrame" }) do CreateFrame("Frame", n, UIParent):Hide() end');
+  for (const part of ["Blizzard_MacroUI", "Blizzard_GuildBankUI", "Blizzard_TimeManager"]) bare.fire("ADDON_LOADED", part);
+  bare.eval("MacroPopupFrame:Show() StopwatchFrame:Show() GearManagerPopupFrame:Show()");
+  const plain = loggedIn(`${PICKER_ENV} __picker("MacroPopupFrame").BorderBox.IconSelectorEditBox = {}`);
+  plain.fire("ADDON_LOADED", "Blizzard_MacroUI");
+  plain.eval("MacroPopupFrame:Show()");
+  expect([bare, plain].map(windowErrors), "windows without their parts, or a box that isn't one: no error").toEqual(["none", "none"]);
+  expect(plain.eval("return MacroPopupFrame.vgWindow"), "the plain popup is still skinned").toBe(true);
+});

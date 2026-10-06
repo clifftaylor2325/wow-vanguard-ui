@@ -31,8 +31,8 @@ local function showTexture(texture)
   if type(texture) == "table" and texture.SetAlpha then texture:SetAlpha(1) end
 end
 
--- A button whose arrow is its normal and disabled texture (the money arrows): a theme button that keeps its arrow.
-local function arrowButton(button)
+-- A button whose picture is its normal and disabled texture (the money arrows, play and reset): a theme button that keeps its picture.
+local function glyphButton(button)
   if type(button) ~= "table" or not button.GetRegions then return end
   T.Button(button)
   showTexture(button.GetNormalTexture and button:GetNormalTexture())
@@ -203,8 +203,8 @@ function GW.SkinStackSplit(frame)
   GW.Skin(frame)
   fadeWhole(frame, SPLIT_ART)
   keyButtons(frame, { "OkayButton", "CancelButton" })
-  arrowButton(frame.LeftButton)
-  arrowButton(frame.RightButton)
+  glyphButton(frame.LeftButton)
+  glyphButton(frame.RightButton)
   keyFonts(frame, { "StackSplitText", "StackItemCountText" }, "number")
 end
 
@@ -215,8 +215,8 @@ function GW.SkinCoinPickup(frame)
   for _, name in ipairs(COIN_ICONS) do keep[_G[name] or false] = true end
   T.FadeRegions(frame, keep)
   namedButtons(COIN_BUTTONS)
-  arrowButton(_G.CoinPickupLeftButton)
-  arrowButton(_G.CoinPickupRightButton)
+  glyphButton(_G.CoinPickupLeftButton)
+  glyphButton(_G.CoinPickupRightButton)
   namedFonts({ "CoinPickupText" }, "number")
 end
 
@@ -283,3 +283,44 @@ end
 
 GW.Add("town", "framed", { "MasterLooterFrame" }, GW.SkinMasterLooter)
 GW.Add("town", "framed", { "GroupLootHistoryFrame" }, GW.SkinLootHistory)
+
+-- Macro, icon pickers, stopwatch, recipe inspection ------------------------------------------------------
+
+-- The macro window's own buttons (none is in a button row).
+local MACRO_BUTTONS = { "MacroEditButton", "MacroCancelButton", "MacroSaveButton", "MacroDeleteButton", "MacroNewButton", "MacroExitButton" }
+GW.AddButtons("MacroFrame", MACRO_BUTTONS)
+
+-- The icon picker's header: the selected icon's area gets an inset panel, the name box and the Okay and
+-- Cancel buttons are themed; the box's own border art (a nine-slice) is faded.
+local function styleIconPickerBox(box)
+  if type(box) ~= "table" then return end
+  fadeWhole(box, { "NineSlice" })
+  insetPanel(box.SelectedIconArea)
+  if type(box.IconSelectorEditBox) == "table" and box.IconSelectorEditBox.SetText then T.EditBox(box.IconSelectorEditBox) end
+  keyButtons(box, { "OkayButton", "CancelButton" })
+end
+
+-- A popup made from IconSelectorPopupFrameTemplate (the macro, guild bank and equipment set popups): the
+-- window skin (its BG faded, a flat panel with a shadow) and the header parts in the theme.
+function GW.SkinIconPicker(frame)
+  GW.Skin(frame)
+  styleIconPickerBox(frame.BorderBox)
+end
+
+-- The stopwatch: its two background plates and the title tab's art faded under a flat panel, the close,
+-- play and reset buttons in the theme (play and reset keep their pictures), the title in the theme font.
+function GW.SkinStopwatch(frame)
+  GW.Skin(frame)
+  if type(_G.StopwatchTabFrame) == "table" then T.FadeRegions(_G.StopwatchTabFrame) end
+  if type(_G.StopwatchCloseButton) == "table" then T.CloseButton(_G.StopwatchCloseButton) end
+  glyphButton(_G.StopwatchPlayPauseButton)
+  glyphButton(_G.StopwatchResetButton)
+  namedFonts({ "StopwatchTitle" }, "small")
+end
+
+GW.Add("town", "onDemand", "Blizzard_MacroUI", { "MacroFrame" })
+GW.Add("town", "onDemand", "Blizzard_MacroUI", { "MacroPopupFrame" }, GW.SkinIconPicker)
+GW.Add("town", "onDemand", "Blizzard_GuildBankUI", { "GuildBankPopupFrame" }, GW.SkinIconPicker)
+GW.Add("town", "framed", { "GearManagerPopupFrame" }, GW.SkinIconPicker)
+GW.Add("town", "onDemand", "Blizzard_TimeManager", { "StopwatchFrame" }, GW.SkinStopwatch)
+GW.Add("town", "onDemand", "Blizzard_Professions", { "InspectRecipeFrame" })
