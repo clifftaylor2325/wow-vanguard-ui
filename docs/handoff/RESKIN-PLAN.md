@@ -369,7 +369,7 @@ Inventory: design §5.8. Group `tabs`. Depends on `T.Tab` and `T.ScrollBar` (S0)
   on acquire), `SkillsFrame` rows' bars, `TokenFrame` rows, `PVPRankFrame` art faded, `EquipmentFlyoutFrame` (`T.Panel`
   on show; its buttons through `ns.GetModule("Bags").SkinItem`, exported by S0.9), `PaperDollFrame`'s stat category boxes (`CharacterStatsPane` categories: `Background` faded, inset
   panel). The gear slots keep their durability labels from `Modules/Windows.lua:268`. Size M.
-- [ ] **S7.4 Scroll bars.** On every registered window on show: any child or `parentKey` named `ScrollBar`, and
+- [x] **S7.4 Scroll bars.** On every registered window on show: any child or `parentKey` named `ScrollBar`, and
   `.ScrollBox`'s paired bar, through `T.ScrollBar`. Size S.
 - [ ] **S7.5 Docs and smoke lines.** README sub-bullet for `tabs`; smoke-test lines: click every tab on the character
   pane, friends, mail, merchant, spellbook; scroll the reputation list. Size S.
