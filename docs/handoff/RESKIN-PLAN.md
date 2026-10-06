@@ -334,7 +334,7 @@ Inventory: design §5.6. No new group: each change lives under its module's own 
   `StatusBar` via `T.StyleBar`, `Background`/`Border` faded, `TimeLabel`/`TypeLabel` theme font, `TypeLabelShadow`
   hidden. The game shows them only with the `showSwingTimer` CVar on, so a stub test defines the frames and checks both
   paths. **[VERIFY IN GAME]** with the CVar on. Size S.
-- [ ] **S6.2 The other aura frames.** `Modules/PlayerAuras.lua`, `PA.BLIZZARD` (:24): append `ExternalDefensivesFrame`,
+- [x] **S6.2 The other aura frames.** `Modules/PlayerAuras.lua`, `PA.BLIZZARD` (:24): append `ExternalDefensivesFrame`,
   `DeadlyDebuffFrame`; `UF.HideBlizzard` skips a missing one already. README: "your buffs and debuffs (and the external
   defensives and deadly debuff frames of newer clients)". Size S.
 - [ ] **S6.3 The crafting cast bar.** `Modules/CastBars.lua`: skin `OverlayPlayerCastingBarFrame` (not hidden: it is the
