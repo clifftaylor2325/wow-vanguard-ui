@@ -20,6 +20,12 @@ local TT = ns.Module("Tooltips", {
 })
 
 TT.NAMES = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2", "EmbeddedItemTooltip" }
+-- More of the client's tooltips and tooltip-like boxes, skinned while the game windows' "menus" group is
+-- on too (its switch: "Right-click menus, dropdowns and more tooltips"). Ones a client lacks are skipped.
+TT.MORE_NAMES = {
+  "ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2", "GameNoHeaderTooltip", "GameSmallHeaderTooltip", "BuffFrameTooltip",
+  "QuickKeybindTooltip", "SettingsTooltip", "PartyMemberBuffTooltip", "AutoCompleteBox",
+}
 -- The client's tooltip fonts -> size before Text size, and bold.
 TT.FONTS = { GameTooltipHeaderText = { 14, true }, GameTooltipText = { 12 }, GameTooltipTextSmall = { 11 } }
 
@@ -45,9 +51,18 @@ function TT.ApplyFonts()
   T.FontObjects(TT.FONTS)
 end
 
--- Skins every tooltip this client has.
+-- Whether the game windows' menus group is on (the Windows module enables before this one).
+local function moreWanted()
+  local settings = ns.GetModule("Windows").settings
+  return settings ~= nil and settings.menus == true
+end
+
+-- Skins every tooltip this client has (TT.MORE_NAMES with the menus group on).
 function TT.SkinAll()
   for _, name in ipairs(TT.NAMES) do skin(_G[name]) end
+  if moreWanted() then
+    for _, name in ipairs(TT.MORE_NAMES) do skin(_G[name]) end
+  end
   skinHealthBar()
 end
 

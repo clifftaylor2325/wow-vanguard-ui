@@ -302,7 +302,7 @@ Inventory: design §5.4. Group `map`.
 Files: `Modules/WindowsMenus.lua`, `Modules/Tooltips.lua`, `scripts/tests/windows-menus.test.mjs`, `scripts/tests/tooltip.test.mjs`,
 own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there). Inventory: design §5.5 and §3.4. Group `menus`.
 
-- [ ] **S5.1 12.x context menus.** `EventRegistry:RegisterCallback("MenuProxy.OnShow", fn, GW)` (guarded on the registry
+- [x] **S5.1 12.x context menus.** `EventRegistry:RegisterCallback("MenuProxy.OnShow", fn, GW)` (guarded on the registry
   and on `RegisterCallback` existing): `fn(_, menu)` fades `menu`'s texture regions (the Compositor's background is a
   region of the menu frame) and `T.Tooltip(menu)` once per frame (menus are pooled: `menu.vgMenu` flag; fade again every
   show). On Camelot also fade `FrameGlow`. Nothing on the menu's buttons. **[VERIFY IN GAME]**: right-click a party
@@ -310,13 +310,13 @@ own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, nu
   because of an AddOn". If an action is blocked, drop this task and record it. Test: the stub's `world.trigger("MenuProxy.OnShow", frame)`
   (`scripts/lib/wow-world.lua:164`) paints the frame; a second trigger paints nothing new; without `EventRegistry`
   nothing errors. Size M.
-- [ ] **S5.2 Legacy dropdowns.** `DropDownList1-3`: on `OnShow`, `Backdrop` and `MenuBackdrop` (child frames) to alpha 0,
+- [x] **S5.2 Legacy dropdowns.** `DropDownList1-3`: on `OnShow`, `Backdrop` and `MenuBackdrop` (child frames) to alpha 0,
   `Border` faded, `T.Tooltip(list)`; the list buttons' highlight kept. Size S.
-- [ ] **S5.3 More tooltips.** `Modules/Tooltips.lua`, `TT.NAMES` (:22): append `ItemRefShoppingTooltip1`,
+- [x] **S5.3 More tooltips.** `Modules/Tooltips.lua`, `TT.NAMES` (:22): append `ItemRefShoppingTooltip1`,
   `ItemRefShoppingTooltip2`, `GameNoHeaderTooltip`, `GameSmallHeaderTooltip`, `BuffFrameTooltip`, `QuickKeybindTooltip`,
   `SettingsTooltip`, `PartyMemberBuffTooltip`, `AutoCompleteBox`; each skipped when the client lacks it (the loop already
   does). `LFGBrowseSearchEntryTooltip` is S4's. Test (`tooltip.test.mjs`): the new names are skinned when present. Size S.
-- [ ] **S5.4 Docs and smoke lines.** README sub-bullet for `menus`; smoke-test lines: the unit menu, the tracking menu,
+- [x] **S5.4 Docs and smoke lines.** README sub-bullet for `menus`; smoke-test lines: the unit menu, the tracking menu,
   a dropdown in the auction house, the buff tooltip. Size S.
 
 ---
