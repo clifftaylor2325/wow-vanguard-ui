@@ -366,3 +366,49 @@ it("legacy system: switched off it stays the game's; a client missing its pages 
   bare.eval("LegacySystemFrame:Show()");
   expect(bare.eval("return #ns.errors"), "no pages, or bare ones: no errors").toBe(0);
 });
+
+// TEST-ONLY queue status panel, shaped like Blizzard's QueueStatusFrame (a TooltipBackdropTemplate frame): its NineSlice, an entry
+// pool holding one entry whose assigned spec has a gold ring, and an Update that takes another entry from the pool.
+const QUEUE_ENV = `
+  function __queueEntry(pool)
+    local entry = CreateFrame("Frame", nil, QueueStatusFrame)
+    entry.AssignedSpec = CreateFrame("Frame", nil, entry)
+    entry.AssignedSpec.Icon, entry.AssignedSpec.Border = entry.AssignedSpec:CreateTexture(), entry.AssignedSpec:CreateTexture()
+    entry.EntrySeparator = entry:CreateTexture()
+    pool.items[#pool.items + 1] = entry
+    return entry
+  end
+  local f = CreateFrame("Frame", "QueueStatusFrame", UIParent) f:Hide()
+  f.NineSlice = CreateFrame("Frame", nil, f) f.NineSlice:CreateTexture()
+  f.statusEntriesPool = { items = {} }
+  function f.statusEntriesPool:EnumerateActive() local i = 0 return function() i = i + 1 return self.items[i] end end
+  __queueEntry(f.statusEntriesPool)
+  function f:Update() __queueEntry(self.statusEntriesPool) end
+`;
+
+it("queue status: the panel is a themed tooltip and the entries' rings are faded, now and when the game rebuilds them", () => {
+  const addon = loggedIn(QUEUE_ENV);
+  addon.eval("QueueStatusFrame:Show()");
+  expect([addon.eval("return QueueStatusFrame.NineSlice:GetAlpha()"), fills(addon, "QueueStatusFrame")], "the game's border is faded and a panel painted").toEqual([0, 1]);
+  const ring = (n) => addon.eval(`local e = QueueStatusFrame.statusEntriesPool.items[${n}] return { e.AssignedSpec.Border:GetAlpha(), e.AssignedSpec.Icon:GetAlpha(), e.EntrySeparator:GetAlpha() }`);
+  expect(ring(1), "the ring is faded, the icon and the line between entries kept").toEqual([0, 1, 1]);
+  addon.eval("QueueStatusFrame:Update()");
+  expect(ring(2), "an entry the game makes on its next update is dressed too").toEqual([0, 1, 1]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("QueueStatusFrame:Hide() QueueStatusFrame:Show() QueueStatusFrame:Update()");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it and updating again paints nothing new").toBe(painted);
+});
+
+it("queue status: switched off it stays the game's; a client without a pool, entries' parts or Update is fine", () => {
+  const off = loggedIn(QUEUE_ENV, MAP_OFF);
+  off.eval("QueueStatusFrame:Show() QueueStatusFrame:Update()");
+  expect([off.eval("return QueueStatusFrame.NineSlice:GetAlpha()"), off.eval("return QueueStatusFrame.statusEntriesPool.items[1].AssignedSpec.Border:GetAlpha()")], "not hooked").toEqual([1, 1]);
+  const bare = loggedIn(`CreateFrame("Frame", "QueueStatusFrame", UIParent)`);
+  bare.eval("QueueStatusFrame:Show()");
+  const sparse = loggedIn(`local f = CreateFrame("Frame", "QueueStatusFrame", UIParent) f.Update = function() end
+    f.statusEntriesPool = { EnumerateActive = function() local done return function() if not done then done = true return CreateFrame("Frame") end end end }`);
+  sparse.eval("QueueStatusFrame:Show() QueueStatusFrame:Update()");
+  const noHook = loggedIn(QUEUE_ENV + "hooksecurefunc = nil");
+  noHook.eval("QueueStatusFrame:Show()");
+  for (const addon of [bare, sparse, noHook]) expect(addon.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return ''"), "no errors").toBe("");
+});

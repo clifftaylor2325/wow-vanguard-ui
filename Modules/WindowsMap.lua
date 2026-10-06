@@ -261,3 +261,26 @@ function GW.SkinLegacy(frame)
 end
 
 GW.Add("map", "onDemand", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)
+
+-- Queue status ---------------------------------------------------------------------------------
+
+-- The queue entries showing now (read-only on the game's pool): the gold ring round each assigned spec's icon faded.
+local function skinQueueEntries(frame)
+  local pool = frame.statusEntriesPool
+  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
+  for entry in pool:EnumerateActive() do
+    if type(entry.AssignedSpec) == "table" then GW.FadeParts(entry.AssignedSpec, { "Border" }) end
+  end
+end
+
+-- The queue status panel (the group finder eye's tooltip-like window): a themed tooltip, and again for the entries
+-- each time the game rebuilds them (Update, which takes them from a pool). The game's hook is set once.
+function GW.SkinQueueStatus(frame)
+  T.Tooltip(frame)
+  skinQueueEntries(frame)
+  if frame.vgQueueHooked or type(frame.Update) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  frame.vgQueueHooked = true
+  hooksecurefunc(frame, "Update", skinQueueEntries)
+end
+
+GW.Add("map", "framed", { "QueueStatusFrame" }, GW.SkinQueueStatus)

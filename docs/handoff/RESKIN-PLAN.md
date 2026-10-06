@@ -284,7 +284,7 @@ Inventory: design §5.4. Group `map`.
   `TalentFrameBaseTemplate` art: `Background`, `BottomBar`, side art; the node buttons untouched); `TabIndicators` and
   the three tabs are S7's. **[DECIDE]** (design §6.1) the tracker; this task assumes (c), the window only, and says so
   in the commit body. Size M.
-- [ ] **S4.6 Queue status.** `QueueStatusFrame` via `T.Tooltip` on `OnShow`; its `QueueStatusFrame` entries' art faded.
+- [x] **S4.6 Queue status.** `QueueStatusFrame` via `T.Tooltip` on `OnShow`; its `QueueStatusFrame` entries' art faded.
   Size S.
 - [ ] **S4.7 Calendar, first pass.** `GW.Add("map", "onDemand", "Blizzard_Calendar", { "CalendarFrame", … })`: the
   outer frame's corner/edge textures (`CalendarFrame` `$parentTopLeft`…) faded, `T.Panel` with shadow, `CalendarCloseButton`,
