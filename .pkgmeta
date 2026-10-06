@@ -1,0 +1,26 @@
+# CurseForge (and Wago) packaging: what their packager puts in the Vanguard
+# folder of the zip. It must hold exactly what scripts/package.mjs puts in the
+# release zip (the TOC, every file it loads, Media/, the libraries' licenses
+# and LICENSE); scripts/pkgmeta.test.mjs fails if the two ever differ.
+# The CurseForge project ID goes in Vanguard.toc as ## X-Curse-Project-ID
+# once the project exists (see README, Releases on CurseForge).
+
+package-as: Vanguard
+
+enable-nolib-creation: no
+
+ignore:
+  - .github
+  - .vscode
+  - art
+  - docs
+  - scripts
+  - README.md
+  - package.json
+  - package-lock.json
+  - vitest.config.mjs
+  - .editorconfig
+  - .gitattributes
+  - .gitignore
+  - .luacheckrc
+  - .pkgmeta
