@@ -302,7 +302,7 @@ Inventory: design §5.4. Group `map`.
 Files: `Modules/WindowsMenus.lua`, `Modules/Tooltips.lua`, `scripts/tests/windows-menus.test.mjs`, `scripts/tests/tooltip.test.mjs`,
 own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there). Inventory: design §5.5 and §3.4. Group `menus`.
 
-- [ ] **S5.1 12.x context menus.** `EventRegistry:RegisterCallback("MenuProxy.OnShow", fn, GW)` (guarded on the registry
+- [x] **S5.1 12.x context menus.** `EventRegistry:RegisterCallback("MenuProxy.OnShow", fn, GW)` (guarded on the registry
   and on `RegisterCallback` existing): `fn(_, menu)` fades `menu`'s texture regions (the Compositor's background is a
   region of the menu frame) and `T.Tooltip(menu)` once per frame (menus are pooled: `menu.vgMenu` flag; fade again every
   show). On Camelot also fade `FrameGlow`. Nothing on the menu's buttons. **[VERIFY IN GAME]**: right-click a party
