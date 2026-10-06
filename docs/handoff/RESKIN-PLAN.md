@@ -263,7 +263,7 @@ Inventory: design §5.3. Group `system`.
 Files: `Modules/WindowsMap.lua`, `scripts/tests/windows-map.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.4. Group `map`.
 
-- [ ] **S4.1 World map.** `WorldMapFrame`: `GW.Skin` applied to `WorldMapFrame.BorderFrame` (it carries the
+- [x] **S4.1 World map.** `WorldMapFrame`: `GW.Skin` applied to `WorldMapFrame.BorderFrame` (it carries the
   `NineSlice`, `TitleContainer`, `CloseButton`, `MaximizeMinimizeFrame`), `Underlay` and the four vignettes faded,
   `NavBar` (made in Lua on load, `Blizzard_WorldMap.lua:343`: `overlay` faded, `homeButton`, `overflow` and the crumb
   buttons via `T.Button`), `SidePanelToggle` (`:349`) buttons, `Tutorial` button. Keep `ScrollContainer` and every map canvas untouched. Re-skin on `OnShow` and after
