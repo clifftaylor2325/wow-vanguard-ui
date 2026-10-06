@@ -211,7 +211,7 @@ Inventory: design §5.2. Group `town`.
   `UpdateItems` to its item skin (as `BG.Enable` :202 does for the combined bag). Registered under `town` but it also
   respects the Bags module being on. Test: with `combined = false`, showing `ContainerFrame1` skins it and its items;
   with Bags off, nothing. Size S.
-- [ ] **S2.5 Loot dialogs.** `MasterLooterFrame` (child of `LootFrame`; `DefaultPanelTemplate` parts `NineSlice`/`Bg`),
+- [x] **S2.5 Loot dialogs.** `MasterLooterFrame` (child of `LootFrame`; `DefaultPanelTemplate` parts `NineSlice`/`Bg`),
   `GroupLootHistoryFrame` (`DefaultPanelFlatTemplate`): `GW.Skin`; the master looter's player buttons `T.Button`. Size S.
 - [ ] **S2.6 Macro, popups with icon pickers, stopwatch.** `GW.Add("town", "onDemand", "Blizzard_MacroUI",
   { "MacroFrame", "MacroPopupFrame" })`, `"Blizzard_GuildBankUI"` → `GuildBankPopupFrame`, framed `GearManagerPopupFrame`,
