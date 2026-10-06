@@ -324,3 +324,42 @@ GW.Add("town", "onDemand", "Blizzard_GuildBankUI", { "GuildBankPopupFrame" }, GW
 GW.Add("town", "framed", { "GearManagerPopupFrame" }, GW.SkinIconPicker)
 GW.Add("town", "onDemand", "Blizzard_TimeManager", { "StopwatchFrame" }, GW.SkinStopwatch)
 GW.Add("town", "onDemand", "Blizzard_Professions", { "InspectRecipeFrame" })
+
+-- Small dialogs -------------------------------------------------------------------------------------
+
+-- The Release Spirit / return to graveyard button's text, and the buttons the message and addon dialogs keep outside Button1-4.
+local GHOST_TEXT = { "GhostFrameContentsFrameText" }
+local ADDON_DIALOG_BUTTONS = { "AddonDialogButton1", "AddonDialogButton2" }
+GW.AddButtons("BasicMessageDialog", { "BasicMessageDialogButton" })
+
+-- The ghost button as a theme button with its text in the theme font (textures and font strings only).
+local function dressGhost(frame)
+  T.Button(frame)
+  namedFonts(GHOST_TEXT, "label")
+end
+
+-- The button a dead player gets to return to the graveyard: dressed out of combat (it is shown from the game's
+-- secure code; in combat the dressing waits, and a button already dressed keeps its look).
+function GW.SkinGhost(frame)
+  ns.OutOfCombat(function() dressGhost(frame) end, "WindowsTown.ghost")
+end
+
+-- The addon list's confirmation dialog: the window is a full-screen catcher with a dialog in it, so the
+-- dialog (AddonDialogBackground) gets the window skin and its two buttons are themed.
+function GW.SkinAddonDialog(frame)
+  local box = _G.AddonDialogBackground
+  if type(box) ~= "table" then return end
+  GW.Skin(box)
+  namedButtons(ADDON_DIALOG_BUTTONS)
+end
+
+-- The currency transfer window: the window skin and its Confirm and Cancel buttons.
+function GW.SkinCurrencyTransfer(frame)
+  GW.Skin(frame)
+  if type(frame.Content) == "table" then keyButtons(frame.Content, { "ConfirmButton", "CancelButton" }) end
+end
+
+GW.Add("town", "framed", { "GhostFrame" }, GW.SkinGhost)
+GW.Add("town", "popups", { "BasicMessageDialog" })
+GW.Add("town", "popups", { "AddonDialog" }, GW.SkinAddonDialog)
+GW.Add("town", "framed", { "CurrencyTransferMenu" }, GW.SkinCurrencyTransfer)
