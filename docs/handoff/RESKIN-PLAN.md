@@ -274,7 +274,7 @@ Inventory: design §5.4. Group `map`.
   `QuestsFrame` art faded, inset panels; their scroll bars are S7's), `QuestLogPopupDetailFrame` (`GW.Skin`). Size S.
 - [x] **S4.3 Battlefield map.** `GW.Add("map", "onDemand", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" })` with
   the same `BorderFrame` treatment; `BattlefieldMapTab` via `T.Button`. Size S.
-- [ ] **S4.4 Vanilla group finder.** `GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame",
+- [x] **S4.4 Vanilla group finder.** `GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame",
   "LFGListingFrame", "LFGBrowseFrame" })`: `LFGParentFrame` gets `T.Panel` with shadow, `$parentCloseButton`
   (`T.CloseButton`), its `$parentPortrait` faded; the two child frames' `NineSlice`/`Bg` faded (no close button of their
   own); `LFGBrowseSearchEntryTooltip` via `T.Tooltip`; the listing's edit boxes `T.EditBox`, its buttons `T.Button`;
