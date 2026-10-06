@@ -168,7 +168,7 @@ Inventory: design §5.1. Group `social`.
   `GuildInviteFrame`, `CommunitiesSettingsDialog`, `CommunitiesAvatarPickerDialog`, `CommunitiesTicketManagerDialog`,
   `GuildRenameFrame`: `GW.Skin` each (`Bg`/`Border`/`BG` parts faded where `GW.ART` doesn't already list them, with
   `GW.SkinWith({ ... })` from S0). Size S.
-- [ ] **S1.4 Channels and friends dialogs.** `ChannelFrame`, `CreateChannelPopup`, `FriendsFriendsFrame`, `AddFriendFrame`,
+- [x] **S1.4 Channels and friends dialogs.** `ChannelFrame`, `CreateChannelPopup`, `FriendsFriendsFrame`, `AddFriendFrame`,
   `BattleNetInviteFrame`: `GW.Skin`; `AddFriendFrame`'s edit boxes via `T.EditBox`. Size S.
 - [ ] **S1.5 Guild creation.** `GuildRegistrarFrame`, `PetitionFrame`, `TabardFrame`: `GW.Skin`;
   `GuildRegistrarText`, `GuildRegistrarPurchaseText`, `PetitionFrameCharterTitle`, `PetitionFrameMemberTitle`
