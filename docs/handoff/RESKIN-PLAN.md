@@ -178,7 +178,7 @@ Inventory: design §5.1. Group `social`.
   `CloseButton`/`acceptButton`/decline buttons themed, the role buttons' checked art kept (only their frame art faded).
   Registered as `"popups"` kind under `social`. **[VERIFY IN GAME]**: start a role check from the raid tools; the popup
   shows themed and the role buttons still check. Size S.
-- [ ] **S1.7 Raid tab.** `GW.Add("social", "onDemand", "Blizzard_RaidUI", { "RaidFrame" }, GW.SkinRaidTab)`: the eight
+- [x] **S1.7 Raid tab.** `GW.Add("social", "onDemand", "Blizzard_RaidUI", { "RaidFrame" }, GW.SkinRaidTab)`: the eight
   `RaidGroup<n>` boxes (their title textures faded, inset panel), `RaidGroupButton1-40` as `T.Button` with the class
   colour the game sets on the name kept; `RaidFrameRaidInfoButton`, `RaidFrameConvertToRaidButton`, `RaidFrameAllAssistCheckButton`
   themed. `RaidParentFrame` registered as framed for clients that use it. Size M.

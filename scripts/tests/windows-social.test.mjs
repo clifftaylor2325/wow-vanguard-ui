@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { WINDOWS_ENV, loggedIn, windowState } from "./helpers.mjs";
+import { WINDOWS_ENV, loggedIn, setCombat, windowState } from "./helpers.mjs";
 
 // The social group's switch turned off in the saved variables.
 const OFF = { savedVariables: "VanguardDB.profiles = { Default = { Windows = { social = false } } }" };
@@ -348,4 +348,62 @@ it("role poll and invite popups: a second show paints nothing more, the switch o
   const bare = loggedIn(`CreateFrame("Frame", "RolePollPopup", UIParent) RolePollPopup.Border = {} RolePollPopup.CloseButton = {} RolePollPopupAcceptButton = {}`);
   bare.eval("RolePollPopup:Show()");
   expect([windowErrors(bare), bare.eval("return #ns.errors")], "a popup with parts missing").toEqual(["none", 0]);
+});
+
+// Raid tab -----------------------------------------------------------------------------------------------
+
+// The raid tab's frames as Blizzard_RaidUI makes them: eight group boxes with a label, member buttons, push buttons.
+const RAID_PARTS = `
+  for i = 1, 8 do
+    local g = CreateFrame("Frame", "RaidGroup" .. i, RaidFrame) g.Outline = g:CreateTexture()
+    local l = CreateFrame("Button", "RaidGroup" .. i .. "Label", g) l.Art = l:CreateTexture()
+  end
+  for i = 1, 40 do
+    local b = CreateFrame("Button", "RaidGroupButton" .. i, RaidFrame, "SecureUnitButtonTemplate") b.Art = b:CreateTexture()
+    b.name = b:CreateFontString("RaidGroupButton" .. i .. "Name", "ARTWORK") b.name:SetTextColor(0.1, 0.8, 0.2)
+  end
+  for _, n in ipairs({ "RaidFrameRaidInfoButton", "RaidFrameConvertToRaidButton" }) do local b = CreateFrame("Button", n, RaidFrame) b.Art = b:CreateTexture() end
+  RaidFrameAllAssistCheckButtonText = RaidFrame:CreateFontString("RaidFrameAllAssistCheckButtonText", "ARTWORK")
+`;
+// RaidFrame exists at login (Blizzard_RaidFrame); the groups and buttons come with Blizzard_RaidUI.
+const RAID_ENV = WINDOWS_ENV + `local rf = CreateFrame("Frame", "RaidFrame", UIParent) rf:Hide() ` + RAID_PARTS;
+
+it("raid tab: group boxes faded and panelled, member buttons flat with the game's class color kept, push buttons themed", () => {
+  const addon = loggedIn(RAID_ENV);
+  addon.eval("RaidFrame:Show()");
+  expect(addon.eval(`local function themed(x) for _, r in ipairs({ x:GetRegions() }) do if r.__alpha ~= 0 then return true end end return false end
+    local g = {} for i = 1, 8 do g[#g + 1] = RaidGroup1.Outline.__alpha == 0 and RaidGroup8.Outline.__alpha == 0 and _G["RaidGroup" .. i .. "Label"].Art.__alpha == 0 and themed(_G["RaidGroup" .. i]) end
+    return { #g, g[1] and g[8], RaidGroupButton1.Art.__alpha, RaidGroupButton40.Art.__alpha, themed(RaidGroupButton40), themed(RaidFrameRaidInfoButton), RaidFrameRaidInfoButton.Art.__alpha,
+      RaidFrameConvertToRaidButton.Art.__alpha, RaidGroupButton1Name.__textColor[2] }`), "the whole tab dressed").toEqual([8, true, 0, 0, true, true, 0, 0, 0.8]);
+  expect(addon.eval(`local c = RaidFrameAllAssistCheckButtonText.__textColor return c[1] == ns.Theme.RGB("text")`), "the checkbox label in the text color").toBe(true);
+});
+
+it("raid tab: skinned when Blizzard_RaidUI loads after the tab, never in combat, a second show paints nothing more, the switch off leaves it the game's", () => {
+  const addon = loggedIn(WINDOWS_ENV + `local rf = CreateFrame("Frame", "RaidFrame", UIParent) rf:Hide()`);
+  addon.eval(RAID_PARTS);
+  setCombat(addon, true);
+  addon.fire("ADDON_LOADED", "Blizzard_RaidUI");
+  expect(addon.eval("return { RaidGroup3.Outline.__alpha, RaidGroupButton5.Art.__alpha == nil }"), "the boxes at once, the secure buttons waiting out the fight").toEqual([0, true]);
+  setCombat(addon, false);
+  expect(addon.eval("return RaidGroupButton5.Art.__alpha"), "the buttons after it").toBe(0);
+  addon.fire("ADDON_LOADED", "Blizzard_SomethingElse");
+  addon.eval("RaidFrame:Show()");
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("RaidFrame:Hide() RaidFrame:Show()");
+  addon.fire("ADDON_LOADED", "Blizzard_RaidUI");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "painting again piles up nothing").toBe(painted);
+  const off = loggedIn(RAID_ENV, OFF);
+  off.eval("RaidFrame:Show()");
+  off.fire("ADDON_LOADED", "Blizzard_RaidUI");
+  expect(off.eval("return { RaidFrame.vgWindow == nil, RaidGroup1.Outline.__alpha ~= 0, RaidGroupButton1.Art.__alpha ~= 0 }"), "left the game's").toEqual([true, true, true]);
+});
+
+it("raid tab: the parent window is skinned, and a client without the raid UI or some of its parts loads cleanly", () => {
+  const addon = loggedIn(WINDOWS_ENV + `__window("RaidParentFrame")`);
+  addon.eval("RaidParentFrame:Show()");
+  expect(windowState(addon, "RaidParentFrame")).toMatchObject({ art: 0, nine: 0, panel: true, title: true });
+  addon.fire("ADDON_LOADED", "Blizzard_RaidUI");
+  const odd = loggedIn(`CreateFrame("Frame", "RaidFrame", UIParent) RaidGroup2 = {} RaidGroupButton3 = {} RaidFrameRaidInfoButton = {} RaidGroup4 = CreateFrame("Frame", nil, RaidFrame)`);
+  odd.eval("RaidFrame:Show()");
+  expect([windowErrors(addon), windowErrors(odd), addon.eval("return #ns.errors"), odd.eval("return #ns.errors")]).toEqual(["none", "none", 0, 0]);
 });
