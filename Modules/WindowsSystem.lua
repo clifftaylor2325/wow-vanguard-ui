@@ -55,10 +55,15 @@ local function inset(p)
   T.Panel(p, { inset = true })
 end
 
+-- Shows a part again: art the window's fade took that is really content (a tutorial's pictures).
+local function restore(p)
+  if p.SetAlpha then p:SetAlpha(1) end
+end
+
 -- What a skin spec can list, in order: the parts (parentKey paths) each step is applied to.
 local STEPS = {
   { "art", fadeAll }, { "fade", fadeRegions }, { "close", T.CloseButton }, { "buttons", T.Button },
-  { "edits", T.EditBox }, { "tabs", skinTab }, { "insets", inset }, { "titles", heading },
+  { "edits", T.EditBox }, { "tabs", skinTab }, { "insets", inset }, { "titles", heading }, { "keep", restore },
 }
 
 -- Applies each listed step of a spec to the parts of the frame that exist.
@@ -95,3 +100,52 @@ GW.SETTINGS_SPEC = {
 GW.SkinSettings = skinner(GW.SETTINGS_SPEC)
 
 GW.Add("system", "framed", { "SettingsPanel" }, GW.SkinSettings)
+
+-- Addon list, chat config, nameplates tutorial -----------------------------------------------
+
+-- A skin for a window GW.Skin handles (art faded, panel, close button, title) with more parts dressed.
+local function withWindowSkin(spec)
+  return function(frame)
+    GW.Skin(frame)
+    dress(frame, spec)
+  end
+end
+
+-- The addon list: its push buttons and search box (the rows keep the game's look).
+GW.SkinAddonList = withWindowSkin({
+  buttons = { "CancelButton", "OkayButton", "EnableAllButton", "DisableAllButton" }, edits = { "SearchBox" },
+})
+-- The nameplates tutorial: the window skin, but its four picture cards are the content, so they stay.
+GW.SkinNamePlatesTutorial = withWindowSkin({ keep = { "StyleOptions", "Aggro", "BuffsDebuffs", "EnemyVsFriendly" } })
+
+-- Whether a child of the chat settings window is one of its boxes: it has the game's NineSlice
+-- (ChatConfigBoxTemplate), or its name ends in Backdrop or Background.
+local function isChatBox(child)
+  local name = child.GetName and child:GetName() or ""
+  return type(child.NineSlice) == "table" or name:find("Backdrop$") ~= nil or name:find("Background$") ~= nil
+end
+
+-- One box of the chat settings in the theme: its border art faded, an inset panel behind it.
+local function skinChatBox(box)
+  if type(box.NineSlice) == "table" then fadeRegions(box.NineSlice) end
+  fadeRegions(box)
+  inset(box)
+end
+
+-- The chat settings window: the window skin, its header plate faded with the title kept, and
+-- each box directly under it (the category list and the settings area) an inset panel.
+function GW.SkinChatConfig(frame)
+  GW.Skin(frame)
+  dress(frame, { fade = { "Header" }, titles = { "Header.Text" } })
+  for _, child in ipairs({ frame:GetChildren() }) do
+    if isChatBox(child) then skinChatBox(child) end
+  end
+end
+GW.AddButtons("ChatConfigFrame", {
+  "ChatConfigFrameDefaultButton", "ChatConfigFrameCancelButton", "ChatConfigFrameOkayButton",
+  "CombatLogDefaultButton", "TextToSpeechDefaultButton",
+})
+
+GW.Add("system", "framed", { "AddonList" }, GW.SkinAddonList)
+GW.Add("system", "framed", { "ChatConfigFrame" }, GW.SkinChatConfig)
+GW.Add("system", "framed", { "NamePlatesTutorial" }, GW.SkinNamePlatesTutorial)
