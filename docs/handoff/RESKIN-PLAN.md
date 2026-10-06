@@ -355,7 +355,7 @@ Inventory: design §5.6. No new group: each change lives under its module's own 
 Files: `Modules/WindowsTabs.lua`, `scripts/tests/windows-tabs.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.8. Group `tabs`. Depends on `T.Tab` and `T.ScrollBar` (S0).
 
-- [ ] **S7.1 Tab buttons on framed windows.** On each window already registered (read `GW.FRAMED` and `GW.ON_DEMAND`
+- [x] **S7.1 Tab buttons on framed windows.** On each window already registered (read `GW.FRAMED` and `GW.ON_DEMAND`
   at `Enable`, don't re-list them): for every button in `frame.Tabs` (parentArray of `PanelTabButtonTemplate`), every
   `_G[name .. "Tab" .. i]` for i = 1..8 that exists, and `frame.TabSystem`'s buttons when present (`TabSystem:GetTabButton`?
   check `Blizzard_SharedXML/Shared/TabSystem/TabSystem.lua` for the accessor and use it guarded), call `T.Tab`. Hook the
