@@ -269,7 +269,7 @@ Inventory: design §5.4. Group `map`.
   buttons via `T.Button`), `SidePanelToggle` (`:349`) buttons, `Tutorial` button. Keep `ScrollContainer` and every map canvas untouched. Re-skin on `OnShow` and after
   `WorldMapFrame:SynchronizeDisplayState` (hooksecurefunc, guarded) because minimising rebuilds the border. The
   coordinate line from `Modules/Waypoints.lua:162` must still sit along the bottom: test it. Size M.
-- [ ] **S4.2 Quest log inside the map.** Only when Vanguard's quest log is off (`ns.GetModule("QuestLog")` nil or its
+- [x] **S4.2 Quest log inside the map.** Only when Vanguard's quest log is off (`ns.GetModule("QuestLog")` nil or its
   setting off, as `Modules/Windows.lua:232` `replaced` does for the quest dialog): `QuestMapFrame` (`DetailsFrame`,
   `QuestsFrame` art faded, inset panels; their scroll bars are S7's), `QuestLogPopupDetailFrame` (`GW.Skin`). Size S.
 - [ ] **S4.3 Battlefield map.** `GW.Add("map", "onDemand", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" })` with
