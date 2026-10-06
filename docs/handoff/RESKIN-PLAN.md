@@ -213,7 +213,7 @@ Inventory: design §5.2. Group `town`.
   with Bags off, nothing. Size S.
 - [x] **S2.5 Loot dialogs.** `MasterLooterFrame` (child of `LootFrame`; `DefaultPanelTemplate` parts `NineSlice`/`Bg`),
   `GroupLootHistoryFrame` (`DefaultPanelFlatTemplate`): `GW.Skin`; the master looter's player buttons `T.Button`. Size S.
-- [ ] **S2.6 Macro, popups with icon pickers, stopwatch.** `GW.Add("town", "onDemand", "Blizzard_MacroUI",
+- [x] **S2.6 Macro, popups with icon pickers, stopwatch.** `GW.Add("town", "onDemand", "Blizzard_MacroUI",
   { "MacroFrame", "MacroPopupFrame" })`, `"Blizzard_GuildBankUI"` → `GuildBankPopupFrame`, framed `GearManagerPopupFrame`,
   `"Blizzard_TimeManager"` → `StopwatchFrame`, `"Blizzard_Professions"` → `InspectRecipeFrame`. One `GW.SkinIconPicker`
   for the `IconSelectorPopupFrameTemplate` windows (`BorderBox`, `BG` faded; `SelectedIconArea` inset panel; the edit
