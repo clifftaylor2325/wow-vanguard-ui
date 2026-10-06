@@ -340,7 +340,7 @@ Inventory: design §5.6. No new group: each change lives under its module's own 
 - [x] **S6.3 The crafting cast bar.** `Modules/CastBars.lua`: skin `OverlayPlayerCastingBarFrame` (not hidden: it is the
   bar over the professions window while crafting): `T.StyleBar`, its `Border`/`Background`/`Flash` faded, `Text` in the
   theme font; on `OnShow`, once. Size S.
-- [ ] **S6.4 Possess bar.** `Modules/SpecialBars.lua`: add `skinPossess = { "PossessButton", 2 }` beside `skinPet` (:28),
+- [x] **S6.4 Possess bar.** `Modules/SpecialBars.lua`: add `skinPossess = { "PossessButton", 2 }` beside `skinPet` (:28),
   default on, through `SB.Skin` (:56). Size S.
 - [ ] **S6.5 Fonts on the HUD text.** `T.FontObjects` on `ErrorFont` (the `UIErrorsFrame` line, next to
   `Modules/Merchant.lua:95`), `ZoneTextFont`, `SubZoneTextFont`, `PVPInfoTextFont`, `PVPArenaTextString`'s font, each
