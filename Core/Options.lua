@@ -258,7 +258,7 @@ O.MODULE_INFO = {
   BossDocks = { "Boss mod docks", "Two spots you can move for boss mods' timer bars; /vg dock lines up Deadly Boss Mods' bars with them." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
   FightHistory = { "Fight history", "Your DPS and place in each fight this session, as a strip of bars under the damage meter (off until switched on)." },
-  Windows = { "Game windows", "Character, merchant, quest, loot and other game windows, popups and the breath bar in the Vanguard look." },
+  Windows = { "Game windows", "Character, merchant, quest, loot, mail, guild, map, options and other game windows, their tabs, menus, popups and the breath bar in the Vanguard look." },
   DataBars = { "XP and reputation", "Thin experience and reputation bars." },
   Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },
   Inventory = { "Inventory", "Remembers your characters' bags and bank; item tooltips say who else has the item." },
@@ -414,15 +414,26 @@ local function chatSizeSetting()
   return liveSetting("Chat", "textSize", function() local CH = ns.GetModule("Chat") if CH.settings then CH.Refresh() end end)
 end
 
--- The game's own windows in the Vanguard look (after a reload).
+-- The game's own windows in the Vanguard look, by group: setting key -> its switch's label.
+local WINDOW_GROUPS = {
+  { "windows", "Character, merchant, quest, loot and other windows (reload)" },
+  { "popups", "Popups (reload)" },
+  { "timers", "Breath and fatigue bars (reload)" },
+  { "durability", "Durability on the character pane's gear (reload)" },
+  { "social", "Mail, guild, channels, friends and guild-creation windows (reload)" },
+  { "town", "Stable, trainer, bags, loot and item dialogs (reload)" },
+  { "system", "Game options, Edit Mode, keybinding and help windows (reload)" },
+  { "map", "World map, group finder, calendar and Legacy windows (reload)" },
+  { "menus", "Right-click menus, dropdowns and more tooltips (reload)" },
+  { "tabs", "Tab buttons and the inside of the character pane (reload)" },
+  { "pvp", "Battleground windows (reload)" },
+}
+
+-- The game's own windows in the Vanguard look (after a reload): one switch per group.
 local function windowRows()
-  return {
-    { "header", "Game windows" },
-    check("Character, merchant, quest, loot and other windows (reload)", setting("Windows", "windows", true)),
-    check("Popups (reload)", setting("Windows", "popups", true)),
-    check("Breath and fatigue bars (reload)", setting("Windows", "timers", true)),
-    check("Durability on the character pane's gear (reload)", setting("Windows", "durability", true)),
-  }
+  local rows = { { "header", "Game windows" } }
+  for _, g in ipairs(WINDOW_GROUPS) do rows[#rows + 1] = check(g[2], setting("Windows", g[1], true)) end
+  return rows
 end
 
 -- The auction helper's scan, auction check, disenchant, crafting and deals rows.

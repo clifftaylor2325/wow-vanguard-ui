@@ -1,0 +1,3 @@
+-- Game windows, tabs group: Tab buttons on every skinned window, the character pane's inner panels and the game's scroll bars, in the
+-- Vanguard look. Filled by stream S7 of docs/handoff/RESKIN-PLAN.md; registers with
+-- GW.Add (Modules/Windows.lua) at file scope, so the windows are watched at login.

@@ -682,6 +682,157 @@ function T.CloseButton(button)
   return button
 end
 
+-- Game frame primitives (docs/design/RESKIN.md 3.3) -----------------------------------------
+
+-- The art the game's three tab templates draw (PanelTabButtonTemplate,
+-- TabSystemButtonTemplate, LargeSideTabButtonTemplate), faded by T.Tab.
+T.TAB_ART = {
+  "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive", "LeftHighlight", "MiddleHighlight",
+  "RightHighlight", "Background", "SelectedTexture", "HighlightTexture", "Mask", "TabGlow",
+  "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow",
+}
+
+-- Whether a game tab is the selected one: a tab system's flag, the checked state a
+-- side tab was last given, else disabled (the game selects a panel tab by disabling it).
+local function tabSelected(button)
+  if type(button.SetTabSelected) == "function" then return button.isSelected == true end
+  if button.vgChecked ~= nil then return button.vgChecked end
+  return type(button.IsEnabled) == "function" and not button:IsEnabled()
+end
+
+-- Shows a tab's accent line while it is selected, one pixel tall, in the accent.
+local function paintTab(entry, frame)
+  local line = entry.parts.line
+  line:SetShown(tabSelected(frame))
+  line:SetHeight(T.Pixel(frame))
+  T.Tint(line, "accent")
+end
+
+-- Repaints a tab after the game changes its state.
+local function repaintTab(button)
+  local entry = painted[button]
+  if entry then repaint(button, entry) end
+end
+
+-- Remembers a side tab's checked state, then repaints it.
+local function onTabChecked(button, checked)
+  button.vgChecked = checked == true
+  repaintTab(button)
+end
+
+-- Follows the three ways the game selects a tab: enabling, SetChecked, SetTabSelected.
+local function watchTab(button)
+  button:HookScript("OnEnable", repaintTab)
+  button:HookScript("OnDisable", repaintTab)
+  if type(hooksecurefunc) ~= "function" then return end
+  if type(button.SetChecked) == "function" then hooksecurefunc(button, "SetChecked", onTabChecked) end
+  if type(button.SetTabSelected) == "function" then hooksecurefunc(button, "SetTabSelected", repaintTab) end
+end
+
+-- Fades each part of a frame named in keys that it has (textures or frames), by alpha.
+local function fadeKeys(frame, keys)
+  for _, key in ipairs(keys) do
+    local part = frame[key]
+    if type(part) == "table" and part.SetAlpha then part:SetAlpha(0) end
+  end
+end
+
+-- A tab's own parts (made once): the accent line along its top and the hover wash.
+local function tabParts(button, entry)
+  entry.parts.line, entry.parts.hover = solid(button, "OVERLAY"), solid(button, "HIGHLIGHT")
+  entry.parts.line:SetPoint("TOPLEFT")
+  entry.parts.line:SetPoint("TOPRIGHT")
+  entry.parts.hover:SetAllPoints()
+  T.Tint(entry.parts.hover, "hover")
+  entry.paint = paintTab
+end
+
+-- One of the game's tab buttons in the theme: its template art faded (its icon and
+-- text kept), an inset panel, the faint hover, and a one-pixel accent line along the
+-- top while it is the selected tab. Safe to run again; follows the game's selection.
+function T.Tab(button)
+  local entry = painted[button]
+  if not entry then
+    entry = base(button, "tab", { inset = true, noSheen = true })
+    tabParts(button, entry)
+    watchTab(button)
+  end
+  fadeKeys(button, T.TAB_ART)
+  repaint(button, entry)
+  return button
+end
+
+-- A tooltip-like frame in the theme (tooltips, menus, small panels): a panel at 0.94
+-- with a soft shadow, the game's NineSlice faded. Safe to run again.
+function T.Tooltip(frame)
+  if type(frame.NineSlice) == "table" and frame.NineSlice.SetAlpha then frame.NineSlice:SetAlpha(0) end
+  return T.Panel(frame, { alpha = 0.94, shadow = true })
+end
+
+-- The parts of the game's scroll bars (MinimalScrollBar, WowTrimScrollBar) whose
+-- art T.ScrollBar fades, and the pieces each part can hold.
+T.SCROLL_ART = { "Background", "Backplate", "Overlay", "Track" }
+local SCROLL_PIECES = { "Begin", "Middle", "End", "Texture" }
+-- The arrow buttons, and whether each points up (Back) or down (Forward).
+local SCROLL_ARROWS = { Back = true, Forward = false }
+
+-- Fades one part of a scroll bar: a frame's own textures, or a texture, and its pieces.
+local function fadePart(part)
+  if type(part) ~= "table" then return end
+  if part.GetRegions then T.FadeRegions(part) elseif part.SetAlpha then part:SetAlpha(0) end
+  fadeKeys(part, SCROLL_PIECES)
+end
+
+-- The thumb's edge in the accent while the mouse is over it.
+local function hoverAccent(f)
+  f:HookScript("OnEnter", function() T.SetBorder(f, { T.Accent() }) end)
+  f:HookScript("OnLeave", function() T.SetBorder(f, nil) end)
+end
+
+-- A scroll arrow in the theme, once: a flat button with the theme's Down icon,
+-- turned upside down for the Back (up) arrow.
+local function arrowGlyph(button, up)
+  if button.vgArrow then return end
+  T.Button(button)
+  button.vgArrow = T.Tint(T.Snap(button:CreateTexture(nil, "OVERLAY")), "text2")
+  button.vgArrow:SetTexture(T.Icon("Down"))
+  button.vgArrow:SetSize(10, 10)
+  button.vgArrow:SetPoint("CENTER")
+  if up then button.vgArrow:SetTexCoord(0, 1, 1, 0) end
+end
+
+-- One of the game's scroll bars in the theme: its track and art faded, the thumb a
+-- raised panel (accent edge under the mouse), the arrows flat with the theme's arrow.
+-- A bar without a thumb (not one of the game's) is left alone. Safe to run again.
+function T.ScrollBar(bar)
+  local thumb = bar.Thumb or (type(bar.Track) == "table" and bar.Track.Thumb)
+  if type(thumb) ~= "table" then return bar end
+  for _, key in ipairs(T.SCROLL_ART) do fadePart(bar[key]) end
+  fadePart(thumb)
+  if not painted[thumb] then hoverAccent(thumb) end
+  T.Panel(thumb, { raised = true, noSheen = true })
+  for key, up in pairs(SCROLL_ARROWS) do if type(bar[key]) == "table" then arrowGlyph(bar[key], up) end end
+  return bar
+end
+
+-- The game's font objects Vanguard sets: name -> { size before Text size, bold }.
+local fontObjects = {}
+
+-- The theme font, scaled by Text size, on each listed font object this client has.
+local function applyFontObjects()
+  for name, spec in pairs(fontObjects) do
+    local font, path, outline = _G[name], T.Font(spec[2])
+    if type(font) == "table" and font.SetFont then font:SetFont(path, T.ScaledSize(spec[1]), outline) end
+  end
+end
+
+-- Puts the theme font on the game's font objects in map ({ FontObjectName = { size,
+-- bold } }) now and after every theme change (font, Text size). The list only grows.
+function T.FontObjects(map)
+  for name, spec in pairs(map) do fontObjects[name] = spec end
+  applyFontObjects()
+end
+
 -- Tints the logo's halves: accent on the left diamond, text color on the right.
 local function paintLogo(entry)
   T.Tint(entry.parts.left, "accent")
@@ -815,6 +966,7 @@ function T.Refresh()
     repaint(frame, entry)
   end
   T.RefreshText()
+  applyFontObjects()
   for t in pairs(crests) do T.PaintCrest(t) end
   for _, fn in ipairs(listeners) do
     fn()

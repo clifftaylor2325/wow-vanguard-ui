@@ -1,7 +1,7 @@
 // more: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { AFK_ENV, CLICK_LUA, FAKE_FADES, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, isTok, key, later, loggedIn, marks, pinned, plate, putAway, raidButton, setCombat, strips } from "./helpers.mjs";
+import { AFK_ENV, CLICK_LUA, FAKE_FADES, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, isTok, key, later, loggedIn, marks, pinned, plate, putAway, raidButton, setCombat, strips, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -2470,31 +2470,6 @@ it("the quest tracker in the Vanguard look: flat headers, brass lines, theme arr
   expect(loggedIn(UI_ENV).eval("return ns.GetModule('MenuStrip').rules ~= nil"), "a client without the tracker loads cleanly").toBe(true);
 });
 
-// TEST-ONLY game windows: a framed window built like the game's ButtonFrameTemplate (art textures,
-// NineSlice, inset, portrait, close button, title, push buttons), a popup and a breath bar.
-const WINDOWS_ENV = `
-  function __window(name, kind)
-    local f = CreateFrame("Frame", name, UIParent)
-    f:CreateTexture(nil, "BACKGROUND"):SetTexture("TEST-ONLY-ART")
-    f.NineSlice = CreateFrame("Frame", nil, f) f.NineSlice:CreateTexture(nil, "BORDER")
-    f.Inset = CreateFrame("Frame", nil, f) f.Inset.NineSlice = CreateFrame("Frame", nil, f.Inset)
-    f.PortraitContainer = CreateFrame("Frame", nil, f)
-    f.CloseButton = CreateFrame("Button", name .. "CloseButton", f)
-    f.TitleContainer = CreateFrame("Frame", nil, f) f.TitleContainer.TitleText = f.TitleContainer:CreateFontString(nil, "OVERLAY")
-    for i = 1, 2 do CreateFrame("Button", name .. "Button" .. i, f) end
-    f:Hide()
-    return f
-  end
-  __window("MerchantFrame") __window("StaticPopup1")
-  local t = __window("MirrorTimer1") t.StatusBar = CreateFrame("StatusBar", nil, t)
-`;
-
-// A window's state: its own art faded, its parts dressed, how many frames are painted.
-const windowState = (addon, name) => addon.eval(`local f = ${name}
-  local art for _, r in ipairs({ f:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
-  local panel = 0 for _, r in ipairs({ f:GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then panel = panel + 1 end end
-  return { art = art, nine = f.NineSlice.__alpha, portrait = f.PortraitContainer.__alpha, insetNine = f.Inset.NineSlice.__alpha,
-    panel = panel > 0, title = f.TitleContainer.TitleText:GetFont() ~= nil, painted = ns.Theme.PaintedCount() }`);
 
 it("game windows in the Vanguard look: framed windows, popups, breath bar, and windows that load later", () => {
   const addon = loggedIn(WINDOWS_ENV);
@@ -2533,6 +2508,43 @@ it("game windows: switched off they stay the game's, and missing windows are fin
   const plain = loggedIn(`local f = CreateFrame("Frame", "LootFrame", UIParent) f.ButtonContainer = { Buttons = { CreateFrame("Button", nil, f) } }
     t = CreateFrame("Frame", "MirrorTimer2", UIParent) CreateFrame("StatusBar", "MirrorTimer2StatusBar", t)`);
   expect(plain.eval("return { select('#', LootFrame.ButtonContainer.Buttons[1]:GetRegions()) > 0, MirrorTimer2StatusBar:GetStatusBarTexture() ~= nil }"), "a window with a button container, and a bar found by name").toEqual([true, true]);
+});
+
+it("game windows registry: a window added under a group is skinned, its group's switch keeps it the game's", () => {
+  const reg = `__window("TestOnlySocialFrame") __window("TestOnlyLaterFrame")
+    local GW = ns.GetModule("Windows")
+    GW.Add("social", "framed", { "TestOnlySocialFrame" }, GW.SkinWith({ "TestOnlyExtra" }))
+    TestOnlySocialFrame.TestOnlyExtra = TestOnlySocialFrame:CreateTexture()
+    GW.AddButtons("TestOnlySocialFrame", { "TestOnlyLooseButton" }) CreateFrame("Button", "TestOnlyLooseButton", TestOnlySocialFrame)`;
+  const on = loggedIn(WINDOWS_ENV + reg);
+  on.eval("TestOnlySocialFrame:Show()");
+  expect(windowState(on, "TestOnlySocialFrame"), "skinned like any window").toMatchObject({ art: 0, nine: 0, panel: true, title: true });
+  expect(on.eval("return { TestOnlySocialFrame.TestOnlyExtra.__alpha, select('#', TestOnlyLooseButton:GetRegions()) > 0 }"), "its extra art faded and its loose button themed").toEqual([0, true]);
+  on.eval(`ns.GetModule("Windows").Add("map", "onDemand", "TestOnly_Part", { "TestOnlyLaterFrame" })`);
+  expect(windowState(on, "TestOnlyLaterFrame").panel, "a late registration for a window that already exists is skinned at once").toBe(true);
+  on.eval(`ns.GetModule("Windows").Add("map", "onDemand", "TestOnly_Later", { "TestOnlyLoadsLater" }) __window("TestOnlyLoadsLater")`);
+  expect(on.eval("return TestOnlyLoadsLater.vgWindow == nil"), "a window that doesn't exist yet waits").toBe(true);
+  on.fire("ADDON_LOADED", "TestOnly_Later");
+  expect(on.eval("return TestOnlyLoadsLater.vgWindow == true"), "until its part of the game loads").toBe(true);
+  const off = loggedIn(WINDOWS_ENV + reg, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { social = false } } }" });
+  off.eval("TestOnlySocialFrame:Show()");
+  expect([windowState(off, "TestOnlySocialFrame").art !== 0, off.eval("return TestOnlySocialFrame.vgWindow == nil")], "with its group off: not hooked, its art left").toEqual([true, true]);
+  expect(windowState(off, "MerchantFrame").panel, "other groups still are").toBe(true);
+  expect(on.eval("return ns.GetModule('Windows').ON_DEMAND.Blizzard_EncounterJournal == nil"), "the encounter journal (never on Forever) is not listed").toBe(true);
+  expect(on.eval("local GW = ns.GetModule('Windows') return { GW.REGISTERED.PlayerSpellsFrame.group, GW.REGISTERED.StaticPopup1.group, GW.REGISTERED.MirrorTimer1.group }"), "the first groups").toEqual(["windows", "popups", "timers"]);
+});
+
+it("game windows registry: parts and named art faded, missing ones skipped", () => {
+  const addon = loggedIn(`TestOnlyNamedArt = UIParent:CreateTexture()`);
+  const out = addon.eval(`
+    local GW = ns.GetModule("Windows")
+    local f = CreateFrame("Frame", nil, UIParent)
+    f.Tex, f.Box = f:CreateTexture(), CreateFrame("Frame", nil, f)
+    local inner = f.Box:CreateTexture()
+    GW.FadeParts(f, { "Tex", "Box", "Missing" })
+    GW.FadeNamed({ "TestOnlyNamedArt", "TestOnlyNoSuchArt" })
+    return { f.Tex.__alpha, inner.__alpha, TestOnlyNamedArt.__alpha }`);
+  expect(out).toEqual([0, 0, 0]);
 });
 
 it("the AFK screen: a dimmed screen and a card while you're away", () => {

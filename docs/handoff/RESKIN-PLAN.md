@@ -91,7 +91,7 @@ Files: `Modules/Windows.lua`, `Modules/Bags.lua`, `Core/Theme.lua`, `Core/Skin.l
 `scripts/tests/theme.test.mjs`, `scripts/lib/media-sources.mjs`, new empty `Modules/Windows{Social,Town,System,Map,Menus,Tabs,PvP}.lua`
 and `scripts/tests/windows-{social,town,system,map,menus,tabs,pvp}.test.mjs`.
 
-- [ ] **S0.1 The registry.** `Modules/Windows.lua`: add `GW.GROUPS`, `GW.Add(group, kind, …)`, `GW.AddButtons(name, list)`
+- [x] **S0.1 The registry.** `Modules/Windows.lua`: add `GW.GROUPS`, `GW.Add(group, kind, …)`, `GW.AddButtons(name, list)`
   as `docs/design/RESKIN.md` §3.1 specifies; re-express `GW.FRAMED` (:19), `GW.POPUPS` (:24), `GW.ON_DEMAND` (:29) and
   `GW.EXTRA_BUTTONS` (:45) through them (keep the old table names as the storage so existing tests keep reading them);
   `watch` (:238) skips a name whose group setting is false; `onLoaded` (:252) unchanged in behaviour; a late
@@ -100,42 +100,48 @@ and `scripts/tests/windows-{social,town,system,map,menus,tabs,pvp}.test.mjs`.
   `social, town, system, map, menus, tabs, pvp = true`. Test (`more.test.mjs`, the "game windows" cases): a name added
   under a group is skinned on show; with that group's setting false it is not hooked; a late on-demand registration
   for a loaded addon is skinned at once; the EncounterJournal entry is gone. Size S.
-- [ ] **S0.2 `T.Tab`.** `Core/Theme.lua`, after `T.CloseButton` (:674): the three templates by parts (design §3.3), the
+- [x] **S0.2 `T.Tab`.** `Core/Theme.lua`, after `T.CloseButton` (:674): the three templates by parts (design §3.3), the
   accent line while selected, hooks on `OnEnable`/`OnDisable` and a post-hook of `SetChecked` when present; `T.Refresh`
   (:813) repaints it with the accent. Export as `S.Tab` in `Core/Skin.lua:17`. Test (`theme.test.mjs`): a stub tab with
   `Left/Middle/Right` is faded and panelled; disabling it shows the accent line and enabling hides it; a side tab with
   `SelectedTexture` works the same; a tab with none of the parts is panelled and nothing errors; an accent change
   recolours the line. Size M.
-- [ ] **S0.3 `T.Tooltip` and `T.FontObjects`.** `T.Tooltip(frame)` = `skin()` from `Modules/Tooltips.lua:29` (panel at
+- [x] **S0.3 `T.Tooltip` and `T.FontObjects`.** `T.Tooltip(frame)` = `skin()` from `Modules/Tooltips.lua:29` (panel at
   alpha 0.94 with shadow, `NineSlice` alpha 0, idempotent) moved into the theme; `Tooltips.lua` calls it.
   `T.FontObjects(map)` = the loop in `TT.ApplyFonts` (`Tooltips.lua:44`), re-run through `T.OnChanged`; `Tooltips.lua`
   and `MS.SkinTracker` (`Modules/MenuStrip.lua:554`) use it. Both exported in `Core/Skin.lua`. Test: existing tooltip
   and tracker tests still pass; `T.FontObjects` applies the theme font at `T.ScaledSize` and re-applies after a text
   size change. Size S.
-- [ ] **S0.4 `T.ScrollBar`.** Both 12.x bars by parts (design §3.3); an `Up` line icon added to
-  `scripts/lib/media-sources.mjs` next to `Down` and generated with `npm run media` (then `node scripts/build-media.mjs
-  --check`, and `media.test.mjs` expectations). Exported as `S.ScrollBar`. Test (`theme.test.mjs`): a stub
+- [x] **S0.4 `T.ScrollBar`.** Both 12.x bars by parts (design §3.3); the up arrow is the existing `Down` icon turned
+  over (`SetTexCoord(0, 1, 1, 0)`), so no new media (the media build's renderer couldn't be installed where S0 was
+  written). Exported as `S.ScrollBar`. Test (`theme.test.mjs`): a stub
   `MinimalScrollBar` and a stub `WowTrimScrollBar` get their track and thumb art faded, the thumb painted, the arrows
   tinted; a bar without a `Thumb` is left alone. Size M.
-- [ ] **S0.5 Area files and TOC.** Create the seven `Modules/Windows<Area>.lua` files holding only a header comment
+- [x] **S0.5 Area files and TOC.** Create the seven `Modules/Windows<Area>.lua` files holding only a header comment
   ("<area> windows in the Vanguard look; filled by stream S<n> of docs/handoff/RESKIN-PLAN.md") and the seven test
   files holding one `it("placeholder", …)` that loads the addon; add the module files to `Vanguard.toc` right after
   `Modules/Windows.lua` (:94) in the order Social, Town, System, Map, Menus, Tabs, PvP. Size S.
-- [ ] **S0.6 Options rows.** `Core/Options.lua`, `windowRows` (:418): one `check` per new group, after the existing
+- [x] **S0.6 Options rows.** `Core/Options.lua`, `windowRows` (:418): one `check` per new group, after the existing
   four, all "(reload)": "Mail, guild, channels, friends and guild-creation windows", "Stable, trainer, bags, loot and
   item dialogs", "Game options, Edit Mode, keybinding and help windows", "World map, group finder, calendar and Legacy
   windows", "Right-click menus, dropdowns and more tooltips", "Tab buttons and the inside of the character pane",
   "Battleground windows". Update the `Windows` module description (:261). Test (`options.test.mjs`): the rows exist and
   toggle their settings. Size S.
-- [ ] **S0.7 Test helpers.** Move `WINDOWS_ENV`, `__window` and `windowState` from `scripts/tests/more.test.mjs:2475-2497`
+- [x] **S0.7 Test helpers.** Move `WINDOWS_ENV`, `__window` and `windowState` from `scripts/tests/more.test.mjs:2475-2497`
   into `scripts/tests/helpers.mjs` (exported), and import them back in `more.test.mjs`; document them in
   `scripts/tests/README.md` under "Inspecting". Size S.
-- [ ] **S0.8 Docs.** `README.md`: split the "Game windows" bullet (line 49) into an intro line plus one sub-bullet per
+- [x] **S0.8 Docs.** `README.md`: split the "Game windows" bullet (line 49) into an intro line plus one sub-bullet per
   group (the existing text for `windows`/`popups`/`timers`; a one-line placeholder "(coming: see docs/handoff/RESKIN-PLAN.md)"
   for the seven new groups, which each stream replaces). `docs/THEME.md`: a "Game frame primitives" section for `T.Tab`,
-  `T.Tooltip`, `T.ScrollBar`, `T.FontObjects`. `docs/SMOKE-TEST.md`: a "Game windows, by area" section with one empty
-  subsection per area (streams append their lines). Size S.
-- [ ] **S0.9 Shared item skin.** `Modules/Bags.lua`: export the local `skinItem` (:95, "Fades an item button's slot art") as
+  `T.Tooltip`, `T.ScrollBar`, `T.FontObjects`. `docs/SMOKE-TEST.md`: section 14 "Game windows, by area" with its switch
+  step (14.1) and a fixed subsection number per stream (14.2 S1 … 14.8 S7, 14.9 S8) that each stream adds; empty `###`
+  subsections aren't allowed (`core.test.mjs` checks every step has Do, Expect and paste lines). Size S.
+- [x] **S0.10 Helpers for the streams** (added while writing S0). `Modules/Windows.lua` also exports
+  `GW.FadeParts(frame, keys)` (parentKeys: a frame's own textures, or a texture), `GW.FadeNamed(names)` (global
+  textures/frames), `GW.SkinWith(keys)` (a skin function: `GW.Skin` then those parts faded), `GW.PaintNamed(names, token)`
+  (font strings by global name in a theme colour) and `GW.settings` (the module's settings once enabled; read a group's
+  switch as `GW.settings.<group>`). Streams use these instead of writing their own loops.
+- [x] **S0.9 Shared item skin.** `Modules/Bags.lua`: export the local `skinItem` (:95, "Fades an item button's slot art") as
   `BG.SkinItem` so other windows' item buttons (mail attachments, the equipment flyout, merchant items later) get the
   same quality border without copying it. No behaviour change; one test that `ns.GetModule("Bags").SkinItem` skins a
   stub button once. Size S.
@@ -144,7 +150,7 @@ and `scripts/tests/windows-{social,town,system,map,menus,tabs,pvp}.test.mjs`.
 
 ## 2. S1 — Social and guild
 
-Files: `Modules/WindowsSocial.lua`, `scripts/tests/windows-social.test.mjs`, own README sub-bullet, own smoke-test subsection.
+Files: `Modules/WindowsSocial.lua`, `scripts/tests/windows-social.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.1. Group `social`.
 
 - [ ] **S1.1 Open mail.** `GW.Add("social", "framed", { "OpenMailFrame" }, GW.SkinOpenMail)`: `GW.Skin`, then the
@@ -160,8 +166,8 @@ Inventory: design §5.1. Group `social`.
   `CommunitiesFrameMixin:OnShow` and after `SetDisplayMode` (hooksecurefunc on the frame, guarded). Size M.
 - [ ] **S1.3 Guild dialogs.** `CommunitiesGuildLogFrame`, `CommunitiesGuildNewsFiltersFrame`, `CommunitiesGuildTextEditFrame`,
   `GuildInviteFrame`, `CommunitiesSettingsDialog`, `CommunitiesAvatarPickerDialog`, `CommunitiesTicketManagerDialog`,
-  `GuildRenameFrame`: `GW.Skin` each (`Bg`/`Border`/`BG` parts faded where `GW.ART` doesn't already list them: add a
-  per-window extra-parts list `GW.SkinWith(parts)` returning a skin function, in this file). Size S.
+  `GuildRenameFrame`: `GW.Skin` each (`Bg`/`Border`/`BG` parts faded where `GW.ART` doesn't already list them, with
+  `GW.SkinWith({ ... })` from S0). Size S.
 - [ ] **S1.4 Channels and friends dialogs.** `ChannelFrame`, `CreateChannelPopup`, `FriendsFriendsFrame`, `AddFriendFrame`,
   `BattleNetInviteFrame`: `GW.Skin`; `AddFriendFrame`'s edit boxes via `T.EditBox`. Size S.
 - [ ] **S1.5 Guild creation.** `GuildRegistrarFrame`, `PetitionFrame`, `TabardFrame`: `GW.Skin`;
@@ -184,7 +190,7 @@ Inventory: design §5.1. Group `social`.
 
 ## 3. S2 — Town and items
 
-Files: `Modules/WindowsTown.lua`, `scripts/tests/windows-town.test.mjs`, own README sub-bullet, own smoke-test subsection.
+Files: `Modules/WindowsTown.lua`, `scripts/tests/windows-town.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.2. Group `town`.
 
 - [ ] **S2.1 Stable.** `PetStableFrame`: `GW.Skin` plus `Background`, `Border`, `PetModelSceneShadow`, `PetShadow` faded,
@@ -223,7 +229,7 @@ Inventory: design §5.2. Group `town`.
 
 ## 4. S3 — System windows
 
-Files: `Modules/WindowsSystem.lua`, `scripts/tests/windows-system.test.mjs`, own README sub-bullet, own smoke-test subsection.
+Files: `Modules/WindowsSystem.lua`, `scripts/tests/windows-system.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.3. Group `system`.
 
 - [ ] **S3.1 Game options.** `SettingsPanel`: `NineSlice`, `Bg` faded; `T.Panel` with shadow; `ClosePanelButton`
@@ -254,7 +260,7 @@ Inventory: design §5.3. Group `system`.
 
 ## 5. S4 — Map, finder and Legacy
 
-Files: `Modules/WindowsMap.lua`, `scripts/tests/windows-map.test.mjs`, own README sub-bullet, own smoke-test subsection.
+Files: `Modules/WindowsMap.lua`, `scripts/tests/windows-map.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.4. Group `map`.
 
 - [ ] **S4.1 World map.** `WorldMapFrame`: `GW.Skin` applied to `WorldMapFrame.BorderFrame` (it carries the
@@ -294,7 +300,7 @@ Inventory: design §5.4. Group `map`.
 ## 6. S5 — Menus and tooltips
 
 Files: `Modules/WindowsMenus.lua`, `Modules/Tooltips.lua`, `scripts/tests/windows-menus.test.mjs`, `scripts/tests/tooltip.test.mjs`,
-own README sub-bullet, own smoke-test subsection. Inventory: design §5.5 and §3.4. Group `menus`.
+own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there). Inventory: design §5.5 and §3.4. Group `menus`.
 
 - [ ] **S5.1 12.x context menus.** `EventRegistry:RegisterCallback("MenuProxy.OnShow", fn, GW)` (guarded on the registry
   and on `RegisterCallback` existing): `fn(_, menu)` fades `menu`'s texture regions (the Compositor's background is a
@@ -346,7 +352,7 @@ Inventory: design §5.6. No new group: each change lives under its module's own 
 
 ## 8. S7 — Tabs and inner parts
 
-Files: `Modules/WindowsTabs.lua`, `scripts/tests/windows-tabs.test.mjs`, own README sub-bullet, own smoke-test subsection.
+Files: `Modules/WindowsTabs.lua`, `scripts/tests/windows-tabs.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.8. Group `tabs`. Depends on `T.Tab` and `T.ScrollBar` (S0).
 
 - [ ] **S7.1 Tab buttons on framed windows.** On each window already registered (read `GW.FRAMED` and `GW.ON_DEMAND`

@@ -1,0 +1,3 @@
+-- Game windows, pvp group: Battleground scoreboards, queue dialogs, objective widgets and the match timer, in the
+-- Vanguard look. Filled by stream S8 of docs/handoff/RESKIN-PLAN.md; registers with
+-- GW.Add (Modules/Windows.lua) at file scope, so the windows are watched at login.

@@ -1,0 +1,3 @@
+-- Game windows, menus group: Right-click menus (the 12.x menu system) and the old dropdown lists, in the
+-- Vanguard look. Filled by stream S5 of docs/handoff/RESKIN-PLAN.md; registers with
+-- GW.Add (Modules/Windows.lua) at file scope, so the windows are watched at login.

@@ -572,3 +572,29 @@ export const unitEvents = (addon, event) => addon.eval(`local subs, plain = {}, 
   end
   table.sort(subs)
   return { subs = table.concat(subs, " "), plain = plain }`);
+
+// TEST-ONLY game windows: a framed window built like the game's ButtonFrameTemplate (art textures,
+// NineSlice, inset, portrait, close button, title, push buttons), a popup and a breath bar.
+export const WINDOWS_ENV = `
+  function __window(name, kind)
+    local f = CreateFrame("Frame", name, UIParent)
+    f:CreateTexture(nil, "BACKGROUND"):SetTexture("TEST-ONLY-ART")
+    f.NineSlice = CreateFrame("Frame", nil, f) f.NineSlice:CreateTexture(nil, "BORDER")
+    f.Inset = CreateFrame("Frame", nil, f) f.Inset.NineSlice = CreateFrame("Frame", nil, f.Inset)
+    f.PortraitContainer = CreateFrame("Frame", nil, f)
+    f.CloseButton = CreateFrame("Button", name .. "CloseButton", f)
+    f.TitleContainer = CreateFrame("Frame", nil, f) f.TitleContainer.TitleText = f.TitleContainer:CreateFontString(nil, "OVERLAY")
+    for i = 1, 2 do CreateFrame("Button", name .. "Button" .. i, f) end
+    f:Hide()
+    return f
+  end
+  __window("MerchantFrame") __window("StaticPopup1")
+  local t = __window("MirrorTimer1") t.StatusBar = CreateFrame("StatusBar", nil, t)
+`;
+
+// A window's state: its own art faded, its parts dressed, how many frames are painted.
+export const windowState = (addon, name) => addon.eval(`local f = ${name}
+  local art for _, r in ipairs({ f:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
+  local panel = 0 for _, r in ipairs({ f:GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then panel = panel + 1 end end
+  return { art = art, nine = f.NineSlice.__alpha, portrait = f.PortraitContainer.__alpha, insetNine = f.Inset.NineSlice.__alpha,
+    panel = panel > 0, title = f.TitleContainer.TitleText:GetFont() ~= nil, painted = ns.Theme.PaintedCount() }`);

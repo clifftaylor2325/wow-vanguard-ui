@@ -1,0 +1,3 @@
+-- Game windows, system group: Game options, addon list, chat config, Edit Mode windows, keybinding, Cooldown Manager settings, help, colour picker, death recap, in the
+-- Vanguard look. Filled by stream S3 of docs/handoff/RESKIN-PLAN.md; registers with
+-- GW.Add (Modules/Windows.lua) at file scope, so the windows are watched at login.
