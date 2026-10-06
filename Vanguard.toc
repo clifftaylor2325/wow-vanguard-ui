@@ -92,6 +92,13 @@ Modules/QuestTrackerView.lua
 Modules/QuestLog.lua
 Modules/QuestLogView.lua
 Modules/Windows.lua
+Modules/WindowsSocial.lua
+Modules/WindowsTown.lua
+Modules/WindowsSystem.lua
+Modules/WindowsMap.lua
+Modules/WindowsMenus.lua
+Modules/WindowsTabs.lua
+Modules/WindowsPvP.lua
 Modules/AuctionPrices.lua
 Modules/AuctionHelper.lua
 Modules/AuctionShop.lua

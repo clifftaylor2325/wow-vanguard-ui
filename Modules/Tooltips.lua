@@ -29,8 +29,7 @@ TT.FONTS = { GameTooltipHeaderText = { 14, true }, GameTooltipText = { 12 }, Gam
 local function skin(tt)
   if type(tt) ~= "table" or tt.vgSkinned then return end
   tt.vgSkinned = true
-  T.Panel(tt, { alpha = 0.94, shadow = true })
-  if tt.NineSlice then tt.NineSlice:SetAlpha(0) end
+  T.Tooltip(tt)
 end
 
 -- The unit health bar under the default tooltip: flat texture.
@@ -40,15 +39,10 @@ local function skinHealthBar()
   T.StyleBar(bar)
 end
 
--- The theme font, scaled by Text size, on the client's tooltip fonts (those it has).
+-- The theme font, scaled by Text size, on the client's tooltip fonts (those it has), kept
+-- after every theme change.
 function TT.ApplyFonts()
-  for name, f in pairs(TT.FONTS) do
-    local font = _G[name]
-    if type(font) == "table" and font.SetFont then
-      local path, outline = T.Font(f[2])
-      font:SetFont(path, T.ScaledSize(f[1]), outline)
-    end
-  end
+  T.FontObjects(TT.FONTS)
 end
 
 -- Skins every tooltip this client has.
@@ -216,7 +210,6 @@ function TT.Enable(settings)
   buildCorner()
   TT.SkinAll()
   TT.ApplyFonts()
-  T.OnChanged(TT.ApplyFonts)
   hookTooltips()
   if _G.GameTooltip then _G.GameTooltip:HookScript("OnHide", onHide) end
   if type(hooksecurefunc) == "function" and type(_G.GameTooltip_SetDefaultAnchor) == "function" then
