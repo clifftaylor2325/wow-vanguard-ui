@@ -211,3 +211,146 @@ it("side tabs: a window without the parts, or a tab the client refuses, loads cl
     CommunitiesFrame.ChatTab = __right(CommunitiesFrame, "ChatTab") CommunitiesFrame.ChatTab.HookScript = function() error("TEST-ONLY: no such script") end`);
   expect(refuses.eval("return { __sideState(CommunitiesFrame.RosterTab).art, #ns.errors }"), "the failing tab is reported, the next one still dressed").toEqual([0, 1]);
 });
+
+// TEST-ONLY character pane parts, shaped like the Camelot pane's: scroll boxes of list rows (a header
+// with a StateIcon, an entry whose Content holds a ColoredProgressBar: a frame with a Fill texture),
+// stat category boxes, the honor tab and the equipment flyout. __art makes the game's art (a texture
+// that reads as art); __panel says whether Vanguard painted something on a frame.
+const PANE_ENV = WINDOWS_ENV + SIDE_ENV + `
+  function __art(f, layer) local t = f:CreateTexture(nil, layer or "BACKGROUND") t:SetTexture("TEST-ONLY-ART") return t end
+  function __a(t) return t.__alpha or -1 end
+  function __panel(f)
+    for _, r in ipairs({ f:GetRegions() }) do
+      if r:GetObjectType() == "Texture" and r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then return true end
+    end
+    return false
+  end
+  -- A ScrollBox as the game keeps it: its rows, ForEachFrame, and the acquire callbacks ScrollUtil registers.
+  ScrollUtil = { AddAcquiredFrameCallback = function(box, cb, owner) table.insert(box.callbacks, function(row) cb(owner, row) end) end }
+  function __box(parent)
+    local box = CreateFrame("Frame", nil, parent)
+    box.rows, box.callbacks = {}, {}
+    function box:ForEachFrame(fn) for _, row in ipairs(self.rows) do if fn(row, {}) then return end end end
+    function box:Acquire(row) table.insert(self.rows, row) for _, cb in ipairs(self.callbacks) do cb(row) end return row end
+    return box
+  end
+  function __header(box)
+    local h = CreateFrame("Button", nil, box)
+    h.banner, h.StateIcon = __art(h), __art(h, "BORDER")
+    return box:Acquire(h)
+  end
+  function __entry(box, key, kind)
+    local e = CreateFrame("Button", nil, box)
+    e.Content = CreateFrame("Frame", nil, e)
+    local bar = CreateFrame(kind or "Frame", nil, e.Content)
+    bar.backdrop, bar.Fill = __art(bar), __art(bar, "BORDER")
+    e.Content[key], e.bar = bar, bar
+    return box:Acquire(e)
+  end
+  __window("CharacterFrame")
+  for _, name in ipairs({ "ReputationFrame", "SkillsFrame", "TokenFrame" }) do
+    local f = CreateFrame("Frame", name, CharacterFrame)
+    f.ScrollBox = __box(f)
+  end
+  SkillsFrame.SkillDetailFrame = CreateFrame("Frame", nil, SkillsFrame)
+  SkillsFrame.SkillDetailFrame.RankBar = CreateFrame("StatusBar", nil, SkillsFrame.SkillDetailFrame)
+  SkillsFrame.SkillDetailFrame.RankBar.Fill = __art(SkillsFrame.SkillDetailFrame.RankBar, "BORDER")
+  __repHeader, __repEntry = __header(ReputationFrame.ScrollBox), __entry(ReputationFrame.ScrollBox, "ReputationBar")
+  __skillEntry = __entry(SkillsFrame.ScrollBox, "SkillsBar", "StatusBar")
+  __tokenHeader = __header(TokenFrame.ScrollBox)
+`;
+
+it("character pane lists: bars panelled with their fill kept, headers flat with their icon kept, rows the game acquires later too", () => {
+  const addon = loggedIn(PANE_ENV);
+  const state = () => addon.eval(`return {
+    repBar = { __a(__repEntry.bar.backdrop), __a(__repEntry.bar.Fill), __panel(__repEntry.bar) },
+    skillBar = { __a(__skillEntry.bar.backdrop), __a(__skillEntry.bar.Fill), __panel(__skillEntry.bar) },
+    rank = { __a(SkillsFrame.SkillDetailFrame.RankBar.Fill), __panel(SkillsFrame.SkillDetailFrame.RankBar) },
+    header = { __a(__repHeader.banner), __a(__repHeader.StateIcon), __panel(__repHeader) },
+    token = { __a(__tokenHeader.banner), __a(__tokenHeader.StateIcon) } }`);
+  const first = state();
+  expect(first.repBar, "reputation bar: backdrop faded, Fill the game's (its colour is the standing), a panel behind").toEqual([0, -1, true]);
+  expect(first.skillBar, "skill bar (a StatusBar with a Fill) the same").toEqual([0, -1, true]);
+  expect(first.rank, "the skill detail's rank bar").toEqual([-1, true]);
+  expect(first.header, "header: banner faded, the plus/minus icon kept visible, a flat button").toEqual([0, 1, true]);
+  expect(first.token, "currency headers too").toEqual([0, 1]);
+  const later = addon.eval(`local e = __entry(ReputationFrame.ScrollBox, "ReputationBar") local h = __header(TokenFrame.ScrollBox)
+    return { __a(e.bar.backdrop), __panel(e.bar), __a(h.banner) }`);
+  expect(later, "rows acquired after the pane was dressed").toEqual([0, true, 0]);
+  addon.eval("CharacterFrame:Show()");
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("CharacterFrame:Hide() CharacterFrame:Show()");
+  expect(addon.eval("return { ns.Theme.PaintedCount(), #ns.errors }"), "a second show paints nothing more").toEqual([painted, 0]);
+});
+
+it("character pane lists: a bar that is a real StatusBar gets the theme's texture, and the lists are the game's with the tabs switch off", () => {
+  const addon = loggedIn(PANE_ENV);
+  expect(addon.eval(`local bar = CreateFrame("StatusBar", nil, UIParent) ns.GetModule("Windows").SkinBar(bar) return bar.__barTexture ~= nil`)).toBe(true);
+  expect(addon.eval(`local bar = CreateFrame("Frame", nil, UIParent) ns.GetModule("Windows").SkinBar(bar) ns.GetModule("Windows").SkinBar(nil) return __panel(bar)`), "a frame that is neither is left alone").toBe(false);
+  const off = loggedIn(PANE_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
+  expect(off.eval("return { __a(__repEntry.bar.backdrop), __a(__repHeader.banner) }"), "tabs off: the pane's lists are the game's").toEqual([-1, -1]);
+  const gameOwn = loggedIn(PANE_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  expect(gameOwn.eval("return __a(__repEntry.bar.backdrop)"), "and so are they when the character window itself is the game's").toBe(-1);
+});
+
+it("character pane stat boxes: the title plate faded and an inset panel, whether plain frames or scroll box rows", () => {
+  const addon = loggedIn(PANE_ENV + `
+    CharacterStatsPane = CreateFrame("Frame", "CharacterStatsPane", CharacterFrame)
+    local function category(parent) local c = CreateFrame("Frame", nil, parent) c.Background = __art(c) c.Title = c:CreateFontString() return c end
+    __cat1 = category(CharacterStatsPane)
+    __statLine = CreateFrame("Frame", nil, CharacterStatsPane) __statLine.Background = __art(__statLine) __statLine.Value = __statLine:CreateFontString()
+    CharacterStatsPaneScrollBox = CreateFrame("Frame", "CharacterStatsPaneScrollBox", CharacterFrame)
+    CharacterStatsPaneScrollBox.ScrollBox = __box(CharacterStatsPaneScrollBox)
+    __cat2 = CharacterStatsPaneScrollBox.ScrollBox:Acquire(category(CharacterStatsPaneScrollBox.ScrollBox))
+  `);
+  expect(addon.eval("return { __cat1.Background.__alpha, __panel(__cat1), __cat2.Background.__alpha, __panel(__cat2) }"), "both kinds of category box").toEqual([0, true, 0, true]);
+  expect(addon.eval("return { __a(__statLine.Background), __panel(__statLine) }"), "a stat line (no title) is left alone").toEqual([-1, false]);
+  expect(addon.eval("return ns.errors[1] == nil")).toBe(true);
+});
+
+it("character pane honor tab: the line and glow faded, the ring, badge and texts kept", () => {
+  const addon = loggedIn(PANE_ENV + `
+    PVPRankFrame = CreateFrame("Frame", "PVPRankFrame", CharacterFrame)
+    PVPRankFrame.MainInfoFrame = CreateFrame("Frame", nil, PVPRankFrame)
+    PVPRankFrame.MainInfoFrame.Line = __art(PVPRankFrame.MainInfoFrame, "ARTWORK")
+    local ring = CreateFrame("Frame", nil, PVPRankFrame.MainInfoFrame)
+    PVPRankFrame.MainInfoFrame.RankProgressBarDisplay = ring
+    ring.glow, ring.Background, ring.Bar, ring.FactionBadge = __art(ring), __art(ring), __art(ring, "BORDER"), __art(ring, "ARTWORK")
+  `);
+  expect(addon.eval(`local m = PVPRankFrame.MainInfoFrame local r = m.RankProgressBarDisplay
+    return { __a(m.Line), __a(r.glow), __a(r.Background), __a(r.Bar), __a(r.FactionBadge) }`)).toEqual([0, 0, -1, -1, -1]);
+  const bare = loggedIn(PANE_ENV + `PVPRankFrame = CreateFrame("Frame", "PVPRankFrame", CharacterFrame)`);
+  expect(bare.eval("return ns.errors[1] == nil"), "a client whose honor tab has no main frame").toBe(true);
+});
+
+it("equipment flyout: panels behind its grid and page bar, its buttons skinned like the bags', again after the game refills it", () => {
+  const addon = loggedIn(PANE_ENV + `
+    EquipmentFlyoutFrame = CreateFrame("Frame", "EquipmentFlyoutFrame", UIParent)
+    EquipmentFlyoutFrame.buttonFrame, EquipmentFlyoutFrame.NavigationFrame = CreateFrame("Frame", nil, EquipmentFlyoutFrame), CreateFrame("Frame", nil, EquipmentFlyoutFrame)
+    __art(EquipmentFlyoutFrame.buttonFrame) __art(EquipmentFlyoutFrame.NavigationFrame)
+    EquipmentFlyoutFrame.buttons = { CreateFrame("Button", nil, EquipmentFlyoutFrame.buttonFrame) }
+    EquipmentFlyoutFrame:Hide()
+    EquipmentFlyout_UpdateItems = function() end
+  `);
+  addon.eval("EquipmentFlyoutFrame:Show()");
+  const flyout = () => addon.eval(`local f = EquipmentFlyoutFrame
+    return { __panel(f.buttonFrame), __panel(f.NavigationFrame), f.buttons[1].vgSkinned == true, #f.buttons }`);
+  expect(flyout(), "its grid and page bar panelled, its first button skinned").toEqual([true, true, true, 1]);
+  addon.eval(`table.insert(EquipmentFlyoutFrame.buttons, CreateFrame("Button", nil, EquipmentFlyoutFrame.buttonFrame))`);
+  expect(addon.eval("return EquipmentFlyoutFrame.buttons[2].vgSkinned"), "a button the game adds waits for the next fill").toBe(null);
+  addon.eval("EquipmentFlyout_UpdateItems()");
+  expect(addon.eval("return EquipmentFlyoutFrame.buttons[2].vgSkinned"), "and is skinned when the game fills the flyout again").toBe(true);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("EquipmentFlyoutFrame:Hide() EquipmentFlyoutFrame:Show() EquipmentFlyout_UpdateItems()");
+  expect(addon.eval("return { ns.Theme.PaintedCount(), #ns.errors }"), "nothing is painted twice").toEqual([painted, 0]);
+  const without = loggedIn(PANE_ENV + `EquipmentFlyoutFrame = CreateFrame("Frame", "EquipmentFlyoutFrame", UIParent)`);
+  expect(without.eval("EquipmentFlyoutFrame:Show() return #ns.errors"), "a flyout without its parts or buttons").toBe(0);
+});
+
+it("character pane: a list that loads later (the currencies' addon) is dressed when its part of the game loads", () => {
+  const addon = loggedIn(PANE_ENV + "__tokenEarly, TokenFrame = TokenFrame, nil");
+  addon.eval("TokenFrame = __tokenEarly");
+  expect(addon.eval("return __a(__tokenHeader.banner)"), "not before the addon loads").toBe(-1);
+  addon.fire("ADDON_LOADED", "Blizzard_TokenUI");
+  expect(addon.eval("return { __a(__tokenHeader.banner), #ns.errors }"), "dressed once it has").toEqual([0, 0]);
+});

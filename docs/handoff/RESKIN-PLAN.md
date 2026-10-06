@@ -365,7 +365,7 @@ Inventory: design §5.8. Group `tabs`. Depends on `T.Tab` and `T.ScrollBar` (S0)
   `GuildBenefitsTab`, `GuildInfoTab`, `GuildPreferredPlaySettingsTab`) and `LegacySystemFrame` (`LegacyTreeTab`,
   `LegacyChallengeTab`, `LegacyRewardTrackTab`, `TabIndicators`), `InspectFrame` tabs, `LFGParentFrameTab1-3`: `T.Tab`.
   Size S.
-- [ ] **S7.3 Inside the character pane.** `ReputationFrame` rows' bars (`T.StyleBar`; the rows come from a `ScrollBox`:
+- [x] **S7.3 Inside the character pane.** `ReputationFrame` rows' bars (`T.StyleBar`; the rows come from a `ScrollBox`:
   on acquire), `SkillsFrame` rows' bars, `TokenFrame` rows, `PVPRankFrame` art faded, `EquipmentFlyoutFrame` (`T.Panel`
   on show; its buttons through `ns.GetModule("Bags").SkinItem`, exported by S0.9), `PaperDollFrame`'s stat category boxes (`CharacterStatsPane` categories: `Background` faded, inset
   panel). The gear slots keep their durability labels from `Modules/Windows.lua:268`. Size M.
