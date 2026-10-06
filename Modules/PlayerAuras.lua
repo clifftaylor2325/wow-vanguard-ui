@@ -20,8 +20,9 @@ local PA = ns.Module("PlayerAuras", {
 PA.GAP = 4
 -- The Masque group your buffs, debuffs and weapon enchants are in, when Masque is loaded (Core/Masque.lua).
 PA.MASQUE = "Buffs and debuffs"
--- The game's frames this replaces.
-PA.BLIZZARD = { "BuffFrame", "DebuffFrame" }
+-- The game's frames this replaces: the buff and debuff frames, and their newer companions
+-- (external defensives cast on you, the deadly debuff warning), where the client has them.
+PA.BLIZZARD = { "BuffFrame", "DebuffFrame", "ExternalDefensivesFrame", "DeadlyDebuffFrame" }
 -- Weapon slot name (Enum.WeaponSlot) and inventory slot, in cell order from the right.
 PA.WEAPONS = { { "MainHand", 16 }, { "OffHand", 17 }, { "Ranged", 18 } }
 
