@@ -421,6 +421,11 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: on a test character, die to a mob and click the Death Recap button on the release popup. Then open the Combat tab of your chat and click two of its filter buttons.
 - Expect: the death recap on a flat panel with a themed Close button and title and the damage rows as the game draws them; the combat log's filter bar on a darker strip with flat filter buttons, still switching filters when clicked.
 - If it fails, paste: a screenshot and `/vg errors`.
+### 14.5 World map, group finder, Legacy and calendar
+
+- Do: press `M` for the world map, then use its minimise and maximise button, click a few zones, open the quest panel on its side and click a quest; hover the group finder eye by the minimap, then click it to open the group finder; open the Legacy window from its button on the menu bar; type `/calendar`, open a day with an event and the "Create event" dialog.
+- Expect: each window has Vanguard's flat dark panel, close button and buttons and no game border; the map itself stays fully visible with no dark box over it (also after minimising and maximising), the coordinate line still shows along its bottom, the nav bar's crumbs follow you into each zone, the calendar's days are dark tiles with event icons still showing, and the Legacy talent nodes and side tabs are untouched.
+- If it fails, paste: a screenshot of the window, which of these steps broke, and `/vg errors`.
 
 ## When you are done
 
