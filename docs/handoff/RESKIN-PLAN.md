@@ -182,7 +182,7 @@ Inventory: design §5.1. Group `social`.
   `RaidGroup<n>` boxes (their title textures faded, inset panel), `RaidGroupButton1-40` as `T.Button` with the class
   colour the game sets on the name kept; `RaidFrameRaidInfoButton`, `RaidFrameConvertToRaidButton`, `RaidFrameAllAssistCheckButton`
   themed. `RaidParentFrame` registered as framed for clients that use it. Size M.
-- [ ] **S1.8 Docs and smoke lines.** The README sub-bullet for `social`; smoke-test lines: open a letter, open the
+- [x] **S1.8 Docs and smoke lines.** The README sub-bullet for `social`; smoke-test lines: open a letter, open the
   guild window and each of its pages, `/join test`, invite a friend, visit a guild registrar; each with what you should
   see and what to paste if it fails. Size S.
 
