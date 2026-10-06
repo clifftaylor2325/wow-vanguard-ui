@@ -337,7 +337,7 @@ Inventory: design §5.6. No new group: each change lives under its module's own 
 - [x] **S6.2 The other aura frames.** `Modules/PlayerAuras.lua`, `PA.BLIZZARD` (:24): append `ExternalDefensivesFrame`,
   `DeadlyDebuffFrame`; `UF.HideBlizzard` skips a missing one already. README: "your buffs and debuffs (and the external
   defensives and deadly debuff frames of newer clients)". Size S.
-- [ ] **S6.3 The crafting cast bar.** `Modules/CastBars.lua`: skin `OverlayPlayerCastingBarFrame` (not hidden: it is the
+- [x] **S6.3 The crafting cast bar.** `Modules/CastBars.lua`: skin `OverlayPlayerCastingBarFrame` (not hidden: it is the
   bar over the professions window while crafting): `T.StyleBar`, its `Border`/`Background`/`Flash` faded, `Text` in the
   theme font; on `OnShow`, once. Size S.
 - [ ] **S6.4 Possess bar.** `Modules/SpecialBars.lua`: add `skinPossess = { "PossessButton", 2 }` beside `skinPet` (:28),

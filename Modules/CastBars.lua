@@ -1,6 +1,7 @@
 -- Cast bars for you, your target and your focus: spell icon, name, the
 -- bar filling as the cast goes (emptying for a channel), gray when the cast
--- can't be interrupted. Each is movable in unlock mode.
+-- can't be interrupted. Each is movable in unlock mode. The game's cast bar
+-- over the professions window while crafting is kept, in the theme.
 --
 -- Timing: where the client gives a cast duration object and the bar can
 -- run it (StatusBar:SetTimerDuration), the client animates the bar itself,
@@ -27,6 +28,9 @@ local LAYOUT = {
 -- The default sizes and points, for layouts placed around them (Core/Setup.lua).
 CB.LAYOUT = LAYOUT
 local BLIZZARD = { "PlayerCastingBarFrame", "CastingBarFrame", "PetCastingBarFrame" }
+-- The art on the game's overlay cast bar (OverlayPlayerCastingBarFrame, CastingBarFrame.xml),
+-- faded by alpha; its finish flash is hidden instead (the game animates the flash's alpha).
+CB.OVERLAY_ART = { "Border", "Background", "TextBorder", "DropShadow" }
 
 CB.bars = {}
 
@@ -237,6 +241,39 @@ local function hideBlizzard(name)
   ns.EditModeReplaced(f)
 end
 
+-- The game's overlay cast bar ---------------------------------------------------------
+
+-- The overlay bar's look: the theme's bar texture in the cast color (good once the cast is
+-- full, as Vanguard's own bar flashes), its art faded, its text in the theme font. The game
+-- sets its own fill again at each cast's start and end (UpdateBarFillTexture), so this follows.
+local function styleOverlay(bar, full)
+  T.BarColor(T.StyleBar(bar), full == true and "good" or "cast")
+  for _, key in ipairs(CB.OVERLAY_ART) do
+    if type(bar[key]) == "table" and bar[key].SetAlpha then bar[key]:SetAlpha(0) end
+  end
+  if type(bar.Text) == "table" and bar.Text.SetFont then T.Text(bar.Text, "small", false) end
+end
+
+-- Hides the overlay bar's finish flash once the game has started it (PlayFadeAnim).
+local function hideFlash(bar)
+  if type(bar.Flash) == "table" and bar.Flash.Hide then bar.Flash:Hide() end
+end
+
+-- The game's cast bar over the professions window while crafting (not a secure frame,
+-- and never hidden: it is the only cast bar there): a flat inset panel, the look now, on
+-- every show and after the game redraws it. Once; a client without it is skipped.
+function CB.SkinOverlay()
+  local bar = _G.OverlayPlayerCastingBarFrame
+  if type(bar) ~= "table" or not bar.SetStatusBarTexture or bar.vgSkinned then return end
+  bar.vgSkinned = true
+  T.HudPanel(bar, { inset = true })
+  styleOverlay(bar)
+  bar:HookScript("OnShow", styleOverlay)
+  if type(hooksecurefunc) ~= "function" then return end
+  if type(bar.UpdateBarFillTexture) == "function" then hooksecurefunc(bar, "UpdateBarFillTexture", styleOverlay) end
+  if type(bar.PlayFadeAnim) == "function" then hooksecurefunc(bar, "PlayFadeAnim", hideFlash) end
+end
+
 -- Events ------------------------------------------------------------------------------
 
 -- Every event that can start, change or end a cast.
@@ -282,6 +319,7 @@ end
 function CB.Enable(settings)
   local units = createBars(settings)
   if settings.hideBlizzard then ns.OutOfCombat(function() for _, n in ipairs(BLIZZARD) do hideBlizzard(n) end end) end
+  CB.SkinOverlay()
   ns.OnUnit(CAST_EVENTS, onCast, unpack(units))
   ns.On("PLAYER_TARGET_CHANGED", function() CB.Update("target") end)
   ns.On("PLAYER_FOCUS_CHANGED", function() CB.Update("focus") end)
