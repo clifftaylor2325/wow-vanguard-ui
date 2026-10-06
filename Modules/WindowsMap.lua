@@ -231,3 +231,33 @@ end
 GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame" }, GW.SkinLFGParent)
 GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGListingFrame", "LFGBrowseFrame" }, GW.SkinLFGPage)
 GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGBrowseSearchEntryTooltip" }, GW.SkinLFGTooltip)
+
+-- Legacy system -------------------------------------------------------------------------------
+
+-- The Legacy window's pages, by key.
+GW.LEGACY_PAGES = { "TreePage", "ChallengesPage", "RewardTrackPage" }
+-- The art each page draws: its background, and the divider between its list and content.
+GW.LEGACY_PAGE_ART = { "Background", "VerticalDivider" }
+-- The challenge page's two panes, which get an inset panel.
+GW.LEGACY_PANES = { "CategoryList", "DetailPane" }
+
+-- One page's background art faded, and an inset panel under each of its panes. The talent
+-- tree's node buttons, the cards and every other part of the page are left as the game made them.
+local function skinLegacyPage(page)
+  if not isFrame(page) then return end
+  GW.FadeParts(page, GW.LEGACY_PAGE_ART)
+  for _, key in ipairs(GW.LEGACY_PANES) do
+    if isFrame(page[key]) then T.Panel(page[key], { inset = true, noSheen = true }) end
+  end
+end
+
+-- The Legacy system window (Forever's own: the Adventure, Professions and Progression trees, challenges
+-- and a reward track): the window skin, and its three pages. The side tabs and their indicators are
+-- another stream's. Decided (design 6.1, option c): this skins the window only; Vanguard's tracker
+-- does not list Legacy challenges and the game's tracker is not brought back for them.
+function GW.SkinLegacy(frame)
+  GW.Skin(frame)
+  for _, key in ipairs(GW.LEGACY_PAGES) do skinLegacyPage(frame[key]) end
+end
+
+GW.Add("map", "onDemand", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)
