@@ -105,3 +105,62 @@ function GW.SkinGuildWindow(frame)
 end
 
 GW.Add("social", "framed", { "CommunitiesFrame" }, GW.SkinGuildWindow)
+
+-- Guild dialogs ---------------------------------------------------------------------------------
+
+-- The art the guild dialogs draw behind them (translucent frames, dark dialog borders).
+GW.GUILD_DIALOG_ART = { "NineSlice", "Bg", "BG", "Border", "Background" }
+-- Their push buttons by parentKey, and by the name suffix the game gives them ($parentAcceptButton).
+GW.GUILD_DIALOG_BUTTONS = { "Accept", "Cancel", "Delete", "Close", "Copy", "LinkToChat", "GenerateLinkButton", "ChangeAvatarButton", "ContextButton" }
+GW.GUILD_DIALOG_NAMED = { "AcceptButton" }
+-- Their edit boxes by parentKey.
+GW.GUILD_DIALOG_BOXES = { "NameEdit", "ShortNameEdit" }
+
+-- Fades one art part named key: a texture, or a frame with its own textures and NineSlice.
+local function fadeKey(frame, key)
+  GW.FadeParts(frame, { key })
+  fadeFrameArt(frame[key])
+end
+
+-- A dialog's close control: the game's "Close" text button as a flat button, its X button as the close glyph.
+local function dressClose(button)
+  if type(button) ~= "table" or not button.CreateTexture then return end
+  local text = type(button.GetText) == "function" and button:GetText() or ""
+  if text ~= "" then T.Button(button) else T.CloseButton(button) end
+end
+
+-- Themes each part of frame named in keys that is a widget with the method `need` (T.Button, or T.EditBox for boxes).
+local function dressKeys(frame, keys, need, skin)
+  for _, key in ipairs(keys) do
+    local part = frame[key]
+    if type(part) == "table" and part[need] and part ~= frame.CloseButton then skin(part) end
+  end
+end
+
+-- The parts a guild dialog may have, each only if it has it: title, close control, push buttons, edit boxes.
+local function dressDialogParts(frame, name)
+  if type(frame.Title) == "table" and frame.Title.SetFont then T.Text(frame.Title, "heading", false) end
+  dressClose(frame.CloseButton or (name and _G[name .. "CloseButton"]))
+  dressKeys(frame, GW.GUILD_DIALOG_BUTTONS, "CreateTexture", T.Button)
+  dressKeys(frame, GW.GUILD_DIALOG_BOXES, "SetText", T.EditBox)
+  for _, suffix in ipairs(GW.GUILD_DIALOG_NAMED) do
+    local button = name and _G[name .. suffix]
+    if type(button) == "table" and button.CreateTexture then T.Button(button) end
+  end
+end
+
+-- A guild dialog: its art faded, a flat panel with a soft shadow, its parts themed. (Not GW.Skin: the log and
+-- text-edit dialogs have a text "Close" button named $parentCloseButton, which must not get the close glyph.)
+function GW.SkinGuildDialog(frame)
+  T.FadeRegions(frame)
+  for _, key in ipairs(GW.GUILD_DIALOG_ART) do fadeKey(frame, key) end
+  T.Panel(frame, { shadow = true })
+  dressDialogParts(frame, frame.GetName and frame:GetName())
+end
+
+GW.Add("social", "framed", {
+  "CommunitiesGuildLogFrame", "CommunitiesGuildNewsFiltersFrame", "CommunitiesGuildTextEditFrame", "GuildInviteFrame",
+  "CommunitiesSettingsDialog", "CommunitiesAvatarPickerDialog", "CommunitiesTicketManagerDialog",
+}, GW.SkinGuildDialog)
+-- The rename window is a ButtonFrameTemplate: the window skin does it all.
+GW.Add("social", "framed", { "GuildRenameFrame" })

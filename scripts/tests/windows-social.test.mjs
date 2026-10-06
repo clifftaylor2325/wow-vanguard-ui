@@ -118,3 +118,72 @@ it("guild window: a second show paints nothing more, the switch off leaves the g
   bare.eval("CommunitiesFrame:Show()");
   expect([windowErrors(bare), bare.eval("return #ns.errors")], "a client with parts missing").toEqual(["none", 0]);
 });
+
+// Guild dialogs --------------------------------------------------------------------------------------
+
+// Builds the guild dialogs as the game has them: translucent frames (a NineSlice, Bg), a log with a text "Close"
+// button named like a close button, a settings dialog with a dark border frame, edit boxes and push buttons.
+const DIALOG_ENV = WINDOWS_ENV + `
+  function __dialog(name)
+    local f = CreateFrame("Frame", name, UIParent)
+    f.Bg = f:CreateTexture() f.NineSlice = CreateFrame("Frame", nil, f) f.NineSlice.Edge = f.NineSlice:CreateTexture()
+    f.Title = f:CreateFontString(nil, "ARTWORK")
+    f:Hide()
+    return f
+  end
+  local log = __dialog("CommunitiesGuildLogFrame")
+  local text = CreateFrame("Button", "CommunitiesGuildLogFrameCloseButton", log) text:SetText("Close")
+  local news = __dialog("CommunitiesGuildNewsFiltersFrame") news.CloseButton = CreateFrame("Button", nil, news)
+  __dialog("CommunitiesGuildTextEditFrame") CreateFrame("Button", "CommunitiesGuildTextEditFrameAcceptButton", CommunitiesGuildTextEditFrame)
+  __dialog("GuildInviteFrame")
+  local set = __dialog("CommunitiesSettingsDialog")
+  set.BG = CreateFrame("Frame", nil, set) set.BG.Edge = set.BG:CreateTexture() set.BG.NineSlice = CreateFrame("Frame", nil, set.BG) set.BG.NineSlice.Edge = set.BG.NineSlice:CreateTexture()
+  set.NameEdit = CreateFrame("EditBox", nil, set) set.NameEdit.Art = set.NameEdit:CreateTexture()
+  for _, k in ipairs({ "Accept", "Cancel", "Delete" }) do set[k] = CreateFrame("Button", nil, set) set[k].Art = set[k]:CreateTexture() end
+  __dialog("CommunitiesAvatarPickerDialog")
+  __dialog("CommunitiesTicketManagerDialog").Close = CreateFrame("Button", nil, CommunitiesTicketManagerDialog)
+  __window("GuildRenameFrame")
+`;
+
+// The names of the guild dialogs.
+const DIALOGS = ["CommunitiesGuildLogFrame", "CommunitiesGuildNewsFiltersFrame", "CommunitiesGuildTextEditFrame", "GuildInviteFrame",
+  "CommunitiesSettingsDialog", "CommunitiesAvatarPickerDialog", "CommunitiesTicketManagerDialog"];
+
+it("guild dialogs: every dialog's art faded and a panel painted, its buttons, boxes and close control themed", () => {
+  const addon = loggedIn(DIALOG_ENV);
+  for (const name of DIALOGS) {
+    addon.eval(`${name}:Show()`);
+    expect(addon.eval(`local f = ${name}
+      local panel = false for _, r in ipairs({ f:GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 and r ~= f.Bg then panel = true end end
+      return { f.Bg.__alpha, f.NineSlice.Edge.__alpha, panel, f.Title:GetFont() ~= nil }`), `${name} dressed`).toEqual([0, 0, true, true]);
+  }
+  expect(addon.eval(`local s = CommunitiesSettingsDialog
+    local function themed(x) for _, r in ipairs({ x:GetRegions() }) do if r.__alpha ~= 0 then return true end end return false end
+    return { s.BG.Edge.__alpha, s.BG.NineSlice.Edge.__alpha, s.NameEdit.Art.__alpha, s.Accept.Art.__alpha, s.Cancel.Art.__alpha, s.Delete.Art.__alpha,
+      themed(s.Accept), themed(s.NameEdit), themed(CommunitiesGuildTextEditFrameAcceptButton), themed(CommunitiesTicketManagerDialog.Close) }`),
+  "the dark border, boxes and buttons").toEqual([0, 0, 0, 0, 0, 0, true, true, true, true]);
+  expect(addon.eval(`local function glyph(b) for _, r in ipairs({ b:GetRegions() }) do if r.__texture and tostring(r.__texture):find("Close") then return true end end return false end
+    return { glyph(CommunitiesGuildLogFrameCloseButton), glyph(CommunitiesGuildNewsFiltersFrame.CloseButton) }`),
+  "a text Close button stays a text button, an X button gets the close glyph").toEqual([false, true]);
+});
+
+it("guild dialogs: the rename window is skinned like any window; a second show paints nothing more; the switch off leaves them the game's", () => {
+  const addon = loggedIn(DIALOG_ENV);
+  addon.eval("GuildRenameFrame:Show()");
+  expect(windowState(addon, "GuildRenameFrame")).toMatchObject({ art: 0, nine: 0, panel: true, title: true });
+  for (const name of DIALOGS) addon.eval(`${name}:Show()`);
+  const painted = windowState(addon, "GuildRenameFrame").painted;
+  for (const name of DIALOGS) addon.eval(`${name}:Hide() ${name}:Show()`);
+  expect(windowState(addon, "GuildRenameFrame").painted, "painting again piles up nothing").toBe(painted);
+  const off = loggedIn(DIALOG_ENV, OFF);
+  for (const name of [...DIALOGS, "GuildRenameFrame"]) off.eval(`${name}:Show()`);
+  expect(off.eval(`local n = 0 for _, name in ipairs({ ${DIALOGS.map((d) => `"${d}"`).join(", ")} }) do if _G[name].vgWindow == nil and (_G[name].Bg.__alpha or 1) ~= 0 then n = n + 1 end end return n`), "all seven untouched").toBe(7);
+});
+
+it("guild dialogs: a client without them, or with their parts missing, loads cleanly", () => {
+  const bare = loggedIn("");
+  const odd = loggedIn(`CommunitiesSettingsDialog = CreateFrame("Frame", "CommunitiesSettingsDialog", UIParent) CommunitiesSettingsDialog.BG = {} CommunitiesSettingsDialog.Accept = {}
+    CommunitiesSettingsDialog.Title = {} CommunitiesSettingsDialog.NameEdit = {} CommunitiesSettingsDialogCloseButton = {} CommunitiesSettingsDialogAcceptButton = {}`);
+  odd.eval("CommunitiesSettingsDialog:Show()");
+  expect([windowErrors(bare), windowErrors(odd), odd.eval("return #ns.errors")]).toEqual(["none", "none", 0]);
+});

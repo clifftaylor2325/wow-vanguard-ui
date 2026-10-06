@@ -164,7 +164,7 @@ Inventory: design §5.1. Group `social`.
   `PortraitOverlay` faded; `GuildBenefitsFrame`, `GuildDetailsFrame`, `MemberList`, `Chat` and `CommunitiesList` art
   faded with inset panels; `StreamDropdown` via `T.Button`. Side tabs are S7's (leave them). Re-skin on
   `CommunitiesFrameMixin:OnShow` and after `SetDisplayMode` (hooksecurefunc on the frame, guarded). Size M.
-- [ ] **S1.3 Guild dialogs.** `CommunitiesGuildLogFrame`, `CommunitiesGuildNewsFiltersFrame`, `CommunitiesGuildTextEditFrame`,
+- [x] **S1.3 Guild dialogs.** `CommunitiesGuildLogFrame`, `CommunitiesGuildNewsFiltersFrame`, `CommunitiesGuildTextEditFrame`,
   `GuildInviteFrame`, `CommunitiesSettingsDialog`, `CommunitiesAvatarPickerDialog`, `CommunitiesTicketManagerDialog`,
   `GuildRenameFrame`: `GW.Skin` each (`Bg`/`Border`/`BG` parts faded where `GW.ART` doesn't already list them, with
   `GW.SkinWith({ ... })` from S0). Size S.
