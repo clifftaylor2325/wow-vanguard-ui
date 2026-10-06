@@ -218,7 +218,7 @@ Inventory: design §5.2. Group `town`.
   `"Blizzard_TimeManager"` → `StopwatchFrame`, `"Blizzard_Professions"` → `InspectRecipeFrame`. One `GW.SkinIconPicker`
   for the `IconSelectorPopupFrameTemplate` windows (`BorderBox`, `BG` faded; `SelectedIconArea` inset panel; the edit
   box `T.EditBox`; OK/Cancel `T.Button`). Size S.
-- [ ] **S2.7 Small dialogs.** `GhostFrame` (`T.Button`), `BasicMessageDialog`, `AddonDialog` (`Border` faded, panel,
+- [x] **S2.7 Small dialogs.** `GhostFrame` (`T.Button`), `BasicMessageDialog`, `AddonDialog` (`Border` faded, panel,
   buttons). `CurrencyTransferMenu`/`TokenFrame` only if `C_CurrencyInfo` exists and the frames do; otherwise skipped
   silently. Size S.
 - [ ] **S2.8 Docs and smoke lines.** README sub-bullet for `town`; smoke-test lines: stable (hunter), trainer, shift-click

@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { WINDOWS_ENV, loggedIn, windowState } from "./helpers.mjs";
+import { WINDOWS_ENV, loggedIn, setCombat, windowState } from "./helpers.mjs";
 
 const OFF = "VanguardDB.profiles = { Default = { Windows = { town = false } } }";
 
@@ -323,4 +323,52 @@ it("S2.6 macro, icon pickers, stopwatch, recipe inspection: group off leaves the
   plain.eval("MacroPopupFrame:Show()");
   expect([bare, plain].map(windowErrors), "windows without their parts, or a box that isn't one: no error").toEqual(["none", "none"]);
   expect(plain.eval("return MacroPopupFrame.vgWindow"), "the plain popup is still skinned").toBe(true);
+});
+
+// TEST-ONLY small dialogs: the ghost button, the message dialog, the addon dialog (a full-screen frame holding
+// the dialog) and the currency transfer window.
+const DIALOGS_ENV = `${WINDOWS_ENV}
+  local g = CreateFrame("Button", "GhostFrame", UIParent) g:CreateTexture() g:Hide()
+  CreateFrame("Frame", "GhostFrameContentsFrame", g):CreateFontString("GhostFrameContentsFrameText", "ARTWORK")
+  local b = __window("BasicMessageDialog") b.Border = CreateFrame("Frame", nil, b) b.Border:CreateTexture()
+  local a = CreateFrame("Frame", "AddonDialog", UIParent) a:Hide()
+  local box = CreateFrame("Frame", "AddonDialogBackground", a) box:CreateTexture("AddonDialogBackgroundBg")
+  CreateFrame("Button", "AddonDialogButton1", box) CreateFrame("Button", "AddonDialogButton2", box)
+  local c = __window("CurrencyTransferMenu") c.Content = CreateFrame("Frame", nil, c)
+  c.Content.ConfirmButton, c.Content.CancelButton = CreateFrame("Button", nil, c.Content), CreateFrame("Button", nil, c.Content)
+`;
+
+it("S2.7 small dialogs: ghost button, message dialog, addon dialog and currency transfer take the theme", () => {
+  const addon = loggedIn(DIALOGS_ENV);
+  addon.eval("GhostFrame:Show() BasicMessageDialog:Show() AddonDialog:Show() CurrencyTransferMenu:Show()");
+  expect(addon.eval("return select('#', GhostFrame:GetRegions()) > 1"), "the ghost button is a theme button (its own texture and the theme's)").toBe(true);
+  expect(addon.eval("return GhostFrameContentsFrameText:GetFont() ~= nil"), "its text in the theme font").toBe(true);
+  const message = windowState(addon, "BasicMessageDialog");
+  expect(message, "the message dialog: art faded, panel").toMatchObject({ art: 0, panel: true });
+  expect(alphas(addon, "BasicMessageDialog.Border"), "its Border faded").toEqual([0]);
+  expect(dressed(addon, "BasicMessageDialogButton1", "BasicMessageDialogButton2"), "its button row themed").toEqual([true, true]);
+  expect(alphas(addon, "AddonDialogBackgroundBg"), "the addon dialog's art faded").toEqual([0]);
+  expect(addon.eval("local n = 0 for _, r in ipairs({ AddonDialogBackground:GetRegions() }) do if r.__alpha ~= 0 then n = n + 1 end end return { n > 0, AddonDialog.vgWindow, select('#', AddonDialog:GetRegions()) }"), "its panel sits on the dialog, not on the full-screen catcher").toEqual([true, true, 0]);
+  expect(dressed(addon, "AddonDialogButton1", "AddonDialogButton2", "CurrencyTransferMenu.Content.ConfirmButton", "CurrencyTransferMenu.Content.CancelButton"), "the addon dialog's and the transfer window's buttons themed").toEqual([true, true, true, true]);
+  expect(windowState(addon, "CurrencyTransferMenu"), "the transfer window skin").toMatchObject({ art: 0, panel: true });
+  const painted = message.painted;
+  addon.eval("BasicMessageDialog:Hide() BasicMessageDialog:Show() AddonDialog:Hide() AddonDialog:Show() GhostFrame:Hide() GhostFrame:Show()");
+  expect(windowState(addon, "BasicMessageDialog").painted, "showing them again paints nothing more").toBe(painted);
+});
+
+it("S2.7 small dialogs: the ghost button waits for the end of combat", () => {
+  const addon = loggedIn(DIALOGS_ENV.replace("local g = CreateFrame", "__wfgStub.inCombat = true local g = CreateFrame"));
+  addon.eval("GhostFrame:Show()");
+  expect(addon.eval("return { GhostFrame.vgWindow, select('#', GhostFrame:GetRegions()) }"), "hooked, but not painted in combat (only its own texture)").toEqual([true, 1]);
+  setCombat(addon, false);
+  expect(addon.eval("return select('#', GhostFrame:GetRegions()) > 1"), "dressed once combat ends").toBe(true);
+});
+
+it("S2.7 small dialogs: group off leaves them the game's; a client without the dialogs or their parts loads cleanly", () => {
+  const off = loggedIn(DIALOGS_ENV, { savedVariables: OFF });
+  off.eval("GhostFrame:Show() BasicMessageDialog:Show() AddonDialog:Show()");
+  expect([windowState(off, "BasicMessageDialog").art !== 0, off.eval("return GhostFrame.vgWindow == nil"), off.eval("return AddonDialog.vgWindow == nil")], "not hooked").toEqual([true, true, true]);
+  const bare = loggedIn('CreateFrame("Frame", "AddonDialog", UIParent):Hide() CreateFrame("Frame", "CurrencyTransferMenu", UIParent):Hide()');
+  bare.eval("AddonDialog:Show() CurrencyTransferMenu:Show()");
+  expect([bare.eval("return CurrencyTransferMenu.vgWindow"), windowErrors(bare)], "an addon dialog without its box, a transfer window without content: skinned, no error").toEqual([true, "none"]);
 });
