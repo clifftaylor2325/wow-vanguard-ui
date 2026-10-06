@@ -193,35 +193,35 @@ Inventory: design §5.1. Group `social`.
 Files: `Modules/WindowsTown.lua`, `scripts/tests/windows-town.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.2. Group `town`.
 
-- [ ] **S2.1 Stable.** `PetStableFrame`: `GW.Skin` plus `Background`, `Border`, `PetModelSceneShadow`, `PetShadow` faded,
+- [x] **S2.1 Stable.** `PetStableFrame`: `GW.Skin` plus `Background`, `Border`, `PetModelSceneShadow`, `PetShadow` faded,
   `Inset` as `GW.ART` handles it, `expBar` via `T.StyleBar`, `purchaseButton` via `T.Button`, `levelText`, `loyaltyLevel`,
   `diet`, `Text` in the theme font. Size S.
-- [ ] **S2.2 Trainer.** `GW.Add("town", "onDemand", "Blizzard_TrainerUI", { "ClassTrainerFrame" }, GW.SkinTrainer)`:
+- [x] **S2.2 Trainer.** `GW.Add("town", "onDemand", "Blizzard_TrainerUI", { "ClassTrainerFrame" }, GW.SkinTrainer)`:
   `GW.Skin`, `BG` and `bottomInset` faded with an inset panel, `GW.AddButtons("ClassTrainerFrame", { "ClassTrainerTrainButton" })`,
   `FilterDropdown` via `T.Button`, each row on acquire (`ClassTrainerFrame.ScrollBox:RegisterCallback(ScrollBoxListMixin.Event.OnAcquiredFrame, …)`
   guarded; keep `selectedTex`, `disabledBG`, `lock`, `icon`; fade the row's `Left/Middle/Right/Bg` art; `name`/`subText`
   in the theme font). Vanguard's Train all button (`Modules/Errands.lua:112`) is already themed; don't move it. Size M.
-- [ ] **S2.3 Side dress-up, stack split, coin pickup.** `SideDressUpFrame` (`BGTopLeft`, `BGBottomLeft`, `$parentTop`,
+- [x] **S2.3 Side dress-up, stack split, coin pickup.** `SideDressUpFrame` (`BGTopLeft`, `BGBottomLeft`, `$parentTop`,
   `$parentBackgroundTop`, `$parentBackgroundBot` faded; `ControlFrame` buttons `T.Button`), `StackSplitFrame`
   (`SingleItemSplitBackground`, `MultiItemSplitBackground`, `FrameGlow` faded; the four buttons `T.Button`;
   `StackSplitText` theme font), `CoinPickupFrame` (textures faded, `CoinPickupOkayButton`/`CoinPickupCancelButton`).
   All three as `"popups"` kind. Size S.
-- [ ] **S2.4 Separate bag windows.** When `ContainerFrameCombinedBags` is off: hook `OnShow` on `ContainerFrame1-7`
+- [x] **S2.4 Separate bag windows.** When `ContainerFrameCombinedBags` is off: hook `OnShow` on `ContainerFrame1-7`
   (those that exist) to `ns.GetModule("Bags").SkinWindow` (`Modules/Bags.lua:127`) and hooksecurefunc each frame's
   `UpdateItems` to its item skin (as `BG.Enable` :202 does for the combined bag). Registered under `town` but it also
   respects the Bags module being on. Test: with `combined = false`, showing `ContainerFrame1` skins it and its items;
   with Bags off, nothing. Size S.
-- [ ] **S2.5 Loot dialogs.** `MasterLooterFrame` (child of `LootFrame`; `DefaultPanelTemplate` parts `NineSlice`/`Bg`),
+- [x] **S2.5 Loot dialogs.** `MasterLooterFrame` (child of `LootFrame`; `DefaultPanelTemplate` parts `NineSlice`/`Bg`),
   `GroupLootHistoryFrame` (`DefaultPanelFlatTemplate`): `GW.Skin`; the master looter's player buttons `T.Button`. Size S.
-- [ ] **S2.6 Macro, popups with icon pickers, stopwatch.** `GW.Add("town", "onDemand", "Blizzard_MacroUI",
+- [x] **S2.6 Macro, popups with icon pickers, stopwatch.** `GW.Add("town", "onDemand", "Blizzard_MacroUI",
   { "MacroFrame", "MacroPopupFrame" })`, `"Blizzard_GuildBankUI"` → `GuildBankPopupFrame`, framed `GearManagerPopupFrame`,
   `"Blizzard_TimeManager"` → `StopwatchFrame`, `"Blizzard_Professions"` → `InspectRecipeFrame`. One `GW.SkinIconPicker`
   for the `IconSelectorPopupFrameTemplate` windows (`BorderBox`, `BG` faded; `SelectedIconArea` inset panel; the edit
   box `T.EditBox`; OK/Cancel `T.Button`). Size S.
-- [ ] **S2.7 Small dialogs.** `GhostFrame` (`T.Button`), `BasicMessageDialog`, `AddonDialog` (`Border` faded, panel,
+- [x] **S2.7 Small dialogs.** `GhostFrame` (`T.Button`), `BasicMessageDialog`, `AddonDialog` (`Border` faded, panel,
   buttons). `CurrencyTransferMenu`/`TokenFrame` only if `C_CurrencyInfo` exists and the frames do; otherwise skipped
   silently. Size S.
-- [ ] **S2.8 Docs and smoke lines.** README sub-bullet for `town`; smoke-test lines: stable (hunter), trainer, shift-click
+- [x] **S2.8 Docs and smoke lines.** README sub-bullet for `town`; smoke-test lines: stable (hunter), trainer, shift-click
   a stack, pick up coins from the money frame, Combined bags off and open a bag, master loot in a group, `/macro`, the
   stopwatch. Size S.
 
