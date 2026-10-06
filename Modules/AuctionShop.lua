@@ -744,7 +744,8 @@ end
 -- Filters -----------------------------------------------------------------------------------
 
 -- Copper from a typed price: "1g 50s", "75s 20c", "12c" or a bare number of gold ("2.5"); nil for
--- nothing, nothing above zero, or text that isn't money.
+-- nothing, nothing above zero, or text that isn't money. Every price box reads it (the shop's max
+-- price, the sell card's price and bid), so a bare number is gold in all of them.
 function AH.ParseMoney(text)
   text = trim(text):lower()
   local gold, copper = tonumber(text), 0
