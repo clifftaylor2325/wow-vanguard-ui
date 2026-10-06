@@ -254,3 +254,66 @@ it("battlefield map: switched off it stays the game's; a client without the tab 
   bare.eval("BattlefieldMapFrame:Show()");
   expect(bare.eval("return #ns.errors"), "no border, no tab: no errors").toBe(0);
 });
+
+// TEST-ONLY group finder, shaped like Blizzard_GroupFinder_VanillaStyle's Mainline XML: the plain outer window with its
+// close button and the eye (a static picture and an animation), the listing and browse pages (PortraitFrameTemplateNoCloseButton
+// frames filling the window, with their extra art, buttons and the listing's comment box), and the browse tooltip.
+// Made when the game loads the part.
+const FINDER_ENV = WINDOWS_ENV + `
+  function __button(parent, name) local b = CreateFrame("Button", name, parent) b:CreateTexture() return b end
+  function __finder()
+    local outer = CreateFrame("Frame", "LFGParentFrame", UIParent) outer:Hide()
+    __button(outer, "LFGParentFrameCloseButton")
+    local eye = __button(outer, "LFGParentFramePortrait")
+    eye.texture = eye:CreateTexture() eye.Anim = CreateFrame("Frame", nil, eye) eye.Anim.Picture = eye.Anim:CreateTexture()
+    local listing = __window("LFGListingFrame")
+    listing.Inset.CustomBG = listing.Inset:CreateTexture()
+    listing.RolesSection, listing.DividerFrame = CreateFrame("Frame", nil, listing), CreateFrame("Frame", nil, listing)
+    listing.RolesSection:CreateTexture() listing.DividerFrame:CreateTexture()
+    listing.BackButton, listing.PostButton = __button(listing), __button(listing)
+    listing.GroupRoleButtons = CreateFrame("Frame", nil, listing) listing.GroupRoleButtons.RolePollButton = __button(listing.GroupRoleButtons)
+    listing.ActivityView = CreateFrame("Frame", nil, listing) listing.ActivityView.BarTop = listing.ActivityView:CreateTexture()
+    listing.ActivityView.Comment = CreateFrame("ScrollFrame", nil, listing.ActivityView) listing.ActivityView.Comment.TopLeftTex = listing.ActivityView.Comment:CreateTexture()
+    listing.ActivityView.Comment.EditBox = CreateFrame("EditBox", nil, listing.ActivityView.Comment)
+    local browse = __window("LFGBrowseFrame")
+    browse.Bg, browse.BackgroundArt, browse.BarTop = browse:CreateTexture(), browse:CreateTexture(), browse:CreateTexture()
+    browse.SendMessageButton, browse.GroupInviteButton = __button(browse), __button(browse)
+    local tip = CreateFrame("Frame", "LFGBrowseSearchEntryTooltip", UIParent) tip:Hide()
+    tip.NineSlice = CreateFrame("Frame", nil, tip) tip.NineSlice:CreateTexture()
+  end
+`;
+
+it("group finder: the window, its listing and browse pages and the group tooltip in the theme once the game loads it", () => {
+  const addon = loggedIn(FINDER_ENV);
+  addon.eval("__finder()");
+  expect(addon.eval("return LFGParentFrame.vgWindow == nil"), "nothing is touched until the part of the game loads").toBe(true);
+  addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
+  addon.eval("LFGParentFrame:Show() LFGListingFrame:Show() LFGBrowseFrame:Show() LFGBrowseSearchEntryTooltip:Show()");
+  expect([fills(addon, "LFGParentFrame"), addon.eval("return select('#', LFGParentFrameCloseButton:GetRegions()) > 1")], "the window gets one panel, and the close button is the theme's").toEqual([1, true]);
+  expect(addon.eval("local e = LFGParentFramePortrait return { e.texture:GetAlpha(), e.Anim.Picture:GetAlpha() }"), "the eye's static picture is faded, its animation kept").toEqual([0, 1]);
+  const listing = windowState(addon, "LFGListingFrame");
+  expect(listing, "the pages' template art is faded; they carry no panel of their own, the window does").toMatchObject({ art: 0, nine: 0, portrait: 0, insetNine: 0, panel: false, title: true });
+  expect(windowState(addon, "LFGBrowseFrame"), "both pages").toMatchObject({ art: 0, nine: 0, portrait: 0, panel: false, title: true });
+  expect(addon.eval("local l, b = LFGListingFrame, LFGBrowseFrame return { l.Inset.CustomBG:GetAlpha(), (l.RolesSection:GetRegions()):GetAlpha(), (l.DividerFrame:GetRegions()):GetAlpha(), l.ActivityView.BarTop:GetAlpha(), b.Bg:GetAlpha(), b.BackgroundArt:GetAlpha(), b.BarTop:GetAlpha() }"), "the insets, strips, dividers and scroll lines").toEqual([0, 0, 0, 0, 0, 0, 0]);
+  expect([fills(addon, "LFGListingFrame.Inset"), fills(addon, "LFGListingFrame.ActivityView.Comment")], "an inset panel on the page, and the comment box is the theme's edit box").toEqual([1, 1]);
+  expect(addon.eval("local c = LFGListingFrame.ActivityView.Comment return { c.TopLeftTex:GetAlpha(), c.EditBox:GetAlpha() }"), "its border art is faded, the box inside kept").toEqual([0, 1]);
+  expect(addon.eval("local l, b = LFGListingFrame, LFGBrowseFrame local out = {} for _, f in ipairs({ l.BackButton, l.PostButton, l.GroupRoleButtons.RolePollButton, b.SendMessageButton, b.GroupInviteButton }) do out[#out + 1] = (f:GetRegions()):GetAlpha() end return out"), "the buttons' art is faded").toEqual([0, 0, 0, 0, 0]);
+  expect([fills(addon, "LFGListingFrame.PostButton"), fills(addon, "LFGBrowseFrame.GroupInviteButton")], "and they are flat buttons").toEqual([2, 2]);
+  expect([addon.eval("return LFGBrowseSearchEntryTooltip.NineSlice:GetAlpha()"), fills(addon, "LFGBrowseSearchEntryTooltip")], "the tooltip's border is faded and a panel painted").toEqual([0, 1]);
+  const painted = listing.painted;
+  addon.eval("for _, n in ipairs({ 'LFGParentFrame', 'LFGListingFrame', 'LFGBrowseFrame', 'LFGBrowseSearchEntryTooltip' }) do _G[n]:Hide() _G[n]:Show() end");
+  expect(windowState(addon, "LFGListingFrame").painted, "showing them again paints nothing new").toBe(painted);
+});
+
+it("group finder: switched off it stays the game's; a client missing parts of it loads cleanly", () => {
+  const off = loggedIn(FINDER_ENV, MAP_OFF);
+  off.eval("__finder()");
+  off.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
+  off.eval("LFGParentFrame:Show() LFGListingFrame:Show()");
+  expect([off.eval("return LFGParentFrame.vgWindow == nil and LFGListingFrame.vgWindow == nil"), windowState(off, "LFGListingFrame").art !== 0, fills(off, "LFGParentFrame")], "not hooked, art left").toEqual([true, true, 0]);
+  const bare = loggedIn(`for _, n in ipairs({ "LFGParentFrame", "LFGListingFrame", "LFGBrowseFrame", "LFGBrowseSearchEntryTooltip" }) do CreateFrame("Frame", n, UIParent) end
+    LFGListingFrame.ActivityView, LFGListingFrame.GroupRoleButtons, LFGBrowseFrame.TitleContainer, LFGBrowseFrame.Inset = {}, {}, {}, {}`);
+  bare.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
+  bare.eval("LFGParentFrame:Show() LFGListingFrame:Show() LFGBrowseFrame:Show() LFGBrowseSearchEntryTooltip:Show()");
+  expect(bare.eval("return #ns.errors"), "bare frames: no errors").toBe(0);
+});

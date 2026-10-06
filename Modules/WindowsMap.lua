@@ -170,3 +170,64 @@ function GW.SkinBattlefieldMap(map)
 end
 
 GW.Add("map", "onDemand", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" }, GW.SkinBattlefieldMap)
+
+-- Group finder --------------------------------------------------------------------------------
+
+-- Extra art on the finder's pages (listing and browse): the browse backdrop, the roles strip, the divider
+-- and the activity view's scroll lines (a frame's key fades its textures).
+GW.LFG_PAGE_ART = { "BackgroundArt", "RolesSection", "DividerFrame", "ActivityView" }
+-- The pages' push buttons by key (the listing's back and post, the browse page's message and invite).
+GW.LFG_PAGE_BUTTONS = { "BackButton", "PostButton", "SendMessageButton", "GroupInviteButton" }
+
+-- Fades the art a window's template draws (GW.ART, its own textures too), with no panel: for windows
+-- made of several frames, where one panel goes on the outer frame.
+function GW.FadeWindowArt(frame)
+  T.FadeRegions(frame)
+  GW.FadeParts(frame, GW.ART)
+  for _, key in ipairs(GW.ART) do
+    local part = frame[key]
+    if key ~= "Inset" and type(part) == "table" and part.SetAlpha then part:SetAlpha(0) end
+  end
+  if type(frame.Inset) == "table" and type(frame.Inset.NineSlice) == "table" then frame.Inset.NineSlice:SetAlpha(0) end
+end
+
+-- A page's title text in the heading font.
+local function dressTitle(page)
+  local title = type(page.TitleContainer) == "table" and page.TitleContainer.TitleText
+  if type(title) == "table" and title.SetFont then T.Text(title, "heading", false) end
+end
+
+-- A page's push buttons and its edit box (the listing's group description), in the theme.
+local function dressPage(page)
+  for _, key in ipairs(GW.LFG_PAGE_BUTTONS) do skinFlatButton(page[key]) end
+  if type(page.GroupRoleButtons) == "table" then skinFlatButton(page.GroupRoleButtons.RolePollButton) end
+  local view = page.ActivityView
+  if type(view) == "table" and isFrame(view.Comment) then T.EditBox(view.Comment) end
+end
+
+-- One page of the group finder (listing or browse), which fills the finder's window: its template art
+-- and extras faded, an inset panel, title, buttons and edit box in the theme. The outer window has the panel.
+function GW.SkinLFGPage(page)
+  GW.FadeWindowArt(page)
+  GW.FadeParts(page, GW.LFG_PAGE_ART)
+  if isFrame(page.Inset) then T.Panel(page.Inset, { inset = true, noSheen = true }) end
+  dressTitle(page)
+  dressPage(page)
+end
+
+-- The finder's window: a panel with a shadow, the close button in the theme, and the eye (its portrait)
+-- without its static picture (the animations it plays while you are listed stay).
+function GW.SkinLFGParent(frame)
+  T.Panel(frame, { shadow = true })
+  if type(_G.LFGParentFrameCloseButton) == "table" then T.CloseButton(_G.LFGParentFrameCloseButton) end
+  if type(_G.LFGParentFramePortrait) == "table" then GW.FadeParts(_G.LFGParentFramePortrait, { "texture" }) end
+end
+
+-- The tooltip the browse list shows for a group.
+function GW.SkinLFGTooltip(frame)
+  T.Tooltip(frame)
+end
+
+GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame" }, GW.SkinLFGParent)
+GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGListingFrame", "LFGBrowseFrame" }, GW.SkinLFGPage)
+GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGBrowseSearchEntryTooltip" }, GW.SkinLFGTooltip)
