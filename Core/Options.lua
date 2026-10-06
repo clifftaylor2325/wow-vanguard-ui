@@ -339,11 +339,11 @@ local function timerRows()
   }
 end
 
--- get/set for restyling all three of the client's special bars at once (applies on reload).
+-- get/set for restyling the client's special bars (pet, stance, possess, extra) at once (applies on reload).
 local function skinSpecial()
   return function() return moduleSettings("SpecialBars").skinPet end, function(v)
     local s = moduleSettings("SpecialBars")
-    s.skinPet, s.skinStance, s.skinExtra = v, v, v
+    s.skinPet, s.skinStance, s.skinPossess, s.skinExtra = v, v, v, v
     O.NeedReload()
   end
 end
@@ -361,7 +361,7 @@ local function actionBarRows()
     check("Lock buttons (Shift-drag to move actions)", setting("ActionBars", "lockButtons")),
     check("Red when out of range", setting("ActionBars", "rangeTint")),
     check("Hide the default bars", setting("ActionBars", "hideBlizzard", true)),
-    check("Restyle the pet, stance and extra action buttons (reload)", skinSpecial()),
+    check("Restyle the pet, stance, possess and extra action buttons (reload)", skinSpecial()),
     check("Pet and stance bars in their own movable spots (reload)", setting("SpecialBars", "place", true)),
     check("Vehicle exit button (reload)", setting("SpecialBars", "vehicleExit", true)),
     { "text", "Empty slots stay hidden until you drag a spell or item onto the bars." }, { "button", "Keybind mode", keybindMode },
