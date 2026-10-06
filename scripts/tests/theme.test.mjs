@@ -277,3 +277,118 @@ it("the faction look on a Russian client keeps Fira Sans for headings (the facti
   expect(look(addon)[0], "Horde on ruRU too").toBe("FiraSansCondensed-SemiBold.ttf");
   expect(look(loggedIn(faction + 'GetLocale = function() return "deDE" end'))[0], "a German client gets Cinzel (it has the Latin accents)").toBe("Cinzel-SemiBold.ttf");
 });
+
+// TEST-ONLY game tab buttons shaped like the game's three tab templates, and a reader
+// for a tab's accent line (the only OVERLAY texture T.Tab adds) and its art's alpha.
+const TABS_LUA = `
+  function __tab(keys, kind)
+    local b = CreateFrame(kind or "Button", nil, UIParent)
+    for _, k in ipairs(keys) do b[k] = b:CreateTexture(nil, "BACKGROUND") end
+    b.Icon = b:CreateTexture(nil, "ARTWORK")
+    return b
+  end
+  function __line(b)
+    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "OVERLAY" then return r end end
+  end
+`;
+
+it("game tabs: art faded, icon kept, a panel, and an accent line that follows the game's selection", () => {
+  const addon = loggedIn(TABS_LUA);
+  const panelTab = addon.eval(`
+    local tab = __tab({ "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive" })
+    ns.Theme.Tab(tab) ns.Theme.Tab(tab) __panelTab = tab
+    local line = __line(tab)
+    local before = line:IsShown()
+    tab:Disable() local selected = line:IsShown()
+    tab:Enable() local after = line:IsShown()
+    return { tab.Left.__alpha, tab.RightActive.__alpha, tab.Icon.__alpha == nil, before, selected, after }`);
+  expect(panelTab, "a panel tab: art faded, icon left, the line shows only while the game has it disabled (selected)").toEqual([0, 0, true, false, true, false]);
+  const sideTab = addon.eval(`
+    local tab = __tab({ "Background", "SelectedTexture", "HighlightTexture" })
+    function tab:SetChecked(on) self.SelectedTexture:SetShown(on) end
+    ns.Theme.Tab(tab)
+    tab:SetChecked(true) local on = __line(tab):IsShown()
+    tab:SetChecked(false)
+    return { tab.Background.__alpha, tab.SelectedTexture.__alpha, on, __line(tab):IsShown() }`);
+  expect(sideTab, "a side tab follows SetChecked").toEqual([0, 0, true, false]);
+  const systemTab = addon.eval(`
+    local tab = __tab({ "Left", "Middle", "Right" })
+    function tab:SetTabSelected(on) self.isSelected = on end
+    ns.Theme.Tab(tab)
+    tab:SetTabSelected(true) local on = __line(tab):IsShown()
+    tab:Disable()
+    tab:SetTabSelected(false)
+    return { on, __line(tab):IsShown() }`);
+  expect(systemTab, "a tab-system tab follows SetTabSelected, not its enabled state").toEqual([true, false]);
+  const frameTab = addon.eval(`
+    local tab = __tab({ "Background", "SelectedTexture" }, "Frame")
+    function tab:HookScript(name, fn) if name == "OnEnable" or name == "OnDisable" then error("Frame doesn't have a " .. name .. " script") end end
+    function tab:SetChecked(on) end
+    ns.Theme.Tab(tab) tab:SetChecked(true)
+    return __line(tab):IsShown()`);
+  expect(frameTab, "a side tab that is a Frame (no OnEnable script) still follows SetChecked").toBe(true);
+  expect(addon.eval("return #ns.errors"), "and nothing is reported").toBe(0);
+  const bare = addon.eval("local b = CreateFrame('Button', nil, UIParent) ns.Theme.Tab(b) return __line(b) ~= nil");
+  expect(bare, "a button with none of the parts is panelled, nothing errors").toBe(true);
+  addon.eval("__panelTab:Disable() ns.Theme.SetAccent(0.1, 0.2, 0.3)");
+  expect(addon.eval("return __line(__panelTab).__vertexColor[3]"), "the line follows the accent").toBeCloseTo(0.3);
+});
+
+it("tooltip-like frames: a panel with a shadow and the game's NineSlice faded, once", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`
+    local f = CreateFrame("Frame", nil, UIParent)
+    f.NineSlice = CreateFrame("Frame", nil, f)
+    ns.Theme.Tooltip(f)
+    local n = ns.Theme.PaintedCount()
+    ns.Theme.Tooltip(f)
+    ns.Theme.Tooltip(CreateFrame("Frame", nil, UIParent))
+    return { f.NineSlice.__alpha, ns.Theme.PaintedCount() - n, select("#", f:GetRegions()) > 0 }`);
+  expect(out, "faded, painted once, and a frame without a NineSlice works too").toEqual([0, 1, true]);
+});
+
+// TEST-ONLY scroll bar shaped like the game's MinimalScrollBar (thumb inside the
+// track) or WowTrimScrollBar (with a background and backplate).
+const SCROLL_LUA = `
+  function __bar(trim)
+    local bar = CreateFrame("Frame", nil, UIParent)
+    bar.Track = CreateFrame("Frame", nil, bar)
+    bar.Track.Begin, bar.Track.Middle = bar.Track:CreateTexture(), bar.Track:CreateTexture()
+    bar.Track.Thumb = CreateFrame("Button", nil, bar.Track)
+    bar.Track.Thumb.Middle = bar.Track.Thumb:CreateTexture()
+    bar.Back, bar.Forward = CreateFrame("Button", nil, bar), CreateFrame("Button", nil, bar)
+    bar.Back.Texture = bar.Back:CreateTexture()
+    if trim then bar.Background, bar.Backplate = bar:CreateTexture(), CreateFrame("Frame", nil, bar) end
+    return bar
+  end
+`;
+
+it("the game's scroll bars: track art faded, a raised thumb with an accent edge under the mouse, flat arrows", () => {
+  const addon = loggedIn(SCROLL_LUA);
+  const minimal = addon.eval(`
+    local bar = __bar() ns.Theme.ScrollBar(bar) ns.Theme.ScrollBar(bar)
+    local thumb = bar.Track.Thumb
+    thumb.__scripts.OnEnter(thumb)
+    local accent = { ns.Theme.Accent() }
+    local edged
+    for _, r in ipairs({ thumb:GetRegions() }) do if r.__vertexColor and r.__vertexColor[1] == accent[1] and r.__vertexColor[3] == accent[3] then edged = true end end
+    thumb.__scripts.OnLeave(thumb)
+    return { bar.Track.Begin.__alpha, thumb.Middle.__alpha, bar.Back.Texture.__alpha, edged == true,
+      bar.Back.vgArrow.__texCoord[3], bar.Forward.vgArrow.__texCoord == nil }`);
+  expect(minimal, "faded, accent under the mouse, the up arrow is the Down icon turned over").toEqual([0, 0, 0, true, 1, true]);
+  const trim = addon.eval("local bar = __bar(true) ns.Theme.ScrollBar(bar) return { bar.Background.__alpha, bar.Track.Thumb.Middle.__alpha }");
+  expect(trim, "the trim bar's background goes too").toEqual([0, 0]);
+  expect(addon.eval("local f = CreateFrame('Frame', nil, UIParent) f.Back = CreateFrame('Button', nil, f) ns.Theme.ScrollBar(f) return f.Back.vgArrow == nil"), "a frame without a thumb is left alone").toBe(true);
+});
+
+it("the game's font objects: the theme font at Text size, kept after a theme change", () => {
+  const addon = loggedIn(`
+    __FontA = CreateFrame("Frame"):CreateFontString()
+  `);
+  addon.eval(`ns.Theme.FontObjects({ __FontA = { 14, true }, __NoSuchFont = { 12 } })`);
+  const before = addon.eval("return { __FontA:GetFont() }");
+  expect(before[0], "the bold theme font").toBe(addon.eval("return (ns.Theme.Font(true))"));
+  expect(before[1], "at the size given").toBe(14);
+  addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
+  expect(addon.eval("return select(2, __FontA:GetFont())"), "re-applied at the new Text size").toBe(21);
+});

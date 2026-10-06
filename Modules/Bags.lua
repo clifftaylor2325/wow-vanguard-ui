@@ -104,6 +104,8 @@ local function skinItem(button)
   T.Panel(button, { inset = true, noBg = true })
   followQuality(button)
 end
+-- The same for other windows' item buttons (mail attachments, the equipment flyout...).
+BG.SkinItem = skinItem
 
 -- Skins every item button the window shows right now (a bag window's, or the
 -- bank panel's pool) that isn't skinned yet.

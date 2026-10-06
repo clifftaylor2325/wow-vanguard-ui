@@ -479,3 +479,26 @@ it("options: the Healing page opens and saves its buff list with the raid heals 
   addon.eval('__editor.input:SetText("TEST-ONLY Aura") __editor.save:GetScript("OnClick")(__editor.save)');
   expect([addon.eval("return VanguardDB.profiles.Default.RaidHealing.buffs"), addon.eval("__editor:Refresh() return __editor.input:GetText()")], "Save keeps the typed list").toEqual(["TEST-ONLY Aura", "TEST-ONLY Aura"]);
 });
+
+it("options: a switch for each group of game windows, under Bars, map, chat", () => {
+  const addon = loggedIn(UI_ENV + CLICK_LUA);
+  addon.slash("");
+  addon.eval('__click("Bars, map, chat")');
+  const groups = { social: "Mail, guild, channels, friends and guild-creation windows (reload)", town: "Stable, trainer, bags, loot and item dialogs (reload)",
+    system: "Game options, Edit Mode, keybinding and help windows (reload)", map: "World map, group finder, calendar and Legacy windows (reload)",
+    menus: "Right-click menus, dropdowns and more tooltips (reload)", tabs: "Tab buttons and the inside of the character pane (reload)", pvp: "Battleground windows (reload)" };
+  for (const [key, label] of Object.entries(groups)) {
+    addon.eval(`__click(${JSON.stringify(label)})`);
+    expect(addon.eval(`return VanguardDB.profiles.Default.Windows.${key}`), `${key} switches off from its row`).toBe(false);
+  }
+});
+
+it("bags: the item skin is shared with other windows, once per button", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`
+    local b = CreateFrame("Button", nil, UIParent) b.icon = b:CreateTexture()
+    local skin = ns.GetModule("Bags").SkinItem
+    skin(b) local n = ns.Theme.PaintedCount() skin(b)
+    return { b.vgSkinned, ns.Theme.PaintedCount() == n, b.icon.__texCoord ~= nil }`);
+  expect(out).toEqual([true, true, true]);
+});
