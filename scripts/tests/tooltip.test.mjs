@@ -99,3 +99,22 @@ it("item tooltips: how many you have, and the item ID when asked", () => {
   addon.eval("C_Item.GetItemCount = function() return 0, 0 end VanguardDB.profiles.Default.Tooltips.itemCount = true VanguardDB.profiles.Default.Tooltips.itemID = false");
   expect(addon.eval('return #__showItem("item:90002", 1)'), "none of it: no count line").toBe(0);
 });
+
+// TEST-ONLY: the client's other tooltips (GameTooltipTemplate / TooltipBackdropTemplate frames with a
+// NineSlice), all but QuickKeybindTooltip, which this client lacks.
+const MORE_TIPS = ["ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2", "GameNoHeaderTooltip", "GameSmallHeaderTooltip", "BuffFrameTooltip", "SettingsTooltip", "PartyMemberBuffTooltip", "AutoCompleteBox"];
+const MORE_TIPS_ENV = MORE_TIPS.map((n) => `local tt = CreateFrame("Frame", "${n}", UIParent) tt.NineSlice = CreateFrame("Frame", nil, tt)`).join("\n");
+// Each of those tooltips' state: skinned (its NineSlice faded under a panel) or not.
+const moreTips = (addon) => addon.eval(`local out = {} for _, n in ipairs({ "${MORE_TIPS.join('", "')}" }) do
+    out[#out + 1] = _G[n].vgSkinned == true and _G[n].NineSlice.__alpha == 0 and select("#", _G[n]:GetRegions()) > 0
+  end return out`);
+
+it("more tooltips: the client's other tooltips get the panel with the menus group on, one it lacks is skipped", () => {
+  const addon = loggedIn(MORE_TIPS_ENV);
+  expect(moreTips(addon), "every one the client has").toEqual(MORE_TIPS.map(() => true));
+  expect(addon.eval("return { QuickKeybindTooltip == nil, #ns.errors }"), "the missing one is skipped without an error").toEqual([true, 0]);
+  const off = loggedIn(MORE_TIPS_ENV + 'local tt = CreateFrame("Frame", "GameTooltip", UIParent) tt.NineSlice = CreateFrame("Frame", nil, tt)',
+    { savedVariables: "VanguardDB.profiles = { Default = { Windows = { menus = false } } }" });
+  expect(moreTips(off), "with the menus group off they are the game's").toEqual(MORE_TIPS.map(() => false));
+  expect(off.eval("return GameTooltip.vgSkinned"), "the main tooltips still are skinned").toBe(true);
+});
