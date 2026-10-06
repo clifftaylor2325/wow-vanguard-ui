@@ -193,7 +193,7 @@ Inventory: design §5.1. Group `social`.
 Files: `Modules/WindowsTown.lua`, `scripts/tests/windows-town.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.2. Group `town`.
 
-- [ ] **S2.1 Stable.** `PetStableFrame`: `GW.Skin` plus `Background`, `Border`, `PetModelSceneShadow`, `PetShadow` faded,
+- [x] **S2.1 Stable.** `PetStableFrame`: `GW.Skin` plus `Background`, `Border`, `PetModelSceneShadow`, `PetShadow` faded,
   `Inset` as `GW.ART` handles it, `expBar` via `T.StyleBar`, `purchaseButton` via `T.Button`, `levelText`, `loyaltyLevel`,
   `diet`, `Text` in the theme font. Size S.
 - [ ] **S2.2 Trainer.** `GW.Add("town", "onDemand", "Blizzard_TrainerUI", { "ClassTrainerFrame" }, GW.SkinTrainer)`:
