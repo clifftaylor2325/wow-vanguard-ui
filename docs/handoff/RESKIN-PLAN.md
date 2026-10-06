@@ -247,7 +247,7 @@ Inventory: design §5.3. Group `system`.
 - [x] **S3.4 Keybinding, Cooldown Manager settings, click bindings.** `QuickKeybindFrame` (panel behind its banner),
   `CooldownViewerSettings` (`GW.Skin`), `CooldownViewerLayoutDialog`/`CooldownViewerImportLayoutDialog`,
   `GW.Add("system", "onDemand", "Blizzard_ClickBindingUI", { "ClickBindingFrame" })`. Size S.
-- [ ] **S3.5 Help, report, splash, colour picker, death recap, combat log bar.** `HelpFrame`, `TicketStatusFrame`,
+- [x] **S3.5 Help, report, splash, colour picker, death recap, combat log bar.** `HelpFrame`, `TicketStatusFrame`,
   `ReportFrame`, `ReportCheatingDialog`, `SplashFrame` (panel behind, art kept), `ColorPickerFrame` + `OpacityFrame`
   (`Border`/`Header` faded, panel, buttons; the wheel and swatch untouched),
   `GW.Add("system", "onDemand", "Blizzard_DeathRecap", { "DeathRecapFrame" })`,
