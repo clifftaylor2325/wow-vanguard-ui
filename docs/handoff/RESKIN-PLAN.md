@@ -221,7 +221,7 @@ Inventory: design §5.2. Group `town`.
 - [x] **S2.7 Small dialogs.** `GhostFrame` (`T.Button`), `BasicMessageDialog`, `AddonDialog` (`Border` faded, panel,
   buttons). `CurrencyTransferMenu`/`TokenFrame` only if `C_CurrencyInfo` exists and the frames do; otherwise skipped
   silently. Size S.
-- [ ] **S2.8 Docs and smoke lines.** README sub-bullet for `town`; smoke-test lines: stable (hunter), trainer, shift-click
+- [x] **S2.8 Docs and smoke lines.** README sub-bullet for `town`; smoke-test lines: stable (hunter), trainer, shift-click
   a stack, pick up coins from the money frame, Combined bags off and open a bag, master loot in a group, `/macro`, the
   stopwatch. Size S.
 
