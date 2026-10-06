@@ -244,7 +244,7 @@ Inventory: design §5.3. Group `system`.
   `EditModeSystemSettingsDialog`, `EditModeLayoutDialog`, `EditModeImportLayoutDialog`, `EditModeImportLayoutLinkDialog`,
   `EditModeUnsavedChangesDialog` (`Border` faded, panel, buttons). **[VERIFY IN GAME]**: open Edit Mode, move a Blizzard
   frame, save; nothing reports a blocked action. Size M.
-- [ ] **S3.4 Keybinding, Cooldown Manager settings, click bindings.** `QuickKeybindFrame` (panel behind its banner),
+- [x] **S3.4 Keybinding, Cooldown Manager settings, click bindings.** `QuickKeybindFrame` (panel behind its banner),
   `CooldownViewerSettings` (`GW.Skin`), `CooldownViewerLayoutDialog`/`CooldownViewerImportLayoutDialog`,
   `GW.Add("system", "onDemand", "Blizzard_ClickBindingUI", { "ClickBindingFrame" })`. Size S.
 - [ ] **S3.5 Help, report, splash, colour picker, death recap, combat log bar.** `HelpFrame`, `TicketStatusFrame`,

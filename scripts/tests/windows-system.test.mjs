@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { loggedIn } from "./helpers.mjs";
+import { loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY builders for the game's system windows: a frame with a piece of template art, parts
 // added by parentKey, and readers for what the skin did (art alpha, a painted panel, themed text).
@@ -249,4 +249,88 @@ it("Edit Mode dialogs: layout, import, import link and unsaved changes get the p
   const off = loggedIn(EDIT_ENV, SWITCH_OFF);
   off.eval("EditModeLayoutDialog:Show()");
   expect(editState(off, "EditModeLayoutDialog").panel, "switched off: the game's dialog").toBe(false);
+});
+
+// TEST-ONLY: the quick keybind banner (a protected Button in the game): its dialog border (BG), header plate and the three buttons.
+const KEYBIND_ENV = SYSTEM_ENV + `
+  local f = CreateFrame("Button", "QuickKeybindFrame", UIParent) __art(f) f:Hide()
+  __sub(f, "BG") __sub(f, "Header") __text(f.Header, "Text") __text(f, "InstructionText")
+  for _, k in ipairs({ "DefaultsButton", "CancelButton", "OkayButton" }) do __sub(f, k, "Button") end
+`;
+
+it("quick keybind banner: a panel behind it, plate faded, buttons themed, and nothing touched in combat", () => {
+  const addon = loggedIn(KEYBIND_ENV);
+  addon.eval("QuickKeybindFrame:Show()");
+  const read = () => addon.eval(`local f = QuickKeybindFrame
+    return { art = __faded(f), bg = f.BG.__alpha, header = __faded(f.Header), panel = __panelled(f), title = f.Header.Text:GetFont() ~= nil,
+      buttons = __panelled(f.DefaultsButton) and __panelled(f.CancelButton) and __panelled(f.OkayButton), text = f.InstructionText:GetFont() == nil, painted = ns.Theme.PaintedCount() }`);
+  const first = read();
+  expect(first, "BG and header plate faded, a panel, title and buttons themed, the white instruction text untouched").toMatchObject({
+    art: 0, bg: 0, header: 0, panel: true, title: true, buttons: true, text: true,
+  });
+  addon.eval("QuickKeybindFrame:Hide() QuickKeybindFrame:Show()");
+  expect(read().painted, "a second show paints nothing new").toBe(first.painted);
+  const late = loggedIn(SYSTEM_ENV + 'local b = CreateFrame("Button", "TestOnlyBanner", UIParent) __art(b)');
+  setCombat(late, true);
+  late.eval('ns.GetModule("Windows").SkinQuickKeybind(TestOnlyBanner)');
+  expect(late.eval("return __panelled(TestOnlyBanner)"), "in combat the banner is left alone").toBe(false);
+  setCombat(late, false);
+  expect(late.eval("return __panelled(TestOnlyBanner)"), "and skinned right after combat").toBe(true);
+  const off = loggedIn(KEYBIND_ENV, SWITCH_OFF);
+  off.eval("QuickKeybindFrame:Show()");
+  expect(off.eval("return __panelled(QuickKeybindFrame)"), "switched off").toBe(false);
+  const bare = loggedIn(SYSTEM_ENV + 'CreateFrame("Button", "QuickKeybindFrame", UIParent)');
+  bare.eval("QuickKeybindFrame:Show()");
+  expect(bare.eval("return __errors('Windows')"), "a banner without its parts").toBe("none");
+});
+
+// TEST-ONLY: the Cooldown Manager's settings window and its two layout dialogs, and the click-casting window (built when its addon loads).
+const COOLDOWN_ENV = BUTTON_FRAME_ENV + `
+  __buttonFrame("CooldownViewerSettings", { "SearchBox" })
+  for _, name in ipairs({ "CooldownViewerLayoutDialog", "CooldownViewerImportLayoutDialog" }) do
+    local d = __frame(name) __sub(d, "Border") __text(d, "Title") __sub(d, "AcceptButton", "Button") __sub(d, "CancelButton", "Button")
+  end
+  function __clickBinding()
+    local f = __buttonFrame("ClickBindingFrame", { "SaveButton", "AddBindingButton", "ResetButton" })
+    __sub(f, "ScrollBoxBackground") __sub(f.ScrollBoxBackground, "NineSlice")
+    return f
+  end
+`;
+
+it("Cooldown Manager settings and its layout dialogs: the window skin, search box and dialog buttons", () => {
+  const addon = loggedIn(COOLDOWN_ENV);
+  addon.eval("CooldownViewerSettings:Show() CooldownViewerLayoutDialog:Show() CooldownViewerImportLayoutDialog:Show()");
+  expect(frameState(addon, "CooldownViewerSettings", ["SearchBox"]), "the settings window and its search box").toMatchObject({ art: 0, panel: true, x: 0, title: true, parts: { SearchBox: true } });
+  for (const name of ["CooldownViewerLayoutDialog", "CooldownViewerImportLayoutDialog"]) {
+    expect(editState(addon, name), `${name}: art faded, panel, title`).toMatchObject({ art: 0, border: 0, panel: true, title: true });
+    expect(addon.eval(`return __panelled(${name}.AcceptButton)`), `${name}: buttons themed`).toBe(true);
+  }
+  sameOnReshow(addon, "CooldownViewerSettings");
+  const off = loggedIn(COOLDOWN_ENV, SWITCH_OFF);
+  off.eval("CooldownViewerSettings:Show() CooldownViewerLayoutDialog:Show()");
+  expect([frameState(off, "CooldownViewerSettings").panel, editState(off, "CooldownViewerLayoutDialog").panel], "switched off").toEqual([false, false]);
+  const bare = loggedIn(SYSTEM_ENV);
+  expect(bare.eval("return __errors('Windows')"), "a client without the Cooldown Manager").toBe("none");
+});
+
+it("click bindings: skinned when their addon loads, with the three buttons and the list backdrop", () => {
+  const addon = loggedIn(COOLDOWN_ENV);
+  addon.eval("__clickBinding()");
+  expect(addon.eval("return ClickBindingFrame.vgWindow"), "not hooked before its part of the game loads").toBeNull();
+  addon.fire("ADDON_LOADED", "Blizzard_ClickBindingUI");
+  addon.eval("ClickBindingFrame:Show()");
+  expect(frameState(addon, "ClickBindingFrame", ["SaveButton", "AddBindingButton", "ResetButton", "ScrollBoxBackground"]), "window skin, buttons, backdrop as an inset panel").toMatchObject({
+    art: 0, panel: true, x: 0, parts: { SaveButton: true, AddBindingButton: true, ResetButton: true, ScrollBoxBackground: true },
+  });
+  expect(addon.eval("return ClickBindingFrame.ScrollBoxBackground.NineSlice.__piece.__alpha"), "the backdrop's border art faded").toBe(0);
+  sameOnReshow(addon, "ClickBindingFrame");
+  const off = loggedIn(COOLDOWN_ENV, SWITCH_OFF);
+  off.eval("__clickBinding()");
+  off.fire("ADDON_LOADED", "Blizzard_ClickBindingUI");
+  off.eval("ClickBindingFrame:Show()");
+  expect(frameState(off, "ClickBindingFrame").panel, "switched off").toBe(false);
+  const bare = loggedIn(BUTTON_FRAME_ENV + "__buttonFrame('ClickBindingFrame')");
+  bare.fire("ADDON_LOADED", "Blizzard_ClickBindingUI");
+  bare.eval("ClickBindingFrame:Show()");
+  expect(bare.eval("return __errors('Windows')"), "a window without the buttons or the backdrop").toBe("none");
 });

@@ -211,3 +211,29 @@ GW.Add("system", "framed", { "EditModeSystemSettingsDialog" }, GW.SkinEditSettin
 GW.Add("system", "framed", {
   "EditModeLayoutDialog", "EditModeImportLayoutDialog", "EditModeImportLayoutLinkDialog", "EditModeUnsavedChangesDialog",
 }, GW.SkinEditDialog)
+
+-- Keybinding, Cooldown Manager settings, click bindings ----------------------------------------
+
+-- The quick keybind banner: its dialog border and header plate faded (its white texts kept), a panel
+-- behind it, its three push buttons and the header title themed. The banner is a protected frame, so
+-- only textures and font strings are touched, and not in combat (it waits until combat ends).
+local quickKeybind = skinner({
+  art = { "BG" }, fade = { "Header" }, titles = { "Header.Text" }, buttons = { "DefaultsButton", "CancelButton", "OkayButton" },
+})
+-- Skins the banner now, or right after combat.
+function GW.SkinQuickKeybind(frame)
+  ns.OutOfCombat(function() quickKeybind(frame) end, "WindowsSystem.QuickKeybind")
+end
+
+-- The Cooldown Manager's settings window: the window skin and its search box (its side tabs are the tabs stream's).
+GW.SkinCooldownSettings = withWindowSkin({ edits = { "SearchBox" } })
+-- The click-casting window (the game's own binding list): the window skin, its three buttons, the list's backdrop.
+GW.SkinClickBinding = withWindowSkin({
+  buttons = { "SaveButton", "AddBindingButton", "ResetButton" },
+  fade = { "ScrollBoxBackground.NineSlice" }, insets = { "ScrollBoxBackground" },
+})
+
+GW.Add("system", "framed", { "QuickKeybindFrame" }, GW.SkinQuickKeybind)
+GW.Add("system", "framed", { "CooldownViewerSettings" }, GW.SkinCooldownSettings)
+GW.Add("system", "framed", { "CooldownViewerLayoutDialog", "CooldownViewerImportLayoutDialog" }, GW.SkinEditDialog)
+GW.Add("system", "onDemand", "Blizzard_ClickBindingUI", { "ClickBindingFrame" }, GW.SkinClickBinding)
