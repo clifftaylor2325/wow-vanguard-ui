@@ -9,7 +9,7 @@ Every `file:line` below is as of `619d5c9`; if a line has moved, grep for the id
 ## 0. How to work (read this first, follow it exactly)
 
 1. **Order.** Do the phases in order (P0 → P4) and the tasks within a phase in order, unless a task says it is independent. Do not start P3/P4 while a P0 task is open.
-2. **One task = one commit.** Branch per phase: `work/p0-hardening`, `work/p1-performance`, `work/p2-defects`, `work/p3-features`, `work/p4-style`. Open one PR per phase (CI only runs on pull requests, `.github/workflows/verify.yml`). Commit subject: `P1.3 RaidHealing: cache watched buff names`; body: what changed, what was verified, anything left for in-game testing.
+2. **One task = one commit.** Branch per phase: `work/p0-hardening`, `work/p1-performance`, `work/p2-defects`, `work/p3-features`, `work/p4-style`. Open one PR per phase (a pull request gets the quick checks, `.github/workflows/verify.yml`; the full suite with coverage runs after the merge and on a PR labelled `full-tests`, `.github/workflows/full-suite.yml`). Commit subject: `P1.3 RaidHealing: cache watched buff names`; body: what changed, what was verified, anything left for in-game testing.
 3. **Before each task:** read every file the task names, in full, plus `README.md` for the feature's intended behaviour. The README is the spec; if your change alters behaviour the README describes, update the README sentence in the same commit.
 4. **After each task, all of these must pass:** `npm run verify` (tests + the code-quality scan), `npm run coverage` (floor is 100 % of lines, `scripts/lua-coverage-floor.json`, so every new line needs a test that executes it), `npm run lint` if `luacheck` is installed, and `node scripts/build-media.mjs --check` if you touched `Media/` or `scripts/lib/media-sources.mjs`. Tick the task's checkbox in this file in the same commit.
 5. **Repository rules the CI enforces** (`scripts/lib/code-quality.mjs`): every function has a comment on the line directly above it; a function body is at most 10 lines of code (nested functions count toward the parent); no colour literals or font sizes outside `Core/Theme.lua` (use `T.RGB`, `T.Color`, `T.Text`, theme tokens); luacheck's `read_globals` in `.luacheckrc` must list every WoW global you start using; `scripts/lib/wow-widget-api.lua` must list every widget method you call (a method not listed is `nil` in tests, on purpose). Add a name there only when you have confirmed it exists in the 12.1 client (Blizzard's `wow-ui-source` or the API docs), never to make a test pass.
@@ -34,7 +34,7 @@ Every `file:line` below is as of `619d5c9`; if a line has moved, grep for the id
 | `npm test` | Vitest, all suites once |
 | `npm run quality` | the code-quality scan (10-line rule, comments, colours) |
 | `npm run verify` | `npm test` + `npm run quality` |
-| `npm run coverage` | every test with Lua line coverage, fails below the floor (CI runs this, then `npm run quality`, on the owner's self-hosted Windows runner; `scripts/ci/install-windows-runner.ps1 -Token <token>` sets one up) |
+| `npm run coverage` | every test with Lua line coverage, fails below the floor (CI runs this after a merge to main, nightly, and on a PR labelled `full-tests`, on the owner's self-hosted Windows runner; `scripts/ci/install-windows-runner.ps1 -Token <token>` sets one up) |
 | `npm run lint` | luacheck (optional locally; CI runs it) |
 | `npm run preview` | Playwright renders `preview/*.png` of the layout and options window |
 | `npm run package` | `dist/Vanguard-<version>.zip` from committed files |

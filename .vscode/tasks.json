@@ -10,6 +10,13 @@
       "problemMatcher": []
     },
     {
+      "label": "quick tests",
+      "detail": "The JS tests and one Lua smoke test: what a pull request's CI runs",
+      "type": "npm",
+      "script": "test:quick",
+      "problemMatcher": []
+    },
+    {
       "label": "lint (luacheck)",
       "type": "shell",
       "command": "luacheck . --formatter plain --codes",
