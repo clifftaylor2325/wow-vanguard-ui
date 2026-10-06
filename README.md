@@ -193,6 +193,16 @@ npm run preview   # preview/*.png: the default layout and the options window (ne
 
 **Code quality:** every function has a comment on the line above it and at most 10 lines of body code; `npm run verify` and CI enforce it on every pull request. The shared libraries in `Libs/` stay exactly as upstream wrote them, so the scan, luacheck and the coverage count leave them out.
 
+### Releases on CurseForge
+
+`.pkgmeta` tells CurseForge's packager (and Wago's, and the BigWigs packager) what goes in the `Vanguard` folder: exactly what `npm run package` puts in the release zip. `scripts/pkgmeta.test.mjs` fails if the two ever differ, so add a new top-level file or folder to `.pkgmeta`'s ignore list unless players need it.
+
+To publish there once the CurseForge project exists:
+
+1. Add `## X-Curse-Project-ID: <id>` to `Vanguard.toc` (the number in the About box on the project's page), so the CurseForge app can match installed copies to the project.
+2. Upload each release's `Vanguard-<version>.zip` to the project, or point CurseForge's packager at this repository and let it build from the release tag with `.pkgmeta`.
+3. Set `CURSEFORGE_URL` in the website's `scripts/lib/html.mjs` to the project's page: its "Coming soon on CurseForge" badges become links.
+
 ## License
 
 MIT, except the fonts: `Media/Fonts/FiraSansCondensed-*.ttf` are Fira Sans Condensed (Copyright 2012-2015 The Mozilla Foundation and Telefonica S.A.) under the SIL Open Font License 1.1, in `Media/Fonts/OFL.txt`. Vanguard ships them trimmed to Latin, Greek and Cyrillic, with the digits pointing at the font's tabular figures. The libraries in `Libs/` keep their own licenses (below); Vanguard's code stays MIT and only calls them, and LibSharedMedia-3.0 ships unmodified with its license text beside it, as the LGPL allows.
