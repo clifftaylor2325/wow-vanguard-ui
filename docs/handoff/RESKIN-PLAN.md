@@ -360,7 +360,7 @@ Inventory: design §5.8. Group `tabs`. Depends on `T.Tab` and `T.ScrollBar` (S0)
   `_G[name .. "Tab" .. i]` for i = 1..8 that exists, and `frame.TabSystem`'s buttons when present (`TabSystem:GetTabButton`?
   check `Blizzard_SharedXML/Shared/TabSystem/TabSystem.lua` for the accessor and use it guarded), call `T.Tab`. Hook the
   window's `OnShow` so tabs the game adds later are covered. Size M.
-- [ ] **S7.2 Side tabs.** The Camelot character pane (`CharacterFrame.CharacterTab`, `ReputationTab`, `SkillsTab`, `PvPTab`,
+- [x] **S7.2 Side tabs.** The Camelot character pane (`CharacterFrame.CharacterTab`, `ReputationTab`, `SkillsTab`, `PvPTab`,
   `CurrencyTab`, `StatisticsTab`; `CharacterFrame.TabIndicators` faded), `CommunitiesFrame` (`ChatTab`, `RosterTab`,
   `GuildBenefitsTab`, `GuildInfoTab`, `GuildPreferredPlaySettingsTab`) and `LegacySystemFrame` (`LegacyTreeTab`,
   `LegacyChallengeTab`, `LegacyRewardTrackTab`, `TabIndicators`), `InspectFrame` tabs, `LFGParentFrameTab1-3`: `T.Tab`.

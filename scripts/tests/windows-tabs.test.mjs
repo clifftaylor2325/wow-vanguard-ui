@@ -108,3 +108,106 @@ it("tab buttons: the tabs switch off, or a window's own group off, leaves the ga
   expect(gameOwn.eval("return __tabState(TestOnlySocial.Tabs[1]).art"), "a window left to the game keeps its tabs").toBe(-1);
   expect(loggedIn(social).eval("return __tabState(TestOnlySocial.Tabs[1]).art"), "and with its group on they are dressed at login").toBe(0);
 });
+
+// TEST-ONLY side tabs: a LargeSideTabButtonTemplate one (a Frame: art keys, SelectedTexture,
+// SetChecked from its mixin) and a RightSideTabTemplate one (a CheckButton with an unkeyed frame
+// texture, an icon and its overlay). __sideState reads the line, the faded art and the icon.
+const SIDE_ENV = TABS_ENV + `
+  function __side(parent, key)
+    local t = CreateFrame("Frame", nil, parent)
+    for _, k in ipairs({ "Background", "SelectedTexture", "HighlightTexture", "Mask", "TabGlow" }) do t[k] = t:CreateTexture(nil, "BACKGROUND") end
+    t.Icon = t:CreateTexture(nil, "ARTWORK")
+    function t:SetChecked(on) self.SelectedTexture:SetShown(on) end
+    t.SelectedTexture:Hide()
+    if key then parent[key] = t end
+    return t
+  end
+  function __right(parent, key, checked)
+    local t = CreateFrame("CheckButton", nil, parent)
+    t.frameArt = t:CreateTexture(nil, "BORDER")
+    t.Icon, t.IconOverlay = t:CreateTexture(nil, "ARTWORK"), t:CreateTexture(nil, "ARTWORK")
+    t:SetChecked(checked == true)
+    parent[key] = t
+    return t
+  end
+  function __sideState(t)
+    local line = __line(t)
+    return { art = t.Background and t.Background.__alpha or (t.frameArt and t.frameArt.__alpha) or -1,
+      icon = t.Icon.__alpha == nil and (t.IconOverlay == nil or t.IconOverlay.__alpha == nil), line = line ~= nil and line:IsShown() }
+  end
+`;
+
+it("side tabs: the character pane's mode tabs in the theme, the checked one lit from the start and as the game moves it", () => {
+  const addon = loggedIn(WINDOWS_ENV + SIDE_ENV + `
+    __window("CharacterFrame")
+    CharacterFrame.ModeTabs = CreateFrame("Frame", nil, CharacterFrame)
+    CharacterFrame.ModeTabs.Tabs = {}
+    for _, key in ipairs({ "CharacterTab", "ReputationTab", "SkillsTab" }) do
+      local t = __side(CharacterFrame.ModeTabs, key)
+      table.insert(CharacterFrame.ModeTabs.Tabs, t)
+    end
+    CharacterFrame.ModeTabs.CharacterTab:SetChecked(true)
+    CharacterFrame.TabIndicators = CreateFrame("Frame", nil, CharacterFrame)
+    CharacterFrame.TabIndicators.Glyph = CharacterFrame.TabIndicators:CreateTexture()
+  `);
+  const tabs = "local m = CharacterFrame.ModeTabs return { __sideState(m.CharacterTab), __sideState(m.ReputationTab), __sideState(m.SkillsTab) }";
+  const first = addon.eval(`${tabs}`);
+  expect(first.map((s) => s.art), "the side art is faded").toEqual([0, 0, 0]);
+  expect(first.map((s) => s.icon), "the icons are the game's").toEqual([true, true, true]);
+  expect(first.map((s) => s.line), "the tab the game had checked before the skin hooked it is already lit").toEqual([true, false, false]);
+  addon.eval("local m = CharacterFrame.ModeTabs m.CharacterTab:SetChecked(false) m.ReputationTab:SetChecked(true)");
+  expect(addon.eval(tabs).map((s) => s.line), "the line follows SetChecked, as the game's RefreshDisplay does").toEqual([false, true, false]);
+  expect(addon.eval("return CharacterFrame.TabIndicators.Glyph.__alpha"), "the gamepad tab indicators' art is faded").toBe(0);
+  addon.eval("CharacterFrame:Show()");
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("CharacterFrame:Hide() CharacterFrame:Show()");
+  expect(addon.eval("return { ns.Theme.PaintedCount(), ns.errors[1] == nil }"), "a second show paints nothing more").toEqual([painted, true]);
+});
+
+it("side tabs: the guild window's, whether or not another group registered it, unless its group is off", () => {
+  const guild = WINDOWS_ENV + SIDE_ENV + `
+    __window("CommunitiesFrame")
+    __right(CommunitiesFrame, "ChatTab", true) __right(CommunitiesFrame, "RosterTab") __right(CommunitiesFrame, "GuildInfoTab")`;
+  const addon = loggedIn(guild);
+  const state = addon.eval("return { __sideState(CommunitiesFrame.ChatTab), __sideState(CommunitiesFrame.RosterTab) }");
+  expect(state.map((s) => s.art), "its frame texture (no key) is faded").toEqual([0, 0]);
+  expect(state.map((s) => s.icon), "its icon and the icon's overlay are kept").toEqual([true, true]);
+  expect(state.map((s) => s.line), "the checked tab is lit").toEqual([true, false]);
+  addon.eval("CommunitiesFrame.RosterTab:SetChecked(true) CommunitiesFrame.ChatTab:SetChecked(false)");
+  expect(addon.eval("return { __sideState(CommunitiesFrame.ChatTab).line, __sideState(CommunitiesFrame.RosterTab).line }"), "and it moves with SetChecked").toEqual([false, true]);
+  const registered = guild + `ns.GetModule("Windows").Add("social", "framed", { "CommunitiesFrame" })`;
+  expect(loggedIn(registered).eval("return __sideState(CommunitiesFrame.ChatTab).art"), "registered by the social group, still dressed").toBe(0);
+  const off = loggedIn(registered, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { social = false } } }" });
+  expect(off.eval("return __sideState(CommunitiesFrame.ChatTab).art"), "with that group off the window and its tabs are the game's").toBe(-1);
+});
+
+it("side tabs: Legacy, inspect and group finder windows are dressed when their part of the game loads", () => {
+  const addon = loggedIn(WINDOWS_ENV + SIDE_ENV);
+  addon.eval(`
+    __window("LegacySystemFrame")
+    LegacySystemFrame.Tabs = {}
+    for _, key in ipairs({ "LegacyRewardTrackTab", "LegacyChallengeTab", "LegacyTreeTab" }) do table.insert(LegacySystemFrame.Tabs, __side(LegacySystemFrame, key)) end
+    LegacySystemFrame.TabIndicators = CreateFrame("Frame", nil, LegacySystemFrame)
+    __window("LFGParentFrame")
+    __tab(LFGParentFrame, "LFGParentFrameTab1") __tab(LFGParentFrame, "LFGParentFrameTab2") __tab(LFGParentFrame, "LFGParentFrameTab3")
+    __side(LFGParentFrame, "ListingTab") __side(LFGParentFrame, "BrowsingTab")
+    __window("InspectFrame") __tab(InspectFrame, "InspectFrameTab1") __tab(InspectFrame, "InspectFrameTab2")`);
+  expect(addon.eval("return __sideState(LegacySystemFrame.LegacyTreeTab).art"), "not before the part loads").toBe(-1);
+  addon.fire("ADDON_LOADED", "Blizzard_LegacySystem");
+  const out = addon.eval(`return { __sideState(LegacySystemFrame.LegacyTreeTab).art, __sideState(LegacySystemFrame.Tabs[1]).art,
+    __tabState(LFGParentFrameTab3).art, __sideState(LFGParentFrame.BrowsingTab).art, __tabState(InspectFrameTab2).art }`);
+  expect(out, "the Legacy side tabs, the group finder's tabs and side tabs and the inspect tabs").toEqual([0, 0, 0, 0, 0]);
+  addon.eval("InspectFrameTab2:Disable()");
+  expect(addon.eval("return __tabState(InspectFrameTab2).line"), "the inspect tab the game selects (disables) is lit").toBe(true);
+  expect(addon.eval("return ns.errors[1] == nil")).toBe(true);
+});
+
+it("side tabs: a window without the parts, or a tab the client refuses, loads cleanly", () => {
+  const bare = loggedIn(WINDOWS_ENV + SIDE_ENV + `__window("CharacterFrame") __window("CommunitiesFrame") __window("LFGParentFrame")
+    CommunitiesFrame.ChatTab = CreateFrame("CheckButton", nil, CommunitiesFrame)`);
+  bare.eval("CharacterFrame:Show() CommunitiesFrame:Show() LFGParentFrame:Show()");
+  expect(bare.eval("return ns.errors[1] == nil"), "no ModeTabs, no tabs, an icon-less check button").toBe(true);
+  const refuses = loggedIn(WINDOWS_ENV + SIDE_ENV + `__window("CommunitiesFrame") __right(CommunitiesFrame, "RosterTab")
+    CommunitiesFrame.ChatTab = __right(CommunitiesFrame, "ChatTab") CommunitiesFrame.ChatTab.HookScript = function() error("TEST-ONLY: no such script") end`);
+  expect(refuses.eval("return { __sideState(CommunitiesFrame.RosterTab).art, #ns.errors }"), "the failing tab is reported, the next one still dressed").toEqual([0, 1]);
+});
