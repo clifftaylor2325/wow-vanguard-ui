@@ -22,6 +22,17 @@ const SYSTEM_ENV = `
   function __errors(word) for _, e in ipairs(ns.errors) do if e.text:find(word) then return e.text end end return "none" end
 `;
 
+// TEST-ONLY: a ButtonFrameTemplate-shaped system window (art, NineSlice, close button, title) with push buttons by parentKey.
+const BUTTON_FRAME_ENV = SYSTEM_ENV + `
+  function __buttonFrame(name, keys)
+    local f = __frame(name)
+    __sub(f, "NineSlice") __sub(f, "Bg") __sub(f, "Inset") __sub(f, "Border")
+    __sub(f, "CloseButton", "Button") __sub(f, "TitleContainer") __text(f.TitleContainer, "TitleText")
+    for _, k in ipairs(keys or {}) do __sub(f, k, "Button") end
+    return f
+  end
+`;
+
 // TEST-ONLY: the game's options window, shaped like SettingsPanel (Blizzard_Settings_Shared).
 const SETTINGS_ENV = SYSTEM_ENV + `
   local f = __frame("SettingsPanel")
@@ -80,4 +91,82 @@ it("game options: switched off it stays the game's, and a client missing parts l
   const bare = loggedIn(SYSTEM_ENV + '__frame("SettingsPanel")');
   bare.eval("SettingsPanel:Show()");
   expect([bare.eval("return __faded(SettingsPanel)"), bare.eval("return __panelled(SettingsPanel)"), bare.eval("return __errors('Windows')")], "a window with none of the parts").toEqual([0, true, "none"]);
+});
+
+// A button frame's state: its art, panel, close button, title font and the named parts' panels.
+const frameState = (addon, name, parts = []) => addon.eval(`local f = ${name}
+  local out = { art = __faded(f), nine = f.NineSlice.__alpha, panel = __panelled(f), x = f.CloseButton.__piece.__alpha,
+    title = f.TitleContainer.TitleText:GetFont() ~= nil, painted = ns.Theme.PaintedCount(), parts = {} }
+  for _, k in ipairs({ ${parts.map((k) => `"${k}"`).join(", ")} }) do out.parts[k] = __panelled(f[k]) end
+  return out`);
+
+// Shows a window twice and checks the second show paints nothing new, then that its switch off leaves it the game's.
+const sameOnReshow = (addon, name) => {
+  const first = frameState(addon, name);
+  addon.eval(`${name}:Hide() ${name}:Show()`);
+  expect(frameState(addon, name).painted, `${name}: showing it again paints nothing new`).toBe(first.painted);
+};
+const SWITCH_OFF = { savedVariables: "VanguardDB.profiles = { Default = { Windows = { system = false } } }" };
+
+it("addon list: the window skin plus its push buttons and search box, the rows untouched", () => {
+  const env = BUTTON_FRAME_ENV + '__buttonFrame("AddonList", { "CancelButton", "OkayButton", "EnableAllButton", "DisableAllButton", "SearchBox" })';
+  const addon = loggedIn(env);
+  addon.eval("AddonList:Show()");
+  expect(frameState(addon, "AddonList", ["CancelButton", "OkayButton", "EnableAllButton", "DisableAllButton", "SearchBox"]),
+    "art faded, panel, close button and title themed, buttons and search box themed").toMatchObject({
+    art: 0, nine: 0, panel: true, x: 0, title: true, parts: { CancelButton: true, OkayButton: true, EnableAllButton: true, DisableAllButton: true, SearchBox: true },
+  });
+  sameOnReshow(addon, "AddonList");
+  const off = loggedIn(env, SWITCH_OFF);
+  off.eval("AddonList:Show()");
+  expect(frameState(off, "AddonList").panel, "switched off: the game's window").toBe(false);
+  const bare = loggedIn(BUTTON_FRAME_ENV + '__buttonFrame("AddonList")');
+  bare.eval("AddonList:Show()");
+  expect([frameState(bare, "AddonList").panel, bare.eval("return __errors('Windows')")], "without the buttons: skinned, no error").toEqual([true, "none"]);
+});
+
+it("nameplates tutorial: the window skin, the four picture cards kept visible", () => {
+  const env = BUTTON_FRAME_ENV + `local f = __buttonFrame("NamePlatesTutorial")
+    for _, k in ipairs({ "StyleOptions", "Aggro", "BuffsDebuffs", "EnemyVsFriendly" }) do f[k] = f:CreateTexture(nil, "ARTWORK") end`;
+  const addon = loggedIn(env);
+  addon.eval("NamePlatesTutorial:Show()");
+  expect(frameState(addon, "NamePlatesTutorial"), "background faded, panel painted").toMatchObject({ art: 0, panel: true });
+  expect(addon.eval("local f = NamePlatesTutorial return { f.StyleOptions.__alpha, f.Aggro.__alpha, f.BuffsDebuffs.__alpha, f.EnemyVsFriendly.__alpha }"), "the cards are shown").toEqual([1, 1, 1, 1]);
+  sameOnReshow(addon, "NamePlatesTutorial");
+  const off = loggedIn(env, SWITCH_OFF);
+  off.eval("NamePlatesTutorial:Show()");
+  expect(frameState(off, "NamePlatesTutorial").art, "switched off: the game's art is not faded").toBeUndefined();
+  const bare = loggedIn(BUTTON_FRAME_ENV + '__buttonFrame("NamePlatesTutorial")');
+  bare.eval("NamePlatesTutorial:Show()");
+  expect(bare.eval("return __errors('Windows')"), "a client without the cards").toBe("none");
+});
+
+// TEST-ONLY: the chat settings window: a Border, a Header with a plate and title, two boxes (one with a NineSlice, one named ...Backdrop), a plain child, and the named buttons.
+const CHAT_ENV = BUTTON_FRAME_ENV + `
+  local f = __buttonFrame("ChatConfigFrame")
+  __sub(f, "Header") __text(f.Header, "Text")
+  local box = __sub(f, "CategoryBox") __sub(box, "NineSlice")
+  local named = CreateFrame("Frame", "TestOnlyChatBackdrop", f) __art(named)
+  local plain = CreateFrame("Frame", nil, f) __art(plain) f.Plain = plain
+  for _, n in ipairs({ "ChatConfigFrameDefaultButton", "ChatConfigFrameCancelButton", "ChatConfigFrameOkayButton", "CombatLogDefaultButton", "TextToSpeechDefaultButton" }) do
+    CreateFrame("Button", n, f):CreateTexture()
+  end
+`;
+
+it("chat settings: the outer window, its header plate, the boxes under it and the named buttons", () => {
+  const addon = loggedIn(CHAT_ENV);
+  addon.eval("ChatConfigFrame:Show()");
+  expect(frameState(addon, "ChatConfigFrame", ["CategoryBox", "Plain"]), "window skinned; the box with a NineSlice is an inset panel, a plain child is not").toMatchObject({
+    art: 0, panel: true, x: 0, title: true, parts: { CategoryBox: true, Plain: false },
+  });
+  expect(addon.eval(`return { __faded(ChatConfigFrame.Header), ChatConfigFrame.Header.Text:GetFont() ~= nil, __faded(ChatConfigFrame.CategoryBox.NineSlice),
+    __faded(TestOnlyChatBackdrop), __panelled(TestOnlyChatBackdrop), __panelled(ChatConfigFrameOkayButton), __panelled(TextToSpeechDefaultButton) }`),
+    "header art faded and its title in the theme font; the box art faded; a child named ...Backdrop treated as a box; named buttons themed").toEqual([0, true, 0, 0, true, true, true]);
+  sameOnReshow(addon, "ChatConfigFrame");
+  const off = loggedIn(CHAT_ENV, SWITCH_OFF);
+  off.eval("ChatConfigFrame:Show()");
+  expect(frameState(off, "ChatConfigFrame").panel, "switched off").toBe(false);
+  const bare = loggedIn(BUTTON_FRAME_ENV + '__buttonFrame("ChatConfigFrame")');
+  bare.eval("ChatConfigFrame:Show()");
+  expect(bare.eval("return __errors('Windows')"), "a window without a header, boxes or buttons").toBe("none");
 });

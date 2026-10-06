@@ -236,7 +236,7 @@ Inventory: design §5.3. Group `system`.
   (`T.CloseButton`), `ApplyButton`, `CloseButton` (`T.Button`), `SearchBox` (`T.EditBox`), `GameTab`/`AddOnsTab`
   (`T.Tab`); `CategoryList` and `SettingsList` inset panels; `Container`/`SettingsCanvas` left to their pages. Fonts via `T.FontObjects({ SettingsListHeader… })` only if those font objects exist on
   Forever (check `Blizzard_Settings_Shared`); otherwise none. Re-skin on `OnShow`. Size M.
-- [ ] **S3.2 Addon list, chat config, nameplates tutorial.** `AddonList` (`GW.Skin`; its rows' `Backdrop` not touched),
+- [x] **S3.2 Addon list, chat config, nameplates tutorial.** `AddonList` (`GW.Skin`; its rows' `Backdrop` not touched),
   `ChatConfigFrame` (outer frame + every child whose name ends in `Backdrop`/`Background`: fade and inset panel),
   `NamePlatesTutorial` (`GW.Skin`). Size S.
 - [ ] **S3.3 Edit Mode windows.** `EditModeManagerFrame` (`Border` faded, `T.Panel` with shadow; `Title`/`LayoutLabel`
