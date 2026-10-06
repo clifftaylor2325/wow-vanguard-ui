@@ -90,3 +90,52 @@ function GW.SkinStable(frame)
 end
 
 GW.Add("town", "framed", { "PetStableFrame" }, GW.SkinStable)
+
+-- Trainer -------------------------------------------------------------------------------------------
+
+-- A skill row's text parts, in the theme font: the name, the requirements and the name's side note.
+local TRAINER_ROW_TEXTS = { "name", "subText", "nameSubText" }
+-- The three pieces of a category header row's plate (faded; its label and fold icon stay).
+local TRAINER_PLATE = { "LeftPiece", "RightPiece", "CenterPiece" }
+
+-- One row of the trainer list as the game acquires it (callback of the list: owner, row, data): the row's
+-- plate faded, the skill's selected mark, disabled shade, lock and icon kept, its texts in the theme font.
+local function skinTrainerRow(_, row)
+  if type(row) ~= "table" then return end
+  fadeWhole(row, TRAINER_PLATE)
+  local plate = type(row.GetNormalTexture) == "function" and row:GetNormalTexture()
+  if type(plate) == "table" then plate:SetAlpha(0) end
+  keyFonts(row, TRAINER_ROW_TEXTS, "small")
+end
+
+-- The list's rows now and each row it acquires later (the game reuses its rows, one callback is enough).
+local function watchTrainerRows(box)
+  local mixin = _G.ScrollBoxListMixin
+  if type(box) ~= "table" or box.vgTrainerRows or type(box.RegisterCallback) ~= "function" then return end
+  if type(mixin) ~= "table" or type(mixin.Event) ~= "table" then return end
+  box.vgTrainerRows = true
+  box:RegisterCallback(mixin.Event.OnAcquiredFrame, skinTrainerRow, GW)
+  if type(box.ForEachFrame) == "function" then box:ForEachFrame(function(row) skinTrainerRow(nil, row) end) end
+end
+
+-- A frame that is only art in the game (an inset): its art faded and a dark panel in its place.
+local function insetPanel(part)
+  if type(part) ~= "table" or not part.GetRegions then return end
+  T.FadeRegions(part)
+  fadeWhole(part, { "NineSlice" })
+  T.Panel(part, { inset = true, noSheen = true })
+end
+
+-- The class trainer: the window skin, its backdrop and money plate faded, the lower inset a dark panel,
+-- the filter button and its rows in the theme (Vanguard's Train all, beside Train, is already themed).
+function GW.SkinTrainer(frame)
+  GW.Skin(frame)
+  GW.FadeParts(frame, { "BG" })
+  GW.FadeNamed({ "ClassTrainerFrameMoneyBg" })
+  insetPanel(frame.bottomInset)
+  keyButtons(frame, { "FilterDropdown" })
+  watchTrainerRows(frame.ScrollBox)
+end
+
+GW.AddButtons("ClassTrainerFrame", { "ClassTrainerTrainButton" })
+GW.Add("town", "onDemand", "Blizzard_TrainerUI", { "ClassTrainerFrame" }, GW.SkinTrainer)
