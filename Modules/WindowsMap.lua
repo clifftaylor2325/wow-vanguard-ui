@@ -9,8 +9,8 @@ local GW = ns.GetModule("Windows")
 
 -- Small helpers ---------------------------------------------------------------------------
 
--- The textures a button draws as its icon (normal, pushed, highlight), which a flat tile keeps.
-GW.GLYPH_GETTERS = { "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture" }
+-- The textures a button draws as its icon (normal, pushed, disabled, highlight), which a flat tile keeps.
+GW.GLYPH_GETTERS = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }
 
 -- Whether a value is a frame (a table with regions) this client has.
 local function isFrame(part)
@@ -284,3 +284,93 @@ function GW.SkinQueueStatus(frame)
 end
 
 GW.Add("map", "framed", { "QueueStatusFrame" }, GW.SkinQueueStatus)
+
+-- Calendar ---------------------------------------------------------------------------------------
+
+-- The textures the calendar keeps visible: the selected weekday's glow and the shadow on the month's last day.
+GW.CALENDAR_KEEP = { "CalendarWeekdaySelectedTexture", "CalendarLastDayDarkTexture" }
+-- The day grid's size (the game makes CalendarDayButton1 to 42).
+GW.CALENDAR_DAYS = 42
+-- The month buttons, drawn as flat tiles round the icon they show.
+GW.CALENDAR_MONTH_BUTTONS = { "CalendarPrevMonthButton", "CalendarNextMonthButton" }
+-- Each dialog's close button (the game names them without "Frame", so the registry's lookup misses them).
+GW.CALENDAR_CLOSE = {
+  CalendarViewHolidayFrame = "CalendarViewHolidayCloseButton", CalendarViewRaidFrame = "CalendarViewRaidCloseButton",
+  CalendarViewEventFrame = "CalendarViewEventCloseButton", CalendarCreateEventFrame = "CalendarCreateEventCloseButton",
+  CalendarMassInviteFrame = "CalendarMassInviteCloseButton",
+}
+-- The dialogs' push buttons (themed with the window by the registry) and text boxes.
+GW.CALENDAR_BUTTONS = {
+  CalendarViewEventFrame = { "CalendarViewEventAcceptButton", "CalendarViewEventTentativeButton", "CalendarViewEventDeclineButton", "CalendarViewEventRemoveButton" },
+  CalendarCreateEventFrame = { "CalendarCreateEventInviteButton", "CalendarCreateEventMassInviteButton", "CalendarCreateEventRaidInviteButton", "CalendarCreateEventCreateButton" },
+  CalendarMassInviteFrame = { "CalendarMassInviteAcceptButton" }, CalendarEventPickerFrame = { "CalendarEventPickerCloseButton" },
+  CalendarTexturePickerFrame = { "CalendarTexturePickerCancelButton", "CalendarTexturePickerAcceptButton" },
+}
+GW.CALENDAR_EDITS = {
+  CalendarCreateEventFrame = { "CalendarCreateEventTitleEdit", "CalendarCreateEventInviteEdit" },
+  CalendarMassInviteFrame = { "CalendarMassInviteMinLevelEdit", "CalendarMassInviteMaxLevelEdit" },
+}
+-- The pictures a dialog keeps: the holiday's art (key Texture of its frame) and the icon on the create dialog.
+GW.CALENDAR_PICTURES = { "CalendarCreateEventIcon" }
+for name, list in pairs(GW.CALENDAR_BUTTONS) do GW.AddButtons(name, list) end
+
+-- One day of the grid: the parchment on its normal texture faded (the event icons, the date, the highlight and
+-- the shadow stay), and an inset panel behind them.
+local function skinDay(button)
+  if not isFrame(button) then return end
+  local back = type(button.GetNormalTexture) == "function" and button:GetNormalTexture()
+  if type(back) == "table" then back:SetAlpha(0) end
+  T.Panel(button, { inset = true, noSheen = true })
+end
+
+-- The textures named in names that this client has, as a set.
+local function namedSet(names)
+  local set = {}
+  for _, name in ipairs(names) do
+    if type(_G[name]) == "table" then set[_G[name]] = true end
+  end
+  return set
+end
+
+-- The calendar window: every texture of its frame faded but the two it keeps (see GW.CALENDAR_KEEP), a panel with a
+-- shadow, the close button, the month buttons as tiles and the day grid as inset panels.
+function GW.SkinCalendar(frame)
+  T.FadeRegions(frame, namedSet(GW.CALENDAR_KEEP))
+  T.Panel(frame, { shadow = true })
+  if type(_G.CalendarCloseButton) == "table" then T.CloseButton(_G.CalendarCloseButton) end
+  for _, name in ipairs(GW.CALENDAR_MONTH_BUTTONS) do GW.SkinGlyphButton(_G[name]) end
+  for i = 1, GW.CALENDAR_DAYS do skinDay(_G["CalendarDayButton" .. i]) end
+end
+
+-- A calendar dialog's header: its plate faded and its title in the heading font.
+local function dressHeader(header)
+  if not isFrame(header) then return end
+  GW.FadeParts(header, GW.MENU_PLATE)
+  if type(header.Text) == "table" then T.Text(header.Text, "heading", false) end
+end
+
+-- The window skin with the dialog's pictures (see GW.CALENDAR_PICTURES) left as the game has them.
+local function skinKeepingPictures(frame)
+  local kept = namedSet(GW.CALENDAR_PICTURES)
+  if type(frame.Texture) == "table" then kept[frame.Texture] = true end
+  for part in pairs(kept) do kept[part] = part:GetAlpha() end
+  GW.Skin(frame)
+  for part, alpha in pairs(kept) do part:SetAlpha(alpha) end
+end
+
+-- One of the calendar's dialogs: the window skin, the header, the close button and the text boxes it has.
+function GW.SkinCalendarDialog(frame)
+  local name = frame:GetName()
+  skinKeepingPictures(frame)
+  dressHeader(frame.Header)
+  if type(_G[GW.CALENDAR_CLOSE[name] or ""]) == "table" then T.CloseButton(_G[GW.CALENDAR_CLOSE[name]]) end
+  for _, edit in ipairs(GW.CALENDAR_EDITS[name] or {}) do
+    if isFrame(_G[edit]) then T.EditBox(_G[edit]) end
+  end
+end
+
+GW.Add("map", "onDemand", "Blizzard_Calendar", { "CalendarFrame" }, GW.SkinCalendar)
+GW.Add("map", "onDemand", "Blizzard_Calendar", {
+  "CalendarViewHolidayFrame", "CalendarViewRaidFrame", "CalendarViewEventFrame", "CalendarCreateEventFrame",
+  "CalendarMassInviteFrame", "CalendarEventPickerFrame", "CalendarTexturePickerFrame",
+}, GW.SkinCalendarDialog)
