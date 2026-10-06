@@ -163,6 +163,17 @@ The theme has no spacing tokens: each layout keeps its sizes as constants in its
 
 Vanguard shares its three bars through LibSharedMedia as "Vanguard", "Vanguard Soft" and "Vanguard Flat". The bar texture applies on reload. `T.StyleBar(bar)` gives a bar the texture; `T.SetBarValue(bar, value)` lets the client ease the change ("Smooth health and power bars", on by default, where the client has `StatusBarInterpolation`); `T.Spark(bar, width)` adds the soft additive spark (cast bars 8 wide in `white` at 0.8, power ticks 6 wide in `spark`). Shields are drawn with `Media/Textures/Stripes` in `shield`; the raid tile dispel wash with `Media/Textures/Fade`.
 
+## Game frame primitives
+
+For the game's own windows (`Modules/Windows*.lua`, docs/design/RESKIN.md), and through the skin API (`S.Tab`, `S.Tooltip`, `S.ScrollBar`, `S.FontObjects`) for other addons. Each is safe to call again and fades the game's art by alpha only, so the game's layout and show/hide code keep working.
+
+| Primitive | What it does |
+| --- | --- |
+| `T.Tab(button)` | A tab of any of the game's three tab templates (`PanelTabButtonTemplate`, `TabSystemButtonTemplate`, `LargeSideTabButtonTemplate`): the parts in `T.TAB_ART` faded (the icon and text kept), an `inset` panel without sheen, the `hover` wash, and a one-pixel `accent` line along the top while it is the selected tab. It follows the game's selection: `SetTabSelected` (tab systems), `SetChecked` (side tabs), else disabled (the game selects a panel tab by disabling it). |
+| `T.Tooltip(frame)` | A tooltip-like frame (tooltips, menus, small panels): the panel at alpha 0.94 with a soft shadow, the game's `NineSlice` faded. |
+| `T.ScrollBar(bar)` | The game's `MinimalScrollBar` and `WowTrimScrollBar`: the parts in `T.SCROLL_ART` and the thumb's art faded, the thumb a `raised` panel whose edge goes `accent` under the mouse, the Back/Forward arrows as flat buttons with the Down icon in `text2` (turned over for Back). A bar without a thumb is left alone. |
+| `T.FontObjects(map)` | The theme font, at `T.ScaledSize(size)`, on the game's font objects in `{ Name = { size, bold } }`, re-applied by `T.Refresh` (font and Text size changes). Used for the tooltip and quest tracker fonts. |
+
 ## Icons
 
 `Media/Icons/*.tga` are white line glyphs drawn on a 16-unit grid at 32 x 32 px by `scripts/lib/media-sources.mjs` and shown at 16 px (options nav, menu strip, close and arrow controls) or smaller (raid marks at about 10 px, which are filled shapes for that reason).

@@ -560,12 +560,9 @@ function MS.SkinTracker()
 end
 
 -- The theme font, scaled by Text size, on the tracker's font objects (the
--- quest titles and objectives keep the game's colors).
+-- quest titles and objectives keep the game's colors), kept after every theme change.
 function MS.TrackerFonts()
-  for name, spec in pairs(MS.TRACKER_FONTS) do
-    local font, path, outline = _G[name], T.Font(spec[2])
-    if type(font) == "table" and font.SetFont then font:SetFont(path, T.ScaledSize(spec[1]), outline) end
-  end
+  T.FontObjects(MS.TRACKER_FONTS)
 end
 
 -- The quest tracker in the Vanguard look, kept up as the game adds sections
@@ -575,7 +572,6 @@ local function lookTracker()
   if MS.OwnTracker() or type(tracker) ~= "table" or type(hooksecurefunc) ~= "function" then return end
   MS.SkinTracker()
   MS.TrackerFonts()
-  T.OnChanged(MS.TrackerFonts)
   T.OnChanged(paintRules)
   if type(tracker.Update) == "function" then hooksecurefunc(tracker, "Update", MS.SkinTracker) end
 end

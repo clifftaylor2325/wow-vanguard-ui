@@ -8,12 +8,24 @@
 -- buttons are themed. It's done every time a window shows, so parts the game
 -- adds later are covered too, and painting again never piles up. The
 -- character pane also shows each worn item's durability on its slot.
+--
+-- Windows are registered by group with GW.Add (docs/design/RESKIN.md 3.1): this
+-- file registers the first three groups, and Modules/Windows<Area>.lua add the
+-- rest. Each group has its own switch; a window in a group switched off is never hooked.
 
 local ADDON, ns = ...
 
 local T = ns.Theme
 
-local GW = ns.Module("Windows", { defaults = { windows = true, popups = true, timers = true, durability = true } })
+local GW = ns.Module("Windows", { defaults = {
+  windows = true, popups = true, timers = true, durability = true,
+  social = true, town = true, system = true, map = true, menus = true, tabs = true, pvp = true,
+} })
+
+-- The groups of game windows, each a switch under Bars, map, chat -> Game windows.
+GW.GROUPS = { "windows", "popups", "timers", "social", "town", "system", "map", "menus", "tabs", "pvp" }
+-- Every registered window: name -> { group = , skin = }, and the names in the order registered.
+GW.REGISTERED, GW.ORDER = {}, {}
 
 -- Framed windows (most use the game's ButtonFrameTemplate or PortraitFrameTemplate).
 GW.FRAMED = {
@@ -25,13 +37,16 @@ GW.POPUPS = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }
 GW.TIMERS = { "MirrorTimer1", "MirrorTimer2", "MirrorTimer3" }
 -- The windows Vanguard's quest dialog stands in for: the game never shows them while it is on, so they are not skinned.
 GW.QUEST_WINDOWS = { QuestFrame = true, GossipFrame = true }
--- Windows that load with their own part of the game: addon name -> window names.
-GW.ON_DEMAND = {
+-- Windows that load with their own part of the game: addon name -> window names
+-- (filled by GW.Add; the first ones are registered at the end of this file).
+GW.ON_DEMAND = {}
+-- The windows group's own on-demand windows. (Blizzard_EncounterJournal never loads on Forever.)
+GW.LATER = {
   Blizzard_PlayerSpells = { "PlayerSpellsFrame" }, Blizzard_TimeManager = { "TimeManagerFrame" },
   Blizzard_AuctionHouseUI = { "AuctionHouseFrame" }, Blizzard_Professions = { "ProfessionsFrame" },
   Blizzard_InspectUI = { "InspectFrame" }, Blizzard_GuildBankUI = { "GuildBankFrame" },
   Blizzard_Collections = { "CollectionsJournal" }, Blizzard_AchievementUI = { "AchievementFrame" },
-  Blizzard_EncounterJournal = { "EncounterJournal" }, Blizzard_FlightMap = { "FlightMapFrame" },
+  Blizzard_FlightMap = { "FlightMapFrame" },
 }
 -- The parchment behind book and letter pages (faded: the page text goes light on the dark panel).
 GW.ITEM_TEXT_ART = { "ItemTextMaterialTopLeft", "ItemTextMaterialTopRight", "ItemTextMaterialBotLeft", "ItemTextMaterialBotRight", "ItemTextFramePageBg" }
@@ -91,6 +106,33 @@ function GW.Skin(frame)
   fadeArt(frame)
   T.Panel(frame, { shadow = true })
   dressParts(frame, name)
+end
+
+-- Fades each part of a frame named in keys (parentKeys) that it has: a frame's own
+-- textures, or a texture itself. Parts it lacks are skipped.
+function GW.FadeParts(frame, keys)
+  for _, key in ipairs(keys) do
+    local part = frame[key]
+    if type(part) == "table" and part.GetRegions then T.FadeRegions(part)
+    elseif type(part) == "table" and part.SetAlpha then part:SetAlpha(0) end
+  end
+end
+
+-- Fades each global texture or frame named in names that this client has (by alpha).
+function GW.FadeNamed(names)
+  for _, name in ipairs(names) do
+    local part = _G[name]
+    if type(part) == "table" and part.SetAlpha then part:SetAlpha(0) end
+  end
+end
+
+-- A skin function for windows with more art than GW.ART: GW.Skin, then the parts
+-- named in keys faded (see GW.FadeParts).
+function GW.SkinWith(keys)
+  return function(frame)
+    GW.Skin(frame)
+    GW.FadeParts(frame, keys)
+  end
 end
 
 -- A breath or fatigue bar: the window skin, and its bar in the theme's bar texture.
@@ -167,6 +209,7 @@ local function paintNamed(names, token)
     if type(fs) == "table" and fs.SetTextColor then T.Color(fs, token) end
   end
 end
+GW.PaintNamed = paintNamed
 
 -- The quest window's texts in light body text and gold headings.
 function GW.LightQuestText()
@@ -234,32 +277,60 @@ local function replaced(name)
   return GW.QUEST_WINDOWS[name] == true and dialog ~= nil and dialog.frame ~= nil
 end
 
--- Skins a window now and every time it shows (once hooked); not one the quest dialog replaces.
-local function watch(name, skin)
+-- Whether a registered window should be hooked now: the client has it, its group is
+-- switched on, it isn't hooked yet, and the quest dialog doesn't stand in for it.
+local function wanted(name, frame)
+  local entry = GW.REGISTERED[name]
+  if not entry or not GW.settings or not GW.settings[entry.group] then return false end
+  return type(frame) == "table" and frame.HookScript ~= nil and not frame.vgWindow and not replaced(name)
+end
+
+-- Skins a registered window now and every time it shows (once hooked).
+local function watch(name)
   local frame = _G[name]
-  if type(frame) ~= "table" or not frame.HookScript or frame.vgWindow or replaced(name) then return end
+  if not wanted(name, frame) then return end
+  local skin = GW.REGISTERED[name].skin
   frame.vgWindow = true
   skin(frame)
   frame:HookScript("OnShow", skin)
 end
 
 -- Watches every window in a list.
-local function watchAll(names, skin)
-  for _, name in ipairs(names) do watch(name, skin) end
+local function watchAll(names)
+  for _, name in ipairs(names) do watch(name) end
 end
 
 -- A part of the game loaded: watch its windows.
 local function onLoaded(_, addon)
-  watchAll(GW.ON_DEMAND[addon] or {}, GW.Skin)
+  watchAll(GW.ON_DEMAND[addon] or {})
 end
 
--- Watches the framed windows (those loaded now and later) and keeps their text readable.
-local function watchWindows()
-  watchAll(GW.FRAMED, GW.Skin)
-  watchGameMenu()
-  for _, names in pairs(GW.ON_DEMAND) do watchAll(names, GW.Skin) end
-  ns.On("ADDON_LOADED", onLoaded)
-  keepTextReadable()
+-- Records windows under a group with their skin (GW.Skin by default), watched at
+-- once when the module is already on (a late registration).
+local function record(group, names, skin)
+  for _, name in ipairs(names) do
+    if not GW.REGISTERED[name] then GW.ORDER[#GW.ORDER + 1] = name end
+    GW.REGISTERED[name] = { group = group, skin = skin or GW.Skin }
+  end
+  if GW.settings then watchAll(names) end
+end
+
+-- Registers game windows under a group (docs/design/RESKIN.md 3.1), at file scope:
+--   GW.Add(group, "framed", names, skin)            skinned now and on every show
+--   GW.Add(group, "popups", names, skin)            the same, for popups
+--   GW.Add(group, "onDemand", addon, names, skin)   once that part of the game loads
+-- skin is a function(frame), GW.Skin when nil.
+function GW.Add(group, kind, a, b, c)
+  if kind ~= "onDemand" then return record(group, a, b) end
+  GW.ON_DEMAND[a] = GW.ON_DEMAND[a] or {}
+  for _, name in ipairs(b) do table.insert(GW.ON_DEMAND[a], name) end
+  record(group, b, c)
+end
+
+-- Push buttons a window keeps outside Button1-4, themed with it.
+function GW.AddButtons(name, buttonNames)
+  GW.EXTRA_BUTTONS[name] = GW.EXTRA_BUTTONS[name] or {}
+  for _, b in ipairs(buttonNames) do table.insert(GW.EXTRA_BUTTONS[name], b) end
 end
 
 -- Durability on the character pane ----------------------------------------------------------
@@ -302,13 +373,21 @@ local function watchDurability()
   for _, e in ipairs({ "UPDATE_INVENTORY_DURABILITY", "UNIT_INVENTORY_CHANGED" }) do ns.On(e, GW.PaintAllDurability) end
 end
 
--- Module entry point (Core/Modules.lua): watch each switched-on group of windows.
+-- The windows this file skins itself: framed windows, popups, breath bars, and the
+-- windows that load later. Other groups register from Modules/Windows<Area>.lua.
+GW.Add("windows", "framed", GW.FRAMED)
+GW.Add("popups", "popups", GW.POPUPS)
+GW.Add("timers", "framed", GW.TIMERS, GW.SkinTimer)
+for addon, names in pairs(GW.LATER) do GW.Add("windows", "onDemand", addon, names) end
+
+-- Module entry point (Core/Modules.lua): every registered window whose group is on is
+-- watched (those loaded now and later), plus the game menu, readable text, durability
+-- and the breath bars' container.
 function GW.Enable(settings)
-  if settings.windows then watchWindows() end
+  GW.settings = settings
+  if settings.windows then watchGameMenu() keepTextReadable() end
   if settings.durability then watchDurability() end
-  if settings.popups then watchAll(GW.POPUPS, GW.Skin) end
-  if settings.timers then
-    watchAll(GW.TIMERS, GW.SkinTimer)
-    watchContainer()
-  end
+  if settings.timers then watchContainer() end
+  watchAll(GW.ORDER)
+  ns.On("ADDON_LOADED", onLoaded)
 end

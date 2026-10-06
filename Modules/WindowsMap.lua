@@ -1,0 +1,3 @@
+-- Game windows, map group: World map, battlefield map, group finder, Legacy system, queue status and calendar, in the
+-- Vanguard look. Filled by stream S4 of docs/handoff/RESKIN-PLAN.md; registers with
+-- GW.Add (Modules/Windows.lua) at file scope, so the windows are watched at login.

@@ -32,6 +32,10 @@ local S = {
   PanelColor = T.PanelColor,
   Font = T.Font,
   OnChanged = T.OnChanged,
+  Tab = T.Tab,
+  Tooltip = T.Tooltip,
+  ScrollBar = T.ScrollBar,
+  FontObjects = T.FontObjects,
 }
 
 local skins, order = {}, {}

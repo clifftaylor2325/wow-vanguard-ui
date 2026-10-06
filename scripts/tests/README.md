@@ -119,6 +119,15 @@ the addon catches with `ns.Try` land in `ns.errors`. Numbers print as the
 game's Lua 5.1 prints them (`3`, not `3.0`), so string assertions match the
 game.
 
+### Game windows
+
+`WINDOWS_ENV` (in `helpers.mjs`) defines TEST-ONLY `__window(name)`, a frame shaped like the game's
+ButtonFrameTemplate (an art texture marked `TEST-ONLY-ART`, `NineSlice`, `Inset`, `PortraitContainer`,
+`CloseButton`, `TitleContainer.TitleText`, `<name>Button1-2`), and makes `MerchantFrame`, `StaticPopup1` and
+`MirrorTimer1`. `windowState(addon, name)` reads one back: `{ art, nine, portrait, insetNine, panel, title, painted }`
+(`art` is the marked texture's alpha; `panel` is whether Vanguard painted anything). The `windows-<area>.test.mjs`
+files build on them; see docs/handoff/RESKIN-PLAN.md section 0.
+
 ## Conventions
 
 - Names, texts and icons a test makes up carry `TEST-ONLY` so a leak into the
