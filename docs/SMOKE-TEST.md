@@ -20,6 +20,8 @@ For every failed step, paste all of this (steps below say "If it fails, paste:" 
 3. The whole output of `/vg errors`: either `No errors caught this session.`, or a header with the version, interface number and error count, the client line, and each error with `(xN)` and its stack lines.
 4. A screenshot (Print Screen; the files land in the game's Screenshots folder).
 
+Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`### Vanguard report v1 ###` to `### end ###`), with the screen size, the modules turned off and the skins. Press Ctrl+C and paste it whole; it is the same block the feedback form on vanguardui.com reads.
+
 ## 1. Install and first login
 
 ### 1.1 Link the addon
@@ -31,7 +33,7 @@ For every failed step, paste all of this (steps below say "If it fails, paste:" 
 ### 1.2 First login opens the setup wizard
 
 - Do: at character select open AddOns and tick Vanguard, then log in on an account that has never run it (or delete `WTF/Account/<account>/SavedVariables/Vanguard.lua` first).
-- Expect: the setup wizard opens by itself with the caption `Step 1 of 3 · Layout`. If you log in during combat it waits and says `Setup opens when combat ends.`
+- Expect: the setup wizard opens by itself with the caption `Step 1 of 4 · Layout`. If you log in during combat it waits and says `Setup opens when combat ends.`
 - If it fails, paste: the Report block.
 
 ### 1.3 Status
@@ -50,14 +52,14 @@ For every failed step, paste all of this (steps below say "If it fails, paste:" 
 
 ### 2.1 Every options page
 
-- Do: type `/vg`, then click each page in the left list in turn: General, Modules, Unit frames, Raid frames, Healing, Click casting, Action bars, Quests, Nameplates, Bars, map, chat, and Profiles (11 pages in all; the order of Quests and Nameplates is whatever the window shows). After each, type `/vg errors`.
+- Do: type `/vg`, then click each page in the left list in turn: General, Modules, Unit frames, Raid frames, Healing, Click casting, Action bars, Quests, Nameplates, Bars, map, chat, Situations and Profiles (12 pages in all; the order of Quests and Nameplates is whatever the window shows). After each, type `/vg errors`.
 - Expect: each page draws its rows with no Lua error popup, and `/vg errors` stays empty.
 - If it fails, paste: the page name, a screenshot of it, and `/vg errors`.
 
 ### 2.2 The wizard, start to finish
 
-- Do: type `/vg setup`. Click Next twice, then Done.
-- Expect: `Step 1 of 3 · Layout` with three choices (Centered: damage and tanking, Centered: healing, Like the game's); Next goes to `Step 2 of 3 · Look`; Next goes to `Step 3 of 3 · Move things` with every frame's handle showing; the button then says Done, and Done hides the handles and the wizard. Escape and the close button do the same. After `/reload` the wizard does not come back by itself.
+- Do: type `/vg setup`. Click Next three times, then Done.
+- Expect: `Step 1 of 4 · Layout` with three choices (Centered: damage and tanking, Centered: healing, Like the game's); Next goes to `Step 2 of 4 · Screen`, with a choice per screen size (1080p, 1440p, 4K, Ultrawide), the one for your screen marked `your screen`, and `Keep my current sizes`; Next goes to `Step 3 of 4 · Look` (the accent swatches and the raid frame style); Next goes to `Step 4 of 4 · Move things` with every frame's handle showing; the button then says Done, and Done hides the handles and the wizard. Escape and the close button do the same. After `/reload` the wizard does not come back by itself.
 - If it fails, paste: the step id, the caption you saw, and `/vg errors`.
 
 ### 2.3 The healing layout
@@ -83,7 +85,7 @@ For every failed step, paste all of this (steps below say "If it fails, paste:" 
 ### 3.3 Combat while unlocked
 
 - Do: type `/vg unlock`, then start a fight with a mob. During the fight type `/vg unlock` again, and after it ends once more, then type `/vg lock` so the frames are locked again.
-- Expect: `Locked for combat. /vg unlock again afterwards.` and the handles gone when the fight starts; during the fight `/vg unlock` prints `Not in combat. Try again once combat ends.` (that wording is the current text, even though it reads backwards); after the fight `/vg unlock` works again.
+- Expect: `Locked for combat. /vg unlock again afterwards.` and the handles gone when the fight starts; during the fight `/vg unlock` prints `In combat. Try again once combat ends.`; after the fight `/vg unlock` works again.
 - If it fails, paste: the chat lines and `/vg errors`.
 
 ### 3.4 Edit Mode
@@ -276,4 +278,4 @@ For every failed step, paste all of this (steps below say "If it fails, paste:" 
 
 ## When you are done
 
-Paste into the first message of the next Claude session: the output of `/vg status` and `/vg errors`, the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.
+Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.

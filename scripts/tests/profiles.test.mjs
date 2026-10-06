@@ -165,10 +165,10 @@ it("a staged profile switch applies at the next load, and until then the running
   expect(next.eval("return ns.Settings('theme') == VanguardDB.profiles.Raid.theme"), "the settings cache hands out the new profile's tables").toBe(true);
 });
 
-it("a staged profile that no longer exists is created empty when it is applied", () => {
+it("a staged profile that no longer exists is dropped when it would be applied", () => {
   const addon = createAddon({ savedVariables: 'VanguardDB = { version = 1, profiles = { Default = {} } }\nVanguardCharDB = { profile = "Default", pendingProfile = "Gone" }' });
   addon.login();
-  expect(addon.eval("return { ns.ProfileName(), VanguardDB.profiles.Gone ~= nil }"), "the switch still happens, onto an empty profile").toEqual(["Gone", true]);
+  expect(addon.eval("return { ns.ProfileName(), VanguardDB.profiles.Gone == nil, VanguardCharDB.pendingProfile == nil }"), "the character keeps its profile, and the deleted one isn't made again empty").toEqual(["Default", true, true]);
 });
 
 it("the spec change events stage the spec's profile, whatever they pass", () => {
@@ -298,4 +298,36 @@ it("strings and profiles from before the rename (ForeverUI 0.3.0)", () => {
   const renamed = loggedIn("", { savedVariables: saved });
   expect(renamed.eval("return ns.Theme.Settings().barTexture"), "the old bar style name reads as Vanguard's").toBe("vanguard");
   expect(renamed.eval("return ns.Theme.BarTexture() == ns.Theme.Texture('Bar')"), "and draws the bundled bar").toBe(true);
+});
+
+it("a profile deleted on another character falls back to Default, not back empty", () => {
+  // TEST-ONLY saved files: this character last used Raid, which another character has since deleted.
+  const gone = createAddon({ savedVariables: 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = { theme = { accent = { 0, 1, 0 } } } } }\nVanguardCharDB = { profile = "Raid" }' });
+  gone.login();
+  expect(gone.eval("return VanguardCharDB.profile"), "the character loads Default").toBe("Default");
+  expect(gone.eval("return VanguardDB.profiles.Raid"), "and the deleted name doesn't come back").toBe(null);
+  expect(gone.eval("return select(2, ns.Theme.Accent())"), "with Default's settings").toBe(1);
+  // TEST-ONLY: a switch to Healer was staged here, then Healer was deleted elsewhere before the reload.
+  const staged = createAddon({ savedVariables: 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Tank = {} } }\nVanguardCharDB = { profile = "Tank", pendingProfile = "Healer" }' });
+  staged.login();
+  expect(staged.eval("return { VanguardCharDB.profile, VanguardCharDB.pendingProfile == nil }"), "the staged switch is dropped and the character keeps its profile").toEqual(["Tank", true]);
+  expect(staged.eval("return VanguardDB.profiles.Healer"), "without making the deleted profile again").toBe(null);
+});
+
+it("Copy here while a switch waits copies into the profile used after the reload", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  addon.slash("profile new Healer");
+  addon.eval('VanguardDB.profiles.Default.theme = { accent = { 1, 0, 0 } }; VanguardDB.profiles.Healer.theme = { accent = { 0, 1, 0 } }');
+  addon.slash("profile Raid");
+  expect(addon.eval("return { VanguardCharDB.profile, VanguardCharDB.pendingProfile }"), "Raid is staged for the reload").toEqual(["Default", "Raid"]);
+  addon.clearChat();
+  addon.slash("profile copy Healer");
+  expect(addon.eval("return VanguardDB.profiles.Raid.theme.accent[2]"), "/vg profile copy writes into the incoming profile").toBe(1);
+  expect(addon.eval("return VanguardDB.profiles.Default.theme.accent[1]"), "and leaves the running profile alone").toBe(1);
+  expect(addon.eval("return Vanguard_Reload.title:GetText()"), "the reload offer names the profile it copied into").toBe("Copied Healer into Raid. Reload the UI now to apply it?");
+  expect(addon.eval('return ns.CopyProfile("Raid")'), "a profile can't be copied onto the one it is going into").toBe(false);
+  addon.eval('VanguardDB.profiles.Healer.theme = { accent = { 0, 0, 1 } }');
+  expect(addon.eval('return ns.CopyProfile("Healer")'), "ns.CopyProfile returns the profile it copied into").toBe("Raid");
+  expect(addon.eval("return { VanguardDB.profiles.Raid.theme.accent[3], VanguardDB.profiles.Default.theme.accent[1] }"), "Copy here does the same").toEqual([1, 1]);
 });
