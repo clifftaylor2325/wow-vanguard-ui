@@ -355,23 +355,23 @@ Inventory: design §5.6. No new group: each change lives under its module's own 
 Files: `Modules/WindowsTabs.lua`, `scripts/tests/windows-tabs.test.mjs`, own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, number fixed there).
 Inventory: design §5.8. Group `tabs`. Depends on `T.Tab` and `T.ScrollBar` (S0).
 
-- [ ] **S7.1 Tab buttons on framed windows.** On each window already registered (read `GW.FRAMED` and `GW.ON_DEMAND`
+- [x] **S7.1 Tab buttons on framed windows.** On each window already registered (read `GW.FRAMED` and `GW.ON_DEMAND`
   at `Enable`, don't re-list them): for every button in `frame.Tabs` (parentArray of `PanelTabButtonTemplate`), every
   `_G[name .. "Tab" .. i]` for i = 1..8 that exists, and `frame.TabSystem`'s buttons when present (`TabSystem:GetTabButton`?
   check `Blizzard_SharedXML/Shared/TabSystem/TabSystem.lua` for the accessor and use it guarded), call `T.Tab`. Hook the
   window's `OnShow` so tabs the game adds later are covered. Size M.
-- [ ] **S7.2 Side tabs.** The Camelot character pane (`CharacterFrame.CharacterTab`, `ReputationTab`, `SkillsTab`, `PvPTab`,
+- [x] **S7.2 Side tabs.** The Camelot character pane (`CharacterFrame.CharacterTab`, `ReputationTab`, `SkillsTab`, `PvPTab`,
   `CurrencyTab`, `StatisticsTab`; `CharacterFrame.TabIndicators` faded), `CommunitiesFrame` (`ChatTab`, `RosterTab`,
   `GuildBenefitsTab`, `GuildInfoTab`, `GuildPreferredPlaySettingsTab`) and `LegacySystemFrame` (`LegacyTreeTab`,
   `LegacyChallengeTab`, `LegacyRewardTrackTab`, `TabIndicators`), `InspectFrame` tabs, `LFGParentFrameTab1-3`: `T.Tab`.
   Size S.
-- [ ] **S7.3 Inside the character pane.** `ReputationFrame` rows' bars (`T.StyleBar`; the rows come from a `ScrollBox`:
+- [x] **S7.3 Inside the character pane.** `ReputationFrame` rows' bars (`T.StyleBar`; the rows come from a `ScrollBox`:
   on acquire), `SkillsFrame` rows' bars, `TokenFrame` rows, `PVPRankFrame` art faded, `EquipmentFlyoutFrame` (`T.Panel`
   on show; its buttons through `ns.GetModule("Bags").SkinItem`, exported by S0.9), `PaperDollFrame`'s stat category boxes (`CharacterStatsPane` categories: `Background` faded, inset
   panel). The gear slots keep their durability labels from `Modules/Windows.lua:268`. Size M.
-- [ ] **S7.4 Scroll bars.** On every registered window on show: any child or `parentKey` named `ScrollBar`, and
+- [x] **S7.4 Scroll bars.** On every registered window on show: any child or `parentKey` named `ScrollBar`, and
   `.ScrollBox`'s paired bar, through `T.ScrollBar`. Size S.
-- [ ] **S7.5 Docs and smoke lines.** README sub-bullet for `tabs`; smoke-test lines: click every tab on the character
+- [x] **S7.5 Docs and smoke lines.** README sub-bullet for `tabs`; smoke-test lines: click every tab on the character
   pane, friends, mail, merchant, spellbook; scroll the reputation list. Size S.
 
 ---
