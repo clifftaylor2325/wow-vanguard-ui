@@ -13,7 +13,7 @@ Sources reached: the search-result pages for Auctionator's wiki API documentatio
 
 | Area | Auctionator | Vanguard today | Gap |
 |---|---|---|---|
-| **Where it lives** | Its own tabs inside the auction house window (Shopping, Selling, Cancelling; Buying on Classic) [doc] | Two tabs on the window after the game's own, since 2026-10-07 (`docs/design/AUCTION-TABS.md`): Shopping (the Shop card, with Deals and the scan beside it) and Selling (the Sell card and your auctions) | The same shape now; the cards' rows fill their tab. Phase 2 of that plan lays each tab out for the room. |
+| **Where it lives** | Its own tabs inside the auction house window (Shopping, Selling, Cancelling; Buying on Classic) [doc] | Two tabs on the window after the game's own, since 2026-10-07 (`docs/design/AUCTION-TABS.md`): Shopping (a Lists pane with the lists, Recent, Deals and Upgrades, and the list picked as a table) and Selling (the Sell card; Up now with Your history, and your auctions, as tables) | The same shape, laid out for the room (phase 2 of that plan, done 2026-10-07). |
 | **Shopping lists** | Many named lists; create, rename, delete; import and export as strings (`^` between terms, `;` between fields) [doc]; "Recent searches" list [prior] | Up to 20 lists of 50 entries; create and add; right-click removes an entry. No rename, delete, import, export or recents. | **List management and import/export missing.** |
 | **Search terms** | A term is a name plus filters: exact match (quoted), min/max level, min/max item level, min/max crafted level, min/max price, quality, tier/expansion, category [doc]; an editor dialog builds them [prior] | A term is an item ID or a plain name. No filters at all; a name search can show a different item (`BestResult` falls back to the first result). | **No filters; wrong-item risk on name searches.** |
 | **Results view** | One row per item with min price and quantity, then a per-auction list (price, stack, quantity, seller, time left) sortable by column; buy from the list with a quantity dialog, Alt-click shortcut, keyboard navigation [doc/prior] | One row per list entry: icon, name, `x qty`, min unit price. Click hands the item to the game's browse list. Only the first page of browse results is read (`HasFullBrowseResults`/`RequestMore` unused). | **No per-auction view, no sorting, no buying.** Buying is a deliberate choice (the game's window buys), but the per-auction list is the piece players use most. |
@@ -99,7 +99,8 @@ Sizes: S under a day of lane time, M one to two, L more. Each is one commit with
 
 ### Phase E: beyond Auctionator
 
-- [x] **E1 Deals card** (M): listings under the 7-day low or under vendor price, after any scan or search.
+- [x] **E1 Deals card** (M): listings under the 7-day low or under vendor price, after any scan or search. An entry in the Lists pane since the tabs were laid out.
+- [x] **E7 Upgrades list** (M, added 2026-10-07): the armor and weapons a scan (by `GetReplicateItemLink`) or an item search saw that beat what you wear, by Gear upgrades' weights; an entry in the Lists pane. `Modules/AuctionUpgrades.lua`.
 - [x] **E2 Price alerts** (M): target prices on shopping entries; sound and toast through the Chat-watch toast.
 - [x] **E3 Chat watch price lines** (S): auction price beside a WTS/WTB line's item in the toast.
 - [x] **E4 Buy lists from Instance prep and Keep stocked** (S): shortfalls become a shopping list with wanted quantities; the shop shows "cheapest 8".
@@ -126,3 +127,4 @@ Still unverified on Forever, and each phase above leans on them:
 - The hours behind the three durations.
 - Whether the game's browse list shows the addon's `SearchForItemKeys` results on the Buy tab.
 - How long `ReplicateItems` takes on a busy realm.
+- Whether `C_AuctionHouse.GetReplicateItemLink` exists on Forever and gives full links (random suffixes included), and whether `C_Item.GetItemStats` on such a link counts the suffix's stats; and that a busy realm's scan doesn't stall while its gear is judged a hundred listings a frame (Upgrades).

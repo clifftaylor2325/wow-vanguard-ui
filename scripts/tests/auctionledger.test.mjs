@@ -171,15 +171,21 @@ it("the ledger is kept per realm and faction, capped, and old records go at logi
   expect(records(addon).length, "forgetting the prices keeps the ledger").toBe(3);
 });
 
-// The sell card's history: [shown, toggle text, line, rows as [price, its color is gold, qty, when]], the listings' visibility.
+// The Up now card, which holds Your history.
+const UP = `${HELPER}.upCard`;
+
+// The Up now card's history: [shown, toggle text, line, the listings' visibility, rows as [price, its color is gold, qty, when]].
 const history = (addon) => {
   const rows = [1, 2, 3, 4].map((i) => {
-    const r = `${CARD}.history.rows[${i}]`;
+    const r = `${UP}.history.rows[${i}]`;
     if (!addon.eval(`return ${r}:IsShown()`)) return null;
-    return [addon.eval(`return ${r}.price:GetText()`), isTok(addon, addon.frame(`${r}.price`).textColor, "gold"), addon.eval(`return ${r}.qty:GetText()`), addon.eval(`return ${r}.time:GetText()`)];
+    return [addon.eval(`return ${r}.cells.price:GetText()`), isTok(addon, addon.frame(`${r}.cells.price`).textColor, "gold"), addon.eval(`return ${r}.cells.qty:GetText()`), addon.eval(`return ${r}.cells.time:GetText()`)];
   }).filter(Boolean);
-  return addon.eval(`local c = ${CARD} return { c.history:IsVisible(), c.historyToggle.text:GetText(), c.history.summary:GetText(), c.list:IsVisible() }`).concat([rows]);
+  return addon.eval(`local c = ${UP} return { c.history:IsShown(), c.historyToggle.text:GetText(), c.summary:GetText(), c.table:IsShown() }`).concat([rows]);
 };
+
+// The sell card's history line.
+const historyLine = (addon) => addon.eval(`return ${CARD}.historyLine:GetText()`);
 
 // Drops the item in bag 0 `slot` on the sell slot.
 function drop(addon, slot) {
@@ -187,13 +193,13 @@ function drop(addon, slot) {
   addon.click(`${CARD}.slot`);
 }
 
-it("Your history on the sell card: the item's last records, how many sold of those that sold or ran out, the average each", () => {
+it("Your history on the Up now card: the item's last records, how many sold of those that sold or ran out, the average each", () => {
   const addon = atAuctionHouse();
-  expect(history(addon), "listings by default; the toggle offers the history").toEqual([false, "Your history", "Put an item on the card to see how it sold.", true, []]);
-  addon.click(`${CARD}.historyToggle`);
-  expect(history(addon).slice(0, 4), "no item: it says how to see it").toEqual([true, "Up now", "Put an item on the card to see how it sold.", false]);
+  expect([history(addon), historyLine(addon)], "listings by default; the toggle offers the history; no line on the sell card").toEqual([[false, "Your history", "", true, []], ""]);
+  addon.click(`${UP}.historyToggle`);
+  expect(history(addon).slice(0, 4), "no item: it says how to see it").toEqual([true, "Up now", "Put an item on the Sell card to see how it sold.", false]);
   drop(addon, 2);
-  expect(history(addon).slice(2), "an item never sold").toEqual(["No sales or expiries of this item yet.", false, []]);
+  expect([history(addon).slice(2), historyLine(addon)], "an item never sold").toEqual([["No sales or expiries of this item yet.", false, []], "No sales or expiries of this item yet."]);
   addon.eval(`local AL = ns.AuctionLedger
     AL.Note({ kind = "sold", id = 9999, name = "TEST-ONLY Blade", qty = 1, amount = 4000, auction = 1, t = __now - 3 * 86400 })
     AL.Note({ kind = "expired", id = 9999, name = "TEST-ONLY Blade", qty = 1, auction = 2, t = __now - 86400 })
@@ -205,10 +211,10 @@ it("Your history on the sell card: the item's last records, how many sold of tho
     [["45s 0c", true, "x 2", "today"], ["cancelled", false, "x 1", "today"], ["expired", false, "x 1", "yesterday"], ["40s 0c", true, "x 1", "3 days ago"]],
   ]);
   addon.eval(`ns.AuctionLedger.Note({ kind = "expired", id = 9999, qty = 1, auction = 5, t = __now })`);
-  expect(history(addon)[2], "a new record shows at once").toBe("sold 2 of 4 · avg 43s 33c");
-  addon.click(`${CARD}.historyToggle`);
-  expect(history(addon).slice(0, 2).concat([history(addon)[3]]), "Up now: the listings again").toEqual([false, "Your history", true]);
-  addon.click(`${CARD}.historyToggle`);
+  expect([history(addon)[2], historyLine(addon)], "a new record shows at once, on the sell card's line too").toEqual(["sold 2 of 4 · avg 43s 33c", "sold 2 of 4 · avg 43s 33c"]);
+  addon.click(`${UP}.historyToggle`);
+  expect(history(addon).slice(0, 4), "Up now: the listings again, the line gone").toEqual([false, "Your history", "", true]);
+  addon.click(`${UP}.historyToggle`);
   addon.eval(`${HELPER}.StopSelling()`);
   drop(addon, 1);
   expect(history(addon).slice(2, 3), "the dust: one sale, nothing ran out").toEqual(["sold 1 of 1 · avg 1s 0c"]);
@@ -216,17 +222,17 @@ it("Your history on the sell card: the item's last records, how many sold of tho
   expect(history(addon).slice(2), "only a cancel: nothing sold or ran out").toEqual(["No sales or expiries of this item yet.", false, [["cancelled", false, "x 5", "today"]]]);
 });
 
-it("the history's toggle sits on the card's heading line, and the history in the listings' place", () => {
+it("the history's toggle sits on the Up now card's heading line, and the history in the listings' place", () => {
   const addon = atAuctionHouse();
-  addon.click(`${CARD}.historyToggle`);
-  const cardRect = addon.frame(CARD).rect;
-  const toggle = addon.frame(`${CARD}.historyToggle`).rect;
-  const title = addon.frame(`${CARD}.title`).rect;
-  const list = addon.frame(`${CARD}.list`).rect;
-  const hist = addon.frame(`${CARD}.history`).rect;
+  addon.click(`${UP}.historyToggle`);
+  const cardRect = addon.frame(UP).rect;
+  const toggle = addon.frame(`${UP}.historyToggle`).rect;
+  const title = addon.frame(`${UP}.title`).rect;
+  const list = addon.frame(`${UP}.table`).rect;
+  const hist = addon.frame(`${UP}.history`).rect;
   expect([toggle.right, toggle.top >= title.top, toggle.bottom < title.top, toggle.left > title.right], "right-aligned, level with the heading").toEqual([cardRect.right, true, true, true]);
   expect(hist, "exactly where the listings are").toEqual(list);
-  expect(addon.frame(`${CARD}.history.summary`).rect.right <= cardRect.right, "the line fits the card").toBe(true);
+  expect([addon.frame(`${UP}.summary`).rect.right <= toggle.left, addon.frame(`${UP}.summary`).rect.left > title.right], "the line beside the heading, before the toggle").toEqual([true, true]);
 });
 
 it("the info strip's auction sales: this session's, off until switched on, from the options", () => {

@@ -266,7 +266,7 @@ function methods:GetWidth() return self.__width or 0 end
 function methods:GetHeight() return self.__height or 0 end
 function methods:SetTextColor(r, g, b, a) self.__textColor = { r, g, b, a or 1 } end
 function methods:SetJustifyH(j) self.__justifyH = j end
-function methods:SetFontObject(font) self.__template = type(font) == "string" and font or self.__template end
+function methods:SetFontObject(font) self.__template = type(font) == "string" and font or self.__template self.__fontObject = font end
 function methods:SetBackdrop(b) self.__backdrop = b end
 function methods:SetBackdropColor(r, g, b, a) self.__backdropColor = { r, g, b, a or 1 } end
 function methods:SetBackdropBorderColor(r, g, b, a) self.__borderColor = { r, g, b, a or 1 } end
@@ -568,9 +568,16 @@ function methods:UnregisterAllEvents()
   self.__events = {}
   self.__unitEvents = nil
 end
--- Whether the frame listens for an event; text and rotation fields.
+-- Whether the frame listens for an event.
 function methods:IsEventRegistered(event) return self.__events[event] == true end
-function methods:SetText(text) self.__text = text end
+-- Text: a font string made with CreateFontString takes none until it has a font (SetFont, a font
+-- object, or a template it inherits one from), as the client refuses it; the stub's own game font
+-- strings have theirs from the game's XML.
+function methods:SetText(text)
+  if self.__needsFont and not (self.__font or self.__template or self.__fontObject) then error("FontString:SetText(): Font not set", 2) end
+  self.__text = text
+end
+-- The text set, and the rotation field.
 function methods:GetText() return self.__text end
 function methods:SetRotation(r) self.__rotation = r end
 function methods:GetRotation() return self.__rotation or 0 end
@@ -604,7 +611,12 @@ function methods:CreateTexture(name, layer, _, sublevel)
 end
 
 -- Font strings record their draw layer and template.
-function methods:CreateFontString(name, layer, template) return newWidget("FontString", name, self, template, layer) end
+-- A font string on the frame; it needs a font before it takes text (methods:SetText).
+function methods:CreateFontString(name, layer, template)
+  local fs = newWidget("FontString", name, self, template, layer)
+  fs.__needsFont = true
+  return fs
+end
 
 -- Checks one template name against the frame type; true if it adds the backdrop mixin.
 local function checkTemplate(t, kind)

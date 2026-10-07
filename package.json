@@ -20,6 +20,6 @@
     "@resvg/resvg-js": "2.6.2",
     "acorn": "^8.18.0",
     "fengari": "^0.1.5",
-    "vitest": "5.0.2"
+    "vitest": "5.0.3"
   }
 }

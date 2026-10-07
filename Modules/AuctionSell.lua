@@ -23,10 +23,15 @@ local AH = ns.GetModule("AuctionHelper")
 
 -- The sell card's lines.
 AH.SELL_LINES = { "Cheapest now", "7-day low", "Deposit", "Your price" }
--- The form: where its rows start (down from the card's top) and how far apart they are.
-AH.FORM_Y, AH.FORM_ROW = -110, 26
--- The listings under the form: where they start, and how many rows show (until AH.Build counts them).
-AH.LIST_Y, AH.LIST_ROWS = -250, 4
+-- The form: where its rows start (down from the card's top), how far apart they are, and the
+-- width of the label column before its boxes.
+AH.FORM_Y, AH.FORM_ROW, AH.LABEL_W = -110, 26, 60
+-- The Up now card (the listings up for the item on the sell card): its rows (how many, until
+-- AH.Build counts them) and its columns: the price each, how many, and the time left.
+AH.LIST_ROWS = 4
+AH.UP_COLUMNS = { { key = "price", title = "Price each", width = 100, side = "RIGHT", role = "number", color = "gold" },
+  { key = "qty", title = "Qty", width = 60, side = "RIGHT", role = "small", color = "text2" },
+  { key = "time", title = "Time left", width = 90, side = "LEFT", role = "small", color = "text2" } }
 -- The sell card's settings: the auction length a new item starts with ("last": the last one
 -- used; or 1 to 3), and lastDuration, the last one picked on the card (none at first).
 AH.defaults.duration = "last"
@@ -277,7 +282,7 @@ function AH.TakeItem(loc)
   local status = api.GetItemCommodityStatus(loc)
   if status ~= AH.ITEM and status ~= AH.COMMODITY then return end
   AH.sell, AH.sellStatus = newSale(loc, api.GetItemKeyFromItem(loc), status == AH.COMMODITY), nil
-  AH.sellCard.listOffset = 0
+  AH.upCard.table.offset = 0
   AH.Queue({ sell = AH.sell.search, card = true }, true)
   AH.PaintSell()
 end
@@ -346,9 +351,9 @@ function AH.TogglePerStack()
   AH.PaintSell()
 end
 
--- A listing clicked: its price becomes the card's, less the undercut rule unless it's yours.
+-- A listing clicked (on the Up now card): its price becomes the card's, less the undercut rule unless it's yours.
 function AH.ClickListing(r)
-  local s, l = AH.sell, r.listing
+  local s, l = AH.sell, r.item
   if not (s and l) then return end
   s.unit = l.mine and l.unit or (AH.UNDERCUT[AH.settings.undercut] or AH.UNDERCUT.silver)(l.unit)
   AH.PaintSell()
@@ -476,38 +481,51 @@ local function paintPriceLine(c, s)
   T.Color(line.value, under and "bad" or "accent")
 end
 
--- A listing's row: its price per unit, how many, the time left, and a mark when it's yours.
+-- A listing's row on the Up now card: its price per unit, how many, the time left, and the flag
+-- when it's yours (the item is the sell card's, so the row names none).
 local function paintListing(r, l)
-  r:SetShown(l ~= nil)
-  r.listing = l
-  if not l then return end
-  r.price:SetText(AP.Money(l.unit))
-  r.qty:SetText("x " .. l.qty)
-  r.time:SetText(l.time)
-  r.mark:SetShown(l.mine)
+  r.icon:SetTexture(nil)
+  r.name:SetText("")
+  r.cells.price:SetText(AP.Money(l.unit))
+  r.cells.qty:SetText("x " .. l.qty)
+  r.cells.time:SetText(l.time)
+  r.flag:SetShown(l.mine)
 end
 
--- The sale's listings under the form, from the scroll offset, with their header while there are any.
-local function paintListings(c, s)
-  local rows = s and s.rows or {}
-  c.listHead:SetShown(#rows > 0)
-  for i, r in ipairs(c.listings) do paintListing(r, rows[c.listOffset + i]) end
+-- The Up now card's status line: what to do without a sale, "searching..." until its price
+-- check answers, "none up" when it found nothing.
+local function upStatus(s)
+  if not s then return "Put an item on the Sell card to see what's up now." end
+  if #(s.rows or {}) > 0 then return "" end
+  return s.searched and "none up" or "searching..."
 end
 
--- The sell card: the item's icon and lines (the price line red under the vendor's), the form,
--- the listings, and Post, which works only
--- when the next stack can go up (AH.PostPrice).
-function AH.PaintSell()
-  local c, s = AH.sellCard, AH.sell
-  if not c then return end
+-- The listings up now for the sale (none without one), from the table's scroll offset.
+function AH.PaintUp(s)
+  local t = AH.upCard.table
+  t:SetItems(s and s.rows or {})
+  t:SetStatus(upStatus(s))
+end
+
+-- The sell card's top: the item's icon and lines (the price line red under the vendor's).
+local function paintItem(c, s)
   local values = s and sellValues(s) or {}
   c.icon:SetTexture(s and C_Item.GetItemIcon(s.loc) or nil)
   for i, line in ipairs(c.lines) do line.value:SetText(values[i] or "") end
-  paintForm(c, s)
-  paintListings(c, s)
   paintPriceLine(c, s)
+end
+
+-- The sell card: the item, the form, its history line, and Post, which works only when the next
+-- stack can go up (AH.PostPrice); the Up now card beside it (the listings, or Your history).
+function AH.PaintSell()
+  local c, s = AH.sellCard, AH.sell
+  if not c then return end
+  paintItem(c, s)
+  paintForm(c, s)
   enable(c.post, AH.PostPrice(s) ~= nil)
-  AH.PaintHistory(c, s)
+  AH.PaintHistoryLine(c, s)
+  AH.PaintUp(s)
+  AH.PaintHistory(AH.upCard, s)
 end
 
 -- The sell card's lines: a label on the left of the space beside the slot, its value on the right.
@@ -563,102 +581,66 @@ local function maxButton(c, name)
   c[name .. "Max"] = b
 end
 
--- The form under the undercut rule: quantity and stack size, each with Max; the number of stacks
--- and the bid; the price with its per unit / per stack toggle.
+-- The form under the undercut rule, one field a row: quantity and stack size, each with Max;
+-- the number of stacks; the bid; the price with its per unit / per stack toggle.
 local function sellForm(c)
-  field(c, "qty", "Quantity", 0, 1, 52, 40)
+  field(c, "qty", "Quantity", 0, 1, AH.LABEL_W, 60)
   maxButton(c, "qty")
-  field(c, "stack", "Stack", 134, 1, 36, 40)
+  field(c, "stack", "Stack", 0, 2, AH.LABEL_W, 60)
   maxButton(c, "stack")
-  field(c, "stacks", "Stacks", 0, 2, 52, 40)
-  field(c, "bid", "Bid", 134, 2, 36, 76)
-  field(c, "price", "Price", 0, 3, 52, 110)
+  field(c, "stacks", "Stacks", 0, 3, AH.LABEL_W, 60)
+  field(c, "bid", "Bid", 0, 4, AH.LABEL_W, 110)
+  field(c, "price", "Price", 0, 5, AH.LABEL_W, 110)
   c.perStack = W.Button(c, "per unit", function() AH.TogglePerStack() end, 70)
   c.perStack:SetHeight(22)
   c.perStack:SetPoint("LEFT", c.price, "RIGHT", 4, 0)
 end
 
--- The auction length: the game's three, as segments.
+-- The auction length: the game's three, as segments, under the form.
 local function lengthRow(c)
   c.length = W.Choice(c, "", AH.DurationChoices(), function() return (AH.Duration(AH.sell)) end,
     function(d) AH.PickDuration(d) end, AH.WIDTH - 2 * AH.PAD)
-  c.length:SetPoint("TOPLEFT", 0, AH.FORM_Y - 3 * AH.FORM_ROW)
+  c.length:SetPoint("TOPLEFT", 0, AH.FORM_Y - 5 * AH.FORM_ROW)
 end
 
--- The posting line: the count on the left; Skip, Stop and Post on the right.
+-- A small line of the card at y, on the left.
+local function smallLine(c, y)
+  local fs = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  fs:SetPoint("TOPLEFT", 0, y)
+  return fs
+end
+
+-- The posting line: Skip, Stop and Post on the right, the count on the left under them, and the
+-- item's history line (Modules/AuctionLedger.lua) under that.
 local function postRow(c)
-  local y = AH.FORM_Y - 3 * AH.FORM_ROW - 32
+  local y = AH.FORM_Y - 5 * AH.FORM_ROW - 32
   c.post = W.Primary(c, "Post", function() AH.Post() end, 60)
   c.post:SetPoint("TOPRIGHT", 0, y)
   c.stop = W.Button(c, "Stop", function() AH.StopSelling() end, 44)
   c.stop:SetPoint("RIGHT", c.post, "LEFT", -4, 0)
   c.skip = W.Button(c, "Skip", function() AH.SkipStack() end, 44)
   c.skip:SetPoint("RIGHT", c.stop, "LEFT", -4, 0)
-  c.status = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  c.status:SetPoint("TOPLEFT", 0, y - 6)
+  c.status, c.historyLine = smallLine(c, y - 6), smallLine(c, y - 30)
 end
 
--- The wheel over the listings scrolls them; near the end, with more on the house, the next page is asked for.
-local function scrollListings(c, delta)
-  local s = AH.sell
-  if not s then return end
-  local card = c:GetParent()
-  card.listOffset = math.max(0, math.min(#(s.rows or {}) - AH.LIST_ROWS, card.listOffset - delta))
-  if card.listOffset + AH.LIST_ROWS >= #(s.rows or {}) - 1 then askMore(s) end
-  AH.PaintSell()
+-- Near the end of the listings on the Up now card, with more on the house: the next page is asked for.
+local function moreListings()
+  if AH.sell then askMore(AH.sell) end
 end
 
--- A listing row's parts: the mark for yours, the price per unit, how many and the time left.
-local function listingParts(r)
-  r.mark = W.Flat(r, "ARTWORK", "accent")
-  r.mark:SetSize(6, 6)
-  r.mark:SetPoint("LEFT", 0, 0)
-  r.price = T.Text(r:CreateFontString(nil, "OVERLAY"), "number", "gold")
-  r.price:SetPoint("LEFT", 10, 0)
-  r.qty = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  r.qty:SetPoint("RIGHT", -70, 0)
-  r.time = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  r.time:SetPoint("RIGHT", -2, 0)
-end
-
--- One of the listings' column headers, at a point of the header line.
-local function listHeader(head, text, point, x)
-  local fs = T.Text(head:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  fs:SetPoint(point, x, 0)
-  fs:SetText(text)
-end
-
--- The listings under the posting line: the column headers, then AH.LIST_ROWS rows (a click takes
--- a row's price), which the wheel scrolls.
-local function listingRows(c)
-  c.list = CreateFrame("Frame", nil, c)
-  c.list:SetPoint("TOPLEFT", 0, AH.LIST_Y)
-  c.list:SetPoint("TOPRIGHT", 0, AH.LIST_Y)
-  c.list:SetHeight(14 + AH.LIST_ROWS * AH.ROW_H)
-  c.listHead = CreateFrame("Frame", nil, c.list)
-  c.listHead:SetPoint("TOPLEFT")
-  c.listHead:SetPoint("TOPRIGHT")
-  c.listHead:SetHeight(14)
-  c.list:EnableMouseWheel(true)
-  c.list:SetScript("OnMouseWheel", scrollListings)
-end
-
--- The listings' headers and rows, and Your history in their place (Modules/AuctionLedger.lua).
-local function listings(c)
-  listingRows(c)
-  listHeader(c.listHead, "Up now, each", "LEFT", 10)
-  listHeader(c.listHead, "Qty", "RIGHT", -70)
-  listHeader(c.listHead, "Time left", "RIGHT", -2)
-  c.listings, c.listOffset = {}, 0
-  for i = 1, AH.LIST_ROWS do
-    c.listings[i] = AH.Row(c.list, i, -14, function(r) AH.ClickListing(r) end)
-    listingParts(c.listings[i])
-  end
+-- The Up now card on a column (h tall): the listings up for the item on the sell card, as a table
+-- (yours flagged in the accent; a click takes a price; the wheel scrolls, and near the end the
+-- next page is asked for), with Your history in its place on a toggle (Modules/AuctionLedger.lua).
+function AH.BuildUp(column, h)
+  local c = AH.Card(column, "Up now", -AH.PAD, h)
+  AH.upCard = c
+  c.table = AH.Table(c, AH.UP_COLUMNS, AH.LIST_ROWS, { flag = "accent", paintRow = paintListing, onClick = AH.ClickListing, onNear = moreListings })
+  AH.TableUnder(c.table, c)
   AH.BuildHistory(c)
 end
 
 -- The sell card (h tall): the slot, its lines, the undercut rule, the form, the length, the
--- posting line and the listings.
+-- posting line and the history line.
 function AH.BuildSell(f, h)
   local c = AH.Card(f, "Sell", -AH.PAD, h)
   AH.sellCard = c
@@ -668,6 +650,5 @@ function AH.BuildSell(f, h)
   sellForm(c)
   lengthRow(c)
   postRow(c)
-  listings(c)
   hooksecurefunc(AuctionHouseFrame, "SetPostItem", function(_, loc) AH.TakeItem(loc) end)
 end
