@@ -65,6 +65,9 @@ GW.SLOTS = { "Head", "Neck", "Shoulder", "Back", "Chest", "Wrist", "Hands", "Wai
 GW.MENU_PLATE = { "LeftBG", "RightBG", "CenterBG" }
 -- A window's art pieces that are faded out, where it has them.
 GW.ART = { "NineSlice", "Bg", "TopTileStreaks", "PortraitContainer", "Border", "Inset" }
+-- How far a window's panel reaches out past the window (units): the game's thick border art sat in
+-- that room, and without it a one-pixel border hugs the contents.
+GW.PAD = 6
 
 -- Skinning ------------------------------------------------------------------------------------
 
@@ -88,10 +91,28 @@ local function buttons(frame, name)
   return out
 end
 
--- The close button, title and push buttons in the theme.
+-- Where a window keeps its maximize and minimize buttons (MaximizeMinimizeButtonFrameTemplate), as parentKeys.
+GW.MAX_MIN = { "MaximizeMinimizeFrame", "MaximizeMinimizeButton" }
+
+-- The button at key in a maximize/minimize box as a window control with the icon, when the box has that button.
+local function maxMinButton(box, key, icon)
+  local button = type(box) == "table" and box[key]
+  if type(button) == "table" and button.CreateTexture then T.WindowControl(button, icon) end
+end
+
+-- A window's maximize and minimize buttons as window controls with the theme's glyphs (their art faded).
+function GW.DressMaxMin(frame)
+  for _, key in ipairs(GW.MAX_MIN) do
+    maxMinButton(frame[key], "MaximizeButton", "Maximize")
+    maxMinButton(frame[key], "MinimizeButton", "Minimize")
+  end
+end
+
+-- The close, maximize and minimize buttons, title and push buttons in the theme.
 local function dressParts(frame, name)
   local close = frame.CloseButton or (name and _G[name .. "CloseButton"])
   if type(close) == "table" then T.CloseButton(close) end
+  GW.DressMaxMin(frame)
   local title = (type(frame.TitleContainer) == "table" and frame.TitleContainer.TitleText) or frame.TitleText
   if type(title) == "table" and title.SetFont then T.Text(title, "heading", false) end
   for _, b in ipairs(buttons(frame, name)) do T.Button(b) end
@@ -100,11 +121,11 @@ local function dressParts(frame, name)
   end
 end
 
--- Skins one window: art faded, a flat panel with a soft shadow, its parts themed.
-function GW.Skin(frame)
+-- Skins one window: art faded, a flat panel with a soft shadow `pad` units (default GW.PAD) out past it, its parts themed.
+function GW.Skin(frame, pad)
   local name = frame.GetName and frame:GetName()
   fadeArt(frame)
-  T.Panel(frame, { shadow = true })
+  T.Panel(frame, { shadow = true, pad = pad or GW.PAD })
   dressParts(frame, name)
 end
 
@@ -135,9 +156,9 @@ function GW.SkinWith(keys)
   end
 end
 
--- A breath or fatigue bar: the window skin, and its bar in the theme's bar texture.
+-- A breath or fatigue bar: the window skin hugging the bar (no room around it), and its bar in the theme's bar texture.
 function GW.SkinTimer(frame)
-  GW.Skin(frame)
+  GW.Skin(frame, 0)
   local bar = frame.StatusBar or _G[(frame:GetName() or "") .. "StatusBar"]
   if type(bar) == "table" and bar.SetStatusBarTexture then T.StyleBar(bar) end
 end

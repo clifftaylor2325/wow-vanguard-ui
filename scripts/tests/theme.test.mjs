@@ -43,6 +43,46 @@ it("widgets", () => {
   expect(/Media\\Icons\\Close$/.test(out.glyph || ""), "the close button draws the Close icon").toBeTruthy();
 });
 
+it("window controls: sized when the caller gave no size, quiet until the mouse is over them, then white on a tile (red behind close)", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`
+    local function parts(b)
+      local tile, glyph
+      for _, r in ipairs({ b:GetRegions() }) do
+        if r.__layer == "ARTWORK" and r.__texture == ns.Theme.WHITE then tile = r elseif r.__layer == "OVERLAY" then glyph = r end
+      end
+      return tile, glyph
+    end
+    local c = ns.Theme.CloseButton(CreateFrame("Button", nil, UIParent))
+    local m = CreateFrame("Button", nil, UIParent)
+    m:SetSize(30, 30) ns.Theme.WindowControl(m, "Maximize")
+    local tile, glyph = parts(c)
+    local quiet = { c:GetWidth(), tile:IsShown(), glyph.__vertexColor }
+    c.__scripts.OnEnter(c)
+    local lit = { tile:IsShown(), tile.__vertexColor, glyph.__vertexColor }
+    c.__scripts.OnLeave(c)
+    local mTile, mGlyph = parts(m)
+    m.__scripts.OnEnter(m)
+    return { quiet = quiet, lit = lit, after = tile:IsShown(), m = { m:GetWidth(), mGlyph.__texture, mTile.__vertexColor } }`);
+  expect([out.quiet[0], out.quiet[1], isTok(addon, out.quiet[2], "text2")], "an unsized close button takes the 20-unit tile's size; quiet: no tile, the glyph in text2").toEqual([20, false, true]);
+  expect([out.lit[0], isTok(addon, out.lit[1], "bad"), isTok(addon, out.lit[2], "white"), out.after], "under the mouse: a red tile and a white glyph, gone again when it leaves").toEqual([true, true, true, false]);
+  expect([out.m[0], /Icons\\Maximize$/.test(out.m[1]), isTok(addon, out.m[2], "accent")], "a sized control keeps its size; a maximize control's glyph, on an accent tile").toEqual([30, true, true]);
+});
+
+it("panels with padding: the fill, border and shadow reach out past the frame, the frame itself stays put", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`
+    local f = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { pad = 6, shadow = true })
+    local bg, top
+    for _, r in ipairs({ f:GetRegions() }) do
+      if r.__layer == "BACKGROUND" and r.__texture == ns.Theme.WHITE then bg = r end
+      if r.__layer == "BORDER" and r.__points.TOPLEFT and r.__points.TOPRIGHT and not top then top = r end
+    end
+    local p = bg.__points
+    return { p.TOPLEFT.x, p.TOPLEFT.y, p.BOTTOMRIGHT.x, p.BOTTOMRIGHT.y, top.__points.TOPLEFT.y, ns.Theme.Padding(f), ns.Theme.Padding(UIParent) }`);
+  expect(out, "6 units out on every side; Padding says how far (0 for a frame never painted)").toEqual([-6, 6, 6, -6, 6, 6, 0]);
+});
+
 // A TEST-ONLY PixelUtil for a screen `height` pixels tall, as Blizzard writes it:
 // the factor is 768 / height and GetNearestPixelSize rounds to whole pixels.
 function pixelUtilLua(height) {

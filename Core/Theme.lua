@@ -287,14 +287,32 @@ local function edgeLayer(frame)
   return "BORDER", 0
 end
 
--- Four edge textures around frame (sized to one pixel when painted).
-local function edges(frame)
+-- The x, y that move an anchor at `point` (TOPLEFT, BOTTOM...) `pad` units out past the frame's edge.
+local function outward(point, pad)
+  local x = point:find("LEFT") and -pad or (point:find("RIGHT") and pad or 0)
+  local y = point:find("TOP") and pad or (point:find("BOTTOM") and -pad or 0)
+  return x, y
+end
+
+-- Anchors a part's `point` to the same point of frame, `pad` units (default none) out past its edge.
+local function pin(t, frame, point, pad)
+  t:SetPoint(point, frame, point, outward(point, pad or 0))
+end
+
+-- The two corners each edge texture runs between.
+local EDGE_POINTS = {
+  top = { "TOPLEFT", "TOPRIGHT" }, bottom = { "BOTTOMLEFT", "BOTTOMRIGHT" },
+  left = { "TOPLEFT", "BOTTOMLEFT" }, right = { "TOPRIGHT", "BOTTOMRIGHT" },
+}
+
+-- Four edge textures around frame, `pad` units out past its edges (sized to one pixel when painted).
+local function edges(frame, pad)
   local layer, sub = edgeLayer(frame)
   local e = { top = solid(frame, layer, sub), bottom = solid(frame, layer, sub), left = solid(frame, layer, sub), right = solid(frame, layer, sub) }
-  e.top:SetPoint("TOPLEFT"); e.top:SetPoint("TOPRIGHT")
-  e.bottom:SetPoint("BOTTOMLEFT"); e.bottom:SetPoint("BOTTOMRIGHT")
-  e.left:SetPoint("TOPLEFT"); e.left:SetPoint("BOTTOMLEFT")
-  e.right:SetPoint("TOPRIGHT"); e.right:SetPoint("BOTTOMRIGHT")
+  for side, points in pairs(EDGE_POINTS) do
+    pin(e[side], frame, points[1], pad)
+    pin(e[side], frame, points[2], pad)
+  end
   return e
 end
 
@@ -310,12 +328,12 @@ local function sheen(frame)
   return solid(frame, "BORDER")
 end
 
--- Places the sheen one pixel inside the top border, one pixel tall.
-local function placeSheen(t, frame)
-  local px = T.Pixel(frame)
+-- Places the sheen one pixel inside the top border (`pad` units out past the frame's top), one pixel tall.
+local function placeSheen(t, frame, pad)
+  local px, out = T.Pixel(frame), pad or 0
   t:ClearAllPoints()
-  t:SetPoint("TOPLEFT", px, -px)
-  t:SetPoint("TOPRIGHT", -px, -px)
+  t:SetPoint("TOPLEFT", frame, "TOPLEFT", px - out, out - px)
+  t:SetPoint("TOPRIGHT", frame, "TOPRIGHT", out - px, out - px)
   t:SetHeight(px)
   T.Tint(t, "sheen")
 end
@@ -352,7 +370,7 @@ local function ringPiece(frame, piece, look)
   local t = T.Snap(frame:CreateTexture(nil, look.layer, nil, look.sublevel))
   t:SetTexture(T.Texture(look.texture))
   t:SetTexCoord(unpack(piece.tc))
-  for _, a in ipairs(piece.at) do t:SetPoint(a[1], frame, a[2]) end
+  for _, a in ipairs(piece.at) do t:SetPoint(a[1], frame, a[2], outward(a[2], look.pad or 0)) end
   local size = wholePixels(frame, look.size)
   if not piece.w then t:SetHeight(size) end
   if not piece.h then t:SetWidth(size) end
@@ -366,10 +384,10 @@ local function ring(frame, look)
   return pieces
 end
 
--- A soft shadow around frame, behind everything else on it: SHADOW_SIZE
--- units, or `size` when it is a number (a slot's is smaller).
-local function shadow(frame, size)
-  return ring(frame, { texture = "Shadow", size = type(size) == "number" and size or SHADOW_SIZE, layer = "BACKGROUND", sublevel = -8 })
+-- A soft shadow around frame (or around its panel, `pad` units out), behind everything else on it:
+-- SHADOW_SIZE units, or `size` when it is a number (a slot's is smaller).
+local function shadow(frame, size, pad)
+  return ring(frame, { texture = "Shadow", size = type(size) == "number" and size or SHADOW_SIZE, layer = "BACKGROUND", sublevel = -8, pad = pad })
 end
 
 -- A glow ring around frame (hidden until T.ShowGlow), size units wide.
@@ -501,18 +519,25 @@ local function repaint(frame, entry)
     colorEdges(p.edges, borderColor(entry))
     sizeEdges(p.edges, frame)
   end
-  if p.sheen then placeSheen(p.sheen, frame) end
+  if p.sheen then placeSheen(p.sheen, frame, entry.opts.pad) end
   if entry.paint then entry.paint(entry, frame) end
 end
 
--- The parts opts ask for: background, edges, sheen (with a background) and shadow.
+-- A background texture over frame, `pad` units out past its edges.
+local function background(frame, pad)
+  local bg = solid(frame, "BACKGROUND")
+  pin(bg, frame, "TOPLEFT", pad)
+  pin(bg, frame, "BOTTOMRIGHT", pad)
+  return bg
+end
+
+-- The parts opts ask for: background, edges, sheen (with a background) and shadow, opts.pad units out past frame.
 local function makeParts(frame, opts)
   local parts = {}
-  parts.bg = not opts.noBg and solid(frame, "BACKGROUND") or nil
-  if parts.bg then parts.bg:SetAllPoints() end
-  parts.edges = not opts.noBorder and edges(frame) or nil
+  parts.bg = not opts.noBg and background(frame, opts.pad) or nil
+  parts.edges = not opts.noBorder and edges(frame, opts.pad) or nil
   parts.sheen = parts.bg and not opts.noSheen and sheen(frame) or nil
-  parts.shadow = opts.shadow and shadow(frame, opts.shadow) or nil
+  parts.shadow = opts.shadow and shadow(frame, opts.shadow, opts.pad) or nil
   return parts
 end
 
@@ -532,7 +557,8 @@ end
 -- A flat dark panel with a one-pixel border and a faint sheen along the
 -- top. opts: inset (darker) or raised (lighter), accent (accent border),
 -- alpha (fill opacity), shadow (soft drop shadow, for floating windows),
--- noBorder, noBg, noSheen.
+-- pad (draw it all that many units out past the frame's edges: room around
+-- a game window's contents), noBorder, noBg, noSheen.
 function T.Panel(frame, opts)
   local entry = base(frame, "panel", opts)
   repaint(frame, entry)
@@ -555,6 +581,12 @@ function T.SetBorder(frame, rgb)
   if not entry then return end
   entry.opts.border = rgb
   repaint(frame, entry)
+end
+
+-- How far a painted panel reaches out past its frame (units; 0 when it doesn't, or the frame isn't painted).
+function T.Padding(frame)
+  local entry = painted[frame]
+  return entry and entry.opts.pad or 0
 end
 
 -- A flat button: inset panel, template art faded, a faint white hover.
@@ -653,33 +685,57 @@ function T.SlotState(frame, state)
   repaint(frame, entry)
 end
 
--- The painted close glyph: the Close icon in the secondary text color.
-local function paintClose(entry)
-  T.Tint(entry.parts.glyph, "text2")
+-- Window controls (close, maximize, minimize): how big the square tile behind the glyph is
+-- while the mouse is over it, and the glyph (units); a control with no size yet takes the tile's.
+T.CONTROL = { tile = 20, glyph = 12 }
+-- The tile's color and opacity by control: red behind close, a wash of the accent behind the others.
+T.CONTROL_TILES = { close = { "bad", 0.9 }, other = { "accent", 0.35 } }
+
+-- Paints a window control: its glyph in the secondary text color, or white over its tile while lit.
+local function paintControl(entry)
+  local p, tile = entry.parts, T.CONTROL_TILES[entry.opts.tile] or T.CONTROL_TILES.other
+  T.Tint(p.glyph, entry.lit and "white" or "text2")
+  T.Tint(p.tile, tile[1], tile[2])
+  p.tile:SetShown(entry.lit == true)
 end
 
--- The close icon and a hover wash on a button.
-local function closeParts(button)
-  local glyph = button:CreateTexture(nil, "OVERLAY")
-  glyph:SetTexture(T.Icon("Close"))
-  glyph:SetSize(12, 12)
+-- A window control's parts (made once): the tile and the glyph, both centered on the button.
+local function controlParts(button, icon)
+  local tile = solid(button, "ARTWORK")
+  tile:SetSize(T.CONTROL.tile, T.CONTROL.tile)
+  tile:SetPoint("CENTER")
+  local glyph = T.Snap(button:CreateTexture(nil, "OVERLAY"))
+  glyph:SetTexture(T.Icon(icon))
+  glyph:SetSize(T.CONTROL.glyph, T.CONTROL.glyph)
   glyph:SetPoint("CENTER")
-  local hover = solid(button, "HIGHLIGHT")
-  hover:SetAllPoints()
-  T.Tint(hover, "hover")
-  return { glyph = glyph, hover = hover }
+  return { tile = tile, glyph = glyph }
 end
 
--- A close button drawn with the Close icon; template art faded.
-function T.CloseButton(button)
+-- Lights a window control while the mouse is over it, and puts it back after.
+local function watchControl(button, entry)
+  button:HookScript("OnEnter", function() entry.lit = true repaint(button, entry) end)
+  button:HookScript("OnLeave", function() entry.lit = false repaint(button, entry) end)
+end
+
+-- A window control drawn with one of the theme's icons (Close, Maximize, Minimize): its template art
+-- faded, the glyph quiet until the mouse is over it, then white on a square tile (opts.tile "close"
+-- makes the tile red). Sized to the tile when it has no size yet. Safe to run again.
+function T.WindowControl(button, icon, opts)
   local entry = painted[button]
   if not entry then
     T.FadeRegions(button)
-    entry = { kind = "close", opts = {}, parts = closeParts(button), paint = paintClose }
+    entry = { kind = "control", opts = opts or {}, parts = controlParts(button, icon), paint = paintControl }
     painted[button] = entry
+    watchControl(button, entry)
+    if (button:GetWidth() or 0) < 1 then button:SetSize(T.CONTROL.tile, T.CONTROL.tile) end
   end
   repaint(button, entry)
   return button
+end
+
+-- A close button as a window control: the Close glyph, red behind it under the mouse.
+function T.CloseButton(button)
+  return T.WindowControl(button, "Close", { tile = "close" })
 end
 
 -- Game frame primitives (docs/design/RESKIN.md 3.3) -----------------------------------------
@@ -700,12 +756,36 @@ local function tabSelected(button)
   return type(button.IsEnabled) == "function" and not button:IsEnabled()
 end
 
--- Shows a tab's accent line while it is selected, one pixel tall, in the accent.
+-- A selected tab's accent bar: how thick it is (screen pixels); and how faded an unselected tab's icon is.
+T.TAB_BAR, T.TAB_DIM = 2, 0.55
+
+-- Places a tab's accent bar along one of its edges (TOP, BOTTOM, LEFT or RIGHT), T.TAB_BAR pixels thick.
+local function placeBar(bar, frame, edge)
+  local points, thick = EDGE_POINTS[edge:lower()] or EDGE_POINTS.top, T.TAB_BAR * T.Pixel(frame)
+  bar:ClearAllPoints()
+  bar:SetPoint(points[1])
+  bar:SetPoint(points[2])
+  if edge == "LEFT" or edge == "RIGHT" then bar:SetWidth(thick) else bar:SetHeight(thick) end
+end
+
+-- Greys and fades a tab's icon while another tab is selected (dim), or gives it back its color.
+local function dimIcon(button, dim)
+  local icon = button.Icon
+  if type(icon) ~= "table" or not icon.SetDesaturated then return end
+  icon:SetDesaturated(dim)
+  icon:SetAlpha(dim and T.TAB_DIM or 1)
+end
+
+-- Paints a tab for its state: the selected one raised, with the accent bar on its outer edge (opts.bar)
+-- and its icon in color; the others inset, their icon greyed when opts.dimIcon asks.
 local function paintTab(entry, frame)
-  local line = entry.parts.line
-  line:SetShown(tabSelected(frame))
-  line:SetHeight(T.Pixel(frame))
-  T.Tint(line, "accent")
+  local on, p = tabSelected(frame), entry.parts
+  entry.opts.inset, entry.opts.raised = not on, on
+  paintBg(p.bg, entry.opts)
+  p.line:SetShown(on)
+  placeBar(p.line, frame, entry.opts.bar or "TOP")
+  T.Tint(p.line, "accent")
+  if entry.opts.dimIcon then dimIcon(frame, not on) end
 end
 
 -- Repaints a tab after the game changes its state.
@@ -739,26 +819,27 @@ local function fadeKeys(frame, keys)
   end
 end
 
--- A tab's own parts (made once): the accent line along its top and the hover wash.
+-- A tab's own parts (made once): the accent bar (placed when painted) and the hover wash.
 local function tabParts(button, entry)
   entry.parts.line, entry.parts.hover = solid(button, "OVERLAY"), solid(button, "HIGHLIGHT")
-  entry.parts.line:SetPoint("TOPLEFT")
-  entry.parts.line:SetPoint("TOPRIGHT")
   entry.parts.hover:SetAllPoints()
   T.Tint(entry.parts.hover, "hover")
   entry.paint = paintTab
 end
 
--- One of the game's tab buttons in the theme: its template art faded (its icon and
--- text kept), an inset panel, the faint hover, and a one-pixel accent line along the
--- top while it is the selected tab. Safe to run again; follows the game's selection.
-function T.Tab(button)
+-- One of the game's tab buttons in the theme: its template art faded (its icon and text
+-- kept), an inset panel and the faint hover; the selected tab is raised, with a T.TAB_BAR
+-- pixel accent bar along one edge. opts (each call may change them): bar, the edge for the
+-- bar (TOP, BOTTOM, LEFT, RIGHT; default TOP), and dimIcon, to grey the icon of a tab that
+-- isn't selected. Safe to run again; follows the game's selection.
+function T.Tab(button, opts)
   local entry = painted[button]
   if not entry then
     entry = base(button, "tab", { inset = true, noSheen = true })
     tabParts(button, entry)
     watchTab(button)
   end
+  for k, v in pairs(opts or {}) do entry.opts[k] = v end
   fadeKeys(button, T.TAB_ART)
   repaint(button, entry)
   return button
