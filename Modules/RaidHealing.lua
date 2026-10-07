@@ -465,4 +465,4 @@ local function pageRows()
   return rows
 end
 
-ns.Options.AddPage({ key = "healing", title = "Healing", icon = "Healing", order = 45, rows = pageRows })
+ns.Options.AddPage({ key = "healing", title = "Healing", icon = "NavHealing", order = 45, rows = pageRows })

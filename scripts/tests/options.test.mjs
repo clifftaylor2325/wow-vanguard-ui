@@ -41,7 +41,7 @@ it("options window: nav, search, controls, footer", () => {
   const nav = addon.eval(`local out = {}
     for k, b in pairs(Vanguard_Options.nav) do out[k] = { icon = b.icon.__texture, rail = b.rail:IsShown(), text = b.text:GetText() } end
     return out`);
-  expect(/Icons\\General$/.test(nav.general.icon) && /Icons\\Healing$/.test(nav.healing.icon), "every nav entry has its icon").toBeTruthy();
+  expect(/Icons\\NavGeneral$/.test(nav.general.icon) && /Icons\\NavHealing$/.test(nav.healing.icon), "every nav entry has its icon").toBeTruthy();
   expect(nav.general.rail === true && nav.raid.rail === false, "the current page gets the accent rail").toBeTruthy();
   expect(addon.eval("return Vanguard_Options.notice:IsShown() or Vanguard_Options.reload:IsShown()") === false, "no reload notice until something needs one").toBeTruthy();
   expect(/TEST-ONLY-9\.9/.test(addon.eval("return Vanguard_Options.version:GetText()")), "the footer shows the version").toBeTruthy();

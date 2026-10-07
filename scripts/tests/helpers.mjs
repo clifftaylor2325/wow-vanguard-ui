@@ -435,7 +435,7 @@ export const MICRO_ENV = `
 `;
 
 // Strips under the Forever-like bars; extra is more Lua to run first.
-export const strips = (extra = "") => loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + extra);
+export const strips = (extra = "", opts) => loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + extra, opts);
 
 // TEST-ONLY Forever extras for the strips (on top of TIDY_ENV + MICRO_ENV): the bars' own frame art, bars that size
 // themselves in Layout (__menuW is the micro menu's width then), the key ring, a menu button with no size yet.

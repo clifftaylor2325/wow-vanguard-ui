@@ -694,7 +694,7 @@ local function rows()
   }
 end
 
-ns.Options.AddPage({ key = "talents", title = "Talents", icon = "Talents", order = 47, rows = rows })
+ns.Options.AddPage({ key = "talents", title = "Talents", icon = "NavTalents", order = 47, rows = rows })
 
 -- Module entry point (Core/Modules.lua): the window hooked now or when its part of the game loads,
 -- repaints on tree changes, and the level-up prompt.

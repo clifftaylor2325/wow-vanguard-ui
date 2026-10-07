@@ -13,7 +13,7 @@
 -- The buttons keep working as the game's own, with the game's icons and alert
 -- flashes, each fitted inside a slot tile; a bag's slot shows how full the bag
 -- is (red when full) and the backpack's how many slots your bags have free.
--- Vanguard's line icons on the menu buttons are a switch away.
+-- Vanguard's icons stand on the menu buttons; a switch brings the game's own back.
 -- The bars stay where they're put when the game lays out its own frames again
 -- (ns.Pin), re-fit whenever the game resizes or re-lays them out, hide the
 -- bars' own frame art (the brass box), and a client without one of these frames
@@ -24,7 +24,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 local V = ns.Visibility
 
-local MS = ns.Module("MenuStrip", { defaults = { menu = "always", tracker = true, glyphs = false, trackerLook = true } })
+local MS = ns.Module("MenuStrip", { defaults = { menu = "always", tracker = true, glyphs = true, trackerLook = true } })
 
 -- A slot's side and the gap between slots: screen pixels at UI scale 1, on the theme's 4 px grid.
 MS.TILE, MS.GAP = 24, 4
@@ -96,10 +96,11 @@ local STATES = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "
 -- Every button on a slot, and the bag buttons with a fill.
 MS.slotted, MS.filled = {}, {}
 
--- Account file version 2 (Core/DB.lua): the game's icons are the menu buttons'
--- default again, so profiles saved with Vanguard's (every profile, since the
--- defaults are written into saved tables) go back to the game's, once; and the
--- bag strip's own position goes, since the bags now ride in the menu's bar.
+-- Account file version 2 (Core/DB.lua), a one-time reset when the bar was
+-- reworked: every profile saved before it went back to the game's icons (the
+-- defaults are written into saved tables, so each carried Vanguard's), and the
+-- bag strip's own position went, since the bags now ride in the menu's bar.
+-- Profiles saved since keep their own setting; new ones start with Vanguard's icons.
 local function upgradeMenu(db)
   for _, profile in pairs(db.profiles or {}) do
     if type(profile.MenuStrip) == "table" then profile.MenuStrip.glyphs = false end
