@@ -1,6 +1,7 @@
 -- /vg frame <name> [deep]: what the client says about a frame right now, for
 -- a bug that only shows in game (a bar that draws empty, a button that isn't
 -- there): shown and visible, alpha and scale (its own and effective), size,
+-- where its rect is (or that it has none: nothing anchored to it is drawn),
 -- strata and level, its parent and anchors, every ancestor's shown state (a
 -- hidden one hides the frame), and with deep its regions and child frames.
 -- A dotted name (MinimapCluster.Tracking) follows keys from the global.
@@ -58,12 +59,21 @@ function I.Name(w)
   return "(unnamed " .. get(w, "GetObjectType") .. ")"
 end
 
--- One line of a frame's state: shown, visible, alpha, scale, size, strata, level and parent.
+-- Where a widget's rect is ("at 12, 34", its left and bottom in its own
+-- units), or "no rect" when the client has none for it: nothing anchored to
+-- it is drawn, nor is it. A zero-sized frame has none.
+function I.Rect(w)
+  local ok, left, bottom = pcall(function() return w:GetRect() end)
+  if not ok or left == nil then return "no rect" end
+  return "at " .. safe(left) .. ", " .. safe(bottom)
+end
+
+-- One line of a frame's state: shown, visible, alpha, scale, size, rect, strata, level and parent.
 function I.StateLine(f)
   local parent = parentOf(f)
-  return string.format("%s (%s): shown %s, visible %s, alpha %s (effective %s), scale %s (effective %s), %s x %s, strata %s level %s, under %s",
+  return string.format("%s (%s): shown %s, visible %s, alpha %s (effective %s), scale %s (effective %s), %s x %s %s, strata %s level %s, under %s",
     I.Name(f), get(f, "GetObjectType"), get(f, "IsShown"), get(f, "IsVisible"), get(f, "GetAlpha"), get(f, "GetEffectiveAlpha"),
-    get(f, "GetScale"), get(f, "GetEffectiveScale"), get(f, "GetWidth"), get(f, "GetHeight"), get(f, "GetFrameStrata"), get(f, "GetFrameLevel"),
+    get(f, "GetScale"), get(f, "GetEffectiveScale"), get(f, "GetWidth"), get(f, "GetHeight"), I.Rect(f), get(f, "GetFrameStrata"), get(f, "GetFrameLevel"),
     parent and I.Name(parent) or "nothing")
 end
 
@@ -102,7 +112,7 @@ end
 
 -- One of the frame's regions or child frames, in one line.
 local function partLine(w)
-  return string.format("  %s (%s): shown %s, alpha %s, %s x %s, %s", I.Name(w), get(w, "GetObjectType"), get(w, "IsShown"), get(w, "GetAlpha"), get(w, "GetWidth"), get(w, "GetHeight"), detail(w))
+  return string.format("  %s (%s): shown %s, alpha %s, %s x %s %s, %s", I.Name(w), get(w, "GetObjectType"), get(w, "IsShown"), get(w, "GetAlpha"), get(w, "GetWidth"), get(w, "GetHeight"), I.Rect(w), detail(w))
 end
 
 -- The frame's regions and child frames (deep), counted, then one line each.
