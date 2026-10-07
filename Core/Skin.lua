@@ -20,6 +20,7 @@ local S = {
   Button = T.Button,
   EditBox = T.EditBox,
   CloseButton = T.CloseButton,
+  WindowControl = T.WindowControl,
   FadeRegions = T.FadeRegions,
   SetFont = T.SetFont,
   Text = T.Text,

@@ -134,6 +134,9 @@ const ICON_SHAPES = {
   Profiles: [ring(8, 4, 2, STROKE), path(arc(8, 15, 6, 6, 0, 180), STROKE)],
   Move: [crisp([[8, 2], [8, 14]]), crisp([[2, 8], [14, 8]]), ...[[8, 1.5, 0, 1], [8, 14.5, 0, -1], [1.5, 8, 1, 0], [14.5, 8, -1, 0]].flatMap(arrowHead)],
   Close: [line(3.5, 4, 11.5, 12, STROKE), line(12.5, 4, 4.5, 12, STROKE)],
+  // A window's maximize and minimize controls: four corner brackets pointing out, then in.
+  Maximize: [crisp([[2, 6], [2, 2], [6, 2]]), crisp([[10, 2], [14, 2], [14, 6]]), crisp([[2, 10], [2, 14], [6, 14]]), crisp([[10, 14], [14, 14], [14, 10]])],
+  Minimize: [crisp([[2, 6], [6, 6], [6, 2]]), crisp([[10, 2], [10, 6], [14, 6]]), crisp([[2, 10], [6, 10], [6, 14]]), crisp([[10, 14], [10, 10], [14, 10]])],
   Check: [path([[3, 8.5], [6.5, 12], [13, 5.5]], STROKE)],
   Down: [path([[4, 6.5], [8, 10.5], [12, 6.5]], STROKE)],
   Right: [path([[6.5, 4], [10.5, 8], [6.5, 12]], STROKE)],

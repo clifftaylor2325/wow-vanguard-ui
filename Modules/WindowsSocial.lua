@@ -83,23 +83,12 @@ local function dressPane(pane)
   T.Panel(inset, { inset = true, noSheen = true })
 end
 
--- The maximize and minimize buttons: their glyph is their art, so they get a flat inset panel behind it
--- (T.Button would fade the glyph away).
-local function dressMaxMin(box)
-  if type(box) ~= "table" then return end
-  for _, key in ipairs({ "MaximizeButton", "MinimizeButton" }) do
-    local button = box[key]
-    if type(button) == "table" and button.CreateTexture then T.Panel(button, { inset = true, noSheen = true }) end
-  end
-end
-
--- The guild window: the window skin, the portrait art faded, each pane and the stream
--- dropdown dressed; again whenever the game switches pages (SetDisplayMode). The side tabs are the tabs stream's.
+-- The guild window: the window skin (its maximize and minimize buttons with it), the portrait art faded, each pane
+-- and the stream dropdown dressed; again whenever the game switches pages (SetDisplayMode). The side tabs are the tabs stream's.
 function GW.SkinGuildWindow(frame)
   GW.Skin(frame)
   GW.FadeParts(frame, { "PortraitOverlay" })
   for _, key in ipairs(GW.GUILD_PANES) do dressPane(frame[key]) end
-  dressMaxMin(frame.MaximizeMinimizeFrame)
   if type(frame.StreamDropdown) == "table" and frame.StreamDropdown.CreateTexture then T.Button(frame.StreamDropdown) end
   after(frame, "SetDisplayMode", GW.SkinGuildWindow)
 end

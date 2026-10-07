@@ -9,7 +9,7 @@ The look in one line: flat dark slate panels, one-screen-pixel borders, one acce
 - **Colours and font sizes live only in `Core/Theme.lua`.** Modules ask for a colour by token name (`T.RGB`, `T.Color`, `T.Tint`, `T.BarColor`, `T.Paint`, `T.Hex`) and for text by role (`T.Text(fs, role)`). `scripts/lib/code-quality.mjs` fails the build on a colour setter called with numbers, a 0-1 colour table, a written-out `|cff......` escape, or a `:SetFont(path, <number>)` outside the theme.
 - **Every painted frame follows live changes.** `T.Panel`, `T.Button`, `T.EditBox`, `T.CloseButton`, `T.Logo` and `T.Crest` remember what they painted; `T.Refresh()` (run by `/vg accent`, the accent swatches, a font or text-size change, a UI scale change) repaints them and re-fonts every string styled with a role. Anything coloured by hand registers with `T.OnChanged(fn)`.
 - **Primitives are idempotent.** Calling one again on the same frame repaints it; it never adds a second border.
-- **Other addons get the same tools** through the Skin API (`Vanguard.RegisterSkin`, `Core/Skin.lua`): `S.Panel`, `S.Button`, `S.EditBox`, `S.CloseButton`, `S.FadeRegions`, `S.SetFont`, `S.Text`, `S.Color`, `S.RGB`, `S.Tint`, `S.BarColor`, `S.Pixel`, `S.Accent`, `S.PanelColor`, `S.Font`, `S.OnChanged`.
+- **Other addons get the same tools** through the Skin API (`Vanguard.RegisterSkin`, `Core/Skin.lua`): `S.Panel`, `S.Button`, `S.EditBox`, `S.CloseButton`, `S.WindowControl`, `S.FadeRegions`, `S.SetFont`, `S.Text`, `S.Color`, `S.RGB`, `S.Tint`, `S.BarColor`, `S.Pixel`, `S.Accent`, `S.PanelColor`, `S.Font`, `S.OnChanged`.
 
 ## Colour tokens
 
@@ -138,11 +138,12 @@ The theme has no spacing tokens: each layout keeps its sizes as constants in its
 
 | Primitive | What it paints |
 | --- | --- |
-| `T.Panel(frame, opts)` | A `panel` fill (`inset` with `opts.inset`, `raised` with `opts.raised`, alpha `opts.alpha`), a one-screen-pixel border in `edge` (or the accent with `opts.accent`, or `T.SetBorder`'s colour), a one-pixel `sheen` line just inside the top border, and with `opts.shadow` a soft shadow. `noBg`, `noBorder`, `noSheen` leave a part out. |
+| `T.Panel(frame, opts)` | A `panel` fill (`inset` with `opts.inset`, `raised` with `opts.raised`, alpha `opts.alpha`), a one-screen-pixel border in `edge` (or the accent with `opts.accent`, or `T.SetBorder`'s colour), a one-pixel `sheen` line just inside the top border, and with `opts.shadow` a soft shadow. `opts.pad` draws it all that many units out past the frame (game windows use 6, room their thick border art used to take; `T.Padding(frame)` reads it back). `noBg`, `noBorder`, `noSheen` leave a part out. |
 | `T.HudPanel(frame, opts)` | `T.Panel` for the HUD (unit frames, bars, the minimap): never a sheen, and a shadow only when "Soft shadows under frames" (`hudShadow`, off by default, applies on reload) is on, so the screen stays calm. |
 | `T.Button(button)` | An `inset` panel, the template's art faded out, and a `hover` wash. |
 | `T.EditBox(box)` | An `inset` panel, the template's art faded out. |
-| `T.CloseButton(button)` | The Close icon (12 x 12) in `text2`, a `hover` wash, the template's art faded out. |
+| `T.WindowControl(button, icon, opts)` | A window control (close, maximize, minimize): the template's art faded, the icon (12 x 12, `T.CONTROL`) in `text2`; under the mouse a 20 x 20 tile behind it (`bad` at 0.9 with `opts.tile = "close"`, else the `accent` at 0.35) and the icon `white`. An unsized button takes the tile's size. |
+| `T.CloseButton(button)` | `T.WindowControl` with the Close icon and the red tile. |
 | `T.Glow(frame, size)` / `T.ShowGlow(glow, on, color)` | A soft ring around a frame (default 8 units; action buttons use 6), hidden until shown, in the accent unless a token is given. Action buttons glow for a spell the game highlights. `T.SizeGlow(glow, frame, pixels)` sizes a ring to whole screen pixels at the frame's scale (the nameplate target glow is 2 px). |
 | `T.Slot(frame)` / `T.SlotState(frame, state)` | A slot tile (the bag and menu bar): a raised fill, a one-pixel border with a one-pixel accent edge inside it, a light line along the top and a dark one along the bottom (a bevel), and a small soft shadow. The accent edge brightens for `"hover"` and darkens for `"pressed"`. |
 | `T.Logo(parent, size)` | The two linked diamonds: left in the accent, right in `text`. |
@@ -169,7 +170,7 @@ For the game's own windows (`Modules/Windows*.lua`, docs/design/RESKIN.md), and 
 
 | Primitive | What it does |
 | --- | --- |
-| `T.Tab(button)` | A tab of any of the game's three tab templates (`PanelTabButtonTemplate`, `TabSystemButtonTemplate`, `LargeSideTabButtonTemplate`): the parts in `T.TAB_ART` faded (the icon and text kept), an `inset` panel without sheen, the `hover` wash, and a one-pixel `accent` line along the top while it is the selected tab. It follows the game's selection: `SetTabSelected` (tab systems), `SetChecked` (side tabs), else disabled (the game selects a panel tab by disabling it). |
+| `T.Tab(button)` | A tab of any of the game's three tab templates (`PanelTabButtonTemplate`, `TabSystemButtonTemplate`, `LargeSideTabButtonTemplate`): the parts in `T.TAB_ART` faded (the icon and text kept), an `inset` panel without sheen and the `hover` wash; the selected tab is `raised` with a 2-pixel `accent` bar (`T.TAB_BAR`) along `opts.bar` (TOP by default; game windows give the edge away from the window), and with `opts.dimIcon` the other tabs' icons are greyed and faded (`T.TAB_DIM`). It follows the game's selection: `SetTabSelected` (tab systems), `SetChecked` (side tabs), else disabled (the game selects a panel tab by disabling it). |
 | `T.Tooltip(frame)` | A tooltip-like frame (tooltips, menus, small panels): the panel at alpha 0.94 with a soft shadow, the game's `NineSlice` faded. |
 | `T.ScrollBar(bar)` | The game's `MinimalScrollBar` and `WowTrimScrollBar`: the parts in `T.SCROLL_ART` and the thumb's art faded, the thumb a `raised` panel whose edge goes `accent` under the mouse, the Back/Forward arrows as flat buttons with the Down icon in `text2` (turned over for Back). A bar without a thumb is left alone. |
 | `T.FontObjects(map)` | The theme font, at `T.ScaledSize(size)`, on the game's font objects in `{ Name = { size, bold } }`, re-applied by `T.Refresh` (font and Text size changes). Used for the tooltip and quest tracker fonts. |
