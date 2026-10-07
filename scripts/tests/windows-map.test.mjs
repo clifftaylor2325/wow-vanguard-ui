@@ -461,6 +461,8 @@ const CALENDAR_ENV = WINDOWS_ENV + `
 
 // A calendar part's alpha (by Lua expression), or "nil" for a part this client lacks.
 const calAlpha = (addon, expr) => addon.eval(`local p = ${expr} return p and p:GetAlpha() or "nil"`);
+// Whether a close button carries the theme's close seal: its CloseMark glyph, drawn (the theme centers its control parts, so they are no fill).
+const closeSeal = (addon, name) => addon.eval(`for _, r in ipairs({ ${name}:GetRegions() }) do if (r.__texture or ""):find("CloseMark") and r:GetAlpha() ~= 0 then return true end end return false`);
 
 it("calendar: the window's art is faded but the weekday glow and last-day shadow, the month buttons and day grid are dressed, the event textures kept", () => {
   const addon = loggedIn(CALENDAR_ENV);
@@ -491,7 +493,7 @@ it("calendar: the seven dialogs are skinned, with their headers, buttons and tex
     expect(addon.eval(`local d = ${name} return { d.Border:GetAlpha(), (d.Border:GetRegions()):GetAlpha(), d.Header.LeftBG:GetAlpha(), d.Header.RightBG:GetAlpha(), d.Header.CenterBG:GetAlpha(), d.Header.Text:GetFont() ~= nil }`), `${name}: the border and the header plate are faded, the title in the theme font`).toEqual([0, 0, 0, 0, 0, true]);
   }
   expect([calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "the holiday's art and the create dialog's icon are left as the game has them").toEqual([0.4, 1]);
-  expect(["CalendarViewHolidayCloseButton", "CalendarViewEventCloseButton", "CalendarCreateEventCloseButton", "CalendarMassInviteCloseButton"].map(n => fills(addon, n)), "the close buttons are drawn in the theme").toEqual([1, 1, 1, 1]);
+  expect(["CalendarViewHolidayCloseButton", "CalendarViewEventCloseButton", "CalendarCreateEventCloseButton", "CalendarMassInviteCloseButton"].map(n => closeSeal(addon, n)), "the close buttons are the theme's close seal").toEqual([true, true, true, true]);
   expect(["CalendarViewEventAcceptButton", "CalendarCreateEventCreateButton", "CalendarEventPickerCloseButton", "CalendarTexturePickerAcceptButton"].map(n => fills(addon, n)), "the push buttons are flat buttons").toEqual([2, 2, 2, 2]);
   expect(["CalendarCreateEventTitleEdit", "CalendarMassInviteMinLevelEdit"].map(n => calAlpha(addon, `(_G.${n}:GetRegions())`)), "the text boxes' template art is faded").toEqual([0, 0]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
