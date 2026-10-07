@@ -1,5 +1,5 @@
-# Sources keep LF line endings on every platform (the self-hosted CI runner
-# is Windows); the art, fonts and zips are binary.
+# Sources keep LF line endings on every platform (the addon is edited on
+# Windows and checked on Linux); the art, fonts and zips are binary.
 * text=auto eol=lf
 *.tga binary
 *.blp binary
