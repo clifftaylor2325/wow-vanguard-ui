@@ -60,6 +60,9 @@ MS.LAST_BAG = 4
 MS.BAG_EVENTS = { "BAG_UPDATE_DELAYED", "BAG_CONTAINER_UPDATE", "PLAYER_ENTERING_WORLD" }
 -- The bars' own frame art on Forever (the brass box), faded: the bar's panel is the only frame.
 MS.BAR_ART = { MicroMenu = { "BorderArt", "BackgroundArt" }, BagsBar = { "BorderArt" } }
+-- The frames in the bar that the game hides itself when it switches input
+-- (MainActionBar_InitializeGamepad / _UnInitializeMKB), leaving the bar empty: shown again.
+MS.KEEP_SHOWN = { "BagsBar", "MicroMenu" }
 
 -- The game's menu buttons -> Vanguard's line icon for each (shown when switched on). A client without one skips it.
 MS.GLYPHS = {
@@ -210,6 +213,24 @@ function MS.FadeArt()
     for _, key in ipairs(keys) do
       local t = type(f) == "table" and f[key]
       if type(t) == "table" and t.SetAlpha then t:SetAlpha(0) end
+    end
+  end
+end
+
+-- Shows one of the bar's frames again after the game hid it itself (out of
+-- combat); one only hidden with the bar (still shown itself) is left alone.
+function MS.Reshow(f)
+  if f:IsShown() then return end
+  ns.OutOfCombat(function() f:Show() end, "menustrip show " .. (f:GetName() or ""))
+end
+
+-- Keeps the bags and the menu shown in the bar: now, and whenever the game hides them.
+local function keepShown()
+  for _, name in ipairs(MS.KEEP_SHOWN) do
+    local f = _G[name]
+    if type(f) == "table" and f.HookScript then
+      f:HookScript("OnHide", MS.Reshow)
+      MS.Reshow(f)
     end
   end
 end
@@ -467,6 +488,7 @@ local function buildStrip()
   addDivider(MS.strip)
   for _, row in ipairs(MS.ROWS) do pinInto(row) end
   MS.FadeArt()
+  keepShown()
   skinButtons()
   MS.FitStrip()
   watchVisibility(MS.strip)

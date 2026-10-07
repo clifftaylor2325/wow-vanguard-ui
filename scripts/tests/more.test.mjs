@@ -2199,6 +2199,22 @@ it("bag and menu bar: the bars' own frame art is hidden, the key ring gets a ful
   expect(off.eval("return { MicroMenu.BorderArt.__alpha, KeyRingButton.vgSlot ~= nil }"), "with or without the line icons, the frame art goes and the key ring is framed").toEqual([0, true]);
 });
 
+it("bag and menu bar: the bags and menu the game hides on an input switch come back, after combat", () => {
+  const addon = strips();
+  // Whether the bag bar and the micro menu are shown themselves.
+  const shown = () => addon.eval("return { BagsBar:IsShown(), MicroMenu:IsShown() }");
+  addon.eval("MicroMenu:Hide() BagsBar:Hide()");
+  expect(shown(), "the game's gamepad switch hides both: shown again at once").toEqual([true, true]);
+  addon.eval("Vanguard_MenuStrip:Hide()");
+  expect(shown(), "hidden only with the bar, they keep their own shown state").toEqual([true, true]);
+  addon.eval("Vanguard_MenuStrip:Show()");
+  setCombat(addon, true);
+  addon.eval("MicroMenu:Hide()");
+  expect(shown(), "in combat it waits").toEqual([true, false]);
+  setCombat(addon, false);
+  expect(shown(), "and shows it when combat ends").toEqual([true, true]);
+});
+
 // Where a seated bar's RIGHT point sits on its row's anchor (row k of the bar): { x, y } in screen units.
 const seatOf = (addon, bar, k, scale) => addon.eval(`local p = ${bar}.__points.RIGHT return { p.rel == ns.GetModule("MenuStrip").ROWS[${k}].anchor, p.relPoint, p.x, p.y }`).map((v, i) => (i > 1 ? r3(v * scale) : v));
 
