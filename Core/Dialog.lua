@@ -22,12 +22,13 @@ local function button(parent, label, width)
 end
 ns.DialogButton = button
 
--- A centered, movable, themed dialog frame with a title.
+-- A centered, movable, themed dialog frame with a title, a layer above the options window (which
+-- is on the dialog strata itself, its cards high in it, so a dialog there opened under them).
 local function dialog(name, w, h)
   local f = T.Panel(CreateFrame("Frame", name, UIParent), { alpha = 0.98, shadow = true })
   f:SetSize(w, h)
   f:SetPoint("CENTER")
-  f:SetFrameStrata("DIALOG")
+  f:SetFrameStrata("FULLSCREEN_DIALOG")
   f:EnableMouse(true)
   f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading")
   f.title:SetPoint("TOPLEFT", 12, -10)
