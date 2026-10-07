@@ -177,7 +177,7 @@ For the game's own windows (`Modules/Windows*.lua`, docs/design/RESKIN.md), and 
 
 ## Icons
 
-`Media/Icons/*.tga` are white line glyphs drawn on a 16-unit grid at 32 x 32 px by `scripts/lib/media-sources.mjs` and shown at 16 px (options nav, menu strip, close and arrow controls) or smaller (raid marks at about 10 px, which are filled shapes for that reason).
+`Media/Icons/*.tga` are white glyphs made at 32 x 32 px by `scripts/lib/media-sources.mjs`. Most are line glyphs drawn on a 16-unit grid and shown at 16 px (menu strip, close and arrow controls) or smaller (raid marks at about 10 px, which are filled shapes for that reason). The options nav's page icons (`Nav*`) and the minimap's two slot buttons (`Minimap*`) are filled silhouettes rasterized from game-icons.net SVGs (`SILHOUETTES`; CC BY 3.0, credited in `art/CREDITS.md` and `Media/Icons/CREDITS.txt`) with one unit of clear air around them, shown at 16 and 12 px. The stroke rules below are for the drawn line glyphs; the tinting rules apply to all.
 
 - **One grid unit is one pixel at 16 px.** Strokes are 2 units (2 px) wide (`STROKE`).
 - **Straight strokes sit on whole units** (`crisp`, `rect`: square-ended boxes), so each covers exactly two rows or columns of pixels at 16 px instead of smearing across three. `scripts/media.test.mjs` checks that the icons made only of straight strokes have no half-covered pixel at 16 px.

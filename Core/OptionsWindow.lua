@@ -477,7 +477,7 @@ end
 
 -- Fills a nav entry with the page's icon and title; clicking opens the page.
 local function fillNavItem(b, page)
-  b.icon = W.IconTexture(b, page.icon or "General", 16, "text2")
+  b.icon = W.IconTexture(b, page.icon or "NavGeneral", 16, "text2")
   b.icon:SetPoint("LEFT", 14, 0)
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label", "text2")
   b.text:SetPoint("LEFT", b.icon, "RIGHT", 9, 0)

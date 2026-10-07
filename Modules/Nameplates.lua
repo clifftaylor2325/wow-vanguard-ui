@@ -397,7 +397,7 @@ end
 ns.Options.AddPage({
   key = "nameplates",
   title = "Nameplates",
-  icon = "Nameplates",
+  icon = "NavNameplates",
   order = 70,
   rows = function() return NP.OptionRows() end,
 })

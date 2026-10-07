@@ -460,7 +460,7 @@ function SI.Rows()
   }
 end
 
-ns.Options.AddPage({ key = "situations", title = "Situations", icon = "Group", order = 85, rows = SI.Rows })
+ns.Options.AddPage({ key = "situations", title = "Situations", icon = "NavSituations", order = 85, rows = SI.Rows })
 
 -- Module entry point (Core/Modules.lua): follows where you are, and applies the override for it.
 function SI.Enable(settings)
