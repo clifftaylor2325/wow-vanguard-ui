@@ -1,5 +1,5 @@
--- Game windows, social group: Mail, guild, channels, friends sub-dialogs, guild creation, role poll and the raid tab, in the
--- Vanguard look. Filled by stream S1 of docs/handoff/RESKIN-PLAN.md; registers with
+-- Game windows, social group: Mail, guild, channels, friends sub-dialogs, the social window (Forever's friends list),
+-- guild creation, role poll and the raid tab, in the Vanguard look. Filled by stream S1 of docs/handoff/RESKIN-PLAN.md; registers with
 -- GW.Add (Modules/Windows.lua) at file scope, so the windows are watched at login.
 
 local ADDON, ns = ...
@@ -103,10 +103,11 @@ GW.SOCIAL_DIALOG_ART = { "NineSlice", "Bg", "BG", "Border", "Background", "Heade
 GW.SOCIAL_DIALOG_BUTTONS = {
   "Accept", "Cancel", "Delete", "Close", "Copy", "LinkToChat", "GenerateLinkButton", "ChangeAvatarButton", "ContextButton",
   "OKButton", "SendButton", "CancelButton", "SendRequestButton", "FriendsDropdown",
+  "UpdateButton", "BlockButton", "UnblockButton", "ExtendButton",
 }
 GW.SOCIAL_DIALOG_NAMED = { "AcceptButton" }
 -- Their edit boxes by parentKey.
-GW.SOCIAL_DIALOG_BOXES = { "NameEdit", "ShortNameEdit", "Name", "Password" }
+GW.SOCIAL_DIALOG_BOXES = { "NameEdit", "ShortNameEdit", "Name", "Password", "EditBox" }
 
 -- Fades one art part named key: a texture, or a frame with its own textures and NineSlice.
 local function fadeKey(frame, key)
@@ -178,6 +179,105 @@ end
 GW.Add("social", "framed", { "ChannelFrame" })
 GW.Add("social", "framed", { "CreateChannelPopup", "FriendsFriendsFrame", "BattleNetInviteFrame" }, GW.SkinSocialDialog)
 GW.Add("social", "framed", { "AddFriendFrame" }, GW.SkinAddFriend)
+
+-- The social window -----------------------------------------------------------------------------
+
+-- On Forever the friends list is the game's social window (Blizzard_SocialUI's SocialUIFrame, a
+-- PortraitFrameTemplate; the old FriendsFrame stays registered for a client that still opens it): a
+-- Battle.net bar under the title, a column of side tabs taken from a pool (friends, recent allies, quick
+-- join, requests, recruit a friend, raid), a content pane per tab made at load, and side windows beside it.
+
+-- Its content panes (parentKeys), one per tab; all but the raid tab's share one template.
+GW.SOCIAL_PANES = { "FriendsList", "RecentAlliesList", "QuickJoinFrame", "FriendRequestsList", "RecruitAFriendFrame", "RaidFrame" }
+-- A pane's push buttons (parentKeys): the action button under its list, the raid tab's two.
+GW.SOCIAL_PANE_BUTTONS = { "ActionButton", "RaidInfoButton", "ConvertToRaidButton" }
+-- A pane's dividers above and below its list: faded, the window's panel is its room.
+GW.SOCIAL_PANE_ART = { "TopDivider", "BottomDivider" }
+-- Its side windows (parentKeys): dialogs beside the window, and the ignore list (a ButtonFrameTemplate).
+GW.SOCIAL_SIDE = { "BattleNetUnavailableNoticeFrame", "BattleNetBroadcastFrame", "RaidInfoFrame" }
+GW.SOCIAL_SIDE_FRAMED = { "IgnoreListFrame" }
+
+-- A button whose icon is its label (the Battle.net menu button): a flat button, its icon shown again
+-- (the flat button fades every texture the game gave it).
+local function iconButton(button)
+  if type(button) ~= "table" or not button.CreateTexture then return end
+  T.Button(button)
+  if type(button.Icon) == "table" and button.Icon.SetAlpha then button.Icon:SetAlpha(1) end
+end
+
+-- A search box (SearchBoxNineSliceTemplate) as T.EditBox, its magnifier shown again.
+local function searchBox(box)
+  if type(box) ~= "table" or not box.SetText then return end
+  T.EditBox(box)
+  if type(box.searchIcon) == "table" and box.searchIcon.SetAlpha then box.searchIcon:SetAlpha(1) end
+end
+
+-- The Battle.net bar: its plate and the band behind the status dropdown and battletag faded, the status
+-- dropdown flat (its presence dot is in its text), the menu button flat with its icon.
+local function dressBattleNetBar(bar)
+  if type(bar) ~= "table" or not bar.GetRegions then return end
+  T.FadeRegions(bar)
+  local box = bar.ControlsContainer
+  if type(box) ~= "table" or not box.GetRegions then return end
+  T.FadeRegions(box)
+  dressKeys(box, { "OnlineStatusDropdown" }, "CreateTexture", T.Button)
+  iconButton(box.BattleNetMenuButton)
+end
+
+-- One content pane: its dividers faded, its search bar and filter button themed, its push buttons flat.
+-- (Its scroll bar is the tabs stream's; the raid tab's role buttons and group cards keep the game's art.)
+local function dressSocialPane(pane)
+  if type(pane) ~= "table" or not pane.GetRegions then return end
+  GW.FadeParts(pane, GW.SOCIAL_PANE_ART)
+  local bar = pane.FilterBar
+  if type(bar) == "table" then
+    searchBox(bar.SearchBar)
+    dressKeys(bar, { "SearchFilterDropdown" }, "CreateTexture", T.Button)
+  end
+  dressKeys(pane, GW.SOCIAL_PANE_BUTTONS, "CreateTexture", T.Button)
+end
+
+-- The ignore list (a ButtonFrameTemplate beside the window): the window skin, its two buttons flat.
+local function skinIgnoreList(frame)
+  GW.Skin(frame)
+  dressKeys(frame, GW.SOCIAL_DIALOG_BUTTONS, "CreateTexture", T.Button)
+end
+
+-- A side window: skinned now, and again on each of its own shows (it opens while the window is
+-- already open, and the game lays it out then); the hook goes on once.
+local function watchSide(frame, skin)
+  if type(frame) ~= "table" or not frame.HookScript then return end
+  skin(frame)
+  if frame.vgSocialSide then return end
+  frame.vgSocialSide = true
+  frame:HookScript("OnShow", function(f) ns.Try("window SocialUIFrame side", skin, f) end)
+end
+
+-- The side tabs the window takes from its pool (anchored again on every RefreshTabs): each in the theme
+-- with its icon and count kept, out past the window's padding, the accent bar on its outer (right) edge,
+-- greyed while another is selected. Left to the game when the tabs group is off.
+local function dressSocialTabs(frame)
+  if not (GW.settings and GW.settings.tabs) or type(frame.EnumerateTabs) ~= "function" then return end
+  for tab in frame:EnumerateTabs() do
+    tab.vgPadded = nil
+    if type(GW.ClearPadding) == "function" then GW.ClearPadding(tab, frame) end
+    T.Tab(tab, { bar = "RIGHT", dimIcon = true })
+  end
+end
+
+-- The social window: the window skin, the Battle.net bar, every pane, its side windows and its tabs; the
+-- tabs again whenever the game makes them again (RefreshTabs, on every show and status change).
+function GW.SkinSocial(frame)
+  GW.Skin(frame)
+  dressBattleNetBar(frame.BattleNetBar)
+  for _, key in ipairs(GW.SOCIAL_PANES) do dressSocialPane(frame[key]) end
+  for _, key in ipairs(GW.SOCIAL_SIDE) do watchSide(frame[key], GW.SkinSocialDialog) end
+  for _, key in ipairs(GW.SOCIAL_SIDE_FRAMED) do watchSide(frame[key], skinIgnoreList) end
+  dressSocialTabs(frame)
+  after(frame, "RefreshTabs", dressSocialTabs)
+end
+
+GW.Add("social", "framed", { "SocialUIFrame" }, GW.SkinSocial)
 
 -- Guild creation --------------------------------------------------------------------------------
 

@@ -410,3 +410,98 @@ it("raid tab: the parent window is skinned, and a client without the raid UI or 
   odd.eval("RaidFrame:Show()");
   expect([windowErrors(addon), windowErrors(odd), addon.eval("return #ns.errors"), odd.eval("return #ns.errors")]).toEqual(["none", "none", 0, 0]);
 });
+
+// The social window (Forever's friends list) ------------------------------------------------------------
+
+// The social window as Blizzard_SocialUI builds it: a portrait window with a Battle.net bar (plate, band, status
+// dropdown, menu button with an icon), a friends pane (dividers, a search bar with a magnifier, a filter button,
+// an action button, a list), a raid pane, side windows (a bordered broadcast dialog with an edit box and buttons,
+// an ignore list that is a window) and side tabs from a pool, anchored again by every RefreshTabs.
+const SOCIAL_ENV = WINDOWS_ENV + `
+  local f = __window("SocialUIFrame")
+  f.BattleNetBar = CreateFrame("Frame", nil, f) f.BattleNetBar.Background = f.BattleNetBar:CreateTexture()
+  local box = CreateFrame("Frame", nil, f.BattleNetBar) f.BattleNetBar.ControlsContainer = box
+  box.BattleNetBackground = box:CreateTexture()
+  box.OnlineStatusDropdown = CreateFrame("Button", nil, box) box.OnlineStatusDropdown.Arrow = box.OnlineStatusDropdown:CreateTexture()
+  box.BattleNetMenuButton = CreateFrame("Button", nil, box) box.BattleNetMenuButton.Icon = box.BattleNetMenuButton:CreateTexture()
+  local function pane(key)
+    local p = CreateFrame("Frame", nil, f) f[key] = p
+    p.TopDivider = p:CreateTexture() p.BottomDivider = p:CreateTexture()
+    p.FilterBar = CreateFrame("Frame", nil, p)
+    p.FilterBar.SearchBar = CreateFrame("EditBox", nil, p.FilterBar)
+    p.FilterBar.SearchBar.Background = p.FilterBar.SearchBar:CreateTexture() p.FilterBar.SearchBar.searchIcon = p.FilterBar.SearchBar:CreateTexture()
+    p.FilterBar.SearchFilterDropdown = CreateFrame("Button", nil, p.FilterBar)
+    p.ActionButton = CreateFrame("Button", nil, p)
+    p.ScrollBox = CreateFrame("Frame", nil, p)
+    return p
+  end
+  pane("FriendsList") pane("RecentAlliesList")
+  f.RaidFrame = CreateFrame("Frame", nil, f) f.RaidFrame.RaidInfoButton = CreateFrame("Button", nil, f.RaidFrame) f.RaidFrame.ConvertToRaidButton = CreateFrame("Button", nil, f.RaidFrame)
+  local cast = CreateFrame("Frame", nil, f) f.BattleNetBroadcastFrame = cast cast:Hide()
+  cast.Border = CreateFrame("Frame", nil, cast) cast.Border.Edge = cast.Border:CreateTexture()
+  cast.Title = cast:CreateFontString(nil, "OVERLAY")
+  cast.EditBox = CreateFrame("EditBox", nil, cast) cast.EditBox.LeftBorder = cast.EditBox:CreateTexture()
+  cast.UpdateButton = CreateFrame("Button", nil, cast) cast.CancelButton = CreateFrame("Button", nil, cast)
+  f.IgnoreListFrame = __window("SocialUIIgnoreList") f.IgnoreListFrame:SetParent(f)
+  f.IgnoreListFrame.BlockButton = CreateFrame("Button", nil, f.IgnoreListFrame)
+  f.tabs, __refreshes = {}, 0
+  function f:EnumerateTabs() local i = 0 return function() i = i + 1 return self.tabs[i] end end
+  function f:RefreshTabs()
+    __refreshes = __refreshes + 1
+    for i = 1, 2 do
+      local tab = self.tabs[i]
+      if not tab then
+        tab = CreateFrame("CheckButton", nil, self) self.tabs[i] = tab
+        tab.Background = tab:CreateTexture() tab.SelectedTexture = tab:CreateTexture() tab.Icon = tab:CreateTexture() tab.Count = tab:CreateFontString(nil, "ARTWORK")
+      end
+      tab:ClearAllPoints()
+      if i == 1 then tab:SetPoint("TOPLEFT", self, "TOPRIGHT", 0, -122) else tab:SetPoint("TOPLEFT", self.tabs[i - 1], "BOTTOMLEFT", 0, -3) end
+      tab:Show()
+    end
+  end
+  f:HookScript("OnShow", function(self) self:RefreshTabs() end)
+`;
+
+// Lua: whether a frame has a texture of its own that isn't the game's art and isn't faded (Vanguard painted it).
+const PAINTED = `local function painted(x) for _, r in ipairs({ x:GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then return true end end return false end`;
+
+it("social window: the window and its Battle.net bar, panes, side windows and tabs in the theme, the tabs again after the game makes them again", () => {
+  const addon = loggedIn(SOCIAL_ENV);
+  addon.eval("SocialUIFrame:Show()");
+  expect(windowState(addon, "SocialUIFrame")).toMatchObject({ art: 0, nine: 0, portrait: 0, panel: true, title: true });
+  expect(addon.eval(`local f, box = SocialUIFrame, SocialUIFrame.BattleNetBar.ControlsContainer ${PAINTED}
+    return { f.BattleNetBar.Background.__alpha, box.BattleNetBackground.__alpha, painted(box.OnlineStatusDropdown), painted(box.BattleNetMenuButton), box.BattleNetMenuButton.Icon.__alpha }`),
+  "the Battle.net bar: plate and band faded, dropdown and menu button flat, the menu icon kept").toEqual([0, 0, true, true, 1]);
+  expect(addon.eval(`local p = SocialUIFrame.FriendsList ${PAINTED}
+    return { p.TopDivider.__alpha, p.BottomDivider.__alpha, painted(p.FilterBar.SearchBar), p.FilterBar.SearchBar.Background.__alpha, p.FilterBar.SearchBar.searchIcon.__alpha,
+      painted(p.FilterBar.SearchFilterDropdown), painted(p.ActionButton), painted(SocialUIFrame.RecentAlliesList.ActionButton), painted(SocialUIFrame.RaidFrame.RaidInfoButton), painted(SocialUIFrame.RaidFrame.ConvertToRaidButton) }`),
+  "a pane: dividers faded, the search box themed with its magnifier, the filter and action buttons flat, the raid tab's buttons too").toEqual([0, 0, true, 0, 1, true, true, true, true, true]);
+  expect(addon.eval(`local f = SocialUIFrame ${PAINTED}
+    local function tab(i) local t = f.tabs[i] return { t.Background.__alpha, t.Icon.__alpha == ns.Theme.TAB_DIM, painted(t) } end
+    local _, rel, _, x = f.tabs[1]:GetPoint(1)
+    return { tab(1), tab(2), rel == f, x == ns.Theme.Padding(f) - ns.Theme.Pixel(f), __refreshes }`),
+  "the side tabs: art faded, icons kept (greyed, none selected), flat, the first moved out past the padding").toEqual([[0, true, true], [0, true, true], true, true, 1]);
+  addon.eval("SocialUIFrame:RefreshTabs()");
+  expect(addon.eval(`local f = SocialUIFrame local _, _, _, x = f.tabs[1]:GetPoint(1) return { __refreshes, x == ns.Theme.Padding(f) - ns.Theme.Pixel(f), f.tabs[1].Background.__alpha }`), "made again: padded and skinned again").toEqual([2, true, 0]);
+  addon.eval("SocialUIFrame.BattleNetBroadcastFrame:Show() SocialUIFrame.IgnoreListFrame:Show()");
+  expect(addon.eval(`local cast, ignore = SocialUIFrame.BattleNetBroadcastFrame, SocialUIFrame.IgnoreListFrame ${PAINTED}
+    return { cast.Border.Edge.__alpha, painted(cast), painted(cast.EditBox), cast.EditBox.LeftBorder.__alpha, painted(cast.UpdateButton), painted(cast.CancelButton), cast.Title:GetFont() ~= nil,
+      ignore.NineSlice.__alpha, painted(ignore), painted(ignore.BlockButton) }`),
+  "the side windows: the broadcast dialog's border faded, a panel, its box, buttons and title themed; the ignore list a window with its button flat").toEqual([0, true, true, 0, true, true, true, 0, true, true]);
+  expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
+});
+
+it("social window: a second show paints nothing more, the switch off leaves it the game's, missing parts load cleanly", () => {
+  const addon = loggedIn(SOCIAL_ENV);
+  addon.eval("SocialUIFrame:Show() SocialUIFrame.BattleNetBroadcastFrame:Show()");
+  const painted = windowState(addon, "SocialUIFrame").painted;
+  addon.eval("SocialUIFrame:Hide() SocialUIFrame:Show() SocialUIFrame.BattleNetBroadcastFrame:Hide() SocialUIFrame.BattleNetBroadcastFrame:Show() SocialUIFrame:RefreshTabs()");
+  expect(windowState(addon, "SocialUIFrame").painted, "painting again piles up nothing").toBe(painted);
+  const off = loggedIn(SOCIAL_ENV, OFF);
+  off.eval("SocialUIFrame:Show()");
+  expect([windowState(off, "SocialUIFrame").art !== 0, off.eval("return SocialUIFrame.vgWindow == nil and SocialUIFrame.tabs[1].Background.__alpha ~= 0")], "with the group off").toEqual([true, true]);
+  const bare = loggedIn(WINDOWS_ENV + `__window("SocialUIFrame") SocialUIFrame.BattleNetBar = {} SocialUIFrame.FriendsList = CreateFrame("Frame", nil, SocialUIFrame) SocialUIFrame.FriendsList.FilterBar = {}
+    SocialUIFrame.RaidFrame = {} SocialUIFrame.IgnoreListFrame = {} SocialUIFrame.BattleNetBroadcastFrame = CreateFrame("Frame", nil, SocialUIFrame)`);
+  bare.eval("SocialUIFrame:Show()");
+  expect([windowErrors(bare), bare.eval("return #ns.errors")], "a client with parts missing").toEqual(["none", 0]);
+});
