@@ -428,8 +428,7 @@ local function addHeader(f)
   f.logo:SetPoint("LEFT", 10, 0)
   addTitle(f)
   f.close = T.CloseButton(CreateFrame("Button", nil, f.header))
-  f.close:SetSize(24, 24)
-  f.close:SetPoint("RIGHT", -8, 0)
+  f.close:SetPoint("CENTER", f.header, "RIGHT", -T.CONTROL.inset, 0)
   f.close:SetScript("OnClick", function() O.Hide() end)
 end
 

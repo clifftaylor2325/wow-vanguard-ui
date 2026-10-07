@@ -101,7 +101,7 @@ it("guild window: panes faded and panelled, portrait art faded, dropdown and max
     return { painted(f.CommunitiesList.InsetFrame), painted(f.MemberList.InsetFrame), painted(f.GuildBenefitsFrame), painted(f.StreamDropdown),
       painted(f.MaximizeMinimizeFrame.MaximizeButton), painted(f.MaximizeMinimizeFrame.MinimizeButton) }`), "inset panels, a themed dropdown and flat max/min buttons").toEqual([true, true, true, true, true, true]);
   expect(addon.eval(`local box = CommunitiesFrame.MaximizeMinimizeFrame
-    local function glyph(b) for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "OVERLAY" and not r.__texture:find("ControlGem") then return r.__texture:match("(%a+)$") end end end
+    local function glyph(b) for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "OVERLAY" then return r.__texture:match("(%a+)$") end end end
     return { glyph(box.MaximizeButton), glyph(box.MinimizeButton) }`), "the max/min buttons draw the theme's Maximize and Minimize glyphs").toEqual(["Maximize", "Minimize"]);
   addon.eval("CommunitiesFrame:SetDisplayMode(2)");
   expect(addon.eval("return { __modes, CommunitiesFrame.CommunitiesList.Art.__alpha }"), "a page switch is skinned again").toEqual([1, 0]);
