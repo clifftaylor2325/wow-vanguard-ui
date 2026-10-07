@@ -2084,8 +2084,10 @@ const MENU = 28 / 27, BAGS = 28 / 47;
 const r3 = (n) => Math.round(n * 1000) / 1000;
 // The bag and menu bar's width and height.
 const barSize = (addon) => addon.eval("return { Vanguard_MenuStrip:GetWidth(), Vanguard_MenuStrip:GetHeight() }").map(r3);
-// The bar's width around a longer row of n slots: the slots, their 4-pixel gaps, and an 8-pixel margin each side.
-const barW = (n) => (n > 0 ? n * 28 - 4 : 0) + 16;
+// The bar's width around a longer row of n slots: the slots, their 4-pixel gaps, and a 12-pixel margin each side.
+const barW = (n) => (n > 0 ? n * 28 - 4 : 0) + 24;
+// The bar's height: a 24-pixel bags row, a 4-pixel gap and a 30-pixel menu row, inside the margins.
+const BAR_H = 24 + 4 + 30 + 24;
 // The bar's width around a micro menu w units wide: the game lays its buttons 27 units apart, 5 overlapping.
 const menuBarW = (w) => barW(Math.round((w - 5) / 27));
 
@@ -2114,9 +2116,9 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   expect([pinned(addon, "BagsBar", "Vanguard_MenuStrip"), pinned(addon, "MicroMenuContainer", "Vanguard_MenuStrip")], "the bag bar and the micro menu ride in one bar, each at its row's right end").toEqual([[true, "RIGHT"], [true, "RIGHT"]]);
   expect(addon.eval("for _, e in ipairs(ns.errors) do if e.text:find('pin ') then return e.text end end return 'none'"), "pinning the first row fits both rows with no error: every row's anchor is made first").toBe("none");
   addon.eval("BagsBar:SetSize(600, 45) ns.PausePins(false)");
-  expect(barSize(addon), "a bag bar 600 units wide holds 13 bags: the bar hugs their slots inside an 8-unit margin (two rows tall)").toEqual([barW(13), 68]);
+  expect(barSize(addon), "a bag bar 600 units wide holds 13 bags: the bar hugs their slots inside a 12-unit margin (two rows tall)").toEqual([barW(13), BAR_H]);
   addon.eval("BagsBar:SetSize(50, 20) ns.PausePins(false)");
-  expect([...barSize(addon), addon.eval("return Vanguard_BagStrip == nil")], "one bag: the bar shrinks to hug its one slot, and there is no separate bag strip").toEqual([barW(1), 68, true]);
+  expect([...barSize(addon), addon.eval("return Vanguard_BagStrip == nil")], "one bag: the bar shrinks to hug its one slot, and there is no separate bag strip").toEqual([barW(1), BAR_H, true]);
   expect(addon.eval("local s = Vanguard_MenuStrip return { s:GetAlpha(), s.__mouseMotion == nil }"), "the bar is always shown by default (P2.18), nothing watching the mouse").toEqual([1, true]);
   expect(addon.eval("return { Vanguard_QuestTracker:GetWidth(), Vanguard_QuestTracker:GetHeight(), next(ObjectiveTrackerFrame.__points) == nil }"), "Vanguard's tracker is on: its spot is made (260 by 248) and the game's tracker is not pinned").toEqual([260, 248, true]);
 });
@@ -2164,11 +2166,11 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
   expect([char.art, char.normal, char.flash, r3(char.w * MENU)], "the game's art is faded but its alert flash stays; the icon is 20 screen pixels").toEqual([0, 0, 1, 20]);
   expect(isTok(addon, char.color, "text"), "the icon is text").toBeTruthy();
   const slot = addon.eval("local s = CharacterMicroButton.vgSlot return { s.__width, s.__height, s.__points.CENTER ~= nil, CharacterMicroButton.vgGlyph:GetParent() == s }");
-  expect([r3(slot[0] * MENU), r3(slot[1] * MENU), slot[2], slot[3]], "each button sits on a centered 24-pixel slot (a 4-pixel gap to its neighbors), the icon on it").toEqual([24, 24, true, true]);
+  expect([r3(slot[0] * MENU), r3(slot[1] * MENU), slot[2], slot[3]], "each button sits on a centered slot 24 pixels wide and 30 tall (a 4-pixel gap to its neighbors), the icon on it").toEqual([24, 30, true, true]);
   const bag = addon.eval(`local b = MainMenuBarBackpackButton local art
     for _, r in ipairs({ b:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
     return { art, b.icon.__alpha, b.icon.__texCoord[1] > 0, b.icon.__points.TOPLEFT.rel == b.vgSlot, b.icon.__points.TOPLEFT.x }`);
-  expect([...bag.slice(0, 4), r3(bag[4] * BAGS)], "bag buttons: the game's art faded, the bag icon kept, cropped and inset 2 pixels in its slot").toEqual([0, 1, true, true, 2]);
+  expect([...bag.slice(0, 4), r3(bag[4] * BAGS)], "bag buttons: the game's art faded, the bag icon kept, cropped and inset 3 pixels in its slot").toEqual([0, 1, true, true, 3]);
   addon.eval("CharacterMicroButton:Disable()");
   expect(isTok(addon, glyph("CharacterMicroButton").color, "muted"), "and muted while the button is disabled").toBeTruthy();
   addon.eval("CharacterMicroButton:Enable()");
@@ -2239,7 +2241,7 @@ it("bag and menu bar: every row's anchor has a size, so the bars get a rect to d
   expect(rects(["Empty", "Probe"]), "and, like the client, gives nothing hung on a zero-sized frame a rect").toEqual([false, false]);
   addon.eval("BagsBar:SetSize(0, 45) MicroMenuContainer:SetSize(0, 30) ns.PausePins(false)");
   expect(addon.eval("local MS = ns.GetModule('MenuStrip') return { MS.ROWS[1].anchor:GetWidth(), MS.ROWS[2].anchor:GetWidth(), Vanguard_MenuStrip:GetWidth() }"),
-    "rows with no buttons keep a unit-wide anchor (the bar hugs its margins)").toEqual([1, 1, 16]);
+    "rows with no buttons keep a unit-wide anchor (the bar hugs its margins)").toEqual([1, 1, 24]);
 });
 
 it("bag and menu bar: the bags and menu the game hides on an input switch come back, after combat", () => {
@@ -2263,17 +2265,17 @@ const seatOf = (addon, bar, k, scale) => addon.eval(`local p = ${bar}.__points.R
 
 it("bag and menu bar: the rows re-fit when the game lays the bars out or resizes them", () => {
   const addon = strips();
-  expect(barSize(addon), "before the game lays them out, the bar is its margins only, two rows of 24-pixel slots and a gap tall").toEqual([16, 68]);
+  expect(barSize(addon), "before the game lays them out, the bar is its margins only, a bags row, a gap and a menu row tall").toEqual([24, BAR_H]);
   addon.eval("MicroMenuContainer:Layout()");
-  expect(barSize(addon), "the bar grows around the laid-out micro menu").toEqual([menuBarW(378), 68]);
+  expect(barSize(addon), "the bar grows around the laid-out micro menu").toEqual([menuBarW(378), BAR_H]);
   // Each row's last slot sits at its anchor (its button reaches past it by half the difference), its middle on the row's.
-  expect(seatOf(addon, "MicroMenuContainer", 2, MENU), "the menu: the lower row, 48 pixels below the top").toEqual([true, "TOPRIGHT", r3((32 * MENU - 24) / 2), -48]);
-  expect(seatOf(addon, "BagsBar", 1, BAGS), "the bags: the upper row, 20 pixels below the top").toEqual([true, "TOPRIGHT", r3((45 * BAGS - 24) / 2), -20]);
+  expect(seatOf(addon, "MicroMenuContainer", 2, MENU), "the menu: the lower row, its middle 55 pixels below the top (the 12-pixel margin, the bags row, the gap and half a 30-pixel slot)").toEqual([true, "TOPRIGHT", r3((32 * MENU - 24) / 2), -55]);
+  expect(seatOf(addon, "BagsBar", 1, BAGS), "the bags: the upper row, its middle 24 pixels below the top").toEqual([true, "TOPRIGHT", r3((45 * BAGS - 24) / 2), -24]);
   addon.eval("BagsBar:SetScale(1) BagsBar:Layout()");
   expect([barSize(addon)[0], r3(addon.eval("return BagsBar:GetScale()"))], "a narrower bag row leaves the bar as wide as the menu, and the game's reset of the bag bar's scale is undone").toEqual([menuBarW(378), r3(BAGS)]);
   addon.eval("MicroMenuContainer:SetSize(500, 40) MicroMenuContainer.__scripts.OnSizeChanged(MicroMenuContainer, 500, 40)");
   expect(barSize(addon)[0], "a size change alone re-fits the bar").toBe(menuBarW(500));
-  expect(addon.eval("local d = ns.GetModule('MenuStrip').divider local p = d.__points.LEFT return { p.relPoint, p.x, p.y, d.__points.RIGHT.x, d:GetHeight() }"), "a one-pixel accent line between the rows, across the bar inside its margins").toEqual(["TOPLEFT", 8, -34, -8, addon.eval("return ns.Theme.Pixel(Vanguard_MenuStrip)")]);
+  expect(addon.eval("local d = ns.GetModule('MenuStrip').divider local p = d.__points.LEFT return { p.relPoint, p.x, p.y, d.__points.RIGHT.x, d:GetHeight() }"), "a one-pixel accent line between the rows, across the bar inside its margins").toEqual(["TOPLEFT", 12, -38, -12, addon.eval("return ns.Theme.Pixel(Vanguard_MenuStrip)")]);
   expect(isTok(addon, addon.eval("return ns.GetModule('MenuStrip').divider.__vertexColor"), "accent"), "in the accent").toBe(true);
   addon.eval("ns.Theme.SetAccent(0.1, 0.9, 0.2)");
   expect(addon.eval("return ns.GetModule('MenuStrip').divider.__vertexColor"), "which it follows").toEqual([0.1, 0.9, 0.2, 1]);
@@ -2307,13 +2309,14 @@ it("bag and menu bar: the bar hugs its slots, one size, one baseline per row, on
   const bar = addon.frame("Vanguard_MenuStrip").rect;
   const bags = slotRects(addon, 1), menu = slotRects(addon, 2);
   expect([bags.length, menu.length], "six bag slots (the key ring with them) over nine menu slots").toEqual([6, 9]);
-  expect([...bags, ...menu].every((r) => r3(r[2] - r[0]) === 24 && r3(r[3] - r[1]) === 24), "every slot is 24 pixels square, the key ring's too").toBe(true);
+  expect([bags.every((r) => r3(r[2] - r[0]) === 24 && r3(r[3] - r[1]) === 24), menu.every((r) => r3(r[2] - r[0]) === 24 && r3(r[3] - r[1]) === 30)],
+    "every bag slot is 24 pixels square, the key ring's too; every menu slot is 24 wide and 30 tall").toEqual([true, true]);
   // The left edges' steps along a row.
   const steps = (row) => row.slice(1).map((r, i) => r3(r[0] - row[i][0]));
   expect([steps(bags), steps(menu)], "each row steps one slot and a 4-pixel gap at a time").toEqual([Array(5).fill(28), Array(8).fill(28)]);
   expect([new Set(bags.map((r) => r[1])).size, new Set(menu.map((r) => r[1])).size], "each row on one baseline").toEqual([1, 1]);
   const pad = [r3(menu[0][0] - bar.left), r3(bar.right - menu[8][2]), r3(menu[0][1] - bar.bottom), r3(bar.top - bags[0][3])];
-  expect(pad, "the same 8-pixel padding on all four sides: the menu row spans the bar, the bags sit on top").toEqual([8, 8, 8, 8]);
+  expect(pad, "the same 12-pixel padding on all four sides: the menu row spans the bar, the bags sit on top").toEqual([12, 12, 12, 12]);
   expect([r3(bags[0][0] - menu[0][0]), r3(menu[8][2] - bags[5][2])], "the shorter bag row is centered over the menu row (3 slots' room each side)").toEqual([42, 42]);
   expect(r3(bags[0][1] - menu[0][3]), "a 4-pixel gap between the rows").toBe(4);
   const line = addon.frame("ns.GetModule('MenuStrip').divider").rect;
@@ -2353,31 +2356,34 @@ it("bag and menu bar: no re-fit while pins are paused or in combat, and one queu
   expect(plain.eval("return { MicroMenuContainer:GetParent() == Vanguard_MenuStrip, MicroMenuContainer.__scripts.OnSizeChanged ~= nil }"), "a client without hooksecurefunc still pins and watches the size").toEqual([true, true]);
 });
 
-it("bag and menu bar: slots are 24 screen pixels, take the clicks, and light up under the mouse", () => {
+it("bag and menu bar: slots are 24 screen pixels wide, take the clicks, and light up under the mouse only", () => {
   const addon = strips();
   // A button's slot: its side and the button's hit insets in screen pixels, its frame level against the button's, and its accent edge's color.
   const slot = (name, scale) => addon.eval(`local b = ${name} local s = b.vgSlot local e
     for _, w in ipairs(__wfgStub.frames) do if w.__parent == s and w.__layer == "BORDER" and w.__sublevel == 0 and w.__vertexColor and w.__vertexColor[1] > 0 then e = w.__vertexColor end end
     return { s.__width, b.__hitInsets and b.__hitInsets[3] or 0, s:GetFrameLevel() < b:GetFrameLevel(), e }`).map((v, i) => (i < 2 ? r3(v * scale) : v));
   const char = slot("CharacterMicroButton", MENU);
-  expect(char.slice(0, 3), "a menu slot: 24 pixels, the 40-unit button taking clicks on the slot only, drawn under the button").toEqual([24, r3((40 * MENU - 24) / 2), true]);
-  expect(isTok(addon, char[3], "accent"), "its inner edge is the accent").toBe(true);
+  expect(char.slice(0, 3), "a menu slot: 24 pixels wide and 30 tall, the 40-unit button taking clicks on the slot only, drawn under the button").toEqual([24, r3((40 * MENU - 30) / 2), true]);
+  expect(char[3][3], "its accent edge is hidden while nothing touches it (a quiet slot)").toBe(0);
   expect(slot("MainMenuBarBackpackButton", BAGS).slice(0, 3), "a bag slot: the same 24 pixels").toEqual([24, r3((45 * BAGS - 24) / 2), true]);
   const accent = addon.eval("return { ns.Theme.Accent() }");
   addon.eval("CharacterMicroButton.__scripts.OnEnter(CharacterMicroButton)");
   const lit = slot("CharacterMicroButton", MENU)[3];
-  expect([0, 1, 2].every((i) => lit[i] > accent[i]), "the mouse over it: the edge brightens").toBe(true);
+  expect([0, 1, 2].every((i) => lit[i] > accent[i]) && lit[3] === 1, "the mouse over it: the edge shows, brighter than the accent").toBe(true);
   addon.eval("CharacterMicroButton.__scripts.OnMouseDown(CharacterMicroButton)");
   const held = slot("CharacterMicroButton", MENU)[3];
   expect([0, 1, 2].every((i) => held[i] < accent[i]), "held down: it darkens").toBe(true);
   addon.eval("CharacterMicroButton.__mouseOver = true CharacterMicroButton.__scripts.OnMouseUp(CharacterMicroButton)");
   expect(slot("CharacterMicroButton", MENU)[3], "let go over it: bright again").toEqual(lit);
   addon.eval("CharacterMicroButton.__mouseOver = false CharacterMicroButton.__scripts.OnMouseUp(CharacterMicroButton)");
-  expect(isTok(addon, slot("CharacterMicroButton", MENU)[3], "accent"), "let go elsewhere: back to the accent").toBe(true);
+  expect(slot("CharacterMicroButton", MENU)[3][3], "let go elsewhere: hidden again").toBe(0);
   addon.eval("CharacterMicroButton.__scripts.OnLeave(CharacterMicroButton)");
-  expect(isTok(addon, slot("CharacterMicroButton", MENU)[3], "accent"), "and when the mouse leaves").toBe(true);
+  expect(slot("CharacterMicroButton", MENU)[3][3], "and when the mouse leaves").toBe(0);
   addon.eval("ns.Theme.SetAccent(0.2, 0.4, 0.6)");
-  expect(slot("CharacterMicroButton", MENU)[3], "the edge follows a new accent").toEqual([0.2, 0.4, 0.6, 1]);
+  expect(slot("CharacterMicroButton", MENU)[3], "the edge follows a new accent (still hidden)").toEqual([0.2, 0.4, 0.6, 0]);
+  addon.eval("CharacterMicroButton.__scripts.OnEnter(CharacterMicroButton)");
+  expect(slot("CharacterMicroButton", MENU)[3][3], "and shows in it under the mouse").toBe(1);
+  addon.eval("CharacterMicroButton.__scripts.OnLeave(CharacterMicroButton)");
   const bevel = addon.eval(`local s, out = CharacterMicroButton.vgSlot, {}
     for _, w in ipairs(__wfgStub.frames) do if w.__parent == s and w.__layer == "BORDER" and w.__sublevel == 1 then out[w.__points.TOPLEFT and "top" or "bottom"] = w.__vertexColor end end
     return out`);
@@ -2433,18 +2439,18 @@ it("bag and menu bar: each bag's slot shows how full it is, the backpack how man
   const bag = (name) => addon.eval(`local b = ${name} local f = b.vgFill
     return { f:IsShown(), (f.__width or 0) * ${BAGS}, f.__vertexColor or false, b.vgIcon.__alpha, b.vgIcon.__desaturated == true }`).map((v, i) => (i === 1 ? r3(v) : v));
   const pack = bag("MainMenuBarBackpackButton");
-  expect([pack[0], pack[1], isTok(addon, pack[2], "accent")], "the backpack, 12 of 16 slots used: a fill three quarters of the 20-pixel icon wide, in the accent").toEqual([true, 15, true]);
+  expect([pack[0], pack[1], isTok(addon, pack[2], "accent")], "the backpack, 12 of 16 slots used: a fill three quarters of the 18-pixel icon wide, in the accent").toEqual([true, 13.5, true]);
   const empty = bag("CharacterBag0Slot");
   expect([empty[0], empty[3], empty[4]], "no bag in the slot: no fill, the game's empty-slot art faint and grey").toEqual([false, 0.35, true]);
   const full = bag("CharacterBag1Slot");
-  expect([full[0], full[1], isTok(addon, full[2], "bad"), full[3], full[4]], "a full bag: a full-width fill in red").toEqual([true, 20, true, 1, false]);
-  expect(r3(bag("CharacterBag2Slot")[1]), "a soul bag fills by its own slots (15 of 20)").toBe(15);
+  expect([full[0], full[1], isTok(addon, full[2], "bad"), full[3], full[4]], "a full bag: a full-width fill in red").toEqual([true, 18, true, 1, false]);
+  expect(r3(bag("CharacterBag2Slot")[1]), "a soul bag fills by its own slots (15 of 20)").toBe(13.5);
   // The backpack's free count and its font size on screen.
   const count = () => addon.eval("local fs = ns.GetModule('MenuStrip').free local _, size = fs:GetFont() return { fs:GetText(), size * MainMenuBarBackpackButton:GetEffectiveScale() / UIParent:GetEffectiveScale() }");
-  expect([count()[0], r3(count()[1])], "the backpack: 4 free (the soul bag's free slots hold only shards), at the theme's count size on screen").toEqual(["4", addon.eval('return ns.Theme.RoleSize("auraCount")')]);
+  expect([count()[0], r3(count()[1])], "the backpack: 4 free (the soul bag's free slots hold only shards), at the theme's tiny size on screen").toEqual(["4", addon.eval('return ns.Theme.RoleSize("tiny")')]);
   addon.eval("__space[0][2] = 0 __space[1] = { 12, 12, 0 }");
   addon.fire("BAG_UPDATE_DELAYED");
-  expect([bag("MainMenuBarBackpackButton")[1], bag("CharacterBag0Slot").slice(0, 1), bag("CharacterBag0Slot")[3], count()[0]], "the bags change: the backpack's fill is full, a new empty bag shows in color with no fill, 12 free").toEqual([20, [false], 1, "12"]);
+  expect([bag("MainMenuBarBackpackButton")[1], bag("CharacterBag0Slot").slice(0, 1), bag("CharacterBag0Slot")[3], count()[0]], "the bags change: the backpack's fill is full, a new empty bag shows in color with no fill, 12 free").toEqual([18, [false], 1, "12"]);
   const bare = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + "C_Container = nil");
   expect(bare.eval("return { ns.GetModule('MenuStrip').free:GetText(), MainMenuBarBackpackButton.vgFill:IsShown() }"), "a client that can't count bag slots shows no count and no fill").toEqual(["", false]);
 });

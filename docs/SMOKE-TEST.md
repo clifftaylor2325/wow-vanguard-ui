@@ -267,7 +267,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 13.1 Placement
 
 - Do: look at the bottom-right corner at UI scale 1.
-- Expect: one bar with the bag buttons over the menu buttons on framed slots, an accent line between the rows, no brass box; it is always shown by default (Bags and game menu under Bars, map, chat changes that). [Before the row anchors were given a size, the bar drew its panel and divider with nothing in it: the client gives a zero-sized frame no rect, and draws nothing anchored to one.]
+- Expect: one bar with the bag buttons over the menu buttons on framed slots (the menu row's taller, each plate inside its slot, nothing crossing the divider; no accent edge on a slot until the mouse is over it), an accent line between the rows, no brass box; it is always shown by default (Bags and game menu under Bars, map, chat changes that). [Before the row anchors were given a size, the bar drew its panel and divider with nothing in it: the client gives a zero-sized frame no rect, and draws nothing anchored to one.]
 - If it fails, paste: a screenshot of the corner, and the output of `/vg frame Vanguard_MenuStrip deep`, `/vg frame BagsBar deep` and `/vg frame MicroMenu deep` (`/vg copy` gives the chat as text).
 
 ### 13.2 Every button works
