@@ -293,7 +293,7 @@ it("the bag's slots, headers, search row and money line sit the padding inside t
   }
   const wide = openFilled(...OWNER_BAG, "__cols = 12");
   expect([insets(wide), slotsRight(wide), wide.eval("return ContainerFrameCombinedBags:GetWidth()")], "a client with 12 columns: 12 slots a row, the window as wide as its grid and the padding").toEqual([inside, PAD, 12 * 37 + 11 * 5 + 2 * PAD]);
-  expect(wide.eval("return BagItemSearchBox:GetWidth()"), "the search box narrowed so Sort fits beside it").toBe(523 - PAD - 52 - 6 - 62);
+  expect(wide.eval("return BagItemSearchBox:GetWidth()"), "the search box starts the padding in and narrows so Sort fits beside it").toBe(523 - PAD - 52 - 6 - PAD);
 });
 
 it("a clear gap above each section header, a small one under it; sections side by side keep theirs", () => {
@@ -330,5 +330,5 @@ it("with sections off the game's plain grid is as it was, and Sort fits beside t
   const money = addon.eval("local f = ContainerFrameCombinedBags return { f.MoneyFrame:GetLeft() - f:GetLeft(), f:GetWidth(), f:GetHeight() }");
   expect([headers(addon), spot(addon, "b0s1"), money], "the game's grid, money line, width and height").toEqual([[], [343, 75], [8, 430, 186]]);
   const sort = addon.eval(`local f, s = ContainerFrameCombinedBags, ns.GetModule("Bags").sort return { f:GetRight() - s:GetRight(), BagItemSearchBox:GetWidth() }`);
-  expect(sort, "Sort ends 12 px inside the right edge; the search box gives it room").toEqual([PAD, 430 - PAD - 52 - 6 - 62]);
+  expect(sort, "Sort ends 12 px inside the right edge; the search box gives it room").toEqual([PAD, 430 - PAD - 52 - 6 - PAD]);
 });
