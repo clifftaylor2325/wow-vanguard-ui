@@ -686,45 +686,62 @@ function T.SlotState(frame, state)
 end
 
 -- Window controls (close, maximize, minimize): how big the square tile behind the glyph is
--- while the mouse is over it, and the glyph (units); a control with no size yet takes the tile's.
-T.CONTROL = { tile = 20, glyph = 12 }
+-- while the mouse is over it, and the glyph (units: drawn on a 20-unit grid, one pixel each);
+-- a control with no size yet takes the tile's.
+T.CONTROL = { tile = 20, glyph = 20 }
 -- The tile's color and opacity by control: red behind close, a wash of the accent behind the others.
 T.CONTROL_TILES = { close = { "bad", 0.9 }, other = { "accent", 0.35 } }
 
--- Paints a window control: its glyph in the secondary text color, or white over its tile while lit.
+-- Paints a window control: its glyph in the secondary text color, or white over its tile while lit;
+-- its ornament (the close seal's studded diamond, the max/min gem) in the accent, or the tile's color while lit.
 local function paintControl(entry)
   local p, tile = entry.parts, T.CONTROL_TILES[entry.opts.tile] or T.CONTROL_TILES.other
   T.Tint(p.glyph, entry.lit and "white" or "text2")
   T.Tint(p.tile, tile[1], tile[2])
   p.tile:SetShown(entry.lit == true)
+  if p.ring then T.Tint(p.ring, entry.lit and tile[1] or "accent") end
 end
 
--- A window control's parts (made once): the tile and the glyph, both centered on the button.
-local function controlParts(button, icon)
-  local tile = solid(button, "ARTWORK")
-  tile:SetSize(T.CONTROL.tile, T.CONTROL.tile)
-  tile:SetPoint("CENTER")
-  local glyph = T.Snap(button:CreateTexture(nil, "OVERLAY"))
-  glyph:SetTexture(T.Icon(icon))
-  glyph:SetSize(T.CONTROL.glyph, T.CONTROL.glyph)
-  glyph:SetPoint("CENTER")
-  return { tile = tile, glyph = glyph }
+-- A texture centered on a button: the path at the size, on the layer.
+local function centered(button, layer, path, size)
+  local t = T.Snap(button:CreateTexture(nil, layer))
+  t:SetTexture(path)
+  t:SetSize(size, size)
+  t:SetPoint("CENTER")
+  return t
 end
 
--- Lights a window control while the mouse is over it, and puts it back after.
+-- A window control's parts (made once), centered on the button: the tile (a square, or opts.shape from
+-- Media/Textures at the glyph's size), the ornament (opts.ring, an icon) and the glyph.
+local function controlParts(button, icon, opts)
+  local tile = opts.shape and centered(button, "ARTWORK", T.Texture(opts.shape), T.CONTROL.glyph) or centered(button, "ARTWORK", T.WHITE, T.CONTROL.tile)
+  local ring = opts.ring and centered(button, "OVERLAY", T.Icon(opts.ring), T.CONTROL.glyph) or nil
+  return { tile = tile, ring = ring, glyph = centered(button, "OVERLAY", T.Icon(icon), T.CONTROL.glyph) }
+end
+
+-- Sets whether a window control is lit, and repaints it.
+local function lightControl(button, entry, lit)
+  entry.lit = lit
+  repaint(button, entry)
+end
+
+-- Lights a window control while the mouse is over it, and puts it back after; a control the game
+-- hides under the mouse (minimize swaps itself for maximize) gets no OnLeave, so hiding puts it back too.
 local function watchControl(button, entry)
-  button:HookScript("OnEnter", function() entry.lit = true repaint(button, entry) end)
-  button:HookScript("OnLeave", function() entry.lit = false repaint(button, entry) end)
+  button:HookScript("OnEnter", function() lightControl(button, entry, true) end)
+  button:HookScript("OnLeave", function() lightControl(button, entry, false) end)
+  button:HookScript("OnHide", function() lightControl(button, entry, false) end)
 end
 
--- A window control drawn with one of the theme's icons (Close, Maximize, Minimize): its template art
--- faded, the glyph quiet until the mouse is over it, then white on a square tile (opts.tile "close"
--- makes the tile red). Sized to the tile when it has no size yet. Safe to run again.
+-- A window control drawn with one of the theme's icons (CloseMark, Maximize, Minimize): its template
+-- art faded, the glyph quiet until the mouse is over it, then white on its tile (opts.tile "close"
+-- makes the tile red; opts.shape and opts.ring, see controlParts). Sized to the tile when it has no
+-- size yet. Safe to run again.
 function T.WindowControl(button, icon, opts)
   local entry = painted[button]
   if not entry then
     T.FadeRegions(button)
-    entry = { kind = "control", opts = opts or {}, parts = controlParts(button, icon), paint = paintControl }
+    entry = { kind = "control", opts = opts or {}, parts = controlParts(button, icon, opts or {}), paint = paintControl }
     painted[button] = entry
     watchControl(button, entry)
     if (button:GetWidth() or 0) < 1 then button:SetSize(T.CONTROL.tile, T.CONTROL.tile) end
@@ -733,9 +750,10 @@ function T.WindowControl(button, icon, opts)
   return button
 end
 
--- A close button as a window control: the Close glyph, red behind it under the mouse.
+-- A close button as a window control, the diamond seal: a cross in a studded accent diamond, the
+-- diamond filled red and the cross white under the mouse.
 function T.CloseButton(button)
-  return T.WindowControl(button, "Close", { tile = "close" })
+  return T.WindowControl(button, "CloseMark", { tile = "close", shape = "Seal", ring = "CloseRing" })
 end
 
 -- Game frame primitives (docs/design/RESKIN.md 3.3) -----------------------------------------

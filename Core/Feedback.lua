@@ -271,12 +271,12 @@ local function addButtons(f)
   f.problem:SetPoint("RIGHT", -PAD, 0)
 end
 
--- The dialog frame: a centered themed panel on the dialog strata, hidden, with its heading.
+-- The dialog frame: a centered themed panel a layer above the options window it opens from, hidden, with its heading.
 local function frame()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_Feedback", UIParent), { alpha = 0.98, shadow = true })
   f:SetSize(WIDTH, HEIGHT)
   f:SetPoint("CENTER")
-  f:SetFrameStrata("DIALOG")
+  f:SetFrameStrata("FULLSCREEN_DIALOG")
   f:EnableMouse(true)
   f:Hide()
   f.heading = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading")
