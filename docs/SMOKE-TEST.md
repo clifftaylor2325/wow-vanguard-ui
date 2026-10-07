@@ -268,7 +268,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: look at the bottom-right corner at UI scale 1.
 - Expect: the bag strip left of the menu strip with a gap and no overlap; the menu strip shows on mouseover (the default) or always if you set Game menu buttons under Bars, map, chat; no brass box inside either strip. [After P0.14. Before it, the overlap and the box from your first screenshot are expected.]
-- If it fails, paste: a screenshot of the corner.
+- If it fails, paste: a screenshot of the corner, and the output of `/vg frame Vanguard_MenuStrip deep`, `/vg frame BagsBar deep` and `/vg frame MicroMenu deep` (`/vg copy` gives the chat as text).
 
 ### 13.2 Every button works
 
