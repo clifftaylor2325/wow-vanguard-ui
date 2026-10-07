@@ -1524,7 +1524,7 @@ end
 -- The window's title, as PortraitFrameTemplate keeps it (TitleContainer.TitleText), and the game's
 -- UpdateTitle: Buy, Sell or Auctions for tabs 1-3, the Buy title for any other tab.
 local function auctionTitle(f)
-  f.TitleContainer = { TitleText = f:CreateFontString(nil, "OVERLAY") }
+  f.TitleContainer = { TitleText = f:CreateFontString(nil, "OVERLAY", "GameFontNormal") }
   -- The title text.
   function f:SetTitle(text) self.TitleContainer.TitleText:SetText(text) end
   -- The title for the selected tab.
@@ -1721,7 +1721,7 @@ local function chatFrames()
     local f = new("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
     f:SetFont(STANDARD_TEXT_FONT, 14, "")
     local tab = new("Button", "ChatFrame" .. i .. "Tab", UIParent)
-    tab.Text = tab:CreateFontString(nil, "OVERLAY")
+    tab.Text = tab:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     new("EditBox", "ChatFrame" .. i .. "EditBox", UIParent)
   end
   SELECTED_CHAT_FRAME = ChatFrame1

@@ -154,7 +154,8 @@ local function flagMark(r, color)
   r.icon:SetPoint("LEFT", 10, 0)
 end
 
--- A row's icon (16 px) and name, and its cells (placed when the columns are set).
+-- A row's icon (16 px) and name, and its cells (each with a font from the start, so one past the
+-- columns can be cleared; placed and styled when the columns are set).
 local function rowParts(t, r)
   r.icon = T.Crop(r:CreateTexture(nil, "ARTWORK"))
   r.icon:SetSize(16, 16)
@@ -163,7 +164,7 @@ local function rowParts(t, r)
   r.name:SetPoint("LEFT", r.icon, "RIGHT", 4, 0)
   r.name:SetWordWrap(false)
   r.cells = {}
-  for i = 1, AH.TABLE_CELLS do r.cells[i] = r:CreateFontString(nil, "OVERLAY") end
+  for i = 1, AH.TABLE_CELLS do r.cells[i] = T.Text(r:CreateFontString(nil, "OVERLAY"), "small") end
   if t.keys then keyMarks(r) end
   if t.flag then flagMark(r, t.flag) end
 end
