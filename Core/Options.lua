@@ -263,9 +263,9 @@ O.MODULE_INFO = {
   DataBars = { "XP and reputation", "Thin experience and reputation bars." },
   Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },
   Inventory = { "Inventory", "Remembers your characters' bags and bank; item tooltips say who else has the item." },
-  Upgrades = { "Gear upgrades", "Compares gear with what you wear by stat weights for your class and role: a tooltip line, and arrows in the bag and on quest rewards." },
+  Upgrades = { "Gear upgrades", "Compares gear with what you wear by stat weights for your class and role: a tooltip line, arrows in the bag and on quest rewards, and the auction house's Upgrades list." },
   VendorMemory = { "Vendor memory", "Remembers what each merchant sells; tooltips and the stock list say where to buy." },
-  AuctionHelper = { "Auction helper", "Shopping lists, a sell card that suggests an undercut and posts, prices in tooltips from your scans, and an undercut check on your auctions." },
+  AuctionHelper = { "Auction helper", "Shopping lists with Deals and Upgrades, a sell card that suggests an undercut and posts, prices in tooltips from your scans, and an undercut check on your auctions." },
   Nameplates = { "Nameplates", "Flat plates with levels, your debuffs, players' buffs, casts and threat." },
   Situations = { "Situations", "Different frame spots and settings for solo, party, raid, PvP, instance and resting, applied out of combat." },
 }
@@ -437,14 +437,15 @@ local function windowRows()
   return rows
 end
 
--- The auction helper's scan, auction check, disenchant, crafting and deals rows.
+-- The auction helper's scan, auction check, disenchant, crafting, deals and upgrades rows.
 local function auctionScanRows()
   return {
     check("Scan button (one scan every 15 minutes)", setting("AuctionHelper", "scanButton")),
     check("Check your auctions for undercuts again after each post and cancel", setting("AuctionHelper", "recheck")),
     check("Disenchant values in tooltips (on for enchanters until you choose)", ns.AuctionPrices.DisenchantSetting()),
     check("Crafting costs and profit beside the profession window", setting("AuctionHelper", "crafting")),
-    check("Deals card on the Shopping tab: listings under the 7-day market or vendor price", liveSetting("AuctionHelper", "deals", function() ns.GetModule("AuctionHelper").PaintDeals() end)),
+    check("Deals list in the Shopping tab: listings under the 7-day market or vendor price", liveSetting("AuctionHelper", "deals", function() ns.GetModule("AuctionHelper").PaintDeals() end)),
+    check("Upgrades list in the Shopping tab: armor and weapons that beat what you wear, by Gear upgrades' weights", liveSetting("AuctionHelper", "upgrades", function() ns.GetModule("AuctionHelper").PaintUpgrades() end)),
   }
 end
 
@@ -452,7 +453,7 @@ end
 local function auctionRows()
   return append({
     { "header", "Auction house" },
-    check("Shopping and Selling tabs on the auction house (lists, deals, sell helper, your auctions, scan)", setting("AuctionHelper", "panel")),
+    check("Shopping and Selling tabs on the auction house (lists, deals, upgrades, sell helper, your auctions, scan)", setting("AuctionHelper", "panel")),
     check("Auction prices in tooltips (from your scans)", setting("AuctionHelper", "tooltip")),
     { "cycle", "Undercut by", { { "copper", "1 copper" }, { "silver", "1 silver" }, { "percent", "1 %" }, { "match", "Match" } }, setting("AuctionHelper", "undercut") },
     { "cycle", "Auction length", ns.GetModule("AuctionHelper").DurationChoices(true), setting("AuctionHelper", "duration") },

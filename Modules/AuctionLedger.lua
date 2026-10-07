@@ -16,7 +16,7 @@
 -- A mail that tells of an outcome an event already recorded joins that record
 -- (the same item, kind and price each, within AL.LINK_AGE) rather than adding
 -- one, and the mail's figures stand; a mail read again is known by its expiry
--- time and contents. The sell card's "Your history" shows the item's last
+-- time and contents. The Up now card's "Your history" shows the item's last
 -- records, how many of its auctions sold out of those that sold or ran out,
 -- and the average price each; the info strip can show this session's sales.
 --
@@ -296,76 +296,66 @@ function AL.SessionSales()
   return sum
 end
 
--- Your history on the sell card ---------------------------------------------------------------
+-- Your history on the Up now card ------------------------------------------------------------
+
+-- The history's columns: a sale's price each (else what became of it), how many, and when.
+AH.HISTORY_COLUMNS = { { key = "price", title = "Price each", width = 100, side = "RIGHT", role = "number", color = "gold" },
+  { key = "qty", title = "Qty", width = 60, side = "RIGHT", role = "small", color = "text2" },
+  { key = "time", title = "When", width = 90, side = "LEFT", role = "small", color = "text2" } }
 
 -- The history's line: how many of the item's auctions sold of those that sold or ran out, and the
 -- average price each; or that there is nothing yet, or no item.
 local function summaryText(s, records)
-  if not s then return "Put an item on the card to see how it sold." end
+  if not s then return "Put an item on the Sell card to see how it sold." end
   local n, avg = AL.Summary(records)
   if n.sold + n.expired == 0 then return "No sales or expiries of this item yet." end
   local text = string.format("sold %d of %d", n.sold, n.sold + n.expired)
   return avg and (text .. " · avg " .. AP.Money(avg)) or text
 end
 
--- A history row: a sale's price each (in gold), else what became of it; how many, and when.
+-- A history row: a sale's price each (in gold), else what became of it; how many, and when (the
+-- item is the sell card's, so the row names none).
 local function paintRecord(r, rec)
-  r:SetShown(rec ~= nil)
-  if not rec then return end
   local sold = rec.kind == "sold"
-  T.Color(r.price, sold and "gold" or "text2"):SetText(sold and AP.Money(math.floor(rec.amount / rec.qty)) or rec.kind)
-  r.qty:SetText("x " .. rec.qty)
-  r.time:SetText(AP.Ago(rec.t))
+  r.icon:SetTexture(nil)
+  r.name:SetText("")
+  T.Color(r.cells.price, sold and "gold" or "text2"):SetText(sold and AP.Money(math.floor(rec.amount / rec.qty)) or rec.kind)
+  r.cells.qty:SetText("x " .. rec.qty)
+  r.cells.time:SetText(AP.Ago(rec.t))
 end
 
--- The bottom of the sell card: the item's history (its line and last records) while Your history
--- is on, else the listings up now; the toggle names the other view.
+-- The Up now card's other view: the item's history (its line beside the heading, its last
+-- records in the listings' place) while Your history is on, else the listings; the toggle names
+-- the other view.
 function AH.PaintHistory(c, s)
-  local on, h = AH.showHistory == true, c.history
+  local on = AH.showHistory == true
   local records = on and s and AL.History(s.id) or {}
-  c.list:SetShown(not on)
-  h:SetShown(on)
+  c.table:SetShown(not on)
+  c.history:SetShown(on)
   c.historyToggle.text:SetText(on and "Up now" or "Your history")
-  h.summary:SetText(summaryText(s, records))
-  for i, r in ipairs(h.rows) do paintRecord(r, records[i]) end
+  c.summary:SetText(on and summaryText(s, records) or "")
+  c.history:SetItems(records)
 end
 
--- Your history / Up now: the bottom of the sell card switches view.
+-- The sell card's history line: how its item sold ("sold 5 of 8 · avg 1s 12c"), nothing without an item.
+function AH.PaintHistoryLine(c, s)
+  c.historyLine:SetText(s and summaryText(s, AL.History(s.id)) or "")
+end
+
+-- Your history / Up now: the Up now card switches view.
 function AH.ToggleHistory()
   AH.showHistory = not AH.showHistory
   AH.PaintSell()
 end
 
--- A history row's parts: the price each (or what became of it), how many and when.
-local function historyParts(r)
-  r.price = T.Text(r:CreateFontString(nil, "OVERLAY"), "number", "gold")
-  r.price:SetPoint("LEFT", 10, 0)
-  r.qty = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  r.qty:SetPoint("RIGHT", -70, 0)
-  r.time = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  r.time:SetPoint("RIGHT", -2, 0)
-end
-
--- History row i: AH.ROW_H tall under the history's line, the width of the card.
-local function historyRow(h, i)
-  local r, y = CreateFrame("Frame", nil, h), -14 - (i - 1) * AH.ROW_H
-  r:SetHeight(AH.ROW_H)
-  r:SetPoint("TOPLEFT", 0, y)
-  r:SetPoint("TOPRIGHT", 0, y)
-  historyParts(r)
-  return r
-end
-
--- The history in the listings' place (hidden until Your history), its line and AH.LIST_ROWS rows,
--- and the toggle on the card's heading line.
+-- The history's table in the listings' place (hidden until Your history), its line beside the
+-- heading, and the toggle on the card's heading line.
 function AH.BuildHistory(c)
-  local h = CreateFrame("Frame", nil, c)
-  h:SetAllPoints(c.list)
-  h:Hide()
-  h.summary = T.Text(h:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  h.summary:SetPoint("TOPLEFT", 0, -1)
-  h.rows, c.history = {}, h
-  for i = 1, AH.LIST_ROWS do h.rows[i] = historyRow(h, i) end
+  c.history = AH.Table(c, AH.HISTORY_COLUMNS, AH.LIST_ROWS, { paintRow = paintRecord })
+  AH.TableUnder(c.history, c)
+  c.history:Hide()
+  c.summary = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  c.summary:SetPoint("LEFT", c.title, "RIGHT", 8, 0)
   c.historyToggle = W.Button(c, "Your history", function() AH.ToggleHistory() end, 90)
   c.historyToggle:SetHeight(18)
   c.historyToggle:SetPoint("TOPRIGHT", 0, 2)
