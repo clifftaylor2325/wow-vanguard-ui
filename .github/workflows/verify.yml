@@ -1,15 +1,16 @@
 name: verify
 
-# The pull-request gate, built to finish in about a minute on the owner's
-# self-hosted Windows runner (scripts/ci/setup-windows-runner.ps1 installs
-# its tools, so it bills no Actions minutes): the code-quality scan,
-# luacheck, Lua 5.1 syntax (the game runs Lua 5.1; the test harness,
-# fengari, is Lua 5.3), the JS tests plus one Lua smoke test (npm run
-# test:quick), and the release zip's contents. The full Lua harness with
-# the coverage floor, and the UI preview, take minutes on that PC, so they
-# run in full-suite.yml: after a merge to main, nightly, from the Actions
-# tab, or on a pull request carrying the "full-tests" label. Not for
+# The pull-request gate, built to finish in a few minutes on a GitHub-hosted
+# runner: the code-quality scan, luacheck, Lua 5.1 syntax (the game runs Lua
+# 5.1; the test harness, fengari, is Lua 5.3), the JS tests plus one Lua
+# smoke test (npm run test:quick), and the release zip's contents. The full
+# Lua harness with the coverage floor, and the UI preview, take longer, so
+# they run in full-suite.yml: after a merge to main, nightly, from the
+# Actions tab, or on a pull request carrying the "full-tests" label. Not for
 # changes to the docs alone.
+#
+# Pull requests never run on a self-hosted runner: the repository is public,
+# and a pull request's own code runs in these jobs.
 on:
   pull_request:
     paths-ignore:
@@ -23,50 +24,20 @@ concurrency:
   group: verify-${{ github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    # Git for Windows' bash, so the same snippets run here and on a Linux
-    # box. The job's first step puts Git's bin folder first on PATH: a
-    # plain "bash" otherwise finds C:\Windows\System32\bash.exe, WSL's
-    # launcher, which fails on a PC without a WSL distribution.
-    shell: bash
-
 jobs:
   quick:
     name: Quick checks
-    runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Git Bash ahead of WSL's bash
-        shell: powershell
-        run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin"
       - uses: actions/checkout@v4
-        with:
-          # node_modules stays from the last run on this runner (the next
-          # step cleans everything else), so npm ci runs only when
-          # package-lock.json changed: it took 25 s from cold.
-          clean: false
-      - name: Clean the checkout, keeping node_modules
-        run: git clean -ffdx -e node_modules
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: The runner's tools
-        run: |
-          for tool in luacheck luac5.1; do
-            command -v "$tool" >/dev/null || { echo "$tool is not on PATH: run scripts/ci/setup-windows-runner.ps1 on the runner"; exit 1; }
-          done
-          luacheck --version && luac5.1 -v
-      - name: npm ci, unless node_modules already matches package-lock.json
-        run: |
-          stamp=node_modules/.package-lock.sha256
-          want="$(node --version) $(sha256sum package-lock.json | cut -d' ' -f1)"
-          if [ "$(cat "$stamp" 2>/dev/null)" = "$want" ]; then
-            echo "node_modules matches package-lock.json; npm ci skipped"
-          else
-            npm ci
-            echo "$want" > "$stamp"
-          fi
+          cache: npm
+      - run: npm ci
+      - name: luacheck and Lua 5.1
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lua-check lua5.1
       - run: npm run quality
       - run: luacheck --no-color .
       - name: Lua 5.1 syntax of every file the TOC loads

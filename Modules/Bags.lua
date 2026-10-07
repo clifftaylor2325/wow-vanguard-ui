@@ -125,12 +125,11 @@ local function skinSearch(name)
   if type(box) == "table" and box.SetText then T.EditBox(box) end
 end
 
--- Skins the window and its item buttons, on every show (the window's art is
--- faded again in case the game restored it; slots already skinned are skipped).
+-- Skins the window and its item buttons, on every show: the game windows' skin (its art and portrait
+-- faded again in case the game restored them, a padded panel, the theme's close button set evenly in
+-- its corner, the title font); slots already skinned are skipped.
 function BG.SkinWindow(frame)
-  T.FadeRegions(frame)
-  if frame.NineSlice then T.FadeRegions(frame.NineSlice) end
-  T.Panel(frame, { shadow = true })
+  ns.GetModule("Windows").Skin(frame)
   skinItems(frame)
   skinSearch("BagItemSearchBox")
 end
@@ -171,11 +170,20 @@ local function placeSort(frame)
   end
 end
 
--- Narrows the game's search box (it keeps the game's left edge, clear of the
--- bag's portrait) so Sort, right of it, ends the padding inside the window's right edge.
+-- Starts the game's search box the padding inside the window's left edge (the game left room there
+-- for the bag's portrait, which the skin fades), when the game set it by its left side on the window's.
+local function alignSearch(frame, box)
+  local point, rel, relPoint, _, y = box:GetPoint(1)
+  if rel ~= frame or type(point) ~= "string" or not point:find("LEFT") or not relPoint:find("LEFT") then return end
+  box:SetPoint(point, rel, relPoint, BG.PAD, y)
+end
+
+-- Starts the game's search box at the left padding and narrows it so Sort, right of it, ends the padding
+-- inside the window's right edge.
 function BG.FitSearch(frame)
   local box = _G.BagItemSearchBox
   if not BG.sort or type(box) ~= "table" or box:GetParent() ~= frame then return end
+  alignSearch(frame, box)
   local _, _, _, left = box:GetPoint(1)
   box:SetWidth(frame:GetWidth() - BG.PAD - SORT_W - SORT_GAP - (left or 0))
 end
