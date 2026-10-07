@@ -2108,6 +2108,7 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   const slots = addon.eval(`local t, a = MinimapCluster.Tracking, AddonCompartmentFrame
     return { t:GetWidth(), t:GetScale(), t.vgGlyph.__texture:match("(%a+)$"), a.vgGlyph.__texture:match("(%a+)$"), t.vgSlot ~= nil, MinimapCluster.IndicatorFrame.MailFrame.vgSlot == nil }`);
   expect(slots, "tracking and the addon compartment are 18-unit slot buttons with the theme's icons (unscaled); mail stays an indicator").toEqual([18, 1, "Search", "Modules", true, true]);
+  expect(addon.eval("local a = AddonCompartmentFrame a.Text = a:CreateFontString() ns.GetModule('Minimap').SlotButton(a, 'Modules') return a.Text:GetAlpha()"), "the compartment's count is faded, not left hanging off the slot").toBe(0);
   addon.eval("local a = AddonCompartmentFrame a.__scripts.OnEnter(a)");
   expect(isTok(addon, addon.eval("return AddonCompartmentFrame.vgGlyph.__vertexColor"), "accent"), "a slot button's icon lights in the accent under the mouse").toBe(true);
   expect([pinned(addon, "BagsBar", "Vanguard_MenuStrip"), pinned(addon, "MicroMenuContainer", "Vanguard_MenuStrip")], "the bag bar and the micro menu ride in one bar, each at its row's right end").toEqual([[true, "RIGHT"], [true, "RIGHT"]]);
