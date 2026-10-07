@@ -2283,30 +2283,22 @@ it("bag and menu bar: the rows re-fit when the game lays the bars out or resizes
   expect(addon.eval("return ns.GetModule('MenuStrip').divider.__vertexColor"), "which it follows").toEqual([0.1, 0.9, 0.2, 1]);
 });
 
-it("bag and menu bar: the game's menu icons are cropped to fill their slots, again each time the game swaps one", () => {
-  // TEST-ONLY atlases at made-up places in their file, and a quest log button whose normal texture the game swaps atlases on.
+it("bag and menu bar: the game's menu icons are drawn larger than their slots, so the icon fills the slot, uncropped", () => {
+  // TEST-ONLY quest log button showing one of the game's menu icons; the character button's art has no atlas.
   const addon = strips(`
-    __wfgWorld.atlases["UI-HUD-MicroMenu-Questlog-Up"] = { left = 0.5, right = 0.75, top = 0, bottom = 0.5 }
-    __wfgWorld.atlases["UI-HUD-MicroMenu-Questlog-Down"] = { left = 0.25, right = 0.5, top = 0.5, bottom = 1 }
-    __wfgWorld.atlases["UI-HUD-MicroMenu-Portrait-Down"] = {}
     local b = __micro("QuestLogMicroButton")
-    function b:SetNormalAtlas(a) self.normal:SetAtlas(a) self.normal:SetTexCoord(0, 1, 0, 1) end
     b.normal:SetAtlas("UI-HUD-MicroMenu-Questlog-Up")
   `, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
-  // The quest log icon's texture coordinates now.
-  const coords = () => addon.eval("return QuestLogMicroButton.normal.__texCoord").map(r3);
-  const { left: l, right: r, top: t, bottom: b } = addon.eval("return ns.GetModule('MenuStrip').ICON_CROP");
-  // The crop box inside an atlas at left..right, top..bottom of its file.
-  const box = (x0, x1, y0, y1) => [x0 + (x1 - x0) * l, x0 + (x1 - x0) * r, y0 + (y1 - y0) * t, y0 + (y1 - y0) * b].map(r3);
-  expect(coords(), "the icon is cropped to its box, inside the atlas's own place in its file").toEqual(box(0.5, 0.75, 0, 0.5));
-  addon.eval("ns.GetModule('MenuStrip').CropIcon(QuestLogMicroButton.normal)");
-  expect(coords(), "cropping it again cuts no deeper").toEqual(box(0.5, 0.75, 0, 0.5));
-  addon.eval("QuestLogMicroButton:SetNormalAtlas('UI-HUD-MicroMenu-Questlog-Down')");
-  expect(coords(), "the game swaps the icon: the new one is cropped too").toEqual(box(0.25, 0.5, 0.5, 1));
-  addon.eval("QuestLogMicroButton:SetNormalAtlas('UI-HUD-MicroMenu-Portrait-Down')");
-  expect(coords(), "the portrait's art is left whole").toEqual([0, 1, 0, 1]);
-  addon.eval("QuestLogMicroButton:SetNormalAtlas('UI-HUD-MicroMenu-Unknown-Up')");
-  expect(coords(), "and an atlas the client doesn't have is left alone").toEqual([0, 1, 0, 1]);
+  // A button's normal texture: its two corners' offsets from the slot's, the slot's size, the inset, and its texture coordinates.
+  const place = (name) => addon.eval(`local b = ${name} local p = b.normal.__points
+    return { p.TOPLEFT.x, p.TOPLEFT.y, p.BOTTOMRIGHT.x, p.BOTTOMRIGHT.y, b.vgSlot.__width, b.vgSlot.__height, b.vgInset, b.normal.__texCoord == nil }`);
+  const { left: l, right: r, top: t, bottom: btm } = addon.eval("return ns.GetModule('MenuStrip').ICON_BOX");
+  const [x0, y0, x1, y1, w, h, d, uncropped] = place("QuestLogMicroButton");
+  const fw = (w - 2 * d) / (r - l), fh = (h - 2 * d) / (btm - t);
+  expect([x0 + fw * l, y0 - fh * t, x1 - fw * (1 - r), y1 + fh * (1 - btm)].map(r3), "so the icon's box lands exactly on its place, the inset in from the slot's edge").toEqual([d, -d, -d, d].map(r3));
+  expect(uncropped, "and nothing is cropped (the client counts an atlas's coordinates its own way)").toBe(true);
+  const [cx0, cy0, cx1, cy1, , , cd] = place("CharacterMicroButton");
+  expect([cx0, cy0, cx1, cy1].map(r3), "art that isn't one of the game's menu icons fits inside the inset").toEqual([cd, -cd, -cd, cd].map(r3));
 });
 
 // TEST-ONLY bars laid out as the game lays them out: nine menu buttons 27 units apart (32 wide,
