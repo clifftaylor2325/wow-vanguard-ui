@@ -36,6 +36,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the setup wizard opens by itself with the caption `Step 1 of 4 · Layout`. If you log in during combat it waits and says `Setup opens when combat ends.`
 - If it fails, paste: the Report block.
 
+### 1.2a Closing early, Skip, and a new character
+
+- Do: on that first login, close the wizard with the X, then `/reload`. Then click **Skip setup** and `/reload` again. Then log in on a character that has never run Vanguard, pick **A profile of its own**, Next, pick Centered: healing, Next, and finish. Log back to the first character.
+- Expect: after the first reload the wizard is back (chat said `Setup opens again at your next login.`); after Skip it stays away. The new character's wizard reads `Step 1 of 5 · Profile`; with a profile of its own, `/vg` → Profiles says `This character uses <its name>.` with no reload, and the first character's frames haven't moved.
+- If it fails, paste: the caption you saw, the Profiles page text and `/vg errors`.
+
 ### 1.3 Status
 
 - Do: type `/vg status`.
@@ -58,8 +64,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 2.2 The wizard, start to finish
 
-- Do: type `/vg setup`. Click Next three times, then Done.
-- Expect: `Step 1 of 4 · Layout` with three choices (Centered: damage and tanking, Centered: healing, Like the game's); Next goes to `Step 2 of 4 · Screen`, with a choice per screen size (1080p, 1440p, 4K, Ultrawide), the one for your screen marked `your screen`, and `Keep my current sizes`; Next goes to `Step 3 of 4 · Look` (the accent swatches and the raid frame style); Next goes to `Step 4 of 4 · Move things` with every frame's handle showing; the button then says Done, and Done hides the handles and the wizard. Escape and the close button do the same. After `/reload` the wizard does not come back by itself.
+- Do: drag a frame with `/vg unlock`, then open `/vg` → General → **Run setup**. Click Next three times, then Done.
+- Expect: `Step 1 of 4 · Layout` with four choices (Centered: damage and tanking, Centered: healing, Like the game's, Keep my current layout), Keep picked; the frame you dragged stays where it is at the end. Next goes to `Step 2 of 4 · Screen`, with a choice per screen size (1080p, 1440p, 4K, Ultrawide), the one for your screen marked `your screen`, and `Keep my current sizes` (picked, when setup runs again); Next goes to `Step 3 of 4 · Look` (the accent swatches and the raid frame style); Next goes to `Step 4 of 4 · Move things` with every frame's handle showing; the button then says Done, and Done hides the handles and the wizard. Escape and the close button close it too. After `/reload` the wizard does not come back by itself.
 - If it fails, paste: the step id, the caption you saw, and `/vg errors`.
 
 ### 2.3 The healing layout
