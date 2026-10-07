@@ -2226,6 +2226,22 @@ it("bag and menu bar: the bars' own frame art is hidden, the key ring gets a ful
   expect(off.eval("return { MicroMenu.BorderArt.__alpha, KeyRingButton.vgSlot ~= nil }"), "with or without the line icons, the frame art goes and the key ring is framed").toEqual([0, true]);
 });
 
+it("bag and menu bar: every row's anchor has a size, so the bars get a rect to draw in", () => {
+  const addon = strips("BagsBar:SetSize(315, 45) MicroMenuContainer:SetSize(226.5, 30)");
+  // The client gives a zero-sized frame no rect and draws nothing anchored to one: the bar showed its panel and divider with nothing in it (seen in game).
+  const rects = (names) => addon.eval(`local out = {} for _, n in ipairs({ ${names.map((n) => JSON.stringify(n)).join(", ")} }) do out[#out + 1] = _G[n]:IsRectValid() end return out`);
+  expect(addon.eval("local MS = ns.GetModule('MenuStrip') local out = {} for i, row in ipairs(MS.ROWS) do out[i] = { row.anchor:GetWidth(), row.anchor:GetHeight(), row.anchor:IsRectValid() } end return out"),
+    "each row's anchor is its row's box: as wide as the row, a slot tall, with a rect").toEqual([[7 * 28 - 4, 24, true], [8 * 28 - 4, 24, true]]);
+  expect(rects(["Vanguard_MenuStrip", "BagsBar", "MicroMenuContainer"]), "the bar and both of the game's bars have rects").toEqual([true, true, true]);
+  addon.eval("local MS = ns.GetModule('MenuStrip') Probe = CreateFrame('Frame', 'Probe', UIParent) Probe:SetSize(10, 10) Probe:SetPoint('RIGHT', MS.ROWS[1].anchor, 'TOPRIGHT') Empty = CreateFrame('Frame', 'Empty', UIParent) Empty:SetPoint('CENTER')");
+  expect(rects(["Probe"]), "the harness lays out what hangs on a row's anchor").toEqual([true]);
+  addon.eval("Probe:SetPoint('RIGHT', Empty, 'TOPRIGHT')");
+  expect(rects(["Empty", "Probe"]), "and, like the client, gives nothing hung on a zero-sized frame a rect").toEqual([false, false]);
+  addon.eval("BagsBar:SetSize(0, 45) MicroMenuContainer:SetSize(0, 30) ns.PausePins(false)");
+  expect(addon.eval("local MS = ns.GetModule('MenuStrip') return { MS.ROWS[1].anchor:GetWidth(), MS.ROWS[2].anchor:GetWidth(), Vanguard_MenuStrip:GetWidth() }"),
+    "rows with no buttons keep a unit-wide anchor (the bar hugs its margins)").toEqual([1, 1, 16]);
+});
+
 it("bag and menu bar: the bags and menu the game hides on an input switch come back, after combat", () => {
   const addon = strips();
   // Whether the bag bar and the micro menu are shown themselves.

@@ -39,7 +39,7 @@ local HELP = {
   "keybind              keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves",
   "status               version, profile, modules, skins, work waiting on combat, what the client has",
   "factionart           which of the game's own faction pictures this client has",
-  "frame <name> [deep]  what the client says about a frame now: shown, alpha, scale, size, anchors and its parents; deep adds its textures and child frames (for a bar that draws empty)",
+  "frame <name> [deep]  what the client says about a frame now: shown, alpha, scale, size, its rect (or none), anchors and its parents; deep adds its textures and child frames (for a frame that draws empty)",
   "errors [clear]       the errors Vanguard caught this session, with stacks and counts (for a bug report); clear empties the list",
   "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
   "feedback [bug|feature]   a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)",
