@@ -233,22 +233,39 @@ it("a hidden number skips its listing without an error", () => {
   expect(addon.eval("return { ns.AuctionPrices.House().prices[2589].min, #ns.errors }"), "only the plain listing counts").toEqual([150, 0]);
 });
 
-it("the panel docks left of the auction house window, at least as tall as it, with every card inside, and goes with it", () => {
+// The window's title text.
+const title = (addon) => addon.eval("return AuctionHouseFrame.TitleContainer.TitleText:GetText()");
+// Picks a tab on the window: 1-3 the game's, 4 Shopping, 5 Selling.
+const pickTab = (addon, i) => addon.click(`AuctionHouseFrame.Tabs[${i}]`);
+
+it("two tabs join the window after the game's three; each shows its page over the content area and names the title", () => {
   const addon = atAuctionHouse();
-  const [panel, window] = [addon.frame("Vanguard_AuctionPanel"), addon.frame("AuctionHouseFrame")];
-  const height = addon.eval(`local AH = ${HELPER} return AH.SCAN_H - AH.ScanY() + AH.PAD`);
-  expect([panel.visible, panel.rect.right, panel.rect.top, panel.rect.height, panel.rect.width], "4 px left of the window, from its top, as tall as its cards need").toEqual([true, window.rect.left - 4, window.rect.top, Math.max(538, height), 280]);
-  const cards = addon.eval(`local AH, out = ${HELPER}, {}
-    for i, c in ipairs({ AH.shopCard, AH.sellCard, AH.scanCard }) do out[i] = { c:GetTop(), c:GetBottom() } end return out`);
-  const bottom = panel.rect.bottom;
-  expect(cards.every(([, b]) => b >= bottom + 8), "every card ends inside the panel's padding").toBe(true);
-  expect([cards[0][1] > cards[1][0], cards[1][1] > cards[2][0]], "the cards don't overlap: shop over sell over scan").toEqual([true, true]);
+  const window = addon.frame("AuctionHouseFrame");
+  const tabs = addon.eval("local out = {} for i, t in ipairs(AuctionHouseFrame.Tabs) do out[i] = t:GetText() end return out");
+  expect([tabs, addon.eval("return AuctionHouseFrame.numTabs")], "Shopping and Selling after Buy, Sell and Auctions").toEqual([["Buy", "Sell", "Auctions", "Shopping", "Selling"], 5]);
+  expect([addon.frame("Vanguard_AuctionShopping").visible, addon.frame("Vanguard_AuctionSelling").visible, title(addon)], "both pages hidden on the game's Buy page").toEqual([false, false, "Browse Auctions"]);
+  pickTab(addon, 4);
+  const page = addon.frame("Vanguard_AuctionShopping");
+  expect([page.visible, page.rect.left, page.rect.top, page.rect.width, page.rect.height, title(addon), addon.eval("return AuctionHouseFrame.selectedTab")], "Shopping: its page over the content area (under the title, above the money line), the title named, the tab selected").toEqual([true, window.rect.left + 4, window.rect.top - 30, 792, 478, "Shopping", 4]);
+  const rows = addon.eval(`local AH = ${HELPER} return { AH.SHOP_ROWS, AH.VIEW_ROWS, AH.DEAL_ROWS, AH.LIST_ROWS, AH.OWNED_ROWS }`);
+  expect(rows, "the rows fill the room: 19 shop and view rows, 18 deals, 9 listings under the sell form, 19 of your auctions").toEqual([19, 19, 18, 9, 19]);
+  const fits = addon.eval(`local AH, out = ${HELPER}, {}
+    for i, c in ipairs({ AH.shopCard, AH.dealsFrame.card, AH.scanCard, AH.sellCard, AH.ownedCard }) do out[i] = { c:GetLeft(), c:GetRight(), c:GetTop(), c:GetBottom() } end return out`);
+  const [l, r, t, b] = [page.rect.left, page.rect.right, page.rect.top, page.rect.bottom];
+  expect(fits.every(([cl, cr, ct, cb]) => cl >= l && cr <= r && ct <= t && cb >= b), "every card inside its page").toBe(true);
+  expect([fits[0][1] <= fits[1][0], fits[1][3] > fits[2][2], fits[3][1] <= fits[4][0]], "Shop left of Deals, the scan under Deals; Sell left of your auctions").toEqual([true, true, true]);
   expect(addon.eval(`local c = ${HELPER}.sellCard return { c.post:GetBottom() >= c:GetBottom(), c.status:GetBottom() >= c:GetBottom(), c.length:GetBottom() > c.post:GetTop() }`), "the sell form fits its card, rows apart").toEqual([true, true, true]);
+  expect(addon.eval(`local c = ${HELPER}.ownedCard return { c.owned[#c.owned]:GetBottom() > c.cancelNext:GetTop(), c.cancelNext:GetBottom() >= c:GetBottom() }`), "Cancel next undercut under the last row, inside the card").toEqual([true, true]);
+  pickTab(addon, 5);
+  expect([addon.frame("Vanguard_AuctionShopping").visible, addon.frame("Vanguard_AuctionSelling").visible, title(addon)], "Selling").toEqual([false, true, "Selling"]);
+  pickTab(addon, 1);
+  expect([addon.frame("Vanguard_AuctionSelling").visible, title(addon)], "back to the game's Buy: ours hide, the game's title").toEqual([false, "Browse Auctions"]);
+  pickTab(addon, 5);
   addon.world.closeAuctionHouse();
-  expect(addon.frame("Vanguard_AuctionPanel").visible, "hidden on close").toBe(false);
+  expect(addon.frame("Vanguard_AuctionSelling").visible, "hidden with the window").toBe(false);
   addon.world.openAuctionHouse();
   addon.update(0);
-  expect([addon.frame("Vanguard_AuctionPanel").visible, addon.frames('w.__name == "Vanguard_AuctionPanel"').length], "shown again, built once").toEqual([true, 1]);
+  expect([addon.frame("Vanguard_AuctionSelling").visible, addon.eval("return #AuctionHouseFrame.Tabs"), title(addon)], "open again on the game's Buy page: built once, five tabs still").toEqual([false, 5, "Browse Auctions"]);
   expect(lastLine(addon), "before any scan").toBe("no scan yet");
 });
 
@@ -286,16 +303,16 @@ it("a finished scan spends the 15 minutes from its start, and your own listings 
   expect([addon.eval("return ns.AuctionPrices.House().lastScan"), lastLine(addon)], "the 15 minutes run from the start").toEqual([1790000000, "last scan 2 min ago"]);
 });
 
-it("switches: no panel, no scan button; nothing at all in combat", () => {
+it("switches: no tabs, no scan button; nothing at all in combat", () => {
   const off = atAuctionHouse("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
-  expect(off.frame("Vanguard_AuctionPanel"), "no panel").toBe(null);
+  expect([off.frame("Vanguard_AuctionShopping"), off.eval("return #AuctionHouseFrame.Tabs")], "no pages, the game's three tabs alone").toEqual([null, 3]);
   const noButton = atAuctionHouse("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { scanButton = false } } }" });
   expect(noButton.eval(`return ${SCAN_BUTTON}:IsShown()`), "no scan button").toBe(false);
   const fight = loggedIn(AH_ENV);
   setCombat(fight, true);
   fight.world.openAuctionHouse();
   fight.update(0);
-  expect(fight.frame("Vanguard_AuctionPanel"), "ignored in combat").toBe(null);
+  expect(fight.frame("Vanguard_AuctionShopping"), "ignored in combat").toBe(null);
 });
 
 it("/vg ah says what it knows, scans at the auction house, and forgets prices", () => {
@@ -328,7 +345,7 @@ it("no auction house on this client: the module still starts, builds nothing and
   const addon = loggedIn(AH_ENV + "C_AuctionHouse = nil", { savedVariables: "VanguardDB.ah = { prices = { [2589] = { min = 90, t = 1790000000, days = {} } }, count = 1 }" });
   addon.world.openAuctionHouse();
   addon.update(0);
-  expect([addon.frame("Vanguard_AuctionPanel"), addon.eval("return #ns.errors")], "no panel, no error").toEqual([null, 0]);
+  expect([addon.frame("Vanguard_AuctionShopping"), addon.eval("return #ns.errors")], "no tabs, no error").toEqual([null, 0]);
   expect(addon.eval('return __showItem("item:2589")[1][1]'), "saved prices still in tooltips").toBe("AH: 90c (today)");
 });
 
@@ -415,13 +432,13 @@ it("entries by item link, ID or name; Remove on the right-click menu; the wheel 
   addon.click(`${HELPER}.shopCard.search`);
   expect(sent(addon), "an ID searches by its item key").toEqual(["SearchForItemKeys:2589"]);
   addon.wheel(`${HELPER}.shopCard.rows[1]`, -1);
-  expect(shopRow(addon, 1)[1], "scrolled one down").toBe("item 99999");
+  expect(shopRow(addon, 1)[1], "seven entries fit the rows: the wheel has nothing to scroll").toBe("Linen Cloth");
   addon.wheel(`${HELPER}.shopCard.rows[1]`, -5);
-  expect([shopRow(addon, 1)[1], shopRow(addon, 6)[1]], "no further than the last").toEqual(["item 99999", "d"]);
+  expect([shopRow(addon, 1)[1], shopRow(addon, 7)[1], shopRow(addon, 8)[0]], "every entry on its row, none past the last").toEqual(["Linen Cloth", "d", false]);
   addon.click(`${HELPER}.shopCard.rows[1]`, "RightButton");
   expect(addon.eval("local out = {} for i, b in ipairs(Vanguard_Menu.items) do if b:IsShown() then out[i] = b.text:GetText() end end return out"), "the row's menu").toEqual(["Filters...", "Remove"]);
   addon.click("Vanguard_Menu.items[2]");
-  expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Mats']"), "Remove took it off").toEqual([2589, "Soul Dust", "a", "b", "c", "d"]);
+  expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Mats']"), "Remove took it off").toEqual([99999, "Soul Dust", "a", "b", "c", "d"]);
 });
 
 it("item names the client hasn't loaded yet, and a hidden price", () => {
@@ -748,18 +765,19 @@ it("a shop row opens every listing of its item in place of the rows; columns sor
   expect(q, "the item's own search, cheapest first, through the queue").toEqual(["SendSearchQuery", 10940, 0, false]);
   expect([view(addon).slice(0, 3), addon.eval(`return ${HELPER}.shopCard.body:IsShown()`)], "the view in place of the rows, searching").toEqual([[true, "Strange Dust", "searching..."], false]);
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
-  expect(view(addon), "cheapest first, the hidden price left out, six rows").toEqual([true, "Strange Dust", "", [
+  expect(view(addon), "cheapest first, the hidden price left out, eight rows").toEqual([true, "Strange Dust", "", [
     ["12s 50c", "7", "10 min", true], ["12s 50c", "20", "50 min", false], ["13s 0c", "200", "11 h", false],
-    ["13s 99c", "5", "27 h", false], ["14s 50c", "1", "2 h", false], ["15s 0c", "60", "", false]]]);
+    ["13s 99c", "5", "27 h", false], ["14s 50c", "1", "2 h", false], ["15s 0c", "60", "", false],
+    ["19s 90c", "12", "2 h", false], ["25s 0c", "3", "1 min", false]]]);
   expect(addon.eval(`return ${HELPER}.pending == nil`), "its search is answered").toBe(true);
   addon.click(`${HELPER}.shopCard.view.heads[2]`);
-  expect(view(addon)[3].map((r) => r[1]), "by quantity").toEqual(["1", "3", "5", "7", "12", "20"]);
+  expect(view(addon)[3].map((r) => r[1]), "by quantity").toEqual(["1", "3", "5", "7", "12", "20", "60", "200"]);
   addon.click(`${HELPER}.shopCard.view.heads[2]`);
-  expect([view(addon)[3].map((r) => r[1]), addon.eval(`return ${HELPER}.shopCard.view.arrow:GetRotation()`)], "again: most first, the arrow turned").toEqual([["200", "60", "20", "12", "7", "5"], 0]);
+  expect([view(addon)[3].map((r) => r[1]), addon.eval(`return ${HELPER}.shopCard.view.arrow:GetRotation()`)], "again: most first, the arrow turned").toEqual([["200", "60", "20", "12", "7", "5", "3", "1"], 0]);
   addon.click(`${HELPER}.shopCard.view.heads[3]`);
-  expect(view(addon)[3].map((r) => r[2]), "by time left (none first)").toEqual(["", "1 min", "10 min", "50 min", "2 h", "2 h"]);
+  expect(view(addon)[3].map((r) => r[2]), "by time left (none first)").toEqual(["", "1 min", "10 min", "50 min", "2 h", "2 h", "11 h", "27 h"]);
   addon.wheel(`${HELPER}.shopCard.view.rows[1]`, -5);
-  expect(view(addon)[3].map((r) => r[2]), "the wheel scrolls to the end").toEqual(["10 min", "50 min", "2 h", "2 h", "11 h", "27 h"]);
+  expect(view(addon)[3].map((r) => r[2]), "eight rows fit: the wheel has nothing to scroll").toEqual(["", "1 min", "10 min", "50 min", "2 h", "2 h", "11 h", "27 h"]);
   addon.advance(1);
   addon.click(`${HELPER}.shopCard.view.rows[2]`);
   expect([sent(addon).at(-1), restrictedLog(addon)], "a listing opens its item in the game's own list; nothing is bought").toEqual(["SearchForItemKeys:10940", []]);
@@ -779,10 +797,11 @@ it("the view reads further pages as it scrolls, shows time-left bands and leaves
   addon.click(`${HELPER}.shopCard.rows[1]`);
   addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   expect(view(addon)[3].map((r) => [r[0], r[2]]), "an item's buyout, its band by the game's name or ours; bid only and over 5g left out").toEqual([
-    ["10s 0c", "Medium"], ["20s 0c", "TEST-ONLY Long"], ["30s 0c", "Very long"], ["40s 0c", "Short"], ["50s 0c", "Medium"], ["60s 0c", "TEST-ONLY Long"]]);
+    ["10s 0c", "Medium"], ["20s 0c", "TEST-ONLY Long"], ["30s 0c", "Very long"], ["40s 0c", "Short"], ["50s 0c", "Medium"], ["60s 0c", "TEST-ONLY Long"],
+    ["70s 0c", "Very long"], ["80s 0c", "Short"]]);
   addon.wheel(`${HELPER}.shopCard.view`, -1);
   addon.advance(1);
-  expect(sent(addon).slice(-1)[0], "near the end: the next page, through the queue").toBe("RequestMoreItemSearchResults:9999");
+  expect(sent(addon).slice(-1)[0], "the last row in view: the next page, through the queue").toBe("RequestMoreItemSearchResults:9999");
   addon.wheel(`${HELPER}.shopCard.view`, 1);
   addon.advance(1);
   expect(sent(addon).filter((x) => x.startsWith("RequestMore")).length, "asked once until it comes").toBe(1);
@@ -837,7 +856,7 @@ it("keys: Up and Down mark a listing, Enter opens it, only while the mouse is ov
   press("UP");
   expect(view(addon)[3][0][3], "Up, not past the first").toBe(true);
   for (let i = 0; i < 7; i++) press("DOWN");
-  expect([view(addon)[3].map((r) => r[0]), view(addon)[3].at(-1)], "Down past the sixth scrolls; not past the last, which is marked").toEqual([["13s 0c", "13s 99c", "14s 50c", "15s 0c", "19s 90c", "25s 0c"], ["25s 0c", "3", "1 min", true]]);
+  expect([view(addon)[3].map((r) => r[0]), view(addon)[3].at(-1)], "Down stops on the last, which is marked; eight rows fit, nothing scrolls").toEqual([["12s 50c", "12s 50c", "13s 0c", "13s 99c", "14s 50c", "15s 0c", "19s 90c", "25s 0c"], ["25s 0c", "3", "1 min", true]]);
   addon.advance(1);
   press("ENTER");
   expect(sent(addon).at(-1), "Enter opens the marked one in the game's list").toBe("SearchForItemKeys:10940");
@@ -1157,7 +1176,7 @@ it("the listings scroll, and near the end the next page comes through the search
   dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
   addon.wheel(`${CARD}.listings[1]`, -1);
   addon.wheel(`${CARD}.listings[1]`, -1);
-  expect([listingRow(addon, 1)[1], listingRow(addon, 4)[1], sent(addon)], "scrolled to the end: the next page waits a second after the last search").toEqual(["3s 0c", "6s 0c", ["SendSellSearchQuery:2589"]]);
+  expect([listingRow(addon, 1)[1], listingRow(addon, 6)[1], listingRow(addon, 7)[0], sent(addon)], "six listings fit the rows; near the end, the next page waits a second after the last search").toEqual(["1s 0c", "6s 0c", false, ["SendSellSearchQuery:2589"]]);
   addon.advance(1);
   addon.wheel(`${CARD}.listings[1]`, -1);
   expect(sent(addon), "asked once, through the queue").toEqual(["SendSellSearchQuery:2589", "RequestMoreCommoditySearchResults:"]);
@@ -1166,7 +1185,7 @@ it("the listings scroll, and near the end the next page comes through the search
   addon.fire("COMMODITY_SEARCH_RESULTS_ADDED", 2589);
   addon.wheel(`${CARD}.listings[1]`, -5);
   addon.advance(5);
-  expect([listingRow(addon, 4)[1], sent(addon).length], "the page is in; all of it: nothing more asked").toEqual(["8s 0c", 2]);
+  expect([listingRow(addon, 8)[1], sent(addon).length], "the page is in; all of it: nothing more asked").toEqual(["8s 0c", 2]);
   addon.wheel(`${CARD}.listings[1]`, 10);
   expect(listingRow(addon, 1)[1], "back to the top").toBe("1s 0c");
 });
@@ -1181,12 +1200,12 @@ it("an item's listings: the game's words for time left, a page more by item key,
   expect([1, 2, 3, 4].map((i) => listingRow(addon, i).slice(1, 4)), "by band").toEqual([["50s 0c", "x 1", "TEST-ONLY Short"], ["60s 0c", "x 1", "TEST-ONLY Very long"], ["70s 0c", "x 1", "TEST-ONLY Medium"], ["80s 0c", "x 1", "TEST-ONLY Long"]]);
   addon.advance(1);
   addon.wheel(`${CARD}.listings[1]`, -5);
-  expect([listingRow(addon, 3)[3], listingRow(addon, 4)[3]], "a band the game doesn't name: nothing; seconds: at least a minute").toEqual(["", "1 min"]);
+  expect([listingRow(addon, 5)[3], listingRow(addon, 6)[3]], "a band the game doesn't name: nothing; seconds: at least a minute").toEqual(["", "1 min"]);
   expect(sent(addon).at(-1), "the next page by the item's key").toBe("RequestMoreItemSearchResults:9999");
   addon.eval("__wfgWorld.ah.more[9999] = nil table.insert(__wfgWorld.ah.items[9999], { buyoutAmount = 9900, quantity = 1, timeLeft = 3 })");
   addon.fire("ITEM_SEARCH_RESULTS_ADDED", { itemID: 9999 });
   addon.wheel(`${CARD}.listings[1]`, -5);
-  expect(listingRow(addon, 4)[1], "the page is in").toBe("99s 0c");
+  expect(listingRow(addon, 7)[1], "the page is in").toBe("99s 0c");
 });
 
 it("the shop's view and the sell card share the search events: each search and each page reaches its own card", () => {
@@ -1266,15 +1285,15 @@ const OWNED = `__wfgWorld.ah.owned = {
   __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }
   __wfgWorld.ah.cancelCost = 100`;
 
-const SCAN_CARD = `${HELPER}.scanCard`;
+const OWNED_CARD = `${HELPER}.ownedCard`;
 
 // Owned row i: [shown, name, price, undercut mark shown].
-const ownedRow = (addon, i) => addon.eval(`local r = ${SCAN_CARD}.owned[${i}]
+const ownedRow = (addon, i) => addon.eval(`local r = ${OWNED_CARD}.owned[${i}]
   return { r:IsShown(), r.name:GetText() or false, r.price:GetText() or false, r.mark:IsShown() }`);
 
 // Check undercuts, the auctions arriving, and each price check answered a second apart.
 function checkUndercuts(addon) {
-  addon.click(`${SCAN_CARD}.check`);
+  addon.click(`${OWNED_CARD}.check`);
   addon.fire("OWNED_AUCTIONS_UPDATED");
   addon.advance(1);
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
@@ -1287,11 +1306,11 @@ it("undercut check marks the undercut auction and Cancel is per click", () => {
   checkUndercuts(addon);
   expect(sent(addon), "your auctions, then each item once").toEqual(["QueryOwnedAuctions:", "SendSellSearchQuery:10940", "SendSellSearchQuery:9999"]);
   expect([ownedRow(addon, 1), ownedRow(addon, 2), ownedRow(addon, 3), ownedRow(addon, 4)[0]], "the dust is undercut (1s 20c against your 1s 50c), the blade isn't; the sold blade shows as sold").toEqual([[true, "Strange Dust", "1s 50c", true], [true, "TEST-ONLY Blade", "40s 0c", false], [true, "TEST-ONLY Blade", "sold · 40s 0c", false], false]);
-  expect(isTok(addon, addon.eval(`return ${SCAN_CARD}.owned[1].mark.__vertexColor`), "bad"), "the mark is red").toBe(true);
-  addon.hover(`${SCAN_CARD}.owned[1].cancel`);
+  expect(isTok(addon, addon.eval(`return ${OWNED_CARD}.owned[1].mark.__vertexColor`), "bad"), "the mark is red").toBe(true);
+  addon.hover(`${OWNED_CARD}.owned[1].cancel`);
   expect(addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out"), "what cancelling costs").toEqual(["Cancel this auction", "Costs 1s 0c"]);
   addon.hover(null);
-  addon.click(`${SCAN_CARD}.owned[1].cancel`);
+  addon.click(`${OWNED_CARD}.owned[1].cancel`);
   expect(restrictedLog(addon), "cancelled once, from the click").toEqual([["CancelAuction", true, 501, "nil", "nil", "nil", "nil"]]);
   addon.fire("AUCTION_CANCELED", 501);
   expect([ownedRow(addon, 1)[1], ownedRow(addon, 2)[2], ownedRow(addon, 3)[0]], "its row goes").toEqual(["TEST-ONLY Blade", "sold · 40s 0c", false]);
@@ -1303,7 +1322,7 @@ it("restricted calls run only inside a click", () => {
   addon.click(`${CARD}.post`);
   addon.advance(1);
   checkUndercuts(addon);
-  addon.click(`${SCAN_CARD}.owned[2].cancel`);
+  addon.click(`${OWNED_CARD}.owned[2].cancel`);
   const after = restrictedLog(addon);
   for (let i = 0; i < 3; i++) {
     addon.advance(3);
@@ -1322,21 +1341,21 @@ it("your auctions: refused cancels, scrolling, unknown names, hidden costs, and 
     for i = 1, 4 do table.insert(__wfgWorld.ah.owned, { auctionID = 600 + i, itemKey = { itemID = 10940 }, status = 0, quantity = 1, buyoutAmount = 90 }) end`);
   addon.fire("OWNED_AUCTIONS_UPDATED");
   expect([ownedRow(addon, 1), ownedRow(addon, 2).slice(1, 3), list(sent(addon))], "shown when the game sends them, nothing checked").toEqual([[true, "Strange Dust", "1s 50c", false], ["item 9999", "40s 0c"], []]);
-  addon.click(`${SCAN_CARD}.owned[1].cancel`);
-  addon.hover(`${SCAN_CARD}.owned[1].cancel`);
+  addon.click(`${OWNED_CARD}.owned[1].cancel`);
+  addon.hover(`${OWNED_CARD}.owned[1].cancel`);
   expect([restrictedLog(addon).length, addon.eval("return #GameTooltip.__lines")], "the game won't cancel it; no cost shown when hidden").toEqual([0, 1]);
-  addon.wheel(`${SCAN_CARD}.owned[1]`, -5);
-  expect([ownedRow(addon, 1)[2], ownedRow(addon, 4)[0]], "scrolled to the end: 7 auctions (one sold), 4 rows").toEqual(["90c", true]);
+  addon.wheel(`${OWNED_CARD}.owned[1]`, -5);
+  expect([ownedRow(addon, 1)[2], ownedRow(addon, 7)[0], ownedRow(addon, 8)[0]], "seven auctions (one sold) on seven rows; the wheel has nothing to scroll").toEqual(["1s 50c", true, false]);
 });
 
 // Two more dust auctions of yours: 2 at 1s 30c a unit (undercut by the 1s 20c up) and 2 at 1s 10c (not).
 const MORE_DUST = `table.insert(__wfgWorld.ah.owned, { auctionID = 506, itemKey = { itemID = 10940 }, status = 0, quantity = 2, buyoutAmount = 130 })
   table.insert(__wfgWorld.ah.owned, { auctionID = 507, itemKey = { itemID = 10940 }, status = 0, quantity = 2, buyoutAmount = 110 })`;
 
-const CANCEL_NEXT = `${SCAN_CARD}.cancelNext`;
+const CANCEL_NEXT = `${OWNED_CARD}.cancelNext`;
 
 // The line under your auctions, and whether Cancel next undercut works.
-const nextState = (addon) => addon.eval(`local c = ${SCAN_CARD} return { c.summary:GetText(), c.cancelNext:IsEnabled() }`);
+const nextState = (addon) => addon.eval(`local c = ${OWNED_CARD} return { c.summary:GetText(), c.cancelNext:IsEnabled() }`);
 
 // The tooltip's lines.
 const tipLines = (addon) => addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out");
@@ -1344,7 +1363,7 @@ const tipLines = (addon) => addon.eval("local out = {} for i, l in ipairs(GameTo
 it("Cancel next undercut cancels one undercut auction per click, then says none are left", () => {
   const addon = atAuctionHouse(BAGS + OWNED + MORE_DUST);
   expect(nextState(addon), "before a check: no line, nothing to cancel").toEqual(["", false]);
-  addon.click(`${SCAN_CARD}.check`);
+  addon.click(`${OWNED_CARD}.check`);
   expect(nextState(addon), "asking for your auctions").toEqual(["checking...", false]);
   addon.fire("OWNED_AUCTIONS_UPDATED");
   addon.advance(1);
@@ -1374,7 +1393,7 @@ it("Cancel next undercut cancels one undercut auction per click, then says none 
 
 it("Cancel next undercut skips an auction the game won't cancel; the line waits for a check that never answers", () => {
   const addon = atAuctionHouse(BAGS + OWNED + MORE_DUST + "__wfgWorld.ah.noCancel[501] = true");
-  addon.click(`${SCAN_CARD}.check`);
+  addon.click(`${OWNED_CARD}.check`);
   addon.fire("OWNED_AUCTIONS_UPDATED");
   addon.advance(1);
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
@@ -1383,7 +1402,7 @@ it("Cancel next undercut skips an auction the game won't cancel; the line waits 
   addon.click(CANCEL_NEXT);
   expect([restrictedLog(addon).map((c) => c[2]), nextState(addon)], "501 can't be cancelled, so 506 goes; 501 still counts").toEqual([[506], ["1 undercut", false]]);
   addon.eval("__wfgWorld.ah.owned = {}");
-  addon.click(`${SCAN_CARD}.check`);
+  addon.click(`${OWNED_CARD}.check`);
   addon.advance(1);
   addon.fire("OWNED_AUCTIONS_UPDATED");
   expect([nextState(addon), list(ownedRow(addon, 1))[0]], "no auctions: none undercut at once").toEqual([["none undercut", false], false]);
@@ -1424,7 +1443,7 @@ const SOLD = `__wfgWorld.ah.owned = {
 // Owned row i as the player sees it: [shown, name, price column, its color token (one of good, gold,
 // text2), Cancel shown, Relist shown, Relist works].
 const ownedLook = (addon, i) => {
-  const r = `${SCAN_CARD}.owned[${i}]`;
+  const r = `${OWNED_CARD}.owned[${i}]`;
   const color = addon.frame(`${r}.price`).textColor;
   const token = ["good", "gold", "text2"].find((t) => isTok(addon, color, t)) || "other";
   return addon.eval(`local r = ${r} return { r:IsShown(), r.name:GetText() or false, r.price:GetText() or false, "${token}", r.cancel:IsShown(), r.relist:IsShown(), r.relist:IsEnabled() }`);
@@ -1432,7 +1451,7 @@ const ownedLook = (addon, i) => {
 
 it("sold rows show the amount, and are neither cancelled nor counted as undercut", () => {
   const addon = atAuctionHouse(BAGS + SOLD + "__wfgWorld.ah.items[9999] = { { buyoutAmount = 100, quantity = 1 } }");
-  addon.click(`${SCAN_CARD}.check`);
+  addon.click(`${OWNED_CARD}.check`);
   addon.fire("OWNED_AUCTIONS_UPDATED");
   addon.advance(1);
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
@@ -1444,7 +1463,7 @@ it("sold rows show the amount, and are neither cancelled nor counted as undercut
     [true, "TEST-ONLY Blade", "sold · 3s 0c", "good", false, false, false],
     [true, "TEST-ONLY Blade", "45s 0c", "gold", true, false, false],
   ]);
-  expect([addon.eval(`return ${SCAN_CARD}.owned[2].mark:IsShown()`), ownedRow(addon, 4)[3], nextState(addon)], "only the blade still up is undercut (1s up)").toEqual([false, true, ["1 undercut", true]]);
+  expect([addon.eval(`return ${OWNED_CARD}.owned[2].mark:IsShown()`), ownedRow(addon, 4)[3], nextState(addon)], "only the blade still up is undercut (1s up)").toEqual([false, true, ["1 undercut", true]]);
   addon.fire("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", 4, "TEST-ONLY A buyer has been found", 705);
   expect([ownedLook(addon, 4), nextState(addon)], "the game says it sold: no more Cancel, nothing to cancel next").toEqual([[true, "TEST-ONLY Blade", "sold · 45s 0c", "good", false, false, false], ["none undercut", false]]);
   addon.fire("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", 4, "TEST-ONLY no auction");
@@ -1458,7 +1477,7 @@ it("an expired auction says it's coming back by mail; once it is in the bags, Re
   addon.fire("OWNED_AUCTIONS_UPDATED");
   addon.fire("AUCTION_HOUSE_AUCTIONS_EXPIRED", 502);
   expect(ownedLook(addon, 2), "expired: by mail, Relist waits for it").toEqual([true, "TEST-ONLY Blade", "expired · by mail", "text2", false, true, false]);
-  addon.click(`${SCAN_CARD}.owned[2].relist`);
+  addon.click(`${OWNED_CARD}.owned[2].relist`);
   addon.eval(`${HELPER}.Relist(502) ${HELPER}.Relist(999)`);
   expect([card(addon)[1], list(sent(addon))], "nothing to put on the card yet").toEqual([false, []]);
   addon.eval("table.remove(__wfgWorld.ah.owned, 2)");
@@ -1472,7 +1491,7 @@ it("an expired auction says it's coming back by mail; once it is in the bags, Re
   addon.update(0);
   expect(ownedLook(addon, 3), "after the mailbox: back in the bags, Relist works").toEqual([true, "TEST-ONLY Blade", "expired · in bags", "text2", false, true, true]);
   addon.advance(1);
-  addon.click(`${SCAN_CARD}.owned[3].relist`);
+  addon.click(`${OWNED_CARD}.owned[3].relist`);
   expect([card(addon)[1], sent(addon), ownedRow(addon, 3)[0]], "the blade from bag 1 is on the sell card, its price checked; the row goes").toEqual(["TEST-ONLY-BLADE", ["SendSellSearchQuery:9999"], false]);
   expect(addon.eval(`local s = ${HELPER}.sell return { s.loc.bagID, s.loc.slotIndex }`), "the bag slot it found").toEqual([1, 4]);
   expect(restrictedLog(addon).length, "relisting posts nothing by itself").toBe(0);
@@ -1590,11 +1609,12 @@ const dealRow = (addon, i) => addon.eval(`local r = ${DEALS}.card.rows[${i}] ret
 // The Deals card: [shown, its count, the line shown while there are none].
 const dealsCard = (addon) => [addon.frame("Vanguard_AuctionDeals").visible, ...addon.eval(`local c = ${DEALS}.card return { c.count:GetText(), c.status:GetText() }`)];
 
-it("deals: a scan lists what's under 70 % of the 7-day market or under vendor price, best first, right of the window", () => {
+it("deals: a scan lists what's under 70 % of the 7-day market or under vendor price, best first, beside the Shop card", () => {
   const markets = `, markets = { [${TODAY - 1}] = 1200, [${TODAY - 2}] = 1000, [${TODAY - 8}] = 9000 }`;
   const addon = atAuctionHouse(DUSTS, { savedVariables: dustHistory(1000, markets) });
-  const [deals, window] = [addon.frame("Vanguard_AuctionDeals"), addon.frame("AuctionHouseFrame")];
-  expect([deals.rect.left, deals.rect.top, deals.rect.width, deals.rect.height, deals.rect.right <= 1920], "4 px right of the window, from its top, on the screen").toEqual([window.rect.right + 4, window.rect.top, 280, 196, true]);
+  pickTab(addon, 4);
+  const [deals, page] = [addon.frame("Vanguard_AuctionDeals"), addon.frame("Vanguard_AuctionShopping")];
+  expect([deals.rect.right, deals.rect.top, deals.rect.width, deals.rect.height], "the Shopping page's right column, from its top, with room for 18 rows").toEqual([page.rect.right, page.rect.top, 280, 406]);
   expect([dealsCard(addon), dealRow(addon, 1)[0]], "none yet").toEqual([[true, "", "None yet: a scan or a search finds them."], false]);
   scan(addon, `{ { itemID = 10940, count = 1, buyoutPrice = 500 }, { itemID = 10940, count = 30, buyoutPrice = 39000 },
     { itemID = 2589, count = 5, buyoutPrice = 50 }, { itemID = 159, count = 1, buyoutPrice = 100 } }`);
@@ -1609,11 +1629,12 @@ it("deals: a scan lists what's under 70 % of the 7-day market or under vendor pr
   addon.hover(null);
   expect(addon.eval("return GameTooltip:IsShown()"), "gone with the mouse").toBe(false);
   addon.click(`${DEALS}.card.rows[1]`);
-  expect([sent(addon).at(-1), restrictedLog(addon)], "a click shows it in the game's own list; nothing is bought").toEqual(["SearchForItemKeys:2589", []]);
+  expect([sent(addon).at(-1), restrictedLog(addon), addon.eval("return AuctionHouseFrame.selectedTab"), addon.frame("Vanguard_AuctionShopping").visible], "a click shows it in the game's own list, on its Buy tab; nothing is bought").toEqual(["SearchForItemKeys:2589", [], 1, false]);
 });
 
 it("deals: each search judges its item again; a low before today stands in for a market; closing forgets them", () => {
   const addon = atAuctionHouse(BAGS + DUST_UP + CLICK_LUA, { savedVariables: dustHistory(150) });
+  pickTab(addon, 4);
   dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
   addon.update(0.01);
   expect(dealRow(addon, 1), "the sell search's 1s (your 95c left out) is a third under yesterday's 1s 50c").toEqual([true, "Strange Dust", "1s 0c", "-33 %"]);
@@ -1628,22 +1649,23 @@ it("deals: each search judges its item again; a low before today stands in for a
   addon.update(0.01);
   expect([dealsCard(addon)[1], dealRow(addon, 1).slice(1), dealRow(addon, 8)[1]], "ten deals, furthest under first, eight rows").toEqual(["10 found", ["item 50010", "9s 0c", "-10 %"], "item 50003"]);
   addon.wheel(`${DEALS}.card.rows[1]`, -1);
-  expect(dealRow(addon, 1)[1], "the wheel scrolls").toBe("item 50009");
+  expect(dealRow(addon, 1)[1], "ten deals fit the rows: the wheel has nothing to scroll").toBe("item 50010");
   addon.wheel(`${DEALS}.card.rows[1]`, -5);
-  expect([dealRow(addon, 1)[1], dealRow(addon, 8)[1]], "no further than the last").toEqual(["item 50008", "item 50001"]);
+  expect([dealRow(addon, 1)[1], dealRow(addon, 10)[1], dealRow(addon, 11)[0]], "every deal on its row, none past the last").toEqual(["item 50010", "item 50001", false]);
   addon.wheel(`${DEALS}.card.rows[1]`, 9);
   expect(dealRow(addon, 1)[1], "nor above the first").toBe("item 50010");
   addon.world.closeAuctionHouse();
   addon.eval("ns.AuctionPrices.RecordSeen(50001, 1)");
   addon.world.openAuctionHouse();
   addon.update(0);
+  pickTab(addon, 4);
   expect(dealsCard(addon), "a new visit starts with none; nothing is judged while the house is closed").toEqual([true, "", "None yet: a scan or a search finds them."]);
   addon.eval('ns.Options.Show("more") __click("Deals card")');
   addon.eval("ns.AuctionPrices.RecordSeen(50001, 1)");
   expect([addon.eval("return ns.Settings('AuctionHelper').deals"), addon.frame("Vanguard_AuctionDeals").visible, addon.eval(`return next(${HELPER}.deals) == nil`)], "switched off under Auction house: the card goes at once, nothing is judged").toEqual([false, false, true]);
 });
 
-it("deals: with the panel off nothing is built, and a deal found paints nothing", () => {
+it("deals: with the tabs off nothing is built, and a deal found paints nothing", () => {
   const addon = atAuctionHouse("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
   addon.eval("ns.AuctionPrices.RecordSeen(2589, 5)");
   addon.update(0.01);

@@ -255,13 +255,16 @@ end
 
 -- A tab after the window's last, named for its page: its display mode is a table of its own that
 -- names none of the game's frames, so picking it hides them all, and the page shows meanwhile.
+-- The game's tab template (PanelTabButtonTemplate, parentArray Tabs) puts the new tab in the
+-- window's Tabs itself; a client whose template doesn't gets it added here.
 local function addTab(name, f)
   local w = AuctionHouseFrame
+  local last = w.Tabs[#w.Tabs]
   local tab = CreateFrame("Button", nil, w, "AuctionHouseFrameDisplayModeTabTemplate")
+  if w.Tabs[#w.Tabs] ~= tab then table.insert(w.Tabs, tab) end
   tab:SetText(name)
-  tab:SetPoint("LEFT", w.Tabs[#w.Tabs], "RIGHT", -15, 0)
+  tab:SetPoint("LEFT", last, "RIGHT", -15, 0)
   tab.displayMode = {}
-  table.insert(w.Tabs, tab)
   w.tabsForDisplayMode[tab.displayMode] = #w.Tabs
   f.vgMode, f.vgTitle = tab.displayMode, name
   return tab
@@ -304,11 +307,18 @@ function AH.ShowInGame()
   if type(modes) == "table" and type(w) == "table" and type(w.SetDisplayMode) == "function" then w:SetDisplayMode(modes.Buy) end
 end
 
+-- No tab row on the window (another client's): said once in chat, and nothing is built.
+function AH.NoTabRow()
+  if not AH.saidNoTabs then ns.Chat("The auction house window has no tab row this client knows, so the Shopping and Selling tabs can't be added (/vg errors says if something failed).") end
+  AH.saidNoTabs = true
+  return false
+end
+
 -- The helper's tabs and pages, built the first time the window shows: Shopping (the Shop card,
 -- Deals and the scan) and Selling (the Sell card and your auctions), sized to the window's content
 -- area. Without the tab row (another client's window) nothing is built.
 function AH.Build()
-  if not hasTabs(AuctionHouseFrame) then return false end
+  if not hasTabs(AuctionHouseFrame) then return AH.NoTabRow() end
   local h, w = AuctionHouseFrame:GetHeight() - AH.PAGE_TOP - AH.PAGE_BOTTOM, AuctionHouseFrame:GetWidth() - 2 * AH.PAGE_X
   countRows(h - 2 * AH.PAD, h - 3 * AH.PAD - AH.SCAN_H)
   local shopping, selling = buildShopping(h, w), buildSelling(h, w)

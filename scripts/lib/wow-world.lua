@@ -1468,17 +1468,35 @@ function PanelTemplates_TabResize() end
 -- The window's display modes (Blizzard_AuctionHouseFrame.lua): each names the window's frames it shows.
 AuctionHouseFrameDisplayMode = { Buy = { "BrowseResultsFrame" }, ItemSell = { "ItemSellFrame" }, Auctions = { "AuctionsFrame" } }
 
--- One of the window's tabs (AuctionHouseFrameDisplayModeTabTemplate), after the last: its text and
--- display mode; a click sets that mode on the window.
+-- The tab template's OnClick (AuctionHouseFrameDisplayModeTabMixin): the window's display mode set
+-- to the tab's.
+local function displayModeClick(self)
+  local w = self:GetParent()
+  if w and w.SetDisplayMode then w:SetDisplayMode(self.displayMode) end
+end
+
+-- CreateFrame with the tab template gives the button the template's OnClick and size, and puts it
+-- in its parent's Tabs (PanelTabButtonTemplate's parentArray), as the game's XML does for the
+-- window's own tabs and an addon's alike.
+local rawCreateFrame = CreateFrame
+function CreateFrame(kind, name, parent, template, ...)
+  local w = rawCreateFrame(kind, name, parent, template, ...)
+  if template == "AuctionHouseFrameDisplayModeTabTemplate" then
+    w:SetSize(80, 32)
+    w:SetScript("OnClick", displayModeClick)
+    parent.Tabs = parent.Tabs or {}
+    table.insert(parent.Tabs, w)
+  end
+  return w
+end
+
+-- One of the window's tabs, after the last: its text and display mode (the template puts it in Tabs).
 local function auctionTab(f, text, mode)
+  local last = f.Tabs[#f.Tabs]
   local tab = CreateFrame("Button", "AuctionHouseFrame" .. text .. "Tab", f, "AuctionHouseFrameDisplayModeTabTemplate")
-  tab:SetSize(80, 32)
   tab:SetText(text)
   tab.displayMode = mode
-  local last = f.Tabs[#f.Tabs]
   if last then tab:SetPoint("LEFT", last, "RIGHT", -15, 0) else tab:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 20, -28) end
-  tab:SetScript("OnClick", function(self) f:SetDisplayMode(self.displayMode) end)
-  f.Tabs[#f.Tabs + 1] = tab
   f.tabsForDisplayMode[mode] = #f.Tabs
 end
 
