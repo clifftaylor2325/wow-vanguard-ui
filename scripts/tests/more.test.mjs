@@ -2101,6 +2101,7 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   addon.eval('MinimapCluster.Tracking:ClearAllPoints() MinimapCluster.Tracking:SetPoint("CENTER", UIParent, "CENTER", 0, 0)');
   expect(pinned(addon, "MinimapCluster.Tracking", overlay), "when the game moves one back, it returns to its corner").toEqual([true, "BOTTOMLEFT"]);
   expect([pinned(addon, "BagsBar", "Vanguard_MenuStrip"), pinned(addon, "MicroMenuContainer", "Vanguard_MenuStrip")], "the bag bar and the micro menu ride in one bar, each at its row's right end").toEqual([[true, "RIGHT"], [true, "RIGHT"]]);
+  expect(addon.eval("for _, e in ipairs(ns.errors) do if e.text:find('pin ') then return e.text end end return 'none'"), "pinning the first row fits both rows with no error: every row's anchor is made first").toBe("none");
   addon.eval("BagsBar:SetSize(600, 45) ns.PausePins(false)");
   expect(barSize(addon), "a bag bar 600 units wide holds 13 bags: the bar hugs their slots inside an 8-unit margin (two rows tall)").toEqual([barW(13), 68]);
   addon.eval("BagsBar:SetSize(50, 20) ns.PausePins(false)");

@@ -402,6 +402,16 @@ it("scroll bars: a window's ScrollBar key and the bar paired with a ScrollBox ar
   expect(addon.eval("return { ns.Theme.PaintedCount(), #ns.errors }"), "painted once").toEqual([painted, 0]);
 });
 
+it("scroll bars: a frame the game keeps from addons is skipped, and so is the inside of one that holds such a frame", () => {
+  const addon = loggedIn(BARS_ENV + `
+    TestOnlyList.Pane.IsForbidden = function() return true end
+    TestOnlyList.Far.GetChildren = function() error("Attempt to access forbidden object from code tainted by an AddOn") end
+  `);
+  addon.eval("TestOnlyList:Show()");
+  const state = addon.eval("return { __barState(TestOnlyList.ScrollBar)[1], __barState(TestOnlyList.Pane.ScrollBar)[1], #ns.errors }");
+  expect(state, "the window's own bar is dressed, the forbidden pane's is the game's, and nothing errors").toEqual([0, -1, 0]);
+});
+
 it("scroll bars: only on registered windows whose groups are on; a bar that isn't one of the game's is left alone", () => {
   const env = BARS_ENV;
   const off = loggedIn(env, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
