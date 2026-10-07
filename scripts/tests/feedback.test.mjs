@@ -146,9 +146,17 @@ it("Tab runs through the boxes of the kind showing, Shift-Tab back, round the en
   expect(addon.frame(BOX).visible, "Escape in a box closes the form").toBe(false);
 });
 
-it("the options window's General page has a Send feedback button that opens the form", () => {
+it("the options window's last page, Feedback, opens the form on a bug or a feature and copies a plain report", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.slash("");
-  expect(addon.eval('return __click("Send feedback")'), "the button is on the page").toBeTruthy();
-  expect([addon.eval("return Vanguard_Options:IsShown()"), addon.frame(BOX).visible], "it closes the options and opens the form").toEqual([false, true]);
+  expect(addon.eval("local last for _, p in ipairs(ns.Options.PAGES) do if not last or (p.order or 70) > (last.order or 70) then last = p end end return last.key"), "Feedback is the last page in the nav's order").toBe("feedback");
+  expect(addon.eval('return __click("Feedback")'), "the nav opens it").toBeTruthy();
+  expect(addon.eval('return __click("Report a bug")'), "Report a bug is on the page").toBeTruthy();
+  expect([addon.eval("return Vanguard_Options:IsShown()"), addon.frame(BOX).visible, addon.eval(`return ${BOX}.kind`)], "it closes the options and opens the form on a bug").toEqual([false, true, "bug"]);
+  addon.click(`${BOX}.cancel`);
+  addon.slash("");
+  expect(addon.eval('return __click("Request a feature")') && addon.eval(`return ${BOX}:IsShown() and ${BOX}.kind`), "Request a feature opens it on a feature").toBe("feature");
+  addon.click(`${BOX}.cancel`);
+  addon.slash("");
+  expect(addon.eval('return __click("Copy a report")') && addon.eval("return Vanguard_TextDialog:IsShown() and Vanguard_TextDialog.title:GetText()"), "Copy a report shows /vg report's box").toBe("Vanguard report: Ctrl+C, then paste at vanguardui.com/feedback");
 });

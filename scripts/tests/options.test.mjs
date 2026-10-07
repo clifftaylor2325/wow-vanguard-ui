@@ -502,3 +502,24 @@ it("bags: the item skin is shared with other windows, once per button", () => {
     return { b.vgSkinned, ns.Theme.PaintedCount() == n, b.icon.__texCoord ~= nil }`);
   expect(out).toEqual([true, true, true]);
 });
+
+// The font string with the given text (the first one), as the stub keeps it.
+const FIND_LUA = `function __fontString(text)
+  for _, w in ipairs(__wfgStub.frames) do
+    if w.__kind == "FontString" and type(w.__text) == "string" and w.__text:sub(1, #text) == text then return w end
+  end
+end`;
+
+it("a note row wraps to its card and the row grows to fit; a dropdown's choice stays on one line, cut at the arrow", () => {
+  const addon = loggedIn(FIND_LUA);
+  addon.slash("");
+  addon.eval('ns.Options.Show("feedback")');
+  const note = addon.eval(`local fs = __fontString("A bug or an idea?")
+    return { fs.__width, fs:GetStringHeight(), fs.__points.TOPLEFT.y, __fontString("Report a bug").__parent.__points.TOPLEFT.y }`);
+  expect(note[0], "the note is as wide as the card's inside (the card is 564 wide, 8 off for the rows and 14 of padding)").toBe(564 - 8 - 14);
+  expect(note[1] > 20 && note[3] <= note[2] - note[1] - 6, "its text wraps to more than one line, and the next row starts under all of it").toBe(true);
+  addon.eval('ns.Options.Show("more")');
+  const choice = addon.eval(`local fs = __fontString("group role, else damage")
+    return { fs.__noWrap, fs.__points.LEFT ~= nil, fs.__points.RIGHT and fs.__points.RIGHT.rel == fs.__parent.arrow }`);
+  expect(choice, "the chosen role is one line between the box's edge and its arrow").toEqual([true, true, true]);
+});
