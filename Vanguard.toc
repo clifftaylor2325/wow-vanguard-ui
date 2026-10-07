@@ -44,6 +44,7 @@ Core/ErrorBadge.lua
 Core/OptionsProfiles.lua
 Core/Setup.lua
 Core/FactionArt.lua
+Core/Inspect.lua
 Core/Slash.lua
 Core/Feedback.lua
 Core/Perf.lua

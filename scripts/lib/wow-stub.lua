@@ -272,6 +272,9 @@ function methods:SetBackdropColor(r, g, b, a) self.__backdropColor = { r, g, b, 
 function methods:SetBackdropBorderColor(r, g, b, a) self.__borderColor = { r, g, b, a or 1 } end
 function methods:SetTexture(t) self.__texture = t end
 function methods:GetTexture() return self.__texture end
+-- A region's draw layer and sublevel, as it was created (or moved) with.
+function methods:SetDrawLayer(layer, sublevel) self.__layer = layer self.__sublevel = sublevel end
+function methods:GetDrawLayer() return self.__layer, self.__sublevel or 0 end
 function methods:SetAtlas(a, useSize) self.__atlas = a self.__atlasSize = useSize end
 function methods:GetAtlas() return self.__atlas end
 function methods:SetColorTexture(r, g, b, a) self.__color = { r, g, b, a or 1 } end
