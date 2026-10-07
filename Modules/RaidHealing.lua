@@ -33,6 +33,22 @@ RH.CLASS_BUFFS = {
   },
 }
 
+-- Every class's group buffs for the options list, by class, as { name, spellID }.
+-- The id finds the icon even for spells you haven't learned (the client can't look those up by name).
+RH.ALL_BUFFS = {
+  { "PRIEST", { { "Power Word: Fortitude", 1243 }, { "Prayer of Fortitude", 21562 }, { "Divine Spirit", 14752 },
+    { "Prayer of Spirit", 27681 }, { "Shadow Protection", 976 }, { "Prayer of Shadow Protection", 27683 } } },
+  { "MAGE", { { "Arcane Intellect", 1459 }, { "Arcane Brilliance", 23028 }, { "Amplify Magic", 1008 }, { "Dampen Magic", 604 } } },
+  { "DRUID", { { "Mark of the Wild", 1126 }, { "Gift of the Wild", 21849 }, { "Thorns", 467 } } },
+  { "PALADIN", { { "Blessing of Might", 19740 }, { "Blessing of Wisdom", 19742 }, { "Blessing of Kings", 20217 },
+    { "Blessing of Salvation", 1038 }, { "Blessing of Light", 19977 }, { "Blessing of Sanctuary", 20911 },
+    { "Greater Blessing of Might", 25782 }, { "Greater Blessing of Wisdom", 25894 }, { "Greater Blessing of Kings", 25898 },
+    { "Greater Blessing of Salvation", 25895 }, { "Greater Blessing of Light", 25890 }, { "Greater Blessing of Sanctuary", 25899 } } },
+  { "WARRIOR", { { "Battle Shout", 6673 } } },
+  { "HUNTER", { { "Trueshot Aura", 19506 } } },
+  { "WARLOCK", { { "Unending Breath", 5697 }, { "Detect Invisibility", 2970 } } },
+}
+
 -- Values -----------------------------------------------------------------------------------
 
 -- A value that isn't there (nil). Written with type() so a hidden value never gets compared.
@@ -297,13 +313,119 @@ local function switch(key)
     function(v) ns.Settings("RaidHealing", RH.defaults)[key] = v; RF.UpdateAll() end
 end
 
--- Saves the typed buff list (empty = class defaults) and refreshes the frames.
-local function saveBuffs(input)
-  ns.Settings("RaidHealing", RH.defaults).buffs = input:GetText()
+-- Stores the buff list (empty = class defaults), then refreshes the frames and the page.
+local function storeBuffs(text)
+  ns.Settings("RaidHealing", RH.defaults).buffs = text
   RH.Forget()
-  input:ClearFocus()
   RF.UpdateAll()
 end
+
+-- Saves the typed buff list and rebuilds the page, so new names get their own rows.
+local function saveBuffs(input)
+  input:ClearFocus()
+  storeBuffs(input:GetText())
+  ns.Options.RebuildPage("healing")
+end
+
+-- Appends the names not seen yet to out, in order.
+local function addNames(out, seen, names)
+  for _, name in ipairs(names) do
+    if not seen[name] then seen[name], out[#out + 1] = true, name end
+  end
+end
+
+-- The names in your spellbook's Buffs group (the click-cast catalog), or none.
+local function bookBuffs()
+  local CS, names = ns.ClickCastSpells, {}
+  if not CS then return names end
+  for _, s in ipairs(CS.Groups().buffs) do names[#names + 1] = s.name end
+  return names
+end
+
+-- A class's readable name ("Priest"), from the client or the token.
+local function className(token)
+  local names = LOCALIZED_CLASS_NAMES_MALE
+  if type(names) == "table" and names[token] then return names[token] end
+  return token:sub(1, 1) .. token:sub(2):lower()
+end
+
+-- The class buff lists in order, yours first.
+local function classOrder()
+  local _, mine = UnitClass("player")
+  local out = {}
+  for _, c in ipairs(RH.ALL_BUFFS) do
+    if c[1] == mine then table.insert(out, 1, c) else out[#out + 1] = c end
+  end
+  return out
+end
+
+-- Appends a class's name and a row per buff it gives, marking each name seen.
+local function addClass(rows, seen, c)
+  rows[#rows + 1] = { "text", className(c[1]) }
+  for _, b in ipairs(c[2]) do
+    seen[b[1]] = true
+    rows[#rows + 1] = { "buffpick", b[1], b[2] }
+  end
+end
+
+-- Appends rows for buffs no class list has: your spellbook's Buffs group, then any other saved name.
+local function addOthers(rows, seen)
+  local names = {}
+  addNames(names, seen, bookBuffs())
+  addNames(names, seen, RH.BuffNames())
+  if #names > 0 then rows[#rows + 1] = { "text", "Other" } end
+  for _, name in ipairs(names) do rows[#rows + 1] = { "buffpick", name } end
+end
+
+-- Appends every buff row: each class's buffs (yours first) under its name, then the others.
+local function addBuffRows(rows)
+  local seen = {}
+  for _, c in ipairs(classOrder()) do addClass(rows, seen, c) end
+  addOthers(rows, seen)
+end
+
+-- Whether a buff is on the watched list now.
+local function watching(name)
+  for _, n in ipairs(RH.BuffNames()) do
+    if n == name then return true end
+  end
+  return false
+end
+
+-- Watches or stops watching one buff, saves the list and refreshes the page.
+local function setWatched(name, on)
+  local names = {}
+  for _, n in ipairs(RH.BuffNames()) do
+    if n ~= name then names[#names + 1] = n end
+  end
+  if on then names[#names + 1] = name end
+  storeBuffs(table.concat(names, ", "))
+  ns.Options.Refresh()
+end
+
+-- A buff's icon: the spellbook's, else the client's by name, then by spell id, else a question mark.
+local function buffIcon(name, id)
+  local s = ns.ClickCastSpells and ns.ClickCastSpells.Spell(name)
+  if s and s.icon then return s.icon end
+  local get = C_Spell and type(C_Spell.GetSpellTexture) == "function" and C_Spell.GetSpellTexture
+  return get and (get(name) or (id and get(id))) or 134400
+end
+
+-- One buff's row: its icon and name, and a switch that watches it. Inset like the
+-- page's other indented rows, so the switch lines up with the switches above.
+local function buffRow(content, row, width)
+  local name = row[2]
+  local r = W.Check(content, name, function() return watching(name) end, function(on) setWatched(name, on) end, width - 8)
+  r.icon = r:CreateTexture(nil, "ARTWORK")
+  r.icon:SetSize(20, 20)
+  r.icon:SetPoint("LEFT", 0, 0)
+  r.icon:SetTexture(buffIcon(name, row[3]))
+  T.Crop(r.icon)
+  r.label:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
+  return r
+end
+
+ns.Options.AddRowKind("buffpick", buffRow, W.ROW_HEIGHT)
 
 -- The buff-list editor: names separated by commas, and Save.
 local function buffEditor(content)
@@ -321,21 +443,20 @@ end
 
 ns.Options.AddRowKind("buffnames", buffEditor, 34)
 
-ns.Options.AddPage({
-  key = "healing",
-  title = "Healing",
-  icon = "Healing",
-  order = 45,
-  rows = function()
-    return {
-      { "header", "On the raid frames" },
-      { "check", "Incoming heals (green, past the health)", switch("healPrediction") },
-      { "check", "Shields (white, after incoming heals)", switch("absorbs") },
-      { "check", "Aggro strip along the top (yellow, orange, red)", switch("aggro") },
-      { "check", "Mark players missing a buff you can give", switch("buffWatch") },
-      { "header", "Buffs to watch" },
-      { "text", "Names, separated by commas. Leave empty for your class's usual buffs." },
-      { "buffnames" },
-    }
-  end,
-})
+-- The Healing page's rows: the switches, a row per buff you could watch, then the typed list.
+local function pageRows()
+  local rows = {
+    { "header", "On the raid frames" },
+    { "check", "Incoming heals (green, past the health)", switch("healPrediction") },
+    { "check", "Shields (white, after incoming heals)", switch("absorbs") },
+    { "check", "Aggro strip along the top (yellow, orange, red)", switch("aggro") },
+    { "check", "Mark players missing a buff you can give", switch("buffWatch") },
+    { "header", "Buffs to watch" },
+  }
+  addBuffRows(rows)
+  rows[#rows + 1] = { "text", "Other buffs: names, separated by commas. None on = your class's usual buffs." }
+  rows[#rows + 1] = { "buffnames" }
+  return rows
+end
+
+ns.Options.AddPage({ key = "healing", title = "Healing", icon = "Healing", order = 45, rows = pageRows })

@@ -67,5 +67,7 @@ it("healing fallbacks and options", () => {
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.save and w.input then w.input:SetText("TEST-ONLY Aura, Arcane Brilliance") w.save:GetScript("OnClick")(w.save) end end`);
   expect(addon.eval("return VanguardDB.profiles.Default.RaidHealing.buffs") === "TEST-ONLY Aura, Arcane Brilliance", "the buff list saves").toBeTruthy();
   expect(healing(addon, 1).missing === "TEST-ONLY-ICON-Arcane Brilliance", "and the frames watch the saved names").toBeTruthy();
+  expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.icon and w.label and w.label:GetText() == "Arcane Intellect" then return w.icon:GetTexture() end end`), "each class buff gets a row with its icon").toBe("TEST-ONLY-ICON-Arcane Intellect");
+  expect(addon.eval('return __click("TEST-ONLY Aura")') && addon.eval("return VanguardDB.profiles.Default.RaidHealing.buffs"), "a buff's switch takes it off the list").toBe("Arcane Brilliance");
   expect(addon.eval('return __click("Aggro strip")') && addon.eval("return VanguardDB.profiles.Default.RaidHealing.aggro") === false, "the page's switches work").toBeTruthy();
 });
