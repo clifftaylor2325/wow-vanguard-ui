@@ -25,6 +25,9 @@ const AH_ENV = `
 
 const HELPER = "ns.GetModule('AuctionHelper')";
 const SCAN_BUTTON = `${HELPER}.scanCard.scan`;
+// The Shopping card's list (a table), and its results view.
+const TABLE = `${HELPER}.shopCard.body.table`;
+const VIEW = `${HELPER}.shopCard.view`;
 
 // A logged-in addon at the TEST-ONLY auction house (extra Lua runs before login).
 function atAuctionHouse(extra = "", opts) {
@@ -247,13 +250,14 @@ it("two tabs join the window after the game's three; each shows its page over th
   pickTab(addon, 4);
   const page = addon.frame("Vanguard_AuctionShopping");
   expect([page.visible, page.rect.left, page.rect.top, page.rect.width, page.rect.height, title(addon), addon.eval("return AuctionHouseFrame.selectedTab")], "Shopping: its page over the content area (under the title, above the money line), the title named, the tab selected").toEqual([true, window.rect.left + 4, window.rect.top - 30, 792, 478, "Shopping", 4]);
-  const rows = addon.eval(`local AH = ${HELPER} return { AH.SHOP_ROWS, AH.VIEW_ROWS, AH.DEAL_ROWS, AH.LIST_ROWS, AH.OWNED_ROWS }`);
-  expect(rows, "the rows fill the room: 19 shop and view rows, 18 deals, 9 listings under the sell form, 19 of your auctions").toEqual([19, 19, 18, 9, 19]);
+  const rows = addon.eval(`local AH = ${HELPER} return { AH.SHOP_ROWS, AH.VIEW_ROWS, AH.PANE_ROWS, AH.LIST_ROWS, AH.OWNED_ROWS }`);
+  expect(rows, "the rows fill the room: 21 list and view rows, 15 pane entries, 9 listings under the sell form, 19 of your auctions").toEqual([21, 21, 15, 9, 19]);
   const fits = addon.eval(`local AH, out = ${HELPER}, {}
-    for i, c in ipairs({ AH.shopCard, AH.dealsFrame.card, AH.scanCard, AH.sellCard, AH.ownedCard }) do out[i] = { c:GetLeft(), c:GetRight(), c:GetTop(), c:GetBottom() } end return out`);
+    for i, c in ipairs({ AH.pane, AH.scanCard, AH.shopCard, AH.sellCard, AH.ownedCard, AH.shopCard.body.table, AH.pane.actions[6] }) do out[i] = { c:GetLeft(), c:GetRight(), c:GetTop(), c:GetBottom() } end return out`);
   const [l, r, t, b] = [page.rect.left, page.rect.right, page.rect.top, page.rect.bottom];
-  expect(fits.every(([cl, cr, ct, cb]) => cl >= l && cr <= r && ct <= t && cb >= b), "every card inside its page").toBe(true);
-  expect([fits[0][1] <= fits[1][0], fits[1][3] > fits[2][2], fits[3][1] <= fits[4][0]], "Shop left of Deals, the scan under Deals; Sell left of your auctions").toEqual([true, true, true]);
+  expect(fits.every(([cl, cr, ct, cb]) => cl >= l && cr <= r && ct <= t && cb >= b), "every card inside its page, the table and the last action button too").toBe(true);
+  expect([fits[0][1] <= fits[2][0], fits[0][3] > fits[1][2], fits[3][1] <= fits[4][0], fits[0][1] - fits[0][0]], "the pane left of the list, the scan under the pane; Sell left of your auctions; the pane 240 wide less the padding").toEqual([true, true, true, 224]);
+  expect(addon.eval(`local p = ${HELPER}.pane return { p.rows[1]:GetTop() - #p.rows * 20 > p.actions[1]:GetTop(), p.actions[6]:GetBottom() >= p:GetBottom() }`), "the pane's last row above its action buttons, the buttons inside the pane").toEqual([true, true]);
   expect(addon.eval(`local c = ${HELPER}.sellCard return { c.post:GetBottom() >= c:GetBottom(), c.status:GetBottom() >= c:GetBottom(), c.length:GetBottom() > c.post:GetTop() }`), "the sell form fits its card, rows apart").toEqual([true, true, true]);
   expect(addon.eval(`local c = ${HELPER}.ownedCard return { c.owned[#c.owned]:GetBottom() > c.cancelNext:GetTop(), c.cancelNext:GetBottom() >= c:GetBottom() }`), "Cancel next undercut under the last row, inside the card").toEqual([true, true]);
   pickTab(addon, 5);
@@ -366,9 +370,9 @@ const sent = (addon) => addon.eval(`local out = {}
   end
   return out`);
 
-// Shop row i: [shown, name, price, count, icon].
-const shopRow = (addon, i) => addon.eval(`local r = ${HELPER}.shopCard.rows[${i}]
-  return { r:IsShown(), r.name:GetText() or false, r.price:GetText() or false, r.qty:GetText() or false, r.icon:GetTexture() or false }`);
+// List row i: [shown, name, price, how many up, icon].
+const shopRow = (addon, i) => addon.eval(`local r = ${TABLE}.rows[${i}]
+  return { r:IsShown(), r.name:GetText() or false, r.cells.price:GetText() or false, r.cells.qty:GetText() or false, r.icon:GetTexture() or false }`);
 
 // The shop card's progress line.
 const progress = (addon) => addon.eval(`return ${HELPER}.shopCard.progress:GetText()`);
@@ -410,16 +414,16 @@ it("result rows show name, cheapest price and quantity; a click opens the item's
   addon.eval("__wfgWorld.ah.browse = {}");
   addon.advance(1);
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
-  expect(shopRow(addon, 1), "the result named like the entry, not the cheaper pouch").toEqual([true, "Strange Dust", "12s 50c", "x 240", "TEST-ONLY-DUST"]);
+  expect(shopRow(addon, 1), "the result named like the entry, not the cheaper pouch").toEqual([true, "Strange Dust", "12s 50c", "240", "TEST-ONLY-DUST"]);
   expect(shopRow(addon, 2).slice(0, 4), "nothing up").toEqual([true, "TEST-ONLY Nothing", "none up", ""]);
   expect(shopRow(addon, 3)[0], "no third entry").toBe(false);
   addon.advance(1);
-  addon.click(`${HELPER}.shopCard.rows[2]`);
+  addon.click(`${TABLE}.rows[2]`);
   expect(sent(addon).length, "nothing found: nothing opens").toBe(2);
-  addon.click(`${HELPER}.shopCard.rows[1]`);
+  addon.click(`${TABLE}.rows[1]`);
   expect(sent(addon).at(-1), "the item's listings are searched by the key its row found").toBe("SendSearchQuery:10940");
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
-  addon.click(`${HELPER}.shopCard.view.back`);
+  addon.click(`${VIEW}.back`);
   expect([shopRow(addon, 1)[2], addon.eval(`return ${HELPER}.pending == nil`)], "back: the row keeps its price; nothing waits").toEqual(["12s 50c", true]);
 });
 
@@ -431,11 +435,11 @@ it("entries by item link, ID or name; Remove on the right-click menu; the wheel 
   expect(shopRow(addon, 2).slice(1), "one it doesn't").toEqual(["item 99999", "", "", "Interface\\Icons\\INV_Misc_QuestionMark"]);
   addon.click(`${HELPER}.shopCard.search`);
   expect(sent(addon), "an ID searches by its item key").toEqual(["SearchForItemKeys:2589"]);
-  addon.wheel(`${HELPER}.shopCard.rows[1]`, -1);
+  addon.wheel(`${TABLE}.rows[1]`, -1);
   expect(shopRow(addon, 1)[1], "seven entries fit the rows: the wheel has nothing to scroll").toBe("Linen Cloth");
-  addon.wheel(`${HELPER}.shopCard.rows[1]`, -5);
+  addon.wheel(`${TABLE}.rows[1]`, -5);
   expect([shopRow(addon, 1)[1], shopRow(addon, 7)[1], shopRow(addon, 8)[0]], "every entry on its row, none past the last").toEqual(["Linen Cloth", "d", false]);
-  addon.click(`${HELPER}.shopCard.rows[1]`, "RightButton");
+  addon.click(`${TABLE}.rows[1]`, "RightButton");
   expect(addon.eval("local out = {} for i, b in ipairs(Vanguard_Menu.items) do if b:IsShown() then out[i] = b.text:GetText() end end return out"), "the row's menu").toEqual(["Filters...", "Remove"]);
   addon.click("Vanguard_Menu.items[2]");
   expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Mats']"), "Remove took it off").toEqual([99999, "Soul Dust", "a", "b", "c", "d"]);
@@ -457,27 +461,47 @@ it("item names the client hasn't loaded yet, and a hidden price", () => {
   expect([shopRow(addon, 2)[2], addon.eval("return #ns.errors")], "a hidden price: nothing to show, no error").toEqual(["none up", 0]);
 });
 
-// The shop dropdown's choices, by their text.
-const choices = (addon) => addon.eval(`local c = {} for i, x in ipairs(${HELPER}.shopCard.lists.choices()) do c[i] = x[2] end return c`);
+// The Lists pane's entries, by name.
+const choices = (addon) => addon.eval(`local c = {} for i, e in ipairs(${HELPER}.PaneEntries()) do c[i] = e.name end return c`);
 
-// The dropdown's actions on the list in use, after the lists and "New list...".
-const LIST_ACTIONS = ["Rename list...", "Duplicate list", "Delete list...", "Export list...", "Import..."];
+// The pane's action buttons that work now, by their text.
+const actions = (addon) => addon.eval(`local out = {} for _, b in ipairs(${HELPER}.pane.actions) do if b:IsEnabled() then out[#out + 1] = b.text:GetText() end end return out`);
 
-it("shopping lists: the dropdown picks or makes one, + Add adds, and the caps hold", () => {
+// Clicks the pane's action button named `text` (New, Rename, Copy, Delete or Clear, Import, Export).
+function act(addon, text) {
+  const i = addon.eval(`for i, b in ipairs(${HELPER}.pane.actions) do if b.text:GetText() == "${text}" then return i end end`);
+  addon.click(`${HELPER}.pane.actions[${i}]`);
+}
+
+// Picks an entry in the pane by its key (a list's name, or AH.RECENT, AH.DEALS...), as a click on its row does.
+const pick = (addon, key) => addon.eval(`${HELPER}.PickEntry(${key})`);
+
+// The Shopping card's heading (the entry shown) and the list's status line.
+const heading = (addon) => addon.eval(`return { ${HELPER}.shopCard.title:GetText(), ${TABLE}.status:GetText() }`);
+
+it("shopping lists: the pane picks or makes one, + Add adds, and the caps hold", () => {
   const addon = atAuctionHouse();
-  expect(choices(addon), "no lists yet: make one or import").toEqual(["New list...", "Import..."]);
+  expect([choices(addon), actions(addon), heading(addon)], "no lists yet: make one or import (Deals and Upgrades are always there)").toEqual([["Deals", "Upgrades"], ["New", "Import"], ["Shopping", "No lists yet: New makes one, Import pastes one."]]);
   addon.click(`${HELPER}.shopCard.add`);
   addon.type("Vanguard_TextEdit", "Strange Dust");
   addon.click("Vanguard_TextDialog.primary");
   expect([addon.eval("return VanguardDB.ah.lists.Shopping"), addon.frame("Vanguard_TextDialog").visible], "+ Add with no list makes Shopping").toEqual([["Strange Dust"], false]);
-  addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.NEW)`);
+  act(addon, "New");
   addon.type("Vanguard_TextEdit", "  TEST-ONLY B  ");
   addon.click("Vanguard_TextDialog.primary");
-  expect([choices(addon), addon.eval(`return ${HELPER}.shopCard.lists.text:GetText()`)], "made and picked").toEqual([["Shopping", "TEST-ONLY B", "New list...", ...LIST_ACTIONS], "TEST-ONLY B"]);
-  addon.eval(`${HELPER}.shopCard.lists.set("Shopping")`);
-  expect(shopRow(addon, 1)[1], "picked back").toBe("Strange Dust");
+  expect([choices(addon), heading(addon), actions(addon)], "made and picked, empty").toEqual([["Shopping", "TEST-ONLY B", "Deals", "Upgrades"], ["TEST-ONLY B", "+ Add takes an item link, an item ID or a name."], ["New", "Rename", "Copy", "Delete", "Import", "Export"]]);
+  // Pane row i: [name, count, marked as the one shown].
+  const paneRow = (i) => addon.eval(`local r = ${HELPER}.pane.rows[${i}] return { r.name:GetText(), r.count:GetText(), r.mark:IsShown() }`);
+  expect([paneRow(1), paneRow(2)], "each list with its count; the one shown marked").toEqual([["Shopping", "1", false], ["TEST-ONLY B", "", true]]);
+  addon.click(`${HELPER}.pane.rows[1]`);
+  expect([shopRow(addon, 1)[1], paneRow(1)[2], heading(addon)], "picked back by a click on its row").toEqual(["Strange Dust", true, ["Shopping", ""]]);
   addon.eval(`for i = 3, 21 do ${HELPER}.NewList("TEST-ONLY " .. i) end for i = 1, 51 do ${HELPER}.AddEntry("x" .. i, "Shopping") end`);
   expect(addon.eval("local n = 0 for _ in pairs(VanguardDB.ah.lists) do n = n + 1 end return { n, #VanguardDB.ah.lists.Shopping }"), "20 lists, 50 entries").toEqual([20, 50]);
+  expect([paneRow(1)[0], paneRow(15)[0], addon.eval(`return ${HELPER}.pane.rows[16]`)], "fifteen entries fit the pane (the lists by name)").toEqual(["Shopping", "TEST-ONLY 5", null]);
+  addon.wheel(`${HELPER}.pane.rows[1]`, -9);
+  expect([paneRow(1)[0], paneRow(15)[0]], "the wheel scrolls the pane as far as its last entry (the 20 lists, Deals, Upgrades)").toEqual(["TEST-ONLY 16", "Upgrades"]);
+  addon.wheel(`${HELPER}.pane.rows[1]`, 9);
+  expect(paneRow(1)[0], "and back").toBe("Shopping");
   expect([chatHas(addon, /at most 20 shopping lists/), chatHas(addon, /holds at most 50 items/)], "says why").toEqual([true, true]);
   expect(addon.eval(`return ${HELPER}.NewList("   ")`), "no name, no list").toBe(false);
 });
@@ -519,7 +543,7 @@ const filterDialog = (addon) => addon.eval(`local d = Vanguard_AuctionFilters
 
 // Opens the filter dialog of shop row i from its right-click menu.
 function openFilters(addon, i) {
-  addon.click(`${HELPER}.shopCard.rows[${i}]`, "RightButton");
+  addon.click(`${TABLE}.rows[${i}]`, "RightButton");
   addon.click("Vanguard_Menu.items[1]");
 }
 
@@ -582,7 +606,7 @@ it("a name matches only itself or a name containing it, never an unrelated resul
   answer("{ { itemKey = { itemID = 4306 }, minPrice = 700, totalQuantity = 2 }, { itemKey = { itemID = 2589 }, minPrice = 10, totalQuantity = 9 } }");
   answer("{ { itemKey = { itemID = 2589 }, minPrice = 60, totalQuantity = 9 } }");
   expect([1, 2, 3, 4].map((i) => shopRow(addon, i).slice(1, 4)), "the pouch contains the name; linen is no dust; silk waits for its name; an ID over its max").toEqual([
-    ["Strange Dust Pouch", "9s 0c", "x 3"], ["Vision Dust", "none up", ""], ["silk", "", ""], ["Linen Cloth", "none up", ""]]);
+    ["Strange Dust Pouch", "9s 0c", "3"], ["Vision Dust", "none up", ""], ["silk", "", ""], ["Linen Cloth", "none up", ""]]);
   expect(sent(addon)[3], "an ID entry with a max price still searches by its item key").toBe("SearchForItemKeys:2589");
   addon.eval("__wfgWorld.items[4306].pending = nil");
   addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 4306);
@@ -621,31 +645,29 @@ function answerText(addon, text) {
 // The yes/no question: whether it shows, and its text.
 const question = (addon) => addon.eval("local f = Vanguard_Question return { f:IsShown(), f.title:GetText() }");
 
-it("list management from the dropdown: rename, duplicate, export, and delete after asking", () => {
+it("list management from the pane's buttons: rename, duplicate, export, and delete after asking", () => {
   const addon = atAuctionHouse(DUSTS);
   makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "2589" }');
-  // Picks a dropdown value.
-  const pick = (v) => addon.eval(`${HELPER}.shopCard.lists.set(${v})`);
-  pick(`${HELPER}.RENAME`);
+  act(addon, "Rename");
   expect(textDialog(addon).slice(0, 2), "asks for the new name").toEqual([true, "Rename TEST-ONLY Mats"]);
   answerText(addon, "  TEST-ONLY Herbs ");
   expect([choices(addon)[0], addon.eval("return { VanguardDB.ah.list, VanguardDB.ah.lists['TEST-ONLY Mats'] == nil }"), textDialog(addon)[0]], "renamed, still in use, the box closed").toEqual(["TEST-ONLY Herbs", ["TEST-ONLY Herbs", true], false]);
-  pick(`${HELPER}.COPY`);
-  pick('"TEST-ONLY Herbs"');
-  pick(`${HELPER}.COPY`);
+  act(addon, "Copy");
+  pick(addon, '"TEST-ONLY Herbs"');
+  act(addon, "Copy");
   expect(choices(addon).slice(0, 3), "copies, each with a free name").toEqual(["TEST-ONLY Herbs", "TEST-ONLY Herbs copy", "TEST-ONLY Herbs copy 2"]);
   expect([addon.eval("return VanguardDB.ah.lists['TEST-ONLY Herbs copy 2']"), shopRow(addon, 1)[1], chatHas(addon, /Copied TEST-ONLY Herbs to TEST-ONLY Herbs copy 2\./)], "the same items, and the copy is in use").toEqual([["Strange Dust", 2589], "Strange Dust", true]);
-  pick(`${HELPER}.RENAME`);
+  act(addon, "Rename");
   answerText(addon, "TEST-ONLY Herbs");
   expect([chatHas(addon, /already a shopping list named TEST-ONLY Herbs\./), addon.eval("return VanguardDB.ah.list")], "a name in use is refused").toEqual([true, "TEST-ONLY Herbs copy 2"]);
   addon.click("Vanguard_TextDialog.close");
-  pick(`${HELPER}.EXPORT`);
+  act(addon, "Export");
   expect(textDialog(addon), "one item per line, ready to copy").toEqual([true, "Shopping list TEST-ONLY Herbs copy 2 (Ctrl+C copies it)", "Strange Dust\n2589"]);
-  pick(`${HELPER}.DELETE`);
+  act(addon, "Delete");
   expect(question(addon), "asks first").toEqual([true, "Delete the shopping list TEST-ONLY Herbs copy 2 (2 items)?"]);
   addon.click("Vanguard_Question.no");
   expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Herbs copy 2'] ~= nil"), "No keeps it").toBe(true);
-  pick(`${HELPER}.DELETE`);
+  act(addon, "Delete");
   addon.click("Vanguard_Question.yes");
   expect([choices(addon).slice(0, 2), addon.eval("return VanguardDB.ah.list"), chatHas(addon, /Deleted the shopping list TEST-ONLY Herbs copy 2\./)], "gone; the first list left is in use").toEqual([["TEST-ONLY Herbs", "TEST-ONLY Herbs copy"], "TEST-ONLY Herbs", true]);
   addon.eval(`${HELPER}.DeleteList("TEST-ONLY Herbs copy") ${HELPER}.DeleteList("TEST-ONLY Nothing")`);
@@ -653,12 +675,12 @@ it("list management from the dropdown: rename, duplicate, export, and delete aft
   addon.eval(`for i = 1, 19 do ${HELPER}.NewList("TEST-ONLY " .. i) end ${HELPER}.NewList("TEST-ONLY Herbs") ${HELPER}.DuplicateList()`);
   expect(addon.eval("return { VanguardDB.ah.lists['TEST-ONLY Herbs copy'] == nil, VanguardDB.ah.list }"), "no copy past 20 lists").toEqual([true, "TEST-ONLY Herbs"]);
   addon.eval(`${HELPER}.DeleteList("TEST-ONLY Herbs") for i = 1, 19 do ${HELPER}.DeleteList("TEST-ONLY " .. i) end`);
-  expect([choices(addon), addon.eval("return VanguardDB.ah.list")], "the last one deleted: no list in use").toEqual([["New list...", "Import..."], null]);
+  expect([choices(addon), actions(addon), addon.eval("return VanguardDB.ah.list")], "the last one deleted: no list in use").toEqual([["Deals", "Upgrades"], ["New", "Import"], null]);
 });
 
 it("import: plain lines and Auctionator's strings, within the caps", () => {
   const addon = atAuctionHouse(DUSTS);
-  addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.IMPORT)`);
+  act(addon, "Import");
   expect(textDialog(addon).slice(0, 2), "no list in use: into Shopping").toEqual([true, "Import into Shopping (names, IDs, links, or a shopping list string)"]);
   answerText(addon, "Linen Cloth\n 2589 \r\n|cffffffff|Hitem:10940::::|h[Strange Dust]|h|r\n\n   \n");
   expect([addon.eval("return { VanguardDB.ah.list, VanguardDB.ah.lists.Shopping }"), textDialog(addon)[0], chatHas(addon, /Imported 3 item\(s\) into Shopping\.$/)], "a name, an ID and a link; blanks skipped").toEqual([["Shopping", ["Linen Cloth", 2589, 10940]], false, true]);
@@ -697,16 +719,16 @@ it("/vg ah rename, duplicate, delete, export and import act on the list in use",
 
 it("Recent: the last 20 terms searched, newest first, kept for the account", () => {
   const addon = atAuctionHouse(DUSTS, { savedVariables: 'VanguardDB.ah = { recent = { "TEST-ONLY Old" } }' });
-  expect([choices(addon), addon.eval(`return ${HELPER}.shopCard.lists.text:GetText()`)], "kept from before: Recent in the dropdown").toEqual([["Recent", "New list...", "Import..."], "Recent"]);
+  expect([choices(addon), heading(addon)[0], actions(addon)], "kept from before: Recent in the pane; nothing shown yet").toEqual([["Recent", "Deals", "Upgrades"], "Shopping", ["New", "Import"]]);
   makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Soul Dust", "2589" }');
   addon.click(`${HELPER}.shopCard.search`);
   expect(addon.eval("return VanguardDB.ah.recent"), "each term searched, the last first").toEqual([2589, "Soul Dust", "Strange Dust", "TEST-ONLY Old"]);
-  addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.RECENT)`);
-  expect([choices(addon), [1, 2, 3, 4].map((i) => shopRow(addon, i)[1])], "Recent in use: its rows, and what can be done with it").toEqual([["TEST-ONLY Mats", "Recent", "New list...", "Duplicate list", "Export list...", "Clear recent...", "Import..."], ["Linen Cloth", "Soul Dust", "Strange Dust", "TEST-ONLY Old"]]);
+  pick(addon, `${HELPER}.RECENT`);
+  expect([choices(addon), [1, 2, 3, 4].map((i) => shopRow(addon, i)[1]), actions(addon)], "Recent in use: its rows, and what can be done with it").toEqual([["TEST-ONLY Mats", "Recent", "Deals", "Upgrades"], ["Linen Cloth", "Soul Dust", "Strange Dust", "TEST-ONLY Old"], ["New", "Copy", "Clear", "Import", "Export"]]);
   addon.advance(5);
   addon.click(`${HELPER}.shopCard.search`);
   expect([addon.eval("return VanguardDB.ah.recent[1]"), progress(addon)], "searching Recent leaves its order").toEqual([2589, "0 of 4"]);
-  addon.click(`${HELPER}.shopCard.rows[4]`, "RightButton");
+  addon.click(`${TABLE}.rows[4]`, "RightButton");
   addon.click("Vanguard_Menu.items[2]");
   expect(addon.eval("return #VanguardDB.ah.recent"), "Remove works on Recent").toBe(3);
   addon.eval(`${HELPER}.AddEntry("TEST-ONLY New")`);
@@ -714,14 +736,18 @@ it("Recent: the last 20 terms searched, newest first, kept for the account", () 
   addon.eval(`local AH = ${HELPER} AH.Remember("soul dust") AH.Remember({ term = "Soul Dust", exact = true }) for i = 1, 25 do AH.Remember("TEST-ONLY " .. i) end`);
   const recent = addon.eval("return VanguardDB.ah.recent");
   expect([recent.length, recent[0], recent[19]], "20 at most; the same term once, whatever its case").toEqual([20, "TEST-ONLY 25", "TEST-ONLY 6"]);
-  addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.RECENT) ${HELPER}.shopCard.lists.set(${HELPER}.COPY)`);
+  pick(addon, `${HELPER}.RECENT`);
+  act(addon, "Copy");
   expect(addon.eval("return { VanguardDB.ah.list, #VanguardDB.ah.lists['Recent copy'] }"), "copied into a list of its own").toEqual(["Recent copy", 20]);
-  addon.eval(`${HELPER}.shopCard.lists.set(${HELPER}.RECENT) ${HELPER}.shopCard.lists.set(${HELPER}.DELETE)`);
+  pick(addon, `${HELPER}.RECENT`);
+  act(addon, "Clear");
   expect(question(addon), "clearing asks first").toEqual([true, "Clear the 20 recent searches?"]);
   addon.click("Vanguard_Question.yes");
   expect([addon.eval("return #VanguardDB.ah.recent"), choices(addon).includes("Recent")], "cleared; still in use, so still listed").toEqual([0, true]);
-  addon.eval(`${HELPER}.shopCard.lists.set("Shopping")`);
-  expect(choices(addon).includes("Recent"), "empty and not in use: not listed").toBe(false);
+  pick(addon, '"Shopping"');
+  expect([choices(addon).includes("Recent"), heading(addon)[1]], "empty and not in use: not listed").toEqual([false, ""]);
+  pick(addon, "nil");
+  expect(heading(addon), "nothing picked while lists exist").toEqual(["Shopping", "Pick a list in the Lists pane."]);
 });
 
 it("/vg ah recent shows Recent", () => {
@@ -736,9 +762,9 @@ it("/vg ah recent shows Recent", () => {
 });
 
 // The results view: shown, the item's name, the status line, and its rows shown as [price, quantity, time left, marked].
-const view = (addon) => addon.eval(`local f = ${HELPER}.shopCard.view local rows = {}
-  for i, r in ipairs(f.rows) do if r:IsShown() then rows[i] = { r.cells.price:GetText(), r.cells.qty:GetText(), r.cells.time:GetText(), r.mark:IsShown() } end end
-  return { f:IsShown(), f.name:GetText() or false, f.status:GetText() or false, rows }`);
+const view = (addon) => addon.eval(`local f = ${VIEW} local rows = {}
+  for i, r in ipairs(f.table.rows) do if r:IsShown() then rows[i] = { r.cells.price:GetText(), r.cells.qty:GetText(), r.cells.time:GetText(), r.mark:IsShown() } end end
+  return { f:IsShown(), f.name:GetText() or false, f.table.status:GetText() or false, rows }`);
 
 // Eight TEST-ONLY dust listings (unit price, quantity, seconds left) and one with a hidden price.
 const DUST_LISTINGS = `__wfgWorld.ah.commodities[10940] = {
@@ -760,7 +786,7 @@ function dustFound(addon) {
 it("a shop row opens every listing of its item in place of the rows; columns sort; Back returns", () => {
   const addon = atAuctionHouse(DUSTS + DUST_LISTINGS);
   dustFound(addon);
-  addon.click(`${HELPER}.shopCard.rows[1]`);
+  addon.click(`${TABLE}.rows[1]`);
   const q = addon.eval("local q = __wfgWorld.ah.queries[#__wfgWorld.ah.queries] return { q.fn, q.args[1].itemID, q.args[2][1].sortOrder, q.args[3] }");
   expect(q, "the item's own search, cheapest first, through the queue").toEqual(["SendSearchQuery", 10940, 0, false]);
   expect([view(addon).slice(0, 3), addon.eval(`return ${HELPER}.shopCard.body:IsShown()`)], "the view in place of the rows, searching").toEqual([[true, "Strange Dust", "searching..."], false]);
@@ -770,18 +796,18 @@ it("a shop row opens every listing of its item in place of the rows; columns sor
     ["13s 99c", "5", "27 h", false], ["14s 50c", "1", "2 h", false], ["15s 0c", "60", "", false],
     ["19s 90c", "12", "2 h", false], ["25s 0c", "3", "1 min", false]]]);
   expect(addon.eval(`return ${HELPER}.pending == nil`), "its search is answered").toBe(true);
-  addon.click(`${HELPER}.shopCard.view.heads[2]`);
+  addon.click(`${VIEW}.table.heads[2]`);
   expect(view(addon)[3].map((r) => r[1]), "by quantity").toEqual(["1", "3", "5", "7", "12", "20", "60", "200"]);
-  addon.click(`${HELPER}.shopCard.view.heads[2]`);
-  expect([view(addon)[3].map((r) => r[1]), addon.eval(`return ${HELPER}.shopCard.view.arrow:GetRotation()`)], "again: most first, the arrow turned").toEqual([["200", "60", "20", "12", "7", "5", "3", "1"], 0]);
-  addon.click(`${HELPER}.shopCard.view.heads[3]`);
+  addon.click(`${VIEW}.table.heads[2]`);
+  expect([view(addon)[3].map((r) => r[1]), addon.eval(`return ${VIEW}.table.arrow:GetRotation()`)], "again: most first, the arrow turned").toEqual([["200", "60", "20", "12", "7", "5", "3", "1"], 0]);
+  addon.click(`${VIEW}.table.heads[3]`);
   expect(view(addon)[3].map((r) => r[2]), "by time left (none first)").toEqual(["", "1 min", "10 min", "50 min", "2 h", "2 h", "11 h", "27 h"]);
-  addon.wheel(`${HELPER}.shopCard.view.rows[1]`, -5);
+  addon.wheel(`${VIEW}.table.rows[1]`, -5);
   expect(view(addon)[3].map((r) => r[2]), "eight rows fit: the wheel has nothing to scroll").toEqual(["", "1 min", "10 min", "50 min", "2 h", "2 h", "11 h", "27 h"]);
   addon.advance(1);
-  addon.click(`${HELPER}.shopCard.view.rows[2]`);
+  addon.click(`${VIEW}.table.rows[2]`);
   expect([sent(addon).at(-1), restrictedLog(addon)], "a listing opens its item in the game's own list; nothing is bought").toEqual(["SearchForItemKeys:10940", []]);
-  addon.click(`${HELPER}.shopCard.view.back`);
+  addon.click(`${VIEW}.back`);
   expect([view(addon)[0], addon.eval(`return ${HELPER}.shopCard.body:IsShown()`), shopRow(addon, 1)[1]], "Back: the rows again").toEqual([false, true, "Strange Dust"]);
 });
 
@@ -794,39 +820,39 @@ it("the view reads further pages as it scrolls, shows time-left bands and leaves
     table.insert(__wfgWorld.ah.items[9999], { buyoutAmount = 99000, quantity = 1, timeLeft = 9 })`);
   makeList(addon, "TEST-ONLY Gear", "{ \"9999\" }");
   addon.eval("VanguardDB.ah.lists['TEST-ONLY Gear'][1] = { term = 9999, maxPrice = 50000 }");
-  addon.click(`${HELPER}.shopCard.rows[1]`);
+  addon.click(`${TABLE}.rows[1]`);
   addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   expect(view(addon)[3].map((r) => [r[0], r[2]]), "an item's buyout, its band by the game's name or ours; bid only and over 5g left out").toEqual([
     ["10s 0c", "Medium"], ["20s 0c", "TEST-ONLY Long"], ["30s 0c", "Very long"], ["40s 0c", "Short"], ["50s 0c", "Medium"], ["60s 0c", "TEST-ONLY Long"],
     ["70s 0c", "Very long"], ["80s 0c", "Short"]]);
-  addon.wheel(`${HELPER}.shopCard.view`, -1);
+  addon.wheel(`${VIEW}.table`, -1);
   addon.advance(1);
   expect(sent(addon).slice(-1)[0], "the last row in view: the next page, through the queue").toBe("RequestMoreItemSearchResults:9999");
-  addon.wheel(`${HELPER}.shopCard.view`, 1);
+  addon.wheel(`${VIEW}.table`, 1);
   addon.advance(1);
   expect(sent(addon).filter((x) => x.startsWith("RequestMore")).length, "asked once until it comes").toBe(1);
   addon.eval("__wfgWorld.ah.items[9999][11] = { buyoutAmount = 500, quantity = 1, timeLeft = 3 } __wfgWorld.ah.searchFull = true");
   addon.fire("ITEM_SEARCH_RESULTS_ADDED", { itemID: 9999 });
   expect([view(addon)[3][0][0], addon.eval(`return ${HELPER}.pending == nil`)], "the new page sorted in; the request done").toEqual(["5s 0c", true]);
-  addon.wheel(`${HELPER}.shopCard.view`, -5);
+  addon.wheel(`${VIEW}.table`, -5);
   addon.advance(2);
   expect(sent(addon).filter((x) => x.startsWith("RequestMore")).length, "all in: no more asked").toBe(1);
-  addon.click(`${HELPER}.shopCard.view.back`);
+  addon.click(`${VIEW}.back`);
   addon.eval(`VanguardDB.ah.lists['TEST-ONLY Gear'][2] = 'TEST-ONLY Unsearched' ${HELPER}.PaintShop()`);
-  addon.click(`${HELPER}.shopCard.rows[2]`);
+  addon.click(`${TABLE}.rows[2]`);
   expect(view(addon)[0], "a name not searched yet opens nothing").toBe(false);
 });
 
 it("a commodity view asks for more with the commodity call; an empty answer says none up; closing drops it", () => {
   const addon = atAuctionHouse(DUSTS + DUST_LISTINGS + " __wfgWorld.ah.searchFull = false");
   dustFound(addon);
-  addon.click(`${HELPER}.shopCard.rows[1]`);
-  addon.wheel(`${HELPER}.shopCard.view`, -1);
+  addon.click(`${TABLE}.rows[1]`);
+  addon.wheel(`${VIEW}.table`, -1);
   addon.advance(2);
   expect(sent(addon).some((x) => x.startsWith("RequestMore")), "nothing asked before the first answer").toBe(false);
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 555);
-  addon.wheel(`${HELPER}.shopCard.view`, -2);
+  addon.wheel(`${VIEW}.table`, -2);
   addon.advance(1);
   expect(addon.eval("local q = __wfgWorld.ah.queries[#__wfgWorld.ah.queries] return { q.fn, q.args[1] }"), "the commodity's next page").toEqual(["RequestMoreCommoditySearchResults", 10940]);
   addon.eval("__wfgWorld.ah.commodities[10940] = {}");
@@ -841,14 +867,14 @@ it("a commodity view asks for more with the commodity call; an empty answer says
 it("keys: Up and Down mark a listing, Enter opens it, only while the mouse is over the view; other keys go on", () => {
   const addon = atAuctionHouse(DUSTS + DUST_LISTINGS);
   dustFound(addon);
-  addon.click(`${HELPER}.shopCard.rows[1]`);
+  addon.click(`${TABLE}.rows[1]`);
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
-  addon.eval(`local f = ${HELPER}.shopCard.view f.SetPropagateKeyboardInput = function(self, v) self.__passed = v end f.EnableKeyboard = function(self, on) self.__kb = on end`);
+  addon.eval(`local f = ${VIEW}.table f.SetPropagateKeyboardInput = function(self, v) self.__passed = v end f.EnableKeyboard = function(self, on) self.__kb = on end`);
   // Whether the view has the keyboard, and whether its last key went on to the game.
-  const kb = () => addon.eval(`local f = ${HELPER}.shopCard.view return { f.__kb == true, f.__passed }`);
+  const kb = () => addon.eval(`local f = ${VIEW}.table return { f.__kb == true, f.__passed }`);
   // Presses a key on the view, as the client does while it has the keyboard.
-  const press = (key) => addon.key(`${HELPER}.shopCard.view`, key);
-  addon.hover(`${HELPER}.shopCard.view.rows[1]`);
+  const press = (key) => addon.key(`${VIEW}.table`, key);
+  addon.hover(`${VIEW}.table.rows[1]`);
   expect(kb()[0], "the mouse over a listing: the view takes the keys").toBe(true);
   press("DOWN");
   expect([view(addon)[3][1][3], kb()[1]], "Down marks the next; the key stops here").toEqual([true, false]);
@@ -868,15 +894,15 @@ it("keys: Up and Down mark a listing, Enter opens it, only while the mouse is ov
   addon.eval("GetCurrentKeyBoardFocus = function() return nil end");
   addon.hover(null);
   expect(kb()[0], "the mouse left: the keys are the game's").toBe(false);
-  addon.hover(`${HELPER}.shopCard.view`);
-  addon.hover(`${HELPER}.shopCard.view.rows[2]`);
+  addon.hover(`${VIEW}.table`);
+  addon.hover(`${VIEW}.table.rows[2]`);
   expect(kb()[0], "from the view onto a row: still the view's").toBe(true);
   setCombat(addon, true);
-  addon.hover(`${HELPER}.shopCard.view`);
+  addon.hover(`${VIEW}.table`);
   press("DOWN");
   expect([kb()[0], kb()[1]], "in combat: never takes the keys, never sets their passing").toEqual([false, true]);
   setCombat(addon, false);
-  addon.eval(`${HELPER}.shopCard.view:Hide()`);
+  addon.eval(`${VIEW}.table:Hide()`);
   expect(kb()[0], "hidden: none").toBe(false);
 });
 
@@ -1211,7 +1237,7 @@ it("an item's listings: the game's words for time left, a page more by item key,
 it("the shop's view and the sell card share the search events: each search and each page reaches its own card", () => {
   const addon = atAuctionHouse(BAGS + DUST_LISTINGS + " __wfgWorld.ah.more[10940] = true");
   dustFound(addon);
-  addon.click(`${HELPER}.shopCard.rows[1]`);
+  addon.click(`${TABLE}.rows[1]`);
   dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
   // How many listings the sell card holds.
   const saleRows = () => addon.eval(`return #${HELPER}.sell.rows`);
@@ -1223,12 +1249,12 @@ it("the shop's view and the sell card share the search events: each search and e
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
   expect([saleRows(), card(addon)[0][0], pending()], "it reaches the sell card").toEqual([8, "12s 50c", false]);
   addon.advance(1);
-  addon.wheel(`${HELPER}.shopCard.view`, -1);
+  addon.wheel(`${VIEW}.table`, -1);
   addon.wheel(`${CARD}.listings[1]`, -5);
   expect([pending(), addon.eval(`return #${HELPER}.queue`), sent(addon).slice(-1)], "the view's page in flight, the sell card's queued behind it").toEqual(["page", 1, ["RequestMoreCommoditySearchResults:"]]);
   addon.eval("table.insert(__wfgWorld.ah.commodities[10940], { unitPrice = 1000, quantity = 4, timeLeftSeconds = 600 }) __wfgWorld.ah.more[10940] = nil");
   addon.fire("COMMODITY_SEARCH_RESULTS_ADDED", 10940);
-  addon.wheel(`${HELPER}.shopCard.view`, 10);
+  addon.wheel(`${VIEW}.table`, 10);
   expect([view(addon)[3][0][0], saleRows(), card(addon)[0][0], pending()], "the page reaches the view, not the sell card").toEqual(["10s 0c", 8, "12s 50c", false]);
   addon.advance(1);
   expect([pending(), sent(addon).filter((x) => x.startsWith("RequestMore")).length], "then the sell card's page").toEqual(["more", 2]);
@@ -1594,7 +1620,6 @@ it("disenchant values: the switch is on for enchanters until set, in the Auction
 
 // Deals ----------------------------------------------------------------------------------------
 
-const DEALS = `${HELPER}.dealsFrame`;
 // Today, as the price store counts days, at the TEST-ONLY clock.
 const TODAY = Math.floor(1790000000 / 86400);
 
@@ -1603,73 +1628,76 @@ const TODAY = Math.floor(1790000000 / 86400);
 const dustHistory = (low, fields = "") => `VanguardDB.ah = { houses = { ["ForeverTest-Alliance"] = { count = 1, lastScan = 0, prices = {
   [10940] = { min = ${low}, t = 1790000000 - 86400, days = { [${TODAY - 1}] = ${low} } ${fields} } } } } }`;
 
-// Deal row i: [shown, name, price, how far under].
-const dealRow = (addon, i) => addon.eval(`local r = ${DEALS}.card.rows[${i}] return { r:IsShown(), r.name:GetText() or false, r.price:GetText() or false, r.qty:GetText() or false }`);
+// Deal row i (the Deals entry shown): [shown, name, price, how far under, judged against].
+const dealRow = (addon, i) => addon.eval(`local r = ${TABLE}.rows[${i}] return { r:IsShown(), r.name:GetText() or false, r.cells.price:GetText() or false, r.cells.off:GetText() or false, r.cells.basis:GetText() or false }`);
 
-// The Deals card: [shown, its count, the line shown while there are none].
-const dealsCard = (addon) => [addon.frame("Vanguard_AuctionDeals").visible, ...addon.eval(`local c = ${DEALS}.card return { c.count:GetText(), c.status:GetText() }`)];
+// The Deals entry: [in the pane, its count there, the card's heading and count, the status line].
+const dealsCard = (addon) => addon.eval(`local AH, e = ${HELPER}, nil
+  for _, x in ipairs(AH.PaneEntries()) do if x.key == AH.DEALS then e = x end end
+  return { e ~= nil, e and e.count or false, AH.shopCard.title:GetText(), AH.shopCard.progress:GetText(), ${TABLE}.status:GetText() }`);
 
-it("deals: a scan lists what's under 70 % of the 7-day market or under vendor price, best first, beside the Shop card", () => {
+it("deals: a scan lists what's under 70 % of the 7-day market or under vendor price, best first, as an entry in the Lists pane", () => {
   const markets = `, markets = { [${TODAY - 1}] = 1200, [${TODAY - 2}] = 1000, [${TODAY - 8}] = 9000 }`;
   const addon = atAuctionHouse(DUSTS, { savedVariables: dustHistory(1000, markets) });
   pickTab(addon, 4);
-  const [deals, page] = [addon.frame("Vanguard_AuctionDeals"), addon.frame("Vanguard_AuctionShopping")];
-  expect([deals.rect.right, deals.rect.top, deals.rect.width, deals.rect.height], "the Shopping page's right column, from its top, with room for 18 rows").toEqual([page.rect.right, page.rect.top, 280, 406]);
-  expect([dealsCard(addon), dealRow(addon, 1)[0]], "none yet").toEqual([[true, "", "None yet: a scan or a search finds them."], false]);
+  expect(dealsCard(addon).slice(0, 3), "the entry, with no count yet; a list shown").toEqual([true, 0, "Shopping"]);
+  pick(addon, `${HELPER}.DEALS`);
+  expect([dealsCard(addon), dealRow(addon, 1)[0], actions(addon), addon.eval(`return ${HELPER}.shopCard.add:IsShown()`)], "none yet; no list buttons").toEqual([[true, 0, "Deals", "", "None yet: a scan or a search finds them."], false, ["New", "Import"], false]);
   scan(addon, `{ { itemID = 10940, count = 1, buyoutPrice = 500 }, { itemID = 10940, count = 30, buyoutPrice = 39000 },
     { itemID = 2589, count = 5, buyoutPrice = 50 }, { itemID = 159, count = 1, buyoutPrice = 100 } }`);
   expect(addon.eval("return ns.GetModule('AuctionHelper').Market7(10940, __now)"), "the dust's 7-day market: 12s, 10s and today's 11s 40c (8 days ago left out)").toBe(1113);
   expect([1, 2, 3].map((i) => dealRow(addon, i)), "linen under its 13c vendor price first, then dust 55 % under its market; water isn't a deal").toEqual([
-    [true, "Linen Cloth", "10c", "< vendor"], [true, "Strange Dust", "5s 0c", "-55 %"], [false, false, false, false]]);
-  expect([dealsCard(addon), isTok(addon, addon.eval(`return ${DEALS}.card.rows[2].qty.__textColor`), "good")], "the count; how far under in good").toEqual([[true, "2 found", ""], true]);
-  addon.hover(`${DEALS}.card.rows[2]`);
+    [true, "Linen Cloth", "10c", "< vendor", "Vendor price 13c"], [true, "Strange Dust", "5s 0c", "-55 %", "7-day market 11s 13c"], [false, false, false, false, false]]);
+  expect([dealsCard(addon), isTok(addon, addon.eval(`return ${TABLE}.rows[2].cells.off.__textColor`), "good")], "the count; how far under in good").toEqual([[true, 2, "Deals", "2 found", ""], true]);
+  addon.hover(`${TABLE}.rows[2]`);
   expect(tipLines(addon), "what the dust was judged against").toEqual(["Strange Dust", "7-day market: 11s 13c", "Click to show it in the auction house's list."]);
-  addon.hover(`${DEALS}.card.rows[1]`);
+  addon.hover(`${TABLE}.rows[1]`);
   expect(tipLines(addon), "the linen's market, and the vendor's price it is under").toEqual(["Linen Cloth", "7-day market: 10c", "Vendor price: 13c", "Click to show it in the auction house's list."]);
   addon.hover(null);
   expect(addon.eval("return GameTooltip:IsShown()"), "gone with the mouse").toBe(false);
-  addon.click(`${DEALS}.card.rows[1]`);
+  addon.click(`${TABLE}.rows[1]`);
   expect([sent(addon).at(-1), restrictedLog(addon), addon.eval("return AuctionHouseFrame.selectedTab"), addon.frame("Vanguard_AuctionShopping").visible], "a click shows it in the game's own list, on its Buy tab; nothing is bought").toEqual(["SearchForItemKeys:2589", [], 1, false]);
 });
 
 it("deals: each search judges its item again; a low before today stands in for a market; closing forgets them", () => {
   const addon = atAuctionHouse(BAGS + DUST_UP + CLICK_LUA, { savedVariables: dustHistory(150) });
   pickTab(addon, 4);
+  pick(addon, `${HELPER}.DEALS`);
   dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
   addon.update(0.01);
-  expect(dealRow(addon, 1), "the sell search's 1s (your 95c left out) is a third under yesterday's 1s 50c").toEqual([true, "Strange Dust", "1s 0c", "-33 %"]);
-  addon.hover(`${DEALS}.card.rows[1]`);
+  expect(dealRow(addon, 1), "the sell search's 1s (your 95c left out) is a third under yesterday's 1s 50c").toEqual([true, "Strange Dust", "1s 0c", "-33 %", "Lowest of the 6 days before 1s 50c"]);
+  addon.hover(`${TABLE}.rows[1]`);
   expect(tipLines(addon)[1], "judged against").toBe("Lowest of the 6 days before: 1s 50c");
   addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 180, totalQuantity = 5 } }");
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
   addon.update(0.01);
-  expect([dealsCard(addon), dealRow(addon, 1)[0]], "a browse sees it at 1s 80c now: no longer a deal").toEqual([[true, "", "None yet: a scan or a search finds them."], false]);
+  expect([dealsCard(addon), dealRow(addon, 1)[0]], "a browse sees it at 1s 80c now: no longer a deal").toEqual([[true, 0, "Deals", "", "None yet: a scan or a search finds them."], false]);
   addon.eval(`local AP = ns.AuctionPrices for i = 1, 10 do AP.Record(50000 + i, 1000, __now - 86400) end
     for i = 1, 10 do AP.RecordSeen(50000 + i, 1000 - 10 * i) end`);
   addon.update(0.01);
-  expect([dealsCard(addon)[1], dealRow(addon, 1).slice(1), dealRow(addon, 8)[1]], "ten deals, furthest under first, eight rows").toEqual(["10 found", ["item 50010", "9s 0c", "-10 %"], "item 50003"]);
-  addon.wheel(`${DEALS}.card.rows[1]`, -1);
+  expect([dealsCard(addon)[3], dealRow(addon, 1).slice(1, 4), dealRow(addon, 8)[1]], "ten deals, furthest under first, on their rows").toEqual(["10 found", ["item 50010", "9s 0c", "-10 %"], "item 50003"]);
+  addon.wheel(`${TABLE}.rows[1]`, -1);
   expect(dealRow(addon, 1)[1], "ten deals fit the rows: the wheel has nothing to scroll").toBe("item 50010");
-  addon.wheel(`${DEALS}.card.rows[1]`, -5);
+  addon.wheel(`${TABLE}.rows[1]`, -5);
   expect([dealRow(addon, 1)[1], dealRow(addon, 10)[1], dealRow(addon, 11)[0]], "every deal on its row, none past the last").toEqual(["item 50010", "item 50001", false]);
-  addon.wheel(`${DEALS}.card.rows[1]`, 9);
+  addon.wheel(`${TABLE}.rows[1]`, 9);
   expect(dealRow(addon, 1)[1], "nor above the first").toBe("item 50010");
   addon.world.closeAuctionHouse();
   addon.eval("ns.AuctionPrices.RecordSeen(50001, 1)");
   addon.world.openAuctionHouse();
   addon.update(0);
   pickTab(addon, 4);
-  expect(dealsCard(addon), "a new visit starts with none; nothing is judged while the house is closed").toEqual([true, "", "None yet: a scan or a search finds them."]);
-  addon.eval('ns.Options.Show("more") __click("Deals card")');
+  expect(dealsCard(addon), "a new visit starts with none, Deals still shown; nothing is judged while the house is closed").toEqual([true, 0, "Deals", "", "None yet: a scan or a search finds them."]);
+  addon.eval('ns.Options.Show("more") __click("Deals list")');
   addon.eval("ns.AuctionPrices.RecordSeen(50001, 1)");
-  expect([addon.eval("return ns.Settings('AuctionHelper').deals"), addon.frame("Vanguard_AuctionDeals").visible, addon.eval(`return next(${HELPER}.deals) == nil`)], "switched off under Auction house: the card goes at once, nothing is judged").toEqual([false, false, true]);
+  expect([addon.eval("return ns.Settings('AuctionHelper').deals"), dealsCard(addon).slice(0, 3), addon.eval(`return next(${HELPER}.deals) == nil`)], "switched off under Auction house: the entry goes at once and gives way to no list, nothing is judged").toEqual([false, [false, false, "Shopping"], true]);
 });
 
 it("deals: with the tabs off nothing is built, and a deal found paints nothing", () => {
   const addon = atAuctionHouse("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
   addon.eval("ns.AuctionPrices.RecordSeen(2589, 5)");
   addon.update(0.01);
-  expect([addon.frame("Vanguard_AuctionDeals"), addon.eval(`return ${HELPER}.deals[2589].price`), addon.eval("return #ns.errors")], "no card, the deal kept, no error").toEqual([null, 5, 0]);
+  expect([addon.eval(`return ${HELPER}.shopCard == nil`), addon.eval(`return ${HELPER}.deals[2589].price`), addon.eval("return #ns.errors")], "no card, the deal kept, no error").toEqual([true, 5, 0]);
 });
 
 // Price alerts ---------------------------------------------------------------------------------

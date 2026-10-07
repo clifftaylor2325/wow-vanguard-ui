@@ -437,14 +437,15 @@ local function windowRows()
   return rows
 end
 
--- The auction helper's scan, auction check, disenchant, crafting and deals rows.
+-- The auction helper's scan, auction check, disenchant, crafting, deals and upgrades rows.
 local function auctionScanRows()
   return {
     check("Scan button (one scan every 15 minutes)", setting("AuctionHelper", "scanButton")),
     check("Check your auctions for undercuts again after each post and cancel", setting("AuctionHelper", "recheck")),
     check("Disenchant values in tooltips (on for enchanters until you choose)", ns.AuctionPrices.DisenchantSetting()),
     check("Crafting costs and profit beside the profession window", setting("AuctionHelper", "crafting")),
-    check("Deals card on the Shopping tab: listings under the 7-day market or vendor price", liveSetting("AuctionHelper", "deals", function() ns.GetModule("AuctionHelper").PaintDeals() end)),
+    check("Deals list in the Shopping tab: listings under the 7-day market or vendor price", liveSetting("AuctionHelper", "deals", function() ns.GetModule("AuctionHelper").PaintDeals() end)),
+    check("Upgrades list in the Shopping tab: armor and weapons that beat what you wear, by Gear upgrades' weights", liveSetting("AuctionHelper", "upgrades", function() ns.GetModule("AuctionHelper").PaintUpgrades() end)),
   }
 end
 
@@ -452,7 +453,7 @@ end
 local function auctionRows()
   return append({
     { "header", "Auction house" },
-    check("Shopping and Selling tabs on the auction house (lists, deals, sell helper, your auctions, scan)", setting("AuctionHelper", "panel")),
+    check("Shopping and Selling tabs on the auction house (lists, deals, upgrades, sell helper, your auctions, scan)", setting("AuctionHelper", "panel")),
     check("Auction prices in tooltips (from your scans)", setting("AuctionHelper", "tooltip")),
     { "cycle", "Undercut by", { { "copper", "1 copper" }, { "silver", "1 silver" }, { "percent", "1 %" }, { "match", "Match" } }, setting("AuctionHelper", "undercut") },
     { "cycle", "Auction length", ns.GetModule("AuctionHelper").DurationChoices(true), setting("AuctionHelper", "duration") },

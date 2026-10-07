@@ -1041,8 +1041,18 @@ C_Container = {
   SortBags = function() world.sorted = true end,
 }
 
--- Equipped items: world.inventory[slotId] = { itemID, durability, maxDurability }.
-world.inventory = {}
+-- Equipped items: world.inventory[slotId] = { itemID, durability, maxDurability }; world.worn[slotId]
+-- = the item's link, for what GetInventoryItemLink gives.
+world.inventory, world.worn = {}, {}
+-- The link of what a slot wears (world.worn), as the addon compares gear by.
+function GetInventoryItemLink(_, slot) return world.worn[slot] end
+-- An item's stats (world.items[id].stats, ITEM_MOD_* keys to amounts), none for an item without.
+function C_Item.GetItemStats(key) local _, item = itemOf(key) return item and item.stats end
+-- Whether an item can be worn: it has an equip location that isn't INVTYPE_NON_EQUIP.
+function C_Item.IsEquippableItem(key) local _, item = itemOf(key) return item ~= nil and item.equipLoc ~= nil and item.equipLoc ~= "" and item.equipLoc ~= "INVTYPE_NON_EQUIP" end
+C_PlayerInfo = C_PlayerInfo or {}
+-- Whether you can use an item: unless world.items[id].unusable.
+function C_PlayerInfo.CanUseItem(id) local _, item = itemOf(id) return not (item and item.unusable) end
 -- Equipped items: icon, count and durability of a slot.
 function GetInventoryItemTexture(_, slot) local it = world.inventory[slot] return it and (world.items[it.itemID] or {}).icon end
 function GetInventoryItemCount(_, slot) return world.inventory[slot] and 1 or 0 end
@@ -1268,8 +1278,9 @@ C_DamageMeter = {
 -- test fires the result event itself (world.fireAuctionEvents fires every one).
 --   browse = { BrowseResultInfo, ... }                items[itemID] = { ItemSearchResultInfo, ... }
 --   commodities[itemID] = { CommoditySearchResultInfo, ... }
---   replicate = { { count, buyoutPrice, itemID, ... }, ... }  rows by GetReplicateItemInfo's return
---     names, read 0-based as the client's; world.ah.reads counts the reads
+--   replicate = { { count, buyoutPrice, itemID, link, ... }, ... }  rows by GetReplicateItemInfo's return
+--     names (link: GetReplicateItemLink's, else built from the itemID), read 0-based as the
+--     client's; world.ah.reads counts the reads, world.ah.linkReads the links read
 --   owned = { OwnedAuctionInfo, ... }; ready and copper (true unless set false); needsConfirm (a
 --   post the client wants confirmed); deposit (copper per item per duration step); cancelCost;
 --   noCancel[auctionID]; browseFull (false: more browse results to ask for); more[itemID] (true: another
@@ -1289,7 +1300,7 @@ Enum.AuctionStatus = { Active = 0, Sold = 1 }
 -- A fresh auction house with nothing listed.
 local function emptyAuctionHouse()
   return { browse = {}, items = {}, commodities = {}, replicate = {}, owned = {}, queries = {}, restricted = {},
-    reads = 0, deposit = 15, cancelCost = 0, noCancel = {}, more = {} }
+    reads = 0, linkReads = 0, deposit = 15, cancelCost = 0, noCancel = {}, more = {} }
 end
 world.ah = emptyAuctionHouse()
 
@@ -1384,6 +1395,15 @@ local function replicateInfo(index)
   return unpack(out, 1, #REPLICATE)
 end
 
+-- Replicate list row `index`'s item link: the row's `link`, else one built from its itemID (nil
+-- past the list); every read is counted apart (world.ah.linkReads).
+local function replicateLink(index)
+  world.ah.linkReads = world.ah.linkReads + 1
+  local row = world.ah.replicate[index + 1]
+  if not row then return nil end
+  return row.link or (select(2, C_Item.GetItemInfo(row.itemID)))
+end
+
 C_AuctionHouse = {
   -- Queries, recorded; the test answers by firing the result event.
   SendBrowseQuery = query("SendBrowseQuery"), SearchForItemKeys = query("SearchForItemKeys"),
@@ -1397,6 +1417,7 @@ C_AuctionHouse = {
   CancelAuction = restricted("CancelAuction"), PlaceBid = restricted("PlaceBid"),
   StartCommoditiesPurchase = restricted("StartCommoditiesPurchase"),
   GetReplicateItemInfo = replicateInfo,
+  GetReplicateItemLink = replicateLink,
 }
 
 -- Browse results, and whether all of them are in.

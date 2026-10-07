@@ -20,14 +20,15 @@
 --     item's cheapest unit price, units up and market value
 --     (Modules/AuctionPrices.lua), which item tooltips then show everywhere.
 --
--- The module is one table over five files, loaded in this order: this one
+-- The module is one table over several files, loaded in this order: this one
 -- holds the tabs, their pages and the cards' build order, the search queue and its throttle,
--- event routing, the scan, the slash commands and Enable;
--- Modules/AuctionShop.lua the Shop card, Modules/AuctionSell.lua the Sell
--- card and Modules/AuctionOwned.lua your auctions. Modules/AuctionLedger.lua
+-- event routing, the scan, the slash commands and Enable; Modules/AuctionTable.lua
+-- the table the pages' lists share; Modules/AuctionShop.lua the Shopping page
+-- (the Lists pane and the list shown), Modules/AuctionSell.lua the Sell card
+-- and Modules/AuctionOwned.lua your auctions. Modules/AuctionLedger.lua
 -- adds the sales ledger and the sell card's Your history,
--- Modules/AuctionRestock.lua the Restock buy list on the Shop card, and
--- Modules/AuctionDeals.lua the Deals card, beside the Shop card.
+-- Modules/AuctionRestock.lua the Restock buy list, Modules/AuctionDeals.lua
+-- the Deals entry in the Lists pane and Modules/AuctionUpgrades.lua the Upgrades one.
 --
 -- The game's auction house is the modern one (C_AuctionHouse) on WoW Forever.
 -- The helper's two tabs join the window's own tab row (its Tabs list and its
@@ -48,10 +49,12 @@ local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 
 local AH = ns.Module("AuctionHelper", { defaults = { panel = true, tooltip = true, undercut = "silver", scanButton = true } })
 
--- Seconds between scans, listings read per frame of a scan; a side column's width (the Deals
--- column's, the Sell card's) and the cards' padding; the scan card's height.
+-- Seconds between scans, listings read per frame of a scan; a side column's width (the Sell
+-- card's) and the cards' padding; the scan card's height; the Lists pane's width, and the
+-- height of a card's toolbar line (the heading with buttons on its right).
 AH.SCAN_GAP, AH.SCAN_ROWS = 900, 400
 AH.WIDTH, AH.PAD, AH.SCAN_H = 280, 8, 64
+AH.PANE_W, AH.TOOLBAR_H = 240, 24
 -- A page's insets on the window: from its sides, under its title, above its money line; and the
 -- room Cancel next undercut and its line keep under your auctions' rows.
 AH.PAGE_X, AH.PAGE_TOP, AH.PAGE_BOTTOM, AH.NEXT_H = 4, 30, 30, 30
@@ -192,13 +195,13 @@ local function fitRows(h)
   return math.max(1, math.floor(h / AH.ROW_H))
 end
 
--- How many rows each card gets, from a card's height and the Deals card's: set before the cards
+-- How many rows each card gets, from a card's height and the Lists pane's: set before the cards
 -- are built, so the lists grow to the room their page has.
-local function countRows(cardH, dealsH)
-  AH.SHOP_ROWS = fitRows(cardH + AH.SHOP_ROWS_Y)
-  AH.VIEW_ROWS = fitRows(cardH - 20 + AH.VIEW_ROWS_Y)
+local function countRows(cardH, paneH)
+  AH.SHOP_ROWS = AH.TableRows(cardH - AH.TOOLBAR_H)
+  AH.VIEW_ROWS = AH.SHOP_ROWS
+  AH.PANE_ROWS = fitRows(paneH + AH.PANE_ROWS_Y - AH.ACTIONS_H)
   AH.LIST_ROWS = fitRows(cardH + AH.LIST_Y - 14)
-  AH.DEAL_ROWS = fitRows(dealsH + AH.DEAL_ROWS_Y)
   AH.OWNED_ROWS = fitRows(cardH + AH.OWNED_ROWS_Y - AH.NEXT_H)
   AH.NEXT_Y = AH.OWNED_ROWS_Y - AH.OWNED_ROWS * AH.ROW_H - 8
 end
@@ -222,7 +225,7 @@ function AH.Column(f, side, width)
   return c
 end
 
--- The scan card under the Deals card: the scan button and when the last scan was.
+-- The scan card under the Lists pane: the scan button and when the last scan was.
 local function buildScan(column, y)
   local c = AH.Card(column, "Scan", y, AH.SCAN_H)
   c.scan = W.Button(c, "Scan the auction house", function() AH.StartScan() end, 150)
@@ -232,14 +235,15 @@ local function buildScan(column, y)
   AH.scanCard = c
 end
 
--- The Shopping page (h tall, w wide): the Shop card, with Deals and the scan in a column on its right.
+-- The Shopping page (h tall, w wide): the Lists pane with the scan under it in a column on the
+-- left, and the list shown (the Shop card) on the right.
 local function buildShopping(h, w)
   local f = page("Vanguard_AuctionShopping")
-  local cardH, dealsH = h - 2 * AH.PAD, h - 3 * AH.PAD - AH.SCAN_H
-  AH.BuildShop(AH.Column(f, "LEFT", w - AH.WIDTH), cardH)
-  local side = AH.Column(f, "RIGHT", AH.WIDTH)
-  AH.BuildDeals(side, dealsH)
-  buildScan(side, -(2 * AH.PAD + dealsH))
+  local cardH, paneH = h - 2 * AH.PAD, h - 3 * AH.PAD - AH.SCAN_H
+  local side = AH.Column(f, "LEFT", AH.PANE_W)
+  AH.BuildPane(side, paneH)
+  buildScan(side, -(2 * AH.PAD + paneH))
+  AH.BuildShop(AH.Column(f, "RIGHT", w - AH.PANE_W), cardH)
   return f
 end
 
@@ -314,9 +318,9 @@ function AH.NoTabRow()
   return false
 end
 
--- The helper's tabs and pages, built the first time the window shows: Shopping (the Shop card,
--- Deals and the scan) and Selling (the Sell card and your auctions), sized to the window's content
--- area. Without the tab row (another client's window) nothing is built.
+-- The helper's tabs and pages, built the first time the window shows: Shopping (the Lists pane
+-- with the scan, and the list shown) and Selling (the Sell card and your auctions), sized to the
+-- window's content area. Without the tab row (another client's window) nothing is built.
 function AH.Build()
   if not hasTabs(AuctionHouseFrame) then return AH.NoTabRow() end
   local h, w = AuctionHouseFrame:GetHeight() - AH.PAGE_TOP - AH.PAGE_BOTTOM, AuctionHouseFrame:GetWidth() - 2 * AH.PAGE_X
@@ -337,7 +341,6 @@ function AH.OnShow()
   AH.PaintSell()
   AH.PaintScan()
   AH.PaintOwned()
-  AH.PaintDeals()
 end
 
 -- The auction house closed: searches waiting and a scan in progress stop (the pages go with the window).
@@ -357,11 +360,12 @@ function AH.PaintScan()
   c.last:SetText(last > 0 and string.format("last scan %d min ago", math.floor((AP.Now() - last) / 60)) or "no scan yet")
 end
 
--- A new scan: where the walk is, each item's listings and how many, your listings left out (and
--- your name, alone and as "Name-Realm", to know them by), and when it started.
+-- A new scan: where the walk is, each item's listings and how many, the gear to judge for
+-- upgrades (link -> cheapest unit price, Modules/AuctionUpgrades.lua), your listings left out (and your name, alone and as
+-- "Name-Realm", to know them by), and when it started.
 local function newScan()
   local me = UnitName("player")
-  return { next = 0, items = {}, listings = {}, mine = 0, me = me, meFull = string.format("%s-%s", tostring(me), AP.Realm()), started = AP.Now() }
+  return { next = 0, items = {}, listings = {}, gear = {}, mine = 0, me = me, meFull = string.format("%s-%s", tostring(me), AP.Realm()), started = AP.Now() }
 end
 
 -- Asks the house for every listing (ReplicateItems), at most once every AH.SCAN_GAP seconds (only a
@@ -392,8 +396,8 @@ local function isMine(s, owner, ownerFull)
 end
 
 -- Listing i (0-based): its units at its unit price (buyout over count) join its item's listings
--- (s.items[itemID] = { [unit price] = units }) and its count; skipped without a buyout or when
--- the client hides a number, and counted apart when it's yours.
+-- (s.items[itemID] = { [unit price] = units }) and its count, and gear joins the scan's gear to
+-- judge; skipped without a buyout or when the client hides a number, and counted apart when it's yours.
 function AH.ScanRow(s, i)
   local _, _, count, _, _, _, _, _, _, buyout, _, _, _, owner, ownerFull, _, id = C_AuctionHouse.GetReplicateItemInfo(i)
   count, buyout, id = ns.PlainNumber(count), ns.PlainNumber(buyout), ns.PlainNumber(id)
@@ -402,6 +406,7 @@ function AH.ScanRow(s, i)
   local unit, prices = math.floor(buyout / count), s.items[id] or {}
   prices[unit], s.items[id] = (prices[unit] or 0) + count, prices
   s.listings[id] = (s.listings[id] or 0) + 1
+  AH.ScanGear(s, i, id, unit)
 end
 
 -- One frame of the scan: the next AH.SCAN_ROWS listings; after the last, the prices are recorded.
@@ -425,12 +430,14 @@ local function recordScan(s, now)
   return n
 end
 
--- The whole list is read: the prices are recorded, and the 15 minutes run from the scan's start.
+-- The whole list is read: the prices are recorded, the gear found goes to be judged, and the 15
+-- minutes run from the scan's start.
 function AH.FinishScan()
   local s = AH.scan
   local n = recordScan(s, AP.Now())
   AP.House().lastScan, AH.scan = s.started, nil
   AH.walker:Hide()
+  AH.JudgeGear(s.gear)
   local yours = s.mine > 0 and string.format(" %d of them were yours and are left out.", s.mine) or ""
   ns.Chat(string.format("Auction house scanned: %d listings, prices for %d items.%s", s.total, n, yours))
   AH.PaintScan()
@@ -518,19 +525,16 @@ function AH.OnSearchEvent(event, arg)
   AH.OnCostResults(event, id, s)
 end
 
--- The auction house's events the helper follows (none in combat).
+-- The auction house's events the helper follows (none in combat), then each file's own.
 local function listen()
   on("AUCTION_HOUSE_SHOW", function() ns.Soon("auctionhelper", AH.OnShow) end)
   on("AUCTION_HOUSE_CLOSED", AH.OnClosed)
   on("REPLICATE_ITEM_LIST_UPDATE", onReplicate)
   on("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", AH.OnBrowse)
-  AH.ListenShop(on)
   for _, e in ipairs(AH.SEARCH_EVENTS) do on(e, AH.OnSearchEvent) end
   -- The sell card again when the game is ready for a post, or a stack left the bags.
   for _, e in ipairs({ "AUCTION_HOUSE_THROTTLED_SYSTEM_READY", "BAG_UPDATE_DELAYED" }) do on(e, function() AH.PaintSell() end) end
-  AH.ListenOwned(on)
-  AH.ListenLedger(on)
-  AH.ListenDeals(on)
+  for _, each in ipairs({ AH.ListenShop, AH.ListenOwned, AH.ListenLedger, AH.ListenDeals, AH.ListenUpgrades }) do each(on) end
 end
 
 -- Module entry point (Core/Modules.lua): prices in tooltips, and the panel at the auction house.

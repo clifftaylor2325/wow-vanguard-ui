@@ -1,14 +1,15 @@
--- Auction helper, the Deals card (Modules/AuctionHelper.lua holds the tabs,
--- the search queue, the scan and the slash commands): a card on the Shopping
--- tab, beside the Shop card, listing what a scan or a search found priced
+-- Auction helper, the Deals list (Modules/AuctionHelper.lua holds the tabs,
+-- the search queue, the scan and the slash commands): an entry in the
+-- Shopping tab's Lists pane, listing what a scan or a search found priced
 -- under an item's usual price. A listing is a deal when its price per unit
 -- is under the item's vendor sell price (buy it, sell it to a merchant), or
 -- under 70 % of the item's market value over the last 7 days (the mean of
 -- each day's market value from your scans), or, for an item no scan priced
 -- in that time, under its lowest price on the six days before today. Each
--- row shows the item, its price per unit and how far under it is, the best
--- first; a click shows the item in the game's own list, so buying stays in
--- the game's hands. A visit's deals are forgotten when the house closes.
+-- row shows the item, its price per unit, how far under it is and what it was
+-- judged against, the best first; a click shows the item in the game's own
+-- list, so buying stays in the game's hands. A visit's deals are forgotten
+-- when the house closes.
 --
 -- Standing rules here: deals are judged from the prices the store records
 -- as it records them (AP.OnSeen: each item's cheapest price per unit from a
@@ -23,10 +24,14 @@ local AH = ns.GetModule("AuctionHelper")
 
 -- A listing under this share (per cent) of its item's 7-day market value is a deal.
 AH.DEAL_PCT = 70
--- The Deals card's rows: how many (until AH.Build counts them from the room they have), and from where.
-AH.DEAL_ROWS, AH.DEAL_ROWS_Y = 8, -20
--- The Deals card's switch (Bars, map, chat > Auction house): on, as the auction plan's Deals card
--- is part of the panel; it only reads prices the panel's searches and scans already bring.
+-- The Deals entry's pane key (no list name can have it), and its columns: the price per unit,
+-- how far under, and what the price was judged against.
+AH.DEALS = "deals"
+AH.DEAL_COLUMNS = { { key = "price", title = "Unit price", width = 100, side = "RIGHT", role = "number", color = "gold" },
+  { key = "off", title = "Under by", width = 70, side = "RIGHT", role = "small", color = "good" },
+  { key = "basis", title = "Judged against", width = 200, side = "LEFT", role = "small", color = "text2" } }
+-- The Deals entry's switch (Bars, map, chat > Auction house): on, as the auction plan's Deals list
+-- is part of the tabs; it only reads prices the tabs' searches and scans already bring.
 AH.defaults.deals = true
 -- This visit's deals: itemID -> { id, key, price, ref, basis, vendor, off }.
 AH.deals = {}
@@ -72,8 +77,8 @@ function AH.Deal(itemID, price, now)
     off = math.floor((base - price) * 100 / base) }
 end
 
--- A price recorded (AP.OnSeen) while the house is open and the card on: the item's deal is set, or
--- dropped when it is no longer one (bought, or dearer now); the card repaints on the next frame.
+-- A price recorded (AP.OnSeen) while the house is open and the entry on: the item's deal is set, or
+-- dropped when it is no longer one (bought, or dearer now); the list repaints on the next frame.
 function AH.CheckDeal(itemID, price, t)
   if not (AH.open and AH.settings.deals) then return end
   AH.deals[itemID] = AH.Deal(itemID, price, t)
@@ -92,14 +97,14 @@ function AH.SortedDeals()
   return out
 end
 
--- The Deals card's events (on: the helper's, which ignores them in combat): each price recorded is
+-- The Deals entry's events (on: the helper's, which ignores them in combat): each price recorded is
 -- judged, and closing the house forgets this visit's deals.
 function AH.ListenDeals(on)
   AP.OnSeen(AH.CheckDeal)
   on("AUCTION_HOUSE_CLOSED", function() AH.deals = {} end)
 end
 
--- The card -------------------------------------------------------------------------------------
+-- The entry ------------------------------------------------------------------------------------
 
 -- How far under a deal is: "< vendor" under the vendor's price, else "-35 %".
 local function underText(d)
@@ -107,39 +112,30 @@ local function underText(d)
   return string.format("-%d %%", d.off)
 end
 
--- A deal's row: the item, its price per unit and how far under; hidden past the last deal.
+-- What a deal was judged against, with that price: the vendor's, else its reference's.
+local function basisText(d)
+  if d.vendor then return "Vendor price " .. AP.Money(d.vendor) end
+  return d.basis .. " " .. AP.Money(d.ref)
+end
+
+-- A deal's row: the item, its price per unit, how far under, and what it was judged against.
 local function paintDeal(r, d)
-  r:SetShown(d ~= nil)
-  r.deal = d
-  if not d then return end
   local name, icon = AH.EntryLook(d.id, d)
   r.icon:SetTexture(icon)
   r.name:SetText(name)
-  r.price:SetText(AP.Money(d.price))
-  r.qty:SetText(underText(d))
-end
-
--- The Deals card, while its switch is on: how many, and the deals from the scroll offset (kept
--- within them), or a line saying how they are found while there are none.
-function AH.PaintDeals()
-  local f = AH.dealsFrame
-  if not f then return end
-  f:SetShown(AH.settings.deals)
-  local list = AH.SortedDeals()
-  f.offset = math.max(0, math.min(f.offset, #list - AH.DEAL_ROWS))
-  f.card.count:SetText(#list > 0 and (#list .. " found") or "")
-  f.card.status:SetText(#list == 0 and "None yet: a scan or a search finds them." or "")
-  for i, r in ipairs(f.card.rows) do paintDeal(r, list[f.offset + i]) end
+  r.cells.price:SetText(AP.Money(d.price))
+  r.cells.off:SetText(underText(d))
+  r.cells.basis:SetText(basisText(d))
 end
 
 -- A deal clicked: its item in the game's own list (first in line), on its Buy tab, to buy there.
 function AH.OpenDeal(r)
-  if r.deal then AH.Queue({ open = r.deal.key }, true) AH.ShowInGame() end
+  if r.item then AH.Queue({ open = r.item.key }, true) AH.ShowInGame() end
 end
 
 -- A deal's tooltip: the item, what it was judged against, and what a click does.
 local function dealTip(r)
-  local d = r.deal
+  local d = r.item
   GameTooltip:SetOwner(r, "ANCHOR_RIGHT")
   GameTooltip:SetText((AH.EntryLook(d.id, d)))
   if d.ref then GameTooltip:AddLine(d.basis .. ": " .. AP.Money(d.ref), T.RGB("text2")) end
@@ -148,46 +144,22 @@ local function dealTip(r)
   GameTooltip:Show()
 end
 
--- The wheel over the card scrolls its deals.
-local function scrollDeals(f, delta)
-  f.offset = math.max(0, f.offset - delta)
-  AH.PaintDeals()
+-- The pane's Deals entry with this visit's count, while the switch is on.
+local function paneEntry()
+  if AH.settings.deals then return { key = AH.DEALS, name = "Deals", count = #AH.SortedDeals() } end
 end
+AH.PANE_EXTRAS[#AH.PANE_EXTRAS + 1] = paneEntry
 
--- The card's rows: icon, name, price per unit and how far under (in "good"), each with its tooltip.
-local function dealRows(c)
-  c.rows = {}
-  for i = 1, AH.DEAL_ROWS do
-    local r = AH.Row(c, i, AH.DEAL_ROWS_Y, AH.OpenDeal)
-    AH.RowParts(r)
-    T.Color(r.qty, "good")
-    r:SetScript("OnEnter", dealTip)
-    r:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    c.rows[i] = r
-  end
-end
+-- What the card shows for Deals: the columns, this visit's deals best first, the count beside the
+-- heading, and the line shown while there are none.
+AH.Sources[AH.DEALS] = { name = "Deals", columns = AH.DEAL_COLUMNS, items = AH.SortedDeals, paint = paintDeal, click = AH.OpenDeal, enter = dealTip,
+  count = function(items) return #items > 0 and (#items .. " found") or "" end,
+  status = function(items) return #items == 0 and "None yet: a scan or a search finds them." or "" end }
 
--- The card in the frame, h tall: its heading with the count on the right, the line shown while
--- there are no deals, and the rows.
-local function dealCard(f, h)
-  local c = AH.Card(f, "Deals", -AH.PAD, h)
-  c.count = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  c.count:SetPoint("TOPRIGHT", 0, -2)
-  c.status = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  c.status:SetPoint("TOPLEFT", 0, AH.DEAL_ROWS_Y - 4)
-  dealRows(c)
-  return c
-end
-
--- The Deals frame at the top of the Shopping page's right column (its card h tall); the wheel scrolls it.
-function AH.BuildDeals(column, h)
-  local f = CreateFrame("Frame", "Vanguard_AuctionDeals", column)
-  f:SetPoint("TOPLEFT")
-  f:SetPoint("TOPRIGHT")
-  f:SetHeight(h + 2 * AH.PAD)
-  f:EnableMouse(true)
-  f:EnableMouseWheel(true)
-  f:SetScript("OnMouseWheel", scrollDeals)
-  f.card, f.offset = dealCard(f, h), 0
-  AH.dealsFrame = f
+-- The Deals entry painted: its count in the pane and, while it is the entry shown, its rows (the
+-- entry gives way to no list when its switch goes off).
+function AH.PaintDeals()
+  if not AH.shopCard then return end
+  if not AH.settings.deals and AH.ListKey() == AH.DEALS then AP.Store().list = nil end
+  AH.PaintShop()
 end
