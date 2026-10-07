@@ -1,118 +1,77 @@
 name: full suite
 
-# Every Vitest suite (the Lua harness, one file per area, and the JS tests)
-# with line coverage of the addon's own Lua: a failing test fails the run,
-# and so does coverage below the floor in scripts/lua-coverage-floor.json
-# (only goes up; 100 is the goal). Then the code-quality scan, luacheck,
-# Lua 5.1 syntax and the release zip's contents; and, as a second job, the
-# UI preview. Each takes several minutes on a GitHub-hosted runner, so this
-# runs after a merge to main, nightly, from the Actions tab, or on a pull
-# request only while it carries the "full-tests" label (verify.yml is the
-# quick gate every pull request gets). The two jobs run side by side.
+# Runs lua-suite.yml (every test with the coverage floor, the checks and
+# the UI preview): weekly, from the Actions tab, or on a pull request while
+# it carries the "full-tests" label. Not after every merge: a private
+# repository's Actions minutes are counted, so the pull-request gate
+# (verify.yml) is the check every change gets, and the whole suite runs
+# here and before each release (release.yml). A red weekly or hand-started
+# run opens an issue labelled ci-failure (later failures comment on it;
+# GitHub's own failure mail for a scheduled run goes to whoever last
+# edited the cron line, which may be nobody), and a green one closes it.
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-  pull_request:
-    types: [opened, synchronize, reopened, labeled]
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
   schedule:
-    # Daily at 10:23 UTC (cron is UTC only); off the hour, since GitHub
-    # delays runs scheduled on busy minutes.
-    - cron: "23 10 * * *"
+    # Sundays at 10:23 UTC (cron is UTC only); off the hour, since GitHub
+    # delays runs scheduled on busy minutes. For every other night instead:
+    # "23 10 */2 * *".
+    - cron: "23 10 * * 0"
   workflow_dispatch:
     inputs:
       preview:
         description: "Also render the UI preview (a few minutes more)"
         type: boolean
         default: true
+  pull_request:
+    types: [labeled, synchronize, reopened]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
 
 permissions:
   contents: read
   issues: write
 
-# The newest run of a kind wins; a push run never cancels a nightly, or
-# the other way round.
+# The newest run of a kind wins; a pull request's run never cancels a
+# scheduled one, or the other way round.
 concurrency:
-  group: full-suite-${{ github.event_name }}-${{ github.ref }}
+  group: full-suite-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  tests:
-    name: Tests, coverage and checks
+  suite:
+    name: Suite
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-tests')
+    uses: ./.github/workflows/lua-suite.yml
+    with:
+      preview: ${{ github.event_name != 'workflow_dispatch' || inputs.preview }}
+
+  report:
+    # The ci-failure issue: opened or commented on when the suite is red,
+    # closed when it is green again. Not for pull requests, which show the
+    # result themselves.
+    name: Report
+    needs: suite
+    if: always() && github.event_name != 'pull_request' && needs.suite.result != 'cancelled'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
+    permissions:
+      issues: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - name: luacheck and Lua 5.1
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq lua-check lua5.1
-      - run: npm run coverage
-      - run: npm run quality
-      - run: luacheck --no-color .
-      - name: Lua 5.1 syntax of every file the TOC loads
-        run: |
-          status=0
-          while IFS= read -r file; do
-            file="${file%$'\r'}"
-            case "$file" in ''|'#'*) continue ;; esac
-            luac5.1 -p "$file" || status=1
-          done < Vanguard.toc
-          exit $status
-      - name: Release zip builds and holds every file it should
-        run: |
-          rm -rf dist
-          node scripts/package.mjs
-          node scripts/check-zip.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: lua-coverage
-          path: coverage/lua-coverage.json
-      - name: Open or update the "Full suite failing on main" issue
-        # A red run on main, nightly or from the Actions tab gets an issue
-        # (one, labelled ci-failure; later failures comment on it), since
-        # GitHub's own failure mail for a scheduled run goes to whoever last
-        # edited the cron line, which may be nobody.
-        if: failure() && github.event_name != 'pull_request'
-        uses: actions/github-script@v7
+      - uses: actions/github-script@v8
+        env:
+          RESULT: ${{ needs.suite.result }}
         with:
           script: |
             const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const body = `The ${context.eventName} run on ${context.sha.slice(0, 7)} failed: ${run}`;
+            const where = `the ${context.eventName} run on ${context.sha.slice(0, 7)}`;
             const { data: open } = await github.rest.issues.listForRepo({ ...context.repo, state: "open", labels: "ci-failure" });
-            if (open.length) await github.rest.issues.createComment({ ...context.repo, issue_number: open[0].number, body });
-            else await github.rest.issues.create({ ...context.repo, title: "Full suite failing on main", body, labels: ["ci-failure"] });
-
-  preview:
-    # A screenshot of the default layout from the addon's real Lua (art
-    # approximated), so a UI change can be reviewed from the run's artifacts.
-    # It needs no green tests job: a UI change is reviewable even when a
-    # test fails.
-    name: UI preview
-    if: (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-tests')) && (github.event_name != 'workflow_dispatch' || inputs.preview)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm install -g playwright@1.56.1 && playwright install --with-deps chromium
-      - run: npm run preview
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ui-preview
-          path: preview/*.png
-          if-no-files-found: error
+            if (process.env.RESULT !== "success") {
+              const body = `${where} failed (${process.env.RESULT}): ${run}`;
+              if (open.length) await github.rest.issues.createComment({ ...context.repo, issue_number: open[0].number, body });
+              else await github.rest.issues.create({ ...context.repo, title: "Full suite failing on main", body, labels: ["ci-failure"] });
+              return;
+            }
+            for (const issue of open) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: issue.number, body: `Green again: ${where} passed: ${run}` });
+              await github.rest.issues.update({ ...context.repo, issue_number: issue.number, state: "closed" });
+            }

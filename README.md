@@ -175,12 +175,12 @@ The callback runs once at login, or immediately if the addon registers after log
 ```bash
 npm install
 npm test          # JS and Lua harness tests under Vitest, once (vitest run, no watch), then a per-area Lua harness summary
-npm run test:quick # the JS tests and one Lua smoke test (about 10 s): what a pull request's CI runs
+npm run test:quick # the JS tests and one Lua smoke test (about 10 s): what a pull request's check runs
 npm run verify    # npm test (real addon Lua in a TEST-ONLY headless WoW client, and the JS tests), then the code-quality scan
                   # (functions of 10 lines or fewer, all documented; colors only from Core/Theme.lua)
 npm run coverage  # every test with line coverage of the addon Lua; fails below scripts/lua-coverage-floor.json (100%)
-                  # CI runs it after a merge to main, nightly, and on a pull request labelled full-tests; a pull request's own
-                  # check is the static checks plus npm run test:quick, in a few minutes on a GitHub-hosted runner
+                  # run it before you open a pull request: CI runs it weekly, before each release, from the Actions tab and
+                  # on a pull request labelled full-tests, not on every change (a private repository's Actions minutes count)
 npm run lint      # luacheck
 npm run media     # regenerate Media/Textures and Media/Icons from scripts/lib/media-sources.mjs
 npm run package   # dist/Vanguard-<version>.zip from committed files
@@ -195,13 +195,15 @@ npm run preview   # preview/*.png: the default layout and the options window (ne
 
 **Windows tools:** `npm run verify` needs only Node. For `npm run lint`, put `luacheck.exe` from the [luacheck releases](https://github.com/lunarmodules/luacheck/releases) on your PATH. CI also runs a Lua 5.1 syntax check (`luac5.1 -p`); you don't need it locally.
 
-**Release:** bump `## Version` in `Vanguard.toc` and merge, then run the `release` workflow from the Actions tab on `main` (it tags `v<version>`), or push a matching tag. It re-runs the checks and publishes a GitHub release with the zip.
+**Release:** bump `## Version` in `Vanguard.toc` and merge, then run the `release` workflow from the Actions tab on `main` (it tags `v<version>`), or push a matching tag. It runs the whole suite with the coverage floor first, then publishes a GitHub release with the zip.
 
 **Art and fonts:** every texture and icon under `Media/` is drawn by code in `scripts/lib/media-sources.mjs` (plain math, no image editor), and `npm run verify` fails if a committed file doesn't match its source. The fonts are made from upstream Fira Sans Condensed by `scripts/fonts/make-fonts.py` (see that file).
 
 **Testing the addon:** `scripts/tests/<area>.test.mjs` play the addon's real Lua in a headless client built for the tests (`scripts/lib/wow-*.lua`): Lua 5.1 semantics, frames with real layout on a 1920x1080 screen, a world model (units, auras, actions, quests, combat, timers) behind the game API, and mouse and keyboard input. A test sets up the world, acts as the player would, and asserts on what the addon drew. The guide is [scripts/tests/README.md](scripts/tests/README.md).
 
 **Code quality:** every function has a comment on the line above it and at most 10 lines of body code; `npm run verify` and CI enforce it on every pull request. The shared libraries in `Libs/` stay exactly as upstream wrote them, so the scan, luacheck and the coverage count leave them out.
+
+**CI:** every pull request gets `verify.yml` ("Quick checks": the code-quality scan, luacheck, Lua 5.1 syntax, `npm run test:quick` and the release zip, inside a minute), and `main` requires it to merge. The whole suite with the coverage floor and the UI preview (`lua-suite.yml`) runs weekly, before each release, from the Actions tab (*full suite* → *Run workflow*) and on a pull request labelled `full-tests`; a red weekly run opens an issue labelled `ci-failure`, which the next green run closes. Run `npm run coverage` yourself before opening a pull request, since CI doesn't on every change: a private repository's Actions minutes are counted, and the gate is kept to one billed minute. Code scanning (GitHub Advanced Security's default setup) stops once the repository is private; nothing here depends on it.
 
 ### Releases on CurseForge
 

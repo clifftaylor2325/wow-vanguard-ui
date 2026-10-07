@@ -1,0 +1,18 @@
+# Monthly, one grouped pull request per ecosystem: every pull request runs
+# the gate, and a private repository's Actions minutes are counted.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      npm:
+        patterns: ["*"]
