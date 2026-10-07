@@ -227,14 +227,12 @@ function PR.Paint(rows)
   card:SetHeight(PR.TOP + math.max(#rows, 1) * PR.ROW + PR.PAD)
 end
 
--- The card's title, its close button (fades it out) and the packed line.
+-- The card's title, in line with its close button (fades it out), and the packed line.
 local function cardParts(f)
   f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading")
-  f.title:SetPoint("TOPLEFT", PR.PAD, -PR.PAD)
+  f.title:SetPoint("LEFT", f, "TOPLEFT", PR.PAD, -T.CONTROL.inset)
   f.title:SetText("Instance prep")
-  f.close = T.CloseButton(CreateFrame("Button", nil, f))
-  f.close:SetSize(20, 20)
-  f.close:SetPoint("TOPRIGHT", -4, -4)
+  f.close = T.PlaceClose(T.CloseButton(CreateFrame("Button", nil, f)), f)
   f.close:SetScript("OnClick", function() T.FadeOut(f) end)
   f.packed = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "good")
   f.packed:SetPoint("TOPLEFT", PR.PAD, -PR.TOP - 2)
@@ -246,7 +244,7 @@ end
 local function buyButton(f)
   f.buy = W.Button(f, "Buy list", function() ns.GetModule("AuctionHelper").Restock() end, 64)
   f.buy:SetHeight(20)
-  f.buy:SetPoint("TOPRIGHT", -26, -5)
+  f.buy:SetPoint("RIGHT", f.close, "LEFT", -4, 0)
   f.buy:Hide()
 end
 

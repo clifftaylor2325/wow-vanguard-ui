@@ -278,7 +278,7 @@ end
 -- The group loot history window: the window skin, and its close button (named ClosePanelButton there).
 function GW.SkinLootHistory(frame)
   GW.Skin(frame)
-  if type(frame.ClosePanelButton) == "table" then T.CloseButton(frame.ClosePanelButton) end
+  GW.DressClose(frame, frame.ClosePanelButton)
 end
 
 GW.Add("town", "framed", { "MasterLooterFrame" }, GW.SkinMasterLooter)
@@ -312,7 +312,7 @@ end
 function GW.SkinStopwatch(frame)
   GW.Skin(frame)
   if type(_G.StopwatchTabFrame) == "table" then T.FadeRegions(_G.StopwatchTabFrame) end
-  if type(_G.StopwatchCloseButton) == "table" then T.CloseButton(_G.StopwatchCloseButton) end
+  GW.DressClose(frame, _G.StopwatchCloseButton)
   glyphButton(_G.StopwatchPlayPauseButton)
   glyphButton(_G.StopwatchResetButton)
   namedFonts({ "StopwatchTitle" }, "small")
