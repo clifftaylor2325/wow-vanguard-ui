@@ -1,6 +1,9 @@
 -- The AFK screen: while you're away (/afk, or the game marks you idle), the
 -- screen dims and a card shows your name in your class color, your level and
--- class, the zone, how long you've been away, the time, and your XP bar.
+-- class, the zone, how long you've been away, the time, and your XP bar. Under
+-- the card, in your faction's heading font and crest color, sits your faction's
+-- passage: Varian's last letter to Anduin for the Alliance, the Blood Oath of
+-- the Horde for the Horde (gone while the faction look is off).
 -- Moving, typing or a fight brings everything back, and a click on the screen
 -- puts it away until the next time. It shows only out of combat, and it's
 -- drawn over the UI rather than hiding it, so nothing secure is touched.
@@ -12,6 +15,20 @@ local T = ns.Theme
 local AFK = ns.Module("AfkScreen", { defaults = {} })
 
 AFK.CARD_W, AFK.CARD_H, AFK.BAR_H = 380, 132, 10
+-- The passage under the card, in your faction's heading font: how wide it wraps, its size over the title's.
+AFK.PASSAGE_W, AFK.PASSAGE_UP = 640, 3
+
+-- The backdrop passage for each faction (shown while the faction look is on).
+AFK.PASSAGES = {
+  Alliance = {
+    text = "My son, a terrible darkness has returned to our world. As before, it seeks to annihilate everything that we hold dear. I go to face it, knowing I may not return. All my life I have lived by the sword. I've seen kingdoms burn, and watched brave heroes die in vain. It's been difficult for me to trust after losing so much. But from you I have learned patience, tolerance, and faith. Anduin, I now believe as you do, that peace is the noblest aspiration. But to preserve it, you must be willing to fight!",
+    by = "Varian Wrynn, to his son Anduin",
+  },
+  Horde = {
+    text = "Lok'tar ogar! Victory or death - it is these words that bind me to the Horde. For they are the most sacred and fundamental of truths to any warrior of the Horde. I give my flesh and blood freely to the Warchief. I am the instrument of my Warchief's desire. I am a weapon of my Warchief's command. From this moment until the end of days I live and die - For the Horde!",
+    by = "The Blood Oath of the Horde",
+  },
+}
 
 -- Values ---------------------------------------------------------------------------------------
 
@@ -75,6 +92,18 @@ local function paintXP(bar)
   T.SetBarValue(bar, cur)
 end
 
+-- Your faction's passage under the card, in the crest's color; gone while the faction look is off.
+function AFK.PaintPassage()
+  local f, faction = AFK.frame, T.Faction()
+  local passage = faction and AFK.PASSAGES[faction]
+  f.passage:SetShown(passage ~= nil)
+  f.by:SetShown(passage ~= nil)
+  if not passage then return end
+  f.passage:SetText(passage.text)
+  f.by:SetText(passage.by)
+  f.passage:SetTextColor(T.RGB(T.CRESTS[faction][2]))
+end
+
 -- The card's texts and bar, as they are now.
 function AFK.Paint()
   local f = AFK.frame
@@ -84,6 +113,7 @@ function AFK.Paint()
   f.where:SetText(AFK.Where())
   AFK.Tick()
   paintXP(f.xp)
+  AFK.PaintPassage()
 end
 
 -- The time away and the clock (once a second while the screen shows).
@@ -141,6 +171,19 @@ local function addCrest(f, card)
   f.crest:SetPoint("TOPLEFT", card, "TOPLEFT", 14, -14)
 end
 
+-- The passage under the card (a title, so it takes the faction's heading font), centered
+-- and wrapped, with who said it beneath.
+local function addPassage(f, card)
+  f.passage = T.Text(f:CreateFontString(nil, "OVERLAY"), "title", false)
+  T.TextSize(f.passage, T.RoleSize("title") + AFK.PASSAGE_UP)
+  f.passage:SetWidth(AFK.PASSAGE_W)
+  f.passage:SetJustifyH("CENTER")
+  f.passage:SetSpacing(4)
+  f.passage:SetPoint("TOP", card, "BOTTOM", 0, -36)
+  f.by = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
+  f.by:SetPoint("TOP", f.passage, "BOTTOM", 0, -10)
+end
+
 -- The XP bar along the card's bottom.
 local function addXP(f, card)
   f.xp = T.BarColor(T.StyleBar(CreateFrame("StatusBar", nil, card)), "xp")
@@ -169,6 +212,7 @@ local function build()
   card:SetPoint("CENTER", f, "CENTER", 0, 60)
   addTexts(f, card)
   addCrest(f, card)
+  addPassage(f, card)
   addXP(f, card)
   return f
 end
@@ -201,4 +245,5 @@ function AFK.Enable()
   ns.On("PLAYER_FLAGS_CHANGED", function(_, unit) if unit == "player" then AFK.Update() end end)
   ns.On("PLAYER_REGEN_DISABLED", AFK.Close)
   ns.On("PLAYER_REGEN_ENABLED", AFK.Update)
+  T.OnChanged(AFK.PaintPassage)
 end

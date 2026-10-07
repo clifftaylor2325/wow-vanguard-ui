@@ -1,10 +1,12 @@
 -- Minimap: square, in a themed frame you can move in unlock mode, with the
--- zone name along its top edge (colored by PvP status), coordinates along the bottom
--- and mouse-wheel zoom. The round border art and zoom buttons are faded
--- out (alpha only), and the game's emptied cluster frame stops taking the
--- mouse and loses its zone button. Nothing is unregistered. The
--- game's small minimap buttons (tracking, mail, dungeon difficulty, the addon
--- compartment) move from the old minimap spot onto this map's corners.
+-- zone name on a see-through band along its top edge (colored by PvP status;
+-- hover it for the zone's territory, click it for the world map), the
+-- coordinates on a band along its bottom, and mouse-wheel zoom. The round
+-- border art and zoom buttons are faded out (alpha only), and the game's
+-- emptied cluster frame stops taking the mouse and loses its zone button.
+-- Nothing is unregistered. The game's small minimap buttons (tracking, mail,
+-- dungeon difficulty, the addon compartment) move from the old minimap spot
+-- onto this map's corners.
 
 local ADDON, ns = ...
 
@@ -29,11 +31,23 @@ MM.HIDE = { "ExpansionLandingPageMinimapButton" }
 MM.ICON_SCALE = 0.85
 -- The accent diamonds on the map's corners (UI units across).
 MM.CORNER = 8
+-- The bands along the map's top and bottom edges (UI units high), and how
+-- solid they are over the map.
+MM.BAND = { top = 20, bottom = 16 }
+MM.BAND_ALPHA = 0.7
+-- Room kept clear of the zone name on each side, for the buttons in the top corners.
+MM.ZONE_INSET = 28
 
 -- Zone text color tokens by PvP type (GetZonePVPInfo); gold otherwise.
 local ZONE_COLORS = {
   sanctuary = "zoneSanctuary", friendly = "zoneFriendly", hostile = "zoneHostile",
   contested = "zoneContested", combat = "zoneHostile",
+}
+
+-- What the zone tooltip says of each PvP type.
+local PVP_WORDS = {
+  sanctuary = "Sanctuary", friendly = "Friendly territory", hostile = "Hostile territory",
+  contested = "Contested territory", combat = "Combat zone",
 }
 
 -- Minimap art this module fades out, by path under the global table.
@@ -132,6 +146,25 @@ function MM.UpdateZone()
   T.Color(MM.zone, ZONE_COLORS[pvp] or "gold")
 end
 
+-- r, g, b of a named color (no alpha, so it can end a tooltip line's arguments).
+local function rgb(name)
+  local r, g, b = T.RGB(name)
+  return r, g, b
+end
+
+-- Fills the tooltip for the zone band: the zone, its subzone when it has
+-- one, and whose territory it is, in the zone text's color.
+local function zoneTooltip(button)
+  local zone = GetZoneText and GetZoneText() or ""
+  local sub, pvp = GetSubZoneText and GetSubZoneText() or "", zonePvP()
+  if zone == "" then zone = GetMinimapZoneText and GetMinimapZoneText() or "" end
+  GameTooltip:SetOwner(button, "ANCHOR_LEFT")
+  GameTooltip:SetText(zone, rgb("text"))
+  if sub ~= "" and sub ~= zone then GameTooltip:AddLine(sub, rgb("text2")) end
+  if PVP_WORDS[pvp] then GameTooltip:AddLine(PVP_WORDS[pvp], rgb(ZONE_COLORS[pvp])) end
+  GameTooltip:Show()
+end
+
 -- The map the player is on, or nil.
 local function playerMap()
   return C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
@@ -205,20 +238,73 @@ local function adoptMinimap(holder, size)
   Minimap:SetScript("OnMouseWheel", onWheel)
 end
 
--- Zone text along the map's top edge and coordinates along its bottom edge
--- (inside, so a map in a screen corner never pushes them off screen). They
--- live on an overlay frame above the map; on the holder the map would cover them.
-local function addTexts(holder)
+-- The overlay frame above the map that holds the bands, the texts, the
+-- corner marks and the game's buttons; on the holder the map would cover them.
+local function createOverlay(holder)
   local overlay = CreateFrame("Frame", nil, holder)
   MM.overlay = overlay
   overlay.Layout = MM.NoLayout
   overlay:SetAllPoints()
   overlay:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 2)
+  return overlay
+end
+
+-- A see-through strip across the top or bottom edge of the map, so the text
+-- on it stays readable over bright ground.
+local function band(overlay, point, height)
+  local t = T.Snap(overlay:CreateTexture(nil, "BACKGROUND"))
+  t:SetPoint(point .. "LEFT", overlay, point .. "LEFT")
+  t:SetPoint(point .. "RIGHT", overlay, point .. "RIGHT")
+  t:SetHeight(height)
+  MM.bands[#MM.bands + 1] = t
+  return t
+end
+
+-- Paints the bands in the panel color, see-through (again after every theme change).
+local function paintBands()
+  local r, g, b = T.PanelColor()
+  for _, t in ipairs(MM.bands) do t:SetColorTexture(r, g, b, MM.BAND_ALPHA) end
+end
+
+-- The bands along the map's top and bottom edges (the bottom one only with
+-- coordinates on); they follow the panel color live.
+local function addBands(overlay, settings)
+  MM.bands = {}
+  MM.top = band(overlay, "TOP", MM.BAND.top)
+  MM.bottom = band(overlay, "BOTTOM", MM.BAND.bottom)
+  MM.bottom:SetShown(settings.coords ~= false)
+  paintBands()
+  T.OnChanged(paintBands)
+end
+
+-- The zone name centered on the top band, kept to the room between the
+-- corner buttons (a long name is cut short rather than run under them), and
+-- the coordinates centered on the bottom band (inside the map, so a map in a
+-- screen corner never pushes them off screen).
+local function addTexts(overlay, size)
   MM.zone = T.Text(overlay:CreateFontString(nil, "OVERLAY"), "label", false)
-  MM.zone:SetPoint("TOP", overlay, "TOP", 0, -6)
+  MM.zone:SetPoint("CENTER", MM.top, "CENTER")
+  MM.zone:SetWidth(size - 2 * MM.ZONE_INSET)
+  MM.zone:SetWordWrap(false)
   MM.coords = T.Text(overlay:CreateFontString(nil, "OVERLAY"), "small")
-  MM.coords:SetPoint("BOTTOM", overlay, "BOTTOM", 0, 4)
+  MM.coords:SetPoint("CENTER", MM.bottom, "CENTER")
   T.Color(MM.coords, "text")
+end
+
+-- The zone name takes the mouse: a click opens (or closes) the world map,
+-- hovering names the zone and its territory, and the wheel still zooms. It
+-- stops short of the top corners, so the buttons there keep their clicks.
+local function zoneButton(overlay)
+  local b = CreateFrame("Button", "Vanguard_MinimapZone", overlay)
+  b:SetPoint("TOPLEFT", overlay, "TOPLEFT", MM.ZONE_INSET, 0)
+  b:SetPoint("TOPRIGHT", overlay, "TOPRIGHT", -MM.ZONE_INSET, 0)
+  b:SetHeight(MM.BAND.top)
+  b:SetScript("OnClick", function() if type(ToggleWorldMap) == "function" then ToggleWorldMap() end end)
+  b:SetScript("OnEnter", zoneTooltip)
+  b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  b:EnableMouseWheel(true)
+  b:SetScript("OnMouseWheel", onWheel)
+  MM.zoneButton = b
 end
 
 -- Tints the corner diamonds in the accent (again after every theme change).
@@ -244,12 +330,19 @@ local function addCorners(overlay)
   T.OnChanged(paintCorners)
 end
 
+-- Dresses the overlay: the bands, the texts on them, the zone button and the corner marks.
+local function dress(overlay, settings)
+  addBands(overlay, settings)
+  addTexts(overlay, settings.size)
+  zoneButton(overlay)
+  addCorners(overlay)
+end
+
 -- Builds the minimap frame. Out of combat, since it moves Blizzard frames.
 local function build(settings)
   local holder = createHolder(settings.size)
   adoptMinimap(holder, settings.size)
-  addTexts(holder)
-  addCorners(MM.overlay)
+  dress(createOverlay(holder), settings)
   fadeArt()
   quietCluster()
   if settings.icons then placeLeftovers() end

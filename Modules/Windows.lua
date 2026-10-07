@@ -285,14 +285,17 @@ local function wanted(name, frame)
   return type(frame) == "table" and frame.HookScript ~= nil and not frame.vgWindow and not replaced(name)
 end
 
--- Skins a registered window now and every time it shows (once hooked).
+-- Skins a registered window now and every time it shows (once hooked). A skin that fails
+-- is reported under the window's name and stops neither its OnShow hook nor the other windows.
 local function watch(name)
   local frame = _G[name]
   if not wanted(name, frame) then return end
   local skin = GW.REGISTERED[name].skin
+  -- Runs the window's skin under ns.Try.
+  local function run(f) ns.Try("window " .. name, skin, f) end
   frame.vgWindow = true
-  skin(frame)
-  frame:HookScript("OnShow", skin)
+  run(frame)
+  frame:HookScript("OnShow", run)
 end
 
 -- Watches every window in a list.
@@ -385,9 +388,9 @@ for addon, names in pairs(GW.LATER) do GW.Add("windows", "onDemand", addon, name
 -- and the breath bars' container.
 function GW.Enable(settings)
   GW.settings = settings
+  ns.On("ADDON_LOADED", onLoaded)
+  watchAll(GW.ORDER)
   if settings.windows then watchGameMenu() keepTextReadable() end
   if settings.durability then watchDurability() end
   if settings.timers then watchContainer() end
-  watchAll(GW.ORDER)
-  ns.On("ADDON_LOADED", onLoaded)
 end
