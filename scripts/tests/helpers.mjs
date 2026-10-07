@@ -207,6 +207,12 @@ export const RAID_ENV = `
   CompactRaidFrameContainer = CreateFrame("Frame", "CompactRaidFrameContainer", UIParent)
   function __spawn(i, unit)
     local b = CreateFrame("Button", "Vanguard_RaidUnitButton" .. i, Vanguard_Raid, "SecureUnitButtonTemplate")
+    -- Sized as RF.INIT sizes it, and placed in a column with the header grown to fit, as the
+    -- client's group header does (a 0 x 0 tile or header gets no rect, nor anything on it).
+    local w, h = Vanguard_Raid:GetAttribute("vg-width"), Vanguard_Raid:GetAttribute("vg-height")
+    b:SetSize(w, h)
+    b:SetPoint("TOPLEFT", Vanguard_Raid, "TOPLEFT", 0, -(i - 1) * h)
+    Vanguard_Raid:SetSize(w, math.max(Vanguard_Raid:GetHeight(), i * h))
     Vanguard_Raid.initialConfigFunction(Vanguard_Raid, b:GetName())
     b:SetAttribute("unit", unit)
     return b
@@ -277,6 +283,9 @@ export const PLATE_ENV = `
   end }
   local function plate(unit, forbidden)
     local p = CreateFrame("Frame", nil, UIParent)
+    -- The client sizes and places every nameplate; a 0 x 0 one would get no rect, nor Vanguard's plate on it.
+    p:SetSize(110, 45)
+    p:SetPoint("CENTER")
     p.UnitFrame = CreateFrame("Frame", nil, p)
     p.IsForbidden = function() return forbidden end
     __plates[unit] = p

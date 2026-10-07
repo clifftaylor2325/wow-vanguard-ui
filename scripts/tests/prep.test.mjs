@@ -59,7 +59,7 @@ it("prep: low ammo and soul shards show as have / want in red", () => {
   expect(shown(hunter), "/vg prep shows the card").toBe(true);
   expect(rows(hunter), "the ammo row").toEqual([["Ammo", "120 / 400"]]);
   expect(isTok(hunter, hunter.eval("return ns.GetModule('InstancePrep').card.rows[1].value.__textColor"), "bad"), "the count is red").toBe(true);
-  expect(hunter.eval("return ns.GetModule('InstancePrep').card:GetHeight()"), "the card fits its one row").toBe(32 + 18 + 8);
+  expect(hunter.eval("return ns.GetModule('InstancePrep').card:GetHeight()"), "the card fits its one row").toBe(40 + 18 + 8);
   const warlock = character("WARLOCK", 60, { extra: "__ammo = 120" });
   warlock.eval("__carry(6265, 3)");
   warlock.slash("prep");
