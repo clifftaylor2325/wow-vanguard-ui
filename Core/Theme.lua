@@ -708,8 +708,9 @@ end
 -- square tile behind the glyph is while the mouse is over it, and the glyph (drawn on a 20-unit
 -- grid, one pixel each, its mark in the middle 9); a control with no size yet takes the tile's.
 -- And where they sit: a close button's middle `inset` in from its panel's top-right corner on
--- both axes (in line with the window's title), the maximize/minimize box `step` left of it.
-T.CONTROL = { tile = 20, glyph = 20, inset = 18, step = 28 }
+-- both axes (its tile with 14 of air to the panel's edge, in line with the window's title), the
+-- maximize/minimize box `step` left of it.
+T.CONTROL = { tile = 20, glyph = 20, inset = 24, step = 28 }
 -- The tile's color and opacity by control: red behind close, a wash of the accent behind the others.
 T.CONTROL_TILES = { close = { "bad", 0.9 }, other = { "accent", 0.35 } }
 
