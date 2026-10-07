@@ -37,12 +37,13 @@ end
 
 -- Text box ------------------------------------------------------------------------
 
--- The scrolling multi-line edit box inside the text dialog.
+-- The scrolling multi-line edit box inside the text dialog. It needs a font before
+-- any text: the game's SetText on an edit box without one is an error ("Font not set").
 local function addEditBox(f)
   local scroll = CreateFrame("ScrollFrame", "Vanguard_TextScroll", f, "UIPanelScrollFrameTemplate")
   scroll:SetPoint("TOPLEFT", 12, -34)
   scroll:SetPoint("BOTTOMRIGHT", -30, 44)
-  f.edit = T.EditBox(CreateFrame("EditBox", "Vanguard_TextEdit", scroll))
+  f.edit = T.Text(T.EditBox(CreateFrame("EditBox", "Vanguard_TextEdit", scroll)), "label")
   f.edit:SetMultiLine(true)
   f.edit:SetAutoFocus(false)
   f.edit:SetWidth(460)

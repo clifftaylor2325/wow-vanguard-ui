@@ -69,12 +69,15 @@ local function addDetails(f)
   f.cards = QP.Pool(f.rewards, QP.Card)
 end
 
+-- The details buttons' width and the gap between them: four span the details column exactly, so the last keeps the window's margin.
+QL.BUTTON_W, QL.BUTTON_GAP = 88, 6
+
 -- The buttons along the bottom of the details side.
 QL.BUTTONS = { { "track", "Track", QL.ToggleTrack }, { "share", "Share", QL.Share }, { "abandon", "Abandon", QL.Abandon }, { "map", "Map", QL.ShowOnMap } }
 
 -- One details button: it runs its action on the chosen quest.
 local function addButton(f, spec, x)
-  local b = ns.DialogButton(f, spec[2], 90)
+  local b = ns.DialogButton(f, spec[2], QL.BUTTON_W)
   b:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", QL.LIST_W + 26 + x, 12)
   b:SetScript("OnClick", function() if QL.details then spec[3](QL.details) end end)
   f.buttons[spec[1]] = b
@@ -96,7 +99,7 @@ end
 
 -- The details buttons; the window starts hidden, and Escape closes it.
 function QL.Finish(f)
-  for i, spec in ipairs(QL.BUTTONS) do addButton(f, spec, (i - 1) * 96) end
+  for i, spec in ipairs(QL.BUTTONS) do addButton(f, spec, (i - 1) * (QL.BUTTON_W + QL.BUTTON_GAP)) end
   f:Hide()
   if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_QuestLog") end
 end

@@ -47,11 +47,12 @@ local function walk(frame, path)
   return type(part) == "table" and part or nil
 end
 
--- Adds a tab button to the list, once (anything that takes a script hook is one).
-local function add(list, button)
+-- Adds a tab button to the list, once (anything that takes a script hook is one); side marks a side tab.
+local function add(list, button, side)
   if type(button) ~= "table" or not button.HookScript or list.seen[button] then return end
   list.seen[button] = true
   list[#list + 1] = button
+  list.side[button] = side
 end
 
 -- Adds the buttons of a window's parentArray of tabs (Tabs: PanelTabButtonTemplate's).
@@ -63,7 +64,7 @@ end
 -- Adds the side tabs a window (or its ModeTabs frame) holds, by key and in its Tabs array.
 local function addSide(list, holder)
   if type(holder) ~= "table" then return end
-  for _, key in ipairs(GW.SIDE_TABS) do add(list, holder[key]) end
+  for _, key in ipairs(GW.SIDE_TABS) do add(list, holder[key], true) end
   addArray(list, holder.Tabs)
 end
 
@@ -83,8 +84,9 @@ local function addNamed(list, name)
 end
 
 -- Every tab button a window has now: its Tabs array and side tabs, its named tabs and its tab systems'.
+-- list.side marks the side tabs (by key).
 function GW.TabButtons(frame)
-  local list = { seen = {} }
+  local list = { seen = {}, side = {} }
   addSide(list, frame)
   addSide(list, frame.ModeTabs)
   addNamed(list, frame.GetName and frame:GetName())
@@ -113,16 +115,52 @@ local function fadeSideArt(tab)
   T.FadeRegions(tab, { [tab.Icon] = true, [tab.IconOverlay or tab.Icon] = true })
 end
 
--- One tab button in the theme, whichever template it came from.
-local function dressTab(button)
-  T.Tab(button)
+-- The edge of a tab away from its window, where its accent bar goes: the far side of a tab beside the
+-- window, else the bottom of one below the window's middle and the top of one above it (TOP when unplaced).
+function GW.OuterEdge(tab, window)
+  local x, y = tab:GetCenter()
+  local left, right, bottom, top = window:GetLeft(), window:GetRight(), window:GetBottom(), window:GetTop()
+  if not (x and y and left and right and bottom and top) then return "TOP" end
+  if x > right then return "RIGHT" end
+  if x < left then return "LEFT" end
+  return y < (bottom + top) / 2 and "BOTTOM" or "TOP"
+end
+
+-- One axis of a tab's offset from its window: when the tab's `near` side (LEFT, TOP...) is set on the window's
+-- opposite `far` edge, the tab is outside the window there and goes `out` units that way; else its offset stays.
+local function outside(point, relPoint, near, far, out, offset)
+  if point:find(near) and relPoint:find(far) then return out end
+  return offset
+end
+
+-- Moves a tab set against an outer edge of its window out to its panel's padded edge (one pixel in,
+-- so their borders meet), once: the panel reaches past the window, and would cover the tab's near end.
+function GW.ClearPadding(tab, window)
+  local pad = T.Padding(window) - T.Pixel(window)
+  if tab.vgPadded or pad <= 0 or tab:GetNumPoints() ~= 1 then return end
+  tab.vgPadded = true
+  local point, rel, relPoint, x, y = tab:GetPoint(1)
+  if rel ~= window or type(point) ~= "string" or type(relPoint) ~= "string" then return end
+  x = outside(point, relPoint, "RIGHT", "LEFT", -pad, outside(point, relPoint, "LEFT", "RIGHT", pad, x))
+  y = outside(point, relPoint, "BOTTOM", "TOP", pad, outside(point, relPoint, "TOP", "BOTTOM", -pad, y))
+  tab:SetPoint(point, rel, relPoint, x, y)
+end
+
+-- One tab button of a window in the theme, whichever template it came from: out past the window's padding,
+-- its accent bar on its outer edge, and a side tab's icon greyed while another is selected.
+local function dressTab(button, window, side)
+  GW.ClearPadding(button, window)
+  T.Tab(button, { bar = GW.OuterEdge(button, window), dimIcon = side == true })
   seedChecked(button)
   fadeSideArt(button)
 end
 
 -- Puts every tab button the window has now in the theme; a button that fails leaves the others alone.
+-- The character pane's ModeTabs holder moves out past the padding like a tab.
 function GW.DressTabs(frame)
-  for _, button in ipairs(GW.TabButtons(frame)) do ns.Try("tab button", dressTab, button) end
+  local list = GW.TabButtons(frame)
+  if type(frame.ModeTabs) == "table" and frame.ModeTabs.GetPoint then ns.Try("tab holder", GW.ClearPadding, frame.ModeTabs, frame) end
+  for _, button in ipairs(list) do ns.Try("tab button", dressTab, button, frame, list.side[button]) end
   GW.FadeParts(frame, { "TabIndicators" })
 end
 
