@@ -1,7 +1,9 @@
 -- The game's always-on extras, put where they don't clutter the screen:
 --   * the bag buttons and the micro menu (character, spellbook, talents, ...)
 --     in one bar in the bottom-right corner: two rows of framed slots
---     (T.Slot), the bags over the menu with a thin accent line between them.
+--     (T.Slot, quiet: the accent edge only under the mouse), the bags over
+--     the menu with a thin accent line between them. The menu row's slots
+--     are taller, the game's plates' own shape, so its art fits them whole.
 --     It is always shown by default; it can also show on mouseover, hide 10 s
 --     after the mouse leaves it, show in combat, stay hidden, or follow a
 --     checklist of conditions (Core/Visibility.lua);
@@ -9,8 +11,8 @@
 --     it. Vanguard's own tracker (Modules/QuestTracker.lua) fills it; only when that
 --     is off is the game's tracker pinned into it and skinned here (one owner).
 -- The buttons keep working as the game's own, with the game's icons and alert
--- flashes, each on a slot tile; a bag's slot shows how full the bag is (red
--- when full) and the backpack's how many slots your bags have free.
+-- flashes, each fitted inside a slot tile; a bag's slot shows how full the bag
+-- is (red when full) and the backpack's how many slots your bags have free.
 -- Vanguard's line icons on the menu buttons are a switch away.
 -- The bars stay where they're put when the game lays out its own frames again
 -- (ns.Pin), re-fit whenever the game resizes or re-lays them out, hide the
@@ -26,25 +28,33 @@ local MS = ns.Module("MenuStrip", { defaults = { menu = "always", tracker = true
 
 -- A slot's side and the gap between slots: screen pixels at UI scale 1, on the theme's 4 px grid.
 MS.TILE, MS.GAP = 24, 4
--- The space between the bar's edge and its slots (the same on all four sides),
--- and between a slot's edge and its icon (pixels).
-MS.MARGIN, MS.INSET = 8, 2
--- The bar's height: two rows of slots and a gap, inside the margin. Its width
--- hugs the longer row (MS.FitStrip).
-MS.HEIGHT = 2 * MS.TILE + MS.GAP + 2 * MS.MARGIN
+-- The menu row's slots are taller than wide: the game's menu plates' own 4:5
+-- shape (24 by 30), so a plate fits its slot whole.
+MS.MENU_TILE_H = 30
+-- The space between the bar's edge and its slots (the same on all four sides) (pixels).
+MS.MARGIN = 12
+-- The bar's height: the bags row, a gap and the menu row, inside the margin.
+-- Its width hugs the longer row (MS.FitStrip).
+MS.HEIGHT = MS.TILE + MS.GAP + MS.MENU_TILE_H + 2 * MS.MARGIN
 -- Vanguard's line icons' side (pixels at UI scale 1), when they're switched on.
 MS.GLYPH_PX = 20
 -- How faint an empty bag slot's icon is (the game's empty bag-slot art, in grey).
 MS.EMPTY_ALPHA = 0.35
 -- How thick the fill along the bottom of a bag's slot is (pixels).
 MS.FILL = 2
+-- The backpack's free count sits this far in from its icon's corner, over a
+-- dark backing this far out around it (pixels), and the backing's opacity.
+MS.COUNT_PAD, MS.COUNT_BACK = 1, 0.75
 -- The two rows, top first: the game's bar, its buttons' size, the padding the
 -- game lays them out with (the micro menu overlaps its buttons by 5, the bag
--- bar spaces its by 2) and the row's middle below the bar's top (pixels). Each
--- bar is drawn at the scale that puts its buttons one slot and one gap apart.
+-- bar spaces its by 2), its slots' height, how far the art sits in from a
+-- slot's edge (the bag icons get a little more air than the menu plates,
+-- which carry their own frame) and the row's middle below the bar's top
+-- (pixels). Each bar is drawn at the scale that puts its buttons one slot
+-- and one gap apart.
 MS.ROWS = {
-  { bar = "BagsBar", button = 45, pad = 2, y = MS.MARGIN + MS.TILE / 2 },
-  { bar = "MicroMenuContainer", button = 32, pad = -5, y = MS.MARGIN + MS.TILE * 1.5 + MS.GAP },
+  { bar = "BagsBar", button = 45, pad = 2, tileH = MS.TILE, inset = 3, y = MS.MARGIN + MS.TILE / 2 },
+  { bar = "MicroMenuContainer", button = 32, pad = -5, tileH = MS.MENU_TILE_H, inset = 2, y = MS.MARGIN + MS.TILE + MS.GAP + MS.MENU_TILE_H / 2 },
 }
 for _, row in ipairs(MS.ROWS) do row.scale = (MS.TILE + MS.GAP) / (row.button + row.pad) end
 -- The quest tracker's spot: its width and the most height it gets (it ends above the
@@ -78,6 +88,9 @@ MS.GLYPHS = {
 MS.ALERTS = { "Flash", "FlashBorder", "FlashContent" }
 -- A menu button's own background plates, faded: its slot is its background.
 MS.MENU_ART = { "Background", "PushedBackground" }
+-- A menu button's art fitted inside its slot, besides its state textures (the
+-- plate with its icon, by state): the character button's portrait and its mask.
+MS.MENU_FIT = { "Portrait", "PortraitMask" }
 -- The button state textures (faded under Vanguard's icons, greyed while disabled).
 local STATES = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }
 -- Every button on a slot, and the bag buttons with a fill.
@@ -268,12 +281,12 @@ end
 
 -- Lets a button take clicks on its slot only, so the menu row's tall buttons
 -- don't reach into the bags row.
-local function hitSlot(b, side)
-  local x, y = math.max(0, (b:GetWidth() - side) / 2), math.max(0, (b:GetHeight() - side) / 2)
+local function hitSlot(b, w, h)
+  local x, y = math.max(0, (b:GetWidth() - w) / 2), math.max(0, (b:GetHeight() - h) / 2)
   b:SetHitRectInsets(x, x, y, y)
 end
 
--- Fits a texture inside a button's slot, MS.INSET in from its edge.
+-- Fits a texture inside a button's slot, its row's inset in from the edge.
 local function inset(b, t)
   local d = b.vgInset
   t:ClearAllPoints()
@@ -282,12 +295,16 @@ local function inset(b, t)
 end
 
 -- The fill along a bag's icon bottom, MS.FILL pixels thick, and on the
--- backpack the free count just above it, at its text size on screen.
+-- backpack the free count in the corner above it, at its text size on
+-- screen, its backing MS.COUNT_PAD out around it.
 local function placeFill(b, rel)
   b.vgFill:SetHeight(MS.FILL / rel)
   if not b.vgFree then return end
-  b.vgFree:SetPoint("BOTTOMRIGHT", b.vgIcon, "BOTTOMRIGHT", 0, MS.FILL / rel)
-  T.TextSize(b.vgFree, T.RoleSize("auraCount") / rel)
+  local pad = MS.COUNT_PAD / rel
+  b.vgFree:SetPoint("BOTTOMRIGHT", b.vgIcon, "BOTTOMRIGHT", -pad, MS.FILL / rel + pad)
+  T.TextSize(b.vgFree, T.RoleSize("tiny") / rel)
+  b.vgFreeBack:SetPoint("TOPLEFT", b.vgFree, "TOPLEFT", -pad, pad)
+  b.vgFreeBack:SetPoint("BOTTOMRIGHT", b.vgFree, "BOTTOMRIGHT", pad, -pad)
 end
 
 -- Sizes a line icon: MS.GLYPH_PX on screen, never past the slot's inset.
@@ -296,16 +313,17 @@ local function sizeGlyph(b, side)
   b.vgGlyph:SetSize(g, g)
 end
 
--- Sizes a button's slot for its scale now: the slot, where the button takes
--- clicks, and its icon, line icon and fill inside it.
+-- Sizes a button's slot for its scale now: the slot (its row's shape), where
+-- the button takes clicks, and the art, line icon and fill inside it.
 local function sizeSlot(b)
-  local rel = relScale(b)
-  local side = slotPixels(b) / rel
-  b.vgSlot:SetSize(side, side)
-  b.vgInset = MS.INSET / rel
-  hitSlot(b, side)
-  if b.vgIcon then inset(b, b.vgIcon) end
-  if b.vgGlyph then sizeGlyph(b, side) end
+  local rel, row = relScale(b), b.vgRow
+  local w = slotPixels(b) / rel
+  local h = w * row.tileH / MS.TILE
+  b.vgSlot:SetSize(w, h)
+  b.vgInset = row.inset / rel
+  hitSlot(b, w, h)
+  for _, t in ipairs(b.vgArt) do inset(b, t) end
+  if b.vgGlyph then sizeGlyph(b, w) end
   if b.vgFill then placeFill(b, rel) end
 end
 
@@ -314,10 +332,11 @@ function MS.SizeSlots()
   for _, b in ipairs(MS.slotted) do sizeSlot(b) end
 end
 
--- A button's slot tile: a T.Slot frame one level under the button (so the
--- button's art and alerts draw over it), centered on it.
+-- A button's slot tile: a quiet T.Slot frame (its accent edge only under the
+-- mouse) one level under the button (so the button's art and alerts draw
+-- over it), centered on it.
 local function addSlot(b, row)
-  local slot = T.Slot(CreateFrame("Frame", nil, b))
+  local slot = T.Slot(CreateFrame("Frame", nil, b), { quiet = true })
   slot:SetPoint("CENTER", b, "CENTER")
   slot:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
   b.vgSlot, b.vgRow = slot, row
@@ -369,13 +388,29 @@ local function addGlyph(b, icon)
   b:HookScript("OnLeave", function(self) hover(self, false) end)
 end
 
+-- The game's art on a menu button that is fitted inside its slot: its state
+-- textures and whichever of MS.MENU_FIT it has.
+local function menuArt(b)
+  local art = {}
+  for _, get in ipairs(STATES) do
+    local t = b[get] and b[get](b)
+    if t then art[#art + 1] = t end
+  end
+  for _, key in ipairs(MS.MENU_FIT) do
+    if type(b[key]) == "table" and b[key].SetPoint then art[#art + 1] = b[key] end
+  end
+  return art
+end
+
 -- One of the game's menu buttons on a slot: its own background plates faded,
--- the game's icon and alerts kept (or Vanguard's line icon, switched on),
--- greyed while disabled, the slot's edge following the mouse. Once per button.
+-- the game's icon fitted inside the slot and its alerts kept (or Vanguard's
+-- line icon, switched on), greyed while disabled, the slot's edge lit under
+-- the mouse. Once per button.
 function MS.SkinButton(b, icon)
   if b.vgSlot then return end
   for _, key in ipairs(MS.MENU_ART) do if type(b[key]) == "table" then b[key]:SetAlpha(0) end end
   addSlot(b, MS.ROWS[2])
+  b.vgArt = menuArt(b)
   if MS.settings.glyphs then addGlyph(b, icon) end
   slotStates(b)
   b:HookScript("OnEnable", paintEnabled)
@@ -419,11 +454,23 @@ local function paintBag(b)
   T.Tint(b.vgFill, free == 0 and "bad" or "accent")
 end
 
--- Every bag's fill and the backpack's free count, now (after the bags changed).
+-- Every bag's fill and the backpack's free count, now (after the bags
+-- changed); the count's backing only with a count to back.
 function MS.PaintBags()
   for _, b in ipairs(MS.filled) do paintBag(b) end
   local n = MS.FreeSlots()
   if MS.free then MS.free:SetText(n and tostring(n) or "") end
+  if MS.freeBack then MS.freeBack:SetShown(n ~= nil) end
+end
+
+-- The backpack's free count: small, in the icon's corner, over a dark backing
+-- so it reads on any icon (both placed by placeFill).
+local function addFree(b)
+  b.vgFreeBack = T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
+  b.vgFreeBack:SetTexture(T.WHITE)
+  T.Tint(b.vgFreeBack, "edge", MS.COUNT_BACK)
+  b.vgFree = T.Text(b:CreateFontString(nil, "OVERLAY"), "tiny")
+  MS.free, MS.freeBack = b.vgFree, b.vgFreeBack
 end
 
 -- A bag's fill along its icon's bottom (sized and painted later), and on the
@@ -434,9 +481,7 @@ local function addFill(b)
   b.vgFill:SetPoint("BOTTOMLEFT", b.vgIcon, "BOTTOMLEFT")
   b.vgFill:Hide()
   MS.filled[#MS.filled + 1] = b
-  if b ~= _G.MainMenuBarBackpackButton then return end
-  b.vgFree = T.Text(b:CreateFontString(nil, "OVERLAY"), "auraCount")
-  MS.free = b.vgFree
+  if b == _G.MainMenuBarBackpackButton then addFree(b) end
 end
 
 -- A bag button's icon texture, by key or by the game's global name.
@@ -445,12 +490,13 @@ local function bagIcon(b)
   return type(icon) == "table" and icon.SetTexCoord and icon or nil
 end
 
--- A bag button's icon, shown and cropped; and a button narrower than a bag
--- (Forever's key ring, 33 units to a bag's 45) widened to a bag's width, so it
--- gets the same slot at the same pitch. The game anchors each bag button's
--- right edge, so it grows away from its neighbor.
+-- A bag button's icon, shown and cropped, the one art fitted in its slot; and
+-- a button narrower than a bag (Forever's key ring, 33 units to a bag's 45)
+-- widened to a bag's width, so it gets the same slot at the same pitch. The
+-- game anchors each bag button's right edge, so it grows away from its neighbor.
 local function fitBag(b, icon)
   b.vgIcon = T.Crop(icon)
+  b.vgArt = { b.vgIcon }
   icon:SetAlpha(1)
   if b:GetWidth() < MS.ROWS[1].button then b:SetWidth(MS.ROWS[1].button) end
 end

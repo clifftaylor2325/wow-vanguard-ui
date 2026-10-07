@@ -652,11 +652,13 @@ local function placeBevel(t, frame, side)
   t:SetHeight(px)
 end
 
--- Paints a slot's accent edge (for its state) and its bevel, at the frame's pixel size.
+-- Paints a slot's accent edge (for its state; a quiet slot's only while it
+-- has one) and its bevel, at the frame's pixel size.
 local function paintSlot(entry, frame)
   local p = entry.parts
   placeInner(p.inner, frame)
-  colorEdges(p.inner, shadeAccent(T.SLOT_STATES[entry.opts.state] or 0))
+  local r, g, b = shadeAccent(T.SLOT_STATES[entry.opts.state] or 0)
+  colorEdges(p.inner, r, g, b, (entry.opts.quiet and not entry.opts.state) and 0 or 1)
   placeBevel(p.lit, frame, "TOP")
   placeBevel(p.dim, frame, "BOTTOM")
   T.Tint(p.lit, "sheen")
@@ -666,11 +668,12 @@ end
 -- A slot tile for a button (the bag and menu bar): a raised slate fill, a
 -- one-pixel border with a one-pixel accent edge inside it, a light line along
 -- the top and a dark one along the bottom inside that (a bevel), and a small
--- soft shadow. The accent edge follows the accent and T.SlotState.
-function T.Slot(frame)
+-- soft shadow. The accent edge follows the accent and T.SlotState; with
+-- opts.quiet it stays hidden until the slot has a state (the mouse over it, or held).
+function T.Slot(frame, opts)
   local entry = painted[frame]
   if not entry then
-    entry = base(frame, "slot", { raised = true, noSheen = true, shadow = T.SLOT_SHADOW })
+    entry = base(frame, "slot", { raised = true, noSheen = true, shadow = T.SLOT_SHADOW, quiet = opts ~= nil and opts.quiet == true })
     entry.parts.inner, entry.parts.lit, entry.parts.dim = edges(frame), solid(frame, "BORDER", 1), solid(frame, "BORDER", 1)
     entry.paint = paintSlot
   end
