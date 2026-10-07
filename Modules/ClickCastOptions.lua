@@ -759,7 +759,7 @@ local function rows()
   return type(C_ClickBindings) == "table" and WITH_GAME or ROWS
 end
 
-O.AddPage({ key = PAGE, title = "Click casting", icon = "ClickCasting", order = 46, rows = rows })
+O.AddPage({ key = PAGE, title = "Click casting", icon = "NavClickCasting", order = 46, rows = rows })
 
 -- An open picker follows the bindings once they apply.
 local function pickerFollows()
