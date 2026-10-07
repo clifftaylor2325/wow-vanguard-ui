@@ -145,14 +145,14 @@ it("MultiSearch searches each term through the shop's queue, only at the open au
   const addon = withApi();
   expect(call(addon, "MultiSearch", `'TEST-ONLY Addon', { 'Strange Dust', '"Soul Dust";0;0;0;0;0;0;0;0;0;0;', 2589, '   ', 'item:2592' }`), "queued").toBe(true);
   expect(listOf(addon, "TEST-ONLY Addon search"), "the terms as a list (Auctionator's fields and quotes off, a non-string and a blank left out)").toEqual(["Strange Dust", "Soul Dust", 2592]);
-  expect([sent(addon), addon.eval(`return ${HELPER}.shopCard.progress:GetText()`), addon.eval(`return ${HELPER}.shopCard.lists.text:GetText()`)], "one search at a time, on the shop card, its list picked").toEqual([["SendBrowseQuery:Strange Dust"], "0 of 3", "TEST-ONLY Addon search"]);
+  expect([sent(addon), addon.eval(`return ${HELPER}.shopCard.progress:GetText()`), addon.eval(`return ${HELPER}.shopCard.title:GetText()`)], "one search at a time, on the shop card, its list picked").toEqual([["SendBrowseQuery:Strange Dust"], "0 of 3", "TEST-ONLY Addon search"]);
   addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 1250, totalQuantity = 240 } }");
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
   addon.advance(1);
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
   addon.advance(1);
   expect(sent(addon), "a second apart; an ID by its item key").toEqual(["SendBrowseQuery:Strange Dust", "SendBrowseQuery:Soul Dust", "SearchForItemKeys:2592"]);
-  expect(addon.eval(`local r = ${HELPER}.shopCard.rows[1] return { r.name:GetText(), r.price:GetText() }`), "the first row shows the result").toEqual(["Strange Dust", "12s 50c"]);
+  expect(addon.eval(`local r = ${HELPER}.shopCard.body.table.rows[1] return { r.name:GetText(), r.cells.price:GetText() }`), "the first row shows the result").toEqual(["Strange Dust", "12s 50c"]);
   expect(call(addon, "MultiSearch", "'TEST-ONLY Addon', { 'Vision Dust' }"), "again").toBe(true);
   expect([listOf(addon, "TEST-ONLY Addon search"), sent(addon).length], "the list is replaced, the searches waiting dropped; the new one waits for the search in flight").toEqual([["Vision Dust"], 3]);
   addon.advance(2);
@@ -191,5 +191,5 @@ it("a list the shop card shows is repainted when an addon changes it", () => {
   const addon = withApi();
   addon.eval(`${HELPER}.NewList("TEST-ONLY Mats") ${HELPER}.AddEntry("Strange Dust")`);
   call(addon, "AlterShoppingListItems", "'TEST-ONLY Addon', 'TEST-ONLY Mats', { 'Linen Cloth', 'Soul Dust' }");
-  expect(addon.eval(`local rows = ${HELPER}.shopCard.rows return { rows[1].name:GetText(), rows[2].name:GetText(), rows[3]:IsShown() }`)).toEqual(["Linen Cloth", "Soul Dust", false]);
+  expect(addon.eval(`local rows = ${HELPER}.shopCard.body.table.rows return { rows[1].name:GetText(), rows[2].name:GetText(), rows[3]:IsShown() }`)).toEqual(["Linen Cloth", "Soul Dust", false]);
 });

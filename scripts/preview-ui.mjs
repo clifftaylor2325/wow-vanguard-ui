@@ -508,7 +508,7 @@ const SCENES = [
     CC.Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew") CC.Add("shift-BUTTON1", "spell", "TEST-ONLY Shield")
     CC.Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") CC.Add("MOUSEWHEELUP", "macro", "/cast [@mouseover] TEST-ONLY Heal")
     ns.Options.Show("clickcast")` },
-  { name: "vanguard-auction", caption: "Auction helper beside the game's auction house window: a shopping list searched (prices per unit, how many are up), the sell card with a stack of dust, the last scan, and your auctions with one undercut; right of the window, the Deals card with two deals (TEST-ONLY items and listings)",
+  { name: "vanguard-auction", caption: "The auction house's Shopping tab: the Lists pane (a shopping list, Deals with two found, Upgrades, the list buttons, the last scan) and the list searched as a table (unit price, how many are up) under its toolbar (TEST-ONLY items and listings)",
     lua: `time = function() return 1790000000 end
       VanguardDB.ah = { list = "Enchanting mats", lists = { ["Enchanting mats"] = { "Strange Dust", "Soul Dust", 10998, "Vision Dust" } } }
       local house = ns.AuctionPrices.House()
@@ -522,21 +522,36 @@ const SCENES = [
       AUCTION_DURATION_ONE = "12 Hours"
       W.openAuctionHouse()
       __wfgStub.update(0)
+      __wfgStub.click(AuctionHouseFrame.Tabs[4])
       local AH = ns.GetModule("AuctionHelper")
       AH.found = { ["Strange Dust"] = { key = { itemID = 10940 }, price = 1250, qty = 240 }, ["Soul Dust"] = { key = { itemID = 11083 }, price = 4800, qty = 35 },
         [10998] = { key = { itemID = 10998 }, price = 21500, qty = 12 }, ["Vision Dust"] = false }
       AH.progress = { done = 4, total = 4 }
-      AH.PaintShop()
-      W.ah.commodities[10940] = { { unitPrice = 120, quantity = 30 } }
-      W.cursor = { type = "item", id = 10940, bag = 0, slot = 1 }
-      AH.TakeCursor()
-      __wfgStub.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940)
-      AH.owned = { { id = 1, key = { itemID = 10940 }, buyout = 150, qty = 20, unit = 150, undercut = true }, { id = 2, key = { itemID = 9999 }, buyout = 45000, qty = 1, unit = 45000, undercut = false } }
-      AH.PaintOwned()
       house.prices[11083] = { min = 5200, t = 1790000000, days = { [20716] = 5000 }, markets = { [20716] = 5000, [20715] = 5400 } }
       ns.AuctionPrices.RecordSeen(11083, 3300)
       ns.AuctionPrices.RecordSeen(2589, 9)
-      __wfgStub.update(0.01)` },
+      __wfgStub.update(0.01)
+      AH.PaintShop()` },
+  { name: "vanguard-auction-selling", caption: "The auction house's Selling tab: the sell card with a stack of dust (one field a row), Up now with the dust's listings (yours flagged), and your auctions with one undercut, its buttons on the heading line (TEST-ONLY items and listings)",
+    lua: `time = function() return 1790000000 end
+      local house = ns.AuctionPrices.House()
+      house.lastScan, house.count, house.prices = 1790000000 - 720, 1, { [10940] = { min = 110, t = 1790000000, days = { [20717] = 105 } } }
+      local W = __wfgWorld
+      W.items[10940] = { name = "Strange Dust", icon = "TEST-ONLY-DUST", commodity = true }
+      W.items[9999] = { name = "TEST-ONLY Blade of the Hunt", icon = "TEST-ONLY-BLADE" }
+      W.bags[0][1] = { itemID = 10940, count = 20 }
+      AUCTION_DURATION_ONE = "12 Hours"
+      W.openAuctionHouse()
+      __wfgStub.update(0)
+      __wfgStub.click(AuctionHouseFrame.Tabs[5])
+      local AH = ns.GetModule("AuctionHelper")
+      W.ah.commodities[10940] = { { unitPrice = 120, quantity = 30 }, { unitPrice = 125, quantity = 20, containsOwnerItem = true }, { unitPrice = 140, quantity = 200 } }
+      W.cursor = { type = "item", id = 0, bag = 0, slot = 1 }
+      AH.TakeCursor()
+      __wfgStub.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940)
+      AH.owned = { { id = 1, key = { itemID = 10940 }, buyout = 150, qty = 20, unit = 150, undercut = true }, { id = 2, key = { itemID = 9999 }, buyout = 45000, qty = 1, unit = 45000, undercut = false } }
+      AH.checked = true
+      AH.PaintOwned()` },
   { name: "vanguard-auction-alert", caption: "A price alert: a shopping list item's filters with the alert at its max price, and the Chat watch toast when a search sees it under that price (TEST-ONLY items and listings)",
     lua: `time = function() return 1790000000 end
       SOUNDKIT = { TELL_MESSAGE = 3081 }
