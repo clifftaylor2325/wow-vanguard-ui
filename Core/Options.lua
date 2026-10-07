@@ -443,15 +443,15 @@ local function auctionScanRows()
     check("Check your auctions for undercuts again after each post and cancel", setting("AuctionHelper", "recheck")),
     check("Disenchant values in tooltips (on for enchanters until you choose)", ns.AuctionPrices.DisenchantSetting()),
     check("Crafting costs and profit beside the profession window", setting("AuctionHelper", "crafting")),
-    check("Deals card: listings under the 7-day market or vendor price", liveSetting("AuctionHelper", "deals", function() ns.GetModule("AuctionHelper").PaintDeals() end)),
+    check("Deals card on the Shopping tab: listings under the 7-day market or vendor price", liveSetting("AuctionHelper", "deals", function() ns.GetModule("AuctionHelper").PaintDeals() end)),
   }
 end
 
--- The auction helper: its panel, tooltip prices, the sell card's undercut, length and vendor floor, then the scan rows.
+-- The auction helper: its tabs, tooltip prices, the sell card's undercut, length and vendor floor, then the scan rows.
 local function auctionRows()
   return append({
     { "header", "Auction house" },
-    check("Vanguard panel beside the auction house (lists, sell helper, scan)", setting("AuctionHelper", "panel")),
+    check("Shopping and Selling tabs on the auction house (lists, deals, sell helper, your auctions, scan)", setting("AuctionHelper", "panel")),
     check("Auction prices in tooltips (from your scans)", setting("AuctionHelper", "tooltip")),
     { "cycle", "Undercut by", { { "copper", "1 copper" }, { "silver", "1 silver" }, { "percent", "1 %" }, { "match", "Match" } }, setting("AuctionHelper", "undercut") },
     { "cycle", "Auction length", ns.GetModule("AuctionHelper").DurationChoices(true), setting("AuctionHelper", "duration") },

@@ -1,6 +1,6 @@
--- Auction helper, your auctions (Modules/AuctionHelper.lua holds the panel,
--- the search queue, the scan and the slash commands; the rows sit on its
--- scan card): Check undercuts asks for your auctions (ReadOwned) and checks
+-- Auction helper, your auctions (Modules/AuctionHelper.lua holds the tabs,
+-- the search queue, the scan and the slash commands; the rows sit on the
+-- Selling tab's Your auctions card): Check undercuts asks for your auctions (ReadOwned) and checks
 -- each item's price now, MarkUndercuts marks the ones someone else asks
 -- less for, and a line under the rows says how many ("3 undercut"). Each
 -- row's Cancel (its cost on hover) cancels one; Cancel next undercut
@@ -24,8 +24,8 @@ local ADDON, ns = ...
 local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
 
--- Your auctions: rows under the scan line (how many, from where).
-AH.OWNED_ROWS, AH.OWNED_ROWS_Y = 4, -64
+-- Your auctions: rows under Check undercuts (how many, until AH.Build counts them; from where).
+AH.OWNED_ROWS, AH.OWNED_ROWS_Y = 4, -48
 -- A row's status by Enum.AuctionStatus (Active 0, Sold 1; AuctionHouseDocumentation.lua); an
 -- expired auction has no status of its own: AUCTION_HOUSE_AUCTIONS_EXPIRED says so.
 AH.STATUS = { [0] = "active", [1] = "sold" }
@@ -34,7 +34,8 @@ AH.STATUS = { [0] = "active", [1] = "sold" }
 AH.SOLD_NOTE, AH.EXPIRED_NOTE = 4, 5
 -- The bags searched for an expired auction's item: the backpack (0) to the fourth bag.
 AH.LAST_BAG = 4
--- Cancel next undercut and the line beside it, under the rows (down from the scan card's top).
+-- Cancel next undercut and the line beside it, under the rows (down from the card's top; AH.Build
+-- moves it under the rows it counts).
 AH.NEXT_Y = -146
 -- Check your auctions again after each post and cancel: off until switched on, since each
 -- check is a search per item (Bars, map, chat > Auction house).
@@ -315,9 +316,9 @@ local function paintNext(c)
   T.Color(c.cancelNext.text, nextOne and "text" or "muted")
 end
 
--- Your auctions under the scan card, from the scroll offset, and the line and button under them.
+-- Your auctions from the scroll offset, and the line and button under them.
 function AH.PaintOwned()
-  local c = AH.scanCard
+  local c = AH.ownedCard
   if not c then return end
   for i, r in ipairs(c.owned) do paintOwnedRow(r, AH.owned[c.offset + i]) end
   paintNext(c)
@@ -361,15 +362,23 @@ local function scrollOwned(c, delta)
   AH.PaintOwned()
 end
 
--- Check undercuts, the rows of your auctions under the scan line, and Cancel next undercut.
-function AH.BuildOwned(c)
-  c.check = W.Button(c, "Check undercuts", function() AH.CheckUndercuts() end, 120)
-  c.check:SetPoint("TOPRIGHT", 0, -20)
+-- The rows of your auctions under Check undercuts, each with its parts.
+local function ownedRows(c)
   c.owned, c.offset = {}, 0
   for i = 1, AH.OWNED_ROWS do
     c.owned[i] = AH.Row(c, i, AH.OWNED_ROWS_Y)
     ownedParts(c.owned[i])
   end
+end
+
+-- The Your auctions card on a column (h tall): Check undercuts, the rows and Cancel next undercut;
+-- the wheel scrolls the rows.
+function AH.BuildOwned(column, h)
+  local c = AH.Card(column, "Your auctions", -AH.PAD, h)
+  AH.ownedCard = c
+  c.check = W.Button(c, "Check undercuts", function() AH.CheckUndercuts() end, 120)
+  c.check:SetPoint("TOPRIGHT", 0, -20)
+  ownedRows(c)
   nextRow(c)
   c:EnableMouseWheel(true)
   c:SetScript("OnMouseWheel", scrollOwned)

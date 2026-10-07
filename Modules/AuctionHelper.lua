@@ -1,5 +1,5 @@
--- Auction helper: a Vanguard panel docked to the left of the game's auction
--- house window.
+-- Auction helper: two Vanguard tabs on the game's auction house window,
+-- Shopping and Selling, after its own Buy, Sell and Auctions.
 --   * Shop: named shopping lists (items by ID or by name); "Search list" runs
 --     the list's searches one after another (one in flight, at most 60 a
 --     minute) and each row shows the item's cheapest price per unit and how
@@ -21,18 +21,23 @@
 --     (Modules/AuctionPrices.lua), which item tooltips then show everywhere.
 --
 -- The module is one table over five files, loaded in this order: this one
--- holds the panel and its build order, the search queue and its throttle,
+-- holds the tabs, their pages and the cards' build order, the search queue and its throttle,
 -- event routing, the scan, the slash commands and Enable;
 -- Modules/AuctionShop.lua the Shop card, Modules/AuctionSell.lua the Sell
 -- card and Modules/AuctionOwned.lua your auctions. Modules/AuctionLedger.lua
 -- adds the sales ledger and the sell card's Your history,
 -- Modules/AuctionRestock.lua the Restock buy list on the Shop card, and
--- Modules/AuctionDeals.lua the Deals card, docked right of the window.
+-- Modules/AuctionDeals.lua the Deals card, beside the Shop card.
 --
 -- The game's auction house is the modern one (C_AuctionHouse) on WoW Forever.
--- Nothing here touches the game's auction frames: the panel only anchors to
--- the window, and the only hook is a post-hook on its SetPostItem that reads
--- the item it was given. Posting and cancelling run only inside a button's
+-- The helper's two tabs join the window's own tab row (its Tabs list and its
+-- display-mode lookup, as the game's OnLoad fills them), each with a display
+-- mode of its own that names none of the game's frames, so picking one hides
+-- them all while the tab's page shows; a listing opened to buy switches the
+-- window to its Buy tab. Nothing else of the game's is touched: the other
+-- hooks are post-hooks (SetDisplayMode and UpdateTitle, to show a page and
+-- name the title; SetPostItem, to read the item the game's sell frame was
+-- given). Posting and cancelling run only inside a button's
 -- click, and a post the game wants confirmed is left to the game. Every price and
 -- quantity goes through ns.PlainNumber before any arithmetic, and events are
 -- ignored in combat (the house closes then).
@@ -43,10 +48,13 @@ local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 
 local AH = ns.Module("AuctionHelper", { defaults = { panel = true, tooltip = true, undercut = "silver", scanButton = true } })
 
--- Seconds between scans, listings read per frame of a scan; the panel's width, padding and gap
--- to the window; the scan card's height (it starts under the sell card, AH.ScanY).
+-- Seconds between scans, listings read per frame of a scan; a side column's width (the Deals
+-- column's, the Sell card's) and the cards' padding; the scan card's height.
 AH.SCAN_GAP, AH.SCAN_ROWS = 900, 400
-AH.WIDTH, AH.PAD, AH.GAP, AH.SCAN_H = 280, 8, 4, 168
+AH.WIDTH, AH.PAD, AH.SCAN_H = 280, 8, 64
+-- A page's insets on the window: from its sides, under its title, above its money line; and the
+-- room Cancel next undercut and its line keep under your auctions' rows.
+AH.PAGE_X, AH.PAGE_TOP, AH.PAGE_BOTTOM, AH.NEXT_H = 4, 30, 30, 30
 -- Searches: seconds between two (at most 60 a minute), and how long one waits for its results.
 AH.SEND_GAP, AH.FALLBACK = 1, 2
 -- A result row's height (the shop's rows and your auctions'), and the icon of an item the client doesn't know.
@@ -67,8 +75,8 @@ local function divider(c)
   c.rule:SetHeight(T.Pixel(c))
 end
 
--- A card on the panel: a heading, from y (down from the panel's top), h units tall, with a
--- divider line above it.
+-- A card on a column: a heading, from y (down from the column's top), h units tall, with a
+-- divider line above it unless it is the first on its column (y of -AH.PAD).
 function AH.Card(f, title, y, h)
   local c = CreateFrame("Frame", nil, f)
   c:SetPoint("TOPLEFT", f, "TOPLEFT", AH.PAD, y)
@@ -77,7 +85,7 @@ function AH.Card(f, title, y, h)
   c.title = T.Text(c:CreateFontString(nil, "OVERLAY"), "heading")
   c.title:SetPoint("TOPLEFT")
   c.title:SetText(title)
-  divider(c)
+  if y < -AH.PAD then divider(c) end
   return c
 end
 
@@ -177,51 +185,144 @@ end
 
 -- The panel ----------------------------------------------------------------------------------
 
--- Where the scan card starts (down from the panel's top): under the sell card, however tall it is.
-function AH.ScanY()
-  return AH.SELL_Y - AH.SELL_H - AH.PAD
+-- Layout ---------------------------------------------------------------------------------------
+
+-- The rows a card has room for in h units (AH.ROW_H each; one at least).
+local function fitRows(h)
+  return math.max(1, math.floor(h / AH.ROW_H))
 end
 
--- The panel's size: AH.WIDTH wide, as tall as the auction house window, or as its cards when they
--- need more (it then reaches below the window), and kept on the screen.
-local function size(f)
-  f:SetWidth(AH.WIDTH)
-  f:SetHeight(math.max(AuctionHouseFrame:GetHeight(), AH.SCAN_H - AH.ScanY() + AH.PAD))
-  f:SetClampedToScreen(true)
+-- How many rows each card gets, from a card's height and the Deals card's: set before the cards
+-- are built, so the lists grow to the room their page has.
+local function countRows(cardH, dealsH)
+  AH.SHOP_ROWS = fitRows(cardH + AH.SHOP_ROWS_Y)
+  AH.VIEW_ROWS = fitRows(cardH - 20 + AH.VIEW_ROWS_Y)
+  AH.LIST_ROWS = fitRows(cardH + AH.LIST_Y - 14)
+  AH.DEAL_ROWS = fitRows(dealsH + AH.DEAL_ROWS_Y)
+  AH.OWNED_ROWS = fitRows(cardH + AH.OWNED_ROWS_Y - AH.NEXT_H)
+  AH.NEXT_Y = AH.OWNED_ROWS_Y - AH.OWNED_ROWS * AH.ROW_H - 8
 end
 
--- The scan card: the scan button and when the last scan was, Check undercuts and your auctions.
-local function buildScan(f)
-  local c = AH.Card(f, "Scan and your auctions", AH.ScanY(), AH.SCAN_H)
+-- A page on the window: a child frame over its content area (under the title, above the money
+-- line), hidden until its tab is picked.
+local function page(name)
+  local f = CreateFrame("Frame", name, AuctionHouseFrame)
+  f:SetPoint("TOPLEFT", AuctionHouseFrame, "TOPLEFT", AH.PAGE_X, -AH.PAGE_TOP)
+  f:SetPoint("BOTTOMRIGHT", AuctionHouseFrame, "BOTTOMRIGHT", -AH.PAGE_X, AH.PAGE_BOTTOM)
+  f:Hide()
+  return f
+end
+
+-- A column of a page, at its left or right edge (side), width wide and as tall as the page.
+function AH.Column(f, side, width)
+  local c = CreateFrame("Frame", nil, f)
+  c:SetWidth(width)
+  c:SetPoint("TOP" .. side)
+  c:SetPoint("BOTTOM" .. side)
+  return c
+end
+
+-- The scan card under the Deals card: the scan button and when the last scan was.
+local function buildScan(column, y)
+  local c = AH.Card(column, "Scan", y, AH.SCAN_H)
   c.scan = W.Button(c, "Scan the auction house", function() AH.StartScan() end, 150)
   c.scan:SetPoint("TOPLEFT", 0, -20)
   c.last = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
   c.last:SetPoint("TOPLEFT", 0, -50)
   AH.scanCard = c
-  AH.BuildOwned(c)
 end
 
--- The panel beside the auction house window (from its top, at least as tall as it), built the
--- first time the window shows.
-function AH.Build()
-  local f = T.Panel(CreateFrame("Frame", "Vanguard_AuctionPanel", UIParent), { shadow = true })
-  size(f)
-  f:SetPoint("TOPRIGHT", AuctionHouseFrame, "TOPLEFT", -AH.GAP, 0)
-  f:EnableMouse(true)
-  AH.frame = f
-  AH.BuildShop(f)
-  AH.BuildSell(f)
-  buildScan(f)
-  AH.BuildDeals(f)
+-- The Shopping page (h tall, w wide): the Shop card, with Deals and the scan in a column on its right.
+local function buildShopping(h, w)
+  local f = page("Vanguard_AuctionShopping")
+  local cardH, dealsH = h - 2 * AH.PAD, h - 3 * AH.PAD - AH.SCAN_H
+  AH.BuildShop(AH.Column(f, "LEFT", w - AH.WIDTH), cardH)
+  local side = AH.Column(f, "RIGHT", AH.WIDTH)
+  AH.BuildDeals(side, dealsH)
+  buildScan(side, -(2 * AH.PAD + dealsH))
   return f
 end
 
--- The auction house opened: the panel shows (built the first time), unless switched off.
+-- The Selling page (h tall, w wide): the Sell card in a column on the left, your auctions on the right.
+local function buildSelling(h, w)
+  local f = page("Vanguard_AuctionSelling")
+  AH.BuildSell(AH.Column(f, "LEFT", AH.WIDTH), h - 2 * AH.PAD)
+  AH.BuildOwned(AH.Column(f, "RIGHT", w - AH.WIDTH), h - 2 * AH.PAD)
+  return f
+end
+
+-- Tabs -----------------------------------------------------------------------------------------
+
+-- A tab after the window's last, named for its page: its display mode is a table of its own that
+-- names none of the game's frames, so picking it hides them all, and the page shows meanwhile.
+local function addTab(name, f)
+  local w = AuctionHouseFrame
+  local tab = CreateFrame("Button", nil, w, "AuctionHouseFrameDisplayModeTabTemplate")
+  tab:SetText(name)
+  tab:SetPoint("LEFT", w.Tabs[#w.Tabs], "RIGHT", -15, 0)
+  tab.displayMode = {}
+  table.insert(w.Tabs, tab)
+  w.tabsForDisplayMode[tab.displayMode] = #w.Tabs
+  f.vgMode, f.vgTitle = tab.displayMode, name
+  return tab
+end
+
+-- The window's display mode changed: each page shows while the mode is its own.
+local function onDisplayMode(_, mode)
+  for _, f in ipairs(AH.pages) do f:SetShown(mode == f.vgMode) end
+end
+
+-- The window named its title for the tab picked: a page's name while one of ours is.
+local function onTitle(w)
+  for _, f in ipairs(AH.pages) do
+    if w.displayMode == f.vgMode then w:SetTitle(f.vgTitle) end
+  end
+end
+
+-- Whether the window has the tab row the Forever client gives it: its Tabs, the lookup from a
+-- display mode to a tab, and the game's tab count call.
+local function hasTabs(w)
+  return type(w) == "table" and type(w.Tabs) == "table" and #w.Tabs > 0
+    and type(w.tabsForDisplayMode) == "table" and type(PanelTemplates_SetNumTabs) == "function"
+end
+
+-- The two tabs on the window, the hooks that show their pages and name the title, and the tabs
+-- in the Vanguard look when the Windows module dresses the window's.
+local function addTabs(shopping, selling)
+  local w = AuctionHouseFrame
+  AH.tabs = { addTab("Shopping", shopping), addTab("Selling", selling) }
+  PanelTemplates_SetNumTabs(w, #w.Tabs)
+  hooksecurefunc(w, "SetDisplayMode", onDisplayMode)
+  hooksecurefunc(w, "UpdateTitle", onTitle)
+  local GW = ns.GetModule("Windows")
+  if GW and GW.DressTabsOf then GW.DressTabsOf("AuctionHouseFrame") end
+end
+
+-- The game's own Buy page, so an item just searched shows in its list; our tab brings you back.
+function AH.ShowInGame()
+  local w, modes = AuctionHouseFrame, AuctionHouseFrameDisplayMode
+  if type(modes) == "table" and type(w) == "table" and type(w.SetDisplayMode) == "function" then w:SetDisplayMode(modes.Buy) end
+end
+
+-- The helper's tabs and pages, built the first time the window shows: Shopping (the Shop card,
+-- Deals and the scan) and Selling (the Sell card and your auctions), sized to the window's content
+-- area. Without the tab row (another client's window) nothing is built.
+function AH.Build()
+  if not hasTabs(AuctionHouseFrame) then return false end
+  local h, w = AuctionHouseFrame:GetHeight() - AH.PAGE_TOP - AH.PAGE_BOTTOM, AuctionHouseFrame:GetWidth() - 2 * AH.PAGE_X
+  countRows(h - 2 * AH.PAD, h - 3 * AH.PAD - AH.SCAN_H)
+  local shopping, selling = buildShopping(h, w), buildSelling(h, w)
+  AH.pages = { shopping, selling }
+  addTabs(shopping, selling)
+  return true
+end
+
+-- The auction house opened: the tabs go on the window the first time (unless switched off, or
+-- the window has no tab row), and the cards are painted.
 function AH.OnShow()
   AH.open = true
   if not AH.settings.panel or type(AuctionHouseFrame) ~= "table" then return end
-  local f = AH.frame or AH.Build()
-  f:Show()
+  if not AH.pages and not AH.Build() then return end
   AH.PaintShop()
   AH.PaintSell()
   AH.PaintScan()
@@ -229,11 +330,10 @@ function AH.OnShow()
   AH.PaintDeals()
 end
 
--- The auction house closed: the panel hides, and searches waiting and a scan in progress stop.
+-- The auction house closed: searches waiting and a scan in progress stop (the pages go with the window).
 function AH.OnClosed()
   AH.open, AH.scan, AH.pending, AH.queue, AH.progress, AH.sell = false, nil, nil, {}, nil, nil
   AH.walker:Hide()
-  if AH.frame then AH.frame:Hide() end
 end
 
 -- Scan ---------------------------------------------------------------------------------------

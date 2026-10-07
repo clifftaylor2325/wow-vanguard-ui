@@ -368,6 +368,12 @@ local function wanted(name)
   return GW.settings and GW.settings.tabs and (not entry or GW.settings[entry.group]) or false
 end
 
+-- Dresses the tabs of the window of that name again, when they are Vanguard's to dress: for a
+-- Vanguard part that adds tabs to a window after it was dressed (the auction helper's).
+function GW.DressTabsOf(name)
+  if wanted(name) and type(_G[name]) == "table" then GW.DressTabs(_G[name]) end
+end
+
 -- Dresses the window of that name, if the client has it and its tabs are wanted.
 local function dressNamed(name)
   if wanted(name) then dress(_G[name]) end
