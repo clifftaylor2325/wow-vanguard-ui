@@ -10,12 +10,21 @@ import { luaSummaryReporter } from "./scripts/lib/lua-summary-reporter.mjs";
 // npm test runs both; npm run coverage runs both with line coverage on,
 // which CI does after a merge (.github/workflows/full-suite.yml).
 // Vitest's own reporters stay; the extra one ends a run with the Lua
-// harness's per-area summary (scripts/lib/lua-summary-reporter.mjs).
+// harness's per-area summary (scripts/lib/lua-summary-reporter.mjs). On GitHub
+// Actions, failures also become annotations on the run, and a JUnit file
+// goes beside the coverage report.
+const ciReporters = process.env.GITHUB_ACTIONS ? ["github-actions", ["junit", { outputFile: "coverage/junit.xml" }]] : [];
+
 export default defineConfig({
   test: {
     environment: "node",
     setupFiles: ["scripts/tests/setup.mjs"],
-    reporters: [...configDefaults.reporters, luaSummaryReporter()],
+    reporters: [...configDefaults.reporters, ...ciReporters, luaSummaryReporter()],
+    // Each worker (a forked process) gets this much heap. The suite needs far
+    // less; a runaway that allocates then dies in a minute or two instead of
+    // after 23 of garbage collection (the harness's instruction budget catches
+    // a runaway that only loops; this catches one that grows).
+    execArgv: ["--max-old-space-size=2048"],
     // One worker per core. Vitest's default keeps a core free for its main
     // process, which has nothing to do while the workers run the Lua harness;
     // on a two-core CI runner that default ran the files one at a time.
