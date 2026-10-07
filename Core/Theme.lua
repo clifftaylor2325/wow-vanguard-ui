@@ -504,10 +504,12 @@ local function borderColor(entry)
   return c[1], c[2], c[3], c[4]
 end
 
--- Colors a painted background: panel, inset or raised color, at opts.alpha if given.
+-- Colors a painted background: panel, inset or raised color (or the opts.fill
+-- token), at opts.alpha if given.
 local function paintBg(bg, opts)
   local r, g, b, a = T.PanelColor(opts.inset)
   if opts.raised then r, g, b, a = T.RGB("raised") end
+  if opts.fill then r, g, b, a = T.RGB(opts.fill) end
   bg:SetVertexColor(r, g, b, opts.alpha or a)
 end
 
@@ -653,7 +655,7 @@ local function placeBevel(t, frame, side)
 end
 
 -- Paints a slot's accent edge (for its state; a quiet slot's only while it
--- has one) and its bevel, at the frame's pixel size.
+-- has one) and its bevel (none in a well), at the frame's pixel size.
 local function paintSlot(entry, frame)
   local p = entry.parts
   placeInner(p.inner, frame)
@@ -661,8 +663,20 @@ local function paintSlot(entry, frame)
   colorEdges(p.inner, r, g, b, (entry.opts.quiet and not entry.opts.state) and 0 or 1)
   placeBevel(p.lit, frame, "TOP")
   placeBevel(p.dim, frame, "BOTTOM")
-  T.Tint(p.lit, "sheen")
-  T.Tint(p.dim, "shade")
+  T.Tint(p.lit, "sheen", entry.opts.well and 0 or nil)
+  T.Tint(p.dim, "shade", entry.opts.well and 0 or nil)
+end
+
+-- A well's fill and border (T.Slot with opts.well): darker than the slate, ringed in a lighter line.
+T.SLOT_WELL = { fill = "void", border = "darkBar" }
+
+-- A slot's painting options from T.Slot's opts (quiet, well).
+local function slotOpts(opts)
+  local well = opts ~= nil and opts.well == true
+  return {
+    raised = not well, fill = well and T.SLOT_WELL.fill or nil, border = well and { T.RGB(T.SLOT_WELL.border) } or nil, well = well,
+    noSheen = true, shadow = T.SLOT_SHADOW, quiet = opts ~= nil and opts.quiet == true,
+  }
 end
 
 -- A slot tile for a button (the bag and menu bar): a raised slate fill, a
@@ -670,10 +684,12 @@ end
 -- the top and a dark one along the bottom inside that (a bevel), and a small
 -- soft shadow. The accent edge follows the accent and T.SlotState; with
 -- opts.quiet it stays hidden until the slot has a state (the mouse over it, or held).
+-- With opts.well it is a dark well instead (T.SLOT_WELL, no bevel), for art
+-- that isn't a full square icon to stand out on.
 function T.Slot(frame, opts)
   local entry = painted[frame]
   if not entry then
-    entry = base(frame, "slot", { raised = true, noSheen = true, shadow = T.SLOT_SHADOW, quiet = opts ~= nil and opts.quiet == true })
+    entry = base(frame, "slot", slotOpts(opts))
     entry.parts.inner, entry.parts.lit, entry.parts.dim = edges(frame), solid(frame, "BORDER", 1), solid(frame, "BORDER", 1)
     entry.paint = paintSlot
   end
