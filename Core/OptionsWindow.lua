@@ -259,10 +259,12 @@ end
 
 -- Scrolling ----------------------------------------------------------------------------------
 
--- Sizes and places the scroll thumb for a page (hidden when it all fits).
+-- Sizes and places the scroll thumb for a page (hidden when it all fits), and notes the page for a drag.
 local function updateThumb(view)
   local vh, ch = view:GetHeight(), view.child:GetHeight()
   window.thumb:SetShown(vh > 0 and ch > vh + 1)
+  window.grip:SetShown(window.thumb:IsShown())
+  window.thumbView = view
   if not window.thumb:IsShown() then return end
   local h = math.max(24, vh * vh / ch)
   window.thumb:SetHeight(h)
@@ -287,6 +289,37 @@ local function scrollTo(view, y)
   view:SetVerticalScroll(math.max(0, math.min(maxScroll(view), y)))
   updateThumb(view)
   updateEdges(view)
+end
+
+-- Where a thumb drag started: the cursor's height (window units) and the page's scroll then.
+local drag
+
+-- The cursor's height in the window's units.
+local function cursorY()
+  local _, y = GetCursorPosition()
+  return y / window:GetEffectiveScale()
+end
+
+-- While the thumb is dragged: scrolls its page as far as the cursor moved, scaled from the
+-- thumb's travel to the page's.
+local function onDrag()
+  local view = window.thumbView
+  local travel = view and view:GetHeight() - window.thumb:GetHeight() or 0
+  if not drag or travel <= 0 then return end
+  scrollTo(view, drag.scroll + (drag.y - cursorY()) / travel * maxScroll(view))
+end
+
+-- Starts a thumb drag with the left button: the page follows the cursor until the button is let go.
+local function startDrag(_, button)
+  if button ~= "LeftButton" or not window.thumbView then return end
+  drag = { y = cursorY(), scroll = window.thumbView:GetVerticalScroll() or 0 }
+  window.grip:SetScript("OnUpdate", onDrag)
+end
+
+-- Ends a thumb drag.
+local function stopDrag()
+  drag = nil
+  window.grip:SetScript("OnUpdate", nil)
 end
 
 -- Scrolls a page 40 units per wheel notch.
@@ -577,12 +610,32 @@ local function makeMovable(f)
   f.header:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
 end
 
--- The scroll thumb: a thin bar right of the pages.
+-- How wide the thumb's grip is (units): wider than the thin bar, so it is easy to catch.
+local GRIP_W = 12
+
+-- The thumb's grip: an invisible frame over the bar that takes the mouse; the bar brightens under it,
+-- and dragging it scrolls the page.
+local function addGrip(f)
+  f.grip = CreateFrame("Frame", nil, f)
+  f.grip:SetPoint("TOP", f.thumb, "TOP")
+  f.grip:SetPoint("BOTTOM", f.thumb, "BOTTOM")
+  f.grip:SetWidth(GRIP_W)
+  f.grip:SetFrameLevel(f:GetFrameLevel() + 20)
+  f.grip:EnableMouse(true)
+  f.grip:SetScript("OnEnter", function() f.thumb:SetAlpha(1) end)
+  f.grip:SetScript("OnLeave", function() if not drag then f.thumb:SetAlpha(0.5) end end)
+  f.grip:SetScript("OnMouseDown", startDrag)
+  f.grip:SetScript("OnMouseUp", function() stopDrag() f.thumb:SetAlpha(f.grip:IsMouseOver() and 1 or 0.5) end)
+end
+
+-- The scroll thumb: a thin bar right of the pages, with its grip.
 local function addThumb(f)
   f.thumb = W.Flat(f, "OVERLAY", "text2")
   f.thumb:SetWidth(3)
   f.thumb:SetAlpha(0.5)
   f.thumb:Hide()
+  addGrip(f)
+  f.grip:Hide()
 end
 
 -- The window frame: centered, above other windows, closes with Escape.

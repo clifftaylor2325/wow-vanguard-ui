@@ -65,6 +65,9 @@ GW.SLOTS = { "Head", "Neck", "Shoulder", "Back", "Chest", "Wrist", "Hands", "Wai
 GW.MENU_PLATE = { "LeftBG", "RightBG", "CenterBG" }
 -- A window's art pieces that are faded out, where it has them.
 GW.ART = { "NineSlice", "Bg", "TopTileStreaks", "PortraitContainer", "Border", "Inset" }
+-- Art that is a window's content, not its frame, by window: faded with the rest, then shown again.
+-- The flight map draws its map on a texture of its own (SetTaxiMap: the TaxiMap texture, InsetBg on newer builds).
+GW.CONTENT_ART = { TaxiFrame = { "TaxiMap", "InsetBg" } }
 -- How far a window's panel reaches out past the window (units): the game's thick border art sat in
 -- that room, and without it a one-pixel border hugs the contents.
 GW.PAD = 6
@@ -94,10 +97,10 @@ end
 -- Where a window keeps its maximize and minimize buttons (MaximizeMinimizeButtonFrameTemplate), as parentKeys.
 GW.MAX_MIN = { "MaximizeMinimizeFrame", "MaximizeMinimizeButton" }
 
--- The button at key in a maximize/minimize box as a window control with the icon, when the box has that button.
+-- The button at key in a maximize/minimize box as a window control with the icon and the accent gem, when the box has that button.
 local function maxMinButton(box, key, icon)
   local button = type(box) == "table" and box[key]
-  if type(button) == "table" and button.CreateTexture then T.WindowControl(button, icon) end
+  if type(button) == "table" and button.CreateTexture then T.WindowControl(button, icon, { ring = "ControlGem" }) end
 end
 
 -- A window's maximize and minimize buttons as window controls with the theme's glyphs (their art faded).
@@ -108,10 +111,37 @@ function GW.DressMaxMin(frame)
   end
 end
 
+-- How far a padded window's close button sits in from its top-right corner, its middle on both
+-- axes the same (units), and the step left from it to the maximize/minimize box.
+GW.CONTROL_INSET, GW.CONTROL_STEP = 8, 22
+
+-- Whether the game set a part by its top-right corner on the window's (a corner close button);
+-- read once, before Vanguard moves it, and not decided while it has no anchor yet.
+local function atCorner(part, frame)
+  if part.vgCorner ~= nil then return part.vgCorner end
+  local point, rel, relPoint = part:GetPoint(1)
+  if point == nil then return false end
+  part.vgCorner = rel == frame and point == "TOPRIGHT" and relPoint == "TOPRIGHT"
+  return part.vgCorner
+end
+
+-- Puts a padded window's corner close button GW.CONTROL_INSET in from its top-right corner and its
+-- maximize/minimize box just left of it, so both sit evenly inside the panel (the game placed them for its wider art).
+function GW.PlaceControls(frame, close)
+  if T.Padding(frame) <= 0 or not atCorner(close, frame) then return end
+  close:ClearAllPoints()
+  close:SetPoint("CENTER", frame, "TOPRIGHT", -GW.CONTROL_INSET, -GW.CONTROL_INSET)
+  for _, key in ipairs(GW.MAX_MIN) do
+    local box = frame[key]
+    if type(box) == "table" and box.SetPoint then box:ClearAllPoints() box:SetPoint("CENTER", close, "CENTER", -GW.CONTROL_STEP, 0) end
+  end
+end
+
 -- The close, maximize and minimize buttons, title and push buttons in the theme.
 local function dressParts(frame, name)
   local close = frame.CloseButton or (name and _G[name .. "CloseButton"])
   if type(close) == "table" then T.CloseButton(close) end
+  if type(close) == "table" and close.GetPoint then GW.PlaceControls(frame, close) end
   GW.DressMaxMin(frame)
   local title = (type(frame.TitleContainer) == "table" and frame.TitleContainer.TitleText) or frame.TitleText
   if type(title) == "table" and title.SetFont then T.Text(title, "heading", false) end
@@ -121,10 +151,20 @@ local function dressParts(frame, name)
   end
 end
 
--- Skins one window: art faded, a flat panel with a soft shadow `pad` units (default GW.PAD) out past it, its parts themed.
+-- Shows again the art a window keeps as content (GW.CONTENT_ART), found by key on it or by global name.
+local function keepContent(frame, name)
+  for _, key in ipairs(GW.CONTENT_ART[name or ""] or {}) do
+    local art = frame[key] or _G[key]
+    if type(art) == "table" and art.SetAlpha then art:SetAlpha(1) end
+  end
+end
+
+-- Skins one window: art faded (its content art kept), a flat panel with a soft shadow `pad` units
+-- (default GW.PAD) out past it, its parts themed.
 function GW.Skin(frame, pad)
   local name = frame.GetName and frame:GetName()
   fadeArt(frame)
+  keepContent(frame, name)
   T.Panel(frame, { shadow = true, pad = pad or GW.PAD })
   dressParts(frame, name)
 end

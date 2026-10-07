@@ -53,8 +53,3 @@ changed file. **Not run:** the other 23 test files, the JS half of `npm run qual
 - "<Class> healing layout" fills the grid; unlearned spells show the name with no icon and bind once learned.
 - Try it tile: hover, press, read the line. Export → Import round-trips. Escape closes the picker with the window.
 - Known gap (by design, later): cell-to-cell drag to move a binding; `CC.Move` exists, no UI yet.
-
-## Cleanup on the owner's machine
-
-Scratch files from the remote test run, safe to delete: `C:\Users\enken\wow-forever\fui-p3-clickcast.tar.gz`,
-`C:\Users\enken\wow-forever\vitest-shim.mjs`, `C:\Users\enken\wow-forever\sync\`.

@@ -36,36 +36,40 @@ it("widgets", () => {
     local c = ns.Theme.CloseButton(CreateFrame("Button", nil, UIParent, "UIPanelCloseButton"))
     local glyph
     for _, w in ipairs(__wfgStub.frames) do
-      if w.__parent == c and w.__kind == "Texture" and w.__layer == "OVERLAY" then glyph = w.__texture end
+      if w.__parent == c and w.__kind == "Texture" and w.__layer == "OVERLAY" and (w.__texture or ""):find("CloseMark") then glyph = w.__texture end
     end
     return { painted = ns.Theme.PaintedCount() - before, glyph = glyph }`);
   expect(out.painted === 3, "button, edit box and close button are painted").toBeTruthy();
-  expect(/Media\\Icons\\Close$/.test(out.glyph || ""), "the close button draws the Close icon").toBeTruthy();
+  expect(/Media\\Icons\\CloseMark$/.test(out.glyph || ""), "the close button draws the seal's cross").toBeTruthy();
 });
 
 it("window controls: sized when the caller gave no size, quiet until the mouse is over them, then white on a tile (red behind close)", () => {
   const addon = loggedIn();
   const out = addon.eval(`
     local function parts(b)
-      local tile, glyph
+      local tile, glyph, ring
       for _, r in ipairs({ b:GetRegions() }) do
-        if r.__layer == "ARTWORK" and r.__texture == ns.Theme.WHITE then tile = r elseif r.__layer == "OVERLAY" then glyph = r end
+        local tex = r.__texture or ""
+        if r.__layer == "ARTWORK" then tile = r
+        elseif tex:find("CloseRing") or tex:find("ControlGem") then ring = r
+        elseif r.__layer == "OVERLAY" then glyph = r end
       end
-      return tile, glyph
+      return tile, glyph, ring
     end
     local c = ns.Theme.CloseButton(CreateFrame("Button", nil, UIParent))
     local m = CreateFrame("Button", nil, UIParent)
     m:SetSize(30, 30) ns.Theme.WindowControl(m, "Maximize")
-    local tile, glyph = parts(c)
-    local quiet = { c:GetWidth(), tile:IsShown(), glyph.__vertexColor }
+    local tile, glyph, ring = parts(c)
+    local quiet = { c:GetWidth(), tile:IsShown(), glyph.__vertexColor, ring.__vertexColor, tile.__texture }
     c.__scripts.OnEnter(c)
     local lit = { tile:IsShown(), tile.__vertexColor, glyph.__vertexColor }
-    c.__scripts.OnLeave(c)
+    c.__scripts.OnHide(c)
     local mTile, mGlyph = parts(m)
     m.__scripts.OnEnter(m)
     return { quiet = quiet, lit = lit, after = tile:IsShown(), m = { m:GetWidth(), mGlyph.__texture, mTile.__vertexColor } }`);
-  expect([out.quiet[0], out.quiet[1], isTok(addon, out.quiet[2], "text2")], "an unsized close button takes the 20-unit tile's size; quiet: no tile, the glyph in text2").toEqual([20, false, true]);
-  expect([out.lit[0], isTok(addon, out.lit[1], "bad"), isTok(addon, out.lit[2], "white"), out.after], "under the mouse: a red tile and a white glyph, gone again when it leaves").toEqual([true, true, true, false]);
+  expect([out.quiet[0], out.quiet[1], isTok(addon, out.quiet[2], "text2"), isTok(addon, out.quiet[3], "accent"), /Seal$/.test(out.quiet[4])],
+    "an unsized close button takes the 20-unit tile's size; quiet: no fill, the cross in text2 inside the accent seal").toEqual([20, false, true, true, true]);
+  expect([out.lit[0], isTok(addon, out.lit[1], "bad"), isTok(addon, out.lit[2], "white"), out.after], "under the mouse: the seal filled red, the cross white; hidden under the mouse (no OnLeave comes) it goes quiet again").toEqual([true, true, true, false]);
   expect([out.m[0], /Icons\\Maximize$/.test(out.m[1]), isTok(addon, out.m[2], "accent")], "a sized control keeps its size; a maximize control's glyph, on an accent tile").toEqual([30, true, true]);
 });
 
