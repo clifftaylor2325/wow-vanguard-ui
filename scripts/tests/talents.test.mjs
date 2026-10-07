@@ -213,3 +213,32 @@ it("talent planner: /vg talents, the summary and plan mode; a client without the
   expect(chatHas(off, /The Talent planner is off/), "/vg talents says it is off").toBe(true);
   expect(loggedIn(TRAITS_ENV).eval("return { #ns.errors, Vanguard_TalentPlan == nil }"), "no talents window yet: nothing built, no errors").toEqual([0, true]);
 });
+
+it("talent planner: a mark's tooltip, the import box, /vg talents spend, and the game's other ways in", () => {
+  // TEST-ONLY: a talent sharing 101's spot whose spell has no name, one in a group the tree doesn't list, and a spec lookup that throws.
+  const addon = open(`__nodes[105] = { g = 10, x = 0, y = 0, max = 1, rank = 0 } __nodes[301] = { g = 99, x = 0, y = 0, max = 1, rank = 0 }
+    C_SpecializationInfo.GetActiveSpecGroup = function() error("TEST-ONLY") end`);
+  // The tooltip's lines (a Lua list comes back as an object keyed 1, 2, ...).
+  const tip = () => Object.values(addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out") || {});
+  expect(addon.eval(`return { ${TP}.SpecGroup(), ${TP}.ReadTree().nodes[301] == nil, #ns.errors }`), "a lookup that throws reads as none (spec group 1), and a talent outside the tree's groups is left out").toEqual([1, true, 0]);
+  addon.eval(`${TP}.SetPlanning(true) __click(101)`);
+  addon.eval("local m = __mark(101) m.__scripts.OnEnter(m)");
+  expect([addon.eval("return { GameTooltip:IsShown(), GameTooltip.__spellId }"), tip().slice(-2)], "hovering a planned talent: its spell, then its plan and how to change it").toEqual([[true, 1010], ["Planned: 1 of 5 (0 bought)", "Left-click plans a point, right-click takes one back."]]);
+  addon.eval("local m = __mark(102) m.__scripts.OnEnter(m)");
+  expect(tip().slice(-2)[0], "a talent not in the plan says so").toBe("Not in your plan (0 of 2 bought)");
+  addon.eval("local m = __mark(102) m.__scripts.OnLeave(m)");
+  expect(addon.eval(`return { GameTooltip:IsShown(), ${TP}.hovered == nil }`), "leaving puts the tooltip away").toEqual([false, true]);
+  // A client with no class talents applies the bought points through the trait API's own commit.
+  addon.eval(`C_ClassTalents = nil C_Traits.CommitConfig = function(id) __traitCommit = id return true end
+    VanguardCharDB.talentPlans = { { ranks = { [101] = 1, [105] = 1 }, hash = "1-2-3" } } ${TP}.Refresh()`);
+  addon.slash("talents spend");
+  expect(addon.eval("return { __bought, __traitCommit }"), "/vg talents spend buys talents in the same spot by ID, and commits the config").toEqual([[101, 105], 501]);
+  expect(chatHas(addon, /talent 105/), "a talent whose spell has no name is called by its ID").toBe(true);
+  addon.slash("talents import");
+  expect(addon.eval("return { Vanguard_TextDialog:IsShown(), Vanguard_TextDialog.title:GetText() }"), "/vg talents import opens a box to paste into").toEqual([true, "Paste a talent plan, then Import"]);
+  addon.eval('Vanguard_TextEdit:SetText("garbage") Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)');
+  expect(chatHas(addon, /Import failed: not a Vanguard profile string./), "a bad paste says why").toBe(true);
+  const text = addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 2 }, hash = "1-2-3" } } ${TP}.ExportDialog() return Vanguard_TextEdit:GetText()`);
+  addon.eval(`${TP}.Clear() ${TP}.ImportDialog() Vanguard_TextEdit:SetText(${JSON.stringify(text)}) Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
+  expect([addon.eval("return Vanguard_TextDialog:IsShown()"), chatHas(addon, /Talent plan imported: 2 points./)], "a good paste imports the plan, closes the box and says how many points").toEqual([false, true]);
+});
