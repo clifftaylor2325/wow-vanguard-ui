@@ -30,10 +30,10 @@ local AH = ns.GetModule("AuctionHelper")
 AH.SHOP_ROWS = 6
 AH.LIST_COLUMNS = { { key = "price", title = "Unit price", width = 100, side = "RIGHT", role = "number", color = "gold" },
   { key = "qty", title = "Up", width = 60, side = "RIGHT", role = "small", color = "text2" },
-  { key = "max", title = "Max", width = 80, side = "RIGHT", role = "small", color = "text2" } }
+  { key = "max", title = "Max", width = 80, side = "RIGHT", role = "small", color = "text2" }, name = "Item" }
 -- The Lists pane: its rows (how many, from where), the height its action buttons take, their
 -- width (three to a row), and the actions in order.
-AH.PANE_ROWS, AH.PANE_ROWS_Y, AH.ACTIONS_H, AH.ACTION_W = 6, -20, 52, 72
+AH.PANE_ROWS, AH.PANE_ROWS_Y, AH.ACTIONS_H, AH.ACTION_W = 6, -20, 52, 66
 -- Shopping lists: how many, entries per list, the list "+ Add" starts, the New action's value.
 AH.MAX_LISTS, AH.MAX_ENTRIES, AH.DEFAULT_LIST, AH.NEW = 20, 50, "Shopping", "\1new"
 -- The other actions on the list in use (values no list name can have).
@@ -783,6 +783,7 @@ local function paneRow(p, i)
   r.name = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
   r.name:SetPoint("LEFT", 6, 0)
   r.name:SetPoint("RIGHT", -40, 0)
+  r.name:SetJustifyH("LEFT")
   r.name:SetWordWrap(false)
   r.count = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "text2")
   r.count:SetPoint("RIGHT", -4, 0)

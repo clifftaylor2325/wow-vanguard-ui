@@ -148,7 +148,7 @@ it("upgrades: a big scan is judged a hundred listings a frame, and closing the h
   addon.update(0);
   addon.eval("__now = __now + 1000");
   scan(addon, "__rows");
-  expect([card(addon)[1], row(addon, 1).slice(1, 5), row(addon, 21)[1]], "all 150 in, the cheapest first among equal gains, on the rows there are").toEqual([150, ["TEST-ONLY Bracers 1", "Wrist", "+10 %", "1s 1c"], "TEST-ONLY Bracers 21"]);
+  expect([card(addon)[1], row(addon, 1).slice(1, 5), row(addon, 20)[1]], "all 150 in, the cheapest first among equal gains, on the rows there are").toEqual([150, ["TEST-ONLY Bracers 1", "Wrist", "+10 %", "1s 1c"], "TEST-ONLY Bracers 20"]);
 });
 
 it("upgrades: the switch under Auction house, the Gear upgrades module off, and a client without listing links", () => {

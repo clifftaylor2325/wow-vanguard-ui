@@ -30,7 +30,7 @@ local AH = ns.GetModule("AuctionHelper")
 AH.UPGRADES = "\1upgrades"
 AH.UPGRADE_COLUMNS = { { key = "slot", title = "Slot", width = 80, side = "LEFT", role = "small", color = "text2" },
   { key = "gain", title = "Gain", width = 80, side = "RIGHT", role = "small", color = "good" },
-  { key = "price", title = "Unit price", width = 100, side = "RIGHT", role = "number", color = "gold" } }
+  { key = "price", title = "Unit price", width = 100, side = "RIGHT", role = "number", color = "gold" }, name = "Item" }
 -- How many of a scan's gear listings are judged a frame.
 AH.JUDGE_ROWS = 100
 -- The slots' names when the client has none (INVTYPE_HEAD and the rest are the game's own strings).

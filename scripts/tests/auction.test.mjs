@@ -251,13 +251,24 @@ it("two tabs join the window after the game's three; each shows its page over th
   const page = addon.frame("Vanguard_AuctionShopping");
   expect([page.visible, page.rect.left, page.rect.top, page.rect.width, page.rect.height, title(addon), addon.eval("return AuctionHouseFrame.selectedTab")], "Shopping: its page over the content area (under the title, above the money line), the title named, the tab selected").toEqual([true, window.rect.left + 4, window.rect.top - 30, 792, 478, "Shopping", 4]);
   const rows = addon.eval(`local AH = ${HELPER} return { AH.SHOP_ROWS, AH.VIEW_ROWS, AH.PANE_ROWS, AH.LIST_ROWS, AH.OWNED_ROWS }`);
-  expect(rows, "the rows fill the room: 21 list and view rows, 15 pane entries, 9 listings up now, 9 of your auctions").toEqual([21, 21, 15, 9, 9]);
+  expect(rows, "the rows fill the room their boxes leave: 20 list and view rows, 14 pane entries, 8 listings up now, 8 of your auctions").toEqual([20, 20, 14, 8, 8]);
   const fits = addon.eval(`local AH, out = ${HELPER}, {}
     for i, c in ipairs({ AH.pane, AH.scanCard, AH.shopCard, AH.sellCard, AH.ownedCard, AH.shopCard.body.table, AH.pane.actions[6], AH.upCard, AH.upCard.table, AH.ownedCard.table }) do out[i] = { c:GetLeft(), c:GetRight(), c:GetTop(), c:GetBottom() } end return out`);
   const [l, r, t, b] = [page.rect.left, page.rect.right, page.rect.top, page.rect.bottom];
   expect(fits.every(([cl, cr, ct, cb]) => cl >= l && cr <= r && ct <= t && cb >= b), "every card inside its page, the tables and the last action button too").toBe(true);
-  expect([fits[0][1] <= fits[2][0], fits[0][3] > fits[1][2], fits[3][1] <= fits[4][0], fits[3][1] <= fits[7][0], fits[7][3] > fits[4][2], fits[0][1] - fits[0][0], fits[3][1] - fits[3][0]], "the pane left of the list, the scan under the pane; Sell left of Up now and your auctions, Up now above your auctions; the pane 240 and the Sell card 300 wide less the padding").toEqual([true, true, true, true, true, 224, 284]);
-  expect(addon.eval(`local p = ${HELPER}.pane return { p.rows[1]:GetTop() - #p.rows * 20 > p.actions[1]:GetTop(), p.actions[6]:GetBottom() >= p:GetBottom() }`), "the pane's last row above its action buttons, the buttons inside the pane").toEqual([true, true]);
+  expect([fits[0][1] <= fits[2][0], fits[0][3] > fits[1][2], fits[3][1] <= fits[4][0], fits[3][1] <= fits[7][0], fits[7][3] > fits[4][2], fits[0][1] - fits[0][0], fits[3][1] - fits[3][0]], "the pane left of the list, the scan under the pane; Sell left of Up now and your auctions, Up now above your auctions; the pane 240 and the Sell card 300 wide less the padding and the boxes' insets").toEqual([true, true, true, true, true, 208, 268]);
+  const boxes = addon.eval(`local AH, out = ${HELPER}, {}
+    for i, c in ipairs({ AH.pane, AH.scanCard, AH.shopCard, AH.sellCard, AH.upCard, AH.ownedCard }) do
+      local b = c.box
+      out[i] = { c:GetLeft() - b:GetLeft(), b:GetTop() - c:GetTop(), b:GetRight() - c:GetRight(), c:GetBottom() - b:GetBottom(), select("#", b:GetRegions()) > 0, b:GetLeft(), b:GetRight(), b:GetTop(), b:GetBottom() }
+    end return out`);
+  expect(boxes.map((b) => b.slice(0, 5)), "every card in its own box (a painted panel), 8 in from its border all round").toEqual(Array(6).fill([8, 8, 8, 8, true]));
+  // Whether two boxes (as the rows above: left at 5, right 6, top 7, bottom 8) don't overlap.
+  const apart = (a, c) => a[6] <= c[5] || c[6] <= a[5] || a[8] >= c[7] || c[8] >= a[7];
+  expect([apart(boxes[0], boxes[1]), apart(boxes[0], boxes[2]), apart(boxes[3], boxes[4]), apart(boxes[4], boxes[5]), apart(boxes[3], boxes[5])], "no two boxes on a page overlap").toEqual([true, true, true, true, true]);
+  expect(addon.eval(`local AH = ${HELPER} return { AH.shopCard.body.table.nameHead:GetText(), AH.upCard.table.nameHead:GetText(), AH.ownedCard.table.nameHead:GetText(), AH.pane.rows[1].name.__justifyH, AH.shopCard.body.table.rows[1].name.__justifyH }`), "the name column headed where rows name an item; names kept to the left").toEqual(["Item", "", "Item", "LEFT", "LEFT"]);
+  expect(addon.eval(`local c = ${HELPER}.sellCard return { c.bid:GetTop() == c.stacks:GetTop(), c.bid:GetLeft() > c.stacks:GetRight(), c.bid:GetRight() <= c:GetRight(), c.undercut:GetRight() <= c:GetRight(), c.length:GetRight() <= c:GetRight() }`), "the bid beside the stacks (no empty row for a commodity), and the form inside its box").toEqual([true, true, true, true, true]);
+  expect(addon.eval(`local p = ${HELPER}.pane return { p.actions[3]:GetRight() <= p:GetRight(), p.rows[1]:GetTop() - #p.rows * 20 > p.actions[1]:GetTop(), p.actions[6]:GetBottom() >= p:GetBottom() }`), "the action buttons inside the pane's box, under its last row").toEqual([true, true, true]);
   expect(addon.eval(`local c = ${HELPER}.sellCard return { c.post:GetBottom() - 40 >= c:GetBottom(), c.length:GetBottom() > c.post:GetTop(), c.price:GetBottom() > c.length:GetTop(), c.bid:GetBottom() > c.price:GetTop(), c.stack:GetLeft() == c.qty:GetLeft() }`), "the sell form fits its card with room for the two lines under Post, one field a row, rows apart").toEqual([true, true, true, true, true]);
   expect(addon.eval(`local c = ${HELPER}.ownedCard return { c.cancelNext:GetRight() < c.check:GetLeft(), c.check:GetRight() == c:GetRight(), c.table.rows[1]:GetTop() < c.cancelNext:GetBottom(), (select(2, c.summary:GetPoint(1))) == c.title }`), "Check undercuts and Cancel next undercut on the heading line, the line beside the heading, the rows under them").toEqual([true, true, true, true]);
   pickTab(addon, 5);
@@ -510,9 +521,9 @@ it("shopping lists: the pane picks or makes one, + Add adds, and the caps hold",
   expect([shopRow(addon, 1)[1], paneRow(1)[2], heading(addon)], "picked back by a click on its row").toEqual(["Strange Dust", true, ["Shopping", ""]]);
   addon.eval(`for i = 3, 21 do ${HELPER}.NewList("TEST-ONLY " .. i) end for i = 1, 51 do ${HELPER}.AddEntry("x" .. i, "Shopping") end`);
   expect(addon.eval("local n = 0 for _ in pairs(VanguardDB.ah.lists) do n = n + 1 end return { n, #VanguardDB.ah.lists.Shopping }"), "20 lists, 50 entries").toEqual([20, 50]);
-  expect([paneRow(1)[0], paneRow(15)[0], addon.eval(`return ${HELPER}.pane.rows[16]`)], "fifteen entries fit the pane (the lists by name)").toEqual(["Shopping", "TEST-ONLY 5", null]);
+  expect([paneRow(1)[0], paneRow(14)[0], addon.eval(`return ${HELPER}.pane.rows[15]`)], "fourteen entries fit the pane (the lists by name)").toEqual(["Shopping", "TEST-ONLY 4", null]);
   addon.wheel(`${HELPER}.pane.rows[1]`, -9);
-  expect([paneRow(1)[0], paneRow(15)[0]], "the wheel scrolls the pane as far as its last entry (the 20 lists, Deals, Upgrades)").toEqual(["TEST-ONLY 16", "Upgrades"]);
+  expect([paneRow(1)[0], paneRow(14)[0]], "the wheel scrolls the pane as far as its last entry (the 20 lists, Deals, Upgrades)").toEqual(["TEST-ONLY 17", "Upgrades"]);
   addon.wheel(`${HELPER}.pane.rows[1]`, 9);
   expect(paneRow(1)[0], "and back").toBe("Shopping");
   expect([chatHas(addon, /at most 20 shopping lists/), chatHas(addon, /holds at most 50 items/)], "says why").toEqual([true, true]);

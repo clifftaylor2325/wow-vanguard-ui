@@ -49,11 +49,12 @@ local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 
 local AH = ns.Module("AuctionHelper", { defaults = { panel = true, tooltip = true, undercut = "silver", scanButton = true } })
 
--- Seconds between scans, listings read per frame of a scan; the Sell card's column's width and
--- the cards' padding; the scan card's height; the Lists pane's width, and the height of a
--- card's toolbar line (the heading with buttons on its right).
+-- Seconds between scans, listings read per frame of a scan; the Sell card's column's width, the
+-- room between the cards' boxes and the column's edges, and between a box's border and what it
+-- holds; the scan card's height; the Lists pane's width, and the height of a card's toolbar
+-- line (the heading with buttons on its right).
 AH.SCAN_GAP, AH.SCAN_ROWS = 900, 400
-AH.WIDTH, AH.PAD, AH.SCAN_H = 300, 8, 64
+AH.WIDTH, AH.PAD, AH.INSET, AH.SCAN_H = 300, 8, 8, 80
 AH.PANE_W, AH.TOOLBAR_H = 240, 24
 -- A page's insets on the window: from its sides, under its title, above its money line.
 AH.PAGE_X, AH.PAGE_TOP, AH.PAGE_BOTTOM = 4, 30, 30
@@ -69,26 +70,32 @@ local function on(event, fn)
   ns.On(event, function(...) if not ns.InCombat() then fn(...) end end)
 end
 
--- A one-pixel divider line just above a card.
-local function divider(c)
-  c.rule = W.Flat(c, "ARTWORK", "divider")
-  c.rule:SetPoint("BOTTOMLEFT", c, "TOPLEFT", 0, AH.PAD / 2)
-  c.rule:SetPoint("BOTTOMRIGHT", c, "TOPRIGHT", 0, AH.PAD / 2)
-  c.rule:SetHeight(T.Pixel(c))
+-- A card's box on a column: a raised panel with the theme's border (the options window's card
+-- look), from y (down from the column's top), h units tall, AH.PAD in from the column's sides.
+local function box(f, y, h)
+  local b = T.Panel(CreateFrame("Frame", nil, f), { raised = true })
+  b:SetPoint("TOPLEFT", f, "TOPLEFT", AH.PAD, y)
+  b:SetPoint("TOPRIGHT", f, "TOPRIGHT", -AH.PAD, y)
+  b:SetHeight(h)
+  return b
 end
 
--- A card on a column: a heading, from y (down from the column's top), h units tall, with a
--- divider line above it unless it is the first on its column (y of -AH.PAD).
+-- A card on a column, in its box (h tall from y): what it holds sits AH.INSET in from the box's
+-- border, its heading at the top left; the card (c.box its box) is what its parts hang on.
 function AH.Card(f, title, y, h)
-  local c = CreateFrame("Frame", nil, f)
-  c:SetPoint("TOPLEFT", f, "TOPLEFT", AH.PAD, y)
-  c:SetPoint("TOPRIGHT", f, "TOPRIGHT", -AH.PAD, y)
-  c:SetHeight(h)
+  local c = CreateFrame("Frame", nil, box(f, y, h))
+  c.box = c:GetParent()
+  c:SetPoint("TOPLEFT", AH.INSET, -AH.INSET)
+  c:SetPoint("BOTTOMRIGHT", -AH.INSET, AH.INSET)
   c.title = T.Text(c:CreateFontString(nil, "OVERLAY"), "heading")
   c.title:SetPoint("TOPLEFT")
   c.title:SetText(title)
-  if y < -AH.PAD then divider(c) end
   return c
+end
+
+-- The inner size of a card's box h tall: what its parts have room for.
+function AH.Inner(h)
+  return h - 2 * AH.INSET
 end
 
 -- A string of a row in a text role and color, at the row's right edge less x.
@@ -202,11 +209,12 @@ end
 -- How many rows each card gets, from a card's height and the Lists pane's: set before the cards
 -- are built, so the lists grow to the room their page has.
 local function countRows(cardH, paneH)
-  AH.SHOP_ROWS = AH.TableRows(cardH - AH.TOOLBAR_H)
+  local upH = upHeight(cardH)
+  AH.SHOP_ROWS = AH.TableRows(AH.Inner(cardH) - AH.TOOLBAR_H)
   AH.VIEW_ROWS = AH.SHOP_ROWS
-  AH.PANE_ROWS = fitRows(paneH + AH.PANE_ROWS_Y - AH.ACTIONS_H)
-  AH.LIST_ROWS = AH.TableRows(upHeight(cardH) - AH.TOOLBAR_H)
-  AH.OWNED_ROWS = AH.TableRows(cardH - upHeight(cardH) - AH.PAD - AH.TOOLBAR_H)
+  AH.PANE_ROWS = fitRows(AH.Inner(paneH) + AH.PANE_ROWS_Y - AH.ACTIONS_H)
+  AH.LIST_ROWS = AH.TableRows(AH.Inner(upH) - AH.TOOLBAR_H)
+  AH.OWNED_ROWS = AH.TableRows(AH.Inner(cardH - upH - AH.PAD) - AH.TOOLBAR_H)
 end
 
 -- A page on the window: a child frame over its content area (under the title, above the money
