@@ -245,7 +245,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 11.1 AFK card
 
 - Do: standing still out of combat, type `/afk`. Move. Type `/afk` again, then click or press a key.
-- Expect: the screen dims to a card with your name in your class colour, level and class, the zone, time away, the clock and an XP bar; moving removes it; a click or key removes it until you are next away; it never shows in combat.
+- Expect: the screen dims to a card with your name in your class colour, level and class, the zone, time away, the clock and an XP bar, and under the card your faction's passage (Varian's letter in Cinzel for Alliance, the Blood Oath in Metamorphous for Horde) in the crest colour; moving removes it; a click or key removes it until you are next away; it never shows in combat.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ## 12. Game menu
@@ -429,8 +429,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - If it fails, paste: a screenshot and `/vg errors`.
 ### 14.5 World map, group finder, Legacy and calendar
 
-- Do: press `M` for the world map, then use its minimise and maximise button, click a few zones, open the quest panel on its side and click a quest; hover the group finder eye by the minimap, then click it to open the group finder; open the Legacy window from its button on the menu bar; type `/calendar`, open a day with an event and the "Create event" dialog.
-- Expect: each window has Vanguard's flat dark panel, close button and buttons and no game border; the map itself stays fully visible with no dark box over it (also after minimising and maximising), the coordinate line still shows along its bottom, the nav bar's crumbs follow you into each zone, the calendar's days are dark tiles with event icons still showing, and the Legacy talent nodes and side tabs are untouched.
+- Do: hover the zone name on the minimap's top band, click it, then click it again; press `M` for the world map, then use its minimise and maximise button, click a few zones, open the quest panel on its side and click a quest; hover the group finder eye by the minimap, then click it to open the group finder; open the Legacy window from its button on the menu bar; type `/calendar`, open a day with an event and the "Create event" dialog.
+- Expect: the minimap's zone tooltip names the zone, its subzone and whose territory it is, the first click opens the world map and the second closes it; each window has Vanguard's flat dark panel, close button and buttons and no game border; the map itself stays fully visible with no dark box over it (also after minimising and maximising), the coordinate line still shows along its bottom, the nav bar's crumbs follow you into each zone, the calendar's days are dark tiles with event icons still showing, and the Legacy talent nodes and side tabs are untouched.
 - If it fails, paste: a screenshot of the window, which of these steps broke, and `/vg errors`.
 ### 14.6 Menus and tooltips
 
