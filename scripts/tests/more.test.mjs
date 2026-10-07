@@ -2622,3 +2622,25 @@ it("the AFK screen: clicks, keys and fights put it away; what the client can't s
   bare.eval("ns.GetModule('AfkScreen').Paint()");
   expect(bare.eval("local f = Vanguard_AfkScreen return { f.name:GetText(), f.who:GetText(), f.xp:IsShown() }"), "a client that can't say much gets a blank card, no errors").toEqual(["", "", false]);
 });
+
+it("the AFK screen's backdrop: your faction's passage under the card, in its heading font and crest color", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + CLICK_LUA + '__faction = "Alliance" UnitFactionGroup = function() return __faction end');
+  // The passage's shown state, font file, opening words, attribution, color and wrap width.
+  const passage = () => addon.eval(`local f = Vanguard_AfkScreen
+    return { f.passage:IsShown(), f.passage.__font[1]:match("[^\\\\]+$"), f.passage:GetText():sub(1, 14), f.by:GetText(), f.passage.__textColor, f.passage:GetWidth() }`);
+  addon.eval("__afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  const ally = passage();
+  expect(ally.slice(0, 4), "Alliance: Varian's letter, in Cinzel").toEqual([true, "Cinzel-SemiBold.ttf", "My son, a terr", "Varian Wrynn, to his son Anduin"]);
+  expect([isTok(addon, ally[4], "allianceCrest"), ally[5]], "in Alliance gold, wrapped under the card").toEqual([true, 640]);
+  expect(addon.eval("return Vanguard_AfkScreen.passage.__font[2] > ns.Theme.RoleSize('title')"), "a size over the title's").toBe(true);
+  addon.eval('__faction = "Horde"');
+  addon.fire("NEUTRAL_FACTION_SELECT_RESULT");
+  const horde = passage();
+  expect([horde[0], horde[1], horde[2], horde[3], isTok(addon, horde[4], "hordeCrest")], "Horde: the Blood Oath, in Metamorphous and Horde red").toEqual([true, "Metamorphous-Regular.ttf", "Lok'tar ogar! ", "The Blood Oath of the Horde", true]);
+  addon.slash("");
+  addon.eval('__click("Faction look: crest and heading font")');
+  expect(addon.eval("local f = Vanguard_AfkScreen return { f.passage:IsShown(), f.by:IsShown() }"), "the faction look off: no passage").toEqual([false, false]);
+  addon.eval('__click("Faction look: crest and heading font") __faction = "Neutral" ns.Theme.Refresh()');
+  expect(addon.eval("return Vanguard_AfkScreen.passage:IsShown()"), "a neutral character: none").toBe(false);
+});
