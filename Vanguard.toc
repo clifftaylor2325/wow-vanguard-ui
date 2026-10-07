@@ -104,12 +104,14 @@ Modules/WindowsTabs.lua
 Modules/WindowsPvP.lua
 Modules/AuctionPrices.lua
 Modules/AuctionHelper.lua
+Modules/AuctionTable.lua
 Modules/AuctionShop.lua
 Modules/AuctionRestock.lua
 Modules/AuctionCrafting.lua
 Modules/AuctionSell.lua
 Modules/AuctionOwned.lua
 Modules/AuctionDeals.lua
+Modules/AuctionUpgrades.lua
 Modules/AuctionAlerts.lua
 Modules/AuctionAPI.lua
 Modules/AuctionLedger.lua

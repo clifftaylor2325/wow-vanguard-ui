@@ -163,7 +163,7 @@ local function search(callerID, terms, exact)
   local name, list = callerID .. " search", entries(terms, exact)
   if not AH.open or #list == 0 or not putList(name, list) then return false end
   AP.Store().list = name
-  if AH.shopCard then AH.shopCard.offset = 0 end
+  AH.ShopTop()
   AH.SearchList()
   return true
 end

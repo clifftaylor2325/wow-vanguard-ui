@@ -206,6 +206,9 @@ reads "Shopping" or "Selling". The floating panel, the Deals frame and their siz
   the selling loop, which the Selling tab's right pane has room for.
 - **Deals as its own tab**: it is a list of items to buy; it reads as one more list in the Shopping
   pane, and a count beside it says when it is worth a look.
+- **Upgrades as a toggle on a Deals card** (considered 2026-10-07, when the Upgrades list was added):
+  rejected for the same reason as a Deals tab; with the pane in place both are entries in it, each
+  with its count, and the table shows whichever is picked.
 - **Keep the floating panel as an option**: two layouts to keep right is twice the testing; the tabs
   replace it. The `panel` setting stays as the switch for the tabs (its saved value carries over).
 
@@ -240,6 +243,12 @@ dropdown and its menu; one table widget (header, sortable columns, rows, wheel a
 by the list table, the listings view, Deals and your auctions, grown from the view's
 `AH.VIEW_COLUMNS` (`AuctionShop.lua:39`). Selling: the one-field-a-row form, the two right panes.
 Deals becomes a list in the pane. **[VERIFY IN GAME]** per tab before the next.
+*Done 2026-10-07, one PR for both tabs: `Modules/AuctionTable.lua` is the table; Shopping is the
+Lists pane (lists, Recent, Deals and the new Upgrades entry, the six list buttons, the scan under
+them) and the list picked as a table under a toolbar; Selling is the form at 300 px, Up now (with
+Your history) above Your auctions, each a table with its buttons on the heading line. The pane is
+240 px, not the sketch's lists-as-rows-with-counts-only: it holds the action buttons too, so the
+card's toolbar carries only + Add, Search list and Restock. Still [VERIFY IN GAME].*
 
 **Phase 3: polish.** Reopen on the Vanguard tab last used (a setting), a count on the Shopping tab
 while Deals has entries, Enter in + Add's dialog to add and search.
