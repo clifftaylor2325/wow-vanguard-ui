@@ -219,7 +219,7 @@ end
 -- without its static picture (the animations it plays while you are listed stay).
 function GW.SkinLFGParent(frame)
   T.Panel(frame, { shadow = true })
-  if type(_G.LFGParentFrameCloseButton) == "table" then T.CloseButton(_G.LFGParentFrameCloseButton) end
+  GW.DressClose(frame, _G.LFGParentFrameCloseButton)
   if type(_G.LFGParentFramePortrait) == "table" then GW.FadeParts(_G.LFGParentFramePortrait, { "texture" }) end
 end
 
@@ -337,7 +337,7 @@ end
 function GW.SkinCalendar(frame)
   T.FadeRegions(frame, namedSet(GW.CALENDAR_KEEP))
   T.Panel(frame, { shadow = true })
-  if type(_G.CalendarCloseButton) == "table" then T.CloseButton(_G.CalendarCloseButton) end
+  GW.DressClose(frame, _G.CalendarCloseButton)
   for _, name in ipairs(GW.CALENDAR_MONTH_BUTTONS) do GW.SkinGlyphButton(_G[name]) end
   for i = 1, GW.CALENDAR_DAYS do skinDay(_G["CalendarDayButton" .. i]) end
 end
@@ -363,7 +363,7 @@ function GW.SkinCalendarDialog(frame)
   local name = frame:GetName()
   skinKeepingPictures(frame)
   dressHeader(frame.Header)
-  if type(_G[GW.CALENDAR_CLOSE[name] or ""]) == "table" then T.CloseButton(_G[GW.CALENDAR_CLOSE[name]]) end
+  GW.DressClose(frame, _G[GW.CALENDAR_CLOSE[name] or ""])
   for _, edit in ipairs(GW.CALENDAR_EDITS[name] or {}) do
     if isFrame(_G[edit]) then T.EditBox(_G[edit]) end
   end

@@ -115,11 +115,12 @@ local function fadeKey(frame, key)
   fadeFrameArt(frame[key])
 end
 
--- A dialog's close control: the game's "Close" text button as a flat button, its X button as the close glyph.
-local function dressClose(button)
+-- A dialog's close control: the game's "Close" text button as a flat button, its X button as the
+-- close glyph in the window's corner (GW.DressClose).
+local function dressClose(frame, button)
   if type(button) ~= "table" or not button.CreateTexture then return end
   local text = type(button.GetText) == "function" and button:GetText() or ""
-  if text ~= "" then T.Button(button) else T.CloseButton(button) end
+  if text ~= "" then T.Button(button) else GW.DressClose(frame, button) end
 end
 
 -- Themes each part of frame named in keys that is a widget with the method `need` (T.Button, or T.EditBox for boxes).
@@ -133,7 +134,7 @@ end
 -- The parts a social dialog may have, each only if it has it: title, close control, push buttons, edit boxes.
 local function dressDialogParts(frame, name)
   if type(frame.Title) == "table" and frame.Title.SetFont then T.Text(frame.Title, "heading", false) end
-  dressClose(frame.CloseButton or (name and _G[name .. "CloseButton"]))
+  dressClose(frame, frame.CloseButton or (name and _G[name .. "CloseButton"]))
   dressKeys(frame, GW.SOCIAL_DIALOG_BUTTONS, "CreateTexture", T.Button)
   dressKeys(frame, GW.SOCIAL_DIALOG_BOXES, "SetText", T.EditBox)
   for _, suffix in ipairs(GW.SOCIAL_DIALOG_NAMED) do
@@ -323,7 +324,7 @@ function GW.SkinRolePopup(frame)
   T.FadeRegions(frame)
   fadeKey(frame, "Border")
   T.Panel(frame, { shadow = true })
-  dressClose(frame.CloseButton)
+  dressClose(frame, frame.CloseButton)
   dressKeys(frame, GW.POPUP_BUTTON_KEYS, "CreateTexture", T.Button)
   for _, suffix in ipairs(GW.POPUP_BUTTON_NAMES) do
     local button = name and _G[name .. suffix]

@@ -448,7 +448,7 @@ it("tabs and the window's padding: a tab set outside the window moves out to the
   expect(addon.eval("return ns.errors[1] == nil")).toBe(true);
 });
 
-it("window controls in a padded window: the corner close button and the max/min box sit evenly in its corner", () => {
+it("window controls: the corner close button and the max/min box sit the same in every window's corner", () => {
   const addon = loggedIn(WINDOWS_ENV + `
     __window("TestOnlyControls") TestOnlyControls:SetSize(300, 200) TestOnlyControls:SetPoint("CENTER")
     TestOnlyControls.CloseButton:SetSize(24, 24) TestOnlyControls.CloseButton:SetPoint("TOPRIGHT", TestOnlyControls, "TOPRIGHT", 1, 0)
@@ -456,14 +456,19 @@ it("window controls in a padded window: the corner close button and the max/min 
     box.MaximizeButton, box.MinimizeButton = CreateFrame("Button", nil, box), CreateFrame("Button", nil, box)
     TestOnlyControls.MaximizeMinimizeButton = box
     __window("TestOnlyOdd") TestOnlyOdd.CloseButton:SetPoint("BOTTOM", TestOnlyOdd, "BOTTOM", 0, 8)
-    ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyControls", "TestOnlyOdd" })`);
+    ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyControls", "TestOnlyOdd" })
+    __window("TestOnlyBare") TestOnlyBare.CloseButton:SetPoint("TOPRIGHT", TestOnlyBare, "TOPRIGHT", -3, -2)`);
   addon.eval("TestOnlyControls:Show() TestOnlyOdd:Show() TestOnlyControls:Hide() TestOnlyControls:Show()");
   const out = addon.eval(`local c, b = TestOnlyControls.CloseButton.__points.CENTER, TestOnlyControls.MaximizeMinimizeButton.__points.CENTER
-    local function gem(x) for _, r in ipairs({ x:GetRegions() }) do if (r.__texture or ""):find("ControlGem") then return true end end return false end
-    return { c.rel == TestOnlyControls, c.x, c.y, b.rel == TestOnlyControls.CloseButton, b.x, b.y, gem(TestOnlyControls.MaximizeMinimizeButton.MaximizeButton),
+    local function glyph(x) for _, r in ipairs({ x:GetRegions() }) do if r.__layer == "OVERLAY" then return (r.__texture or ""):match("(%a+)$") end end end
+    return { c.rel == TestOnlyControls, c.x, c.y, b.rel == TestOnlyControls.CloseButton, b.x, b.y, glyph(TestOnlyControls.MaximizeMinimizeButton.MaximizeButton),
       TestOnlyOdd.CloseButton.__points.BOTTOM ~= nil, ns.errors[1] == nil }`);
-  expect(out, "close 12 in from the corner both ways (18 from the panel's padded edge), the max/min box (with its gem) 28 to its left; a close button the game put elsewhere stays there")
-    .toEqual([true, -12, -12, true, -28, 0, true, true, true]);
+  expect(out, "close 12 in from the corner both ways (18 from the panel's padded edge), the max/min box (its plain glyph) 28 to its left; a close button the game put elsewhere stays there")
+    .toEqual([true, -12, -12, true, -28, 0, "Maximize", true, true]);
+  // A window painted without padding (the finder, the calendar): its close button 18 in from the frame's own corner.
+  addon.eval("ns.Theme.Panel(TestOnlyBare) ns.GetModule('Windows').DressClose(TestOnlyBare, TestOnlyBare.CloseButton)");
+  expect(addon.eval("local c = TestOnlyBare.CloseButton.__points.CENTER return { c.rel == TestOnlyBare, c.relPoint, c.x, c.y }"), "an unpadded window's close button: 18 in from its corner both ways")
+    .toEqual([true, "TOPRIGHT", -18, -18]);
 });
 
 it("flight map: its map art stays when the window's art is faded", () => {
