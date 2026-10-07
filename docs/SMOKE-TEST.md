@@ -523,6 +523,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: no bar, no badges; the window is the game's (with Vanguard's panel). `/vg talents` says the planner is off.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 14.9.1 Shopping and Selling tabs at the auction house
+
+- Do: talk to an auctioneer; click the Shopping tab, then Selling, then the game's Buy; on Shopping click a shopping list row's listing (or a deal); on Selling drop an item on the sell slot, then click the same item in a bag.
+- Expect: two tabs, Shopping and Selling, after the game's Buy, Sell and Auctions, in the same look as the game's; the window's title says Shopping or Selling while one is open; Shopping holds the Shop card with Deals and the scan button in a column on its right, Selling the Sell card with Your auctions on its right, every card inside the window, the lists about twenty rows tall; a listing or deal clicked switches to the game's Buy page with the item in its list, and Shopping brings back the view where it was; the sell slot takes the dropped item; a bag click shows the game's own Sell page (the item is on the Selling tab too).
+- If it fails, paste: a screenshot of each tab and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.
