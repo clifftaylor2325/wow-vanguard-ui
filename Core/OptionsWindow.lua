@@ -139,7 +139,8 @@ end
 local BUILDERS = {
   -- One builder per row kind; each returns the widget it made.
   -- Header rows are card titles (groupRows), not widgets.
-  text = function(c, r) return W.Text(c, r[2]) end,
+  -- A note wraps to the card's width (its row grows to fit; see rowHeight).
+  text = function(c, r, w) local fs = W.Text(c, r[2]) fs:SetWidth(w - PAD - 4) return fs end,
   check = function(c, r, w) return W.Check(c, r[2], r[3], r[4], w) end,
   button = function(c, r) return W.Button(c, r[2], r[3], 220) end,
   cycle = function(c, r, w) return W.Choice(c, r[2], r[3], r[4], r[5], w) end,
@@ -223,6 +224,12 @@ local function addCardTitle(card, title)
   return PAD + 18
 end
 
+-- A row's height: its kind's, except a note, which takes the height of its wrapped text (with a little air).
+local function rowHeight(w, kind)
+  if kind == "text" then return math.max(ROW_HEIGHT.text, w:GetStringHeight() + 6) end
+  return ROW_HEIGHT[kind] or 28
+end
+
 -- Builds a card's rows top to bottom from y; returns the y below them. Each
 -- row keeps its card, its caption and where it sits on the page (for search).
 local function placeRows(card, rows, y, cardY)
@@ -233,7 +240,7 @@ local function placeRows(card, rows, y, cardY)
     markChanges(w, row)
     w:SetPoint("TOPLEFT", card, "TOPLEFT", full and 4 or PAD + 2, -y)
     widgets[#widgets + 1] = w
-    y = y + (ROW_HEIGHT[row[1]] or 28)
+    y = y + rowHeight(w, row[1])
   end
   return y
 end

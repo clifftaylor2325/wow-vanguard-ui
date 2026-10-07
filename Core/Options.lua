@@ -691,7 +691,7 @@ end
 
 -- Gear upgrades: the role the weights are for, and where upgrades show.
 local function upgradeRows()
-  local roles = { { "auto", "your group role (damage when none)" }, { "damage", "damage" }, { "tank", "tank" }, { "healer", "healer" } }
+  local roles = { { "auto", "group role, else damage" }, { "damage", "damage" }, { "tank", "tank" }, { "healer", "healer" } }
   return {
     { "header", "Gear upgrades" },
     { "cycle", "Weigh stats for", roles, liveSetting("Upgrades", "role", function() ns.GetModule("Upgrades").Changed() end) },
@@ -840,6 +840,24 @@ local function questAutoRows()
   }
 end
 
+-- Opens the feedback form (Core/Feedback.lua) on a kind, with the options window out of the way.
+local function openFeedback(kind)
+  return function() O.Hide(); ns.Feedback.Open(kind) end
+end
+
+-- Feedback: the in-game form for a bug or an idea, and the plain /vg report.
+local function feedbackRows()
+  return {
+    { "header", "Feedback" },
+    { "text", "A bug or an idea? The form asks what vanguardui.com/feedback asks, then makes one block to paste there; the site's form fills itself from it (/vg feedback does the same)." },
+    { "button", "Report a bug", openFeedback("bug") },
+    { "button", "Request a feature", openFeedback("feature") },
+    { "header", "Just the report" },
+    { "text", "What /vg status and /vg errors say, in one block to paste into the site's report box by hand (/vg report)." },
+    { "button", "Copy a report", function() SlashCmdList.VANGUARD("report") end },
+  }
+end
+
 local PAGES = {
   { key = "general", title = "General", icon = "General", order = 10, rows = generalRows },
   { key = "modules", title = "Modules", icon = "Modules", order = 20, rows = moduleRows },
@@ -849,6 +867,7 @@ local PAGES = {
   { key = "quests", title = "Quests", icon = "Quests", order = 70, rows = function() return append(questRows(), questAutoRows()) end },
   { key = "more", title = "Bars, map, chat", icon = "Map", order = 80, rows = function() return morePageRows() end },
   { key = "profiles", title = "Profiles", icon = "Profiles", order = 90, rows = profileRows },
+  { key = "feedback", title = "Feedback", icon = "Help", order = 100, rows = feedbackRows },
 }
 O.PAGES = PAGES
 

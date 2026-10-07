@@ -275,16 +275,25 @@ local function refreshDropdown(d)
   d.text:SetText(currentText(choices, d.get()))
 end
 
+-- The dropdown's arrow at its right edge, and the current choice on one line
+-- between the left edge and the arrow; a choice too long for the box ends in "...".
+local function addDropdownText(d)
+  d.arrow = icon(d, "Down", 12, "text2")
+  d.arrow:SetPoint("RIGHT", -6, 0)
+  d.text = T.Text(d:CreateFontString(nil, "OVERLAY"), "label")
+  d.text:SetPoint("LEFT", 8, 0)
+  d.text:SetPoint("RIGHT", d.arrow, "LEFT", -4, 0)
+  d.text:SetJustifyH("LEFT")
+  d.text:SetWordWrap(false)
+end
+
 -- A dropdown: shows the current choice; click to pick from a menu. choices
 -- is a list of { value, text } or a function returning one.
 function W.Dropdown(parent, choices, get, set, width)
   local d = T.Button(CreateFrame("Button", nil, parent))
   d:SetSize(width or 180, 22)
   d.choices, d.get, d.set, d.Refresh = choices, get, set, refreshDropdown
-  d.text = T.Text(d:CreateFontString(nil, "OVERLAY"), "label")
-  d.text:SetPoint("LEFT", 8, 0)
-  d.arrow = icon(d, "Down", 12, "text2")
-  d.arrow:SetPoint("RIGHT", -6, 0)
+  addDropdownText(d)
   d:SetScript("OnClick", function(self) if menu and menu:IsShown() and menu.owner == self then W.CloseMenu() else openMenu(self) end end)
   d:Refresh()
   return d
