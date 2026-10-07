@@ -5,11 +5,10 @@ name: full suite
 # and so does coverage below the floor in scripts/lua-coverage-floor.json
 # (only goes up; 100 is the goal). Then the code-quality scan, luacheck,
 # Lua 5.1 syntax and the release zip's contents; and, as a second job, the
-# UI preview. Each takes minutes on the owner's self-hosted Windows runner,
-# so this runs after a merge to main, nightly, from the Actions tab, or on
-# a pull request only while it carries the "full-tests" label (verify.yml
-# is the quick gate every pull request gets). One runner runs one job at a
-# time, so the two jobs run one after the other.
+# UI preview. Each takes several minutes on a GitHub-hosted runner, so this
+# runs after a merge to main, nightly, from the Actions tab, or on a pull
+# request only while it carries the "full-tests" label (verify.yml is the
+# quick gate every pull request gets). The two jobs run side by side.
 on:
   push:
     branches: [main]
@@ -22,14 +21,13 @@ on:
       - "docs/**"
       - "**.md"
   schedule:
-    # Daily at 10:23 UTC, early morning in the Americas when the PC is
-    # likely idle (cron is UTC only); off the hour, since GitHub delays
-    # runs scheduled on busy minutes.
+    # Daily at 10:23 UTC (cron is UTC only); off the hour, since GitHub
+    # delays runs scheduled on busy minutes.
     - cron: "23 10 * * *"
   workflow_dispatch:
     inputs:
       preview:
-        description: "Also render the UI preview (about 6 minutes more)"
+        description: "Also render the UI preview (a few minutes more)"
         type: boolean
         default: true
 
@@ -43,47 +41,21 @@ concurrency:
   group: full-suite-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    # Git for Windows' bash (see verify.yml).
-    shell: bash
-
 jobs:
   tests:
     name: Tests, coverage and checks
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-tests')
-    runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Git Bash ahead of WSL's bash
-        shell: powershell
-        run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin"
       - uses: actions/checkout@v4
-        with:
-          # The same checkout as verify.yml's, so a run here leaves the
-          # runner's node_modules for the next pull request's quick gate.
-          clean: false
-      - name: Clean the checkout, keeping node_modules
-        run: git clean -ffdx -e node_modules
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: The runner's tools
-        run: |
-          for tool in luacheck luac5.1; do
-            command -v "$tool" >/dev/null || { echo "$tool is not on PATH: run scripts/ci/setup-windows-runner.ps1 on the runner"; exit 1; }
-          done
-          luacheck --version && luac5.1 -v
-      - name: npm ci, unless node_modules already matches package-lock.json
-        run: |
-          stamp=node_modules/.package-lock.sha256
-          want="$(node --version) $(sha256sum package-lock.json | cut -d' ' -f1)"
-          if [ "$(cat "$stamp" 2>/dev/null)" = "$want" ]; then
-            echo "node_modules matches package-lock.json; npm ci skipped"
-          else
-            npm ci
-            echo "$want" > "$stamp"
-          fi
+          cache: npm
+      - run: npm ci
+      - name: luacheck and Lua 5.1
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lua-check lua5.1
       - run: npm run coverage
       - run: npm run quality
       - run: luacheck --no-color .
@@ -124,36 +96,20 @@ jobs:
   preview:
     # A screenshot of the default layout from the addon's real Lua (art
     # approximated), so a UI change can be reviewed from the run's artifacts.
-    # Chromium stays in the runner's Playwright cache, so the install is a
-    # no-op after the first run. It needs no green tests job: a UI change is
-    # reviewable even when a test fails.
+    # It needs no green tests job: a UI change is reviewable even when a
+    # test fails.
     name: UI preview
     if: (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-tests')) && (github.event_name != 'workflow_dispatch' || inputs.preview)
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Git Bash ahead of WSL's bash
-        shell: powershell
-        run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin"
       - uses: actions/checkout@v4
-        with:
-          clean: false
-      - name: Clean the checkout, keeping node_modules
-        run: git clean -ffdx -e node_modules
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: npm ci, unless node_modules already matches package-lock.json
-        run: |
-          stamp=node_modules/.package-lock.sha256
-          want="$(node --version) $(sha256sum package-lock.json | cut -d' ' -f1)"
-          if [ "$(cat "$stamp" 2>/dev/null)" = "$want" ]; then
-            echo "node_modules matches package-lock.json; npm ci skipped"
-          else
-            npm ci
-            echo "$want" > "$stamp"
-          fi
-      - run: npm install -g playwright@1.56.1 && playwright install chromium
+          cache: npm
+      - run: npm ci
+      - run: npm install -g playwright@1.56.1 && playwright install --with-deps chromium
       - run: npm run preview
       - uses: actions/upload-artifact@v4
         with:

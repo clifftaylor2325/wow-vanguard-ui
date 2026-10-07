@@ -19,15 +19,14 @@ export default defineConfig({
     // One worker per core. Vitest's default keeps a core free for its main
     // process, which has nothing to do while the workers run the Lua harness;
     // on a two-core CI runner that default ran the files one at a time.
-    // VITEST_MAX_WORKERS caps it (the self-hosted runner's .env can set it so
-    // a run leaves cores for the game).
+    // VITEST_MAX_WORKERS caps it (set it to leave cores for the game while
+    // a run goes on beside it).
     maxWorkers: Number(process.env.VITEST_MAX_WORKERS) || os.availableParallelism(),
     // A Lua harness case loads the whole addon, often several times; with
     // coverage counting every line hit that can pass Vitest's 5 s default.
-    // In CI (Actions sets CI on the self-hosted runner too) the limit is 2
-    // minutes, which the full suite needs: its first run there timed out
-    // the first case of several files at 30 s while every worker started
-    // at once on a shared desktop.
+    // In CI (Actions sets CI) the limit is 2 minutes, which the full suite
+    // needs: its first run timed out the first case of several files at
+    // 30 s while every worker started at once on a shared machine.
     testTimeout: process.env.CI ? 120_000 : 30_000,
     projects: [
       { extends: true, test: { name: "quick", include: ["scripts/*.test.mjs", "scripts/tests/smoke.test.mjs"], exclude: [...configDefaults.exclude, "scripts/lua-engine.test.mjs"] } },
