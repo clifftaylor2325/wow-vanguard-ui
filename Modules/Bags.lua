@@ -92,8 +92,9 @@ end
 
 -- Fades an item button's slot art and gives it a thin border in its quality
 -- color. Once per button: the game reuses its buttons and never undoes this.
+-- A slot with no button yet (a bag window the game hasn't filled) is skipped.
 local function skinItem(button)
-  if button.vgSkinned then return end
+  if type(button) ~= "table" or button.vgSkinned then return end
   button.vgSkinned = true
   for _, key in ipairs(ITEM_ART) do
     local region = button[key] or (button["Get" .. key] and button["Get" .. key](button))
