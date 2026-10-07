@@ -39,6 +39,7 @@ local HELP = {
   "keybind              keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves",
   "status               version, profile, modules, skins, work waiting on combat, what the client has",
   "factionart           which of the game's own faction pictures this client has",
+  "frame <name> [deep]  what the client says about a frame now: shown, alpha, scale, size, anchors and its parents; deep adds its textures and child frames (for a bar that draws empty)",
   "errors [clear]       the errors Vanguard caught this session, with stacks and counts (for a bug report); clear empties the list",
   "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
   "feedback [bug|feature]   a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)",
@@ -86,6 +87,13 @@ local function framesCommand()
   for _, m in ipairs(list) do
     chat(string.format("  %s  (%s)", m.key, m.label))
   end
+end
+
+-- /vg frame <name> [deep]
+local function frameCommand(rest)
+  local name, deep = rest:match("^(%S+)%s*(%S*)$")
+  if not name then return chat("Usage: /vg frame <name> [deep]   (a global frame name; dots follow keys: MinimapCluster.Tracking)") end
+  printLines(ns.Inspect.Lines(name, deep:lower() == "deep"))
 end
 
 -- /vg accent reset
@@ -486,6 +494,7 @@ local COMMANDS = {
   way = function(rest) ns.GetModule("Waypoints").Command(rest) end,
   dock = function() ns.GetModule("BossDocks").Command() end,
   factionart = function() ns.FactionArt.Report() end,
+  frame = frameCommand,
   status = statusCommand,
   errors = errorsCommand,
   report = reportCommand,

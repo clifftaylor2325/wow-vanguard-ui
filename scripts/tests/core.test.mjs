@@ -230,6 +230,28 @@ it("/vg perf: says what it can without the game's counters", () => {
   expect(said(addon, "perf bogus"), "anything else: the usage").toEqual(["Usage: /vg perf [cpu | watch]"]);
 });
 
+it("/vg frame: a frame's state, anchors and parents, and with deep its textures and child frames", () => {
+  const addon = loggedIn();
+  addon.eval(`local f = CreateFrame("Frame", "ProbeFrame", UIParent) f:SetSize(30, 20) f:SetPoint("CENTER", UIParent, "CENTER", 1, -2.5) f:SetAlpha(0.5) f:SetScale(2)
+    local t = f:CreateTexture(nil, "ARTWORK") t:SetTexture("Probe/Art") t:SetAlpha(0) t:SetSize(10, 10)
+    local c = CreateFrame("Frame", "ProbeChild", f) c:Hide() f.Child = c`);
+  const lines = said(addon, "frame ProbeFrame deep");
+  expect(lines[0], "the first line: the frame's own state, with its parent").toMatch(/^ProbeFrame \(Frame\): shown yes, visible yes, alpha 0\.5 \(effective .*\), scale 2 \(effective 2\), 30 x 20, strata .* level \d+, under UIParent$/);
+  expect(lines[1], "then each anchor").toBe("  CENTER to UIParent CENTER 1, -2.5");
+  expect(lines[2], "then every ancestor's shown state").toBe("  under UIParent: shown yes, alpha 1, scale 1");
+  expect(lines.slice(3), "deep: the regions and child frames, counted, one line each").toEqual([
+    "  1 region(s):",
+    expect.stringMatching(/^  \(unnamed Texture\) \(Texture\): shown yes, alpha 0, 10 x 10, layer ARTWORK, file Probe\/Art$/),
+    "  1 child frame(s):",
+    expect.stringMatching(/^  ProbeChild \(Frame\): shown no, alpha 1, 0 x 0, level \d+$/),
+  ]);
+  expect(said(addon, "frame ProbeFrame.Child"), "a dotted name follows keys from the global; without deep, no parts").toEqual([
+    expect.stringMatching(/^ProbeChild \(Frame\): shown no, visible no, .*, under ProbeFrame$/), "  no anchors",
+    "  under ProbeFrame: shown yes, alpha 0.5, scale 2", "  under UIParent: shown yes, alpha 1, scale 1"]);
+  expect(said(addon, "frame Nope"), "a name that leads nowhere says so").toEqual(["No frame called Nope (a global name; dots follow keys: MinimapCluster.Tracking)."]);
+  expect(said(addon, "frame"), "no name: the usage").toEqual(["Usage: /vg frame <name> [deep]   (a global frame name; dots follow keys: MinimapCluster.Tracking)"]);
+});
+
 // TEST-ONLY counters: Vanguard's CPU total (__cpu ms) and memory (2048 KB), each refreshed by its Update call (counted).
 const PERF_ENV = `
   __cpu, __updates = 0, { cpu = 0, mem = 0 }
