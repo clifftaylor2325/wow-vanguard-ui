@@ -25,7 +25,7 @@ it("minimap", () => {
   const M = "ns.GetModule('Minimap')";
   const bands = addon.eval(`local M = ${M} return { #M.bands, M.top.__color, M.top.__height, M.bottom.__height, M.bottom:IsShown(),
     M.zone.__noWrap, M.zone.__width, M.zone.__points.CENTER.rel == M.top, M.coords.__points.CENTER.rel == M.bottom }`);
-  expect([bands[0], isTok(addon, bands[1], "panel"), bands[1][3], bands.slice(2)], "a see-through panel-colored band along the top and bottom edges, the zone name and coordinates centered on them; the name is clamped and doesn't wrap").toEqual([2, true, 0.7, [20, 16, true, true, 124, true, true]]);
+  expect([bands[0], isTok(addon, bands[1], "panel"), bands[1][3], bands.slice(2)], "a see-through panel-colored band along the top and bottom edges, the zone name and coordinates centered on them; the name is clamped and doesn't wrap").toEqual([2, true, 0.7, [20, 24, true, true, 124, true, true]]);
   addon.eval("ns.Theme.Settings().panel = { 0.1, 0.2, 0.3, 1 } ns.Theme.Refresh()");
   expect(addon.eval(`return ${M}.top.__color`), "the bands follow the panel color live").toEqual([0.1, 0.2, 0.3, 0.7]);
   addon.eval("__maps = 0 ToggleWorldMap = function() __maps = __maps + 1 end local b = Vanguard_MinimapZone b.__scripts.OnClick(b) b.__scripts.OnEnter(b)");
@@ -213,6 +213,10 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   addon.eval('__lines = { "|cffff8000[TEST-ONLY General]|r hi |Hitem:90001|h[TEST-ONLY Sword]|h", { __secret = true }, "two |TTEST-ONLY-ICON:0|tlines" }');
   addon.eval("local b = ns.GetModule('ChatExtras').copyButton b.__scripts.OnClick(b)");
   expect(addon.eval("return __shown"), "the Copy button gives plain text; hidden lines are left out").toEqual(["Copy chat (Ctrl+C)", "[TEST-ONLY General] hi [TEST-ONLY Sword]\ntwo lines"]);
+  const real = loggedIn(UI_ENV + CHAT_EXTRAS_ENV);
+  real.eval('__lines = { "TEST-ONLY hello" } local b = ns.GetModule("ChatExtras").copyButton b.__scripts.OnClick(b)');
+  expect(real.eval("return { Vanguard_TextDialog:IsShown(), Vanguard_TextEdit:GetText(), Vanguard_TextEdit:GetFont() ~= nil }"),
+    "the real copy box opens with the text, its edit box given a font first (the game's SetText errors without one)").toEqual([true, "TEST-ONLY hello", true]);
   const bare = loggedIn("ChatFrame1 = nil");
   bare.slash("copy");
   expect(chatHas(bare, /can't read the chat back/) && bare.eval("return ns.GetModule('ChatExtras').copyButton == nil"), "a client that can't read chat back says so").toBe(true);
@@ -855,6 +859,7 @@ const wheelLog = (addon, which, delta) => addon.eval(`local s = Vanguard_QuestLo
 it("quest log: a long list and long quest text scroll, a short one does not", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval("ns.GetModule('QuestLog').Open()");
+  expect(addon.eval("local c = ns.GetModule('QuestLog').frame.close return { c:GetWidth(), c:GetHeight(), c:IsVisible() }"), "the close button has a size (it was 0 by 0, so it never showed)").toEqual([20, 20, true]);
   expect(logScrolls(addon), "five lines and a short text fit the 356 px views: nothing to scroll").toEqual({ list: [356, 0, 0], detail: [356, 0, 0] });
   addon.eval(`for i = 1, 20 do local id = 91000 + i
     __log[#__log + 1] = { questID = id }
@@ -2100,6 +2105,11 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
     "tracking, mail and the addon compartment sit on the map's corners").toEqual([[true, "BOTTOMLEFT"], [true, "TOPRIGHT"], [true, "BOTTOMRIGHT"]]);
   addon.eval('MinimapCluster.Tracking:ClearAllPoints() MinimapCluster.Tracking:SetPoint("CENTER", UIParent, "CENTER", 0, 0)');
   expect(pinned(addon, "MinimapCluster.Tracking", overlay), "when the game moves one back, it returns to its corner").toEqual([true, "BOTTOMLEFT"]);
+  const slots = addon.eval(`local t, a = MinimapCluster.Tracking, AddonCompartmentFrame
+    return { t:GetWidth(), t:GetScale(), t.vgGlyph.__texture:match("(%a+)$"), a.vgGlyph.__texture:match("(%a+)$"), t.vgSlot ~= nil, MinimapCluster.IndicatorFrame.MailFrame.vgSlot == nil }`);
+  expect(slots, "tracking and the addon compartment are 18-unit slot buttons with the theme's icons (unscaled); mail stays an indicator").toEqual([18, 1, "Search", "Modules", true, true]);
+  addon.eval("local a = AddonCompartmentFrame a.__scripts.OnEnter(a)");
+  expect(isTok(addon, addon.eval("return AddonCompartmentFrame.vgGlyph.__vertexColor"), "accent"), "a slot button's icon lights in the accent under the mouse").toBe(true);
   expect([pinned(addon, "BagsBar", "Vanguard_MenuStrip"), pinned(addon, "MicroMenuContainer", "Vanguard_MenuStrip")], "the bag bar and the micro menu ride in one bar, each at its row's right end").toEqual([[true, "RIGHT"], [true, "RIGHT"]]);
   addon.eval("BagsBar:SetSize(600, 45) ns.PausePins(false)");
   expect(barSize(addon), "a bag bar 600 units wide holds 13 bags: the bar hugs their slots inside an 8-unit margin (two rows tall)").toEqual([barW(13), 68]);
