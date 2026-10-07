@@ -241,7 +241,8 @@ const RAID = `
 `;
 
 // TEST-ONLY nameplates: your target (a boar with your debuff, casting), a wolf with aggro on you, a
-// marked wolf, and a friendly player; plates placed where the client might put them.
+// marked wolf under the mouse, and a friendly player with a big defensive and one of your buffs;
+// plates placed where the client might put them.
 const PLATES = `
   __units.nameplate1 = __units.target
   __units.nameplate2 = { name = "TEST-ONLY Wolf", hp = 9000, maxhp = 20000, power = 0, maxpower = 0, ptype = "RAGE", reaction = 2 }
@@ -262,11 +263,14 @@ const PLATES = `
   local getAura = C_UnitAuras.GetAuraDataByIndex
   C_UnitAuras.GetAuraDataByIndex = function(unit, i, filter)
     if unit == "nameplate1" and filter == "HARMFUL|PLAYER|!CROWD_CONTROL" and i <= 2 then return { icon = "TEST-ONLY-DOT", expirationTime = 0, duration = 0 } end
+    if unit == "nameplate4" and i == 1 and (filter == "HELPFUL|BIG_DEFENSIVE" or filter:find("^HELPFUL|PLAYER|")) then return { icon = "TEST-ONLY-BUFF", expirationTime = 0, duration = 0 } end
     return getAura(unit, i, filter)
   end
   UnitCastingInfo = function(unit) if unit == "nameplate1" then return "TEST-ONLY Charge", "", "TEST-ONLY-ICON", GetTime() * 1000 - 600, GetTime() * 1000 + 1400, false, nil, false end end
   C_QuestLog = C_QuestLog or {} C_QuestLog.UnitIsRelatedToActiveQuest = function(unit) return unit == "nameplate2" or unit == "nameplate3" end
   for unit in pairs(spots) do __wfgStub.fire("NAME_PLATE_UNIT_ADDED", unit) end
+  __units.mouseover = __units.nameplate3
+  __wfgStub.fire("UPDATE_MOUSEOVER_UNIT")
 `;
 
 // TEST-ONLY instanced combat: health comes back as secret values, which the
@@ -486,7 +490,7 @@ const SCENES = [
       GetQuestLogChoiceInfo = function(i) if i == 1 then return "TEST-ONLY Shepherd's Boots", "TEST-ONLY-ICON", 1, 3 end return "TEST-ONLY Wolfhide Gloves", "TEST-ONLY-ICON", 1, 2 end
       GetQuestLogRewardInfo = function() return "TEST-ONLY Farm Bread", "TEST-ONLY-ICON", 5, 1 end
       GetQuestLogRewardMoney = function() return 1500 end GetQuestLogRewardXP = function() return 650 end` },
-  { name: "vanguard-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a gold ! on the wolves a quest needs, a friendly player (TEST-ONLY units)", lua: PLATES },
+  { name: "vanguard-nameplates", caption: "Nameplates: your target (accent border, your debuffs, a cast), aggro in red, a raid icon, a gold ! on the wolves a quest needs, the marked wolf under the mouse, a friendly player with buffs right of the bar (TEST-ONLY units)", lua: PLATES },
   { name: "vanguard-tooltip", caption: "Tooltip over a hostile target in the movable corner: reaction-colored name and border, Target line (TEST-ONLY lines)", lua: `
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)
     GameTooltip.unit = "target" __tipHooks.GameTooltip_SetDefaultAnchor(GameTooltip, UIParent) GameTooltip:Show() __tipPost(GameTooltip)` },
