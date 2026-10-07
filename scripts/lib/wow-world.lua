@@ -399,13 +399,17 @@ C_StringUtil = {
   end,
 }
 
--- Atlases the client has (a test adds to world.atlases); unknown ones are nil, as in game.
+-- Atlases the client has (a test adds to world.atlases, each with its place
+-- in its file if not the whole of it: left, right, top, bottom); unknown ones are nil, as in game.
 world.atlases = {}
 C_Texture = {
   -- The atlas info table, or nil.
   GetAtlasInfo = function(name)
     local a = world.atlases[name]
-    return a and { file = a.file or "TEST-ONLY-ATLAS", width = a.width or 64, height = a.height or 64, leftTexCoord = 0, rightTexCoord = 1, topTexCoord = 0, bottomTexCoord = 1 }
+    return a and {
+      file = a.file or "TEST-ONLY-ATLAS", width = a.width or 64, height = a.height or 64,
+      leftTexCoord = a.left or 0, rightTexCoord = a.right or 1, topTexCoord = a.top or 0, bottomTexCoord = a.bottom or 1,
+    }
   end,
 }
 

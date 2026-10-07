@@ -2283,6 +2283,32 @@ it("bag and menu bar: the rows re-fit when the game lays the bars out or resizes
   expect(addon.eval("return ns.GetModule('MenuStrip').divider.__vertexColor"), "which it follows").toEqual([0.1, 0.9, 0.2, 1]);
 });
 
+it("bag and menu bar: the game's menu icons are cropped to fill their slots, again each time the game swaps one", () => {
+  // TEST-ONLY atlases at made-up places in their file, and a quest log button whose normal texture the game swaps atlases on.
+  const addon = strips(`
+    __wfgWorld.atlases["UI-HUD-MicroMenu-Questlog-Up"] = { left = 0.5, right = 0.75, top = 0, bottom = 0.5 }
+    __wfgWorld.atlases["UI-HUD-MicroMenu-Questlog-Down"] = { left = 0.25, right = 0.5, top = 0.5, bottom = 1 }
+    __wfgWorld.atlases["UI-HUD-MicroMenu-Portrait-Down"] = {}
+    local b = __micro("QuestLogMicroButton")
+    function b:SetNormalAtlas(a) self.normal:SetAtlas(a) self.normal:SetTexCoord(0, 1, 0, 1) end
+    b.normal:SetAtlas("UI-HUD-MicroMenu-Questlog-Up")
+  `, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
+  // The quest log icon's texture coordinates now.
+  const coords = () => addon.eval("return QuestLogMicroButton.normal.__texCoord").map(r3);
+  const { left: l, right: r, top: t, bottom: b } = addon.eval("return ns.GetModule('MenuStrip').ICON_CROP");
+  // The crop box inside an atlas at left..right, top..bottom of its file.
+  const box = (x0, x1, y0, y1) => [x0 + (x1 - x0) * l, x0 + (x1 - x0) * r, y0 + (y1 - y0) * t, y0 + (y1 - y0) * b].map(r3);
+  expect(coords(), "the icon is cropped to its box, inside the atlas's own place in its file").toEqual(box(0.5, 0.75, 0, 0.5));
+  addon.eval("ns.GetModule('MenuStrip').CropIcon(QuestLogMicroButton.normal)");
+  expect(coords(), "cropping it again cuts no deeper").toEqual(box(0.5, 0.75, 0, 0.5));
+  addon.eval("QuestLogMicroButton:SetNormalAtlas('UI-HUD-MicroMenu-Questlog-Down')");
+  expect(coords(), "the game swaps the icon: the new one is cropped too").toEqual(box(0.25, 0.5, 0.5, 1));
+  addon.eval("QuestLogMicroButton:SetNormalAtlas('UI-HUD-MicroMenu-Portrait-Down')");
+  expect(coords(), "the portrait's art is left whole").toEqual([0, 1, 0, 1]);
+  addon.eval("QuestLogMicroButton:SetNormalAtlas('UI-HUD-MicroMenu-Unknown-Up')");
+  expect(coords(), "and an atlas the client doesn't have is left alone").toEqual([0, 1, 0, 1]);
+});
+
 // TEST-ONLY bars laid out as the game lays them out: nine menu buttons 27 units apart (32 wide,
 // overlapping by 5) from the micro menu's left, and the bags right to left from the bag bar's
 // right edge, 2 units apart, the key ring last at its 33 units.
@@ -2386,10 +2412,14 @@ it("bag and menu bar: slots are 24 screen pixels wide, take the clicks, and ligh
   addon.eval("CharacterMicroButton.__scripts.OnEnter(CharacterMicroButton)");
   expect(slot("CharacterMicroButton", MENU)[3][3], "and shows in it under the mouse").toBe(1);
   addon.eval("CharacterMicroButton.__scripts.OnLeave(CharacterMicroButton)");
-  const bevel = addon.eval(`local s, out = CharacterMicroButton.vgSlot, {}
-    for _, w in ipairs(__wfgStub.frames) do if w.__parent == s and w.__layer == "BORDER" and w.__sublevel == 1 then out[w.__points.TOPLEFT and "top" or "bottom"] = w.__vertexColor end end
+  const well = addon.eval(`local s, out = CharacterMicroButton.vgSlot, { bevel = {}, colors = {} }
+    for _, w in ipairs(__wfgStub.frames) do if w.__parent == s and w.__vertexColor then
+      if w.__layer == "BORDER" and w.__sublevel == 1 then out.bevel[#out.bevel + 1] = w.__vertexColor[4] end
+      out.colors[#out.colors + 1] = w.__vertexColor
+    end end
     return out`);
-  expect([isTok(addon, bevel.top, "sheen"), isTok(addon, bevel.bottom, "shade")], "a bevel: a light line along the top, a dark one along the bottom").toEqual([true, true]);
+  expect(well.bevel, "a dark well: its bevel lines don't show").toEqual([0, 0]);
+  expect(["void", "darkBar"].map((t) => well.colors.some((c) => isTok(addon, c, t))), "filled with the void color, ringed in a lighter line").toEqual([true, true]);
   expect(addon.eval("return { CharacterMicroButton.Background.__alpha, CharacterMicroButton.normal.__alpha == nil, CharacterMicroButton.Flash.__alpha == nil }"), "the game's background plate goes; its icon and alert flash stay").toEqual([0, true, true]);
   addon.eval("CharacterMicroButton:Disable()");
   expect(addon.eval("return CharacterMicroButton.normal.__desaturated"), "a disabled button's icon is grey").toBe(true);
