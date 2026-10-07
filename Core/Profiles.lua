@@ -100,6 +100,29 @@ local function freeName(base)
   return name
 end
 
+-- A profile name base from a character's name: the characters a profile name can hold
+-- (short enough for freeName's " 2"), else "Character".
+local function nameBase(name)
+  local base = (type(name) == "string" and name or ""):gsub("[^%w%s%-_]", "")
+  return base ~= "" and base:sub(1, 29) or "Character"
+end
+
+-- The name ns.ForkProfile would give a profile for this character name.
+function ns.ForkName(name)
+  return freeName(nameBase(name))
+end
+
+-- Gives this character a profile of its own named after `name`, without a reload: the running
+-- profile's tables move to the new name (the modules and the settings cache keep using them), and
+-- the old name keeps a copy, so the characters sharing it see what they had. Returns the new name.
+function ns.ForkProfile(name)
+  local new, live = ns.ForkName(name), ns.Profile()
+  VanguardDB.profiles[ns.ProfileName()] = ns.Copy(live)
+  VanguardDB.profiles[new] = live
+  VanguardCharDB.profile, VanguardCharDB.editModeProfile = new, new
+  return new
+end
+
 -- The display block taken out of an imported profile when its UI scale is a usable number, else nil.
 local function takeDisplay(data)
   local display = data.display

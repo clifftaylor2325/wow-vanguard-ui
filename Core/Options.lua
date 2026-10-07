@@ -168,10 +168,12 @@ local function lookRows()
   }
 end
 
--- General, part two: moving frames.
+-- General, part two: setup again, and moving frames.
 local function layoutRows()
   return {
     { "header", "Layout" },
+    { "text", "Setup walks through layout, screen and look again; it starts on Keep, so it changes only what you pick (/vg setup)." },
+    { "button", "Run setup", function() O.Hide(); ns.Setup.Open() end },
     { "button", "Move frames", function() O.Hide(); ns.Unlock() end },
     check("Show a grid while moving", moverOption("grid")),
     check("Snap to other frames", moverOption("snap")),
@@ -757,6 +759,13 @@ local function currentProfileText()
   return "This character uses " .. ns.ProfileName() .. " until you reload, then " .. later .. "."
 end
 
+-- Start over: the profile back to defaults, and setup opens after the reload that applies it.
+local function startOver()
+  ns.ResetProfile()
+  VanguardCharDB.setupDone = false
+  O.NeedReload()
+end
+
 -- Profiles, part one: which profile, export/import, reset.
 local function currentProfileRows()
   return {
@@ -765,6 +774,7 @@ local function currentProfileRows()
     { "button", "Export profile", function() ns.ShowText("Vanguard export  Ctrl+C to copy", ns.ExportProfile()) end },
     { "button", "Import", function() ns.ImportDialog() end },
     { "button", "Reset profile", function() ns.ResetProfile(); O.NeedReload() end },
+    { "button", "Start over: reset and run setup", startOver },
   }
 end
 
