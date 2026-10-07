@@ -559,9 +559,14 @@ const BIND_ENV = `
   SaveBindings = function(set) __savedSet = set end
 `;
 
-// The keybind banner: shown, whether the last key went on to the game, and whether the hover mark shows.
-const binder = (addon) => addon.eval(`local f = Vanguard_KeybindMode
-  return { shown = f:IsShown(), passed = f.__passed == true, mark = f.mark:IsShown() }`);
+// The keybind banner: shown, whether the last key went on to the game, and whether the wash
+// shows on the button under the mouse (its catcher, the frame that takes the mouse while the mode is on).
+const binder = (addon) => addon.eval(`local f, AB = Vanguard_KeybindMode, ns.GetModule("ActionBars")
+  return { shown = f:IsShown(), passed = f.__passed == true, mark = AB.bindHover ~= nil and AB.bindHover.vgCatcher.wash:IsShown() }`);
+
+// The tooltip's lines while it shows (its text only), or null when hidden.
+const tipLines = (addon) => addon.eval(`if not GameTooltip:IsShown() then return nil end
+  local out = {} for _, l in ipairs(GameTooltip.__lines) do out[#out + 1] = l.text end return out`);
 
 // The keys bound to a command.
 const boundTo = (addon, command) => addon.eval(`return table.concat(__wfgWorld.bindings.${command} or {}, ",")`);
@@ -574,8 +579,10 @@ it("keybind mode: hover a button and press a key to bind it; a modifier alone wa
   expect(addon.eval("return Vanguard_Bar1Button4:GetAlpha()"), "empty slots show, so they can be bound").toBe(1);
   addon.key("Vanguard_KeybindMode", "Q");
   expect([binder(addon).passed, boundTo(addon, "ACTIONBUTTON4")], "a key with no button under the mouse goes on to the game").toEqual([true, ""]);
-  addon.hover("Vanguard_Bar1Button4");
-  expect(binder(addon).mark, "the button under the mouse is marked").toBe(true);
+  expect(addon.eval("return Vanguard_Bar1Button4.vgCatcher:IsShown()"), "a catcher sits over every button, taking the mouse").toBe(true);
+  addon.hover("Vanguard_Bar1Button4.vgCatcher");
+  expect([binder(addon).mark, addon.eval("return Vanguard_Bar1Button3.vgCatcher.wash:IsShown()")], "the button under the mouse is marked, the others not").toEqual([true, false]);
+  expect(tipLines(addon), "and its tooltip names it, its keys (none yet) and what to do").toEqual(["Bar 1 button 4", "Keys: no key", expect.stringMatching(/^Press a key, the middle or a side mouse button, or roll the wheel.*Backspace clears\.$/)]);
   addon.key("Vanguard_KeybindMode", "LSHIFT");
   expect([binder(addon).passed, boundTo(addon, "ACTIONBUTTON4")], "Shift alone binds nothing (and stays with the mode)").toEqual([false, ""]);
   addon.keys({ shift: true });
@@ -583,16 +590,59 @@ it("keybind mode: hover a button and press a key to bind it; a modifier alone wa
   addon.keys({ shift: false });
   expect([boundTo(addon, "ACTIONBUTTON4"), addon.eval("return __savedSet")], "Shift-Q is bound to the button's command and saved in the set in use").toEqual(["SHIFT-Q", 2]);
   expect([addon.eval("return Vanguard_Bar1Button4.hotkey:GetText()"), addon.eval("return __wfgWorld.overrides['SHIFT-Q'].target")], "the hotkey shows it, and the key clicks the button").toEqual(["SQ", "Vanguard_Bar1Button4:LeftButton"]);
-  expect(chatHas(addon, /SHIFT-Q bound to Bar 1 button 4\.$/), "chat says so").toBe(true);
-  addon.hover("Vanguard_Bar1Button1");
+  expect([chatHas(addon, /SHIFT-Q bound to Bar 1 button 4\.$/), tipLines(addon)[1]], "chat says so (the key was free), and the tooltip follows").toEqual([true, "Keys: SHIFT-Q"]);
+  addon.hover("Vanguard_Bar1Button1.vgCatcher");
   addon.keys({ alt: true, ctrl: true });
   addon.key("Vanguard_KeybindMode", "F");
   addon.keys({ alt: false, ctrl: false });
   expect([boundTo(addon, "ACTIONBUTTON1"), addon.eval("return GetBindingAction('1')")], "the new key replaces the button's old one").toEqual(["ALT-CTRL-F", ""]);
   addon.hover(null);
-  expect(binder(addon).mark, "leaving the button drops the mark").toBe(false);
+  expect([binder(addon).mark, tipLines(addon)], "leaving the button drops the mark and the tooltip").toEqual([false, null]);
+  addon.hover("Vanguard_Bar1Button2.vgCatcher");
   addon.key("Vanguard_KeybindMode", "ESCAPE");
   expect([binder(addon).shown, binder(addon).passed, addon.eval("return Vanguard_Bar1Button5:GetAlpha()")], "Escape leaves (and doesn't open the game menu); empty slots hide again").toEqual([false, false, 0]);
+  expect([tipLines(addon), addon.eval("return Vanguard_Bar1Button2.vgCatcher:IsShown()")], "the tooltip and the catchers go with it").toEqual([null, false]);
+});
+
+it("keybind mode: the mouse's side buttons and wheel bind too; Backspace clears; a taken key says whose it was", () => {
+  const addon = loggedIn(BIND_ENV + `
+    __wfgWorld.bindings.MOVEFORWARD = { "W" }
+    __wfgWorld.bindings.JUMP = { "SPACE" }
+    BINDING_NAME_MOVEFORWARD = "Move Forward"
+  `);
+  addon.slash("keybind");
+  addon.hover("Vanguard_Bar1Button4.vgCatcher");
+  addon.click("Vanguard_Bar1Button4.vgCatcher", "LeftButton");
+  addon.click("Vanguard_Bar1Button4.vgCatcher", "RightButton");
+  expect([boundTo(addon, "ACTIONBUTTON4"), chatHas(addon, /bound to Bar 1 button 4/)], "left and right click bind nothing").toEqual(["", false]);
+  addon.keys({ ctrl: true });
+  addon.click("Vanguard_Bar1Button4.vgCatcher", "Button4");
+  addon.keys({ ctrl: false });
+  expect([boundTo(addon, "ACTIONBUTTON4"), addon.eval("return Vanguard_Bar1Button4.hotkey:GetText()")], "a side button binds, with the modifiers held").toEqual(["CTRL-BUTTON4", "CM4"]);
+  addon.click("Vanguard_Bar1Button4.vgCatcher", "MiddleButton");
+  expect(boundTo(addon, "ACTIONBUTTON4"), "the middle button too").toBe("BUTTON3");
+  addon.wheel("Vanguard_Bar1Button4.vgCatcher", 1);
+  expect(boundTo(addon, "ACTIONBUTTON4"), "wheel up").toBe("MOUSEWHEELUP");
+  addon.wheel("Vanguard_Bar1Button4.vgCatcher", -1);
+  expect([boundTo(addon, "ACTIONBUTTON4"), addon.eval("return Vanguard_Bar1Button4.hotkey:GetText()")], "wheel down").toEqual(["MOUSEWHEELDOWN", "WD"]);
+  addon.key("Vanguard_KeybindMode", "BACKSPACE");
+  expect([boundTo(addon, "ACTIONBUTTON4"), addon.eval("return Vanguard_Bar1Button4.hotkey:GetText()"), tipLines(addon)[1]], "Backspace clears the button's keys").toEqual(["", "", "Keys: no key"]);
+  expect(chatHas(addon, /Bar 1 button 4 unbound \(was MOUSEWHEELDOWN\)\.$/), "and says what it had").toBe(true);
+  addon.key("Vanguard_KeybindMode", "DELETE");
+  expect(chatHas(addon, /Bar 1 button 4 has no key\.$/), "Delete clears too; with no key it only says so").toBe(true);
+  addon.key("Vanguard_KeybindMode", "W");
+  expect([boundTo(addon, "ACTIONBUTTON4"), boundTo(addon, "MOVEFORWARD"), chatHas(addon, /W bound to Bar 1 button 4, taken from Move Forward\.$/)], "a key the game used is taken, and chat says from what").toEqual(["W", "", true]);
+  addon.key("Vanguard_KeybindMode", "SPACE");
+  expect(chatHas(addon, /SPACE bound to Bar 1 button 4, taken from JUMP\.$/), "a command with no name is named as is").toBe(true);
+  addon.key("Vanguard_KeybindMode", "1");
+  expect([boundTo(addon, "ACTIONBUTTON1"), chatHas(addon, /1 bound to Bar 1 button 4, taken from Bar 1 button 1\.$/)], "a key from another Vanguard button names that button").toEqual(["", true]);
+  addon.key("Vanguard_KeybindMode", "1");
+  expect(chatHas(addon, /1 bound to Bar 1 button 4\.$/), "binding the button's own key again is not a take").toBe(true);
+  addon.hover("Vanguard_Bar1Button1.vgCatcher");
+  setCombat(addon, true);
+  expect(addon.eval("return ns.GetModule('ActionBars').ClearKeys(Vanguard_Bar1Button4)"), "no clearing in combat").toBe(false);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect([addon.eval("return Vanguard_KeybindMode:IsShown()"), tipLines(addon), binder(addon).mark], "a fight ends the mode, with its tooltip and mark").toEqual([false, null, false]);
 });
 
 it("keybind mode: out of combat only, ends when a fight starts; from the options; needs the bars", () => {

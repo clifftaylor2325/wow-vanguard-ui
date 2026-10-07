@@ -35,7 +35,7 @@ local HELP = {
   "way [zone] x y [title]   a waypoint on the map that the game's arrow points to (a zone by name, or #<map id>); way clear removes it",
   "dock                 line up Deadly Boss Mods' bars with the Boss timers spots (move those with unlock); for BigWigs, where to drag its bars",
   "binds                this spec's click-casting and hover-key bindings (set them in /vg > Click casting)",
-  "keybind              keybind mode: hover an action button and press a key to bind it; Escape leaves",
+  "keybind              keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves",
   "status               version, profile, modules, skins, work waiting on combat, what the client has",
   "factionart           which of the game's own faction pictures this client has",
   "errors [clear]       the errors Vanguard caught this session, with stacks and counts (for a bug report); clear empties the list",

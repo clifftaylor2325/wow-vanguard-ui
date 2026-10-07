@@ -269,17 +269,45 @@ local function pickerParts()
   picker:SetScript("OnMouseWheel", function(self, delta) self.offset = self.offset - delta * 3 self:Refresh() end)
 end
 
+-- How the picker closes besides picking: Escape (only the picker, not the window), a click
+-- anywhere outside it, or its parent hiding.
+local function pickerDismissals()
+  picker:EnableKeyboard(true)
+  picker:SetScript("OnKeyDown", function(self, k)
+    self:SetPropagateKeyboardInput(k ~= "ESCAPE")
+    if k == "ESCAPE" then closePicker() end
+  end)
+  picker.catcher = CreateFrame("Button", nil, UIParent)
+  picker.catcher:SetAllPoints(UIParent)
+  picker.catcher:SetFrameStrata("FULLSCREEN_DIALOG")
+  picker.catcher:SetScript("OnClick", closePicker)
+  picker:SetScript("OnHide", function(self) self.catcher:Hide() state.pickKey = nil end)
+end
+
+-- The picker's frame settings: above every window, kept on screen, takes the mouse.
+local function pickerSettings()
+  picker:SetFrameStrata("FULLSCREEN_DIALOG")
+  picker:SetClampedToScreen(true)
+  picker:EnableMouse(true)
+end
+
 -- Builds the picker once: a raised panel with the search, the rows and the more line.
 local function pickerFrame()
   if picker then return picker end
   picker = T.Panel(CreateFrame("Frame", "Vanguard_SpellPicker", UIParent), { raised = true, shadow = true })
   picker:SetSize(280, 34 + PICKER_ROWS * ROW_H + 22)
-  picker:SetFrameStrata("FULLSCREEN_DIALOG")
-  picker:EnableMouse(true)
+  pickerSettings()
+  pickerDismissals()
   picker.open, picker.offset, picker.rows, picker.Refresh = {}, 0, {}, refreshPicker
   pickerParts()
   for i = 1, PICKER_ROWS do picker.rows[i] = pickerRow(i) wireRow(picker.rows[i]) end
   return picker
+end
+
+-- Shows the catcher just under the picker, so a click anywhere else closes it.
+local function showCatcher()
+  picker.catcher:SetFrameLevel(math.max(0, picker:GetFrameLevel() - 1))
+  picker.catcher:Show()
 end
 
 -- Opens the picker beside an anchor frame, for a key. It becomes the anchor's child, so it
@@ -294,6 +322,7 @@ local function openPicker(anchor, key)
   picker:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 6, 0)
   picker:Refresh()
   picker:Show()
+  showCatcher()
 end
 
 -- Grid ------------------------------------------------------------------------------------------

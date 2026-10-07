@@ -391,7 +391,7 @@ it("queue status: the panel is a themed tooltip and the entries' rings are faded
   const addon = loggedIn(QUEUE_ENV);
   addon.eval("QueueStatusFrame:Show()");
   expect([addon.eval("return QueueStatusFrame.NineSlice:GetAlpha()"), fills(addon, "QueueStatusFrame")], "the game's border is faded and a panel painted").toEqual([0, 1]);
-  // Entry n's spec ring, icon and separator alphas.
+  // Queue entry n's spec ring, icon and separator alphas.
   const ring = (n) => addon.eval(`local e = QueueStatusFrame.statusEntriesPool.items[${n}] return { e.AssignedSpec.Border:GetAlpha(), e.AssignedSpec.Icon:GetAlpha(), e.EntrySeparator:GetAlpha() }`);
   expect(ring(1), "the ring is faded, the icon and the line between entries kept").toEqual([0, 1, 1]);
   addon.eval("QueueStatusFrame:Update()");
