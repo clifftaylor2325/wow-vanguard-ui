@@ -21,7 +21,7 @@ local PR = ns.Module("InstancePrep", {
 })
 
 -- The card's width, row height, padding and where its rows start (under the title).
-PR.WIDTH, PR.ROW, PR.PAD, PR.TOP = 260, 18, 8, 32
+PR.WIDTH, PR.ROW, PR.PAD, PR.TOP = 260, 18, 8, 40
 -- The instance types the door check covers (ns.Where): dungeons and raids.
 PR.DOORS = { party = true, raid = true }
 -- Consumables are item class 0 (Enum.ItemClass.Consumable); by subclass
