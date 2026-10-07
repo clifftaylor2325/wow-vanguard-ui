@@ -80,6 +80,8 @@ export const TEXTURES = {
   Spark: spark,
   // A small filled diamond (minimap corners, the assist mark), on a 16-unit grid.
   Diamond: () => draw(image(16, 16), 16, [poly([[8, 1], [15, 8], [8, 15], [1, 8]])]),
+  // The close seal's fill under the mouse: its outer diamond, filled, on the controls' 20-unit grid.
+  Seal: () => draw(image(64, 64), 20, [poly([[10, 1.4], [18.6, 10], [10, 18.6], [1.4, 10]])]),
   // Shadow (filled) and glow (hollow) share the soft falloff.
   Shadow: () => softBox(64, 16, 6, [0, 0, 0], 0.8, false),
   Glow: () => softBox(64, 16, 5, [1, 1, 1], 0.9, true),
@@ -134,9 +136,6 @@ const ICON_SHAPES = {
   Profiles: [ring(8, 4, 2, STROKE), path(arc(8, 15, 6, 6, 0, 180), STROKE)],
   Move: [crisp([[8, 2], [8, 14]]), crisp([[2, 8], [14, 8]]), ...[[8, 1.5, 0, 1], [8, 14.5, 0, -1], [1.5, 8, 1, 0], [14.5, 8, -1, 0]].flatMap(arrowHead)],
   Close: [line(3.5, 4, 11.5, 12, STROKE), line(12.5, 4, 4.5, 12, STROKE)],
-  // A window's maximize and minimize controls: four corner brackets pointing out, then in.
-  Maximize: [crisp([[2, 6], [2, 2], [6, 2]]), crisp([[10, 2], [14, 2], [14, 6]]), crisp([[2, 10], [2, 14], [6, 14]]), crisp([[10, 14], [14, 14], [14, 10]])],
-  Minimize: [crisp([[2, 6], [6, 6], [6, 2]]), crisp([[10, 2], [10, 6], [14, 6]]), crisp([[2, 10], [6, 10], [6, 14]]), crisp([[10, 14], [10, 10], [14, 10]])],
   Check: [path([[3, 8.5], [6.5, 12], [13, 5.5]], STROKE)],
   Down: [path([[4, 6.5], [8, 10.5], [12, 6.5]], STROKE)],
   Right: [path([[6.5, 4], [10.5, 8], [6.5, 12]], STROKE)],
@@ -193,13 +192,34 @@ const MENU_SHAPES = {
   Legacy: [crisp([[3, 2], [13, 2]]), crisp([[3, 14], [13, 14]]), line(4.5, 3, 8, 8, STROKE), line(11.5, 3, 8, 8, STROKE), line(8, 8, 4.5, 13, STROKE), line(8, 8, 11.5, 13, STROKE), poly([[5, 13], [11, 13], [8, 10]])],
 };
 
+// The window controls (close, maximize, minimize; Core/Theme.lua T.CONTROL), on a 20-unit grid
+// drawn at 64 px and shown at 20, one unit a pixel. Two tones: the bracket or cross in the text
+// color, its ornament (the seal, the gem) a separate icon in the accent.
+const GEM = poly([[10, 7.5], [12.5, 10], [10, 12.5], [7.5, 10]]);
+// One corner bracket of a maximize or minimize control: one-pixel strokes on half units, through points.
+const bracket = (points) => crisp(points, false, 1);
+const CONTROL_SHAPES = {
+  // Four corner brackets pointing out (maximize) or in (minimize), around the gem's place.
+  Maximize: [[[3.5, 8.5], [3.5, 3.5], [8.5, 3.5]], [[11.5, 3.5], [16.5, 3.5], [16.5, 8.5]], [[3.5, 11.5], [3.5, 16.5], [8.5, 16.5]], [[11.5, 16.5], [16.5, 16.5], [16.5, 11.5]]].map(bracket),
+  Minimize: [[[3.5, 7.5], [7.5, 7.5], [7.5, 3.5]], [[12.5, 3.5], [12.5, 7.5], [16.5, 7.5]], [[3.5, 12.5], [7.5, 12.5], [7.5, 16.5]], [[12.5, 16.5], [12.5, 12.5], [16.5, 12.5]]].map(bracket),
+  // The small diamond gem in the middle of maximize and minimize.
+  ControlGem: [GEM],
+  // The close seal: a diamond outline with a stud on each of its points.
+  CloseRing: [path([[10, 2], [18, 10], [10, 18], [2, 10]], 1.2, true), dot(10, 1.6, 1.3), dot(18.4, 10, 1.3), dot(10, 18.4, 1.3), dot(1.6, 10, 1.3)],
+  // The cross inside the seal.
+  CloseMark: [line(7.4, 7.4, 12.6, 12.6, 1.5), line(12.6, 7.4, 7.4, 12.6, 1.5)],
+};
+
 // The two strokes of an arrow head at (x, y) pointing against (dx, dy).
 function arrowHead([x, y, dx, dy]) {
   return [line(x, y, x + 2 * dx + 2 * dy, y + 2 * dy + 2 * dx, STROKE), line(x, y, x + 2 * dx - 2 * dy, y + 2 * dy - 2 * dx, STROKE)];
 }
 
 // Name (under Media/Icons) -> the image it holds.
-export const ICONS = Object.fromEntries(Object.entries({ ...ICON_SHAPES, ...MENU_SHAPES }).map(([name, shapes]) => [name, () => draw(image(32, 32), 16, shapes)]));
+export const ICONS = {
+  ...Object.fromEntries(Object.entries({ ...ICON_SHAPES, ...MENU_SHAPES }).map(([name, shapes]) => [name, () => draw(image(32, 32), 16, shapes)])),
+  ...Object.fromEntries(Object.entries(CONTROL_SHAPES).map(([name, shapes]) => [name, () => draw(image(64, 64), 20, shapes)])),
+};
 
 // Every generated file: path under Media -> image maker.
 export const MEDIA = {

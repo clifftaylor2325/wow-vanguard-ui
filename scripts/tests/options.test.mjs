@@ -523,3 +523,25 @@ it("a note row wraps to its card and the row grows to fit; a dropdown's choice s
     return { fs.__noWrap, fs.__points.LEFT ~= nil, fs.__points.RIGHT and fs.__points.RIGHT.rel == fs.__parent.arrow }`);
   expect(choice, "the chosen role is one line between the box's edge and its arrow").toEqual([true, true, true]);
 });
+
+it("options: the scroll thumb drags its page, and the copy box opens above the window", () => {
+  const addon = loggedIn();
+  addon.eval('ns.Options.Show("general")');
+  const out = addon.eval(`
+    local view
+    for _, w in ipairs(__wfgStub.frames) do if w.__scrollChild and w.__scripts.OnMouseWheel and w:IsVisible() then view = w end end
+    -- TEST-ONLY page taller than its view: the thumb is 24 tall and travels 76.
+    view.__height, view.__scrollChild.__height = 100, 800
+    view:GetScript("OnMouseWheel")(view, 0)
+    local grip, y = Vanguard_Options.grip, 500
+    GetCursorPosition = function() return 0, y end
+    grip:GetScript("OnMouseDown")(grip, "LeftButton")
+    y = 500 - 38 * Vanguard_Options:GetEffectiveScale()
+    __wfgStub.update(0.05)
+    local dragged = view:GetVerticalScroll()
+    grip:GetScript("OnMouseUp")(grip, "LeftButton")
+    y = 0 __wfgStub.update(0.05)
+    ns.ShowText("TEST-ONLY", "TEST-ONLY")
+    return { grip:IsShown(), dragged, view:GetVerticalScroll(), Vanguard_TextDialog.__strata, Vanguard_Options.__strata }`);
+  expect(out, "dragging the thumb half its travel scrolls half the page and stops when let go; the copy box is a layer above the window").toEqual([true, 350, 350, "FULLSCREEN_DIALOG", "DIALOG"]);
+});
