@@ -1051,9 +1051,9 @@ it("game alerts: a talking head that loads later is restyled once when its part 
 const WARNING_ENV = `
   GameFontNormalHuge = "GameFontNormalHuge"
   RaidWarningFrame = CreateFrame("Frame", "RaidWarningFrame", UIParent)
-  RaidWarningFrame.line, RaidWarningFrame.counter = RaidWarningFrame:CreateFontString(), 0
+  RaidWarningFrame.line, RaidWarningFrame.counter = RaidWarningFrame:CreateFontString(nil, nil, "GameFontNormalHuge"), 0
   function RaidWarningFrame:AddMessage(text) self.counter = self.counter + 1 self.line:SetText(text) self.line:SetTextColor(1, 0.2, 0.2) self.line.messageOrder = self.counter end
-  function RaidWarningFrame:GetSortedMessages() return { self:CreateFontString(), self.line } end
+  function RaidWarningFrame:GetSortedMessages() return { self:CreateFontString(nil, nil, "GameFontNormalHuge"), self.line } end
   RaidWarningFrame:RegisterEvent("HARDCORE_DEATHS") RaidWarningFrame:RegisterEvent("CHAT_MSG_RAID_WARNING")
   RaidWarningFrame:SetScript("OnEvent", function(self, event, text) self:AddMessage(text) end)
 `;
