@@ -1,12 +1,15 @@
--- Auction helper, the Shop card (Modules/AuctionHelper.lua holds the tabs,
+-- Auction helper, the Shopping page (Modules/AuctionHelper.lua holds the tabs,
 -- the search queue, the scan and the slash commands): named shopping lists
 -- and their entries (an item ID or a name, with filters: exact name, level,
--- quality and a max price, set from a row's right-click menu), managed from the dropdown or
--- /vg ah (rename, duplicate, delete with a confirm, export as text, import
--- plain lines or Auctionator's `^`/`;` strings), Search list, which runs the
--- list's searches one after another (the last 20 terms searched are kept,
--- account-wide, as the Recent pseudo-list), each entry's best result, and the
--- card's rows; clicking a row opens the results view in their place: every
+-- quality and a max price, set from a row's right-click menu), managed from
+-- the Lists pane's buttons or /vg ah (new, rename, duplicate, delete with a
+-- confirm, export as text, import plain lines or Auctionator's `^`/`;`
+-- strings), Search list, which runs the list's searches one after another
+-- (the last 20 terms searched are kept, account-wide, as the Recent
+-- pseudo-list), and each entry's best result. The pane on the left lists the
+-- lists (with Recent, and the entries other files add: Deals, Upgrades); the
+-- card on the right shows the one picked as a table (Modules/AuctionTable.lua)
+-- under a toolbar; clicking a row opens the results view in its place: every
 -- listing of that item (unit price, quantity, time left; each column sorts),
 -- further pages read as you scroll, Up/Down and Enter while the mouse is
 -- over it, and a listing clicked shows its item in the game's own list.
@@ -22,34 +25,41 @@ local ADDON, ns = ...
 local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
 
--- The shop card's rows: how many (until AH.Build counts them from the room they have), from where.
-AH.SHOP_ROWS, AH.SHOP_ROWS_Y = 6, -74
--- Shopping lists: how many, entries per list, the list "+ Add" starts, the dropdown's "New list..." value.
+-- The list's rows: how many (until AH.Build counts them from the room they have), and its columns
+-- (Modules/AuctionTable.lua's form): the cheapest unit price, how many are up, and the max price.
+AH.SHOP_ROWS = 6
+AH.LIST_COLUMNS = { { key = "price", title = "Unit price", width = 100, side = "RIGHT", role = "number", color = "gold" },
+  { key = "qty", title = "Up", width = 60, side = "RIGHT", role = "small", color = "text2" },
+  { key = "max", title = "Max", width = 80, side = "RIGHT", role = "small", color = "text2" } }
+-- The Lists pane: its rows (how many, from where), the height its action buttons take, their
+-- width (three to a row), and the actions in order.
+AH.PANE_ROWS, AH.PANE_ROWS_Y, AH.ACTIONS_H, AH.ACTION_W = 6, -20, 52, 72
+-- Shopping lists: how many, entries per list, the list "+ Add" starts, the New action's value.
 AH.MAX_LISTS, AH.MAX_ENTRIES, AH.DEFAULT_LIST, AH.NEW = 20, 50, "Shopping", "\1new"
--- The dropdown's other actions on the list in use (values no list name can have).
+-- The other actions on the list in use (values no list name can have).
 AH.RENAME, AH.COPY, AH.DELETE, AH.IMPORT, AH.EXPORT = "\1rename", "\1copy", "\1delete", "\1import", "\1export"
+AH.ACTIONS = { { AH.NEW, "New" }, { AH.RENAME, "Rename" }, { AH.COPY, "Copy" }, { AH.DELETE, "Delete" }, { AH.IMPORT, "Import" }, { AH.EXPORT, "Export" } }
 -- Enum.AuctionHouseFilter's ExactMatch and PoorQuality (AuctionHouseEnumsDocumentation.lua): the
 -- quality filters run on from PoorQuality in Enum.ItemQuality's order (Poor 0 ... Legendary 5).
 AH.EXACT_FILTER, AH.QUALITY_FILTER = 5, 6
 -- The qualities a filter can ask for, as { Enum.ItemQuality, name }, after "Any".
 AH.ANY, AH.QUALITIES = "any", { { "any", "Any" }, { 0, "Poor" }, { 1, "Common" }, { 2, "Uncommon" }, { 3, "Rare" }, { 4, "Epic" }, { 5, "Legendary" } }
--- The results view: its rows (how many, from where in the view) and its columns, as
--- { sort key, heading, left edge, width, side the text keeps to }.
-AH.VIEW_ROWS, AH.VIEW_ROWS_Y = 6, -48
-AH.VIEW_COLUMNS = { { "price", "Unit price", 0, 100, "RIGHT" }, { "qty", "Quantity", 100, 60, "RIGHT" }, { "time", "Time left", 172, 92, "LEFT" } }
+-- The results view: its rows (how many, until AH.Build counts them) and its columns.
+AH.VIEW_ROWS = 6
+AH.VIEW_COLUMNS = { { key = "price", title = "Unit price", width = 100, side = "RIGHT", role = "number", color = "gold" },
+  { key = "qty", title = "Quantity", width = 70, side = "RIGHT", role = "small", color = "text" },
+  { key = "time", title = "Time left", width = 92, side = "LEFT", role = "small", color = "text2" } }
 -- Enum.AuctionHouseTimeLeftBand (Short 0 ... VeryLong 3) as the game's names (TIME_LEFT_SHORT...) and
 -- ours when the client has none.
 AH.TIME_BANDS = { [0] = { "TIME_LEFT_SHORT", "Short" }, [1] = { "TIME_LEFT_MEDIUM", "Medium" }, [2] = { "TIME_LEFT_LONG", "Long" }, [3] = { "TIME_LEFT_VERY_LONG", "Very long" } }
--- The colors of a listing's cells, by column.
-AH.CELL_COLORS = { price = "gold", qty = "text", time = "text2" }
 -- A shop row's right-click menu; the filter dialog's width.
 AH.ROW_CHOICES, AH.FILTER_W = { { "filters", "Filters..." }, { "remove", "Remove" } }, 280
 -- Copper in one of each money unit typed into a max price.
 AH.MONEY_UNITS = { g = 10000, s = 100, c = 1 }
--- The Recent pseudo-list: its dropdown value, and how many searched terms it keeps.
+-- The Recent pseudo-list: its pane key, and how many searched terms it keeps.
 AH.RECENT, AH.MAX_RECENT = "\1recent", 20
 -- What chat says when an action needs a list and there's none in use.
-AH.NO_LIST = "Pick a shopping list first (the Shop card's dropdown, or /vg ah list <name>)."
+AH.NO_LIST = "Pick a shopping list first (the Lists pane, or /vg ah list <name>)."
 
 -- Shopping lists -----------------------------------------------------------------------------
 
@@ -524,21 +534,28 @@ end
 -- Asks for the next page of listings (through the queue, once at a time) when the view is near its
 -- last row and the client has more.
 local function moreIfNear(v)
-  if v.commodity == nil or v.full or v.asked or v.offset + AH.VIEW_ROWS < #v.rows - 2 then return end
+  if v.commodity == nil or v.full or v.asked or not AH.shopCard.view.table:NearEnd() then return end
   v.asked = true
   AH.Queue({ page = v.key, commodity = v.commodity })
 end
 
+-- The view's table from its top, its first row marked for the keyboard.
+local function viewTop()
+  local t = AH.shopCard.view.table
+  t.offset, t.mark = 0, 1
+end
+
 -- Opens the results view for an item key: every listing, searched first in line.
 function AH.OpenListings(key, f)
-  AH.view = { key = key, rows = {}, sort = "price", reverse = false, offset = 0, mark = 1, maxPrice = f and f.maxPrice }
+  AH.view = { key = key, rows = {}, sort = "price", reverse = false, maxPrice = f and f.maxPrice }
+  viewTop()
   AH.DropQueued("listings")
   AH.DropQueued("page")
   AH.Queue({ listings = key }, true)
   AH.PaintShop()
 end
 
--- Back: the shop's rows again, and the view's searches dropped.
+-- Back: the list again, and the view's searches dropped.
 function AH.CloseListings()
   AH.view = nil
   AH.DropQueued("listings")
@@ -550,18 +567,9 @@ end
 function AH.SortListings(column)
   local v = AH.view
   v.reverse = v.sort == column and not v.reverse
-  v.sort, v.offset, v.mark = column, 0, 1
+  v.sort = column
+  viewTop()
   sortListings(v)
-  AH.PaintShop()
-end
-
--- Marks listing i (kept within the rows, scrolled into view) for the keyboard.
-function AH.MarkListing(i)
-  local v = AH.view
-  v.mark = math.max(1, math.min(#v.rows, i))
-  if v.mark <= v.offset then v.offset = v.mark - 1 end
-  if v.mark > v.offset + AH.VIEW_ROWS then v.offset = v.mark - AH.VIEW_ROWS end
-  moreIfNear(v)
   AH.PaintShop()
 end
 
@@ -569,85 +577,42 @@ end
 function AH.OpenListing(i)
   local v = AH.view
   if not v.rows[i] then return end
-  v.mark = i
+  AH.shopCard.view.table.mark = i
   AH.Queue({ open = v.key }, true)
   AH.ShowInGame()
   AH.PaintShop()
 end
 
--- The wheel over the view scrolls its rows (and asks for more near the end).
-local function scrollListings(_, delta)
-  local v = AH.view
-  v.offset = math.max(0, math.min(#v.rows - AH.VIEW_ROWS, v.offset - delta))
-  moreIfNear(v)
-  AH.PaintShop()
-end
-
--- What a key does in the view; true when it used it (Up, Down, Enter).
-local function useListingKey(key)
-  local v = AH.view
-  if key == "UP" or key == "DOWN" then AH.MarkListing(v.mark + (key == "UP" and -1 or 1)) return true end
-  if key == "ENTER" and v.rows[v.mark] then AH.OpenListing(v.mark) return true end
-  return false
-end
-
--- A key while the view has the keyboard: the ones it uses stop here, every other one goes on to the
--- game; none is used while a box has the typing (the options window's way).
-local function onListingKey(f, key)
-  local typing = type(GetCurrentKeyBoardFocus) == "function" and GetCurrentKeyBoardFocus() ~= nil
-  local used = not typing and AH.view ~= nil and useListingKey(key)
-  if not ns.InCombat() and ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(not used) end
-end
-
--- The view takes the keyboard while the mouse is over it, out of combat, and lets it go otherwise.
-local function focusKeys(v, on)
-  v:EnableKeyboard(on and not ns.InCombat())
-end
-
--- The sort arrow beside the sorted column's heading: up for low first, down for high first.
-local function paintArrow(f, v)
-  local h = f.heads[v.sort]
-  local right = h.side == "RIGHT"
-  f.arrow:ClearAllPoints()
-  f.arrow:SetPoint(right and "RIGHT" or "LEFT", h.text, right and "LEFT" or "RIGHT", right and -2 or 2, 0)
-  f.arrow:SetRotation(v.reverse and 0 or math.pi)
-end
-
--- The view's head: its item, the sorted column's heading in the accent, and "searching..." or
--- "none up" while there's no listing to show.
+-- The view's head: its item, and "searching..." or "none up" while there's no listing to show.
 local function paintViewHead(f, v)
   local info = C_AuctionHouse.GetItemKeyInfo(v.key)
   f.icon:SetTexture(info and info.iconFileID or AH.UNKNOWN_ICON)
   f.name:SetText(info and info.itemName or ("item " .. v.key.itemID))
-  f.status:SetText(#v.rows > 0 and "" or (v.searched and "none up" or "searching..."))
-  for _, h in ipairs(f.heads) do T.Color(h.text, h.column == v.sort and "accent" or "text2") end
-  paintArrow(f, v)
+  f.table:SetStatus(#v.rows > 0 and "" or (v.searched and "none up" or "searching..."))
+  f.table:SetSort(v.sort, v.reverse)
 end
 
--- A listing's row: unit price, quantity and time left, marked when it's the keyboard's.
-local function paintListing(r, v, i)
-  local l = v.rows[i]
-  r:SetShown(l ~= nil)
-  if not l then return end
-  r.index = i
+-- A listing's row: unit price, quantity and time left (the item is in the view's head).
+local function paintListing(r, l)
+  r.icon:SetTexture(nil)
+  r.name:SetText("")
   r.cells.price:SetText(AP.Money(l.price))
   r.cells.qty:SetText(tostring(l.qty))
   r.cells.time:SetText(l.timeText)
-  r.mark:SetShown(i == v.mark)
-  r.wash:SetShown(i == v.mark)
 end
 
--- The results view in place of the shop's rows while it's open (else the rows and their controls).
+-- The results view in place of the list while it's open (else the list, its toolbar and the heading).
 function AH.PaintListings()
   local c, v = AH.shopCard, AH.view
   c.body:SetShown(v == nil)
+  c.title:SetShown(v == nil)
   c.view:SetShown(v ~= nil)
   if not v then return end
   paintViewHead(c.view, v)
-  for i, r in ipairs(c.view.rows) do paintListing(r, v, v.offset + i) end
+  c.view.table:SetItems(v.rows)
 end
 
--- The shop card -------------------------------------------------------------------------------
+-- The list shown ------------------------------------------------------------------------------
 
 -- What a row shows for an entry: the item's name and icon from its result, else from what the
 -- client knows of an item ID, else the name typed.
@@ -659,69 +624,190 @@ function AH.EntryLook(entry, found)
   return name or ("item " .. term), icon or AH.UNKNOWN_ICON
 end
 
--- A row for one entry: the item, how many are up and the cheapest price per unit ("none up"
--- after a search found nothing); hidden past the list's end.
+-- A row for one entry: the item, the cheapest price per unit ("none up" after a search found
+-- nothing), how many are up, and its max price when a filter sets one.
 local function paintRow(r, entry)
-  r:SetShown(entry ~= nil)
-  if entry == nil then return end
   local found = AH.found[entry]
   local name, icon = AH.EntryLook(entry, found)
-  r.entry = entry
+  local _, f = AH.Term(entry)
   r.name:SetText(name)
   r.icon:SetTexture(icon)
-  r.price:SetText(found and AP.Money(found.price) or (found == false and "none up" or ""))
-  r.qty:SetText(found and ("x " .. found.qty) or "")
+  r.cells.price:SetText(found and AP.Money(found.price) or (found == false and "none up" or ""))
+  r.cells.qty:SetText(found and tostring(found.qty) or "")
+  r.cells.max:SetText(f and f.maxPrice and AP.Money(f.maxPrice) or "")
   AH.PaintCost(r, entry)
-end
-
--- The shop card: the list picked, the search's progress ("12 of 50") and a row per entry from the scroll offset.
-function AH.PaintShop()
-  local c, p = AH.shopCard, AH.progress
-  if not c then return end
-  local _, list = AH.CurrentList()
-  c.lists:Refresh()
-  c.progress:SetText(p and string.format("%d of %d", p.done, p.total) or "")
-  for i, r in ipairs(c.rows) do
-    r.index = c.offset + i
-    paintRow(r, list and list[r.index])
-  end
-  AH.PaintListings()
 end
 
 -- A row clicked: left opens the results view for its item (the one its search found, or an item
 -- ID's own), right opens the row's menu (Filters..., Remove) under it.
 function AH.ClickRow(r, button)
   if button == "RightButton" then return AH.RowMenu(r) end
-  local found, term, f = AH.found[r.entry], AH.Term(r.entry)
+  local found, term, f = AH.found[r.item], AH.Term(r.item)
   local key = found and found.key or (type(term) == "number" and C_AuctionHouse.MakeItemKey(term))
   if key then AH.OpenListings(key, f) end
 end
 
--- The mouse wheel over the rows scrolls them.
-local function scrollShop(c, delta)
-  local _, list = AH.CurrentList()
-  c.offset = math.max(0, math.min(#(list or {}) - #c.rows, c.offset - delta))
+-- The list's status line: how to start while there's no list, or the list is empty.
+local function listStatus(items)
+  if not AH.CurrentList() then return countLists(AP.Store()) > 0 and "Pick a list in the Lists pane." or "No lists yet: New makes one, Import pastes one." end
+  if #items > 0 then return "" end
+  return AH.ListKey() == AH.RECENT and "Nothing searched yet." or "+ Add takes an item link, an item ID or a name."
+end
+
+-- The list search's progress, "12 of 50", while one runs.
+local function listCount()
+  local p = AH.progress
+  return p and string.format("%d of %d", p.done, p.total) or ""
+end
+
+-- What the card shows for a list (the entry picked in the pane): its columns, its items, how a
+-- row is painted and what a click does, the count beside the heading, the status line, and that
+-- the list buttons apply. Modules/AuctionDeals.lua and Modules/AuctionUpgrades.lua add their own,
+-- by their pane keys.
+AH.Sources = {}
+AH.Sources.list = { columns = AH.LIST_COLUMNS, paint = paintRow, click = AH.ClickRow, count = listCount, status = listStatus, buttons = true,
+  items = function() local _, list = AH.CurrentList() return list or {} end }
+
+-- The source of what the card shows now: the entry picked in the pane (a list unless a file adds its own).
+function AH.Source()
+  return AH.Sources[AH.ListKey()] or AH.Sources.list
+end
+
+-- The card's toolbar: the heading names the list (or the source), the count beside it, and the list buttons when they apply.
+local function paintToolbar(c, s, items)
+  c.title:SetText(AH.CurrentList() or s.name or "Shopping")
+  c.progress:SetText(s.count(items))
+  for _, b in ipairs({ c.add, c.search, c.restock }) do b:SetShown(s.buttons == true) end
+end
+
+-- The source's list on the card: its columns when they change, its rows from the scroll offset,
+-- and its status line.
+local function paintSource(t, s, items)
+  if t.columns ~= s.columns then t:SetColumns(s.columns) end
+  t.paintRow = s.paint
+  t:SetItems(items)
+  t:SetStatus(s.status(items))
+end
+
+-- The card: the pane, then the source's list, its toolbar, and the results view when one is open.
+function AH.PaintShop()
+  local c = AH.shopCard
+  if not c then return end
+  AH.PaintPane()
+  local s = AH.Source()
+  local items = s.items()
+  paintToolbar(c, s, items)
+  paintSource(c.body.table, s, items)
+  AH.PaintListings()
+end
+
+-- The list shown from its top (a list made or picked, Modules/AuctionAPI.lua's searches).
+function AH.ShopTop()
+  if AH.shopCard then AH.shopCard.body.table.offset = 0 end
+end
+
+-- The Lists pane -------------------------------------------------------------------------------
+
+-- The pane's entries, each { key, name, count }: the lists by name, Recent (once something was
+-- searched, or while it is shown), then what the other files add (Deals, Upgrades: AH.PANE_EXTRAS,
+-- each a function giving an entry or nil).
+function AH.PaneEntries()
+  local out = {}
+  for name, list in pairs(AP.Store().lists) do out[#out + 1] = { key = name, name = name, count = #list } end
+  table.sort(out, function(a, b) return a.name < b.name end)
+  if #AH.Recent() > 0 or AH.ListKey() == AH.RECENT then out[#out + 1] = { key = AH.RECENT, name = "Recent", count = #AH.Recent() } end
+  for _, extra in ipairs(AH.PANE_EXTRAS) do out[#out + 1] = extra() end
+  return out
+end
+AH.PANE_EXTRAS = {}
+
+-- An entry picked in the pane: its list shown from the top (a results view open closes).
+function AH.PickEntry(key)
+  AP.Store().list = key
+  AH.ShopTop()
+  if AH.view then return AH.CloseListings() end
   AH.PaintShop()
 end
 
--- The actions on the list in use: a list's, or Recent's (no rename; Delete clears it).
-local function listActions()
-  if listInUse() then return { { AH.RENAME, "Rename list..." }, { AH.COPY, "Duplicate list" }, { AH.DELETE, "Delete list..." }, { AH.EXPORT, "Export list..." } } end
-  if AH.ListKey() == AH.RECENT then return { { AH.COPY, "Duplicate list" }, { AH.EXPORT, "Export list..." }, { AH.DELETE, "Clear recent..." } } end
-  return {}
+-- A pane row: the entry's name and count, marked (accent edge and wash) when it's the one shown.
+local function paintPaneRow(r, e)
+  r:SetShown(e ~= nil)
+  r.entry = e
+  if not e then return end
+  local on = e.key == AH.ListKey()
+  r.name:SetText(e.name)
+  r.count:SetText(e.count > 0 and tostring(e.count) or "")
+  T.Color(r.name, on and "accent" or "text")
+  r.mark:SetShown(on)
+  r.wash:SetShown(on)
 end
 
--- The dropdown's choices: the lists by name, Recent (once something was searched), "New list...",
--- the actions on the list in use, and Import.
-local function listChoices()
-  local out = {}
-  for name in pairs(AP.Store().lists) do out[#out + 1] = { name, name } end
-  table.sort(out, function(a, b) return a[1] < b[1] end)
-  if #AH.Recent() > 0 or AH.ListKey() == AH.RECENT then out[#out + 1] = { AH.RECENT, "Recent" } end
-  out[#out + 1] = { AH.NEW, "New list..." }
-  for _, c in ipairs(listActions()) do out[#out + 1] = c end
-  out[#out + 1] = { AH.IMPORT, "Import..." }
-  return out
+-- Which actions work now: on a list all six; on Recent new, import, copy, export and delete (as
+-- Clear); with nothing shown, new and import.
+local function actionsOn()
+  if listInUse() then return { [AH.NEW] = true, [AH.RENAME] = true, [AH.COPY] = true, [AH.DELETE] = true, [AH.IMPORT] = true, [AH.EXPORT] = true } end
+  local recent = AH.ListKey() == AH.RECENT
+  return { [AH.NEW] = true, [AH.IMPORT] = true, [AH.COPY] = recent, [AH.EXPORT] = recent, [AH.DELETE] = recent }
+end
+
+-- The action buttons: the ones that work now enabled (the rest muted); Delete reads Clear on Recent.
+local function paintActions(p)
+  local on = actionsOn()
+  for _, b in ipairs(p.actions) do
+    if on[b.action] then b:Enable() else b:Disable() end
+    T.Color(b.text, on[b.action] and "text" or "muted")
+  end
+  p.delete.text:SetText(AH.ListKey() == AH.RECENT and "Clear" or "Delete")
+end
+
+-- The pane: its entries from the scroll offset (kept within them), and the actions.
+function AH.PaintPane()
+  local p = AH.pane
+  if not p then return end
+  local entries = AH.PaneEntries()
+  p.offset = math.max(0, math.min(p.offset, #entries - #p.rows))
+  for i, r in ipairs(p.rows) do paintPaneRow(r, entries[p.offset + i]) end
+  paintActions(p)
+end
+
+-- The wheel over the pane scrolls its entries.
+local function scrollPane(p, delta)
+  p.offset = math.max(0, p.offset - delta)
+  AH.PaintPane()
+end
+
+-- Pane row i: a click shows its entry; its name on the left, its count on the right, and the mark.
+local function paneRow(p, i)
+  local r = AH.Row(p, i, AH.PANE_ROWS_Y, function(self) if self.entry then AH.PickEntry(self.entry.key) end end)
+  AH.KeyMarks(r)
+  r.name = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
+  r.name:SetPoint("LEFT", 6, 0)
+  r.name:SetPoint("RIGHT", -40, 0)
+  r.name:SetWordWrap(false)
+  r.count = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  r.count:SetPoint("RIGHT", -4, 0)
+  return r
+end
+
+-- Action button i at the pane's bottom, three to a row: its action (AH.LIST_ACTIONS) on a click.
+local function actionButton(p, i, choice)
+  local b = W.Button(p, choice[2], function() AH.LIST_ACTIONS[choice[1]]() end, AH.ACTION_W)
+  b.action = choice[1]
+  local col, row = (i - 1) % 3, math.floor((i - 1) / 3)
+  b:SetPoint("BOTTOMLEFT", p, "BOTTOMLEFT", col * (AH.ACTION_W + 4), (1 - row) * 26)
+  return b
+end
+
+-- The Lists pane on a column (h tall): the entries' rows (the wheel scrolls them) and the actions.
+function AH.BuildPane(column, h)
+  local p = AH.Card(column, "Lists", -AH.PAD, h)
+  p.rows, p.offset, p.actions = {}, 0, {}
+  for i = 1, AH.PANE_ROWS do p.rows[i] = paneRow(p, i) end
+  for i, choice in ipairs(AH.ACTIONS) do p.actions[i] = actionButton(p, i, choice) end
+  p.delete = p.actions[4]
+  p:EnableMouseWheel(true)
+  p:SetScript("OnMouseWheel", scrollPane)
+  AH.pane = p
 end
 
 -- The dropdown's actions, by value.
@@ -733,14 +819,6 @@ AH.LIST_ACTIONS = {
   [AH.EXPORT] = function() AH.ExportList() end,
   [AH.IMPORT] = function() AH.AskImport() end,
 }
-
--- A choice in the dropdown: an action, or a list picked (shown from its top).
-local function pickList(v)
-  if AH.LIST_ACTIONS[v] then return AH.LIST_ACTIONS[v]() end
-  AP.Store().list = v
-  AH.shopCard.offset = 0
-  AH.PaintShop()
-end
 
 -- Filters -----------------------------------------------------------------------------------
 
@@ -878,125 +956,86 @@ function AH.RowMenu(r)
   d:GetScript("OnClick")(d)
 end
 
--- The shop card's progress line, and its rows, scrolled by the mouse wheel.
-local function shopRows(c)
+-- The card ------------------------------------------------------------------------------------
+
+-- A table under a card's toolbar, the width of the card.
+function AH.TableUnder(t, parent)
+  t:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -AH.TOOLBAR_H)
+  t:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -AH.TOOLBAR_H)
+end
+
+-- A toolbar button, 18 high, right of the last one (or at the card's top right).
+function AH.ToolButton(c, text, onClick, width, after)
+  local b = W.Button(c.body, text, onClick, width)
+  b:SetHeight(18)
+  if after then b:SetPoint("RIGHT", after, "LEFT", -4, 0) else b:SetPoint("TOPRIGHT", 0, 2) end
+  return b
+end
+
+-- The card's toolbar: the count or progress beside the heading, and the list buttons on the right:
+-- + Add, Search list and Restock (Modules/AuctionRestock.lua).
+local function toolbar(c)
   c.progress = T.Text(c.body:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  c.progress:SetPoint("LEFT", c.search, "RIGHT", 8, 0)
-  c.rows, c.offset = {}, 0
-  for i = 1, AH.SHOP_ROWS do
-    c.rows[i] = AH.Row(c.body, i, AH.SHOP_ROWS_Y, AH.ClickRow)
-    AH.RowParts(c.rows[i])
-  end
-  c:EnableMouseWheel(true)
-  c:SetScript("OnMouseWheel", scrollShop)
+  c.progress:SetPoint("LEFT", c.title, "RIGHT", 8, 0)
+  c.add = AH.ToolButton(c, "+ Add", function() ns.AskText("Add to list", function(text) AH.AddEntry(text) end, "Add") end, 70)
+  c.search = AH.ToolButton(c, "Search list", function() AH.SearchList() end, 100, c.add)
+  AH.BuildRestock(c)
 end
 
--- A column's heading in the view: its name, sorting by it on a click.
-local function columnHead(f, col)
-  local h = CreateFrame("Button", nil, f)
-  h:SetPoint("TOPLEFT", col[3], -30)
-  h:SetSize(col[4], 16)
-  h.column, h.side = col[1], col[5]
-  h.text = T.Text(h:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  h.text:SetPoint(col[5], col[5] == "RIGHT" and -2 or 2, 0)
-  h.text:SetText(col[2])
-  h:SetScript("OnClick", function() AH.SortListings(col[1]) end)
-  return h
+-- A click on a row: whatever the card shows (its source) answers it.
+local function clickSource(r, button)
+  AH.Source().click(r, button)
 end
 
--- A listing row's cell for a column: price in gold numbers, quantity in text, time left in text2.
-local function listingCell(r, col)
-  local role, color = col[1] == "price" and "number" or "small", AH.CELL_COLORS[col[1]]
-  local fs = T.Text(r:CreateFontString(nil, "OVERLAY"), role, color)
-  fs:SetPoint(col[5], r, "LEFT", col[5] == "RIGHT" and col[3] + col[4] - 2 or col[3] + 2, 0)
-  return fs
+-- The mouse over a row: the source's tooltip, when it has one.
+local function enterSource(r)
+  local s = AH.Source()
+  if s.enter then s.enter(r) end
 end
 
--- A listing's row in the view: a cell per column, the keyboard's mark (an accent edge and a wash),
--- and the keys taken while the mouse is over it.
-local function listingRow(f, i)
-  local r = AH.Row(f, i, AH.VIEW_ROWS_Y, function(self) AH.OpenListing(self.index) end)
-  r.wash, r.mark, r.cells = W.Flat(r, "BACKGROUND", "hover"), W.Flat(r, "ARTWORK", "accent"), {}
-  r.wash:SetAllPoints()
-  r.mark:SetPoint("TOPLEFT")
-  r.mark:SetPoint("BOTTOMLEFT")
-  r.mark:SetWidth(2)
-  for _, col in ipairs(AH.VIEW_COLUMNS) do r.cells[col[1]] = listingCell(r, col) end
-  r:SetScript("OnEnter", function() focusKeys(f, true) end)
-  r:SetScript("OnLeave", function() focusKeys(f, f:IsMouseOver()) end)
-  return r
+-- The mouse off a row: the tooltip goes.
+local function leaveSource()
+  GameTooltip:Hide()
 end
 
 -- The view's top line: Back, then the item's icon and name.
-local function viewTop(f)
+local function viewHead(f)
   f.back = W.Button(f, "Back", function() AH.CloseListings() end, 60)
-  f.back:SetPoint("TOPLEFT")
+  f.back:SetHeight(18)
+  f.back:SetPoint("TOPLEFT", 0, 2)
   f.icon = T.Crop(f:CreateTexture(nil, "ARTWORK"))
   f.icon:SetSize(16, 16)
   f.icon:SetPoint("LEFT", f.back, "RIGHT", 8, 0)
-  f.name = T.Text(f:CreateFontString(nil, "OVERLAY"), "label")
+  f.name = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading")
   f.name:SetPoint("LEFT", f.icon, "RIGHT", 4, 0)
   f.name:SetPoint("RIGHT", f, "RIGHT", 0, 0)
   f.name:SetWordWrap(false)
 end
 
--- The column headings (by sort key too) with the sort arrow, the status line and the rows.
-local function viewTable(f)
-  f.heads, f.rows = {}, {}
-  for i, col in ipairs(AH.VIEW_COLUMNS) do
-    f.heads[i] = columnHead(f, col)
-    f.heads[col[1]] = f.heads[i]
-  end
-  f.arrow = W.IconTexture(f, "Down", 10, "accent")
-  f.status = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  f.status:SetPoint("TOPLEFT", 4, AH.VIEW_ROWS_Y - 4)
-  for i = 1, AH.VIEW_ROWS do f.rows[i] = listingRow(f, i) end
-end
-
--- The keys and the wheel: the view has the keyboard while the mouse is over it, never once hidden.
-local function viewInput(f)
-  f:EnableMouse(true)
-  f:EnableMouseWheel(true)
-  f:SetScript("OnMouseWheel", scrollListings)
-  f:SetScript("OnKeyDown", onListingKey)
-  f:SetScript("OnEnter", function(self) focusKeys(self, true) end)
-  f:SetScript("OnLeave", function(self) focusKeys(self, self:IsMouseOver()) end)
-  f:SetScript("OnHide", function(self) self:EnableKeyboard(false) end)
-end
-
--- The results view, in place of the shop's rows and controls (under the card's heading), hidden until a row opens it.
+-- The results view in the list's place (over the whole card), hidden until a row opens it: Back
+-- and the item, then the listings' table, which takes the keyboard while the mouse is over it.
 local function buildView(c)
   local f = CreateFrame("Frame", nil, c)
-  f:SetPoint("TOPLEFT", 0, -20)
-  f:SetPoint("BOTTOMRIGHT")
-  viewTop(f)
-  viewTable(f)
-  viewInput(f)
+  f:SetAllPoints()
+  viewHead(f)
+  f.table = AH.Table(f, AH.VIEW_COLUMNS, AH.VIEW_ROWS, { keys = true, paintRow = paintListing, onOpen = AH.OpenListing, onSort = AH.SortListings,
+    onClick = function(r) AH.OpenListing(r.index) end, onNear = function() if AH.view then moreIfNear(AH.view) end end })
+  AH.TableUnder(f.table, f)
   f:Hide()
   c.view = f
 end
 
--- The shop card's controls: the list dropdown, + Add, Search list and Restock (Modules/AuctionRestock.lua).
-local function shopControls(c)
-  c.lists = W.Dropdown(c.body, listChoices, function() return AP.Store().list end, pickList, 180)
-  c.lists:SetPoint("TOPLEFT", 0, -20)
-  c.add = W.Button(c.body, "+ Add", function() ns.AskText("Add to list", function(text) AH.AddEntry(text) end, "Add") end, 76)
-  c.add:SetPoint("TOPRIGHT", 0, -19)
-  c.search = W.Button(c.body, "Search list", function() AH.SearchList() end, 120)
-  c.search:SetPoint("TOPLEFT", 0, -46)
-  AH.BuildRestock(c)
-end
-
--- The shop card (h tall): the list dropdown, + Add, Search list with its progress line and the rows (in
--- c.body, which the results view takes the place of), a row's menu (a hidden dropdown that opens
--- the dropdown menu under the row right-clicked), and the results view.
+-- The Shopping card (h tall): the toolbar and the list's table (in c.body, which the results view
+-- takes the place of), a row's menu (a hidden dropdown that opens the dropdown menu under the
+-- row right-clicked), and the results view.
 function AH.BuildShop(f, h)
-  local c = AH.Card(f, "Shop", -AH.PAD, h)
+  local c = AH.Card(f, "Shopping", -AH.PAD, h)
   c.body = CreateFrame("Frame", nil, c)
   c.body:SetAllPoints()
-  shopControls(c)
   AH.shopCard = c
-  shopRows(c)
+  toolbar(c)
+  c.body.table = AH.Table(c.body, AH.LIST_COLUMNS, AH.SHOP_ROWS, { paintRow = paintRow, onClick = clickSource, onEnter = enterSource, onLeave = leaveSource })
+  AH.TableUnder(c.body.table, c.body)
   c.rowMenu = W.Dropdown(c, AH.ROW_CHOICES, function() end, AH.RowAction, 120)
   c.rowMenu:Hide()
   buildView(c)

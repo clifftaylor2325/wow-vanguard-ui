@@ -48,8 +48,8 @@ const restock = (addon) => {
 };
 
 // Shop row i: [shown, name, price, count].
-const shopRow = (addon, i) => addon.eval(`local r = ${HELPER}.shopCard.rows[${i}]
-  return { r:IsShown(), r.name:GetText() or false, r.price:GetText() or false, r.qty:GetText() or false }`);
+const shopRow = (addon, i) => addon.eval(`local r = ${HELPER}.shopCard.body.table.rows[${i}]
+  return { r:IsShown(), r.name:GetText() or false, r.cells.price:GetText() or false, r.cells.qty:GetText() or false }`);
 
 // The queries sent, as "fn:what" (an item key's itemID, or the first of a list of keys).
 const sent = (addon) => addon.eval(`local out = {}
@@ -77,7 +77,7 @@ it("the Restock list holds what Instance prep and Keep stocked are short of, wit
   expect(restock(addon), "8 more runes, 20 powder (the portals are packed), 7 cloth and 2 blades").toEqual([[17031, 8], [17020, 20], [2589, 7], [9999, 2]]);
   expect(addon.eval("return VanguardDB.ah.list"), "and it's the list in use").toBe("Restock");
   expect(chatHas(addon, /Shopping list Restock: TEST-ONLY Rune of Teleportation x8, TEST-ONLY Arcane Powder x20, Linen Cloth x7, TEST-ONLY Blade x2\./), "chat says what's on it").toBe(true);
-  expect(chatHas(addon, /At the auction house, Search list on the Shop card shows what the cheapest of each come to\./), "and where to search it").toBe(true);
+  expect(chatHas(addon, /At the auction house, Search list on the Shopping tab shows what the cheapest of each come to\./), "and where to search it").toBe(true);
   expect(addon.eval("return #__wfgWorld.ah.queries"), "nothing searched away from the auction house").toBe(0);
   addon.slash("stock 17020 30");
   addon.slash("ah restock");
@@ -130,7 +130,7 @@ it("at the auction house Restock searches the list, then prices the cheapest of 
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 17020);
   expect(sent(addon).slice(2), "then the next entry and its listings").toEqual(["SearchForItemKeys:17020", "SendSearchQuery:17020"]);
   expect(shopRow(addon, 2), "6 at 10s, 6 of the 10 at 12s (4 are yours), 8 at 15s").toEqual([true, "TEST-ONLY Arcane Powder", "2g 52s 0c", "20 for"]);
-  expect(isTok(addon, addon.eval(`return ${HELPER}.shopCard.rows[2].qty.__textColor`), "text2"), "enough up: in text2").toBe(true);
+  expect(isTok(addon, addon.eval(`return ${HELPER}.shopCard.body.table.rows[2].cells.qty.__textColor`), "text2"), "enough up: in text2").toBe(true);
   expect(addon.eval("return ns.AuctionPrices.House().prices[17020].min"), "the cheapest price feeds the price store").toBe(1000);
   expect(addon.eval("local out = {} for i, r in ipairs(__wfgWorld.ah.restricted) do out[i] = r.fn end return out"), "nothing is bought").toEqual({});
 });
@@ -147,7 +147,7 @@ it("fewer up than wanted shows in the warning colour; an item's listings are bou
   browse(addon, 9999);
   addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   expect(shopRow(addon, 1).slice(2), "3 of the 7 cloth").toEqual(["1s 50c", "3 for"]);
-  expect(isTok(addon, addon.eval(`return ${HELPER}.shopCard.rows[1].qty.__textColor`), "warn"), "short: in warn").toBe(true);
+  expect(isTok(addon, addon.eval(`return ${HELPER}.shopCard.body.table.rows[1].cells.qty.__textColor`), "warn"), "short: in warn").toBe(true);
   expect(shopRow(addon, 2).slice(2), "2 blades wanted: the stack of 3 at 10s each beats 40s; yours and hidden ones left out").toEqual(["30s 0c", "3 for"]);
   expect(addon.eval(`local AH = ${HELPER} return { AH.CheapestCost({}, 5) }`), "nothing up").toEqual([0, 0]);
 });
