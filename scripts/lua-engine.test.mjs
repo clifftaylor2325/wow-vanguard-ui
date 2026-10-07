@@ -66,6 +66,16 @@ it("an edited file is compiled again, an unchanged one served from the cache", (
   fs.rmSync(file, { force: true });
 });
 
+it("a font string takes text only once it has a font, as the client's does", () => {
+  const addon = createAddon();
+  addon.eval(`__f = CreateFrame("Frame", nil, UIParent) __bare = __f:CreateFontString(nil, "OVERLAY")`);
+  expect(() => addon.eval(`__bare:SetText("TEST-ONLY")`), "no font yet: refused").toThrow(/FontString:SetText\(\): Font not set/);
+  addon.eval(`__bare:SetFont("Fonts/TEST-ONLY.TTF", 12, "") __bare:SetText("TEST-ONLY")
+    __obj = __f:CreateFontString(nil, "OVERLAY") __obj:SetFontObject(GameFontNormal or {}) __obj:SetText("TEST-ONLY")
+    __tpl = __f:CreateFontString(nil, "OVERLAY", "GameFontNormal") __tpl:SetText("TEST-ONLY")`);
+  expect(addon.eval("return { __bare:GetText(), __obj:GetText(), __tpl:GetText() }"), "a font, a font object or a template: taken").toEqual(["TEST-ONLY", "TEST-ONLY", "TEST-ONLY"]);
+});
+
 it("layout: anchors, sizes and scale resolve to screen rects as the client lays them out", () => {
   const addon = createAddon();
   // A frame's edges and size in its own units.
@@ -74,7 +84,7 @@ it("layout: anchors, sizes and scale resolve to screen rects as the client lays 
     __a = CreateFrame("Frame", "TESTONLY_A", UIParent) __a:SetSize(200, 100) __a:SetPoint("CENTER")
     __b = CreateFrame("Frame", "TESTONLY_B", __a) __b:SetPoint("TOPLEFT", __a, "TOPLEFT", 10, -10) __b:SetPoint("BOTTOMRIGHT", __a, "BOTTOMRIGHT", -10, 10)
     __c = CreateFrame("Frame", "TESTONLY_C", UIParent) __c:SetSize(50, 20) __c:SetPoint("BOTTOMRIGHT", -5, 5) __c:SetScale(2)
-    __t = __a:CreateFontString(nil, "OVERLAY") __t:SetPoint("TOP") __t:SetText("Hello")`);
+    __t = __a:CreateFontString(nil, "OVERLAY", "GameFontNormal") __t:SetPoint("TOP") __t:SetText("Hello")`);
   expect(rect("__a"), "a centered 200x100 frame on 1920x1080").toEqual([860, 490, 200, 100]);
   expect(rect("__b"), "a frame anchored on both corners gets its size from them").toEqual([870, 500, 180, 80]);
   expect(rect("__c"), "a scaled frame's offsets are in its own units, and so are its edges (screen pixels / scale)").toEqual([(1920 - 10 - 100) / 2, 5, 50, 20]);
