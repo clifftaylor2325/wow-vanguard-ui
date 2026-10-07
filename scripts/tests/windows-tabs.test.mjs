@@ -465,3 +465,12 @@ it("window controls in a padded window: the corner close button and the max/min 
   expect(out, "close 8 in from the corner both ways, the max/min box (with its gem) 22 to its left; a close button the game put elsewhere stays there")
     .toEqual([true, -8, -8, true, -22, 0, true, true, true]);
 });
+
+it("flight map: its map art stays when the window's art is faded", () => {
+  const addon = loggedIn(WINDOWS_ENV + `
+    __window("TaxiFrame")
+    TaxiMap = TaxiFrame:CreateTexture("TaxiMap", "ARTWORK")
+    TaxiFrame.InsetBg = TaxiFrame:CreateTexture(nil, "BACKGROUND")`);
+  addon.eval("TaxiFrame:Show() TaxiFrame:Hide() TaxiFrame:Show()");
+  expect(addon.eval("return { TaxiMap:GetAlpha(), TaxiFrame.InsetBg:GetAlpha(), TaxiFrame.NineSlice.__alpha }"), "the map (either texture the client draws it on) shows, the frame art is faded").toEqual([1, 1, 0]);
+});

@@ -65,6 +65,9 @@ GW.SLOTS = { "Head", "Neck", "Shoulder", "Back", "Chest", "Wrist", "Hands", "Wai
 GW.MENU_PLATE = { "LeftBG", "RightBG", "CenterBG" }
 -- A window's art pieces that are faded out, where it has them.
 GW.ART = { "NineSlice", "Bg", "TopTileStreaks", "PortraitContainer", "Border", "Inset" }
+-- Art that is a window's content, not its frame, by window: faded with the rest, then shown again.
+-- The flight map draws its map on a texture of its own (SetTaxiMap: the TaxiMap texture, InsetBg on newer builds).
+GW.CONTENT_ART = { TaxiFrame = { "TaxiMap", "InsetBg" } }
 -- How far a window's panel reaches out past the window (units): the game's thick border art sat in
 -- that room, and without it a one-pixel border hugs the contents.
 GW.PAD = 6
@@ -148,10 +151,20 @@ local function dressParts(frame, name)
   end
 end
 
--- Skins one window: art faded, a flat panel with a soft shadow `pad` units (default GW.PAD) out past it, its parts themed.
+-- Shows again the art a window keeps as content (GW.CONTENT_ART), found by key on it or by global name.
+local function keepContent(frame, name)
+  for _, key in ipairs(GW.CONTENT_ART[name or ""] or {}) do
+    local art = frame[key] or _G[key]
+    if type(art) == "table" and art.SetAlpha then art:SetAlpha(1) end
+  end
+end
+
+-- Skins one window: art faded (its content art kept), a flat panel with a soft shadow `pad` units
+-- (default GW.PAD) out past it, its parts themed.
 function GW.Skin(frame, pad)
   local name = frame.GetName and frame:GetName()
   fadeArt(frame)
+  keepContent(frame, name)
   T.Panel(frame, { shadow = true, pad = pad or GW.PAD })
   dressParts(frame, name)
 end
