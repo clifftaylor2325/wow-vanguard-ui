@@ -132,6 +132,11 @@ files build on them; see docs/handoff/RESKIN-PLAN.md section 0.
 
 - Names, texts and icons a test makes up carry `TEST-ONLY` so a leak into the
   addon is obvious.
+- One file per area, and no file much past a few dozen cases: Vitest runs files
+  in parallel, so one 100-case file bounds the whole run. When an area outgrows
+  its file, split it by what the cases cover (`quests`, `quest-dialog`,
+  `auction-shop`...), and put the TEST-ONLY environments and readers two files
+  share in `<area>-env.mjs` beside them (`more-env.mjs`, `auction-env.mjs`).
 - A case asserts on what the player would see (visible, text, rect, color),
   not on how the addon got there; internal fields (`w.__shown`) are for the
   predicates in `frames()`.
