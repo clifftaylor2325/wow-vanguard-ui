@@ -176,9 +176,20 @@ function rectOf(w)
 end
 stub.rectOf = rectOf
 
--- Whether the widget has a rect of its own to report (anchored, or UIParent).
-local function laidOut(w)
-  return w == UIParent or next(w.__points) ~= nil or scrollOwner(w) ~= nil
+-- Whether a widget's rect is one the client would give it: anchored (or
+-- UIParent, or in a scroll frame), with a width and a height, and every
+-- frame it hangs on laid out too. The client gives a zero-sized frame no
+-- rect, and nothing anchored to one is drawn (a 0 x 0 anchor frame hides a
+-- whole bar); the rect itself is still worked out, so sizes read as usual.
+local function laidOut(w, depth)
+  if w == UIParent then return true end
+  if next(w.__points) == nil and scrollOwner(w) == nil then return false end
+  local r = rectOf(w)
+  if r.width <= 0 or r.height <= 0 then return false end
+  for _, p in pairs(w.__points) do
+    if type(p.rel) == "table" and p.rel ~= UIParent and (depth or 0) < 64 and not laidOut(p.rel, (depth or 0) + 1) then return false end
+  end
+  return true
 end
 
 -- Edges in the widget's own scale. A test may pin __left/__bottom directly.

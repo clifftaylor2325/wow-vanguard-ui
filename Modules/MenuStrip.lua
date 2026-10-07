@@ -133,13 +133,17 @@ end
 -- Sizes the bar to hug its rows, MS.MARGIN on every side, and places each
 -- row's anchor: the longer row spans the bar inside the margin, the shorter
 -- one is centered under or over it (on the same 4-pixel gaps). The bar's
--- mover keeps its corner, so it grows away from it.
+-- mover keeps its corner, so it grows away from it. An anchor is its row's
+-- box, a slot tall and never narrower than a unit: the client gives a
+-- zero-sized frame no rect, and nothing anchored to one is drawn.
 function MS.FitStrip()
   local w1, w2 = MS.RowWidth(MS.ROWS[1]), MS.RowWidth(MS.ROWS[2])
   local w = math.max(w1, w2)
   MS.strip:SetSize(w + 2 * MS.MARGIN, MS.HEIGHT)
   for i, row in ipairs(MS.ROWS) do
-    row.anchor:SetPoint("TOPRIGHT", MS.strip, "TOPRIGHT", -MS.MARGIN - (w - (i == 1 and w1 or w2)) / 2, 0)
+    local rw = i == 1 and w1 or w2
+    row.anchor:SetSize(math.max(1, rw), MS.TILE)
+    row.anchor:SetPoint("TOPRIGHT", MS.strip, "TOPRIGHT", -MS.MARGIN - (w - rw) / 2, 0)
   end
 end
 

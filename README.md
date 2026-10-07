@@ -133,7 +133,7 @@ Download `Vanguard-<version>.zip` from the [latest release](https://github.com/c
 /vg way [zone] x y [title]      a waypoint the game's arrow points to; /vg way clear removes it
 /vg dock                        line up Deadly Boss Mods' bars with the Boss timers spots; for BigWigs, where to drag its bars
 /vg factionart                  which of the game's own faction pictures this client has
-/vg frame <name> [deep]         what the client says about a frame now (shown, alpha, scale, size, anchors, its parents); deep adds its textures and child frames, for a bar that draws empty: paste it with a bug report
+/vg frame <name> [deep]         what the client says about a frame now (shown, alpha, scale, size, where its rect is or that it has none, anchors, its parents); deep adds its textures and child frames, for a frame that draws empty: paste it with a bug report
 /vg fights                      your DPS, length and place in each fight this session, newest first
 /vg vendors [clear]             how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them
 /vg prep [want <kind> <n>]      the Instance prep card now; want sets how many food, bandages, potions, ammo or shards to carry
