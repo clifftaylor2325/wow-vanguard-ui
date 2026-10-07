@@ -440,7 +440,7 @@ it("tabs and the window's padding: a tab set outside the window moves out to the
   const out = addon.eval(`local px = ns.Theme.Pixel(CommunitiesFrame) local pad = ns.GetModule("Windows").PAD - px
     local c, r, b = CommunitiesFrame.ChatTab.__points.TOPLEFT, CommunitiesFrame.RosterTab.__points.TOP, TestOnlyBottomTab1.__points.TOPLEFT
     return { math.abs(c.x - pad) < 1e-9, c.y, r.rel == CommunitiesFrame.ChatTab, r.y, b.x, math.abs(b.y + pad) < 1e-9, ns.Theme.Padding(CommunitiesFrame) }`);
-  expect(out, "the guild window's first side tab sits on the panel's padded edge (shown twice: moved once), the next still follows it; the bottom tab drops below the padding").toEqual([true, -40, true, -8, 11, true, 6]);
+  expect(out, "the guild window's first side tab sits on the panel's padded edge (shown twice: moved once), the next still follows it; the bottom tab drops below the padding").toEqual([true, -40, true, -8, 11, true, 12]);
   const bars = addon.eval(`local function bar(t) for _, r in ipairs({ t:GetRegions() }) do if r.__layer == "OVERLAY" then return r end end end
     local side, bottom = bar(CommunitiesFrame.ChatTab), bar(TestOnlyBottomTab1)
     return { side.__points.TOPRIGHT ~= nil and side.__points.BOTTOMRIGHT ~= nil, bottom.__points.BOTTOMLEFT ~= nil and bottom.__points.BOTTOMRIGHT ~= nil }`);
@@ -463,12 +463,12 @@ it("window controls: the corner close button and the max/min box sit the same in
     local function glyph(x) for _, r in ipairs({ x:GetRegions() }) do if r.__layer == "OVERLAY" then return (r.__texture or ""):match("(%a+)$") end end end
     return { c.rel == TestOnlyControls, c.x, c.y, b.rel == TestOnlyControls.CloseButton, b.x, b.y, glyph(TestOnlyControls.MaximizeMinimizeButton.MaximizeButton),
       TestOnlyOdd.CloseButton.__points.BOTTOM ~= nil, ns.errors[1] == nil }`);
-  expect(out, "close 12 in from the corner both ways (18 from the panel's padded edge), the max/min box (its plain glyph) 28 to its left; a close button the game put elsewhere stays there")
+  expect(out, "close 12 in from the corner both ways (24 from the panel's padded edge), the max/min box (its plain glyph) 28 to its left; a close button the game put elsewhere stays there")
     .toEqual([true, -12, -12, true, -28, 0, "Maximize", true, true]);
-  // A window painted without padding (the finder, the calendar): its close button 18 in from the frame's own corner.
+  // A window painted without padding (the finder, the calendar): its close button 24 in from the frame's own corner.
   addon.eval("ns.Theme.Panel(TestOnlyBare) ns.GetModule('Windows').DressClose(TestOnlyBare, TestOnlyBare.CloseButton)");
-  expect(addon.eval("local c = TestOnlyBare.CloseButton.__points.CENTER return { c.rel == TestOnlyBare, c.relPoint, c.x, c.y }"), "an unpadded window's close button: 18 in from its corner both ways")
-    .toEqual([true, "TOPRIGHT", -18, -18]);
+  expect(addon.eval("local c = TestOnlyBare.CloseButton.__points.CENTER return { c.rel == TestOnlyBare, c.relPoint, c.x, c.y }"), "an unpadded window's close button: 24 in from its corner both ways")
+    .toEqual([true, "TOPRIGHT", -24, -24]);
 });
 
 it("flight map: its map art stays when the window's art is faded", () => {

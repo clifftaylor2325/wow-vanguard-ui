@@ -39,7 +39,7 @@ end
 -- The title, the quest count and the close button along the top.
 local function addTop(f)
   f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "title", "text")
-  f.title:SetPoint("TOPLEFT", f, "TOPLEFT", 14, -12)
+  f.title:SetPoint("LEFT", f, "TOPLEFT", 14, -T.CONTROL.inset)
   f.title:SetText("Quest log")
   f.count = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
   f.count:SetPoint("LEFT", f.title, "RIGHT", 10, 0)

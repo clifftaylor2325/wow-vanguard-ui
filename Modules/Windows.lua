@@ -69,8 +69,9 @@ GW.ART = { "NineSlice", "Bg", "TopTileStreaks", "PortraitContainer", "Border", "
 -- The flight map draws its map on a texture of its own (SetTaxiMap: the TaxiMap texture, InsetBg on newer builds).
 GW.CONTENT_ART = { TaxiFrame = { "TaxiMap", "InsetBg" } }
 -- How far a window's panel reaches out past the window (units): the game's thick border art sat in
--- that room, and without it a one-pixel border hugs the contents.
-GW.PAD = 6
+-- that room; it is the contents' margin to the panel's edge on every side (art that fills the window
+-- edge to edge, like the spellbook's pages, included), and keeps the close button 12 in from the window.
+GW.PAD = 12
 
 -- Skinning ------------------------------------------------------------------------------------
 
