@@ -447,9 +447,7 @@ end
 
 -- The close button (top right) and the footer: Skip setup (first step only), then Back, then Next or Done.
 local function controls(f)
-  f.close = T.CloseButton(CreateFrame("Button", nil, f))
-  f.close:SetSize(22, 22)
-  f.close:SetPoint("TOPRIGHT", -8, -8)
+  f.close = T.PlaceClose(T.CloseButton(CreateFrame("Button", nil, f)), f)
   f.close:SetScript("OnClick", function() f:Hide() end)
   f.next = W.Primary(f, "Next", function() S.Next() end)
   f.next:SetPoint("BOTTOMRIGHT", -PAD, PAD)

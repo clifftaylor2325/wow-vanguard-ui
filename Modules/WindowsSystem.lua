@@ -60,9 +60,15 @@ local function restore(p)
   if p.SetAlpha then p:SetAlpha(1) end
 end
 
--- What a skin spec can list, in order: the parts (parentKey paths) each step is applied to.
+-- A window's close button in the theme and in its corner (GW.DressClose).
+local function close(p, frame)
+  GW.DressClose(frame, p)
+end
+
+-- What a skin spec can list, in order: the parts (parentKey paths) each step is applied to (each
+-- step is given the part and the window).
 local STEPS = {
-  { "art", fadeAll }, { "fade", fadeRegions }, { "close", T.CloseButton }, { "buttons", T.Button },
+  { "art", fadeAll }, { "fade", fadeRegions }, { "close", close }, { "buttons", T.Button },
   { "edits", T.EditBox }, { "tabs", skinTab }, { "insets", inset }, { "titles", heading }, { "keep", restore },
 }
 
@@ -71,7 +77,7 @@ local function dress(frame, spec)
   for _, step in ipairs(STEPS) do
     for _, path in ipairs(spec[step[1]] or {}) do
       local p = part(frame, path)
-      if p then step[2](p) end
+      if p then step[2](p, frame) end
     end
   end
 end

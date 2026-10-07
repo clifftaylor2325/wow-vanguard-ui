@@ -82,8 +82,6 @@ export const TEXTURES = {
   Spark: spark,
   // A small filled diamond (minimap corners, the assist mark), on a 16-unit grid.
   Diamond: () => draw(image(16, 16), 16, [poly([[8, 1], [15, 8], [8, 15], [1, 8]])]),
-  // The close seal's fill under the mouse: its outer diamond, filled, on the controls' 20-unit grid.
-  Seal: () => draw(image(64, 64), 20, [poly([[10, 1.4], [18.6, 10], [10, 18.6], [1.4, 10]])]),
   // Shadow (filled) and glow (hollow) share the soft falloff.
   Shadow: () => softBox(64, 16, 6, [0, 0, 0], 0.8, false),
   Glow: () => softBox(64, 16, 5, [1, 1, 1], 0.9, true),
@@ -207,21 +205,18 @@ export const SILHOUETTES = {
 };
 
 // The window controls (close, maximize, minimize; Core/Theme.lua T.CONTROL), on a 20-unit grid
-// drawn at 64 px and shown at 20, one unit a pixel. Two tones: the bracket or cross in the text
-// color, its ornament (the seal, the gem) a separate icon in the accent.
-const GEM = poly([[10, 7.5], [12.5, 10], [10, 12.5], [7.5, 10]]);
-// One corner bracket of a maximize or minimize control: one-pixel strokes on half units, through points.
-const bracket = (points) => crisp(points, false, 1);
+// drawn at 64 px and shown at 20, one unit a pixel, one tone (tinted by the theme). Each mark fills
+// the same middle box, about 4.5 to 15.5, so the three read as one set wherever they stand.
+// How thick their strokes are (units).
+const CONTROL_STROKE = 1.6;
+// An arrow along a diagonal: its shaft from `from` to its tip, and the head's two strokes back from the tip.
+const arrow = (from, tip, head) => [...path([from, tip], CONTROL_STROKE), ...path([head[0], tip, head[1]], CONTROL_STROKE)];
 const CONTROL_SHAPES = {
-  // Four corner brackets pointing out (maximize) or in (minimize), around the gem's place.
-  Maximize: [[[3.5, 8.5], [3.5, 3.5], [8.5, 3.5]], [[11.5, 3.5], [16.5, 3.5], [16.5, 8.5]], [[3.5, 11.5], [3.5, 16.5], [8.5, 16.5]], [[11.5, 16.5], [16.5, 16.5], [16.5, 11.5]]].map(bracket),
-  Minimize: [[[3.5, 7.5], [7.5, 7.5], [7.5, 3.5]], [[12.5, 3.5], [12.5, 7.5], [16.5, 7.5]], [[3.5, 12.5], [7.5, 12.5], [7.5, 16.5]], [[12.5, 16.5], [12.5, 12.5], [16.5, 12.5]]].map(bracket),
-  // The small diamond gem in the middle of maximize and minimize.
-  ControlGem: [GEM],
-  // The close seal: a diamond outline with a stud on each of its points.
-  CloseRing: [path([[10, 2], [18, 10], [10, 18], [2, 10]], 1.2, true), dot(10, 1.6, 1.3), dot(18.4, 10, 1.3), dot(10, 18.4, 1.3), dot(1.6, 10, 1.3)],
-  // The cross inside the seal.
-  CloseMark: [line(7.4, 7.4, 12.6, 12.6, 1.5), line(12.6, 7.4, 7.4, 12.6, 1.5)],
+  // Two diagonal arrows pointing out to the corners (maximize: grow) or in from them (minimize: shrink).
+  Maximize: [...arrow([9, 11], [4.5, 15.5], [[4.5, 12], [8, 15.5]]), ...arrow([11, 9], [15.5, 4.5], [[12, 4.5], [15.5, 8]])],
+  Minimize: [...arrow([4.5, 15.5], [9, 11], [[6, 11], [9, 14]]), ...arrow([15.5, 4.5], [11, 9], [[14, 9], [11, 6]])],
+  // The close cross, corner to corner of the box.
+  CloseMark: [line(5.5, 5.5, 14.5, 14.5, 1.8), line(14.5, 5.5, 5.5, 14.5, 1.8)],
 };
 
 // The two strokes of an arrow head at (x, y) pointing against (dx, dy).

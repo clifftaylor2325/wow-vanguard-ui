@@ -43,8 +43,7 @@ local function addTop(f)
   f.title:SetText("Quest log")
   f.count = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
   f.count:SetPoint("LEFT", f.title, "RIGHT", 10, 0)
-  f.close = T.CloseButton(CreateFrame("Button", nil, f))
-  f.close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -8, -8)
+  f.close = T.PlaceClose(T.CloseButton(CreateFrame("Button", nil, f)), f)
   f.close:SetScript("OnClick", function() f:Hide() end)
 end
 
