@@ -1,8 +1,9 @@
 -- Auction helper, your auctions (Modules/AuctionHelper.lua holds the tabs,
 -- the search queue, the scan and the slash commands; the rows sit on the
--- Selling tab's Your auctions card): Check undercuts asks for your auctions (ReadOwned) and checks
--- each item's price now, MarkUndercuts marks the ones someone else asks
--- less for, and a line under the rows says how many ("3 undercut"). Each
+-- Selling tab's Your auctions card, a table under the card's toolbar): Check
+-- undercuts asks for your auctions (ReadOwned) and checks each item's price
+-- now, MarkUndercuts marks the ones someone else asks less for, and a line
+-- on the toolbar says how many ("3 undercut"). Each
 -- row's Cancel (its cost on hover) cancels one; Cancel next undercut
 -- cancels the first undercut auction on each click and moves to the next.
 -- With "check again" on, a post or a cancel checks them all again.
@@ -24,8 +25,12 @@ local ADDON, ns = ...
 local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
 
--- Your auctions: rows under Check undercuts (how many, until AH.Build counts them; from where).
-AH.OWNED_ROWS, AH.OWNED_ROWS_Y = 4, -48
+-- Your auctions: how many rows (until AH.Build counts them), and the table's columns: what the
+-- price column says (your price per unit, sold and the amount, expired and where the item is),
+-- and the room for a row's Cancel or Relist button.
+AH.OWNED_ROWS = 4
+AH.OWNED_COLUMNS = { { key = "price", title = "Your price", width = 120, side = "RIGHT", role = "number", color = "gold" },
+  { key = "action", title = "", width = 64, side = "RIGHT", role = "small", color = "text" } }
 -- A row's status by Enum.AuctionStatus (Active 0, Sold 1; AuctionHouseDocumentation.lua); an
 -- expired auction has no status of its own: AUCTION_HOUSE_AUCTIONS_EXPIRED says so.
 AH.STATUS = { [0] = "active", [1] = "sold" }
@@ -34,9 +39,6 @@ AH.STATUS = { [0] = "active", [1] = "sold" }
 AH.SOLD_NOTE, AH.EXPIRED_NOTE = 4, 5
 -- The bags searched for an expired auction's item: the backpack (0) to the fourth bag.
 AH.LAST_BAG = 4
--- Cancel next undercut and the line beside it, under the rows (down from the card's top; AH.Build
--- moves it under the rows it counts).
-AH.NEXT_Y = -146
 -- Check your auctions again after each post and cancel: off until switched on, since each
 -- check is a search per item (Bars, map, chat > Auction house).
 AH.defaults.recheck = false
@@ -274,27 +276,25 @@ local function statusText(a, home)
   return AP.Money(a.unit), "gold"
 end
 
--- A row's red mark (undercut, while up) and its button: Cancel while up, Relist once expired
+-- A row's red flag (undercut, while up) and its button: Cancel while up, Relist once expired
 -- (working when the item is back in the bags); a sold row has none.
 local function paintActions(r, a, home)
-  r.mark:SetShown(a.undercut == true and up(a))
+  r.flag:SetShown(a.undercut == true and up(a))
   r.cancel:SetShown(up(a))
   r.relist:SetShown(a.status == "expired")
   if home then r.relist:Enable() else r.relist:Disable() end
   T.Color(r.relist.text, home and "text" or "muted")
 end
 
--- An auction's row: the item, what the price column says by status, the mark and the button.
+-- An auction's row: the item, what the price column says by status, the flag and the button.
 local function paintOwnedRow(r, a)
-  r:SetShown(a ~= nil)
-  if not a then return end
   local name, icon = itemLook(a.key)
   local home = a.status == "expired" and AH.FindInBags(a.key.itemID) ~= nil
   local text, color = statusText(a, home)
   r.id = a.id
   r.icon:SetTexture(icon)
   r.name:SetText(name)
-  T.Color(r.price, color):SetText(text)
+  T.Color(r.cells.price, color):SetText(text)
   paintActions(r, a, home)
 end
 
@@ -306,8 +306,8 @@ local function paintLater()
   C_Timer.After(AH.SEND_GAP, function() AH.paintWait = false AH.PaintOwned() end)
 end
 
--- The line under the rows once you've checked ("checking...", "3 undercut", "none undercut"),
--- and Cancel next undercut, which works while an undercut auction is left to cancel.
+-- The toolbar's line once you've checked ("checking...", "3 undercut", "none undercut"), and
+-- Cancel next undercut, which works while an undercut auction is left to cancel.
 local function paintNext(c)
   local busy, n, nextOne = checking(), #undercuts(), AH.NextUndercut()
   if busy then paintLater() end
@@ -316,11 +316,18 @@ local function paintNext(c)
   T.Color(c.cancelNext.text, nextOne and "text" or "muted")
 end
 
--- Your auctions from the scroll offset, and the line and button under them.
+-- The status line while there are no rows: what Check undercuts does, or that none are up.
+local function ownedStatus()
+  if #AH.owned > 0 then return "" end
+  return AH.checked and "No auctions of yours are up." or "Check undercuts lists your auctions and marks the ones someone asks less for."
+end
+
+-- Your auctions from the table's scroll offset, and the toolbar's line and button.
 function AH.PaintOwned()
   local c = AH.ownedCard
   if not c then return end
-  for i, r in ipairs(c.owned) do paintOwnedRow(r, AH.owned[c.offset + i]) end
+  c.table:SetItems(AH.owned)
+  c.table:SetStatus(ownedStatus())
   paintNext(c)
 end
 
@@ -333,53 +340,32 @@ local function costButton(parent, text, onClick, width, tip)
   return b
 end
 
--- An auction row's parts: the undercut mark, icon, name (up to the price column, however long
--- that is), the price column, and Cancel or Relist in the same place.
-local function ownedParts(r)
-  r.mark = W.Flat(r, "ARTWORK", "bad")
-  r.mark:SetSize(6, 6)
-  r.mark:SetPoint("LEFT", 0, 0)
-  AH.RowParts(r)
-  r.icon:SetPoint("LEFT", 10, 0)
-  r.price:SetPoint("RIGHT", -64, 0)
-  r.name:SetPoint("RIGHT", r.price, "LEFT", -4, 0)
+-- An auction row's buttons, at its right: Cancel (its cost on hover) and Relist in the same place.
+local function ownedButtons(r)
   r.cancel = costButton(r, "Cancel", function(self) AH.Cancel(self:GetParent().id) end, 60, cancelTip)
   r.relist = W.Button(r, "Relist", function(self) AH.Relist(self:GetParent().id) end, 60)
   for _, b in ipairs({ r.cancel, r.relist }) do b:SetHeight(18) b:SetPoint("RIGHT", 0, 0) end
 end
 
--- Cancel next undercut (what it cancels next and the cost on hover), and the line beside it.
-local function nextRow(c)
-  c.cancelNext = costButton(c, "Cancel next undercut", function() AH.CancelNext() end, 140, nextTip)
-  c.cancelNext:SetPoint("TOPRIGHT", 0, AH.NEXT_Y)
-  c.summary = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  c.summary:SetPoint("LEFT", c, "TOPLEFT", 0, AH.NEXT_Y - 9)
-end
-
--- The wheel over your auctions scrolls them.
-local function scrollOwned(c, delta)
-  c.offset = math.max(0, math.min(#AH.owned - #c.owned, c.offset - delta))
-  AH.PaintOwned()
-end
-
--- The rows of your auctions under Check undercuts, each with its parts.
-local function ownedRows(c)
-  c.owned, c.offset = {}, 0
-  for i = 1, AH.OWNED_ROWS do
-    c.owned[i] = AH.Row(c, i, AH.OWNED_ROWS_Y)
-    ownedParts(c.owned[i])
-  end
-end
-
--- The Your auctions card on a column (h tall): Check undercuts, the rows and Cancel next undercut;
--- the wheel scrolls the rows.
-function AH.BuildOwned(column, h)
-  local c = AH.Card(column, "Your auctions", -AH.PAD, h)
-  AH.ownedCard = c
+-- The card's toolbar: Check undercuts at the right, Cancel next undercut (what it cancels next
+-- and the cost on hover) left of it, and the line beside the heading.
+local function toolbar(c)
   c.check = W.Button(c, "Check undercuts", function() AH.CheckUndercuts() end, 120)
-  c.check:SetPoint("TOPRIGHT", 0, -20)
-  ownedRows(c)
-  nextRow(c)
-  c:EnableMouseWheel(true)
-  c:SetScript("OnMouseWheel", scrollOwned)
+  c.check:SetHeight(18)
+  c.check:SetPoint("TOPRIGHT", 0, 2)
+  c.cancelNext = costButton(c, "Cancel next undercut", function() AH.CancelNext() end, 140, nextTip)
+  c.cancelNext:SetPoint("RIGHT", c.check, "LEFT", -4, 0)
+  c.summary = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  c.summary:SetPoint("LEFT", c.title, "RIGHT", 8, 0)
+end
+
+-- The Your auctions card on a column, from y (h tall): the toolbar, and the rows as a table
+-- (the undercut flag in red, each row's Cancel or Relist at its right; the wheel scrolls).
+function AH.BuildOwned(column, y, h)
+  local c = AH.Card(column, "Your auctions", y, h)
+  AH.ownedCard = c
+  toolbar(c)
+  c.table = AH.Table(c, AH.OWNED_COLUMNS, AH.OWNED_ROWS, { flag = "bad", paintRow = paintOwnedRow })
+  AH.TableUnder(c.table, c)
+  for _, r in ipairs(c.table.rows) do ownedButtons(r) end
 end
