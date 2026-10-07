@@ -1475,10 +1475,10 @@ local function displayModeClick(self)
   if w and w.SetDisplayMode then w:SetDisplayMode(self.displayMode) end
 end
 
+local rawCreateFrame = CreateFrame
 -- CreateFrame with the tab template gives the button the template's OnClick and size, and puts it
 -- in its parent's Tabs (PanelTabButtonTemplate's parentArray), as the game's XML does for the
 -- window's own tabs and an addon's alike.
-local rawCreateFrame = CreateFrame
 function CreateFrame(kind, name, parent, template, ...)
   local w = rawCreateFrame(kind, name, parent, template, ...)
   if template == "AuctionHouseFrameDisplayModeTabTemplate" then
