@@ -164,7 +164,7 @@ local function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_FightHistory", UIParent))
   FH.frame = f
   f:SetSize(FH.WIDTH, FH.HEIGHT)
-  ns.Mover(f, "fighthistory", "Fight history", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 89 })
+  ns.Mover(f, "fighthistory", "Fight history", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 103 })
   f.bars = {}
   for i = 1, FH.MAX do f.bars[i] = addBar(f, i) end
   watchMouse(f)

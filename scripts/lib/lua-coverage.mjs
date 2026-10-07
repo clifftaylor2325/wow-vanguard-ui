@@ -120,10 +120,15 @@ export function loadHits(target) {
   for (const file of files) mergeHits(file);
 }
 
+// The line hook, for a state whose debug hook the harness sets (it lets go of the last state's prototypes first).
+export function lineHook() {
+  fold();
+  return onLine;
+}
+
 // Starts recording executed lines in a Lua state (and lets go of the last one's prototypes).
 export function attachCoverage(L) {
-  fold();
-  lua.lua_sethook(L, onLine, lua.LUA_MASKLINE, 0);
+  lua.lua_sethook(L, lineHook(), lua.LUA_MASKLINE, 0);
 }
 
 // Coverage of one file: { file, total, covered, missing[] }.
