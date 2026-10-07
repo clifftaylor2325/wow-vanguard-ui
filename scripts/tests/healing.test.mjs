@@ -64,7 +64,10 @@ it("healing fallbacks and options", () => {
   addon.eval('__spawn(1, "raid1")');
   expect(healing(addon, 1).heal === 120 && healing(addon, 1).shield == null, "without the calculator: the older incoming-heals call; no shields").toBeTruthy();
   addon.eval('ns.Options.Show("healing")');
-  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.save and w.input then w.input:SetText("TEST-ONLY Aura, Arcane Brilliance") w.save:GetScript("OnClick")(w.save) end end`);
+  // The one buff editor on the page, found before Save is pressed: Save rebuilds the page (new rows for the typed
+  // names), which appends a fresh editor to the client's frame list, so a walk over that list would press Save forever.
+  addon.eval(`local editor for _, w in ipairs(__wfgStub.frames) do if w.save and w.input then editor = w end end
+    editor.input:SetText("TEST-ONLY Aura, Arcane Brilliance") editor.save:GetScript("OnClick")(editor.save)`);
   expect(addon.eval("return VanguardDB.profiles.Default.RaidHealing.buffs") === "TEST-ONLY Aura, Arcane Brilliance", "the buff list saves").toBeTruthy();
   expect(healing(addon, 1).missing === "TEST-ONLY-ICON-Arcane Brilliance", "and the frames watch the saved names").toBeTruthy();
   expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.icon and w.label and w.label:GetText() == "Arcane Intellect" then return w.icon:GetTexture() end end`), "each class buff gets a row with its icon").toBe("TEST-ONLY-ICON-Arcane Intellect");
