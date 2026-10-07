@@ -187,7 +187,8 @@ const WTS_LINE = "WTS |cffffffff|Hitem:10940::::|h[Strange Dust]|h|r and |cfffff
 // The toast's price text, its color, and the right edges of the line, the price and the toast.
 const priceLook = (addon) => {
   const [toastRect, line, price] = ["Vanguard_ChatWatchToast", "Vanguard_ChatWatchToast.line", "Vanguard_ChatWatchToast.price"].map((r) => addon.frame(r));
-  return { text: price.text, color: price.textColor, lineRight: line.rect.right, priceLeft: price.rect.left, priceRight: price.rect.right, toastRight: toastRect.rect.right };
+  // An empty price is 0 wide, so it has no rect (as in the client): its edges are then undefined.
+  return { text: price.text, color: price.textColor, lineRight: line.rect.right, priceLeft: price.rect?.left, priceRight: price.rect?.right, toastRight: toastRect.rect.right };
 };
 
 it("chat watch: a line linking an item with an auction price shows it beside the line, the line untouched", () => {
