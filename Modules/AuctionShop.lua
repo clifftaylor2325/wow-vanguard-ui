@@ -1,4 +1,4 @@
--- Auction helper, the Shop card (Modules/AuctionHelper.lua holds the panel,
+-- Auction helper, the Shop card (Modules/AuctionHelper.lua holds the tabs,
 -- the search queue, the scan and the slash commands): named shopping lists
 -- and their entries (an item ID or a name, with filters: exact name, level,
 -- quality and a max price, set from a row's right-click menu), managed from the dropdown or
@@ -22,8 +22,8 @@ local ADDON, ns = ...
 local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
 
--- The shop card: where it starts and its height, its rows (how many, from where).
-AH.SHOP_Y, AH.SHOP_H, AH.SHOP_ROWS, AH.SHOP_ROWS_Y = -8, 196, 6, -74
+-- The shop card's rows: how many (until AH.Build counts them from the room they have), from where.
+AH.SHOP_ROWS, AH.SHOP_ROWS_Y = 6, -74
 -- Shopping lists: how many, entries per list, the list "+ Add" starts, the dropdown's "New list..." value.
 AH.MAX_LISTS, AH.MAX_ENTRIES, AH.DEFAULT_LIST, AH.NEW = 20, 50, "Shopping", "\1new"
 -- The dropdown's other actions on the list in use (values no list name can have).
@@ -565,12 +565,13 @@ function AH.MarkListing(i)
   AH.PaintShop()
 end
 
--- A listing opened (clicked, or Enter on the marked one): its item in the game's own list, to buy there.
+-- A listing opened (clicked, or Enter on the marked one): its item in the game's own list, on its Buy tab, to buy there.
 function AH.OpenListing(i)
   local v = AH.view
   if not v.rows[i] then return end
   v.mark = i
   AH.Queue({ open = v.key }, true)
+  AH.ShowInGame()
   AH.PaintShop()
 end
 
@@ -849,14 +850,14 @@ local function fillFilters(d, entry)
   d.alert:Refresh()
 end
 
--- Opens the filter dialog for entry i of a list, beside the shop panel.
+-- Opens the filter dialog for entry i of a list, over the auction house window.
 function AH.EditFilters(listName, i)
   local d, list = AH.filterDialog or buildFilters(), AH.ListByName(listName)
   if not (list and list[i] ~= nil) then return end
   d.listName, d.index = listName, i
   fillFilters(d, list[i])
   d:ClearAllPoints()
-  d:SetPoint("TOPLEFT", AH.frame or UIParent, "TOPRIGHT", 8, 0)
+  d:SetPoint("CENTER", type(AuctionHouseFrame) == "table" and AuctionHouseFrame or UIParent, "CENTER", 0, 0)
   d:Show()
 end
 
@@ -986,15 +987,14 @@ local function shopControls(c)
   AH.BuildRestock(c)
 end
 
--- The shop card: the list dropdown, + Add, Search list with its progress line and the rows (in
+-- The shop card (h tall): the list dropdown, + Add, Search list with its progress line and the rows (in
 -- c.body, which the results view takes the place of), a row's menu (a hidden dropdown that opens
 -- the dropdown menu under the row right-clicked), and the results view.
-function AH.BuildShop(f)
-  local c = AH.Card(f, "Shop", AH.SHOP_Y, AH.SHOP_H)
+function AH.BuildShop(f, h)
+  local c = AH.Card(f, "Shop", -AH.PAD, h)
   c.body = CreateFrame("Frame", nil, c)
   c.body:SetAllPoints()
   shopControls(c)
-  c.rule:Hide()
   AH.shopCard = c
   shopRows(c)
   c.rowMenu = W.Dropdown(c, AH.ROW_CHOICES, function() end, AH.RowAction, 120)

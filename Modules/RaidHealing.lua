@@ -443,9 +443,10 @@ end
 
 ns.Options.AddRowKind("buffnames", buffEditor, 34)
 
--- The Healing page's rows: the switches, a row per buff you could watch, then the typed list.
-local function pageRows()
-  local rows = {
+-- The switches at the top of the Healing page, one per thing drawn on the raid frames,
+-- ending with the header the buff rows go under.
+local function switchRows()
+  return {
     { "header", "On the raid frames" },
     { "check", "Incoming heals (green, past the health)", switch("healPrediction") },
     { "check", "Shields (white, after incoming heals)", switch("absorbs") },
@@ -453,6 +454,11 @@ local function pageRows()
     { "check", "Mark players missing a buff you can give", switch("buffWatch") },
     { "header", "Buffs to watch" },
   }
+end
+
+-- The Healing page's rows: the switches, a row per buff you could watch, then the typed list.
+local function pageRows()
+  local rows = switchRows()
   addBuffRows(rows)
   rows[#rows + 1] = { "text", "Other buffs: names, separated by commas. None on = your class's usual buffs." }
   rows[#rows + 1] = { "buffnames" }

@@ -1,4 +1,4 @@
--- Auction helper, the Sell card (Modules/AuctionHelper.lua holds the panel,
+-- Auction helper, the Sell card (Modules/AuctionHelper.lua holds the tabs,
 -- the search queue, the scan and the slash commands): the sell slot and the
 -- item it takes (TakeItem, TakeCursor, or the game's own sell frame), the
 -- price check's results (Cheapest), the undercut rules and the price to ask
@@ -21,12 +21,11 @@ local ADDON, ns = ...
 local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
 
--- The sell card: where it starts and its height, and its lines.
-AH.SELL_Y, AH.SELL_H = -210, 346
+-- The sell card's lines.
 AH.SELL_LINES = { "Cheapest now", "7-day low", "Deposit", "Your price" }
 -- The form: where its rows start (down from the card's top) and how far apart they are.
 AH.FORM_Y, AH.FORM_ROW = -110, 26
--- The listings under the form: where they start, and how many rows show.
+-- The listings under the form: where they start, and how many rows show (until AH.Build counts them).
 AH.LIST_Y, AH.LIST_ROWS = -250, 4
 -- The sell card's settings: the auction length a new item starts with ("last": the last one
 -- used; or 1 to 3), and lastDuration, the last one picked on the card (none at first).
@@ -658,10 +657,10 @@ local function listings(c)
   AH.BuildHistory(c)
 end
 
--- The sell card: the slot, its lines, the undercut rule, the form, the length, the posting line
--- and the listings.
-function AH.BuildSell(f)
-  local c = AH.Card(f, "Sell", AH.SELL_Y, AH.SELL_H)
+-- The sell card (h tall): the slot, its lines, the undercut rule, the form, the length, the
+-- posting line and the listings.
+function AH.BuildSell(f, h)
+  local c = AH.Card(f, "Sell", -AH.PAD, h)
   AH.sellCard = c
   sellSlot(c)
   sellLines(c)

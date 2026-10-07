@@ -212,6 +212,7 @@ return {
     UIPanelButtonTemplate = { kind = "Button" },
     GameMenuFrameButtonTemplate = { kind = "Button" },
     UIPanelCloseButton = { kind = "Button" },
+    AuctionHouseFrameDisplayModeTabTemplate = { kind = "Button" },
     UIPanelScrollFrameTemplate = { kind = "ScrollFrame" },
     SecureUnitButtonTemplate = { kind = "Button" },
     SecureActionButtonTemplate = {},

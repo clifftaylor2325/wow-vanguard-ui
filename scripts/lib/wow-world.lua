@@ -1456,22 +1456,90 @@ function world.fireAuctionEvents(key, id)
   for _, event in ipairs(world.AH_EVENTS) do stub.fire(event, KEY_EVENTS[event] and key or id) end
 end
 
+-- TEST-ONLY shapes of the game's PanelTemplates tab calls (Blizzard_SharedXML PanelTemplates.lua):
+-- the tab count and the selected tab are kept on the window. How many tabs the window has.
+function PanelTemplates_SetNumTabs(frame, n) frame.numTabs = n end
+-- The selected tab, by number.
+function PanelTemplates_SetTab(frame, id) frame.selectedTab = id end
+-- The selected tab's number.
+function PanelTemplates_GetSelectedTab(frame) return frame.selectedTab end
+-- A tab sized to its text in the game; nothing here.
+function PanelTemplates_TabResize() end
+-- The window's display modes (Blizzard_AuctionHouseFrame.lua): each names the window's frames it shows.
+AuctionHouseFrameDisplayMode = { Buy = { "BrowseResultsFrame" }, ItemSell = { "ItemSellFrame" }, Auctions = { "AuctionsFrame" } }
+
+-- One of the window's tabs (AuctionHouseFrameDisplayModeTabTemplate), after the last: its text and
+-- display mode; a click sets that mode on the window.
+local function auctionTab(f, text, mode)
+  local tab = CreateFrame("Button", "AuctionHouseFrame" .. text .. "Tab", f, "AuctionHouseFrameDisplayModeTabTemplate")
+  tab:SetSize(80, 32)
+  tab:SetText(text)
+  tab.displayMode = mode
+  local last = f.Tabs[#f.Tabs]
+  if last then tab:SetPoint("LEFT", last, "RIGHT", -15, 0) else tab:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 20, -28) end
+  tab:SetScript("OnClick", function(self) f:SetDisplayMode(self.displayMode) end)
+  f.Tabs[#f.Tabs + 1] = tab
+  f.tabsForDisplayMode[mode] = #f.Tabs
+end
+
+-- The window's title, as PortraitFrameTemplate keeps it (TitleContainer.TitleText), and the game's
+-- UpdateTitle: Buy, Sell or Auctions for tabs 1-3, the Buy title for any other tab.
+local function auctionTitle(f)
+  f.TitleContainer = { TitleText = f:CreateFontString(nil, "OVERLAY") }
+  -- The title text.
+  function f:SetTitle(text) self.TitleContainer.TitleText:SetText(text) end
+  -- The title for the selected tab.
+  function f:UpdateTitle()
+    local tab = PanelTemplates_GetSelectedTab(self)
+    self:SetTitle(tab == 2 and "Sell" or tab == 3 and "Auctions" or "Browse Auctions")
+  end
+end
+
+-- The game's SetDisplayMode: the mode kept (the same one again returns early), its tab selected
+-- and the title updated; a mode with no tab (none of the game's has that) changes neither.
+local function auctionDisplayMode(f)
+  -- The display mode.
+  function f:SetDisplayMode(mode)
+    if self.displayMode == mode then return end
+    self.displayMode = mode
+    local tab = self.tabsForDisplayMode[mode]
+    if tab then PanelTemplates_SetTab(self, tab) self:UpdateTitle() end
+  end
+end
+
+-- The window's tab row and display modes, as the game's OnLoad sets them up: the title, three tabs,
+-- the lookup from a mode to its tab, SetDisplayMode and the tab count.
+local function auctionTabs(f)
+  f.Tabs, f.tabsForDisplayMode = {}, {}
+  auctionTitle(f)
+  auctionDisplayMode(f)
+  auctionTab(f, "Buy", AuctionHouseFrameDisplayMode.Buy)
+  auctionTab(f, "Sell", AuctionHouseFrameDisplayMode.ItemSell)
+  auctionTab(f, "Auctions", AuctionHouseFrameDisplayMode.Auctions)
+  PanelTemplates_SetNumTabs(f, #f.Tabs)
+end
+
 -- The game's auction house window, made the first time the house opens (Blizzard_AuctionHouseUI
--- loads on demand), 800 x 538 at the center, with the SetPostItem a bag click calls.
+-- loads on demand), 800 x 538 at the center, with its tab row and the SetPostItem a bag click calls
+-- (it shows the game's sell page, as in the game).
 local function auctionHouseFrame()
   if AuctionHouseFrame then return AuctionHouseFrame end
   local f = stub.newWidget("Frame", "AuctionHouseFrame", UIParent)
   f:SetSize(800, 538)
   f:SetPoint("CENTER")
+  auctionTabs(f)
   -- The item a bag click (or the game's sell frame) puts up for sale: recorded in world.ah.postItem.
-  function f:SetPostItem(loc) world.ah.postItem = loc end
+  function f:SetPostItem(loc) world.ah.postItem = loc self:SetDisplayMode(AuctionHouseFrameDisplayMode.ItemSell) end
   stub.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI")
   return f
 end
 
--- The player talks to an auctioneer: the window shows and AUCTION_HOUSE_SHOW fires.
+-- The player talks to an auctioneer: the window shows on its Buy page (the game's OnShow sets that
+-- mode) and AUCTION_HOUSE_SHOW fires.
 function world.openAuctionHouse()
-  auctionHouseFrame():Show()
+  local f = auctionHouseFrame()
+  f:Show()
+  f:SetDisplayMode(AuctionHouseFrameDisplayMode.Buy)
   stub.fire("AUCTION_HOUSE_SHOW")
 end
 
