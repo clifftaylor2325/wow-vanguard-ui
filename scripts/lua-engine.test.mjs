@@ -190,3 +190,10 @@ it("the auction house: queries recorded, restricted calls logged with the click 
   addon.world.closeAuctionHouse();
   expect(addon.eval("return AuctionHouseFrame:IsShown()")).toBe(false);
 });
+
+it("a call from the tests that runs past its instruction budget fails with a traceback, and the addon goes on", () => {
+  const addon = createAddon({ instructionBudget: 5e6 });
+  expect(() => addon.eval("while true do end")).toThrow(/Lua ran 5000000 instructions in one call from the tests/);
+  expect(addon.eval("return ns.Theme ~= nil"), "the state is still usable after the error").toBe(true);
+  expect(addon.eval("local n = 0 for i = 1, 100000 do n = n + 1 end return n"), "a long call inside the budget runs").toBe(100000);
+});

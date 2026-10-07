@@ -11,6 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { root, tocFiles } from "./lib/lua-harness.mjs";
 import { coverageReport, formatReport, loadHits } from "./lib/lua-coverage.mjs";
+import { appendJobSummary } from "./lib/lua-summary-reporter.mjs";
 
 const hits = path.join(root, "coverage", "lua-hits");
 const bin = path.join(root, "node_modules", "vitest", "vitest.mjs");
@@ -36,6 +37,7 @@ const report = coverageReport(root, luaFiles);
 const floor = JSON.parse(fs.readFileSync(path.join(root, "scripts/lua-coverage-floor.json"), "utf8")).lines;
 fs.writeFileSync(path.join(root, "coverage/lua-coverage.json"), `${JSON.stringify(report, null, 2)}\n`);
 console.log(`\nLua line coverage (floor ${floor}%)\n${formatReport(report)}`);
+appendJobSummary(`Lua line coverage (floor ${floor}%)`, formatReport(report).split("\n"));
 if (report.pct + 1e-9 < floor) {
   console.error(`\nLua coverage ${report.pct.toFixed(2)}% is below the floor of ${floor}%.`);
   process.exit(1);
