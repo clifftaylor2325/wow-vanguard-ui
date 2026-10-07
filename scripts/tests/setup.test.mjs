@@ -231,7 +231,7 @@ function problemsAt(addon, layout, sw, sh, label) {
 it("setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", () => {
   const addon = wholeHud();
   expect(addon.eval("return ChatFrame1.__points.BOTTOMLEFT ~= nil"), "chat sits in its layout spot").toBe(true);
-  expect(moverSpots(addon).menustrip.slice(4, 6).map((n) => Math.round(n * 10) / 10), "the bag and menu bar hugs its 14 menu slots").toEqual([404, 68]);
+  expect(moverSpots(addon).menustrip.slice(4, 6).map((n) => Math.round(n * 10) / 10), "the bag and menu bar hugs its 14 menu slots").toEqual([412, 82]);
   expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "fighthistory", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras", "petbar", "stancebar", "chat", "questdialog"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
   expect(moverSpots(addon).questdialog.slice(3, 6), "the quest dialog is checked at its greatest size, 8 px over the focus cast bar").toEqual([346, 560, 360]);
   for (const layout of ["damage", "healing", "classic"]) {

@@ -1,18 +1,18 @@
 name: verify
 
-# The pull-request gate, built to finish in a few minutes on a GitHub-hosted
-# runner: the code-quality scan, luacheck, Lua 5.1 syntax (the game runs Lua
-# 5.1; the test harness, fengari, is Lua 5.3), the JS tests plus one Lua
-# smoke test (npm run test:quick), and the release zip's contents. The full
-# Lua harness with the coverage floor, and the UI preview, take longer, so
-# they run in full-suite.yml: after a merge to main, nightly, from the
-# Actions tab, or on a pull request carrying the "full-tests" label. Not for
-# changes to the docs alone.
-#
-# Pull requests never run on a self-hosted runner: the repository is public,
-# and a pull request's own code runs in these jobs.
+# The pull-request gate: the check a pull request needs to merge (the
+# "Quick checks" job in the main branch's ruleset). The code-quality scan,
+# luacheck, Lua 5.1 syntax (the game runs Lua 5.1; the test harness,
+# fengari, is Lua 5.3), the JS tests plus one Lua smoke test (npm run
+# test:quick), and the release zip's contents. Built to finish inside a
+# minute: a private repository's Actions minutes are counted, and a job
+# bills by the started minute. The full Lua harness with the coverage floor
+# runs in full-suite.yml (weekly, from the Actions tab, or on a pull request
+# carrying the "full-tests" label) and on each release (release.yml). Not
+# for drafts (ready_for_review starts it), or for changes to the docs alone.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -21,23 +21,27 @@ permissions:
   contents: read
 
 concurrency:
-  group: verify-${{ github.ref }}
+  group: verify-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   quick:
     name: Quick checks
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - name: luacheck and Lua 5.1
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq lua-check lua5.1
+      - name: npm ci, with luacheck and Lua 5.1 installing alongside
+        run: |
+          (sudo apt-get update -qq && sudo apt-get install -y -qq lua-check lua5.1) > apt.log 2>&1 &
+          apt_pid=$!
+          npm ci
+          wait "$apt_pid" || { cat apt.log; exit 1; }
       - run: npm run quality
       - run: luacheck --no-color .
       - name: Lua 5.1 syntax of every file the TOC loads

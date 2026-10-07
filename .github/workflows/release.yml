@@ -3,7 +3,8 @@ name: release
 # Publish a GitHub release with the addon zip attached, either by pushing a
 # tag like v0.3.0 (matching ## Version in Vanguard.toc) or by running
 # this workflow from the Actions tab on main, which tags the commit
-# v<TOC version> itself.
+# v<TOC version> itself. The whole suite (lua-suite.yml: every test with
+# the coverage floor, the checks) runs first, so nothing ships red.
 on:
   push:
     tags: ["v*"]
@@ -13,17 +14,17 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  version:
+    name: Tag matches the TOC version
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.check.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - name: Tag matches the TOC version
+      - id: check
         run: |
           toc=$(sed -n 's/^## Version:[[:space:]]*//p' Vanguard.toc | tr -d '\r')
           if [ "$GITHUB_EVENT_NAME" = "push" ]; then
@@ -34,17 +35,33 @@ jobs:
               echo "v$toc already exists; bump ## Version first"; exit 1
             fi
           fi
-          echo "RELEASE_TAG=v$toc" >> "$GITHUB_ENV"
+          echo "tag=v$toc" >> "$GITHUB_OUTPUT"
+
+  suite:
+    name: Suite
+    needs: version
+    uses: ./.github/workflows/lua-suite.yml
+    with:
+      preview: false
+
+  release:
+    name: Publish
+    needs: [version, suite]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
       - run: npm ci
-      - run: npm run verify
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq lua-check lua5.1
-      - run: luacheck --no-color .
-      - name: Lua 5.1 syntax
-        run: |
-          grep -vE '^\s*(#|$)' Vanguard.toc | tr -d '\r' | xargs -n1 luac5.1 -p
       - run: node scripts/package.mjs --ref "$GITHUB_SHA"
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.version.outputs.tag }}
         # On a manual run, --target creates the tag at this commit.
         run: gh release create "$RELEASE_TAG" dist/*.zip --title "$RELEASE_TAG" --target "$GITHUB_SHA" --generate-notes

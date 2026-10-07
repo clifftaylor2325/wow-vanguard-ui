@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import fengari from "fengari";
 import { expect, it } from "vitest";
-import { root } from "./lib/lua-harness.mjs";
+import { createAddon, root } from "./lib/lua-harness.mjs";
 import { attachCoverage, coverageReport, executableLines, hitLines, lineRanges, loadHits } from "./lib/lua-coverage.mjs";
 
 const { lua, lauxlib, lualib, to_luastring } = fengari;
@@ -84,4 +84,17 @@ it("a missing hits file fails", () => {
 it("empty hits are not full coverage", () => {
   const report = coverageReport(root, ["Core/Events.lua"]);
   expect(report.total > 0 && report.pct < 100).toBeTruthy();
+});
+
+it("the harness records the addon's lines when coverage is on, with the instruction budget beside it", () => {
+  const was = process.env.LUA_COVERAGE;
+  process.env.LUA_COVERAGE = "1";
+  try {
+    const addon = createAddon({ instructionBudget: 5e6 });
+    addon.eval("ns.Theme.RGB('accent')");
+    expect(hitLines("@Core/Theme.lua").size, "Theme's lines were recorded").toBeGreaterThan(0);
+    expect(() => addon.eval("while true do end")).toThrow(/instructions in one call/);
+  } finally {
+    if (was === undefined) delete process.env.LUA_COVERAGE; else process.env.LUA_COVERAGE = was;
+  }
 });

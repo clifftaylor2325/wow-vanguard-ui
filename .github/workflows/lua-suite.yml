@@ -1,0 +1,90 @@
+name: lua suite
+
+# The whole Vitest run (the Lua harness, one file per area, and the JS
+# tests) with line coverage of the addon's own Lua: a failing test fails
+# the run, and so does coverage below the floor in
+# scripts/lua-coverage-floor.json (only goes up; 100 is the goal). Then the
+# code-quality scan, luacheck, Lua 5.1 syntax and the release zip's
+# contents; and, when asked, the UI preview as a second job beside it.
+#
+# This workflow has no triggers of its own: full-suite.yml calls it weekly,
+# from the Actions tab and for the "full-tests" label, and release.yml
+# before each release. On Actions, Vitest also writes failures as
+# annotations on the run and a JUnit file (vitest.config.mjs), and the
+# Lua-by-area and coverage tables go to the job summary.
+on:
+  workflow_call:
+    inputs:
+      preview:
+        description: "Also render the UI preview (a few minutes more)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests, coverage and checks
+    runs-on: ubuntu-latest
+    # The tests take about five minutes on a hosted runner; a runaway dies
+    # well inside this (the harness's instruction budget, the workers' heap cap).
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: luacheck and Lua 5.1
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lua-check lua5.1
+      - run: npm run coverage
+      - run: npm run quality
+      - run: luacheck --no-color .
+      - name: Lua 5.1 syntax of every file the TOC loads
+        run: |
+          status=0
+          while IFS= read -r file; do
+            file="${file%$'\r'}"
+            case "$file" in ''|'#'*) continue ;; esac
+            luac5.1 -p "$file" || status=1
+          done < Vanguard.toc
+          exit $status
+      - name: Release zip builds and holds every file it should
+        run: |
+          rm -rf dist
+          node scripts/package.mjs
+          node scripts/check-zip.mjs
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: lua-coverage
+          path: |
+            coverage/lua-coverage.json
+            coverage/junit.xml
+          if-no-files-found: ignore
+
+  preview:
+    # A screenshot of the default layout from the addon's real Lua (art
+    # approximated), so a UI change can be reviewed from the run's artifacts.
+    # It needs no green tests job: a UI change is reviewable even when a
+    # test fails.
+    name: UI preview
+    if: inputs.preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install -g playwright@1.56.1 && playwright install --with-deps chromium
+      - run: npm run preview
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ui-preview
+          path: preview/*.png
+          if-no-files-found: error

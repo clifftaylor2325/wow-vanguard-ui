@@ -136,9 +136,10 @@ files build on them; see docs/handoff/RESKIN-PLAN.md section 0.
   not on how the addon got there; internal fields (`w.__shown`) are for the
   predicates in `frames()`.
 - Coverage of the addon's Lua is enforced (`npm run coverage`, which runs
-  every test with coverage on; CI runs it after a merge to main, nightly, and
-  on a pull request labelled `full-tests`, since the suite takes minutes on
-  the owner's runner): a new feature comes with the scenario that exercises
-  it. A pull request's own check runs only `smoke.test.mjs` from here.
+  every test with coverage on; run it before opening a pull request, since CI
+  runs it weekly, before a release, from the Actions tab and on a pull request
+  labelled `full-tests`, not on every change): a new feature comes with the
+  scenario that exercises it. A pull request's own check runs only
+  `smoke.test.mjs` from here.
 - `npm run quality` applies to the tests too: every function has a comment
   above it and at most 10 lines of body code.

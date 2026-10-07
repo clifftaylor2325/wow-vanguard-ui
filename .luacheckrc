@@ -91,4 +91,6 @@ read_globals = {
   "GetInboxNumItems", "GetInboxHeaderInfo", "GetInboxInvoiceInfo", "AUCTION_EXPIRED_MAIL_SUBJECT",
   -- D2 Auction helper, crafting costs: the game's profession window (Blizzard_Professions).
   "ProfessionsFrame",
+  -- Minimap: the game's world map toggle. Healing: the client's readable class names, for the buff list.
+  "ToggleWorldMap", "LOCALIZED_CLASS_NAMES_MALE",
 }

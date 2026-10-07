@@ -718,8 +718,8 @@ end
 -- Media/Textures at the glyph's size), the ornament (opts.ring, an icon) and the glyph.
 local function controlParts(button, icon, opts)
   local tile = opts.shape and centered(button, "ARTWORK", T.Texture(opts.shape), T.CONTROL.glyph) or centered(button, "ARTWORK", T.WHITE, T.CONTROL.tile)
-  local ring = opts.ring and centered(button, "OVERLAY", T.Icon(opts.ring), T.CONTROL.glyph) or nil
-  return { tile = tile, ring = ring, glyph = centered(button, "OVERLAY", T.Icon(icon), T.CONTROL.glyph) }
+  local ornament = opts.ring and centered(button, "OVERLAY", T.Icon(opts.ring), T.CONTROL.glyph) or nil
+  return { tile = tile, ring = ornament, glyph = centered(button, "OVERLAY", T.Icon(icon), T.CONTROL.glyph) }
 end
 
 -- Sets whether a window control is lit, and repaints it.

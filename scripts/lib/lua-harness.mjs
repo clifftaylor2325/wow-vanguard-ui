@@ -17,7 +17,7 @@ import fengari from "fengari";
 import lobject from "fengari/src/lobject.js";
 import lstring from "fengari/src/lstring.js";
 import { luaString, luaValue } from "./lua-emit.mjs";
-import { attachCoverage } from "./lua-coverage.mjs";
+import { lineHook } from "./lua-coverage.mjs";
 
 const { lua, lauxlib, lualib, to_luastring, to_jsstring } = fengari;
 
@@ -173,6 +173,43 @@ function pushAddonArgs(L) {
   return 2;
 }
 
+// Hooks -------------------------------------------------------------------------------------
+// Every addon state gets one debug hook: the coverage line hook when npm run coverage asks
+// for it, and always a count hook that stops a runaway. Lua that runs more instructions in
+// one call from the tests (an eval, an event, a frame, a file load) than the budget raises
+// an error with a traceback, where a test timeout can't reach (the call is synchronous):
+// without it a looping test once grew a CI worker for 23 minutes until it died out of memory.
+
+// Instructions between two count hooks (how often the budget is checked).
+const COUNT_EVERY = 1000;
+// The budget a state gets unless createAddon is told another.
+const DEFAULT_BUDGET = Number(process.env.LUA_INSTRUCTION_BUDGET) || 5e8;
+// Each state's budget and how much of it the current call has used.
+const budgets = new WeakMap();
+
+// Starts the current call's count from zero (a state without a budget is left alone).
+function resetBudget(L) {
+  const b = budgets.get(L);
+  if (b) b.used = 0;
+}
+
+// Counts COUNT_EVERY more instructions, and raises a Lua error once the call is past its budget.
+function countHook(L) {
+  const b = budgets.get(L);
+  b.used += COUNT_EVERY;
+  if (b.used <= b.limit) return;
+  lauxlib.luaL_error(L, to_luastring(`Lua ran ${b.limit} instructions in one call from the tests: a runaway loop? (createAddon's instructionBudget, or LUA_INSTRUCTION_BUDGET, raises it)`));
+}
+
+// Sets the state's one hook: the count hook, and the coverage line hook when coverage is on.
+function attachHooks(L, limit) {
+  budgets.set(L, { limit, used: 0 });
+  const onLine = process.env.LUA_COVERAGE ? lineHook() : null;
+  // Line events go to coverage, count events to the budget.
+  const hook = (state, ar) => (ar.event === lua.LUA_HOOKLINE ? onLine(state, ar) : countHook(state));
+  lua.lua_sethook(L, hook, lua.LUA_MASKCOUNT | (onLine ? lua.LUA_MASKLINE : 0), COUNT_EVERY);
+}
+
 // The message handler for pcall: the error with a Lua traceback (test and
 // harness frames trimmed), so a failure says where in the addon it happened.
 function traceback(L) {
@@ -187,6 +224,7 @@ function traceback(L) {
 // Runs the chunk that `push` leaves on the stack, with the traceback handler
 // under it, leaving nresults. Errors throw with a traceback.
 function runPushed(L, push, chunkName, withAddonArgs, nresults) {
+  resetBudget(L);
   lua.lua_pushjsfunction(L, traceback);
   const base = lua.lua_gettop(L);
   push();
@@ -386,10 +424,11 @@ function input(addon) {
 }
 
 // savedVariables: Lua source run after the addon files and before
-// ADDON_LOADED, which is when WoW restores SavedVariables.
-export function createAddon({ savedVariables = "" } = {}) {
+// ADDON_LOADED, which is when WoW restores SavedVariables. instructionBudget:
+// the most instructions one call from the tests may run (see Hooks above).
+export function createAddon({ savedVariables = "", instructionBudget = DEFAULT_BUDGET } = {}) {
   const L = newState();
-  if (process.env.LUA_COVERAGE) attachCoverage(L);
+  attachHooks(L, instructionBudget);
   loadStub(L);
   loadAddon(L, savedVariables);
   // Runs Lua with `ADDON, ns` in scope and returns the first result as JS.

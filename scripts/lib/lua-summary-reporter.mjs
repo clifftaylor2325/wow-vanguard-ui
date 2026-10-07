@@ -2,6 +2,7 @@
 // test files under scripts/tests/ (core, theme, bars...), each counted as
 // passed/total, like the summary the harness printed before it moved onto Vitest.
 
+import fs from "node:fs";
 import path from "node:path";
 
 export const TESTS_DIR = path.join("scripts", "tests");
@@ -41,6 +42,13 @@ function harnessCases(testModules) {
   return out;
 }
 
+// Appends lines to the GitHub Actions job summary (GITHUB_STEP_SUMMARY) as a text block; nothing elsewhere.
+export function appendJobSummary(title, lines) {
+  const file = process.env.GITHUB_STEP_SUMMARY;
+  if (!file) return;
+  fs.appendFileSync(file, [`### ${title}`, "", "```text", ...lines, "```", ""].join("\n"));
+}
+
 // A reporter object for vitest.config.mjs that prints the area lines after a run.
 export function luaSummaryReporter() {
   return {
@@ -50,7 +58,9 @@ export function luaSummaryReporter() {
     onTestRunEnd(testModules) {
       const cases = harnessCases(testModules);
       if (cases.length === 0) return;
-      this.logger.log(["", "Lua harness by area", ...summaryLines(tally(cases))].join("\n"));
+      const lines = summaryLines(tally(cases));
+      this.logger.log(["", "Lua harness by area", ...lines].join("\n"));
+      appendJobSummary("Lua harness by area", lines);
     },
   };
 }
