@@ -501,6 +501,7 @@ const SCENES = [
   { name: "vanguard-options-profiles", caption: "Options window: Profiles, each with Use, Copy here and Delete (which ask first), and a box for a new one (TEST-ONLY profiles)",
     lua: 'ns.NewProfile("TEST-ONLY Healer") ns.NewProfile("TEST-ONLY Leveling") ns.Options.Show("profiles")' },
   { name: "vanguard-options-bars", caption: "Options window: Action bars", lua: 'ns.Options.Show("actionbars")' },
+  { name: "vanguard-options-feedback", caption: "Options window: Feedback, the last page: the in-game form for a bug or an idea, and the plain report", lua: 'ns.Options.Show("feedback")' },
   { name: "vanguard-healing", caption: "Options window: Healing", lua: 'ns.Options.Show("healing")' },
   { name: "vanguard-clickcast", caption: "Options window: Click casting (TEST-ONLY bindings)", lua: `
     local CC = ns.GetModule("ClickCast")
@@ -565,8 +566,8 @@ for (const scene of SCENES) {
   await renderScene(page, addon, {
     file,
     caption: `Preview · ${scene.caption} · layout from the addon's Lua; TEST-ONLY units, icons and chat; map, icons and font approximated, not a game screenshot`,
-    // Nothing depends on measured text height, so there is nothing to redo.
-    relayout: () => {},
+    // An options page sizes its note rows from the measured text, so it is built again from the measurements.
+    relayout: () => { const m = (scene.lua || "").match(/ns\.Options\.Show\("(\w+)"\)/); if (m) addon.eval(`ns.Options.RebuildPage("${m[1]}")`); },
     screen: scene.screen,
   });
   console.log(`wrote ${path.relative(process.cwd(), file)}`);

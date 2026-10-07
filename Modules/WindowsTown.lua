@@ -345,8 +345,8 @@ function GW.SkinGhost(frame)
 end
 
 -- The addon list's confirmation dialog: the window is a full-screen catcher with a dialog in it, so the
--- dialog (AddonDialogBackground) gets the window skin and its two buttons are themed.
-function GW.SkinAddonDialog(frame)
+-- dialog (AddonDialogBackground) gets the window skin and its two buttons are themed (the catcher itself is left alone).
+function GW.SkinAddonDialog()
   local box = _G.AddonDialogBackground
   if type(box) ~= "table" then return end
   GW.Skin(box)
