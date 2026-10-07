@@ -339,6 +339,13 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: in a party, open the raid tab (the friends window's Raid tab), then convert to a raid and look again.
 - Expect: the eight group boxes are flat panels, the member buttons are flat and keep each name's class colour, Raid Info and Convert to Raid are themed buttons; nothing changes while you are in combat and it catches up after.
 - If it fails, paste: a screenshot of the tab and `/vg errors`.
+
+### 14.2.9 Social window (Forever's friends list)
+
+- Do: open the friends list (O); click each side tab (friends, recent allies, quick join, requests, raid); type in the search box and open Filter; open the Battle.net menu (the button right of your battletag) and choose Ignore list and Edit broadcast.
+- Expect: the window is a flat panel with the theme's close button and title; the Battle.net bar's blue band is gone (the status dropdown and menu button are flat, the menu button keeps its icon); the side tabs are flat with their icons, the selected one marked on its outer edge, the others greyed; the search box is a dark input box with its magnifier, Filter and Add New Friend are themed buttons, the list scrolls; the ignore list and broadcast windows beside it are flat panels with themed buttons.
+- If it fails, paste: a screenshot and `/vg errors`.
+
 ### 14.3.1 Stable (a hunter)
 
 - Do: with a hunter, talk to a stable master.

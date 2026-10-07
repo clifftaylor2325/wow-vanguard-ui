@@ -1,5 +1,5 @@
 -- The error badge: how many errors Vanguard caught this session (the
--- entries /vg errors lists), as a small count on the addons button by the
+-- entries /vg errors lists), as a small count beside the addons button by the
 -- minimap and as a line in the options window's footer, so nobody has to type
 -- the command to find out. Both follow every newly caught error and
 -- /vg errors clear; with no errors there is no badge.
@@ -16,11 +16,12 @@ local function errorsText(n)
   return n == 1 and "1 error" or (n .. " errors")
 end
 
--- The count on the addons button's top-right corner: a small square in the bad color.
+-- The count just left of the addons button, level with it (a small square in the bad color): beside the
+-- button's icon, not over it, and inside the minimap's band when the button sits there.
 local function buttonBadge(button)
   local b = CreateFrame("Frame", "Vanguard_ErrorBadge", button)
   b:SetSize(14, 14)
-  b:SetPoint("CENTER", button, "TOPRIGHT", -3, -3)
+  b:SetPoint("RIGHT", button, "LEFT", -3, 0)
   b:SetFrameLevel(button:GetFrameLevel() + 5)
   b.fill = ns.Widgets.Flat(b, "ARTWORK", "bad")
   b.fill:SetAllPoints()
