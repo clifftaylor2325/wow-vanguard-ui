@@ -479,13 +479,20 @@ local function skinButtons()
   T.OnChanged(function() ns.OutOfCombat(MS.SizeSlots, "menuslots") end)
 end
 
+-- The strip's own frame: a HUD panel in the bottom-right corner that the player can
+-- move, with the accent line between its two rows.
+local function makeStrip()
+  local strip = T.HudPanel(CreateFrame("Frame", "Vanguard_MenuStrip", UIParent), { inset = true })
+  strip:SetSize(2 * MS.MARGIN, MS.HEIGHT)
+  ns.Mover(strip, "menustrip", "Bags and game menu", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 20 })
+  addDivider(strip)
+  return strip
+end
+
 -- The bar in the bottom-right corner: the game's bag bar and micro menu in two
 -- rows of slots, with the accent line between them.
 local function buildStrip()
-  MS.strip = T.HudPanel(CreateFrame("Frame", "Vanguard_MenuStrip", UIParent), { inset = true })
-  MS.strip:SetSize(2 * MS.MARGIN, MS.HEIGHT)
-  ns.Mover(MS.strip, "menustrip", "Bags and game menu", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 20 })
-  addDivider(MS.strip)
+  MS.strip = makeStrip()
   for _, row in ipairs(MS.ROWS) do row.anchor = CreateFrame("Frame", nil, MS.strip) end
   for _, row in ipairs(MS.ROWS) do pinInto(row) end
   MS.FadeArt()
