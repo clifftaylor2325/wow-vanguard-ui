@@ -111,9 +111,10 @@ function GW.DressMaxMin(frame)
   end
 end
 
--- How far a padded window's close button sits in from its top-right corner, its middle on both
--- axes the same (units), and the step left from it to the maximize/minimize box.
-GW.CONTROL_INSET, GW.CONTROL_STEP = 8, 22
+-- How far a padded window's close button's middle sits in from the panel's top-right corner (the
+-- padded edge the eye sees), the same on both axes (units): the 20-unit glyph with 8 of air to the
+-- border; and the step left from it to the maximize/minimize box (the same 8 between the glyphs).
+GW.CONTROL_INSET, GW.CONTROL_STEP = 18, 28
 
 -- Whether the game set a part by its top-right corner on the window's (a corner close button);
 -- read once, before Vanguard moves it, and not decided while it has no anchor yet.
@@ -125,12 +126,15 @@ local function atCorner(part, frame)
   return part.vgCorner
 end
 
--- Puts a padded window's corner close button GW.CONTROL_INSET in from its top-right corner and its
--- maximize/minimize box just left of it, so both sit evenly inside the panel (the game placed them for its wider art).
+-- Puts a padded window's corner close button GW.CONTROL_INSET in from the panel's top-right corner (the
+-- panel reaches its padding out past the window) and its maximize/minimize box GW.CONTROL_STEP left of
+-- it, so both sit evenly inside the panel (the game placed them for its wider art).
 function GW.PlaceControls(frame, close)
-  if T.Padding(frame) <= 0 or not atCorner(close, frame) then return end
+  local pad = T.Padding(frame)
+  if pad <= 0 or not atCorner(close, frame) then return end
+  local inset = GW.CONTROL_INSET - pad
   close:ClearAllPoints()
-  close:SetPoint("CENTER", frame, "TOPRIGHT", -GW.CONTROL_INSET, -GW.CONTROL_INSET)
+  close:SetPoint("CENTER", frame, "TOPRIGHT", -inset, -inset)
   for _, key in ipairs(GW.MAX_MIN) do
     local box = frame[key]
     if type(box) == "table" and box.SetPoint then box:ClearAllPoints() box:SetPoint("CENTER", close, "CENTER", -GW.CONTROL_STEP, 0) end

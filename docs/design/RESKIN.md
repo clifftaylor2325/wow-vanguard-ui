@@ -141,7 +141,7 @@ loaded on Forever and get the same treatment through their `OnShow`.
   `HonorLevelUpBanner`): the art *is* the content; a flat panel behind an achievement toast reads worse than the toast.
 - Tutorials and help plates (`TutorialFrame`, `HelpPlate*`, `Blizzard_NewPlayerExperience`): short-lived, and the game
   anchors them to its own frames, some of which Vanguard hides.
-- The shop (`CatalogShopFrame`), `SocialUIFrame`, `RecruitAFriend*`, `SplashFrame` after a first pass: rarely open.
+- The shop (`CatalogShopFrame`), `RecruitAFriend*`, `SplashFrame` after a first pass: rarely open. (`SocialUIFrame` was listed here; on Forever it is the friends list, `C_SocialUI.IsSystemEnabled()` being on, so `WindowsSocial.lua` skins it: `GW.SkinSocial`.)
 - Anything only reachable in content Forever doesn't have (vehicles, pet battles, garrisons, covenants, housing,
   delves, transmog): the addons are present but never asked for.
 
