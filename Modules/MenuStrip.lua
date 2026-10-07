@@ -59,7 +59,7 @@ MS.ROWS = {
 for _, row in ipairs(MS.ROWS) do row.scale = (MS.TILE + MS.GAP) / (row.button + row.pad) end
 -- The quest tracker's spot: its width and the most height it gets (it ends above the
 -- target of target at UI scale 1.0).
-MS.TRACKER_W, MS.TRACKER_H = 260, 248
+MS.TRACKER_W, MS.TRACKER_H = 260, 234
 -- The game's bag buttons (backpack, bags, reagent bag, and the key ring Forever adds), framed where the client has them.
 MS.BAGS = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot", "CharacterReagentBag0Slot", "KeyRingButton" }
 -- The key ring holds keys, not bag space, so its slot has no fill.

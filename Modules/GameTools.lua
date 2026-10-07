@@ -25,7 +25,7 @@ GT.SPOTS = {
   EssentialCooldownViewer = { "cdm_essential", "Cooldowns", { "BOTTOM", "BOTTOM", 0, 210 }, 236, 32 },
   UtilityCooldownViewer = { "cdm_utility", "Utility cooldowns", { "BOTTOM", "BOTTOM", 0, 248 }, 206, 24 },
   BuffIconCooldownViewer = { "cdm_buffs", "Tracked buffs", { "BOTTOM", "BOTTOM", 0, 278 }, 206, 24 },
-  DamageMeter = { "damagemeter", "Damage meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 104 }, 300, 78 },
+  DamageMeter = { "damagemeter", "Damage meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 118 }, 300, 78 },
 }
 -- The Cooldown Manager's rows, in the order they're placed (the buff bars are styled only).
 GT.VIEWERS = { "EssentialCooldownViewer", "UtilityCooldownViewer", "BuffIconCooldownViewer", "BuffBarCooldownViewer" }
