@@ -447,3 +447,21 @@ it("tabs and the window's padding: a tab set outside the window moves out to the
   expect(bars, "the accent bar runs along the edge away from the window: the side tab's right, the bottom tab's bottom").toEqual([true, true]);
   expect(addon.eval("return ns.errors[1] == nil")).toBe(true);
 });
+
+it("window controls in a padded window: the corner close button and the max/min box sit evenly in its corner", () => {
+  const addon = loggedIn(WINDOWS_ENV + `
+    __window("TestOnlyControls") TestOnlyControls:SetSize(300, 200) TestOnlyControls:SetPoint("CENTER")
+    TestOnlyControls.CloseButton:SetSize(24, 24) TestOnlyControls.CloseButton:SetPoint("TOPRIGHT", TestOnlyControls, "TOPRIGHT", 1, 0)
+    local box = CreateFrame("Frame", nil, TestOnlyControls) box:SetSize(32, 32) box:SetPoint("RIGHT", TestOnlyControls.CloseButton, "LEFT", 8, 0)
+    box.MaximizeButton, box.MinimizeButton = CreateFrame("Button", nil, box), CreateFrame("Button", nil, box)
+    TestOnlyControls.MaximizeMinimizeButton = box
+    __window("TestOnlyOdd") TestOnlyOdd.CloseButton:SetPoint("BOTTOM", TestOnlyOdd, "BOTTOM", 0, 8)
+    ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyControls", "TestOnlyOdd" })`);
+  addon.eval("TestOnlyControls:Show() TestOnlyOdd:Show() TestOnlyControls:Hide() TestOnlyControls:Show()");
+  const out = addon.eval(`local c, b = TestOnlyControls.CloseButton.__points.CENTER, TestOnlyControls.MaximizeMinimizeButton.__points.CENTER
+    local function gem(x) for _, r in ipairs({ x:GetRegions() }) do if (r.__texture or ""):find("ControlGem") then return true end end return false end
+    return { c.rel == TestOnlyControls, c.x, c.y, b.rel == TestOnlyControls.CloseButton, b.x, b.y, gem(TestOnlyControls.MaximizeMinimizeButton.MaximizeButton),
+      TestOnlyOdd.CloseButton.__points.BOTTOM ~= nil, ns.errors[1] == nil }`);
+  expect(out, "close 8 in from the corner both ways, the max/min box (with its gem) 22 to its left; a close button the game put elsewhere stays there")
+    .toEqual([true, -8, -8, true, -22, 0, true, true, true]);
+});

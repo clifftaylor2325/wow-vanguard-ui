@@ -94,10 +94,10 @@ end
 -- Where a window keeps its maximize and minimize buttons (MaximizeMinimizeButtonFrameTemplate), as parentKeys.
 GW.MAX_MIN = { "MaximizeMinimizeFrame", "MaximizeMinimizeButton" }
 
--- The button at key in a maximize/minimize box as a window control with the icon, when the box has that button.
+-- The button at key in a maximize/minimize box as a window control with the icon and the accent gem, when the box has that button.
 local function maxMinButton(box, key, icon)
   local button = type(box) == "table" and box[key]
-  if type(button) == "table" and button.CreateTexture then T.WindowControl(button, icon) end
+  if type(button) == "table" and button.CreateTexture then T.WindowControl(button, icon, { ring = "ControlGem" }) end
 end
 
 -- A window's maximize and minimize buttons as window controls with the theme's glyphs (their art faded).
@@ -108,10 +108,37 @@ function GW.DressMaxMin(frame)
   end
 end
 
+-- How far a padded window's close button sits in from its top-right corner, its middle on both
+-- axes the same (units), and the step left from it to the maximize/minimize box.
+GW.CONTROL_INSET, GW.CONTROL_STEP = 8, 22
+
+-- Whether the game set a part by its top-right corner on the window's (a corner close button);
+-- read once, before Vanguard moves it, and not decided while it has no anchor yet.
+local function atCorner(part, frame)
+  if part.vgCorner ~= nil then return part.vgCorner end
+  local point, rel, relPoint = part:GetPoint(1)
+  if point == nil then return false end
+  part.vgCorner = rel == frame and point == "TOPRIGHT" and relPoint == "TOPRIGHT"
+  return part.vgCorner
+end
+
+-- Puts a padded window's corner close button GW.CONTROL_INSET in from its top-right corner and its
+-- maximize/minimize box just left of it, so both sit evenly inside the panel (the game placed them for its wider art).
+function GW.PlaceControls(frame, close)
+  if T.Padding(frame) <= 0 or not atCorner(close, frame) then return end
+  close:ClearAllPoints()
+  close:SetPoint("CENTER", frame, "TOPRIGHT", -GW.CONTROL_INSET, -GW.CONTROL_INSET)
+  for _, key in ipairs(GW.MAX_MIN) do
+    local box = frame[key]
+    if type(box) == "table" and box.SetPoint then box:ClearAllPoints() box:SetPoint("CENTER", close, "CENTER", -GW.CONTROL_STEP, 0) end
+  end
+end
+
 -- The close, maximize and minimize buttons, title and push buttons in the theme.
 local function dressParts(frame, name)
   local close = frame.CloseButton or (name and _G[name .. "CloseButton"])
   if type(close) == "table" then T.CloseButton(close) end
+  if type(close) == "table" and close.GetPoint then GW.PlaceControls(frame, close) end
   GW.DressMaxMin(frame)
   local title = (type(frame.TitleContainer) == "table" and frame.TitleContainer.TitleText) or frame.TitleText
   if type(title) == "table" and title.SetFont then T.Text(title, "heading", false) end
