@@ -77,7 +77,7 @@ it("game options: the window in the theme, its art faded, buttons, search box, t
 it("game options: the tabs' accent line follows the game's selection, the title text stays visible", () => {
   const addon = loggedIn(SETTINGS_ENV);
   addon.eval("SettingsPanel:Show()");
-  // Whether the tab's overlay line (the selected mark) is shown.
+  // Whether a settings tab's selected-line (its OVERLAY region) shows.
   const line = (tab) => addon.eval(`for _, r in ipairs({ SettingsPanel.${tab}:GetRegions() }) do if r.__layer == "OVERLAY" then return r:IsShown() end end`);
   addon.eval("SettingsPanel.GameTab:OnSelected(true)");
   expect([line("GameTab"), line("AddOnsTab")], "the selected tab has the line").toEqual([true, false]);
@@ -262,7 +262,7 @@ const KEYBIND_ENV = SYSTEM_ENV + `
 it("quick keybind banner: a panel behind it, plate faded, buttons themed, and nothing touched in combat", () => {
   const addon = loggedIn(KEYBIND_ENV);
   addon.eval("QuickKeybindFrame:Show()");
-  // The keybind frame's dressing: art faded, panels, buttons, text font, and how many frames are painted.
+  // The quick keybind banner's skin state: art, header, panel, buttons, texts and the paint count.
   const read = () => addon.eval(`local f = QuickKeybindFrame
     return { art = __faded(f), bg = f.BG.__alpha, header = __faded(f.Header), panel = __panelled(f), title = f.Header.Text:GetFont() ~= nil,
       buttons = __panelled(f.DefaultsButton) and __panelled(f.CancelButton) and __panelled(f.OkayButton), text = f.InstructionText:GetFont() == nil, painted = ns.Theme.PaintedCount() }`);

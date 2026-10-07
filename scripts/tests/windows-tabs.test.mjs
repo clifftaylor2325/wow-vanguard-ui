@@ -262,7 +262,7 @@ const PANE_ENV = WINDOWS_ENV + SIDE_ENV + `
 
 it("character pane lists: bars panelled with their fill kept, headers flat with their icon kept, rows the game acquires later too", () => {
   const addon = loggedIn(PANE_ENV);
-  // The bars', headers' and rows' art and panels, as they stand now.
+  // The character pane lists' bars and headers: alphas and whether each is panelled.
   const state = () => addon.eval(`return {
     repBar = { __a(__repEntry.bar.backdrop), __a(__repEntry.bar.Fill), __panel(__repEntry.bar) },
     skillBar = { __a(__skillEntry.bar.backdrop), __a(__skillEntry.bar.Fill), __panel(__skillEntry.bar) },
@@ -334,7 +334,7 @@ it("equipment flyout: panels behind its grid and page bar, its buttons skinned l
     EquipmentFlyout_UpdateItems = function() end
   `);
   addon.eval("EquipmentFlyoutFrame:Show()");
-  // The flyout's grid and page bar panels, its first button's skin, and its button count.
+  // The equipment flyout: its grid and page bar panelled, its first button skinned, its button count.
   const flyout = () => addon.eval(`local f = EquipmentFlyoutFrame
     return { __panel(f.buttonFrame), __panel(f.NavigationFrame), f.buttons[1].vgSkinned == true, #f.buttons }`);
   expect(flyout(), "its grid and page bar panelled, its first button skinned").toEqual([true, true, true, 1]);
@@ -391,7 +391,7 @@ const BARS_ENV = PANE_ENV + `
 
 it("scroll bars: a window's ScrollBar key and the bar paired with a ScrollBox are in the theme, a second show paints nothing more", () => {
   const addon = loggedIn(BARS_ENV);
-  // The window's own scroll bar and the pane's, as __barState reads them.
+  // The window's and the pane's scroll bar states.
   const bars = () => addon.eval("return { __barState(TestOnlyList.ScrollBar), __barState(TestOnlyList.Pane.ScrollBar) }");
   expect(bars(), "the window's own bar and the pane's, paired with its ScrollBox: track and thumb art faded, the thumb panelled, arrows drawn").toEqual([[0, 0, true, true], [0, 0, true, true]]);
   expect(addon.eval("return __barState(__holder.ScrollBar)"), "and the bar on a ScrollBox's own parent").toEqual([0, 0, true, true]);
