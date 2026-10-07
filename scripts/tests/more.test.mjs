@@ -2502,6 +2502,18 @@ it("game windows in the Vanguard look: framed windows, popups, breath bar, and w
   addon.fire("ADDON_LOADED", "TEST-ONLY_SomethingElse");
 });
 
+it("game windows: one skin that fails is reported and the other windows, and those that load later, are still skinned", () => {
+  const addon = loggedIn(WINDOWS_ENV + `__window("CharacterFrame").NineSlice.GetRegions = function() error("TEST-ONLY skin failure") end`);
+  expect(addon.eval("return ns.errors[1].text:find('window CharacterFrame', 1, true) ~= nil"), "the failure is reported under the window's name").toBe(true);
+  addon.eval("MerchantFrame:Show()");
+  expect(windowState(addon, "MerchantFrame"), "windows after it are still skinned").toMatchObject({ art: 0, panel: true });
+  addon.eval('__window("PlayerSpellsFrame")');
+  addon.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
+  expect(windowState(addon, "PlayerSpellsFrame"), "and windows that load later too").toMatchObject({ art: 0, panel: true });
+  addon.eval("CharacterFrame:Show()");
+  expect(addon.eval("return ns.errors[1].count"), "the failing skin is still tried on each show").toBe(2);
+});
+
 it("game windows: the quest and gossip windows are skinned only when Vanguard's quest dialog is off", () => {
   const env = WINDOWS_ENV + '__window("QuestFrame") __window("GossipFrame")';
   const on = loggedIn(env);
