@@ -556,7 +556,7 @@ end
 -- The undercut rule (live), and the card repainted with it.
 local function undercutRow(c)
   c.undercut = W.Choice(c, "Undercut by", AH.UNDERCUT_CHOICES, function() return AH.settings.undercut end,
-    function(v) AH.settings.undercut = v AH.PaintSell() end, AH.WIDTH - 2 * AH.PAD)
+    function(v) AH.settings.undercut = v AH.PaintSell() end, AH.WIDTH - 2 * AH.PAD - 2 * AH.INSET)
   c.undercut:SetPoint("TOPLEFT", 0, -78)
 end
 
@@ -581,16 +581,17 @@ local function maxButton(c, name)
   c[name .. "Max"] = b
 end
 
--- The form under the undercut rule, one field a row: quantity and stack size, each with Max;
--- the number of stacks; the bid; the price with its per unit / per stack toggle.
+-- The form under the undercut rule, a field a row: quantity and stack size, each with Max; the
+-- number of stacks, with the bid beside it (an item's only, so a commodity leaves no empty row);
+-- the price with its per unit / per stack toggle.
 local function sellForm(c)
   field(c, "qty", "Quantity", 0, 1, AH.LABEL_W, 60)
   maxButton(c, "qty")
   field(c, "stack", "Stack", 0, 2, AH.LABEL_W, 60)
   maxButton(c, "stack")
   field(c, "stacks", "Stacks", 0, 3, AH.LABEL_W, 60)
-  field(c, "bid", "Bid", 0, 4, AH.LABEL_W, 110)
-  field(c, "price", "Price", 0, 5, AH.LABEL_W, 110)
+  field(c, "bid", "Bid", 128, 3, 28, 100)
+  field(c, "price", "Price", 0, 4, AH.LABEL_W, 110)
   c.perStack = W.Button(c, "per unit", function() AH.TogglePerStack() end, 70)
   c.perStack:SetHeight(22)
   c.perStack:SetPoint("LEFT", c.price, "RIGHT", 4, 0)
@@ -599,8 +600,8 @@ end
 -- The auction length: the game's three, as segments, under the form.
 local function lengthRow(c)
   c.length = W.Choice(c, "", AH.DurationChoices(), function() return (AH.Duration(AH.sell)) end,
-    function(d) AH.PickDuration(d) end, AH.WIDTH - 2 * AH.PAD)
-  c.length:SetPoint("TOPLEFT", 0, AH.FORM_Y - 5 * AH.FORM_ROW)
+    function(d) AH.PickDuration(d) end, AH.WIDTH - 2 * AH.PAD - 2 * AH.INSET)
+  c.length:SetPoint("TOPLEFT", 0, AH.FORM_Y - 4 * AH.FORM_ROW)
 end
 
 -- A small line of the card at y, on the left.
@@ -613,7 +614,7 @@ end
 -- The posting line: Skip, Stop and Post on the right, the count on the left under them, and the
 -- item's history line (Modules/AuctionLedger.lua) under that.
 local function postRow(c)
-  local y = AH.FORM_Y - 5 * AH.FORM_ROW - 32
+  local y = AH.FORM_Y - 4 * AH.FORM_ROW - 32
   c.post = W.Primary(c, "Post", function() AH.Post() end, 60)
   c.post:SetPoint("TOPRIGHT", 0, y)
   c.stop = W.Button(c, "Stop", function() AH.StopSelling() end, 44)

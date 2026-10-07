@@ -30,7 +30,7 @@ local AH = ns.GetModule("AuctionHelper")
 -- and the room for a row's Cancel or Relist button.
 AH.OWNED_ROWS = 4
 AH.OWNED_COLUMNS = { { key = "price", title = "Your price", width = 120, side = "RIGHT", role = "number", color = "gold" },
-  { key = "action", title = "", width = 64, side = "RIGHT", role = "small", color = "text" } }
+  { key = "action", title = "", width = 64, side = "RIGHT", role = "small", color = "text" }, name = "Item" }
 -- A row's status by Enum.AuctionStatus (Active 0, Sold 1; AuctionHouseDocumentation.lua); an
 -- expired auction has no status of its own: AUCTION_HOUSE_AUCTIONS_EXPIRED says so.
 AH.STATUS = { [0] = "active", [1] = "sold" }
