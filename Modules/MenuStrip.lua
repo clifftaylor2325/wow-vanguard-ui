@@ -158,9 +158,9 @@ end
 
 -- Pins one of the game's bars into its row (on the row's own anchor, a frame
 -- of ours the bar is fitted around), then fits the bar and the slots around
--- it, now and at every re-fit.
+-- it, now and at every re-fit. Every row's anchor is made before the first
+-- pin: fitting places them all.
 local function pinInto(row)
-  row.anchor = CreateFrame("Frame", nil, MS.strip)
   local f = _G[row.bar]
   if type(f) ~= "table" or not f.SetPoint then return end
   ns.Pin(f, function(bar)
@@ -486,6 +486,7 @@ local function buildStrip()
   MS.strip:SetSize(2 * MS.MARGIN, MS.HEIGHT)
   ns.Mover(MS.strip, "menustrip", "Bags and game menu", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 20 })
   addDivider(MS.strip)
+  for _, row in ipairs(MS.ROWS) do row.anchor = CreateFrame("Frame", nil, MS.strip) end
   for _, row in ipairs(MS.ROWS) do pinInto(row) end
   MS.FadeArt()
   keepShown()

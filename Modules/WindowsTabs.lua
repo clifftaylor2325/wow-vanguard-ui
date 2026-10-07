@@ -293,18 +293,24 @@ end
 
 -- Puts the scroll bars of a frame and of the frames inside it (depth levels down) in the theme: its
 -- ScrollBar key, and the bar paired with its ScrollBox. A bar that is not one of the game's 12.x
--- scroll bars (an old scroll frame's slider) is left alone by T.ScrollBar itself.
+-- scroll bars (an old scroll frame's slider) is left alone by T.ScrollBar itself. A frame the game
+-- keeps from addons is skipped, and so is the inside of one that holds such a frame (the game refuses
+-- to list its children then).
 function GW.DressBars(frame, depth)
+  if frame.IsForbidden and frame:IsForbidden() then return end
   dressBar(frame.ScrollBar)
   dressBar(pairedBar(frame))
   if depth <= 0 or not frame.GetChildren then return end
-  for _, child in ipairs({ frame:GetChildren() }) do GW.DressBars(child, depth - 1) end
+  local ok, children = pcall(function() return { frame:GetChildren() } end)
+  if not ok then return end
+  for _, child in ipairs(children) do GW.DressBars(child, depth - 1) end
 end
 
 -- What runs when a window shows: its tabs, and its scroll bars if it is a registered window.
 function GW.DressWindow(frame)
   GW.DressTabs(frame)
-  if GW.REGISTERED[frame:GetName() or ""] then ns.Try("scroll bars", GW.DressBars, frame, GW.SCROLL_DEPTH) end
+  local name = frame:GetName() or ""
+  if GW.REGISTERED[name] then ns.Try("scroll bars " .. name, GW.DressBars, frame, GW.SCROLL_DEPTH) end
 end
 
 -- Dresses a window's tabs and scroll bars now and every time it shows, once per window, and what it holds inside.

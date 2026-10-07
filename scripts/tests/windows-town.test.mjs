@@ -229,6 +229,10 @@ it("S2.4 separate bag windows: the Bags module or the town group off leaves them
   const bare = loggedIn(`${WINDOWS_ENV} __window("ContainerFrame3").UpdateItems = function() end local f = __window("ContainerFrame4") f.UpdateItems = function() end f.EnumerateValidItems = function() return ipairs({}) end`);
   bare.eval("ContainerFrame3:Show() ContainerFrame3:UpdateItems() ContainerFrame4:Show() ContainerFrame4:UpdateItems()");
   expect([windowState(bare, "ContainerFrame3").panel, windowErrors(bare)], "windows without the item calls are skinned, no error").toEqual([true, "none"]);
+  // The game lists a bag window's slots before it has made their buttons (a window not opened yet).
+  const empty = loggedIn(`${BAGS_ENV} function ContainerFrame2:EnumerateValidItems() local i = 0 return function() i = i + 1 if i <= 2 then return i, self.items[i] end end end`, { savedVariables: "VanguardDB.profiles = { Default = { Bags = { combined = false } } }" });
+  empty.eval("ContainerFrame2:Show()");
+  expect([windowState(empty, "ContainerFrame2").panel, skinnedItems(empty, "ContainerFrame2"), empty.eval("return #ns.errors")], "a slot with no button yet is skipped: the window and its one button are skinned, no error").toEqual([true, 1, 0]);
 });
 
 // TEST-ONLY master looter window and group loot history. MasterLooterFrame_UpdatePlayers makes the player
