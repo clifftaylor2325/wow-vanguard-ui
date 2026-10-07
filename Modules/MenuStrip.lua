@@ -1,9 +1,9 @@
 -- The game's always-on extras, put where they don't clutter the screen:
 --   * the bag buttons and the micro menu (character, spellbook, talents, ...)
 --     in one bar in the bottom-right corner: two rows of framed slots
---     (T.Slot, quiet: the accent edge only under the mouse), the bags over
+--     (T.Slot wells, quiet: the accent edge only under the mouse), the bags over
 --     the menu with a thin accent line between them. The menu row's slots
---     are taller, the game's plates' own shape, so its art fits them whole.
+--     are taller, the game's icons' own shape, each icon cropped to fill its slot.
 --     It is always shown by default; it can also show on mouseover, hide 10 s
 --     after the mouse leaves it, show in combat, stay hidden, or follow a
 --     checklist of conditions (Core/Visibility.lua);
@@ -28,8 +28,8 @@ local MS = ns.Module("MenuStrip", { defaults = { menu = "always", tracker = true
 
 -- A slot's side and the gap between slots: screen pixels at UI scale 1, on the theme's 4 px grid.
 MS.TILE, MS.GAP = 24, 4
--- The menu row's slots are taller than wide: the game's menu plates' own 4:5
--- shape (24 by 30), so a plate fits its slot whole.
+-- The menu row's slots are taller than wide: the game's menu icons' own 4:5
+-- shape (24 by 30), so an icon fills its slot undistorted.
 MS.MENU_TILE_H = 30
 -- The space between the bar's edge and its slots (the same on all four sides) (pixels).
 MS.MARGIN = 12
@@ -48,8 +48,8 @@ MS.COUNT_PAD, MS.COUNT_BACK = 1, 0.75
 -- The two rows, top first: the game's bar, its buttons' size, the padding the
 -- game lays them out with (the micro menu overlaps its buttons by 5, the bag
 -- bar spaces its by 2), its slots' height, how far the art sits in from a
--- slot's edge (the bag icons get a little more air than the menu plates,
--- which carry their own frame) and the row's middle below the bar's top
+-- slot's edge (the bag icons, full squares, get a little more air than the
+-- menu icons, which are clear around their shape) and the row's middle below the bar's top
 -- (pixels). Each bar is drawn at the scale that puts its buttons one slot
 -- and one gap apart.
 MS.ROWS = {
@@ -88,9 +88,18 @@ MS.GLYPHS = {
 MS.ALERTS = { "Flash", "FlashBorder", "FlashContent" }
 -- A menu button's own background plates, faded: its slot is its background.
 MS.MENU_ART = { "Background", "PushedBackground" }
--- A menu button's art fitted inside its slot, besides its state textures (the
--- plate with its icon, by state): the character button's portrait and its mask.
-MS.MENU_FIT = { "Portrait", "PortraitMask" }
+-- A menu button's art fitted inside its slot, besides its state textures (its
+-- icon, by state): the character button's portrait and its mask, and the
+-- icon's alert glow.
+MS.MENU_FIT = { "Portrait", "PortraitMask", "FlashContent" }
+-- The game's menu icons (UI-HUD-MicroMenu-<name>-<state>, 64 by 82) are clear
+-- around a smaller icon: the box every icon and its pressed shift fit in, as
+-- fractions of the art, the slot's own 4:5 shape. Cropped to it, an icon fills its slot.
+MS.ICON_CROP = { left = 0.14, right = 0.875, top = 0.16, bottom = 0.88 }
+-- The states the game's menu icons come in (their atlas names' last part, lower case).
+MS.ICON_STATES = { "up", "down", "disabled", "mouseover" }
+-- The button's atlas setters the game swaps its icons with -> the texture each sets.
+MS.ICON_SETTERS = { SetNormalAtlas = "GetNormalTexture", SetPushedAtlas = "GetPushedTexture", SetDisabledAtlas = "GetDisabledTexture", SetHighlightAtlas = "GetHighlightTexture" }
 -- The button state textures (faded under Vanguard's icons, greyed while disabled).
 local STATES = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }
 -- Every button on a slot, and the bag buttons with a fill.
@@ -333,11 +342,11 @@ function MS.SizeSlots()
   for _, b in ipairs(MS.slotted) do sizeSlot(b) end
 end
 
--- A button's slot tile: a quiet T.Slot frame (its accent edge only under the
--- mouse) one level under the button (so the button's art and alerts draw
+-- A button's slot tile: a quiet T.Slot well (dark, its accent edge only under
+-- the mouse) one level under the button (so the button's art and alerts draw
 -- over it), centered on it.
 local function addSlot(b, row)
-  local slot = T.Slot(CreateFrame("Frame", nil, b), { quiet = true })
+  local slot = T.Slot(CreateFrame("Frame", nil, b), { quiet = true, well = true })
   slot:SetPoint("CENTER", b, "CENTER")
   slot:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
   b.vgSlot, b.vgRow = slot, row
@@ -403,15 +412,52 @@ local function menuArt(b)
   return art
 end
 
+-- Whether an atlas is one of the game's menu icons (not the portrait's art).
+local function isIcon(atlas)
+  local name = type(atlas) == "string" and atlas:lower() or ""
+  if not name:find("^ui%-hud%-micromenu%-") or name:find("portrait", 1, true) then return false end
+  for _, state in ipairs(MS.ICON_STATES) do
+    if name:sub(-#state - 1) == "-" .. state then return true end
+  end
+  return false
+end
+
+-- Crops a texture showing one of the game's menu icons (atlas, else the
+-- texture's own) to the icon's box (MS.ICON_CROP), from the atlas's own
+-- coordinates, so cropping again never cuts deeper. Other art is left alone.
+function MS.CropIcon(t, atlas)
+  atlas = atlas or (t and t.GetAtlas and t:GetAtlas())
+  local info = isIcon(atlas) and type(C_Texture) == "table" and C_Texture.GetAtlasInfo(atlas)
+  if not info then return end
+  local l, w = info.leftTexCoord, info.rightTexCoord - info.leftTexCoord
+  local top, h = info.topTexCoord, info.bottomTexCoord - info.topTexCoord
+  local c = MS.ICON_CROP
+  t:SetTexCoord(l + w * c.left, l + w * c.right, top + h * c.top, top + h * c.bottom)
+end
+
+-- A menu button's icons among its art cropped to fill its slot: now, and each
+-- time the game swaps one (it does when a window opens or closes, and the
+-- guild's colors). Returns the art.
+local function cropIcons(b, art)
+  for _, t in ipairs(art) do MS.CropIcon(t) end
+  if type(hooksecurefunc) ~= "function" then return art end
+  for set, get in pairs(MS.ICON_SETTERS) do
+    if type(b[set]) == "function" and type(b[get]) == "function" then
+      hooksecurefunc(b, set, function(self, atlas) MS.CropIcon(self[get](self), atlas) end)
+    end
+  end
+  return art
+end
+
 -- One of the game's menu buttons on a slot: its own background plates faded,
--- the game's icon fitted inside the slot and its alerts kept (or Vanguard's
+-- the game's icon cropped to fill the slot and its alerts kept (or Vanguard's
 -- line icon, switched on), greyed while disabled, the slot's edge lit under
 -- the mouse. Once per button.
 function MS.SkinButton(b, icon)
   if b.vgSlot then return end
   for _, key in ipairs(MS.MENU_ART) do if type(b[key]) == "table" then b[key]:SetAlpha(0) end end
   addSlot(b, MS.ROWS[2])
-  b.vgArt = menuArt(b)
+  b.vgArt = cropIcons(b, menuArt(b))
   if MS.settings.glyphs then addGlyph(b, icon) end
   slotStates(b)
   b:HookScript("OnEnable", paintEnabled)
