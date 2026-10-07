@@ -2284,10 +2284,12 @@ it("bag and menu bar: the rows re-fit when the game lays the bars out or resizes
 });
 
 it("bag and menu bar: the game's menu icons are drawn larger than their slots, so the icon fills the slot, uncropped", () => {
-  // TEST-ONLY quest log button showing one of the game's menu icons; the character button's art has no atlas.
+  // TEST-ONLY quest log button showing one of the game's menu icons; the character button's art has no atlas,
+  // and the guild button's is a menu atlas in no button state (a shine, not an icon).
   const addon = strips(`
     local b = __micro("QuestLogMicroButton")
     b.normal:SetAtlas("UI-HUD-MicroMenu-Questlog-Up")
+    __micro("GuildMicroButton").normal:SetAtlas("UI-HUD-MicroMenu-Shine")
   `, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
   // A button's normal texture: its two corners' offsets from the slot's, the slot's size, the inset, and its texture coordinates.
   const place = (name) => addon.eval(`local b = ${name} local p = b.normal.__points
@@ -2299,6 +2301,8 @@ it("bag and menu bar: the game's menu icons are drawn larger than their slots, s
   expect(uncropped, "and nothing is cropped (the client counts an atlas's coordinates its own way)").toBe(true);
   const [cx0, cy0, cx1, cy1, , , cd] = place("CharacterMicroButton");
   expect([cx0, cy0, cx1, cy1].map(r3), "art that isn't one of the game's menu icons fits inside the inset").toEqual([cd, -cd, -cd, cd].map(r3));
+  const [gx0, gy0, gx1, gy1, , , gd] = place("GuildMicroButton");
+  expect([gx0, gy0, gx1, gy1].map(r3), "and so does a menu atlas in no button state").toEqual([gd, -gd, -gd, gd].map(r3));
 });
 
 // TEST-ONLY bars laid out as the game lays them out: nine menu buttons 27 units apart (32 wide,
