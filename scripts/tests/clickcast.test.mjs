@@ -150,6 +150,17 @@ it("the grid picks spells from the spellbook, with ranks, drops and clears", () 
   addon.click(cell(addon, "ctrl-BUTTON2"));
   expect(addon.frame("Vanguard_SpellPicker").visible, "clicking a cell opens the picker").toBe(true);
   expect(addon.texts("HEALS").length === 1 && addon.texts("ACTIONS").length === 0, "groups are headed; the actions are further down").toBe(true);
+  addon.eval("Vanguard_SpellPicker.SetPropagateKeyboardInput = function(self, v) self.__passed = v end");
+  addon.eval('Vanguard_SpellPicker.__scripts.OnKeyDown(Vanguard_SpellPicker, "A")');
+  expect(addon.frame("Vanguard_SpellPicker").visible && addon.eval("return Vanguard_SpellPicker.__passed"), "other keys pass through").toBe(true);
+  addon.eval('Vanguard_SpellPicker.__scripts.OnKeyDown(Vanguard_SpellPicker, "ESCAPE")');
+  expect(addon.frame("Vanguard_SpellPicker").visible, "Escape closes the picker").toBe(false);
+  expect(addon.eval("return Vanguard_SpellPicker.catcher:IsShown()"), "and its click catcher").toBe(false);
+  addon.click(cell(addon, "ctrl-BUTTON2"));
+  expect(addon.eval("return Vanguard_SpellPicker.catcher:IsShown()"), "an open picker has a catcher behind it").toBe(true);
+  addon.eval("Vanguard_SpellPicker.catcher.__scripts.OnClick(Vanguard_SpellPicker.catcher)");
+  expect(addon.frame("Vanguard_SpellPicker").visible, "clicking outside closes it").toBe(false);
+  addon.click(cell(addon, "ctrl-BUTTON2"));
   addon.click(pickerRow(addon, "Flash Heal"));
   expect(bindings(addon)["ctrl-BUTTON2"], "picking a spell binds its highest rank by name").toBe("spell:Flash Heal:9472:nil");
   expect(addon.frame("Vanguard_SpellPicker").visible).toBe(false);
