@@ -462,8 +462,8 @@ it("window controls in a padded window: the corner close button and the max/min 
     local function gem(x) for _, r in ipairs({ x:GetRegions() }) do if (r.__texture or ""):find("ControlGem") then return true end end return false end
     return { c.rel == TestOnlyControls, c.x, c.y, b.rel == TestOnlyControls.CloseButton, b.x, b.y, gem(TestOnlyControls.MaximizeMinimizeButton.MaximizeButton),
       TestOnlyOdd.CloseButton.__points.BOTTOM ~= nil, ns.errors[1] == nil }`);
-  expect(out, "close 8 in from the corner both ways, the max/min box (with its gem) 22 to its left; a close button the game put elsewhere stays there")
-    .toEqual([true, -8, -8, true, -22, 0, true, true, true]);
+  expect(out, "close 12 in from the corner both ways (18 from the panel's padded edge), the max/min box (with its gem) 28 to its left; a close button the game put elsewhere stays there")
+    .toEqual([true, -12, -12, true, -28, 0, true, true, true]);
 });
 
 it("flight map: its map art stays when the window's art is faded", () => {
