@@ -49,15 +49,14 @@ local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 
 local AH = ns.Module("AuctionHelper", { defaults = { panel = true, tooltip = true, undercut = "silver", scanButton = true } })
 
--- Seconds between scans, listings read per frame of a scan; a side column's width (the Sell
--- card's) and the cards' padding; the scan card's height; the Lists pane's width, and the
--- height of a card's toolbar line (the heading with buttons on its right).
+-- Seconds between scans, listings read per frame of a scan; the Sell card's column's width and
+-- the cards' padding; the scan card's height; the Lists pane's width, and the height of a
+-- card's toolbar line (the heading with buttons on its right).
 AH.SCAN_GAP, AH.SCAN_ROWS = 900, 400
-AH.WIDTH, AH.PAD, AH.SCAN_H = 280, 8, 64
+AH.WIDTH, AH.PAD, AH.SCAN_H = 300, 8, 64
 AH.PANE_W, AH.TOOLBAR_H = 240, 24
--- A page's insets on the window: from its sides, under its title, above its money line; and the
--- room Cancel next undercut and its line keep under your auctions' rows.
-AH.PAGE_X, AH.PAGE_TOP, AH.PAGE_BOTTOM, AH.NEXT_H = 4, 30, 30, 30
+-- A page's insets on the window: from its sides, under its title, above its money line.
+AH.PAGE_X, AH.PAGE_TOP, AH.PAGE_BOTTOM = 4, 30, 30
 -- Searches: seconds between two (at most 60 a minute), and how long one waits for its results.
 AH.SEND_GAP, AH.FALLBACK = 1, 2
 -- A result row's height (the shop's rows and your auctions'), and the icon of an item the client doesn't know.
@@ -195,15 +194,19 @@ local function fitRows(h)
   return math.max(1, math.floor(h / AH.ROW_H))
 end
 
+-- The Up now card's height on the Selling page: half the column, less the padding between the cards.
+local function upHeight(cardH)
+  return math.floor((cardH - AH.PAD) / 2)
+end
+
 -- How many rows each card gets, from a card's height and the Lists pane's: set before the cards
 -- are built, so the lists grow to the room their page has.
 local function countRows(cardH, paneH)
   AH.SHOP_ROWS = AH.TableRows(cardH - AH.TOOLBAR_H)
   AH.VIEW_ROWS = AH.SHOP_ROWS
   AH.PANE_ROWS = fitRows(paneH + AH.PANE_ROWS_Y - AH.ACTIONS_H)
-  AH.LIST_ROWS = fitRows(cardH + AH.LIST_Y - 14)
-  AH.OWNED_ROWS = fitRows(cardH + AH.OWNED_ROWS_Y - AH.NEXT_H)
-  AH.NEXT_Y = AH.OWNED_ROWS_Y - AH.OWNED_ROWS * AH.ROW_H - 8
+  AH.LIST_ROWS = AH.TableRows(upHeight(cardH) - AH.TOOLBAR_H)
+  AH.OWNED_ROWS = AH.TableRows(cardH - upHeight(cardH) - AH.PAD - AH.TOOLBAR_H)
 end
 
 -- A page on the window: a child frame over its content area (under the title, above the money
@@ -247,11 +250,16 @@ local function buildShopping(h, w)
   return f
 end
 
--- The Selling page (h tall, w wide): the Sell card in a column on the left, your auctions on the right.
+-- The Selling page (h tall, w wide): the Sell card in a column on the left; on the right, the
+-- listings up now (with Your history) above your auctions.
 local function buildSelling(h, w)
   local f = page("Vanguard_AuctionSelling")
-  AH.BuildSell(AH.Column(f, "LEFT", AH.WIDTH), h - 2 * AH.PAD)
-  AH.BuildOwned(AH.Column(f, "RIGHT", w - AH.WIDTH), h - 2 * AH.PAD)
+  local cardH = h - 2 * AH.PAD
+  local upH = upHeight(cardH)
+  AH.BuildSell(AH.Column(f, "LEFT", AH.WIDTH), cardH)
+  local side = AH.Column(f, "RIGHT", w - AH.WIDTH)
+  AH.BuildUp(side, upH)
+  AH.BuildOwned(side, -(2 * AH.PAD + upH), cardH - upH - AH.PAD)
   return f
 end
 
@@ -320,7 +328,8 @@ end
 
 -- The helper's tabs and pages, built the first time the window shows: Shopping (the Lists pane
 -- with the scan, and the list shown) and Selling (the Sell card and your auctions), sized to the
--- window's content area. Without the tab row (another client's window) nothing is built.
+-- window's content area; Selling has the listings up now and your auctions on its right. Without
+-- the tab row (another client's window) nothing is built.
 function AH.Build()
   if not hasTabs(AuctionHouseFrame) then return AH.NoTabRow() end
   local h, w = AuctionHouseFrame:GetHeight() - AH.PAGE_TOP - AH.PAGE_BOTTOM, AuctionHouseFrame:GetWidth() - 2 * AH.PAGE_X
