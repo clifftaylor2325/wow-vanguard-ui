@@ -2109,8 +2109,8 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   expect(pinned(addon, "MinimapCluster.Tracking", overlay), "when the game moves one back, it returns to its corner").toEqual([true, "BOTTOMLEFT"]);
   const slots = addon.eval(`local t, a = MinimapCluster.Tracking, AddonCompartmentFrame
     return { t:GetWidth(), t:GetScale(), t.vgGlyph.__texture:match("(%a+)$"), a.vgGlyph.__texture:match("(%a+)$"), t.vgSlot ~= nil, MinimapCluster.IndicatorFrame.MailFrame.vgSlot == nil }`);
-  expect(slots, "tracking and the addon compartment are 18-unit slot buttons with the theme's icons (unscaled); mail stays an indicator").toEqual([18, 1, "Search", "Modules", true, true]);
-  expect(addon.eval("local a = AddonCompartmentFrame a.Text = a:CreateFontString() ns.GetModule('Minimap').SlotButton(a, 'Modules') return a.Text:GetAlpha()"), "the compartment's count is faded, not left hanging off the slot").toBe(0);
+  expect(slots, "tracking and the addon compartment are 18-unit slot buttons with the theme's icons (unscaled); mail stays an indicator").toEqual([18, 1, "MinimapTracking", "MinimapAddons", true, true]);
+  expect(addon.eval("local a = AddonCompartmentFrame a.Text = a:CreateFontString() ns.GetModule('Minimap').SlotButton(a, 'MinimapAddons') return a.Text:GetAlpha()"), "the compartment's count is faded, not left hanging off the slot").toBe(0);
   addon.eval("local a = AddonCompartmentFrame a.__scripts.OnEnter(a)");
   expect(isTok(addon, addon.eval("return AddonCompartmentFrame.vgGlyph.__vertexColor"), "accent"), "a slot button's icon lights in the accent under the mouse").toBe(true);
   expect([pinned(addon, "BagsBar", "Vanguard_MenuStrip"), pinned(addon, "MicroMenuContainer", "Vanguard_MenuStrip")], "the bag bar and the micro menu ride in one bar, each at its row's right end").toEqual([[true, "RIGHT"], [true, "RIGHT"]]);
@@ -2178,7 +2178,9 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
   addon.eval('ns.Options.Show("more")');
   expect(addon.eval('return __click("Vanguard icons on the menu buttons") and VanguardDB.profiles.Default.MenuStrip.glyphs'), "the switch is on the page").toBe(false);
   const plain = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV);
-  expect(plain.eval("return { CharacterMicroButton.vgGlyph == nil, CharacterMicroButton.normal.__alpha == nil, CharacterMicroButton.vgSlot ~= nil }"), "by default the game's own icon stays, on its slot").toEqual([true, true, true]);
+  expect(plain.eval("return { CharacterMicroButton.vgGlyph ~= nil, CharacterMicroButton.normal.__alpha, CharacterMicroButton.vgSlot ~= nil }"), "by default Vanguard's icon stands on the slot, the game's faded").toEqual([true, 0, true]);
+  const off = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
+  expect(off.eval("return { CharacterMicroButton.vgGlyph == nil, CharacterMicroButton.normal.__alpha == nil, CharacterMicroButton.vgSlot ~= nil }"), "switched off, the game's own icon stays, on its slot").toEqual([true, true, true]);
 
   const plates = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV);
   plates.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
@@ -2357,7 +2359,7 @@ it("bag and menu bar: no re-fit while pins are paused or in combat, and one queu
 });
 
 it("bag and menu bar: slots are 24 screen pixels wide, take the clicks, and light up under the mouse only", () => {
-  const addon = strips();
+  const addon = strips("", { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
   // A button's slot: its side and the button's hit insets in screen pixels, its frame level against the button's, and its accent edge's color.
   const slot = (name, scale) => addon.eval(`local b = ${name} local s = b.vgSlot local e
     for _, w in ipairs(__wfgStub.frames) do if w.__parent == s and w.__layer == "BORDER" and w.__sublevel == 0 and w.__vertexColor and w.__vertexColor[1] > 0 then e = w.__vertexColor end end

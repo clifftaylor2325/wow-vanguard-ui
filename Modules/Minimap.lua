@@ -22,10 +22,10 @@ local MM = ns.Module("Minimap", {
 -- click for a menu (tracking, the addon compartment) become slot buttons on
 -- the bottom band with the theme's icon (slot); the others are indicators.
 MM.LEFTOVERS = {
-  { paths = { { "MinimapCluster", "Tracking" }, { "MiniMapTracking" } }, point = "BOTTOMLEFT", x = 3, y = 3, slot = "Search" },
+  { paths = { { "MinimapCluster", "Tracking" }, { "MiniMapTracking" } }, point = "BOTTOMLEFT", x = 3, y = 3, slot = "MinimapTracking" },
   { paths = { { "MinimapCluster", "IndicatorFrame", "MailFrame" }, { "MiniMapMailFrame" } }, point = "TOPRIGHT", x = -2, y = -2 },
   { paths = { { "MinimapCluster", "InstanceDifficulty" }, { "MiniMapInstanceDifficulty" } }, point = "TOPLEFT", x = 2, y = -2 },
-  { paths = { { "AddonCompartmentFrame" } }, point = "BOTTOMRIGHT", x = -3, y = 3, slot = "Modules" },
+  { paths = { { "AddonCompartmentFrame" } }, point = "BOTTOMRIGHT", x = -3, y = 3, slot = "MinimapAddons" },
   -- The group finder eye (shown while you're queued), smaller, just above the compartment.
   { paths = { { "QueueStatusButton" } }, point = "BOTTOMRIGHT", x = -2, y = 42, scale = 0.6 },
 }

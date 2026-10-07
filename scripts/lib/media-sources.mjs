@@ -1,11 +1,13 @@
 // Vanguard's artwork, as code: every file under Media/Textures and
-// Media/Icons is made here, and the faction crests under Media/Art come from
-// their SVGs (scripts/lib/media-crests.mjs); scripts/build-media.mjs writes them.
+// Media/Icons is made here (the line icons drawn in plain math; the options
+// nav's and the minimap's filled icons, SILHOUETTES, rasterized from
+// game-icons.net SVGs), and the faction crests under Media/Art come from their
+// SVGs too (scripts/lib/media-crests.mjs); scripts/build-media.mjs writes them.
 // Textures are white or grayscale so the addon tints them with theme colors;
 // Icon is the one pre-colored image (the addons list can't tint).
 
 import { image, fill, draw, line, poly, box, frame, ring, path, arc } from "./media-art.mjs";
-import { CRESTS, crest } from "./media-crests.mjs";
+import { CRESTS, crest, glyph } from "./media-crests.mjs";
 
 const BRASS = [0xd9 / 255, 0xa4 / 255, 0x41 / 255];
 const LIGHT = [0xe8 / 255, 0xea / 255, 0xee / 255];
@@ -192,6 +194,18 @@ const MENU_SHAPES = {
   Legacy: [crisp([[3, 2], [13, 2]]), crisp([[3, 14], [13, 14]]), line(4.5, 3, 8, 8, STROKE), line(11.5, 3, 8, 8, STROKE), line(8, 8, 4.5, 13, STROKE), line(8, 8, 11.5, 13, STROKE), poly([[5, 13], [11, 13], [8, 10]])],
 };
 
+// Filled silhouettes from game-icons.net (art/game-icons; scripts/lib/media-crests.mjs glyph):
+// the options nav's page icons (Nav*, shown at 16 px) and the minimap's two slot buttons
+// (Minimap*, 12 px), each a 32 px image with a unit of air around it. Icon name -> SVG name.
+export const SILHOUETTES = {
+  NavGeneral: "lorc-cog", NavModules: "lorc-cubes", NavUnitFrames: "delapouite-portrait",
+  NavRaidFrames: "delapouite-three-friends", NavActionBars: "lorc-broadsword", NavQuests: "lorc-scroll-unfurled",
+  NavMap: "lorc-compass", NavProfiles: "delapouite-id-card", NavFeedback: "delapouite-chat-bubble",
+  NavClickCasting: "delapouite-mouse", NavHealing: "sbed-health-increase", NavTalents: "delapouite-upgrade",
+  NavSituations: "delapouite-crossroad", NavNameplates: "delapouite-price-tag",
+  MinimapTracking: "delapouite-binoculars", MinimapAddons: "lorc-jigsaw-piece",
+};
+
 // The window controls (close, maximize, minimize; Core/Theme.lua T.CONTROL), on a 20-unit grid
 // drawn at 64 px and shown at 20, one unit a pixel. Two tones: the bracket or cross in the text
 // color, its ornament (the seal, the gem) a separate icon in the accent.
@@ -219,6 +233,7 @@ function arrowHead([x, y, dx, dy]) {
 export const ICONS = {
   ...Object.fromEntries(Object.entries({ ...ICON_SHAPES, ...MENU_SHAPES }).map(([name, shapes]) => [name, () => draw(image(32, 32), 16, shapes)])),
   ...Object.fromEntries(Object.entries(CONTROL_SHAPES).map(([name, shapes]) => [name, () => draw(image(64, 64), 20, shapes)])),
+  ...Object.fromEntries(Object.entries(SILHOUETTES).map(([name, svg]) => [name, () => glyph(svg)])),
 };
 
 // Every generated file: path under Media -> image maker.

@@ -860,15 +860,15 @@ local function feedbackRows()
 end
 
 local PAGES = {
-  { key = "general", title = "General", icon = "General", order = 10, rows = generalRows },
-  { key = "modules", title = "Modules", icon = "Modules", order = 20, rows = moduleRows },
-  { key = "unitframes", title = "Unit frames", icon = "UnitFrames", order = 30, rows = function() return append(append(append(unitFrameRows(), readoutRows()), castRows()), timerRows()) end },
-  { key = "raid", title = "Raid frames", icon = "RaidFrames", order = 40, rows = raidPageRows },
-  { key = "actionbars", title = "Action bars", icon = "ActionBars", order = 60, rows = actionBarPageRows },
-  { key = "quests", title = "Quests", icon = "Quests", order = 70, rows = function() return append(questRows(), questAutoRows()) end },
-  { key = "more", title = "Bars, map, chat", icon = "Map", order = 80, rows = function() return morePageRows() end },
-  { key = "profiles", title = "Profiles", icon = "Profiles", order = 90, rows = profileRows },
-  { key = "feedback", title = "Feedback", icon = "Help", order = 100, rows = feedbackRows },
+  { key = "general", title = "General", icon = "NavGeneral", order = 10, rows = generalRows },
+  { key = "modules", title = "Modules", icon = "NavModules", order = 20, rows = moduleRows },
+  { key = "unitframes", title = "Unit frames", icon = "NavUnitFrames", order = 30, rows = function() return append(append(append(unitFrameRows(), readoutRows()), castRows()), timerRows()) end },
+  { key = "raid", title = "Raid frames", icon = "NavRaidFrames", order = 40, rows = raidPageRows },
+  { key = "actionbars", title = "Action bars", icon = "NavActionBars", order = 60, rows = actionBarPageRows },
+  { key = "quests", title = "Quests", icon = "NavQuests", order = 70, rows = function() return append(questRows(), questAutoRows()) end },
+  { key = "more", title = "Bars, map, chat", icon = "NavMap", order = 80, rows = function() return morePageRows() end },
+  { key = "profiles", title = "Profiles", icon = "NavProfiles", order = 90, rows = profileRows },
+  { key = "feedback", title = "Feedback", icon = "NavFeedback", order = 100, rows = feedbackRows },
 }
 O.PAGES = PAGES
 

@@ -1,0 +1,34 @@
+Vanguard options nav and minimap icons
+
+The Nav*.tga and Minimap*.tga files here are from game-icons.net
+(https://game-icons.net, https://github.com/game-icons/icons), licensed under
+Creative Commons Attribution 3.0 Unported
+(https://creativecommons.org/licenses/by/3.0/). The other icons in this
+folder are Vanguard's own.
+
+NavGeneral.tga        "Cog" by Lorc (lorc-cog)
+NavModules.tga        "Cubes" by Lorc (lorc-cubes)
+NavUnitFrames.tga     "Portrait" by Delapouite (delapouite-portrait)
+NavRaidFrames.tga     "Three friends" by Delapouite (delapouite-three-friends)
+NavActionBars.tga     "Broadsword" by Lorc (lorc-broadsword)
+NavQuests.tga         "Scroll unfurled" by Lorc (lorc-scroll-unfurled)
+NavMap.tga            "Compass" by Lorc (lorc-compass)
+NavProfiles.tga       "ID card" by Delapouite (delapouite-id-card)
+NavFeedback.tga       "Chat bubble" by Delapouite (delapouite-chat-bubble)
+NavClickCasting.tga   "Mouse" by Delapouite (delapouite-mouse)
+NavHealing.tga        "Health increase" by Sbed (sbed-health-increase)
+NavTalents.tga        "Upgrade" by Delapouite (delapouite-upgrade)
+NavSituations.tga     "Crossroad" by Delapouite (delapouite-crossroad)
+NavNameplates.tga     "Price tag" by Delapouite (delapouite-price-tag)
+MinimapTracking.tga   "Binoculars" by Delapouite (delapouite-binoculars)
+MinimapAddons.tga     "Jigsaw piece" by Lorc (lorc-jigsaw-piece)
+
+Lorc: http://lorcblog.blogspot.com
+Delapouite: https://delapouite.com
+Sbed: http://opengameart.org/content/95-game-icons
+Each icon's page is https://game-icons.net/1x1/<author>/<name>.html, with the
+name in parentheses above split at its first dash.
+
+Changes: the black background square is removed and each glyph is rasterized
+to a 32x32 white image with a 2-pixel clear margin, whose alpha is the glyph,
+so Vanguard can tint it.

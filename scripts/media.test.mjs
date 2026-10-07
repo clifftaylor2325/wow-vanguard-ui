@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { staleMedia } from "./build-media.mjs";
 import { fontFacts } from "./lib/truetype.mjs";
 import { crest, crestNames } from "./lib/media-crests.mjs";
-import { ICONS } from "./lib/media-sources.mjs";
+import { ICONS, SILHOUETTES } from "./lib/media-sources.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -65,18 +65,22 @@ function oflLicense() {
   expect(text, "Media/Fonts/OFL.txt must hold the font license").toMatch(/SIL Open Font License/);
 }
 
+// Media files one Lua or TOC source names, as repo paths: T.Texture/T.Icon calls, an options page's
+// icon or a minimap slot's, Media paths, fonts and crests.
+function mediaIn(src) {
+  const files = [];
+  for (const m of src.matchAll(/T\.(Texture|Icon)\("(\w+)"\)/g)) files.push(`Media/${m[1] === "Icon" ? "Icons" : "Textures"}/${m[2]}.tga`);
+  for (const m of src.matchAll(/\b(?:icon|slot) = "(\w+)"/g)) files.push(`Media/Icons/${m[1]}.tga`);
+  for (const m of src.matchAll(/Media\\+(Textures|Icons)\\+(\w+)/g)) files.push(`Media/${m[1]}/${m[2]}.tga`);
+  for (const m of src.matchAll(/Fonts\\+([\w-]+\.ttf)/g)) files.push(`Media/Fonts/${m[1]}`);
+  for (const m of src.matchAll(/"((?:lorc|delapouite|sbed)-[\w-]+)"/g)) files.push(`Media/Art/${m[1]}.tga`);
+  return files;
+}
+
 // Media files named in the addon's Lua and TOC, as repo paths.
 function namedMedia() {
-  const files = [];
   const lua = ["Vanguard.toc", ...fs.readdirSync(path.join(root, "Core")).map((f) => `Core/${f}`), ...fs.readdirSync(path.join(root, "Modules")).map((f) => `Modules/${f}`)];
-  for (const f of lua) {
-    const src = fs.readFileSync(path.join(root, f), "utf8");
-    for (const m of src.matchAll(/T\.(Texture|Icon)\("(\w+)"\)/g)) files.push(`Media/${m[1] === "Icon" ? "Icons" : "Textures"}/${m[2]}.tga`);
-    for (const m of src.matchAll(/Media\\+(Textures|Icons)\\+(\w+)/g)) files.push(`Media/${m[1]}/${m[2]}.tga`);
-    for (const m of src.matchAll(/Fonts\\+([\w-]+\.ttf)/g)) files.push(`Media/Fonts/${m[1]}`);
-    for (const m of src.matchAll(/"((?:lorc|delapouite|sbed)-[\w-]+)"/g)) files.push(`Media/Art/${m[1]}.tga`);
-  }
-  return [...new Set(files)];
+  return [...new Set(lua.flatMap((f) => mediaIn(fs.readFileSync(path.join(root, f), "utf8"))))];
 }
 
 // The scan finds at least one Media path.
@@ -104,6 +108,36 @@ function crestsRasterize() {
 function crestsCredited() {
   const credits = fs.readFileSync(path.join(root, "art/CREDITS.md"), "utf8");
   for (const name of crestNames()) expect(credits, `${name}.svg needs a credit line`).toContain(`\`${name}.svg\``);
+}
+
+// Every silhouette names an SVG that is on disk under art/game-icons.
+function silhouetteSourcesExist() {
+  const names = crestNames();
+  for (const [icon, svg] of Object.entries(SILHOUETTES)) expect(names, `${icon}: art/game-icons/${svg}.svg is missing`).toContain(svg);
+}
+
+// A silhouette's alpha at 16 px: the share of its pixels over half covered, and the most alpha on its outer ring.
+function silhouetteFacts(name) {
+  const a = at16(name);
+  const ring = a.filter((_, i) => i < 16 || i >= 240 || i % 16 === 0 || i % 16 === 15);
+  return { share: a.filter((v) => v > 0.5).length / 256, ring: Math.max(...ring) };
+}
+
+// Every silhouette is a 32 px white image, clear at the corner, with a clear unit of air at 16 px
+// around a glyph that covers between a tenth and half of it (an empty or mis-sized SVG fails).
+function silhouettesReadable() {
+  for (const name of Object.keys(SILHOUETTES)) {
+    const img = ICONS[name]();
+    const { share, ring } = silhouetteFacts(name);
+    expect([img.w, img.h, img.px[0], img.px[3], ring, share > 0.1 && share < 0.5], `${name}: 32x32, white, clear corner, clear ring, a glyph (${share})`).toEqual([32, 32, 1, 0, 0, true]);
+  }
+}
+
+// Every silhouette's SVG is credited in the CREDITS.txt that ships beside the icons, under its license.
+function iconsCredited() {
+  const credits = fs.readFileSync(path.join(root, "Media/Icons/CREDITS.txt"), "utf8");
+  expect(credits, "Media/Icons/CREDITS.txt must name the license").toMatch(/Creative Commons Attribution 3\.0/);
+  for (const [icon, svg] of Object.entries(SILHOUETTES)) expect(credits, `${icon}.tga (${svg}) needs a credit line`).toMatch(new RegExp(`^${icon}\\.tga .*\\(${svg}\\)`, "m"));
 }
 
 // Line icons made only of level and upright strokes: at 16 px every pixel
@@ -142,10 +176,20 @@ describe(
     it("SemiBold: digits 0-9 must share one width", semiBoldDigits);
     it("SemiBold: Latin, Greek, Cyrillic and euro glyphs", semiBoldGlyphs);
     it("Media/Fonts/OFL.txt must hold the font license", oflLicense);
-    it("faction crests rasterize from their SVGs", crestsRasterize);
-    it("faction crest sources are credited", crestsCredited);
+    it("game-icons sources rasterize from their SVGs", crestsRasterize);
+    it("game-icons sources are credited", crestsCredited);
     it("icons of straight strokes are crisp at 16 px", squareIconsCrisp);
     it("icon strokes are two pixels wide at 16 px", strokeIsTwoPixels);
+  },
+);
+
+describe(
+  "silhouettes",
+  // The options nav's and minimap's game-icons silhouettes: sourced, legible, credited.
+  () => {
+    it("every silhouette has its SVG", silhouetteSourcesExist);
+    it("options nav and minimap silhouettes are 32 px, inset and legible", silhouettesReadable);
+    it("the silhouettes are credited beside the icons", iconsCredited);
   },
 );
 
