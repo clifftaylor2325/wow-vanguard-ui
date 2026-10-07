@@ -266,7 +266,7 @@ O.MODULE_INFO = {
   Upgrades = { "Gear upgrades", "Compares gear with what you wear by stat weights for your class and role: a tooltip line, arrows in the bag and on quest rewards, and the auction house's Upgrades list." },
   VendorMemory = { "Vendor memory", "Remembers what each merchant sells; tooltips and the stock list say where to buy." },
   AuctionHelper = { "Auction helper", "Shopping lists with Deals and Upgrades, a sell card that suggests an undercut and posts, prices in tooltips from your scans, and an undercut check on your auctions." },
-  Nameplates = { "Nameplates", "Flat plates with levels, your debuffs, casts and threat." },
+  Nameplates = { "Nameplates", "Flat plates with levels, your debuffs, players' buffs, casts and threat." },
   Situations = { "Situations", "Different frame spots and settings for solo, party, raid, PvP, instance and resting, applied out of combat." },
 }
 
