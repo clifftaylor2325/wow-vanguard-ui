@@ -19,8 +19,8 @@ local ADDON, ns = ...
 local T, W = ns.Theme, ns.Widgets
 local AH = ns.GetModule("AuctionHelper")
 
--- The header line's height, and the most columns a table has beside the name.
-AH.TABLE_HEAD, AH.TABLE_CELLS = 16, 4
+-- The header line's height, the most columns a table has beside the name, and the room between two columns.
+AH.TABLE_HEAD, AH.TABLE_CELLS, AH.TABLE_GAP = 16, 4, 12
 
 -- How many rows fit in h units with the header (one at least).
 function AH.TableRows(h)
@@ -30,10 +30,10 @@ end
 -- Columns --------------------------------------------------------------------------------------
 
 -- Where the columns sit: each one's right edge from the table's right (the last at the edge, each
--- before it further in), and where the name column ends.
+-- before it further in, AH.TABLE_GAP apart), and where the name column ends.
 local function place(columns)
   local xs, x = {}, 0
-  for i = #columns, 1, -1 do xs[i], x = x, x + columns[i].width end
+  for i = #columns, 1, -1 do xs[i], x = x, x + columns[i].width + AH.TABLE_GAP end
   return xs, x
 end
 
@@ -93,10 +93,12 @@ local function setSort(t, key, reverse)
 end
 
 -- The table's columns, at most AH.TABLE_CELLS, as { key, title, width, side (the text's, RIGHT or
--- LEFT), role, color }: the headings and every row's cells laid out again, nothing sorted.
+-- LEFT), role, color } (and name, the name column's heading, when its rows name an item): the
+-- headings and every row's cells laid out again, nothing sorted.
 local function setColumns(t, columns)
   t.columns = columns
   t.xs, t.nameEnd = place(columns)
+  t.nameHead:SetText(columns.name or "")
   for i = 1, AH.TABLE_CELLS do
     if columns[i] then placeHead(t, i, columns[i], t.xs[i]) else t.heads[i]:Hide() t.heads[i].key = nil end
   end
@@ -154,15 +156,21 @@ local function flagMark(r, color)
   r.icon:SetPoint("LEFT", 10, 0)
 end
 
+-- A row's name after its icon, kept to the left on one line (its right edge set with the columns).
+local function rowName(r)
+  r.name = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
+  r.name:SetPoint("LEFT", r.icon, "RIGHT", 4, 0)
+  r.name:SetJustifyH("LEFT")
+  r.name:SetWordWrap(false)
+end
+
 -- A row's icon (16 px) and name, and its cells (each with a font from the start, so one past the
 -- columns can be cleared; placed and styled when the columns are set).
 local function rowParts(t, r)
   r.icon = T.Crop(r:CreateTexture(nil, "ARTWORK"))
   r.icon:SetSize(16, 16)
   r.icon:SetPoint("LEFT", 2, 0)
-  r.name = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
-  r.name:SetPoint("LEFT", r.icon, "RIGHT", 4, 0)
-  r.name:SetWordWrap(false)
+  rowName(r)
   r.cells = {}
   for i = 1, AH.TABLE_CELLS do r.cells[i] = T.Text(r:CreateFontString(nil, "OVERLAY"), "small") end
   if t.keys then keyMarks(r) end
@@ -263,6 +271,8 @@ local METHODS = { SetColumns = setColumns, SetItems = setItems, Paint = paint, S
 local function parts(t, n)
   t.heads, t.rows, t.items, t.offset, t.mark = {}, {}, {}, 0, 1
   for i = 1, AH.TABLE_CELLS do t.heads[i] = head(t) end
+  t.nameHead = T.Text(t:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  t.nameHead:SetPoint("TOPLEFT", 4, -2)
   t.arrow = W.IconTexture(t, "Down", 10, "accent")
   t.status = T.Text(t:CreateFontString(nil, "OVERLAY"), "small", "text2")
   t.status:SetPoint("TOPLEFT", 4, -AH.TABLE_HEAD - 4)
