@@ -144,25 +144,23 @@ local function addSlot(obj, icon)
   T.OnChanged(function() paintGlyph(obj) end)
 end
 
--- The addon compartment's count of addons, small in the accent on the slot's top-right corner.
-local function badge(obj)
-  if type(obj.Text) ~= "table" or not obj.Text.SetPoint then return end
-  T.Text(obj.Text, "tiny", "accent")
-  obj.Text:ClearAllPoints()
-  obj.Text:SetPoint("CENTER", obj, "TOPRIGHT", -2, -2)
+-- The addon compartment's count of addons, faded out: the icon says what the button is, and the
+-- count hung off the slot's corner (its tooltip and menu still list the addons).
+local function hideCount(obj)
+  if type(obj.Text) == "table" and obj.Text.SetAlpha then obj.Text:SetAlpha(0) end
 end
 
 -- One of the game's minimap buttons as a slot button like the menu bar's: MM.BUTTON square, the
--- game's art faded (again whenever the game places it), its click area filling the slot, the theme's icon on it.
+-- game's art and the compartment's count faded (again whenever the game places it), its click area filling the slot, the theme's icon on it.
 function MM.SlotButton(obj, icon)
   local b = clickable(obj)
   obj:SetSize(MM.BUTTON, MM.BUTTON)
   T.FadeRegions(obj)
   if b ~= obj then T.FadeRegions(b) b:ClearAllPoints() b:SetAllPoints(obj) end
+  hideCount(obj)
   if obj.vgSlot then return end
   addSlot(obj, icon)
   slotStates(obj, b)
-  badge(obj)
 end
 
 -- Pins one of the game's minimap buttons to a corner of the map (it stays
