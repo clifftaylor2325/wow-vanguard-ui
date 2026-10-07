@@ -74,10 +74,14 @@ local function chooseProfile()
   VanguardDB.profiles[VanguardCharDB.profile] = VanguardDB.profiles[VanguardCharDB.profile] or {}
 end
 
+-- True when this character had no saved settings at load: its first login with Vanguard.
+local newCharacter = false
+
 -- Creates or repairs the saved tables, and upgrades an older account file.
 -- Runs at ADDON_LOADED, when WoW has restored them.
 local function initDB()
   local from = savedVersion()
+  newCharacter = type(VanguardCharDB) ~= "table"
   VanguardDB = fill(type(VanguardDB) == "table" and VanguardDB or {}, { profiles = {} })
   dropBrokenProfiles(VanguardDB.profiles)
   VanguardDB.version = from or DB_VERSION
@@ -91,6 +95,11 @@ ns.On("ADDON_LOADED", function(_, name)
     initDB()
   end
 end)
+
+-- True when this is the character's first login with Vanguard (it had no saved settings).
+function ns.NewCharacter()
+  return newCharacter
+end
 
 -- The active profile's name.
 function ns.ProfileName()
