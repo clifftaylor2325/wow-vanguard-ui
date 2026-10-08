@@ -16,6 +16,7 @@ ignore:
   - docs
   - scripts
   - README.md
+  - CLAUDE.md
   - package.json
   - package-lock.json
   - vitest.config.mjs
