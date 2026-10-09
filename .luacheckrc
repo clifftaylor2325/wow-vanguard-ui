@@ -76,7 +76,7 @@ read_globals = {
   -- F6 Auction helper: the auction house API and the game's auction house window.
   "C_AuctionHouse", "AuctionHouseFrame",
   -- Auction helper, tabs: the window's tab row (the game's tab count call) and its display modes.
-  "PanelTemplates_SetNumTabs", "AuctionHouseFrameDisplayMode",
+  "PanelTemplates_SetNumTabs", "PanelTemplates_TabResize", "AuctionHouseFrameDisplayMode",
   -- F6 Auction helper, sell card: the item on the cursor.
   "C_Cursor",
   -- C1 Auction prices: the realm you're on, so each realm and faction keeps its own prices.

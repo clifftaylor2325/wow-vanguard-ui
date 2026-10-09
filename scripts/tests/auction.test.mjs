@@ -236,6 +236,12 @@ it("a hidden number skips its listing without an error", () => {
   expect(addon.eval("return { ns.AuctionPrices.House().prices[2589].min, #ns.errors }"), "only the plain listing counts").toEqual([150, 0]);
 });
 
+it("our Shopping and Selling tabs are sized to their names, so the labels aren't cut off", () => {
+  const addon = atAuctionHouse();
+  const sizes = addon.eval("local out = {} for i = 4, 5 do local t = AuctionHouseFrame.Tabs[i] out[#out + 1] = { t:GetWidth(), #t:GetText() * 6 } end return out");
+  expect(sizes.every(([w, text]) => w >= 70 && w >= text + 20), "each tab at least 70 px wide, with 20 px to spare beside its name").toBe(true);
+});
+
 // The window's title text.
 const title = (addon) => addon.eval("return AuctionHouseFrame.TitleContainer.TitleText:GetText()");
 // Picks a tab on the window: 1-3 the game's, 4 Shopping, 5 Selling.
