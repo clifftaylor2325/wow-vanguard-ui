@@ -31,7 +31,7 @@ GW.REGISTERED, GW.ORDER = {}, {}
 GW.FRAMED = {
   "CharacterFrame", "MerchantFrame", "MailFrame", "QuestFrame", "GossipFrame", "TradeFrame",
   "LootFrame", "GameMenuFrame", "ReadyCheckFrame", "FriendsFrame", "DressUpFrame", "TaxiFrame", "ItemTextFrame",
-  "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4",
+  "SpellBookFrame", "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4",
 }
 GW.POPUPS = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }
 GW.TIMERS = { "MirrorTimer1", "MirrorTimer2", "MirrorTimer3" }
