@@ -1484,8 +1484,12 @@ function PanelTemplates_SetNumTabs(frame, n) frame.numTabs = n end
 function PanelTemplates_SetTab(frame, id) frame.selectedTab = id end
 -- The selected tab's number.
 function PanelTemplates_GetSelectedTab(frame) return frame.selectedTab end
--- A tab sized to its text in the game; nothing here.
-function PanelTemplates_TabResize() end
+-- A tab sized to its text (the text's width plus the padding, at least the minimum), as the game does.
+-- Text is measured at the harness's 6 px a character.
+function PanelTemplates_TabResize(tab, padding, absoluteSize, minWidth)
+  local w = absoluteSize or (#(tab:GetText() or "") * 6 + (padding or 0))
+  tab:SetWidth(math.max(minWidth or 0, w))
+end
 -- The window's display modes (Blizzard_AuctionHouseFrame.lua): each names the window's frames it shows.
 AuctionHouseFrameDisplayMode = { Buy = { "BrowseResultsFrame" }, ItemSell = { "ItemSellFrame" }, Auctions = { "AuctionsFrame" } }
 
