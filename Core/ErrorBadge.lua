@@ -51,7 +51,7 @@ function EB.Footer(window)
   b:SetPoint("LEFT", window.version, "RIGHT", 16, 0)
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "small", "bad")
   b.text:SetPoint("LEFT")
-  b:SetScript("OnClick", function() SlashCmdList.VANGUARD("errors") end)
+  b:SetScript("OnClick", ns.Guard("click list errors", function() SlashCmdList.VANGUARD("errors") end))
   EB.footer = b
   EB.Update()
 end

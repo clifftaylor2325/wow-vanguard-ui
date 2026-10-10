@@ -378,7 +378,7 @@ local function styleTile(page, i, s)
   tileBar(b)
   b.text = text(page, "small", "text", s[3])
   b.text:SetPoint("TOP", b, "BOTTOM", 0, -4)
-  b:SetScript("OnClick", function() S.SetStyle(s[1]); refresh() end)
+  b:SetScript("OnClick", ns.Guard("click setup style", function() S.SetStyle(s[1]); refresh() end))
   return b
 end
 
@@ -452,7 +452,7 @@ end
 -- The close button (top right) and the footer: Skip setup (first step only), then Back, then Next or Done.
 local function controls(f)
   f.close = T.PlaceClose(T.CloseButton(CreateFrame("Button", nil, f)), f)
-  f.close:SetScript("OnClick", function() f:Hide() end)
+  f.close:SetScript("OnClick", ns.Guard("click close setup", function() f:Hide() end))
   f.next = W.Primary(f, "Next", function() S.Next() end)
   f.next:SetPoint("BOTTOMRIGHT", -PAD, PAD)
   f.back = W.Button(f, "Back", function() S.Back() end, 100)

@@ -31,7 +31,7 @@ local function addFirst(menu)
   local b = menuButton(menu)
   b.layoutIndex = FIRST
   b.bottomPadding = SECTION_GAP
-  b:SetScript("OnClick", ns.OpenFromGameMenu)
+  b:SetScript("OnClick", ns.Guard("click open options from game menu", ns.OpenFromGameMenu))
   ns.gameMenuButton = b
   if type(menu.MarkDirty) == "function" then menu:MarkDirty() end
 end
@@ -40,7 +40,7 @@ end
 local function addBelow(menu)
   local b = ns.DialogButton(menu, "Vanguard", 144)
   b:SetPoint("TOP", menu, "BOTTOM", 0, -4)
-  b:SetScript("OnClick", ns.OpenFromGameMenu)
+  b:SetScript("OnClick", ns.Guard("click open options from game menu", ns.OpenFromGameMenu))
   ns.gameMenuButton = b
 end
 
