@@ -1,4 +1,4 @@
--- Raid frame status marks, VuhDo style:
+-- Raid frame status marks:
 --   * players out of your range fade
 --   * raid target icons (skull, cross...) along the top
 --   * ready check answers in the middle while a check runs

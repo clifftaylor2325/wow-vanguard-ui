@@ -2,7 +2,7 @@
 
 For the session that picks this up on the owner's machine (clone at `C:\Workspace\wow-forever-ui`).
 Branch `work/p3-clickcast`, PR https://github.com/clifftaylor2325/wow-forever-ui/pull/78, head `8daf0dd`.
-Design: `docs/design/CLICK-CASTING.md` (branch `docs/ellesmereui-gap-analysis`). Repo rules: `docs/handoff/WORKPLAN.md` §0.
+Design: `docs/design/CLICK-CASTING.md` (on an older docs branch, not merged). Repo rules: `docs/handoff/WORKPLAN.md` §0.
 
 ## What was done (do not redo)
 
