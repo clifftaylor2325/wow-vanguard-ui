@@ -423,6 +423,30 @@ function input(addon) {
   return api;
 }
 
+// Every addon createAddon built since the last test ended. The array lives on
+// globalThis because the global afterEach in scripts/tests/setup.mjs reaches
+// the same one through the symbol (setup.mjs runs for the quick project too, so
+// it never imports this module) and empties it in place: only push and
+// splice(0) touch it, so every module keeps holding the one array.
+export const createdAddons = (globalThis[Symbol.for("vanguard.addons")] ??= []);
+
+// Lua that keeps what ns.ClearErrors drops: the entries it is about to forget
+// go into __wfgCleared first, so the error guard still judges them.
+const HARVEST = `
+  __wfgCleared = {}
+  local kept = ns.ClearErrors
+  ns.ClearErrors = function(...)
+    for i = 1, #ns.errors do __wfgCleared[#__wfgCleared + 1] = ns.errors[i] end
+    return kept(...)
+  end
+`;
+
+// Registers an addon for the error guard and starts keeping the errors ns.ClearErrors forgets.
+function track(addon) {
+  addon.eval(HARVEST);
+  createdAddons.push(addon);
+}
+
 // savedVariables: Lua source run after the addon files and before
 // ADDON_LOADED, which is when WoW restores SavedVariables. instructionBudget:
 // the most instructions one call from the tests may run (see Hooks above).
@@ -435,5 +459,6 @@ export function createAddon({ savedVariables = "", instructionBudget = DEFAULT_B
   const addon = { L, eval: (source) => evalIn(L, source) };
   Object.assign(addon, drivers(addon), lifecycle(addon), inspectors(addon), input(addon));
   addon.world = worldApi(addon);
+  track(addon);
   return addon;
 }
