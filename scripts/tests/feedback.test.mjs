@@ -3,7 +3,7 @@
 // read by the site's src/feedback/fill.js, so the shapes below are that parser's.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, expectErrors, loggedIn } from "./helpers.mjs";
 
 const BOX = "Vanguard_Feedback";
 // Opens the form by /vg feedback [kind]; the problem line; the copy box's state; a text's lines.
@@ -78,6 +78,7 @@ it("Make report says what the site would, in its words, and keeps the form open"
 
 it("a bug's block carries the kind, title, texts and the /vg report, color codes gone", () => {
   const addon = loggedIn();
+  expectErrors("RaidFrames: attempt to index a nil value");
   addon.eval('ns.Report("RaidFrames", "attempt to index a nil value")');
   open(addon);
   goodBug(addon);
