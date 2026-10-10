@@ -3,10 +3,11 @@
 // real layout, so each case takes one away.
 
 import { expect, it } from "vitest";
-import { loggedIn } from "./helpers.mjs";
+import { expectErrors, loggedIn } from "./helpers.mjs";
 
 it("without issecretvalue nothing is secret, and a failing after-combat update is reported while the rest run", () => {
   const addon = loggedIn("issecretvalue = nil");
+  expectErrors("after-combat update: eval:2: TEST-ONLY boom");
   expect(addon.eval("return ns.IsSecret(5)")).toBe(false);
   addon.world.combat(true);
   addon.eval("ns.OutOfCombat(function() error('TEST-ONLY boom') end) ns.OutOfCombat(function() __ran = true end)");
