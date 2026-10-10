@@ -329,7 +329,7 @@ end
 local function watchLayouts()
   local f = editModeManager()
   if not f or type(f.UpdateLayoutInfo) ~= "function" or type(hooksecurefunc) ~= "function" then return end
-  hooksecurefunc(f, "UpdateLayoutInfo", onLayouts)
+  hooksecurefunc(f, "UpdateLayoutInfo", ns.Guard("hook UpdateLayoutInfo", onLayouts))
   if ns.EditModeLayout() then onLayouts() end
 end
 -- (Registered after the spec profile's login handler, so the profile is settled first.)
