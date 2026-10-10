@@ -1,5 +1,5 @@
 -- Bag sections (part of the Bags module): the combined bag's own item buttons
--- laid out in sections, as AdiBags and Baganator do: quest items, equipment,
+-- laid out in sections: quest items, equipment,
 -- consumables, trade goods, the rest, junk and the empty slots, each under a
 -- header in the theme, packed side by side where they fit, with the window's
 -- padding (Bags.PAD) around them and the money line. The buttons stay
