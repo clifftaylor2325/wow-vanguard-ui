@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import fengari from "fengari";
 import { expect, it } from "vitest";
+import { expectErrors } from "./lib/error-guard.mjs";
 import { createAddon, hasCachedChunk, pushFileChunk, root, tocFiles } from "./lib/lua-harness.mjs";
 
 const { lua, lauxlib, lualib } = fengari;
@@ -28,6 +29,7 @@ it("numbers print as the game's Lua 5.1 prints them: whole floats without .0", (
 
 it("a Lua error carries a traceback naming the addon file", () => {
   const addon = createAddon();
+  expectErrors("TEST-ONLY: eval:2: attempt to index a nil value (local 't')");
   expect(() => addon.eval("ns.Theme.RGB(nil .. 'x')")).toThrow(/eval:2: attempt to concatenate/);
   expect(() => addon.eval("ns.Try('TEST-ONLY', function() local t = nil; return t.x end) return ns.errors[#ns.errors]")).not.toThrow();
   expect(addon.eval("return ns.errors[#ns.errors].text")).toMatch(/TEST-ONLY: eval:2: attempt to index/);

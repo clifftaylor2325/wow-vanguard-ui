@@ -1,9 +1,10 @@
 // skins: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn } from "./helpers.mjs";
+import { chatHas, expectErrors, loggedIn } from "./helpers.mjs";
 
 it("skin API", () => {
+  expectErrors("skin for Broken: eval:5: oops");
   const addon = loggedIn(`
     Vanguard.RegisterSkin("Early", function(S) __early = S.apiVersion; S.Panel(CreateFrame("Frame", nil, UIParent)) end)
     Vanguard.RegisterSkin("Early", function() __dup = true end)
