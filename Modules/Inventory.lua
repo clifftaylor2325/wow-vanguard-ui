@@ -90,7 +90,7 @@ end
 function IV.OnChanged()
   if IV.pending then return end
   IV.pending = true
-  C_Timer.After(IV.SCAN_DELAY, IV.Scan)
+  C_Timer.After(IV.SCAN_DELAY, ns.Guard("timer bag scan", IV.Scan))
 end
 
 -- The bank opened: read it (and the bags) now.
