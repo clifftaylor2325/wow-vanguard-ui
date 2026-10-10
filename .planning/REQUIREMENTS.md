@@ -81,37 +81,37 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LNCH-01 | — | Pending |
-| LNCH-02 | — | Pending |
-| CI-01 | — | Pending |
-| CI-02 | — | Pending |
-| CI-03 | — | Pending |
-| CI-04 | — | Pending |
-| CI-05 | — | Pending |
-| CI-06 | — | Pending |
-| CI-07 | — | Pending |
-| CI-08 | — | Pending |
-| AH-01 | — | Pending |
-| AH-02 | — | Pending |
-| AH-03 | — | Pending |
-| UI-01 | — | Pending |
-| UI-02 | — | Pending |
-| UI-03 | — | Pending |
-| UI-04 | — | Pending |
-| UI-05 | — | Pending |
-| UI-06 | — | Pending |
-| FEAT-01 | — | Pending |
-| FEAT-02 | — | Pending |
-| FEAT-03 | — | Pending |
-| FEAT-04 | — | Pending |
-| FEAT-05 | — | Pending |
-| FEAT-06 | — | Pending |
+| LNCH-01 | Phase 12 | Pending |
+| LNCH-02 | Phase 12 | Pending |
+| CI-01 | Phase 1 | Pending |
+| CI-02 | Phase 1 | Pending |
+| CI-03 | Phase 2 | Pending |
+| CI-04 | Phase 2 | Pending |
+| CI-05 | Phase 3 | Pending |
+| CI-06 | Phase 3 | Pending |
+| CI-07 | Phase 4 | Pending |
+| CI-08 | Phase 4 | Pending |
+| AH-01 | Phase 5 | Pending |
+| AH-02 | Phase 5 | Pending |
+| AH-03 | Phase 5 | Pending |
+| UI-01 | Phase 7 | Pending |
+| UI-02 | Phase 7 | Pending |
+| UI-03 | Phase 6 | Pending |
+| UI-04 | Phase 6 | Pending |
+| UI-05 | Phase 8 | Pending |
+| UI-06 | Phase 8 | Pending |
+| FEAT-01 | Phase 9 | Pending |
+| FEAT-02 | Phase 9 | Pending |
+| FEAT-03 | Phase 9 | Pending |
+| FEAT-04 | Phase 10 | Pending |
+| FEAT-05 | Phase 10 | Pending |
+| FEAT-06 | Phase 11 | Pending |
 
 **Coverage:**
-- v1 requirements: 26 total
-- Mapped to phases: 0 (roadmap not yet created)
-- Unmapped: 26
+- v1 requirements: 25 total (the earlier count of 26 was off by one; the list holds 25 IDs)
+- Mapped to phases: 25
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-10-09*
-*Last updated: 2026-10-09 after scoping answers*
+*Last updated: 2026-10-09 after roadmap creation*
