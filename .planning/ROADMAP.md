@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Code and CI (priority 1):
 
 - [x] **Phase 1: Green baseline** - The full suite passes on main, each #169 case is resolved with evidence, and coverage reports again (completed 2026-10-09)
-- [ ] **Phase 2: Errors fail tests** - A swallowed addon error fails its test, and runs give the same result every time
+- [x] **Phase 2: Errors fail tests** - A swallowed addon error fails its test, and runs give the same result every time (completed 2026-10-10)
 - [ ] **Phase 3: Fast suite and CI gate** - The full suite runs in under 5 minutes on the hosted runner, on ready-for-review and the full-tests label
 - [ ] **Phase 4: Lean core** - Dead code is gone, and per-frame and unit-event work goes through shared helpers
 
@@ -77,21 +77,22 @@ Plans:
   3. A weekly CI job runs the full suite in a shuffled order and prints its seed. Any flaky case found is fixed, not retried. The first green shuffled run waits for the hosted runner (blocked by billing); the user accepted leaving that part open (D-05 in `02-CONTEXT.md`).
   4. The suite stays green with the guard on: errors it exposes are fixed in the addon, not excused with an expected-error marker.
 
-**Plans**: 13 plans in 8 waves
+**Plans**: 13/13 plans complete in 8 waves
 Plans:
-- [ ] 02-01-PLAN.md — Tracer: `ns.Guard`, the guarded SetPostItem hook, the `createAddon` registry and `ns.ClearErrors` harvest, `error-guard.mjs` (`expectErrors`, which refuses any marker broader than one error, and `check`), the global `afterEach` behind a `VG_ERROR_GUARD=1` opt-in; guard unit tests, click/timer/nil cases, `AURA_FALLBACK`
-- [ ] 02-02-PLAN.md — CI-03: `link-wow.test.mjs` cases made independent; `VG_SHUFFLE_SEED` shuffle in `vitest.config.mjs`; the Sunday full run shuffled with its seed printed (lua-suite/full-suite), checked by `scripts/workflows.test.mjs`
-- [ ] 02-03-PLAN.md — core.test.mjs under the guard: R1/R2/R5 fixtures fixed at the cause, deliberate error-rail cases named
-- [ ] 02-04-PLAN.md — auras, plates and report tests under the guard: fallback notices named, D-06 via `AURA_FALLBACK`
-- [ ] 02-05-PLAN.md — ChatExtras guards (R3, addon fix); Enum and hooksecurefunc fixtures (R1, R2) and the AFK fixture (R4); deliberate entries in more and tooltip named
-- [ ] 02-06-PLAN.md — the one deliberate error each in lua-engine, auctionapi, feedback, fallbacks and skins tests named
-- [ ] 02-07-PLAN.md — Guard on for every test (opt-in removed), tests README, coverage at 100%; negative control on the SetPostItem hook
-- [ ] 02-08-PLAN.md — Money first: auction hooks, clicks and timers and the W.Button / W.Primary / Controls factories under `ns.Guard`
-- [ ] 02-09-PLAN.md — Money first: bags, bag sections, upgrade markers, errands, merchant and inventory under `ns.Guard`
-- [ ] 02-10-PLAN.md — The remaining Core hooks, clicks and timers under `ns.Guard`
-- [ ] 02-11-PLAN.md — Window skins, menu strip, game tools, alerts, tooltips, chat and bars under `ns.Guard`
-- [ ] 02-12-PLAN.md — Quests, tracker, broker, click-cast options, minimap, raid tools, talents, fight history and raid status under `ns.Guard`
-- [ ] 02-13-PLAN.md — Code-quality rule against bare hooks, clicks and timers (README sentence); stub `debugstack`; stack in the guard message; phase gate
+- [x] 02-01-PLAN.md — Tracer: `ns.Guard`, the guarded SetPostItem hook, the `createAddon` registry and `ns.ClearErrors` harvest, `error-guard.mjs` (`expectErrors`, which refuses any marker broader than one error, and `check`), the global `afterEach` behind a `VG_ERROR_GUARD=1` opt-in; guard unit tests, click/timer/nil cases, `AURA_FALLBACK`
+- [x] 02-02-PLAN.md — CI-03: `link-wow.test.mjs` cases made independent; `VG_SHUFFLE_SEED` shuffle in `vitest.config.mjs`; the Sunday full run shuffled with its seed printed (lua-suite/full-suite), checked by `scripts/workflows.test.mjs`
+- [x] 02-03-PLAN.md — core.test.mjs under the guard: R1/R2/R5 fixtures fixed at the cause, deliberate error-rail cases named
+- [x] 02-04-PLAN.md — auras, plates and report tests under the guard: fallback notices named, D-06 via `AURA_FALLBACK`
+- [x] 02-05-PLAN.md — ChatExtras guards (R3, addon fix); Enum and hooksecurefunc fixtures (R1, R2) and the AFK fixture (R4); deliberate entries in more and tooltip named
+- [x] 02-06-PLAN.md — the one deliberate error each in lua-engine, auctionapi, feedback, fallbacks and skins tests named
+- [x] 02-07-PLAN.md — Guard on for every test (opt-in removed), tests README, coverage at 100%; negative control on the SetPostItem hook
+- [x] 02-08-PLAN.md — Money first: auction hooks, clicks and timers and the W.Button / W.Primary / Controls factories under `ns.Guard`
+- [x] 02-09-PLAN.md — Money first: bags, bag sections, upgrade markers, errands, merchant and inventory under `ns.Guard`
+- [x] 02-10-PLAN.md — The remaining Core hooks, clicks and timers under `ns.Guard`
+- [x] 02-11-PLAN.md — Window skins, menu strip, game tools, alerts, tooltips, chat and bars under `ns.Guard`
+- [x] 02-12-PLAN.md — Quests, tracker, broker, click-cast options, minimap, raid tools, talents, fight history and raid status under `ns.Guard`
+- [x] 02-13-PLAN.md — Code-quality rule against bare hooks, clicks and timers (README sentence); stub `debugstack`; stack in the guard message; phase gate
+
 **Notes**: Today only `smoke.test.mjs` asserts zero errors, and 54 `hooksecurefunc` calls, 57 `OnClick` handlers and 12 unguarded `C_Timer` calls bypass `ns.Try` (research recount; 3 more timer calls already run inside `ns.Try`). Put the guard in a global `afterEach` in `scripts/tests/setup.mjs` and wrap the money paths first. The combat-lockdown mode and per-module secret-value sweep for the harness that research recommended are deferred (`02-CONTEXT.md`): they are not in CI-03 or CI-04 and become a requirement before Phase 12's in-combat check.
 
 ### Phase 3: Fast suite and CI gate
@@ -241,7 +242,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Green baseline | 2/2 | Complete    | 2026-10-09 |
-| 2. Errors fail tests | 0/13 | Planned | - |
+| 2. Errors fail tests | 13/13 | Complete    | 2026-10-10 |
 | 3. Fast suite and CI gate | 0/TBD | Not started | - |
 | 4. Lean core | 0/TBD | Not started | - |
 | 5. Auction Post fix | 0/TBD | Not started | - |
