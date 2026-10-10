@@ -12,6 +12,13 @@ name: lua suite
 # before each release. On Actions, Vitest also writes failures as
 # annotations on the run and a JUnit file (vitest.config.mjs), and the
 # Lua-by-area and coverage tables go to the job summary.
+#
+# With the shuffle input on (the weekly run only, set by full-suite.yml),
+# a step picks a seed, exports it as VG_SHUFFLE_SEED and writes it with the
+# replay command to the job summary, and Vitest runs files and tests in the
+# order that seed gives (vitest.config.mjs). Pull-request, hand-started and
+# release runs keep the written order. A failing case is fixed at its cause;
+# nothing here runs a failed case again.
 on:
   workflow_call:
     inputs:
@@ -19,6 +26,10 @@ on:
         description: "Also render the UI preview (a few minutes more)"
         type: boolean
         default: true
+      shuffle:
+        description: "Shuffle the test order and print the seed, so a failure can be replayed"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -39,6 +50,15 @@ jobs:
       - run: npm ci
       - name: luacheck and Lua 5.1
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lua-check lua5.1
+      - name: Pick and print the shuffle seed
+        if: inputs.shuffle
+        # The seed comes from the clock inside the script; no workflow
+        # expression is placed in this text. vitest.config.mjs reads
+        # VG_SHUFFLE_SEED, which npm run coverage passes on to Vitest.
+        run: |
+          seed=$(date +%s)
+          echo "VG_SHUFFLE_SEED=$seed" >> "$GITHUB_ENV"
+          printf 'Shuffled run, seed %s. Replay: VG_SHUFFLE_SEED=%s npm test (PowerShell: $env:VG_SHUFFLE_SEED=%s; npm test)\n' "$seed" "$seed" "$seed" | tee -a "$GITHUB_STEP_SUMMARY"
       - run: npm run coverage
       - run: npm run quality
       - run: luacheck --no-color .
