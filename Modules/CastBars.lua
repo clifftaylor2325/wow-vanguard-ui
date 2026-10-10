@@ -270,8 +270,8 @@ function CB.SkinOverlay()
   styleOverlay(bar)
   bar:HookScript("OnShow", styleOverlay)
   if type(hooksecurefunc) ~= "function" then return end
-  if type(bar.UpdateBarFillTexture) == "function" then hooksecurefunc(bar, "UpdateBarFillTexture", styleOverlay) end
-  if type(bar.PlayFadeAnim) == "function" then hooksecurefunc(bar, "PlayFadeAnim", hideFlash) end
+  if type(bar.UpdateBarFillTexture) == "function" then hooksecurefunc(bar, "UpdateBarFillTexture", ns.Guard("hook UpdateBarFillTexture", styleOverlay)) end
+  if type(bar.PlayFadeAnim) == "function" then hooksecurefunc(bar, "PlayFadeAnim", ns.Guard("hook PlayFadeAnim", hideFlash)) end
 end
 
 -- Events ------------------------------------------------------------------------------
