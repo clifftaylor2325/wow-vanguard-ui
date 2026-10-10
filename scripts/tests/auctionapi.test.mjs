@@ -2,7 +2,7 @@
 // searches other addons call, at the TEST-ONLY auction house of the headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn } from "./helpers.mjs";
+import { chatHas, expectErrors, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY: a wall clock a test moves (__now), dusts (Strange Dust a commodity, and a pouch
 // named like it), and __call(fn, ...), which calls an API function from Lua and returns
@@ -109,6 +109,7 @@ it("disenchant prices by item ID and link, whether or not you know Enchanting", 
 });
 
 it("RegisterForDBUpdate: callbacks run once on the frame after a scan, and after a search records a price", () => {
+  expectErrors("Vanguard.API.v1 update for TEST-ONLY Broken: eval:3: TEST-ONLY broken");
   const addon = withApi(`__wfgWorld.ah.commodities[10940] = { { unitPrice = 100, quantity = 5 } }
     __wfgWorld.bags[0][1] = { itemID = 10940, count = 20 }`);
   addon.eval(`__heard = {} Vanguard.API.v1.RegisterForDBUpdate("TEST-ONLY A", function(...) table.insert(__heard, "A" .. select("#", ...)) end)
