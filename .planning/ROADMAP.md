@@ -49,12 +49,12 @@ Launch:
 ## Phase Details
 
 ### Phase 1: Green baseline
-**Goal**: The author can trust a green run: the full suite passes on main, locally and on the hosted runner, and coverage reports again.
+**Goal**: The author can trust a green run: the full suite passes on clean main locally, and coverage reports again. The hosted-runner check moves to Phase 3.
 **Depends on**: Nothing (first phase)
 **Requirements**: CI-01, CI-02
 **Success Criteria** (what must be TRUE):
-  1. `npm test` on a clean checkout of main reports zero failed cases locally, and a full-suite run on the hosted runner is green as well.
-  2. Each of the seven cases in #169 has a recorded outcome on the issue: fixed, with the cause named in the commit body, or shown not to reproduce on clean main and on the hosted runner.
+  1. `npm test` on a clean checkout of main reports zero failed cases locally. The hosted-runner run is confirmed in Phase 3.
+  2. Each of the seven cases in #169 has a recorded outcome on the issue: fixed, with the cause named in the commit body, or shown not to reproduce on clean main.
   3. Every harness or stub change made to turn a case green cites the 12.1 Blizzard source in its commit body, and no commit loosens a harness rule and changes a test together.
   4. `npm run coverage` prints its report and passes the 100% floor in `scripts/lua-coverage-floor.json`.
 **Plans**: TBD
