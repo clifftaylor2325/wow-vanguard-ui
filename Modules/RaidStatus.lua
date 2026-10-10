@@ -267,7 +267,7 @@ end
 local function onReadyFinished()
   if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return clearReady() end
   local check = RS.readyChecks
-  C_Timer.After(READY_LINGER, function() if RS.readyChecks == check then clearReady() end end)
+  C_Timer.After(READY_LINGER, ns.Guard("timer ready check linger", function() if RS.readyChecks == check then clearReady() end end))
 end
 
 -- Refreshes a tile's center marks, if it has them.
