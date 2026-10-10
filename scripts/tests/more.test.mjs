@@ -1,7 +1,7 @@
 // more: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { AFK_ENV, CLICK_LUA, FAKE_FADES, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, isTok, key, later, loggedIn, marks, pinned, plate, putAway, raidButton, setCombat, strips, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { AFK_ENV, CLICK_LUA, FAKE_FADES, expectErrors, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, isTok, key, later, loggedIn, marks, pinned, plate, putAway, raidButton, setCombat, strips, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -1600,6 +1600,7 @@ it("game menu: buttons made after the skin ran are skinned once, Vanguard's matc
 });
 
 it("game menu button: falls back, or goes without what the menu lacks", () => {
+  expectErrors(/^GameMenu: wow-world\.lua:\d+: CreateFrame: unknown template NoSuchTemplate$/);
   const broken = loggedIn(FOREVER_MENU_ENV + 'GameMenuFrame.buttonTemplate = "NoSuchTemplate"');
   expect(broken.eval("local b = ns.gameMenuButton return { b.text:GetText(), b.__points.TOP.rel == GameMenuFrame, ns.errors[#ns.errors].text:match('^GameMenu:') ~= nil }"), "a template that can't be built: themed button under the menu, one logged error").toEqual(["Vanguard", true, true]);
   const plain = loggedIn(FOREVER_MENU_ENV + "GameMenuFrame.buttonTemplate = nil");
@@ -2580,6 +2581,7 @@ it("game windows in the Vanguard look: framed windows, popups, breath bar, and w
 });
 
 it("game windows: one skin that fails is reported and the other windows, and those that load later, are still skinned", () => {
+  expectErrors(/^window CharacterFrame: eval:\d+: TEST-ONLY skin failure$/);
   const addon = loggedIn(WINDOWS_ENV + `__window("CharacterFrame").NineSlice.GetRegions = function() error("TEST-ONLY skin failure") end`);
   expect(addon.eval("return ns.errors[1].text:find('window CharacterFrame', 1, true) ~= nil"), "the failure is reported under the window's name").toBe(true);
   addon.eval("MerchantFrame:Show()");
@@ -2707,7 +2709,9 @@ it("the AFK screen: clicks, keys and fights put it away; what the client can't s
   addon.eval("UnitIsAFK = function() return { __secret = true } end");
   addon.fire("PLAYER_FLAGS_CHANGED", "player");
   expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "a hidden away flag counts as here").toBe(false);
-  const bare = loggedIn("UnitName = nil UnitLevel = nil UnitClass = nil UnitXP = nil");
+  // The modules that read the unit calls this client lacks are off: a client without UnitClass breaks them, and the card is the point here.
+  const needUnits = ["UnitFrames", "ComboPoints", "ClassBars", "SwingTimer", "InfoStrip", "Inventory"].map((name) => name + " = false").join(", ");
+  const bare = loggedIn("UnitName = nil UnitLevel = nil UnitClass = nil UnitXP = nil", { savedVariables: `VanguardDB.profiles = { Default = { modules = { ${needUnits} } } }` });
   bare.eval("ns.GetModule('AfkScreen').Paint()");
   expect(bare.eval("local f = Vanguard_AfkScreen return { f.name:GetText(), f.who:GetText(), f.xp:IsShown() }"), "a client that can't say much gets a blank card, no errors").toEqual(["", "", false]);
 });
