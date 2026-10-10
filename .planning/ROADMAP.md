@@ -102,7 +102,7 @@ Plans:
 **Requirements**: CI-05, CI-06
 **Success Criteria** (what must be TRUE):
   1. Every push runs the quick check, and marking a PR ready for review, or adding the `full-tests` label, starts the full suite.
-  2. The full suite finishes in under 5 minutes wall time on the hosted runner, and the measured time, with per-file times, is recorded in the phase PR.
+  2. The full suite finishes in under 5 minutes wall time on a 2-worker local proxy for a 2-vCPU runner, and the measured time, with per-file times, is recorded in the phase summaries and verification. The same measurement on the hosted runner waits for the billing block to clear; the user accepted leaving that part open (D-01 in `03-CONTEXT.md`).
   3. No case was dropped or skipped to reach the time: the test count and the 100% coverage floor match the start of the phase.
 
 **Plans**: TBD
