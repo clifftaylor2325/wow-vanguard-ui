@@ -119,6 +119,21 @@ the addon catches with `ns.Try` land in `ns.errors`. Numbers print as the
 game's Lua 5.1 prints them (`3`, not `3.0`), so string assertions match the
 game.
 
+Every test is judged on this, with no switch to turn it off. After each test the
+setup file fails it if any addon it built left an entry in `ns.errors` (entries
+cleared with `ns.ClearErrors` count too), printing each entry's text, count and
+stack. A test that causes an error on purpose names it:
+
+- `expectErrors("<whole entry text>")` (from `./helpers.mjs`), or, where a line
+  number or a counter varies, a RegExp anchored by `^` and `$` whose only
+  variable parts are digit runs (`\d+`).
+- `expectErrors` throws for any broader matcher (unanchored, empty or wildcard
+  patterns, character classes, groups, alternation, `\w` or `\s`, the `g`, `m`
+  and `y` flags, an empty string), so a marker cannot cover a class of errors.
+- A marker that matches nothing fails the test too.
+- `AURA_FALLBACK` (in `helpers.mjs`) names the deliberate aura-container
+  fallback notice (D-06).
+
 ### Game windows
 
 `WINDOWS_ENV` (in `helpers.mjs`) defines TEST-ONLY `__window(name)`, a frame shaped like the game's

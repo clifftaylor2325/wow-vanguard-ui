@@ -21,12 +21,10 @@ afterAll(() => {
 
 // After every test: forget the addons it built and the errors it named, so
 // no Lua state outlives its test, and fail the test if an addon left an error
-// it did not name with expectErrors. Judging is opt-in (VG_ERROR_GUARD=1) only
-// until the markers land and plan 02-07 removes the switch; it names no file
-// and no test, and once it is gone every test in both projects is judged. It
-// never advances the test clock: work a test did not advance stays unrun.
+// it did not name with expectErrors. Every test in both projects is judged, and
+// a test opts out of nothing; it can only name, with expectErrors, each error
+// it causes on purpose (D-01). The guard never advances the test clock: work a
+// test did not advance stays unrun.
 afterEach(() => {
-  const addons = createdAddons.splice(0);
-  const named = takeExpected();
-  if (process.env.VG_ERROR_GUARD === "1") check(addons, named);
+  check(createdAddons.splice(0), takeExpected());
 });
