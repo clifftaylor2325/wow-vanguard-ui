@@ -9,6 +9,19 @@ const setupClick = (addon, which) => addon.eval(`local b = Vanguard_Setup.${whic
 // The setup wizard's state: the step showing (0 while closed), the account flag, and whether frames are unlocked.
 const setupState = (addon) => addon.eval("return { step = ns.Setup.Step() or 0, done = VanguardDB.setupDone == true, unlocked = ns.Unlocked() }");
 
+it("the setup wizard sits above the unlock handles on the last step, so their labels never draw over it", () => {
+  const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
+  for (let i = 0; i < 3; i++) setupClick(addon, "next");
+  expect(setupState(addon), "step 4 unlocks the frames").toEqual({ step: 4, done: false, unlocked: true });
+  expect(addon.eval("return Vanguard_Setup.__strata"), "the wizard is on the full-screen dialog strata").toBe("FULLSCREEN_DIALOG");
+  expect(addon.frames('w.__strata == "DIALOG" and w:IsVisible()').length, "the unlock handles are up, on the dialog strata under the wizard").toBeGreaterThan(0);
+});
+
+it("the setup wizard's title and step caption are centred across the window", () => {
+  const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
+  expect(addon.eval("local w, t, c = Vanguard_Setup, Vanguard_Setup.title, Vanguard_Setup.caption return { math.abs(select(1, t:GetCenter()) - select(1, w:GetCenter())) < 1, math.abs(select(1, c:GetCenter()) - select(1, w:GetCenter())) < 1 }"), "the title and the caption sit on the window's centre line").toEqual([true, true]);
+});
+
 it("first-run setup: once per account, four clicks with the defaults", () => {
   const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
   expect(setupState(addon), "a new account opens setup at step 1").toEqual({ step: 1, done: false, unlocked: false });
