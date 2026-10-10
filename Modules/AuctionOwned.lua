@@ -303,7 +303,7 @@ end
 local function paintLater()
   if AH.paintWait then return end
   AH.paintWait = true
-  C_Timer.After(AH.SEND_GAP, function() AH.paintWait = false AH.PaintOwned() end)
+  C_Timer.After(AH.SEND_GAP, ns.Guard("timer repaint owned", function() AH.paintWait = false AH.PaintOwned() end))
 end
 
 -- The toolbar's line once you've checked ("checking...", "3 undercut", "none undercut"), and
