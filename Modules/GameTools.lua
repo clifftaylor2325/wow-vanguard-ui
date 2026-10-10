@@ -115,7 +115,7 @@ local function watchViewer(name)
   local viewer = _G[name]
   if type(viewer) ~= "table" then return end
   GT.SkinViewer(viewer)
-  if type(viewer.RefreshLayout) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(viewer, "RefreshLayout", GT.SkinViewer) end
+  if type(viewer.RefreshLayout) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(viewer, "RefreshLayout", ns.Guard("hook RefreshLayout", GT.SkinViewer)) end
 end
 
 -- Damage meter -------------------------------------------------------------------------------
@@ -149,7 +149,7 @@ function GT.SkinWindow(win)
   T.HudPanel(win, { alpha = 0.9 })
   skinLines(win)
   local box = win.ScrollBox
-  if type(box) == "table" and type(box.Update) == "function" then hooksecurefunc(box, "Update", function() skinLines(win) end) end
+  if type(box) == "table" and type(box.Update) == "function" then hooksecurefunc(box, "Update", ns.Guard("hook Update", function() skinLines(win) end)) end
 end
 
 -- Every meter window, now and whenever the game opens another.
@@ -158,7 +158,7 @@ local function watchMeter()
   if type(meter) ~= "table" or type(meter.ForEachSessionWindow) ~= "function" or type(hooksecurefunc) ~= "function" then return end
   meter:ForEachSessionWindow(GT.SkinWindow)
   if type(meter.SetupSessionWindow) == "function" then
-    hooksecurefunc(meter, "SetupSessionWindow", function(self) self:ForEachSessionWindow(GT.SkinWindow) end)
+    hooksecurefunc(meter, "SetupSessionWindow", ns.Guard("hook SetupSessionWindow", function(self) self:ForEachSessionWindow(GT.SkinWindow) end))
   end
 end
 
