@@ -158,7 +158,12 @@ const pinPoint = (addon) => addon.eval("local n = next(__pinTarget.__points) ret
 
 // TEST-ONLY pin: the game's hooksecurefunc (a post-hook on a table's method) and a frame Vanguard pins.
 const PIN_ENV = `
-  hooksecurefunc = function(a, b, c) local orig = a[b] a[b] = function(...) local r = orig(...) c(...) return r end end
+  hooksecurefunc = function(a, b, c)
+    if type(a) == "string" then a, b, c = _G, a, b end
+    local orig = a[b]
+    if type(orig) ~= "function" then return end
+    a[b] = function(...) local r = orig(...) c(...) return r end
+  end
   __pinTarget = CreateFrame("Frame", "Vanguard_PinTest", UIParent)
   __calls, __boom = 0, false
   ns.Pin(__pinTarget, function(f)
@@ -401,9 +406,13 @@ it("a session: what you set in one login comes back in the next", () => {
 
 const CLIENT_KEYS = ["auraContainer", "pixelUtil", "eventValid", "barEase", "cooldownObject", "cooldownMin", "countdownText", "keyPropagate", "damageMeter", "cooldownViewer", "swingTimer", "meterEnums"];
 
+// TEST-ONLY: a client whose Enum lacks the four tables the capability probe asks about (the rest of the stub's Enum stays, as on the client).
+const NO_PROBE_ENUMS = "Enum.StatusBarInterpolation, Enum.PlayerSwingType, Enum.DamageMeterSessionType, Enum.DamageMeterType = nil, nil, nil, nil ";
+
 // TEST-ONLY: a client that has every optional call the probe asks about.
 const CLIENT_FULL_ENV = `
-  Enum = { StatusBarInterpolation = { ExponentialEaseOut = 1 }, PlayerSwingType = {}, DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } }
+  Enum.StatusBarInterpolation.ExponentialEaseOut = 1
+  Enum.DamageMeterSessionType, Enum.DamageMeterType = { Current = 1 }, { Dps = 1 }
   PixelUtil = { GetNearestPixelSize = function() return 1 end }
   C_EventUtils = { IsEventValid = function() return true end }
   C_DamageMeter = { GetCombatSessionFromType = function() end }
@@ -426,10 +435,10 @@ it("client capability probe: what this client has, and /vg status says so", () =
     CreateFrame = function(kind, ...) if kind == "Cooldown" then error("TEST-ONLY: no cooldown frames") end return real(kind, ...) end`);
   expect(noCooldown.eval("return { ns.Client.has.cooldownObject, ns.Client.has.cooldownMin, ns.Client.has.countdownText, ns.Client.has.keyPropagate }"), "a client that cannot make a Cooldown frame has none of its methods, and the probe does not fail").toEqual([false, false, false, true]);
   // [barEase, meterEnums, swingTimer] on a client with this Lua defined.
-  const half = (lua) => loggedIn(lua).eval("return { ns.Client.has.barEase, ns.Client.has.meterEnums, ns.Client.has.swingTimer }");
-  expect(half("Enum = { StatusBarInterpolation = {}, DamageMeterSessionType = {}, DamageMeterType = { Dps = 1 } }"), "enums without the values asked for do not count").toEqual([false, false, false]);
-  expect(half("Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = {} }"), "the damage meter needs both enum values").toEqual([false, false, false]);
-  expect(half("Enum = { StatusBarInterpolation = { ExponentialEaseOut = 1 } } C_SwingTimer = {}"), "the swing timer needs its enum as well").toEqual([true, false, false]);
+  const half = (lua) => loggedIn(NO_PROBE_ENUMS + lua).eval("return { ns.Client.has.barEase, ns.Client.has.meterEnums, ns.Client.has.swingTimer }");
+  expect(half("Enum.StatusBarInterpolation, Enum.DamageMeterSessionType, Enum.DamageMeterType = {}, {}, { Dps = 1 }"), "enums without the values asked for do not count").toEqual([false, false, false]);
+  expect(half("Enum.DamageMeterSessionType, Enum.DamageMeterType = { Current = 1 }, {}"), "the damage meter needs both enum values").toEqual([false, false, false]);
+  expect(half("Enum.StatusBarInterpolation = { ExponentialEaseOut = 1 } C_SwingTimer = {}"), "the swing timer needs its enum as well").toEqual([true, false, false]);
 });
 
 // TEST-ONLY: a client with none of them: no aura container, no cooldown calls, no key propagation.
