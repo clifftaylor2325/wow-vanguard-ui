@@ -61,7 +61,7 @@ end
 -- Links addresses in chat, where the game hands addon links back to addons.
 local function watchLinks()
   local registry = _G.EventRegistry
-  if type(ChatFrame_AddMessageEventFilter) ~= "function" or type(registry) ~= "table" then return end
+  if type(ChatFrame_AddMessageEventFilter) ~= "function" or type(registry) ~= "table" or type(registry.RegisterCallback) ~= "function" then return end
   for _, event in ipairs(CX.EVENTS) do ChatFrame_AddMessageEventFilter(event, filter) end
   registry:RegisterCallback("SetItemRef", CX.OnLink, CX)
 end
@@ -140,7 +140,7 @@ end
 local function watchWindow(frame)
   if type(frame) ~= "table" or frame.vgWatched then return end
   frame.vgWatched = true
-  if type(frame.TransformMessages) == "function" then hooksecurefunc(frame, "AddMessage", shortenAdded) end
+  if type(frame.TransformMessages) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(frame, "AddMessage", shortenAdded) end
   frame:HookScript("OnMouseWheel", jump)
 end
 
