@@ -125,7 +125,7 @@ function AH.Row(c, i, y, onClick)
   r:SetPoint("TOPRIGHT", 0, y - (i - 1) * AH.ROW_H)
   W.Flat(r, "HIGHLIGHT", "hover"):SetAllPoints()
   r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-  r:SetScript("OnClick", onClick)
+  r:SetScript("OnClick", ns.Guard("click auction row", onClick))
   return r
 end
 
@@ -155,7 +155,7 @@ end
 local function sendLater(wait)
   if AH.waiting then return end
   AH.waiting = true
-  C_Timer.After(wait, function() AH.waiting = false AH.Next() end)
+  C_Timer.After(wait, ns.Guard("timer search queue", function() AH.waiting = false AH.Next() end))
 end
 
 -- Sends the next queued search: one in flight at a time, and AH.SEND_GAP seconds apart (at most
@@ -167,7 +167,7 @@ function AH.Next()
   local s = table.remove(AH.queue, 1)
   AH.pending, AH.lastSent = s, GetTime()
   AH.Send(s)
-  C_Timer.After(AH.FALLBACK, function() if AH.pending == s then AH.Done() end end)
+  C_Timer.After(AH.FALLBACK, ns.Guard("timer search fallback", function() if AH.pending == s then AH.Done() end end))
 end
 
 -- Queues a search (first in line when asked) and sends it if nothing is in flight.
@@ -322,8 +322,8 @@ local function addTabs(shopping, selling)
   local w = AuctionHouseFrame
   AH.tabs = { addTab("Shopping", shopping), addTab("Selling", selling) }
   PanelTemplates_SetNumTabs(w, #w.Tabs)
-  hooksecurefunc(w, "SetDisplayMode", onDisplayMode)
-  hooksecurefunc(w, "UpdateTitle", onTitle)
+  hooksecurefunc(w, "SetDisplayMode", ns.Guard("hook SetDisplayMode", onDisplayMode))
+  hooksecurefunc(w, "UpdateTitle", ns.Guard("hook UpdateTitle", onTitle))
   local GW = ns.GetModule("Windows")
   if GW and GW.DressTabsOf then GW.DressTabsOf("AuctionHouseFrame") end
 end

@@ -26,10 +26,15 @@ function W.Text(parent, text)
   return fs
 end
 
--- A themed push button that runs onClick.
+-- The report label for a push button's click: its caption when it has one, else "button".
+function W.ClickLabel(text)
+  return "click " .. (type(text) == "string" and text or "button")
+end
+
+-- A themed push button that runs onClick (a failure in it is reported under the button's caption).
 function W.Button(parent, text, onClick, width)
   local b = ns.DialogButton(parent, text, width or 160)
-  b:SetScript("OnClick", onClick)
+  b:SetScript("OnClick", ns.Guard(W.ClickLabel(text), onClick))
   return b
 end
 
@@ -53,7 +58,7 @@ end
 function W.Cycle(parent, caption, choices, get, set)
   local b = ns.DialogButton(parent, caption, 220)
   b.caption, b.choices, b.get, b.Refresh = caption, choices, get, refreshCycle
-  b:SetScript("OnClick", function(self) set(nextChoice(self.choices, self.get())[1]); self:Refresh() end)
+  b:SetScript("OnClick", ns.Guard("click cycle", function(self) set(nextChoice(self.choices, self.get())[1]); self:Refresh() end))
   b:Refresh()
   return b
 end
@@ -67,7 +72,7 @@ function W.Swatch(parent, rgb, onClick)
   s.fill:SetPoint("TOPLEFT", 3, -3)
   s.fill:SetPoint("BOTTOMRIGHT", -3, 3)
   s.fill:SetVertexColor(rgb[1], rgb[2], rgb[3])
-  s:SetScript("OnClick", onClick)
+  s:SetScript("OnClick", ns.Guard("click swatch", onClick))
   return s
 end
 
@@ -124,7 +129,7 @@ end
 function W.KeyCapture(parent, caption, onKey)
   local b = ns.DialogButton(parent, caption, 220)
   b.caption, b.onKey = caption, onKey
-  b:SetScript("OnClick", function(self) self.capturing = true; self:EnableKeyboard(true); self.text:SetText("Press a key, click or scroll...") end)
+  b:SetScript("OnClick", ns.Guard("click key capture", function(self) self.capturing = true; self:EnableKeyboard(true); self.text:SetText("Press a key, click or scroll...") end))
   b:SetScript("OnKeyDown", onKeyDown)
   b:SetScript("OnMouseDown", onMouseDown)
   b:EnableMouseWheel(true)
