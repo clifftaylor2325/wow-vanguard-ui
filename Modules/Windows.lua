@@ -220,7 +220,7 @@ local function watchContainer()
   if type(box) ~= "table" or not box.GetChildren or box.vgWindow then return end
   box.vgWindow = true
   skinContainerTimers()
-  if type(box.SetupTimer) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(box, "SetupTimer", skinContainerTimers) end
+  if type(box.SetupTimer) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(box, "SetupTimer", ns.Guard("hook SetupTimer", skinContainerTimers)) end
 end
 
 -- The game menu -------------------------------------------------------------------------------
@@ -259,7 +259,7 @@ end
 local function watchGameMenu()
   local menu = _G.GameMenuFrame
   if type(menu) ~= "table" or type(hooksecurefunc) ~= "function" or type(menu.InitButtons) ~= "function" then return end
-  hooksecurefunc(menu, "InitButtons", GW.SkinMenu)
+  hooksecurefunc(menu, "InitButtons", ns.Guard("hook InitButtons", GW.SkinMenu))
   GW.SkinMenu(menu)
 end
 
@@ -314,8 +314,8 @@ end
 local function after(owner, name, fn)
   local target = owner or _G
   if type(hooksecurefunc) ~= "function" or type(target[name]) ~= "function" then return end
-  if owner then return hooksecurefunc(owner, name, fn) end
-  hooksecurefunc(name, fn)
+  if owner then return hooksecurefunc(owner, name, ns.Guard("hook " .. tostring(name), fn)) end
+  hooksecurefunc(name, ns.Guard("hook " .. tostring(name), fn))
 end
 
 -- Keeps quest and gossip text readable: the game recolors it for parchment as
