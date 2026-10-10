@@ -5,7 +5,7 @@ import { ACTIONS_ENV, CLICK_LUA, HEALING_ENV, RAID_ENV, TICKS_ENV, UI_ENV, UNITS
 
 it("frames pass: bar texture, smoothing, raid style, shields, glows", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + CLICK_LUA + `
-    Enum = { StatusBarInterpolation = { ExponentialEaseOut = 1 } }
+    Enum = Enum or {} Enum.StatusBarInterpolation = { ExponentialEaseOut = 1 }
     __setValueArgs = {}
     local sv = __wfgStub.methods and __wfgStub.methods.SetValue`);
   addon.eval('__spawn(1, "raid1")');
