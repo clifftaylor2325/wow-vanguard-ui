@@ -47,7 +47,7 @@ local function skinTab(tab)
   T.Tab(tab)
   if tab.vgTabWatched or type(tab.OnSelected) ~= "function" or type(hooksecurefunc) ~= "function" then return end
   tab.vgTabWatched = true
-  hooksecurefunc(tab, "OnSelected", tabSelected)
+  hooksecurefunc(tab, "OnSelected", ns.Guard("hook OnSelected", tabSelected))
 end
 
 -- An inset panel behind a list or canvas.
@@ -209,7 +209,7 @@ function GW.SkinEditSettings(dialog)
   dressExtraButtons(dialog)
   if dialog.vgExtraButtons or type(dialog.UpdateExtraButtons) ~= "function" or type(hooksecurefunc) ~= "function" then return end
   dialog.vgExtraButtons = true
-  hooksecurefunc(dialog, "UpdateExtraButtons", dressExtraButtons)
+  hooksecurefunc(dialog, "UpdateExtraButtons", ns.Guard("hook UpdateExtraButtons", dressExtraButtons))
 end
 
 GW.Add("system", "framed", { "EditModeManagerFrame" }, GW.SkinEditMode)
@@ -315,7 +315,7 @@ function GW.SkinCombatLogBar(frame)
   if frame.vgQuickButtons or type(hooksecurefunc) ~= "function" then return end
   frame.vgQuickButtons = true
   for _, script in ipairs({ "OnShow", "OnEvent" }) do frame:HookScript(script, dressQuickButtons) end
-  if type(_G.Blizzard_CombatLog_QuickButton_OnClick) == "function" then hooksecurefunc("Blizzard_CombatLog_QuickButton_OnClick", dressQuickButtons) end
+  if type(_G.Blizzard_CombatLog_QuickButton_OnClick) == "function" then hooksecurefunc("Blizzard_CombatLog_QuickButton_OnClick", ns.Guard("hook Blizzard_CombatLog_QuickButton_OnClick", dressQuickButtons)) end
 end
 
 GW.Add("system", "framed", { "HelpFrame" })
