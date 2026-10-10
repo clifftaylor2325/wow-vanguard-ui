@@ -17,8 +17,10 @@ Make the full test suite pass on clean `main` locally, resolve each of the seven
 - **D-01:** Keep the stricter "laid out" rule in `scripts/lib/wow-layout.lua`. Fix the three test fixtures so they have a size or anchor, as the client would lay them out: the chat watch toast price line, the nameplate fixture (`__plates.nameplate1`), and the raid unit buttons under the stub's header emulation. No test is loosened to pass.
 
 ### Auction tab behaviour (cases #169-1 to #169-4)
-- **D-02:** Max-price filter (`auction.test.mjs:799`): the code is wrong. Listings above the list entry's `maxPrice` must be hidden. Fix the filter in the auction view and keep the test expectation.
-- **D-03:** Sell-card history (`auctionledger.test.mjs:192`): listings are shown by default and history sits behind the toggle, as the test expects. Fix the sell card so it does this.
+- **D-02:** Max-price filter (`auction.test.mjs:799`): listings above the list entry's `maxPrice` must be hidden. **Revised 2026-10-09 after research:** the code already does this (`Modules/AuctionShop.lua:493`); the case was a stale test setup, fixed on main by `84a7b0a`. No code change. Record as "not a code bug".
+- **D-03:** Sell-card history (`auctionledger.test.mjs:192`): listings are shown by default and history sits behind the toggle. **Revised 2026-10-09:** the code already does this; the test never picked the Selling tab (fixed by `84a7b0a`). No code change. Record as "not a code bug".
+- **D-06 (new, 2026-10-09):** Phase 1 records evidence and changes no `Modules/` code. All seven #169 cases pass on current main (120/120 across the five files, re-run by the orchestrator). The plan re-baselines on a clean checkout, writes a seven-row outcome table, and checks coverage. The user chose "record, don't fix" and no extra regression tests.
+- **D-07 (new, 2026-10-09):** The plan includes drafting the #169 outcome comment and closing the issue, but nothing is posted or closed until the user approves at execution time.
 
 ### Green bar and closing #169
 - **D-04:** Phase 1 is done when clean `main` passes the full suite locally and `npm run coverage` passes the 100% floor. No hosted-runner run is required in this phase; that confirmation moves to Phase 3.
