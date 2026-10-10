@@ -1113,7 +1113,7 @@ it("game alerts: a rare nearby is announced with a sound and a chat line, out of
 // TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
 const DPS_ENV = `
   __dps = { combatSources = { { isLocalPlayer = false, amountPerSecond = 999 }, { isLocalPlayer = true, amountPerSecond = 1234.5 } } }
-  Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } }
+  Enum = Enum or {} Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1 }
   C_DamageMeter = { GetCombatSessionFromType = function(kind, what) __asked = { kind, what } return __dps end }
 `;
 
@@ -1135,9 +1135,9 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
   const hidden = (lua) => { addon.eval(lua); addon.fire("PLAYER_REGEN_ENABLED"); return block(addon, "dps").shown; };
   expect([hidden("__dps.combatSources[2].amountPerSecond = { __secret = true }"), hidden("__dps = { __secret = true }"), hidden("__dps = {}"), hidden("__dps = nil")], "hidden figures, a hidden fight, no fight: nothing shows").toEqual([false, false, false, false]);
   expect(addon.eval("return Vanguard_InfoStrip:GetHeight()"), "and the fourth row goes").toBe(before);
-  addon.eval("Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } } __dps = { combatSources = { { isLocalPlayer = true, amountPerSecond = 0 } } }");
+  addon.eval("Enum = Enum or {} Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1 } __dps = { combatSources = { { isLocalPlayer = true, amountPerSecond = 0 } } }");
   expect(hidden(""), "no damage done: nothing shows").toBe(false);
-  addon.eval("__asked = nil Enum = nil");
+  addon.eval("__asked = nil Enum.DamageMeterSessionType = nil Enum.DamageMeterType = nil");
   expect([addon.eval("return ns.GetModule('InfoStrip').DPS()"), addon.eval("return __asked")], "without the client's enums the meter is not asked with guessed numbers").toEqual([null, null]);
   const bare = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { dps = true } } }" });
   bare.fire("PLAYER_REGEN_ENABLED");
@@ -1159,7 +1159,7 @@ it("the info strip: your place in the last fight's DPS, in a group", () => {
   expect([shown("__dps.combatSources = { __dps.combatSources[1] }"), shown("__dps.combatSources = { { isLocalPlayer = false }, { isLocalPlayer = false } }"), shown("__dps = { __secret = true }")],
     "alone, not in the list, or a hidden fight: nothing shows").toEqual([false, false, false]);
   const bare = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { rank = true } } }" });
-  bare.eval("Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } } C_DamageMeter = { GetCombatSessionFromType = function() __asked = true return { combatSources = { { isLocalPlayer = true }, {} } } end }");
+  bare.eval("Enum = Enum or {} Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1 } C_DamageMeter = { GetCombatSessionFromType = function() __asked = true return { combatSources = { { isLocalPlayer = true }, {} } } end }");
   bare.fire("PLAYER_REGEN_ENABLED");
   expect([block(bare, "rank").shown, bare.eval("return __asked == nil")], "a client whose meter had no enums at login is not asked").toEqual([false, true]);
 });
@@ -1638,7 +1638,7 @@ it("boss frames: the game's holder is put away only out of combat", () => {
 // protected through its five secure boss buttons, which register the engage event).
 const BOSS_ENV = `
   __units.boss1 = { name = "TEST-ONLY Boss", hp = 5000, maxhp = 10000, power = 0, maxpower = 0, ptype = "MANA" }
-  hooksecurefunc = function(t, name, fn) local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
+  hooksecurefunc = function(t, name, fn) if type(t) == "string" then t, name, fn = _G, t, name end local orig = t[name] if type(orig) ~= "function" then return end t[name] = function(...) local r = orig(...) fn(...) return r end end
   BossTargetFrameContainer = CreateFrame("Frame", "BossTargetFrameContainer", UIParent)
   BossTargetFrameContainer:RegisterEvent("PLAYER_ENTERING_WORLD")
   BossTargetFrameContainer.IsProtected = function() return true, false end
