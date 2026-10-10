@@ -95,11 +95,11 @@ end
 local function watchAlpha(m)
   m.ownAlpha = m.frame:GetAlpha() or 1
   if type(hooksecurefunc) ~= "function" then return end
-  hooksecurefunc(m.frame, "SetAlpha", function(f, a)
+  hooksecurefunc(m.frame, "SetAlpha", ns.Guard("hook SetAlpha", function(f, a)
     if f.vgFading or ns.PlainNumber(a) == nil then return end
     m.ownAlpha = a
     fade(m)
-  end)
+  end))
 end
 
 -- Sets a mover's frame to its saved scale and opacity.
@@ -206,7 +206,7 @@ function ns.Pin(frame, apply)
   runPin(frame)
   if frame.vgPinned or type(hooksecurefunc) ~= "function" then return end
   frame.vgPinned = true
-  hooksecurefunc(frame, "SetPoint", function(self) if not self.vgPinning then runPin(self) end end)
+  hooksecurefunc(frame, "SetPoint", ns.Guard("hook SetPoint", function(self) if not self.vgPinning then runPin(self) end end))
 end
 
 -- Pauses every pin (so the game's Edit Mode can move its frames freely), or
@@ -264,7 +264,7 @@ function ns.EditModeReplaced(frame)
   if type(frame) ~= "table" or replaced[frame] or type(frame.HighlightSystem) ~= "function" then return end
   if type(hooksecurefunc) ~= "function" then return end
   replaced[frame] = true
-  hooksecurefunc(frame, "HighlightSystem", hideHandle)
+  hooksecurefunc(frame, "HighlightSystem", ns.Guard("hook HighlightSystem", hideHandle))
   hideHandle(frame)
 end
 
