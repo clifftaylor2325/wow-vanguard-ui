@@ -27,6 +27,12 @@ A test cannot pass while the addon swallows an error, and a red run says exactly
 ### Repeated and shuffled runs (CI-03)
 - **D-05:** A weekly CI job runs the full suite in a shuffled order and prints its seed so a failure can be replayed. The PR full-suite run is not shuffled. No local shuffled runs are required to close the phase. The user knowingly accepts that the shuffle part of roadmap criterion 3 stays open until the hosted runner works (it is currently blocked by billing); the roadmap wording was updated to say so. Any flaky case met while running the suite is fixed at its cause, not retried.
 
+### Decided after research (2026-10-10)
+- **D-06 (user):** The deliberate aura-container fallback notice (`Core/AuraEngine.lua:57`, carried by 12 tests) stays in `ns.errors` for now. The 12 tests declare it with the expected-error marker, and "does Forever show the error badge at login?" goes on the author's in-game check list. A separate notice channel is a later change.
+- **Real site counts (research, replaces the approximate figures in D-03):** 54 `hooksecurefunc` calls (the earlier 81 counted grep lines, 36 of them `type(hooksecurefunc)` guards), 57 `OnClick` handlers, and 12 unguarded timer calls (3 more are already inside `ns.Try`). Research expects the guard to turn 60 tests in 15 files red: about 43 are deliberate error tests that need a marker, about 17 come from six root causes (none on a money path), under D-04's stop threshold.
+- **Order-dependent test (CI-03):** `scripts/link-wow.test.mjs` fails 6 of 12 cases when shuffled, because its cases share a folder and rely on running in order. Make the cases independent. Every Lua-harness case passed shuffled.
+- **Defaults taken from the research recommendations (not asked; redirect if wrong):** do exactly D-03 (the other 102 `SetScript` handlers and 54 `HookScript` calls are a recorded follow-up); reuse the existing Sunday full run for the shuffled job rather than adding a second weekly workflow; add a default `debugstack` to the test stub as a separate task after the guard is green; add a code-quality rule that rejects a bare `hooksecurefunc`, `OnClick` or `C_Timer` call; no metatable tap on `ns.errors`.
+
 ### Claude's Discretion
 - How the expected-error marker looks (name, arguments, matching by text or pattern), as long as D-01 holds.
 - How the harness records the addons a test created.
