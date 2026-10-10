@@ -15,9 +15,24 @@ import { luaSummaryReporter } from "./scripts/lib/lua-summary-reporter.mjs";
 // goes beside the coverage report.
 const ciReporters = process.env.GITHUB_ACTIONS ? ["github-actions", ["junit", { outputFile: "coverage/junit.xml" }]] : [];
 
+// Shuffled order. The weekly CI run sets VG_SHUFFLE_SEED (D-05) so a hidden
+// order dependence shows up; Vitest then prints `Running tests with seed "N"`.
+// A failure replays with the same seed: in bash, VG_SHUFFLE_SEED=N npm test;
+// in PowerShell, $env:VG_SHUFFLE_SEED=N; npm test (then Remove-Item
+// Env:VG_SHUFFLE_SEED, or later runs in that window stay shuffled).
+// The seed fixes the order of files and of tests within a file, not how files
+// interleave across workers; that does not matter because every file builds
+// its own state. Unset (or not a positive whole number), the order is exactly
+// as before. There is deliberately no option that runs a failed case again:
+// a case that fails in some order is fixed at its cause.
+const asked = Number(process.env.VG_SHUFFLE_SEED);
+const shuffleSeed = Number.isSafeInteger(asked) && asked > 0 ? asked : 0;
+const shuffle = shuffleSeed ? { sequence: { shuffle: { files: true, tests: true }, seed: shuffleSeed } } : {};
+
 export default defineConfig({
   test: {
     environment: "node",
+    ...shuffle,
     setupFiles: ["scripts/tests/setup.mjs"],
     reporters: [...configDefaults.reporters, ...ciReporters, luaSummaryReporter()],
     // Each worker (a forked process) gets this much heap. The suite needs far
