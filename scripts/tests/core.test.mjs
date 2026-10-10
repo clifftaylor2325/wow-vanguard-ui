@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createAddon, root } from "../lib/lua-harness.mjs";
 import { luaValue } from "../lib/lua-emit.mjs";
-import { ACTIONS_ENV, AFK_ENV, CLICK_LUA, ENGINE_ENV, FOREVER_ENV, HEALING_ENV, MICRO_ENV, QUEST_ENV, RAID_ENV, SETUP_DONE, TIDY_ENV, TOTEMS_ENV, UI_ENV, UNITS_ENV, bars, button, calls, chatHas, healing, isTok, key, lacking, later, loggedIn, putAway, setCombat, totemCell } from "./helpers.mjs";
+import { ACTIONS_ENV, AFK_ENV, AURA_FALLBACK, CLICK_LUA, ENGINE_ENV, FOREVER_ENV, HEALING_ENV, MICRO_ENV, QUEST_ENV, RAID_ENV, SETUP_DONE, TIDY_ENV, TOTEMS_ENV, UI_ENV, UNITS_ENV, bars, button, calls, chatHas, expectErrors, healing, isTok, key, lacking, later, loggedIn, putAway, setCombat, totemCell } from "./helpers.mjs";
 
 it("saved variables", () => {
   expect(createAddon().eval("return next(ns.Profile()) == nil"), "before ADDON_LOADED the profile is empty").toBe(true);
@@ -66,6 +66,7 @@ it("settings tables are filled once per profile and key", () => {
 });
 
 it("the account file's version is read and upgraded", () => {
+  expectErrors("DB upgrade 4: eval:2: boom");
   const spy = "__mig = {} local real = ns.MigrateDB ns.MigrateDB = function(from, to) __mig[#__mig + 1] = { from, to } return real(from, to) end";
   const stamped = loggedIn(spy, { savedVariables: "VanguardDB.version = nil" });
   expect(stamped.eval("return __mig"), "a file without a stamp is upgraded from 0").toEqual([[0, 2]]);
@@ -82,6 +83,7 @@ it("the account file's version is read and upgraded", () => {
 });
 
 it("a failing first upgrade step on an unstamped file is retried at the next login", () => {
+  expectErrors("DB upgrade 1: eval:2: boom");
   const boom = 'ns.UpgradeDB(1, function() error("boom") end)';
   for (const bad of ["VanguardDB.version = nil", 'VanguardDB.version = "old"']) {
     const addon = loggedIn(boom, { savedVariables: bad });
@@ -92,6 +94,7 @@ it("a failing first upgrade step on an unstamped file is retried at the next log
 });
 
 it("modules", () => {
+  expectErrors("module Bad: eval:4: boom");
   const addon = loggedIn(`
     ns.Module("Good", { defaults = { size = 3 }, Enable = function(s) __size = s.size end })
     ns.Module("Bad", { Enable = function() error("boom") end })
@@ -107,6 +110,7 @@ it("modules", () => {
 });
 
 it("modules: a module whose saved settings fail to upgrade is reported, and the modules after it still load", () => {
+  expectErrors(/^module DataBars: Modules\/DataBars\.lua:\d+: attempt to compare number with string$/, "module TESTONLY_Broken: eval:3: attempt to compare number with string");
   const addon = loggedIn(`
     ns.Migrate("TESTONLY_Broken", function(saved) return saved.layout >= 2 end)
     ns.Module("TESTONLY_Broken", { defaults = {}, Enable = function() __broken = true end })
@@ -158,7 +162,12 @@ const pinPoint = (addon) => addon.eval("local n = next(__pinTarget.__points) ret
 
 // TEST-ONLY pin: the game's hooksecurefunc (a post-hook on a table's method) and a frame Vanguard pins.
 const PIN_ENV = `
-  hooksecurefunc = function(a, b, c) local orig = a[b] a[b] = function(...) local r = orig(...) c(...) return r end end
+  hooksecurefunc = function(a, b, c)
+    if type(a) == "string" then a, b, c = _G, a, b end
+    local orig = a[b]
+    if type(orig) ~= "function" then return end
+    a[b] = function(...) local r = orig(...) c(...) return r end
+  end
   __pinTarget = CreateFrame("Frame", "Vanguard_PinTest", UIParent)
   __calls, __boom = 0, false
   ns.Pin(__pinTarget, function(f)
@@ -169,6 +178,7 @@ const PIN_ENV = `
 `;
 
 it("pins: a throwing apply is reported and the pin keeps working", () => {
+  expectErrors(/^pin Vanguard_PinTest: eval:\d+: boom$/, "pin frame: eval:2: bare");
   const addon = loggedIn(PIN_ENV);
   expect([addon.eval("return __pinTarget.vgPinned"), pinCalls(addon), pinPoint(addon)], "the pin is hooked and applied at registration").toEqual([true, 1, "CENTER"]);
   addon.eval("__boom = true __pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 1, 1)");
@@ -401,9 +411,13 @@ it("a session: what you set in one login comes back in the next", () => {
 
 const CLIENT_KEYS = ["auraContainer", "pixelUtil", "eventValid", "barEase", "cooldownObject", "cooldownMin", "countdownText", "keyPropagate", "damageMeter", "cooldownViewer", "swingTimer", "meterEnums"];
 
+// TEST-ONLY: a client whose Enum lacks the four tables the capability probe asks about (the rest of the stub's Enum stays, as on the client).
+const NO_PROBE_ENUMS = "Enum.StatusBarInterpolation, Enum.PlayerSwingType, Enum.DamageMeterSessionType, Enum.DamageMeterType = nil, nil, nil, nil ";
+
 // TEST-ONLY: a client that has every optional call the probe asks about.
 const CLIENT_FULL_ENV = `
-  Enum = { StatusBarInterpolation = { ExponentialEaseOut = 1 }, PlayerSwingType = {}, DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } }
+  Enum.StatusBarInterpolation.ExponentialEaseOut = 1
+  Enum.DamageMeterSessionType, Enum.DamageMeterType = { Current = 1 }, { Dps = 1 }
   PixelUtil = { GetNearestPixelSize = function() return 1 end }
   C_EventUtils = { IsEventValid = function() return true end }
   C_DamageMeter = { GetCombatSessionFromType = function() end }
@@ -412,6 +426,7 @@ const CLIENT_FULL_ENV = `
 `;
 
 it("client capability probe: what this client has, and /vg status says so", () => {
+  expectErrors("aura icon: eval:3: TEST-ONLY: no cooldown frames", "module PlayerAuras: eval:3: TEST-ONLY: no cooldown frames", "module ActionBars: eval:3: TEST-ONLY: no cooldown frames");
   const full = loggedIn(UNITS_ENV + CLIENT_FULL_ENV);
   expect(full.eval("return ns.Client.has"), "a client with everything: every flag is true").toEqual({ ...Object.fromEntries(CLIENT_KEYS.map((k) => [k, true])), secureSnippets: true });
   full.slash("status");
@@ -426,10 +441,10 @@ it("client capability probe: what this client has, and /vg status says so", () =
     CreateFrame = function(kind, ...) if kind == "Cooldown" then error("TEST-ONLY: no cooldown frames") end return real(kind, ...) end`);
   expect(noCooldown.eval("return { ns.Client.has.cooldownObject, ns.Client.has.cooldownMin, ns.Client.has.countdownText, ns.Client.has.keyPropagate }"), "a client that cannot make a Cooldown frame has none of its methods, and the probe does not fail").toEqual([false, false, false, true]);
   // [barEase, meterEnums, swingTimer] on a client with this Lua defined.
-  const half = (lua) => loggedIn(lua).eval("return { ns.Client.has.barEase, ns.Client.has.meterEnums, ns.Client.has.swingTimer }");
-  expect(half("Enum = { StatusBarInterpolation = {}, DamageMeterSessionType = {}, DamageMeterType = { Dps = 1 } }"), "enums without the values asked for do not count").toEqual([false, false, false]);
-  expect(half("Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = {} }"), "the damage meter needs both enum values").toEqual([false, false, false]);
-  expect(half("Enum = { StatusBarInterpolation = { ExponentialEaseOut = 1 } } C_SwingTimer = {}"), "the swing timer needs its enum as well").toEqual([true, false, false]);
+  const half = (lua) => loggedIn(NO_PROBE_ENUMS + lua).eval("return { ns.Client.has.barEase, ns.Client.has.meterEnums, ns.Client.has.swingTimer }");
+  expect(half("Enum.StatusBarInterpolation, Enum.DamageMeterSessionType, Enum.DamageMeterType = {}, {}, { Dps = 1 }"), "enums without the values asked for do not count").toEqual([false, false, false]);
+  expect(half("Enum.DamageMeterSessionType, Enum.DamageMeterType = { Current = 1 }, {}"), "the damage meter needs both enum values").toEqual([false, false, false]);
+  expect(half("Enum.StatusBarInterpolation = { ExponentialEaseOut = 1 } C_SwingTimer = {}"), "the swing timer needs its enum as well").toEqual([true, false, false]);
 });
 
 // TEST-ONLY: a client with none of them: no aura container, no cooldown calls, no key propagation.
@@ -441,6 +456,7 @@ const CLIENT_NONE_ENV = `
 `;
 
 it("client capability probe: every flag off, every module still enables", () => {
+  expectErrors(AURA_FALLBACK);
   const addon = loggedIn(UNITS_ENV + ACTIONS_ENV + TOTEMS_ENV + ENGINE_ENV + CLIENT_NONE_ENV);
   expect(addon.eval("return ns.Client.has"), "a client with none of the optional calls").toEqual({ ...Object.fromEntries(CLIENT_KEYS.map((k) => [k, false])), secureSnippets: true });
   // The modules that are on in the settings but did not enable, on a client with and without the calls.
@@ -558,6 +574,7 @@ it("secure snippets: logging in during a fight defers the probe, and it runs bef
 });
 
 it("secure snippets: what waits for the probe's answer runs once, after the fight, and one that fails does not stop the rest", () => {
+  expectErrors("secure snippet fallback: eval:3: TEST-ONLY waiter broke");
   const addon = createAddon({ savedVariables: SETUP_DONE });
   setCombat(addon, true);
   addon.login();
@@ -573,6 +590,7 @@ it("secure snippets: what waits for the probe's answer runs once, after the figh
 });
 
 it("/vg errors: what Vanguard caught this session", () => {
+  expectErrors(/^TEST-ONLY: \d+$/);
   const addon = loggedIn();
   addon.eval("ns.ClearErrors()");
   addon.slash("errors");
@@ -599,6 +617,7 @@ const ERRORS_ENV = `
 `;
 
 it("caught errors: one entry per distinct error, counted, with its stack, told once", () => {
+  expectErrors("TEST-ONLY site: boom", "TEST-ONLY try: eval:2: bad x", "TEST-ONLY inner: in", "TEST-ONLY outer: eval:2: out");
   const addon = loggedIn(ERRORS_ENV);
   addon.clearChat();
   addon.eval('ns.ClearErrors() __handled = {} ns.Report("TEST-ONLY site", "boom") ns.Report("TEST-ONLY site", "boom")');
@@ -627,6 +646,7 @@ const LIVE_STACK_ENV = `
 `;
 
 it("caught errors: the stack is read while the failing frames are still live", () => {
+  expectErrors("TEST-ONLY live: eval:2: TEST-ONLY deep", "event TEST_ONLY_LIVE: eval:2: TEST-ONLY deep", "TEST-ONLY late: x");
   const addon = loggedIn(LIVE_STACK_ENV);
   addon.eval('ns.ClearErrors() __failer = function() error("TEST-ONLY deep") end ns.Try("TEST-ONLY live", function() __failer() end)');
   expect(addon.eval("return ns.errors[1].stack"), "ns.Try keeps a stack that still has the failing function in it").toBe("TEST-ONLY failing frame live");
@@ -637,6 +657,7 @@ it("caught errors: the stack is read while the failing frames are still live", (
 });
 
 it("caught errors: without debugstack or an error handler (this stub), and a hidden error value", () => {
+  expectErrors("TEST-ONLY bare: x", "TEST-ONLY: (a hidden error message)");
   const addon = loggedIn("GetBuildInfo = nil debugstack = nil geterrorhandler = nil CallErrorHandler = nil");
   addon.eval('ns.ClearErrors() ns.Report("TEST-ONLY bare", "x")');
   expect(addon.eval("return { ns.errors[1].text, ns.errors[1].stack, ns.errors[1].count }"), "the error is kept without a stack").toEqual(["TEST-ONLY bare: x", "", 1]);
@@ -651,6 +672,7 @@ it("caught errors: without debugstack or an error handler (this stub), and a hid
 });
 
 it("caught errors: a game handler that fails or reports again cannot loop, and an empty handler slot", () => {
+  expectErrors("TEST-ONLY outer: x", "TEST-ONLY inner: TEST-ONLY outer: x", "TEST-ONLY none: y");
   const broken = loggedIn(`__handled = 0 geterrorhandler = function() return function(msg) __handled = __handled + 1 ns.Report("TEST-ONLY inner", msg) error("TEST-ONLY handler broke") end end`);
   expect(broken.eval('ns.ClearErrors() __handled = 0 ns.Report("TEST-ONLY outer", "x") return { __handled, #ns.errors, ns.errors[1].text, ns.errors[2].text }'), "the inner report is kept but not handed back to the handler").toEqual([1, 2, "TEST-ONLY outer: x", "TEST-ONLY inner: TEST-ONLY outer: x"]);
   const none = loggedIn("geterrorhandler = function() return nil end");
@@ -658,6 +680,7 @@ it("caught errors: a game handler that fails or reports again cannot loop, and a
 });
 
 it("caught errors: an after-combat update that fails is reported and the rest still run", () => {
+  expectErrors("after-combat update: eval:2: TEST-ONLY late");
   const addon = loggedIn();
   setCombat(addon, true);
   addon.eval('ns.OutOfCombat(function() error("TEST-ONLY late") end) ns.OutOfCombat(function() __after = true end)');
@@ -668,6 +691,7 @@ it("caught errors: an after-combat update that fails is reported and the rest st
 });
 
 it("/vg errors: counts, build, interface version and the aura backend, then clear", () => {
+  expectErrors("TEST-ONLY twice: x", "TEST-ONLY once: y");
   const addon = loggedIn(FOREVER_ENV + ERRORS_ENV);
   addon.eval('ns.ClearErrors() ns.Report("TEST-ONLY twice", "x") ns.Report("TEST-ONLY twice", "x") ns.Report("TEST-ONLY once", "y")');
   addon.clearChat();
@@ -745,6 +769,7 @@ const THROWING_HANDLERS = `
 `;
 
 it("events: a handler that throws does not stop the others, and the error is kept with its stack", () => {
+  expectErrors("event TEST_ONLY_EVENT: eval:5: TEST-ONLY first");
   const addon = loggedIn(`debugstack = function(level) return "TEST-ONLY stack " .. tostring(level) end
     __handled = {} geterrorhandler = function() return function(err) __handled[#__handled + 1] = err end end`);
   const out = addon.eval(THROWING_HANDLERS + "return { ran = __ran, last = ns.errors[#ns.errors], handled = __handled, n = #ns.errors }");
@@ -756,12 +781,14 @@ it("events: a handler that throws does not stop the others, and the error is kep
 });
 
 it("events: on a client without debugstack or an error handler, the error is still kept", () => {
+  expectErrors("event TEST_ONLY_EVENT: eval:5: TEST-ONLY first");
   const out = loggedIn().eval(THROWING_HANDLERS + "return { ran = #__ran, last = ns.errors[#ns.errors] }");
   expect(out.ran, "the second handler ran").toBe(1);
   expect(out.last, "the record has no stack and nothing was forwarded").toMatchObject({ text: expect.stringMatching(/^event TEST_ONLY_EVENT: .*TEST-ONLY first$/), stack: "" });
 });
 
 it("events: a broken game error handler cannot lose the record", () => {
+  expectErrors("event TEST_ONLY_EVENT: eval:5: TEST-ONLY first");
   const broken = loggedIn('geterrorhandler = function() return function() error("TEST-ONLY handler broke") end end');
   const last = broken.eval(THROWING_HANDLERS + "return ns.errors[#ns.errors].text");
   expect(last, "the handler's own failure is swallowed").toMatch(/TEST-ONLY first$/);
@@ -771,6 +798,7 @@ it("events: a broken game error handler cannot lose the record", () => {
 });
 
 it("events: Blizzard's CallErrorHandler is preferred, and called straight from the failing stack's handler", () => {
+  expectErrors("event TEST_ONLY_EVENT: eval:5: TEST-ONLY first");
   const addon = loggedIn(`__called = nil CallErrorHandler = function(err) __called = err __caller = debug.getinfo(2, "S").what end
     geterrorhandler = function() return function() __wrong = true end end`);
   const out = addon.eval(THROWING_HANDLERS + "return { called = __called, wrong = __wrong, caller = __caller }");
@@ -780,6 +808,7 @@ it("events: Blizzard's CallErrorHandler is preferred, and called straight from t
 });
 
 it("events: a game handler that fails inside a failing handler keeps the record, loses nothing after, and is not told twice", () => {
+  expectErrors("event TEST_ONLY_EVENT: eval:5: TEST-ONLY first", "TEST-ONLY again: second");
   const addon = loggedIn(`__calls = 0 geterrorhandler = function() return function() __calls = __calls + 1 error("TEST-ONLY handler broke") end end`);
   const out = addon.eval("__calls = 0 " + THROWING_HANDLERS + "return { ran = #__ran, n = #ns.errors, text = ns.errors[1].text, calls = __calls }");
   expect(out, "the record is kept once, the second handler ran, the broken handler was called once").toEqual({ ran: 1, n: 1, text: expect.stringMatching(/TEST-ONLY first$/), calls: 1 });
@@ -827,6 +856,7 @@ it("unit events: a subscription hears only the units it asked the client for, an
 });
 
 it("unit events: a failing handler is reported, an event the client lacks is skipped, and an old client is filtered here", () => {
+  expectErrors("event UNIT_LEVEL: eval:2: TEST-ONLY unit handler", "event TEST_ONLY_GONE: not on this client");
   const addon = loggedIn(NOTE_LUA + "__wfgWorld.invalidEvents.TEST_ONLY_GONE = true");
   addon.eval('ns.ClearErrors() ns.OnUnit("UNIT_LEVEL", function() error("TEST-ONLY unit handler") end, "player") ns.OnUnit("UNIT_LEVEL", __note, "player")');
   addon.fire("UNIT_LEVEL", "player", 1);
@@ -916,6 +946,7 @@ it("Forever fixes: the newer calls for zone color, pet moods, breath bars, the m
 });
 
 it("the error badge: a count on the addons button and in the options footer, gone at zero", () => {
+  expectErrors("TEST-ONLY site: TEST-ONLY failure", "TEST-ONLY site: TEST-ONLY other");
   const addon = loggedIn('AddonCompartmentFrame = CreateFrame("Frame", "AddonCompartmentFrame", UIParent)');
   // Both badges: the addons button's count and shown state, the footer's text and shown state.
   const badges = () => addon.eval(`local f = Vanguard_OptionsErrors return { Vanguard_ErrorBadge:IsShown(), Vanguard_ErrorBadge.text:GetText() or "",
