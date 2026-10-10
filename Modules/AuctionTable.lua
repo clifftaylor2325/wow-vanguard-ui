@@ -112,7 +112,7 @@ local function head(t)
   local h = CreateFrame("Button", nil, t)
   h:SetHeight(AH.TABLE_HEAD)
   h.text = T.Text(h:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  h:SetScript("OnClick", function(self) if t.onSort and self.key then t.onSort(self.key) end end)
+  h:SetScript("OnClick", ns.Guard("click sort header", function(self) if t.onSort and self.key then t.onSort(self.key) end end))
   return h
 end
 
