@@ -1,7 +1,7 @@
 -- Broker strip: other addons' data feeds (LibDataBroker data sources: gold
 -- trackers, durability, guild counts and the like) in a thin strip along the
 -- top edge, left of center (clear of the frames that start 20 px down), the
--- way Titan Panel shows them. Pick which feeds show
+-- way info-bar addons show them. Pick which feeds show
 -- under Bars, map, chat (up to MAX, in the order picked); each slot shows the
 -- feed's icon and text, its own tooltip on hover, and passes clicks to it.
 -- Launchers (minimap-style buttons) stay in the minimap drawer.

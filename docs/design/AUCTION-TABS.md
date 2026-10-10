@@ -86,7 +86,7 @@ From the Forever client's own UI source (`Blizzard_AuctionHouseUI`, branch `fore
   the Auctions page from −42 to the same bottom; the money inset's top is 27 px up from the bottom.
   So a page of ours can use **x 4 … 796, y −30 … −508: about 790 × 478**, under the title and above
   the money line. At 20 px a row that is **room for about 20 rows** beside a toolbar and a header.
-- **Adding a tab** is what Auctionator has done since the modern house arrived (8.3), and it has not
+- **Adding a tab** is what auction addons have done since the modern house arrived (8.3), and it has not
   tainted anything in that time: the window is not protected, and buying runs through
   `C_AuctionHouse` and static popups the game owns. In our terms:
 
@@ -119,7 +119,7 @@ From the Forever client's own UI source (`Blizzard_AuctionHouseUI`, branch `fore
 **Shopping** and **Selling**, after the game's Buy, Sell and Auctions. Two, not four: the row has room
 for more (five tabs of 70–110 px fit under an 800 px window with room to spare), but each tab is a place
 to look, and the helper's pieces fall into exactly two jobs. The names are distinct from the game's
-tabs and are the ones Auctionator's players already know. While one of ours is selected the title
+tabs and are the ones auction addon players already know. While one of ours is selected the title
 reads "Shopping" or "Selling". The floating panel, the Deals frame and their sizing code go.
 
 ### Shopping (buying side)
