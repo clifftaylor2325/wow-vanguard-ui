@@ -2,7 +2,12 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, ENGINE_ENV, NO_RAID, RAID_ENV, SETUP_DONE, UNITS_ENV, button, chatHas, isTok, key, lacking, loggedIn, putAway, setCombat, tooltip, unitEvents } from "./helpers.mjs";
+import { AURA_FALLBACK, CLICK_LUA, ENGINE_ENV, NO_RAID, RAID_ENV, SETUP_DONE, UNITS_ENV, button, chatHas, expectErrors, isTok, key, lacking, loggedIn, putAway, setCombat, tooltip, unitEvents } from "./helpers.mjs";
+
+// The notices a client without the dispel-highlight style leaves: the engine's calls into it are wrapped
+// (Core/AuraEngine.lua), so only the extra is lost. Only the line number of the error varies.
+const NO_DISPEL_STYLE = /^debuff type colors: Core\/AuraEngine\.lua:\d+: attempt to index a nil value \(field 'CustomAuraButtonDispelTypeTextureStyle'\)$/;
+const NO_DISPEL_EXTRAS = /^aura icon extras: Core\/AuraEngine\.lua:\d+: attempt to index a nil value \(field 'CustomAuraButtonDispelTypeTextureStyle'\)$/;
 
 // TEST-ONLY auras by unit and filter. raid1: a Magic debuff and two of your HoTs.
 const AURA_ENV = `
@@ -63,6 +68,7 @@ it("raid indicators", () => {
 });
 
 it("a client that won't drive the dispel highlight never shows it uncolored", () => {
+  expectErrors(NO_DISPEL_STYLE, NO_DISPEL_EXTRAS);
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + "Enum.CustomAuraButtonDispelTypeTextureStyle = nil");
   addon.eval('__spawn(1, "raid1")');
   const out = addon.eval(`local first = Vanguard_RaidUnitButton1.debuffRow.frame.__groups[1].buttons[1]
@@ -72,6 +78,7 @@ it("a client that won't drive the dispel highlight never shows it uncolored", ()
 });
 
 it("raid auras listen for UNIT_AURA only on the fallback, where they paint the highlight themselves", () => {
+  expectErrors(AURA_FALLBACK);
   const noHealing = { savedVariables: "VanguardDB.profiles = { Default = { modules = { RaidHealing = false } } }" };
   const engine = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV, noHealing);
   engine.eval('__spawn(1, "raid1")');
@@ -82,6 +89,7 @@ it("raid auras listen for UNIT_AURA only on the fallback, where they paint the h
 });
 
 it("raid indicators on the fallback", () => {
+  expectErrors(AURA_FALLBACK);
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + "__wfgStub.noAuraContainer = true");
   addon.eval('__spawn(1, "raid1")');
   // Button 1's fallback highlight and icons.
@@ -299,6 +307,7 @@ it("your buffs: the game's external defensives and deadly debuff frames go with 
 });
 
 it("your buffs: the enchant switch, and clients without enchant info", () => {
+  expectErrors(AURA_FALLBACK, "event WEAPON_ENCHANT_CHANGED: not on this client");
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + CLICK_LUA);
   addon.slash("");
   addon.eval('__click("Bars, map, chat")');
@@ -337,6 +346,7 @@ it("aura container timer options a client refuses, and the engine probe", () => 
 });
 
 it("aura containers without the engine (the fallback)", () => {
+  expectErrors(AURA_FALLBACK);
   const addon = loggedIn(UNITS_ENV + CONTAINER_AURAS + `__wfgStub.noAuraContainer = true
     C_UnitAuras.GetAuraApplicationDisplayCount = function(unit, id) return id == 1 and "3*" or "" end`);
   const c = addon.eval(`__c = ns.Auras.Container(UIParent, __spec, "target")
@@ -364,6 +374,7 @@ it("aura containers without the engine (the fallback)", () => {
 });
 
 it("fallback containers skip a UNIT_AURA that changes nothing they show, and re-anchor only when what shows moves", () => {
+  expectErrors(AURA_FALLBACK);
   const addon = loggedIn(UNITS_ENV + CONTAINER_AURAS + "__wfgStub.noAuraContainer = true");
   addon.eval(`__c = ns.Auras.Container(UIParent, __spec, "target")
     __reads, __anchors = 0, 0
@@ -406,6 +417,7 @@ const REJECTING_AURAS = `__wfgStub.noAuraContainer = true
 `;
 
 it("aura filter words this client rejects are dropped for the session", () => {
+  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|CROWD_CONTROL: this client rejects it; reading HARMFUL", "aura filter HELPFUL|PLAYER|RAID_IN_COMBAT: this client rejects it; reading HELPFUL|PLAYER");
   const addon = loggedIn(UNITS_ENV + REJECTING_AURAS);
   expect(addon.eval('return ns.Auras.Filter("HARMFUL|CROWD_CONTROL")'), "the unknown word goes").toBe("HARMFUL");
   expect(addon.eval('return ns.Auras.Filter("HELPFUL|PLAYER|RAID_IN_COMBAT")'), "a known qualifier stays").toBe("HELPFUL|PLAYER");
@@ -430,6 +442,8 @@ it("aura filter words this client rejects are dropped for the session", () => {
 });
 
 it("a client that rejects every aura filter word keeps the filter and shows no auras", () => {
+  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|CROWD_CONTROL: no part of it is known to this client", "aura filter HARMFUL|PLAYER: no part of it is known to this client",
+    "aura filter HARMFUL: no part of it is known to this client", "aura filter HELPFUL: no part of it is known to this client");
   const addon = loggedIn(UNITS_ENV + `__wfgStub.noAuraContainer = true
     C_UnitAuras = { GetAuraDataByIndex = function() error("TEST-ONLY: no filters") end }`);
   expect(addon.eval('return ns.Auras.Filter("HARMFUL|CROWD_CONTROL")'), "nothing better to read: the filter is kept").toBe("HARMFUL|CROWD_CONTROL");
@@ -447,6 +461,7 @@ it("aura filters pass through on a client without the aura read", () => {
 });
 
 it("the raid dispel highlight reads through the stripped filter on the fallback", () => {
+  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|RAID: this client rejects it; reading HARMFUL", "aura filter HELPFUL|PLAYER|RAID_IN_COMBAT: this client rejects it; reading HELPFUL|PLAYER");
   const addon = loggedIn(UNITS_ENV + RAID_ENV + `__wfgStub.noAuraContainer = true
     __errors = 0
     C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
@@ -476,6 +491,7 @@ const BAD_TEMPLATE_ENV = `
 `;
 
 it("the engine probe refuses an AuraContainer without AddAuraGroup", () => {
+  expectErrors("aura containers (using Vanguard's own icons): the client's AuraContainer has no AddAuraGroup");
   const addon = loggedIn(UNITS_ENV + CONTAINER_AURAS + BAD_TEMPLATE_ENV);
   expect(addon.eval("return ns.AuraEngine.Available()"), "a frame without the engine's methods is no engine").toBe(false);
   const c = addon.eval(`__c = ns.Auras.Container(UIParent, __spec, "target") local other = ns.Auras.Container(UIParent, __spec, "target")
@@ -496,6 +512,7 @@ const REFUSING_ENV = `
 `;
 
 it("a container the client refuses after the probe retires the engine for the session", () => {
+  expectErrors(/^aura container \(switching to Vanguard's own icons\): eval:\d+: TEST-ONLY: SetUnit refused$/, /^aura container \(switching to Vanguard's own icons\): eval:\d+: TEST-ONLY: no more containers$/);
   const off = { savedVariables: "VanguardDB = { profiles = { Default = { modules = { FrameAuras = false, PlayerAuras = false } } } }" };
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS + REFUSING_ENV, off);
   expect(addon.eval("return ns.AuraEngine.Available()"), "the probe sees the methods, so the engine is in").toBe(true);
@@ -520,6 +537,7 @@ it("a container the client refuses after the probe retires the engine for the se
 });
 
 it("raid tiles built after the engine retires get the fallback highlight", () => {
+  expectErrors(/^aura container \(switching to Vanguard's own icons\): eval:\d+: TEST-ONLY: SetUnit refused$/);
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV + REFUSING_ENV);
   addon.eval('__spawn(1, "raid1")');
   const b = addon.eval(`local b = Vanguard_RaidUnitButton1
@@ -541,6 +559,7 @@ const HOT_REFUSING_ENV = `
 `;
 
 it("a raid tile whose second container is refused keeps one dispel highlight", () => {
+  expectErrors(/^aura container \(switching to Vanguard's own icons\): eval:\d+: TEST-ONLY: HoT row refused$/);
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV + HOT_REFUSING_ENV);
   addon.eval('__spawn(1, "raid1")');
   const b = addon.eval(`local b = Vanguard_RaidUnitButton1
