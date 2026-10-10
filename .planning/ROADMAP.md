@@ -74,7 +74,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Any test that leaves an entry in the addon's error list (`ns.errors`) fails, and the failure prints the error text and where it came from. Only tests on a named allow-list (tests of the error handling itself) are exempt.
   2. Errors raised inside `hooksecurefunc` callbacks, `OnClick` handlers and `C_Timer` callbacks reach the error list, so a throwing handler fails its area test instead of passing.
-  3. The full suite gives the same result on repeated runs and under a shuffled order seed. Any flaky case found is fixed, not retried.
+  3. A weekly CI job runs the full suite in a shuffled order and prints its seed. Any flaky case found is fixed, not retried. The first green shuffled run waits for the hosted runner (blocked by billing); the user accepted leaving that part open (D-05 in `02-CONTEXT.md`).
   4. The suite stays green with the guard on: errors it exposes are fixed in the addon, not added to the allow-list.
 
 **Plans**: TBD
