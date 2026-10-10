@@ -57,7 +57,10 @@ Launch:
   2. Each of the seven cases in #169 has a recorded outcome on the issue: fixed, with the cause named in the commit body, or shown not to reproduce on clean main.
   3. Every harness or stub change made to turn a case green cites the 12.1 Blizzard source in its commit body, and no commit loosens a harness rule and changes a test together.
   4. `npm run coverage` prints its report and passes the 100% floor in `scripts/lua-coverage-floor.json`.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 01-01-PLAN.md — Clean-checkout baseline: worktree at origin/main with `npm ci`, the five #169 files, git evidence, `npm run verify`, `npm run coverage` at the 100% floor (no tracked file changes)
+- [ ] 01-02-PLAN.md — Draft the seven-row #169 outcome comment, get the user's approval at a blocking-human checkpoint, then post it and close or keep the issue open as chosen
 **Notes**: Re-baseline first. Sources disagree on what is red (751/751 passing locally on 2026-10-09 against seven red cases in #169), so compare clean main locally and on the hosted runner before chasing anything. Research also suggests pinning fengari 0.1.5 and luacheck 1.2.0 (official binary, checked by SHA-256), moving CI to Node 24 with an `.nvmrc`, and running `npm ci` so local Vitest matches the lock file.
 
 ### Phase 2: Errors fail tests
@@ -198,7 +201,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Green baseline | 0/TBD | Not started | - |
+| 1. Green baseline | 0/2 | Not started | - |
 | 2. Errors fail tests | 0/TBD | Not started | - |
 | 3. Fast suite and CI gate | 0/TBD | Not started | - |
 | 4. Lean core | 0/TBD | Not started | - |
