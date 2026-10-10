@@ -16,8 +16,8 @@ Requirements for the launch on 2026-11-04. Each maps to a roadmap phase.
 
 - [x] **CI-01**: The full test suite is green on main, and each of the seven cases in #169 is resolved with evidence (fixed, or documented as not reproducing)
 - [x] **CI-02**: `npm run coverage` reports again and the 100% line-coverage floor holds
-- [ ] **CI-03**: Tests are deterministic: no flaky cases, and a failure names what broke
-- [ ] **CI-04**: Any test that leaves an error in the addon's error list fails, so swallowed errors cannot pass
+- [x] **CI-03**: Tests are deterministic: no flaky cases, and a failure names what broke
+- [x] **CI-04**: Any test that leaves an error in the addon's error list fails, so swallowed errors cannot pass
 - [ ] **CI-05**: The full suite runs on ready-for-review and on the `full-tests` label; the quick check runs on every push
 - [ ] **CI-06**: The full suite finishes in under 5 minutes on the hosted runner, measured and recorded
 - [ ] **CI-07**: Dead code is removed: the six test-only functions and any unused defaults, theme tokens, media and globals, each with its test
@@ -85,8 +85,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LNCH-02 | Phase 12 | Pending |
 | CI-01 | Phase 1 | Complete |
 | CI-02 | Phase 1 | Complete |
-| CI-03 | Phase 2 | Pending |
-| CI-04 | Phase 2 | Pending |
+| CI-03 | Phase 2 | Complete |
+| CI-04 | Phase 2 | Complete |
 | CI-05 | Phase 3 | Pending |
 | CI-06 | Phase 3 | Pending |
 | CI-07 | Phase 4 | Pending |
