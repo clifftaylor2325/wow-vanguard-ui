@@ -803,7 +803,7 @@ local function raidRows()
     { "cycle", "Groups as (reload)", { { "columns", "Columns" }, { "rows", "Rows (wide, for big raids)" } }, setting("RaidFrames", "layout", true) },
     check("Hide the default raid frames", setting("RaidFrames", "hideBlizzard", true)),
     { "cycle", "Style", { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }, raidSetting("look") },
-    { "cycle", "Width", { { 72, "72" }, { 90, "90" }, { 100, "100" }, { 120, "120" } }, setting("RaidFrames", "width", true) },
+    { "cycle", "Width", ns.Widgets.Keep({ { 72, "72" }, { 90, "90" }, { 100, "100" }, { 120, "120" } }), setting("RaidFrames", "width", true) },
     { "cycle", "Height", { { 36, "36" }, { 40, "40" }, { 48, "48" }, { 56, "56" } }, setting("RaidFrames", "height", true) },
   }
 end

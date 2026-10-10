@@ -273,6 +273,13 @@ end
 
 -- Tabs -----------------------------------------------------------------------------------------
 
+-- The tab's label, and the tab sized to fit it (the game's tab sizing: 20 px of padding, 70 px at least),
+-- so a name never runs past its tab.
+local function labelTab(tab, name)
+  tab:SetText(name)
+  PanelTemplates_TabResize(tab, 20, nil, 70)
+end
+
 -- A tab after the window's last, named for its page: its display mode is a table of its own that
 -- names none of the game's frames, so picking it hides them all, and the page shows meanwhile.
 -- The game's tab template (PanelTabButtonTemplate, parentArray Tabs) puts the new tab in the
@@ -282,7 +289,7 @@ local function addTab(name, f)
   local last = w.Tabs[#w.Tabs]
   local tab = CreateFrame("Button", nil, w, "AuctionHouseFrameDisplayModeTabTemplate")
   if w.Tabs[#w.Tabs] ~= tab then table.insert(w.Tabs, tab) end
-  tab:SetText(name)
+  labelTab(tab, name)
   tab:SetPoint("LEFT", last, "RIGHT", -15, 0)
   tab.displayMode = {}
   w.tabsForDisplayMode[tab.displayMode] = #w.Tabs

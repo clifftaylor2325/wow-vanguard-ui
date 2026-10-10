@@ -418,12 +418,15 @@ local function movePage(page)
   end
 end
 
--- The title, the step caption under it, and your faction's crest left of the close button.
+-- The title and the step caption under it, centred across the window (as the game's own titles are),
+-- and your faction's crest left of the close button.
 local function addTitle(f)
   f.title = text(f, "title", "text", "Set up Vanguard")
-  f.title:SetPoint("TOPLEFT", PAD, -14)
+  f.title:SetPoint("TOP", f, "TOP", 0, -14)
+  f.title:SetJustifyH("CENTER")
   f.caption = text(f, "small", "accent", "")
-  f.caption:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -4)
+  f.caption:SetPoint("TOP", f.title, "BOTTOM", 0, -4)
+  f.caption:SetJustifyH("CENTER")
   f.crest = T.Crest(f, 28)
   f.crest:SetPoint("TOPRIGHT", -PAD - 32, -12)
 end
@@ -433,7 +436,8 @@ local function window()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_Setup", UIParent), { alpha = 0.98, shadow = true })
   f:SetSize(WIDTH, HEIGHT)
   f:SetPoint("CENTER")
-  f:SetFrameStrata("DIALOG")
+  -- Above the unlock handles (DIALOG), so their labels and grid never draw over the steps.
+  f:SetFrameStrata("FULLSCREEN_DIALOG")
   f:EnableMouse(true)
   addTitle(f)
   return f
