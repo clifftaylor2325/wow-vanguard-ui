@@ -8,7 +8,7 @@ const TOOLTIP_ENV = `
   __hooks, __post = {}, {}
   hooksecurefunc = function(name, fn) __hooks[name] = fn end
   GameTooltip_SetDefaultAnchor = function() end
-  Enum = { TooltipDataType = { Item = 0, Unit = 2 } }
+  Enum = Enum or {} Enum.TooltipDataType = { Item = 0, Unit = 2 }
   TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) __post[kind] = fn end }
   local tt = CreateFrame("Frame", "GameTooltip", UIParent)
   tt.NineSlice = CreateFrame("Frame", nil, tt)
