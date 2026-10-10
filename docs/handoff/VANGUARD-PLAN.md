@@ -8,21 +8,21 @@ This file is written so that a model with less context can carry it out. Section
 
 ## 0. Why, and how this plan runs
 
-**Why rename.** Another addon called ForeverUI (by Solindius) has been live on CurseForge (`curseforge.com/wow/addons/foreverui`, about 11K downloads) and Wago (`addons.wago.io/addons/foreverui`) since September and updates almost daily. Ours is not published yet. Two addons with the same folder name overwrite each other on install, and players would confuse the two. "Vanguard" is free on both: `curseforge.com/wow/addons/vanguard` and `addons.wago.io/addons/vanguard` returned 404 on 2026-10-05 (checked against the ForeverUI pages, which loaded). Renaming now costs a find-and-replace; after the Nov 4, 2026 launch it would cost players their settings.
+**Why rename.** Another, unrelated addon called ForeverUI has been live on CurseForge and Wago since September and updates almost daily. Ours is not published yet. Two addons with the same folder name overwrite each other on install, and players would confuse the two. "Vanguard" is free on both: `curseforge.com/wow/addons/vanguard` and `addons.wago.io/addons/vanguard` returned 404 on 2026-10-05. Renaming now costs a find-and-replace; after the Nov 4, 2026 launch it would cost players their settings.
 
 **Why these features.** They are the gaps left after comparing ForeverUI against the 20 most-downloaded WoW addons on CurseForge (all-time downloads, September–October 2026), with everything ForeverUI already ships struck out. Ranked by impact:
 
-| # | Feature | Comes from | Why it matters on Forever |
+| # | Feature | Players fill it today with | Why it matters on Forever |
 |---|---|---|---|
-| F1 | Gear upgrade indicator | Pawn (129M) | Pawn has no Forever build, and Forever rewrote the stats on thousands of items, so players can't trust what they remember. |
-| F2 | Alt and bank inventory in tooltips | Bagnon (168M), Baganator (38M) | Tooltips already count this character's bags and bank; other characters are the missing half. |
-| F3 | `/way` waypoints and world map coordinates | TomTom (90M), HandyNotes (61M) | Guides and Forever map sites hand out `/way` lines; coordinates only show on the minimap today. |
-| F4 | Questie coexistence | Questie (208M, has a Forever build) | The most-used addon that ships for Forever; Vanguard replaces the quest tracker and quest log Questie works with. |
-| F5 | Docking spots for boss timers and warnings | DBM (635M), BigWigs (207M) | Both ship for Forever; their bars should sit in a known place in the Centered layout. |
-| F6 | LibDataBroker readouts on the info strip | Titan Panel, ElvUI datatexts | The minimap drawer gathers other addons' buttons but can't show their text feeds. |
-| F7 | Faster auto-loot | Leatrix Plus (72M) | The one common Leatrix toggle Vanguard doesn't have. |
+| F1 | Gear upgrade indicator | A standalone upgrade addon | The common one has no Forever build, and Forever rewrote the stats on thousands of items, so players can't trust what they remember. |
+| F2 | Alt and bank inventory in tooltips | Bag addons | Tooltips already count this character's bags and bank; other characters are the missing half. |
+| F3 | `/way` waypoints and world map coordinates | Waypoint and map-note addons | Guides and Forever map sites hand out `/way` lines; coordinates only show on the minimap today. |
+| F4 | Questie coexistence | Questie (has a Forever build) | The most-used addon that ships for Forever; Vanguard replaces the quest tracker and quest log Questie works with. |
+| F5 | Docking spots for boss timers and warnings | DBM, BigWigs | Both ship for Forever; their bars should sit in a known place in the Centered layout. |
+| F6 | LibDataBroker readouts on the info strip | Info-bar addons | The minimap drawer gathers other addons' buttons but can't show their text feeds. |
+| F7 | Faster auto-loot | Quality-of-life addons | The one common quality-of-life toggle Vanguard doesn't have. |
 
-Deliberately not planned (blocked by Forever's secret-value rules, retail-only, or a separate product): boss timers, hazard alarms, threat meters, WeakAuras-style triggers, Mythic+ tools, world quests, collection databases.
+Deliberately not planned (blocked by Forever's secret-value rules, retail-only, or a separate product): boss timers, hazard alarms, threat meters, custom aura triggers, Mythic+ tools, world quests, collection databases.
 
 ### Order and branches (overrides WORKPLAN section 0 items 1 and 2)
 
@@ -91,7 +91,7 @@ Every feature is a module made with `ns.Module(name, { defaults = ... })`, with 
 
 - [x] **F1.1 Score.** New `Modules/Upgrades.lua`. `UP.Score(link, weights)` = sum of `weights[stat] * value` over `C_Item.GetItemStats(link)` (keys are the client's stat tokens, e.g. `ITEM_MOD_STRENGTH_SHORT`; confirm the token list in `Gethe/wow-ui-source` branch `forever` before relying on it). Cache by link. Items with no stats score 0 and never show as upgrades.
 - [x] **F1.2 Compare.** `UP.Compare(link)`: the slot from `C_Item.GetItemInfoInstant(link)` (equip location) → inventory slot(s) via a small `EQUIP_SLOTS` table; for paired slots (rings, trinkets, one-handers when dual wielding) compare against the weaker equipped item; an empty slot is always an upgrade. Return the percentage change. Skip items the player can't use (`C_Item.IsEquippableItem`, plus `C_PlayerInfo.CanUseItem` if the client has it; check). **[VERIFY IN GAME]** that armour-type and weapon-skill limits are respected; never read tooltip text to find red lines (it's hidden from addons).
-- [x] **F1.3 Weights. [DECIDE]** New `Modules/UpgradeWeights.lua`: default weights per class and role (tank, healer, damage), for the vanilla stats Forever uses. The owner approves the defaults table before F1 merges (put it in the PR for review). Role setting: Auto (from `UnitGroupRolesAssigned`, as `Modules/RaidFrames.lua:81` does; damage when none), Tank, Healer, Damage. Weights are editable per character in options, and `/vg weights export|import` shares them as a `VG1:weights:...` string (reuse `Core/Serialize.lua`; no Pawn code or format).
+- [x] **F1.3 Weights. [DECIDE]** New `Modules/UpgradeWeights.lua`: default weights per class and role (tank, healer, damage), for the vanilla stats Forever uses. The owner approves the defaults table before F1 merges (put it in the PR for review). Role setting: Auto (from `UnitGroupRolesAssigned`, as `Modules/RaidFrames.lua:81` does; damage when none), Tank, Healer, Damage. Weights are editable per character in options, and `/vg weights export|import` shares them as a `VG1:weights:...` string (reuse `Core/Serialize.lua`; no other addon's code or format).
 - [x] **F1.4 Show it.** Tooltip line through `ns.GetModule("Tooltips").AddItemLines(fn)` (see `Modules/AuctionPrices.lua:399`): "Upgrade +12%" in the theme's good colour or "−5%" in its bad colour, with "vs <equipped item name>". A small up-arrow on bag item buttons in the combined bag (`Modules/Bags.lua`, `Modules/BagSections.lua`; use a theme icon, `T.Icon`), and on the best quest reward choice in `Modules/QuestDialog.lua`. Each has its own switch; tooltip line on by default, arrows on by default.
 - [x] **F1.5 Tests and README.** Score maths, paired slots, empty slot, unusable item, cache invalidation on `PLAYER_EQUIPMENT_CHANGED`, the weights string round trip.
 
@@ -111,7 +111,7 @@ Every feature is a module made with `ns.Module(name, { defaults = ... })`, with 
 
 ### F4 Questie coexistence (`work/f4-questie`) — size S, mostly in-game checking
 
-- [x] **F4.1 Read, don't copy.** Questie is GPLv3; read its source to learn which frames and hooks it uses for the quest tracker, quest log and map, but copy no code. Note the frame names in the commit body.
+- [x] **F4.1 Integration points.** List the game frames Vanguard must leave alone while Questie is loaded (quest tracker, quest log, map); copy no code. Note the frame names in the commit body.
 - [x] **F4.2 Who owns the tracker.** New setting under the quest tracker options: "With Questie: use Vanguard's tracker / use Questie's" (default: Questie's when Questie is loaded). Questie's choice → `Modules/QuestTracker.lua` leaves the game's tracker alone (no `Suppress("ObjectiveTrackerFrame")`, line 128) and doesn't build its own; and if Questie's tracker frame exists, skin it with the theme panel (the same primitives `Core/Skin.lua` hands out). Same for the quest log if Questie adds to the game's quest log.
 - [x] **F4.3 Tests and in-game check.** Stub tests for both settings with and without Questie loaded. **[VERIFY IN GAME]** with Questie's Forever build installed: no doubled trackers, Questie's map icons show, no errors in `/vg errors`.
 

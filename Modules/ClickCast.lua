@@ -1,4 +1,4 @@
--- Click casting and hover keys, VuhDo style, on the raid frames (and, if
+-- Click casting and hover keys on the raid frames (and, if
 -- you like, the unit frames).
 --
 --   Mouse: a button plus Shift/Ctrl/Alt on a frame casts on that player

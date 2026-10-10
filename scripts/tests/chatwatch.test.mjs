@@ -36,9 +36,9 @@ const toast = (addon) => addon.eval("local f = Vanguard_ChatWatchToast return { 
 it("chat watch: a watched phrase in Trade rings the whisper sound and shows a toast with the sender", () => {
   const addon = watching();
   expect(addon.eval("return ns.Settings('ChatWatch').phrases"), "stored lower-case").toEqual(["lfm"]);
-  say(addon, "CHANNEL", "LFM Deadmines need a healer", "Healbot");
+  say(addon, "CHANNEL", "LFM Deadmines need a healer", "Lightmend");
   expect(rings(addon), "the whisper sound (3081)").toBe(1);
-  expect(toast(addon), "the toast, with the sender and the line").toEqual([true, "Healbot", "LFM Deadmines need a healer"]);
+  expect(toast(addon), "the toast, with the sender and the line").toEqual([true, "Lightmend", "LFM Deadmines need a healer"]);
   expect(isTok(addon, addon.eval("return Vanguard_ChatWatchToast.sender.__textColor"), "accent"), "the sender in the accent").toBe(true);
   addon.advance(8.5);
   expect(toast(addon)[0], "gone after 8 s").toBe(false);
@@ -65,25 +65,25 @@ it("chat watch: matching ignores case and links' codes; unticked channels are no
 
 it("chat watch: hidden chat (dungeons, raids, encounters) is skipped without an error", () => {
   const addon = watching();
-  sayLua(addon, "__wfgWorld.secret()", '"Healbot"');
+  sayLua(addon, "__wfgWorld.secret()", '"Lightmend"');
   sayLua(addon, '"LFM"', "__wfgWorld.secret()");
-  sayLua(addon, "nil", '"Healbot"');
+  sayLua(addon, "nil", '"Lightmend"');
   expect([rings(addon), toast(addon)[0], addon.eval("return #ns.errors")], "no sound, no toast, no errors").toEqual([0, false, 0]);
 });
 
 it("chat watch: one alert per line, and per sender and phrase every 30 s", () => {
   const addon = watching("wts");
-  say(addon, "CHANNEL", "LFM UBRS", "Healbot", 500);
-  say(addon, "CHANNEL", "LFM UBRS", "Healbot", 500);
+  say(addon, "CHANNEL", "LFM UBRS", "Lightmend", 500);
+  say(addon, "CHANNEL", "LFM UBRS", "Lightmend", 500);
   expect(rings(addon), "the same line (by its ID) rings once").toBe(1);
   addon.advance(3);
-  say(addon, "CHANNEL", "LFM UBRS still", "Healbot");
+  say(addon, "CHANNEL", "LFM UBRS still", "Lightmend");
   expect(rings(addon), "the same sender and phrase stays quiet for 30 s").toBe(1);
-  say(addon, "CHANNEL", "WTS potions", "Healbot");
+  say(addon, "CHANNEL", "WTS potions", "Lightmend");
   say(addon, "CHANNEL", "LFM MC", "Raidlead");
   expect([rings(addon), toast(addon)[1]], "another phrase or sender rings, at most once every 2 s; the toast shows the newest").toEqual([2, "Raidlead"]);
   addon.advance(31);
-  say(addon, "CHANNEL", "LFM UBRS last call", "Healbot");
+  say(addon, "CHANNEL", "LFM UBRS last call", "Lightmend");
   expect(rings(addon), "released after 30 s").toBe(3);
   addon.eval("local CW = ns.GetModule('ChatWatch') CW.MAX_LINES = 2 CW.lines, CW.lineCount = {}, 0");
   say(addon, "CHANNEL", "nothing", "A", 1);
@@ -97,15 +97,15 @@ it("chat watch: your own lines don't ring; clicking the toast whispers the sende
   say(addon, "CHANNEL", "LFM DM", "Tester");
   say(addon, "CHANNEL", "LFM DM", "Tester-Realm");
   expect(rings(addon), "your own lines, with or without the realm").toBe(0);
-  say(addon, "CHANNEL", "LFM DM", "Healbot-Realm");
+  say(addon, "CHANNEL", "LFM DM", "Lightmend-Realm");
   addon.click("Vanguard_ChatWatchToast");
-  expect([addon.eval("return __tells"), toast(addon)[0]], "a click whispers the sender and puts the toast away").toEqual([["Healbot-Realm"], false]);
+  expect([addon.eval("return __tells"), toast(addon)[0]], "a click whispers the sender and puts the toast away").toEqual([["Lightmend-Realm"], false]);
   say(addon, "CHANNEL", "LFM SM", "Other");
   addon.click("Vanguard_ChatWatchToast", "RightButton");
   expect([addon.eval("return #__tells"), toast(addon)[0]], "a right-click only dismisses").toEqual([1, false]);
-  addon.eval("ChatFrameUtil = nil ChatFrame_SendTell = function(name) table.insert(__tells, 'old:' .. name) end ns.GetModule('ChatWatch').Whisper('Healbot')");
-  addon.eval("ChatFrame_SendTell = nil ns.GetModule('ChatWatch').Whisper('Healbot')");
-  expect(addon.eval("return __tells"), "the older whisper call, or nothing without one").toEqual(["Healbot-Realm", "old:Healbot"]);
+  addon.eval("ChatFrameUtil = nil ChatFrame_SendTell = function(name) table.insert(__tells, 'old:' .. name) end ns.GetModule('ChatWatch').Whisper('Lightmend')");
+  addon.eval("ChatFrame_SendTell = nil ns.GetModule('ChatWatch').Whisper('Lightmend')");
+  expect(addon.eval("return __tells"), "the older whisper call, or nothing without one").toEqual(["Lightmend-Realm", "old:Lightmend"]);
   addon.eval("__wfgWorld.units.player.name = __wfgWorld.secret()");
   addon.advance(3);
   say(addon, "CHANNEL", "LFM RFC", "Tester");
@@ -177,7 +177,7 @@ it("chat watch: no chat filter is added, and the module off listens to nothing",
   const filters = (addon) => addon.eval("local n = 0 for event in pairs(ns.GetModule('ChatWatch').EVENTS) do n = n + #(__wfgWorld.chatFilters[event] or {}) end return n");
   expect(filters(on), "the same filters as without Chat watch").toBe(filters(off));
   off.slash("watch add lfm");
-  say(off, "CHANNEL", "LFM", "Healbot");
+  say(off, "CHANNEL", "LFM", "Lightmend");
   expect([rings(off), off.eval("return Vanguard_ChatWatchToast == nil")], "off: nothing rings, no toast is built").toEqual([0, true]);
 });
 
@@ -227,7 +227,7 @@ it("chat watch: another module's alert uses the same toast and sound, even with 
   expect([off.eval("return __ran"), toast(off)[0]], "right-click only puts it away").toEqual([1, false]);
   const on = watching();
   notify(on);
-  say(on, "CHANNEL", "LFM Deadmines", "Healbot");
+  say(on, "CHANNEL", "LFM Deadmines", "Lightmend");
   on.click("Vanguard_ChatWatchToast");
-  expect([on.eval("return __ran"), on.eval("return __tells")], "a chat line's toast after it whispers the sender, not the alert's action").toEqual([0, ["Healbot"]]);
+  expect([on.eval("return __ran"), on.eval("return __tells")], "a chat line's toast after it whispers the sender, not the alert's action").toEqual([0, ["Lightmend"]]);
 });
