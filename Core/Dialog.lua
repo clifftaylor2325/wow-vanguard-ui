@@ -61,7 +61,7 @@ local function textBox()
   box.primary:SetPoint("BOTTOMRIGHT", -12, 12)
   box.close = button(box, "Close")
   box.close:SetPoint("RIGHT", box.primary, "LEFT", -8, 0)
-  box.close:SetScript("OnClick", function() box:Hide() end)
+  box.close:SetScript("OnClick", ns.Guard("click close text box", function() box:Hide() end))
   return box
 end
 
@@ -84,7 +84,7 @@ function ns.AskText(title, onImport, label)
   f.edit:SetText("")
   f.primary.text:SetText(label or "Import")
   f.primary:Show()
-  f.primary:SetScript("OnClick", function() onImport(f.edit:GetText()) end)
+  f.primary:SetScript("OnClick", ns.Guard("click text box primary", function() onImport(f.edit:GetText()) end))
   f:Show()
   f.edit:SetFocus()
 end
@@ -113,8 +113,8 @@ function ns.Ask(text, yes, onYes, onNo)
   local f = questionDialog()
   f.title:SetText(text)
   f.yes.text:SetText(yes)
-  f.yes:SetScript("OnClick", function() f:Hide() onYes() end)
-  f.no:SetScript("OnClick", function() f:Hide() onNo() end)
+  f.yes:SetScript("OnClick", ns.Guard("click question yes", function() f:Hide() onYes() end))
+  f.no:SetScript("OnClick", ns.Guard("click question no", function() f:Hide() onNo() end))
   f:Show()
 end
 
@@ -155,7 +155,7 @@ end
 -- Makes a button reload the UI when clicked. The overlay is a protected
 -- frame, so it is built out of combat; a button built in combat gets it when combat ends.
 function ns.ReloadButton(btn)
-  btn:SetScript("OnClick", reloadByHand)
+  btn:SetScript("OnClick", ns.Guard("click reload by hand", reloadByHand))
   ns.OutOfCombat(function() addReloadOverlay(btn) end, btn)
   return btn
 end
@@ -169,7 +169,7 @@ local function reloadDialog()
   reload.accept:SetPoint("BOTTOMRIGHT", -12, 12)
   reload.cancel = button(reload, "Later")
   reload.cancel:SetPoint("RIGHT", reload.accept, "LEFT", -8, 0)
-  reload.cancel:SetScript("OnClick", function() reload:Hide() end)
+  reload.cancel:SetScript("OnClick", ns.Guard("click reload later", function() reload:Hide() end))
   return reload
 end
 
