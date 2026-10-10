@@ -782,7 +782,7 @@ it("events: a handler that throws does not stop the others, and the error is kep
 
 it("events: on a client without debugstack or an error handler, the error is still kept", () => {
   expectErrors("event TEST_ONLY_EVENT: eval:5: TEST-ONLY first");
-  const out = loggedIn().eval(THROWING_HANDLERS + "return { ran = #__ran, last = ns.errors[#ns.errors] }");
+  const out = loggedIn("debugstack = nil").eval(THROWING_HANDLERS + "return { ran = #__ran, last = ns.errors[#ns.errors] }");
   expect(out.ran, "the second handler ran").toBe(1);
   expect(out.last, "the record has no stack and nothing was forwarded").toMatchObject({ text: expect.stringMatching(/^event TEST_ONLY_EVENT: .*TEST-ONLY first$/), stack: "" });
 });
