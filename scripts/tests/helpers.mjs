@@ -4,6 +4,13 @@
 
 import { createAddon } from "../lib/lua-harness.mjs";
 
+// Tests that cause an error on purpose name it, so the error guard (setup.mjs) lets it stand.
+export { expectErrors } from "../lib/error-guard.mjs";
+
+// The deliberate aura-container fallback notice. It stays in ns.errors by the user's
+// decision D-06, so a test whose client lacks AuraContainer names it with expectErrors.
+export const AURA_FALLBACK = /^aura containers \(using Vanguard's own icons\): wow-world\.lua:\d+: CreateFrame: unknown frame type AuraContainer$/;
+
 // r, g, b, a of a theme color token, read from the addon.
 export const tok = (addon, name) => addon.eval(`return { ns.Theme.RGB("${name}") }`);
 

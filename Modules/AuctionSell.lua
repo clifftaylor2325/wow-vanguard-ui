@@ -651,5 +651,5 @@ function AH.BuildSell(f, h)
   sellForm(c)
   lengthRow(c)
   postRow(c)
-  hooksecurefunc(AuctionHouseFrame, "SetPostItem", function(_, loc) AH.TakeItem(loc) end)
+  hooksecurefunc(AuctionHouseFrame, "SetPostItem", ns.Guard("hook SetPostItem", function(_, loc) AH.TakeItem(loc) end))
 end
