@@ -45,6 +45,17 @@ it("a throwing timer callback is reported under its timer label", () => {
   expectErrors("timer TEST-ONLY: TEST-ONLY timer");
 });
 
+it("a caught error carries its stack, and the guard's failure message prints it", () => {
+  const addon = loggedIn();
+  addon.eval(`function TestOnlyStackTarget() end
+    hooksecurefunc("TestOnlyStackTarget", ns.Guard("hook TEST-ONLY", function() error("TEST-ONLY stack") end))
+    TestOnlyStackTarget()`);
+  const entry = caught(addon).find((e) => /TEST-ONLY stack$/.test(e.text));
+  expect(entry?.stack, "the entry kept the failing frames, from the test client's debugstack").toMatch(/eval:\d+/);
+  expect(() => check([addon], []), "an unnamed entry fails the guard with its stack under the text").toThrow(/hook TEST-ONLY: eval:\d+: TEST-ONLY stack[\s\S]*stack:\n\s+\S/);
+  expectErrors(/^hook TEST-ONLY: eval:\d+: TEST-ONLY stack$/);
+});
+
 it("ns.Guard hands a non-function back, passes arguments through and returns nothing", () => {
   const addon = loggedIn();
   expect(addon.eval(`return ns.Guard("x", nil) == nil`), "nil still clears a script").toBe(true);
