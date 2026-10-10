@@ -188,8 +188,8 @@ function DB.Suppress(name)
   if protected(f) then return ns.OutOfCombat(function() f:Hide() end, f) end
   f:Hide()
   if type(hooksecurefunc) ~= "function" then return end
-  hooksecurefunc(f, "Show", f.Hide)
-  hooksecurefunc(f, "SetShown", f.Hide)
+  hooksecurefunc(f, "Show", ns.Guard("hook Show", f.Hide))
+  hooksecurefunc(f, "SetShown", ns.Guard("hook SetShown", f.Hide))
 end
 
 -- Applies the bars' visibility setting (one for both): now, or when combat ends

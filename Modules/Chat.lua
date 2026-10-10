@@ -158,7 +158,7 @@ end
 
 -- Hooks a client function by name, when this client has it.
 local function after(name, fn)
-  if type(hooksecurefunc) == "function" and type(_G[name]) == "function" then hooksecurefunc(name, fn) end
+  if type(hooksecurefunc) == "function" and type(_G[name]) == "function" then hooksecurefunc(name, ns.Guard("hook " .. tostring(name), fn)) end
 end
 
 -- The game's own chat size menu re-fonts a window: put ours back (unless chat follows the game).
