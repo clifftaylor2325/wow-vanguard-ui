@@ -117,7 +117,7 @@ local function skinGameBar(frame, color)
   dressGameBar(frame.StatusBar, color)
   fadeGameArt(frame)
   frame:HookScript("OnShow", fadeGameArt)
-  if type(hooksecurefunc) == "function" and type(frame.ApplyRangePresentation) == "function" then hooksecurefunc(frame, "ApplyRangePresentation", fadeGameArt) end
+  if type(hooksecurefunc) == "function" and type(frame.ApplyRangePresentation) == "function" then hooksecurefunc(frame, "ApplyRangePresentation", ns.Guard("hook ApplyRangePresentation", fadeGameArt)) end
 end
 
 -- The game's swing bars in the theme (Vanguard's timer is off): each this client has.
