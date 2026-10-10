@@ -64,7 +64,7 @@ function MC.SellJunk(tries)
   if #junk == 0 then return end
   for _, spot in ipairs(junk) do C_Container.UseContainerItem(spot[1], spot[2]) end
   if tries == MC.RETRIES then ns.Chat(string.format("Selling %d junk item(s).", #junk)) end
-  if tries > 1 and C_Timer and C_Timer.After then C_Timer.After(MC.RETRY_AFTER, function() MC.SellJunk(tries - 1) end) end
+  if tries > 1 and C_Timer and C_Timer.After then C_Timer.After(MC.RETRY_AFTER, ns.Guard("timer sell junk", function() MC.SellJunk(tries - 1) end)) end
 end
 
 -- Sells your junk: the client's own one-step sale where it has one.
