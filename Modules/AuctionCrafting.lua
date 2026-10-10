@@ -237,7 +237,7 @@ function CR.Hook()
   local form = CR.Form()
   if CR.hooked or not form or type(form.Init) ~= "function" then return end
   CR.hooked = true
-  hooksecurefunc(form, "Init", function(_, info) CR.recipe = type(info) == "table" and ns.PlainNumber(info.recipeID) or nil CR.Paint() end)
+  hooksecurefunc(form, "Init", ns.Guard("hook Init", function(_, info) CR.recipe = type(info) == "table" and ns.PlainNumber(info.recipeID) or nil CR.Paint() end))
   form:HookScript("OnShow", function() CR.Paint() end)
   form:HookScript("OnHide", function() if CR.frame then CR.frame:Hide() end end)
 end
