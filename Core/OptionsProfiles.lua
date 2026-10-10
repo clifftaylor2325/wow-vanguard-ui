@@ -15,10 +15,10 @@ function W.Danger(parent, text, onClick, width)
   local b = ns.DialogButton(parent, text, width or 120)
   T.Color(b.text, "bad")
   -- Asks first, then acts.
-  b:SetScript("OnClick", function(self)
+  b:SetScript("OnClick", ns.Guard("click danger button", function(self)
     if not self.armed then self.armed = true return self.text:SetText("Sure?") end
     onClick()
-  end)
+  end))
   return b
 end
 
