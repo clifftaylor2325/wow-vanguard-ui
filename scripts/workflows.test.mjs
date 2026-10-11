@@ -271,3 +271,66 @@ it("the evaluator reads a missing property as undefined and rejects syntax it do
   expect(() => evaluate("github.event.action > 1", github)).toThrow(/unsupported expression syntax/);
   expect(() => evaluate("fromJSON('1')", github)).toThrow(/unsupported name/);
 });
+
+// Toolchain pins (D-05) ------------------------------------------------------------------
+
+// The SHA-256 of the luacheck 1.2.0 release binary (the Linux x86-64 build) that verify.yml and
+// lua-suite.yml install. Confirmed in commit 3-05-01 on 2026-10-10: a fresh download matched
+// research's digest under `sha256sum -c`, the release is 835048 bytes, and the release's .asc
+// signature verified (Good signature, primary key 9F377DDB6D3153A48EB3EB1E63CC496475267693,
+// fetched from keys.openpgp.org and from github.com/alerque.gpg). The release API publishes no
+// digest field. Both workflows must hold exactly this value: to change it, verify the new
+// digest a second way first, then change this constant and both workflows together.
+const LUACHECK_SHA256 = "d68da17fca0697d9e2fb04201f3884abd259fa558b3a449bccaed47f1390defc";
+const LUACHECK_URL = "https://github.com/lunarmodules/luacheck/releases/download/v1.2.0/luacheck";
+const LUACHECK_STEPS = [
+  ["verify.yml", "npm ci, with luacheck 1.2.0 and Lua 5.1 installing alongside"],
+  ["lua-suite.yml", "luacheck 1.2.0 and Lua 5.1"],
+];
+
+// The run script of the named step in a workflow (the step must exist).
+function stepScript(file, name) {
+  const step = stepNamed(workflow(file), name);
+  expect(step, `${file} has a step named "${name}"`).not.toBe("");
+  return runBlocks(step).join("\n");
+}
+
+it("both workflows pin the verified luacheck digest and the v1.2.0 release URL in a step env", () => {
+  expect(LUACHECK_SHA256).toMatch(/^[0-9a-f]{64}$/);
+  for (const [file, name] of LUACHECK_STEPS) {
+    const lines = stepNamed(workflow(file), name).split("\n").map((l) => l.trim());
+    expect(lines, file).toContain(`LUACHECK_SHA256: ${LUACHECK_SHA256}`);
+    expect(lines, file).toContain(`LUACHECK_URL: ${LUACHECK_URL}`);
+  }
+});
+
+it("each luacheck step installs the binary only after sha256sum -c accepts it", () => {
+  for (const [file, name] of LUACHECK_STEPS) {
+    const script = stepScript(file, name);
+    expect(script, file).toMatch(/"\$LUACHECK_URL"\s*&&\s*echo "\$LUACHECK_SHA256 {2}\$RUNNER_TEMP\/luacheck" \| sha256sum -c -\s*&&/);
+    expect(script, file).toMatch(/sha256sum -c -\s*&&\s*sudo install -m 0755 "\$RUNNER_TEMP\/luacheck" \/usr\/local\/bin\/luacheck/);
+    expect(script, file).not.toContain("${{");
+  }
+});
+
+it("the foreground luacheck step ends on the install, so a failed check fails the step", () => {
+  const script = stepScript("lua-suite.yml", LUACHECK_STEPS[1][1]).trim();
+  expect(script.endsWith("sudo install -m 0755 \"$RUNNER_TEMP/luacheck\" /usr/local/bin/luacheck")).toBe(true);
+});
+
+it("verify runs the check in the background tools group, and its wait fails the step", () => {
+  const script = stepScript("verify.yml", LUACHECK_STEPS[0][1]);
+  expect(script).toMatch(/\) > tools\.log 2>&1 &\n\s*tools_pid=\$!\n\s*npm ci\n/);
+  expect(script).toMatch(/wait "\$tools_pid" \|\| \{ cat tools\.log; exit 1; \}/);
+  expect(script.indexOf("sha256sum -c")).toBeLessThan(script.indexOf("tools_pid=$!"));
+});
+
+it("neither workflow installs luacheck from apt; lua5.1 stays; luacheck prints its version first", () => {
+  for (const [file] of LUACHECK_STEPS) {
+    const text = workflow(file);
+    expect(text, file).not.toContain("lua-check");
+    expect(text, file).toContain("sudo apt-get install -y -qq lua5.1");
+    const scripts = runBlocks(text).map((b) => b.split("\n").map((l) => l.trim()).join("\n").trim());
+    expect(scripts, file).toContain("luacheck --version\nluacheck --no-color .");
+  }
+});
