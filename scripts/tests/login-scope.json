@@ -1,6 +1,184 @@
 {
   "about": "Test files whose logins leave the six heavy modules off, with the cases that keep the full login; written by node scripts/login-scope-probe.mjs --write.",
   "scoped": {
-    "scripts/tests/auction.test.mjs": []
+    "scripts/lua-engine.test.mjs": [],
+    "scripts/tests/auction.test.mjs": [],
+    "scripts/tests/auctionapi.test.mjs": [],
+    "scripts/tests/auctioncrafting.test.mjs": [],
+    "scripts/tests/auctionledger.test.mjs": [],
+    "scripts/tests/auctionrestock.test.mjs": [
+      "a max price leaves dearer listings out; filters stay when the list is made again and when they're saved",
+      "a search that never answers still counts; a plain entry has no wanted amount",
+      "at the auction house Restock searches the list, then prices the cheapest of the wanted amount",
+      "fewer up than wanted shows in the warning colour; an item's listings are bought whole",
+      "the Restock list holds what Instance prep and Keep stocked are short of, with how many",
+      "the prep card's Buy list waits for the Auction helper, and an ammo row is no item to buy"
+    ],
+    "scripts/tests/auctionupgrades.test.mjs": [],
+    "scripts/tests/auras.test.mjs": [
+      "a client that rejects every aura filter word keeps the filter and shows no auras",
+      "raid tiles built after the engine retires get the fallback highlight",
+      "target and focus auras",
+      "your buffs and debuffs replace the game's, with weapon enchants in front",
+      "your buffs: the enchant switch, and clients without enchant info",
+      "your buffs: the game's external defensives and deadly debuff frames go with its buff frames"
+    ],
+    "scripts/tests/bagsections.test.mjs": [],
+    "scripts/tests/bars.test.mjs": [
+      "Hidden bar bindings stay intact",
+      "In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone",
+      "a moved action bar keeps its spot until reset",
+      "a paged bar 1 button's tooltip is for the slot it shows now, not its action attribute",
+      "action bar cooldown numbers in the theme's font",
+      "action bar dragging",
+      "action bar empty slots hide until the grid shows",
+      "action bar layout: per-bar buttons, rows and size, deferred in combat",
+      "action bar paging and events",
+      "action bar stack follows button size and rows",
+      "action bar visibility: each mode's state driver and mouseover alpha",
+      "action bars",
+      "action bars stack with bar 1 on top",
+      "action button cooldowns, the C_ActionBar API and range polling",
+      "action buttons cast on yourself, your focus or the mouseover with the game's modifiers",
+      "action buttons show their action's tooltip on hover and hide it on leave",
+      "an old profile keeps its right-edge bar on Always; a fresh enable gets On mouseover",
+      "bag, equipment, form, macro and charge events refresh the buttons they change",
+      "bar 1 pages without secure snippets: the driver sets the bar's own actionpage, the buttons read it",
+      "bar 1 with secure snippets keeps the snippet paging",
+      "counts show on a client without the deprecated GetActionCount (C_ActionBar.GetActionUseCount)",
+      "empty slots take no mouse, so blank bar space passes clicks through; a drag turns it back on",
+      "in combat an empty slot's mouse waits for the fight to end, one entry per button, the last state winning",
+      "keybind mode: hover a button and press a key to bind it; a modifier alone waits; Escape leaves",
+      "keybind mode: out of combat only, ends when a fight starts; from the options; needs the bars",
+      "keybind mode: the mouse's side buttons and wheel bind too; Backspace clears; a taken key says whose it was",
+      "mouseover bars are revealed during a drag and restored after",
+      "reagent and item counts show even at 0 and 1",
+      "the bottom stack follows per-bar size and rows, live",
+      "the game's hidden action buttons are silenced, and one cooldown event refreshes the sweeps",
+      "the mouseover fade still follows hovering an action button",
+      "the right-edge bars start off and show on mouseover when turned on"
+    ],
+    "scripts/tests/broker.test.mjs": [],
+    "scripts/tests/casts.test.mjs": [],
+    "scripts/tests/chatwatch.test.mjs": [],
+    "scripts/tests/clickcast.test.mjs": [
+      "bindings carry spell ids and ranks, move, copy, export and import",
+      "sharing: export, import, copy to another spec, and the combat notice",
+      "without specializations the page speaks of this character"
+    ],
+    "scripts/tests/clicks.test.mjs": [
+      "click-casting validation, labels and unit frames"
+    ],
+    "scripts/tests/core.test.mjs": [
+      "Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line",
+      "a damaged account file: a profile that isn't a table, or a name that isn't a name, is dropped at load",
+      "client capability probe: every flag off, every module still enables",
+      "client capability probe: what this client has, and /vg status says so",
+      "the account file's version is read and upgraded"
+    ],
+    "scripts/tests/data.test.mjs": [],
+    "scripts/tests/docks.test.mjs": [],
+    "scripts/tests/errorrail.test.mjs": [],
+    "scripts/tests/fallbacks.test.mjs": [],
+    "scripts/tests/feedback.test.mjs": [],
+    "scripts/tests/fights.test.mjs": [],
+    "scripts/tests/frames.test.mjs": [
+      "brass art: a calmer HUD, soft sparks, corner diamonds and role marks",
+      "frames pass: bar texture, smoothing, raid style, shields, glows",
+      "proc glow on action buttons"
+    ],
+    "scripts/tests/healing.test.mjs": [],
+    "scripts/tests/inventory.test.mjs": [],
+    "scripts/tests/masque.test.mjs": [
+      "with Masque loaded, action, pet and stance buttons and aura icons go to Masque groups, without Vanguard's skin",
+      "without Masque (or without LibStub) nothing changes"
+    ],
+    "scripts/tests/more.test.mjs": [
+      "Edit Mode: a game frame Vanguard hides or replaces gets no handle, every other system keeps its own",
+      "boss frames: five in a column at the top left, the game's put away",
+      "boss frames: the game's holder is put away only out of combat",
+      "raid tools: calls, target icons and world markers for the leader and assistants",
+      "the game's tools: a switch shows the Cooldown Manager's essential row between the frames, timers in the theme font"
+    ],
+    "scripts/tests/motion.test.mjs": [],
+    "scripts/tests/options.test.mjs": [
+      "options window",
+      "text that fits: chat size, tooltip fonts, the status line, name width"
+    ],
+    "scripts/tests/plates.test.mjs": [],
+    "scripts/tests/prep.test.mjs": [
+      "prep: /vg prep want sets the wanted amounts; the options page has the section",
+      "prep: Keep-stocked items under their count, and worn gear, are on the card",
+      "prep: a client without the bag, item or instance calls checks what it can",
+      "prep: a hidden count skips its row without an error",
+      "prep: a ready check shows the card, packed or not, unless switched off",
+      "prep: class reagents follow your level",
+      "prep: food and drink, bandages and potions are counted by their item subclass",
+      "prep: low ammo and soul shards show as have / want in red",
+      "prep: nothing is checked in combat, and /vg prep waits for the fight to end",
+      "prep: nothing short keeps the card away at the door; /vg prep says everything's packed",
+      "prep: once per visit at the door, gone after Hide after or the close button"
+    ],
+    "scripts/tests/profiles.test.mjs": [],
+    "scripts/tests/raid.test.mjs": [
+      "raid tools: a burst of roster events in combat queues one update of the bar, not one per event"
+    ],
+    "scripts/tests/range.test.mjs": [
+      "range tint"
+    ],
+    "scripts/tests/report.test.mjs": [
+      "/vg report names the modules turned off and the skinned addons, with any that are off or failed"
+    ],
+    "scripts/tests/setup.test.mjs": [
+      "Centered layout: compact raid grid, one-time migrations, a strip with nothing to show",
+      "default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 px buttons; a saved profile keeps its sizes",
+      "setup again: Keep and Keep change nothing; Run setup in the options; Start over owes setup after the reload",
+      "setup layouts: Like the game's puts your frames at the top left; another layout puts them back",
+      "setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect",
+      "setup screen: this screen's preset is picked; Keep changes nothing; a preset sets the UI scale, buttons, tiles and text",
+      "setup screens: with each screen preset, nothing overlaps or leaves its own screen, in every layout, solo to 40-man",
+      "the setup wizard sits above the unlock handles on the last step, so their labels never draw over it"
+    ],
+    "scripts/tests/situations.test.mjs": [],
+    "scripts/tests/skins.test.mjs": [],
+    "scripts/tests/special.test.mjs": [],
+    "scripts/tests/spellbook.test.mjs": [],
+    "scripts/tests/status.test.mjs": [],
+    "scripts/tests/talents.test.mjs": [],
+    "scripts/tests/theme.test.mjs": [],
+    "scripts/tests/tooltip.test.mjs": [],
+    "scripts/tests/units.test.mjs": [
+      "a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest",
+      "class bars: druid mana while a form shows rage or energy",
+      "class bars: totems for shamans, mana in forms for druids",
+      "combo points for rogues and druids",
+      "power ticks: energy every two seconds, and forms switch",
+      "power ticks: the five-second rule after a mana spell",
+      "power ticks: the spark moves on one anchor, as tall as the bar, with no anchors cleared per frame",
+      "target of target: health and power on every look, its name only when it's someone else",
+      "threat and happiness only where the client and settings allow",
+      "threat on your target and your pet's happiness",
+      "unit events: combo points, the druid's mana, power ticks and threat ask the client for your own units only",
+      "unit frame events",
+      "unit frame health text settings apply at once",
+      "unit frames",
+      "unit frames on WoW Forever: levels, health percent, classification"
+    ],
+    "scripts/tests/unlock.test.mjs": [],
+    "scripts/tests/upgrades.test.mjs": [],
+    "scripts/tests/vendor.test.mjs": [],
+    "scripts/tests/visibility.test.mjs": [
+      "action bars: a bar shown on a checklist shows while you drag a spell, and follows instances on zone changes",
+      "action bars: the checklist row in the options sets a bar's conditions, and the client's state drives it",
+      "the state the client reports at registration comes from its own parser when it has one"
+    ],
+    "scripts/tests/waypoints.test.mjs": [],
+    "scripts/tests/windows-map.test.mjs": [],
+    "scripts/tests/windows-menus.test.mjs": [],
+    "scripts/tests/windows-pvp.test.mjs": [],
+    "scripts/tests/windows-social.test.mjs": [],
+    "scripts/tests/windows-system.test.mjs": [],
+    "scripts/tests/windows-tabs.test.mjs": [],
+    "scripts/tests/windows-town.test.mjs": []
   }
 }
