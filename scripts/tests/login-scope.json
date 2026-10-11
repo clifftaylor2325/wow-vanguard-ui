@@ -1,0 +1,6 @@
+{
+  "about": "Test files whose logins leave the six heavy modules off, with the cases that keep the full login; written by node scripts/login-scope-probe.mjs --write.",
+  "scoped": {
+    "scripts/tests/auction.test.mjs": []
+  }
+}
