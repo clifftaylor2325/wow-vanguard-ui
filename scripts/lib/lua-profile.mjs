@@ -156,3 +156,39 @@ export function writeProfileJson(file, data, info) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `${JSON.stringify(profileJson(data, info))}\n`);
 }
+
+// Writes the accumulator as JSON when it holds at least one sample.
+export function dumpProfile(file) {
+  const data = profileData();
+  if (!data.samples) return;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${JSON.stringify(data)}
+`);
+}
+
+// Adds one counter map into another.
+function addCounts(into, from) {
+  for (const [key, n] of Object.entries(from)) into[key] = (into[key] ?? 0) + n;
+}
+
+// Adds a dump's per-file self and inclusive counts into the sum.
+function addFiles(into, from) {
+  for (const [file, { self, incl }] of Object.entries(from)) {
+    const sum = (into[file] ??= { self: 0, incl: 0 });
+    sum.self += self;
+    sum.incl += incl;
+  }
+}
+
+// The sum of dumped profiles (the files dumpProfile wrote).
+export function mergeProfiles(files) {
+  const merged = fresh();
+  for (const file of files) {
+    const data = JSON.parse(fs.readFileSync(file, "utf8"));
+    merged.samples += data.samples;
+    addFiles(merged.files, data.files);
+    addCounts(merged.functions, data.functions);
+    addCounts(merged.lines, data.lines);
+  }
+  return merged;
+}
