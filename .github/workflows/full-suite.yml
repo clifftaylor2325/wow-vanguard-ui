@@ -27,7 +27,7 @@ on:
         type: boolean
         default: true
   pull_request:
-    types: [labeled, synchronize, reopened]
+    types: [opened, ready_for_review, labeled, synchronize, reopened]
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -37,15 +37,29 @@ permissions:
   issues: write
 
 # The newest run of a kind wins; a pull request's run never cancels a
-# scheduled one, or the other way round.
+# scheduled one, or the other way round. A label other than "full-tests"
+# gets a group of its own (the suffix): the job condition below skips that
+# run, and a skipped run must not cancel a good one in the pull request's
+# own group.
 concurrency:
-  group: full-suite-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: full-suite-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}${{ github.event.action == 'labeled' && github.event.label.name != 'full-tests' && '-other-label' || '' }}
   cancel-in-progress: true
 
 jobs:
   suite:
     name: Suite
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-tests')
+    # Other events always run. A pull request runs when it is opened ready,
+    # marked ready or reopened, and on later pushes only with the label; a
+    # draft never runs, and neither does an unrelated label being added.
+    if: >-
+      github.event_name != 'pull_request' || (
+        !github.event.pull_request.draft
+        && (github.event.action != 'labeled' || github.event.label.name == 'full-tests')
+        && (
+          github.event.action == 'opened' ||
+          github.event.action == 'ready_for_review' ||
+          github.event.action == 'reopened' ||
+          contains(github.event.pull_request.labels.*.name, 'full-tests')))
     uses: ./.github/workflows/lua-suite.yml
     with:
       preview: ${{ github.event_name != 'workflow_dispatch' || inputs.preview }}
