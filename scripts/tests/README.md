@@ -48,8 +48,55 @@ addon drew.** `scripts/tests/scenarios.test.mjs` has more.
   files are run, SavedVariables Lua is run after them, nothing has fired yet.
 - `loggedIn(env)` (from `./helpers.mjs`): a finished-setup account, `env` Lua
   run before login, then `login()` fires ADDON_LOADED, PLAYER_LOGIN and
-  PLAYER_ENTERING_WORLD. To test an older or stricter client, nil out an API
+  PLAYER_ENTERING_WORLD (with six heavy modules off in most files; see
+  "Scoped logins" below). To test an older or stricter client, nil out an API
   in `env` (`"C_Timer = nil"`) or call `addon.world.without("C_Timer")`.
+
+### Scoped logins
+
+A full login enables every module, and six of them (ActionBars, FrameAuras,
+PlayerAuras, InstancePrep, UnitFrames and RaidTools) cost about three quarters
+of it. So in a test file listed in `scripts/tests/login-scope.json`, `loggedIn`
+leaves those six off (through `VanguardDB.profiles.Default.modules`, after your
+`savedVariables`), except for the cases on that file's keep-full list, which get
+the full login. The error guard judges a scoped login exactly as it judges a
+full one.
+
+- A file not in the data keeps the full login. So do the cross-module files
+  (`smoke`, `scenarios`, `movers`; `FULL_FILES` in `scripts/lib/login-scope.mjs`)
+  and a few single cases that check modules against each other (`FULL_CASES`
+  there, each with its reason). `createAddon` is never scoped.
+- The data is written by `node scripts/login-scope-probe.mjs --write`, never by
+  hand. The probe runs the whole suite with every login scoped; a case that fails
+  that way needs a heavy module and goes on its file's keep-full list. It takes a
+  few minutes (`--workers <n>` caps Vitest's workers). Without `--write` it only
+  prints how many cases of each file keep the full login.
+- `VG_LOGIN_SCOPE=full` runs every login full (the equivalence check);
+  `VG_LOGIN_SCOPE=probe` runs every login scoped; any other value throws.
+- A new case in a listed file that needs one of the six modules fails (frames
+  missing, or an `expectErrors` marker that "never" matched). Rerun the probe and
+  commit the JSON. If the case checks several modules together, add it to
+  `FULL_CASES` with a reason instead, and rerun the probe; a test fails when a
+  `FULL_CASES` title no longer exists in its file.
+- A case that only asserts that something is absent can pass with a module off
+  without testing anything. Coverage catches the lines this hides:
+  `npm run coverage` must stay at 100%, and a line only a scoped case used to
+  reach goes back on the full login through `FULL_CASES`.
+
+### Timing and profiling
+
+- `npm run timing` runs the suite on 2 workers (the hosted runner's size) and
+  prints the total wall time, a per-file table and the test counts. `--workers <n>`
+  changes the cap, `--budget <seconds>` the limit it fails over (default 300),
+  and `--baseline <file>` fails when a case listed in the file (one `file|case`
+  line each, written by `--cases-out <file>`) is missing, failed or skipped.
+  Files named after the options run alone.
+- `npm run profile -- <area>` runs `scripts/tests/<area>.test.mjs` under Vitest
+  with a Lua sampler on, and `npm run profile -- login` profiles warm logins. Both
+  print where the Lua goes, by file, function and line, and write
+  `coverage/profile/<area>.json`. One sample is 1,000 Lua VM instructions; time
+  inside the harness's JavaScript is not counted. Nothing is sampled unless
+  `LUA_PROFILE` is set, which the command does.
 
 ### The world (`addon.world`)
 
