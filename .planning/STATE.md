@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Fast suite and CI gate
 status: executing
-stopped_at: Completed 03-05-PLAN.md
-last_updated: "2026-10-11T03:16:33.088Z"
+stopped_at: Completed 03-06-PLAN.md
+last_updated: "2026-10-11T03:30:46.908Z"
 last_activity: 2026-10-10
 last_activity_desc: Phase 03 execution started
-state_head: a2c9d21f2156a00ea343190c4a27b0074b76ce3f
+state_head: 0cca8353e68e1d9303f20e75dd8b3c578bd1479b
 progress:
   total_phases: 12
   completed_phases: 2
   total_plans: 22
-  completed_plans: 20
+  completed_plans: 21
   percent: 17
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-09)
 ## Current Position
 
 Phase: 03 (Fast suite and CI gate) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-10-10 — Phase 03 execution started
 
@@ -62,6 +62,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 03 P03 | 10 min | 2 tasks | 6 files |
 | Phase 03 P04 | 7 min | 2 tasks | 5 files |
 | Phase 03 P05 | 12 min | 3 tasks | 8 files |
+| Phase 03 P06 | 13 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,8 @@ Recent decisions affecting current work:
 - [Phase 03]: [03-03] Profiler counts a frame as Lua only when what is Lua or main (fengari reports host functions as J); setup.mjs resets the accumulator after each per-file dump
 - [Phase 03]: [03-04] login-scope.test.mjs is in FULL_FILES (its logins test the scoping rules, so the probe's --write must not scope it); the probe refuses --write when a login file ran no case
 - [Phase 03]: [03-05] The foreground luacheck step in lua-suite.yml is one && chain that ends the script, because bash -e ignores a failing non-final member of an && list; CI-05 not ticked since 03-07 also declares it
+- [Phase 03]: setup 'nothing overlaps' cases are hand-kept on the full login: they compare every module's mover rects and pass vacuously with a module off
+- [Phase 03]: units 'threat and happiness only where the client and settings allow' is kept on the full login for coverage (UnitExtras.lua:46)
 
 ### Pending Todos
 
@@ -104,6 +107,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-11T03:16:33.000Z
-Stopped at: Completed 03-05-PLAN.md
+Last session: 2026-10-11T03:30:46.846Z
+Stopped at: Completed 03-06-PLAN.md
 Resume file: None
