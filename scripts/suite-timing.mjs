@@ -10,7 +10,9 @@
 //   --budget <seconds>  wall-time budget (default 300)
 //   --cases-out <file>  write every case as a sorted `file|case` line; refused
 //                       when any case did not pass
-//   --baseline <file>   not wired yet (the baseline check comes with its tests)
+//   --baseline <file>   a --cases-out list: fails when a listed case is missing
+//                       or did not pass, or when any case in the run was
+//                       skipped; prints the new cases by file
 // Environment variables (VG_LOGIN_SCOPE, VG_SHUFFLE_SEED, LUA_PROFILE) pass
 // through to the run.
 
@@ -20,7 +22,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { caseList, formatReport, machineBusy, maxConcurrent } from "./lib/suite-timing.mjs";
+import { baselineDiff, caseList, formatReport, machineBusy, maxConcurrent } from "./lib/suite-timing.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const bin = path.join(root, "node_modules", "vitest", "vitest.mjs");
@@ -44,7 +46,7 @@ function readOptions(argv) {
   const opts = { workers: Number(values.workers), budget: Number(values.budget), casesOut: values["cases-out"], baseline: values.baseline, filters: positionals };
   if (!Number.isInteger(opts.workers) || opts.workers < 1) fail(`--workers must be a whole number of 1 or more, not "${values.workers}"`);
   if (!(opts.budget > 0)) fail(`--budget must be a number of seconds above 0, not "${values.budget}"`);
-  if (opts.baseline) fail("--baseline is not available yet");
+  if (opts.baseline && !fs.existsSync(opts.baseline)) fail(`--baseline file not found: ${opts.baseline}`);
   return opts;
 }
 
@@ -86,6 +88,30 @@ function writeCases(opts, report) {
   return [];
 }
 
+// Prints the baseline comparison; returns the problems (missing, not passed, or skipped cases).
+function checkBaseline(opts, report) {
+  const lines = fs.readFileSync(opts.baseline, "utf8").split(String.fromCharCode(10)).filter(Boolean);
+  const cases = caseList(report, root);
+  const diff = baselineDiff(lines, cases);
+  console.log(`baseline: ${diff.passed} of ${diff.total} cases present and passed`);
+  diff.missing.forEach((l) => console.log(`missing: ${l}`));
+  diff.notPassed.forEach((l) => console.log(`not passed: ${l}`));
+  const added = Object.entries(diff.added).sort();
+  console.log(`new cases: ${added.reduce((n, [, count]) => n + count, 0)}`);
+  added.forEach(([file, count]) => console.log(`  ${file} ${count}`));
+  return baselineProblems(diff, cases);
+}
+
+// The failures a baseline comparison adds: lost or failed baseline cases, skipped cases in the run.
+function baselineProblems(diff, cases) {
+  const skipped = cases.filter((c) => c.status === "skipped" || c.status === "todo" || c.status === "pending");
+  return [
+    ...(diff.missing.length ? [`${diff.missing.length} baseline case(s) missing`] : []),
+    ...(diff.notPassed.length ? [`${diff.notPassed.length} baseline case(s) did not pass`] : []),
+    ...(skipped.length ? [`${skipped.length} case(s) skipped or todo`] : []),
+  ];
+}
+
 // Reads the JSON report Vitest wrote, or exits 1 naming Vitest's exit status.
 function loadReport(run) {
   if (!fs.existsSync(reportFile)) fail(`Vitest wrote no report (exit status ${run.status})`);
@@ -101,6 +127,7 @@ async function main() {
   const report = loadReport(run);
   console.log(formatReport({ env: environment(opts, busy), wall: run.wall, report, root }));
   const problems = [...runProblems(opts, run, report), ...(opts.casesOut ? writeCases(opts, report) : [])];
+  if (opts.baseline) problems.push(...checkBaseline(opts, report));
   problems.forEach((p) => console.error(`FAIL: ${p}`));
   process.exit(problems.length ? 1 : 0);
 }
