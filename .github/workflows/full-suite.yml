@@ -1,14 +1,19 @@
 name: full suite
 
 # Runs lua-suite.yml (every test with the coverage floor, the checks and
-# the UI preview): weekly, from the Actions tab, or on a pull request while
-# it carries the "full-tests" label. Not after every merge: a private
-# repository's Actions minutes are counted, so the pull-request gate
-# (verify.yml) is the check every change gets, and the whole suite runs
-# here and before each release (release.yml). A red weekly or hand-started
-# run opens an issue labelled ci-failure (later failures comment on it;
-# GitHub's own failure mail for a scheduled run goes to whoever last
-# edited the cron line, which may be nobody), and a green one closes it.
+# the UI preview): when a pull request is opened ready for review or marked
+# ready for review (a draft never runs it), on every later push while the
+# pull request carries the "full-tests" label, weekly, and from the Actions
+# tab. A later push without the label stops a run still in progress for that
+# pull request (the code it was testing is stale; both runs share the pull
+# request's concurrency group), and adding any other label neither starts
+# nor stops a run. Not after every merge: a private repository's Actions
+# minutes are counted, so the pull-request gate (verify.yml) is the check
+# every push gets, and the whole suite runs here and before each release
+# (release.yml). A red weekly or hand-started run opens an issue labelled
+# ci-failure (later failures comment on it; GitHub's own failure mail for a
+# scheduled run goes to whoever last edited the cron line, which may be
+# nobody), and a green one closes it.
 #
 # Only the weekly run is shuffled (D-05): its tests run in a seeded random
 # order and the seed goes to the job summary with the replay command, to

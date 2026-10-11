@@ -7,9 +7,10 @@ name: lua suite
 # code-quality scan, luacheck, Lua 5.1 syntax and the release zip's
 # contents; and, when asked, the UI preview as a second job beside it.
 #
-# This workflow has no triggers of its own: full-suite.yml calls it weekly,
-# from the Actions tab and for the "full-tests" label, and release.yml
-# before each release. On Actions, Vitest also writes failures as
+# This workflow has no triggers of its own: full-suite.yml calls it when a
+# pull request is opened ready for review or marked ready for review, on
+# later pushes while the pull request carries the "full-tests" label,
+# weekly and from the Actions tab, and release.yml before each release. On Actions, Vitest also writes failures as
 # annotations on the run and a JUnit file (vitest.config.mjs), and the
 # Lua-by-area and coverage tables go to the job summary.
 #

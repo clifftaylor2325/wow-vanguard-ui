@@ -180,8 +180,9 @@ npm run test:quick # the JS tests and one Lua smoke test (about 10 s): what a pu
 npm run verify    # npm test (real addon Lua in a TEST-ONLY headless WoW client, and the JS tests), then the code-quality scan
                   # (functions of 10 lines or fewer, all documented; colors only from Core/Theme.lua)
 npm run coverage  # every test with line coverage of the addon Lua; fails below scripts/lua-coverage-floor.json (100%)
-                  # run it before you open a pull request: CI runs it weekly, before each release, from the Actions tab and
-                  # on a pull request labelled full-tests, not on every change (a private repository's Actions minutes count)
+                  # run it before you open a pull request: CI runs it when a pull request is opened ready or marked ready for
+                  # review (not a draft), on later pushes only while it carries the full-tests label, weekly, before each
+                  # release and from the Actions tab, not on every push (a private repository's Actions minutes count)
 npm run lint      # luacheck
 npm run media     # regenerate Media/Textures and Media/Icons from scripts/lib/media-sources.mjs
 npm run package   # dist/Vanguard-<version>.zip from committed files
@@ -204,7 +205,7 @@ npm run preview   # preview/*.png: the default layout and the options window (ne
 
 **Code quality:** every function has a comment on the line above it and at most 10 lines of body code; `npm run verify` and CI enforce it on every pull request. The shared libraries in `Libs/` stay exactly as upstream wrote them, so the scan, luacheck and the coverage count leave them out.
 
-**CI:** every pull request gets `verify.yml` ("Quick checks": the code-quality scan, luacheck, Lua 5.1 syntax, `npm run test:quick` and the release zip, inside a minute), and `main` requires it to merge. The whole suite with the coverage floor and the UI preview (`lua-suite.yml`) runs weekly, before each release, from the Actions tab (*full suite* → *Run workflow*) and on a pull request labelled `full-tests`; a red weekly run opens an issue labelled `ci-failure`, which the next green run closes. Run `npm run coverage` yourself before opening a pull request, since CI doesn't on every change: a private repository's Actions minutes are counted, and the gate is kept to one billed minute. Code scanning (GitHub Advanced Security's default setup) stops once the repository is private; nothing here depends on it.
+**CI:** every pull request gets `verify.yml` ("Quick checks": the code-quality scan, luacheck, Lua 5.1 syntax, `npm run test:quick` and the release zip, inside a minute), and `main` requires it to merge. The whole suite with the coverage floor and the UI preview (`lua-suite.yml`) runs when a pull request is opened ready for review or marked ready for review (a draft doesn't run it), on every later push while the pull request carries the `full-tests` label, weekly (shuffled), before each release and from the Actions tab (*full suite* → *Run workflow*). A later push without the label stops a full-suite run still in progress for that pull request (the code it was testing is stale), and adding any other label neither starts nor stops a run. A red weekly run opens an issue labelled `ci-failure`, which the next green run closes. Run `npm run coverage` yourself before opening a pull request, since CI doesn't run it on every push: a private repository's Actions minutes are counted, and the gate is kept to one billed minute. Code scanning (GitHub Advanced Security's default setup) stops once the repository is private; nothing here depends on it.
 
 ### Releases on CurseForge
 
