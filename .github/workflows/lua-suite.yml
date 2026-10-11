@@ -49,8 +49,19 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: luacheck and Lua 5.1
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq lua-check lua5.1
+      # The same pinned luacheck 1.2.0 release binary as verify.yml: installed
+      # only after its SHA-256 matches. The chain is the last thing in the
+      # script, so a failed check fails the step before the install runs.
+      - name: luacheck 1.2.0 and Lua 5.1
+        env:
+          LUACHECK_SHA256: d68da17fca0697d9e2fb04201f3884abd259fa558b3a449bccaed47f1390defc
+          LUACHECK_URL: https://github.com/lunarmodules/luacheck/releases/download/v1.2.0/luacheck
+        run: |
+          sudo apt-get update -qq &&
+          sudo apt-get install -y -qq lua5.1 &&
+          curl -fsSL -o "$RUNNER_TEMP/luacheck" "$LUACHECK_URL" &&
+          echo "$LUACHECK_SHA256  $RUNNER_TEMP/luacheck" | sha256sum -c - &&
+          sudo install -m 0755 "$RUNNER_TEMP/luacheck" /usr/local/bin/luacheck
       - name: Pick and print the shuffle seed
         if: inputs.shuffle
         # The seed comes from the clock inside the script; no workflow
@@ -62,7 +73,9 @@ jobs:
           printf 'Shuffled run, seed %s. Replay: VG_SHUFFLE_SEED=%s npm test (PowerShell: $env:VG_SHUFFLE_SEED=%s; npm test)\n' "$seed" "$seed" "$seed" | tee -a "$GITHUB_STEP_SUMMARY"
       - run: npm run coverage
       - run: npm run quality
-      - run: luacheck --no-color .
+      - run: |
+          luacheck --version
+          luacheck --no-color .
       - name: Lua 5.1 syntax of every file the TOC loads
         run: |
           status=0

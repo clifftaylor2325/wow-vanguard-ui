@@ -39,14 +39,30 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: npm ci, with luacheck and Lua 5.1 installing alongside
+      # luacheck 1.2.0 is the release binary, installed only after its SHA-256
+      # matches (the apt package is an older release). The digest was checked a
+      # second way when it was pinned; scripts/workflows.test.mjs holds the same
+      # value and fails if this one drifts. The tools group runs beside npm ci,
+      # and the wait fails the step if any part of it failed.
+      - name: npm ci, with luacheck 1.2.0 and Lua 5.1 installing alongside
+        env:
+          LUACHECK_SHA256: d68da17fca0697d9e2fb04201f3884abd259fa558b3a449bccaed47f1390defc
+          LUACHECK_URL: https://github.com/lunarmodules/luacheck/releases/download/v1.2.0/luacheck
         run: |
-          (sudo apt-get update -qq && sudo apt-get install -y -qq lua-check lua5.1) > apt.log 2>&1 &
-          apt_pid=$!
+          (
+            sudo apt-get update -qq &&
+            sudo apt-get install -y -qq lua5.1 &&
+            curl -fsSL -o "$RUNNER_TEMP/luacheck" "$LUACHECK_URL" &&
+            echo "$LUACHECK_SHA256  $RUNNER_TEMP/luacheck" | sha256sum -c - &&
+            sudo install -m 0755 "$RUNNER_TEMP/luacheck" /usr/local/bin/luacheck
+          ) > tools.log 2>&1 &
+          tools_pid=$!
           npm ci
-          wait "$apt_pid" || { cat apt.log; exit 1; }
+          wait "$tools_pid" || { cat tools.log; exit 1; }
       - run: npm run quality
-      - run: luacheck --no-color .
+      - run: |
+          luacheck --version
+          luacheck --no-color .
       - name: Lua 5.1 syntax of every file the TOC loads
         run: |
           status=0
