@@ -18,6 +18,7 @@ import lobject from "fengari/src/lobject.js";
 import lstring from "fengari/src/lstring.js";
 import { luaString, luaValue } from "./lua-emit.mjs";
 import { lineHook } from "./lua-coverage.mjs";
+import { profileSampler } from "./lua-profile.mjs";
 
 const { lua, lauxlib, lualib, to_luastring, to_jsstring } = fengari;
 
@@ -201,12 +202,16 @@ function countHook(L) {
   lauxlib.luaL_error(L, to_luastring(`Lua ran ${b.limit} instructions in one call from the tests: a runaway loop? (createAddon's instructionBudget, or LUA_INSTRUCTION_BUDGET, raises it)`));
 }
 
-// Sets the state's one hook: the count hook, and the coverage line hook when coverage is on.
+// Sets the state's one hook: the count hook, the coverage line hook when coverage is on,
+// and the profiler's sampler on each count event when LUA_PROFILE is set.
 function attachHooks(L, limit) {
   budgets.set(L, { limit, used: 0 });
   const onLine = process.env.LUA_COVERAGE ? lineHook() : null;
-  // Line events go to coverage, count events to the budget.
-  const hook = (state, ar) => (ar.event === lua.LUA_HOOKLINE ? onLine(state, ar) : countHook(state));
+  const sample = process.env.LUA_PROFILE ? profileSampler() : null;
+  // A count event: the budget check, then the profiler's sample.
+  const onCount = (state) => { countHook(state); if (sample) sample(state); };
+  // Line events go to coverage, count events to the budget (and the profiler).
+  const hook = (state, ar) => (ar.event === lua.LUA_HOOKLINE ? onLine(state, ar) : onCount(state));
   lua.lua_sethook(L, hook, lua.LUA_MASKCOUNT | (onLine ? lua.LUA_MASKLINE : 0), COUNT_EVERY);
 }
 
