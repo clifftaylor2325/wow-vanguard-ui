@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Fast suite and CI gate
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-10-11T02:52:05.617Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-10-11T02:56:53.936Z"
 last_activity: 2026-10-10
 last_activity_desc: Phase 03 execution started
-state_head: ec22f2386d82341f98b67313200ff02a662afbfe
+state_head: b931d230f3f45f725009a3d2d1abd579e615f5f8
 progress:
   total_phases: 12
   completed_phases: 2
   total_plans: 22
-  completed_plans: 16
+  completed_plans: 17
   percent: 17
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-09)
 ## Current Position
 
 Phase: 03 (Fast suite and CI gate) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-10-10 — Phase 03 execution started
 
@@ -58,6 +58,7 @@ Progress: [██░░░░░░░░] 17%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 03 P01 | 8 min | 3 tasks | 5 files |
+| Phase 03 P02 | 15 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,7 @@ Recent decisions affecting current work:
 - [Roadmap]: FEAT-06 (party quest progress over addon messages) stays in v1 by the author's decision, against the research's advice; cuttable.
 - [Roadmap]: File splits have no v1 requirement; they ride as cuttable, structure-only tails (Options in Phase 4, auction files in Phase 5 after the fix, Theme at the start of Phase 6).
 - [Phase 03]: [03-01] suite-timing CLI also fails when Vitest exits non-zero with no failed test; test groups are flat it() calls because describe() callbacks are not exempt from the 10-line rule
+- [Phase 03]: 03-02: opened added to full-suite pull_request types beyond D-04's wording (a PR opened ready fires opened, not ready_for_review)
 
 ### Pending Todos
 
@@ -96,6 +98,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-11T02:52:05.513Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-10-11T02:56:53.842Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
