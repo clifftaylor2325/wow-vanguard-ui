@@ -1,18 +1,18 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 3
+current_phase: 03
 current_phase_name: Fast suite and CI gate
-status: planning
-stopped_at: Phase 3 researched; ready to plan
-last_updated: "2026-10-10T21:20:30.342Z"
+status: executing
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-10-11T02:52:05.617Z"
 last_activity: 2026-10-10
-last_activity_desc: Phase 2 complete, transitioned to Phase 3
-state_head: 9ec2b1ecd088afa69aff8d59dc39657bd75d9c1a
+last_activity_desc: Phase 03 execution started
+state_head: ec22f2386d82341f98b67313200ff02a662afbfe
 progress:
   total_phases: 12
   completed_phases: 2
-  total_plans: 15
-  completed_plans: 15
+  total_plans: 22
+  completed_plans: 16
   percent: 17
 ---
 
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-09)
 
 **Core value:** On launch day, Vanguard loads without errors and everything it replaces works, verified by a full test suite that is green and fast enough to run on every PR.
-**Current focus:** Phase 2 — Errors fail tests
+**Current focus:** Phase 03 — Fast suite and CI gate
 
 ## Current Position
 
-Phase: 3 — Fast suite and CI gate
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-10 — Phase 2 complete, transitioned to Phase 3
+Phase: 03 (Fast suite and CI gate) — EXECUTING
+Plan: 2 of 7
+Status: Ready to execute
+Last activity: 2026-10-10 — Phase 03 execution started
 
 Progress: [██░░░░░░░░] 17%
 
@@ -53,6 +53,11 @@ Progress: [██░░░░░░░░] 17%
 - Trend: -
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 03 P01 | 8 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -66,6 +71,7 @@ Recent decisions affecting current work:
 - [Roadmap]: Features (Phases 9-11) are cut first if time runs short; Phase 12 runs regardless.
 - [Roadmap]: FEAT-06 (party quest progress over addon messages) stays in v1 by the author's decision, against the research's advice; cuttable.
 - [Roadmap]: File splits have no v1 requirement; they ride as cuttable, structure-only tails (Options in Phase 4, auction files in Phase 5 after the fix, Theme at the start of Phase 6).
+- [Phase 03]: [03-01] suite-timing CLI also fails when Vitest exits non-zero with no failed test; test groups are flat it() calls because describe() callbacks are not exempt from the 10-line rule
 
 ### Pending Todos
 
@@ -90,6 +96,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-10T21:20:30.211Z
-Stopped at: Phase 3 researched; ready to plan
-Resume file: .planning/phases/03-fast-suite-and-ci-gate/03-CONTEXT.md
+Last session: 2026-10-11T02:52:05.513Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None
