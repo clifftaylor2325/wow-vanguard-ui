@@ -2,7 +2,12 @@
 // logged-in addon, chat and theme-color checks, and the TEST-ONLY game
 // environments cases build on.
 
-import { createAddon } from "../lib/lua-harness.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { expect } from "vitest";
+import { createAddon, root } from "../lib/lua-harness.mjs";
+import { SCOPE_FILE, modulesOffLua, scopeFor } from "../lib/login-scope.mjs";
+import { relFile } from "../lib/suite-timing.mjs";
 
 // Tests that cause an error on purpose name it, so the error guard (setup.mjs) lets it stand.
 export { expectErrors } from "../lib/error-guard.mjs";
@@ -33,10 +38,28 @@ export const RETAIL = "__wfgWorld.build.interface = 120007\n";
 // wizard stays shut in cases about other things (a case's own VanguardDB or VanguardCharDB replaces them).
 export const SETUP_DONE = "VanguardDB = { version = 2, profiles = {}, setupDone = true }\nVanguardCharDB = {}\n";
 
+// The scope data (which test files log in with the six heavy modules off), read once.
+const SCOPE_DATA = JSON.parse(fs.readFileSync(path.join(root, SCOPE_FILE), "utf8"));
+
+// The running case as { file, key }: its file relative to the repo root with forward slashes, and
+// its describe chain and title joined by " > " (the shape the scope data and the JSON report use).
+// Outside a running case the key is undefined.
+export function runningCase() {
+  const { testPath, currentTestName } = expect.getState();
+  return { file: testPath ? relFile(root, testPath) : undefined, key: currentTestName };
+}
+
+// The Lua that turns the heavy modules off for the running case: empty (a full login) unless the
+// data scopes it, or VG_LOGIN_SCOPE says probe; VG_LOGIN_SCOPE=full always gives the empty text.
+function scopeLua() {
+  return modulesOffLua(scopeFor({ mode: process.env.VG_LOGIN_SCOPE, ...runningCase(), data: SCOPE_DATA }));
+}
+
 // A logged-in addon; extra Lua runs before login (e.g. a module or a skin).
 // firstRun: a brand-new account (no SavedVariables unless given), so setup opens.
+// The six heavy modules are off for a case the scope data lists (see scripts/lib/login-scope.mjs).
 export function loggedIn(extra = "", { firstRun = false, savedVariables = "" } = {}) {
-  const addon = createAddon({ savedVariables: firstRun ? savedVariables : SETUP_DONE + savedVariables });
+  const addon = createAddon({ savedVariables: (firstRun ? savedVariables : SETUP_DONE + savedVariables) + scopeLua() });
   if (extra) addon.eval(extra);
   addon.login();
   return addon;
