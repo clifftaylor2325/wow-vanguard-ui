@@ -154,6 +154,27 @@ it("the full-login lists name files that exist and cases in the form file|case",
   expect(FULL_CASES.every((c) => c.split("|").length === 2)).toBe(true);
 });
 
+// The text of a file under the repo root.
+const textOf = (file) => fs.readFileSync(path.join(root, file), "utf8");
+
+it("the full-login lists cannot go stale: every hand-kept case's title is still in its file, so a rename cannot move it onto a scoped login", () => {
+  const gone = FULL_CASES.filter((entry) => {
+    const [file, key] = entry.split("|");
+    return !textOf(file).includes(key.split(" > ").pop());
+  });
+  expect(gone, "renamed or deleted cases").toEqual([]);
+});
+
+it("the full-login lists agree with the committed data: each hand-kept case is on its file's keep list, no hand-kept file is listed", () => {
+  const { scoped } = JSON.parse(textOf(SCOPE_FILE));
+  const missing = FULL_CASES.filter((entry) => {
+    const [file, key] = entry.split("|");
+    return !(scoped[file] ?? []).includes(key);
+  });
+  expect(missing, "FULL_CASES entries the data does not keep full").toEqual([]);
+  expect(FULL_FILES.filter((file) => Object.hasOwn(scoped, file)), "FULL_FILES entries the data lists").toEqual([]);
+});
+
 it("a real scoped login: the six modules are off, RaidFrames is on, no frame of ActionBars exists, no error", () => {
   const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY) });
   addon.login();

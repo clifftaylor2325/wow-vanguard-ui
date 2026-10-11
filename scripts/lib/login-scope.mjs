@@ -24,6 +24,9 @@ export const FULL_FILES = [
 export const FULL_CASES = [
   "scripts/tests/core.test.mjs|client capability probe: every flag off, every module still enables", // every module, on every client shape
   "scripts/tests/setup.test.mjs|the setup wizard sits above the unlock handles on the last step, so their labels never draw over it", // needs the handles of the bars
+  "scripts/tests/setup.test.mjs|setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", // the rects of every module's mover against each other; with a module off an overlap check passes vacuously
+  "scripts/tests/setup.test.mjs|setup screens: with each screen preset, nothing overlaps or leaves its own screen, in every layout, solo to 40-man", // the same check at each screen preset
+  "scripts/tests/units.test.mjs|threat and happiness only where the client and settings allow", // coverage: the only case that runs Modules/UnitExtras.lua:46 (it passes vacuously with UnitFrames off, since nothing is built)
 ];
 
 // Where the data lives, relative to the repo root.
