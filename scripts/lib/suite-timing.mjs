@@ -58,6 +58,30 @@ export function caseList(report, root) {
   );
 }
 
+// Compares baseline `file|key` lines (a multiset) with this run's cases.
+// Passed cases are matched first, so a duplicate line needs one passing case per copy.
+export function baselineDiff(lines, cases) {
+  const wanted = new Map();
+  for (const line of lines) wanted.set(line, (wanted.get(line) ?? 0) + 1);
+  const result = { total: lines.length, passed: 0, missing: [], notPassed: [], added: {} };
+  const ordered = [...cases].sort((a, b) => (b.status === "passed") - (a.status === "passed"));
+  for (const c of ordered) matchCase(wanted, result, c);
+  for (const [line, n] of wanted) result.missing.push(...Array(n).fill(line));
+  return result;
+}
+
+// Files one case into the diff: matched and passed, matched and not passed, or new.
+function matchCase(wanted, result, c) {
+  const line = `${c.file}|${c.key}`;
+  if (!wanted.get(line)) {
+    result.added[c.file] = (result.added[c.file] ?? 0) + 1;
+    return;
+  }
+  wanted.set(line, wanted.get(line) - 1);
+  if (c.status === "passed") result.passed += 1;
+  else result.notPassed.push(line);
+}
+
 // CPU idle and total ticks summed over all cores.
 function cpuTotals() {
   const sums = os.cpus().map((c) => ({ idle: c.times.idle, total: Object.values(c.times).reduce((a, b) => a + b, 0) }));
