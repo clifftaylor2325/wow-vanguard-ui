@@ -1,0 +1,907 @@
+scripts/check-zip.test.mjs|a difference in the list is reported both ways
+scripts/check-zip.test.mjs|a wrong CRC, damaged data and a file that is not a zip are each refused
+scripts/check-zip.test.mjs|the built zip holds exactly the expected entries, each matching its CRC
+scripts/code-quality.test.mjs|code quality > JS: 10 documented lines pass
+scripts/code-quality.test.mjs|code quality > JS: 11 lines fail
+scripts/code-quality.test.mjs|code quality > JS: attempt() test cases are not exempt
+scripts/code-quality.test.mjs|code quality > JS: describe() callbacks are not exempt
+scripts/code-quality.test.mjs|code quality > JS: it() does not exempt a nested function
+scripts/code-quality.test.mjs|code quality > JS: it() test cases are exempt
+scripts/code-quality.test.mjs|code quality > JS: undocumented arrow fails
+scripts/code-quality.test.mjs|code quality > Lua: 10 documented lines pass
+scripts/code-quality.test.mjs|code quality > Lua: 11 lines fail
+scripts/code-quality.test.mjs|code quality > Lua: a blank line breaks the doc
+scripts/code-quality.test.mjs|code quality > Lua: blank and comment lines don't count
+scripts/code-quality.test.mjs|code quality > Lua: long strings are not code
+scripts/code-quality.test.mjs|code quality > Lua: nested functions count toward the parent
+scripts/code-quality.test.mjs|code quality > Lua: one comment covers a run of one-liners
+scripts/code-quality.test.mjs|code quality > Lua: undocumented function fails
+scripts/code-quality.test.mjs|code quality > clicks: OnClick needs a guard, nil and other scripts pass
+scripts/code-quality.test.mjs|code quality > colors: a 0-1 number table fails
+scripts/code-quality.test.mjs|code quality > colors: a setter with numbers fails
+scripts/code-quality.test.mjs|code quality > colors: a |c escape with a written color fails
+scripts/code-quality.test.mjs|code quality > colors: big numbers, comments and strings pass
+scripts/code-quality.test.mjs|code quality > colors: only addon Lua is checked
+scripts/code-quality.test.mjs|code quality > colors: the theme itself may write them
+scripts/code-quality.test.mjs|code quality > colors: theme tokens pass
+scripts/code-quality.test.mjs|code quality > fonts: SetFont with a written size fails
+scripts/code-quality.test.mjs|code quality > fonts: T.SetFont with a size fails
+scripts/code-quality.test.mjs|code quality > fonts: roles and computed sizes pass
+scripts/code-quality.test.mjs|code quality > hooks: a bare hooksecurefunc fails
+scripts/code-quality.test.mjs|code quality > hooks: a callback on the next line is read
+scripts/code-quality.test.mjs|code quality > hooks: a guarded hook passes
+scripts/code-quality.test.mjs|code quality > hooks: a type check is not a call
+scripts/code-quality.test.mjs|code quality > hooks: commas inside the callback do not split it
+scripts/code-quality.test.mjs|code quality > hooks: comments, strings and other folders are ignored
+scripts/code-quality.test.mjs|code quality > timers: bare C_Timer calls fail, guarded ones pass
+scripts/code-quality.test.mjs|code quality > timers: only ns.Soon's timer in Core/Combat.lua is excepted
+scripts/code-quality.test.mjs|the scan covers new files, not ignored or deleted ones
+scripts/error-guard.test.mjs|error guard > check: an empty Lua table is an empty list
+scripts/error-guard.test.mjs|error guard > check: throws judge's message, else nothing
+scripts/error-guard.test.mjs|error guard > expectErrors and takeExpected: the list empties when taken
+scripts/error-guard.test.mjs|error guard > expectErrors: a mixed call keeps none
+scripts/error-guard.test.mjs|error guard > expectErrors: broad matchers are refused (D-01)
+scripts/error-guard.test.mjs|error guard > expectErrors: matchers that name one error are accepted
+scripts/error-guard.test.mjs|error guard > judge: a stack prints only when the addon kept one
+scripts/error-guard.test.mjs|error guard > judge: a stray entry is listed with text, count and hint
+scripts/error-guard.test.mjs|error guard > judge: a string is the whole text, a RegExp has to match
+scripts/error-guard.test.mjs|error guard > judge: an unused matcher and a second stray entry
+scripts/error-guard.test.mjs|error guard > judge: nothing found, nothing expected
+scripts/link-wow.test.mjs|link:wow > CLI: needs a folder, remembers it, links, reports, unlinks
+scripts/link-wow.test.mjs|link:wow > a file in the slot is refused
+scripts/link-wow.test.mjs|link:wow > backup name is dated
+scripts/link-wow.test.mjs|link:wow > config: missing or broken file reads as {}
+scripts/link-wow.test.mjs|link:wow > config: saving the game folder keeps other keys
+scripts/link-wow.test.mjs|link:wow > empty slot: status, link, relink is a no-op
+scripts/link-wow.test.mjs|link:wow > game folder problems: none given, no AddOns, fine
+scripts/link-wow.test.mjs|link:wow > game folder: flag, then env, then saved
+scripts/link-wow.test.mjs|link:wow > installed copy: refused without --replace, moved aside with it
+scripts/link-wow.test.mjs|link:wow > link elsewhere is replaced; broken readlink reads as no target
+scripts/link-wow.test.mjs|link:wow > paths: case-insensitive on Windows only, trailing separators ignored
+scripts/link-wow.test.mjs|link:wow > unlink: missing, real folder kept, link removed
+scripts/lua-coverage.test.mjs|a function ending in a multi-line tail call is fully covered when it runs
+scripts/lua-coverage.test.mjs|a missing hits file fails
+scripts/lua-coverage.test.mjs|a syntax error names the chunk
+scripts/lua-coverage.test.mjs|empty hits are not full coverage
+scripts/lua-coverage.test.mjs|executable lines skip blanks, comments and each function's implicit final return
+scripts/lua-coverage.test.mjs|missing lines print as ranges
+scripts/lua-coverage.test.mjs|one hook records each chunk's lines under its own name, including a chunk loaded from a binary
+scripts/lua-coverage.test.mjs|the harness records the addon's lines when coverage is on, with the instruction budget beside it
+scripts/lua-coverage.test.mjs|the hook runs without breaking the chunk
+scripts/lua-engine.test.mjs|a Lua error carries a traceback naming the addon file
+scripts/lua-engine.test.mjs|a call from the tests that runs past its instruction budget fails with a traceback, and the addon goes on
+scripts/lua-engine.test.mjs|a font string takes text only once it has a font, as the client's does
+scripts/lua-engine.test.mjs|a worker compiles each addon file once: the second addon loads from the chunk cache, with file names intact
+scripts/lua-engine.test.mjs|an edited file is compiled again, an unchanged one served from the cache
+scripts/lua-engine.test.mjs|auras, actions and secrets through the world
+scripts/lua-engine.test.mjs|input: clicks, hover, the wheel and keys reach the frame's scripts
+scripts/lua-engine.test.mjs|inspectors: a frame's snapshot, text search and the top-level screen
+scripts/lua-engine.test.mjs|layout: anchors, sizes and scale resolve to screen rects as the client lays them out
+scripts/lua-engine.test.mjs|numbers print as the game's Lua 5.1 prints them: whole floats without .0
+scripts/lua-engine.test.mjs|the auction house: queries recorded, restricted calls logged with the click that made them, 0-based replicate rows
+scripts/lua-engine.test.mjs|the world: a unit change fires the client's events at frames registered for them
+scripts/lua-engine.test.mjs|timers run on the test clock, and combat queues work
+scripts/lua-summary.test.mjs|a file under scripts/tests is an area; other tests are not
+scripts/lua-summary.test.mjs|summary lines count passes per area, in first-seen order
+scripts/media.test.mjs|media > Media/Fonts/OFL.txt must hold the font license
+scripts/media.test.mjs|media > Medium: Latin, Greek, Cyrillic and euro glyphs
+scripts/media.test.mjs|media > Medium: digits 0-9 must share one width
+scripts/media.test.mjs|media > SemiBold: Latin, Greek, Cyrillic and euro glyphs
+scripts/media.test.mjs|media > SemiBold: digits 0-9 must share one width
+scripts/media.test.mjs|media > committed art is current
+scripts/media.test.mjs|media > game-icons sources are credited
+scripts/media.test.mjs|media > game-icons sources rasterize from their SVGs
+scripts/media.test.mjs|media > icon strokes are two pixels wide at 16 px
+scripts/media.test.mjs|media > icons of straight strokes are crisp at 16 px
+scripts/media.test.mjs|named media > Media/Art/lorc-crossed-axes.tga exists
+scripts/media.test.mjs|named media > Media/Art/lorc-crossed-swords.tga exists
+scripts/media.test.mjs|named media > Media/Fonts/Cinzel-SemiBold.ttf exists
+scripts/media.test.mjs|named media > Media/Fonts/FiraSansCondensed-Medium.ttf exists
+scripts/media.test.mjs|named media > Media/Fonts/FiraSansCondensed-SemiBold.ttf exists
+scripts/media.test.mjs|named media > Media/Fonts/Metamorphous-Regular.ttf exists
+scripts/media.test.mjs|named media > Media/Icons/Achievements.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Character.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Check.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Close.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Collections.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Crown.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Down.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Group.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Help.tga exists
+scripts/media.test.mjs|named media > Media/Icons/House.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Journal.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Legacy.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Map.tga exists
+scripts/media.test.mjs|named media > Media/Icons/MenuCog.tga exists
+scripts/media.test.mjs|named media > Media/Icons/MinimapAddons.tga exists
+scripts/media.test.mjs|named media > Media/Icons/MinimapTracking.tga exists
+scripts/media.test.mjs|named media > Media/Icons/NavActionBars.tga exists
+scripts/media.test.mjs|named media > Media/Icons/NavClickCasting.tga exists
+scripts/media.test.mjs|named media > Media/Icons/NavFeedback.tga exists
+scripts/media.test.mjs|named media > Media/Icons/NavGeneral.tga exists
+scripts/media.test.mjs|named media > Media/Icons/NavHealing.tga exists
+scripts/media.test.mjs|named media > Media/Icons/NavMap.tga exists
+scripts/media.test.mjs|named media > Media/Icons/NavModules.tga exists
+scripts/media.test.mjs|named media > Media/Icons/NavNameplates.tga exists
+scripts/media.test.mjs|named media > Media/Icons/NavProfiles.tga exists
+scripts/media.test.mjs|named media > Media/Icons/NavQuests.tga exists
+scripts/media.test.mjs|named media > Media/Icons/NavRaidFrames.tga exists
+scripts/media.test.mjs|named media > Media/Icons/NavSituations.tga exists
+scripts/media.test.mjs|named media > Media/Icons/NavTalents.tga exists
+scripts/media.test.mjs|named media > Media/Icons/NavUnitFrames.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Professions.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Quests.tga exists
+scripts/media.test.mjs|named media > Media/Icons/RoleHealer.tga exists
+scripts/media.test.mjs|named media > Media/Icons/RoleTank.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Shop.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Social.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Spellbook.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Talents.tga exists
+scripts/media.test.mjs|named media > Media/Icons/Waiting.tga exists
+scripts/media.test.mjs|named media > Media/Textures/Bar.tga exists
+scripts/media.test.mjs|named media > Media/Textures/BarSoft.tga exists
+scripts/media.test.mjs|named media > Media/Textures/Diamond.tga exists
+scripts/media.test.mjs|named media > Media/Textures/Fade.tga exists
+scripts/media.test.mjs|named media > Media/Textures/Icon.tga exists
+scripts/media.test.mjs|named media > Media/Textures/LogoLeft.tga exists
+scripts/media.test.mjs|named media > Media/Textures/Spark.tga exists
+scripts/media.test.mjs|named media > Media/Textures/Stripes.tga exists
+scripts/media.test.mjs|named media > the addon names at least one Media file
+scripts/media.test.mjs|silhouettes > every silhouette has its SVG
+scripts/media.test.mjs|silhouettes > options nav and minimap silhouettes are 32 px, inset and legible
+scripts/media.test.mjs|silhouettes > the silhouettes are credited beside the icons
+scripts/pkgmeta.test.mjs|.pkgmeta packages the addon under its own folder name
+scripts/pkgmeta.test.mjs|.pkgmeta ships exactly the release zip's files
+scripts/tests/auction.test.mjs|/vg ah list and add
+scripts/tests/auction.test.mjs|/vg ah recent shows Recent
+scripts/tests/auction.test.mjs|/vg ah rename, duplicate, delete, export and import act on the list in use
+scripts/tests/auction.test.mjs|/vg ah says what it knows, scans at the auction house, and forgets prices
+scripts/tests/auction.test.mjs|Cancel next undercut cancels one undercut auction per click, then says none are left
+scripts/tests/auction.test.mjs|Cancel next undercut skips an auction the game won't cancel; the line waits for a check that never answers
+scripts/tests/auction.test.mjs|Recent: the last 20 terms searched, newest first, kept for the account
+scripts/tests/auction.test.mjs|Search list needs entries; closing the auction house drops the searches waiting
+scripts/tests/auction.test.mjs|a commodity view asks for more with the commodity call; an empty answer says none up; closing drops it
+scripts/tests/auction.test.mjs|a finished scan spends the 15 minutes from its start, and your own listings are left out
+scripts/tests/auction.test.mjs|a hidden number skips its listing without an error
+scripts/tests/auction.test.mjs|a list search runs one query at a time within the limit
+scripts/tests/auction.test.mjs|a name matches only itself or a name containing it, never an unrelated result
+scripts/tests/auction.test.mjs|a scan keeps each day's low, units up and market value (the cheapest 15 % of the units)
+scripts/tests/auction.test.mjs|a scan records each item's cheapest unit price and the day's low
+scripts/tests/auction.test.mjs|a sell search and an owned check record the price; a scan keeps the units and market value
+scripts/tests/auction.test.mjs|a shop row opens every listing of its item in place of the rows; columns sort; Back returns
+scripts/tests/auction.test.mjs|a true return waits for the game's confirmation
+scripts/tests/auction.test.mjs|a window without the tab row this client knows: nothing is built, and chat says so once
+scripts/tests/auction.test.mjs|an expired auction says it's coming back by mail; once it is in the bags, Relist puts it on the sell card
+scripts/tests/auction.test.mjs|an item's listings: the game's words for time left, a page more by item key, bid-only ones left out
+scripts/tests/auction.test.mjs|browse results record each trusted item's cheapest price, the game's own browses too
+scripts/tests/auction.test.mjs|closing the auction house stops a scan
+scripts/tests/auction.test.mjs|deals: a scan lists what's under 70 % of the 7-day market or under vendor price, best first, as an entry in the Lists pane
+scripts/tests/auction.test.mjs|deals: each search judges its item again; a low before today stands in for a market; closing forgets them
+scripts/tests/auction.test.mjs|deals: with the tabs off nothing is built, and a deal found paints nothing
+scripts/tests/auction.test.mjs|disenchant values: chance x average quantity x each material's market (else its low), for gear only
+scripts/tests/auction.test.mjs|disenchant values: the switch is on for enchanters until set, in the Auction house options
+scripts/tests/auction.test.mjs|each realm and faction keeps its own prices and its own cap
+scripts/tests/auction.test.mjs|entries by item link, ID or name; Remove on the right-click menu; the wheel scrolls
+scripts/tests/auction.test.mjs|filters travel: exact names export in quotes, import as exact, and copies have their own
+scripts/tests/auction.test.mjs|hidden numbers and stray results
+scripts/tests/auction.test.mjs|history: 30 days of values are kept, older ones go at login, and older versions' prices still read
+scripts/tests/auction.test.mjs|import: plain lines and Auctionator's strings, within the caps
+scripts/tests/auction.test.mjs|item names the client hasn't loaded yet, and a hidden price
+scripts/tests/auction.test.mjs|keys: Up and Down mark a listing, Enter opens it, only while the mouse is over the view; other keys go on
+scripts/tests/auction.test.mjs|list management from the pane's buttons: rename, duplicate, export, and delete after asking
+scripts/tests/auction.test.mjs|migration keeps the newer price of each item; login forgets stale and broken houses
+scripts/tests/auction.test.mjs|never more than 60 searches a minute, a second apart
+scripts/tests/auction.test.mjs|no auction house on this client: the module still starts, builds nothing and doesn't fail
+scripts/tests/auction.test.mjs|one frame of a scan reads at most 400 listings
+scripts/tests/auction.test.mjs|our Shopping and Selling tabs are sized to their names, so the labels aren't cut off
+scripts/tests/auction.test.mjs|posting calls the right function from a click, never from a timer
+scripts/tests/auction.test.mjs|price alerts: a scan or any search rings for named lists' entries by ID or name, several on one toast
+scripts/tests/auction.test.mjs|price alerts: the filter dialog's switch alerts at the max price; a search at or under it rings once per drop
+scripts/tests/auction.test.mjs|pruning and caps: old prices go at login, and past the cap the oldest items go
+scripts/tests/auction.test.mjs|restricted calls run only inside a click
+scripts/tests/auction.test.mjs|result rows show name, cheapest price and quantity; a click opens the item's listings
+scripts/tests/auction.test.mjs|scans are 15 minutes apart
+scripts/tests/auction.test.mjs|search filters: exact name, levels and quality go in the browse query; a max price hides dearer results
+scripts/tests/auction.test.mjs|shopping lists: the pane picks or makes one, + Add adds, and the caps hold
+scripts/tests/auction.test.mjs|sold rows show the amount, and are neither cancelled nor counted as undercut
+scripts/tests/auction.test.mjs|stack presets for vanilla: by item class and subclass, else one
+scripts/tests/auction.test.mjs|switches: no tabs, no scan button; nothing at all in combat
+scripts/tests/auction.test.mjs|the Up now card lists what's up for the item on the sell card: price each, how many, time left, yours flagged; a click takes a price
+scripts/tests/auction.test.mjs|the account-wide prices move into this realm and faction once; the lists stay account-wide
+scripts/tests/auction.test.mjs|the addon never writes into the game's auction window
+scripts/tests/auction.test.mjs|the listings scroll, and near the end the next page comes through the search queue
+scripts/tests/auction.test.mjs|the market value is quantity-weighted over at least one unit, rounded down
+scripts/tests/auction.test.mjs|the next stack is the same item: another variant or a locked slot is passed over
+scripts/tests/auction.test.mjs|the sell card suggests an undercut
+scripts/tests/auction.test.mjs|the sell form: an item's bid, and the auction length picked, remembered or fixed
+scripts/tests/auction.test.mjs|the sell form: quantity and stack size with Max, the preset stack, one stack posted per click and the next loaded
+scripts/tests/auction.test.mjs|the sell form: typed counts and prices, per unit or per stack, Skip and Stop
+scripts/tests/auction.test.mjs|the shop's view and the sell card share the search events: each search and each page reaches its own card
+scripts/tests/auction.test.mjs|the tooltip line says what an item went for, and when
+scripts/tests/auction.test.mjs|the view reads further pages as it scrolls, shows time-left bands and leaves out what's over the max price
+scripts/tests/auction.test.mjs|two tabs join the window after the game's three; each shows its page over the content area and names the title
+scripts/tests/auction.test.mjs|undercut check marks the undercut auction and Cancel is per click
+scripts/tests/auction.test.mjs|vendor floor: an item the vendor won't buy, or a hidden vendor price, is never under
+scripts/tests/auction.test.mjs|vendor floor: the price line turns red under the vendor's price, and Post waits unless the option is off
+scripts/tests/auction.test.mjs|what the sell card won't take, and when it can't post
+scripts/tests/auction.test.mjs|with check again on, each post and each cancel checks your auctions again, through the queue
+scripts/tests/auction.test.mjs|your auctions: refused cancels, scrolling, unknown names, hidden costs, and updates the game sends
+scripts/tests/auctionapi.test.mjs|CreateShoppingList makes or replaces a list; AlterShoppingListItems changes one that exists; the caps hold
+scripts/tests/auctionapi.test.mjs|MultiSearch searches each term through the shop's queue, only at the open auction house
+scripts/tests/auctionapi.test.mjs|MultiSearchExact searches a name the client knows by its item ID
+scripts/tests/auctionapi.test.mjs|RegisterForDBUpdate: callbacks run once on the frame after a scan, and after a search records a price
+scripts/tests/auctionapi.test.mjs|Vanguard.API.v1 has Auctionator's function names, and every one wants a callerID string
+scripts/tests/auctionapi.test.mjs|a list the shop card shows is repainted when an addon changes it
+scripts/tests/auctionapi.test.mjs|auction prices by item ID and link: this realm and faction's cheapest unit price last seen, in copper
+scripts/tests/auctionapi.test.mjs|disenchant prices by item ID and link, whether or not you know Enchanting
+scripts/tests/auctionapi.test.mjs|vendor prices by item ID and link, from the client's item info
+scripts/tests/auctioncrafting.test.mjs|Add reagents keeps the reagents for the crafts typed in stock and makes the Restock list
+scripts/tests/auctioncrafting.test.mjs|another recipe repaints it: an enchant sells nothing, a recipe that makes several sells their average, a loss is red
+scripts/tests/auctioncrafting.test.mjs|beside the profession window, a recipe's reagents, what they cost, what it sells for and the profit
+scripts/tests/auctioncrafting.test.mjs|only post-hooks: the window's fields stay the game's; the helper off hooks nothing; no client schematic API is fine
+scripts/tests/auctioncrafting.test.mjs|the options have the switch
+scripts/tests/auctionledger.test.mjs|Your history on the Up now card: the item's last records, how many sold of those that sold or ran out, the average each
+scripts/tests/auctionledger.test.mjs|a client without the inbox calls doesn't read mail
+scripts/tests/auctionledger.test.mjs|an event's sale and the mail about it are one record, the mail's figures standing
+scripts/tests/auctionledger.test.mjs|events: a sold row, the game's notices, an expiry and a cancel are one record each, however often they come
+scripts/tests/auctionledger.test.mjs|mail: seller invoices and expired mail are noted once however often the inbox is read; other mail isn't
+scripts/tests/auctionledger.test.mjs|mail: the subject line as the client words it, and hidden values
+scripts/tests/auctionledger.test.mjs|the history's toggle sits on the Up now card's heading line, and the history in the listings' place
+scripts/tests/auctionledger.test.mjs|the info strip's auction sales: this session's, off until switched on, from the options
+scripts/tests/auctionledger.test.mjs|the ledger is kept per realm and faction, capped, and old records go at login
+scripts/tests/auctionledger.test.mjs|with the auction helper off, nothing is noted and the strip shows nothing
+scripts/tests/auctionrestock.test.mjs|a max price leaves dearer listings out; filters stay when the list is made again and when they're saved
+scripts/tests/auctionrestock.test.mjs|a search that never answers still counts; a plain entry has no wanted amount
+scripts/tests/auctionrestock.test.mjs|at the auction house Restock searches the list, then prices the cheapest of the wanted amount
+scripts/tests/auctionrestock.test.mjs|fewer up than wanted shows in the warning colour; an item's listings are bought whole
+scripts/tests/auctionrestock.test.mjs|the Restock list holds what Instance prep and Keep stocked are short of, with how many
+scripts/tests/auctionrestock.test.mjs|the prep card's Buy list waits for the Auction helper, and an ammo row is no item to buy
+scripts/tests/auctionupgrades.test.mjs|upgrades: a big scan is judged a hundred listings a frame, and closing the house stops it
+scripts/tests/auctionupgrades.test.mjs|upgrades: a scan lists the gear that beats what you wear, the biggest gain first, one listing for an empty slot
+scripts/tests/auctionupgrades.test.mjs|upgrades: an item search's results are judged too, bids only skipped, a listing seen again at its new price
+scripts/tests/auctionupgrades.test.mjs|upgrades: the switch under Auction house, the Gear upgrades module off, and a client without listing links
+scripts/tests/auctionupgrades.test.mjs|upgrades: what you wear and the weights change the judgement; closing the house forgets the listings
+scripts/tests/auras.test.mjs|a client that rejects every aura filter word keeps the filter and shows no auras
+scripts/tests/auras.test.mjs|a client that won't drive the dispel highlight never shows it uncolored
+scripts/tests/auras.test.mjs|a container the client refuses after the probe retires the engine for the session
+scripts/tests/auras.test.mjs|a raid tile whose second container is refused keeps one dispel highlight
+scripts/tests/auras.test.mjs|aura colors and stacks when the client hides the values
+scripts/tests/auras.test.mjs|aura container timer options a client refuses, and the engine probe
+scripts/tests/auras.test.mjs|aura containers on the client's engine
+scripts/tests/auras.test.mjs|aura containers without the engine (the fallback)
+scripts/tests/auras.test.mjs|aura duration objects and power colors the theme does not name
+scripts/tests/auras.test.mjs|aura filter words this client rejects are dropped for the session
+scripts/tests/auras.test.mjs|aura filters pass through on a client without the aura read
+scripts/tests/auras.test.mjs|fallback containers skip a UNIT_AURA that changes nothing they show, and re-anchor only when what shows moves
+scripts/tests/auras.test.mjs|raid auras listen for UNIT_AURA only on the fallback, where they paint the highlight themselves
+scripts/tests/auras.test.mjs|raid indicators
+scripts/tests/auras.test.mjs|raid indicators on the fallback
+scripts/tests/auras.test.mjs|raid tile zones never overlap
+scripts/tests/auras.test.mjs|raid tiles built after the engine retires get the fallback highlight
+scripts/tests/auras.test.mjs|target and focus auras
+scripts/tests/auras.test.mjs|the engine probe refuses an AuraContainer without AddAuraGroup
+scripts/tests/auras.test.mjs|the raid dispel highlight reads through the stripped filter on the fallback
+scripts/tests/auras.test.mjs|your buffs and debuffs replace the game's, with weapon enchants in front
+scripts/tests/auras.test.mjs|your buffs: the enchant switch, and clients without enchant info
+scripts/tests/auras.test.mjs|your buffs: the game's external defensives and deadly debuff frames go with its buff frames
+scripts/tests/bagsections.test.mjs|a clear gap above each section header, a small one under it; sections side by side keep theirs
+scripts/tests/bagsections.test.mjs|a client without the bag window's layout calls keeps the plain combined bag
+scripts/tests/bagsections.test.mjs|a switch under Bars, map, chat gives back the plain combined bag at once, and the sections again
+scripts/tests/bagsections.test.mjs|an item the client hasn't loaded yet waits under Other and moves when its info arrives
+scripts/tests/bagsections.test.mjs|bag sections follow what you carry; the same items move nothing
+scripts/tests/bagsections.test.mjs|in combat the bag keeps its layout and catches up after; opened in combat it shows the plain grid until then
+scripts/tests/bagsections.test.mjs|quality borders, search dimming and item tooltips still work inside sections
+scripts/tests/bagsections.test.mjs|the bag's slots, headers, search row and money line sit the padding inside the window, in bags of every size
+scripts/tests/bagsections.test.mjs|the combined bag in sections: each kind of item under its header, packed side by side
+scripts/tests/bagsections.test.mjs|the money line keeps the padding when the game puts it back, and sits on the currency tracker when that shows
+scripts/tests/bagsections.test.mjs|the window grows to fit; on a 768 px screen at UI scale 1 the game keeps even a full bag on screen
+scripts/tests/bagsections.test.mjs|with sections off the game's plain grid is as it was, and Sort fits beside the search box there too
+scripts/tests/bars.test.mjs|Hidden bar bindings stay intact
+scripts/tests/bars.test.mjs|In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone
+scripts/tests/bars.test.mjs|a dropped spell named by GetSpellInfo
+scripts/tests/bars.test.mjs|a moved action bar keeps its spot until reset
+scripts/tests/bars.test.mjs|a paged bar 1 button's tooltip is for the slot it shows now, not its action attribute
+scripts/tests/bars.test.mjs|action bar cooldown numbers in the theme's font
+scripts/tests/bars.test.mjs|action bar dragging
+scripts/tests/bars.test.mjs|action bar empty slots hide until the grid shows
+scripts/tests/bars.test.mjs|action bar layout: per-bar buttons, rows and size, deferred in combat
+scripts/tests/bars.test.mjs|action bar paging and events
+scripts/tests/bars.test.mjs|action bar stack follows button size and rows
+scripts/tests/bars.test.mjs|action bar visibility: each mode's state driver and mouseover alpha
+scripts/tests/bars.test.mjs|action bars
+scripts/tests/bars.test.mjs|action bars stack with bar 1 on top
+scripts/tests/bars.test.mjs|action button cooldowns, the C_ActionBar API and range polling
+scripts/tests/bars.test.mjs|action buttons cast on yourself, your focus or the mouseover with the game's modifiers
+scripts/tests/bars.test.mjs|action buttons show their action's tooltip on hover and hide it on leave
+scripts/tests/bars.test.mjs|an old profile keeps its right-edge bar on Always; a fresh enable gets On mouseover
+scripts/tests/bars.test.mjs|bag, equipment, form, macro and charge events refresh the buttons they change
+scripts/tests/bars.test.mjs|bar 1 pages like the game's main bar: a Shift+number page wins over a stance, form or stealth bar
+scripts/tests/bars.test.mjs|bar 1 pages without secure snippets: the driver sets the bar's own actionpage, the buttons read it
+scripts/tests/bars.test.mjs|bar 1 with secure snippets keeps the snippet paging
+scripts/tests/bars.test.mjs|bar 1 without secure snippets, found out after a login in a fight: the snippet paging is undone when it ends
+scripts/tests/bars.test.mjs|counts show on a client without the deprecated GetActionCount (C_ActionBar.GetActionUseCount)
+scripts/tests/bars.test.mjs|empty slots take no mouse, so blank bar space passes clicks through; a drag turns it back on
+scripts/tests/bars.test.mjs|in combat an empty slot's mouse waits for the fight to end, one entry per button, the last state winning
+scripts/tests/bars.test.mjs|keybind mode: hover a button and press a key to bind it; a modifier alone waits; Escape leaves
+scripts/tests/bars.test.mjs|keybind mode: out of combat only, ends when a fight starts; from the options; needs the bars
+scripts/tests/bars.test.mjs|keybind mode: the mouse's side buttons and wheel bind too; Backspace clears; a taken key says whose it was
+scripts/tests/bars.test.mjs|mouseover bars are revealed during a drag and restored after
+scripts/tests/bars.test.mjs|reagent and item counts show even at 0 and 1
+scripts/tests/bars.test.mjs|the bottom stack follows per-bar size and rows, live
+scripts/tests/bars.test.mjs|the game's hidden action buttons are silenced, and one cooldown event refreshes the sweeps
+scripts/tests/bars.test.mjs|the mouseover fade still follows hovering an action button
+scripts/tests/bars.test.mjs|the right-edge bars start off and show on mouseover when turned on
+scripts/tests/broker.test.mjs|broker strip: hover shows the feed's tooltip, and clicks reach it
+scripts/tests/broker.test.mjs|broker strip: picked feeds show with their text and icon, and follow their changes
+scripts/tests/broker.test.mjs|broker strip: without LibDataBroker it hides, and joins when an addon loads it; options list the feeds
+scripts/tests/casts.test.mjs|a channel the client stops with an interrupter flashes red, one it lets run out flashes green
+scripts/tests/casts.test.mjs|a finished cast fades in 0.35 s, and in 0.15 s in combat
+scripts/tests/casts.test.mjs|cast bar flashes on finish and interrupt
+scripts/tests/casts.test.mjs|cast bars
+scripts/tests/casts.test.mjs|cast bars ask the client for their own units' casts only
+scripts/tests/casts.test.mjs|cast bars read a cast as values and write the seconds left only when they read differently
+scripts/tests/casts.test.mjs|cast bars: spark, seconds left, latency and the uninterruptible edge
+scripts/tests/casts.test.mjs|cast timing from the client's duration object
+scripts/tests/casts.test.mjs|on the client's timer a channel empties and a cast fills, as without it
+scripts/tests/casts.test.mjs|the game's crafting cast bar stays, drawn in the theme, through every cast
+scripts/tests/chatwatch.test.mjs|chat watch: /vg watch adds, lists, removes and clears; at most 20 phrases of 40 characters
+scripts/tests/chatwatch.test.mjs|chat watch: a line linking an item with an auction price shows it beside the line, the line untouched
+scripts/tests/chatwatch.test.mjs|chat watch: a watched phrase in Trade rings the whisper sound and shows a toast with the sender
+scripts/tests/chatwatch.test.mjs|chat watch: another module's alert uses the same toast and sound, even with Chat watch off; its click runs its own action
+scripts/tests/chatwatch.test.mjs|chat watch: hidden chat (dungeons, raids, encounters) is skipped without an error
+scripts/tests/chatwatch.test.mjs|chat watch: matching ignores case and links' codes; unticked channels are not watched
+scripts/tests/chatwatch.test.mjs|chat watch: no chat filter is added, and the module off listens to nothing
+scripts/tests/chatwatch.test.mjs|chat watch: one alert per line, and per sender and phrase every 30 s
+scripts/tests/chatwatch.test.mjs|chat watch: the options add a phrase from a dialog, list a Remove button per phrase, and switch channels
+scripts/tests/chatwatch.test.mjs|chat watch: the sound and the toast can each be switched off
+scripts/tests/chatwatch.test.mjs|chat watch: your own lines don't ring; clicking the toast whispers the sender
+scripts/tests/clickcast.test.mjs|bindings carry spell ids and ranks, move, copy, export and import
+scripts/tests/clickcast.test.mjs|sharing: export, import, copy to another spec, and the combat notice
+scripts/tests/clickcast.test.mjs|the grid picks spells from the spellbook, with ranks, drops and clears
+scripts/tests/clickcast.test.mjs|the minus key can be a hover key: its name reads, with or without a modifier
+scripts/tests/clickcast.test.mjs|the picker's actions, macros and typed names; the extra modifier columns
+scripts/tests/clickcast.test.mjs|the spell catalog folds ranks and sorts the spellbook into healer groups
+scripts/tests/clickcast.test.mjs|the spell catalog listens for new spells by an event Forever has, so login reports no error
+scripts/tests/clickcast.test.mjs|the starter layout, hover keys with collision notes, and the test tile
+scripts/tests/clickcast.test.mjs|without specializations the page speaks of this character
+scripts/tests/clicks.test.mjs|click casting
+scripts/tests/clicks.test.mjs|click-casting validation, labels and unit frames
+scripts/tests/clicks.test.mjs|the game's click bindings: Vanguard's own step aside out of combat, and come back
+scripts/tests/core.test.mjs|/vg errors: counts, build, interface version and the aura backend, then clear
+scripts/tests/core.test.mjs|/vg errors: what Vanguard caught this session
+scripts/tests/core.test.mjs|/vg frame: a frame's state, anchors and parents, and with deep its textures and child frames
+scripts/tests/core.test.mjs|/vg perf: CPU and memory with the change since the last report, the busiest functions, profiling and the watch
+scripts/tests/core.test.mjs|/vg perf: says what it can without the game's counters
+scripts/tests/core.test.mjs|/vg stock with the Errands module off says so instead of failing
+scripts/tests/core.test.mjs|Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line
+scripts/tests/core.test.mjs|WoW Forever client: interface, hidden auras, no specializations
+scripts/tests/core.test.mjs|a damaged account file: a profile that isn't a table, or a name that isn't a name, is dropped at load
+scripts/tests/core.test.mjs|a failing first upgrade step on an unstamped file is retried at the next login
+scripts/tests/core.test.mjs|a retail client is not WoW Forever and keeps its aura state readable
+scripts/tests/core.test.mjs|a session: what you set in one login comes back in the next
+scripts/tests/core.test.mjs|caught errors: a game handler that fails or reports again cannot loop, and an empty handler slot
+scripts/tests/core.test.mjs|caught errors: an after-combat update that fails is reported and the rest still run
+scripts/tests/core.test.mjs|caught errors: one entry per distinct error, counted, with its stack, told once
+scripts/tests/core.test.mjs|caught errors: the stack is read while the failing frames are still live
+scripts/tests/core.test.mjs|caught errors: without debugstack or an error handler (this stub), and a hidden error value
+scripts/tests/core.test.mjs|client capability probe: every flag off, every module still enables
+scripts/tests/core.test.mjs|client capability probe: in a fight the aura container waits; first use probes early
+scripts/tests/core.test.mjs|client capability probe: what this client has, and /vg status says so
+scripts/tests/core.test.mjs|combat queue
+scripts/tests/core.test.mjs|combat queue: a key replaces its entry, in place
+scripts/tests/core.test.mjs|events unsubscribe and a delivered event with no listeners
+scripts/tests/core.test.mjs|events: Blizzard's CallErrorHandler is preferred, and called straight from the failing stack's handler
+scripts/tests/core.test.mjs|events: a broken game error handler cannot lose the record
+scripts/tests/core.test.mjs|events: a game handler that fails inside a failing handler keeps the record, loses nothing after, and is not told twice
+scripts/tests/core.test.mjs|events: a handler that throws does not stop the others, and the error is kept with its stack
+scripts/tests/core.test.mjs|events: on a client without debugstack or an error handler, the error is still kept
+scripts/tests/core.test.mjs|modules
+scripts/tests/core.test.mjs|modules: a module whose saved settings fail to upgrade is reported, and the modules after it still load
+scripts/tests/core.test.mjs|pins: a throwing apply is reported and the pin keeps working
+scripts/tests/core.test.mjs|pins: any number of game moves in combat leave one pending pin
+scripts/tests/core.test.mjs|reload buttons: a /reload macro overlay, since the Forever client blocks ReloadUI()
+scripts/tests/core.test.mjs|saved variables
+scripts/tests/core.test.mjs|secret checks: the client's check is chosen once and called bare, with no pcall per value
+scripts/tests/core.test.mjs|secure snippets: a client that compiles them keeps hover keys and says so in /vg status
+scripts/tests/core.test.mjs|secure snippets: a client whose snippets fail to compile turns hover keys off, once, and keeps mouse bindings
+scripts/tests/core.test.mjs|secure snippets: a snippet that runs but writes nothing, and a client without the handler API, count as no
+scripts/tests/core.test.mjs|secure snippets: logging in during a fight defers the probe, and it runs before click casting applies
+scripts/tests/core.test.mjs|secure snippets: what waits for the probe's answer runs once, after the fight, and one that fails does not stop the rest
+scripts/tests/core.test.mjs|settings tables are filled once per profile and key
+scripts/tests/core.test.mjs|slash
+scripts/tests/core.test.mjs|slash commands for frames, accent, grid, theme, modules, skins, profile and spec
+scripts/tests/core.test.mjs|smoke-test checklist: every /vg command it names is real
+scripts/tests/core.test.mjs|smoke-test checklist: every step has its Do, Expect and paste lines
+scripts/tests/core.test.mjs|the account file's version is read and upgraded
+scripts/tests/core.test.mjs|the error badge: a count on the addons button and in the options footer, gone at zero
+scripts/tests/core.test.mjs|unit events: a failing handler is reported, an event the client lacks is skipped, and an old client is filtered here
+scripts/tests/core.test.mjs|unit events: a subscription hears only the units it asked the client for, and can be pointed at others
+scripts/tests/core.test.mjs|wrong-typed saved values are replaced by their defaults
+scripts/tests/data.test.mjs|data bars
+scripts/tests/docks.test.mjs|boss docks: BigWigs gets directions, neither loaded says so, and the module off says so
+scripts/tests/docks.test.mjs|boss docks: the options button shows only while a boss mod is loaded
+scripts/tests/docks.test.mjs|boss docks: two movable spots, and /vg dock lines up DBM's bars with them
+scripts/tests/errorrail.test.mjs|a caught error carries its stack, and the guard's failure message prints it
+scripts/tests/errorrail.test.mjs|a throwing OnClick callback is reported under its click label
+scripts/tests/errorrail.test.mjs|a throwing SetPostItem hook is reported and the Post path goes on
+scripts/tests/errorrail.test.mjs|a throwing timer callback is reported under its timer label
+scripts/tests/errorrail.test.mjs|an entry ns.ClearErrors removed is still judged
+scripts/tests/errorrail.test.mjs|ns.Guard hands a non-function back, passes arguments through and returns nothing
+scripts/tests/errorrail.test.mjs|the aura-container fallback notice is the one AURA_FALLBACK names
+scripts/tests/fallbacks.test.mjs|a mover dropped before the client has laid it out keeps the point the client reports
+scripts/tests/fallbacks.test.mjs|raid status reads nothing from a client without the API
+scripts/tests/fallbacks.test.mjs|the XP bar hides at the cap on a client with only IsXPUserDisabled, and with no XP to earn
+scripts/tests/fallbacks.test.mjs|without issecretvalue nothing is secret, and a failing after-combat update is reported while the rest run
+scripts/tests/feedback.test.mjs|/vg feedback opens the form on a bug, with the summary focused and the bug fields showing
+scripts/tests/feedback.test.mjs|Make report says what the site would, in its words, and keeps the form open
+scripts/tests/feedback.test.mjs|Tab runs through the boxes of the kind showing, Shift-Tab back, round the ends
+scripts/tests/feedback.test.mjs|a bug's block carries the kind, title, texts and the /vg report, color codes gone
+scripts/tests/feedback.test.mjs|a feature's block carries the area, a module's key or one of the site's general choices
+scripts/tests/feedback.test.mjs|the options window's last page, Feedback, opens the form on a bug or a feature and copies a plain report
+scripts/tests/fights.test.mjs|20 fights at most: the oldest goes
+scripts/tests/fights.test.mjs|a client without the damage meter: the module loads, records nothing and shows nothing
+scripts/tests/fights.test.mjs|a client without timers reads the fight as combat ends
+scripts/tests/fights.test.mjs|a fight is recorded half a second after combat ends, with its length, your DPS, place and the list's size
+scripts/tests/fights.test.mjs|a hidden DPS is kept as an empty slot, and the tallest bar ignores it
+scripts/tests/fights.test.mjs|fights under two seconds, hidden lengths and fights in combat are skipped
+scripts/tests/fights.test.mjs|the strip is off by default; switched on, the latest bar is in the accent and heights follow the DPS
+scripts/tests/fights.test.mjs|the strip's visibility setting hides it, and an empty history shows nothing
+scripts/tests/fights.test.mjs|the tooltip and /vg fights list the fights, newest first
+scripts/tests/frames.test.mjs|brass art: a calmer HUD, soft sparks, corner diamonds and role marks
+scripts/tests/frames.test.mjs|frames pass: bar texture, smoothing, raid style, shields, glows
+scripts/tests/frames.test.mjs|proc glow on action buttons
+scripts/tests/healing.test.mjs|buff watch: one aura pass per aura change, nothing on health, the names and known spells kept
+scripts/tests/healing.test.mjs|heal prediction, aggro, buff watch
+scripts/tests/healing.test.mjs|healing fallbacks and options
+scripts/tests/inventory.test.mjs|inventory: /vg inventory lists, forgets one, or forgets them all
+scripts/tests/inventory.test.mjs|inventory: a client that can't say your name or read bags stores nothing and breaks nothing
+scripts/tests/inventory.test.mjs|inventory: a crowd of characters is cut to six names
+scripts/tests/inventory.test.mjs|inventory: item tooltips list who else has it, in their class color, then the total
+scripts/tests/inventory.test.mjs|inventory: the bags are read at login and half a second after they change, the bank while it's open
+scripts/tests/masque.test.mjs|with Masque loaded, action, pet and stance buttons and aura icons go to Masque groups, without Vanguard's skin
+scripts/tests/masque.test.mjs|without Masque (or without LibStub) nothing changes
+scripts/tests/more.test.mjs|/vg factionart: which of the game's own faction pictures the client has
+scripts/tests/more.test.mjs|Edit Mode shows Vanguard's handles too, with a note under its window
+scripts/tests/more.test.mjs|Edit Mode: a game frame Vanguard hides or replaces gets no handle, every other system keeps its own
+scripts/tests/more.test.mjs|Round Four leftovers: menu glyphs, a target diamond, raid names above incoming heals
+scripts/tests/more.test.mjs|Train all at a trainer: learns what you can afford, one at a time
+scripts/tests/more.test.mjs|Train all in one click: no purchase twice, the budget counted before the game answers, a list that re-indexes
+scripts/tests/more.test.mjs|a Sort button on the combined bag, where the client can sort
+scripts/tests/more.test.mjs|a Vanguard button on the game menu opens the options
+scripts/tests/more.test.mjs|a context overlay is left alone so the game's search dimming shows
+scripts/tests/more.test.mjs|at a merchant: repair with your own gold, sell junk
+scripts/tests/more.test.mjs|auto-accept: summons, resurrections and duels, each off until switched on
+scripts/tests/more.test.mjs|bag and menu bar: each bag's slot shows how full it is, the backpack how many slots are free
+scripts/tests/more.test.mjs|bag and menu bar: every row's anchor has a size, so the bars get a rect to draw in
+scripts/tests/more.test.mjs|bag and menu bar: line icons are 20 screen pixels on their slot, accent under the mouse
+scripts/tests/more.test.mjs|bag and menu bar: no re-fit while pins are paused or in combat, and one queued entry per bar
+scripts/tests/more.test.mjs|bag and menu bar: one mover keeps the menu strip's saved spot; the bag strip's spot and the line icons are dropped once
+scripts/tests/more.test.mjs|bag and menu bar: slots are 24 screen pixels wide, take the clicks, and light up under the mouse only
+scripts/tests/more.test.mjs|bag and menu bar: the bags and menu the game hides on an input switch come back, after combat
+scripts/tests/more.test.mjs|bag and menu bar: the bar hugs its slots, one size, one baseline per row, one pair of edges
+scripts/tests/more.test.mjs|bag and menu bar: the bars' own frame art is hidden, the key ring gets a full slot and no fill
+scripts/tests/more.test.mjs|bag and menu bar: the game's menu icons are drawn larger than their slots, so the icon fills the slot, uncropped
+scripts/tests/more.test.mjs|bag and menu bar: the rows re-fit when the game lays the bars out or resizes them
+scripts/tests/more.test.mjs|bags
+scripts/tests/more.test.mjs|bags and bank: item quality borders, the search boxes and the bank in the theme
+scripts/tests/more.test.mjs|bags: each slot is skinned once, the window on show, a border only when its color changes
+scripts/tests/more.test.mjs|bags: the combined CVar is set once per change of the setting, and given back when the module is switched off
+scripts/tests/more.test.mjs|boss frames: five in a column at the top left, the game's put away
+scripts/tests/more.test.mjs|boss frames: the game's holder is put away only out of combat
+scripts/tests/more.test.mjs|character pane durability, the mail's Open All button
+scripts/tests/more.test.mjs|chat
+scripts/tests/more.test.mjs|chat art is hidden so the game's mouseover fade cannot bring it back
+scripts/tests/more.test.mjs|chat extras: web links you can copy, and a Copy button for the recent chat
+scripts/tests/more.test.mjs|chat is a mover: placed once, sized once, kept where the player put it
+scripts/tests/more.test.mjs|chat: Ctrl + mouse wheel jumps to the top or bottom
+scripts/tests/more.test.mjs|chat: short channel names, live, never reading hidden lines
+scripts/tests/more.test.mjs|chat: the game's timestamps and class-colored names, from /vg
+scripts/tests/more.test.mjs|faster auto-loot: every unlocked slot at once while the game auto-loots, off until switched on
+scripts/tests/more.test.mjs|flight timer: the first flight is timed, the next counts down
+scripts/tests/more.test.mjs|flight timer: the taxi check runs only from picking a flight until it lands
+scripts/tests/more.test.mjs|game alerts: Hardcore death notices take the theme font and red; a reused line gets the game's font back
+scripts/tests/more.test.mjs|game alerts: a rare nearby is announced with a sound and a chat line, out of combat, once (off until switched on)
+scripts/tests/more.test.mjs|game alerts: a talking head that loads later is restyled once when its part of the game loads
+scripts/tests/more.test.mjs|game alerts: loss of control and the talking head, styled and placed (or hidden)
+scripts/tests/more.test.mjs|game alerts: the loss of control band stays hidden when the game's animation resets its alpha
+scripts/tests/more.test.mjs|game menu button: falls back, or goes without what the menu lacks
+scripts/tests/more.test.mjs|game menu: buttons made after the skin ran are skinned once, Vanguard's matches, the header plate is gone
+scripts/tests/more.test.mjs|game windows in the Vanguard look: framed windows, popups, breath bar, and windows that load later
+scripts/tests/more.test.mjs|game windows registry: a window added under a group is skinned, its group's switch keeps it the game's
+scripts/tests/more.test.mjs|game windows registry: parts and named art faded, missing ones skipped
+scripts/tests/more.test.mjs|game windows: one skin that fails is reported and the other windows, and those that load later, are still skinned
+scripts/tests/more.test.mjs|game windows: quest and gossip text stays readable on the dark panel
+scripts/tests/more.test.mjs|game windows: switched off they stay the game's, and missing windows are fine
+scripts/tests/more.test.mjs|game windows: the quest and gossip windows are skinned only when Vanguard's quest dialog is off
+scripts/tests/more.test.mjs|keep stocked: /vg stock sets the list, a merchant tops you up
+scripts/tests/more.test.mjs|keep stocked: an item sold in stacks (ammo) is bought in whole stacks
+scripts/tests/more.test.mjs|main tank frames without secure snippets: the header copies the clicks; tiles are sized and set up out of combat
+scripts/tests/more.test.mjs|main tank frames: the raid's main tanks and assists, with what each is targeting
+scripts/tests/more.test.mjs|menu strip: set to mouseover, shown by the mouse entering and leaving it and its buttons, with nothing polling
+scripts/tests/more.test.mjs|menu strip: the game's tracker is pinned into the spot only while Vanguard's own tracker is off
+scripts/tests/more.test.mjs|minimap
+scripts/tests/more.test.mjs|minimap coordinates: asked again only after the player moves
+scripts/tests/more.test.mjs|minimap drawer: addon buttons gathered beside the map
+scripts/tests/more.test.mjs|minimap with no position, chat window hooks, and short numbers
+scripts/tests/more.test.mjs|minimap: the game's emptied cluster takes no mouse and its zone button is hidden
+scripts/tests/more.test.mjs|more game windows: friends, books and letters, and windows that load later
+scripts/tests/more.test.mjs|nameplates: a gold ! by units your quests need
+scripts/tests/more.test.mjs|party pets and targets: small tiles above the party, only in a party, when switched on
+scripts/tests/more.test.mjs|quest automation: accept, turn in, best reward, skip chatter; Shift skips it
+scripts/tests/more.test.mjs|quest bursts: many quest log updates in one frame rebuild the tracker and the open log once
+scripts/tests/more.test.mjs|quest dialog: a long greeting or quest text scrolls, a short one does not
+scripts/tests/more.test.mjs|quest dialog: gossip lines, quest details, rewards and keys
+scripts/tests/more.test.mjs|quest dialog: hiding the whole UI keeps the conversation open; closing it ends it
+scripts/tests/more.test.mjs|quest dialog: late item details redraw the page; spell and currency rewards
+scripts/tests/more.test.mjs|quest dialog: sized to its page, above the cast bars, cards under the text, a quest mark without a portrait
+scripts/tests/more.test.mjs|quest dialog: turning in, picking a reward, closing, and handing the windows back
+scripts/tests/more.test.mjs|quest log: a long list and long quest text scroll, a short one does not
+scripts/tests/more.test.mjs|quest log: keys follow rebinding, /vg quests, closing, and switched off
+scripts/tests/more.test.mjs|quest log: the game's quest log button opens Vanguard's log instead of the game's
+scripts/tests/more.test.mjs|quest log: zones, a quest's details, and its buttons
+scripts/tests/more.test.mjs|quest tracker: an item shows its cooldown and range, and the game's tooltip
+scripts/tests/more.test.mjs|quest tracker: each quest keeps its own item button; in combat counts update and the items wait
+scripts/tests/more.test.mjs|quest tracker: nearest first, collapsing, too many quests, and switched off
+scripts/tests/more.test.mjs|quest tracker: the nearest-first sort ticks only while that order is on
+scripts/tests/more.test.mjs|quest tracker: watched quests with levels, objectives and items
+scripts/tests/more.test.mjs|quest tracker: with Questie loaded, Questie's tracker shows instead unless Vanguard's is picked
+scripts/tests/more.test.mjs|raid frames: groups as rows, and the main tank's shield
+scripts/tests/more.test.mjs|raid tools: calls, target icons and world markers for the leader and assistants
+scripts/tests/more.test.mjs|the AFK screen fades in over 0.4 s and, when a fight starts, out in 0.15 s
+scripts/tests/more.test.mjs|the AFK screen's backdrop: your faction's passage under the card, in its heading font and crest color
+scripts/tests/more.test.mjs|the AFK screen: a dimmed screen and a card while you're away
+scripts/tests/more.test.mjs|the AFK screen: clicks, keys and fights put it away; what the client can't say is left out
+scripts/tests/more.test.mjs|the bag's Sort button sits beside the search box and the game's own sort button stays hidden
+scripts/tests/more.test.mjs|the error line drops what the action bar already shows, and the rest takes the game's own path
+scripts/tests/more.test.mjs|the faction look: your faction's crest and heading font, and Off
+scripts/tests/more.test.mjs|the game's extras: a protected frame is hidden once, out of combat, with no Show hook
+scripts/tests/more.test.mjs|the game's extras: duplicates hidden, minimap buttons on the map, menu strip, quest tracker
+scripts/tests/more.test.mjs|the game's extras: each switch off leaves the game's frame alone, and missing frames are fine
+scripts/tests/more.test.mjs|the game's tools: Cooldown Manager and damage meter styled and placed, standing aside for Edit Mode
+scripts/tests/more.test.mjs|the game's tools: a switch shows the Cooldown Manager's essential row between the frames, timers in the theme font
+scripts/tests/more.test.mjs|the game's tools: one hint when the Cooldown Manager is off
+scripts/tests/more.test.mjs|the info strip under the minimap
+scripts/tests/more.test.mjs|the info strip's fight reads, shared with Fight history: your line and the fight's length
+scripts/tests/more.test.mjs|the info strip: XP and gold per hour, and time to level
+scripts/tests/more.test.mjs|the info strip: a warlock's soul shards, across the bags and the reagent bag
+scripts/tests/more.test.mjs|the info strip: ammo, and clients that can't answer
+scripts/tests/more.test.mjs|the info strip: your DPS in the last fight, from the game's damage meter
+scripts/tests/more.test.mjs|the info strip: your place in the last fight's DPS, in a group
+scripts/tests/more.test.mjs|the quest tracker in the Vanguard look: flat headers, brass lines, theme arrows and font
+scripts/tests/motion.test.mjs|motion: fades, reduce motion, sounds
+scripts/tests/motion.test.mjs|motion: no fade lasts more than 0.15 s in combat
+scripts/tests/motion.test.mjs|motion: the alert sound is the game's whisper sound, and Interface sounds turns it off
+scripts/tests/movers.test.mjs|a damaged saved position (a hand-edited profile string) falls back to the default spot instead of failing the module
+scripts/tests/movers.test.mjs|a mover's watcher hears when that mover is moved or reset, and only then
+scripts/tests/movers.test.mjs|layout
+scripts/tests/movers.test.mjs|mover coordinates with no handle
+scripts/tests/movers.test.mjs|movers
+scripts/tests/movers.test.mjs|per-frame scale and opacity: saved with the position, anchored where it was, reset to 1
+scripts/tests/movers.test.mjs|per-frame scale: dragging a scaled handle, and combat
+scripts/tests/options.test.mjs|a note row wraps to its card and the row grows to fit; a dropdown's choice stays on one line, cut at the arrow
+scripts/tests/options.test.mjs|bags: the item skin is shared with other windows, once per button
+scripts/tests/options.test.mjs|choice fallback, key capture and the mouse wheel
+scripts/tests/options.test.mjs|options slider, search, scroll, special bars and profile switch
+scripts/tests/options.test.mjs|options window
+scripts/tests/options.test.mjs|options window: nav, search, controls, footer
+scripts/tests/options.test.mjs|options: Bar 1's Show when chips sit inside the card, inset like every other row's control
+scripts/tests/options.test.mjs|options: Up and Down walk the pages, Tab the rows, Enter presses one; other keys and typing go on to the game
+scripts/tests/options.test.mjs|options: a Width the presets don't list shows its value as a dropdown; a preset stays as segments
+scripts/tests/options.test.mjs|options: a changed setting gets a dot that puts the default back
+scripts/tests/options.test.mjs|options: a dot on the nav marks each page with changed settings, as rows change and are put back
+scripts/tests/options.test.mjs|options: a frame's scale and opacity from the Layout card; a long menu scrolls
+scripts/tests/options.test.mjs|options: a switch for each group of game windows, under Bars, map, chat
+scripts/tests/options.test.mjs|options: profiles in the window
+scripts/tests/options.test.mjs|options: search jumps to the row, and the page edges fade
+scripts/tests/options.test.mjs|options: search reads each page's rows once per opening; a rebuilt page leaves no orphan rows
+scripts/tests/options.test.mjs|options: the General page's sample unit frame and button follow the accent, font, text size and bar texture as they change
+scripts/tests/options.test.mjs|options: the Healing page opens and saves its buff list with the raid heals module switched off
+scripts/tests/options.test.mjs|options: the mouse wheel over a slider, a choice or a switch scrolls the page and never changes the value
+scripts/tests/options.test.mjs|options: the scroll thumb drags its page, and the copy box opens above the window
+scripts/tests/options.test.mjs|text that fits: chat size, tooltip fonts, the status line, name width
+scripts/tests/plates.test.mjs|NP.RefreshAll repaints every plate on screen from the settings as they are now
+scripts/tests/plates.test.mjs|a fallback debuff row put away after a fight is reused by the next plate drawn in one
+scripts/tests/plates.test.mjs|a nameplate first drawn in combat gets the client's aura container after the fight
+scripts/tests/plates.test.mjs|a plate's click area and stacking box are our name and bar, padded, whatever the client's own frame sets
+scripts/tests/plates.test.mjs|a player's plate first drawn in combat gets its buff row on the client's container after the fight
+scripts/tests/plates.test.mjs|each nameplate asks the client for its own unit's events, once
+scripts/tests/plates.test.mjs|nameplate frames are built ahead at login, so a pull of 30 plates builds none
+scripts/tests/plates.test.mjs|nameplates
+scripts/tests/plates.test.mjs|nameplates repaint only what an event changed, and the border only when the target or the scale does
+scripts/tests/plates.test.mjs|nameplates show levels in the difficulty color
+scripts/tests/plates.test.mjs|player plates show defensives, important buffs and yours right of the bar; other plates none
+scripts/tests/plates.test.mjs|the plate under the mouse gets a faint wash until the mouse leaves its unit
+scripts/tests/plates.test.mjs|your target's plate glows 2 px in the accent, names are outlined world text, the cast icon is as tall as its bar
+scripts/tests/prep.test.mjs|prep: /vg prep want sets the wanted amounts; the options page has the section
+scripts/tests/prep.test.mjs|prep: Keep-stocked items under their count, and worn gear, are on the card
+scripts/tests/prep.test.mjs|prep: a client without the bag, item or instance calls checks what it can
+scripts/tests/prep.test.mjs|prep: a hidden count skips its row without an error
+scripts/tests/prep.test.mjs|prep: a ready check shows the card, packed or not, unless switched off
+scripts/tests/prep.test.mjs|prep: class reagents follow your level
+scripts/tests/prep.test.mjs|prep: food and drink, bandages and potions are counted by their item subclass
+scripts/tests/prep.test.mjs|prep: low ammo and soul shards show as have / want in red
+scripts/tests/prep.test.mjs|prep: nothing is checked in combat, and /vg prep waits for the fight to end
+scripts/tests/prep.test.mjs|prep: nothing short keeps the card away at the door; /vg prep says everything's packed
+scripts/tests/prep.test.mjs|prep: once per visit at the door, gone after Hide after or the close button
+scripts/tests/profiles.test.mjs|Copy here while a switch waits copies into the profile used after the reload
+scripts/tests/profiles.test.mjs|a frame's scale and opacity travel with the profile: export, import and a staged switch
+scripts/tests/profiles.test.mjs|a profile deleted on another character falls back to Default, not back empty
+scripts/tests/profiles.test.mjs|a profile string with an unterminated quote
+scripts/tests/profiles.test.mjs|a staged profile switch applies at the next load, and until then the running profile is the one edited
+scripts/tests/profiles.test.mjs|a staged profile that no longer exists is dropped when it would be applied
+scripts/tests/profiles.test.mjs|export and import
+scripts/tests/profiles.test.mjs|profile copy, empty export and a taken import name
+scripts/tests/profiles.test.mjs|profile management
+scripts/tests/profiles.test.mjs|profile strings
+scripts/tests/profiles.test.mjs|profile strings carry the UI scale and screen; importing one asks whether to use its UI scale
+scripts/tests/profiles.test.mjs|profile strings keep big whole numbers
+scripts/tests/profiles.test.mjs|spec profiles
+scripts/tests/profiles.test.mjs|strings and profiles from before the rename (ForeverUI 0.3.0)
+scripts/tests/profiles.test.mjs|the Edit Mode layout goes with the profile: remembered, exported, and switched to when the profile loads
+scripts/tests/profiles.test.mjs|the Edit Mode layout: one this account lacks, combat, and a client without Edit Mode
+scripts/tests/profiles.test.mjs|the spec change events stage the spec's profile, whatever they pass
+scripts/tests/raid.test.mjs|a unit event reaches only the tile showing that unit
+scripts/tests/raid.test.mjs|raid bursts: a roster burst is one refresh of every tile; a new target repaints edges only
+scripts/tests/raid.test.mjs|raid frames
+scripts/tests/raid.test.mjs|raid frames with secure snippets keep the init snippet
+scripts/tests/raid.test.mjs|raid frames without secure snippets: the header copies the clicks; buttons are sized and set up out of combat
+scripts/tests/raid.test.mjs|raid frames: a dark style chosen before 'look' carries over
+scripts/tests/raid.test.mjs|raid tiles: a class-colored top line in the softened look, and missing health that stays readable on a 40-player grid
+scripts/tests/raid.test.mjs|raid tiles: each event refreshes only its own part of the tile
+scripts/tests/raid.test.mjs|raid tools: a burst of roster events in combat queues one update of the bar, not one per event
+scripts/tests/raid.test.mjs|the hidden default raid frames are silenced
+scripts/tests/raid.test.mjs|the raid header is configured before the first precreate shows it, and stays hidden if the driver hid it
+scripts/tests/raid.test.mjs|without snippets the header is configured before each precreate, and the one that shows it again leaves it as it was
+scripts/tests/range.test.mjs|range tint
+scripts/tests/report.test.mjs|/vg report lists the caught errors, newest last, with their stacks and no color codes
+scripts/tests/report.test.mjs|/vg report names the modules turned off and the skinned addons, with any that are off or failed
+scripts/tests/report.test.mjs|/vg report opens one block with the markers and what /vg status says
+scripts/tests/report.test.mjs|/vg report stays under 8,000 characters: stacks go first, then the oldest errors
+scripts/tests/report.test.mjs|/vg status and /vg errors are unchanged by the report
+scripts/tests/scenarios.test.mjs|/vg unlock waits for combat to end, then shows the movers
+scripts/tests/scenarios.test.mjs|a buff on the player shows its icon in the player auras, and goes with the buff
+scripts/tests/scenarios.test.mjs|a tracked quest lists its title and objectives
+scripts/tests/scenarios.test.mjs|an action slot shows its spell's icon and cooldown sweep
+scripts/tests/scenarios.test.mjs|clicking a category in the options window opens its page
+scripts/tests/scenarios.test.mjs|every top-level frame of the default layout sits inside a 1920x1080 screen with no overlaps
+scripts/tests/scenarios.test.mjs|targeting a hostile shows the target frame with its health and name, and losing it hides the frame
+scripts/tests/setup.test.mjs|/vg setup reopens setup; Back and the close button
+scripts/tests/setup.test.mjs|Centered layout: compact raid grid, one-time migrations, a strip with nothing to show
+scripts/tests/setup.test.mjs|default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 px buttons; a saved profile keeps its sizes
+scripts/tests/setup.test.mjs|first-run setup waits for combat and steps aside in a fight
+scripts/tests/setup.test.mjs|first-run setup: a new character on a set-up account picks its profile first; old characters aren't asked
+scripts/tests/setup.test.mjs|first-run setup: a profile of its own copies the shared one without a reload, and your role picks the layout
+scripts/tests/setup.test.mjs|first-run setup: closing it early asks again at the next login; Skip setup ends it
+scripts/tests/setup.test.mjs|first-run setup: once per account, four clicks with the defaults
+scripts/tests/setup.test.mjs|setup again: Keep and Keep change nothing; Run setup in the options; Start over owes setup after the reload
+scripts/tests/setup.test.mjs|setup layouts: Damage and tanking restores Vanguard's defaults, undoing Healing
+scripts/tests/setup.test.mjs|setup layouts: Healing puts the raid frames under the character and turns click casting on
+scripts/tests/setup.test.mjs|setup layouts: Like the game's puts your frames at the top left; another layout puts them back
+scripts/tests/setup.test.mjs|setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect
+scripts/tests/setup.test.mjs|setup layouts: your specialization's role, else your group role, picks the first layout
+scripts/tests/setup.test.mjs|setup look: accent swatches and the raid frame style apply at once
+scripts/tests/setup.test.mjs|setup look: each raid frame style is a small raid tile drawn in that style, in your class color
+scripts/tests/setup.test.mjs|setup screen: this screen's preset is picked; Keep changes nothing; a preset sets the UI scale, buttons, tiles and text
+scripts/tests/setup.test.mjs|setup screen: which preset fits which screen, and the UI scale setting
+scripts/tests/setup.test.mjs|setup screens: with each screen preset, nothing overlaps or leaves its own screen, in every layout, solo to 40-man
+scripts/tests/setup.test.mjs|the setup wizard sits above the unlock handles on the last step, so their labels never draw over it
+scripts/tests/setup.test.mjs|the setup wizard's title and step caption are centred across the window
+scripts/tests/situations.test.mjs|situations: /vg situation list prints where you are and every override
+scripts/tests/situations.test.mjs|situations: a frame reset to its default while recording is overridden back to the default
+scripts/tests/situations.test.mjs|situations: a profile change puts the base back into its tables, forgets it and applies the new profile's override
+scripts/tests/situations.test.mjs|situations: a recording in progress at logout is saved, and the profile keeps its base
+scripts/tests/situations.test.mjs|situations: an export made while an override is on carries the profile's own values
+scripts/tests/situations.test.mjs|situations: in combat the apply waits for combat to end
+scripts/tests/situations.test.mjs|situations: joining a raid applies its override; leaving puts the base back without saving the override
+scripts/tests/situations.test.mjs|situations: recording keeps only what the player changed, with the frames' and settings' own controls
+scripts/tests/situations.test.mjs|situations: recording over an override starts from it; nothing changed clears it; refusals
+scripts/tests/situations.test.mjs|situations: switched off, clearing, unknown frames and modules that aren't running
+scripts/tests/situations.test.mjs|situations: the options page records, stops, clears and switches overrides off
+scripts/tests/situations.test.mjs|situations: the profile on disk never holds an override (logout puts the base back first)
+scripts/tests/situations.test.mjs|situations: the same tables told of a change get their base back and the override again
+scripts/tests/situations.test.mjs|situations: the staged profile switch applies the other profile's override at the next login
+scripts/tests/situations.test.mjs|situations: which situation holds, the first of pvp, instance, raid, party, resting, solo
+scripts/tests/skins.test.mjs|skin API
+scripts/tests/skins.test.mjs|skin SetFont and a UI scale change
+scripts/tests/smoke.test.mjs|the addon loads, logs in, unlocks and locks its frames, and catches no error
+scripts/tests/special.test.mjs|options: one switch restyles the pet, stance, possess and extra buttons
+scripts/tests/special.test.mjs|pet and stance buttons keep the textures the client shows by state
+scripts/tests/special.test.mjs|special bars
+scripts/tests/special.test.mjs|the pet and stance bars are placed after combat, and left to Edit Mode when placing is off
+scripts/tests/special.test.mjs|the pet and stance bars sit on movers of their own, kept there when the game re-places them
+scripts/tests/special.test.mjs|the possess bar's buttons are restyled too, out of combat, and can be left alone
+scripts/tests/spellbook.test.mjs|the spellbook is one of the framed windows, so it gets the flat Vanguard panel
+scripts/tests/status.test.mjs|raid status marks
+scripts/tests/status.test.mjs|range ticker: only while the raid frames show, no repeat questions, no repaint when nothing changed
+scripts/tests/status.test.mjs|ready check: a new check started while the last one's answers linger keeps its answers up
+scripts/tests/talents.test.mjs|talent planner: /vg talents, the summary and plan mode; a client without the trait API; the module off
+scripts/tests/talents.test.mjs|talent planner: Spend planned buys the next picks in order and applies them; chat says what
+scripts/tests/talents.test.mjs|talent planner: a mark's tooltip, the import box, /vg talents spend, and the game's other ways in
+scripts/tests/talents.test.mjs|talent planner: a plan made on another tree keeps the talents still there and says what was dropped
+scripts/tests/talents.test.mjs|talent planner: at a level-up chat names the next pick, or Spend by itself buys it
+scripts/tests/talents.test.mjs|talent planner: buying order, rows' gates, prerequisites and unreachable ranks
+scripts/tests/talents.test.mjs|talent planner: export and import share a plan as a string, for your class; clear empties it
+scripts/tests/talents.test.mjs|talent planner: the bar on the talents window, and plan mode's clicks set planned ranks
+scripts/tests/talents.test.mjs|talent planner: the window's own button lookup and enumerator are used where the client has them
+scripts/tests/theme.test.mjs|a long dropdown shows 16 choices at once, scrolls with the wheel and opens at the current choice
+scripts/tests/theme.test.mjs|bundled font and logo
+scripts/tests/theme.test.mjs|fading a frame's art: template textures go, Vanguard's own parts and kept ones stay, call after call
+scripts/tests/theme.test.mjs|game tabs: art faded, icon kept, a panel, and an accent line that follows the game's selection
+scripts/tests/theme.test.mjs|one-pixel borders at every resolution and UI scale
+scripts/tests/theme.test.mjs|panels with padding: the fill, border and shadow reach out past the frame, the frame itself stays put
+scripts/tests/theme.test.mjs|shared media: a name no longer shared, or no LibSharedMedia at all, falls back to the built-ins
+scripts/tests/theme.test.mjs|shared media: the bundled LibSharedMedia-3.0 carries Vanguard's font and bars, and the pickers offer what other addons share
+scripts/tests/theme.test.mjs|text roles, sheen and shadows
+scripts/tests/theme.test.mjs|the faction look on a Russian client keeps Fira Sans for headings (the faction fonts have no Cyrillic); the crest stays
+scripts/tests/theme.test.mjs|the game's font objects: the theme font at Text size, kept after a theme change
+scripts/tests/theme.test.mjs|the game's scroll bars: track art faded, a raised thumb with an accent edge under the mouse, flat arrows
+scripts/tests/theme.test.mjs|theme
+scripts/tests/theme.test.mjs|theme tokens and pixel-perfect borders
+scripts/tests/theme.test.mjs|tooltip-like frames: a panel with a shadow and the game's NineSlice faded, once
+scripts/tests/theme.test.mjs|widgets
+scripts/tests/theme.test.mjs|window controls: sized when the caller gave no size, quiet until the mouse is over them, then white on a tile (red behind close)
+scripts/tests/tooltip.test.mjs|item tooltips show what the stack sells for, unless the client already does
+scripts/tests/tooltip.test.mjs|item tooltips: how many you have, and the item ID when asked
+scripts/tests/tooltip.test.mjs|item tooltips: other modules' lines come after the tooltip's own, and one that fails doesn't stop the rest
+scripts/tests/tooltip.test.mjs|more tooltips: the client's other tooltips get the panel with the menus group on, one it lacks is skipped
+scripts/tests/tooltip.test.mjs|tooltips
+scripts/tests/units.test.mjs|a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest
+scripts/tests/units.test.mjs|class bars: druid mana while a form shows rage or energy
+scripts/tests/units.test.mjs|class bars: totems for shamans, mana in forms for druids
+scripts/tests/units.test.mjs|combo points for rogues and druids
+scripts/tests/units.test.mjs|power ticks: energy every two seconds, and forms switch
+scripts/tests/units.test.mjs|power ticks: switches, and no player frame
+scripts/tests/units.test.mjs|power ticks: the five-second rule after a mana spell
+scripts/tests/units.test.mjs|power ticks: the spark moves on one anchor, as tall as the bar, with no anchors cleared per frame
+scripts/tests/units.test.mjs|swing timer: a row per hand, from the client's own swings
+scripts/tests/units.test.mjs|swing timer: a weapon swap restarts a swing under way at the new weapon's speed
+scripts/tests/units.test.mjs|swing timer: the game's own bars are put away while Vanguard's is on, out of combat
+scripts/tests/units.test.mjs|swing timer: who sees it
+scripts/tests/units.test.mjs|swing timer: with Vanguard's off, the game's own bars are drawn in the theme
+scripts/tests/units.test.mjs|target of target: health and power on every look, its name only when it's someone else
+scripts/tests/units.test.mjs|threat and happiness only where the client and settings allow
+scripts/tests/units.test.mjs|threat on your target and your pet's happiness
+scripts/tests/units.test.mjs|unit events: combo points, the druid's mana, power ticks and threat ask the client for your own units only
+scripts/tests/units.test.mjs|unit frame events
+scripts/tests/units.test.mjs|unit frame health text settings apply at once
+scripts/tests/units.test.mjs|unit frames
+scripts/tests/units.test.mjs|unit frames on WoW Forever: levels, health percent, classification
+scripts/tests/units.test.mjs|unit frames wait for combat
+scripts/tests/unlock.test.mjs|a grid size from a hand-edited profile string is kept to 8-256 px, so unlocking can't freeze the game
+scripts/tests/unlock.test.mjs|accent presets
+scripts/tests/unlock.test.mjs|unlock mode
+scripts/tests/unlock.test.mjs|unlock popover: anchor, offsets, reset
+scripts/tests/unlock.test.mjs|unlock popover: scale and opacity in percent
+scripts/tests/upgrades.test.mjs|upgrades: arrows on upgrades in the combined bag and on quest rewards
+scripts/tests/upgrades.test.mjs|upgrades: the role picks the weights, and /vg weights shows and changes them
+scripts/tests/upgrades.test.mjs|upgrades: tooltips compare gear with what you wear, by your class's weights
+scripts/tests/upgrades.test.mjs|upgrades: weights go out and come back as a string
+scripts/tests/vendor.test.mjs|/vg stock says where to buy, /vg vendors counts and clear forgets
+scripts/tests/vendor.test.mjs|a hidden name or zone, combat and the remember switch
+scripts/tests/vendor.test.mjs|a merchant is remembered with its name, zone and subzone; limited stock is flagged
+scripts/tests/vendor.test.mjs|item tooltips say who sells the item and where
+scripts/tests/vendor.test.mjs|older clients: the item ID from the link, limited stock from the old call, and the list changing
+scripts/tests/vendor.test.mjs|past the item cap, the items seen longest ago are forgotten
+scripts/tests/vendor.test.mjs|the error line and the zone text in the theme font, kept after a Text size change
+scripts/tests/vendor.test.mjs|three merchants per item, the one seen last first
+scripts/tests/visibility.test.mjs|a visibility setting compiles to one macro-conditional state; the old four mean what they meant
+scripts/tests/visibility.test.mjs|action bars: a bar shown on a checklist shows while you drag a spell, and follows instances on zone changes
+scripts/tests/visibility.test.mjs|action bars: the checklist row in the options sets a bar's conditions, and the client's state drives it
+scripts/tests/visibility.test.mjs|data bars: one visibility for both; a hidden bar stays hidden at max level
+scripts/tests/visibility.test.mjs|info strip: Always by default; in combat, on mouseover or hidden from its options, live
+scripts/tests/visibility.test.mjs|menu bar: Auto-hide shows it at login and under the mouse, and fades it 10 s after the mouse leaves
+scripts/tests/visibility.test.mjs|menu strip: its Always/On mouseover setting is the visibility setting; In combat drives the strip securely
+scripts/tests/visibility.test.mjs|ns.AutoHide fades a frame out after its time, and a later call restarts the wait
+scripts/tests/visibility.test.mjs|ns.Where is the client's instance type, or none outside one or when the client can't say
+scripts/tests/visibility.test.mjs|the state the client reports at registration comes from its own parser when it has one
+scripts/tests/waypoints.test.mjs|waypoints: /way is left to another addon, /vg way always works, and the switch can turn it off
+scripts/tests/waypoints.test.mjs|waypoints: /way reads guide coordinates, names zones, and points the game's arrow
+scripts/tests/waypoints.test.mjs|waypoints: lines it can't use say why and set nothing
+scripts/tests/waypoints.test.mjs|waypoints: the world map shows your coordinates and the cursor's, ten times a second
+scripts/tests/windows-map.test.mjs|battlefield map: its border and tab in the theme once the game loads it, the canvas left alone
+scripts/tests/windows-map.test.mjs|battlefield map: switched off it stays the game's; a client without the tab or border is fine
+scripts/tests/windows-map.test.mjs|calendar: switched off it stays the game's; a client missing the window, its buttons or its dialogs' parts loads cleanly
+scripts/tests/windows-map.test.mjs|calendar: the seven dialogs are skinned, with their headers, buttons and text boxes dressed and their pictures kept
+scripts/tests/windows-map.test.mjs|calendar: the window's art is faded but the weekday glow and last-day shadow, the month buttons and day grid are dressed, the event textures kept
+scripts/tests/windows-map.test.mjs|group finder: switched off it stays the game's; a client missing parts of it loads cleanly
+scripts/tests/windows-map.test.mjs|group finder: the window, its listing and browse pages and the group tooltip in the theme once the game loads it
+scripts/tests/windows-map.test.mjs|legacy system: switched off it stays the game's; a client missing its pages loads cleanly
+scripts/tests/windows-map.test.mjs|legacy system: the window in the theme, its page backgrounds faded and its panes panelled, tabs and tree nodes untouched
+scripts/tests/windows-map.test.mjs|quest panel in the map: left the game's while Vanguard's quest log is on, or the group is off
+scripts/tests/windows-map.test.mjs|quest panel in the map: with Vanguard's quest log off, the list, the details and the pop-out window are in the theme
+scripts/tests/windows-map.test.mjs|queue status: switched off it stays the game's; a client without a pool, entries' parts or Update is fine
+scripts/tests/windows-map.test.mjs|queue status: the panel is a themed tooltip and the entries' rings are faded, now and when the game rebuilds them
+scripts/tests/windows-map.test.mjs|the map group loads cleanly on a client without its windows
+scripts/tests/windows-map.test.mjs|world map: minimising or maximising rebuilds the border, and the skin goes back on
+scripts/tests/windows-map.test.mjs|world map: switched off it stays the game's; a client missing parts or the map loads cleanly
+scripts/tests/windows-map.test.mjs|world map: the border in the theme without a fill over the canvas, the overscroll art faded, the canvas untouched
+scripts/tests/windows-map.test.mjs|world map: the coordinate line Vanguard adds still shows along the bottom, at login and when the map loads later
+scripts/tests/windows-map.test.mjs|world map: the nav bar, its crumbs and the quest log toggle are dressed, and follow the map's changes
+scripts/tests/windows-menus.test.mjs|12.x menus: each open fades the game's background and glow, the panel behind it is painted once, the rows and keys untouched
+scripts/tests/windows-menus.test.mjs|12.x menus: with the menus group off they stay the game's; a client without the hook loads cleanly
+scripts/tests/windows-menus.test.mjs|old dropdown lists: both backdrops faded, a tooltip panel behind, the buttons and their highlight the game's
+scripts/tests/windows-menus.test.mjs|the menus group loads cleanly on a client without its windows
+scripts/tests/windows-pvp.test.mjs|the pvp group loads cleanly on a client without its windows
+scripts/tests/windows-social.test.mjs|channels and friends dialogs: a second show paints nothing more, the switch off leaves them the game's, missing parts load cleanly
+scripts/tests/windows-social.test.mjs|channels and friends dialogs: the window and each dialog skinned, borders faded, edit boxes and buttons themed
+scripts/tests/windows-social.test.mjs|guild creation: a second show paints nothing more, the switch off leaves them the game's, a client without the texts loads cleanly
+scripts/tests/windows-social.test.mjs|guild creation: the three windows skinned, their texts light and gold, again after the game recolors them
+scripts/tests/windows-social.test.mjs|guild dialogs: a client without them, or with their parts missing, loads cleanly
+scripts/tests/windows-social.test.mjs|guild dialogs: every dialog's art faded and a panel painted, its buttons, boxes and close control themed
+scripts/tests/windows-social.test.mjs|guild dialogs: the rename window is skinned like any window; a second show paints nothing more; the switch off leaves them the game's
+scripts/tests/windows-social.test.mjs|guild window: a second show paints nothing more, the switch off leaves the game's, missing parts load cleanly
+scripts/tests/windows-social.test.mjs|guild window: panes faded and panelled, portrait art faded, dropdown and max/min dressed, skinned again on a page switch
+scripts/tests/windows-social.test.mjs|open mail: a client without the body text, the stationery, the items or the Update method loads cleanly
+scripts/tests/windows-social.test.mjs|open mail: a redraw puts the look back, a second show paints nothing more, the switch off leaves the game's
+scripts/tests/windows-social.test.mjs|open mail: the letter window in the theme, its stationery faded, body text light, buttons and items dressed
+scripts/tests/windows-social.test.mjs|raid tab: group boxes faded and panelled, member buttons flat with the game's class color kept, push buttons themed
+scripts/tests/windows-social.test.mjs|raid tab: skinned when Blizzard_RaidUI loads after the tab, never in combat, a second show paints nothing more, the switch off leaves it the game's
+scripts/tests/windows-social.test.mjs|raid tab: the parent window is skinned, and a client without the raid UI or some of its parts loads cleanly
+scripts/tests/windows-social.test.mjs|role poll and invite popups: a second show paints nothing more, the switch off leaves them the game's, missing parts load cleanly
+scripts/tests/windows-social.test.mjs|role poll and invite popups: border faded, panel painted, close and accept buttons themed, role buttons untouched
+scripts/tests/windows-social.test.mjs|social window: a second show paints nothing more, the switch off leaves it the game's, missing parts load cleanly
+scripts/tests/windows-social.test.mjs|social window: the window and its Battle.net bar, panes, side windows and tabs in the theme, the tabs again after the game makes them again
+scripts/tests/windows-social.test.mjs|the social group loads cleanly on a client without its windows
+scripts/tests/windows-system.test.mjs|Cooldown Manager settings and its layout dialogs: the window skin, search box and dialog buttons
+scripts/tests/windows-system.test.mjs|Edit Mode dialogs: layout, import, import link and unsaved changes get the panel, buttons and name box
+scripts/tests/windows-system.test.mjs|Edit Mode system settings: the dialog, its Revert button, and the extra buttons the game adds later
+scripts/tests/windows-system.test.mjs|Edit Mode window: skinned, its panel kept out of the game's layout, and Vanguard's note still shows
+scripts/tests/windows-system.test.mjs|Edit Mode window: switched off it stays the game's (the note still shows), and a bare client is fine
+scripts/tests/windows-system.test.mjs|addon list: the window skin plus its push buttons and search box, the rows untouched
+scripts/tests/windows-system.test.mjs|chat settings: the outer window, its header plate, the boxes under it and the named buttons
+scripts/tests/windows-system.test.mjs|click bindings: skinned when their addon loads, with the three buttons and the list backdrop
+scripts/tests/windows-system.test.mjs|combat log bar: a panel, its filter buttons themed as the game makes them
+scripts/tests/windows-system.test.mjs|death recap: skinned when its addon loads, the rows left as the game draws them
+scripts/tests/windows-system.test.mjs|game options: switched off it stays the game's, and a client missing parts loads cleanly
+scripts/tests/windows-system.test.mjs|game options: the tabs' accent line follows the game's selection, the title text stays visible
+scripts/tests/windows-system.test.mjs|game options: the window in the theme, its art faded, buttons, search box, tabs and lists dressed
+scripts/tests/windows-system.test.mjs|help window, report window and ticket status in the theme, the ticket icon kept
+scripts/tests/windows-system.test.mjs|nameplates tutorial: the window skin, the four picture cards kept visible
+scripts/tests/windows-system.test.mjs|quick keybind banner: a panel behind it, plate faded, buttons themed, and nothing touched in combat
+scripts/tests/windows-system.test.mjs|report-cheating dialog, splash window and colour picker: switched off, and a client without their parts
+scripts/tests/windows-system.test.mjs|report-cheating dialog, splash window, colour picker and opacity window
+scripts/tests/windows-system.test.mjs|the system group loads cleanly on a client without its windows
+scripts/tests/windows-tabs.test.mjs|character pane honor tab: the line and glow faded, the ring, badge and texts kept
+scripts/tests/windows-tabs.test.mjs|character pane lists: a bar that is a real StatusBar gets the theme's texture, and the lists are the game's with the tabs switch off
+scripts/tests/windows-tabs.test.mjs|character pane lists: bars panelled with their fill kept, headers flat with their icon kept, rows the game acquires later too
+scripts/tests/windows-tabs.test.mjs|character pane stat boxes: the title plate faded and an inset panel, whether plain frames or scroll box rows
+scripts/tests/windows-tabs.test.mjs|character pane: a list that loads later (the currencies' addon) is dressed when its part of the game loads
+scripts/tests/windows-tabs.test.mjs|equipment flyout: panels behind its grid and page bar, its buttons skinned like the bags', again after the game refills it
+scripts/tests/windows-tabs.test.mjs|flight map: its map art stays when the window's art is faded
+scripts/tests/windows-tabs.test.mjs|scroll bars: a frame the game keeps from addons is skipped, and so is the inside of one that holds such a frame
+scripts/tests/windows-tabs.test.mjs|scroll bars: a window's ScrollBar key and the bar paired with a ScrollBox are in the theme, a second show paints nothing more
+scripts/tests/windows-tabs.test.mjs|scroll bars: only on registered windows whose groups are on; a bar that isn't one of the game's is left alone
+scripts/tests/windows-tabs.test.mjs|side tabs: Legacy, inspect and group finder windows are dressed when their part of the game loads
+scripts/tests/windows-tabs.test.mjs|side tabs: a window without the parts, or a tab the client refuses, loads cleanly
+scripts/tests/windows-tabs.test.mjs|side tabs: the character pane's mode tabs in the theme, the checked one lit from the start and as the game moves it
+scripts/tests/windows-tabs.test.mjs|side tabs: the guild window's, whether or not another group registered it, unless its group is off
+scripts/tests/windows-tabs.test.mjs|tab buttons on framed windows: named, array and tab-system tabs in the theme, the selected one lit
+scripts/tests/windows-tabs.test.mjs|tab buttons: a second show paints nothing more, and tabs a tab system adds later are dressed
+scripts/tests/windows-tabs.test.mjs|tab buttons: the tabs switch off, or a window's own group off, leaves the game's tabs
+scripts/tests/windows-tabs.test.mjs|tab buttons: windows that load later are dressed when their part of the game loads
+scripts/tests/windows-tabs.test.mjs|tabs and the window's padding: a tab set outside the window moves out to the panel's edge, once, with its bar on its outer edge
+scripts/tests/windows-tabs.test.mjs|the tabs group loads cleanly on a client without its windows
+scripts/tests/windows-tabs.test.mjs|window controls: the corner close button and the max/min box sit the same in every window's corner
+scripts/tests/windows-town.test.mjs|S2.1 the pet stable: art faded, pet scene and experience bar dressed, purchase button and texts in the theme
+scripts/tests/windows-town.test.mjs|S2.1 the pet stable: its group switched off leaves it the game's; a client with a bare window loads cleanly
+scripts/tests/windows-town.test.mjs|S2.2 the trainer: group off leaves it the game's; a trainer without a list or mixin loads cleanly
+scripts/tests/windows-town.test.mjs|S2.2 the trainer: window, filter and train buttons themed, rows dressed as the list acquires them
+scripts/tests/windows-town.test.mjs|S2.3 side dress-up, stack split and coin pickup: group off leaves them the game's; bare windows load cleanly
+scripts/tests/windows-town.test.mjs|S2.3 side dress-up, stack split and coin pickup: plates faded, buttons themed with their glyphs kept
+scripts/tests/windows-town.test.mjs|S2.4 separate bag windows: the Bags module or the town group off leaves them the game's; a bag without item calls is fine
+scripts/tests/windows-town.test.mjs|S2.4 separate bag windows: with Combined bags off the window and its items take the Bags look
+scripts/tests/windows-town.test.mjs|S2.5 loot dialogs: group off leaves them the game's; a window without its parts or the game's list call loads cleanly
+scripts/tests/windows-town.test.mjs|S2.5 loot dialogs: master looter and loot history skinned, player buttons themed as the game lists them
+scripts/tests/windows-town.test.mjs|S2.6 macro, icon pickers, stopwatch, recipe inspection: group off leaves them the game's; bare windows load cleanly
+scripts/tests/windows-town.test.mjs|S2.6 macro, icon pickers, stopwatch, recipe inspection: skinned when their part of the game loads
+scripts/tests/windows-town.test.mjs|S2.7 small dialogs: ghost button, message dialog, addon dialog and currency transfer take the theme
+scripts/tests/windows-town.test.mjs|S2.7 small dialogs: group off leaves them the game's; a client without the dialogs or their parts loads cleanly
+scripts/tests/windows-town.test.mjs|S2.7 small dialogs: the ghost button waits for the end of combat
+scripts/tests/windows-town.test.mjs|the town group loads cleanly on a client without its windows
+scripts/workflows.test.mjs|full-suite shuffles only for the schedule event
+scripts/workflows.test.mjs|lua-suite keeps read-only permissions
+scripts/workflows.test.mjs|lua-suite takes a boolean shuffle input that defaults to off
+scripts/workflows.test.mjs|no run script holds an input expression
+scripts/workflows.test.mjs|release never shuffles
+scripts/workflows.test.mjs|the seed step comes before the coverage run
+scripts/workflows.test.mjs|the seed step is conditional, exports the seed and prints both replay forms
