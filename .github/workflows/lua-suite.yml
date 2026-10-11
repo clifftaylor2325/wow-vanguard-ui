@@ -39,8 +39,10 @@ jobs:
   tests:
     name: Tests, coverage and checks
     runs-on: ubuntu-latest
-    # The tests take about five minutes on a hosted runner; a runaway dies
-    # well inside this (the harness's instruction budget, the workers' heap cap).
+    # On a 2-worker local proxy for a 2-vCPU runner the suite took 155.5 s and
+    # 158.7 s (170.7 s with coverage) on 2026-10-11; the hosted time is not
+    # measured yet. A runaway dies well inside this limit (the harness's
+    # instruction budget, the workers' heap cap).
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
