@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createAddon, root } from "./lib/lua-harness.mjs";
-import { FULL_CASES, FULL_FILES, HEAVY, SCOPE_FILE, modulesOffLua, scopeFor } from "./lib/login-scope.mjs";
+import { FULL_CASES, FULL_FILES, HEAVY, SCOPE_FILE, buildScope, dataText, modulesOffLua, probeRows, scopeFor } from "./lib/login-scope.mjs";
 import { SETUP_DONE, loggedIn, runningCase } from "./tests/helpers.mjs";
 
 // Scope data with one listed file whose keep-full list holds one case.
@@ -16,6 +16,17 @@ const DATA = { scoped: { "a.test.mjs": ["keep me"], "b.test.mjs": [] } };
 
 // Whether each of the six heavy modules is enabled in an addon, in HEAVY order.
 const enabledSix = (addon) => HEAVY.map((name) => addon.eval(`return ns.ModuleEnabled("${name}")`));
+
+// A case as the probe reads it from the JSON report (see caseList in scripts/lib/suite-timing.mjs).
+const kase = (file, key, status = "passed") => ({ file, key, status });
+
+// A probe run over three login files and one file that never logs in: a.test.mjs has a failed case (sharing its
+// title with a passing one) and a skipped one, full.test.mjs is kept on the full login, other.test.mjs is not a login file.
+const RUN = [
+  kase("a.test.mjs", "ok"), kase("a.test.mjs", "needs"), kase("a.test.mjs", "needs", "failed"), kase("a.test.mjs", "waits", "skipped"),
+  kase("b.test.mjs", "fine"), kase("full.test.mjs", "q", "failed"), kase("other.test.mjs", "r", "failed"),
+];
+const SETUP = { loginFiles: ["b.test.mjs", "full.test.mjs", "a.test.mjs"], fullFiles: ["full.test.mjs"], fullCases: ["a.test.mjs|zeta", "full.test.mjs|ignored", "b.test.mjs|a|b"] };
 
 // Runs fn with VG_LOGIN_SCOPE set to value (or unset for undefined), then puts the old value back.
 function withMode(value, fn) {
@@ -29,6 +40,35 @@ function withMode(value, fn) {
     else process.env.VG_LOGIN_SCOPE = before;
   }
 }
+
+it("buildScope: lists each login file that is not kept full, with the sorted keys of its cases that did not pass plus its full cases", () => {
+  expect(buildScope(RUN, SETUP)).toEqual({ "a.test.mjs": ["needs", "waits", "zeta"], "b.test.mjs": ["a|b"] });
+});
+
+it("buildScope: files outside the login files and every full-login file get no entry; a full case of a full-login file is ignored", () => {
+  const files = Object.keys(buildScope(RUN, SETUP));
+  expect(files.includes("other.test.mjs"), "never logs in").toBe(false);
+  expect(files.includes("full.test.mjs"), "the whole file is full anyway").toBe(false);
+});
+
+it("buildScope: the files come out sorted, so the same results always give the same JSON text", () => {
+  const scoped = buildScope(RUN, SETUP);
+  expect(Object.keys(scoped)).toEqual(["a.test.mjs", "b.test.mjs"]);
+  expect(JSON.stringify(buildScope([...RUN].reverse(), { ...SETUP, loginFiles: [...SETUP.loginFiles].reverse() }))).toBe(JSON.stringify(scoped));
+});
+
+it("buildScope: a login file with every case passing and no full case is listed with an empty keep list", () => {
+  expect(buildScope([kase("c.test.mjs", "x")], { loginFiles: ["c.test.mjs"], fullFiles: [], fullCases: [] })).toEqual({ "c.test.mjs": [] });
+});
+
+it("probeRows: one row per login file, sorted, counting its cases that keep the full login; a full-login file keeps all", () => {
+  const scoped = buildScope(RUN, SETUP);
+  expect(probeRows(RUN, { ...SETUP, scoped })).toEqual([
+    { file: "a.test.mjs", cases: 4, keep: 3 },
+    { file: "b.test.mjs", cases: 1, keep: 0 },
+    { file: "full.test.mjs", cases: 1, keep: 1 },
+  ]);
+});
 
 it("modulesOffLua: no names give no Lua", () => {
   expect(modulesOffLua([])).toBe("");
@@ -100,6 +140,13 @@ it("the data file: a note, and sorted listed files each with a list of case name
   expect(files, "sorted, so the same data always reads the same").toEqual([...files].sort());
   expect(Object.values(data.scoped).every((keep) => Array.isArray(keep) && keep.every((k) => typeof k === "string"))).toBe(true);
   expect(files.filter((f) => FULL_FILES.includes(f)), "a file kept on the full login is never listed").toEqual([]);
+});
+
+it("dataText: the data file is in the form the probe writes (two-space indent, trailing newline), so --write is reproducible", () => {
+  const text = fs.readFileSync(path.join(root, SCOPE_FILE), "utf8").replace(/\r\n/g, "\n");
+  const data = JSON.parse(text);
+  expect(dataText(data.about, data.scoped)).toBe(text);
+  expect(dataText("n", { "a.test.mjs": [] })).toBe('{\n  "about": "n",\n  "scoped": {\n    "a.test.mjs": []\n  }\n}\n');
 });
 
 it("the full-login lists name files that exist and cases in the form file|case", () => {

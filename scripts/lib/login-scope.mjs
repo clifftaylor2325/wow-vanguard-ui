@@ -17,6 +17,7 @@ export const FULL_FILES = [
   "scripts/tests/smoke.test.mjs", // the pull request's one harness case: a complete login, unlock, lock, no errors
   "scripts/tests/scenarios.test.mjs", // every top-level frame of the default layout inside a 1920x1080 screen with no overlaps
   "scripts/tests/movers.test.mjs", // moving the frames of every module that has one
+  "scripts/login-scope.test.mjs", // its logins test the scoping rules under each mode, so the data must not scope them
 ];
 
 // Single cases (`file|case`) that stay on the full login, in files that are otherwise scoped.
@@ -54,4 +55,44 @@ export function scopeFor({ mode, file, key, data }) {
   if (mode === "probe") return HEAVY;
   const keep = Object.hasOwn(data.scoped, file) ? data.scoped[file] : undefined;
   return key === undefined || !keep || keep.includes(key) ? [] : HEAVY;
+}
+
+// The names in fullCases (`file|case` entries) that belong to a file.
+function fullCasesOf(file, fullCases) {
+  const prefix = `${file}|`;
+  return fullCases.filter((entry) => entry.startsWith(prefix)).map((entry) => entry.slice(prefix.length));
+}
+
+// One login file's keep-full list: the names of its cases that did not pass in the
+// probe run (a case that needs a heavy module fails with it off) plus its full cases,
+// sorted and without repeats.
+function keepList(file, cases, fullCases) {
+  const failed = cases.filter((c) => c.file === file && c.status !== "passed").map((c) => c.key);
+  return [...new Set([...failed, ...fullCasesOf(file, fullCases)])].sort();
+}
+
+// The `scoped` map of the data file from a probe run: `cases` are the run's { file, key, status }
+// (as caseList reads them), loginFiles the test files that call loggedIn, fullFiles the files
+// kept whole on the full login and fullCases the single `file|case` entries kept full. Every
+// login file that is not in fullFiles gets an entry; the files come out sorted, so the same
+// results always give the same JSON text.
+export function buildScope(cases, { loginFiles, fullFiles, fullCases }) {
+  const files = [...new Set(loginFiles)].filter((file) => !fullFiles.includes(file)).sort();
+  return Object.fromEntries(files.map((file) => [file, keepList(file, cases, fullCases)]));
+}
+
+// The text of the data file for a note and a scoped map: two-space indent and a trailing newline.
+export function dataText(about, scoped) {
+  return `${JSON.stringify({ about, scoped }, null, 2)}\n`;
+}
+
+// One row per login file for the probe's printout, sorted by file: how many cases it has and
+// how many of them keep the full login (every case of a file in fullFiles; else those named in
+// the file's keep list in `scoped`).
+export function probeRows(cases, { loginFiles, fullFiles, scoped }) {
+  return [...new Set(loginFiles)].sort().map((file) => {
+    const own = cases.filter((c) => c.file === file);
+    const kept = fullFiles.includes(file) ? own : own.filter((c) => (scoped[file] ?? []).includes(c.key));
+    return { file, cases: own.length, keep: kept.length };
+  });
 }
