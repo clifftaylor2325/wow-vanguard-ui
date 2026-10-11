@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Fast suite and CI gate
 status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-10-11T03:11:28.936Z"
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-10-11T03:16:33.088Z"
 last_activity: 2026-10-10
 last_activity_desc: Phase 03 execution started
-state_head: a9f5b87661eabb2c6b454060fd89ec1480bc0541
+state_head: a2c9d21f2156a00ea343190c4a27b0074b76ce3f
 progress:
   total_phases: 12
   completed_phases: 2
   total_plans: 22
-  completed_plans: 19
+  completed_plans: 20
   percent: 17
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-09)
 ## Current Position
 
 Phase: 03 (Fast suite and CI gate) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-10-10 — Phase 03 execution started
 
@@ -61,6 +61,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 03 P02 | 15 min | 2 tasks | 6 files |
 | Phase 03 P03 | 10 min | 2 tasks | 6 files |
 | Phase 03 P04 | 7 min | 2 tasks | 5 files |
+| Phase 03 P05 | 12 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,7 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-02: opened added to full-suite pull_request types beyond D-04's wording (a PR opened ready fires opened, not ready_for_review)
 - [Phase 03]: [03-03] Profiler counts a frame as Lua only when what is Lua or main (fengari reports host functions as J); setup.mjs resets the accumulator after each per-file dump
 - [Phase 03]: [03-04] login-scope.test.mjs is in FULL_FILES (its logins test the scoping rules, so the probe's --write must not scope it); the probe refuses --write when a login file ran no case
+- [Phase 03]: [03-05] The foreground luacheck step in lua-suite.yml is one && chain that ends the script, because bash -e ignores a failing non-final member of an && list; CI-05 not ticked since 03-07 also declares it
 
 ### Pending Todos
 
@@ -102,6 +104,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-11T03:11:28.798Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-10-11T03:16:33.000Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None
