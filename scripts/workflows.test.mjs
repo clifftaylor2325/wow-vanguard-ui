@@ -350,6 +350,35 @@ it("fengari is exactly 0.1.5 in package.json, the lock's root entry and the lock
   expect(lock[""].devDependencies.vitest).toBe(pkg.vitest);
 });
 
+// The text of each `- uses: actions/setup-node` step in a workflow (the step line and what is under it).
+function setupNodeSteps(text) {
+  const lines = text.split("\n");
+  const found = [];
+  lines.forEach((line, i) => {
+    if (/^\s*-\s+uses:\s+actions\/setup-node@/.test(line)) found.push([line, ...deeperLines(lines, i + 1, line.indexOf("-"))].join("\n"));
+  });
+  return found;
+}
+
+it("every setup-node step reads .nvmrc and keeps the npm cache", () => {
+  const counts = { "verify.yml": 1, "lua-suite.yml": 2, "release.yml": 1, "full-suite.yml": 0 };
+  for (const [file, count] of Object.entries(counts)) {
+    const steps = setupNodeSteps(workflow(file));
+    expect(steps.length, `${file} setup-node steps`).toBe(count);
+    for (const step of steps) {
+      expect(step, file).toMatch(/^\s+node-version-file: \.nvmrc$/m);
+      expect(step, file).toMatch(/^\s+cache: npm$/m);
+    }
+  }
+});
+
+it("no workflow names a Node version of its own", () => {
+  for (const { name, text } of allWorkflows()) {
+    const code = text.split("\n").filter((l) => !l.trim().startsWith("#"));
+    expect(code.join("\n"), name).not.toMatch(/^\s*node-version:/m);
+  }
+});
+
 it("neither workflow installs luacheck from apt; lua5.1 stays; luacheck prints its version first", () => {
   for (const [file] of LUACHECK_STEPS) {
     const text = workflow(file);

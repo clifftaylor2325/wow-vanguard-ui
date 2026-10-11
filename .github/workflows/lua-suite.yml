@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       # The same pinned luacheck 1.2.0 release binary as verify.yml: installed
@@ -112,7 +112,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - run: npm install -g playwright@1.56.1 && playwright install --with-deps chromium
