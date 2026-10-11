@@ -7,7 +7,9 @@
 // suite job's `if` and the concurrency group of full-suite.yml for each
 // event, with a small evaluator for the part of the expression syntax those
 // two places use (anything else throws). The hosted run itself cannot be
-// checked here.
+// checked here. The file also checks the toolchain pins (D-05): the luacheck
+// release binary's digest, Node's version in .nvmrc and what reads it, and the
+// exact fengari version.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -323,6 +325,29 @@ it("verify runs the check in the background tools group, and its wait fails the 
   expect(script).toMatch(/\) > tools\.log 2>&1 &\n\s*tools_pid=\$!\n\s*npm ci\n/);
   expect(script).toMatch(/wait "\$tools_pid" \|\| \{ cat tools\.log; exit 1; \}/);
   expect(script.indexOf("sha256sum -c")).toBeLessThan(script.indexOf("tools_pid=$!"));
+});
+
+// The text of a file in the repository, by its path from the root.
+function repoText(rel) {
+  return fs.readFileSync(path.join(root, rel), "utf8");
+}
+
+it(".nvmrc is one plain major version of at least 24 and .pkgmeta leaves it out of the zip", () => {
+  const nvmrc = repoText(".nvmrc");
+  expect(nvmrc).toMatch(/^\d+\r?\n?$/);
+  expect(Number(nvmrc.trim())).toBeGreaterThanOrEqual(24);
+  const ignore = repoText(".pkgmeta").split(/^ignore:\s*$/m)[1] ?? "";
+  expect([...ignore.matchAll(/^\s+-\s+(\S+)\s*$/gm)].map((m) => m[1])).toContain(".nvmrc");
+});
+
+it("fengari is exactly 0.1.5 in package.json, the lock's root entry and the lock's resolved entry", () => {
+  const pkg = JSON.parse(repoText("package.json")).devDependencies;
+  const lock = JSON.parse(repoText("package-lock.json")).packages;
+  expect(pkg.fengari).toBe("0.1.5");
+  expect(lock[""].devDependencies.fengari).toBe("0.1.5");
+  expect(lock["node_modules/fengari"].version).toBe("0.1.5");
+  expect(pkg.vitest, "vitest stays exact").toMatch(/^\d+\.\d+\.\d+$/);
+  expect(lock[""].devDependencies.vitest).toBe(pkg.vitest);
 });
 
 it("neither workflow installs luacheck from apt; lua5.1 stays; luacheck prints its version first", () => {

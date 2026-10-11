@@ -25,4 +25,5 @@ ignore:
   - .gitattributes
   - .gitignore
   - .luacheckrc
+  - .nvmrc
   - .pkgmeta
