@@ -1,11 +1,13 @@
 // Vitest setup for the Lua harness tests: when npm run coverage asks for
 // line hits, each test file writes its own hits file as it ends, and
-// scripts/coverage-lua.mjs merges them. After every test the error guard
+// scripts/coverage-lua.mjs merges them; npm run profile -- <area> does the
+// same with the profiler's samples (LUA_PROFILE). After every test the error guard
 // judges what the addons it built caught.
 
 import path from "node:path";
 import { afterAll, afterEach, expect } from "vitest";
 import { dumpHits } from "../lib/lua-coverage.mjs";
+import { dumpProfile, resetProfile } from "../lib/lua-profile.mjs";
 import { check, takeExpected } from "../lib/error-guard.mjs";
 
 // The addons the test built. The array is shared through the global, not
@@ -16,7 +18,12 @@ const createdAddons = (globalThis[Symbol.for("vanguard.addons")] ??= []);
 
 afterAll(() => {
   const dir = process.env.LUA_COVERAGE_HITS;
-  if (dir) dumpHits(path.join(dir, `${path.basename(expect.getState().testPath ?? "hits")}-${process.pid}.json`));
+  const name = `${path.basename(expect.getState().testPath ?? "hits")}-${process.pid}.json`;
+  if (dir) dumpHits(path.join(dir, name));
+  // npm run profile -- <area> passes an absolute folder; a bare "1" (the login mode) is not one.
+  const profileDir = process.env.LUA_PROFILE;
+  if (profileDir && path.isAbsolute(profileDir)) dumpProfile(path.join(profileDir, name));
+  resetProfile();
 });
 
 // After every test: forget the addons it built and the errors it named, so
