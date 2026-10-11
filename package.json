@@ -9,6 +9,7 @@
     "test:quick": "vitest run --project quick",
     "verify": "npm test && npm run quality",
     "coverage": "node scripts/coverage-lua.mjs",
+    "timing": "node scripts/suite-timing.mjs",
     "media": "node scripts/build-media.mjs",
     "quality": "node scripts/check-code-quality.mjs",
     "lint": "luacheck .",
