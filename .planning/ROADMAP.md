@@ -105,15 +105,16 @@ Plans:
   2. The full suite finishes in under 5 minutes wall time on a 2-worker local proxy for a 2-vCPU runner, and the measured time, with per-file times, is recorded in the phase summaries and verification. The same measurement on the hosted runner waits for the billing block to clear; the user accepted leaving that part open (D-01 in `03-CONTEXT.md`).
   3. No case was dropped or skipped to reach the time: the test count and the 100% coverage floor match the start of the phase.
 
-**Plans**: 7 plans in 4 waves
+**Plans**: 1/7 plans executed in 4 waves
 Plans:
-- [ ] 03-01-PLAN.md — `npm run timing` (2-worker per-file timing recorder with a budget and a baseline check) and the 907 phase-start case names, captured before any test edit
+- [x] 03-01-PLAN.md — `npm run timing` (2-worker per-file timing recorder with a budget and a baseline check) and the 907 phase-start case names, captured before any test edit
 - [ ] 03-02-PLAN.md — CI-05: full suite on opened-ready / ready-for-review, later pushes only with `full-tests`, drafts never, unrelated labels cannot cancel; truth-table test over the workflow's own expressions; README wording
 - [ ] 03-03-PLAN.md — Lua sampling profiler in the harness count hook: `npm run profile -- login` and `npm run profile -- <area>`, output in `coverage/profile/`
 - [ ] 03-04-PLAN.md — Scoped logins from data (`scripts/tests/login-scope.json`, six heavy modules off through the SavedVariables seam, `VG_LOGIN_SCOPE=full|probe`), auction as the tracer, and the probe that derives the data
 - [ ] 03-05-PLAN.md — D-05 housekeeping: luacheck 1.2.0 binary pinned by a SHA-256 verified a second way (fails closed), `.nvmrc` (Node 24) in every setup-node, fengari exactly 0.1.5
 - [ ] 03-06-PLAN.md — Probe the whole suite, write the scope data, keep cross-module checks on the full login, 907 of 907 phase-start cases green; tests README and README commands
 - [ ] 03-07-PLAN.md — Phase gate (verify, every login full, baseline, coverage 19058/19058), then the quiet-machine 2-worker timing runs recorded with per-file times
+
 **Notes**: The CI design is the author's decision: full suite on ready-for-review and on the `full-tests` label, quick check on every push. The existing weekly and pre-release runs can stay. Current measurements do not yet support 5 minutes on a 2-vCPU runner (2,622 CPU-seconds on 16 threads), so measure on the hosted runner first. Research order: a Lua sampling profiler (`npm run profile -- <area>`), Enable-cost cuts in the six heaviest modules (ActionBars first), scoped and shared logins, then splitting `more.test.mjs` and `auction.test.mjs`. No Vitest sharding. A wasmoon spike only if the suite is still above about 8 CPU-minutes.
 
 ### Phase 4: Lean core
@@ -251,7 +252,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Green baseline | 2/2 | Complete    | 2026-10-09 |
 | 2. Errors fail tests | 13/13 | Complete    | 2026-10-10 |
-| 3. Fast suite and CI gate | 0/7 | Planned | - |
+| 3. Fast suite and CI gate | 1/7 | In Progress | - |
 | 4. Lean core | 0/TBD | Not started | - |
 | 5. Auction Post fix | 0/TBD | Not started | - |
 | 6. Theme scale and motion | 0/TBD | Not started | - |
