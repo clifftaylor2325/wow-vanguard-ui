@@ -41,7 +41,7 @@ it("open mail: the letter window in the theme, its stationery faded, body text l
     return { c.P ~= nil and c.P[1] == ns.Theme.RGB("text"), c.H1 ~= nil and c.H1[1] == ns.Theme.RGB("gold") }`), "body light, headings gold").toEqual([true, true]);
   expect(addon.eval(`local n = 0 for _, name in ipairs({ "OpenMailReplyButton", "OpenMailReportSpamButton" }) do
       if select('#', _G[name]:GetRegions()) > 0 then n = n + 1 end end return n`), "its buttons themed").toBe(2);
-  expect(addon.eval("return { OpenMailLetterButton.vgSkinned, OpenMailMoneyButton.vgSkinned, OpenMailAttachmentButton1.vgSkinned }"), "the item buttons get the bags' border").toEqual([true, true, true]);
+  expect(addon.eval("return { ns.FrameState('vgSkinned')[OpenMailLetterButton], ns.FrameState('vgSkinned')[OpenMailMoneyButton], ns.FrameState('vgSkinned')[OpenMailAttachmentButton1] }"), "the item buttons get the bags' border").toEqual([true, true, true]);
 });
 
 it("open mail: a redraw puts the look back, a second show paints nothing more, the switch off leaves the game's", () => {
@@ -55,7 +55,7 @@ it("open mail: a redraw puts the look back, a second show paints nothing more, t
   expect(addon.eval("OpenMailFrame:Update() return __updates"), "the hook went on once, the game's call still runs").toBe(3);
   const off = loggedIn(MAIL_ENV, OFF);
   off.eval("OpenMailFrame:Show()");
-  expect([windowState(off, "OpenMailFrame").art !== 0, off.eval("return OpenMailFrame.vgWindow == nil and OpenStationeryBackgroundLeft.__alpha ~= 0")], "with the group off").toEqual([true, true]);
+  expect([windowState(off, "OpenMailFrame").art !== 0, off.eval("return ns.FrameState('vgWindow')[OpenMailFrame] == nil and OpenStationeryBackgroundLeft.__alpha ~= 0")], "with the group off").toEqual([true, true]);
 });
 
 it("open mail: a client without the body text, the stationery, the items or the Update method loads cleanly", () => {
@@ -115,7 +115,7 @@ it("guild window: a second show paints nothing more, the switch off leaves the g
   expect(windowState(addon, "CommunitiesFrame").painted, "painting again piles up nothing").toBe(painted);
   const off = loggedIn(GUILD_ENV, OFF);
   off.eval("CommunitiesFrame:Show()");
-  expect([windowState(off, "CommunitiesFrame").art !== 0, off.eval("return CommunitiesFrame.vgWindow == nil")], "with the group off").toEqual([true, true]);
+  expect([windowState(off, "CommunitiesFrame").art !== 0, off.eval("return ns.FrameState('vgWindow')[CommunitiesFrame] == nil")], "with the group off").toEqual([true, true]);
   const bare = loggedIn(WINDOWS_ENV + `__window("CommunitiesFrame") CommunitiesFrame.Chat = {} CommunitiesFrame.StreamDropdown = {} CommunitiesFrame.MaximizeMinimizeFrame = {}
     CommunitiesFrame.MemberList = CreateFrame("Frame", nil, CommunitiesFrame) CommunitiesFrame.MemberList.InsetFrame = {}`);
   bare.eval("CommunitiesFrame:Show()");
@@ -180,7 +180,7 @@ it("guild dialogs: the rename window is skinned like any window; a second show p
   expect(windowState(addon, "GuildRenameFrame").painted, "painting again piles up nothing").toBe(painted);
   const off = loggedIn(DIALOG_ENV, OFF);
   for (const name of [...DIALOGS, "GuildRenameFrame"]) off.eval(`${name}:Show()`);
-  expect(off.eval(`local n = 0 for _, name in ipairs({ ${DIALOGS.map((d) => `"${d}"`).join(", ")} }) do if _G[name].vgWindow == nil and (_G[name].Bg.__alpha or 1) ~= 0 then n = n + 1 end end return n`), "all seven untouched").toBe(7);
+  expect(off.eval(`local n = 0 for _, name in ipairs({ ${DIALOGS.map((d) => `"${d}"`).join(", ")} }) do if ns.FrameState('vgWindow')[_G[name]] == nil and (_G[name].Bg.__alpha or 1) ~= 0 then n = n + 1 end end return n`), "all seven untouched").toBe(7);
 });
 
 it("guild dialogs: a client without them, or with their parts missing, loads cleanly", () => {
@@ -242,7 +242,7 @@ it("channels and friends dialogs: a second show paints nothing more, the switch 
   expect(windowState(addon, "ChannelFrame").painted, "painting again piles up nothing").toBe(painted);
   const off = loggedIn(FRIENDS_ENV, OFF);
   for (const name of names) off.eval(`${name}:Show()`);
-  expect(off.eval(`local n = 0 for _, name in ipairs({ ${names.map((d) => `"${d}"`).join(", ")} }) do if _G[name].vgWindow == nil then n = n + 1 end end return n`), "none hooked").toBe(5);
+  expect(off.eval(`local n = 0 for _, name in ipairs({ ${names.map((d) => `"${d}"`).join(", ")} }) do if ns.FrameState('vgWindow')[_G[name]] == nil then n = n + 1 end end return n`), "none hooked").toBe(5);
   const bare = loggedIn(`AddFriendFrame = CreateFrame("Frame", "AddFriendFrame", UIParent) AddFriendNameEditBox = {} AddFriendEntryFrameAcceptButton = {}`);
   bare.eval("AddFriendFrame:Show()");
   expect([windowErrors(bare), bare.eval("return #ns.errors")], "a client without the dialog's named parts").toEqual(["none", 0]);
@@ -301,7 +301,7 @@ it("guild creation: a second show paints nothing more, the switch off leaves the
   const off = loggedIn(CREATION_ENV, OFF);
   for (const name of CREATION) off.eval(`${name}:Show()`);
   off.eval("PetitionFrame_Update()");
-  expect(off.eval("return { GuildRegistrarFrame.vgWindow == nil, PetitionFrameCharterTitle.__textColor[1] }"), "left the game's, its texts dark").toEqual([true, 0.2]);
+  expect(off.eval("return { ns.FrameState('vgWindow')[GuildRegistrarFrame] == nil, PetitionFrameCharterTitle.__textColor[1] }"), "left the game's, its texts dark").toEqual([true, 0.2]);
   const bare = loggedIn(WINDOWS_ENV + `__window("PetitionFrame") __window("TabardFrame") GuildRegistrarFrameEditBox = {}`);
   bare.eval("PetitionFrame:Show() TabardFrame:Show()");
   expect([windowErrors(bare), bare.eval("return #ns.errors")], "no texts, no game functions, no buttons").toEqual(["none", 0]);
@@ -347,7 +347,7 @@ it("role poll and invite popups: a second show paints nothing more, the switch o
   expect(addon.eval("return ns.Theme.PaintedCount()"), "painting again piles up nothing").toBe(painted);
   const off = loggedIn(POPUP_ENV, OFF);
   off.eval("RolePollPopup:Show() LFGInvitePopup:Show()");
-  expect(off.eval("return { RolePollPopup.vgWindow == nil, LFGInvitePopup.Border.Art.__alpha ~= 0 }"), "left the game's").toEqual([true, true]);
+  expect(off.eval("return { ns.FrameState('vgWindow')[RolePollPopup] == nil, LFGInvitePopup.Border.Art.__alpha ~= 0 }"), "left the game's").toEqual([true, true]);
   const bare = loggedIn(`CreateFrame("Frame", "RolePollPopup", UIParent) RolePollPopup.Border = {} RolePollPopup.CloseButton = {} RolePollPopupAcceptButton = {}`);
   bare.eval("RolePollPopup:Show()");
   expect([windowErrors(bare), bare.eval("return #ns.errors")], "a popup with parts missing").toEqual(["none", 0]);
@@ -398,7 +398,7 @@ it("raid tab: skinned when Blizzard_RaidUI loads after the tab, never in combat,
   const off = loggedIn(RAID_ENV, OFF);
   off.eval("RaidFrame:Show()");
   off.fire("ADDON_LOADED", "Blizzard_RaidUI");
-  expect(off.eval("return { RaidFrame.vgWindow == nil, RaidGroup1.Outline.__alpha ~= 0, RaidGroupButton1.Art.__alpha ~= 0 }"), "left the game's").toEqual([true, true, true]);
+  expect(off.eval("return { ns.FrameState('vgWindow')[RaidFrame] == nil, RaidGroup1.Outline.__alpha ~= 0, RaidGroupButton1.Art.__alpha ~= 0 }"), "left the game's").toEqual([true, true, true]);
 });
 
 it("raid tab: the parent window is skinned, and a client without the raid UI or some of its parts loads cleanly", () => {
@@ -499,7 +499,7 @@ it("social window: a second show paints nothing more, the switch off leaves it t
   expect(windowState(addon, "SocialUIFrame").painted, "painting again piles up nothing").toBe(painted);
   const off = loggedIn(SOCIAL_ENV, OFF);
   off.eval("SocialUIFrame:Show()");
-  expect([windowState(off, "SocialUIFrame").art !== 0, off.eval("return SocialUIFrame.vgWindow == nil and SocialUIFrame.tabs[1].Background.__alpha ~= 0")], "with the group off").toEqual([true, true]);
+  expect([windowState(off, "SocialUIFrame").art !== 0, off.eval("return ns.FrameState('vgWindow')[SocialUIFrame] == nil and SocialUIFrame.tabs[1].Background.__alpha ~= 0")], "with the group off").toEqual([true, true]);
   const bare = loggedIn(WINDOWS_ENV + `__window("SocialUIFrame") SocialUIFrame.BattleNetBar = {} SocialUIFrame.FriendsList = CreateFrame("Frame", nil, SocialUIFrame) SocialUIFrame.FriendsList.FilterBar = {}
     SocialUIFrame.RaidFrame = {} SocialUIFrame.IgnoreListFrame = {} SocialUIFrame.BattleNetBroadcastFrame = CreateFrame("Frame", nil, SocialUIFrame)`);
   bare.eval("SocialUIFrame:Show()");

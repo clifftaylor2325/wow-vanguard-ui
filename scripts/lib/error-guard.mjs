@@ -39,7 +39,9 @@ export function takeExpected() {
 }
 
 // Every entry the addon caught as [{ text, count, stack }]: the ones
-// ns.ClearErrors forgot (kept by the harness in __wfgCleared), then ns.errors.
+// ns.ClearErrors forgot (kept by the harness in __wfgCleared), then ns.errors,
+// then the rules the harness saw it break (scripts/lib/wow-taint.lua: a field
+// stored on a game frame, a protected call blocked in combat).
 export function caught(addon) {
   const found = addon.eval(`
     local out = {}
@@ -48,6 +50,7 @@ export function caught(addon) {
     end
     add(__wfgCleared or {})
     add(ns.errors)
+    add(__wfgStub.violations or {})
     return out`);
   return Array.isArray(found) ? found : [];
 }

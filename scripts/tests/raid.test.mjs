@@ -172,6 +172,7 @@ const HEADER_LOG = `__log = {}
     if f:GetName() == "Vanguard_Raid" then __log[#__log + 1] = "driver " .. attr f:Hide() end
     return drive(f, attr, v)
   end
+  __wfgStub.transparent[CreateFrame] = true
 `;
 
 // The header's log split at its first Show: what came before, what came after, and how many Shows there were.

@@ -15,6 +15,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgSkinned = ns.FrameState("vgSkinned")
+
 local T = ns.Theme
 
 local GT = ns.Module("GameTools", { defaults = { cooldowns = true, meter = true, place = true, cdmHint = true, essential = false } })
@@ -92,8 +95,8 @@ end
 -- One cooldown or buff item in the theme: icon cropped and framed (a buff bar
 -- gets the theme's bar instead), its numbers in the theme font. Once per item.
 function GT.SkinItem(item)
-  if item.vgSkinned then return end
-  item.vgSkinned = true
+  if vgSkinned[item] then return end
+  vgSkinned[item] = true
   local icon = iconOf(item)
   if type(icon) == "table" and icon.SetTexCoord then T.Crop(icon) end
   if type(item.Bar) == "table" then T.StyleBar(item.Bar)
@@ -124,8 +127,8 @@ end
 -- name and amount in the theme font, its icon cropped. Once per line.
 function GT.SkinEntry(entry)
   local bar = entry.StatusBar
-  if entry.vgSkinned or type(bar) ~= "table" then return end
-  entry.vgSkinned = true
+  if vgSkinned[entry] or type(bar) ~= "table" then return end
+  vgSkinned[entry] = true
   T.StyleBar(bar)
   for _, region in ipairs(bar.BackgroundRegions or {}) do region:SetAlpha(0) end
   T.HudPanel(bar, { inset = true })
@@ -143,8 +146,8 @@ end
 -- One meter window in the theme: its header art faded, a flat panel, its
 -- lines restyled whenever the list redraws. Once per window.
 function GT.SkinWindow(win)
-  if win.vgSkinned then return end
-  win.vgSkinned = true
+  if vgSkinned[win] then return end
+  vgSkinned[win] = true
   if type(win.Header) == "table" then win.Header:SetAlpha(0) end
   T.HudPanel(win, { alpha = 0.9 })
   skinLines(win)

@@ -1,7 +1,7 @@
 // more: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { AFK_ENV, CLICK_LUA, FAKE_FADES, expectErrors, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, isTok, key, later, loggedIn, marks, pinned, plate, putAway, px, raidButton, setCombat, strips, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { AFK_ENV, CLICK_LUA, FAKE_FADES, expectErrors, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, gridLines, isTok, key, later, loggedIn, marks, pinned, plate, putAway, px, raidButton, setCombat, strips, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -37,6 +37,12 @@ it("minimap", () => {
   expect(addon.eval("return { GameTooltip:IsShown(), Minimap:GetZoom() }"), "the tooltip goes when the mouse leaves, and the wheel over the name still zooms").toEqual([false, 4]);
   const bare = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Minimap = { coords = false } } }" });
   expect(bare.eval(`return ${M}.bottom:IsShown()`), "coordinates off: no bottom band").toBe(false);
+});
+
+it("a minimap that has the game's own wheel handler keeps it, and Vanguard adds none", () => {
+  const addon = loggedIn("Minimap:SetScript('OnMouseWheel', function(self, d) self.__gameWheel = (self.__gameWheel or 0) + d end)");
+  addon.eval("Minimap:GetScript('OnMouseWheel')(Minimap, 1)");
+  expect(addon.eval("return { Minimap.__gameWheel, Minimap:GetZoom(), Minimap:IsMouseWheelEnabled() }"), "the game's handler runs once and Vanguard's doesn't zoom as well").toEqual([1, 0, true]);
 });
 
 it("chat", () => {
@@ -163,7 +169,7 @@ it("bags: each slot is skinned once, the window on show, a border only when its 
   addon.eval(`__new = CreateFrame("Button", nil, ContainerFrameCombinedBags) __new.IconBorder = __new:CreateTexture()
     ContainerFrameCombinedBags.EnumerateValidItems = function() return ipairs({ __item, __new }) end
     ContainerFrameCombinedBags:UpdateItems()`);
-  expect([painted(addon), addon.eval("return __new.vgSkinned"), borderOf(addon, "__new") !== undefined], "a slot the game adds is skinned when it fills the slots, the old one is left alone").toEqual([[1, 0, 0], true, true]);
+  expect([painted(addon), addon.eval("return ns.FrameState('vgSkinned')[__new]"), borderOf(addon, "__new") !== undefined], "a slot the game adds is skinned when it fills the slots, the old one is left alone").toEqual([[1, 0, 0], true, true]);
   addon.eval("for _ = 1, 3 do __item.IconBorder:SetVertexColor(0.1, 0.4, 1) end");
   expect([painted(addon)[2], borderOf(addon, "__item")], "the same quality color three times: one repaint").toEqual([1, [0.1, 0.4, 1, 1]]);
   addon.eval("__item.IconBorder:Hide() __item.IconBorder:Hide() __item.IconBorder:SetVertexColor(0.1, 0.4, 1)");
@@ -177,7 +183,7 @@ it("bags: each slot is skinned once, the window on show, a border only when its 
 it("character pane durability, the mail's Open All button", () => {
   const addon = loggedIn(UNITS_ENV + UI_ENV + STRIP_ENV + GEAR_ENV);
   // A gear slot's durability label: shown, text and color.
-  const slot = (name) => addon.eval(`local l = Character${name}Slot.vgDurability return l and { l:IsShown(), l:GetText(), l.__textColor } or false`);
+  const slot = (name) => addon.eval(`local l = ns.FrameState('vgDurability')[Character${name}Slot] return l and { l:IsShown(), l:GetText(), l.__textColor } or false`);
   expect(slot("Head"), "nothing painted while the pane is shut").toBe(false);
   addon.eval("CharacterFrame:Show()");
   const legs = slot("Legs");
@@ -189,7 +195,7 @@ it("character pane durability, the mail's Open All button", () => {
   expect(borderOf(addon, "OpenAllMail") !== undefined, "the mail's Open All button is themed").toBe(true);
   const off = loggedIn(UNITS_ENV + UI_ENV + STRIP_ENV + GEAR_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { durability = false } } }" });
   off.eval("CharacterFrame:Show()");
-  expect(off.eval("return CharacterHeadSlot.vgDurability == nil"), "switched off, no labels").toBe(true);
+  expect(off.eval("return ns.FrameState('vgDurability')[CharacterHeadSlot] == nil"), "switched off, no labels").toBe(true);
 });
 
 // TEST-ONLY chat hooks: the game's message filters and link callback, and the lines the main window holds.
@@ -257,7 +263,7 @@ it("chat: short channel names, live, never reading hidden lines", () => {
     .toEqual(["|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[RL]|h hi", "|Hchannel:X|h[LFG]|h hi", "|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[t]|h hi"]);
   expect(addon.eval('ChatFrame2:AddMessage("plain TEST-ONLY line") local m = ChatFrame2.__messages return m[#m]'), "a line without a channel tag is left alone").toBe("plain TEST-ONLY line");
   addon.eval('FCF_OpenTemporaryWindow("TestOnly")');
-  expect(addon.eval("return ChatFrameTempTestOnly.vgWatched"), "a whisper window that opens later is followed too").toBe(true);
+  expect(addon.eval("return ns.FrameState('vgWatched')[ChatFrameTempTestOnly]"), "a whisper window that opens later is followed too").toBe(true);
 });
 
 it("chat: Ctrl + mouse wheel jumps to the top or bottom", () => {
@@ -918,8 +924,8 @@ it("quest bursts: many quest log updates in one frame rebuild the tracker and th
 
 it("quest tracker: the nearest-first sort ticks only while that order is on", () => {
   const addon = loggedIn(TRACK_ENV);
-  // Whether the tracker has its sort ticker (an OnUpdate script).
-  const ticking = () => addon.eval("return Vanguard_QuestTrackerFrame:GetScript('OnUpdate') ~= nil");
+  // Whether the tracker's sort is a job on the shared ticker.
+  const ticking = () => addon.eval("return ns.ticker.vgJobs['quest tracker sort'] ~= nil");
   expect(ticking(), "in the game's order, no sort ticker").toBe(false);
   addon.eval("ns.GetModule('QuestTracker').settings.order = 'nearest' ns.GetModule('QuestTracker').ApplyOrder()");
   expect([ticking(), addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].title:GetText()")], "nearest first: it ticks, and the tracker is re-sorted at once").toEqual([true, "[12] TEST-ONLY Letter"]);
@@ -1061,7 +1067,7 @@ const WARNING_ENV = `
 it("game alerts: Hardcore death notices take the theme font and red; a reused line gets the game's font back", () => {
   const addon = loggedIn(WARNING_ENV);
   // The message line: its font face, color, the game font object it was given, and the death mark.
-  const line = () => addon.eval("local l = RaidWarningFrame.line return { font = l.__font and l.__font[1], color = l.__textColor, template = l.__template or false, death = l.vgDeath or false }");
+  const line = () => addon.eval("local l = RaidWarningFrame.line return { font = l.__font and l.__font[1], color = l.__textColor, template = l.__template or false, death = ns.FrameState('vgDeath')[l] or false }");
   addon.fire("HARDCORE_DEATHS", "TEST-ONLY Bob has fallen.");
   const death = line();
   expect([death.font, isTok(addon, death.color, "bad"), death.death], "a death notice: the theme's title font, the theme's red").toEqual([addon.eval('local f = UIParent:CreateFontString() ns.Theme.ApplyRole(f, "title") return f.__font[1]'), true, true]);
@@ -1591,7 +1597,7 @@ it("game menu: buttons made after the skin ran are skinned once, Vanguard's matc
   addon.eval("GameMenuFrame:Hide() GameMenuFrame:Show()");
   expect(addon.eval("return __spy"), "the next open makes two new buttons: only those are skinned").toBe(5);
   addon.eval("GameMenuFrame:Hide() GameMenuFrame.buttonPool.__active = {} GameMenuFrame:Show()");
-  expect(addon.eval("local n = 0 for b in GameMenuFrame.buttonPool:EnumerateActive() do if b.vgMenuSkinned then n = n + 1 end end return n"), "every active button carries the skin").toBe(2);
+  expect(addon.eval("local n = 0 for b in GameMenuFrame.buttonPool:EnumerateActive() do if ns.FrameState('vgMenuSkinned')[b] then n = n + 1 end end return n"), "every active button carries the skin").toBe(2);
   const head = addon.eval("local h = GameMenuFrame.Header local p = h.__points.TOP return { h.LeftBG:IsShown(), h.RightBG:IsShown(), h.CenterBG:IsShown(), h.Text.__font ~= nil, p.rel == GameMenuFrame, p.y }");
   expect(head, "the header plate is hidden, its title in the theme font, inside the panel").toEqual([false, false, false, true, true, -8]);
   const off = loggedIn(FOREVER_MENU_ENV + MENU_POOL_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
@@ -1842,7 +1848,7 @@ it("the bag's Sort button sits beside the search box and the game's own sort but
 
 it("a context overlay is left alone so the game's search dimming shows", () => {
   const addon = loggedIn(UI_ENV);
-  addon.eval("__item.ItemContextOverlay = __item:CreateTexture() __item.vgSkinned = nil ContainerFrameCombinedBags:Hide() ContainerFrameCombinedBags:Show()");
+  addon.eval("__item.ItemContextOverlay = __item:CreateTexture() ns.FrameState('vgSkinned')[__item] = nil ContainerFrameCombinedBags:Hide() ContainerFrameCombinedBags:Show()");
   expect(addon.eval("return __item.ItemContextOverlay:GetAlpha()"), "its alpha is the game's, not faded to 0").toBe(1);
 });
 
@@ -1874,10 +1880,10 @@ it("nameplates: a gold ! by units your quests need", () => {
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
   // A plate's quest mark: shown, its icon, its color.
-  const mark = (unit) => addon.eval(`local q = __plates.${unit}.vg.quest return { q:IsShown(), q.__texture, q.__vertexColor }`);
+  const mark = (unit) => addon.eval(`local q = ns.FrameState('vgPlate')[__plates.${unit}].quest return { q:IsShown(), q.__texture, q.__vertexColor }`);
   const one = mark("nameplate1");
   expect([one[0], /Icons\\Quests$/.test(one[1]), isTok(addon, one[2], "gold")], "a quest unit gets the gold !").toEqual([true, true, true]);
-  expect(addon.eval("return __plates.nameplate1.vg.quest.__points.LEFT.rel == __plates.nameplate1.vg.name"), "just right of its name").toBe(true);
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest.__points.LEFT.rel == ns.FrameState('vgPlate')[__plates.nameplate1].name"), "just right of its name").toBe(true);
   expect(mark("nameplate2")[0], "a hidden answer counts as no").toBe(false);
   addon.eval("__related.nameplate1 = nil");
   addon.fire("QUEST_LOG_UPDATE");
@@ -1889,7 +1895,7 @@ it("nameplates: a gold ! by units your quests need", () => {
   expect(mark("nameplate1")[0], "the switch turns the marks off at once").toBe(false);
   const bare = loggedIn(UNITS_ENV + PLATE_ENV + "C_QuestLog = nil");
   bare.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
-  expect(bare.eval("return __plates.nameplate1.vg.quest:IsShown()"), "a client that can't say shows none").toBe(false);
+  expect(bare.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "a client that can't say shows none").toBe(false);
 });
 
 it("flight timer: the taxi check runs only from picking a flight until it lands", () => {
@@ -1897,13 +1903,13 @@ it("flight timer: the taxi check runs only from picking a flight until it lands"
   // How often the taxi state was asked so far, then reset.
   const asked = () => addon.eval("local n = __asked __asked = 0 return n");
   addon.advance(60);
-  expect([asked(), addon.eval('return ns.GetModule("Errands").poller:IsShown()')], "a minute on the ground with no flight picked: never asked").toEqual([0, false]);
+  expect([asked(), addon.eval('return ns.ticker.vgJobs["flight poll"] ~= nil')], "a minute on the ground with no flight picked: never asked").toEqual([0, false]);
   addon.eval("TakeTaxiNode(2) __onTaxi = true");
   addon.advance(5);
   expect([asked(), flightBar(addon).shown], "in the air: asked twice a second, the bar up").toEqual([10, true]);
   addon.eval("__onTaxi = false");
   addon.advance(1);
-  expect([addon.eval('return ns.GetModule("Errands").poller:IsShown()'), flightBar(addon).shown], "landed: the check stops").toEqual([false, false]);
+  expect([addon.eval('return ns.ticker.vgJobs["flight poll"] ~= nil'), flightBar(addon).shown], "landed: the check stops").toEqual([false, false]);
   asked();
   addon.advance(30);
   expect(asked(), "and stays stopped").toBe(0);
@@ -1953,12 +1959,12 @@ it("the game's tools: Cooldown Manager and damage meter styled and placed, stand
     return { crop = i.Icon.__texCoord and i.Icon.__texCoord[1], inset = i.Icon.__points.TOPLEFT.x > 0, font = i.ChargeCount.Current.__font[3] }`);
   expect(item.crop > 0 && item.inset && item.font === "OUTLINE", "cooldown icons are cropped, inset in a thin border, with outlined numbers").toBe(true);
   addon.eval("UtilityCooldownViewer:RefreshLayout()");
-  expect(addon.eval("return UtilityCooldownViewer.items[2].vgSkinned"), "items the game adds later are styled too").toBe(true);
+  expect(addon.eval("return ns.FrameState('vgSkinned')[UtilityCooldownViewer.items[2]]"), "items the game adds later are styled too").toBe(true);
   expect(addon.eval("return BuffBarCooldownViewer.items[1].Bar:GetStatusBarTexture() ~= nil and BuffBarCooldownViewer.items[1].Bar.Name.__font ~= nil"), "buff bars get the theme's bar and font").toBe(true);
   const win = addon.eval("local w = DamageMeterSessionWindow1 local l = w.ScrollBox.lines[1] return { w.Header.__alpha, l.StatusBar.BackgroundRegions[1].__alpha, l.StatusBar.Name.__font ~= nil }");
   expect(win, "the meter's header and bar shading fade, its lines take the theme font").toEqual([0, 0, true]);
   addon.eval("__line(DamageMeterSessionWindow1) DamageMeterSessionWindow1.ScrollBox:Update() DamageMeter:SetupSessionWindow() __line(DamageMeterSessionWindow2) DamageMeterSessionWindow2.ScrollBox:Update()");
-  expect(addon.eval("return { DamageMeterSessionWindow1.ScrollBox.lines[2].vgSkinned, DamageMeterSessionWindow2.vgSkinned, DamageMeterSessionWindow2.ScrollBox.lines[1].vgSkinned }"), "new lines and new windows are styled as they come").toEqual([true, true, true]);
+  expect(addon.eval("return { ns.FrameState('vgSkinned')[DamageMeterSessionWindow1.ScrollBox.lines[2]], ns.FrameState('vgSkinned')[DamageMeterSessionWindow2], ns.FrameState('vgSkinned')[DamageMeterSessionWindow2.ScrollBox.lines[1]] }"), "new lines and new windows are styled as they come").toEqual([true, true, true]);
   // Where a game frame is anchored: { point, the spot it's on }.
   const spot = (name, point) => addon.eval(`local p = ${name}.__points.${point} return p and { p.relPoint, p.rel == Vanguard_${name}Spot } or false`);
   expect([spot("EssentialCooldownViewer", "CENTER"), spot("DamageMeter", "TOPLEFT"), spot("DamageMeter", "BOTTOMRIGHT")], "rows are centered on their spots; the meter fills its own").toEqual([["CENTER", true], ["TOPLEFT", true], ["BOTTOMRIGHT", true]]);
@@ -1970,16 +1976,19 @@ it("the game's tools: Cooldown Manager and damage meter styled and placed, stand
   addon.eval('__click("Bars, map, chat")');
   expect(addon.eval('return __click("Place them to fit the layout") and VanguardDB.profiles.Default.GameTools.place'), "the placing switch is on the page").toBe(false);
   const left = loggedIn(TOOLS_ENV, { savedVariables: "VanguardDB.profiles.Default = { GameTools = { place = false } }" });
-  expect(left.eval("return { Vanguard_DamageMeterSpot == nil, DamageMeter.__points.TOPLEFT.rel == UIParent, DamageMeterSessionWindow1.vgSkinned }"), "with placing off they keep Edit Mode's spots but are still styled").toEqual([true, true, true]);
+  expect(left.eval("return { Vanguard_DamageMeterSpot == nil, DamageMeter.__points.TOPLEFT.rel == UIParent, ns.FrameState('vgSkinned')[DamageMeterSessionWindow1] }"), "with placing off they keep Edit Mode's spots but are still styled").toEqual([true, true, true]);
   const off = loggedIn(TOOLS_ENV, { savedVariables: "VanguardDB.profiles.Default = { GameTools = { cooldowns = false, meter = false } }" });
-  expect(off.eval("return { EssentialCooldownViewer.items[1].vgSkinned == nil, DamageMeterSessionWindow1.vgSkinned == nil, Vanguard_DamageMeterSpot == nil }"), "switched off, both stay the game's").toEqual([true, true, true]);
+  expect(off.eval("return { ns.FrameState('vgSkinned')[EssentialCooldownViewer.items[1]] == nil, ns.FrameState('vgSkinned')[DamageMeterSessionWindow1] == nil, Vanguard_DamageMeterSpot == nil }"), "switched off, both stay the game's").toEqual([true, true, true]);
   expect(loggedIn("").eval("return ns.GetModule('GameTools') ~= nil"), "a client without these tools loads cleanly").toBe(true);
 });
 
 it("Edit Mode shows Vanguard's handles too, with a note under its window", () => {
   const addon = loggedIn(TOOLS_ENV + CLICK_LUA);
   // Whether the handles are up, how many grid lines show, and whether the note shows (with its text).
-  const state = () => addon.eval("local n = Vanguard_EditModeNote return { ns.Unlocked(), ns.GridLineCount(), n ~= nil and n:IsShown(), n ~= nil and n.text:GetText() == ns.EDIT_NOTE }");
+  const state = () => {
+    const s = addon.eval("local n = Vanguard_EditModeNote return { ns.Unlocked(), n ~= nil and n:IsShown(), n ~= nil and n.text:GetText() == ns.EDIT_NOTE }");
+    return [s[0], gridLines(addon), s[1], s[2]];
+  };
   addon.eval("EditModeManagerFrame:Show()");
   expect(state(), "opening Edit Mode shows the handles (the game draws its own grid) and the note").toEqual([true, 0, true, true]);
   expect(addon.eval("return Vanguard_EditModeNote.__points.TOP.rel == EditModeManagerFrame"), "the note sits under Edit Mode's window").toBe(true);
@@ -2109,11 +2118,11 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   addon.eval('MinimapCluster.Tracking:ClearAllPoints() MinimapCluster.Tracking:SetPoint("CENTER", UIParent, "CENTER", 0, 0)');
   expect(pinned(addon, "MinimapCluster.Tracking", overlay), "when the game moves one back, it returns to its corner").toEqual([true, "BOTTOMLEFT"]);
   const slots = addon.eval(`local t, a = MinimapCluster.Tracking, AddonCompartmentFrame
-    return { t:GetWidth(), t:GetScale(), t.vgGlyph.__texture:match("(%a+)$"), a.vgGlyph.__texture:match("(%a+)$"), t.vgSlot ~= nil, MinimapCluster.IndicatorFrame.MailFrame.vgSlot == nil }`);
+    return { t:GetWidth(), t:GetScale(), ns.FrameState('vgGlyph')[t].__texture:match("(%a+)$"), ns.FrameState('vgGlyph')[a].__texture:match("(%a+)$"), ns.FrameState('vgSlot')[t] ~= nil, ns.FrameState('vgSlot')[MinimapCluster.IndicatorFrame.MailFrame] == nil }`);
   expect(slots, "tracking and the addon compartment are 18-unit slot buttons with the theme's icons (unscaled); mail stays an indicator").toEqual([18, 1, "MinimapTracking", "MinimapAddons", true, true]);
   expect(addon.eval("local a = AddonCompartmentFrame a.Text = a:CreateFontString() ns.GetModule('Minimap').SlotButton(a, 'MinimapAddons') return a.Text:GetAlpha()"), "the compartment's count is faded, not left hanging off the slot").toBe(0);
   addon.eval("local a = AddonCompartmentFrame a.__scripts.OnEnter(a)");
-  expect(isTok(addon, addon.eval("return AddonCompartmentFrame.vgGlyph.__vertexColor"), "accent"), "a slot button's icon lights in the accent under the mouse").toBe(true);
+  expect(isTok(addon, addon.eval("return ns.FrameState('vgGlyph')[AddonCompartmentFrame].__vertexColor"), "accent"), "a slot button's icon lights in the accent under the mouse").toBe(true);
   expect([pinned(addon, "BagsBar", "Vanguard_MenuStrip"), pinned(addon, "MicroMenuContainer", "Vanguard_MenuStrip")], "the bag bar and the micro menu ride in one bar, each at its row's right end").toEqual([[true, "RIGHT"], [true, "RIGHT"]]);
   expect(addon.eval("for _, e in ipairs(ns.errors) do if e.text:find('pin ') then return e.text end end return 'none'"), "pinning the first row fits both rows with no error: every row's anchor is made first").toBe("none");
   addon.eval("BagsBar:SetSize(600, 45) ns.PausePins(false)");
@@ -2161,16 +2170,16 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
   // A menu button's state: its icon, the icon's color, its faded art and kept flash, the icon's width.
   const glyph = (name) => addon.eval(`local b = ${name} local art
     for _, r in ipairs({ b:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
-    return { tex = b.vgGlyph and b.vgGlyph.__texture, color = b.vgGlyph and b.vgGlyph.__vertexColor, art = art, normal = b.normal.__alpha, flash = b.Flash.__alpha or 1, w = b.vgGlyph and b.vgGlyph.__width }`);
+    return { tex = ns.FrameState('vgGlyph')[b] and ns.FrameState('vgGlyph')[b].__texture, color = ns.FrameState('vgGlyph')[b] and ns.FrameState('vgGlyph')[b].__vertexColor, art = art, normal = b.normal.__alpha, flash = b.Flash.__alpha or 1, w = ns.FrameState('vgGlyph')[b] and ns.FrameState('vgGlyph')[b].__width }`);
   const char = glyph("CharacterMicroButton");
   expect(/Icons\\Character$/.test(char.tex) && /Icons\\MenuCog$/.test(glyph("MainMenuMicroButton").tex), "switched on, each menu button gets its Vanguard icon (a client without the rest is fine)").toBeTruthy();
   expect([char.art, char.normal, char.flash, r3(char.w * MENU)], "the game's art is faded but its alert flash stays; the icon is 20 screen pixels").toEqual([0, 0, 1, 20]);
   expect(isTok(addon, char.color, "text"), "the icon is text").toBeTruthy();
-  const slot = addon.eval("local s = CharacterMicroButton.vgSlot return { s.__width, s.__height, s.__points.CENTER ~= nil, CharacterMicroButton.vgGlyph:GetParent() == s }");
+  const slot = addon.eval("local s = ns.FrameState('vgSlot')[CharacterMicroButton] return { s.__width, s.__height, s.__points.CENTER ~= nil, ns.FrameState('vgGlyph')[CharacterMicroButton]:GetParent() == s }");
   expect([r3(slot[0] * MENU), r3(slot[1] * MENU), slot[2], slot[3]], "each button sits on a centered slot 24 pixels wide and 30 tall (a 4-pixel gap to its neighbors), the icon on it").toEqual([24, 30, true, true]);
   const bag = addon.eval(`local b = MainMenuBarBackpackButton local art
     for _, r in ipairs({ b:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
-    return { art, b.icon.__alpha, b.icon.__texCoord[1] > 0, b.icon.__points.TOPLEFT.rel == b.vgSlot, b.icon.__points.TOPLEFT.x }`);
+    return { art, b.icon.__alpha, b.icon.__texCoord[1] > 0, b.icon.__points.TOPLEFT.rel == ns.FrameState('vgSlot')[b], b.icon.__points.TOPLEFT.x }`);
   expect([...bag.slice(0, 4), r3(bag[4] * BAGS)], "bag buttons: the game's art faded, the bag icon kept, cropped and inset 3 pixels in its slot").toEqual([0, 1, true, true, 3]);
   addon.eval("CharacterMicroButton:Disable()");
   expect(isTok(addon, glyph("CharacterMicroButton").color, "disabled"), "and in the disabled tier while the button is disabled").toBeTruthy();
@@ -2179,21 +2188,21 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
   addon.eval('ns.Options.Show("more")');
   expect(addon.eval('return __click("Vanguard icons on the menu buttons") and VanguardDB.profiles.Default.MenuStrip.glyphs'), "the switch is on the page").toBe(false);
   const plain = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV);
-  expect(plain.eval("return { CharacterMicroButton.vgGlyph ~= nil, CharacterMicroButton.normal.__alpha, CharacterMicroButton.vgSlot ~= nil }"), "by default Vanguard's icon stands on the slot, the game's faded").toEqual([true, 0, true]);
+  expect(plain.eval("return { ns.FrameState('vgGlyph')[CharacterMicroButton] ~= nil, CharacterMicroButton.normal.__alpha, ns.FrameState('vgSlot')[CharacterMicroButton] ~= nil }"), "by default Vanguard's icon stands on the slot, the game's faded").toEqual([true, 0, true]);
   const off = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
-  expect(off.eval("return { CharacterMicroButton.vgGlyph == nil, CharacterMicroButton.normal.__alpha == nil, CharacterMicroButton.vgSlot ~= nil }"), "switched off, the game's own icon stays, on its slot").toEqual([true, true, true]);
+  expect(off.eval("return { ns.FrameState('vgGlyph')[CharacterMicroButton] == nil, CharacterMicroButton.normal.__alpha == nil, ns.FrameState('vgSlot')[CharacterMicroButton] ~= nil }"), "switched off, the game's own icon stays, on its slot").toEqual([true, true, true]);
 
   const plates = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV);
   plates.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
   plates.fire("PLAYER_ENTERING_WORLD");
   // A plate's target marker: shown, texture, color and where it's anchored.
-  const marker = (unit) => plates.eval(`local m = __plates.${unit}.vg.marker return { m:IsShown(), m.__texture, m.__vertexColor, m.__points.LEFT.relPoint }`);
+  const marker = (unit) => plates.eval(`local m = ns.FrameState('vgPlate')[__plates.${unit}].marker return { m:IsShown(), m.__texture, m.__vertexColor, m.__points.LEFT.relPoint }`);
   const target = marker("nameplate1");
   expect(target[0] === true && /Textures\\Diamond$/.test(target[1]) && isTok(plates, target[2], "accent") && target[3] === "RIGHT", "your target's plate gets an accent diamond at its right").toBeTruthy();
   // Whether a plate's target marker shows.
-  const shown = (unit) => plates.eval(`return __plates.${unit}.vg.marker:IsShown()`);
+  const shown = (unit) => plates.eval(`return ns.FrameState('vgPlate')[__plates.${unit}].marker:IsShown()`);
   expect(shown("nameplate2"), "other plates don't").toBe(false);
-  plates.eval('VanguardDB.profiles.Default.Nameplates.targetBorder = false ns.GetModule("Nameplates").Update(__plates.nameplate1.vg, "nameplate1")');
+  plates.eval('VanguardDB.profiles.Default.Nameplates.targetBorder = false ns.GetModule("Nameplates").Update(ns.FrameState("vgPlate")[__plates.nameplate1], "nameplate1")');
   expect(shown("nameplate1"), "and it goes with the target border switch").toBe(false);
 
   const raid = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV);
@@ -2225,10 +2234,10 @@ it("menu strip: set to mouseover, shown by the mouse entering and leaving it and
 it("bag and menu bar: the bars' own frame art is hidden, the key ring gets a full slot and no fill", () => {
   const addon = strips();
   expect(addon.eval("return { MicroMenu.BorderArt.__alpha, MicroMenu.BackgroundArt.__alpha, BagsBar.BorderArt.__alpha }"), "the brass box is faded").toEqual([0, 0, 0]);
-  const ring = addon.eval("local b = KeyRingButton return { b.icon.__alpha, b.icon.__points.TOPLEFT.rel == b.vgSlot, b.icon.__texCoord[1] > 0, b.vgSlot.__width, b.vgFill == nil, b:GetWidth() }");
+  const ring = addon.eval("local b = KeyRingButton return { b.icon.__alpha, b.icon.__points.TOPLEFT.rel == ns.FrameState('vgSlot')[b], b.icon.__texCoord[1] > 0, ns.FrameState('vgSlot')[b].__width, ns.FrameState('vgFill')[b] == nil, b:GetWidth() }");
   expect([ring[0], ring[1], ring[2], r3(ring[3] * BAGS), ring[4], ring[5]], "the key ring: widened from 33 to a bag's 45 units, its icon cropped in a full 24-pixel slot, no fill").toEqual([1, true, true, 24, true, 45]);
   const off = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
-  expect(off.eval("return { MicroMenu.BorderArt.__alpha, KeyRingButton.vgSlot ~= nil }"), "with or without the line icons, the frame art goes and the key ring is framed").toEqual([0, true]);
+  expect(off.eval("return { MicroMenu.BorderArt.__alpha, ns.FrameState('vgSlot')[KeyRingButton] ~= nil }"), "with or without the line icons, the frame art goes and the key ring is framed").toEqual([0, true]);
 });
 
 it("bag and menu bar: every row's anchor has a size, so the bars get a rect to draw in", () => {
@@ -2294,7 +2303,7 @@ it("bag and menu bar: the game's menu icons are drawn larger than their slots, s
   `, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
   // A button's normal texture: its two corners' offsets from the slot's, the slot's size, the inset, and its texture coordinates.
   const place = (name) => addon.eval(`local b = ${name} local p = b.normal.__points
-    return { p.TOPLEFT.x, p.TOPLEFT.y, p.BOTTOMRIGHT.x, p.BOTTOMRIGHT.y, b.vgSlot.__width, b.vgSlot.__height, b.vgInset, b.normal.__texCoord == nil }`);
+    return { p.TOPLEFT.x, p.TOPLEFT.y, p.BOTTOMRIGHT.x, p.BOTTOMRIGHT.y, ns.FrameState('vgSlot')[b].__width, ns.FrameState('vgSlot')[b].__height, ns.FrameState('vgInset')[b], b.normal.__texCoord == nil }`);
   const { left: l, right: r, top: t, bottom: btm } = addon.eval("return ns.GetModule('MenuStrip').ICON_BOX");
   const [x0, y0, x1, y1, w, h, d, uncropped] = place("QuestLogMicroButton");
   const fw = (w - 2 * d) / (r - l), fh = (h - 2 * d) / (btm - t);
@@ -2325,8 +2334,8 @@ const GAME_BARS_ENV = `
 
 // Every slot's screen rect (left, bottom, right, top, to three places) in a row (1 bags, 2 menu), left to right.
 const slotRects = (addon, k) => addon.eval(`local MS, out = ns.GetModule("MenuStrip"), {}
-  for i, b in ipairs(MS.slotted) do if b.vgRow == MS.ROWS[${k}] then out[#out + 1] = i end end return out`)
-  .map((i) => addon.frame(`ns.GetModule("MenuStrip").slotted[${i}].vgSlot`).rect)
+  for i, b in ipairs(MS.slotted) do if ns.FrameState('vgRow')[b] == MS.ROWS[${k}] then out[#out + 1] = i end end return out`)
+  .map((i) => addon.frame(`ns.FrameState("vgSlot")[ns.GetModule("MenuStrip").slotted[${i}]]`).rect)
   .map((r) => [r.left, r.bottom, r.right, r.top].map(r3)).sort((a, b) => a[0] - b[0]);
 
 it("bag and menu bar: the bar hugs its slots, one size, one baseline per row, one pair of edges", () => {
@@ -2358,10 +2367,10 @@ it("bag and menu bar: one mover keeps the menu strip's saved spot; the bag strip
   const old = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { firstRun: true, savedVariables: `VanguardDB = { version = 1, setupDone = true, profiles = { Default = { MenuStrip = { glyphs = true }, ${spots} } } }` });
   const saved = old.eval("local p = VanguardDB.profiles.Default return { VanguardDB.version, p.MenuStrip.glyphs, p.positions.bagstrip == nil, p.positions.menustrip.x }");
   expect(saved, "an older file: the game's icons again and the bag strip's spot gone, the menu strip's kept").toEqual([2, false, true, 400]);
-  expect(old.eval("local p = Vanguard_MenuStrip.__points.BOTTOMLEFT return { p.x, p.y, CharacterMicroButton.vgGlyph == nil }"), "the bar stands where the menu strip was, with the game's icons").toEqual([400, 20, true]);
+  expect(old.eval("local p = Vanguard_MenuStrip.__points.BOTTOMLEFT return { p.x, p.y, ns.FrameState('vgGlyph')[CharacterMicroButton] == nil }"), "the bar stands where the menu strip was, with the game's icons").toEqual([400, 20, true]);
   expect(old.eval("local keys = {} for _, m in ipairs(ns.MoverList()) do keys[m.key] = m.label end return { keys.menustrip, keys.bagstrip == nil }"), "one mover for the bar").toEqual(["Bags and game menu", true]);
   const now = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
-  expect(now.eval("return CharacterMicroButton.vgGlyph ~= nil"), "line icons switched on after the upgrade stay on").toBe(true);
+  expect(now.eval("return ns.FrameState('vgGlyph')[CharacterMicroButton] ~= nil"), "line icons switched on after the upgrade stay on").toBe(true);
 });
 
 it("bag and menu bar: no re-fit while pins are paused or in combat, and one queued entry per bar", () => {
@@ -2384,7 +2393,7 @@ it("bag and menu bar: no re-fit while pins are paused or in combat, and one queu
 it("bag and menu bar: slots are 24 screen pixels wide, take the clicks, and light up under the mouse only", () => {
   const addon = strips("", { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
   // A button's slot: its side and the button's hit insets in screen pixels, its frame level against the button's, and its accent edge's color.
-  const slot = (name, scale) => addon.eval(`local b = ${name} local s = b.vgSlot local e
+  const slot = (name, scale) => addon.eval(`local b = ${name} local s = ns.FrameState('vgSlot')[b] local e
     for _, w in ipairs(__wfgStub.frames) do if w.__parent == s and w.__layer == "BORDER" and w.__sublevel == 0 and w.__vertexColor and w.__vertexColor[1] > 0 then e = w.__vertexColor end end
     return { s.__width, b.__hitInsets and b.__hitInsets[3] or 0, s:GetFrameLevel() < b:GetFrameLevel(), e }`).map((v, i) => (i < 2 ? r3(v * scale) : v));
   const char = slot("CharacterMicroButton", MENU);
@@ -2409,7 +2418,7 @@ it("bag and menu bar: slots are 24 screen pixels wide, take the clicks, and ligh
   addon.eval("CharacterMicroButton.__scripts.OnEnter(CharacterMicroButton)");
   expect(slot("CharacterMicroButton", MENU)[3][3], "and shows in it under the mouse").toBe(1);
   addon.eval("CharacterMicroButton.__scripts.OnLeave(CharacterMicroButton)");
-  const well = addon.eval(`local s, out = CharacterMicroButton.vgSlot, { bevel = {}, colors = {} }
+  const well = addon.eval(`local s, out = ns.FrameState('vgSlot')[CharacterMicroButton], { bevel = {}, colors = {} }
     for _, w in ipairs(__wfgStub.frames) do if w.__parent == s and w.__vertexColor then
       if w.__layer == "BORDER" and w.__sublevel == 1 then out.bevel[#out.bevel + 1] = w.__vertexColor[4] end
       out.colors[#out.colors + 1] = w.__vertexColor
@@ -2423,20 +2432,20 @@ it("bag and menu bar: slots are 24 screen pixels wide, take the clicks, and ligh
   addon.eval("CharacterMicroButton:Enable()");
   expect(addon.eval("return CharacterMicroButton.normal.__desaturated"), "and in color again when enabled").toBe(false);
   addon.eval("CharacterMicroButton:SetScale(0.5) MicroMenuContainer:Layout()");
-  expect(r3(addon.eval("return CharacterMicroButton.vgSlot.__width") * MENU * 0.5), "a smaller button: its slot shrinks to its place in the row, re-sized by the re-fit").toBe(r3(27 * MENU * 0.5 - 4));
-  expect(r3(addon.eval("return EJMicroButton.vgSlot.__width") * MENU), "a button with no size yet gets a full slot").toBe(24);
+  expect(r3(addon.eval("return ns.FrameState('vgSlot')[CharacterMicroButton].__width") * MENU * 0.5), "a smaller button: its slot shrinks to its place in the row, re-sized by the re-fit").toBe(r3(27 * MENU * 0.5 - 4));
+  expect(r3(addon.eval("return ns.FrameState('vgSlot')[EJMicroButton].__width") * MENU), "a button with no size yet gets a full slot").toBe(24);
 });
 
 it("bag and menu bar: line icons are 20 screen pixels on their slot, accent under the mouse", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
   // The line icon's screen size and whether it is square and centered on the slot.
   const look = () => addon.eval(`local b = CharacterMicroButton local rel = b:GetEffectiveScale() / UIParent:GetEffectiveScale()
-    return { b.vgGlyph.__width * rel, b.vgGlyph.__height == b.vgGlyph.__width, b.vgGlyph.__points.CENTER.rel == b.vgSlot }`);
+    return { ns.FrameState('vgGlyph')[b].__width * rel, ns.FrameState('vgGlyph')[b].__height == ns.FrameState('vgGlyph')[b].__width, ns.FrameState('vgGlyph')[b].__points.CENTER.rel == ns.FrameState('vgSlot')[b] }`);
   expect([r3(look()[0]), look()[1], look()[2]], "20 screen pixels, square, centered on the slot").toEqual([20, true, true]);
   addon.eval("CharacterMicroButton:SetScale(0.5) MicroMenuContainer:Layout()");
   expect(r3(look()[0]), "a smaller menu: the icon stays inside its smaller slot").toBe(r3(27 * MENU * 0.5 - 4 - 4));
   // The line icon's current color.
-  const color = () => addon.eval("return CharacterMicroButton.vgGlyph.__vertexColor");
+  const color = () => addon.eval("return ns.FrameState('vgGlyph')[CharacterMicroButton].__vertexColor");
   expect(isTok(addon, color(), "text"), "text at rest").toBe(true);
   addon.eval("CharacterMicroButton.__scripts.OnEnter(CharacterMicroButton)");
   expect(isTok(addon, color(), "accent"), "accent under the mouse").toBe(true);
@@ -2465,8 +2474,8 @@ const BAGS_ENV = `
 it("bag and menu bar: each bag's slot shows how full it is, the backpack how many slots are free", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + BAGS_ENV);
   // A bag button's fill (shown, width in screen pixels, color), its icon's alpha and greyness, and the backpack's count and its size on screen.
-  const bag = (name) => addon.eval(`local b = ${name} local f = b.vgFill
-    return { f:IsShown(), (f.__width or 0) * ${BAGS}, f.__vertexColor or false, b.vgIcon.__alpha, b.vgIcon.__desaturated == true }`).map((v, i) => (i === 1 ? r3(v) : v));
+  const bag = (name) => addon.eval(`local b = ${name} local f = ns.FrameState('vgFill')[b]
+    return { f:IsShown(), (f.__width or 0) * ${BAGS}, f.__vertexColor or false, ns.FrameState('vgIcon')[b].__alpha, ns.FrameState('vgIcon')[b].__desaturated == true }`).map((v, i) => (i === 1 ? r3(v) : v));
   const pack = bag("MainMenuBarBackpackButton");
   expect([pack[0], pack[1], isTok(addon, pack[2], "accent")], "the backpack, 12 of 16 slots used: a fill three quarters of the 18-pixel icon wide, in the accent").toEqual([true, 13.5, true]);
   const empty = bag("CharacterBag0Slot");
@@ -2481,7 +2490,7 @@ it("bag and menu bar: each bag's slot shows how full it is, the backpack how man
   addon.fire("BAG_UPDATE_DELAYED");
   expect([bag("MainMenuBarBackpackButton")[1], bag("CharacterBag0Slot").slice(0, 1), bag("CharacterBag0Slot")[3], count()[0]], "the bags change: the backpack's fill is full, a new empty bag shows in color with no fill, 12 free").toEqual([18, [false], 1, "12"]);
   const bare = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + "C_Container = nil");
-  expect(bare.eval("return { ns.GetModule('MenuStrip').free:GetText(), MainMenuBarBackpackButton.vgFill:IsShown() }"), "a client that can't count bag slots shows no count and no fill").toEqual(["", false]);
+  expect(bare.eval("return { ns.GetModule('MenuStrip').free:GetText(), ns.FrameState('vgFill')[MainMenuBarBackpackButton]:IsShown() }"), "a client that can't count bag slots shows no count and no fill").toEqual(["", false]);
 });
 
 // TEST-ONLY quest and gossip windows that color their text for parchment (dark brown), as the game does.
@@ -2548,7 +2557,7 @@ it("the quest tracker in the Vanguard look: flat headers, brass lines, theme arr
   expect(head, "header art and the game's button fade; the title takes the theme font; each header gets a brass line").toEqual([0, 0, 0, true, 2]);
   expect(isTok(addon, addon.eval("return ns.GetModule('MenuStrip').rules[1].__vertexColor"), "accent"), "the line is the accent").toBe(true);
   // The container header's arrow texture.
-  const arrow = () => addon.eval("return ObjectiveTrackerFrame.Header.vgArrow.__texture");
+  const arrow = () => addon.eval("return ns.FrameState('vgArrow')[ObjectiveTrackerFrame.Header].__texture");
   expect(/Icons\\Down$/.test(arrow()), "an open section shows the Down arrow").toBe(true);
   addon.eval("ObjectiveTrackerFrame.Header:SetCollapsed(true)");
   expect(/Icons\\Right$/.test(arrow()), "collapsed, it shows Right").toBe(true);
@@ -2556,11 +2565,11 @@ it("the quest tracker in the Vanguard look: flat headers, brass lines, theme arr
   addon.eval("ns.Theme.SetAccent(0.1, 0.2, 0.3)");
   expect(addon.eval("return ns.GetModule('MenuStrip').rules[2].__vertexColor[3]"), "the lines follow the accent").toBe(0.3);
   addon.eval("ObjectiveTrackerFrame.modules[2] = { Header = __header(ObjectiveTrackerFrame) } ObjectiveTrackerFrame:Update()");
-  expect(addon.eval("return ObjectiveTrackerFrame.modules[2].Header.vgHeader"), "a section the game adds later is styled on its next update").toBe(true);
+  expect(addon.eval("return ns.FrameState('vgHeader')[ObjectiveTrackerFrame.modules[2].Header]"), "a section the game adds later is styled on its next update").toBe(true);
   const own = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV);
-  expect(own.eval("return { ObjectiveTrackerFrame.Header.vgHeader == nil, ObjectiveTrackerLineFont.font == nil, #ns.GetModule('MenuStrip').rules }"), "with Vanguard's own tracker on, the game's tracker is not skinned").toEqual([true, true, 0]);
+  expect(own.eval("return { ns.FrameState('vgHeader')[ObjectiveTrackerFrame.Header] == nil, ObjectiveTrackerLineFont.font == nil, #ns.GetModule('MenuStrip').rules }"), "with Vanguard's own tracker on, the game's tracker is not skinned").toEqual([true, true, 0]);
   const off = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV, { savedVariables: "VanguardDB.profiles.Default = { QuestTracker = { own = false }, MenuStrip = { trackerLook = false } }" });
-  expect(off.eval("return { ObjectiveTrackerFrame.Header.vgHeader == nil, ObjectiveTrackerLineFont.font == nil }"), "switched off, the tracker stays the game's").toEqual([true, true]);
+  expect(off.eval("return { ns.FrameState('vgHeader')[ObjectiveTrackerFrame.Header] == nil, ObjectiveTrackerLineFont.font == nil }"), "switched off, the tracker stays the game's").toEqual([true, true]);
   expect(loggedIn(UI_ENV).eval("return ns.GetModule('MenuStrip').rules ~= nil"), "a client without the tracker loads cleanly").toBe(true);
 });
 
@@ -2598,7 +2607,7 @@ it("game windows: the quest and gossip windows are skinned only when Vanguard's 
   const on = loggedIn(env);
   on.eval("MerchantFrame:Show() QuestFrame:Show() GossipFrame:Show()");
   expect([windowState(on, "QuestFrame").panel, windowState(on, "GossipFrame").panel, windowState(on, "MerchantFrame").panel], "with the dialog on the game's never show: left alone, other windows skinned").toEqual([false, false, true]);
-  expect(on.eval("return QuestFrame.vgWindow == nil and GossipFrame.vgWindow == nil"), "and not even hooked").toBe(true);
+  expect(on.eval("return ns.FrameState('vgWindow')[QuestFrame] == nil and ns.FrameState('vgWindow')[GossipFrame] == nil"), "and not even hooked").toBe(true);
   for (const saved of ["VanguardDB.profiles = { Default = { QuestDialog = { dialog = false } } }", "VanguardDB.profiles = { Default = { modules = { QuestDialog = false } } }"]) {
     const off = loggedIn(env, { savedVariables: saved });
     off.eval("QuestFrame:Show() GossipFrame:Show()");
@@ -2620,7 +2629,8 @@ it("game windows: switched off they stay the game's, and missing windows are fin
 it("game windows registry: a window added under a group is skinned, its group's switch keeps it the game's", () => {
   const reg = `__window("TestOnlySocialFrame") __window("TestOnlyLaterFrame")
     local GW = ns.GetModule("Windows")
-    GW.Add("social", "framed", { "TestOnlySocialFrame" }, GW.SkinWith({ "TestOnlyExtra" }))
+    -- TEST-ONLY skin: the window skin, then the window's extra art faded.
+    GW.Add("social", "framed", { "TestOnlySocialFrame" }, function(f) GW.Skin(f) GW.FadeParts(f, { "TestOnlyExtra" }) end)
     TestOnlySocialFrame.TestOnlyExtra = TestOnlySocialFrame:CreateTexture()
     GW.AddButtons("TestOnlySocialFrame", { "TestOnlyLooseButton" }) CreateFrame("Button", "TestOnlyLooseButton", TestOnlySocialFrame)`;
   const on = loggedIn(WINDOWS_ENV + reg);
@@ -2630,12 +2640,12 @@ it("game windows registry: a window added under a group is skinned, its group's 
   on.eval(`ns.GetModule("Windows").Add("map", "onDemand", "TestOnly_Part", { "TestOnlyLaterFrame" })`);
   expect(windowState(on, "TestOnlyLaterFrame").panel, "a late registration for a window that already exists is skinned at once").toBe(true);
   on.eval(`ns.GetModule("Windows").Add("map", "onDemand", "TestOnly_Later", { "TestOnlyLoadsLater" }) __window("TestOnlyLoadsLater")`);
-  expect(on.eval("return TestOnlyLoadsLater.vgWindow == nil"), "a window that doesn't exist yet waits").toBe(true);
+  expect(on.eval("return ns.FrameState('vgWindow')[TestOnlyLoadsLater] == nil"), "a window that doesn't exist yet waits").toBe(true);
   on.fire("ADDON_LOADED", "TestOnly_Later");
-  expect(on.eval("return TestOnlyLoadsLater.vgWindow == true"), "until its part of the game loads").toBe(true);
+  expect(on.eval("return ns.FrameState('vgWindow')[TestOnlyLoadsLater] == true"), "until its part of the game loads").toBe(true);
   const off = loggedIn(WINDOWS_ENV + reg, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { social = false } } }" });
   off.eval("TestOnlySocialFrame:Show()");
-  expect([windowState(off, "TestOnlySocialFrame").art !== 0, off.eval("return TestOnlySocialFrame.vgWindow == nil")], "with its group off: not hooked, its art left").toEqual([true, true]);
+  expect([windowState(off, "TestOnlySocialFrame").art !== 0, off.eval("return ns.FrameState('vgWindow')[TestOnlySocialFrame] == nil")], "with its group off: not hooked, its art left").toEqual([true, true]);
   expect(windowState(off, "MerchantFrame").panel, "other groups still are").toBe(true);
   expect(on.eval("return ns.GetModule('Windows').ON_DEMAND.Blizzard_EncounterJournal == nil"), "the encounter journal (never on Forever) is not listed").toBe(true);
   expect(on.eval("local GW = ns.GetModule('Windows') return { GW.REGISTERED.PlayerSpellsFrame.group, GW.REGISTERED.StaticPopup1.group, GW.REGISTERED.MirrorTimer1.group }"), "the first groups").toEqual(["windows", "popups", "timers"]);

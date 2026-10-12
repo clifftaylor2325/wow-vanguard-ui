@@ -242,5 +242,5 @@ it("the game's crafting cast bar stays, drawn in the theme, through every cast",
   off.eval("OverlayPlayerCastingBarFrame:Show()");
   expect([overlay(off).fill, overlay(off).art[0]], "with cast bars off it is the game's own").toEqual(["TEST-ONLY-ATLAS", undefined]);
   const bare = loggedIn('CreateFrame("StatusBar", "OverlayPlayerCastingBarFrame", UIParent)');
-  expect([bare.eval("return OverlayPlayerCastingBarFrame.vgSkinned"), bare.eval("return #ns.errors"), loggedIn().eval("return #ns.errors")], "a bar without its parts, or a client without the bar, loads cleanly").toEqual([true, 0, 0]);
+  expect([bare.eval("return ns.FrameState('vgSkinned')[OverlayPlayerCastingBarFrame]"), bare.eval("return #ns.errors"), loggedIn().eval("return #ns.errors")], "a bar without its parts, or a client without the bar, loads cleanly").toEqual([true, 0, 0]);
 });

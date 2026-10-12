@@ -72,7 +72,9 @@ it("range ticker: only while the raid frames show, no repeat questions, no repai
   expect([rangeCalls(addon).alpha, marks(addon, 1).alpha], "a change of range repaints that tile only").toEqual([1, 0.4]);
   addon.eval("Vanguard_Raid:Hide() __wfgStub.advance(1)");
   expect(rangeCalls(addon), "while the raid frames are hidden, no range checks at all").toEqual({ range: 0, isUnit: 0, alpha: 0 });
-  addon.eval("Vanguard_Raid:Show() __wfgStub.advance(0.25)");
+  addon.eval("Vanguard_Raid:Show()");
+  rangeCalls(addon); // the tiles repaint as they come back into view
+  addon.eval("__wfgStub.advance(0.25)");
   expect(rangeCalls(addon).range, "shown again, the checks resume").toBe(2);
 });
 

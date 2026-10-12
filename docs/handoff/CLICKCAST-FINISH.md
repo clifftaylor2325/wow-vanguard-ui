@@ -52,4 +52,4 @@ changed file. **Not run:** the other 23 test files, the JS half of `npm run qual
   the section shows the note and mouse bindings still work.
 - "<Class> healing layout" fills the grid; unlearned spells show the name with no icon and bind once learned.
 - Try it tile: hover, press, read the line. Export → Import round-trips. Escape closes the picker with the window.
-- Known gap (by design, later): cell-to-cell drag to move a binding; `CC.Move` exists, no UI yet.
+- Known gap (by design, later): cell-to-cell drag to move a binding; no UI yet (`CC.Move` was removed in CI-07 as unused, so add it back with the UI).
