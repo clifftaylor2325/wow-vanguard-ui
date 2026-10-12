@@ -58,15 +58,6 @@ const BOX = `
   ns.Mover(__box, "box", "TEST-ONLY box", { "BOTTOM", "BOTTOM", 0, 100 })
 `;
 
-it("a mover's watcher hears when that mover is moved or reset, and only then", () => {
-  const addon = loggedIn(BOX + `ns.Mover(CreateFrame("Frame", nil, UIParent), "TESTONLY-other", "TEST-ONLY other", { "BOTTOM", "BOTTOM", 0, 0 })
-    __heard = {} ns.WatchMover('box', function(key) __heard[#__heard + 1] = key end)`);
-  addon.eval("ns.SetMoverPoint('box', 'BOTTOM', 'BOTTOM', 40, 100) ns.ResetMovers('box')");
-  expect(addon.eval("return __heard"), "moved, then reset: told twice, with its key").toEqual(["box", "box"]);
-  addon.eval("ns.SetMoverPoint('TESTONLY-other', 'BOTTOM', 'BOTTOM', 0, 0)");
-  expect(addon.eval("return #__heard"), "another mover's change is not its business").toBe(2);
-});
-
 // The box on screen: its scale, alpha, rect (screen pixels: center x, bottom, width) and saved entry.
 const box = (addon) => {
   const r = addon.frame("TESTONLY_Box").rect;

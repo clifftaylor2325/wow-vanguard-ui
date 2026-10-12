@@ -158,6 +158,8 @@ local widgetMeta = {
   end,
 }
 
+stub.widgetMeta = widgetMeta
+
 -- Each widget's regions and child frames, kept in creation order, so
 -- GetRegions and GetChildren need not scan every widget there is.
 local childrenOf = setmetatable({}, { __mode = "k" })
@@ -485,20 +487,41 @@ function methods:GetStringHeight()
   return text == "" and 0 or estimatedHeight(text, self.__width or 300)
 end
 
--- Showing a hidden widget runs its OnShow, as the client does.
+-- Runs a script on each shown frame under a widget: the client fires OnShow and
+-- OnHide down the tree when a frame's visibility changes (a dialog's buttons too).
+local function cascade(w, script)
+  for _, child in ipairs(childrenOf[w] or {}) do
+    if child.__shown and child.__scripts then
+      local fn = child.__scripts[script]
+      if fn then fn(child) end
+      cascade(child, script)
+    end
+  end
+end
+
+-- Whether a widget's parents are all shown (it shows when it is).
+local function parentsShown(w)
+  return w.__parent == nil or w.__parent:IsVisible()
+end
+
+-- Showing a hidden widget runs its OnShow, as the client does, and its shown
+-- children's when it comes into view.
 function methods:Show()
   local was = self.__shown
   self.__shown = true
   local onShow = self.__scripts.OnShow
   if not was and onShow then onShow(self) end
+  if not was and parentsShown(self) then cascade(self, "OnShow") end
 end
 
--- Hiding a shown widget runs its OnHide, as the client does.
+-- Hiding a shown widget runs its OnHide, as the client does, and its shown
+-- children's when it was in view.
 function methods:Hide()
   local was = self.__shown
   self.__shown = false
   local onHide = self.__scripts.OnHide
   if was and onHide then onHide(self) end
+  if was and parentsShown(self) then cascade(self, "OnHide") end
 end
 
 -- The shown state.

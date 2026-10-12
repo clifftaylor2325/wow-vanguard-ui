@@ -113,9 +113,6 @@ it("bindings carry spell ids and ranks, move, copy, export and import", () => {
   expect(attrs('f:GetAttribute("shift-spell1")'), "no rank casts by name, so a new rank applies by itself").toBe("Flash Heal");
   expect(attrs('f:GetAttribute("type5") .. "/" .. f:GetAttribute("*type-vg5")'), "hover keys use the * prefix so modified presses find them").toBe("focus/assist");
   expect(addon.eval(`return ${CC}.ActionText(${CC}.Binding("ctrl-BUTTON2")) .. "|" .. ${CC}.ActionText(${CC}.Binding("BUTTON5")) .. "|" .. ${CC}.ActionText(${CC}.Binding("SHIFT-Q"))`)).toBe("Flash Heal (Rank 1)|Focus|Assist");
-  addon.eval(`${CC}.Move("ctrl-BUTTON2", "BUTTON5") ${CC}.Move("BUTTON4", "BUTTON4") ${CC}.Move("nope", "BUTTON4")`);
-  expect(bindings(addon)).toMatchObject({ BUTTON5: "spell:Flash Heal:2061:1", "ctrl-BUTTON2": "focus:nil:nil:nil" });
-  expect(addon.eval(`${CC}.Move("BUTTON4", "alt-BUTTON3") return ${CC}.Binding("alt-BUTTON3").value`), "moving to an empty key just moves").toBe("Renew");
   addon.eval(`${CC}.CopyToSpec(2)`);
   expect(addon.eval(`return #${CC}.Bindings(2), ${CC}.Bindings(2)[1].key`)).toBe(5);
   const text = addon.eval(`return ${CC}.Export()`);
@@ -123,7 +120,7 @@ it("bindings carry spell ids and ranks, move, copy, export and import", () => {
   addon.eval(`${CC}.Clear()`);
   expect(addon.eval(`return #${CC}.Bindings(), ${CC}.frames[1]:GetAttribute("type5")`)).toBe(0);
   expect(addon.eval(`return ${CC}.Import(${JSON.stringify(text)})`), "importing brings them back").toBe(5);
-  expect(bindings(addon).BUTTON5).toBe("spell:Flash Heal:2061:1");
+  expect(bindings(addon)["ctrl-BUTTON2"]).toBe("spell:Flash Heal:2061:1");
   expect(addon.eval(`local n, err = ${CC}.Import("garbage") return err`)).toBe("not a Vanguard profile string");
   expect(addon.eval(`local n, err = ${CC}.Import(ns.Serialize.Encode("profile", { a = 1 })) return err`)).toBe("not a click-casting string");
   const odd = addon.eval(`return ns.Serialize.Encode("clickcast", { bindings = { { key = 1 }, { key = "BUTTON4", action = "target" } } })`);

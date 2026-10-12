@@ -112,27 +112,18 @@ local function checkRange()
   end
 end
 
--- Checks range five times a second (range has no dependable event).
+-- Checks range five times a second (range has no dependable event); once the
+-- raid header exists, only while it is visible.
 local function pollRange()
-  local elapsed = 0
-  RS.ticker = CreateFrame("Frame")
-  RS.ticker:SetScript("OnUpdate", function(_, dt)
-    elapsed = elapsed + dt
-    if elapsed < RANGE_EVERY then return end
-    elapsed = 0
-    checkRange()
-  end)
+  ns.Every("raid range", RANGE_EVERY, checkRange, RF.header)
 end
 
--- The range ticker runs only while the raid frames show: it follows the
--- raid header (once it exists) as it shows and hides.
+-- The range check follows the raid header as it shows and hides, once the header exists.
 local function followHeader()
   local header = RF.header
   if not header or RS.following then return end
   RS.following = true
-  RS.ticker:SetShown(header:IsVisible())
-  header:HookScript("OnShow", function() RS.ticker:Show() end)
-  header:HookScript("OnHide", function() RS.ticker:Hide() end)
+  pollRange()
 end
 
 -- Parts ------------------------------------------------------------------------------------

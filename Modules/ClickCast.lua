@@ -113,15 +113,6 @@ function CC.Remove(key)
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
 end
 
--- Moves a binding to another key (swapping with whatever is there).
-function CC.Move(from, to)
-  local a, b = CC.Binding(from), CC.Binding(to)
-  if not a or from == to then return end
-  a.key = to
-  if b then b.key = from end
-  ns.OutOfCombat(CC.ApplyAll, "clickcast")
-end
-
 -- Removes every binding in the current spec.
 function CC.Clear()
   local list = CC.Bindings()

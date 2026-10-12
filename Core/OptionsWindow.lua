@@ -633,12 +633,15 @@ local function onKey(f, key)
   if not ns.InCombat() and ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(not used) end
 end
 
--- Takes the keyboard while shown and out of combat (it can't pass keys on in a fight), never while hidden.
+-- Takes the keyboard while shown and out of combat (it can't pass keys on in a fight), never while hidden;
+-- a fight lets it go, and the combat queue takes it back when the fight ends.
 local function wireKeys(f)
   f:SetScript("OnKeyDown", onKey)
   f:SetScript("OnHide", function(self) self:EnableKeyboard(false) self.focusRow = nil end)
-  ns.On("PLAYER_REGEN_DISABLED", function() f:EnableKeyboard(false) end)
-  ns.On("PLAYER_REGEN_ENABLED", function() f:EnableKeyboard(f:IsShown()) end)
+  ns.On("PLAYER_REGEN_DISABLED", function()
+    f:EnableKeyboard(false)
+    ns.AfterCombat(function() f:EnableKeyboard(f:IsShown()) end, "options keyboard")
+  end)
 end
 
 -- Building and showing -----------------------------------------------------------------------
@@ -811,11 +814,6 @@ end
 -- The window's frame (Vanguard_Options), or nil until it is first opened.
 function O.Frame()
   return window
-end
-
--- How many rows the built pages hold (for tests).
-function O.RowCount()
-  return #widgets
 end
 
 -- Throws a built page away so it's built again from its rows (its list

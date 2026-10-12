@@ -103,7 +103,7 @@ const BAG_ENV = `
 it("upgrades: arrows on upgrades in the combined bag and on quest rewards", () => {
   const addon = loggedIn(GEAR_ENV + BAG_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Bags = false } } }" });
   // Whether each of the three bag buttons shows its arrow.
-  const arrows = () => addon.eval("local out = {} for i = 1, 3 do local a = __buttons[i].vgUpgrade out[i] = a ~= nil and a:IsShown() end return out");
+  const arrows = () => addon.eval("local out = {} for i = 1, 3 do local a = ns.FrameState('vgUpgrade')[__buttons[i]] out[i] = a ~= nil and a:IsShown() end return out");
   addon.eval("ContainerFrameCombinedBags:UpdateItems()");
   expect(arrows(), "the better bracers only").toEqual([true, false, false]);
   addon.eval("__worn[9] = __link(2)");
@@ -116,7 +116,7 @@ it("upgrades: arrows on upgrades in the combined bag and on quest rewards", () =
   expect(arrows(), "switched off").toEqual([false, false, false]);
   // Paints a reward card for a link (a Lua expression); whether its arrow shows.
   const card = (link) => addon.eval(`local QP = ns.QuestParts local c = __card or QP.Card(UIParent) __card = c
-    QP.PaintCard(c, { name = "TEST-ONLY Reward", texture = 1, count = 1, quality = 2, link = ${link} }) return c.vgUpgrade ~= nil and c.vgUpgrade:IsShown()`);
+    QP.PaintCard(c, { name = "TEST-ONLY Reward", texture = 1, count = 1, quality = 2, link = ${link} }) return ns.FrameState('vgUpgrade')[c] ~= nil and ns.FrameState('vgUpgrade')[c]:IsShown()`);
   expect([card("__link(2)"), card("nil")], "a reward that's an upgrade gets the arrow; one with no link doesn't").toEqual([true, false]);
   addon.eval("ns.GetModule('Upgrades').settings.quests = false");
   expect(card("__link(2)"), "switched off").toBe(false);

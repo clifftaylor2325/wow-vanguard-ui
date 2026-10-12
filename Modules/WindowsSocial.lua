@@ -4,6 +4,10 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgPadded = ns.FrameState("vgPadded")
+local vgSocialSide = ns.FrameState("vgSocialSide")
+
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
 
@@ -249,8 +253,8 @@ end
 local function watchSide(frame, skin)
   if type(frame) ~= "table" or not frame.HookScript then return end
   skin(frame)
-  if frame.vgSocialSide then return end
-  frame.vgSocialSide = true
+  if vgSocialSide[frame] then return end
+  vgSocialSide[frame] = true
   frame:HookScript("OnShow", function(f) ns.Try("window SocialUIFrame side", skin, f) end)
 end
 
@@ -260,7 +264,7 @@ end
 local function dressSocialTabs(frame)
   if not (GW.settings and GW.settings.tabs) or type(frame.EnumerateTabs) ~= "function" then return end
   for tab in frame:EnumerateTabs() do
-    tab.vgPadded = nil
+    vgPadded[tab] = nil
     if type(GW.ClearPadding) == "function" then GW.ClearPadding(tab, frame) end
     T.Tab(tab, { bar = "RIGHT", dimIcon = true })
   end
