@@ -18,6 +18,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgSkinned = ns.FrameState("vgSkinned")
+
 local T = ns.Theme
 
 local SB = ns.Module("SpecialBars", {
@@ -56,8 +59,8 @@ SB.MASQUE = "Pet, stance and extra buttons"
 -- Restyles one client button: art faded (state textures kept), icon cropped,
 -- themed border; or hands it to Masque (which finds the game button's regions).
 function SB.Skin(b)
-  if type(b) ~= "table" or b.vgSkinned then return end
-  b.vgSkinned = true
+  if type(b) ~= "table" or vgSkinned[b] then return end
+  vgSkinned[b] = true
   if ns.Masque.Add(SB.MASQUE, b) then return end
   local icon = iconOf(b)
   T.FadeRegions(b, SB.KeepSet(b))

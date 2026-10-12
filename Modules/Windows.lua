@@ -15,6 +15,12 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgCorner = ns.FrameState("vgCorner")
+local vgDurability = ns.FrameState("vgDurability")
+local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
+local vgWindow = ns.FrameState("vgWindow")
+
 local T = ns.Theme
 
 local GW = ns.Module("Windows", { defaults = {
@@ -115,11 +121,11 @@ end
 -- Whether the game set a part by its top-right corner on the window's (a corner close button);
 -- read once, before Vanguard moves it, and not decided while it has no anchor yet.
 local function atCorner(part, frame)
-  if part.vgCorner ~= nil then return part.vgCorner end
+  if vgCorner[part] ~= nil then return vgCorner[part] end
   local point, rel, relPoint = part:GetPoint(1)
   if point == nil then return false end
-  part.vgCorner = rel == frame and point == "TOPRIGHT" and relPoint == "TOPRIGHT"
-  return part.vgCorner
+  vgCorner[part] = rel == frame and point == "TOPRIGHT" and relPoint == "TOPRIGHT"
+  return vgCorner[part]
 end
 
 -- Puts a window's corner close button where every window has it (T.PlaceClose: T.CONTROL.inset in
@@ -189,15 +195,6 @@ function GW.FadeNamed(names)
   end
 end
 
--- A skin function for windows with more art than GW.ART: GW.Skin, then the parts
--- named in keys faded (see GW.FadeParts).
-function GW.SkinWith(keys)
-  return function(frame)
-    GW.Skin(frame)
-    GW.FadeParts(frame, keys)
-  end
-end
-
 -- A breath or fatigue bar: the window skin hugging the bar (no room around it), and its bar in the theme's bar texture.
 function GW.SkinTimer(frame)
   GW.Skin(frame, 0)
@@ -217,8 +214,8 @@ end
 -- again each time it sets one up (it makes them as they're needed).
 local function watchContainer()
   local box = _G.MirrorTimerContainer
-  if type(box) ~= "table" or not box.GetChildren or box.vgWindow then return end
-  box.vgWindow = true
+  if type(box) ~= "table" or not box.GetChildren or vgWindow[box] then return end
+  vgWindow[box] = true
   skinContainerTimers()
   if type(box.SetupTimer) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(box, "SetupTimer", ns.Guard("hook SetupTimer", skinContainerTimers)) end
 end
@@ -229,8 +226,8 @@ end
 -- pool (made again on every InitButtons, reused ones keep the look), and
 -- Vanguard's own button is made from the same template.
 function GW.SkinMenuButton(button)
-  if button.vgMenuSkinned then return end
-  button.vgMenuSkinned = true
+  if vgMenuSkinned[button] then return end
+  vgMenuSkinned[button] = true
   T.Button(button)
 end
 
@@ -345,7 +342,7 @@ end
 local function wanted(name, frame)
   local entry = GW.REGISTERED[name]
   if not entry or not GW.settings or not GW.settings[entry.group] then return false end
-  return type(frame) == "table" and frame.HookScript ~= nil and not frame.vgWindow and not replaced(name)
+  return type(frame) == "table" and frame.HookScript ~= nil and not vgWindow[frame] and not replaced(name)
 end
 
 -- Skins a registered window now and every time it shows (once hooked). A skin that fails
@@ -356,7 +353,7 @@ local function watch(name)
   local skin = GW.REGISTERED[name].skin
   -- Runs the window's skin under ns.Try.
   local function run(f) ns.Try("window " .. name, skin, f) end
-  frame.vgWindow = true
+  vgWindow[frame] = true
   run(frame)
   frame:HookScript("OnShow", run)
 end
@@ -403,11 +400,11 @@ end
 
 -- A gear slot's durability label (made once), along the slot's bottom edge.
 local function slotLabel(button)
-  if not button.vgDurability then
-    button.vgDurability = T.Text(button:CreateFontString(nil, "OVERLAY"), "auraCount", false)
-    button.vgDurability:SetPoint("BOTTOM", button, "BOTTOM", 0, 2)
+  if not vgDurability[button] then
+    vgDurability[button] = T.Text(button:CreateFontString(nil, "OVERLAY"), "auraCount", false)
+    vgDurability[button]:SetPoint("BOTTOM", button, "BOTTOM", 0, 2)
   end
-  return button.vgDurability
+  return vgDurability[button]
 end
 
 -- One slot's durability as "62%" in the info strip's colors; hidden at full,

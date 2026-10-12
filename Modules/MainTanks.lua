@@ -62,13 +62,7 @@ end
 
 -- Reads the tile's unit a few times a second while it shows.
 local function poll(b)
-  local elapsed = 0
-  b:SetScript("OnUpdate", function(self, dt)
-    elapsed = elapsed + dt
-    if elapsed < MT.POLL then return end
-    elapsed = 0
-    MT.Paint(self)
-  end)
+  ns.Every(b, MT.POLL, MT.Paint, b)
 end
 
 -- Dresses a unit button as a small tile: a flat panel, a health bar one pixel

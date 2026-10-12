@@ -1,7 +1,7 @@
 // unlock: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { UI_ENV, UP, chatHas, key, loggedIn } from "./helpers.mjs";
+import { UI_ENV, UP, chatHas, gridLines, key, loggedIn } from "./helpers.mjs";
 
 it("unlock mode", () => {
   const addon = loggedIn(`
@@ -12,7 +12,7 @@ it("unlock mode", () => {
     ns.Mover(__b, "b", "B", { "CENTER", "CENTER", 0, -100 })
   `);
   addon.slash("unlock");
-  expect(addon.eval("return ns.GridLineCount()") === 94, "unlock shows a 32 px grid (61 + 33 lines on 1920x1080)").toBeTruthy();
+  expect(gridLines(addon) === 94, "unlock shows a 32 px grid (61 + 33 lines on 1920x1080)").toBeTruthy();
   // Drops handle `key` with its bottom-left at (left, bottom).
   const drop = (key, left, bottom) =>
     addon.eval(`local h = ns.MoverHandleForTest("${key}"); h.__left, h.__bottom = ${left}, ${bottom}; h:GetScript("OnDragStop")(h)`);
@@ -30,9 +30,9 @@ it("unlock mode", () => {
   expect(JSON.stringify(saved()) === JSON.stringify(["TOP", -311, -150]), "Shift nudges 10 px").toBeTruthy();
   expect(/TOP -311, -150/.test(addon.eval(`return ns.MoverHandleForTest("a").label:GetText()`)), "the selected handle shows its point and offsets").toBeTruthy();
   addon.slash("grid 64");
-  expect(addon.eval("return ns.GridLineCount()") === 48, "/vg grid 64 redraws the grid (31 + 17)").toBeTruthy();
+  expect(gridLines(addon) === 48, "/vg grid 64 redraws the grid (31 + 17)").toBeTruthy();
   addon.slash("grid off");
-  expect(addon.eval("return ns.GridLineCount()") === 0, "/vg grid off hides it").toBeTruthy();
+  expect(gridLines(addon) === 0, "/vg grid off hides it").toBeTruthy();
   addon.slash("snap off");
   drop("a", 601, 900);
   expect(saved()[0] === "TOP" && saved()[1] === -309, `with snapping off, the drop stays where it was (got ${JSON.stringify(saved())})`).toBeTruthy();
@@ -159,11 +159,11 @@ it("unlock mode's bar: Exit without saving puts every frame back as it was; Save
 it("a grid size from a hand-edited profile string is kept to 8-256 px, so unlocking can't freeze the game", () => {
   const addon = loggedIn("UIParent:SetSize(1920, 1080)", { savedVariables: "VanguardDB.profiles = { Default = { movers = { gridSize = 1 } } }" });
   addon.slash("unlock");
-  expect(addon.eval("return ns.GridLineCount()"), "1 px draws as 8 px (241 + 135 lines), not 3002 lines").toBe(376);
+  expect(gridLines(addon), "1 px draws as 8 px (241 + 135 lines), not 3002 lines").toBe(376);
   addon.slash("lock");
   addon.eval("ns.MoverOptions().gridSize = 0");
   addon.slash("unlock");
-  expect(addon.eval("return ns.GridLineCount()"), "0 px (a loop that never ends) draws as 8 px too").toBe(376);
+  expect(gridLines(addon), "0 px (a loop that never ends) draws as 8 px too").toBe(376);
   addon.eval("ns.ShowGrid(1000)");
-  expect(addon.eval("return ns.GridLineCount()"), "and above 256 px as 256 (7 + 5 lines)").toBe(12);
+  expect(gridLines(addon), "and above 256 px as 256 (7 + 5 lines)").toBe(12);
 });

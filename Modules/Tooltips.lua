@@ -13,6 +13,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgSkinned = ns.FrameState("vgSkinned")
+
 local T = ns.Theme
 
 local TT = ns.Module("Tooltips", {
@@ -33,8 +36,8 @@ TT.FONTS = { GameTooltipHeaderText = { 14, true }, GameTooltipText = { 12 }, Gam
 
 -- Flat panel on one tooltip, its default art hidden (alpha only, so the client's layout is untouched).
 local function skin(tt)
-  if type(tt) ~= "table" or tt.vgSkinned then return end
-  tt.vgSkinned = true
+  if type(tt) ~= "table" or vgSkinned[tt] then return end
+  vgSkinned[tt] = true
   T.Tooltip(tt)
 end
 
