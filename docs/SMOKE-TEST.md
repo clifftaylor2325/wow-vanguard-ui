@@ -318,8 +318,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 14.2.2 Guild window and its pages
 
-- Do: open the guild window (the Guild or Social menu button, or `J`), then click each page: Chat, Roster, Guild Info, the benefits page, then the maximize/minimize button.
-- Expect: every page shows on flat dark panels (list, roster, chat, benefits, info) with no marble or portrait art; the stream dropdown is a flat button; the maximize and minimize buttons still show their symbol; switching pages keeps the look; the side tabs are still the game's.
+- Do: open the guild window (the Guild or Social menu button, or `J`), then click each page: Chat, Roster, Guild Info, the benefits page, Preferred Play Settings (if your guild window has it), then the maximize/minimize button. On Roster, tick Show Offline Members.
+- Expect: every page shows on flat dark panels (list, roster, chat, benefits, info, preferred play settings) with no marble or portrait art and nothing showing through behind the settings page's dropdowns; the stream dropdown is a flat button; the maximize and minimize buttons still show their symbol; switching pages keeps the look; the side tabs are still the game's. On Roster, rank names show in full (the Rank header lines up over them) and offline members are a lighter grey you can read at a glance, still unlike online members. On Guild Info, the Guild Information box shows your guild's information, or "No guild information yet." if it has none. On Preferred Play Settings, unless you are the guild master the Apply buttons are faint and do nothing.
 - If it fails, paste: a screenshot of the page that looks wrong and `/vg errors`.
 
 ### 14.2.3 Guild dialogs
