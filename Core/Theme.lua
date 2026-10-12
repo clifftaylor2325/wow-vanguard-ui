@@ -727,14 +727,20 @@ local function paintHoverLine(entry, button)
   placeSheen(entry.parts.hoverLine, button, entry.opts.pad, "borderHi")
 end
 
+-- Each themed button's hover parts (weak; kept off the button, which may be one of the game's).
+local hoverOf = setmetatable({}, { __mode = "k" })
+
+-- A button's hover parts, { fill, line }, or nil for a button T.Button never painted.
+function T.HoverParts(button) return hoverOf[button] end
+
 -- A button's hover look (#257): a raisedHover fill over its inset fill and a one-pixel borderHi
 -- line along its top, both clear until the mouse comes over it (T.EaseHover eases them).
 local function hoverParts(button, entry)
   local fill = T.Tint(solid(button, "BACKGROUND", 1, "fill"), "raisedHover")
   fill:SetAllPoints()
   entry.parts.hover, entry.parts.hoverLine, entry.paint = fill, solid(button, "BORDER", 2, "border"), paintHoverLine
-  button.vgHover = { fill, entry.parts.hoverLine }
-  for _, t in ipairs(button.vgHover) do t:SetAlpha(0) end
+  hoverOf[button] = { fill, entry.parts.hoverLine }
+  for _, t in ipairs(hoverOf[button]) do t:SetAlpha(0) end
   button:HookScript("OnEnter", ns.Guard("button hover", function(b) T.EaseHover(b, true) end))
   button:HookScript("OnLeave", ns.Guard("button hover", function(b) T.EaseHover(b, false) end))
   button:HookScript("OnHide", ns.Guard("button hover", function(b) T.EaseHover(b, false, true) end))
@@ -1374,6 +1380,9 @@ end
 -- pixels it rises into place as it opens.
 T.WINDOW_OPEN, T.WINDOW_CLOSE, T.WINDOW_RISE = 0.13, 0.1, 4
 
+-- Each window's open animation (weak; kept off the frame, which may be one of the game's).
+local riserOf = setmetatable({}, { __mode = "k" })
+
 -- Adds an animation of a kind to group, at a place in its order, lasting seconds.
 local function step(group, kind, order, seconds)
   local a = group:CreateAnimation(kind)
@@ -1385,12 +1394,13 @@ end
 -- A window's open animation (made once), or false when the client can't animate it: a drop
 -- (at once), then a rise back to its spot while it fades in, eased out.
 local function riser(frame)
-  if frame.vgRiser ~= nil then return frame.vgRiser end
+  if riserOf[frame] ~= nil then return riserOf[frame] end
   local group = frame.CreateAnimationGroup and frame:CreateAnimationGroup()
-  frame.vgRiser = group and group.CreateAnimation and { group = group, drop = step(group, "Translation", 1, 0),
+  local r = group and group.CreateAnimation and { group = group, drop = step(group, "Translation", 1, 0),
     rise = step(group, "Translation", 2, T.WINDOW_OPEN), alpha = step(group, "Alpha", 2, T.WINDOW_OPEN) } or false
-  if frame.vgRiser then frame.vgRiser.rise:SetSmoothing("OUT") frame.vgRiser.alpha:SetSmoothing("OUT") end
-  return frame.vgRiser
+  if r then r.rise:SetSmoothing("OUT") r.alpha:SetSmoothing("OUT") end
+  riserOf[frame] = r
+  return r
 end
 
 -- Opens a window (#257): shown, fading in as it rises T.WINDOW_RISE screen pixels into its own
@@ -1408,7 +1418,7 @@ end
 
 -- Closes a window (#257): fades it out over T.WINDOW_CLOSE, then hides it and runs done.
 function T.CloseWindow(frame, done)
-  if frame.vgRiser then frame.vgRiser.group:Stop() end
+  if riserOf[frame] then riserOf[frame].group:Stop() end
   T.FadeOut(frame, T.WINDOW_CLOSE, done)
 end
 
@@ -1419,7 +1429,7 @@ T.HOVER_IN, T.HOVER_OUT = 0.1, 0.13
 -- at once with Reduce motion, or when `now` (the button was hidden).
 function T.EaseHover(button, on, now)
   local to = on and (not button.IsEnabled or button:IsEnabled()) and 1 or 0
-  for _, t in ipairs(button.vgHover or {}) do
+  for _, t in ipairs(hoverOf[button] or {}) do
     local f = not now and activeFader(t)
     if f then playFade(f, t:GetAlpha(), to, T.FadeTime(to == 1 and T.HOVER_IN or T.HOVER_OUT), function() t:SetAlpha(to) end) end
     if not f then T.StopFade(t) t:SetAlpha(to) end

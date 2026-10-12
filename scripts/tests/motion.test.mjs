@@ -48,18 +48,20 @@ it("motion: no fade lasts more than 0.15 s in combat", () => {
 
 // A themed test button with fake faders on its two hover parts; returns nothing.
 const HOVER_BUTTON = `local b = ns.Theme.Button(CreateFrame("Button", "TEST_Hover", UIParent)) b:SetSize(80, 22)
-  for _, t in ipairs(b.vgHover) do __fakeFader(t) end`;
+  for _, t in ipairs(ns.Theme.HoverParts(b)) do __fakeFader(t) end
+  -- The playing fake fade on a region, or nil.
+  function __playing(owner) for i = #__fades, 1, -1 do local g = __fades[i] if g.owner == owner and g.playing then return g end end end`;
 
 // The hover parts' alphas, and the last fade each was given: { alphas, fades }.
 const hoverState = (addon) => addon.eval(`local out = { {}, {} }
-  for i, t in ipairs(TEST_Hover.vgHover) do out[1][i] = t:GetAlpha() local f = t.vgFader out[2][i] = f and f.group.playing and { f.group.from, f.group.to, f.group.duration, f.alpha.smoothing } or false end
+  for i, t in ipairs(ns.Theme.HoverParts(TEST_Hover)) do out[1][i] = t:GetAlpha() local g = __playing(t) out[2][i] = g and { g.from, g.to, g.duration, g.anims[1].smoothing } or false end
   return out`);
 
 it("motion: a button's hover eases in (0.1 s) and out (0.13 s) to raisedHover with a borderHi top line, never while disabled (#257)", () => {
   const addon = loggedIn(FAKE_FADES + HOVER_BUTTON);
-  const [fill, line] = addon.eval("return { TEST_Hover.vgHover[1].__vertexColor, TEST_Hover.vgHover[2].__vertexColor }");
+  const [fill, line] = addon.eval("local h = ns.Theme.HoverParts(TEST_Hover) return { h[1].__vertexColor, h[2].__vertexColor }");
   expect([isTok(addon, fill, "raisedHover"), isTok(addon, line, "borderHi")], "the fill in raisedHover, the line in borderHi").toEqual([true, true]);
-  expect(addon.eval("local p = TEST_Hover.vgHover[2] return { p:GetHeight(), p.__points.TOPLEFT ~= nil }"), "the line is one screen pixel, along the top").toEqual([px(addon, 1), true]);
+  expect(addon.eval("local p = ns.Theme.HoverParts(TEST_Hover)[2] return { p:GetHeight(), p.__points.TOPLEFT ~= nil }"), "the line is one screen pixel, along the top").toEqual([px(addon, 1), true]);
   expect(hoverState(addon), "clear at rest").toEqual([[0, 0], [false, false]]);
   addon.eval('TEST_Hover:GetScript("OnEnter")(TEST_Hover)');
   expect(hoverState(addon)[1], "the mouse comes over: both ease in from 0 to 1 in 0.1 s, eased out").toEqual([[0, 1, 0.1, "OUT"], [0, 1, 0.1, "OUT"]]);
@@ -75,21 +77,21 @@ it("motion: a button's hover eases in (0.1 s) and out (0.13 s) to raisedHover wi
 
 it("motion: a window opens rising 4 px into place as it fades in, and closes in 0.1 s; at once in combat (#257)", () => {
   const addon = loggedIn(FAKE_FADES + 'local f = CreateFrame("Frame", "TEST_Window", UIParent) f:SetSize(200, 100) f:Hide() __fakeFader(f)');
-  addon.eval("ns.Theme.OpenWindow(TEST_Window)");
-  const open = addon.eval(`local g = TEST_Window.vgRiser.group local out = {}
+  addon.eval("ns.Theme.OpenWindow(TEST_Window) __riser = __fades[1]");
+  const open = addon.eval(`local g = __riser local out = {}
     for i, a in ipairs(g.anims) do out[i] = { a.kind, a.order, a.duration, a.offset and a.offset[2] or false, a.smoothing or false } end
     return { TEST_Window:IsShown(), g.playing, g.from, g.to, out }`);
   const p4 = 4 * px(addon, 1);
   expect(open, "shown at once; a drop of 4 screen pixels, then a 0.13 s rise back and fade in, eased out").toEqual([true, true, 0, 1,
     [["Translation", 1, 0, -p4, false], ["Translation", 2, 0.13, p4, "OUT"], ["Alpha", 2, 0.13, false, "OUT"]]]);
   addon.eval("__fades = {} ns.Theme.CloseWindow(TEST_Window)");
-  expect(addon.eval("return { TEST_Window.vgRiser.group.playing, __fades[1].duration, TEST_Window:IsShown() }"), "closing stops the rise and fades out in 0.1 s").toEqual([false, 0.1, true]);
+  expect(addon.eval("return { __riser.playing, __fades[1].duration, TEST_Window:IsShown() }"), "closing stops the rise and fades out in 0.1 s").toEqual([false, 0.1, true]);
   addon.eval("__finishFades()");
   expect(addon.eval("return TEST_Window:IsShown()"), "then hides it").toBe(false);
   setCombat(addon, true);
-  addon.eval("ns.Theme.OpenWindow(TEST_Window)");
-  expect(addon.eval("return { TEST_Window:IsShown(), TEST_Window.vgRiser.group.playing, TEST_Window:GetAlpha() }"), "in combat it opens at once").toEqual([true, false, 1]);
+  addon.eval("__fades = {} ns.Theme.OpenWindow(TEST_Window)");
+  expect(addon.eval("return { TEST_Window:IsShown(), #__fades, TEST_Window:GetAlpha() }"), "in combat it opens at once").toEqual([true, 0, 1]);
   setCombat(addon, false);
-  addon.eval('local f = CreateFrame("Frame", "TEST_Plain", UIParent) f:Hide() ns.Theme.OpenWindow(f)');
-  expect(addon.eval("return { TEST_Plain:IsShown(), TEST_Plain.vgRiser }"), "a client that can't animate opens it at once").toEqual([true, false]);
+  addon.eval('__fades = {} local f = CreateFrame("Frame", "TEST_Plain", UIParent) f:Hide() ns.Theme.OpenWindow(f) ns.Theme.OpenWindow(f)');
+  expect(addon.eval("return { TEST_Plain:IsShown(), #__fades, TEST_Plain:GetAlpha() }"), "a client that can't animate opens it at once, every time").toEqual([true, 0, 1]);
 });
