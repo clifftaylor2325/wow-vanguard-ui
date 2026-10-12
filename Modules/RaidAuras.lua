@@ -154,6 +154,14 @@ local function update(b, unit)
   if b.dispel then paintDispel(b, unit) end
 end
 
+-- Lets go of an emptied tile's unit: the rows show nobody's auras (RF empty hook).
+local function emptied(b)
+  if b.auraUnit == nil then return end
+  b.auraUnit = nil
+  b.debuffRow:SetUnit(nil)
+  b.hotRow:SetUnit(nil)
+  if b.dispel then b.dispel:Hide() end
+end
 
 -- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new).
 function RA.Enable(settings)
@@ -161,4 +169,5 @@ function RA.Enable(settings)
   for _, b in ipairs(RF.buttons) do setup(b) end
   table.insert(RF.setupHooks, setup)
   table.insert(RF.updateHooks, update)
+  table.insert(RF.emptyHooks, emptied)
 end
