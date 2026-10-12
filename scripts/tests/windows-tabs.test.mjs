@@ -370,6 +370,8 @@ const HOSTS_ENV = PANE_ENV + `
   CharacterFrame.RightPaneHost = CreateFrame("Frame", "CharacterFrameRightPaneHost", CharacterFrame)
   __statBg, CharacterFrame.RightPaneHost.StoneBg = __art(CharacterFrame.RightPaneHost), __art(CharacterFrame.RightPaneHost, "ARTWORK")
   __divider = __art(CreateFrame("Frame", nil, CharacterFrame.RightPaneHost), "OVERLAY")
+  CharacterFrame.RightPaneToggleButton = CreateFrame("Button", "CharacterFrameRightPaneToggleButton", CharacterFrame)
+  CharacterFrame.RightPaneToggleButton:SetPoint("TOPRIGHT", CharacterFrame.LeftPaneHost, "TOPRIGHT", -6, -6)
   TokenFrame.ScrollBox.size = 0
   function TokenFrame.ScrollBox:GetDataProviderSize() return self.size end
   function TokenFrame.ScrollBox:SetDataProvider(n) self.size = n end
@@ -383,6 +385,17 @@ it("character pane: the wooden and stone backdrops faded, each list on a flat in
   expect(off.eval("return { __a(__woodBg), __panel(TokenFrame.ScrollBox) }"), "tabs off: the game's backdrops").toEqual([-1, false]);
   const bare = loggedIn(PANE_ENV + "CharacterFrame.LeftPaneHost = true");
   expect(bare.eval("return #ns.errors"), "a host that is not a frame, and a currency list that cannot count its rows").toBe(0);
+});
+
+it("character pane: the right-pane toggle (the gold arrow) sits in the title row, beside the close button", () => {
+  const addon = loggedIn(HOSTS_ENV);
+  const toggle = addon.eval(`local b = CharacterFrame.RightPaneToggleButton local p = b.__points.CENTER
+    return { p.rel == CharacterFrame.CloseButton, p.x, p.y, b.__points.TOPRIGHT == nil }`);
+  expect(toggle, "CENTER on the close button, one control step left, its old corner anchor cleared").toEqual([true, -28, 0, true]);
+  const off = loggedIn(HOSTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
+  expect(off.eval("return CharacterFrame.RightPaneToggleButton.__points.CENTER == nil"), "tabs off: where the game put it").toBe(true);
+  const bare = loggedIn(HOSTS_ENV + "CharacterFrame.CloseButton = nil");
+  expect(bare.eval("return { CharacterFrame.RightPaneToggleButton.__points.CENTER == nil, #ns.errors }"), "no close button to sit by: left alone").toEqual([true, 0]);
 });
 
 it("currency: an empty list says so, and the note follows the list the game sets", () => {
