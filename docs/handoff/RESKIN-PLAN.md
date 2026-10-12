@@ -389,7 +389,7 @@ Files: `Modules/WindowsPvP.lua`, `scripts/tests/windows-pvp.test.mjs`. Inventory
   panel behind each widget container only while it has children (hook `OnSizeChanged`); `TimerTracker` bars via
   `T.StyleBar` on creation (hooksecurefunc `TimerTracker_OnEvent`, guarded); `PvPObjectiveBannerFrame` fonts. Size M.
 - [x] **S8.4 Honor tab.** `PVPRankFrame` (if S7.3 left it): art faded, rank bar `T.StyleBar`. Size S.
-- [ ] **S8.5 Docs and smoke lines.** Size S.
+- [x] **S8.5 Docs and smoke lines.** Size S.
 
 ---
 
@@ -416,3 +416,5 @@ When the stream is complete: git fetch origin main && git rebase origin/main, ru
 ## 11. Done list
 
 Move finished streams here with the PR number: `- S0 foundation (PR #…)`.
+
+- S8 PvP (branch `p8-pvp`, Phase 8; PR #…)
