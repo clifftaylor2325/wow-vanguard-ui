@@ -217,6 +217,26 @@ it("situations: a frame reset to its default while recording is overridden back 
   expect([spot(addon), savedSpot(addon)], "and the player's spot comes back, saved as it was").toEqual([["LEFT", "LEFT", 20, 0], { point: "LEFT", relPoint: "LEFT", x: 20, y: 0 }]);
 });
 
+it("situations: a frame's links (anchored to another frame, matched sizes, its own size) are recorded and applied", () => {
+  const addon = situated();
+  // The XP bar's link and width, and the reputation bar's height: [anchored to, side, x, y, matched width, xp width, rep height].
+  const links = () => addon.eval(`local to, side, x, y = ns.MoverAnchor("xpbar")
+    return { to or "none", side or "none", x or 0, y or 0, ns.MoverMatch("xpbar", "width") or "none", Vanguard_xpbar:GetWidth(), Vanguard_repbar:GetHeight() }`);
+  const own = links();
+  addon.slash("situation record raid");
+  addon.eval("ns.SetMoverAnchor('xpbar', 'infostrip', 'BOTTOM', 0, -6) ns.SetMoverMatch('xpbar', 'width', 'infostrip') ns.SetMoverSize('repbar', 'height', 12)");
+  const recorded = addon.eval("local p = ns.Settings('positions') return { xpbar = p.xpbar, repbar = p.repbar }");
+  const linked = links();
+  expect(linked.slice(0, 5), "while recording: the XP bar under the info strip, as wide as it").toEqual(["infostrip", "BOTTOM", 0, -6, "infostrip"]);
+  addon.slash("situation stop");
+  expect(addon.eval("return ns.Settings('Situations').overrides.raid.positions"), "the override holds each frame's links with its spot").toEqual(recorded);
+  expect(links(), "solo: the bars as they were").toEqual(own);
+  raid(addon);
+  expect(links(), "in a raid: anchored, matched and sized again").toEqual(linked);
+  raid(addon, false);
+  expect([links(), addon.eval("return ns.Settings('positions').xpbar == nil")], "out of it: the player's own layout, with nothing linked in the profile").toEqual([own, true]);
+});
+
 it("situations: a recording in progress at logout is saved, and the profile keeps its base", () => {
   const addon = situated();
   addon.slash("situation record raid");
