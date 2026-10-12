@@ -4,7 +4,7 @@
 // controls and applied out of combat as you move between situations.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, chatHas, loggedIn, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY instance and resting state, set by the cases.
 const SIT_ENV = `
@@ -280,13 +280,21 @@ it("situations: the options page records, stops, clears and switches overrides o
   addon.slash("");
   addon.eval('__click("Situations")');
   expect(addon.texts("Now: Raid · 2 overrides (1 frame, info strip)").length, "the page says where you are and what applies").toBe(1);
+  // Stop recording and save: whether it can be clicked, and whether its label is in the disabled tier.
+  const stopButton = () => {
+    const b = addon.frames('w.text ~= nil and w.text.__text == "Stop recording and save"')[0];
+    return [b.enabled, isTok(addon, addon.eval(`return __wfgStub.frames[${b.id}].text.__textColor`), "disabled")];
+  };
+  expect(stopButton(), "Record for is Off: Stop recording and save is greyed out").toEqual([false, true]);
   addon.eval('__click("Record for")');
   expect(addon.eval("return ns.GetModule('Situations').recording"), "Record for: the next choice, Solo").toBe("solo");
   expect(addon.find("^Recording for Solo") !== null, "the status line says so").toBe(true);
+  expect(stopButton(), "recording: it can be clicked").toEqual([true, false]);
   addon.eval('__click("Record for")');
   addon.eval("ns.SetMoverPoint('infostrip', 'BOTTOM', 'BOTTOM', 0, 300)");
   addon.eval('__click("Stop recording and save")');
   expect(addon.eval("return ns.Settings('Situations').overrides.party.positions.infostrip.point"), "the party's override is saved").toBe("BOTTOM");
+  expect(stopButton(), "stopped: greyed out again").toEqual([false, true]);
   addon.eval('__click("Clear the active")');
   expect([addon.eval("return ns.Settings('Situations').overrides.raid"), spot(addon)], "the raid's override is gone and so is its spot").toEqual([null, HOME]);
   addon.eval('__click("Apply situation overrides")');

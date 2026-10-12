@@ -68,6 +68,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: each page draws its rows with no Lua error popup, and `/vg errors` stays empty.
 - If it fails, paste: the page name, a screenshot of it, and `/vg errors`.
 
+### 2.1a Situations: Stop recording only while recording
+
+- Do: type `/vg`, open Situations with Record for at Off, and look at **Stop recording and save**; click it. Then set Record for to Solo and look again; click Stop recording and save.
+- Expect: with Record for at Off the button is greyed out and a click does nothing (no chat line). While recording it is bright and a click saves (`Solo: ... saved.` in chat), Record for goes back to Off and the button greys out again.
+- If it fails, paste: a screenshot of the page, the chat lines and `/vg errors`.
+
+### 2.1b Windows are opaque
+
+- Do: stand where the world behind is bright (snow, sky, a lit city). Type `/vg` and open Situations and Talents (short pages); then open a merchant, your character pane and the quest log (L).
+- Expect: no world shows through any of these windows, including the empty space under a short options page. Tooltips and menus may still be very slightly see-through (that is the theme's panel opacity, not a window).
+- If it fails, paste: a screenshot of the window over the bright ground and `/vg errors`.
+
 ### 2.2 The wizard, start to finish
 
 - Do: drag a frame with `/vg unlock`, then open `/vg` → General → **Run setup**. Click Next three times, then Done.
@@ -220,6 +232,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a small tile for that player at the top left, beside the raid tools, with health in their class colour.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 6.4 Preview the party and raid frames alone
+
+- Do: out of a group and out of combat, type `/vg preview party`, then `/vg preview 25` and `/vg preview 40`. Open `/vg` → Raid frames, change Width, Height, Style, Sort by role and Groups as, then pick Off under Preview. Turn it on again and attack a training dummy.
+- Expect: five sample tiles just above your player frame (one Dead, one Offline, a shield and a cross before the tanks' and healers' names), then 25 and 40 drawn smaller in groups side by side; each settings change shows on the preview at once. Off hides it, and combat hides it with a chat line. Your real frames don't change until a reload.
+- If it fails, paste: a screenshot, `/vg errors` and `/vg frame Vanguard_RaidPreview`.
+
 ## 7. Combat visuals: auras, cast bars, nameplates
 
 ### 7.1 Target and focus auras
@@ -292,6 +310,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a button reading `Train all (N) · <money>` on the trainer window; clicking it prints `Trained N skill(s) for <money>.`; in combat it does nothing.
 - If it fails, paste: a screenshot of the trainer window and `/vg errors`.
 
+### 9.4 Shopping and Selling tabs at the auction house
+
+- Do: talk to an auctioneer; click the Shopping tab, then Selling, then the game's Buy; on Shopping click a list in the Lists pane, then a row of it (its listings), then Back; click Scan the auction house, then the pane's Deals and Upgrades entries; on Selling drop an item on the sell slot, click Your history and Up now on the card at the top right, then click the same item in a bag.
+- Expect: two tabs, Shopping and Selling, after the game's Buy, Sell and Auctions, in the same look as the game's; the window's title says Shopping or Selling while one is open. Shopping: the Lists pane on the left (your lists with their counts, Recent, Deals, Upgrades; six buttons under them; the scan button at the bottom), the list picked on the right as a table with headings (Item, Unit price, Up, Max) under a toolbar (+ Add, Search list, Restock), about twenty rows; a row's listings replace the table with Back and the item above sortable columns; after the scan, Deals shows its rows (Unit price, Under by, Judged against) and Upgrades its rows (Slot, Gain, Unit price) with the counts beside the entries, or a line saying none were found. Selling: the Sell card on the left with one field a row, Up now at the top right (the item's listings, yours flagged; Your history in its place on the toggle), Your auctions at the bottom right with Check undercuts and Cancel next undercut on its heading line; every card inside the window. A listing, deal or upgrade clicked switches to the game's Buy page with the item in its list, and Shopping brings back the view where it was; the sell slot takes the dropped item; a bag click shows the game's own Sell page (the item is on the Selling tab too).
+- If it fails, paste: a screenshot of each tab and `/vg errors`.
+
+### 9.5 Sort beside the backpack button
+
+- Do: open your bags (combined bag on) and look at the row with the search box. Click Sort, including on its right half.
+- Expect: the search box, then the whole word `Sort` on its button, then the game's backpack button in the top-right corner, with a small gap between each; nothing overlaps. Every click on Sort sorts your bags.
+- If it fails, paste: a screenshot of the bag's top row and `/vg errors`.
+
 ## 10. Click casting
 
 ### 10.1 Make a binding
@@ -299,6 +329,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: type `/vg`, open Click casting, click Set key and press Shift+Q (a hover key) or Shift and left-click, set Action to Spell, type a spell name, and click Add binding. Then type `/vg binds`.
 - Expect: the key text `Shift + Q (hover)` or `Shift + Left click` in the editor and a row in the list below; `/vg binds` prints `Click casting (this spec):` and then `  Shift + Q (hover)  ->  <spell>`.
 - If it fails, paste: the `/vg binds` output and `/vg errors`.
+
+### 10.1a Hover keys card on a fresh character
+
+- Do: on a character with no hover keys, type `/vg` and open Click casting. Scroll just far enough to see the "KEYS WHILE HOVERING A FRAME" card's title.
+- Expect: right under the title, an **Add key** button with "No hover keys yet. Add one, press the key, pick the spell." beside it (wrapped inside the card). If `/vg status` says `secure snippets: no`, the line "This client can't compile the secure code hover keys need; mouse bindings still work." sits there instead. Keys you add list under that line.
+- If it fails, paste: a screenshot of the card, `/vg status` and `/vg errors`.
 
 ### 10.2 Use it
 
@@ -378,8 +414,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 14.2.2 Guild window and its pages
 
-- Do: open the guild window (the Guild or Social menu button, or `J`), then click each page: Chat, Roster, Guild Info, the benefits page, then the maximize/minimize button.
-- Expect: every page shows on flat dark panels (list, roster, chat, benefits, info) with no marble or portrait art; the stream dropdown is a flat button; the maximize and minimize buttons still show their symbol; switching pages keeps the look; the side tabs are still the game's.
+- Do: open the guild window (the Guild or Social menu button, or `J`), then click each page: Chat, Roster, Guild Info, the benefits page, Preferred Play Settings (if your guild window has it), then the maximize/minimize button. On Roster, tick Show Offline Members.
+- Expect: every page shows on flat dark panels (list, roster, chat, benefits, info, preferred play settings) with no marble or portrait art and nothing showing through behind the settings page's dropdowns; the stream dropdown is a flat button; the maximize and minimize buttons still show their symbol; switching pages keeps the look; the side tabs are still the game's. On Roster, rank names show in full (the Rank header lines up over them) and offline members are a lighter grey you can read at a glance, still unlike online members. On Guild Info, the Guild Information box shows your guild's information, or "No guild information yet." if it has none. On Preferred Play Settings, unless you are the guild master the Apply buttons have the disabled look (greyed label, no hover) and do nothing.
 - If it fails, paste: a screenshot of the page that looks wrong and `/vg errors`.
 
 ### 14.2.3 Guild dialogs
@@ -517,6 +553,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: hover the zone name on the minimap's top band, click it, then click it again; press `M` for the world map, then use its minimise and maximise button, click a few zones, open the quest panel on its side and click a quest; hover the group finder eye by the minimap, then click it to open the group finder; open the Legacy window from its button on the menu bar; type `/calendar`, open a day with an event and the "Create event" dialog.
 - Expect: the minimap's zone tooltip names the zone, its subzone and whose territory it is, the first click opens the world map and the second closes it; each window has Vanguard's flat dark panel, close button and buttons and no game border; the map itself stays fully visible with no dark box over it (also after minimising and maximising), the coordinate line still shows along its bottom, the nav bar's crumbs follow you into each zone, the calendar's days are dark tiles with event icons still showing, and the Legacy talent nodes and side tabs are untouched.
 - If it fails, paste: a screenshot of the window, which of these steps broke, and `/vg errors`.
+
+### 14.5.1 Group finder search page and Legacy challenges
+
+- Do: open the group finder and go to its search page (the who list, with the player search box); look at it before searching, search for a name nobody has, then for a name that is online; go to the browse page and look at its top right corner. Then open the Legacy window's Challenges page and look at the right-hand pane before picking a category, after picking one, and on a category with no challenges.
+- Expect: the search page has the flat panel like the listing and browse pages, with no brass border, and its list sits on a flat inset panel. While the list is empty, a grey line in its middle says the game's "No groups found" line (the game's own words, so it says groups on a player search). The line also shows before the first search, and it goes away when the list has names. The settings gear sits in the title row just left of the close button, not on it. The Legacy challenge pane says "Select a category to view its challenges." until you pick one. On a category with nothing in it, it says the game's line, or "No challenges to show here.". No world or game art shows through any Legacy page.
+- If it fails, paste: a screenshot of the page that is wrong, the step that broke, and `/vg errors`.
 ### 14.6 Menus and tooltips
 
 - Do: (1) in a party, right-click a party member's frame and use Whisper, then right-click it again for Set Focus (once out of combat, once in combat), then right-click yourself for Leave Party; (2) click the minimap's tracking button; (3) right-click a chat tab; (4) at the auction house, open a dropdown (the category or sort filter); (5) open the guild window's Preferred Play Settings and its language dropdown, if your guild window has it (the game's last old-style dropdown); (6) type `/w ` and the first letters of a friend's name in chat; (7) click an item link in chat and hold Shift over the tooltip that opens, to compare it with what you wear.
@@ -582,6 +624,54 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the tabs, the pane's lists and the scroll bars are the game's own again; the windows keep their Vanguard panels.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 14.8.6 The small square tabs on the Character tab
+
+- Do: press C on a character that knows one title or none, and look at the small square tabs at the top of the stats half (stats, equipment manager, titles). Then do the same on a character with two or more titles and click the third tab.
+- Expect: with one title or none, the third tab (Titles) is dimmed and grey and does nothing. The game itself disables it, and Vanguard leaves these tabs as the game draws them. With two or more titles it shows its icon and opens the title list.
+- If it fails, paste: a screenshot of the tabs, how many titles the character knows, and `/vg errors`.
+
+### 14.8.7 Character pane backdrops, currency and the arrow
+
+- Do: press C and click the gold arrow in the title row to hide the stats half, then click it again. Open Reputation and Skills. Open Currency on a new character that has no currencies, then on one that has some.
+- Expect: no wooden or stone backdrop shows behind any tab, and each list sits on a flat dark inset panel. The arrow sits in the title row just left of the close button, level with the title and not over the close button, with the stats half shown and hidden; it still hides and shows the stats half. The empty currency list says "You have no currencies yet." in grey in its middle; the line is gone when the list has currencies.
+- If it fails, paste: a screenshot with the stats half shown, one with it hidden, one of the Currency tab, and `/vg errors`.
+
+### 14.8.8 Appearances
+
+- Do: open the collections window (Shift+P) on the Appearances tab. Click a slot where you have nothing collected (a tabard on a new character, say), then a slot that has appearances, then open the Sets tab.
+- Expect: no leather backdrop. The item grid, and the sets tab's list and preview, sit on flat dark inset panels with the models still showing. The empty slot says "No appearances to show for this slot." in grey; the line is gone on a slot that has appearances.
+- If it fails, paste: a screenshot of the empty slot, one of the Sets tab, and `/vg errors`.
+
+### 14.9.1 Battleground queue dialogs
+
+- Do: queue for a battleground (alone, then in a group if you can) and wait for it to pop; on the role check pick a role and accept; if you can, get a war game or arena invite.
+- Expect: the role check, the group's ready popup, the "enter battle" dialog and the invite are flat panels with a soft shadow and no gold dialog border; Accept, Decline, Enter Battle and Leave Queue are flat buttons that still work; the battleground's picture on the enter dialog, the invite's icon and ring and the role icons still show; the close (or hide) button is the theme's. Enter Battle takes you in with no "Interface action failed because of an AddOn". [Needs in game: none of these was seen in the game.]
+- If it fails, paste: a screenshot of the dialog and `/vg errors`.
+
+### 14.9.2 Scoreboard and match results
+
+- Do: in a battleground press H (or open the scoreboard), click its tabs (All, Alliance, Horde), scroll the table, then finish the match and look at the results window; click Leave (or Queue again).
+- Expect: both windows are a flat panel with the theme's close button, the table on a darker inset with the rows, column headings and team colour unchanged, a flat scroll bar, flat tabs, and flat Queue again and Leave buttons that work; the reward band under the table has no backdrop art but its burst of light still plays when rewards come in. [Needs in game: the faction border the game lays on at the start of a match must stay faded.]
+- If it fails, paste: a screenshot of each window and `/vg errors`.
+
+### 14.9.3 Objectives and the countdown
+
+- Do: enter a battleground with flags or bases (Warsong Gulch, Arathi Basin) before it starts; watch the countdown, then take or watch a flag being taken; look at the scores at the top of the screen and anything under the minimap.
+- Expect: the countdown bar uses the theme's bar texture on a flat panel with its time in the theme font, and the big numbers are the game's; the scores at the top (and capture bars under the minimap) sit on one flat panel that disappears when they go; the panel never stays behind as an empty square; the objective banner's text is in the theme font at its usual size. [Needs in game: the panel's place and size around the widgets.]
+- If it fails, paste: a screenshot of the top of the screen and `/vg errors`.
+
+### 14.9.4 Honor tab and switch
+
+- Do: press C, open the Honor tab and its rank details; then under `/vg` → Bars, map, chat → Game windows untick "Battleground windows", `/reload`, queue again and open the scoreboard.
+- Expect: the rank details have no divider line and a flat scroll bar if the text scrolls; with the switch off every window above is the game's own again and the scores at the top have no panel.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.10 Moving game windows
+
+- Do: open the character pane (C), drag it by its title bar to the middle of the screen and close it; open it again, then open the spellbook (P) beside it and close that. Open your bags (B) and drag the combined bag by its top edge; close and reopen them. Drag the game menu (Escape) by its header, the guild window, the group finder, the Legacy window and the auction house by their title bars. `/reload` and open the character pane and the bags again. Then start a fight, open the character pane, and leave combat. Last, `/vg` → Bars, map, chat → Game windows → Reset window positions, and open the character pane.
+- Expect: each window follows the mouse and stays where it is dropped; it opens there again, after opening another window beside it and after the reload too; the close and minimize buttons and the bag's portrait button still work (the drag area stops short of them). In the fight the pane may open where the game puts it and jumps to your spot when combat ends, never moving while you fight. `/vg` itself can be dragged by its header and reopens there. After Reset window positions the options window is in the middle and the character pane opens where the game puts it. [Needs in game: the drag itself; that no window jumps back while you hold it; whether the game refuses any of them.]
+- If it fails, paste: the window's name, a screenshot after the drop and after reopening, and `/vg errors`.
+
 ## 15. Talent planner
 
 ### 15.1 Bar and plan mode
@@ -608,11 +698,11 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: no bar, no badges; the window is the game's (with Vanguard's panel). `/vg talents` says the planner is off.
 - If it fails, paste: a screenshot and `/vg errors`.
 
-### 14.9.1 Shopping and Selling tabs at the auction house
+### 15.5 A long summary stays clear of Apply Changes
 
-- Do: talk to an auctioneer; click the Shopping tab, then Selling, then the game's Buy; on Shopping click a list in the Lists pane, then a row of it (its listings), then Back; click Scan the auction house, then the pane's Deals and Upgrades entries; on Selling drop an item on the sell slot, click Your history and Up now on the card at the top right, then click the same item in a bag.
-- Expect: two tabs, Shopping and Selling, after the game's Buy, Sell and Auctions, in the same look as the game's; the window's title says Shopping or Selling while one is open. Shopping: the Lists pane on the left (your lists with their counts, Recent, Deals, Upgrades; six buttons under them; the scan button at the bottom), the list picked on the right as a table with headings (Item, Unit price, Up, Max) under a toolbar (+ Add, Search list, Restock), about twenty rows; a row's listings replace the table with Back and the item above sortable columns; after the scan, Deals shows its rows (Unit price, Under by, Judged against) and Upgrades its rows (Slot, Gain, Unit price) with the counts beside the entries, or a line saying none were found. Selling: the Sell card on the left with one field a row, Up now at the top right (the item's listings, yours flagged; Your history in its place on the toggle), Your auctions at the bottom right with Check undercuts and Cancel next undercut on its heading line; every card inside the window. A listing, deal or upgrade clicked switches to the game's Buy page with the item in its list, and Shopping brings back the view where it was; the sell slot takes the dropped item; a bag click shows the game's own Sell page (the item is on the Selling tab too).
-- If it fails, paste: a screenshot of each tab and `/vg errors`.
+- Do: tick **Plan** and plan many talents, including one in a lower row whose row above is not planned, so the summary names the next pick and an unreachable rank. Look along the window's foot, then hover the summary.
+- Expect: the summary ends before the game's Apply Changes button (at most two lines, the rest cut short) and never runs over it or the buttons beside it; hovering it shows a "Talent plan" tooltip with the whole summary.
+- If it fails, paste: a screenshot of the window's foot and `/vg talents`.
 
 ### 14.9.2 Post from the Selling tab
 

@@ -960,6 +960,28 @@ const TOGGLE_ENV = `
   function ToggleQuestLog() __game = __game + 1 if WorldMapFrame then if WorldMapFrame:IsShown() then WorldMapFrame:Hide() else WorldMapFrame:Show() end end end
 `;
 
+// The fill opacity of the panel painted on a frame: its background (the theme's white texture on the frame's
+// BACKGROUND layer, not the shadow under it).
+const fillAlpha = (addon, lua) => addon.eval(`local f = ${lua}
+  for _, w in ipairs(__wfgStub.frames) do
+    if w.__parent == f and w.__kind == "Texture" and w.__layer == "BACKGROUND" and w.__texture == ns.Theme.WHITE and (w.__sublevel or 0) == 0 then return w.__vertexColor[4] end
+  end`);
+
+it("windows are opaque: game windows, the quest log and the options window (under a short page too); tooltips keep the theme's", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + WINDOWS_ENV);
+  addon.eval("MerchantFrame:Show()");
+  addon.slash("quests");
+  addon.slash("");
+  addon.eval('ns.Options.Show("situations")');
+  const opaque = ["MerchantFrame", "Vanguard_QuestLog", "Vanguard_Options"].map((name) => fillAlpha(addon, name));
+  expect(opaque, "a skinned game window, the quest log and the options window: no world shows through").toEqual([1, 1, 1]);
+  const page = addon.eval(`local f, child = Vanguard_Options, nil
+    for _, w in ipairs(__wfgStub.frames) do if w.__kind == "ScrollFrame" and w:IsVisible() and w:GetParent() == f then child = w.child end end
+    return { child:GetBottom() > f:GetBottom(), f:GetHeight() == ns.Theme.PixelRound(f, 560, true) }`);
+  expect(page, "the Situations page ends above the window's foot; the opaque fill covers the window (560 tall, pixel-rounded) to its edges").toEqual([true, true]);
+  expect(fillAlpha(addon, "GameTooltip"), "tooltips keep the theme's panel opacity").toBe(addon.eval("return select(4, ns.Theme.RGB('panel'))"));
+});
+
 it("quest log: the game's quest log button opens Vanguard's log instead of the game's", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV + TOGGLE_ENV);
   // The state of Vanguard's log and the game's map after a press of the micro button.
@@ -1561,7 +1583,7 @@ it("a Vanguard button on the game menu opens the options", () => {
   expect(addon.eval("return GameMenuFrame.order"), "first in the menu, above Options").toEqual(["Vanguard", "Options", "Return to Game"]);
   expect(addon.eval("local m = math.huge for _, c in ipairs({ GameMenuFrame:GetChildren() }) do if c ~= ns.gameMenuButton and c.layoutIndex then m = math.min(m, c.layoutIndex) end end return ns.gameMenuButton.layoutIndex < m"), "lower than every pooled button's layoutIndex").toBe(true);
   addon.eval("GameMenuFrame:Hide() GameMenuFrame:Show()");
-  expect(addon.eval("local n = 0 for _, c in ipairs({ GameMenuFrame:GetChildren() }) do if c:GetText() == 'Vanguard' then n = n + 1 end end return { GameMenuFrame.order[1], n, __calls.AddButton }"), "still first on the next open, one button, AddButton only from the game").toEqual(["Vanguard", 1, 4]);
+  expect(addon.eval("local n = 0 for _, c in ipairs({ GameMenuFrame:GetChildren() }) do if c.GetText and c:GetText() == 'Vanguard' then n = n + 1 end end return { GameMenuFrame.order[1], n, __calls.AddButton }"), "still first on the next open, one button, AddButton only from the game").toEqual(["Vanguard", 1, 4]);
   addon.eval("ns.gameMenuButton:GetScript('OnClick')(ns.gameMenuButton)");
   expect(addon.eval("return { GameMenuFrame:IsShown(), Vanguard_Options and Vanguard_Options:IsShown() or ns.Options.current ~= nil }"), "clicking it closes the menu and opens the options").toEqual([false, true]);
   const old = loggedIn("GameMenuFrame = CreateFrame('Frame', 'GameMenuFrame', UIParent)");
