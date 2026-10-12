@@ -8,6 +8,7 @@ local chat = ns.Chat
 local HELP = {
   "A from-scratch UI suite. /vg opens the options window; /vg <command>:",
   "setup                first-run setup again: layout, screen, look, then move things",
+  "whatsnew             what's new in this version of Vanguard; click a line to open its setting",
   "unlock | lock        drag handles on every Vanguard frame; click one, then arrow keys nudge (Shift: 10 px)",
   "reset <frame|all>    put a frame (or every frame) back at its default spot",
   "frames               list the movable frames",
@@ -39,6 +40,7 @@ local HELP = {
   "keybind              keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves",
   "status               version, profile, modules, skins, work waiting on combat, what the client has",
   "factionart           which of the game's own faction pictures this client has",
+  "realm                your realm, ruleset and side as the client gives them, and the key your prices, sales and characters are kept under",
   "frame <name> [deep]  what the client says about a frame now: shown, alpha, scale, size, its rect (or none), anchors and its parents; deep adds its textures and child frames (for a frame that draws empty)",
   "errors [clear]       the errors Vanguard caught this session, with stacks and counts (for a bug report); clear empties the list",
   "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
@@ -297,11 +299,9 @@ local function specCommand(rest)
   chat(rest == "off" and "This spec no longer switches profiles." or ("Spec " .. spec .. " now uses profile " .. rest .. "."))
 end
 
--- The addon version from the TOC.
+-- The addon version from the TOC (Core/WhatsNew.lua reads it).
 local function version()
-  local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
-  local ok, v = pcall(get, ADDON, "Version")
-  return ok and v or "?"
+  return ns.AddonVersion()
 end
 
 -- The first WoW Forever beta build that loads addon settings and runs secure
@@ -485,6 +485,8 @@ local COMMANDS = {
   config = function() ns.Options.Toggle() end,
   -- /vg setup: the first-run wizard again (after combat, if in it)
   setup = function() ns.Setup.Open() end,
+  -- /vg whatsnew: the release notes for this version again
+  whatsnew = function() ns.WhatsNew.Open() end,
   unlock = unlockCommand,
   move = unlockCommand,
   lock = lockCommand,
@@ -519,6 +521,7 @@ local COMMANDS = {
   way = function(rest) ns.GetModule("Waypoints").Command(rest) end,
   dock = function() ns.GetModule("BossDocks").Command() end,
   factionart = function() ns.FactionArt.Report() end,
+  realm = function() ns.Home.Report() end,
   frame = frameCommand,
   status = statusCommand,
   errors = errorsCommand,

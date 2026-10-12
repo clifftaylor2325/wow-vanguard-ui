@@ -95,8 +95,8 @@ it("chat watch: one alert per line, and per sender and phrase every 30 s", () =>
 it("chat watch: your own lines don't ring; clicking the toast whispers the sender", () => {
   const addon = watching();
   say(addon, "CHANNEL", "LFM DM", "Tester");
-  say(addon, "CHANNEL", "LFM DM", "Tester-Realm");
-  expect(rings(addon), "your own lines, with or without the realm").toBe(0);
+  say(addon, "CHANNEL", "LFM DM", "Tester-ForeverTest");
+  expect(rings(addon), "your own lines, with or without your realm").toBe(0);
   say(addon, "CHANNEL", "LFM DM", "Lightmend-Realm");
   addon.click("Vanguard_ChatWatchToast");
   expect([addon.eval("return __tells"), toast(addon)[0]], "a click whispers the sender and puts the toast away").toEqual([["Lightmend-Realm"], false]);
@@ -230,4 +230,15 @@ it("chat watch: another module's alert uses the same toast and sound, even with 
   say(on, "CHANNEL", "LFM Deadmines", "Lightmend");
   on.click("Vanguard_ChatWatchToast");
   expect([on.eval("return __ran"), on.eval("return __tells")], "a chat line's toast after it whispers the sender, not the alert's action").toEqual([0, ["Lightmend"]]);
+});
+
+it("chat watch: two-part names: your realm is left off the toast, a click whispers the full name, a namesake elsewhere rings", () => {
+  const addon = watching();
+  say(addon, "CHANNEL", "LFM DM", "Lightmend-ForeverTest");
+  expect(toast(addon)[1], "someone on your realm, without it").toBe("Lightmend");
+  addon.click("Vanguard_ChatWatchToast");
+  expect(addon.eval("return __tells"), "the whisper keeps the full name").toEqual(["Lightmend-ForeverTest"]);
+  addon.advance(3);
+  say(addon, "CHANNEL", "LFM DM", "Tester-OtherRealm");
+  expect([rings(addon), toast(addon)[1]], "your name on another realm is someone else, shown with their realm").toEqual([2, "Tester-OtherRealm"]);
 });
