@@ -21,8 +21,10 @@ Core/Events.lua
 Core/DB.lua
 Core/Combat.lua
 Core/Client.lua
+Core/Home.lua
 Core/Serialize.lua
 Core/Profiles.lua
+Core/ProfileStrings.lua
 Core/Modules.lua
 Core/Theme.lua
 Core/SharedMedia.lua
@@ -42,6 +44,8 @@ Core/Options.lua
 Core/OptionsWindow.lua
 Core/ErrorBadge.lua
 Core/OptionsProfiles.lua
+Core/ProfileExport.lua
+Core/SettingsGuard.lua
 Core/Setup.lua
 Core/FactionArt.lua
 Core/Inspect.lua

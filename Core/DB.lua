@@ -124,10 +124,19 @@ local cache = {}
 local profileListeners = {}
 
 -- Registers fn(saved) to upgrade the settings table `key` as older versions
--- saved it. It runs on the saved table before defaults are filled in, so it
--- can tell a value the player had from one a new default would add.
+-- saved (or exported) it. It runs on the saved table before defaults are filled in, so it
+-- can tell a value the player had from one a new default would add. It runs again each
+-- session, so it must leave an upgraded table as it is.
 function ns.Migrate(key, fn)
   migrations[key] = fn
+end
+
+-- Runs the upgrade registered for the settings table `key` (ns.Migrate) on t, once per
+-- table: ns.Settings on a saved table, and an import on each table a string carries,
+-- before it is saved (Core/ProfileStrings.lua). Returns t.
+function ns.MigrateTable(key, t)
+  if migrations[key] and not migrated[t] then migrations[key](t) migrated[t] = true end
+  return t
 end
 
 -- Registers fn() to run whenever the active profile's settings are switched, copied, reset or imported.
@@ -149,8 +158,7 @@ ns.OnProfileChanged(function() cache = {} end)
 function ns.Settings(key, defaults)
   local profile, hit = ns.Profile(), cache[key]
   if hit and profile[key] == hit.t and (defaults == nil or defaults == hit.defaults) then return hit.t end
-  local saved = type(profile[key]) == "table" and profile[key] or {}
-  if migrations[key] and not migrated[saved] then migrations[key](saved) migrated[saved] = true end
+  local saved = ns.MigrateTable(key, type(profile[key]) == "table" and profile[key] or {})
   profile[key] = ns.Fill(saved, defaults or {})
   cache[key] = { t = profile[key], defaults = defaults }
   return profile[key]
