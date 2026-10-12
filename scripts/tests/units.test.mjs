@@ -413,12 +413,15 @@ it("threat on your target and your pet's happiness", () => {
     addon.fire("PLAYER_TARGET_CHANGED");
     expect(threat()[0], `no threat to show (${info}): the text clears`).toBe("");
   }
-  // The pet's mood dot: shown, its color.
-  const dot = () => addon.eval("local d = ns.GetModule('UnitExtras').happy return { d:IsShown(), d.__color }");
-  expect(dot(), "a happy pet gets a green dot").toEqual([true, tok(addon, "good")]);
+  // The pet's mood glyph: shown, its color, its glyph.
+  const dot = () => addon.eval("local d = ns.GetModule('UnitExtras').happy return { d:IsShown(), d.__vertexColor, (d.__texture or ''):match('[^\\\\]+$') }");
+  expect(dot(), "a happy pet gets a check in the good color").toEqual([true, tok(addon, "good"), "Check"]);
+  addon.eval("__happy = 2");
+  addon.fire("UNIT_HAPPINESS", "pet");
+  expect(dot(), "a content one, a triangle in warn").toEqual([true, tok(addon, "warn"), "Warn"]);
   addon.eval("__happy = 1");
   addon.fire("UNIT_HAPPINESS", "pet");
-  expect(dot(), "an unhappy one, red").toEqual([true, tok(addon, "bad")]);
+  expect(dot(), "an unhappy one, a cross in bad").toEqual([true, tok(addon, "bad"), "Close"]);
   addon.eval("__happy = nil");
   addon.fire("UNIT_PET", "player");
   expect(dot()[0], "no pet with moods: no dot").toBe(false);

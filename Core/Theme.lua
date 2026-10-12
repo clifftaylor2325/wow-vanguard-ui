@@ -61,8 +61,9 @@ local TOKENS = {
   -- Text
   -- Text tiers, brightest first (#227): text, text2, muted; disabled only for disabled and placeholder text.
   text = "e8eaee", text2 = "c8cdd6", muted = "a6adb9", disabled = "7c8390", white = "ffffff", gold = "ffd100",
-  -- State (kept apart from the accent)
-  good = "4fc27a", warn = "ee8b3a", bad = "e0565b", info = "5aa2f0", unknown = "808080",
+  -- State (kept apart from the accent), off the red-green axis (#235, after Okabe-Ito): a bluish
+  -- green, an amber and a vermilion, each with a glyph where it stands alone (T.STATE_GLYPHS).
+  good = "3fbf9a", warn = "f0b43c", bad = "e8663f", info = "5aa2f0", unknown = "808080",
   -- Reaction to you
   hostile = "cc4b45", neutral = "e0c24e", friendly = "4db86a",
   -- Resources
@@ -91,6 +92,13 @@ T.TOKENS = {}
 for name, v in pairs(TOKENS) do
   T.TOKENS[name] = type(v) == "table" and fromHex(v[1], v[2]) or fromHex(v)
 end
+
+-- Color assist (#235): with the colorAssist setting on, the reaction colors move off the red-green
+-- axis, to a friendly blue, a neutral yellow and a hostile vermilion. Token name -> { r, g, b, a }.
+T.ASSIST = { friendly = fromHex("4a9be8"), neutral = fromHex("e8d25a"), hostile = fromHex("e0663a") }
+
+-- The glyph (under Media/Icons) that goes with a state color where it stands alone (#235).
+T.STATE_GLYPHS = { good = "Check", warn = "Warn", bad = "Close" }
 
 -- Accent presets for /vg accent and the options swatches, in display order.
 -- Jade, orchid and copper (#231) keep clear of class, item quality and state colours.
@@ -126,6 +134,8 @@ local DEFAULTS = {
   barTexture = "vanguard",
   -- Soft shadows under HUD frames (unit frames, bars, minimap); floating windows always have one.
   hudShadow = false,
+  -- Reaction colors off the red-green axis (#235, General -> Look; on reload).
+  colorAssist = false,
   smoothBars = true,
   reduceMotion = false,
   sounds = true,
@@ -216,10 +226,11 @@ local function accentVariant(name)
 end
 
 -- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings,
--- accentText and accentDim follow the accent).
+-- accentText and accentDim follow the accent, and the reactions follow Color assist).
 function T.RGB(name)
   local key = SETTING_TOKENS[name]
-  local c = T.ACCENT_VARIANTS[name] and accentVariant(name) or key and T.Settings()[key] or T.TOKENS[name]
+  local c = T.ACCENT_VARIANTS[name] and accentVariant(name) or key and T.Settings()[key]
+    or T.Settings().colorAssist and T.ASSIST[name] or T.TOKENS[name]
   if not c then error("Vanguard: no color named " .. tostring(name), 2) end
   return c[1], c[2], c[3], c[4] or 1
 end

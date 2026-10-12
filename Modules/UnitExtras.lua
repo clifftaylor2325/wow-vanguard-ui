@@ -2,8 +2,9 @@
 --   * your threat on your target, as a percent above the target frame, in
 --     the threat colors once you have aggro (a tank watches it climb, a DPS
 --     watches it stay under 100);
---   * your pet's happiness as a dot on the pet frame: green happy, orange
---     content, red unhappy (an unhappy hunter pet deals less damage).
+--   * your pet's happiness as a glyph on the pet frame: a check happy, a
+--     triangle content, a cross unhappy, each in its state color (an unhappy
+--     hunter pet deals less damage).
 -- Each one shows only where the client answers, and a hidden answer shows
 -- nothing.
 
@@ -16,7 +17,8 @@ local UX = ns.Module("UnitExtras", { defaults = { threat = true, happiness = tru
 
 -- Pet happiness (GetPetHappiness: 1 unhappy, 2 content, 3 happy) -> color token.
 UX.HAPPINESS = { "bad", "warn", "good" }
-UX.DOT = 6
+-- The mood glyph's size (#235: a shape as well as a color, so it reads without telling red from green).
+UX.GLYPH = 10
 
 -- Threat ----------------------------------------------------------------------------------------
 
@@ -53,11 +55,13 @@ function UX.Happiness()
   return UX.HAPPINESS[ns.PlainNumber(get()) or 0]
 end
 
--- Shows the dot on the pet frame in your pet's mood, or hides it.
+-- Shows the glyph on the pet frame for your pet's mood, in its state color, or hides it.
 function UX.UpdateHappiness()
   local token = UX.Happiness()
   UX.happy:SetShown(token ~= nil)
-  if token then UX.happy:SetColorTexture(T.RGB(token)) end
+  if not token then return end
+  UX.happy:SetTexture(T.Icon(T.STATE_GLYPHS[token]))
+  T.Tint(UX.happy, token)
 end
 
 -- Building ---------------------------------------------------------------------------------------
@@ -74,10 +78,10 @@ local function addThreat(target)
   UX.UpdateThreat()
 end
 
--- The mood dot in the pet frame's top-right corner, following your pet.
+-- The mood glyph in the pet frame's top-right corner, following your pet.
 local function addHappiness(pet)
-  UX.happy = T.Snap(pet.health:CreateTexture(nil, "OVERLAY"))
-  UX.happy:SetSize(UX.DOT, UX.DOT)
+  UX.happy = T.Snap(pet.health:CreateTexture(nil, "OVERLAY"), "icon")
+  UX.happy:SetSize(UX.GLYPH, UX.GLYPH)
   UX.happy:SetPoint("TOPRIGHT", pet, "TOPRIGHT", -3, -3)
   for _, e in ipairs({ "UNIT_HAPPINESS", "UNIT_PET" }) do ns.On(e, UX.UpdateHappiness) end
   UX.UpdateHappiness()
