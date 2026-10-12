@@ -25,6 +25,8 @@ ignore:
   - .editorconfig
   - .gitattributes
   - .gitignore
+  - .markdownlint-cli2.jsonc
   - .luacheckrc
   - .nvmrc
   - .pkgmeta
+  - _typos.toml

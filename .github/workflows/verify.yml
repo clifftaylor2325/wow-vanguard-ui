@@ -1,24 +1,29 @@
 name: verify
 
 # The pull-request gate: the check a pull request needs to merge (the
-# "Quick checks" job in the main branch's ruleset). The code-quality scan,
-# the TOC against the files on disk (scripts/check-toc.mjs), luacheck, Lua 5.1 syntax (the game runs Lua 5.1; the test harness,
-# fengari, is Lua 5.3), the JS tests plus one Lua smoke test (npm run
-# test:quick), and the release zip's contents. Built to finish inside a
-# minute: a private repository's Actions minutes are counted, and a job
-# bills by the started minute. The full Lua harness with the coverage floor
-# runs in full-suite.yml (when a pull request is opened ready for review or
-# marked ready for review, on later pushes while it carries the "full-tests"
-# label, weekly, and from the Actions tab) and on each release (release.yml).
+# "Quick checks" job in the main branch's ruleset). Spelling (typos), the
+# code-quality scan, the TOC against the files on disk
+# (scripts/check-toc.mjs), luacheck, Lua 5.1 syntax (the game runs Lua 5.1;
+# the test harness, fengari, is Lua 5.3), the JS tests plus one Lua smoke
+# test (npm run test:quick), and the release zip's contents. Built to finish
+# inside a minute: a private repository's Actions minutes are counted, and a
+# job bills by the started minute. The full Lua harness with the coverage
+# floor runs in full-suite.yml (when a pull request is opened ready for
+# review or marked ready for review, on later pushes while it carries the
+# "full-tests" label, weekly, and from the Actions tab) and on each release
+# (release.yml). Markdown lint is separate and not required (markdown.yml).
 # This check runs on every push of a pull request that is not a draft
 # (ready_for_review starts it), whatever the label. A draft skips the job
 # with its `if`, which counts as passing. There is deliberately no path
 # filter (#262): a required check from a workflow skipped by `paths-ignore`
 # stays pending and blocks the merge. Instead the job always runs, and its
 # first check (scripts/docs-only.mjs) diffs the merge commit against the
-# base; when only docs changed (docs/** and *.md), every later step is
-# skipped, so a docs-only pull request reports a green "Quick checks" in a
-# few seconds without an admin bypass.
+# base; when only docs changed (docs/** and *.md), every step after the
+# spelling check is skipped, so a docs-only pull request reports "Quick
+# checks" in a few seconds without an admin bypass.
+#
+# Every action is pinned to a full commit SHA, its version in a comment;
+# Dependabot (monthly) moves both together.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -39,13 +44,17 @@ jobs:
     steps:
       # Two deep: the pull request's merge commit and both its parents, so the
       # next step can diff it against the base (its first parent).
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 2
       - name: Docs-only change
         id: changes
         run: node scripts/docs-only.mjs
-      - uses: actions/setup-node@v7
+      # Spelling of code, comments and docs (typos, configured in _typos.toml).
+      # It runs for docs-only changes too: docs are what it reads most.
+      - name: Spelling
+        uses: crate-ci/typos@7f9d0819ca1c008ade73f4b41fa9d258d48f605b # v1.51.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: steps.changes.outputs.docs_only != 'true'
         with:
           node-version-file: .nvmrc
