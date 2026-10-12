@@ -405,8 +405,7 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   addon.eval('ns.Options.current = "nowhere"');
   expect(press(addon, "TAB"), "a page with no rows (none built): Tab has nothing to mark").toEqual(["nowhere", false]);
   addon.eval("ns.Options.Show('general')");
-  setCombat(addon, true);
-  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.world.combat(true);
   addon.eval("Vanguard_Options.__passed = 'TEST-ONLY unset'");
   expect([addon.eval("return Vanguard_Options.__kb"), press(addon, "W")[1]], "a fight takes the keyboard back (keys can't be passed on in combat)").toEqual([false, "TEST-ONLY unset"]);
   addon.eval("ns.Options.Show('more')");
@@ -508,7 +507,7 @@ it("bags: the item skin is shared with other windows, once per button", () => {
     local b = CreateFrame("Button", nil, UIParent) b.icon = b:CreateTexture()
     local skin = ns.GetModule("Bags").SkinItem
     skin(b) local n = ns.Theme.PaintedCount() skin(b)
-    return { b.vgSkinned, ns.Theme.PaintedCount() == n, b.icon.__texCoord ~= nil }`);
+    return { ns.FrameState('vgSkinned')[b], ns.Theme.PaintedCount() == n, b.icon.__texCoord ~= nil }`);
   expect(out).toEqual([true, true, true]);
 });
 

@@ -21,6 +21,11 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgHooked = ns.FrameState("vgHooked")
+local vgStacked = ns.FrameState("vgStacked")
+local vgPlate = ns.FrameState("vgPlate")
+
 local T = ns.Theme
 local CB = ns.GetModule("CastBars")
 local RS = ns.GetModule("RaidStatus")
@@ -292,7 +297,7 @@ end
 -- (some 230 wide, 152 in the classic style), so at the widest bar on classic
 -- plates the outer few pixels can't be clicked. Nothing on a client without it.
 function NP.ApplyHitArea(plate)
-  local f = plate and plate.vg
+  local f = plate and vgPlate[plate]
   if not f or not f.unit or type(plate.CanChangeHitTestPoints) ~= "function" or not plate:CanChangeHitTestPoints() then return end
   ns.Try("nameplate click area", plate.SetAllHitTestPoints, plate, f.hit)
 end
@@ -300,8 +305,8 @@ end
 -- Has the client stack a plate by our name and bar rather than its own taller
 -- frame; tried again on the plate's next unit if the client refused it.
 local function stackByHitArea(plate)
-  if plate.vgStacked or type(plate.SetStackingBoundsFrame) ~= "function" then return end
-  plate.vgStacked = (pcall(plate.SetStackingBoundsFrame, plate, plate.vg.hit))
+  if vgStacked[plate] or type(plate.SetStackingBoundsFrame) ~= "function" then return end
+  vgStacked[plate] = (pcall(plate.SetStackingBoundsFrame, plate, vgPlate[plate].hit))
 end
 
 -- A plate given a unit: the client stacks it by our box, and clicks land in it.
@@ -323,8 +328,8 @@ local function hideDefault(plate)
   local uf = plate.UnitFrame
   if type(uf) ~= "table" or not uf.Hide then return end
   uf:Hide()
-  if not uf.vgHooked then
-    uf.vgHooked = true
+  if not vgHooked[uf] then
+    vgHooked[uf] = true
     uf:HookScript("OnShow", uf.Hide)
     if type(uf.UpdateHitTestArea) == "function" then hooksecurefunc(uf, "UpdateHitTestArea", ns.Guard("hook UpdateHitTestArea", reapplyHitArea)) end
   end
@@ -437,14 +442,14 @@ end
 local function onAdded(_, unit)
   local plate = NP.PlateFor(unit)
   if not plate then return end
-  plate.vg = plate.vg or claim(plate)
+  vgPlate[plate] = vgPlate[plate] or claim(plate)
   hideDefault(plate)
-  NP.plates[unit] = plate.vg
-  plate.vg.unit = unit
+  NP.plates[unit] = vgPlate[plate]
+  vgPlate[plate].unit = unit
   takeHitArea(plate)
-  ns.SetUnits(plate.vg.events, unit)
-  plate.vg:Show()
-  refresh(plate.vg, unit)
+  ns.SetUnits(vgPlate[plate].events, unit)
+  vgPlate[plate]:Show()
+  refresh(vgPlate[plate], unit)
 end
 
 -- A nameplate went away: forget it (the client reuses the plate).

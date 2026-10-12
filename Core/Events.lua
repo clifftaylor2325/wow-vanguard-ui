@@ -16,6 +16,26 @@ function ns.Chat(msg)
   end
 end
 
+-- State kept for the game's frames ---------------------------------------------------------
+-- A field stored on a frame the game owns plants taint, and taint errors in the
+-- game's own code then get blamed on Vanguard. So whatever Vanguard remembers
+-- about one of the game's frames (skinned once, hooked once, its extra parts)
+-- lives in a side table: ns.FrameState(name) is one table per name (frame ->
+-- value), shared by every file that asks for that name, with weak keys so a
+-- frame the game drops doesn't stay. Vanguard's own frames may keep fields.
+
+local frameStates = {}
+
+-- The side table for one kind of per-frame state (frame -> value), made on first use.
+function ns.FrameState(name)
+  local t = frameStates[name]
+  if not t then
+    t = setmetatable({}, { __mode = "k" })
+    frameStates[name] = t
+  end
+  return t
+end
+
 -- Caught errors ------------------------------------------------------------------------------
 -- A failure Vanguard catches (a module that fails to load, a handler that
 -- throws, an icon the client refuses) must not stop the rest, but it shouldn't
