@@ -111,7 +111,7 @@ local function lineSpec(e)
     return { text = QP.Plain(e.title), icon = T.Icon(QL.collapsed[e.title] and "Right" or "Down"), color = "gold",
       select = function() QL.collapsed[e.title] = not QL.collapsed[e.title] QL.Refresh() end }
   end
-  return { id = e.id, text = QP.Titled(e.level, e.title), icon = e.ready and T.Icon("Check") or nil, color = { QP.LevelColor(e.level) }, select = function() QL.Select(e.id) end }
+  return { id = e.id, text = QP.Titled(e.level, e.title, e.id), icon = e.ready and T.Icon("Check") or nil, color = { QP.LevelColor(e.level) }, select = function() QL.Select(e.id) end }
 end
 
 -- One list line (quests indented under their zone; no numbers in the log).
@@ -186,7 +186,7 @@ end
 
 -- Fills the details side with a quest and sizes its scroll to fit.
 local function renderDetails(f, d)
-  f.questTitle:SetText(QP.Titled(d.level, d.title))
+  f.questTitle:SetText(QP.Titled(d.level, d.title, d.id))
   f.text:SetText(QP.Plain(d.text))
   f.objectives:SetText(objectivesText(d))
   renderRewards(f, d)

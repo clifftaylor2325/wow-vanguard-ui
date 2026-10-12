@@ -41,14 +41,14 @@ QD.Call, QD.Gossip = call, gossip
 -- Lines ----------------------------------------------------------------------------------------
 
 -- A quest you can take: "!", in its difficulty color.
-local function availableLine(level, title, select)
-  return { text = QP.Titled(level, title), icon = QP.ICONS.available, color = { QP.LevelColor(level) }, select = select, quest = true }
+local function availableLine(level, title, select, questID)
+  return { text = QP.Titled(level, title, questID), icon = QP.ICONS.available, color = { QP.LevelColor(level) }, select = select, quest = true }
 end
 
 -- A quest you have: "?" in gold when ready to turn in, gray while still in progress.
-local function activeLine(level, title, complete, select)
+local function activeLine(level, title, complete, select, questID)
   local ready = not ns.IsSecret(complete) and complete == true
-  return { text = QP.Titled(level, title), icon = ready and QP.ICONS.ready or QP.ICONS.active, color = ready and "gold" or "text2", select = select, quest = true }
+  return { text = QP.Titled(level, title, questID), icon = ready and QP.ICONS.ready or QP.ICONS.active, color = ready and "gold" or "text2", select = select, quest = true }
 end
 
 -- The NPC's gossip options in the game's order.
@@ -67,8 +67,8 @@ end
 -- A gossip NPC's lines: quests to take, quests to turn in, then its options.
 function QD.GossipLines()
   local out = {}
-  for _, q in ipairs(gossip("GetAvailableQuests") or {}) do out[#out + 1] = availableLine(q.questLevel, q.title, function() gossip("SelectAvailableQuest", q.questID) end) end
-  for _, q in ipairs(gossip("GetActiveQuests") or {}) do out[#out + 1] = activeLine(q.questLevel, q.title, q.isComplete, function() gossip("SelectActiveQuest", q.questID) end) end
+  for _, q in ipairs(gossip("GetAvailableQuests") or {}) do out[#out + 1] = availableLine(q.questLevel, q.title, function() gossip("SelectAvailableQuest", q.questID) end, ns.PlainNumber(q.questID)) end
+  for _, q in ipairs(gossip("GetActiveQuests") or {}) do out[#out + 1] = activeLine(q.questLevel, q.title, q.isComplete, function() gossip("SelectActiveQuest", q.questID) end, ns.PlainNumber(q.questID)) end
   for _, o in ipairs(sortedOptions()) do out[#out + 1] = optionLine(o) end
   return out
 end
@@ -178,7 +178,7 @@ QD.PAGES = {
 function QD.DetailPage()
   local auto = call(QuestGetAutoAccept) == true
   return {
-    title = call(GetTitleText), text = call(GetQuestText), objectives = call(GetObjectiveText),
+    title = QP.WithMark(call(GetTitleText), ns.PlainNumber(call(GetQuestID))), text = call(GetQuestText), objectives = call(GetObjectiveText),
     choices = QD.Items("choice", call(GetNumQuestChoices)), rewards = QD.Items("reward", call(GetNumQuestRewards)), money = QD.MoneyLine(),
     primary = auto and { "OK", function() call(AcknowledgeAutoAcceptQuest) end } or { "Accept", function() call(AcceptQuest) end },
     secondary = not auto and { "Decline", function() call(DeclineQuest) end } or nil,

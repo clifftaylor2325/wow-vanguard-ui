@@ -1191,7 +1191,7 @@ it("the next stack is the same item: another variant or a locked slot is passed 
   expect(restrictedLog(addon).map((c) => c[2]), "the blade in bag 0, then the one in bag 1 slot 3").toEqual(["0:2", "1:3"]);
   addon.eval("__wfgWorld.bags[1][3] = nil");
   addon.fire("BAG_UPDATE_DELAYED");
-  expect([card(addon)[2], card(addon)[0][2], form(addon)[7]], "none left in the bags (the card follows the bags): no Post, no deposit").toEqual([false, "", "posted 2 of 4"]);
+  expect([card(addon)[2], card(addon)[0][2], form(addon)[7]], "none left in the bags (the card follows the bags): no Post, no deposit, and the line says why").toEqual([false, "", "posted 2 of 4 · the item isn't in your bags"]);
 });
 
 // TEST-ONLY linen up now: someone's at 2s (2 hours left), yours at 2s 50c, someone's at 3s (20
