@@ -113,6 +113,9 @@ local ALIASES = {
   fel = "jade", void = "orchid", ember = "copper",
   blue = "arcane", bronze = "brass", green = "jade", purple = "orchid", red = "copper",
 }
+-- An earlier name read from T.PRESETS gives the preset it now stands for, so other code and addons
+-- that read T.PRESETS.fel keep working (pairs over T.PRESETS still lists only the five).
+setmetatable(T.PRESETS, { __index = function(_, name) return ALIASES[name] and T.PRESETS[ALIASES[name]] end })
 
 local DEFAULTS = {
   accent = T.PRESETS.brass,
