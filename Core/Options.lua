@@ -760,11 +760,26 @@ local function currentProfileText()
   return "This character uses " .. ns.ProfileName() .. " until you reload, then " .. later .. "."
 end
 
--- Start over: the profile back to defaults, and setup opens after the reload that applies it.
+-- Asks before a reset: what is lost (every setting in the profile in use, for every character
+-- using it) and where its copy goes; yes backs it up, resets it and runs after().
+local function confirmReset(what, yes, after)
+  local name = ns.ProfileName()
+  local q = "%s Every setting in profile %s goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile %s."
+  ns.Ask(string.format(q, what, name, ns.BackupName(name)), yes, function()
+    ns.Chat(string.format("Profile %s as it was is saved as profile %s.", name, ns.BackupProfile()))
+    ns.ResetProfile()
+    after()
+  end, function() end)
+end
+
+-- Reset profile: after asking, the profile back to defaults (backed up first), applied on reload.
+local function resetProfile()
+  confirmReset("Reset this profile?", "Reset", O.NeedReload)
+end
+
+-- Start over: after asking, the profile back to defaults (backed up first), and setup opens after the reload that applies it.
 local function startOver()
-  ns.ResetProfile()
-  VanguardCharDB.setupDone = false
-  O.NeedReload()
+  confirmReset("Start over?", "Start over", function() VanguardCharDB.setupDone = false O.NeedReload() end)
 end
 
 -- Profiles, part one: which profile, export/import, reset.
@@ -775,7 +790,7 @@ local function currentProfileRows()
     { "button", "Export profile", function() ns.ShowText("Vanguard export  Ctrl+C to copy", ns.ExportProfile()) end },
     { "button", "Choose what to export", function() ns.ExportDialog() end },
     { "button", "Import", function() ns.ImportDialog() end },
-    { "button", "Reset profile", function() ns.ResetProfile(); O.NeedReload() end },
+    { "button", "Reset profile", resetProfile },
     { "button", "Start over: reset and run setup", startOver },
   }
 end

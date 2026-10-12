@@ -9,11 +9,22 @@ local T, W, O = ns.Theme, ns.Widgets, ns.Options
 
 local ROW, SMALL = 30, 84
 
--- A destructive push button: its label in the danger color. The first
--- click asks "Sure?" in its place, the second runs onClick.
-function W.Danger(parent, text, onClick, width)
+-- Shows a danger button's warning (what it loses for good) in the game's tooltip, where the client has one.
+local function warnTip(b)
+  if not GameTooltip or not b.warn then return end
+  GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
+  GameTooltip:SetText(b.warn, nil, nil, nil, nil, true)
+  GameTooltip:Show()
+end
+
+-- A destructive push button: its label in the danger color, and warn (what it loses) in a tooltip
+-- under the mouse. The first click asks "Sure?" in its place, the second runs onClick.
+function W.Danger(parent, text, onClick, width, warn)
   local b = ns.DialogButton(parent, text, width or 120)
   T.Color(b.text, "bad")
+  b.warn = warn
+  b:HookScript("OnEnter", ns.Guard("hover danger button", warnTip))
+  b:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
   -- Asks first, then acts.
   b:SetScript("OnClick", ns.Guard("click danger button", function(self)
     if not self.armed then self.armed = true return self.text:SetText("Sure?") end
@@ -24,11 +35,13 @@ end
 
 -- One profile ------------------------------------------------------------------------------
 
--- Delete and Copy here, right to left: they change settings for good, so they ask first.
+-- Delete and Copy here, right to left: they change settings for good, so they ask first and say what they lose.
 local function addEditButtons(r, name)
-  r.delete = W.Danger(r, "Delete", function() ns.DeleteProfile(name) O.RebuildPage("profiles") end, SMALL)
+  local lost = "Deletes profile " .. name .. " for every character on this account. It can't be undone."
+  r.delete = W.Danger(r, "Delete", function() ns.DeleteProfile(name) O.RebuildPage("profiles") end, SMALL, lost)
   r.delete:SetPoint("RIGHT", -8, 0)
-  r.copy = W.Danger(r, "Copy here", function() ns.CopyProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL)
+  lost = string.format("Replaces every setting in profile %s with profile %s's. It can't be undone.", ns.SelectedProfileName(), name)
+  r.copy = W.Danger(r, "Copy here", function() ns.CopyProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL, lost)
   r.copy:SetPoint("RIGHT", r.delete, "LEFT", -6, 0)
 end
 
