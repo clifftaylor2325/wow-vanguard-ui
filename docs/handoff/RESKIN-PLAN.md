@@ -417,4 +417,12 @@ When the stream is complete: git fetch origin main && git rebase origin/main, ru
 
 Move finished streams here with the PR number: `- S0 foundation (PR #…)`.
 
+- S0 foundation (PR #129)
+- S1 social and guild (PR #130)
+- S2 town and items (PR #131)
+- S3 system windows (PR #132)
+- S4 map, finder and Legacy (PR #133)
+- S5 menus and tooltips (PR #134)
+- S6 HUD leftovers (PR #135)
+- S7 tabs and inner parts (PR #136)
 - S8 PvP (branch `p8-pvp`, Phase 8; PR #…)
