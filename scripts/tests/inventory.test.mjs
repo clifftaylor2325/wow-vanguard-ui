@@ -19,7 +19,7 @@ const BAGS_ENV = `
 `;
 
 // This character's record (Tester, a mage on Forever Test, Alliance).
-const mine = (addon) => addon.eval('return VanguardDB.inventory["Forever Test - Alliance"].Tester');
+const mine = (addon) => addon.eval('return VanguardDB.inventory["ForeverTest-Alliance"].Tester');
 
 it("inventory: the bags are read at login and half a second after they change, the bank while it's open", () => {
   const addon = loggedIn(BAGS_ENV);
@@ -48,7 +48,7 @@ it("inventory: the bags are read at login and half a second after they change, t
 
 // TEST-ONLY saved characters on this realm and side: two with linen (one with a class),
 // one without any, a broken entry, and the logged-in character itself.
-const ALTS = `VanguardDB.inventory = { ["Forever Test - Alliance"] = {
+const ALTS = `VanguardDB.inventory = { ["ForeverTest-Alliance"] = {
   Alpha = { class = "WARRIOR", bags = { [2589] = 5 }, bank = { [2589] = 3 } },
   Bravo = { bags = { [2589] = 2 } },
   Charlie = { class = "ROGUE", bags = { [118] = 1 }, bank = {} },
@@ -69,7 +69,7 @@ it("inventory: item tooltips list who else has it, in their class color, then th
 it("inventory: a crowd of characters is cut to six names", () => {
   let crowd = "";
   for (let i = 1; i <= 8; i += 1) crowd += `Alt${i} = { bags = { [2589] = 1 } }, `;
-  const addon = loggedIn(BAGS_ENV, { savedVariables: `VanguardDB.inventory = { ["Forever Test - Alliance"] = { ${crowd} } }` });
+  const addon = loggedIn(BAGS_ENV, { savedVariables: `VanguardDB.inventory = { ["ForeverTest-Alliance"] = { ${crowd} } }` });
   addon.eval("C_Item.GetItemCount = function() return 0 end");
   const lines = addon.eval('return __tip("item:2589")');
   expect([lines.length, lines[5], lines[6], lines[7]], "six names, how many more, and the total of all eight").toEqual([8, "Alt6 1", "+2 more", "Total 8"]);
@@ -80,7 +80,7 @@ it("inventory: /vg inventory lists, forgets one, or forgets them all", () => {
   addon.slash("inventory");
   expect([chatHas(addon, /Characters remembered here: 5\./), chatHas(addon, /^.*Tester: bags read today/)], "how many, and when each was read").toEqual([true, true]);
   addon.slash("inventory forget alpha");
-  expect([chatHas(addon, /Forgot Alpha's bags and bank\./), addon.eval('return VanguardDB.inventory["Forever Test - Alliance"].Alpha == nil')], "any case").toEqual([true, true]);
+  expect([chatHas(addon, /Forgot Alpha's bags and bank\./), addon.eval('return VanguardDB.inventory["ForeverTest-Alliance"].Alpha == nil')], "any case").toEqual([true, true]);
   addon.slash("inventory forget Nobody");
   expect(chatHas(addon, /No character called Nobody is remembered here\./), "an unknown name").toBe(true);
   addon.slash("inventory clear");

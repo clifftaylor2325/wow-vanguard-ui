@@ -9,7 +9,7 @@ local moduleSettings, setting, check, append = O.ModuleSettings, O.Setting, O.Ch
 
 -- get/set for whether action bar n is shown (applies on reload).
 local function barSetting(n)
-  return function() local b = moduleSettings("ActionBars").bars[n] return b and b.enabled end,
+  return O.Tag(function() local b = moduleSettings("ActionBars").bars[n] return b and b.enabled end, "ActionBars", "bars"),
     function(v) moduleSettings("ActionBars").bars[n].enabled = v; O.NeedReload() end
 end
 
@@ -22,7 +22,7 @@ end
 -- get/set for one of action bar n's settings (button count, per row,
 -- visibility); applies at once, or when combat ends.
 local function barOption(n, key)
-  return function() return moduleSettings("ActionBars").bars[n][key] end,
+  return O.Tag(function() return moduleSettings("ActionBars").bars[n][key] end, "ActionBars", "bars"),
     function(v) moduleSettings("ActionBars").bars[n][key] = v; barChanged(n, key) end
 end
 
@@ -77,8 +77,10 @@ end
 -- Bars shown on mouseover or on conditions also show while you drag a spell or
 -- item. "Hidden" doesn't draw the bar, but its keys still cast (a keybind-only bar).
 local function barVisibilityRows(n)
-  return ns.Visibility.Rows("Visibility", function() return moduleSettings("ActionBars").bars[n] end,
+  local mode, when = ns.Visibility.Rows("Visibility", function() return moduleSettings("ActionBars").bars[n] end,
     "visibility", "showWhen", function() barChanged(n, "visibility") end)
+  O.Tag(mode[4], "ActionBars", "bars")
+  return mode, when
 end
 
 -- One action bar's card: on/off, visibility, button count, per row and size.

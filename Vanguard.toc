@@ -21,8 +21,10 @@ Core/Events.lua
 Core/DB.lua
 Core/Combat.lua
 Core/Client.lua
+Core/Home.lua
 Core/Serialize.lua
 Core/Profiles.lua
+Core/ProfileStrings.lua
 Core/Modules.lua
 Core/Theme.lua
 Core/SharedMedia.lua
@@ -35,9 +37,11 @@ Core/Masque.lua
 Core/Layout.lua
 Core/Grid.lua
 Core/Movers.lua
+Core/MoverLinks.lua
 Core/Widgets.lua
 Core/Controls.lua
 Core/MoverPopover.lua
+Core/UnlockBar.lua
 Core/Options.lua
 Core/OptionsFrames.lua
 Core/OptionsBars.lua
@@ -47,7 +51,11 @@ Core/OptionsWindow.lua
 Core/OptionsPreview.lua
 Core/ErrorBadge.lua
 Core/OptionsProfiles.lua
+Core/ProfileExport.lua
+Core/SettingsGuard.lua
 Core/Setup.lua
+Core/WhatsNewNotes.lua
+Core/WhatsNew.lua
 Core/FactionArt.lua
 Core/Inspect.lua
 Core/Slash.lua
@@ -133,6 +141,7 @@ Modules/Upgrades.lua
 Modules/VendorMemory.lua
 Modules/Nameplates.lua
 Modules/Situations.lua
+Modules/SituationsBanner.lua
 Modules/ClickCast.lua
 Modules/ClickCastSpells.lua
 Modules/ClickCastOptions.lua

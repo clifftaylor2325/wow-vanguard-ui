@@ -122,6 +122,29 @@ const profileRow = (addon, name) => addon.eval(`for _, w in ipairs(__wfgStub.fra
 const profileButton = (addon, name, button) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
   if w.label and w.label.__text == "${name}" and w.card and w:IsVisible() then local b = w.${button} b:GetScript("OnClick")(b) return b.text.__text end end`);
 
+// Runs one of a profile row's button scripts (OnEnter, OnLeave) and returns the tooltip: shown, first line.
+const profileHover = (addon, name, button, script) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+  if w.label and w.label.__text == "${name}" and w.card and w:IsVisible() then local b = w.${button} b:GetScript("${script}")(b)
+    return { GameTooltip:IsShown(), (GameTooltip.__lines[1] or {}).text or false } end end`);
+
+it("options: Delete, Copy here, Reset profile and Start over say what they lose; a reset asks and keeps a copy", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.NewProfile("TEST-ONLY Tank") ns.Profile().Chat = { background = false } ns.Options.Show("profiles")');
+  expect(profileHover(addon, "TEST-ONLY Tank", "delete", "OnEnter"), "Delete's tooltip").toEqual([true, "Deletes profile TEST-ONLY Tank for every character on this account. It can't be undone."]);
+  expect(profileHover(addon, "TEST-ONLY Tank", "copy", "OnEnter"), "Copy here's tooltip").toEqual([true, "Replaces every setting in profile Default with profile TEST-ONLY Tank's. It can't be undone."]);
+  expect(profileHover(addon, "TEST-ONLY Tank", "copy", "OnLeave")[0], "leaving hides it").toBe(false);
+  addon.eval("GameTooltip = nil");
+  expect(addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.delete and w:IsVisible() then w.delete:GetScript("OnEnter")(w.delete) w.delete:GetScript("OnLeave")(w.delete) return true end end'), "a client without the tooltip shows none, without an error").toBe(true);
+  addon.eval('__click("Reset profile")');
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "Reset profile asks, saying what is lost and where the copy goes")
+    .toBe("Reset this profile? Every setting in profile Default goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile Default backup.");
+  addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
+  expect(addon.eval("return { VanguardDB.profiles.Default.Chat.background, VanguardDB.profiles['Default backup'] == nil }"), "No changes nothing").toEqual([false, true]);
+  addon.eval('__click("Reset profile") Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  expect(addon.eval("return { VanguardDB.profiles.Default.Chat == nil, VanguardDB.profiles['Default backup'].Chat.background, Vanguard_Options.reload:IsShown() }"), "Reset backs the profile up, then resets it for the reload").toEqual([true, false, true]);
+  expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
+});
+
 it("options: profiles in the window", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.NewProfile("TEST-ONLY Healer") ns.NewProfile("TEST-ONLY Tank") ns.Options.Show("profiles")');
@@ -561,10 +584,10 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|27", "modules|Modules|20|54", "unitframes|Unit frames|30|23", "raid|Raid frames|40|18",
-    "actionbars|Action bars|60|73", "quests|Quests|70|12", "more|Bars, map, chat|80|138", "profiles|Profiles|90|13",
+    "general|General|10|30", "modules|Modules|20|54", "unitframes|Unit frames|30|23", "raid|Raid frames|40|18",
+    "actionbars|Action bars|60|73", "quests|Quests|70|12", "more|Bars, map, chat|80|138", "profiles|Profiles|90|14",
     "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|70|12",
-    "situations|Situations|85|9", "clickcast|Click casting|46|11",
+    "situations|Situations|85|16", "clickcast|Click casting|46|11",
   ]);
   addon.eval('ns.Options.Show("general")');
   // The nav entries top to bottom, by each one's offset from the top of the nav.

@@ -82,10 +82,12 @@ end
 -- The visibility rows (Core/Visibility.lua) of a module's frame, applied at once
 -- (when the module runs); unset, the setting is Always. modes: its choices (V.MODES unless given).
 local function visibilityRows(caption, module, modeKey, whenKey, modes)
-  return ns.Visibility.Rows(caption, function() return moduleSettings(module) end, modeKey, whenKey, function()
+  local mode, when = ns.Visibility.Rows(caption, function() return moduleSettings(module) end, modeKey, whenKey, function()
     local m = ns.GetModule(module)
     if m.enabled then m.ApplyVisibility() end
   end, "always", modes)
+  O.Tag(mode[4], module, modeKey)
+  return mode, when
 end
 
 -- The game's extras: minimap buttons, the menu strip and the quest tracker (after a reload).
