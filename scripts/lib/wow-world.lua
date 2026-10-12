@@ -1181,7 +1181,7 @@ function GetQuestLogChoiceInfo(i) local _, q = questIndex(world.selectedQuest) l
 function GetNumQuestLogRewards() local _, q = questIndex(world.selectedQuest) return q and q.rewards and #q.rewards or 0 end
 function GetQuestLogRewardInfo(i) local _, q = questIndex(world.selectedQuest) local r = q and q.rewards and q.rewards[i] if not r then return nil end return r.name, r.icon, r.count or 1, r.quality or 1, true end
 function GetQuestLogRewardMoney() local _, q = questIndex(world.selectedQuest) return q and q.money or 0 end
-function GetQuestLogRewardXP() local _, q = questIndex(world.selectedQuest) return q and q.xp or 0 end
+function GetQuestLogRewardXP(id) local _, q = questIndex(id or world.selectedQuest) return q and q.xp or 0 end
 
 -- Adds a quest to the log and fires QUEST_LOG_UPDATE / QUEST_ACCEPTED.
 function world.addQuest(q)
