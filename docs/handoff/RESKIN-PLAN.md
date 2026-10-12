@@ -381,15 +381,15 @@ Inventory: design §5.8. Group `tabs`. Depends on `T.Tab` and `T.ScrollBar` (S0)
 
 Files: `Modules/WindowsPvP.lua`, `scripts/tests/windows-pvp.test.mjs`. Inventory: design §5.7. Group `pvp`.
 
-- [ ] **S8.1 Scoreboards.** `PVPMatchScoreboard`, `PVPMatchResults`: their `Content`/`Background` art faded, `T.Panel`
+- [x] **S8.1 Scoreboards.** `PVPMatchScoreboard`, `PVPMatchResults`: their `Content`/`Background` art faded, `T.Panel`
   with shadow, header buttons `T.Button`, the table's rows untouched. Size M.
-- [ ] **S8.2 Queue dialogs.** `PVPReadyDialog`, `PVPReadyPopup`, `PVPRoleCheckPopup`, `PVPFramePopup`: `Border` faded,
+- [x] **S8.2 Queue dialogs.** `PVPReadyDialog`, `PVPReadyPopup`, `PVPRoleCheckPopup`, `PVPFramePopup`: `Border` faded,
   panel, buttons; as `"popups"`. Size S.
-- [ ] **S8.3 Objectives and timer.** `UIWidgetTopCenterContainerFrame`, `UIWidgetBelowMinimapContainerFrame`: a flat
+- [x] **S8.3 Objectives and timer.** `UIWidgetTopCenterContainerFrame`, `UIWidgetBelowMinimapContainerFrame`: a flat
   panel behind each widget container only while it has children (hook `OnSizeChanged`); `TimerTracker` bars via
   `T.StyleBar` on creation (hooksecurefunc `TimerTracker_OnEvent`, guarded); `PvPObjectiveBannerFrame` fonts. Size M.
-- [ ] **S8.4 Honor tab.** `PVPRankFrame` (if S7.3 left it): art faded, rank bar `T.StyleBar`. Size S.
-- [ ] **S8.5 Docs and smoke lines.** Size S.
+- [x] **S8.4 Honor tab.** `PVPRankFrame` (if S7.3 left it): art faded, rank bar `T.StyleBar`. Size S.
+- [x] **S8.5 Docs and smoke lines.** Size S.
 
 ---
 
@@ -416,3 +416,5 @@ When the stream is complete: git fetch origin main && git rebase origin/main, ru
 ## 11. Done list
 
 Move finished streams here with the PR number: `- S0 foundation (PR #…)`.
+
+- S8 PvP (branch `p8-pvp`, Phase 8; PR #…)

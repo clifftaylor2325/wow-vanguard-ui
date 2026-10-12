@@ -14,7 +14,7 @@
 
 local ADDON, ns = ...
 
-local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game", withQuestie = "questie" } })
+local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game", withQuestie = "questie", xp = true } })
 
 QT.W, QT.H, QT.SORT_EVERY = 260, 234, 1
 QT.EVENTS = { "QUEST_WATCH_LIST_CHANGED", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_REMOVED", "PLAYER_ENTERING_WORLD" }
@@ -72,13 +72,14 @@ function QT.LogIndex(id)
   return ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
 end
 
--- One watched quest: { id, title, level, ready, objectives, item }, or nil when the log doesn't have it.
+-- One watched quest: { id, title, level, ready, objectives, item, xp }, or nil when the log doesn't have it.
 function QT.Quest(id)
   local index = QT.LogIndex(id)
   local info = index and questLog("GetInfo", index)
   if type(info) ~= "table" then return nil end
   local ready = yes(questLog("ReadyForTurnIn", id)) or yes(questLog("IsComplete", id))
-  return { id = id, title = info.title, level = info.level, ready = ready, objectives = QT.Objectives(id), item = questItem(index) }
+  return { id = id, title = info.title, level = info.level, ready = ready, objectives = QT.Objectives(id), item = questItem(index),
+    xp = QT.settings.xp and ns.GetModule("DataBars").RewardXP(id) or 0 }
 end
 
 -- How far a quest is (squared), or a long way when the client can't say.

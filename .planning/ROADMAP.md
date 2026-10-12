@@ -32,9 +32,9 @@ Auction house (priority 2):
 
 UI polish (priority 3):
 
-- [ ] **Phase 6: Theme scale and motion** - One type scale, spacing grid and fade helper, all in Theme
-- [ ] **Phase 7: Control states and panel depth** - Controls react to hover, press, disabled and focus, and panels have depth
-- [ ] **Phase 8: Every window styled** - The PvP windows are reskinned and visual issues #187-#204 are closed
+- [x] **Phase 6: Theme scale and motion** - One type scale, spacing grid and fade helper, all in Theme (completed 2026-10-12)
+- [x] **Phase 7: Control states and panel depth** - Controls react to hover, press, disabled and focus, and panels have depth (completed 2026-10-12)
+- [x] **Phase 8: Every window styled** - The PvP windows are reskinned and visual issues #187-#204 are closed (completed 2026-10-12)
 
 Levelling and group features (priority 4, cut first):
 
@@ -255,9 +255,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 3. Fast suite and CI gate | 7/7 | Complete    | 2026-10-11 |
 | 4. Lean core | TBD | Complete | 2026-10-12 |
 | 5. Auction Post fix | 0/TBD | Not started | - |
-| 6. Theme scale and motion | 0/TBD | Not started | - |
-| 7. Control states and panel depth | 0/TBD | Not started | - |
-| 8. Every window styled | 0/TBD | Not started | - |
+| 6. Theme scale and motion | TBD | Complete | 2026-10-12 |
+| 7. Control states and panel depth | TBD | Complete | 2026-10-12 |
+| 8. Every window styled | TBD | Complete | 2026-10-12 |
 | 9. Levelling helpers | 0/TBD | Not started | - |
 | 10. Roll tracking | 0/TBD | Not started | - |
 | 11. Party quest progress | 0/TBD | Not started | - |

@@ -54,3 +54,17 @@ it("with secret geometry, through a fight with hidden numbers, nothing errors an
   expect(addon.eval("return #ns.errors"), "nothing caught by ns.Try").toBe(0);
   expect(addon.frame("Vanguard_target").visible, "the target frame shows a target with hidden numbers").toBe(true);
 });
+
+// The safe mode a friend turns to when a module breaks the launch: every module off in the profile.
+const ALL_OFF = `for _, name in ipairs(ns.ModuleNames()) do ns.SetModuleEnabled(name, false) end`;
+
+it("with every module switched off the addon still logs in, opens its options and reports no error", () => {
+  const addon = loggedIn(ALL_OFF);
+  expect(addon.eval("local n = 0 for _, name in ipairs(ns.ModuleNames()) do if ns.GetModule(name).enabled then n = n + 1 end end return n"), "no module is built").toBe(0);
+  addon.slash("");
+  expect(addon.frame("Vanguard_Options").visible, "the options window opens").toBe(true);
+  addon.slash("status");
+  addon.slash("errors");
+  addon.advance(2);
+  expect(addon.eval("return #ns.errors"), "nothing caught by ns.Try").toBe(0);
+});

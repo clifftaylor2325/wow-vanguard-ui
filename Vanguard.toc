@@ -77,6 +77,7 @@ Modules/RaidFrames.lua
 Modules/RaidAuras.lua
 Modules/RaidHealing.lua
 Modules/RaidStatus.lua
+Modules/RaidPreview.lua
 Modules/RaidTools.lua
 Modules/MainTanks.lua
 Modules/PartyExtras.lua
@@ -118,6 +119,7 @@ Modules/WindowsMap.lua
 Modules/WindowsMenus.lua
 Modules/WindowsTabs.lua
 Modules/WindowsPvP.lua
+Modules/WindowsMove.lua
 Modules/AuctionPrices.lua
 Modules/AuctionHelper.lua
 Modules/AuctionTable.lua

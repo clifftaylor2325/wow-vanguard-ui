@@ -1,7 +1,7 @@
 // raid: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { HEALING_ENV, RAID_ENV, UNITS_ENV, borderOf, isTok, loggedIn, raidButton, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, HEALING_ENV, RAID_ENV, UNITS_ENV, borderOf, chatHas, isTok, loggedIn, raidButton, setCombat } from "./helpers.mjs";
 
 it("a unit event reaches only the tile showing that unit", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
@@ -300,4 +300,78 @@ it("raid tools: a burst of roster events in combat queues one update of the bar,
   expect(addon.eval("return ns.QueuedCount()"), "the waiting work is no more after 40 events than after one").toBe(once);
   setCombat(addon, false);
   expect([addon.eval("return __shows"), addon.eval("return Vanguard_RaidTools.actions.Raid:IsShown()")], "after the fight the bar is updated once, for the raid").toEqual([1, false]);
+});
+
+// TEST-ONLY: counts every attribute set on the raid header and its buttons from here on, so a test can show the preview never touches them.
+const SECURE_WATCH = `__secureSets = 0
+  for _, f in ipairs({ Vanguard_Raid, unpack(ns.GetModule("RaidFrames").buttons) }) do
+    local set = f.SetAttribute f.SetAttribute = function(...) __secureSets = __secureSets + 1 return set(...) end
+  end`;
+
+// Preview tile i: shown, name, status, role texture, bar color, power shown and color, top line.
+const previewTile = (addon, i) => addon.eval(`local b = Vanguard_RaidPreviewTile${i}
+  return { shown = b:IsVisible(), name = b.name:GetText(), status = b.status:GetText(), role = b.role:IsShown() and b.role.__texture or false,
+    bar = b.health.__barColor, value = b.health.__value, power = b.power:IsShown(), powerColor = b.power.__barColor, line = b.topLine:IsShown() }`);
+
+// How many preview tiles are visible.
+const shownTiles = (addon) => addon.eval("local n = 0 for _, b in ipairs(ns.RaidPreview.tiles) do if b:IsVisible() then n = n + 1 end end return n");
+
+it("raid preview: sample players in the raid tiles, laid out by the raid frame settings, and the secure header left alone", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
+  addon.eval('__spawn(1, "raid1")');
+  addon.eval(SECURE_WATCH);
+  addon.slash("preview party");
+  expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview on, with sample players/)], "a party: five sample players, and chat says how it ends").toEqual([5, true]);
+  const tank = previewTile(addon, 1);
+  expect([tank.name, /Icons\\RoleTank$/.test(tank.role), tank.value, tank.status, tank.line], "the tank: name, shield, health, missing health, top line").toEqual(["Aldren", true, 2560, addon.eval("return '-' .. AbbreviateNumbers(1440)"), true]);
+  expect(Math.abs(tank.bar[0] - addon.eval("return (ns.GetModule('RaidFrames').Soften(0.78, 0.61, 0.43))")) < 1e-6 && isTok(addon, tank.powerColor, "rage"), "softened class color as on a real tile; rage for a warrior").toBe(true);
+  expect([previewTile(addon, 4).status, isTok(addon, previewTile(addon, 4).bar, "darkBar"), previewTile(addon, 5).status, previewTile(addon, 3).role], "one dead, one offline (dark bars); no mark for damage").toEqual(["Dead", true, "Offline", false]);
+  // Preview tile i's rect on screen.
+  const r = (i) => addon.frame(`Vanguard_RaidPreviewTile${i}`).rect;
+  const holder = addon.frame("Vanguard_RaidHolder").rect;
+  expect([r(1).width, r(1).height, r(2).bottom - r(1).top, r(1).bottom, r(1).left + r(1).width / 2], "100 x 48 tiles in a column growing up from the holder, 4 apart, centered on it").toEqual([100, 48, 4, holder.bottom, holder.left + holder.width / 2]);
+  addon.slash("preview 40");
+  expect([shownTiles(addon), addon.eval("return Vanguard_RaidPreview:GetScale()"), Math.round((r(6).left - r(1).right) * 1000) / 1000], "a raid of 40: drawn at 72%, groups side by side").toEqual([40, 0.72, 2.88]);
+  addon.eval('ns.Options.Show("raid") __click("Width") __click("Sort by role") __click("Style")');
+  expect([Math.round(r(1).width / 0.72), addon.eval("return { Vanguard_RaidPreviewTile1.name:GetText(), Vanguard_RaidPreviewTile4.name:GetText(), Vanguard_RaidPreviewTile5.name:GetText() }"), addon.eval("return Vanguard_Options.reload:IsShown()")],
+    "a new width and sorting by role show at once (tanks first, then healers); the real frames wait for a reload").toEqual([120, ["Aldren", "Zelda", "Brielle"], true]);
+  expect([isTok(addon, previewTile(addon, 1).bar, "darkBar"), previewTile(addon, 1).line], "a new style too").toEqual([true, false]);
+  addon.eval('local s = VanguardDB.profiles.Default.RaidFrames s.layout = "rows" s.showPower = false RAID_CLASS_COLORS = nil ns.Theme.Refresh()');
+  expect([r(2).bottom === r(1).bottom && r(2).left > r(1).right, r(6).bottom > r(1).top, previewTile(addon, 1).power], "groups as rows; the power bar off; redrawn on a theme change").toEqual([true, true, false]);
+  expect(previewTile(addon, 1).name, "with no class colors the tiles still draw").toBe("Aldren");
+  expect([addon.eval("return __secureSets"), addon.eval('return #ns.GetModule("RaidFrames").buttons'), raidButton(addon, 1).name], "the secure header and its buttons are never touched").toEqual([0, 1, "TEST-ONLY Tank"]);
+  addon.eval('__click("Preview with sample players")');
+  expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off\.$/), addon.eval("return ns.RaidPreview.size")], "the options row steps from Raid (40) to Off").toEqual([0, true, 0]);
+});
+
+it("raid preview: a real group or combat ends it; it won't start in a group, in combat or with the raid frames off; not saved", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + "__grouped = false IsInGroup = function() return __grouped end");
+  addon.slash("preview");
+  expect(shownTiles(addon), "/vg preview with nothing after it: a raid of 10").toBe(10);
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect(shownTiles(addon), "a roster event while you're still solo leaves it").toBe(10);
+  addon.eval("__grouped = true");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off: you joined a group\.$/)], "a real group ends it").toEqual([0, true]);
+  addon.slash("preview 25");
+  expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sYou're in a group: your real party or raid frames are showing\.$/)], "and it won't start in one").toEqual([0, true]);
+  addon.eval("__grouped = false");
+  addon.slash("preview 25");
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off: combat started\.$/)], "combat ends it").toEqual([0, true]);
+  addon.slash("preview 10");
+  expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sIn combat\. Try the preview again once combat ends\.$/)], "and it won't start in combat").toEqual([0, true]);
+  setCombat(addon, false);
+  addon.slash("preview 10");
+  addon.slash("preview");
+  expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off\.$/)], "/vg preview again turns it off").toEqual([0, true]);
+  addon.clearChat();
+  addon.slash("preview off");
+  addon.slash("preview 7");
+  expect(Array.from(addon.chat()).map((l) => l.replace(/^.*Vanguard:\S*\s/, "")), "off when off says nothing; a size it doesn't offer gets the usage").toEqual(["Usage: /vg preview [party | 10 | 25 | 40 | off]"]);
+  expect(addon.eval("return VanguardDB.profiles.Default.RaidFrames.preview == nil and ns.RaidPreview.size == 0"), "nothing saved: after a reload it starts off").toBe(true);
+  const off = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { RaidFrames = false } } }" });
+  off.slash("preview party");
+  expect(chatHas(off, /Vanguard:\S*\sThe raid frames are off \(\/vg > Modules\), so there is nothing to preview\.$/), "with the raid frames off there is nothing to preview").toBe(true);
 });

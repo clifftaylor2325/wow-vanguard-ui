@@ -82,9 +82,9 @@ local function addButton(f, spec, x)
   f.buttons[spec[1]] = b
 end
 
--- Builds the window (hidden), movable, closed by Escape.
+-- Builds the window (hidden, opaque), movable, closed by Escape.
 function QL.Build()
-  local f = T.Panel(CreateFrame("Frame", "Vanguard_QuestLog", UIParent), { alpha = 0.97, shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_QuestLog", UIParent), { alpha = 1, shadow = true })
   f:SetSize(QL.W, QL.H)
   f:SetFrameStrata("HIGH")
   ns.Mover(f, "questlog", "Quest log", { "CENTER", "CENTER", -200, 40 })
