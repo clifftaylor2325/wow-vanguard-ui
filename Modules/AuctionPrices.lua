@@ -38,21 +38,15 @@ function AP.Day(t)
 end
 
 -- The account's auction data: VanguardDB.ah = { lists (Auction helper's shopping lists, for every
--- character), list (the one in use), houses = { ["Realm-Faction"] = a house, see AP.House } }.
+-- character), list (the one in use), houses = { [home key (ns.Home.Key)] = a house, see AP.House } }.
 function AP.Store()
   VanguardDB.ah = ns.Fill(type(VanguardDB.ah) == "table" and VanguardDB.ah or {}, { lists = {}, houses = {} })
   return VanguardDB.ah
 end
 
--- The auction house you use: your realm's normalized name (as in "Name-Realm", the same on every
--- character) and your faction, as "Realm-Alliance", "Realm-Horde" or "Realm-none".
-function AP.HouseKey()
-  return AP.Realm() .. "-" .. ns.FactionArt.Faction()
-end
-
 -- Your realm's normalized name (no spaces or hyphens), else its name as the client shows it.
 function AP.Realm()
-  return GetNormalizedRealmName() or GetRealmName()
+  return ns.Home.Realm()
 end
 
 -- This realm and faction's prices: { prices = { [itemID] = an item }, count (items priced),
@@ -61,7 +55,8 @@ end
 -- days = { [day] = that day's low }, qtys = { [day] = units up }, markets = { [day] = market value } };
 -- a day's units and market value are the last seen that day. Prices of older versions have days only.
 function AP.House()
-  local houses, key = AP.Store().houses, AP.HouseKey()
+  local houses = AP.Store().houses
+  local key = ns.Home.Adopt(houses)
   houses[key] = ns.Fill(type(houses[key]) == "table" and houses[key] or {}, { prices = {}, count = 0, lastScan = 0 })
   return houses[key]
 end
