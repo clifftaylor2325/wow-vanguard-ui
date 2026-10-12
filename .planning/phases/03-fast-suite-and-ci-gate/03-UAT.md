@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 03-fast-suite-and-ci-gate
 source: [03-VERIFICATION.md]
 started: 2026-10-11T13:19:59Z
-updated: 2026-10-12T02:16:44Z
+updated: 2026-10-12T02:19:29.998Z
 ---
 
 ## Current Test
 
-number: 6
-name: Decide the open review items WR-01 and IN-05
-expected: |
-  Each marked fixed, deferred or wontfix in 03-REVIEW-DISPOSITION.md (WR-01: a scoped firstRun login runs MigrateDB(0,2); IN-05: the UI preview job now runs on every ready-for-review PR)
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -44,14 +40,15 @@ source: user accepted about 156 s (hosted run 205 s, under the 300 s requirement
 
 ### 6. Decide the open review items WR-01 and IN-05
 expected: each marked fixed, deferred or wontfix in 03-REVIEW-DISPOSITION.md (WR-01: a scoped firstRun login runs MigrateDB(0,2); IN-05: the UI preview job now runs on every ready-for-review PR)
-result: [pending]
+result: pass
+source: user accepted WR-01 fix (in gap closure) and IN-05 wontfix
 
 ## Summary
 
 total: 6
-passed: 4
+passed: 5
 issues: 1
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
