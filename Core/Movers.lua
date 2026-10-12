@@ -4,6 +4,9 @@
 -- arrow keys nudge it (Shift: 10 px). Positions are saved per profile
 -- against the nearest screen edge, so they hold across resolutions, with
 -- each frame's own scale and opacity (right-click a handle to set them).
+-- A frame can also be anchored to another frame's side, or match its width
+-- or height (Core/MoverLinks.lua); unlock mode's bar can exit without
+-- saving (Core/UnlockBar.lua).
 
 local ADDON, ns = ...
 
@@ -25,7 +28,8 @@ function ns.MoverOptions()
 end
 
 -- Saved positions in the active profile: key -> { point, relPoint, x, y, scale, alpha }
--- (offsets in UIParent's units; scale and opacity left out while they are 1).
+-- (offsets in UIParent's units; scale and opacity left out while they are 1), plus a
+-- frame's links: rel, match, and its own w and h (Core/MoverLinks.lua).
 local function saved()
   return ns.Settings("positions")
 end
@@ -61,10 +65,15 @@ end
 -- The nine anchor points a saved position may name.
 local POINTS = { TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true, RIGHT = true, BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true }
 
--- The point to use for a mover: saved (when it names a real point; offsets
--- that aren't numbers read as 0), else its default.
+-- The point to use for a mover: where its link puts it (anchored to a frame
+-- that is there), saved (when it names a real point; offsets that aren't
+-- numbers read as 0), else its default.
 local function pointFor(m)
   local p = saved()[m.key]
+  if type(p) == "table" and p.rel ~= nil then
+    local point, relPoint, x, y = ns.MoverLinks.Point(m.key, p)
+    if point then return point, relPoint, x, y end
+  end
   if type(p) == "table" and POINTS[p.point] then
     return p.point, POINTS[p.relPoint] and p.relPoint or p.point, tonumber(p.x) or 0, tonumber(p.y) or 0
   end
@@ -111,10 +120,12 @@ local function applyLook(m)
   fade(m)
 end
 
--- Puts a mover's frame at its point, scale and opacity; protected frames wait for combat to end.
+-- Puts a mover's frame at its point, scale, size (one Vanguard may size) and opacity;
+-- protected frames wait for combat to end.
 local function place(m)
   ns.OutOfCombat(function()
     applyLook(m)
+    ns.MoverLinks.Size(m)
     anchor(m.frame, m)
   end)
 end
@@ -127,18 +138,20 @@ function ns.Mover(frame, key, label, default)
   end
   movers[key] = m
   place(m)
+  ns.MoverLinks.Registered(key)
   return m
 end
 
 -- Changes a mover's default point (a stacked bar whose neighbors changed
 -- size) and moves its frame, and its handle in unlock mode, there, unless a
--- saved position wins.
+-- saved position wins; frames linked to it follow.
 function ns.SetMoverDefault(key, default)
   local m = movers[key]
   if not m then return end
   m.default = default
   place(m)
   if m.handle then anchor(m.handle, m) end
+  ns.MoverLinks.Changed(key)
 end
 
 -- Mover watchers: key -> fn(key), run when that mover's saved position changes
@@ -150,24 +163,32 @@ function ns.WatchMover(key, fn)
   watchers[key] = fn
 end
 
--- Tells the key's watcher that the mover's point changed.
+-- Tells the key's watcher, and the frames linked to it, that the mover's point changed.
 local function changed(key)
   if watchers[key] then watchers[key](key) end
+  ns.MoverLinks.Changed(key)
+end
+
+-- Tells everything that follows a mover (its watcher, the frames linked to it, the popover) that it changed.
+function ns.MoverChanged(key)
+  changed(key)
+  if ns.OnMoverMoved then ns.OnMoverMoved(key) end
 end
 
 -- Saving ------------------------------------------------------------------------------
 
--- Saves a position for a mover (keeping its scale and opacity), moves its frame, and keeps its handle on it.
+-- Saves a position for a mover (keeping its scale and opacity; an anchored one keeps its
+-- link, with new offsets), moves its frame, and keeps its handle on it.
 local function savePosition(m, point, relPoint, x, y)
   local p = entry(m.key)
   p.point, p.relPoint, p.x, p.y = point, relPoint, x, y
+  ns.MoverLinks.Saved(m.key, p)
   place(m)
   if m.handle then
     anchor(m.handle, m)
     ns.ShowCoords(m)
   end
-  changed(m.key)
-  if ns.OnMoverMoved then ns.OnMoverMoved(m.key) end
+  ns.MoverChanged(m.key)
 end
 
 -- A mover's point, relative point and offsets (saved, or its default);
@@ -343,14 +364,16 @@ end
 
 -- Selection and keys ------------------------------------------------------------------
 
--- Shows the selected handle's point and offsets on it; others show their label.
+-- Shows the selected handle's point and offsets on it (for an anchored frame, the
+-- side it's anchored to and its offsets from it); others show their label.
 function ns.ShowCoords(m)
   if not m.handle then
     return
   end
   local point, _, x, y = pointFor(m)
+  local where, rx, ry = ns.MoverLinks.Where(m.key)
   local label = m.label .. suffix
-  m.handle.label:SetText(m == selected and string.format("%s\n%s %d, %d", label, point, x, y) or label)
+  m.handle.label:SetText(m == selected and string.format("%s\n%s %d, %d", label, where or point, rx or x, ry or y) or label)
 end
 
 -- Selects a handle for arrow-key nudging (and deselects the previous one).
@@ -421,6 +444,17 @@ local function handleFor(m)
   return m.handle
 end
 
+-- Puts a mover's frame where it belongs now (and its handle, sized to it, in unlock mode).
+function ns.PlaceMover(key)
+  local m = movers[key]
+  if not m then return end
+  place(m)
+  if m.handle then
+    handleFor(m)
+    ns.ShowCoords(m)
+  end
+end
+
 -- Scale and opacity ---------------------------------------------------------------------
 
 -- Saves a mover's scale or opacity (field "scale" or "alpha", to the hundredth,
@@ -432,8 +466,7 @@ local function setLook(key, field, value, range)
   entry(key)[field] = value ~= 1 and value or nil
   place(m)
   if m.handle then handleFor(m) end
-  changed(key)
-  if ns.OnMoverMoved then ns.OnMoverMoved(key) end
+  ns.MoverChanged(key)
 end
 
 -- Sets a mover's scale (0.5 to 2); its frame grows or shrinks around its anchor point.
@@ -448,23 +481,24 @@ end
 
 -- Lock / unlock -----------------------------------------------------------------------
 
--- Shows every handle and the grid (not with noGrid). Refused in combat.
-function ns.Unlock(noGrid)
-  if ns.InCombat() then
-    return false
-  end
+-- Shows every handle and the grid (not for the game's Edit Mode, which draws its own),
+-- and remembers every spot for Exit without saving (Core/UnlockBar.lua). Refused in combat.
+function ns.Unlock(editMode)
+  if ns.InCombat() then return false end
+  ns.UnlockStarted(editMode)
   unlocked = true
   for _, key in ipairs(order) do
     handleFor(movers[key]):Show()
   end
   local options = ns.MoverOptions()
-  if options.grid and not noGrid then ns.ShowGrid(options.gridSize) end
+  if options.grid and not editMode then ns.ShowGrid(options.gridSize) end
   return true
 end
 
--- Hides every handle and the grid.
+-- Hides every handle, the grid and unlock mode's bar, keeping every change.
 function ns.Lock()
   unlocked = false
+  ns.UnlockEnded()
   selectMover(nil)
   if ns.CloseMoverPopover then ns.CloseMoverPopover() end
   for _, m in pairs(movers) do
@@ -478,15 +512,14 @@ function ns.Unlocked()
   return unlocked
 end
 
--- Forgets one mover's saved position, scale and opacity and puts its frame (and handle) back.
+-- Forgets one mover's saved position, scale, opacity and links and puts its frame (and handle) back.
 local function resetOne(k)
   saved()[k] = nil
-  place(movers[k])
-  if movers[k].handle then handleFor(movers[k]) end
+  ns.PlaceMover(k)
   changed(k)
 end
 
--- Forgets a saved position, scale and opacity (or all with "all") and puts frames back. Returns how many.
+-- Forgets a saved position, scale, opacity and links (or all with "all") and puts frames back. Returns how many.
 function ns.ResetMovers(key)
   local n = 0
   for _, k in ipairs(order) do
