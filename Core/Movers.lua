@@ -4,8 +4,14 @@
 -- arrow keys nudge it (Shift: 10 px). Positions are saved per profile
 -- against the nearest screen edge, so they hold across resolutions, with
 -- each frame's own scale and opacity (right-click a handle to set them).
+-- A frame can also be anchored to another frame's side, or match its width
+-- or height (Core/MoverLinks.lua); unlock mode's bar can exit without
+-- saving (Core/UnlockBar.lua).
 
 local ADDON, ns = ...
+
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgFading = ns.FrameState("vgFading")
 
 local T = ns.Theme
 local L = ns.Layout
@@ -25,7 +31,8 @@ function ns.MoverOptions()
 end
 
 -- Saved positions in the active profile: key -> { point, relPoint, x, y, scale, alpha }
--- (offsets in UIParent's units; scale and opacity left out while they are 1).
+-- (offsets in UIParent's units; scale and opacity left out while they are 1), plus a
+-- frame's links: rel, match, and its own w and h (Core/MoverLinks.lua).
 local function saved()
   return ns.Settings("positions")
 end
@@ -61,10 +68,15 @@ end
 -- The nine anchor points a saved position may name.
 local POINTS = { TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true, RIGHT = true, BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true }
 
--- The point to use for a mover: saved (when it names a real point; offsets
--- that aren't numbers read as 0), else its default.
+-- The point to use for a mover: where its link puts it (anchored to a frame
+-- that is there), saved (when it names a real point; offsets that aren't
+-- numbers read as 0), else its default.
 local function pointFor(m)
   local p = saved()[m.key]
+  if type(p) == "table" and p.rel ~= nil then
+    local point, relPoint, x, y = ns.MoverLinks.Point(m.key, p)
+    if point then return point, relPoint, x, y end
+  end
   if type(p) == "table" and POINTS[p.point] then
     return p.point, POINTS[p.relPoint] and p.relPoint or p.point, tonumber(p.x) or 0, tonumber(p.y) or 0
   end
@@ -84,9 +96,9 @@ end
 -- Draws a mover's frame at its opacity times the alpha its module last gave it.
 local function fade(m)
   local f = m.frame
-  f.vgFading = true
+  vgFading[f] = true
   f:SetAlpha(m.ownAlpha * select(2, ns.MoverLook(m.key)))
-  f.vgFading = false
+  vgFading[f] = false
 end
 
 -- From the first opacity other than 1 on, an alpha the frame's module sets (a
@@ -96,7 +108,7 @@ local function watchAlpha(m)
   m.ownAlpha = m.frame:GetAlpha() or 1
   if type(hooksecurefunc) ~= "function" then return end
   hooksecurefunc(m.frame, "SetAlpha", ns.Guard("hook SetAlpha", function(f, a)
-    if f.vgFading or ns.PlainNumber(a) == nil then return end
+    if vgFading[f] or ns.PlainNumber(a) == nil then return end
     m.ownAlpha = a
     fade(m)
   end))
@@ -111,10 +123,12 @@ local function applyLook(m)
   fade(m)
 end
 
--- Puts a mover's frame at its point, scale and opacity; protected frames wait for combat to end.
+-- Puts a mover's frame at its point, scale, size (one Vanguard may size) and opacity;
+-- protected frames wait for combat to end.
 local function place(m)
   ns.OutOfCombat(function()
     applyLook(m)
+    ns.MoverLinks.Size(m)
     anchor(m.frame, m)
   end)
 end
@@ -127,47 +141,42 @@ function ns.Mover(frame, key, label, default)
   end
   movers[key] = m
   place(m)
+  ns.MoverLinks.Registered(key)
   return m
 end
 
 -- Changes a mover's default point (a stacked bar whose neighbors changed
 -- size) and moves its frame, and its handle in unlock mode, there, unless a
--- saved position wins.
+-- saved position wins; frames linked to it follow.
 function ns.SetMoverDefault(key, default)
   local m = movers[key]
   if not m then return end
   m.default = default
   place(m)
   if m.handle then anchor(m.handle, m) end
+  ns.MoverLinks.Changed(key)
 end
 
--- Mover watchers: key -> fn(key), run when that mover's saved position changes
--- (moved, nudged, or reset); a frame whose own default depends on another's spot.
-local watchers = {}
-
--- Runs fn(key) whenever the mover for key is moved or reset (one watcher per key).
-function ns.WatchMover(key, fn)
-  watchers[key] = fn
-end
-
--- Tells the key's watcher that the mover's point changed.
-local function changed(key)
-  if watchers[key] then watchers[key](key) end
+-- Tells everything that follows a mover (the frames linked to it, the popover) that it changed.
+function ns.MoverChanged(key)
+  ns.MoverLinks.Changed(key)
+  if ns.OnMoverMoved then ns.OnMoverMoved(key) end
 end
 
 -- Saving ------------------------------------------------------------------------------
 
--- Saves a position for a mover (keeping its scale and opacity), moves its frame, and keeps its handle on it.
+-- Saves a position for a mover (keeping its scale and opacity; an anchored one keeps its
+-- link, with new offsets), moves its frame, and keeps its handle on it.
 local function savePosition(m, point, relPoint, x, y)
   local p = entry(m.key)
   p.point, p.relPoint, p.x, p.y = point, relPoint, x, y
+  ns.MoverLinks.Saved(m.key, p)
   place(m)
   if m.handle then
     anchor(m.handle, m)
     ns.ShowCoords(m)
   end
-  changed(m.key)
-  if ns.OnMoverMoved then ns.OnMoverMoved(m.key) end
+  ns.MoverChanged(m.key)
 end
 
 -- A mover's point, relative point and offsets (saved, or its default);
@@ -178,35 +187,48 @@ end
 
 -- Pinning the game's frames ------------------------------------------------------------------
 
--- Every frame Vanguard pins (weak keys, so a frame that goes away doesn't stay).
+-- Pin state lives here, never on the game's frames (a field stored on one of
+-- them plants taint). Weak keys, so a frame that goes away doesn't stay.
+-- pinned: frame -> its apply function; runs: frame -> its queued run (made once,
+-- so the combat queue keeps one entry per frame); hooked: frames whose SetPoint
+-- is hooked; pinning: frames whose pin is running now.
 local pinned = setmetatable({}, { __mode = "k" })
+local runs = setmetatable({}, { __mode = "k" })
+local hooked = setmetatable({}, { __mode = "k" })
+local pinning = setmetatable({}, { __mode = "k" })
 
 -- Runs a frame's pin, flagged so its own SetPoint calls aren't seen as the
 -- game's. A pin that fails is reported (ns.Try) and the flag is cleared all the same.
 local function applyPin(frame)
-  frame.vgPinning = true
-  ns.Try("pin " .. (frame:GetName() or "frame"), frame.vgPin, frame)
-  frame.vgPinning = false
+  pinning[frame] = true
+  ns.Try("pin " .. (frame:GetName() or "frame"), pinned[frame], frame)
+  pinning[frame] = nil
 end
 
 -- Queues a frame's pin for after combat, one entry per frame however often the
 -- game moves it; nothing happens while pins are paused (Edit Mode open).
 local function runPin(frame)
   if ns.pinsPaused then return end
-  ns.OutOfCombat(frame.vgRun, frame)
+  ns.OutOfCombat(runs[frame], frame)
 end
 
 -- Keeps one of the game's frames where Vanguard put it: apply(frame) runs now
 -- (after combat if in it) and again whenever the game moves the frame back
 -- (Edit Mode re-anchors some of its frames when it lays out).
 function ns.Pin(frame, apply)
-  frame.vgPin = apply
-  frame.vgRun = frame.vgRun or function() applyPin(frame) end
-  pinned[frame] = true
+  pinned[frame] = apply
+  runs[frame] = runs[frame] or function() applyPin(frame) end
   runPin(frame)
-  if frame.vgPinned or type(hooksecurefunc) ~= "function" then return end
-  frame.vgPinned = true
-  hooksecurefunc(frame, "SetPoint", ns.Guard("hook SetPoint", function(self) if not self.vgPinning then runPin(self) end end))
+  if hooked[frame] or type(hooksecurefunc) ~= "function" then return end
+  hooked[frame] = true
+  hooksecurefunc(frame, "SetPoint", ns.Guard("hook SetPoint", function(self) if not pinning[self] then runPin(self) end end))
+end
+
+-- Runs a pinned frame's pin again (the game resized it or laid it out again),
+-- through the queue; nothing while its pin is running or for a frame never pinned.
+function ns.Repin(frame)
+  if pinning[frame] or not pinned[frame] then return end
+  runPin(frame)
 end
 
 -- Pauses every pin (so the game's Edit Mode can move its frames freely), or
@@ -343,14 +365,16 @@ end
 
 -- Selection and keys ------------------------------------------------------------------
 
--- Shows the selected handle's point and offsets on it; others show their label.
+-- Shows the selected handle's point and offsets on it (for an anchored frame, the
+-- side it's anchored to and its offsets from it); others show their label.
 function ns.ShowCoords(m)
   if not m.handle then
     return
   end
   local point, _, x, y = pointFor(m)
+  local where, rx, ry = ns.MoverLinks.Where(m.key)
   local label = m.label .. suffix
-  m.handle.label:SetText(m == selected and string.format("%s\n%s %d, %d", label, point, x, y) or label)
+  m.handle.label:SetText(m == selected and string.format("%s\n%s %d, %d", label, where or point, rx or x, ry or y) or label)
 end
 
 -- Selects a handle for arrow-key nudging (and deselects the previous one).
@@ -421,6 +445,17 @@ local function handleFor(m)
   return m.handle
 end
 
+-- Puts a mover's frame where it belongs now (and its handle, sized to it, in unlock mode).
+function ns.PlaceMover(key)
+  local m = movers[key]
+  if not m then return end
+  place(m)
+  if m.handle then
+    handleFor(m)
+    ns.ShowCoords(m)
+  end
+end
+
 -- Scale and opacity ---------------------------------------------------------------------
 
 -- Saves a mover's scale or opacity (field "scale" or "alpha", to the hundredth,
@@ -432,8 +467,7 @@ local function setLook(key, field, value, range)
   entry(key)[field] = value ~= 1 and value or nil
   place(m)
   if m.handle then handleFor(m) end
-  changed(key)
-  if ns.OnMoverMoved then ns.OnMoverMoved(key) end
+  ns.MoverChanged(key)
 end
 
 -- Sets a mover's scale (0.5 to 2); its frame grows or shrinks around its anchor point.
@@ -448,23 +482,24 @@ end
 
 -- Lock / unlock -----------------------------------------------------------------------
 
--- Shows every handle and the grid (not with noGrid). Refused in combat.
-function ns.Unlock(noGrid)
-  if ns.InCombat() then
-    return false
-  end
+-- Shows every handle and the grid (not for the game's Edit Mode, which draws its own),
+-- and remembers every spot for Exit without saving (Core/UnlockBar.lua). Refused in combat.
+function ns.Unlock(editMode)
+  if ns.InCombat() then return false end
+  ns.UnlockStarted(editMode)
   unlocked = true
   for _, key in ipairs(order) do
     handleFor(movers[key]):Show()
   end
   local options = ns.MoverOptions()
-  if options.grid and not noGrid then ns.ShowGrid(options.gridSize) end
+  if options.grid and not editMode then ns.ShowGrid(options.gridSize) end
   return true
 end
 
--- Hides every handle and the grid.
+-- Hides every handle, the grid and unlock mode's bar, keeping every change.
 function ns.Lock()
   unlocked = false
+  ns.UnlockEnded()
   selectMover(nil)
   if ns.CloseMoverPopover then ns.CloseMoverPopover() end
   for _, m in pairs(movers) do
@@ -478,15 +513,14 @@ function ns.Unlocked()
   return unlocked
 end
 
--- Forgets one mover's saved position, scale and opacity and puts its frame (and handle) back.
+-- Forgets one mover's saved position, scale, opacity and links and puts its frame (and handle) back.
 local function resetOne(k)
   saved()[k] = nil
-  place(movers[k])
-  if movers[k].handle then handleFor(movers[k]) end
-  changed(k)
+  ns.PlaceMover(k)
+  ns.MoverLinks.Changed(k)
 end
 
--- Forgets a saved position, scale and opacity (or all with "all") and puts frames back. Returns how many.
+-- Forgets a saved position, scale, opacity and links (or all with "all") and puts frames back. Returns how many.
 function ns.ResetMovers(key)
   local n = 0
   for _, k in ipairs(order) do

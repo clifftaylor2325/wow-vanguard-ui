@@ -122,6 +122,29 @@ const profileRow = (addon, name) => addon.eval(`for _, w in ipairs(__wfgStub.fra
 const profileButton = (addon, name, button) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
   if w.label and w.label.__text == "${name}" and w.card and w:IsVisible() then local b = w.${button} b:GetScript("OnClick")(b) return b.text.__text end end`);
 
+// Runs one of a profile row's button scripts (OnEnter, OnLeave) and returns the tooltip: shown, first line.
+const profileHover = (addon, name, button, script) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+  if w.label and w.label.__text == "${name}" and w.card and w:IsVisible() then local b = w.${button} b:GetScript("${script}")(b)
+    return { GameTooltip:IsShown(), (GameTooltip.__lines[1] or {}).text or false } end end`);
+
+it("options: Delete, Copy here, Reset profile and Start over say what they lose; a reset asks and keeps a copy", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.NewProfile("TEST-ONLY Tank") ns.Profile().Chat = { background = false } ns.Options.Show("profiles")');
+  expect(profileHover(addon, "TEST-ONLY Tank", "delete", "OnEnter"), "Delete's tooltip").toEqual([true, "Deletes profile TEST-ONLY Tank for every character on this account. It can't be undone."]);
+  expect(profileHover(addon, "TEST-ONLY Tank", "copy", "OnEnter"), "Copy here's tooltip").toEqual([true, "Replaces every setting in profile Default with profile TEST-ONLY Tank's. It can't be undone."]);
+  expect(profileHover(addon, "TEST-ONLY Tank", "copy", "OnLeave")[0], "leaving hides it").toBe(false);
+  addon.eval("GameTooltip = nil");
+  expect(addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.delete and w:IsVisible() then w.delete:GetScript("OnEnter")(w.delete) w.delete:GetScript("OnLeave")(w.delete) return true end end'), "a client without the tooltip shows none, without an error").toBe(true);
+  addon.eval('__click("Reset profile")');
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "Reset profile asks, saying what is lost and where the copy goes")
+    .toBe("Reset this profile? Every setting in profile Default goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile Default backup.");
+  addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
+  expect(addon.eval("return { VanguardDB.profiles.Default.Chat.background, VanguardDB.profiles['Default backup'] == nil }"), "No changes nothing").toEqual([false, true]);
+  addon.eval('__click("Reset profile") Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  expect(addon.eval("return { VanguardDB.profiles.Default.Chat == nil, VanguardDB.profiles['Default backup'].Chat.background, Vanguard_Options.reload:IsShown() }"), "Reset backs the profile up, then resets it for the reload").toEqual([true, false, true]);
+  expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
+});
+
 it("options: profiles in the window", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.NewProfile("TEST-ONLY Healer") ns.NewProfile("TEST-ONLY Tank") ns.Options.Show("profiles")');
@@ -186,13 +209,18 @@ it("options: search reads each page's rows once per opening; a rebuilt page leav
   const reads = () => addon.eval("local r = { __rows.general or 0, __rows.profiles or 0 } __rows = {} return r");
   addon.eval('ns.NewProfile("TEST-ONLY Healer") ns.Options.Show("profiles")');
   reads();
-  const rows = addon.eval("return ns.Options.RowCount()");
+  // How many rows the open page shows (each row keeps its card and its place on the page).
+  const shown = () => addon.frames("w.card ~= nil and w.pageY ~= nil and w:IsVisible()").length;
+  const rows = shown();
+  addon.eval("__old = {} for _, w in ipairs(__wfgStub.frames) do if w.card and w.pageY and w:IsVisible() and w.Refresh then __old[#__old + 1] = w end end");
   for (const text of ["h", "he", "hea", "heal"]) addon.eval(`ns.Options.Search("${text}")`);
   expect([reads(), addon.eval("return ns.Options.matched.profiles")], "opening the window read every page's rows once (for the nav's Changed dots), so four keystrokes read none, and still find a profile's name").toEqual([[0, 0], true]);
   addon.eval('ns.Options.RebuildPage("profiles")');
-  expect([addon.eval("return ns.Options.RowCount()"), reads()], "a rebuilt page replaces its rows: the row list is the same length, the profiles page read again to build it").toEqual([rows, [0, 1]]);
+  expect([shown(), reads()], "a rebuilt page replaces its rows: the page shows as many, the profiles page read again to build it").toEqual([rows, [0, 1]]);
+  const stale = addon.eval("local n = 0 for _, w in ipairs(__old) do w.Refresh = function() n = n + 1 end end ns.Options.Refresh() return { #__old > 0, n }");
+  expect(stale, "the thrown-away rows are no longer refreshed").toEqual([true, 0]);
   addon.eval('ns.NewProfile("TEST-ONLY Tank") ns.Options.RebuildPage("profiles") ns.Options.Search("tank")');
-  expect([addon.eval("return ns.Options.RowCount()"), addon.eval("return ns.Options.matched.profiles"), reads()], "a new profile: one more row, found by the search; only the rebuilt page is read again, once (to build it, mark its dot and search it)").toEqual([rows + 1, true, [0, 1]]);
+  expect([shown(), addon.eval("return ns.Options.matched.profiles"), reads()], "a new profile: one more row, found by the search; only the rebuilt page is read again, once (to build it, mark its dot and search it)").toEqual([rows + 1, true, [0, 1]]);
   addon.eval('ns.Options.Search("tan")');
   expect(reads(), "the next keystroke reads nothing").toEqual([0, 0]);
   addon.eval('ns.Options.Hide() Vanguard_Options:Hide() ns.Options.Show() ns.Options.Search("tan")');
@@ -208,10 +236,9 @@ it("choice fallback, key capture and the mouse wheel", () => {
   expect(fallback === "a", "a choice that is not in the list wraps to the first").toBeTruthy();
   addon.eval('ns.Options.Show("clickcast")');
   const captured = addon.eval(`
-    local W, CC, got, action = ns.Widgets, ns.GetModule("ClickCast"), nil, "spell"
-    -- TEST-ONLY widgets: a key capture and an action cycle, as a page would build them.
+    local W, CC, got = ns.Widgets, ns.GetModule("ClickCast"), nil
+    -- TEST-ONLY widget: a key capture, as a page would build it.
     local cap = W.KeyCapture(UIParent, "Set key", function(k) got = CC.KeyText(k) end)
-    local cycle = W.Cycle(UIParent, "Action", { { "spell", "Spell" }, { "macro", "Macro" } }, function() return action end, function(v) action = v end)
     cap:GetScript("OnClick")(cap)
     cap:GetScript("OnKeyDown")(cap, "F")
     local key = got
@@ -221,17 +248,10 @@ it("choice fallback, key capture and the mouse wheel", () => {
     cap:GetScript("OnClick")(cap)
     cap:GetScript("OnMouseWheel")(cap, -1)
     local wheel = got
-    cycle:GetScript("OnClick")(cycle)
-    local stepped = cycle.text:GetText()
-    local calls = 0
-    -- TEST-ONLY getter: the first read is an unknown action, then "spell".
-    cycle.get = function() calls = calls + 1; return calls == 1 and "missing" or "spell" end
-    cycle:GetScript("OnClick")(cycle)
-    return { key = key, cancelled = cancelled, wheel = wheel, stepped = stepped, back = cycle.text:GetText() }
+    return { key = key, cancelled = cancelled, wheel = wheel }
   `);
   expect(captured.key === "F (hover)" && captured.cancelled === true, "a key is captured, and Escape cancels").toBeTruthy();
   expect(captured.wheel === "Wheel down (hover)", "the wheel is captured as a hover binding").toBeTruthy();
-  expect(captured.stepped === "Action: Macro" && captured.back === "Action: Spell", "the action cycle steps, and an unknown value wraps to the first").toBeTruthy();
   expect(addon.eval('return __click("Also on your player, target and focus frames (reload)")') === true, "unit-frame click casting is a switch on the page").toBeTruthy();
   expect(addon.eval("return ns.Settings('ClickCast').unitFrames") === true, "the switch turns it on").toBeTruthy();
 });
@@ -405,8 +425,7 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   addon.eval('ns.Options.current = "nowhere"');
   expect(press(addon, "TAB"), "a page with no rows (none built): Tab has nothing to mark").toEqual(["nowhere", false]);
   addon.eval("ns.Options.Show('general')");
-  setCombat(addon, true);
-  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.world.combat(true);
   addon.eval("Vanguard_Options.__passed = 'TEST-ONLY unset'");
   expect([addon.eval("return Vanguard_Options.__kb"), press(addon, "W")[1]], "a fight takes the keyboard back (keys can't be passed on in combat)").toEqual([false, "TEST-ONLY unset"]);
   addon.eval("ns.Options.Show('more')");
@@ -508,7 +527,7 @@ it("bags: the item skin is shared with other windows, once per button", () => {
     local b = CreateFrame("Button", nil, UIParent) b.icon = b:CreateTexture()
     local skin = ns.GetModule("Bags").SkinItem
     skin(b) local n = ns.Theme.PaintedCount() skin(b)
-    return { b.vgSkinned, ns.Theme.PaintedCount() == n, b.icon.__texCoord ~= nil }`);
+    return { ns.FrameState('vgSkinned')[b], ns.Theme.PaintedCount() == n, b.icon.__texCoord ~= nil }`);
   expect(out).toEqual([true, true, true]);
 });
 
@@ -553,4 +572,24 @@ it("options: the scroll thumb drags its page, and the copy box opens above the w
     ns.ShowText("TEST-ONLY", "TEST-ONLY")
     return { grip:IsShown(), dragged, view:GetVerticalScroll(), Vanguard_TextDialog.__strata, Vanguard_Options.__strata }`);
   expect(out, "dragging the thumb half its travel scrolls half the page and stops when let go; the copy box is a layer above the window").toEqual([true, 350, 350, "FULLSCREEN_DIALOG", "DIALOG"]);
+});
+
+it("options: the pages, their nav order and each page's row count stay as they were when Options.lua was split into area files", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // Every page in ns.Options.PAGES order: key, title, nav order and how many rows it builds.
+  const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
+  // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
+  expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
+    "general|General|10|30", "modules|Modules|20|54", "unitframes|Unit frames|30|23", "raid|Raid frames|40|18",
+    "actionbars|Action bars|60|73", "quests|Quests|70|12", "more|Bars, map, chat|80|138", "profiles|Profiles|90|14",
+    "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|70|12",
+    "situations|Situations|85|16", "clickcast|Click casting|46|11",
+  ]);
+  addon.eval('ns.Options.Show("general")');
+  // The nav entries top to bottom, by each one's offset from the top of the nav.
+  const nav = addon.eval("local list = {} for k, b in pairs(Vanguard_Options.nav) do local _, _, _, _, y = b:GetPoint() list[#list + 1] = { k, y } end table.sort(list, function(a, b) return a[2] > b[2] end) local out = {} for i, e in ipairs(list) do out[i] = e[1] end return out");
+  expect(nav, "the nav lists the pages in the same order").toEqual([
+    "general", "modules", "unitframes", "raid", "healing", "clickcast", "talents", "actionbars",
+    "nameplates", "quests", "more", "situations", "profiles", "feedback",
+  ]);
 });

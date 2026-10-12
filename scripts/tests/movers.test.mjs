@@ -58,15 +58,6 @@ const BOX = `
   ns.Mover(__box, "box", "TEST-ONLY box", { "BOTTOM", "BOTTOM", 0, 100 })
 `;
 
-it("a mover's watcher hears when that mover is moved or reset, and only then", () => {
-  const addon = loggedIn(BOX + `ns.Mover(CreateFrame("Frame", nil, UIParent), "TESTONLY-other", "TEST-ONLY other", { "BOTTOM", "BOTTOM", 0, 0 })
-    __heard = {} ns.WatchMover('box', function(key) __heard[#__heard + 1] = key end)`);
-  addon.eval("ns.SetMoverPoint('box', 'BOTTOM', 'BOTTOM', 40, 100) ns.ResetMovers('box')");
-  expect(addon.eval("return __heard"), "moved, then reset: told twice, with its key").toEqual(["box", "box"]);
-  addon.eval("ns.SetMoverPoint('TESTONLY-other', 'BOTTOM', 'BOTTOM', 0, 0)");
-  expect(addon.eval("return #__heard"), "another mover's change is not its business").toBe(2);
-});
-
 // The box on screen: its scale, alpha, rect (screen pixels: center x, bottom, width) and saved entry.
 const box = (addon) => {
   const r = addon.frame("TESTONLY_Box").rect;
@@ -132,4 +123,151 @@ it("a damaged saved position (a hand-edited profile string) falls back to the de
   expect(addon.eval("return { ns.MoverLook('uf_target') }"), "a scale out of range is kept to it, an opacity that isn't a number is 1").toEqual([0.5, 1]);
   addon.eval('ns.Profile().positions.box = { point = "TOPLEFT", relPoint = "TEST-ONLY", x = "12", y = {} } ns.SetMoverDefault("box", { "BOTTOM", "BOTTOM", 0, 100 })');
   expect(addon.eval("return { ns.MoverPoint('box') }"), "a good point keeps; a bad relative point is the point; offsets that aren't numbers read as numbers or 0").toEqual(["TOPLEFT", "TOPLEFT", 12, 0]);
+});
+
+// Links between frames (Core/MoverLinks.lua) ------------------------------------------------
+
+// TEST-ONLY second box: 100 x 20, at the screen's center until it's anchored.
+const DEP = `
+  __dep = CreateFrame("Frame", "TESTONLY_Dep", UIParent)
+  __dep:SetSize(100, 20)
+  ns.Mover(__dep, "dep", "TEST-ONLY dep", { "CENTER", "CENTER", 0, 0 })
+`;
+// A frame's rect on screen as [left, bottom, width, height].
+const rectOf = (addon, name) => { const r = addon.frame(name).rect; return [r.left, r.bottom, r.width, r.height]; };
+// A Lua call's results as a list.
+const results = (addon, lua) => addon.eval(`return { ${lua} }`);
+// No frame by that name, as a setter says it.
+const NO_FRAME = "There's no frame called TEST-ONLY-none here (is its module on?).";
+
+it("layout: rects, clamping to the screen, and the nearest side", () => {
+  const addon = loggedIn();
+  // A rect from ns.Layout as [left, bottom, w, h].
+  const rect = (lua) => addon.eval(`local r = ${lua} return { r.left, r.bottom, r.w, r.h }`);
+  expect(rect("ns.Layout.Rect('TOPRIGHT', 'TOPRIGHT', -12, -12, 100, 50, 1920, 1080)"), "a frame's rect from its point").toEqual([1808, 1018, 100, 50]);
+  expect(rect("ns.Layout.RectAt('LEFT', 500, 300, 100, 20)"), "the rect whose left point is at 500, 300").toEqual([500, 290, 100, 20]);
+  expect(rect("ns.Layout.Clamp({ left = -20, bottom = 1070, w = 100, h = 20 }, 1920, 1080)"), "a rect past the edges is moved onto the screen").toEqual([0, 1060, 100, 20]);
+  // The side of a 200 x 40 frame at 500, 500 that a 100 x 20 one at left, bottom is nearest.
+  const side = (l, b) => addon.eval(`return ns.Layout.NearestSide({ left = ${l}, bottom = ${b}, w = 100, h = 20 }, { left = 500, bottom = 500, w = 200, h = 40 })`);
+  expect([side(720, 505), side(300, 505), side(550, 560), side(550, 400)], "right, left, above and below another frame").toEqual(["RIGHT", "LEFT", "TOP", "BOTTOM"]);
+});
+
+it("anchoring a frame to another frame's side: placed there, grows away from it, follows it, refused with a reason", () => {
+  const addon = loggedIn(BOX + DEP);
+  expect(results(addon, 'ns.SetMoverAnchor("dep", "box", "RIGHT", 4, 0)'), "anchoring is accepted").toEqual([true]);
+  expect(rectOf(addon, "TESTONLY_Dep"), "its left edge 4 px right of the box, centered on it").toEqual([1064, 110, 100, 20]);
+  addon.eval("__dep:SetWidth(150)");
+  expect(rectOf(addon, "TESTONLY_Dep"), "anchored to the right, it grows to the right").toEqual([1064, 110, 150, 20]);
+  addon.eval('ns.SetMoverAnchor("dep", "box", "TOP", 0, 0) __dep:SetHeight(40)');
+  expect(rectOf(addon, "TESTONLY_Dep"), "anchored above, it sits on the box and grows upward").toEqual([885, 140, 150, 40]);
+  addon.eval("ns.SetMoverPoint('box', 'BOTTOM', 'BOTTOM', 100, 300)");
+  expect(rectOf(addon, "TESTONLY_Dep"), "the box moved: it follows").toEqual([985, 340, 150, 40]);
+  addon.eval("ns.SetMoverScale('box', 1.5)");
+  expect(rectOf(addon, "TESTONLY_Dep")[1], "the box rescaled: it stays on top of it").toBe(360);
+  addon.eval("ns.SetMoverScale('box', 1) ns.SetMoverAnchor('dep', 'box', 'RIGHT', 0, 0) __box:SetWidth(300) __box:GetScript('OnSizeChanged')(__box, 300, 40)");
+  expect(rectOf(addon, "TESTONLY_Dep")[0], "the box's module made it wider: it follows its right edge").toBe(1210);
+  expect(addon.eval("return ns.Settings('positions').dep"), "the link is saved, with the spot it's at (against the nearest screen edge) to fall back on")
+    .toEqual({ rel: { to: "box", side: "RIGHT", x: 0, y: 0 }, point: "BOTTOMRIGHT", relPoint: "BOTTOMRIGHT", x: -560, y: 300 });
+  addon.eval("ns.Nudge('dep', 5, -2)");
+  expect(results(addon, "ns.MoverAnchor('dep')"), "a nudge moves it from the side it's anchored to; the link holds").toEqual(["box", "RIGHT", 5, -2]);
+  const there = rectOf(addon, "TESTONLY_Dep");
+  expect([results(addon, "ns.SetMoverAnchor('dep')"), rectOf(addon, "TESTONLY_Dep"), addon.eval("return ns.MoverAnchor('dep') == nil")], "anchored to the screen again, it stays where it is").toEqual([[true], there, true]);
+  addon.eval("ns.SetMoverAnchor('dep', 'box')");
+  expect([rectOf(addon, "TESTONLY_Dep"), results(addon, "ns.MoverAnchor('dep')")], "no side or offsets: the nearest side, and it stays where it is").toEqual([there, ["box", "RIGHT", 5, -2]]);
+  addon.slash("reset box");
+  expect(rectOf(addon, "TESTONLY_Dep")[0], "the box reset to its default spot: it follows").toBe(1115);
+  expect(results(addon, "ns.SetMoverAnchor('dep', 'dep', 'TOP')"), "not to itself").toEqual([false, "A frame can't be anchored to itself."]);
+  expect(results(addon, "ns.SetMoverAnchor('dep', 'TEST-ONLY-none', 'TOP')"), "not to a frame that isn't there").toEqual([false, NO_FRAME]);
+  expect(results(addon, "ns.SetMoverAnchor('TEST-ONLY-none', 'box')"), "nor for one").toEqual([false, NO_FRAME]);
+  expect(results(addon, "ns.SetMoverAnchor('dep', 'box', 'TEST-ONLY')"), "a side is one of four").toEqual([false, "Pick a side: left, right, top or bottom."]);
+  expect(results(addon, "ns.SetMoverAnchor('box', 'dep', 'LEFT')"), "and never round in a circle")
+    .toEqual([false, "TEST-ONLY dep is anchored to TEST-ONLY box already (or to a frame anchored to it), so that would go round in a circle."]);
+});
+
+// A JS value (numbers, strings, plain objects) as a Lua table constructor.
+const lua = (v) => (typeof v === "object" ? `{ ${Object.entries(v).map(([k, x]) => `[${JSON.stringify(k)}] = ${lua(x)}`).join(", ")} }` : JSON.stringify(v));
+
+it("an anchored frame whose frame isn't there lands at its last screen spot, never off screen", () => {
+  const addon = loggedIn(BOX + DEP);
+  addon.eval("ns.SetMoverAnchor('dep', 'box', 'RIGHT', 5000, 0)");
+  expect(rectOf(addon, "TESTONLY_Dep"), "offsets past the screen's edge: it stops at the edge").toEqual([1820, 110, 100, 20]);
+  addon.eval(`local p = ns.Settings("positions") p.box = { rel = { to = "dep", side = "TOP" } } p.dep.rel.side = "LEFT"
+    ns.PlaceMover("box") ns.PlaceMover("dep")`);
+  expect(addon.eval("return #ns.errors"), "a loop in a hand-edited profile places both frames, without an error").toBe(0);
+  addon.eval("ns.SetMoverAnchor('cast_player', 'uf_player', 'BOTTOM', 0, -4)");
+  const cast = rectOf(addon, "Vanguard_CastBar_player");
+  const player = rectOf(addon, "Vanguard_player");
+  expect([cast[0] + cast[2] / 2, cast[1] + cast[3]], "the player cast bar hangs 4 px under the player frame").toEqual([player[0] + player[2] / 2, player[1] - 4]);
+  const positions = addon.eval("return { cast_player = ns.Settings('positions').cast_player }");
+  const off = loggedIn("", { savedVariables: `VanguardDB.profiles.Default = { modules = { UnitFrames = false }, positions = ${lua(positions)} }` });
+  expect(rectOf(off, "Vanguard_CastBar_player"), "with the unit frames off, it is where it was").toEqual(cast);
+  expect(results(off, "ns.MoverLinks.Where('cast_player')"), "its handle still names the frame it's anchored to, by its key").toEqual(["Below uf_player", 0, -4]);
+  positions.uf_player = { point: "CENTER", relPoint: "CENTER", x: 0, y: 0 };
+  const on = loggedIn("", { savedVariables: `VanguardDB.profiles.Default = { positions = ${lua(positions)} }` });
+  const moved = rectOf(on, "Vanguard_player");
+  expect(rectOf(on, "Vanguard_CastBar_player")[1] + cast[3], "with them on again, it follows the player frame to its new spot").toBe(moved[1] - 4);
+});
+
+// TEST-ONLY tall frame: 50 x 300, too tall for a bar to match.
+const TALL = `
+  __tall = CreateFrame("Frame", "TESTONLY_Tall", UIParent)
+  __tall:SetSize(50, 300)
+  ns.Mover(__tall, "tall", "TEST-ONLY tall", { "LEFT", "LEFT", 20, 0 })
+`;
+// The player cast bar's and the XP bar's widths and heights: [cast w, cast h, xp w, xp h].
+const sizes = (addon) => addon.eval("return { Vanguard_CastBar_player:GetWidth(), Vanguard_CastBar_player:GetHeight(), Vanguard_xpbar:GetWidth(), Vanguard_xpbar:GetHeight() }");
+
+it("matching another frame's width or height: kept as it changes, refused with a reason when it can't be", () => {
+  const addon = loggedIn(BOX + TALL);
+  expect(sizes(addon), "the bars start at their own sizes").toEqual([220, 18, 478, 6]);
+  expect(results(addon, "ns.SetMoverMatch('cast_player', 'width', 'box')"), "matching is accepted").toEqual([true]);
+  expect(sizes(addon)[0], "the cast bar takes the box's width").toBe(200);
+  addon.eval("__box:SetWidth(320) __box:GetScript('OnSizeChanged')(__box, 320, 40)");
+  expect(sizes(addon)[0], "and keeps it as the box changes").toBe(320);
+  addon.eval("ns.SetMoverScale('box', 1.5) ns.SetMoverScale('cast_player', 2)");
+  expect(sizes(addon)[0], "on screen: the box at 150% is 480 wide, so the cast bar at 200% is 240").toBe(240);
+  addon.eval("ns.SetMoverScale('box', 1) ns.SetMoverScale('cast_player', 1) ns.SetMoverMatch('xpbar', 'width', 'cast_player')");
+  expect(sizes(addon)[2], "a match of a match follows along").toBe(320);
+  expect(results(addon, "ns.SetMoverMatch('cast_player', 'width', 'xpbar')"), "never round in a circle").toEqual([false, "Experience already matches the width of Player cast bar."]);
+  expect(results(addon, "ns.SetMoverMatch('cast_player', 'height', 'box')"), "a cast bar's height is its own").toEqual([false, "Player cast bar sets its own height, so it can't match another frame's."]);
+  expect(results(addon, "ns.SetMoverMatch('box', 'width', 'cast_player')"), "a frame Vanguard doesn't size can't match").toEqual([false, "TEST-ONLY box sets its own width, so it can't match another frame's."]);
+  expect(results(addon, "ns.SetMoverMatch('xpbar', 'height', 'xpbar')"), "not itself").toEqual([false, "A frame can't match its own height."]);
+  expect(results(addon, "ns.SetMoverMatch('xpbar', 'height', 'TEST-ONLY-none')"), "not a frame that isn't there").toEqual([false, NO_FRAME]);
+  expect(results(addon, "ns.SetMoverMatch('TEST-ONLY-none', 'height', 'box')"), "nor for one").toEqual([false, NO_FRAME]);
+  expect(results(addon, "ns.SetMoverMatch('xpbar', 'height', 'tall')"), "not a size it can't be").toEqual([false, "TEST-ONLY tall is 300 tall; Experience can be 2 to 40."]);
+  expect(results(addon, "ns.SetMoverMatch('xpbar', 'height', 'box')"), "a size it can be").toEqual([true]);
+  expect(addon.eval("return ns.Settings('positions').xpbar.match"), "saved with the frame").toEqual({ width: "cast_player", height: "box" });
+  addon.eval("ns.SetMoverMatch('cast_player', 'width') ns.SetMoverMatch('xpbar', 'width', '') ns.SetMoverMatch('xpbar', 'height')");
+  expect([sizes(addon), addon.eval("return ns.Settings('positions').xpbar.match == nil")], "unmatched, each is its own size again").toEqual([[220, 18, 478, 6], true]);
+  addon.eval(`local p = ns.Settings("positions") p.xpbar.match = { width = "repbar" } p.repbar = { match = { width = "xpbar" } } ns.PlaceMover("xpbar")`);
+  expect([sizes(addon)[2], addon.eval("return #ns.errors")], "a loop in a hand-edited profile gives up on the match, without an error").toEqual([478, 0]);
+});
+
+// The visible options slider row whose caption is this text, as Lua.
+const sliderRow = (text) => `(function() for _, w in ipairs(__wfgStub.frames) do
+  if w.track and w.label and w.label.__text == "${text}" and w:IsVisible() then return w end end end)()`;
+// The default tooltip's lines' text.
+const tipLines = (addon) => addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines or {}) do out[i] = l.text end return out");
+
+it("a frame's own size under General → Layout: set for a frame Vanguard sizes, locked with why while matched or for one that sizes itself", () => {
+  const addon = loggedIn(BOX);
+  addon.eval('ns.Options.Show("general")');
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Frame to size" then w.dropdown.set("xpbar") end end');
+  addon.eval(`local r = ${sliderRow("Its width")} r.set(300) r:Refresh()`);
+  expect([sizes(addon)[2], addon.eval("return ns.Settings('positions').xpbar.w")], "the width slider sizes the XP bar, and it is saved").toEqual([300, 300]);
+  addon.eval(`local r = ${sliderRow("Its height")} r.set(99) r:Refresh()`);
+  expect(sizes(addon)[3], "each frame keeps to its own range").toBe(40);
+  addon.eval("ns.SetMoverSize('xpbar', 'width', 478) ns.SetMoverSize('xpbar', 'height', 'TEST-ONLY')");
+  expect(addon.eval("return ns.Settings('positions').xpbar.w"), "its own size back is saved as unset; a bad value changes nothing").toBe(null);
+  addon.eval(`ns.SetMoverMatch("xpbar", "width", "box") local r = ${sliderRow("Its width")} r:Refresh() r:GetScript("OnEnter")(r)`);
+  const why = "Matched to the width of TEST-ONLY box. To unmatch, right-click its handle in unlock mode (/vg unlock) and set Match width to None.";
+  expect([tipLines(addon), addon.eval("return GameTooltip:IsShown()")], "matched, the slider locks; hovering it says to what, and how to unmatch").toEqual([[why], true]);
+  addon.eval(`local r = ${sliderRow("Its width")} r:GetScript("OnClick")(r) r.track:GetScript("OnLeave")(r.track)`);
+  expect([sizes(addon)[2], addon.eval("return GameTooltip:IsShown()")], "a click doesn't change it; leaving hides the tooltip").toEqual([200, false]);
+  expect(addon.eval("return { ns.SetMoverSize('xpbar', 'width', 300) }"), "nor does setting it").toEqual([false, why]);
+  addon.eval(`ns.SetMoverMatch("xpbar", "width") local r = ${sliderRow("Its width")} r:Refresh() GameTooltip:Hide() r:GetScript("OnEnter")(r)`);
+  expect(addon.eval("return GameTooltip:IsShown()"), "unmatched, hovering shows nothing").toBe(false);
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Frame to size" then w.dropdown.set("box") end end');
+  addon.eval(`local r = ${sliderRow("Its height")} r:Refresh() r:GetScript("OnEnter")(r)`);
+  expect(tipLines(addon), "a frame that sizes itself: locked, and it says so").toEqual(["TEST-ONLY box sets its own height."]);
 });

@@ -24,9 +24,9 @@ it("special bars", () => {
   const addon = createAddon();
   addon.eval(ACTIONS_ENV + BUTTONS_ENV);
   addon.login();
-  const pet = addon.eval("local b = PetActionButton3 return { skinned = b.vgSkinned, art = b.art.__alpha, icon = b.icon.__alpha }");
+  const pet = addon.eval("local b = PetActionButton3 return { skinned = ns.FrameState('vgSkinned')[b], art = b.art.__alpha, icon = b.icon.__alpha }");
   expect(pet.skinned === true && pet.art === 0 && pet.icon === undefined, "pet buttons are restyled: art faded, icon kept").toBeTruthy();
-  expect(addon.eval("return StanceButton1.vgSkinned and ExtraActionButton1.vgSkinned") === true, "stance and extra action buttons too").toBeTruthy();
+  expect(addon.eval("return ns.FrameState('vgSkinned')[StanceButton1] and ns.FrameState('vgSkinned')[ExtraActionButton1]") === true, "stance and extra action buttons too").toBeTruthy();
   const exit = addon.eval("local b = Vanguard_VehicleExit return { type = b:GetAttribute('type'), macro = b:GetAttribute('macrotext'), driver = b.__states.visibility }");
   expect(exit.type === "macro" && exit.macro === "/leavevehicle", "the vehicle exit button leaves the vehicle").toBeTruthy();
   expect(/canexitvehicle/.test(exit.driver), "and only shows while you can leave").toBeTruthy();
@@ -40,7 +40,7 @@ it("pet and stance buttons keep the textures the client shows by state", () => {
   const alphas = addon.eval(`local b = PetActionButton3
     return { b:GetCheckedTexture().__alpha == nil, b.Flash.__alpha == nil, b.AutoCastable.__alpha == nil, b.art.__alpha, b.slotArt.__alpha, StanceButton1:GetCheckedTexture().__alpha == nil }`);
   expect(alphas, "the checked texture, the attack flash, the auto-cast mark and the active stance's highlight stay; the template art goes").toEqual([true, true, true, 0, 0, true]);
-  expect(addon.eval("return ExtraActionButton1:GetCheckedTexture() == nil and ExtraActionButton1.vgSkinned"), "a button with no checked texture is still restyled").toBe(true);
+  expect(addon.eval("return ExtraActionButton1:GetCheckedTexture() == nil and ns.FrameState('vgSkinned')[ExtraActionButton1]"), "a button with no checked texture is still restyled").toBe(true);
 });
 
 // TEST-ONLY the possess bar's two buttons (PossessButtonTemplate: a secure small action button) with their slot art.
@@ -57,16 +57,16 @@ it("the possess bar's buttons are restyled too, out of combat, and can be left a
   fight.eval(ACTIONS_ENV + POSSESS_ENV);
   setCombat(fight, true);
   fight.login();
-  expect(fight.eval("return PossessButton1.vgSkinned == nil"), "not in a fight").toBe(true);
+  expect(fight.eval("return ns.FrameState('vgSkinned')[PossessButton1] == nil"), "not in a fight").toBe(true);
   setCombat(fight, false);
-  const after = fight.eval("local b = PossessButton2 return { b.vgSkinned, b.slotArt.__alpha, b.icon.__alpha == nil, b:GetCheckedTexture().__alpha == nil, ns.Theme.PaintedCount() }");
+  const after = fight.eval("local b = PossessButton2 return { ns.FrameState('vgSkinned')[b], b.slotArt.__alpha, b.icon.__alpha == nil, b:GetCheckedTexture().__alpha == nil, ns.Theme.PaintedCount() }");
   expect(after.slice(0, 4), "when it ends: art faded, icon and checked texture kept").toEqual([true, 0, true, true]);
   fight.eval('ns.GetModule("SpecialBars").Skin(PossessButton2)');
   expect(fight.eval("return ns.Theme.PaintedCount()"), "skinning again paints nothing more").toBe(after[4]);
   const off = loggedIn(ACTIONS_ENV + POSSESS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { SpecialBars = { skinPossess = false } } }" });
-  expect(off.eval("return PossessButton1.vgSkinned == nil and PossessButton1.slotArt.__alpha == nil"), "switched off: the game's own").toBe(true);
+  expect(off.eval("return ns.FrameState('vgSkinned')[PossessButton1] == nil and PossessButton1.slotArt.__alpha == nil"), "switched off: the game's own").toBe(true);
   const one = loggedIn(ACTIONS_ENV + 'CreateFrame("CheckButton", "PossessButton1", UIParent)');
-  expect([one.eval("return PossessButton1.vgSkinned"), one.eval("return #ns.errors")], "a client with one bare button (or none) loads cleanly").toEqual([true, 0]);
+  expect([one.eval("return ns.FrameState('vgSkinned')[PossessButton1]"), one.eval("return #ns.errors")], "a client with one bare button (or none) loads cleanly").toEqual([true, 0]);
 });
 
 // The bar's anchor: its point, the name of the frame it hangs from and that frame's point.

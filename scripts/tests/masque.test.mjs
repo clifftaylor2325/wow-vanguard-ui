@@ -59,7 +59,7 @@ it("with Masque loaded, action, pet and stance buttons and aura icons go to Masq
 
 it("without Masque (or without LibStub) nothing changes", () => {
   const plain = loggedIn(SKINS_ENV);
-  expect(plain.eval("return { __buttoned[Vanguard_Bar1Button1] == true, PetActionButton1.vgSkinned == true, PetActionButton1.art.__alpha, ns.Masque.Lib() == nil }"), "Vanguard's skins, as before").toEqual([true, true, 0, true]);
+  expect(plain.eval("return { __buttoned[Vanguard_Bar1Button1] == true, ns.FrameState('vgSkinned')[PetActionButton1] == true, PetActionButton1.art.__alpha, ns.Masque.Lib() == nil }"), "Vanguard's skins, as before").toEqual([true, true, 0, true]);
   plain.world.addAura("player", { name: "TEST-ONLY Buff", duration: 0, icon: "TEST-ONLY-ICON" });
   expect(plain.eval('local PA = ns.GetModule("PlayerAuras") local c = PA.cells[1] for _, ch in ipairs({ c:GetChildren() }) do if __panelled[ch] then return true end end return false'), "aura icons keep the theme edge").toBe(true);
   const noMasque = loggedIn('LibStub = function() return nil end' + SKINS_ENV);

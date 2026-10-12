@@ -11,6 +11,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgSkinned = ns.FrameState("vgSkinned")
+
 local T = ns.Theme
 
 local CB = ns.Module("CastBars", {
@@ -219,12 +222,17 @@ function CB.Build(bar, w, h)
   return bar
 end
 
--- A themed cast bar for a unit, hidden until it casts; movable.
+-- The widths a cast bar may be given in unlock mode (matched to another frame, or set under
+-- General → Layout); its height stays its own, as its icon and text are sized to it.
+CB.WIDTHS = { 80, 600 }
+
+-- A themed cast bar for a unit, hidden until it casts; movable, and Vanguard may set its width.
 local function createBar(unit)
   local def = LAYOUT[unit]
   local bar = CB.Build(CreateFrame("StatusBar", "Vanguard_CastBar_" .. unit, UIParent), def.w, def.h)
   bar.unit = unit
   ns.Mover(bar, "cast_" .. unit, unit:sub(1, 1):upper() .. unit:sub(2) .. " cast bar", def.point)
+  ns.MoverSizable("cast_" .. unit, { width = CB.WIDTHS })
   return bar
 end
 
@@ -264,8 +272,8 @@ end
 -- every show and after the game redraws it. Once; a client without it is skipped.
 function CB.SkinOverlay()
   local bar = _G.OverlayPlayerCastingBarFrame
-  if type(bar) ~= "table" or not bar.SetStatusBarTexture or bar.vgSkinned then return end
-  bar.vgSkinned = true
+  if type(bar) ~= "table" or not bar.SetStatusBarTexture or vgSkinned[bar] then return end
+  vgSkinned[bar] = true
   T.HudPanel(bar, { inset = true })
   styleOverlay(bar)
   bar:HookScript("OnShow", styleOverlay)

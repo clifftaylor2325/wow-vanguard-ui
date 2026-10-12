@@ -59,7 +59,7 @@ it("settings tables are filled once per profile and key", () => {
   expect(addon.eval("ns.Profile().TESTONLY = {} ns.Settings('TESTONLY') return __migs"), "a new table is migrated").toBe(2);
   addon.eval("ns.Profile().theme.panel = { 1, 0, 0, 1 }");
   expect(addon.eval("ns.CopyProfile('Default') local copied = __changes ns.ResetProfile() local reset = __changes return { copied, reset, ns.Theme.Settings().panel[4] }"), "copy and reset notify, and the settings are filled again").toEqual([3, 4, 0.94]);
-  expect(addon.eval(`local text = ns.ExportProfile('theme') ns.Theme.Settings().accent = { 1, 1, 1 } ns.ImportProfile(text) return { __changes, ns.Theme.Settings().accent[1] == ns.Theme.PRESETS.brass[1] }`), "a module import notifies and is used").toEqual([5, true]);
+  expect(addon.eval(`local text = ns.ExportProfile('theme') ns.Theme.Settings().accent = { 1, 1, 1 } ns.ImportProfile(text) return { __changes, ns.Theme.Settings().accent[1] == ns.Theme.PRESETS.brass[1] }`), "a module import notifies (before its merge, so an active Situations override comes off first, and after) and is used").toEqual([6, true]);
   addon.slash("accent ff0000");
   addon.slash("accent reset");
   expect(addon.eval("return { ns.Theme.Accent() == ns.Theme.PRESETS.brass[1], ns.Theme.Settings().accent[4] }"), "/vg accent reset puts the default accent into the cached table").toEqual([true, 1]);
@@ -180,9 +180,9 @@ const PIN_ENV = `
 it("pins: a throwing apply is reported and the pin keeps working", () => {
   expectErrors(/^pin Vanguard_PinTest: eval:\d+: boom$/, "pin frame: eval:2: bare");
   const addon = loggedIn(PIN_ENV);
-  expect([addon.eval("return __pinTarget.vgPinned"), pinCalls(addon), pinPoint(addon)], "the pin is hooked and applied at registration").toEqual([true, 1, "CENTER"]);
+  expect([pinCalls(addon), pinPoint(addon)], "the pin is applied at registration").toEqual([1, "CENTER"]);
   addon.eval("__boom = true __pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 1, 1)");
-  expect(addon.eval("return __pinTarget.vgPinning"), "the flag clears after a failing apply").toBe(false);
+  expect(pinCalls(addon), "the game's move runs the pin through the hook").toBe(2);
   expect(addon.eval("return ns.errors[#ns.errors].text"), "the failure is kept for /vg errors under the frame's name").toMatch(/^pin Vanguard_PinTest: .*boom/);
   addon.eval("__boom = false __pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 2, 2)");
   expect([pinCalls(addon), pinPoint(addon)], "the next move of the frame is put back").toEqual([3, "CENTER"]);
@@ -438,7 +438,8 @@ it("client capability probe: what this client has, and /vg status says so", () =
   bare.slash("status");
   expect(chatHas(bare, /Client has: auraContainer, eventValid, cooldownObject, cooldownMin, countdownText, keyPropagate, damageMeter, cooldownViewer, swingTimer {2}· {2}lacks: pixelUtil, barEase, meterEnums$/), "and the lacking ones are named").toBe(true);
   const noCooldown = loggedIn(`local real = CreateFrame
-    CreateFrame = function(kind, ...) if kind == "Cooldown" then error("TEST-ONLY: no cooldown frames") end return real(kind, ...) end`);
+    CreateFrame = function(kind, ...) if kind == "Cooldown" then error("TEST-ONLY: no cooldown frames") end return real(kind, ...) end
+    __wfgStub.transparent[CreateFrame] = true`);
   expect(noCooldown.eval("return { ns.Client.has.cooldownObject, ns.Client.has.cooldownMin, ns.Client.has.countdownText, ns.Client.has.keyPropagate }"), "a client that cannot make a Cooldown frame has none of its methods, and the probe does not fail").toEqual([false, false, false, true]);
   // [barEase, meterEnums, swingTimer] on a client with this Lua defined.
   const half = (lua) => loggedIn(NO_PROBE_ENUMS + lua).eval("return { ns.Client.has.barEase, ns.Client.has.meterEnums, ns.Client.has.swingTimer }");
@@ -724,6 +725,20 @@ it("reload buttons: a /reload macro overlay, since the Forever client blocks Rel
   addon.eval("local a = Vanguard_Reload.accept a:SetScript('OnEnter', nil) a.reloadOverlay:GetScript('OnEnter')(a.reloadOverlay)");
   addon.eval("Vanguard_Reload.cancel:GetScript('OnClick')(Vanguard_Reload.cancel)");
   expect(addon.eval("return Vanguard_Reload:IsShown()"), "Later closes it").toBe(false);
+  // Reload's overlay: shown, anchored, and whether the dialog is protected (it holds or hangs on one).
+  const cover = () => addon.eval(`local d = Vanguard_Reload local o = d.accept.reloadOverlay
+    return { o:IsShown(), o:GetNumPoints() > 0 and o.__points.TOPLEFT.rel == d.accept, (d:IsProtected()) }`);
+  addon.eval('ns.OfferReload("TEST-ONLY change.")');
+  expect(cover(), "out of combat the overlay covers the shown button, and the dialog itself is not protected").toEqual([true, true, false]);
+  addon.eval("Vanguard_Reload:Hide()");
+  expect(cover()[0], "it hides with the button").toBe(false);
+  addon.world.combat(true);
+  expect(cover(), "a fight puts it away: hidden and let go of").toEqual([false, false, false]);
+  addon.eval('ns.OfferReload("TEST-ONLY change.")');
+  expect(addon.eval("return Vanguard_Reload:IsShown()"), "so the dialog still opens in combat").toBe(true);
+  addon.world.combat(false);
+  expect(cover(), "after the fight it covers the button again").toEqual([true, true, false]);
+  addon.eval("Vanguard_Reload:Hide()");
   setCombat(addon, true);
   addon.slash("");
   expect(reloadOverlay(addon, "Vanguard_Options.reload"), "a reload button built in combat has no overlay yet").toBe(false);
@@ -927,7 +942,7 @@ it("Forever fixes: the newer calls for zone color, pet moods, breath bars, the m
   expect(isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "gold"), "a hidden answer is plain gold").toBe(true);
   expect(addon.eval("local f = QueueStatusButton local p = f.__points.BOTTOMRIGHT return { f:GetParent() == ns.GetModule('Minimap').overlay, p.y, f:GetScale() }"), "the group finder eye sits small on the map's bottom-right, above the compartment").toEqual([true, 42, 0.6]);
   expect(putAway(addon, "ExpansionLandingPageMinimapButton"), "the expansion button is put away").toBe(true);
-  expect(/Icons\\House$/.test(addon.eval("return HousingMicroButton.vgGlyph.__texture")), "the housing button gets the house icon").toBe(true);
+  expect(/Icons\\House$/.test(addon.eval("return ns.FrameState('vgGlyph')[HousingMicroButton].__texture")), "the housing button gets the house icon").toBe(true);
   // Whether the breath bar container's i-th timer has the theme's bar texture.
   const barStyled = (i) => addon.eval(`return __timers[${i}].StatusBar:GetStatusBarTexture() ~= nil`);
   expect(barStyled(1), "a breath bar the container already holds is styled").toBe(true);
