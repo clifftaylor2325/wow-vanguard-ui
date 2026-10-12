@@ -1,7 +1,7 @@
 // more: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { AFK_ENV, CLICK_LUA, FAKE_FADES, expectErrors, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, gridLines, isTok, key, later, loggedIn, marks, pinned, plate, putAway, raidButton, setCombat, strips, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { AFK_ENV, CLICK_LUA, FAKE_FADES, expectErrors, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, gridLines, isTok, key, later, loggedIn, marks, pinned, plate, putAway, px, raidButton, setCombat, strips, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -50,9 +50,9 @@ it("chat", () => {
   const c = addon.eval(`return { font = { ChatFrame1:GetFont() }, box = ns.Theme.PaintedCount(),
     tab1 = ChatFrame1Tab.Text.__textColor, tab2 = ChatFrame2Tab.Text.__textColor }`);
   expect(c.font[0] === "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-Medium.ttf" && c.font[1] === 12, `chat windows get the theme font at Medium, 12 (got ${JSON.stringify(c.font)})`).toBeTruthy();
-  expect(isTok(addon, c.tab2, "accent") && isTok(addon, c.tab1, "text2"), "the selected window's tab is accent, others gray").toBeTruthy();
+  expect(isTok(addon, c.tab2, "accentText") && isTok(addon, c.tab1, "text2"), "the selected window's tab is in the accent's text colour, others gray").toBeTruthy();
   addon.slash("accent ember");
-  expect(isTok(addon, addon.eval("return ChatFrame2Tab.Text.__textColor"), "accent"), "tabs follow accent changes").toBeTruthy();
+  expect(isTok(addon, addon.eval("return ChatFrame2Tab.Text.__textColor"), "accentText"), "tabs follow accent changes").toBeTruthy();
 });
 
 // TEST-ONLY chat window art as the game names it (ChatFrame<i><part>), with the game's own mouseover fade.
@@ -865,7 +865,7 @@ const wheelLog = (addon, which, delta) => addon.eval(`local s = Vanguard_QuestLo
 it("quest log: a long list and long quest text scroll, a short one does not", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval("ns.GetModule('QuestLog').Open()");
-  expect(addon.eval("local c = ns.GetModule('QuestLog').frame.close return { c:GetWidth(), c:GetHeight(), c:IsVisible() }"), "the close button has a size (it was 0 by 0, so it never showed)").toEqual([20, 20, true]);
+  expect(addon.eval("local c = ns.GetModule('QuestLog').frame.close return { c:GetWidth(), c:GetHeight(), c:IsVisible() }"), "the close button has a size (it was 0 by 0, so it never showed): 20, an even count of whole screen pixels").toEqual([px(addon, 20, true), px(addon, 20, true), true]);
   expect(logScrolls(addon), "five lines and a short text fit the 356 px views: nothing to scroll").toEqual({ list: [356, 0, 0], detail: [356, 0, 0] });
   addon.eval(`for i = 1, 20 do local id = 91000 + i
     __log[#__log + 1] = { questID = id }
@@ -1622,7 +1622,7 @@ const bossHolder = (addon) => addon.eval(`local c, b1, b5 = BossTargetFrameConta
 
 it("boss frames: five in a column at the top left, the game's put away", () => {
   const addon = loggedIn(UNITS_ENV + BOSS_ENV);
-  expect(addon.eval(`return { Vanguard_boss5 ~= nil, Vanguard_boss1.__watched, Vanguard_boss2.__points.TOPLEFT.rel == Vanguard_boss1, Vanguard_boss2:GetWidth() }`), "five boss frames, each shown while its boss exists, stacked").toEqual([true, true, true, 150]);
+  expect(addon.eval(`return { Vanguard_boss5 ~= nil, Vanguard_boss1.__watched, Vanguard_boss2.__points.TOPLEFT.rel == Vanguard_boss1, Vanguard_boss2:GetWidth() }`), "five boss frames, each shown while its boss exists, stacked, 150 wide in whole screen pixels").toEqual([true, true, true, px(addon, 150)]);
   expect(addon.eval("return { ns.MoverPoint('uf_boss1') }"), "movable, from the top-left corner").toEqual(["TOPLEFT", "TOPLEFT", 20, -20]);
   addon.eval("__units.boss1.hp = 4200");
   addon.fire("INSTANCE_ENCOUNTER_ENGAGE_UNIT");
@@ -2191,7 +2191,7 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
     return { art, b.icon.__alpha, b.icon.__texCoord[1] > 0, b.icon.__points.TOPLEFT.rel == ns.FrameState('vgSlot')[b], b.icon.__points.TOPLEFT.x }`);
   expect([...bag.slice(0, 4), r3(bag[4] * BAGS)], "bag buttons: the game's art faded, the bag icon kept, cropped and inset 3 pixels in its slot").toEqual([0, 1, true, true, 3]);
   addon.eval("CharacterMicroButton:Disable()");
-  expect(isTok(addon, glyph("CharacterMicroButton").color, "muted"), "and muted while the button is disabled").toBeTruthy();
+  expect(isTok(addon, glyph("CharacterMicroButton").color, "disabled"), "and in the disabled tier while the button is disabled").toBeTruthy();
   addon.eval("CharacterMicroButton:Enable()");
   expect(isTok(addon, glyph("CharacterMicroButton").color, "text"), "back to text when it's enabled again").toBeTruthy();
   addon.eval('ns.Options.Show("more")');
@@ -2459,7 +2459,7 @@ it("bag and menu bar: line icons are 20 screen pixels on their slot, accent unde
   addon.eval("CharacterMicroButton.__scripts.OnEnter(CharacterMicroButton)");
   expect(isTok(addon, color(), "accent"), "accent under the mouse").toBe(true);
   addon.eval("CharacterMicroButton:Disable()");
-  expect(isTok(addon, color(), "muted"), "muted while disabled, even under the mouse").toBe(true);
+  expect(isTok(addon, color(), "disabled"), "the disabled tier while disabled, even under the mouse").toBe(true);
   addon.eval("CharacterMicroButton:Enable()");
   expect(isTok(addon, color(), "accent"), "enabled again under the mouse: accent").toBe(true);
   addon.eval("CharacterMicroButton.__scripts.OnLeave(CharacterMicroButton)");
@@ -2494,7 +2494,7 @@ it("bag and menu bar: each bag's slot shows how full it is, the backpack how man
   expect(r3(bag("CharacterBag2Slot")[1]), "a soul bag fills by its own slots (15 of 20)").toBe(13.5);
   // The backpack's free count and its font size on screen.
   const count = () => addon.eval("local fs = ns.GetModule('MenuStrip').free local _, size = fs:GetFont() return { fs:GetText(), size * MainMenuBarBackpackButton:GetEffectiveScale() / UIParent:GetEffectiveScale() }");
-  expect([count()[0], r3(count()[1])], "the backpack: 4 free (the soul bag's free slots hold only shards), at the theme's tiny size on screen").toEqual(["4", addon.eval('return ns.Theme.RoleSize("tiny")')]);
+  expect([count()[0], r3(count()[1])], "the backpack: 4 free (the soul bag's free slots hold only shards), at the theme's badge size on screen (9, the one role under 10)").toEqual(["4", addon.eval('return ns.Theme.RoleSize("badge")')]);
   addon.eval("__space[0][2] = 0 __space[1] = { 12, 12, 0 }");
   addon.fire("BAG_UPDATE_DELAYED");
   expect([bag("MainMenuBarBackpackButton")[1], bag("CharacterBag0Slot").slice(0, 1), bag("CharacterBag0Slot")[3], count()[0]], "the bags change: the backpack's fill is full, a new empty bag shows in color with no fill, 12 free").toEqual([18, [false], 1, "12"]);

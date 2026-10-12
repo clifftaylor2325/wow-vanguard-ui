@@ -505,6 +505,13 @@ local function scrollToRow(view, w)
   if w.pageY + w:GetHeight() > top + h then scrollTo(view, w.pageY + w:GetHeight() - h + 8) end
 end
 
+-- Moves the keyboard's row to w (or to none), its focus ring with it.
+local function setFocus(w)
+  if window.focusRow then T.FocusRing(window.focusRow, false) end
+  window.focusRow = w
+  if w then T.FocusRing(w, true) end
+end
+
 -- Moves the keyboard's row to the next (dir 1) or previous (dir -1) one, wrapping, marked and in view.
 local function stepRow(dir)
   local rows, at = pressableRows(), 0
@@ -513,7 +520,7 @@ local function stepRow(dir)
     if w == window.focusRow then at = i end
   end
   if at == 0 and dir < 0 then at = 1 end
-  window.focusRow = rows[(at - 1 + dir) % #rows + 1]
+  setFocus(rows[(at - 1 + dir) % #rows + 1])
   O.MarkRow(window.focusRow)
   scrollToRow(pages[O.current], window.focusRow)
 end
@@ -540,7 +547,7 @@ end
 -- a fight lets it go, and the combat queue takes it back when the fight ends.
 local function wireKeys(f)
   f:SetScript("OnKeyDown", onKey)
-  f:SetScript("OnHide", function(self) self:EnableKeyboard(false) self.focusRow = nil end)
+  f:SetScript("OnHide", function(self) self:EnableKeyboard(false) setFocus(nil) end)
   ns.On("PLAYER_REGEN_DISABLED", function()
     f:EnableKeyboard(false)
     ns.AfterCombat(function() f:EnableKeyboard(f:IsShown()) end, "options keyboard")
@@ -589,7 +596,7 @@ end
 -- The window frame: centered, above other windows, closes with Escape.
 local function windowFrame()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = 0.98, shadow = true })
-  f:SetSize(WIDTH, HEIGHT)
+  T.PixelSize(f, WIDTH, HEIGHT, true)
   f:SetPoint("CENTER")
   f:SetFrameStrata("DIALOG")
   f:EnableMouse(true)
@@ -647,17 +654,17 @@ local function showPage()
   end
 end
 
--- Brings the window up (fading in, with a sound) or, when it was already
+-- Brings the window up (fading in as it rises into place, with a sound) or, when it was already
 -- open, plays the page sound for a new page.
 local function appear(previous)
   if not previous then T.Sound("open") elseif previous ~= O.current then T.Sound("page") end
-  if previous then T.StopFade(window) else T.FadeIn(window) end
+  if previous then T.StopFade(window) else T.OpenWindow(window) end
   if pages[O.current] then scrollTo(pages[O.current], pages[O.current]:GetVerticalScroll() or 0) end
 end
 
 -- The window takes the keyboard (out of combat); a new page starts without a keyboard row.
 local function takeKeys(previous)
-  if previous ~= O.current then window.focusRow = nil end
+  if previous ~= O.current then setFocus(nil) end
   window:EnableKeyboard(not ns.InCombat())
 end
 
@@ -772,7 +779,7 @@ function O.Hide()
   W.CloseMenu()
   if not window or not window:IsShown() then return end
   T.Sound("close")
-  T.FadeOut(window)
+  T.CloseWindow(window)
 end
 
 -- Opens or closes the window.
