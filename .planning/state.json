@@ -1,0 +1,73 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": null,
+  "phases": [
+    {
+      "number": "1",
+      "name": "Green baseline",
+      "status": "complete"
+    },
+    {
+      "number": "2",
+      "name": "Errors fail tests",
+      "status": "complete"
+    },
+    {
+      "number": "3",
+      "name": "Fast suite and CI gate",
+      "status": "complete"
+    },
+    {
+      "number": "4",
+      "name": "Lean core",
+      "status": "pending"
+    },
+    {
+      "number": "5",
+      "name": "Auction Post fix",
+      "status": "pending"
+    },
+    {
+      "number": "6",
+      "name": "Theme scale and motion",
+      "status": "pending"
+    },
+    {
+      "number": "7",
+      "name": "Control states and panel depth",
+      "status": "pending"
+    },
+    {
+      "number": "8",
+      "name": "Every window styled",
+      "status": "pending"
+    },
+    {
+      "number": "9",
+      "name": "Levelling helpers",
+      "status": "pending"
+    },
+    {
+      "number": "10",
+      "name": "Roll tracking",
+      "status": "pending"
+    },
+    {
+      "number": "11",
+      "name": "Party quest progress",
+      "status": "pending"
+    },
+    {
+      "number": "12",
+      "name": "Launch readiness",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd:progress --next",
+    "label": "Advance to the next step (plan phase 4)",
+    "reason": "Phase 4 of 12 — needs a plan"
+  },
+  "updated_at": "2026-10-12T02:43:29.791Z"
+}
