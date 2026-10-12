@@ -23,6 +23,7 @@ const EXCEPTIONS = {
   BattlefieldMapFrame: { hooked: true, why: "its border frame gets an edge and shadow over the map, not a panel" },
   LFGListingFrame: { hooked: true, why: "a page inside the group finder (which has the panel): its Inset is panelled" },
   LFGBrowseFrame: { hooked: true, why: "a page inside the group finder (which has the panel): its Inset is panelled" },
+  LFGWhoListFrame: { hooked: true, why: "a page inside the group finder (which has the panel): its Inset is panelled" },
   PVPReadyPopup: { hooked: true, why: "it draws itself on its ReadyStatus child, which gets the panel" },
   UIWidgetTopCenterContainerFrame: { hooked: true, why: "a HUD widget box: its panel is on a backdrop child, shown only while it has widgets" },
   UIWidgetBelowMinimapContainerFrame: { hooked: true, why: "a HUD widget box: its panel is on a backdrop child, shown only while it has widgets" },
