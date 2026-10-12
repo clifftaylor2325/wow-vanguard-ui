@@ -25,6 +25,9 @@ export const isTok = (addon, c, name) => {
   return Array.isArray(c) && [0, 1, 2].every((i) => Math.abs(c[i] - t[i]) < 1e-6);
 };
 
+// How many grid lines the player sees: visible 1 px textures spanning the whole screen, across or down.
+export const gridLines = (addon) => addon.frames('w.__kind == "Texture" and w:IsVisible() and ((w:GetWidth() == 1 and w:GetHeight() == UIParent:GetHeight()) or (w:GetHeight() == 1 and w:GetWidth() == UIParent:GetWidth()))').length;
+
 // Enters or leaves combat (leaving fires PLAYER_REGEN_ENABLED, which runs queued work).
 export function setCombat(addon, on) {
   addon.eval(`__wfgStub.inCombat = ${on}`);

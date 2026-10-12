@@ -768,11 +768,6 @@ local function forgetRows(view)
   end
 end
 
--- How many rows the built pages hold (for tests).
-function O.RowCount()
-  return #widgets
-end
-
 -- Throws a built page away so it's built again from its rows (its list
 -- changed), showing it again if it's the current one.
 function O.RebuildPage(key)

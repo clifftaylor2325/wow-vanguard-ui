@@ -183,7 +183,7 @@ For the game's own windows (`Modules/Windows*.lua`, docs/design/RESKIN.md), and 
 - **One grid unit is one pixel at 16 px.** Strokes are 2 units (2 px) wide (`STROKE`).
 - **Straight strokes sit on whole units** (`crisp`, `rect`: square-ended boxes), so each covers exactly two rows or columns of pixels at 16 px instead of smearing across three. `scripts/media.test.mjs` checks that the icons made only of straight strokes have no half-covered pixel at 16 px.
 - **45-degree strokes run half a unit off the grid** (the close cross, the check, the arrows, the map diamond), which lands each step of the stroke on whole pixels.
-- Where 2 px strokes do not fit, a glyph uses filled shapes (the action bar buttons) or 1 px strokes (the six raid tiles); curves (rings, arcs) stay round. They are tinted with tokens: `text2` at rest in the options nav, `text` at rest on the menu strip, the accent under the mouse or when selected, `muted` when disabled. Regenerate them with `npm run media`, never by hand; `node scripts/build-media.mjs --check` (and `npm run verify`) fails if a committed file does not match its source.
+- Where 2 px strokes do not fit, a glyph uses filled shapes (the raid marks); curves (rings, arcs) stay round. They are tinted with tokens: `text2` at rest in the options nav, `text` at rest on the menu strip, the accent under the mouse or when selected, `muted` when disabled. Regenerate them with `npm run media`, never by hand; `node scripts/build-media.mjs --check` (and `npm run verify`) fails if a committed file does not match its source, or no source makes it any more (`npm run media` deletes those).
 
 ## Theme settings
 

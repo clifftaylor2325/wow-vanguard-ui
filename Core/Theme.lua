@@ -41,7 +41,7 @@ local LATIN_HEADING_MISSING = { ruRU = true }
 
 -- A texture from Media/Textures (Bar, Shadow, Glow, Stripes, LogoLeft, ...).
 function T.Texture(name) return T.MEDIA .. "Textures\\" .. name end
--- An icon from Media/Icons (General, Close, Check, Down, ...).
+-- An icon from Media/Icons (Close, Check, Down, Search, ...).
 function T.Icon(name) return T.MEDIA .. "Icons\\" .. name end
 
 -- r, g, b, a (0-1) from "rrggbb" and an optional alpha.
