@@ -92,13 +92,20 @@ end
 
 -- Blocks ---------------------------------------------------------------------------------------
 
--- A quest's lines under its title: the arrow's next step when it follows this quest (Quest
--- guidance), then { text, color } for each objective, or "Ready to turn in".
-function QT.LineSpecs(q)
-  local step = ns.QuestGuide.StepLine(q.id)
-  local out = { step }
-  if q.ready then out[#out + 1] = { "Ready to turn in", "good" } return out end
+-- The lines for a quest's state: "Ready to turn in", or its objectives (gray, then green when done).
+function QT.StateLines(q)
+  if q.ready then return { { "Ready to turn in", "good" } } end
+  local out = {}
   for _, o in ipairs(q.objectives) do out[#out + 1] = { "- " .. o.text, o.done and "good" or "text2" } end
+  return out
+end
+
+-- A quest's lines under its title: the arrow's next step when it follows this quest (Quest
+-- guidance), then { text, color } for each objective, or "Ready to turn in", then its XP.
+function QT.LineSpecs(q)
+  local out = { ns.QuestGuide.StepLine(q.id) }
+  for _, line in ipairs(QT.StateLines(q)) do out[#out + 1] = line end
+  if (q.xp or 0) > 0 then out[#out + 1] = { q.xp .. " XP", "text2" } end
   return out
 end
 

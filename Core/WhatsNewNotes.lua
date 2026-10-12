@@ -20,6 +20,19 @@ ns.WHATS_NEW = {
     { module = "AuctionHelper", label = "Auction helper", items = {
       { text = "The Shopping and Selling tabs on the auction house are sized to their names.", page = "more", row = "Shopping and Selling tabs on the auction house" },
     } },
+    { module = "MenuStrip", label = "Menu bar", items = {
+      { text = "A menu bar button takes your click while the game's new indicator is showing above it." },
+    } },
+    { module = "Situations", label = "Situations", items = {
+      { text = "While you record a situation, a banner says which one you are editing and what it changes, with a button to stop and save." },
+    } },
+    { label = "Profiles", items = {
+      { text = "If the game loses your saved settings, Vanguard says so and offers to restore them from a backup it keeps." },
+      { text = "A profile can be exported in parts, such as layout only or one module, and imported without touching the rest.", page = "profiles", row = "Choose what to export" },
+    } },
+    { label = "Moving frames", items = {
+      { text = "A frame can be anchored to another frame, and a bar can match another frame's width or height. Exit without saving puts everything back as it was." },
+    } },
     { module = "QuestGuide", label = "Quest guidance", items = {
       { text = "Quest-start pins on the world map, from the game's own quest data. Shift-click a quest in the tracker to point the arrow at its next step.", page = "quests", row = "Quest-start pins on the world map" },
     } },

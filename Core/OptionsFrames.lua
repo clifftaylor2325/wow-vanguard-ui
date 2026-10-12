@@ -14,6 +14,7 @@ local function raidSetting(key)
     set(v)
     local RF = ns.GetModule("RaidFrames")
     if RF and RF.settings then RF.UpdateAll() end
+    ns.RaidPreview.Refresh()
   end, initial
 end
 
@@ -73,17 +74,33 @@ local function timerRows()
   }
 end
 
+-- get/set for a raid frame setting the preview (Modules/RaidPreview.lua) shows at once; the real frames take a reload.
+local function previewedSetting(key)
+  local get, set, initial = setting("RaidFrames", key, true)
+  return get, function(v) set(v); ns.RaidPreview.Refresh() end, initial
+end
+
 -- Raid frames: party coverage, sorting, size.
 local function raidRows()
   return {
     { "header", "Raid frames" },
     check("Use them for your party too", setting("RaidFrames", "showInParty", true)), check("Include yourself", setting("RaidFrames", "showPlayer", true)),
-    check("Sort by role (tanks, healers, damage)", setting("RaidFrames", "sortByRole", true)),
-    { "cycle", "Groups as (reload)", { { "columns", "Columns" }, { "rows", "Rows (wide, for big raids)" } }, setting("RaidFrames", "layout", true) },
+    check("Sort by role (tanks, healers, damage)", previewedSetting("sortByRole")),
+    { "cycle", "Groups as (reload)", { { "columns", "Columns" }, { "rows", "Rows (wide, for big raids)" } }, previewedSetting("layout") },
     check("Hide the default raid frames", setting("RaidFrames", "hideBlizzard", true)),
     { "cycle", "Style", { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }, raidSetting("look") },
-    { "cycle", "Width", ns.Widgets.Keep({ { 72, "72" }, { 90, "90" }, { 100, "100" }, { 120, "120" } }), setting("RaidFrames", "width", true) },
-    { "cycle", "Height", { { 36, "36" }, { 40, "40" }, { 48, "48" }, { 56, "56" } }, setting("RaidFrames", "height", true) },
+    { "cycle", "Width", ns.Widgets.Keep({ { 72, "72" }, { 90, "90" }, { 100, "100" }, { 120, "120" } }), previewedSetting("width") },
+    { "cycle", "Height", { { 36, "36" }, { 40, "40" }, { 48, "48" }, { 56, "56" } }, previewedSetting("height") },
+  }
+end
+
+-- The preview: sample players in the raid tiles, to check them without a group (not saved).
+local function raidPreviewRows()
+  local RP = ns.RaidPreview
+  return {
+    { "header", "Preview" },
+    { "text", "Fills the raid tiles with sample players, so you can check their size, style and layout alone. A new width, height, sorting or Groups as shows in the preview at once (the real frames take a reload). It ends when you join a group, enter combat or reload." },
+    { "cycle", "Preview with sample players", RP.CHOICES, function() return RP.size end, RP.Set },
   }
 end
 
@@ -98,14 +115,14 @@ end
 
 -- Raid frames plus their indicators.
 local function raidPageRows()
-  return append(append(raidRows(), raidAuraRows()), {
+  return append(append(append(raidRows(), raidAuraRows()), {
     check("Power bar", raidSetting("showPower")),
     check("Fade players out of range", setting("RaidStatus", "rangeFade")),
     check("Raid target icons", setting("RaidStatus", "raidIcons")),
     check("Ready check answers", setting("RaidStatus", "readyCheck")),
     check("Mark players being resurrected", setting("RaidStatus", "resurrect")),
     check("Leader and assistant marks", setting("RaidStatus", "leader")),
-  })
+  }), raidPreviewRows())
 end
 
 O.AddPage({ key = "unitframes", title = "Unit frames", icon = "NavUnitFrames", order = 30, rows = function() return append(append(append(unitFrameRows(), readoutRows()), castRows()), timerRows()) end })

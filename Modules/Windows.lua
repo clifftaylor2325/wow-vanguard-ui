@@ -26,6 +26,8 @@ local T = ns.Theme
 local GW = ns.Module("Windows", { defaults = {
   windows = true, popups = true, timers = true, durability = true,
   social = true, town = true, system = true, map = true, menus = true, tabs = true, pvp = true,
+  -- Dragging windows by their title bar (Modules/WindowsMove.lua), and the places they were dropped on, by window name.
+  movable = true, moved = {},
 } })
 
 -- The groups of game windows, each a switch under Bars, map, chat -> Game windows.
@@ -167,13 +169,13 @@ local function keepContent(frame, name)
   end
 end
 
--- Skins one window: art faded (its content art kept), a flat panel with a soft shadow `pad` units
--- (default GW.PAD) out past it, its parts themed.
+-- Skins one window: art faded (its content art kept), a flat opaque panel (the world never shows through a
+-- window) with a soft shadow `pad` units (default GW.PAD) out past it, its parts themed.
 function GW.Skin(frame, pad)
   local name = frame.GetName and frame:GetName()
   fadeArt(frame)
   keepContent(frame, name)
-  T.Panel(frame, { shadow = true, pad = pad or GW.PAD })
+  T.Panel(frame, { shadow = true, pad = pad or GW.PAD, alpha = 1 })
   dressParts(frame, name)
 end
 
@@ -444,8 +446,8 @@ GW.Add("timers", "framed", GW.TIMERS, GW.SkinTimer)
 for addon, names in pairs(GW.LATER) do GW.Add("windows", "onDemand", addon, names) end
 
 -- Module entry point (Core/Modules.lua): every registered window whose group is on is
--- watched (those loaded now and later), plus the game menu, readable text, durability
--- and the breath bars' container.
+-- watched (those loaded now and later), plus the game menu, readable text, durability,
+-- the breath bars' container and dragging windows by their title bar.
 function GW.Enable(settings)
   GW.settings = settings
   ns.On("ADDON_LOADED", onLoaded)
@@ -453,4 +455,5 @@ function GW.Enable(settings)
   if settings.windows then watchGameMenu() keepTextReadable() end
   if settings.durability then watchDurability() end
   if settings.timers then watchContainer() end
+  if settings.movable then GW.WatchMoves() end
 end

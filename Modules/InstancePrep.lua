@@ -8,6 +8,8 @@
 -- Auction helper's Restock shopping list (Modules/AuctionRestock.lua).
 -- Every count the client hides skips its row, never compared; nothing is
 -- checked in combat, and /vg prep in combat waits for the fight to end.
+-- Anywhere, a supply that runs low is said once in chat (Warn in chat; it
+-- speaks again only after the supply has been back at its wanted count).
 
 local ADDON, ns = ...
 
@@ -15,7 +17,7 @@ local T, W = ns.Theme, ns.Widgets
 
 local PR = ns.Module("InstancePrep", {
   defaults = {
-    onEnter = true, onReadyCheck = true, hideAfter = 20, durability = 50,
+    onEnter = true, onReadyCheck = true, lowWarn = true, hideAfter = 20, durability = 50,
     want = { food = 20, bandages = 10, potions = 3, ammo = 400, shards = 10 },
   },
 })
@@ -291,6 +293,38 @@ function PR.OnReadyCheck()
   if PR.settings.onReadyCheck and not ns.InCombat() then PR.Show(true) end
 end
 
+-- Low-supply warning ------------------------------------------------------------------------
+
+-- The supplies that are short now: by item (or label), each { text = "Food & drink 3 / 20" }, and their order.
+-- An item's name can change as the client caches it, so items are told apart by id.
+function PR.LowSupplies()
+  local low, order = {}, {}
+  for _, r in ipairs(PR.Rows()) do
+    local key = r.need and (r.id or r.label)
+    if key then low[key] = r.label .. " " .. r.value order[#order + 1] = key end
+  end
+  return low, order
+end
+
+-- Warns of the supplies that have just run low. A supply warns once: not again until it has
+-- been back at its wanted count. The first look only notes what is already low (the door card
+-- covers that). Not in combat: the check waits for the fight to end.
+function PR.CheckSupplies()
+  if ns.InCombat() then return ns.OutOfCombat(PR.CheckSupplies, "supplies") end
+  local low, order = PR.LowSupplies()
+  local before, fresh = PR.lowNow, {}
+  PR.lowNow = low
+  for _, key in ipairs(order) do
+    if before and not before[key] then fresh[#fresh + 1] = low[key] end
+  end
+  if #fresh > 0 then ns.Chat("Running low: " .. table.concat(fresh, ", ") .. ".") end
+end
+
+-- Bags changed (or you came into a world): look at the supplies on the next frame, once.
+function PR.OnBags()
+  if PR.settings.lowWarn then ns.Soon("prep supplies", PR.CheckSupplies) end
+end
+
 -- /vg prep want <key> <n>: how many of food, bandages, potions, ammo or shards to carry.
 local function setWant(rest)
   local key, n = rest:match("^want%s+(%a+)%s+(%d+)%s*$")
@@ -313,4 +347,6 @@ function PR.Enable(settings)
   buildCard()
   ns.On("PLAYER_ENTERING_WORLD", PR.OnEnter)
   ns.On("READY_CHECK", PR.OnReadyCheck)
+  ns.On("BAG_UPDATE_DELAYED", PR.OnBags)
+  ns.On("PLAYER_ENTERING_WORLD", function() PR.lowNow = nil PR.OnBags() end)
 end

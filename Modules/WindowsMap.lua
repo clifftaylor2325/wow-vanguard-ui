@@ -8,6 +8,8 @@ local ADDON, ns = ...
 local vgGlyph = ns.FrameState("vgGlyph")
 local vgMapWatched = ns.FrameState("vgMapWatched")
 local vgQueueHooked = ns.FrameState("vgQueueHooked")
+local vgEmptyNote = ns.FrameState("vgEmptyNote")
+local vgEmptyWatched = ns.FrameState("vgEmptyWatched")
 
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
@@ -42,6 +44,47 @@ end
 -- A button's template art faded, its label kept, as a flat button (the nav bar's crumbs).
 local function skinFlatButton(button)
   if isFrame(button) then T.Button(button) end
+end
+
+-- Empty lists (also used by Modules/WindowsTabs.lua) --------------------------------------------
+
+-- How far an empty list's note keeps from the list's sides (units).
+GW.EMPTY_MARGIN = 16
+
+-- A list's note for when it holds nothing: made once, across the middle of the list, wrapped to its width.
+function GW.EmptyNote(list)
+  if not vgEmptyNote[list] then
+    local note = T.Text(list:CreateFontString(nil, "OVERLAY"), "label", "text2")
+    note:SetPoint("LEFT", list, "LEFT", GW.EMPTY_MARGIN, 0)
+    note:SetPoint("RIGHT", list, "RIGHT", -GW.EMPTY_MARGIN, 0)
+    note:SetJustifyH("CENTER")
+    vgEmptyNote[list] = note
+  end
+  return vgEmptyNote[list]
+end
+
+-- Shows a list's note with that text while empty is true, and hides it otherwise.
+function GW.SetEmptyNote(list, empty, text)
+  local note = GW.EmptyNote(list)
+  note:SetText(text or "")
+  note:SetShown(empty == true)
+end
+
+-- Whether a game ScrollBox holds no rows now (its data provider's size, 0 with none); false when it can't tell.
+function GW.BoxEmpty(box)
+  return type(box.GetDataProviderSize) == "function" and box:GetDataProviderSize() == 0
+end
+
+-- Keeps a ScrollBox's empty note right, now, each time the game hands it new rows (SetDataProvider) and as it
+-- shows. text is the note's text, or a function that returns it. Watched once per box.
+function GW.WatchEmpty(box, text)
+  if not isFrame(box) or vgEmptyWatched[box] then return end
+  vgEmptyWatched[box] = true
+  -- Shows or hides the note for the rows the box holds now.
+  local function update() GW.SetEmptyNote(box, GW.BoxEmpty(box), type(text) == "function" and text() or text) end
+  update()
+  if type(box.SetDataProvider) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(box, "SetDataProvider", ns.Guard("hook SetDataProvider", update)) end
+  box:HookScript("OnShow", ns.Guard("empty note", update))
 end
 
 -- World map -----------------------------------------------------------------------------------
@@ -183,6 +226,13 @@ GW.Add("map", "onDemand", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" }, 
 GW.LFG_PAGE_ART = { "BackgroundArt", "RolesSection", "DividerFrame", "ActivityView" }
 -- The pages' push buttons by key (the listing's back and post, the browse page's message and invite).
 GW.LFG_PAGE_BUTTONS = { "BackButton", "PostButton", "SendMessageButton", "GroupInviteButton" }
+-- Where a page's inset panel goes: its Inset frame, else its list (the who list's page has no Inset).
+GW.LFG_WELLS = { "Inset", "ScrollBox" }
+-- The finder's pages: listing, browse, and the who list (the search view: a search box, a filter and a list).
+GW.LFG_PAGES = { "LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame" }
+-- The pages whose list gets a note while it is empty, and the game's string the note reads: the who list says
+-- what the browse page says over an empty result (its NoResultsFound line, which the browse page keeps).
+GW.LFG_EMPTY = { LFGWhoListFrame = "LFG_LIST_NO_RESULTS_FOUND" }
 
 -- Fades the art a window's template draws (GW.ART, its own textures too), with no panel: for windows
 -- made of several frames, where one panel goes on the outer frame.
@@ -210,14 +260,40 @@ local function dressPage(page)
   if type(view) == "table" and isFrame(view.Comment) then T.EditBox(view.Comment) end
 end
 
--- One page of the group finder (listing or browse), which fills the finder's window: its template art
--- and extras faded, an inset panel, title, buttons and edit box in the theme. The outer window has the panel.
+-- The inset panel under a page's content, on the first part of GW.LFG_WELLS the page has.
+local function panelWell(page)
+  for _, key in ipairs(GW.LFG_WELLS) do
+    if isFrame(page[key]) then return T.Panel(page[key], { inset = true, noSheen = true }) end
+  end
+end
+
+-- A page's settings gear (the browse page's OptionsButton) in the finder's control row: T.CONTROL.step left
+-- of the close button, level with it, as GW.PlaceControls lines up a window's controls (the game set it under
+-- the close button's corner, where Vanguard's close button now sits).
+local function placeGear(page)
+  local gear, close = page.OptionsButton, _G.LFGParentFrameCloseButton
+  if not isFrame(gear) or not isFrame(close) then return end
+  gear:ClearAllPoints()
+  gear:SetPoint("CENTER", close, "CENTER", -T.CONTROL.step, 0)
+end
+
+-- A page's list note for when it is empty (GW.LFG_EMPTY), on the pages that have one.
+local function watchEmptyPage(page)
+  local key = GW.LFG_EMPTY[page:GetName() or ""]
+  if key then GW.WatchEmpty(page.ScrollBox, function() return _G[key] end) end
+end
+
+-- One page of the group finder (listing, browse or who list), which fills the finder's window: its template
+-- art (the portrait badge and the border too) and extras faded, an inset panel, title, buttons and edit box
+-- in the theme, its gear beside the close button and the who list's empty note. The outer window has the panel.
 function GW.SkinLFGPage(page)
   GW.FadeWindowArt(page)
   GW.FadeParts(page, GW.LFG_PAGE_ART)
-  if isFrame(page.Inset) then T.Panel(page.Inset, { inset = true, noSheen = true }) end
+  panelWell(page)
   dressTitle(page)
   dressPage(page)
+  placeGear(page)
+  watchEmptyPage(page)
 end
 
 -- The finder's window: a panel with a shadow, the close button in the theme, and the eye (its portrait)
@@ -234,7 +310,7 @@ function GW.SkinLFGTooltip(frame)
 end
 
 GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame" }, GW.SkinLFGParent)
-GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGListingFrame", "LFGBrowseFrame" }, GW.SkinLFGPage)
+GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", GW.LFG_PAGES, GW.SkinLFGPage)
 GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGBrowseSearchEntryTooltip" }, GW.SkinLFGTooltip)
 
 -- Legacy system -------------------------------------------------------------------------------
@@ -245,15 +321,27 @@ GW.LEGACY_PAGES = { "TreePage", "ChallengesPage", "RewardTrackPage" }
 GW.LEGACY_PAGE_ART = { "Background", "VerticalDivider" }
 -- The challenge page's two panes, which get an inset panel.
 GW.LEGACY_PANES = { "CategoryList", "DetailPane" }
+-- What the challenge list (the detail pane) says while it is empty: a prompt until a category is picked (the game
+-- has no line for that), then the game's own no-challenges line (LEGACY_NO_CHALLENGES, its category list's), or ours.
+GW.LEGACY_EMPTY = { pick = "Select a category to view its challenges.", none = "No challenges to show here." }
 
--- One page's background art faded, and an inset panel under each of its panes. The talent
--- tree's node buttons, the cards and every other part of the page are left as the game made them.
+-- The detail pane's empty note, by whether a category is picked (the game keeps the picked one as the pane's info).
+local function challengeNote(pane)
+  return function()
+    if pane.info == nil then return GW.LEGACY_EMPTY.pick end
+    return _G.LEGACY_NO_CHALLENGES or GW.LEGACY_EMPTY.none
+  end
+end
+
+-- One page's background art faded, and an inset panel under each of its panes, the challenge list with its
+-- empty note. The talent tree's node buttons, the cards and every other part of the page are the game's.
 local function skinLegacyPage(page)
   if not isFrame(page) then return end
   GW.FadeParts(page, GW.LEGACY_PAGE_ART)
   for _, key in ipairs(GW.LEGACY_PANES) do
     if isFrame(page[key]) then T.Panel(page[key], { inset = true, noSheen = true }) end
   end
+  if isFrame(page.DetailPane) then GW.WatchEmpty(page.DetailPane.ScrollBox, challengeNote(page.DetailPane)) end
 end
 
 -- The Legacy system window (Forever's own: the Adventure, Professions and Progression trees, challenges
