@@ -218,3 +218,39 @@ What the rules cost: the "every function has a comment above it" rule is worth i
 - [DECIDE] Is "under 5 minutes" the CI target for the full PR suite, or is about 9 minutes acceptable given the minutes cap?
 - [DECIDE] Replace "verify and coverage" with "quality and coverage" in CLAUDE.md?
 - [DECIDE] After launch, change the 10-line rule's unit (statements, or a line-length cap)?
+
+## Tools and practices that help agents write better code
+
+Added 2026-10-12 at Cliff's request. The code-quality spike (`code-quality-checks.md`) already weighs luacheck, StyLua, selene and LuaLS as CI tools; this section asks a narrower question: what gives an agent better feedback while it writes, before CI sees the code? Nothing below is set up in the repo today (there is no `.claude/` directory, and no `---@` annotations in `Core/` or `Modules/`).
+
+### Feedback inside the session (highest value, lowest cost)
+
+1. **Claude Code hooks in `.claude/settings.json`.** A `PostToolUse` hook on Edit/Write that runs `npm run quality` and `luacheck <file>` on the file just changed gives the agent the 10-line, comment, colour and guard rules within seconds of writing, instead of at pre-push or in CI. The quality scan takes about 1.3 s for the whole tree, so this is cheap. This is the single most effective change for agent-written code: a rule the agent hears about at edit time is fixed in the same thought; one it hears about at push time costs a new cycle. Effort S. [DECIDE] since it adds a top-level folder (`.claude/`).
+2. **Repo skills in `.claude/skills/`.** A skill is a short markdown playbook the agent loads when the task matches: "add a module" (the `ns.Module` skeleton, where settings go, the test file to copy, the README and `/vg help` lines to touch), "add a harness scenario", "fix a visual issue" (the `/vg frame` output, the smoke-test step). These encode the rules in CLAUDE.md as worked examples, which agents follow more reliably than prose rules. The project's "Working method" bullets are already most of the content. Effort S each. Same [DECIDE] as above.
+3. **A `/code-review`-style pass before marking a PR ready.** Claude Code has a built-in review skill that reads the diff adversarially for correctness bugs. Asking for it once per PR (it is one line in the thread brief) catches the class of error the harness cannot: a wrong guard that still runs, a secret compared after a `type()` check, a handler registered twice. It costs tokens, not CI minutes.
+
+### Making intent checkable
+
+4. **LuaLS annotations as a contract, not a linter.** Even without running LuaLS in CI, `---@param unit string` and `---@return number|nil` on the `ns.*` helpers (`ns.PlainNumber`, `ns.Settings`, `ns.OnUnit`, `ns.FrameState`) tell an agent what a function accepts without opening the file. The 60-odd `ns` entry points are the whole surface a module author touches. Annotating only those is a few hours. When LuaLS `--check` is added later (the earlier spike's item 9), these annotations are what it checks against. Post-launch.
+5. **A written `docs/PATTERNS.md`, or a section in CLAUDE.md.** CLAUDE.md states the rules; nothing shows the canonical shape of a module, a guarded hook, a secret-safe read or a combat-deferred update in ten lines each. Agents copy the nearest existing code, so the nearest code is the de facto standard; one short reference stops drift between modules. [DECIDE] because CLAUDE.md says no new docs unless asked.
+
+### Lua and WoW practices worth stating (most are already followed)
+
+- **Locals everywhere, globals never.** luacheck enforces this. Watch the 200-locals and 60-upvalues limits per chunk (F10).
+- **No allocation in hot paths.** `OnUpdate`, `UNIT_AURA` and `UNIT_HEALTH` handlers should not build tables, closures or strings per call. Reuse a table, format text only when the value changed. `scripts/bench.mjs` is the place to prove it.
+- **Cache the API locally in hot functions** (`local UnitHealth = UnitHealth` at file top) only where a profile shows it; it hurts readability elsewhere.
+- **`pairs` order is undefined.** Anything the player sees sorted must sort explicitly. The harness happens to iterate like 5.3, the game like 5.1; a test can pass by luck.
+- **Strings:** build with `table.concat` in loops, not `..`; `string.format("%d", x)` errors in 5.3 on a float and silently truncates in 5.1 (the stub already shims this).
+- **Varargs:** `select("#", ...)` for counts, never `#{...}`, because nil holes lie.
+- **Frames:** reuse a frame pool rather than creating in response to events; frames are never garbage collected. Every `CreateFrame` outside setup is a leak candidate.
+- **Secure code:** keep protected changes in `ns.OutOfCombat`; prefer `SecureHandler` snippets and attributes over Lua that runs in combat; never store Lua state on a secure frame (the taint rule already enforces this).
+- **SavedVariables:** keep the saved shape flat and stable; a type change needs a `ns.Migrate` step (F7).
+- **Errors:** raise with `error(msg, 2)` so the stack points at the caller; never swallow with a bare `pcall` (there are 63 `pcall` sites; each should either report or be an API-probe where the error is the answer).
+
+### General guidance for agent-driven work
+
+- **Small, single-purpose PRs** with the test in the same commit as the code. The repo already does this; it is the main reason the 100% floor holds.
+- **Executable specs over prose.** A harness scenario that reads like the README sentence (`scripts/tests/scenarios.test.mjs` style) is the best brief an agent can get. When a README sentence changes, the matching scenario changes in the same commit.
+- **Keep the state files true** (F4). An agent trusts `STATE.md` and `CONCERNS.md` the way a new hire would.
+- **Let the scanner grow with the mistakes.** Every error that reaches a tester in launch week should become a scanner rule or a harness rule, report-only first with a baseline, as #263 did. That is how the repo turns one-off fixes into guard rails.
+- **Don't reach for a typed Lua** (Teal, or a TypeScript-to-Lua pipeline) for this project. The custom harness, the TOC loader and the 10-line rule all assume plain Lua files; a compile step would cost more than the types return.
