@@ -562,3 +562,32 @@ it("type sizes (#258): no role under 10 but badge; the error badge uses it", () 
   expect(small, "only badge is under 10").toEqual(["badge"]);
   expect(addon.eval("return { ns.Theme.RoleSize('tiny'), ns.Theme.RoleSize('auraTimerSmall'), ns.Theme.RoleSize('badge') }"), "tiny and the small aura timer at 10, badge 9").toEqual([10, 10, 9]);
 });
+
+// A painted frame's one-pixel lines on BORDER sublevel 1 or 2 and its sheen: { y offset in pixels, colour } of each, top to bottom.
+const lines = (addon, lua) => addon.eval(`local f, px = ${lua}, ns.Theme.Pixel(${lua}) local out = {}
+  for _, w in ipairs(__wfgStub.frames) do
+    if w.__parent == f and w.__kind == "Texture" and w.__layer == "BORDER" and math.abs((w:GetHeight() or 0) - px) < 1e-9 and (w.__points.TOPLEFT or w.__points.BOTTOMLEFT) then
+      local p = w.__points.TOPLEFT or w.__points.BOTTOMLEFT
+      out[#out + 1] = { p.point, math.floor(p.y / px + 0.5), w.__vertexColor }
+    end
+  end
+  table.sort(out, function(a, b) return a[1] .. a[2] < b[1] .. b[2] end)
+  return out`);
+
+it("inner bevel (#234): buttons and raised panels get a borderHi line inside the top and a dark one inside the bottom; the sheen moves one row down", () => {
+  const addon = loggedIn();
+  // Whether colour c is the token `name` at alpha a.
+  const near = (c, name, a) => isTok(addon, c, name) && Math.abs(c[3] - a) < 1e-6;
+  addon.eval('__btn = ns.Theme.Button(CreateFrame("Button", nil, UIParent)) __btn:SetSize(80, 22)');
+  addon.eval('__raised = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { raised = true })');
+  addon.eval('__flat = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent))');
+  addon.eval('__slot = ns.Theme.Slot(CreateFrame("Frame", nil, UIParent))');
+  for (const which of ["__btn", "__raised"]) {
+    const l = lines(addon, which);
+    const bottom = l.find((x) => x[0] === "BOTTOMLEFT" && x[1] === 1), top = l.find((x) => x[0] === "TOPLEFT" && x[1] === -1 && near(x[2], "borderHi", 0.35)), sheen = l.find((x) => x[0] === "TOPLEFT" && x[1] === -2);
+    expect([bottom?.[1], near(bottom?.[2], "shade", 0.35), top !== undefined, isTok(addon, sheen?.[2], "sheen")], `${which}: bottom line on the first row up, dark at 35%; top line on the first row down in borderHi at 35%; the sheen on the second row`).toEqual([1, true, true, true]);
+  }
+  const flat = lines(addon, "__flat").filter((x) => x[1] !== 0);
+  expect([flat.length, flat[0][1], isTok(addon, flat[0][2], "sheen")], "a plain panel: no bevel, its sheen on the first row").toEqual([1, -1, true]);
+  expect(lines(addon, "__slot").some((x) => near(x[2], "borderHi", 0.35)), "a slot keeps its own bevel, not this one").toBe(false);
+});

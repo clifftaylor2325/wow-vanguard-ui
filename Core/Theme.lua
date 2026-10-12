@@ -458,15 +458,37 @@ local function sheen(frame)
   return solid(frame, "BORDER", nil, "sheen")
 end
 
--- Places the sheen one pixel inside the top border (`pad` units out past the frame's top), one pixel tall.
--- (A button's hover line sits in the same place, in `token`.)
-local function placeSheen(t, frame, pad, token)
+-- Places the sheen just inside the top border (`pad` units out past the frame's top), one pixel tall:
+-- on the first row inside it, or the `row`th (a bevelled panel keeps row 1 for its bevel line).
+-- (A button's hover line sits on row 1, in `token`.)
+local function placeSheen(t, frame, pad, token, row)
   local px, out = T.Pixel(frame), T.PixelRound(frame, pad or 0)
   t:ClearAllPoints()
-  t:SetPoint("TOPLEFT", frame, "TOPLEFT", px - out, out - px)
-  t:SetPoint("TOPRIGHT", frame, "TOPRIGHT", out - px, out - px)
+  t:SetPoint("TOPLEFT", frame, "TOPLEFT", px - out, out - px * (row or 1))
+  t:SetPoint("TOPRIGHT", frame, "TOPRIGHT", out - px, out - px * (row or 1))
   t:SetHeight(px)
   T.Tint(t, token or "sheen")
+end
+
+-- The inner bevel (#234) on buttons and raised panels: { token, alpha } of the light line along the
+-- top inner edge and the dark one along the bottom inner edge, each one pixel, just inside the border.
+T.BEVEL = { top = { "borderHi", 0.35 }, bottom = { "shade", 0.35 } }
+
+-- Places one bevel line (side "TOP" or "BOTTOM") on the first row inside frame's border, `out` past it.
+local function placeBevelLine(t, frame, side, out)
+  local px, y = T.Pixel(frame), side == "TOP" and out - T.Pixel(frame) or T.Pixel(frame) - out
+  t:ClearAllPoints()
+  t:SetPoint(side .. "LEFT", frame, side .. "LEFT", px - out, y)
+  t:SetPoint(side .. "RIGHT", frame, side .. "RIGHT", out - px, y)
+  t:SetHeight(px)
+  T.Tint(t, T.BEVEL[side:lower()][1], T.BEVEL[side:lower()][2])
+end
+
+-- Places and tints a frame's bevel lines (`pad` units out past the frame).
+local function placeBevelLines(bevel, frame, pad)
+  local out = T.PixelRound(frame, pad or 0)
+  placeBevelLine(bevel.top, frame, "TOP", out)
+  placeBevelLine(bevel.bottom, frame, "BOTTOM", out)
 end
 
 -- How far a shadow reaches past its frame. It sits evenly around the frame:
@@ -652,7 +674,8 @@ local function repaint(frame, entry)
     colorEdges(p.edges, borderColor(entry))
     sizeEdges(p.edges, frame)
   end
-  if p.sheen then placeSheen(p.sheen, frame, entry.opts.pad) end
+  if p.sheen then placeSheen(p.sheen, frame, entry.opts.pad, nil, p.bevel and 2) end
+  if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad) end
   if entry.paint then entry.paint(entry, frame) end
 end
 
@@ -664,12 +687,15 @@ local function background(frame, pad)
   return bg
 end
 
--- The parts opts ask for: background, edges, sheen (with a background) and shadow, opts.pad units out past frame.
+-- The parts opts ask for: background, edges, sheen (with a background), a bevel (opts.bevel, or a
+-- raised panel with a border, unless opts.noBevel) and shadow, opts.pad units out past frame.
 local function makeParts(frame, opts)
   local parts = {}
   parts.bg = not opts.noBg and background(frame, opts.pad) or nil
   parts.edges = not opts.noBorder and edges(frame, opts.pad) or nil
   parts.sheen = parts.bg and not opts.noSheen and sheen(frame) or nil
+  local bevelled = parts.edges and not opts.noBevel and (opts.bevel or opts.raised)
+  parts.bevel = bevelled and { top = solid(frame, "BORDER", 1, "border"), bottom = solid(frame, "BORDER", 1, "border") } or nil
   parts.shadow = opts.shadow and shadow(frame, opts.shadow, opts.pad) or nil
   return parts
 end
@@ -749,7 +775,7 @@ end
 -- A flat button: inset panel, template art faded, an eased hover (raisedHover and a borderHi top line).
 function T.Button(button)
   local fresh = not painted[button]
-  local entry = base(button, "button", { inset = true })
+  local entry = base(button, "button", { inset = true, bevel = true })
   if fresh then
     T.FadeRegions(button, { [entry.parts.bg] = true })
     hoverParts(button, entry)
@@ -828,7 +854,7 @@ local function slotOpts(opts)
   local well = opts ~= nil and opts.well == true
   return {
     raised = not well, fill = well and T.SLOT_WELL.fill or nil, border = well and { T.RGB(T.SLOT_WELL.border) } or nil, well = well,
-    noSheen = true, shadow = T.SLOT_SHADOW, quiet = opts ~= nil and opts.quiet == true,
+    noSheen = true, noBevel = true, shadow = T.SLOT_SHADOW, quiet = opts ~= nil and opts.quiet == true,
   }
 end
 

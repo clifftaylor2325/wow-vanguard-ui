@@ -516,3 +516,19 @@ it("default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 
   expect(sizes(old).slice(3, 5), "a profile that saved the old button size and bar width keeps them").toEqual([px(old, 36), 454]);
   expect(old.eval("return { ns.MoverPoint('uf_player') }"), "and a frame it moved stays put").toEqual(["BOTTOM", "BOTTOM", -250, 180]);
 });
+
+// Every status bar with a fill, by its fill texture: how many use each.
+const BAR_MATERIALS = `local out = {}
+  for _, w in ipairs(__wfgStub.frames) do
+    local t = w.__kind == "StatusBar" and w.__barTexture and w.__barTexture.__texture
+    if t then out[t] = (out[t] or 0) + 1 end
+  end
+  return out`;
+
+it("one bar material (#234): every Vanguard bar on the whole HUD uses the theme's bar texture, and a new pick reaches them all", () => {
+  const addon = wholeHud();
+  const used = addon.eval(BAR_MATERIALS);
+  expect([Object.keys(used), Object.values(used).reduce((a, b) => a + b, 0) > 20], "one texture, on every bar on screen (unit frames, raid tiles, cast bars, XP, ...)").toEqual([[addon.eval("return ns.Theme.BarTexture()")], true]);
+  const soft = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { barTexture = "soft" } } } }' });
+  expect(Object.keys(soft.eval(BAR_MATERIALS)), "the Soft material on all of them").toEqual([soft.eval('return ns.Theme.Texture("BarSoft")')]);
+});
