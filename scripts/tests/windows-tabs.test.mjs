@@ -361,6 +361,48 @@ it("character pane: a list that loads later (the currencies' addon) is dressed w
   expect(addon.eval("return { __a(__tokenHeader.banner), #ns.errors }"), "dressed once it has").toEqual([0, 0]);
 });
 
+// TEST-ONLY collections window, shaped like Blizzard_Collections' Mainline Wardrobe.xml: the journal (a window) holding
+// WardrobeCollectionFrame, whose item grid and sets preview are CollectionsBackgroundTemplate frames (a leather tile and
+// shadows on an InsetFrameTemplate: a Bg and a NineSlice) with models on them, and whose sets list is an InsetFrameTemplate.
+// Made when the game loads the part.
+const COLLECTIONS_ENV = PANE_ENV + `
+  function __backdrop(parent)
+    local f = CreateFrame("Frame", nil, parent)
+    f.BackgroundTile, f.ShadowCornerTop, f.Bg = __art(f), __art(f, "BORDER"), __art(f)
+    f.NineSlice = CreateFrame("Frame", nil, f) __art(f.NineSlice)
+    return f
+  end
+  function __collections()
+    __window("CollectionsJournal")
+    local w = CreateFrame("Frame", "WardrobeCollectionFrame", CollectionsJournal)
+    w.ItemsCollectionFrame = __backdrop(w)
+    w.ItemsCollectionFrame.Model = CreateFrame("Frame", nil, w.ItemsCollectionFrame) __art(w.ItemsCollectionFrame.Model, "ARTWORK")
+    w.SetsCollectionFrame = CreateFrame("Frame", nil, w)
+    w.SetsCollectionFrame.RightInset, w.SetsCollectionFrame.LeftInset = __backdrop(w.SetsCollectionFrame), __backdrop(w.SetsCollectionFrame)
+  end
+`;
+
+it("appearances: the item grid's and the sets tab's leather backdrops are faded, with a flat inset panel behind the content", () => {
+  const addon = loggedIn(COLLECTIONS_ENV);
+  addon.eval("__collections()");
+  expect(addon.eval("return __a(WardrobeCollectionFrame.ItemsCollectionFrame.BackgroundTile)"), "not before the part loads").toBe(-1);
+  addon.fire("ADDON_LOADED", "Blizzard_Collections");
+  addon.eval("CollectionsJournal:Show()");
+  // A backdrop's tile, shadow, background and edge alphas, and whether it is panelled.
+  const backdrop = (path) => addon.eval(`local f = WardrobeCollectionFrame.${path} return { __a(f.BackgroundTile), __a(f.ShadowCornerTop), __a(f.Bg), f.NineSlice:GetAlpha(), __panel(f) }`);
+  expect(backdrop("ItemsCollectionFrame"), "the item grid: tile, shadows, inset background and edge faded, an inset panel").toEqual([0, 0, 0, 0, true]);
+  expect([backdrop("SetsCollectionFrame.RightInset"), backdrop("SetsCollectionFrame.LeftInset")], "the sets tab's preview and list too").toEqual([[0, 0, 0, 0, true], [0, 0, 0, 0, true]]);
+  expect(addon.eval("local m = WardrobeCollectionFrame.ItemsCollectionFrame.Model return { m:GetAlpha(), __a((m:GetRegions())) }"), "the appearance models on it are the game's").toEqual([1, -1]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("CollectionsJournal:Hide() CollectionsJournal:Show()");
+  expect(addon.eval("return { ns.Theme.PaintedCount(), #ns.errors }"), "showing it again paints nothing new").toEqual([painted, 0]);
+  const bare = loggedIn(COLLECTIONS_ENV + `__window("CollectionsJournal") CreateFrame("Frame", "WardrobeCollectionFrame", CollectionsJournal).SetsCollectionFrame = {}`);
+  bare.fire("ADDON_LOADED", "Blizzard_Collections");
+  const none = loggedIn(COLLECTIONS_ENV + `__window("CollectionsJournal")`);
+  none.fire("ADDON_LOADED", "Blizzard_Collections");
+  expect([bare.eval("CollectionsJournal:Show() return #ns.errors"), none.eval("CollectionsJournal:Show() return #ns.errors")], "a wardrobe without backdrops, or no wardrobe: no errors").toEqual([0, 0]);
+});
+
 // TEST-ONLY scroll bars shaped like the game's MinimalScrollBar (a Track holding the Thumb, arrow
 // buttons), and a reader for a bar's state: track art and thumb art faded, a panel on the thumb.
 const BARS_ENV = PANE_ENV + `

@@ -301,8 +301,31 @@ function GW.DressCharacterPane()
   watchFlyout()
 end
 
+-- Inside the collections window -------------------------------------------------------------
+
+-- The appearances tab's backdrops inside WardrobeCollectionFrame (Blizzard_Collections), as parentKey paths: the
+-- item grid and the sets tab's preview (CollectionsBackgroundTemplate: a leather tile and shadows on an inset
+-- frame), and the sets tab's list (InsetFrameTemplate).
+GW.WARDROBE_BACKDROPS = { { "ItemsCollectionFrame" }, { "SetsCollectionFrame", "RightInset" }, { "SetsCollectionFrame", "LeftInset" } }
+
+-- One backdrop: its tile, shadows and inset background faded, its NineSlice edge too, and a flat inset panel behind
+-- what it holds (the models and buttons on it are its children and stay the game's).
+local function skinBackdrop(frame)
+  if type(frame) ~= "table" or not frame.GetRegions then return end
+  T.FadeRegions(frame)
+  if type(frame.NineSlice) == "table" and frame.NineSlice.SetAlpha then frame.NineSlice:SetAlpha(0) end
+  T.Panel(frame, { inset = true, noSheen = true })
+end
+
+-- Dresses the inside of the collections window: the appearances tab's backdrops. Safe to run again.
+function GW.DressCollections()
+  local wardrobe = _G.WardrobeCollectionFrame
+  if type(wardrobe) ~= "table" then return end
+  for _, path in ipairs(GW.WARDROBE_BACKDROPS) do skinBackdrop(walk(wardrobe, path)) end
+end
+
 -- What a window holds besides tabs that is dressed with it, by window name: a function that takes no argument.
-GW.INSIDE = { CharacterFrame = GW.DressCharacterPane }
+GW.INSIDE = { CharacterFrame = GW.DressCharacterPane, CollectionsJournal = GW.DressCollections }
 
 -- Dresses what the window holds besides tabs (GW.INSIDE), now and every time it shows; a failure is reported.
 local function dressInside(frame)
