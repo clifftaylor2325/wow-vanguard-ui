@@ -83,3 +83,46 @@ function L.Snap(left, bottom, w, h, others, sw, sh)
   local dy = bestShift({ bottom, bottom + h, bottom + h / 2 }, ys)
   return left + dx, bottom + dy
 end
+
+-- Rects and points --------------------------------------------------------------------------
+
+-- Anchoring to another frame's side: the frame's own point pinned there, and
+-- the other frame's point it is pinned to. To the right of a frame, its left
+-- edge is pinned, so it grows to the right (and so on for each side).
+L.SIDES = { LEFT = { "RIGHT", "LEFT" }, RIGHT = { "LEFT", "RIGHT" }, TOP = { "BOTTOM", "TOP" }, BOTTOM = { "TOP", "BOTTOM" } }
+
+-- Where a named point ("TOPLEFT", "RIGHT", "CENTER", ...) of a rect
+-- ({ left, bottom, w, h }) is: x, y.
+function L.PointAt(r, point)
+  local x = point:find("LEFT") and r.left or point:find("RIGHT") and r.left + r.w or r.left + r.w / 2
+  local y = point:find("TOP") and r.bottom + r.h or point:find("BOTTOM") and r.bottom or r.bottom + r.h / 2
+  return x, y
+end
+
+-- The w x h rect whose named point sits at x, y.
+function L.RectAt(point, x, y, w, h)
+  local px, py = L.PointAt({ left = 0, bottom = 0, w = w, h = h }, point)
+  return { left = x - px, bottom = y - py, w = w, h = h }
+end
+
+-- The rect of a w x h frame whose point is at relPoint of a sw x sh screen, offset x, y.
+function L.Rect(point, relPoint, x, y, w, h, sw, sh)
+  local ax, ay = L.PointAt({ left = 0, bottom = 0, w = sw, h = sh }, relPoint)
+  return L.RectAt(point, ax + x, ay + y, w, h)
+end
+
+-- A rect moved as little as it takes to be on a sw x sh screen (one bigger
+-- than the screen starts at its left or bottom edge).
+function L.Clamp(r, sw, sh)
+  local left = math.max(0, math.min(r.left, sw - r.w))
+  local bottom = math.max(0, math.min(r.bottom, sh - r.h))
+  return { left = left, bottom = bottom, w = r.w, h = r.h }
+end
+
+-- The side of rect t ("LEFT", "RIGHT", "TOP" or "BOTTOM") that rect r is nearest to.
+function L.NearestSide(r, t)
+  local dx = (r.left + r.w / 2) - (t.left + t.w / 2)
+  local dy = (r.bottom + r.h / 2) - (t.bottom + t.h / 2)
+  if math.abs(dx) * (t.h + r.h) > math.abs(dy) * (t.w + r.w) then return dx < 0 and "LEFT" or "RIGHT" end
+  return dy < 0 and "BOTTOM" or "TOP"
+end

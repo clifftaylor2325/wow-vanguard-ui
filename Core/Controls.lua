@@ -321,10 +321,13 @@ end
 
 -- Slider -------------------------------------------------------------------------------------
 
--- Places the fill and thumb for the current value, and shows it as text.
+-- Places the fill and thumb for the current value, and shows it as text; a
+-- locked slider's fill and caption are muted.
 local function refreshSlider(r)
-  local v = r.get()
+  local v, locked = r.get(), r.locked and r.locked()
   local share = math.max(0, math.min(1, (v - r.min) / (r.max - r.min)))
+  T.Tint(r.fill, locked and "muted" or "accent")
+  T.Color(r.label, locked and "muted" or "text")
   r.fill:SetWidth(math.max(1, r.track:GetWidth() * share))
   r.thumb:ClearAllPoints()
   r.thumb:SetPoint("CENTER", r.track, "LEFT", r.track:GetWidth() * share, 0)
@@ -382,14 +385,39 @@ local function stepOrWrap(r)
   end
 end
 
+-- A locked slider's tooltip: why it's locked, and how to unlock it.
+local function lockTip(f)
+  local why = f.slider.locked()
+  if not why or not GameTooltip then return end
+  GameTooltip:SetOwner(f, "ANCHOR_RIGHT")
+  GameTooltip:SetText(why, nil, nil, nil, nil, true)
+  GameTooltip:Show()
+end
+
+-- A slider that can lock (opts.locked() gives why, or nil): while it does, its value can't be
+-- changed, and hovering it (the row or its track) shows why.
+local function addLock(r, locked)
+  local set = r.set
+  r.locked = locked
+  -- A value is set only while the slider isn't locked.
+  r.set = function(v) if not locked() then set(v) end end
+  for _, f in ipairs({ r, r.track }) do
+    f.slider = r
+    f:SetScript("OnEnter", lockTip)
+    f:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+  end
+end
+
 -- A slider row for a number from min to max in steps; format(v) is its
 -- text. Clicking the caption steps up (wrapping to min); dragging along the
 -- track sets it. The wheel over it scrolls the page, as over any row.
+-- With opts.locked, it locks while that says why (see addLock).
 function W.Slider(parent, caption, opts, get, set, width)
   local r = row(parent, caption, width)
   r.min, r.max, r.step, r.format = opts.min, opts.max, opts.step, opts.format or tostring
   r.get, r.set, r.Refresh = get, set, refreshSlider
   addTrack(r)
+  if opts.locked then addLock(r, opts.locked) end
   r.value = T.Text(r:CreateFontString(nil, "OVERLAY"), "number", "text2")
   r.value:SetPoint("RIGHT", -8, 0)
   r:SetScript("OnClick", ns.Guard("click slider", stepOrWrap))

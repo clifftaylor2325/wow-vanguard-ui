@@ -3,8 +3,10 @@
 -- and on a new character's first login after that, with a profile step first
 -- (VanguardCharDB.setupDone false, pickProfile). Closing it early asks again at the
 -- next login. Never in combat (it waits for combat to end, and steps aside if a fight
--- starts while it is open). /vg setup and the options open it again, with Keep
--- picked, so Next, Next, Next, Done changes nothing you didn't pick.
+-- starts while it is open). It always opens with Keep picked (your role's layout and
+-- your screen's preset are marked), so Next, Next, Next, Done changes nothing you didn't
+-- pick. Before it changes anything it copies the profile to its backup profile, and Done
+-- ends with a reload.
 
 local ADDON, ns = ...
 
@@ -22,9 +24,9 @@ local PROFILE_STEPS = { "profile", "layout", "screen", "look", "move" }
 local AGAIN = "Run setup again any time: /vg setup, or Run setup on the General page of /vg."
 local LATER = "Setup opens again at your next login. /vg setup opens it now; Skip setup on its first page turns it off."
 
--- Layout presets, in display order: damage is the default, Keep (the last) moves nothing.
+-- Layout presets, in display order; Keep (the last) moves nothing and is picked when setup opens.
 S.LAYOUTS = {
-  { key = "damage", text = "Centered: damage and tanking", hint = "Your frames around your character; party and raid just above your player frame." },
+  { key = "damage", text = "Centered: damage and tanking", hint = "For damage dealers and tanks: your frames around your character, party and raid just above your player frame." },
   { key = "healing", text = "Centered: healing", hint = "Party and raid centered above your frames, click casting on." },
   { key = "classic", text = "Like the game's", hint = "Your frames at the top left as the game has them, party and raid down the left side." },
   { key = "keep", text = "Keep my current layout", hint = "Moves nothing: your frames stay where they are." },
@@ -66,10 +68,12 @@ S.STYLES = { { "soft", "Class colors, softened", "Softened" }, { "dark", "Dark, 
 local TILE_W, TILE_H, TILE_GAP = 100, 48, 16
 
 local frame
+-- Functions run each time setup ends, after it has locked the frames and saved (What's new waits for it).
+S.onEnd = {}
 -- order: the pages showing; floor: the first step Back reaches; owed: setup opened owing a run;
 -- complete: Done or Skip was clicked (closing otherwise doesn't count as setup having run).
 local state = { step = 1, order = STEPS, floor = 1, profile = "share", layout = S.LAYOUTS[1].key, screen = "keep",
-  owed = false, complete = false, paused = false, reload = false }
+  owed = false, complete = false, paused = false, reload = false, backup = nil }
 local waiting = false
 
 -- Presets -------------------------------------------------------------------------------
@@ -79,6 +83,14 @@ local function turnOn(name)
   if ns.ModuleEnabled(name) then return end
   ns.SetModuleEnabled(name, true)
   state.reload = true
+end
+
+-- Before setup's first change in a run: copies the profile in use to its backup profile (once
+-- per run) and says so in chat.
+function S.Backup()
+  if state.backup then return end
+  state.backup = ns.BackupProfile()
+  ns.Chat(string.format("Profile %s as it was before setup is saved as profile %s.", ns.ProfileName(), state.backup))
 end
 
 -- Saves a frame's spot, moving it now (or after combat) when it is built; the
@@ -128,8 +140,9 @@ local APPLY = {
   keep = function() end,
 }
 
--- Applies a layout preset by key.
+-- Applies a layout preset by key, backing the profile up first unless it is Keep.
 function S.ApplyLayout(key)
+  if key ~= "keep" then S.Backup() end
   APPLY[key]()
 end
 
@@ -141,17 +154,17 @@ local function playerRole()
   return ns.GetModule("Upgrades").ROLES[role or "NONE"]
 end
 
--- The layout for your role: Centered: healing for a healer, else Centered: damage and tanking.
+-- The layout for your role (marked on the layout step): Centered: healing for a healer, else Centered: damage and tanking.
 function S.GuessLayout()
   return playerRole() == "healer" and "healing" or "damage"
 end
 
--- Applies the profile step: "new" gives this character a profile of its own, picks your role's
--- layout on the next step and keeps Back from returning to it, so the new profile stays; "share" changes nothing.
+-- Applies the profile step: "new" gives this character a profile of its own and keeps Back
+-- from returning to it, so the new profile stays; "share" changes nothing.
 function S.ApplyProfile(key)
   if key ~= "new" then return end
   ns.ForkProfile(UnitName("player"))
-  state.layout, state.floor = S.GuessLayout(), state.step + 1
+  state.floor = state.step + 1
 end
 
 -- The raid frames' settings in the active profile, with their defaults.
@@ -161,6 +174,7 @@ end
 
 -- Sets the raid frame style, repainting the raid frames when they are built.
 function S.SetStyle(look)
+  S.Backup()
   raidSettings().look = look
   local RF = ns.GetModule("RaidFrames")
   if RF.settings then RF.UpdateAll() end
@@ -260,6 +274,7 @@ end
 function S.ApplyScreen(key)
   local p = S.ScreenPreset(key)
   if not p then return end
+  S.Backup()
   setScale(p)
   setButtons(p.button)
   setTiles(p.tile)
@@ -272,12 +287,20 @@ local function percent(v)
   return math.floor(v * 100 + 0.5)
 end
 
--- What a preset sets, in a line under the choices.
+-- Who sets the UI scale now: Vanguard's pixel-perfect scale while it is on, else the game's own slider.
+function S.ScaleOwner()
+  if T.Settings().pixelScale then return "Vanguard's pixel-perfect scale (General, Look)" end
+  return "the game's UI Scale slider (Options, Graphics)"
+end
+
+-- What a preset sets, under the choices: a preset moves the game's own UI Scale slider (and
+-- turns Vanguard's pixel-perfect scale off), Pixel-perfect turns that scale on, and Keep leaves
+-- the scale with whichever sets it now.
 local function screenHint(p)
-  if not p then return "Changes nothing: your UI scale and frame, button, tile and text sizes stay as they are." end
-  local sharp = p.pixel and "Sharpest: every line on whole screen pixels. " or ""
-  return string.format("%sUI scale %d%%, action buttons %d px, raid tiles %d x %d, text %d%%.",
-    sharp, percent(p.ui), p.button, p.tile[1], p.tile[2], percent(p.textScale))
+  if not p then return "Changes nothing: your UI scale stays with " .. S.ScaleOwner() .. ", your sizes as they are." end
+  local scale = p.pixel and "Sharpest: every line on whole screen pixels. Vanguard's pixel-perfect scale at %d%%"
+    or "Moves the game's UI Scale slider to %d%% (Vanguard's pixel-perfect scale goes off)"
+  return string.format(scale .. "; action buttons %d px, raid tiles %d x %d, text %d%%.", percent(p.ui), p.button, p.tile[1], p.tile[2], percent(p.textScale))
 end
 
 -- Marks -----------------------------------------------------------------------------------
@@ -295,11 +318,11 @@ local function isAccent(rgb)
   return r == rgb[1] and g == rgb[2] and b == rgb[3]
 end
 
--- Marks the chosen button on a page of choices and shows its hint.
+-- Marks the chosen button on a page of choices and shows its hint (a function's answer, for one that changes).
 local function markChoice(page, value)
   for _, b in ipairs(page.choices) do
     mark(b, b.value == value)
-    if b.value == value then page.hint:SetText(b.hint) end
+    if b.value == value then page.hint:SetText(type(b.hint) == "function" and b.hint() or b.hint) end
   end
 end
 
@@ -357,6 +380,7 @@ local function choicePage(page, question, list, field)
   end
   page.hint = text(page, "small", "text2", "")
   page.hint:SetPoint("TOPLEFT", 0, -24 - #list * 30)
+  page.hint:SetWidth(WIDTH - 2 * PAD)
 end
 
 -- The profile choices for a new character: share the profile it loaded with, or one of its own.
@@ -372,9 +396,18 @@ local function profilePage(page)
   choicePage(page, "Vanguard is set up on this account. Profiles in /vg switches this later.", profileChoices(), "profile")
 end
 
+-- The layout choices, the one for your role marked.
+local function layoutChoices()
+  local mine, out = S.GuessLayout(), {}
+  for i, l in ipairs(S.LAYOUTS) do
+    out[i] = { key = l.key, hint = l.hint, text = l.text .. (l.key == mine and "  ·  your role" or "") }
+  end
+  return out
+end
+
 -- The layout step: a button per layout, then the chosen one's hint.
 local function layoutPage(page)
-  choicePage(page, "How do you mostly play? You can change it all later in /vg.", S.LAYOUTS, "layout")
+  choicePage(page, "How do you mostly play? You can change it all later in /vg.", layoutChoices(), "layout")
 end
 
 -- The screen choices: each preset (the one for this screen marked), then Keep.
@@ -385,7 +418,7 @@ local function screenChoices()
     out[i] = { key = p.key, hint = screenHint(p), text = string.format("%s (%d x %d)%s", p.text, p.w, p.h, mine) }
   end
   out[#out + 1] = { key = S.PIXEL.key, text = S.PIXEL.text, hint = screenHint(S.PixelPreset()) }
-  out[#out + 1] = { key = "keep", text = "Keep my current sizes", hint = screenHint(nil) }
+  out[#out + 1] = { key = "keep", text = "Keep my current sizes", hint = function() return screenHint(nil) end }
   return out
 end
 
@@ -429,7 +462,7 @@ end
 
 -- One accent swatch, with a check when chosen: picking it sets the accent at once.
 local function swatch(page, i, rgb)
-  local s = W.Swatch(page, rgb, function() T.SetAccent(rgb[1], rgb[2], rgb[3]); refresh() end)
+  local s = W.Swatch(page, rgb, function() S.Backup(); T.SetAccent(rgb[1], rgb[2], rgb[3]); refresh() end)
   s:SetPoint("TOPLEFT", (i - 1) * 34, -20)
   s.rgb = rgb
   s.check = W.IconTexture(s, "Check", 14, "void")
@@ -481,9 +514,9 @@ local function window()
   return f
 end
 
--- Done or Skip setup: setup ran, so closing it now counts.
-local function complete()
-  state.complete = true
+-- Done or Skip setup: setup ran, so closing it now counts (done: it was Done, not Skip).
+local function complete(done)
+  state.complete, state.done = true, done == true
   frame:Hide()
 end
 
@@ -495,14 +528,16 @@ local function controls(f)
   f.next:SetPoint("BOTTOMRIGHT", -PAD, PAD)
   f.back = W.Button(f, "Back", function() S.Back() end, 100)
   f.back:SetPoint("RIGHT", f.next, "LEFT", -8, 0)
-  f.skip = W.Button(f, "Skip setup", complete, 110)
+  f.skip = W.Button(f, "Skip setup", function() complete(false) end, 110)
   f.skip:SetPoint("BOTTOMLEFT", PAD, PAD)
 end
 
--- Why setup offers a reload (a module turned on, new raid tile sizes), or nil.
+-- Why setup offers a reload: a module turned on, new raid tile sizes, or Done (setup always ends
+-- with one, so everything it set shows as it will from now on); nil otherwise.
 local function reloadReason()
   if state.reload then return "Setup turned on a module that was off." end
   if state.retile then return "The new raid tile size shows after a reload." end
+  if state.complete and state.done then return "Setup is done." end
 end
 
 -- Remembers that setup ran, on the account and for this character, and says how to run it again.
@@ -511,16 +546,36 @@ local function markDone()
   ns.Chat(AGAIN)
 end
 
+-- After a first run's Done: the question that suggests keeping a profile string outside the game.
+S.EXPORT_ASK = "Keep a copy of these settings outside the game? Export a profile string and save it somewhere safe; /vg import brings it back."
+
+-- Shows the whole profile's export string, selected to copy; with a reload owed, chat says to reload after.
+local function exportNow(why)
+  ns.ShowText("Vanguard export (profile " .. ns.ProfileName() .. ")  Ctrl+C to copy", ns.ExportProfile())
+  if why then ns.Chat(why .. " Type /reload once you've copied the string.") end
+end
+
+-- After a first run's Done: asks whether to export a profile string, then offers the reload (when one is owed) on Not now.
+local function suggestExport(why)
+  ns.Ask(S.EXPORT_ASK, "Export", function() exportNow(why) end, function() if why then ns.OfferReload(why) end end)
+end
+
+-- What follows the end of setup: the export question after a first run's Done, else the reload offer when one is owed.
+local function afterSetup(firstRun, why)
+  if firstRun then return suggestExport(why) end
+  if why then ns.OfferReload(why) end
+end
+
 -- Setup ended (Done, Skip setup, the close button or Escape): lock the frames; after Done or Skip
--- remember that setup ran, else (when it was owed) say it opens again; offer a reload when a
--- module was turned on or the raid tiles changed size.
+-- remember that setup ran, else (when it was owed) say it opens again; after a first run's Done
+-- suggest exporting a profile string; offer a reload when a module was turned on or the raid tiles changed size.
 local function finished()
   if state.paused then return end
   if ns.Unlocked() then ns.Lock() end
   if state.complete then markDone() elseif state.owed then ns.Chat(LATER) end
-  local why = reloadReason()
-  if why then ns.OfferReload(why) end
+  afterSetup(state.complete and state.owed and state.done, reloadReason())
   state.reload, state.retile = false, false
+  for _, fn in ipairs(S.onEnd) do fn() end
 end
 
 local BUILDERS = { profile = profilePage, layout = layoutPage, screen = screenPage, look = lookPage, move = movePage }
@@ -573,7 +628,7 @@ local LEAVE = {
 function S.Next()
   local leave = LEAVE[state.order[state.step]]
   if leave then leave() end
-  if state.step == #state.order then return complete() end
+  if state.step == #state.order then return complete(true) end
   showStep(state.step + 1)
 end
 
@@ -601,17 +656,16 @@ local function owed()
   return not VanguardDB.setupDone or VanguardCharDB.setupDone == false
 end
 
--- Opens setup at step 1 (the profile step for a new character); in combat it waits. When setup is
--- owed on this profile, your role's layout and this screen's preset are picked; otherwise (running it
--- again, or sharing a profile that ran it) Keep and Keep, so clicking through changes nothing.
+-- Opens setup at step 1 (the profile step for a new character); in combat it waits. Keep and Keep
+-- are picked, the first time too, so Vanguard starts from where you are and clicking through
+-- changes nothing; your role's layout and your screen's preset are marked.
 function S.Open()
   if ns.InCombat() then return S.Defer() end
   frame = frame or build()
   local owe, pick = owed(), VanguardCharDB.pickProfile == true
-  local guess = owe and not pick
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
-  state.layout, state.screen = guess and S.GuessLayout() or "keep", guess and S.DetectScreen() or "keep"
-  state.reload, state.paused = false, false
+  state.layout, state.screen, state.backup = "keep", "keep", nil
+  state.reload, state.paused, state.done = false, false, false
   T.OpenWindow(frame)
   showStep(1)
 end
@@ -645,6 +699,7 @@ end)
 
 -- A login while setup is owed (the account's first, a new character's, or after closing it early
 -- or starting over) opens it, after the modules have built.
+-- Not while the saved settings didn't load (Core/SettingsGuard.lua offers the restore; Start fresh opens setup).
 ns.On("PLAYER_LOGIN", function()
-  if owed() then S.Open() end
+  if owed() and not ns.SettingsGuard.Lost() then S.Open() end
 end)

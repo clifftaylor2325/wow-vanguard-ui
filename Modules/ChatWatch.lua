@@ -71,13 +71,6 @@ local function seenLine(id)
   return false
 end
 
--- True for your own line: only when your name and the sender's are both plain.
-local function own(sender)
-  local me = UnitName("player")
-  if ns.IsSecret(me) or type(me) ~= "string" then return false end
-  return sender == me or sender:match("^[^%-]+") == me
-end
-
 -- A chat event (ns.On): text and sender, then the payload, whose ninth value
 -- after them is the line ID. A secret (or missing) text or sender is skipped
 -- before any string is read; a channel you don't watch is skipped too.
@@ -85,7 +78,7 @@ function CW.OnChat(event, text, sender, ...)
   local key = CW.EVENTS[event]
   if not (key and CW.settings.channels[key]) then return end
   if ns.IsSecret(text) or ns.IsSecret(sender) or type(text) ~= "string" or type(sender) ~= "string" then return end
-  if seenLine(ns.PlainNumber((select(9, ...)))) or own(sender) then return end
+  if seenLine(ns.PlainNumber((select(9, ...)))) or ns.Home.IsMe(sender) then return end
   local phrase = CW.Match(text)
   if phrase and fresh(sender, phrase, GetTime()) then CW.Alert(sender, text, phrase) end
 end
@@ -136,7 +129,7 @@ end
 function CW.ShowToast(sender, text)
   local f = CW.toast
   f.vgSender, f.vgClick = sender, nil
-  f.sender:SetText(sender)
+  f.sender:SetText(ns.Home.Display(sender))
   f.line:SetText(text)
   fitLine(f, CW.PriceText(text))
   T.FadeIn(f)
