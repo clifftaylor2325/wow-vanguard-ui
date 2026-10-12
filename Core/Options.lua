@@ -25,10 +25,26 @@ local function default(module, key)
   return m and m.defaults and m.defaults[key]
 end
 
+-- Which setting a row's getter reads: get -> { module, key }. Weak keys, so a
+-- page's rows can go. The window reads it (O.SettingOf) to tell what a row sets.
+local settingOf = setmetatable({}, { __mode = "k" })
+
+-- Notes that get reads `key` of `module` (a module's or another settings table's name); returns get.
+function O.Tag(get, module, key)
+  settingOf[get] = { module, key }
+  return get
+end
+
+-- The module and key a tagged getter reads, or nil for anything else.
+function O.SettingOf(get)
+  local s = settingOf[get]
+  if s then return s[1], s[2] end
+end
+
 -- get/set for one module setting, and its default (the window marks a changed
 -- setting and can put it back); reload marks a change that needs one.
 local function setting(module, key, reload)
-  return function() return moduleSettings(module)[key] end,
+  return O.Tag(function() return moduleSettings(module)[key] end, module, key),
     function(v) moduleSettings(module)[key] = v; if reload then O.NeedReload() end end,
     default(module, key)
 end
@@ -51,7 +67,7 @@ end
 
 -- get/set for whether action bar n is shown (applies on reload).
 local function barSetting(n)
-  return function() local b = moduleSettings("ActionBars").bars[n] return b and b.enabled end,
+  return O.Tag(function() local b = moduleSettings("ActionBars").bars[n] return b and b.enabled end, "ActionBars", "bars"),
     function(v) moduleSettings("ActionBars").bars[n].enabled = v; O.NeedReload() end
 end
 
@@ -64,7 +80,7 @@ end
 -- get/set for one of action bar n's settings (button count, per row,
 -- visibility); applies at once, or when combat ends.
 local function barOption(n, key)
-  return function() return moduleSettings("ActionBars").bars[n][key] end,
+  return O.Tag(function() return moduleSettings("ActionBars").bars[n][key] end, "ActionBars", "bars"),
     function(v) moduleSettings("ActionBars").bars[n][key] = v; barChanged(n, key) end
 end
 
@@ -118,7 +134,7 @@ end
 
 -- get/set for a theme setting; changes apply on reload.
 local function themeSetting(key)
-  return function() return T.Settings()[key] end, function(v) T.Settings()[key] = v; O.NeedReload() end
+  return O.Tag(function() return T.Settings()[key] end, "theme", key), function(v) T.Settings()[key] = v; O.NeedReload() end
 end
 
 -- get/set for a theme setting that applies on reload, shown at once in the General page's sample.
@@ -131,7 +147,7 @@ end
 -- styled text is re-fonted. Setting the same value again does nothing, so
 -- dragging a slider only re-fonts when the value moves.
 local function liveThemeSetting(key)
-  return function() return T.Settings()[key] end, function(v)
+  return O.Tag(function() return T.Settings()[key] end, "theme", key), function(v)
     if T.Settings()[key] == v then return end
     T.Settings()[key] = v
     T.Refresh()
@@ -387,8 +403,10 @@ end
 -- Bars shown on mouseover or on conditions also show while you drag a spell or
 -- item. "Hidden" doesn't draw the bar, but its keys still cast (a keybind-only bar).
 local function barVisibilityRows(n)
-  return ns.Visibility.Rows("Visibility", function() return moduleSettings("ActionBars").bars[n] end,
+  local mode, when = ns.Visibility.Rows("Visibility", function() return moduleSettings("ActionBars").bars[n] end,
     "visibility", "showWhen", function() barChanged(n, "visibility") end)
+  O.Tag(mode[4], "ActionBars", "bars")
+  return mode, when
 end
 
 -- One action bar's card: on/off, visibility, button count, per row and size.
@@ -485,10 +503,12 @@ end
 -- The visibility rows (Core/Visibility.lua) of a module's frame, applied at once
 -- (when the module runs); unset, the setting is Always. modes: its choices (V.MODES unless given).
 local function visibilityRows(caption, module, modeKey, whenKey, modes)
-  return ns.Visibility.Rows(caption, function() return moduleSettings(module) end, modeKey, whenKey, function()
+  local mode, when = ns.Visibility.Rows(caption, function() return moduleSettings(module) end, modeKey, whenKey, function()
     local m = ns.GetModule(module)
     if m.enabled then m.ApplyVisibility() end
   end, "always", modes)
+  O.Tag(mode[4], module, modeKey)
+  return mode, when
 end
 
 -- The game's extras: minimap buttons, the menu strip and the quest tracker (after a reload).
