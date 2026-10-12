@@ -32,14 +32,16 @@ it("first-run setup: once per account, four clicks with the defaults", () => {
   expect(setupState(addon).step === 2 && addon.eval("return Vanguard_Setup.back:IsShown()"), "Next goes to Screen, which has Back").toBe(true);
   expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "the second step is the screen").toBe("Step 2 of 4 · Screen");
   setupClick(addon, "next");
-  expect(addon.eval("return { GetCVar('useUiScale'), GetCVar('uiScale') }"), "leaving it applies this screen's preset (1080p): UI scale 80%").toEqual(["1", "0.8"]);
+  expect(addon.eval("return { GetCVar('useUiScale'), GetCVar('uiScale') }"), "Keep is picked the first time too, so the UI scale is left alone").toEqual({});
   setupClick(addon, "next");
   expect(setupState(addon), "the last step unlocks the frames").toEqual({ step: 4, done: false, unlocked: true });
   expect(addon.eval("return Vanguard_Setup.next.text:GetText()"), "the last step's button is Done").toBe("Done");
   setupClick(addon, "next");
   expect(setupState(addon), "Done closes setup, locks the frames and remembers that setup ran").toEqual({ step: 0, done: true, unlocked: false });
-  const kept = addon.eval("return { raid = VanguardDB.profiles.Default.positions.raid == nil, look = ns.Settings('RaidFrames').look, brass = select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1], reload = Vanguard_Reload == nil }");
-  expect(kept, "the defaults change no position, style or accent, and need no reload").toEqual({ raid: true, look: "soft", brass: true, reload: true });
+  const kept = addon.eval("return { raid = (VanguardDB.profiles.Default.positions or {}).raid == nil, look = ns.Settings('RaidFrames').look, brass = select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1], backup = VanguardDB.profiles['Default backup'] == nil }");
+  expect(kept, "Keep and Keep change no position, style or accent, so nothing is backed up").toEqual({ raid: true, look: "soft", brass: true, backup: true });
+  addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
+  expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "Done always ends with a reload").toBe("Setup is done. Reload the UI now to apply it?");
   const again = loggedIn("", { firstRun: true, savedVariables: "VanguardDB = { setupDone = true } VanguardCharDB = {}" });
   expect(again.eval("return Vanguard_Setup == nil"), "setup does not open again for a character that played on this account").toBe(true);
 });
@@ -116,12 +118,14 @@ it("first-run setup: a new character on a set-up account picks its profile first
   expect(again.eval("return Vanguard_Setup.caption:GetText()"), "a new character that closed it early gets the profile step again").toBe("Step 1 of 5 · Profile");
 });
 
-it("first-run setup: a profile of its own copies the shared one without a reload, and your role picks the layout", () => {
+it("first-run setup: a profile of its own copies the shared one without a reload, and your role's layout is marked", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV + "__units.player.role = 'HEALER'", { firstRun: true, savedVariables: SET_UP_ACCOUNT });
   addon.eval('__click("A profile of its own")');
   setupClick(addon, "next");
   expect(addon.eval("return { ns.ProfileName(), VanguardCharDB.editModeProfile, Vanguard_Setup.back:IsShown() }"), "the character uses its new profile at once, and Back can't undo it").toEqual(["name", "name", false]);
-  expect(addon.eval("return Vanguard_Setup.pages.layout.hint:GetText()"), "a healer's new profile starts on Centered: healing").toMatch(/click casting on/);
+  expect(addon.eval("return { Vanguard_Setup.pages.layout.hint:GetText(), Vanguard_Setup.pages.layout.choices[2].text:GetText() }"), "a healer's new profile starts on Keep, with Healing marked")
+    .toEqual(["Moves nothing: your frames stay where they are.", "Centered: healing  ·  your role"]);
+  addon.eval('__click("Centered: healing")');
   setupClick(addon, "next");
   expect(addon.eval("return { VanguardDB.profiles.name.positions.raid.point, VanguardDB.profiles.Default.positions.raid.y }"), "Healing moved the new profile's raid grid; Default keeps its own").toEqual(["BOTTOM", -300]);
   expect(addon.eval("return ns.Settings('positions') == VanguardDB.profiles.name.positions"), "the running settings are the new profile's").toBe(true);
@@ -132,15 +136,16 @@ it("first-run setup: a profile of its own copies the shared one without a reload
   expect([fork("name"), fork("Ælfric"), fork("Ææ"), fork(undefined)], "a taken name is numbered; letters a profile can't hold are dropped").toEqual(["name 2", "lfric", "Character", "Character"]);
 });
 
-it("setup layouts: your specialization's role, else your group role, picks the first layout", () => {
-  // The layout a new account's setup picks first, with this Lua run before login.
+it("setup layouts: your specialization's role, else your group role, marks your layout", () => {
+  // The layout setup marks as your role's, with this Lua run before login.
   const guess = (lua) => loggedIn(lua, { firstRun: true }).eval("return ns.Setup.GuessLayout()");
   expect(guess(""), "no role: damage and tanking").toBe("damage");
   expect(guess("__wfgWorld.units.player.role = 'TANK'"), "a tank: damage and tanking").toBe("damage");
   expect(guess("__wfgWorld.spec = 2 GetSpecializationRole = function(i) return i == 2 and 'HEALER' or 'DAMAGER' end"), "a healing spec: healing").toBe("healing");
   expect(guess("__wfgWorld.spec = 1 __wfgWorld.units.player.role = 'HEALER' GetSpecializationRole = function() return 'DAMAGER' end"), "the spec wins over the group role").toBe("damage");
   const healer = loggedIn("__wfgWorld.units.player.role = 'HEALER'", { firstRun: true });
-  expect(healer.eval("return Vanguard_Setup.pages.layout.hint:GetText()"), "a new account's healer starts on Centered: healing").toMatch(/click casting on/);
+  expect(healer.eval("return { Vanguard_Setup.pages.layout.hint:GetText(), Vanguard_Setup.pages.layout.choices[2].text:GetText() }"), "a new account's healer starts on Keep too, Healing marked as theirs")
+    .toEqual(["Moves nothing: your frames stay where they are.", "Centered: healing  ·  your role"]);
 });
 
 it("setup again: Keep and Keep change nothing; Run setup in the options; Start over owes setup after the reload", () => {
@@ -154,22 +159,28 @@ it("setup again: Keep and Keep change nothing; Run setup in the options; Start o
   expect(addon.eval("return { { ns.MoverPoint('raid') }, GetCVar('uiScale') or 'unset', ns.GetModule('ActionBars').settings.size }"), "clicking through keeps positions, UI scale and sizes").toEqual(before);
   addon.eval('ns.Options.Show("profiles")');
   expect(addon.eval('return __click("Start over")'), "Profiles has Start over").toBe(true);
-  expect(addon.eval("return { VanguardCharDB.setupDone, VanguardDB.profiles.Default.positions == nil }"), "it resets the profile and owes setup").toEqual([false, true]);
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "it asks first, saying what is lost and where the copy goes")
+    .toBe("Start over? Every setting in profile Default goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile Default backup.");
+  addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  expect(addon.eval("return { VanguardCharDB.setupDone, VanguardDB.profiles.Default.positions == nil, VanguardDB.profiles['Default backup'].positions.raid.y }"), "it backs the profile up, resets it and owes setup").toEqual([false, true, -300]);
+  expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
   const after = loggedIn("", { firstRun: true, savedVariables: "VanguardDB = { version = 2, setupDone = true, profiles = { Default = {} } }\nVanguardCharDB = { setupDone = false }" });
-  expect(after.eval("return { Vanguard_Setup.caption:GetText(), Vanguard_Setup.pages.layout.hint:GetText() }"), "after the reload setup opens on its layouts, not Keep").toEqual(["Step 1 of 4 · Layout", "Your frames around your character; party and raid just above your player frame."]);
+  expect(after.eval("return { Vanguard_Setup.caption:GetText(), Vanguard_Setup.pages.layout.hint:GetText() }"), "after the reload setup opens on its layouts, Keep picked").toEqual(["Step 1 of 4 · Layout", "Moves nothing: your frames stay where they are."]);
 });
 
 it("setup layouts: Healing puts the raid frames under the character and turns click casting on", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   const layouts = addon.eval("local out = {} for i, b in ipairs(Vanguard_Setup.pages.layout.choices) do out[i] = b.text:GetText() end return out");
-  expect(layouts, "three layouts, damage and tanking first, then Keep").toEqual(["Centered: damage and tanking", "Centered: healing", "Like the game's", "Keep my current layout"]);
+  expect(layouts, "three layouts, damage and tanking first (marked as your role's: no role says healer), then Keep").toEqual(["Centered: damage and tanking  ·  your role", "Centered: healing", "Like the game's", "Keep my current layout"]);
   expect(addon.eval('return __click("Centered: healing")') && addon.eval("return Vanguard_Setup.pages.layout.hint:GetText()"), "picking Healing shows what it does").toMatch(/click casting on/);
   expect(borderOf(addon, "Vanguard_Setup.pages.layout.choices[2]"), "the chosen layout is outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
   setupClick(addon, "next");
   expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing centers the raid frames above your frames").toEqual(["BOTTOM", "BOTTOM", 0, 342]);
   expect(addon.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "click casting and the raid frames are on").toBe(true);
+  expect(chatHas(addon, /Profile Default as it was before setup is saved as profile Default backup\./), "the profile was backed up before Healing applied").toBe(true);
   for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
-  expect(addon.eval("return Vanguard_Reload == nil"), "nothing was off, so no reload is offered").toBe(true);
+  addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
+  expect(addon.eval("return Vanguard_Reload.title:GetText()"), "nothing was off, so the reload is Done's own").toMatch(/^Setup is done\./);
   const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: "VanguardDB = { profiles = { Default = { modules = { ClickCast = false, RaidFrames = false } } } }" });
   off.eval('__click("Centered: healing")');
   setupClick(off, "next");
@@ -197,6 +208,7 @@ it("setup layouts: Damage and tanking restores Vanguard's defaults, undoing Heal
   expect(addon.eval("return { ns.MoverPoint('raid') }"), "picking Damage and tanking puts the raid frames back").toEqual(home);
   expect(addon.eval("return VanguardDB.profiles.Default.positions.raid == nil"), "and forgets the saved spot").toBe(true);
   const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: 'VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, positions = { raid = { point = "TOP", relPoint = "CENTER", x = 0, y = -200 } } } } }' });
+  off.eval('__click("Centered: damage and tanking")');
   setupClick(off, "next");
   expect(off.eval("return VanguardDB.profiles.Default.positions.raid == nil"), "without raid frames built, the saved spot is cleared for next time").toBe(true);
 });
@@ -410,11 +422,12 @@ it("setup screen: this screen's preset is picked; Keep changes nothing; a preset
   setupClick(addon, "next");
   const [labels, hint] = screenPage(addon);
   expect(labels, "four presets, this screen's marked, then Keep").toEqual(["1080p (1920 x 1080)", "1440p (2560 x 1440)  ·  your screen", "4K (3840 x 2160)", "Ultrawide (3440 x 1440)", "Keep my current sizes"]);
-  expect(borderOf(addon, "Vanguard_Setup.pages.screen.choices[2]"), "and picked, outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
-  expect(hint, "the hint says what it sets").toBe("UI scale 70%, action buttons 38 px, raid tiles 110 x 48, text 105%.");
+  expect(borderOf(addon, "Vanguard_Setup.pages.screen.choices[5]"), "Keep is picked, outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  expect(hint, "Keep says it changes nothing, and who sets the UI scale now").toBe("Changes nothing: your UI scale stays with Vanguard's pixel-perfect scale (General, Look), your sizes as they are.");
+  addon.eval('__click("1440p")');
+  expect(screenPage(addon)[1], "a preset says what it sets, and that it moves the game's own slider").toBe("Moves the game's UI Scale slider to 70% (Vanguard's pixel-perfect scale goes off); action buttons 38 px, raid tiles 110 x 48, text 105%.");
   const before = screenSizes(addon);
   addon.eval('__click("Keep my current sizes")');
-  expect(screenPage(addon)[1], "Keep says it changes nothing").toMatch(/^Changes nothing/);
   setupClick(addon, "next");
   expect(screenSizes(addon), "and it doesn't").toEqual(before);
   setupClick(addon, "back");
@@ -491,7 +504,7 @@ it("first-run setup: Done suggests exporting a profile string; Skip and a rerun 
   expect(addon.eval("return Vanguard_Question:IsShown() and Vanguard_Question.title:GetText()"), "Done asks about keeping a copy").toBe("Keep a copy of these settings outside the game? Export a profile string and save it somewhere safe; /vg import brings it back.");
   addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
   expect(addon.eval("return Vanguard_TextDialog:IsShown() and Vanguard_TextEdit:GetText():sub(1, 12)"), "Export shows the whole profile's string to copy").toBe("VG1:profile:");
-  expect(chatHas(addon, /The new raid tile size shows after a reload\. Type \/reload once you've copied the string\.$/), "a reload still owed is said in chat, not over the string").toBe(true);
+  expect(chatHas(addon, /Setup is done\. Type \/reload once you've copied the string\.$/), "the reload Done owes is said in chat, not over the string").toBe(true);
   expect(addon.eval("return Vanguard_Reload == nil"), "with no dialog on top").toBe(true);
   const skipped = loggedIn(CLICK_LUA, { firstRun: true });
   skipped.eval('__click("Skip setup")');
