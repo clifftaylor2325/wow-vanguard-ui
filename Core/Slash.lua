@@ -13,7 +13,7 @@ local HELP = {
   "frames               list the movable frames",
   "grid [size|on|off]   the unlock-mode grid; snap on|off   snapping while dragging",
   "texelsnap [on|off]   still borders, fills and lines snap to the pixel grid (a test; off by default)",
-  "accent <rrggbb|name> set the accent color (brass, arcane, fel, void, ember); accent reset",
+  "accent <rrggbb|name> set the accent color (brass, arcane, jade, orchid, copper); accent reset",
   "theme reset          every theme setting back to default",
   "modules              list modules; enable|disable <module> (then /reload)",
   "skins                addons skinned through Vanguard.RegisterSkin; skins <addon> on|off",
@@ -110,7 +110,7 @@ local function accentCommand(rest)
   end
   local r, g, b = T.ParseColor(rest:lower())
   if not r then
-    return chat("Usage: /vg accent rrggbb | brass | arcane | fel | void | ember")
+    return chat("Usage: /vg accent rrggbb | brass | arcane | jade | orchid | copper")
   end
   T.SetAccent(r, g, b)
   chat("Accent set to " .. rest:lower() .. ".")

@@ -40,10 +40,18 @@ it("unlock mode", () => {
   expect(addon.eval(`return ns.MoverHandleForTest("a"):IsShown()`) === false, "/vg lock hides the handles").toBeTruthy();
 });
 
+// The accent's rrggbb after /vg accent <name>.
+const accentAfter = (addon, name) => {
+  addon.slash(`accent ${name}`);
+  return addon.eval('return ns.Theme.Hex("accent")').slice(2);
+};
+
 it("accent presets", () => {
   const addon = loggedIn();
-  addon.slash("accent void");
-  expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.void[1]") === true, "/vg accent void sets the void preset").toBeTruthy();
+  addon.slash("accent orchid");
+  expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.orchid[1]") === true, "/vg accent orchid sets the orchid preset").toBeTruthy();
+  expect(["fel", "void", "ember", "green", "purple", "red"].map((n) => accentAfter(addon, n)), "the names before #231 give jade, orchid and copper (#231)").toEqual(["4fbfa3", "b48ae8", "c8784a", "4fbfa3", "b48ae8", "c8784a"]);
+  expect(addon.eval("return ns.Theme.PRESET_ORDER"), "the swatches' order").toEqual(["brass", "arcane", "jade", "orchid", "copper"]);
   addon.slash("accent blue");
   expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]") === true, "the old preset names still work (blue is arcane)").toBeTruthy();
   addon.slash("accent #3D9EFF");
@@ -100,4 +108,9 @@ it("a grid size from a hand-edited profile string is kept to 8-256 px, so unlock
   expect(addon.eval("return ns.GridLineCount()"), "0 px (a loop that never ends) draws as 8 px too").toBe(376);
   addon.eval("ns.ShowGrid(1000)");
   expect(addon.eval("return ns.GridLineCount()"), "and above 256 px as 256 (7 + 5 lines)").toBe(12);
+});
+
+it("accent presets (#231): a profile that picked ember keeps its colour", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB = { profiles = { Default = { theme = { accent = { 0xe0 / 255, 0x66 / 255, 0x4b / 255 } } } } }" });
+  expect(addon.eval('return ns.Theme.Hex("accent")').slice(2), "the old ember stays, as its own hex").toBe("e0664b");
 });

@@ -82,15 +82,15 @@ Colours that are not tokens on purpose: class colours come from the client (`RAI
 
 `T.PRESET_ORDER` is the order of the swatches under General → Look and in the setup wizard; `/vg accent <name>` takes the same names, any `rrggbb` or `#rrggbb`, or `reset`.
 
-| Preset | Hex | Older name that still works |
+| Preset | Hex | Older names that still work |
 | --- | --- | --- |
 | brass (default) | `d9a441` | bronze |
 | arcane | `5aa2f0` | blue |
-| fel | `5bcb7e` | green |
-| void | `a47bf0` | purple |
-| ember | `e0664b` | red |
+| jade | `4fbfa3` | fel, green |
+| orchid | `b48ae8` | void, purple |
+| copper | `c8784a` | ember, red |
 
-The state colours (`good`, `warn`, `bad`) are kept apart from every preset, so an accent never reads as a warning. Arcane shares its hex with `info`.
+The state colours (`good`, `warn`, `bad`) are kept apart from every preset, so an accent never reads as a warning, and jade, orchid and copper keep clear of item quality and class colours too (#231: they replaced fel `5bcb7e`, near Uncommon and Hunter; void `a47bf0`, near Epic and Warlock; and ember `e0664b`, near `bad`). An older name now gives the new colour; a profile that picked fel, void or ember keeps that colour as its own hex. Arcane shares its hex with `info`.
 
 ## Text
 
@@ -268,5 +268,5 @@ The work plan (P4.1) described the theme from an earlier review. The code is wha
 - **Spacing grid.** The plan speaks of a 4/8 px grid. The code has no spacing tokens and uses mostly even offsets (2 to 16); the 4 px steps above are the rule for new work, not a description of every existing layout.
 - **Bar textures.** The plan names "bar textures" generally. The code has three built-ins (Vanguard, Soft, Flat) and, since P3.5, every bar texture shared through LibSharedMedia; it also shares its own bars and fonts under the "Vanguard ..." names.
 - **Fonts.** Besides Fira Sans Condensed and the game's font, the Font picker lists LibSharedMedia fonts (P3.5), and the faction look adds Cinzel and Metamorphous for titles and headings.
-- **Accents.** The plan's five presets match the code (brass, arcane, fel, void, ember); the code also accepts any hex colour and the older names bronze, blue, green, purple and red.
+- **Accents.** The plan's five presets were brass, arcane, fel, void and ember; the code now has brass, arcane, jade, orchid and copper (#231) and also accepts any hex colour and the older names fel, void, ember, bronze, blue, green, purple and red.
 - **Default sizes** of unit frames, raid tiles, action buttons, the menu strip and windows are not theme tokens; they live in each module and the setup wizard's screen presets (`Core/Setup.lua`), and are described in the README.
