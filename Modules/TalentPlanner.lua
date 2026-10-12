@@ -38,6 +38,8 @@ TP.LEVEL_ABOVE = 5
 TP.RING = 6
 -- The bar: its size, where it sits from the window's bottom left, the Plan switch's and Spend planned's widths.
 TP.BAR_WIDTH, TP.BAR_HEIGHT, TP.BAR_X, TP.BAR_Y, TP.SWITCH_WIDTH, TP.SPEND_WIDTH = 520, 24, 14, 10, 84, 110
+-- The summary's room: how far short of the game's Apply Changes button it ends, and its lines at most.
+TP.APPLY_GAP, TP.SUMMARY_LINES = 12, 2
 -- How long after a level-up the points are read (the game fills the new point in a moment).
 TP.LEVEL_DELAY = 1
 
@@ -460,16 +462,49 @@ function TP.SetPlanning(on)
   TP.Refresh()
 end
 
+-- The whole summary in a tooltip, over the summary on the bar (cut short there when it doesn't fit).
+local function showSummaryTip(area)
+  local text = TP.bar.summary:GetText()
+  if not text or text == "" then return end
+  GameTooltip:SetOwner(area, "ANCHOR_TOP")
+  GameTooltip:SetText("Talent plan", T.RGB("text"))
+  local r, g, b = T.RGB("text2")
+  GameTooltip:AddLine(text, r, g, b, true)
+  GameTooltip:Show()
+end
+
+-- The summary's right end: TP.APPLY_GAP short of the game's Apply Changes button (its ApplyButton, centred
+-- on the window's foot) where the window has one, else the bar's end.
+local function summaryEnd(bar, frame)
+  local apply = frame.ApplyButton
+  if type(apply) == "table" and apply.GetLeft then return bar.summary:SetPoint("RIGHT", apply, "LEFT", -TP.APPLY_GAP, 0) end
+  bar.summary:SetPoint("RIGHT", bar, "RIGHT", 0, 0)
+end
+
+-- The summary after Spend planned: kept clear of the game's buttons (TP.SUMMARY_LINES lines at most, the
+-- client cutting the rest), the whole of it in a tooltip on hover.
+local function barSummary(bar, frame)
+  bar.summary = T.Text(bar:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  bar.summary:SetPoint("LEFT", bar.spend, "RIGHT", 10, 0)
+  summaryEnd(bar, frame)
+  bar.summary:SetJustifyH("LEFT")
+  bar.summary:SetMaxLines(TP.SUMMARY_LINES)
+  bar.tip = CreateFrame("Frame", nil, bar)
+  bar.tip:SetAllPoints(bar.summary)
+  bar.tip:EnableMouseMotion(true)
+  bar.tip:SetScript("OnEnter", showSummaryTip)
+  bar.tip:SetScript("OnLeave", function() GameTooltip:Hide() end)
+end
+
 -- The bar's controls: the Plan switch, Spend planned, and the summary after them.
-local function barControls(bar)
+local function barControls(bar, frame)
   bar.plan = W.Check(bar, "Plan", function() return TP.planning == true end, TP.SetPlanning, TP.SWITCH_WIDTH)
   bar.plan:SetHeight(TP.BAR_HEIGHT)
   bar.plan:SetPoint("LEFT", 0, 0)
   bar.spend = W.Button(bar, "Spend planned", function() TP.SpendPlanned() end, TP.SPEND_WIDTH)
   bar.spend:SetHeight(TP.BAR_HEIGHT - 4)
   bar.spend:SetPoint("LEFT", bar.plan, "RIGHT", 8, 0)
-  bar.summary = T.Text(bar:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  bar.summary:SetPoint("LEFT", bar.spend, "RIGHT", 10, 0)
+  barSummary(bar, frame)
 end
 
 -- The planner's bar along the window's foot, made once.
@@ -478,7 +513,7 @@ local function buildBar(frame)
   bar:SetSize(TP.BAR_WIDTH, TP.BAR_HEIGHT)
   bar:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", TP.BAR_X, TP.BAR_Y)
   bar:SetFrameLevel(frame:GetFrameLevel() + TP.LEVEL_ABOVE)
-  barControls(bar)
+  barControls(bar, frame)
   TP.bar = bar
 end
 
