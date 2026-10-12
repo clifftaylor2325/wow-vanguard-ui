@@ -79,6 +79,14 @@ Claude usage and CI minutes are both limited. Pick the cheapest model and effort
 - **Merging in a wave.** When several PRs are open, merge in the order that keeps `main` moving under the fewest branches (core and harness first, then features), and bring `main` into a branch once, right before it merges, not after every merge.
 - **GSD.** `.planning/config.json` sets `model_profile` to `budget` for the same reason. A phase plan states the model and effort a plan needs only when it is not the default above.
 
+## Agent tooling
+
+- **Edit-time check.** `.claude/settings.json` runs `scripts/agent-check.mjs` after every Edit or Write: the code-quality rules and luacheck (when installed) on that one file, fed back as hook output. Fix what it says before moving on; it is the same scanner CI runs. `node scripts/agent-check.mjs <file>` runs it by hand.
+- **Skills** in `.claude/skills/`: `add-module`, `add-harness-scenario`, `fix-visual-issue`, `ready-pr`. Use the one that matches the task; each is the worked example of the rules above.
+- **Patterns.** `docs/PATTERNS.md` shows the canonical shape of a module, a guarded callback, frame state, a secret-safe read, combat-deferred work, events and timers, a migration and a scenario. Copy from there, not from the nearest file.
+- **Before a PR is marked ready**, run the built-in `code-review` skill on the diff once (the `ready-pr` skill says how). It catches what the harness cannot.
+- **Annotations.** The `ns.*` helpers in `Core/` carry `---@param` and `---@return` lines; keep them when you change a signature, and add them to a new helper.
+
 ## Don't
 
 - Don't commit to `main` directly. Work on a branch and open a PR.
