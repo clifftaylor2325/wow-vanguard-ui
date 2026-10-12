@@ -580,13 +580,6 @@ end
 
 -- Combat ----------------------------------------------------------------------------------
 
--- A fight started with setup open: step aside until it ends.
-local function pause()
-  if not S.Step() then return end
-  state.paused = true
-  frame:Hide()
-end
-
 -- The fight ended: bring setup back on the step it was on.
 local function resume()
   if not state.paused then return end
@@ -595,8 +588,15 @@ local function resume()
   showStep(state.step)
 end
 
+-- A fight started with setup open: step aside, and come back through the combat queue when it ends.
+local function pause()
+  if not S.Step() then return end
+  state.paused = true
+  frame:Hide()
+  ns.AfterCombat(resume, "setup")
+end
+
 ns.On("PLAYER_REGEN_DISABLED", pause)
-ns.On("PLAYER_REGEN_ENABLED", resume)
 
 -- A new character on an account that has run setup owes it, starting with which profile to use
 -- (after Core/DB.lua's handler has read the saved tables).

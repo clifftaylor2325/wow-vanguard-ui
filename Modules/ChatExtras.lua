@@ -11,6 +11,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgWatched = ns.FrameState("vgWatched")
+
 local T = ns.Theme
 
 local CX = ns.Module("ChatExtras", { defaults = { links = true, copy = true, shortChannels = false, ctrlScroll = true } })
@@ -138,8 +141,8 @@ end
 
 -- Follows a chat window's new lines and wheel, once per window.
 local function watchWindow(frame)
-  if type(frame) ~= "table" or frame.vgWatched then return end
-  frame.vgWatched = true
+  if type(frame) ~= "table" or vgWatched[frame] then return end
+  vgWatched[frame] = true
   if type(frame.TransformMessages) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(frame, "AddMessage", ns.Guard("hook AddMessage", shortenAdded)) end
   frame:HookScript("OnMouseWheel", jump)
 end

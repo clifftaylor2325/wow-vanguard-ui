@@ -364,7 +364,7 @@ const gameSwing = (addon, hand) => addon.eval(`local f = SwingTimer${hand}Frame 
 it("swing timer: the game's own bars are put away while Vanguard's is on, out of combat", () => {
   const addon = loggedIn(UNITS_ENV + SWING_ENV + GAME_SWING_ENV);
   expect(["MainHand", "OffHand", "Ranged"].map((h) => putAway(addon, `SwingTimer${h}Frame`)), "all three hidden, as the game's unit frames are").toEqual([true, true, true]);
-  expect(addon.eval("return SwingTimerMainHandFrame:IsEventRegistered('PLAYER_ENTERING_WORLD') or SwingTimerMainHandFrame.vgSkinned == true"), "no events, and not dressed").toBe(false);
+  expect(addon.eval("return SwingTimerMainHandFrame:IsEventRegistered('PLAYER_ENTERING_WORLD') or ns.FrameState('vgSkinned')[SwingTimerMainHandFrame] == true"), "no events, and not dressed").toBe(false);
   const fight = createAddon({ savedVariables: SETUP_DONE });
   fight.eval(UNITS_ENV + SWING_ENV + GAME_SWING_ENV);
   setCombat(fight, true);
@@ -385,7 +385,7 @@ it("swing timer: with Vanguard's off, the game's own bars are drawn in the theme
   const again = gameSwing(addon, "MainHand");
   expect([again.bg, again.border, again.painted], "the range look and a second show fade the art again, painting nothing more").toEqual([0, 0, main.painted]);
   const bare = loggedIn(UNITS_ENV + SWING_ENV + 'CreateFrame("Frame", "SwingTimerMainHandFrame", UIParent) SwingTimerOffHandFrame = CreateFrame("Frame", nil, UIParent) SwingTimerOffHandFrame.StatusBar = CreateFrame("StatusBar", nil, SwingTimerOffHandFrame)', { savedVariables: "VanguardDB.profiles = { Default = { SwingTimer = { show = 'never' } } }" });
-  expect([bare.eval("return SwingTimerMainHandFrame.vgSkinned == nil and SwingTimerOffHandFrame.vgSkinned"), bare.eval("return #ns.errors")], "a bar without its fill is left alone; one without labels, art or range look is still dressed").toEqual([true, 0]);
+  expect([bare.eval("return ns.FrameState('vgSkinned')[SwingTimerMainHandFrame] == nil and ns.FrameState('vgSkinned')[SwingTimerOffHandFrame]"), bare.eval("return #ns.errors")], "a bar without its fill is left alone; one without labels, art or range look is still dressed").toEqual([true, 0]);
   expect(loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { SwingTimer = { show = 'never' } } }" }).eval("return #ns.errors"), "a client without the game's swing timer loads cleanly").toBe(0);
 });
 

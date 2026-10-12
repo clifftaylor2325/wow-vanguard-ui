@@ -11,6 +11,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgSkinned = ns.FrameState("vgSkinned")
+
 local T = ns.Theme
 
 local CB = ns.Module("CastBars", {
@@ -264,8 +267,8 @@ end
 -- every show and after the game redraws it. Once; a client without it is skipped.
 function CB.SkinOverlay()
   local bar = _G.OverlayPlayerCastingBarFrame
-  if type(bar) ~= "table" or not bar.SetStatusBarTexture or bar.vgSkinned then return end
-  bar.vgSkinned = true
+  if type(bar) ~= "table" or not bar.SetStatusBarTexture or vgSkinned[bar] then return end
+  vgSkinned[bar] = true
   T.HudPanel(bar, { inset = true })
   styleOverlay(bar)
   bar:HookScript("OnShow", styleOverlay)

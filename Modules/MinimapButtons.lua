@@ -6,6 +6,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgGathered = ns.FrameState("vgGathered")
+
 local T = ns.Theme
 
 local MB = ns.Module("MinimapButtons", { defaults = { drawer = true } })
@@ -38,8 +41,8 @@ end
 
 -- Takes one addon button into the drawer, kept in its cell when the addon moves it again.
 local function gather(b)
-  if b.vgGathered then return end
-  b.vgGathered = true
+  if vgGathered[b] then return end
+  vgGathered[b] = true
   MB.buttons[#MB.buttons + 1] = b
   local n = #MB.buttons
   b:SetParent(MB.drawer)

@@ -126,20 +126,51 @@ local function forwardHover(overlay, btn)
   overlay:SetScript("OnLeave", function() local fn = btn:GetScript("OnLeave") if fn then fn(btn) end end)
 end
 
+-- Reload overlays and the buttons they cover (overlay -> button).
+local overlays = setmetatable({}, { __mode = "k" })
+
+-- Covers a button with its overlay, shown while the button is (out of combat only).
+local function cover(o)
+  local btn = overlays[o]
+  o:ClearAllPoints()
+  o:SetAllPoints(btn)
+  o:SetFrameStrata(btn:GetFrameStrata())
+  o:SetFrameLevel(btn:GetFrameLevel() + 5)
+  o:SetShown(btn:IsVisible())
+end
+
+-- The button showed or hid: its overlay follows, out of combat (in combat it is put away).
+local function follow(o)
+  if not ns.InCombat() then cover(o) end
+end
+
+-- A fight starts (just before the lockdown): every overlay hides and lets go of its
+-- button, so no frame of the addon holds or hangs on a protected one in combat (the
+-- client would protect it too: the options window could not open or close). They come back after.
+local function putAway()
+  for o in pairs(overlays) do
+    o:Hide()
+    o:ClearAllPoints()
+    ns.AfterCombat(function() cover(o) end, o)
+  end
+end
+
 -- Lays an overlay over a button that runs the /reload macro when clicked.
 -- Blizzard's own prompts call ReloadUI() from secure code (Blizzard_StaticPopup_Game);
 -- an addon's nearest equivalent is a secure action button whose macro the client
--- runs on a hardware click, out of combat. The overlay is a protected frame.
+-- runs on a hardware click, out of combat. The overlay is a protected frame, so it
+-- hangs on UIParent, not on the button, and covers the button only out of combat.
 local function addReloadOverlay(btn)
-  local o = CreateFrame("Button", nil, btn, "SecureActionButtonTemplate")
-  o:SetAllPoints(btn)
-  o:SetFrameLevel(btn:GetFrameLevel() + 5)
+  local o = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
+  overlays[o] = btn
   o:RegisterForClicks("AnyDown", "AnyUp")
   o:SetAttribute("useOnKeyDown", false)
   o:SetAttribute("type", "macro")
   o:SetAttribute("macrotext", "/reload")
   forwardHover(o, btn)
+  for _, script in ipairs({ "OnShow", "OnHide" }) do btn:HookScript(script, function() follow(o) end) end
   btn.reloadOverlay = o
+  cover(o)
 end
 
 -- A click on a reload button before its overlay exists (it was built in combat):
@@ -159,6 +190,7 @@ function ns.ReloadButton(btn)
   ns.OutOfCombat(function() addReloadOverlay(btn) end, btn)
   return btn
 end
+ns.On("PLAYER_REGEN_DISABLED", putAway)
 
 -- Builds the reload dialog once: the reason, a Reload button and Later.
 local function reloadDialog()
