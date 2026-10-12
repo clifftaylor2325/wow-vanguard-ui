@@ -47,9 +47,11 @@ end
 
 -- Named colors: "rrggbb", or { "rrggbb", alpha }.
 local TOKENS = {
-  -- Surfaces
-  void = "0b0d11", panel = { "12151b", 0.94 }, raised = "1a1e26", inset = { "07080b", 0.95 },
-  edge = "000000", sheen = { "ffffff", 0.06 }, divider = "242a34", shade = { "000000", 0.5 },
+  -- Surfaces, stepped about 0.04 apart in OKLCH lightness (#229): inset, panel, raised,
+  -- raisedHover (an opaque control under the mouse), divider, borderHi (inner bevel, focus base).
+  void = "0b0d11", panel = { "13161c", 0.94 }, raised = "1b1f26", inset = { "0c0e13", 0.95 },
+  raisedHover = "262a32", borderHi = "43484f",
+  edge = "000000", sheen = { "ffffff", 0.06 }, divider = "2f343d", shade = { "000000", 0.5 },
   hover = { "ffffff", 0.08 }, darkBar = "2a3039", checked = { "ffffff", 0.25 }, gridline = { "ffffff", 0.12 },
   textShadow = { "000000", 0.9 },
   -- The dark sweep over an aura icon as its time runs out.

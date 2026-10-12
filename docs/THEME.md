@@ -20,20 +20,24 @@ The look in one line: flat dark slate panels, one-screen-pixel borders, one acce
 | Token | Default | Setting | Role |
 | --- | --- | --- | --- |
 | `accent` | `d9a441` (brass) | `accent` | The one highlight colour: selected nav items, focus and target edges, glows, links, header rules, the logo's left diamond, the minimap's corner diamonds. Changed by `/vg accent`, the swatches under General → Look, or the hex box beside them. |
-| `panel` | `12151b` at 0.94 | `panel` | The fill of every panel (`T.Panel`, `T.HudPanel`). Softened raid bars mix their class colour into it. |
-| `inset` | `07080b` at 0.95 | `inset` | The darker fill of buttons, edit boxes and inset panels (`opts.inset`). |
+| `panel` | `13161c` at 0.94 | `panel` | The fill of every panel (`T.Panel`, `T.HudPanel`). Softened raid bars mix their class colour into it. |
+| `inset` | `0c0e13` at 0.95 | `inset` | The darker fill of buttons, edit boxes and inset panels (`opts.inset`). |
 | `edge` | `000000` | `border` | Every one-pixel border unless a frame sets its own (`T.SetBorder`) or asks for the accent (`opts.accent`). |
 
-`panel`, `inset` and `border` have no control in the options window: they are kept in the profile (and its export string) and go back to these defaults with `/vg theme reset`.
+`panel`, `inset` and `border` have no control in the options window: they are kept in the profile (and its export string) and go back to these defaults with `/vg theme reset`. A profile keeps the values it saved, so a profile made before the surfaces were re-stepped (#229) keeps `12151b` and `07080b` until `/vg theme reset`.
 
 ### Fixed tokens
+
+The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) step about 0.04 apart in OKLCH lightness at one cool hue, so each separates from the next at one pixel.
 
 | Group | Token | Value | Role |
 | --- | --- | --- | --- |
 | Surfaces | `void` | `0b0d11` | Near-black for text and marks drawn on an accent fill: a selected segment or condition, the setup wizard's check. |
-| | `raised` | `1a1e26` | The lighter fill of raised panels (`opts.raised`): dropdown menus, popovers, the spell picker, keybind mode. |
+| | `raised` | `1b1f26` | The lighter fill of raised panels (`opts.raised`): dropdown menus, popovers, the spell picker, keybind mode. |
+| | `raisedHover` | `262a32` | An opaque control under the mouse, in place of the `hover` wash. |
+| | `borderHi` | `43484f` | A lighter line: the inner bevel and the base of a focus ring. |
 | | `sheen` | `ffffff` at 0.06 | The one-pixel light line inside a panel's top border. |
-| | `divider` | `242a34` | Lines between sections (the options window). |
+| | `divider` | `2f343d` | Lines between sections (the options window). |
 | | `shade` | `000000` at 0.5 | Dimming behind or under things: the options nav, unit frame bar backgrounds, the cast bar's latency zone, the AFK screen. |
 | | `hover` | `ffffff` at 0.08 | The faint white wash under the mouse on buttons, rows, raid tiles and menu icons. |
 | | `darkBar` | `2a3039` | The health bar of the raid style "Dark, class-coloured names". |
