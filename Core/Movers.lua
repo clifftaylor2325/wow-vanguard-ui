@@ -141,20 +141,6 @@ function ns.SetMoverDefault(key, default)
   if m.handle then anchor(m.handle, m) end
 end
 
--- Mover watchers: key -> fn(key), run when that mover's saved position changes
--- (moved, nudged, or reset); a frame whose own default depends on another's spot.
-local watchers = {}
-
--- Runs fn(key) whenever the mover for key is moved or reset (one watcher per key).
-function ns.WatchMover(key, fn)
-  watchers[key] = fn
-end
-
--- Tells the key's watcher that the mover's point changed.
-local function changed(key)
-  if watchers[key] then watchers[key](key) end
-end
-
 -- Saving ------------------------------------------------------------------------------
 
 -- Saves a position for a mover (keeping its scale and opacity), moves its frame, and keeps its handle on it.
@@ -166,7 +152,6 @@ local function savePosition(m, point, relPoint, x, y)
     anchor(m.handle, m)
     ns.ShowCoords(m)
   end
-  changed(m.key)
   if ns.OnMoverMoved then ns.OnMoverMoved(m.key) end
 end
 
@@ -432,7 +417,6 @@ local function setLook(key, field, value, range)
   entry(key)[field] = value ~= 1 and value or nil
   place(m)
   if m.handle then handleFor(m) end
-  changed(key)
   if ns.OnMoverMoved then ns.OnMoverMoved(key) end
 end
 
@@ -483,7 +467,6 @@ local function resetOne(k)
   saved()[k] = nil
   place(movers[k])
   if movers[k].handle then handleFor(movers[k]) end
-  changed(k)
 end
 
 -- Forgets a saved position, scale and opacity (or all with "all") and puts frames back. Returns how many.

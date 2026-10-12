@@ -189,15 +189,6 @@ function GW.FadeNamed(names)
   end
 end
 
--- A skin function for windows with more art than GW.ART: GW.Skin, then the parts
--- named in keys faded (see GW.FadeParts).
-function GW.SkinWith(keys)
-  return function(frame)
-    GW.Skin(frame)
-    GW.FadeParts(frame, keys)
-  end
-end
-
 -- A breath or fatigue bar: the window skin hugging the bar (no room around it), and its bar in the theme's bar texture.
 function GW.SkinTimer(frame)
   GW.Skin(frame, 0)

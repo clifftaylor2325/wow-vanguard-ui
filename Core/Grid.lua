@@ -67,12 +67,3 @@ function ns.HideGrid()
     grid:Hide()
   end
 end
-
--- How many grid lines are showing (for tests and /vg status).
-function ns.GridLineCount()
-  local n = 0
-  for _, t in ipairs(lines) do
-    n = n + (t:IsShown() and 1 or 0)
-  end
-  return grid and grid:IsShown() and n or 0
-end
