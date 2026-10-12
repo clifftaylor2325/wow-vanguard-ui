@@ -356,13 +356,6 @@ function GetCreatureDifficultyColor(level)
 end
 GetQuestDifficultyColor = GetCreatureDifficultyColor
 
--- Threat status colors: 0 gray through 3 red.
-function GetThreatStatusColor(status)
-  local colors = { [0] = { 0.69, 0.69, 0.69 }, { 1, 1, 0.47 }, { 1, 0.6, 0 }, { 1, 0, 0 } }
-  local c = colors[status] or colors[0]
-  return c[1], c[2], c[3]
-end
-
 -- A number as the client abbreviates it (12.3K, 1.2M); secrets stay secret.
 function AbbreviateNumbers(v)
   if issecretvalue(v) then return world.secret(v.n and AbbreviateNumbers(v.n)) end
