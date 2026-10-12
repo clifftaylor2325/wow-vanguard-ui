@@ -18,8 +18,8 @@ local HELP = {
   "skins                addons skinned through Vanguard.RegisterSkin; skins <addon> on|off",
   "profile [name]       show profiles, or switch this character to one",
   "profile new|copy|delete <name>, profile reset   manage profiles",
-  "export [module]      copy the profile (or one module's settings) as a string",
-  "import               paste a string from /vg export",
+  "export [part ...|pick]   copy the profile as a string, or only some parts of it: layout, situations, global or a module's name; pick opens a panel with a switch for each part",
+  "import               paste a string from /vg export: a whole profile becomes a new profile, a partial one merges into yours (backed up first)",
   "spec [profile|off]   use a profile whenever you're in this specialization",
   "copy                 the recent chat as plain text, ready to copy",
   "situation [record <name>|stop|clear [name]|list]   Situations: record a layout and settings for solo, party, raid, pvp, instance or resting",
@@ -228,21 +228,46 @@ local function profileCommand(rest)
   useProfile(rest)
 end
 
--- /vg export [module]
+-- The words of a command's rest, in order.
+local function words(rest)
+  local list = {}
+  for word in rest:gmatch("%S+") do list[#list + 1] = word end
+  return list
+end
+
+-- /vg export [part ...|pick]: the whole profile, the parts named (layout, situations,
+-- global, a module), or pick: the panel with a switch for each part.
 local function exportCommand(rest)
-  local text, err = ns.ExportProfile(rest ~= "" and rest or nil)
+  if rest:lower() == "pick" then return ns.ExportDialog() end
+  local text, err = ns.ExportProfile(rest ~= "" and words(rest) or nil)
   if not text then return chat("Nothing to export: " .. err .. ".") end
   ns.ShowText("Vanguard export (" .. (rest ~= "" and rest or "profile " .. ns.ProfileName()) .. ")  Ctrl+C to copy", text)
 end
 
--- /vg import: a box to paste into. A whole profile that carries its UI scale asks
--- whether to use it first; then the reload is offered.
+-- The import box's progress while a large string is read: "Importing… 40%" in its title.
+local function importProgress(percent)
+  ns.TextProgress("Importing… " .. percent .. "%")
+end
+
+-- The end of /vg import: why it failed (the box stays, to try again), or the notes (fonts and
+-- textures this client lacks, the backup), the UI scale question for a whole profile that
+-- carries one, then the reload (when nothing needs one, what happened is said in chat at once).
+local function imported(done, detail)
+  if not done then
+    ns.TextProgress(nil)
+    return chat("Import failed: " .. detail .. ".")
+  end
+  ns.HideText()
+  printLines(detail.notes)
+  if not detail.reload then chat(done) end
+  ns.OfferDisplay(detail.display, function() if detail.reload then ns.OfferReload(done) end end)
+end
+
+-- /vg import: a box to paste into. A large string is read a frame's work at a time, with
+-- its progress in the box's title (Core/ProfileStrings.lua's ns.StartImport).
 local function importCommand()
   ns.AskText("Paste a Vanguard string, then Import", function(text)
-    local done, detail = ns.ImportProfile(text)
-    if not done then return chat("Import failed: " .. detail .. ".") end
-    ns.HideText()
-    ns.OfferDisplay(detail, function() ns.OfferReload(done) end)
+    if not ns.StartImport(text, importProgress, imported) then chat("Import failed: an import is still running.") end
   end)
 end
 
