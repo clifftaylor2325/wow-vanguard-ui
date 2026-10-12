@@ -11,7 +11,8 @@
 -- Three rules, always on:
 --  * Field writes: addon code that stores a new field on a game widget plants
 --    taint in game (frame.vgSkinned = true). Keep such state in a weak-keyed
---    side table instead.
+--    side table instead. Replacing a game widget's script (SetScript) is
+--    recorded the same way: hook it with HookScript.
 --  * Combat lockdown: while in combat (world.combat(true)), addon code that
 --    calls a protected method (Show, Hide, SetPoint, SetSize, SetAttribute...)
 --    on a protected frame is blocked as the client blocks it: nothing happens
@@ -144,6 +145,19 @@ local function rewrap(name, wrap)
   local orig = methods[name]
   if orig then methods[name] = wrap(orig) end
 end
+
+-- SetScript on a game widget from addon code: replaces the game's own handler
+-- (the addon hooks it instead, with HookScript). Recorded; the script is still set.
+local function guardScript(set)
+  return function(self, name, fn)
+    local at = callerOf(1)
+    if rawget(self, "__byGame") and byAddon(at) then
+      violate(string.format("script replaced: %s set %s on the game's frame %s", where(at), tostring(name), label(self)))
+    end
+    return set(self, name, fn)
+  end
+end
+rewrap("SetScript", guardScript)
 
 -- A region made by CreateTexture or CreateFontString belongs to whoever called it.
 for _, name in ipairs({ "CreateTexture", "CreateFontString" }) do

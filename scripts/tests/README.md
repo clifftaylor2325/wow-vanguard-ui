@@ -199,7 +199,8 @@ error: the test fails unless `expectErrors` names it.
 - **Field writes.** Addon code that stores a field on a game frame is recorded
   (`field write: Modules/X.lua:12 stored the field vgFoo on the game's frame
   ChatFrame1`). Keep that state in `ns.FrameState("vgFoo")[frame]`; a test reads it
-  the same way.
+  the same way. Replacing a game frame's script with `SetScript` is recorded too
+  (`script replaced: ...`): hook it with `HookScript`.
 - **Combat lockdown.** In combat, addon code that calls a protected method
   (`Show`, `Hide`, `SetPoint`, `SetSize`, `SetAttribute` and the like) on a
   protected frame is blocked: nothing happens, ADDON_ACTION_BLOCKED fires and the
