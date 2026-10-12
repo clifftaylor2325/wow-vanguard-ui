@@ -580,6 +580,14 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: four lines: `Realm: <name> (as in names: <name without spaces>)`, `Ruleset: ...` (a season or `hardcore` where the game names one, else `none named by the client`), `Side: ... Data key: ...`, and `Your name in chat: ...`. The toast shows your friend's name with their realm, and a click whispers them. Characters and auction prices from before still show on tooltips.
 - If it fails, paste: all four lines from both characters, and how your friend's name appeared in chat.
 
+## 17. Situations
+
+### 17.1 The editing banner and settings an override can't hold
+
+- Do: type `/vg situation record raid`, then `/vg` and `/vg unlock`. Look above the options window and at the top center of the screen. On the Nameplates page point at "Cast bar", then at "Threat colors while you have aggro". Click **Stop and save** on either banner. Then record again, `/vg unlock`, and pull a mob (or `/vg lock`).
+- Expect: while recording, a strip with an accent border sits along the top edge of the options window and another at the top center of the screen (while the frames are unlocked), each reading "Editing as: Raid · changes apply only in Raid" with a **Stop and save** button. "Cast bar" is dimmed and its tooltip says "Not recorded for Raid: this setting changes your base profile."; "Threat colors while you have aggro" is not dimmed and has no tooltip. Stop and save ends the recording: chat says what was kept ("Raid: ... saved."), both strips go, and your own layout is back. Entering combat (or locking) removes the screen strip. The Situations page lists what an override can hold, under "What an override holds". [Needs in game: that the strips sit clear of the window's header and the handles, and that the tooltip shows.]
+- If it fails, paste: a screenshot of the window and of the screen top, and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.
