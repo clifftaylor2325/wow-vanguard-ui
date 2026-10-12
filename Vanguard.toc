@@ -132,3 +132,5 @@ Modules/ClickCast.lua
 Modules/ClickCastSpells.lua
 Modules/ClickCastOptions.lua
 Modules/Coexist.lua
+Modules/GroupBoard.lua
+Modules/GroupBoardView.lua
