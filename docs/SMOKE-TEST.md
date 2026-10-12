@@ -154,6 +154,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a small tile for that player at the top left, beside the raid tools, with health in their class colour.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 6.4 Preview the party and raid frames alone
+
+- Do: out of a group and out of combat, type `/vg preview party`, then `/vg preview 25` and `/vg preview 40`. Open `/vg` → Raid frames, change Width, Height, Style, Sort by role and Groups as, then pick Off under Preview. Turn it on again and attack a training dummy.
+- Expect: five sample tiles just above your player frame (one Dead, one Offline, a shield and a cross before the tanks' and healers' names), then 25 and 40 drawn smaller in groups side by side; each settings change shows on the preview at once. Off hides it, and combat hides it with a chat line. Your real frames don't change until a reload.
+- If it fails, paste: a screenshot, `/vg errors` and `/vg frame Vanguard_RaidPreview`.
+
 ## 7. Combat visuals: auras, cast bars, nameplates
 
 ### 7.1 Target and focus auras

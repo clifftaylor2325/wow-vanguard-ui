@@ -63,6 +63,7 @@ Modules/RaidFrames.lua
 Modules/RaidAuras.lua
 Modules/RaidHealing.lua
 Modules/RaidStatus.lua
+Modules/RaidPreview.lua
 Modules/RaidTools.lua
 Modules/MainTanks.lua
 Modules/PartyExtras.lua
