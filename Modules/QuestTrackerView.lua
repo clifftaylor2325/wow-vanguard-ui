@@ -92,10 +92,19 @@ end
 
 -- Blocks ---------------------------------------------------------------------------------------
 
--- A quest's lines under its title: { text, color } for each objective, or "Ready to turn in", then its XP.
+-- The lines for a quest's state: "Ready to turn in", or its objectives (gray, then green when done).
+function QT.StateLines(q)
+  if q.ready then return { { "Ready to turn in", "good" } } end
+  local out = {}
+  for _, o in ipairs(q.objectives) do out[#out + 1] = { "- " .. o.text, o.done and "good" or "text2" } end
+  return out
+end
+
+-- A quest's lines under its title: the arrow's next step when it follows this quest (Quest
+-- guidance), then { text, color } for each objective, or "Ready to turn in", then its XP.
 function QT.LineSpecs(q)
-  local out = q.ready and { { "Ready to turn in", "good" } } or {}
-  for _, o in ipairs(q.ready and {} or q.objectives) do out[#out + 1] = { "- " .. o.text, o.done and "good" or "text2" } end
+  local out = { ns.QuestGuide.StepLine(q.id) }
+  for _, line in ipairs(QT.StateLines(q)) do out[#out + 1] = line end
   if (q.xp or 0) > 0 then out[#out + 1] = { q.xp .. " XP", "text2" } end
   return out
 end
@@ -120,7 +129,7 @@ end
 -- Fills a block: the title in the quest's difficulty color, then its lines.
 function QT.PaintBlock(b, q)
   b.id = q.id
-  b.title:SetText(QP.Titled(q.level, q.title))
+  b.title:SetText(QP.Titled(q.level, q.title, q.id))
   T.Color(b.title, QP.LevelColor(q.level))
   paintLines(b, q)
   b:SetHeight(QT.BlockHeight(q))

@@ -1050,7 +1050,7 @@ C_Container = {
     local it = (world.bags[bag] or {})[slot]
     if not it then return nil end
     local _, link, quality, _, _, _, _, _, _, icon = C_Item.GetItemInfo(it.itemID)
-    return { iconFileID = it.icon or icon, stackCount = it.count or 1, quality = it.quality or quality, hyperlink = it.link or link, itemID = it.itemID, hasNoValue = (world.items[it.itemID] or {}).sellPrice == 0, isLocked = false }
+    return { iconFileID = it.icon or icon, stackCount = it.count or 1, quality = it.quality or quality, hyperlink = it.link or link, itemID = it.itemID, hasNoValue = (world.items[it.itemID] or {}).sellPrice == 0, isLocked = it.locked == true }
   end,
   -- Whether a slot holds a quest item (the item's quest = true) and the quest it starts (questID).
   GetContainerItemQuestInfo = function(bag, slot)
@@ -1312,6 +1312,14 @@ C_DamageMeter = {
 -- ConfirmPostItem, ConfirmPostCommodity, CancelAuction, PlaceBid, StartCommoditiesPurchase) are
 -- logged in world.ah.restricted as { fn, args, clicked, path }: clicked says whether a click was
 -- running (stub.click), path is the Lua stack that made the call.
+-- world.ah.throttle = true models what a post does to the client (AuctionHouseDocumentation.lua;
+-- the game's sell frame follows the same throttle, Blizzard_AuctionHouseSellFrame.lua CanPostItem):
+-- a PostItem or PostCommodity the client doesn't want confirmed sends a throttled message, so
+-- AUCTION_HOUSE_THROTTLED_MESSAGE_SENT fires, IsThrottledMessageSystemReady answers false and the
+-- posted bag slot is locked (world.bags entry .locked, GetContainerItemInfo's isLocked) until the
+-- test calls world.finishPost(auctionID): the house took the stack (the units leave the slot),
+-- AUCTION_HOUSE_AUCTION_CREATED, BAG_UPDATE_DELAYED and AUCTION_HOUSE_THROTTLED_SYSTEM_READY fire.
+-- Off (the default), the throttle stays ready and nothing leaves the bags.
 -- world.items[id].commodity = true makes an item a commodity, .noAuction one the house won't take,
 -- .pending one whose item key info the client hasn't loaded yet, .equipment one the house calls equipment.
 
@@ -1341,13 +1349,41 @@ local function query(name)
   return function(...) table.insert(world.ah.queries, { fn = name, args = { ... } }) end
 end
 
+-- A post the client sent with world.ah.throttle on: the throttle busy and the posted slot locked
+-- until world.finishPost; its location and quantity are kept for that.
+local function sendPost(loc, quantity)
+  local it = loc and (world.bags[loc.bagID] or {})[loc.slotIndex]
+  if it then it.locked = true end
+  world.ah.ready, world.ah.posting = false, { loc = loc, quantity = quantity }
+  stub.fire("AUCTION_HOUSE_THROTTLED_MESSAGE_SENT")
+end
+
 -- A restricted call: logged with whether a click was running and the code path that made it;
--- a post answers world.ah.needsConfirm (true: the client wants the post confirmed).
+-- a post answers world.ah.needsConfirm (true: the client wants the post confirmed), and one it
+-- sends drops the throttle with world.ah.throttle on.
 local function restricted(name)
   return function(...)
-    table.insert(world.ah.restricted, { fn = name, args = { ... }, clicked = stub.hardware > 0, path = debug.traceback("", 2) })
-    if name == "PostItem" or name == "PostCommodity" then return world.ah.needsConfirm == true end
+    local args = { ... }
+    table.insert(world.ah.restricted, { fn = name, args = args, clicked = stub.hardware > 0, path = debug.traceback("", 2) })
+    if name ~= "PostItem" and name ~= "PostCommodity" then return end
+    if world.ah.needsConfirm == true then return true end
+    if world.ah.throttle then sendPost(args[1], args[3]) end
+    return false
   end
+end
+
+-- The house took the post world.ah.throttle held: the stack's units leave its slot (the slot
+-- empties when none are left), and the auction is made, the bags change and the throttle is ready.
+function world.finishPost(auctionID)
+  local p = world.ah.posting
+  local bag, slot = p and p.loc.bagID, p and p.loc.slotIndex
+  local it = bag and (world.bags[bag] or {})[slot]
+  if it then it.locked, it.count = nil, (it.count or 1) - p.quantity end
+  if it and it.count < 1 then world.bags[bag][slot] = nil end
+  world.ah.ready, world.ah.posting = true, nil
+  stub.fire("AUCTION_HOUSE_AUCTION_CREATED", auctionID)
+  stub.fire("BAG_UPDATE_DELAYED")
+  stub.fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
 end
 
 -- ItemLocation (Blizzard_ObjectAPI/Mainline/ItemLocation.lua): a bag and slot in world.bags.

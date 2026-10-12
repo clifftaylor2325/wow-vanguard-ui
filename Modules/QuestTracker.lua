@@ -99,9 +99,12 @@ end
 
 -- Actions --------------------------------------------------------------------------------------
 
--- A title was clicked: left opens the quest (Vanguard's quest log, else the game's map); right stops watching it.
+-- A title was clicked: left opens the quest (Vanguard's quest log, else the game's map), Shift-left points
+-- the arrow at it (Quest guidance, when it's on); right stops watching it.
 function QT.OnTitle(id, button)
   if button == "RightButton" then return questLog("RemoveQuestWatch", id) end
+  local guide = ns.QuestGuide
+  if IsShiftKeyDown() and guide.settings then return guide.Point(id) end
   local log = ns.GetModule("QuestLog")
   if log and log.Open and log.frame then return log.Open(id) end
   if type(QuestMapFrame_OpenToQuestDetails) == "function" then QuestMapFrame_OpenToQuestDetails(id) end

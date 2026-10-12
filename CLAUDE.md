@@ -67,6 +67,18 @@ Before you say a change is done: `npm run verify` and `npm run coverage` must bo
 - Open one PR per phase. List the tasks, tests added, anything skipped, and a "needs in-game check" list.
 - Plans in `docs/handoff/` refer to the old repo name `wow-forever-ui` and to a commit (`619d5c9`). Line numbers in them have drifted. Grep for the identifier they quote rather than trusting the line.
 
+## Usage and cost
+
+Claude usage and CI minutes are both limited. Pick the cheapest model and effort that can do the task well, and run work in parallel only when the pieces are independent.
+
+- **Model by task.** Haiku for mechanical work: closing issues with a link, ticking plans, renumbering smoke-test steps, bringing `main` into a branch, release-note drafts from merged PR titles, a status summary. Sonnet for everything that changes code: bug fixes, feature phases, harness tests, site generators, docs that need judgement. Opus or above only for a root cause nobody has reproduced, a change to the harness rules (`scripts/lib/wow-taint.lua`, the secret helpers), a secure or protected code path, or a decision that spans modules.
+- **Effort by task.** Low for the Haiku work and for checklists. Medium is the default for code. High only for the Opus cases above. Don't raise effort to make up for a vague brief; sharpen the brief.
+- **Briefs stay lean.** A thread's brief names the issue or phase, the branch, the files it may touch, and the default picked where the ask forks. It does not restate the README, this file or the plan; the thread reads those itself. One thread per independent branch. A task that waits on another PR waits; it does not get a thread yet.
+- **Local runs.** `npm run test:quick` while iterating. `npm run verify` and `npm run coverage` once, before the PR, not after every edit.
+- **CI minutes.** Open PRs as drafts and mark them ready once, when they are done; CI skips drafts. The `full-tests` label goes only on a PR that adds new game API surface, changes the harness, or cuts a release. Don't push to re-run a green check.
+- **Merging in a wave.** When several PRs are open, merge in the order that keeps `main` moving under the fewest branches (core and harness first, then features), and bring `main` into a branch once, right before it merges, not after every merge.
+- **GSD.** `.planning/config.json` sets `model_profile` to `budget` for the same reason. A phase plan states the model and effort a plan needs only when it is not the default above.
+
 ## Don't
 
 - Don't commit to `main` directly. Work on a branch and open a PR.
