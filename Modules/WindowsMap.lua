@@ -178,6 +178,10 @@ GW.Add("map", "onDemand", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" }, 
 GW.LFG_PAGE_ART = { "BackgroundArt", "RolesSection", "DividerFrame", "ActivityView" }
 -- The pages' push buttons by key (the listing's back and post, the browse page's message and invite).
 GW.LFG_PAGE_BUTTONS = { "BackButton", "PostButton", "SendMessageButton", "GroupInviteButton" }
+-- Where a page's inset panel goes: its Inset frame, else its list (the who list's page has no Inset).
+GW.LFG_WELLS = { "Inset", "ScrollBox" }
+-- The finder's pages: listing, browse, and the who list (the search view: a search box, a filter and a list).
+GW.LFG_PAGES = { "LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame" }
 
 -- Fades the art a window's template draws (GW.ART, its own textures too), with no panel: for windows
 -- made of several frames, where one panel goes on the outer frame.
@@ -205,12 +209,20 @@ local function dressPage(page)
   if type(view) == "table" and isFrame(view.Comment) then T.EditBox(view.Comment) end
 end
 
--- One page of the group finder (listing or browse), which fills the finder's window: its template art
--- and extras faded, an inset panel, title, buttons and edit box in the theme. The outer window has the panel.
+-- The inset panel under a page's content, on the first part of GW.LFG_WELLS the page has.
+local function panelWell(page)
+  for _, key in ipairs(GW.LFG_WELLS) do
+    if isFrame(page[key]) then return T.Panel(page[key], { inset = true, noSheen = true }) end
+  end
+end
+
+-- One page of the group finder (listing, browse or who list), which fills the finder's window: its template
+-- art (the portrait badge and the border too) and extras faded, an inset panel, title, buttons and edit box
+-- in the theme. The outer window has the panel.
 function GW.SkinLFGPage(page)
   GW.FadeWindowArt(page)
   GW.FadeParts(page, GW.LFG_PAGE_ART)
-  if isFrame(page.Inset) then T.Panel(page.Inset, { inset = true, noSheen = true }) end
+  panelWell(page)
   dressTitle(page)
   dressPage(page)
 end
@@ -229,7 +241,7 @@ function GW.SkinLFGTooltip(frame)
 end
 
 GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame" }, GW.SkinLFGParent)
-GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGListingFrame", "LFGBrowseFrame" }, GW.SkinLFGPage)
+GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", GW.LFG_PAGES, GW.SkinLFGPage)
 GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGBrowseSearchEntryTooltip" }, GW.SkinLFGTooltip)
 
 -- Legacy system -------------------------------------------------------------------------------
