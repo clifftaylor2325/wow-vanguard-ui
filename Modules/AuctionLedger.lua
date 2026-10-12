@@ -41,13 +41,14 @@ AL.LINK_AGE, AL.SAME_MAIL, AL.OPEN_AGE = 30 * 86400, 120, 3 * 86400
 
 -- The ledger -----------------------------------------------------------------------------------
 
--- This realm and faction's ledger: { records = { a record, oldest first }, open = { [auctionID] =
+-- This realm and faction's ledger (ns.Home.Key, the ruleset in it when the client names one): { records = { a record, oldest first }, open = { [auctionID] =
 -- an auction up } }. A record is { kind ("sold", "expired" or "cancelled"), id (the item's ID,
 -- when known), name, qty, amount (a sale's copper for all its units), t (when noted), auction (its
 -- auction's ID, from an event), mail (the expiry time of the mail that told of it) }; an auction
 -- up is { id, name, qty, unit (price each), t (when first seen) }.
 function AL.Book()
-  local books, key = ns.Fill(AP.Store(), { ledgers = {} }).ledgers, AP.HouseKey()
+  local books = ns.Fill(AP.Store(), { ledgers = {} }).ledgers
+  local key = ns.Home.Adopt(books)
   books[key] = ns.Fill(type(books[key]) == "table" and books[key] or {}, { records = {}, open = {} })
   return books[key]
 end
