@@ -192,6 +192,7 @@ it("a real scoped login on a brand-new account (no VanguardDB before the scope t
 });
 
 it("a scoped brand-new account is not migrated: Core/DB.lua sees a fresh install, as it does unscoped (WR-01)", () => {
+  // [migration count, account file version] after a login on the given saved variables.
   const migrated = (savedVariables) => {
     const addon = createAddon({ savedVariables });
     addon.eval("migrations = 0; local run = ns.MigrateDB; ns.MigrateDB = function(...) migrations = migrations + 1; return run(...) end");
