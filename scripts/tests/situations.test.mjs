@@ -277,3 +277,120 @@ it("situations: the options page records, stops, clears and switches overrides o
   addon.eval('__click("Record for")');
   expect(addon.eval("return ns.GetModule('Situations').recording"), "then Off, which stops recording").toBe(null);
 });
+
+// TEST-ONLY: __row(text) is the shown options row whose caption starts with text; __point(text) keeps it in __hovered.
+const ROW_LUA = `
+  function __row(text)
+    for _, w in ipairs(__wfgStub.frames) do
+      local fs, shown, f = w.label, true, w
+      while f do if not f.__shown then shown = false end f = f.__parent end
+      if shown and type(fs) == "table" and type(fs.__text) == "string" and fs.__text:sub(1, #text) == text and w.__scripts.OnClick then return w end
+    end
+  end
+  function __point(text) __hovered = __row(text) end
+`;
+// The banner's text while recording for Raid.
+const RAID_BANNER = "Editing as: Raid · changes apply only in Raid";
+// What a setting an override can't hold says while recording for Raid.
+const NOT_RECORDED = "Not recorded for Raid: this setting changes your base profile.";
+// The banner strips: the one over the options window and the one on the screen.
+const OPTIONS_STRIP = "ns.GetModule('Situations').Banner.options";
+const SCREEN_STRIP = "ns.GetModule('Situations').Banner.screen";
+// Whether a banner strip is on screen (false while it hasn't been made).
+const stripShown = (addon, ref) => addon.eval(`local f = ${ref} return f ~= nil and f:IsVisible()`);
+
+it("situations: while recording, a banner over the options window and the unlocked screen says what you're editing", () => {
+  const addon = situated();
+  addon.slash("situation record raid");
+  addon.slash("");
+  expect(addon.texts(RAID_BANNER).length, "recording, with the options open: the banner over the window").toBe(1);
+  const window = addon.frame("Vanguard_Options").rect;
+  const options = addon.frame(OPTIONS_STRIP).rect;
+  expect([options.bottom >= window.top, options.left, options.right], "along the window's top edge, as wide as it").toEqual([true, window.left, window.right]);
+  expect(addon.eval(`return ${OPTIONS_STRIP}.button.text:GetText()`), "its button stops and saves").toBe("Stop and save");
+  addon.slash("unlock");
+  const screen = addon.frame(SCREEN_STRIP).rect;
+  expect([addon.texts(RAID_BANNER).length, (screen.left + screen.right) / 2, screen.top], "unlocked: a second banner at the top center of the screen").toEqual([2, 960, 1072]);
+  expect(screen.width > RAID_BANNER.length * 6, "wide enough for its text and button").toBe(true);
+  addon.eval("ns.SetMoverPoint('infostrip', 'BOTTOM', 'BOTTOM', 0, 300)");
+  addon.click(SCREEN_STRIP + ".button");
+  expect(addon.eval("return ns.GetModule('Situations').recording"), "the button ends the edit").toBe(null);
+  expect(chatHas(addon, /Raid: 1 override \(1 frame\) saved\.$/), "the recording is saved, and the chat says what was kept").toBe(true);
+  expect([spot(addon), addon.texts(RAID_BANNER).length], "back on the base profile; both banners gone").toEqual([HOME, 0]);
+  expect(addon.eval("return ns.Unlocked()"), "the frames stay unlocked").toBe(true);
+  addon.slash("situation record party");
+  expect(addon.texts("Editing as: Party · changes apply only in Party").length, "another recording: both banners name it").toBe(2);
+  addon.click(OPTIONS_STRIP + ".button");
+  expect([addon.eval("return ns.GetModule('Situations').recording"), stripShown(addon, SCREEN_STRIP)], "the window's button ends it too").toEqual([null, false]);
+});
+
+it("situations: the banner clears when the frames lock (by hand or for combat), on a profile change and at logout", () => {
+  const addon = situated();
+  addon.slash("situation record raid");
+  addon.slash("unlock");
+  expect([stripShown(addon, SCREEN_STRIP), stripShown(addon, OPTIONS_STRIP)], "unlocked, options never opened: only the screen banner").toEqual([true, false]);
+  addon.world.combat(true);
+  expect(stripShown(addon, SCREEN_STRIP), "combat locks the handles, and the banner goes with them").toBe(false);
+  addon.click(SCREEN_STRIP + ".button");
+  expect(addon.eval("return ns.GetModule('Situations').recording"), "a click in combat waits for combat to end").toBe("raid");
+  addon.world.combat(false);
+  expect(addon.eval("return ns.GetModule('Situations').recording"), "then stops and saves").toBe(null);
+  addon.slash("situation record raid");
+  addon.slash("unlock");
+  addon.slash("lock");
+  expect(stripShown(addon, SCREEN_STRIP), "/vg lock clears it").toBe(false);
+  addon.slash("");
+  expect(stripShown(addon, OPTIONS_STRIP), "opening the options while recording shows the window's banner").toBe(true);
+  addon.eval("ns.ProfileChanged()");
+  expect(stripShown(addon, OPTIONS_STRIP), "a profile change stops the recording, and the banner").toBe(false);
+  addon.slash("situation record raid");
+  addon.fire("PLAYER_LOGOUT");
+  expect([stripShown(addon, OPTIONS_STRIP), addon.eval("return ns.GetModule('Situations').recording")], "logout saves the recording and clears the banner").toEqual([false, null]);
+});
+
+it("situations: while recording, a setting an override can't hold is dimmed and says so when you point at it", () => {
+  const addon = situated("", ROW_LUA);
+  // The tooltip's first line while it shows, else false.
+  const tip = () => addon.eval("return GameTooltip ~= nil and GameTooltip:IsShown() and GameTooltip.__lines[1].text or false");
+  // Points at a row, then away: [the tooltip it showed, whether its caption is muted].
+  const point = (caption) => {
+    addon.eval(`__point(${JSON.stringify(caption)})`);
+    addon.hover("__hovered");
+    const muted = JSON.stringify(addon.frame("__hovered.label").textColor) === JSON.stringify(addon.eval("return { ns.Theme.RGB('muted') }"));
+    const out = [tip(), muted];
+    addon.hover(null);
+    return out;
+  };
+  addon.slash("");
+  expect(point("Soft shadows under frames"), "not recording: no note").toEqual([false, false]);
+  addon.slash("situation record raid");
+  expect(point("Soft shadows under frames"), "recording: a theme setting changes the base profile").toEqual([NOT_RECORDED, true]);
+  expect(tip(), "the note goes when the mouse leaves").toBe(false);
+  addon.eval('__click("Nameplates")');
+  expect(point("Cast bar"), "a nameplate setting outside the allowlist").toEqual([NOT_RECORDED, true]);
+  expect(point("Threat colors while you have aggro"), "one an override holds: no note").toEqual([false, false]);
+  addon.eval('__click("Bars, map, chat")');
+  expect(point("Experience bar"), "the XP bars' parts need a reload").toEqual([NOT_RECORDED, true]);
+  expect(point("XP and reputation bars"), "their visibility is held").toEqual([false, false]);
+  expect(point("Durability"), "so are the info strip's blocks").toEqual([false, false]);
+  addon.eval('__click("Action bars")');
+  expect(point("Show bar 1"), "an action bar setting").toEqual([NOT_RECORDED, true]);
+  expect(point("Visibility"), "and an action bar's visibility").toEqual([NOT_RECORDED, true]);
+  addon.slash("situation stop");
+  addon.eval('__click("Nameplates")');
+  expect(point("Cast bar"), "recording stopped: the note and the dimming go").toEqual([false, false]);
+  addon.eval("GameTooltip = nil");
+  addon.slash("situation record raid");
+  expect(point("Cast bar"), "without a tooltip the row is still dimmed").toEqual([false, true]);
+});
+
+it("situations: the page lists what an override can hold and says everything else changes the base profile", () => {
+  const addon = situated("", CLICK_LUA);
+  addon.slash("");
+  addon.eval('__click("Situations")');
+  expect(addon.texts("Frame spots, scale and opacity (move frames with /vg unlock).").length, "frames first").toBe(1);
+  const holds = addon.eval("local SI, out = ns.GetModule('Situations'), {} for _, m in ipairs(SI.ORDER) do out[#out + 1] = SI.HOLDS[m] end return out");
+  expect(holds.length, "a line for every module an override can set").toBe(addon.eval("local n = 0 for _ in pairs(ns.GetModule('Situations').LIVE) do n = n + 1 end return n"));
+  for (const line of holds) expect(addon.texts(line).length, line).toBe(1);
+  expect(addon.find("^Everything else, including any setting that needs a reload, changes your base profile") !== null, "and everything else changes the base profile").toBe(true);
+});

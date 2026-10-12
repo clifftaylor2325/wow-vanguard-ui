@@ -132,6 +132,7 @@ Modules/Upgrades.lua
 Modules/VendorMemory.lua
 Modules/Nameplates.lua
 Modules/Situations.lua
+Modules/SituationsBanner.lua
 Modules/ClickCast.lua
 Modules/ClickCastSpells.lua
 Modules/ClickCastOptions.lua
