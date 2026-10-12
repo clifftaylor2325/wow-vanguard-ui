@@ -38,8 +38,8 @@ UI polish (priority 3):
 
 Levelling and group features (priority 4, cut first):
 
-- [ ] **Phase 9: Levelling helpers** - Quest XP, kills to level and low-supply warnings
-- [ ] **Phase 10: Roll tracking** - `/roll` results and loot rolls are tracked (loot rolls cuttable)
+- [x] **Phase 9: Levelling helpers** - Quest XP, kills to level and low-supply warnings (completed 2026-10-12)
+- [x] **Phase 10: Roll tracking** - `/roll` results and loot rolls are tracked (loot rolls cuttable) (completed 2026-10-12)
 - [ ] **Phase 11: Party quest progress** - Live party quest progress over addon messages (cuttable; the author's call)
 
 Launch:
@@ -258,7 +258,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Theme scale and motion | TBD | Complete | 2026-10-12 |
 | 7. Control states and panel depth | TBD | Complete | 2026-10-12 |
 | 8. Every window styled | TBD | Complete | 2026-10-12 |
-| 9. Levelling helpers | 0/TBD | Not started | - |
-| 10. Roll tracking | 0/TBD | Not started | - |
+| 9. Levelling helpers | TBD | Complete | 2026-10-12 |
+| 10. Roll tracking | TBD | Complete | 2026-10-12 |
 | 11. Party quest progress | 0/TBD | Not started | - |
 | 12. Launch readiness | 0/TBD | Not started | - |
