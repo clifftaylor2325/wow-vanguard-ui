@@ -286,7 +286,13 @@ const FINDER_ENV = WINDOWS_ENV + `
     who.BackgroundArt, who.headerBackground, who.insideFrame = who:CreateTexture(), who:CreateTexture(), who:CreateTexture()
     who.BarTop, who.BarMiddle = who:CreateTexture(), who:CreateTexture()
     who.ScrollBox = CreateFrame("Frame", nil, who)
+    who.ScrollBox.rows = 0
+    function who.ScrollBox:GetDataProviderSize() return self.rows end
+    function who.ScrollBox:SetDataProvider(n) self.rows = n end
+    browse.OptionsButton = __button(browse)
+    browse.OptionsButton:SetPoint("TOPRIGHT", browse, "TOPRIGHT", -12, -32)
   end
+  LFG_LIST_NO_RESULTS_FOUND = "TEST-ONLY No groups found."
 `;
 
 it("group finder: the window, its listing and browse pages and the group tooltip in the theme once the game loads it", () => {
@@ -327,17 +333,39 @@ it("group finder: the who list page (the search view) loses the brass border and
   expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(painted);
 });
 
+it("group finder: the who list says the game's no-results line while empty, and the settings gear sits in the close button's row", () => {
+  const addon = loggedIn(FINDER_ENV);
+  addon.eval("__finder()");
+  addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
+  addon.eval("LFGParentFrame:Show() LFGWhoListFrame:Show() LFGBrowseFrame:Show()");
+  // The who list's note: its text and whether it shows.
+  const note = () => addon.eval("local n = LFGWhoListFrame.ScrollBox.vgEmptyNote return { n:GetText(), n:IsShown() }");
+  expect(note(), "an empty who list (before any search) shows the browse page's empty-result line").toEqual(["TEST-ONLY No groups found.", true]);
+  addon.eval("LFGWhoListFrame.ScrollBox:SetDataProvider(3)");
+  expect(note()[1], "rows from a search hide it").toBe(false);
+  addon.eval("LFGWhoListFrame.ScrollBox:SetDataProvider(0) LFGWhoListFrame:Hide() LFGWhoListFrame:Show()");
+  expect(note()[1], "an empty result shows it again, once").toBe(true);
+  expect(addon.eval("local n, c = 0, LFGWhoListFrame.ScrollBox for _, r in ipairs({ c:GetRegions() }) do if r.__kind == 'FontString' then n = n + 1 end end return n"), "made once").toBe(1);
+  const gear = addon.eval(`local p = LFGBrowseFrame.OptionsButton.__points.CENTER
+    return { p.rel == LFGParentFrameCloseButton, p.x, p.y, LFGBrowseFrame.OptionsButton.__points.TOPRIGHT == nil }`);
+  expect(gear, "the gear is T.CONTROL.step left of the close button and level with it, its old anchor gone").toEqual([true, -28, 0, true]);
+  const plain = addon.eval(`local box = CreateFrame("Frame", nil, UIParent) local GW = ns.GetModule("Windows")
+    GW.WatchEmpty(box, "TEST-ONLY") GW.WatchEmpty(nil, "TEST-ONLY") return { GW.BoxEmpty(box), box.vgEmptyNote:IsShown() }`);
+  expect(plain, "a list that can't say how many rows it has gets no note shown").toEqual([false, false]);
+});
+
 it("group finder: switched off it stays the game's; a client missing parts of it loads cleanly", () => {
   const off = loggedIn(FINDER_ENV, MAP_OFF);
   off.eval("__finder()");
   off.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
   off.eval("LFGParentFrame:Show() LFGListingFrame:Show()");
   expect([off.eval("return LFGParentFrame.vgWindow == nil and LFGListingFrame.vgWindow == nil"), windowState(off, "LFGListingFrame").art !== 0, fills(off, "LFGParentFrame")], "not hooked, art left").toEqual([true, true, 0]);
-  const bare = loggedIn(`for _, n in ipairs({ "LFGParentFrame", "LFGListingFrame", "LFGBrowseFrame", "LFGBrowseSearchEntryTooltip" }) do CreateFrame("Frame", n, UIParent) end
-    LFGListingFrame.ActivityView, LFGListingFrame.GroupRoleButtons, LFGBrowseFrame.TitleContainer, LFGBrowseFrame.Inset = {}, {}, {}, {}`);
+  const bare = loggedIn(`for _, n in ipairs({ "LFGParentFrame", "LFGListingFrame", "LFGBrowseFrame", "LFGBrowseSearchEntryTooltip", "LFGWhoListFrame" }) do CreateFrame("Frame", n, UIParent) end
+    LFGListingFrame.ActivityView, LFGListingFrame.GroupRoleButtons, LFGBrowseFrame.TitleContainer, LFGBrowseFrame.Inset = {}, {}, {}, {}
+    LFGBrowseFrame.OptionsButton = CreateFrame("Button", nil, LFGBrowseFrame)`);
   bare.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
-  bare.eval("LFGParentFrame:Show() LFGListingFrame:Show() LFGBrowseFrame:Show() LFGBrowseSearchEntryTooltip:Show()");
-  expect(bare.eval("return #ns.errors"), "bare frames: no errors").toBe(0);
+  bare.eval("LFGParentFrame:Show() LFGListingFrame:Show() LFGBrowseFrame:Show() LFGBrowseSearchEntryTooltip:Show() LFGWhoListFrame:Show()");
+  expect(bare.eval("return #ns.errors"), "bare frames (a gear but no close button, a who page without a list): no errors").toBe(0);
 });
 
 // TEST-ONLY Legacy system window, shaped like Blizzard_LegacySystem's XML: a portrait frame with three pages (each with its
