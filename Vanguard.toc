@@ -43,6 +43,8 @@ Core/OptionsWindow.lua
 Core/ErrorBadge.lua
 Core/OptionsProfiles.lua
 Core/Setup.lua
+Core/WhatsNewNotes.lua
+Core/WhatsNew.lua
 Core/FactionArt.lua
 Core/Inspect.lua
 Core/Slash.lua

@@ -168,21 +168,28 @@ local function lookRows()
   }
 end
 
--- General, part two: setup again, and moving frames.
-local function layoutRows()
+-- General, part two: setup again, and what's new in this version.
+local function setupRows()
   return {
     { "header", "Layout" },
     { "text", "Setup walks through layout, screen and look again; it starts on Keep, so it changes only what you pick (/vg setup)." },
     { "button", "Run setup", function() O.Hide(); ns.Setup.Open() end },
+    { "button", "What's new", function() O.Hide(); ns.WhatsNew.Open() end },
+  }
+end
+
+-- General, part three: moving frames.
+local function layoutRows()
+  return append(setupRows(), {
     { "button", "Move frames", function() O.Hide(); ns.Unlock() end },
     check("Show a grid while moving", moverOption("grid")),
     check("Snap to other frames", moverOption("snap")),
     check("Show these handles in the game's Edit Mode too", moverOption("editMode")),
     { "text", "While moving frames, right-click one for its exact anchor, offsets, scale and opacity." },
-  }
+  })
 end
 
--- General, part three: one frame's scale and opacity, and resetting every frame.
+-- General, part four: one frame's scale and opacity, and resetting every frame.
 local function sizeRows()
   return {
     { "cycle", "Frame to size", moverChoices(), pickMover() },
