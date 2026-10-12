@@ -33,6 +33,15 @@ ns.WHATS_NEW = {
     { label = "Moving frames", items = {
       { text = "A frame can be anchored to another frame, and a bar can match another frame's width or height. Exit without saving puts everything back as it was." },
     } },
+    { module = "QuestGuide", label = "Quest guidance", items = {
+      { text = "Quest-start pins on the world map, from the game's own quest data. Shift-click a quest in the tracker to point the arrow at its next step.", page = "quests", row = "Quest-start pins on the world map" },
+    } },
+    { module = "GroupBoard", label = "Group board", items = {
+      { text = "A group board (/vg lfg) lists looking-for-more and looking-for-group posts from chat by dungeon, role and level. A click opens a whisper you send yourself.", page = "more", row = "Open the group board" },
+    } },
+    { module = "Coexist", label = "Other addons", items = {
+      { text = "When another addon does a job a Vanguard module also does, chat says so once and the Modules page lets you pick which one does it." },
+    } },
     { label = "Setup", items = {
       { text = "The setup wizard sits above the frame handles on its last step, and its title and step are centred.", page = "general", row = "Run setup" },
     } },
