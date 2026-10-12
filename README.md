@@ -164,7 +164,7 @@ if Vanguard and Vanguard.RegisterSkin then
     S.EditBox(MyFrame.Input)
     S.CloseButton(MyFrame.Close)
     S.Text(MyFrame.Title, "title")  -- text roles: title, heading, name, cell, label, number, small, tiny, world
-    S.Color(MyFrame.Hint, "text2")  -- theme colors by name: text, text2, muted, accent, good, bad...
+    S.Color(MyFrame.Hint, "text2")  -- theme colors by name: text, text2, muted, accent, accentText, good, bad...
     S.Tint(MyFrame.Glow, "accent")
   end)
 end

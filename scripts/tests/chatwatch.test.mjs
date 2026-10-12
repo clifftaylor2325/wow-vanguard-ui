@@ -39,7 +39,7 @@ it("chat watch: a watched phrase in Trade rings the whisper sound and shows a to
   say(addon, "CHANNEL", "LFM Deadmines need a healer", "Lightmend");
   expect(rings(addon), "the whisper sound (3081)").toBe(1);
   expect(toast(addon), "the toast, with the sender and the line").toEqual([true, "Lightmend", "LFM Deadmines need a healer"]);
-  expect(isTok(addon, addon.eval("return Vanguard_ChatWatchToast.sender.__textColor"), "accent"), "the sender in the accent").toBe(true);
+  expect(isTok(addon, addon.eval("return Vanguard_ChatWatchToast.sender.__textColor"), "accentText"), "the sender in the accent's text colour").toBe(true);
   addon.advance(8.5);
   expect(toast(addon)[0], "gone after 8 s").toBe(false);
 });

@@ -285,7 +285,7 @@ end
 -- Outlines a choice (and colors its label) in the accent when it is the chosen one.
 local function mark(b, on)
   T.SetBorder(b, on and { T.Accent() } or nil)
-  if b.text then T.Color(b.text, on and "accent" or "text") end
+  if b.text then T.Color(b.text, on and "accentText" or "text") end
   if b.check then b.check:SetShown(on) end
 end
 
@@ -325,7 +325,7 @@ local function refresh()
   markChoice(frame.pages.screen, state.screen)
   for _, s in ipairs(look.swatches) do mark(s, isAccent(s.rgb)) end
   for _, b in ipairs(look.styles) do mark(b, b.value == raidSettings().look) paintTile(b) end
-  T.Color(frame.caption, "accent")
+  T.Color(frame.caption, "accentText")
 end
 
 -- Building ------------------------------------------------------------------------------
@@ -462,7 +462,7 @@ local function addTitle(f)
   f.title = text(f, "title", "text", "Set up Vanguard")
   f.title:SetPoint("TOP", f, "TOP", 0, -14)
   f.title:SetJustifyH("CENTER")
-  f.caption = text(f, "small", "accent", "")
+  f.caption = text(f, "small", "accentText", "")
   f.caption:SetPoint("TOP", f.title, "BOTTOM", 0, -4)
   f.caption:SetJustifyH("CENTER")
   f.crest = T.Crest(f, 28)

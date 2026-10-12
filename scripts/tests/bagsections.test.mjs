@@ -182,11 +182,11 @@ it("the combined bag in sections: each kind of item under its header, packed sid
   const quest = addon.texts("Quest items")[0];
   const frame = addon.frame("ContainerFrameCombinedBags").rect;
   expect([quest.rect.left - frame.left, frame.top - quest.rect.top, quest.rect.width], "a header sits over its slots, as wide as its section").toEqual([12, 75, 79]);
-  expect(isTok(addon, quest.textColor, "accent"), "headers are in the accent").toBe(true);
+  expect(isTok(addon, quest.textColor, "accentText"), "headers are in the accent's text colour").toBe(true);
   expect(addon.eval("local f = ContainerFrameCombinedBags return { f:GetWidth(), f:GetHeight() }"), "the window grows by the headers and rows the sections add, and by the padding (the game's 430 x 186)").toEqual([439, 233]);
   expect(addon.eval("for _, b in ipairs(ContainerFrameCombinedBags.Items) do if not b:IsShown() then return false end end return true"), "no slot is hidden").toBe(true);
   addon.slash("accent ff8000");
-  expect(isTok(addon, addon.texts("Quest items")[0].textColor, "accent"), "a new accent repaints the headers").toBe(true);
+  expect(isTok(addon, addon.texts("Quest items")[0].textColor, "accentText"), "a new accent repaints the headers").toBe(true);
 });
 
 it("bag sections follow what you carry; the same items move nothing", () => {

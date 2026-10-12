@@ -20,6 +20,7 @@ The look in one line: flat dark slate panels, one-screen-pixel borders, one acce
 | Token | Default | Setting | Role |
 | --- | --- | --- | --- |
 | `accent` | `d9a441` (brass) | `accent` | The one highlight colour: selected nav items, focus and target edges, glows, links, header rules, the logo's left diamond, the minimap's corner diamonds. Changed by `/vg accent`, the swatches under General → Look, or the hex box beside them. |
+| `accentText`, `accentDim` | `e6b45b`, `8a6a2f` (from brass) | `accent` | Made from the accent in OKLCH (`T.ACCENT_VARIANTS`: lightness +0.047 and chroma x0.94 for text, -0.207 and x0.67 for dim), so every preset and custom hex gets them, worked out once per accent. `accentText` is for accent-coloured text: selected choices, captions, tabs, headers, badges, links, the `Vanguard:` chat prefix, and `T.Color` with no colour. `accentDim` is for accent borders and ornament only, never text. The `accent` itself stays for bars, borders, glows and selected fills. |
 | `panel` | `13161c` at 0.94 | `panel` | The fill of every panel (`T.Panel`, `T.HudPanel`). Softened raid bars mix their class colour into it. |
 | `inset` | `0c0e13` at 0.95 | `inset` | The darker fill of buttons, edit boxes and inset panels (`opts.inset`). |
 | `edge` | `000000` | `border` | Every one-pixel border unless a frame sets its own (`T.SetBorder`) or asks for the accent (`opts.accent`). |
