@@ -95,3 +95,48 @@ it("motion: a window opens rising 4 px into place as it fades in, and closes in 
   addon.eval('__fades = {} local f = CreateFrame("Frame", "TEST_Plain", UIParent) f:Hide() ns.Theme.OpenWindow(f) ns.Theme.OpenWindow(f)');
   expect(addon.eval("return { TEST_Plain:IsShown(), #__fades, TEST_Plain:GetAlpha() }"), "a client that can't animate opens it at once, every time").toEqual([true, 0, 1]);
 });
+
+// A themed test button with its own label anchored LEFT and RIGHT 2 units down; returns nothing.
+const PRESS_BUTTON = `local b = CreateFrame("Button", "TEST_Press", UIParent) b:SetSize(80, 22)
+  b.text = b:CreateFontString(nil, "OVERLAY") b.text:SetPoint("LEFT", b, "LEFT", 4, -2) b.text:SetPoint("RIGHT", b, "RIGHT", -4, -2)
+  ns.Theme.Button(b) ns.Theme.Text(b.text, "label", "text")`;
+
+// The press overlay's shown state and the label's anchor ys: { shown, [leftY, rightY] }.
+const pressState = (addon) => addon.eval(`local p = TEST_Press.text.__points
+  return { ns.Theme.PressOverlay(TEST_Press):IsShown(), { p.LEFT.y, p.RIGHT.y } }`);
+
+it("motion: a pressed button goes one shade darker and drops its label a pixel, at once; never while disabled (#257)", () => {
+  const addon = loggedIn(PRESS_BUTTON);
+  const overlay = addon.eval("local o = ns.Theme.PressOverlay(TEST_Press) return { o.__vertexColor, o:GetDrawLayer() }");
+  expect([isTok(addon, overlay[0], "shade"), overlay[0][3], overlay[1]], "a shade overlay at 0.3 over the fill").toEqual([true, 0.3, "BACKGROUND"]);
+  expect(pressState(addon), "hidden at rest").toEqual([false, [-2, -2]]);
+  addon.eval('TEST_Press:GetScript("OnMouseDown")(TEST_Press)');
+  expect(pressState(addon), "mouse down: shown, and both anchors one screen pixel lower").toEqual([true, [-2 - px(addon, 1), -2 - px(addon, 1)]]);
+  addon.eval('TEST_Press:GetScript("OnMouseDown")(TEST_Press)');
+  expect(pressState(addon)[1][0], "a second mouse down doesn't drop it again").toBe(-2 - px(addon, 1));
+  addon.eval('TEST_Press:GetScript("OnMouseUp")(TEST_Press)');
+  expect(pressState(addon), "mouse up: back where it was").toEqual([false, [-2, -2]]);
+  addon.eval('TEST_Press:GetScript("OnMouseDown")(TEST_Press) TEST_Press:Hide()');
+  expect(pressState(addon), "hiding a held button clears it").toEqual([false, [-2, -2]]);
+  addon.eval('TEST_Press:Show() TEST_Press:Disable() TEST_Press:GetScript("OnMouseDown")(TEST_Press)');
+  expect(pressState(addon), "a disabled button shows no press").toEqual([false, [-2, -2]]);
+  addon.eval('ns.Theme.PressButton(CreateFrame("Button"), true) local p = CreateFrame("Button") p.IsProtected = function() return true end p.text = p:CreateFontString() p.text:SetPoint("CENTER") ns.Theme.Button(p) p:GetScript("OnMouseDown")(p) TEST_Protected = p');
+  expect(addon.eval("return { ns.Theme.PressOverlay(TEST_Protected):IsShown(), TEST_Protected.text.__points.CENTER.y }"), "a protected button darkens but keeps its label still; an unthemed one is left alone").toEqual([true, 0]);
+});
+
+it("motion: a disabled button's label goes to the disabled tier with no hover, and gets its colour back when enabled (#257)", () => {
+  const addon = loggedIn(FAKE_FADES + PRESS_BUTTON);
+  // TEST_Press's label colour, as rgb.
+  const label = () => addon.eval("return TEST_Press.text.__textColor");
+  expect(isTok(addon, label(), "text"), "enabled: its own colour").toBe(true);
+  addon.eval('TEST_Press:GetScript("OnEnter")(TEST_Press) TEST_Press:Disable()');
+  expect([isTok(addon, label(), "disabled"), addon.eval("return ns.Theme.HoverParts(TEST_Press)[1]:GetAlpha()")], "disabled: the disabled tier, the hover cleared at once").toEqual([true, 0]);
+  addon.eval("ns.Theme.Button(TEST_Press)");
+  expect(isTok(addon, label(), "disabled"), "repainting keeps it disabled").toBe(true);
+  addon.eval("TEST_Press:Enable()");
+  expect(isTok(addon, label(), "text"), "enabled again: the colour from before").toBe(true);
+  addon.eval('local b = CreateFrame("Button", "TEST_Off", UIParent) b:SetFontString(b:CreateFontString()) b:Disable() ns.Theme.Button(b) ns.Theme.DisabledLook(CreateFrame("Frame"), true)');
+  expect(isTok(addon, addon.eval("return TEST_Off:GetFontString().__textColor"), "disabled"), "a button painted while disabled starts disabled, its template label too").toBe(true);
+  addon.eval("ns.Theme.DisabledLook(TEST_Press, false)");
+  expect(isTok(addon, label(), "text"), "enabling one that wasn't disabled changes nothing").toBe(true);
+});

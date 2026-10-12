@@ -97,8 +97,10 @@ function scanFindsMedia() {
 
 // Media images the addon builds a name for at run time, so the scan can't see them: the logo's
 // halves (T.Texture("Logo" .. half)), the shadow and glow rings (ring(frame, { texture = ... })) and
-// the window controls' glyphs (Modules/Windows.lua maxMinButton).
-const BUILT_NAMES = ["Media/Textures/LogoRight.tga", "Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga"];
+// the window controls' glyphs (Modules/Windows.lua maxMinButton), the dispel badge letters
+// (Core/Auras.lua A.DISPEL_GLYPHS) and the warn state's glyph (Core/Theme.lua T.STATE_GLYPHS).
+const BUILT_NAMES = ["Media/Textures/LogoRight.tga", "Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
+  ...["Magic", "Curse", "Disease", "Poison"].map((t) => `Media/Icons/Dispel${t}.tga`), "Media/Icons/Warn.tga"];
 
 // The images in Media/ (not the fonts and license texts), as repo paths.
 function mediaImages() {

@@ -154,12 +154,12 @@ local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step 
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
--- General, part one: accent, font, text size, scale and theme reset.
+-- General, part one: accent, color assist, font, text size, scale and theme reset.
 local function lookRows()
   return {
     { "header", "Look" },
     { "preview" },
-    { "swatches" },
+    { "swatches" }, check("Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", themeSetting("colorAssist")),
     { "cycle", "Font", T.SharedChoices("font", FONT_CHOICES), liveThemeSetting("font") },
     { "slider", "Text size", TEXT_SIZES, liveThemeSetting("textScale") }, { "cycle", "Faction look: crest and heading font", FACTION_LOOK, liveThemeSetting("faction") },
     check("Pixel-perfect scale (crisp 1-pixel lines)", function() return T.Settings().pixelScale end,

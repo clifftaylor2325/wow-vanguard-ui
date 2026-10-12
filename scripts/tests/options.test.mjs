@@ -1,7 +1,7 @@
 // options: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, button, calls, chatHas, isTok, key, loggedIn, marks, setCombat, tooltip } from "./helpers.mjs";
+import { CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, button, calls, chatHas, isTok, key, loggedIn, marks, px, setCombat, tooltip } from "./helpers.mjs";
 
 it("options window", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
@@ -404,9 +404,9 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   expect(press(addon, "W"), "a key it doesn't use goes on to the game: you can still walk").toEqual(["general", true]);
   expect(press(addon, "SPACE")[1], "so do Space and Enter until a row has the keyboard").toBe(true);
   press(addon, "TAB");
-  expect(keyRow(addon), "Tab marks the first row that does something (the sample and the swatches are skipped)").toEqual(["Font", true, true]);
+  expect(keyRow(addon), "Tab marks the first row that does something (the sample and the swatches are skipped)").toEqual(["Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", true, true]);
   press(addon, "TAB");
-  expect(keyRow(addon)[0], "Tab again: the next").toBe("Text size");
+  expect(keyRow(addon)[0], "Tab again: the next").toBe("Font");
   addon.keys({ shift: true });
   press(addon, "TAB");
   press(addon, "TAB");
@@ -414,7 +414,8 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   const last = keyRow(addon);
   expect([last[0], last[2], addon.eval("return Vanguard_Options.found:IsShown()")], "Shift-Tab goes back, and past the first wraps to the last row, scrolled into view").toEqual([addon.eval("local rows = {} for _, w in ipairs(__wfgStub.frames) do if w.card and w:IsVisible() and w:GetObjectType() == 'Button' then rows[#rows + 1] = w end end table.sort(rows, function(a, b) return a.pageY < b.pageY end) return rows[#rows].caption"), true, true]);
   press(addon, "TAB");
-  expect(keyRow(addon), "and Tab from the last wraps to the first, scrolled back up").toEqual(["Font", true, true]);
+  expect(keyRow(addon), "and Tab from the last wraps to the first, scrolled back up").toEqual(["Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", true, true]);
+  press(addon, "TAB");
   const font = addon.eval("return ns.Theme.Settings().font");
   expect([press(addon, "ENTER")[1], addon.eval("return ns.Theme.Settings().font") !== font], "Enter presses the row (it steps the font), and stops there").toEqual([false, true]);
   addon.eval("GetCurrentKeyBoardFocus = function() return Vanguard_Options.search end");
@@ -437,6 +438,31 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   setCombat(addon, true);
   setCombat(addon, false);
   expect(addon.eval("return Vanguard_Options.__kb"), "and a fight ending while it is closed doesn't change that").toBe(false);
+});
+
+// The focus ring on a row: { shown, the ring's colour, its and the gap's top-left x } (false if it never had one).
+const ringOf = (addon, row) => addon.eval(`local f = ns.Theme.FocusParts(${row})
+  if not f then return false end
+  return { f.ring.top:IsShown(), f.ring.top.__vertexColor, f.ring.top.__points.TOPLEFT.x, f.gap.top.__points.TOPLEFT.x, f.gap.top.__vertexColor }`);
+
+it("options: the keyboard's row wears a focus ring (accentText, outside a black gap) that moves with Tab (#257)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general") TEST_Rows = {}');
+  addon.key("Vanguard_Options", "TAB");
+  addon.eval("TEST_Rows[1] = Vanguard_Options.focusRow");
+  const [shown, colour, x, gapX, gap] = ringOf(addon, "TEST_Rows[1]");
+  expect([shown, isTok(addon, colour, "accentText"), x, isTok(addon, gap, "edge"), gapX], "shown on the row: the ring 2 px out, the black gap 1 px out").toEqual([true, true, -2 * px(addon, 1), true, -px(addon, 1)]);
+  addon.key("Vanguard_Options", "TAB");
+  addon.eval("TEST_Rows[2] = Vanguard_Options.focusRow");
+  expect([ringOf(addon, "TEST_Rows[1]")[0], ringOf(addon, "TEST_Rows[2]")[0]], "Tab moves it to the next row").toEqual([false, true]);
+  addon.key("Vanguard_Options", "DOWN");
+  expect(ringOf(addon, "TEST_Rows[2]")[0], "a new page drops it").toBe(false);
+  addon.eval('ns.Options.Show("general")');
+  addon.key("Vanguard_Options", "TAB");
+  addon.eval("TEST_Rows[3] = Vanguard_Options.focusRow Vanguard_Options:Hide()");
+  expect(ringOf(addon, "TEST_Rows[3]")[0], "and so does closing the window").toBe(false);
+  addon.eval("ns.Theme.FocusRing(UIParent, false)");
+  expect(ringOf(addon, "UIParent"), "hiding a ring a frame never had makes none").toBe(false);
 });
 
 it("options: the General page's sample unit frame and button follow the accent, font, text size and bar texture as they change", () => {
@@ -580,7 +606,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|30", "modules|Modules|20|57", "unitframes|Unit frames|30|23", "raid|Raid frames|40|18",
+    "general|General|10|31", "modules|Modules|20|57", "unitframes|Unit frames|30|23", "raid|Raid frames|40|18",
     "actionbars|Action bars|60|73", "quests|Quests|70|18", "more|Bars, map, chat|80|147", "profiles|Profiles|90|14",
     "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|70|12",
     "situations|Situations|85|16", "clickcast|Click casting|46|11",

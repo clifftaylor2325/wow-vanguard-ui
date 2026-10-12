@@ -53,17 +53,17 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | | `disabled` | `7c8390` | Disabled and placeholder text only (a search box's hint, a button you can't press yet, a disabled menu icon). |
 | | `white` | `ffffff` | Text and sparks over bars and icons (timers, counts, the cast spark). |
 | | `gold` | `ffd100` | The game's gold: quest titles and "!" marks, money, elite units, the leader's crown, the zone name's default. |
-| State | `good` | `4fc27a` | Success, ready, full durability. |
-| | `warn` | `ee8b3a` | Warnings, middling values. |
-| | `bad` | `e0565b` | Errors, not ready, broken items. |
+| State | `good` | `3fbf9a` | Success, ready, full durability. Off the red-green axis with `warn` and `bad` (#235, after Okabe-Ito); where a state stands alone as a mark it has a glyph too (`T.STATE_GLYPHS`: `Check`, `Warn`, `Close`), as on the pet's mood. |
+| | `warn` | `f0b43c` | Warnings, middling values. |
+| | `bad` | `e8663f` | Errors, not ready, broken items. |
 | | `info` | `5aa2f0` | Informational state (reserved; no module uses it yet). |
 | | `unknown` | `808080` | A value the client will not tell (reserved; no module uses it yet). |
 | Reaction | `hostile` | `cc4b45` | Hostile units (nameplates, unit frames). |
 | | `neutral` | `e0c24e` | Neutral units. |
-| | `friendly` | `4db86a` | Friendly units. |
+| | `friendly` | `4db86a` | Friendly units. With Color assist on (`colorAssist`, #235) the three reactions are `T.ASSIST`'s instead: friendly `4a9be8` (blue), neutral `e8d25a`, hostile `e0663a` (vermilion). |
 | Resources | `mana` / `rage` / `energy` / `focus` | `3e7be0` / `cf4a3e` / `e6c24a` / `e0893c` | Power bars. |
 | Threat | `threat1` / `threat2` / `threat3` | `e0c24e` / `ee8b3a` / `e0565b` | Yellow, orange, red threat. |
-| Dispel | `magic` / `curse` / `disease` / `poison` | `3c8cf0` / `9a55e0` / `b08a3a` / `3fa34d` | Debuff borders and the raid tile dispel wash. |
+| Dispel | `magic` / `curse` / `disease` / `poison` | `3c8cf0` / `9a55e0` / `b08a3a` / `3fa34d` | Debuff borders and the raid tile dispel wash. Every debuff icon also carries a type badge (#235): its letter (`Media/Icons/DispelMagic`, `DispelCurse`, `DispelDisease`, `DispelPoison`) in the type's colour on an `edge` backing at 0.8, half the icon (at least 8 units) in its top-left corner; on the client's aura engine each letter is mapped clear for every type but its own, so hidden types keep theirs. |
 | | `dispel` | `cc4dff` | The dispel highlight when the client hides the debuff's type. |
 | Casts | `cast` | `e6a93a` | A cast. |
 | | `channel` | `4fc27a` | A channel. |
@@ -145,9 +145,10 @@ The theme has no spacing tokens: each layout keeps its sizes as constants in its
 
 | Primitive | What it paints |
 | --- | --- |
-| `T.Panel(frame, opts)` | A `panel` fill (`inset` with `opts.inset`, `raised` with `opts.raised`, alpha `opts.alpha`), a one-screen-pixel border in `edge` (or the accent with `opts.accent`, or `T.SetBorder`'s colour), a one-pixel `sheen` line just inside the top border, and with `opts.shadow` a soft shadow. `opts.pad` draws it all that many units out past the frame (game windows use 6, room their thick border art used to take; `T.Padding(frame)` reads it back). `noBg`, `noBorder`, `noSheen` leave a part out. |
+| `T.Panel(frame, opts)` | A `panel` fill (`inset` with `opts.inset`, `raised` with `opts.raised`, alpha `opts.alpha`), a one-screen-pixel border in `edge` (or the accent with `opts.accent`, or `T.SetBorder`'s colour), a one-pixel `sheen` line just inside the top border, and with `opts.shadow` a soft shadow. A raised panel (or `opts.bevel`; `T.Button` always) also gets an inner bevel (#234, `T.BEVEL`): a one-pixel `borderHi` line at 35 % on the first row inside the top border and a `shade` line at 35 % on the first row inside the bottom, and its sheen moves down to the second row so the two never merge; `opts.noBevel` leaves it out (slots have their own). `opts.pad` draws it all that many units out past the frame (game windows use 6, room their thick border art used to take; `T.Padding(frame)` reads it back). `noBg`, `noBorder`, `noSheen` leave a part out. With `panelGradient` on (`/vg gradient`, off by default, #259) a floating window's fill (`opts.shadow`, or `opts.gradient`) runs from `T.PANEL_GRADIENT[1]` (-0.012) to `[2]` (+0.012) OKLCH lightness bottom to top (`SetGradient` VERTICAL, alpha kept), about 2.4 % in all, under 7 of 255 levels; smaller panels stay flat. |
 | `T.HudPanel(frame, opts)` | `T.Panel` for the HUD (unit frames, bars, the minimap): never a sheen, and a shadow only when "Soft shadows under frames" (`hudShadow`, off by default, applies on reload) is on, so the screen stays calm. |
-| `T.Button(button)` | An `inset` panel, the template's art faded out, and an eased hover (#257): a `raisedHover` fill over the inset and a one-pixel `borderHi` line inside the top border, easing in over `T.HOVER_IN` (0.1 s) and out over `T.HOVER_OUT` (0.13 s), eased out (`OUT` smoothing), never on a disabled button, cleared at once when the button hides (`T.EaseHover`). |
+| `T.Button(button)` | An `inset` panel, the template's art faded out, and an eased hover (#257): a `raisedHover` fill over the inset and a one-pixel `borderHi` line inside the top border, easing in over `T.HOVER_IN` (0.1 s) and out over `T.HOVER_OUT` (0.13 s), eased out (`OUT` smoothing), never on a disabled button, cleared at once when the button hides (`T.EaseHover`). Pressed (#257, `T.PRESS`, `T.PressButton`): a `shade` overlay at 30 % over the fill and its own label (`button.text`) one screen pixel lower, at once, while the mouse is held; a protected button darkens but keeps its label still. Disabled (#257, `T.DisabledLook`, run by the button's `OnDisable` and `OnEnable`): no hover or press and the label in `disabled`, its own colour back when enabled again. |
+| `T.FocusRing(frame, on)` | The keyboard focus ring (#257): a one-pixel `accentText` ring two screen pixels outside the frame, with a one-pixel `edge` (black) gap between, placed at the frame's pixel size, never animated. The options window puts it on the row Tab marks and takes it off on a new page or when it closes. |
 | `T.EditBox(box)` | An `inset` panel, the template's art faded out. |
 | `T.WindowControl(button, icon, opts)` | A window control (close, maximize, minimize): the template's art faded, the glyph (`T.CONTROL`: drawn on a 20-unit grid, its mark in the middle 9 to 11 units; maximize and minimize are diagonal arrows pointing out and in) in `text2`; under the mouse a 20 x 20 tile behind it (`bad` at 0.9 with `opts.tile = "close"`, else the `accent` at 0.35) and the glyph `white`. An unsized button takes the tile's size. |
 | `T.CloseButton(button)` | `T.WindowControl` with the plain cross (`CloseMark`) and the red tile. |
@@ -161,7 +162,7 @@ The theme has no spacing tokens: each layout keeps its sizes as constants in its
 
 **Sizes and offsets land on whole screen pixels.** `T.PixelRound(frame, length, even)` rounds a length to whole pixels at the frame's scale (to an even count with `even`, for things centred on a frame). `T.PixelSize(frame, w, h, even)` sizes a frame that way and remembers it; panel padding, glows and sheens, the close and window controls, arrows, the logo, unit frames, the options and setup windows and the action bars' button sizes and gaps use them. When the UI scale, the screen size or a frame's mover scale changes, `T.Rescale()` sizes them again on the next frame, out of combat (queued until the fight ends), and calls the `T.OnScale(fn)` listeners (the action bars lay out again).
 
-**Shadows** are a nine-slice ring of `Media/Textures/Shadow` (black, 0.8 alpha, soft falloff) reaching 10 units around the frame on every side, rounded to whole pixels, on the BACKGROUND layer. Floating windows always have one: the options window, setup, dialogs, menus and popovers, the quest dialog and log, tooltips, bags, skinned game windows, alerts. HUD frames have one only with `hudShadow`.
+**Shadows** are a nine-slice ring of `Media/Textures/Shadow` (black, 0.8 alpha, soft falloff) reaching 10 units around the frame on every side, rounded to whole pixels, on the BACKGROUND layer. Floating windows always have one: the options window, setup, dialogs, menus and popovers, the quest dialog and log, tooltips, bags, skinned game windows, alerts. HUD frames have one only with `hudShadow`. With `sliceRings` on (`/vg nineslice`, then a reload; off by default until an in-game check, #236) each shadow and glow is instead one texture the client slices itself (`SetTextureSliceMargins`, `T.SLICE_MARGIN` 16 texture pixels, the client's default stretched mode), anchored the same whole-pixel distance out; a client without texture slicing keeps the eight pieces.
 
 ## Bars
 
@@ -194,6 +195,8 @@ For the game's own windows (`Modules/Windows*.lua`, docs/design/RESKIN.md), and 
 - **45-degree strokes run half a unit off the grid** (the close cross, the check, the arrows, the map diamond), which lands each step of the stroke on whole pixels.
 - Where 2 px strokes do not fit, a glyph uses filled shapes (the raid marks); curves (rings, arcs) stay round. They are tinted with tokens: `text2` at rest in the options nav, `text` at rest on the menu strip, the accent under the mouse or when selected, `disabled` when disabled. Regenerate them with `npm run media`, never by hand; `node scripts/build-media.mjs --check` (and `npm run verify`) fails if a committed file does not match its source, or no source makes it any more (`npm run media` deletes those).
 
+Game icons (spells, items, auras) go through `T.Crop(texture, w, h)`: it trims `T.ICON_EDGE` (0.08) off every edge, the art's baked-in bevel, and given a slot that isn't square, crops the long axis further so the icon keeps its aspect ratio (#259). Every slot Vanguard draws today is square.
+
 ## Theme settings
 
 All in the profile's `theme` table (`T.Settings()`), exported with the profile; `/vg theme reset` (or Reset theme under General → Look) puts them all back.
@@ -209,9 +212,12 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `pixelScale` | off | General → Look → Pixel-perfect scale | on: at once, out of combat; off: on reload |
 | `pixelMultiple` | 1 | Setup → Pixel-perfect (sharpest) | with `pixelScale`, out of combat |
 | `texelSnap` | off | `/vg texelsnap` | at once |
-| `barTexture` | `"vanguard"` | General → Bars → Bar texture | on reload |
+| `sliceRings` | off | `/vg nineslice` | on reload |
+| `panelGradient` | off | `/vg gradient` | at once |
+| `barTexture` | `"vanguard"` | General → Bars → Bar texture | on reload; one material for every bar (#234): unit frames, raid tiles, cast bars, XP and reputation, the damage meter all fill with `T.BarTexture()`, and a test checks the whole HUD |
 | `smoothBars` | on | General → Bars → Smooth health and power bars | at once |
 | `hudShadow` | off | General → Bars → Soft shadows under frames | on reload |
+| `colorAssist` | off | General → Look → Color assist | on reload |
 | `reduceMotion` | off | General → Motion and sound → Reduce motion | at once |
 | `sounds` | on | General → Motion and sound → Interface sounds | at once |
 
@@ -226,6 +232,7 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | Options window (`/vg`) opens | fade in, rising 4 px into place | 0.13 s | at once | Reduce motion |
 | Options window closes | fade out | 0.1 s | 0.1 s | Reduce motion |
 | A button (`T.Button`) under the mouse | hover eases in / out | 0.1 s / 0.13 s | 0.1 s / 0.13 s | Reduce motion (at once) |
+| A button (`T.Button`) pressed, or a row's keyboard focus ring | darker fill, label down 1 px / ring on | at once | at once | - |
 | Options page change | stops a fade in progress; the page appears at once | - | - | - |
 | Unlock mode: a frame's popover (right-click a handle) opens / closes | fade in / out | 0.12 s | closes in 0.12 s (a fight ends unlock mode) | Reduce motion |
 | Setup wizard opens, or comes back after a fight | fade in, rising 4 px into place | 0.13 s | - (waits for the fight to end) | Reduce motion |

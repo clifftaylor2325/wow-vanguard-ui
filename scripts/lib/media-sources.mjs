@@ -97,6 +97,8 @@ export const TEXTURES = {
 
 // An icon's stroke, in grid units: two pixels where icons are shown (16 px).
 const STROKE = 2;
+// The dispel badge letters' stroke: bolder, since they're shown at about 8 px.
+const LETTER = 2.5;
 
 // Straight strokes through points, STROKE wide (or w). A level or upright
 // segment is a box with square ends, so with its points on whole grid units
@@ -133,6 +135,13 @@ const ICON_SHAPES = {
   RoleHealer: [box(6, 1.5, 10, 14.5, 0.5), box(1.5, 6, 14.5, 10, 0.5)],
   Crown: [poly([[2, 4.5], [5.5, 8], [8, 2.5], [10.5, 8], [14, 4.5], [13, 11.5], [3, 11.5]]), box(3, 12.5, 13, 14.5, 0.5)],
   Waiting: [box(1.5, 6.5, 4.5, 9.5, 1.5), box(6.5, 6.5, 9.5, 9.5, 1.5), box(11.5, 6.5, 14.5, 9.5, 1.5)],
+  // The warn state's glyph (#235), filled so it reads at 10 px beside the check and the cross.
+  Warn: [poly([[8, 1.5], [15, 14], [1, 14]])],
+  // Dispel type badges (#235): a bold letter each (Magic, Curse, Disease, Poison), read at 8 px.
+  DispelMagic: [...path([[3, 13.5], [3, 2.5], [8, 9], [13, 2.5], [13, 13.5]], LETTER)],
+  DispelCurse: [...path(arc(8.5, 8, 5.5, 5.5, 45, 315, 14), LETTER)],
+  DispelDisease: [...path([[3.5, 2.5], [3.5, 13.5]], LETTER), ...path([[3.5, 2.5], ...arc(7.5, 8, 5.5, 5.5, 90, -90, 12), [3.5, 13.5]], LETTER)],
+  DispelPoison: [...path([[4, 13.5], [4, 2.5]], LETTER), ...path([[4, 2.5], ...arc(8.5, 5.5, 4, 3, 90, -90, 10), [4, 8.5]], LETTER)],
 };
 
 // A filled five-point star centered at (cx, cy) with outer radius r.
