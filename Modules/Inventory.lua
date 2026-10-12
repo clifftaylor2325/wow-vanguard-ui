@@ -26,12 +26,12 @@ IV.MAX_NAMES = 6
 
 -- The store -------------------------------------------------------------------------------
 
--- This realm and side's characters: VanguardDB.inventory["<realm> - <faction>"] = { [name] = record },
+-- This realm and side's characters: VanguardDB.inventory[home key (ns.Home.Key)] = { [name] = record },
 -- where a record is { class, bags = { [itemID] = count }, bank = { ... }, updated = time read }.
+-- Characters kept under the older "<realm> - <faction>" key move to it once (ns.Home.Adopt).
 function IV.Characters()
-  local realm = type(GetRealmName) == "function" and GetRealmName() or "?"
-  local key = realm .. " - " .. (type(UnitFactionGroup) == "function" and UnitFactionGroup("player") or "?")
   VanguardDB.inventory = type(VanguardDB.inventory) == "table" and VanguardDB.inventory or {}
+  local key = ns.Home.Adopt(VanguardDB.inventory)
   VanguardDB.inventory[key] = type(VanguardDB.inventory[key]) == "table" and VanguardDB.inventory[key] or {}
   return VanguardDB.inventory[key]
 end
