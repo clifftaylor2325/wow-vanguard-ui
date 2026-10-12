@@ -7,7 +7,8 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { checkSource, sourceFiles } from "./lib/code-quality.mjs";
+import { REPORT_RULES, SECURE_ALLOW, checkSource, compareToBaseline, reportSource, sourceFiles } from "./lib/code-quality.mjs";
+import { root } from "./check-zip.mjs";
 
 // n body lines of Lua, or of JS when js is true.
 const body = (n, js = false) => Array.from({ length: n }, (_, i) => `  ${js ? "let" : "local"} v${i} = ${i}${js ? ";" : ""}`).join("\n");
@@ -272,6 +273,153 @@ describe(
     it("colors: only addon Lua is checked", colorAddonOnly);
   },
 );
+
+// Report-only rules (#263) ----------------------------------------------------------------
+
+// The report-only rules each finding of one TEST-ONLY source hit, in order.
+const reported = (src, file = "Modules/t.lua") => reportSource(file, src).map((f) => f.rule);
+const SECURE = "secure-outside-combat-guard";
+const ONUPDATE = "unbounded-onupdate";
+
+// A bare SetAttribute in a function is reported with its line and fix, and does not block.
+function secureBare() {
+  const src = inFn('b:SetAttribute("type", "macro")');
+  expect(reported(src)).toEqual([SECURE]);
+  expect(reportSource("Modules/t.lua", src)[0]).toMatchObject({ line: 3, message: expect.stringMatching(/^SetAttribute\(\) outside a combat guard: run it through ns\.OutOfCombat/) });
+  expect(problems("Modules/t.lua", src)).toBe("");
+}
+
+// Each kind of protected call is read.
+function secureKinds() {
+  const calls = ['RegisterStateDriver(b, "visibility", "show")', "RegisterAttributeDriver(b, 'x', 'y')", "SecureHandlerWrapScript(b, 'OnClick', h, '')", "RegisterUnitWatch(b)", "ClearOverrideBindings(b)", 'SetOverrideBindingClick(b, true, "F", "B")'];
+  for (const call of calls) expect(reported(inFn(call)), call).toEqual([SECURE]);
+}
+
+// A function passed to ns.OutOfCombat passes.
+function secureDeferred() {
+  expect(reported(inFn('ns.OutOfCombat(function() b:SetAttribute("x", 1) end, "key")'))).toEqual([]);
+}
+
+// A function named inside ns.OutOfCombat passes, and so does one it calls.
+function secureDeferredByName() {
+  const src = "-- doc\nlocal function set(b)\n  b:SetAttribute('x', 1)\nend\n-- doc\nlocal function apply(b)\n  set(b)\nend\n-- doc\nfunction M.Go(b)\n  ns.OutOfCombat(function() apply(b) end)\nend\n";
+  expect(reported(src)).toEqual([]);
+  expect(reported("-- doc\nfunction M.Apply(b)\n  b:SetAttribute('x', 1)\nend\nns.OutOfCombat(M.Apply)\n")).toEqual([]);
+}
+
+// A combat check before the call passes; one after it does not.
+function secureChecked() {
+  expect(reported(inFn('if InCombatLockdown() then return end\n  b:SetAttribute("x", 1)'))).toEqual([]);
+  expect(reported(inFn('if ns.InCombat() then return end\n  RegisterStateDriver(b, "x", "y")'))).toEqual([]);
+  expect(reported(inFn('b:SetAttribute("x", 1)\n  if InCombatLockdown() then return end'))).toEqual([SECURE]);
+}
+
+// Top-level (load time) calls, snippets in strings, mentions and other folders pass.
+function secureIgnored() {
+  expect(reported('local b = CreateFrame("Button")\nb:SetAttribute("type", "macro")\n')).toEqual([]);
+  expect(reported(inFn('SecureHandlerExecute(b, "self:SetAttribute(\'x\', 1)")'))).toEqual([SECURE]);
+  expect(reported(inFn('-- b:SetAttribute("x", 1)\n  local s = "RegisterStateDriver(b)"'))).toEqual([]);
+  expect(reported(inFn("if type(RegisterStateDriver) == 'function' then fn() end"))).toEqual([]);
+  expect(reported(inFn('b:SetAttribute("x", 1)'), "scripts/lib/t.lua")).toEqual([]);
+  expect(reported(inFn('b:SetAttribute("x", 1)'), "Modules/t.mjs")).toEqual([]);
+}
+
+// The allow-list is explicit and starts empty.
+function secureAllowList() {
+  expect([...SECURE_ALLOW]).toEqual([]);
+}
+
+// A handler that runs every frame is reported, and does not block.
+function onUpdateBare() {
+  const src = inFn('b:SetScript("OnUpdate", function(self, dt) fn() end)');
+  expect(reported(src)).toEqual([ONUPDATE]);
+  expect(reportSource("Modules/t.lua", src)[0].message).toMatch(/neither throttled nor cleared/);
+  expect(problems("Modules/t.lua", src)).toBe("");
+}
+
+// Adding up (or counting down) elapsed time and acting past a threshold passes, as does GetTime().
+function onUpdateThrottled() {
+  expect(reported(inFn('b:SetScript("OnUpdate", function(_, dt)\n    t = t + dt\n    if t >= 0.2 then t = 0 fn() end\n  end)'))).toEqual([]);
+  expect(reported(inFn('b:SetScript("OnUpdate", function(s, e)\n    s.wait = s.wait - e\n    if s.wait > 0 then return end\n  end)'))).toEqual([]);
+  expect(reported(inFn('b:SetScript("OnUpdate", function()\n    if GetTime() < nextAt then return end\n  end)'))).toEqual([]);
+}
+
+// Adding up time without acting on it, or sums of another parameter, are not a throttle.
+function onUpdateNotThrottled() {
+  expect(reported(inFn('b:SetScript("OnUpdate", function(_, dt) t = t + dt end)'))).toEqual([ONUPDATE]);
+  expect(reported(inFn('b:SetScript("OnUpdate", function(_, dt, x) if x + 1 then return end end)'))).toEqual([ONUPDATE]);
+}
+
+// A file with a local tick(_, dt) of this body that sets it as an OnUpdate handler.
+const withTick = (body) => `-- doc\nlocal function tick(_, dt)\n${body}\nend\n${inFn('b:SetScript("OnUpdate", tick)')}`;
+
+// A named handler is looked up in the file; one defined elsewhere is reported.
+function onUpdateNamed() {
+  expect(reported(withTick("  t = t + dt\n  if t < 1 then return end"))).toEqual([]);
+  expect(reported(withTick("  fn()"))).toEqual([ONUPDATE]);
+  expect(reported(inFn('b:SetScript("OnUpdate", Elsewhere.Tick)'))).toEqual([ONUPDATE]);
+}
+
+// A file that clears its handler passes, also with a conditional nil.
+function onUpdateCleared() {
+  expect(reported(inFn('b:SetScript("OnUpdate", fn)\n  b:SetScript("OnUpdate", nil)'))).toEqual([]);
+  expect(reported(inFn('b:SetScript("OnUpdate", on and fn or nil)'))).toEqual([]);
+}
+
+// HookScript is read, a guarded literal is looked into, other scripts and folders are not.
+function onUpdateForms() {
+  expect(reported(inFn('b:HookScript("OnUpdate", function() fn() end)'))).toEqual([ONUPDATE]);
+  expect(reported(inFn('b:SetScript("OnUpdate", ns.Guard("tick", function(_, dt) t = t + dt if t > 1 then fn() end end))'))).toEqual([]);
+  expect(reported(inFn('b:SetScript("OnShow", function() fn() end)'))).toEqual([]);
+  expect(reported(inFn('b:SetScript("OnUpdate", fn)'), "scripts/lib/t.lua")).toEqual([]);
+}
+
+describe(
+  "code quality, report-only",
+  // Secure calls outside a combat guard.
+  () => {
+    it("secure: a bare SetAttribute is reported, and does not block", secureBare);
+    it("secure: each kind of protected call is read", secureKinds);
+    it("secure: a function passed to ns.OutOfCombat passes", secureDeferred);
+    it("secure: a function named under ns.OutOfCombat passes, and one it calls", secureDeferredByName);
+    it("secure: a combat check before the call passes, after it does not", secureChecked);
+    it("secure: load time, strings, mentions and other folders pass", secureIgnored);
+    it("secure: the allow-list is explicit and starts empty", secureAllowList);
+  },
+);
+
+describe(
+  "code quality, report-only",
+  // OnUpdate handlers are throttled or cleared.
+  () => {
+    it("OnUpdate: an every-frame handler is reported, and does not block", onUpdateBare);
+    it("OnUpdate: elapsed-time and GetTime throttles pass", onUpdateThrottled);
+    it("OnUpdate: adding time without a threshold is not a throttle", onUpdateNotThrottled);
+    it("OnUpdate: a named handler is looked up in the file", onUpdateNamed);
+    it("OnUpdate: a file that clears its handler passes", onUpdateCleared);
+    it("OnUpdate: HookScript, guarded literals, other scripts and folders", onUpdateForms);
+  },
+);
+
+it("baseline: a count above fails, below asks to lower it, a missing rule counts as 0", () => {
+  const rows = compareToBaseline({ [SECURE]: 3, [ONUPDATE]: 1 }, { [SECURE]: 2 });
+  expect(rows).toEqual([
+    { rule: SECURE, count: 3, baseline: 2, status: "above" },
+    { rule: ONUPDATE, count: 1, baseline: 0, status: "above" },
+  ]);
+  expect(compareToBaseline({ [SECURE]: 1 }, { [SECURE]: 2, [ONUPDATE]: 0 }).map((r) => r.status)).toEqual(["below", "at"]);
+});
+
+it("baseline: the committed file lists every report-only rule as a whole number", () => {
+  const baseline = JSON.parse(fs.readFileSync(path.join(root, "scripts/code-quality-baseline.json"), "utf8"));
+  expect(Object.keys(baseline).sort()).toEqual([...REPORT_RULES].sort());
+  for (const n of Object.values(baseline)) expect(Number.isInteger(n) && n >= 0).toBe(true);
+});
+
+it("npm run quality passes on the repo and prints each report-only count against its baseline", () => {
+  const out = execFileSync(process.execPath, [path.join(root, "scripts/check-code-quality.mjs")], { encoding: "utf8" });
+  for (const rule of REPORT_RULES) expect(out).toMatch(new RegExp(`^ {2}${rule} +\\d+ {2}\\(baseline \\d+\\)`, "m"));
+});
 
 // A new file nobody has added to git yet is checked too; ignored and deleted ones aren't.
 it("the scan covers new files, not ignored or deleted ones", () => {

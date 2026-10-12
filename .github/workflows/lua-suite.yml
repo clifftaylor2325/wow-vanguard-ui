@@ -4,9 +4,9 @@ name: lua suite
 # tests) with line coverage of the addon's own Lua: a failing test fails
 # the run, and so does coverage below the floor in
 # scripts/lua-coverage-floor.json (only goes up; 100 is the goal). Then the
-# raid benchmark, the code-quality scan, luacheck, Lua 5.1 syntax and the
-# release zip's contents; and, when asked, the UI preview as a second job
-# beside it.
+# raid benchmark, the code-quality scan, the TOC check (scripts/check-toc.mjs),
+# luacheck, Lua 5.1 syntax and the release zip's contents; and, when asked,
+# the UI preview as a second job beside it.
 #
 # This workflow has no triggers of its own: full-suite.yml calls it when a
 # pull request is opened ready for review or marked ready for review, on
@@ -46,8 +46,8 @@ jobs:
     # instruction budget, the workers' heap cap).
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -84,6 +84,8 @@ jobs:
       - name: Raid benchmark (harness measurement)
         run: npm run bench -- --summary "$GITHUB_STEP_SUMMARY"
       - run: npm run quality
+      - name: The TOC against the files on disk
+        run: node scripts/check-toc.mjs
       - run: |
           luacheck --version
           luacheck --no-color .
@@ -101,7 +103,7 @@ jobs:
           rm -rf dist
           node scripts/package.mjs
           node scripts/check-zip.mjs
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: lua-coverage
@@ -121,15 +123,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - run: npm install -g playwright@1.56.1 && playwright install --with-deps chromium
       - run: npm run preview
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ui-preview
           path: preview/*.png

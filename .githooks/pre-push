@@ -1,0 +1,61 @@
+#!/bin/sh
+# Vanguard pre-push hook: the quick checks before a push, so a red gate shows
+# up here rather than minutes later in CI. npm install turns it on (the
+# prepare script, scripts/install-hooks.mjs, sets core.hooksPath to
+# .githooks). CI stays the source of truth: a tool that is not installed is
+# skipped and named, and `git push --no-verify` skips the hook once.
+#
+# Runs npm run test:quick, npm run quality and the TOC check; then luacheck
+# and the Lua 5.1 syntax pass (luac5.1 -p over every file the TOC loads) when
+# those tools are installed. On Windows (Git Bash) the syntax pass is skipped:
+# a native Lua 5.1 luac is awkward to get there, and CI runs it.
+
+status=0
+skipped=""
+
+# Runs one check, prints its name first, and remembers a failure.
+check() {
+  echo "pre-push: $*"
+  "$@" || status=1
+}
+
+# The Lua 5.1 syntax of every file the TOC loads (the same loop as verify.yml).
+luac_toc() {
+  rc=0
+  cr=$(printf '\r')
+  while IFS= read -r file || [ -n "$file" ]; do
+    file=${file%"$cr"}
+    case "$file" in ''|'#'*) continue ;; esac
+    luac5.1 -p "$file" || rc=1
+  done < Vanguard.toc
+  return $rc
+}
+
+check npm run --silent test:quick
+check npm run --silent quality
+check node scripts/check-toc.mjs
+
+if command -v luacheck >/dev/null 2>&1; then
+  check luacheck --no-color --quiet .
+else
+  skipped="$skipped luacheck (not installed)"
+fi
+
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) skipped="$skipped luac5.1 (Windows)" ;;
+  *)
+    if command -v luac5.1 >/dev/null 2>&1; then
+      check luac_toc
+    else
+      skipped="$skipped luac5.1 (not installed)"
+    fi
+    ;;
+esac
+
+if [ -n "$skipped" ]; then
+  echo "pre-push: skipped:$skipped; CI runs them"
+fi
+if [ "$status" -ne 0 ]; then
+  echo "pre-push: a check failed; fix it, or push with --no-verify to skip the hook once"
+fi
+exit $status
