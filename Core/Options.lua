@@ -412,6 +412,18 @@ function O.AddPage(page)
   PAGES[#PAGES + 1] = page
 end
 
+-- Adds rows from another file to a page: rowsFn() runs each time the page is built, its rows
+-- after the page's own (first: before them). A key with no page is left alone.
+function O.AddRows(key, rowsFn, first)
+  for _, page in ipairs(PAGES) do
+    if page.key == key then
+      local own = page.rows
+      -- The page's own rows with the added ones before or after them.
+      page.rows = function() return first and append(rowsFn(), own()) or append(own(), rowsFn()) end
+    end
+  end
+end
+
 -- The addons button by the minimap: left-click options, right-click move frames.
 function Vanguard_OnAddonCompartmentClick(_, button)
   if button == "RightButton" then
