@@ -13,7 +13,7 @@ Read this before touching anything. README.md is the spec for behaviour; this fi
 ## Commands
 
 ```sh
-npm install           # once
+npm install           # once; also turns on .githooks/pre-push (test:quick, quality, TOC, luacheck and luac if installed; --no-verify skips)
 npm run test:quick    # JS tests + one Lua smoke test (~10 s); what a PR's quick check runs
 npm test              # all tests (JS + Lua harness)
 npm run verify        # npm test + code-quality scan
