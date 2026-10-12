@@ -39,7 +39,12 @@ Core/Widgets.lua
 Core/Controls.lua
 Core/MoverPopover.lua
 Core/Options.lua
+Core/OptionsFrames.lua
+Core/OptionsBars.lua
+Core/OptionsQuests.lua
+Core/OptionsMore.lua
 Core/OptionsWindow.lua
+Core/OptionsPreview.lua
 Core/ErrorBadge.lua
 Core/OptionsProfiles.lua
 Core/Setup.lua
