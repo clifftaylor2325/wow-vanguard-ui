@@ -13,7 +13,7 @@ local T = ns.Theme
 local V = ns.Visibility
 
 local DB = ns.Module("DataBars", {
-  defaults = { width = 478, height = 6, xp = true, reputation = true, text = "hover" },
+  defaults = { width = 478, height = 6, xp = true, reputation = true, text = "hover", tooltip = true },
 })
 
 -- Profiles saved before the Centered layout hold the old size (476 x 10) as
@@ -89,6 +89,79 @@ end
 -- "Valdrakken Accord  1.2K / 2.5K (48%)"
 function DB.ReputationText(rep)
   return string.format("%s  %s / %s (%d%%)", rep.name, DB.Short(rep.cur), DB.Short(rep.max), math.floor(rep.cur / rep.max * 100))
+end
+
+-- Levelling detail -----------------------------------------------------------------------
+
+-- A quest's XP reward, or 0 (the client takes the quest's id).
+function DB.RewardXP(id)
+  if type(GetQuestLogRewardXP) ~= "function" then return 0 end
+  local xp = ns.PlainNumber(GetQuestLogRewardXP(id))
+  return xp and xp > 0 and xp or 0
+end
+
+-- True when the client says so with a plain true (a hidden value counts as no).
+local function isTrue(v)
+  return not ns.IsSecret(v) and v == true
+end
+
+-- The XP a log entry is worth when it is a quest ready to turn in, else 0.
+local function readyXP(info)
+  if type(info) ~= "table" or info.isHeader == true or not info.questID then return 0 end
+  return isTrue(C_QuestLog.IsComplete(info.questID)) and DB.RewardXP(info.questID) or 0
+end
+
+-- The XP waiting in the quest log: every quest ready to turn in, added up.
+function DB.QuestXP()
+  local log, total = C_QuestLog, 0
+  if type(log) ~= "table" or type(log.GetNumQuestLogEntries) ~= "function" or type(log.IsComplete) ~= "function" then return 0 end
+  for i = 1, ns.PlainNumber((log.GetNumQuestLogEntries())) or 0 do total = total + readyXP(log.GetInfo(i)) end
+  return total
+end
+
+-- A kill's XP is the gain that lands within a second of the game's XP message for a kill (the two
+-- events' order isn't known, so either may come first). Quests and discoveries give no such message.
+DB.KILL_WINDOW = 1
+
+-- Pairs a kill message with an XP gain that came with it: that gain is what a kill gives now.
+function DB.PairKill()
+  local kill, gain = DB.killAt, DB.gainAt
+  if not (kill and gain and math.abs(kill - gain) <= DB.KILL_WINDOW) then return end
+  DB.killXP, DB.killAt, DB.gainAt = DB.gain, nil, nil
+end
+
+-- The XP message for a kill came.
+function DB.OnKillMessage()
+  DB.killAt = number(GetTime)
+  DB.PairKill()
+end
+
+-- Experience changed: a rise is a gain (a level-up's drop isn't).
+function DB.OnXPChange()
+  local now = number(UnitXP, "player")
+  if DB.lastXP and now > DB.lastXP then DB.gain, DB.gainAt = now - DB.lastXP, number(GetTime) end
+  DB.lastXP = now
+  DB.PairKill()
+end
+
+-- The tooltip's lines as { left, right }: what is left in the level, how far through, rested, kills.
+function DB.XPLines(xp)
+  local lines = { { "To next level", DB.Short(xp.max - xp.cur) }, { "Through this level", math.floor(xp.cur / xp.max * 100) .. "%" } }
+  if xp.rested > 0 then lines[#lines + 1] = { "Rested", DB.Short(xp.rested) .. " (" .. math.floor(xp.rested / xp.max * 100) .. "% of a level)" } end
+  if DB.killXP then lines[#lines + 1] = { "Kills to level", "about " .. math.ceil((xp.max - xp.cur) / DB.killXP) .. " (" .. DB.killXP .. " XP each)" } end
+  local waiting = DB.QuestXP()
+  if waiting > 0 then lines[#lines + 1] = { "XP in finished quests", DB.Short(waiting) } end
+  return lines
+end
+
+-- Shows the XP bar's tooltip, when it is on and the bar has something to say.
+function DB.ShowXPTooltip(bar)
+  local xp = DB.settings.tooltip and DB.XP()
+  if not xp then return end
+  GameTooltip_SetDefaultAnchor(GameTooltip, bar)
+  GameTooltip:SetText("Level " .. xp.level, T.RGB("text"))
+  for _, l in ipairs(DB.XPLines(xp)) do GameTooltip:AddDoubleLine(l[1], l[2]) end
+  GameTooltip:Show()
 end
 
 -- Building -------------------------------------------------------------------------------
@@ -174,6 +247,11 @@ local function enableXP(settings)
   DB.xpBar.vgOnState = DB.UpdateXP
   addRested(DB.xpBar)
   for _, e in ipairs({ "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD" }) do ns.On(e, DB.UpdateXP) end
+  ns.On("PLAYER_XP_UPDATE", DB.OnXPChange)
+  ns.On("CHAT_MSG_COMBAT_XP_GAIN", DB.OnKillMessage)
+  DB.xpBar:EnableMouse(true)
+  DB.xpBar:HookScript("OnEnter", ns.Guard("show XP tooltip", function(self) DB.ShowXPTooltip(self) end))
+  DB.xpBar:HookScript("OnLeave", function() GameTooltip:Hide() end)
   DB.UpdateXP()
 end
 
