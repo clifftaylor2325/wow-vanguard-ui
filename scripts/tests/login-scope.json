@@ -6,6 +6,7 @@
     "scripts/tests/auctionapi.test.mjs": [],
     "scripts/tests/auctioncrafting.test.mjs": [],
     "scripts/tests/auctionledger.test.mjs": [],
+    "scripts/tests/auctionpost.test.mjs": [],
     "scripts/tests/auctionrestock.test.mjs": [
       "a max price leaves dearer listings out; filters stay when the list is made again and when they're saved",
       "a search that never answers still counts; a plain entry has no wanted amount",
