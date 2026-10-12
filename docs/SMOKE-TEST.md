@@ -62,6 +62,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: each page draws its rows with no Lua error popup, and `/vg errors` stays empty.
 - If it fails, paste: the page name, a screenshot of it, and `/vg errors`.
 
+### 2.1a Situations: Stop recording only while recording
+
+- Do: type `/vg`, open Situations with Record for at Off, and look at **Stop recording and save**; click it. Then set Record for to Solo and look again; click Stop recording and save.
+- Expect: with Record for at Off the button is greyed out and a click does nothing (no chat line). While recording it is bright and a click saves (`Solo: ... saved.` in chat), Record for goes back to Off and the button greys out again.
+- If it fails, paste: a screenshot of the page, the chat lines and `/vg errors`.
+
 ### 2.2 The wizard, start to finish
 
 - Do: drag a frame with `/vg unlock`, then open `/vg` → General → **Run setup**. Click Next three times, then Done.
