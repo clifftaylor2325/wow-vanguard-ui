@@ -18,8 +18,8 @@ Requirements for the launch on 2026-11-04. Each maps to a roadmap phase.
 - [x] **CI-02**: `npm run coverage` reports again and the 100% line-coverage floor holds
 - [x] **CI-03**: Tests are deterministic: no flaky cases, and a failure names what broke
 - [x] **CI-04**: Any test that leaves an error in the addon's error list fails, so swallowed errors cannot pass
-- [ ] **CI-05**: The full suite runs on ready-for-review and on the `full-tests` label; the quick check runs on every push
-- [ ] **CI-06**: The full suite finishes in under 5 minutes on the hosted runner, measured and recorded
+- [x] **CI-05**: The full suite runs on ready-for-review and on the `full-tests` label; the quick check runs on every push
+- [x] **CI-06**: The full suite finishes in under 5 minutes on the hosted runner, measured and recorded
 - [ ] **CI-07**: Dead code is removed: the six test-only functions and any unused defaults, theme tokens, media and globals, each with its test
 - [ ] **CI-08**: Per-frame drivers share one throttled `ns.Every` helper, and unprotected event registrations go through `ns.OnUnit`
 
@@ -87,8 +87,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CI-02 | Phase 1 | Complete |
 | CI-03 | Phase 2 | Complete |
 | CI-04 | Phase 2 | Complete |
-| CI-05 | Phase 3 | Pending |
-| CI-06 | Phase 3 | Pending |
+| CI-05 | Phase 3 | Complete |
+| CI-06 | Phase 3 | Complete |
 | CI-07 | Phase 4 | Pending |
 | CI-08 | Phase 4 | Pending |
 | AH-01 | Phase 5 | Pending |

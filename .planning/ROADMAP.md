@@ -23,7 +23,7 @@ Code and CI (priority 1):
 
 - [x] **Phase 1: Green baseline** - The full suite passes on main, each #169 case is resolved with evidence, and coverage reports again (completed 2026-10-09)
 - [x] **Phase 2: Errors fail tests** - A swallowed addon error fails its test, and runs give the same result every time (completed 2026-10-10)
-- [ ] **Phase 3: Fast suite and CI gate** - The full suite runs in under 5 minutes on the hosted runner, on ready-for-review and the full-tests label
+- [x] **Phase 3: Fast suite and CI gate** - The full suite runs in under 5 minutes on the hosted runner, on ready-for-review and the full-tests label (completed 2026-10-11)
 - [ ] **Phase 4: Lean core** - Dead code is gone, and per-frame and unit-event work goes through shared helpers
 
 Auction house (priority 2):
@@ -105,7 +105,7 @@ Plans:
   2. The full suite finishes in under 5 minutes wall time on a 2-worker local proxy for a 2-vCPU runner, and the measured time, with per-file times, is recorded in the phase summaries and verification. The same measurement on the hosted runner waits for the billing block to clear; the user accepted leaving that part open (D-01 in `03-CONTEXT.md`).
   3. No case was dropped or skipped to reach the time: the test count and the 100% coverage floor match the start of the phase.
 
-**Plans**: 7/7 plans executed in 4 waves
+**Plans**: 7/7 plans complete in 4 waves
 Plans:
 - [x] 03-01-PLAN.md — `npm run timing` (2-worker per-file timing recorder with a budget and a baseline check) and the 907 phase-start case names, captured before any test edit
 - [x] 03-02-PLAN.md — CI-05: full suite on opened-ready / ready-for-review, later pushes only with `full-tests`, drafts never, unrelated labels cannot cancel; truth-table test over the workflow's own expressions; README wording
@@ -252,7 +252,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Green baseline | 2/2 | Complete    | 2026-10-09 |
 | 2. Errors fail tests | 13/13 | Complete    | 2026-10-10 |
-| 3. Fast suite and CI gate | 7/7 | In Progress | - |
+| 3. Fast suite and CI gate | 7/7 | Complete    | 2026-10-11 |
 | 4. Lean core | 0/TBD | Not started | - |
 | 5. Auction Post fix | 0/TBD | Not started | - |
 | 6. Theme scale and motion | 0/TBD | Not started | - |
