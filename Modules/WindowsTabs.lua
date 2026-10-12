@@ -290,10 +290,38 @@ local function watchFlyout()
   if type(_G.EquipmentFlyout_UpdateItems) == "function" then hooksecurefunc("EquipmentFlyout_UpdateItems", ns.Guard("hook EquipmentFlyout_UpdateItems", skinFlyout)) end
 end
 
--- Dresses the inside of the character pane: its lists' rows, the skill rank bar, the stat boxes, the
--- honor tab and the equipment flyout. Safe to run again: lists and the flyout are watched once.
+-- The pane's own backdrops, as parentKeys of CharacterFrame (Camelot CharacterFrame.xml): the wooden background
+-- behind the left pane (every tab's list sits on it) and the stat backdrop and stone plate behind the right one.
+GW.PANE_HOSTS = { "LeftPaneHost", "RightPaneHost" }
+
+-- What the currency list says while it holds nothing (the game has no line of its own for that).
+GW.CURRENCY_EMPTY = "You have no currencies yet."
+
+-- A pane host's art faded: its own textures and those of the frames it holds (the right one's divider line).
+local function fadeHost(host)
+  if type(host) ~= "table" or not host.GetRegions then return end
+  T.FadeRegions(host)
+  for _, child in ipairs({ host:GetChildren() }) do T.FadeRegions(child) end
+end
+
+-- The pane's flat look: its hosts' art faded, each list in a flat inset panel, and the currency list's empty note.
+local function flattenPane()
+  local frame = _G.CharacterFrame
+  if type(frame) == "table" then
+    for _, key in ipairs(GW.PANE_HOSTS) do fadeHost(frame[key]) end
+  end
+  for _, name in ipairs(GW.PANE_LISTS) do
+    local box = boxOf(name)
+    if type(box) == "table" and box.GetRegions then T.Panel(box, { inset = true, noSheen = true }) end
+  end
+  if boxOf("TokenFrame") then GW.WatchEmpty(boxOf("TokenFrame"), GW.CURRENCY_EMPTY) end
+end
+
+-- Dresses the inside of the character pane: its backdrops and lists' rows, the skill rank bar, the stat boxes,
+-- the honor tab and the equipment flyout. Safe to run again: lists and the flyout are watched once.
 function GW.DressCharacterPane()
   watchLists()
+  flattenPane()
   skinStatCategories()
   local skills, honor = _G.SkillsFrame, _G.PVPRankFrame
   if type(skills) == "table" and type(skills.SkillDetailFrame) == "table" then GW.SkinBar(skills.SkillDetailFrame.RankBar) end
