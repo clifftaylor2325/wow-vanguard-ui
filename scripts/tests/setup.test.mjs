@@ -176,6 +176,8 @@ it("setup layouts: Healing puts the raid frames under the character and turns cl
   expect(off.eval("return VanguardDB.profiles.Default.positions.raid"), "without raid frames built, the spot is saved for next time").toEqual({ point: "BOTTOM", relPoint: "BOTTOM", x: 0, y: 342 });
   expect(off.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "Healing turns click casting and the raid frames on").toBe(true);
   for (let i = 0; i < 3; i += 1) setupClick(off, "next");
+  expect(off.eval("return Vanguard_Question:IsShown() and Vanguard_Reload == nil"), "a first run's Done asks about exporting first").toBe(true);
+  off.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(off.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "a module that was off offers a reload at the end").toMatch(/Setup turned on a module that was off/);
 });
 
@@ -421,6 +423,7 @@ it("setup screen: this screen's preset is picked; Keep changes nothing; a preset
   expect(screenSizes(addon), "1440p: UI scale 70%, 38 px buttons laid out at once, 110 x 48 tiles, text 105%, pixel-perfect scale off").toEqual(["1", "0.7", 38, 38, 110, 48, 1.05, false]);
   setupClick(addon, "next");
   setupClick(addon, "next");
+  addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "new tile sizes offer a reload at the end").toMatch(/^The new raid tile size shows after a reload/);
 });
 
@@ -480,4 +483,20 @@ it("default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 
   const old = loggedIn(ACTIONS_ENV + UNITS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { ActionBars = { size = 36 }, DataBars = { width = 454, layout = 2 }, positions = { uf_player = { point = "BOTTOM", relPoint = "BOTTOM", x = -250, y = 180 } } } } }' });
   expect(sizes(old).slice(3, 5), "a profile that saved the old button size and bar width keeps them").toEqual([36, 454]);
   expect(old.eval("return { ns.MoverPoint('uf_player') }"), "and a frame it moved stays put").toEqual(["BOTTOM", "BOTTOM", -250, 180]);
+});
+
+it("first-run setup: Done suggests exporting a profile string; Skip and a rerun don't", () => {
+  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(2560, 1440)", { firstRun: true });
+  for (let i = 0; i < 4; i += 1) setupClick(addon, "next");
+  expect(addon.eval("return Vanguard_Question:IsShown() and Vanguard_Question.title:GetText()"), "Done asks about keeping a copy").toBe("Keep a copy of these settings outside the game? Export a profile string and save it somewhere safe; /vg import brings it back.");
+  addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  expect(addon.eval("return Vanguard_TextDialog:IsShown() and Vanguard_TextEdit:GetText():sub(1, 12)"), "Export shows the whole profile's string to copy").toBe("VG1:profile:");
+  expect(chatHas(addon, /The new raid tile size shows after a reload\. Type \/reload once you've copied the string\.$/), "a reload still owed is said in chat, not over the string").toBe(true);
+  expect(addon.eval("return Vanguard_Reload == nil"), "with no dialog on top").toBe(true);
+  const skipped = loggedIn(CLICK_LUA, { firstRun: true });
+  skipped.eval('__click("Skip setup")');
+  expect(skipped.eval("return Vanguard_Question == nil"), "Skip setup asks nothing").toBe(true);
+  skipped.slash("setup");
+  for (let i = 0; i < 4; i += 1) setupClick(skipped, "next");
+  expect(skipped.eval("return Vanguard_Question == nil"), "nor does finishing setup again").toBe(true);
 });

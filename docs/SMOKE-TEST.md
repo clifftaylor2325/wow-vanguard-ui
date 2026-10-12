@@ -32,14 +32,14 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 1.2 First login opens the setup wizard
 
-- Do: at character select open AddOns and tick Vanguard, then log in on an account that has never run it (or delete `WTF/Account/<account>/SavedVariables/Vanguard.lua` first).
+- Do: at character select open AddOns and tick Vanguard, then log in on an account that has never run it (or delete both `WTF/Account/<account>/SavedVariables/Vanguard.lua` and the character's `WTF/Account/<account>/<realm>/<character>/SavedVariables/Vanguard.lua` first; deleting only the account's file is the settings-loss check in 4.4).
 - Expect: the setup wizard opens by itself with the caption `Step 1 of 4 · Layout`. If you log in during combat it waits and says `Setup opens when combat ends.`
 - If it fails, paste: the Report block.
 
 ### 1.2a Closing early, Skip, and a new character
 
-- Do: on that first login, close the wizard with the X, then `/reload`. Then click **Skip setup** and `/reload` again. Then log in on a character that has never run Vanguard, pick **A profile of its own**, Next, pick Centered: healing, Next, and finish. Log back to the first character.
-- Expect: after the first reload the wizard is back (chat said `Setup opens again at your next login.`); after Skip it stays away. The new character's wizard reads `Step 1 of 5 · Profile`; with a profile of its own, `/vg` → Profiles says `This character uses <its name>.` with no reload, and the first character's frames haven't moved.
+- Do: on that first login, close the wizard with the X, then `/reload`. Then click **Skip setup** and `/reload` again. Then `/vg setup` and click through to Done. Then log in on a character that has never run Vanguard, pick **A profile of its own**, Next, pick Centered: healing, Next, and finish. Log back to the first character.
+- Expect: after the first reload the wizard is back (chat said `Setup opens again at your next login.`); after Skip it stays away and asks nothing. Finishing the rerun asks nothing either. The new character's wizard reads `Step 1 of 5 · Profile`; with a profile of its own, `/vg` → Profiles says `This character uses <its name>.` with no reload, and the first character's frames haven't moved.
 - If it fails, paste: the caption you saw, the Profiles page text and `/vg errors`.
 
 ### 1.3 Status
@@ -125,6 +125,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: type `/vg export`.
 - Expect: a text box titled `Vanguard export (profile Smoke)  Ctrl+C to copy` holding one long string.
 - If it fails, paste: a screenshot.
+
+### 4.4 Lost settings come back
+
+- Do: change the accent (`/vg accent fel`), then log out to character select and quit the game. Rename `WTF/Account/<account>/SavedVariables/Vanguard.lua` to `Vanguard.lua.bak` (keep the character's own file), start the game and log in on the same character. Click Restore, then Reload. Afterwards quit, put the `.bak` file back under its own name if you want the old file, and also try once with the character's file renamed instead of the account's.
+- Expect: chat says `Vanguard's saved settings didn't load this session (the account file came back blank). This character kept a backup.`, a question asks `Vanguard's saved settings didn't load. Restore profile <name> from this character's backup?`, the setup wizard stays shut, and `/vg` → General starts with the notice. After Restore and the reload the fel accent is back and nothing is asked again. With only the character's file renamed, chat says `This character's saved Vanguard settings didn't load; it uses profile <name> again.` and setup stays shut.
+- If it fails, paste: the chat lines, whether the question showed, and `/vg errors`.
 
 ## 5. Pixel borders
 
