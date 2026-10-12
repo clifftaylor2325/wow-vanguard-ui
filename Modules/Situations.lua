@@ -7,8 +7,9 @@
 -- You record an override as you'd set things up anyway: Record for Raid,
 -- drag frames and flip settings with their own handles and options, then
 -- Stop recording: only what changed is kept, and the base goes back. An
--- override holds mover spots (point, scale, opacity) and the allowlisted live
--- settings in SI.LIVE; nothing else is recorded or applied.
+-- override holds mover spots (point, scale, opacity, and a frame's links: what
+-- it's anchored to, the sizes it matches, its own size) and the allowlisted
+-- live settings in SI.LIVE; nothing else is recorded or applied.
 --
 -- Applying writes through the movers' and the modules' own setters, so the
 -- frames and modules see the override as they'd see a change of yours. The
@@ -46,6 +47,11 @@ local ALLOWED = {}
 for module, live in pairs(SI.LIVE) do
   ALLOWED[module] = {}
   for _, key in ipairs(live.keys) do ALLOWED[module][key] = true end
+end
+
+-- Whether an override can hold a module's setting (one in SI.LIVE).
+function SI.Holds(module, key)
+  return ALLOWED[module] ~= nil and ALLOWED[module][key] == true
 end
 
 -- Stands for a setting that was unset in the base (a table can't hold nil).
@@ -116,12 +122,18 @@ end
 
 -- Snapshots --------------------------------------------------------------------------------------
 
--- Every mover's saved spot as plain fields ({} for one at its default).
+-- A copy of a link table in a saved spot (rel, match), or nil.
+local function link(t)
+  return type(t) == "table" and ns.Copy(t) or nil
+end
+
+-- Every mover's saved spot as plain fields ({} for one at its default), with its links (Core/MoverLinks.lua).
 local function spotsNow()
   local out, saved = {}, ns.Settings("positions")
   for _, m in ipairs(ns.MoverList()) do
     local p = tbl(saved[m.key])
-    out[m.key] = { point = p.point, relPoint = p.relPoint, x = p.x, y = p.y, scale = p.scale, alpha = p.alpha }
+    out[m.key] = { point = p.point, relPoint = p.relPoint, x = p.x, y = p.y, scale = p.scale, alpha = p.alpha,
+      rel = link(p.rel), match = link(p.match), w = p.w, h = p.h }
   end
   return out
 end
@@ -229,11 +241,13 @@ end
 
 -- Applying -------------------------------------------------------------------------------------
 
--- Puts a mover at a spot with the movers' own setters: its default first, then the spot's point, scale and opacity.
+-- Puts a mover at a spot with the movers' own setters: its default first, then the spot's point
+-- (where an anchored frame lands while the frame it's anchored to isn't there), links, scale and opacity.
 local function placeSpot(key, spot)
   if not ns.MoverFrame(key) or type(spot) ~= "table" then return end
   ns.ResetMovers(key)
   if spot.point then ns.SetMoverPoint(key, spot.point, spot.relPoint, spot.x or 0, spot.y or 0) end
+  ns.RestoreMoverLinks(key, spot)
   if spot.scale then ns.SetMoverScale(key, spot.scale) end
   if spot.alpha then ns.SetMoverAlpha(key, spot.alpha) end
 end
@@ -448,16 +462,35 @@ SI.INTRO = {
   "A change to something the active override sets lasts until you leave the situation.",
 }
 
+-- What an override can hold, in plain words: each live module's settings (SI.ORDER), after frames.
+SI.HOLDS = {
+  InfoStrip = "Info strip: when it shows, and each of its blocks.",
+  MenuStrip = "Menu bar: when it shows.",
+  DataBars = "XP bars: when they show.",
+  Nameplates = "Nameplates: levels, threat colors, target border and quest marks.",
+}
+-- What the page says about every other setting.
+SI.ELSEWHERE = "Everything else, including any setting that needs a reload, changes your base profile even while recording. While recording, most of them are dimmed and say so when you point at them."
+
+-- Adds the card that says what an override can hold, and what it can't, to a page's rows; returns them.
+function SI.HoldRows(rows)
+  rows[#rows + 1] = { "header", "What an override holds" }
+  rows[#rows + 1] = { "text", "Frame spots, scale and opacity (move frames with /vg unlock)." }
+  for _, module in ipairs(SI.ORDER) do rows[#rows + 1] = { "text", SI.HOLDS[module] } end
+  rows[#rows + 1] = { "text", SI.ELSEWHERE }
+  return rows
+end
+
 -- The Situations page's rows.
 function SI.Rows()
-  return {
+  return SI.HoldRows({
     { "header", "Situations" }, { "text", SI.INTRO[1] }, { "text", SI.INTRO[2] }, { "text", SI.INTRO[3] },
     { "check", "Apply situation overrides", function() return db().enabled end, function(v) db().enabled = v SI.Refresh() end, true },
     { "text", SI.StatusText },
     { "cycle", "Record for", SI.CHOICES, SI.GetRecording, SI.SetRecording, "off" },
     { "button", "Stop recording and save", function() stop() ns.Options.Refresh() end, function() return SI.recording ~= nil end },
     { "button", "Clear the active situation's overrides", function() SI.ClearActive() ns.Options.Refresh() end },
-  }
+  })
 end
 
 ns.Options.AddPage({ key = "situations", title = "Situations", icon = "NavSituations", order = 85, rows = SI.Rows })
