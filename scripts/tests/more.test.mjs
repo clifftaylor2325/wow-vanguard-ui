@@ -924,8 +924,8 @@ it("quest bursts: many quest log updates in one frame rebuild the tracker and th
 
 it("quest tracker: the nearest-first sort ticks only while that order is on", () => {
   const addon = loggedIn(TRACK_ENV);
-  // Whether the tracker has its sort ticker (an OnUpdate script).
-  const ticking = () => addon.eval("return Vanguard_QuestTrackerFrame:GetScript('OnUpdate') ~= nil");
+  // Whether the tracker's sort is a job on the shared ticker.
+  const ticking = () => addon.eval("return ns.ticker.vgJobs['quest tracker sort'] ~= nil");
   expect(ticking(), "in the game's order, no sort ticker").toBe(false);
   addon.eval("ns.GetModule('QuestTracker').settings.order = 'nearest' ns.GetModule('QuestTracker').ApplyOrder()");
   expect([ticking(), addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].title:GetText()")], "nearest first: it ticks, and the tracker is re-sorted at once").toEqual([true, "[12] TEST-ONLY Letter"]);
@@ -1903,13 +1903,13 @@ it("flight timer: the taxi check runs only from picking a flight until it lands"
   // How often the taxi state was asked so far, then reset.
   const asked = () => addon.eval("local n = __asked __asked = 0 return n");
   addon.advance(60);
-  expect([asked(), addon.eval('return ns.GetModule("Errands").poller:IsShown()')], "a minute on the ground with no flight picked: never asked").toEqual([0, false]);
+  expect([asked(), addon.eval('return ns.ticker.vgJobs["flight poll"] ~= nil')], "a minute on the ground with no flight picked: never asked").toEqual([0, false]);
   addon.eval("TakeTaxiNode(2) __onTaxi = true");
   addon.advance(5);
   expect([asked(), flightBar(addon).shown], "in the air: asked twice a second, the bar up").toEqual([10, true]);
   addon.eval("__onTaxi = false");
   addon.advance(1);
-  expect([addon.eval('return ns.GetModule("Errands").poller:IsShown()'), flightBar(addon).shown], "landed: the check stops").toEqual([false, false]);
+  expect([addon.eval('return ns.ticker.vgJobs["flight poll"] ~= nil'), flightBar(addon).shown], "landed: the check stops").toEqual([false, false]);
   asked();
   addon.advance(30);
   expect(asked(), "and stays stopped").toBe(0);

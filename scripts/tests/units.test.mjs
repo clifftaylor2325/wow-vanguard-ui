@@ -435,10 +435,14 @@ it("unit events: combo points, the druid's mana, power ticks and threat ask the 
     GetComboPoints = function() return __cp end`, NO_RAID);
   // Who hears the event (see unitEvents).
   const heard = (event) => unitEvents(addon, event);
-  expect(heard("UNIT_POWER_UPDATE"), "combo points and the mana bar: your power only, nothing takes every unit's").toEqual({ subs: "player player", plain: 0 });
+  const frameUnits = ["boss1", "boss2", "boss3", "boss4", "boss5", "focus", "party1", "party2", "party3", "party4", "pet", "player", "target", "targettarget"];
+  // The unit frames' subscriptions (one per frame, for its unit) sorted in with `own`, as unitEvents lists them.
+  const withFrames = (...own) => [...frameUnits, ...own].sort().join(" ");
+  expect(heard("UNIT_HEALTH"), "the unit frames: one subscription per frame, for its own unit").toEqual({ subs: withFrames(), plain: 0 });
+  expect(heard("UNIT_POWER_UPDATE"), "combo points and the mana bar: your power only, nothing takes every unit's").toEqual({ subs: withFrames("player", "player"), plain: 0 });
   expect(heard("UNIT_POWER_FREQUENT"), "the energy tick too").toEqual({ subs: "player player player", plain: 0 });
-  expect(heard("UNIT_MAXPOWER")).toEqual({ subs: "player player", plain: 0 });
-  expect(heard("UNIT_DISPLAYPOWER"), "a form's power type: the mana bar and the spark").toEqual({ subs: "player player", plain: 0 });
+  expect(heard("UNIT_MAXPOWER")).toEqual({ subs: withFrames("player", "player"), plain: 0 });
+  expect(heard("UNIT_DISPLAYPOWER"), "a form's power type: the mana bar and the spark").toEqual({ subs: withFrames("player", "player"), plain: 0 });
   expect(heard("UNIT_SPELLCAST_SUCCEEDED"), "the five-second rule: your casts").toEqual({ subs: "player", plain: 0 });
   expect([heard("UNIT_THREAT_LIST_UPDATE").subs, heard("UNIT_THREAT_SITUATION_UPDATE").subs], "threat: your target's list, and your own situation").toEqual(["target", "player"]);
   // How many combo-point pips are lit.
