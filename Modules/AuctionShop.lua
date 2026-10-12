@@ -755,7 +755,7 @@ local function paintActions(p)
   local on = actionsOn()
   for _, b in ipairs(p.actions) do
     if on[b.action] then b:Enable() else b:Disable() end
-    T.Color(b.text, on[b.action] and "text" or "muted")
+    T.Color(b.text, on[b.action] and "text" or "disabled")
   end
   p.delete.text:SetText(AH.ListKey() == AH.RECENT and "Clear" or "Delete")
 end

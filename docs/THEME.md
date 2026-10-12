@@ -43,8 +43,9 @@ The look in one line: flat dark slate panels, one-screen-pixel borders, one acce
 | | `sweep` | `000000` at 0.65 | The dark sweep over an aura icon as its time runs out. |
 | | `spark` | `ffffff` at 0.9 | The power bar's tick spark (five-second rule, energy ticks). |
 | Text | `text` | `e8eaee` | Body text (the default colour of `T.Text`). |
-| | `text2` | `a6adb9` | Secondary text, hints, the close glyph, assistant marks. |
-| | `muted` | `6b7280` | Disabled and least important text. |
+| | `text2` | `c8cdd6` | Secondary text, hints, the close glyph, assistant marks. |
+| | `muted` | `a6adb9` | Least important text: card titles, descriptions, notes. |
+| | `disabled` | `7c8390` | Disabled and placeholder text only (a search box's hint, a button you can't press yet, a disabled menu icon). |
 | | `white` | `ffffff` | Text and sparks over bars and icons (timers, counts, the cast spark). |
 | | `gold` | `ffd100` | The game's gold: quest titles and "!" marks, money, elite units, the leader's crown, the zone name's default. |
 | State | `good` | `4fc27a` | Success, ready, full durability. |
@@ -185,7 +186,7 @@ For the game's own windows (`Modules/Windows*.lua`, docs/design/RESKIN.md), and 
 - **One grid unit is one pixel at 16 px.** Strokes are 2 units (2 px) wide (`STROKE`).
 - **Straight strokes sit on whole units** (`crisp`, `rect`: square-ended boxes), so each covers exactly two rows or columns of pixels at 16 px instead of smearing across three. `scripts/media.test.mjs` checks that the icons made only of straight strokes have no half-covered pixel at 16 px.
 - **45-degree strokes run half a unit off the grid** (the close cross, the check, the arrows, the map diamond), which lands each step of the stroke on whole pixels.
-- Where 2 px strokes do not fit, a glyph uses filled shapes (the action bar buttons) or 1 px strokes (the six raid tiles); curves (rings, arcs) stay round. They are tinted with tokens: `text2` at rest in the options nav, `text` at rest on the menu strip, the accent under the mouse or when selected, `muted` when disabled. Regenerate them with `npm run media`, never by hand; `node scripts/build-media.mjs --check` (and `npm run verify`) fails if a committed file does not match its source.
+- Where 2 px strokes do not fit, a glyph uses filled shapes (the action bar buttons) or 1 px strokes (the six raid tiles); curves (rings, arcs) stay round. They are tinted with tokens: `text2` at rest in the options nav, `text` at rest on the menu strip, the accent under the mouse or when selected, `disabled` when disabled. Regenerate them with `npm run media`, never by hand; `node scripts/build-media.mjs --check` (and `npm run verify`) fails if a committed file does not match its source.
 
 ## Theme settings
 

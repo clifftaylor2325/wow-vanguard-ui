@@ -57,7 +57,8 @@ local TOKENS = {
   -- The spark on the power bar (the five-second rule, energy ticks) and the swing timer.
   spark = { "ffffff", 0.9 },
   -- Text
-  text = "e8eaee", text2 = "a6adb9", muted = "6b7280", white = "ffffff", gold = "ffd100",
+  -- Text tiers, brightest first (#227): text, text2, muted; disabled only for disabled and placeholder text.
+  text = "e8eaee", text2 = "c8cdd6", muted = "a6adb9", disabled = "7c8390", white = "ffffff", gold = "ffd100",
   -- State (kept apart from the accent)
   good = "4fc27a", warn = "ee8b3a", bad = "e0565b", info = "5aa2f0", unknown = "808080",
   -- Reaction to you

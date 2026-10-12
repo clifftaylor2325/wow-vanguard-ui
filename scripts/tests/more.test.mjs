@@ -2173,7 +2173,7 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
     return { art, b.icon.__alpha, b.icon.__texCoord[1] > 0, b.icon.__points.TOPLEFT.rel == b.vgSlot, b.icon.__points.TOPLEFT.x }`);
   expect([...bag.slice(0, 4), r3(bag[4] * BAGS)], "bag buttons: the game's art faded, the bag icon kept, cropped and inset 3 pixels in its slot").toEqual([0, 1, true, true, 3]);
   addon.eval("CharacterMicroButton:Disable()");
-  expect(isTok(addon, glyph("CharacterMicroButton").color, "muted"), "and muted while the button is disabled").toBeTruthy();
+  expect(isTok(addon, glyph("CharacterMicroButton").color, "disabled"), "and in the disabled tier while the button is disabled").toBeTruthy();
   addon.eval("CharacterMicroButton:Enable()");
   expect(isTok(addon, glyph("CharacterMicroButton").color, "text"), "back to text when it's enabled again").toBeTruthy();
   addon.eval('ns.Options.Show("more")');
@@ -2441,7 +2441,7 @@ it("bag and menu bar: line icons are 20 screen pixels on their slot, accent unde
   addon.eval("CharacterMicroButton.__scripts.OnEnter(CharacterMicroButton)");
   expect(isTok(addon, color(), "accent"), "accent under the mouse").toBe(true);
   addon.eval("CharacterMicroButton:Disable()");
-  expect(isTok(addon, color(), "muted"), "muted while disabled, even under the mouse").toBe(true);
+  expect(isTok(addon, color(), "disabled"), "the disabled tier while disabled, even under the mouse").toBe(true);
   addon.eval("CharacterMicroButton:Enable()");
   expect(isTok(addon, color(), "accent"), "enabled again under the mouse: accent").toBe(true);
   addon.eval("CharacterMicroButton.__scripts.OnLeave(CharacterMicroButton)");

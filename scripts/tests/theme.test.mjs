@@ -1,7 +1,7 @@
 // theme: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, button, chatHas, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, button, chatHas, isTok, loggedIn, px, setCombat, tok } from "./helpers.mjs";
 
 it("theme", () => {
   const addon = loggedIn();
@@ -513,4 +513,19 @@ it("texel snapping (#226): a profile saved with it on snaps still textures from 
   expect(addon.eval("local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.__snapToPixelGrid == true and w.__texelBias == 1 then n = n + 1 end end return n") > 0, "textures made during login snap").toBe(true);
   const s = snapping(addon);
   expect([s.fill, s.bar], "a panel's fill snaps, a bar's fill doesn't").toEqual([[true, 1], [false, 0]]);
+});
+
+// WCAG relative luminance of an { r, g, b } colour (0-1 channels).
+const lum = (c) => c.slice(0, 3).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+
+// WCAG contrast of a token's colour over the panel colour.
+const contrast = (addon, name) => {
+  return Math.round(((lum(tok(addon, name)) + 0.05) / (lum(tok(addon, "panel")) + 0.05)) * 10) / 10;
+};
+
+it("text tiers (#227): text, text2, muted, then disabled, each readable on a panel; a search box's hint is in the disabled tier", () => {
+  const addon = loggedIn();
+  expect(["text", "text2", "muted", "disabled"].map((n) => contrast(addon, n)), "brightest first; every tier, disabled too, clears 4.5:1").toEqual([15.2, 11.5, 8.1, 4.8]);
+  const hint = addon.eval('local e = ns.Widgets.Search(UIParent, 200, "Search", function() end) return { e.hint.__textColor[1], e.hint.__textColor[2], e.hint.__textColor[3] }');
+  expect(isTok(addon, hint, "disabled"), "the search hint is placeholder text").toBe(true);
 });

@@ -376,10 +376,10 @@ end
 
 -- Menu buttons --------------------------------------------------------------------------------
 
--- Tints a button's line icon: muted while the button is disabled, else accent
+-- Tints a button's line icon: disabled while the button is disabled, else accent
 -- while the mouse is over it, else text.
 local function paintGlyph(b)
-  T.Tint(b.vgGlyph, not b:IsEnabled() and "muted" or (b.vgHover and "accent" or "text"))
+  T.Tint(b.vgGlyph, not b:IsEnabled() and "disabled" or (b.vgHover and "accent" or "text"))
 end
 
 -- Notes whether the mouse is over a button and repaints its line icon.
