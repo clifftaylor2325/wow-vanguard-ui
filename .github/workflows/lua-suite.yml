@@ -4,8 +4,9 @@ name: lua suite
 # tests) with line coverage of the addon's own Lua: a failing test fails
 # the run, and so does coverage below the floor in
 # scripts/lua-coverage-floor.json (only goes up; 100 is the goal). Then the
-# code-quality scan, luacheck, Lua 5.1 syntax and the release zip's
-# contents; and, when asked, the UI preview as a second job beside it.
+# code-quality scan, the TOC check (scripts/check-toc.mjs), luacheck, Lua
+# 5.1 syntax and the release zip's contents; and, when asked, the UI
+# preview as a second job beside it.
 #
 # This workflow has no triggers of its own: full-suite.yml calls it when a
 # pull request is opened ready for review or marked ready for review, on
@@ -75,6 +76,8 @@ jobs:
           printf 'Shuffled run, seed %s. Replay: VG_SHUFFLE_SEED=%s npm test (PowerShell: $env:VG_SHUFFLE_SEED=%s; npm test)\n' "$seed" "$seed" "$seed" | tee -a "$GITHUB_STEP_SUMMARY"
       - run: npm run coverage
       - run: npm run quality
+      - name: The TOC against the files on disk
+        run: node scripts/check-toc.mjs
       - run: |
           luacheck --version
           luacheck --no-color .

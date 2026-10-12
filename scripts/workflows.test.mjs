@@ -379,6 +379,14 @@ it("no workflow names a Node version of its own", () => {
   }
 });
 
+it("verify and lua-suite both run the TOC check right after the code-quality scan", () => {
+  for (const file of ["verify.yml", "lua-suite.yml"]) {
+    const text = workflow(file);
+    expect(stepScript(file, "The TOC against the files on disk").trim(), file).toBe("node scripts/check-toc.mjs");
+    expect(text.indexOf("- name: The TOC against the files on disk"), file).toBeGreaterThan(text.indexOf("- run: npm run quality"));
+  }
+});
+
 it("neither workflow installs luacheck from apt; lua5.1 stays; luacheck prints its version first", () => {
   for (const [file] of LUACHECK_STEPS) {
     const text = workflow(file);

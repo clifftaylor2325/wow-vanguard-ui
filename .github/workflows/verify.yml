@@ -2,7 +2,7 @@ name: verify
 
 # The pull-request gate: the check a pull request needs to merge (the
 # "Quick checks" job in the main branch's ruleset). The code-quality scan,
-# luacheck, Lua 5.1 syntax (the game runs Lua 5.1; the test harness,
+# the TOC against the files on disk (scripts/check-toc.mjs), luacheck, Lua 5.1 syntax (the game runs Lua 5.1; the test harness,
 # fengari, is Lua 5.3), the JS tests plus one Lua smoke test (npm run
 # test:quick), and the release zip's contents. Built to finish inside a
 # minute: a private repository's Actions minutes are counted, and a job
@@ -60,6 +60,8 @@ jobs:
           npm ci
           wait "$tools_pid" || { cat tools.log; exit 1; }
       - run: npm run quality
+      - name: The TOC against the files on disk
+        run: node scripts/check-toc.mjs
       - run: |
           luacheck --version
           luacheck --no-color .
