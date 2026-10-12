@@ -163,13 +163,13 @@ local function keepContent(frame, name)
   end
 end
 
--- Skins one window: art faded (its content art kept), a flat panel with a soft shadow `pad` units
--- (default GW.PAD) out past it, its parts themed.
+-- Skins one window: art faded (its content art kept), a flat opaque panel (the world never shows through a
+-- window) with a soft shadow `pad` units (default GW.PAD) out past it, its parts themed.
 function GW.Skin(frame, pad)
   local name = frame.GetName and frame:GetName()
   fadeArt(frame)
   keepContent(frame, name)
-  T.Panel(frame, { shadow = true, pad = pad or GW.PAD })
+  T.Panel(frame, { shadow = true, pad = pad or GW.PAD, alpha = 1 })
   dressParts(frame, name)
 end
 

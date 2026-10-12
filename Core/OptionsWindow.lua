@@ -676,9 +676,9 @@ local function addThumb(f)
   f.grip:Hide()
 end
 
--- The window frame: above other windows, closes with Escape (O.PlaceWindow places it).
+-- The window frame: opaque (no world shows through, under short pages either), above other windows, closes with Escape (O.PlaceWindow places it).
 local function windowFrame()
-  local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = 0.98, shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = 1, shadow = true })
   f:SetSize(WIDTH, HEIGHT)
   f:SetFrameStrata("DIALOG")
   f:EnableMouse(true)
