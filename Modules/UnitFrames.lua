@@ -313,17 +313,14 @@ local UNIT_EVENTS = {
   UNIT_LEVEL = UF.UpdateName,
 }
 
--- Frame OnEvent: a unit event for this frame's unit.
-local function onUnitEvent(f, event)
-  UNIT_EVENTS[event](f)
-end
+-- The unit events, as a list for ns.OnUnit.
+local UNIT_EVENT_LIST = {}
+for event in pairs(UNIT_EVENTS) do UNIT_EVENT_LIST[#UNIT_EVENT_LIST + 1] = event end
 
--- Listens for its own unit's events (RegisterUnitEvent filters by unit).
+-- Listens for its own unit's events through ns.OnUnit (the client sends that
+-- unit's only); the subscription is its own frame, not the secure unit button.
 local function listen(f)
-  for event in pairs(UNIT_EVENTS) do
-    f:RegisterUnitEvent(event, f.unit)
-  end
-  f:SetScript("OnEvent", onUnitEvent)
+  f.vgUnitEvents = ns.OnUnit(UNIT_EVENT_LIST, function(event) UNIT_EVENTS[event](f) end, f.unit)
 end
 
 -- Whether the frame's unit is someone else, or shows another name or level,
