@@ -640,7 +640,7 @@ end
 -- The window frame: centered, above other windows, closes with Escape.
 local function windowFrame()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = 0.98, shadow = true })
-  f:SetSize(WIDTH, HEIGHT)
+  T.PixelSize(f, WIDTH, HEIGHT, true)
   f:SetPoint("CENTER")
   f:SetFrameStrata("DIALOG")
   f:EnableMouse(true)

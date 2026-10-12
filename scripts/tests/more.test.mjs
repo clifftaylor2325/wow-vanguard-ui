@@ -1,7 +1,7 @@
 // more: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { AFK_ENV, CLICK_LUA, FAKE_FADES, expectErrors, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, isTok, key, later, loggedIn, marks, pinned, plate, putAway, raidButton, setCombat, strips, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { AFK_ENV, CLICK_LUA, FAKE_FADES, expectErrors, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, isTok, key, later, loggedIn, marks, pinned, plate, putAway, px, raidButton, setCombat, strips, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -859,7 +859,7 @@ const wheelLog = (addon, which, delta) => addon.eval(`local s = Vanguard_QuestLo
 it("quest log: a long list and long quest text scroll, a short one does not", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval("ns.GetModule('QuestLog').Open()");
-  expect(addon.eval("local c = ns.GetModule('QuestLog').frame.close return { c:GetWidth(), c:GetHeight(), c:IsVisible() }"), "the close button has a size (it was 0 by 0, so it never showed)").toEqual([20, 20, true]);
+  expect(addon.eval("local c = ns.GetModule('QuestLog').frame.close return { c:GetWidth(), c:GetHeight(), c:IsVisible() }"), "the close button has a size (it was 0 by 0, so it never showed): 20, an even count of whole screen pixels").toEqual([px(addon, 20, true), px(addon, 20, true), true]);
   expect(logScrolls(addon), "five lines and a short text fit the 356 px views: nothing to scroll").toEqual({ list: [356, 0, 0], detail: [356, 0, 0] });
   addon.eval(`for i = 1, 20 do local id = 91000 + i
     __log[#__log + 1] = { questID = id }
@@ -1616,7 +1616,7 @@ const bossHolder = (addon) => addon.eval(`local c, b1, b5 = BossTargetFrameConta
 
 it("boss frames: five in a column at the top left, the game's put away", () => {
   const addon = loggedIn(UNITS_ENV + BOSS_ENV);
-  expect(addon.eval(`return { Vanguard_boss5 ~= nil, Vanguard_boss1.__watched, Vanguard_boss2.__points.TOPLEFT.rel == Vanguard_boss1, Vanguard_boss2:GetWidth() }`), "five boss frames, each shown while its boss exists, stacked").toEqual([true, true, true, 150]);
+  expect(addon.eval(`return { Vanguard_boss5 ~= nil, Vanguard_boss1.__watched, Vanguard_boss2.__points.TOPLEFT.rel == Vanguard_boss1, Vanguard_boss2:GetWidth() }`), "five boss frames, each shown while its boss exists, stacked, 150 wide in whole screen pixels").toEqual([true, true, true, px(addon, 150)]);
   expect(addon.eval("return { ns.MoverPoint('uf_boss1') }"), "movable, from the top-left corner").toEqual(["TOPLEFT", "TOPLEFT", 20, -20]);
   addon.eval("__units.boss1.hp = 4200");
   addon.fire("INSTANCE_ENCOUNTER_ENGAGE_UNIT");

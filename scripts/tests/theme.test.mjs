@@ -1,7 +1,7 @@
 // theme: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, button, chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, button, chatHas, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
 
 it("theme", () => {
   const addon = loggedIn();
@@ -66,7 +66,7 @@ it("window controls: sized when the caller gave no size, quiet until the mouse i
     m.__scripts.OnEnter(m)
     return { quiet = quiet, lit = lit, after = tile:IsShown(), m = { m:GetWidth(), mGlyph.__texture, mTile.__vertexColor } }`);
   expect([out.quiet[0], out.quiet[1], isTok(addon, out.quiet[2], "text2"), out.quiet[3], out.quiet[4], out.quiet[5]],
-    "an unsized close button takes the 20-unit tile's size; quiet: no tile, a plain cross in text2 and nothing else").toEqual([20, false, true, 0, 20, "CloseMark"]);
+    "an unsized close button takes the 20-unit tile's size in whole, even screen pixels; quiet: no tile, a plain cross in text2 and nothing else").toEqual([px(addon, 20, true), false, true, 0, px(addon, 20, true), "CloseMark"]);
   expect([out.lit[0], isTok(addon, out.lit[1], "bad"), isTok(addon, out.lit[2], "white"), out.after], "under the mouse: a red square tile, the cross white; hidden under the mouse (no OnLeave comes) it goes quiet again").toEqual([true, true, true, false]);
   expect([out.m[0], /Icons\\Maximize$/.test(out.m[1]), isTok(addon, out.m[2], "accent")], "a sized control keeps its size; a maximize control's glyph, on an accent tile").toEqual([30, true, true]);
 });
@@ -82,7 +82,8 @@ it("panels with padding: the fill, border and shadow reach out past the frame, t
     end
     local p = bg.__points
     return { p.TOPLEFT.x, p.TOPLEFT.y, p.BOTTOMRIGHT.x, p.BOTTOMRIGHT.y, top.__points.TOPLEFT.y, ns.Theme.Padding(f), ns.Theme.Padding(UIParent) }`);
-  expect(out, "6 units out on every side; Padding says how far (0 for a frame never painted)").toEqual([-6, 6, 6, -6, 6, 6, 0]);
+  const six = px(addon, 6);
+  expect(out, "6 units out on every side, in whole screen pixels; Padding says how far (0 for a frame never painted)").toEqual([-six, six, six, -six, six, 6, 0]);
 });
 
 // A TEST-ONLY PixelUtil for a screen `height` pixels tall, as Blizzard writes it:
@@ -434,3 +435,46 @@ it("the game's font objects: the theme font at Text size, kept after a theme cha
   addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
   expect(addon.eval("return select(2, __FontA:GetFont())"), "re-applied at the new Text size").toBe(21);
 });
+
+it("pixel rounding: sizes and offsets land on whole screen pixels, centred ones on an even count (#225)", () => {
+  const addon = loggedIn();
+  // Screen pixels a length covers at UIParent's scale now (1080p, scale 1: 1080 / 768 per unit).
+  const pixels = (lua) => addon.eval(`return (${lua}) * UIParent:GetEffectiveScale() * 1080 / 768`);
+  expect(pixels("ns.Theme.PixelRound(UIParent, 38)"), "38 units at 1080p and scale 1 are 53.4 pixels: 53").toBeCloseTo(53, 9);
+  expect(pixels("ns.Theme.PixelRound(UIParent, 21, true)"), "21 units, centred: 29.5 pixels become an even 30").toBeCloseTo(30, 9);
+  expect(pixels("ns.Theme.PixelRound(UIParent, 0)"), "nothing stays nothing").toBe(0);
+  addon.eval(`UIParent:SetScale(768 / 1080)`);
+  expect(addon.eval("return ns.Theme.PixelRound(UIParent, 38)"), "at pixel-perfect scale a whole unit is already a whole pixel").toBeCloseTo(38, 9);
+});
+
+it("pixel sizes are rounded again after a UI scale, screen or frame scale change, out of combat (#225)", () => {
+  const addon = loggedIn("__scaled = 0 ns.Theme.OnScale(function() __scaled = __scaled + 1 end)");
+  addon.eval(`TEST_Sized = ns.Theme.PixelSize(CreateFrame("Frame", nil, UIParent), 100, 40)`);
+  // TEST_Sized's width and height in screen pixels at UIParent's scale now.
+  const size = () => addon.eval("local k = UIParent:GetEffectiveScale() * 1080 / 768 return { TEST_Sized:GetWidth() * k, TEST_Sized:GetHeight() * k }");
+  expect(size().map((n) => Math.round(n * 1e6) / 1e6), "100 x 40 units at 1080p and scale 1: 140.6 x 56.3 pixels become 141 x 56").toEqual([141, 56]);
+  setCombat(addon, true);
+  addon.eval("UIParent:SetScale(0.8)");
+  addon.fire("UI_SCALE_CHANGED");
+  addon.update(0.1);
+  expect([addon.eval("return __scaled"), addon.eval("return ns.QueuedCount()") > 0], "in combat the rounding waits (sizes on secure frames are protected)").toEqual([0, true]);
+  setCombat(addon, false);
+  expect(size().map((n) => Math.round(n * 1e6) / 1e6), "then at scale 0.8: 112.5 x 45 pixels become 113 x 45").toEqual([113, 45]);
+  expect(addon.eval("return __scaled"), "and the OnScale listeners run once").toBe(1);
+  addon.fire("DISPLAY_SIZE_CHANGED");
+  addon.fire("DISPLAY_SIZE_CHANGED");
+  addon.update(0.1);
+  expect(addon.eval("return __scaled"), "a burst of changes rounds once").toBe(2);
+  addon.eval("ns.SetMoverScale('minimap', 1.5)");
+  addon.update(0.1);
+  expect(addon.eval("return __scaled"), "a frame's own scale (unlock mode) rounds again too").toBe(3);
+});
+
+it("pixel-perfect scale takes a whole multiple: 2 makes one UI unit two screen pixels (#225)", () => {
+  const addon = loggedIn("GetPhysicalScreenSize = function() return 3840, 2160 end");
+  addon.eval("ns.Theme.Settings().pixelMultiple = 2 ns.Theme.SetPixelScale(true)");
+  expect(addon.eval("return UIParent:GetScale()"), "4K at 2x: 2 x 768 / 2160").toBeCloseTo((2 * 768) / 2160, 9);
+  addon.eval("ns.Theme.Settings().pixelMultiple = 0.5");
+  expect(addon.eval("return ns.Theme.PixelScale()"), "never less than one pixel per unit").toBeCloseTo(768 / 2160, 9);
+});
+

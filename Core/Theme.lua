@@ -106,6 +106,8 @@ local DEFAULTS = {
   font = "",
   outline = "",
   pixelScale = false,
+  -- Screen pixels per UI unit at pixel-perfect scale (a whole number; the Pixel-perfect screen preset sets it).
+  pixelMultiple = 1,
   textScale = 1,
   barTexture = "vanguard",
   -- Soft shadows under HUD frames (unit frames, bars, minimap); floating windows always have one.
@@ -279,6 +281,46 @@ function T.PixelsPerUnit()
   return scaleOf(UIParent) * screenHeight() / 768
 end
 
+-- Sizes asked for through T.PixelSize: frame -> { w, h, even }. Weak, so a frame that is
+-- collected doesn't stay; a scale or screen change rounds them all again (T.Rescale).
+local pixelSized = setmetatable({}, { __mode = "k" })
+-- Called after every scale or screen change has been rounded again (T.OnScale).
+local scaleListeners = {}
+
+-- A length in frame's units rounded to whole screen pixels at its scale now
+-- (mult * floor(x / mult + 0.5), mult being T.Pixel). With even it is an even
+-- number of pixels, so a frame centred on an even-width parent stays on whole pixels.
+function T.PixelRound(frame, length, even)
+  local step = T.Pixel(frame) * (even and 2 or 1)
+  return math.floor(length / step + 0.5) * step
+end
+
+-- Sizes a frame to w x h rounded to whole screen pixels (even counts with `even`, for
+-- a centred frame), and remembers the size asked for, so T.Rescale rounds it again.
+function T.PixelSize(frame, w, h, even)
+  pixelSized[frame] = { w, h, even }
+  frame:SetSize(T.PixelRound(frame, w, even), T.PixelRound(frame, h, even))
+  return frame
+end
+
+-- Calls fn() (out of combat) after a UI scale, screen or frame scale change, once
+-- T.PixelSize frames are rounded again: for layouts that place things on whole pixels.
+function T.OnScale(fn)
+  scaleListeners[#scaleListeners + 1] = fn
+end
+
+-- Rounds every T.PixelSize frame again for the scale now and tells the T.OnScale listeners.
+local function resizeAll()
+  for frame, s in pairs(pixelSized) do frame:SetSize(T.PixelRound(frame, s[1], s[3]), T.PixelRound(frame, s[2], s[3])) end
+  for _, fn in ipairs(scaleListeners) do fn() end
+end
+
+-- After a scale change: rounds the remembered sizes again on the next frame, once however
+-- often it is asked for, and out of combat (some of them are secure frames).
+function T.Rescale()
+  ns.Soon("pixel sizes", function() ns.OutOfCombat(resizeAll, "pixel sizes") end)
+end
+
 -- Where a frame's border is drawn: a status bar's on top (its fill would cover
 -- a BORDER-layer line), anything else's under its content.
 local function edgeLayer(frame)
@@ -294,9 +336,10 @@ local function outward(point, pad)
   return x, y
 end
 
--- Anchors a part's `point` to the same point of frame, `pad` units (default none) out past its edge.
+-- Anchors a part's `point` to the same point of frame, `pad` units (default none, rounded to
+-- whole screen pixels) out past its edge.
 local function pin(t, frame, point, pad)
-  t:SetPoint(point, frame, point, outward(point, pad or 0))
+  t:SetPoint(point, frame, point, outward(point, T.PixelRound(frame, pad or 0)))
 end
 
 -- The two corners each edge texture runs between.
@@ -330,7 +373,7 @@ end
 
 -- Places the sheen one pixel inside the top border (`pad` units out past the frame's top), one pixel tall.
 local function placeSheen(t, frame, pad)
-  local px, out = T.Pixel(frame), pad or 0
+  local px, out = T.Pixel(frame), T.PixelRound(frame, pad or 0)
   t:ClearAllPoints()
   t:SetPoint("TOPLEFT", frame, "TOPLEFT", px - out, out - px)
   t:SetPoint("TOPRIGHT", frame, "TOPRIGHT", out - px, out - px)
@@ -370,7 +413,7 @@ local function ringPiece(frame, piece, look)
   local t = T.Snap(frame:CreateTexture(nil, look.layer, nil, look.sublevel))
   t:SetTexture(T.Texture(look.texture))
   t:SetTexCoord(unpack(piece.tc))
-  for _, a in ipairs(piece.at) do t:SetPoint(a[1], frame, a[2], outward(a[2], look.pad or 0)) end
+  for _, a in ipairs(piece.at) do t:SetPoint(a[1], frame, a[2], outward(a[2], T.PixelRound(frame, look.pad or 0))) end
   local size = wholePixels(frame, look.size)
   if not piece.w then t:SetHeight(size) end
   if not piece.h then t:SetWidth(size) end
@@ -722,11 +765,12 @@ local function paintControl(entry)
   p.tile:SetShown(entry.lit == true)
 end
 
--- A texture centered on a button: the path at the size, on the layer.
+-- A texture centered on a button: the path at the size (an even number of screen pixels,
+-- so it stays on whole pixels in an even button), on the layer.
 local function centered(button, layer, path, size)
   local t = T.Snap(button:CreateTexture(nil, layer))
   t:SetTexture(path)
-  t:SetSize(size, size)
+  T.PixelSize(t, size, size, true)
   t:SetPoint("CENTER")
   return t
 end
@@ -760,7 +804,7 @@ function T.WindowControl(button, icon, opts)
     entry = { kind = "control", opts = opts or {}, parts = controlParts(button, icon), paint = paintControl }
     painted[button] = entry
     watchControl(button, entry)
-    if (button:GetWidth() or 0) < 1 then button:SetSize(T.CONTROL.tile, T.CONTROL.tile) end
+    if (button:GetWidth() or 0) < 1 then T.PixelSize(button, T.CONTROL.tile, T.CONTROL.tile, true) end
   end
   repaint(button, entry)
   return button
@@ -774,7 +818,7 @@ end
 -- Puts a close button T.CONTROL.inset in from a panel's top-right corner on both axes: the corner the
 -- eye sees, so a panel drawn out past its frame (T.Padding) counts its padding. Returns the button.
 function T.PlaceClose(close, panel)
-  local inset = T.CONTROL.inset - T.Padding(panel)
+  local inset = T.PixelRound(panel, T.CONTROL.inset - T.Padding(panel))
   close:ClearAllPoints()
   close:SetPoint("CENTER", panel, "TOPRIGHT", -inset, -inset)
   return close
@@ -921,7 +965,7 @@ local function arrowGlyph(button, up)
   T.Button(button)
   button.vgArrow = T.Tint(T.Snap(button:CreateTexture(nil, "OVERLAY")), "text2")
   button.vgArrow:SetTexture(T.Icon("Down"))
-  button.vgArrow:SetSize(10, 10)
+  T.PixelSize(button.vgArrow, 10, 10, true)
   button.vgArrow:SetPoint("CENTER")
   if up then button.vgArrow:SetTexCoord(0, 1, 1, 0) end
 end
@@ -974,8 +1018,7 @@ end
 
 -- The Vanguard mark (two linked diamonds) at size x size; follows the accent live.
 function T.Logo(parent, size)
-  local f = CreateFrame("Frame", nil, parent)
-  f:SetSize(size, size)
+  local f = T.PixelSize(CreateFrame("Frame", nil, parent), size, size)
   local parts = { right = logoHalf(f, "Right", 0), left = logoHalf(f, "Left", 1) }
   local entry = { kind = "logo", opts = {}, parts = parts, paint = paintLogo }
   painted[f] = entry
@@ -1243,13 +1286,20 @@ end
 
 -- Pixel-perfect scale ----------------------------------------------------------------
 
+-- The pixel-perfect scale the settings pick: 768 / screen height times the whole
+-- multiple (pixelMultiple, 1 unless set: 2 makes one UI unit two screen pixels).
+function T.PixelScale()
+  return T.PixelPerfectScale() * math.max(1, math.floor(T.Settings().pixelMultiple or 1))
+end
+
 -- Sets UIParent to the pixel-perfect scale when that setting is on, out of
--- combat, then resizes every border.
+-- combat, then resizes every border and rounds pixel-sized frames again.
 function T.ApplyScale()
   if not T.Settings().pixelScale then return end
   ns.OutOfCombat(function()
-    UIParent:SetScale(T.PixelPerfectScale())
+    UIParent:SetScale(T.PixelScale())
     T.Refresh()
+    T.Rescale()
   end)
 end
 
@@ -1264,6 +1314,7 @@ end
 local function onScaleChanged()
   T.Refresh()
   T.ApplyScale()
+  T.Rescale()
 end
 
 ns.On("PLAYER_LOGIN", T.ApplyScale)
