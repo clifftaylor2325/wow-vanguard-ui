@@ -100,7 +100,7 @@ it("tab buttons: the tabs switch off, or a window's own group off, leaves the ga
   const off = loggedIn(WINDOWS_ENV + WINDOW_TABS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
   off.eval("MerchantFrame:Show() TestOnlySpells:Show()");
   expect(off.eval("return { __tabState(MerchantFrameTab1).art, __tabState(TestOnlySpells.TabSystem:GetTabButton(1)).art }"), "tabs off: the art is the game's").toEqual([-1, -1]);
-  expect(off.eval("return MerchantFrame.vgWindow"), "while the window itself is still skinned").toBe(true);
+  expect(off.eval("return ns.FrameState('vgWindow')[MerchantFrame]"), "while the window itself is still skinned").toBe(true);
   const social = WINDOWS_ENV + TABS_ENV + `__window("TestOnlySocial") TestOnlySocial.Tabs = { __tab(TestOnlySocial) }
     ns.GetModule("Windows").Add("social", "framed", { "TestOnlySocial" })`;
   const gameOwn = loggedIn(social, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { social = false } } }" });
@@ -340,12 +340,12 @@ it("equipment flyout: panels behind its grid and page bar, its buttons skinned l
   addon.eval("EquipmentFlyoutFrame:Show()");
   // The equipment flyout: its grid and page bar panelled, its first button skinned, its button count.
   const flyout = () => addon.eval(`local f = EquipmentFlyoutFrame
-    return { __panel(f.buttonFrame), __panel(f.NavigationFrame), f.buttons[1].vgSkinned == true, #f.buttons }`);
+    return { __panel(f.buttonFrame), __panel(f.NavigationFrame), ns.FrameState('vgSkinned')[f.buttons[1]] == true, #f.buttons }`);
   expect(flyout(), "its grid and page bar panelled, its first button skinned").toEqual([true, true, true, 1]);
   addon.eval(`table.insert(EquipmentFlyoutFrame.buttons, CreateFrame("Button", nil, EquipmentFlyoutFrame.buttonFrame))`);
-  expect(addon.eval("return EquipmentFlyoutFrame.buttons[2].vgSkinned"), "a button the game adds waits for the next fill").toBe(null);
+  expect(addon.eval("return ns.FrameState('vgSkinned')[EquipmentFlyoutFrame.buttons[2]]"), "a button the game adds waits for the next fill").toBe(null);
   addon.eval("EquipmentFlyout_UpdateItems()");
-  expect(addon.eval("return EquipmentFlyoutFrame.buttons[2].vgSkinned"), "and is skinned when the game fills the flyout again").toBe(true);
+  expect(addon.eval("return ns.FrameState('vgSkinned')[EquipmentFlyoutFrame.buttons[2]]"), "and is skinned when the game fills the flyout again").toBe(true);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("EquipmentFlyoutFrame:Hide() EquipmentFlyoutFrame:Show() EquipmentFlyout_UpdateItems()");
   expect(addon.eval("return { ns.Theme.PaintedCount(), #ns.errors }"), "nothing is painted twice").toEqual([painted, 0]);
@@ -374,7 +374,7 @@ const BARS_ENV = PANE_ENV + `
     if key then parent[key] = bar end
     return bar
   end
-  function __barState(bar) return { __a(bar.Track.Begin), __a(bar.Track.Thumb.Middle), __panel(bar.Track.Thumb), bar.Back.vgArrow ~= nil } end
+  function __barState(bar) return { __a(bar.Track.Begin), __a(bar.Track.Thumb.Middle), __panel(bar.Track.Thumb), ns.FrameState('vgArrow')[bar.Back] ~= nil } end
   __window("TestOnlyList")
   __bar(TestOnlyList, "ScrollBar")
   TestOnlyList.Pane = CreateFrame("Frame", nil, TestOnlyList)

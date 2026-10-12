@@ -4,6 +4,10 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgBagItems = ns.FrameState("vgBagItems")
+local vgPlayers = ns.FrameState("vgPlayers")
+
 local T = ns.Theme
 
 local GW = ns.GetModule("Windows")
@@ -238,8 +242,8 @@ function GW.SkinBagWindow(frame)
   local bags = ns.GetModule("Bags")
   if not (bags and ns.ModuleEnabled("Bags")) then return end
   bags.SkinWindow(frame)
-  if frame.vgBagItems or type(frame.UpdateItems) ~= "function" or type(hooksecurefunc) ~= "function" then return end
-  frame.vgBagItems = true
+  if vgBagItems[frame] or type(frame.UpdateItems) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  vgBagItems[frame] = true
   hooksecurefunc(frame, "UpdateItems", ns.Guard("hook UpdateItems", skinBagItems))
 end
 
@@ -270,8 +274,8 @@ function GW.SkinMasterLooter(frame)
   if type(frame.Item) == "table" then fadeWhole(frame.Item, MASTER_ART) end
   fadeWhole(frame, { "HighlightFrame" })
   dressMasterPlayers()
-  if frame.vgPlayers or type(_G.MasterLooterFrame_UpdatePlayers) ~= "function" or type(hooksecurefunc) ~= "function" then return end
-  frame.vgPlayers = true
+  if vgPlayers[frame] or type(_G.MasterLooterFrame_UpdatePlayers) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  vgPlayers[frame] = true
   hooksecurefunc("MasterLooterFrame_UpdatePlayers", ns.Guard("hook MasterLooterFrame_UpdatePlayers", dressMasterPlayers))
 end
 

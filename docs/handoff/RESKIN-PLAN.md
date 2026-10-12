@@ -139,7 +139,7 @@ and `scripts/tests/windows-{social,town,system,map,menus,tabs,pvp}.test.mjs`.
   subsections aren't allowed (`core.test.mjs` checks every step has Do, Expect and paste lines). Size S.
 - [x] **S0.10 Helpers for the streams** (added while writing S0). `Modules/Windows.lua` also exports
   `GW.FadeParts(frame, keys)` (parentKeys: a frame's own textures, or a texture), `GW.FadeNamed(names)` (global
-  textures/frames), `GW.SkinWith(keys)` (a skin function: `GW.Skin` then those parts faded), `GW.PaintNamed(names, token)`
+  textures/frames), `GW.SkinWith(keys)` (a skin function: `GW.Skin` then those parts faded; removed in CI-07, unused), `GW.PaintNamed(names, token)`
   (font strings by global name in a theme colour) and `GW.settings` (the module's settings once enabled; read a group's
   switch as `GW.settings.<group>`). Streams use these instead of writing their own loops.
 - [x] **S0.9 Shared item skin.** `Modules/Bags.lua`: export the local `skinItem` (:95, "Fades an item button's slot art") as
