@@ -17,7 +17,8 @@
     "lint": "luacheck .",
     "package": "node scripts/package.mjs",
     "preview": "node scripts/preview-ui.mjs",
-    "link:wow": "node scripts/link-wow.mjs"
+    "link:wow": "node scripts/link-wow.mjs",
+    "prepare": "node scripts/install-hooks.mjs"
   },
   "devDependencies": {
     "@resvg/resvg-js": "2.6.2",

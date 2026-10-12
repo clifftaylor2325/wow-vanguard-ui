@@ -1,0 +1,31 @@
+# Spelling check: typos (https://github.com/crate-ci/typos), run on every pull
+# request by the "Spelling" step of .github/workflows/verify.yml, docs-only
+# ones included. It reads code, comments and docs. Locally:
+# `typos` from the repo root, with the binary from its releases page.
+#
+# A word typos flags that is right here goes below with a note saying why;
+# a real misspelling gets fixed instead.
+
+[files]
+# Vendored libraries (kept as upstream wrote them), generated media and the
+# art sources are not ours to spell-check; the lock file is generated too.
+extend-exclude = ["Libs/", "Media/", "art/", "package-lock.json"]
+
+[default]
+# WoW's texture escape, |T<path>:<size>|t: the path is not prose.
+extend-ignore-re = ['\|T[^|\s]*\|t']
+
+[default.extend-words]
+# WoW vocabulary.
+defensives = "defensives" # damage-reduction spells, as players call them
+hander = "hander" # a two-hander: a two-handed weapon
+varian = "varian" # Varian Wrynn, quoted on the AFK screen
+lok = "lok" # "Lok'tar ogar", the Horde's battle cry, quoted on the AFK screen
+overlayed = "overlayed" # the client's IsSpellOverlayed (a spell's proc glow)
+# Code and test names.
+fo = "fo" # a test's local for Vanguard_focus
+failer = "failer" # a test helper: the function that fails on purpose
+mis = "mis" # the prefix in "mis-sized"
+
+[default.extend-identifiers]
+PNGs = "PNGs" # plural of PNG
