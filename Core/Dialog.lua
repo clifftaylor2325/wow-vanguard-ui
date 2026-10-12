@@ -35,6 +35,7 @@ local function dialog(name, w, h)
   f:Hide()
   return f
 end
+ns.Dialog = dialog
 
 -- Text box ------------------------------------------------------------------------
 
@@ -80,6 +81,7 @@ end
 -- (Import, or the label given) is clicked.
 function ns.AskText(title, onImport, label)
   local f = textBox()
+  f.ownTitle = title
   f.title:SetText(title)
   f.edit:SetText("")
   f.primary.text:SetText(label or "Import")
@@ -87,6 +89,14 @@ function ns.AskText(title, onImport, label)
   f.primary:SetScript("OnClick", ns.Guard("click text box primary", function() onImport(f.edit:GetText()) end))
   f:Show()
   f.edit:SetFocus()
+end
+
+-- Shows work under way in the text dialog's title (as "Importing… 40%"), its primary
+-- button hidden meanwhile; nil puts the title ns.AskText gave and the button back.
+function ns.TextProgress(title)
+  local f = textBox()
+  f.title:SetText(title or f.ownTitle)
+  f.primary:SetShown(title == nil)
 end
 
 -- Hides the text dialog.

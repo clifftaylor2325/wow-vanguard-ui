@@ -217,6 +217,7 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | Options page change | stops a fade in progress; the page appears at once | - | - | - |
 | Unlock mode: a frame's popover (right-click a handle) opens / closes | fade in / out | 0.12 s | closes in 0.12 s (a fight ends unlock mode) | Reduce motion |
 | Setup wizard opens, or comes back after a fight | fade in | 0.12 s | - (waits for the fight to end) | Reduce motion |
+| What's new window opens (after an update, `/vg whatsnew`) | fade in | 0.12 s | 0.12 s (only from `/vg whatsnew`; after an update it waits for the fight to end) | Reduce motion |
 | AFK screen appears | fade in | 0.4 s | - (never opens in a fight) | Reduce motion |
 | AFK screen goes (you are back, a click or key, a fight starts) | fade out | 0.2 s | 0.15 s | Reduce motion |
 | Instance prep card shows, then goes after Hide after (20 s) or its close button | fade in / fade out | 0.12 s | - (never opens in a fight; closes in 0.12 s) | Reduce motion |

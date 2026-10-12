@@ -103,17 +103,32 @@ local function wireText(bar, mode)
   end
 end
 
--- A themed status bar with centered text, movable as `key`.
+-- The sizes an XP or reputation bar may be given in unlock mode (matched to another frame, or
+-- set under General → Layout).
+DB.SIZES = { width = { 60, 1600 }, height = { 2, 40 } }
+
+-- The bar's centered text, shown as the text setting says (always, or on hover).
+local function addText(bar, mode)
+  bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "small")
+  bar.text:SetPoint("CENTER")
+  wireText(bar, mode)
+end
+
+-- A bar Vanguard resized: its fill (and the XP bar's rested strip) is drawn again.
+local function resized(bar)
+  if bar.vgOnState then bar.vgOnState() end
+end
+
+-- A themed status bar with centered text, movable as `key`; Vanguard may set its size.
 local function createBar(key, label, point, settings)
   local bar = CreateFrame("StatusBar", "Vanguard_" .. key, UIParent)
   bar:SetSize(settings.width, settings.height)
   T.StyleBar(bar)
   T.HudPanel(bar, { inset = true })
-  bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "small")
-  bar.text:SetPoint("CENTER")
-  wireText(bar, settings.text)
+  addText(bar, settings.text)
   V.WatchHover(bar)
   ns.Mover(bar, key, label, point)
+  ns.MoverSizable(key, DB.SIZES, resized)
   return bar
 end
 
