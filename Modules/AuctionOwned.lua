@@ -283,7 +283,7 @@ local function paintActions(r, a, home)
   r.cancel:SetShown(up(a))
   r.relist:SetShown(a.status == "expired")
   if home then r.relist:Enable() else r.relist:Disable() end
-  T.Color(r.relist.text, home and "text" or "muted")
+  T.Color(r.relist.text, home and "text" or "disabled")
 end
 
 -- An auction's row: the item, what the price column says by status, the flag and the button.
@@ -313,7 +313,7 @@ local function paintNext(c)
   if busy then paintLater() end
   c.summary:SetText(not AH.checked and "" or busy and "checking..." or n > 0 and (n .. " undercut") or "none undercut")
   if nextOne then c.cancelNext:Enable() else c.cancelNext:Disable() end
-  T.Color(c.cancelNext.text, nextOne and "text" or "muted")
+  T.Color(c.cancelNext.text, nextOne and "text" or "disabled")
 end
 
 -- The status line while there are no rows: what Check undercuts does, or that none are up.

@@ -528,7 +528,7 @@ local function paintPriceLine(c, s)
   local line, under = c.lines[#c.lines], s ~= nil and AH.UnderVendor(s, AH.SellPrice(s))
   line:SetText(under and "Under vendor price" or AH.SELL_LINES[#AH.SELL_LINES])
   T.Color(line, under and "bad" or "text2")
-  T.Color(line.value, under and "bad" or "accent")
+  T.Color(line.value, under and "bad" or "accentText")
 end
 
 -- A listing's row on the Up now card: its price per unit, how many, the time left, and the flag
@@ -587,7 +587,7 @@ local function sellLines(c)
     local l = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
     l:SetPoint("TOPLEFT", 44, -20 - (i - 1) * 14)
     l:SetText(label)
-    l.value = T.Text(c:CreateFontString(nil, "OVERLAY"), i == #AH.SELL_LINES and "number" or "small", i == #AH.SELL_LINES and "accent" or "text")
+    l.value = T.Text(c:CreateFontString(nil, "OVERLAY"), i == #AH.SELL_LINES and "number" or "small", i == #AH.SELL_LINES and "accentText" or "text")
     l.value:SetPoint("TOPRIGHT", 0, -20 - (i - 1) * 14)
     c.lines[i] = l
   end
