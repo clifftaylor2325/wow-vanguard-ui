@@ -27,12 +27,21 @@ local WINDOW_GROUPS = {
   { "menus", "Right-click menus, dropdowns and more tooltips (reload)" },
   { "tabs", "Tab buttons and the inside of the character pane (reload)" },
   { "pvp", "Battleground windows (reload)" },
+  { "movable", "Drag game windows by their title bar (reload)" },
 }
 
--- The game's own windows in the Vanguard look (after a reload): one switch per group.
+-- Forgets where game windows were dragged to (and the options window's place, which goes back to the middle at once).
+local function resetWindowPlaces()
+  ns.GetModule("Windows").ResetMoves()
+  O.PlaceWindow()
+end
+
+-- The game's own windows in the Vanguard look (after a reload): one switch per group, dragging them by
+-- their title bar, and a button that puts them back where the game places them.
 local function windowRows()
   local rows = { { "header", "Game windows" } }
   for _, g in ipairs(WINDOW_GROUPS) do rows[#rows + 1] = check(g[2], setting("Windows", g[1], true)) end
+  rows[#rows + 1] = { "button", "Reset window positions", resetWindowPlaces }
   return rows
 end
 

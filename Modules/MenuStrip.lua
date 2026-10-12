@@ -222,7 +222,7 @@ end
 -- slots only: inside the bar's margin, which the bar hugs its rows with.
 local function addDivider(strip)
   local y = -(MS.MARGIN + MS.TILE + MS.GAP / 2)
-  MS.divider = T.Snap(strip:CreateTexture(nil, "ARTWORK"))
+  MS.divider = T.Snap(strip:CreateTexture(nil, "ARTWORK"), "divider")
   MS.divider:SetTexture(T.WHITE)
   MS.divider:SetPoint("LEFT", strip, "TOPLEFT", MS.MARGIN, y)
   MS.divider:SetPoint("RIGHT", strip, "TOPRIGHT", -MS.MARGIN, y)
@@ -338,7 +338,7 @@ local function placeFill(b, rel)
   if not vgFree[b] then return end
   local pad = MS.COUNT_PAD / rel
   vgFree[b]:SetPoint("BOTTOMRIGHT", vgIcon[b], "BOTTOMRIGHT", -pad, MS.FILL / rel + pad)
-  T.TextSize(vgFree[b], T.RoleSize("tiny") / rel)
+  T.TextSize(vgFree[b], T.RoleSize("badge") / rel)
   vgFreeBack[b]:SetPoint("TOPLEFT", vgFree[b], "TOPLEFT", -pad, pad)
   vgFreeBack[b]:SetPoint("BOTTOMRIGHT", vgFree[b], "BOTTOMRIGHT", pad, -pad)
 end
@@ -390,10 +390,10 @@ end
 
 -- Menu buttons --------------------------------------------------------------------------------
 
--- Tints a button's line icon: muted while the button is disabled, else accent
+-- Tints a button's line icon: disabled while the button is disabled, else accent
 -- while the mouse is over it, else text.
 local function paintGlyph(b)
-  T.Tint(vgGlyph[b], not b:IsEnabled() and "muted" or (vgHover[b] and "accent" or "text"))
+  T.Tint(vgGlyph[b], not b:IsEnabled() and "disabled" or (vgHover[b] and "accent" or "text"))
 end
 
 -- Notes whether the mouse is over a button and repaints its line icon.
@@ -444,6 +444,15 @@ local function icons(art)
   return set
 end
 
+-- Lets clicks through the game's own child frames on a menu button (its "new"
+-- indicator and pulse), so a click reaches the button while an alert is shown.
+-- Our slot is left alone.
+local function clickThrough(b)
+  for _, child in ipairs({ b:GetChildren() }) do
+    if child ~= vgSlot[b] and child.IsMouseEnabled and child:IsMouseEnabled() then child:EnableMouse(false) end
+  end
+end
+
 -- The game's art on a menu button that is fitted inside its slot: its state
 -- textures and whichever of MS.MENU_FIT it has; and which of it shows the game's icons.
 local function menuArt(b)
@@ -455,6 +464,7 @@ local function menuArt(b)
   for _, key in ipairs(MS.MENU_FIT) do
     if type(b[key]) == "table" and b[key].SetPoint then art[#art + 1] = b[key] end
   end
+  ns.OutOfCombat(function() clickThrough(b) end, "menustrip clickthrough " .. (b:GetName() or ""))
   return art, icons(art)
 end
 
@@ -525,7 +535,7 @@ local function addFree(b)
   vgFreeBack[b] = T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
   vgFreeBack[b]:SetTexture(T.WHITE)
   T.Tint(vgFreeBack[b], "edge", MS.COUNT_BACK)
-  vgFree[b] = T.Text(b:CreateFontString(nil, "OVERLAY"), "tiny")
+  vgFree[b] = T.Text(b:CreateFontString(nil, "OVERLAY"), "badge")
   MS.free, MS.freeBack = vgFree[b], vgFreeBack[b]
 end
 

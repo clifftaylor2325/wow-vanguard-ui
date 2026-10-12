@@ -78,7 +78,7 @@ it("talent planner: the bar on the talents window, and plan mode's clicks set pl
   expect(mark(addon, 101).mouse, "plan mode: the marks take the mouse").toBe(true);
   addon.eval("__click(101) __click(101)");
   const planned = mark(addon, 101);
-  expect([planned.badge, planned.shown, isTok(addon, planned.color, "accent"), planned.ring], "two left-clicks plan two ranks: the badge shows 2 in the accent, and it is the next pick").toEqual(["2", true, true, true]);
+  expect([planned.badge, planned.shown, isTok(addon, planned.color, "accentText"), planned.ring], "two left-clicks plan two ranks: the badge shows 2 in the accent's text colour, and it is the next pick").toEqual(["2", true, true, true]);
   expect(addon.eval("return VanguardCharDB.talentPlans[1].ranks[101]"), "the plan is saved per character and spec group").toBe(2);
   addon.eval("__click(101, 'RightButton')");
   expect(mark(addon, 101).badge, "a right-click takes one back").toBe("1");
@@ -241,4 +241,32 @@ it("talent planner: a mark's tooltip, the import box, /vg talents spend, and the
   const text = addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 2 }, hash = "1-2-3" } } ${TP}.ExportDialog() return Vanguard_TextEdit:GetText()`);
   addon.eval(`${TP}.Clear() ${TP}.ImportDialog() Vanguard_TextEdit:SetText(${JSON.stringify(text)}) Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
   expect([addon.eval("return Vanguard_TextDialog:IsShown()"), chatHas(addon, /Talent plan imported: 2 points./)], "a good paste imports the plan, closes the box and says how many points").toEqual([false, true]);
+});
+
+// TEST-ONLY talents window at Forever's size (Camelot Blizzard_PlayerSpellsFrame.xml: the window 1618 x 883,
+// its TalentsFrame 1212 x 681 at its foot) with the game's Apply Changes button (ApplyButton, 164 x 22, centred 8 px up).
+const APPLY_ENV = `
+  PlayerSpellsFrame:SetSize(1618, 883) PlayerSpellsFrame:SetPoint("TOP", UIParent, "TOP", 0, -41)
+  local tf = PlayerSpellsFrame.TalentsFrame
+  tf:SetSize(1212, 681) tf:ClearAllPoints() tf:SetPoint("BOTTOM", PlayerSpellsFrame, "BOTTOM", 0, 4)
+  tf.ApplyButton = CreateFrame("Button", nil, tf) tf.ApplyButton:SetSize(164, 22) tf.ApplyButton:SetPoint("BOTTOM", tf, "BOTTOM", 0, 8)
+`;
+
+it("talent planner: the summary stops short of the game's Apply Changes button, the whole of it in a tooltip", () => {
+  const addon = open(APPLY_ENV);
+  addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 1, [104] = 1 }, hash = "1-2-3" } } ${TP}.Refresh()`);
+  const full = "4 planned, 2 bought, 2 to buy; next: Unbreakable Will; 1 unreachable (a talent or row it needs is not in the plan); 3 points to spend";
+  expect(summary(addon), "a long summary").toBe(full);
+  const room = addon.eval(`local s, a = Vanguard_TalentPlan.summary, PlayerSpellsFrame.TalentsFrame.ApplyButton
+    return { a:GetLeft() - s:GetRight(), s:GetLeft() - Vanguard_TalentPlan.spend:GetRight() }`);
+  expect(room, "it ends 12 px short of Apply Changes, 10 px after Spend planned").toEqual([12, 10]);
+  addon.eval("local t = Vanguard_TalentPlan.tip t:GetScript('OnEnter')(t)");
+  const lines = addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out");
+  expect([addon.eval("return GameTooltip:IsShown()"), Object.values(lines).slice(-2)], "hovering it shows the whole summary").toEqual([true, ["Talent plan", full]]);
+  addon.eval("local t = Vanguard_TalentPlan.tip t:GetScript('OnLeave')(t)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "leaving puts it away").toBe(false);
+  const plain = open();
+  expect(plain.eval("local b = Vanguard_TalentPlan local point, rel, at = b.summary:GetPoint(2) return { point, rel == b, at }"), "a window without Apply Changes: the summary ends with the bar").toEqual(["RIGHT", true, "RIGHT"]);
+  plain.eval("Vanguard_TalentPlan.summary:SetText('') local t = Vanguard_TalentPlan.tip t:GetScript('OnEnter')(t)");
+  expect(plain.eval("return GameTooltip:IsShown()"), "no summary (a client without the trait API): no tooltip").toBe(false);
 });

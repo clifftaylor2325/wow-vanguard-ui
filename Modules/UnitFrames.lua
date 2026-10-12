@@ -65,7 +65,7 @@ local function reactionColor(unit)
   if isSecret(reaction) or type(reaction) ~= "number" then
     return T.TOKENS.unknown
   end
-  return T.TOKENS[reaction <= 3 and "hostile" or reaction == 4 and "neutral" or "friendly"]
+  return { T.RGB(reaction <= 3 and "hostile" or reaction == 4 and "neutral" or "friendly") }
 end
 
 -- r, g, b for a unit's health bar: class color for players, reaction otherwise.
@@ -221,7 +221,7 @@ end
 local function createUnitFrame(key, unit, w, h, settings)
   local f = CreateFrame("Button", "Vanguard_" .. key, UIParent, "SecureUnitButtonTemplate")
   f.unit, f.key = unit, key
-  f:SetSize(w, h)
+  T.PixelSize(f, w, h)
   makeSecure(f, unit)
   T.HudPanel(f)
   f.health, f.power = createBar(f), createBar(f)

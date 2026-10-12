@@ -737,7 +737,7 @@ local function paintPaneRow(r, e)
   local on = e.key == AH.ListKey()
   r.name:SetText(e.name)
   r.count:SetText(e.count > 0 and tostring(e.count) or "")
-  T.Color(r.name, on and "accent" or "text")
+  T.Color(r.name, on and "accentText" or "text")
   r.mark:SetShown(on)
   r.wash:SetShown(on)
 end
@@ -755,7 +755,7 @@ local function paintActions(p)
   local on = actionsOn()
   for _, b in ipairs(p.actions) do
     if on[b.action] then b:Enable() else b:Disable() end
-    T.Color(b.text, on[b.action] and "text" or "muted")
+    T.Color(b.text, on[b.action] and "text" or "disabled")
   end
   p.delete.text:SetText(AH.ListKey() == AH.RECENT and "Clear" or "Delete")
 end

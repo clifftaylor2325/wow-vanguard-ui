@@ -64,7 +64,7 @@ function SB.Skin(b)
   if ns.Masque.Add(SB.MASQUE, b) then return end
   local icon = iconOf(b)
   T.FadeRegions(b, SB.KeepSet(b))
-  if icon and icon.SetTexCoord then icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+  if icon and icon.SetTexCoord then T.Crop(icon) end
   T.Panel(b, { noBg = true })
 end
 

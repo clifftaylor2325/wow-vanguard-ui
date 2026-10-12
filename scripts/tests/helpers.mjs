@@ -16,6 +16,10 @@ export { expectErrors } from "../lib/error-guard.mjs";
 // decision D-06, so a test whose client lacks AuraContainer names it with expectErrors.
 export const AURA_FALLBACK = /^aura containers \(using Vanguard's own icons\): wow-world\.lua:\d+: CreateFrame: unknown frame type AuraContainer$/;
 
+// A length in UI units rounded to whole screen pixels at UIParent's scale now, as the theme
+// rounds sizes and offsets (T.PixelRound; with even, an even number of pixels).
+export const px = (addon, n, even = false) => addon.eval(`return ns.Theme.PixelRound(UIParent, ${n}, ${even})`);
+
 // r, g, b, a of a theme color token, read from the addon.
 export const tok = (addon, name) => addon.eval(`return { ns.Theme.RGB("${name}") }`);
 
@@ -342,12 +346,19 @@ export const FAKE_FADES = `
   __fades = {}
   function __fakeFader(frame)
     frame.CreateAnimationGroup = function()
-      local g = { scripts = {} }
+      local g = { scripts = {}, owner = frame }
       function g:SetToFinalAlpha() end
       function g:Stop() self.playing = false end
       function g:SetScript(k, fn) self.scripts[k] = fn end
       function g:Play() self.playing = true table.insert(__fades, self) end
-      function g:CreateAnimation() local a = {} function a:SetFromAlpha(v) g.from = v end function a:SetToAlpha(v) g.to = v end function a:SetDuration(v) g.duration = v end return a end
+      function g:CreateAnimation(kind)
+        local a = { kind = kind } g.anims = g.anims or {} table.insert(g.anims, a)
+        function a:SetFromAlpha(v) g.from = v end function a:SetToAlpha(v) g.to = v end
+        function a:SetDuration(v) self.duration = v if kind == "Alpha" then g.duration = v end end
+        function a:SetSmoothing(v) self.smoothing = v end function a:SetOrder(v) self.order = v end
+        function a:SetOffset(x, y) self.offset = { x, y } end
+        return a
+      end
       return g
     end
   end
