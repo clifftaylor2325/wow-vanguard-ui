@@ -40,21 +40,16 @@ local function moduleRow(parent, row, width)
   return r
 end
 
--- How opaque a button row is while it can't be used (its enabled() says false).
-local DISABLED_ALPHA = 0.5
-
--- Greys a button row out (disabled, half opaque) while its enabled() says false; re-read on every refresh.
+-- Disables a button row (the themed button's disabled look) while its enabled() says false; re-read on every refresh.
 local function followEnabled(b, enabled)
-  -- Re-reads enabled(): the button works, or is greyed out.
+  -- Re-reads enabled(): the button works, or is disabled.
   b.Refresh = function(self)
-    local on = enabled() == true
-    if on then self:Enable() else self:Disable() end
-    self:SetAlpha(on and 1 or DISABLED_ALPHA)
+    if enabled() == true then self:Enable() else self:Disable() end
   end
   b:Refresh()
 end
 
--- A button row: { "button", label, onClick, enabled }; enabled (optional) greys it out while it says false.
+-- A button row: { "button", label, onClick, enabled }; enabled (optional) disables it while it says false.
 local function buttonRow(c, r)
   local b = W.Button(c, r[2], r[3], 220)
   if r[4] then followEnabled(b, r[4]) end
