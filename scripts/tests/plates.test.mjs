@@ -317,7 +317,7 @@ it("the plate under the mouse gets a faint wash until the mouse leaves its unit"
   const addon = loggedIn(UNITS_ENV + PLATE_ENV);
   const NP = "ns.GetModule('Nameplates')";
   // Whether each plate is washed, and whether the mouseover watch is on.
-  const washed = () => addon.eval(`return { ns.FrameState('vgPlate')[__plates.nameplate1].hover:IsShown(), ns.FrameState('vgPlate')[__plates.nameplate2].hover:IsShown(), ${NP}.hoverWatch:IsShown() }`);
+  const washed = () => addon.eval(`return { ns.FrameState('vgPlate')[__plates.nameplate1].hover:IsShown(), ns.FrameState('vgPlate')[__plates.nameplate2].hover:IsShown(), ns.ticker.vgJobs['nameplate hover'] ~= nil }`);
   expect(washed(), "no mouseover: no wash, nothing watched").toEqual([false, false, false]);
   addon.eval("__units.mouseover = __units.party1");
   addon.fire("UPDATE_MOUSEOVER_UNIT");
@@ -326,9 +326,10 @@ it("the plate under the mouse gets a faint wash until the mouse leaves its unit"
   addon.eval("__units.mouseover = __units.target");
   addon.fire("UPDATE_MOUSEOVER_UNIT");
   expect(washed(), "onto the boar: the wash moves with it").toEqual([true, false, true]);
-  addon.eval(`__units.mouseover = nil local w = ${NP}.hoverWatch w:GetScript("OnUpdate")(w, 0.05)`);
+  addon.eval("__units.mouseover = nil");
+  addon.update(0.05);
   expect(washed(), "the mouse left, but the watch only looks every tenth of a second").toEqual([true, false, true]);
-  addon.eval(`local w = ${NP}.hoverWatch w:GetScript("OnUpdate")(w, 0.06)`);
+  addon.update(0.06);
   expect(washed(), "then the wash goes and the watch stops").toEqual([false, false, false]);
   addon.eval(`__units.mouseover = __units.party1 local same = UnitIsUnit
     UnitIsUnit = function(a, b) if b == "mouseover" then return { __secret = true } end return same(a, b) end`);
