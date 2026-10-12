@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { WINDOWS_ENV, loggedIn, setCombat, windowState } from "./helpers.mjs";
+import { WINDOWS_ENV, isTok, loggedIn, setCombat, windowState } from "./helpers.mjs";
 
 // The social group's switch turned off in the saved variables.
 const OFF = { savedVariables: "VanguardDB.profiles = { Default = { Windows = { social = false } } }" };
@@ -175,7 +175,7 @@ const PAGES_ENV = GUILD_ENV + `
   function CommunitiesGuildInfoFrame_UpdateText(self, infoText) self.DetailsFrame:GetScrollChild().Details:SetText(infoText or __infoText) end
 
   local page = CreateFrame("Frame", "CommunitiesFrameGuildPreferredPlaySettingsFrame", f) f.GuildPreferredPlaySettingsFrame = page
-  for _, k in ipairs({ "LocaleApplyButton", "DatacenterApplyButton" }) do page[k] = CreateFrame("Button", nil, page) page[k].Art = page[k]:CreateTexture() end
+  for _, k in ipairs({ "LocaleApplyButton", "DatacenterApplyButton" }) do page[k] = CreateFrame("Button", nil, page) page[k].Art = page[k]:CreateTexture() page[k]:SetFontString(page[k]:CreateFontString()) end
   __leader = false
   function page:RefreshState() for _, b in ipairs({ self.LocaleApplyButton, self.DatacenterApplyButton }) do if __leader then b:Enable() else b:Disable() end end end
 `;
@@ -238,18 +238,21 @@ it("guild info: a note in the empty Guild Information box, gone when the game fi
   expect(addon.eval("local n = 0 for _, r in ipairs({ CommunitiesFrame.GuildDetailsFrame.Info.DetailsFrame:GetScrollChild():GetRegions() }) do n = n + 1 end return n"), "made once").toBe(2);
 });
 
-it("preferred play settings: the page panelled, its Apply buttons flat and faint while the game disables them", () => {
+it("preferred play settings: the page panelled, its Apply buttons flat and in the disabled look while the game disables them", () => {
   const addon = loggedIn(PAGES_ENV);
   addon.eval("CommunitiesFrame:Show()");
   const page = "CommunitiesFrame.GuildPreferredPlaySettingsFrame";
   expect(addon.eval(`local function painted(x) for _, r in ipairs({ x:GetRegions() }) do if r.__alpha ~= 0 then return true end end return false end
     return { painted(${page}), painted(${page}.LocaleApplyButton), ${page}.LocaleApplyButton.Art.__alpha, ${page}.DatacenterApplyButton.Art.__alpha }`),
   "an inset panel behind the page, flat buttons").toEqual([true, true, 0, 0]);
-  expect(addon.eval(`return { ${page}.LocaleApplyButton:GetAlpha(), ${page}.DatacenterApplyButton:GetAlpha() }`), "enabled: full").toEqual([1, 1]);
+  // Each Apply button's label in the disabled tier, and its alpha (left alone: the flat button's own look).
+  const dimmed = () => ["LocaleApplyButton", "DatacenterApplyButton"].map((k) =>
+    [isTok(addon, addon.eval(`return ${page}.${k}:GetFontString().__textColor`), "disabled"), addon.eval(`return ${page}.${k}:GetAlpha()`)]);
+  expect(dimmed(), "enabled: the normal look").toEqual([[false, 1], [false, 1]]);
   addon.eval(`${page}:RefreshState()`);
-  expect(addon.eval(`return { ${page}.LocaleApplyButton:GetAlpha(), ${page}.DatacenterApplyButton:GetAlpha() }`), "not the guild master: faint").toEqual([0.5, 0.5]);
+  expect(dimmed(), "not the guild master: the disabled look").toEqual([[true, 1], [true, 1]]);
   addon.eval(`__leader = true ${page}:RefreshState()`);
-  expect(addon.eval(`return { ${page}.LocaleApplyButton:GetAlpha(), ${page}.DatacenterApplyButton:GetAlpha() }`), "the guild master: full again").toEqual([1, 1]);
+  expect(dimmed(), "the guild master: the normal look again").toEqual([[false, 1], [false, 1]]);
 });
 
 it("guild pages: with the group off the roster, info box and settings page stay the game's", () => {

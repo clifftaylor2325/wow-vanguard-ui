@@ -194,21 +194,13 @@ end
 
 -- The Preferred Play Settings page's Apply buttons (parentKeys); the game disables them for anyone but the guild master.
 GW.GUILD_APPLY_BUTTONS = { "LocaleApplyButton", "DatacenterApplyButton" }
--- How faint a disabled Apply button is drawn (the flat button has no disabled look of its own).
-GW.GUILD_APPLY_DIM = 0.5
-
--- The page's Apply buttons flat, each faint while the game has it disabled; again after each RefreshState
--- (where the game enables or disables them).
+-- The page's Apply buttons flat; the flat button follows the game enabling or disabling them (T.Button's disabled look).
 local function dressPlaySettings(page)
   if type(page) ~= "table" then return end
   for _, key in ipairs(GW.GUILD_APPLY_BUTTONS) do
     local button = page[key]
-    if type(button) == "table" and button.CreateTexture then
-      T.Button(button)
-      button:SetAlpha(button:IsEnabled() and 1 or GW.GUILD_APPLY_DIM)
-    end
+    if type(button) == "table" and button.CreateTexture then T.Button(button) end
   end
-  after(page, "RefreshState", dressPlaySettings)
 end
 
 -- The guild window's pages beyond their panels: the roster's hooks, the Guild Information box's note (now and
