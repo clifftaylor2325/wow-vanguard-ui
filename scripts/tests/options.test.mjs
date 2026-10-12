@@ -384,9 +384,9 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   expect(press(addon, "W"), "a key it doesn't use goes on to the game: you can still walk").toEqual(["general", true]);
   expect(press(addon, "SPACE")[1], "so do Space and Enter until a row has the keyboard").toBe(true);
   press(addon, "TAB");
-  expect(keyRow(addon), "Tab marks the first row that does something (the sample and the swatches are skipped)").toEqual(["Font", true, true]);
+  expect(keyRow(addon), "Tab marks the first row that does something (the sample and the swatches are skipped)").toEqual(["Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", true, true]);
   press(addon, "TAB");
-  expect(keyRow(addon)[0], "Tab again: the next").toBe("Text size");
+  expect(keyRow(addon)[0], "Tab again: the next").toBe("Font");
   addon.keys({ shift: true });
   press(addon, "TAB");
   press(addon, "TAB");
@@ -394,7 +394,8 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   const last = keyRow(addon);
   expect([last[0], last[2], addon.eval("return Vanguard_Options.found:IsShown()")], "Shift-Tab goes back, and past the first wraps to the last row, scrolled into view").toEqual([addon.eval("local rows = {} for _, w in ipairs(__wfgStub.frames) do if w.card and w:IsVisible() and w:GetObjectType() == 'Button' then rows[#rows + 1] = w end end table.sort(rows, function(a, b) return a.pageY < b.pageY end) return rows[#rows].caption"), true, true]);
   press(addon, "TAB");
-  expect(keyRow(addon), "and Tab from the last wraps to the first, scrolled back up").toEqual(["Font", true, true]);
+  expect(keyRow(addon), "and Tab from the last wraps to the first, scrolled back up").toEqual(["Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", true, true]);
+  press(addon, "TAB");
   const font = addon.eval("return ns.Theme.Settings().font");
   expect([press(addon, "ENTER")[1], addon.eval("return ns.Theme.Settings().font") !== font], "Enter presses the row (it steps the font), and stops there").toEqual([false, true]);
   addon.eval("GetCurrentKeyBoardFocus = function() return Vanguard_Options.search end");

@@ -7,6 +7,7 @@ import { AURA_FALLBACK, CLICK_LUA, ENGINE_ENV, NO_RAID, RAID_ENV, SETUP_DONE, UN
 // The notices a client without the dispel-highlight style leaves: the engine's calls into it are wrapped
 // (Core/AuraEngine.lua), so only the extra is lost. Only the line number of the error varies.
 const NO_DISPEL_STYLE = /^debuff type colors: Core\/AuraEngine\.lua:\d+: attempt to index a nil value \(field 'CustomAuraButtonDispelTypeTextureStyle'\)$/;
+const NO_DISPEL_BADGE = /^debuff type badge: Core\/AuraEngine\.lua:\d+: attempt to index a nil value \(field 'CustomAuraButtonDispelTypeTextureStyle'\)$/;
 const NO_DISPEL_EXTRAS = /^aura icon extras: Core\/AuraEngine\.lua:\d+: attempt to index a nil value \(field 'CustomAuraButtonDispelTypeTextureStyle'\)$/;
 
 // TEST-ONLY auras by unit and filter. raid1: a Magic debuff and two of your HoTs.
@@ -28,7 +29,7 @@ const indicators = (addon) => addon.eval(`local b = Vanguard_RaidUnitButton1
   local d, h = b.debuffRow.frame, b.hotRow.frame
   local first = d.__groups[1].buttons[1]
   local out = { dispel = { filter = d.__groups[1].filter, max = d.__groups[1].opts.maxFrameCount, shown = first.__shown, icon = first.__icon.__texture,
-      regs = #first.__dispel, wash = first.__dispel[5].texture.__vertexColor, washShown = first.__dispel[5].texture.__shown, edge = first.__dispel[6].texture.__vertexColor },
+      regs = #first.__dispel, wash = first.__dispel[10].texture.__vertexColor, washShown = first.__dispel[10].texture.__shown, edge = first.__dispel[11].texture.__vertexColor },
     others = { filter = d.__groups[2].filter, max = d.__groups[2].opts.maxFrameCount, icon = d.__groups[2].buttons[1].__shown and d.__groups[2].buttons[1].__icon.__texture },
     hots = { filter = h.__groups[1].filter, max = h.__groups[1].opts.maxFrameCount, icon = h.__groups[1].buttons[1].__icon.__texture,
       count = h.__groups[1].buttons[1].__count:GetText(), pandemic = #h.__groups[1].buttons[1].__pandemic, timer = h.__groups[1].buttons[1].__durationText },
@@ -42,8 +43,8 @@ it("raid indicators", () => {
   const i = indicators(addon);
   expect(i.dispel.filter === "HARMFUL|RAID" && i.dispel.max === 1 && i.dispel.icon === "TEST-ONLY-CURSE", "the first debuff shown is one you can dispel").toBeTruthy();
   expect(i.others.filter === "HARMFUL|!RAID" && i.others.max === 2 && i.others.icon === "TEST-ONLY-BOSS", "then up to two others (a boss debuff shows too)").toBeTruthy();
-  expect(i.dispel.regs === 9 && i.dispel.washShown && isTok(addon, i.dispel.wash, "magic") && i.dispel.wash[3] === 0.35 && isTok(addon, i.dispel.edge, "magic"),
-    "the client washes the tile and colors its edge by the debuff's type").toBeTruthy();
+  expect(i.dispel.regs === 14 && i.dispel.washShown && isTok(addon, i.dispel.wash, "magic") && i.dispel.wash[3] === 0.35 && isTok(addon, i.dispel.edge, "magic"),
+    "the client washes the tile and colors its edge by the debuff's type (after the icon's edge and badge)").toBeTruthy();
   expect(i.hots.filter === "HELPFUL|PLAYER|RAID_IN_COMBAT" && i.hots.max === 3 && i.hots.icon === "TEST-ONLY-HOT-A" && i.hots.count === "2", "your HoTs, with stacks").toBeTruthy();
   expect(i.hots.pandemic === 1 && i.hots.timer == null, "HoTs light in their refresh window; no timer numbers on raid icons").toBeTruthy();
   expect(i.mouse === false && i.unit === "raid1" && i.rowsShown, "icons let clicks through to the tile, and follow its unit").toBeTruthy();
@@ -68,7 +69,7 @@ it("raid indicators", () => {
 });
 
 it("a client that won't drive the dispel highlight never shows it uncolored", () => {
-  expectErrors(NO_DISPEL_STYLE, NO_DISPEL_EXTRAS);
+  expectErrors(NO_DISPEL_STYLE, NO_DISPEL_BADGE, NO_DISPEL_EXTRAS);
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + "Enum.CustomAuraButtonDispelTypeTextureStyle = nil");
   addon.eval('__spawn(1, "raid1")');
   const out = addon.eval(`local first = Vanguard_RaidUnitButton1.debuffRow.frame.__groups[1].buttons[1]
@@ -242,7 +243,7 @@ it("aura containers on the client's engine", () => {
   expect(c.cd && c.hideNumbers === true && c.swipe[3] === 0.65, "a dark sweep with no countdown numbers on it").toBeTruthy();
   expect(c.mouse === false, "icons can let clicks through (raid frames)").toBeTruthy();
   expect(c.dim === true && c.mine === false, "others' auras are dimmed, yours are not").toBeTruthy();
-  expect(c.rings === 4 && c.ringStyle === 3 && c.ringShown && isTok(addon, c.ringColor, "magic"), "a debuff's edge is handed to the client, colored by its type").toBeTruthy();
+  expect(c.rings === 9 && c.ringStyle === 3 && c.ringShown && isTok(addon, c.ringColor, "magic"), "a debuff's edge (and its badge) is handed to the client, colored by its type").toBeTruthy();
   expect(c.pandemic === 1, "the refresh-window wash is handed to the client").toBeTruthy();
   expect(c.timer === "%dm" && c.color === 0, "the timer text gets the theme's formatter and time-left colors").toBeTruthy();
   addon.eval("__c:SetUnit(nil)");
@@ -565,7 +566,7 @@ it("a raid tile whose second container is refused keeps one dispel highlight", (
   const b = addon.eval(`local b = Vanguard_RaidUnitButton1
     return { debuffs = b.debuffRow.frame.__kind, hots = b.hotRow.groups ~= nil, highlight = b.dispel ~= nil, available = ns.AuraEngine.Available(),
       registered = #b.debuffRow.frame.__groups[1].buttons[1].__dispel }`);
-  expect(b, "the debuff row stays on the engine with the client's highlight, and the tile adds no second one").toEqual({ debuffs: "AuraContainer", hots: true, highlight: false, available: false, registered: 9 });
+  expect(b, "the debuff row stays on the engine with the client's highlight, and the tile adds no second one").toEqual({ debuffs: "AuraContainer", hots: true, highlight: false, available: false, registered: 14 });
   expect(errorsWith(addon, REFUSED_WHERE), "the HoT row was refused once").toEqual([1, 1]);
   addon.eval('__spawn(2, "raid1")');
   expect(addon.eval("return Vanguard_RaidUnitButton2.dispel ~= nil"), "tiles built after the retirement use the fallback highlight").toBe(true);
@@ -585,4 +586,34 @@ it("aura colors and stacks when the client hides the values", () => {
   expect(out.stacks === "4" && out.one === "" && out.hidden === "", "stacks: plain counts above 1 when the client's formatter fails; nothing when hidden").toBeTruthy();
   const noCurve = loggedIn(UNITS_ENV + `C_UnitAuras = { GetAuraDispelTypeColor = function() return nil end }`);
   expect(noCurve.eval('return ns.Auras.DispelToken("Magic")') === "magic" && isTok(noCurve, noCurve.eval('return { ns.Auras.DispelColor("target", { dispelName = { __secret = true } }) }'), "bad"), "no curve support: a hidden type shows as 'bad'").toBeTruthy();
+});
+
+// A debuff button's badge as the client drew it: { glyph (or "back") -> [shown, alpha, r, g, b] }.
+const badgeOf = (addon, lua) => addon.eval(`local out = {}
+  for _, d in ipairs((${lua}).__dispel) do local t = d.texture local name = (t.__texture or ""):match("(Dispel%a+)$") or (t.__layer == "OVERLAY" and t.__sublevel == 6 and "back")
+    if name then local c = t.__vertexColor or {} out[name] = { t:IsShown(), c[4], c[1], c[2], c[3] } end end
+  return out`);
+
+it("dispel badges (#235): a debuff icon carries its type's letter on a dark backing, handed to the client so hidden types keep theirs", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS);
+  addon.eval('__c = ns.Auras.Container(UIParent, __spec, "target") __g = __c.frame.__groups[1]');
+  const magic = badgeOf(addon, "__g.buttons[1]");
+  expect([magic.back.slice(0, 2), magic.DispelMagic.slice(0, 2), isTok(addon, magic.DispelMagic.slice(2), "magic")], "a Magic debuff: the backing at 0.8 and its M at full strength in the magic color").toEqual([[true, 0.8], [true, 1], true]);
+  expect(["DispelCurse", "DispelDisease", "DispelPoison"].map((g) => magic[g][1]), "the other letters are mapped clear").toEqual([0, 0, 0]);
+  const curse = badgeOf(addon, "__g.buttons[2]");
+  expect([curse.DispelCurse[1], curse.DispelMagic[1], isTok(addon, curse.DispelCurse.slice(2), "curse")], "a Curse debuff shows its C").toEqual([1, 0, true]);
+  expect(addon.eval("local b = __g.buttons[1].__dispel[5].texture return { b:GetWidth(), b.__points.TOPLEFT ~= nil }"), "half the icon, in its top-left corner").toEqual([addon.eval("return __spec.groups[1].size") / 2, true]);
+});
+
+it("dispel badges on Vanguard's own icons: shown for a type it can read, never for none or a hidden one (#235)", () => {
+  const addon = loggedIn('__f = ns.Auras.Icon(UIParent, 12, { size = 12, debuff = true })');
+  // The badge parts shown on __f: { back, the letters shown }.
+  const shown = () => addon.eval(`local b, out = __f.badge, {} for k, t in pairs(__f.badge.letters) do if t:IsShown() then out[#out + 1] = k end end return { b.back:IsShown(), out[1] or false, #out }`);
+  expect(addon.eval("return __f.badge.back:GetWidth()"), "never smaller than 8 units").toBe(8);
+  addon.eval('ns.Auras.Show(__f, "player", { icon = "P", dispelName = "Poison" })');
+  expect(shown(), "a Poison debuff: the backing and its P").toEqual([true, "Poison", 1]);
+  for (const kind of ["nil", "{ __secret = true }", '"Enrage"']) {
+    addon.eval(`ns.Auras.Show(__f, "player", { icon = "X", dispelName = ${kind} })`);
+    expect(shown(), `no badge for ${kind}`).toEqual([false, false, 0]);
+  }
 });

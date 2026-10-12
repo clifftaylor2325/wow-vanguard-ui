@@ -53,17 +53,17 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | | `disabled` | `7c8390` | Disabled and placeholder text only (a search box's hint, a button you can't press yet, a disabled menu icon). |
 | | `white` | `ffffff` | Text and sparks over bars and icons (timers, counts, the cast spark). |
 | | `gold` | `ffd100` | The game's gold: quest titles and "!" marks, money, elite units, the leader's crown, the zone name's default. |
-| State | `good` | `4fc27a` | Success, ready, full durability. |
-| | `warn` | `ee8b3a` | Warnings, middling values. |
-| | `bad` | `e0565b` | Errors, not ready, broken items. |
+| State | `good` | `3fbf9a` | Success, ready, full durability. Off the red-green axis with `warn` and `bad` (#235, after Okabe-Ito); where a state stands alone as a mark it has a glyph too (`T.STATE_GLYPHS`: `Check`, `Warn`, `Close`), as on the pet's mood. |
+| | `warn` | `f0b43c` | Warnings, middling values. |
+| | `bad` | `e8663f` | Errors, not ready, broken items. |
 | | `info` | `5aa2f0` | Informational state (reserved; no module uses it yet). |
 | | `unknown` | `808080` | A value the client will not tell (reserved; no module uses it yet). |
 | Reaction | `hostile` | `cc4b45` | Hostile units (nameplates, unit frames). |
 | | `neutral` | `e0c24e` | Neutral units. |
-| | `friendly` | `4db86a` | Friendly units. |
+| | `friendly` | `4db86a` | Friendly units. With Color assist on (`colorAssist`, #235) the three reactions are `T.ASSIST`'s instead: friendly `4a9be8` (blue), neutral `e8d25a`, hostile `e0663a` (vermilion). |
 | Resources | `mana` / `rage` / `energy` / `focus` | `3e7be0` / `cf4a3e` / `e6c24a` / `e0893c` | Power bars. |
 | Threat | `threat1` / `threat2` / `threat3` | `e0c24e` / `ee8b3a` / `e0565b` | Yellow, orange, red threat. |
-| Dispel | `magic` / `curse` / `disease` / `poison` | `3c8cf0` / `9a55e0` / `b08a3a` / `3fa34d` | Debuff borders and the raid tile dispel wash. |
+| Dispel | `magic` / `curse` / `disease` / `poison` | `3c8cf0` / `9a55e0` / `b08a3a` / `3fa34d` | Debuff borders and the raid tile dispel wash. Every debuff icon also carries a type badge (#235): its letter (`Media/Icons/DispelMagic`, `DispelCurse`, `DispelDisease`, `DispelPoison`) in the type's colour on an `edge` backing at 0.8, half the icon (at least 8 units) in its top-left corner; on the client's aura engine each letter is mapped clear for every type but its own, so hidden types keep theirs. |
 | | `dispel` | `cc4dff` | The dispel highlight when the client hides the debuff's type. |
 | Casts | `cast` | `e6a93a` | A cast. |
 | | `channel` | `4fc27a` | A channel. |
@@ -217,6 +217,7 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `barTexture` | `"vanguard"` | General → Bars → Bar texture | on reload; one material for every bar (#234): unit frames, raid tiles, cast bars, XP and reputation, the damage meter all fill with `T.BarTexture()`, and a test checks the whole HUD |
 | `smoothBars` | on | General → Bars → Smooth health and power bars | at once |
 | `hudShadow` | off | General → Bars → Soft shadows under frames | on reload |
+| `colorAssist` | off | General → Look → Color assist | on reload |
 | `reduceMotion` | off | General → Motion and sound → Reduce motion | at once |
 | `sounds` | on | General → Motion and sound → Interface sounds | at once |
 

@@ -644,3 +644,20 @@ it("icon crop (#259): the bevel off every edge of a square slot; a slot that isn
   expect([wide[0], wide[1], wide[2], wide[3]].map((v) => +v.toFixed(6)), "twice as wide: the height keeps half as much").toEqual([0.08, 0.92, 0.29, 0.71]);
   expect([tall[0], tall[1], tall[2], tall[3]].map((v) => +v.toFixed(6)), "twice as tall: the width does").toEqual([0.29, 0.71, 0.08, 0.92]);
 });
+
+it("state colors and Color assist (#235): states off the red-green axis; the switch moves reactions to blue, yellow and vermilion", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // A token's color as rrggbb.
+  const hex = (name) => addon.eval(`return ns.Theme.Hex("${name}")`).slice(2);
+  expect(["good", "warn", "bad"].map(hex), "good, warn and bad").toEqual(["3fbf9a", "f0b43c", "e8663f"]);
+  expect(addon.eval("return ns.Theme.STATE_GLYPHS"), "each with a glyph where it stands alone").toEqual({ good: "Check", warn: "Warn", bad: "Close" });
+  addon.world.setUnit("target", { name: "TEST-ONLY Wolf", hp: 1, maxhp: 1, reaction: 2 });
+  // The target's health bar color as rrggbb.
+  const bar = () => addon.eval(`local r, g, b = ns.GetModule("UnitFrames").HealthColor("target") return string.format("%02x%02x%02x", r * 255 + 0.5, g * 255 + 0.5, b * 255 + 0.5)`);
+  expect([["friendly", "neutral", "hostile"].map(hex), bar()], "off by default: the usual reactions").toEqual([["4db86a", "e0c24e", "cc4b45"], "cc4b45"]);
+  addon.slash("");
+  addon.eval('__click("General")');
+  expect(addon.eval('return __click("Color assist")') !== false, "the switch is under General, Look").toBe(true);
+  expect([addon.eval("return ns.Theme.Settings().colorAssist"), ["friendly", "neutral", "hostile"].map(hex), bar()], "on: friendly blue, neutral yellow, hostile vermilion, health bars too").toEqual([true, ["4a9be8", "e8d25a", "e0663a"], "e0663a"]);
+  expect(hex("bad"), "other colors stay as they are").toBe("e8663f");
+});

@@ -65,7 +65,7 @@ local function reactionColor(unit)
   if isSecret(reaction) or type(reaction) ~= "number" then
     return T.TOKENS.unknown
   end
-  return T.TOKENS[reaction <= 3 and "hostile" or reaction == 4 and "neutral" or "friendly"]
+  return { T.RGB(reaction <= 3 and "hostile" or reaction == 4 and "neutral" or "friendly") }
 end
 
 -- r, g, b for a unit's health bar: class color for players, reaction otherwise.
