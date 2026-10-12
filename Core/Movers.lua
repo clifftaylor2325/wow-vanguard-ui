@@ -102,10 +102,11 @@ local function watchAlpha(m)
   end))
 end
 
--- Sets a mover's frame to its saved scale and opacity.
+-- Sets a mover's frame to its saved scale and opacity; pixel-sized frames round again for the new scale.
 local function applyLook(m)
   local scale, alpha = ns.MoverLook(m.key)
   m.frame:SetScale(scale)
+  T.Rescale()
   if alpha == 1 and not m.ownAlpha then return end
   if not m.ownAlpha then watchAlpha(m) end
   fade(m)

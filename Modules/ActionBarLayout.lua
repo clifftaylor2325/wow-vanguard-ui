@@ -19,7 +19,7 @@
 local ADDON, ns = ...
 
 local AB = ns.GetModule("ActionBars")
-local V = ns.Visibility
+local T, V = ns.Theme, ns.Visibility
 
 AB.MAX_BUTTONS = 12
 -- True while you drag a spell or item (ACTIONBAR_SHOWGRID until HIDEGRID).
@@ -40,30 +40,36 @@ local function placeButton(b, i, perRow, step)
   b:SetPoint("TOPLEFT", ((i - 1) % perRow) * step, -math.floor((i - 1) / perRow) * step)
 end
 
--- Sizes a bar to fit count buttons of size px in rows of perRow.
-local function sizeBar(bar, count, perRow, size)
-  local gap = AB.settings.spacing
+-- Sizes a bar to fit count buttons of size px, gap apart, in rows of perRow.
+local function sizeBar(bar, count, perRow, size, gap)
   local cols, rows = math.min(count, perRow), math.ceil(count / perRow)
   bar:SetSize(cols * (size + gap) - gap, rows * (size + gap) - gap)
 end
 
--- Sizes and places every button; shows the first `buttons`, hides the rest.
-local function layoutButtons(bar, s, size)
+-- Sizes and places every button, gap apart; shows the first `buttons`, hides the rest.
+local function layoutButtons(bar, s, size, gap)
   for i, b in ipairs(bar.vgButtons) do
     b:SetSize(size, size)
-    placeButton(b, i, s.perRow, size + AB.settings.spacing)
+    placeButton(b, i, s.perRow, size + gap)
     b:SetShown(i <= s.buttons)
   end
 end
 
--- Lays bar n out from its settings right now. Only call out of combat.
+-- Lays bar n out from its settings right now, its button size and gap rounded to whole
+-- screen pixels at the bar's scale, so every button edge lands on a pixel. Only call out of combat.
 function AB.LayoutBar(n)
   local bar, s = AB.bars[n], AB.settings.bars[n]
   if not bar then return end
-  local size = AB.ButtonSize(n)
-  layoutButtons(bar, s, size)
-  sizeBar(bar, s.buttons, s.perRow, size)
+  local size, gap = T.PixelRound(bar, AB.ButtonSize(n)), T.PixelRound(bar, AB.settings.spacing)
+  layoutButtons(bar, s, size, gap)
+  sizeBar(bar, s.buttons, s.perRow, size, gap)
 end
+
+-- Lays every built bar out again after a scale change (T.OnScale runs it out of combat).
+local function relayoutAll()
+  for n in pairs(AB.bars) do AB.LayoutBar(n) end
+end
+T.OnScale(relayoutAll)
 
 -- Lays bar n out again after a settings change, re-stacks the bottom bars
 -- (bar 1 stays on top) and re-points the key bindings at the buttons it now

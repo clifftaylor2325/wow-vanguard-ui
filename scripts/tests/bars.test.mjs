@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { ACTIONS_ENV, SETUP_DONE, UNITS_ENV, bars, button, chatHas, key, loggedIn, overlaps, setCombat } from "./helpers.mjs";
+import { ACTIONS_ENV, SETUP_DONE, UNITS_ENV, bars, button, chatHas, key, loggedIn, overlaps, px, setCombat } from "./helpers.mjs";
 
 it("action bars", () => {
   const addon = loggedIn(ACTIONS_ENV);
@@ -218,7 +218,7 @@ it("the right-edge bars start off and show on mouseover when turned on", () => {
   const bar4 = barVis(on, 4);
   expect(bar4.driver === "show" && bar4.alpha === 0 && bar4.mouse === true, "turned on, bar 4 is faded out until the mouse is over it").toBeTruthy();
   const second = on.eval("local _, _, _, x, y = Vanguard_Bar4Button2:GetPoint(1) return { x, y }");
-  expect(second[0] === 0 && second[1] === -40, "one button per row, as before").toBeTruthy();
+  expect(second, "one button per row, as before (38 + 2 apart, each in whole screen pixels)").toEqual([0, -(px(on, 38) + px(on, 2))]);
 });
 
 // TEST-ONLY profile saved before bars had a visibility setting: bar 4 was on
@@ -305,7 +305,9 @@ it("action bar layout: per-bar buttons, rows and size, deferred in combat", () =
     local _, _, _, x, y = b7:GetPoint(1)
     return { w = bar:GetWidth(), h = bar:GetHeight(), x7 = x, y7 = y, size = b7:GetWidth(), shown12 = Vanguard_Bar2Button12:IsShown() }`);
   const before = lay();
-  expect(JSON.stringify(before) === JSON.stringify({ w: 478, h: 38, x7: 240, y7: 0, size: 38, shown12: true }), `bar 2 starts as one row of 12 at the shared 38 px (got ${JSON.stringify(before)})`).toBeTruthy();
+  // Button sizes and the gap are whole screen pixels at the bar's scale (38, 40 and 2 units rounded).
+  const [s38, s40, g] = [px(addon, 38), px(addon, 40), px(addon, 2)];
+  expect(before, "bar 2 starts as one row of 12 at the shared 38 px").toEqual({ w: 12 * (s38 + g) - g, h: s38, x7: 6 * (s38 + g), y7: 0, size: s38, shown12: true });
   expect(getBarOption(addon, 2, "Button size") === 38 && addon.eval("return __overrides.F12") === "Vanguard_Bar2Button12:LeftButton", "its size row reads the shared size; button 12 has its key").toBeTruthy();
   setCombat(addon, true);
   setBarOption(addon, 2, "Buttons per row", 6);
@@ -314,9 +316,9 @@ it("action bar layout: per-bar buttons, rows and size, deferred in combat", () =
   expect(JSON.stringify(lay()) === JSON.stringify(before) && addon.eval("return ns.QueuedCount()") === 3, "layout changes made in combat wait for it to end (secure frames)").toBeTruthy();
   setCombat(addon, false);
   const after = lay();
-  expect(JSON.stringify(after) === JSON.stringify({ w: 250, h: 82, x7: 0, y7: -42, size: 40, shown12: false }), `then bar 2 is two rows of 6 at 40 px, showing 10 buttons (got ${JSON.stringify(after)})`).toBeTruthy();
+  expect(after, "then bar 2 is two rows of 6 at 40 px, showing 10 buttons").toEqual({ w: 6 * (s40 + g) - g, h: 2 * (s40 + g) - g, x7: 0, y7: -(s40 + g), size: s40, shown12: false });
   expect(addon.eval("return __overrides.F12") === null && getBarOption(addon, 2, "Button size") === 40, "a hidden button gives up its key; the bar keeps its own size").toBeTruthy();
-  expect(addon.eval("return Vanguard_Bar3Button1:GetWidth()") === 38, "other bars keep theirs").toBeTruthy();
+  expect(addon.eval("return Vanguard_Bar3Button1:GetWidth()"), "other bars keep theirs").toBe(s38);
 });
 
 it("action button cooldowns, the C_ActionBar API and range polling", () => {

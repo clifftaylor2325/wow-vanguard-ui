@@ -150,7 +150,9 @@ The theme has no spacing tokens: each layout keeps its sizes as constants in its
 | `T.Logo(parent, size)` | The two linked diamonds: left in the accent, right in `text`. |
 | `T.Crest(parent, size, layer, alpha)` | The faction crest in its token colour, hidden while the faction look is off. |
 
-**Borders are one screen pixel at any UI scale.** `T.Pixel(frame)` is the length of one physical pixel in the frame's units (the client's `PixelUtil` factor, else 768 / screen height, over the frame's effective scale). It is never rounded to whole UI units, which would give 2 px at 1440p and 3 px at 4K. Textures painted by the theme are kept off the client's pixel-grid snapping (`T.Snap`) so 1 px lines stay crisp. A status bar's border is drawn on its top layer (the fill would cover a lower one). "Pixel-perfect scale" (off by default) sets UIParent to 768 / screen height, out of combat, so one UI unit is one pixel; the setup wizard's screen presets turn it off, since they set the game's UI scale instead.
+**Borders are one screen pixel at any UI scale.** `T.Pixel(frame)` is the length of one physical pixel in the frame's units (the client's `PixelUtil` factor, else 768 / screen height, over the frame's effective scale). It is never rounded to whole UI units, which would give 2 px at 1440p and 3 px at 4K. Textures painted by the theme are kept off the client's pixel-grid snapping (`T.Snap`) so 1 px lines stay crisp. A status bar's border is drawn on its top layer (the fill would cover a lower one). "Pixel-perfect scale" (off by default) sets UIParent to 768 / screen height times `pixelMultiple` (a whole number, 1 unless setup's Pixel-perfect preset picks 2 for a 4K screen), out of combat, so one UI unit is one or two whole pixels; the setup wizard's other screen presets turn it off, since they set the game's UI scale instead.
+
+**Sizes and offsets land on whole screen pixels.** `T.PixelRound(frame, length, even)` rounds a length to whole pixels at the frame's scale (to an even count with `even`, for things centred on a frame). `T.PixelSize(frame, w, h, even)` sizes a frame that way and remembers it; panel padding, glows and sheens, the close and window controls, arrows, the logo, unit frames, the options and setup windows and the action bars' button sizes and gaps use them. When the UI scale, the screen size or a frame's mover scale changes, `T.Rescale()` sizes them again on the next frame, out of combat (queued until the fight ends), and calls the `T.OnScale(fn)` listeners (the action bars lay out again).
 
 **Shadows** are a nine-slice ring of `Media/Textures/Shadow` (black, 0.8 alpha, soft falloff) reaching 10 units around the frame on every side, rounded to whole pixels, on the BACKGROUND layer. Floating windows always have one: the options window, setup, dialogs, menus and popovers, the quest dialog and log, tooltips, bags, skinned game windows, alerts. HUD frames have one only with `hudShadow`.
 
@@ -198,6 +200,7 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `textScale` | 1 | General → Look → Text size (70 % - 130 %) | at once |
 | `faction` | `"auto"` | General → Look → Faction look | at once |
 | `pixelScale` | off | General → Look → Pixel-perfect scale | on: at once, out of combat; off: on reload |
+| `pixelMultiple` | 1 | Setup → Pixel-perfect (sharpest) | with `pixelScale`, out of combat |
 | `barTexture` | `"vanguard"` | General → Bars → Bar texture | on reload |
 | `smoothBars` | on | General → Bars → Smooth health and power bars | at once |
 | `hudShadow` | off | General → Bars → Soft shadows under frames | on reload |

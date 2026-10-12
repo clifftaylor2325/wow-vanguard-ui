@@ -65,7 +65,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 2.2 The wizard, start to finish
 
 - Do: drag a frame with `/vg unlock`, then open `/vg` → General → **Run setup**. Click Next three times, then Done.
-- Expect: `Step 1 of 4 · Layout` with four choices (Centered: damage and tanking, Centered: healing, Like the game's, Keep my current layout), Keep picked; the frame you dragged stays where it is at the end. Next goes to `Step 2 of 4 · Screen`, with a choice per screen size (1080p, 1440p, 4K, Ultrawide), the one for your screen marked `your screen`, and `Keep my current sizes` (picked, when setup runs again); Next goes to `Step 3 of 4 · Look` (the accent swatches and the raid frame style); Next goes to `Step 4 of 4 · Move things` with every frame's handle showing; the button then says Done, and Done hides the handles and the wizard. Escape and the close button close it too. After `/reload` the wizard does not come back by itself.
+- Expect: `Step 1 of 4 · Layout` with four choices (Centered: damage and tanking, Centered: healing, Like the game's, Keep my current layout), Keep picked; the frame you dragged stays where it is at the end. Next goes to `Step 2 of 4 · Screen`, with a choice per screen size (1080p, 1440p, 4K, Ultrawide), the one for your screen marked `your screen`, `Pixel-perfect (sharpest)` and `Keep my current sizes` (picked, when setup runs again); Next goes to `Step 3 of 4 · Look` (the accent swatches and the raid frame style); Next goes to `Step 4 of 4 · Move things` with every frame's handle showing; the button then says Done, and Done hides the handles and the wizard. Escape and the close button close it too. After `/reload` the wizard does not come back by itself.
 - If it fails, paste: the step id, the caption you saw, and `/vg errors`.
 
 ### 2.3 The healing layout
@@ -133,6 +133,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: set the game to 2560x1440 and UI scale 1.0 (the game's UI Scale setting, usually under Options, System, Advanced; confirm the path in your client). Take a screenshot of the player frame's edge and zoom in. Type `/vg status`.
 - Expect: the border exactly 1 screen pixel wide, and `UI scale 1.00` in the status text line. [After P0.4. Before it the border is 2 px at 1440p, because the old size was one UI unit rounded to whole pixels.]
 - If it fails, paste: the zoomed crop, your resolution, and the `UI scale` line.
+
+### 5.2 Pixel-perfect preset
+
+- Do: `/vg setup`, Next, pick **Pixel-perfect (sharpest)**, then finish. Screenshot the action bars, the player frame and the `/vg` window's close button, and zoom in. Then drag a frame's scale slider in unlock mode to 150% and screenshot it again.
+- Expect: the hint under the choices starts `Sharpest: every line on whole screen pixels.` Every border, button edge and gap between action buttons is a whole number of screen pixels, with no blurred or doubled line; the close button's cross sits centred. On a 4K screen each UI unit is two pixels. After the scale change, borders are still sharp.
+- If it fails, paste: the zoomed crops, your resolution, `/vg status` and `/vg errors`.
 
 ## 6. Party and raid
 

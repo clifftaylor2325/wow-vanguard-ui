@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { loggedIn, WINDOWS_ENV } from "./helpers.mjs";
+import { loggedIn, px, WINDOWS_ENV } from "./helpers.mjs";
 
 // TEST-ONLY tab buttons shaped like the game's tab templates, and a reader for a tab's state:
 // art = the alpha of its Left texture (-1 while the game's own), line = whether its accent
@@ -464,11 +464,11 @@ it("window controls: the corner close button and the max/min box sit the same in
     return { c.rel == TestOnlyControls, c.x, c.y, b.rel == TestOnlyControls.CloseButton, b.x, b.y, glyph(TestOnlyControls.MaximizeMinimizeButton.MaximizeButton),
       TestOnlyOdd.CloseButton.__points.BOTTOM ~= nil, ns.errors[1] == nil }`);
   expect(out, "close 12 in from the corner both ways (24 from the panel's padded edge), the max/min box (its plain glyph) 28 to its left; a close button the game put elsewhere stays there")
-    .toEqual([true, -12, -12, true, -28, 0, "Maximize", true, true]);
+    .toEqual([true, -px(addon, 12), -px(addon, 12), true, -28, 0, "Maximize", true, true]);
   // A window painted without padding (the finder, the calendar): its close button 24 in from the frame's own corner.
   addon.eval("ns.Theme.Panel(TestOnlyBare) ns.GetModule('Windows').DressClose(TestOnlyBare, TestOnlyBare.CloseButton)");
   expect(addon.eval("local c = TestOnlyBare.CloseButton.__points.CENTER return { c.rel == TestOnlyBare, c.relPoint, c.x, c.y }"), "an unpadded window's close button: 24 in from its corner both ways")
-    .toEqual([true, "TOPRIGHT", -24, -24]);
+    .toEqual([true, "TOPRIGHT", -px(addon, 24), -px(addon, 24)]);
 });
 
 it("flight map: its map art stays when the window's art is faded", () => {

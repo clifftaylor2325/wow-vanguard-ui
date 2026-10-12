@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { AURA_FALLBACK, CLICK_LUA, ENGINE_ENV, NO_RAID, RAID_ENV, SETUP_DONE, UNITS_ENV, button, chatHas, expectErrors, isTok, key, lacking, loggedIn, putAway, setCombat, tooltip, unitEvents } from "./helpers.mjs";
+import { AURA_FALLBACK, CLICK_LUA, ENGINE_ENV, NO_RAID, RAID_ENV, SETUP_DONE, UNITS_ENV, button, chatHas, expectErrors, isTok, key, lacking, loggedIn, putAway, px, setCombat, tooltip, unitEvents } from "./helpers.mjs";
 
 // The notices a client without the dispel-highlight style leaves: the engine's calls into it are wrapped
 // (Core/AuraEngine.lua), so only the extra is lost. Only the line number of the error varies.
@@ -165,7 +165,7 @@ it("target and focus auras", () => {
   expect(t.buffs.groups[0].icon === "BUFF-A" && t.debuffs.groups[1].timer === false, "buffs above; no timer numbers by default (the sweep shows time left)").toBeTruthy();
   const f = frameRows(addon, "focus");
   expect(f.buffs == null && f.debuffs.groups[1].icon === "MY-DOT", "the focus shows your debuffs only").toBeTruthy();
-  expect(addon.eval("return Vanguard_target.debuffs.frame.__flowLine") === 240, "the row wraps at the frame's width").toBeTruthy();
+  expect(addon.eval("return Vanguard_target.debuffs.frame.__flowLine"), "the row wraps at the frame's width (240, in whole screen pixels)").toBe(px(addon, 240));
   addon.eval('__frameAuras.HELPFUL = {}');
   addon.fire("PLAYER_TARGET_CHANGED");
   expect(frameRows(addon, "target").buffs.groups[0].icon === false, "a new target reads its auras again").toBeTruthy();

@@ -16,6 +16,10 @@ export { expectErrors } from "../lib/error-guard.mjs";
 // decision D-06, so a test whose client lacks AuraContainer names it with expectErrors.
 export const AURA_FALLBACK = /^aura containers \(using Vanguard's own icons\): wow-world\.lua:\d+: CreateFrame: unknown frame type AuraContainer$/;
 
+// A length in UI units rounded to whole screen pixels at UIParent's scale now, as the theme
+// rounds sizes and offsets (T.PixelRound; with even, an even number of pixels).
+export const px = (addon, n, even = false) => addon.eval(`return ns.Theme.PixelRound(UIParent, ${n}, ${even})`);
+
 // r, g, b, a of a theme color token, read from the addon.
 export const tok = (addon, name) => addon.eval(`return { ns.Theme.RGB("${name}") }`);
 
