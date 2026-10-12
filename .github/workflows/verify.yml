@@ -11,14 +11,17 @@ name: verify
 # marked ready for review, on later pushes while it carries the "full-tests"
 # label, weekly, and from the Actions tab) and on each release (release.yml).
 # This check runs on every push of a pull request that is not a draft
-# (ready_for_review starts it), whatever the label; not for changes to the
-# docs alone.
+# (ready_for_review starts it), whatever the label. A draft skips the job
+# with its `if`, which counts as passing. There is deliberately no path
+# filter (#262): a required check from a workflow skipped by `paths-ignore`
+# stays pending and blocks the merge. Instead the job always runs, and its
+# first check (scripts/docs-only.mjs) diffs the merge commit against the
+# base; when only docs changed (docs/** and *.md), every later step is
+# skipped, so a docs-only pull request reports a green "Quick checks" in a
+# few seconds without an admin bypass.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
 
 permissions:
   contents: read
@@ -34,8 +37,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # Two deep: the pull request's merge commit and both its parents, so the
+      # next step can diff it against the base (its first parent).
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - name: Docs-only change
+        id: changes
+        run: node scripts/docs-only.mjs
       - uses: actions/setup-node@v7
+        if: steps.changes.outputs.docs_only != 'true'
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -45,6 +56,7 @@ jobs:
       # value and fails if this one drifts. The tools group runs beside npm ci,
       # and the wait fails the step if any part of it failed.
       - name: npm ci, with luacheck 1.2.0 and Lua 5.1 installing alongside
+        if: steps.changes.outputs.docs_only != 'true'
         env:
           LUACHECK_SHA256: d68da17fca0697d9e2fb04201f3884abd259fa558b3a449bccaed47f1390defc
           LUACHECK_URL: https://github.com/lunarmodules/luacheck/releases/download/v1.2.0/luacheck
@@ -59,13 +71,19 @@ jobs:
           tools_pid=$!
           npm ci
           wait "$tools_pid" || { cat tools.log; exit 1; }
-      - run: npm run quality
+      - name: Code-quality scan
+        if: steps.changes.outputs.docs_only != 'true'
+        run: npm run quality
       - name: The TOC against the files on disk
+        if: steps.changes.outputs.docs_only != 'true'
         run: node scripts/check-toc.mjs
-      - run: |
+      - name: luacheck
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
           luacheck --version
           luacheck --no-color .
       - name: Lua 5.1 syntax of every file the TOC loads
+        if: steps.changes.outputs.docs_only != 'true'
         run: |
           status=0
           while IFS= read -r file; do
@@ -75,8 +93,10 @@ jobs:
           done < Vanguard.toc
           exit $status
       - name: JS tests and the Lua smoke test
+        if: steps.changes.outputs.docs_only != 'true'
         run: npm run test:quick
       - name: Release zip builds and holds every file it should
+        if: steps.changes.outputs.docs_only != 'true'
         run: |
           rm -rf dist
           node scripts/package.mjs
