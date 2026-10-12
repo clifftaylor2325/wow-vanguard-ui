@@ -74,7 +74,7 @@ end
 local function colorTab(tab, selected)
   local text = tab.Text or (tab.GetFontString and tab:GetFontString())
   if text then
-    T.Text(text, "label", selected and "accent" or "text2")
+    T.Text(text, "label", selected and "accentText" or "text2")
   end
 end
 

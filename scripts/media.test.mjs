@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { orphanMedia, staleMedia } from "./build-media.mjs";
 import { fontFacts } from "./lib/truetype.mjs";
 import { crest, crestNames } from "./lib/media-crests.mjs";
-import { ICONS, SILHOUETTES } from "./lib/media-sources.mjs";
+import { ICONS, MEDIA, SILHOUETTES } from "./lib/media-sources.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -97,8 +97,10 @@ function scanFindsMedia() {
 
 // Media images the addon builds a name for at run time, so the scan can't see them: the logo's
 // halves (T.Texture("Logo" .. half)), the shadow and glow rings (ring(frame, { texture = ... })) and
-// the window controls' glyphs (Modules/Windows.lua maxMinButton).
-const BUILT_NAMES = ["Media/Textures/LogoRight.tga", "Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga"];
+// the window controls' glyphs (Modules/Windows.lua maxMinButton), the dispel badge letters
+// (Core/Auras.lua A.DISPEL_GLYPHS) and the warn state's glyph (Core/Theme.lua T.STATE_GLYPHS).
+const BUILT_NAMES = ["Media/Textures/LogoRight.tga", "Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
+  ...["Magic", "Curse", "Disease", "Poison"].map((t) => `Media/Icons/Dispel${t}.tga`), "Media/Icons/Warn.tga"];
 
 // The images in Media/ (not the fonts and license texts), as repo paths.
 function mediaImages() {
@@ -190,6 +192,45 @@ function strokeIsTwoPixels() {
   expect([6, 7, 8, 9].map((col) => Math.round(a[4 * 16 + col] * 100) / 100)).toEqual([0, 1, 1, 0]);
 }
 
+// Generated files that are not tinted white shapes: the pre-colored addons-list icon, the black
+// shadow (one color throughout) and the two opaque grayscale bars.
+const NOT_TINTED = { "Textures/Icon.tga": "colored", "Textures/Shadow.tga": "one color", "Textures/Bar.tga": "opaque", "Textures/BarSoft.tga": "opaque" };
+
+// How many pixels of an image fail a test on (r, g, b, a).
+function countPixels(img, bad) {
+  let n = 0;
+  for (let i = 0; i < img.px.length; i += 4) if (bad(img.px[i], img.px[i + 1], img.px[i + 2], img.px[i + 3])) n++;
+  return n;
+}
+
+// Every tinted image is white in every pixel, clear ones included, so filtering never pulls a dark
+// fringe into a tinted edge (#228); the shadow is one color throughout and the bars are opaque.
+function clearPixelsWhite() {
+  const out = Object.entries(MEDIA).map(([file, make]) => {
+    const img = make();
+    const kind = NOT_TINTED[file];
+    if (kind === "colored") return [file, 0];
+    if (kind === "opaque") return [file, countPixels(img, (r, g, b, a) => a < 1)];
+    if (kind === "one color") return [file, countPixels(img, (r, g, b) => r !== img.px[0] || g !== img.px[1] || b !== img.px[2])];
+    return [file, countPixels(img, (r, g, b) => r < 1 || g < 1 || b < 1)];
+  });
+  expect(out.filter(([, n]) => n > 0)).toEqual([]);
+}
+
+// Pixels with any alpha along an image's outer ring.
+function edgePixels(img) {
+  let n = 0;
+  for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++) if ((x === 0 || y === 0 || x === img.w - 1 || y === img.h - 1) && img.px[(y * img.w + x) * 4 + 3] > 0) n++;
+  return n;
+}
+
+// Icons and the stand-alone shapes (diamond, logo halves) keep a clear pixel inside their canvas
+// edge, so clamped sampling never smears an edge (#228). Tiled and stretched textures are exempt.
+function shapesPadded() {
+  const shapes = Object.keys(MEDIA).filter((f) => f.startsWith("Icons/") || /^Textures\/(Diamond|LogoLeft|LogoRight|Icon)\.tga$/.test(f));
+  expect(shapes.map((f) => [f, edgePixels(MEDIA[f]())]).filter(([, n]) => n > 0)).toEqual([]);
+}
+
 describe(
   "media",
   // Generated art, then digits, glyphs and the license for each weight.
@@ -202,8 +243,17 @@ describe(
     it("Media/Fonts/OFL.txt must hold the font license", oflLicense);
     it("game-icons sources rasterize from their SVGs", crestsRasterize);
     it("game-icons sources are credited", crestsCredited);
+  },
+);
+
+describe(
+  "media icons",
+  // How icons and tinted shapes sit on the pixel grid and under their clear pixels.
+  () => {
     it("icons of straight strokes are crisp at 16 px", squareIconsCrisp);
     it("icon strokes are two pixels wide at 16 px", strokeIsTwoPixels);
+    it("tinted art is white under its clear pixels", clearPixelsWhite);
+    it("icons and shapes keep a clear pixel inside their edge", shapesPadded);
   },
 );
 

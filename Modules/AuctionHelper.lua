@@ -538,6 +538,9 @@ end
 
 -- An item's search results: a search answered (UPDATED), or a further page of it (ADDED).
 AH.SEARCH_EVENTS = { "ITEM_SEARCH_RESULTS_UPDATED", "COMMODITY_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_ADDED", "COMMODITY_SEARCH_RESULTS_ADDED" }
+-- The events that paint the sell card again: the game's message throttle busy or ready (as the
+-- game's own sell frame follows it), and the bags changed.
+AH.SELL_EVENTS = { "AUCTION_HOUSE_THROTTLED_MESSAGE_SENT", "AUCTION_HOUSE_THROTTLED_SYSTEM_READY", "BAG_UPDATE_DELAYED" }
 
 -- An item's search results go to the shop's view and to the sell card, both against the search in
 -- flight when they came: only the one whose search it is (their kinds differ) marks it done, which
@@ -556,8 +559,9 @@ local function listen()
   on("REPLICATE_ITEM_LIST_UPDATE", onReplicate)
   on("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", AH.OnBrowse)
   for _, e in ipairs(AH.SEARCH_EVENTS) do on(e, AH.OnSearchEvent) end
-  -- The sell card again when the game is ready for a post, or a stack left the bags.
-  for _, e in ipairs({ "AUCTION_HOUSE_THROTTLED_SYSTEM_READY", "BAG_UPDATE_DELAYED" }) do on(e, function() AH.PaintSell() end) end
+  -- The sell card again when the game goes busy (a message sent) or is ready for a post again, or a
+  -- stack left the bags, so Post is on only while it can post.
+  for _, e in ipairs(AH.SELL_EVENTS) do on(e, function() AH.PaintSell() end) end
   for _, each in ipairs({ AH.ListenShop, AH.ListenOwned, AH.ListenLedger, AH.ListenDeals, AH.ListenUpgrades }) do each(on) end
 end
 

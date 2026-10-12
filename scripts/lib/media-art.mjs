@@ -8,9 +8,12 @@ import zlib from "node:zlib";
 
 const SS = 4;
 
-// An RGBA image of w x h, all transparent.
+// An RGBA image of w x h, all transparent white: a clear pixel keeps white RGB, so a
+// tinted, filtered edge never blends toward black (no dark fringe).
 export function image(w, h) {
-  return { w, h, px: new Float64Array(w * h * 4) };
+  const px = new Float64Array(w * h * 4);
+  for (let i = 0; i < px.length; i += 4) px.fill(1, i, i + 3);
+  return { w, h, px };
 }
 
 // Sets every pixel from fn(x, y) -> [r, g, b, a] (0-1).
@@ -21,12 +24,14 @@ export function fill(img, fn) {
   return img;
 }
 
-// Paints color rgb at coverage a over pixel (x, y) (straight alpha "over").
+// Paints color rgb at coverage a over pixel (x, y) (straight alpha "over"); a pixel
+// that stays clear keeps its color, so clear pixels stay white.
 function over(img, x, y, rgb, a) {
   const i = (y * img.w + x) * 4;
   const p = img.px;
   const out = a + p[i + 3] * (1 - a);
-  for (let c = 0; c < 3; c++) p[i + c] = out ? (rgb[c] * a + p[i + c] * p[i + 3] * (1 - a)) / out : 0;
+  if (!out) return;
+  for (let c = 0; c < 3; c++) p[i + c] = (rgb[c] * a + p[i + c] * p[i + 3] * (1 - a)) / out;
   p[i + 3] = out;
 }
 

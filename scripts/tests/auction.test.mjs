@@ -1191,7 +1191,7 @@ it("the next stack is the same item: another variant or a locked slot is passed 
   expect(restrictedLog(addon).map((c) => c[2]), "the blade in bag 0, then the one in bag 1 slot 3").toEqual(["0:2", "1:3"]);
   addon.eval("__wfgWorld.bags[1][3] = nil");
   addon.fire("BAG_UPDATE_DELAYED");
-  expect([card(addon)[2], card(addon)[0][2], form(addon)[7]], "none left in the bags (the card follows the bags): no Post, no deposit").toEqual([false, "", "posted 2 of 4"]);
+  expect([card(addon)[2], card(addon)[0][2], form(addon)[7]], "none left in the bags (the card follows the bags): no Post, no deposit, and the line says why").toEqual([false, "", "posted 2 of 4 · the item isn't in your bags"]);
 });
 
 // TEST-ONLY linen up now: someone's at 2s (2 hours left), yours at 2s 50c, someone's at 3s (20
@@ -1448,7 +1448,7 @@ it("Cancel next undercut cancels one undercut auction per click, then says none 
   expect([restrictedLog(addon), nextState(addon)], "the first, from the click; one left").toEqual([[["CancelAuction", true, 501, "nil", "nil", "nil", "nil"]], ["1 undercut", true]]);
   addon.click(CANCEL_NEXT);
   expect(restrictedLog(addon).map((c) => c[2]), "the next click takes the next one, before the game has answered the first").toEqual([501, 506]);
-  expect([nextState(addon), isTok(addon, addon.frame(`${CANCEL_NEXT}.text`).textColor, "muted")], "none left: it says so and stops").toEqual([["none undercut", false], true]);
+  expect([nextState(addon), isTok(addon, addon.frame(`${CANCEL_NEXT}.text`).textColor, "disabled")], "none left: it says so and stops, its button in the disabled tier").toEqual([["none undercut", false], true]);
   addon.click(CANCEL_NEXT);
   addon.fire("AUCTION_CANCELED", 501);
   addon.fire("AUCTION_CANCELED", 506);

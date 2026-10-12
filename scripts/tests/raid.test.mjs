@@ -33,7 +33,7 @@ it("raid frames", () => {
   const tank = raidButton(addon, 1);
   expect(tank.hp === 300 && tank.max === 1000 && tank.name === "TEST-ONLY Tank" && /Icons\\RoleTank$/.test(tank.role), "health, name and a tank's shield").toBeTruthy();
   expect(tank.nameAfter && raidButton(addon, 3).role === false && raidButton(addon, 3).roleW === 1 && tank.roleW > 1, "no role, no mark: it narrows, so the name after it starts near the row's start").toBeTruthy();
-  const soft = 0.78 * 0.7 + (0x12 / 255) * 0.3;
+  const soft = 0.78 * 0.7 + (0x13 / 255) * 0.3;
   expect(Math.abs(tank.color[0] - soft) < 1e-6, "class colors, softened into the panel color by default").toBeTruthy();
   expect(tank.status === "-700", "the second row shows missing health").toBeTruthy();
   expect(addon.eval("return Vanguard_RaidUnitButton1.name.__font[3]") === "OUTLINE", "names over the bar are outlined").toBeTruthy();
@@ -98,16 +98,16 @@ it("raid tiles: a class-colored top line in the softened look, and missing healt
   expect([t.size, t.justify, t.text], "a 10-player grid: the missing health at its usual size, under the name").toEqual([10, "CENTER", "-700"]);
   // The grid fitted to n players: the status size in tile units and on screen, its justification, the line's pixels.
   const fit = (n) => { addon.eval(`__members = ${n}`); addon.fire("GROUP_ROSTER_UPDATE"); t = tile(); return [r3(t.size), r3(t.onScreen), t.justify, r3(t.px)]; };
-  expect(fit(25), "25 players (drawn at 80%): 9 px on screen, beside the name, the line still 1 px").toEqual([11.25, 9, "RIGHT", 1]);
-  expect(fit(40), "40 players (drawn at 72%): still 9 px on screen").toEqual([12.5, 9, "RIGHT", 1]);
+  expect(fit(25), "25 players (drawn at 80%): 10 px on screen, the floor (#258), beside the name, the line still 1 px").toEqual([12.5, 10, "RIGHT", 1]);
+  expect(fit(40), "40 players (drawn at 72%): still 10 px on screen").toEqual([13.889, 10, "RIGHT", 1]);
   expect(t.text, "with the missing health in it").toBe("-700");
   setCombat(addon, true);
   addon.eval("ns.Theme.Settings().textScale = 1.2 ns.Theme.Refresh() __units.raid1.hp = { __secret = true }");
   addon.fire("UNIT_HEALTH", "raid1");
   t = tile();
-  expect([r3(t.size), t.text], "a text size change in a fight keeps the size until the fight ends; hidden health shows no number").toEqual([12.5, ""]);
+  expect([r3(t.size), t.text], "a text size change in a fight keeps the size until the fight ends; hidden health shows no number").toEqual([13.889, ""]);
   setCombat(addon, false);
-  expect(r3(tile().onScreen), "then the text size applies (the smallest text is 11 at 120%)").toBe(11);
+  expect(r3(tile().onScreen), "then the text size applies (the smallest text is 12 at 120%)").toBe(12);
   addon.eval("ns.Theme.Settings().textScale = 1 ns.Theme.Refresh()");
   expect(fit(10).slice(0, 3), "back to 10 players: full size again").toEqual([10, 10, "CENTER"]);
   for (const look of ["dark", "class"]) {
@@ -119,7 +119,7 @@ it("raid tiles: a class-colored top line in the softened look, and missing healt
   expect(tall.eval(TILE_LOOK).size, "a taller tile: bigger missing-health text").toBe(12);
   const short = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { RaidFrames = { height = 36 } } } }" });
   short.eval('__spawn(1, "raid1")');
-  expect(short.eval(TILE_LOOK).size, "a shorter one: never under the smallest text").toBe(9);
+  expect(short.eval(TILE_LOOK).size, "a shorter one: never under the smallest text (10, #258)").toBe(10);
 });
 
 // TEST-ONLY: a client whose secure snippets fail to compile (the probe's call throws).
@@ -324,7 +324,7 @@ it("raid preview: sample players in the raid tiles, laid out by the raid frame s
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview on, with sample players/)], "a party: five sample players, and chat says how it ends").toEqual([5, true]);
   const tank = previewTile(addon, 1);
   expect([tank.name, /Icons\\RoleTank$/.test(tank.role), tank.value, tank.status, tank.line], "the tank: name, shield, health, missing health, top line").toEqual(["Aldren", true, 2560, addon.eval("return '-' .. AbbreviateNumbers(1440)"), true]);
-  expect(Math.abs(tank.bar[0] - (0.78 * 0.7 + (0x12 / 255) * 0.3)) < 1e-6 && isTok(addon, tank.powerColor, "rage"), "softened class color as on a real tile; rage for a warrior").toBe(true);
+  expect(Math.abs(tank.bar[0] - addon.eval("return (ns.GetModule('RaidFrames').Soften(0.78, 0.61, 0.43))")) < 1e-6 && isTok(addon, tank.powerColor, "rage"), "softened class color as on a real tile; rage for a warrior").toBe(true);
   expect([previewTile(addon, 4).status, isTok(addon, previewTile(addon, 4).bar, "darkBar"), previewTile(addon, 5).status, previewTile(addon, 3).role], "one dead, one offline (dark bars); no mark for damage").toEqual(["Dead", true, "Offline", false]);
   // Preview tile i's rect on screen.
   const r = (i) => addon.frame(`Vanguard_RaidPreviewTile${i}`).rect;
