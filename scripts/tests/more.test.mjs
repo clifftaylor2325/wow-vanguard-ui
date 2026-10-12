@@ -2165,6 +2165,15 @@ it("the game's extras: each switch off leaves the game's frame alone, and missin
   expect(bare.eval("return Vanguard_MenuStrip ~= nil and Vanguard_QuestTracker ~= nil"), "a client without these frames still gets the strip and the spot, with nothing to pin").toBe(true);
 });
 
+it("a menu button takes clicks while the game's new indicator is shown (#243)", () => {
+  // TEST-ONLY indicator: a mouse-taking child frame above the button, as the game's alert frames are.
+  const ALERT_ENV = `__alert = CreateFrame("Frame", nil, CharacterMicroButton) __alert:EnableMouse(true) __alert:SetFrameLevel(CharacterMicroButton:GetFrameLevel() + 5)`;
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + ALERT_ENV);
+  expect(addon.eval("return { __alert:IsMouseEnabled() and 1 or 0, ns.FrameState('vgSlot')[CharacterMicroButton] ~= nil }"), "the indicator no longer takes the mouse, the slot is kept").toEqual([0, true]);
+  addon.eval("local clicked = 0 CharacterMicroButton:HookScript('OnClick', function() clicked = clicked + 1 end) CharacterMicroButton:Click() __clicked = clicked");
+  expect(addon.eval("return __clicked"), "a click reaches the button").toBe(1);
+});
+
 it("Round Four leftovers: menu glyphs, a target diamond, raid names above incoming heals", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
   // A menu button's state: its icon, the icon's color, its faded art and kept flash, the icon's width.
