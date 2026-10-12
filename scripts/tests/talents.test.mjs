@@ -78,7 +78,7 @@ it("talent planner: the bar on the talents window, and plan mode's clicks set pl
   expect(mark(addon, 101).mouse, "plan mode: the marks take the mouse").toBe(true);
   addon.eval("__click(101) __click(101)");
   const planned = mark(addon, 101);
-  expect([planned.badge, planned.shown, isTok(addon, planned.color, "accent"), planned.ring], "two left-clicks plan two ranks: the badge shows 2 in the accent, and it is the next pick").toEqual(["2", true, true, true]);
+  expect([planned.badge, planned.shown, isTok(addon, planned.color, "accentText"), planned.ring], "two left-clicks plan two ranks: the badge shows 2 in the accent's text colour, and it is the next pick").toEqual(["2", true, true, true]);
   expect(addon.eval("return VanguardCharDB.talentPlans[1].ranks[101]"), "the plan is saved per character and spec group").toBe(2);
   addon.eval("__click(101, 'RightButton')");
   expect(mark(addon, 101).badge, "a right-click takes one back").toBe("1");

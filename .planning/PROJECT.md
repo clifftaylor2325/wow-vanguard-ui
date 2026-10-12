@@ -97,6 +97,7 @@ On launch day, Vanguard loads without errors and everything it replaces works, v
 | CI target is a full suite under 5 minutes, run on every PR | Author wants the whole suite per PR rather than a tiny gate plus rare full runs | — Pending |
 | Launch audience is the author and two friends, public listing after | Realistic first users; keeps support load small | — Pending |
 | Feature scope limited to levelling and group play | Author picked these; vanilla content at launch is mostly levelling in small groups | — Pending |
+| Cheapest model and effort per task (CLAUDE.md "Usage and cost"); GSD model profile `budget` | Author (2026-10-12): Claude usage and CI minutes are limited, so parallel work runs on Haiku for mechanical tasks and Sonnet for code, with Opus only for root causes, harness rules and protected paths | — Decided |
 
 ## Evolution
 

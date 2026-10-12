@@ -3,7 +3,7 @@
 -- current page as cards of setting rows (it scrolls when long), and a footer
 -- that says when a reload is needed. Up and Down walk the pages, Tab and
 -- Shift-Tab the rows, Enter or Space presses the row. Pages and their rows
--- come from Core/Options.lua and modules' own pages.
+-- come from Core/Options.lua, its area files and modules' own pages.
 
 local ADDON, ns = ...
 
@@ -11,8 +11,8 @@ local T, W, O = ns.Theme, ns.Widgets, ns.Options
 
 local WIDTH, HEIGHT, NAV_WIDTH, BAR = 780, 560, 176, 40
 local CARD_WIDTH, PAD = WIDTH - NAV_WIDTH - 40, 10
--- Height of each row kind (modules add theirs with O.AddRowKind).
-local ROW_HEIGHT = { check = 28, cycle = 28, slider = 28, swatches = 30, button = 32, text = 20, preview = 52, module = 40 }
+-- Height of each row kind (Core/OptionsPreview.lua and modules add theirs with O.AddRowKind).
+local ROW_HEIGHT = { check = 28, cycle = 28, slider = 28, button = 32, text = 20, module = 40 }
 -- Row kinds laid out edge to edge in a card (the rest are indented).
 local FULL_WIDTH = { check = true, cycle = true, slider = true, swatches = true, module = true }
 -- Where a row kind keeps its setter; the setting's default, if the row has one, comes right after it.
@@ -27,101 +27,6 @@ local needsReload = false
 local quiet = false
 
 -- Rows ---------------------------------------------------------------------------------------
-
--- The accent row: a swatch per preset and a hex box (Enter applies).
-local function accentRow(parent, width)
-  local r = CreateFrame("Frame", nil, parent)
-  r:SetSize(width, ROW_HEIGHT.swatches)
-  r.label = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
-  r.label:SetPoint("LEFT", 8, 0)
-  r.label:SetText("Accent")
-  r.hex = W.Input(r, 74)
-  r.hex:SetPoint("RIGHT", -8, 0)
-  r.hex:SetScript("OnEnterPressed", function(self) local cr, cg, cb = T.ParseHex(self:GetText()) if cr then T.SetAccent(cr, cg, cb) end self:ClearFocus() end)
-  -- Shows the current accent as #rrggbb.
-  r.Refresh = function(self) self.hex:SetText("#" .. T.Hex("accent"):sub(3):upper()) end
-  return r
-end
-
--- The preset swatches, right to left before the hex box.
-local function addSwatches(r)
-  for i, name in ipairs(T.PRESET_ORDER) do
-    local rgb = T.PRESETS[name]
-    local s = W.Swatch(r, rgb, function() T.SetAccent(rgb[1], rgb[2], rgb[3]) end)
-    s:SetSize(22, 22)
-    s:SetPoint("RIGHT", r.hex, "LEFT", -12 - (#T.PRESET_ORDER - i) * 26, 0)
-  end
-end
-
--- A bar on the sample unit frame, h tall, at value (of 100).
-local function sampleBar(f, h, value)
-  local bar = CreateFrame("StatusBar", nil, f)
-  bar:SetHeight(h)
-  bar:SetMinMaxValues(0, 100)
-  bar:SetValue(value)
-  return bar
-end
-
--- The sample unit frame: health on top with the name and health text, power along the bottom.
-local function sampleUnit(r)
-  local f = T.HudPanel(CreateFrame("Frame", nil, r))
-  f:SetSize(220, 36)
-  f:SetPoint("LEFT", 8, 0)
-  f.health, f.power = sampleBar(f, 26, 72), sampleBar(f, 7, 60)
-  f.health:SetPoint("TOPLEFT", 1, -1)
-  f.health:SetPoint("TOPRIGHT", -1, -1)
-  f.power:SetPoint("BOTTOMLEFT", 1, 1)
-  f.power:SetPoint("BOTTOMRIGHT", -1, 1)
-  return f
-end
-
--- The sample unit frame's name (left) and health (right).
-local function sampleTexts(f)
-  f.name = T.Text(f.health:CreateFontString(nil, "OVERLAY"), "name")
-  f.name:SetPoint("LEFT", 4, 0)
-  f.value = T.Text(f.health:CreateFontString(nil, "OVERLAY"), "number")
-  f.value:SetPoint("RIGHT", -4, 0)
-end
-
--- The sample action button: an icon, its key and count, and an accent glow (a spell that procced).
-local function sampleButton(r)
-  local b = T.Button(CreateFrame("Button", nil, r))
-  b:SetSize(36, 36)
-  b:SetPoint("LEFT", r.unit, "RIGHT", 16, 0)
-  b.icon = T.Crop(b:CreateTexture(nil, "ARTWORK"))
-  b.icon:SetPoint("TOPLEFT", 1, -1)
-  b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
-  b.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-  b.hotkey, b.count = T.Text(b:CreateFontString(nil, "OVERLAY"), "small", "text2"), T.Text(b:CreateFontString(nil, "OVERLAY"), "small", "white")
-  b.glow = T.Glow(b, 6)
-  return b
-end
-
--- A live sample in the current theme (accent, font, text size, bar texture):
--- a unit frame and an action button, as the HUD draws them.
-local function previewRow(parent, width)
-  local r = CreateFrame("Frame", nil, parent)
-  r:SetSize(width, ROW_HEIGHT.preview)
-  r.unit = sampleUnit(r)
-  sampleTexts(r.unit)
-  r.button = sampleButton(r)
-  r.button.hotkey:SetPoint("TOPRIGHT", -2, -2)
-  r.button.count:SetPoint("BOTTOMRIGHT", -2, 2)
-  return r
-end
-
--- Fills the sample from the theme as it is now: the bar texture, the bars' colors, the texts and the glow.
-local function refreshPreview(r)
-  local u, b = r.unit, r.button
-  for _, bar in ipairs({ u.health, u.power }) do T.StyleBar(bar) end
-  T.BarColor(u.health, "friendly")
-  T.BarColor(u.power, "mana")
-  u.name:SetText("<name>")
-  u.value:SetText("72%")
-  b.hotkey:SetText("1")
-  b.count:SetText("5")
-  T.ShowGlow(b.glow, true)
-end
 
 -- A module's switch: its name, and under it what the module does, in small muted text.
 local function moduleRow(parent, row, width)
@@ -166,8 +71,6 @@ local BUILDERS = {
   button = buttonRow,
   cycle = function(c, r, w) return W.Choice(c, r[2], r[3], r[4], r[5], w) end,
   slider = function(c, r, w) return W.Slider(c, r[2], r[3], r[4], r[5], w) end,
-  swatches = function(c, _, w) local r = accentRow(c, w) addSwatches(r) return r end,
-  preview = function(c, _, w) local r = previewRow(c, w) r.Refresh = refreshPreview return r end,
   module = moduleRow,
 }
 
@@ -623,6 +526,13 @@ local function scrollToRow(view, w)
   if w.pageY + w:GetHeight() > top + h then scrollTo(view, w.pageY + w:GetHeight() - h + 8) end
 end
 
+-- Moves the keyboard's row to w (or to none), its focus ring with it.
+local function setFocus(w)
+  if window.focusRow then T.FocusRing(window.focusRow, false) end
+  window.focusRow = w
+  if w then T.FocusRing(w, true) end
+end
+
 -- Moves the keyboard's row to the next (dir 1) or previous (dir -1) one, wrapping, marked and in view.
 local function stepRow(dir)
   local rows, at = pressableRows(), 0
@@ -631,7 +541,7 @@ local function stepRow(dir)
     if w == window.focusRow then at = i end
   end
   if at == 0 and dir < 0 then at = 1 end
-  window.focusRow = rows[(at - 1 + dir) % #rows + 1]
+  setFocus(rows[(at - 1 + dir) % #rows + 1])
   O.MarkRow(window.focusRow)
   scrollToRow(pages[O.current], window.focusRow)
 end
@@ -658,7 +568,7 @@ end
 -- a fight lets it go, and the combat queue takes it back when the fight ends.
 local function wireKeys(f)
   f:SetScript("OnKeyDown", onKey)
-  f:SetScript("OnHide", function(self) self:EnableKeyboard(false) self.focusRow = nil end)
+  f:SetScript("OnHide", function(self) self:EnableKeyboard(false) setFocus(nil) end)
   ns.On("PLAYER_REGEN_DISABLED", function()
     f:EnableKeyboard(false)
     ns.AfterCombat(function() f:EnableKeyboard(f:IsShown()) end, "options keyboard")
@@ -725,7 +635,7 @@ end
 -- The window frame: opaque (no world shows through, under short pages either), above other windows, closes with Escape (O.PlaceWindow places it).
 local function windowFrame()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = 1, shadow = true })
-  f:SetSize(WIDTH, HEIGHT)
+  T.PixelSize(f, WIDTH, HEIGHT, true)
   f:SetFrameStrata("DIALOG")
   f:EnableMouse(true)
   if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_Options") end
@@ -783,17 +693,17 @@ local function showPage()
   end
 end
 
--- Brings the window up (fading in, with a sound) or, when it was already
+-- Brings the window up (fading in as it rises into place, with a sound) or, when it was already
 -- open, plays the page sound for a new page.
 local function appear(previous)
   if not previous then T.Sound("open") elseif previous ~= O.current then T.Sound("page") end
-  if previous then T.StopFade(window) else T.FadeIn(window) end
+  if previous then T.StopFade(window) else T.OpenWindow(window) end
   if pages[O.current] then scrollTo(pages[O.current], pages[O.current]:GetVerticalScroll() or 0) end
 end
 
 -- The window takes the keyboard (out of combat); a new page starts without a keyboard row.
 local function takeKeys(previous)
-  if previous ~= O.current then window.focusRow = nil end
+  if previous ~= O.current then setFocus(nil) end
   window:EnableKeyboard(not ns.InCombat())
 end
 
@@ -908,7 +818,7 @@ function O.Hide()
   W.CloseMenu()
   if not window or not window:IsShown() then return end
   T.Sound("close")
-  T.FadeOut(window)
+  T.CloseWindow(window)
 end
 
 -- Opens or closes the window.

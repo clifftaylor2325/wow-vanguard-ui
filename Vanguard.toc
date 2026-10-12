@@ -44,7 +44,12 @@ Core/Controls.lua
 Core/MoverPopover.lua
 Core/UnlockBar.lua
 Core/Options.lua
+Core/OptionsFrames.lua
+Core/OptionsBars.lua
+Core/OptionsQuests.lua
+Core/OptionsMore.lua
 Core/OptionsWindow.lua
+Core/OptionsPreview.lua
 Core/ErrorBadge.lua
 Core/OptionsProfiles.lua
 Core/ProfileExport.lua
@@ -104,6 +109,8 @@ Modules/QuestTracker.lua
 Modules/QuestTrackerView.lua
 Modules/QuestLog.lua
 Modules/QuestLogView.lua
+Modules/QuestGuide.lua
+Modules/QuestGuideMap.lua
 Modules/Windows.lua
 Modules/WindowsSocial.lua
 Modules/WindowsTown.lua
@@ -143,3 +150,6 @@ Modules/SituationsBanner.lua
 Modules/ClickCast.lua
 Modules/ClickCastSpells.lua
 Modules/ClickCastOptions.lua
+Modules/Coexist.lua
+Modules/GroupBoard.lua
+Modules/GroupBoardView.lua
