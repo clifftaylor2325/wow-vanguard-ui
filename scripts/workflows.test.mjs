@@ -281,8 +281,10 @@ it("verify fetches two deep, then its first check works out whether only docs ch
   expect(changes).not.toContain("if:");
 });
 
-it("every later verify step is skipped for a docs-only change, and the job still reports", () => {
-  const later = verifySteps().slice(2);
+it("every verify step after the spelling check is skipped for a docs-only change, and the job still reports", () => {
+  const [spelling, ...later] = verifySteps().slice(2);
+  expect(spelling).toMatch(/^ {6}- name: Spelling$/m);
+  expect(spelling, "spelling also reads docs-only changes").not.toContain("if:");
   expect(later.length).toBeGreaterThanOrEqual(8);
   for (const step of later) expect(step.split("\n").map((l) => l.trim()), step.split("\n")[0]).toContain(DOCS_ONLY_IF);
   expect(jobCondition(workflow("verify.yml"), "quick")).toBe("${{ !github.event.pull_request.draft }}");
@@ -435,4 +437,71 @@ it("neither workflow installs luacheck from apt; lua5.1 stays; luacheck prints i
     const scripts = runBlocks(text).map((b) => b.split("\n").map((l) => l.trim()).join("\n").trim());
     expect(scripts, file).toContain("luacheck --version\nluacheck --no-color .");
   }
+});
+
+// Hygiene (#265) -------------------------------------------------------------------------
+
+// Every `uses:` line in the workflows, as { file, ref, comment } (ref is what follows `uses:`).
+function usesLines() {
+  return allWorkflows().flatMap(({ name, text }) =>
+    [...text.matchAll(/^\s*(?:-\s+)?uses:\s*(\S+)(?:\s+#\s*(.*))?$/gm)].map((m) => ({ file: name, ref: m[1], comment: m[2] ?? "" })),
+  );
+}
+
+it("every action is pinned to a full commit SHA with its version in a comment; local workflows are exempt", () => {
+  const all = usesLines();
+  const remote = all.filter((u) => !u.ref.startsWith("./"));
+  expect(remote.length, "the reader finds the actions").toBeGreaterThanOrEqual(14);
+  expect(all.some((u) => u.ref === "./.github/workflows/lua-suite.yml"), "local workflows are read too").toBe(true);
+  for (const u of remote) {
+    expect(u.ref, `${u.file}: ${u.ref}`).toMatch(/^[\w.-]+\/[\w.-]+(\/[\w./-]+)?@[0-9a-f]{40}$/);
+    expect(u.comment, `${u.file}: ${u.ref}`).toMatch(/^v\d+\.\d+\.\d+$/);
+  }
+});
+
+it("one action is pinned to one SHA and one version everywhere it is used", () => {
+  const seen = new Map();
+  for (const u of usesLines().filter((x) => !x.ref.startsWith("./"))) {
+    const [name, sha] = u.ref.split("@");
+    const pin = `${sha} ${u.comment}`;
+    expect(seen.get(name) ?? pin, `${u.file}: ${name}`).toBe(pin);
+    seen.set(name, pin);
+  }
+});
+
+it("verify spell-checks with the pinned typos action, configured to skip vendored and generated files", () => {
+  expect(verifySteps()[2]).toMatch(/^ {8}uses: crate-ci\/typos@[0-9a-f]{40} # v\d+\.\d+\.\d+$/m);
+  const typos = repoText("_typos.toml");
+  const exclude = typos.match(/^extend-exclude = \[(.*)\]$/m)?.[1] ?? "";
+  for (const dir of ["Libs/", "Media/", "art/"]) expect(exclude).toContain(`"${dir}"`);
+  for (const word of ["defensives", "hander", "varian"]) expect(typos).toMatch(new RegExp(`^${word} = "${word}" # `, "m"));
+});
+
+it("markdown lint is its own non-required workflow, filtered to Markdown, drafts skipped", () => {
+  const text = workflow("markdown.yml");
+  const paths = text.match(/^ {4}paths:\n((?: {6}- .*\n)+)/m)?.[1] ?? "";
+  expect(paths).toContain('- "docs/**"');
+  expect(paths).toContain('- "**.md"');
+  expect(text).toMatch(/^ {4}name: Markdown lint$/m);
+  expect(text).not.toContain("name: Quick checks");
+  expect(jobCondition(text, "lint")).toBe("${{ !github.event.pull_request.draft }}");
+  expect(text).toMatch(/uses: DavidAnson\/markdownlint-cli2-action@[0-9a-f]{40} # v/);
+  expect(text).toMatch(/^permissions:\n {2}contents: read\n/m);
+});
+
+it("the markdownlint settings keep the defaults on and say why each rule is off", () => {
+  const text = repoText(".markdownlint-cli2.jsonc");
+  expect(text).toContain('"default": true');
+  const lines = text.split("\n");
+  // True for a line that turns one rule off.
+  const isOff = (l) => /^\s+"MD\d+": false,?$/.test(l);
+  const off = lines.flatMap((l, i) => (isOff(l) ? [i] : []));
+  expect(off.length).toBeGreaterThan(0);
+  for (const i of off) expect(lines.slice(0, i).reverse().find((l) => !isOff(l)), lines[i]).toMatch(/^\s+\/\/ /);
+  expect(text).toContain('".planning/**"');
+});
+
+it("the pull request template has the sections CLAUDE.md asks a pull request for", () => {
+  const headings = repoText(".github/PULL_REQUEST_TEMPLATE.md").split("\n").filter((l) => l.startsWith("## "));
+  expect(headings).toEqual(["## Tasks", "## Tests added", "## Skipped", "## Needs in-game check"]);
 });
