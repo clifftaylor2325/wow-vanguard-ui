@@ -15,6 +15,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgPlanner = ns.FrameState("vgPlanner")
+
 local T, W = ns.Theme, ns.Widgets
 
 local TP = ns.Module("TalentPlanner", { defaults = { levelPrompt = true, autoSpend = false } })
@@ -543,8 +546,8 @@ end
 -- Hooks the game's talents window once it exists: the bar built, a repaint on show, the tooltip put away on hide.
 function TP.Attach()
   local frame = TP.Frame()
-  if not frame or frame.vgPlanner then return end
-  frame.vgPlanner = true
+  if not frame or vgPlanner[frame] then return end
+  vgPlanner[frame] = true
   buildBar(frame)
   frame:HookScript("OnShow", TP.Schedule)
   frame:HookScript("OnHide", function() GameTooltip:Hide() end)

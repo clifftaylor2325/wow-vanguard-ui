@@ -42,6 +42,18 @@ export function resetProfile() {
   globalThis[KEY] = fresh();
 }
 
+// An empty accumulator, for useProfile.
+export function emptyProfile() {
+  return fresh();
+}
+
+// Sends the samples to `data` from now on (one accumulator per event, say); returns the accumulator it replaces.
+export function useProfile(data) {
+  const before = profileData();
+  globalThis[KEY] = data;
+  return before;
+}
+
 // The Lua frame at a stack level as { file, line, defined, name }; null for a
 // JS- or C-implemented function, undefined once past the bottom of the stack.
 function frameAt(L, ar, level) {

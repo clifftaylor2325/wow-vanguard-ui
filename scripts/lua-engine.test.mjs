@@ -127,6 +127,22 @@ it("auras, actions and secrets through the world", () => {
   expect(addon.eval('return { issecretvalue(UnitHealth("player")), pcall(function() return UnitHealth("player") + 1 end) }').slice(0, 2), "a secret errors on arithmetic, as in instanced combat").toEqual([true, false]);
 });
 
+it("an aura change refreshes every aura container showing that unit, including one made after the last change", () => {
+  const addon = createAddon();
+  addon.eval(`__refreshed = {}
+    function __container(key, unit)
+      local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+      local update = c.UpdateAllAuras
+      c.UpdateAllAuras = function(self) __refreshed[#__refreshed + 1] = key return update(self) end
+      c:SetUnit(unit)
+    end
+    __container("early", "player") __container("target", "target")`);
+  addon.world.addAura("player", { name: "TEST-ONLY Buff", duration: 30 });
+  addon.eval('__container("late", "player") __refreshed = {}');
+  addon.world.addAura("player", { name: "TEST-ONLY Shield", duration: 30 });
+  expect(addon.eval("return __refreshed"), "both player containers, in creation order; not the target's").toEqual(["early", "late"]);
+});
+
 it("timers run on the test clock, and combat queues work", () => {
   const addon = loggedIn();
   addon.eval("__fired = 0 C_Timer.After(2, function() __fired = __fired + 1 end) __ticker = C_Timer.NewTicker(1, function() __fired = __fired + 10 end, 2)");
@@ -139,6 +155,20 @@ it("timers run on the test clock, and combat queues work", () => {
   expect(addon.eval("return { InCombatLockdown(), __after == nil }"), "the function waits for combat to end").toEqual([true, true]);
   addon.world.combat(false);
   expect(addon.eval("return __after ~= nil")).toBe(true);
+});
+
+it("showing or hiding a frame runs OnShow and OnHide on its shown children, as the client does", () => {
+  const addon = createAddon();
+  const log = addon.eval(`local log = {}
+    local p = CreateFrame("Frame", nil, UIParent) p:Hide()
+    local shown, hidden = CreateFrame("Frame", nil, p), CreateFrame("Frame", nil, p)
+    hidden:Hide()
+    for name, f in pairs({ shown = shown, hidden = hidden }) do
+      for _, s in ipairs({ "OnShow", "OnHide" }) do f:SetScript(s, function() log[#log + 1] = name .. " " .. s end) end
+    end
+    p:Show() p:Hide()
+    return log`);
+  expect(log, "the shown child follows its parent; the hidden one doesn't").toEqual(["shown OnShow", "shown OnHide"]);
 });
 
 it("input: clicks, hover, the wheel and keys reach the frame's scripts", () => {
@@ -208,4 +238,98 @@ it("a call from the tests that runs past its instruction budget fails with a tra
   expect(() => addon.eval("while true do end")).toThrow(/Lua ran 5000000 instructions in one call from the tests/);
   expect(addon.eval("return ns.Theme ~= nil"), "the state is still usable after the error").toBe(true);
   expect(addon.eval("local n = 0 for i = 1, 100000 do n = n + 1 end return n"), "a long call inside the budget runs").toBe(100000);
+});
+
+// Taint rules (scripts/lib/wow-taint.lua) ------------------------------------------------------
+
+// Runs Lua as if it were a line of one of the addon's files (Modules/TEST-ONLY.lua), and returns its result.
+const asAddon = (addon, lua) => addon.eval(`return assert(load(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))()`);
+
+it("taint: frames belong to whoever made them; the addon's files make the addon's", () => {
+  const addon = createAddon();
+  addon.eval(`__mine = assert(load("local f = CreateFrame('Frame', nil, UIParent) return f", "@Modules/TEST-ONLY.lua"))()
+    __mineTex = assert(load("local t = ChatFrame1:CreateTexture() return t", "@Modules/TEST-ONLY.lua"))()
+    __game = CreateFrame("StatusBar", nil, UIParent) __game:SetStatusBarTexture("TEST-ONLY") __gameTex = __game:CreateTexture()
+    __viaPcall = assert(load("local ok, f = pcall(CreateFrame, 'Frame') return f", "@Core/TEST-ONLY.lua"))()`);
+  expect(addon.eval("return { UIParent.__byGame, ChatFrame1.__byGame, __game.__byGame, __game:GetStatusBarTexture().__byGame, __gameTex.__byGame }"),
+    "the client's frames, test code's stand-ins, and regions the stub makes for them are the game's").toEqual([true, true, true, true, true]);
+  expect(addon.eval("return { __mine.__byGame == nil, __mineTex.__byGame == nil, __viaPcall.__byGame == nil }"),
+    "a frame or region the addon's files make (through pcall too) is the addon's").toEqual([true, true, true]);
+  addon.eval("AuctionHouseFrame = nil __wfgWorld.openAuctionHouse()");
+  expect(addon.eval("return AuctionHouseFrame.__byGame"), "a window the world makes later is the game's").toBe(true);
+});
+
+it("taint: addon code storing a field on a game frame fails the test; game, test and own-frame writes don't", () => {
+  const addon = createAddon();
+  expectErrors("field write: Modules/TEST-ONLY.lua:1 stored the field vgTest on the game's frame ChatFrame1");
+  asAddon(addon, "ChatFrame1.vgTest = true ChatFrame1.vgTest = false");
+  asAddon(addon, "local f = CreateFrame('Frame') f.vgMine = true");
+  addon.eval("ChatFrame1.testOnly = 1 hooksecurefunc(ChatFrame1, 'Show', function() end)");
+  expect(addon.eval("return { ChatFrame1.vgTest, #__wfgStub.violations, __wfgStub.violations[1].count }"), "the write still happens, and is one entry").toEqual([false, 1, 1]);
+  const unnamed = createAddon();
+  unnamed.eval("__plain = CreateFrame('Frame')");
+  expectErrors(/^field write: Modules\/TEST-ONLY\.lua:1 stored the field vgTest on the game's frame Frame #\d+$/);
+  asAddon(unnamed, "__plain.vgTest = true");
+});
+
+// A TEST-ONLY secure button (the game's), the addon's holder around it, and a listener for blocked actions.
+const SECURE_ENV = `
+  __secure = CreateFrame("Button", "TESTONLY_Secure", UIParent, "SecureActionButtonTemplate")
+  __holder = assert(load("local f = CreateFrame('Frame', 'TESTONLY_Holder', UIParent) return f", "@Modules/TEST-ONLY.lua"))()
+  __inner = CreateFrame("Button", nil, __holder, "SecureUnitButtonTemplate")
+  __blocked = {}
+  __listen = CreateFrame("Frame") __listen:RegisterEvent("ADDON_ACTION_BLOCKED")
+  __listen:SetScript("OnEvent", function(_, _, who, what) __blocked[#__blocked + 1] = who .. " " .. what end)
+`;
+
+it("taint: in combat, addon code's protected calls on protected frames are blocked, as the client blocks them", () => {
+  const addon = createAddon();
+  addon.eval(SECURE_ENV);
+  expect(addon.eval("return { __secure:IsProtected() }"), "a secure template's frame is protected itself").toEqual([true, true]);
+  expect(addon.eval("return { __holder:IsProtected() }"), "a frame holding one is protected through it").toEqual([true, false]);
+  expect(addon.eval("return { PlayerFrame:IsProtected(), select(2, ChatFrame1:IsProtected()) }"), "the game's unit frames are; its chat is not").toEqual([true, false]);
+  asAddon(addon, "__secure:Hide()");
+  expect(addon.eval("return __secure:IsShown()"), "out of combat the call goes through").toBe(false);
+  addon.world.combat(true);
+  expectErrors("blocked in combat: Modules/TEST-ONLY.lua:1 called Show on the protected frame TESTONLY_Secure",
+    "blocked in combat: Modules/TEST-ONLY.lua:1 called SetPoint on the protected frame TESTONLY_Holder");
+  asAddon(addon, "__secure:Show() pcall(__secure.Show, __secure) __holder:SetPoint('CENTER') __secure:SetAlpha(0.5) ChatFrame1:Hide()");
+  expect(addon.eval("return { __secure:IsShown(), next(__holder.__points) == nil, __secure:GetAlpha(), ChatFrame1:IsShown() }"),
+    "blocked calls do nothing; unprotected ones and unprotected frames are untouched").toEqual([false, true, 0.5, false]);
+  expect(addon.eval("return __blocked"), "the client says so with ADDON_ACTION_BLOCKED").toEqual(["Vanguard Show()", "Vanguard Show()", "Vanguard SetPoint()"]);
+  addon.eval("__secure:Show() __holder:SetPoint('CENTER')");
+  expect(addon.eval("return { __secure:IsShown(), next(__holder.__points) ~= nil }"), "the game's own (secure) code is never blocked").toEqual([true, true]);
+});
+
+it("taint: a hook in front of a protected method doesn't hide the addon code that called it", () => {
+  const addon = createAddon();
+  addon.eval(SECURE_ENV + "hooksecurefunc(__secure, 'Hide', function() end)");
+  addon.world.combat(true);
+  expectErrors("blocked in combat: Core/TEST-ONLY.lua:1 called Hide on the protected frame TESTONLY_Secure");
+  addon.eval(`assert(load("__secure:Hide()", "@Core/TEST-ONLY.lua"))()`);
+  expect(addon.eval("return __secure:IsShown()"), "still shown").toBe(true);
+});
+
+it("taint: secret geometry, derived: a secret fill, secret text and what anchors to them read as secrets", () => {
+  const addon = createAddon();
+  addon.eval(`__bar = CreateFrame("StatusBar", nil, UIParent) __bar:SetSize(100, 10) __bar:SetPoint("CENTER")
+    __bar:SetStatusBarTexture("TEST-ONLY") __bar:SetMinMaxValues(0, 100) __bar:SetValue(__wfgWorld.secret(40))
+    __spark = __bar:CreateTexture() __spark:SetSize(2, 10) __spark:SetPoint("CENTER", __bar:GetStatusBarTexture(), "RIGHT")
+    __text = __bar:CreateFontString() __text:SetFont("TEST-ONLY", 10) __text:SetText(__wfgWorld.secret("TEST-ONLY"))
+    __scroll = CreateFrame("ScrollFrame", nil, ChatFrame1) __scroll:SetSize(10, 10) __scroll:SetPoint("CENTER")
+    __child = CreateFrame("Frame", nil, __scroll) __child:SetSize(10, 50) __scroll:SetScrollChild(__child)`);
+  // Which getters answer with secrets now.
+  const secrets = () => addon.eval(`local s = issecretvalue return { s(__bar:GetStatusBarTexture():GetWidth()), s(__spark:GetLeft()), s(__text:GetStringWidth()), s(__bar:GetWidth()), s(UIParent:GetWidth()), s(ChatFrame1:GetWidth()) }`);
+  expect(secrets(), "off: nothing is secret").toEqual([false, false, false, false, false, false]);
+  addon.world.secretGeometry("derived");
+  expect(secrets(), "derived: the fill, the spark on it and the secret text; not the bar, the screen or the game's chat").toEqual([true, true, true, false, false, false]);
+  expect(() => addon.eval("return __spark:GetLeft() + 1"), "arithmetic on one fails, as in game").toThrow(/arithmetic/);
+  addon.world.secretGeometry("strict");
+  expect(secrets(), "strict: every frame of the game's too (test code made this bar, so it is one), never the screen").toEqual([true, true, true, true, false, true]);
+  expect(addon.eval("local x, y = __bar:GetCenter() return { issecretvalue(x), issecretvalue(y), __scroll:GetVerticalScrollRange() }"),
+    "every value a getter returns is hidden; the scroll range is worked out from true heights").toEqual([true, true, 40]);
+  expect(addon.eval("return { CreateFrame('Frame'):GetLeft() == nil, __wfgStub.secretGeometryOf(__child) }"), "a frame with no rect still has no position").toEqual([true, true]);
+  expect(() => addon.world.secretGeometry("TEST-ONLY"), "an unknown mode is refused").toThrow(/derived, strict or off/);
+  addon.world.secretGeometry(null);
+  expect(secrets(), "and off again").toEqual([false, false, false, false, false, false]);
 });

@@ -14,6 +14,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgUpgrade = ns.FrameState("vgUpgrade")
+
 local T = ns.Theme
 local W = ns.UpgradeWeights
 
@@ -157,19 +160,19 @@ end
 
 -- An upward arrow in a button's top-left corner (the theme's Down glyph turned over), made when first needed.
 local function arrowOf(button)
-  if button.vgUpgrade then return button.vgUpgrade end
+  if vgUpgrade[button] then return vgUpgrade[button] end
   local a = button:CreateTexture(nil, "OVERLAY")
   a:SetTexture(T.Icon("Down"))
   a:SetTexCoord(0, 1, 1, 0)
   a:SetSize(14, 14)
   a:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
-  button.vgUpgrade = T.Tint(a, "good")
+  vgUpgrade[button] = T.Tint(a, "good")
   return a
 end
 
 -- Shows the arrow on a button when on; hides it (if it was ever made) when not.
 local function setArrow(button, on)
-  if on then arrowOf(button):Show() elseif button.vgUpgrade then button.vgUpgrade:Hide() end
+  if on then arrowOf(button):Show() elseif vgUpgrade[button] then vgUpgrade[button]:Hide() end
 end
 
 -- Marks a bag item button: the arrow when the item in it is an upgrade.

@@ -141,12 +141,19 @@ local function solve(edges, axis, extent, lo, hi)
   return c - extent / 2, extent
 end
 
+-- A number as the client draws it: a secret's hidden number (the client fills a
+-- bar by a secret value it won't tell addons), anything else as it is.
+local function drawn(v)
+  if type(v) == "table" and v.__secret then return v.n end
+  return v
+end
+
 -- A status bar's fill texture: the bar's rect cut to the value's share.
 local function fillRect(w)
   local bar = w.__parent
   local r = rectOf(bar)
-  local lo, hi = bar.__min or 0, bar.__max or 1
-  local v = bar.__value
+  local lo, hi = drawn(bar.__min) or 0, drawn(bar.__max) or 1
+  local v = drawn(bar.__value)
   local share = type(v) == "number" and type(lo) == "number" and type(hi) == "number" and hi > lo and math.max(0, math.min(1, (v - lo) / (hi - lo))) or 0
   local width = r.width * share
   local left = bar.__reverseFill and r.left + r.width - width or r.left
@@ -181,8 +188,11 @@ stub.rectOf = rectOf
 -- frame it hangs on laid out too. The client gives a zero-sized frame no
 -- rect, and nothing anchored to one is drawn (a 0 x 0 anchor frame hides a
 -- whole bar); the rect itself is still worked out, so sizes read as usual.
+-- A status bar's fill is laid out by its bar (while it has a width).
 local function laidOut(w, depth)
   if w == UIParent then return true end
+  local fill = w.__parent and w.__parent.__barTexture == w
+  if fill then return rectOf(w).width > 0 and laidOut(w.__parent, (depth or 0) + 1) end
   if next(w.__points) == nil and scrollOwner(w) == nil then return false end
   local r = rectOf(w)
   if r.width <= 0 or r.height <= 0 then return false end

@@ -10,6 +10,11 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgArrow = ns.FrameState("vgArrow")
+local vgChecked = ns.FrameState("vgChecked")
+local vgFader = ns.FrameState("vgFader")
+
 local T = {}
 ns.Theme = T
 
@@ -36,7 +41,7 @@ local LATIN_HEADING_MISSING = { ruRU = true }
 
 -- A texture from Media/Textures (Bar, Shadow, Glow, Stripes, LogoLeft, ...).
 function T.Texture(name) return T.MEDIA .. "Textures\\" .. name end
--- An icon from Media/Icons (General, Close, Check, Down, ...).
+-- An icon from Media/Icons (Close, Check, Down, Search, ...).
 function T.Icon(name) return T.MEDIA .. "Icons\\" .. name end
 
 -- r, g, b, a (0-1) from "rrggbb" and an optional alpha.
@@ -794,7 +799,7 @@ T.TAB_ART = {
 -- side tab was last given, else disabled (the game selects a panel tab by disabling it).
 local function tabSelected(button)
   if type(button.SetTabSelected) == "function" then return button.isSelected == true end
-  if button.vgChecked ~= nil then return button.vgChecked end
+  if vgChecked[button] ~= nil then return vgChecked[button] end
   return type(button.IsEnabled) == "function" and not button:IsEnabled()
 end
 
@@ -838,7 +843,7 @@ end
 
 -- Remembers a side tab's checked state, then repaints it.
 local function onTabChecked(button, checked)
-  button.vgChecked = checked == true
+  vgChecked[button] = checked == true
   repaintTab(button)
 end
 
@@ -917,13 +922,13 @@ end
 -- A scroll arrow in the theme, once: a flat button with the theme's Down icon,
 -- turned upside down for the Back (up) arrow.
 local function arrowGlyph(button, up)
-  if button.vgArrow then return end
+  if vgArrow[button] then return end
   T.Button(button)
-  button.vgArrow = T.Tint(T.Snap(button:CreateTexture(nil, "OVERLAY")), "text2")
-  button.vgArrow:SetTexture(T.Icon("Down"))
-  button.vgArrow:SetSize(10, 10)
-  button.vgArrow:SetPoint("CENTER")
-  if up then button.vgArrow:SetTexCoord(0, 1, 1, 0) end
+  vgArrow[button] = T.Tint(T.Snap(button:CreateTexture(nil, "OVERLAY")), "text2")
+  vgArrow[button]:SetTexture(T.Icon("Down"))
+  vgArrow[button]:SetSize(10, 10)
+  vgArrow[button]:SetPoint("CENTER")
+  if up then vgArrow[button]:SetTexCoord(0, 1, 1, 0) end
 end
 
 -- One of the game's scroll bars in the theme: its track and art faded, the thumb a
@@ -1156,12 +1161,12 @@ end
 
 -- A frame's alpha animation (made once), or false when the client can't animate it.
 local function fader(frame)
-  if frame.vgFader ~= nil then return frame.vgFader end
+  if vgFader[frame] ~= nil then return vgFader[frame] end
   local group = frame.CreateAnimationGroup and frame:CreateAnimationGroup()
   local alpha = group and group.CreateAnimation and group:CreateAnimation("Alpha")
   if alpha then group:SetToFinalAlpha(true) end
-  frame.vgFader = alpha and { group = group, alpha = alpha } or false
-  return frame.vgFader
+  vgFader[frame] = alpha and { group = group, alpha = alpha } or false
+  return vgFader[frame]
 end
 
 -- Plays an alpha change from -> to over seconds, then runs done.
@@ -1222,7 +1227,7 @@ end
 
 -- Stops a fade in progress and leaves the frame fully visible.
 function T.StopFade(frame)
-  local f = frame.vgFader
+  local f = vgFader[frame]
   if f then f.group:SetScript("OnFinished", nil) f.group:Stop() end
   frame:SetAlpha(1)
 end

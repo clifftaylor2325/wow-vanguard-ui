@@ -12,6 +12,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgDeath = ns.FrameState("vgDeath")
+
 local T = ns.Theme
 
 local GA = ns.Module("GameAlerts", { defaults = { lossOfControl = true, talkingHead = "move", hardcore = true, rares = false } })
@@ -96,8 +99,8 @@ end
 -- A message was added: a line the game reuses after a death notice gets its own font back.
 function GA.OnWarning(frame)
   local fs = newestWarning(frame)
-  if not (fs and fs.vgDeath) then return end
-  fs.vgDeath = nil
+  if not (fs and vgDeath[fs]) then return end
+  vgDeath[fs] = nil
   fs:SetFontObject(_G.GameFontNormalHuge)
 end
 
@@ -106,7 +109,7 @@ end
 function GA.OnWarningEvent(frame, event)
   local fs = event == "HARDCORE_DEATHS" and newestWarning(frame)
   if not fs then return end
-  fs.vgDeath = true
+  vgDeath[fs] = true
   T.ApplyRole(fs, "title")
   T.Color(fs, "bad")
 end

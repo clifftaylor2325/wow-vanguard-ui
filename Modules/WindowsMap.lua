@@ -4,6 +4,11 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgGlyph = ns.FrameState("vgGlyph")
+local vgMapWatched = ns.FrameState("vgMapWatched")
+local vgQueueHooked = ns.FrameState("vgQueueHooked")
+
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
 
@@ -84,10 +89,10 @@ end
 
 -- The "..." on the nav bar's overflow button, made once: the button's own art is gone.
 local function overflowGlyph(button)
-  if not isFrame(button) or button.vgGlyph then return end
-  button.vgGlyph = T.Text(button:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  button.vgGlyph:SetPoint("CENTER")
-  button.vgGlyph:SetText("...")
+  if not isFrame(button) or vgGlyph[button] then return end
+  vgGlyph[button] = T.Text(button:CreateFontString(nil, "OVERLAY"), "label", "text2")
+  vgGlyph[button]:SetPoint("CENTER")
+  vgGlyph[button]:SetText("...")
 end
 
 -- The nav bar's buttons: home, overflow, and every crumb it holds now.
@@ -126,8 +131,8 @@ end
 -- Follows the game's redraws of the map: the nav bar's crumbs (rebuilt on each map change) and
 -- the display state (minimising rebuilds the border). Hooked once.
 local function watchMap(map)
-  if map.vgMapWatched or type(hooksecurefunc) ~= "function" then return end
-  map.vgMapWatched = true
+  if vgMapWatched[map] or type(hooksecurefunc) ~= "function" then return end
+  vgMapWatched[map] = true
   if type(map.SynchronizeDisplayState) == "function" then hooksecurefunc(map, "SynchronizeDisplayState", ns.Guard("hook SynchronizeDisplayState", GW.SkinWorldMap)) end
   local nav = map.NavBar
   if type(nav) == "table" and type(nav.Refresh) == "function" then hooksecurefunc(nav, "Refresh", ns.Guard("hook Refresh", function() skinNavButtons(nav) end)) end
@@ -364,8 +369,8 @@ end
 function GW.SkinQueueStatus(frame)
   T.Tooltip(frame)
   skinQueueEntries(frame)
-  if frame.vgQueueHooked or type(frame.Update) ~= "function" or type(hooksecurefunc) ~= "function" then return end
-  frame.vgQueueHooked = true
+  if vgQueueHooked[frame] or type(frame.Update) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  vgQueueHooked[frame] = true
   hooksecurefunc(frame, "Update", ns.Guard("hook Update", skinQueueEntries))
 end
 

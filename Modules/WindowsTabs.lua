@@ -8,6 +8,10 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgPadded = ns.FrameState("vgPadded")
+local vgSeeded = ns.FrameState("vgSeeded")
+
 local T = ns.Theme
 
 local GW = ns.GetModule("Windows")
@@ -103,8 +107,8 @@ end
 -- The game checks a side tab as the window loads, before T.Tab hooks SetChecked: says the state once
 -- more, so the accent line starts on the right tab.
 local function seedChecked(tab)
-  if tab.vgSeeded or type(tab.SetChecked) ~= "function" then return end
-  tab.vgSeeded = true
+  if vgSeeded[tab] or type(tab.SetChecked) ~= "function" then return end
+  vgSeeded[tab] = true
   local on = checkedNow(tab)
   if on ~= nil then tab:SetChecked(on) end
 end
@@ -137,8 +141,8 @@ end
 -- so their borders meet), once: the panel reaches past the window, and would cover the tab's near end.
 function GW.ClearPadding(tab, window)
   local pad = T.Padding(window) - T.Pixel(window)
-  if tab.vgPadded or pad <= 0 or tab:GetNumPoints() ~= 1 then return end
-  tab.vgPadded = true
+  if vgPadded[tab] or pad <= 0 or tab:GetNumPoints() ~= 1 then return end
+  vgPadded[tab] = true
   local point, rel, relPoint, x, y = tab:GetPoint(1)
   if rel ~= window or type(point) ~= "string" or type(relPoint) ~= "string" then return end
   x = outside(point, relPoint, "RIGHT", "LEFT", -pad, outside(point, relPoint, "LEFT", "RIGHT", pad, x))

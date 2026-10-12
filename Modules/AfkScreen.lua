@@ -225,15 +225,11 @@ end
 
 -- Clicks and keys put the screen away; the time away and the clock tick once a second.
 local function wire(f)
-  local elapsed = 0
   f:EnableMouse(true)
   f:SetScript("OnMouseDown", AFK.Dismiss)
   f:SetScript("OnKeyDown", AFK.Dismiss)
   ns.OutOfCombat(function() f:EnableKeyboard(true) if ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(true) end end)
-  f:SetScript("OnUpdate", function(_, dt)
-    elapsed = elapsed + dt
-    if elapsed >= 1 then elapsed = 0 AFK.Tick() end
-  end)
+  ns.Every("afk screen", 1, AFK.Tick, f)
 end
 
 -- Module entry point (Core/Modules.lua): a fight puts the screen away, and it

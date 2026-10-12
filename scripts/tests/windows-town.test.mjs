@@ -54,10 +54,10 @@ it("S2.1 the pet stable: art faded, pet scene and experience bar dressed, purcha
 it("S2.1 the pet stable: its group switched off leaves it the game's; a client with a bare window loads cleanly", () => {
   const off = loggedIn(STABLE_ENV, { savedVariables: OFF });
   off.eval("PetStableFrame:Show()");
-  expect([windowState(off, "PetStableFrame").art !== 0, off.eval("return PetStableFrame.vgWindow == nil")], "not hooked, art left").toEqual([true, true]);
+  expect([windowState(off, "PetStableFrame").art !== 0, off.eval("return ns.FrameState('vgWindow')[PetStableFrame] == nil")], "not hooked, art left").toEqual([true, true]);
   const bare = loggedIn('CreateFrame("Frame", "PetStableFrame", UIParent):Hide()');
   bare.eval("PetStableFrame:Show()");
-  expect([bare.eval("return PetStableFrame.vgWindow"), windowErrors(bare)], "a window without the parts is skinned, no error").toEqual([true, "none"]);
+  expect([bare.eval("return ns.FrameState('vgWindow')[PetStableFrame]"), windowErrors(bare)], "a window without the parts is skinned, no error").toEqual([true, "none"]);
 });
 
 // TEST-ONLY trainer (Blizzard_TrainerUI, loads on demand): the window, its list as the game's ScrollBox hands out rows.
@@ -184,7 +184,7 @@ it("S2.3 side dress-up, stack split and coin pickup: group off leaves them the g
   expect(["SideDressUpFrame", "StackSplitFrame", "CoinPickupFrame"].map((n) => windowState(off, n).art !== 0), "art left").toEqual([true, true, true]);
   const bare = loggedIn('for _, n in ipairs({ "SideDressUpFrame", "StackSplitFrame", "CoinPickupFrame" }) do CreateFrame("Frame", n, UIParent):Hide() end');
   bare.eval("SideDressUpFrame:Show() StackSplitFrame:Show() CoinPickupFrame:Show()");
-  expect([bare.eval("return StackSplitFrame.vgWindow"), windowErrors(bare)], "windows without their parts").toEqual([true, "none"]);
+  expect([bare.eval("return ns.FrameState('vgWindow')[StackSplitFrame]"), windowErrors(bare)], "windows without their parts").toEqual([true, "none"]);
 });
 
 // TEST-ONLY separate bag windows (ContainerFrame1-7): a window per bag, each holding item buttons the way
@@ -203,7 +203,7 @@ const BAGS_ENV = `${WINDOWS_ENV}
 `;
 
 // How many of a bag window's item buttons have the Bags module's item look.
-const skinnedItems = (addon, name) => addon.eval(`local n = 0 for _, b in ipairs(${name}.items) do if b.vgSkinned then n = n + 1 end end return n`);
+const skinnedItems = (addon, name) => addon.eval(`local n = 0 for _, b in ipairs(${name}.items) do if ns.FrameState('vgSkinned')[b] then n = n + 1 end end return n`);
 
 it("S2.4 separate bag windows: with Combined bags off the window and its items take the Bags look", () => {
   const addon = loggedIn(BAGS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Bags = { combined = false } } }" });
@@ -222,7 +222,7 @@ it("S2.4 separate bag windows: with Combined bags off the window and its items t
 it("S2.4 separate bag windows: the Bags module or the town group off leaves them the game's; a bag without item calls is fine", () => {
   const noBags = loggedIn(BAGS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Bags = false } } }" });
   noBags.eval("ContainerFrame1:Show()");
-  expect([windowState(noBags, "ContainerFrame1").art !== 0, skinnedItems(noBags, "ContainerFrame1"), noBags.eval("return ContainerFrame1.vgBagItems == nil")], "Bags off: nothing").toEqual([true, 0, true]);
+  expect([windowState(noBags, "ContainerFrame1").art !== 0, skinnedItems(noBags, "ContainerFrame1"), noBags.eval("return ns.FrameState('vgBagItems')[ContainerFrame1] == nil")], "Bags off: nothing").toEqual([true, 0, true]);
   const off = loggedIn(BAGS_ENV, { savedVariables: OFF });
   off.eval("ContainerFrame1:Show()");
   expect([windowState(off, "ContainerFrame1").art !== 0, skinnedItems(off, "ContainerFrame1")], "town off: nothing").toEqual([true, 0]);
@@ -267,10 +267,10 @@ it("S2.5 loot dialogs: master looter and loot history skinned, player buttons th
 it("S2.5 loot dialogs: group off leaves them the game's; a window without its parts or the game's list call loads cleanly", () => {
   const off = loggedIn(LOOT_ENV, { savedVariables: OFF });
   off.eval("MasterLooterFrame:Show() GroupLootHistoryFrame:Show()");
-  expect([windowState(off, "MasterLooterFrame").art !== 0, windowState(off, "GroupLootHistoryFrame").art !== 0, off.eval("return MasterLooterFrame.vgPlayers == nil")], "not hooked").toEqual([true, true, true]);
+  expect([windowState(off, "MasterLooterFrame").art !== 0, windowState(off, "GroupLootHistoryFrame").art !== 0, off.eval("return ns.FrameState('vgPlayers')[MasterLooterFrame] == nil")], "not hooked").toEqual([true, true, true]);
   const bare = loggedIn('CreateFrame("Frame", "MasterLooterFrame", UIParent):Hide() CreateFrame("Frame", "GroupLootHistoryFrame", UIParent):Hide()');
   bare.eval("MasterLooterFrame:Show() GroupLootHistoryFrame:Show()");
-  expect([bare.eval("return MasterLooterFrame.vgWindow"), windowErrors(bare)], "bare windows: skinned, no list hook, no error").toEqual([true, "none"]);
+  expect([bare.eval("return ns.FrameState('vgWindow')[MasterLooterFrame]"), windowErrors(bare)], "bare windows: skinned, no list hook, no error").toEqual([true, "none"]);
 });
 
 // TEST-ONLY icon picker popup (IconSelectorPopupFrameTemplate): the frame with its header box and parts.
@@ -326,7 +326,7 @@ it("S2.6 macro, icon pickers, stopwatch, recipe inspection: group off leaves the
   plain.fire("ADDON_LOADED", "Blizzard_MacroUI");
   plain.eval("MacroPopupFrame:Show()");
   expect([bare, plain].map(windowErrors), "windows without their parts, or a box that isn't one: no error").toEqual(["none", "none"]);
-  expect(plain.eval("return MacroPopupFrame.vgWindow"), "the plain popup is still skinned").toBe(true);
+  expect(plain.eval("return ns.FrameState('vgWindow')[MacroPopupFrame]"), "the plain popup is still skinned").toBe(true);
 });
 
 // TEST-ONLY small dialogs: the ghost button, the message dialog, the addon dialog (a full-screen frame holding
@@ -352,7 +352,7 @@ it("S2.7 small dialogs: ghost button, message dialog, addon dialog and currency 
   expect(alphas(addon, "BasicMessageDialog.Border"), "its Border faded").toEqual([0]);
   expect(dressed(addon, "BasicMessageDialogButton1", "BasicMessageDialogButton2"), "its button row themed").toEqual([true, true]);
   expect(alphas(addon, "AddonDialogBackgroundBg"), "the addon dialog's art faded").toEqual([0]);
-  expect(addon.eval("local n = 0 for _, r in ipairs({ AddonDialogBackground:GetRegions() }) do if r.__alpha ~= 0 then n = n + 1 end end return { n > 0, AddonDialog.vgWindow, select('#', AddonDialog:GetRegions()) }"), "its panel sits on the dialog, not on the full-screen catcher").toEqual([true, true, 0]);
+  expect(addon.eval("local n = 0 for _, r in ipairs({ AddonDialogBackground:GetRegions() }) do if r.__alpha ~= 0 then n = n + 1 end end return { n > 0, ns.FrameState('vgWindow')[AddonDialog], select('#', AddonDialog:GetRegions()) }"), "its panel sits on the dialog, not on the full-screen catcher").toEqual([true, true, 0]);
   expect(dressed(addon, "AddonDialogButton1", "AddonDialogButton2", "CurrencyTransferMenu.Content.ConfirmButton", "CurrencyTransferMenu.Content.CancelButton"), "the addon dialog's and the transfer window's buttons themed").toEqual([true, true, true, true]);
   expect(windowState(addon, "CurrencyTransferMenu"), "the transfer window skin").toMatchObject({ art: 0, panel: true });
   const painted = message.painted;
@@ -363,7 +363,7 @@ it("S2.7 small dialogs: ghost button, message dialog, addon dialog and currency 
 it("S2.7 small dialogs: the ghost button waits for the end of combat", () => {
   const addon = loggedIn(DIALOGS_ENV.replace("local g = CreateFrame", "__wfgStub.inCombat = true local g = CreateFrame"));
   addon.eval("GhostFrame:Show()");
-  expect(addon.eval("return { GhostFrame.vgWindow, select('#', GhostFrame:GetRegions()) }"), "hooked, but not painted in combat (only its own texture)").toEqual([true, 1]);
+  expect(addon.eval("return { ns.FrameState('vgWindow')[GhostFrame], select('#', GhostFrame:GetRegions()) }"), "hooked, but not painted in combat (only its own texture)").toEqual([true, 1]);
   setCombat(addon, false);
   expect(addon.eval("return select('#', GhostFrame:GetRegions()) > 1"), "dressed once combat ends").toBe(true);
 });
@@ -371,8 +371,8 @@ it("S2.7 small dialogs: the ghost button waits for the end of combat", () => {
 it("S2.7 small dialogs: group off leaves them the game's; a client without the dialogs or their parts loads cleanly", () => {
   const off = loggedIn(DIALOGS_ENV, { savedVariables: OFF });
   off.eval("GhostFrame:Show() BasicMessageDialog:Show() AddonDialog:Show()");
-  expect([windowState(off, "BasicMessageDialog").art !== 0, off.eval("return GhostFrame.vgWindow == nil"), off.eval("return AddonDialog.vgWindow == nil")], "not hooked").toEqual([true, true, true]);
+  expect([windowState(off, "BasicMessageDialog").art !== 0, off.eval("return ns.FrameState('vgWindow')[GhostFrame] == nil"), off.eval("return ns.FrameState('vgWindow')[AddonDialog] == nil")], "not hooked").toEqual([true, true, true]);
   const bare = loggedIn('CreateFrame("Frame", "AddonDialog", UIParent):Hide() CreateFrame("Frame", "CurrencyTransferMenu", UIParent):Hide()');
   bare.eval("AddonDialog:Show() CurrencyTransferMenu:Show()");
-  expect([bare.eval("return CurrencyTransferMenu.vgWindow"), windowErrors(bare)], "an addon dialog without its box, a transfer window without content: skinned, no error").toEqual([true, "none"]);
+  expect([bare.eval("return ns.FrameState('vgWindow')[CurrencyTransferMenu]"), windowErrors(bare)], "an addon dialog without its box, a transfer window without content: skinned, no error").toEqual([true, "none"]);
 });

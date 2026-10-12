@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process";
 import fengari from "fengari";
 import { expect, it } from "vitest";
 import { createAddon, root } from "./lib/lua-harness.mjs";
-import { dumpProfile, formatProfile, mergeProfiles, profileData, profileSampler, resetProfile, topRows } from "./lib/lua-profile.mjs";
+import { dumpProfile, emptyProfile, formatProfile, mergeProfiles, profileData, profileSampler, resetProfile, topRows, useProfile } from "./lib/lua-profile.mjs";
 
 const { lua, lauxlib, lualib, to_luastring } = fengari;
 
@@ -84,6 +84,20 @@ it("mergeProfiles adds the samples and the file, function and line counts of two
   const [line, hits] = topRows(first.lines, null, 1)[0];
   expect(merged.lines[line]).toBe(hits * 2);
   fs.rmSync(dir, { recursive: true, force: true });
+});
+
+it("useProfile sends later samples to another accumulator and gives back the one it replaced", () => {
+  resetProfile();
+  const before = profileData();
+  const mine = emptyProfile();
+  expect(mine).toEqual({ samples: 0, files: {}, functions: {}, lines: {} });
+  expect(useProfile(mine)).toBe(before);
+  const L = lauxlib.luaL_newstate();
+  lua.lua_sethook(L, profileSampler(), lua.LUA_MASKCOUNT, 1000);
+  runChunk(L, "local n = 0 for i = 1, 20000 do n = n + i end", "@TEST-ONLY-mine.lua");
+  expect(useProfile(before)).toBe(mine);
+  expect(mine.samples, "the samples went to the swapped-in accumulator").toBeGreaterThan(10);
+  expect(before.samples, "and none to the one it replaced").toBe(0);
 });
 
 it("dumpProfile writes nothing when no sample was taken", () => {

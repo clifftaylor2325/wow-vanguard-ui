@@ -255,7 +255,7 @@ it("a switch under Bars, map, chat gives back the plain combined bag at once, an
   addon.eval('__click("Combined bag in sections")');
   expect([headers(addon).length, spot(addon, "b0s1"), height(addon)], "switched on: sections at once").toEqual([7, [12, 160], 233]);
   addon.eval('ContainerFrameCombinedBags:Hide() __click("Combined bag in sections") __click("Combined bag in sections")');
-  expect(addon.eval("return ContainerFrameCombinedBags.vgSections == nil"), "switched off and on while closed: laid out at the next opening").toBe(true);
+  expect(addon.eval("return ns.FrameState('vgSections')[ContainerFrameCombinedBags] == nil"), "switched off and on while closed: laid out at the next opening").toBe(true);
 });
 
 it("a client without the bag window's layout calls keeps the plain combined bag", () => {
