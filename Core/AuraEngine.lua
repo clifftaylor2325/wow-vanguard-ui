@@ -221,10 +221,12 @@ function E.Create(parent, spec, unit)
   return retire(frame, parent, spec, unit)
 end
 
--- Shows another unit's auras (nil: none). The client follows UNIT_AURA itself.
+-- Shows another unit's auras. The client follows UNIT_AURA itself. With no unit
+-- the container is bound to "none", the client's null unit, and turned off, so it
+-- never keeps the unit it had (an emptied raid tile shows nobody's auras).
 function Container:SetUnit(unit)
   self.unit = unit
-  if unit then self.frame:SetUnit(unit) end
+  self.frame:SetUnit(unit or "none")
   self.frame:SetEnabled(unit ~= nil)
 end
 

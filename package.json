@@ -11,12 +11,14 @@
     "coverage": "node scripts/coverage-lua.mjs",
     "timing": "node scripts/suite-timing.mjs",
     "profile": "node scripts/profile-lua.mjs",
+    "bench": "node scripts/bench.mjs",
     "media": "node scripts/build-media.mjs",
     "quality": "node scripts/check-code-quality.mjs",
     "lint": "luacheck .",
     "package": "node scripts/package.mjs",
     "preview": "node scripts/preview-ui.mjs",
-    "link:wow": "node scripts/link-wow.mjs"
+    "link:wow": "node scripts/link-wow.mjs",
+    "prepare": "node scripts/install-hooks.mjs"
   },
   "devDependencies": {
     "@resvg/resvg-js": "2.6.2",
