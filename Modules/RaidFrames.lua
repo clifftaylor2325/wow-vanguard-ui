@@ -49,7 +49,8 @@ RF.buttons = {}
 -- Other modules add to a raid button here: setupHooks(b) once per button,
 -- updateHooks(b, unit) on every refresh (Modules/RaidAuras.lua uses both).
 -- healthHooks(b, unit) after a health event (only what follows health).
-RF.setupHooks, RF.updateHooks, RF.healthHooks = {}, {}, {}
+-- emptyHooks(b) when a tile's unit goes away (the group shrank).
+RF.setupHooks, RF.updateHooks, RF.healthHooks, RF.emptyHooks = {}, {}, {}, {}
 -- Tiles by the unit token the group header gave them (see RF.ForUnit).
 RF.byUnit = {}
 
@@ -238,11 +239,16 @@ local function paintTopLine(b, unit)
   RF.PaintTopLine(b, unitFrames().HealthColor(unit))
 end
 
+-- A tile with no unit (the group shrank): every module's part lets go of the old one.
+function RF.Emptied(b)
+  for _, hook in ipairs(RF.emptyHooks) do hook(b) end
+end
+
 -- Everything on one tile: name, role, health, power, edge, top line and every
 -- module's part (RF.updateHooks). For a roster change, a new tile, or a setting.
 function RF.Update(b)
   local unit = tileUnit(b)
-  if not unit then return end
+  if not unit then RF.Emptied(b) return end
   b.name:SetText(UnitName(unit))
   updateRole(b, unit)
   paintTopLine(b, unit)

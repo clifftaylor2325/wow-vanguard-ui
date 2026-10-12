@@ -6,6 +6,13 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgBack = ns.FrameState("vgBack")
+local vgChecked = ns.FrameState("vgChecked")
+local vgExtraButtons = ns.FrameState("vgExtraButtons")
+local vgQuickButtons = ns.FrameState("vgQuickButtons")
+local vgTabWatched = ns.FrameState("vgTabWatched")
+
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
 
@@ -38,15 +45,15 @@ end
 
 -- A game tab's selected state: the accent line follows the game's SelectableButton calls.
 local function tabSelected(tab, selected)
-  tab.vgChecked = selected == true
+  vgChecked[tab] = selected == true
   T.Tab(tab)
 end
 
 -- A panel tab (MinimalTabTemplate) in the theme; its selection comes through OnSelected.
 local function skinTab(tab)
   T.Tab(tab)
-  if tab.vgTabWatched or type(tab.OnSelected) ~= "function" or type(hooksecurefunc) ~= "function" then return end
-  tab.vgTabWatched = true
+  if vgTabWatched[tab] or type(tab.OnSelected) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  vgTabWatched[tab] = true
   hooksecurefunc(tab, "OnSelected", ns.Guard("hook OnSelected", tabSelected))
 end
 
@@ -207,8 +214,8 @@ local editSettings = skinner({ layout = true, art = { "Border" }, titles = { "Ti
 function GW.SkinEditSettings(dialog)
   editSettings(dialog)
   dressExtraButtons(dialog)
-  if dialog.vgExtraButtons or type(dialog.UpdateExtraButtons) ~= "function" or type(hooksecurefunc) ~= "function" then return end
-  dialog.vgExtraButtons = true
+  if vgExtraButtons[dialog] or type(dialog.UpdateExtraButtons) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  vgExtraButtons[dialog] = true
   hooksecurefunc(dialog, "UpdateExtraButtons", ns.Guard("hook UpdateExtraButtons", dressExtraButtons))
 end
 
@@ -275,12 +282,12 @@ GW.AddButtons("ReportCheatingDialog", { "ReportCheatingDialogCancelButton" })
 -- The splash window (what's new): its big art stays; a panel goes behind it, on a child frame one
 -- level below the window so it draws under the art, and its two close buttons and buttons are themed.
 function GW.SkinSplash(frame)
-  if not frame.vgBack then
-    frame.vgBack = CreateFrame("Frame", nil, frame)
-    frame.vgBack:SetAllPoints(frame)
-    frame.vgBack:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
+  if not vgBack[frame] then
+    vgBack[frame] = CreateFrame("Frame", nil, frame)
+    vgBack[frame]:SetAllPoints(frame)
+    vgBack[frame]:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
   end
-  T.Panel(frame.vgBack, { shadow = true })
+  T.Panel(vgBack[frame], { shadow = true })
   dress(frame, { close = { "TopCloseButton" }, buttons = { "BottomCloseButton" } })
 end
 
@@ -312,8 +319,8 @@ function GW.SkinCombatLogBar(frame)
   T.FadeRegions(frame)
   T.Panel(frame, { inset = true })
   dressQuickButtons()
-  if frame.vgQuickButtons or type(hooksecurefunc) ~= "function" then return end
-  frame.vgQuickButtons = true
+  if vgQuickButtons[frame] or type(hooksecurefunc) ~= "function" then return end
+  vgQuickButtons[frame] = true
   for _, script in ipairs({ "OnShow", "OnEvent" }) do frame:HookScript(script, dressQuickButtons) end
   if type(_G.Blizzard_CombatLog_QuickButton_OnClick) == "function" then hooksecurefunc("Blizzard_CombatLog_QuickButton_OnClick", ns.Guard("hook Blizzard_CombatLog_QuickButton_OnClick", dressQuickButtons)) end
 end

@@ -1,0 +1,33 @@
+name: markdown
+
+# Markdown lint (markdownlint-cli2, settings in .markdownlint-cli2.jsonc) on
+# pull requests that change Markdown or those settings. Not a required check:
+# the ruleset requires only "Quick checks" (verify.yml), so this workflow may
+# keep a path filter. Drafts skip it, as they skip the gate.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "docs/**"
+      - "**.md"
+      - ".markdownlint-cli2.jsonc"
+      - ".github/workflows/markdown.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: markdown-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Markdown lint
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+        with:
+          globs: "**/*.md"

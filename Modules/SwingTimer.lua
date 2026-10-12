@@ -10,6 +10,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgSkinned = ns.FrameState("vgSkinned")
+
 local T = ns.Theme
 local CB = ns.GetModule("CastBars")
 local UF = ns.GetModule("UnitFrames")
@@ -112,8 +115,8 @@ end
 -- Dresses one of the game's swing bars, once; its art is faded again each time it shows
 -- and after the game redraws its range look. A bar without its fill is left alone.
 local function skinGameBar(frame, color)
-  if frame.vgSkinned or type(frame.StatusBar) ~= "table" or not frame.StatusBar.SetStatusBarTexture then return end
-  frame.vgSkinned = true
+  if vgSkinned[frame] or type(frame.StatusBar) ~= "table" or not frame.StatusBar.SetStatusBarTexture then return end
+  vgSkinned[frame] = true
   dressGameBar(frame.StatusBar, color)
   fadeGameArt(frame)
   frame:HookScript("OnShow", fadeGameArt)
