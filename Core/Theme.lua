@@ -120,6 +120,8 @@ local DEFAULTS = {
   texelSnap = false,
   -- Shadows and glows as one nine-slice texture each; off until the in-game check (#236).
   sliceRings = false,
+  -- A subtle top-to-bottom lightness shift on floating windows' fills (#259); off by default.
+  panelGradient = false,
   textScale = 1,
   barTexture = "vanguard",
   -- Soft shadows under HUD frames (unit frames, bars, minimap); floating windows always have one.
@@ -690,13 +692,32 @@ local function borderColor(entry)
   return c[1], c[2], c[3], c[4]
 end
 
+-- The panel gradient (#259): the OKLCH lightness change at a large panel's bottom and top edge, so
+-- the fill runs about 2.4 % lighter from bottom to top (more bands; less doesn't read).
+T.PANEL_GRADIENT = { -0.012, 0.012 }
+
+-- A colour d lighter in OKLCH lightness (darker when d < 0), as a client Color at alpha a.
+local function lighter(r, g, b, a, d)
+  local L, A, B = toOklab(r, g, b)
+  local r2, g2, b2 = fromOklab(L + d, A, B)
+  return CreateColor(r2, g2, b2, a)
+end
+
+-- Runs a large panel's fill (a floating window's: opts.shadow, or opts.gradient) a shade lighter
+-- toward its top while the panelGradient setting is on (VERTICAL runs bottom to top).
+local function shadeBg(bg, opts, r, g, b, a)
+  if not (T.Settings().panelGradient and (opts.shadow or opts.gradient) and bg.SetGradient) then return end
+  bg:SetGradient("VERTICAL", lighter(r, g, b, a, T.PANEL_GRADIENT[1]), lighter(r, g, b, a, T.PANEL_GRADIENT[2]))
+end
+
 -- Colors a painted background: panel, inset or raised color (or the opts.fill
--- token), at opts.alpha if given.
+-- token), at opts.alpha if given, shaded top to bottom where shadeBg says.
 local function paintBg(bg, opts)
   local r, g, b, a = T.PanelColor(opts.inset)
   if opts.raised then r, g, b, a = T.RGB("raised") end
   if opts.fill then r, g, b, a = T.RGB(opts.fill) end
   bg:SetVertexColor(r, g, b, opts.alpha or a)
+  shadeBg(bg, opts, r, g, b, opts.alpha or a)
 end
 
 -- Applies the current colors (and pixel size) to one painted frame.
@@ -750,7 +771,7 @@ end
 -- top. opts: inset (darker) or raised (lighter), accent (accent border),
 -- alpha (fill opacity), shadow (soft drop shadow, for floating windows),
 -- pad (draw it all that many units out past the frame's edges: room around
--- a game window's contents), noBorder, noBg, noSheen.
+-- a game window's contents), gradient (the panel gradient without a shadow), noBorder, noBg, noSheen.
 function T.Panel(frame, opts)
   local entry = base(frame, "panel", opts)
   repaint(frame, entry)
@@ -1286,9 +1307,18 @@ function T.Logo(parent, size)
   return f
 end
 
--- Crops the baked-in bevel off an icon texture.
-function T.Crop(texture)
-  texture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+-- How much T.Crop trims off each edge of an icon's art: 0.08, its baked-in bevel.
+T.ICON_EDGE = 0.08
+
+-- Crops the baked-in bevel off an icon texture; given a slot's w and h, crops the long axis further
+-- (#259) so the icon keeps its aspect ratio in a slot that isn't square.
+function T.Crop(texture, w, h)
+  local ex, ey = T.ICON_EDGE, T.ICON_EDGE
+  if w and h and w > 0 and h > 0 and w ~= h then
+    local keep = (0.5 - T.ICON_EDGE) * math.min(w, h) / math.max(w, h)
+    if w > h then ey = 0.5 - keep else ex = 0.5 - keep end
+  end
+  texture:SetTexCoord(ex, 1 - ex, ey, 1 - ey)
   return texture
 end
 

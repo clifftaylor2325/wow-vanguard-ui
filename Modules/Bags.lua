@@ -101,7 +101,7 @@ local function skinItem(button)
     if type(region) == "table" and region.SetAlpha then region:SetAlpha(0) end
   end
   local icon = button.icon or button.Icon
-  if icon and icon.SetTexCoord then icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+  if icon and icon.SetTexCoord then T.Crop(icon) end
   T.Panel(button, { inset = true, noBg = true })
   followQuality(button)
 end
