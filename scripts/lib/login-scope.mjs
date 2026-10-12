@@ -6,6 +6,10 @@
 // helpers.mjs (loggedIn) applies it; scripts/login-scope-probe.mjs derives the
 // data. Only node: modules are used, so a quick-project test can run it.
 
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 // The six modules a login pays for most (Enable cost, measured 2026-10-10:
 // about 150 of a login's 190 ms; ActionBars 67 ms, FrameAuras 27, PlayerAuras
 // 20, InstancePrep 13, UnitFrames 12, RaidTools 12).
@@ -29,6 +33,10 @@ export const FULL_CASES = [
   "scripts/tests/units.test.mjs|threat and happiness only where the client and settings allow", // coverage: the only case that runs Modules/UnitExtras.lua:46 (it passes vacuously with UnitFrames off, since nothing is built)
 ];
 
+// The account file version a fresh install is stamped with, read from Core/DB.lua so a scoped
+// brand-new account is made as current and Core/DB.lua runs no upgrade step on it (WR-01).
+const DB_VERSION = Number(/local DB_VERSION = ([0-9]+)/.exec(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../Core/DB.lua"), "utf8"))[1]);
+
 // Where the data lives, relative to the repo root.
 export const SCOPE_FILE = "scripts/tests/login-scope.json";
 
@@ -37,12 +45,12 @@ const MODES = ["full", "probe"];
 
 // Lua that turns the named modules off in the Default profile, merging into
 // whatever VanguardDB the caller's saved variables made (each level is created
-// only where it is missing). Starts with a newline so it never joins the
+// only where it is missing; a missing VanguardDB is made current, so it is not migrated). Starts with a newline so it never joins the
 // caller's last line; no names give no Lua.
 export function modulesOffLua(names) {
   if (!names.length) return "";
   const levels = ["VanguardDB", "VanguardDB.profiles", "VanguardDB.profiles.Default", "VanguardDB.profiles.Default.modules"];
-  const make = levels.map((level) => `${level} = ${level} or {}`);
+  const make = levels.map((level) => `${level} = ${level} or ${level === "VanguardDB" ? `{ version = ${DB_VERSION} }` : "{}"}`);
   const off = names.map((name) => `VanguardDB.profiles.Default.modules.${name} = false`);
   return `\n${[...make, ...off].join("\n")}`;
 }
