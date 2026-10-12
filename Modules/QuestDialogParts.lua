@@ -32,11 +32,17 @@ function QP.LevelColor(level)
   return T.RGB("text")
 end
 
--- "[12] Title" (just the title for a quest without a level).
-function QP.Titled(level, title)
+-- A title (plain, else "…") with Quest guidance's "New" mark after it when the quest is new in WoW Forever.
+function QP.WithMark(title, questID)
+  local QG = ns.QuestGuide
+  return QP.Plain(title) .. (QG and questID and QG.Mark(questID) or "")
+end
+
+-- "[12] Title" (just the title for a quest without a level), marked new when it is (QP.WithMark).
+function QP.Titled(level, title, questID)
   level = ns.PlainNumber(level)
-  if level and level > 0 then return string.format("[%d] %s", level, QP.Plain(title)) end
-  return QP.Plain(title)
+  if level and level > 0 then return string.format("[%d] %s", level, QP.WithMark(title, questID)) end
+  return QP.WithMark(title, questID)
 end
 
 -- Lines ----------------------------------------------------------------------------------------
