@@ -573,3 +573,23 @@ it("options: the scroll thumb drags its page, and the copy box opens above the w
     return { grip:IsShown(), dragged, view:GetVerticalScroll(), Vanguard_TextDialog.__strata, Vanguard_Options.__strata }`);
   expect(out, "dragging the thumb half its travel scrolls half the page and stops when let go; the copy box is a layer above the window").toEqual([true, 350, 350, "FULLSCREEN_DIALOG", "DIALOG"]);
 });
+
+it("options: the pages, their nav order and each page's row count stay as they were when Options.lua was split into area files", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // Every page in ns.Options.PAGES order: key, title, nav order and how many rows it builds.
+  const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
+  // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
+  expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
+    "general|General|10|30", "modules|Modules|20|54", "unitframes|Unit frames|30|23", "raid|Raid frames|40|18",
+    "actionbars|Action bars|60|73", "quests|Quests|70|12", "more|Bars, map, chat|80|138", "profiles|Profiles|90|14",
+    "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|70|12",
+    "situations|Situations|85|16", "clickcast|Click casting|46|11",
+  ]);
+  addon.eval('ns.Options.Show("general")');
+  // The nav entries top to bottom, by each one's offset from the top of the nav.
+  const nav = addon.eval("local list = {} for k, b in pairs(Vanguard_Options.nav) do local _, _, _, _, y = b:GetPoint() list[#list + 1] = { k, y } end table.sort(list, function(a, b) return a[2] > b[2] end) local out = {} for i, e in ipairs(list) do out[i] = e[1] end return out");
+  expect(nav, "the nav lists the pages in the same order").toEqual([
+    "general", "modules", "unitframes", "raid", "healing", "clickcast", "talents", "actionbars",
+    "nameplates", "quests", "more", "situations", "profiles", "feedback",
+  ]);
+});
