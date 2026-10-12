@@ -1,7 +1,7 @@
 // more: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { AFK_ENV, CLICK_LUA, FAKE_FADES, expectErrors, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, isTok, key, later, loggedIn, marks, pinned, plate, putAway, raidButton, setCombat, strips, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { AFK_ENV, CLICK_LUA, FAKE_FADES, expectErrors, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, gridLines, isTok, key, later, loggedIn, marks, pinned, plate, putAway, raidButton, setCombat, strips, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -1985,7 +1985,10 @@ it("the game's tools: Cooldown Manager and damage meter styled and placed, stand
 it("Edit Mode shows Vanguard's handles too, with a note under its window", () => {
   const addon = loggedIn(TOOLS_ENV + CLICK_LUA);
   // Whether the handles are up, how many grid lines show, and whether the note shows (with its text).
-  const state = () => addon.eval("local n = Vanguard_EditModeNote return { ns.Unlocked(), ns.GridLineCount(), n ~= nil and n:IsShown(), n ~= nil and n.text:GetText() == ns.EDIT_NOTE }");
+  const state = () => {
+    const s = addon.eval("local n = Vanguard_EditModeNote return { ns.Unlocked(), n ~= nil and n:IsShown(), n ~= nil and n.text:GetText() == ns.EDIT_NOTE }");
+    return [s[0], gridLines(addon), s[1], s[2]];
+  };
   addon.eval("EditModeManagerFrame:Show()");
   expect(state(), "opening Edit Mode shows the handles (the game draws its own grid) and the note").toEqual([true, 0, true, true]);
   expect(addon.eval("return Vanguard_EditModeNote.__points.TOP.rel == EditModeManagerFrame"), "the note sits under Edit Mode's window").toBe(true);
@@ -2626,7 +2629,8 @@ it("game windows: switched off they stay the game's, and missing windows are fin
 it("game windows registry: a window added under a group is skinned, its group's switch keeps it the game's", () => {
   const reg = `__window("TestOnlySocialFrame") __window("TestOnlyLaterFrame")
     local GW = ns.GetModule("Windows")
-    GW.Add("social", "framed", { "TestOnlySocialFrame" }, GW.SkinWith({ "TestOnlyExtra" }))
+    -- TEST-ONLY skin: the window skin, then the window's extra art faded.
+    GW.Add("social", "framed", { "TestOnlySocialFrame" }, function(f) GW.Skin(f) GW.FadeParts(f, { "TestOnlyExtra" }) end)
     TestOnlySocialFrame.TestOnlyExtra = TestOnlySocialFrame:CreateTexture()
     GW.AddButtons("TestOnlySocialFrame", { "TestOnlyLooseButton" }) CreateFrame("Button", "TestOnlyLooseButton", TestOnlySocialFrame)`;
   const on = loggedIn(WINDOWS_ENV + reg);
