@@ -613,3 +613,34 @@ it("nine-slice rings (#236): off by default; /vg nineslice draws each shadow and
   on.eval('__old = CreateFrame("Frame", nil, UIParent) local real = __old.CreateTexture __old.CreateTexture = function(...) local t = real(...) t.SetTextureSliceMargins = false return t end ns.Theme.Panel(__old, { shadow = true })');
   expect(ringOf(on, "__old", "Shadow")[0], "a client that can't slice gets the eight pieces").toBe(8);
 });
+
+// A painted frame's fill (the white BACKGROUND texture over it): { its colour, its gradient or false }.
+const fillOf = (addon, lua) => addon.eval(`local f = ${lua}
+  for _, r in ipairs({ f:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__texture == ns.Theme.WHITE and r.__points.BOTTOMRIGHT then return { r.__vertexColor, r.__gradient or false } end end`);
+
+it("panel gradient (#259): off by default; /vg gradient runs a floating window's fill a shade lighter toward the top, at once", () => {
+  const addon = loggedIn('__win = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true }) __flat = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent))');
+  expect(fillOf(addon, "__win")[1], "off by default: one colour").toBe(false);
+  addon.slash("gradient");
+  const [base, gradient] = fillOf(addon, "__win");
+  const [orientation, bottom, top] = gradient;
+  expect([orientation, bottom[3], top[3], chatHas(addon, /Panel gradient on/)], "on at once: VERTICAL (bottom to top), the fill's alpha kept at both ends").toEqual(["VERTICAL", base[3], base[3], true]);
+  // A colour's rough brightness (r + g + b).
+  const lum = (c) => c[0] + c[1] + c[2];
+  expect([lum(bottom) < lum(base), lum(base) < lum(top), [0, 1, 2].every((i) => top[i] - bottom[i] < 0.025)], "darker at the bottom, lighter at the top, and only a shade apart (under 7 of 255 levels)").toEqual([true, true, true]);
+  expect(fillOf(addon, "__flat")[1], "a panel that isn't a floating window stays flat").toBe(false);
+  addon.eval('__asked = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { gradient = true })');
+  expect(fillOf(addon, "__asked")[1][0], "unless it asks for the gradient").toBe("VERTICAL");
+  addon.slash("gradient off");
+  expect([fillOf(addon, "__win")[1], addon.eval("return ns.Theme.Settings().panelGradient"), chatHas(addon, /Panel gradient off/)], "off again: one colour, saved").toEqual([false, false, true]);
+});
+
+it("icon crop (#259): the bevel off every edge of a square slot; a slot that isn't square crops its long axis further", () => {
+  const addon = loggedIn();
+  // The tex coords T.Crop gives a texture for a slot of w by h (nil: unknown).
+  const crop = (w, h) => addon.eval(`return ns.Theme.Crop(UIParent:CreateTexture(), ${w}, ${h}).__texCoord`);
+  expect([crop("nil", "nil"), crop(30, 30), crop(0, 20)], "square or unknown: 0.08 to 0.92 both ways").toEqual([[0.08, 0.92, 0.08, 0.92], [0.08, 0.92, 0.08, 0.92], [0.08, 0.92, 0.08, 0.92]]);
+  const wide = crop(40, 20), tall = crop(20, 40);
+  expect([wide[0], wide[1], wide[2], wide[3]].map((v) => +v.toFixed(6)), "twice as wide: the height keeps half as much").toEqual([0.08, 0.92, 0.29, 0.71]);
+  expect([tall[0], tall[1], tall[2], tall[3]].map((v) => +v.toFixed(6)), "twice as tall: the width does").toEqual([0.29, 0.71, 0.08, 0.92]);
+});
