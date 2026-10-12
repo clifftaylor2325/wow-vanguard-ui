@@ -1,5 +1,6 @@
 -- Profile management on top of Core/DB.lua: new, copy, delete and reset,
--- export/import strings (Core/Serialize.lua), profiles that follow your
+-- export/import strings (Core/Serialize.lua, Core/ProfileStrings.lua) with a
+-- backup before every import, profiles that follow your
 -- specialization, and the game's Edit Mode layout that goes with a profile.
 -- Profile changes apply on reload; Vanguard offers one.
 -- Loaded before Core/Modules.lua so the spec profile is chosen at login
@@ -63,27 +64,31 @@ function ns.DisplayBlock()
   return { uiScale = math.floor(scale * 100 + 0.5) / 100, width = tonumber(w) or 0, height = tonumber(h) or 0 }
 end
 
--- The whole profile for export: its settings, plus the display block beside them.
+-- The whole profile for export: its settings, plus the display block, format and version beside them.
 local function withDisplay(profile)
   local data = {}
   for k, v in pairs(profile) do data[k] = v end
   data.display = ns.DisplayBlock()
-  return data
+  return ns.StampPayload(data)
 end
 
--- The export string for scope, from the profile's tables as they are now.
+-- The export string for scope, from the profile's tables as they are now: the whole profile,
+-- or only the parts asked for (Core/ProfileStrings.lua's ns.FindParts).
 local function encode(scope)
   local profile = ns.Profile()
-  local data = scope == "profile" and withDisplay(profile) or profile[scope]
-  if type(data) ~= "table" then
-    return nil, "nothing saved for " .. scope .. " yet"
+  local parts, missing = ns.FindParts(scope, profile)
+  if missing then
+    return nil, "nothing saved for " .. missing .. " yet"
   end
-  return S.Encode(scope, data)
+  if not parts then return S.Encode("profile", withDisplay(profile)) end
+  return S.Encode("parts", ns.PartsPayload(profile, parts))
 end
 
--- The export string for the whole profile ("profile", with the UI scale and screen it
--- was made on) or one module's settings: the profile's own values, with any active
--- Situations override taken out for the export (ns.OwnValues, Modules/Situations.lua).
+-- The export string for the whole profile ("profile" or nil, with the UI scale and screen it
+-- was made on) or some parts of it (a part's name, or a list of them: layout, situations,
+-- global, a module, or a table's own name such as theme; a list naming every part is the
+-- whole profile): the profile's own values, with any active Situations override taken out
+-- for the export (ns.OwnValues, Modules/Situations.lua).
 function ns.ExportProfile(scope)
   scope = scope or "profile"
   if ns.OwnValues then return ns.OwnValues(encode, scope) end
@@ -123,6 +128,26 @@ function ns.ForkProfile(name)
   return new
 end
 
+-- The rolling backup's name for a profile: "<name> backup", the name cut to fit 32 characters;
+-- never the profile in use nor the one this character switches to at the reload (then
+-- "<name> backup 2", or 3).
+local function backupName(name)
+  for n = 1, 3 do
+    local suffix = n == 1 and " backup" or (" backup " .. n)
+    local backup = name:sub(1, 32 - #suffix) .. suffix
+    if backup ~= ns.ProfileName() and backup ~= ns.SelectedProfileName() then return backup end
+  end
+end
+
+-- Copies the profile this character uses (its own values: an active Situations override is
+-- taken out, as for an export) into its one rolling backup profile, replacing the last
+-- backup. Runs before every import. Returns the backup's name.
+function ns.BackupProfile()
+  local name = backupName(ns.ProfileName())
+  VanguardDB.profiles[name] = ns.OwnValues and ns.OwnValues(ns.Copy, ns.Profile()) or ns.Copy(ns.Profile())
+  return name
+end
+
 -- The display block taken out of an imported profile when its UI scale is a usable number, else nil.
 local function takeDisplay(data)
   local display = data.display
@@ -131,30 +156,59 @@ local function takeDisplay(data)
   return scale and scale > 0 and display or nil
 end
 
--- A whole imported profile: saved under a free name (without its display block, which
--- comes back second), and this character switches to it on reload.
-local function importWhole(data)
-  local name, display = freeName("Imported"), takeDisplay(data)
-  VanguardDB.profiles[name] = data
+-- A whole profile whose settings equal one this account has: this character uses that one
+-- (after a reload, unless it is already the one in use), and nothing is added.
+local function importMatch(name, result)
   ns.UseProfile(name)
-  return "Imported as profile " .. name .. "; this character will use it after a reload.", display
+  result.reload = name ~= ns.ProfileName()
+  if result.reload then return "This string matches profile " .. name .. "; this character will use it after a reload." end
+  return "This string matches profile " .. name .. ", which this character already uses: nothing new to import."
 end
 
--- Applies an import string. A whole profile becomes a new profile this
--- character switches to; a module's settings replace that module's in the
--- active profile. Returns a description of what changed (and, for a whole profile
--- that carries one, its display block), or nil and why not.
+-- A whole imported profile: saved under a free name (without its display block, which goes
+-- in the result), and this character switches to it on reload; one that matches a profile
+-- this account has uses that profile instead of making another copy.
+local function importWhole(data, result)
+  result.display = takeDisplay(data)
+  local match = ns.MatchingProfile(ns.StripPayload(data))
+  if match then return importMatch(match, result) end
+  local name = freeName("Imported")
+  VanguardDB.profiles[name] = data
+  ns.UseProfile(name)
+  return "Imported as profile " .. name .. "; this character will use it after a reload."
+end
+
+-- A partial string: its tables merge into the active profile, key by key.
+local function importParts(data)
+  ns.MergeParts(ns.Profile(), data)
+  return "Imported " .. ns.PartsText(data) .. " settings into profile " .. ns.ProfileName() .. "."
+end
+
+-- The import's notes: each font or bar texture the string names that this client lacks, then where the backup is.
+local function importNotes(payload, backup)
+  local notes = ns.MissingMedia(payload)
+  notes[#notes + 1] = "Profile " .. ns.ProfileName() .. " as it was before this import is saved as profile " .. backup .. "."
+  return notes
+end
+
+-- Applies a decoded string (scope and settings, or nil and why not; Core/Serialize.lua): an
+-- older string is upgraded first, and the profile in use is backed up (ns.BackupProfile). A
+-- whole profile becomes a new profile this character switches to (or the one it matches); a
+-- partial string merges into the active profile. Returns what happened and the result
+-- { display (a whole profile's UI scale block, or nil), reload, notes, backup }, or nil and why not.
+function ns.ApplyImport(scope, data)
+  local kind, payload = ns.ReadPayload(scope, data)
+  if not kind then return nil, payload end
+  local backup = ns.BackupProfile()
+  local result = { notes = importNotes(payload, backup), backup = backup, reload = true }
+  local text = kind == "profile" and importWhole(payload, result) or importParts(payload)
+  return text, result
+end
+
+-- Applies an import string at once (ns.StartImport, Core/ProfileStrings.lua, spreads a large
+-- one over frames): see ns.ApplyImport.
 function ns.ImportProfile(text)
-  local scope, data = S.Decode(text)
-  if not scope then
-    return nil, data
-  end
-  if scope ~= "profile" then
-    ns.Profile()[scope] = data
-    ns.ProfileChanged()
-    return "Imported " .. scope .. " settings into profile " .. ns.ProfileName() .. "."
-  end
-  return importWhole(data)
+  return ns.ApplyImport(S.Decode(text))
 end
 
 -- " on a w x h screen" from a display block, or "" when it has no usable size.
