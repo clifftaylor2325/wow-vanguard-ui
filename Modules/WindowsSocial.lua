@@ -19,7 +19,7 @@ local function after(frame, name, fn)
   hooked[frame] = hooked[frame] or {}
   if hooked[frame][key] or type(frame[name]) ~= "function" or type(hooksecurefunc) ~= "function" then return end
   hooked[frame][key] = true
-  hooksecurefunc(frame, name, function() fn(frame) end)
+  hooksecurefunc(frame, name, ns.Guard("hook " .. key, function() fn(frame) end))
 end
 
 -- Open mail -------------------------------------------------------------------------------------

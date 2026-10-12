@@ -103,7 +103,7 @@ local function wireSlot(b)
   b:RegisterForClicks("AnyUp")
   b:SetScript("OnEnter", BS.OnEnter)
   b:SetScript("OnLeave", BS.OnLeave)
-  b:SetScript("OnClick", BS.OnClick)
+  b:SetScript("OnClick", ns.Guard("click broker feed", BS.OnClick))
   b:Hide()
   return b
 end

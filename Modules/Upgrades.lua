@@ -285,7 +285,7 @@ function UP.Enable(settings)
   ns.GetModule("Tooltips").AddItemLines(UP.AddLine)
   ns.QuestParts.OnPaintCard(UP.MarkCard)
   local bag = _G.ContainerFrameCombinedBags
-  if bag and type(hooksecurefunc) == "function" then hooksecurefunc(bag, "UpdateItems", markBagSafely) end
+  if bag and type(hooksecurefunc) == "function" then hooksecurefunc(bag, "UpdateItems", ns.Guard("hook UpdateItems", markBagSafely)) end
   ns.On("PLAYER_EQUIPMENT_CHANGED", UP.OnGearChanged)
   ns.On("PLAYER_ROLES_ASSIGNED", UP.OnRolesChanged)
 end

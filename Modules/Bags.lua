@@ -86,8 +86,8 @@ end
 local function followQuality(button)
   local border = button.IconBorder
   if type(border) ~= "table" or type(hooksecurefunc) ~= "function" then return end
-  hooksecurefunc(border, "SetVertexColor", function(_, r, g, b) paintQuality(button, r, g, b) end)
-  hooksecurefunc(border, "Hide", function() paintQuality(button, nil) end)
+  hooksecurefunc(border, "SetVertexColor", ns.Guard("hook SetVertexColor", function(_, r, g, b) paintQuality(button, r, g, b) end))
+  hooksecurefunc(border, "Hide", ns.Guard("hook Hide", function() paintQuality(button, nil) end))
 end
 
 -- Fades an item button's slot art and gives it a thin border in its quality
@@ -146,7 +146,7 @@ local function watchBank()
   if type(bank) ~= "table" or type(panel) ~= "table" then return end
   bank:HookScript("OnShow", function() ns.GetModule("Windows").Skin(bank) BG.SkinBankItems() end)
   if type(panel.GenerateItemSlotsForSelectedTab) == "function" and type(hooksecurefunc) == "function" then
-    hooksecurefunc(panel, "GenerateItemSlotsForSelectedTab", BG.SkinBankItems)
+    hooksecurefunc(panel, "GenerateItemSlotsForSelectedTab", ns.Guard("hook GenerateItemSlotsForSelectedTab", BG.SkinBankItems))
   end
 end
 
@@ -156,7 +156,7 @@ local function hideGameSort()
   local game = _G.BagItemAutoSortButton
   if type(game) ~= "table" then return end
   game:Hide()
-  if type(hooksecurefunc) == "function" then hooksecurefunc(game, "Show", game.Hide) end
+  if type(hooksecurefunc) == "function" then hooksecurefunc(game, "Show", ns.Guard("hook Show", game.Hide)) end
 end
 
 -- Puts the Sort button on the search row: right of the search box, or where the
@@ -192,7 +192,7 @@ end
 -- gives the box its own width then), when the client has that call.
 local function watchSearchRow(frame)
   if type(frame.UpdateSearchBox) ~= "function" or type(hooksecurefunc) ~= "function" then return end
-  hooksecurefunc(frame, "UpdateSearchBox", BG.FitSearch)
+  hooksecurefunc(frame, "UpdateSearchBox", ns.Guard("hook UpdateSearchBox", BG.FitSearch))
 end
 
 -- A Sort button beside the search box, if the client can sort bags; the game's own is hidden.
@@ -202,7 +202,7 @@ function BG.AddSort(frame)
   BG.sort = ns.DialogButton(frame, "Sort", SORT_W)
   BG.sort:SetHeight(20)
   placeSort(frame)
-  BG.sort:SetScript("OnClick", function() sort() end)
+  BG.sort:SetScript("OnClick", ns.Guard("click sort bags", function() sort() end))
   hideGameSort()
   watchSearchRow(frame)
 end
@@ -218,7 +218,7 @@ function BG.Enable(settings)
   BG.AddSort(frame)
   frame:HookScript("OnShow", BG.SkinWindow)
   if type(frame.UpdateItems) == "function" and type(hooksecurefunc) == "function" then
-    hooksecurefunc(frame, "UpdateItems", skinItems)
+    hooksecurefunc(frame, "UpdateItems", ns.Guard("hook UpdateItems", skinItems))
   end
   BG.WatchSections(frame)
 end

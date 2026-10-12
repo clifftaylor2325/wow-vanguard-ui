@@ -3,7 +3,11 @@
 // so the checks below use the same patterns that parser does.
 
 import { expect, it } from "vitest";
-import { loggedIn } from "./helpers.mjs";
+import { expectErrors, loggedIn } from "./helpers.mjs";
+
+// The 20 generated entries of the size-cap case: Module<i>: then "long message " thirty times, then <i>.
+// Built from its fixed parts and two digit runs only (D-01).
+const GENERATED = new RegExp("^Module\\d+: " + "long message ".repeat(30) + "\\d+$");
 
 // The report text, as /vg report shows it in the copy box.
 const report = (addon) => {
@@ -33,6 +37,7 @@ it("/vg report opens one block with the markers and what /vg status says", () =>
 });
 
 it("/vg report lists the caught errors, newest last, with their stacks and no color codes", () => {
+  expectErrors("RaidFrames: attempt to index a nil value", "Nameplates: |cffff0000bad|r arithmetic");
   const addon = loggedIn();
   addon.eval(`ns.Report("RaidFrames", "attempt to index a nil value")
     ns.Report("RaidFrames", "attempt to index a nil value")
@@ -57,6 +62,8 @@ it("/vg report lists the caught errors, newest last, with their stacks and no co
 });
 
 it("/vg report stays under 8,000 characters: stacks go first, then the oldest errors", () => {
+  // The case plants 20 entries and the cap keeps all 20, so the guard judges every one of them.
+  expectErrors(GENERATED);
   const addon = loggedIn();
   addon.eval(`for i = 1, 20 do ns.Report("Module" .. i, string.rep("long message ", 30) .. i) end`);
   const text = addon.eval("return ns.ReportText()");
@@ -80,6 +87,8 @@ it("/vg status and /vg errors are unchanged by the report", () => {
 });
 
 it("/vg report names the modules turned off and the skinned addons, with any that are off or failed", () => {
+  // The "Broken" skin throws on purpose; only the line number of its error varies.
+  expectErrors(/^skin for Broken: eval:\d+: oops$/);
   const addon = loggedIn(`Vanguard.RegisterSkin("Good", function() end)
     Vanguard.RegisterSkin("Broken", function() error("oops") end)
     Vanguard.RegisterSkin("Muted", function() end)`, {

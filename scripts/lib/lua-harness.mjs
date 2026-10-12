@@ -18,6 +18,7 @@ import lobject from "fengari/src/lobject.js";
 import lstring from "fengari/src/lstring.js";
 import { luaString, luaValue } from "./lua-emit.mjs";
 import { lineHook } from "./lua-coverage.mjs";
+import { profileSampler } from "./lua-profile.mjs";
 
 const { lua, lauxlib, lualib, to_luastring, to_jsstring } = fengari;
 
@@ -201,12 +202,16 @@ function countHook(L) {
   lauxlib.luaL_error(L, to_luastring(`Lua ran ${b.limit} instructions in one call from the tests: a runaway loop? (createAddon's instructionBudget, or LUA_INSTRUCTION_BUDGET, raises it)`));
 }
 
-// Sets the state's one hook: the count hook, and the coverage line hook when coverage is on.
+// Sets the state's one hook: the count hook, the coverage line hook when coverage is on,
+// and the profiler's sampler on each count event when LUA_PROFILE is set.
 function attachHooks(L, limit) {
   budgets.set(L, { limit, used: 0 });
   const onLine = process.env.LUA_COVERAGE ? lineHook() : null;
-  // Line events go to coverage, count events to the budget.
-  const hook = (state, ar) => (ar.event === lua.LUA_HOOKLINE ? onLine(state, ar) : countHook(state));
+  const sample = process.env.LUA_PROFILE ? profileSampler() : null;
+  // A count event: the budget check, then the profiler's sample.
+  const onCount = (state) => { countHook(state); if (sample) sample(state); };
+  // Line events go to coverage, count events to the budget (and the profiler).
+  const hook = (state, ar) => (ar.event === lua.LUA_HOOKLINE ? onLine(state, ar) : onCount(state));
   lua.lua_sethook(L, hook, lua.LUA_MASKCOUNT | (onLine ? lua.LUA_MASKLINE : 0), COUNT_EVERY);
 }
 
@@ -423,6 +428,30 @@ function input(addon) {
   return api;
 }
 
+// Every addon createAddon built since the last test ended. The array lives on
+// globalThis because the global afterEach in scripts/tests/setup.mjs reaches
+// the same one through the symbol (setup.mjs runs for the quick project too, so
+// it never imports this module) and empties it in place: only push and
+// splice(0) touch it, so every module keeps holding the one array.
+export const createdAddons = (globalThis[Symbol.for("vanguard.addons")] ??= []);
+
+// Lua that keeps what ns.ClearErrors drops: the entries it is about to forget
+// go into __wfgCleared first, so the error guard still judges them.
+const HARVEST = `
+  __wfgCleared = {}
+  local kept = ns.ClearErrors
+  ns.ClearErrors = function(...)
+    for i = 1, #ns.errors do __wfgCleared[#__wfgCleared + 1] = ns.errors[i] end
+    return kept(...)
+  end
+`;
+
+// Registers an addon for the error guard and starts keeping the errors ns.ClearErrors forgets.
+function track(addon) {
+  addon.eval(HARVEST);
+  createdAddons.push(addon);
+}
+
 // savedVariables: Lua source run after the addon files and before
 // ADDON_LOADED, which is when WoW restores SavedVariables. instructionBudget:
 // the most instructions one call from the tests may run (see Hooks above).
@@ -435,5 +464,6 @@ export function createAddon({ savedVariables = "", instructionBudget = DEFAULT_B
   const addon = { L, eval: (source) => evalIn(L, source) };
   Object.assign(addon, drivers(addon), lifecycle(addon), inspectors(addon), input(addon));
   addon.world = worldApi(addon);
+  track(addon);
   return addon;
 }

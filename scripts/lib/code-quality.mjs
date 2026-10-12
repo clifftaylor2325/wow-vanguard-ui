@@ -7,6 +7,11 @@
 //   3. Addon Lua (Core/, Modules/) writes no color numbers and no font
 //      sizes: colors come from the theme's named tokens and text from its
 //      roles, both in Core/Theme.lua.
+//   4. Addon Lua (Core/, Modules/) gives hooksecurefunc, SetScript("OnClick", ...)
+//      and C_Timer.After / NewTimer / NewTicker a callback that is an
+//      ns.Guard(...) call, so an error in it reaches /vg errors (D-03). The one
+//      exception is ns.Soon's timer in Core/Combat.lua, which runs each job
+//      under ns.Try.
 // Test cases (the callback passed to it(...)) are exempt from rule 1.
 
 import fs from "node:fs";
@@ -303,6 +308,80 @@ function fontProblems(file, src) {
   return [...code.matchAll(FONT_SIZE)].map((m) => ({ line: line(m.index), message: FONT_MESSAGE }));
 }
 
+// Bare hooks, clicks and timers --------------------------------------------------------
+
+const TIMER_CALLS = new Set(["After", "NewTimer", "NewTicker"]);
+// The one file whose bare timer is allowed: ns.Soon runs each job under ns.Try.
+const SOON_HOME = "Core/Combat.lua";
+
+// Code tokens of Lua source (comments dropped), each carrying its source text.
+function codeTokens(src) {
+  return tokenizeLua(src)
+    .filter((t) => t.kind !== "comment")
+    .map((t) => ({ ...t, text: t.text ?? src.slice(t.start, t.end) }));
+}
+
+// The call whose name starts at tokens[i], as { kind, open } (open is the index of its "("), or null.
+function callbackCall(tokens, i) {
+  // Text of the token at k, if there is one.
+  const at = (k) => tokens[k]?.text;
+  if (at(i) === "hooksecurefunc" && at(i + 1) === "(") return { kind: "hooksecurefunc", open: i + 1 };
+  if (at(i) === "SetScript" && at(i + 1) === "(" && /^["']OnClick["']$/.test(at(i + 2))) return { kind: "OnClick", open: i + 1 };
+  if (at(i) === "C_Timer" && at(i + 1) === "." && TIMER_CALLS.has(at(i + 2)) && at(i + 3) === "(") return { kind: `C_Timer.${at(i + 2)}`, open: i + 3 };
+  return null;
+}
+
+// +1 for a token that opens a bracket or block, -1 for one that closes it, else 0.
+function nesting(t) {
+  if (t.kind === "punct") return "([{".includes(t.text) ? 1 : "}])".includes(t.text) ? -1 : 0;
+  if (t.kind !== "word") return 0;
+  return LUA_BLOCK_OPEN.has(t.text) ? 1 : LUA_BLOCK_CLOSE.has(t.text) ? -1 : 0;
+}
+
+// The top-level arguments, as token lists, of the call whose "(" is tokens[open].
+function callArgs(tokens, open) {
+  const args = [[]];
+  let depth = 1;
+  for (let k = open + 1; depth > 0 && k < tokens.length; k++) {
+    depth += nesting(tokens[k]);
+    if (depth === 1 && tokens[k].text === ",") args.push([]);
+    else if (depth > 0) args[args.length - 1].push(tokens[k]);
+  }
+  return args;
+}
+
+// True when the callback begins ns.Guard( , or is a literal nil clearing a click script.
+function isGuarded(call, callback) {
+  const head = callback.slice(0, 4).map((t) => t.text).join("");
+  return head === "ns.Guard(" || (call.kind === "OnClick" && callback.length === 1 && callback[0].text === "nil");
+}
+
+// True for ns.Soon's next-frame timer: a C_Timer.After in SOON_HOME whose callback calls runSoon.
+function isSoonTimer(file, call, callback) {
+  return file === SOON_HOME && call.kind === "C_Timer.After" && callback.some((t) => t.text === "runSoon");
+}
+
+// True when the call at tokens[i] hands a bare function to a hook, click or timer.
+function isBareCallback(file, tokens, i) {
+  const call = callbackCall(tokens, i);
+  if (!call) return false;
+  const args = callArgs(tokens, call.open);
+  const callback = (call.kind === "OnClick" ? args[1] : args[args.length - 1]) ?? [];
+  return !isGuarded(call, callback) && !isSoonTimer(file, call, callback);
+}
+
+// Hooks, clicks and timers whose callback is not an ns.Guard(...) call: [{ line, message }].
+function bareCallbackProblems(file, src) {
+  if (!COLOR_SCOPE.test(file)) return [];
+  const tokens = codeTokens(src);
+  const line = lineIndex(src);
+  return tokens.flatMap((t, i) => {
+    if (!isBareCallback(file, tokens, i)) return [];
+    const kind = callbackCall(tokens, i).kind;
+    return [{ line: line(t.start), message: `bare ${kind} callback: wrap it in ns.Guard(where, fn) so its errors reach /vg errors` }];
+  });
+}
+
 // The Lua and JS files in the repo at root: tracked ones and new ones git
 // would add (ignored files and deleted ones left out), each once, in order.
 export function sourceFiles(root) {
@@ -317,5 +396,5 @@ export function checkSource(file, src) {
   const fns = lua ? luaFunctions(src) : jsFunctions(src);
   const documented = documentedSet(fns, kinds);
   const out = fns.flatMap((fn) => functionProblems(fn, kinds, documented));
-  return lua ? out.concat(colorProblems(file, src), fontProblems(file, src)) : out;
+  return lua ? out.concat(colorProblems(file, src), fontProblems(file, src), bareCallbackProblems(file, src)) : out;
 }

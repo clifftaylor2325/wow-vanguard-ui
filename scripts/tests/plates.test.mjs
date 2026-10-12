@@ -1,9 +1,11 @@
 // plates: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, PLATE_ENV, UNITS_ENV, isTok, loggedIn, plate, setCombat, tok, unitEvents } from "./helpers.mjs";
+import { AURA_FALLBACK, CLICK_LUA, PLATE_ENV, UNITS_ENV, expectErrors, isTok, loggedIn, plate, setCombat, tok, unitEvents } from "./helpers.mjs";
 
 it("a nameplate first drawn in combat gets the client's aura container after the fight", () => {
+  // The client built last (noAuraContainer) has no AuraContainer: its probe leaves the D-06 notice.
+  expectErrors(AURA_FALLBACK);
   // No plate frames built ahead, so the plate is drawn in the fight.
   const addon = loggedIn(UNITS_ENV + PLATE_ENV + "__units.nameplate2 = nil ns.GetModule('Nameplates').POOL = 0");
   setCombat(addon, true);

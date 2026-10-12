@@ -228,6 +228,6 @@ function TT.Enable(settings)
   hookTooltips()
   if _G.GameTooltip then _G.GameTooltip:HookScript("OnHide", onHide) end
   if type(hooksecurefunc) == "function" and type(_G.GameTooltip_SetDefaultAnchor) == "function" then
-    hooksecurefunc("GameTooltip_SetDefaultAnchor", TT.Anchor)
+    hooksecurefunc("GameTooltip_SetDefaultAnchor", ns.Guard("hook GameTooltip_SetDefaultAnchor", TT.Anchor))
   end
 end

@@ -74,7 +74,7 @@ local function buildToggle(map)
   t.icon = T.Tint(t:CreateTexture(nil, "OVERLAY"), "text2")
   t.icon:SetTexture(T.Icon("Waiting"))
   t.icon:SetAllPoints()
-  t:SetScript("OnClick", function() MB.drawer:SetShown(not MB.drawer:IsShown()) end)
+  t:SetScript("OnClick", ns.Guard("click minimap button drawer", function() MB.drawer:SetShown(not MB.drawer:IsShown()) end))
   t:Hide()
   MB.toggle = t
 end
@@ -87,7 +87,7 @@ local function build()
   buildToggle(map)
   MB.Scan()
   ns.On("PLAYER_ENTERING_WORLD", MB.Scan)
-  if type(C_Timer) == "table" and type(C_Timer.After) == "function" then C_Timer.After(MB.RESCAN_AFTER, MB.Scan) end
+  if type(C_Timer) == "table" and type(C_Timer.After) == "function" then C_Timer.After(MB.RESCAN_AFTER, ns.Guard("timer minimap button rescan", MB.Scan)) end
 end
 
 -- Module entry point (Core/Modules.lua): after the minimap is built (it waits out combat too).

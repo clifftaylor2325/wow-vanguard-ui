@@ -7,11 +7,19 @@ name: lua suite
 # code-quality scan, luacheck, Lua 5.1 syntax and the release zip's
 # contents; and, when asked, the UI preview as a second job beside it.
 #
-# This workflow has no triggers of its own: full-suite.yml calls it weekly,
-# from the Actions tab and for the "full-tests" label, and release.yml
-# before each release. On Actions, Vitest also writes failures as
+# This workflow has no triggers of its own: full-suite.yml calls it when a
+# pull request is opened ready for review or marked ready for review, on
+# later pushes while the pull request carries the "full-tests" label,
+# weekly and from the Actions tab, and release.yml before each release. On Actions, Vitest also writes failures as
 # annotations on the run and a JUnit file (vitest.config.mjs), and the
 # Lua-by-area and coverage tables go to the job summary.
+#
+# With the shuffle input on (the weekly run only, set by full-suite.yml),
+# a step picks a seed, exports it as VG_SHUFFLE_SEED and writes it with the
+# replay command to the job summary, and Vitest runs files and tests in the
+# order that seed gives (vitest.config.mjs). Pull-request, hand-started and
+# release runs keep the written order. A failing case is fixed at its cause;
+# nothing here runs a failed case again.
 on:
   workflow_call:
     inputs:
@@ -19,6 +27,10 @@ on:
         description: "Also render the UI preview (a few minutes more)"
         type: boolean
         default: true
+      shuffle:
+        description: "Shuffle the test order and print the seed, so a failure can be replayed"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -27,21 +39,45 @@ jobs:
   tests:
     name: Tests, coverage and checks
     runs-on: ubuntu-latest
-    # The tests take about five minutes on a hosted runner; a runaway dies
-    # well inside this (the harness's instruction budget, the workers' heap cap).
+    # On a 2-worker local proxy for a 2-vCPU runner the suite took 155.5 s and
+    # 158.7 s (170.7 s with coverage) on 2026-10-11; the hosted time is not
+    # measured yet. A runaway dies well inside this limit (the harness's
+    # instruction budget, the workers' heap cap).
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: luacheck and Lua 5.1
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq lua-check lua5.1
+      # The same pinned luacheck 1.2.0 release binary as verify.yml: installed
+      # only after its SHA-256 matches. The chain is the last thing in the
+      # script, so a failed check fails the step before the install runs.
+      - name: luacheck 1.2.0 and Lua 5.1
+        env:
+          LUACHECK_SHA256: d68da17fca0697d9e2fb04201f3884abd259fa558b3a449bccaed47f1390defc
+          LUACHECK_URL: https://github.com/lunarmodules/luacheck/releases/download/v1.2.0/luacheck
+        run: |
+          sudo apt-get update -qq &&
+          sudo apt-get install -y -qq lua5.1 &&
+          curl -fsSL -o "$RUNNER_TEMP/luacheck" "$LUACHECK_URL" &&
+          echo "$LUACHECK_SHA256  $RUNNER_TEMP/luacheck" | sha256sum -c - &&
+          sudo install -m 0755 "$RUNNER_TEMP/luacheck" /usr/local/bin/luacheck
+      - name: Pick and print the shuffle seed
+        if: inputs.shuffle
+        # The seed comes from the clock inside the script; no workflow
+        # expression is placed in this text. vitest.config.mjs reads
+        # VG_SHUFFLE_SEED, which npm run coverage passes on to Vitest.
+        run: |
+          seed=$(date +%s)
+          echo "VG_SHUFFLE_SEED=$seed" >> "$GITHUB_ENV"
+          printf 'Shuffled run, seed %s. Replay: VG_SHUFFLE_SEED=%s npm test (PowerShell: $env:VG_SHUFFLE_SEED=%s; npm test)\n' "$seed" "$seed" "$seed" | tee -a "$GITHUB_STEP_SUMMARY"
       - run: npm run coverage
       - run: npm run quality
-      - run: luacheck --no-color .
+      - run: |
+          luacheck --version
+          luacheck --no-color .
       - name: Lua 5.1 syntax of every file the TOC loads
         run: |
           status=0
@@ -78,7 +114,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - run: npm install -g playwright@1.56.1 && playwright install --with-deps chromium

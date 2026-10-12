@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Fails if any function is over the length limit or undocumented, or addon
-// Lua writes color numbers (rules in scripts/lib/code-quality.mjs).
+// Lua writes color numbers, or hands a hook, click or timer a callback that is
+// not an ns.Guard(...) call (rules in scripts/lib/code-quality.mjs).
 //
 //   node scripts/check-code-quality.mjs [--summary]
 //
@@ -35,5 +36,5 @@ function report(summary) {
 }
 
 const total = report(process.argv.includes("--summary"));
-console.log(total ? `\n${total} code-quality problem(s).` : "OK  every function is documented and at most 10 lines; colors and text sizes come from the theme");
+console.log(total ? `\n${total} code-quality problem(s).` : "OK  every function is documented and at most 10 lines; colors and text sizes come from the theme; hooks, clicks and timers run under ns.Guard");
 process.exit(total ? 1 : 0);

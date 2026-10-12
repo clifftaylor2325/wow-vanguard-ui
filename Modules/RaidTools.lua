@@ -62,7 +62,7 @@ local function actionButton(bar, spec)
   local b = ns.DialogButton(bar, spec[1], 44)
   b:SetHeight(RT.ICON)
   b:RegisterForClicks("AnyUp")
-  b:SetScript("OnClick", spec[2])
+  b:SetScript("OnClick", ns.Guard("click raid tools button", spec[2]))
   bar.actions[spec[1]] = b
   RT.Place(bar, b, 1, #bar.list)
 end
@@ -106,7 +106,7 @@ end
 local function addTargetIcons(bar)
   for i = 1, 9 do
     local b = iconButton(bar, nil, i <= 8 and i or nil)
-    b:SetScript("OnClick", function() RT.MarkTarget(i <= 8 and i or 0) end)
+    b:SetScript("OnClick", ns.Guard("click raid target icon", function() RT.MarkTarget(i <= 8 and i or 0) end))
     RT.Place(bar, b, 2, i - 1)
   end
 end

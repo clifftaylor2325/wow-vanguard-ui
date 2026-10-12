@@ -87,9 +87,9 @@ end
 local function watchMap(map)
   if map.vgMapWatched or type(hooksecurefunc) ~= "function" then return end
   map.vgMapWatched = true
-  if type(map.SynchronizeDisplayState) == "function" then hooksecurefunc(map, "SynchronizeDisplayState", GW.SkinWorldMap) end
+  if type(map.SynchronizeDisplayState) == "function" then hooksecurefunc(map, "SynchronizeDisplayState", ns.Guard("hook SynchronizeDisplayState", GW.SkinWorldMap)) end
   local nav = map.NavBar
-  if type(nav) == "table" and type(nav.Refresh) == "function" then hooksecurefunc(nav, "Refresh", function() skinNavButtons(nav) end) end
+  if type(nav) == "table" and type(nav.Refresh) == "function" then hooksecurefunc(nav, "Refresh", ns.Guard("hook Refresh", function() skinNavButtons(nav) end)) end
 end
 
 -- The world map: its border, the fill behind the canvas, the overscroll art, nav bar and quest toggle.
@@ -280,7 +280,7 @@ function GW.SkinQueueStatus(frame)
   skinQueueEntries(frame)
   if frame.vgQueueHooked or type(frame.Update) ~= "function" or type(hooksecurefunc) ~= "function" then return end
   frame.vgQueueHooked = true
-  hooksecurefunc(frame, "Update", skinQueueEntries)
+  hooksecurefunc(frame, "Update", ns.Guard("hook Update", skinQueueEntries))
 end
 
 GW.Add("map", "framed", { "QueueStatusFrame" }, GW.SkinQueueStatus)

@@ -168,7 +168,7 @@ end
 local function watchSystems(frame)
   for _, path in ipairs(GW.TAB_SYSTEMS) do
     local system = walk(frame, path)
-    if system and type(system.AddTab) == "function" then hooksecurefunc(system, "AddTab", function() GW.DressTabs(frame) end) end
+    if system and type(system.AddTab) == "function" then hooksecurefunc(system, "AddTab", ns.Guard("hook AddTab", function() GW.DressTabs(frame) end)) end
   end
 end
 
@@ -287,7 +287,7 @@ local function watchFlyout()
   if type(flyout) ~= "table" or not flyout.HookScript or watched[flyout] then return end
   watched[flyout] = true
   flyout:HookScript("OnShow", skinFlyout)
-  if type(_G.EquipmentFlyout_UpdateItems) == "function" then hooksecurefunc("EquipmentFlyout_UpdateItems", skinFlyout) end
+  if type(_G.EquipmentFlyout_UpdateItems) == "function" then hooksecurefunc("EquipmentFlyout_UpdateItems", ns.Guard("hook EquipmentFlyout_UpdateItems", skinFlyout)) end
 end
 
 -- Dresses the inside of the character pane: its lists' rows, the skill rank bar, the stat boxes, the

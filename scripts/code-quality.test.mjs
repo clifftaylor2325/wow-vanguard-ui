@@ -149,6 +149,84 @@ function colorAddonOnly() {
   expect(problems("scripts/lib/t.lua", "local C = { 0.2, 0.6, 1 }\n")).toBe("");
 }
 
+// A Lua statement inside a documented function, so only the bare-callback rule can report.
+const inFn = (stmt) => `-- doc\nlocal function f(b, fn)\n  ${stmt}\nend\n`;
+
+// A bare hooksecurefunc fails and names ns.Guard.
+function hookBareFails() {
+  expect(problems("Modules/t.lua", inFn('hooksecurefunc(f, "X", fn)'))).toMatch(/hooksecurefunc.*ns\.Guard/);
+}
+
+// A guarded hook passes, in the object form and the global-name form.
+function hookGuardedPasses() {
+  expect(problems("Modules/t.lua", inFn('hooksecurefunc(f, "X", ns.Guard("hook X", fn))'))).toBe("");
+  expect(problems("Modules/t.lua", inFn('hooksecurefunc("X", ns.Guard("hook X", fn))'))).toBe("");
+}
+
+// A callback that starts on the next line is read too: guarded passes, bare fails.
+function hookNextLine() {
+  expect(problems("Modules/t.lua", inFn('hooksecurefunc(f, "X",\n    ns.Guard("hook X", fn))'))).toBe("");
+  expect(problems("Modules/t.lua", inFn('hooksecurefunc(f, "X",\n    function() end)'))).toMatch(/bare hooksecurefunc/);
+}
+
+// A function body with commas of its own is one argument, not several.
+function hookBodyCommas() {
+  const bare = inFn('hooksecurefunc(f, "X", function(a, b)\n    local c, d = 1, 2\n  end)');
+  expect(problems("Modules/t.lua", bare)).toMatch(/bare hooksecurefunc/);
+  expect(problems("Modules/t.lua", inFn('hooksecurefunc(f, "X", ns.Guard("hook X", function(a)\n    local c, d = 1, 2\n  end))'))).toBe("");
+}
+
+// Checking that hooksecurefunc exists is not a call.
+function hookTypeCheck() {
+  expect(problems("Modules/t.lua", inFn('if type(hooksecurefunc) == "function" then fn() end'))).toBe("");
+}
+
+// A bare OnClick fails, a guarded one and a literal nil pass, and another script kind is out of scope.
+function clickRule() {
+  expect(problems("Modules/t.lua", inFn('b:SetScript("OnClick", fn)'))).toMatch(/bare OnClick/);
+  expect(problems("Modules/t.lua", inFn('b:SetScript("OnClick", ns.Guard("click", fn))'))).toBe("");
+  expect(problems("Modules/t.lua", inFn('b:SetScript("OnClick", nil)'))).toBe("");
+  expect(problems("Modules/t.lua", inFn('b:SetScript("OnEnter", fn)'))).toBe("");
+}
+
+// Bare timers fail, in each of the three forms; guarded ones pass.
+function timerRule() {
+  expect(problems("Modules/t.lua", inFn("C_Timer.After(1, fn)"))).toMatch(/bare C_Timer\.After/);
+  expect(problems("Modules/t.lua", inFn("C_Timer.NewTicker(5, fn)"))).toMatch(/bare C_Timer\.NewTicker/);
+  expect(problems("Modules/t.lua", inFn("C_Timer.NewTimer(5, fn)"))).toMatch(/bare C_Timer\.NewTimer/);
+  expect(problems("Modules/t.lua", inFn('C_Timer.After(1, ns.Guard("later", fn))'))).toBe("");
+  expect(problems("Modules/t.lua", inFn('C_Timer.NewTicker(5, ns.Guard("tick", fn))'))).toBe("");
+}
+
+// ns.Soon's timer in Core/Combat.lua passes; another bare timer there, or the same one elsewhere, fails.
+function soonException() {
+  expect(problems("Core/Combat.lua", inFn("C_Timer.After(0, function() runSoon(key) end)"))).toBe("");
+  expect(problems("Core/Combat.lua", inFn("C_Timer.After(1, fn)"))).toMatch(/bare C_Timer\.After/);
+  expect(problems("Modules/t.lua", inFn("C_Timer.After(0, function() runSoon(key) end)"))).toMatch(/bare C_Timer\.After/);
+}
+
+// Mentions in comments and strings are ignored, and files outside Core/ and Modules/ are not checked.
+function bareIgnored() {
+  expect(problems("Modules/t.lua", inFn('-- hooksecurefunc(f, "X", fn)\n  local s = "C_Timer.After(1, fn)"'))).toBe("");
+  expect(problems("scripts/lib/t.lua", inFn("C_Timer.After(1, fn)"))).toBe("");
+}
+
+describe(
+  "code quality",
+  // Hooks, clicks and timers run under ns.Guard.
+  () => {
+    it("hooks: a bare hooksecurefunc fails", hookBareFails);
+    it("hooks: a guarded hook passes", hookGuardedPasses);
+    it("hooks: a callback on the next line is read", hookNextLine);
+    it("hooks: commas inside the callback do not split it", hookBodyCommas);
+    it("hooks: a type check is not a call", hookTypeCheck);
+    it("clicks: OnClick needs a guard, nil and other scripts pass", clickRule);
+    it("timers: bare C_Timer calls fail, guarded ones pass", timerRule);
+    it("timers: only ns.Soon's timer in Core/Combat.lua is excepted", soonException);
+    it("hooks: comments, strings and other folders are ignored", bareIgnored);
+  },
+);
+
 describe(
   "code quality",
   // Lua length, nesting, long strings and doc comments.

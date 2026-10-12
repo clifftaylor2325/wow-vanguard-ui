@@ -180,7 +180,7 @@ end
 -- Re-fits the bar whenever the game changes a row's size or lays it out again.
 local function watchBar(f)
   f:HookScript("OnSizeChanged", MS.Refit)
-  if type(f.Layout) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(f, "Layout", MS.Refit) end
+  if type(f.Layout) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(f, "Layout", ns.Guard("hook Layout", MS.Refit)) end
 end
 
 -- Pins one of the game's bars into its row (on the row's own anchor, a frame
@@ -657,7 +657,7 @@ local function skinToggle(header)
   header.vgArrow:SetSize(12, 12)
   header.vgArrow:SetPoint("CENTER", b, "CENTER")
   MS.PaintArrow(header, false)
-  if type(header.SetCollapsed) == "function" then hooksecurefunc(header, "SetCollapsed", MS.PaintArrow) end
+  if type(header.SetCollapsed) == "function" then hooksecurefunc(header, "SetCollapsed", ns.Guard("hook SetCollapsed", MS.PaintArrow)) end
 end
 
 -- One tracker header in the theme: its art faded, a flat band with an accent
@@ -695,7 +695,7 @@ local function lookTracker()
   MS.SkinTracker()
   MS.TrackerFonts()
   T.OnChanged(paintRules)
-  if type(tracker.Update) == "function" then hooksecurefunc(tracker, "Update", MS.SkinTracker) end
+  if type(tracker.Update) == "function" then hooksecurefunc(tracker, "Update", ns.Guard("hook Update", MS.SkinTracker)) end
 end
 
 -- Module entry point (Core/Modules.lua): out of combat, since some of these hold secure buttons.

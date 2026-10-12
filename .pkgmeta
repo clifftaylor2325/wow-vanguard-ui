@@ -11,6 +11,7 @@ enable-nolib-creation: no
 
 ignore:
   - .github
+  - .planning
   - .vscode
   - art
   - docs
@@ -24,4 +25,5 @@ ignore:
   - .gitattributes
   - .gitignore
   - .luacheckrc
+  - .nvmrc
   - .pkgmeta

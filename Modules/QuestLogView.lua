@@ -44,7 +44,7 @@ local function addTop(f)
   f.count = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
   f.count:SetPoint("LEFT", f.title, "RIGHT", 10, 0)
   f.close = T.PlaceClose(T.CloseButton(CreateFrame("Button", nil, f)), f)
-  f.close:SetScript("OnClick", function() f:Hide() end)
+  f.close:SetScript("OnClick", ns.Guard("click close quest log", function() f:Hide() end))
 end
 
 -- A text on the details side, wrapping to its width.
@@ -78,7 +78,7 @@ QL.BUTTONS = { { "track", "Track", QL.ToggleTrack }, { "share", "Share", QL.Shar
 local function addButton(f, spec, x)
   local b = ns.DialogButton(f, spec[2], QL.BUTTON_W)
   b:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", QL.LIST_W + 26 + x, 12)
-  b:SetScript("OnClick", function() if QL.details then spec[3](QL.details) end end)
+  b:SetScript("OnClick", ns.Guard("click quest log button", function() if QL.details then spec[3](QL.details) end end))
   f.buttons[spec[1]] = b
 end
 
@@ -121,7 +121,7 @@ local function paintEntry(f, i, e)
   b:SetWidth(QL.LIST_W - 10)
   QP.PaintLine(b, i, spec)
   b.text:SetText(spec.text)
-  b:SetScript("OnClick", function(self) self.spec.select() end)
+  b:SetScript("OnClick", ns.Guard("click quest log line", function(self) self.spec.select() end))
 end
 
 -- Redraws the list, and shows the chosen quest (the first one when none is chosen yet).

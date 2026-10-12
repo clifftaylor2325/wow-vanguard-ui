@@ -130,7 +130,7 @@ function P.Watch()
     return ns.Chat("Stopped printing Vanguard's CPU and memory.")
   end
   if not (C_Timer and C_Timer.NewTicker) then return ns.Chat("This client has no timers to print with.") end
-  P.ticker = C_Timer.NewTicker(P.EVERY, function() P.Report(false) end)
+  P.ticker = C_Timer.NewTicker(P.EVERY, ns.Guard("timer perf report", function() P.Report(false) end))
   ns.Chat(string.format("Printing Vanguard's CPU and memory every %d s; /vg perf watch again stops.", P.EVERY))
 end
 

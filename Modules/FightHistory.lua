@@ -50,7 +50,7 @@ local function onRegen()
   if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return FH.Record() end
   if FH.waiting then return end
   FH.waiting = true
-  C_Timer.After(FH.DELAY, function() FH.waiting = nil FH.Record() end)
+  C_Timer.After(FH.DELAY, ns.Guard("timer fight history record", function() FH.waiting = nil FH.Record() end))
 end
 
 -- Drawing ------------------------------------------------------------------------------------

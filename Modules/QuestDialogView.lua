@@ -115,8 +115,8 @@ function QD.Wire(f)
   f:Hide()
   f:SetScript("OnHide", QD.OnHide)
   f:SetScript("OnKeyDown", QD.OnKey)
-  f.primary:SetScript("OnClick", QD.Press)
-  f.secondary:SetScript("OnClick", function() QD.page.secondary[2]() end)
+  f.primary:SetScript("OnClick", ns.Guard("click quest dialog primary", QD.Press))
+  f.secondary:SetScript("OnClick", ns.Guard("click quest dialog secondary", function() QD.page.secondary[2]() end))
   if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_QuestDialog") end
 end
 
@@ -131,7 +131,7 @@ local function renderLines(f, lines)
     b:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, i == 1 and -10 or 0)
     b:SetWidth(QD.W - 40)
     QP.PaintLine(b, i, spec)
-    b:SetScript("OnClick", function() QD.SelectLine(i) end)
+    b:SetScript("OnClick", ns.Guard("click quest dialog line", function() QD.SelectLine(i) end))
     prev = b
   end
 end
@@ -156,7 +156,7 @@ end
 
 -- One reward card's clicks and tooltip.
 local function wireCard(c)
-  c:SetScript("OnClick", function(self) if self.item.kind == "choice" then QD.Pick(self.item.index) end end)
+  c:SetScript("OnClick", ns.Guard("click quest reward choice", function(self) if self.item.kind == "choice" then QD.Pick(self.item.index) end end))
   c:SetScript("OnEnter", function(self) QD.ItemTooltip(self) end)
   c:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 end

@@ -31,7 +31,7 @@ end
 
 -- Runs fn after a short wait (at once on a client without timers).
 local function later(seconds, fn)
-  if type(C_Timer) == "table" and type(C_Timer.After) == "function" then return C_Timer.After(seconds, fn) end
+  if type(C_Timer) == "table" and type(C_Timer.After) == "function" then return C_Timer.After(seconds, ns.Guard("timer errands", fn)) end
   fn()
 end
 
@@ -113,7 +113,7 @@ function ER.AddTrainButton()
   if ER.trainButton or type(frame) ~= "table" then return end
   local b, train = ns.DialogButton(frame, "Train all", 170), _G.ClassTrainerTrainButton
   if type(train) == "table" then b:SetPoint("RIGHT", train, "LEFT", -4, 0) else b:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 6) end
-  b:SetScript("OnClick", ER.TrainAll)
+  b:SetScript("OnClick", ns.Guard("click train all", ER.TrainAll))
   ER.trainButton = b
   ER.UpdateTrainButton()
 end
@@ -341,7 +341,7 @@ end
 -- Times flights, where the client lets addons see you pick one.
 local function watchFlights()
   if type(hooksecurefunc) ~= "function" or type(_G.TakeTaxiNode) ~= "function" then return end
-  hooksecurefunc("TakeTaxiNode", ER.OnTakeTaxi)
+  hooksecurefunc("TakeTaxiNode", ns.Guard("hook TakeTaxiNode", ER.OnTakeTaxi))
   buildBar()
   pollFlights()
 end

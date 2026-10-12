@@ -1,14 +1,24 @@
 name: full suite
 
 # Runs lua-suite.yml (every test with the coverage floor, the checks and
-# the UI preview): weekly, from the Actions tab, or on a pull request while
-# it carries the "full-tests" label. Not after every merge: a private
-# repository's Actions minutes are counted, so the pull-request gate
-# (verify.yml) is the check every change gets, and the whole suite runs
-# here and before each release (release.yml). A red weekly or hand-started
-# run opens an issue labelled ci-failure (later failures comment on it;
-# GitHub's own failure mail for a scheduled run goes to whoever last
-# edited the cron line, which may be nobody), and a green one closes it.
+# the UI preview): when a pull request is opened ready for review or marked
+# ready for review (a draft never runs it), on every later push while the
+# pull request carries the "full-tests" label, weekly, and from the Actions
+# tab. A later push without the label stops a run still in progress for that
+# pull request (the code it was testing is stale; both runs share the pull
+# request's concurrency group), and adding any other label neither starts
+# nor stops a run. Not after every merge: a private repository's Actions
+# minutes are counted, so the pull-request gate (verify.yml) is the check
+# every push gets, and the whole suite runs here and before each release
+# (release.yml). A red weekly or hand-started run opens an issue labelled
+# ci-failure (later failures comment on it; GitHub's own failure mail for a
+# scheduled run goes to whoever last edited the cron line, which may be
+# nobody), and a green one closes it.
+#
+# Only the weekly run is shuffled (D-05): its tests run in a seeded random
+# order and the seed goes to the job summary with the replay command, to
+# show up a case that depends on running after another. Pull-request and
+# hand-started runs keep the written order.
 on:
   schedule:
     # Sundays at 10:23 UTC (cron is UTC only); off the hour, since GitHub
@@ -22,7 +32,7 @@ on:
         type: boolean
         default: true
   pull_request:
-    types: [labeled, synchronize, reopened]
+    types: [opened, ready_for_review, labeled, synchronize, reopened]
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -32,18 +42,33 @@ permissions:
   issues: write
 
 # The newest run of a kind wins; a pull request's run never cancels a
-# scheduled one, or the other way round.
+# scheduled one, or the other way round. A label other than "full-tests"
+# gets a group of its own (the suffix): the job condition below skips that
+# run, and a skipped run must not cancel a good one in the pull request's
+# own group.
 concurrency:
-  group: full-suite-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: full-suite-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}${{ github.event.action == 'labeled' && github.event.label.name != 'full-tests' && '-other-label' || '' }}
   cancel-in-progress: true
 
 jobs:
   suite:
     name: Suite
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-tests')
+    # Other events always run. A pull request runs when it is opened ready,
+    # marked ready or reopened, and on later pushes only with the label; a
+    # draft never runs, and neither does an unrelated label being added.
+    if: >-
+      github.event_name != 'pull_request' || (
+        !github.event.pull_request.draft
+        && (github.event.action != 'labeled' || github.event.label.name == 'full-tests')
+        && (
+          github.event.action == 'opened' ||
+          github.event.action == 'ready_for_review' ||
+          github.event.action == 'reopened' ||
+          contains(github.event.pull_request.labels.*.name, 'full-tests')))
     uses: ./.github/workflows/lua-suite.yml
     with:
       preview: ${{ github.event_name != 'workflow_dispatch' || inputs.preview }}
+      shuffle: ${{ github.event_name == 'schedule' }}
 
   report:
     # The ci-failure issue: opened or commented on when the suite is red,
