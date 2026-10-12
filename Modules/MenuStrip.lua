@@ -21,6 +21,21 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgArrow = ns.FrameState("vgArrow")
+local vgArt = ns.FrameState("vgArt")
+local vgFill = ns.FrameState("vgFill")
+local vgFree = ns.FrameState("vgFree")
+local vgFreeBack = ns.FrameState("vgFreeBack")
+local vgGlyph = ns.FrameState("vgGlyph")
+local vgHeader = ns.FrameState("vgHeader")
+local vgHover = ns.FrameState("vgHover")
+local vgIcon = ns.FrameState("vgIcon")
+local vgIcons = ns.FrameState("vgIcons")
+local vgInset = ns.FrameState("vgInset")
+local vgRow = ns.FrameState("vgRow")
+local vgSlot = ns.FrameState("vgSlot")
+
 local T = ns.Theme
 local V = ns.Visibility
 
@@ -173,8 +188,7 @@ end
 -- Runs a pinned bar's placement again after the game resized it or laid it out
 -- again; through the pin, so pauses, combat and the pinning flag are honored.
 function MS.Refit(bar)
-  if bar.vgPinning or type(bar.vgPin) ~= "function" then return end
-  ns.Pin(bar, bar.vgPin)
+  ns.Repin(bar)
 end
 
 -- Re-fits the bar whenever the game changes a row's size or lays it out again.
@@ -285,8 +299,8 @@ end
 -- at most MS.TILE (every button in a row has the same place: see fitBag).
 local function slotPixels(b)
   local side = math.min(b:GetWidth(), b:GetHeight())
-  if side <= 0 then side = b.vgRow.button end
-  return math.min(MS.TILE, (side + b.vgRow.pad) * relScale(b) - MS.GAP)
+  if side <= 0 then side = vgRow[b].button end
+  return math.min(MS.TILE, (side + vgRow[b].pad) * relScale(b) - MS.GAP)
 end
 
 -- Lets a button take clicks on its slot only, so the menu row's tall buttons
@@ -300,53 +314,53 @@ end
 -- top, right, bottom): nothing, or for one of the game's menu icons its clear
 -- margins, so its icon's box (MS.ICON_BOX) fills the place.
 local function reach(b, t)
-  if not (b.vgIcons and b.vgIcons[t]) then return 0, 0, 0, 0 end
+  if not (vgIcons[b] and vgIcons[b][t]) then return 0, 0, 0, 0 end
   local box = MS.ICON_BOX
-  local w = (b.vgSlot:GetWidth() - 2 * b.vgInset) / (box.right - box.left)
-  local h = (b.vgSlot:GetHeight() - 2 * b.vgInset) / (box.bottom - box.top)
+  local w = (vgSlot[b]:GetWidth() - 2 * vgInset[b]) / (box.right - box.left)
+  local h = (vgSlot[b]:GetHeight() - 2 * vgInset[b]) / (box.bottom - box.top)
   return w * box.left, h * box.top, w * (1 - box.right), h * (1 - box.bottom)
 end
 
 -- Fits a texture inside a button's slot, its row's inset in from the edge.
 local function inset(b, t)
-  local d = b.vgInset
+  local d = vgInset[b]
   local l, top, r, bottom = reach(b, t)
   t:ClearAllPoints()
-  t:SetPoint("TOPLEFT", b.vgSlot, "TOPLEFT", d - l, top - d)
-  t:SetPoint("BOTTOMRIGHT", b.vgSlot, "BOTTOMRIGHT", r - d, d - bottom)
+  t:SetPoint("TOPLEFT", vgSlot[b], "TOPLEFT", d - l, top - d)
+  t:SetPoint("BOTTOMRIGHT", vgSlot[b], "BOTTOMRIGHT", r - d, d - bottom)
 end
 
 -- The fill along a bag's icon bottom, MS.FILL pixels thick, and on the
 -- backpack the free count in the corner above it, at its text size on
 -- screen, its backing MS.COUNT_PAD out around it.
 local function placeFill(b, rel)
-  b.vgFill:SetHeight(MS.FILL / rel)
-  if not b.vgFree then return end
+  vgFill[b]:SetHeight(MS.FILL / rel)
+  if not vgFree[b] then return end
   local pad = MS.COUNT_PAD / rel
-  b.vgFree:SetPoint("BOTTOMRIGHT", b.vgIcon, "BOTTOMRIGHT", -pad, MS.FILL / rel + pad)
-  T.TextSize(b.vgFree, T.RoleSize("badge") / rel)
-  b.vgFreeBack:SetPoint("TOPLEFT", b.vgFree, "TOPLEFT", -pad, pad)
-  b.vgFreeBack:SetPoint("BOTTOMRIGHT", b.vgFree, "BOTTOMRIGHT", pad, -pad)
+  vgFree[b]:SetPoint("BOTTOMRIGHT", vgIcon[b], "BOTTOMRIGHT", -pad, MS.FILL / rel + pad)
+  T.TextSize(vgFree[b], T.RoleSize("badge") / rel)
+  vgFreeBack[b]:SetPoint("TOPLEFT", vgFree[b], "TOPLEFT", -pad, pad)
+  vgFreeBack[b]:SetPoint("BOTTOMRIGHT", vgFree[b], "BOTTOMRIGHT", pad, -pad)
 end
 
 -- Sizes a line icon: MS.GLYPH_PX on screen, never past the slot's inset.
 local function sizeGlyph(b, side)
-  local g = math.min(MS.GLYPH_PX / relScale(b), side - 2 * b.vgInset)
-  b.vgGlyph:SetSize(g, g)
+  local g = math.min(MS.GLYPH_PX / relScale(b), side - 2 * vgInset[b])
+  vgGlyph[b]:SetSize(g, g)
 end
 
 -- Sizes a button's slot for its scale now: the slot (its row's shape), where
 -- the button takes clicks, and the art, line icon and fill inside it.
 local function sizeSlot(b)
-  local rel, row = relScale(b), b.vgRow
+  local rel, row = relScale(b), vgRow[b]
   local w = slotPixels(b) / rel
   local h = w * row.tileH / MS.TILE
-  b.vgSlot:SetSize(w, h)
-  b.vgInset = row.inset / rel
+  vgSlot[b]:SetSize(w, h)
+  vgInset[b] = row.inset / rel
   hitSlot(b, w, h)
-  for _, t in ipairs(b.vgArt) do inset(b, t) end
-  if b.vgGlyph then sizeGlyph(b, w) end
-  if b.vgFill then placeFill(b, rel) end
+  for _, t in ipairs(vgArt[b]) do inset(b, t) end
+  if vgGlyph[b] then sizeGlyph(b, w) end
+  if vgFill[b] then placeFill(b, rel) end
 end
 
 -- Sizes every slot again (the bars' scale or the text size changed).
@@ -361,17 +375,17 @@ local function addSlot(b, row)
   local slot = T.Slot(CreateFrame("Frame", nil, b), { quiet = true, well = true })
   slot:SetPoint("CENTER", b, "CENTER")
   slot:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
-  b.vgSlot, b.vgRow = slot, row
+  vgSlot[b], vgRow[b] = slot, row
   MS.slotted[#MS.slotted + 1] = b
 end
 
 -- The slot's accent edge follows the mouse: brighter while it's over the
 -- button, darker while the button is held down.
 local function slotStates(b)
-  b:HookScript("OnEnter", function(self) T.SlotState(self.vgSlot, "hover") end)
-  b:HookScript("OnLeave", function(self) T.SlotState(self.vgSlot, nil) end)
-  b:HookScript("OnMouseDown", function(self) T.SlotState(self.vgSlot, "pressed") end)
-  b:HookScript("OnMouseUp", function(self) T.SlotState(self.vgSlot, self:IsMouseOver() and "hover" or nil) end)
+  b:HookScript("OnEnter", function(self) T.SlotState(vgSlot[self], "hover") end)
+  b:HookScript("OnLeave", function(self) T.SlotState(vgSlot[self], nil) end)
+  b:HookScript("OnMouseDown", function(self) T.SlotState(vgSlot[self], "pressed") end)
+  b:HookScript("OnMouseUp", function(self) T.SlotState(vgSlot[self], self:IsMouseOver() and "hover" or nil) end)
 end
 
 -- Menu buttons --------------------------------------------------------------------------------
@@ -379,12 +393,12 @@ end
 -- Tints a button's line icon: disabled while the button is disabled, else accent
 -- while the mouse is over it, else text.
 local function paintGlyph(b)
-  T.Tint(b.vgGlyph, not b:IsEnabled() and "disabled" or (b.vgHover and "accent" or "text"))
+  T.Tint(vgGlyph[b], not b:IsEnabled() and "disabled" or (vgHover[b] and "accent" or "text"))
 end
 
 -- Notes whether the mouse is over a button and repaints its line icon.
 local function hover(b, over)
-  b.vgHover = over
+  vgHover[b] = over
   paintGlyph(b)
 end
 
@@ -395,7 +409,7 @@ local function paintEnabled(b)
     local t = b[get] and b[get](b)
     if t then t:SetDesaturated(off) end
   end
-  if b.vgGlyph then paintGlyph(b) end
+  if vgGlyph[b] then paintGlyph(b) end
 end
 
 -- Vanguard's line icon in the middle of the slot instead of the game's (whose
@@ -403,9 +417,9 @@ end
 local function addGlyph(b, icon)
   T.FadeRegions(b, alerts(b))
   fadeStates(b)
-  b.vgGlyph = T.Snap(b.vgSlot:CreateTexture(nil, "OVERLAY"))
-  b.vgGlyph:SetTexture(icon)
-  b.vgGlyph:SetPoint("CENTER", b.vgSlot, "CENTER")
+  vgGlyph[b] = T.Snap(vgSlot[b]:CreateTexture(nil, "OVERLAY"))
+  vgGlyph[b]:SetTexture(icon)
+  vgGlyph[b]:SetPoint("CENTER", vgSlot[b], "CENTER")
   b:HookScript("OnEnter", function(self) hover(self, true) end)
   b:HookScript("OnLeave", function(self) hover(self, false) end)
 end
@@ -449,10 +463,10 @@ end
 -- line icon, switched on), greyed while disabled, the slot's edge lit under
 -- the mouse. Once per button.
 function MS.SkinButton(b, icon)
-  if b.vgSlot then return end
+  if vgSlot[b] then return end
   for _, key in ipairs(MS.MENU_ART) do if type(b[key]) == "table" then b[key]:SetAlpha(0) end end
   addSlot(b, MS.ROWS[2])
-  b.vgArt, b.vgIcons = menuArt(b)
+  vgArt[b], vgIcons[b] = menuArt(b)
   if MS.settings.glyphs then addGlyph(b, icon) end
   slotStates(b)
   b:HookScript("OnEnable", paintEnabled)
@@ -488,12 +502,12 @@ end
 local function paintBag(b)
   local total, free = MS.BagSpace(b:GetBagID())
   if not total then return end
-  b.vgIcon:SetDesaturated(total == 0)
-  b.vgIcon:SetAlpha(total == 0 and MS.EMPTY_ALPHA or 1)
-  b.vgFill:SetShown(total > free)
+  vgIcon[b]:SetDesaturated(total == 0)
+  vgIcon[b]:SetAlpha(total == 0 and MS.EMPTY_ALPHA or 1)
+  vgFill[b]:SetShown(total > free)
   if total <= free then return end
-  b.vgFill:SetWidth((b.vgSlot:GetWidth() - 2 * b.vgInset) * (total - free) / total)
-  T.Tint(b.vgFill, free == 0 and "bad" or "accent")
+  vgFill[b]:SetWidth((vgSlot[b]:GetWidth() - 2 * vgInset[b]) * (total - free) / total)
+  T.Tint(vgFill[b], free == 0 and "bad" or "accent")
 end
 
 -- Every bag's fill and the backpack's free count, now (after the bags
@@ -508,20 +522,20 @@ end
 -- The backpack's free count: small, in the icon's corner, over a dark backing
 -- so it reads on any icon (both placed by placeFill).
 local function addFree(b)
-  b.vgFreeBack = T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
-  b.vgFreeBack:SetTexture(T.WHITE)
-  T.Tint(b.vgFreeBack, "edge", MS.COUNT_BACK)
-  b.vgFree = T.Text(b:CreateFontString(nil, "OVERLAY"), "badge")
-  MS.free, MS.freeBack = b.vgFree, b.vgFreeBack
+  vgFreeBack[b] = T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
+  vgFreeBack[b]:SetTexture(T.WHITE)
+  T.Tint(vgFreeBack[b], "edge", MS.COUNT_BACK)
+  vgFree[b] = T.Text(b:CreateFontString(nil, "OVERLAY"), "badge")
+  MS.free, MS.freeBack = vgFree[b], vgFreeBack[b]
 end
 
 -- A bag's fill along its icon's bottom (sized and painted later), and on the
 -- backpack the free count.
 local function addFill(b)
-  b.vgFill = T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
-  b.vgFill:SetTexture(T.WHITE)
-  b.vgFill:SetPoint("BOTTOMLEFT", b.vgIcon, "BOTTOMLEFT")
-  b.vgFill:Hide()
+  vgFill[b] = T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
+  vgFill[b]:SetTexture(T.WHITE)
+  vgFill[b]:SetPoint("BOTTOMLEFT", vgIcon[b], "BOTTOMLEFT")
+  vgFill[b]:Hide()
   MS.filled[#MS.filled + 1] = b
   if b == _G.MainMenuBarBackpackButton then addFree(b) end
 end
@@ -537,8 +551,8 @@ end
 -- widened to a bag's width, so it gets the same slot at the same pitch. The
 -- game anchors each bag button's right edge, so it grows away from its neighbor.
 local function fitBag(b, icon)
-  b.vgIcon = T.Crop(icon)
-  b.vgArt = { b.vgIcon }
+  vgIcon[b] = T.Crop(icon)
+  vgArt[b] = { vgIcon[b] }
   icon:SetAlpha(1)
   if b:GetWidth() < MS.ROWS[1].button then b:SetWidth(MS.ROWS[1].button) end
 end
@@ -548,7 +562,7 @@ end
 -- the slot's edge following the mouse. Once per button.
 function MS.SkinBag(b)
   local icon = bagIcon(b)
-  if b.vgSlot or not icon then return end
+  if vgSlot[b] or not icon then return end
   T.FadeRegions(b, alerts(b))
   fadeStates(b)
   fitBag(b, icon)
@@ -645,7 +659,7 @@ end
 
 -- Shows a header's collapse arrow: Down while open, Right while collapsed.
 function MS.PaintArrow(header, collapsed)
-  header.vgArrow:SetTexture(T.Icon(collapsed and "Right" or "Down"))
+  vgArrow[header]:SetTexture(T.Icon(collapsed and "Right" or "Down"))
 end
 
 -- A header's collapse button: the game's art faded, the theme's arrow drawn on
@@ -653,9 +667,9 @@ end
 local function skinToggle(header)
   local b = header.MinimizeButton
   fadeStates(b)
-  header.vgArrow = T.Tint(T.Snap(b:CreateTexture(nil, "OVERLAY")), "text2")
-  header.vgArrow:SetSize(12, 12)
-  header.vgArrow:SetPoint("CENTER", b, "CENTER")
+  vgArrow[header] = T.Tint(T.Snap(b:CreateTexture(nil, "OVERLAY")), "text2")
+  vgArrow[header]:SetSize(12, 12)
+  vgArrow[header]:SetPoint("CENTER", b, "CENTER")
   MS.PaintArrow(header, false)
   if type(header.SetCollapsed) == "function" then hooksecurefunc(header, "SetCollapsed", ns.Guard("hook SetCollapsed", MS.PaintArrow)) end
 end
@@ -663,8 +677,8 @@ end
 -- One tracker header in the theme: its art faded, a flat band with an accent
 -- line along the bottom, its title in the heading font (its color kept). Once.
 function MS.SkinHeader(header)
-  if header.vgHeader then return end
-  header.vgHeader = true
+  if vgHeader[header] then return end
+  vgHeader[header] = true
   for _, key in ipairs(MS.HEADER_ART) do if type(header[key]) == "table" then header[key]:SetAlpha(0) end end
   T.HudPanel(header, { inset = true, alpha = 0.6 })
   addRule(header)

@@ -154,11 +154,8 @@ function WP.MapText(map)
   return table.concat(parts, "     ")
 end
 
--- Every frame while the world map is open (the line's frame hides with it): the line, at most every MAP_INTERVAL.
-function WP.OnMapUpdate(_, elapsed)
-  WP.wait = (WP.wait or 0) - elapsed
-  if WP.wait > 0 then return end
-  WP.wait = WP.MAP_INTERVAL
+-- The line under the open world map, from where you and the cursor are.
+function WP.PaintMapLine()
   WP.mapLine:SetText(WP.MapText(_G.WorldMapFrame))
 end
 
@@ -168,7 +165,7 @@ local function buildMapLine(map)
   holder:SetAllPoints(map.ScrollContainer or map)
   WP.mapLine = T.Text(holder:CreateFontString(nil, "OVERLAY"), "small", "text2")
   WP.mapLine:SetPoint("BOTTOM", holder, "BOTTOM", 0, 6)
-  holder:SetScript("OnUpdate", WP.OnMapUpdate)
+  ns.Every("world map coords", WP.MAP_INTERVAL, WP.PaintMapLine, holder, true)
 end
 
 -- The game's world map has loaded (when it wasn't there at login).

@@ -6,7 +6,7 @@
 // Textures are white or grayscale so the addon tints them with theme colors;
 // Icon is the one pre-colored image (the addons list can't tint).
 
-import { image, fill, draw, line, poly, box, frame, ring, path, arc } from "./media-art.mjs";
+import { image, fill, draw, line, poly, box, ring, path, arc } from "./media-art.mjs";
 import { CRESTS, crest, glyph } from "./media-crests.mjs";
 
 const BRASS = [0xd9 / 255, 0xa4 / 255, 0x41 / 255];
@@ -121,20 +121,7 @@ function rect(x0, y0, x1, y1, w = STROKE) {
 // whole units, so they cover whole pixels; slanted ones run half a unit off the
 // grid, which lands each step of a 45-degree stroke on whole pixels too.
 const ICON_SHAPES = {
-  // Three sliders and their knobs.
-  General: [crisp([[2, 3], [14, 3]]), crisp([[2, 8], [14, 8]]), crisp([[2, 13], [14, 13]]), box(9, 1, 12, 5), box(4, 6, 7, 10), box(10, 11, 13, 15)],
-  Modules: [rect(2, 2, 6, 6), rect(10, 2, 14, 6), rect(2, 10, 6, 14), rect(10, 10, 14, 14)],
-  UnitFrames: [rect(2, 4, 14, 10), box(4, 6, 10, 8), crisp([[2, 13], [10, 13]])],
-  // Six tiles: too many for two-pixel sides in 16 px, so one-pixel ones.
-  RaidFrames: [[1, 4], [6, 9], [11, 14]].flatMap(([y0, y1]) => [rect(1.5, y0 + 0.5, 6.5, y1 + 0.5, 1), rect(9.5, y0 + 0.5, 14.5, y1 + 0.5, 1)]),
-  Healing: [crisp([[6, 2], [10, 2], [10, 6], [14, 6], [14, 10], [10, 10], [10, 14], [6, 14], [6, 10], [2, 10], [2, 6], [6, 6]], true)],
-  ClickCasting: [frame(4, 2, 12, 14, STROKE, 3), crisp([[8, 2], [8, 7]]), crisp([[4, 7], [12, 7]])],
-  ActionBars: [box(1, 4, 5, 8), box(6, 4, 10, 8), box(11, 4, 15, 8), crisp([[2, 12], [14, 12]])],
-  Nameplates: [crisp([[5, 3], [11, 3]]), rect(2, 6, 14, 11), box(4, 8, 10, 9), crisp([[2, 14], [10, 14]])],
-  Tooltips: [crisp([[2, 2], [14, 2], [14, 11], [8, 11], [5, 14], [5, 11], [2, 11]], true), box(4, 4, 12, 6), box(4, 7, 9, 9)],
   Map: [path([[8, 2.5], [13.5, 8], [8, 13.5], [2.5, 8]], STROKE, true), poly([[8, 5], [11, 8], [8, 11], [7, 8]])],
-  Profiles: [ring(8, 4, 2, STROKE), path(arc(8, 14.5, 6, 6, 0, 180), STROKE)],
-  Move: [crisp([[8, 2], [8, 14]]), crisp([[2, 8], [14, 8]]), ...[[8, 1.5, 0, 1], [8, 14.5, 0, -1], [1.5, 8, 1, 0], [14.5, 8, -1, 0]].flatMap(arrowHead)],
   Close: [line(3.5, 4, 11.5, 12, STROKE), line(12.5, 4, 4.5, 12, STROKE)],
   Check: [path([[3, 8.5], [6.5, 12], [13, 5.5]], STROKE)],
   Down: [path([[4, 6.5], [8, 10.5], [12, 6.5]], STROKE)],
@@ -218,11 +205,6 @@ const CONTROL_SHAPES = {
   // The close cross, corner to corner of the box.
   CloseMark: [line(5.5, 5.5, 14.5, 14.5, 1.8), line(14.5, 5.5, 5.5, 14.5, 1.8)],
 };
-
-// The two strokes of an arrow head at (x, y) pointing against (dx, dy).
-function arrowHead([x, y, dx, dy]) {
-  return [line(x, y, x + 2 * dx + 2 * dy, y + 2 * dy + 2 * dx, STROKE), line(x, y, x + 2 * dx - 2 * dy, y + 2 * dy - 2 * dx, STROKE)];
-}
 
 // Name (under Media/Icons) -> the image it holds.
 export const ICONS = {

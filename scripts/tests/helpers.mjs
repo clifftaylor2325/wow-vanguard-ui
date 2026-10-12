@@ -29,6 +29,9 @@ export const isTok = (addon, c, name) => {
   return Array.isArray(c) && [0, 1, 2].every((i) => Math.abs(c[i] - t[i]) < 1e-6);
 };
 
+// How many grid lines the player sees: visible 1 px textures spanning the whole screen, across or down.
+export const gridLines = (addon) => addon.frames('w.__kind == "Texture" and w:IsVisible() and ((w:GetWidth() == 1 and w:GetHeight() == UIParent:GetHeight()) or (w:GetHeight() == 1 and w:GetWidth() == UIParent:GetWidth()))').length;
+
 // Enters or leaves combat (leaving fires PLAYER_REGEN_ENABLED, which runs queued work).
 export function setCombat(addon, on) {
   addon.eval(`__wfgStub.inCombat = ${on}`);
@@ -61,9 +64,10 @@ function scopeLua() {
 
 // A logged-in addon; extra Lua runs before login (e.g. a module or a skin).
 // firstRun: a brand-new account (no SavedVariables unless given), so setup opens.
+// client: Lua run before the addon's files load (RETAIL_CLIENT from the harness).
 // The six heavy modules are off for a case the scope data lists (see scripts/lib/login-scope.mjs).
-export function loggedIn(extra = "", { firstRun = false, savedVariables = "" } = {}) {
-  const addon = createAddon({ savedVariables: (firstRun ? savedVariables : SETUP_DONE + savedVariables) + scopeLua() });
+export function loggedIn(extra = "", { firstRun = false, savedVariables = "", client = "" } = {}) {
+  const addon = createAddon({ client, savedVariables: (firstRun ? savedVariables : SETUP_DONE + savedVariables) + scopeLua() });
   if (extra) addon.eval(extra);
   addon.login();
   return addon;
@@ -331,7 +335,7 @@ export const PLATE_ENV = `
 `;
 
 // One nameplate's state.
-export const plate = (addon, unit) => addon.eval(`local p = __plates.${unit} local f = p.vg
+export const plate = (addon, unit) => addon.eval(`local p = __plates.${unit} local f = ns.FrameState('vgPlate')[p]
   if not f then return { drawn = false, default = p.UnitFrame:IsShown() } end
   local edge for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "OVERLAY" and w.__sublevel == 7 then edge = w.__vertexColor break end end
   return { drawn = f:IsShown(), default = p.UnitFrame:IsShown(), hp = f.__value, color = f.__barColor, name = f.name:GetText(),
@@ -515,6 +519,7 @@ export const SPECIAL_BARS_ENV = `
 export const lacking = (name) => `
   local real = CreateFrame
   CreateFrame = function(kind, ...) local f = real(kind, ...) if kind == "AuraContainer" then f[${JSON.stringify(name)}] = false end return f end
+  __wfgStub.transparent[CreateFrame] = true
 `;
 
 // TEST-ONLY totems: slot 1 has a totem down (plain values), the other slots are empty.

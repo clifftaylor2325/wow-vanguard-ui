@@ -417,11 +417,11 @@ it("the game's scroll bars: track art faded, a raised thumb with an accent edge 
     for _, r in ipairs({ thumb:GetRegions() }) do if r.__vertexColor and r.__vertexColor[1] == accent[1] and r.__vertexColor[3] == accent[3] then edged = true end end
     thumb.__scripts.OnLeave(thumb)
     return { bar.Track.Begin.__alpha, thumb.Middle.__alpha, bar.Back.Texture.__alpha, edged == true,
-      bar.Back.vgArrow.__texCoord[3], bar.Forward.vgArrow.__texCoord == nil }`);
+      ns.FrameState('vgArrow')[bar.Back].__texCoord[3], ns.FrameState('vgArrow')[bar.Forward].__texCoord == nil }`);
   expect(minimal, "faded, accent under the mouse, the up arrow is the Down icon turned over").toEqual([0, 0, 0, true, 1, true]);
   const trim = addon.eval("local bar = __bar(true) ns.Theme.ScrollBar(bar) return { bar.Background.__alpha, bar.Track.Thumb.Middle.__alpha }");
   expect(trim, "the trim bar's background goes too").toEqual([0, 0]);
-  expect(addon.eval("local f = CreateFrame('Frame', nil, UIParent) f.Back = CreateFrame('Button', nil, f) ns.Theme.ScrollBar(f) return f.Back.vgArrow == nil"), "a frame without a thumb is left alone").toBe(true);
+  expect(addon.eval("local f = CreateFrame('Frame', nil, UIParent) f.Back = CreateFrame('Button', nil, f) ns.Theme.ScrollBar(f) return ns.FrameState('vgArrow')[f.Back] == nil"), "a frame without a thumb is left alone").toBe(true);
 });
 
 it("the game's font objects: the theme font at Text size, kept after a theme change", () => {

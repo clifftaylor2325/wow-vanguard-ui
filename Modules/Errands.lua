@@ -270,13 +270,14 @@ local function currentNode()
   end
 end
 
--- You picked a destination: note the route, and start watching for takeoff.
+-- You picked a destination: note the route, and check the taxi state twice a
+-- second from now until the flight lands or is forgotten.
 function ER.OnTakeTaxi(index)
   local from, to = currentNode(), ask("TaxiNodeName", index)
   if type(from) ~= "string" or type(to) ~= "string" then return end
   local key = from .. " > " .. to
   ER.flight = { key = key, to = to, picked = ask("GetTime") or 0, known = ER.settings.flights[key] }
-  ER.poller:Show()
+  ns.Every("flight poll", ER.FLIGHT_POLL, ER.PollFlight)
 end
 
 -- Seconds as "1:05".
@@ -306,7 +307,7 @@ end
 -- flight that never took off is forgotten. With no flight to follow, it stops.
 function ER.PollFlight()
   local f, flying, now = ER.flight, ask("UnitOnTaxi", "player") == true, ask("GetTime") or 0
-  if not f then return ER.poller:Hide() end
+  if not f then return ns.Every("flight poll", nil) end
   if f.start and not flying then return land(f) end
   if flying then f.start = f.start or now return ER.PaintFlight(f) end
   if now - f.picked > ER.TAKEOFF_WAIT then ER.flight = nil end
@@ -324,26 +325,11 @@ local function buildBar()
   ER.bar = bar
 end
 
--- Checks the taxi state twice a second, only from picking a flight until it
--- lands or is forgotten (hidden, the frame runs nothing).
-local function pollFlights()
-  local elapsed = 0
-  ER.poller = CreateFrame("Frame")
-  ER.poller:Hide()
-  ER.poller:SetScript("OnUpdate", function(_, dt)
-    elapsed = elapsed + dt
-    if elapsed < ER.FLIGHT_POLL then return end
-    elapsed = 0
-    ER.PollFlight()
-  end)
-end
-
 -- Times flights, where the client lets addons see you pick one.
 local function watchFlights()
   if type(hooksecurefunc) ~= "function" or type(_G.TakeTaxiNode) ~= "function" then return end
   hooksecurefunc("TakeTaxiNode", ns.Guard("hook TakeTaxiNode", ER.OnTakeTaxi))
   buildBar()
-  pollFlights()
 end
 
 -- Module entry point (Core/Modules.lua).

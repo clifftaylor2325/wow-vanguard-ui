@@ -6,6 +6,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgSuppressed = ns.FrameState("vgSuppressed")
+
 local T = ns.Theme
 local V = ns.Visibility
 
@@ -197,8 +200,8 @@ end
 -- hidden once, out of combat.
 function DB.Suppress(name)
   local f = _G[name]
-  if type(f) ~= "table" or not f.Hide or f.vgSuppressed then return end
-  f.vgSuppressed = true
+  if type(f) ~= "table" or not f.Hide or vgSuppressed[f] then return end
+  vgSuppressed[f] = true
   ns.EditModeReplaced(f)
   if protected(f) then return ns.OutOfCombat(function() f:Hide() end, f) end
   f:Hide()
