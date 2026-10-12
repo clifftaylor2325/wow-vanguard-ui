@@ -176,7 +176,7 @@ The callback runs once at login, or immediately if the addon registers after log
 ```bash
 npm install
 npm test          # JS and Lua harness tests under Vitest, once (vitest run, no watch), then a per-area Lua harness summary
-npm run test:quick # the JS tests and one Lua smoke test (about 10 s): what a pull request's check runs
+npm run test:quick # the JS tests and the Lua smoke tests (both clients, and secret geometry): what a pull request's check runs
 npm run verify    # npm test (real addon Lua in a TEST-ONLY headless WoW client, and the JS tests), then the code-quality scan
                   # (functions of 10 lines or fewer, all documented; colors only from Core/Theme.lua)
 npm run coverage  # every test with line coverage of the addon Lua; fails below scripts/lua-coverage-floor.json (100%)
@@ -203,7 +203,7 @@ npm run preview   # preview/*.png: the default layout and the options window (ne
 
 **Art and fonts:** every texture and icon under `Media/` is made by code in `scripts/lib/media-sources.mjs`: most drawn in plain math (no image editor), the options nav's and minimap's icons and the faction crests rasterized from game-icons.net SVGs in `art/game-icons` (credited in `art/CREDITS.md`); `npm run verify` fails if a committed file doesn't match its source. The fonts are made from upstream Fira Sans Condensed by `scripts/fonts/make-fonts.py` (see that file).
 
-**Testing the addon:** `scripts/tests/<area>.test.mjs` play the addon's real Lua in a headless client built for the tests (`scripts/lib/wow-*.lua`): Lua 5.1 semantics, frames with real layout on a 1920x1080 screen, a world model (units, auras, actions, quests, combat, timers) behind the game API, and mouse and keyboard input. A test sets up the world, acts as the player would, and asserts on what the addon drew. The guide is [scripts/tests/README.md](scripts/tests/README.md).
+**Testing the addon:** `scripts/tests/<area>.test.mjs` play the addon's real Lua in a headless client built for the tests (`scripts/lib/wow-*.lua`): Lua 5.1 semantics, frames with real layout on a 1920x1080 screen, a world model (units, auras, actions, quests, combat, timers) behind the game API, and mouse and keyboard input. A test sets up the world, acts as the player would, and asserts on what the addon drew. The client also holds the addon to the game's taint rules: a test fails if the addon stores a field on one of the game's frames or touches a protected frame in combat, and it can hide positions and sizes as secrets the way the client does in a fight. The guide is [scripts/tests/README.md](scripts/tests/README.md).
 
 **Code quality:** every function has a comment on the line above it and at most 10 lines of body code; `npm run verify` and CI enforce it on every pull request. The shared libraries in `Libs/` stay exactly as upstream wrote them, so the scan, luacheck and the coverage count leave them out.
 

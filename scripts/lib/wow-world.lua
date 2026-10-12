@@ -139,17 +139,24 @@ function securecallfunction(fn, ...)
   return fn(...)
 end
 
+-- The hooks hooksecurefunc made: each stands in for the function it hooks, so
+-- wow-taint.lua looks through it to the code that called the function.
+stub.transparent = setmetatable({}, { __mode = "k" })
+
 -- hooksecurefunc: runs fn after the function, as FrameXML does. A global name
 -- hooks _G; a missing function is left alone.
 function hooksecurefunc(t, name, fn)
   if type(t) == "string" then t, name, fn = _G, t, name end
   local orig = t[name]
   if type(orig) ~= "function" then return end
-  t[name] = function(...)
+  -- The original, then the hook, with the original's results.
+  local function hooked(...)
     local results = { orig(...) }
     fn(...)
     return unpack(results)
   end
+  stub.transparent[hooked] = true
+  t[name] = hooked
 end
 
 -- debugstack(start): the Lua call stack as text, `start` levels above its caller (1 = the function
@@ -679,11 +686,14 @@ function world.removeUnit(token)
   if token:match("^nameplate") then stub.fire("NAME_PLATE_UNIT_REMOVED", token) else stub.fire(tokenEvent(token)) end
 end
 
--- Enters or leaves combat, firing PLAYER_REGEN_DISABLED / ENABLED.
+-- Enters or leaves combat, as the client does: PLAYER_REGEN_DISABLED fires just
+-- before the lockdown starts (its handlers may still touch protected frames), and
+-- PLAYER_REGEN_ENABLED just after it ends.
 function world.combat(on)
   if stub.inCombat == on then return end
+  if on then stub.fire("PLAYER_REGEN_DISABLED") end
   stub.inCombat = on
-  stub.fire(on and "PLAYER_REGEN_DISABLED" or "PLAYER_REGEN_ENABLED")
+  if not on then stub.fire("PLAYER_REGEN_ENABLED") end
 end
 
 -- Auras -----------------------------------------------------------------------------------

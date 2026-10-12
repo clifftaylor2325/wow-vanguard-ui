@@ -19,9 +19,10 @@ Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
 | `scripts/lib/wow-stub.lua` | Frames, regions, scripts, events, the clock, Lua 5.1 shims, and the input drivers. |
 | `scripts/lib/wow-layout.lua` | Anchors, sizes and scale resolved to screen rects (1920x1080, origin bottom-left). |
 | `scripts/lib/wow-world.lua` | The world: units, auras, actions, spells, quests, bags, the map, timers, Blizzard frames. |
+| `scripts/lib/wow-taint.lua` | Taint and combat rules: who owns each frame, field writes on the game's frames, protected calls blocked in combat, secret geometry. |
 | `scripts/lib/wow-inspect.lua` | A widget as a plain snapshot: what it draws, where, and its children. |
 | `scripts/lua-engine.test.mjs` | The client's own tests (5.1 printing, layout, events, timers, input, inspectors). |
-| `scripts/tests/smoke.test.mjs` | The one harness case a pull request's CI runs (`npm run test:quick`): one load, login, unlock, lock, no errors. |
+| `scripts/tests/smoke.test.mjs` | The harness cases a pull request's CI runs (`npm run test:quick`): load, login, unlock, lock and no errors, once as WoW Forever and once as Retail, then a fight with secret geometry on. |
 
 ## Writing a scenario
 
@@ -44,8 +45,11 @@ addon drew.** `scripts/tests/scenarios.test.mjs` has more.
 
 ### Loading the addon
 
-- `createAddon({ savedVariables })` (from `../lib/lua-harness.mjs`): the addon
-  files are run, SavedVariables Lua is run after them, nothing has fired yet.
+- `createAddon({ savedVariables, client })` (from `../lib/lua-harness.mjs`): the
+  addon files are run, SavedVariables Lua is run after them, nothing has fired
+  yet. `client` is Lua run before the addon's files: `FOREVER_CLIENT` (the
+  default) or `RETAIL_CLIENT` (interface 120007). `loggedIn(env, { client })`
+  passes it on.
 - `loggedIn(env)` (from `./helpers.mjs`): a finished-setup account, `env` Lua
   run before login, then `login()` fires ADDON_LOADED, PLAYER_LOGIN and
   PLAYER_ENTERING_WORLD (with six heavy modules off in most files; see
@@ -109,7 +113,7 @@ change fires the events the client would.
 | `setUnit(token, fields)` | Creates or changes a unit (`name, hp, maxhp, power, maxpower, ptypeName, reaction, level, class, isPlayer, connected, dead, role, ...`). A new target fires PLAYER_TARGET_CHANGED; changed fields fire their UNIT_* events. |
 | `removeUnit(token)` | The unit is gone (target lost, pet dismissed). |
 | `unit(token)` | The unit's fields, or null. |
-| `combat(true/false)` | PLAYER_REGEN_DISABLED / PLAYER_REGEN_ENABLED, with `InCombatLockdown()` to match. |
+| `combat(true/false)` | PLAYER_REGEN_DISABLED, then `InCombatLockdown()` turns true; `InCombatLockdown()` turns false, then PLAYER_REGEN_ENABLED (the client's order). |
 | `addAura(unit, aura)` / `removeAura(unit, name)` | Auras (`name, duration, applications, isHarmful, dispelName, sourceUnit, icon, spellId`); containers refresh and UNIT_AURA fires. |
 | `setAction(slot, fields)` | An action slot: `{ id: 133 }` is Fireball (world spells: 133, 1459, 116, 2136, 118), plus `cooldown: { start, duration }`, `usable`, `count`, `charges`, ... |
 | `addQuest(quest)` | A quest in the log (`questID, title, level, watched, objectives: [{ text, finished, type }]`). |
@@ -122,6 +126,7 @@ change fires the events the client would.
 | `openProfession(recipeID)` / `selectRecipe(recipeID)` / `closeProfession()` | The profession window: `ProfessionsFrame` (made on the first open, as Blizzard_Professions loads; ADDON_LOADED fires) shows on TRADE_SKILL_SHOW and its `CraftingPage.SchematicForm:Init({ recipeID })` is given the recipe; TRADE_SKILL_CLOSE fires and it hides. `C_TradeSkillUI.GetRecipeSchematic` answers from `world.recipes[recipeID]` (a CraftingRecipeSchematic: `name, outputItemID, quantityMin, quantityMax, reagentSlotSchematics = { { reagents = { { itemID } }, quantityRequired, reagentType } }`). |
 | `world.professions` | Your two primary professions, `{ name, skillLine, profession }` each (`profession` an `Enum.Profession`, Enchanting 9): `GetProfessions`, `GetProfessionInfo` and `C_TradeSkillUI.GetProfessionInfoBySkillLineID` answer from it. Empty by default. |
 | `secret(n)` | A secret value (as the client hides numbers in instanced combat): `set("units.player.hp", secret(100))`. |
+| `secretGeometry(mode)` | Secret positions and sizes, as the client hides them: `"derived"` (a bar's fill while its value is secret, a font string showing secret text, and anything anchored to those), `"strict"` (those, and every frame of the game's but UIParent), or off (`null`). Geometry getters then answer with secrets. |
 | `get(field)` / `set(field, value)` | Any world field by path: `set("money", 12345)`, `set("build.interface", 120007)`. |
 | `without(...names)` | Removes global APIs, as an older client would lack them. |
 
@@ -180,6 +185,35 @@ stack. A test that causes an error on purpose names it:
 - A marker that matches nothing fails the test too.
 - `AURA_FALLBACK` (in `helpers.mjs`) names the deliberate aura-container
   fallback notice (D-06).
+
+### Taint, combat and secret geometry
+
+`scripts/lib/wow-taint.lua` holds the addon to rules the real client enforces and a
+line-coverage run can't see. A broken rule is recorded and judged like a caught
+error: the test fails unless `expectErrors` names it.
+
+- **Who owns a frame.** A widget made by the addon's files (`Core/`, `Modules/`,
+  `Libs/`), or made on one of the addon's frames (a group header's buttons), is the
+  addon's. Everything else is the game's: what existed before the addon loaded,
+  what the world makes, and what test code makes to stand in for the game.
+- **Field writes.** Addon code that stores a field on a game frame is recorded
+  (`field write: Modules/X.lua:12 stored the field vgFoo on the game's frame
+  ChatFrame1`). Keep that state in `ns.FrameState("vgFoo")[frame]`; a test reads it
+  the same way.
+- **Combat lockdown.** In combat, addon code that calls a protected method
+  (`Show`, `Hide`, `SetPoint`, `SetSize`, `SetAttribute` and the like) on a
+  protected frame is blocked: nothing happens, ADDON_ACTION_BLOCKED fires and the
+  call is recorded. Secure templates, `PlayerFrame` and the other unit frames, and
+  anything marked with `__wfgStub.protect(frame)` are protected, and so is a
+  frame holding one.
+- **Secret geometry** is off unless a test calls `world.secretGeometry`.
+- A test that wraps `CreateFrame` in its own Lua marks the wrapper with
+  `__wfgStub.transparent[CreateFrame] = true` after defining it, so ownership is
+  read from the code that called the wrapper.
+- `world.combat(true)` fires PLAYER_REGEN_DISABLED before `InCombatLockdown()`
+  turns true, as the client does: a handler there may still touch protected
+  frames, and `ns.OutOfCombat` would run at once, so work for after the fight
+  goes through `ns.AfterCombat`.
 
 ### Game windows
 
