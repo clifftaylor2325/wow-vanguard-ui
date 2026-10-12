@@ -487,6 +487,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: hover the zone name on the minimap's top band, click it, then click it again; press `M` for the world map, then use its minimise and maximise button, click a few zones, open the quest panel on its side and click a quest; hover the group finder eye by the minimap, then click it to open the group finder; open the Legacy window from its button on the menu bar; type `/calendar`, open a day with an event and the "Create event" dialog.
 - Expect: the minimap's zone tooltip names the zone, its subzone and whose territory it is, the first click opens the world map and the second closes it; each window has Vanguard's flat dark panel, close button and buttons and no game border; the map itself stays fully visible with no dark box over it (also after minimising and maximising), the coordinate line still shows along its bottom, the nav bar's crumbs follow you into each zone, the calendar's days are dark tiles with event icons still showing, and the Legacy talent nodes and side tabs are untouched.
 - If it fails, paste: a screenshot of the window, which of these steps broke, and `/vg errors`.
+
+### 14.5.1 Group finder search page and Legacy challenges
+
+- Do: open the group finder and go to its search page (the who list, with the player search box); look at it before searching, search for a name nobody has, then for a name that is online; go to the browse page and look at its top right corner. Then open the Legacy window's Challenges page and look at the right-hand pane before picking a category, after picking one, and on a category with no challenges.
+- Expect: the search page has the flat panel like the listing and browse pages, with no brass border, and its list sits on a flat inset panel. While the list is empty, a grey line in its middle says the game's "No groups found" line (the game's own words, so it says groups on a player search). The line also shows before the first search, and it goes away when the list has names. The settings gear sits in the title row just left of the close button, not on it. The Legacy challenge pane says "Select a category to view its challenges." until you pick one. On a category with nothing in it, it says the game's line, or "No challenges to show here.". No world or game art shows through any Legacy page.
+- If it fails, paste: a screenshot of the page that is wrong, the step that broke, and `/vg errors`.
 ### 14.6 Menus and tooltips
 
 - Do: (1) in a party, right-click a party member's frame and use Whisper, then right-click it again for Set Focus (once out of combat, once in combat), then right-click yourself for Leave Party; (2) click the minimap's tracking button; (3) right-click a chat tab; (4) at the auction house, open a dropdown (the category or sort filter); (5) open the guild window's Preferred Play Settings and its language dropdown, if your guild window has it (the game's last old-style dropdown); (6) type `/w ` and the first letters of a friend's name in chat; (7) click an item link in chat and hold Shift over the tooltip that opens, to compare it with what you wear.
@@ -551,6 +557,24 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: under `/vg` → Bars, map, chat → Game windows untick "Tab buttons and the inside of the character pane", `/reload`, open the character pane and the friends window.
 - Expect: the tabs, the pane's lists and the scroll bars are the game's own again; the windows keep their Vanguard panels.
 - If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.8.6 The small square tabs on the Character tab
+
+- Do: press C on a character that knows one title or none, and look at the small square tabs at the top of the stats half (stats, equipment manager, titles). Then do the same on a character with two or more titles and click the third tab.
+- Expect: with one title or none, the third tab (Titles) is dimmed and grey and does nothing. The game itself disables it, and Vanguard leaves these tabs as the game draws them. With two or more titles it shows its icon and opens the title list.
+- If it fails, paste: a screenshot of the tabs, how many titles the character knows, and `/vg errors`.
+
+### 14.8.7 Character pane backdrops, currency and the arrow
+
+- Do: press C and click the gold arrow in the title row to hide the stats half, then click it again. Open Reputation and Skills. Open Currency on a new character that has no currencies, then on one that has some.
+- Expect: no wooden or stone backdrop shows behind any tab, and each list sits on a flat dark inset panel. The arrow sits in the title row just left of the close button, level with the title and not over the close button, with the stats half shown and hidden; it still hides and shows the stats half. The empty currency list says "You have no currencies yet." in grey in its middle; the line is gone when the list has currencies.
+- If it fails, paste: a screenshot with the stats half shown, one with it hidden, one of the Currency tab, and `/vg errors`.
+
+### 14.8.8 Appearances
+
+- Do: open the collections window (Shift+P) on the Appearances tab. Click a slot where you have nothing collected (a tabard on a new character, say), then a slot that has appearances, then open the Sets tab.
+- Expect: no leather backdrop. The item grid, and the sets tab's list and preview, sit on flat dark inset panels with the models still showing. The empty slot says "No appearances to show for this slot." in grey; the line is gone on a slot that has appearances.
+- If it fails, paste: a screenshot of the empty slot, one of the Sets tab, and `/vg errors`.
 
 ### 14.9.1 Battleground queue dialogs
 
