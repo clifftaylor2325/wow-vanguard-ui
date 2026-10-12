@@ -1135,10 +1135,11 @@ end
 -- over a bright bar, such as raid frame names).
 T.ROLES = {
   title = { 15, true }, heading = { 13, true }, name = { 12, true }, cell = { 11, true },
-  label = { 12 }, number = { 12 }, small = { 10 }, tiny = { 9 }, world = { 11, true, "OUTLINE" },
+  -- No role is under 10 (#258) but badge, for a count or mark on a tiny badge.
+  label = { 12 }, number = { 12 }, small = { 10 }, tiny = { 10 }, badge = { 9 }, world = { 11, true, "OUTLINE" },
   barName = { 11, true, "OUTLINE" }, barSmall = { 10, false, "OUTLINE" },
   -- Aura icons: stack counts, and the timer on larger and smaller icons.
-  cooldown = { 14, true, "OUTLINE" }, auraCount = { 10, true, "OUTLINE" }, auraTimer = { 11, true, "OUTLINE" }, auraTimerSmall = { 9, true, "OUTLINE" },
+  cooldown = { 14, true, "OUTLINE" }, auraCount = { 10, true, "OUTLINE" }, auraTimer = { 11, true, "OUTLINE" }, auraTimerSmall = { 10, true, "OUTLINE" },
   -- Chat windows (Modules/Chat.lua picks the size; this is Medium).
   chat = { 12 },
 }

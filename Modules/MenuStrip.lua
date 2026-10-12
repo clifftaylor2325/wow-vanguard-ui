@@ -324,7 +324,7 @@ local function placeFill(b, rel)
   if not b.vgFree then return end
   local pad = MS.COUNT_PAD / rel
   b.vgFree:SetPoint("BOTTOMRIGHT", b.vgIcon, "BOTTOMRIGHT", -pad, MS.FILL / rel + pad)
-  T.TextSize(b.vgFree, T.RoleSize("tiny") / rel)
+  T.TextSize(b.vgFree, T.RoleSize("badge") / rel)
   b.vgFreeBack:SetPoint("TOPLEFT", b.vgFree, "TOPLEFT", -pad, pad)
   b.vgFreeBack:SetPoint("BOTTOMRIGHT", b.vgFree, "BOTTOMRIGHT", pad, -pad)
 end
@@ -511,7 +511,7 @@ local function addFree(b)
   b.vgFreeBack = T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
   b.vgFreeBack:SetTexture(T.WHITE)
   T.Tint(b.vgFreeBack, "edge", MS.COUNT_BACK)
-  b.vgFree = T.Text(b:CreateFontString(nil, "OVERLAY"), "tiny")
+  b.vgFree = T.Text(b:CreateFontString(nil, "OVERLAY"), "badge")
   MS.free, MS.freeBack = b.vgFree, b.vgFreeBack
 end
 

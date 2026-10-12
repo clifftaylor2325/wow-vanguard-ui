@@ -2476,7 +2476,7 @@ it("bag and menu bar: each bag's slot shows how full it is, the backpack how man
   expect(r3(bag("CharacterBag2Slot")[1]), "a soul bag fills by its own slots (15 of 20)").toBe(13.5);
   // The backpack's free count and its font size on screen.
   const count = () => addon.eval("local fs = ns.GetModule('MenuStrip').free local _, size = fs:GetFont() return { fs:GetText(), size * MainMenuBarBackpackButton:GetEffectiveScale() / UIParent:GetEffectiveScale() }");
-  expect([count()[0], r3(count()[1])], "the backpack: 4 free (the soul bag's free slots hold only shards), at the theme's tiny size on screen").toEqual(["4", addon.eval('return ns.Theme.RoleSize("tiny")')]);
+  expect([count()[0], r3(count()[1])], "the backpack: 4 free (the soul bag's free slots hold only shards), at the theme's badge size on screen (9, the one role under 10)").toEqual(["4", addon.eval('return ns.Theme.RoleSize("badge")')]);
   addon.eval("__space[0][2] = 0 __space[1] = { 12, 12, 0 }");
   addon.fire("BAG_UPDATE_DELAYED");
   expect([bag("MainMenuBarBackpackButton")[1], bag("CharacterBag0Slot").slice(0, 1), bag("CharacterBag0Slot")[3], count()[0]], "the bags change: the backpack's fill is full, a new empty bag shows in color with no fill, 12 free").toEqual([18, [false], 1, "12"]);
