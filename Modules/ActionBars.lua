@@ -352,7 +352,7 @@ local function addIcon(b)
   b.icon = b:CreateTexture(nil, "ARTWORK")
   b.icon:SetPoint("TOPLEFT", px, -px)
   b.icon:SetPoint("BOTTOMRIGHT", -px, px)
-  b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+  T.Crop(b.icon)
 end
 
 -- The count (bottom right, white) and hotkey (top right, light gray) texts.

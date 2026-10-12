@@ -125,6 +125,38 @@ function E.RegisterDispel(button, textures, alpha)
   for _, t in ipairs(textures) do button:AddDispelTypeTexture(t, opts) end
 end
 
+-- The client's dispel types a badge map covers (the untyped ones map clear).
+local BADGE_TYPES = { "None", "Bleed", "Magic", "Curse", "Disease", "Poison" }
+
+-- A color map for one badge part: `color(kind)` gives r, g, b, a for each type, as Color objects.
+local function badgeMap(color)
+  local map = {}
+  for _, kind in ipairs(BADGE_TYPES) do map[kind] = CreateColor(color(kind)) end
+  return map
+end
+
+-- The backing's color for a type: dark for a type with a letter, clear for one without.
+local function backColor(kind)
+  local r, g, b = T.RGB("edge")
+  return r, g, b, A.DISPEL_GLYPHS[kind] and 0.8 or 0
+end
+
+-- The client's options for a badge part colored by `map` (the art kept, shown with a debuff).
+local function badgeOpts(map)
+  return { style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset, showWhenHarmful = true, customDispelColorMap = map }
+end
+
+-- Hands a debuff's type badge to the client (#235): the backing for any typed debuff, and each
+-- letter in its type's color for its own type only (clear for every other), hidden types included.
+function E.RegisterBadge(button, badge)
+  button:AddDispelTypeTexture(badge.back, badgeOpts(once("badgeBack", function() return badgeMap(backColor) end)))
+  for kind, t in pairs(badge.letters) do
+    local r, g, b = T.RGB(A.DispelToken(kind))
+    local map = once("badge" .. kind, function() return badgeMap(function(k) return r, g, b, k == kind and 1 or 0 end) end)
+    button:AddDispelTypeTexture(t, badgeOpts(map))
+  end
+end
+
 -- A soft accent wash the client shows while your HoT is in its refresh window
 -- (the last stretch, where casting it again loses nothing).
 local function pandemic(button, parts)
@@ -145,7 +177,7 @@ function E.Init(button, style)
   button:SetDurationCooldown(parts.cooldown)
   button:SetApplicationCount(parts.count, {})
   if parts.timer then durationText(button, parts.timer) end
-  if parts.ring then ns.Try("debuff type colors", E.RegisterDispel, button, parts.ring, 1) end
+  if parts.ring then ns.Try("debuff type colors", E.RegisterDispel, button, parts.ring, 1) ns.Try("debuff type badge", E.RegisterBadge, button, parts.badge) end
   if style.pandemic then ns.Try("HoT refresh window", pandemic, button, parts) end
   if style.register then ns.Try("aura icon extras", style.register, button) end
   if style.cancel and button.SetCancelAuraButtons then button:SetCancelAuraButtons("RightButtonUp") end

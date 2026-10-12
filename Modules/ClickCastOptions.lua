@@ -59,7 +59,7 @@ end
 -- An icon frame with a letter for actions that have no icon; :Set(binding) fills it.
 local function bindingIcon(parent, size)
   local f = iconFrame(parent, size)
-  f.letter = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading", "accent")
+  f.letter = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading", "accentText")
   f.letter:SetPoint("CENTER")
   f.Set = setIcon
   return f

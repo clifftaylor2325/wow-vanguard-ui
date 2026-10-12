@@ -71,7 +71,7 @@ const alpha = (addon, expr) => addon.eval(`return (${expr}):GetAlpha()`);
 // How many textures of a frame (by Lua expression) are visible and stretch over the whole frame (a fill).
 const fills = (addon, expr) => addon.eval(`local n = 0
   for _, r in ipairs({ (${expr}):GetRegions() }) do
-    if r.__kind == "Texture" and r:GetAlpha() ~= 0 and r.__points.TOPLEFT and r.__points.BOTTOMRIGHT then n = n + 1 end
+    if r.__kind == "Texture" and r:GetAlpha() ~= 0 and r:IsShown() and r.__points.TOPLEFT and r.__points.BOTTOMRIGHT then n = n + 1 end
   end
   return n`);
 
@@ -192,7 +192,7 @@ it("quest panel in the map: with Vanguard's quest log off, the list, the details
     list: 0, scroll: 0, edge: 0, bg: 0, seal: 0, border: 0, strip: 0, rewards: 0, buttons: [0, 0, 0, 0] });
   expect([fills(addon, "QuestMapFrame.QuestsFrame"), fills(addon, "QuestMapFrame.QuestsFrame.DetailsFrame")], "the list and the details each get an inset panel").toEqual([1, 1]);
   expect(windowState(addon, "QuestLogPopupDetailFrame"), "the pop-out is a window in the theme").toMatchObject({ art: 0, nine: 0, panel: true, title: true });
-  expect(["Abandon", "Share", "Track"].map((b) => fills(addon, `QuestLogPopupDetailFrame${b}Button`)), "its three buttons are themed (a fill and a hover wash each)").toEqual([2, 2, 2]);
+  expect(["Abandon", "Share", "Track"].map((b) => fills(addon, `QuestLogPopupDetailFrame${b}Button`)), "its three buttons are themed (one fill each; the hover fill stays clear until the mouse comes over)").toEqual([1, 1, 1]);
   addon.eval("QuestMapFrame:Hide() QuestMapFrame:Show() QuestLogPopupDetailFrame:Hide() QuestLogPopupDetailFrame:Show()");
   expect(questPanel(addon).painted, "showing them again paints nothing new").toBe(first.painted);
 });
@@ -237,7 +237,7 @@ it("battlefield map: its border and tab in the theme once the game loads it, the
   expect([fills(addon, "BattlefieldMapFrame.BorderFrame"), addon.eval("return select('#', BattlefieldMapFrame.BorderFrame:GetRegions()) > 8")], "an edge is painted over the map but no fill, which would hide it").toEqual([0, true]);
   expect(addon.eval("local c = BattlefieldMapFrame.BorderFrame.CloseButton return select('#', c:GetRegions()) > 1"), "the close button is the theme's").toBe(true);
   expect(addon.eval("local t = BattlefieldMapTab return { t.Left:GetAlpha(), t.Middle:GetAlpha(), t.Right:GetAlpha(), t.Text:GetAlpha() }"), "the tab's art is faded, its label kept").toEqual([0, 0, 0, 1]);
-  expect([fills(addon, "BattlefieldMapTab"), alpha(addon, "BattlefieldMapFrame.ScrollContainer")], "the tab is a flat button, the canvas the game's").toEqual([2, 1]);
+  expect([fills(addon, "BattlefieldMapTab"), alpha(addon, "BattlefieldMapFrame.ScrollContainer")], "the tab is a flat button (its hover clear at rest), the canvas the game's").toEqual([1, 1]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("BattlefieldMapFrame:Hide() BattlefieldMapFrame:Show()");
   expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(painted);
@@ -298,7 +298,7 @@ it("group finder: the window, its listing and browse pages and the group tooltip
   expect([fills(addon, "LFGListingFrame.Inset"), fills(addon, "LFGListingFrame.ActivityView.Comment")], "an inset panel on the page, and the comment box is the theme's edit box").toEqual([1, 1]);
   expect(addon.eval("local c = LFGListingFrame.ActivityView.Comment return { c.TopLeftTex:GetAlpha(), c.EditBox:GetAlpha() }"), "its border art is faded, the box inside kept").toEqual([0, 1]);
   expect(addon.eval("local l, b = LFGListingFrame, LFGBrowseFrame local out = {} for _, f in ipairs({ l.BackButton, l.PostButton, l.GroupRoleButtons.RolePollButton, b.SendMessageButton, b.GroupInviteButton }) do out[#out + 1] = (f:GetRegions()):GetAlpha() end return out"), "the buttons' art is faded").toEqual([0, 0, 0, 0, 0]);
-  expect([fills(addon, "LFGListingFrame.PostButton"), fills(addon, "LFGBrowseFrame.GroupInviteButton")], "and they are flat buttons").toEqual([2, 2]);
+  expect([fills(addon, "LFGListingFrame.PostButton"), fills(addon, "LFGBrowseFrame.GroupInviteButton")], "and they are flat buttons (one fill; the hover clear at rest)").toEqual([1, 1]);
   expect([addon.eval("return LFGBrowseSearchEntryTooltip.NineSlice:GetAlpha()"), fills(addon, "LFGBrowseSearchEntryTooltip")], "the tooltip's border is faded and a panel painted").toEqual([0, 1]);
   const painted = listing.painted;
   addon.eval("for _, n in ipairs({ 'LFGParentFrame', 'LFGListingFrame', 'LFGBrowseFrame', 'LFGBrowseSearchEntryTooltip' }) do _G[n]:Hide() _G[n]:Show() end");
@@ -494,7 +494,7 @@ it("calendar: the seven dialogs are skinned, with their headers, buttons and tex
   }
   expect([calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "the holiday's art and the create dialog's icon are left as the game has them").toEqual([0.4, 1]);
   expect(["CalendarViewHolidayCloseButton", "CalendarViewEventCloseButton", "CalendarCreateEventCloseButton", "CalendarMassInviteCloseButton"].map(n => closeSeal(addon, n)), "the close buttons are the theme's close seal").toEqual([true, true, true, true]);
-  expect(["CalendarViewEventAcceptButton", "CalendarCreateEventCreateButton", "CalendarEventPickerCloseButton", "CalendarTexturePickerAcceptButton"].map(n => fills(addon, n)), "the push buttons are flat buttons").toEqual([2, 2, 2, 2]);
+  expect(["CalendarViewEventAcceptButton", "CalendarCreateEventCreateButton", "CalendarEventPickerCloseButton", "CalendarTexturePickerAcceptButton"].map(n => fills(addon, n)), "the push buttons are flat buttons (one fill; the hover clear at rest)").toEqual([1, 1, 1, 1]);
   expect(["CalendarCreateEventTitleEdit", "CalendarMassInviteMinLevelEdit"].map(n => calAlpha(addon, `(_G.${n}:GetRegions())`)), "the text boxes' template art is faded").toEqual([0, 0]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("CalendarCreateEventFrame:Hide() CalendarCreateEventFrame:Show() CalendarViewHolidayFrame:Hide() CalendarViewHolidayFrame:Show()");
