@@ -95,3 +95,55 @@ it("S8.1 scoreboards: loaded later (on demand), switched off, or bare", () => {
   bare.eval("PVPMatchScoreboard:Show() PVPMatchResults:Show()");
   expect([windowState(bare, "PVPMatchResults").panel, windowErrors(bare)], "windows without a table, bar or buttons").toEqual([true, "none"]);
 });
+
+// Queue dialogs -----------------------------------------------------------------------------------
+
+// The four queue dialogs as the game builds them: a dialog border, own art, named push buttons; the invite's
+// battleground icon, ring and hide button; the ready popup drawn on its ReadyStatus child.
+const DIALOG_ENV = PVP_ENV + `
+  function __dialog(name, parent)
+    local f = CreateFrame("Frame", name, parent or UIParent) __art(f)
+    f.Border = CreateFrame("Frame", nil, f) __art(f.Border)
+    f:Hide() return f
+  end
+  local d = __dialog("PVPReadyDialog") d.background, d.bottomArt = __art(d), __art(d, "OVERLAY")
+  CreateFrame("Button", "PVPReadyDialogCloseButton", d)
+  CreateFrame("Button", "PVPReadyDialogEnterBattleButton", d) CreateFrame("Button", "PVPReadyDialogLeaveQueueButton", d)
+  local r = __dialog("PVPRoleCheckPopup")
+  r.TankIcon = CreateFrame("Button", "PVPRoleCheckPopupRoleButtonTank", r) r.TankIcon.icon = __art(r.TankIcon, "ARTWORK")
+  CreateFrame("Button", "PVPRoleCheckPopupAcceptButton", r) CreateFrame("Button", "PVPRoleCheckPopupDeclineButton", r)
+  local p = __dialog("PVPFramePopup") PVPFramePopupBackground = __art(p, "BORDER")
+  p.ringIcon, PVPFramePopupRing = __art(p, "ARTWORK"), __art(p, "OVERLAY")
+  p.minimizeButton = CreateFrame("Button", "PVPFramePopupMinimizeButton", p) __art(p.minimizeButton, "ARTWORK")
+  CreateFrame("Button", "PVPFramePopupAcceptButton", p) CreateFrame("Button", "PVPFramePopupDeclineButton", p)
+  local pop = CreateFrame("Frame", "PVPReadyPopup", UIParent) pop:Hide()
+  local status = __dialog("ReadyStatus", pop) status:Show() status.CloseButton = CreateFrame("Button", nil, status)
+  pop.RolelessButton = CreateFrame("Frame", nil, pop) pop.RolelessButton.Texture = __art(pop.RolelessButton, "ARTWORK")
+`;
+
+it("S8.2 queue dialogs: border and art faded, content art kept, a panel, the close, hide and push buttons themed", () => {
+  const addon = loggedIn(DIALOG_ENV);
+  addon.eval("PVPReadyDialog:Show() PVPRoleCheckPopup:Show() PVPFramePopup:Show() PVPReadyPopup:Show()");
+  expect(addon.eval(`local out = {} for i, n in ipairs({ "PVPReadyDialog", "PVPRoleCheckPopup", "PVPFramePopup" }) do
+      local f = _G[n] out[i] = { f.Border:GetAlpha(), __panel(f) } end return out`), "each dialog: its border faded and a panel")
+    .toEqual([[0, true], [0, true], [0, true]]);
+  expect(addon.eval(`local d, p = PVPReadyDialog, PVPFramePopup
+    return { d.background:GetAlpha(), d.bottomArt:GetAlpha(), p.ringIcon:GetAlpha(), PVPFramePopupRing:GetAlpha(), PVPFramePopupBackground:GetAlpha() }`),
+  "the battleground picture, icon and ring kept; the divider and the invite's backdrop faded").toEqual([1, 0, 1, 1, 0]);
+  expect(addon.eval(`local out = {} for i, n in ipairs({ "PVPReadyDialogCloseButton", "PVPReadyDialogEnterBattleButton", "PVPReadyDialogLeaveQueueButton",
+      "PVPRoleCheckPopupAcceptButton", "PVPRoleCheckPopupDeclineButton", "PVPFramePopupAcceptButton", "PVPFramePopupDeclineButton" }) do
+      out[i] = __panel(_G[n]) or select('#', _G[n]:GetRegions()) > 0 end return out`), "close and push buttons themed").toEqual(Array(7).fill(true));
+  expect(addon.eval("return { (PVPFramePopupMinimizeButton:GetRegions()):GetAlpha(), select('#', PVPFramePopupMinimizeButton:GetRegions()) > 1 }"),
+    "the invite's hide button: its art faded, the theme's glyph on it").toEqual([0, true]);
+  expect(addon.eval("return { PVPRoleCheckPopup.TankIcon.icon:GetAlpha(), PVPReadyPopup.RolelessButton.Texture:GetAlpha() }"), "role icons keep their art").toEqual([1, 1]);
+});
+
+it("S8.2 the ready popup is drawn on its ReadyStatus child; the group off leaves every dialog the game's", () => {
+  const addon = loggedIn(DIALOG_ENV);
+  addon.eval("PVPReadyPopup:Show()");
+  expect(addon.eval("return { ReadyStatus.Border:GetAlpha(), __panel(ReadyStatus), select('#', ReadyStatus.CloseButton:GetRegions()) > 0, __panel(PVPReadyPopup) }"),
+    "the child: border faded, a panel, its close button themed; the popup itself painted nothing").toEqual([0, true, true, false]);
+  const off = loggedIn(DIALOG_ENV, OFF);
+  off.eval("PVPReadyDialog:Show() PVPReadyPopup:Show()");
+  expect(off.eval("return { PVPReadyDialog.Border:GetAlpha(), __panel(PVPReadyDialog), ReadyStatus.Border:GetAlpha(), PVPReadyDialog.vgWindow == nil }"), "with the group off").toEqual([1, false, 1, true]);
+});
