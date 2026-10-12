@@ -129,7 +129,7 @@ const WORLD = `
   local tab = CreateFrame("Button", "ChatFrame1Tab", UIParent)
   tab:SetSize(70, 22)
   tab:SetPoint("BOTTOMLEFT", chat, "TOPLEFT", 0, 6)
-  tab.Text = tab:CreateFontString(nil, "OVERLAY")
+  tab.Text = tab:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   tab.Text:SetPoint("CENTER")
   tab.Text:SetText("General")
   SELECTED_CHAT_FRAME = chat
@@ -363,13 +363,13 @@ const SCENES = [
       DamageMeter = CreateFrame("Frame", "DamageMeter", UIParent) DamageMeter:SetSize(400, 200) DamageMeter:SetPoint("TOPLEFT")
       local w = CreateFrame("Frame", "DamageMeterSessionWindow1", DamageMeter) w:SetPoint("TOPLEFT") w:SetPoint("BOTTOMRIGHT")
       w.Header = w:CreateTexture() w.Header:SetColorTexture(0.5, 0.35, 0.1, 1) w.Header:SetPoint("TOPLEFT") w.Header:SetPoint("TOPRIGHT") w.Header:SetHeight(22)
-      local title = w:CreateFontString(nil, "OVERLAY") title:SetPoint("TOPLEFT", 8, -5) title:SetText("TEST-ONLY Damage Done") title:SetTextColor(1, 0.82, 0)
+      local title = w:CreateFontString(nil, "OVERLAY", "GameFontNormal") title:SetPoint("TOPLEFT", 8, -5) title:SetText("TEST-ONLY Damage Done") title:SetTextColor(1, 0.82, 0)
       w.ScrollBox = CreateFrame("Frame", nil, w) w.ScrollBox.lines = {}
       function w.ScrollBox:ForEachFrame(fn) for _, l in ipairs(self.lines) do fn(l) end end
       for i, row in ipairs({ { "<name>", 0.41, 0.8, 0.94, 1 }, { "TEST-ONLY Rogue", 1, 0.96, 0.41, 0.6 }, { "TEST-ONLY Priest", 1, 1, 1, 0.45 } }) do
         local l = CreateFrame("Button", nil, w.ScrollBox) l:SetPoint("TOPLEFT", w, "TOPLEFT", 4, -26 - (i - 1) * 20) l:SetPoint("RIGHT", w, "RIGHT", -4, 0) l:SetHeight(18)
         l.StatusBar = CreateFrame("StatusBar", nil, l) l.StatusBar:SetAllPoints() l.StatusBar:SetMinMaxValues(0, 1) l.StatusBar:SetValue(row[5]) l.StatusBar:SetStatusBarColor(row[2], row[3], row[4])
-        l.StatusBar.Name = l.StatusBar:CreateFontString(nil, "OVERLAY") l.StatusBar.Name:SetPoint("LEFT", 4, 0) l.StatusBar.Name:SetText(i .. ". " .. row[1])
+        l.StatusBar.Name = l.StatusBar:CreateFontString(nil, "OVERLAY", "GameFontNormal") l.StatusBar.Name:SetPoint("LEFT", 4, 0) l.StatusBar.Name:SetText(i .. ". " .. row[1])
         w.ScrollBox.lines[i] = l end
       DamageMeter.windows = { w }
       function DamageMeter:ForEachSessionWindow(fn) for _, x in ipairs(self.windows) do fn(x) end end
@@ -381,23 +381,23 @@ const SCENES = [
       local function header(y, text)
         local h = CreateFrame("Frame", nil, ObjectiveTrackerFrame) h:SetSize(260, 24) h:SetPoint("TOPLEFT", 0, y)
         h.Background = h:CreateTexture() h.Background:SetAllPoints() h.Background:SetColorTexture(0.45, 0.32, 0.12, 1)
-        h.Text = h:CreateFontString(nil, "OVERLAY") h.Text:SetPoint("LEFT", 8, 0) h.Text:SetText(text) h.Text:SetTextColor(1, 0.82, 0)
+        h.Text = h:CreateFontString(nil, "OVERLAY", "GameFontNormal") h.Text:SetPoint("LEFT", 8, 0) h.Text:SetText(text) h.Text:SetTextColor(1, 0.82, 0)
         h.MinimizeButton = CreateFrame("Button", nil, h) h.MinimizeButton:SetSize(16, 16) h.MinimizeButton:SetPoint("RIGHT", -6, 0)
         return h
       end
       ObjectiveTrackerFrame.Header = header(0, "All Objectives")
       ObjectiveTrackerFrame.modules = { { Header = header(-30, "Quests") } }
       for i, line in ipairs({ { "[14] TEST-ONLY Patrolling", 1, 0.82, 0 }, { "  - Ready for turn-in", 0.8, 0.8, 0.8 }, { "[12] TEST-ONLY Militia", 0.25, 0.75, 0.25 }, { "  - 3/15 TEST-ONLY slain", 0.8, 0.8, 0.8 } }) do
-        local fs = ObjectiveTrackerFrame:CreateFontString(nil, "OVERLAY") fs:SetPoint("TOPLEFT", 10, -60 - (i - 1) * 16) fs:SetText(line[1]) fs:SetTextColor(line[2], line[3], line[4]) end` },
+        local fs = ObjectiveTrackerFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal") fs:SetPoint("TOPLEFT", 10, -60 - (i - 1) * 16) fs:SetText(line[1]) fs:SetTextColor(line[2], line[3], line[4]) end` },
   { name: "vanguard-window", caption: "A game window in the Vanguard look: the game's art faded, a flat panel with a soft shadow, the theme's close button, title and buttons (TEST-ONLY merchant window)",
     lua: "MerchantFrame:Show()",
     before: `local f = CreateFrame("Frame", "MerchantFrame", UIParent) f:SetSize(340, 420) f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 40, -120)
       local art = f:CreateTexture(nil, "BACKGROUND") art:SetAllPoints() art:SetColorTexture(0.45, 0.32, 0.18, 1)
       f.CloseButton = CreateFrame("Button", "MerchantFrameCloseButton", f) f.CloseButton:SetSize(20, 20) f.CloseButton:SetPoint("TOPRIGHT", -4, -4)
       f.TitleContainer = CreateFrame("Frame", nil, f) f.TitleContainer:SetAllPoints()
-      f.TitleContainer.TitleText = f.TitleContainer:CreateFontString(nil, "OVERLAY") f.TitleContainer.TitleText:SetPoint("TOP", 0, -8) f.TitleContainer.TitleText:SetText("TEST-ONLY Merchant")
+      f.TitleContainer.TitleText = f.TitleContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal") f.TitleContainer.TitleText:SetPoint("TOP", 0, -8) f.TitleContainer.TitleText:SetText("TEST-ONLY Merchant")
       for i = 1, 2 do local b = CreateFrame("Button", "MerchantFrameButton" .. i, f) b:SetSize(120, 22) b:SetPoint("BOTTOMLEFT", 16 + (i - 1) * 140, 14)
-        b.text = b:CreateFontString(nil, "OVERLAY") b.text:SetPoint("CENTER") b.text:SetText(i == 1 and "TEST-ONLY Repair" or "TEST-ONLY Buyback") end
+        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal") b.text:SetPoint("CENTER") b.text:SetText(i == 1 and "TEST-ONLY Repair" or "TEST-ONLY Buyback") end
       f:Hide()` },
   { name: "vanguard-errands", caption: "Errands: Train all on the trainer's window, with the count and what it costs, and the flight timer counting down to a route flown before (TEST-ONLY trainer and route)",
     lua: `__wfgStub.fire("ADDON_LOADED", "Blizzard_TrainerUI") __wfgStub.fire("TRAINER_SHOW")
