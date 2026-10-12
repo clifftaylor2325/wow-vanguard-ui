@@ -772,6 +772,7 @@ local function currentProfileRows()
     { "header", "Profile" },
     { "text", currentProfileText },
     { "button", "Export profile", function() ns.ShowText("Vanguard export  Ctrl+C to copy", ns.ExportProfile()) end },
+    { "button", "Choose what to export", function() ns.ExportDialog() end },
     { "button", "Import", function() ns.ImportDialog() end },
     { "button", "Reset profile", function() ns.ResetProfile(); O.NeedReload() end },
     { "button", "Start over: reset and run setup", startOver },

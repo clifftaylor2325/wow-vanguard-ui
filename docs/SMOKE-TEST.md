@@ -126,6 +126,24 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a text box titled `Vanguard export (profile Smoke)  Ctrl+C to copy` holding one long string.
 - If it fails, paste: a screenshot.
 
+### 4.4 Export only the layout
+
+- Do: type `/vg export pick`, click None, switch on Layout (positions and movers) and click Export; copy the string. On another character (or after `/vg profile new Other` and a reload), move one frame with `/vg unlock`, change the accent with `/vg accent fel`, then `/vg import` the string and reload.
+- Expect: the panel lists Layout, Situations overrides, Global settings and your modules, all on at first; the box is titled `Vanguard export (layout)  Ctrl+C to copy` and its string starts `VG1:parts:`. The import says `Imported layout settings into profile <name>.` and `Profile <name> as it was before this import is saved as profile <name> backup.`; after the reload the frames sit where the string put them and the fel accent is still there.
+- If it fails, paste: the chat lines, a screenshot after the reload, and `/vg errors`.
+
+### 4.5 Import a large string
+
+- Do: on a profile with many modules set up, type `/vg export`, copy the string, then `/vg import`, paste it and click Import.
+- Expect: no freeze; for a large string the box's title counts up (`Importing… 40%`) before it closes. Your own unchanged export says `This string matches profile <name>, which this character already uses: nothing new to import.` and makes no `Imported` profile.
+- If it fails, paste: how long the game froze, the chat lines and `/vg errors`.
+
+### 4.6 Import a font this client lacks
+
+- Do: with another addon's font picked under General → Font, `/vg export` the profile; disable that addon (or use a client without it), reload, and `/vg import` the string.
+- Expect: chat names it: `Font not found: <name> (no addon here shares it). Vanguard uses its default font instead.`, and the text is drawn in Fira Sans Condensed.
+- If it fails, paste: the chat lines and a screenshot of some text.
+
 ## 5. Pixel borders
 
 ### 5.1 Border width at 1440p
