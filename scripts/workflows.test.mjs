@@ -254,6 +254,46 @@ it("verify keeps its types and draft check and does not depend on the label", ()
   expect(code.join("\n")).not.toContain(FULL);
 });
 
+// Docs-only pull requests (#262) -------------------------------------------------------
+
+const DOCS_ONLY_IF = "if: steps.changes.outputs.docs_only != 'true'";
+
+// The steps of verify.yml's quick job, each as its text (from its `- ` line to the next step).
+function verifySteps() {
+  const lines = workflow("verify.yml").split("\n");
+  const starts = lines.flatMap((l, i) => (/^ {6}- /.test(l) ? [i] : []));
+  return starts.map((at) => [lines[at], ...deeperLines(lines, at + 1, 6)].join("\n"));
+}
+
+it("verify has no path filter, so the required check reports on every pull request", () => {
+  const on = workflow("verify.yml").split(/^permissions:/m)[0];
+  expect(on).toMatch(/^on:\n {2}pull_request:\n/m);
+  expect(on).not.toMatch(/^\s+paths(-ignore)?:/m);
+});
+
+it("verify fetches two deep, then its first check works out whether only docs changed", () => {
+  const [checkout, changes] = verifySteps();
+  expect(checkout).toMatch(/^ {6}- uses: actions\/checkout@/);
+  expect(checkout).toMatch(/^ {10}fetch-depth: 2$/m);
+  expect(changes).toMatch(/^ {6}- name: Docs-only change$/m);
+  expect(changes).toMatch(/^ {8}id: changes$/m);
+  expect(runBlocks(changes)).toEqual(["node scripts/docs-only.mjs"]);
+  expect(changes).not.toContain("if:");
+});
+
+it("every later verify step is skipped for a docs-only change, and the job still reports", () => {
+  const later = verifySteps().slice(2);
+  expect(later.length).toBeGreaterThanOrEqual(8);
+  for (const step of later) expect(step.split("\n").map((l) => l.trim()), step.split("\n")[0]).toContain(DOCS_ONLY_IF);
+  expect(jobCondition(workflow("verify.yml"), "quick")).toBe("${{ !github.event.pull_request.draft }}");
+});
+
+it("verify's header says why there is no path filter", () => {
+  const header = workflow("verify.yml").split(/^on:/m)[0];
+  expect(header).toContain("#262");
+  expect(header).toContain("scripts/docs-only.mjs");
+});
+
 it("no workflow sets the local login scope override, so CI runs the committed scope data", () => {
   const all = allWorkflows();
   expect(all.length).toBeGreaterThanOrEqual(4);
@@ -383,7 +423,7 @@ it("verify and lua-suite both run the TOC check right after the code-quality sca
   for (const file of ["verify.yml", "lua-suite.yml"]) {
     const text = workflow(file);
     expect(stepScript(file, "The TOC against the files on disk").trim(), file).toBe("node scripts/check-toc.mjs");
-    expect(text.indexOf("- name: The TOC against the files on disk"), file).toBeGreaterThan(text.indexOf("- run: npm run quality"));
+    expect(text.indexOf("- name: The TOC against the files on disk"), file).toBeGreaterThan(text.indexOf("run: npm run quality"));
   }
 });
 
