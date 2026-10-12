@@ -122,6 +122,145 @@ it("guild window: a second show paints nothing more, the switch off leaves the g
   expect([windowErrors(bare), bare.eval("return #ns.errors")], "a client with parts missing").toEqual(["none", 0]);
 });
 
+// The guild window's pages as Blizzard_Communities builds them: the roster (rows take their methods from
+// CommunitiesMemberListEntryMixin, which greys an offline member and sets a Rank cell to 75 on every layout; a
+// ColumnDisplay lays out headers from the column table), the Guild Info page's Guild Information box (filled by
+// CommunitiesGuildInfoFrame_UpdateText), and the Preferred Play Settings page with its Apply buttons (enabled by
+// RefreshState only for the guild master). One row is made before login, as a roster shown already would have.
+const PAGES_ENV = GUILD_ENV + `
+  Enum.ClubMemberPresence = { Online = 1, Offline = 3 }
+  __GUILD_COLUMNS = { { attribute = "level", width = 40 }, { attribute = "classID", width = 45 }, { attribute = "name", width = 100 },
+    { attribute = "zone", width = 100 }, { attribute = "guildRankOrder", width = 85 }, { attribute = "memberNote", width = 0 } }
+  __CLUB_COLUMNS = { { attribute = "name", width = 145 }, { attribute = "role", width = 85 }, { attribute = "memberNote", width = 0 } }
+  local f, list = CommunitiesFrame, CommunitiesFrame.MemberList
+  CommunitiesMemberListEntryMixin = {}
+  function CommunitiesMemberListEntryMixin:UpdatePresence()
+    local off = Enum.ClubMemberPresence and Enum.ClubMemberPresence.Offline
+    local c = self.memberInfo and off ~= nil and self.memberInfo.presence == off and 0.5 or 1
+    for _, fs in ipairs({ self.NameFrame.Name, self.Level, self.Zone, self.Rank, self.Note, self.GuildInfo }) do fs:SetTextColor(c, c, c) end
+  end
+  function CommunitiesMemberListEntryMixin:RefreshExpandedColumns() if self.Rank.SetWidth then self.Rank:SetWidth(75) end end
+  function CommunitiesMemberListEntryMixin:GetMemberList() return list end
+  list.columnInfo = __GUILD_COLUMNS
+  list.ScrollBox = { rows = {} }
+  function list.ScrollBox:ForEachFrame(fn) for _, row in ipairs(self.rows) do fn(row) end end
+  function __row(presence)
+    local row = CreateFrame("Button", nil, list)
+    for k, v in pairs(CommunitiesMemberListEntryMixin) do row[k] = v end
+    row.NameFrame = CreateFrame("Frame", nil, row) row.NameFrame.Name = row.NameFrame:CreateFontString()
+    for _, k in ipairs({ "Level", "Zone", "Rank", "Note", "GuildInfo" }) do row[k] = row:CreateFontString() end
+    row.memberInfo, row.expanded = { presence = presence }, true
+    row.Note:SetWidth(93)
+    table.insert(list.ScrollBox.rows, row)
+    return row
+  end
+  __early = __row(Enum.ClubMemberPresence.Offline)
+  local display = CreateFrame("Frame", nil, list) list.ColumnDisplay = display
+  display.columnHeaders = { active = {} }
+  function display.columnHeaders:EnumerateActive() return pairs(self.active) end
+  function display:LayoutColumns(columns)
+    self.columnHeaders.active = {}
+    for i, info in ipairs(columns) do
+      local header = CreateFrame("Button", nil, self) header:SetWidth(info.width) header:SetID(i)
+      self.columnHeaders.active[header] = true
+    end
+  end
+  function __header(id) for h in pairs(list.ColumnDisplay.columnHeaders.active) do if h:GetID() == id then return h:GetWidth() end end end
+
+  local info = CreateFrame("Frame", nil, f.GuildDetailsFrame) f.GuildDetailsFrame.Info = info
+  info.DetailsFrame = CreateFrame("ScrollFrame", nil, info)
+  local child = CreateFrame("Frame", nil, info.DetailsFrame) info.DetailsFrame:SetScrollChild(child)
+  child.Details = child:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+  __infoText = ""
+  function CommunitiesGuildInfoFrame_UpdateText(self, infoText) self.DetailsFrame:GetScrollChild().Details:SetText(infoText or __infoText) end
+
+  local page = CreateFrame("Frame", "CommunitiesFrameGuildPreferredPlaySettingsFrame", f) f.GuildPreferredPlaySettingsFrame = page
+  for _, k in ipairs({ "LocaleApplyButton", "DatacenterApplyButton" }) do page[k] = CreateFrame("Button", nil, page) page[k].Art = page[k]:CreateTexture() end
+  __leader = false
+  function page:RefreshState() for _, b in ipairs({ self.LocaleApplyButton, self.DatacenterApplyButton }) do if __leader then b:Enable() else b:Disable() end end end
+`;
+
+// A roster row's text colors, as { name, level, zone, rank, note, guildInfo } red values (rounded to 0.01).
+const rowColors = (addon, row) => addon.eval(`local r = ${row} local out = {}
+  for _, fs in ipairs({ r.NameFrame.Name, r.Level, r.Zone, r.Rank, r.Note, r.GuildInfo }) do out[#out + 1] = math.floor(fs.__textColor[1] * 100 + 0.5) / 100 end
+  return out`);
+
+it("guild roster: the Rank column wider (header and cells), the Note column giving the room, on rows made before and after", () => {
+  const addon = loggedIn(PAGES_ENV);
+  addon.eval("CommunitiesFrame:Show() CommunitiesFrame.MemberList.ColumnDisplay:LayoutColumns(__GUILD_COLUMNS)");
+  expect(addon.eval("return { __header(5), __header(4), __header(6) }"), "the Rank header 85 + 40; the others the game's").toEqual([125, 100, 0]);
+  addon.eval("__late = __row(Enum.ClubMemberPresence.Online) __early:RefreshExpandedColumns() __late:RefreshExpandedColumns()");
+  expect(addon.eval("return { __early.Rank:GetWidth(), __late.Rank:GetWidth(), __late.Note:GetWidth() }"), "both rows' Rank cells 75 + 40; a filling note left alone").toEqual([115, 115, 93]);
+  addon.eval("__late.guildColumnIndex = 2 __late:RefreshExpandedColumns()");
+  expect(addon.eval("return __late.Note:GetWidth()"), "beside an extra column, the fixed note 93 - 40").toBe(53);
+  addon.eval("CommunitiesFrame:SetDisplayMode(2) __late:RefreshExpandedColumns()");
+  expect(addon.eval("return __late.Rank:GetWidth()"), "a page switch hooks no row twice").toBe(115);
+});
+
+it("guild roster: other clubs' columns, the chat-side list and a client without the parts keep the game's widths", () => {
+  const addon = loggedIn(PAGES_ENV);
+  addon.eval(`CommunitiesFrame:Show() CommunitiesFrame.MemberList.ColumnDisplay:LayoutColumns(__CLUB_COLUMNS)
+    CommunitiesFrame.MemberList.columnInfo = __CLUB_COLUMNS __early:RefreshExpandedColumns()`);
+  expect(addon.eval("return { __header(2), __early.Rank:GetWidth() }"), "a community's roster").toEqual([85, 75]);
+  addon.eval("CommunitiesFrame.MemberList.columnInfo = nil __early:RefreshExpandedColumns()");
+  expect(addon.eval("return __early.Rank:GetWidth()"), "no column table").toBe(75);
+  addon.eval("CommunitiesFrame.MemberList.columnInfo = __GUILD_COLUMNS __early.expanded = false __early:RefreshExpandedColumns()");
+  expect(addon.eval("return __early.Rank:GetWidth()"), "the collapsed list beside chat").toBe(75);
+  addon.eval(`CommunitiesFrame.MemberList.ColumnDisplay.columnHeaders = {} CommunitiesFrame.MemberList.ColumnDisplay:LayoutColumns(__GUILD_COLUMNS)
+    __early.expanded = true __early.Rank, __early.Note, __early.guildColumnIndex = {}, {}, 1 __early:RefreshExpandedColumns()`);
+  expect([windowErrors(addon), addon.eval("return #ns.errors")], "a header pool or cells it can't size").toEqual(["none", 0]);
+});
+
+it("guild roster: an offline member's row in the theme's secondary text, an online row left as the game colors it", () => {
+  const addon = loggedIn(PAGES_ENV);
+  addon.eval("CommunitiesFrame:Show() __late = __row(Enum.ClubMemberPresence.Online) __early:UpdatePresence() __late:UpdatePresence()");
+  const text2 = addon.eval("return math.floor(select(1, ns.Theme.RGB('text2')) * 100 + 0.5) / 100");
+  expect(rowColors(addon, "__early"), "offline: every text the game greys, lighter").toEqual([text2, text2, text2, text2, text2, text2]);
+  expect(text2, "lighter than the game's grey").toBeGreaterThan(0.5);
+  expect(rowColors(addon, "__late"), "online: the game's").toEqual([1, 1, 1, 1, 1, 1]);
+  addon.eval("__early.memberInfo = nil __early:UpdatePresence() __late.NameFrame = nil __late.memberInfo.presence = Enum.ClubMemberPresence.Offline __late.UpdatePresence = function() end");
+  expect(rowColors(addon, "__early"), "a header row (no member) keeps the game's").toEqual([1, 1, 1, 1, 1, 1]);
+  const noEnum = loggedIn(PAGES_ENV + "Enum.ClubMemberPresence = nil");
+  noEnum.eval("CommunitiesFrame:Show() __early.memberInfo.presence = nil __early:UpdatePresence()");
+  expect([rowColors(noEnum, "__early")[0], windowErrors(noEnum), noEnum.eval("return #ns.errors")], "a client without the presence enum").toEqual([1, "none", 0]);
+});
+
+it("guild info: a note in the empty Guild Information box, gone when the game fills it, back when it is emptied", () => {
+  const addon = loggedIn(PAGES_ENV);
+  addon.eval("CommunitiesFrame:Show()");
+  const note = "CommunitiesFrame.GuildDetailsFrame.Info.vgEmptyNote";
+  expect(addon.eval(`return { ${note}:GetText(), ${note}:IsShown(), ${note}:GetFont() ~= nil }`), "shown while the game has drawn nothing").toEqual(["No guild information yet.", true, true]);
+  addon.eval("CommunitiesGuildInfoFrame_UpdateText(CommunitiesFrame.GuildDetailsFrame.Info, 'Raids on Tuesday')");
+  expect(addon.eval(`return ${note}:IsShown()`), "hidden once the guild has information").toBe(false);
+  addon.eval("CommunitiesGuildInfoFrame_UpdateText(CommunitiesFrame.GuildDetailsFrame.Info)");
+  expect(addon.eval(`return ${note}:IsShown()`), "back when the information is emptied").toBe(true);
+  addon.eval("CommunitiesFrame:Hide() CommunitiesFrame:Show()");
+  expect(addon.eval("local n = 0 for _, r in ipairs({ CommunitiesFrame.GuildDetailsFrame.Info.DetailsFrame:GetScrollChild():GetRegions() }) do n = n + 1 end return n"), "made once").toBe(2);
+});
+
+it("preferred play settings: the page panelled, its Apply buttons flat and faint while the game disables them", () => {
+  const addon = loggedIn(PAGES_ENV);
+  addon.eval("CommunitiesFrame:Show()");
+  const page = "CommunitiesFrame.GuildPreferredPlaySettingsFrame";
+  expect(addon.eval(`local function painted(x) for _, r in ipairs({ x:GetRegions() }) do if r.__alpha ~= 0 then return true end end return false end
+    return { painted(${page}), painted(${page}.LocaleApplyButton), ${page}.LocaleApplyButton.Art.__alpha, ${page}.DatacenterApplyButton.Art.__alpha }`),
+  "an inset panel behind the page, flat buttons").toEqual([true, true, 0, 0]);
+  expect(addon.eval(`return { ${page}.LocaleApplyButton:GetAlpha(), ${page}.DatacenterApplyButton:GetAlpha() }`), "enabled: full").toEqual([1, 1]);
+  addon.eval(`${page}:RefreshState()`);
+  expect(addon.eval(`return { ${page}.LocaleApplyButton:GetAlpha(), ${page}.DatacenterApplyButton:GetAlpha() }`), "not the guild master: faint").toEqual([0.5, 0.5]);
+  addon.eval(`__leader = true ${page}:RefreshState()`);
+  expect(addon.eval(`return { ${page}.LocaleApplyButton:GetAlpha(), ${page}.DatacenterApplyButton:GetAlpha() }`), "the guild master: full again").toEqual([1, 1]);
+});
+
+it("guild pages: with the group off the roster, info box and settings page stay the game's", () => {
+  const off = loggedIn(PAGES_ENV, OFF);
+  off.eval("CommunitiesFrame:Show() CommunitiesFrame.MemberList.ColumnDisplay:LayoutColumns(__GUILD_COLUMNS) __early:RefreshExpandedColumns() __early:UpdatePresence()");
+  off.eval("CommunitiesFrame.GuildPreferredPlaySettingsFrame:RefreshState()");
+  expect(off.eval(`return { __header(5), __early.Rank:GetWidth(), CommunitiesFrame.GuildDetailsFrame.Info.vgEmptyNote == nil,
+    CommunitiesFrame.GuildPreferredPlaySettingsFrame.LocaleApplyButton:GetAlpha() }`)).toEqual([85, 75, true, 1]);
+  expect(rowColors(off, "__early")).toEqual([0.5, 0.5, 0.5, 0.5, 0.5, 0.5]);
+});
+
 // Guild dialogs --------------------------------------------------------------------------------------
 
 // Builds the guild dialogs as the game has them: translucent frames (a NineSlice, Bg), a log with a text "Close"
