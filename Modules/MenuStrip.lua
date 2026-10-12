@@ -444,6 +444,15 @@ local function icons(art)
   return set
 end
 
+-- Lets clicks through the game's own child frames on a menu button (its "new"
+-- indicator and pulse), so a click reaches the button while an alert is shown.
+-- Our slot is left alone.
+local function clickThrough(b)
+  for _, child in ipairs({ b:GetChildren() }) do
+    if child ~= vgSlot[b] and child.IsMouseEnabled and child:IsMouseEnabled() then child:EnableMouse(false) end
+  end
+end
+
 -- The game's art on a menu button that is fitted inside its slot: its state
 -- textures and whichever of MS.MENU_FIT it has; and which of it shows the game's icons.
 local function menuArt(b)
@@ -455,6 +464,7 @@ local function menuArt(b)
   for _, key in ipairs(MS.MENU_FIT) do
     if type(b[key]) == "table" and b[key].SetPoint then art[#art + 1] = b[key] end
   end
+  ns.OutOfCombat(function() clickThrough(b) end, "menustrip clickthrough " .. (b:GetName() or ""))
   return art, icons(art)
 end
 
