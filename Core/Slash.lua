@@ -14,6 +14,8 @@ local HELP = {
   "frames               list the movable frames",
   "grid [size|on|off]   the unlock-mode grid; snap on|off   snapping while dragging",
   "texelsnap [on|off]   still borders, fills and lines snap to the pixel grid (a test; off by default)",
+  "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
+  "gradient [on|off]    windows a shade lighter toward the top (off by default)",
   "accent <rrggbb|name> set the accent color (brass, arcane, jade, orchid, copper); accent reset",
   "theme reset          every theme setting back to default",
   "modules              list modules; enable|disable <module> (then /reload)",
@@ -152,6 +154,21 @@ local function texelSnapCommand(rest)
   local on = rest == "on" or (rest == "" and not T.Settings().texelSnap)
   T.SetTexelSnap(on)
   chat(on and "Texel snapping on: borders, fills, dividers and sheens snap to the pixel grid." or "Texel snapping off.")
+end
+
+-- /vg nineslice [on|off]: shadows and glows as one nine-slice texture each, after a reload (#236).
+local function nineSliceCommand(rest)
+  local s = T.Settings()
+  s.sliceRings = rest == "on" or (rest == "" and not s.sliceRings)
+  chat((s.sliceRings and "Nine-slice shadows on" or "Nine-slice shadows off") .. " after a /reload.")
+end
+
+-- /vg gradient [on|off]: floating windows' fills a shade lighter toward the top, at once (#259).
+local function gradientCommand(rest)
+  local s = T.Settings()
+  s.panelGradient = rest == "on" or (rest == "" and not s.panelGradient)
+  T.Refresh()
+  chat(s.panelGradient and "Panel gradient on: windows run a shade lighter toward the top." or "Panel gradient off.")
 end
 
 -- /vg theme reset
@@ -506,6 +523,8 @@ local COMMANDS = {
   grid = gridCommand,
   snap = snapCommand,
   texelsnap = texelSnapCommand,
+  nineslice = nineSliceCommand,
+  gradient = gradientCommand,
   theme = themeCommand,
   modules = modulesCommand,
   enable = setModule(true),

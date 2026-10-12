@@ -142,6 +142,40 @@ local function ring(f, px)
   return strips
 end
 
+-- Dispel type -> its badge glyph under Media/Icons (#235): a letter, so a type reads without its hue.
+A.DISPEL_GLYPHS = { Magic = "DispelMagic", Curse = "DispelCurse", Disease = "DispelDisease", Poison = "DispelPoison" }
+-- The badge's side: a share of the icon's, and the least it may be (UI units).
+A.BADGE, A.BADGE_MIN = 0.5, 8
+
+-- One badge letter on the badge's backing, in its type's color, hidden until shown.
+local function letter(f, back, kind)
+  local t = T.Tint(T.Snap(f:CreateTexture(nil, "OVERLAY", nil, 7), "icon"), A.DispelToken(kind))
+  t:SetTexture(T.Icon(A.DISPEL_GLYPHS[kind]))
+  t:SetAllPoints(back)
+  t:Hide()
+  return t
+end
+
+-- A debuff icon's type badge (#235) in its top-left corner: a dark backing and one letter per
+-- type, all hidden until a typed debuff shows. { back, letters = { type -> texture } }.
+local function badge(f, size)
+  local back = T.Tint(T.Snap(f:CreateTexture(nil, "OVERLAY", nil, 6)), "edge", 0.8)
+  back:SetTexture(T.WHITE)
+  back:SetSize(math.max(A.BADGE_MIN, size * A.BADGE), math.max(A.BADGE_MIN, size * A.BADGE))
+  back:SetPoint("TOPLEFT")
+  back:Hide()
+  local letters = {}
+  for kind in pairs(A.DISPEL_GLYPHS) do letters[kind] = letter(f, back, kind) end
+  return { back = back, letters = letters }
+end
+
+-- Shows a debuff's type badge for a type it can read, or hides it (no type, or a hidden one).
+function A.ShowBadge(b, kind)
+  local known = not ns.IsSecret(kind) and type(kind) == "string" and b.letters[kind] ~= nil
+  b.back:SetShown(known)
+  for k, t in pairs(b.letters) do t:SetShown(known and k == kind) end
+end
+
 -- The dark sweep: empties clockwise as the aura runs out, no edge line, no flash.
 local function sweep(f, px)
   local cd = CreateFrame("Cooldown", nil, f, "CooldownFrameTemplate")
@@ -177,7 +211,7 @@ local function frameEdge(f, masque)
 end
 
 -- Dresses an icon frame (an engine button or one of ours). style: size, debuff
--- (type-colored edge), dim (desaturated: others' auras), timer, masque (the
+-- (type-colored edge and type badge), dim (desaturated: others' auras), timer, masque (the
 -- Masque group that skins it, when Masque is loaded). Returns its parts.
 function A.Dress(f, style)
   f:SetSize(style.size, style.size)
@@ -188,7 +222,7 @@ function A.Dress(f, style)
   local cd = sweep(f, px)
   local count, clock = texts(f, cd, style.size, style.timer)
   ns.Masque.Add(style.masque, f, { Icon = icon, Cooldown = cd, Count = count }, "Aura")
-  return { icon = icon, cooldown = cd, count = count, timer = clock, ring = style.debuff and ring(skin, px) or nil }
+  return { icon = icon, cooldown = cd, count = count, timer = clock, ring = style.debuff and ring(skin, px) or nil, badge = style.debuff and badge(skin, style.size) or nil }
 end
 
 -- Containers -------------------------------------------------------------------------------

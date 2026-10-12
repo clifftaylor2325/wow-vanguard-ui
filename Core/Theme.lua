@@ -66,8 +66,9 @@ local TOKENS = {
   -- Text
   -- Text tiers, brightest first (#227): text, text2, muted; disabled only for disabled and placeholder text.
   text = "e8eaee", text2 = "c8cdd6", muted = "a6adb9", disabled = "7c8390", white = "ffffff", gold = "ffd100",
-  -- State (kept apart from the accent)
-  good = "4fc27a", warn = "ee8b3a", bad = "e0565b", info = "5aa2f0", unknown = "808080",
+  -- State (kept apart from the accent), off the red-green axis (#235, after Okabe-Ito): a bluish
+  -- green, an amber and a vermilion, each with a glyph where it stands alone (T.STATE_GLYPHS).
+  good = "3fbf9a", warn = "f0b43c", bad = "e8663f", info = "5aa2f0", unknown = "808080",
   -- Reaction to you
   hostile = "cc4b45", neutral = "e0c24e", friendly = "4db86a",
   -- Resources
@@ -96,6 +97,13 @@ T.TOKENS = {}
 for name, v in pairs(TOKENS) do
   T.TOKENS[name] = type(v) == "table" and fromHex(v[1], v[2]) or fromHex(v)
 end
+
+-- Color assist (#235): with the colorAssist setting on, the reaction colors move off the red-green
+-- axis, to a friendly blue, a neutral yellow and a hostile vermilion. Token name -> { r, g, b, a }.
+T.ASSIST = { friendly = fromHex("4a9be8"), neutral = fromHex("e8d25a"), hostile = fromHex("e0663a") }
+
+-- The glyph (under Media/Icons) that goes with a state color where it stands alone (#235).
+T.STATE_GLYPHS = { good = "Check", warn = "Warn", bad = "Close" }
 
 -- Accent presets for /vg accent and the options swatches, in display order.
 -- Jade, orchid and copper (#231) keep clear of class, item quality and state colours.
@@ -126,10 +134,16 @@ local DEFAULTS = {
   pixelMultiple = 1,
   -- Texel snapping for still textures (borders, fills, dividers, sheens); off until the in-game A/B test (#226).
   texelSnap = false,
+  -- Shadows and glows as one nine-slice texture each; off until the in-game check (#236).
+  sliceRings = false,
+  -- A subtle top-to-bottom lightness shift on floating windows' fills (#259); off by default.
+  panelGradient = false,
   textScale = 1,
   barTexture = "vanguard",
   -- Soft shadows under HUD frames (unit frames, bars, minimap); floating windows always have one.
   hudShadow = false,
+  -- Reaction colors off the red-green axis (#235, General -> Look; on reload).
+  colorAssist = false,
   smoothBars = true,
   reduceMotion = false,
   sounds = true,
@@ -220,10 +234,11 @@ local function accentVariant(name)
 end
 
 -- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings,
--- accentText and accentDim follow the accent).
+-- accentText and accentDim follow the accent, and the reactions follow Color assist).
 function T.RGB(name)
   local key = SETTING_TOKENS[name]
-  local c = T.ACCENT_VARIANTS[name] and accentVariant(name) or key and T.Settings()[key] or T.TOKENS[name]
+  local c = T.ACCENT_VARIANTS[name] and accentVariant(name) or key and T.Settings()[key]
+    or T.Settings().colorAssist and T.ASSIST[name] or T.TOKENS[name]
   if not c then error("Vanguard: no color named " .. tostring(name), 2) end
   return c[1], c[2], c[3], c[4] or 1
 end
@@ -466,15 +481,37 @@ local function sheen(frame)
   return solid(frame, "BORDER", nil, "sheen")
 end
 
--- Places the sheen one pixel inside the top border (`pad` units out past the frame's top), one pixel tall.
--- (A button's hover line sits in the same place, in `token`.)
-local function placeSheen(t, frame, pad, token)
+-- Places the sheen just inside the top border (`pad` units out past the frame's top), one pixel tall:
+-- on the first row inside it, or the `row`th (a bevelled panel keeps row 1 for its bevel line).
+-- (A button's hover line sits on row 1, in `token`.)
+local function placeSheen(t, frame, pad, token, row)
   local px, out = T.Pixel(frame), T.PixelRound(frame, pad or 0)
   t:ClearAllPoints()
-  t:SetPoint("TOPLEFT", frame, "TOPLEFT", px - out, out - px)
-  t:SetPoint("TOPRIGHT", frame, "TOPRIGHT", out - px, out - px)
+  t:SetPoint("TOPLEFT", frame, "TOPLEFT", px - out, out - px * (row or 1))
+  t:SetPoint("TOPRIGHT", frame, "TOPRIGHT", out - px, out - px * (row or 1))
   t:SetHeight(px)
   T.Tint(t, token or "sheen")
+end
+
+-- The inner bevel (#234) on buttons and raised panels: { token, alpha } of the light line along the
+-- top inner edge and the dark one along the bottom inner edge, each one pixel, just inside the border.
+T.BEVEL = { top = { "borderHi", 0.35 }, bottom = { "shade", 0.35 } }
+
+-- Places one bevel line (side "TOP" or "BOTTOM") on the first row inside frame's border, `out` past it.
+local function placeBevelLine(t, frame, side, out)
+  local px, y = T.Pixel(frame), side == "TOP" and out - T.Pixel(frame) or T.Pixel(frame) - out
+  t:ClearAllPoints()
+  t:SetPoint(side .. "LEFT", frame, side .. "LEFT", px - out, y)
+  t:SetPoint(side .. "RIGHT", frame, side .. "RIGHT", out - px, y)
+  t:SetHeight(px)
+  T.Tint(t, T.BEVEL[side:lower()][1], T.BEVEL[side:lower()][2])
+end
+
+-- Places and tints a frame's bevel lines (`pad` units out past the frame).
+local function placeBevelLines(bevel, frame, pad)
+  local out = T.PixelRound(frame, pad or 0)
+  placeBevelLine(bevel.top, frame, "TOP", out)
+  placeBevelLine(bevel.bottom, frame, "BOTTOM", out)
 end
 
 -- How far a shadow reaches past its frame. It sits evenly around the frame:
@@ -516,8 +553,38 @@ local function ringPiece(frame, piece, look)
   return t
 end
 
--- The eight pieces of a soft ring (shadow or glow) around frame.
+-- Nine-slice rings (#236): with the setting on (theme.sliceRings, /vg nineslice), a shadow or glow
+-- is one texture the client slices itself, its corners T.SLICE_MARGIN texture pixels (a quarter of
+-- the 64-pixel art), stretched (the client's default slice mode). Off until the in-game check
+-- shows how big the client draws the margins; the eight pieces stay the fallback.
+T.SLICE_MARGIN = 16
+-- Sliced ring textures (weak), so T.SizeGlow knows to move one texture, not eight.
+local slicedRing = setmetatable({}, { __mode = "k" })
+
+-- Places a sliced ring `size` units out past frame's edges (and `pad` more), in whole pixels.
+local function placeSliced(t, frame, size, pad)
+  local out = T.PixelRound(frame, pad or 0) + wholePixels(frame, size)
+  t:ClearAllPoints()
+  t:SetPoint("TOPLEFT", frame, "TOPLEFT", -out, out)
+  t:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", out, -out)
+end
+
+-- One sliced texture as a ring around frame: { texture }, or nil (and the texture hidden) when
+-- the client can't slice textures.
+local function sliced(frame, look, t)
+  if not t.SetTextureSliceMargins then return t:Hide() end
+  t:SetTexture(T.Texture(look.texture))
+  t:SetTextureSliceMargins(T.SLICE_MARGIN, T.SLICE_MARGIN, T.SLICE_MARGIN, T.SLICE_MARGIN)
+  placeSliced(t, frame, look.size, look.pad)
+  slicedRing[t] = true
+  return { t }
+end
+
+-- A soft ring (shadow or glow) around frame: one sliced texture with the setting on and a
+-- client that can, else eight pieces.
 local function ring(frame, look)
+  local one = T.Settings().sliceRings and sliced(frame, look, T.Snap(frame:CreateTexture(nil, look.layer, nil, look.sublevel)))
+  if one then return one end
   local pieces = {}
   for i, piece in ipairs(SHADOW_PIECES) do pieces[i] = ringPiece(frame, piece, look) end
   return pieces
@@ -548,6 +615,7 @@ end
 -- frame's scale now (call again when its scale changes).
 function T.SizeGlow(glow, frame, pixels)
   local size = pixels * T.Pixel(frame)
+  if slicedRing[glow[1]] then return placeSliced(glow[1], frame, size) end
   for i, t in ipairs(glow) do
     if not SHADOW_PIECES[i].w then t:SetHeight(size) end
     if not SHADOW_PIECES[i].h then t:SetWidth(size) end
@@ -643,13 +711,32 @@ local function borderColor(entry)
   return c[1], c[2], c[3], c[4]
 end
 
+-- The panel gradient (#259): the OKLCH lightness change at a large panel's bottom and top edge, so
+-- the fill runs about 2.4 % lighter from bottom to top (more bands; less doesn't read).
+T.PANEL_GRADIENT = { -0.012, 0.012 }
+
+-- A colour d lighter in OKLCH lightness (darker when d < 0), as a client Color at alpha a.
+local function lighter(r, g, b, a, d)
+  local L, A, B = toOklab(r, g, b)
+  local r2, g2, b2 = fromOklab(L + d, A, B)
+  return CreateColor(r2, g2, b2, a)
+end
+
+-- Runs a large panel's fill (a floating window's: opts.shadow, or opts.gradient) a shade lighter
+-- toward its top while the panelGradient setting is on (VERTICAL runs bottom to top).
+local function shadeBg(bg, opts, r, g, b, a)
+  if not (T.Settings().panelGradient and (opts.shadow or opts.gradient) and bg.SetGradient) then return end
+  bg:SetGradient("VERTICAL", lighter(r, g, b, a, T.PANEL_GRADIENT[1]), lighter(r, g, b, a, T.PANEL_GRADIENT[2]))
+end
+
 -- Colors a painted background: panel, inset or raised color (or the opts.fill
--- token), at opts.alpha if given.
+-- token), at opts.alpha if given, shaded top to bottom where shadeBg says.
 local function paintBg(bg, opts)
   local r, g, b, a = T.PanelColor(opts.inset)
   if opts.raised then r, g, b, a = T.RGB("raised") end
   if opts.fill then r, g, b, a = T.RGB(opts.fill) end
   bg:SetVertexColor(r, g, b, opts.alpha or a)
+  shadeBg(bg, opts, r, g, b, opts.alpha or a)
 end
 
 -- Applies the current colors (and pixel size) to one painted frame.
@@ -660,7 +747,8 @@ local function repaint(frame, entry)
     colorEdges(p.edges, borderColor(entry))
     sizeEdges(p.edges, frame)
   end
-  if p.sheen then placeSheen(p.sheen, frame, entry.opts.pad) end
+  if p.sheen then placeSheen(p.sheen, frame, entry.opts.pad, nil, p.bevel and 2) end
+  if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad) end
   if entry.paint then entry.paint(entry, frame) end
 end
 
@@ -672,12 +760,15 @@ local function background(frame, pad)
   return bg
 end
 
--- The parts opts ask for: background, edges, sheen (with a background) and shadow, opts.pad units out past frame.
+-- The parts opts ask for: background, edges, sheen (with a background), a bevel (opts.bevel, or a
+-- raised panel with a border, unless opts.noBevel) and shadow, opts.pad units out past frame.
 local function makeParts(frame, opts)
   local parts = {}
   parts.bg = not opts.noBg and background(frame, opts.pad) or nil
   parts.edges = not opts.noBorder and edges(frame, opts.pad) or nil
   parts.sheen = parts.bg and not opts.noSheen and sheen(frame) or nil
+  local bevelled = parts.edges and not opts.noBevel and (opts.bevel or opts.raised)
+  parts.bevel = bevelled and { top = solid(frame, "BORDER", 1, "border"), bottom = solid(frame, "BORDER", 1, "border") } or nil
   parts.shadow = opts.shadow and shadow(frame, opts.shadow, opts.pad) or nil
   return parts
 end
@@ -699,7 +790,7 @@ end
 -- top. opts: inset (darker) or raised (lighter), accent (accent border),
 -- alpha (fill opacity), shadow (soft drop shadow, for floating windows),
 -- pad (draw it all that many units out past the frame's edges: room around
--- a game window's contents), noBorder, noBg, noSheen.
+-- a game window's contents), gradient (the panel gradient without a shadow), noBorder, noBg, noSheen.
 function T.Panel(frame, opts)
   local entry = base(frame, "panel", opts)
   repaint(frame, entry)
@@ -751,18 +842,109 @@ local function hoverParts(button, entry)
   for _, t in ipairs(hoverOf[button]) do t:SetAlpha(0) end
   button:HookScript("OnEnter", ns.Guard("button hover", function(b) T.EaseHover(b, true) end))
   button:HookScript("OnLeave", ns.Guard("button hover", function(b) T.EaseHover(b, false) end))
-  button:HookScript("OnHide", ns.Guard("button hover", function(b) T.EaseHover(b, false, true) end))
+  button:HookScript("OnHide", ns.Guard("button hover", function(b) T.EaseHover(b, false, true) T.PressButton(b, false) end))
 end
 
--- A flat button: inset panel, template art faded, an eased hover (raisedHover and a borderHi top line).
+-- Each frame's keyboard focus ring (weak): { gap = edges, ring = edges }.
+local focusOf = setmetatable({}, { __mode = "k" })
+
+-- Pins a set of edges `pixels` screen pixels out past frame, one pixel thick, in a colour.
+local function ringAt(e, frame, pixels, token)
+  for side, points in pairs(EDGE_POINTS) do
+    pin(e[side], frame, points[1], pixels * T.Pixel(frame))
+    pin(e[side], frame, points[2], pixels * T.Pixel(frame))
+    T.Tint(e[side], token)
+  end
+  sizeEdges(e, frame)
+end
+
+-- A frame's focus ring parts, { gap = edges, ring = edges }, or nil before it ever had one.
+function T.FocusParts(frame) return focusOf[frame] end
+
+-- Shows (or hides) a keyboard focus ring around frame (#257): a one-pixel accentText ring outside
+-- a one-pixel black gap, placed at the frame's pixel size each time, never animated.
+function T.FocusRing(frame, on)
+  if not focusOf[frame] and not on then return end
+  local f = focusOf[frame] or { gap = edges(frame), ring = edges(frame) }
+  focusOf[frame] = f
+  ringAt(f.gap, frame, 1, "edge")
+  ringAt(f.ring, frame, 2, "accentText")
+  for _, e in pairs(f) do for _, t in pairs(e) do t:SetShown(on == true) end end
+end
+
+-- How a pressed button looks (#257): a shade overlay at T.PRESS[2] over its fill (one step darker)
+-- and its own label (button.text) T.PRESS.drop screen pixels lower, at once, while the mouse is held.
+T.PRESS = { "shade", 0.3, drop = 1 }
+-- Each themed button's press state (weak): { overlay = texture, ys = its label's anchor ys before the press }.
+local pressOf = setmetatable({}, { __mode = "k" })
+
+-- Moves a button's own label (button.text) T.PRESS.drop pixels down (down) or back to where it was,
+-- every anchor at once; never on a protected button (its regions can't move in a fight).
+local function dropLabel(button, state, down)
+  local fs = button.text
+  if type(fs) ~= "table" or not fs.GetNumPoints or button.IsProtected and button:IsProtected() then return end
+  local points, drop = {}, T.PRESS.drop * T.Pixel(button)
+  for i = 1, fs:GetNumPoints() do points[i] = { fs:GetPoint(i) } end
+  if down then state.ys = {} end
+  for i, p in ipairs(points) do
+    if down then state.ys[i] = p[5] end
+    fs:SetPoint(p[1], p[2], p[3], p[4], down and p[5] - drop or state.ys and state.ys[i] or p[5])
+  end
+end
+
+-- A themed button's press overlay, or nil for a button T.Button never painted.
+function T.PressOverlay(button) return pressOf[button] and pressOf[button].overlay end
+
+-- Shows or hides a button's press look; only an enabled button shows it.
+function T.PressButton(button, down)
+  local s = pressOf[button]
+  if not s then return end
+  local on = down == true and (not button.IsEnabled or button:IsEnabled())
+  if on == s.overlay:IsShown() then return end
+  s.overlay:SetShown(on)
+  dropLabel(button, s, on)
+end
+
+-- Each disabled themed button's label colour from before (weak), given back when it's enabled.
+local labelBefore = setmetatable({}, { __mode = "k" })
+
+-- Gives a button its disabled look (#257): no hover or press, its label in the disabled tier; or,
+-- enabled again, the label's colour from before.
+function T.DisabledLook(button, disabled)
+  local fs = type(button.text) == "table" and button.text or button.GetFontString and button:GetFontString()
+  if disabled then T.EaseHover(button, false, true) T.PressButton(button, false) end
+  if not (fs and fs.GetTextColor) then return end
+  if disabled then labelBefore[button] = labelBefore[button] or { fs:GetTextColor() } return T.Color(fs, "disabled") end
+  local c = labelBefore[button]
+  labelBefore[button] = nil
+  if c then T.Color(fs, c[1], c[2], c[3]) end
+end
+
+-- A button's press and disabled looks (#257): the hidden overlay, and hooks on the mouse and on
+-- its state (pcall: a widget without OnEnable/OnDisable can't have them hooked).
+local function stateParts(button)
+  local t = T.Tint(solid(button, "BACKGROUND", 2, "fill"), T.PRESS[1], T.PRESS[2])
+  t:SetAllPoints()
+  t:Hide()
+  pressOf[button] = { overlay = t }
+  button:HookScript("OnMouseDown", ns.Guard("button press", function(b) T.PressButton(b, true) end))
+  button:HookScript("OnMouseUp", ns.Guard("button press", function(b) T.PressButton(b, false) end))
+  pcall(button.HookScript, button, "OnDisable", ns.Guard("button state", function(b) T.DisabledLook(b, true) end))
+  pcall(button.HookScript, button, "OnEnable", ns.Guard("button state", function(b) T.DisabledLook(b, false) end))
+end
+
+-- A flat button: inset panel with a bevel, template art faded, an eased hover (raisedHover and a
+-- borderHi top line), a press look and a disabled look.
 function T.Button(button)
   local fresh = not painted[button]
-  local entry = base(button, "button", { inset = true })
+  local entry = base(button, "button", { inset = true, bevel = true })
   if fresh then
     T.FadeRegions(button, { [entry.parts.bg] = true })
     hoverParts(button, entry)
+    stateParts(button)
   end
   repaint(button, entry)
+  if button.IsEnabled and not button:IsEnabled() then T.DisabledLook(button, true) end
   return button
 end
 
@@ -836,7 +1018,7 @@ local function slotOpts(opts)
   local well = opts ~= nil and opts.well == true
   return {
     raised = not well, fill = well and T.SLOT_WELL.fill or nil, border = well and { T.RGB(T.SLOT_WELL.border) } or nil, well = well,
-    noSheen = true, shadow = T.SLOT_SHADOW, quiet = opts ~= nil and opts.quiet == true,
+    noSheen = true, noBevel = true, shadow = T.SLOT_SHADOW, quiet = opts ~= nil and opts.quiet == true,
   }
 end
 
@@ -1144,9 +1326,18 @@ function T.Logo(parent, size)
   return f
 end
 
--- Crops the baked-in bevel off an icon texture.
-function T.Crop(texture)
-  texture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+-- How much T.Crop trims off each edge of an icon's art: 0.08, its baked-in bevel.
+T.ICON_EDGE = 0.08
+
+-- Crops the baked-in bevel off an icon texture; given a slot's w and h, crops the long axis further
+-- (#259) so the icon keeps its aspect ratio in a slot that isn't square.
+function T.Crop(texture, w, h)
+  local ex, ey = T.ICON_EDGE, T.ICON_EDGE
+  if w and h and w > 0 and h > 0 and w ~= h then
+    local keep = (0.5 - T.ICON_EDGE) * math.min(w, h) / math.max(w, h)
+    if w > h then ey = 0.5 - keep else ex = 0.5 - keep end
+  end
+  texture:SetTexCoord(ex, 1 - ex, ey, 1 - ey)
   return texture
 end
 

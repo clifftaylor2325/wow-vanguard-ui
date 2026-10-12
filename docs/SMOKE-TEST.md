@@ -188,11 +188,17 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the hint under the choices starts `Sharpest: every line on whole screen pixels.` Every border, button edge and gap between action buttons is a whole number of screen pixels, with no blurred or doubled line; the close button's cross sits centred. On a 4K screen each UI unit is two pixels. After the scale change, borders are still sharp.
 - If it fails, paste: the zoomed crops, your resolution, `/vg status` and `/vg errors`.
 
-### 5.3 Hover and window motion
+### 5.3 Hover, press, focus and window motion
 
-- Do: open `/vg` and move the mouse slowly over a few buttons (Run setup, Move frames). Close `/vg` and open it again. Then start a fight (a training dummy) and open `/vg` during it.
-- Expect: a button eases to a lighter fill with a thin light line along its top as the mouse comes over, and eases back as it leaves; a disabled button shows no hover. The window rises a few pixels into place as it fades in and ends sharp, not blurred; it closes quickly. In combat it opens at once. With Reduce motion on, all of it is instant.
+- Do: open `/vg` and move the mouse slowly over a few buttons (Run setup, Move frames); hold the mouse button down on one, then let go away from it. Press Tab a few times. Close `/vg` and open it again. Then start a fight (a training dummy) and open `/vg` during it.
+- Expect: a button eases to a lighter fill with a thin light line along its top as the mouse comes over, and eases back as it leaves; a disabled button shows no hover and its label is grey. Held down, a button goes a shade darker and its label sits a pixel lower; it comes back when you let go. Tab puts a thin accent ring, with a dark gap, around the marked row and moves it to the next. The window rises a few pixels into place as it fades in and ends sharp, not blurred; it closes quickly. In combat it opens at once. With Reduce motion on, all of it is instant.
 - If it fails, paste: a short video or two screenshots, and `/vg errors`.
+
+### 5.4 Color assist and state glyphs
+
+- Do: target a hostile mob, then a neutral one, then a friendly NPC. Tick Color assist under `/vg` → General → Look and reload, then target the same three. On a hunter, look at the pet frame's top-right corner.
+- Expect: before, red, yellow and green health bars; after, vermilion, yellow and blue. The pet's mood is a check (happy), a triangle (content) or a cross (unhappy), in green, amber or red.
+- If it fails, paste: screenshots and `/vg errors`.
 
 ## 6. Party and raid
 
@@ -205,7 +211,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 6.2 Raid frames (if you can)
 
 - Do: as leader or assistant, press the Raid button on the raid tools bar (top left) to convert to a raid, then press Ready on the same bar.
-- Expect: raid frames in groups, 100x48 tiles at 10 members or fewer and smaller above that; the ready check starts.
+- Expect: raid frames in groups, 100x48 tiles at 10 members or fewer and smaller above that; the ready check starts. A debuff you can dispel shows its type's letter (M, C, D or P) in the icon's top-left corner, in combat in an instance too.
 - If it fails, paste: a screenshot and `/vg errors`. In an instance during combat `/vg status` should say `aura values hidden right now` while the bars still fill; paste that line if the bars do not fill.
 
 ### 6.3 Main tank tiles (if you can)

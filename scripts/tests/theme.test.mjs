@@ -562,3 +562,102 @@ it("type sizes (#258): no role under 10 but badge; the error badge uses it", () 
   expect(small, "only badge is under 10").toEqual(["badge"]);
   expect(addon.eval("return { ns.Theme.RoleSize('tiny'), ns.Theme.RoleSize('auraTimerSmall'), ns.Theme.RoleSize('badge') }"), "tiny and the small aura timer at 10, badge 9").toEqual([10, 10, 9]);
 });
+
+// A painted frame's one-pixel lines on BORDER sublevel 1 or 2 and its sheen: { y offset in pixels, colour } of each, top to bottom.
+const lines = (addon, lua) => addon.eval(`local f, px = ${lua}, ns.Theme.Pixel(${lua}) local out = {}
+  for _, w in ipairs(__wfgStub.frames) do
+    if w.__parent == f and w.__kind == "Texture" and w.__layer == "BORDER" and math.abs((w:GetHeight() or 0) - px) < 1e-9 and (w.__points.TOPLEFT or w.__points.BOTTOMLEFT) then
+      local p = w.__points.TOPLEFT or w.__points.BOTTOMLEFT
+      out[#out + 1] = { p.point, math.floor(p.y / px + 0.5), w.__vertexColor }
+    end
+  end
+  table.sort(out, function(a, b) return a[1] .. a[2] < b[1] .. b[2] end)
+  return out`);
+
+it("inner bevel (#234): buttons and raised panels get a borderHi line inside the top and a dark one inside the bottom; the sheen moves one row down", () => {
+  const addon = loggedIn();
+  // Whether colour c is the token `name` at alpha a.
+  const near = (c, name, a) => isTok(addon, c, name) && Math.abs(c[3] - a) < 1e-6;
+  addon.eval('__btn = ns.Theme.Button(CreateFrame("Button", nil, UIParent)) __btn:SetSize(80, 22)');
+  addon.eval('__raised = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { raised = true })');
+  addon.eval('__flat = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent))');
+  addon.eval('__slot = ns.Theme.Slot(CreateFrame("Frame", nil, UIParent))');
+  for (const which of ["__btn", "__raised"]) {
+    const l = lines(addon, which);
+    const bottom = l.find((x) => x[0] === "BOTTOMLEFT" && x[1] === 1), top = l.find((x) => x[0] === "TOPLEFT" && x[1] === -1 && near(x[2], "borderHi", 0.35)), sheen = l.find((x) => x[0] === "TOPLEFT" && x[1] === -2);
+    expect([bottom?.[1], near(bottom?.[2], "shade", 0.35), top !== undefined, isTok(addon, sheen?.[2], "sheen")], `${which}: bottom line on the first row up, dark at 35%; top line on the first row down in borderHi at 35%; the sheen on the second row`).toEqual([1, true, true, true]);
+  }
+  const flat = lines(addon, "__flat").filter((x) => x[1] !== 0);
+  expect([flat.length, flat[0][1], isTok(addon, flat[0][2], "sheen")], "a plain panel: no bevel, its sheen on the first row").toEqual([1, -1, true]);
+  expect(lines(addon, "__slot").some((x) => near(x[2], "borderHi", 0.35)), "a slot keeps its own bevel, not this one").toBe(false);
+});
+
+// The Shadow or Glow textures on a frame: { count, the first one's slice margins, its TOPLEFT x and y }.
+const ringOf = (addon, lua, art) => addon.eval(`local f, n, first = ${lua}, 0, nil
+  for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and (w.__texture or ""):find("${art}$") then n = n + 1 first = first or w end end
+  local p = first and first.__points.TOPLEFT
+  return { n, first and first.__sliceMargins or false, p and p.x or false, p and p.y or false }`);
+
+it("nine-slice rings (#236): off by default; /vg nineslice draws each shadow and glow as one sliced texture after a reload, eight pieces where the client can't", () => {
+  const addon = loggedIn();
+  expect(ringOf(addon, 'ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })', "Shadow")[0], "off by default: eight pieces").toBe(8);
+  addon.slash("nineslice");
+  expect([addon.eval("return ns.Theme.Settings().sliceRings"), chatHas(addon, /Nine-slice shadows on after a \/reload/)], "the switch, saved, says it needs a reload").toEqual([true, true]);
+  addon.slash("nineslice off");
+  expect([addon.eval("return ns.Theme.Settings().sliceRings"), chatHas(addon, /Nine-slice shadows off after a \/reload/)], "and off").toEqual([false, true]);
+  const on = loggedIn("", { savedVariables: "VanguardDB = { profiles = { Default = { theme = { sliceRings = true } } } }" });
+  const ten = px(on, 10), pixel = on.eval("return ns.Theme.Pixel(UIParent)");
+  expect(ringOf(on, 'ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })', "Shadow"), "on: one texture, 16-pixel margins, 10 units out on every side").toEqual([1, [16, 16, 16, 16], -ten, ten]);
+  on.eval('__g = CreateFrame("Frame", nil, UIParent) __glow = ns.Theme.Glow(__g, 6) ns.Theme.SizeGlow(__glow, __g, 2) ns.Theme.ShowGlow(__glow, true)');
+  expect([ringOf(on, "__g", "Glow"), on.eval("return __glow[1]:IsShown()")], "a glow is one texture too, sized to whole pixels and shown").toEqual([[1, [16, 16, 16, 16], -2 * pixel, 2 * pixel], true]);
+  on.eval('__old = CreateFrame("Frame", nil, UIParent) local real = __old.CreateTexture __old.CreateTexture = function(...) local t = real(...) t.SetTextureSliceMargins = false return t end ns.Theme.Panel(__old, { shadow = true })');
+  expect(ringOf(on, "__old", "Shadow")[0], "a client that can't slice gets the eight pieces").toBe(8);
+});
+
+// A painted frame's fill (the white BACKGROUND texture over it): { its colour, its gradient or false }.
+const fillOf = (addon, lua) => addon.eval(`local f = ${lua}
+  for _, r in ipairs({ f:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__texture == ns.Theme.WHITE and r.__points.BOTTOMRIGHT then return { r.__vertexColor, r.__gradient or false } end end`);
+
+it("panel gradient (#259): off by default; /vg gradient runs a floating window's fill a shade lighter toward the top, at once", () => {
+  const addon = loggedIn('__win = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true }) __flat = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent))');
+  expect(fillOf(addon, "__win")[1], "off by default: one colour").toBe(false);
+  addon.slash("gradient");
+  const [base, gradient] = fillOf(addon, "__win");
+  const [orientation, bottom, top] = gradient;
+  expect([orientation, bottom[3], top[3], chatHas(addon, /Panel gradient on/)], "on at once: VERTICAL (bottom to top), the fill's alpha kept at both ends").toEqual(["VERTICAL", base[3], base[3], true]);
+  // A colour's rough brightness (r + g + b).
+  const lum = (c) => c[0] + c[1] + c[2];
+  expect([lum(bottom) < lum(base), lum(base) < lum(top), [0, 1, 2].every((i) => top[i] - bottom[i] < 0.025)], "darker at the bottom, lighter at the top, and only a shade apart (under 7 of 255 levels)").toEqual([true, true, true]);
+  expect(fillOf(addon, "__flat")[1], "a panel that isn't a floating window stays flat").toBe(false);
+  addon.eval('__asked = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { gradient = true })');
+  expect(fillOf(addon, "__asked")[1][0], "unless it asks for the gradient").toBe("VERTICAL");
+  addon.slash("gradient off");
+  expect([fillOf(addon, "__win")[1], addon.eval("return ns.Theme.Settings().panelGradient"), chatHas(addon, /Panel gradient off/)], "off again: one colour, saved").toEqual([false, false, true]);
+});
+
+it("icon crop (#259): the bevel off every edge of a square slot; a slot that isn't square crops its long axis further", () => {
+  const addon = loggedIn();
+  // The tex coords T.Crop gives a texture for a slot of w by h (nil: unknown).
+  const crop = (w, h) => addon.eval(`return ns.Theme.Crop(UIParent:CreateTexture(), ${w}, ${h}).__texCoord`);
+  expect([crop("nil", "nil"), crop(30, 30), crop(0, 20)], "square or unknown: 0.08 to 0.92 both ways").toEqual([[0.08, 0.92, 0.08, 0.92], [0.08, 0.92, 0.08, 0.92], [0.08, 0.92, 0.08, 0.92]]);
+  const wide = crop(40, 20), tall = crop(20, 40);
+  expect([wide[0], wide[1], wide[2], wide[3]].map((v) => +v.toFixed(6)), "twice as wide: the height keeps half as much").toEqual([0.08, 0.92, 0.29, 0.71]);
+  expect([tall[0], tall[1], tall[2], tall[3]].map((v) => +v.toFixed(6)), "twice as tall: the width does").toEqual([0.29, 0.71, 0.08, 0.92]);
+});
+
+it("state colors and Color assist (#235): states off the red-green axis; the switch moves reactions to blue, yellow and vermilion", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // A token's color as rrggbb.
+  const hex = (name) => addon.eval(`return ns.Theme.Hex("${name}")`).slice(2);
+  expect(["good", "warn", "bad"].map(hex), "good, warn and bad").toEqual(["3fbf9a", "f0b43c", "e8663f"]);
+  expect(addon.eval("return ns.Theme.STATE_GLYPHS"), "each with a glyph where it stands alone").toEqual({ good: "Check", warn: "Warn", bad: "Close" });
+  addon.world.setUnit("target", { name: "TEST-ONLY Wolf", hp: 1, maxhp: 1, reaction: 2 });
+  // The target's health bar color as rrggbb.
+  const bar = () => addon.eval(`local r, g, b = ns.GetModule("UnitFrames").HealthColor("target") return string.format("%02x%02x%02x", r * 255 + 0.5, g * 255 + 0.5, b * 255 + 0.5)`);
+  expect([["friendly", "neutral", "hostile"].map(hex), bar()], "off by default: the usual reactions").toEqual([["4db86a", "e0c24e", "cc4b45"], "cc4b45"]);
+  addon.slash("");
+  addon.eval('__click("General")');
+  expect(addon.eval('return __click("Color assist")') !== false, "the switch is under General, Look").toBe(true);
+  expect([addon.eval("return ns.Theme.Settings().colorAssist"), ["friendly", "neutral", "hostile"].map(hex), bar()], "on: friendly blue, neutral yellow, hostile vermilion, health bars too").toEqual([true, ["4a9be8", "e8d25a", "e0663a"], "e0663a"]);
+  expect(hex("bad"), "other colors stay as they are").toBe("e8663f");
+});

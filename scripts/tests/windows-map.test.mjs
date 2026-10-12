@@ -71,7 +71,7 @@ const alpha = (addon, expr) => addon.eval(`return (${expr}):GetAlpha()`);
 // How many textures of a frame (by Lua expression) are visible and stretch over the whole frame (a fill).
 const fills = (addon, expr) => addon.eval(`local n = 0
   for _, r in ipairs({ (${expr}):GetRegions() }) do
-    if r.__kind == "Texture" and r:GetAlpha() ~= 0 and r.__points.TOPLEFT and r.__points.BOTTOMRIGHT then n = n + 1 end
+    if r.__kind == "Texture" and r:GetAlpha() ~= 0 and r:IsShown() and r.__points.TOPLEFT and r.__points.BOTTOMRIGHT then n = n + 1 end
   end
   return n`);
 

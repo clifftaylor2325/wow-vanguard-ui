@@ -250,6 +250,9 @@ function methods:SetBlendMode(mode) self.__blend = mode end
 -- Records whether a texture snaps to the pixel grid.
 function methods:SetSnapToPixelGrid(snap) self.__snapToPixelGrid = snap end
 
+-- Records a texture's nine-slice margins (texture pixels: left, top, right, bottom).
+function methods:SetTextureSliceMargins(l, t, r, b) self.__sliceMargins = { l, t, r, b } end
+
 -- Records a texture's texel snapping bias.
 function methods:SetTexelSnappingBias(bias) self.__texelBias = bias end
 
@@ -270,6 +273,8 @@ function methods:SetHeight(h) self.__height = h end
 function methods:GetWidth() return self.__width or 0 end
 function methods:GetHeight() return self.__height or 0 end
 function methods:SetTextColor(r, g, b, a) self.__textColor = { r, g, b, a or 1 } end
+-- The text colour last set (white until one is).
+function methods:GetTextColor() local c = self.__textColor or { 1, 1, 1, 1 } return c[1], c[2], c[3], c[4] end
 function methods:SetJustifyH(j) self.__justifyH = j end
 function methods:SetFontObject(font) self.__template = type(font) == "string" and font or self.__template self.__fontObject = font end
 function methods:SetBackdrop(b) self.__backdrop = b end
@@ -283,7 +288,10 @@ function methods:GetDrawLayer() return self.__layer, self.__sublevel or 0 end
 function methods:SetAtlas(a, useSize) self.__atlas = a self.__atlasSize = useSize end
 function methods:GetAtlas() return self.__atlas end
 function methods:SetColorTexture(r, g, b, a) self.__color = { r, g, b, a or 1 } end
-function methods:SetVertexColor(r, g, b, a) self.__vertexColor = { r, g, b, a or 1 } end
+-- A texture's colour; one colour for every corner replaces a gradient, as in the client.
+function methods:SetVertexColor(r, g, b, a) self.__vertexColor = { r, g, b, a or 1 } self.__gradient = nil end
+-- Records a texture's gradient: { orientation, min colour, max colour } (each { r, g, b, a }).
+function methods:SetGradient(o, lo, hi) self.__gradient = { o, { lo:GetRGBA() }, { hi:GetRGBA() } } end
 function methods:SetAlpha(a) self.__alpha = a end
 -- A frame's ID (0 until set, as in the client; secure action buttons read it to page).
 function methods:SetID(id) self.__frameID = id end
@@ -316,6 +324,9 @@ function methods:IsMouseWheelEnabled() return self.__mouseWheel == true or self.
 -- Moving (recorded for the mover tests).
 function methods:StartMoving() self.__moving = true end
 function methods:StopMovingOrSizing() self.__moving = false end
+
+-- How many anchor points a widget has.
+function methods:GetNumPoints() local n = 0 for _ in pairs(self.__points) do n = n + 1 end return n end
 
 -- The i-th anchor point, in a stable (alphabetical) order.
 function methods:GetPoint(i)
@@ -603,6 +614,9 @@ function methods:SetText(text)
   if self.__needsFont and not (self.__font or self.__template or self.__fontObject) then error("FontString:SetText(): Font not set", 2) end
   self.__text = text
 end
+-- A button's label font string (as a template's own would be), once one is set.
+function methods:SetFontString(fs) self.__fontString = fs end
+function methods:GetFontString() return self.__fontString end
 -- The text set, and the rotation field.
 function methods:GetText() return self.__text end
 function methods:SetRotation(r) self.__rotation = r end

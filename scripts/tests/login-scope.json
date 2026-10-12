@@ -133,6 +133,7 @@
     "scripts/tests/setup.test.mjs": [
       "Centered layout: compact raid grid, one-time migrations, a strip with nothing to show",
       "default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 px buttons; a saved profile keeps its sizes",
+      "one bar material (#234): every Vanguard bar on the whole HUD uses the theme's bar texture, and a new pick reaches them all",
       "setup again: Keep and Keep change nothing; Run setup in the options; Start over owes setup after the reload",
       "setup layouts: Like the game's puts your frames at the top left; another layout puts them back",
       "setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect",
