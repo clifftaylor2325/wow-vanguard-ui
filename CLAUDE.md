@@ -13,8 +13,8 @@ Read this before touching anything. README.md is the spec for behaviour; this fi
 ## Commands
 
 ```sh
-npm install           # once
-npm run test:quick    # JS tests + one Lua smoke test (~10 s); what a PR's quick check runs
+npm install           # once; also turns on .githooks/pre-push (test:quick, quality, TOC, luacheck and luac if installed; --no-verify skips)
+npm run test:quick    # JS tests + the Lua smoke tests (both clients, secret geometry); what a PR's quick check runs
 npm test              # all tests (JS + Lua harness)
 npm run verify        # npm test + code-quality scan
 npm run coverage      # all tests with line coverage; floor is 100% (scripts/lua-coverage-floor.json)
@@ -43,6 +43,8 @@ Before you say a change is done: `npm run verify` and `npm run coverage` must bo
 
 - Nothing protected in combat. Guard with `ns.OutOfCombat`.
 - Never read or compare a value that might be secret. Use `ns.IsSecret` and `ns.PlainNumber`.
+- Never store a field on a frame the game made, and never replace its scripts with `SetScript`. Keep per-frame state in an `ns.FrameState` side table and use `HookScript`. The harness fails a test that does either (`scripts/lib/wow-taint.lua`).
+- A `PLAYER_REGEN_DISABLED` handler defers its after-fight work with `ns.AfterCombat`. Anything else that waits for the fight to end uses `ns.OutOfCombat`.
 - Prefer `C_Item`, `C_Spell` and `C_UnitAuras` over older globals.
 - Detect Forever by interface version with `ns.IsForever`, not by the presence of a global.
 - Fades never run longer than 0.15 s in combat. Motion and sounds respect the Reduce motion and Interface sounds switches. Every fade and sound is listed in `docs/THEME.md`; update it when you add one.

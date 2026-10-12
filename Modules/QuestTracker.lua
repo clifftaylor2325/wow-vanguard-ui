@@ -111,22 +111,11 @@ end
 
 -- Updates ---------------------------------------------------------------------------------------
 
--- Seconds since the last nearest-first sort.
-local elapsed = 0
-
--- One frame of the nearest-first order: re-sorts by distance once a second.
-local function sortTick(_, dt)
-  elapsed = elapsed + dt
-  if elapsed < QT.SORT_EVERY then return end
-  elapsed = 0
-  QT.Refresh()
-end
-
--- Applies the order setting: the once-a-second sort runs only while the order
--- is nearest first, and the tracker is drawn in the order now.
+-- Applies the order setting: the once-a-second sort (while the tracker shows)
+-- runs only while the order is nearest first, and the tracker is drawn in the order now.
 function QT.ApplyOrder()
   if not QT.frame then return end
-  QT.frame:SetScript("OnUpdate", QT.settings.order == "nearest" and sortTick or nil)
+  ns.Every("quest tracker sort", QT.settings.order == "nearest" and QT.SORT_EVERY or nil, QT.Refresh, QT.frame)
   QT.Refresh()
 end
 

@@ -18,6 +18,7 @@ local ADDON, ns = ...
 
 local L = ns.Layout
 local K = {}
+local vgLinkWatch = ns.FrameState("vgLinkWatch")
 ns.MoverLinks = K
 
 -- Width and height, and the saved field that holds each as the frame's own size.
@@ -247,8 +248,8 @@ end
 -- count changed), after combat if in it. Hooked once per frame.
 local function watchSize(key)
   local f = ns.MoverFrame(key)
-  if f.vgLinkWatch == key then return end
-  f.vgLinkWatch = key
+  if vgLinkWatch[f] == key then return end
+  vgLinkWatch[f] = key
   f:HookScript("OnSizeChanged", ns.Guard("hook OnSizeChanged", function() ns.OutOfCombat(function() K.Changed(key) end, "links " .. key) end))
 end
 

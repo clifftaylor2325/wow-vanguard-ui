@@ -11,6 +11,7 @@ enable-nolib-creation: no
 
 ignore:
   - .github
+  - .githooks
   - .planning
   - .vscode
   - art
@@ -24,6 +25,8 @@ ignore:
   - .editorconfig
   - .gitattributes
   - .gitignore
+  - .markdownlint-cli2.jsonc
   - .luacheckrc
   - .nvmrc
   - .pkgmeta
+  - _typos.toml

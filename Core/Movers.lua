@@ -10,6 +10,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgFading = ns.FrameState("vgFading")
+
 local T = ns.Theme
 local L = ns.Layout
 
@@ -93,9 +96,9 @@ end
 -- Draws a mover's frame at its opacity times the alpha its module last gave it.
 local function fade(m)
   local f = m.frame
-  f.vgFading = true
+  vgFading[f] = true
   f:SetAlpha(m.ownAlpha * select(2, ns.MoverLook(m.key)))
-  f.vgFading = false
+  vgFading[f] = false
 end
 
 -- From the first opacity other than 1 on, an alpha the frame's module sets (a
@@ -105,7 +108,7 @@ local function watchAlpha(m)
   m.ownAlpha = m.frame:GetAlpha() or 1
   if type(hooksecurefunc) ~= "function" then return end
   hooksecurefunc(m.frame, "SetAlpha", ns.Guard("hook SetAlpha", function(f, a)
-    if f.vgFading or ns.PlainNumber(a) == nil then return end
+    if vgFading[f] or ns.PlainNumber(a) == nil then return end
     m.ownAlpha = a
     fade(m)
   end))
@@ -154,24 +157,9 @@ function ns.SetMoverDefault(key, default)
   ns.MoverLinks.Changed(key)
 end
 
--- Mover watchers: key -> fn(key), run when that mover's saved position changes
--- (moved, nudged, or reset); a frame whose own default depends on another's spot.
-local watchers = {}
-
--- Runs fn(key) whenever the mover for key is moved or reset (one watcher per key).
-function ns.WatchMover(key, fn)
-  watchers[key] = fn
-end
-
--- Tells the key's watcher, and the frames linked to it, that the mover's point changed.
-local function changed(key)
-  if watchers[key] then watchers[key](key) end
-  ns.MoverLinks.Changed(key)
-end
-
--- Tells everything that follows a mover (its watcher, the frames linked to it, the popover) that it changed.
+-- Tells everything that follows a mover (the frames linked to it, the popover) that it changed.
 function ns.MoverChanged(key)
-  changed(key)
+  ns.MoverLinks.Changed(key)
   if ns.OnMoverMoved then ns.OnMoverMoved(key) end
 end
 
@@ -199,35 +187,48 @@ end
 
 -- Pinning the game's frames ------------------------------------------------------------------
 
--- Every frame Vanguard pins (weak keys, so a frame that goes away doesn't stay).
+-- Pin state lives here, never on the game's frames (a field stored on one of
+-- them plants taint). Weak keys, so a frame that goes away doesn't stay.
+-- pinned: frame -> its apply function; runs: frame -> its queued run (made once,
+-- so the combat queue keeps one entry per frame); hooked: frames whose SetPoint
+-- is hooked; pinning: frames whose pin is running now.
 local pinned = setmetatable({}, { __mode = "k" })
+local runs = setmetatable({}, { __mode = "k" })
+local hooked = setmetatable({}, { __mode = "k" })
+local pinning = setmetatable({}, { __mode = "k" })
 
 -- Runs a frame's pin, flagged so its own SetPoint calls aren't seen as the
 -- game's. A pin that fails is reported (ns.Try) and the flag is cleared all the same.
 local function applyPin(frame)
-  frame.vgPinning = true
-  ns.Try("pin " .. (frame:GetName() or "frame"), frame.vgPin, frame)
-  frame.vgPinning = false
+  pinning[frame] = true
+  ns.Try("pin " .. (frame:GetName() or "frame"), pinned[frame], frame)
+  pinning[frame] = nil
 end
 
 -- Queues a frame's pin for after combat, one entry per frame however often the
 -- game moves it; nothing happens while pins are paused (Edit Mode open).
 local function runPin(frame)
   if ns.pinsPaused then return end
-  ns.OutOfCombat(frame.vgRun, frame)
+  ns.OutOfCombat(runs[frame], frame)
 end
 
 -- Keeps one of the game's frames where Vanguard put it: apply(frame) runs now
 -- (after combat if in it) and again whenever the game moves the frame back
 -- (Edit Mode re-anchors some of its frames when it lays out).
 function ns.Pin(frame, apply)
-  frame.vgPin = apply
-  frame.vgRun = frame.vgRun or function() applyPin(frame) end
-  pinned[frame] = true
+  pinned[frame] = apply
+  runs[frame] = runs[frame] or function() applyPin(frame) end
   runPin(frame)
-  if frame.vgPinned or type(hooksecurefunc) ~= "function" then return end
-  frame.vgPinned = true
-  hooksecurefunc(frame, "SetPoint", ns.Guard("hook SetPoint", function(self) if not self.vgPinning then runPin(self) end end))
+  if hooked[frame] or type(hooksecurefunc) ~= "function" then return end
+  hooked[frame] = true
+  hooksecurefunc(frame, "SetPoint", ns.Guard("hook SetPoint", function(self) if not pinning[self] then runPin(self) end end))
+end
+
+-- Runs a pinned frame's pin again (the game resized it or laid it out again),
+-- through the queue; nothing while its pin is running or for a frame never pinned.
+function ns.Repin(frame)
+  if pinning[frame] or not pinned[frame] then return end
+  runPin(frame)
 end
 
 -- Pauses every pin (so the game's Edit Mode can move its frames freely), or
@@ -516,7 +517,7 @@ end
 local function resetOne(k)
   saved()[k] = nil
   ns.PlaceMover(k)
-  changed(k)
+  ns.MoverLinks.Changed(k)
 end
 
 -- Forgets a saved position, scale, opacity and links (or all with "all") and puts frames back. Returns how many.

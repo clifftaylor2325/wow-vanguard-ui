@@ -38,31 +38,6 @@ function W.Button(parent, text, onClick, width)
   return b
 end
 
--- The choice after the current one (wrapping), from a list of { value, text }.
-local function nextChoice(choices, current)
-  for i, c in ipairs(choices) do
-    if c[1] == current then return choices[i % #choices + 1] end
-  end
-  return choices[1]
-end
-
--- Shows "Label: choice" for the current value.
-local function refreshCycle(b)
-  local current = b.get()
-  for _, c in ipairs(b.choices) do
-    if c[1] == current then b.text:SetText(b.caption .. ": " .. c[2]) end
-  end
-end
-
--- A button that steps through choices ({ value, text } pairs) on each click.
-function W.Cycle(parent, caption, choices, get, set)
-  local b = ns.DialogButton(parent, caption, 220)
-  b.caption, b.choices, b.get, b.Refresh = caption, choices, get, refreshCycle
-  b:SetScript("OnClick", ns.Guard("click cycle", function(self) set(nextChoice(self.choices, self.get())[1]); self:Refresh() end))
-  b:Refresh()
-  return b
-end
-
 -- A small square of color that runs onClick.
 function W.Swatch(parent, rgb, onClick)
   local s = T.Button(CreateFrame("Button", nil, parent))

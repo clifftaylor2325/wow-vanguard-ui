@@ -378,17 +378,15 @@ local function addText(frame, key)
   return fs
 end
 
--- The strip's timer: the clock every second, fps and latency every third, the rates every fifth.
+-- The strip's timer while it shows: the clock every second, fps and latency every third, the rates every fifth.
 local function ticker(frame)
-  local elapsed, ticks = 0, 0
-  frame:SetScript("OnUpdate", function(_, dt)
-    elapsed = elapsed + dt
-    if elapsed < 1 then return end
-    elapsed, ticks = 0, ticks + 1
+  local ticks = 0
+  ns.Every("info strip", 1, function()
+    ticks = ticks + 1
     IS.Paint("clock")
     if ticks % 3 == 0 then IS.Paint("system") end
     if ticks % 5 == 0 then IS.PaintRates() end
-  end)
+  end, frame)
 end
 
 -- Applies the strip's visibility setting: now, or when combat ends (the client's
