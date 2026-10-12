@@ -44,9 +44,9 @@ it("chat", () => {
   const c = addon.eval(`return { font = { ChatFrame1:GetFont() }, box = ns.Theme.PaintedCount(),
     tab1 = ChatFrame1Tab.Text.__textColor, tab2 = ChatFrame2Tab.Text.__textColor }`);
   expect(c.font[0] === "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-Medium.ttf" && c.font[1] === 12, `chat windows get the theme font at Medium, 12 (got ${JSON.stringify(c.font)})`).toBeTruthy();
-  expect(isTok(addon, c.tab2, "accent") && isTok(addon, c.tab1, "text2"), "the selected window's tab is accent, others gray").toBeTruthy();
+  expect(isTok(addon, c.tab2, "accentText") && isTok(addon, c.tab1, "text2"), "the selected window's tab is in the accent's text colour, others gray").toBeTruthy();
   addon.slash("accent ember");
-  expect(isTok(addon, addon.eval("return ChatFrame2Tab.Text.__textColor"), "accent"), "tabs follow accent changes").toBeTruthy();
+  expect(isTok(addon, addon.eval("return ChatFrame2Tab.Text.__textColor"), "accentText"), "tabs follow accent changes").toBeTruthy();
 });
 
 // TEST-ONLY chat window art as the game names it (ChatFrame<i><part>), with the game's own mouseover fade.

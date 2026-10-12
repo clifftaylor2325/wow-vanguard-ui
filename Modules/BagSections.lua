@@ -154,7 +154,7 @@ end
 
 -- A section's header (made once per section) with its label, in the accent.
 local function headerOf(frame, s)
-  local fs = BG.headers[s.key] or T.Text(frame:CreateFontString(nil, "OVERLAY"), "cell", "accent")
+  local fs = BG.headers[s.key] or T.Text(frame:CreateFontString(nil, "OVERLAY"), "cell", "accentText")
   BG.headers[s.key] = fs
   fs:SetText(s.label)
   return fs
@@ -283,7 +283,7 @@ end
 
 -- Headers take a new accent at once.
 local function paintHeaders()
-  for _, fs in pairs(BG.headers) do T.Color(fs, "accent") end
+  for _, fs in pairs(BG.headers) do T.Color(fs, "accentText") end
 end
 
 -- Whether the client has the item calls the sections classify with.

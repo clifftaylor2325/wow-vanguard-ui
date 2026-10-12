@@ -158,10 +158,59 @@ end
 -- The user-adjustable tokens live in the theme settings (the rest are fixed).
 local SETTING_TOKENS = { accent = "accent", panel = "panel", inset = "inset", edge = "border" }
 
--- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings).
+-- The accent's text and dim variants (#230), each { OKLCH lightness change, chroma factor }:
+-- accentText is lighter, for accent-coloured text; accentDim is darker, for borders and
+-- ornament only, never text. Brass d9a441 gives e6b45b and 8a6a2f.
+T.ACCENT_VARIANTS = { accentText = { 0.047, 0.94 }, accentDim = { -0.207, 0.67 } }
+
+-- An sRGB channel (0-1) in linear light, and back.
+local function linear(c) return c <= 0.04045 and c / 12.92 or ((c + 0.055) / 1.055) ^ 2.4 end
+-- A linear channel back in sRGB, clamped to 0-1 (a variant can fall outside the gamut).
+local function gamma(c)
+  c = math.max(0, math.min(1, c))
+  return c <= 0.0031308 and c * 12.92 or 1.055 * c ^ (1 / 2.4) - 0.055
+end
+
+-- An sRGB colour in OKLab: L, a, b (Bjorn Ottosson's matrices).
+local function toOklab(r, g, b)
+  r, g, b = linear(r), linear(g), linear(b)
+  local l = (0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b) ^ (1 / 3)
+  local m = (0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b) ^ (1 / 3)
+  local s = (0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b) ^ (1 / 3)
+  return 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+end
+
+-- An OKLab colour back in sRGB: r, g, b (0-1).
+local function fromOklab(L, a, b)
+  local l = (L + 0.3963377774 * a + 0.2158037573 * b) ^ 3
+  local m = (L - 0.1055613458 * a - 0.0638541728 * b) ^ 3
+  local s = (L - 0.0894841775 * a - 1.2914855480 * b) ^ 3
+  return gamma(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+    gamma(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+    gamma(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)
+end
+
+-- Variant name -> { key = the accent it was made from, c = its colour }, so it's worked out once per accent.
+local variants = {}
+
+-- An accent variant's colour, made from the current accent (and cached until the accent changes).
+local function accentVariant(name)
+  local a, v, hit = T.Settings().accent, T.ACCENT_VARIANTS[name], variants[name]
+  local key = string.format("%.6f %.6f %.6f", a[1], a[2], a[3])
+  if hit and hit.key == key then return hit.c end
+  local L, A, B = toOklab(a[1], a[2], a[3])
+  local r, g, b = fromOklab(math.max(0, math.min(1, L + v[1])), A * v[2], B * v[2])
+  variants[name] = { key = key, c = { r, g, b, 1 } }
+  return variants[name].c
+end
+
+-- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings,
+-- accentText and accentDim follow the accent).
 function T.RGB(name)
   local key = SETTING_TOKENS[name]
-  local c = key and T.Settings()[key] or T.TOKENS[name]
+  local c = T.ACCENT_VARIANTS[name] and accentVariant(name) or key and T.Settings()[key] or T.TOKENS[name]
   if not c then error("Vanguard: no color named " .. tostring(name), 2) end
   return c[1], c[2], c[3], c[4] or 1
 end
@@ -1144,12 +1193,12 @@ function T.RefreshText()
   for fs, role in pairs(styled) do T.ApplyRole(fs, role) end
 end
 
--- Colors a font string: a named color, r, g, b (for other addons' skins), or the accent.
+-- Colors a font string: a named color, r, g, b (for other addons' skins), or the accent's text variant.
 function T.Color(fs, r, g, b)
   if type(r) == "number" then
     fs:SetTextColor(r, g, b)
   else
-    fs:SetTextColor(T.RGB(r or "accent"))
+    fs:SetTextColor(T.RGB(r or "accentText"))
   end
   return fs
 end

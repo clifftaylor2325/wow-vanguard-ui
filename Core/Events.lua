@@ -6,7 +6,7 @@ local ADDON, ns = ...
 -- "Vanguard:" in the accent color (plain until the theme has loaded).
 local function chatPrefix()
   local T = ns.Theme
-  return T and T.Paint("Vanguard:", "accent") .. " " or "Vanguard: "
+  return T and T.Paint("Vanguard:", "accentText") .. " " or "Vanguard: "
 end
 
 -- Prints one line to the default chat frame, prefixed with the addon name.

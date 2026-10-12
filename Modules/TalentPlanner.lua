@@ -351,7 +351,7 @@ end
 -- Adds the plan's lines for a talent to the tooltip: its planned rank (in the accent while it has one) and how to change it.
 local function addPlanLines(node)
   local planned = TP.Plan().ranks[node.nodeID]
-  local r, g, b = T.RGB(planned and "accent" or "text2")
+  local r, g, b = T.RGB(planned and "accentText" or "text2")
   GameTooltip:AddLine(planLine(node, planned), r, g, b)
   local hr, hg, hb = T.RGB("text2")
   GameTooltip:AddLine("Left-click plans a point, right-click takes one back.", hr, hg, hb)
@@ -386,7 +386,7 @@ end
 
 -- The mark's parts and scripts: the badge at its top right, the ring, clicks that plan and a tooltip on hover.
 local function markParts(m)
-  m.badge = T.Text(m:CreateFontString(nil, "OVERLAY"), "auraCount", "accent")
+  m.badge = T.Text(m:CreateFontString(nil, "OVERLAY"), "auraCount", "accentText")
   m.badge:SetPoint("TOPRIGHT", -2, -2)
   m.ring = T.Glow(m, TP.RING)
   m:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -414,7 +414,7 @@ local function paintMark(m, node, planned, result)
   m.node = node
   m.badge:SetShown(planned ~= nil and planned > node.rank)
   m.badge:SetText(planned and tostring(planned) or "")
-  T.Color(m.badge, result.stuck[node.nodeID] and "bad" or "accent")
+  T.Color(m.badge, result.stuck[node.nodeID] and "bad" or "accentText")
   T.ShowGlow(m.ring, result.order[1] == node.nodeID)
   m:EnableMouse(TP.planning == true)
   m:Show()

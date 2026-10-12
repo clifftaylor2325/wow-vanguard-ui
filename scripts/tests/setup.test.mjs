@@ -367,8 +367,8 @@ it("setup look: accent swatches and the raid frame style apply at once", () => {
   expect(addon.eval("return ns.Settings('RaidFrames').look"), "a style button sets the raid frame style").toBe("dark");
   expect(borderOf(addon, "Vanguard_Setup.pages.look.styles[2]"), "the chosen style is outlined").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
   const captions = addon.eval("local out = {} for i, b in ipairs(Vanguard_Setup.pages.look.styles) do out[i] = { b.text:GetText(), b.text.__textColor } end return out");
-  expect(captions.map(([t, c]) => [t, ...c.slice(0, 3)]), "each tile's short name under it, the chosen one in the accent")
-    .toEqual([["Softened", ...tok(addon, "text").slice(0, 3)], ["Dark", ...tok(addon, "accent").slice(0, 3)], ["Bright", ...tok(addon, "text").slice(0, 3)]]);
+  expect(captions.map(([t, c]) => [t, ...c.slice(0, 3)]), "each tile's short name under it, the chosen one in the accent's text colour")
+    .toEqual([["Softened", ...tok(addon, "text").slice(0, 3)], ["Dark", ...tok(addon, "accentText").slice(0, 3)], ["Bright", ...tok(addon, "text").slice(0, 3)]]);
 });
 
 // The style tiles on setup's Look step: each one's size, bar color and fill, and its name's text and color.

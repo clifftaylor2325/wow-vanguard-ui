@@ -235,7 +235,7 @@ local function fillItem(i, choice, current, pick)
   menu.items[i] = menu.items[i] or menuItem(i)
   local b = menu.items[i]
   b.text:SetText(choice[2])
-  T.Color(b.text, choice[1] == current and "accent" or "text")
+  T.Color(b.text, choice[1] == current and "accentText" or "text")
   b.check:SetShown(choice[1] == current)
   b:SetScript("OnClick", ns.Guard("click menu item", function() W.CloseMenu(); pick(choice[1]) end))
   b:Show()

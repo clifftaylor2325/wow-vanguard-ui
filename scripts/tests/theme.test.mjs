@@ -124,7 +124,7 @@ it("theme tokens and pixel-perfect borders", () => {
   expect(addon.eval('return ns.Theme.Hex("white")') === "ffffffff", "Hex gives the escape-code form").toBeTruthy();
   addon.eval('ns.Chat("TEST-ONLY line")');
   const last = addon.chat().at(-1);
-  expect(last.startsWith("|c" + addon.eval('return ns.Theme.Hex("accent")') + "Vanguard:|r"), `chat lines start with Vanguard: in the accent (got ${last})`).toBeTruthy();
+  expect(last.startsWith("|c" + addon.eval('return ns.Theme.Hex("accentText")') + "Vanguard:|r"), `chat lines start with Vanguard: in the accent's text colour (got ${last})`).toBeTruthy();
   addon.eval('ns.Options.Show("general")');
   setCombat(addon, true);
   addon.eval('__click("Pixel-perfect scale")');
@@ -537,4 +537,21 @@ it("slate surfaces (#229): inset, panel, raised, raisedHover, divider, borderHi 
   expect(isTok(addon, addon.eval("return { ns.Theme.PanelColor() }"), "panel"), "a new profile's panels use the new panel colour").toBe(true);
   const old = loggedIn("", { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { panel = { 0x12 / 255, 0x15 / 255, 0x1b / 255, 0.94 } } } } }' });
   expect(old.eval("return { ns.Theme.PanelColor() }")[0], "a profile that saved the old panel keeps it (no migration)").toBeCloseTo(0x12 / 255, 6);
+});
+
+// An accent variant as rrggbb.
+const hexOf = (addon, name) => addon.eval(`return ns.Theme.Hex("${name}")`).slice(2);
+
+it("accent variants (#230): accentText and accentDim are made from any accent in OKLCH and follow /vg accent", () => {
+  const addon = loggedIn();
+  expect([hexOf(addon, "accent"), hexOf(addon, "accentText"), hexOf(addon, "accentDim")], "brass: fill, a lighter text, a darker dim").toEqual(["d9a441", "e6b45b", "8a6a2f"]);
+  addon.slash("accent 5aa2f0");
+  expect([hexOf(addon, "accentText"), hexOf(addon, "accentDim")], "a new accent gives new variants at once").toEqual(["6eb1fb", "386493"]);
+  addon.slash("accent ff0000");
+  expect([hexOf(addon, "accentText"), hexOf(addon, "accentDim")], "a variant outside the screen's colours is clamped").toEqual(["ff3c2e", "950000"]);
+  addon.slash("accent ffffff");
+  expect(hexOf(addon, "accentText"), "white can't get lighter").toBe("ffffff");
+  expect(contrast(addon, "accentText") > contrast(addon, "accent") || hexOf(addon, "accent") === "ffffff", "text is never dimmer than the fill").toBe(true);
+  addon.slash("accent reset");
+  expect(addon.eval('local fs = UIParent:CreateFontString() ns.Theme.Color(fs) return ns.Theme.Hex("accentText") == string.format("ff%02x%02x%02x", fs.__textColor[1] * 255 + 0.5, fs.__textColor[2] * 255 + 0.5, fs.__textColor[3] * 255 + 0.5)'), "T.Color with no colour uses the text variant").toBe(true);
 });

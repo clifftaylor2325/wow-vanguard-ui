@@ -157,7 +157,7 @@ end
 
 -- The toast's two lines: the sender, and the line cut to one row.
 local function toastText(f)
-  f.sender = T.Text(f:CreateFontString(nil, "OVERLAY"), "name", "accent")
+  f.sender = T.Text(f:CreateFontString(nil, "OVERLAY"), "name", "accentText")
   f.sender:SetPoint("TOPLEFT", 8, -7)
   f.sender:SetPoint("RIGHT", -8, 0)
   f.sender:SetJustifyH("LEFT")

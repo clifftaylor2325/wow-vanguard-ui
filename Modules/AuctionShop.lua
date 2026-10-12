@@ -737,7 +737,7 @@ local function paintPaneRow(r, e)
   local on = e.key == AH.ListKey()
   r.name:SetText(e.name)
   r.count:SetText(e.count > 0 and tostring(e.count) or "")
-  T.Color(r.name, on and "accent" or "text")
+  T.Color(r.name, on and "accentText" or "text")
   r.mark:SetShown(on)
   r.wash:SetShown(on)
 end
