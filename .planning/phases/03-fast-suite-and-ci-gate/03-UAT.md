@@ -8,10 +8,10 @@ updated: 2026-10-12T02:16:44Z
 
 ## Current Test
 
-number: 5
-name: Decide D-06's internal 150 s budget
+number: 6
+name: Decide the open review items WR-01 and IN-05
 expected: |
-  A decision. Recorded runs 155.5 s and 158.7 s, independent verifier run 148.5 s; hosted run 205 s; the 300 s requirement is met in every run. The user already chose to accept about 156 s during execution; record that here or ask for module startup work.
+  Each marked fixed, deferred or wontfix in 03-REVIEW-DISPOSITION.md (WR-01: a scoped firstRun login runs MigrateDB(0,2); IN-05: the UI preview job now runs on every ready-for-review PR)
 awaiting: user response
 
 ## Tests
@@ -39,7 +39,8 @@ severity: major
 
 ### 5. Decide D-06's internal 150 s budget
 expected: a decision. Recorded runs 155.5 s and 158.7 s, independent verifier run 148.5 s; the 300 s requirement is met in every run. The user already chose to accept about 156 s during execution; record that here or ask for module startup work.
-result: [pending]
+result: pass
+source: user accepted about 156 s (hosted run 205 s, under the 300 s requirement)
 
 ### 6. Decide the open review items WR-01 and IN-05
 expected: each marked fixed, deferred or wontfix in 03-REVIEW-DISPOSITION.md (WR-01: a scoped firstRun login runs MigrateDB(0,2); IN-05: the UI preview job now runs on every ready-for-review PR)
@@ -48,9 +49,9 @@ result: [pending]
 ## Summary
 
 total: 6
-passed: 3
+passed: 4
 issues: 1
-pending: 2
+pending: 1
 skipped: 0
 blocked: 0
 
