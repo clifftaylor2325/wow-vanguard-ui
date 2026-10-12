@@ -51,6 +51,16 @@ it("raid indicators", () => {
   expect(addon.eval("return Vanguard_RaidUnitButton3.debuffRow.frame.__shown") === false, "the offline show no auras").toBeTruthy();
   addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", "raid2")');
   expect(addon.eval("return Vanguard_RaidUnitButton1.debuffRow.frame.__unit") === "raid2", "a roster change points the rows at the new unit").toBeTruthy();
+  // A tile's rows: their unit, the hot row's, whether on, and whether any icon shows.
+  const rows = (i) => addon.eval(`local b = Vanguard_RaidUnitButton${i} local any = false
+    for _, row in ipairs({ b.debuffRow, b.hotRow }) do for _, g in ipairs(row.frame.__groups) do for _, x in ipairs(g.buttons) do any = any or x.__shown end end end
+    return { unit = b.debuffRow.frame.__unit, hot = b.hotRow.frame.__unit, on = b.debuffRow.frame.__enabled, any = any }`);
+  const none = { unit: "none", hot: "none", on: false, any: false };
+  addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", nil)');
+  expect(rows(1), "an emptied tile's rows are bound to the null unit and show nothing").toEqual(none);
+  addon.eval('__spawn(4, nil)');
+  expect(rows(4), "a tile made with no unit starts on the null unit").toEqual(none);
+  addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", "raid2")');
   const b1 = "Vanguard_RaidUnitButton1";
   addon.eval(`${b1}:GetScript("OnEnter")(${b1})`);
   const hover = addon.eval(`return ${b1}.hover:IsShown()`);
@@ -101,6 +111,9 @@ it("raid indicators on the fallback", () => {
   expect(s1.shown && isTok(addon, s1.wash, "magic") && s1.wash[3] === 0.35 && isTok(addon, s1.edge, "magic"), "a debuff you can dispel washes the tile in its type's color").toBeTruthy();
   expect(s1.first === "TEST-ONLY-CURSE" && s1.other === "TEST-ONLY-BOSS" && s1.dup === false, "the dispellable one first, the others after, none twice").toBeTruthy();
   expect(s1.hot === "TEST-ONLY-HOT-A" && s1.hotCd[0] === 1018 && s1.hidden == null, "HoTs with a sweep from plain times, none from hidden ones").toBeTruthy();
+  addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", nil)');
+  expect(addon.eval("local b = Vanguard_RaidUnitButton1 return { b.dispel:IsShown(), b.debuffRow.unit == nil, b.hotRow.unit == nil }"), "an emptied tile drops its highlight and its unit").toEqual([false, true, true]);
+  addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", "raid1")');
   addon.eval('__auras.raid1["HARMFUL|RAID"][1].dispelName = { __secret = true }');
   addon.fire("UNIT_AURA", "raid1");
   expect(isTok(addon, state().edge, "bad"), "a hidden type the client can't color for us shows as a plain warning").toBeTruthy();
@@ -488,6 +501,7 @@ const errorsWith = (addon, text) => addon.eval(`local n, count = 0, 0
 const BAD_TEMPLATE_ENV = `
   local real = CreateFrame
   CreateFrame = function(kind, name, parent, template) if kind == "AuraContainer" then return real("Frame", name, parent) end return real(kind, name, parent, template) end
+  __wfgStub.transparent[CreateFrame] = true
 `;
 
 it("the engine probe refuses an AuraContainer without AddAuraGroup", () => {
@@ -509,6 +523,7 @@ const REFUSED_WHERE = "aura container (switching to Vanguard's own icons)";
 const REFUSING_ENV = `
   local real = CreateFrame
   CreateFrame = function(kind, ...) local f = real(kind, ...) if kind == "AuraContainer" then f.SetUnit = function() error("TEST-ONLY: SetUnit refused") end end return f end
+  __wfgStub.transparent[CreateFrame] = true
 `;
 
 it("a container the client refuses after the probe retires the engine for the session", () => {
@@ -530,7 +545,8 @@ it("a container the client refuses after the probe retires the engine for the se
   addon.eval("__c:SetUnit(nil) __c:Refresh()");
   expect(addon.eval("return __c.groups[1].icons[1]:IsShown()"), "the fallback container is fully usable").toBe(false);
   const noMore = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS + `local n, real = 0, CreateFrame
-    CreateFrame = function(kind, ...) if kind == "AuraContainer" then n = n + 1 if n > 1 then error("TEST-ONLY: no more containers") end end return real(kind, ...) end`, off);
+    CreateFrame = function(kind, ...) if kind == "AuraContainer" then n = n + 1 if n > 1 then error("TEST-ONLY: no more containers") end end return real(kind, ...) end
+    __wfgStub.transparent[CreateFrame] = true`, off);
   expect(noMore.eval("return ns.AuraEngine.Available()"), "the probe's container is the first and only one the client makes").toBe(true);
   expect(noMore.eval('local c = ns.Auras.Container(UIParent, __spec, "target") return { c.frame.__kind, ns.AuraEngine.Available(), ns.errors[#ns.errors].text }'),
     "a CreateFrame that errors retires the engine the same way").toEqual(["Frame", false, expect.stringMatching(/^aura container \(switching.*TEST-ONLY: no more containers$/)]);
@@ -556,6 +572,7 @@ const HOT_REFUSING_ENV = `
     end
     return f
   end
+  __wfgStub.transparent[CreateFrame] = true
 `;
 
 it("a raid tile whose second container is refused keeps one dispel highlight", () => {
