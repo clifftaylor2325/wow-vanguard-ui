@@ -78,7 +78,7 @@ it("modulesOffLua: starts on a new line, makes each missing table level, then se
   const lines = modulesOffLua(HEAVY).split("\n");
   expect(lines[0], "a leading newline so it never joins the caller's last line").toBe("");
   expect(lines.slice(1, 5)).toEqual([
-    "VanguardDB = VanguardDB or {}",
+    "VanguardDB = VanguardDB or { version = 2 }",
     "VanguardDB.profiles = VanguardDB.profiles or {}",
     "VanguardDB.profiles.Default = VanguardDB.profiles.Default or {}",
     "VanguardDB.profiles.Default.modules = VanguardDB.profiles.Default.modules or {}",
@@ -189,6 +189,17 @@ it("a real scoped login on a brand-new account (no VanguardDB before the scope t
   addon.login();
   expect(enabledSix(addon)).toEqual(HEAVY.map(() => false));
   expect(addon.eval("return #ns.errors")).toBe(0);
+});
+
+it("a scoped brand-new account is not migrated: Core/DB.lua sees a fresh install, as it does unscoped (WR-01)", () => {
+  const migrated = (savedVariables) => {
+    const addon = createAddon({ savedVariables });
+    addon.eval("migrations = 0; local run = ns.MigrateDB; ns.MigrateDB = function(...) migrations = migrations + 1; return run(...) end");
+    addon.login();
+    return [addon.eval("return migrations"), addon.eval("return VanguardDB.version")];
+  };
+  expect(migrated(modulesOffLua(HEAVY)), "scoped").toEqual(migrated(""));
+  expect(migrated(modulesOffLua(HEAVY))[0]).toBe(0);
 });
 
 it("the scope text merges into the caller's own saved variables instead of replacing them", () => {
