@@ -29,7 +29,7 @@ function A.Icon(parent, size, style)
   style = style or { size = size }
   local f = CreateFrame("Frame", nil, parent)
   local parts = A.Dress(f, { size = size, debuff = style.debuff, dim = style.dim, masque = style.masque })
-  f.icon, f.cooldown, f.count, f.ring = parts.icon, parts.cooldown, parts.count, parts.ring
+  f.icon, f.cooldown, f.count, f.ring, f.badge = parts.icon, parts.cooldown, parts.count, parts.ring, parts.badge
   if style.timer then A.Countdown(f.cooldown, size) end
   f:Hide()
   return f
@@ -47,13 +47,14 @@ function A.Sweep(cd, unit, aura)
   if exp and dur and dur > 0 then cd:SetCooldown(exp - dur, dur) else cd:Clear() end
 end
 
--- Colors and shows a debuff icon's type edge.
+-- Colors and shows a debuff icon's type edge, and its type badge where the type can be read.
 local function paintRing(f, unit, aura)
   local r, g, b = A.DispelColor(unit, aura)
   for _, t in ipairs(f.ring) do
     t:SetVertexColor(r, g, b)
     t:Show()
   end
+  A.ShowBadge(f.badge, aura.dispelName)
 end
 
 -- Fills an icon from an aura, or hides it when there is none.

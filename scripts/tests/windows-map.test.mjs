@@ -71,7 +71,7 @@ const alpha = (addon, expr) => addon.eval(`return (${expr}):GetAlpha()`);
 // How many textures of a frame (by Lua expression) are visible and stretch over the whole frame (a fill).
 const fills = (addon, expr) => addon.eval(`local n = 0
   for _, r in ipairs({ (${expr}):GetRegions() }) do
-    if r.__kind == "Texture" and r:GetAlpha() ~= 0 and r.__points.TOPLEFT and r.__points.BOTTOMRIGHT then n = n + 1 end
+    if r.__kind == "Texture" and r:GetAlpha() ~= 0 and r:IsShown() and r.__points.TOPLEFT and r.__points.BOTTOMRIGHT then n = n + 1 end
   end
   return n`);
 
@@ -192,7 +192,7 @@ it("quest panel in the map: with Vanguard's quest log off, the list, the details
     list: 0, scroll: 0, edge: 0, bg: 0, seal: 0, border: 0, strip: 0, rewards: 0, buttons: [0, 0, 0, 0] });
   expect([fills(addon, "QuestMapFrame.QuestsFrame"), fills(addon, "QuestMapFrame.QuestsFrame.DetailsFrame")], "the list and the details each get an inset panel").toEqual([1, 1]);
   expect(windowState(addon, "QuestLogPopupDetailFrame"), "the pop-out is a window in the theme").toMatchObject({ art: 0, nine: 0, panel: true, title: true });
-  expect(["Abandon", "Share", "Track"].map((b) => fills(addon, `QuestLogPopupDetailFrame${b}Button`)), "its three buttons are themed (a fill and a hover wash each)").toEqual([2, 2, 2]);
+  expect(["Abandon", "Share", "Track"].map((b) => fills(addon, `QuestLogPopupDetailFrame${b}Button`)), "its three buttons are themed (one fill each; the hover fill stays clear until the mouse comes over)").toEqual([1, 1, 1]);
   addon.eval("QuestMapFrame:Hide() QuestMapFrame:Show() QuestLogPopupDetailFrame:Hide() QuestLogPopupDetailFrame:Show()");
   expect(questPanel(addon).painted, "showing them again paints nothing new").toBe(first.painted);
 });
@@ -237,7 +237,7 @@ it("battlefield map: its border and tab in the theme once the game loads it, the
   expect([fills(addon, "BattlefieldMapFrame.BorderFrame"), addon.eval("return select('#', BattlefieldMapFrame.BorderFrame:GetRegions()) > 8")], "an edge is painted over the map but no fill, which would hide it").toEqual([0, true]);
   expect(addon.eval("local c = BattlefieldMapFrame.BorderFrame.CloseButton return select('#', c:GetRegions()) > 1"), "the close button is the theme's").toBe(true);
   expect(addon.eval("local t = BattlefieldMapTab return { t.Left:GetAlpha(), t.Middle:GetAlpha(), t.Right:GetAlpha(), t.Text:GetAlpha() }"), "the tab's art is faded, its label kept").toEqual([0, 0, 0, 1]);
-  expect([fills(addon, "BattlefieldMapTab"), alpha(addon, "BattlefieldMapFrame.ScrollContainer")], "the tab is a flat button, the canvas the game's").toEqual([2, 1]);
+  expect([fills(addon, "BattlefieldMapTab"), alpha(addon, "BattlefieldMapFrame.ScrollContainer")], "the tab is a flat button (its hover clear at rest), the canvas the game's").toEqual([1, 1]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("BattlefieldMapFrame:Hide() BattlefieldMapFrame:Show()");
   expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(painted);
@@ -257,8 +257,9 @@ it("battlefield map: switched off it stays the game's; a client without the tab 
 
 // TEST-ONLY group finder, shaped like Blizzard_GroupFinder_VanillaStyle's Mainline XML: the plain outer window with its
 // close button and the eye (a static picture and an animation), the listing and browse pages (PortraitFrameTemplateNoCloseButton
-// frames filling the window, with their extra art, buttons and the listing's comment box), and the browse tooltip.
-// Made when the game loads the part.
+// frames filling the window, with their extra art, buttons and the listing's comment box), the browse tooltip, and the
+// who list page (WhoList.xml: no Inset, its own backdrop, header stone, inside frame and lines, and a list). Made when
+// the game loads the part.
 const FINDER_ENV = WINDOWS_ENV + `
   function __button(parent, name) local b = CreateFrame("Button", name, parent) b:CreateTexture() return b end
   function __finder()
@@ -280,7 +281,18 @@ const FINDER_ENV = WINDOWS_ENV + `
     browse.SendMessageButton, browse.GroupInviteButton = __button(browse), __button(browse)
     local tip = CreateFrame("Frame", "LFGBrowseSearchEntryTooltip", UIParent) tip:Hide()
     tip.NineSlice = CreateFrame("Frame", nil, tip) tip.NineSlice:CreateTexture()
+    local who = __window("LFGWhoListFrame")
+    who.Inset = nil
+    who.BackgroundArt, who.headerBackground, who.insideFrame = who:CreateTexture(), who:CreateTexture(), who:CreateTexture()
+    who.BarTop, who.BarMiddle = who:CreateTexture(), who:CreateTexture()
+    who.ScrollBox = CreateFrame("Frame", nil, who)
+    who.ScrollBox.rows = 0
+    function who.ScrollBox:GetDataProviderSize() return self.rows end
+    function who.ScrollBox:SetDataProvider(n) self.rows = n end
+    browse.OptionsButton = __button(browse)
+    browse.OptionsButton:SetPoint("TOPRIGHT", browse, "TOPRIGHT", -12, -32)
   end
+  LFG_LIST_NO_RESULTS_FOUND = "TEST-ONLY No groups found."
 `;
 
 it("group finder: the window, its listing and browse pages and the group tooltip in the theme once the game loads it", () => {
@@ -298,11 +310,48 @@ it("group finder: the window, its listing and browse pages and the group tooltip
   expect([fills(addon, "LFGListingFrame.Inset"), fills(addon, "LFGListingFrame.ActivityView.Comment")], "an inset panel on the page, and the comment box is the theme's edit box").toEqual([1, 1]);
   expect(addon.eval("local c = LFGListingFrame.ActivityView.Comment return { c.TopLeftTex:GetAlpha(), c.EditBox:GetAlpha() }"), "its border art is faded, the box inside kept").toEqual([0, 1]);
   expect(addon.eval("local l, b = LFGListingFrame, LFGBrowseFrame local out = {} for _, f in ipairs({ l.BackButton, l.PostButton, l.GroupRoleButtons.RolePollButton, b.SendMessageButton, b.GroupInviteButton }) do out[#out + 1] = (f:GetRegions()):GetAlpha() end return out"), "the buttons' art is faded").toEqual([0, 0, 0, 0, 0]);
-  expect([fills(addon, "LFGListingFrame.PostButton"), fills(addon, "LFGBrowseFrame.GroupInviteButton")], "and they are flat buttons").toEqual([2, 2]);
+  expect([fills(addon, "LFGListingFrame.PostButton"), fills(addon, "LFGBrowseFrame.GroupInviteButton")], "and they are flat buttons (one fill; the hover clear at rest)").toEqual([1, 1]);
   expect([addon.eval("return LFGBrowseSearchEntryTooltip.NineSlice:GetAlpha()"), fills(addon, "LFGBrowseSearchEntryTooltip")], "the tooltip's border is faded and a panel painted").toEqual([0, 1]);
   const painted = listing.painted;
   addon.eval("for _, n in ipairs({ 'LFGParentFrame', 'LFGListingFrame', 'LFGBrowseFrame', 'LFGBrowseSearchEntryTooltip' }) do _G[n]:Hide() _G[n]:Show() end");
   expect(windowState(addon, "LFGListingFrame").painted, "showing them again paints nothing new").toBe(painted);
+});
+
+it("group finder: the who list page (the search view) loses the brass border and portrait badge and gets an inset panel like the other pages", () => {
+  const addon = loggedIn(FINDER_ENV);
+  addon.eval("__finder()");
+  addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
+  addon.eval("LFGParentFrame:Show() LFGWhoListFrame:Show()");
+  // The who page's art: its marked template art, border, badge, and its own backdrop, header stone, frame and lines.
+  const art = () => addon.eval(`local w = LFGWhoListFrame local a
+    for _, r in ipairs({ w:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then a = r:GetAlpha() end end
+    return { a, w.NineSlice:GetAlpha(), w.PortraitContainer:GetAlpha(), w.BackgroundArt:GetAlpha(), w.headerBackground:GetAlpha(), w.insideFrame:GetAlpha(), w.BarTop:GetAlpha(), w.BarMiddle:GetAlpha() }`);
+  expect(art(), "the template art, the brass border, the round badge and the page's own art are faded").toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+  expect([fills(addon, "LFGWhoListFrame.ScrollBox"), addon.eval("return LFGWhoListFrame.TitleContainer.TitleText:GetFont() ~= nil")], "with no Inset, its list gets the inset panel; the title is in the theme font").toEqual([1, true]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("LFGWhoListFrame:Hide() LFGWhoListFrame:Show()");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(painted);
+});
+
+it("group finder: the who list says the game's no-results line while empty, and the settings gear sits in the close button's row", () => {
+  const addon = loggedIn(FINDER_ENV);
+  addon.eval("__finder()");
+  addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
+  addon.eval("LFGParentFrame:Show() LFGWhoListFrame:Show() LFGBrowseFrame:Show()");
+  // The who list's note: its text and whether it shows.
+  const note = () => addon.eval("local n = ns.FrameState('vgEmptyNote')[LFGWhoListFrame.ScrollBox] return { n:GetText(), n:IsShown() }");
+  expect(note(), "an empty who list (before any search) shows the browse page's empty-result line").toEqual(["TEST-ONLY No groups found.", true]);
+  addon.eval("LFGWhoListFrame.ScrollBox:SetDataProvider(3)");
+  expect(note()[1], "rows from a search hide it").toBe(false);
+  addon.eval("LFGWhoListFrame.ScrollBox:SetDataProvider(0) LFGWhoListFrame:Hide() LFGWhoListFrame:Show()");
+  expect(note()[1], "an empty result shows it again, once").toBe(true);
+  expect(addon.eval("local n, c = 0, LFGWhoListFrame.ScrollBox for _, r in ipairs({ c:GetRegions() }) do if r.__kind == 'FontString' then n = n + 1 end end return n"), "made once").toBe(1);
+  const gear = addon.eval(`local p = LFGBrowseFrame.OptionsButton.__points.CENTER
+    return { p.rel == LFGParentFrameCloseButton, p.x, p.y, LFGBrowseFrame.OptionsButton.__points.TOPRIGHT == nil }`);
+  expect(gear, "the gear is T.CONTROL.step left of the close button and level with it, its old anchor gone").toEqual([true, -28, 0, true]);
+  const plain = addon.eval(`local box = CreateFrame("Frame", nil, UIParent) local GW = ns.GetModule("Windows")
+    GW.WatchEmpty(box, "TEST-ONLY") GW.WatchEmpty(nil, "TEST-ONLY") return { GW.BoxEmpty(box), ns.FrameState('vgEmptyNote')[box]:IsShown() }`);
+  expect(plain, "a list that can't say how many rows it has gets no note shown").toEqual([false, false]);
 });
 
 it("group finder: switched off it stays the game's; a client missing parts of it loads cleanly", () => {
@@ -311,11 +360,12 @@ it("group finder: switched off it stays the game's; a client missing parts of it
   off.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
   off.eval("LFGParentFrame:Show() LFGListingFrame:Show()");
   expect([off.eval("return ns.FrameState('vgWindow')[LFGParentFrame] == nil and ns.FrameState('vgWindow')[LFGListingFrame] == nil"), windowState(off, "LFGListingFrame").art !== 0, fills(off, "LFGParentFrame")], "not hooked, art left").toEqual([true, true, 0]);
-  const bare = loggedIn(`for _, n in ipairs({ "LFGParentFrame", "LFGListingFrame", "LFGBrowseFrame", "LFGBrowseSearchEntryTooltip" }) do CreateFrame("Frame", n, UIParent) end
-    LFGListingFrame.ActivityView, LFGListingFrame.GroupRoleButtons, LFGBrowseFrame.TitleContainer, LFGBrowseFrame.Inset = {}, {}, {}, {}`);
+  const bare = loggedIn(`for _, n in ipairs({ "LFGParentFrame", "LFGListingFrame", "LFGBrowseFrame", "LFGBrowseSearchEntryTooltip", "LFGWhoListFrame" }) do CreateFrame("Frame", n, UIParent) end
+    LFGListingFrame.ActivityView, LFGListingFrame.GroupRoleButtons, LFGBrowseFrame.TitleContainer, LFGBrowseFrame.Inset = {}, {}, {}, {}
+    LFGBrowseFrame.OptionsButton = CreateFrame("Button", nil, LFGBrowseFrame)`);
   bare.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
-  bare.eval("LFGParentFrame:Show() LFGListingFrame:Show() LFGBrowseFrame:Show() LFGBrowseSearchEntryTooltip:Show()");
-  expect(bare.eval("return #ns.errors"), "bare frames: no errors").toBe(0);
+  bare.eval("LFGParentFrame:Show() LFGListingFrame:Show() LFGBrowseFrame:Show() LFGBrowseSearchEntryTooltip:Show() LFGWhoListFrame:Show()");
+  expect(bare.eval("return #ns.errors"), "bare frames (a gear but no close button, a who page without a list): no errors").toBe(0);
 });
 
 // TEST-ONLY Legacy system window, shaped like Blizzard_LegacySystem's XML: a portrait frame with three pages (each with its
@@ -334,6 +384,12 @@ const LEGACY_ENV = WINDOWS_ENV + `
     tree.Node = CreateFrame("Button", nil, tree.LegacyTreeTraitPanel.ButtonsParent) tree.Node:CreateTexture()
     chal.VerticalDivider = CreateFrame("Frame", nil, chal) chal.VerticalDivider:CreateTexture()
     chal.CategoryList, chal.DetailPane = CreateFrame("Frame", nil, chal), CreateFrame("Frame", nil, chal)
+    local box = CreateFrame("Frame", nil, chal.DetailPane) chal.DetailPane.ScrollBox = box
+    box.rows = 0
+    function box:GetDataProviderSize() return self.rows end
+    function box:SetDataProvider(n) self.rows = n end
+    -- as LegacyChallengeDetailPaneMixin:GenerateDataProvider: the picked category kept as info, then the rows
+    function chal.DetailPane:SelectCategory(info, n) self.info = info self.ScrollBox:SetDataProvider(n) end
     f.LegacyTreeTab = CreateFrame("Frame", nil, f) f.LegacyTreeTab:CreateTexture()
     f.TabIndicators = CreateFrame("Frame", nil, f) f.TabIndicators:CreateTexture()
   end
@@ -354,6 +410,22 @@ it("legacy system: the window in the theme, its page backgrounds faded and its p
   expect(fills(addon, "LegacySystemFrame.TreePage.LegacyTreeTraitPanel"), "the tree's panel is not covered, so it does not hide the close button's corner").toBe(0);
   addon.eval("LegacySystemFrame:Hide() LegacySystemFrame:Show()");
   expect(windowState(addon, "LegacySystemFrame"), "showing it again paints nothing new").toMatchObject({ panel: true, painted: first.painted });
+});
+
+it("legacy system: the challenge detail pane prompts for a category while nothing is picked, and says when a category has none", () => {
+  const addon = loggedIn(LEGACY_ENV);
+  addon.eval("__legacy()");
+  addon.fire("ADDON_LOADED", "Blizzard_LegacySystem");
+  addon.eval("LegacySystemFrame:Show()");
+  // The detail pane's note: its text and whether it shows.
+  const note = () => addon.eval("local n = ns.FrameState('vgEmptyNote')[LegacySystemFrame.ChallengesPage.DetailPane.ScrollBox] return { n:GetText(), n:IsShown() }");
+  expect(note(), "nothing picked: a prompt").toEqual(["Select a category to view its challenges.", true]);
+  addon.eval("LegacySystemFrame.ChallengesPage.DetailPane:SelectCategory({ id = 1 }, 4)");
+  expect(note()[1], "a category with challenges: no note").toBe(false);
+  addon.eval("LegacySystemFrame.ChallengesPage.DetailPane:SelectCategory({ id = 2 }, 0)");
+  expect(note(), "a category whose challenges are all filtered out: Vanguard's line when the game has none").toEqual(["No challenges to show here.", true]);
+  addon.eval("LEGACY_NO_CHALLENGES = 'TEST-ONLY No challenges' LegacySystemFrame.ChallengesPage.DetailPane:SelectCategory({ id = 2 }, 0)");
+  expect(note(), "else the game's own no-challenges line").toEqual(["TEST-ONLY No challenges", true]);
 });
 
 it("legacy system: switched off it stays the game's; a client missing its pages loads cleanly", () => {
@@ -494,7 +566,7 @@ it("calendar: the seven dialogs are skinned, with their headers, buttons and tex
   }
   expect([calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "the holiday's art and the create dialog's icon are left as the game has them").toEqual([0.4, 1]);
   expect(["CalendarViewHolidayCloseButton", "CalendarViewEventCloseButton", "CalendarCreateEventCloseButton", "CalendarMassInviteCloseButton"].map(n => closeSeal(addon, n)), "the close buttons are the theme's close seal").toEqual([true, true, true, true]);
-  expect(["CalendarViewEventAcceptButton", "CalendarCreateEventCreateButton", "CalendarEventPickerCloseButton", "CalendarTexturePickerAcceptButton"].map(n => fills(addon, n)), "the push buttons are flat buttons").toEqual([2, 2, 2, 2]);
+  expect(["CalendarViewEventAcceptButton", "CalendarCreateEventCreateButton", "CalendarEventPickerCloseButton", "CalendarTexturePickerAcceptButton"].map(n => fills(addon, n)), "the push buttons are flat buttons (one fill; the hover clear at rest)").toEqual([1, 1, 1, 1]);
   expect(["CalendarCreateEventTitleEdit", "CalendarMassInviteMinLevelEdit"].map(n => calAlpha(addon, `(_G.${n}:GetRegions())`)), "the text boxes' template art is faded").toEqual([0, 0]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("CalendarCreateEventFrame:Hide() CalendarCreateEventFrame:Show() CalendarViewHolidayFrame:Hide() CalendarViewHolidayFrame:Show()");

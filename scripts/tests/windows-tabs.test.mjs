@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { loggedIn, WINDOWS_ENV } from "./helpers.mjs";
+import { loggedIn, px, WINDOWS_ENV } from "./helpers.mjs";
 
 // TEST-ONLY tab buttons shaped like the game's tab templates, and a reader for a tab's state:
 // art = the alpha of its Left texture (-1 while the game's own), line = whether its accent
@@ -361,6 +361,117 @@ it("character pane: a list that loads later (the currencies' addon) is dressed w
   expect(addon.eval("return { __a(__tokenHeader.banner), #ns.errors }"), "dressed once it has").toEqual([0, 0]);
 });
 
+// TEST-ONLY pane hosts, shaped like the Camelot CharacterFrame.xml's: the left host's wooden background, the right
+// host's stat backdrop and stone plate and its child frame holding the divider line. The currency list's ScrollBox
+// says how many rows it holds, as the game's does (GetDataProviderSize), and takes a new list (SetDataProvider).
+const HOSTS_ENV = PANE_ENV + `
+  CharacterFrame.LeftPaneHost = CreateFrame("Frame", "CharacterFrameLeftPaneHost", CharacterFrame)
+  __woodBg = __art(CharacterFrame.LeftPaneHost)
+  CharacterFrame.RightPaneHost = CreateFrame("Frame", "CharacterFrameRightPaneHost", CharacterFrame)
+  __statBg, CharacterFrame.RightPaneHost.StoneBg = __art(CharacterFrame.RightPaneHost), __art(CharacterFrame.RightPaneHost, "ARTWORK")
+  __divider = __art(CreateFrame("Frame", nil, CharacterFrame.RightPaneHost), "OVERLAY")
+  CharacterFrame.RightPaneToggleButton = CreateFrame("Button", "CharacterFrameRightPaneToggleButton", CharacterFrame)
+  CharacterFrame.RightPaneToggleButton:SetPoint("TOPRIGHT", CharacterFrame.LeftPaneHost, "TOPRIGHT", -6, -6)
+  TokenFrame.ScrollBox.size = 0
+  function TokenFrame.ScrollBox:GetDataProviderSize() return self.size end
+  function TokenFrame.ScrollBox:SetDataProvider(n) self.size = n end
+`;
+
+it("character pane: the wooden and stone backdrops faded, each list on a flat inset panel, as on the other lists", () => {
+  const addon = loggedIn(HOSTS_ENV);
+  expect(addon.eval("return { __a(__woodBg), __a(__statBg), __a(CharacterFrame.RightPaneHost.StoneBg), __a(__divider) }"), "the hosts' art and the divider").toEqual([0, 0, 0, 0]);
+  expect(addon.eval("return { __panel(ReputationFrame.ScrollBox), __panel(SkillsFrame.ScrollBox), __panel(TokenFrame.ScrollBox) }"), "reputation, skills and currency lists").toEqual([true, true, true]);
+  const off = loggedIn(HOSTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
+  expect(off.eval("return { __a(__woodBg), __panel(TokenFrame.ScrollBox) }"), "tabs off: the game's backdrops").toEqual([-1, false]);
+  const bare = loggedIn(PANE_ENV + "CharacterFrame.LeftPaneHost = true");
+  expect(bare.eval("return #ns.errors"), "a host that is not a frame, and a currency list that cannot count its rows").toBe(0);
+});
+
+it("character pane: the right-pane toggle (the gold arrow) sits in the title row, beside the close button", () => {
+  const addon = loggedIn(HOSTS_ENV);
+  const toggle = addon.eval(`local b = CharacterFrame.RightPaneToggleButton local p = b.__points.CENTER
+    return { p.rel == CharacterFrame.CloseButton, p.x, p.y, b.__points.TOPRIGHT == nil }`);
+  expect(toggle, "CENTER on the close button, one control step left, its old corner anchor cleared").toEqual([true, -28, 0, true]);
+  const off = loggedIn(HOSTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
+  expect(off.eval("return CharacterFrame.RightPaneToggleButton.__points.CENTER == nil"), "tabs off: where the game put it").toBe(true);
+  const bare = loggedIn(HOSTS_ENV + "CharacterFrame.CloseButton = nil");
+  expect(bare.eval("return { CharacterFrame.RightPaneToggleButton.__points.CENTER == nil, #ns.errors }"), "no close button to sit by: left alone").toEqual([true, 0]);
+});
+
+it("currency: an empty list says so, and the note follows the list the game sets", () => {
+  const addon = loggedIn(HOSTS_ENV);
+  // The currency list's note: its text and whether it shows.
+  const note = () => addon.eval("local n = ns.FrameState('vgEmptyNote')[TokenFrame.ScrollBox] return { n:GetText(), n:IsShown() }");
+  expect(note(), "no currencies yet").toEqual(["You have no currencies yet.", true]);
+  addon.eval("TokenFrame.ScrollBox:SetDataProvider(3)");
+  expect(note()[1], "a list with currencies").toBe(false);
+  addon.eval("TokenFrame.ScrollBox:SetDataProvider(0) CharacterFrame:Hide() CharacterFrame:Show()");
+  expect([note()[1], addon.eval("return #ns.errors")], "empty again, watched once").toEqual([true, 0]);
+});
+
+// TEST-ONLY collections window, shaped like Blizzard_Collections' Mainline Wardrobe.xml: the journal (a window) holding
+// WardrobeCollectionFrame, whose item grid and sets preview are CollectionsBackgroundTemplate frames (a leather tile and
+// shadows on an InsetFrameTemplate: a Bg and a NineSlice) with models on them, and whose sets list is an InsetFrameTemplate.
+// Made when the game loads the part.
+const COLLECTIONS_ENV = PANE_ENV + `
+  function __backdrop(parent)
+    local f = CreateFrame("Frame", nil, parent)
+    f.BackgroundTile, f.ShadowCornerTop, f.Bg = __art(f), __art(f, "BORDER"), __art(f)
+    f.NineSlice = CreateFrame("Frame", nil, f) __art(f.NineSlice)
+    return f
+  end
+  function __collections()
+    __window("CollectionsJournal")
+    local w = CreateFrame("Frame", "WardrobeCollectionFrame", CollectionsJournal)
+    w.ItemsCollectionFrame = __backdrop(w)
+    w.ItemsCollectionFrame.Model = CreateFrame("Frame", nil, w.ItemsCollectionFrame) __art(w.ItemsCollectionFrame.Model, "ARTWORK")
+    w.SetsCollectionFrame = CreateFrame("Frame", nil, w)
+    w.SetsCollectionFrame.RightInset, w.SetsCollectionFrame.LeftInset = __backdrop(w.SetsCollectionFrame), __backdrop(w.SetsCollectionFrame)
+    -- as WardrobeItemsCollectionMixin: the filtered list for the slot (nil until the game makes it), redrawn by UpdateItems
+    local items = w.ItemsCollectionFrame
+    function items:GetFilteredVisualsList() return self.filteredVisualsList end
+    function items:UpdateItems() end
+    function items:SetSlot(n) self.filteredVisualsList = {} for i = 1, n do self.filteredVisualsList[i] = { visualID = i } end self:UpdateItems() end
+  end
+`;
+
+it("appearances: the item grid's and the sets tab's leather backdrops are faded, with a flat inset panel behind the content", () => {
+  const addon = loggedIn(COLLECTIONS_ENV);
+  addon.eval("__collections()");
+  expect(addon.eval("return __a(WardrobeCollectionFrame.ItemsCollectionFrame.BackgroundTile)"), "not before the part loads").toBe(-1);
+  addon.fire("ADDON_LOADED", "Blizzard_Collections");
+  addon.eval("CollectionsJournal:Show()");
+  // A backdrop's tile, shadow, background and edge alphas, and whether it is panelled.
+  const backdrop = (path) => addon.eval(`local f = WardrobeCollectionFrame.${path} return { __a(f.BackgroundTile), __a(f.ShadowCornerTop), __a(f.Bg), f.NineSlice:GetAlpha(), __panel(f) }`);
+  expect(backdrop("ItemsCollectionFrame"), "the item grid: tile, shadows, inset background and edge faded, an inset panel").toEqual([0, 0, 0, 0, true]);
+  expect([backdrop("SetsCollectionFrame.RightInset"), backdrop("SetsCollectionFrame.LeftInset")], "the sets tab's preview and list too").toEqual([[0, 0, 0, 0, true], [0, 0, 0, 0, true]]);
+  expect(addon.eval("local m = WardrobeCollectionFrame.ItemsCollectionFrame.Model return { m:GetAlpha(), __a((m:GetRegions())) }"), "the appearance models on it are the game's").toEqual([1, -1]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("CollectionsJournal:Hide() CollectionsJournal:Show()");
+  expect(addon.eval("return { ns.Theme.PaintedCount(), #ns.errors }"), "showing it again paints nothing new").toEqual([painted, 0]);
+  const bare = loggedIn(COLLECTIONS_ENV + `__window("CollectionsJournal") CreateFrame("Frame", "WardrobeCollectionFrame", CollectionsJournal).SetsCollectionFrame = {}`);
+  bare.fire("ADDON_LOADED", "Blizzard_Collections");
+  const none = loggedIn(COLLECTIONS_ENV + `__window("CollectionsJournal")`);
+  none.fire("ADDON_LOADED", "Blizzard_Collections");
+  expect([bare.eval("CollectionsJournal:Show() return #ns.errors"), none.eval("CollectionsJournal:Show() return #ns.errors")], "a wardrobe without backdrops, or no wardrobe: no errors").toEqual([0, 0]);
+});
+
+it("appearances: an empty grid says so, and the note follows the slot the game redraws", () => {
+  const addon = loggedIn(COLLECTIONS_ENV);
+  addon.eval("__collections()");
+  addon.fire("ADDON_LOADED", "Blizzard_Collections");
+  addon.eval("CollectionsJournal:Show()");
+  // The grid's note: its text and whether it shows.
+  const note = () => addon.eval("local n = ns.FrameState('vgEmptyNote')[WardrobeCollectionFrame.ItemsCollectionFrame] return { n:GetText(), n:IsShown() }");
+  expect(note()[1], "before the game has listed a slot: no note").toBe(false);
+  addon.eval("WardrobeCollectionFrame.ItemsCollectionFrame:SetSlot(0)");
+  expect(note(), "a slot with nothing collected").toEqual(["No appearances to show for this slot.", true]);
+  addon.eval("WardrobeCollectionFrame.ItemsCollectionFrame:SetSlot(5)");
+  expect(note()[1], "a slot with appearances").toBe(false);
+  addon.eval("CollectionsJournal:Hide() CollectionsJournal:Show() WardrobeCollectionFrame.ItemsCollectionFrame:SetSlot(0)");
+  expect([note()[1], addon.eval("return #ns.errors")], "watched once, still right after another show").toEqual([true, 0]);
+});
+
 // TEST-ONLY scroll bars shaped like the game's MinimalScrollBar (a Track holding the Thumb, arrow
 // buttons), and a reader for a bar's state: track art and thumb art faded, a panel on the thumb.
 const BARS_ENV = PANE_ENV + `
@@ -464,11 +575,11 @@ it("window controls: the corner close button and the max/min box sit the same in
     return { c.rel == TestOnlyControls, c.x, c.y, b.rel == TestOnlyControls.CloseButton, b.x, b.y, glyph(TestOnlyControls.MaximizeMinimizeButton.MaximizeButton),
       TestOnlyOdd.CloseButton.__points.BOTTOM ~= nil, ns.errors[1] == nil }`);
   expect(out, "close 12 in from the corner both ways (24 from the panel's padded edge), the max/min box (its plain glyph) 28 to its left; a close button the game put elsewhere stays there")
-    .toEqual([true, -12, -12, true, -28, 0, "Maximize", true, true]);
+    .toEqual([true, -px(addon, 12), -px(addon, 12), true, -28, 0, "Maximize", true, true]);
   // A window painted without padding (the finder, the calendar): its close button 24 in from the frame's own corner.
   addon.eval("ns.Theme.Panel(TestOnlyBare) ns.GetModule('Windows').DressClose(TestOnlyBare, TestOnlyBare.CloseButton)");
   expect(addon.eval("local c = TestOnlyBare.CloseButton.__points.CENTER return { c.rel == TestOnlyBare, c.relPoint, c.x, c.y }"), "an unpadded window's close button: 24 in from its corner both ways")
-    .toEqual([true, "TOPRIGHT", -24, -24]);
+    .toEqual([true, "TOPRIGHT", -px(addon, 24), -px(addon, 24)]);
 });
 
 it("flight map: its map art stays when the window's art is faded", () => {

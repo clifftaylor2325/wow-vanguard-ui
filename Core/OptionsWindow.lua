@@ -40,6 +40,22 @@ local function moduleRow(parent, row, width)
   return r
 end
 
+-- Disables a button row (the themed button's disabled look) while its enabled() says false; re-read on every refresh.
+local function followEnabled(b, enabled)
+  -- Re-reads enabled(): the button works, or is disabled.
+  b.Refresh = function(self)
+    if enabled() == true then self:Enable() else self:Disable() end
+  end
+  b:Refresh()
+end
+
+-- A button row: { "button", label, onClick, enabled }; enabled (optional) disables it while it says false.
+local function buttonRow(c, r)
+  local b = W.Button(c, r[2], r[3], 220)
+  if r[4] then followEnabled(b, r[4]) end
+  return b
+end
+
 -- Row kind -> builder(parent, row, width) returning the widget.
 local BUILDERS = {
   -- One builder per row kind; each returns the widget it made.
@@ -47,7 +63,7 @@ local BUILDERS = {
   -- A note wraps to the card's width (its row grows to fit; see rowHeight).
   text = function(c, r, w) local fs = W.Text(c, r[2]) fs:SetWidth(w - PAD - 4) return fs end,
   check = function(c, r, w) return W.Check(c, r[2], r[3], r[4], w) end,
-  button = function(c, r) return W.Button(c, r[2], r[3], 220) end,
+  button = buttonRow,
   cycle = function(c, r, w) return W.Choice(c, r[2], r[3], r[4], r[5], w) end,
   slider = function(c, r, w) return W.Slider(c, r[2], r[3], r[4], r[5], w) end,
   module = moduleRow,
@@ -505,6 +521,13 @@ local function scrollToRow(view, w)
   if w.pageY + w:GetHeight() > top + h then scrollTo(view, w.pageY + w:GetHeight() - h + 8) end
 end
 
+-- Moves the keyboard's row to w (or to none), its focus ring with it.
+local function setFocus(w)
+  if window.focusRow then T.FocusRing(window.focusRow, false) end
+  window.focusRow = w
+  if w then T.FocusRing(w, true) end
+end
+
 -- Moves the keyboard's row to the next (dir 1) or previous (dir -1) one, wrapping, marked and in view.
 local function stepRow(dir)
   local rows, at = pressableRows(), 0
@@ -513,7 +536,7 @@ local function stepRow(dir)
     if w == window.focusRow then at = i end
   end
   if at == 0 and dir < 0 then at = 1 end
-  window.focusRow = rows[(at - 1 + dir) % #rows + 1]
+  setFocus(rows[(at - 1 + dir) % #rows + 1])
   O.MarkRow(window.focusRow)
   scrollToRow(pages[O.current], window.focusRow)
 end
@@ -540,7 +563,7 @@ end
 -- a fight lets it go, and the combat queue takes it back when the fight ends.
 local function wireKeys(f)
   f:SetScript("OnKeyDown", onKey)
-  f:SetScript("OnHide", function(self) self:EnableKeyboard(false) self.focusRow = nil end)
+  f:SetScript("OnHide", function(self) self:EnableKeyboard(false) setFocus(nil) end)
   ns.On("PLAYER_REGEN_DISABLED", function()
     f:EnableKeyboard(false)
     ns.AfterCombat(function() f:EnableKeyboard(f:IsShown()) end, "options keyboard")
@@ -549,13 +572,31 @@ end
 
 -- Building and showing -----------------------------------------------------------------------
 
--- Lets the window be dragged around by its header.
+-- The window's place is kept with the game windows' (the Windows module's settings, Modules/WindowsMove.lua) under this name.
+local PLACE_KEY = "Vanguard_Options"
+
+-- The window dropped: it stops and its place is saved.
+local function dropped(f)
+  f:StopMovingOrSizing()
+  ns.GetModule("Windows").SavePlace(PLACE_KEY, f)
+end
+
+-- Lets the window be dragged around by its header, kept on the screen; where it is dropped is remembered.
 local function makeMovable(f)
   f:SetMovable(true)
+  f:SetClampedToScreen(true)
   f.header:EnableMouse(true)
   f.header:RegisterForDrag("LeftButton")
-  f.header:SetScript("OnDragStart", function() f:StartMoving() end)
-  f.header:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
+  f.header:SetScript("OnDragStart", ns.Guard("drag options", function() f:StartMoving() end))
+  f.header:SetScript("OnDragStop", ns.Guard("drop options", function() dropped(f) end))
+end
+
+-- Puts the window where it was last dropped, or in the middle of the screen (after Reset window positions too).
+function O.PlaceWindow()
+  if not window then return end
+  window:ClearAllPoints()
+  window:SetPoint("CENTER")
+  ns.GetModule("Windows").PutBack(PLACE_KEY, window)
 end
 
 -- How wide the thumb's grip is (units): wider than the thin bar, so it is easy to catch.
@@ -586,11 +627,10 @@ local function addThumb(f)
   f.grip:Hide()
 end
 
--- The window frame: centered, above other windows, closes with Escape.
+-- The window frame: opaque (no world shows through, under short pages either), above other windows, closes with Escape (O.PlaceWindow places it).
 local function windowFrame()
-  local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = 0.98, shadow = true })
-  f:SetSize(WIDTH, HEIGHT)
-  f:SetPoint("CENTER")
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = 1, shadow = true })
+  T.PixelSize(f, WIDTH, HEIGHT, true)
   f:SetFrameStrata("DIALOG")
   f:EnableMouse(true)
   if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_Options") end
@@ -607,6 +647,7 @@ local function build()
   addNav(window)
   addThumb(window)
   makeMovable(window)
+  O.PlaceWindow()
   wireKeys(window)
 end
 
@@ -647,17 +688,17 @@ local function showPage()
   end
 end
 
--- Brings the window up (fading in, with a sound) or, when it was already
+-- Brings the window up (fading in as it rises into place, with a sound) or, when it was already
 -- open, plays the page sound for a new page.
 local function appear(previous)
   if not previous then T.Sound("open") elseif previous ~= O.current then T.Sound("page") end
-  if previous then T.StopFade(window) else T.FadeIn(window) end
+  if previous then T.StopFade(window) else T.OpenWindow(window) end
   if pages[O.current] then scrollTo(pages[O.current], pages[O.current]:GetVerticalScroll() or 0) end
 end
 
 -- The window takes the keyboard (out of combat); a new page starts without a keyboard row.
 local function takeKeys(previous)
-  if previous ~= O.current then window.focusRow = nil end
+  if previous ~= O.current then setFocus(nil) end
   window:EnableKeyboard(not ns.InCombat())
 end
 
@@ -772,7 +813,7 @@ function O.Hide()
   W.CloseMenu()
   if not window or not window:IsShown() then return end
   T.Sound("close")
-  T.FadeOut(window)
+  T.CloseWindow(window)
 end
 
 -- Opens or closes the window.

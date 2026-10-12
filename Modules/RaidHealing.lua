@@ -201,7 +201,7 @@ local function addBuffMarker(b)
   b.missing = T.Snap(b.overlay:CreateTexture(nil, "OVERLAY"))
   b.missing:SetSize(z[3], z[4])
   b.missing:SetPoint("TOPLEFT", b, "TOPLEFT", z[1], -z[2])
-  b.missing:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+  T.Crop(b.missing)
   b.missing:Hide()
 end
 

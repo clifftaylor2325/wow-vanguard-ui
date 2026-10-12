@@ -182,11 +182,11 @@ it("the combined bag in sections: each kind of item under its header, packed sid
   const quest = addon.texts("Quest items")[0];
   const frame = addon.frame("ContainerFrameCombinedBags").rect;
   expect([quest.rect.left - frame.left, frame.top - quest.rect.top, quest.rect.width], "a header sits over its slots, as wide as its section").toEqual([12, 75, 79]);
-  expect(isTok(addon, quest.textColor, "accent"), "headers are in the accent").toBe(true);
+  expect(isTok(addon, quest.textColor, "accentText"), "headers are in the accent's text colour").toBe(true);
   expect(addon.eval("local f = ContainerFrameCombinedBags return { f:GetWidth(), f:GetHeight() }"), "the window grows by the headers and rows the sections add, and by the padding (the game's 430 x 186)").toEqual([439, 233]);
   expect(addon.eval("for _, b in ipairs(ContainerFrameCombinedBags.Items) do if not b:IsShown() then return false end end return true"), "no slot is hidden").toBe(true);
   addon.slash("accent ff8000");
-  expect(isTok(addon, addon.texts("Quest items")[0].textColor, "accent"), "a new accent repaints the headers").toBe(true);
+  expect(isTok(addon, addon.texts("Quest items")[0].textColor, "accentText"), "a new accent repaints the headers").toBe(true);
 });
 
 it("bag sections follow what you carry; the same items move nothing", () => {
@@ -331,4 +331,33 @@ it("with sections off the game's plain grid is as it was, and Sort fits beside t
   expect([headers(addon), spot(addon, "b0s1"), money], "the game's grid, money line, width and height").toEqual([[], [343, 75], [8, 430, 186]]);
   const sort = addon.eval(`local f, s = ContainerFrameCombinedBags, ns.GetModule("Bags").sort return { f:GetRight() - s:GetRight(), BagItemSearchBox:GetWidth() }`);
   expect(sort, "Sort ends 12 px inside the right edge; the search box gives it room").toEqual([PAD, 430 - PAD - 52 - 6 - PAD]);
+});
+
+// TEST-ONLY gamepad bag bar, as Blizzard_MainMenuBarBagButtons builds it on Forever (Camelot
+// MainMenuBarBagButtons.xml, Shared GamepadBagBarMixin:OnLoad): parented to the combined bag at its
+// top-right corner (5 px in, 19 px down, 215 x 50), its backpack button (37 x 37) on the bar's right,
+// left showing without a gamepad.
+const BACKPACK_ENV = `
+  GamepadBagBar = CreateFrame("Frame", "GamepadBagBar", ContainerFrameCombinedBags) GamepadBagBar:SetSize(215, 50)
+  GamepadBagBar:SetPoint("TOPRIGHT", ContainerFrameCombinedBags, "TOPRIGHT", -5, -19)
+  GamepadBagBar.BackpackButton = CreateFrame("Button", "GamepadBackpackButton", GamepadBagBar)
+  GamepadBagBar.BackpackButton:SetSize(37, 37) GamepadBagBar.BackpackButton:SetPoint("RIGHT", GamepadBagBar, "RIGHT")
+`;
+
+// The search row from left to right: the search box's left inset, the gap to Sort, Sort's width, the gap
+// from Sort to the backpack button, and Sort's inset from the window's right edge (px).
+const searchRow = (addon) => addon.eval(`local f, s, b = ContainerFrameCombinedBags, ns.GetModule("Bags").sort, GamepadBackpackButton
+  return { BagItemSearchBox:GetLeft() - f:GetLeft(), s:GetLeft() - BagItemSearchBox:GetRight(), s:GetWidth(), b:GetLeft() - s:GetRight(), f:GetRight() - s:GetRight() }`);
+
+it("the game's backpack button in the bag's top-right corner sits beside Sort, not over it", () => {
+  const addon = loggedIn(BAG_ENV + BACKPACK_ENV);
+  addon.eval("__openBag()");
+  expect(searchRow(addon), "search box 12 px in, Sort 6 px right of it at its full 52 px, the backpack button 6 px right of Sort").toEqual([PAD, 6, 52, 6, 48]);
+  const plain = loggedIn(BAG_ENV + BACKPACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Bags = { sections = false } } }" });
+  plain.eval("__openBag()");
+  expect(searchRow(plain), "the game's plain grid: the same row").toEqual([PAD, 6, 52, 6, 48]);
+  addon.eval("GamepadBackpackButton:Hide() ContainerFrameCombinedBags:Update()");
+  expect(searchRow(addon).slice(-1), "the button hidden (a gamepad bar laid out otherwise): Sort ends the padding in again").toEqual([PAD]);
+  addon.eval("GamepadBackpackButton:Show() GamepadBagBar:SetParent(UIParent) ContainerFrameCombinedBags:Update()");
+  expect(searchRow(addon).slice(-1), "a bar that isn't on the bag window: the padding").toEqual([PAD]);
 });

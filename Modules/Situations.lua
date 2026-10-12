@@ -488,7 +488,7 @@ function SI.Rows()
     { "check", "Apply situation overrides", function() return db().enabled end, function(v) db().enabled = v SI.Refresh() end, true },
     { "text", SI.StatusText },
     { "cycle", "Record for", SI.CHOICES, SI.GetRecording, SI.SetRecording, "off" },
-    { "button", "Stop recording and save", function() stop() ns.Options.Refresh() end },
+    { "button", "Stop recording and save", function() stop() ns.Options.Refresh() end, function() return SI.recording ~= nil end },
     { "button", "Clear the active situation's overrides", function() SI.ClearActive() ns.Options.Refresh() end },
   })
 end

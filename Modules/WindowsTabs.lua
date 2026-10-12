@@ -294,10 +294,49 @@ local function watchFlyout()
   if type(_G.EquipmentFlyout_UpdateItems) == "function" then hooksecurefunc("EquipmentFlyout_UpdateItems", ns.Guard("hook EquipmentFlyout_UpdateItems", skinFlyout)) end
 end
 
--- Dresses the inside of the character pane: its lists' rows, the skill rank bar, the stat boxes, the
--- honor tab and the equipment flyout. Safe to run again: lists and the flyout are watched once.
+-- The pane's own backdrops, as parentKeys of CharacterFrame (Camelot CharacterFrame.xml): the wooden background
+-- behind the left pane (every tab's list sits on it) and the stat backdrop and stone plate behind the right one.
+GW.PANE_HOSTS = { "LeftPaneHost", "RightPaneHost" }
+
+-- What the currency list says while it holds nothing (the game has no line of its own for that).
+GW.CURRENCY_EMPTY = "You have no currencies yet."
+
+-- A pane host's art faded: its own textures and those of the frames it holds (the right one's divider line).
+local function fadeHost(host)
+  if type(host) ~= "table" or not host.GetRegions then return end
+  T.FadeRegions(host)
+  for _, child in ipairs({ host:GetChildren() }) do T.FadeRegions(child) end
+end
+
+-- The pane's flat look: its hosts' art faded, each list in a flat inset panel, and the currency list's empty note.
+local function flattenPane()
+  local frame = _G.CharacterFrame
+  if type(frame) == "table" then
+    for _, key in ipairs(GW.PANE_HOSTS) do fadeHost(frame[key]) end
+  end
+  for _, name in ipairs(GW.PANE_LISTS) do
+    local box = boxOf(name)
+    if type(box) == "table" and box.GetRegions then T.Panel(box, { inset = true, noSheen = true }) end
+  end
+  if boxOf("TokenFrame") then GW.WatchEmpty(boxOf("TokenFrame"), GW.CURRENCY_EMPTY) end
+end
+
+-- The button that shows and hides the pane's right half (CharacterFrame.RightPaneToggleButton: a plain Button, not
+-- protected, that the game never moves; it sat below the title row on the left pane's corner) put in the title row,
+-- T.CONTROL.step left of the close button, as a window's maximize box is (GW.PlaceControls).
+local function placePaneToggle(frame)
+  local toggle = type(frame) == "table" and frame.RightPaneToggleButton
+  if type(toggle) ~= "table" or not toggle.SetPoint or type(frame.CloseButton) ~= "table" then return end
+  toggle:ClearAllPoints()
+  toggle:SetPoint("CENTER", frame.CloseButton, "CENTER", -T.CONTROL.step, 0)
+end
+
+-- Dresses the inside of the character pane: its backdrops, right-pane toggle and lists' rows, the skill rank bar,
+-- the stat boxes, the honor tab and the equipment flyout. Safe to run again: lists and the flyout are watched once.
 function GW.DressCharacterPane()
   watchLists()
+  flattenPane()
+  placePaneToggle(_G.CharacterFrame)
   skinStatCategories()
   local skills, honor = _G.SkillsFrame, _G.PVPRankFrame
   if type(skills) == "table" and type(skills.SkillDetailFrame) == "table" then GW.SkinBar(skills.SkillDetailFrame.RankBar) end
@@ -305,8 +344,52 @@ function GW.DressCharacterPane()
   watchFlyout()
 end
 
+-- Inside the collections window -------------------------------------------------------------
+
+-- The appearances tab's backdrops inside WardrobeCollectionFrame (Blizzard_Collections), as parentKey paths: the
+-- item grid and the sets tab's preview (CollectionsBackgroundTemplate: a leather tile and shadows on an inset
+-- frame), and the sets tab's list (InsetFrameTemplate).
+GW.WARDROBE_BACKDROPS = { { "ItemsCollectionFrame" }, { "SetsCollectionFrame", "RightInset" }, { "SetsCollectionFrame", "LeftInset" } }
+
+-- One backdrop: its tile, shadows and inset background faded, its NineSlice edge too, and a flat inset panel behind
+-- what it holds (the models and buttons on it are its children and stay the game's).
+local function skinBackdrop(frame)
+  if type(frame) ~= "table" or not frame.GetRegions then return end
+  T.FadeRegions(frame)
+  if type(frame.NineSlice) == "table" and frame.NineSlice.SetAlpha then frame.NineSlice:SetAlpha(0) end
+  T.Panel(frame, { inset = true, noSheen = true })
+end
+
+-- What the appearances grid says while it shows nothing (on Forever it lists only collected appearances, so a
+-- slot can be empty; the game has no line of its own for that).
+GW.APPEARANCES_EMPTY = "No appearances to show for this slot."
+
+-- The appearances grid's empty note: shown while the game's filtered list for the slot and search is empty
+-- (not before the game has made that list).
+local function noteAppearances(items)
+  local list = type(items.GetFilteredVisualsList) == "function" and items:GetFilteredVisualsList()
+  GW.SetEmptyNote(items, type(list) == "table" and #list == 0, GW.APPEARANCES_EMPTY)
+end
+
+-- Keeps the grid's note right now and after each redraw (UpdateItems: a slot, page, filter or search change), once.
+local function watchAppearances(items)
+  if type(items) ~= "table" or not items.CreateFontString or watched[items] then return end
+  watched[items] = true
+  noteAppearances(items)
+  if type(items.UpdateItems) == "function" then hooksecurefunc(items, "UpdateItems", ns.Guard("hook UpdateItems", noteAppearances)) end
+end
+
+-- Dresses the inside of the collections window: the appearances tab's backdrops and the grid's empty note.
+-- Safe to run again.
+function GW.DressCollections()
+  local wardrobe = _G.WardrobeCollectionFrame
+  if type(wardrobe) ~= "table" then return end
+  for _, path in ipairs(GW.WARDROBE_BACKDROPS) do skinBackdrop(walk(wardrobe, path)) end
+  watchAppearances(wardrobe.ItemsCollectionFrame)
+end
+
 -- What a window holds besides tabs that is dressed with it, by window name: a function that takes no argument.
-GW.INSIDE = { CharacterFrame = GW.DressCharacterPane }
+GW.INSIDE = { CharacterFrame = GW.DressCharacterPane, CollectionsJournal = GW.DressCollections }
 
 -- Dresses what the window holds besides tabs (GW.INSIDE), now and every time it shows; a failure is reported.
 local function dressInside(frame)

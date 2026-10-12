@@ -105,7 +105,7 @@ local function skinItem(button)
     if type(region) == "table" and region.SetAlpha then region:SetAlpha(0) end
   end
   local icon = button.icon or button.Icon
-  if icon and icon.SetTexCoord then icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+  if icon and icon.SetTexCoord then T.Crop(icon) end
   T.Panel(button, { inset = true, noBg = true })
   followQuality(button)
 end
@@ -182,14 +182,33 @@ local function alignSearch(frame, box)
   box:SetPoint(point, rel, relPoint, BG.PAD, y)
 end
 
+-- The game's backpack button in the bag window's top-right corner, when it shows there: the client
+-- parents its GamepadBagBar (Blizzard_MainMenuBarBagButtons) to the window at the corner and, with no
+-- gamepad, leaves that bar's backpack button showing.
+local function backpackButton(frame)
+  local bar = _G.GamepadBagBar
+  local button = type(bar) == "table" and bar.BackpackButton
+  if type(button) ~= "table" or bar:GetParent() ~= frame then return nil end
+  return bar:IsShown() and button:IsShown() and button or nil
+end
+
+-- The room Sort leaves at the window's right edge: the padding, or the game's backpack button and the
+-- gap left of it, so Sort sits beside that button, not under it.
+local function rightRoom(frame)
+  local button = backpackButton(frame)
+  local left, right = button and button:GetLeft(), frame:GetRight()
+  if not (left and right) then return BG.PAD end
+  return math.max(BG.PAD, right - left + SORT_GAP)
+end
+
 -- Starts the game's search box at the left padding and narrows it so Sort, right of it, ends the padding
--- inside the window's right edge.
+-- inside the window's right edge (left of the game's backpack button, when that shows in the corner).
 function BG.FitSearch(frame)
   local box = _G.BagItemSearchBox
   if not BG.sort or type(box) ~= "table" or box:GetParent() ~= frame then return end
   alignSearch(frame, box)
   local _, _, _, left = box:GetPoint(1)
-  box:SetWidth(frame:GetWidth() - BG.PAD - SORT_W - SORT_GAP - (left or 0))
+  box:SetWidth(frame:GetWidth() - rightRoom(frame) - SORT_W - SORT_GAP - (left or 0))
 end
 
 -- The search box fitted each time the game sets up the bag's search row (it

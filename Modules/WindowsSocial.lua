@@ -7,6 +7,7 @@ local ADDON, ns = ...
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgPadded = ns.FrameState("vgPadded")
 local vgSocialSide = ns.FrameState("vgSocialSide")
+local vgEmptyNote = ns.FrameState("vgEmptyNote")
 
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
@@ -16,14 +17,20 @@ local GW = ns.GetModule("Windows")
 -- Frames whose game methods are already hooked here (a skin runs on every show; a hook goes on once).
 local hooked = {}
 
--- Runs fn(frame) after the frame's game method `name` each time it runs, once per
--- frame and method; a client without the method is skipped.
-local function after(frame, name, fn)
+-- Runs fn after the frame's game method (or the table's function) `name` each time it runs, with
+-- that call's own arguments (self first, for a method); once per frame and method, a client
+-- without the method is skipped. A post-hook (hooksecurefunc): the game's function is kept.
+local function afterWith(frame, name, fn)
   local key = tostring(name)
   hooked[frame] = hooked[frame] or {}
   if hooked[frame][key] or type(frame[name]) ~= "function" or type(hooksecurefunc) ~= "function" then return end
   hooked[frame][key] = true
-  hooksecurefunc(frame, name, ns.Guard("hook " .. key, function() fn(frame) end))
+  hooksecurefunc(frame, name, ns.Guard("hook " .. key, fn))
+end
+
+-- Runs fn(frame) after the frame's game method `name` each time it runs (see afterWith).
+local function after(frame, name, fn)
+  afterWith(frame, name, function() fn(frame) end)
 end
 
 -- Open mail -------------------------------------------------------------------------------------
@@ -67,8 +74,9 @@ GW.AddButtons("OpenMailFrame", { "OpenMailReplyButton", "OpenMailDeleteButton", 
 
 -- Guild window ----------------------------------------------------------------------------------
 
--- The guild window's panes (parentKeys); each has art to fade and, mostly, an InsetFrame.
-GW.GUILD_PANES = { "CommunitiesList", "MemberList", "Chat", "GuildBenefitsFrame", "GuildDetailsFrame" }
+-- The guild window's panes (parentKeys); each has art to fade and, mostly, an InsetFrame. The Preferred
+-- Play Settings page has neither: its inset panel goes on the page itself.
+GW.GUILD_PANES = { "CommunitiesList", "MemberList", "Chat", "GuildBenefitsFrame", "GuildDetailsFrame", "GuildPreferredPlaySettingsFrame" }
 
 -- Fades a frame's own textures and its NineSlice (a part's art), by alpha.
 local function fadeFrameArt(frame)
@@ -87,13 +95,132 @@ local function dressPane(pane)
   T.Panel(inset, { inset = true, noSheen = true })
 end
 
+-- Guild roster: the game lays out its columns from tables local to Blizzard_Communities (GUILD_COLUMN_INFO), so
+-- the Rank column is widened after the game's own calls: its header after ColumnDisplay:LayoutColumns, its
+-- cells after each row's RefreshExpandedColumns (which sets them back to the game's 75 every time).
+
+-- How much wider the guild roster's Rank column is drawn (header and cells); the Note column gives the room.
+GW.GUILD_RANK_EXTRA = 40
+-- A Rank cell's width (the game's 75 plus the extra), and a Note cell's beside an extra column such as
+-- professions (the game's fixed 93 less the extra; without one the note fills the rest of the row).
+GW.GUILD_RANK_CELL, GW.GUILD_NOTE_BESIDE = 75 + GW.GUILD_RANK_EXTRA, 93 - GW.GUILD_RANK_EXTRA
+-- A roster row's texts (parentKeys) that the game greys for an offline member, besides the name.
+GW.GUILD_ROSTER_TEXTS = { "Level", "Zone", "Rank", "Note", "GuildInfo" }
+
+-- The index of the guild Rank column in a roster column table (other clubs' tables have none).
+local function rankColumn(columns)
+  if type(columns) ~= "table" then return nil end
+  for i, info in ipairs(columns) do
+    if type(info) == "table" and info.attribute == "guildRankOrder" then return i end
+  end
+end
+
+-- After the roster lays out its column headers: the guild Rank header wider by GW.GUILD_RANK_EXTRA (the
+-- Note header after it fills what is left, so it gives the room).
+local function widenRankHeader(display, columns)
+  local index, pool = rankColumn(columns), display.columnHeaders
+  if not index or type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
+  for header in pool:EnumerateActive() do
+    if header:GetID() == index then header:SetWidth((columns[index].width or 0) + GW.GUILD_RANK_EXTRA) end
+  end
+end
+
+-- After the game lays out a guild roster row: its Rank cell as wide as the header, and its Note cell narrower by
+-- as much when it has a fixed width (beside an extra column).
+local function widenRankCell(row)
+  local list = row.expanded and type(row.GetMemberList) == "function" and row:GetMemberList()
+  if type(list) ~= "table" or not rankColumn(list.columnInfo) then return end
+  if type(row.Rank) == "table" and row.Rank.SetWidth then row.Rank:SetWidth(GW.GUILD_RANK_CELL) end
+  if row.guildColumnIndex ~= nil and type(row.Note) == "table" and row.Note.SetWidth then row.Note:SetWidth(GW.GUILD_NOTE_BESIDE) end
+end
+
+-- A font string, when it is one, in a theme text color.
+local function paintText(fs, token)
+  if type(fs) == "table" and fs.SetTextColor then T.Color(fs, token) end
+end
+
+-- After the game colors a row for its member's presence: an offline member's texts in the theme's secondary
+-- text (the game's grey is hard to read on the dark panel); online rows keep white text and class-colored names.
+local function lightOffline(row)
+  local info, presence = row.memberInfo, type(Enum) == "table" and Enum.ClubMemberPresence
+  local offline = type(presence) == "table" and presence.Offline or nil
+  if type(info) ~= "table" or offline == nil or ns.IsSecret(info.presence) or info.presence ~= offline then return end
+  for _, key in ipairs(GW.GUILD_ROSTER_TEXTS) do paintText(row[key], "text2") end
+  paintText(type(row.NameFrame) == "table" and row.NameFrame.Name, "text2")
+end
+
+-- One roster row's hooks, unless it took them from the row mixin when it was made.
+local function hookRow(row, mixin)
+  if type(row) ~= "table" or row.RefreshExpandedColumns == mixin.RefreshExpandedColumns then return end
+  afterWith(row, "UpdatePresence", lightOffline)
+  afterWith(row, "RefreshExpandedColumns", widenRankCell)
+end
+
+-- The roster's hooks, on once: on the game's row mixin (CommunitiesMemberListEntryMixin), so every row made
+-- later has them, on any row made already, and on the roster's column headers. Post-hooks only: nothing of the
+-- game's is replaced, so the roster is not tainted.
+local function hookRoster(list)
+  local mixin = _G.CommunitiesMemberListEntryMixin
+  if type(list) ~= "table" or type(mixin) ~= "table" then return end
+  afterWith(mixin, "UpdatePresence", lightOffline)
+  afterWith(mixin, "RefreshExpandedColumns", widenRankCell)
+  if type(list.ScrollBox) == "table" and list.ScrollBox.ForEachFrame then list.ScrollBox:ForEachFrame(function(row) hookRow(row, mixin) end) end
+  if type(list.ColumnDisplay) == "table" then afterWith(list.ColumnDisplay, "LayoutColumns", widenRankHeader) end
+end
+
+-- The note the Guild Info page shows in its Guild Information box while the guild has none.
+GW.GUILD_INFO_EMPTY = "No guild information yet."
+
+-- Vanguard's note in the Guild Information box (made once, where the game draws the text).
+local function emptyNote(info, child, details)
+  if not vgEmptyNote[info] then
+    vgEmptyNote[info] = T.Text(child:CreateFontString(nil, "ARTWORK"), "small", "text2")
+    vgEmptyNote[info]:SetPoint("TOPLEFT", details, "TOPLEFT", 0, 0)
+    vgEmptyNote[info]:SetText(GW.GUILD_INFO_EMPTY)
+  end
+  return vgEmptyNote[info]
+end
+
+-- The Guild Info page's Guild Information box (the game fills it through CommunitiesGuildInfoFrame_UpdateText, on
+-- show, on GUILD_ROSTER_UPDATE and after an edit): Vanguard's note shown while the game's text is empty.
+local function noteGuildInfo(info)
+  local box = type(info) == "table" and info.DetailsFrame
+  local child = type(box) == "table" and box.GetScrollChild and box:GetScrollChild()
+  local details = type(child) == "table" and child.Details
+  if type(details) ~= "table" or not details.GetText then return end
+  local text = details:GetText()
+  emptyNote(info, child, details):SetShown(not ns.IsSecret(text) and (text == nil or text == ""))
+end
+
+-- The Preferred Play Settings page's Apply buttons (parentKeys); the game disables them for anyone but the guild master.
+GW.GUILD_APPLY_BUTTONS = { "LocaleApplyButton", "DatacenterApplyButton" }
+-- The page's Apply buttons flat; the flat button follows the game enabling or disabling them (T.Button's disabled look).
+local function dressPlaySettings(page)
+  if type(page) ~= "table" then return end
+  for _, key in ipairs(GW.GUILD_APPLY_BUTTONS) do
+    local button = page[key]
+    if type(button) == "table" and button.CreateTexture then T.Button(button) end
+  end
+end
+
+-- The guild window's pages beyond their panels: the roster's hooks, the Guild Information box's note (now and
+-- after each game fill), the Preferred Play Settings buttons.
+local function dressGuildPages(frame)
+  hookRoster(frame.MemberList)
+  if type(frame.GuildDetailsFrame) == "table" then noteGuildInfo(frame.GuildDetailsFrame.Info) end
+  afterWith(_G, "CommunitiesGuildInfoFrame_UpdateText", noteGuildInfo)
+  dressPlaySettings(frame.GuildPreferredPlaySettingsFrame)
+end
+
 -- The guild window: the window skin (its maximize and minimize buttons with it), the portrait art faded, each pane
--- and the stream dropdown dressed; again whenever the game switches pages (SetDisplayMode). The side tabs are the tabs stream's.
+-- and the stream dropdown dressed, its pages' parts; again whenever the game switches pages (SetDisplayMode). The
+-- side tabs are the tabs stream's.
 function GW.SkinGuildWindow(frame)
   GW.Skin(frame)
   GW.FadeParts(frame, { "PortraitOverlay" })
   for _, key in ipairs(GW.GUILD_PANES) do dressPane(frame[key]) end
   if type(frame.StreamDropdown) == "table" and frame.StreamDropdown.CreateTexture then T.Button(frame.StreamDropdown) end
+  dressGuildPages(frame)
   after(frame, "SetDisplayMode", GW.SkinGuildWindow)
 end
 
