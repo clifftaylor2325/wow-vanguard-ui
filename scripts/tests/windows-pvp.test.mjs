@@ -234,3 +234,18 @@ it("S8.3 the objective banner: its texts in the theme font at the game's size, i
   off.eval("PvPObjectiveBannerFrame:Show()");
   expect(off.eval("return (PvPObjectiveBannerFrame.Title:GetFont())"), "with the group off").toBe("TEST-ONLY-FONT");
 });
+
+// Honor tab ---------------------------------------------------------------------------------------
+
+it("S8.4 honor tab: the rank details pane's divider faded and its scroll bar themed; a tab without the pane loads cleanly", () => {
+  const addon = loggedIn(PVP_ENV + `
+    local r = CreateFrame("Frame", "PVPRankFrame", UIParent) r:Hide()
+    r.DetailFrame = CreateFrame("Frame", nil, r) r.DetailFrame.Divider = __art(r.DetailFrame, "BORDER")
+    r.DetailFrame.DescriptionScrollBar = __scrollBar(r.DetailFrame) r.DetailFrame.Title = r.DetailFrame:CreateFontString()
+  `);
+  addon.eval("PVPRankFrame:Show()");
+  expect(addon.eval("local d = PVPRankFrame.DetailFrame return { d.Divider:GetAlpha(), __panel(d.DescriptionScrollBar.Thumb), __panel(PVPRankFrame) }"),
+    "divider faded, scroll bar themed, no panel of its own (the character pane has it)").toEqual([0, true, false]);
+  const bare = loggedIn('CreateFrame("Frame", "PVPRankFrame", UIParent)');
+  expect(windowErrors(bare)).toBe("none");
+});

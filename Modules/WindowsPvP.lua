@@ -205,3 +205,17 @@ function GW.SkinPvPBanner(frame)
 end
 
 GW.Add("pvp", "framed", { "PvPObjectiveBannerFrame" }, GW.SkinPvPBanner)
+
+-- Honor tab -------------------------------------------------------------------------------------
+
+-- The honor tab's side pane (the rank details): its divider faded and its description's scroll bar in the theme.
+-- The tab's own art is faded by WindowsTabs.lua; its rank ring is a Cooldown swipe on Forever, not a status
+-- bar, and stays the game's.
+function GW.SkinPvPRankPane(frame)
+  local pane = frame.DetailFrame
+  if type(pane) ~= "table" then return end
+  GW.FadeParts(pane, { "Divider" })
+  if type(pane.DescriptionScrollBar) == "table" then T.ScrollBar(pane.DescriptionScrollBar) end
+end
+
+GW.Add("pvp", "framed", { "PVPRankFrame" }, GW.SkinPvPRankPane)
