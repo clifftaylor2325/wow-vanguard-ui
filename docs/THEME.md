@@ -20,22 +20,27 @@ The look in one line: flat dark slate panels, one-screen-pixel borders, one acce
 | Token | Default | Setting | Role |
 | --- | --- | --- | --- |
 | `accent` | `d9a441` (brass) | `accent` | The one highlight colour: selected nav items, focus and target edges, glows, links, header rules, the logo's left diamond, the minimap's corner diamonds. Changed by `/vg accent`, the swatches under General → Look, or the hex box beside them. |
-| `panel` | `12151b` at 0.94 | `panel` | The fill of every panel (`T.Panel`, `T.HudPanel`). Softened raid bars mix their class colour into it. |
-| `inset` | `07080b` at 0.95 | `inset` | The darker fill of buttons, edit boxes and inset panels (`opts.inset`). |
+| `accentText`, `accentDim` | `e6b45b`, `8a6a2f` (from brass) | `accent` | Made from the accent in OKLCH (`T.ACCENT_VARIANTS`: lightness +0.047 and chroma x0.94 for text, -0.207 and x0.67 for dim), so every preset and custom hex gets them, worked out once per accent. `accentText` is for accent-coloured text: selected choices, captions, tabs, headers, badges, links, the `Vanguard:` chat prefix, and `T.Color` with no colour. `accentDim` is for accent borders and ornament only, never text. The `accent` itself stays for bars, borders, glows and selected fills. |
+| `panel` | `13161c` at 0.94 | `panel` | The fill of every panel (`T.Panel`, `T.HudPanel`). Softened raid bars mix their class colour into it. |
+| `inset` | `0c0e13` at 0.95 | `inset` | The darker fill of buttons, edit boxes and inset panels (`opts.inset`). |
 | `edge` | `000000` | `border` | Every one-pixel border unless a frame sets its own (`T.SetBorder`) or asks for the accent (`opts.accent`). |
 
-`panel`, `inset` and `border` have no control in the options window: they are kept in the profile (and its export string) and go back to these defaults with `/vg theme reset`.
+`panel`, `inset` and `border` have no control in the options window: they are kept in the profile (and its export string) and go back to these defaults with `/vg theme reset`. A profile keeps the values it saved, so a profile made before the surfaces were re-stepped (#229) keeps `12151b` and `07080b` until `/vg theme reset`.
 
 ### Fixed tokens
+
+The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) step about 0.04 apart in OKLCH lightness at one cool hue, so each separates from the next at one pixel.
 
 | Group | Token | Value | Role |
 | --- | --- | --- | --- |
 | Surfaces | `void` | `0b0d11` | Near-black for text and marks drawn on an accent fill: a selected segment or condition, the setup wizard's check. |
-| | `raised` | `1a1e26` | The lighter fill of raised panels (`opts.raised`): dropdown menus, popovers, the spell picker, keybind mode. |
+| | `raised` | `1b1f26` | The lighter fill of raised panels (`opts.raised`): dropdown menus, popovers, the spell picker, keybind mode. |
+| | `raisedHover` | `262a32` | An opaque control under the mouse, in place of the `hover` wash. |
+| | `borderHi` | `43484f` | A lighter line: the inner bevel and the base of a focus ring. |
 | | `sheen` | `ffffff` at 0.06 | The one-pixel light line inside a panel's top border. |
-| | `divider` | `242a34` | Lines between sections (the options window). |
+| | `divider` | `2f343d` | Lines between sections (the options window). |
 | | `shade` | `000000` at 0.5 | Dimming behind or under things: the options nav, unit frame bar backgrounds, the cast bar's latency zone, the AFK screen. |
-| | `hover` | `ffffff` at 0.08 | The faint white wash under the mouse on buttons, rows, raid tiles and menu icons. |
+| | `hover` | `ffffff` at 0.08 | The faint white wash under the mouse on rows, tabs, raid tiles and menu icons (see-through things; buttons ease to `raisedHover`). |
 | | `darkBar` | `2a3039` | The health bar of the raid style "Dark, class-coloured names". |
 | | `checked` | `ffffff` at 0.25 | An action button that is checked (an active stance or aura). |
 | | `gridline` | `ffffff` at 0.12 | The unlock-mode grid. |
@@ -43,8 +48,9 @@ The look in one line: flat dark slate panels, one-screen-pixel borders, one acce
 | | `sweep` | `000000` at 0.65 | The dark sweep over an aura icon as its time runs out. |
 | | `spark` | `ffffff` at 0.9 | The power bar's tick spark (five-second rule, energy ticks). |
 | Text | `text` | `e8eaee` | Body text (the default colour of `T.Text`). |
-| | `text2` | `a6adb9` | Secondary text, hints, the close glyph, assistant marks. |
-| | `muted` | `6b7280` | Disabled and least important text. |
+| | `text2` | `c8cdd6` | Secondary text, hints, the close glyph, assistant marks. |
+| | `muted` | `a6adb9` | Least important text: card titles, descriptions, notes. |
+| | `disabled` | `7c8390` | Disabled and placeholder text only (a search box's hint, a button you can't press yet, a disabled menu icon). |
 | | `white` | `ffffff` | Text and sparks over bars and icons (timers, counts, the cast spark). |
 | | `gold` | `ffd100` | The game's gold: quest titles and "!" marks, money, elite units, the leader's crown, the zone name's default. |
 | State | `good` | `4fc27a` | Success, ready, full durability. |
@@ -76,15 +82,15 @@ Colours that are not tokens on purpose: class colours come from the client (`RAI
 
 `T.PRESET_ORDER` is the order of the swatches under General → Look and in the setup wizard; `/vg accent <name>` takes the same names, any `rrggbb` or `#rrggbb`, or `reset`.
 
-| Preset | Hex | Older name that still works |
+| Preset | Hex | Older names that still work |
 | --- | --- | --- |
 | brass (default) | `d9a441` | bronze |
 | arcane | `5aa2f0` | blue |
-| fel | `5bcb7e` | green |
-| void | `a47bf0` | purple |
-| ember | `e0664b` | red |
+| jade | `4fbfa3` | fel, green |
+| orchid | `b48ae8` | void, purple |
+| copper | `c8784a` | ember, red |
 
-The state colours (`good`, `warn`, `bad`) are kept apart from every preset, so an accent never reads as a warning. Arcane shares its hex with `info`.
+The state colours (`good`, `warn`, `bad`) are kept apart from every preset, so an accent never reads as a warning, and jade, orchid and copper keep clear of item quality and class colours too (#231: they replaced fel `5bcb7e`, near Uncommon and Hunter; void `a47bf0`, near Epic and Warlock; and ember `e0664b`, near `bad`). An older name now gives the new colour; a profile that picked fel, void or ember keeps that colour as its own hex. Arcane shares its hex with `info`.
 
 ## Text
 
@@ -110,15 +116,16 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 | `cell` | 11 (8 - 14) | SemiBold | - | Bag section headers. |
 | `label` | 12 (8 - 16) | Medium | - | Body text, control labels, options nav items. |
 | `number` | 12 (8 - 16) | Medium | - | Health and power values, counters, timers on frames. |
-| `small` | 10 (7 - 13) | Medium | - | Secondary lines: bar text, the info strip, hints, keybinds. |
-| `tiny` | 9 (6 - 12) | Medium | - | The error badge. |
+| `small` | 10 (7 - 13) | Medium | - | Secondary lines: bar text, the info strip, hints, keybinds. At a pixel-perfect scale a point is a screen pixel, so no role but `badge` goes under 10 (#258). |
+| `tiny` | 10 (7 - 13) | Medium | - | The floor for raid tile text that shrinks with the tile. |
+| `badge` | 9 (6 - 12) | Medium | - | The only role under 10: a count or mark on a tiny badge (the error badge, the backpack's free-slot count). |
 | `world` | 11 (8 - 14) | SemiBold | OUTLINE | Text drawn in the world: nameplate names. |
 | `barName` | 11 (8 - 14) | SemiBold | OUTLINE | Names over a bright bar (raid tiles). |
 | `barSmall` | 10 (7 - 13) | Medium | OUTLINE | Small text over a bar (raid tile status, the damage meter, the flight timer). |
 | `cooldown` | 14 (10 - 18) | SemiBold | OUTLINE | Cooldown numbers on action buttons and the Cooldown Manager. |
 | `auraCount` | 10 (7 - 13) | SemiBold | OUTLINE | Stack counts on aura and item icons. |
 | `auraTimer` | 11 (8 - 14) | SemiBold | OUTLINE | The timer on larger aura icons. |
-| `auraTimerSmall` | 9 (6 - 12) | SemiBold | OUTLINE | The timer on smaller aura icons. |
+| `auraTimerSmall` | 10 (7 - 13) | SemiBold | OUTLINE | The timer on smaller aura icons. |
 | `chat` | 12 (8 - 16) | Medium | - | Chat windows ("Medium"). |
 
 Sizes that are not roles, all inside the code-quality rule because they are scaled with `T.ScaledSize` and set on the game's font objects: chat's Small/Medium/Large (10/12/14, `Modules/Chat.lua`), the tooltip fonts (header 14 SemiBold, body 12, small 11, `Modules/Tooltips.lua`) and the game's quest tracker fonts (header 13 SemiBold, lines 12, `Modules/MenuStrip.lua`).
@@ -140,7 +147,7 @@ The theme has no spacing tokens: each layout keeps its sizes as constants in its
 | --- | --- |
 | `T.Panel(frame, opts)` | A `panel` fill (`inset` with `opts.inset`, `raised` with `opts.raised`, alpha `opts.alpha`), a one-screen-pixel border in `edge` (or the accent with `opts.accent`, or `T.SetBorder`'s colour), a one-pixel `sheen` line just inside the top border, and with `opts.shadow` a soft shadow. `opts.pad` draws it all that many units out past the frame (game windows use 6, room their thick border art used to take; `T.Padding(frame)` reads it back). `noBg`, `noBorder`, `noSheen` leave a part out. |
 | `T.HudPanel(frame, opts)` | `T.Panel` for the HUD (unit frames, bars, the minimap): never a sheen, and a shadow only when "Soft shadows under frames" (`hudShadow`, off by default, applies on reload) is on, so the screen stays calm. |
-| `T.Button(button)` | An `inset` panel, the template's art faded out, and a `hover` wash. |
+| `T.Button(button)` | An `inset` panel, the template's art faded out, and an eased hover (#257): a `raisedHover` fill over the inset and a one-pixel `borderHi` line inside the top border, easing in over `T.HOVER_IN` (0.1 s) and out over `T.HOVER_OUT` (0.13 s), eased out (`OUT` smoothing), never on a disabled button, cleared at once when the button hides (`T.EaseHover`). |
 | `T.EditBox(box)` | An `inset` panel, the template's art faded out. |
 | `T.WindowControl(button, icon, opts)` | A window control (close, maximize, minimize): the template's art faded, the glyph (`T.CONTROL`: drawn on a 20-unit grid, its mark in the middle 9 to 11 units; maximize and minimize are diagonal arrows pointing out and in) in `text2`; under the mouse a 20 x 20 tile behind it (`bad` at 0.9 with `opts.tile = "close"`, else the `accent` at 0.35) and the glyph `white`. An unsized button takes the tile's size. |
 | `T.CloseButton(button)` | `T.WindowControl` with the plain cross (`CloseMark`) and the red tile. |
@@ -150,7 +157,9 @@ The theme has no spacing tokens: each layout keeps its sizes as constants in its
 | `T.Logo(parent, size)` | The two linked diamonds: left in the accent, right in `text`. |
 | `T.Crest(parent, size, layer, alpha)` | The faction crest in its token colour, hidden while the faction look is off. |
 
-**Borders are one screen pixel at any UI scale.** `T.Pixel(frame)` is the length of one physical pixel in the frame's units (the client's `PixelUtil` factor, else 768 / screen height, over the frame's effective scale). It is never rounded to whole UI units, which would give 2 px at 1440p and 3 px at 4K. Textures painted by the theme are kept off the client's pixel-grid snapping (`T.Snap`) so 1 px lines stay crisp. A status bar's border is drawn on its top layer (the fill would cover a lower one). "Pixel-perfect scale" (off by default) sets UIParent to 768 / screen height, out of combat, so one UI unit is one pixel; the setup wizard's screen presets turn it off, since they set the game's UI scale instead.
+**Borders are one screen pixel at any UI scale.** `T.Pixel(frame)` is the length of one physical pixel in the frame's units (the client's `PixelUtil` factor, else 768 / screen height, over the frame's effective scale). It is never rounded to whole UI units, which would give 2 px at 1440p and 3 px at 4K. Textures painted by the theme are kept off the client's pixel-grid snapping (`T.Snap`) so 1 px lines stay crisp. `T.Snap(texture, class)` puts a texture under one snapping policy by class (`T.SNAP_CLASSES`): with texel snapping on (`/vg texelsnap`, off by default until an in-game A/B test settles it, #226) the still classes (`border`, `fill`, `divider`, `sheen`) snap to the pixel grid with a bias of `T.SNAP_BIAS` (1), and the moving ones (`bar`, `spark`, `swipe`) and art (`icon`, the default) stay off. `T.SetTexelSnap(on)` and `T.Refresh` re-apply it to every texture at once. A status bar's border is drawn on its top layer (the fill would cover a lower one). "Pixel-perfect scale" (off by default) sets UIParent to 768 / screen height times `pixelMultiple` (a whole number, 1 unless setup's Pixel-perfect preset picks 2 for a 4K screen), out of combat, so one UI unit is one or two whole pixels; the setup wizard's other screen presets turn it off, since they set the game's UI scale instead.
+
+**Sizes and offsets land on whole screen pixels.** `T.PixelRound(frame, length, even)` rounds a length to whole pixels at the frame's scale (to an even count with `even`, for things centred on a frame). `T.PixelSize(frame, w, h, even)` sizes a frame that way and remembers it; panel padding, glows and sheens, the close and window controls, arrows, the logo, unit frames, the options and setup windows and the action bars' button sizes and gaps use them. When the UI scale, the screen size or a frame's mover scale changes, `T.Rescale()` sizes them again on the next frame, out of combat (queued until the fight ends), and calls the `T.OnScale(fn)` listeners (the action bars lay out again).
 
 **Shadows** are a nine-slice ring of `Media/Textures/Shadow` (black, 0.8 alpha, soft falloff) reaching 10 units around the frame on every side, rounded to whole pixels, on the BACKGROUND layer. Floating windows always have one: the options window, setup, dialogs, menus and popovers, the quest dialog and log, tooltips, bags, skinned game windows, alerts. HUD frames have one only with `hudShadow`.
 
@@ -178,12 +187,12 @@ For the game's own windows (`Modules/Windows*.lua`, docs/design/RESKIN.md), and 
 
 ## Icons
 
-`Media/Icons/*.tga` are white glyphs made at 32 x 32 px by `scripts/lib/media-sources.mjs`. Most are line glyphs drawn on a 16-unit grid and shown at 16 px (menu strip, close and arrow controls) or smaller (raid marks at about 10 px, which are filled shapes for that reason). The options nav's page icons (`Nav*`) and the minimap's two slot buttons (`Minimap*`) are filled silhouettes rasterized from game-icons.net SVGs (`SILHOUETTES`; CC BY 3.0, credited in `art/CREDITS.md` and `Media/Icons/CREDITS.txt`) with one unit of clear air around them, shown at 16 and 12 px. The stroke rules below are for the drawn line glyphs; the tinting rules apply to all.
+`Media/Icons/*.tga` are white glyphs made at 32 x 32 px by `scripts/lib/media-sources.mjs`. Most are line glyphs drawn on a 16-unit grid and shown at 16 px (menu strip, close and arrow controls) or smaller (raid marks at about 10 px, which are filled shapes for that reason). The options nav's page icons (`Nav*`) and the minimap's two slot buttons (`Minimap*`) are filled silhouettes rasterized from game-icons.net SVGs (`SILHOUETTES`; CC BY 3.0, credited in `art/CREDITS.md` and `Media/Icons/CREDITS.txt`) with one unit of clear air around them, shown at 16 and 12 px. The stroke rules below are for the drawn line glyphs; the tinting rules apply to all. Every tinted image is white in every pixel, its clear ones included, with the shape only in alpha, so filtering never pulls a dark fringe into a tinted edge; icons and the stand-alone shapes (the diamond, the logo halves) keep at least one clear pixel inside their canvas edge (`scripts/media.test.mjs` checks both).
 
 - **One grid unit is one pixel at 16 px.** Strokes are 2 units (2 px) wide (`STROKE`).
 - **Straight strokes sit on whole units** (`crisp`, `rect`: square-ended boxes), so each covers exactly two rows or columns of pixels at 16 px instead of smearing across three. `scripts/media.test.mjs` checks that the icons made only of straight strokes have no half-covered pixel at 16 px.
 - **45-degree strokes run half a unit off the grid** (the close cross, the check, the arrows, the map diamond), which lands each step of the stroke on whole pixels.
-- Where 2 px strokes do not fit, a glyph uses filled shapes (the raid marks); curves (rings, arcs) stay round. They are tinted with tokens: `text2` at rest in the options nav, `text` at rest on the menu strip, the accent under the mouse or when selected, `muted` when disabled. Regenerate them with `npm run media`, never by hand; `node scripts/build-media.mjs --check` (and `npm run verify`) fails if a committed file does not match its source, or no source makes it any more (`npm run media` deletes those).
+- Where 2 px strokes do not fit, a glyph uses filled shapes (the raid marks); curves (rings, arcs) stay round. They are tinted with tokens: `text2` at rest in the options nav, `text` at rest on the menu strip, the accent under the mouse or when selected, `disabled` when disabled. Regenerate them with `npm run media`, never by hand; `node scripts/build-media.mjs --check` (and `npm run verify`) fails if a committed file does not match its source, or no source makes it any more (`npm run media` deletes those).
 
 ## Theme settings
 
@@ -198,6 +207,8 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `textScale` | 1 | General → Look → Text size (70 % - 130 %) | at once |
 | `faction` | `"auto"` | General → Look → Faction look | at once |
 | `pixelScale` | off | General → Look → Pixel-perfect scale | on: at once, out of combat; off: on reload |
+| `pixelMultiple` | 1 | Setup → Pixel-perfect (sharpest) | with `pixelScale`, out of combat |
+| `texelSnap` | off | `/vg texelsnap` | at once |
 | `barTexture` | `"vanguard"` | General → Bars → Bar texture | on reload |
 | `smoothBars` | on | General → Bars → Smooth health and power bars | at once |
 | `hudShadow` | off | General → Bars → Soft shadows under frames | on reload |
@@ -206,17 +217,18 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 
 ## Motion and sound
 
-Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`, `T.FadeOut`, `T.StopFade`): an alpha animation on frames that are not protected (never a secure frame), 0.12 s unless the caller asks for another length. **In combat no fade lasts longer than 0.15 s** (`T.COMBAT_FADE`, applied by `T.FadeTime`): combat counts from the fight's `PLAYER_REGEN_DISABLED` (which comes just before the client's lockdown) until `PLAYER_REGEN_ENABLED`. **Reduce motion** (General → Motion and sound, off by default) turns every fade into an instant show or hide. **Interface sounds** (on by default) turns Vanguard's own interface sounds off. Everything else that changes on screen does so at once, without animation.
+Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`, `T.FadeOut`, `T.StopFade`, `T.OpenWindow`, `T.CloseWindow`, `T.EaseHover`): an alpha animation, eased out, on frames that are not protected (never a secure frame) or on a button's own textures, 0.12 s unless the caller asks for another length. A window opens with `T.OpenWindow` (#257): it fades in over `T.WINDOW_OPEN` (0.13 s) while rising `T.WINDOW_RISE` (4) screen pixels into its own spot, so it ends on the pixel grid, and opens at once in combat; `T.CloseWindow` fades it out over `T.WINDOW_CLOSE` (0.1 s). **In combat no fade lasts longer than 0.15 s** (`T.COMBAT_FADE`, applied by `T.FadeTime`): combat counts from the fight's `PLAYER_REGEN_DISABLED` (which comes just before the client's lockdown) until `PLAYER_REGEN_ENABLED`. **Reduce motion** (General → Motion and sound, off by default) turns every fade into an instant show or hide. **Interface sounds** (on by default) turns Vanguard's own interface sounds off. Everything else that changes on screen does so at once, without animation.
 
 ### Fades and flashes
 
 | What | Kind | Out of combat | In combat | Turned off by |
 | --- | --- | --- | --- | --- |
-| Options window (`/vg`) opens | fade in | 0.12 s | 0.12 s | Reduce motion |
-| Options window closes | fade out | 0.12 s | 0.12 s | Reduce motion |
+| Options window (`/vg`) opens | fade in, rising 4 px into place | 0.13 s | at once | Reduce motion |
+| Options window closes | fade out | 0.1 s | 0.1 s | Reduce motion |
+| A button (`T.Button`) under the mouse | hover eases in / out | 0.1 s / 0.13 s | 0.1 s / 0.13 s | Reduce motion (at once) |
 | Options page change | stops a fade in progress; the page appears at once | - | - | - |
 | Unlock mode: a frame's popover (right-click a handle) opens / closes | fade in / out | 0.12 s | closes in 0.12 s (a fight ends unlock mode) | Reduce motion |
-| Setup wizard opens, or comes back after a fight | fade in | 0.12 s | - (waits for the fight to end) | Reduce motion |
+| Setup wizard opens, or comes back after a fight | fade in, rising 4 px into place | 0.13 s | - (waits for the fight to end) | Reduce motion |
 | What's new window opens (after an update, `/vg whatsnew`) | fade in | 0.12 s | 0.12 s (only from `/vg whatsnew`; after an update it waits for the fight to end) | Reduce motion |
 | AFK screen appears | fade in | 0.4 s | - (never opens in a fight) | Reduce motion |
 | AFK screen goes (you are back, a click or key, a fight starts) | fade out | 0.2 s | 0.15 s | Reduce motion |
@@ -255,9 +267,9 @@ The game's own sounds (error messages, the micro menu, windows Vanguard restyles
 
 The work plan (P4.1) described the theme from an earlier review. The code is what ships, so this page follows it:
 
-- **Text sizes.** The plan says "title 14 … tiny 9". The code has `title` 15, `heading` 13, `name`, `label` and `number` 12, `cell` 11, `small` 10, `tiny` 9, plus the outlined roles (`world`, `barName`, `barSmall`, `cooldown`, `auraCount`, `auraTimer`, `auraTimerSmall`) and `chat`.
+- **Text sizes.** The plan says "title 14 … tiny 9". The code has `title` 15, `heading` 13, `name`, `label` and `number` 12, `cell` 11, `small` and `tiny` 10, `badge` 9 (the only role under 10, #258), plus the outlined roles (`world`, `barName`, `barSmall`, `cooldown`, `auraCount`, `auraTimer`, `auraTimerSmall`) and `chat`.
 - **Spacing grid.** The plan speaks of a 4/8 px grid. The code has no spacing tokens and uses mostly even offsets (2 to 16); the 4 px steps above are the rule for new work, not a description of every existing layout.
 - **Bar textures.** The plan names "bar textures" generally. The code has three built-ins (Vanguard, Soft, Flat) and, since P3.5, every bar texture shared through LibSharedMedia; it also shares its own bars and fonts under the "Vanguard ..." names.
 - **Fonts.** Besides Fira Sans Condensed and the game's font, the Font picker lists LibSharedMedia fonts (P3.5), and the faction look adds Cinzel and Metamorphous for titles and headings.
-- **Accents.** The plan's five presets match the code (brass, arcane, fel, void, ember); the code also accepts any hex colour and the older names bronze, blue, green, purple and red.
+- **Accents.** The plan's five presets were brass, arcane, fel, void and ember; the code now has brass, arcane, jade, orchid and copper (#231) and also accepts any hex colour and the older names fel, void, ember, bronze, blue, green, purple and red.
 - **Default sizes** of unit frames, raid tiles, action buttons, the menu strip and windows are not theme tokens; they live in each module and the setup wizard's screen presets (`Core/Setup.lua`), and are described in the README.

@@ -1,7 +1,7 @@
 // setup: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { ACTIONS_ENV, CLICK_LUA, MICRO_ENV, RAID_ENV, SPECIAL_BARS_ENV, STRIPS_ENV, STRIP_ENV, SWING_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, UP, block, borderOf, button, chatHas, healing, key, later, loggedIn, overlaps, pinned, setCombat, strips, tok, tooltip } from "./helpers.mjs";
+import { ACTIONS_ENV, CLICK_LUA, MICRO_ENV, RAID_ENV, SPECIAL_BARS_ENV, STRIPS_ENV, STRIP_ENV, SWING_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, UP, block, borderOf, button, chatHas, healing, key, later, loggedIn, overlaps, pinned, px, setCombat, strips, tok, tooltip } from "./helpers.mjs";
 
 // Clicks one of the setup wizard's buttons (next, back or close) as the player would.
 const setupClick = (addon, which) => addon.eval(`local b = Vanguard_Setup.${which} b:GetScript("OnClick")(b, "LeftButton")`);
@@ -381,8 +381,8 @@ it("setup look: accent swatches and the raid frame style apply at once", () => {
   expect(addon.eval("return ns.Settings('RaidFrames').look"), "a style button sets the raid frame style").toBe("dark");
   expect(borderOf(addon, "Vanguard_Setup.pages.look.styles[2]"), "the chosen style is outlined").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
   const captions = addon.eval("local out = {} for i, b in ipairs(Vanguard_Setup.pages.look.styles) do out[i] = { b.text:GetText(), b.text.__textColor } end return out");
-  expect(captions.map(([t, c]) => [t, ...c.slice(0, 3)]), "each tile's short name under it, the chosen one in the accent")
-    .toEqual([["Softened", ...tok(addon, "text").slice(0, 3)], ["Dark", ...tok(addon, "accent").slice(0, 3)], ["Bright", ...tok(addon, "text").slice(0, 3)]]);
+  expect(captions.map(([t, c]) => [t, ...c.slice(0, 3)]), "each tile's short name under it, the chosen one in the accent's text colour")
+    .toEqual([["Softened", ...tok(addon, "text").slice(0, 3)], ["Dark", ...tok(addon, "accentText").slice(0, 3)], ["Bright", ...tok(addon, "text").slice(0, 3)]]);
 });
 
 // The style tiles on setup's Look step: each one's size, bar color and fill, and its name's text and color.
@@ -421,8 +421,8 @@ it("setup screen: this screen's preset is picked; Keep changes nothing; a preset
   const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(2560, 1440)", { firstRun: true, savedVariables: "VanguardDB = { profiles = { Default = { theme = { pixelScale = true } } } }" });
   setupClick(addon, "next");
   const [labels, hint] = screenPage(addon);
-  expect(labels, "four presets, this screen's marked, then Keep").toEqual(["1080p (1920 x 1080)", "1440p (2560 x 1440)  ·  your screen", "4K (3840 x 2160)", "Ultrawide (3440 x 1440)", "Keep my current sizes"]);
-  expect(borderOf(addon, "Vanguard_Setup.pages.screen.choices[5]"), "Keep is picked, outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  expect(labels, "four presets, this screen's marked, then Pixel-perfect and Keep").toEqual(["1080p (1920 x 1080)", "1440p (2560 x 1440)  ·  your screen", "4K (3840 x 2160)", "Ultrawide (3440 x 1440)", "Pixel-perfect (sharpest)", "Keep my current sizes"]);
+  expect(borderOf(addon, "Vanguard_Setup.pages.screen.choices[6]"), "Keep is picked, outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
   expect(hint, "Keep says it changes nothing, and who sets the UI scale now").toBe("Changes nothing: your UI scale stays with Vanguard's pixel-perfect scale (General, Look), your sizes as they are.");
   addon.eval('__click("1440p")');
   expect(screenPage(addon)[1], "a preset says what it sets, and that it moves the game's own slider").toBe("Moves the game's UI Scale slider to 70% (Vanguard's pixel-perfect scale goes off); action buttons 38 px, raid tiles 110 x 48, text 105%.");
@@ -433,11 +433,46 @@ it("setup screen: this screen's preset is picked; Keep changes nothing; a preset
   setupClick(addon, "back");
   addon.eval('__click("1440p")');
   setupClick(addon, "next");
-  expect(screenSizes(addon), "1440p: UI scale 70%, 38 px buttons laid out at once, 110 x 48 tiles, text 105%, pixel-perfect scale off").toEqual(["1", "0.7", 38, 38, 110, 48, 1.05, false]);
+  expect(screenSizes(addon), "1440p: UI scale 70%, 38 px buttons laid out at once (in whole screen pixels), 110 x 48 tiles, text 105%, pixel-perfect scale off").toEqual(["1", "0.7", 38, px(addon, 38), 110, 48, 1.05, false]);
   setupClick(addon, "next");
   setupClick(addon, "next");
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "new tile sizes offer a reload at the end").toMatch(/^The new raid tile size shows after a reload/);
+});
+
+// What Pixel-perfect sets on a w x h screen: { ui, pixel, button, tile, textScale }.
+const pixelPreset = (addon, w, h) => addon.eval(`__wfgStub.setScreen(${w}, ${h}) local p = ns.Setup.PixelPreset()
+  return { math.floor(p.ui * 1e6 + 0.5) / 1e6, p.pixel, p.button, p.tile[1], p.tile[2], p.textScale }`);
+
+it("setup screen: Pixel-perfect is a whole-pixel scale, with Vanguard's own sizes grown to make up for it (#225)", () => {
+  const addon = loggedIn();
+  expect(pixelPreset(addon, 1920, 1080), "1080p: 71%, 1 pixel per unit; the 1080p preset's buttons and text grown by 0.8 / 0.711, its tiles kept").toEqual([0.711111, 1, 43, 100, 48, 1.15]);
+  expect(pixelPreset(addon, 2560, 1440), "1440p: 53%; text stops at the slider's 130%").toEqual([0.533333, 1, 50, 110, 48, 1.3]);
+  expect(pixelPreset(addon, 3840, 2160), "4K: 2 pixels per unit (71%), so a little smaller than the 4K preset").toEqual([0.711111, 2, 35, 110, 48, 1]);
+  expect(pixelPreset(addon, 1366, 768)[0], "a small screen: 100%").toBe(1);
+  expect([1080, 1200, 1440, 1600, 2160, 2880].map((h) => addon.eval(`return ns.Setup.PixelMultiple(${h})`)), "one pixel per unit up to about 1600 tall, two at 4K").toEqual([1, 1, 1, 1, 2, 2]);
+});
+
+it("setup screen: picking Pixel-perfect turns on Vanguard's pixel-perfect scale and leaves the game's UI scale alone (#225)", () => {
+  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(2560, 1440)", { firstRun: true });
+  setupClick(addon, "next");
+  addon.eval('__click("Pixel-perfect (sharpest)")');
+  expect(screenPage(addon)[1], "its hint says why and what it sets").toBe("Sharpest: every line on whole screen pixels. Vanguard's pixel-perfect scale at 53%; action buttons 50 px, raid tiles 110 x 48, text 130%.");
+  setupClick(addon, "next");
+  expect(screenSizes(addon), "the game's UI scale untouched; 50 px buttons (whole pixels already), 110 x 48 tiles, text 130%, pixel-perfect on").toEqual(["unset", "unset", 50, 50, 110, 48, 1.3, true]);
+  expect([addon.eval("return UIParent:GetScale()"), addon.eval("return ns.Theme.Settings().pixelMultiple")], "UIParent at 768 / 1440, one pixel per unit").toEqual([768 / 1440, 1]);
+});
+
+it("setup screen: with Pixel-perfect, nothing overlaps or leaves the screen, in every layout, solo to 40-man (#225)", () => {
+  const addon = wholeHud();
+  for (const [w, h] of [[1920, 1080], [2560, 1440], [3840, 2160], [3440, 1440]]) {
+    addon.eval(`__wfgStub.setScreen(${w}, ${h})`);
+    const n = addon.eval(`return ns.Setup.PixelMultiple(${h})`);
+    for (const layout of ["damage", "healing", "classic"]) {
+      addon.eval(`ns.Setup.ApplyLayout("${layout}") ns.Setup.ApplyScreen("pixel")`);
+      expect(problemsAt(addon, layout, w / n, h / n, `pixel-perfect ${w}x${h}, ${layout}`)).toEqual([]);
+    }
+  }
 });
 
 it("setup screen: which preset fits which screen, and the UI scale setting", () => {
@@ -492,9 +527,9 @@ it("default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 
   // The player frame's size and name size, bar 1's button size, the XP bar's width and the 1080p preset's buttons.
   const sizes = (a) => a.eval(`return { Vanguard_player:GetWidth(), Vanguard_player:GetHeight(), select(2, Vanguard_player.name:GetFont()),
     Vanguard_Bar1Button1:GetWidth(), ns.Settings("DataBars").width, ns.Setup.ScreenPreset("1080").button }`);
-  expect(sizes(addon), "a new profile: the plan's 1080p sizes, and the 1080p preset agrees").toEqual([240, 36, 12, 38, 478, 38]);
+  expect(sizes(addon), "a new profile: the plan's 1080p sizes (frames in whole screen pixels), and the 1080p preset agrees").toEqual([px(addon, 240), px(addon, 36), 12, px(addon, 38), 478, 38]);
   const old = loggedIn(ACTIONS_ENV + UNITS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { ActionBars = { size = 36 }, DataBars = { width = 454, layout = 2 }, positions = { uf_player = { point = "BOTTOM", relPoint = "BOTTOM", x = -250, y = 180 } } } } }' });
-  expect(sizes(old).slice(3, 5), "a profile that saved the old button size and bar width keeps them").toEqual([36, 454]);
+  expect(sizes(old).slice(3, 5), "a profile that saved the old button size and bar width keeps them").toEqual([px(old, 36), 454]);
   expect(old.eval("return { ns.MoverPoint('uf_player') }"), "and a frame it moved stays put").toEqual(["BOTTOM", "BOTTOM", -250, 180]);
 });
 

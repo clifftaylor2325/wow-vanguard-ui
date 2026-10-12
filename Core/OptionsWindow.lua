@@ -589,7 +589,7 @@ end
 -- The window frame: centered, above other windows, closes with Escape.
 local function windowFrame()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = 0.98, shadow = true })
-  f:SetSize(WIDTH, HEIGHT)
+  T.PixelSize(f, WIDTH, HEIGHT, true)
   f:SetPoint("CENTER")
   f:SetFrameStrata("DIALOG")
   f:EnableMouse(true)
@@ -647,11 +647,11 @@ local function showPage()
   end
 end
 
--- Brings the window up (fading in, with a sound) or, when it was already
+-- Brings the window up (fading in as it rises into place, with a sound) or, when it was already
 -- open, plays the page sound for a new page.
 local function appear(previous)
   if not previous then T.Sound("open") elseif previous ~= O.current then T.Sound("page") end
-  if previous then T.StopFade(window) else T.FadeIn(window) end
+  if previous then T.StopFade(window) else T.OpenWindow(window) end
   if pages[O.current] then scrollTo(pages[O.current], pages[O.current]:GetVerticalScroll() or 0) end
 end
 
@@ -772,7 +772,7 @@ function O.Hide()
   W.CloseMenu()
   if not window or not window:IsShown() then return end
   T.Sound("close")
-  T.FadeOut(window)
+  T.CloseWindow(window)
 end
 
 -- Opens or closes the window.

@@ -136,6 +136,7 @@
       "setup again: Keep and Keep change nothing; Run setup in the options; Start over owes setup after the reload",
       "setup layouts: Like the game's puts your frames at the top left; another layout puts them back",
       "setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect",
+      "setup screen: picking Pixel-perfect turns on Vanguard's pixel-perfect scale and leaves the game's UI scale alone (#225)",
       "setup screen: this screen's preset is picked; Keep changes nothing; a preset sets the UI scale, buttons, tiles and text",
       "setup screens: with each screen preset, nothing overlaps or leaves its own screen, in every layout, solo to 40-man",
       "the setup wizard sits above the unlock handles on the last step, so their labels never draw over it"

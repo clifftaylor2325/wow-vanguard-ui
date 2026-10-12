@@ -1448,7 +1448,7 @@ it("Cancel next undercut cancels one undercut auction per click, then says none 
   expect([restrictedLog(addon), nextState(addon)], "the first, from the click; one left").toEqual([[["CancelAuction", true, 501, "nil", "nil", "nil", "nil"]], ["1 undercut", true]]);
   addon.click(CANCEL_NEXT);
   expect(restrictedLog(addon).map((c) => c[2]), "the next click takes the next one, before the game has answered the first").toEqual([501, 506]);
-  expect([nextState(addon), isTok(addon, addon.frame(`${CANCEL_NEXT}.text`).textColor, "muted")], "none left: it says so and stops").toEqual([["none undercut", false], true]);
+  expect([nextState(addon), isTok(addon, addon.frame(`${CANCEL_NEXT}.text`).textColor, "disabled")], "none left: it says so and stops, its button in the disabled tier").toEqual([["none undercut", false], true]);
   addon.click(CANCEL_NEXT);
   addon.fire("AUCTION_CANCELED", 501);
   addon.fire("AUCTION_CANCELED", 506);
