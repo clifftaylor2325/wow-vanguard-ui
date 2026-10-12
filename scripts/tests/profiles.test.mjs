@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { RETAIL, UI_ENV, chatHas, loggedIn, setCombat } from "./helpers.mjs";
+import { RETAIL, UI_ENV, chatHas, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
 
 it("profile strings", () => {
   const addon = loggedIn();
@@ -120,6 +120,8 @@ it("profile copy, empty export and a taken import name", () => {
   expect(empty.missing === true && /nothing saved for NoSuchModule/.test(empty.err), "exporting a module with no saved table says so").toBeTruthy();
   const imported = addon.eval(`
     local text = ns.ExportProfile()
+    -- The profile changes after the export, so the string matches no profile here.
+    ns.Theme.Settings().reduceMotion = not ns.Theme.Settings().reduceMotion
     -- TEST-ONLY profile already named Imported, so the next import is "Imported 2".
     VanguardDB.profiles.Imported = {}
     return ns.ImportProfile(text)
@@ -215,6 +217,7 @@ it("profile strings carry the UI scale and screen; importing one asks whether to
   src.slash("accent ff8000");
   expect(src.eval(`local _, data = ns.Serialize.Decode(ns.ExportProfile("theme")) return data.display == nil`), "a module's string has none").toBe(true);
   const dst = loggedIn();
+  dst.slash("accent ff8000");
   importText(dst, text);
   expect(dst.eval("return Vanguard_Question.title:GetText()"), "the question names the scale and screen, and yours").toBe("This profile was made at UI scale 70% on a 2560 x 1440 screen (yours: 100%). Use its UI scale?");
   expect(dst.eval("return Vanguard_Reload == nil or not Vanguard_Reload:IsShown()"), "the reload waits for the answer").toBe(true);
@@ -330,4 +333,194 @@ it("Copy here while a switch waits copies into the profile used after the reload
   addon.eval('VanguardDB.profiles.Healer.theme = { accent = { 0, 0, 1 } }');
   expect(addon.eval('return ns.CopyProfile("Healer")'), "ns.CopyProfile returns the profile it copied into").toBe("Raid");
   expect(addon.eval("return { VanguardDB.profiles.Raid.theme.accent[3], VanguardDB.profiles.Default.theme.accent[1] }"), "Copy here does the same").toEqual([1, 1]);
+});
+
+// A string made in Lua: ns.Serialize.Encode(scope, <Lua table>); `fui` gives it ForeverUI's FUI1 prefix.
+const encoded = (addon, scope, lua, fui = false) => addon.eval(`local text = ns.Serialize.Encode("${scope}", ${lua}) return ${fui ? '(text:gsub("^VG1:", "FUI1:"))' : "text"}`);
+// ns.ImportProfile on a string: { m = what it says, notes, reload } or { why = why not }.
+const imports = (addon, text) => addon.eval(`local m, r = ns.ImportProfile(${JSON.stringify(text)})
+  if not m then return { why = r } end
+  return { m = m, notes = r.notes, reload = r.reload }`);
+
+it("profile strings carry their format and version, and an older string is upgraded before anything is saved", () => {
+  const addon = loggedIn();
+  expect(addon.eval("local _, d = ns.Serialize.Decode(ns.ExportProfile()) return { d.format, type(d.addonVersion) }"), "every string says its format and the version that made it").toEqual([2, "string"]);
+  // TEST-ONLY whole profile from before formats (ForeverUI's prefix), with the old bar style name.
+  const old = encoded(addon, "profile", '{ theme = { barTexture = "forever", reduceMotion = true } }', true);
+  const whole = imports(addon, old);
+  expect(whole.m, "it imports as a new profile, as before").toBe("Imported as profile Imported; this character will use it after a reload.");
+  expect(addon.eval("local t = VanguardDB.profiles.Imported return { t.theme.barTexture, t.format == nil, t.addonVersion == nil }"), "its tables went through their upgrades (ns.Migrate) first; the string's own keys aren't kept").toEqual(["vanguard", true, true]);
+  expect(whole.notes.length, "the renamed bar style is no missing texture: the only note is the backup").toBe(1);
+  addon.eval('ns.Theme.Settings().reduceMotion = true ns.Theme.Settings().barTexture = "soft"');
+  // TEST-ONLY module string from before formats: the theme table alone, under its name.
+  const mod = imports(addon, encoded(addon, "theme", '{ barTexture = "forever" }', true));
+  expect(mod.m, "a module's string still imports into the active profile").toBe("Imported theme settings into profile Default.");
+  expect(addon.eval("return { ns.Theme.Settings().barTexture, ns.Theme.Settings().reduceMotion }"), "upgraded, and merged: what it doesn't carry keeps its local value").toEqual(["vanguard", true]);
+  expect(imports(addon, encoded(addon, "profile", "{ format = 3 }")).why, "a string from a newer Vanguard says so").toBe("it was made by a newer version of Vanguard: update Vanguard, then import it again");
+  expect(imports(addon, encoded(addon, "talents", '{ class = "MAGE" }')).why, "another kind of Vanguard string is named").toBe("it's a talents string, not a profile string");
+  expect(imports(addon, "garbage").why, "and the old reasons stand").toBe("not a Vanguard profile string");
+});
+
+it("a partial string merges into the profile: what it carries wins, what it doesn't keeps its local value", () => {
+  const src = loggedIn();
+  src.eval('ns.Profile().positions = { uf_player = { point = "TOP", relPoint = "TOP", x = 1, y = -2 } } ns.Theme.Settings().reduceMotion = true');
+  const layout = src.eval('return ns.ExportProfile("layout")');
+  expect(layout.startsWith("VG1:parts:"), "a part's string").toBe(true);
+  const dst = loggedIn();
+  dst.eval('ns.Profile().positions = { uf_player = { point = "LEFT", relPoint = "LEFT", x = 5, y = 5, scale = 1.5 }, minimap = { point = "TOPRIGHT", relPoint = "TOPRIGHT", x = -3, y = -3 } }');
+  expect(imports(dst, layout), "it imports into the active profile, and a reload applies it").toMatchObject({ m: "Imported layout settings into profile Default.", reload: true });
+  expect(dst.eval("return ns.Profile().positions.uf_player"), "a frame the string places takes its spot whole").toEqual({ point: "TOP", relPoint: "TOP", x: 1, y: -2 });
+  expect(dst.eval("return { ns.Profile().positions.minimap.x, ns.Theme.Settings().reduceMotion }"), "a frame it doesn't place keeps its own, and settings outside the layout stay").toEqual([-3, false]);
+  dst.eval("local s = ns.Settings('InfoStrip') s.dps, s.gold = false, false");
+  // TEST-ONLY partial string from a version whose InfoStrip had only the DPS switch.
+  imports(dst, encoded(dst, "parts", '{ format = 2, parts = { "InfoStrip" }, InfoStrip = { dps = true } }'));
+  expect(dst.eval("return { ns.Settings('InfoStrip').dps, ns.Settings('InfoStrip').gold }"), "a module's settings merge key by key").toEqual([true, false]);
+  dst.eval("ns.Settings('Situations').overrides = { raid = { settings = { InfoStrip = { dps = true } } }, party = { positions = { minimap = { scale = 2 } } } }");
+  // TEST-ONLY Situations part with a raid override that only fades the minimap.
+  imports(dst, encoded(dst, "parts", '{ format = 2, parts = { "situations" }, Situations = { overrides = { raid = { positions = { minimap = { alpha = 0.5 } } } } } }'));
+  expect(dst.eval("local o = ns.Settings('Situations').overrides return { o.raid.settings == nil, o.raid.positions.minimap.alpha, o.party.positions.minimap.scale }"), "a situation's override is replaced whole; the others stay").toEqual([true, 0.5, 2]);
+  expect(imports(dst, encoded(dst, "parts", "{ format = 2 }")).m, "a string that names no parts still says where it went").toBe("Imported its settings into profile Default.");
+});
+
+it("export with Include parts: /vg export <part ...>, and the export panel's switches", () => {
+  const addon = loggedIn();
+  addon.eval('ns.Profile().positions = { uf_player = { point = "TOP", relPoint = "TOP", x = 1, y = -2 } }');
+  const parts = addon.eval("return ns.ProfileParts()");
+  expect(parts.slice(0, 3), "the parts: layout, situations overrides and global settings first").toEqual(["layout", "situations", "global"]);
+  expect(parts.slice(3), "then each module with saved settings, by name").toEqual([...parts.slice(3)].sort());
+  // The export string's tables: whether it has positions, theme and InfoStrip, and its parts list.
+  const holds = (lua) => addon.eval(`local _, d = ns.Serialize.Decode(${lua}) return { d.positions ~= nil, d.theme ~= nil, d.InfoStrip ~= nil, d.parts and table.concat(d.parts, " ") or "whole" }`);
+  expect(holds('ns.ExportProfile("LAYOUT")'), "a part by name, in any case").toEqual([true, false, false, "layout"]);
+  expect(holds("ns.ExportProfile(ns.ProfileParts())"), "every part is the whole profile").toEqual([true, true, true, "whole"]);
+  addon.slash("export layout infostrip");
+  expect(addon.eval("return Vanguard_TextDialog.title:GetText()"), "/vg export takes several parts").toBe("Vanguard export (layout infostrip)  Ctrl+C to copy");
+  expect(holds("Vanguard_TextEdit:GetText()"), "and the string holds just those").toEqual([true, false, true, "layout InfoStrip"]);
+  addon.clearChat();
+  addon.slash("export layout TEST-ONLY");
+  expect(chatHas(addon, /Nothing to export: nothing saved for TEST-ONLY yet\.$/), "a part with nothing saved is named").toBe(true);
+  addon.slash("export pick");
+  // The panel: its title, whether it shows, and for each switch shown its label and whether it is on.
+  const panel = () => addon.eval(`local f = Vanguard_ExportDialog local out = { title = f.title:GetText(), shown = f:IsShown(), rows = {} }
+    for _, r in ipairs(f.rows) do if r:IsShown() then out.rows[#out.rows + 1] = { r.label:GetText(), r.get() == true } end end
+    return out`);
+  const opened = panel();
+  expect([opened.title, opened.shown, opened.rows.length], "/vg export pick opens the panel with a switch per part").toEqual(["Export: what to include", true, parts.length]);
+  expect(opened.rows.slice(0, 3), "named for the player, every one on").toEqual([["Layout (positions and movers)", true], ["Situations overrides", true], ["Global settings (theme, modules list, skins)", true]]);
+  // Clicks the button the Lua expression names.
+  const click = (lua) => addon.eval(`local b = ${lua} b:GetScript("OnClick")(b)`);
+  click("Vanguard_ExportDialog.none");
+  expect(panel().rows.every((r) => r[1] === false), "None turns every switch off").toBe(true);
+  click("Vanguard_ExportDialog.export");
+  expect(panel().title, "with nothing on, Export says so").toBe("Switch on at least one part to export.");
+  click("Vanguard_ExportDialog.rows[1]");
+  click("Vanguard_ExportDialog.export");
+  expect([panel().shown, addon.eval("return Vanguard_TextDialog.title:GetText()")], "Export closes the panel and shows the string for what is on").toEqual([false, "Vanguard export (layout)  Ctrl+C to copy"]);
+  expect(holds("Vanguard_TextEdit:GetText()"), "only the layout").toEqual([true, false, false, "layout"]);
+  addon.eval("ns.Profile().InfoStrip = nil ns.ExportDialog()");
+  const again = panel();
+  expect([again.title, again.rows.length, again.rows.every((r) => r[1])], "opened again: its title back, every switch on, one for each part there is now").toEqual(["Export: what to include", parts.length - 1, true]);
+  click("Vanguard_ExportDialog.none");
+  click("Vanguard_ExportDialog.all");
+  click("Vanguard_ExportDialog.export");
+  expect(addon.eval("return Vanguard_TextDialog.title:GetText()"), "everything on is the whole profile").toBe("Vanguard export (profile Default)  Ctrl+C to copy");
+  expect(addon.eval("return Vanguard_TextEdit:GetText():sub(1, 12)")).toBe("VG1:profile:");
+  addon.eval("ns.ExportDialog()");
+  click("Vanguard_ExportDialog.close");
+  expect(panel().shown, "Close closes it").toBe(false);
+});
+
+it("every import backs up the profile in use first, into one rolling backup profile", () => {
+  const addon = loggedIn();
+  addon.eval("ns.Theme.Settings().reduceMotion = true");
+  expect(addon.eval("return ns.BackupProfile()"), "the backup is named after the profile").toBe("Default backup");
+  expect(addon.eval("local b = VanguardDB.profiles['Default backup'] return { b ~= ns.Profile(), b.theme ~= ns.Profile().theme, b.theme.reduceMotion }"), "a copy of it").toEqual([true, true, true]);
+  // TEST-ONLY partial string that turns Reduce motion off.
+  const off = encoded(addon, "parts", '{ format = 2, parts = { "global" }, theme = { reduceMotion = false } }');
+  addon.clearChat();
+  importText(addon, off);
+  expect(chatHas(addon, /Profile Default as it was before this import is saved as profile Default backup\./), "the import says where the profile as it was is").toBe(true);
+  expect(addon.eval("return { ns.Theme.Settings().reduceMotion, VanguardDB.profiles['Default backup'].theme.reduceMotion }"), "and the backup has it").toEqual([false, true]);
+  importText(addon, off);
+  expect(addon.eval("return { ns.ProfileNames(), VanguardDB.profiles['Default backup'].theme.reduceMotion }"), "the next import replaces the same backup").toEqual([["Default", "Default backup"], false]);
+  // TEST-ONLY 32-character profile names: one that needs cutting, and one whose backup name would be its own.
+  const backupOf = (name) => addon.eval(`VanguardDB.profiles["${name}"] = {} VanguardCharDB.profile = "${name}" return ns.BackupProfile()`);
+  expect(backupOf(`TEST-ONLY ${"x".repeat(22)}`), "a long name is cut to fit 32 characters").toBe(`TEST-ONLY ${"x".repeat(15)} backup`);
+  expect(backupOf(`TEST-ONLY ${"x".repeat(15)} backup`), "and the backup is never the profile in use").toBe(`TEST-ONLY ${"x".repeat(13)} backup 2`);
+});
+
+it("importing a string that matches a profile here uses that profile instead of making a copy", () => {
+  const addon = loggedIn();
+  const own = addon.eval("return ns.ExportProfile()");
+  addon.clearChat();
+  importText(addon, own);
+  expect(chatHas(addon, /This string matches profile Default, which this character already uses: nothing new to import\./), "your own export says it is the profile you use").toBe(true);
+  addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
+  expect(addon.eval("return { VanguardDB.profiles.Imported == nil, Vanguard_Reload == nil or not Vanguard_Reload:IsShown(), Vanguard_TextDialog:IsShown() }"), "no copy is made, and after the UI scale question no reload is offered").toEqual([true, true, false]);
+  addon.eval("VanguardDB.profiles.Raid = ns.Copy(ns.Profile()) ns.Theme.Settings().reduceMotion = not ns.Theme.Settings().reduceMotion");
+  expect(imports(addon, own), "a string matching another profile switches to it").toMatchObject({ m: "This string matches profile Raid; this character will use it after a reload.", reload: true });
+  expect(addon.eval("return { VanguardCharDB.pendingProfile, VanguardDB.profiles.Imported == nil }")).toEqual(["Raid", true]);
+});
+
+it("an import names each font and bar texture this client doesn't have, and what it draws instead", () => {
+  const addon = loggedIn('LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Shared", [[Interface\\AddOns\\TestOnly\\Font.ttf]])');
+  // TEST-ONLY theme naming a font and a bar texture no addon shares here.
+  const text = encoded(addon, "parts", '{ format = 2, parts = { "global" }, theme = { font = "TEST-ONLY Missing", barTexture = "TEST-ONLY Gone" } }');
+  addon.clearChat();
+  importText(addon, text);
+  expect(chatHas(addon, /Font not found: TEST-ONLY Missing \(no addon here shares it\)\. Vanguard uses its default font instead\./), "a missing font is named, with what is used instead").toBe(true);
+  expect(chatHas(addon, /Bar texture not found: TEST-ONLY Gone \(no addon here shares it\)\. Vanguard uses its Vanguard bar texture instead\./), "and a missing bar texture").toBe(true);
+  expect(addon.eval("return { ns.Theme.Settings().font, ns.Theme.BarTexture() == ns.Theme.Texture('Bar') }"), "the names stay saved, and Vanguard's own are drawn").toEqual(["TEST-ONLY Missing", true]);
+  // How many lines ns.MissingMedia gives for a theme (a Lua table).
+  const found = (lua) => addon.eval(`return #ns.MissingMedia({ theme = ${lua} })`);
+  expect([found('{ font = "TEST-ONLY Shared", barTexture = "soft" }'), found('{ font = "client" }'), found('{ font = "" }'), found('{ font = [[Fonts\\TEST-ONLY.ttf]] }'), addon.eval("return #ns.MissingMedia({})")], "a shared font, Vanguard's bars, the game's font and a font path are found").toEqual([0, 0, 0, 0, 0]);
+});
+
+// A TEST-ONLY profile big enough to take many frames at a small budget: its string.
+const BIG = `local t = {} for i = 1, 400 do t["TEST-ONLY key " .. i] = i end ns.Profile().TestOnlyBig = t return ns.ExportProfile()`;
+
+it("a large string is imported across frames, with its progress in the box's title", () => {
+  const text = loggedIn().eval(BIG);
+  const addon = loggedIn();
+  addon.eval("ns.Serialize.BUDGET = 20");
+  importText(addon, text);
+  // The import box's title, whether its Import button shows, and the profile staged (false before).
+  const state = () => addon.eval("return { Vanguard_TextDialog.title:GetText(), Vanguard_TextDialog.primary:IsShown(), VanguardCharDB.pendingProfile or false }");
+  const first = state();
+  expect(first[0], "the box's title shows how far it has got").toMatch(/^Importing… \d+%$/);
+  expect(first.slice(1), "its Import button is put away, and nothing is imported yet").toEqual([false, false]);
+  addon.clearChat();
+  importText(addon, text);
+  expect(chatHas(addon, /Import failed: an import is still running\./), "a second import waits for the first").toBe(true);
+  const seen = [];
+  for (let frames = 0; frames < 400 && state()[2] === false; frames++) {
+    const percent = state()[0].match(/^Importing… (\d+)%$/);
+    if (percent) seen.push(Number(percent[1]));
+    addon.update(0.02);
+  }
+  expect(seen.length, "it took many frames").toBeGreaterThan(5);
+  expect(seen.every((p, i) => i === 0 || p >= seen[i - 1]), `the percentage only goes up (${seen.join(" ")})`).toBe(true);
+  expect(addon.eval("return { VanguardCharDB.pendingProfile, VanguardDB.profiles.Imported.TestOnlyBig['TEST-ONLY key 400'], Vanguard_TextDialog:IsShown() }"), "then it finishes like any import").toEqual(["Imported", 400, false]);
+});
+
+it("a large string that fails part way says why, and a failing step ends the import", () => {
+  const text = loggedIn().eval(BIG);
+  const addon = loggedIn();
+  addon.eval("ns.Serialize.BUDGET = 20");
+  addon.clearChat();
+  importText(addon, text.slice(0, -40));
+  for (let frames = 0; frames < 50; frames++) addon.update(0.02);
+  expect(chatHas(addon, /Import failed: the string is incomplete \(was it cut off when pasting\?\)\./), "a cut-off string is found out after its checksum").toBe(true);
+  expect(addon.eval("return { Vanguard_TextDialog.title:GetText(), Vanguard_TextDialog.primary:IsShown() }"), "and the box is back, to paste again").toEqual(["Paste a Vanguard string, then Import", true]);
+  expectErrors("profile import: eval:2: TEST-ONLY import failure");
+  addon.eval('ns.ApplyImport = function() error("TEST-ONLY import failure") end');
+  importText(addon, "VG1:x:0000:AAAA");
+  expect(chatHas(addon, /Import failed: something went wrong while importing it \(see \/vg errors\)\./), "a step that fails ends the import with a reason").toBe(true);
+  const sync = addon.eval(`ns.ApplyImport = function(scope) return scope end
+    local timer, steps, said = C_Timer, {}, nil
+    C_Timer = nil
+    ns.StartImport(${JSON.stringify(text)}, function(p) steps[#steps + 1] = p end, function(m) said = m end)
+    C_Timer = timer
+    return { #steps, said }`);
+  expect(sync[1], "without the client's timer every step runs at once").toBe("profile");
+  expect(sync[0]).toBeGreaterThan(5);
 });
