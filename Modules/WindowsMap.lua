@@ -314,15 +314,27 @@ GW.LEGACY_PAGES = { "TreePage", "ChallengesPage", "RewardTrackPage" }
 GW.LEGACY_PAGE_ART = { "Background", "VerticalDivider" }
 -- The challenge page's two panes, which get an inset panel.
 GW.LEGACY_PANES = { "CategoryList", "DetailPane" }
+-- What the challenge list (the detail pane) says while it is empty: a prompt until a category is picked (the game
+-- has no line for that), then the game's own no-challenges line (LEGACY_NO_CHALLENGES, its category list's), or ours.
+GW.LEGACY_EMPTY = { pick = "Select a category to view its challenges.", none = "No challenges to show here." }
 
--- One page's background art faded, and an inset panel under each of its panes. The talent
--- tree's node buttons, the cards and every other part of the page are left as the game made them.
+-- The detail pane's empty note, by whether a category is picked (the game keeps the picked one as the pane's info).
+local function challengeNote(pane)
+  return function()
+    if pane.info == nil then return GW.LEGACY_EMPTY.pick end
+    return _G.LEGACY_NO_CHALLENGES or GW.LEGACY_EMPTY.none
+  end
+end
+
+-- One page's background art faded, and an inset panel under each of its panes, the challenge list with its
+-- empty note. The talent tree's node buttons, the cards and every other part of the page are the game's.
 local function skinLegacyPage(page)
   if not isFrame(page) then return end
   GW.FadeParts(page, GW.LEGACY_PAGE_ART)
   for _, key in ipairs(GW.LEGACY_PANES) do
     if isFrame(page[key]) then T.Panel(page[key], { inset = true, noSheen = true }) end
   end
+  if isFrame(page.DetailPane) then GW.WatchEmpty(page.DetailPane.ScrollBox, challengeNote(page.DetailPane)) end
 end
 
 -- The Legacy system window (Forever's own: the Adventure, Professions and Progression trees, challenges

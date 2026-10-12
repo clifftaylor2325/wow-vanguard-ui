@@ -384,6 +384,12 @@ const LEGACY_ENV = WINDOWS_ENV + `
     tree.Node = CreateFrame("Button", nil, tree.LegacyTreeTraitPanel.ButtonsParent) tree.Node:CreateTexture()
     chal.VerticalDivider = CreateFrame("Frame", nil, chal) chal.VerticalDivider:CreateTexture()
     chal.CategoryList, chal.DetailPane = CreateFrame("Frame", nil, chal), CreateFrame("Frame", nil, chal)
+    local box = CreateFrame("Frame", nil, chal.DetailPane) chal.DetailPane.ScrollBox = box
+    box.rows = 0
+    function box:GetDataProviderSize() return self.rows end
+    function box:SetDataProvider(n) self.rows = n end
+    -- as LegacyChallengeDetailPaneMixin:GenerateDataProvider: the picked category kept as info, then the rows
+    function chal.DetailPane:SelectCategory(info, n) self.info = info self.ScrollBox:SetDataProvider(n) end
     f.LegacyTreeTab = CreateFrame("Frame", nil, f) f.LegacyTreeTab:CreateTexture()
     f.TabIndicators = CreateFrame("Frame", nil, f) f.TabIndicators:CreateTexture()
   end
@@ -404,6 +410,22 @@ it("legacy system: the window in the theme, its page backgrounds faded and its p
   expect(fills(addon, "LegacySystemFrame.TreePage.LegacyTreeTraitPanel"), "the tree's panel is not covered, so it does not hide the close button's corner").toBe(0);
   addon.eval("LegacySystemFrame:Hide() LegacySystemFrame:Show()");
   expect(windowState(addon, "LegacySystemFrame"), "showing it again paints nothing new").toMatchObject({ panel: true, painted: first.painted });
+});
+
+it("legacy system: the challenge detail pane prompts for a category while nothing is picked, and says when a category has none", () => {
+  const addon = loggedIn(LEGACY_ENV);
+  addon.eval("__legacy()");
+  addon.fire("ADDON_LOADED", "Blizzard_LegacySystem");
+  addon.eval("LegacySystemFrame:Show()");
+  // The detail pane's note: its text and whether it shows.
+  const note = () => addon.eval("local n = LegacySystemFrame.ChallengesPage.DetailPane.ScrollBox.vgEmptyNote return { n:GetText(), n:IsShown() }");
+  expect(note(), "nothing picked: a prompt").toEqual(["Select a category to view its challenges.", true]);
+  addon.eval("LegacySystemFrame.ChallengesPage.DetailPane:SelectCategory({ id = 1 }, 4)");
+  expect(note()[1], "a category with challenges: no note").toBe(false);
+  addon.eval("LegacySystemFrame.ChallengesPage.DetailPane:SelectCategory({ id = 2 }, 0)");
+  expect(note(), "a category whose challenges are all filtered out: Vanguard's line when the game has none").toEqual(["No challenges to show here.", true]);
+  addon.eval("LEGACY_NO_CHALLENGES = 'TEST-ONLY No challenges' LegacySystemFrame.ChallengesPage.DetailPane:SelectCategory({ id = 2 }, 0)");
+  expect(note(), "else the game's own no-challenges line").toEqual(["TEST-ONLY No challenges", true]);
 });
 
 it("legacy system: switched off it stays the game's; a client missing its pages loads cleanly", () => {

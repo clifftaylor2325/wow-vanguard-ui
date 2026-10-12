@@ -379,6 +379,11 @@ const COLLECTIONS_ENV = PANE_ENV + `
     w.ItemsCollectionFrame.Model = CreateFrame("Frame", nil, w.ItemsCollectionFrame) __art(w.ItemsCollectionFrame.Model, "ARTWORK")
     w.SetsCollectionFrame = CreateFrame("Frame", nil, w)
     w.SetsCollectionFrame.RightInset, w.SetsCollectionFrame.LeftInset = __backdrop(w.SetsCollectionFrame), __backdrop(w.SetsCollectionFrame)
+    -- as WardrobeItemsCollectionMixin: the filtered list for the slot (nil until the game makes it), redrawn by UpdateItems
+    local items = w.ItemsCollectionFrame
+    function items:GetFilteredVisualsList() return self.filteredVisualsList end
+    function items:UpdateItems() end
+    function items:SetSlot(n) self.filteredVisualsList = {} for i = 1, n do self.filteredVisualsList[i] = { visualID = i } end self:UpdateItems() end
   end
 `;
 
@@ -401,6 +406,22 @@ it("appearances: the item grid's and the sets tab's leather backdrops are faded,
   const none = loggedIn(COLLECTIONS_ENV + `__window("CollectionsJournal")`);
   none.fire("ADDON_LOADED", "Blizzard_Collections");
   expect([bare.eval("CollectionsJournal:Show() return #ns.errors"), none.eval("CollectionsJournal:Show() return #ns.errors")], "a wardrobe without backdrops, or no wardrobe: no errors").toEqual([0, 0]);
+});
+
+it("appearances: an empty grid says so, and the note follows the slot the game redraws", () => {
+  const addon = loggedIn(COLLECTIONS_ENV);
+  addon.eval("__collections()");
+  addon.fire("ADDON_LOADED", "Blizzard_Collections");
+  addon.eval("CollectionsJournal:Show()");
+  // The grid's note: its text and whether it shows.
+  const note = () => addon.eval("local n = WardrobeCollectionFrame.ItemsCollectionFrame.vgEmptyNote return { n:GetText(), n:IsShown() }");
+  expect(note()[1], "before the game has listed a slot: no note").toBe(false);
+  addon.eval("WardrobeCollectionFrame.ItemsCollectionFrame:SetSlot(0)");
+  expect(note(), "a slot with nothing collected").toEqual(["No appearances to show for this slot.", true]);
+  addon.eval("WardrobeCollectionFrame.ItemsCollectionFrame:SetSlot(5)");
+  expect(note()[1], "a slot with appearances").toBe(false);
+  addon.eval("CollectionsJournal:Hide() CollectionsJournal:Show() WardrobeCollectionFrame.ItemsCollectionFrame:SetSlot(0)");
+  expect([note()[1], addon.eval("return #ns.errors")], "watched once, still right after another show").toEqual([true, 0]);
 });
 
 // TEST-ONLY scroll bars shaped like the game's MinimalScrollBar (a Track holding the Thumb, arrow

@@ -317,11 +317,32 @@ local function skinBackdrop(frame)
   T.Panel(frame, { inset = true, noSheen = true })
 end
 
--- Dresses the inside of the collections window: the appearances tab's backdrops. Safe to run again.
+-- What the appearances grid says while it shows nothing (on Forever it lists only collected appearances, so a
+-- slot can be empty; the game has no line of its own for that).
+GW.APPEARANCES_EMPTY = "No appearances to show for this slot."
+
+-- The appearances grid's empty note: shown while the game's filtered list for the slot and search is empty
+-- (not before the game has made that list).
+local function noteAppearances(items)
+  local list = type(items.GetFilteredVisualsList) == "function" and items:GetFilteredVisualsList()
+  GW.SetEmptyNote(items, type(list) == "table" and #list == 0, GW.APPEARANCES_EMPTY)
+end
+
+-- Keeps the grid's note right now and after each redraw (UpdateItems: a slot, page, filter or search change), once.
+local function watchAppearances(items)
+  if type(items) ~= "table" or not items.CreateFontString or watched[items] then return end
+  watched[items] = true
+  noteAppearances(items)
+  if type(items.UpdateItems) == "function" then hooksecurefunc(items, "UpdateItems", ns.Guard("hook UpdateItems", noteAppearances)) end
+end
+
+-- Dresses the inside of the collections window: the appearances tab's backdrops and the grid's empty note.
+-- Safe to run again.
 function GW.DressCollections()
   local wardrobe = _G.WardrobeCollectionFrame
   if type(wardrobe) ~= "table" then return end
   for _, path in ipairs(GW.WARDROBE_BACKDROPS) do skinBackdrop(walk(wardrobe, path)) end
+  watchAppearances(wardrobe.ItemsCollectionFrame)
 end
 
 -- What a window holds besides tabs that is dressed with it, by window name: a function that takes no argument.
