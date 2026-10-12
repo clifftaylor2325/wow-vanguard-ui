@@ -21,6 +21,7 @@ Core/Events.lua
 Core/DB.lua
 Core/Combat.lua
 Core/Client.lua
+Core/Home.lua
 Core/Serialize.lua
 Core/Profiles.lua
 Core/Modules.lua
