@@ -7,8 +7,9 @@
 -- You record an override as you'd set things up anyway: Record for Raid,
 -- drag frames and flip settings with their own handles and options, then
 -- Stop recording: only what changed is kept, and the base goes back. An
--- override holds mover spots (point, scale, opacity) and the allowlisted live
--- settings in SI.LIVE; nothing else is recorded or applied.
+-- override holds mover spots (point, scale, opacity, and a frame's links: what
+-- it's anchored to, the sizes it matches, its own size) and the allowlisted
+-- live settings in SI.LIVE; nothing else is recorded or applied.
 --
 -- Applying writes through the movers' and the modules' own setters, so the
 -- frames and modules see the override as they'd see a change of yours. The
@@ -121,12 +122,18 @@ end
 
 -- Snapshots --------------------------------------------------------------------------------------
 
--- Every mover's saved spot as plain fields ({} for one at its default).
+-- A copy of a link table in a saved spot (rel, match), or nil.
+local function link(t)
+  return type(t) == "table" and ns.Copy(t) or nil
+end
+
+-- Every mover's saved spot as plain fields ({} for one at its default), with its links (Core/MoverLinks.lua).
 local function spotsNow()
   local out, saved = {}, ns.Settings("positions")
   for _, m in ipairs(ns.MoverList()) do
     local p = tbl(saved[m.key])
-    out[m.key] = { point = p.point, relPoint = p.relPoint, x = p.x, y = p.y, scale = p.scale, alpha = p.alpha }
+    out[m.key] = { point = p.point, relPoint = p.relPoint, x = p.x, y = p.y, scale = p.scale, alpha = p.alpha,
+      rel = link(p.rel), match = link(p.match), w = p.w, h = p.h }
   end
   return out
 end
@@ -234,11 +241,13 @@ end
 
 -- Applying -------------------------------------------------------------------------------------
 
--- Puts a mover at a spot with the movers' own setters: its default first, then the spot's point, scale and opacity.
+-- Puts a mover at a spot with the movers' own setters: its default first, then the spot's point
+-- (where an anchored frame lands while the frame it's anchored to isn't there), links, scale and opacity.
 local function placeSpot(key, spot)
   if not ns.MoverFrame(key) or type(spot) ~= "table" then return end
   ns.ResetMovers(key)
   if spot.point then ns.SetMoverPoint(key, spot.point, spot.relPoint, spot.x or 0, spot.y or 0) end
+  ns.RestoreMoverLinks(key, spot)
   if spot.scale then ns.SetMoverScale(key, spot.scale) end
   if spot.alpha then ns.SetMoverAlpha(key, spot.alpha) end
 end

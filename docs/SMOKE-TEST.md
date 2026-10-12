@@ -106,6 +106,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: `Reset N frame(s).` with N above zero, and the frames back at their default spots.
 - If it fails, paste: the chat line.
 
+### 3.6 Anchor the cast bar under the player frame
+
+- Do: type `/vg unlock`, right-click the Player cast bar handle, set **Anchor to** to Player and **Side** to Bottom, type `-4` in Y offset and press Enter, click **Save and lock** on the bar at the top. Change spec (if your character has one), `/reload`, then turn Unit frames off under `/vg` → Modules, `/reload`, turn them on again and `/reload`.
+- Expect: the popover title reads `Player cast bar  ·  Below Player`, the cast bar sits 4 px under the player frame's bottom edge and stays there after the spec change and the reload; with Unit frames off it stays where it was (on screen), and with them on again it is under the player frame. No error.
+- If it fails, paste: a screenshot of each step that went wrong and `/vg errors`.
+
+### 3.7 Exit without saving
+
+- Do: type `/vg unlock`, drag two frames somewhere new, then click **Exit without saving** on the bar at the top of the screen.
+- Expect: the chat line `Every frame is back where it was when you unlocked.`, both frames back where they were, and the handles and the bar gone.
+- If it fails, paste: which frame stayed moved and `/vg errors`.
+
 ## 4. Profiles and import
 
 ### 4.1 Switch profile
