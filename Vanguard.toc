@@ -136,6 +136,7 @@ Modules/AuctionLedger.lua
 Modules/GameTools.lua
 Modules/BossDocks.lua
 Modules/FightHistory.lua
+Modules/Rolls.lua
 Modules/GameAlerts.lua
 Modules/AfkScreen.lua
 Modules/DataBars.lua

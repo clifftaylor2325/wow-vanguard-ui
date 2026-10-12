@@ -173,6 +173,20 @@ local function fightRows()
   }
 end
 
+-- The roll tracker: its switches (applied at once) and its visibility.
+local function rollRows()
+  local R = ns.GetModule("Rolls")
+  local rollVisibility, rollWhen = visibilityRows("Roll tracker visibility", "Rolls", "visibility", "showWhen")
+  -- Draws the panel again (when the module is on).
+  local function paint() if R.enabled then R.Paint() end end
+  return {
+    { "header", "Roll tracker" },
+    check("Show the group's /roll results in a small panel", liveSetting("Rolls", "show", paint)),
+    check("Show loot rolls (who rolled what) where the client has them", liveSetting("Rolls", "loot", function() if R.enabled then R.ReadLoot() end end)),
+    rollVisibility, rollWhen,
+  }
+end
+
 -- The info strip's auction sales (the sales ledger, Modules/AuctionLedger.lua): off until switched on.
 local function ledgerRows()
   return { check("Your auction sales this session", stripSetting("ahgold")) }
@@ -189,7 +203,7 @@ local function stripRows()
     check("Soul shards (warlocks)", stripSetting("shards")), check("XP per hour this session", stripSetting("xprate")),
     check("Time to the next level", stripSetting("leveltime")), check("Gold per hour this session", stripSetting("goldrate")),
     check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")), check("Your place in the last fight's DPS, in a group", stripSetting("rank")),
-  }, append(ledgerRows(), fightRows()))
+  }, append(ledgerRows(), append(fightRows(), rollRows())))
 end
 
 -- At a merchant, and the error line.

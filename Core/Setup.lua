@@ -45,6 +45,7 @@ S.CLASSIC = {
   raid = { "BOTTOMLEFT", "BOTTOMLEFT", 20, 330 }, uf_party1 = { "TOPLEFT", "TOPLEFT", 20, -310 },
   partyextras = { "TOPLEFT", "TOPLEFT", 190, -310 }, uf_boss1 = { "TOPRIGHT", "TOPRIGHT", -290, -200 },
   raidtools = { "TOP", "TOP", 100, -120 }, maintanks = { "TOP", "TOP", 100, -196 },
+  rolls = { "TOPLEFT", "TOPLEFT", 20, -8 },
 }
 -- Screen presets, in display order, for the screen each is made for (w x h pixels): the UI
 -- scale (the game's own UI scale, whose slider runs 0.65 to 1.15; it sizes the unit frames,
