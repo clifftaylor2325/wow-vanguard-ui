@@ -525,7 +525,16 @@ const contrast = (addon, name) => {
 
 it("text tiers (#227): text, text2, muted, then disabled, each readable on a panel; a search box's hint is in the disabled tier", () => {
   const addon = loggedIn();
-  expect(["text", "text2", "muted", "disabled"].map((n) => contrast(addon, n)), "brightest first; every tier, disabled too, clears 4.5:1").toEqual([15.2, 11.5, 8.1, 4.8]);
+  expect(["text", "text2", "muted", "disabled"].map((n) => contrast(addon, n)), "brightest first; every tier, disabled too, clears 4.5:1").toEqual([15, 11.4, 8, 4.7]);
   const hint = addon.eval('local e = ns.Widgets.Search(UIParent, 200, "Search", function() end) return { e.hint.__textColor[1], e.hint.__textColor[2], e.hint.__textColor[3] }');
   expect(isTok(addon, hint, "disabled"), "the search hint is placeholder text").toBe(true);
+});
+
+it("slate surfaces (#229): inset, panel, raised, raisedHover, divider, borderHi step up evenly; a profile keeps a panel colour it saved", () => {
+  const addon = loggedIn();
+  const steps = ["inset", "panel", "raised", "raisedHover", "divider", "borderHi"].map((n) => lum(tok(addon, n)));
+  expect(steps.every((l, i) => i === 0 || l > steps[i - 1]), "each lighter than the one before").toBe(true);
+  expect(isTok(addon, addon.eval("return { ns.Theme.PanelColor() }"), "panel"), "a new profile's panels use the new panel colour").toBe(true);
+  const old = loggedIn("", { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { panel = { 0x12 / 255, 0x15 / 255, 0x1b / 255, 0.94 } } } } }' });
+  expect(old.eval("return { ns.Theme.PanelColor() }")[0], "a profile that saved the old panel keeps it (no migration)").toBeCloseTo(0x12 / 255, 6);
 });

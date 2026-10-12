@@ -33,7 +33,7 @@ it("raid frames", () => {
   const tank = raidButton(addon, 1);
   expect(tank.hp === 300 && tank.max === 1000 && tank.name === "TEST-ONLY Tank" && /Icons\\RoleTank$/.test(tank.role), "health, name and a tank's shield").toBeTruthy();
   expect(tank.nameAfter && raidButton(addon, 3).role === false && raidButton(addon, 3).roleW === 1 && tank.roleW > 1, "no role, no mark: it narrows, so the name after it starts near the row's start").toBeTruthy();
-  const soft = 0.78 * 0.7 + (0x12 / 255) * 0.3;
+  const soft = 0.78 * 0.7 + (0x13 / 255) * 0.3;
   expect(Math.abs(tank.color[0] - soft) < 1e-6, "class colors, softened into the panel color by default").toBeTruthy();
   expect(tank.status === "-700", "the second row shows missing health").toBeTruthy();
   expect(addon.eval("return Vanguard_RaidUnitButton1.name.__font[3]") === "OUTLINE", "names over the bar are outlined").toBeTruthy();
