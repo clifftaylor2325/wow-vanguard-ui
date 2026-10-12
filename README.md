@@ -186,6 +186,7 @@ npm run coverage  # every test with line coverage of the addon Lua; fails below 
 npm run lint      # luacheck
 npm run timing    # the suite on 2 workers (the hosted runner's size): wall time, per-file table; --budget and --baseline fail it
 npm run profile -- <area>  # where the Lua of one test area (or "login") spends its time, by file, function and line
+npm run bench     # time and Lua instructions per event and per module under a scripted 40-player raid (a harness measurement); --compare <file>
 npm run media     # regenerate Media/Textures and Media/Icons from scripts/lib/media-sources.mjs
 npm run package   # dist/Vanguard-<version>.zip from committed files
 npm run preview   # preview/*.png: the default layout and the options window (needs Playwright)
