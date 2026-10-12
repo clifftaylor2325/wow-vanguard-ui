@@ -73,6 +73,8 @@ read_globals = {
   "ChatFrameUtil", "ChatFrame_SendTell",
   -- F5 Situations: whether you're in a raid, and resting.
   "IsInRaid", "IsResting",
+  -- #208 Quest guidance: the client's quest lines (quest-start spots on a map).
+  "C_QuestLine",
   -- F6 Auction helper: the auction house API and the game's auction house window.
   "C_AuctionHouse", "AuctionHouseFrame",
   -- Auction helper, tabs: the window's tab row (the game's tab count call) and its display modes.
