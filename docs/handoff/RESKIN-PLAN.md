@@ -381,7 +381,7 @@ Inventory: design §5.8. Group `tabs`. Depends on `T.Tab` and `T.ScrollBar` (S0)
 
 Files: `Modules/WindowsPvP.lua`, `scripts/tests/windows-pvp.test.mjs`. Inventory: design §5.7. Group `pvp`.
 
-- [ ] **S8.1 Scoreboards.** `PVPMatchScoreboard`, `PVPMatchResults`: their `Content`/`Background` art faded, `T.Panel`
+- [x] **S8.1 Scoreboards.** `PVPMatchScoreboard`, `PVPMatchResults`: their `Content`/`Background` art faded, `T.Panel`
   with shadow, header buttons `T.Button`, the table's rows untouched. Size M.
 - [ ] **S8.2 Queue dialogs.** `PVPReadyDialog`, `PVPReadyPopup`, `PVPRoleCheckPopup`, `PVPFramePopup`: `Border` faded,
   panel, buttons; as `"popups"`. Size S.
