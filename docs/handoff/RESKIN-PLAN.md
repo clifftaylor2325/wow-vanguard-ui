@@ -383,7 +383,7 @@ Files: `Modules/WindowsPvP.lua`, `scripts/tests/windows-pvp.test.mjs`. Inventory
 
 - [x] **S8.1 Scoreboards.** `PVPMatchScoreboard`, `PVPMatchResults`: their `Content`/`Background` art faded, `T.Panel`
   with shadow, header buttons `T.Button`, the table's rows untouched. Size M.
-- [ ] **S8.2 Queue dialogs.** `PVPReadyDialog`, `PVPReadyPopup`, `PVPRoleCheckPopup`, `PVPFramePopup`: `Border` faded,
+- [x] **S8.2 Queue dialogs.** `PVPReadyDialog`, `PVPReadyPopup`, `PVPRoleCheckPopup`, `PVPFramePopup`: `Border` faded,
   panel, buttons; as `"popups"`. Size S.
 - [ ] **S8.3 Objectives and timer.** `UIWidgetTopCenterContainerFrame`, `UIWidgetBelowMinimapContainerFrame`: a flat
   panel behind each widget container only while it has children (hook `OnSizeChanged`); `TimerTracker` bars via

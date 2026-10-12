@@ -91,3 +91,33 @@ end
 -- Blizzard_PVPMatch loads at login on Forever (LoadOnDemand 0); registered on demand as well, so a client
 -- that loads it later is covered too.
 GW.Add("pvp", "onDemand", "Blizzard_PVPMatch", { "PVPMatchScoreboard", "PVPMatchResults" }, GW.SkinPvPMatch)
+
+-- Queue dialogs ---------------------------------------------------------------------------------
+
+-- The art the dialogs keep as content: the battleground's picture on the ready dialog, the battleground's
+-- icon and its ring on the war game and arena invite.
+GW.CONTENT_ART.PVPReadyDialog = { "background" }
+GW.CONTENT_ART.PVPFramePopup = { "ringIcon", "PVPFramePopupRing" }
+GW.AddButtons("PVPReadyDialog", { "PVPReadyDialogEnterBattleButton", "PVPReadyDialogLeaveQueueButton" })
+GW.AddButtons("PVPRoleCheckPopup", { "PVPRoleCheckPopupAcceptButton", "PVPRoleCheckPopupDeclineButton" })
+GW.AddButtons("PVPFramePopup", { "PVPFramePopupAcceptButton", "PVPFramePopupDeclineButton" })
+
+-- A queue dialog: its dialog border and art faded (its content art kept), a flat panel with a soft shadow hugging
+-- it, the close and push buttons themed, and the invite's hide button as a window control with the Minimize glyph.
+-- The role buttons keep their art (it is their role icon and check).
+function GW.SkinPvPDialog(frame)
+  GW.Skin(frame, 0)
+  local hide = frame.minimizeButton
+  if type(hide) == "table" and hide.CreateTexture then T.WindowControl(hide, "Minimize") end
+end
+
+-- The ready popup draws itself on a child (ReadyStatus: the border, the title and the close button): every child
+-- of it that has a dialog border is skinned as a dialog.
+function GW.SkinPvPReadyPopup(frame)
+  for _, child in ipairs({ frame:GetChildren() }) do
+    if type(child.Border) == "table" then GW.SkinPvPDialog(child) end
+  end
+end
+
+GW.Add("pvp", "popups", { "PVPReadyDialog", "PVPRoleCheckPopup", "PVPFramePopup" }, GW.SkinPvPDialog)
+GW.Add("pvp", "popups", { "PVPReadyPopup" }, GW.SkinPvPReadyPopup)
