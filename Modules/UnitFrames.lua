@@ -347,16 +347,9 @@ local function refreshTargetOfTarget(f)
   if identityChanged(f) then UF.UpdateName(f) end
 end
 
--- Target of target has no events of its own; refresh it a few times a second.
+-- Target of target has no events of its own; refresh it a few times a second while it shows.
 local function pollTargetOfTarget(f)
-  local elapsed = 0
-  f:SetScript("OnUpdate", function(self, dt)
-    elapsed = elapsed + dt
-    if elapsed >= 0.2 then
-      elapsed = 0
-      refreshTargetOfTarget(self)
-    end
-  end)
+  ns.Every(f, 0.2, refreshTargetOfTarget, f)
 end
 
 -- Updates every frame whose key is listed (all frames with no list).

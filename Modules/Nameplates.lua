@@ -416,7 +416,7 @@ local function refresh(f, unit)
   NP.Update(f, unit)
   NP.PaintQuest(f, unit)
   NP.UpdateAuras(f, unit)
-  if NP.UpdateHover(f, unit) then NP.hoverWatch:Show() end
+  if NP.UpdateHover(f, unit) then NP.WatchHover(true) end
   if f.cast then CB.Show(f.cast, unit) end
 end
 
@@ -490,22 +490,21 @@ end
 local function onMouseover()
   local any = false
   for unit, f in pairs(NP.plates) do any = NP.UpdateHover(f, unit) or any end
-  NP.hoverWatch:SetShown(any)
+  NP.WatchHover(any)
 end
 
--- Seconds since the mouseover watch last looked.
-local sinceHoverPoll = 0
-
--- While a wash shows: every NP.HOVER_POLL seconds, clears the washes once the
--- mouse is over no unit (a hidden answer counts as none), and stops watching.
-local function pollHover(watch, elapsed)
-  sinceHoverPoll = sinceHoverPoll + elapsed
-  if sinceHoverPoll < NP.HOVER_POLL then return end
-  sinceHoverPoll = 0
+-- While a wash shows: clears the washes once the mouse is over no unit (a
+-- hidden answer counts as none), and stops watching.
+local function pollHover()
   local over = UnitExists("mouseover")
   if not ns.IsSecret(over) and over == true then return end
   each(function(f) f.hover:Hide() end)
-  watch:Hide()
+  NP.WatchHover(false)
+end
+
+-- Starts (or stops) the mouseover watch: a look every NP.HOVER_POLL seconds.
+function NP.WatchHover(on)
+  ns.Every("nameplate hover", on and NP.HOVER_POLL or nil, pollHover)
 end
 
 -- Event -> handler.
@@ -523,9 +522,6 @@ local EVENTS = {
 -- Module entry point (Core/Modules.lua): builds the plate frames ahead, out of combat.
 function NP.Enable(settings)
   NP.settings = settings
-  NP.hoverWatch = CreateFrame("Frame")
-  NP.hoverWatch:Hide()
-  NP.hoverWatch:SetScript("OnUpdate", pollHover)
   ns.OutOfCombat(NP.FillPool)
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
   T.OnChanged(function() each(repaintTarget) end)

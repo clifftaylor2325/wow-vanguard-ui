@@ -261,14 +261,10 @@ end
 -- Refreshes the coordinates at most five times a second, and only after the
 -- player moved: standing still asks the client for no new map position.
 local function coordsTicker(frame)
-  local elapsed = 0
-  frame:SetScript("OnUpdate", function(_, dt)
-    elapsed = elapsed + dt
-    if elapsed < 0.2 then return end
-    elapsed = 0
+  ns.Every("minimap coords", 0.2, function()
     local mapID = playerMap()
     if not unmoved(mapID) then MM.coords:SetText(MM.CoordsText(mapID)) end
-  end)
+  end, frame)
 end
 
 -- Mouse wheel zooms in and out.
