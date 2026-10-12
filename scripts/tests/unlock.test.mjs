@@ -1,7 +1,7 @@
 // unlock: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { UI_ENV, UP, key, loggedIn } from "./helpers.mjs";
+import { UI_ENV, UP, chatHas, key, loggedIn } from "./helpers.mjs";
 
 it("unlock mode", () => {
   const addon = loggedIn(`
@@ -51,6 +51,7 @@ it("accent presets", () => {
   addon.slash("accent orchid");
   expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.orchid[1]") === true, "/vg accent orchid sets the orchid preset").toBeTruthy();
   expect(["fel", "void", "ember", "green", "purple", "red"].map((n) => accentAfter(addon, n)), "the names before #231 give jade, orchid and copper (#231)").toEqual(["4fbfa3", "b48ae8", "c8784a", "4fbfa3", "b48ae8", "c8784a"]);
+  expect(addon.eval("local P, n = ns.Theme.PRESETS, 0 for _ in pairs(P) do n = n + 1 end return { P.fel == P.jade, P.ember == P.copper, P.nothing == nil, n }"), "and read from T.PRESETS too, which still lists only the five").toEqual([true, true, true, 5]);
   expect(addon.eval("return ns.Theme.PRESET_ORDER"), "the swatches' order").toEqual(["brass", "arcane", "jade", "orchid", "copper"]);
   addon.slash("accent blue");
   expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]") === true, "the old preset names still work (blue is arcane)").toBeTruthy();
@@ -96,6 +97,72 @@ it("unlock popover: scale and opacity in percent", () => {
   expect(look(), "a bad number is ignored and a big one stops at 100%").toEqual(["150", "100", 1.5, 1]);
   addon.eval("Vanguard_MoverPopover.reset:GetScript('OnClick')(Vanguard_MoverPopover.reset)");
   expect(look(), "Reset puts the scale and opacity back").toEqual(["100", "100", 1, 1]);
+});
+
+// Opens a popover dropdown (by its field) and picks the item with this text, scrolling the menu as needed.
+const pick = (addon, field, text) => addon.eval(`local d = Vanguard_MoverPopover.${field} d:GetScript("OnClick")(d)
+  for _ = 1, 40 do for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() and b.text:GetText() == "${text}" then b:GetScript("OnClick")(b) return true end end
+  Vanguard_Menu:GetScript("OnMouseWheel")(Vanguard_Menu, -1) end`);
+
+it("unlock popover: anchored to another frame's side, offsets from it, matched sizes, and why a link is refused", () => {
+  const addon = loggedIn(UI_ENV);
+  addon.slash("unlock");
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "cast_player" then __h = w end end __h:GetScript("OnMouseDown")(__h, "RightButton")');
+  // The popover's state: [title, point dropdown shown, side dropdown shown, X, Y, why].
+  const state = () => addon.eval(`local p = Vanguard_MoverPopover
+    return { p.title:GetText(), p.anchor:IsShown(), p.side:IsShown(), p.x:GetText(), p.y:GetText(), p.why:GetText() }`);
+  const at = addon.frame("Vanguard_CastBar_player").rect;
+  pick(addon, "target", "Minimap");
+  expect(addon.eval("return { ns.MoverAnchor('cast_player') }").slice(0, 2), "anchored to the minimap, on its nearest side (below it)").toEqual(["minimap", "BOTTOM"]);
+  expect([addon.frame("Vanguard_CastBar_player").rect.left, addon.frame("Vanguard_CastBar_player").rect.bottom], "where it was").toEqual([at.left, at.bottom]);
+  pick(addon, "side", "Bottom");
+  expect(state(), "a side puts it flush under the minimap; the popover shows the side and its offsets").toEqual(["Player cast bar  ·  Below Minimap", false, true, "0", "0", ""]);
+  addon.eval('local p = Vanguard_MoverPopover p.x:SetText("-40") p.x:GetScript("OnEnterPressed")(p.x)');
+  expect(addon.eval("return { ns.MoverAnchor('cast_player') }"), "an X offset is from the side it's anchored to").toEqual(["minimap", "BOTTOM", -40, 0]);
+  expect(addon.eval("return __h.label:GetText()"), "and the handle says so").toBe("Player cast bar\nBelow Minimap -40, 0");
+  addon.slash("snap off");
+  addon.eval('local h = __h h.__left, h.__bottom = h:GetLeft() + 3, h:GetBottom() - 8 h:GetScript("OnDragStop")(h)');
+  expect(addon.eval("return { ns.MoverAnchor('cast_player') }").slice(2), "a drag keeps the link, with new offsets").toEqual([-37, -8]);
+  pick(addon, "matchWidth", "Minimap");
+  expect(addon.eval("return Vanguard_CastBar_player:GetWidth() == ns.MoverFrame('minimap'):GetWidth()"), "Match width takes the minimap's width").toBe(true);
+  pick(addon, "matchHeight", "Minimap");
+  expect(state()[5], "Match height is refused, and the popover says why").toBe("Player cast bar sets its own height, so it can't match another frame's.");
+  pick(addon, "target", "Screen");
+  expect([addon.eval("return ns.MoverAnchor('cast_player') == nil"), state()[1], state()[5]], "anchored to the screen again; the point dropdown is back").toEqual([true, true, ""]);
+  addon.eval("Vanguard_MoverPopover.reset:GetScript('OnClick')(Vanguard_MoverPopover.reset)");
+  expect(addon.eval("return { ns.MoverMatch('cast_player', 'width') == nil, Vanguard_CastBar_player:GetWidth() }"), "Reset unmatches it too").toEqual([true, 220]);
+});
+
+// TEST-ONLY boxes a and b, 100 x 20 each, on a 1920 x 1080 screen.
+const BOXES = `
+  UIParent:SetSize(1920, 1080)
+  __a = CreateFrame("Frame", "TESTONLY_A", UIParent); __a:SetSize(100, 20)
+  __b = CreateFrame("Frame", "TESTONLY_B", UIParent); __b:SetSize(100, 20)
+  ns.Mover(__a, "a", "A", { "CENTER", "CENTER", 0, 0 })
+  ns.Mover(__b, "b", "B", { "CENTER", "CENTER", 0, -100 })
+`;
+
+it("unlock mode's bar: Exit without saving puts every frame back as it was; Save and lock keeps the changes", () => {
+  const addon = loggedIn(BOXES);
+  addon.eval("ns.SetMoverPoint('a', 'TOP', 'TOP', 0, -300) ns.SetMoverScale('b', 1.5)");
+  // Every saved spot, and where the two boxes are.
+  const now = () => ({ positions: addon.eval("return ns.Settings('positions')"), a: addon.frame("TESTONLY_A").rect, b: addon.frame("TESTONLY_B").rect });
+  const before = now();
+  addon.slash("unlock");
+  expect([addon.eval("return Vanguard_UnlockBar:IsShown()"), addon.eval("return Vanguard_UnlockBar.text:GetText()")], "unlocking shows the bar").toEqual([true, "Moving frames"]);
+  addon.eval("ns.Nudge('a', 10, 0) ns.SetMoverAnchor('b', 'a', 'BOTTOM', 0, -4) ns.SetMoverScale('b', 1) ns.SetMoverAlpha('a', 0.5)");
+  expect(now(), "the frames moved").not.toEqual(before);
+  addon.eval("Vanguard_UnlockBar.exit:GetScript('OnClick')(Vanguard_UnlockBar.exit)");
+  expect(now(), "Exit without saving: every spot, link, scale and opacity as it was").toEqual(before);
+  expect([addon.eval("return ns.Unlocked()"), addon.eval("return Vanguard_UnlockBar:IsShown()"), chatHas(addon, /Every frame is back where it was when you unlocked\./)], "locked, the bar gone, and chat says so").toEqual([false, false, true]);
+  addon.slash("unlock");
+  addon.eval("ns.Nudge('a', 0, 7)");
+  addon.eval("Vanguard_UnlockBar.save:GetScript('OnClick')(Vanguard_UnlockBar.save)");
+  expect([addon.eval("return ns.Settings('positions').a.y"), addon.eval("return ns.Unlocked()")], "Save and lock keeps the change and locks").toEqual([-293, false]);
+  addon.eval("__edit = CreateFrame('Frame', nil, UIParent) ns.EditModeMovers(__edit, true)");
+  expect([addon.eval("return ns.Unlocked()"), addon.eval("return Vanguard_UnlockBar:IsShown()")], "the game's Edit Mode unlocks without the bar (it has its own buttons)").toEqual([true, false]);
+  addon.eval("ns.Nudge('a', 0, 1) ns.EditModeMovers(__edit, false)");
+  expect([addon.eval("return ns.Settings('positions').a.y"), addon.eval("return ns.Unlocked()")], "closing it locks and keeps the change").toEqual([-292, false]);
 });
 
 it("a grid size from a hand-edited profile string is kept to 8-256 px, so unlocking can't freeze the game", () => {

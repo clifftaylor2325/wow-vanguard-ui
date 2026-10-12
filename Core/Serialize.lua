@@ -7,7 +7,10 @@
 -- instead, with the same body; they still import.
 --
 -- The parser reads only this grammar; nothing pasted is ever run as code.
--- The checksum catches a string cut off in the paste.
+-- The checksum catches a string cut off in the paste. Decoding keeps its place
+-- between calls (S.Decoder), so a large string can be read a frame's work at a
+-- time, S.BUDGET units per call, instead of freezing the game; the reader keeps
+-- its own stack of open tables rather than recursing, so it can stop anywhere.
 
 local ADDON, ns = ...
 
@@ -16,6 +19,9 @@ ns.Serialize = S
 
 local MAX_DEPTH = 20
 local B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+-- Units of work one call of a stepped decode does: 64 bytes summed, 16 base64 groups
+-- decoded, or one value read count one each.
+S.BUDGET = 2000
 
 -- Writing ------------------------------------------------------------------------------
 
@@ -70,8 +76,6 @@ end
 
 -- Reading ------------------------------------------------------------------------------
 
-local read
-
 -- Skips spaces; returns the next position.
 local function skip(text, pos)
   return text:find("[^%s]", pos) or #text + 1
@@ -108,38 +112,73 @@ local function readAtom(text, pos)
   return tonumber(num), pos + #num
 end
 
--- One [key]=value pair at pos, added to t: next position.
-local function readPair(text, pos, t, depth)
-  if text:sub(pos, pos) ~= "[" then error("expected [ at " .. pos) end
-  local key, p = read(text, skip(text, pos + 1), depth + 1)
-  if type(key) == "table" or text:sub(skip(text, p), skip(text, p) + 1) ~= "]=" then error("bad key at " .. pos) end
-  local value
-  value, p = read(text, skip(text, skip(text, p) + 2), depth + 1)
-  t[key] = value
-  return skip(text, p)
-end
-
--- A table literal at pos (the opening brace): value, next position.
-local function readTable(text, pos, depth)
-  local t, p = {}, skip(text, pos + 1)
-  while text:sub(p, p) ~= "}" do
-    if p > #text then error("unterminated table") end
-    p = readPair(text, p, t, depth)
-    if text:sub(p, p) == "," then p = skip(text, p + 1) end
-  end
-  return t, p + 1
-end
-
--- Any value at pos: value, next position.
-read = function(text, pos, depth)
-  if depth > MAX_DEPTH then error("settings nest too deeply") end
-  local c = text:sub(pos, pos)
-  if c == "{" then return readTable(text, pos, depth) end
-  if c == '"' then return readString(text, pos) end
+-- A key, or a value that isn't a table, at pos: value, next position.
+local function readScalar(text, pos)
+  if text:sub(pos, pos) == '"' then return readString(text, pos) end
   return readAtom(text, pos)
 end
 
--- Base64 and checksum ------------------------------------------------------------------
+-- The reader's state p: text, pos, stack (the tables open, innermost last, each
+-- { t = the table, key = the key its next value goes under }), and root and done
+-- once the whole value is read.
+
+-- Puts a value read into the innermost open table under the key read before it (or, with
+-- none open, makes it the whole value), then steps over a comma after it.
+local function place(p, value, pos)
+  local top = p.stack[#p.stack]
+  if not top then p.root, p.done = value, true return end
+  top.t[top.key] = value
+  pos = skip(p.text, pos)
+  if p.text:sub(pos, pos) == "," then pos = skip(p.text, pos + 1) end
+  p.pos = pos
+end
+
+-- Opens a table at pos (its opening brace).
+local function open(p, pos)
+  if #p.stack > MAX_DEPTH then error("settings nest too deeply") end
+  p.stack[#p.stack + 1] = { t = {} }
+  p.pos = skip(p.text, pos + 1)
+end
+
+-- Reads a value at pos: a table opens, anything else is placed.
+local function readValue(p, pos)
+  if p.text:sub(pos, pos) == "{" then return open(p, pos) end
+  place(p, readScalar(p.text, pos))
+end
+
+-- Reads a [key]= at the reader's position into the innermost open table; returns where its value starts.
+local function readKey(p, top)
+  local text = p.text
+  if text:sub(p.pos, p.pos) ~= "[" then error("expected [ at " .. p.pos) end
+  local key, q = readScalar(text, skip(text, p.pos + 1))
+  q = skip(text, q)
+  if text:sub(q, q + 1) ~= "]=" then error("bad key at " .. p.pos) end
+  top.key = key
+  return skip(text, q + 2)
+end
+
+-- One step of reading: the whole value at first, then the innermost table's next pair or its end.
+local function readStep(p)
+  local top = p.stack[#p.stack]
+  if not top then return readValue(p, p.pos) end
+  if p.text:sub(p.pos, p.pos) == "}" then
+    p.stack[#p.stack] = nil
+    return place(p, top.t, p.pos + 1)
+  end
+  if p.pos > #p.text then error("unterminated table") end
+  readValue(p, readKey(p, top))
+end
+
+-- Up to n steps of reading; returns how many it took (it stops once the whole value is read).
+local function readSteps(p, n)
+  for i = 1, n do
+    readStep(p)
+    if p.done then return i end
+  end
+  return n
+end
+
+-- Base64 groups --------------------------------------------------------------------------
 
 -- Three bytes (0-255, nil past the end) as four base64 characters.
 local function encodeGroup(a, b, c)
@@ -154,15 +193,6 @@ local function encodeGroup(a, b, c)
   return table.concat(out)
 end
 
--- Text as base64.
-function S.Base64(text)
-  local out = {}
-  for i = 1, #text, 3 do
-    out[#out + 1] = encodeGroup(text:byte(i, i + 2))
-  end
-  return table.concat(out)
-end
-
 -- Four base64 characters back to up to three bytes.
 local function decodeGroup(chunk)
   local n, pad = 0, 0
@@ -174,24 +204,96 @@ local function decodeGroup(chunk)
   return string.char(math.floor(n / 65536) % 256, math.floor(n / 256) % 256, n % 256):sub(1, 3 - pad)
 end
 
--- Base64 back to text, or nil if it isn't valid base64.
-function S.Unbase64(b64)
-  b64 = b64:gsub("%s", "")
-  if #b64 % 4 ~= 0 or b64:find("[^%w%+/=]") then return nil end
+-- Stepped decoding ---------------------------------------------------------------------------
+-- A decode's state d: the scope, the checksum it should have (want) and the body; the phase
+-- it is in (a function(d, n) that does up to n units of work, returns how many it took and
+-- moves d.phase on); how far it has got (progress, 0-1); and at the end its result:
+-- { scope, settings } or { nil, why not }.
+
+local readyPhase, checkPhase
+
+-- Sums up to n * 64 more bytes of d.body into d.sum (from d.i), then on to the check.
+local function sumPhase(d, n)
+  local from, stop = d.i, math.min(#d.body, d.i + n * 64 - 1)
+  for i = from, stop do d.sum = (d.sum * 31 + d.body:byte(i)) % 65536 end
+  d.i, d.progress = stop + 1, 0.2 * stop / #d.body
+  if d.i > #d.body then d.phase = checkPhase end
+  return math.max(1, math.ceil((stop - from + 1) / 64))
+end
+
+-- Decodes up to n * 16 more base64 groups of d.body into d.out (from d.j), then on to reading.
+local function unbasePhase(d, n)
+  local from, stop = d.j, math.min(#d.body, d.j + n * 64 - 1)
+  for i = from, stop, 4 do d.out[#d.out + 1] = decodeGroup(d.body:sub(i, i + 3)) end
+  d.j, d.progress = stop + 1, 0.2 + 0.3 * stop / #d.body
+  if d.j > #d.body then d.phase = readyPhase end
+  return math.max(1, math.ceil((stop - from + 1) / 64))
+end
+
+-- After the checksum: true when the body checks out and is base64, else nil and why not.
+local function checkedBody(d)
+  if string.format("%04x", d.sum) ~= d.want then return nil, "the string is incomplete (was it cut off when pasting?)" end
+  if #d.body % 4 ~= 0 or d.body:find("[^%w%+/=]") then return nil, "the string is damaged" end
+  return true
+end
+
+-- The check between summing and decoding: on to the base64, or the decode ends with why not.
+checkPhase = function(d)
+  local ok, why = checkedBody(d)
+  if not ok then d.result = { nil, why } return 1 end
+  d.j, d.out, d.phase = 1, {}, unbasePhase
+  return 1
+end
+
+-- What reading gave: the settings table, or nil and why not.
+local function settingsRead(root)
+  if type(root) ~= "table" then return nil, "the settings in it can't be read" end
+  return root
+end
+
+-- Reads up to n more values of the settings text; at the end (or at text that isn't
+-- settings, which is never run) the decode's result is set.
+local function readPhase(d, n)
+  local p = d.p
+  local ok, used = pcall(readSteps, p, n)
+  if ok and not p.done then d.progress = 0.5 + 0.5 * p.pos / #p.text return used end
+  local value, why = settingsRead(ok and p.root)
+  d.result = value and { d.scope, value } or { nil, why }
+  return 1
+end
+
+-- The base64 decoded: the settings text joined, and on to reading it.
+readyPhase = function(d)
+  local raw = table.concat(d.out)
+  d.p, d.phase = { text = raw, pos = skip(raw, 1), stack = {} }, readPhase
+  return 1
+end
+
+-- Base64 and checksum, whole --------------------------------------------------------------
+
+-- Text as base64.
+function S.Base64(text)
   local out = {}
-  for i = 1, #b64, 4 do
-    out[#out + 1] = decodeGroup(b64:sub(i, i + 3))
+  for i = 1, #text, 3 do
+    out[#out + 1] = encodeGroup(text:byte(i, i + 2))
   end
   return table.concat(out)
 end
 
+-- Base64 back to text, or nil if it isn't valid base64.
+function S.Unbase64(b64)
+  b64 = b64:gsub("%s", "")
+  if #b64 % 4 ~= 0 or b64:find("[^%w%+/=]") then return nil end
+  local d = { body = b64, j = 1, out = {} }
+  unbasePhase(d, math.huge)
+  return table.concat(d.out)
+end
+
 -- A 4-hex-digit checksum of the text.
 function S.Checksum(text)
-  local sum = 0
-  for i = 1, #text do
-    sum = (sum * 31 + text:byte(i)) % 65536
-  end
-  return string.format("%04x", sum)
+  local d = { body = text, i = 1, sum = 0 }
+  sumPhase(d, math.huge)
+  return string.format("%04x", d.sum)
 end
 
 -- Public -----------------------------------------------------------------------------------
@@ -208,14 +310,43 @@ local function pasted(text)
   return (s:gsub("^FUI1:", "VG1:"))
 end
 
--- A VG1 (or older FUI1) string back to scope and settings table, or nil and a reason.
-function S.Decode(text)
+-- A decode's state for the pasted text, or nil and why not when it isn't a Vanguard string.
+local function start(text)
   local scope, sum, body = pasted(text):match("^VG1:([%w_]+):(%x%x%x%x):(.+)$")
   if not scope then return nil, "not a Vanguard profile string" end
-  if S.Checksum(body) ~= sum then return nil, "the string is incomplete (was it cut off when pasting?)" end
-  local raw = S.Unbase64(body)
-  if not raw then return nil, "the string is damaged" end
-  local ok, value = pcall(read, raw, skip(raw, 1), 0)
-  if not ok or type(value) ~= "table" then return nil, "the settings in it can't be read" end
-  return scope, value
+  return { scope = scope, want = sum, body = body, i = 1, sum = 0, progress = 0, phase = sumPhase }
+end
+
+-- One call's work on a decode (S.BUDGET units): false and how far it has got (0-1), or,
+-- once it has finished, true and what S.Decode returns.
+local function advance(d)
+  local left = S.BUDGET
+  while not d.result and left > 0 do left = left - d.phase(d, left) end
+  if d.result then return true, d.result[1], d.result[2] end
+  return false, d.progress
+end
+
+-- A stepped decode of a VG1 (or older FUI1) string: each call of the function it returns
+-- does one frame's work (S.BUDGET units) and returns false and how far it has got (0-1),
+-- or, once the decode has finished, true and what S.Decode returns.
+function S.Decoder(text)
+  local d, why = start(text)
+  d = d or { result = { nil, why } }
+  return function() return advance(d) end
+end
+
+-- A VG1 (or older FUI1) string back to scope and settings table, or nil and a reason.
+function S.Decode(text)
+  local step = S.Decoder(text)
+  local done, a, b = step()
+  while not done do done, a, b = step() end
+  return a, b
+end
+
+-- The format a decoded profile string says it has (1 for one without: Vanguard 0.5.0 and
+-- older), or nil and why not when it is newer than `newest`, the newest this version reads.
+function S.Format(data, newest)
+  local format = tonumber(data.format) or 1
+  if format > newest then return nil, "it was made by a newer version of Vanguard: update Vanguard, then import it again" end
+  return format
 end
