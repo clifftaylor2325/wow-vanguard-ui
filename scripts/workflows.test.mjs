@@ -73,6 +73,15 @@ it("the seed step comes before the coverage run", () => {
   expect(text.indexOf("- run: npm run coverage")).toBeGreaterThan(seed);
 });
 
+it("the raid bench runs after the coverage run, appends to the job summary, has no budget and keeps its JSON", () => {
+  const text = workflow("lua-suite.yml");
+  const step = stepNamed(text, "Raid benchmark (harness measurement)");
+  expect(runBlocks(step)).toEqual(['npm run bench -- --summary "$GITHUB_STEP_SUMMARY"']);
+  expect(text.indexOf("- name: Raid benchmark (harness measurement)")).toBeGreaterThan(text.indexOf("- run: npm run coverage"));
+  expect(step, "a slowdown never fails the run").not.toContain("--budget");
+  expect(text).toMatch(/^ {12}coverage\/bench\/\*\.json$/m);
+});
+
 it("full-suite shuffles only for the schedule event", () => {
   expect(workflow("full-suite.yml")).toContain("shuffle: ${{ github.event_name == 'schedule' }}");
 });
@@ -254,6 +263,48 @@ it("verify keeps its types and draft check and does not depend on the label", ()
   expect(code.join("\n")).not.toContain(FULL);
 });
 
+// Docs-only pull requests (#262) -------------------------------------------------------
+
+const DOCS_ONLY_IF = "if: steps.changes.outputs.docs_only != 'true'";
+
+// The steps of verify.yml's quick job, each as its text (from its `- ` line to the next step).
+function verifySteps() {
+  const lines = workflow("verify.yml").split("\n");
+  const starts = lines.flatMap((l, i) => (/^ {6}- /.test(l) ? [i] : []));
+  return starts.map((at) => [lines[at], ...deeperLines(lines, at + 1, 6)].join("\n"));
+}
+
+it("verify has no path filter, so the required check reports on every pull request", () => {
+  const on = workflow("verify.yml").split(/^permissions:/m)[0];
+  expect(on).toMatch(/^on:\n {2}pull_request:\n/m);
+  expect(on).not.toMatch(/^\s+paths(-ignore)?:/m);
+});
+
+it("verify fetches two deep, then its first check works out whether only docs changed", () => {
+  const [checkout, changes] = verifySteps();
+  expect(checkout).toMatch(/^ {6}- uses: actions\/checkout@/);
+  expect(checkout).toMatch(/^ {10}fetch-depth: 2$/m);
+  expect(changes).toMatch(/^ {6}- name: Docs-only change$/m);
+  expect(changes).toMatch(/^ {8}id: changes$/m);
+  expect(runBlocks(changes)).toEqual(["node scripts/docs-only.mjs"]);
+  expect(changes).not.toContain("if:");
+});
+
+it("every verify step after the spelling check is skipped for a docs-only change, and the job still reports", () => {
+  const [spelling, ...later] = verifySteps().slice(2);
+  expect(spelling).toMatch(/^ {6}- name: Spelling$/m);
+  expect(spelling, "spelling also reads docs-only changes").not.toContain("if:");
+  expect(later.length).toBeGreaterThanOrEqual(8);
+  for (const step of later) expect(step.split("\n").map((l) => l.trim()), step.split("\n")[0]).toContain(DOCS_ONLY_IF);
+  expect(jobCondition(workflow("verify.yml"), "quick")).toBe("${{ !github.event.pull_request.draft }}");
+});
+
+it("verify's header says why there is no path filter", () => {
+  const header = workflow("verify.yml").split(/^on:/m)[0];
+  expect(header).toContain("#262");
+  expect(header).toContain("scripts/docs-only.mjs");
+});
+
 it("no workflow sets the local login scope override, so CI runs the committed scope data", () => {
   const all = allWorkflows();
   expect(all.length).toBeGreaterThanOrEqual(4);
@@ -379,6 +430,14 @@ it("no workflow names a Node version of its own", () => {
   }
 });
 
+it("verify and lua-suite both run the TOC check right after the code-quality scan", () => {
+  for (const file of ["verify.yml", "lua-suite.yml"]) {
+    const text = workflow(file);
+    expect(stepScript(file, "The TOC against the files on disk").trim(), file).toBe("node scripts/check-toc.mjs");
+    expect(text.indexOf("- name: The TOC against the files on disk"), file).toBeGreaterThan(text.indexOf("run: npm run quality"));
+  }
+});
+
 it("neither workflow installs luacheck from apt; lua5.1 stays; luacheck prints its version first", () => {
   for (const [file] of LUACHECK_STEPS) {
     const text = workflow(file);
@@ -387,4 +446,71 @@ it("neither workflow installs luacheck from apt; lua5.1 stays; luacheck prints i
     const scripts = runBlocks(text).map((b) => b.split("\n").map((l) => l.trim()).join("\n").trim());
     expect(scripts, file).toContain("luacheck --version\nluacheck --no-color .");
   }
+});
+
+// Hygiene (#265) -------------------------------------------------------------------------
+
+// Every `uses:` line in the workflows, as { file, ref, comment } (ref is what follows `uses:`).
+function usesLines() {
+  return allWorkflows().flatMap(({ name, text }) =>
+    [...text.matchAll(/^\s*(?:-\s+)?uses:\s*(\S+)(?:\s+#\s*(.*))?$/gm)].map((m) => ({ file: name, ref: m[1], comment: m[2] ?? "" })),
+  );
+}
+
+it("every action is pinned to a full commit SHA with its version in a comment; local workflows are exempt", () => {
+  const all = usesLines();
+  const remote = all.filter((u) => !u.ref.startsWith("./"));
+  expect(remote.length, "the reader finds the actions").toBeGreaterThanOrEqual(14);
+  expect(all.some((u) => u.ref === "./.github/workflows/lua-suite.yml"), "local workflows are read too").toBe(true);
+  for (const u of remote) {
+    expect(u.ref, `${u.file}: ${u.ref}`).toMatch(/^[\w.-]+\/[\w.-]+(\/[\w./-]+)?@[0-9a-f]{40}$/);
+    expect(u.comment, `${u.file}: ${u.ref}`).toMatch(/^v\d+\.\d+\.\d+$/);
+  }
+});
+
+it("one action is pinned to one SHA and one version everywhere it is used", () => {
+  const seen = new Map();
+  for (const u of usesLines().filter((x) => !x.ref.startsWith("./"))) {
+    const [name, sha] = u.ref.split("@");
+    const pin = `${sha} ${u.comment}`;
+    expect(seen.get(name) ?? pin, `${u.file}: ${name}`).toBe(pin);
+    seen.set(name, pin);
+  }
+});
+
+it("verify spell-checks with the pinned typos action, configured to skip vendored and generated files", () => {
+  expect(verifySteps()[2]).toMatch(/^ {8}uses: crate-ci\/typos@[0-9a-f]{40} # v\d+\.\d+\.\d+$/m);
+  const typos = repoText("_typos.toml");
+  const exclude = typos.match(/^extend-exclude = \[(.*)\]$/m)?.[1] ?? "";
+  for (const dir of ["Libs/", "Media/", "art/"]) expect(exclude).toContain(`"${dir}"`);
+  for (const word of ["defensives", "hander", "varian"]) expect(typos).toMatch(new RegExp(`^${word} = "${word}" # `, "m"));
+});
+
+it("markdown lint is its own non-required workflow, filtered to Markdown, drafts skipped", () => {
+  const text = workflow("markdown.yml");
+  const paths = text.match(/^ {4}paths:\n((?: {6}- .*\n)+)/m)?.[1] ?? "";
+  expect(paths).toContain('- "docs/**"');
+  expect(paths).toContain('- "**.md"');
+  expect(text).toMatch(/^ {4}name: Markdown lint$/m);
+  expect(text).not.toContain("name: Quick checks");
+  expect(jobCondition(text, "lint")).toBe("${{ !github.event.pull_request.draft }}");
+  expect(text).toMatch(/uses: DavidAnson\/markdownlint-cli2-action@[0-9a-f]{40} # v/);
+  expect(text).toMatch(/^permissions:\n {2}contents: read\n/m);
+});
+
+it("the markdownlint settings keep the defaults on and say why each rule is off", () => {
+  const text = repoText(".markdownlint-cli2.jsonc");
+  expect(text).toContain('"default": true');
+  const lines = text.split("\n");
+  // True for a line that turns one rule off.
+  const isOff = (l) => /^\s+"MD\d+": false,?$/.test(l);
+  const off = lines.flatMap((l, i) => (isOff(l) ? [i] : []));
+  expect(off.length).toBeGreaterThan(0);
+  for (const i of off) expect(lines.slice(0, i).reverse().find((l) => !isOff(l)), lines[i]).toMatch(/^\s+\/\/ /);
+  expect(text).toContain('".planning/**"');
+});
+
+it("the pull request template has the sections CLAUDE.md asks a pull request for", () => {
+  const headings = repoText(".github/PULL_REQUEST_TEMPLATE.md").split("\n").filter((l) => l.startsWith("## "));
+  expect(headings).toEqual(["## Tasks", "## Tests added", "## Skipped", "## Needs in-game check"]);
 });
