@@ -802,18 +802,109 @@ local function hoverParts(button, entry)
   for _, t in ipairs(hoverOf[button]) do t:SetAlpha(0) end
   button:HookScript("OnEnter", ns.Guard("button hover", function(b) T.EaseHover(b, true) end))
   button:HookScript("OnLeave", ns.Guard("button hover", function(b) T.EaseHover(b, false) end))
-  button:HookScript("OnHide", ns.Guard("button hover", function(b) T.EaseHover(b, false, true) end))
+  button:HookScript("OnHide", ns.Guard("button hover", function(b) T.EaseHover(b, false, true) T.PressButton(b, false) end))
 end
 
--- A flat button: inset panel, template art faded, an eased hover (raisedHover and a borderHi top line).
+-- Each frame's keyboard focus ring (weak): { gap = edges, ring = edges }.
+local focusOf = setmetatable({}, { __mode = "k" })
+
+-- Pins a set of edges `pixels` screen pixels out past frame, one pixel thick, in a colour.
+local function ringAt(e, frame, pixels, token)
+  for side, points in pairs(EDGE_POINTS) do
+    pin(e[side], frame, points[1], pixels * T.Pixel(frame))
+    pin(e[side], frame, points[2], pixels * T.Pixel(frame))
+    T.Tint(e[side], token)
+  end
+  sizeEdges(e, frame)
+end
+
+-- A frame's focus ring parts, { gap = edges, ring = edges }, or nil before it ever had one.
+function T.FocusParts(frame) return focusOf[frame] end
+
+-- Shows (or hides) a keyboard focus ring around frame (#257): a one-pixel accentText ring outside
+-- a one-pixel black gap, placed at the frame's pixel size each time, never animated.
+function T.FocusRing(frame, on)
+  if not focusOf[frame] and not on then return end
+  local f = focusOf[frame] or { gap = edges(frame), ring = edges(frame) }
+  focusOf[frame] = f
+  ringAt(f.gap, frame, 1, "edge")
+  ringAt(f.ring, frame, 2, "accentText")
+  for _, e in pairs(f) do for _, t in pairs(e) do t:SetShown(on == true) end end
+end
+
+-- How a pressed button looks (#257): a shade overlay at T.PRESS[2] over its fill (one step darker)
+-- and its own label (button.text) T.PRESS.drop screen pixels lower, at once, while the mouse is held.
+T.PRESS = { "shade", 0.3, drop = 1 }
+-- Each themed button's press state (weak): { overlay = texture, ys = its label's anchor ys before the press }.
+local pressOf = setmetatable({}, { __mode = "k" })
+
+-- Moves a button's own label (button.text) T.PRESS.drop pixels down (down) or back to where it was,
+-- every anchor at once; never on a protected button (its regions can't move in a fight).
+local function dropLabel(button, state, down)
+  local fs = button.text
+  if type(fs) ~= "table" or not fs.GetNumPoints or button.IsProtected and button:IsProtected() then return end
+  local points, drop = {}, T.PRESS.drop * T.Pixel(button)
+  for i = 1, fs:GetNumPoints() do points[i] = { fs:GetPoint(i) } end
+  if down then state.ys = {} end
+  for i, p in ipairs(points) do
+    if down then state.ys[i] = p[5] end
+    fs:SetPoint(p[1], p[2], p[3], p[4], down and p[5] - drop or state.ys and state.ys[i] or p[5])
+  end
+end
+
+-- A themed button's press overlay, or nil for a button T.Button never painted.
+function T.PressOverlay(button) return pressOf[button] and pressOf[button].overlay end
+
+-- Shows or hides a button's press look; only an enabled button shows it.
+function T.PressButton(button, down)
+  local s = pressOf[button]
+  if not s then return end
+  local on = down == true and (not button.IsEnabled or button:IsEnabled())
+  if on == s.overlay:IsShown() then return end
+  s.overlay:SetShown(on)
+  dropLabel(button, s, on)
+end
+
+-- Each disabled themed button's label colour from before (weak), given back when it's enabled.
+local labelBefore = setmetatable({}, { __mode = "k" })
+
+-- Gives a button its disabled look (#257): no hover or press, its label in the disabled tier; or,
+-- enabled again, the label's colour from before.
+function T.DisabledLook(button, disabled)
+  local fs = type(button.text) == "table" and button.text or button.GetFontString and button:GetFontString()
+  if disabled then T.EaseHover(button, false, true) T.PressButton(button, false) end
+  if not (fs and fs.GetTextColor) then return end
+  if disabled then labelBefore[button] = labelBefore[button] or { fs:GetTextColor() } return T.Color(fs, "disabled") end
+  local c = labelBefore[button]
+  labelBefore[button] = nil
+  if c then T.Color(fs, c[1], c[2], c[3]) end
+end
+
+-- A button's press and disabled looks (#257): the hidden overlay, and hooks on the mouse and on
+-- its state (pcall: a widget without OnEnable/OnDisable can't have them hooked).
+local function stateParts(button)
+  local t = T.Tint(solid(button, "BACKGROUND", 2, "fill"), T.PRESS[1], T.PRESS[2])
+  t:SetAllPoints()
+  t:Hide()
+  pressOf[button] = { overlay = t }
+  button:HookScript("OnMouseDown", ns.Guard("button press", function(b) T.PressButton(b, true) end))
+  button:HookScript("OnMouseUp", ns.Guard("button press", function(b) T.PressButton(b, false) end))
+  pcall(button.HookScript, button, "OnDisable", ns.Guard("button state", function(b) T.DisabledLook(b, true) end))
+  pcall(button.HookScript, button, "OnEnable", ns.Guard("button state", function(b) T.DisabledLook(b, false) end))
+end
+
+-- A flat button: inset panel with a bevel, template art faded, an eased hover (raisedHover and a
+-- borderHi top line), a press look and a disabled look.
 function T.Button(button)
   local fresh = not painted[button]
   local entry = base(button, "button", { inset = true, bevel = true })
   if fresh then
     T.FadeRegions(button, { [entry.parts.bg] = true })
     hoverParts(button, entry)
+    stateParts(button)
   end
   repaint(button, entry)
+  if button.IsEnabled and not button:IsEnabled() then T.DisabledLook(button, true) end
   return button
 end
 
