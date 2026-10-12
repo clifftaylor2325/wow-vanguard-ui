@@ -43,7 +43,7 @@ Before you say a change is done: `npm run verify` and `npm run coverage` must bo
 
 - Nothing protected in combat. Guard with `ns.OutOfCombat`.
 - Never read or compare a value that might be secret. Use `ns.IsSecret` and `ns.PlainNumber`.
-- Never store a field on a frame the game made, and never replace its scripts with `SetScript`. Keep per-frame state in an `ns.FrameState` side table and use `HookScript`. The harness fails a test that stores such a field (`scripts/lib/wow-taint.lua`).
+- Never store a field on a frame the game made, and never replace its scripts with `SetScript`. Keep per-frame state in an `ns.FrameState` side table and use `HookScript`. The harness fails a test that does either (`scripts/lib/wow-taint.lua`).
 - A `PLAYER_REGEN_DISABLED` handler defers its after-fight work with `ns.AfterCombat`. Anything else that waits for the fight to end uses `ns.OutOfCombat`.
 - Prefer `C_Item`, `C_Spell` and `C_UnitAuras` over older globals.
 - Detect Forever by interface version with `ns.IsForever`, not by the presence of a global.
