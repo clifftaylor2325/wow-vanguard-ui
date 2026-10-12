@@ -257,8 +257,9 @@ it("battlefield map: switched off it stays the game's; a client without the tab 
 
 // TEST-ONLY group finder, shaped like Blizzard_GroupFinder_VanillaStyle's Mainline XML: the plain outer window with its
 // close button and the eye (a static picture and an animation), the listing and browse pages (PortraitFrameTemplateNoCloseButton
-// frames filling the window, with their extra art, buttons and the listing's comment box), and the browse tooltip.
-// Made when the game loads the part.
+// frames filling the window, with their extra art, buttons and the listing's comment box), the browse tooltip, and the
+// who list page (WhoList.xml: no Inset, its own backdrop, header stone, inside frame and lines, and a list). Made when
+// the game loads the part.
 const FINDER_ENV = WINDOWS_ENV + `
   function __button(parent, name) local b = CreateFrame("Button", name, parent) b:CreateTexture() return b end
   function __finder()
@@ -280,6 +281,11 @@ const FINDER_ENV = WINDOWS_ENV + `
     browse.SendMessageButton, browse.GroupInviteButton = __button(browse), __button(browse)
     local tip = CreateFrame("Frame", "LFGBrowseSearchEntryTooltip", UIParent) tip:Hide()
     tip.NineSlice = CreateFrame("Frame", nil, tip) tip.NineSlice:CreateTexture()
+    local who = __window("LFGWhoListFrame")
+    who.Inset = nil
+    who.BackgroundArt, who.headerBackground, who.insideFrame = who:CreateTexture(), who:CreateTexture(), who:CreateTexture()
+    who.BarTop, who.BarMiddle = who:CreateTexture(), who:CreateTexture()
+    who.ScrollBox = CreateFrame("Frame", nil, who)
   end
 `;
 
@@ -303,6 +309,22 @@ it("group finder: the window, its listing and browse pages and the group tooltip
   const painted = listing.painted;
   addon.eval("for _, n in ipairs({ 'LFGParentFrame', 'LFGListingFrame', 'LFGBrowseFrame', 'LFGBrowseSearchEntryTooltip' }) do _G[n]:Hide() _G[n]:Show() end");
   expect(windowState(addon, "LFGListingFrame").painted, "showing them again paints nothing new").toBe(painted);
+});
+
+it("group finder: the who list page (the search view) loses the brass border and portrait badge and gets an inset panel like the other pages", () => {
+  const addon = loggedIn(FINDER_ENV);
+  addon.eval("__finder()");
+  addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
+  addon.eval("LFGParentFrame:Show() LFGWhoListFrame:Show()");
+  // The who page's art: its marked template art, border, badge, and its own backdrop, header stone, frame and lines.
+  const art = () => addon.eval(`local w = LFGWhoListFrame local a
+    for _, r in ipairs({ w:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then a = r:GetAlpha() end end
+    return { a, w.NineSlice:GetAlpha(), w.PortraitContainer:GetAlpha(), w.BackgroundArt:GetAlpha(), w.headerBackground:GetAlpha(), w.insideFrame:GetAlpha(), w.BarTop:GetAlpha(), w.BarMiddle:GetAlpha() }`);
+  expect(art(), "the template art, the brass border, the round badge and the page's own art are faded").toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+  expect([fills(addon, "LFGWhoListFrame.ScrollBox"), addon.eval("return LFGWhoListFrame.TitleContainer.TitleText:GetFont() ~= nil")], "with no Inset, its list gets the inset panel; the title is in the theme font").toEqual([1, true]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("LFGWhoListFrame:Hide() LFGWhoListFrame:Show()");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(painted);
 });
 
 it("group finder: switched off it stays the game's; a client missing parts of it loads cleanly", () => {
