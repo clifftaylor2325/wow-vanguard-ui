@@ -121,3 +121,87 @@ end
 
 GW.Add("pvp", "popups", { "PVPReadyDialog", "PVPRoleCheckPopup", "PVPFramePopup" }, GW.SkinPvPDialog)
 GW.Add("pvp", "popups", { "PVPReadyPopup" }, GW.SkinPvPReadyPopup)
+
+-- Objectives and the match timer ----------------------------------------------------------------
+
+-- How far the panel behind a widget container reaches out past its widgets (units).
+GW.WIDGET_PAD = 4
+
+-- Whether a widget container shows any widget now: its own count, else whether it holds a frame besides
+-- Vanguard's backdrop.
+local function hasWidgets(box)
+  if type(box.HasAnyWidgetsShowing) == "function" then return box:HasAnyWidgetsShowing() == true end
+  return select("#", box:GetChildren()) > 1
+end
+
+-- Shows the panel behind a widget container while it shows widgets, and hides it while it is empty.
+local function fitBackdrop(box)
+  box.vgBackdrop:SetShown(hasWidgets(box))
+end
+
+-- Vanguard's backdrop for a widget container: a frame of its own filling the container, at the container's level
+-- (the widgets sit above it), left out of the container's layout (else the container could never shrink), with a
+-- flat HUD panel.
+local function makeBackdrop(box)
+  local back = CreateFrame("Frame", nil, box)
+  back.ignoreInLayout = true
+  back:SetAllPoints(box)
+  back:SetFrameLevel(box:GetFrameLevel())
+  T.HudPanel(back, { pad = GW.WIDGET_PAD })
+  return back
+end
+
+-- A widget container (the flags, bases and scores at the top of the screen, the capture bars under the minimap):
+-- the panel behind its widgets, shown only while it has some, checked again as the container resizes and after
+-- the game lays its widgets out. The widgets themselves stay the game's.
+function GW.SkinWidgetBox(box)
+  box.vgBackdrop = box.vgBackdrop or makeBackdrop(box)
+  fitBackdrop(box)
+  after(box, "OnSizeChanged", fitBackdrop, true)
+  after(box, "UpdateWidgetLayout", fitBackdrop)
+end
+
+GW.Add("pvp", "framed", { "UIWidgetTopCenterContainerFrame", "UIWidgetBelowMinimapContainerFrame" }, GW.SkinWidgetBox)
+
+-- A game font string in the theme font for a text role, at the size the game gave it; its colour left alone.
+local function themeFont(fs, role)
+  local _, size = fs:GetFont()
+  T.Text(fs, role, false)
+  if size then T.TextSize(fs, size) end
+end
+
+-- One countdown bar of the match timer, once: the theme's bar texture, its border and backdrop faded, a flat HUD
+-- panel, and the time in the theme font at the game's size. The big numbers stay the game's.
+local function skinTimerBar(timer)
+  local bar = timer.bar
+  if type(bar) ~= "table" or bar.vgTimer or not bar.SetStatusBarTexture then return end
+  bar.vgTimer = true
+  T.StyleBar(bar)
+  T.FadeRegions(bar, { [bar:GetStatusBarTexture()] = true })
+  T.HudPanel(bar)
+  if type(bar.timeText) == "table" then themeFont(bar.timeText, "number") end
+end
+
+-- The match timer (the countdown before a battleground or arena starts): every bar it holds, now and after each
+-- of its events (it makes a bar as a timer starts). Its OnEvent script is hooked: the game set it from XML, so a
+-- hook on the global TimerTracker_OnEvent would never run.
+function GW.SkinTimerTracker(frame)
+  for _, timer in ipairs(frame.timerList or {}) do skinTimerBar(timer) end
+  after(frame, "OnEvent", GW.SkinTimerTracker, true)
+end
+
+GW.Add("pvp", "framed", { "TimerTracker" }, GW.SkinTimerTracker)
+
+-- The objective banner's texts and their text roles: the objective's name and its flash, and the line under it.
+GW.BANNER_TEXTS = { Title = "title", TitleFlash = "title", BonusLabel = "label" }
+
+-- The objective banner (a flag taken, a base assaulted) in the theme font at the game's sizes; its art and its
+-- animation stay the game's (the animation sets their alpha).
+function GW.SkinPvPBanner(frame)
+  for key, role in pairs(GW.BANNER_TEXTS) do
+    local fs = frame[key]
+    if type(fs) == "table" and fs.SetFont then themeFont(fs, role) end
+  end
+end
+
+GW.Add("pvp", "framed", { "PvPObjectiveBannerFrame" }, GW.SkinPvPBanner)

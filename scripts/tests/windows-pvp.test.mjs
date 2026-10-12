@@ -147,3 +147,90 @@ it("S8.2 the ready popup is drawn on its ReadyStatus child; the group off leaves
   off.eval("PVPReadyDialog:Show() PVPReadyPopup:Show()");
   expect(off.eval("return { PVPReadyDialog.Border:GetAlpha(), __panel(PVPReadyDialog), ReadyStatus.Border:GetAlpha(), PVPReadyDialog.vgWindow == nil }"), "with the group off").toEqual([1, false, 1, true]);
 });
+
+// Objectives and the match timer -------------------------------------------------------------------
+
+// The top-center widget container with the game's mixin (a widget count, a layout call); the one under the
+// minimap without it (a client whose container lacks the mixin: its children are counted).
+const WIDGET_ENV = PVP_ENV + `
+  local top = CreateFrame("Frame", "UIWidgetTopCenterContainerFrame", UIParent) top:SetSize(10, 10)
+  top.numWidgetsShowing, top.__layouts = 0, 0
+  function top:HasAnyWidgetsShowing() return self.numWidgetsShowing > 0 end
+  function top:UpdateWidgetLayout() self.__layouts = self.__layouts + 1 end
+  CreateFrame("Frame", "UIWidgetBelowMinimapContainerFrame", UIParent):SetSize(10, 10)
+`;
+
+it("S8.3 widget containers: a flat panel behind the widgets only while there are some, out of the layout", () => {
+  const addon = loggedIn(WIDGET_ENV);
+  const top = "UIWidgetTopCenterContainerFrame";
+  expect(addon.eval(`local b = ${top}.vgBackdrop return { b:IsShown(), __panel(b), b.ignoreInLayout, b:GetFrameLevel() == ${top}:GetFrameLevel() }`),
+    "an empty container: its panel made but hidden, left out of the layout, behind the widgets").toEqual([false, true, true, true]);
+  addon.eval(`${top}.numWidgetsShowing = 2 ${top}:UpdateWidgetLayout()`);
+  expect(addon.eval(`return { ${top}.vgBackdrop:IsShown(), ${top}.__layouts }`), "widgets laid out: the panel shows, the game's call ran").toEqual([true, 1]);
+  addon.eval(`${top}.numWidgetsShowing = 0 ${top}.__scripts.OnSizeChanged(${top})`);
+  expect(addon.eval(`return ${top}.vgBackdrop:IsShown()`), "emptied: hidden again as it resizes").toBe(false);
+  addon.eval(`${top}:Hide() ${top}:Show() ${top}:UpdateWidgetLayout()`);
+  expect(addon.eval(`return { ${top}.__layouts, select('#', ${top}:GetChildren()) }`), "showing again makes no second panel or hook").toEqual([2, 1]);
+});
+
+it("S8.3 widget containers: without the game's mixin the children are counted; the group off adds nothing", () => {
+  const addon = loggedIn(WIDGET_ENV);
+  const box = "UIWidgetBelowMinimapContainerFrame";
+  expect(addon.eval(`return ${box}.vgBackdrop:IsShown()`), "only Vanguard's backdrop in it").toBe(false);
+  addon.eval(`CreateFrame("Frame", nil, ${box}) ${box}.__scripts.OnSizeChanged(${box})`);
+  expect(addon.eval(`return ${box}.vgBackdrop:IsShown()`), "a widget in it").toBe(true);
+  const off = loggedIn(WIDGET_ENV, OFF);
+  expect(off.eval("return UIWidgetTopCenterContainerFrame.vgBackdrop == nil and UIWidgetBelowMinimapContainerFrame.vgBackdrop == nil")).toBe(true);
+});
+
+// The match timer as the game builds it: TimerTracker with a timerList, each timer a frame holding a StatusBar
+// (bar) with a backdrop and border and a time text; a START_TIMER makes another timer.
+const TIMER_ENV = PVP_ENV + `
+  local tt = CreateFrame("Frame", "TimerTracker", UIParent) tt.timerList = {}
+  function __timer()
+    local t = CreateFrame("Frame", "TimerTrackerTimer" .. (#tt.timerList + 1), tt)
+    t.bar = CreateFrame("StatusBar", t:GetName() .. "StatusBar", t) t.bar.back, t.bar.border = __art(t.bar), __art(t.bar, "OVERLAY")
+    t.bar.timeText = t.bar:CreateFontString() t.bar.timeText:SetFont("TEST-ONLY-FONT", 18)
+    t.digit1 = __art(t, "OVERLAY")
+    table.insert(tt.timerList, t) return t
+  end
+  __timer()
+  tt:SetScript("OnEvent", function(self, event) if event == "START_TIMER" then __timer() end end)
+`;
+
+it("S8.3 the match timer: each bar in the theme as it is made, its numbers left alone", () => {
+  const addon = loggedIn(TIMER_ENV);
+  // The bar of the i-th timer.
+  const bar = (i) => `TimerTracker.timerList[${i}].bar`;
+  expect(addon.eval(`local b = ${bar(1)} local font, size = b.timeText:GetFont()
+    return { b:GetStatusBarTexture():GetTexture() == ns.Theme.BarTexture(), b.back:GetAlpha(), b.border:GetAlpha(), __panel(b), font ~= "TEST-ONLY-FONT", size }`),
+  "the bar there at login: theme texture, art faded, a panel, the time in the theme font at the game's size").toEqual([true, 0, 0, true, true, 18]);
+  addon.eval('TimerTracker.__scripts.OnEvent(TimerTracker, "START_TIMER")');
+  expect(addon.eval(`return { ${bar(2)}.border:GetAlpha(), __panel(${bar(2)}), TimerTracker.timerList[1].digit1:GetAlpha() }`), "a timer started later; the big numbers kept").toEqual([0, true, 1]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval('TimerTracker.__scripts.OnEvent(TimerTracker, "PLAYER_ENTERING_WORLD") TimerTracker:Hide() TimerTracker:Show()');
+  expect([addon.eval("return #TimerTracker.timerList"), addon.eval("return ns.Theme.PaintedCount()")], "one hook, each bar once").toEqual([2, painted]);
+  const bare = loggedIn('CreateFrame("Frame", "TimerTracker", UIParent).timerList = { CreateFrame("Frame") }');
+  expect(windowErrors(bare), "a timer without a bar").toBe("none");
+});
+
+// The objective banner: its three texts in a large quest font, and its art.
+const BANNER_ENV = PVP_ENV + `
+  local b = CreateFrame("Frame", "PvPObjectiveBannerFrame", UIParent) b:Hide()
+  for _, key in ipairs({ "Title", "TitleFlash", "BonusLabel" }) do b[key] = b:CreateFontString() b[key]:SetFont("TEST-ONLY-FONT", 30) end
+  b.BG1 = __art(b, "BORDER")
+`;
+
+it("S8.3 the objective banner: its texts in the theme font at the game's size, its art left to its animation", () => {
+  const addon = loggedIn(BANNER_ENV);
+  addon.eval("PvPObjectiveBannerFrame:Show()");
+  expect(addon.eval(`local out = {} for i, key in ipairs({ "Title", "TitleFlash", "BonusLabel" }) do
+      local font, size = PvPObjectiveBannerFrame[key]:GetFont() out[i] = { font ~= "TEST-ONLY-FONT", size } end return out`))
+    .toEqual([[true, 30], [true, 30], [true, 30]]);
+  addon.eval("PvPObjectiveBannerFrame:Hide() PvPObjectiveBannerFrame:Show()");
+  expect(addon.eval("local _, size = PvPObjectiveBannerFrame.Title:GetFont() return { size, PvPObjectiveBannerFrame.BG1:GetAlpha(), __panel(PvPObjectiveBannerFrame) }"),
+    "shown again: the size holds; no panel, the art kept").toEqual([30, 1, false]);
+  const off = loggedIn(BANNER_ENV, OFF);
+  off.eval("PvPObjectiveBannerFrame:Show()");
+  expect(off.eval("return (PvPObjectiveBannerFrame.Title:GetFont())"), "with the group off").toBe("TEST-ONLY-FONT");
+});
