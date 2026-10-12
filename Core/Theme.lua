@@ -108,6 +108,8 @@ local DEFAULTS = {
   pixelScale = false,
   -- Screen pixels per UI unit at pixel-perfect scale (a whole number; the Pixel-perfect screen preset sets it).
   pixelMultiple = 1,
+  -- Texel snapping for still textures (borders, fills, dividers, sheens); off until the in-game A/B test (#226).
+  texelSnap = false,
   textScale = 1,
   barTexture = "vanguard",
   -- Soft shadows under HUD frames (unit frames, bars, minimap); floating windows always have one.
@@ -219,21 +221,49 @@ end
 
 -- Parts --------------------------------------------------------------------------------
 
--- A solid-color texture on frame at a draw layer (and sublevel).
-local function solid(frame, layer, sublevel)
+-- A solid-color texture on frame at a draw layer (and sublevel), of a snapping class (T.SNAP_CLASSES).
+local function solid(frame, layer, sublevel, class)
   local t = frame:CreateTexture(nil, layer, nil, sublevel)
   t:SetTexture(T.WHITE)
-  return T.Snap(t)
+  return T.Snap(t, class)
 end
 
--- Keeps a texture off the client's pixel-grid snapping, so 1 px lines and
--- icon edges stay crisp at any UI scale instead of blurring or jumping.
-function T.Snap(texture)
+-- Texel snapping policy (#226): which classes of texture snap to the pixel grid while
+-- texel snapping is on. Still lines and fills snap; anything that moves or scales
+-- (bar fills, sparks, cooldown swipes) and art (icons, soft rings) stays off.
+T.SNAP_CLASSES = { border = true, fill = true, divider = true, sheen = true, bar = false, spark = false, swipe = false, icon = false }
+-- The sharpening bias a snapped texture gets (0 to 1).
+T.SNAP_BIAS = 1
+-- Every texture T.Snap has seen -> its class (weak), so a switch reaches them all.
+local snapClass = setmetatable({}, { __mode = "k" })
+
+-- Sets a texture's pixel-grid snapping for its class: on (with the bias) only for a still
+-- class while texel snapping is on; off otherwise, as before #226.
+local function applySnap(texture, class)
+  local on = T.SNAP_CLASSES[class] == true and T.Settings().texelSnap == true
+  texture:SetSnapToPixelGrid(on)
+  texture:SetTexelSnappingBias(on and T.SNAP_BIAS or 0)
+end
+
+-- Puts a texture under the snapping policy for its class (default "icon": off, so 1 px
+-- lines and icon edges stay crisp at any UI scale instead of blurring or jumping).
+function T.Snap(texture, class)
   if texture.SetSnapToPixelGrid then
-    texture:SetSnapToPixelGrid(false)
-    texture:SetTexelSnappingBias(0)
+    snapClass[texture] = class or "icon"
+    applySnap(texture, class or "icon")
   end
   return texture
+end
+
+-- Puts every texture T.Snap has seen under the policy again (after a switch or a profile load).
+local function reSnap()
+  for texture, class in pairs(snapClass) do applySnap(texture, class) end
+end
+
+-- Turns texel snapping for still textures on or off (the A/B test, #226), at once.
+function T.SetTexelSnap(on)
+  T.Settings().texelSnap = on == true
+  reSnap()
 end
 
 -- Pixels ----------------------------------------------------------------------------
@@ -351,7 +381,7 @@ local EDGE_POINTS = {
 -- Four edge textures around frame, `pad` units out past its edges (sized to one pixel when painted).
 local function edges(frame, pad)
   local layer, sub = edgeLayer(frame)
-  local e = { top = solid(frame, layer, sub), bottom = solid(frame, layer, sub), left = solid(frame, layer, sub), right = solid(frame, layer, sub) }
+  local e = { top = solid(frame, layer, sub, "border"), bottom = solid(frame, layer, sub, "border"), left = solid(frame, layer, sub, "border"), right = solid(frame, layer, sub, "border") }
   for side, points in pairs(EDGE_POINTS) do
     pin(e[side], frame, points[1], pad)
     pin(e[side], frame, points[2], pad)
@@ -368,7 +398,7 @@ end
 
 -- The sheen: a one-pixel light line just inside the top border (placed when painted).
 local function sheen(frame)
-  return solid(frame, "BORDER")
+  return solid(frame, "BORDER", nil, "sheen")
 end
 
 -- Places the sheen one pixel inside the top border (`pad` units out past the frame's top), one pixel tall.
@@ -473,7 +503,7 @@ end
 -- A soft spark (Media/Textures/Spark) on a bar's top layer, width units wide,
 -- drawn additively so it brightens the fill under it. The caller places and tints it.
 function T.Spark(bar, width)
-  local t = T.Snap(bar:CreateTexture(nil, "OVERLAY"))
+  local t = T.Snap(bar:CreateTexture(nil, "OVERLAY"), "spark")
   t:SetTexture(T.Texture("Spark"))
   t:SetBlendMode("ADD")
   t:SetWidth(width)
@@ -483,7 +513,7 @@ end
 -- Gives a status bar the theme's bar texture.
 function T.StyleBar(bar)
   bar:SetStatusBarTexture(T.BarTexture())
-  T.Snap(bar:GetStatusBarTexture())
+  T.Snap(bar:GetStatusBarTexture(), "bar")
   return bar
 end
 
@@ -570,7 +600,7 @@ end
 
 -- A background texture over frame, `pad` units out past its edges.
 local function background(frame, pad)
-  local bg = solid(frame, "BACKGROUND")
+  local bg = solid(frame, "BACKGROUND", nil, "fill")
   pin(bg, frame, "TOPLEFT", pad)
   pin(bg, frame, "BOTTOMRIGHT", pad)
   return bg
@@ -640,7 +670,7 @@ function T.Button(button)
   local entry = base(button, "button", { inset = true })
   if fresh then
     T.FadeRegions(button, { [entry.parts.bg] = true })
-    entry.parts.hover = solid(button, "HIGHLIGHT")
+    entry.parts.hover = solid(button, "HIGHLIGHT", nil, "fill")
     entry.parts.hover:SetAllPoints()
     T.Tint(entry.parts.hover, "hover")
   end
@@ -733,7 +763,7 @@ function T.Slot(frame, opts)
   local entry = painted[frame]
   if not entry then
     entry = base(frame, "slot", slotOpts(opts))
-    entry.parts.inner, entry.parts.lit, entry.parts.dim = edges(frame), solid(frame, "BORDER", 1), solid(frame, "BORDER", 1)
+    entry.parts.inner, entry.parts.lit, entry.parts.dim = edges(frame), solid(frame, "BORDER", 1, "border"), solid(frame, "BORDER", 1, "border")
     entry.paint = paintSlot
   end
   repaint(frame, entry)
@@ -907,7 +937,7 @@ end
 
 -- A tab's own parts (made once): the accent bar (placed when painted) and the hover wash.
 local function tabParts(button, entry)
-  entry.parts.line, entry.parts.hover = solid(button, "OVERLAY"), solid(button, "HIGHLIGHT")
+  entry.parts.line, entry.parts.hover = solid(button, "OVERLAY", nil, "divider"), solid(button, "HIGHLIGHT", nil, "fill")
   entry.parts.hover:SetAllPoints()
   T.Tint(entry.parts.hover, "hover")
   entry.paint = paintTab
@@ -1136,6 +1166,7 @@ function T.Refresh()
   T.RefreshText()
   applyFontObjects()
   for t in pairs(crests) do T.PaintCrest(t) end
+  reSnap()
   for _, fn in ipairs(listeners) do
     fn()
   end

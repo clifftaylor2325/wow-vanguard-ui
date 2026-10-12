@@ -478,3 +478,39 @@ it("pixel-perfect scale takes a whole multiple: 2 makes one UI unit two screen p
   expect(addon.eval("return ns.Theme.PixelScale()"), "never less than one pixel per unit").toBeCloseTo(768 / 2160, 9);
 });
 
+// Snapping of one texture of each class on a panel, a bar and a button: { class: [snaps, bias] }.
+const snapping = (addon) => addon.eval(`local T = ns.Theme
+  __snapPanel = __snapPanel or T.Panel(CreateFrame("Frame", nil, UIParent))
+  __snapBar = __snapBar or T.StyleBar(CreateFrame("StatusBar", nil, UIParent))
+  __snapSpark = __snapSpark or T.Spark(__snapBar, 8)
+  __snapIcon, __snapLine = __snapIcon or T.Snap(UIParent:CreateTexture()), __snapLine or T.Snap(UIParent:CreateTexture(), "divider")
+  local out = {}
+  for _, w in ipairs(__wfgStub.frames) do
+    if w.__parent == __snapPanel and w.__layer == "BACKGROUND" then out.fill = { w.__snapToPixelGrid, w.__texelBias } end
+    if w.__parent == __snapPanel and w.__layer == "BORDER" and w.__points.TOPLEFT and w.__points.TOPLEFT.y ~= 0 then out.sheen = { w.__snapToPixelGrid, w.__texelBias } end
+  end
+  for name, t in pairs({ bar = __snapBar:GetStatusBarTexture(), spark = __snapSpark, icon = __snapIcon, divider = __snapLine }) do out[name] = { t.__snapToPixelGrid, t.__texelBias } end
+  return out`);
+
+it("texel snapping (#226): off by default; /vg texelsnap snaps still borders, fills, dividers and sheens, never bars, sparks or icons", () => {
+  const addon = loggedIn();
+  const off = [false, 0];
+  expect(snapping(addon), "off by default: nothing snaps, as before").toEqual({ fill: off, sheen: off, bar: off, spark: off, icon: off, divider: off });
+  addon.slash("texelsnap on");
+  const on = [true, 1];
+  expect(snapping(addon), "on: still classes snap with bias 1, moving ones and art don't").toEqual({ fill: on, sheen: on, bar: off, spark: off, icon: off, divider: on });
+  expect([addon.eval("return ns.Theme.Settings().texelSnap"), chatHas(addon, /Texel snapping on/)], "saved in the profile, and said in chat").toEqual([true, true]);
+  expect(addon.eval('return ns.Theme.Snap(UIParent:CreateTexture(), "border").__snapToPixelGrid'), "a texture made while it's on follows the policy").toBe(true);
+  addon.slash("texelsnap");
+  expect([snapping(addon).fill, addon.eval("return ns.Theme.Settings().texelSnap"), chatHas(addon, /Texel snapping off/)], "with nothing after it, it toggles back off").toEqual([off, false, true]);
+  addon.slash("texelsnap");
+  addon.slash("texelsnap off");
+  expect(snapping(addon).sheen, "off turns it off").toEqual(off);
+});
+
+it("texel snapping (#226): a profile saved with it on snaps still textures from login", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB = { profiles = { Default = { theme = { texelSnap = true } } } }" });
+  expect(addon.eval("local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.__snapToPixelGrid == true and w.__texelBias == 1 then n = n + 1 end end return n") > 0, "textures made during login snap").toBe(true);
+  const s = snapping(addon);
+  expect([s.fill, s.bar], "a panel's fill snaps, a bar's fill doesn't").toEqual([[true, 1], [false, 0]]);
+});

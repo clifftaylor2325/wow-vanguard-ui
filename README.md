@@ -118,6 +118,7 @@ Download `Vanguard-<version>.zip` from the [latest release](https://github.com/c
 /vg reset <frame|all>
 /vg frames        the frames you can move
 /vg grid [size|on|off]          the unlock-mode grid; /vg snap on|off   snapping while dragging
+/vg texelsnap [on|off]          still borders, fills, dividers and sheens snap to the screen's pixel grid; bars, sparks and icons never do (a side-by-side test, off by default)
 /vg accent <rrggbb|brass|arcane|fel|void|ember> | reset      /vg theme reset
 /vg modules       the list of modules; /vg enable|disable <module>, then /reload
 /vg skins         addons skinned through the API; skins <addon> on|off
