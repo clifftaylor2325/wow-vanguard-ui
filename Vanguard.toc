@@ -103,6 +103,7 @@ Modules/WindowsMap.lua
 Modules/WindowsMenus.lua
 Modules/WindowsTabs.lua
 Modules/WindowsPvP.lua
+Modules/WindowsMove.lua
 Modules/AuctionPrices.lua
 Modules/AuctionHelper.lua
 Modules/AuctionTable.lua

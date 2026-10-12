@@ -600,13 +600,31 @@ end
 
 -- Building and showing -----------------------------------------------------------------------
 
--- Lets the window be dragged around by its header.
+-- The window's place is kept with the game windows' (the Windows module's settings, Modules/WindowsMove.lua) under this name.
+local PLACE_KEY = "Vanguard_Options"
+
+-- The window dropped: it stops and its place is saved.
+local function dropped(f)
+  f:StopMovingOrSizing()
+  ns.GetModule("Windows").SavePlace(PLACE_KEY, f)
+end
+
+-- Lets the window be dragged around by its header, kept on the screen; where it is dropped is remembered.
 local function makeMovable(f)
   f:SetMovable(true)
+  f:SetClampedToScreen(true)
   f.header:EnableMouse(true)
   f.header:RegisterForDrag("LeftButton")
-  f.header:SetScript("OnDragStart", function() f:StartMoving() end)
-  f.header:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
+  f.header:SetScript("OnDragStart", ns.Guard("drag options", function() f:StartMoving() end))
+  f.header:SetScript("OnDragStop", ns.Guard("drop options", function() dropped(f) end))
+end
+
+-- Puts the window where it was last dropped, or in the middle of the screen (after Reset window positions too).
+function O.PlaceWindow()
+  if not window then return end
+  window:ClearAllPoints()
+  window:SetPoint("CENTER")
+  ns.GetModule("Windows").PutBack(PLACE_KEY, window)
 end
 
 -- How wide the thumb's grip is (units): wider than the thin bar, so it is easy to catch.
@@ -637,11 +655,10 @@ local function addThumb(f)
   f.grip:Hide()
 end
 
--- The window frame: centered, above other windows, closes with Escape.
+-- The window frame: above other windows, closes with Escape (O.PlaceWindow places it).
 local function windowFrame()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = 0.98, shadow = true })
   f:SetSize(WIDTH, HEIGHT)
-  f:SetPoint("CENTER")
   f:SetFrameStrata("DIALOG")
   f:EnableMouse(true)
   if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_Options") end
@@ -658,6 +675,7 @@ local function build()
   addNav(window)
   addThumb(window)
   makeMovable(window)
+  O.PlaceWindow()
   wireKeys(window)
 end
 
