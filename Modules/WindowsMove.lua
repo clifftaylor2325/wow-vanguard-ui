@@ -123,7 +123,7 @@ local function makeMovable(frame, name)
   frame:SetMovable(true)
   frame:SetClampedToScreen(true)
   local h = CreateFrame("Frame", nil, frame)
-  h.window = frame
+  h.window, h.ignoreInLayout = frame, true
   placeHandle(h, frame, titleBar(frame, name))
   h:EnableMouse(true)
   h:RegisterForDrag("LeftButton")

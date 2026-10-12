@@ -109,8 +109,8 @@ it("Add reagents keeps the reagents for the crafts typed in stock and makes the 
 
 it("only post-hooks: the window's fields stay the game's; the helper off hooks nothing; no client schematic API is fine", () => {
   // A frame's fields as text, but for the hooked Init, the recipe the game's own Init keeps, and the
-  // mark the Windows module leaves on a window it skins.
-  const keys = `local skip = { Init = true, currentRecipeInfo = true, vgWindow = true }
+  // marks the Windows module leaves on a window it skins and makes movable.
+  const keys = `local skip = { Init = true, currentRecipeInfo = true, vgWindow = true, vgMovable = true, vgMoveHandle = true }
     local function keys(t) local out = {} for k, v in pairs(t) do if not skip[k] then out[#out + 1] = tostring(k) .. "=" .. tostring(v) end end table.sort(out) return table.concat(out, ",") end`;
   const addon = crafter(`__wfgWorld.openProfession() ${keys}
     __before = { keys(ProfessionsFrame), keys(ProfessionsFrame.CraftingPage), keys(ProfessionsFrame.CraftingPage.SchematicForm) }`);
