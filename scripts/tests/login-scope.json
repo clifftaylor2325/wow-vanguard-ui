@@ -129,6 +129,7 @@
     "scripts/tests/report.test.mjs": [
       "/vg report names the modules turned off and the skinned addons, with any that are off or failed"
     ],
+    "scripts/tests/rolls.test.mjs": [],
     "scripts/tests/setup.test.mjs": [
       "Centered layout: compact raid grid, one-time migrations, a strip with nothing to show",
       "default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 px buttons; a saved profile keeps its sizes",
