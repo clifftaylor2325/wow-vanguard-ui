@@ -15,7 +15,7 @@ local T, W = ns.Theme, ns.Widgets
 local S = {}
 ns.Setup = S
 
-local WIDTH, HEIGHT, PAD = 440, 320, 16
+local WIDTH, HEIGHT, PAD = 440, 350, 16
 -- The pages in order, each with its caption name; a wizard shows STEPS, or PROFILE_STEPS for a new character.
 local NAMES = { profile = "Profile", layout = "Layout", screen = "Screen", look = "Look", move = "Move things" }
 local STEPS = { "layout", "screen", "look", "move" }
@@ -58,6 +58,9 @@ S.SCREENS = {
 }
 -- The client's UI scale range (its Graphics settings slider).
 S.UI_SCALE = { min = 0.65, max = 1.15 }
+-- The Pixel-perfect choice beside the presets: one UI unit is a whole number of screen pixels, so
+-- every line and glyph lands on real pixels; Vanguard's own sizes make up for the smaller scale.
+S.PIXEL = { key = "pixel", text = "Pixel-perfect (sharpest)" }
 
 -- Raid frame styles: the Raid page's Style choices, and the short name under each style's tile in setup.
 S.STYLES = { { "soft", "Class colors, softened", "Softened" }, { "dark", "Dark, class-colored names", "Dark" },
@@ -198,11 +201,36 @@ function S.DetectScreen()
   return h >= 1300 and "1440" or "1080"
 end
 
--- A screen preset by key, or nil ("keep").
+-- A screen preset by key (S.PIXEL's for "pixel"), or nil ("keep").
 function S.ScreenPreset(key)
+  if key == S.PIXEL.key then return S.PixelPreset() end
   for _, p in ipairs(S.SCREENS) do
     if p.key == key then return p end
   end
+end
+
+-- How many screen pixels one UI unit covers at pixel-perfect scale on a screen h pixels tall:
+-- 1 up to about 1600 pixels tall, 2 at 4K, so things never get smaller than 1080p's.
+function S.PixelMultiple(h)
+  return math.max(1, math.floor(h / 1080 + 0.25))
+end
+
+-- A size grown by ratio, in whole units.
+local function grown(size, ratio)
+  return math.floor(size * ratio + 0.5)
+end
+
+-- What Pixel-perfect sets on this screen: the scale (768 / height times the whole multiple), this
+-- screen's preset (1080p's on a small screen) with its buttons and text grown by how much smaller
+-- that scale is than the preset's (the text in steps of 5%, within the slider's range). Raid tiles
+-- keep the preset's size: the grid sits among frames drawn in UI units, so growing it alone crowds them.
+function S.PixelPreset()
+  local base, _, h = S.ScreenPreset(S.DetectScreen()) or S.SCREENS[1], screenSize()
+  local n = S.PixelMultiple(h > 0 and h or 768)
+  local ui = T.PixelPerfectScale() * n
+  local r = base.ui / ui
+  local text = math.max(0.7, math.min(1.3, math.floor(base.textScale * r * 20 + 0.5) / 20))
+  return { key = S.PIXEL.key, ui = ui, pixel = n, button = grown(base.button, r), tile = base.tile, textScale = text }
 end
 
 -- Sets the game's UI scale (clamped to its own slider's range), out of combat: the client's
@@ -217,6 +245,14 @@ function ns.SetUIScale(scale)
     set("useUiScale", "1")
     set("uiScale", tostring(scale))
   end)
+end
+
+-- Sets a screen preset's scale: Pixel-perfect's whole multiple with Vanguard's pixel-perfect scale,
+-- else the game's UI scale (which turns pixel-perfect off).
+local function setScale(p)
+  if not p.pixel then return ns.SetUIScale(p.ui) end
+  T.Settings().pixelMultiple = p.pixel
+  T.SetPixelScale(true)
 end
 
 -- Sets the action buttons' shared size and lays the built bars out again (a bar's own size still wins).
@@ -240,7 +276,7 @@ function S.ApplyScreen(key)
   local p = S.ScreenPreset(key)
   if not p then return end
   S.Backup()
-  ns.SetUIScale(p.ui)
+  setScale(p)
   setButtons(p.button)
   setTiles(p.tile)
   T.Settings().textScale = p.textScale
@@ -259,11 +295,13 @@ function S.ScaleOwner()
 end
 
 -- What a preset sets, under the choices: a preset moves the game's own UI Scale slider (and
--- turns Vanguard's pixel-perfect scale off); Keep leaves the scale with whichever sets it now.
+-- turns Vanguard's pixel-perfect scale off), Pixel-perfect turns that scale on, and Keep leaves
+-- the scale with whichever sets it now.
 local function screenHint(p)
   if not p then return "Changes nothing: your UI scale stays with " .. S.ScaleOwner() .. ", your sizes as they are." end
-  return string.format("Moves the game's UI Scale slider to %d%% (Vanguard's pixel-perfect scale goes off); action buttons %d px, raid tiles %d x %d, text %d%%.",
-    percent(p.ui), p.button, p.tile[1], p.tile[2], percent(p.textScale))
+  local scale = p.pixel and "Sharpest: every line on whole screen pixels. Vanguard's pixel-perfect scale at %d%%"
+    or "Moves the game's UI Scale slider to %d%% (Vanguard's pixel-perfect scale goes off)"
+  return string.format(scale .. "; action buttons %d px, raid tiles %d x %d, text %d%%.", percent(p.ui), p.button, p.tile[1], p.tile[2], percent(p.textScale))
 end
 
 -- Marks -----------------------------------------------------------------------------------
@@ -271,7 +309,7 @@ end
 -- Outlines a choice (and colors its label) in the accent when it is the chosen one.
 local function mark(b, on)
   T.SetBorder(b, on and { T.Accent() } or nil)
-  if b.text then T.Color(b.text, on and "accent" or "text") end
+  if b.text then T.Color(b.text, on and "accentText" or "text") end
   if b.check then b.check:SetShown(on) end
 end
 
@@ -311,7 +349,7 @@ local function refresh()
   markChoice(frame.pages.screen, state.screen)
   for _, s in ipairs(look.swatches) do mark(s, isAccent(s.rgb)) end
   for _, b in ipairs(look.styles) do mark(b, b.value == raidSettings().look) paintTile(b) end
-  T.Color(frame.caption, "accent")
+  T.Color(frame.caption, "accentText")
 end
 
 -- Building ------------------------------------------------------------------------------
@@ -380,6 +418,7 @@ local function screenChoices()
     local mine = p.key == detected and "  ·  your screen" or ""
     out[i] = { key = p.key, hint = screenHint(p), text = string.format("%s (%d x %d)%s", p.text, p.w, p.h, mine) }
   end
+  out[#out + 1] = { key = S.PIXEL.key, text = S.PIXEL.text, hint = screenHint(S.PixelPreset()) }
   out[#out + 1] = { key = "keep", text = "Keep my current sizes", hint = function() return screenHint(nil) end }
   return out
 end
@@ -457,7 +496,7 @@ local function addTitle(f)
   f.title = text(f, "title", "text", "Set up Vanguard")
   f.title:SetPoint("TOP", f, "TOP", 0, -14)
   f.title:SetJustifyH("CENTER")
-  f.caption = text(f, "small", "accent", "")
+  f.caption = text(f, "small", "accentText", "")
   f.caption:SetPoint("TOP", f.title, "BOTTOM", 0, -4)
   f.caption:SetJustifyH("CENTER")
   f.crest = T.Crest(f, 28)
@@ -467,7 +506,7 @@ end
 -- The window: a floating panel with a title and the step caption.
 local function window()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_Setup", UIParent), { alpha = 0.98, shadow = true })
-  f:SetSize(WIDTH, HEIGHT)
+  T.PixelSize(f, WIDTH, HEIGHT, true)
   f:SetPoint("CENTER")
   -- Above the unlock handles (DIALOG), so their labels and grid never draw over the steps.
   f:SetFrameStrata("FULLSCREEN_DIALOG")
@@ -628,7 +667,7 @@ function S.Open()
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
   state.layout, state.screen, state.backup = "keep", "keep", nil
   state.reload, state.paused, state.done = false, false, false
-  T.FadeIn(frame)
+  T.OpenWindow(frame)
   showStep(1)
 end
 
@@ -638,7 +677,7 @@ end
 local function resume()
   if not state.paused then return end
   state.paused = false
-  T.FadeIn(frame)
+  T.OpenWindow(frame)
   showStep(state.step)
 end
 

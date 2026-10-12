@@ -32,7 +32,7 @@ local function addHeader(f)
   f.header:SetText("Quests")
   f.count = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
   f.count:SetPoint("TOPRIGHT", f, "TOPRIGHT", -20, -3)
-  f.rule = T.Snap(f:CreateTexture(nil, "ARTWORK"))
+  f.rule = T.Snap(f:CreateTexture(nil, "ARTWORK"), "divider")
   f.rule:SetHeight(T.Pixel(f))
   f.rule:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -QT.HEADER + 4)
   f.rule:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -QT.HEADER + 4)
@@ -92,10 +92,12 @@ end
 
 -- Blocks ---------------------------------------------------------------------------------------
 
--- A quest's lines under its title: { text, color } for each objective, or "Ready to turn in".
+-- A quest's lines under its title: the arrow's next step when it follows this quest (Quest
+-- guidance), then { text, color } for each objective, or "Ready to turn in".
 function QT.LineSpecs(q)
-  if q.ready then return { { "Ready to turn in", "good" } } end
-  local out = {}
+  local step = ns.QuestGuide.StepLine(q.id)
+  local out = { step }
+  if q.ready then out[#out + 1] = { "Ready to turn in", "good" } return out end
   for _, o in ipairs(q.objectives) do out[#out + 1] = { "- " .. o.text, o.done and "good" or "text2" } end
   return out
 end
@@ -120,7 +122,7 @@ end
 -- Fills a block: the title in the quest's difficulty color, then its lines.
 function QT.PaintBlock(b, q)
   b.id = q.id
-  b.title:SetText(QP.Titled(q.level, q.title))
+  b.title:SetText(QP.Titled(q.level, q.title, q.id))
   T.Color(b.title, QP.LevelColor(q.level))
   paintLines(b, q)
   b:SetHeight(QT.BlockHeight(q))

@@ -364,7 +364,7 @@ end
 -- painted by paintTopLine), under the aggro strip (Modules/RaidHealing.lua),
 -- which covers it while the player has aggro.
 local function addTopLine(b)
-  b.topLine = T.Snap(b.health:CreateTexture(nil, "OVERLAY", nil, -1))
+  b.topLine = T.Snap(b.health:CreateTexture(nil, "OVERLAY", nil, -1), "border")
   b.topLine:SetTexture(T.WHITE)
   b.topLine:SetPoint("TOPLEFT", b.health, "TOPLEFT")
   b.topLine:SetPoint("TOPRIGHT", b.health, "TOPRIGHT")

@@ -87,7 +87,7 @@ local function setSort(t, key, reverse)
   for i = 1, AH.TABLE_CELLS do
     local h = t.heads[i]
     local on = key ~= nil and h.key == key
-    T.Color(h.text, on and "accent" or "text2")
+    T.Color(h.text, on and "accentText" or "text2")
     if on then paintArrow(t, h, reverse) end
   end
 end
