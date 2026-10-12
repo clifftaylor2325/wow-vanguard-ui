@@ -107,6 +107,49 @@ local function markChanges(w, row)
   w:Refresh()
 end
 
+-- Notes on settings -------------------------------------------------------------------------
+
+-- The note on a row's setting now (O.SettingNote, from Modules/SituationsBanner.lua: a setting
+-- a recording can't hold), or nil. The setting is the one its getter is tagged with (O.Tag).
+local function noteOf(row)
+  local at = SETTER_AT[row[1]]
+  local module, key = O.SettingOf(at and row[at - 1])
+  return module and O.SettingNote and O.SettingNote(module, key) or nil
+end
+
+-- Shows a row's note as its tooltip while it has one.
+local function noteTooltip(w)
+  local note = noteOf(w.row)
+  if not note or not GameTooltip then return end
+  GameTooltip:SetOwner(w, "ANCHOR_RIGHT")
+  GameTooltip:SetText(note)
+  GameTooltip:Show()
+end
+
+-- Hides the note's tooltip.
+local function hideNote()
+  if GameTooltip then GameTooltip:Hide() end
+end
+
+-- Gives a tagged setting's row its note: the tooltip on hover, and a muted caption while it has one.
+local function addNote(w, row)
+  local at = SETTER_AT[row[1]]
+  if not (at and O.SettingOf(row[at - 1]) and w.label) then return end
+  w.row = row
+  w:HookScript("OnEnter", noteTooltip)
+  w:HookScript("OnLeave", hideNote)
+  local refresh = w.Refresh
+  -- The row's own refresh, then its caption: muted while the setting has a note.
+  w.Refresh = function(self) refresh(self) T.Color(self.label, noteOf(row) and "muted" or "text") end
+  w:Refresh()
+end
+
+-- Gives a row its reset dot (a setting with a default) and its note (a tagged setting).
+local function dressRow(w, row)
+  markChanges(w, row)
+  addNote(w, row)
+end
+
 -- Cards --------------------------------------------------------------------------------------
 
 -- Splits rows into cards: each header starts one; rows before the first header make an untitled card.
@@ -140,7 +183,7 @@ local function placeRows(card, rows, y, cardY)
     local full = FULL_WIDTH[row[1]]
     local w = BUILDERS[row[1]](card, row, CARD_WIDTH - 8)
     w.card, w.caption, w.pageY = card, row[2], cardY + y
-    markChanges(w, row)
+    dressRow(w, row)
     w:SetPoint("TOPLEFT", card, "TOPLEFT", full and 4 or PAD + 2, -y)
     widgets[#widgets + 1] = w
     y = y + rowHeight(w, row[1])
@@ -666,6 +709,11 @@ local function forgetRows(view)
   for i = #widgets, 1, -1 do
     if widgets[i].card.child == view.child then table.remove(widgets, i) end
   end
+end
+
+-- The window's frame (Vanguard_Options), or nil until it is first opened.
+function O.Frame()
+  return window
 end
 
 -- How many rows the built pages hold (for tests).
