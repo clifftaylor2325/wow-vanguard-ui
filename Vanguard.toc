@@ -49,6 +49,8 @@ Core/OptionsProfiles.lua
 Core/ProfileExport.lua
 Core/SettingsGuard.lua
 Core/Setup.lua
+Core/WhatsNewNotes.lua
+Core/WhatsNew.lua
 Core/FactionArt.lua
 Core/Inspect.lua
 Core/Slash.lua

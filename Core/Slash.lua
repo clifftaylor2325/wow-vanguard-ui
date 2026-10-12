@@ -8,6 +8,7 @@ local chat = ns.Chat
 local HELP = {
   "A from-scratch UI suite. /vg opens the options window; /vg <command>:",
   "setup                first-run setup again: layout, screen, look, then move things",
+  "whatsnew             what's new in this version of Vanguard; click a line to open its setting",
   "unlock | lock        drag handles on every Vanguard frame; click one, then arrow keys nudge (Shift: 10 px)",
   "reset <frame|all>    put a frame (or every frame) back at its default spot",
   "frames               list the movable frames",
@@ -298,11 +299,9 @@ local function specCommand(rest)
   chat(rest == "off" and "This spec no longer switches profiles." or ("Spec " .. spec .. " now uses profile " .. rest .. "."))
 end
 
--- The addon version from the TOC.
+-- The addon version from the TOC (Core/WhatsNew.lua reads it).
 local function version()
-  local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
-  local ok, v = pcall(get, ADDON, "Version")
-  return ok and v or "?"
+  return ns.AddonVersion()
 end
 
 -- The first WoW Forever beta build that loads addon settings and runs secure
@@ -486,6 +485,8 @@ local COMMANDS = {
   config = function() ns.Options.Toggle() end,
   -- /vg setup: the first-run wizard again (after combat, if in it)
   setup = function() ns.Setup.Open() end,
+  -- /vg whatsnew: the release notes for this version again
+  whatsnew = function() ns.WhatsNew.Open() end,
   unlock = unlockCommand,
   move = unlockCommand,
   lock = lockCommand,
