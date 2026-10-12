@@ -317,11 +317,22 @@ local function flattenPane()
   if boxOf("TokenFrame") then GW.WatchEmpty(boxOf("TokenFrame"), GW.CURRENCY_EMPTY) end
 end
 
--- Dresses the inside of the character pane: its backdrops and lists' rows, the skill rank bar, the stat boxes,
--- the honor tab and the equipment flyout. Safe to run again: lists and the flyout are watched once.
+-- The button that shows and hides the pane's right half (CharacterFrame.RightPaneToggleButton: a plain Button, not
+-- protected, that the game never moves; it sat below the title row on the left pane's corner) put in the title row,
+-- T.CONTROL.step left of the close button, as a window's maximize box is (GW.PlaceControls).
+local function placePaneToggle(frame)
+  local toggle = type(frame) == "table" and frame.RightPaneToggleButton
+  if type(toggle) ~= "table" or not toggle.SetPoint or type(frame.CloseButton) ~= "table" then return end
+  toggle:ClearAllPoints()
+  toggle:SetPoint("CENTER", frame.CloseButton, "CENTER", -T.CONTROL.step, 0)
+end
+
+-- Dresses the inside of the character pane: its backdrops, right-pane toggle and lists' rows, the skill rank bar,
+-- the stat boxes, the honor tab and the equipment flyout. Safe to run again: lists and the flyout are watched once.
 function GW.DressCharacterPane()
   watchLists()
   flattenPane()
+  placePaneToggle(_G.CharacterFrame)
   skinStatCategories()
   local skills, honor = _G.SkillsFrame, _G.PVPRankFrame
   if type(skills) == "table" and type(skills.SkillDetailFrame) == "table" then GW.SkinBar(skills.SkillDetailFrame.RankBar) end
