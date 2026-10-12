@@ -355,3 +355,22 @@ it("without specializations the page speaks of this character", () => {
   addon.eval('__click("Also on your player, target and focus frames")');
   expect(addon.eval('return ns.Settings("ClickCast", ns.GetModule("ClickCast").defaults).unitFrames')).toBe(false);
 });
+
+it("the hover keys card shows Add key and its hint right under its title, inside the page as it opens", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  const title = addon.texts("KEYS WHILE HOVERING A FRAME")[0].rect;
+  const view = addon.frames('w.__kind == "ScrollFrame" and w:IsVisible()')[0].rect;
+  const list = addon.frames("w.rows ~= nil and w.add ~= nil")[0].rect;
+  const add = addon.frame(widget(addon, 'w.caption == "Add key" and w.onKey ~= nil'));
+  const hint = addon.texts("No hover keys yet. Add one, press the key, pick the spell.")[0];
+  expect([add.visible, title.bottom - add.rect.top, add.rect.bottom >= view.bottom], "Add key sits 8 px under the card's title, in the page before any scrolling").toEqual([true, 8, true]);
+  expect([hint.visible, hint.rect.bottom >= view.bottom, hint.rect.right <= list.right], "the hint beside it, inside the page and the card").toEqual([true, true, true]);
+  addon.eval(`${CC}.Add("SHIFT-Q", "target") ns.Options.Refresh()`);
+  const row = addon.texts("Shift + Q")[0].rect;
+  expect(row.top <= add.rect.bottom, "a hover key's row comes under the Add key line").toBe(true);
+  addon.eval("ns.Client = ns.Client or {} ns.Client.ProbeSnippets = function() return false end ns.Options.Refresh()");
+  const off = addon.texts("This client can't compile the secure code hover keys need; mouse bindings still work.")[0];
+  expect([off.visible, title.bottom - off.rect.top, off.rect.right <= list.right], "without snippets the note takes the top line, inside the card").toEqual([true, 12, true]);
+  addon.eval("ns.Client.ProbeSnippets = nil");
+});

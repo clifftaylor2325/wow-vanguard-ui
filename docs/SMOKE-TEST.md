@@ -252,6 +252,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the key text `Shift + Q (hover)` or `Shift + Left click` in the editor and a row in the list below; `/vg binds` prints `Click casting (this spec):` and then `  Shift + Q (hover)  ->  <spell>`.
 - If it fails, paste: the `/vg binds` output and `/vg errors`.
 
+### 10.1a Hover keys card on a fresh character
+
+- Do: on a character with no hover keys, type `/vg` and open Click casting. Scroll just far enough to see the "KEYS WHILE HOVERING A FRAME" card's title.
+- Expect: right under the title, an **Add key** button with "No hover keys yet. Add one, press the key, pick the spell." beside it (wrapped inside the card). If `/vg status` says `secure snippets: no`, the line "This client can't compile the secure code hover keys need; mouse bindings still work." sits there instead. Keys you add list under that line.
+- If it fails, paste: a screenshot of the card, `/vg status` and `/vg errors`.
+
 ### 10.2 Use it
 
 - Do: out of combat, hover a party or raid tile (or your own frame) and press the key or click.
