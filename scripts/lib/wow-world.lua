@@ -139,17 +139,24 @@ function securecallfunction(fn, ...)
   return fn(...)
 end
 
+-- The hooks hooksecurefunc made: each stands in for the function it hooks, so
+-- wow-taint.lua looks through it to the code that called the function.
+stub.transparent = setmetatable({}, { __mode = "k" })
+
 -- hooksecurefunc: runs fn after the function, as FrameXML does. A global name
 -- hooks _G; a missing function is left alone.
 function hooksecurefunc(t, name, fn)
   if type(t) == "string" then t, name, fn = _G, t, name end
   local orig = t[name]
   if type(orig) ~= "function" then return end
-  t[name] = function(...)
+  -- The original, then the hook, with the original's results.
+  local function hooked(...)
     local results = { orig(...) }
     fn(...)
     return unpack(results)
   end
+  stub.transparent[hooked] = true
+  t[name] = hooked
 end
 
 -- debugstack(start): the Lua call stack as text, `start` levels above its caller (1 = the function
@@ -355,13 +362,6 @@ function GetCreatureDifficultyColor(level)
   return { r = 0.5, g = 0.5, b = 0.5 }
 end
 GetQuestDifficultyColor = GetCreatureDifficultyColor
-
--- Threat status colors: 0 gray through 3 red.
-function GetThreatStatusColor(status)
-  local colors = { [0] = { 0.69, 0.69, 0.69 }, { 1, 1, 0.47 }, { 1, 0.6, 0 }, { 1, 0, 0 } }
-  local c = colors[status] or colors[0]
-  return c[1], c[2], c[3]
-end
 
 -- A number as the client abbreviates it (12.3K, 1.2M); secrets stay secret.
 function AbbreviateNumbers(v)
@@ -679,11 +679,14 @@ function world.removeUnit(token)
   if token:match("^nameplate") then stub.fire("NAME_PLATE_UNIT_REMOVED", token) else stub.fire(tokenEvent(token)) end
 end
 
--- Enters or leaves combat, firing PLAYER_REGEN_DISABLED / ENABLED.
+-- Enters or leaves combat, as the client does: PLAYER_REGEN_DISABLED fires just
+-- before the lockdown starts (its handlers may still touch protected frames), and
+-- PLAYER_REGEN_ENABLED just after it ends.
 function world.combat(on)
   if stub.inCombat == on then return end
+  if on then stub.fire("PLAYER_REGEN_DISABLED") end
   stub.inCombat = on
-  stub.fire(on and "PLAYER_REGEN_DISABLED" or "PLAYER_REGEN_ENABLED")
+  if not on then stub.fire("PLAYER_REGEN_ENABLED") end
 end
 
 -- Auras -----------------------------------------------------------------------------------
@@ -782,12 +785,23 @@ local function completeAura(aura)
   return aura
 end
 
+local containers, scanned = {}, 0
+-- The aura containers made so far, in creation order. Widgets are only ever
+-- added to stub.frames, so each is looked at once, not on every aura change.
+local function auraContainers()
+  for i = scanned + 1, #stub.frames do
+    if stub.frames[i].__kind == "AuraContainer" then containers[#containers + 1] = stub.frames[i] end
+  end
+  scanned = #stub.frames
+  return containers
+end
+
 -- The client's aura containers showing a unit read its auras again (the
 -- client does this itself on an aura change), then UNIT_AURA fires.
 local function auraChanged(unit, payload)
   local u = resolveUnit(unit)
-  for _, w in ipairs(stub.frames) do
-    if w.__kind == "AuraContainer" and w.__unit and resolveUnit(w.__unit) == u then w:UpdateAllAuras() end
+  for _, w in ipairs(auraContainers()) do
+    if w.__unit and resolveUnit(w.__unit) == u then w:UpdateAllAuras() end
   end
   stub.fire("UNIT_AURA", unit, payload)
 end

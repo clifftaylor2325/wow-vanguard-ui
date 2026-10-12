@@ -25,7 +25,7 @@ const TOOLTIP_ENV = `
 it("tooltips", () => {
   const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV);
   let t = tooltip(addon);
-  expect(t.nine === 0 && addon.eval("return GameTooltip.vgSkinned") === true, "the default art is hidden under a flat panel").toBeTruthy();
+  expect(t.nine === 0 && addon.eval("return ns.FrameState('vgSkinned')[GameTooltip]") === true, "the default art is hidden under a flat panel").toBeTruthy();
   expect(addon.eval("return GameTooltipStatusBar.__barTexture ~= nil"), "the health bar gets a flat texture").toBeTruthy();
   addon.eval("__showUnit('target')");
   t = tooltip(addon);
@@ -107,7 +107,7 @@ const MORE_TIPS = ["ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2", "GameNo
 const MORE_TIPS_ENV = MORE_TIPS.map((n) => `local tt = CreateFrame("Frame", "${n}", UIParent) tt.NineSlice = CreateFrame("Frame", nil, tt)`).join("\n");
 // Each of those tooltips' state: skinned (its NineSlice faded under a panel) or not.
 const moreTips = (addon) => addon.eval(`local out = {} for _, n in ipairs({ "${MORE_TIPS.join('", "')}" }) do
-    out[#out + 1] = _G[n].vgSkinned == true and _G[n].NineSlice.__alpha == 0 and select("#", _G[n]:GetRegions()) > 0
+    out[#out + 1] = ns.FrameState('vgSkinned')[_G[n]] == true and _G[n].NineSlice.__alpha == 0 and select("#", _G[n]:GetRegions()) > 0
   end return out`);
 
 it("more tooltips: the client's other tooltips get the panel with the menus group on, one it lacks is skipped", () => {
@@ -117,5 +117,5 @@ it("more tooltips: the client's other tooltips get the panel with the menus grou
   const off = loggedIn(MORE_TIPS_ENV + 'local tt = CreateFrame("Frame", "GameTooltip", UIParent) tt.NineSlice = CreateFrame("Frame", nil, tt)',
     { savedVariables: "VanguardDB.profiles = { Default = { Windows = { menus = false } } }" });
   expect(moreTips(off), "with the menus group off they are the game's").toEqual(MORE_TIPS.map(() => false));
-  expect(off.eval("return GameTooltip.vgSkinned"), "the main tooltips still are skinned").toBe(true);
+  expect(off.eval("return ns.FrameState('vgSkinned')[GameTooltip]"), "the main tooltips still are skinned").toBe(true);
 });

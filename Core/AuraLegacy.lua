@@ -108,16 +108,15 @@ function L.Create(parent, spec, unit)
   frame:SetSize(1, 1)
   if spec.level then frame:SetFrameLevel(spec.level) end
   local c = setmetatable({ frame = frame, flow = flow(spec), groups = build(frame, spec), ids = {}, placed = {} }, Container)
-  frame:SetScript("OnEvent", function(_, _, _, info) c:Refresh(info) end)
+  c.events = ns.OnUnit("UNIT_AURA", function(_, _, info) c:Refresh(info) end)
   c:SetUnit(unit)
   return c
 end
 
--- Shows another unit's auras (nil: none), refreshed on its UNIT_AURA.
+-- Shows another unit's auras (nil: none), refreshed on its UNIT_AURA (ns.OnUnit, the unit's only).
 function Container:SetUnit(unit)
   self.unit = unit
-  self.frame:UnregisterAllEvents()
-  if unit then self.frame:RegisterUnitEvent("UNIT_AURA", unit) end
+  ns.SetUnits(self.events, unit)
   self:Refresh()
 end
 

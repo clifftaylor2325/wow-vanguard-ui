@@ -13,6 +13,9 @@
 //      exception is ns.Soon's timer in Core/Combat.lua, which runs each job
 //      under ns.Try.
 // Test cases (the callback passed to it(...)) are exempt from rule 1.
+// Two more rules are report-only (#263, reportSource below): secure calls
+// outside a combat guard, and OnUpdate handlers neither throttled nor cleared.
+// They fail the scan only when a count rises above scripts/code-quality-baseline.json.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -397,4 +400,164 @@ export function checkSource(file, src) {
   const documented = documentedSet(fns, kinds);
   const out = fns.flatMap((fn) => functionProblems(fn, kinds, documented));
   return lua ? out.concat(colorProblems(file, src), fontProblems(file, src), bareCallbackProblems(file, src)) : out;
+}
+
+// Report-only rules (#263) -------------------------------------------------------------
+// Two heuristics for the game rules that cause the subtlest bugs. They count, they don't
+// block: scripts/check-code-quality.mjs fails only when a count rises above its baseline in
+// scripts/code-quality-baseline.json (a ratchet, like scripts/lua-coverage-floor.json). A
+// rule becomes blocking once it is quiet on main. Both have false positives by design.
+//   secure-outside-combat-guard: a call that changes a secure frame or a binding (refused in
+//     combat) sits in no function that runs under ns.OutOfCombat or checks InCombatLockdown()
+//     / ns.InCombat() before it. Code at a file's top level runs at load and counts as safe.
+//   unbounded-onupdate: an OnUpdate handler that neither waits on the elapsed time it adds up
+//     (or on GetTime()) nor is cleared anywhere in its file with SetScript("OnUpdate", nil).
+
+export const REPORT_RULES = ["secure-outside-combat-guard", "unbounded-onupdate"];
+
+// Calls the client refuses on protected frames, or for bindings, while in combat.
+const SECURE_CALLS = new Set([
+  "SetAttribute", "RegisterStateDriver", "UnregisterStateDriver", "RegisterAttributeDriver", "UnregisterAttributeDriver",
+  "SecureHandlerExecute", "SecureHandlerWrapScript", "SecureHandlerUnwrapScript", "SecureHandlerSetFrameRef",
+  "RegisterUnitWatch", "UnregisterUnitWatch", "ClearOverrideBindings",
+  "SetOverrideBinding", "SetOverrideBindingClick", "SetOverrideBindingSpell", "SetOverrideBindingMacro", "SetOverrideBindingItem",
+]);
+// Files whose secure calls all run where the frame is made and set up, in the same safe
+// window. Add a file only after reading every call in it; empty means none is excused.
+export const SECURE_ALLOW = new Set([]);
+// Words that, before a secure call in the same function, mean it checks for combat first.
+const COMBAT_CHECKS = new Set(["InCombatLockdown", "InCombat"]);
+
+// The last part of a dotted or method name ("ns.Bars:Apply" gives "Apply").
+const lastPart = (name) => name.split(/[.:]/).pop();
+
+// Every function in code tokens as { open, close, name }: token indexes of `function` and its `end`.
+function functionSpans(tokens) {
+  const stack = [];
+  const spans = [];
+  tokens.forEach((t, i) => {
+    if (t.kind !== "word" || !(LUA_BLOCK_OPEN.has(t.text) || LUA_BLOCK_CLOSE.has(t.text))) return;
+    if (LUA_BLOCK_OPEN.has(t.text)) stack.push(t.text === "function" ? { open: i, name: luaFunctionName(tokens, i) } : null);
+    else spans.push({ ...stack.pop(), close: i });
+  });
+  return spans.filter((s) => s.open !== undefined);
+}
+
+// The index of the token that closes the "(" at tokens[open] (the last token if none does).
+function closeParen(tokens, open) {
+  let depth = 0;
+  for (let k = open; k < tokens.length; k++) {
+    depth += nesting(tokens[k]);
+    if (depth === 0) return k;
+  }
+  return tokens.length - 1;
+}
+
+// [open, close] token ranges of each ns.OutOfCombat( ... ) call's arguments.
+function deferRanges(tokens) {
+  return tokens.flatMap((t, i) => {
+    const call = t.text === "ns" && tokens[i + 1]?.text === "." && tokens[i + 2]?.text === "OutOfCombat" && tokens[i + 3]?.text === "(";
+    return call ? [[i + 3, closeParen(tokens, i + 3)]] : [];
+  });
+}
+
+// True when the call at tokens[i] is one of SECURE_CALLS (not its definition or a mention).
+function isSecureCall(tokens, i) {
+  return SECURE_CALLS.has(tokens[i].text) && tokens[i + 1]?.text === "(" && tokens[i - 1]?.text !== "function";
+}
+
+// The words of tokens[a..b].
+const wordsIn = (tokens, a, b) => tokens.slice(a, b + 1).filter((t) => t.kind === "word").map((t) => t.text);
+
+// Functions that run out of combat: passed to ns.OutOfCombat, or named by a function that
+// does (inside its arguments, or in a function already known to run there; same file only).
+function deferredSpans(tokens, spans, ranges) {
+  const names = new Set(ranges.flatMap(([a, b]) => wordsIn(tokens, a, b)));
+  const safe = new Set();
+  for (let grew = true; grew; ) {
+    const more = spans.filter((s) => !safe.has(s) && (ranges.some(([a, b]) => a < s.open && s.close <= b) || (s.name && names.has(lastPart(s.name)))));
+    more.forEach((s) => safe.add(s) && wordsIn(tokens, s.open, s.close).forEach((w) => names.add(w)));
+    grew = more.length > 0;
+  }
+  return safe;
+}
+
+// True when the secure call at tokens[i] is at the top level (load time), or a function holding it
+// runs out of combat (deferredSpans) or checks for combat before it.
+function isCombatSafeAt(ctx, i) {
+  const enclosing = ctx.spans.filter((s) => s.open < i && i < s.close);
+  // True when function s checks for combat before tokens[i].
+  const checks = (s) => ctx.tokens.slice(s.open, i).some((t) => COMBAT_CHECKS.has(t.text));
+  return !enclosing.length || enclosing.some((s) => ctx.safe.has(s) || checks(s));
+}
+
+// Secure calls outside a combat guard: [{ rule, line, message }].
+function unguardedSecureCalls(file, src) {
+  if (!COLOR_SCOPE.test(file) || SECURE_ALLOW.has(file)) return [];
+  const tokens = codeTokens(src);
+  const spans = functionSpans(tokens);
+  const ctx = { tokens, spans, safe: deferredSpans(tokens, spans, deferRanges(tokens)) };
+  const line = lineIndex(src);
+  const hits = tokens.flatMap((t, i) => (isSecureCall(tokens, i) && !isCombatSafeAt(ctx, i) ? [t] : []));
+  const message = `outside a combat guard: run it through ns.OutOfCombat, or check InCombatLockdown() first`;
+  return hits.map((t) => ({ rule: REPORT_RULES[0], line: line(t.start), message: `${t.text}() ${message}` }));
+}
+
+// The OnUpdate scripts set in code tokens, as { at, handler } (handler: the argument's tokens).
+function onUpdateCalls(tokens) {
+  return tokens.flatMap((t, i) => {
+    const hit = (t.text === "SetScript" || t.text === "HookScript") && tokens[i + 1]?.text === "(" && /^["']OnUpdate["']$/.test(tokens[i + 2]?.text);
+    return hit ? [{ at: i, handler: callArgs(tokens, i + 1)[1] ?? [] }] : [];
+  });
+}
+
+// The tokens of a handler's function: the literal itself, or the function its name points to in the file.
+function handlerBody(tokens, spans, handler) {
+  if (handler.some((t) => t.text === "function")) return handler;
+  const names = new Set(handler.filter((t) => t.kind === "word").map((t) => t.text));
+  const span = spans.find((s) => s.name && names.has(lastPart(s.name)));
+  return span ? tokens.slice(span.open, span.close + 1) : [];
+}
+
+const SIGNS = new Set(["+", "-"]);
+
+// True when a handler adds up (or counts down) its elapsed time, its second parameter, and
+// acts only past a threshold, or returns early on GetTime().
+function isThrottled(body) {
+  const words = body.map((t) => t.text);
+  const open = words.indexOf("(", words.indexOf("function"));
+  const params = words.slice(open + 1, words.indexOf(")", open)).filter((w) => w !== ",");
+  const elapsed = params[1];
+  const adds = elapsed !== undefined && words.some((w, k) => w === elapsed && (SIGNS.has(words[k - 1]) || SIGNS.has(words[k + 1])));
+  const gates = words.includes("return") || words.includes("if");
+  return (adds && gates) || (words.includes("GetTime") && words.includes("return"));
+}
+
+const ONUPDATE_MESSAGE = 'OnUpdate handler neither throttled nor cleared: return early until enough elapsed time adds up, or SetScript("OnUpdate", nil) when done';
+
+// OnUpdate handlers neither throttled nor cleared in their file: [{ rule, line, message }].
+function unboundedOnUpdates(file, src) {
+  if (!COLOR_SCOPE.test(file)) return [];
+  const tokens = codeTokens(src);
+  const calls = onUpdateCalls(tokens);
+  if (calls.some((c) => c.handler.some((t) => t.text === "nil"))) return [];
+  const spans = functionSpans(tokens);
+  const line = lineIndex(src);
+  const loose = calls.filter((c) => !isThrottled(handlerBody(tokens, spans, c.handler)));
+  return loose.map((c) => ({ rule: REPORT_RULES[1], line: line(tokens[c.at].start), message: ONUPDATE_MESSAGE }));
+}
+
+// Report-only findings in one file: [{ rule, line, message }]. They never fail on their own.
+export function reportSource(file, src) {
+  if (!file.endsWith(".lua")) return [];
+  return unguardedSecureCalls(file, src).concat(unboundedOnUpdates(file, src));
+}
+
+// Each report-only rule's count against its baseline (a missing baseline is 0):
+// [{ rule, count, baseline, status }], status "above" (fails), "below" (lower the baseline) or "at".
+export function compareToBaseline(counts, baseline) {
+  return REPORT_RULES.map((rule) => {
+    const [count, base] = [counts[rule] ?? 0, baseline[rule] ?? 0];
+    return { rule, count, baseline: base, status: count > base ? "above" : count < base ? "below" : "at" };
+  });
 }

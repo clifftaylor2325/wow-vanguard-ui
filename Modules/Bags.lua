@@ -8,6 +8,10 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgSkinned = ns.FrameState("vgSkinned")
+local vgBorder = ns.FrameState("vgBorder")
+
 local T = ns.Theme
 
 local BG = ns.Module("Bags", {
@@ -66,7 +70,7 @@ end
 
 -- Whether the slot's border already shows r, g, b (nil r: the theme's border).
 local function unchanged(button, r, g, b)
-  local last = button.vgBorder
+  local last = vgBorder[button]
   if last == nil or anySecret(r, g, b) then return false end
   if r == nil then return last == false end
   return last ~= false and last[1] == r and last[2] == g and last[3] == b
@@ -77,8 +81,8 @@ local function paintQuality(button, r, g, b)
   if unchanged(button, r, g, b) then return end
   local rgb = r ~= nil and { r, g, b } or nil
   T.SetBorder(button, rgb)
-  button.vgBorder = rgb or false
-  if anySecret(r, g, b) then button.vgBorder = nil end
+  vgBorder[button] = rgb or false
+  if anySecret(r, g, b) then vgBorder[button] = nil end
 end
 
 -- Puts the item's quality color (the game sets it on its own border, which is
@@ -94,8 +98,8 @@ end
 -- color. Once per button: the game reuses its buttons and never undoes this.
 -- A slot with no button yet (a bag window the game hasn't filled) is skipped.
 local function skinItem(button)
-  if type(button) ~= "table" or button.vgSkinned then return end
-  button.vgSkinned = true
+  if type(button) ~= "table" or vgSkinned[button] then return end
+  vgSkinned[button] = true
   for _, key in ipairs(ITEM_ART) do
     local region = button[key] or (button["Get" .. key] and button["Get" .. key](button))
     if type(region) == "table" and region.SetAlpha then region:SetAlpha(0) end
