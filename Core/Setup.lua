@@ -612,7 +612,7 @@ function S.Open()
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
   state.layout, state.screen = guess and S.GuessLayout() or "keep", guess and S.DetectScreen() or "keep"
   state.reload, state.paused = false, false
-  T.FadeIn(frame)
+  T.OpenWindow(frame)
   showStep(1)
 end
 
@@ -629,7 +629,7 @@ end
 local function resume()
   if not state.paused then return end
   state.paused = false
-  T.FadeIn(frame)
+  T.OpenWindow(frame)
   showStep(state.step)
 end
 

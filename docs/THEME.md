@@ -40,7 +40,7 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | | `sheen` | `ffffff` at 0.06 | The one-pixel light line inside a panel's top border. |
 | | `divider` | `2f343d` | Lines between sections (the options window). |
 | | `shade` | `000000` at 0.5 | Dimming behind or under things: the options nav, unit frame bar backgrounds, the cast bar's latency zone, the AFK screen. |
-| | `hover` | `ffffff` at 0.08 | The faint white wash under the mouse on buttons, rows, raid tiles and menu icons. |
+| | `hover` | `ffffff` at 0.08 | The faint white wash under the mouse on rows, tabs, raid tiles and menu icons (see-through things; buttons ease to `raisedHover`). |
 | | `darkBar` | `2a3039` | The health bar of the raid style "Dark, class-coloured names". |
 | | `checked` | `ffffff` at 0.25 | An action button that is checked (an active stance or aura). |
 | | `gridline` | `ffffff` at 0.12 | The unlock-mode grid. |
@@ -147,7 +147,7 @@ The theme has no spacing tokens: each layout keeps its sizes as constants in its
 | --- | --- |
 | `T.Panel(frame, opts)` | A `panel` fill (`inset` with `opts.inset`, `raised` with `opts.raised`, alpha `opts.alpha`), a one-screen-pixel border in `edge` (or the accent with `opts.accent`, or `T.SetBorder`'s colour), a one-pixel `sheen` line just inside the top border, and with `opts.shadow` a soft shadow. `opts.pad` draws it all that many units out past the frame (game windows use 6, room their thick border art used to take; `T.Padding(frame)` reads it back). `noBg`, `noBorder`, `noSheen` leave a part out. |
 | `T.HudPanel(frame, opts)` | `T.Panel` for the HUD (unit frames, bars, the minimap): never a sheen, and a shadow only when "Soft shadows under frames" (`hudShadow`, off by default, applies on reload) is on, so the screen stays calm. |
-| `T.Button(button)` | An `inset` panel, the template's art faded out, and a `hover` wash. |
+| `T.Button(button)` | An `inset` panel, the template's art faded out, and an eased hover (#257): a `raisedHover` fill over the inset and a one-pixel `borderHi` line inside the top border, easing in over `T.HOVER_IN` (0.1 s) and out over `T.HOVER_OUT` (0.13 s), eased out (`OUT` smoothing), never on a disabled button, cleared at once when the button hides (`T.EaseHover`). |
 | `T.EditBox(box)` | An `inset` panel, the template's art faded out. |
 | `T.WindowControl(button, icon, opts)` | A window control (close, maximize, minimize): the template's art faded, the glyph (`T.CONTROL`: drawn on a 20-unit grid, its mark in the middle 9 to 11 units; maximize and minimize are diagonal arrows pointing out and in) in `text2`; under the mouse a 20 x 20 tile behind it (`bad` at 0.9 with `opts.tile = "close"`, else the `accent` at 0.35) and the glyph `white`. An unsized button takes the tile's size. |
 | `T.CloseButton(button)` | `T.WindowControl` with the plain cross (`CloseMark`) and the red tile. |
@@ -217,17 +217,18 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 
 ## Motion and sound
 
-Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`, `T.FadeOut`, `T.StopFade`): an alpha animation on frames that are not protected (never a secure frame), 0.12 s unless the caller asks for another length. **In combat no fade lasts longer than 0.15 s** (`T.COMBAT_FADE`, applied by `T.FadeTime`): combat counts from the fight's `PLAYER_REGEN_DISABLED` (which comes just before the client's lockdown) until `PLAYER_REGEN_ENABLED`. **Reduce motion** (General → Motion and sound, off by default) turns every fade into an instant show or hide. **Interface sounds** (on by default) turns Vanguard's own interface sounds off. Everything else that changes on screen does so at once, without animation.
+Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`, `T.FadeOut`, `T.StopFade`, `T.OpenWindow`, `T.CloseWindow`, `T.EaseHover`): an alpha animation, eased out, on frames that are not protected (never a secure frame) or on a button's own textures, 0.12 s unless the caller asks for another length. A window opens with `T.OpenWindow` (#257): it fades in over `T.WINDOW_OPEN` (0.13 s) while rising `T.WINDOW_RISE` (4) screen pixels into its own spot, so it ends on the pixel grid, and opens at once in combat; `T.CloseWindow` fades it out over `T.WINDOW_CLOSE` (0.1 s). **In combat no fade lasts longer than 0.15 s** (`T.COMBAT_FADE`, applied by `T.FadeTime`): combat counts from the fight's `PLAYER_REGEN_DISABLED` (which comes just before the client's lockdown) until `PLAYER_REGEN_ENABLED`. **Reduce motion** (General → Motion and sound, off by default) turns every fade into an instant show or hide. **Interface sounds** (on by default) turns Vanguard's own interface sounds off. Everything else that changes on screen does so at once, without animation.
 
 ### Fades and flashes
 
 | What | Kind | Out of combat | In combat | Turned off by |
 | --- | --- | --- | --- | --- |
-| Options window (`/vg`) opens | fade in | 0.12 s | 0.12 s | Reduce motion |
-| Options window closes | fade out | 0.12 s | 0.12 s | Reduce motion |
+| Options window (`/vg`) opens | fade in, rising 4 px into place | 0.13 s | at once | Reduce motion |
+| Options window closes | fade out | 0.1 s | 0.1 s | Reduce motion |
+| A button (`T.Button`) under the mouse | hover eases in / out | 0.1 s / 0.13 s | 0.1 s / 0.13 s | Reduce motion (at once) |
 | Options page change | stops a fade in progress; the page appears at once | - | - | - |
 | Unlock mode: a frame's popover (right-click a handle) opens / closes | fade in / out | 0.12 s | closes in 0.12 s (a fight ends unlock mode) | Reduce motion |
-| Setup wizard opens, or comes back after a fight | fade in | 0.12 s | - (waits for the fight to end) | Reduce motion |
+| Setup wizard opens, or comes back after a fight | fade in, rising 4 px into place | 0.13 s | - (waits for the fight to end) | Reduce motion |
 | AFK screen appears | fade in | 0.4 s | - (never opens in a fight) | Reduce motion |
 | AFK screen goes (you are back, a click or key, a fight starts) | fade out | 0.2 s | 0.15 s | Reduce motion |
 | Instance prep card shows, then goes after Hide after (20 s) or its close button | fade in / fade out | 0.12 s | - (never opens in a fight; closes in 0.12 s) | Reduce motion |

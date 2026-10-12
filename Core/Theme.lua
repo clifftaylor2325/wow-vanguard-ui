@@ -459,13 +459,14 @@ local function sheen(frame)
 end
 
 -- Places the sheen one pixel inside the top border (`pad` units out past the frame's top), one pixel tall.
-local function placeSheen(t, frame, pad)
+-- (A button's hover line sits in the same place, in `token`.)
+local function placeSheen(t, frame, pad, token)
   local px, out = T.Pixel(frame), T.PixelRound(frame, pad or 0)
   t:ClearAllPoints()
   t:SetPoint("TOPLEFT", frame, "TOPLEFT", px - out, out - px)
   t:SetPoint("TOPRIGHT", frame, "TOPRIGHT", out - px, out - px)
   t:SetHeight(px)
-  T.Tint(t, "sheen")
+  T.Tint(t, token or "sheen")
 end
 
 -- How far a shadow reaches past its frame. It sits evenly around the frame:
@@ -721,15 +722,31 @@ function T.Padding(frame)
   return entry and entry.opts.pad or 0
 end
 
--- A flat button: inset panel, template art faded, a faint white hover.
+-- Places a button's hover line (one pixel inside its top border, in borderHi) when it is painted.
+local function paintHoverLine(entry, button)
+  placeSheen(entry.parts.hoverLine, button, entry.opts.pad, "borderHi")
+end
+
+-- A button's hover look (#257): a raisedHover fill over its inset fill and a one-pixel borderHi
+-- line along its top, both clear until the mouse comes over it (T.EaseHover eases them).
+local function hoverParts(button, entry)
+  local fill = T.Tint(solid(button, "BACKGROUND", 1, "fill"), "raisedHover")
+  fill:SetAllPoints()
+  entry.parts.hover, entry.parts.hoverLine, entry.paint = fill, solid(button, "BORDER", 2, "border"), paintHoverLine
+  button.vgHover = { fill, entry.parts.hoverLine }
+  for _, t in ipairs(button.vgHover) do t:SetAlpha(0) end
+  button:HookScript("OnEnter", ns.Guard("button hover", function(b) T.EaseHover(b, true) end))
+  button:HookScript("OnLeave", ns.Guard("button hover", function(b) T.EaseHover(b, false) end))
+  button:HookScript("OnHide", ns.Guard("button hover", function(b) T.EaseHover(b, false, true) end))
+end
+
+-- A flat button: inset panel, template art faded, an eased hover (raisedHover and a borderHi top line).
 function T.Button(button)
   local fresh = not painted[button]
   local entry = base(button, "button", { inset = true })
   if fresh then
     T.FadeRegions(button, { [entry.parts.bg] = true })
-    entry.parts.hover = solid(button, "HIGHLIGHT", nil, "fill")
-    entry.parts.hover:SetAllPoints()
-    T.Tint(entry.parts.hover, "hover")
+    hoverParts(button, entry)
   end
   repaint(button, entry)
   return button
@@ -1286,12 +1303,13 @@ end
 
 -- Motion and sound --------------------------------------------------------------------
 
--- A frame's alpha animation (made once), or false when the client can't animate it.
+-- A frame's (or texture's) alpha animation (made once, eased out: fast, then settling), or
+-- false when the client can't animate it.
 local function fader(frame)
   if frame.vgFader ~= nil then return frame.vgFader end
   local group = frame.CreateAnimationGroup and frame:CreateAnimationGroup()
   local alpha = group and group.CreateAnimation and group:CreateAnimation("Alpha")
-  if alpha then group:SetToFinalAlpha(true) end
+  if alpha then group:SetToFinalAlpha(true) alpha:SetSmoothing("OUT") end
   frame.vgFader = alpha and { group = group, alpha = alpha } or false
   return frame.vgFader
 end
@@ -1350,6 +1368,62 @@ function T.FadeOut(frame, seconds, done)
   local finish = function() frame:Hide() frame:SetAlpha(1) if done then done() end end
   if not f or not frame:IsShown() then return finish() end
   playFade(f, 1, 0, T.FadeTime(seconds), finish)
+end
+
+-- How a window opens and closes (#257): seconds to open and to close, and how many screen
+-- pixels it rises into place as it opens.
+T.WINDOW_OPEN, T.WINDOW_CLOSE, T.WINDOW_RISE = 0.13, 0.1, 4
+
+-- Adds an animation of a kind to group, at a place in its order, lasting seconds.
+local function step(group, kind, order, seconds)
+  local a = group:CreateAnimation(kind)
+  a:SetOrder(order)
+  a:SetDuration(seconds)
+  return a
+end
+
+-- A window's open animation (made once), or false when the client can't animate it: a drop
+-- (at once), then a rise back to its spot while it fades in, eased out.
+local function riser(frame)
+  if frame.vgRiser ~= nil then return frame.vgRiser end
+  local group = frame.CreateAnimationGroup and frame:CreateAnimationGroup()
+  frame.vgRiser = group and group.CreateAnimation and { group = group, drop = step(group, "Translation", 1, 0),
+    rise = step(group, "Translation", 2, T.WINDOW_OPEN), alpha = step(group, "Alpha", 2, T.WINDOW_OPEN) } or false
+  if frame.vgRiser then frame.vgRiser.rise:SetSmoothing("OUT") frame.vgRiser.alpha:SetSmoothing("OUT") end
+  return frame.vgRiser
+end
+
+-- Opens a window (#257): shown, fading in as it rises T.WINDOW_RISE screen pixels into its own
+-- spot (so it ends on the pixel grid); at once in combat or with Reduce motion.
+function T.OpenWindow(frame)
+  local r = not T.Settings().reduceMotion and not (fighting or ns.InCombat()) and riser(frame)
+  T.StopFade(frame)
+  frame:Show()
+  if not r then return end
+  local px = T.Pixel(frame) * T.WINDOW_RISE
+  r.group:Stop() r.drop:SetOffset(0, -px) r.rise:SetOffset(0, px)
+  r.alpha:SetFromAlpha(0) r.alpha:SetToAlpha(1)
+  r.group:Play()
+end
+
+-- Closes a window (#257): fades it out over T.WINDOW_CLOSE, then hides it and runs done.
+function T.CloseWindow(frame, done)
+  if frame.vgRiser then frame.vgRiser.group:Stop() end
+  T.FadeOut(frame, T.WINDOW_CLOSE, done)
+end
+
+-- How long a button's hover takes to ease in and out (#257), in seconds; capped in combat like any fade.
+T.HOVER_IN, T.HOVER_OUT = 0.1, 0.13
+
+-- Eases a button's hover look in (on, while it is enabled) or out, from where it is now;
+-- at once with Reduce motion, or when `now` (the button was hidden).
+function T.EaseHover(button, on, now)
+  local to = on and (not button.IsEnabled or button:IsEnabled()) and 1 or 0
+  for _, t in ipairs(button.vgHover or {}) do
+    local f = not now and activeFader(t)
+    if f then playFade(f, t:GetAlpha(), to, T.FadeTime(to == 1 and T.HOVER_IN or T.HOVER_OUT), function() t:SetAlpha(to) end) end
+    if not f then T.StopFade(t) t:SetAlpha(to) end
+  end
 end
 
 -- Stops a fade in progress and leaves the frame fully visible.

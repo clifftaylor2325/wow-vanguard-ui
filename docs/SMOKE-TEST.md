@@ -140,6 +140,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the hint under the choices starts `Sharpest: every line on whole screen pixels.` Every border, button edge and gap between action buttons is a whole number of screen pixels, with no blurred or doubled line; the close button's cross sits centred. On a 4K screen each UI unit is two pixels. After the scale change, borders are still sharp.
 - If it fails, paste: the zoomed crops, your resolution, `/vg status` and `/vg errors`.
 
+### 5.3 Hover and window motion
+
+- Do: open `/vg` and move the mouse slowly over a few buttons (Run setup, Move frames). Close `/vg` and open it again. Then start a fight (a training dummy) and open `/vg` during it.
+- Expect: a button eases to a lighter fill with a thin light line along its top as the mouse comes over, and eases back as it leaves; a disabled button shows no hover. The window rises a few pixels into place as it fades in and ends sharp, not blurred; it closes quickly. In combat it opens at once. With Reduce motion on, all of it is instant.
+- If it fails, paste: a short video or two screenshots, and `/vg errors`.
+
 ## 6. Party and raid
 
 ### 6.1 Party frames (if you can)

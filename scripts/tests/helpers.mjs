@@ -347,7 +347,14 @@ export const FAKE_FADES = `
       function g:Stop() self.playing = false end
       function g:SetScript(k, fn) self.scripts[k] = fn end
       function g:Play() self.playing = true table.insert(__fades, self) end
-      function g:CreateAnimation() local a = {} function a:SetFromAlpha(v) g.from = v end function a:SetToAlpha(v) g.to = v end function a:SetDuration(v) g.duration = v end return a end
+      function g:CreateAnimation(kind)
+        local a = { kind = kind } g.anims = g.anims or {} table.insert(g.anims, a)
+        function a:SetFromAlpha(v) g.from = v end function a:SetToAlpha(v) g.to = v end
+        function a:SetDuration(v) self.duration = v if kind == "Alpha" then g.duration = v end end
+        function a:SetSmoothing(v) self.smoothing = v end function a:SetOrder(v) self.order = v end
+        function a:SetOffset(x, y) self.offset = { x, y } end
+        return a
+      end
       return g
     end
   end
