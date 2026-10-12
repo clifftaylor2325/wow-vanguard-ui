@@ -4,8 +4,9 @@ name: lua suite
 # tests) with line coverage of the addon's own Lua: a failing test fails
 # the run, and so does coverage below the floor in
 # scripts/lua-coverage-floor.json (only goes up; 100 is the goal). Then the
-# code-quality scan, luacheck, Lua 5.1 syntax and the release zip's
-# contents; and, when asked, the UI preview as a second job beside it.
+# raid benchmark, the code-quality scan, luacheck, Lua 5.1 syntax and the
+# release zip's contents; and, when asked, the UI preview as a second job
+# beside it.
 #
 # This workflow has no triggers of its own: full-suite.yml calls it when a
 # pull request is opened ready for review or marked ready for review, on
@@ -74,6 +75,14 @@ jobs:
           echo "VG_SHUFFLE_SEED=$seed" >> "$GITHUB_ENV"
           printf 'Shuffled run, seed %s. Replay: VG_SHUFFLE_SEED=%s npm test (PowerShell: $env:VG_SHUFFLE_SEED=%s; npm test)\n' "$seed" "$seed" "$seed" | tee -a "$GITHUB_STEP_SUMMARY"
       - run: npm run coverage
+      # The raid benchmark (scripts/bench.mjs, issue #255): time and Lua
+      # instructions per event under a scripted 40-player raid, a harness
+      # measurement until /vg perf confirms it in game. Its tables go to the
+      # job summary and its JSON into the lua-coverage artifact. It runs
+      # without --budget, so a slowdown never fails the run (shared runners
+      # are noisy); an error the addon catches under the raid load does.
+      - name: Raid benchmark (harness measurement)
+        run: npm run bench -- --summary "$GITHUB_STEP_SUMMARY"
       - run: npm run quality
       - run: |
           luacheck --version
@@ -99,6 +108,7 @@ jobs:
           path: |
             coverage/lua-coverage.json
             coverage/junit.xml
+            coverage/bench/*.json
           if-no-files-found: ignore
 
   preview:

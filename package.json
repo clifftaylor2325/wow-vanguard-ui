@@ -11,6 +11,7 @@
     "coverage": "node scripts/coverage-lua.mjs",
     "timing": "node scripts/suite-timing.mjs",
     "profile": "node scripts/profile-lua.mjs",
+    "bench": "node scripts/bench.mjs",
     "media": "node scripts/build-media.mjs",
     "quality": "node scripts/check-code-quality.mjs",
     "lint": "luacheck .",
