@@ -11,6 +11,16 @@ Things to know before you start:
 - Where an Expect depends on an earlier fix, a bracketed note says which. If that fix did not land, the note says what you will see instead.
 - Quote chat lines as they appear; a missing or different line is a finding.
 
+## Run order by crash risk
+
+If the beta closes before you finish, do these first and stop after any step that throws a Lua error (paste the report block):
+
+1. 1.1 to 1.4: install, first login, `/vg status` (also read the real Interface build from it and put it in `Vanguard.toc` before packaging), `/vg errors`.
+2. 7 and 3.3: combat with auras, cast bars, nameplates and unlocked frames.
+3. 9.4 and 14.9.2: open the auction house, then Post from the Selling tab. Run `/vg errors` right after.
+4. 14: each skinned game window, opened once in combat and once out of it.
+5. Everything else, in section order.
+
 ## Report block
 
 For every failed step, paste all of this (steps below say "If it fails, paste:" for anything extra):
