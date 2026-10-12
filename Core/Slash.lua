@@ -13,6 +13,7 @@ local HELP = {
   "frames               list the movable frames",
   "grid [size|on|off]   the unlock-mode grid; snap on|off   snapping while dragging",
   "texelsnap [on|off]   still borders, fills and lines snap to the pixel grid (a test; off by default)",
+  "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
   "accent <rrggbb|name> set the accent color (brass, arcane, jade, orchid, copper); accent reset",
   "theme reset          every theme setting back to default",
   "modules              list modules; enable|disable <module> (then /reload)",
@@ -148,6 +149,13 @@ local function texelSnapCommand(rest)
   local on = rest == "on" or (rest == "" and not T.Settings().texelSnap)
   T.SetTexelSnap(on)
   chat(on and "Texel snapping on: borders, fills, dividers and sheens snap to the pixel grid." or "Texel snapping off.")
+end
+
+-- /vg nineslice [on|off]: shadows and glows as one nine-slice texture each, after a reload (#236).
+local function nineSliceCommand(rest)
+  local s = T.Settings()
+  s.sliceRings = rest == "on" or (rest == "" and not s.sliceRings)
+  chat((s.sliceRings and "Nine-slice shadows on" or "Nine-slice shadows off") .. " after a /reload.")
 end
 
 -- /vg theme reset
@@ -477,6 +485,7 @@ local COMMANDS = {
   grid = gridCommand,
   snap = snapCommand,
   texelsnap = texelSnapCommand,
+  nineslice = nineSliceCommand,
   theme = themeCommand,
   modules = modulesCommand,
   enable = setModule(true),

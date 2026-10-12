@@ -591,3 +591,25 @@ it("inner bevel (#234): buttons and raised panels get a borderHi line inside the
   expect([flat.length, flat[0][1], isTok(addon, flat[0][2], "sheen")], "a plain panel: no bevel, its sheen on the first row").toEqual([1, -1, true]);
   expect(lines(addon, "__slot").some((x) => near(x[2], "borderHi", 0.35)), "a slot keeps its own bevel, not this one").toBe(false);
 });
+
+// The Shadow or Glow textures on a frame: { count, the first one's slice margins, its TOPLEFT x and y }.
+const ringOf = (addon, lua, art) => addon.eval(`local f, n, first = ${lua}, 0, nil
+  for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and (w.__texture or ""):find("${art}$") then n = n + 1 first = first or w end end
+  local p = first and first.__points.TOPLEFT
+  return { n, first and first.__sliceMargins or false, p and p.x or false, p and p.y or false }`);
+
+it("nine-slice rings (#236): off by default; /vg nineslice draws each shadow and glow as one sliced texture after a reload, eight pieces where the client can't", () => {
+  const addon = loggedIn();
+  expect(ringOf(addon, 'ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })', "Shadow")[0], "off by default: eight pieces").toBe(8);
+  addon.slash("nineslice");
+  expect([addon.eval("return ns.Theme.Settings().sliceRings"), chatHas(addon, /Nine-slice shadows on after a \/reload/)], "the switch, saved, says it needs a reload").toEqual([true, true]);
+  addon.slash("nineslice off");
+  expect([addon.eval("return ns.Theme.Settings().sliceRings"), chatHas(addon, /Nine-slice shadows off after a \/reload/)], "and off").toEqual([false, true]);
+  const on = loggedIn("", { savedVariables: "VanguardDB = { profiles = { Default = { theme = { sliceRings = true } } } }" });
+  const ten = px(on, 10), pixel = on.eval("return ns.Theme.Pixel(UIParent)");
+  expect(ringOf(on, 'ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })', "Shadow"), "on: one texture, 16-pixel margins, 10 units out on every side").toEqual([1, [16, 16, 16, 16], -ten, ten]);
+  on.eval('__g = CreateFrame("Frame", nil, UIParent) __glow = ns.Theme.Glow(__g, 6) ns.Theme.SizeGlow(__glow, __g, 2) ns.Theme.ShowGlow(__glow, true)');
+  expect([ringOf(on, "__g", "Glow"), on.eval("return __glow[1]:IsShown()")], "a glow is one texture too, sized to whole pixels and shown").toEqual([[1, [16, 16, 16, 16], -2 * pixel, 2 * pixel], true]);
+  on.eval('__old = CreateFrame("Frame", nil, UIParent) local real = __old.CreateTexture __old.CreateTexture = function(...) local t = real(...) t.SetTextureSliceMargins = false return t end ns.Theme.Panel(__old, { shadow = true })');
+  expect(ringOf(on, "__old", "Shadow")[0], "a client that can't slice gets the eight pieces").toBe(8);
+});

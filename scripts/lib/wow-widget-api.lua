@@ -47,7 +47,7 @@ local TEXTURE = {
   "GetTexture", "GetTextureFileID", "IsDesaturated", "RemoveMaskTexture",
   "SetAtlas", "SetBlendMode", "SetColorTexture", "SetDesaturated",
   "SetDesaturation", "SetGradient", "SetHorizTile", "SetMask", "SetRotation",
-  "SetSnapToPixelGrid", "SetTexCoord", "SetTexelSnappingBias", "SetTexture",
+  "SetSnapToPixelGrid", "SetTexCoord", "SetTexelSnappingBias", "SetTexture", "SetTextureSliceMargins",
   "SetVertTile", "SetVertexOffset",
 }
 

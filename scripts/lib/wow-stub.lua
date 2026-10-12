@@ -248,6 +248,9 @@ function methods:SetBlendMode(mode) self.__blend = mode end
 -- Records whether a texture snaps to the pixel grid.
 function methods:SetSnapToPixelGrid(snap) self.__snapToPixelGrid = snap end
 
+-- Records a texture's nine-slice margins (texture pixels: left, top, right, bottom).
+function methods:SetTextureSliceMargins(l, t, r, b) self.__sliceMargins = { l, t, r, b } end
+
 -- Records a texture's texel snapping bias.
 function methods:SetTexelSnappingBias(bias) self.__texelBias = bias end
 
