@@ -135,6 +135,27 @@ local function moduleRow(parent, row, width)
   return r
 end
 
+-- How opaque a button row is while it can't be used (its enabled() says false).
+local DISABLED_ALPHA = 0.5
+
+-- Greys a button row out (disabled, half opaque) while its enabled() says false; re-read on every refresh.
+local function followEnabled(b, enabled)
+  -- Re-reads enabled(): the button works, or is greyed out.
+  b.Refresh = function(self)
+    local on = enabled() == true
+    if on then self:Enable() else self:Disable() end
+    self:SetAlpha(on and 1 or DISABLED_ALPHA)
+  end
+  b:Refresh()
+end
+
+-- A button row: { "button", label, onClick, enabled }; enabled (optional) greys it out while it says false.
+local function buttonRow(c, r)
+  local b = W.Button(c, r[2], r[3], 220)
+  if r[4] then followEnabled(b, r[4]) end
+  return b
+end
+
 -- Row kind -> builder(parent, row, width) returning the widget.
 local BUILDERS = {
   -- One builder per row kind; each returns the widget it made.
@@ -142,7 +163,7 @@ local BUILDERS = {
   -- A note wraps to the card's width (its row grows to fit; see rowHeight).
   text = function(c, r, w) local fs = W.Text(c, r[2]) fs:SetWidth(w - PAD - 4) return fs end,
   check = function(c, r, w) return W.Check(c, r[2], r[3], r[4], w) end,
-  button = function(c, r) return W.Button(c, r[2], r[3], 220) end,
+  button = buttonRow,
   cycle = function(c, r, w) return W.Choice(c, r[2], r[3], r[4], r[5], w) end,
   slider = function(c, r, w) return W.Slider(c, r[2], r[3], r[4], r[5], w) end,
   swatches = function(c, _, w) local r = accentRow(c, w) addSwatches(r) return r end,
