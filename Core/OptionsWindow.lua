@@ -40,6 +40,22 @@ local function moduleRow(parent, row, width)
   return r
 end
 
+-- Disables a button row (the themed button's disabled look) while its enabled() says false; re-read on every refresh.
+local function followEnabled(b, enabled)
+  -- Re-reads enabled(): the button works, or is disabled.
+  b.Refresh = function(self)
+    if enabled() == true then self:Enable() else self:Disable() end
+  end
+  b:Refresh()
+end
+
+-- A button row: { "button", label, onClick, enabled }; enabled (optional) disables it while it says false.
+local function buttonRow(c, r)
+  local b = W.Button(c, r[2], r[3], 220)
+  if r[4] then followEnabled(b, r[4]) end
+  return b
+end
+
 -- Row kind -> builder(parent, row, width) returning the widget.
 local BUILDERS = {
   -- One builder per row kind; each returns the widget it made.
@@ -47,7 +63,7 @@ local BUILDERS = {
   -- A note wraps to the card's width (its row grows to fit; see rowHeight).
   text = function(c, r, w) local fs = W.Text(c, r[2]) fs:SetWidth(w - PAD - 4) return fs end,
   check = function(c, r, w) return W.Check(c, r[2], r[3], r[4], w) end,
-  button = function(c, r) return W.Button(c, r[2], r[3], 220) end,
+  button = buttonRow,
   cycle = function(c, r, w) return W.Choice(c, r[2], r[3], r[4], r[5], w) end,
   slider = function(c, r, w) return W.Slider(c, r[2], r[3], r[4], r[5], w) end,
   module = moduleRow,
@@ -556,13 +572,31 @@ end
 
 -- Building and showing -----------------------------------------------------------------------
 
--- Lets the window be dragged around by its header.
+-- The window's place is kept with the game windows' (the Windows module's settings, Modules/WindowsMove.lua) under this name.
+local PLACE_KEY = "Vanguard_Options"
+
+-- The window dropped: it stops and its place is saved.
+local function dropped(f)
+  f:StopMovingOrSizing()
+  ns.GetModule("Windows").SavePlace(PLACE_KEY, f)
+end
+
+-- Lets the window be dragged around by its header, kept on the screen; where it is dropped is remembered.
 local function makeMovable(f)
   f:SetMovable(true)
+  f:SetClampedToScreen(true)
   f.header:EnableMouse(true)
   f.header:RegisterForDrag("LeftButton")
-  f.header:SetScript("OnDragStart", function() f:StartMoving() end)
-  f.header:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
+  f.header:SetScript("OnDragStart", ns.Guard("drag options", function() f:StartMoving() end))
+  f.header:SetScript("OnDragStop", ns.Guard("drop options", function() dropped(f) end))
+end
+
+-- Puts the window where it was last dropped, or in the middle of the screen (after Reset window positions too).
+function O.PlaceWindow()
+  if not window then return end
+  window:ClearAllPoints()
+  window:SetPoint("CENTER")
+  ns.GetModule("Windows").PutBack(PLACE_KEY, window)
 end
 
 -- How wide the thumb's grip is (units): wider than the thin bar, so it is easy to catch.
@@ -593,11 +627,10 @@ local function addThumb(f)
   f.grip:Hide()
 end
 
--- The window frame: centered, above other windows, closes with Escape.
+-- The window frame: opaque (no world shows through, under short pages either), above other windows, closes with Escape (O.PlaceWindow places it).
 local function windowFrame()
-  local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = 0.98, shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = 1, shadow = true })
   T.PixelSize(f, WIDTH, HEIGHT, true)
-  f:SetPoint("CENTER")
   f:SetFrameStrata("DIALOG")
   f:EnableMouse(true)
   if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_Options") end
@@ -614,6 +647,7 @@ local function build()
   addNav(window)
   addThumb(window)
   makeMovable(window)
+  O.PlaceWindow()
   wireKeys(window)
 end
 

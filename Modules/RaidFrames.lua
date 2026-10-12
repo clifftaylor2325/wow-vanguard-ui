@@ -84,13 +84,19 @@ function RF.RoleMark(unit)
   return RF.ROLE_MARKS[role], RF.ROLE_MARKS[role] and "text2"
 end
 
--- Missing health as short text ("-16K"); "" at full health, or when the client
+-- Missing health as short text ("-16K") from plain numbers; "" at full health.
+function RF.DeficitText(health, max)
+  if health >= max then return "" end
+  local missing = max - health
+  return "-" .. (type(AbbreviateNumbers) == "function" and AbbreviateNumbers(missing) or tostring(missing))
+end
+
+-- A unit's missing health as short text; "" at full health, or when the client
 -- keeps the values secret (in instanced combat), since they can't be subtracted.
 function RF.Deficit(unit)
   local health, max = ns.PlainNumber(UnitHealth(unit)), ns.PlainNumber(UnitHealthMax(unit))
-  if not health or not max or health >= max then return "" end
-  local missing = max - health
-  return "-" .. (type(AbbreviateNumbers) == "function" and AbbreviateNumbers(missing) or tostring(missing))
+  if not health or not max then return "" end
+  return RF.DeficitText(health, max)
 end
 
 -- True when two unit tokens name the same unit (a hidden answer counts as no).
@@ -135,15 +141,26 @@ local function showRoleTexture(t, mark)
   if mark then t:SetTexture(mark) end
 end
 
--- The role mark (with its shadow), or none. With no mark it narrows to one
--- unit, so the name anchored after it starts near the row's start. Nothing is
--- re-anchored, so this is safe in combat (the game's raid frames do the same).
-local function updateRole(b, unit)
-  local mark, color = RF.RoleMark(unit)
+-- Paints a role mark (an icon path, with its shadow) in a color, or none. With no
+-- mark it narrows to one unit, so the name anchored after it starts near the row's
+-- start. Nothing is re-anchored, so this is safe in combat (the game's raid frames do the same).
+function RF.PaintRole(b, mark, color)
   showRoleTexture(b.role, mark)
   showRoleTexture(b.roleShadow, mark)
   if color then T.Tint(b.role, color) end
   b.role:SetWidth(mark and b.roleSize or 1)
+end
+
+-- The unit's role mark (with its shadow), or none.
+local function updateRole(b, unit)
+  RF.PaintRole(b, RF.RoleMark(unit))
+end
+
+-- Paints the status line: down ("Dead" / "Offline") when given, else the deficit text.
+function RF.PaintStatus(b, down, deficit)
+  b.down = down ~= nil
+  b.status:SetText(down or deficit)
+  T.Color(b.status, down == "Dead" and "bad" or "text2")
 end
 
 -- Dead / Offline, else the missing health, on the status line.
@@ -151,15 +168,13 @@ local function updateStatus(b, unit)
   -- DownState, not the health text: that text can be a secret string, and
   -- comparing a secret errors ("attempt to compare ... a secret string value").
   local down = unitFrames().DownState(unit)
-  b.down = down ~= nil
-  b.status:SetText(down or RF.Deficit(unit))
-  T.Color(b.status, down == "Dead" and "bad" or "text2")
+  RF.PaintStatus(b, down, not down and RF.Deficit(unit))
 end
 
--- Colors by look: softened class bars (default) or bright ones, both with light
--- names; or dark bars with class-colored names. The dead and offline get a dark bar.
-local function paintHealth(b, unit)
-  local r, g, bl = unitFrames().HealthColor(unit)
+-- Paints the health bar and name from a class color r, g, bl by look: softened
+-- class bars (default) or bright ones, both with light names; or dark bars with
+-- class-colored names. The dead and offline (b.down) get a dark bar.
+function RF.PaintColors(b, r, g, bl)
   if b.down then return T.BarColor(b.health, "darkBar") end
   if RF.settings.look == "dark" then
     T.BarColor(b.health, "darkBar")
@@ -170,6 +185,11 @@ local function paintHealth(b, unit)
   T.Color(b.name, "text")
 end
 
+-- The health bar and name in the unit's colors.
+local function paintHealth(b, unit)
+  RF.PaintColors(b, unitFrames().HealthColor(unit))
+end
+
 -- The health bar, the status line under the name, and the colors.
 local function updateHealth(b, unit)
   b.health:SetMinMaxValues(0, UnitHealthMax(unit))
@@ -178,13 +198,23 @@ local function updateHealth(b, unit)
   paintHealth(b, unit)
 end
 
+-- Shows the thin power bar, or hides it when turned off; true when shown.
+function RF.ShowPower(b)
+  b.power:SetShown(RF.settings.showPower == true)
+  return RF.settings.showPower == true
+end
+
+-- Paints the power bar: value of max, in r, g, bl.
+function RF.PaintPower(b, value, max, r, g, bl)
+  b.power:SetMinMaxValues(0, max)
+  b.power:SetValue(value)
+  b.power:SetStatusBarColor(r, g, bl)
+end
+
 -- The thin power bar: value, maximum and power color, or hidden when turned off.
 function RF.UpdatePower(b, unit)
-  b.power:SetShown(RF.settings.showPower == true)
-  if not RF.settings.showPower then return end
-  b.power:SetMinMaxValues(0, UnitPowerMax(unit))
-  b.power:SetValue(UnitPower(unit))
-  b.power:SetStatusBarColor(unitFrames().PowerColor(unit))
+  if not RF.ShowPower(b) then return end
+  RF.PaintPower(b, UnitPower(unit), UnitPowerMax(unit), unitFrames().PowerColor(unit))
 end
 
 -- The unit a tile shows, when it exists; else nil.
@@ -194,13 +224,19 @@ local function tileUnit(b)
   return nil
 end
 
--- The 1 px line in the unit's class color along the tile's top, in the
+-- The 1 px line in a class color (r, g, bl) along the tile's top, in the
 -- softened look only (softened, close class colors such as shaman and mage
--- blues read alike). Its class doesn't change with health, so it is painted here only.
-local function paintTopLine(b, unit)
+-- blues read alike).
+function RF.PaintTopLine(b, r, g, bl)
   local on = RF.settings.look == "soft"
   b.topLine:SetShown(on)
-  if on then b.topLine:SetVertexColor(unitFrames().HealthColor(unit)) end
+  if on then b.topLine:SetVertexColor(r, g, bl) end
+end
+
+-- The top line in the unit's class color. Its class doesn't change with
+-- health, so it is painted on a full update only.
+local function paintTopLine(b, unit)
+  RF.PaintTopLine(b, unitFrames().HealthColor(unit))
 end
 
 -- A tile with no unit (the group shrank): every module's part lets go of the old one.
@@ -383,6 +419,8 @@ local function placeTexts(b, z)
   T.TextSize(b.status, z.statusSize)
   b.topLine:SetHeight(T.Pixel(b))
 end
+-- Shared with the preview tiles (Modules/RaidPreview.lua).
+RF.PlaceTexts = placeTexts
 
 -- The tile's texts: the top row, the status line (Dead / Offline or the
 -- missing health) and the top line, laid out in their zones.
@@ -467,10 +505,16 @@ local function addScripts(b)
   b:HookScript("OnLeave", function() b.hover:Hide() end)
 end
 
--- Insecure setup for a button the header created (called from RF.INIT).
-function RF.Setup(b)
+-- The panel and every part of a tile (bars, texts, marks, overlay): on a button
+-- the header made, and on the preview's tiles (Modules/RaidPreview.lua).
+function RF.Dress(b)
   T.HudPanel(b)
   addParts(b)
+end
+
+-- Insecure setup for a button the header created (called from RF.INIT).
+function RF.Setup(b)
+  RF.Dress(b)
   addScripts(b)
   RF.buttons[#RF.buttons + 1] = b
   track(b, b:GetAttribute("unit"))
@@ -583,6 +627,7 @@ local function headerPoint()
   local point = ns.MoverPoint("raid") or "BOTTOM"
   return point:find("LEFT") and "BOTTOMLEFT" or point:find("RIGHT") and "BOTTOMRIGHT" or "BOTTOM"
 end
+RF.HeaderPoint = headerPoint
 
 -- Scales the grid to the group's size, pins it to the holder and lays the
 -- tiles' texts out for that scale (out of combat).

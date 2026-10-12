@@ -21,6 +21,8 @@ local MOUSE = { "Left", "Right", "Middle", "Button 4", "Button 5" }
 local MODS = { { "", "Plain" }, { "shift-", "Shift" }, { "ctrl-", "Ctrl" }, { "alt-", "Alt" } }
 local MORE_MODS = { { "ctrl-shift-", "Ctrl + Shift" }, { "alt-shift-", "Alt + Shift" }, { "alt-ctrl-", "Alt + Ctrl" } }
 local CELL_H, LABEL_W, MAX_KEYS, PICKER_ROWS, ROW_H, ICON_SIZE = 40, 92, 8, 12, 24, 24
+-- The hover-key list's top line (Add key and the line beside it): its height above the rows.
+local KEYS_TOP = 32
 local PLAIN_ACTIONS = { { "target", "Target" }, { "menu", "Unit menu" }, { "focus", "Focus" }, { "assist", "Assist" } }
 
 -- Page state: whether the extra modifier columns show, and the key the picker is for.
@@ -450,11 +452,11 @@ local function keyRowTexts(row)
   row.note:SetPoint("RIGHT", -90, 0)
 end
 
--- One hover-key row: the key, the spell's icon and name, the collision note, Remove.
+-- One hover-key row (under the Add key line): the key, the spell's icon and name, the collision note, Remove.
 local function keyRow(list, i)
   local row = CreateFrame("Button", nil, list)
   row:SetSize(list:GetWidth() - 8, 26)
-  row:SetPoint("TOPLEFT", 4, -(i - 1) * 26)
+  row:SetPoint("TOPLEFT", 4, -(KEYS_TOP + (i - 1) * 26))
   wash(row)
   keyRowTexts(row)
   row.remove = W.Button(row, "Remove", function() CC.Remove(row.key) changed() end, 80)
@@ -506,24 +508,29 @@ local function keyCaptured(list, key)
   openPicker(list.add, key)
 end
 
--- The Add key capture, the line beside it and the no-snippets note.
-local function keysFooter(list)
+-- The list's top line, right under the card's title (so it shows before any row, and before the
+-- page is scrolled): the Add key capture with the hint or count beside it (wrapping inside the card),
+-- or the no-snippets note in their place.
+local function keysHead(list)
   list.add = W.KeyCapture(list, "Add key", function(key) keyCaptured(list, key) end)
-  list.add:SetPoint("BOTTOMLEFT", 4, 4)
+  list.add:SetPoint("TOPLEFT", 4, -4)
   list.more = T.Text(list:CreateFontString(nil, "OVERLAY"), "small", "text2")
   list.more:SetPoint("LEFT", list.add, "RIGHT", 10, 0)
+  list.more:SetPoint("RIGHT", list, "RIGHT", -8, 0)
+  list.more:SetJustifyH("LEFT")
   list.off = T.Text(list:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  list.off:SetPoint("BOTTOMLEFT", 8, 8)
+  list.off:SetPoint("TOPLEFT", 8, -8)
+  list.off:SetPoint("RIGHT", list, "RIGHT", -8, 0)
   list.off:SetText("This client can't compile the secure code hover keys need; mouse bindings still work.")
 end
 
--- The hover-key list row kind: the rows, then the Add key capture and notes.
+-- The hover-key list row kind: the Add key capture and its line on top, then the rows.
 local function keysBuilder(parent, _, width)
   local list = CreateFrame("Frame", nil, parent)
   list:SetSize(width, MAX_KEYS * 26 + 40)
   list.rows, list.Refresh = {}, refreshKeys
   for i = 1, MAX_KEYS do list.rows[i] = keyRow(list, i) end
-  keysFooter(list)
+  keysHead(list)
   list:Refresh()
   return list
 end
