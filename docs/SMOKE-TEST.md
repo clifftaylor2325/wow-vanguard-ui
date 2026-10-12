@@ -590,6 +590,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: no bar, no badges; the window is the game's (with Vanguard's panel). `/vg talents` says the planner is off.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 15.5 A long summary stays clear of Apply Changes
+
+- Do: tick **Plan** and plan many talents, including one in a lower row whose row above is not planned, so the summary names the next pick and an unreachable rank. Look along the window's foot, then hover the summary.
+- Expect: the summary ends before the game's Apply Changes button (at most two lines, the rest cut short) and never runs over it or the buttons beside it; hovering it shows a "Talent plan" tooltip with the whole summary.
+- If it fails, paste: a screenshot of the window's foot and `/vg talents`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.
