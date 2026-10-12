@@ -133,7 +133,7 @@ const ICON_SHAPES = {
   Nameplates: [crisp([[5, 3], [11, 3]]), rect(2, 6, 14, 11), box(4, 8, 10, 9), crisp([[2, 14], [10, 14]])],
   Tooltips: [crisp([[2, 2], [14, 2], [14, 11], [8, 11], [5, 14], [5, 11], [2, 11]], true), box(4, 4, 12, 6), box(4, 7, 9, 9)],
   Map: [path([[8, 2.5], [13.5, 8], [8, 13.5], [2.5, 8]], STROKE, true), poly([[8, 5], [11, 8], [8, 11], [7, 8]])],
-  Profiles: [ring(8, 4, 2, STROKE), path(arc(8, 15, 6, 6, 0, 180), STROKE)],
+  Profiles: [ring(8, 4, 2, STROKE), path(arc(8, 14.5, 6, 6, 0, 180), STROKE)],
   Move: [crisp([[8, 2], [8, 14]]), crisp([[2, 8], [14, 8]]), ...[[8, 1.5, 0, 1], [8, 14.5, 0, -1], [1.5, 8, 1, 0], [14.5, 8, -1, 0]].flatMap(arrowHead)],
   Close: [line(3.5, 4, 11.5, 12, STROKE), line(12.5, 4, 4.5, 12, STROKE)],
   Check: [path([[3, 8.5], [6.5, 12], [13, 5.5]], STROKE)],
@@ -162,11 +162,11 @@ function dot(cx, cy, r) {
   return box(cx - r, cy - r, cx + r, cy + r, r);
 }
 
-// A cog: a ring with eight teeth around it.
+// A cog: a ring with eight teeth around it (their tips clear of the canvas edge).
 function cog() {
   const teeth = Array.from({ length: 8 }, (_, i) => {
     const a = (i * 45 * Math.PI) / 180;
-    return line(8 + 4.5 * Math.cos(a), 8 + 4.5 * Math.sin(a), 8 + 6.8 * Math.cos(a), 8 + 6.8 * Math.sin(a), STROKE);
+    return line(8 + 4.5 * Math.cos(a), 8 + 4.5 * Math.sin(a), 8 + 6.4 * Math.cos(a), 8 + 6.4 * Math.sin(a), STROKE);
   });
   return [ring(8, 8, 4, STROKE), ...teeth];
 }
