@@ -376,14 +376,49 @@ end
 
 -- Posting ------------------------------------------------------------------------------------
 
--- The unit price the next stack goes up at, when Post can put it up: a sale with units left and
--- a price (and a bid under it; not under the vendor's with "Never post under vendor price"), its
--- item in the bags, and the game's message throttle ready.
-function AH.PostPrice(s)
-  local price = s and s.qty > s.done and AH.SellPrice(s)
-  if not price or (s.bid and s.bid >= price) or not AH.SellLocation(s) then return nil end
-  if AH.settings.vendorFloor and AH.UnderVendor(s, price) then return nil end
-  if C_AuctionHouse.IsThrottledMessageSystemReady() then return price end
+-- Why Post can't put the next stack up, by the key AH.PostCheck gives: shown on the card's count
+-- line while Post is off, and in chat when a click comes too soon (the game busy since the paint).
+AH.POST_REASONS = {
+  price = "no price yet: wait for the price check, or type one",
+  bid = "the bid must be under the buyout",
+  bags = "the item isn't in your bags",
+  vendor = "under the vendor price",
+  money = "not enough money for the deposit",
+  busy = "waiting for the auction house",
+}
+
+-- A bid as the game takes it (rounded up to silver without copper prices, as the price is), or nil.
+local function bidFor(s)
+  return s.bid and forGame(s.bid)
+end
+
+-- The sale's unit price when it has one it may post at (and a bid under it), else why not.
+local function priceCheck(s)
+  local price = AH.SellPrice(s)
+  if not price then return "price" end
+  if s.bid and bidFor(s) >= price then return "bid" end
+  return nil, price
+end
+
+-- Whether the money you have covers the next stack's deposit at location loc (when both are known).
+local function canPay(s, loc)
+  local dep, money = deposit(s, (AH.Duration(s)), loc), ns.PlainNumber(GetMoney())
+  return not (dep and money) or money >= dep
+end
+
+-- Whether Post can put the sale's next stack up now: nil, the unit price and the item's location;
+-- else why not ("sold" when nothing is left to post; a key of AH.POST_REASONS otherwise): a price
+-- (and a bid under it), the item in the bags, not under the vendor's price with "Never post under
+-- vendor price", the deposit covered, and the game's message throttle ready.
+function AH.PostCheck(s)
+  if not (s and s.qty > s.done) then return "sold" end
+  local why, price = priceCheck(s)
+  local loc = not why and AH.SellLocation(s)
+  if why or not loc then return why or "bags" end
+  if AH.settings.vendorFloor and AH.UnderVendor(s, price) then return "vendor" end
+  if not canPay(s, loc) then return "money" end
+  if not C_AuctionHouse.IsThrottledMessageSystemReady() then return "busy" end
+  return nil, price, loc
 end
 
 -- A stack went up, or was skipped: on to the next; after the last, the card empties and its line
@@ -395,16 +430,23 @@ function AH.NextStack(s, n)
   AH.PaintSell()
 end
 
+-- A click on Post that can't post (the game went busy after the card was painted): chat says why,
+-- and the card is painted again, so Post shows off until it can.
+local function refused(why)
+  if AH.POST_REASONS[why] then ns.Chat("Can't post yet: " .. AH.POST_REASONS[why] .. ".") end
+  AH.PaintSell()
+end
+
 -- Post (the button's click, never a timer or an event): puts the next stack up, one restricted
 -- call per click. A true answer means the game wants the post confirmed: that is the game's to
 -- ask, so the card says so and keeps the stack.
 function AH.Post()
   local s = AH.sell
-  local price = AH.PostPrice(s)
-  if not price then return end
-  local api, loc, d, n = C_AuctionHouse, AH.SellLocation(s), AH.Duration(s), stackSize(s)
+  local why, price, loc = AH.PostCheck(s)
+  if why then return refused(why) end
+  local api, d, n = C_AuctionHouse, AH.Duration(s), stackSize(s)
   local confirm
-  if s.commodity then confirm = api.PostCommodity(loc, d, n, price) else confirm = api.PostItem(loc, d, n, s.bid, price) end
+  if s.commodity then confirm = api.PostCommodity(loc, d, n, price) else confirm = api.PostItem(loc, d, n, bidFor(s), price) end
   if confirm then return ns.Chat("The game wants this price confirmed: list it from the game's own Sell tab.") end
   s.posted = s.posted + 1
   AH.NextStack(s, n)
@@ -462,13 +504,21 @@ local function paintBoxes(c, s)
   c.bid:SetShown(s ~= nil and not s.commodity)
 end
 
--- The form for the sale s (or nil): its boxes, the toggle, the length, the count ("posted 3 of
--- 10", kept after the last stack or Stop), and Skip and Stop while there is a sale.
-local function paintForm(c, s)
+-- The count line: "posted 3 of 10" (kept after the last stack or Stop), and while Post is off for
+-- the sale, why ("posted 0 of 3 · waiting for the auction house").
+local function statusText(s, why)
+  if not s then return AH.sellStatus or "" end
+  local text = string.format("posted %d of %d", s.posted, AH.StackCount(s))
+  return AH.POST_REASONS[why] and (text .. " · " .. AH.POST_REASONS[why]) or text
+end
+
+-- The form for the sale s (or nil): its boxes, the toggle, the length, the count line (with why
+-- Post is off), and Skip and Stop while there is a sale.
+local function paintForm(c, s, why)
   paintBoxes(c, s)
   c.perStack.text:SetText(AH.perStack and "per stack" or "per unit")
   c.length:Refresh()
-  c.status:SetText(s and string.format("posted %d of %d", s.posted, AH.StackCount(s)) or AH.sellStatus or "")
+  c.status:SetText(statusText(s, why))
   enable(c.skip, s ~= nil)
   enable(c.stop, s ~= nil)
 end
@@ -516,13 +566,15 @@ local function paintItem(c, s)
 end
 
 -- The sell card: the item, the form, its history line, and Post, which works only when the next
--- stack can go up (AH.PostPrice); the Up now card beside it (the listings, or Your history).
+-- stack can go up (AH.PostCheck; the count line says why not); the Up now card beside it (the
+-- listings, or Your history).
 function AH.PaintSell()
   local c, s = AH.sellCard, AH.sell
   if not c then return end
+  local why = AH.PostCheck(s)
   paintItem(c, s)
-  paintForm(c, s)
-  enable(c.post, AH.PostPrice(s) ~= nil)
+  paintForm(c, s, why)
+  enable(c.post, why == nil)
   AH.PaintHistoryLine(c, s)
   AH.PaintUp(s)
   AH.PaintHistory(AH.upCard, s)
