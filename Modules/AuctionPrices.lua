@@ -44,12 +44,6 @@ function AP.Store()
   return VanguardDB.ah
 end
 
--- The auction house you use: your realm's normalized name (as in "Name-Realm", the same on every
--- character), the ruleset when the client names one, and your faction (ns.Home.Key).
-function AP.HouseKey()
-  return ns.Home.Key()
-end
-
 -- Your realm's normalized name (no spaces or hyphens), else its name as the client shows it.
 function AP.Realm()
   return ns.Home.Realm()
