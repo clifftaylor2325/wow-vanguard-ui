@@ -66,7 +66,7 @@ const openAll = (group) => `
 const results = (addon, group) => addon.eval(`local GW, out = ns.GetModule("Windows"), {}
   for _, name in ipairs(GW.ORDER) do
     local f = _G[name]
-    if GW.REGISTERED[name].group == "${group}" then out[name] = { hooked = f.vgWindow == true, panel = __panel(f) } end
+    if GW.REGISTERED[name].group == "${group}" then out[name] = { hooked = ns.FrameState('vgWindow')[f] == true, panel = __panel(f) } end
   end
   return out`);
 

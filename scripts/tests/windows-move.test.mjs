@@ -34,7 +34,7 @@ const corner = (addon, name) => {
 
 // Drags a window by its drag area to put its top-left corner at x, y (screen pixels): OnDragStart, the
 // window following the mouse (StartMoving), then OnDragStop. Returns whether it was moving in between.
-const drag = (addon, name, x, y) => addon.eval(`local h = ${name}.vgMoveHandle
+const drag = (addon, name, x, y) => addon.eval(`local h = ns.FrameState('vgMoveHandle')[${name}]
   h:GetScript("OnDragStart")(h, "LeftButton")
   local moving = ${name}.__moving == true
   if moving then ${name}:ClearAllPoints() ${name}:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", ${x}, ${y}) end
@@ -52,7 +52,7 @@ it("#201 the character pane: dragged by its title bar, its place is saved and pu
   addon.eval("__open(CharacterFrame)");
   expect(corner(addon, "CharacterFrame"), "opened where the panel manager puts it").toEqual([16, 964]);
   expect(addon.eval("return { CharacterFrame.__testMovable, CharacterFrame.__testClamped }"), "made movable and kept on the screen").toEqual([true, true]);
-  const h = addon.frame("CharacterFrame.vgMoveHandle");
+  const h = addon.frame("ns.FrameState('vgMoveHandle')[CharacterFrame]");
   expect([h.mouse, Math.round(h.rect.left), Math.round(h.rect.right), Math.round(h.rect.height)], "the drag area over the title bar, short of the close button").toEqual([true, 16 + 58, 16 + 384 - 24 - 40, 20]);
   expect(drag(addon, "CharacterFrame", 500, 700), "a drag moves it").toBe(true);
   expect([saved(addon).CharacterFrame, addon.eval("return { CharacterFrame.__moving, CharacterFrame.__testUserPlaced }")], "the drop saves its corner and keeps the game's layout cache out").toEqual([{ x: 500, y: 700 }, [false, false]]);
@@ -60,9 +60,9 @@ it("#201 the character pane: dragged by its title bar, its place is saved and pu
   expect(corner(addon, "CharacterFrame"), "the panel manager placed it again: put back").toEqual([500, 700]);
   addon.eval("CharacterFrame:Hide() __open(CharacterFrame)");
   expect(corner(addon, "CharacterFrame"), "opened again: put back").toEqual([500, 700]);
-  addon.eval('local h = CharacterFrame.vgMoveHandle h:GetScript("OnDragStart")(h) CharacterFrame:ClearAllPoints() CharacterFrame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", 300, 600) ns.GetModule("Windows").PlaceAll()');
+  addon.eval('local h = ns.FrameState("vgMoveHandle")[CharacterFrame] h:GetScript("OnDragStart")(h) CharacterFrame:ClearAllPoints() CharacterFrame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", 300, 600) ns.GetModule("Windows").PlaceAll()');
   expect(corner(addon, "CharacterFrame"), "while being dragged it is left under the mouse").toEqual([300, 600]);
-  addon.eval('CharacterFrame.vgMoveHandle:GetScript("OnDragStop")(CharacterFrame.vgMoveHandle)');
+  addon.eval('ns.FrameState("vgMoveHandle")[CharacterFrame]:GetScript("OnDragStop")(ns.FrameState("vgMoveHandle")[CharacterFrame])');
   expect(errors(addon)).toBe("none");
 });
 
@@ -70,7 +70,7 @@ it("#201 the combined bag: a drag strip along its top, and its place kept when t
   const addon = loggedIn(MOVE_ENV);
   addon.eval("__open(ContainerFrameCombinedBags)");
   const bag = addon.frame("ContainerFrameCombinedBags").rect;
-  const h = addon.frame("ContainerFrameCombinedBags.vgMoveHandle").rect;
+  const h = addon.frame("ns.FrameState('vgMoveHandle')[ContainerFrameCombinedBags]").rect;
   expect([h.left - bag.left, bag.right - h.right, bag.top - h.top, h.height], "a strip 24 tall, clear of the portrait and the close button").toEqual([58, 64, 0, 24]);
   drag(addon, "ContainerFrameCombinedBags", 200, 800);
   addon.eval("__testBagScale = 0.8 UpdateContainerFrameAnchors()");
@@ -89,10 +89,10 @@ it("#201 nothing moves in combat: a drag doesn't start, putting back waits until
   expect(corner(addon, "CharacterFrame"), "the game placed it in combat: left there for now").toEqual([16, 964]);
   addon.eval('__window("LFGParentFrame") LFGParentFrame:SetSize(300, 400)');
   addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
-  expect(addon.eval("return LFGParentFrame.vgMoveHandle == nil"), "a window that loads in combat is set up after it").toBe(true);
+  expect(addon.eval("return ns.FrameState('vgMoveHandle')[LFGParentFrame] == nil"), "a window that loads in combat is set up after it").toBe(true);
   setCombat(addon, false);
   expect(corner(addon, "CharacterFrame"), "put back when the fight ends").toEqual([500, 700]);
-  expect(addon.eval("return LFGParentFrame.vgMoveHandle ~= nil and LFGParentFrame.vgMoveHandle.__mouse"), "the loaded window has its drag area").toBe(true);
+  expect(addon.eval("return ns.FrameState('vgMoveHandle')[LFGParentFrame] ~= nil and ns.FrameState('vgMoveHandle')[LFGParentFrame].__mouse"), "the loaded window has its drag area").toBe(true);
   expect(errors(addon)).toBe("none");
 });
 
@@ -100,7 +100,7 @@ it("#201 the switch off leaves the game's windows alone, saved places and all", 
   const addon = loggedIn(MOVE_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { movable = false, moved = { CharacterFrame = { x = 500, y = 700 } } } } }" });
   addon.eval("__open(CharacterFrame) UpdateUIPanelPositions()");
   expect(corner(addon, "CharacterFrame"), "where the game puts it").toEqual([16, 964]);
-  expect(addon.eval("return { CharacterFrame.vgMoveHandle == nil, CharacterFrame.__testMovable == nil }"), "no drag area, not made movable").toEqual([true, true]);
+  expect(addon.eval("return { ns.FrameState('vgMoveHandle')[CharacterFrame] == nil, CharacterFrame.__testMovable == nil }"), "no drag area, not made movable").toEqual([true, true]);
 });
 
 it("#201 options: the switch and Reset window positions under Bars, map, chat; the options window remembers where it was dropped", () => {
@@ -130,7 +130,7 @@ it("#201 a client without the windows or the layout calls loads cleanly; windows
   addon.eval('local m = CreateFrame("Frame", "GameMenuFrame", UIParent) m:SetSize(200, 300) m:SetPoint("CENTER") m.Header = CreateFrame("Frame", nil, m) m.Header:SetSize(160, 30) m.Header:SetPoint("TOP", m, "TOP", 0, 10)');
   addon.fire("ADDON_LOADED", "TEST-ONLY");
   const header = addon.frame("GameMenuFrame.Header").rect;
-  const h = addon.frame("GameMenuFrame.vgMoveHandle").rect;
+  const h = addon.frame("ns.FrameState('vgMoveHandle')[GameMenuFrame]").rect;
   expect([h.left === header.left, header.right - h.right, h.top === header.top, h.height], "the drag area over the menu's header").toEqual([true, 40, true, 30]);
   const W = "ns.GetModule('Windows')";
   addon.eval(`${W}.SavePlace("TEST-ONLY", CreateFrame("Frame")) ${W}.Moved()["TEST-ONLY-JUNK"] = { x = "TEST-ONLY" } ${W}.PutBack("TEST-ONLY-JUNK", GameMenuFrame)`);

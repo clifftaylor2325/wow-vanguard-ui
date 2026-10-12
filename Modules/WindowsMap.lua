@@ -8,6 +8,8 @@ local ADDON, ns = ...
 local vgGlyph = ns.FrameState("vgGlyph")
 local vgMapWatched = ns.FrameState("vgMapWatched")
 local vgQueueHooked = ns.FrameState("vgQueueHooked")
+local vgEmptyNote = ns.FrameState("vgEmptyNote")
+local vgEmptyWatched = ns.FrameState("vgEmptyWatched")
 
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
@@ -51,14 +53,14 @@ GW.EMPTY_MARGIN = 16
 
 -- A list's note for when it holds nothing: made once, across the middle of the list, wrapped to its width.
 function GW.EmptyNote(list)
-  if not list.vgEmptyNote then
+  if not vgEmptyNote[list] then
     local note = T.Text(list:CreateFontString(nil, "OVERLAY"), "label", "text2")
     note:SetPoint("LEFT", list, "LEFT", GW.EMPTY_MARGIN, 0)
     note:SetPoint("RIGHT", list, "RIGHT", -GW.EMPTY_MARGIN, 0)
     note:SetJustifyH("CENTER")
-    list.vgEmptyNote = note
+    vgEmptyNote[list] = note
   end
-  return list.vgEmptyNote
+  return vgEmptyNote[list]
 end
 
 -- Shows a list's note with that text while empty is true, and hides it otherwise.
@@ -76,8 +78,8 @@ end
 -- Keeps a ScrollBox's empty note right, now, each time the game hands it new rows (SetDataProvider) and as it
 -- shows. text is the note's text, or a function that returns it. Watched once per box.
 function GW.WatchEmpty(box, text)
-  if not isFrame(box) or box.vgEmptyWatched then return end
-  box.vgEmptyWatched = true
+  if not isFrame(box) or vgEmptyWatched[box] then return end
+  vgEmptyWatched[box] = true
   -- Shows or hides the note for the rows the box holds now.
   local function update() GW.SetEmptyNote(box, GW.BoxEmpty(box), type(text) == "function" and text() or text) end
   update()

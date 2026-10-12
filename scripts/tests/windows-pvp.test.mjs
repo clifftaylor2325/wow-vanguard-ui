@@ -163,12 +163,12 @@ const WIDGET_ENV = PVP_ENV + `
 it("S8.3 widget containers: a flat panel behind the widgets only while there are some, out of the layout", () => {
   const addon = loggedIn(WIDGET_ENV);
   const top = "UIWidgetTopCenterContainerFrame";
-  expect(addon.eval(`local b = ${top}.vgBackdrop return { b:IsShown(), __panel(b), b.ignoreInLayout, b:GetFrameLevel() == ${top}:GetFrameLevel() }`),
+  expect(addon.eval(`local b = ns.FrameState('vgBackdrop')[${top}] return { b:IsShown(), __panel(b), b.ignoreInLayout, b:GetFrameLevel() == ${top}:GetFrameLevel() }`),
     "an empty container: its panel made but hidden, left out of the layout, behind the widgets").toEqual([false, true, true, true]);
   addon.eval(`${top}.numWidgetsShowing = 2 ${top}:UpdateWidgetLayout()`);
-  expect(addon.eval(`return { ${top}.vgBackdrop:IsShown(), ${top}.__layouts }`), "widgets laid out: the panel shows, the game's call ran").toEqual([true, 1]);
+  expect(addon.eval(`return { ns.FrameState('vgBackdrop')[${top}]:IsShown(), ${top}.__layouts }`), "widgets laid out: the panel shows, the game's call ran").toEqual([true, 1]);
   addon.eval(`${top}.numWidgetsShowing = 0 ${top}.__scripts.OnSizeChanged(${top})`);
-  expect(addon.eval(`return ${top}.vgBackdrop:IsShown()`), "emptied: hidden again as it resizes").toBe(false);
+  expect(addon.eval(`return ns.FrameState('vgBackdrop')[${top}]:IsShown()`), "emptied: hidden again as it resizes").toBe(false);
   addon.eval(`${top}:Hide() ${top}:Show() ${top}:UpdateWidgetLayout()`);
   expect(addon.eval(`return { ${top}.__layouts, select('#', ${top}:GetChildren()) }`), "showing again makes no second panel or hook").toEqual([2, 1]);
 });
@@ -176,11 +176,11 @@ it("S8.3 widget containers: a flat panel behind the widgets only while there are
 it("S8.3 widget containers: without the game's mixin the children are counted; the group off adds nothing", () => {
   const addon = loggedIn(WIDGET_ENV);
   const box = "UIWidgetBelowMinimapContainerFrame";
-  expect(addon.eval(`return ${box}.vgBackdrop:IsShown()`), "only Vanguard's backdrop in it").toBe(false);
+  expect(addon.eval(`return ns.FrameState('vgBackdrop')[${box}]:IsShown()`), "only Vanguard's backdrop in it").toBe(false);
   addon.eval(`CreateFrame("Frame", nil, ${box}) ${box}.__scripts.OnSizeChanged(${box})`);
-  expect(addon.eval(`return ${box}.vgBackdrop:IsShown()`), "a widget in it").toBe(true);
+  expect(addon.eval(`return ns.FrameState('vgBackdrop')[${box}]:IsShown()`), "a widget in it").toBe(true);
   const off = loggedIn(WIDGET_ENV, OFF);
-  expect(off.eval("return UIWidgetTopCenterContainerFrame.vgBackdrop == nil and UIWidgetBelowMinimapContainerFrame.vgBackdrop == nil")).toBe(true);
+  expect(off.eval("return ns.FrameState('vgBackdrop')[UIWidgetTopCenterContainerFrame] == nil and ns.FrameState('vgBackdrop')[UIWidgetBelowMinimapContainerFrame] == nil")).toBe(true);
 });
 
 // The match timer as the game builds it: TimerTracker with a timerList, each timer a frame holding a StatusBar

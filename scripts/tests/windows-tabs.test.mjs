@@ -401,7 +401,7 @@ it("character pane: the right-pane toggle (the gold arrow) sits in the title row
 it("currency: an empty list says so, and the note follows the list the game sets", () => {
   const addon = loggedIn(HOSTS_ENV);
   // The currency list's note: its text and whether it shows.
-  const note = () => addon.eval("local n = TokenFrame.ScrollBox.vgEmptyNote return { n:GetText(), n:IsShown() }");
+  const note = () => addon.eval("local n = ns.FrameState('vgEmptyNote')[TokenFrame.ScrollBox] return { n:GetText(), n:IsShown() }");
   expect(note(), "no currencies yet").toEqual(["You have no currencies yet.", true]);
   addon.eval("TokenFrame.ScrollBox:SetDataProvider(3)");
   expect(note()[1], "a list with currencies").toBe(false);
@@ -462,7 +462,7 @@ it("appearances: an empty grid says so, and the note follows the slot the game r
   addon.fire("ADDON_LOADED", "Blizzard_Collections");
   addon.eval("CollectionsJournal:Show()");
   // The grid's note: its text and whether it shows.
-  const note = () => addon.eval("local n = WardrobeCollectionFrame.ItemsCollectionFrame.vgEmptyNote return { n:GetText(), n:IsShown() }");
+  const note = () => addon.eval("local n = ns.FrameState('vgEmptyNote')[WardrobeCollectionFrame.ItemsCollectionFrame] return { n:GetText(), n:IsShown() }");
   expect(note()[1], "before the game has listed a slot: no note").toBe(false);
   addon.eval("WardrobeCollectionFrame.ItemsCollectionFrame:SetSlot(0)");
   expect(note(), "a slot with nothing collected").toEqual(["No appearances to show for this slot.", true]);

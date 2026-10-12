@@ -228,7 +228,7 @@ it("guild roster: an offline member's row in the theme's secondary text, an onli
 it("guild info: a note in the empty Guild Information box, gone when the game fills it, back when it is emptied", () => {
   const addon = loggedIn(PAGES_ENV);
   addon.eval("CommunitiesFrame:Show()");
-  const note = "CommunitiesFrame.GuildDetailsFrame.Info.vgEmptyNote";
+  const note = "ns.FrameState('vgEmptyNote')[CommunitiesFrame.GuildDetailsFrame.Info]";
   expect(addon.eval(`return { ${note}:GetText(), ${note}:IsShown(), ${note}:GetFont() ~= nil }`), "shown while the game has drawn nothing").toEqual(["No guild information yet.", true, true]);
   addon.eval("CommunitiesGuildInfoFrame_UpdateText(CommunitiesFrame.GuildDetailsFrame.Info, 'Raids on Tuesday')");
   expect(addon.eval(`return ${note}:IsShown()`), "hidden once the guild has information").toBe(false);
@@ -256,7 +256,7 @@ it("guild pages: with the group off the roster, info box and settings page stay 
   const off = loggedIn(PAGES_ENV, OFF);
   off.eval("CommunitiesFrame:Show() CommunitiesFrame.MemberList.ColumnDisplay:LayoutColumns(__GUILD_COLUMNS) __early:RefreshExpandedColumns() __early:UpdatePresence()");
   off.eval("CommunitiesFrame.GuildPreferredPlaySettingsFrame:RefreshState()");
-  expect(off.eval(`return { __header(5), __early.Rank:GetWidth(), CommunitiesFrame.GuildDetailsFrame.Info.vgEmptyNote == nil,
+  expect(off.eval(`return { __header(5), __early.Rank:GetWidth(), ns.FrameState('vgEmptyNote')[CommunitiesFrame.GuildDetailsFrame.Info] == nil,
     CommunitiesFrame.GuildPreferredPlaySettingsFrame.LocaleApplyButton:GetAlpha() }`)).toEqual([85, 75, true, 1]);
   expect(rowColors(off, "__early")).toEqual([0.5, 0.5, 0.5, 0.5, 0.5, 0.5]);
 });

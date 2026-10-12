@@ -18,6 +18,11 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgDragging = ns.FrameState("vgDragging")
+local vgMovable = ns.FrameState("vgMovable")
+local vgMoveHandle = ns.FrameState("vgMoveHandle")
+
 local GW = ns.GetModule("Windows")
 
 -- The windows that can be dragged, by global name; one the client lacks (or hasn't loaded yet) is skipped.
@@ -70,7 +75,7 @@ end
 -- it waits, once per window, until the fight ends.
 local function place(name)
   local frame = _G[name]
-  if type(frame) ~= "table" or not frame.vgMovable or frame.vgDragging or not GW.Moved()[name] then return end
+  if type(frame) ~= "table" or not vgMovable[frame] or vgDragging[frame] or not GW.Moved()[name] then return end
   ns.OutOfCombat(function() GW.PutBack(name, frame) end, "move " .. name)
 end
 
@@ -84,15 +89,15 @@ end
 -- A drag on a window's title bar starts moving it; never in combat.
 local function startDrag(handle)
   if ns.InCombat() then return end
-  handle.window.vgDragging = true
+  vgDragging[handle.window] = true
   handle.window:StartMoving()
 end
 
 -- The drop: the window stops, the game's own layout cache is kept out of it, and its place is saved.
 local function stopDrag(handle)
   local frame = handle.window
-  if not frame.vgDragging then return end
-  frame.vgDragging = nil
+  if not vgDragging[frame] then return end
+  vgDragging[frame] = nil
   frame:StopMovingOrSizing()
   frame:SetUserPlaced(false)
   GW.SavePlace(frame:GetName(), frame)
@@ -129,14 +134,14 @@ local function makeMovable(frame, name)
   h:RegisterForDrag("LeftButton")
   h:SetScript("OnDragStart", ns.Guard("drag " .. name, startDrag))
   h:SetScript("OnDragStop", ns.Guard("drop " .. name, stopDrag))
-  frame.vgMoveHandle = h
+  vgMoveHandle[frame] = h
 end
 
 -- Sets a window up once, when the client has it: made movable out of combat, and put back each time it shows.
 local function setUp(name)
   local frame = _G[name]
-  if type(frame) ~= "table" or type(frame.HookScript) ~= "function" or frame.vgMovable then return end
-  frame.vgMovable = true
+  if type(frame) ~= "table" or type(frame.HookScript) ~= "function" or vgMovable[frame] then return end
+  vgMovable[frame] = true
   ns.OutOfCombat(function() makeMovable(frame, name) end, "move setup " .. name)
   frame:HookScript("OnShow", function() place(name) end)
 end
