@@ -3,15 +3,15 @@ status: testing
 phase: 03-fast-suite-and-ci-gate
 source: [03-VERIFICATION.md]
 started: 2026-10-11T13:19:59Z
-updated: 2026-10-12T02:15:28Z
+updated: 2026-10-12T02:16:44Z
 ---
 
 ## Current Test
 
-number: 2
-name: Unrelated label neither starts nor cancels a run; a push without full-tests cancels a running full suite
+number: 5
+name: Decide D-06's internal 150 s budget
 expected: |
-  Adding an unrelated label while a full-suite run is in progress starts nothing and cancels nothing (assumption A2). A push without the label on another PR cancels its in-progress run.
+  A decision. Recorded runs 155.5 s and 158.7 s, independent verifier run 148.5 s; hosted run 205 s; the 300 s requirement is met in every run. The user already chose to accept about 156 s during execution; record that here or ask for module startup work.
 awaiting: user response
 
 ## Tests
@@ -23,7 +23,8 @@ source: PR #242 (opened non-draft 13:37:41Z). Skipped verify and full-suite runs
 
 ### 2. Unrelated label neither starts nor cancels a run; a push without full-tests cancels a running full suite
 expected: adding an unrelated label while a full-suite run is in progress starts nothing and cancels nothing (assumption A2); a push without the label on another PR cancels its in-progress run
-result: [pending]
+result: pass
+source: user confirmed
 
 ### 3. Hosted full-suite time is under 5 minutes
 expected: the "Tests, coverage and checks" job of the first hosted full-suite run takes under 5 minutes (CI-06; local 2-worker proxy shows 148.5 to 158.7 s)
@@ -47,9 +48,9 @@ result: [pending]
 ## Summary
 
 total: 6
-passed: 2
+passed: 3
 issues: 1
-pending: 3
+pending: 2
 skipped: 0
 blocked: 0
 
