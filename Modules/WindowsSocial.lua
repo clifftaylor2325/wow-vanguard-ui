@@ -7,6 +7,7 @@ local ADDON, ns = ...
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgPadded = ns.FrameState("vgPadded")
 local vgSocialSide = ns.FrameState("vgSocialSide")
+local vgEmptyNote = ns.FrameState("vgEmptyNote")
 
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
@@ -172,12 +173,12 @@ GW.GUILD_INFO_EMPTY = "No guild information yet."
 
 -- Vanguard's note in the Guild Information box (made once, where the game draws the text).
 local function emptyNote(info, child, details)
-  if not info.vgEmptyNote then
-    info.vgEmptyNote = T.Text(child:CreateFontString(nil, "ARTWORK"), "small", "text2")
-    info.vgEmptyNote:SetPoint("TOPLEFT", details, "TOPLEFT", 0, 0)
-    info.vgEmptyNote:SetText(GW.GUILD_INFO_EMPTY)
+  if not vgEmptyNote[info] then
+    vgEmptyNote[info] = T.Text(child:CreateFontString(nil, "ARTWORK"), "small", "text2")
+    vgEmptyNote[info]:SetPoint("TOPLEFT", details, "TOPLEFT", 0, 0)
+    vgEmptyNote[info]:SetText(GW.GUILD_INFO_EMPTY)
   end
-  return info.vgEmptyNote
+  return vgEmptyNote[info]
 end
 
 -- The Guild Info page's Guild Information box (the game fills it through CommunitiesGuildInfoFrame_UpdateText, on

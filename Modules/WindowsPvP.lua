@@ -9,6 +9,10 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgBackdrop = ns.FrameState("vgBackdrop")
+local vgTimer = ns.FrameState("vgTimer")
+
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
 
@@ -136,7 +140,7 @@ end
 
 -- Shows the panel behind a widget container while it shows widgets, and hides it while it is empty.
 local function fitBackdrop(box)
-  box.vgBackdrop:SetShown(hasWidgets(box))
+  vgBackdrop[box]:SetShown(hasWidgets(box))
 end
 
 -- Vanguard's backdrop for a widget container: a frame of its own filling the container, at the container's level
@@ -155,7 +159,7 @@ end
 -- the panel behind its widgets, shown only while it has some, checked again as the container resizes and after
 -- the game lays its widgets out. The widgets themselves stay the game's.
 function GW.SkinWidgetBox(box)
-  box.vgBackdrop = box.vgBackdrop or makeBackdrop(box)
+  vgBackdrop[box] = vgBackdrop[box] or makeBackdrop(box)
   fitBackdrop(box)
   after(box, "OnSizeChanged", fitBackdrop, true)
   after(box, "UpdateWidgetLayout", fitBackdrop)
@@ -174,8 +178,8 @@ end
 -- panel, and the time in the theme font at the game's size. The big numbers stay the game's.
 local function skinTimerBar(timer)
   local bar = timer.bar
-  if type(bar) ~= "table" or bar.vgTimer or not bar.SetStatusBarTexture then return end
-  bar.vgTimer = true
+  if type(bar) ~= "table" or vgTimer[bar] or not bar.SetStatusBarTexture then return end
+  vgTimer[bar] = true
   T.StyleBar(bar)
   T.FadeRegions(bar, { [bar:GetStatusBarTexture()] = true })
   T.HudPanel(bar)

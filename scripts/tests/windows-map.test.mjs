@@ -339,7 +339,7 @@ it("group finder: the who list says the game's no-results line while empty, and 
   addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
   addon.eval("LFGParentFrame:Show() LFGWhoListFrame:Show() LFGBrowseFrame:Show()");
   // The who list's note: its text and whether it shows.
-  const note = () => addon.eval("local n = LFGWhoListFrame.ScrollBox.vgEmptyNote return { n:GetText(), n:IsShown() }");
+  const note = () => addon.eval("local n = ns.FrameState('vgEmptyNote')[LFGWhoListFrame.ScrollBox] return { n:GetText(), n:IsShown() }");
   expect(note(), "an empty who list (before any search) shows the browse page's empty-result line").toEqual(["TEST-ONLY No groups found.", true]);
   addon.eval("LFGWhoListFrame.ScrollBox:SetDataProvider(3)");
   expect(note()[1], "rows from a search hide it").toBe(false);
@@ -350,7 +350,7 @@ it("group finder: the who list says the game's no-results line while empty, and 
     return { p.rel == LFGParentFrameCloseButton, p.x, p.y, LFGBrowseFrame.OptionsButton.__points.TOPRIGHT == nil }`);
   expect(gear, "the gear is T.CONTROL.step left of the close button and level with it, its old anchor gone").toEqual([true, -28, 0, true]);
   const plain = addon.eval(`local box = CreateFrame("Frame", nil, UIParent) local GW = ns.GetModule("Windows")
-    GW.WatchEmpty(box, "TEST-ONLY") GW.WatchEmpty(nil, "TEST-ONLY") return { GW.BoxEmpty(box), box.vgEmptyNote:IsShown() }`);
+    GW.WatchEmpty(box, "TEST-ONLY") GW.WatchEmpty(nil, "TEST-ONLY") return { GW.BoxEmpty(box), ns.FrameState('vgEmptyNote')[box]:IsShown() }`);
   expect(plain, "a list that can't say how many rows it has gets no note shown").toEqual([false, false]);
 });
 
@@ -418,7 +418,7 @@ it("legacy system: the challenge detail pane prompts for a category while nothin
   addon.fire("ADDON_LOADED", "Blizzard_LegacySystem");
   addon.eval("LegacySystemFrame:Show()");
   // The detail pane's note: its text and whether it shows.
-  const note = () => addon.eval("local n = LegacySystemFrame.ChallengesPage.DetailPane.ScrollBox.vgEmptyNote return { n:GetText(), n:IsShown() }");
+  const note = () => addon.eval("local n = ns.FrameState('vgEmptyNote')[LegacySystemFrame.ChallengesPage.DetailPane.ScrollBox] return { n:GetText(), n:IsShown() }");
   expect(note(), "nothing picked: a prompt").toEqual(["Select a category to view its challenges.", true]);
   addon.eval("LegacySystemFrame.ChallengesPage.DetailPane:SelectCategory({ id = 1 }, 4)");
   expect(note()[1], "a category with challenges: no note").toBe(false);
