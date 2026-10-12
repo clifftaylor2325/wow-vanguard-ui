@@ -103,6 +103,18 @@ local function moverLook(look, setter)
     function(v) local key = sizedMover() if key then setter(key, v) end end, 1
 end
 
+-- get/set for the picked frame's own width or height (dim), applied at once; locked (see
+-- moverSizes) while it's matched to another frame's, or for a frame that sizes itself.
+local function moverSize(dim)
+  return function() return ns.MoverSize(sizedMover(), dim) end, function(v) ns.SetMoverSize(sizedMover(), dim, v) end
+end
+
+-- The slider for a frame's own width (up to 1200) or height (up to 80), in whole units; each frame keeps to its own range.
+-- Locked, the slider says why (matched to another frame, or a frame that sizes itself).
+local function moverSizes(dim, max, step)
+  return { min = 2, max = max, step = step, locked = function() return ns.MoverSizeLock(sizedMover(), dim) end }
+end
+
 -- Page rows ---------------------------------------------------------------------------
 
 -- A check row: { "check", label, get, set, default }.
@@ -178,16 +190,18 @@ local function layoutRows()
     check("Show a grid while moving", moverOption("grid")),
     check("Snap to other frames", moverOption("snap")),
     check("Show these handles in the game's Edit Mode too", moverOption("editMode")),
-    { "text", "While moving frames, right-click one for its exact anchor, offsets, scale and opacity." },
+    { "text", "While moving frames, right-click one to anchor it to the screen or to another frame's side, for its exact offsets, scale and opacity, or to match its width or height to another frame's." },
   }
 end
 
--- General, part three: one frame's scale and opacity, and resetting every frame.
+-- General, part three: one frame's scale, opacity and size, and resetting every frame.
 local function sizeRows()
   return {
     { "cycle", "Frame to size", moverChoices(), pickMover() },
     { "slider", "Its scale", MOVER_SCALES, moverLook(1, ns.SetMoverScale) },
     { "slider", "Its opacity", MOVER_ALPHAS, moverLook(2, ns.SetMoverAlpha) },
+    { "slider", "Its width", moverSizes("width", 1200, 2), moverSize("width") },
+    { "slider", "Its height", moverSizes("height", 80, 1), moverSize("height") },
     { "button", "Reset all positions", function() ns.ResetMovers("all"); O.Refresh() end },
   }
 end

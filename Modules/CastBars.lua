@@ -219,12 +219,17 @@ function CB.Build(bar, w, h)
   return bar
 end
 
--- A themed cast bar for a unit, hidden until it casts; movable.
+-- The widths a cast bar may be given in unlock mode (matched to another frame, or set under
+-- General → Layout); its height stays its own, as its icon and text are sized to it.
+CB.WIDTHS = { 80, 600 }
+
+-- A themed cast bar for a unit, hidden until it casts; movable, and Vanguard may set its width.
 local function createBar(unit)
   local def = LAYOUT[unit]
   local bar = CB.Build(CreateFrame("StatusBar", "Vanguard_CastBar_" .. unit, UIParent), def.w, def.h)
   bar.unit = unit
   ns.Mover(bar, "cast_" .. unit, unit:sub(1, 1):upper() .. unit:sub(2) .. " cast bar", def.point)
+  ns.MoverSizable("cast_" .. unit, { width = CB.WIDTHS })
   return bar
 end
 
