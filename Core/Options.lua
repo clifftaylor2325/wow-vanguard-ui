@@ -25,10 +25,26 @@ local function default(module, key)
   return m and m.defaults and m.defaults[key]
 end
 
+-- Which setting a row's getter reads: get -> { module, key }. Weak keys, so a
+-- page's rows can go. The window reads it (O.SettingOf) to tell what a row sets.
+local settingOf = setmetatable({}, { __mode = "k" })
+
+-- Notes that get reads `key` of `module` (a module's or another settings table's name); returns get.
+function O.Tag(get, module, key)
+  settingOf[get] = { module, key }
+  return get
+end
+
+-- The module and key a tagged getter reads, or nil for anything else.
+function O.SettingOf(get)
+  local s = settingOf[get]
+  if s then return s[1], s[2] end
+end
+
 -- get/set for one module setting, and its default (the window marks a changed
 -- setting and can put it back); reload marks a change that needs one.
 local function setting(module, key, reload)
-  return function() return moduleSettings(module)[key] end,
+  return O.Tag(function() return moduleSettings(module)[key] end, module, key),
     function(v) moduleSettings(module)[key] = v; if reload then O.NeedReload() end end,
     default(module, key)
 end
@@ -51,7 +67,7 @@ end
 
 -- get/set for whether action bar n is shown (applies on reload).
 local function barSetting(n)
-  return function() local b = moduleSettings("ActionBars").bars[n] return b and b.enabled end,
+  return O.Tag(function() local b = moduleSettings("ActionBars").bars[n] return b and b.enabled end, "ActionBars", "bars"),
     function(v) moduleSettings("ActionBars").bars[n].enabled = v; O.NeedReload() end
 end
 
@@ -64,7 +80,7 @@ end
 -- get/set for one of action bar n's settings (button count, per row,
 -- visibility); applies at once, or when combat ends.
 local function barOption(n, key)
-  return function() return moduleSettings("ActionBars").bars[n][key] end,
+  return O.Tag(function() return moduleSettings("ActionBars").bars[n][key] end, "ActionBars", "bars"),
     function(v) moduleSettings("ActionBars").bars[n][key] = v; barChanged(n, key) end
 end
 
@@ -103,6 +119,18 @@ local function moverLook(look, setter)
     function(v) local key = sizedMover() if key then setter(key, v) end end, 1
 end
 
+-- get/set for the picked frame's own width or height (dim), applied at once; locked (see
+-- moverSizes) while it's matched to another frame's, or for a frame that sizes itself.
+local function moverSize(dim)
+  return function() return ns.MoverSize(sizedMover(), dim) end, function(v) ns.SetMoverSize(sizedMover(), dim, v) end
+end
+
+-- The slider for a frame's own width (up to 1200) or height (up to 80), in whole units; each frame keeps to its own range.
+-- Locked, the slider says why (matched to another frame, or a frame that sizes itself).
+local function moverSizes(dim, max, step)
+  return { min = 2, max = max, step = step, locked = function() return ns.MoverSizeLock(sizedMover(), dim) end }
+end
+
 -- Page rows ---------------------------------------------------------------------------
 
 -- A check row: { "check", label, get, set, default }.
@@ -118,7 +146,7 @@ end
 
 -- get/set for a theme setting; changes apply on reload.
 local function themeSetting(key)
-  return function() return T.Settings()[key] end, function(v) T.Settings()[key] = v; O.NeedReload() end
+  return O.Tag(function() return T.Settings()[key] end, "theme", key), function(v) T.Settings()[key] = v; O.NeedReload() end
 end
 
 -- get/set for a theme setting that applies on reload, shown at once in the General page's sample.
@@ -131,7 +159,7 @@ end
 -- styled text is re-fonted. Setting the same value again does nothing, so
 -- dragging a slider only re-fonts when the value moves.
 local function liveThemeSetting(key)
-  return function() return T.Settings()[key] end, function(v)
+  return O.Tag(function() return T.Settings()[key] end, "theme", key), function(v)
     if T.Settings()[key] == v then return end
     T.Settings()[key] = v
     T.Refresh()
@@ -185,16 +213,18 @@ local function layoutRows()
     check("Show a grid while moving", moverOption("grid")),
     check("Snap to other frames", moverOption("snap")),
     check("Show these handles in the game's Edit Mode too", moverOption("editMode")),
-    { "text", "While moving frames, right-click one for its exact anchor, offsets, scale and opacity." },
+    { "text", "While moving frames, right-click one to anchor it to the screen or to another frame's side, for its exact offsets, scale and opacity, or to match its width or height to another frame's." },
   })
 end
 
--- General, part four: one frame's scale and opacity, and resetting every frame.
+-- General, part four: one frame's scale, opacity and size, and resetting every frame.
 local function sizeRows()
   return {
     { "cycle", "Frame to size", moverChoices(), pickMover() },
     { "slider", "Its scale", MOVER_SCALES, moverLook(1, ns.SetMoverScale) },
     { "slider", "Its opacity", MOVER_ALPHAS, moverLook(2, ns.SetMoverAlpha) },
+    { "slider", "Its width", moverSizes("width", 1200, 2), moverSize("width") },
+    { "slider", "Its height", moverSizes("height", 80, 1), moverSize("height") },
     { "button", "Reset all positions", function() ns.ResetMovers("all"); O.Refresh() end },
   }
 end
@@ -218,9 +248,10 @@ local function motionRows()
   }
 end
 
--- General: look, bars, motion, layout and frame sizes.
+-- General: the settings-loss notice when there is one (Core/SettingsGuard.lua), look, bars, motion, layout and frame sizes.
 local function generalRows()
-  return append(append(append(append(lookRows(), barRows()), motionRows()), layoutRows()), sizeRows())
+  local rows = append(ns.SettingsGuard.Rows(), lookRows())
+  return append(append(append(append(rows, barRows()), motionRows()), layoutRows()), sizeRows())
 end
 
 -- Each module's name in the window and what it does (and what it needs, if anything).
@@ -394,8 +425,10 @@ end
 -- Bars shown on mouseover or on conditions also show while you drag a spell or
 -- item. "Hidden" doesn't draw the bar, but its keys still cast (a keybind-only bar).
 local function barVisibilityRows(n)
-  return ns.Visibility.Rows("Visibility", function() return moduleSettings("ActionBars").bars[n] end,
+  local mode, when = ns.Visibility.Rows("Visibility", function() return moduleSettings("ActionBars").bars[n] end,
     "visibility", "showWhen", function() barChanged(n, "visibility") end)
+  O.Tag(mode[4], "ActionBars", "bars")
+  return mode, when
 end
 
 -- One action bar's card: on/off, visibility, button count, per row and size.
@@ -492,10 +525,12 @@ end
 -- The visibility rows (Core/Visibility.lua) of a module's frame, applied at once
 -- (when the module runs); unset, the setting is Always. modes: its choices (V.MODES unless given).
 local function visibilityRows(caption, module, modeKey, whenKey, modes)
-  return ns.Visibility.Rows(caption, function() return moduleSettings(module) end, modeKey, whenKey, function()
+  local mode, when = ns.Visibility.Rows(caption, function() return moduleSettings(module) end, modeKey, whenKey, function()
     local m = ns.GetModule(module)
     if m.enabled then m.ApplyVisibility() end
   end, "always", modes)
+  O.Tag(mode[4], module, modeKey)
+  return mode, when
 end
 
 -- The game's extras: minimap buttons, the menu strip and the quest tracker (after a reload).
@@ -779,6 +814,7 @@ local function currentProfileRows()
     { "header", "Profile" },
     { "text", currentProfileText },
     { "button", "Export profile", function() ns.ShowText("Vanguard export  Ctrl+C to copy", ns.ExportProfile()) end },
+    { "button", "Choose what to export", function() ns.ExportDialog() end },
     { "button", "Import", function() ns.ImportDialog() end },
     { "button", "Reset profile", function() ns.ResetProfile(); O.NeedReload() end },
     { "button", "Start over: reset and run setup", startOver },
@@ -796,9 +832,10 @@ local function specRows()
   }
 end
 
--- Profiles: export/import, reset, spec profiles, and every profile.
+-- Profiles: the settings-loss notice when there is one, export/import, reset, spec profiles, and every profile.
 local function profileRows()
-  return append(append(currentProfileRows(), specRows()), profileListRows())
+  local rows = append(ns.SettingsGuard.Rows(), currentProfileRows())
+  return append(append(rows, specRows()), profileListRows())
 end
 
 -- Raid frames: party coverage, sorting, size.

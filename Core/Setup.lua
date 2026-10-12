@@ -445,9 +445,9 @@ local function window()
   return f
 end
 
--- Done or Skip setup: setup ran, so closing it now counts.
-local function complete()
-  state.complete = true
+-- Done or Skip setup: setup ran, so closing it now counts (done: it was Done, not Skip).
+local function complete(done)
+  state.complete, state.done = true, done == true
   frame:Hide()
 end
 
@@ -459,7 +459,7 @@ local function controls(f)
   f.next:SetPoint("BOTTOMRIGHT", -PAD, PAD)
   f.back = W.Button(f, "Back", function() S.Back() end, 100)
   f.back:SetPoint("RIGHT", f.next, "LEFT", -8, 0)
-  f.skip = W.Button(f, "Skip setup", complete, 110)
+  f.skip = W.Button(f, "Skip setup", function() complete(false) end, 110)
   f.skip:SetPoint("BOTTOMLEFT", PAD, PAD)
 end
 
@@ -475,15 +475,34 @@ local function markDone()
   ns.Chat(AGAIN)
 end
 
+-- After a first run's Done: the question that suggests keeping a profile string outside the game.
+S.EXPORT_ASK = "Keep a copy of these settings outside the game? Export a profile string and save it somewhere safe; /vg import brings it back."
+
+-- Shows the whole profile's export string, selected to copy; with a reload owed, chat says to reload after.
+local function exportNow(why)
+  ns.ShowText("Vanguard export (profile " .. ns.ProfileName() .. ")  Ctrl+C to copy", ns.ExportProfile())
+  if why then ns.Chat(why .. " Type /reload once you've copied the string.") end
+end
+
+-- After a first run's Done: asks whether to export a profile string, then offers the reload (when one is owed) on Not now.
+local function suggestExport(why)
+  ns.Ask(S.EXPORT_ASK, "Export", function() exportNow(why) end, function() if why then ns.OfferReload(why) end end)
+end
+
+-- What follows the end of setup: the export question after a first run's Done, else the reload offer when one is owed.
+local function afterSetup(firstRun, why)
+  if firstRun then return suggestExport(why) end
+  if why then ns.OfferReload(why) end
+end
+
 -- Setup ended (Done, Skip setup, the close button or Escape): lock the frames; after Done or Skip
--- remember that setup ran, else (when it was owed) say it opens again; offer a reload when a
--- module was turned on or the raid tiles changed size.
+-- remember that setup ran, else (when it was owed) say it opens again; after a first run's Done
+-- suggest exporting a profile string; offer a reload when a module was turned on or the raid tiles changed size.
 local function finished()
   if state.paused then return end
   if ns.Unlocked() then ns.Lock() end
   if state.complete then markDone() elseif state.owed then ns.Chat(LATER) end
-  local why = reloadReason()
-  if why then ns.OfferReload(why) end
+  afterSetup(state.complete and state.owed and state.done, reloadReason())
   state.reload, state.retile = false, false
   for _, fn in ipairs(S.onEnd) do fn() end
 end
@@ -538,7 +557,7 @@ local LEAVE = {
 function S.Next()
   local leave = LEAVE[state.order[state.step]]
   if leave then leave() end
-  if state.step == #state.order then return complete() end
+  if state.step == #state.order then return complete(true) end
   showStep(state.step + 1)
 end
 
@@ -576,7 +595,7 @@ function S.Open()
   local guess = owe and not pick
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
   state.layout, state.screen = guess and S.GuessLayout() or "keep", guess and S.DetectScreen() or "keep"
-  state.reload, state.paused = false, false
+  state.reload, state.paused, state.done = false, false, false
   T.FadeIn(frame)
   showStep(1)
 end
@@ -610,6 +629,7 @@ end)
 
 -- A login while setup is owed (the account's first, a new character's, or after closing it early
 -- or starting over) opens it, after the modules have built.
+-- Not while the saved settings didn't load (Core/SettingsGuard.lua offers the restore; Start fresh opens setup).
 ns.On("PLAYER_LOGIN", function()
-  if owed() then S.Open() end
+  if owed() and not ns.SettingsGuard.Lost() then S.Open() end
 end)
