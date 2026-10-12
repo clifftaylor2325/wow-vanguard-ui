@@ -161,7 +161,7 @@ The theme has no spacing tokens: each layout keeps its sizes as constants in its
 
 **Sizes and offsets land on whole screen pixels.** `T.PixelRound(frame, length, even)` rounds a length to whole pixels at the frame's scale (to an even count with `even`, for things centred on a frame). `T.PixelSize(frame, w, h, even)` sizes a frame that way and remembers it; panel padding, glows and sheens, the close and window controls, arrows, the logo, unit frames, the options and setup windows and the action bars' button sizes and gaps use them. When the UI scale, the screen size or a frame's mover scale changes, `T.Rescale()` sizes them again on the next frame, out of combat (queued until the fight ends), and calls the `T.OnScale(fn)` listeners (the action bars lay out again).
 
-**Shadows** are a nine-slice ring of `Media/Textures/Shadow` (black, 0.8 alpha, soft falloff) reaching 10 units around the frame on every side, rounded to whole pixels, on the BACKGROUND layer. Floating windows always have one: the options window, setup, dialogs, menus and popovers, the quest dialog and log, tooltips, bags, skinned game windows, alerts. HUD frames have one only with `hudShadow`.
+**Shadows** are a nine-slice ring of `Media/Textures/Shadow` (black, 0.8 alpha, soft falloff) reaching 10 units around the frame on every side, rounded to whole pixels, on the BACKGROUND layer. Floating windows always have one: the options window, setup, dialogs, menus and popovers, the quest dialog and log, tooltips, bags, skinned game windows, alerts. HUD frames have one only with `hudShadow`. With `sliceRings` on (`/vg nineslice`, then a reload; off by default until an in-game check, #236) each shadow and glow is instead one texture the client slices itself (`SetTextureSliceMargins`, `T.SLICE_MARGIN` 16 texture pixels, the client's default stretched mode), anchored the same whole-pixel distance out; a client without texture slicing keeps the eight pieces.
 
 ## Bars
 
@@ -209,6 +209,7 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `pixelScale` | off | General → Look → Pixel-perfect scale | on: at once, out of combat; off: on reload |
 | `pixelMultiple` | 1 | Setup → Pixel-perfect (sharpest) | with `pixelScale`, out of combat |
 | `texelSnap` | off | `/vg texelsnap` | at once |
+| `sliceRings` | off | `/vg nineslice` | on reload |
 | `barTexture` | `"vanguard"` | General → Bars → Bar texture | on reload; one material for every bar (#234): unit frames, raid tiles, cast bars, XP and reputation, the damage meter all fill with `T.BarTexture()`, and a test checks the whole HUD |
 | `smoothBars` | on | General → Bars → Smooth health and power bars | at once |
 | `hudShadow` | off | General → Bars → Soft shadows under frames | on reload |

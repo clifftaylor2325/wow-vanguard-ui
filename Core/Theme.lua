@@ -118,6 +118,8 @@ local DEFAULTS = {
   pixelMultiple = 1,
   -- Texel snapping for still textures (borders, fills, dividers, sheens); off until the in-game A/B test (#226).
   texelSnap = false,
+  -- Shadows and glows as one nine-slice texture each; off until the in-game check (#236).
+  sliceRings = false,
   textScale = 1,
   barTexture = "vanguard",
   -- Soft shadows under HUD frames (unit frames, bars, minimap); floating windows always have one.
@@ -530,8 +532,38 @@ local function ringPiece(frame, piece, look)
   return t
 end
 
--- The eight pieces of a soft ring (shadow or glow) around frame.
+-- Nine-slice rings (#236): with the setting on (theme.sliceRings, /vg nineslice), a shadow or glow
+-- is one texture the client slices itself, its corners T.SLICE_MARGIN texture pixels (a quarter of
+-- the 64-pixel art), stretched (the client's default slice mode). Off until the in-game check
+-- shows how big the client draws the margins; the eight pieces stay the fallback.
+T.SLICE_MARGIN = 16
+-- Sliced ring textures (weak), so T.SizeGlow knows to move one texture, not eight.
+local slicedRing = setmetatable({}, { __mode = "k" })
+
+-- Places a sliced ring `size` units out past frame's edges (and `pad` more), in whole pixels.
+local function placeSliced(t, frame, size, pad)
+  local out = T.PixelRound(frame, pad or 0) + wholePixels(frame, size)
+  t:ClearAllPoints()
+  t:SetPoint("TOPLEFT", frame, "TOPLEFT", -out, out)
+  t:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", out, -out)
+end
+
+-- One sliced texture as a ring around frame: { texture }, or nil (and the texture hidden) when
+-- the client can't slice textures.
+local function sliced(frame, look, t)
+  if not t.SetTextureSliceMargins then return t:Hide() end
+  t:SetTexture(T.Texture(look.texture))
+  t:SetTextureSliceMargins(T.SLICE_MARGIN, T.SLICE_MARGIN, T.SLICE_MARGIN, T.SLICE_MARGIN)
+  placeSliced(t, frame, look.size, look.pad)
+  slicedRing[t] = true
+  return { t }
+end
+
+-- A soft ring (shadow or glow) around frame: one sliced texture with the setting on and a
+-- client that can, else eight pieces.
 local function ring(frame, look)
+  local one = T.Settings().sliceRings and sliced(frame, look, T.Snap(frame:CreateTexture(nil, look.layer, nil, look.sublevel)))
+  if one then return one end
   local pieces = {}
   for i, piece in ipairs(SHADOW_PIECES) do pieces[i] = ringPiece(frame, piece, look) end
   return pieces
@@ -562,6 +594,7 @@ end
 -- frame's scale now (call again when its scale changes).
 function T.SizeGlow(glow, frame, pixels)
   local size = pixels * T.Pixel(frame)
+  if slicedRing[glow[1]] then return placeSliced(glow[1], frame, size) end
   for i, t in ipairs(glow) do
     if not SHADOW_PIECES[i].w then t:SetHeight(size) end
     if not SHADOW_PIECES[i].h then t:SetWidth(size) end
