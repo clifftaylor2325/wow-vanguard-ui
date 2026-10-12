@@ -63,6 +63,8 @@ S.STYLES = { { "soft", "Class colors, softened", "Softened" }, { "dark", "Dark, 
 local TILE_W, TILE_H, TILE_GAP = 100, 48, 16
 
 local frame
+-- Functions run each time setup ends, after it has locked the frames and saved (What's new waits for it).
+S.onEnd = {}
 -- order: the pages showing; floor: the first step Back reaches; owed: setup opened owing a run;
 -- complete: Done or Skip was clicked (closing otherwise doesn't count as setup having run).
 local state = { step = 1, order = STEPS, floor = 1, profile = "share", layout = S.LAYOUTS[1].key, screen = "keep",
@@ -502,6 +504,7 @@ local function finished()
   if state.complete then markDone() elseif state.owed then ns.Chat(LATER) end
   afterSetup(state.complete and state.owed and state.done, reloadReason())
   state.reload, state.retile = false, false
+  for _, fn in ipairs(S.onEnd) do fn() end
 end
 
 local BUILDERS = { profile = profilePage, layout = layoutPage, screen = screenPage, look = lookPage, move = movePage }
