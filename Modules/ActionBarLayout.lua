@@ -18,6 +18,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgHover = ns.FrameState("vgHover")
+
 local AB = ns.GetModule("ActionBars")
 local T, V = ns.Theme, ns.Visibility
 
@@ -141,7 +144,7 @@ end
 -- The mouse came over a bar or one of its buttons: show it if it fades.
 local function onEnter(frame)
   local bar = frame.vgBar or frame
-  bar.vgHover = true
+  vgHover[bar] = true
   AB.UpdateAlpha(bar.vgIndex)
 end
 
@@ -149,7 +152,7 @@ end
 -- over it (moving between buttons crosses the bar itself).
 local function onLeave(frame)
   local bar = frame.vgBar or frame
-  bar.vgHover = bar:IsMouseOver() == true
+  vgHover[bar] = bar:IsMouseOver() == true
   AB.UpdateAlpha(bar.vgIndex)
 end
 
@@ -199,7 +202,7 @@ end
 -- mouseover bar revealed for a drag stays shown only if the mouse is on it.
 local function refreshBarAlpha()
   for n, bar in pairs(AB.bars) do
-    bar.vgHover = bar:IsMouseOver() == true
+    vgHover[bar] = bar:IsMouseOver() == true
     AB.UpdateAlpha(n)
   end
 end

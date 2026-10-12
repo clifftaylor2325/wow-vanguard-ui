@@ -318,7 +318,7 @@ it("Cooldown Manager settings and its layout dialogs: the window skin, search bo
 it("click bindings: skinned when their addon loads, with the three buttons and the list backdrop", () => {
   const addon = loggedIn(COOLDOWN_ENV);
   addon.eval("__clickBinding()");
-  expect(addon.eval("return ClickBindingFrame.vgWindow"), "not hooked before its part of the game loads").toBeNull();
+  expect(addon.eval("return ns.FrameState('vgWindow')[ClickBindingFrame]"), "not hooked before its part of the game loads").toBeNull();
   addon.fire("ADDON_LOADED", "Blizzard_ClickBindingUI");
   addon.eval("ClickBindingFrame:Show()");
   expect(frameState(addon, "ClickBindingFrame", ["SaveButton", "AddBindingButton", "ResetButton", "ScrollBoxBackground"]), "window skin, buttons, backdrop as an inset panel").toMatchObject({
@@ -391,7 +391,7 @@ it("report-cheating dialog, splash window, colour picker and opacity window", ()
     return { __faded(d), d.Border.__alpha, __panelled(d), ReportCheatingDialogTitle:GetFont() ~= nil, __panelled(d.reportButton), __panelled(ReportCheatingDialogCancelButton), __panelled(d.CommentFrame) }`),
     "report cheating: art and Border faded, panel, named title themed, report and Cancel buttons, comment box an inset panel").toEqual([0, 0, true, true, true, true, true]);
   expect(addon.eval(`local s = SplashFrame
-    return { s.LeftTexture.__alpha ~= 0, __faded(s) ~= 0, s.vgBack ~= nil and __panelled(s.vgBack), __panelled(s.BottomCloseButton), s.TopCloseButton.__piece.__alpha }`),
+    return { s.LeftTexture.__alpha ~= 0, __faded(s) ~= 0, ns.FrameState('vgBack')[s] ~= nil and __panelled(ns.FrameState('vgBack')[s]), __panelled(s.BottomCloseButton), s.TopCloseButton.__piece.__alpha }`),
     "splash: its art is kept (nothing faded), the panel is on a frame behind it, the buttons themed").toEqual([true, true, true, true, 0]);
   expect(addon.eval(`local c = ColorPickerFrame
     return { __faded(c), c.Border.__alpha, __faded(c.Header), c.Header.Text:GetFont() ~= nil, __panelled(c), __panelled(c.Footer.CancelButton), __panelled(c.Footer.OkayButton), __panelled(c.Content.HexBox) }`),
@@ -404,7 +404,7 @@ it("report-cheating dialog, splash window, colour picker and opacity window", ()
 it("report-cheating dialog, splash window and colour picker: switched off, and a client without their parts", () => {
   const off = loggedIn(DIALOGS_ENV, SWITCH_OFF);
   off.eval("ReportCheatingDialog:Show() SplashFrame:Show() ColorPickerFrame:Show() OpacityFrame:Show()");
-  expect(off.eval("return { __faded(ReportCheatingDialog) ~= 0, SplashFrame.vgBack == nil, __faded(ColorPickerFrame) ~= 0, __faded(OpacityFrame) ~= 0 }"), "the game's own windows").toEqual([true, true, true, true]);
+  expect(off.eval("return { __faded(ReportCheatingDialog) ~= 0, ns.FrameState('vgBack')[SplashFrame] == nil, __faded(ColorPickerFrame) ~= 0, __faded(OpacityFrame) ~= 0 }"), "the game's own windows").toEqual([true, true, true, true]);
   const bare = loggedIn(SYSTEM_ENV + '__frame("ReportCheatingDialog") __frame("SplashFrame") __frame("ColorPickerFrame") __frame("OpacityFrame")');
   bare.eval("ReportCheatingDialog:Show() SplashFrame:Show() ColorPickerFrame:Show() OpacityFrame:Show()");
   expect(bare.eval("return __errors('Windows')"), "windows without their parts load cleanly").toBe("none");
@@ -433,7 +433,7 @@ const RECAP_ENV = SYSTEM_ENV + `
 it("death recap: skinned when its addon loads, the rows left as the game draws them", () => {
   const addon = loggedIn(RECAP_ENV);
   addon.eval("__recap()");
-  expect(addon.eval("return DeathRecapFrame.vgWindow"), "not hooked before its part of the game loads").toBeNull();
+  expect(addon.eval("return ns.FrameState('vgWindow')[DeathRecapFrame]"), "not hooked before its part of the game loads").toBeNull();
   addon.fire("ADDON_LOADED", "Blizzard_DeathRecap");
   addon.eval("DeathRecapFrame:Show()");
   expect(addon.eval(`local f = DeathRecapFrame

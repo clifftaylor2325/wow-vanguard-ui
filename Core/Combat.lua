@@ -35,6 +35,13 @@ function ns.OutOfCombat(fn, key)
   end
 end
 
+-- Runs fn once the fight that is starting or under way ends (PLAYER_REGEN_ENABLED),
+-- in the same queue as ns.OutOfCombat: for a PLAYER_REGEN_DISABLED handler, which
+-- runs before the client's lockdown starts, so ns.OutOfCombat there would run fn at once.
+function ns.AfterCombat(fn, key)
+  enqueue(fn, key)
+end
+
 -- The client's check for a hidden value, or one that says no on a client
 -- without it. It never throws, so it is called bare, not under pcall.
 local isSecret

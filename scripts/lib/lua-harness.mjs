@@ -23,6 +23,12 @@ import { profileSampler } from "./lua-profile.mjs";
 const { lua, lauxlib, lualib, to_luastring, to_jsstring } = fengari;
 
 export const ADDON = "Vanguard";
+
+// The two clients the TOC declares (## Interface: 16001, 120007). The world
+// starts as WoW Forever; RETAIL_CLIENT, passed to createAddon as `client`,
+// makes it a Retail 12.x client before the addon's files load.
+export const FOREVER_CLIENT = "";
+export const RETAIL_CLIENT = '__wfgWorld.build.version, __wfgWorld.build.interface = "12.0.7", 120007';
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 // Lua 5.1 fidelity for `..`: the game prints a whole float as "3", fengari
@@ -221,7 +227,7 @@ function traceback(L) {
   const msg = lua.lua_tojsstring(L, 1) ?? "<non-string error>";
   lauxlib.luaL_traceback(L, L, to_luastring(msg), 1);
   const [first, ...rest] = lua.lua_tojsstring(L, -1).split("\n");
-  const lines = [first, ...rest.filter((l) => !/\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-layout\.lua/.test(l))];
+  const lines = [first, ...rest.filter((l) => !/\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-layout\.lua|wow-taint\.lua/.test(l))];
   lua.lua_pushstring(L, to_luastring(lines.join("\n")));
   return 1;
 }
@@ -276,13 +282,14 @@ function runLib(L, name, nresults = 0) {
   runFile(L, path.join(root, "scripts/lib", name), `@${name}`, false, nresults);
 }
 
-// Loads the widget API list, the WoW stub, its layout, the world, and an empty addon namespace.
+// Loads the widget API list, the WoW stub, its layout, the world, the taint rules, and an empty addon namespace.
 function loadStub(L) {
   runLib(L, "wow-widget-api.lua", 1);
   lua.lua_setglobal(L, to_luastring("__wfgWidgetApi"));
   runLib(L, "wow-stub.lua");
   runLib(L, "wow-layout.lua");
   runLib(L, "wow-world.lua");
+  runLib(L, "wow-taint.lua");
   run(L, "__wfgNs = {}; __wfgStub.firstAddonFrame = #__wfgStub.frames", "=ns", false, 0);
 }
 
@@ -341,6 +348,7 @@ function lifecycle(addon) {
 //   setUnit(token, fields)         creates or updates a unit: { name, hp, maxhp, class, reaction... }
 //   removeUnit(token)
 //   combat(on)                     enters or leaves combat
+//   secretGeometry(mode)           "derived", "strict" or null: geometry getters answer with secrets (scripts/lib/wow-taint.lua)
 //   addAura(unit, aura)            { name, duration, applications, isHarmful, dispelName, sourceUnit }
 //   removeAura(unit, name)
 //   setAction(slot, fields)        a spell (by world spell id) or any action fields; null clears
@@ -352,7 +360,7 @@ function lifecycle(addon) {
 //   fireAuctionEvents(key, id)     every auction house event once
 //   openMailbox()                  the mailbox opens: MAIL_SHOW, then the inbox (world.mail) arrives
 //   openProfession(recipeID), selectRecipe(recipeID), closeProfession()   the profession window and its recipe form
-const WORLD_CALLS = ["unit", "setUnit", "removeUnit", "combat", "addAura", "removeAura", "setAction", "addQuest", "openNpc", "learn", "forgetAll",
+const WORLD_CALLS = ["unit", "setUnit", "removeUnit", "combat", "secretGeometry", "addAura", "removeAura", "setAction", "addQuest", "openNpc", "learn", "forgetAll",
   "openAuctionHouse", "closeAuctionHouse", "postFromBag", "fireAuctionEvents", "openMailbox", "openProfession", "selectRecipe", "closeProfession"];
 
 // The world: what the game API reports, from JS.
@@ -453,12 +461,15 @@ function track(addon) {
 }
 
 // savedVariables: Lua source run after the addon files and before
-// ADDON_LOADED, which is when WoW restores SavedVariables. instructionBudget:
-// the most instructions one call from the tests may run (see Hooks above).
-export function createAddon({ savedVariables = "", instructionBudget = DEFAULT_BUDGET } = {}) {
+// ADDON_LOADED, which is when WoW restores SavedVariables. client: Lua run
+// after the client is up and before the addon's files load (the client the
+// addon finds as it loads, e.g. RETAIL_CLIENT). instructionBudget: the most
+// instructions one call from the tests may run (see Hooks above).
+export function createAddon({ savedVariables = "", client = "", instructionBudget = DEFAULT_BUDGET } = {}) {
   const L = newState();
   attachHooks(L, instructionBudget);
   loadStub(L);
+  if (client) run(L, client, "=client", false, 0);
   loadAddon(L, savedVariables);
   // Runs Lua with `ADDON, ns` in scope and returns the first result as JS.
   const addon = { L, eval: (source) => evalIn(L, source) };

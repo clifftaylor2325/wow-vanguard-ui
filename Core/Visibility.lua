@@ -16,6 +16,11 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgAutoHideCount = ns.FrameState("vgAutoHideCount")
+local vgHover = ns.FrameState("vgHover")
+local vgHoverOf = ns.FrameState("vgHoverOf")
+
 local T, W = ns.Theme, ns.Widgets
 
 local V = {}
@@ -102,7 +107,7 @@ end
 -- 1 unless the frame fades and the mouse isn't over it (nor is it revealed, as
 -- action bars are while you drag a spell, nor lingering after Auto-hide), else 0.
 function V.Alpha(frame)
-  if frame.vgState ~= "fade" or frame.vgHover or frame.vgReveal or frame.vgLingering then return 1 end
+  if frame.vgState ~= "fade" or vgHover[frame] or frame.vgReveal or frame.vgLingering then return 1 end
   return 0
 end
 
@@ -128,11 +133,11 @@ end
 -- the Instance prep card and the Chat watch toast do each time they show.
 -- Without the client's timer the frame stays until it is closed.
 function ns.AutoHide(frame, seconds)
-  local token = (frame.vgAutoHideCount or 0) + 1
-  frame.vgAutoHideCount = token
+  local token = (vgAutoHideCount[frame] or 0) + 1
+  vgAutoHideCount[frame] = token
   if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return end
   C_Timer.After(seconds, ns.Guard("timer auto hide", function()
-    if frame.vgAutoHideCount == token then T.FadeOut(frame) end
+    if vgAutoHideCount[frame] == token then T.FadeOut(frame) end
   end))
 end
 
@@ -205,23 +210,23 @@ ns.On("ZONE_CHANGED_NEW_AREA", onZone)
 
 -- The mouse came over the frame or a frame in it.
 local function hoverEnter(f)
-  local frame = f.vgHoverOf
-  frame.vgHover = true
+  local frame = vgHoverOf[f]
+  vgHover[frame] = true
   V.Refresh(frame)
 end
 
 -- The mouse left: the frame fades unless the mouse is still over it (moving
 -- between its buttons crosses the frame itself); an Auto-hide frame lingers first.
 local function hoverLeave(f)
-  local frame = f.vgHoverOf
-  frame.vgHover = frame.vgHoverRoot:IsMouseOver() == true
-  if frame.vgAutoHide and not frame.vgHover then return V.Linger(frame) end
+  local frame = vgHoverOf[f]
+  vgHover[frame] = frame.vgHoverRoot:IsMouseOver() == true
+  if frame.vgAutoHide and not vgHover[frame] then return V.Linger(frame) end
   V.Refresh(frame)
 end
 
 -- Follows the mouse over a frame and every frame inside it (nothing polls).
 local function hookHover(f, frame)
-  f.vgHoverOf = frame
+  vgHoverOf[f] = frame
   f:HookScript("OnEnter", hoverEnter)
   f:HookScript("OnLeave", hoverLeave)
   for _, child in ipairs({ f:GetChildren() }) do hookHover(child, frame) end

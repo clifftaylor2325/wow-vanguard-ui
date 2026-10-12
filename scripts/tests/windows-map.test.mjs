@@ -90,7 +90,7 @@ it("world map: the border in the theme without a fill over the canvas, the overs
   expect(fills(addon, "WorldMapFrame"), "the fill goes on the map itself, behind its canvas").toBe(1);
   expect([alpha(addon, "TestOnlyMapBorder.Underlay"), alpha(addon, "TestOnlyMapBorder.InsetBorderTop"), alpha(addon, "WorldMapFrame.BorderFrame.Bg")], "the underlay, inset line and the game's rock background are faded").toEqual([0, 0, 0]);
   expect(addon.eval("local o = WorldMapFrame.OverscrollBG return { o.Texture:GetAlpha(), o.TopLeftVignette:GetAlpha(), o.TopRightVignette:GetAlpha(), o.BottomLeftVignette:GetAlpha(), o.BottomRightVignette:GetAlpha() }"), "the overscroll tile and four vignettes").toEqual([0, 0, 0, 0, 0]);
-  expect(addon.eval("local s = WorldMapFrame.ScrollContainer return { s:GetAlpha(), (select(1, s:GetRegions())):GetAlpha(), tostring(s.vgWindow) }"), "the canvas is left as the game made it").toEqual([1, 1, "nil"]);
+  expect(addon.eval("local s = WorldMapFrame.ScrollContainer return { s:GetAlpha(), (select(1, s:GetRegions())):GetAlpha(), tostring(ns.FrameState('vgWindow')[s]) }"), "the canvas is left as the game made it").toEqual([1, 1, "nil"]);
   expect(addon.eval("local t = WorldMapFrame.BorderFrame.Tutorial return { t.Ring:GetAlpha(), t.I:GetAlpha() }"), "the tutorial button keeps its \"i\" and loses its ring").toEqual([0, 1]);
   addon.eval("WorldMapFrame:Hide() WorldMapFrame:Show()");
   expect(windowState(addon, "TestOnlyMapBorder"), "showing it again paints nothing new").toMatchObject({ panel: true, painted: first.painted });
@@ -117,7 +117,7 @@ it("world map: the coordinate line Vanguard adds still shows along the bottom, a
   late.eval(WORLD_MAP_ENV.slice(WINDOWS_ENV.length));
   late.fire("ADDON_LOADED", "Blizzard_WorldMap");
   late.eval("WorldMapFrame:Show()");
-  expect(late.eval("return { Vanguard_MapCoords ~= nil, WorldMapFrame.BorderFrame.vgWindow == nil }"), "a map that loads after login gets both the line and the skin").toEqual([true, true]);
+  expect(late.eval("return { Vanguard_MapCoords ~= nil, ns.FrameState('vgWindow')[WorldMapFrame.BorderFrame] == nil }"), "a map that loads after login gets both the line and the skin").toEqual([true, true]);
   expect(windowState(late, "TestOnlyMapBorder"), "").toMatchObject({ art: 0, panel: true });
 });
 
@@ -131,7 +131,7 @@ it("world map: the nav bar, its crumbs and the quest log toggle are dressed, and
     return { tex, (select(1, n.overlay:GetRegions())):GetAlpha(), (select(1, n.home:GetRegions())):GetAlpha(), (select(1, n.overflow:GetRegions())):GetAlpha(), #n.navList, flat }`);
   expect(nav(), "the strip, the overlay and the buttons' art are faded; the home button is flat").toEqual([0, 0, 0, 0, 1, 1]);
   expect(fills(addon, "WorldMapFrame.NavBar"), "the nav bar has an inset panel").toBe(1);
-  expect(addon.eval("local g = WorldMapFrame.NavBar.overflow.vgGlyph return g:GetText()"), "the overflow button gets a text glyph in place of its art").toBe("...");
+  expect(addon.eval("local g = ns.FrameState('vgGlyph')[WorldMapFrame.NavBar.overflow] return g:GetText()"), "the overflow button gets a text glyph in place of its art").toBe("...");
   addon.eval("WorldMapFrame.NavBar:Refresh() WorldMapFrame.NavBar:Refresh()");
   expect(nav().slice(4), "two new crumbs, each a flat button as it is made").toEqual([3, 3]);
   const painted = windowState(addon, "TestOnlyMapBorder").painted;
@@ -144,7 +144,7 @@ it("world map: the nav bar, its crumbs and the quest log toggle are dressed, and
 it("world map: switched off it stays the game's; a client missing parts or the map loads cleanly", () => {
   const off = loggedIn(WORLD_MAP_ENV, MAP_OFF);
   off.eval("WorldMapFrame:Show()");
-  expect([windowState(off, "TestOnlyMapBorder").art !== 0, off.eval("return WorldMapFrame.vgWindow == nil and WorldMapFrame.NavBar.overflow.vgGlyph == nil"), fills(off, "WorldMapFrame")], "not hooked, art left, nothing painted").toEqual([true, true, 0]);
+  expect([windowState(off, "TestOnlyMapBorder").art !== 0, off.eval("return ns.FrameState('vgWindow')[WorldMapFrame] == nil and ns.FrameState('vgGlyph')[WorldMapFrame.NavBar.overflow] == nil"), fills(off, "WorldMapFrame")], "not hooked, art left, nothing painted").toEqual([true, true, 0]);
   const bare = loggedIn(`WorldMapFrame = CreateFrame("Frame", "WorldMapFrame", UIParent)`);
   bare.eval("WorldMapFrame:Show()");
   const sparse = loggedIn(`local m = CreateFrame("Frame", "WorldMapFrame", UIParent) m.BorderFrame = {} m.NavBar = CreateFrame("Frame", nil, m) m.SidePanelToggle = {} m.SynchronizeDisplayState = true`);
@@ -203,7 +203,7 @@ it("quest panel in the map: left the game's while Vanguard's quest log is on, or
   expect([questPanel(own).bg, questPanel(own).list, windowState(own, "QuestLogPopupDetailFrame").panel], "Vanguard's log is the quest log: the game's panels are untouched").toEqual([1, 1, false]);
   const off = loggedIn(QUEST_MAP_ENV, { savedVariables: OWN_LOG_OFF.replace("QuestLog = { own = false }", "QuestLog = { own = false }, Windows = { map = false }") });
   off.eval("QuestMapFrame:Show() QuestLogPopupDetailFrame:Show()");
-  expect([questPanel(off).bg, off.eval("return QuestMapFrame.vgWindow == nil and QuestLogPopupDetailFrame.vgWindow == nil")], "with the map group off they are not even hooked").toEqual([1, true]);
+  expect([questPanel(off).bg, off.eval("return ns.FrameState('vgWindow')[QuestMapFrame] == nil and ns.FrameState('vgWindow')[QuestLogPopupDetailFrame] == nil")], "with the map group off they are not even hooked").toEqual([1, true]);
   const sparse = loggedIn(`CreateFrame("Frame", "QuestMapFrame", UIParent).QuestsFrame = {} CreateFrame("Frame", "QuestLogPopupDetailFrame", UIParent)`, { savedVariables: OWN_LOG_OFF });
   sparse.eval("QuestMapFrame:Show() QuestLogPopupDetailFrame:Show()");
   const partial = loggedIn(`local p = CreateFrame("Frame", "QuestMapFrame", UIParent) p.DetailsFrame = CreateFrame("Frame", nil, p) p.DetailsFrame.BackFrame = {}`, { savedVariables: OWN_LOG_OFF });
@@ -230,7 +230,7 @@ it("battlefield map: its border and tab in the theme once the game loads it, the
   const addon = loggedIn(BATTLEFIELD_ENV);
   addon.fire("ADDON_LOADED", "TEST-ONLY_SomethingElse");
   addon.eval("__battlefieldMap()");
-  expect(addon.eval("return BattlefieldMapFrame.vgWindow == nil"), "nothing is touched until the part of the game loads").toBe(true);
+  expect(addon.eval("return ns.FrameState('vgWindow')[BattlefieldMapFrame] == nil"), "nothing is touched until the part of the game loads").toBe(true);
   addon.fire("ADDON_LOADED", "Blizzard_BattlefieldMap");
   addon.eval("BattlefieldMapFrame:Show()");
   expect(addon.eval("local b = BattlefieldMapFrame.BorderFrame local out = {} for _, k in ipairs({ 'TopLeft', 'TopRight', 'BottomLeft', 'BottomRight', 'Top', 'Bottom', 'Left', 'Right' }) do out[#out + 1] = b[k]:GetAlpha() end return out"), "the ornate border's eight pieces are faded").toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
@@ -248,7 +248,7 @@ it("battlefield map: switched off it stays the game's; a client without the tab 
   off.eval("__battlefieldMap()");
   off.fire("ADDON_LOADED", "Blizzard_BattlefieldMap");
   off.eval("BattlefieldMapFrame:Show()");
-  expect([off.eval("return BattlefieldMapFrame.vgWindow == nil"), off.eval("return BattlefieldMapTab.Left:GetAlpha()")], "not hooked, art left").toEqual([true, 1]);
+  expect([off.eval("return ns.FrameState('vgWindow')[BattlefieldMapFrame] == nil"), off.eval("return BattlefieldMapTab.Left:GetAlpha()")], "not hooked, art left").toEqual([true, 1]);
   const bare = loggedIn(`CreateFrame("Frame", "BattlefieldMapFrame", UIParent)`);
   bare.fire("ADDON_LOADED", "Blizzard_BattlefieldMap");
   bare.eval("BattlefieldMapFrame:Show()");
@@ -286,7 +286,7 @@ const FINDER_ENV = WINDOWS_ENV + `
 it("group finder: the window, its listing and browse pages and the group tooltip in the theme once the game loads it", () => {
   const addon = loggedIn(FINDER_ENV);
   addon.eval("__finder()");
-  expect(addon.eval("return LFGParentFrame.vgWindow == nil"), "nothing is touched until the part of the game loads").toBe(true);
+  expect(addon.eval("return ns.FrameState('vgWindow')[LFGParentFrame] == nil"), "nothing is touched until the part of the game loads").toBe(true);
   addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
   addon.eval("LFGParentFrame:Show() LFGListingFrame:Show() LFGBrowseFrame:Show() LFGBrowseSearchEntryTooltip:Show()");
   expect([fills(addon, "LFGParentFrame"), addon.eval("return select('#', LFGParentFrameCloseButton:GetRegions()) > 1")], "the window gets one panel, and the close button is the theme's").toEqual([1, true]);
@@ -310,7 +310,7 @@ it("group finder: switched off it stays the game's; a client missing parts of it
   off.eval("__finder()");
   off.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
   off.eval("LFGParentFrame:Show() LFGListingFrame:Show()");
-  expect([off.eval("return LFGParentFrame.vgWindow == nil and LFGListingFrame.vgWindow == nil"), windowState(off, "LFGListingFrame").art !== 0, fills(off, "LFGParentFrame")], "not hooked, art left").toEqual([true, true, 0]);
+  expect([off.eval("return ns.FrameState('vgWindow')[LFGParentFrame] == nil and ns.FrameState('vgWindow')[LFGListingFrame] == nil"), windowState(off, "LFGListingFrame").art !== 0, fills(off, "LFGParentFrame")], "not hooked, art left").toEqual([true, true, 0]);
   const bare = loggedIn(`for _, n in ipairs({ "LFGParentFrame", "LFGListingFrame", "LFGBrowseFrame", "LFGBrowseSearchEntryTooltip" }) do CreateFrame("Frame", n, UIParent) end
     LFGListingFrame.ActivityView, LFGListingFrame.GroupRoleButtons, LFGBrowseFrame.TitleContainer, LFGBrowseFrame.Inset = {}, {}, {}, {}`);
   bare.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
@@ -343,14 +343,14 @@ it("legacy system: the window in the theme, its page backgrounds faded and its p
   // The tabs group (Modules/WindowsTabs.lua) dresses the Legacy tabs and indicators; off here, so this case sees only the map group's skin.
   const addon = loggedIn(LEGACY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
   addon.eval("__legacy()");
-  expect(addon.eval("return LegacySystemFrame.vgWindow == nil"), "nothing is touched until the part of the game loads").toBe(true);
+  expect(addon.eval("return ns.FrameState('vgWindow')[LegacySystemFrame] == nil"), "nothing is touched until the part of the game loads").toBe(true);
   addon.fire("ADDON_LOADED", "Blizzard_LegacySystem");
   addon.eval("LegacySystemFrame:Show()");
   const first = windowState(addon, "LegacySystemFrame");
   expect(first, "the window's art is faded, a panel painted, the title in the theme font").toMatchObject({ art: 0, nine: 0, portrait: 0, insetNine: 0, panel: true, title: true });
   expect(addon.eval("local f = LegacySystemFrame return { f.TreePage.Background:GetAlpha(), f.ChallengesPage.Background:GetAlpha(), f.RewardTrackPage.Background:GetAlpha(), (f.TreePage.VerticalDivider:GetRegions()):GetAlpha(), (f.ChallengesPage.VerticalDivider:GetRegions()):GetAlpha() }"), "the three page backgrounds and both dividers are faded").toEqual([0, 0, 0, 0, 0]);
   expect([fills(addon, "LegacySystemFrame.ChallengesPage.CategoryList"), fills(addon, "LegacySystemFrame.ChallengesPage.DetailPane")], "the challenge panes are inset panels").toEqual([1, 1]);
-  expect(addon.eval("local f = LegacySystemFrame return { (f.LegacyTreeTab:GetRegions()):GetAlpha(), (f.TabIndicators:GetRegions()):GetAlpha(), (f.TreePage.Node:GetRegions()):GetAlpha(), tostring(f.TreePage.Node.vgWindow) }"), "the tabs, their indicators and the tree's node buttons are left to the game").toEqual([1, 1, 1, "nil"]);
+  expect(addon.eval("local f = LegacySystemFrame return { (f.LegacyTreeTab:GetRegions()):GetAlpha(), (f.TabIndicators:GetRegions()):GetAlpha(), (f.TreePage.Node:GetRegions()):GetAlpha(), tostring(ns.FrameState('vgWindow')[f.TreePage.Node]) }"), "the tabs, their indicators and the tree's node buttons are left to the game").toEqual([1, 1, 1, "nil"]);
   expect(fills(addon, "LegacySystemFrame.TreePage.LegacyTreeTraitPanel"), "the tree's panel is not covered, so it does not hide the close button's corner").toBe(0);
   addon.eval("LegacySystemFrame:Hide() LegacySystemFrame:Show()");
   expect(windowState(addon, "LegacySystemFrame"), "showing it again paints nothing new").toMatchObject({ panel: true, painted: first.painted });
@@ -361,7 +361,7 @@ it("legacy system: switched off it stays the game's; a client missing its pages 
   off.eval("__legacy()");
   off.fire("ADDON_LOADED", "Blizzard_LegacySystem");
   off.eval("LegacySystemFrame:Show()");
-  expect([windowState(off, "LegacySystemFrame").art !== 0, off.eval("return LegacySystemFrame.TreePage.Background:GetAlpha()"), off.eval("return LegacySystemFrame.vgWindow == nil")], "not hooked, art left").toEqual([true, 1, true]);
+  expect([windowState(off, "LegacySystemFrame").art !== 0, off.eval("return LegacySystemFrame.TreePage.Background:GetAlpha()"), off.eval("return ns.FrameState('vgWindow')[LegacySystemFrame] == nil")], "not hooked, art left").toEqual([true, 1, true]);
   const bare = loggedIn(WINDOWS_ENV + `__window("LegacySystemFrame") LegacySystemFrame.TreePage = {} LegacySystemFrame.ChallengesPage = CreateFrame("Frame", nil, LegacySystemFrame)`);
   bare.fire("ADDON_LOADED", "Blizzard_LegacySystem");
   bare.eval("LegacySystemFrame:Show()");
@@ -506,7 +506,7 @@ it("calendar: switched off it stays the game's; a client missing the window, its
   off.eval("__calendar() __calendarDialogs()");
   off.fire("ADDON_LOADED", "Blizzard_Calendar");
   off.eval("CalendarFrame:Show() CalendarViewEventFrame:Show()");
-  expect([calAlpha(off, "_G.CalendarFrameTopLeftTexture"), off.eval("return CalendarDayButton1.parchment:GetAlpha()"), off.eval("return CalendarViewEventFrame.Border:GetAlpha()"), off.eval("return CalendarFrame.vgWindow == nil")], "not hooked, art left").toEqual([1, 1, 1, true]);
+  expect([calAlpha(off, "_G.CalendarFrameTopLeftTexture"), off.eval("return CalendarDayButton1.parchment:GetAlpha()"), off.eval("return CalendarViewEventFrame.Border:GetAlpha()"), off.eval("return ns.FrameState('vgWindow')[CalendarFrame] == nil")], "not hooked, art left").toEqual([1, 1, 1, true]);
   const bare = loggedIn(WINDOWS_ENV + `
     CreateFrame("Frame", "CalendarFrame", UIParent):Hide() CalendarPrevMonthButton = {} CalendarDayButton1 = CreateFrame("Button", "CalendarDayButton1", CalendarFrame)
     local d = CreateFrame("Frame", "CalendarViewRaidFrame", UIParent) d.Header = {} d:Hide()

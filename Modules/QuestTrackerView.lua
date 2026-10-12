@@ -208,21 +208,13 @@ function QT.ItemTooltip(b)
   tip:Show()
 end
 
--- One frame of a button: the range check, a few times a second.
-local function rangeTick(b, dt)
-  b.vgWait = (b.vgWait or 0) - dt
-  if b.vgWait > 0 then return end
-  b.vgWait = QT.RANGE_EVERY
-  QT.UpdateRange(b)
-end
-
--- The button's cooldown swipe over the icon, its tooltip and its range check.
+-- The button's cooldown swipe over the icon, its tooltip and its range check (a few times a second while it shows).
 local function wireItem(b)
   b.cooldown = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
   b.cooldown:SetAllPoints()
   b:SetScript("OnEnter", QT.ItemTooltip)
   b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-  b:SetScript("OnUpdate", rangeTick)
+  ns.Every(b, QT.RANGE_EVERY, QT.UpdateRange, b, true)
 end
 
 -- Item button i (made the first time): the game's secure button that uses an item. It sits on

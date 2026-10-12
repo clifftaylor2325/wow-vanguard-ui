@@ -11,6 +11,11 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgGlyph = ns.FrameState("vgGlyph")
+local vgHover = ns.FrameState("vgHover")
+local vgSlot = ns.FrameState("vgSlot")
+
 local T = ns.Theme
 
 local MM = ns.Module("Minimap", {
@@ -120,26 +125,26 @@ end
 
 -- Paints a slot button's icon: the accent while the mouse is over it, else the text color.
 local function paintGlyph(obj)
-  T.Tint(obj.vgGlyph, obj.vgHover and "accent" or "text")
+  T.Tint(vgGlyph[obj], vgHover[obj] and "accent" or "text")
 end
 
 -- The slot's accent edge and the icon follow the mouse, as on the menu bar's buttons.
 local function slotStates(obj, b)
-  b:HookScript("OnEnter", function() obj.vgHover = true T.SlotState(obj.vgSlot, "hover") paintGlyph(obj) end)
-  b:HookScript("OnLeave", function() obj.vgHover = false T.SlotState(obj.vgSlot, nil) paintGlyph(obj) end)
-  b:HookScript("OnMouseDown", function() T.SlotState(obj.vgSlot, "pressed") end)
-  b:HookScript("OnMouseUp", function() T.SlotState(obj.vgSlot, obj.vgHover and "hover" or nil) end)
+  b:HookScript("OnEnter", function() vgHover[obj] = true T.SlotState(vgSlot[obj], "hover") paintGlyph(obj) end)
+  b:HookScript("OnLeave", function() vgHover[obj] = false T.SlotState(vgSlot[obj], nil) paintGlyph(obj) end)
+  b:HookScript("OnMouseDown", function() T.SlotState(vgSlot[obj], "pressed") end)
+  b:HookScript("OnMouseUp", function() T.SlotState(vgSlot[obj], vgHover[obj] and "hover" or nil) end)
 end
 
 -- The slot tile (a level under the button, so the game's count text draws over it) and the icon on it, made once.
 local function addSlot(obj, icon)
-  obj.vgSlot = T.Slot(CreateFrame("Frame", nil, obj))
-  obj.vgSlot:SetAllPoints(obj)
-  obj.vgSlot:SetFrameLevel(math.max(0, obj:GetFrameLevel() - 1))
-  obj.vgGlyph = T.Snap(obj.vgSlot:CreateTexture(nil, "OVERLAY"))
-  obj.vgGlyph:SetTexture(T.Icon(icon))
-  obj.vgGlyph:SetSize(MM.GLYPH, MM.GLYPH)
-  obj.vgGlyph:SetPoint("CENTER")
+  vgSlot[obj] = T.Slot(CreateFrame("Frame", nil, obj))
+  vgSlot[obj]:SetAllPoints(obj)
+  vgSlot[obj]:SetFrameLevel(math.max(0, obj:GetFrameLevel() - 1))
+  vgGlyph[obj] = T.Snap(vgSlot[obj]:CreateTexture(nil, "OVERLAY"))
+  vgGlyph[obj]:SetTexture(T.Icon(icon))
+  vgGlyph[obj]:SetSize(MM.GLYPH, MM.GLYPH)
+  vgGlyph[obj]:SetPoint("CENTER")
   paintGlyph(obj)
   T.OnChanged(function() paintGlyph(obj) end)
 end
@@ -158,7 +163,7 @@ function MM.SlotButton(obj, icon)
   T.FadeRegions(obj)
   if b ~= obj then T.FadeRegions(b) b:ClearAllPoints() b:SetAllPoints(obj) end
   hideCount(obj)
-  if obj.vgSlot then return end
+  if vgSlot[obj] then return end
   addSlot(obj, icon)
   slotStates(obj, b)
 end
@@ -261,20 +266,24 @@ end
 -- Refreshes the coordinates at most five times a second, and only after the
 -- player moved: standing still asks the client for no new map position.
 local function coordsTicker(frame)
-  local elapsed = 0
-  frame:SetScript("OnUpdate", function(_, dt)
-    elapsed = elapsed + dt
-    if elapsed < 0.2 then return end
-    elapsed = 0
+  ns.Every("minimap coords", 0.2, function()
     local mapID = playerMap()
     if not unmoved(mapID) then MM.coords:SetText(MM.CoordsText(mapID)) end
-  end)
+  end, frame)
 end
 
 -- Mouse wheel zooms in and out.
 local function onWheel(_, delta)
   local zoom = Minimap:GetZoom() + (delta > 0 and 1 or -1)
   Minimap:SetZoom(math.max(0, math.min(Minimap:GetZoomLevels() - 1, zoom)))
+end
+
+-- The wheel over the map zooms: by the game's own handler when the map has one,
+-- else by Vanguard's, hooked on (a script set on the game's frame would replace the game's).
+local function wheelZoom()
+  Minimap:EnableMouseWheel(true)
+  if Minimap:GetScript("OnMouseWheel") then return end
+  Minimap:HookScript("OnMouseWheel", onWheel)
 end
 
 -- Building -------------------------------------------------------------------------------
@@ -295,8 +304,7 @@ local function adoptMinimap(holder, size)
   Minimap:SetPoint("CENTER", holder, "CENTER")
   Minimap:SetSize(size, size)
   Minimap:SetMaskTexture(T.WHITE)
-  Minimap:EnableMouseWheel(true)
-  Minimap:SetScript("OnMouseWheel", onWheel)
+  wheelZoom()
 end
 
 -- The overlay frame above the map that holds the bands, the texts, the

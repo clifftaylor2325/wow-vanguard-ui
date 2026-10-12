@@ -1,0 +1,34 @@
+// Markdown lint: markdownlint-cli2, run by .github/workflows/markdown.yml on
+// pull requests that touch Markdown (not a required check). The settings fit
+// the docs as they are written rather than reformatting them: each rule below
+// is off because the docs break it on purpose. Every other rule is on.
+{
+  "config": {
+    "default": true,
+    // One paragraph per line: the docs never hard-wrap.
+    "MD013": false,
+    // Tables are written compactly, without padding to line up the pipes.
+    "MD060": false,
+    // Plain URLs are written out where a reader may copy them.
+    "MD034": false,
+    // Numbered lists continue their numbering across headings (VISUAL-POLISH).
+    "MD029": false,
+    // Bold lines label groups inside a section, below the heading levels.
+    "MD036": false,
+    // Lists and headings sit tight against the line that introduces them.
+    "MD022": false,
+    "MD031": false,
+    "MD032": false,
+    // Fences without a language hold plain text, layouts and command output.
+    "MD040": false,
+    // Angle-bracket placeholders (<Class>, <n>) are text, not HTML.
+    "MD033": false,
+    // Code spans keep the spaces that show what to type ("/w ").
+    "MD038": false,
+    // Compact tables merge a cell where a column does not apply (AUCTION-TABS).
+    "MD056": false
+  },
+  "globs": ["**/*.md"],
+  // Generated planning notes, vendored libraries and build output.
+  "ignores": ["node_modules/**", ".planning/**", "Libs/**", "dist/**", "coverage/**", "preview/**"]
+}

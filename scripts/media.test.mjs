@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { staleMedia } from "./build-media.mjs";
+import { orphanMedia, staleMedia } from "./build-media.mjs";
 import { fontFacts } from "./lib/truetype.mjs";
 import { crest, crestNames } from "./lib/media-crests.mjs";
 import { ICONS, MEDIA, SILHOUETTES } from "./lib/media-sources.mjs";
@@ -37,6 +37,11 @@ function artIsCurrent() {
   const stale = staleMedia();
   const msg = `generated art out of date: ${stale.map((s) => s.file).join(", ")} (run node scripts/build-media.mjs)`;
   expect(stale.length, msg).toBe(0);
+}
+
+// No committed image is left over from a source that was removed.
+function noOrphanArt() {
+  expect(orphanMedia(), "images no source makes (run node scripts/build-media.mjs to delete them)").toEqual([]);
 }
 
 // Medium digits 0-9 share one width.
@@ -70,6 +75,8 @@ function oflLicense() {
 function mediaIn(src) {
   const files = [];
   for (const m of src.matchAll(/T\.(Texture|Icon)\("(\w+)"\)/g)) files.push(`Media/${m[1] === "Icon" ? "Icons" : "Textures"}/${m[2]}.tga`);
+  for (const m of src.matchAll(/T\.Icon\(\w+ and "(\w+)" or "(\w+)"\)/g)) files.push(`Media/Icons/${m[1]}.tga`, `Media/Icons/${m[2]}.tga`);
+  for (const m of src.matchAll(/\b(?:icon|IconTexture|WindowControl)\(\w+, "(\w+)"/g)) files.push(`Media/Icons/${m[1]}.tga`);
   for (const m of src.matchAll(/\b(?:icon|slot) = "(\w+)"/g)) files.push(`Media/Icons/${m[1]}.tga`);
   for (const m of src.matchAll(/Media\\+(Textures|Icons)\\+(\w+)/g)) files.push(`Media/${m[1]}/${m[2]}.tga`);
   for (const m of src.matchAll(/Fonts\\+([\w-]+\.ttf)/g)) files.push(`Media/Fonts/${m[1]}`);
@@ -86,6 +93,25 @@ function namedMedia() {
 // The scan finds at least one Media path.
 function scanFindsMedia() {
   expect(namedMedia().length, "found no Media paths in the addon (the scan is broken)").toBeGreaterThan(0);
+}
+
+// Media images the addon builds a name for at run time, so the scan can't see them: the logo's
+// halves (T.Texture("Logo" .. half)), the shadow and glow rings (ring(frame, { texture = ... })) and
+// the window controls' glyphs (Modules/Windows.lua maxMinButton), the dispel badge letters
+// (Core/Auras.lua A.DISPEL_GLYPHS) and the warn state's glyph (Core/Theme.lua T.STATE_GLYPHS).
+const BUILT_NAMES = ["Media/Textures/LogoRight.tga", "Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
+  ...["Magic", "Curse", "Disease", "Poison"].map((t) => `Media/Icons/Dispel${t}.tga`), "Media/Icons/Warn.tga"];
+
+// The images in Media/ (not the fonts and license texts), as repo paths.
+function mediaImages() {
+  const dirs = ["Art", "Icons", "Textures"];
+  return dirs.flatMap((d) => fs.readdirSync(path.join(root, "Media", d)).filter((f) => f.endsWith(".tga")).map((f) => `Media/${d}/${f}`));
+}
+
+// Every image in Media/ is named by the addon (or built by name), so none ships unused.
+function noUnusedMedia() {
+  const used = new Set([...namedMedia(), ...BUILT_NAMES]);
+  expect(mediaImages().filter((f) => !used.has(f)), "Media images the addon never uses (remove them in scripts/lib/media-sources.mjs)").toEqual([]);
 }
 
 // One named Media file is on disk.
@@ -142,7 +168,7 @@ function iconsCredited() {
 
 // Line icons made only of level and upright strokes: at 16 px every pixel
 // they touch must be fully covered, none half (P4.2).
-const SQUARE_ICONS = ["General", "Modules", "UnitFrames", "RaidFrames", "Healing", "ActionBars", "Nameplates", "Spellbook", "Professions", "Quests", "Collections"];
+const SQUARE_ICONS = ["Spellbook", "Professions", "Quests", "Collections"];
 
 // An icon's alpha at 16 px: the 32 px image averaged over 2 x 2 blocks, as the GPU draws it at half size.
 function at16(name) {
@@ -160,10 +186,10 @@ function squareIconsCrisp() {
   expect(soft.filter(([, n]) => n > 0)).toEqual([]);
 }
 
-// A straight stroke is two pixels wide at 16 px: the General icon's top slider is rows 2 and 3.
+// A straight stroke is two pixels wide at 16 px: the Quests icon's upright stroke is columns 7 and 8.
 function strokeIsTwoPixels() {
-  const a = at16("General");
-  expect([1, 2, 3, 4].map((row) => Math.round(a[row * 16 + 2] * 100) / 100)).toEqual([0, 1, 1, 0]);
+  const a = at16("Quests");
+  expect([6, 7, 8, 9].map((col) => Math.round(a[4 * 16 + col] * 100) / 100)).toEqual([0, 1, 1, 0]);
 }
 
 // Generated files that are not tinted white shapes: the pre-colored addons-list icon, the black
@@ -246,6 +272,8 @@ describe(
   // Every Media path the addon names must exist.
   () => {
     it("the addon names at least one Media file", scanFindsMedia);
+    it("every image in Media/ is used by the addon", noUnusedMedia);
+    it("no image is left over from a removed source", noOrphanArt);
     for (const file of namedMedia()) it(`${file} exists`, () => fileExists(file));
   },
 );

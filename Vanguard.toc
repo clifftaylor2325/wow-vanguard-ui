@@ -20,6 +20,7 @@ Libs/LibSharedMedia-3.0/LibSharedMedia-3.0.lua
 Core/Events.lua
 Core/DB.lua
 Core/Combat.lua
+Core/Ticker.lua
 Core/Client.lua
 Core/Home.lua
 Core/Serialize.lua
@@ -43,7 +44,12 @@ Core/Controls.lua
 Core/MoverPopover.lua
 Core/UnlockBar.lua
 Core/Options.lua
+Core/OptionsFrames.lua
+Core/OptionsBars.lua
+Core/OptionsQuests.lua
+Core/OptionsMore.lua
 Core/OptionsWindow.lua
+Core/OptionsPreview.lua
 Core/ErrorBadge.lua
 Core/OptionsProfiles.lua
 Core/ProfileExport.lua

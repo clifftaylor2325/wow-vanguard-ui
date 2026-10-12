@@ -10,6 +10,9 @@
 
 local ADDON, ns = ...
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
+local vgSections = ns.FrameState("vgSections")
+
 local T = ns.Theme
 local BG = ns.GetModule("Bags")
 
@@ -193,7 +196,7 @@ end
 -- While the sections show, the money line (with the currency tracker under it)
 -- sits the padding inside the window's sides and bottom, as the slots do.
 function BG.PadMoney(frame)
-  if not frame.vgSections then return end
+  if not vgSections[frame] then return end
   local row = bottomRow(frame)
   row:ClearAllPoints()
   row:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", BG.PAD, BG.PAD)
@@ -234,8 +237,8 @@ end
 -- The game's plain grid back (sections switched off): its own money line, size and layout.
 function BG.PlainBag(frame)
   BG.HideHeaders()
-  if not frame.vgSections then return end
-  frame.vgSections = nil
+  if not vgSections[frame] then return end
+  vgSections[frame] = nil
   frame:UpdateCurrencyFrames()
   frame:UpdateFrameSize()
   frame:UpdateItemLayout()
@@ -249,8 +252,8 @@ function BG.LayOutSections(frame)
   if not frame:IsShown() then return end
   local buttons = buttonsOf(frame)
   local list, sig = BG.Group(buttons)
-  if sig == frame.vgSections then return end
-  frame.vgSections = sig
+  if sig == vgSections[frame] then return end
+  vgSections[frame] = sig
   BG.Place(frame, list)
 end
 
@@ -264,7 +267,7 @@ end
 -- The game laid out its plain grid again (the window opened): in combat the
 -- headers go with it until combat ends; the sections come back when they can.
 function BG.AfterGameLayout(frame)
-  frame.vgSections = nil
+  vgSections[frame] = nil
   if ns.InCombat() then BG.HideHeaders() end
   BG.QueueSections()
 end

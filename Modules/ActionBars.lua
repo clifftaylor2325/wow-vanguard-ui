@@ -619,15 +619,7 @@ end
 
 -- Without range events: re-check every button five times a second.
 local function pollRange()
-  local elapsed = 0
-  local ticker = CreateFrame("Frame")
-  ticker:SetScript("OnUpdate", function(_, dt)
-    elapsed = elapsed + dt
-    if elapsed >= 0.2 then
-      elapsed = 0
-      each(updateRange)
-    end
-  end)
+  ns.Every("action bar range", 0.2, function() each(updateRange) end)
 end
 
 -- What you carry or wear changed: item counts, and whether an item can be used.
