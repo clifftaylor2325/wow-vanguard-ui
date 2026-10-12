@@ -15,6 +15,7 @@ local function questRows()
     { "header", "Quest tracker" },
     check("Vanguard's quest tracker under the info strip (reload)", setting("QuestTracker", "own", true)),
     { "cycle", "With Questie loaded (reload)", { { "questie", "Questie's tracker" }, { "vanguard", "Vanguard's tracker" } }, setting("QuestTracker", "withQuestie", true) },
+    check("Each quest's XP under it", liveSetting("QuestTracker", "xp", function() ns.GetModule("QuestTracker").Refresh() end)),
     { "cycle", "Order", { { "game", "As the game orders them" }, { "nearest", "Nearest first" } }, liveSetting("QuestTracker", "order", function() ns.GetModule("QuestTracker").ApplyOrder() end) },
   }
 end
