@@ -326,7 +326,7 @@ local function hideDefault(plate)
   if not uf.vgHooked then
     uf.vgHooked = true
     uf:HookScript("OnShow", uf.Hide)
-    if type(uf.UpdateHitTestArea) == "function" then hooksecurefunc(uf, "UpdateHitTestArea", reapplyHitArea) end
+    if type(uf.UpdateHitTestArea) == "function" then hooksecurefunc(uf, "UpdateHitTestArea", ns.Guard("hook UpdateHitTestArea", reapplyHitArea)) end
   end
 end
 

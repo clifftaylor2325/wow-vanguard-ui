@@ -147,7 +147,7 @@ end
 -- The button the quest log key clicks.
 local function addToggle()
   QL.toggle = CreateFrame("Button", "Vanguard_QuestLogToggle", UIParent)
-  QL.toggle:SetScript("OnClick", QL.Toggle)
+  QL.toggle:SetScript("OnClick", ns.Guard("click quest log toggle", QL.Toggle))
 end
 
 -- The game's own quest log toggle ran (its micro button, or anything else that
@@ -160,7 +160,7 @@ end
 
 -- Makes the game's quest log toggle (the micro button) open this log too.
 local function hookGameToggle()
-  if type(hooksecurefunc) == "function" and type(_G.ToggleQuestLog) == "function" then hooksecurefunc("ToggleQuestLog", QL.OnGameToggle) end
+  if type(hooksecurefunc) == "function" and type(_G.ToggleQuestLog) == "function" then hooksecurefunc("ToggleQuestLog", ns.Guard("hook ToggleQuestLog", QL.OnGameToggle)) end
 end
 
 -- Re-renders the log, if it is still open.

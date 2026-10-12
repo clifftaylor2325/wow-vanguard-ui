@@ -152,6 +152,14 @@ function hooksecurefunc(t, name, fn)
   end
 end
 
+-- debugstack(start): the Lua call stack as text, `start` levels above its caller (1 = the function
+-- that called debugstack), as Blizzard_ScriptErrors.lua reads it: `debugstack(debugStackLevel)`.
+-- Built from debug.traceback without its "stack traceback:" header, one frame per line.
+function debugstack(start)
+  local text = debug.traceback("", (tonumber(start) or 1) + 1)
+  return (text:gsub("^\n?stack traceback:\n?", ""))
+end
+
 -- Static popups: which are shown, by name.
 world.popups = {}
 -- Shows a popup by name (its arguments kept), hides one, or hides a UI panel.

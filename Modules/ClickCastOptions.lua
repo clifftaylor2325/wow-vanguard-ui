@@ -253,8 +253,8 @@ end
 
 -- A row's scripts: click picks, the chevron opens ranks, hovering shows the spell's tooltip.
 local function wireRow(b)
-  b:SetScript("OnClick", function(self) pickItem(self.item) end)
-  b.chevron:SetScript("OnClick", function() toggleRanks(b.item) end)
+  b:SetScript("OnClick", ns.Guard("click spell picker item", function(self) pickItem(self.item) end))
+  b.chevron:SetScript("OnClick", ns.Guard("click spell picker ranks", function() toggleRanks(b.item) end))
   b:SetScript("OnEnter", rowTooltip)
   b:SetScript("OnLeave", hideTooltip)
 end
@@ -280,7 +280,7 @@ local function pickerDismissals()
   picker.catcher = CreateFrame("Button", nil, UIParent)
   picker.catcher:SetAllPoints(UIParent)
   picker.catcher:SetFrameStrata("FULLSCREEN_DIALOG")
-  picker.catcher:SetScript("OnClick", closePicker)
+  picker.catcher:SetScript("OnClick", ns.Guard("click close spell picker", closePicker))
   picker:SetScript("OnHide", function(self) self.catcher:Hide() state.pickKey = nil end)
 end
 
@@ -356,7 +356,7 @@ end
 -- A cell's scripts: clicks, drops and the spell tooltip.
 local function wireCell(c)
   c:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-  c:SetScript("OnClick", cellClick)
+  c:SetScript("OnClick", ns.Guard("click click-cast cell", cellClick))
   c:SetScript("OnReceiveDrag", function(self) if dropSpell(self.key) then changed() end end)
   c:SetScript("OnEnter", function(self) local b = CC.Binding(self.key) spellTooltip(self, b and b.spellID) end)
   c:SetScript("OnLeave", hideTooltip)
@@ -561,7 +561,7 @@ local function wireTile(tile)
   tile:SetScript("OnEnter", function(self) self:EnableKeyboard(true) self.result:SetText("Press a key or click...") end)
   tile:SetScript("OnLeave", function(self) self:EnableKeyboard(false) end)
   tile:SetScript("OnKeyDown", tileKey)
-  tile:SetScript("OnClick", tileClick)
+  tile:SetScript("OnClick", ns.Guard("click click-cast test tile", tileClick))
   tile:SetScript("OnMouseWheel", function(self, d) self.result:SetText(describe(W.Modifiers() .. (d > 0 and "MOUSEWHEELUP" or "MOUSEWHEELDOWN"))) end)
 end
 

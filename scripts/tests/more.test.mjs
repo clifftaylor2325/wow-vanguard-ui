@@ -1,7 +1,7 @@
 // more: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { AFK_ENV, CLICK_LUA, FAKE_FADES, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, isTok, key, later, loggedIn, marks, pinned, plate, putAway, raidButton, setCombat, strips, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { AFK_ENV, CLICK_LUA, FAKE_FADES, expectErrors, HEALING_ENV, MICRO_ENV, PLATE_ENV, QUEST_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, bars, block, borderOf, button, calls, chatHas, isTok, key, later, loggedIn, marks, pinned, plate, putAway, raidButton, setCombat, strips, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -1113,7 +1113,7 @@ it("game alerts: a rare nearby is announced with a sound and a chat line, out of
 // TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
 const DPS_ENV = `
   __dps = { combatSources = { { isLocalPlayer = false, amountPerSecond = 999 }, { isLocalPlayer = true, amountPerSecond = 1234.5 } } }
-  Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } }
+  Enum = Enum or {} Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1 }
   C_DamageMeter = { GetCombatSessionFromType = function(kind, what) __asked = { kind, what } return __dps end }
 `;
 
@@ -1135,9 +1135,9 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
   const hidden = (lua) => { addon.eval(lua); addon.fire("PLAYER_REGEN_ENABLED"); return block(addon, "dps").shown; };
   expect([hidden("__dps.combatSources[2].amountPerSecond = { __secret = true }"), hidden("__dps = { __secret = true }"), hidden("__dps = {}"), hidden("__dps = nil")], "hidden figures, a hidden fight, no fight: nothing shows").toEqual([false, false, false, false]);
   expect(addon.eval("return Vanguard_InfoStrip:GetHeight()"), "and the fourth row goes").toBe(before);
-  addon.eval("Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } } __dps = { combatSources = { { isLocalPlayer = true, amountPerSecond = 0 } } }");
+  addon.eval("Enum = Enum or {} Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1 } __dps = { combatSources = { { isLocalPlayer = true, amountPerSecond = 0 } } }");
   expect(hidden(""), "no damage done: nothing shows").toBe(false);
-  addon.eval("__asked = nil Enum = nil");
+  addon.eval("__asked = nil Enum.DamageMeterSessionType = nil Enum.DamageMeterType = nil");
   expect([addon.eval("return ns.GetModule('InfoStrip').DPS()"), addon.eval("return __asked")], "without the client's enums the meter is not asked with guessed numbers").toEqual([null, null]);
   const bare = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { dps = true } } }" });
   bare.fire("PLAYER_REGEN_ENABLED");
@@ -1159,7 +1159,7 @@ it("the info strip: your place in the last fight's DPS, in a group", () => {
   expect([shown("__dps.combatSources = { __dps.combatSources[1] }"), shown("__dps.combatSources = { { isLocalPlayer = false }, { isLocalPlayer = false } }"), shown("__dps = { __secret = true }")],
     "alone, not in the list, or a hidden fight: nothing shows").toEqual([false, false, false]);
   const bare = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { rank = true } } }" });
-  bare.eval("Enum = { DamageMeterSessionType = { Current = 1 }, DamageMeterType = { Dps = 1 } } C_DamageMeter = { GetCombatSessionFromType = function() __asked = true return { combatSources = { { isLocalPlayer = true }, {} } } end }");
+  bare.eval("Enum = Enum or {} Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1 } C_DamageMeter = { GetCombatSessionFromType = function() __asked = true return { combatSources = { { isLocalPlayer = true }, {} } } end }");
   bare.fire("PLAYER_REGEN_ENABLED");
   expect([block(bare, "rank").shown, bare.eval("return __asked == nil")], "a client whose meter had no enums at login is not asked").toEqual([false, true]);
 });
@@ -1600,6 +1600,7 @@ it("game menu: buttons made after the skin ran are skinned once, Vanguard's matc
 });
 
 it("game menu button: falls back, or goes without what the menu lacks", () => {
+  expectErrors(/^GameMenu: wow-world\.lua:\d+: CreateFrame: unknown template NoSuchTemplate$/);
   const broken = loggedIn(FOREVER_MENU_ENV + 'GameMenuFrame.buttonTemplate = "NoSuchTemplate"');
   expect(broken.eval("local b = ns.gameMenuButton return { b.text:GetText(), b.__points.TOP.rel == GameMenuFrame, ns.errors[#ns.errors].text:match('^GameMenu:') ~= nil }"), "a template that can't be built: themed button under the menu, one logged error").toEqual(["Vanguard", true, true]);
   const plain = loggedIn(FOREVER_MENU_ENV + "GameMenuFrame.buttonTemplate = nil");
@@ -1638,7 +1639,7 @@ it("boss frames: the game's holder is put away only out of combat", () => {
 // protected through its five secure boss buttons, which register the engage event).
 const BOSS_ENV = `
   __units.boss1 = { name = "TEST-ONLY Boss", hp = 5000, maxhp = 10000, power = 0, maxpower = 0, ptype = "MANA" }
-  hooksecurefunc = function(t, name, fn) local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
+  hooksecurefunc = function(t, name, fn) if type(t) == "string" then t, name, fn = _G, t, name end local orig = t[name] if type(orig) ~= "function" then return end t[name] = function(...) local r = orig(...) fn(...) return r end end
   BossTargetFrameContainer = CreateFrame("Frame", "BossTargetFrameContainer", UIParent)
   BossTargetFrameContainer:RegisterEvent("PLAYER_ENTERING_WORLD")
   BossTargetFrameContainer.IsProtected = function() return true, false end
@@ -2580,6 +2581,7 @@ it("game windows in the Vanguard look: framed windows, popups, breath bar, and w
 });
 
 it("game windows: one skin that fails is reported and the other windows, and those that load later, are still skinned", () => {
+  expectErrors(/^window CharacterFrame: eval:\d+: TEST-ONLY skin failure$/);
   const addon = loggedIn(WINDOWS_ENV + `__window("CharacterFrame").NineSlice.GetRegions = function() error("TEST-ONLY skin failure") end`);
   expect(addon.eval("return ns.errors[1].text:find('window CharacterFrame', 1, true) ~= nil"), "the failure is reported under the window's name").toBe(true);
   addon.eval("MerchantFrame:Show()");
@@ -2707,7 +2709,9 @@ it("the AFK screen: clicks, keys and fights put it away; what the client can't s
   addon.eval("UnitIsAFK = function() return { __secret = true } end");
   addon.fire("PLAYER_FLAGS_CHANGED", "player");
   expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "a hidden away flag counts as here").toBe(false);
-  const bare = loggedIn("UnitName = nil UnitLevel = nil UnitClass = nil UnitXP = nil");
+  // The modules that read the unit calls this client lacks are off: a client without UnitClass breaks them, and the card is the point here.
+  const needUnits = ["UnitFrames", "ComboPoints", "ClassBars", "SwingTimer", "InfoStrip", "Inventory"].map((name) => name + " = false").join(", ");
+  const bare = loggedIn("UnitName = nil UnitLevel = nil UnitClass = nil UnitXP = nil", { savedVariables: `VanguardDB.profiles = { Default = { modules = { ${needUnits} } } }` });
   bare.eval("ns.GetModule('AfkScreen').Paint()");
   expect(bare.eval("local f = Vanguard_AfkScreen return { f.name:GetText(), f.who:GetText(), f.xp:IsShown() }"), "a client that can't say much gets a blank card, no errors").toEqual(["", "", false]);
 });

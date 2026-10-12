@@ -51,7 +51,7 @@ function W.Primary(parent, text, onClick, width)
   b.fill:SetAllPoints()
   T.Color(b.text, "void")
   b.Refresh = refreshPrimary
-  b:SetScript("OnClick", onClick)
+  b:SetScript("OnClick", ns.Guard(W.ClickLabel(text), onClick))
   b:Refresh()
   return b
 end
@@ -93,7 +93,7 @@ function W.Check(parent, text, get, set, width)
   local r = row(parent, text, width)
   r.get, r.Refresh = get, refreshSwitch
   addSwitch(r)
-  r:SetScript("OnClick", function(self) set(not self.get()); T.Sound(self.get() and "on" or "off"); self:Refresh() end)
+  r:SetScript("OnClick", ns.Guard("click switch", function(self) set(not self.get()); T.Sound(self.get() and "on" or "off"); self:Refresh() end))
   r:Refresh()
   return r
 end
@@ -168,7 +168,7 @@ local function segment(r, choice, set)
   s.text = T.Text(s:CreateFontString(nil, "OVERLAY"), "small")
   s.text:SetPoint("CENTER")
   s.text:SetText(choice[2])
-  s:SetScript("OnClick", function() set(choice[1]); r:Refresh() end)
+  s:SetScript("OnClick", ns.Guard("click segment", function() set(choice[1]); r:Refresh() end))
   return s
 end
 
@@ -199,7 +199,7 @@ function W.Choice(parent, caption, choices, get, set, width)
   r.caption, r.choices, r.get = caption, choices, get
   if fitsSegments(choices) then addSegments(r, choices, set) else addDropdown(r, choices, get, set) end
   r.Refresh = r.Refresh or refreshSegments
-  r:SetScript("OnClick", function(self) set(W.NextChoice(self.choices, self.get())[1]); self:Refresh() end)
+  r:SetScript("OnClick", ns.Guard("click choice", function(self) set(W.NextChoice(self.choices, self.get())[1]); self:Refresh() end))
   r:Refresh()
   return r
 end
@@ -237,7 +237,7 @@ local function fillItem(i, choice, current, pick)
   b.text:SetText(choice[2])
   T.Color(b.text, choice[1] == current and "accent" or "text")
   b.check:SetShown(choice[1] == current)
-  b:SetScript("OnClick", function() W.CloseMenu(); pick(choice[1]) end)
+  b:SetScript("OnClick", ns.Guard("click menu item", function() W.CloseMenu(); pick(choice[1]) end))
   b:Show()
 end
 
@@ -314,7 +314,7 @@ function W.Dropdown(parent, choices, get, set, width)
   d:SetSize(width or 180, 22)
   d.choices, d.get, d.set, d.Refresh = choices, get, set, refreshDropdown
   addDropdownText(d)
-  d:SetScript("OnClick", function(self) if menu and menu:IsShown() and menu.owner == self then W.CloseMenu() else openMenu(self) end end)
+  d:SetScript("OnClick", ns.Guard("click dropdown", function(self) if menu and menu:IsShown() and menu.owner == self then W.CloseMenu() else openMenu(self) end end))
   d:Refresh()
   return d
 end
@@ -392,7 +392,7 @@ function W.Slider(parent, caption, opts, get, set, width)
   addTrack(r)
   r.value = T.Text(r:CreateFontString(nil, "OVERLAY"), "number", "text2")
   r.value:SetPoint("RIGHT", -8, 0)
-  r:SetScript("OnClick", stepOrWrap)
+  r:SetScript("OnClick", ns.Guard("click slider", stepOrWrap))
   r:Refresh()
   return r
 end

@@ -849,8 +849,8 @@ local function watchTab(button)
   pcall(button.HookScript, button, "OnEnable", repaintTab)
   pcall(button.HookScript, button, "OnDisable", repaintTab)
   if type(hooksecurefunc) ~= "function" then return end
-  if type(button.SetChecked) == "function" then hooksecurefunc(button, "SetChecked", onTabChecked) end
-  if type(button.SetTabSelected) == "function" then hooksecurefunc(button, "SetTabSelected", repaintTab) end
+  if type(button.SetChecked) == "function" then hooksecurefunc(button, "SetChecked", ns.Guard("hook SetChecked", onTabChecked)) end
+  if type(button.SetTabSelected) == "function" then hooksecurefunc(button, "SetTabSelected", ns.Guard("hook SetTabSelected", repaintTab)) end
 end
 
 -- Fades each part of a frame named in keys that it has (textures or frames), by alpha.

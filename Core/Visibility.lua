@@ -112,7 +112,7 @@ function V.Linger(frame)
   local token = (frame.vgLingerCount or 0) + 1
   frame.vgLingerCount = token
   frame.vgLingering = type(C_Timer) == "table" and type(C_Timer.After) == "function" or nil
-  if frame.vgLingering then C_Timer.After(V.LINGER, function() V.EndLinger(frame, token) end) end
+  if frame.vgLingering then C_Timer.After(V.LINGER, ns.Guard("timer end linger", function() V.EndLinger(frame, token) end)) end
   V.Refresh(frame)
 end
 
@@ -131,9 +131,9 @@ function ns.AutoHide(frame, seconds)
   local token = (frame.vgAutoHideCount or 0) + 1
   frame.vgAutoHideCount = token
   if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return end
-  C_Timer.After(seconds, function()
+  C_Timer.After(seconds, ns.Guard("timer auto hide", function()
     if frame.vgAutoHideCount == token then T.FadeOut(frame) end
-  end)
+  end))
 end
 
 -- Where you are, as the client's instance type (IsInInstance's second
@@ -285,7 +285,7 @@ local function chip(r, c)
   s.text = T.Text(s:CreateFontString(nil, "OVERLAY"), "small")
   s.text:SetPoint("CENTER")
   s.text:SetText(c[2])
-  s:SetScript("OnClick", function() V.Toggle(r.acc, c[1]) T.Sound("on") ns.Options.Refresh() end)
+  s:SetScript("OnClick", ns.Guard("click visibility chip", function() V.Toggle(r.acc, c[1]) T.Sound("on") ns.Options.Refresh() end))
   return s
 end
 

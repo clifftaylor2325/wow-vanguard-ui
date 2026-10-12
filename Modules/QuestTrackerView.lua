@@ -22,7 +22,7 @@ local function addToggle(f)
   f.toggle:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -2)
   f.toggle.icon = T.Tint(f.toggle:CreateTexture(nil, "OVERLAY"), "text2")
   f.toggle.icon:SetAllPoints()
-  f.toggle:SetScript("OnClick", function() QT.collapsed = not QT.collapsed QT.Refresh() end)
+  f.toggle:SetScript("OnClick", ns.Guard("click quest tracker collapse", function() QT.collapsed = not QT.collapsed QT.Refresh() end))
 end
 
 -- "Quests", the count beside the arrow, and a brass line under them.
@@ -57,7 +57,7 @@ local function makeBlock(parent)
   b.title:SetWidth(QT.W)
   b.title:SetJustifyH("LEFT")
   b.lines = QP.Pool(b, objectiveLine)
-  b:SetScript("OnClick", function(self, button) QT.OnTitle(self.id, button) end)
+  b:SetScript("OnClick", ns.Guard("click quest tracker title", function(self, button) QT.OnTitle(self.id, button) end))
   return b
 end
 

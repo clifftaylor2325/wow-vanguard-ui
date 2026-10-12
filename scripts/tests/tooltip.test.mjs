@@ -1,14 +1,14 @@
 // tooltip: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { UNITS_ENV, calls, isTok, loggedIn, tooltip } from "./helpers.mjs";
+import { UNITS_ENV, calls, expectErrors, isTok, loggedIn, tooltip } from "./helpers.mjs";
 
 // TEST-ONLY tooltip: GameTooltip as a plain frame with the tooltip calls the module uses.
 const TOOLTIP_ENV = `
   __hooks, __post = {}, {}
   hooksecurefunc = function(name, fn) __hooks[name] = fn end
   GameTooltip_SetDefaultAnchor = function() end
-  Enum = { TooltipDataType = { Item = 0, Unit = 2 } }
+  Enum = Enum or {} Enum.TooltipDataType = { Item = 0, Unit = 2 }
   TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) __post[kind] = fn end }
   local tt = CreateFrame("Frame", "GameTooltip", UIParent)
   tt.NineSlice = CreateFrame("Frame", nil, tt)
@@ -79,6 +79,7 @@ it("item tooltips show what the stack sells for, unless the client already does"
 });
 
 it("item tooltips: other modules' lines come after the tooltip's own, and one that fails doesn't stop the rest", () => {
+  expectErrors(/^tooltip lines: eval:\d+: TEST-ONLY broken line$/);
   const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV);
   addon.eval(`local TT = ns.GetModule("Tooltips")
     TT.AddItemLines(function(tt, link) tt:AddLine("TEST-ONLY first " .. link) end)

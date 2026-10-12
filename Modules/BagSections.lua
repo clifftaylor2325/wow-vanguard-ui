@@ -313,9 +313,9 @@ end
 function BG.WatchSections(frame)
   if not canSection(frame) then return end
   BG.sectionFrame = frame
-  hooksecurefunc(frame, "UpdateItemLayout", BG.AfterGameLayout)
-  hooksecurefunc(frame, "UpdateItems", BG.QueueSections)
-  hooksecurefunc(frame, "UpdateCurrencyFrames", BG.PadMoney)
+  hooksecurefunc(frame, "UpdateItemLayout", ns.Guard("hook UpdateItemLayout", BG.AfterGameLayout))
+  hooksecurefunc(frame, "UpdateItems", ns.Guard("hook UpdateItems", BG.QueueSections))
+  hooksecurefunc(frame, "UpdateCurrencyFrames", ns.Guard("hook UpdateCurrencyFrames", BG.PadMoney))
   ns.On("ITEM_DATA_LOAD_RESULT", itemLoaded)
   T.OnChanged(paintHeaders)
 end

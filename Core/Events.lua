@@ -155,6 +155,17 @@ function ns.Try(where, fn, ...)
   return finished(outer, xpcall(fn, traced, ...))
 end
 
+-- Wraps a hook, OnClick or timer callback so a failure is reported under
+-- `where` (ns.errors, /vg errors, the game's handler) instead of escaping.
+-- Returns nothing, as the game ignores what these callbacks return; a
+-- non-function (nil clears a script) comes back as it is.
+function ns.Guard(where, fn)
+  if type(fn) ~= "function" then return fn end
+  return function(...)
+    ns.Try(where, fn, ...)
+  end
+end
+
 -- Events ------------------------------------------------------------------------------------
 
 -- Event -> list of handlers. A list is never changed in place: ns.On and

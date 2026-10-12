@@ -115,7 +115,7 @@ end
 local function watchDeaths()
   local f = _G.RaidWarningFrame
   if type(f) ~= "table" or type(f.GetSortedMessages) ~= "function" or type(hooksecurefunc) ~= "function" then return end
-  hooksecurefunc(f, "AddMessage", GA.OnWarning)
+  hooksecurefunc(f, "AddMessage", ns.Guard("hook AddMessage", GA.OnWarning))
   f:HookScript("OnEvent", GA.OnWarningEvent)
 end
 

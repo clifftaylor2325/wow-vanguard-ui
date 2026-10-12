@@ -240,7 +240,7 @@ function GW.SkinBagWindow(frame)
   bags.SkinWindow(frame)
   if frame.vgBagItems or type(frame.UpdateItems) ~= "function" or type(hooksecurefunc) ~= "function" then return end
   frame.vgBagItems = true
-  hooksecurefunc(frame, "UpdateItems", skinBagItems)
+  hooksecurefunc(frame, "UpdateItems", ns.Guard("hook UpdateItems", skinBagItems))
 end
 
 GW.Add("town", "framed", { "ContainerFrame1", "ContainerFrame2", "ContainerFrame3", "ContainerFrame4", "ContainerFrame5", "ContainerFrame6", "ContainerFrame7" }, GW.SkinBagWindow)
@@ -272,7 +272,7 @@ function GW.SkinMasterLooter(frame)
   dressMasterPlayers()
   if frame.vgPlayers or type(_G.MasterLooterFrame_UpdatePlayers) ~= "function" or type(hooksecurefunc) ~= "function" then return end
   frame.vgPlayers = true
-  hooksecurefunc("MasterLooterFrame_UpdatePlayers", dressMasterPlayers)
+  hooksecurefunc("MasterLooterFrame_UpdatePlayers", ns.Guard("hook MasterLooterFrame_UpdatePlayers", dressMasterPlayers))
 end
 
 -- The group loot history window: the window skin, and its close button (named ClosePanelButton there).

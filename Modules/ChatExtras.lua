@@ -61,7 +61,7 @@ end
 -- Links addresses in chat, where the game hands addon links back to addons.
 local function watchLinks()
   local registry = _G.EventRegistry
-  if type(ChatFrame_AddMessageEventFilter) ~= "function" or type(registry) ~= "table" then return end
+  if type(ChatFrame_AddMessageEventFilter) ~= "function" or type(registry) ~= "table" or type(registry.RegisterCallback) ~= "function" then return end
   for _, event in ipairs(CX.EVENTS) do ChatFrame_AddMessageEventFilter(event, filter) end
   registry:RegisterCallback("SetItemRef", CX.OnLink, CX)
 end
@@ -99,7 +99,7 @@ local function addCopyButton()
   CX.copyButton = ns.DialogButton(frame, "Copy", 40)
   CX.copyButton:SetHeight(16)
   CX.copyButton:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", 0, 4)
-  CX.copyButton:SetScript("OnClick", CX.ShowCopy)
+  CX.copyButton:SetScript("OnClick", ns.Guard("click copy chat", CX.ShowCopy))
 end
 
 -- Short channel names ---------------------------------------------------------------------
@@ -140,7 +140,7 @@ end
 local function watchWindow(frame)
   if type(frame) ~= "table" or frame.vgWatched then return end
   frame.vgWatched = true
-  if type(frame.TransformMessages) == "function" then hooksecurefunc(frame, "AddMessage", shortenAdded) end
+  if type(frame.TransformMessages) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(frame, "AddMessage", ns.Guard("hook AddMessage", shortenAdded)) end
   frame:HookScript("OnMouseWheel", jump)
 end
 
@@ -193,5 +193,5 @@ function CX.Enable(settings)
   if settings.links then watchLinks() end
   if settings.copy then addCopyButton() end
   CX.WatchWindows()
-  if type(hooksecurefunc) == "function" and type(FCF_OpenTemporaryWindow) == "function" then hooksecurefunc("FCF_OpenTemporaryWindow", CX.WatchWindows) end
+  if type(hooksecurefunc) == "function" and type(FCF_OpenTemporaryWindow) == "function" then hooksecurefunc("FCF_OpenTemporaryWindow", ns.Guard("hook FCF_OpenTemporaryWindow", CX.WatchWindows)) end
 end
