@@ -12,6 +12,7 @@ local HELP = {
   "reset <frame|all>    put a frame (or every frame) back at its default spot",
   "frames               list the movable frames",
   "grid [size|on|off]   the unlock-mode grid; snap on|off   snapping while dragging",
+  "texelsnap [on|off]   still borders, fills and lines snap to the pixel grid (a test; off by default)",
   "accent <rrggbb|name> set the accent color (brass, arcane, fel, void, ember); accent reset",
   "theme reset          every theme setting back to default",
   "modules              list modules; enable|disable <module> (then /reload)",
@@ -140,6 +141,13 @@ local function snapCommand(rest)
   local o = ns.MoverOptions()
   o.snap = rest == "on" or (rest == "" and not o.snap)
   chat(o.snap and "Snapping on." or "Snapping off.")
+end
+
+-- /vg texelsnap [on|off]: pixel-grid snapping for still textures, for the A/B test (#226).
+local function texelSnapCommand(rest)
+  local on = rest == "on" or (rest == "" and not T.Settings().texelSnap)
+  T.SetTexelSnap(on)
+  chat(on and "Texel snapping on: borders, fills, dividers and sheens snap to the pixel grid." or "Texel snapping off.")
 end
 
 -- /vg theme reset
@@ -468,6 +476,7 @@ local COMMANDS = {
   accent = accentCommand,
   grid = gridCommand,
   snap = snapCommand,
+  texelsnap = texelSnapCommand,
   theme = themeCommand,
   modules = modulesCommand,
   enable = setModule(true),

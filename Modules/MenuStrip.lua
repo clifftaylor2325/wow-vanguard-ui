@@ -208,7 +208,7 @@ end
 -- slots only: inside the bar's margin, which the bar hugs its rows with.
 local function addDivider(strip)
   local y = -(MS.MARGIN + MS.TILE + MS.GAP / 2)
-  MS.divider = T.Snap(strip:CreateTexture(nil, "ARTWORK"))
+  MS.divider = T.Snap(strip:CreateTexture(nil, "ARTWORK"), "divider")
   MS.divider:SetTexture(T.WHITE)
   MS.divider:SetPoint("LEFT", strip, "TOPLEFT", MS.MARGIN, y)
   MS.divider:SetPoint("RIGHT", strip, "TOPRIGHT", -MS.MARGIN, y)
