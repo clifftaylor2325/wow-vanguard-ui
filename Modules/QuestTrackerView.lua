@@ -92,11 +92,11 @@ end
 
 -- Blocks ---------------------------------------------------------------------------------------
 
--- A quest's lines under its title: { text, color } for each objective, or "Ready to turn in".
+-- A quest's lines under its title: { text, color } for each objective, or "Ready to turn in", then its XP.
 function QT.LineSpecs(q)
-  if q.ready then return { { "Ready to turn in", "good" } } end
-  local out = {}
-  for _, o in ipairs(q.objectives) do out[#out + 1] = { "- " .. o.text, o.done and "good" or "text2" } end
+  local out = q.ready and { { "Ready to turn in", "good" } } or {}
+  for _, o in ipairs(q.ready and {} or q.objectives) do out[#out + 1] = { "- " .. o.text, o.done and "good" or "text2" } end
+  if (q.xp or 0) > 0 then out[#out + 1] = { q.xp .. " XP", "text2" } end
   return out
 end
 

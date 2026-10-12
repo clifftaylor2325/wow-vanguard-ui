@@ -110,6 +110,7 @@ local function dataBarRows()
     { "header", "XP and reputation" },
     check("Experience bar", setting("DataBars", "xp", true)), check("Reputation bar", setting("DataBars", "reputation", true)),
     { "cycle", "Numbers", { { "hover", "on hover" }, { "always", "always" } }, setting("DataBars", "text", true) },
+    check("Experience tooltip on hover (kills to level, rested, quest XP)", setting("DataBars", "tooltip")),
     barsVisibility, barsWhen,
   }
 end
@@ -272,6 +273,7 @@ local function prepRows()
     { "header", "Instance prep" },
     check("Checklist when you enter a dungeon or raid (only when something is low)", setting("InstancePrep", "onEnter")),
     check("Checklist on a ready check", setting("InstancePrep", "onReadyCheck")),
+    check("Warn in chat when a supply runs low (once, out of combat)", setting("InstancePrep", "lowWarn")),
     { "slider", "Hide after", PREP_SECONDS, setting("InstancePrep", "hideAfter") },
     { "slider", "Durability warning under", PREP_PERCENT, setting("InstancePrep", "durability") },
     { "text", "Wanted amounts: /vg prep want <food|bandages|potions|ammo|shards> <n>; items from /vg stock are checked too." },
