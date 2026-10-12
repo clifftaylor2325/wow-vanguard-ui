@@ -93,13 +93,18 @@ for name, v in pairs(TOKENS) do
 end
 
 -- Accent presets for /vg accent and the options swatches, in display order.
-T.PRESET_ORDER = { "brass", "arcane", "fel", "void", "ember" }
+-- Jade, orchid and copper (#231) keep clear of class, item quality and state colours.
+T.PRESET_ORDER = { "brass", "arcane", "jade", "orchid", "copper" }
 T.PRESETS = {
-  brass = fromHex("d9a441"), arcane = fromHex("5aa2f0"), fel = fromHex("5bcb7e"),
-  void = fromHex("a47bf0"), ember = fromHex("e0664b"),
+  brass = fromHex("d9a441"), arcane = fromHex("5aa2f0"), jade = fromHex("4fbfa3"),
+  orchid = fromHex("b48ae8"), copper = fromHex("c8784a"),
 }
--- Earlier preset names still work.
-local ALIASES = { blue = "arcane", bronze = "brass", green = "fel", purple = "void", red = "ember" }
+-- Earlier preset names still work: fel, void and ember (before #231) and the names before them.
+-- A profile keeps the colour it saved, so an earlier fel, void or ember pick stays as it was.
+local ALIASES = {
+  fel = "jade", void = "orchid", ember = "copper",
+  blue = "arcane", bronze = "brass", green = "jade", purple = "orchid", red = "copper",
+}
 
 local DEFAULTS = {
   accent = T.PRESETS.brass,
