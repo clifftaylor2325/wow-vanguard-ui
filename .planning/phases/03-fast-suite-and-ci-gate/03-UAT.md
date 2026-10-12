@@ -3,7 +3,7 @@ status: complete
 phase: 03-fast-suite-and-ci-gate
 source: [03-VERIFICATION.md]
 started: 2026-10-11T13:19:59Z
-updated: 2026-10-12T02:19:29.998Z
+updated: 2026-10-12T02:36:21Z
 ---
 
 ## Current Test
@@ -29,9 +29,8 @@ source: PR #242 full-suite run 38143945159, Tests, coverage and checks 13:37:59Z
 
 ### 4. First hosted verify and lua-suite run after the toolchain pins
 expected: luacheck 1.2.0 installs after sha256sum -c accepts the digest; lua5.1 still installs through apt; node-version-file .nvmrc gives Node 24 on actions/setup-node@v7; the Playwright preview job runs on Node 24 (assumptions A3, A4, A6)
-result: issue
-reported: "Toolchain pins proved on PR #242: luacheck 1.2.0 installed after sha256sum -c, setup-node@v7 read .nvmrc, UI preview ran Node v24.21.0, lua5.1 installed. But Suite / UI preview failed: npm run preview threw 'FontString:SetText(): Font not set' (eval:69, scripts/preview-ui.mjs:576)."
-severity: major
+result: pass
+source: PR #242 run 38196119168 after be36bed (preview fonts): Suite / UI preview passed in 3m6s on Node 24. Earlier failure on run 38143945159 was reported as: "Toolchain pins proved on PR #242: luacheck 1.2.0 installed after sha256sum -c, setup-node@v7 read .nvmrc, UI preview ran Node v24.21.0, lua5.1 installed. But Suite / UI preview failed: npm run preview threw 'FontString:SetText(): Font not set' (eval:69, scripts/preview-ui.mjs:576)."
 
 ### 5. Decide D-06's internal 150 s budget
 expected: a decision. Recorded runs 155.5 s and 158.7 s, independent verifier run 148.5 s; the 300 s requirement is met in every run. The user already chose to accept about 156 s during execution; record that here or ask for module startup work.
@@ -46,8 +45,8 @@ source: user accepted WR-01 fix (in gap closure) and IN-05 wontfix
 ## Summary
 
 total: 6
-passed: 5
-issues: 1
+passed: 6
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
@@ -56,7 +55,9 @@ blocked: 0
 
 - gap_id: G-03-4
   truth: "The Playwright preview job runs on Node 24 and completes"
-  status: failed
+  status: resolved
+  resolved_by: "be36bed (direct fix, no gap plan); hosted run 38196119168 green"
+  resolved_at: 2026-10-12
   reason: "User reported: Suite / UI preview failed on PR #242 (run 38143945159): npm run preview threw FontString:SetText(): Font not set at eval:69, scripts/preview-ui.mjs:576. The job makes the full-suite workflow red."
   severity: major
   test: 4
