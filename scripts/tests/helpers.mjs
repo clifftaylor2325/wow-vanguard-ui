@@ -342,7 +342,7 @@ export const FAKE_FADES = `
   __fades = {}
   function __fakeFader(frame)
     frame.CreateAnimationGroup = function()
-      local g = { scripts = {} }
+      local g = { scripts = {}, owner = frame }
       function g:SetToFinalAlpha() end
       function g:Stop() self.playing = false end
       function g:SetScript(k, fn) self.scripts[k] = fn end
