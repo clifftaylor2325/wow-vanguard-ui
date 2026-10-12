@@ -32,9 +32,9 @@ local PREFIX = "addon:Vanguard:url:"
 
 -- Links -----------------------------------------------------------------------------------
 
--- The accent as a chat color code.
+-- The accent's text variant as a chat color code.
 local function accentCode()
-  local r, g, b = T.RGB("accent")
+  local r, g, b = T.RGB("accentText")
   return string.format("|cff%02x%02x%02x", math.floor(r * 255), math.floor(g * 255), math.floor(b * 255))
 end
 

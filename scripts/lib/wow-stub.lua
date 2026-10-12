@@ -250,6 +250,9 @@ function methods:SetBlendMode(mode) self.__blend = mode end
 -- Records whether a texture snaps to the pixel grid.
 function methods:SetSnapToPixelGrid(snap) self.__snapToPixelGrid = snap end
 
+-- Records a texture's texel snapping bias.
+function methods:SetTexelSnappingBias(bias) self.__texelBias = bias end
+
 -- Forgets every anchor point.
 function methods:ClearAllPoints() self.__points = {} end
 

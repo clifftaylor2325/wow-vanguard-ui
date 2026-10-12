@@ -25,7 +25,7 @@ local function buttonBadge(button)
   b:SetFrameLevel(button:GetFrameLevel() + 5)
   b.fill = ns.Widgets.Flat(b, "ARTWORK", "bad")
   b.fill:SetAllPoints()
-  b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "tiny", "white")
+  b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "badge", "white")
   b.text:SetPoint("CENTER")
   return b
 end

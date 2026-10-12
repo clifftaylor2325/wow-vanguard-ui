@@ -221,7 +221,7 @@ end
 local function createUnitFrame(key, unit, w, h, settings)
   local f = CreateFrame("Button", "Vanguard_" .. key, UIParent, "SecureUnitButtonTemplate")
   f.unit, f.key = unit, key
-  f:SetSize(w, h)
+  T.PixelSize(f, w, h)
   makeSecure(f, unit)
   T.HudPanel(f)
   f.health, f.power = createBar(f), createBar(f)

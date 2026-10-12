@@ -52,9 +52,11 @@ end
 
 -- Named colors: "rrggbb", or { "rrggbb", alpha }.
 local TOKENS = {
-  -- Surfaces
-  void = "0b0d11", panel = { "12151b", 0.94 }, raised = "1a1e26", inset = { "07080b", 0.95 },
-  edge = "000000", sheen = { "ffffff", 0.06 }, divider = "242a34", shade = { "000000", 0.5 },
+  -- Surfaces, stepped about 0.04 apart in OKLCH lightness (#229): inset, panel, raised,
+  -- raisedHover (an opaque control under the mouse), divider, borderHi (inner bevel, focus base).
+  void = "0b0d11", panel = { "13161c", 0.94 }, raised = "1b1f26", inset = { "0c0e13", 0.95 },
+  raisedHover = "262a32", borderHi = "43484f",
+  edge = "000000", sheen = { "ffffff", 0.06 }, divider = "2f343d", shade = { "000000", 0.5 },
   hover = { "ffffff", 0.08 }, darkBar = "2a3039", checked = { "ffffff", 0.25 }, gridline = { "ffffff", 0.12 },
   textShadow = { "000000", 0.9 },
   -- The dark sweep over an aura icon as its time runs out.
@@ -62,7 +64,8 @@ local TOKENS = {
   -- The spark on the power bar (the five-second rule, energy ticks) and the swing timer.
   spark = { "ffffff", 0.9 },
   -- Text
-  text = "e8eaee", text2 = "a6adb9", muted = "6b7280", white = "ffffff", gold = "ffd100",
+  -- Text tiers, brightest first (#227): text, text2, muted; disabled only for disabled and placeholder text.
+  text = "e8eaee", text2 = "c8cdd6", muted = "a6adb9", disabled = "7c8390", white = "ffffff", gold = "ffd100",
   -- State (kept apart from the accent)
   good = "4fc27a", warn = "ee8b3a", bad = "e0565b", info = "5aa2f0", unknown = "808080",
   -- Reaction to you
@@ -95,13 +98,21 @@ for name, v in pairs(TOKENS) do
 end
 
 -- Accent presets for /vg accent and the options swatches, in display order.
-T.PRESET_ORDER = { "brass", "arcane", "fel", "void", "ember" }
+-- Jade, orchid and copper (#231) keep clear of class, item quality and state colours.
+T.PRESET_ORDER = { "brass", "arcane", "jade", "orchid", "copper" }
 T.PRESETS = {
-  brass = fromHex("d9a441"), arcane = fromHex("5aa2f0"), fel = fromHex("5bcb7e"),
-  void = fromHex("a47bf0"), ember = fromHex("e0664b"),
+  brass = fromHex("d9a441"), arcane = fromHex("5aa2f0"), jade = fromHex("4fbfa3"),
+  orchid = fromHex("b48ae8"), copper = fromHex("c8784a"),
 }
--- Earlier preset names still work.
-local ALIASES = { blue = "arcane", bronze = "brass", green = "fel", purple = "void", red = "ember" }
+-- Earlier preset names still work: fel, void and ember (before #231) and the names before them.
+-- A profile keeps the colour it saved, so an earlier fel, void or ember pick stays as it was.
+local ALIASES = {
+  fel = "jade", void = "orchid", ember = "copper",
+  blue = "arcane", bronze = "brass", green = "jade", purple = "orchid", red = "copper",
+}
+-- An earlier name read from T.PRESETS gives the preset it now stands for, so other code and addons
+-- that read T.PRESETS.fel keep working (pairs over T.PRESETS still lists only the five).
+setmetatable(T.PRESETS, { __index = function(_, name) return ALIASES[name] and T.PRESETS[ALIASES[name]] end })
 
 local DEFAULTS = {
   accent = T.PRESETS.brass,
@@ -111,6 +122,10 @@ local DEFAULTS = {
   font = "",
   outline = "",
   pixelScale = false,
+  -- Screen pixels per UI unit at pixel-perfect scale (a whole number; the Pixel-perfect screen preset sets it).
+  pixelMultiple = 1,
+  -- Texel snapping for still textures (borders, fills, dividers, sheens); off until the in-game A/B test (#226).
+  texelSnap = false,
   textScale = 1,
   barTexture = "vanguard",
   -- Soft shadows under HUD frames (unit frames, bars, minimap); floating windows always have one.
@@ -156,10 +171,59 @@ end
 -- The user-adjustable tokens live in the theme settings (the rest are fixed).
 local SETTING_TOKENS = { accent = "accent", panel = "panel", inset = "inset", edge = "border" }
 
--- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings).
+-- The accent's text and dim variants (#230), each { OKLCH lightness change, chroma factor }:
+-- accentText is lighter, for accent-coloured text; accentDim is darker, for borders and
+-- ornament only, never text. Brass d9a441 gives e6b45b and 8a6a2f.
+T.ACCENT_VARIANTS = { accentText = { 0.047, 0.94 }, accentDim = { -0.207, 0.67 } }
+
+-- An sRGB channel (0-1) in linear light, and back.
+local function linear(c) return c <= 0.04045 and c / 12.92 or ((c + 0.055) / 1.055) ^ 2.4 end
+-- A linear channel back in sRGB, clamped to 0-1 (a variant can fall outside the gamut).
+local function gamma(c)
+  c = math.max(0, math.min(1, c))
+  return c <= 0.0031308 and c * 12.92 or 1.055 * c ^ (1 / 2.4) - 0.055
+end
+
+-- An sRGB colour in OKLab: L, a, b (Bjorn Ottosson's matrices).
+local function toOklab(r, g, b)
+  r, g, b = linear(r), linear(g), linear(b)
+  local l = (0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b) ^ (1 / 3)
+  local m = (0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b) ^ (1 / 3)
+  local s = (0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b) ^ (1 / 3)
+  return 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+end
+
+-- An OKLab colour back in sRGB: r, g, b (0-1).
+local function fromOklab(L, a, b)
+  local l = (L + 0.3963377774 * a + 0.2158037573 * b) ^ 3
+  local m = (L - 0.1055613458 * a - 0.0638541728 * b) ^ 3
+  local s = (L - 0.0894841775 * a - 1.2914855480 * b) ^ 3
+  return gamma(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+    gamma(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+    gamma(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)
+end
+
+-- Variant name -> { key = the accent it was made from, c = its colour }, so it's worked out once per accent.
+local variants = {}
+
+-- An accent variant's colour, made from the current accent (and cached until the accent changes).
+local function accentVariant(name)
+  local a, v, hit = T.Settings().accent, T.ACCENT_VARIANTS[name], variants[name]
+  local key = string.format("%.6f %.6f %.6f", a[1], a[2], a[3])
+  if hit and hit.key == key then return hit.c end
+  local L, A, B = toOklab(a[1], a[2], a[3])
+  local r, g, b = fromOklab(math.max(0, math.min(1, L + v[1])), A * v[2], B * v[2])
+  variants[name] = { key = key, c = { r, g, b, 1 } }
+  return variants[name].c
+end
+
+-- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings,
+-- accentText and accentDim follow the accent).
 function T.RGB(name)
   local key = SETTING_TOKENS[name]
-  local c = key and T.Settings()[key] or T.TOKENS[name]
+  local c = T.ACCENT_VARIANTS[name] and accentVariant(name) or key and T.Settings()[key] or T.TOKENS[name]
   if not c then error("Vanguard: no color named " .. tostring(name), 2) end
   return c[1], c[2], c[3], c[4] or 1
 end
@@ -222,21 +286,49 @@ end
 
 -- Parts --------------------------------------------------------------------------------
 
--- A solid-color texture on frame at a draw layer (and sublevel).
-local function solid(frame, layer, sublevel)
+-- A solid-color texture on frame at a draw layer (and sublevel), of a snapping class (T.SNAP_CLASSES).
+local function solid(frame, layer, sublevel, class)
   local t = frame:CreateTexture(nil, layer, nil, sublevel)
   t:SetTexture(T.WHITE)
-  return T.Snap(t)
+  return T.Snap(t, class)
 end
 
--- Keeps a texture off the client's pixel-grid snapping, so 1 px lines and
--- icon edges stay crisp at any UI scale instead of blurring or jumping.
-function T.Snap(texture)
+-- Texel snapping policy (#226): which classes of texture snap to the pixel grid while
+-- texel snapping is on. Still lines and fills snap; anything that moves or scales
+-- (bar fills, sparks, cooldown swipes) and art (icons, soft rings) stays off.
+T.SNAP_CLASSES = { border = true, fill = true, divider = true, sheen = true, bar = false, spark = false, swipe = false, icon = false }
+-- The sharpening bias a snapped texture gets (0 to 1).
+T.SNAP_BIAS = 1
+-- Every texture T.Snap has seen -> its class (weak), so a switch reaches them all.
+local snapClass = setmetatable({}, { __mode = "k" })
+
+-- Sets a texture's pixel-grid snapping for its class: on (with the bias) only for a still
+-- class while texel snapping is on; off otherwise, as before #226.
+local function applySnap(texture, class)
+  local on = T.SNAP_CLASSES[class] == true and T.Settings().texelSnap == true
+  texture:SetSnapToPixelGrid(on)
+  texture:SetTexelSnappingBias(on and T.SNAP_BIAS or 0)
+end
+
+-- Puts a texture under the snapping policy for its class (default "icon": off, so 1 px
+-- lines and icon edges stay crisp at any UI scale instead of blurring or jumping).
+function T.Snap(texture, class)
   if texture.SetSnapToPixelGrid then
-    texture:SetSnapToPixelGrid(false)
-    texture:SetTexelSnappingBias(0)
+    snapClass[texture] = class or "icon"
+    applySnap(texture, class or "icon")
   end
   return texture
+end
+
+-- Puts every texture T.Snap has seen under the policy again (after a switch or a profile load).
+local function reSnap()
+  for texture, class in pairs(snapClass) do applySnap(texture, class) end
+end
+
+-- Turns texel snapping for still textures on or off (the A/B test, #226), at once.
+function T.SetTexelSnap(on)
+  T.Settings().texelSnap = on == true
+  reSnap()
 end
 
 -- Pixels ----------------------------------------------------------------------------
@@ -284,6 +376,46 @@ function T.PixelsPerUnit()
   return scaleOf(UIParent) * screenHeight() / 768
 end
 
+-- Sizes asked for through T.PixelSize: frame -> { w, h, even }. Weak, so a frame that is
+-- collected doesn't stay; a scale or screen change rounds them all again (T.Rescale).
+local pixelSized = setmetatable({}, { __mode = "k" })
+-- Called after every scale or screen change has been rounded again (T.OnScale).
+local scaleListeners = {}
+
+-- A length in frame's units rounded to whole screen pixels at its scale now
+-- (mult * floor(x / mult + 0.5), mult being T.Pixel). With even it is an even
+-- number of pixels, so a frame centred on an even-width parent stays on whole pixels.
+function T.PixelRound(frame, length, even)
+  local step = T.Pixel(frame) * (even and 2 or 1)
+  return math.floor(length / step + 0.5) * step
+end
+
+-- Sizes a frame to w x h rounded to whole screen pixels (even counts with `even`, for
+-- a centred frame), and remembers the size asked for, so T.Rescale rounds it again.
+function T.PixelSize(frame, w, h, even)
+  pixelSized[frame] = { w, h, even }
+  frame:SetSize(T.PixelRound(frame, w, even), T.PixelRound(frame, h, even))
+  return frame
+end
+
+-- Calls fn() (out of combat) after a UI scale, screen or frame scale change, once
+-- T.PixelSize frames are rounded again: for layouts that place things on whole pixels.
+function T.OnScale(fn)
+  scaleListeners[#scaleListeners + 1] = fn
+end
+
+-- Rounds every T.PixelSize frame again for the scale now and tells the T.OnScale listeners.
+local function resizeAll()
+  for frame, s in pairs(pixelSized) do frame:SetSize(T.PixelRound(frame, s[1], s[3]), T.PixelRound(frame, s[2], s[3])) end
+  for _, fn in ipairs(scaleListeners) do fn() end
+end
+
+-- After a scale change: rounds the remembered sizes again on the next frame, once however
+-- often it is asked for, and out of combat (some of them are secure frames).
+function T.Rescale()
+  ns.Soon("pixel sizes", function() ns.OutOfCombat(resizeAll, "pixel sizes") end)
+end
+
 -- Where a frame's border is drawn: a status bar's on top (its fill would cover
 -- a BORDER-layer line), anything else's under its content.
 local function edgeLayer(frame)
@@ -299,9 +431,10 @@ local function outward(point, pad)
   return x, y
 end
 
--- Anchors a part's `point` to the same point of frame, `pad` units (default none) out past its edge.
+-- Anchors a part's `point` to the same point of frame, `pad` units (default none, rounded to
+-- whole screen pixels) out past its edge.
 local function pin(t, frame, point, pad)
-  t:SetPoint(point, frame, point, outward(point, pad or 0))
+  t:SetPoint(point, frame, point, outward(point, T.PixelRound(frame, pad or 0)))
 end
 
 -- The two corners each edge texture runs between.
@@ -313,7 +446,7 @@ local EDGE_POINTS = {
 -- Four edge textures around frame, `pad` units out past its edges (sized to one pixel when painted).
 local function edges(frame, pad)
   local layer, sub = edgeLayer(frame)
-  local e = { top = solid(frame, layer, sub), bottom = solid(frame, layer, sub), left = solid(frame, layer, sub), right = solid(frame, layer, sub) }
+  local e = { top = solid(frame, layer, sub, "border"), bottom = solid(frame, layer, sub, "border"), left = solid(frame, layer, sub, "border"), right = solid(frame, layer, sub, "border") }
   for side, points in pairs(EDGE_POINTS) do
     pin(e[side], frame, points[1], pad)
     pin(e[side], frame, points[2], pad)
@@ -330,17 +463,18 @@ end
 
 -- The sheen: a one-pixel light line just inside the top border (placed when painted).
 local function sheen(frame)
-  return solid(frame, "BORDER")
+  return solid(frame, "BORDER", nil, "sheen")
 end
 
 -- Places the sheen one pixel inside the top border (`pad` units out past the frame's top), one pixel tall.
-local function placeSheen(t, frame, pad)
-  local px, out = T.Pixel(frame), pad or 0
+-- (A button's hover line sits in the same place, in `token`.)
+local function placeSheen(t, frame, pad, token)
+  local px, out = T.Pixel(frame), T.PixelRound(frame, pad or 0)
   t:ClearAllPoints()
   t:SetPoint("TOPLEFT", frame, "TOPLEFT", px - out, out - px)
   t:SetPoint("TOPRIGHT", frame, "TOPRIGHT", out - px, out - px)
   t:SetHeight(px)
-  T.Tint(t, "sheen")
+  T.Tint(t, token or "sheen")
 end
 
 -- How far a shadow reaches past its frame. It sits evenly around the frame:
@@ -375,7 +509,7 @@ local function ringPiece(frame, piece, look)
   local t = T.Snap(frame:CreateTexture(nil, look.layer, nil, look.sublevel))
   t:SetTexture(T.Texture(look.texture))
   t:SetTexCoord(unpack(piece.tc))
-  for _, a in ipairs(piece.at) do t:SetPoint(a[1], frame, a[2], outward(a[2], look.pad or 0)) end
+  for _, a in ipairs(piece.at) do t:SetPoint(a[1], frame, a[2], outward(a[2], T.PixelRound(frame, look.pad or 0))) end
   local size = wholePixels(frame, look.size)
   if not piece.w then t:SetHeight(size) end
   if not piece.h then t:SetWidth(size) end
@@ -435,7 +569,7 @@ end
 -- A soft spark (Media/Textures/Spark) on a bar's top layer, width units wide,
 -- drawn additively so it brightens the fill under it. The caller places and tints it.
 function T.Spark(bar, width)
-  local t = T.Snap(bar:CreateTexture(nil, "OVERLAY"))
+  local t = T.Snap(bar:CreateTexture(nil, "OVERLAY"), "spark")
   t:SetTexture(T.Texture("Spark"))
   t:SetBlendMode("ADD")
   t:SetWidth(width)
@@ -445,7 +579,7 @@ end
 -- Gives a status bar the theme's bar texture.
 function T.StyleBar(bar)
   bar:SetStatusBarTexture(T.BarTexture())
-  T.Snap(bar:GetStatusBarTexture())
+  T.Snap(bar:GetStatusBarTexture(), "bar")
   return bar
 end
 
@@ -532,7 +666,7 @@ end
 
 -- A background texture over frame, `pad` units out past its edges.
 local function background(frame, pad)
-  local bg = solid(frame, "BACKGROUND")
+  local bg = solid(frame, "BACKGROUND", nil, "fill")
   pin(bg, frame, "TOPLEFT", pad)
   pin(bg, frame, "BOTTOMRIGHT", pad)
   return bg
@@ -596,15 +730,37 @@ function T.Padding(frame)
   return entry and entry.opts.pad or 0
 end
 
--- A flat button: inset panel, template art faded, a faint white hover.
+-- Places a button's hover line (one pixel inside its top border, in borderHi) when it is painted.
+local function paintHoverLine(entry, button)
+  placeSheen(entry.parts.hoverLine, button, entry.opts.pad, "borderHi")
+end
+
+-- Each themed button's hover parts (weak; kept off the button, which may be one of the game's).
+local hoverOf = setmetatable({}, { __mode = "k" })
+
+-- A button's hover parts, { fill, line }, or nil for a button T.Button never painted.
+function T.HoverParts(button) return hoverOf[button] end
+
+-- A button's hover look (#257): a raisedHover fill over its inset fill and a one-pixel borderHi
+-- line along its top, both clear until the mouse comes over it (T.EaseHover eases them).
+local function hoverParts(button, entry)
+  local fill = T.Tint(solid(button, "BACKGROUND", 1, "fill"), "raisedHover")
+  fill:SetAllPoints()
+  entry.parts.hover, entry.parts.hoverLine, entry.paint = fill, solid(button, "BORDER", 2, "border"), paintHoverLine
+  hoverOf[button] = { fill, entry.parts.hoverLine }
+  for _, t in ipairs(hoverOf[button]) do t:SetAlpha(0) end
+  button:HookScript("OnEnter", ns.Guard("button hover", function(b) T.EaseHover(b, true) end))
+  button:HookScript("OnLeave", ns.Guard("button hover", function(b) T.EaseHover(b, false) end))
+  button:HookScript("OnHide", ns.Guard("button hover", function(b) T.EaseHover(b, false, true) end))
+end
+
+-- A flat button: inset panel, template art faded, an eased hover (raisedHover and a borderHi top line).
 function T.Button(button)
   local fresh = not painted[button]
   local entry = base(button, "button", { inset = true })
   if fresh then
     T.FadeRegions(button, { [entry.parts.bg] = true })
-    entry.parts.hover = solid(button, "HIGHLIGHT")
-    entry.parts.hover:SetAllPoints()
-    T.Tint(entry.parts.hover, "hover")
+    hoverParts(button, entry)
   end
   repaint(button, entry)
   return button
@@ -695,7 +851,7 @@ function T.Slot(frame, opts)
   local entry = painted[frame]
   if not entry then
     entry = base(frame, "slot", slotOpts(opts))
-    entry.parts.inner, entry.parts.lit, entry.parts.dim = edges(frame), solid(frame, "BORDER", 1), solid(frame, "BORDER", 1)
+    entry.parts.inner, entry.parts.lit, entry.parts.dim = edges(frame), solid(frame, "BORDER", 1, "border"), solid(frame, "BORDER", 1, "border")
     entry.paint = paintSlot
   end
   repaint(frame, entry)
@@ -727,11 +883,12 @@ local function paintControl(entry)
   p.tile:SetShown(entry.lit == true)
 end
 
--- A texture centered on a button: the path at the size, on the layer.
+-- A texture centered on a button: the path at the size (an even number of screen pixels,
+-- so it stays on whole pixels in an even button), on the layer.
 local function centered(button, layer, path, size)
   local t = T.Snap(button:CreateTexture(nil, layer))
   t:SetTexture(path)
-  t:SetSize(size, size)
+  T.PixelSize(t, size, size, true)
   t:SetPoint("CENTER")
   return t
 end
@@ -765,7 +922,7 @@ function T.WindowControl(button, icon, opts)
     entry = { kind = "control", opts = opts or {}, parts = controlParts(button, icon), paint = paintControl }
     painted[button] = entry
     watchControl(button, entry)
-    if (button:GetWidth() or 0) < 1 then button:SetSize(T.CONTROL.tile, T.CONTROL.tile) end
+    if (button:GetWidth() or 0) < 1 then T.PixelSize(button, T.CONTROL.tile, T.CONTROL.tile, true) end
   end
   repaint(button, entry)
   return button
@@ -779,7 +936,7 @@ end
 -- Puts a close button T.CONTROL.inset in from a panel's top-right corner on both axes: the corner the
 -- eye sees, so a panel drawn out past its frame (T.Padding) counts its padding. Returns the button.
 function T.PlaceClose(close, panel)
-  local inset = T.CONTROL.inset - T.Padding(panel)
+  local inset = T.PixelRound(panel, T.CONTROL.inset - T.Padding(panel))
   close:ClearAllPoints()
   close:SetPoint("CENTER", panel, "TOPRIGHT", -inset, -inset)
   return close
@@ -868,7 +1025,7 @@ end
 
 -- A tab's own parts (made once): the accent bar (placed when painted) and the hover wash.
 local function tabParts(button, entry)
-  entry.parts.line, entry.parts.hover = solid(button, "OVERLAY"), solid(button, "HIGHLIGHT")
+  entry.parts.line, entry.parts.hover = solid(button, "OVERLAY", nil, "divider"), solid(button, "HIGHLIGHT", nil, "fill")
   entry.parts.hover:SetAllPoints()
   T.Tint(entry.parts.hover, "hover")
   entry.paint = paintTab
@@ -926,7 +1083,7 @@ local function arrowGlyph(button, up)
   T.Button(button)
   vgArrow[button] = T.Tint(T.Snap(button:CreateTexture(nil, "OVERLAY")), "text2")
   vgArrow[button]:SetTexture(T.Icon("Down"))
-  vgArrow[button]:SetSize(10, 10)
+  T.PixelSize(vgArrow[button], 10, 10, true)
   vgArrow[button]:SetPoint("CENTER")
   if up then vgArrow[button]:SetTexCoord(0, 1, 1, 0) end
 end
@@ -979,8 +1136,7 @@ end
 
 -- The Vanguard mark (two linked diamonds) at size x size; follows the accent live.
 function T.Logo(parent, size)
-  local f = CreateFrame("Frame", nil, parent)
-  f:SetSize(size, size)
+  local f = T.PixelSize(CreateFrame("Frame", nil, parent), size, size)
   local parts = { right = logoHalf(f, "Right", 0), left = logoHalf(f, "Left", 1) }
   local entry = { kind = "logo", opts = {}, parts = parts, paint = paintLogo }
   painted[f] = entry
@@ -1010,10 +1166,11 @@ end
 -- over a bright bar, such as raid frame names).
 T.ROLES = {
   title = { 15, true }, heading = { 13, true }, name = { 12, true }, cell = { 11, true },
-  label = { 12 }, number = { 12 }, small = { 10 }, tiny = { 9 }, world = { 11, true, "OUTLINE" },
+  -- No role is under 10 (#258) but badge, for a count or mark on a tiny badge.
+  label = { 12 }, number = { 12 }, small = { 10 }, tiny = { 10 }, badge = { 9 }, world = { 11, true, "OUTLINE" },
   barName = { 11, true, "OUTLINE" }, barSmall = { 10, false, "OUTLINE" },
   -- Aura icons: stack counts, and the timer on larger and smaller icons.
-  cooldown = { 14, true, "OUTLINE" }, auraCount = { 10, true, "OUTLINE" }, auraTimer = { 11, true, "OUTLINE" }, auraTimerSmall = { 9, true, "OUTLINE" },
+  cooldown = { 14, true, "OUTLINE" }, auraCount = { 10, true, "OUTLINE" }, auraTimer = { 11, true, "OUTLINE" }, auraTimerSmall = { 10, true, "OUTLINE" },
   -- Chat windows (Modules/Chat.lua picks the size; this is Medium).
   chat = { 12 },
 }
@@ -1073,12 +1230,12 @@ function T.RefreshText()
   for fs, role in pairs(styled) do T.ApplyRole(fs, role) end
 end
 
--- Colors a font string: a named color, r, g, b (for other addons' skins), or the accent.
+-- Colors a font string: a named color, r, g, b (for other addons' skins), or the accent's text variant.
 function T.Color(fs, r, g, b)
   if type(r) == "number" then
     fs:SetTextColor(r, g, b)
   else
-    fs:SetTextColor(T.RGB(r or "accent"))
+    fs:SetTextColor(T.RGB(r or "accentText"))
   end
   return fs
 end
@@ -1098,6 +1255,7 @@ function T.Refresh()
   T.RefreshText()
   applyFontObjects()
   for t in pairs(crests) do T.PaintCrest(t) end
+  reSnap()
   for _, fn in ipairs(listeners) do
     fn()
   end
@@ -1159,12 +1317,13 @@ end
 
 -- Motion and sound --------------------------------------------------------------------
 
--- A frame's alpha animation (made once), or false when the client can't animate it.
+-- A frame's (or texture's) alpha animation (made once, eased out: fast, then settling), or
+-- false when the client can't animate it.
 local function fader(frame)
   if vgFader[frame] ~= nil then return vgFader[frame] end
   local group = frame.CreateAnimationGroup and frame:CreateAnimationGroup()
   local alpha = group and group.CreateAnimation and group:CreateAnimation("Alpha")
-  if alpha then group:SetToFinalAlpha(true) end
+  if alpha then group:SetToFinalAlpha(true) alpha:SetSmoothing("OUT") end
   vgFader[frame] = alpha and { group = group, alpha = alpha } or false
   return vgFader[frame]
 end
@@ -1225,6 +1384,66 @@ function T.FadeOut(frame, seconds, done)
   playFade(f, 1, 0, T.FadeTime(seconds), finish)
 end
 
+-- How a window opens and closes (#257): seconds to open and to close, and how many screen
+-- pixels it rises into place as it opens.
+T.WINDOW_OPEN, T.WINDOW_CLOSE, T.WINDOW_RISE = 0.13, 0.1, 4
+
+-- Each window's open animation (weak; kept off the frame, which may be one of the game's).
+local riserOf = setmetatable({}, { __mode = "k" })
+
+-- Adds an animation of a kind to group, at a place in its order, lasting seconds.
+local function step(group, kind, order, seconds)
+  local a = group:CreateAnimation(kind)
+  a:SetOrder(order)
+  a:SetDuration(seconds)
+  return a
+end
+
+-- A window's open animation (made once), or false when the client can't animate it: a drop
+-- (at once), then a rise back to its spot while it fades in, eased out.
+local function riser(frame)
+  if riserOf[frame] ~= nil then return riserOf[frame] end
+  local group = frame.CreateAnimationGroup and frame:CreateAnimationGroup()
+  local r = group and group.CreateAnimation and { group = group, drop = step(group, "Translation", 1, 0),
+    rise = step(group, "Translation", 2, T.WINDOW_OPEN), alpha = step(group, "Alpha", 2, T.WINDOW_OPEN) } or false
+  if r then r.rise:SetSmoothing("OUT") r.alpha:SetSmoothing("OUT") end
+  riserOf[frame] = r
+  return r
+end
+
+-- Opens a window (#257): shown, fading in as it rises T.WINDOW_RISE screen pixels into its own
+-- spot (so it ends on the pixel grid); at once in combat or with Reduce motion.
+function T.OpenWindow(frame)
+  local r = not T.Settings().reduceMotion and not (fighting or ns.InCombat()) and riser(frame)
+  T.StopFade(frame)
+  frame:Show()
+  if not r then return end
+  local px = T.Pixel(frame) * T.WINDOW_RISE
+  r.group:Stop() r.drop:SetOffset(0, -px) r.rise:SetOffset(0, px)
+  r.alpha:SetFromAlpha(0) r.alpha:SetToAlpha(1)
+  r.group:Play()
+end
+
+-- Closes a window (#257): fades it out over T.WINDOW_CLOSE, then hides it and runs done.
+function T.CloseWindow(frame, done)
+  if riserOf[frame] then riserOf[frame].group:Stop() end
+  T.FadeOut(frame, T.WINDOW_CLOSE, done)
+end
+
+-- How long a button's hover takes to ease in and out (#257), in seconds; capped in combat like any fade.
+T.HOVER_IN, T.HOVER_OUT = 0.1, 0.13
+
+-- Eases a button's hover look in (on, while it is enabled) or out, from where it is now;
+-- at once with Reduce motion, or when `now` (the button was hidden).
+function T.EaseHover(button, on, now)
+  local to = on and (not button.IsEnabled or button:IsEnabled()) and 1 or 0
+  for _, t in ipairs(hoverOf[button] or {}) do
+    local f = not now and activeFader(t)
+    if f then playFade(f, t:GetAlpha(), to, T.FadeTime(to == 1 and T.HOVER_IN or T.HOVER_OUT), function() t:SetAlpha(to) end) end
+    if not f then T.StopFade(t) t:SetAlpha(to) end
+  end
+end
+
 -- Stops a fade in progress and leaves the frame fully visible.
 function T.StopFade(frame)
   local f = vgFader[frame]
@@ -1248,13 +1467,20 @@ end
 
 -- Pixel-perfect scale ----------------------------------------------------------------
 
+-- The pixel-perfect scale the settings pick: 768 / screen height times the whole
+-- multiple (pixelMultiple, 1 unless set: 2 makes one UI unit two screen pixels).
+function T.PixelScale()
+  return T.PixelPerfectScale() * math.max(1, math.floor(T.Settings().pixelMultiple or 1))
+end
+
 -- Sets UIParent to the pixel-perfect scale when that setting is on, out of
--- combat, then resizes every border.
+-- combat, then resizes every border and rounds pixel-sized frames again.
 function T.ApplyScale()
   if not T.Settings().pixelScale then return end
   ns.OutOfCombat(function()
-    UIParent:SetScale(T.PixelPerfectScale())
+    UIParent:SetScale(T.PixelScale())
     T.Refresh()
+    T.Rescale()
   end)
 end
 
@@ -1269,6 +1495,7 @@ end
 local function onScaleChanged()
   T.Refresh()
   T.ApplyScale()
+  T.Rescale()
 end
 
 ns.On("PLAYER_LOGIN", T.ApplyScale)

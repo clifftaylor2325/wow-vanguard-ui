@@ -149,11 +149,11 @@ function dot(cx, cy, r) {
   return box(cx - r, cy - r, cx + r, cy + r, r);
 }
 
-// A cog: a ring with eight teeth around it.
+// A cog: a ring with eight teeth around it (their tips clear of the canvas edge).
 function cog() {
   const teeth = Array.from({ length: 8 }, (_, i) => {
     const a = (i * 45 * Math.PI) / 180;
-    return line(8 + 4.5 * Math.cos(a), 8 + 4.5 * Math.sin(a), 8 + 6.8 * Math.cos(a), 8 + 6.8 * Math.sin(a), STROKE);
+    return line(8 + 4.5 * Math.cos(a), 8 + 4.5 * Math.sin(a), 8 + 6.4 * Math.cos(a), 8 + 6.4 * Math.sin(a), STROKE);
   });
   return [ring(8, 8, 4, STROKE), ...teeth];
 }

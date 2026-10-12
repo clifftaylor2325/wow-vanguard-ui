@@ -1,7 +1,7 @@
 // theme: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, button, chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, button, chatHas, isTok, loggedIn, px, setCombat, tok } from "./helpers.mjs";
 
 it("theme", () => {
   const addon = loggedIn();
@@ -66,7 +66,7 @@ it("window controls: sized when the caller gave no size, quiet until the mouse i
     m.__scripts.OnEnter(m)
     return { quiet = quiet, lit = lit, after = tile:IsShown(), m = { m:GetWidth(), mGlyph.__texture, mTile.__vertexColor } }`);
   expect([out.quiet[0], out.quiet[1], isTok(addon, out.quiet[2], "text2"), out.quiet[3], out.quiet[4], out.quiet[5]],
-    "an unsized close button takes the 20-unit tile's size; quiet: no tile, a plain cross in text2 and nothing else").toEqual([20, false, true, 0, 20, "CloseMark"]);
+    "an unsized close button takes the 20-unit tile's size in whole, even screen pixels; quiet: no tile, a plain cross in text2 and nothing else").toEqual([px(addon, 20, true), false, true, 0, px(addon, 20, true), "CloseMark"]);
   expect([out.lit[0], isTok(addon, out.lit[1], "bad"), isTok(addon, out.lit[2], "white"), out.after], "under the mouse: a red square tile, the cross white; hidden under the mouse (no OnLeave comes) it goes quiet again").toEqual([true, true, true, false]);
   expect([out.m[0], /Icons\\Maximize$/.test(out.m[1]), isTok(addon, out.m[2], "accent")], "a sized control keeps its size; a maximize control's glyph, on an accent tile").toEqual([30, true, true]);
 });
@@ -82,7 +82,8 @@ it("panels with padding: the fill, border and shadow reach out past the frame, t
     end
     local p = bg.__points
     return { p.TOPLEFT.x, p.TOPLEFT.y, p.BOTTOMRIGHT.x, p.BOTTOMRIGHT.y, top.__points.TOPLEFT.y, ns.Theme.Padding(f), ns.Theme.Padding(UIParent) }`);
-  expect(out, "6 units out on every side; Padding says how far (0 for a frame never painted)").toEqual([-6, 6, 6, -6, 6, 6, 0]);
+  const six = px(addon, 6);
+  expect(out, "6 units out on every side, in whole screen pixels; Padding says how far (0 for a frame never painted)").toEqual([-six, six, six, -six, six, 6, 0]);
 });
 
 // A TEST-ONLY PixelUtil for a screen `height` pixels tall, as Blizzard writes it:
@@ -123,7 +124,7 @@ it("theme tokens and pixel-perfect borders", () => {
   expect(addon.eval('return ns.Theme.Hex("white")') === "ffffffff", "Hex gives the escape-code form").toBeTruthy();
   addon.eval('ns.Chat("TEST-ONLY line")');
   const last = addon.chat().at(-1);
-  expect(last.startsWith("|c" + addon.eval('return ns.Theme.Hex("accent")') + "Vanguard:|r"), `chat lines start with Vanguard: in the accent (got ${last})`).toBeTruthy();
+  expect(last.startsWith("|c" + addon.eval('return ns.Theme.Hex("accentText")') + "Vanguard:|r"), `chat lines start with Vanguard: in the accent's text colour (got ${last})`).toBeTruthy();
   addon.eval('ns.Options.Show("general")');
   setCombat(addon, true);
   addon.eval('__click("Pixel-perfect scale")');
@@ -433,4 +434,131 @@ it("the game's font objects: the theme font at Text size, kept after a theme cha
   expect(before[1], "at the size given").toBe(14);
   addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
   expect(addon.eval("return select(2, __FontA:GetFont())"), "re-applied at the new Text size").toBe(21);
+});
+
+it("pixel rounding: sizes and offsets land on whole screen pixels, centred ones on an even count (#225)", () => {
+  const addon = loggedIn();
+  // Screen pixels a length covers at UIParent's scale now (1080p, scale 1: 1080 / 768 per unit).
+  const pixels = (lua) => addon.eval(`return (${lua}) * UIParent:GetEffectiveScale() * 1080 / 768`);
+  expect(pixels("ns.Theme.PixelRound(UIParent, 38)"), "38 units at 1080p and scale 1 are 53.4 pixels: 53").toBeCloseTo(53, 9);
+  expect(pixels("ns.Theme.PixelRound(UIParent, 21, true)"), "21 units, centred: 29.5 pixels become an even 30").toBeCloseTo(30, 9);
+  expect(pixels("ns.Theme.PixelRound(UIParent, 0)"), "nothing stays nothing").toBe(0);
+  addon.eval(`UIParent:SetScale(768 / 1080)`);
+  expect(addon.eval("return ns.Theme.PixelRound(UIParent, 38)"), "at pixel-perfect scale a whole unit is already a whole pixel").toBeCloseTo(38, 9);
+});
+
+it("pixel sizes are rounded again after a UI scale, screen or frame scale change, out of combat (#225)", () => {
+  const addon = loggedIn("__scaled = 0 ns.Theme.OnScale(function() __scaled = __scaled + 1 end)");
+  addon.eval(`TEST_Sized = ns.Theme.PixelSize(CreateFrame("Frame", nil, UIParent), 100, 40)`);
+  // TEST_Sized's width and height in screen pixels at UIParent's scale now.
+  const size = () => addon.eval("local k = UIParent:GetEffectiveScale() * 1080 / 768 return { TEST_Sized:GetWidth() * k, TEST_Sized:GetHeight() * k }");
+  expect(size().map((n) => Math.round(n * 1e6) / 1e6), "100 x 40 units at 1080p and scale 1: 140.6 x 56.3 pixels become 141 x 56").toEqual([141, 56]);
+  setCombat(addon, true);
+  addon.eval("UIParent:SetScale(0.8)");
+  addon.fire("UI_SCALE_CHANGED");
+  addon.update(0.1);
+  expect([addon.eval("return __scaled"), addon.eval("return ns.QueuedCount()") > 0], "in combat the rounding waits (sizes on secure frames are protected)").toEqual([0, true]);
+  setCombat(addon, false);
+  expect(size().map((n) => Math.round(n * 1e6) / 1e6), "then at scale 0.8: 112.5 x 45 pixels become 113 x 45").toEqual([113, 45]);
+  expect(addon.eval("return __scaled"), "and the OnScale listeners run once").toBe(1);
+  addon.fire("DISPLAY_SIZE_CHANGED");
+  addon.fire("DISPLAY_SIZE_CHANGED");
+  addon.update(0.1);
+  expect(addon.eval("return __scaled"), "a burst of changes rounds once").toBe(2);
+  addon.eval("ns.SetMoverScale('minimap', 1.5)");
+  addon.update(0.1);
+  expect(addon.eval("return __scaled"), "a frame's own scale (unlock mode) rounds again too").toBe(3);
+});
+
+it("pixel-perfect scale takes a whole multiple: 2 makes one UI unit two screen pixels (#225)", () => {
+  const addon = loggedIn("GetPhysicalScreenSize = function() return 3840, 2160 end");
+  addon.eval("ns.Theme.Settings().pixelMultiple = 2 ns.Theme.SetPixelScale(true)");
+  expect(addon.eval("return UIParent:GetScale()"), "4K at 2x: 2 x 768 / 2160").toBeCloseTo((2 * 768) / 2160, 9);
+  addon.eval("ns.Theme.Settings().pixelMultiple = 0.5");
+  expect(addon.eval("return ns.Theme.PixelScale()"), "never less than one pixel per unit").toBeCloseTo(768 / 2160, 9);
+});
+
+// Snapping of one texture of each class on a panel, a bar and a button: { class: [snaps, bias] }.
+const snapping = (addon) => addon.eval(`local T = ns.Theme
+  __snapPanel = __snapPanel or T.Panel(CreateFrame("Frame", nil, UIParent))
+  __snapBar = __snapBar or T.StyleBar(CreateFrame("StatusBar", nil, UIParent))
+  __snapSpark = __snapSpark or T.Spark(__snapBar, 8)
+  __snapIcon, __snapLine = __snapIcon or T.Snap(UIParent:CreateTexture()), __snapLine or T.Snap(UIParent:CreateTexture(), "divider")
+  local out = {}
+  for _, w in ipairs(__wfgStub.frames) do
+    if w.__parent == __snapPanel and w.__layer == "BACKGROUND" then out.fill = { w.__snapToPixelGrid, w.__texelBias } end
+    if w.__parent == __snapPanel and w.__layer == "BORDER" and w.__points.TOPLEFT and w.__points.TOPLEFT.y ~= 0 then out.sheen = { w.__snapToPixelGrid, w.__texelBias } end
+  end
+  for name, t in pairs({ bar = __snapBar:GetStatusBarTexture(), spark = __snapSpark, icon = __snapIcon, divider = __snapLine }) do out[name] = { t.__snapToPixelGrid, t.__texelBias } end
+  return out`);
+
+it("texel snapping (#226): off by default; /vg texelsnap snaps still borders, fills, dividers and sheens, never bars, sparks or icons", () => {
+  const addon = loggedIn();
+  const off = [false, 0];
+  expect(snapping(addon), "off by default: nothing snaps, as before").toEqual({ fill: off, sheen: off, bar: off, spark: off, icon: off, divider: off });
+  addon.slash("texelsnap on");
+  const on = [true, 1];
+  expect(snapping(addon), "on: still classes snap with bias 1, moving ones and art don't").toEqual({ fill: on, sheen: on, bar: off, spark: off, icon: off, divider: on });
+  expect([addon.eval("return ns.Theme.Settings().texelSnap"), chatHas(addon, /Texel snapping on/)], "saved in the profile, and said in chat").toEqual([true, true]);
+  expect(addon.eval('return ns.Theme.Snap(UIParent:CreateTexture(), "border").__snapToPixelGrid'), "a texture made while it's on follows the policy").toBe(true);
+  addon.slash("texelsnap");
+  expect([snapping(addon).fill, addon.eval("return ns.Theme.Settings().texelSnap"), chatHas(addon, /Texel snapping off/)], "with nothing after it, it toggles back off").toEqual([off, false, true]);
+  addon.slash("texelsnap");
+  addon.slash("texelsnap off");
+  expect(snapping(addon).sheen, "off turns it off").toEqual(off);
+});
+
+it("texel snapping (#226): a profile saved with it on snaps still textures from login", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB = { profiles = { Default = { theme = { texelSnap = true } } } }" });
+  expect(addon.eval("local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.__snapToPixelGrid == true and w.__texelBias == 1 then n = n + 1 end end return n") > 0, "textures made during login snap").toBe(true);
+  const s = snapping(addon);
+  expect([s.fill, s.bar], "a panel's fill snaps, a bar's fill doesn't").toEqual([[true, 1], [false, 0]]);
+});
+
+// WCAG relative luminance of an { r, g, b } colour (0-1 channels).
+const lum = (c) => c.slice(0, 3).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+
+// WCAG contrast of a token's colour over the panel colour.
+const contrast = (addon, name) => {
+  return Math.round(((lum(tok(addon, name)) + 0.05) / (lum(tok(addon, "panel")) + 0.05)) * 10) / 10;
+};
+
+it("text tiers (#227): text, text2, muted, then disabled, each readable on a panel; a search box's hint is in the disabled tier", () => {
+  const addon = loggedIn();
+  expect(["text", "text2", "muted", "disabled"].map((n) => contrast(addon, n)), "brightest first; every tier, disabled too, clears 4.5:1").toEqual([15, 11.4, 8, 4.7]);
+  const hint = addon.eval('local e = ns.Widgets.Search(UIParent, 200, "Search", function() end) return { e.hint.__textColor[1], e.hint.__textColor[2], e.hint.__textColor[3] }');
+  expect(isTok(addon, hint, "disabled"), "the search hint is placeholder text").toBe(true);
+});
+
+it("slate surfaces (#229): inset, panel, raised, raisedHover, divider, borderHi step up evenly; a profile keeps a panel colour it saved", () => {
+  const addon = loggedIn();
+  const steps = ["inset", "panel", "raised", "raisedHover", "divider", "borderHi"].map((n) => lum(tok(addon, n)));
+  expect(steps.every((l, i) => i === 0 || l > steps[i - 1]), "each lighter than the one before").toBe(true);
+  expect(isTok(addon, addon.eval("return { ns.Theme.PanelColor() }"), "panel"), "a new profile's panels use the new panel colour").toBe(true);
+  const old = loggedIn("", { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { panel = { 0x12 / 255, 0x15 / 255, 0x1b / 255, 0.94 } } } } }' });
+  expect(old.eval("return { ns.Theme.PanelColor() }")[0], "a profile that saved the old panel keeps it (no migration)").toBeCloseTo(0x12 / 255, 6);
+});
+
+// An accent variant as rrggbb.
+const hexOf = (addon, name) => addon.eval(`return ns.Theme.Hex("${name}")`).slice(2);
+
+it("accent variants (#230): accentText and accentDim are made from any accent in OKLCH and follow /vg accent", () => {
+  const addon = loggedIn();
+  expect([hexOf(addon, "accent"), hexOf(addon, "accentText"), hexOf(addon, "accentDim")], "brass: fill, a lighter text, a darker dim").toEqual(["d9a441", "e6b45b", "8a6a2f"]);
+  addon.slash("accent 5aa2f0");
+  expect([hexOf(addon, "accentText"), hexOf(addon, "accentDim")], "a new accent gives new variants at once").toEqual(["6eb1fb", "386493"]);
+  addon.slash("accent ff0000");
+  expect([hexOf(addon, "accentText"), hexOf(addon, "accentDim")], "a variant outside the screen's colours is clamped").toEqual(["ff3c2e", "950000"]);
+  addon.slash("accent ffffff");
+  expect(hexOf(addon, "accentText"), "white can't get lighter").toBe("ffffff");
+  expect(contrast(addon, "accentText") > contrast(addon, "accent") || hexOf(addon, "accent") === "ffffff", "text is never dimmer than the fill").toBe(true);
+  addon.slash("accent reset");
+  expect(addon.eval('local fs = UIParent:CreateFontString() ns.Theme.Color(fs) return ns.Theme.Hex("accentText") == string.format("ff%02x%02x%02x", fs.__textColor[1] * 255 + 0.5, fs.__textColor[2] * 255 + 0.5, fs.__textColor[3] * 255 + 0.5)'), "T.Color with no colour uses the text variant").toBe(true);
+});
+
+it("type sizes (#258): no role under 10 but badge; the error badge uses it", () => {
+  const addon = loggedIn();
+  const small = addon.eval("local out = {} for name, r in pairs(ns.Theme.ROLES) do if r[1] < 10 then out[#out + 1] = name end end return out");
+  expect(small, "only badge is under 10").toEqual(["badge"]);
+  expect(addon.eval("return { ns.Theme.RoleSize('tiny'), ns.Theme.RoleSize('auraTimerSmall'), ns.Theme.RoleSize('badge') }"), "tiny and the small aura timer at 10, badge 9").toEqual([10, 10, 9]);
 });
