@@ -332,3 +332,32 @@ it("with sections off the game's plain grid is as it was, and Sort fits beside t
   const sort = addon.eval(`local f, s = ContainerFrameCombinedBags, ns.GetModule("Bags").sort return { f:GetRight() - s:GetRight(), BagItemSearchBox:GetWidth() }`);
   expect(sort, "Sort ends 12 px inside the right edge; the search box gives it room").toEqual([PAD, 430 - PAD - 52 - 6 - PAD]);
 });
+
+// TEST-ONLY gamepad bag bar, as Blizzard_MainMenuBarBagButtons builds it on Forever (Camelot
+// MainMenuBarBagButtons.xml, Shared GamepadBagBarMixin:OnLoad): parented to the combined bag at its
+// top-right corner (5 px in, 19 px down, 215 x 50), its backpack button (37 x 37) on the bar's right,
+// left showing without a gamepad.
+const BACKPACK_ENV = `
+  GamepadBagBar = CreateFrame("Frame", "GamepadBagBar", ContainerFrameCombinedBags) GamepadBagBar:SetSize(215, 50)
+  GamepadBagBar:SetPoint("TOPRIGHT", ContainerFrameCombinedBags, "TOPRIGHT", -5, -19)
+  GamepadBagBar.BackpackButton = CreateFrame("Button", "GamepadBackpackButton", GamepadBagBar)
+  GamepadBagBar.BackpackButton:SetSize(37, 37) GamepadBagBar.BackpackButton:SetPoint("RIGHT", GamepadBagBar, "RIGHT")
+`;
+
+// The search row from left to right: the search box's left inset, the gap to Sort, Sort's width, the gap
+// from Sort to the backpack button, and Sort's inset from the window's right edge (px).
+const searchRow = (addon) => addon.eval(`local f, s, b = ContainerFrameCombinedBags, ns.GetModule("Bags").sort, GamepadBackpackButton
+  return { BagItemSearchBox:GetLeft() - f:GetLeft(), s:GetLeft() - BagItemSearchBox:GetRight(), s:GetWidth(), b:GetLeft() - s:GetRight(), f:GetRight() - s:GetRight() }`);
+
+it("the game's backpack button in the bag's top-right corner sits beside Sort, not over it", () => {
+  const addon = loggedIn(BAG_ENV + BACKPACK_ENV);
+  addon.eval("__openBag()");
+  expect(searchRow(addon), "search box 12 px in, Sort 6 px right of it at its full 52 px, the backpack button 6 px right of Sort").toEqual([PAD, 6, 52, 6, 48]);
+  const plain = loggedIn(BAG_ENV + BACKPACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Bags = { sections = false } } }" });
+  plain.eval("__openBag()");
+  expect(searchRow(plain), "the game's plain grid: the same row").toEqual([PAD, 6, 52, 6, 48]);
+  addon.eval("GamepadBackpackButton:Hide() ContainerFrameCombinedBags:Update()");
+  expect(searchRow(addon).slice(-1), "the button hidden (a gamepad bar laid out otherwise): Sort ends the padding in again").toEqual([PAD]);
+  addon.eval("GamepadBackpackButton:Show() GamepadBagBar:SetParent(UIParent) ContainerFrameCombinedBags:Update()");
+  expect(searchRow(addon).slice(-1), "a bar that isn't on the bag window: the padding").toEqual([PAD]);
+});
