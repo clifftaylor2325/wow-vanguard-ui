@@ -232,6 +232,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a button reading `Train all (N) · <money>` on the trainer window; clicking it prints `Trained N skill(s) for <money>.`; in combat it does nothing.
 - If it fails, paste: a screenshot of the trainer window and `/vg errors`.
 
+### 9.4 Shopping and Selling tabs at the auction house
+
+- Do: talk to an auctioneer; click the Shopping tab, then Selling, then the game's Buy; on Shopping click a list in the Lists pane, then a row of it (its listings), then Back; click Scan the auction house, then the pane's Deals and Upgrades entries; on Selling drop an item on the sell slot, click Your history and Up now on the card at the top right, then click the same item in a bag.
+- Expect: two tabs, Shopping and Selling, after the game's Buy, Sell and Auctions, in the same look as the game's; the window's title says Shopping or Selling while one is open. Shopping: the Lists pane on the left (your lists with their counts, Recent, Deals, Upgrades; six buttons under them; the scan button at the bottom), the list picked on the right as a table with headings (Item, Unit price, Up, Max) under a toolbar (+ Add, Search list, Restock), about twenty rows; a row's listings replace the table with Back and the item above sortable columns; after the scan, Deals shows its rows (Unit price, Under by, Judged against) and Upgrades its rows (Slot, Gain, Unit price) with the counts beside the entries, or a line saying none were found. Selling: the Sell card on the left with one field a row, Up now at the top right (the item's listings, yours flagged; Your history in its place on the toggle), Your auctions at the bottom right with Check undercuts and Cancel next undercut on its heading line; every card inside the window. A listing, deal or upgrade clicked switches to the game's Buy page with the item in its list, and Shopping brings back the view where it was; the sell slot takes the dropped item; a bag click shows the game's own Sell page (the item is on the Selling tab too).
+- If it fails, paste: a screenshot of each tab and `/vg errors`.
+
 ## 10. Click casting
 
 ### 10.1 Make a binding
@@ -522,6 +528,36 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the tabs, the pane's lists and the scroll bars are the game's own again; the windows keep their Vanguard panels.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 14.9.1 Battleground queue dialogs
+
+- Do: queue for a battleground (alone, then in a group if you can) and wait for it to pop; on the role check pick a role and accept; if you can, get a war game or arena invite.
+- Expect: the role check, the group's ready popup, the "enter battle" dialog and the invite are flat panels with a soft shadow and no gold dialog border; Accept, Decline, Enter Battle and Leave Queue are flat buttons that still work; the battleground's picture on the enter dialog, the invite's icon and ring and the role icons still show; the close (or hide) button is the theme's. Enter Battle takes you in with no "Interface action failed because of an AddOn". [Needs in game: none of these was seen in the game.]
+- If it fails, paste: a screenshot of the dialog and `/vg errors`.
+
+### 14.9.2 Scoreboard and match results
+
+- Do: in a battleground press H (or open the scoreboard), click its tabs (All, Alliance, Horde), scroll the table, then finish the match and look at the results window; click Leave (or Queue again).
+- Expect: both windows are a flat panel with the theme's close button, the table on a darker inset with the rows, column headings and team colour unchanged, a flat scroll bar, flat tabs, and flat Queue again and Leave buttons that work; the reward band under the table has no backdrop art but its burst of light still plays when rewards come in. [Needs in game: the faction border the game lays on at the start of a match must stay faded.]
+- If it fails, paste: a screenshot of each window and `/vg errors`.
+
+### 14.9.3 Objectives and the countdown
+
+- Do: enter a battleground with flags or bases (Warsong Gulch, Arathi Basin) before it starts; watch the countdown, then take or watch a flag being taken; look at the scores at the top of the screen and anything under the minimap.
+- Expect: the countdown bar uses the theme's bar texture on a flat panel with its time in the theme font, and the big numbers are the game's; the scores at the top (and capture bars under the minimap) sit on one flat panel that disappears when they go; the panel never stays behind as an empty square; the objective banner's text is in the theme font at its usual size. [Needs in game: the panel's place and size around the widgets.]
+- If it fails, paste: a screenshot of the top of the screen and `/vg errors`.
+
+### 14.9.4 Honor tab and switch
+
+- Do: press C, open the Honor tab and its rank details; then under `/vg` → Bars, map, chat → Game windows untick "Battleground windows", `/reload`, queue again and open the scoreboard.
+- Expect: the rank details have no divider line and a flat scroll bar if the text scrolls; with the switch off every window above is the game's own again and the scores at the top have no panel.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.10 Moving game windows
+
+- Do: open the character pane (C), drag it by its title bar to the middle of the screen and close it; open it again, then open the spellbook (P) beside it and close that. Open your bags (B) and drag the combined bag by its top edge; close and reopen them. Drag the game menu (Escape) by its header, the guild window, the group finder, the Legacy window and the auction house by their title bars. `/reload` and open the character pane and the bags again. Then start a fight, open the character pane, and leave combat. Last, `/vg` → Bars, map, chat → Game windows → Reset window positions, and open the character pane.
+- Expect: each window follows the mouse and stays where it is dropped; it opens there again, after opening another window beside it and after the reload too; the close and minimize buttons and the bag's portrait button still work (the drag area stops short of them). In the fight the pane may open where the game puts it and jumps to your spot when combat ends, never moving while you fight. `/vg` itself can be dragged by its header and reopens there. After Reset window positions the options window is in the middle and the character pane opens where the game puts it. [Needs in game: the drag itself; that no window jumps back while you hold it; whether the game refuses any of them.]
+- If it fails, paste: the window's name, a screenshot after the drop and after reopening, and `/vg errors`.
+
 ## 15. Talent planner
 
 ### 15.1 Bar and plan mode
@@ -547,18 +583,6 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: under `/vg` → Modules switch Talent planner off, `/reload`, open the talents window.
 - Expect: no bar, no badges; the window is the game's (with Vanguard's panel). `/vg talents` says the planner is off.
 - If it fails, paste: a screenshot and `/vg errors`.
-
-### 14.9.1 Shopping and Selling tabs at the auction house
-
-- Do: talk to an auctioneer; click the Shopping tab, then Selling, then the game's Buy; on Shopping click a list in the Lists pane, then a row of it (its listings), then Back; click Scan the auction house, then the pane's Deals and Upgrades entries; on Selling drop an item on the sell slot, click Your history and Up now on the card at the top right, then click the same item in a bag.
-- Expect: two tabs, Shopping and Selling, after the game's Buy, Sell and Auctions, in the same look as the game's; the window's title says Shopping or Selling while one is open. Shopping: the Lists pane on the left (your lists with their counts, Recent, Deals, Upgrades; six buttons under them; the scan button at the bottom), the list picked on the right as a table with headings (Item, Unit price, Up, Max) under a toolbar (+ Add, Search list, Restock), about twenty rows; a row's listings replace the table with Back and the item above sortable columns; after the scan, Deals shows its rows (Unit price, Under by, Judged against) and Upgrades its rows (Slot, Gain, Unit price) with the counts beside the entries, or a line saying none were found. Selling: the Sell card on the left with one field a row, Up now at the top right (the item's listings, yours flagged; Your history in its place on the toggle), Your auctions at the bottom right with Check undercuts and Cancel next undercut on its heading line; every card inside the window. A listing, deal or upgrade clicked switches to the game's Buy page with the item in its list, and Shopping brings back the view where it was; the sell slot takes the dropped item; a bag click shows the game's own Sell page (the item is on the Selling tab too).
-- If it fails, paste: a screenshot of each tab and `/vg errors`.
-
-### 14.10 Moving game windows
-
-- Do: open the character pane (C), drag it by its title bar to the middle of the screen and close it; open it again, then open the spellbook (P) beside it and close that. Open your bags (B) and drag the combined bag by its top edge; close and reopen them. Drag the game menu (Escape) by its header, the guild window, the group finder, the Legacy window and the auction house by their title bars. `/reload` and open the character pane and the bags again. Then start a fight, open the character pane, and leave combat. Last, `/vg` → Bars, map, chat → Game windows → Reset window positions, and open the character pane.
-- Expect: each window follows the mouse and stays where it is dropped; it opens there again, after opening another window beside it and after the reload too; the close and minimize buttons and the bag's portrait button still work (the drag area stops short of them). In the fight the pane may open where the game puts it and jumps to your spot when combat ends, never moving while you fight. `/vg` itself can be dragged by its header and reopens there. After Reset window positions the options window is in the middle and the character pane opens where the game puts it. [Needs in game: the drag itself; that no window jumps back while you hold it; whether the game refuses any of them.]
-- If it fails, paste: the window's name, a screenshot after the drop and after reopening, and `/vg errors`.
 
 ## When you are done
 
