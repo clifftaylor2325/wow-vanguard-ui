@@ -211,9 +211,10 @@ local function motionRows()
   }
 end
 
--- General: look, bars, motion, layout and frame sizes.
+-- General: the settings-loss notice when there is one (Core/SettingsGuard.lua), look, bars, motion, layout and frame sizes.
 local function generalRows()
-  return append(append(append(append(lookRows(), barRows()), motionRows()), layoutRows()), sizeRows())
+  local rows = append(ns.SettingsGuard.Rows(), lookRows())
+  return append(append(append(append(rows, barRows()), motionRows()), layoutRows()), sizeRows())
 end
 
 -- Each module's name in the window and what it does (and what it needs, if anything).
@@ -790,9 +791,10 @@ local function specRows()
   }
 end
 
--- Profiles: export/import, reset, spec profiles, and every profile.
+-- Profiles: the settings-loss notice when there is one, export/import, reset, spec profiles, and every profile.
 local function profileRows()
-  return append(append(currentProfileRows(), specRows()), profileListRows())
+  local rows = append(ns.SettingsGuard.Rows(), currentProfileRows())
+  return append(append(rows, specRows()), profileListRows())
 end
 
 -- Raid frames: party coverage, sorting, size.

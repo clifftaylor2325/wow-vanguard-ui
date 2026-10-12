@@ -44,6 +44,7 @@ Core/OptionsWindow.lua
 Core/ErrorBadge.lua
 Core/OptionsProfiles.lua
 Core/ProfileExport.lua
+Core/SettingsGuard.lua
 Core/Setup.lua
 Core/FactionArt.lua
 Core/Inspect.lua
