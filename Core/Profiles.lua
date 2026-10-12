@@ -131,7 +131,7 @@ end
 -- The rolling backup's name for a profile: "<name> backup", the name cut to fit 32 characters;
 -- never the profile in use nor the one this character switches to at the reload (then
 -- "<name> backup 2", or 3).
-local function backupName(name)
+function ns.BackupName(name)
   for n = 1, 3 do
     local suffix = n == 1 and " backup" or (" backup " .. n)
     local backup = name:sub(1, 32 - #suffix) .. suffix
@@ -143,7 +143,7 @@ end
 -- taken out, as for an export) into its one rolling backup profile, replacing the last
 -- backup. Runs before every import. Returns the backup's name.
 function ns.BackupProfile()
-  local name = backupName(ns.ProfileName())
+  local name = ns.BackupName(ns.ProfileName())
   VanguardDB.profiles[name] = ns.OwnValues and ns.OwnValues(ns.Copy, ns.Profile()) or ns.Copy(ns.Profile())
   return name
 end
