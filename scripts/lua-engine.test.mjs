@@ -127,6 +127,22 @@ it("auras, actions and secrets through the world", () => {
   expect(addon.eval('return { issecretvalue(UnitHealth("player")), pcall(function() return UnitHealth("player") + 1 end) }').slice(0, 2), "a secret errors on arithmetic, as in instanced combat").toEqual([true, false]);
 });
 
+it("an aura change refreshes every aura container showing that unit, including one made after the last change", () => {
+  const addon = createAddon();
+  addon.eval(`__refreshed = {}
+    function __container(key, unit)
+      local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+      local update = c.UpdateAllAuras
+      c.UpdateAllAuras = function(self) __refreshed[#__refreshed + 1] = key return update(self) end
+      c:SetUnit(unit)
+    end
+    __container("early", "player") __container("target", "target")`);
+  addon.world.addAura("player", { name: "TEST-ONLY Buff", duration: 30 });
+  addon.eval('__container("late", "player") __refreshed = {}');
+  addon.world.addAura("player", { name: "TEST-ONLY Shield", duration: 30 });
+  expect(addon.eval("return __refreshed"), "both player containers, in creation order; not the target's").toEqual(["early", "late"]);
+});
+
 it("timers run on the test clock, and combat queues work", () => {
   const addon = loggedIn();
   addon.eval("__fired = 0 C_Timer.After(2, function() __fired = __fired + 1 end) __ticker = C_Timer.NewTicker(1, function() __fired = __fired + 10 end, 2)");

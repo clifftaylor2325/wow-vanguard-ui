@@ -782,12 +782,23 @@ local function completeAura(aura)
   return aura
 end
 
+local containers, scanned = {}, 0
+-- The aura containers made so far, in creation order. Widgets are only ever
+-- added to stub.frames, so each is looked at once, not on every aura change.
+local function auraContainers()
+  for i = scanned + 1, #stub.frames do
+    if stub.frames[i].__kind == "AuraContainer" then containers[#containers + 1] = stub.frames[i] end
+  end
+  scanned = #stub.frames
+  return containers
+end
+
 -- The client's aura containers showing a unit read its auras again (the
 -- client does this itself on an aura change), then UNIT_AURA fires.
 local function auraChanged(unit, payload)
   local u = resolveUnit(unit)
-  for _, w in ipairs(stub.frames) do
-    if w.__kind == "AuraContainer" and w.__unit and resolveUnit(w.__unit) == u then w:UpdateAllAuras() end
+  for _, w in ipairs(auraContainers()) do
+    if w.__unit and resolveUnit(w.__unit) == u then w:UpdateAllAuras() end
   end
   stub.fire("UNIT_AURA", unit, payload)
 end
