@@ -361,6 +361,41 @@ it("character pane: a list that loads later (the currencies' addon) is dressed w
   expect(addon.eval("return { __a(__tokenHeader.banner), #ns.errors }"), "dressed once it has").toEqual([0, 0]);
 });
 
+// TEST-ONLY pane hosts, shaped like the Camelot CharacterFrame.xml's: the left host's wooden background, the right
+// host's stat backdrop and stone plate and its child frame holding the divider line. The currency list's ScrollBox
+// says how many rows it holds, as the game's does (GetDataProviderSize), and takes a new list (SetDataProvider).
+const HOSTS_ENV = PANE_ENV + `
+  CharacterFrame.LeftPaneHost = CreateFrame("Frame", "CharacterFrameLeftPaneHost", CharacterFrame)
+  __woodBg = __art(CharacterFrame.LeftPaneHost)
+  CharacterFrame.RightPaneHost = CreateFrame("Frame", "CharacterFrameRightPaneHost", CharacterFrame)
+  __statBg, CharacterFrame.RightPaneHost.StoneBg = __art(CharacterFrame.RightPaneHost), __art(CharacterFrame.RightPaneHost, "ARTWORK")
+  __divider = __art(CreateFrame("Frame", nil, CharacterFrame.RightPaneHost), "OVERLAY")
+  TokenFrame.ScrollBox.size = 0
+  function TokenFrame.ScrollBox:GetDataProviderSize() return self.size end
+  function TokenFrame.ScrollBox:SetDataProvider(n) self.size = n end
+`;
+
+it("character pane: the wooden and stone backdrops faded, each list on a flat inset panel, as on the other lists", () => {
+  const addon = loggedIn(HOSTS_ENV);
+  expect(addon.eval("return { __a(__woodBg), __a(__statBg), __a(CharacterFrame.RightPaneHost.StoneBg), __a(__divider) }"), "the hosts' art and the divider").toEqual([0, 0, 0, 0]);
+  expect(addon.eval("return { __panel(ReputationFrame.ScrollBox), __panel(SkillsFrame.ScrollBox), __panel(TokenFrame.ScrollBox) }"), "reputation, skills and currency lists").toEqual([true, true, true]);
+  const off = loggedIn(HOSTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
+  expect(off.eval("return { __a(__woodBg), __panel(TokenFrame.ScrollBox) }"), "tabs off: the game's backdrops").toEqual([-1, false]);
+  const bare = loggedIn(PANE_ENV + "CharacterFrame.LeftPaneHost = true");
+  expect(bare.eval("return #ns.errors"), "a host that is not a frame, and a currency list that cannot count its rows").toBe(0);
+});
+
+it("currency: an empty list says so, and the note follows the list the game sets", () => {
+  const addon = loggedIn(HOSTS_ENV);
+  // The currency list's note: its text and whether it shows.
+  const note = () => addon.eval("local n = TokenFrame.ScrollBox.vgEmptyNote return { n:GetText(), n:IsShown() }");
+  expect(note(), "no currencies yet").toEqual(["You have no currencies yet.", true]);
+  addon.eval("TokenFrame.ScrollBox:SetDataProvider(3)");
+  expect(note()[1], "a list with currencies").toBe(false);
+  addon.eval("TokenFrame.ScrollBox:SetDataProvider(0) CharacterFrame:Hide() CharacterFrame:Show()");
+  expect([note()[1], addon.eval("return #ns.errors")], "empty again, watched once").toEqual([true, 0]);
+});
+
 // TEST-ONLY collections window, shaped like Blizzard_Collections' Mainline Wardrobe.xml: the journal (a window) holding
 // WardrobeCollectionFrame, whose item grid and sets preview are CollectionsBackgroundTemplate frames (a leather tile and
 // shadows on an InsetFrameTemplate: a Bg and a NineSlice) with models on them, and whose sets list is an InsetFrameTemplate.
