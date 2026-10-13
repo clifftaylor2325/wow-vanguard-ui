@@ -884,6 +884,8 @@ C_Spell = {
     local id, s = spellOf(key)
     return s and { name = s.name, iconID = s.icon, castTime = s.castTime or 0, minRange = 0, maxRange = s.range or 40, spellID = id }
   end,
+  -- Puts the spell on the cursor.
+  PickupSpell = function(key) local id = spellOf(key) world.cursor = id and { type = "spell", id = id } or nil end,
   GetSpellName = function(key) local _, s = spellOf(key) return s and s.name end,
   GetSpellTexture = function(key) local _, s = spellOf(key) return s and s.icon end,
   -- The spell's power costs, as a list of { type, cost, name }.
@@ -976,7 +978,12 @@ end
 -- Using, picking up and placing actions, recorded.
 function UseAction(slot) world.used = world.used or {} table.insert(world.used, slot) end
 function PickupAction(slot) world.cursor = { type = "action", id = slot } end
-function PlaceAction(slot) world.placed = slot world.cursor = nil end
+-- Places a spell on the cursor onto the slot (nothing comes back to the cursor), and records the slot.
+function PlaceAction(slot)
+  local c = world.cursor
+  world.placed, world.cursor = slot, nil
+  if c and c.type == "spell" then world.setAction(slot, { id = c.id }) end
+end
 C_ActionBar = {
   -- Range checks and the bar page, recorded.
   EnableActionRangeCheck = function(slot, on) world.rangeChecks = world.rangeChecks or {} world.rangeChecks[slot] = on end,
@@ -1857,6 +1864,7 @@ local function tooltipSetters(tip)
   function tip:SetInventoryItem(unit, slot) self.__item = { unit = unit, slot = slot } end
   function tip:SetHyperlink(link) self.__link = link end
   function tip:SetItemByID(id) self.__itemId = id end
+  function tip:SetQuestLogItem(kind, i, questID) self.__questLogItem = kind .. " " .. i .. " " .. tostring(questID) end
   function tip:SetSpellByID(id) self.__spellId = id self.__lines = { { text = (world.spells[id] or {}).name } } end
   function tip:GetItem() return self.__itemName, self.__itemLink end
 end

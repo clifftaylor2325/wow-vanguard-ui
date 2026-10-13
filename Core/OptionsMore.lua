@@ -295,6 +295,15 @@ local function vendorRows()
   }
 end
 
+-- Spell ranks: the bar notice and trainer memory, both off until switched on.
+local function spellRankRows()
+  return {
+    { "header", "Spell ranks" },
+    check("Notice older spell ranks on bar buttons (/vg ranks)", setting("SpellRanks", "barNotice")),
+    check("Remember what trainers teach (/vg trainers)", setting("SpellRanks", "trainerMemory")),
+  }
+end
+
 -- Instance prep's sliders: how long the card stays (seconds), and the durability warning (percent).
 local PREP_SECONDS = { min = 5, max = 60, step = 5, format = function(v) return string.format("%d s", v) end }
 local PREP_PERCENT = { min = 10, max = 90, step = 5, format = function(v) return string.format("%d%%", v) end }
@@ -366,7 +375,7 @@ local function morePageRows()
   append(rows, auctionRows())
   append(append(rows, gameToolRows()), bossDockRows())
   append(rows, merchantRows())
-  append(append(rows, errandRows()), prepRows())
+  append(append(append(rows, errandRows()), spellRankRows()), prepRows())
   append(append(append(rows, chatRows()), chatWatchRows()), comfortRows())
   return append(append(rows, tooltipRows()), upgradeRows())
 end

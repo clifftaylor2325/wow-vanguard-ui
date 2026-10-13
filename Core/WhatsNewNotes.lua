@@ -11,6 +11,9 @@ local ADDON, ns = ...
 
 ns.WHATS_NEW = {
   { version = "0.6.0", groups = {
+    { module = "SpellRanks", label = "Spell ranks", items = {
+      { text = "Chat can say when a bar button holds an older rank of a spell you know better; /vg ranks lists them and /vg ranks swap puts the newest rank there, out of combat.", page = "more", row = "Notice older spell ranks on bar buttons (/vg ranks)", off = true },
+      { text = "Trainers you visit are remembered: /vg trainers next lists what comes in the next levels and where to learn it, and a level-up says so too.", page = "more", row = "Remember what trainers teach (/vg trainers)", off = true },
     { module = "InstancePrep", label = "Instance prep", items = {
       { text = "A dungeon card on the checklist shows the dungeon's level range, your own quests for it and the keys you carry, at the door and with /vg prep.", page = "more", row = "Dungeon card: level range, your dungeon quests and keys on the checklist", off = true },
     } },
@@ -31,6 +34,7 @@ ns.WHATS_NEW = {
     } },
     { label = "Profiles", items = {
       { text = "If the game loses your saved settings, Vanguard says so and offers to restore them from a backup it keeps." },
+      { text = "Presets: Vanguard's Healer, Damage and Tank, and any an addon offers, apply from the Profiles page (or /vg preset) after a question and a backup. Addons can also open the options window on a page.", page = "profiles", row = "Apply Healer" },
       { text = "A profile can be exported in parts, such as layout only or one module, and imported without touching the rest.", page = "profiles", row = "Choose what to export" },
     } },
     { label = "Moving frames", items = {

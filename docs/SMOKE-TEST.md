@@ -291,7 +291,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 8.3 Quest log
 
 - Do: fill the quest log (as many quests as it lets you take; the limit on Forever is not confirmed), then press the quest log key and type `/vg quests`.
-- Expect: Vanguard's log with quests under their zones (click a zone to fold it), `[12] Title` lines in difficulty colours, and Track or Untrack, Share, Abandon and Map for the chosen quest. If it is off, `/vg quests` says `Vanguard's quest log is off (/vg > Quests).`
+- Expect: Vanguard's log with quests under their zones (click a zone to fold it), `[12] Title` lines in difficulty colours, and Track or Untrack, Share, Abandon and Map for the chosen quest. Hover a reward card (a quest with an item reward): the item's tooltip shows beside it and goes when you leave. [Needs in game: the tooltip must show for both choices and fixed rewards.] If it is off, `/vg quests` says `Vanguard's quest log is off (/vg > Quests).`
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 8.4 Quest tracker overflow
@@ -437,7 +437,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.2.2 Guild window and its pages
 
 - Do: open the guild window (the Guild or Social menu button, or `J`), then click each page: Chat, Roster, Guild Info, the benefits page, Preferred Play Settings (if your guild window has it), then the maximize/minimize button. On Roster, tick Show Offline Members.
-- Expect: every page shows on flat dark panels (list, roster, chat, benefits, info, preferred play settings) with no marble or portrait art and nothing showing through behind the settings page's dropdowns; the stream dropdown is a flat button; the maximize and minimize buttons still show their symbol; switching pages keeps the look; the side tabs are still the game's. On Roster, rank names show in full (the Rank header lines up over them) and offline members are a lighter grey you can read at a glance, still unlike online members. On Guild Info, the Guild Information box shows your guild's information, or "No guild information yet." if it has none. On Preferred Play Settings, unless you are the guild master the Apply buttons have the disabled look (greyed label, no hover) and do nothing.
+- Expect: every page shows on flat dark panels (list, roster, chat, benefits, info, preferred play settings) with no marble or portrait art and nothing showing through behind the settings page's dropdowns; the stream dropdown is a flat button; the maximize and minimize buttons still show their symbol; switching pages keeps the look; the side tabs are still the game's. On Roster, rank names show in full (the Rank header lines up over them), online members' names, zones, ranks and notes are bright (no dark film over the rows), and offline members are a lighter grey you can read at a glance, still unlike online members. The same goes for the community list on the left and the Chat page. On Guild Info, the Guild Information box shows your guild's information, or "No guild information yet." if it has none. On Preferred Play Settings, unless you are the guild master the Apply buttons have the disabled look (greyed label, no hover) and do nothing.
 - If it fails, paste: a screenshot of the page that looks wrong and `/vg errors`.
 
 ### 14.2.3 Guild dialogs
@@ -690,8 +690,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 14.10 Moving game windows
 
-- Do: open the character pane (C), drag it by its title bar to the middle of the screen and close it; open it again, then open the spellbook (P) beside it and close that. Open your bags (B) and drag the combined bag by its top edge; close and reopen them. Drag the game menu (Escape) by its header, the guild window, the group finder, the Legacy window and the auction house by their title bars. `/reload` and open the character pane and the bags again. Then start a fight, open the character pane, and leave combat. Last, `/vg` → Bars, map, chat → Game windows → Reset window positions, and open the character pane.
-- Expect: each window follows the mouse and stays where it is dropped; it opens there again, after opening another window beside it and after the reload too; the close and minimize buttons and the bag's portrait button still work (the drag area stops short of them). In the fight the pane may open where the game puts it and jumps to your spot when combat ends, never moving while you fight. `/vg` itself can be dragged by its header and reopens there. After Reset window positions the options window is in the middle and the character pane opens where the game puts it. [Needs in game: the drag itself; that no window jumps back while you hold it; whether the game refuses any of them.]
+- Do: open the character pane (C), drag it by its title bar to the middle of the screen and close it; open it again, then open the spellbook (P) beside it and close that. Open your bags (B) and drag the combined bag by its top edge; close and reopen them. Drag the game menu (Escape) by its header, the guild window, the group finder, the Legacy window and the auction house by their title bars. `/reload` and open the character pane and the bags again. Then start a fight, open the character pane, and leave combat. Then open the calendar and drag it by the empty strip along its top edge (not on the month arrows), and drag the friends window the same way; close and reopen both. Last, `/vg` → Bars, map, chat → Game windows → Reset window positions, and open the character pane.
+- Expect: each window follows the mouse and stays where it is dropped; it opens there again, after opening another window beside it and after the reload too; the close and minimize buttons, the calendar's month arrows and the bag's portrait button still work (the drag area stops short of them, and the top-edge drag only starts on an empty spot). In the fight the pane may open where the game puts it and jumps to your spot when combat ends, never moving while you fight. `/vg` itself can be dragged by its header and reopens there. After Reset window positions the options window is in the middle and the character pane opens where the game puts it. [Needs in game: the drag itself, by the title bar and by the top edge; which windows have mouse enabled on their own frame (a window that doesn't can only be dragged by its title bar); that no window jumps back while you hold it; whether the game refuses any of them.]
 - If it fails, paste: the window's name, a screenshot after the drop and after reopening, and `/vg errors`.
 
 ## 15. Talent planner
@@ -796,9 +796,43 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: `cd` lists the cooldown with its time left, for each character that noted one; `top` lists up to five recipes that pay best, per craft and per hour at the pace set under Craft queue. [Needs in game: that C_TradeSkillUI.GetAllRecipeIDs and GetRecipeCooldown exist and give the open profession's recipes and seconds left, and that reading a few hundred recipes causes no stutter.]
 - If it fails, paste: `/vg errors` and what `/run print(C_TradeSkillUI.GetAllRecipeIDs ~= nil, C_TradeSkillUI.GetRecipeCooldown ~= nil)` prints.
 
-## 21. Dungeon card
+## 21. Presets (batch 2)
 
-### 21.1 The dungeon card on the Instance prep checklist
+### 21.1 Apply a built-in preset
+
+- Do: type `/vg preset`, then `/vg preset Healer` and click Apply. Open `/vg` → Profiles and find the Presets rows.
+- Expect: the first command lists Healer, Damage and Tank; the second asks `Apply preset Healer? Your profile is backed up first.`; after Apply chat says `Profile <name> as it was before this import is saved as profile <name> backup.` and a reload is offered. Frames you had moved stay where they were. No error popup.
+- If it fails, paste: the chat lines and `/vg errors`.
+
+### 21.2 In combat
+
+- Do: pull a mob, then type `/vg preset Tank` and answer Apply.
+- Expect: chat says `Applying a preset waits until combat ends.` and nothing changes.
+- If it fails, paste: the chat lines and `/vg errors`.
+
+### 21.3 Another addon
+
+- Do: `/run Vanguard.RegisterPreset("Mine", "VG1:parts:x", "test") Vanguard.OpenOptions("profiles", "Apply Healer")`, then click Apply Mine.
+- Expect: the options window opens on Profiles at the preset rows, which now list Mine; applying it says `Import failed: ...` (the string is not real) and nothing changes.
+- If it fails, paste: what you saw and `/vg errors`.
+
+## 22. Spell ranks
+
+### 22.1 Bar notice and swap
+
+- Do: in `/vg` open Bars, map, chat and switch on "Notice older spell ranks on bar buttons (/vg ranks)". On a character with a ranked spell, put an old rank of it on a bar (drag it from the spellbook, or keep one on a bar after learning the next rank). Type `/reload`, then `/vg ranks`, then `/vg ranks swap`. Try `/vg ranks swap` in combat.
+- Expect: after the reload (or after learning a rank), chat says "N button(s) on your bars hold an older spell rank." once. `/vg ranks` lists "Bar B button N: Spell Rank 2 -> Rank 4" and changes nothing. `/vg ranks swap` puts the newest rank on each, says "Put the newest rank on N button(s).", and leaves your cursor empty. In combat it says "Bars can't change in combat." [Needs in game: that C_Spell.PickupSpell with PlaceAction swaps a spell on a bar out of combat, that GetActionInfo gives the spell ID of the rank on the button, and that SPELLS_CHANGED fires when a rank is learned.]
+- If it fails, paste: the `/vg ranks` output and `/vg errors`.
+
+### 22.2 Trainer memory
+
+- Do: switch on "Remember what trainers teach (/vg trainers)". Open your class trainer, close it, then type `/vg trainers`, `/vg trainers next`. Level up, if you can, and read chat.
+- Expect: `/vg trainers` says how many services are remembered; `/vg trainers next` lists "Level N: Spell Rank R (Trainer, Zone, Subzone)" for the next five levels, lowest first (or says nothing is remembered). A level-up prints the same list under "Trainers you've visited teach, from this level:". `/vg trainers clear` says "Forgot every trainer." [Needs in game: that GetTrainerServiceLevelReq exists on Forever, where the rank text ("Rank 3") sits among GetTrainerServiceInfo's returns, and that TRAINER_SHOW and TRAINER_UPDATE fire.]
+- If it fails, paste: `/run print(GetTrainerServiceLevelReq, GetNumTrainerServices())` with the trainer open, and `/vg errors`.
+
+## 23. Dungeon card
+
+### 23.1 The dungeon card on the Instance prep checklist
 
 - Do: in `/vg` open Bars, map, chat and switch on "Dungeon card: level range, your dungeon quests and keys on the checklist". With a quest for a dungeon in your log, walk into that dungeon (a character that carries nothing short, if you can). Then leave and type `/vg prep`.
 - Expect: at the door the checklist shows even though nothing is short, with a heading "Dungeon name · levels A-B · 5-player Normal", "Your quests here" and your quests for this dungeon as "[level] Title" (done ones with "· done"), and "Keys: ..." when you carry a key. Outside, `/vg prep` shows "Dungeon quests in your log" (your dungeon and raid quests) and any keys. With the switch off none of these lines show. [Needs in game: that GetInstanceInfo gives the name, size and difficulty, that C_Map.GetMapLevels answers for a dungeon map, that C_QuestLog.GetQuestsOnMap lists your quests inside a dungeon, that C_QuestLog.GetQuestTagInfo tags dungeon quests with Enum.QuestTag Dungeon, Raid or Group, and that keys are item class 13.]

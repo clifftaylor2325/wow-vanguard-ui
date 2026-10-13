@@ -24,6 +24,7 @@ local HELP = {
   "profile new|copy|delete <name>, profile reset   manage profiles",
   "export [part ...|pick]   copy the profile as a string, or only some parts of it: layout, situations, global or a module's name; pick opens a panel with a switch for each part",
   "import               paste a string from /vg export: a whole profile becomes a new profile, a partial one merges into yours (backed up first)",
+  "preset [name]        presets on offer (Vanguard's healer, damage and tank, and any an addon registers); a name asks to apply it, backed up first",
   "spec [profile|off]   use a profile whenever you're in this specialization",
   "copy                 the recent chat as plain text, ready to copy",
   "situation [record <name>|stop|clear [name]|list]   Situations: record a layout and settings for solo, party, raid, pvp, instance or resting",
@@ -36,6 +37,8 @@ local HELP = {
   "rolls [clear]        the group's /roll results this session, newest first; clear forgets them",
   "fights               your DPS, length and place in each fight this session, newest first",
   "vendors [clear]      how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them",
+  "ranks [swap]         spell ranks: bar buttons holding an older rank than you know; swap puts the newest rank there (out of combat). Off until Spell ranks is switched on",
+  "trainers [next|clear]   what the trainers you've visited teach: how many services are remembered, what the next levels bring and where, or forget them (Trainer memory off until switched on)",
   "inventory [forget <name>|clear]   your characters remembered here and when their bags were read; forget drops one, clear forgets them all",
   "weights [set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role; change one, go back to the defaults, or share them",
   "prep [want <kind> <n>] the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards",
@@ -304,6 +307,15 @@ local function importCommand()
 end
 
 ns.ImportDialog = importCommand
+ns.ImportDone = imported
+
+-- /vg preset [name]: the presets on offer (Core/Integration.lua), or ask to apply one.
+local function presetCommand(rest)
+  local preset = ns.FindPreset(rest)
+  if preset then return ns.AskPreset(preset) end
+  chat(rest == "" and "Presets (/vg preset <name> applies one):" or ("No preset called " .. rest .. ". Presets:"))
+  for _, p in ipairs(Vanguard.GetPresets()) do chat("  " .. p.name .. (p.info ~= "" and ("  -  " .. p.info) or "")) end
+end
 
 -- /vg binds: this spec's click-casting bindings, one per line.
 local function bindsCommand()
@@ -510,6 +522,8 @@ end
 local COMMANDS = {
   -- /vg help
   help = function() printLines(HELP) end,
+  -- /vg preset [name]
+  preset = presetCommand,
   -- /vg options (also /vg with nothing after it)
   options = function() ns.Options.Toggle() end,
   config = function() ns.Options.Toggle() end,
@@ -547,6 +561,8 @@ local COMMANDS = {
   rolls = function(rest) ns.GetModule("Rolls").Command(rest) end,
   fights = function() ns.GetModule("FightHistory").Command() end,
   vendors = function(rest) ns.GetModule("VendorMemory").Command(rest) end,
+  ranks = function(rest) ns.GetModule("SpellRanks").RanksCommand(rest) end,
+  trainers = function(rest) ns.GetModule("SpellRanks").TrainersCommand(rest) end,
   inventory = function(rest) ns.GetModule("Inventory").Command(rest) end,
   weights = function(rest) ns.GetModule("Upgrades").Command(rest) end,
   prep = function(rest) ns.GetModule("InstancePrep").Command(rest) end,
