@@ -477,7 +477,7 @@ export const SCENES = [
     CC.Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew") CC.Add("shift-BUTTON1", "spell", "TEST-ONLY Shield")
     CC.Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") CC.Add("MOUSEWHEELUP", "macro", "/cast [@mouseover] TEST-ONLY Heal")
     ns.Options.Show("clickcast")` },
-  { name: "vanguard-auction", caption: "The auction house's Shopping tab: the Lists pane (a shopping list, Deals with two found, Upgrades, the list buttons, the last scan) and the list searched as a table (unit price, how many are up) under its toolbar (TEST-ONLY items and listings)",
+  { name: "vanguard-auction", caption: "The auction house's Lists tab: the Lists pane (a shopping list, Deals with two found, Upgrades, the list buttons, the last scan) and the list searched as a table (unit price, how many are up) under its toolbar (TEST-ONLY items and listings)",
     lua: `time = function() return 1790000000 end
       VanguardDB.ah = { list = "Enchanting mats", lists = { ["Enchanting mats"] = { "Strange Dust", "Soul Dust", 10998, "Vision Dust" } } }
       local house = ns.AuctionPrices.House()
@@ -501,7 +501,7 @@ export const SCENES = [
       ns.AuctionPrices.RecordSeen(2589, 9)
       __wfgStub.update(0.01)
       AH.PaintShop()` },
-  { name: "vanguard-auction-selling", caption: "The auction house's Selling tab: the sell card with a stack of dust (one field a row), Up now with the dust's listings (yours flagged), and your auctions with one undercut, its buttons on the heading line (TEST-ONLY items and listings)",
+  { name: "vanguard-auction-selling", caption: "The auction house's Posting tab: the sell card with a stack of dust (one field a row), Up now with the dust's listings (yours flagged), and your auctions with one undercut, its buttons on the heading line (TEST-ONLY items and listings)",
     lua: `time = function() return 1790000000 end
       local house = ns.AuctionPrices.House()
       house.lastScan, house.count, house.prices = 1790000000 - 720, 1, { [10940] = { min = 110, t = 1790000000, days = { [20717] = 105 } } }
