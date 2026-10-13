@@ -277,6 +277,7 @@ O.MODULE_INFO = {
   Errands = { "Errands", "Train all at a trainer, keep items stocked from merchants, and time your flights." },
   InstancePrep = { "Instance prep", "A checklist of what's low (ammo, reagents, food, bandages, potions, your stock list) when you enter an instance or a ready check starts." },
   TalentPlanner = { "Talent planner", "Plan your talent points on the talents window before you have them: planned ranks on each talent, the next pick ringed, Spend planned buys them in order." },
+  Legacy = { "Legacy", "A probe of what the client has for the Legacy system and a 16-point perk plan list (the planner is off until switched on)." },
   BossDocks = { "Boss mod docks", "Two spots you can move for boss mods' timer bars; /vg dock lines up Deadly Boss Mods' bars with them." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
   CraftQueue = { "Craft queue", "A list of crafts to make, profession cooldowns across your characters and the recipes that pay best, from the auction prices (off until switched on; /vg craft)." },
