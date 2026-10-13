@@ -25,7 +25,7 @@ npm run preview       # preview/*.png (needs Playwright)
 npm run link:wow -- --wow "<Forever folder>"   # link the clone into the game for /reload testing
 ```
 
-Before you say a change is done: `npm run verify` and `npm run coverage` must both pass. Every new line of addon Lua needs a test that executes it. CI runs `verify.yml` on every PR; the full suite runs weekly, before releases, or on PRs labelled `full-tests`.
+Before you say a change is done: `npm run quality` and `npm run coverage` must both pass (coverage runs every test, so `npm run verify` on top of it only runs the suite twice). Every new line of addon Lua needs a test that executes it. CI runs `verify.yml` on every PR; the full suite runs weekly, before releases, or on PRs labelled `full-tests`.
 
 ## Hard rules (CI enforces these)
 
@@ -74,10 +74,21 @@ Claude usage and CI minutes are both limited. Pick the cheapest model and effort
 - **Model by task.** Haiku for mechanical work: closing issues with a link, ticking plans, renumbering smoke-test steps, bringing `main` into a branch, release-note drafts from merged PR titles, a status summary. Sonnet for everything that changes code: bug fixes, feature phases, harness tests, site generators, docs that need judgement. Opus or above only for a root cause nobody has reproduced, a change to the harness rules (`scripts/lib/wow-taint.lua`, the secret helpers), a secure or protected code path, or a decision that spans modules.
 - **Effort by task.** Low for the Haiku work and for checklists. Medium is the default for code. High only for the Opus cases above. Don't raise effort to make up for a vague brief; sharpen the brief.
 - **Briefs stay lean.** A thread's brief names the issue or phase, the branch, the files it may touch, and the default picked where the ask forks. It does not restate the README, this file or the plan; the thread reads those itself. One thread per independent branch. A task that waits on another PR waits; it does not get a thread yet.
-- **Local runs.** `npm run test:quick` while iterating. `npm run verify` and `npm run coverage` once, before the PR, not after every edit.
+- **Local runs.** `npm run test:quick` while iterating. `npm run quality` and `npm run coverage` once, before the PR, not after every edit.
 - **CI minutes.** Open PRs as drafts and mark them ready once, when they are done; CI skips drafts. The `full-tests` label goes only on a PR that adds new game API surface, changes the harness, or cuts a release. Don't push to re-run a green check.
 - **Merging in a wave.** When several PRs are open, merge in the order that keeps `main` moving under the fewest branches (core and harness first, then features), and bring `main` into a branch once, right before it merges, not after every merge.
 - **GSD.** `.planning/config.json` sets `model_profile` to `budget` for the same reason. A phase plan states the model and effort a plan needs only when it is not the default above.
+
+## Agent tooling
+
+- **Edit-time check.** `.claude/settings.json` runs `scripts/agent-check.mjs` after every Edit or Write: the code-quality rules and luacheck (when installed) on that one file, fed back as hook output. Fix what it says before moving on; it is the same scanner CI runs. `node scripts/agent-check.mjs <file>` runs it by hand.
+- **Skills** in `.claude/skills/`, one per recurring task; use the one that matches, each is the worked example of the rules above:
+  - Building: `add-module` (a new feature), `add-setting` (a switch or option on an existing module), `add-slash-command` (a `/vg` command), `add-media` (a texture or icon), `add-game-api` (a client API the harness lacks).
+  - Changing: `polish-module` (look or code of an existing module, a game window's skin), `fix-bug` (a behaviour bug), `fix-visual-issue` (a look bug).
+  - Testing and shipping: `add-harness-scenario` (a test), `ready-pr` (before any PR), `release` (a version), `triage-game-report` (what Cliff pastes from the game), `sweep-prs` (the weekly PR and CI sweep).
+- **Patterns.** `docs/PATTERNS.md` shows the canonical shape of a module, a guarded callback, frame state, a secret-safe read, combat-deferred work, events and timers, a migration and a scenario. Copy from there, not from the nearest file.
+- **Before a PR is marked ready**, run the built-in `code-review` skill on the diff once (the `ready-pr` skill says how). It catches what the harness cannot.
+- **Annotations.** The `ns.*` helpers in `Core/` carry `---@param` and `---@return` lines; keep them when you change a signature, and add them to a new helper.
 
 ## Don't
 

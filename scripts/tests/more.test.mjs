@@ -638,6 +638,8 @@ it("quest tracker: watched quests with levels, objectives and items", () => {
   expect([isTok(addon, colors[0], "text2"), isTok(addon, colors[1], "good"), isTok(addon, colors[2], "good"), colors[3][0]], "done objectives in green, the title in its difficulty color").toEqual([true, true, true, 1]);
   expect(addon.eval("return { ObjectiveTrackerFrame:IsShown(), ObjectiveTrackerFrame:GetParent() == UIParent, Vanguard_QuestTrackerFrame:GetParent() == Vanguard_QuestTracker }"), "the game's tracker is hidden in place; this one sits in the tracker's spot").toEqual([false, true, true]);
   expect(addon.eval(`local b = Vanguard_QuestItem1 return { b:GetAttribute("type"), b:GetAttribute("item"), b.__points.TOPRIGHT.rel == Vanguard_QuestTrackerFrame.blocks[1], b:IsShown() }`), "the wolves' item, beside its quest").toEqual(["item", "item:90061", true, true]);
+  expect(addon.eval("return { Vanguard_QuestTrackerFrame.__strata, Vanguard_QuestItem1.__strata }"),
+    "the tracker (its clickable titles with it) and its items on LOW, as the game's tracker, under the game's windows (an open bag's items stay clickable)").toEqual(["LOW", "LOW"]);
   setCombat(addon, true);
   addon.eval("__quests[90051].item = nil");
   addon.fire("QUEST_LOG_UPDATE");
@@ -2187,11 +2189,19 @@ it("the game's extras: each switch off leaves the game's frame alone, and missin
   expect(bare.eval("return Vanguard_MenuStrip ~= nil and Vanguard_QuestTracker ~= nil"), "a client without these frames still gets the strip and the spot, with nothing to pin").toBe(true);
 });
 
-it("a menu button takes clicks while the game's new indicator is shown (#243)", () => {
-  // TEST-ONLY indicator: a mouse-taking child frame above the button, as the game's alert frames are.
-  const ALERT_ENV = `__alert = CreateFrame("Frame", nil, CharacterMicroButton) __alert:EnableMouse(true) __alert:SetFrameLevel(CharacterMicroButton:GetFrameLevel() + 5)`;
-  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + ALERT_ENV);
-  expect(addon.eval("return { __alert:IsMouseEnabled() and 1 or 0, ns.FrameState('vgSlot')[CharacterMicroButton] ~= nil }"), "the indicator no longer takes the mouse, the slot is kept").toEqual([0, true]);
+it("a menu button takes clicks while the game's notification badge is shown (#243)", () => {
+  // TEST-ONLY badge, shaped like the game's NotificationOverlay: a hidden child frame over the whole button, high
+  // above it; and a mouse-taking alert frame. The badge turns the mouse back on whenever it is shown.
+  const BADGE_ENV = `__badge = CreateFrame("Frame", nil, CharacterMicroButton) __badge:SetAllPoints() __badge:SetFrameLevel(100) __badge:Hide()
+    __badge:HookScript("OnShow", function(self) self:EnableMouse(true) self:SetHitRectInsets(0, 0, 0, 0) end)
+    __alert = CreateFrame("Frame", nil, CharacterMicroButton) __alert:EnableMouse(true)`;
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + BADGE_ENV);
+  // A frame's mouse switch and its hit area's left inset.
+  const state = (f) => addon.eval(`return { ${f}:IsMouseEnabled() and 1 or 0, ${f}.__hitInsets[1] }`);
+  expect([state("__badge"), state("__alert")], "both frames take no mouse and have no place to hit").toEqual([[0, 512], [0, 512]]);
+  addon.eval("__badge:Show()");
+  expect(state("__badge"), "a badge shown later is made click-through again").toEqual([0, 512]);
+  expect(addon.eval("return ns.FrameState('vgSlot')[CharacterMicroButton]:IsMouseEnabled() and 1 or 0"), "our own slot is left alone").toBe(0);
   addon.eval("local clicked = 0 CharacterMicroButton:HookScript('OnClick', function() clicked = clicked + 1 end) CharacterMicroButton:Click() __clicked = clicked");
   expect(addon.eval("return __clicked"), "a click reaches the button").toBe(1);
 });
