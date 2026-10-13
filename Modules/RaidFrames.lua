@@ -739,6 +739,8 @@ function RF.Enable(settings)
   for e, fn in pairs(UNIT_EVENTS) do ns.On(e, fn) end
   for e, part in pairs(TILE_EVENTS) do ns.On(e, function() RF.EachTile(RF[part]) end) end
   for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD" }) do ns.On(e, RF.RosterChanged) end
+  -- A drag, a nudge or a reset of the raid frames' spot: the grid is pinned to the spot's new side.
+  ns.OnMoverPlaced(function(key) if key == "raid" then RF.Fit() end end)
   -- A new text size or UI scale: the texts' sizes and the top line's pixel follow.
   T.OnChanged(function() ns.OutOfCombat(RF.PlaceAllTexts, "raidtexts") end)
 end
