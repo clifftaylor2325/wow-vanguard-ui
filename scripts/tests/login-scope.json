@@ -2,10 +2,17 @@
   "about": "Test files whose logins leave the six heavy modules off, with the cases that keep the full login; written by node scripts/login-scope-probe.mjs --write.",
   "scoped": {
     "scripts/lua-engine.test.mjs": [],
+    "scripts/tests/alerts.test.mjs": [
+      "Edit Mode: a game frame Vanguard hides or replaces gets no handle, every other system keeps its own",
+      "boss frames: five in a column at the top left, the game's put away",
+      "boss frames: the game's holder is put away only out of combat",
+      "the game's tools: a switch shows the Cooldown Manager's essential row between the frames, timers in the theme font"
+    ],
     "scripts/tests/auction.test.mjs": [],
     "scripts/tests/auctionapi.test.mjs": [],
     "scripts/tests/auctioncrafting.test.mjs": [],
     "scripts/tests/auctionledger.test.mjs": [],
+    "scripts/tests/auctionowned.test.mjs": [],
     "scripts/tests/auctionpost.test.mjs": [],
     "scripts/tests/auctionrestock.test.mjs": [
       "a max price leaves dearer listings out; filters stay when the list is made again and when they're saved",
@@ -15,6 +22,8 @@
       "the Restock list holds what Instance prep and Keep stocked are short of, with how many",
       "the prep card's Buy list waits for the Auction helper, and an ammo row is no item to buy"
     ],
+    "scripts/tests/auctionsell.test.mjs": [],
+    "scripts/tests/auctionshop.test.mjs": [],
     "scripts/tests/auctionupgrades.test.mjs": [],
     "scripts/tests/auras.test.mjs": [
       "a client that rejects every aura filter word keeps the filter and shows no auras",
@@ -61,6 +70,7 @@
     ],
     "scripts/tests/broker.test.mjs": [],
     "scripts/tests/casts.test.mjs": [],
+    "scripts/tests/chat.test.mjs": [],
     "scripts/tests/chatwatch.test.mjs": [],
     "scripts/tests/clickcast.test.mjs": [
       "bindings carry spell ids and ranks, move, copy, export and import",
@@ -70,16 +80,23 @@
     "scripts/tests/clicks.test.mjs": [
       "click-casting validation, labels and unit frames"
     ],
-    "scripts/tests/core.test.mjs": [
-      "Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line",
-      "a damaged account file: a profile that isn't a table, or a name that isn't a name, is dropped at load",
+    "scripts/tests/clientprobe.test.mjs": [
       "client capability probe: every flag off, every module still enables",
-      "client capability probe: what this client has, and /vg status says so",
+      "client capability probe: what this client has, and /vg status says so"
+    ],
+    "scripts/tests/core.test.mjs": [
+      "a damaged account file: a profile that isn't a table, or a name that isn't a name, is dropped at load",
       "the account file's version is read and upgraded"
     ],
     "scripts/tests/data.test.mjs": [],
     "scripts/tests/docks.test.mjs": [],
     "scripts/tests/errorrail.test.mjs": [],
+    "scripts/tests/errors.test.mjs": [
+      "Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line"
+    ],
+    "scripts/tests/extras.test.mjs": [
+      "raid tools: calls, target icons and world markers for the leader and assistants"
+    ],
     "scripts/tests/fallbacks.test.mjs": [],
     "scripts/tests/feedback.test.mjs": [],
     "scripts/tests/fights.test.mjs": [],
@@ -94,18 +111,13 @@
       "with Masque loaded, action, pet and stance buttons and aura icons go to Masque groups, without Vanguard's skin",
       "without Masque (or without LibStub) nothing changes"
     ],
-    "scripts/tests/more.test.mjs": [
-      "Edit Mode: a game frame Vanguard hides or replaces gets no handle, every other system keeps its own",
-      "boss frames: five in a column at the top left, the game's put away",
-      "boss frames: the game's holder is put away only out of combat",
-      "raid tools: calls, target icons and world markers for the leader and assistants",
-      "the game's tools: a switch shows the Cooldown Manager's essential row between the frames, timers in the theme font"
-    ],
     "scripts/tests/motion.test.mjs": [],
     "scripts/tests/options.test.mjs": [
       "options window",
       "text that fits: chat size, tooltip fonts, the status line, name width"
     ],
+    "scripts/tests/platebuffs.test.mjs": [],
+    "scripts/tests/platepaint.test.mjs": [],
     "scripts/tests/plates.test.mjs": [],
     "scripts/tests/prep.test.mjs": [
       "prep: /vg prep want sets the wanted amounts; the options page has the section",
@@ -120,7 +132,9 @@
       "prep: nothing short keeps the card away at the door; /vg prep says everything's packed",
       "prep: once per visit at the door, gone after Hide after or the close button"
     ],
+    "scripts/tests/profileguard.test.mjs": [],
     "scripts/tests/profiles.test.mjs": [],
+    "scripts/tests/quests.test.mjs": [],
     "scripts/tests/raid.test.mjs": [
       "raid tools: a burst of roster events in combat queues one update of the bar, not one per event"
     ],
@@ -132,22 +146,25 @@
     ],
     "scripts/tests/rolls.test.mjs": [],
     "scripts/tests/setup.test.mjs": [
+      "setup again: Keep and Keep change nothing; Run setup in the options; Start over owes setup after the reload",
+      "the setup wizard sits above the unlock handles on the last step, so their labels never draw over it"
+    ],
+    "scripts/tests/setuplayouts.test.mjs": [
       "Centered layout: compact raid grid, one-time migrations, a strip with nothing to show",
       "default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 px buttons; a saved profile keeps its sizes",
       "one bar material (#234): every Vanguard bar on the whole HUD uses the theme's bar texture, and a new pick reaches them all",
-      "setup again: Keep and Keep change nothing; Run setup in the options; Start over owes setup after the reload",
       "setup layouts: Like the game's puts your frames at the top left; another layout puts them back",
       "setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect",
       "setup screen: picking Pixel-perfect turns on Vanguard's pixel-perfect scale and leaves the game's UI scale alone (#225)",
       "setup screen: this screen's preset is picked; Keep changes nothing; a preset sets the UI scale, buttons, tiles and text",
-      "setup screens: with each screen preset, nothing overlaps or leaves its own screen, in every layout, solo to 40-man",
-      "the setup wizard sits above the unlock handles on the last step, so their labels never draw over it"
+      "setup screens: with each screen preset, nothing overlaps or leaves its own screen, in every layout, solo to 40-man"
     ],
     "scripts/tests/situations.test.mjs": [],
     "scripts/tests/skins.test.mjs": [],
     "scripts/tests/special.test.mjs": [],
     "scripts/tests/spellbook.test.mjs": [],
     "scripts/tests/status.test.mjs": [],
+    "scripts/tests/strips.test.mjs": [],
     "scripts/tests/talents.test.mjs": [],
     "scripts/tests/theme.test.mjs": [],
     "scripts/tests/tooltip.test.mjs": [],
