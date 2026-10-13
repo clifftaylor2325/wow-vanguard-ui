@@ -32,6 +32,7 @@ local HELP = {
   "questdata [questID]  what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever",
   "lfg                  open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level",
   "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
+  "craft [add [n]|next|stock|cd|top|done|clear]   the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)",
   "rolls [clear]        the group's /roll results this session, newest first; clear forgets them",
   "fights               your DPS, length and place in each fight this session, newest first",
   "vendors [clear]      how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them",
@@ -542,6 +543,7 @@ local COMMANDS = {
   copy = function() ns.GetModule("ChatExtras").ShowCopy() end,
   quests = function() local QL = ns.GetModule("QuestLog") if QL.frame then QL.Toggle() else ns.Chat("Vanguard's quest log is off (/vg > Quests).") end end,
   stock = stockCommand,
+  craft = function(rest) ns.GetModule("CraftQueue").Command(rest) end,
   rolls = function(rest) ns.GetModule("Rolls").Command(rest) end,
   fights = function() ns.GetModule("FightHistory").Command() end,
   vendors = function(rest) ns.GetModule("VendorMemory").Command(rest) end,
@@ -566,14 +568,15 @@ local COMMANDS = {
   perf = function(rest) ns.Perf.Command(rest) end,
 }
 
--- /vg entry point: no arguments opens the options window.
+-- /vg entry point: no arguments opens the options window. A command runs under
+-- ns.Try, so an error in it is kept for /vg errors like any other caught error.
 local function handleSlash(msg)
   local cmd, rest = (msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
   if cmd == "" then
     return ns.Options.Toggle()
   end
   local handler = COMMANDS[cmd:lower()] or function() chat("Unknown command. /vg help") end
-  handler(rest)
+  ns.Try("slash " .. cmd:lower(), handler, rest)
 end
 
 SLASH_VANGUARD1 = "/vg"

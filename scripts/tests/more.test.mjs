@@ -638,6 +638,8 @@ it("quest tracker: watched quests with levels, objectives and items", () => {
   expect([isTok(addon, colors[0], "text2"), isTok(addon, colors[1], "good"), isTok(addon, colors[2], "good"), colors[3][0]], "done objectives in green, the title in its difficulty color").toEqual([true, true, true, 1]);
   expect(addon.eval("return { ObjectiveTrackerFrame:IsShown(), ObjectiveTrackerFrame:GetParent() == UIParent, Vanguard_QuestTrackerFrame:GetParent() == Vanguard_QuestTracker }"), "the game's tracker is hidden in place; this one sits in the tracker's spot").toEqual([false, true, true]);
   expect(addon.eval(`local b = Vanguard_QuestItem1 return { b:GetAttribute("type"), b:GetAttribute("item"), b.__points.TOPRIGHT.rel == Vanguard_QuestTrackerFrame.blocks[1], b:IsShown() }`), "the wolves' item, beside its quest").toEqual(["item", "item:90061", true, true]);
+  expect(addon.eval("return { Vanguard_QuestTrackerFrame.__strata, Vanguard_QuestItem1.__strata }"),
+    "the tracker (its clickable titles with it) and its items on LOW, as the game's tracker, under the game's windows (an open bag's items stay clickable)").toEqual(["LOW", "LOW"]);
   setCombat(addon, true);
   addon.eval("__quests[90051].item = nil");
   addon.fire("QUEST_LOG_UPDATE");
@@ -1152,7 +1154,7 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
   addon.slash("");
   addon.eval('__click("Bars, map, chat")');
   addon.eval(`__click("Your DPS in the last fight (from the game's damage meter)")`);
-  expect([block(addon, "dps").text, addon.eval("return __asked"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "your line's figure, the current fight's DPS, on a fourth row").toEqual(["1.2K dps", [1, 1], 68]);
+  expect([block(addon, "dps").text, addon.eval("return __asked"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "your line's figure, the current fight's DPS, on a fifth row").toEqual(["1.2K dps", [1, 1], 84]);
   setCombat(addon, true);
   addon.eval("__dps.combatSources[2].amountPerSecond = 2500");
   addon.fire("DAMAGE_METER_RESET");
@@ -1178,7 +1180,7 @@ it("the info strip: your place in the last fight's DPS, in a group", () => {
   addon.slash("");
   addon.eval('__click("Bars, map, chat")');
   addon.eval(`__click("Your place in the last fight's DPS")`);
-  expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "text2"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "second of two, on the fourth row").toEqual(["#2 of 2", true, 68]);
+  expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "text2"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "second of two, on the fifth row").toEqual(["#2 of 2", true, 84]);
   addon.eval("__dps.combatSources = { __dps.combatSources[2], __dps.combatSources[1], { isLocalPlayer = false } }");
   addon.fire("PLAYER_REGEN_ENABLED");
   expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "gold")], "at the top of three, in gold").toEqual(["#1 of 3", true]);
@@ -1333,6 +1335,22 @@ it("the info strip under the minimap", () => {
   addon.eval('__click("Bars, map, chat")');
   expect(addon.eval('return __click("Clock")') && block(addon, "clock").shown, "a block turns off at once").toBe(false);
   expect(addon.eval('return { ns.MoverPoint("infostrip") }'), "the strip is movable, under the minimap").toEqual(["TOPRIGHT", "TOPRIGHT", -12, -200]);
+});
+
+it("the info strip: the day and date with a calendar button", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + 'date = function(f) return f == "%A, %d %B" and "Tuesday, 13 October" or "21:04" end __opened = 0 ToggleCalendar = function() __opened = __opened + 1 end');
+  const button = "Vanguard_InfoStripCalendar";
+  expect([block(addon, "date").text, addon.eval(`return ${button}:IsShown()`)], "the day and date, with the button beside them").toEqual(["Tuesday, 13 October", true]);
+  expect(addon.eval(`return { ${button}:GetWidth(), ns.FrameState("vgGlyph")[${button}].__texture:match("(%a+)$") }`), "the button is a 14-unit slot with the calendar icon").toEqual([14, "Calendar"]);
+  addon.eval(`${button}.__scripts.OnClick(${button}) ${button}.__scripts.OnEnter(${button}) ${button}.__scripts.OnLeave(${button})`);
+  expect(addon.eval("return __opened"), "a click opens the calendar").toBe(1);
+  addon.eval("ToggleCalendar = nil");
+  addon.eval(`${button}.__scripts.OnClick(${button})`);
+  expect(addon.eval("return #ns.errors"), "a client without it does nothing, without an error").toBe(0);
+  addon.eval('ns.Settings("InfoStrip").date = false ns.GetModule("InfoStrip").UpdateAll()');
+  expect([block(addon, "date").shown, addon.eval(`return ${button}:IsShown()`)], "turned off, the date and its button go").toEqual([false, false]);
+  addon.eval('ns.Settings("InfoStrip").date = true __wfgStub.advance(60)');
+  expect(block(addon, "date").shown, "and come back on the next minute's tick").toBe(true);
 });
 
 it("the info strip: ammo, and clients that can't answer", () => {
@@ -1744,9 +1762,9 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
   // Whether each leveling block shows.
   const rates = () => ["xprate", "leveltime", "goldrate"].map((k) => block(addon, k).shown);
-  // The strip's height (two rows, or three with the leveling row).
+  // The strip's height (three rows with the date, or four with the leveling row).
   const height = () => addon.eval("return Vanguard_InfoStrip:GetHeight()");
-  expect([rates(), height()], "nothing to say yet: two rows").toEqual([[false, false, false], 36]);
+  expect([rates(), height()], "nothing to say yet: three rows").toEqual([[false, false, false], 52]);
   addon.eval("__xp = 1900");
   addon.fire("PLAYER_XP_UPDATE", "player");
   later(addon, 10);
@@ -1754,7 +1772,7 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   expect(rates(), "the first minute's numbers jump about, so they wait").toEqual([false, false, false]);
   later(addon, 1790);
   addon.fire("PLAYER_XP_UPDATE", "player");
-  expect([block(addon, "xprate").text, block(addon, "leveltime").text, height()], "900 XP in half an hour; the strip grows a row").toEqual(["1.8K xp/h", "lvl 1h 44m", 52]);
+  expect([block(addon, "xprate").text, block(addon, "leveltime").text, height()], "900 XP in half an hour; the strip grows a row").toEqual(["1.8K xp/h", "lvl 1h 44m", 68]);
   addon.eval("__xp, __xpmax, __rested = 200, 6000, nil");
   addon.fire("PLAYER_XP_UPDATE", "player");
   expect([block(addon, "xprate").text, block(addon, "leveltime").text], "a level-up counts the old level's rest too").toEqual(["8.4K xp/h", "lvl 42m"]);
@@ -1770,7 +1788,7 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   expect(rates(), "no XP numbers at the level cap").toEqual([false, false, true]);
   addon.eval("__money = 123407");
   addon.fire("PLAYER_MONEY");
-  expect([rates(), height()], "no change in gold, no gold rate; back to two rows").toEqual([[false, false, false], 36]);
+  expect([rates(), height()], "no change in gold, no gold rate; back to three rows").toEqual([[false, false, false], 52]);
   addon.eval('__level = 20 __xp = { __secret = true }');
   addon.fire("PLAYER_XP_UPDATE", "player");
   expect(rates(), "hidden XP: the rate so far stays, the time to level hides").toEqual([true, false, false]);
@@ -2187,11 +2205,19 @@ it("the game's extras: each switch off leaves the game's frame alone, and missin
   expect(bare.eval("return Vanguard_MenuStrip ~= nil and Vanguard_QuestTracker ~= nil"), "a client without these frames still gets the strip and the spot, with nothing to pin").toBe(true);
 });
 
-it("a menu button takes clicks while the game's new indicator is shown (#243)", () => {
-  // TEST-ONLY indicator: a mouse-taking child frame above the button, as the game's alert frames are.
-  const ALERT_ENV = `__alert = CreateFrame("Frame", nil, CharacterMicroButton) __alert:EnableMouse(true) __alert:SetFrameLevel(CharacterMicroButton:GetFrameLevel() + 5)`;
-  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + ALERT_ENV);
-  expect(addon.eval("return { __alert:IsMouseEnabled() and 1 or 0, ns.FrameState('vgSlot')[CharacterMicroButton] ~= nil }"), "the indicator no longer takes the mouse, the slot is kept").toEqual([0, true]);
+it("a menu button takes clicks while the game's notification badge is shown (#243)", () => {
+  // TEST-ONLY badge, shaped like the game's NotificationOverlay: a hidden child frame over the whole button, high
+  // above it; and a mouse-taking alert frame. The badge turns the mouse back on whenever it is shown.
+  const BADGE_ENV = `__badge = CreateFrame("Frame", nil, CharacterMicroButton) __badge:SetAllPoints() __badge:SetFrameLevel(100) __badge:Hide()
+    __badge:HookScript("OnShow", function(self) self:EnableMouse(true) self:SetHitRectInsets(0, 0, 0, 0) end)
+    __alert = CreateFrame("Frame", nil, CharacterMicroButton) __alert:EnableMouse(true)`;
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + BADGE_ENV);
+  // A frame's mouse switch and its hit area's left inset.
+  const state = (f) => addon.eval(`return { ${f}:IsMouseEnabled() and 1 or 0, ${f}.__hitInsets[1] }`);
+  expect([state("__badge"), state("__alert")], "both frames take no mouse and have no place to hit").toEqual([[0, 512], [0, 512]]);
+  addon.eval("__badge:Show()");
+  expect(state("__badge"), "a badge shown later is made click-through again").toEqual([0, 512]);
+  expect(addon.eval("return ns.FrameState('vgSlot')[CharacterMicroButton]:IsMouseEnabled() and 1 or 0"), "our own slot is left alone").toBe(0);
   addon.eval("local clicked = 0 CharacterMicroButton:HookScript('OnClick', function() clicked = clicked + 1 end) CharacterMicroButton:Click() __clicked = clicked");
   expect(addon.eval("return __clicked"), "a click reaches the button").toBe(1);
 });

@@ -78,9 +78,15 @@ local function ownSpot()
   return spot
 end
 
+-- The tracker's strata, and its item buttons': LOW, the game's own tracker's (ObjectiveTrackerFrame), under
+-- the game's windows. On the default MEDIUM its clickable quest titles drew over an open window (the combined
+-- bag) and took the mouse from the window's items there, so they couldn't be picked up or dragged.
+QT.STRATA = "LOW"
+
 -- Builds the tracker over its spot.
 function QT.Build(spot)
   local f = CreateFrame("Frame", "Vanguard_QuestTrackerFrame", spot or ownSpot())
+  f:SetFrameStrata(QT.STRATA)
   f:SetAllPoints()
   addHeader(f)
   addToggle(f)
@@ -217,8 +223,9 @@ function QT.ItemTooltip(b)
   tip:Show()
 end
 
--- The button's cooldown swipe over the icon, its tooltip and its range check (a few times a second while it shows).
+-- The button's strata (the tracker's), cooldown swipe over the icon, tooltip and range check (a few times a second while it shows).
 local function wireItem(b)
+  b:SetFrameStrata(QT.STRATA)
   b.cooldown = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
   b.cooldown:SetAllPoints()
   b:SetScript("OnEnter", QT.ItemTooltip)
