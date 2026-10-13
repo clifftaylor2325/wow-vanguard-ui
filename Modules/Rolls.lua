@@ -3,6 +3,8 @@
 -- and fades away 30 seconds after the last roll. Each result is read from the
 -- game's roll line (RANDOM_ROLL_RESULT, in the client's language) in the system
 -- chat messages; a line the client hides, or one that doesn't match, is skipped.
+-- With the officer loot tools on (Modules/OfficerLoot.lua), a roll by a player who reserved
+-- the item being rolled for is flagged "[SR]", and a loot item lists who reserved it.
 -- Where the client has the loot history (C_LootHistory, not confirmed on every
 -- client), the panel also lists the last few items the group rolled for, with
 -- each member's choice and roll and who won; where it doesn't, that part stays
@@ -119,6 +121,41 @@ function R.ReadLoot()
   R.Paint()
 end
 
+-- Reserves -----------------------------------------------------------------------------------
+
+-- The officer loot tools (set by Modules/OfficerLoot.lua) when they are on, else nil.
+function R.Reserves()
+  local OL = R.reserve
+  return OL and OL.On() and OL or nil
+end
+
+-- The link of the newest loot item still being rolled for, or nil.
+function R.Rolling()
+  for i = #R.items, 1, -1 do
+    if not R.items[i].done then return R.items[i].link end
+  end
+end
+
+-- The item the latest round is for: the one /vg loot focus names, else the item being rolled for.
+function R.RoundItem()
+  local OL = R.Reserves()
+  return OL and (OL.focus or R.Rolling()) or nil
+end
+
+-- " [SR]" when the player reserved the item (a link or name), else "".
+function R.Flag(name, item)
+  local OL = R.Reserves()
+  return (OL and item and OL.Reserved(name, item)) and " [SR]" or ""
+end
+
+-- The line naming who reserved the item, or nil when no one did.
+function R.ReservedLine(item)
+  local OL = R.Reserves()
+  local names = OL and OL.Holders(item) or {}
+  if #names == 0 then return nil end
+  return { "Reserved: " .. table.concat(names, ", "), "", "row" }
+end
+
 -- Listing ------------------------------------------------------------------------------------
 
 -- A roll's figures: "87" and its range when it isn't 1 to 100.
@@ -129,17 +166,18 @@ end
 -- The latest round as lines: a heading, then each roll, the highest ones marked "win".
 function R.RollLines()
   if #R.rolls == 0 then return {} end
-  local round = R.Round()
+  local round, item = R.Round(), R.RoundItem()
   local out = { { "Rolls " .. round[1].low .. "-" .. round[1].high, "", "head" } }
-  for _, r in ipairs(round) do out[#out + 1] = { r.name, figures(r), r.roll == round[1].roll and "win" or "row" } end
+  for _, r in ipairs(round) do out[#out + 1] = { r.name .. R.Flag(r.name, item), figures(r), r.roll == round[1].roll and "win" or "row" } end
   return out
 end
 
 -- One loot item as lines: its link, then each member's choice and roll; the winner marked "win".
 function R.ItemLines(item)
   local out = { { item.link, item.done and "" or "rolling", "head" } }
+  out[2] = R.ReservedLine(item.link)
   for _, p in ipairs(item.players) do
-    out[#out + 1] = { p.name, p.choice .. (p.roll and (" " .. p.roll) or ""), p.winner and "win" or "row" }
+    out[#out + 1] = { p.name .. R.Flag(p.name, item.link), p.choice .. (p.roll and (" " .. p.roll) or ""), p.winner and "win" or "row" }
   end
   return out
 end
