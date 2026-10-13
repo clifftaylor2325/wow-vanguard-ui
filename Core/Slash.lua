@@ -17,6 +17,7 @@ local HELP = {
   "slug [on|off]        world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a test; off by default)",
   "framebuffer [on|off] windows drawn through a frame buffer while they open and close (a test; off by default)",
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
+  "icons [on|off]       menu strip icons drawn at their on-screen size, after a /reload (off by default)",
   "cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)",
   "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
   "variant [default|contrast|vellum|classic]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look",
@@ -204,6 +205,14 @@ local function ornamentsCommand(rest)
   s.ornaments = rest == "on" or (rest == "" and not s.ornaments)
   T.Refresh()
   chat(s.ornaments and "Window ornaments on." or "Window ornaments off.")
+end
+
+-- /vg icons [on|off]: line and menu icons baked at their on-screen size (#232), after a /reload.
+local function iconsCommand(rest)
+  local s = T.Settings()
+  if rest ~= "" and rest ~= "on" and rest ~= "off" then return chat("Usage: /vg icons [on|off]") end
+  s.sizedIcons = rest == "on" or (rest == "" and not s.sizedIcons)
+  chat(s.sizedIcons and "Sized icons on after a /reload." or "Sized icons off after a /reload.")
 end
 
 -- /vg variant [name]: a theme variant (#237), repainted at once.
@@ -597,6 +606,7 @@ local COMMANDS = {
   cdmglow = cdmGlowCommand,
   gradient = gradientCommand,
   ornaments = ornamentsCommand,
+  icons = iconsCommand,
   variant = variantCommand,
   slug = slugCommand,
   framebuffer = frameBufferCommand,
