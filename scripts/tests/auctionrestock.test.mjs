@@ -77,7 +77,7 @@ it("the Restock list holds what Instance prep and Keep stocked are short of, wit
   expect(restock(addon), "8 more runes, 20 powder (the portals are packed), 7 cloth and 2 blades").toEqual([[17031, 8], [17020, 20], [2589, 7], [9999, 2]]);
   expect(addon.eval("return VanguardDB.ah.list"), "and it's the list in use").toBe("Restock");
   expect(chatHas(addon, /Shopping list Restock: TEST-ONLY Rune of Teleportation x8, TEST-ONLY Arcane Powder x20, Linen Cloth x7, TEST-ONLY Blade x2\./), "chat says what's on it").toBe(true);
-  expect(chatHas(addon, /At the auction house, Search list on the Shopping tab shows what the cheapest of each come to\./), "and where to search it").toBe(true);
+  expect(chatHas(addon, /At the auction house, Search list on the Lists tab shows what the cheapest of each come to\./), "and where to search it").toBe(true);
   expect(addon.eval("return #__wfgWorld.ah.queries"), "nothing searched away from the auction house").toBe(0);
   addon.slash("stock 17020 30");
   addon.slash("ah restock");
