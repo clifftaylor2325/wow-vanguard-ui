@@ -133,8 +133,8 @@ it("attaches at most 12, and a preset button before the panel exists is quiet", 
 
 it("the options have the switch", () => {
   const addon = mailer();
-  addon.eval('ns.Options.Show("more")');
-  expect(addon.find("^Search the inbox and send%-to%-alt presets").text, "under Bars, map, chat").toMatch(/^Search the inbox/);
+  addon.eval('ns.Options.Show("town")');
+  expect(addon.find("^Search the inbox and send%-to%-alt presets").text, "under Town and gear").toMatch(/^Search the inbox/);
   addon.eval("ns.Settings('MailTools').on = false");
   addon.eval(`${MT}.Paint()`);
   expect(addon.eval("return Vanguard_MailTools == nil"), "off before any mailbox: no panel").toBe(true);

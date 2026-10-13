@@ -269,7 +269,7 @@ end
 -- /vg mail [words]|preset ...|send <name>.
 function MT.Command(rest)
   rest = rest or ""
-  if not MT.settings or not MT.settings.on then return ns.Chat("The mail tools are off (/vg > Bars, map, chat > Mail tools).") end
+  if not MT.settings or not MT.settings.on then return ns.Chat("The mail tools are off (/vg > Town and gear > Mail tools).") end
   local word, arg = rest:match("^(%S*)%s*(.-)$")
   if word == "preset" then return MT.PresetCommand(arg) end
   if word == "send" then return MT.Send(arg) end

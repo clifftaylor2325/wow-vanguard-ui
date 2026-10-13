@@ -25,7 +25,7 @@ local AH = ns.GetModule("AuctionHelper")
 local CR = {}
 AH.Crafting = CR
 
--- The panel shows unless switched off (Bars, map, chat: Auction house).
+-- The panel shows unless switched off (Town and gear: Auction house).
 AH.defaults.crafting = true
 
 -- The panel's width, padding, row height (reagents) and line height (totals); its gap from the

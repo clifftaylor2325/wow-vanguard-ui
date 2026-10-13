@@ -56,11 +56,15 @@ function Vanguard.GetPresets()
   return out
 end
 
+-- The page keys the options had before they were split, and where their rows went first.
+local OLD_PAGES = { more = "bars" }
+
 -- Opens the options window on a page (its key, as /vg search shows them: general, modules, raid,
--- profiles, ...), scrolled to the first row whose caption holds `setting` (optional). Returns true,
+-- profiles, ...; the old "more" opens "bars"), scrolled to the first row whose caption holds `setting` (optional). Returns true,
 -- or false for a page that doesn't exist.
 function Vanguard.OpenOptions(page, setting)
   if type(page) ~= "string" then return false end
+  page = OLD_PAGES[page] or page
   local known = false
   for _, p in ipairs(O.PAGES) do known = known or p.key == page end
   if not known then return false end

@@ -242,7 +242,7 @@ it("the info strip's auction sales: this session's, off until switched on, from 
   const block = () => addon.eval("local fs = ns.GetModule('InfoStrip').texts.ahgold return { fs:IsShown(), fs:GetText() or false }");
   addon.eval(`ns.AuctionLedger.Note({ kind = "sold", id = 9999, qty = 1, amount = 4000, auction = 2, t = __now })`);
   expect(block()[0], "off by default").toBe(false);
-  addon.eval('ns.Options.Show("more")');
+  addon.eval('ns.Options.Show("map")');
   addon.eval('__click("Your auction sales this session")');
   expect([addon.eval("return ns.Settings('InfoStrip').ahgold"), block()], "on: this session's sale only (the one before login isn't)").toEqual([true, [true, "AH +40s 0c"]]);
   expect(isTok(addon, addon.frame("ns.GetModule('InfoStrip').texts.ahgold").textColor, "gold"), "in gold").toBe(true);

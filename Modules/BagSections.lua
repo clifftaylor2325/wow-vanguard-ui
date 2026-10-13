@@ -6,7 +6,7 @@
 -- the game's, so using, dragging, search dimming, quality borders and item
 -- tooltips work as before; only where they sit changes. Item buttons are
 -- protected: they move only out of combat, and a change in combat waits for
--- it to end. A switch under Bars, map, chat gives back the game's plain grid.
+-- it to end. A switch under Bars and bags gives back the game's plain grid.
 
 local ADDON, ns = ...
 

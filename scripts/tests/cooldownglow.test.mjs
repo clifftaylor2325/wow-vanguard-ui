@@ -115,7 +115,7 @@ it("cooldown glow: /vg cdmglow and the options switch it at once, and the share 
   addon.slash("cdmglow");
   expect(addon.eval("return ns.GetModule('CooldownGlow').settings.glow"), "no word toggles").toBe(true);
   addon.slash("");
-  addon.eval('__click("Bars, map, chat")');
+  addon.eval('ns.Options.Show("tools")');
   addon.eval('__click("Glow a Cooldown Manager buff")');
   expect(addon.eval("return ns.GetModule('CooldownGlow').settings.glow"), "the options switch turns it off again").toBe(false);
 });
