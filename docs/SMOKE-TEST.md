@@ -207,7 +207,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 5.2 Pixel-perfect preset
 
 - Do: `/vg setup`, Next, pick **Pixel-perfect (sharpest)**, then finish. Screenshot the action bars, the player frame and the `/vg` window's close button, and zoom in. Then drag a frame's scale slider in unlock mode to 150% and screenshot it again.
-- Expect: the hint under the choices starts `Sharpest: every line on whole screen pixels.` Every border, button edge and gap between action buttons is a whole number of screen pixels, with no blurred or doubled line; the close button's cross sits centred. On a 4K screen each UI unit is two pixels. After the scale change, borders are still sharp.
+- Expect: the hint under the choices starts `Sharpest: every line on whole screen pixels.` Every border, button edge and gap between action buttons is a whole number of screen pixels, with no blurred or doubled line; the close button's cross sits centred on its faint slate tile (the tile turns red under the mouse; maximize and minimize turn accent). On a 4K screen each UI unit is two pixels. After the scale change, borders are still sharp.
 - If it fails, paste: the zoomed crops, your resolution, `/vg status` and `/vg errors`.
 
 ### 5.3 Hover, press, focus and window motion
@@ -573,7 +573,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.5 World map, group finder, Legacy and calendar
 
 - Do: hover the zone name on the minimap's top band, click it, then click it again; press `M` for the world map, then use its minimise and maximise button, click a few zones, open the quest panel on its side and click a quest; hover the group finder eye by the minimap, then click it to open the group finder; open the Legacy window from its button on the menu bar; type `/calendar`, open a day with an event and the "Create event" dialog. Look at the info strip under the minimap, then click the small calendar button at the right end of its date row.
-- Expect: the minimap's zone tooltip names the zone, its subzone and whose territory it is, the first click opens the world map and the second closes it; each window has Vanguard's flat dark panel, close button and buttons and no game border; the map itself stays fully visible with no dark box over it (also after minimising and maximising), the coordinate line still shows along its bottom, the nav bar's crumbs follow you into each zone, the calendar's days are dark tiles with event icons still showing, its filter button and class buttons are flat tiles with the class icons still showing (a button this client lacks is simply absent), and the Legacy talent nodes and side tabs are untouched. The info strip's third row reads the day and date (for example "Tuesday, 13 October") with a flat calendar button at its right end; the button's tooltip says Calendar, it lights in your accent under the mouse, and a click opens (and, clicked again, closes) the calendar.
+- Expect: the minimap's zone tooltip names the zone, its subzone and whose territory it is, the first click opens the world map and the second closes it; each window has Vanguard's flat dark panel, close button and buttons and no game border; the map itself stays fully visible with no dark box over it (also after minimising and maximising), the coordinate line still shows along its bottom, the nav bar's crumbs follow you into each zone, the calendar's days are dark tiles with event icons still showing, its filter button and class buttons are flat tiles with the class icons still showing (a button this client lacks is simply absent), and the Legacy talent nodes and side tabs are untouched. The info strip reads in two columns with nothing running together (durability beside free bag slots, gold beside the clock, fps beside ammo); its fourth row reads the day and date (for example "Tuesday, 13 October") with a flat calendar button at its right end; the button's tooltip says Calendar, it lights in your accent under the mouse, and a click opens (and, clicked again, closes) the calendar.
 - If it fails, paste: a screenshot of the window, which of these steps broke, and `/vg errors`.
 
 ### 14.5.1 Group finder search page and Legacy challenges
@@ -830,9 +830,23 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: `/vg trainers` says how many services are remembered; `/vg trainers next` lists "Level N: Spell Rank R (Trainer, Zone, Subzone)" for the next five levels, lowest first (or says nothing is remembered). A level-up prints the same list under "Trainers you've visited teach, from this level:". `/vg trainers clear` says "Forgot every trainer." [Needs in game: that GetTrainerServiceLevelReq exists on Forever, where the rank text ("Rank 3") sits among GetTrainerServiceInfo's returns, and that TRAINER_SHOW and TRAINER_UPDATE fire.]
 - If it fails, paste: `/run print(GetTrainerServiceLevelReq, GetNumTrainerServices())` with the trainer open, and `/vg errors`.
 
-## 23. Dungeon card
+## 23. Mail tools
 
-### 23.1 The dungeon card on the Instance prep checklist
+### 23.1 Search and Take (off until switched on: /vg > Bars, map, chat > Mail tools)
+
+- Do: switch the mail tools on, open a mailbox with a few mails. Type part of a sender or subject in the panel's search box, click the filter button through its four values, click Take on a mail with money and on one with an item. Type `/vg mail <words>`.
+- Expect: a panel right of the mail window lists the matching mails (sender: subject, with money and item count); the filter button reads All, Money, Items, Sales; Take takes the money and the first item, one per click; the panel goes when the window closes; chat lists the same matches. With the switch off, `/vg mail` says so. [Needs in game: that TakeInboxMoney and TakeInboxItem(mail, 1) work from a click, that GetInboxInvoiceInfo marks sales, and the panel's place beside the window.]
+- If it fails, paste: `/vg errors` and a screenshot of the mailbox.
+
+### 23.2 Send-to-alt presets
+
+- Do: `/vg mail preset add Smith <an alt> iron`, open the Send Mail tab, click the Smith button on the panel (or `/vg mail send Smith`).
+- Expect: the alt's name is in the To box and bag items whose name holds "iron" are attached (12 at most); nothing is sent until you press Send. In combat or with the tab closed, chat says to open the tab. [Needs in game: that C_Container.UseContainerItem attaches to the open Send Mail tab, and that the panel (anchored to the Mail window) shows on the Send Mail tab too.]
+- If it fails, paste: `/vg errors` and what chat said.
+
+## 24. Dungeon card
+
+### 24.1 The dungeon card on the Instance prep checklist
 
 - Do: in `/vg` open Bars, map, chat and switch on "Dungeon card: level range, your dungeon quests and keys on the checklist". With a quest for a dungeon in your log, walk into that dungeon (a character that carries nothing short, if you can). Then leave and type `/vg prep`.
 - Expect: at the door the checklist shows even though nothing is short, with a heading "Dungeon name · levels A-B · 5-player Normal", "Your quests here" and your quests for this dungeon as "[level] Title" (done ones with "· done"), and "Keys: ..." when you carry a key. Outside, `/vg prep` shows "Dungeon quests in your log" (your dungeon and raid quests) and any keys. With the switch off none of these lines show. [Needs in game: that GetInstanceInfo gives the name, size and difficulty, that C_Map.GetMapLevels answers for a dungeon map, that C_QuestLog.GetQuestsOnMap lists your quests inside a dungeon, that C_QuestLog.GetQuestTagInfo tags dungeon quests with Enum.QuestTag Dungeon, Raid or Group, and that keys are item class 13.]

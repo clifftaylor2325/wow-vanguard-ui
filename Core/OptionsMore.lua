@@ -196,6 +196,14 @@ local function craftRows()
   }
 end
 
+-- The mail tools: their one switch (off until switched on).
+local function mailRows()
+  return {
+    { "header", "Mail tools" },
+    check("Search the inbox and send-to-alt presets beside the mail window (/vg mail)", liveSetting("MailTools", "on", function() ns.GetModule("MailTools").Paint() end)),
+  }
+end
+
 -- The info strip's auction sales (the sales ledger, Modules/AuctionLedger.lua): off until switched on.
 local function ledgerRows()
   return { check("Your auction sales this session", stripSetting("ahgold")) }
@@ -212,7 +220,7 @@ local function stripRows()
     check("Soul shards (warlocks)", stripSetting("shards")), check("XP per hour this session", stripSetting("xprate")),
     check("Time to the next level", stripSetting("leveltime")), check("Gold per hour this session", stripSetting("goldrate")),
     check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")), check("Your place in the last fight's DPS, in a group", stripSetting("rank")),
-  }, append(ledgerRows(), append(fightRows(), append(rollRows(), craftRows()))))
+  }, append(ledgerRows(), append(fightRows(), append(rollRows(), append(craftRows(), mailRows())))))
 end
 
 -- At a merchant, and the error line.
