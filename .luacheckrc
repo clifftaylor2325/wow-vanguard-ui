@@ -48,7 +48,7 @@ read_globals = {
   -- P2.8 Chat: the game's list of chat window art names.
   "CHAT_FRAME_TEXTURES",
   -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.
-  "IsInInstance", "SecureCmdOptionParse",
+  "IsInInstance", "SecureCmdOptionParse", "SendChatMessage",
   -- P3.4 Keybind mode: binding a key to a button's command and saving it in the binding set in use.
   "SetBinding", "SaveBindings", "GetCurrentBindingSet",
   -- P3.5 Shared media: the bundled libraries' loader (Libs/LibStub).
@@ -90,6 +90,7 @@ read_globals = {
   "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI",
   -- E5 Auction ledger: the inbox's auction mail (Blizzard_MailFrame/MailFrame.lua), and the game's
   -- "Auction expired" subject line.
+  "TakeInboxMoney", "TakeInboxItem", "MailFrame", "SendMailFrame", "SendMailNameEditBox",
   "GetInboxNumItems", "GetInboxHeaderInfo", "GetInboxInvoiceInfo", "AUCTION_EXPIRED_MAIL_SUBJECT",
   -- D2 Auction helper, crafting costs: the game's profession window (Blizzard_Professions).
   "ProfessionsFrame",

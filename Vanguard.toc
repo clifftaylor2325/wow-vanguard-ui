@@ -100,7 +100,9 @@ Modules/BrokerStrip.lua
 Modules/MenuStrip.lua
 Modules/Merchant.lua
 Modules/Errands.lua
+Modules/ErrandsBoats.lua
 Modules/InstancePrep.lua
+Modules/DungeonCard.lua
 Modules/TalentPlanner.lua
 Modules/Legacy.lua
 Modules/AutoAccept.lua
@@ -139,8 +141,10 @@ Modules/AuctionLedger.lua
 Modules/GameTools.lua
 Modules/BossDocks.lua
 Modules/FightHistory.lua
+Modules/FightRecap.lua
 Modules/Rolls.lua
 Modules/CraftQueue.lua
+Modules/MailTools.lua
 Modules/GameAlerts.lua
 Modules/AfkScreen.lua
 Modules/DataBars.lua
