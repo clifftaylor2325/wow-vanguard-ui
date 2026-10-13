@@ -280,6 +280,14 @@ it("raid frames: up to 10 sit over your player frame, a bigger raid stacks its g
   expect(state(10), "10 players: the same").toEqual(["BOTTOM", "BOTTOM", -240, 344, "columns", "BOTTOM", "LEFT"]);
   expect(state(25), "25: left of your character, groups stacked as rows").toEqual(["BOTTOMLEFT", "BOTTOM", -620, 344, "rows", "LEFT", "BOTTOM"]);
   expect(state(40), "40: the same").toEqual(["BOTTOMLEFT", "BOTTOM", -620, 344, "rows", "LEFT", "BOTTOM"]);
+  // A roster change in combat leaves the secure header, its anchor and the holder's default alone until the fight ends.
+  addon.eval("__secureSets = 0 local set = Vanguard_Raid.SetAttribute Vanguard_Raid.SetAttribute = function(...) __secureSets = __secureSets + 1 return set(...) end");
+  setCombat(addon, true);
+  addon.eval("__members = 5");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect([addon.eval("return __secureSets"), addon.eval("return { ns.MoverPoint('raid') }"), addon.eval("return Vanguard_Raid:GetAttribute('point')")], "in combat nothing is re-anchored or re-laid out").toEqual([0, ["BOTTOMLEFT", "BOTTOM", -620, 344], "LEFT"]);
+  setCombat(addon, false);
+  expect([addon.eval("return { ns.MoverPoint('raid') }"), addon.eval("return Vanguard_Raid:GetAttribute('point')")], "and it follows when combat ends").toEqual([["BOTTOM", "BOTTOM", -240, 344], "BOTTOM"]);
   expect(state(5), "and back over your player frame when the raid shrinks").toEqual(["BOTTOM", "BOTTOM", -240, 344, "columns", "BOTTOM", "LEFT"]);
   expect(addon.eval("return { Vanguard_RaidHolder:GetWidth(), Vanguard_RaidHolder:GetHeight() }"), "the holder is one group's size in the layout").toEqual([100, 256]);
   addon.eval(`${RF}.settings.stackBig = false`);
