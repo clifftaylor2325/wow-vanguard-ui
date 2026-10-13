@@ -96,6 +96,15 @@ it("world map: the border in the theme without a fill over the canvas, the overs
   expect(windowState(addon, "TestOnlyMapBorder"), "showing it again paints nothing new").toMatchObject({ panel: true, painted: first.painted });
 });
 
+it("world map: its close button sits level with the map's higher title, the usual windows' 24 down", () => {
+  const addon = loggedIn(WORLD_MAP_ENV + `
+    local b = WorldMapFrame.BorderFrame
+    b.CloseButton = CreateFrame("Button", nil, b) b.CloseButton:CreateTexture()
+    b.CloseButton:SetPoint("TOPRIGHT", b, "TOPRIGHT", 5, 5)`);
+  addon.eval("WorldMapFrame:Show()");
+  expect(addon.eval("local p = WorldMapFrame.BorderFrame.CloseButton.__points.CENTER return { p.x, p.y }"), "24 in from the right, 14 down").toEqual([expect.closeTo(-24, 0), expect.closeTo(-14, 0)]);
+});
+
 it("world map: minimising or maximising rebuilds the border, and the skin goes back on", () => {
   const addon = loggedIn(WORLD_MAP_ENV);
   addon.eval("WorldMapFrame:Show() WorldMapFrame:SynchronizeDisplayState()");
