@@ -663,6 +663,28 @@ it("state colors and Color assist (#235): states off the red-green axis; the swi
   expect(hex("bad"), "other colors stay as they are").toBe("e8663f");
 });
 
+// The visible textures under a frame that use a given art file.
+const artShown = (addon, frame, art) => addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do
+  if w.__kind == "Texture" and w.__parent == ${frame} and w:IsShown() and tostring(w.__texture):find("${art}") then n = n + 1 end end return n`);
+
+it("ornaments (#238): off by default; /vg ornaments puts a rule on the options window and brackets on the quest log and setup, in the accent's dim variant", () => {
+  const addon = loggedIn("", { firstRun: true });
+  addon.eval('ns.Options.Show("general") ns.GetModule("QuestLog").Toggle()');
+  // How many ornament pieces each window shows: the options rule diamond, the quest log and setup brackets.
+  const shown = () => [artShown(addon, "Vanguard_Options", "Diamond"), artShown(addon, "Vanguard_QuestLog", "OrnamentCorner"), artShown(addon, "Vanguard_Setup", "OrnamentCorner")];
+  expect(shown(), "off by default: nothing drawn").toEqual([0, 0, 0]);
+  addon.slash("ornaments");
+  expect([shown(), chatHas(addon, /Window ornaments on/)], "on at once: a diamond rule, four brackets each").toEqual([[1, 4, 4], true]);
+  const dim = tok(addon, "accentDim");
+  expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__parent == Vanguard_QuestLog and tostring(w.__texture):find("OrnamentCorner") then return w.__vertexColor end end`).slice(0, 3), "tinted in the accent's dim variant").toEqual(dim.slice(0, 3));
+  addon.eval('ns.Theme.Ornament(Vanguard_QuestLog, "corners")');
+  expect(artShown(addon, "Vanguard_QuestLog", "OrnamentCorner"), "asking again adds nothing").toBe(4);
+  addon.eval('ns.Theme.Settings().accent = { 0.2, 0.9, 0.4 } ns.Theme.Refresh()');
+  expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__parent == Vanguard_QuestLog and tostring(w.__texture):find("OrnamentCorner") then return w.__vertexColor end end`)[1], "follows the accent").not.toBeCloseTo(dim[0], 2);
+  addon.slash("ornaments off");
+  expect([shown(), chatHas(addon, /Window ornaments off/)]).toEqual([[0, 0, 0], true]);
+});
+
 // The border thickness of a painted frame, in screen pixels: its thickest thin BORDER-layer line (the sheen is one pixel).
 const edgeThickness = (addon, name) => addon.eval(`local f = ${name} local least
   for _, r in ipairs({ f:GetRegions() }) do
@@ -707,4 +729,18 @@ it("SLUG text (#239): off by default; /vg slug adds the SLUG flag to outlined wo
   expect(addon.eval('return ns.Theme.FontFlags(nil, true), ns.Theme.FontFlags("", true)'), "with no flags it is just SLUG").toBe("SLUG");
   addon.slash("slug off");
   expect([flags("__world"), addon.eval("return ns.Theme.Settings().slugText"), chatHas(addon, /SLUG text off/)]).toEqual(["OUTLINE", false, true]);
+});
+
+it("classic look (#218): a variant with a bronze border, gold-cream text and the window ornaments on without their setting", () => {
+  const addon = loggedIn("", { firstRun: true });
+  addon.eval('ns.GetModule("QuestLog").Toggle() __win = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })');
+  // The colour of the test window's border.
+  const edge = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__parent == __win and w.__layer == "BORDER" and w.__vertexColor then return w.__vertexColor end end`);
+  const base = edge();
+  expect(artShown(addon, "Vanguard_QuestLog", "OrnamentCorner"), "off by default").toBe(0);
+  addon.slash("variant classic");
+  expect([tok(addon, "text").slice(0, 3), chatHas(addon, /Theme variant: Classic look/)], "gold-cream text").toEqual([[242 / 255, 226 / 255, 182 / 255], true]);
+  expect([edge()[2] < edge()[0], edge()[0] > base[0], artShown(addon, "Vanguard_QuestLog", "OrnamentCorner")], "a bronze border (warm, not black) and the brackets on").toEqual([true, true, 4]);
+  addon.slash("variant default");
+  expect([edge()[0], artShown(addon, "Vanguard_QuestLog", "OrnamentCorner")], "back to the black border, no brackets").toEqual([base[0], 0]);
 });

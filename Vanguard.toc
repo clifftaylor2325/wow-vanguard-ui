@@ -106,6 +106,7 @@ Modules/Merchant.lua
 Modules/Errands.lua
 Modules/ErrandsBoats.lua
 Modules/InstancePrep.lua
+Modules/InstancePrepBuffs.lua
 Modules/DungeonCard.lua
 Modules/TalentPlanner.lua
 Modules/Legacy.lua
