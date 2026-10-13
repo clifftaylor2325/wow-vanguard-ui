@@ -99,6 +99,23 @@ function QP.Card(parent)
   c.name = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text")
   c.name:SetPoint("LEFT", c.icon, "RIGHT", 6, 0)
   c.name:SetPoint("RIGHT", c, "RIGHT", -4, 0)
+  return QP.WireTooltip(c)
+end
+
+-- Shows a card's item tooltip: a quest log reward by its quest, a quest dialog reward by its slot (nothing when the client lacks the call).
+function QP.ItemTooltip(c)
+  local tip, item = GameTooltip, c.item
+  local log = item and item.questID
+  if not (tip and item and type(tip[log and "SetQuestLogItem" or "SetQuestItem"]) == "function") then return end
+  tip:SetOwner(c, "ANCHOR_RIGHT")
+  if log then tip:SetQuestLogItem(item.kind, item.index, item.questID) else tip:SetQuestItem(item.kind, item.index) end
+  tip:Show()
+end
+
+-- Hovering a card shows its item's tooltip; leaving hides it. Returns the card.
+function QP.WireTooltip(c)
+  c:HookScript("OnEnter", function(self) QP.ItemTooltip(self) end)
+  c:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
   return c
 end
 
