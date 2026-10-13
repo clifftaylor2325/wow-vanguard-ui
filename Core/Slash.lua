@@ -578,14 +578,15 @@ local COMMANDS = {
   perf = function(rest) ns.Perf.Command(rest) end,
 }
 
--- /vg entry point: no arguments opens the options window.
+-- /vg entry point: no arguments opens the options window. A command runs under
+-- ns.Try, so an error in it is kept for /vg errors like any other caught error.
 local function handleSlash(msg)
   local cmd, rest = (msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
   if cmd == "" then
     return ns.Options.Toggle()
   end
   local handler = COMMANDS[cmd:lower()] or function() chat("Unknown command. /vg help") end
-  handler(rest)
+  ns.Try("slash " .. cmd:lower(), handler, rest)
 end
 
 SLASH_VANGUARD1 = "/vg"
