@@ -220,6 +220,18 @@ function clearPixelsWhite() {
   expect(out.filter(([, n]) => n > 0)).toEqual([]);
 }
 
+// The addons-list icon is the crest, pre-coloured (media-brand.mjs): a few hundred solid brass
+// pixels (the shield's field and the hilts), the V in slate over them, and grey steel on the blades
+// (thin at 64 px, so most of their pixels are blends: any grey over half alpha counts).
+function iconIsCrest() {
+  const img = MEDIA["Textures/Icon.tga"]();
+  const near = (r, g, b, want) => [r, g, b].every((v, c) => Math.abs(v - want[c] / 255) < 0.025);
+  const brass = countPixels(img, (r, g, b, a) => a > 0.99 && near(r, g, b, [0xd9, 0xa4, 0x41]));
+  const slate = countPixels(img, (r, g, b, a) => a > 0.99 && near(r, g, b, [0x0b, 0x0d, 0x11]));
+  const steel = countPixels(img, (r, g, b, a) => a > 0.5 && Math.min(r, g, b) > 0.55 && Math.abs(r - b) < 0.1);
+  expect({ brass: brass > 500, slate: slate > 60, steel: steel > 20 }).toEqual({ brass: true, slate: true, steel: true });
+}
+
 // Pixels with any alpha along an image's outer ring.
 function edgePixels(img) {
   let n = 0;
@@ -257,6 +269,7 @@ describe(
     it("icon strokes are two pixels wide at 16 px", strokeIsTwoPixels);
     it("tinted art is white under its clear pixels", clearPixelsWhite);
     it("icons and shapes keep a clear pixel inside their edge", shapesPadded);
+    it("the addons-list icon is the pre-coloured crest", iconIsCrest);
   },
 );
 

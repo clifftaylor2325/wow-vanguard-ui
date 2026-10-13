@@ -57,6 +57,16 @@ uses are named in `SILHOUETTES` in `scripts/lib/media-sources.mjs`.
 | `sbed-health-increase.svg` | Sbed (http://opengameart.org/content/95-game-icons) | https://game-icons.net/1x1/sbed/health-increase.html |
 | `sbed-shield.svg` | Sbed (http://opengameart.org/content/95-game-icons) | https://game-icons.net/1x1/sbed/shield.html |
 
+## Vanguard's own crest
+
+`brand/vanguard-crest.svg` is Vanguard's crest (two swords crossed behind a rimmed brass
+shield that bears a V), drawn for Vanguard; copyright Clifton Taylor, all rights reserved,
+like the rest of the addon. The V is Cinzel's capital at weight 900 (the font below, SIL
+OFL; the licence allows its glyphs in a logo), converted to an outline. The build does not
+read the SVG: `scripts/lib/media-brand.mjs` draws the same shapes with `media-art.mjs` for
+`Media/Textures/Icon.tga`, the addons list's icon, and the website keeps the SVG for its
+favicon and logo.
+
 ## Heading fonts: SIL Open Font License 1.1
 
 From https://github.com/google/fonts (ofl/).
