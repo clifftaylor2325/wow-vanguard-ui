@@ -74,9 +74,25 @@ local function cooldownManagerSetting()
   return liveSetting("GameTools", "essential", function() ns.GetModule("GameTools").SetCooldownManager(moduleSettings("GameTools").essential) end)
 end
 
+-- The share of an aura's time left under which the Cooldown Manager's icon glows.
+local GLOW_PERCENT = { min = 10, max = 60, step = 5, format = function(v) return string.format("%d%%", v) end }
+
+-- Puts the Cooldown Manager glows right after a change of their switch or share.
+local function applyGlow()
+  ns.GetModule("CooldownGlow").Apply()
+end
+
+-- The Cooldown Manager glow's switch and share (Modules/CooldownGlow.lua), applied at once.
+local function glowRows()
+  return {
+    check("Glow a Cooldown Manager buff in its last part, where the game's own flag is missing", liveSetting("CooldownGlow", "glow", applyGlow)),
+    { "slider", "Glow when this much is left", GLOW_PERCENT, liveSetting("CooldownGlow", "percent", applyGlow) },
+  }
+end
+
 -- The game's own tools: the Cooldown Manager and the damage meter (after a reload).
 local function gameToolRows()
-  return {
+  return append({
     { "header", "The game's tools" },
     check("Show the game's Cooldown Manager: its essential row between your frames", cooldownManagerSetting()), check("Cooldown Manager in the Vanguard look (reload)", setting("GameTools", "cooldowns", true)),
     check("Damage meter in the Vanguard look (reload)", setting("GameTools", "meter", true)),
@@ -85,7 +101,7 @@ local function gameToolRows()
     { "cycle", "Talking head (reload)", { { "move", "Vanguard look, top center" }, { "hide", "Hidden" }, { "game", "The game's" } }, setting("GameAlerts", "talkingHead", true) },
     check("Hardcore death notices in the Vanguard look (reload)", setting("GameAlerts", "hardcore", true)),
     check("A rare nearby: a sound and a chat line, out of combat", setting("GameAlerts", "rares")),
-  }
+  }, glowRows())
 end
 
 -- The visibility rows (Core/Visibility.lua) of a module's frame, applied at once

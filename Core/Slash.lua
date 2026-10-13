@@ -17,6 +17,7 @@ local HELP = {
   "slug [on|off]        world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a test; off by default)",
   "framebuffer [on|off] windows drawn through a frame buffer while they open and close (a test; off by default)",
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
+  "cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)",
   "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
   "variant [default|contrast|vellum|classic]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look",
   "gradient [on|off]    windows a shade lighter toward the top (off by default)",
@@ -175,6 +176,16 @@ local function nineSliceCommand(rest)
   local s = T.Settings()
   s.sliceRings = rest == "on" or (rest == "" and not s.sliceRings)
   chat((s.sliceRings and "Nine-slice shadows on" or "Nine-slice shadows off") .. " after a /reload.")
+end
+
+-- /vg cdmglow [on|off|<percent>]: the Cooldown Manager refresh-window glow (#252), at once.
+local function cdmGlowCommand(rest)
+  local CG = ns.GetModule("CooldownGlow")
+  local percent = tonumber(rest)
+  if percent then CG.settings.percent = math.min(60, math.max(10, math.floor(percent))) end
+  CG.settings.glow = percent ~= nil or rest == "on" or (rest == "" and not CG.settings.glow)
+  CG.Apply()
+  chat(CG.settings.glow and ("Cooldown Manager glow on: under " .. CG.settings.percent .. " percent left.") or "Cooldown Manager glow off.")
 end
 
 -- /vg gradient [on|off]: floating windows' fills a shade lighter toward the top, at once (#259).
@@ -581,6 +592,7 @@ local COMMANDS = {
   snap = snapCommand,
   texelsnap = texelSnapCommand,
   nineslice = nineSliceCommand,
+  cdmglow = cdmGlowCommand,
   gradient = gradientCommand,
   ornaments = ornamentsCommand,
   variant = variantCommand,

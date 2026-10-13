@@ -140,6 +140,7 @@ Modules/AuctionAlerts.lua
 Modules/AuctionAPI.lua
 Modules/AuctionLedger.lua
 Modules/GameTools.lua
+Modules/CooldownGlow.lua
 Modules/BossDocks.lua
 Modules/FightHistory.lua
 Modules/FightRecap.lua
