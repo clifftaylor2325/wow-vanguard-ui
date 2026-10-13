@@ -197,12 +197,12 @@ const MENU_SHAPES = {
 // the options nav's page icons (Nav*, shown at 16 px) and the minimap's two slot buttons
 // (Minimap*, 12 px), each a 32 px image with a unit of air around it. Icon name -> SVG name.
 export const SILHOUETTES = {
-  NavGeneral: "lorc-cog", NavModules: "lorc-cubes", NavUnitFrames: "delapouite-portrait",
+  NavGeneral: "lorc-cog", NavModules: "lorc-cubes", NavUnitFrames: "delapouite-orc-head",
   NavRaidFrames: "delapouite-three-friends", NavActionBars: "lorc-broadsword", NavQuests: "lorc-scroll-unfurled",
   NavMap: "lorc-compass", NavProfiles: "delapouite-id-card", NavFeedback: "delapouite-chat-bubble",
   NavClickCasting: "delapouite-mouse", NavHealing: "sbed-health-increase", NavTalents: "delapouite-upgrade",
   NavSituations: "delapouite-crossroad", NavNameplates: "delapouite-price-tag",
-  NavBars: "lorc-laurel-crown", NavChat: "lorc-raven", NavTools: "delapouite-castle", NavTown: "sbed-shield",
+  NavBars: "lorc-laurel-crown", NavChat: "lorc-raven", NavTools: "lorc-battle-axe", NavTown: "delapouite-castle",
   MinimapTracking: "delapouite-binoculars", MinimapAddons: "lorc-jigsaw-piece",
 };
 
