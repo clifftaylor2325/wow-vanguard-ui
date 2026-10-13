@@ -52,8 +52,8 @@ local function auctionScanRows()
     check("Check your auctions for undercuts again after each post and cancel", setting("AuctionHelper", "recheck")),
     check("Disenchant values in tooltips (on for enchanters until you choose)", ns.AuctionPrices.DisenchantSetting()),
     check("Crafting costs and profit beside the profession window", setting("AuctionHelper", "crafting")),
-    check("Deals list in the Shopping tab: listings under the 7-day market or vendor price", liveSetting("AuctionHelper", "deals", function() ns.GetModule("AuctionHelper").PaintDeals() end)),
-    check("Upgrades list in the Shopping tab: armor and weapons that beat what you wear, by Gear upgrades' weights", liveSetting("AuctionHelper", "upgrades", function() ns.GetModule("AuctionHelper").PaintUpgrades() end)),
+    check("Deals list in the Lists tab: listings under the 7-day market or vendor price", liveSetting("AuctionHelper", "deals", function() ns.GetModule("AuctionHelper").PaintDeals() end)),
+    check("Upgrades list in the Lists tab: armor and weapons that beat what you wear, by Gear upgrades' weights", liveSetting("AuctionHelper", "upgrades", function() ns.GetModule("AuctionHelper").PaintUpgrades() end)),
   }
 end
 
@@ -61,7 +61,7 @@ end
 local function auctionRows()
   return append({
     { "header", "Auction house" },
-    check("Shopping and Selling tabs on the auction house (lists, deals, upgrades, sell helper, your auctions, scan)", setting("AuctionHelper", "panel")),
+    check("Lists and Posting tabs on the auction house (lists, deals, upgrades, sell helper, your auctions, scan)", setting("AuctionHelper", "panel")),
     check("Auction prices in tooltips (from your scans)", setting("AuctionHelper", "tooltip")),
     { "cycle", "Undercut by", { { "copper", "1 copper" }, { "silver", "1 silver" }, { "percent", "1 %" }, { "match", "Match" } }, setting("AuctionHelper", "undercut") },
     { "cycle", "Auction length", ns.GetModule("AuctionHelper").DurationChoices(true), setting("AuctionHelper", "duration") },
@@ -169,6 +169,7 @@ local function fightRows()
   return {
     { "header", "Fight history" },
     check("Sparkline of your DPS in the last 20 fights, under the damage meter", liveSetting("FightHistory", "strip", function() if FH.enabled then FH.Paint() end end)),
+    check("Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)", setting("FightHistory", "recap")),
     fightVisibility, fightWhen,
   }
 end
@@ -292,6 +293,15 @@ local function errandRows()
     check("Train all button at trainers", setting("Errands", "trainAll")),
     check("Keep items stocked from merchants (/vg stock)", setting("Errands", "stock")),
     check("Flight timer (reload)", setting("Errands", "flightTimer", true)),
+    check("Boat and zeppelin timer (reload)", setting("Errands", "boatTimer", true)),
+  }
+end
+
+-- The Legacy perk planner: its switch (/vg legacy plan).
+local function legacyRows()
+  return {
+    { "header", "Legacy" },
+    check("Legacy perk planner: a list of perks within the tree's 16 points (/vg legacy plan)", setting("Legacy", "planner")),
   }
 end
 
@@ -383,7 +393,7 @@ local function morePageRows()
   append(rows, auctionRows())
   append(append(rows, gameToolRows()), bossDockRows())
   append(rows, merchantRows())
-  append(append(append(rows, errandRows()), spellRankRows()), prepRows())
+  append(append(append(append(rows, errandRows()), spellRankRows()), legacyRows()), prepRows())
   append(append(append(rows, chatRows()), chatWatchRows()), comfortRows())
   return append(append(rows, tooltipRows()), upgradeRows())
 end

@@ -122,7 +122,36 @@ local ALIASES = {
 -- that read T.PRESETS.fel keep working (pairs over T.PRESETS still lists only the five).
 setmetatable(T.PRESETS, { __index = function(_, name) return ALIASES[name] and T.PRESETS[ALIASES[name]] end })
 
+-- Theme variants (#237): token sets that swap surfaces and text, chosen with the variant setting
+-- ("default" is none). A variant's tokens win over the saved panel and inset colours; `assist` turns
+-- Color assist on, `ring` is the accent focus ring in screen pixels, `flat` drops gradients.
+T.VARIANT_ORDER = { "default", "contrast", "vellum" }
+T.VARIANTS = {
+  -- High Contrast: opaque near-black panels, white text, no sheen, full-saturation states.
+  contrast = {
+    label = "High contrast", assist = true, ring = 2, flat = true,
+    tokens = {
+      panel = "0a0b0e", inset = "050608", raised = "14161b", divider = "4a5260", sheen = { "ffffff", 0 },
+      text = "ffffff", text2 = "dfe3ea", muted = "b8bfca",
+      good = "00e060", warn = "ff9a1f", bad = "ff4040", info = "4da6ff",
+    },
+  },
+  -- Vellum & Ink: a warm dark with cream text and brass.
+  vellum = {
+    label = "Vellum and ink",
+    tokens = {
+      panel = { "1a1612", 0.94 }, inset = { "100d0a", 0.95 }, raised = "241f19", divider = "3a3226",
+      text = "efe6d2", text2 = "d2c6ad", muted = "9a8f78",
+    },
+  },
+}
+for _, v in pairs(T.VARIANTS) do
+  for name, c in pairs(v.tokens) do v.tokens[name] = type(c) == "table" and fromHex(c[1], c[2]) or fromHex(c) end
+end
+
 local DEFAULTS = {
+  -- A theme variant (#237): "default", "contrast" or "vellum".
+  variant = "default",
   accent = T.PRESETS.brass,
   panel = T.TOKENS.panel,
   inset = T.TOKENS.inset,
@@ -138,6 +167,11 @@ local DEFAULTS = {
   sliceRings = false,
   -- A subtle top-to-bottom lightness shift on floating windows' fills (#259); off by default.
   panelGradient = false,
+  -- Experiments with 12.x client features (#239), each off until its in-game A/B check: world text
+  -- (outlined roles) drawn with the SLUG font flag, and big windows drawn through a frame buffer
+  -- while they open and close.
+  slugText = false,
+  frameBuffer = false,
   textScale = 1,
   barTexture = "vanguard",
   -- Soft shadows under HUD frames (unit frames, bars, minimap); floating windows always have one.
@@ -176,9 +210,15 @@ function T.Accent()
   return c[1], c[2], c[3]
 end
 
+-- The active theme variant (a T.VARIANTS entry), or nil for the default look.
+function T.Variant()
+  return T.VARIANTS[T.Settings().variant]
+end
+
 -- r, g, b, a of the panel (or, with inset, the darker inset) fill.
 function T.PanelColor(inset)
-  local c = T.Settings()[inset and "inset" or "panel"]
+  local v = T.Variant()
+  local c = v and v.tokens[inset and "inset" or "panel"] or T.Settings()[inset and "inset" or "panel"]
   return c[1], c[2], c[3], c[4]
 end
 
@@ -236,9 +276,10 @@ end
 -- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings,
 -- accentText and accentDim follow the accent, and the reactions follow Color assist).
 function T.RGB(name)
-  local key = SETTING_TOKENS[name]
-  local c = T.ACCENT_VARIANTS[name] and accentVariant(name) or key and T.Settings()[key]
-    or T.Settings().colorAssist and T.ASSIST[name] or T.TOKENS[name]
+  local key, v = SETTING_TOKENS[name], T.Variant()
+  local assist = T.Settings().colorAssist or v and v.assist
+  local c = v and v.tokens[name] or T.ACCENT_VARIANTS[name] and accentVariant(name) or key and T.Settings()[key]
+    or assist and T.ASSIST[name] or T.TOKENS[name]
   if not c then error("Vanguard: no color named " .. tostring(name), 2) end
   return c[1], c[2], c[3], c[4] or 1
 end
@@ -469,9 +510,10 @@ local function edges(frame, pad)
   return e
 end
 
--- Sizes the edges to one screen pixel for frame.
-local function sizeEdges(e, frame)
-  local px = T.Pixel(frame)
+-- Sizes the edges to one screen pixel for frame, or the variant's focus ring (#237) when thick.
+local function sizeEdges(e, frame, thick)
+  local v = T.Variant()
+  local px = T.Pixel(frame) * (thick and v and v.ring or 1)
   e.top:SetHeight(px); e.bottom:SetHeight(px)
   e.left:SetWidth(px); e.right:SetWidth(px)
 end
@@ -725,7 +767,7 @@ end
 -- Runs a large panel's fill (a floating window's: opts.shadow, or opts.gradient) a shade lighter
 -- toward its top while the panelGradient setting is on (VERTICAL runs bottom to top).
 local function shadeBg(bg, opts, r, g, b, a)
-  if not (T.Settings().panelGradient and (opts.shadow or opts.gradient) and bg.SetGradient) then return end
+  if not (T.Settings().panelGradient and (opts.shadow or opts.gradient) and bg.SetGradient) or (T.Variant() or {}).flat then return end
   bg:SetGradient("VERTICAL", lighter(r, g, b, a, T.PANEL_GRADIENT[1]), lighter(r, g, b, a, T.PANEL_GRADIENT[2]))
 end
 
@@ -745,7 +787,7 @@ local function repaint(frame, entry)
   if p.bg then paintBg(p.bg, entry.opts) end
   if p.edges then
     colorEdges(p.edges, borderColor(entry))
-    sizeEdges(p.edges, frame)
+    sizeEdges(p.edges, frame, entry.opts.accent or entry.opts.border)
   end
   if p.sheen then placeSheen(p.sheen, frame, entry.opts.pad, nil, p.bevel and 2) end
   if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad) end
@@ -1416,12 +1458,19 @@ function T.Text(fs, role, color)
   return fs
 end
 
+-- A font's flags with SLUG added (#239) when the slugText setting is on and the text is world text
+-- (an outlined role); otherwise as given.
+function T.FontFlags(flags, world)
+  if not (world and T.Settings().slugText) then return flags end
+  return (flags and flags ~= "" and flags .. "," or "") .. "SLUG"
+end
+
 -- Sets a role's font, size and shadow (or outline) on a font string; leaves its color alone.
 function T.ApplyRole(fs, role)
   local r = T.ROLES[role]
   local path, outline = T.Font(r[2])
   if T.HEADING_ROLES[role] then path = T.HeadingFont() or path end
-  fs:SetFont(path, sizes[fs] or roleSize(r), r[3] or outline)
+  fs:SetFont(path, sizes[fs] or roleSize(r), T.FontFlags(r[3] or outline, r[3]))
   fs:SetShadowOffset(r[3] and 0 or 1, r[3] and 0 or -1)
   fs:SetShadowColor(T.RGB("textShadow"))
 end
@@ -1620,23 +1669,35 @@ local function riser(frame)
   return r
 end
 
+-- Draws a window through its own frame buffer (#239) while it fades, when the frameBuffer setting
+-- is on and the client has SetIsFrameBuffer, so overlapping translucent borders don't ghost.
+local function buffered(frame, on)
+  if T.Settings().frameBuffer and frame.SetIsFrameBuffer then frame:SetIsFrameBuffer(on) end
+end
+
+-- Plays a window's open animation from px below its spot, buffered until it ends.
+local function playRise(frame, r, px)
+  r.group:Stop() r.drop:SetOffset(0, -px) r.rise:SetOffset(0, px)
+  r.alpha:SetFromAlpha(0) r.alpha:SetToAlpha(1)
+  buffered(frame, true)
+  r.group:SetScript("OnFinished", ns.Guard("window frame buffer", function() buffered(frame, false) end))
+  r.group:Play()
+end
+
 -- Opens a window (#257): shown, fading in as it rises T.WINDOW_RISE screen pixels into its own
 -- spot (so it ends on the pixel grid); at once in combat or with Reduce motion.
 function T.OpenWindow(frame)
   local r = not T.Settings().reduceMotion and not (fighting or ns.InCombat()) and riser(frame)
   T.StopFade(frame)
   frame:Show()
-  if not r then return end
-  local px = T.Pixel(frame) * T.WINDOW_RISE
-  r.group:Stop() r.drop:SetOffset(0, -px) r.rise:SetOffset(0, px)
-  r.alpha:SetFromAlpha(0) r.alpha:SetToAlpha(1)
-  r.group:Play()
+  if r then playRise(frame, r, T.Pixel(frame) * T.WINDOW_RISE) end
 end
 
 -- Closes a window (#257): fades it out over T.WINDOW_CLOSE, then hides it and runs done.
 function T.CloseWindow(frame, done)
   if riserOf[frame] then riserOf[frame].group:Stop() end
-  T.FadeOut(frame, T.WINDOW_CLOSE, done)
+  buffered(frame, true)
+  T.FadeOut(frame, T.WINDOW_CLOSE, function() buffered(frame, false) if done then done() end end)
 end
 
 -- How long a button's hover takes to ease in and out (#257), in seconds; capped in combat like any fade.

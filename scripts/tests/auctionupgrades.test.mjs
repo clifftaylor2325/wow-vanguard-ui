@@ -36,7 +36,7 @@ const HELPER = "ns.GetModule('AuctionHelper')";
 const SCAN_BUTTON = `${HELPER}.scanCard.scan`;
 const TABLE = `${HELPER}.shopCard.body.table`;
 
-// A warrior at the TEST-ONLY auction house, on the Shopping tab with Upgrades picked.
+// A warrior at the TEST-ONLY auction house, on the Lists tab with Upgrades picked.
 function warrior(extra = "", opts) {
   const addon = loggedIn(GEAR_ENV + extra, opts);
   addon.world.setUnit("player", { class: "WARRIOR" });

@@ -25,7 +25,9 @@ ns.WHATS_NEW = {
       { text = "A raid tile width the choices don't list shows its value on the Width row.", page = "raid", row = "Width" },
     } },
     { module = "AuctionHelper", label = "Auction helper", items = {
-      { text = "The Shopping and Selling tabs on the auction house are sized to their names.", page = "more", row = "Shopping and Selling tabs on the auction house" },
+      { text = "The auction house tabs are now called Lists and Posting, and are sized to their names.", page = "more", row = "Lists and Posting tabs on the auction house" },
+      { text = "Posting shows a step guide (Item, Price, Post, Listed) with a line saying what to do next, and a price the game asks you to confirm is confirmed with a second click." },
+      { text = "Clicking an item in your bags while Posting is open keeps you on Posting instead of switching to the game's Sell page." },
     } },
     { module = "MenuStrip", label = "Menu bar", items = {
       { text = "A menu bar button takes your click while the game's new indicator is showing above it." },
@@ -56,8 +58,20 @@ ns.WHATS_NEW = {
     { module = "Coexist", label = "Other addons", items = {
       { text = "When another addon does a job a Vanguard module also does, chat says so once and the Modules page lets you pick which one does it." },
     } },
+    { module = "FightHistory", label = "Fight history", items = {
+      { text = "/vg recap shows the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, and sends them to a channel on request. A recap in your own chat after each fight is off until you switch it on.", page = "more", row = "Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)", off = true },
+    } },
+    { module = "Errands", label = "Errands", items = {
+      { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "more", row = "Boat and zeppelin timer (reload)", off = true },
+    } },
+    { module = "Legacy", label = "Legacy system", items = {
+      { text = "/vg legacy probe lists what the game has for the Legacy system, and a perk planner (off until you switch it on) keeps a list of perks within the tree's 16 points.", page = "more", row = "Legacy perk planner: a list of perks within the tree's 16 points (/vg legacy plan)", off = true },
+    } },
     { label = "Setup", items = {
       { text = "The setup wizard sits above the frame handles on its last step, and its title and step are centred.", page = "general", row = "Run setup" },
+    } },
+    { label = "Theme tests", items = {
+      { text = "Two switches for side-by-side tests: /vg slug draws world text with the game's smooth-scaling font flag, and /vg framebuffer stops inner borders showing through a window as it fades.", off = true },
     } },
     { label = "Errors", items = {
       { text = "An error in a hook on a game function, a button click or a timer is kept in /vg errors and doesn't stop the others." },
