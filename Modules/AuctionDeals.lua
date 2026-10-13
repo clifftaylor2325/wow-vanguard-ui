@@ -1,6 +1,6 @@
 -- Auction helper, the Deals list (Modules/AuctionHelper.lua holds the tabs,
 -- the search queue, the scan and the slash commands): an entry in the
--- Shopping tab's Lists pane, listing what a scan or a search found priced
+-- Lists tab's pane, listing what a scan or a search found priced
 -- under an item's usual price. A listing is a deal when its price per unit
 -- is under the item's vendor sell price (buy it, sell it to a merchant), or
 -- under 70 % of the item's market value over the last 7 days (the mean of
