@@ -64,11 +64,11 @@ it("window controls: sized when the caller gave no size, on a faint tile at rest
     c.__scripts.OnHide(c)
     local mTile, mGlyph = parts(m)
     m.__scripts.OnEnter(m)
-    return { quiet = quiet, lit = lit, after = tile:IsShown(), m = { m:GetWidth(), mGlyph.__texture, mTile.__vertexColor } }`);
+    return { quiet = quiet, lit = lit, after = tile.__vertexColor, m = { m:GetWidth(), mGlyph.__texture, mTile.__vertexColor } }`);
   expect([out.quiet[0], out.quiet[1], isTok(addon, out.quiet[2], "text2"), out.quiet[3], out.quiet[4], out.quiet[5]],
     "an unsized close button takes the 20-unit tile's size in whole, even screen pixels; at rest: a faint raised tile under a plain cross in text2 and nothing else").toEqual([px(addon, 20, true), true, true, 0, px(addon, 20, true), "CloseMark"]);
   expect(isTok(addon, out.quiet[6], "raised"), "the resting tile is the raised slate, the same behind every control").toBe(true);
-  expect([out.lit[0], isTok(addon, out.lit[1], "bad"), isTok(addon, out.lit[2], "white"), out.after], "under the mouse: a red square tile, the cross white; hidden under the mouse (no OnLeave comes) it goes quiet again").toEqual([true, true, true, false]);
+  expect([out.lit[0], isTok(addon, out.lit[1], "bad"), isTok(addon, out.lit[2], "white"), isTok(addon, out.after, "raised")], "under the mouse: a red square tile, the cross white; hidden under the mouse (no OnLeave comes) the tile goes back to the resting slate").toEqual([true, true, true, true]);
   expect([out.m[0], /Icons\\Maximize$/.test(out.m[1]), isTok(addon, out.m[2], "accent")], "a sized control keeps its size; a maximize control's glyph, on an accent tile").toEqual([30, true, true]);
 });
 
