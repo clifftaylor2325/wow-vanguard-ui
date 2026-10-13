@@ -93,9 +93,7 @@ end
 
 -- The scroll frame this widget is the scroll child of, if any.
 local function scrollOwner(w)
-  for _, f in ipairs(stub.frames) do
-    if f.__scrollChild == w then return f end
-  end
+  return stub.scrollOwners[w]
 end
 
 -- The anchors to lay a widget out by, in a stable order; an unanchored
