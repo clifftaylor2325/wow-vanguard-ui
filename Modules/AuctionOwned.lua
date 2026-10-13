@@ -40,7 +40,7 @@ AH.SOLD_NOTE, AH.EXPIRED_NOTE = 4, 5
 -- The bags searched for an expired auction's item: the backpack (0) to the fourth bag.
 AH.LAST_BAG = 4
 -- Check your auctions again after each post and cancel: off until switched on, since each
--- check is a search per item (Bars, map, chat > Auction house).
+-- check is a search per item (Town and gear > Auction house).
 AH.defaults.recheck = false
 
 -- Your auctions ------------------------------------------------------------------------------

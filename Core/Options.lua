@@ -4,7 +4,8 @@
 -- light up the reload notice. This file holds the shared helpers, the
 -- General, Modules, Profiles and Feedback pages, and the page list; the
 -- other pages' rows are in their own files (Core/OptionsFrames.lua,
--- OptionsBars.lua, OptionsQuests.lua, OptionsMore.lua), which add them
+-- OptionsBars.lua, OptionsQuests.lua, OptionsBags.lua, OptionsMap.lua,
+-- OptionsChat.lua, OptionsTools.lua, OptionsTown.lua), which add them
 -- with O.AddPage. A new setting goes in its area's file.
 
 local ADDON, ns = ...
@@ -113,7 +114,19 @@ local function append(a, b)
   return a
 end
 
+-- The visibility rows (Core/Visibility.lua) of a module's frame, applied at once
+-- (when the module runs); unset, the setting is Always. modes: its choices (V.MODES unless given).
+local function visibilityRows(caption, module, modeKey, whenKey, modes)
+  local mode, when = ns.Visibility.Rows(caption, function() return moduleSettings(module) end, modeKey, whenKey, function()
+    local m = ns.GetModule(module)
+    if m.enabled then m.ApplyVisibility() end
+  end, "always", modes)
+  O.Tag(mode[4], module, modeKey)
+  return mode, when
+end
+
 -- The helpers the area files build their rows with.
+O.VisibilityRows = visibilityRows
 O.ModuleSettings, O.Setting, O.LiveSetting, O.Check, O.Append = moduleSettings, setting, liveSetting, check, append
 
 -- get/set for a theme setting; changes apply on reload.
@@ -282,6 +295,8 @@ O.MODULE_INFO = {
   Legacy = { "Legacy", "A probe of what the client has for the Legacy system and a 16-point perk plan list (the planner is off until switched on)." },
   BossDocks = { "Boss mod docks", "Two spots you can move for boss mods' timer bars; /vg dock lines up Deadly Boss Mods' bars with them." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
+  CooldownGaps = { "Cooldown gaps", "A small row of icons for what the game's Cooldown Manager misses: on-use trinkets, items you choose, pet abilities and totems (off until switched on)." },
+  CooldownGlow = { "Cooldown Manager glow", "A glow on a Cooldown Manager icon when its aura is in its last part (30 % by default), for spells without the game's own pandemic flag (off until switched on)." },
   CraftQueue = { "Craft queue", "A list of crafts to make, profession cooldowns across your characters and the recipes that pay best, from the auction prices (off until switched on; /vg craft)." },
   MailTools = { "Mail tools", "Search and filter the inbox beside the mail window, and presets that fill the Send Mail tab for your alts (off until switched on; /vg mail)." },
   Rolls = { "Roll tracker", "A small panel with the group's /roll results, highest first, and (where the client has the loot history) who rolled what on the items being rolled for." },
@@ -413,7 +428,11 @@ local PAGES = {
   { key = "raid" },
   { key = "actionbars" },
   { key = "quests" },
-  { key = "more" },
+  { key = "bars" },
+  { key = "map" },
+  { key = "chat" },
+  { key = "tools" },
+  { key = "town" },
   { key = "profiles", title = "Profiles", icon = "NavProfiles", order = 90, rows = profileRows },
   { key = "feedback", title = "Feedback", icon = "NavFeedback", order = 100, rows = feedbackRows },
 }

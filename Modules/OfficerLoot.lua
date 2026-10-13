@@ -241,7 +241,7 @@ function OL.ShareRows()
   }
 end
 
--- The card on the Bars, map, chat page.
+-- The card on the Windows and tools page.
 function OL.Rows()
   local get, set, default = ns.Options.LiveSetting("OfficerLoot", "on", function() OL.Apply() end)
   local rows = {
@@ -253,7 +253,7 @@ function OL.Rows()
   }
   return ns.Options.Append(rows, OL.ShareRows())
 end
-ns.Options.AddRows("more", OL.Rows)
+ns.Options.AddRows("tools", OL.Rows)
 
 -- Follows the switch: the roll tracker and the roster are drawn again.
 function OL.Apply()

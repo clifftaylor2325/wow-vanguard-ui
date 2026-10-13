@@ -51,10 +51,11 @@ it("options window: nav, search, controls, footer", () => {
   expect(addon.eval("return ns.Options.current") === "raid", "Enter in the search opens the first match").toBeTruthy();
   addon.eval('ns.Options.Search("")');
   expect(addon.eval("return Vanguard_Options.nav.general:GetAlpha()") === 1, "clearing the search brings every page back").toBeTruthy();
-  addon.eval('ns.Options.Show("more")');
+  addon.eval('ns.Options.Show("bars")');
   const seg = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.segments and w.label:GetText() == "Numbers" then
       w.segments[2]:GetScript("OnClick")(w.segments[2]) return { value = VanguardDB.profiles.Default.DataBars.text, on = w.segments[2].fill:IsShown(), off = w.segments[1].fill:IsShown() } end end`);
   expect(seg.value === "always" && seg.on === true && seg.off === false, "clicking a segment picks it and lights it").toBeTruthy();
+  addon.eval('ns.Options.Show("tools")');
   const dd = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.label:GetText() == "Tooltip position" then
       w.dropdown:GetScript("OnClick")(w.dropdown)
       local m = Vanguard_Menu
@@ -187,10 +188,10 @@ it("options: search jumps to the row, and the page edges fade", () => {
   const found = () => addon.eval(`local f = Vanguard_Options.found local w for _, x in ipairs(__wfgStub.frames) do if x.found == f and f then w = x end end
     return { ns.Options.current, w and w.caption, f ~= nil and f:IsShown() }`);
   expect(found(), "Enter opens the first page that matches and marks the row").toEqual(["modules", "Swing timer", true]);
-  search("bars, map");
+  search("town and gear");
   expect(found()[2], "a new search clears the old mark (a page title match marks no row)").toBe(false);
   search("TEST-ONLY nothing matches");
-  expect(addon.eval("return ns.Options.current"), "no match: Enter stays put").toBe("more");
+  expect(addon.eval("return ns.Options.current"), "no match: Enter stays put").toBe("town");
   addon.eval('ns.Options.current = "nowhere" ns.Options.JumpTo("swing")');
   addon.eval('ns.Options.Show("unitframes")');
   // The page's view: its edges, after scrolling to a place.
@@ -429,7 +430,7 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   addon.world.combat(true);
   addon.eval("Vanguard_Options.__passed = 'TEST-ONLY unset'");
   expect([addon.eval("return Vanguard_Options.__kb"), press(addon, "W")[1]], "a fight takes the keyboard back (keys can't be passed on in combat)").toEqual([false, "TEST-ONLY unset"]);
-  addon.eval("ns.Options.Show('more')");
+  addon.eval("ns.Options.Show('bars')");
   expect(addon.eval("return Vanguard_Options.__kb"), "and opening a page in combat doesn't take it").toBe(false);
   setCombat(addon, false);
   expect(addon.eval("return Vanguard_Options.__kb"), "after the fight the open window has it again").toBe(true);
@@ -508,7 +509,7 @@ it("text that fits: chat size, tooltip fonts, the status line, name width", () =
   addon.eval("FCF_SetChatWindowFontSize(nil, ChatFrame1, 18)");
   expect(sizes()[0], "the game's own chat size menu can't undo Vanguard's size").toBe(8);
   addon.slash("");
-  addon.eval('__click("Bars, map, chat")');
+  addon.eval('ns.Options.Show("chat")');
   expect(addon.eval('return __click("Chat text size") and VanguardDB.profiles.Default.Chat.textSize'), "the chat size is on the options page").toBe(14);
   expect(sizes()[0], "and Large applies at once (14 at 70%)").toBe(10);
   addon.eval('VanguardDB.profiles.Default.Chat.textSize = "game" FCF_SetChatWindowFontSize(nil, ChatFrame1, 18)');
@@ -534,10 +535,10 @@ it("options: the Healing page opens and saves its buff list with the raid heals 
   expect([addon.eval("return VanguardDB.profiles.Default.RaidHealing.buffs"), addon.eval("__editor:Refresh() return __editor.input:GetText()")], "Save keeps the typed list").toEqual(["TEST-ONLY Aura", "TEST-ONLY Aura"]);
 });
 
-it("options: a switch for each group of game windows, under Bars, map, chat", () => {
+it("options: a switch for each group of game windows, under Windows and tools", () => {
   const addon = loggedIn(UI_ENV + CLICK_LUA);
   addon.slash("");
-  addon.eval('__click("Bars, map, chat")');
+  addon.eval('ns.Options.Show("tools")');
   const groups = { social: "Mail, guild, channels, friends and guild-creation windows (reload)", town: "Stable, trainer, bags, loot and item dialogs (reload)",
     system: "Game options, Edit Mode, keybinding and help windows (reload)", map: "World map, group finder, calendar and Legacy windows (reload)",
     menus: "Right-click menus, dropdowns and more tooltips (reload)", tabs: "Tab buttons and the inside of the character pane (reload)", pvp: "Battleground windows (reload)" };
@@ -572,7 +573,7 @@ it("a note row wraps to its card and the row grows to fit; a dropdown's choice s
     return { fs.__width, fs:GetStringHeight(), fs.__points.TOPLEFT.y, __fontString("Report a bug").__parent.__points.TOPLEFT.y }`);
   expect(note[0], "the note is as wide as the card's inside (the card is 564 wide, 8 off for the rows and 14 of padding)").toBe(564 - 8 - 14);
   expect(note[1] > 20 && note[3] <= note[2] - note[1] - 6, "its text wraps to more than one line, and the next row starts under all of it").toBe(true);
-  addon.eval('ns.Options.Show("more")');
+  addon.eval('ns.Options.Show("town")');
   const choice = addon.eval(`local fs = __fontString("group role, else damage")
     return { fs.__noWrap, fs.__points.LEFT ~= nil, fs.__points.RIGHT and fs.__points.RIGHT.rel == fs.__parent.arrow }`);
   expect(choice, "the chosen role is one line between the box's edge and its arrow").toEqual([true, true, true]);
@@ -606,9 +607,9 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|33", "modules|Modules|20|64", "unitframes|Unit frames|30|24", "raid|Raid frames|40|21",
-    "actionbars|Action bars|60|73", "quests|Quests|70|19", "more|Bars, map, chat|80|181", "profiles|Profiles|90|22",
-    "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|70|12",
+    "general|General|10|33", "modules|Modules|20|66", "unitframes|Unit frames|30|24", "raid|Raid frames|40|22",
+    "actionbars|Action bars|60|73", "quests|Quests|70|19", "bars|Bars and bags|80|17", "map|Map|81|29", "chat|Chat|82|31", "tools|Windows and tools|83|61", "town|Town and gear|84|47", "profiles|Profiles|90|22",
+    "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|12",
     "situations|Situations|85|16", "clickcast|Click casting|46|11",
   ]);
   addon.eval('ns.Options.Show("general")');
@@ -616,6 +617,24 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const nav = addon.eval("local list = {} for k, b in pairs(Vanguard_Options.nav) do local _, _, _, _, y = b:GetPoint() list[#list + 1] = { k, y } end table.sort(list, function(a, b) return a[2] > b[2] end) local out = {} for i, e in ipairs(list) do out[i] = e[1] end return out");
   expect(nav, "the nav lists the pages in the same order").toEqual([
     "general", "modules", "unitframes", "raid", "healing", "clickcast", "talents", "actionbars",
-    "nameplates", "quests", "more", "situations", "profiles", "feedback",
+    "nameplates", "quests", "bars", "map", "chat", "tools", "town", "situations", "profiles", "feedback",
   ]);
+});
+
+it("options: every nav entry fits inside the nav, however many pages there are", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // The foot of the lowest nav entry and the shortest entry, in px (the nav is 480 px tall: the window's 560 less its header and footer).
+  const fit = addon.eval(`local foot, least = 0, 99 for _, b in pairs(Vanguard_Options.nav) do local _, _, _, _, y = b:GetPoint()
+    foot, least = math.max(foot, -y + b:GetHeight()), math.min(least, b:GetHeight()) end return { foot, least }`);
+  expect(fit[0] <= 480 && fit[1] >= 24, "the last entry ends above the nav's foot and no entry is squeezed under 24 px").toBe(true);
+});
+
+it("slider values show rounded, never as float noise", () => {
+  const addon = loggedIn();
+  // The text a slider shows for v at the given step.
+  const text = (step, v) => addon.eval(`local s = ns.Widgets.Slider(UIParent, "t", { min = 0, max = 1200, step = ${step} }, function() return ${v} end, function() end) return s.value:GetText()`);
+  expect(text(2, 210.00007629395)).toBe("210");
+  expect(text(1, 35.999524536133)).toBe("36");
+  expect(text(0.05, 0.55)).toBe("0.55");
 });

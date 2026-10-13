@@ -153,12 +153,12 @@ it("upgrades: a big scan is judged a hundred listings a frame, and closing the h
 
 it("upgrades: the switch under Auction house, the Gear upgrades module off, and a client without listing links", () => {
   const addon = warrior(CLICK_LUA);
-  addon.eval('ns.Options.Show("more") __click("Upgrades list")');
+  addon.eval('ns.Options.Show("town") __click("Upgrades list")');
   scan(addon, SCAN);
   expect([addon.eval("return ns.Settings('AuctionHelper').upgrades"), card(addon).slice(0, 3), addon.eval("return __wfgWorld.ah.linkReads")], "switched off: the entry goes and gives way to no list, no link is read").toEqual([false, [false, false, "Shopping"], 0]);
   const off = warrior("", { savedVariables: "VanguardDB.profiles = { Default = { modules = { Upgrades = false } } }" });
   scan(off, SCAN);
-  expect(card(off), "Gear upgrades off: nothing judged, and the line says what to turn on").toEqual([true, 0, "Upgrades", "", "Turn on Gear upgrades (Bars, map, chat) to judge gear."]);
+  expect(card(off), "Gear upgrades off: nothing judged, and the line says what to turn on").toEqual([true, 0, "Upgrades", "", "Turn on Gear upgrades (Town and gear) to judge gear."]);
   const bare = warrior("C_AuctionHouse.GetReplicateItemLink = nil");
   scan(bare, SCAN);
   expect([card(bare)[1], addon.eval("return #ns.errors"), chatHas(bare, /Auction house scanned: 11 listings/)], "no links to judge by: the scan still records prices").toEqual([0, 0, true]);

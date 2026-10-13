@@ -6,7 +6,7 @@
 // Textures are white or grayscale so the addon tints them with theme colors;
 // Icon is the one pre-colored image (the addons list can't tint).
 
-import { image, fill, draw, line, poly, box, ring, path, arc } from "./media-art.mjs";
+import { image, fill, draw, drawSdf, line, poly, box, ring, path, arc } from "./media-art.mjs";
 import { CRESTS, crest, glyph } from "./media-crests.mjs";
 
 const BRASS = [0xd9 / 255, 0xa4 / 255, 0x41 / 255];
@@ -202,8 +202,15 @@ export const SILHOUETTES = {
   NavMap: "lorc-compass", NavProfiles: "delapouite-id-card", NavFeedback: "delapouite-chat-bubble",
   NavClickCasting: "delapouite-mouse", NavHealing: "sbed-health-increase", NavTalents: "delapouite-upgrade",
   NavSituations: "delapouite-crossroad", NavNameplates: "delapouite-price-tag",
+  NavBars: "lorc-laurel-crown", NavChat: "lorc-raven", NavTools: "delapouite-castle", NavTown: "sbed-shield",
   MinimapTracking: "delapouite-binoculars", MinimapAddons: "lorc-jigsaw-piece",
 };
+
+// The sizes (px) the line and menu icons are also baked at (#232), each as Icons/<Name><size> drawn
+// by signed distance at exactly that size; Core/Theme.lua T.SIZED_ICONS lists the same names and sizes.
+export const ICON_SIZES = [16, 20, 24, 32];
+// Only the menu strip asks for a size (Modules/MenuStrip.lua MS.GLYPHS), so only its icons are baked.
+export const SIZED_ICONS = ["Character", "Spellbook", "Talents", "Professions", "Achievements", "Quests", "Social", "Group", "Collections", "Journal", "Shop", "MenuCog", "Help", "Map", "House", "Legacy"];
 
 // The window controls (close, maximize, minimize; Core/Theme.lua T.CONTROL), on a 20-unit grid
 // drawn at 64 px and shown at 20, one unit a pixel, one tone (tinted by the theme). Each mark fills
@@ -223,6 +230,7 @@ const CONTROL_SHAPES = {
 // Name (under Media/Icons) -> the image it holds.
 export const ICONS = {
   ...Object.fromEntries(Object.entries({ ...ICON_SHAPES, ...MENU_SHAPES }).map(([name, shapes]) => [name, () => draw(image(32, 32), 16, shapes)])),
+  ...Object.fromEntries(SIZED_ICONS.flatMap((name) => ICON_SIZES.map((size) => [`${name}${size}`, () => drawSdf(image(size, size), 16, { ...ICON_SHAPES, ...MENU_SHAPES }[name])]))),
   ...Object.fromEntries(Object.entries(CONTROL_SHAPES).map(([name, shapes]) => [name, () => draw(image(64, 64), 20, shapes)])),
   ...Object.fromEntries(Object.entries(SILHOUETTES).map(([name, svg]) => [name, () => glyph(svg)])),
 };

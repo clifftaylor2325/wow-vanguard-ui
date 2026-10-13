@@ -122,7 +122,7 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 | `world` | 11 (8 - 14) | SemiBold | OUTLINE | Text drawn in the world: nameplate names. |
 | `barName` | 11 (8 - 14) | SemiBold | OUTLINE | Names over a bright bar (raid tiles). |
 | `barSmall` | 10 (7 - 13) | Medium | OUTLINE | Small text over a bar (raid tile status, the damage meter, the flight timer). |
-| `cooldown` | 14 (10 - 18) | SemiBold | OUTLINE | Cooldown numbers on action buttons and the Cooldown Manager. |
+| `cooldown` | 14 (10 - 18) | SemiBold | OUTLINE | Cooldown numbers on action buttons, the Cooldown Manager and the Cooldown gaps row (that row has no fades or sounds). |
 | `auraCount` | 10 (7 - 13) | SemiBold | OUTLINE | Stack counts on aura and item icons. |
 | `auraTimer` | 11 (8 - 14) | SemiBold | OUTLINE | The timer on larger aura icons. |
 | `auraTimerSmall` | 10 (7 - 13) | SemiBold | OUTLINE | The timer on smaller aura icons. |
@@ -217,6 +217,7 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `variant` | `"default"` | General → Look → Theme variant, `/vg variant` | at once; `T.VARIANTS` token sets (#237): `contrast` (panel `0a0b0e` alpha 1, inset `050608`, raised `14161b`, divider `4a5260`, text `ffffff`, text2 `dfe3ea`, muted `b8bfca`, sheen alpha 0, saturated good/warn/bad/info, Color assist on, `ring` 2 px on accent-bordered frames, no gradient) `classic` (#218: panel `1c1610` alpha 0.96, inset `120d09`, raised `2b2117`, divider `4a3a24`, edge `6b5230`, sheen `ffd27a` at 8 %, text `f2e2b6`, text2 `d4bf8c`, muted `9c8a62`; `ornaments` always on) and `vellum` (panel `1a1612`, inset `100d0a`, raised `241f19`, divider `3a3226`, text `efe6d2`, text2 `d2c6ad`, muted `9a8f78`); `T.RGB` and `T.PanelColor` read the variant first; `T.Refresh` repaints. Parchment is not built |
 | `panelGradient` | off | `/vg gradient` | at once |
 | `ornaments` | off | `/vg ornaments`, General → Look → Window ornaments | at once; `T.Ornament(frame, kind, anchor)` (#238) gives a window one ornament, once: `"rule"` (a one-pixel rule along the bottom of `anchor` with a `Diamond` cut in the middle; the options window's header) or `"corners"` (four `OrnamentCorner` brackets, a one-pixel L with a 45° chamfer, `T.ORNAMENT_SIZE` 14 units, `T.ORNAMENT_INSET` 3 in; setup and the quest log). Tinted `accentDim`, never on combat frames; the faction crest watermark is not built |
+| `sizedIcons` | off | `/vg icons` | after a `/reload`; `T.Icon(name, size)` (#232) returns `Icons\<Name><px>` for the 16 menu-strip icons in `T.SIZED_ICONS`, the smallest of `T.ICON_SIZES` (16, 20, 24, 32) at or above `size`, drawn by `drawSdf` (one-pixel smoothstep of the signed distance at that size, level and upright stems snapped to whole pixels, a clear pixel at each edge). Only the menu strip passes a size (`MS.GLYPH_PX`); the plain 32 px files stay for everything else. Adds about 0.4 MB to the package |
 | `slugText` | off | `/vg slug` | at once; adds the SLUG font flag to outlined world-text roles only (`T.FontFlags`, #239) |
 | `frameBuffer` | off | `/vg framebuffer` | next window open or close; `T.OpenWindow`/`T.CloseWindow` call `SetIsFrameBuffer` on the window only while it fades, and only where the client has it (#239) |
 | `barTexture` | `"vanguard"` | General → Bars → Bar texture | on reload; one material for every bar (#234): unit frames, raid tiles, cast bars, XP and reputation, the damage meter all fill with `T.BarTexture()`, and a test checks the whole HUD |
@@ -252,6 +253,7 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | Raid tiles out of range | alpha 40 % | instant | instant | Fade players out of range (Raid frames) |
 | Health and power bars | the client eases the value (`ExponentialEaseOut`) | the client's easing | the client's easing | Smooth health and power bars |
 | Action button proc glow | the accent glow ring shows while the game highlights the spell | static, no animation | static | - |
+| Cooldown Manager icon with less than the set share of its aura left (`/vg cdmglow`) | the accent glow ring shows | static, no animation | static | - |
 | Aura and cooldown sweeps | the dark sweep, no edge line and no end flash (bling) | the aura's duration | the aura's duration | - |
 | Micro menu buttons | the game's own alert flash (kept on the strip) | the game's | the game's | - (the game's) |
 | Stance and pet bars | the game's attack flash and auto-cast mark (kept) | the game's | the game's | - (the game's) |
