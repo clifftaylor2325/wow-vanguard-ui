@@ -551,9 +551,9 @@ function RF.SpotFor(n)
   return big(n) and RF.SPOT_BIG or RF.SPOT
 end
 
--- Layout attributes: groups of five (or sorted by role), as columns or rows (key).
-local function layout(header, s, key)
-  local grow = RF.GROW[key] or RF.GROW.columns
+-- Layout attributes: groups of five (or sorted by role), as columns or rows (kind).
+local function layout(header, s, kind)
+  local grow = RF.GROW[kind] or RF.GROW.columns
   header:SetAttribute("groupBy", s.sortByRole and "ASSIGNEDROLE" or "GROUP")
   header:SetAttribute("groupingOrder", s.sortByRole and "TANK,HEALER,DAMAGER,NONE" or "1,2,3,4,5,6,7,8")
   header:SetAttribute("maxColumns", 8)

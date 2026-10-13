@@ -177,12 +177,13 @@ local function blocked()
   if inGroup() then return "You're in a group: your real party or raid frames are showing." end
 end
 
--- Turns the preview off, with a chat line ending in why (when given).
-function RP.Stop(why)
+-- Turns the preview off, with a chat line ending in why (when given). The real grid is fitted again
+-- at once, or, from the PLAYER_REGEN_DISABLED handler (before the lockdown starts), after the fight.
+function RP.Stop(why, atCombatStart)
   if RP.size == 0 then return end
   RP.size = 0
   RP.frame:Hide()
-  RF.Fit()
+  if atCombatStart then ns.AfterCombat(RF.Fit, "raidfit") else RF.Fit() end
   ns.Chat("Raid frames preview off" .. (why and (": " .. why) or "."))
 end
 
@@ -214,6 +215,6 @@ end
 -- A roster change: once you're in a real group, the preview ends.
 ns.On("GROUP_ROSTER_UPDATE", function() if RP.size > 0 and inGroup() then RP.Stop("you joined a group.") end end)
 -- Combat ends it at once.
-ns.On("PLAYER_REGEN_DISABLED", function() RP.Stop("combat started.") end)
+ns.On("PLAYER_REGEN_DISABLED", function() RP.Stop("combat started.", true) end)
 -- A new text size or UI scale: the preview is drawn again.
 T.OnChanged(RP.Refresh)

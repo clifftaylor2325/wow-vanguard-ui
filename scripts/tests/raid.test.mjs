@@ -357,12 +357,14 @@ it("raid preview: a real group or combat ends it; it won't start in a group, in 
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sYou're in a group: your real party or raid frames are showing\.$/)], "and it won't start in one").toEqual([0, true]);
   addon.eval("__grouped = false");
   addon.slash("preview 25");
-  setCombat(addon, true);
   addon.fire("PLAYER_REGEN_DISABLED");
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off: combat started\.$/)], "combat ends it").toEqual([0, true]);
+  expect(addon.eval("return { ns.MoverPoint('raid') }"), "and the real grid isn't re-anchored at that edge, before the lockdown").toEqual(["BOTTOMLEFT", "BOTTOM", -620, 344]);
+  setCombat(addon, true);
   addon.slash("preview 10");
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sIn combat\. Try the preview again once combat ends\.$/)], "and it won't start in combat").toEqual([0, true]);
   setCombat(addon, false);
+  expect(addon.eval("return { ns.MoverPoint('raid') }"), "it is fitted when the fight ends").toEqual(["BOTTOM", "BOTTOM", -240, 344]);
   addon.slash("preview 10");
   addon.slash("preview");
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off\.$/)], "/vg preview again turns it off").toEqual([0, true]);
