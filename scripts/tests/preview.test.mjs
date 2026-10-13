@@ -2,6 +2,8 @@
 // must build in the headless client, since the preview job in CI fails the whole run when one
 // does not. The screenshots need Playwright and are not taken here; only the Lua that builds
 // each scene runs, which is where the job failed on 2026-10-11 (a font string with no font).
+// The scenes are split over two files by position, even here and odd in previewodd.test.mjs,
+// so two workers share them.
 
 import { describe, expect, it } from "vitest";
 import { SCENES, buildScene } from "../lib/preview-scenes.mjs";
@@ -13,7 +15,7 @@ describe("UI preview scenes", () => {
     expect(SCENES.filter((scene) => !scene.caption)).toEqual([]);
   });
 
-  it.each(SCENES.map((scene) => [scene.name, scene]))("%s builds and the addon caught no error", (_name, scene) => {
+  it.each(SCENES.filter((_, i) => i % 2 === 0).map((scene) => [scene.name, scene]))("%s builds and the addon caught no error", (_name, scene) => {
     const addon = buildScene(scene);
     expect(addon.eval("return #ns.errors")).toBe(0);
   });
