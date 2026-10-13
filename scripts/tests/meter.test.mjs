@@ -125,7 +125,7 @@ it("the lines setting limits the rows, and the switch and the options apply at o
   const addon = loggedIn(METER_ENV + CLICK_LUA);
   setLines(addon, "{ { name = 'A', amountPerSecond = 8 }, { name = 'B', amountPerSecond = 7 }, { name = 'C', amountPerSecond = 6 }, { name = 'D', amountPerSecond = 5 }, { name = 'E', amountPerSecond = 4 }, { name = 'F', amountPerSecond = 3 } }");
   addon.slash("");
-  addon.eval('__click("Windows and tools")');
+  addon.eval('ns.Options.Show("tools")');
   expect(addon.eval('return __click("Vanguard\'s own damage and healing meter")'), "the switch is on the meter's section").toBe(true);
   expect(addon.frame("Vanguard_Meter").visible, "on at once").toBe(true);
   expect(rows(addon).filter((r) => r[0]).length, "five lines by default").toBe(5);

@@ -9,7 +9,7 @@ local ADDON, ns = ...
 
 local T, W, O = ns.Theme, ns.Widgets, ns.Options
 
-local WIDTH, HEIGHT, NAV_WIDTH, BAR = 780, 560, 176, 40
+local WIDTH, HEIGHT, NAV_WIDTH, BAR = 780, 600, 176, 40
 local CARD_WIDTH, PAD = WIDTH - NAV_WIDTH - 40, 10
 -- Height of each row kind (Core/OptionsPreview.lua and modules add theirs with O.AddRowKind).
 local ROW_HEIGHT = { check = 28, cycle = 28, slider = 28, button = 32, text = 20, module = 54 }

@@ -22,7 +22,7 @@ ns.WHATS_NEW = {
       { text = "A dungeon card on the checklist shows the dungeon's level range, your own quests for it and the keys you carry, at the door and with /vg prep.", page = "town", row = "Dungeon card: level range, your dungeon quests and keys on the checklist", off = true },
     } },
     { module = "Windows", label = "Game windows", items = {
-      { text = "The spellbook gets the flat Vanguard panel, like the other game windows.", page = "tools", row = "Character, merchant, quest, loot and other windows" },
+      { text = "The spellbook gets the flat Vanguard panel, like the other game windows.", page = "windows", row = "Character, merchant, quest, loot and other windows" },
     } },
     { module = "CooldownGlow", label = "Cooldown Manager glow", items = {
       { text = "A Cooldown Manager buff icon can glow when its aura is in its last 30 % (you choose the share), for spells the game doesn't flag itself.", page = "tools", row = "Glow a Cooldown Manager buff in its last part, where the game's own flag is missing", off = true },

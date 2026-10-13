@@ -106,7 +106,7 @@ it("#201 the switch off leaves the game's windows alone, saved places and all", 
   expect(addon.eval("return { ns.FrameState('vgMoveHandle')[CharacterFrame] == nil, CharacterFrame.__testMovable == nil }"), "no drag area, not made movable").toEqual([true, true]);
 });
 
-it("#201 options: the switch and Reset window positions under Windows and tools; the options window remembers where it was dropped", () => {
+it("#201 options: the switch and Reset window positions under Game windows; the options window remembers where it was dropped", () => {
   const addon = loggedIn(MOVE_ENV + CLICK_LUA);
   addon.eval("ns.Options.PlaceWindow()");
   addon.eval("__open(CharacterFrame)");
@@ -117,11 +117,11 @@ it("#201 options: the switch and Reset window positions under Windows and tools;
   expect(saved(addon).Vanguard_Options, "the options window's drop is saved with the game windows'").toEqual({ x: 100, y: 900 });
   addon.eval("Vanguard_Options:ClearAllPoints() ns.Options.PlaceWindow()");
   expect(corner(addon, "Vanguard_Options"), "and it is put back there").toEqual([100, 900]);
-  addon.eval('__click("Windows and tools")');
+  addon.eval('ns.Options.Show("windows")');
   expect(addon.eval('return __click("Drag game windows by their title bar")') && addon.eval("return VanguardDB.profiles.Default.Windows.movable"), "the switch turns dragging off (on reload)").toBe(false);
   addon.eval('__click("Reset window positions")');
   expect(saved(addon), "Reset window positions forgets every place").toEqual({});
-  expect(corner(addon, "Vanguard_Options"), "the options window back in the middle at once").toEqual([570, 820]);
+  expect(corner(addon, "Vanguard_Options"), "the options window back in the middle at once").toEqual([570, 840]);
   const next = loggedIn(MOVE_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { moved = { Vanguard_Options = { x = 100, y = 900 } } } } }" });
   next.slash("");
   expect(corner(next, "Vanguard_Options"), "after a reload it opens where it was dropped").toEqual([100, 900]);
