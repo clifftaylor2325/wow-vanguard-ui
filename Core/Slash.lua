@@ -24,6 +24,7 @@ local HELP = {
   "profile new|copy|delete <name>, profile reset   manage profiles",
   "export [part ...|pick]   copy the profile as a string, or only some parts of it: layout, situations, global or a module's name; pick opens a panel with a switch for each part",
   "import               paste a string from /vg export: a whole profile becomes a new profile, a partial one merges into yours (backed up first)",
+  "preset [name]        presets on offer (Vanguard's healer, damage and tank, and any an addon registers); a name asks to apply it, backed up first",
   "spec [profile|off]   use a profile whenever you're in this specialization",
   "copy                 the recent chat as plain text, ready to copy",
   "situation [record <name>|stop|clear [name]|list]   Situations: record a layout and settings for solo, party, raid, pvp, instance or resting",
@@ -303,6 +304,15 @@ local function importCommand()
 end
 
 ns.ImportDialog = importCommand
+ns.ImportDone = imported
+
+-- /vg preset [name]: the presets on offer (Core/Integration.lua), or ask to apply one.
+local function presetCommand(rest)
+  local preset = ns.FindPreset(rest)
+  if preset then return ns.AskPreset(preset) end
+  chat(rest == "" and "Presets (/vg preset <name> applies one):" or ("No preset called " .. rest .. ". Presets:"))
+  for _, p in ipairs(Vanguard.GetPresets()) do chat("  " .. p.name .. (p.info ~= "" and ("  -  " .. p.info) or "")) end
+end
 
 -- /vg binds: this spec's click-casting bindings, one per line.
 local function bindsCommand()
@@ -509,6 +519,8 @@ end
 local COMMANDS = {
   -- /vg help
   help = function() printLines(HELP) end,
+  -- /vg preset [name]
+  preset = presetCommand,
   -- /vg options (also /vg with nothing after it)
   options = function() ns.Options.Toggle() end,
   config = function() ns.Options.Toggle() end,
