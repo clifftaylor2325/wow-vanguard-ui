@@ -776,6 +776,20 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: nothing happens on a client without it (no error). With it, under the roll lines the panel shows the item, "rolling" until it is done, and each member's choice and roll, the winner in your accent color. [Needs in game: whether Forever has C_LootHistory with GetNumItems, GetItem and GetPlayerInfo and the LOOT_HISTORY_* events, and the order of the values GetItem and GetPlayerInfo return.]
 - If it fails, paste: the `/run` line's output and `/vg errors`.
 
+## 20. Craft queue
+
+### 20.1 Queue, next and stock (off until switched on: /vg > Bars, map, chat > Craft queue)
+
+- Do: switch the craft queue on. Open a profession, pick a recipe, type `/vg craft add 3`, then `/vg craft`, `/vg craft next`, `/vg craft stock`. Make one craft.
+- Expect: chat says "Queued: 3 x <recipe>"; `/vg craft` lists the queue and what reagents you are short of; `next` opens that recipe with 3 typed in the panel's Crafts box and tells you to press Create (nothing is crafted for you); `stock` raises Keep stocked and makes the Restock list (nothing is bought); the queue count drops by one after the craft. With the switch off, `/vg craft` says the queue is off. [Needs in game: that C_TradeSkillUI.OpenRecipe exists, that your own UNIT_SPELLCAST_SUCCEEDED spell ID is the recipe ID so a craft comes off the queue, and that the queue survives /reload.]
+- If it fails, paste: `/vg errors` and what `/run print(C_TradeSkillUI.OpenRecipe ~= nil)` prints.
+
+### 20.2 Cooldowns and ranking
+
+- Do: with the queue on, open a profession that has a cooldown (a transmute, say), then `/vg craft cd`. Visit the auction house, open a profession again and type `/vg craft top`.
+- Expect: `cd` lists the cooldown with its time left, for each character that noted one; `top` lists up to five recipes that pay best, per craft and per hour at the pace set under Craft queue. [Needs in game: that C_TradeSkillUI.GetAllRecipeIDs and GetRecipeCooldown exist and give the open profession's recipes and seconds left, and that reading a few hundred recipes causes no stutter.]
+- If it fails, paste: `/vg errors` and what `/run print(C_TradeSkillUI.GetAllRecipeIDs ~= nil, C_TradeSkillUI.GetRecipeCooldown ~= nil)` prints.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.

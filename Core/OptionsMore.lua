@@ -187,6 +187,15 @@ local function rollRows()
   }
 end
 
+-- The craft queue: its switch (off until switched on) and the pace the per-hour ranking assumes.
+local function craftRows()
+  return {
+    { "header", "Craft queue" },
+    check("Craft queue, profession cooldowns and recipe ranking (/vg craft)", setting("CraftQueue", "on")),
+    { "slider", "Seconds a craft takes, for the per-hour ranking", { min = 1, max = 60, step = 1 }, setting("CraftQueue", "secs") },
+  }
+end
+
 -- The info strip's auction sales (the sales ledger, Modules/AuctionLedger.lua): off until switched on.
 local function ledgerRows()
   return { check("Your auction sales this session", stripSetting("ahgold")) }
@@ -203,7 +212,7 @@ local function stripRows()
     check("Soul shards (warlocks)", stripSetting("shards")), check("XP per hour this session", stripSetting("xprate")),
     check("Time to the next level", stripSetting("leveltime")), check("Gold per hour this session", stripSetting("goldrate")),
     check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")), check("Your place in the last fight's DPS, in a group", stripSetting("rank")),
-  }, append(ledgerRows(), append(fightRows(), rollRows())))
+  }, append(ledgerRows(), append(fightRows(), append(rollRows(), craftRows()))))
 end
 
 -- At a merchant, and the error line.
