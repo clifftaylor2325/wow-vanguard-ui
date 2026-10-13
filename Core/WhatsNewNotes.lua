@@ -39,6 +39,9 @@ ns.WHATS_NEW = {
     { module = "GroupBoard", label = "Group board", items = {
       { text = "A group board (/vg lfg) lists looking-for-more and looking-for-group posts from chat by dungeon, role and level. A click opens a whisper you send yourself.", page = "more", row = "Open the group board" },
     } },
+    { module = "GroupThreat", label = "Group threat", items = {
+      { text = "A panel lists who in your group has the most threat on your target. It starts off, and hides itself while the game hides threat values.", page = "unitframes", row = "Group threat panel: who has the most threat on your target (reload)", off = true },
+    } },
     { module = "Coexist", label = "Other addons", items = {
       { text = "When another addon does a job a Vanguard module also does, chat says so once and the Modules page lets you pick which one does it." },
     } },
