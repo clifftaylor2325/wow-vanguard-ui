@@ -32,7 +32,7 @@ local function unitFrameRows()
     { "cycle", "Health as", { { "value", "Value (42.8K)" }, { "percent", "Percent (84%)" } }, unitFrameSetting("healthFormat") },
     check("Show levels (reload)", setting("UnitFrames", "showLevel", true)),
     check("Boss frames, top left (reload)", setting("UnitFrames", "boss", true)), check("Party pets and targets, above the party (reload)", setting("PartyExtras", "show", true)),
-    check("Shaman totems under the player frame (reload)", setting("ClassBars", "totems", true)),
+    check("Group threat panel: who has the most threat on your target (reload)", setting("GroupThreat", "show", true)), check("Shaman totems under the player frame (reload)", setting("ClassBars", "totems", true)),
     check("Druid mana under the player frame in bear and cat form (reload)", setting("ClassBars", "druidMana", true)),
   }
 end
