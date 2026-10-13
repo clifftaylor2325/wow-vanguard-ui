@@ -661,3 +661,37 @@ it("state colors and Color assist (#235): states off the red-green axis; the swi
   expect([addon.eval("return ns.Theme.Settings().colorAssist"), ["friendly", "neutral", "hostile"].map(hex), bar()], "on: friendly blue, neutral yellow, hostile vermilion, health bars too").toEqual([true, ["4a9be8", "e8d25a", "e0663a"], "e0663a"]);
   expect(hex("bad"), "other colors stay as they are").toBe("e8663f");
 });
+
+// The border thickness of a painted frame, in screen pixels: its thickest thin BORDER-layer line (the sheen is one pixel).
+const edgeThickness = (addon, name) => addon.eval(`local f = ${name} local least
+  for _, r in ipairs({ f:GetRegions() }) do
+    local w, h = r:GetWidth(), r:GetHeight()
+    local t = r.__layer == "BORDER" and (w > 0 and h > 0 and math.min(w, h) or math.max(w, h))
+    if t and t > 0 and t < 10 and (not least or t > least) then least = t end
+  end
+  return least and least / ns.Theme.Pixel(f)`);
+
+it("theme variants (#237): default unchanged; High contrast and Vellum and ink swap surface and text tokens, repaint at once and ride the profile", () => {
+  const addon = loggedIn('__win = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true }) __ring = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { accent = true })');
+  const base = { text: tok(addon, "text"), panel: tok(addon, "panel"), hostile: tok(addon, "hostile") };
+  expect([addon.eval("return ns.Theme.Variant()"), addon.eval("return ns.Theme.Settings().variant"), edgeThickness(addon, "__ring")], "off by default: no variant, a 1 px accent border").toEqual([null, "default", 1]);
+  addon.slash("variant contrast");
+  expect([tok(addon, "text").slice(0, 3), tok(addon, "panel"), tok(addon, "sheen")[3], chatHas(addon, /Theme variant: High contrast/)], "white text, an opaque panel, no sheen").toEqual([[1, 1, 1], [10 / 255, 11 / 255, 14 / 255, 1], 0, true]);
+  expect([tok(addon, "hostile"), edgeThickness(addon, "__ring")], "Color assist on with it, and a 2 px accent ring").toEqual([addon.eval("return { ns.Theme.RGB('hostile') }"), 2]);
+  expect(tok(addon, "hostile")[0], "the reaction colors are the assist set").not.toBeCloseTo(base.hostile[0], 3);
+  expect(fillOf(addon, "__win")[0].slice(0, 3), "a painted window follows at once").toEqual(tok(addon, "panel").slice(0, 3));
+  addon.slash("gradient on");
+  expect(fillOf(addon, "__win")[1], "no gradient, even with the setting on").toBe(false);
+  addon.slash("gradient off");
+  addon.slash("variant vellum");
+  expect([tok(addon, "text").slice(0, 3), tok(addon, "raised").slice(0, 3), tok(addon, "hostile")[0] === base.hostile[0], edgeThickness(addon, "__ring")], "warm text and raised, normal reactions, a 1 px border").toEqual([[239 / 255, 230 / 255, 210 / 255], [36 / 255, 31 / 255, 25 / 255], true, 1]);
+  expect(addon.eval("return VanguardDB.profiles.Default.theme.variant"), "kept in the profile").toBe("vellum");
+  addon.slash("variant nope");
+  expect([chatHas(addon, /Usage: \/vg variant/), addon.eval("return ns.Theme.Settings().variant")], "a bad name shows usage and changes nothing").toEqual([true, "vellum"]);
+  addon.slash("variant");
+  addon.slash("variant default");
+  expect([tok(addon, "text"), tok(addon, "panel"), chatHas(addon, /Theme variant: Slate and brass/)], "back to the default look").toEqual([base.text, base.panel, true]);
+  addon.slash("variant contrast");
+  addon.slash("theme reset");
+  expect(addon.eval("return ns.Theme.Variant()"), "Reset theme clears it").toBeNull();
+});
