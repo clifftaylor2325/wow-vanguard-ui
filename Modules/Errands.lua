@@ -115,12 +115,18 @@ function ER.TrainAll()
   ER.UpdateTrainButton()
 end
 
+-- Puts the button left of the game's Train button, the same height so their edges line up.
+function ER.PlaceBesides(b, train)
+  b:SetPoint("RIGHT", train, "LEFT", -4, 0)
+  b:SetHeight(train:GetHeight())
+end
+
 -- Adds the Train all button to the game's trainer window, once that window exists.
 function ER.AddTrainButton()
   local frame = _G.ClassTrainerFrame
   if ER.trainButton or type(frame) ~= "table" then return end
   local b, train = ns.DialogButton(frame, "Train all", ER.TRAIN_WIDTH), _G.ClassTrainerTrainButton
-  if type(train) == "table" then b:SetPoint("RIGHT", train, "LEFT", -4, 0) else b:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 6) end
+  if type(train) == "table" then ER.PlaceBesides(b, train) else b:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 6) end
   b:SetScript("OnClick", ns.Guard("click train all", ER.TrainAll))
   ER.trainButton = b
   ER.UpdateTrainButton()

@@ -157,9 +157,10 @@ const FOREVER_TRAINER_ENV = `
 `;
 it("Train all is narrow enough to leave the player's money line clear", () => {
   const addon = loggedIn(TRAINER_ENV);
-  addon.eval("__loadTrainer(true)");
+  addon.eval("__loadTrainer(true) ClassTrainerTrainButton:SetHeight(25)");
   addon.fire("ADDON_LOADED", "Blizzard_TrainerUI");
   expect(addon.eval('return ns.GetModule("Errands").trainButton:GetWidth()')).toBeLessThanOrEqual(100);
+  expect(addon.eval('return { ns.GetModule("Errands").trainButton:GetHeight(), ClassTrainerTrainButton:GetHeight() }'), "same height as Train").toEqual([25, 25]);
 });
 it("Train all in one click: no purchase twice, the budget counted before the game answers, a list that re-indexes", () => {
   const addon = loggedIn(FOREVER_TRAINER_ENV);
