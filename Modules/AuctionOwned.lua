@@ -1,6 +1,6 @@
 -- Auction helper, your auctions (Modules/AuctionHelper.lua holds the tabs,
 -- the search queue, the scan and the slash commands; the rows sit on the
--- Selling tab's Your auctions card, a table under the card's toolbar): Check
+-- Posting tab's Your auctions card, a table under the card's toolbar): Check
 -- undercuts asks for your auctions (ReadOwned) and checks each item's price
 -- now, MarkUndercuts marks the ones someone else asks less for, and a line
 -- on the toolbar says how many ("3 undercut"). Each
