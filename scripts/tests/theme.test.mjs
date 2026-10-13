@@ -756,3 +756,23 @@ it("classic look (#218): a variant with a bronze border, gold-cream text and the
   addon.slash("variant default");
   expect([edge()[0], artShown(addon, "Vanguard_QuestLog", "OrnamentCorner")], "back to the black border, no brackets").toEqual([base[0], 0]);
 });
+
+it("more variants: Midnight, Obsidian, Moss and Ash and ember swap surfaces and text, and every variant keeps its text tiers readable", () => {
+  const addon = loggedIn();
+  const base = { text: tok(addon, "text"), edge: tok(addon, "edge") };
+  addon.slash("variant midnight");
+  expect([tok(addon, "panel").slice(0, 3), chatHas(addon, /Theme variant: Midnight/)], "navy-black panels").toEqual([[13 / 255, 18 / 255, 32 / 255], true]);
+  addon.slash("variant obsidian");
+  expect([tok(addon, "panel")[0] === tok(addon, "panel")[2], tok(addon, "edge")[0] > base.edge[0]], "a neutral grey and a lighter edge").toEqual([true, true]);
+  addon.slash("variant moss");
+  expect(tok(addon, "panel")[1] > tok(addon, "panel")[0], "green leads").toBe(true);
+  addon.slash("variant ember");
+  expect([tok(addon, "divider")[0] > tok(addon, "divider")[2], chatHas(addon, /Theme variant: Ash and ember/)], "a rust divider").toEqual([true, true]);
+  for (const name of addon.eval("return ns.Theme.VARIANT_ORDER")) {
+    addon.slash(`variant ${name}`);
+    expect(["text", "text2", "muted"].map((n) => contrast(addon, n) >= 4.5), `${name}: text, text2 and muted clear 4.5:1`).toEqual([true, true, true]);
+  }
+  expect(addon.eval("return #ns.Theme.VARIANT_ORDER"), "eight entries, default included").toBe(8);
+  addon.slash("variant default");
+  expect(tok(addon, "text"), "back to the default").toEqual(base.text);
+});

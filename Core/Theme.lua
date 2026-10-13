@@ -147,7 +147,7 @@ setmetatable(T.PRESETS, { __index = function(_, name) return ALIASES[name] and T
 -- Theme variants (#237): token sets that swap surfaces and text, chosen with the variant setting
 -- ("default" is none). A variant's tokens win over the saved panel and inset colours; `assist` turns
 -- Color assist on, `ring` is the accent focus ring in screen pixels, `flat` drops gradients.
-T.VARIANT_ORDER = { "default", "contrast", "vellum", "classic" }
+T.VARIANT_ORDER = { "default", "contrast", "vellum", "classic", "midnight", "obsidian", "moss", "ember" }
 T.VARIANTS = {
   -- High Contrast: opaque near-black panels, white text, no sheen, full-saturation states.
   contrast = {
@@ -175,13 +175,45 @@ T.VARIANTS = {
       text = "efe6d2", text2 = "d2c6ad", muted = "9a8f78",
     },
   },
+  -- Midnight: a cold navy-black with steel-blue dividers and ice-blue text.
+  midnight = {
+    label = "Midnight",
+    tokens = {
+      panel = { "0d1220", 0.94 }, inset = { "080c16", 0.95 }, raised = "151c2e", divider = "2a3550",
+      text = "e6eefc", text2 = "c3cfe6", muted = "9aa8c4",
+    },
+  },
+  -- Obsidian: neutral charcoal with no warm or cold tint, light grey text and a thin silver edge.
+  obsidian = {
+    label = "Obsidian",
+    tokens = {
+      panel = { "141414", 0.94 }, inset = { "0c0c0c", 0.95 }, raised = "1e1e1e", divider = "343434", edge = "5c5c5c",
+      text = "ececec", text2 = "cfcfcf", muted = "a8a8a8",
+    },
+  },
+  -- Moss: a dark forest green with mossy dividers and pale sage text.
+  moss = {
+    label = "Moss",
+    tokens = {
+      panel = { "101a14", 0.94 }, inset = { "0a110d", 0.95 }, raised = "18261d", divider = "2c4232",
+      text = "e4eee6", text2 = "c3d4c7", muted = "98ad9e",
+    },
+  },
+  -- Ash and ember: smoky grey with a dim rust edge and dividers, warm grey text.
+  ember = {
+    label = "Ash and ember",
+    tokens = {
+      panel = { "1a1718", 0.94 }, inset = { "110f10", 0.95 }, raised = "262223", divider = "4a2e2a", edge = "5a2c24",
+      text = "ebe4e2", text2 = "cfc5c2", muted = "a89c98",
+    },
+  },
 }
 for _, v in pairs(T.VARIANTS) do
   for name, c in pairs(v.tokens) do v.tokens[name] = type(c) == "table" and fromHex(c[1], c[2]) or fromHex(c) end
 end
 
 local DEFAULTS = {
-  -- A theme variant (#237, #218): "default", "contrast", "vellum" or "classic".
+  -- A theme variant (#237, #218): "default", "contrast", "vellum", "classic", "midnight", "obsidian", "moss" or "ember".
   variant = "default",
   accent = T.PRESETS.brass,
   panel = T.TOKENS.panel,
