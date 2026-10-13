@@ -349,6 +349,8 @@ it("group finder: the who list says the game's no-results line while empty, and 
   const gear = addon.eval(`local p = LFGBrowseFrame.OptionsButton.__points.CENTER
     return { p.rel == LFGParentFrameCloseButton, p.x, p.y, LFGBrowseFrame.OptionsButton.__points.TOPRIGHT == nil }`);
   expect(gear, "the gear is T.CONTROL.step left of the close button and level with it, its old anchor gone").toEqual([true, -28, 0, true]);
+  expect(addon.eval(`local n = 0 for _, r in ipairs({ LFGBrowseFrame.OptionsButton:GetRegions() }) do if r.__layer == "BACKGROUND" then n = n + 1 end end return n`),
+    "the gear sits on the window controls' resting tile, like the close button beside it").toBe(1);
   const plain = addon.eval(`local box = CreateFrame("Frame", nil, UIParent) local GW = ns.GetModule("Windows")
     GW.WatchEmpty(box, "TEST-ONLY") GW.WatchEmpty(nil, "TEST-ONLY") return { GW.BoxEmpty(box), ns.FrameState('vgEmptyNote')[box]:IsShown() }`);
   expect(plain, "a list that can't say how many rows it has gets no note shown").toEqual([false, false]);
@@ -498,7 +500,8 @@ const CALENDAR_ENV = WINDOWS_ENV + `
     for _, name in ipairs({ "CalendarFrameTopLeftTexture", "CalendarWeekday1Background", "CalendarMonthBackground", "CalendarWeekdaySelectedTexture", "CalendarLastDayDarkTexture" }) do
       _G[name] = f:CreateTexture(nil, "BACKGROUND")
     end
-    CreateFrame("Button", "CalendarCloseButton", f):CreateTexture()
+    local close = CreateFrame("Button", "CalendarCloseButton", f) close:CreateTexture()
+    close:SetPoint("TOPRIGHT", f, "TOPRIGHT", 1, -17)
     for _, name in ipairs({ "CalendarPrevMonthButton", "CalendarNextMonthButton" }) do
       local b = CreateFrame("Button", name, f)
       b.art, b.icon, b.off = b:CreateTexture(), b:CreateTexture(), b:CreateTexture()
@@ -506,6 +509,7 @@ const CALENDAR_ENV = WINDOWS_ENV + `
       b.GetDisabledTexture = function(self) return self.off end
     end
     local filter = CreateFrame("Button", "CalendarFilterButton", f) filter.art = filter:CreateTexture()
+    filter:SetSize(106, 22) filter:SetPoint("TOPRIGHT", f, "TOPRIGHT", -27, -20)
     for _, name in ipairs({ "CalendarClassTotalsButton", "CalendarClassButton1", "CalendarClassButton11" }) do
       local b = CreateFrame("Button", name, f)
       b.art, b.icon = b:CreateTexture(), b:CreateTexture()
@@ -551,6 +555,8 @@ it("calendar: the window's art is faded but the weekday glow and last-day shadow
   expect(["CalendarWeekdaySelectedTexture", "CalendarLastDayDarkTexture"].map(n => calAlpha(addon, `_G.${n}`)), "the glow and the shadow stay").toEqual([1, 1]);
   expect(fills(addon, "CalendarFrame"), "the frame has a panel fill").toBe(1);
   expect(addon.eval("return CalendarCloseButton:GetRegions():GetAlpha()"), "the close button's art is gone").toBe(0);
+  expect(addon.eval("local p, rel, rp, x, y = CalendarFilterButton:GetPoint(1) return { CalendarFilterButton:GetNumPoints(), p, rel == CalendarCloseButton, rp, x, y }"),
+    "the filter button sits level with the close button, its right edge where a maximize box's plate would end (clear of the close plate)").toEqual([1, "RIGHT", true, "CENTER", -addon.eval("return ns.Theme.PixelRound(CalendarCloseButton, 18)"), 0]);
   expect(addon.eval("local p, n = CalendarPrevMonthButton, CalendarNextMonthButton return { p.art:GetAlpha(), p.icon:GetAlpha(), p.off:GetAlpha(), n.art:GetAlpha(), n.icon:GetAlpha() }"), "the month buttons keep their icon and lose the template art").toEqual([0, 1, 1, 0, 1]);
   expect([fills(addon, "CalendarPrevMonthButton"), fills(addon, "CalendarNextMonthButton")], "and are flat tiles").toEqual([1, 1]);
   expect(addon.eval("local t, c = CalendarClassTotalsButton, CalendarClassButton11 return { CalendarFilterButton.art:GetAlpha(), t.art:GetAlpha(), t.icon:GetAlpha(), c.art:GetAlpha(), c.icon:GetAlpha() }"), "the filter button and the class buttons lose the template art and keep the class icons").toEqual([0, 0, 1, 0, 1]);
