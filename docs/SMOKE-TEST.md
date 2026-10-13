@@ -332,11 +332,17 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: two tabs, Shopping and Selling, after the game's Buy, Sell and Auctions, in the same look as the game's; the window's title says Shopping or Selling while one is open. Shopping: the Lists pane on the left (your lists with their counts, Recent, Deals, Upgrades; six buttons under them; the scan button at the bottom), the list picked on the right as a table with headings (Item, Unit price, Up, Max) under a toolbar (+ Add, Search list, Restock), about twenty rows; a row's listings replace the table with Back and the item above sortable columns; after the scan, Deals shows its rows (Unit price, Under by, Judged against) and Upgrades its rows (Slot, Gain, Unit price) with the counts beside the entries, or a line saying none were found. Selling: the Sell card on the left with one field a row, Up now at the top right (the item's listings, yours flagged; Your history in its place on the toggle), Your auctions at the bottom right with Check undercuts and Cancel next undercut on its heading line; every card inside the window. A listing, deal or upgrade clicked switches to the game's Buy page with the item in its list, and Shopping brings back the view where it was; the sell slot takes the dropped item; a bag click shows the game's own Sell page (the item is on the Selling tab too).
 - If it fails, paste: a screenshot of each tab and `/vg errors`.
 
-### 9.5 Sort beside the backpack button
+### 9.5 Sort clear of the backpack icon
 
-- Do: open your bags (combined bag on) and look at the row with the search box. Click Sort, including on its right half.
-- Expect: the search box, then the whole word `Sort` on its button, then the game's backpack button in the top-right corner, with a small gap between each; nothing overlaps. Every click on Sort sorts your bags.
-- If it fails, paste: a screenshot of the bag's top row and `/vg errors`.
+- Do: without a gamepad, open your bags (combined bag on) and look at the top row. Click Sort, including on its right half. Close and open the bags, then `/reload` and open them again.
+- Expect: the search box, then the whole word `Sort` on its button ending just inside the window's right edge; no backpack icon in the top-right corner (the backpack stays on the bag bar by the menu). Every click on Sort sorts your bags.
+- If it fails, paste: a screenshot of the bag's top row, and with the icon still there, a screenshot of `/fstack` while hovering it; and `/vg errors`.
+
+### 9.6 Items drag out of the bag under the quest tracker
+
+- Do: with some quests watched, open your bags so the window covers the quest tracker on the right. Click and drag items from every part of the window, including the slots under where the tracker sits: onto an action bar, into another slot, and out onto the ground.
+- Expect: the bag window draws over the tracker (no quest text shows through it), and every item picks up and drops. Quest item buttons beside the tracker are also under the window.
+- If it fails, paste: a screenshot of `/fstack` while hovering a slot that won't drag, and `/vg errors`.
 
 ## 10. Click casting
 

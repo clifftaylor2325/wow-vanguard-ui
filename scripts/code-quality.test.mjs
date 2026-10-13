@@ -280,6 +280,7 @@ describe(
 const reported = (src, file = "Modules/t.lua") => reportSource(file, src).map((f) => f.rule);
 const SECURE = "secure-outside-combat-guard";
 const ONUPDATE = "unbounded-onupdate";
+const HANDLER = "unguarded-script-handler";
 
 // A bare SetAttribute in a function is reported with its line and fix, and does not block.
 function secureBare() {
@@ -370,7 +371,7 @@ function onUpdateCleared() {
 function onUpdateForms() {
   expect(reported(inFn('b:HookScript("OnUpdate", function() fn() end)'))).toEqual([ONUPDATE]);
   expect(reported(inFn('b:SetScript("OnUpdate", ns.Guard("tick", function(_, dt) t = t + dt if t > 1 then fn() end end))'))).toEqual([]);
-  expect(reported(inFn('b:SetScript("OnShow", function() fn() end)'))).toEqual([]);
+  expect(reported(inFn('b:SetScript("OnShow", function() fn() end)'))).toEqual([HANDLER]);
   expect(reported(inFn('b:SetScript("OnUpdate", fn)'), "scripts/lib/t.lua")).toEqual([]);
 }
 
@@ -385,6 +386,41 @@ describe(
     it("secure: a combat check before the call passes, after it does not", secureChecked);
     it("secure: load time, strings, mentions and other folders pass", secureIgnored);
     it("secure: the allow-list is explicit and starts empty", secureAllowList);
+  },
+);
+
+// A bare OnEnter or OnShow handler is reported with its line and fix, on SetScript and HookScript, and does not block.
+function handlerBare() {
+  const src = inFn('b:SetScript("OnEnter", function() fn() end)');
+  expect(reported(src)).toEqual([HANDLER]);
+  expect(reportSource("Modules/t.lua", src)[0]).toMatchObject({ line: 3, message: expect.stringMatching(/^OnEnter handler is not an ns\.Guard/) });
+  expect(reported(inFn('f:HookScript("OnShow", GW.Light)'))).toEqual([HANDLER]);
+  expect(problems("Modules/t.lua", src)).toBe("");
+}
+
+// A guarded handler, a cleared one, and the scripts other rules own pass; other folders are not read.
+function handlerPasses() {
+  expect(reported(inFn('b:SetScript("OnEnter", ns.Guard("enter", function() fn() end))'))).toEqual([]);
+  expect(reported(inFn('b:SetScript("OnKeyDown", nil)\n  b:SetScript("OnHide", on and fn or nil)'))).toEqual([]);
+  expect(reported(inFn('b:SetScript("OnClick", ns.Guard("click", fn))'))).toEqual([]);
+  expect(reported(inFn('b:SetScript("OnEnter", fn)'), "scripts/lib/t.lua")).toEqual([]);
+  expect(reported(inFn('b:SetScript("OnEnter", fn)'), "Core/t.mjs")).toEqual([]);
+}
+
+// OnClick on SetScript is the blocking rule's; on HookScript it is this rule's. OnUpdate has its own rule.
+function handlerOverlap() {
+  expect(reported(inFn('b:SetScript("OnClick", fn)'))).toEqual([]);
+  expect(reported(inFn('b:HookScript("OnClick", fn)'))).toEqual([HANDLER]);
+  expect(reported(inFn('b:SetScript("OnUpdate", fn)'))).toEqual([ONUPDATE]);
+}
+
+describe(
+  "code quality, report-only",
+  // Script handlers are ns.Guard calls.
+  () => {
+    it("handlers: a bare OnEnter or OnShow is reported, and does not block", handlerBare);
+    it("handlers: guarded, cleared, other folders and the blocking rule's scripts pass", handlerPasses);
+    it("handlers: OnClick and OnUpdate belong to the other rules", handlerOverlap);
   },
 );
 
@@ -406,8 +442,9 @@ it("baseline: a count above fails, below asks to lower it, a missing rule counts
   expect(rows).toEqual([
     { rule: SECURE, count: 3, baseline: 2, status: "above" },
     { rule: ONUPDATE, count: 1, baseline: 0, status: "above" },
+    { rule: HANDLER, count: 0, baseline: 0, status: "at" },
   ]);
-  expect(compareToBaseline({ [SECURE]: 1 }, { [SECURE]: 2, [ONUPDATE]: 0 }).map((r) => r.status)).toEqual(["below", "at"]);
+  expect(compareToBaseline({ [SECURE]: 1 }, { [SECURE]: 2, [ONUPDATE]: 0, [HANDLER]: 0 }).map((r) => r.status)).toEqual(["below", "at", "at"]);
 });
 
 it("baseline: the committed file lists every report-only rule as a whole number", () => {

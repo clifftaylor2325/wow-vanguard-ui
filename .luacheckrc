@@ -29,7 +29,7 @@ globals = {
 -- WoW API the addon reads. Add a name only when the addon starts using it.
 read_globals = {
   "UiMapPoint", "C_SuperTrack", "hash_SlashCmdList",
-  "C_Bank",
+  "C_Bank", "InputUtil",
   "GetInventoryItemLink", "C_PlayerInfo",
   "AbbreviateNumbers", "GetTime", "UnitCastingInfo", "UnitChannelInfo", "AuraUtil", "CreateUnitHealPredictionCalculator", "UnitGetDetailedHealPrediction", "UnitGetIncomingHeals", "UnitGetTotalAbsorbs", "UnitThreatSituation", "C_ActionBar", "C_AddOns", "C_CVar", "C_Reputation", "C_Spell", "C_UnitAuras", "C_Timer", "GetLocale", "GetCursorPosition", "Enum", "GetActionInfo", "SOUNDKIT", "PlaySound", "ClearCursor", "GetCursorInfo", "GetSpellInfo", "C_SpecializationInfo", "GetSpecialization", "ReloadUI", "GetXPExhaustion", "IsPlayerAtEffectiveMaxLevel", "IsXPUserDisabled", "UnitLevel", "UnitXP", "UnitXPMax", "C_Map", "FCF_OpenTemporaryWindow", "FCF_Tab_OnClick", "GetMinimapZoneText", "GetZonePVPInfo", "Minimap", "NUM_CHAT_WINDOWS", "SELECTED_CHAT_FRAME", "SecureHandlerExecute", "SecureHandlerUnwrapScript", "SecureHandlerWrapScript", "SetCVar", "UISpecialFrames", "hooksecurefunc", "ClearOverrideBindings", "GetBindingKey", "CreateFrame", "DEFAULT_CHAT_FRAME", "debugstack", "geterrorhandler", "CallErrorHandler",
   "GetAddOnMetadata", "GetBuildInfo", "GetNetStats", "UnitClassification", "C_SpellBook", "GetBindingAction", "GetNumSpecializations", "GetCreatureDifficultyColor", "GetComboPoints", "C_Secrets", "CreateColor", "AnchorUtil", "AuraContainerSortMethod", "C_CurveUtil", "C_StringUtil", "InCombatLockdown", "IsAltKeyDown", "IsControlKeyDown", "IsShiftKeyDown", "PowerBarColor", "RAID_CLASS_COLORS",
