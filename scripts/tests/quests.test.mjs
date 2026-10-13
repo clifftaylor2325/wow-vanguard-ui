@@ -388,6 +388,11 @@ it("quest tracker: nearest first, collapsing, too many quests, and switched off"
   addon.update(0);
   const t = tracker(addon);
   expect([t.count, t.more], "more than fit: the rest are counted").toEqual(["9", `+${9 - t.blocks.length} more`]);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.moreBtn b.__scripts.OnClick(b)");
+  const open = tracker(addon);
+  expect([open.blocks.length, open.more], "clicking the count shows them all, with a way back").toEqual([9, "Show fewer"]);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.moreBtn b.__scripts.OnClick(b)");
+  expect(tracker(addon).more, "and clicking again folds them").toEqual(`+${9 - t.blocks.length} more`);
   addon.eval("__watches = {}");
   addon.fire("QUEST_WATCH_LIST_CHANGED");
   addon.update(0);
