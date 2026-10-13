@@ -19,7 +19,7 @@ local V = ns.Visibility
 local IS = ns.Module("InfoStrip", {
   defaults = {
     durability = true, bags = true, system = true, gold = true, ammo = true, clock = true, shards = true,
-    xprate = true, leveltime = true, goldrate = true, dps = false, rank = false, ahgold = false,
+    xprate = true, leveltime = true, goldrate = true, dps = false, rank = false, ahgold = false, date = true,
   },
 })
 
@@ -30,11 +30,16 @@ IS.BLOCKS = {
   gold = { 2, "LEFT" }, ammo = { 2, "CENTER" }, clock = { 2, "RIGHT" },
   -- Soul shards share ammo's place: no class carries both.
   shards = { 2, "CENTER" },
-  xprate = { 3, "LEFT" }, leveltime = { 3, "CENTER" }, goldrate = { 3, "RIGHT" },
-  dps = { 4, "LEFT" }, rank = { 4, "RIGHT" },
+  -- The day and date, with the calendar button at the row's right end.
+  date = { 3, "LEFT" },
+  xprate = { 4, "LEFT" }, leveltime = { 4, "CENTER" }, goldrate = { 4, "RIGHT" },
+  dps = { 5, "LEFT" }, rank = { 5, "RIGHT" },
   -- Auction sales sit between them (neither is on by default).
-  ahgold = { 4, "CENTER" },
+  ahgold = { 5, "CENTER" },
 }
+-- The calendar button beside the date: its side (UI units) and the gap to the strip's edge.
+IS.CALENDAR, IS.CALENDAR_GAP = 14, 4
+IS.CALENDAR_ICON = { slot = "Calendar" }
 -- The session's rates wait this long (seconds) before showing: early numbers jump about.
 IS.SETTLE = 60
 -- The leveling blocks, repainted every few seconds as the session's rates change.
@@ -288,6 +293,12 @@ function IS.TEXT.clock()
   if t then return t, "text" end
 end
 
+-- The day and date, "Tuesday, 13 October".
+function IS.TEXT.date()
+  local t = ask("date", "%A, %d %B")
+  if t then return t, "text" end
+end
+
 -- XP per hour this session (the XP bar shows rested XP).
 function IS.TEXT.xprate()
   local rate = not atMaxLevel() and IS.XPRate()
@@ -352,6 +363,7 @@ function IS.Paint(key)
   local text, color
   if IS.settings[key] then text, color = IS.TEXT[key]() end
   fs:SetShown(text ~= nil)
+  if key == "date" and IS.calendar then IS.calendar:SetShown(text ~= nil) end
   if text and text ~= fs.last then fs:SetText(text) fs.last = text end
   if color then T.Color(fs, color) end
   fitRows()
@@ -378,6 +390,18 @@ local function addText(frame, key)
   return fs
 end
 
+-- The calendar button (shown with the date): a slot button of the minimap's kind at the date row's right end,
+-- opening the calendar like /calendar.
+local function addCalendar(frame)
+  local b = CreateFrame("Button", "Vanguard_InfoStripCalendar", frame)
+  b:SetPoint("RIGHT", frame, "TOPRIGHT", -IS.CALENDAR_GAP, -(IS.BLOCKS.date[1] - 0.5) * IS.ROW)
+  b:SetScript("OnClick", ns.Guard("click info strip calendar", function() if type(ToggleCalendar) == "function" then ToggleCalendar() end end))
+  b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_LEFT") GameTooltip:SetText("Calendar", T.RGB("text")) GameTooltip:Show() end)
+  b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  ns.GetModule("Minimap").SlotButton(b, IS.CALENDAR_ICON.slot, IS.CALENDAR)
+  IS.calendar = b
+end
+
 -- The strip's timer while it shows: the clock every second, fps and latency every third, the rates every fifth.
 local function ticker(frame)
   local ticks = 0
@@ -386,6 +410,7 @@ local function ticker(frame)
     IS.Paint("clock")
     if ticks % 3 == 0 then IS.Paint("system") end
     if ticks % 5 == 0 then IS.PaintRates() end
+    if ticks % 60 == 0 then IS.Paint("date") end
   end, frame)
 end
 
@@ -412,6 +437,7 @@ local function build()
   ns.Mover(f, "infostrip", "Info strip", { "TOPRIGHT", "TOPRIGHT", -12, -200 })
   IS.texts = {}
   for key in pairs(IS.BLOCKS) do IS.texts[key] = addText(f, key) end
+  addCalendar(f)
   ticker(f)
   IS.UpdateAll()
   watchVisibility(f)
