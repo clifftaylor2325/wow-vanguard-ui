@@ -11,6 +11,8 @@ ns.Perf = P
 
 -- How often /vg perf watch prints (seconds), and how many functions the busiest list shows.
 P.EVERY, P.TOP = 60, 10
+-- How many KB the low point of a memory run may rise before it counts as memory kept (readings wobble).
+P.KEPT = 50
 
 -- The CPU total at the last report and when it was taken, for the change since.
 local last = {}
@@ -27,10 +29,11 @@ function P.Profiling()
   return get ~= nil and tostring(get("scriptProfile")) == "1"
 end
 
--- Vanguard's memory in KB, or nil when the client can't say.
+-- Vanguard's memory in KB, or nil when the client can't say or the player is in
+-- combat (the game's memory counter is never refreshed in a fight).
 function P.Memory()
   local update, get = api("UpdateAddOnMemoryUsage"), api("GetAddOnMemoryUsage")
-  if not get then return nil end
+  if not get or ns.InCombat() then return nil end
   if update then update() end
   return ns.PlainNumber(get(ADDON))
 end
@@ -64,7 +67,8 @@ end
 -- The memory part of the report.
 local function memoryText()
   local kb = P.Memory()
-  return kb and string.format("memory %.1f MB", kb / 1024) or "memory: the client can't say"
+  if kb then return string.format("memory %.1f MB", kb / 1024) end
+  return ns.InCombat() and "memory: not read in combat" or "memory: the client can't say"
 end
 
 -- Adds every function in t to list as { "prefix" .. key, fn }.
@@ -140,4 +144,72 @@ function P.Command(rest)
   if rest == "watch" then return P.Watch() end
   if rest ~= "" then return ns.Chat("Usage: /vg perf [cpu | watch]") end
   P.Report(true)
+end
+
+-- /vg mem ---------------------------------------------------------------------------------
+
+-- A memory run samples every P.MEM_EVERY seconds for P.MEM_TICKS samples (a minute).
+P.MEM_EVERY, P.MEM_TICKS = 5, 12
+
+-- The run under way: { kb = samples in KB, ticks = timer calls so far, at = start time, ticker }; nil when none.
+local run
+
+-- The smallest of the samples from i to j.
+local function lowest(kb, i, j)
+  local low = kb[i]
+  for k = i + 1, j do low = math.min(low, kb[k]) end
+  return low
+end
+
+-- How far the low point moved from the first half of the run to the second, in KB: memory
+-- that stays after the game has cleared the garbage. nil under four samples.
+local function floorChange(kb)
+  local n = #kb
+  if n < 4 then return nil end
+  return lowest(kb, math.floor(n / 2) + 1, n) - lowest(kb, 1, math.ceil(n / 2))
+end
+
+-- What the low point's move means: kept memory, or only garbage the game collects.
+local function floorText(change)
+  if not change then return "Too few readings to tell garbage from kept memory (readings are skipped in combat)." end
+  if change > P.KEPT then return string.format("The low point rose %.0f KB: Vanguard is keeping memory (data that grows, or that is never let go).", change) end
+  return "The low point held: the rise and fall is garbage the game collects, not memory kept."
+end
+
+-- The memory run's result, as two chat lines: the readings, then what the low point says.
+local function memReport(r, now)
+  local kb, secs = r.kb, math.max(1, now - r.at)
+  if #kb < 2 then return ns.Chat("Vanguard's memory: too few readings (the game's counter is not read in combat).") end
+  local grew = kb[#kb] - kb[1]
+  ns.Chat(string.format("Vanguard's memory over %d s: %.2f MB to %.2f MB (%+.0f KB, %+.1f KB/s), low %.2f, high %.2f MB.",
+    secs, kb[1] / 1024, kb[#kb] / 1024, grew, grew / secs, lowest(kb, 1, #kb) / 1024, math.max(unpack(kb)) / 1024))
+  ns.Chat(floorText(floorChange(kb)))
+end
+
+-- Ends the run: the timer stops and the result prints.
+local function memFinish()
+  local r = run
+  run = nil
+  r.ticker:Cancel()
+  memReport(r, GetTime())
+end
+
+-- One timer call: a reading (none in combat), and the end of the run after its last.
+local function memTick()
+  run.ticks = run.ticks + 1
+  local kb = P.Memory()
+  if kb then run.kb[#run.kb + 1] = kb end
+  if run.ticks >= P.MEM_TICKS then memFinish() end
+end
+
+-- /vg mem: starts a one-minute memory run (a reading now and every few seconds), or ends the one
+-- under way early with what it has. Stay out of combat: the game's counter is not read in a fight.
+function P.MemCommand()
+  if run then return memFinish() end
+  if not (C_Timer and C_Timer.NewTicker) then return ns.Chat("This client has no timers to measure with.") end
+  local kb = P.Memory()
+  if not kb then return ns.Chat("Vanguard's memory can't be read " .. (ns.InCombat() and "in combat; try again out of combat." or "on this client.")) end
+  run = { kb = { kb }, ticks = 0, at = GetTime() }
+  run.ticker = C_Timer.NewTicker(P.MEM_EVERY, ns.Guard("timer memory run", memTick))
+  ns.Chat(string.format("Measuring Vanguard's memory for %d s (a reading every %d s). Stand still out of combat; /vg mem again ends it early.", P.MEM_EVERY * P.MEM_TICKS, P.MEM_EVERY))
 end

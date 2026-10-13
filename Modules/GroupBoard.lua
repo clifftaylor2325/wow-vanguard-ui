@@ -56,15 +56,19 @@ GB.entries = {}
 -- Reading a line --------------------------------------------------------------------------------
 
 -- A line as " word word ": lower-case, colour and link codes and punctuation gone, so a short name only matches a whole word.
+-- A line with no escape codes (most of them) skips the three code strips.
 function GB.Words(text)
-  local s = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", ""):lower()
-  return " " .. (s:gsub("[^%w]+", " ")) .. " "
+  local s = text:find("|", 1, true) and text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", "") or text
+  return " " .. (s:lower():gsub("[^%w]+", " ")) .. " "
 end
+
+-- Each phrase on word edges (" tank "), made once: every line asks again, so a new string per phrase per line would be garbage.
+local padded = setmetatable({}, { __index = function(t, p) local v = " " .. p .. " " t[p] = v return v end })
 
 -- Whether the words hold any of the phrases (each on word edges).
 local function hasAny(words, phrases)
   for _, p in ipairs(phrases) do
-    if words:find(" " .. p .. " ", 1, true) then return true end
+    if words:find(padded[p], 1, true) then return true end
   end
   return false
 end
