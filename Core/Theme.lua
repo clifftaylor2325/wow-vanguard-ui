@@ -125,7 +125,7 @@ setmetatable(T.PRESETS, { __index = function(_, name) return ALIASES[name] and T
 -- Theme variants (#237): token sets that swap surfaces and text, chosen with the variant setting
 -- ("default" is none). A variant's tokens win over the saved panel and inset colours; `assist` turns
 -- Color assist on, `ring` is the accent focus ring in screen pixels, `flat` drops gradients.
-T.VARIANT_ORDER = { "default", "contrast", "vellum" }
+T.VARIANT_ORDER = { "default", "contrast", "vellum", "classic" }
 T.VARIANTS = {
   -- High Contrast: opaque near-black panels, white text, no sheen, full-saturation states.
   contrast = {
@@ -134,6 +134,15 @@ T.VARIANTS = {
       panel = "0a0b0e", inset = "050608", raised = "14161b", divider = "4a5260", sheen = { "ffffff", 0 },
       text = "ffffff", text2 = "dfe3ea", muted = "b8bfca",
       good = "00e060", warn = "ff9a1f", bad = "ff4040", info = "4da6ff",
+    },
+  },
+  -- Classic (#218): dark leather and bronze, gold-cream text, a bronze border, the window ornaments on.
+  -- Own colours only; nothing from the game's art.
+  classic = {
+    label = "Classic look", ornaments = true,
+    tokens = {
+      panel = { "1c1610", 0.96 }, inset = { "120d09", 0.96 }, raised = "2b2117", divider = "4a3a24", edge = "6b5230",
+      sheen = { "ffd27a", 0.08 }, text = "f2e2b6", text2 = "d4bf8c", muted = "9c8a62",
     },
   },
   -- Vellum & Ink: a warm dark with cream text and brass.
@@ -150,7 +159,7 @@ for _, v in pairs(T.VARIANTS) do
 end
 
 local DEFAULTS = {
-  -- A theme variant (#237): "default", "contrast" or "vellum".
+  -- A theme variant (#237, #218): "default", "contrast", "vellum" or "classic".
   variant = "default",
   accent = T.PRESETS.brass,
   panel = T.TOKENS.panel,
@@ -753,8 +762,7 @@ local function borderColor(entry)
   local own = entry.opts.border
   if own then return own[1], own[2], own[3], 1 end
   if entry.opts.accent then return T.Accent() end
-  local c = T.Settings().border
-  return c[1], c[2], c[3], c[4]
+  return T.RGB("edge")
 end
 
 -- The panel gradient (#259): the OKLCH lightness change at a large panel's bottom and top edge, so
@@ -1600,7 +1608,7 @@ end
 
 -- Shows or hides a window's ornament with the ornaments setting and paints it in the accent's dim variant.
 function T.PaintOrnament(frame, o)
-  local on = T.Settings().ornaments == true
+  local on = T.Settings().ornaments == true or (T.Variant() or {}).ornaments == true
   for _, t in ipairs(o) do
     t:SetShown(on)
     T.Tint(t, "accentDim")
