@@ -154,3 +154,94 @@ it("/vg gaps chooses items by ID, link or name", () => {
   addon.slash("gaps");
   expect(chatHas(addon, /Chosen items: none/), "cleared").toBe(true);
 });
+
+// TEST-ONLY: spells the player knows, spell cooldown tables, and the Cooldown Manager's essential and utility rows.
+const SPELLS_ENV = `
+  Enum.CooldownViewerCategory = { Essential = 0, Utility = 1 }
+  __wfgWorld.spells[501] = { name = "Strike", icon = "TEST-ONLY-ICON-Strike" }
+  __wfgWorld.spells[502] = { name = "Guard", icon = "TEST-ONLY-ICON-Guard" }
+  __wfgWorld.spells[503] = { name = "Rush", icon = "TEST-ONLY-ICON-Rush" }
+  __spellCd, __sets, __infos = {}, { [0] = { 11, 12 }, [1] = { 13, 14 } }, {
+    [11] = { spellID = 501, isKnown = true }, [12] = { spellID = 502, overrideSpellID = 503, isKnown = true },
+    [13] = { spellID = 999, isKnown = false }, [14] = { spellID = 501, isKnown = true },
+  }
+  C_Spell.GetSpellCooldown = function(id) local c = __spellCd[id] if c then return { startTime = c[1], duration = c[2] } end end
+  C_CooldownViewer.GetCooldownViewerCategorySet = function(category) return __sets[category] end
+  C_CooldownViewer.GetCooldownViewerCooldownInfo = function(id) return __infos[id] end
+`;
+
+it("draws the spells you choose, with the game's duration object, plain numbers, or as ready", () => {
+  const addon = on(SPELLS_ENV + "__spellObj[501] = __wfgWorld.durationObject(0, 30)\n__spellCd[502] = { 400, 8 }\n__spellObj[502] = nil");
+  addon.slash("gaps spell add 501");
+  addon.slash("gaps spell add Guard");
+  addon.slash("gaps spell add 503");
+  expect(shown(addon).filter((c) => c.icon.includes("Strike") || c.icon.includes("Guard") || c.icon.includes("Rush")).map((c) => [c.icon, c.object, c.sweep]), "Strike takes the object, Guard the numbers, Rush has neither and is ready").toEqual([
+    ["TEST-ONLY-ICON-Strike", 30, undefined], ["TEST-ONLY-ICON-Guard", undefined, [400, 8]], ["TEST-ONLY-ICON-Rush", undefined, undefined],
+  ]);
+  expect(chatHas(addon, /Showing spell 501\./), "says so").toBe(true);
+});
+
+it("a spell whose numbers are hidden and that has no object is shown as ready; one with a hidden object still sweeps", () => {
+  const addon = on(SPELLS_ENV + "__spellCd[501] = { { __secret = true }, { __secret = true } }");
+  addon.slash("gaps spell add 501");
+  expect(shown(addon).map((c) => c.icon), "no object and hidden numbers: ready").toEqual(["TEST-ONLY-ICON-Strike", "TEST-ONLY-ICON-Trinket"]);
+  addon.eval("__spellObj[501] = __wfgWorld.durationObject(0, { __secret = true })");
+  refresh(addon);
+  expect(shown(addon)[0].object === undefined, "a hidden-length object goes to the sweep").toBe(false);
+  expect(addon.eval("return #ns.errors"), "no error").toBe(0);
+  const noObj = on(SPELLS_ENV + "C_Spell.GetSpellCooldownDuration = nil\n__spellCd[501] = { { __secret = true }, 5 }");
+  noObj.slash("gaps spell add 501");
+  expect(shown(noObj).map((c) => c.icon), "a client without duration objects and hidden numbers draws nothing for it").toEqual(["TEST-ONLY-ICON-Trinket"]);
+});
+
+it("with the switch on, the manager's essential and utility spells are drawn once each, known ones only, overrides first", () => {
+  const addon = on(SPELLS_ENV, "");
+  addon.eval("ns.GetModule('CooldownGaps').settings.tracked = true ns.GetModule('CooldownGaps').Rebuild()");
+  expect(shown(addon).slice(0, 2).map((c) => c.icon), "Strike, then Guard's override Rush; the unknown one and the repeat are left out").toEqual(["TEST-ONLY-ICON-Strike", "TEST-ONLY-ICON-Rush"]);
+  addon.eval("__sets[0] = { 14 } ns.GetModule('CooldownGaps').Rebuild()");
+  expect(shown(addon)[0].icon, "the list is read again on a change").toBe("TEST-ONLY-ICON-Strike");
+  addon.eval("ns.GetModule('CooldownGaps').settings.tracked = false ns.GetModule('CooldownGaps').Rebuild()");
+  expect(shown(addon).map((c) => c.icon), "switched off: only the trinket").toEqual(["TEST-ONLY-ICON-Trinket"]);
+});
+
+it("a client without the manager's calls, or that refuses them, adds nothing and raises no error", () => {
+  const settings = "ns.GetModule('CooldownGaps').settings.tracked = true ns.GetModule('CooldownGaps').Rebuild()";
+  const none = on("");
+  none.eval(settings);
+  expect(shown(none).map((c) => c.icon), "no Enum.CooldownViewerCategory").toEqual(["TEST-ONLY-ICON-Trinket"]);
+  const refuses = on(SPELLS_ENV + "C_CooldownViewer.GetCooldownViewerCategorySet = function() error('no') end");
+  refuses.eval(settings);
+  expect(shown(refuses).map((c) => c.icon), "a refused set").toEqual(["TEST-ONLY-ICON-Trinket"]);
+  const hidden = on(SPELLS_ENV + "C_CooldownViewer.GetCooldownViewerCategorySet = function() return __wfgWorld.secret(1) end");
+  hidden.eval(settings);
+  expect(shown(hidden).map((c) => c.icon), "a hidden set").toEqual(["TEST-ONLY-ICON-Trinket"]);
+  const badInfo = on(SPELLS_ENV + "__infos[11] = __wfgWorld.secret(1) __infos[12] = 5 __infos[14] = { spellID = __wfgWorld.secret(1) }");
+  badInfo.eval(settings);
+  expect(shown(badInfo).map((c) => c.icon), "hidden or odd info").toEqual(["TEST-ONLY-ICON-Trinket"]);
+  const missing = on(SPELLS_ENV + "C_CooldownViewer.GetCooldownViewerCooldownInfo = nil");
+  missing.eval(settings);
+  expect([shown(missing).length, missing.eval("return #ns.errors")], "a client without the info call").toEqual([1, 0]);
+});
+
+it("the tracked spells follow a spec or spellbook change, and the spell commands list, remove and refuse", () => {
+  const addon = on(SPELLS_ENV, "");
+  addon.eval("ns.GetModule('CooldownGaps').settings.tracked = true");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED");
+  expect(shown(addon).length, "read on a spec change").toBe(3);
+  addon.slash("gaps spell add 501");
+  addon.slash("gaps spell add 501");
+  expect(chatHas(addon, /Already showing spell 501/), "twice says so").toBe(true);
+  addon.slash("gaps spell");
+  addon.slash("gaps");
+  expect(chatHas(addon, /Chosen spells: 501\. \/vg gaps spell add/), "listed").toBe(true);
+  addon.slash("gaps spell add |cff71d5ff|Hspell:502|h[Guard]|h|r");
+  addon.slash("gaps spell add nonsense");
+  expect(chatHas(addon, /Say a spell/), "an unknown name is refused").toBe(true);
+  addon.slash("gaps spell remove 501");
+  addon.slash("gaps spell remove 501");
+  expect(chatHas(addon, /Spell 501 is not on the list/), "removing what isn't there says so").toBe(true);
+  addon.slash("gaps spell add");
+  addon.slash("gaps clear");
+  addon.slash("gaps spell");
+  expect(chatHas(addon, /Chosen spells: none/), "cleared").toBe(true);
+});

@@ -12,7 +12,7 @@ local ADDON, ns = ...
 ns.WHATS_NEW = {
   { version = "0.6.0", groups = {
     { module = "CooldownGaps", label = "Cooldown gaps", items = {
-      { text = "A new row of icons for what the game's Cooldown Manager misses: on-use trinkets, items you choose with /vg gaps add, your pet's abilities and totems.", page = "more", row = "Cooldown gaps", off = true },
+      { text = "A new row of icons for what the game's Cooldown Manager misses: on-use trinkets, items and spells you choose with /vg gaps add and /vg gaps spell add, your pet's abilities and totems; a switch also draws the Cooldown Manager's essential and utility cooldowns there in the Vanguard look.", page = "more", row = "Cooldown gaps", off = true },
     } },
     { module = "SpellRanks", label = "Spell ranks", items = {
       { text = "Chat can say when a bar button holds an older rank of a spell you know better; /vg ranks lists them and /vg ranks swap puts the newest rank there, out of combat.", page = "more", row = "Notice older spell ranks on bar buttons (/vg ranks)", off = true },
