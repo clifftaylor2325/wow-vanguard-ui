@@ -460,7 +460,9 @@ local function clickThrough(b)
   for _, child in ipairs({ b:GetChildren() }) do
     if child ~= vgSlot[b] then
       passThrough(child)
-      child:HookScript("OnShow", function(self) ns.OutOfCombat(function() passThrough(self) end, "menustrip passthrough") end)
+      child:HookScript("OnShow", ns.Guard("menustrip passthrough", function(self)
+        ns.OutOfCombat(function() passThrough(self) end, "menustrip passthrough")
+      end))
     end
   end
 end
