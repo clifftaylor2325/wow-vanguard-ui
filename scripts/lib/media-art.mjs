@@ -120,6 +120,57 @@ export function draw(img, grid, shapes, rgb = [1, 1, 1]) {
   return img;
 }
 
+// Signed distance (grid units, negative inside) from a point to a polygon's outline.
+function polyDist(x, y, pts) {
+  let d = Infinity;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) d = Math.min(d, segDist(x, y, [...pts[j], ...pts[i]]));
+  return inPolygon(x, y, pts) ? -d : d;
+}
+
+// Signed distance (grid units, negative inside) to a line of width s.w along s.p.
+const lineDist = (x, y, s) => segDist(x, y, s.p) - s.w / 2;
+// To a polygon.
+const polyShapeDist = (x, y, s) => polyDist(x, y, s.p);
+// To a filled box.
+const boxShapeDist = (x, y, s) => boxDist(x, y, s.p);
+// To a box outline of width s.w.
+const frameDist = (x, y, s) => Math.abs(boxDist(x, y, s.p)) - s.w / 2;
+// To a ring of radius s.p[2] and width s.w.
+const ringDist = (x, y, s) => Math.abs(Math.hypot(x - s.p[0], y - s.p[1]) - s.p[2]) - s.w / 2;
+
+// Shape kind -> signed distance to its outline, in grid units (negative inside).
+const DIST = { line: lineDist, poly: polyShapeDist, box: boxShapeDist, frame: frameDist, ring: ringDist };
+
+// A square-cornered box with its edges moved to whole output pixels (a level or upright stem then
+// covers whole pixels at any size); other shapes stay as they are.
+function snapped(s, unit) {
+  if (s.kind !== "box" || s.p[4]) return s;
+  return { ...s, p: s.p.map((v, i) => (i < 4 ? Math.round(v * unit) / unit : v)) };
+}
+
+// Alpha for a signed distance in output pixels: a one-pixel smoothstep across the edge.
+const edgeAlpha = (d) => {
+  const t = Math.max(0, Math.min(1, 0.5 - d));
+  return t * t * (3 - 2 * t);
+};
+
+// Draws shapes (laid out on a `grid`-unit square) over img in one color by signed distance (#232):
+// each pixel's alpha is a one-pixel smoothstep of its distance to the nearest edge at the output
+// size, and level and upright stems are snapped to whole pixels, so the icon is even and sharp at
+// that exact size. The grid fills the canvas less a clear pixel on each side (#228).
+export function drawSdf(img, grid, shapes, rgb = [1, 1, 1]) {
+  const unit = (img.w - 2) / grid;
+  const flat = shapes.flat().map((s) => snapped(s, unit));
+  for (let y = 0; y < img.h; y++) {
+    for (let x = 0; x < img.w; x++) {
+      const d = Math.min(...flat.map((s) => DIST[s.kind]((x - 0.5) / unit, (y - 0.5) / unit, s))) * unit;
+      const a = edgeAlpha(d);
+      if (a > 0) over(img, x, y, rgb, a);
+    }
+  }
+  return img;
+}
+
 // Writers -------------------------------------------------------------------------------
 
 // A 0-1 channel as a byte.
