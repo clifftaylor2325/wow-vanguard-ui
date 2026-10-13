@@ -118,7 +118,7 @@ end
 -- /vg frame <name> [deep]
 local function frameCommand(rest)
   local name, deep = rest:match("^(%S+)%s*(%S*)$")
-  if not name then return chat("Usage: /vg frame <name> [deep]   (a global frame name; dots follow keys: MinimapCluster.Tracking)") end
+  if not name then return chat("Usage: /vg frame <name> [deep]   (a global frame name; dots follow keys: MinimapCluster.Tracking; #3 is the third child frame)") end
   printLines(ns.Inspect.Lines(name, deep:lower() == "deep"))
 end
 
