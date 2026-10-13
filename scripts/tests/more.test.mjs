@@ -1166,7 +1166,7 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
   addon.slash("");
   addon.eval('__click("Bars, map, chat")');
   addon.eval(`__click("Your DPS in the last fight (from the game's damage meter)")`);
-  expect([block(addon, "dps").text, addon.eval("return __asked"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "your line's figure, the current fight's DPS, on a fifth row").toEqual(["1.2K dps", [1, 1], 84]);
+  expect([block(addon, "dps").text, addon.eval("return __asked"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "your line's figure, the current fight's DPS, on a seventh row").toEqual(["1.2K dps", [1, 1], 130]);
   setCombat(addon, true);
   addon.eval("__dps.combatSources[2].amountPerSecond = 2500");
   addon.fire("DAMAGE_METER_RESET");
@@ -1192,7 +1192,7 @@ it("the info strip: your place in the last fight's DPS, in a group", () => {
   addon.slash("");
   addon.eval('__click("Bars, map, chat")');
   addon.eval(`__click("Your place in the last fight's DPS")`);
-  expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "text2"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "second of two, on the fifth row").toEqual(["#2 of 2", true, 84]);
+  expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "text2"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "second of two, on the seventh row").toEqual(["#2 of 2", true, 130]);
   addon.eval("__dps.combatSources = { __dps.combatSources[2], __dps.combatSources[1], { isLocalPlayer = false } }");
   addon.fire("PLAYER_REGEN_ENABLED");
   expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "gold")], "at the top of three, in gold").toEqual(["#1 of 3", true]);
@@ -1325,21 +1325,21 @@ it("the faction look: your faction's crest and heading font, and Off", () => {
 it("the info strip under the minimap", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + CLICK_LUA);
   const dur = block(addon, "durability");
-  expect(dur.text === "9%" && isTok(addon, dur.color, "bad"), "your most worn item, red at 10% or less").toBe(true);
+  expect(dur.text === "9% durability" && isTok(addon, dur.color, "bad"), "your most worn item, red at 10% or less").toBe(true);
   addon.eval("__dur[7] = { 50, 100 } __dur[1] = { 20, 100 }");
   addon.fire("UPDATE_INVENTORY_DURABILITY");
   expect(isTok(addon, block(addon, "durability").color, "warn"), "orange at 25% or less").toBe(true);
   addon.eval("__dur[1] = { 90, 100 }");
   addon.fire("UPDATE_INVENTORY_DURABILITY");
-  expect(block(addon, "durability").text === "50%" && isTok(addon, block(addon, "durability").color, "text"), "plain above that").toBe(true);
+  expect(block(addon, "durability").text === "50% durability" && isTok(addon, block(addon, "durability").color, "text"), "plain above that").toBe(true);
   expect(block(addon, "bags").text, "free slots across the five bags").toBe("12 free");
-  expect([block(addon, "system").text, block(addon, "gold").text, block(addon, "clock").text], "fps and latency, gold, the time").toEqual(["58 fps  64 ms", "12g 34s 7c", "21:04"]);
+  expect([block(addon, "system").text, block(addon, "gold").text, block(addon, "clock").text], "fps and latency, gold, the time").toEqual(["58 fps · 64 ms", "12g 34s 7c", "21:04"]);
   expect(block(addon, "ammo").shown, "a mage carries no ammo").toBe(false);
   addon.eval("__fps = 30 __money = 507 __wfgStub.advance(1.1)");
-  expect(block(addon, "system").text, "fps waits for the third second").toBe("58 fps  64 ms");
+  expect(block(addon, "system").text, "fps waits for the third second").toBe("58 fps · 64 ms");
   addon.eval("__wfgStub.advance(2.2)");
   addon.fire("PLAYER_MONEY");
-  expect([block(addon, "system").text, block(addon, "gold").text], "then updates; under a gold, no gold part").toEqual(["30 fps  64 ms", "5s 7c"]);
+  expect([block(addon, "system").text, block(addon, "gold").text], "then updates; under a gold, no gold part").toEqual(["30 fps · 64 ms", "5s 7c"]);
   addon.eval("C_Container.GetContainerNumFreeSlots = function() return 0 end");
   addon.fire("BAG_UPDATE_DELAYED");
   expect(isTok(addon, block(addon, "bags").color, "bad"), "full bags are red").toBe(true);
@@ -1353,7 +1353,7 @@ it("the info strip: the day and date with a calendar button", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + 'date = function(f) return f == "%A, %d %B" and "Tuesday, 13 October" or "21:04" end __opened = 0 ToggleCalendar = function() __opened = __opened + 1 end');
   const button = "Vanguard_InfoStripCalendar";
   expect([block(addon, "date").text, addon.eval(`return ${button}:IsShown()`)], "the day and date, with the button beside them").toEqual(["Tuesday, 13 October", true]);
-  expect(addon.eval(`return { ${button}:GetWidth(), ns.FrameState("vgGlyph")[${button}].__texture:match("(%a+)$") }`), "the button is a 14-unit slot with the calendar icon").toEqual([14, "Calendar"]);
+  expect(addon.eval(`return { ${button}:GetWidth(), ns.FrameState("vgGlyph")[${button}].__texture:match("(%a+)$") }`), "the button is an 18-unit slot with the calendar icon").toEqual([18, "Calendar"]);
   addon.eval(`${button}.__scripts.OnClick(${button}) ${button}.__scripts.OnEnter(${button}) ${button}.__scripts.OnLeave(${button})`);
   expect(addon.eval("return __opened"), "a click opens the calendar").toBe(1);
   addon.eval("ToggleCalendar = nil");
@@ -1774,9 +1774,9 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
   // Whether each leveling block shows.
   const rates = () => ["xprate", "leveltime", "goldrate"].map((k) => block(addon, k).shown);
-  // The strip's height (three rows with the date, or four with the leveling row).
+  // The strip's height (four rows with the date, or six with the two leveling rows).
   const height = () => addon.eval("return Vanguard_InfoStrip:GetHeight()");
-  expect([rates(), height()], "nothing to say yet: three rows").toEqual([[false, false, false], 52]);
+  expect([rates(), height()], "nothing to say yet: four rows").toEqual([[false, false, false], 76]);
   addon.eval("__xp = 1900");
   addon.fire("PLAYER_XP_UPDATE", "player");
   later(addon, 10);
@@ -1784,7 +1784,7 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   expect(rates(), "the first minute's numbers jump about, so they wait").toEqual([false, false, false]);
   later(addon, 1790);
   addon.fire("PLAYER_XP_UPDATE", "player");
-  expect([block(addon, "xprate").text, block(addon, "leveltime").text, height()], "900 XP in half an hour; the strip grows a row").toEqual(["1.8K xp/h", "lvl 1h 44m", 68]);
+  expect([block(addon, "xprate").text, block(addon, "leveltime").text, height()], "900 XP in half an hour; the strip grows a row").toEqual(["1.8K xp/h", "lvl 1h 44m", 94]);
   addon.eval("__xp, __xpmax, __rested = 200, 6000, nil");
   addon.fire("PLAYER_XP_UPDATE", "player");
   expect([block(addon, "xprate").text, block(addon, "leveltime").text], "a level-up counts the old level's rest too").toEqual(["8.4K xp/h", "lvl 42m"]);
@@ -1800,7 +1800,7 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   expect(rates(), "no XP numbers at the level cap").toEqual([false, false, true]);
   addon.eval("__money = 123407");
   addon.fire("PLAYER_MONEY");
-  expect([rates(), height()], "no change in gold, no gold rate; back to three rows").toEqual([[false, false, false], 52]);
+  expect([rates(), height()], "no change in gold, no gold rate; back to four rows").toEqual([[false, false, false], 76]);
   addon.eval('__level = 20 __xp = { __secret = true }');
   addon.fire("PLAYER_XP_UPDATE", "player");
   expect(rates(), "hidden XP: the rate so far stays, the time to level hides").toEqual([true, false, false]);
