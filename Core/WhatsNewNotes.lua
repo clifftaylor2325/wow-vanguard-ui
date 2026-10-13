@@ -24,6 +24,9 @@ ns.WHATS_NEW = {
     { module = "Windows", label = "Game windows", items = {
       { text = "The spellbook gets the flat Vanguard panel, like the other game windows.", page = "more", row = "Character, merchant, quest, loot and other windows" },
     } },
+    { module = "CooldownGlow", label = "Cooldown Manager glow", items = {
+      { text = "A Cooldown Manager buff icon can glow when its aura is in its last 30 % (you choose the share), for spells the game doesn't flag itself.", page = "more", row = "Glow a Cooldown Manager buff in its last part, where the game's own flag is missing", off = true },
+    } },
     { module = "RaidFrames", label = "Raid frames", items = {
       { text = "A raid tile width the choices don't list shows its value on the Width row.", page = "raid", row = "Width" },
     } },
