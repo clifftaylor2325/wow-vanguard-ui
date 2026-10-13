@@ -41,6 +41,7 @@ end
 -- A message with each web address made a clickable accent link (hidden text is returned as is).
 function CX.LinkURLs(text)
   if ns.IsSecret(text) or type(text) ~= "string" then return text end
+  if not (text:find("://", 1, true) or text:find("www.", 1, true)) then return text end
   local color = accentCode()
   for _, pattern in ipairs(CX.PATTERNS) do
     text = text:gsub(pattern, function(url) return color .. "|H" .. PREFIX .. url .. "|h[" .. url .. "]|h|r" end)
