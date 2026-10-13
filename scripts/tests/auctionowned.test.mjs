@@ -369,7 +369,7 @@ it("disenchant values: the switch is on for enchanters until set, in the Auction
   const addon = loggedIn(AH_ENV + GEAR + CLICK_LUA);
   addon.eval(MATS);
   expect(addon.eval("local get, set, default = ns.AuctionPrices.DisenchantSetting() return { get(), default }"), "off for a non-enchanter").toEqual([false, false]);
-  addon.eval('ns.Options.Show("more")');
+  addon.eval('ns.Options.Show("town")');
   addon.eval('__click("Disenchant values in tooltips")');
   expect([addon.eval("return ns.Settings('AuctionHelper').disenchant"), tipOf(addon, 9101)], "ticked: on without Enchanting").toEqual([true, ["Disenchant: ~4s 87c"]]);
   addon.eval(ENCHANTER);
@@ -445,7 +445,7 @@ it("deals: each search judges its item again; a low before today stands in for a
   addon.update(0);
   pickTab(addon, 4);
   expect(dealsCard(addon), "a new visit starts with none, Deals still shown; nothing is judged while the house is closed").toEqual([true, 0, "Deals", "", "None yet: a scan or a search finds them."]);
-  addon.eval('ns.Options.Show("more") __click("Deals list")');
+  addon.eval('ns.Options.Show("town") __click("Deals list")');
   addon.eval("ns.AuctionPrices.RecordSeen(50001, 1)");
   expect([addon.eval("return ns.Settings('AuctionHelper').deals"), dealsCard(addon).slice(0, 3), addon.eval(`return next(${HELPER}.deals) == nil`)], "switched off under Auction house: the entry goes at once and gives way to no list, nothing is judged").toEqual([false, [false, false, "Shopping"], true]);
 });

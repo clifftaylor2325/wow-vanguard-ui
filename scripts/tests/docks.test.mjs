@@ -43,10 +43,10 @@ it("boss docks: BigWigs gets directions, neither loaded says so, and the module 
 
 it("boss docks: the options button shows only while a boss mod is loaded", () => {
   const without = loggedIn(CLICK_LUA);
-  without.eval('ns.Options.Show("more")');
+  without.eval('ns.Options.Show("tools")');
   expect(without.eval('return __click("Line up boss mod bars") == true'), "no boss mod: no button").toBe(false);
   const withDbm = loggedIn(CLICK_LUA + DBM_ENV);
-  withDbm.eval('ns.Options.Show("more")');
+  withDbm.eval('ns.Options.Show("tools")');
   withDbm.eval('__click("Line up boss mod bars")');
   expect(withDbm.eval("return DBT.opts.TimerPoint"), "the button docks DBM's bars").toBe("CENTER");
 });

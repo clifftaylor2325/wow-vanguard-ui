@@ -150,7 +150,7 @@ it("chat watch: /vg watch adds, lists, removes and clears; at most 20 phrases of
 
 it("chat watch: the options add a phrase from a dialog, list a Remove button per phrase, and switch channels", () => {
   const addon = watching();
-  addon.eval('ns.Options.Show("more")');
+  addon.eval('ns.Options.Show("chat")');
   expect(addon.find("^Remove: lfm$").text, "a Remove button for the phrase").toBe("Remove: lfm");
   addon.eval('__click("Add a phrase")');
   expect(addon.frame("Vanguard_TextDialog").visible, "Add a phrase asks for it").toBe(true);
@@ -201,7 +201,7 @@ it("chat watch: a line linking an item with an auction price shows it beside the
   say(addon, "CHANNEL", "WTS |cffffffff|Hitem:10940::::|h[Strange Dust]|h|r cheap", "Other");
   const plain = priceLook(addon);
   expect([plain.text, plain.lineRight], "no priced item: no price, the line to the toast's edge again").toEqual(["", plain.toastRight - 8]);
-  addon.eval('ns.Options.Show("more")');
+  addon.eval('ns.Options.Show("chat")');
   addon.eval('__click("Auction price of a linked item")');
   say(addon, "CHANNEL", WTS_LINE, "Third");
   expect([priceLook(addon).text, addon.eval("return ns.Settings('ChatWatch').prices")], "switched off in the Chat watch options").toEqual(["", false]);

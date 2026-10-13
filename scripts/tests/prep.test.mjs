@@ -186,7 +186,7 @@ it("prep: /vg prep want sets the wanted amounts; the options page has the sectio
   expect(addon.chat().at(-1), "an unknown kind: the usage").toMatch(/Usage: \/vg prep want/);
   addon.slash("prep");
   expect(rows(addon), "the new amount counts").toEqual([["Food & drink", "20 / 30"]]);
-  addon.eval('ns.Options.Show("more")');
+  addon.eval('ns.Options.Show("town")');
   expect(addon.find("^Checklist when you enter a dungeon or raid").text, "the switches").toMatch(/only when something is low/);
   expect(addon.find("^20 s$").text, "Hide after, in seconds").toBe("20 s");
   expect(addon.find("^50%%$").text, "the durability warning, in percent").toBe("50%");
@@ -293,7 +293,7 @@ it("prep buffs: nothing is guessed when the client hides auras or can't list the
 
 it("prep buffs: the options page has the switches", () => {
   const addon = character("WARRIOR", 60);
-  addon.eval('ns.Options.Show("more")');
+  addon.eval('ns.Options.Show("town")');
   addon.eval('__click("Buff checks on the card: flask, food, oil or poison, raid buffs")');
   expect(addon.eval("return ns.Settings('InstancePrep').buffs"), "a switch sets the profile").toBe(true);
   addon.eval('__click("World buffs among them")');

@@ -209,7 +209,7 @@ local function channel(key)
     function(v) ns.Settings("GroupBoard", GB.defaults).channels[key] = v end, GB.defaults.channels[key]
 end
 
--- The board's card on the Bars, map, chat page.
+-- The board's card on the Chat page.
 function GB.Rows()
   return {
     { "header", "Group board" },
@@ -221,7 +221,7 @@ function GB.Rows()
     { "check", "Yell", channel("yell") }, { "check", "Say", channel("say") }, { "check", "Guild", channel("guild") },
   }
 end
-ns.Options.AddRows("more", GB.Rows)
+ns.Options.AddRows("chat", GB.Rows)
 
 -- Module entry point (Core/Modules.lua): the window is built the first time it opens.
 function GB.Enable(settings)

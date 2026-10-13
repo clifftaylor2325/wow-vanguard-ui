@@ -102,8 +102,8 @@ it("game alerts: a rare nearby is announced with a sound and a chat line, out of
   addon.fire("VIGNETTE_MINIMAP_UPDATED", "rare", true);
   expect(rares(), "off until you switch it on").toEqual([]);
   addon.slash("");
-  addon.eval('__click("Bars, map, chat")');
-  expect(addon.eval('return __click("A rare nearby")'), "the switch is under Bars, map, chat").toBe(true);
+  addon.eval('ns.Options.Show("tools")');
+  expect(addon.eval('return __click("A rare nearby")'), "the switch is under Windows and tools").toBe(true);
   addon.fire("VIGNETTE_MINIMAP_UPDATED", "rare", true);
   addon.fire("VIGNETTE_MINIMAP_UPDATED", "rare", true);
   expect([rares().length, /Rare nearby: TEST-ONLY Rare$/.test(rares()[0]), addon.eval("return __wfgWorld.sounds[#__wfgWorld.sounds]")], "one line and the raid warning sound, once per rare").toEqual([1, true, "RAID_WARNING"]);
@@ -173,7 +173,7 @@ it("the game's tools: Cooldown Manager and damage meter styled and placed, stand
   addon.eval("EditModeManagerFrame:Hide()");
   expect(spot("EssentialCooldownViewer", "CENTER"), "and it's back on its spot when Edit Mode closes").toEqual(["CENTER", true]);
   addon.slash("");
-  addon.eval('__click("Bars, map, chat")');
+  addon.eval('ns.Options.Show("tools")');
   expect(addon.eval('return __click("Place them to fit the layout") and VanguardDB.profiles.Default.GameTools.place'), "the placing switch is on the page").toBe(false);
   const left = loggedIn(TOOLS_ENV, { savedVariables: "VanguardDB.profiles.Default = { GameTools = { place = false } }" });
   expect(left.eval("return { Vanguard_DamageMeterSpot == nil, DamageMeter.__points.TOPLEFT.rel == UIParent, ns.FrameState('vgSkinned')[DamageMeterSessionWindow1] }"), "with placing off they keep Edit Mode's spots but are still styled").toEqual([true, true, true]);
@@ -247,7 +247,7 @@ it("the game's tools: a switch shows the Cooldown Manager's essential row betwee
   expect(timer, "the cooldown timer in the theme's timer font").toEqual([addon.eval('return ns.Theme.RoleSize("cooldown")'), "OUTLINE"]);
   expect(addon.eval('return GetCVar("cooldownViewerEnabled") == nil'), "off by default: the game's setting is left alone").toBe(true);
   addon.slash("");
-  addon.eval('__click("Bars, map, chat")');
+  addon.eval('ns.Options.Show("tools")');
   addon.eval(`__click("Show the game's Cooldown Manager")`);
   expect(addon.eval('return GetCVar("cooldownViewerEnabled")'), "ticked: the game's Cooldown Manager is on").toBe("1");
   addon.eval(`__click("Show the game's Cooldown Manager")`);
