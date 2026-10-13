@@ -10,7 +10,7 @@
 --
 -- Standing rules here: PostItem and PostCommodity (and ConfirmPost*) run only
 -- inside Post's click, one call per click; the only hook is a post-hook on the game's
--- SetPostItem that reads the item it was given, and nothing writes into the
+-- SetPostItem that reads the item it was given (and keeps Posting open), and nothing writes into the
 -- game's auction frames; price checks go through AH.Queue (one in flight, at
 -- most 60 a minute); every price and quantity goes through ns.PlainNumber
 -- before arithmetic; and both paths work: a commodity at a unit price, or an
@@ -285,6 +285,7 @@ function AH.TakeItem(loc)
   AH.upCard.table.offset = 0
   AH.Queue({ sell = AH.sell.search, card = true }, true)
   AH.PaintSell()
+  return true
 end
 
 -- An item dropped on (or clicked onto) the sell slot: it goes back to its bag and onto the card.
@@ -825,5 +826,5 @@ function AH.BuildSell(f, h)
   lengthRow(c)
   postRow(c)
   guideRow(c)
-  hooksecurefunc(AuctionHouseFrame, "SetPostItem", ns.Guard("hook SetPostItem", function(_, loc) AH.TakeItem(loc) end))
+  hooksecurefunc(AuctionHouseFrame, "SetPostItem", ns.Guard("hook SetPostItem", function(_, loc) if AH.TakeItem(loc) then AH.KeepSelling() end end))
 end

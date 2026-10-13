@@ -662,3 +662,15 @@ it("state colors and Color assist (#235): states off the red-green axis; the swi
   expect([addon.eval("return ns.Theme.Settings().colorAssist"), ["friendly", "neutral", "hostile"].map(hex), bar()], "on: friendly blue, neutral yellow, hostile vermilion, health bars too").toEqual([true, ["4a9be8", "e8d25a", "e0663a"], "e0663a"]);
   expect(hex("bad"), "other colors stay as they are").toBe("e8663f");
 });
+
+it("SLUG text (#239): off by default; /vg slug adds the SLUG flag to outlined world text only, at once", () => {
+  const addon = loggedIn('__world = UIParent:CreateFontString() ns.Theme.Text(__world, "world") __plain = UIParent:CreateFontString() ns.Theme.Text(__plain, "label")');
+  // The font flags set on a test font string.
+  const flags = (name) => addon.eval(`return ${name}.__font[3]`);
+  expect([flags("__world"), flags("__plain")], "off by default").toEqual(["OUTLINE", ""]);
+  addon.slash("slug");
+  expect([flags("__world"), flags("__plain"), chatHas(addon, /SLUG text on/)], "world text gains SLUG, panel text does not").toEqual(["OUTLINE,SLUG", "", true]);
+  expect(addon.eval('return ns.Theme.FontFlags(nil, true), ns.Theme.FontFlags("", true)'), "with no flags it is just SLUG").toBe("SLUG");
+  addon.slash("slug off");
+  expect([flags("__world"), addon.eval("return ns.Theme.Settings().slugText"), chatHas(addon, /SLUG text off/)]).toEqual(["OUTLINE", false, true]);
+});

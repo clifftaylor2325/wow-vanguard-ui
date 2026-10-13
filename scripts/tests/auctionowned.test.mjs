@@ -40,7 +40,7 @@ function scan(addon, rows) {
   addon.fire("REPLICATE_ITEM_LIST_UPDATE");
   for (let i = 0; i < 10; i++) addon.update(0.01);
 }
-// Picks a tab on the window: 1-3 the game's, 4 Shopping, 5 Selling.
+// Picks a tab on the window: 1-3 the game's, 4 Lists, 5 Posting.
 const pickTab = (addon, i) => addon.click(`AuctionHouseFrame.Tabs[${i}]`);
 // Shop ---------------------------------------------------------------------------------------
 
