@@ -99,14 +99,14 @@ local function guardWrite(w, key, value)
   if byAddon(at) then violate(string.format("field write: %s stored the field %s on the game's frame %s", where(at), tostring(key), label(w))) end
 end
 
--- Game widgets resolve methods as every widget does and watch their new fields.
-local gameMeta = { __index = stub.widgetMeta.__index, __newindex = guardWrite }
+-- Game widgets resolve methods as every widget does (stub.metaFor) and watch their new fields.
+stub.gameNewindex = guardWrite
 
 -- Makes a widget the game's.
 local function ownByGame(w)
   if rawget(w, "__byGame") then return w end
   rawset(w, "__byGame", true)
-  return setmetatable(w, gameMeta)
+  return setmetatable(w, stub.metaFor(w))
 end
 stub.ownByGame = ownByGame
 
