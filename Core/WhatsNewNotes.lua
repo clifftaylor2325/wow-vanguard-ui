@@ -49,6 +49,9 @@ ns.WHATS_NEW = {
     { label = "Setup", items = {
       { text = "The setup wizard sits above the frame handles on its last step, and its title and step are centred.", page = "general", row = "Run setup" },
     } },
+    { label = "Window ornaments", items = {
+      { text = "A thin brass rule under the options window's header and corner brackets on setup and the quest log.", page = "general", row = "Window ornaments: a brass rule or corners on large windows", off = true },
+    } },
     { label = "Errors", items = {
       { text = "An error in a hook on a game function, a button click or a timer is kept in /vg errors and doesn't stop the others." },
     } },

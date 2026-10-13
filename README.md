@@ -130,6 +130,7 @@ Download `Vanguard-<version>.zip` from the [latest release](https://github.com/c
 /vg grid [size|on|off]          the unlock-mode grid; /vg snap on|off   snapping while dragging
 /vg texelsnap [on|off]          still borders, fills, dividers and sheens snap to the screen's pixel grid; bars, sparks and icons never do (a side-by-side test, off by default)
 /vg nineslice [on|off]          shadows and glows drawn as one texture each, after a /reload (a side-by-side test, off by default)
+/vg ornaments [on|off]          a brass rule under the options window's header and corner brackets on setup and the quest log, in the accent's dim shade (off by default; also General → Look → Window ornaments)
 /vg gradient [on|off]           windows' fills a shade lighter toward the top (off by default)
 /vg accent <rrggbb|brass|arcane|jade|orchid|copper> | reset      /vg theme reset
 /vg modules       the list of modules; /vg enable|disable <module>, then /reload

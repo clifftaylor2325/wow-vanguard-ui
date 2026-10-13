@@ -154,18 +154,25 @@ local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step 
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
--- General, part one: accent, color assist, font, text size, scale and theme reset.
-local function lookRows()
+-- Look, the font, text size, faction and ornament rows.
+local function lookTextRows()
   return {
-    { "header", "Look" },
-    { "preview" },
-    { "swatches" }, check("Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", themeSetting("colorAssist")),
     { "cycle", "Font", T.SharedChoices("font", FONT_CHOICES), liveThemeSetting("font") },
-    { "slider", "Text size", TEXT_SIZES, liveThemeSetting("textScale") }, { "cycle", "Faction look: crest and heading font", FACTION_LOOK, liveThemeSetting("faction") },
-    check("Pixel-perfect scale (crisp 1-pixel lines)", function() return T.Settings().pixelScale end,
-      function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end),
-    { "button", "Reset theme", function() T.Reset() end },
+    { "slider", "Text size", TEXT_SIZES, liveThemeSetting("textScale") },
+    { "cycle", "Faction look: crest and heading font", FACTION_LOOK, liveThemeSetting("faction") },
+    check("Window ornaments: a brass rule or corners on large windows", previewedSetting("ornaments")),
   }
+end
+
+-- General, part one: accent, color assist, font, text size, ornaments, scale and theme reset.
+local function lookRows()
+  local rows = { { "header", "Look" }, { "preview" }, { "swatches" },
+    check("Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", themeSetting("colorAssist")) }
+  for _, row in ipairs(lookTextRows()) do rows[#rows + 1] = row end
+  rows[#rows + 1] = check("Pixel-perfect scale (crisp 1-pixel lines)", function() return T.Settings().pixelScale end,
+    function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end)
+  rows[#rows + 1] = { "button", "Reset theme", function() T.Reset() end }
+  return rows
 end
 
 -- General, part two: setup again, and what's new in this version.

@@ -87,6 +87,8 @@ export const TEXTURES = {
   Shadow: () => softBox(64, 16, 6, [0, 0, 0], 0.8, false),
   Glow: () => softBox(64, 16, 5, [1, 1, 1], 0.9, true),
   Stripes: stripes,
+  // A window-corner bracket (#238), top left, on a 16-unit grid: two one-unit lines meeting in a 45-degree chamfer.
+  OrnamentCorner: () => draw(image(16, 16), 16, [box(0, 5, 1, 16), box(5, 0, 16, 1), line(0.5, 5, 5, 0.5, 1)]),
   Fade: fade,
   // The logo halves, white, for the addon to tint (accent left, text right).
   LogoLeft: () => draw(image(64, 64), 64, LOGO_LEFT),

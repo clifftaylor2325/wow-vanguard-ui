@@ -641,6 +641,7 @@ end
 local function build()
   window = windowFrame()
   addHeader(window)
+  T.Ornament(window, "rule", window.header)
   addHeaderControls(window)
   addFooter(window)
   ns.ErrorBadge.Footer(window)
