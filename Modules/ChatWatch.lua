@@ -206,7 +206,7 @@ end
 
 -- The options page lists a Remove button per phrase: built again after a change.
 local function phrasesChanged()
-  ns.Options.RebuildPage("more")
+  ns.Options.RebuildPage("chat")
 end
 
 -- Why a phrase can't be added, or nil when it can.

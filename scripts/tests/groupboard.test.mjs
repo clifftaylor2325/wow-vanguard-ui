@@ -140,7 +140,7 @@ it("group board: the tooltip, closing, the module off, and its options card", ()
   expect(addon.eval("return GameTooltip:IsShown()"), "hidden on leave; no post, no tooltip").toBe(false);
   addon.eval("local c = Vanguard_GroupBoard.close c.__scripts.OnClick(c)");
   expect(addon.eval("return Vanguard_GroupBoard:IsShown()"), "the close button").toBe(false);
-  addon.eval('ns.Options.Show("more") __click("Open the group board")');
+  addon.eval('ns.Options.Show("chat") __click("Open the group board")');
   expect(addon.eval("return Vanguard_GroupBoard:IsShown()"), "the options button opens it").toBe(true);
   addon.slash("lfg");
   post(addon, "LFG WC", "Later");

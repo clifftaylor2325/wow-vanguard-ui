@@ -205,7 +205,7 @@ end
 -- /vg gaps [add <item> | remove <item> | list | clear].
 function CG.Command(rest)
   local verb, arg = (rest or ""):match("^(%S*)%s*(.-)$")
-  if not CG.settings then return ns.Chat("The cooldown gaps row is off. Turn it on under /vg > Bars, map, chat, then /reload.") end
+  if not CG.settings then return ns.Chat("The cooldown gaps row is off. Turn it on under /vg > Windows and tools, then /reload.") end
   if verb == "add" then return CG.Add(arg) end
   if verb == "remove" then return CG.Remove(arg) end
   if verb == "clear" then save({}) return ns.Chat("Chosen items forgotten.") end

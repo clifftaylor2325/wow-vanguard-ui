@@ -55,7 +55,7 @@ it("broker strip: hover shows the feed's tooltip, and clicks reach it", () => {
 it("broker strip: without LibDataBroker it hides, and joins when an addon loads it; options list the feeds", () => {
   const addon = loggedIn(CLICK_LUA);
   expect([strip(addon).shown, addon.eval("return #ns.GetModule('BrokerStrip').Sources()")], "no broker: hidden, no feeds").toEqual([false, 0]);
-  addon.eval('ns.Options.Show("more")');
+  addon.eval('ns.Options.Show("map")');
   expect(addon.eval('return __click("TEST-ONLY Gold")'), "no feed switches on the page").toBe(false);
   addon.eval(LDB_ENV);
   addon.eval("ns.GetModule('BrokerStrip').Choose('TEST-ONLY Gold', true)");
@@ -63,7 +63,7 @@ it("broker strip: without LibDataBroker it hides, and joins when an addon loads 
   addon.eval('__set("TEST-ONLY Gold", "text", "14g")');
   expect(strip(addon).slots, "the broker loaded later: hooked, so the picked feed shows and follows its changes").toEqual([["TEST-ONLY Gold", "14g"]]);
   const page = loggedIn(CLICK_LUA + LDB_ENV);
-  page.eval('ns.Options.Show("more")');
+  page.eval('ns.Options.Show("map")');
   page.eval('__click("TEST-ONLY Guild")');
   expect([page.eval("return ns.GetModule('BrokerStrip').Chosen('TEST-ONLY Guild')"), strip(page).slots], "a feed's switch picks it").toEqual([true, [["TEST-ONLY Guild", "Guild"]]]);
   const off = loggedIn(LDB_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { BrokerStrip = false } } }" });
