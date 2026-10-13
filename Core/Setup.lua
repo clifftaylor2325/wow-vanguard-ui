@@ -512,6 +512,7 @@ local function window()
   f:SetFrameStrata("FULLSCREEN_DIALOG")
   f:EnableMouse(true)
   addTitle(f)
+  T.Ornament(f, "corners")
   return f
 end
 

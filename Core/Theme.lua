@@ -167,6 +167,8 @@ local DEFAULTS = {
   sliceRings = false,
   -- A subtle top-to-bottom lightness shift on floating windows' fills (#259); off by default.
   panelGradient = false,
+  -- A brass rule or corner brackets on a few large windows (#238); off by default.
+  ornaments = false,
   -- Experiments with 12.x client features (#239), each off until its in-game A/B check: world text
   -- (outlined roles) drawn with the SLUG font flag, and big windows drawn through a frame buffer
   -- while they open and close.
@@ -191,6 +193,8 @@ local painted = setmetatable({}, { __mode = "k" })
 local listeners = {}
 -- Every crest texture (weak), repainted when the theme changes.
 local crests = setmetatable({}, { __mode = "k" })
+-- Every window with an ornament (#238): frame -> its pieces (weak), repainted when the theme changes.
+local ornaments = setmetatable({}, { __mode = "k" })
 
 -- Theme settings in the active profile, with defaults.
 function T.Settings()
@@ -1505,6 +1509,12 @@ function T.OnChanged(fn)
   listeners[#listeners + 1] = fn
 end
 
+-- Repaints the crests and the ornaments.
+local function repaintArt()
+  for t in pairs(crests) do T.PaintCrest(t) end
+  for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
+end
+
 -- Repaints every painted frame, re-fonts styled text and tells the listeners.
 function T.Refresh()
   for frame, entry in pairs(painted) do
@@ -1512,7 +1522,7 @@ function T.Refresh()
   end
   T.RefreshText()
   applyFontObjects()
-  for t in pairs(crests) do T.PaintCrest(t) end
+  repaintArt()
   reSnap()
   for _, fn in ipairs(listeners) do
     fn()
@@ -1553,6 +1563,57 @@ function T.Crest(parent, size, layer, alpha)
   crests[t] = true
   T.PaintCrest(t)
   return t
+end
+
+-- The tex coords that turn the top-left corner bracket into each corner (#238).
+local CORNER_FLIPS = { TOPLEFT = { 0, 1, 0, 1 }, TOPRIGHT = { 1, 0, 0, 1 }, BOTTOMLEFT = { 0, 1, 1, 0 }, BOTTOMRIGHT = { 1, 0, 1, 0 } }
+-- How far the brackets and the rule sit in from the window's edge (units), and the bracket's size.
+T.ORNAMENT_INSET, T.ORNAMENT_SIZE = 3, 14
+
+-- Four corner brackets just inside a frame's corners.
+local function cornerBrackets(frame)
+  local out = {}
+  for point, flip in pairs(CORNER_FLIPS) do
+    local t = frame:CreateTexture(nil, "OVERLAY")
+    t:SetTexture(T.Texture("OrnamentCorner"))
+    t:SetSize(T.ORNAMENT_SIZE, T.ORNAMENT_SIZE)
+    t:SetPoint(point, frame, point, outward(point, -T.ORNAMENT_INSET))
+    t:SetTexCoord(flip[1], flip[2], flip[3], flip[4])
+    out[#out + 1] = t
+  end
+  return out
+end
+
+-- A one-pixel rule along the bottom of an anchor (a header) with a diamond cut in its middle.
+local function headerRule(frame, anchor)
+  local left, right = solid(frame, "OVERLAY", 0, "divider"), solid(frame, "OVERLAY", 0, "divider")
+  local mid = frame:CreateTexture(nil, "OVERLAY")
+  mid:SetTexture(T.Texture("Diamond"))
+  mid:SetSize(7, 7)
+  mid:SetPoint("CENTER", anchor, "BOTTOM")
+  left:SetPoint("BOTTOMLEFT", anchor, "BOTTOMLEFT", 12, 0)
+  left:SetPoint("BOTTOMRIGHT", anchor, "BOTTOM", -8, 0)
+  right:SetPoint("BOTTOMLEFT", anchor, "BOTTOM", 8, 0)
+  right:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", -12, 0)
+  return { left, right, mid, rule = { left, right } }
+end
+
+-- Shows or hides a window's ornament with the ornaments setting and paints it in the accent's dim variant.
+function T.PaintOrnament(frame, o)
+  local on = T.Settings().ornaments == true
+  for _, t in ipairs(o) do
+    t:SetShown(on)
+    T.Tint(t, "accentDim")
+  end
+  for _, t in ipairs(o.rule or {}) do t:SetHeight(T.Pixel(frame)) end
+end
+
+-- Gives a large window an ornament (#238), once: kind "corners" (four brackets) or "rule" (a rule
+-- along the bottom of `anchor`, its header). One per window; never on combat frames. Off with the ornaments setting.
+function T.Ornament(frame, kind, anchor)
+  if ornaments[frame] then return end
+  ornaments[frame] = kind == "rule" and headerRule(frame, anchor or frame) or cornerBrackets(frame)
+  T.PaintOrnament(frame, ornaments[frame])
 end
 
 -- Sets the accent color (0-1 components) and repaints.
