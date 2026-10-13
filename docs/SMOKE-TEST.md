@@ -248,6 +248,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: five sample tiles just above your player frame (one Dead, one Offline, a shield and a cross before the tanks' and healers' names), then 25 and 40 drawn smaller in groups side by side; each settings change shows on the preview at once. Off hides it, and combat hides it with a chat line. Your real frames don't change until a reload.
 - If it fails, paste: a screenshot, `/vg errors` and `/vg frame Vanguard_RaidPreview`.
 
+### 6.5 Raid readiness on the ready-check card (batch 2)
+
+- Do: `/vg` → Bars, map, chat → Instance prep, switch on "Buff checks on the card" (and "World buffs among them"). Out of combat, without a flask, food buff, weapon oil or poison, or your class's raid buffs, type `/vg prep`. Then get each one and type `/vg prep` again; then start a ready check in a group, and finally type `/vg errors`.
+- Expect: the card lists Flask, Food buff, Fortitude, Mark of the Wild, Arcane Intellect, a weapon row and (with a weapon in the off hand) an off-hand row, each "missing" in red; each row goes when you have the buff. World buffs shows only while you have none. In an instance during combat no buff row appears; `/vg status` saying `aura values hidden right now` also means none. No Lua error.
+- If it fails, paste: a screenshot, `/vg errors`, and the names of the buffs you have (the names in the code are from the classic game and unchecked on Forever).
+
 ## 7. Combat visuals: auras, cast bars, nameplates
 
 ### 7.1 Target and focus auras

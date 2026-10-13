@@ -122,6 +122,11 @@
     "scripts/tests/platepaint.test.mjs": [],
     "scripts/tests/plates.test.mjs": [],
     "scripts/tests/prep.test.mjs": [
+      "prep buffs: a ready check lists the flask, food, enchants and raid buffs you lack",
+      "prep buffs: nothing is guessed when the client hides auras or can't list them",
+      "prep buffs: off until switched on",
+      "prep buffs: the options page has the switches",
+      "prep buffs: world buffs only when asked for, an off hand only when it holds a weapon",
       "prep: /vg prep want sets the wanted amounts; the options page has the section",
       "prep: Keep-stocked items under their count, and worn gear, are on the card",
       "prep: a client without the bag, item or instance calls checks what it can",
