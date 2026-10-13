@@ -147,6 +147,8 @@ Modules/Meter.lua
 Modules/Rolls.lua
 Modules/CraftQueue.lua
 Modules/MailTools.lua
+Modules/OfficerLoot.lua
+Modules/OfficerRoster.lua
 Modules/GameAlerts.lua
 Modules/AfkScreen.lua
 Modules/DataBars.lua
