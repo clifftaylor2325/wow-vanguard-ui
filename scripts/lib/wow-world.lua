@@ -15,16 +15,31 @@ stub.world = world
 
 -- Secrets --------------------------------------------------------------------------------
 -- The client hides some values in instanced combat: a "secret" errors on
--- arithmetic and comparison. Here it is a table, so the same mistakes fail.
+-- arithmetic, comparison, concatenation, length, a call and a field read or
+-- write. Here it is a table under a metatable that raises on each of those, so
+-- the same mistakes fail (a plain table would only fail some of them). What
+-- the real client's type() returns for a secret number is not confirmed
+-- (issue #284 records it); until then type(secret) is "table" here.
 
--- A secret value (hides `n`, which only the preview reads).
+-- What a secret refuses: every metamethod raises this.
+local function refuse()
+  error("attempt to use a secret value", 2)
+end
+
+local SECRET = {
+  __index = refuse, __newindex = refuse, __call = refuse,
+  __add = refuse, __sub = refuse, __mul = refuse, __div = refuse, __mod = refuse, __pow = refuse, __unm = refuse,
+  __concat = refuse, __len = refuse, __lt = refuse, __le = refuse,
+}
+
+-- A secret value (hides `n`, which only the harness reads, with rawget).
 function world.secret(n)
-  return { __secret = true, n = n }
+  return setmetatable({ __secret = true, n = n }, SECRET)
 end
 
 -- Whether a value is a secret.
 function issecretvalue(v)
-  return type(v) == "table" and v.__secret == true
+  return type(v) == "table" and rawget(v, "__secret") == true
 end
 
 world.aurasSecret = false
@@ -365,7 +380,7 @@ GetQuestDifficultyColor = GetCreatureDifficultyColor
 
 -- A number as the client abbreviates it (12.3K, 1.2M); secrets stay secret.
 function AbbreviateNumbers(v)
-  if issecretvalue(v) then return world.secret(v.n and AbbreviateNumbers(v.n)) end
+  if issecretvalue(v) then local n = rawget(v, "n") return world.secret(n and AbbreviateNumbers(n)) end
   if type(v) ~= "number" then return tostring(v) end
   if v >= 1e6 then return string.format("%.1fM", v / 1e6) end
   if v >= 1e3 then return string.format("%.1fK", v / 1e3) end
@@ -399,7 +414,7 @@ C_StringUtil = {
     local f = { rounding = rounding }
     -- A number rounded by the rule, as text; a secret stays secret.
     function f:Format(n)
-      if issecretvalue(n) then return world.secret(n.n and self:Format(n.n)) end
+      if issecretvalue(n) then local v = rawget(n, "n") return world.secret(v and self:Format(v)) end
       local r = rounding == Enum.NumericRuleFormatRounding.Up and math.ceil(n) or math.floor(n)
       return tostring(r)
     end
@@ -869,6 +884,8 @@ C_Spell = {
     local id, s = spellOf(key)
     return s and { name = s.name, iconID = s.icon, castTime = s.castTime or 0, minRange = 0, maxRange = s.range or 40, spellID = id }
   end,
+  -- Puts the spell on the cursor.
+  PickupSpell = function(key) local id = spellOf(key) world.cursor = id and { type = "spell", id = id } or nil end,
   GetSpellName = function(key) local _, s = spellOf(key) return s and s.name end,
   GetSpellTexture = function(key) local _, s = spellOf(key) return s and s.icon end,
   -- The spell's power costs, as a list of { type, cost, name }.
@@ -961,7 +978,12 @@ end
 -- Using, picking up and placing actions, recorded.
 function UseAction(slot) world.used = world.used or {} table.insert(world.used, slot) end
 function PickupAction(slot) world.cursor = { type = "action", id = slot } end
-function PlaceAction(slot) world.placed = slot world.cursor = nil end
+-- Places a spell on the cursor onto the slot (nothing comes back to the cursor), and records the slot.
+function PlaceAction(slot)
+  local c = world.cursor
+  world.placed, world.cursor = slot, nil
+  if c and c.type == "spell" then world.setAction(slot, { id = c.id }) end
+end
 C_ActionBar = {
   -- Range checks and the bar page, recorded.
   EnableActionRangeCheck = function(slot, on) world.rangeChecks = world.rangeChecks or {} world.rangeChecks[slot] = on end,
@@ -1730,6 +1752,19 @@ world.recipes = {}
 
 -- A recipe's schematic (nil for one the world doesn't have).
 function C_TradeSkillUI.GetRecipeSchematic(recipeID) return world.recipes[recipeID] end
+-- world.cooldowns[recipeID] = seconds left; world.openedRecipe = the last recipe OpenRecipe was given.
+world.cooldowns = {}
+-- Every recipe ID the world has, in order (the open profession's list).
+function C_TradeSkillUI.GetAllRecipeIDs()
+  local ids = {}
+  for id in pairs(world.recipes) do ids[#ids + 1] = id end
+  table.sort(ids)
+  return ids
+end
+-- A recipe's cooldown: seconds left (0 for none), whether it is a daily one, charges, max charges.
+function C_TradeSkillUI.GetRecipeCooldown(recipeID) return world.cooldowns[recipeID] or 0, false, 0, 0 end
+-- Opens a recipe in the profession window (only noted here).
+function C_TradeSkillUI.OpenRecipe(recipeID) world.openedRecipe = recipeID return true end
 
 -- The window, made the first time a profession opens, with its crafting page's recipe form.
 local function professionsFrame()
@@ -1829,6 +1864,7 @@ local function tooltipSetters(tip)
   function tip:SetInventoryItem(unit, slot) self.__item = { unit = unit, slot = slot } end
   function tip:SetHyperlink(link) self.__link = link end
   function tip:SetItemByID(id) self.__itemId = id end
+  function tip:SetQuestLogItem(kind, i, questID) self.__questLogItem = kind .. " " .. i .. " " .. tostring(questID) end
   function tip:SetSpellByID(id) self.__spellId = id self.__lines = { { text = (world.spells[id] or {}).name } } end
   function tip:GetItem() return self.__itemName, self.__itemLink end
 end
@@ -1867,7 +1903,7 @@ function world.reset()
   world.actions, world.quests, world.npc, world.merchant, world.trainer = {}, {}, nil, nil, nil
   world.cursor, world.timers, world.book = nil, {}, {}
   world.ah = emptyAuctionHouse()
-  world.professions, world.recipes = {}, {}
+  world.professions, world.recipes, world.cooldowns, world.openedRecipe = {}, {}, {}, nil
   world.mail = {}
   refreshWatches()
 end
