@@ -22,8 +22,8 @@ const BAGS = `__wfgWorld.items[2589].commodity = true
   __wfgWorld.ah.throttle = true
   AUCTION_DURATION_ONE, AUCTION_DURATION_TWO = "TEST-ONLY 12 Hours", "TEST-ONLY 24 Hours"`;
 
-// A logged-in addon at the TEST-ONLY auction house, on the helper's Selling tab (extra Lua runs before login).
-function atSelling(extra = "") {
+// A logged-in addon at the TEST-ONLY auction house, on the helper's Posting tab (extra Lua runs before login).
+function atPosting(extra = "") {
   const addon = loggedIn(BAGS + extra);
   addon.world.openAuctionHouse();
   addon.update(0);
@@ -52,21 +52,19 @@ const posts = (addon) => {
 // The sell card as the player sees it: [item on it, Post on, the count line, the guide's line].
 const card = (addon) => addon.eval(`local c = ${CARD} return { ${HELPER}.sell ~= nil, c.post:IsEnabled(), c.status:GetText(), c.guide:GetText() }`);
 
-// Bag item `slot` of bag 0 clicked, back on the Selling tab (the game's SetPostItem shows its own
-// sell page), and the price check answered with `event` once it is sent (searches go a second apart).
+// Bag item `slot` of bag 0 clicked (the window stays on Posting), and the price check answered
+// with `event` once it is sent (searches go a second apart).
 function bagClick(addon, slot, event, payload) {
   addon.world.postFromBag(0, slot);
-  addon.click(`${HELPER}.tabs[2]`);
   addon.advance(1);
   addon.fire(event, payload);
 }
 
 it("Post on a commodity, end to end: bag click, price check, each stack up through the throttle", () => {
-  const addon = atSelling();
-  expect([card(addon), errors(addon)], "the Selling tab: nothing on the card, no error").toEqual([[false, false, "", "Drop an item on the slot, or click one in your bags."], []]);
+  const addon = atPosting();
+  expect([card(addon), errors(addon)], "the Posting tab: nothing on the card, no error").toEqual([[false, false, "", "Drop an item on the slot, or click one in your bags."], []]);
   addon.world.postFromBag(0, 3);
   expect(addon.eval("local q = __wfgWorld.ah.queries[#__wfgWorld.ah.queries] return { q.fn, q.args[1].itemID }"), "the bag click: the item's price check is sent").toEqual(["SendSellSearchQuery", 2589]);
-  addon.click(`${HELPER}.tabs[2]`);
   expect(card(addon)[3], "the price check not answered yet").toBe("Checking what it sells for...");
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
   addon.click(`${CARD}.qtyMax`);
@@ -84,7 +82,7 @@ it("Post on a commodity, end to end: bag click, price check, each stack up throu
 });
 
 it("Post on an item, end to end: the bid and buyout in whole silver where the game takes no copper", () => {
-  const addon = atSelling("__wfgWorld.ah.copper = false SetCVar('auctionHouseDurationDropdown', 2)");
+  const addon = atPosting("__wfgWorld.ah.copper = false SetCVar('auctionHouseDurationDropdown', 2)");
   bagClick(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   addon.type(`${CARD}.bid`, "10s 50c");
   expect([card(addon), errors(addon)], "one blade; the bid under the buyout").toEqual([[true, true, "posted 0 of 1", "Click Post to list stack 1 of 1."], []]);
@@ -95,7 +93,7 @@ it("Post on an item, end to end: the bid and buyout in whole silver where the ga
 });
 
 it("Post off says why on the card, and a click the game is too busy for says so in chat", () => {
-  const addon = atSelling("__wfgWorld.ah.commodities[2589] = {} __wfgWorld.items[2589].sellPrice = 150");
+  const addon = atPosting("__wfgWorld.ah.commodities[2589] = {} __wfgWorld.items[2589].sellPrice = 150");
   bagClick(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
   expect(card(addon), "nothing up and no 7-day low: no price").toEqual([true, false, "posted 0 of 1", "No price found: type one in Price."]);
   addon.type(`${CARD}.price`, "1s");
@@ -124,7 +122,7 @@ it("Post off says why on the card, and a click the game is too busy for says so 
 });
 
 it("Post says in chat what it sends, and what the game answers within 3 seconds of the click", () => {
-  const addon = atSelling();
+  const addon = atPosting();
   // What chat has said after "Post: " so far.
   const said = () => Array.from(addon.chat()).filter((line) => /Post: /.test(line)).map((line) => line.replace(/^.*Post: /, ""));
   bagClick(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
@@ -150,4 +148,23 @@ it("Post says in chat what it sends, and what the game answers within 3 seconds 
   addon.eval("__wfgStub.now = __wfgStub.now + 4");
   addon.fire("AUCTION_HOUSE_POST_WARNING");
   expect([said().length, errors(addon)], "4 seconds on, an answer is no longer the click's; no error").toEqual([6, []]);
+});
+
+it("a bag click while on Posting keeps the window on Posting; from the game's Buy or Sell it shows the game's sell page", () => {
+  const addon = atPosting();
+  // Which page shows: [Posting's page shown, the window's title, the game's mode named].
+  const page = () => addon.eval(`local w = AuctionHouseFrame
+    local mode = "ours" for k, v in pairs(AuctionHouseFrameDisplayMode) do if v == w.displayMode then mode = k end end
+    return { Vanguard_AuctionSelling:IsShown(), w.TitleContainer.TitleText:GetText(), mode }`);
+  addon.world.postFromBag(0, 3);
+  const guide = addon.eval(`local c = ${CARD} return { c.guide:GetBottom() >= c:GetBottom(), c.steps[4]:GetRight() <= c:GetRight() }`);
+  expect(guide, "the guide's steps and line inside the Sell card").toEqual([true, true]);
+  expect([page(), card(addon)[0], errors(addon)], "the item on the card, and Posting still open").toEqual([[true, "Posting", "ours"], true, []]);
+  addon.eval("AuctionHouseFrame:SetDisplayMode(AuctionHouseFrameDisplayMode.Buy)");
+  addon.world.postFromBag(0, 2);
+  expect([page(), card(addon)[0], errors(addon)], "from Buy: the game's own sell page, and the item on the Posting card too").toEqual([[false, "Sell", "ItemSell"], true, []]);
+  addon.click(`${HELPER}.tabs[2]`);
+  addon.eval("AuctionHouseFrame:SetDisplayMode(AuctionHouseFrameDisplayMode.ItemSell)");
+  addon.world.postFromBag(0, 3);
+  expect(page(), "Posting, then the game's Sell: a bag click stays on the game's sell page").toEqual([false, "Sell", "ItemSell"]);
 });

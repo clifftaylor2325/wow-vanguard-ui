@@ -96,6 +96,27 @@ it("motion: a window opens rising 4 px into place as it fades in, and closes in 
   expect(addon.eval("return { TEST_Plain:IsShown(), #__fades, TEST_Plain:GetAlpha() }"), "a client that can't animate opens it at once, every time").toEqual([true, 0, 1]);
 });
 
+it("motion: with /vg framebuffer on, a window is drawn through a frame buffer only while it opens and closes (#239)", () => {
+  const addon = loggedIn(FAKE_FADES + 'local f = CreateFrame("Frame", "TEST_Buf", UIParent) f:SetSize(200, 100) f:Hide() __fakeFader(f)');
+  // Whether the window is drawn through a frame buffer now.
+  const buf = () => addon.eval("return TEST_Buf.__frameBuffer");
+  addon.eval("ns.Theme.OpenWindow(TEST_Buf) __finishFades()");
+  expect(buf(), "off by default: never touched").toBeFalsy();
+  addon.slash("framebuffer");
+  expect(addon.eval("return ns.Theme.Settings().frameBuffer"), "the switch is saved").toBe(true);
+  addon.eval("ns.Theme.OpenWindow(TEST_Buf)");
+  expect(buf(), "on while it fades in").toBe(true);
+  addon.eval("__finishFades()");
+  expect(buf(), "off once it has opened").toBe(false);
+  addon.eval("__fades = {} ns.Theme.CloseWindow(TEST_Buf)");
+  expect(buf(), "on while it fades out").toBe(true);
+  addon.eval("__finishFades()");
+  expect(buf(), "off once it is hidden").toBe(false);
+  addon.eval("TEST_Buf.SetIsFrameBuffer = nil ns.Theme.OpenWindow(TEST_Buf)");
+  addon.slash("framebuffer off");
+  expect(addon.eval("return ns.Theme.Settings().frameBuffer"), "a client without the call is left alone; off again").toBe(false);
+});
+
 // A themed test button with its own label anchored LEFT and RIGHT 2 units down; returns nothing.
 const PRESS_BUTTON = `local b = CreateFrame("Button", "TEST_Press", UIParent) b:SetSize(80, 22)
   b.text = b:CreateFontString(nil, "OVERLAY") b.text:SetPoint("LEFT", b, "LEFT", 4, -2) b.text:SetPoint("RIGHT", b, "RIGHT", -4, -2)
