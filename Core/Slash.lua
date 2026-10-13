@@ -65,6 +65,7 @@ local HELP = {
   "errors [clear]       the errors Vanguard caught this session, with stacks and counts (for a bug report); clear empties the list",
   "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
   "feedback [bug|feature]   a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)",
+  "gaps [add <item>|remove <item>|clear]   Cooldown gaps (switch it on under Bars, map, chat): choose items such as a Healthstone or potion to show beside trinkets, pet abilities and totems; no verb lists them",
   "perf [cpu|watch]     Vanguard's CPU and memory now; cpu turns the game's CPU profiling on or off (reload); watch prints them every minute",
 }
 
@@ -628,6 +629,7 @@ local COMMANDS = {
   talents = function(rest) ns.GetModule("TalentPlanner").Command(rest) end,
   legacy = function(rest) ns.GetModule("Legacy").Command(rest) end,
   watch = function(rest) ns.GetModule("ChatWatch").Command(rest) end,
+  gaps = function(rest) ns.GetModule("CooldownGaps").Command(rest) end,
   lfg = function() ns.GetModule("GroupBoard").Toggle() end,
   questdata = function(rest) ns.QuestGuide.Command(rest) end,
   situation = function(rest) ns.GetModule("Situations").Command(rest) end,

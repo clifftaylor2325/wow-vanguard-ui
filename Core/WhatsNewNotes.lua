@@ -11,6 +11,9 @@ local ADDON, ns = ...
 
 ns.WHATS_NEW = {
   { version = "0.6.0", groups = {
+    { module = "CooldownGaps", label = "Cooldown gaps", items = {
+      { text = "A new row of icons for what the game's Cooldown Manager misses: on-use trinkets, items you choose with /vg gaps add, your pet's abilities and totems.", page = "more", row = "Cooldown gaps", off = true },
+    } },
     { module = "SpellRanks", label = "Spell ranks", items = {
       { text = "Chat can say when a bar button holds an older rank of a spell you know better; /vg ranks lists them and /vg ranks swap puts the newest rank there, out of combat.", page = "more", row = "Notice older spell ranks on bar buttons (/vg ranks)", off = true },
       { text = "Trainers you visit are remembered: /vg trainers next lists what comes in the next levels and where to learn it, and a level-up says so too.", page = "more", row = "Remember what trainers teach (/vg trainers)", off = true },
