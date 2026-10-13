@@ -12,7 +12,7 @@ local T, W, O = ns.Theme, ns.Widgets, ns.Options
 local WIDTH, HEIGHT, NAV_WIDTH, BAR = 780, 560, 176, 40
 local CARD_WIDTH, PAD = WIDTH - NAV_WIDTH - 40, 10
 -- Height of each row kind (Core/OptionsPreview.lua and modules add theirs with O.AddRowKind).
-local ROW_HEIGHT = { check = 28, cycle = 28, slider = 28, button = 32, text = 20, module = 40 }
+local ROW_HEIGHT = { check = 28, cycle = 28, slider = 28, button = 32, text = 20, module = 54 }
 -- Row kinds laid out edge to edge in a card (the rest are indented).
 local FULL_WIDTH = { check = true, cycle = true, slider = true, swatches = true, module = true }
 -- Where a row kind keeps its setter; the setting's default, if the row has one, comes right after it.
@@ -36,6 +36,8 @@ local function moduleRow(parent, row, width)
   r.label:SetPoint("TOPLEFT", 8, -6)
   r.desc = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "muted")
   r.desc:SetPoint("TOPLEFT", r.label, "BOTTOMLEFT", 0, -3)
+  r.desc:SetJustifyH("LEFT")
+  r.desc:SetWidth(width - 62)
   r.desc:SetText(row[6])
   return r
 end
