@@ -112,6 +112,8 @@ MS.MENU_FIT = { "Portrait", "PortraitMask", "FlashContent" }
 -- fractions of the art, the slot's own 4:5 shape. An icon's texture is drawn
 -- larger than its slot so this box fills it, its clear margins reaching past
 -- the slot (never cropped: the client counts an atlas's coordinates its own way).
+-- How far in from each edge a frame that passes clicks through has its hit area cut (more than it is wide).
+MS.NO_HIT = 512
 MS.ICON_BOX = { left = 0.14, right = 0.875, top = 0.16, bottom = 0.88 }
 -- The states the game's menu icons come in (their atlas names' last part, lower case).
 MS.ICON_STATES = { "up", "down", "disabled", "mouseover" }
@@ -444,12 +446,22 @@ local function icons(art)
   return set
 end
 
--- Lets clicks through the game's own child frames on a menu button (its "new"
--- indicator and pulse), so a click reaches the button while an alert is shown.
--- Our slot is left alone.
+-- Makes one of the game's frames on a menu button pass every click through: off
+-- the mouse, and with no place left to hit if something turns the mouse back on.
+local function passThrough(f)
+  f:EnableMouse(false)
+  f:SetHitRectInsets(MS.NO_HIT, MS.NO_HIT, MS.NO_HIT, MS.NO_HIT)
+end
+
+-- Lets clicks through the game's own child frames on a menu button (its
+-- notification diamond overlay and any other alert), now and each time one is
+-- shown, so a click reaches the button while a badge is shown. Our slot is left alone.
 local function clickThrough(b)
   for _, child in ipairs({ b:GetChildren() }) do
-    if child ~= vgSlot[b] and child.IsMouseEnabled and child:IsMouseEnabled() then child:EnableMouse(false) end
+    if child ~= vgSlot[b] then
+      passThrough(child)
+      child:HookScript("OnShow", function(self) ns.OutOfCombat(function() passThrough(self) end, "menustrip passthrough") end)
+    end
   end
 end
 
