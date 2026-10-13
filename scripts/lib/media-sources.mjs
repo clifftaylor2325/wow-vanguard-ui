@@ -179,6 +179,8 @@ const MENU_SHAPES = {
   Social: [dot(5.2, 5, 2.2), dot(11, 5.6, 1.9), poly(arc(5.2, 14.5, 4, 5.5, 0, 180)), poly(arc(11.2, 14.5, 3.4, 4.6, 0, 180))],
   Group: [path(arc(8, 8, 6, 4.5, 0, 180), STROKE), path(arc(8, 8, 6, 4.5, 180, 360), STROKE), dot(8, 8, 2)],
   Collections: [box(1, 2, 15, 6), rect(3, 6, 13, 14), crisp([[8, 6], [8, 14]])],
+  // A calendar: a page with a filled header, two binding pegs and a few dates.
+  Calendar: [rect(2.5, 3.5, 13.5, 14), box(2, 3, 14, 6.5), crisp([[5, 1.5], [5, 4.5]]), crisp([[11, 1.5], [11, 4.5]]), box(4.5, 8.5, 6.5, 10.5), box(7.5, 8.5, 9.5, 10.5), box(10.5, 8.5, 12.5, 10.5), box(4.5, 11.5, 6.5, 12.5)],
   Journal: [crisp([[2, 3], [8, 5], [14, 3], [14, 12], [8, 14], [2, 12]], true), crisp([[8, 5], [8, 14]])],
   Shop: [ring(8, 8, 6, STROKE), dot(8, 8, 2)],
   MenuCog: cog(),
