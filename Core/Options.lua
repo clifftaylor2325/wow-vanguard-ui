@@ -266,6 +266,7 @@ O.MODULE_INFO = {
   RaidStatus = { "Raid marks", "Range fade, raid icons, ready check, resurrection, leader. Needs Raid frames." },
   MainTanks = { "Main tank frames", "In a raid, the main tanks and assists as small tiles at the top left, with what each is targeting." },
   PartyExtras = { "Party pets and targets", "Small tiles for each party member's pet and target, above the party (switch it on under Unit frames)." },
+  GroupThreat = { "Group threat", "A small panel of who in your group has the most threat on your target. Off until you switch it on (Unit frames); hides itself while the game hides threat values." },
   RaidTools = { "Raid tools", "For the leader and assistants: ready check, pull timer, role check, target icons and world markers." },
   ClickCast = { "Click casting", "Cast on a frame with a click or a hover key." },
   ActionBars = { "Action bars", "Eight bars with their own size, layout and visibility." },
