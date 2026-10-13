@@ -13,6 +13,8 @@ local T, W = ns.Theme, ns.Widgets
 
 local ROW_HEIGHT = 28
 W.ROW_HEIGHT = ROW_HEIGHT
+-- The switch track's width; a caption stops short of it.
+local SWITCH_WIDTH = 36
 
 -- Shared parts -------------------------------------------------------------------------------
 
@@ -67,32 +69,55 @@ W.IconTexture = icon
 
 -- Switch --------------------------------------------------------------------------------------
 
--- Shows the switch on (accent track, knob right) or off (dark track, knob left).
+-- Shows the switch: on (accent fill, bright knob right) or off (dark track, dim knob left); the knob is bright under the mouse, the fill darker while pressed.
 local function refreshSwitch(r)
   local on = r.get() == true
   r.fill:SetShown(on)
-  T.Tint(r.fill, "accent")
+  T.Tint(r.fill, r.pressed and "accentDim" or "accent")
   r.knob:ClearAllPoints()
   r.knob:SetPoint(on and "RIGHT" or "LEFT", r.track, on and "RIGHT" or "LEFT", on and -2 or 2, 0)
-  T.Tint(r.knob, on and "white" or "muted")
+  T.Tint(r.knob, (on or r.hot) and "white" or "muted")
 end
 
--- The switch itself: an inset track, an accent fill when on, and a square knob.
+-- Keeps r.hot (mouse over) and r.pressed (button down) up to date, redrawing the switch on each change.
+local function trackMouse(r)
+  for event, field, value in ([[OnEnter hot true OnLeave hot false OnMouseDown pressed true OnMouseUp pressed false]]):gmatch("(%w+) (%w+) (%w+)") do
+    r:HookScript(event, function(self) self[field] = value == "true"; if self.get then self:Refresh() end end)
+  end
+end
+
+-- The knob's bevel: a light line along its top and a dark one along its bottom, each one pixel.
+local function addKnobBevel(r)
+  local top, bottom = flat(r.track, "OVERLAY", "sheen"), flat(r.track, "OVERLAY", "shade")
+  top:SetHeight(1)
+  bottom:SetHeight(1)
+  top:SetPoint("TOPLEFT", r.knob, "TOPLEFT")
+  top:SetPoint("TOPRIGHT", r.knob, "TOPRIGHT")
+  bottom:SetPoint("BOTTOMLEFT", r.knob, "BOTTOMLEFT")
+  bottom:SetPoint("BOTTOMRIGHT", r.knob, "BOTTOMRIGHT")
+end
+
+-- The switch itself: a recessed track with an inner border, an accent fill when on, and a beveled square knob.
 local function addSwitch(r)
   r.track = T.Panel(CreateFrame("Frame", nil, r), { inset = true, noSheen = true })
-  r.track:SetSize(36, 18)
+  r.track:SetSize(SWITCH_WIDTH, 18)
   r.track:SetPoint("RIGHT", -8, 0)
   r.fill = flat(r.track, "ARTWORK", "accent")
-  r.fill:SetAllPoints()
+  r.fill:SetPoint("TOPLEFT", 1, -1)
+  r.fill:SetPoint("BOTTOMRIGHT", -1, 1)
   r.knob = flat(r.track, "OVERLAY", "muted")
   r.knob:SetSize(14, 14)
+  addKnobBevel(r)
 end
 
--- A switch row: set(on) runs on click, then the row re-reads get().
+-- A switch row: set(on) runs on click, then the row re-reads get(). A long caption wraps left of the switch.
 function W.Check(parent, text, get, set, width)
   local r = row(parent, text, width)
+  r.label:SetWidth((width or 400) - SWITCH_WIDTH - 24)
+  r.label:SetJustifyH("LEFT")
   r.get, r.Refresh = get, refreshSwitch
   addSwitch(r)
+  trackMouse(r)
   r:SetScript("OnClick", ns.Guard("click switch", function(self) set(not self.get()); T.Sound(self.get() and "on" or "off"); self:Refresh() end))
   r:Refresh()
   return r
