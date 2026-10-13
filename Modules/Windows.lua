@@ -130,12 +130,23 @@ local function atCorner(part, frame)
   return vgCorner[part]
 end
 
+-- Windows whose title row sits higher than the usual one, by the parent's global name: how far down (units)
+-- the middle of their window controls goes (the map's title is 14 down, the others' about 24).
+GW.CONTROL_DROP = { WorldMapFrame = 14 }
+
+-- The window's control drop (GW.CONTROL_DROP), looked up by its parent's name (a border frame has none of its
+-- own) or its own; nil for most.
+local function controlDrop(frame)
+  local parent = frame:GetParent()
+  return GW.CONTROL_DROP[(parent and parent:GetName()) or frame:GetName() or ""]
+end
+
 -- Puts a window's corner close button where every window has it (T.PlaceClose: T.CONTROL.inset in
 -- from the panel's top-right corner) and its maximize/minimize box T.CONTROL.step left of it (the game
 -- placed them for its wider art). A close button the game put anywhere else stays there.
 function GW.PlaceControls(frame, close)
   if not atCorner(close, frame) then return end
-  T.PlaceClose(close, frame)
+  T.PlaceClose(close, frame, controlDrop(frame))
   for _, key in ipairs(GW.MAX_MIN) do
     local box = frame[key]
     if type(box) == "table" and box.SetPoint then box:ClearAllPoints() box:SetPoint("CENTER", close, "CENTER", -T.CONTROL.step, 0) end
