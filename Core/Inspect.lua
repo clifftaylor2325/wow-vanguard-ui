@@ -13,12 +13,19 @@ local ADDON, ns = ...
 ns.Inspect = {}
 local I = ns.Inspect
 
--- The frame a dotted global name leads to, or nil.
+-- The next step of a dotted name from a frame: a key, or "#n" for the frame's nth child frame (an unnamed one).
+local function step(f, key)
+  local n = tonumber(key:match("^#(%d+)$"))
+  if n and type(f.GetChildren) == "function" then return (select(n, f:GetChildren())) end
+  return f[key]
+end
+
+-- The frame a dotted global name leads to, or nil. A "#n" part is the nth child frame of the frame before it.
 function I.Resolve(name)
   local f = _G
   for key in (name or ""):gmatch("[^%.]+") do
     if type(f) ~= "table" then return nil end
-    f = f[key]
+    f = step(f, key)
   end
   return type(f) == "table" and type(f.GetObjectType) == "function" and f or nil
 end

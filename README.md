@@ -168,7 +168,7 @@ Download `Vanguard-<version>.zip` from the [latest release](https://github.com/c
 /vg dock                        line up Deadly Boss Mods' bars with the Boss timers spots; for BigWigs, where to drag its bars
 /vg factionart                  which of the game's own faction pictures this client has
 /vg realm                       your realm, ruleset and side as the client gives them, how it writes your name, and the key your prices, sales and characters are kept under
-/vg frame <name> [deep]         what the client says about a frame now (shown, alpha, scale, size, where its rect is or that it has none, anchors, its parents); deep adds its textures and child frames, for a frame that draws empty: paste it with a bug report
+/vg frame <name> [deep]         (a name may end in #n parts, the nth child frame of the one before: QuestScrollFrame.Contents.#3) what the client says about a frame now (shown, alpha, scale, size, where its rect is or that it has none, anchors, its parents); deep adds its textures and child frames, for a frame that draws empty: paste it with a bug report
 /vg craft [add [n]|next|stock|cd|top|done|clear]   the craft queue, profession cooldowns and best recipes (off until switched on)
 /vg mail [words]|preset ...|send <name>   search the inbox; presets for sending items to your alts (off until switched on)
 /vg rolls [clear]                the group's /roll results this session, newest first; clear forgets them
