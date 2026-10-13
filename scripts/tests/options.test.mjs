@@ -638,3 +638,16 @@ it("slider values show rounded, never as float noise", () => {
   expect(text(1, 35.999524536133)).toBe("36");
   expect(text(0.05, 0.55)).toBe("0.55");
 });
+
+it("switches wrap a long caption left of the track and react to the mouse", () => {
+  const addon = loggedIn();
+  addon.eval(`local on = false
+    __sw = ns.Widgets.Check(UIParent, "A caption", function() return on end, function(v) on = v end, 300)`);
+  expect(addon.eval("return __sw.label:GetWidth()"), "the caption stops short of the 36 px track").toBe(300 - 36 - 24);
+  // Runs one of the row's mouse scripts and returns whether it is hot and pressed.
+  const knob = (event) => addon.eval(`__sw.__scripts.${event}(__sw) return { __sw.hot == true, __sw.pressed == true }`);
+  expect(knob("OnEnter"), "the mouse over the row marks it hot").toEqual([true, false]);
+  expect(knob("OnMouseDown"), "pressing marks it pressed").toEqual([true, true]);
+  expect(knob("OnMouseUp"), "letting go clears the press").toEqual([true, false]);
+  expect(knob("OnLeave"), "leaving clears the hot mark").toEqual([false, false]);
+});

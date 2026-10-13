@@ -188,9 +188,10 @@ local function addCardTitle(card, title)
   return PAD + 18
 end
 
--- A row's height: its kind's, except a note, which takes the height of its wrapped text (with a little air).
+-- A row's height: its kind's, except a note or a switch with a long caption, which take the height of their wrapped text (with a little air).
 local function rowHeight(w, kind)
   if kind == "text" then return math.max(ROW_HEIGHT.text, w:GetStringHeight() + 6) end
+  if kind == "check" and w.label then return math.max(ROW_HEIGHT.check, w.label:GetStringHeight() + 12) end
   return ROW_HEIGHT[kind] or 28
 end
 
