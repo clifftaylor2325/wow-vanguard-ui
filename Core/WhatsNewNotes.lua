@@ -91,6 +91,9 @@ ns.WHATS_NEW = {
     { label = "Window ornaments", items = {
       { text = "A thin brass rule under the options window's header and corner brackets on setup and the quest log.", page = "general", row = "Window ornaments: a brass rule or corners on large windows", off = true },
     } },
+    { label = "Sharper icons", items = {
+      { text = "/vg icons draws the menu strip icons at the size they show at (16, 20, 24 or 32 px) instead of scaling one image, for even strokes. It takes effect after a /reload.", off = true },
+    } },
     { label = "Theme tests", items = {
       { text = "Two switches for side-by-side tests: /vg slug draws world text with the game's smooth-scaling font flag, and /vg framebuffer stops inner borders showing through a window as it fades.", off = true },
     } },

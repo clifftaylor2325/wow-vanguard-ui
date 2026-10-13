@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { orphanMedia, staleMedia } from "./build-media.mjs";
 import { fontFacts } from "./lib/truetype.mjs";
 import { crest, crestNames } from "./lib/media-crests.mjs";
-import { ICONS, MEDIA, SILHOUETTES } from "./lib/media-sources.mjs";
+import { ICONS, ICON_SIZES, MEDIA, SILHOUETTES, SIZED_ICONS } from "./lib/media-sources.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -78,6 +78,7 @@ function mediaIn(src) {
   for (const m of src.matchAll(/T\.Icon\(\w+ and "(\w+)" or "(\w+)"\)/g)) files.push(`Media/Icons/${m[1]}.tga`, `Media/Icons/${m[2]}.tga`);
   for (const m of src.matchAll(/\b(?:icon|IconTexture|WindowControl)\(\w+, "(\w+)"/g)) files.push(`Media/Icons/${m[1]}.tga`);
   for (const m of src.matchAll(/\b(?:icon|slot) = "(\w+)"/g)) files.push(`Media/Icons/${m[1]}.tga`);
+  for (const m of src.matchAll(/MicroButton = "(\w+)"/g)) files.push(`Media/Icons/${m[1]}.tga`);
   for (const m of src.matchAll(/Media\\+(Textures|Icons)\\+(\w+)/g)) files.push(`Media/${m[1]}/${m[2]}.tga`);
   for (const m of src.matchAll(/Fonts\\+([\w-]+\.ttf)/g)) files.push(`Media/Fonts/${m[1]}`);
   for (const m of src.matchAll(/"((?:lorc|delapouite|sbed)-[\w-]+)"/g)) files.push(`Media/Art/${m[1]}.tga`);
@@ -99,6 +100,8 @@ function scanFindsMedia() {
 // halves (T.Texture("Logo" .. half)), the shadow and glow rings (ring(frame, { texture = ... })) and
 // the window controls' glyphs (Modules/Windows.lua maxMinButton), the dispel badge letters
 // (Core/Auras.lua A.DISPEL_GLYPHS) and the warn state's glyph (Core/Theme.lua T.STATE_GLYPHS).
+// The sized copies of the line and menu icons (#232), named by T.Icon(name, size) in the Lua.
+const SIZED_NAMES = SIZED_ICONS.flatMap((n) => ICON_SIZES.map((s) => `Media/Icons/${n}${s}.tga`));
 const BUILT_NAMES = ["Media/Textures/LogoRight.tga", "Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
   ...["Magic", "Curse", "Disease", "Poison"].map((t) => `Media/Icons/Dispel${t}.tga`), "Media/Icons/Warn.tga"];
 
@@ -110,7 +113,7 @@ function mediaImages() {
 
 // Every image in Media/ is named by the addon (or built by name), so none ships unused.
 function noUnusedMedia() {
-  const used = new Set([...namedMedia(), ...BUILT_NAMES]);
+  const used = new Set([...namedMedia(), ...BUILT_NAMES, ...SIZED_NAMES]);
   expect(mediaImages().filter((f) => !used.has(f)), "Media images the addon never uses (remove them in scripts/lib/media-sources.mjs)").toEqual([]);
 }
 
@@ -275,5 +278,33 @@ describe(
     it("every image in Media/ is used by the addon", noUnusedMedia);
     it("no image is left over from a removed source", noOrphanArt);
     for (const file of namedMedia()) it(`${file} exists`, () => fileExists(file));
+  },
+);
+
+// Core/Theme.lua lists the same icons and sizes the generator draws.
+function sizedListsMatch() {
+  const theme = fs.readFileSync(path.join(root, "Core/Theme.lua"), "utf8");
+  const sizes = theme.match(/T\.ICON_SIZES = \{([^}]*)\}/)[1].split(",").map(Number);
+  const names = [...theme.match(/T\.SIZED_ICONS = \{([^}]*)\}/)[1].matchAll(/"(\w+)"/g)].map((m) => m[1]);
+  expect([sizes, [...names].sort()]).toEqual([ICON_SIZES, [...SIZED_ICONS].sort()]);
+}
+
+// A sized icon file's width and height from its TGA header.
+function tgaSize(name, size) {
+  const buf = fs.readFileSync(path.join(root, `Media/Icons/${name}${size}.tga`));
+  return [buf.readUInt16LE(12), buf.readUInt16LE(14)];
+}
+
+// Every icon has a file at every size, each the size it says.
+function sizedFilesFit() {
+  for (const name of SIZED_ICONS) for (const size of ICON_SIZES) expect(tgaSize(name, size), `${name}${size}`).toEqual([size, size]);
+}
+
+describe(
+  "sized icons (#232)",
+  // The Lua's icon list and sizes match the generated files.
+  () => {
+    it("Core/Theme.lua lists the same icons and sizes the generator draws", sizedListsMatch);
+    it("every icon has a file at every size", sizedFilesFit);
   },
 );
