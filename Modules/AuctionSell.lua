@@ -285,6 +285,7 @@ function AH.TakeItem(loc)
   AH.upCard.table.offset = 0
   AH.Queue({ sell = AH.sell.search, card = true }, true)
   AH.PaintSell()
+  return true
 end
 
 -- An item dropped on (or clicked onto) the sell slot: it goes back to its bag and onto the card.
@@ -825,5 +826,5 @@ function AH.BuildSell(f, h)
   lengthRow(c)
   postRow(c)
   guideRow(c)
-  hooksecurefunc(AuctionHouseFrame, "SetPostItem", ns.Guard("hook SetPostItem", function(_, loc) AH.TakeItem(loc) AH.KeepSelling() end))
+  hooksecurefunc(AuctionHouseFrame, "SetPostItem", ns.Guard("hook SetPostItem", function(_, loc) if AH.TakeItem(loc) then AH.KeepSelling() end end))
 end

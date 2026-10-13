@@ -249,7 +249,7 @@ local function buildScan(column, y)
   AH.scanCard = c
 end
 
--- The Shopping page (h tall, w wide): the Lists pane with the scan under it in a column on the
+-- The Lists page (h tall, w wide): the Lists pane with the scan under it in a column on the
 -- left, and the list shown (the Shop card) on the right.
 local function buildShopping(h, w)
   local f = page("Vanguard_AuctionShopping")
@@ -300,10 +300,10 @@ local function addTab(name, f)
   return tab
 end
 
--- The window's display mode changed: each page shows while the mode is its own; the mode it had
--- before is kept (AH.lastMode), so a bag click can bring Selling back (AH.KeepSelling).
-local function onDisplayMode(w, mode)
-  if w.displayMode ~= AH.mode then AH.lastMode, AH.mode = AH.mode, w.displayMode end
+-- The window's display mode was set: each page shows while the mode is its own; the mode set
+-- before is kept (AH.lastMode), so a bag click can bring Posting back (AH.KeepSelling).
+local function onDisplayMode(_, mode)
+  AH.lastMode, AH.mode = AH.mode, mode
   for _, f in ipairs(AH.pages) do f:SetShown(mode == f.vgMode) end
 end
 
@@ -339,8 +339,8 @@ function AH.ShowInGame()
   if type(modes) == "table" and type(w) == "table" and type(w.SetDisplayMode) == "function" then w:SetDisplayMode(modes.Buy) end
 end
 
--- A bag click while Selling was open: the game showed its own sell page for the item, so Selling
--- (whose card took the item) shows again.
+-- A bag click the Sell card took while Posting was open: the game showed its own sell page for
+-- the item, so Posting shows again.
 function AH.KeepSelling()
   local f = AH.pages and AH.pages[2]
   if f and AH.lastMode == f.vgMode and AH.mode ~= f.vgMode then AuctionHouseFrame:SetDisplayMode(f.vgMode) end
@@ -353,9 +353,9 @@ function AH.NoTabRow()
   return false
 end
 
--- The helper's tabs and pages, built the first time the window shows: Shopping (the Lists pane
--- with the scan, and the list shown) and Selling (the Sell card and your auctions), sized to the
--- window's content area; Selling has the listings up now and your auctions on its right. Without
+-- The helper's tabs and pages, built the first time the window shows: Lists (the Lists pane
+-- with the scan, and the list shown) and Posting (the Sell card and your auctions), sized to the
+-- window's content area; Posting has the listings up now and your auctions on its right. Without
 -- the tab row (another client's window) nothing is built.
 function AH.Build()
   if not hasTabs(AuctionHouseFrame) then return AH.NoTabRow() end
@@ -379,9 +379,11 @@ function AH.OnShow()
   AH.PaintOwned()
 end
 
--- The auction house closed: searches waiting and a scan in progress stop (the pages go with the window).
+-- The auction house closed: searches waiting and a scan in progress stop (the pages go with the
+-- window), and the modes it was in are forgotten.
 function AH.OnClosed()
   AH.open, AH.scan, AH.pending, AH.queue, AH.progress, AH.sell = false, nil, nil, {}, nil, nil
+  AH.mode, AH.lastMode = nil, nil
   AH.walker:Hide()
 end
 
