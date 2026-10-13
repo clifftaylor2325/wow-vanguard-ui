@@ -20,7 +20,8 @@ local HELP = {
   "icons [on|off]       menu strip icons drawn at their on-screen size, after a /reload (off by default)",
   "cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)",
   "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
-  "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember",
+  "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember|frost]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember, Frost (light)",
+  "corners [square|rounded]  panel corners: square (default) or rounded, on every theme",
   "gradient [on|off]    windows a shade lighter toward the top (off by default)",
   "accent <rrggbb|name> set the accent color (brass, arcane, jade, orchid, copper); accent reset",
   "theme reset          every theme setting back to default",
@@ -219,10 +220,19 @@ end
 -- /vg variant [name]: a theme variant (#237), repainted at once.
 local function variantCommand(rest)
   if rest == "" then rest = T.Settings().variant end
-  if rest ~= "default" and not T.VARIANTS[rest] then return chat("Usage: /vg variant default|contrast|vellum|classic|midnight|obsidian|moss|ember") end
+  if rest ~= "default" and not T.VARIANTS[rest] then return chat("Usage: /vg variant default|contrast|vellum|classic|midnight|obsidian|moss|ember|frost") end
   T.Settings().variant = rest
   T.Refresh()
   chat("Theme variant: " .. (T.VARIANTS[rest] and T.VARIANTS[rest].label or "Slate and brass") .. ".")
+end
+
+-- /vg corners [square|rounded]: panel corners on every theme, repainted at once (no argument shows the current one).
+local function cornersCommand(rest)
+  if rest == "" then rest = T.Settings().corners end
+  if rest ~= "square" and rest ~= "rounded" then return chat("Usage: /vg corners square|rounded") end
+  T.Settings().corners = rest
+  T.Refresh()
+  chat("Corners: " .. rest .. ".")
 end
 
 -- /vg slug [on|off]: the SLUG font flag on world text, repainted at once (#239).
@@ -609,6 +619,7 @@ local COMMANDS = {
   ornaments = ornamentsCommand,
   icons = iconsCommand,
   variant = variantCommand,
+  corners = cornersCommand,
   slug = slugCommand,
   framebuffer = frameBufferCommand,
   theme = themeCommand,

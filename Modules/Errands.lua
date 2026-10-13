@@ -116,8 +116,8 @@ end
 -- Puts Train all left of Train, and stretches it back only as far as the player's money line, which sits bottom left.
 function ER.PlaceTrainButton(b, train)
   b:SetPoint("RIGHT", train, "LEFT", -4, 0)
-  local money = _G.ClassTrainerFrameMoneyFrame
-  if type(money) == "table" then b:SetPoint("LEFT", money, "RIGHT", 6, 0) end
+  local moneyLine = _G.ClassTrainerFrameMoneyFrame
+  if type(moneyLine) == "table" then b:SetPoint("LEFT", moneyLine, "RIGHT", 6, 0) end
 end
 
 -- Adds the Train all button to the game's trainer window, once that window exists.
