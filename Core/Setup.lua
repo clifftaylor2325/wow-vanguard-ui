@@ -26,8 +26,8 @@ local LATER = "Setup opens again at your next login. /vg setup opens it now; Ski
 
 -- Layout presets, in display order; Keep (the last) moves nothing and is picked when setup opens.
 S.LAYOUTS = {
-  { key = "damage", text = "Centered: damage and tanking", hint = "For damage dealers and tanks: your frames around your character, party and raid just above your player frame." },
-  { key = "healing", text = "Centered: healing", hint = "Party and raid above your frames, a big raid stacked at the left of your character, click casting on." },
+  { key = "damage", text = "Centered: damage and tanking", hint = "For damage dealers and tanks: your frames around your character, compact raid frames without power bars or heal overlays, threat colours and longer debuff rows on nameplates." },
+  { key = "healing", text = "Centered: healing", hint = "Party and raid above your frames, a big raid stacked at the left of your character, raid frames sorted by role with power bars, raid debuffs, HoTs and incoming heals, short debuff rows on nameplates, click casting on." },
   { key = "classic", text = "Like the game's", hint = "Your frames at the top left as the game has them, party and raid down the left side." },
   { key = "keep", text = "Keep my current layout", hint = "Moves nothing: your frames stay where they are." },
 }
@@ -74,7 +74,7 @@ S.onEnd = {}
 -- order: the pages showing; floor: the first step Back reaches; owed: setup opened owing a run;
 -- complete: Done or Skip was clicked (closing otherwise doesn't count as setup having run).
 local state = { step = 1, order = STEPS, floor = 1, profile = "share", layout = S.LAYOUTS[1].key, screen = "keep",
-  owed = false, complete = false, paused = false, reload = false, backup = nil }
+  owed = false, complete = false, paused = false, reload = false, role = false, backup = nil }
 local waiting = false
 
 -- Presets -------------------------------------------------------------------------------
@@ -113,13 +113,40 @@ local function restoreDefaults()
   if ns.MoverPoint("raid") then ns.GetModule("RaidFrames").Fit() end
 end
 
+-- The role preset each layout applies (Core/PresetStrings.lua).
+local ROLE = { damage = "Damage", healing = "Healer" }
+
+-- One module's saved settings, whether or not it is on.
+local function moduleSettings(name)
+  local m = ns.GetModule(name)
+  return ns.Settings(name, m and m.defaults or {})
+end
+
+-- Sets a role layout's raid frame, raid aura, raid healing and nameplate settings (its
+-- preset's); the frames on screen repaint now, the rest shows after the reload Done offers.
+local function applyRole(key)
+  for name, values in pairs(ns.ROLE_SETTINGS[ROLE[key]]) do
+    local saved = moduleSettings(name)
+    for k, v in pairs(values) do saved[k] = v end
+  end
+  local RF, NP = ns.GetModule("RaidFrames"), ns.GetModule("Nameplates")
+  if RF and RF.settings then RF.UpdateAll() end
+  if NP and NP.settings then NP.RefreshAll() end
+  state.role = true
+end
+
 -- What each layout changes.
 local APPLY = {
-  -- Damage and tanking: Vanguard's defaults.
-  damage = restoreDefaults,
-  -- Healing: Vanguard's defaults (a big raid sits at the left of your character), click casting on.
+  -- Damage and tanking: Vanguard's defaults with the Damage preset's settings.
+  damage = function()
+    restoreDefaults()
+    applyRole("damage")
+  end,
+  -- Healing: Vanguard's defaults (a big raid sits at the left of your character), click casting on,
+  -- the Healer preset's settings.
   healing = function()
     restoreDefaults()
+    applyRole("healing")
     turnOn("RaidFrames")
     turnOn("ClickCast")
   end,
@@ -530,6 +557,7 @@ end
 local function reloadReason()
   if state.reload then return "Setup turned on a module that was off." end
   if state.retile then return "The new raid tile size shows after a reload." end
+  if state.role then return "The layout's raid frame, raid aura and nameplate settings show after a reload." end
   if state.complete and state.done then return "Setup is done." end
 end
 
@@ -567,7 +595,7 @@ local function finished()
   if ns.Unlocked() then ns.Lock() end
   if state.complete then markDone() elseif state.owed then ns.Chat(LATER) end
   afterSetup(state.complete and state.owed and state.done, reloadReason())
-  state.reload, state.retile = false, false
+  state.reload, state.retile, state.role = false, false, false
   for _, fn in ipairs(S.onEnd) do fn() end
 end
 
@@ -658,7 +686,7 @@ function S.Open()
   local owe, pick = owed(), VanguardCharDB.pickProfile == true
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
   state.layout, state.screen, state.backup = "keep", "keep", nil
-  state.reload, state.paused, state.done = false, false, false
+  state.reload, state.paused, state.done, state.role = false, false, false, false
   T.OpenWindow(frame)
   showStep(1)
 end

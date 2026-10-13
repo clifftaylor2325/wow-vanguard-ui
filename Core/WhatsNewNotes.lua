@@ -88,6 +88,7 @@ ns.WHATS_NEW = {
     } },
     { label = "Setup", items = {
       { text = "The setup wizard sits above the frame handles on its last step, and its title and step are centred.", page = "general", row = "Run setup" },
+      { text = "Setup's Healing and Damage and tanking layouts now set the raid frame, raid aura and nameplate settings of the Healer and Damage presets, so the two look different; the presets carry raid auras and raid healing too.", page = "general", row = "Run setup" },
     } },
     { label = "Theme", items = {
       { text = "Three new looks: High contrast (opaque panels, white text, a thicker accent ring), Vellum and ink (a warm dark with cream text) and Classic look (dark leather and bronze with gold-cream text). Slate and brass stays the default.", page = "general", row = "Theme variant: surfaces and text", off = true },
