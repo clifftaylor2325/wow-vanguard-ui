@@ -40,6 +40,7 @@ function character(savedVariables = ON, extra = "") {
 const lines = (addon) => addon.eval(`local out = {}
   for _, fs in ipairs(ns.GetModule("InstancePrep").card.info) do if fs:IsShown() then out[#out + 1] = fs:GetText() end end
   return out`);
+// The shown lines as a list (an empty Lua table comes back as an object).
 const text = (addon) => { const out = lines(addon); return Array.isArray(out) ? out : []; };
 
 // Whether the card is on screen.

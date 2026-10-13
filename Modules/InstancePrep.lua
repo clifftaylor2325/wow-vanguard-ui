@@ -231,20 +231,21 @@ local function infoLine(i)
   return fs
 end
 
--- Shows the dungeon card's lines under the first `top` of the card; returns the height they take.
+-- Shows one dungeon card line on its font string at row i under `top`, or hides the font string when there is none.
+local function paintLine(fs, line, i, top)
+  fs:SetShown(line ~= nil)
+  if not line then return end
+  T.Text(fs, line[2] == "head" and "heading" or "label", line[2] == "head" and "text" or "text2")
+  fs:SetText(line[1])
+  fs:SetPoint("TOPLEFT", PR.PAD, -(top + (i - 1) * PR.ROW))
+end
+
+-- Shows the dungeon card's lines under the first `top` of the card; returns the height they take (with padding).
 local function paintInfo(lines, top)
   local card = PR.card
   for i = #card.info + 1, #lines do infoLine(i) end
-  for i, fs in ipairs(card.info) do
-    local line = lines[i]
-    fs:SetShown(line ~= nil)
-    if line then
-      T.Text(fs, line[2] == "head" and "heading" or "label", line[2] == "head" and "text" or "text2")
-      fs:SetText(line[1])
-      fs:SetPoint("TOPLEFT", PR.PAD, -(top + (i - 1) * PR.ROW))
-    end
-  end
-  return #lines * PR.ROW
+  for i, fs in ipairs(card.info) do paintLine(fs, lines[i], i, top) end
+  return #lines > 0 and #lines * PR.ROW + PR.PAD or 0
 end
 
 -- Puts rows on the card ("Everything's packed." when there are none), with Buy list when one
@@ -256,7 +257,7 @@ function PR.Paint(rows, lines)
   for i, r in ipairs(card.rows) do paintRow(r, rows[i]) end
   card.packed:SetShown(#rows == 0)
   local top = PR.TOP + math.max(#rows, 1) * PR.ROW + PR.PAD
-  card:SetHeight(top + paintInfo(lines or {}, top) + PR.PAD)
+  card:SetHeight(top + paintInfo(lines or {}, top))
 end
 
 -- The card's title, in line with its close button (fades it out), and the packed line.
