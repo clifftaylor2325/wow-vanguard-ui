@@ -143,7 +143,7 @@ local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", "the game's fo
 -- The faction look: by your character's faction, or off.
 local FACTION_LOOK = { { "auto", "By your faction" }, { "off", "Off" } }
 -- The theme variants (#237), in display order.
-local VARIANT_CHOICES = { { "default", "Slate and brass" }, { "contrast", "High contrast" }, { "vellum", "Vellum and ink" } }
+local VARIANT_CHOICES = { { "default", "Slate and brass" }, { "contrast", "High contrast" }, { "vellum", "Vellum and ink" }, { "classic", "Classic look" } }
 local BAR_TEXTURES = { { "vanguard", "Vanguard" }, { "soft", "Soft" }, { "flat", "Flat" } }
 -- A share as a percent.
 local function percent(v)
@@ -156,17 +156,18 @@ local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step 
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
--- Look, the font, text size, faction and variant rows.
+-- Look, the font, text size, faction, variant and ornament rows.
 local function lookTextRows()
   return {
     { "cycle", "Font", T.SharedChoices("font", FONT_CHOICES), liveThemeSetting("font") },
     { "slider", "Text size", TEXT_SIZES, liveThemeSetting("textScale") },
     { "cycle", "Faction look: crest and heading font", FACTION_LOOK, liveThemeSetting("faction") },
     { "cycle", "Theme variant: surfaces and text", VARIANT_CHOICES, liveThemeSetting("variant") },
+    check("Window ornaments: a brass rule or corners on large windows", previewedSetting("ornaments")),
   }
 end
 
--- General, part one: accent, color assist, font, text size, variant, scale and theme reset.
+-- General, part one: accent, color assist, font, text size, variant, ornaments, scale and theme reset.
 local function lookRows()
   local rows = { { "header", "Look" }, { "preview" }, { "swatches" },
     check("Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", themeSetting("colorAssist")) }
