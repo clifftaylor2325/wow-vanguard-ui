@@ -71,7 +71,8 @@ end
 -- A figure as short text ("12.3K"), hidden or not; "" where the client refuses.
 local function short(v)
   local ok, text = pcall(AbbreviateNumbers, figure(v))
-  return ok and text or ""
+  if not ok then return "" end
+  return text
 end
 
 -- True when a line is yours (a hidden answer counts as no).
@@ -89,19 +90,29 @@ local function fill(row, src, top)
   give(row.value, "SetText", short(src.amountPerSecond))
 end
 
+-- A list's line i, or nil when it is missing, hidden or not a table.
+local function lineAt(list, i)
+  local src = list and list[i]
+  if ns.IsSecret(src) or type(src) ~= "table" then return nil end
+  return src
+end
+
 -- Paints one row from the list's line i, hidden when it has none or the row is past the setting.
 local function paintRow(i, list)
-  local row, src = MT.frame.rows[i], list and i <= MT.settings.rows and list[i] or nil
+  local row = MT.frame.rows[i]
+  local src = i <= MT.settings.rows and lineAt(list, i) or nil
   row:SetShown(src ~= nil)
-  if src then fill(row, src, list[1]) end
+  if src then fill(row, src, lineAt(list, 1)) end
 end
 
 -- Shows the panel while it's on and its visibility shows it, sized to its rows, and paints each row.
 function MT.Paint()
-  local f, list = MT.frame, MT.Sources()
+  local f = MT.frame
   if not f then return end
   f:SetShown(MT.settings.on == true and V.Shows(f))
   f:SetHeight(MT.HEAD + MT.settings.rows * (MT.ROW + MT.GAP) + MT.GAP)
+  if not f:IsShown() then return end
+  local list = MT.Sources()
   f.title:SetText(MT.KINDS[MT.settings.kind] or MT.KINDS.Dps)
   f.empty:SetShown(list == nil or list[1] == nil)
   for i = 1, #f.rows do paintRow(i, list) end
@@ -148,6 +159,7 @@ end
 
 -- /vg meter [on|off|dps|hps]: switch it, or say how it stands.
 function MT.Command(rest)
+  if not MT.settings then return ns.Chat("Vanguard's meter is switched off under Modules (/vg > Modules).") end
   local word = (rest or ""):lower():match("^%s*(%S*)")
   if word == "on" or word == "off" then MT.SetOn(word == "on")
   elseif word == "dps" or word == "hps" then MT.SetKind(word == "dps" and "Dps" or "Hps") end

@@ -132,3 +132,21 @@ it("the lines setting limits the rows, and the switch and the options apply at o
   addon.eval("ns.GetModule('Meter').settings.rows = 3 ns.GetModule('Meter').Paint()");
   expect([rows(addon).filter((r) => r[0]).length, addon.eval("return Vanguard_Meter:GetHeight()")], "three lines, a shorter panel").toEqual([3, 16 + 3 * 17 + 1]);
 });
+
+it("a line that is hidden or not a table is skipped, and a switched-off meter reads nothing", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  setLines(addon, "{ __wfgWorld.secret(1), 7, { name = 'Tess', amountPerSecond = 5 } }");
+  addon.advance(1);
+  expect(rows(addon).slice(0, 3).map((r) => r[0]), "the two unusable lines draw nothing, no error").toEqual([false, false, true]);
+  expect(addon.eval("return #ns.errors"), "no error").toBe(0);
+  addon.eval("__reads = 0 local get = C_DamageMeter.GetCombatSessionFromType C_DamageMeter.GetCombatSessionFromType = function(...) __reads = __reads + 1 return get(...) end");
+  addon.slash("meter off");
+  addon.advance(2);
+  expect(addon.eval("return __reads"), "off: the game's meter is not asked").toBe(0);
+});
+
+it("with the Meter module switched off, /vg meter says so instead of failing", () => {
+  const addon = loggedIn(METER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Meter = false } } }" });
+  addon.slash("meter on");
+  expect([chatHas(addon, /meter is switched off under Modules/), addon.eval("return #ns.errors"), addon.eval("return Vanguard_Meter == nil")], "a message, no error, no panel").toEqual([true, 0, true]);
+});
