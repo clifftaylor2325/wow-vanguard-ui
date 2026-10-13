@@ -45,6 +45,7 @@ local function addTop(f)
   f.count:SetPoint("LEFT", f.title, "RIGHT", 10, 0)
   f.close = T.PlaceClose(T.CloseButton(CreateFrame("Button", nil, f)), f)
   f.close:SetScript("OnClick", ns.Guard("click close quest log", function() f:Hide() end))
+  T.Ornament(f, "corners")
 end
 
 -- A text on the details side, wrapping to its width.
@@ -89,7 +90,6 @@ function QL.Build()
   f:SetFrameStrata("HIGH")
   ns.Mover(f, "questlog", "Quest log", { "CENTER", "CENTER", -200, 40 })
   addTop(f)
-  T.Ornament(f, "corners")
   f.listScroll, f.list = scrollArea(f, 12, QL.LIST_W)
   f.lines, f.buttons = QP.Pool(f.list, QP.Line), {}
   addDetails(f)

@@ -401,6 +401,7 @@ local function addHeaderControls(f)
   f.search = W.Search(f.header, 190, "Search settings", function(text) O.Search(text) end)
   f.search:SetPoint("RIGHT", f.profile, "LEFT", -8, 0)
   f.search:SetScript("OnEnterPressed", searchEnter)
+  T.Ornament(f, "rule", f.header)
 end
 
 -- The addon's version from its TOC, or nil.
@@ -641,7 +642,6 @@ end
 local function build()
   window = windowFrame()
   addHeader(window)
-  T.Ornament(window, "rule", window.header)
   addHeaderControls(window)
   addFooter(window)
   ns.ErrorBadge.Footer(window)
