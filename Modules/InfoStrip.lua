@@ -37,8 +37,8 @@ IS.BLOCKS = {
   -- Auction sales sit between them (neither is on by default).
   ahgold = { 5, "CENTER" },
 }
--- The calendar button beside the date: its side (UI units) and the gap to the strip's edge.
-IS.CALENDAR, IS.CALENDAR_GAP = 14, 4
+-- The calendar button beside the date: its side and icon size (UI units) and the gap to the strip's edge.
+IS.CALENDAR, IS.CALENDAR_GLYPH, IS.CALENDAR_GAP = 18, 14, 3
 IS.CALENDAR_ICON = { slot = "Calendar" }
 -- The session's rates wait this long (seconds) before showing: early numbers jump about.
 IS.SETTLE = 60
@@ -398,7 +398,7 @@ local function addCalendar(frame)
   b:SetScript("OnClick", ns.Guard("click info strip calendar", function() if type(ToggleCalendar) == "function" then ToggleCalendar() end end))
   b:SetScript("OnEnter", ns.Guard("info strip calendar tip", function(self) GameTooltip:SetOwner(self, "ANCHOR_LEFT") GameTooltip:SetText("Calendar", T.RGB("text")) GameTooltip:Show() end))
   b:SetScript("OnLeave", ns.Guard("info strip calendar tip", function() GameTooltip:Hide() end))
-  ns.GetModule("Minimap").SlotButton(b, IS.CALENDAR_ICON.slot, IS.CALENDAR)
+  ns.GetModule("Minimap").SlotButton(b, IS.CALENDAR_ICON.slot, IS.CALENDAR, IS.CALENDAR_GLYPH)
   IS.calendar = b
 end
 

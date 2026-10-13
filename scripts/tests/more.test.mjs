@@ -1341,7 +1341,7 @@ it("the info strip: the day and date with a calendar button", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + 'date = function(f) return f == "%A, %d %B" and "Tuesday, 13 October" or "21:04" end __opened = 0 ToggleCalendar = function() __opened = __opened + 1 end');
   const button = "Vanguard_InfoStripCalendar";
   expect([block(addon, "date").text, addon.eval(`return ${button}:IsShown()`)], "the day and date, with the button beside them").toEqual(["Tuesday, 13 October", true]);
-  expect(addon.eval(`return { ${button}:GetWidth(), ns.FrameState("vgGlyph")[${button}].__texture:match("(%a+)$") }`), "the button is a 14-unit slot with the calendar icon").toEqual([14, "Calendar"]);
+  expect(addon.eval(`return { ${button}:GetWidth(), ns.FrameState("vgGlyph")[${button}].__texture:match("(%a+)$") }`), "the button is an 18-unit slot with the calendar icon").toEqual([18, "Calendar"]);
   addon.eval(`${button}.__scripts.OnClick(${button}) ${button}.__scripts.OnEnter(${button}) ${button}.__scripts.OnLeave(${button})`);
   expect(addon.eval("return __opened"), "a click opens the calendar").toBe(1);
   addon.eval("ToggleCalendar = nil");
