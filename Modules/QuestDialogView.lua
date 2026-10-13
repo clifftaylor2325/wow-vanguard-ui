@@ -154,11 +154,9 @@ local function renderBody(f, p)
   return bodyHeight(f, #(p.lines or {}))
 end
 
--- One reward card's clicks and tooltip.
+-- One reward card's clicks (its tooltip is the card's own, QP.WireTooltip).
 local function wireCard(c)
   c:SetScript("OnClick", ns.Guard("click quest reward choice", function(self) if self.item.kind == "choice" then QD.Pick(self.item.index) end end))
-  c:SetScript("OnEnter", function(self) QD.ItemTooltip(self) end)
-  c:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 end
 
 -- Every item the page lists: the choices first, then what you get anyway.
@@ -269,15 +267,6 @@ function QD.Press()
   local spec = QD.page and QD.page.primary
   local ready = spec and (spec[3] ~= false or (QD.page.pick and QD.choice ~= nil))
   if ready then spec[2]() end
-end
-
--- The item's tooltip by its card.
-function QD.ItemTooltip(c)
-  local tip = GameTooltip
-  if not tip or type(tip.SetQuestItem) ~= "function" then return end
-  tip:SetOwner(c, "ANCHOR_RIGHT")
-  tip:SetQuestItem(c.item.kind, c.item.index)
-  tip:Show()
 end
 
 -- What a key does here: 1-9 pick a line (or a reward) that exists, Space

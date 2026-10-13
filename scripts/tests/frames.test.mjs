@@ -1,5 +1,6 @@
 // frames: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
+import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { ACTIONS_ENV, CLICK_LUA, HEALING_ENV, RAID_ENV, TICKS_ENV, UI_ENV, UNITS_ENV, bars, button, isTok, loggedIn, marks, raidButton, spark } from "./helpers.mjs";
 
@@ -13,6 +14,8 @@ it("frames pass: bar texture, smoothing, raid style, shields, glows", () => {
   expect(/Media\\Textures\\Bar$/.test(tex), "raid health uses the Vanguard bar texture").toBeTruthy();
   expect(/Media\\Textures\\Stripes$/.test(addon.eval("return Vanguard_RaidUnitButton1.shield.__barTexture.__texture")), "shields are striped").toBeTruthy();
   expect(/Bar$/.test(addon.eval("return Vanguard_player.health.__barTexture.__texture")), "unit frames use it too").toBeTruthy();
+  const stripes = readFileSync(new URL("../../Media/Textures/Stripes.tga", import.meta.url));
+  expect([stripes.readUInt16LE(12), stripes.readUInt16LE(14)], "the shield stripes are one 8 px tile, repeated both ways (#257)").toEqual([8, 8]);
   addon.eval('ns.Options.Show("raid")');
   addon.eval('__click("Style")');
   const dark = addon.eval("local b = Vanguard_RaidUnitButton1 return { bar = b.health.__barColor, name = b.name.__textColor }");

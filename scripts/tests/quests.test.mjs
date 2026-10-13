@@ -261,6 +261,8 @@ it("quest tracker: watched quests with levels, objectives and items", () => {
   expect([isTok(addon, colors[0], "text2"), isTok(addon, colors[1], "good"), isTok(addon, colors[2], "good"), colors[3][0]], "done objectives in green, the title in its difficulty color").toEqual([true, true, true, 1]);
   expect(addon.eval("return { ObjectiveTrackerFrame:IsShown(), ObjectiveTrackerFrame:GetParent() == UIParent, Vanguard_QuestTrackerFrame:GetParent() == Vanguard_QuestTracker }"), "the game's tracker is hidden in place; this one sits in the tracker's spot").toEqual([false, true, true]);
   expect(addon.eval(`local b = Vanguard_QuestItem1 return { b:GetAttribute("type"), b:GetAttribute("item"), b.__points.TOPRIGHT.rel == Vanguard_QuestTrackerFrame.blocks[1], b:IsShown() }`), "the wolves' item, beside its quest").toEqual(["item", "item:90061", true, true]);
+  expect(addon.eval("return { Vanguard_QuestTrackerFrame.__strata, Vanguard_QuestItem1.__strata }"),
+    "the tracker (its clickable titles with it) and its items on LOW, as the game's tracker, under the game's windows (an open bag's items stay clickable)").toEqual(["LOW", "LOW"]);
   setCombat(addon, true);
   addon.eval("__quests[90051].item = nil");
   addon.fire("QUEST_LOG_UPDATE");
@@ -463,6 +465,17 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   addon.fire("QUEST_LOG_UPDATE");
   addon.update(0);
   expect(questLog(addon).title, "the log's next update chooses the first quest showing").toBe("[3] TEST-ONLY Far");
+});
+it("quest log: hovering a reward card shows its item, leaving hides it", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  addon.eval("local c = Vanguard_QuestLog.cards[2] c.__scripts.OnEnter(c)");
+  expect(addon.eval("return { GameTooltip.__questLogItem, GameTooltip:IsShown(), GameTooltip:GetOwner() == Vanguard_QuestLog.cards[2] }"), "a reward: set from its slot and quest, by its card").toEqual(["reward 1 90051", true, true]);
+  addon.eval("local c = Vanguard_QuestLog.cards[1] c.__scripts.OnEnter(c) c.__scripts.OnLeave(c)");
+  expect(addon.eval("return { GameTooltip.__questLogItem, GameTooltip:IsShown() }"), "a choice; leaving hides the tooltip").toEqual(["choice 1 90051", false]);
+  addon.eval("GameTooltip.SetQuestLogItem = nil GameTooltip.__questLogItem = nil local c = Vanguard_QuestLog.cards[1] c.__scripts.OnEnter(c)");
+  expect(addon.eval("return GameTooltip.__questLogItem"), "a client without the call shows nothing").toBe(null);
+  addon.eval("local QP, g = ns.QuestParts, GameTooltip GameTooltip = nil QP.ItemTooltip(Vanguard_QuestLog.cards[1]) QP.ItemTooltip({}) Vanguard_QuestLog.cards[1].__scripts.OnLeave() GameTooltip = g");
 });
 // The quest log's two scroll areas: each child's height, how far it scrolls, and where it is.
 const logScrolls = (addon) => addon.eval(`local f = Vanguard_QuestLog
