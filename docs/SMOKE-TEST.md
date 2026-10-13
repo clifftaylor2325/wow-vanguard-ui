@@ -358,7 +358,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 9.3 Trainer: Train all
 
 - Do: at a class trainer with skills you can afford, click Train all. Try it again in combat if you can.
-- Expect: a button reading `Train all (N) · <money>` on the trainer window; clicking it prints `Trained N skill(s) for <money>.`; in combat it does nothing.
+- Expect: a button reading `Train all (N)` on the trainer window, clear of your money line; clicking it prints `Trained N skill(s) for <money>.`; in combat it does nothing.
 - If it fails, paste: a screenshot of the trainer window and `/vg errors`.
 
 ### 9.4 Lists and Posting tabs at the auction house
