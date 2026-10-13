@@ -260,11 +260,7 @@ npm run preview   # preview/*.png: the default layout and the options window (ne
 
 `.pkgmeta` tells CurseForge's packager (and Wago's, and the BigWigs packager) what goes in the `Vanguard` folder: exactly what `npm run package` puts in the release zip. `scripts/pkgmeta.test.mjs` fails if the two ever differ, so add a new top-level file or folder to `.pkgmeta`'s ignore list unless players need it.
 
-To publish there once the CurseForge project exists:
-
-1. Add `## X-Curse-Project-ID: <id>` to `Vanguard.toc` (the number in the About box on the project's page), so the CurseForge app can match installed copies to the project.
-2. Upload each release's `Vanguard-<version>.zip` to the project, or point CurseForge's packager at this repository and let it build from the release tag with `.pkgmeta`.
-3. Set `CURSEFORGE_URL` in the website's `scripts/lib/html.mjs` to the project's page: its "Coming soon on CurseForge" badges become links.
+Both projects exist. `Vanguard.toc` carries `## X-Curse-Project-ID` and `## X-Wago-ID`, and the `listings` job in `release.yml` runs the BigWigs packager after the GitHub release is published, so a new `v*` tag reaches CurseForge and Wago without a manual upload. It needs the repository secrets `CF_API_KEY` (CurseForge, Account → API Tokens) and `WAGO_API_TOKEN` (Wago, Developer tools), and skips itself while either is missing. The packager (v2.6.1, pinned by commit) knows the Forever flavor and maps Interface 16xxx to it. Nobody has run it yet, and the TOC's second value (120007) is a retail Interface, so the first tag shows whether CurseForge and Wago also list Vanguard as a retail file. When both listings are live, set `CURSEFORGE_URL` in the website's `scripts/lib/html.mjs`: its "Coming soon on CurseForge" badges become links.
 
 ## License
 
