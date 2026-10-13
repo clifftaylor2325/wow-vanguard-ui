@@ -1624,6 +1624,9 @@ T.ROLES = {
 local styled = setmetatable({}, { __mode = "k" })
 -- Styled strings drawn at a size of their own (T.TextSize): string -> size. Weak too.
 local sizes = setmetatable({}, { __mode = "k" })
+-- Every font string coloured by token name (T.Color): string -> token. Weak; T.RefreshText recolours
+-- them all, so a variant switch reaches text that was drawn before it (a light look needs dark text).
+local colored = setmetatable({}, { __mode = "k" })
 
 -- A size after the text scale setting.
 function T.ScaledSize(size)
@@ -1676,16 +1679,21 @@ function T.TextSize(fs, size)
   T.ApplyRole(fs, styled[fs])
 end
 
--- Re-fonts every string styled with a role (after a font or text size change).
+-- Re-fonts every string styled with a role (after a font or text size change) and recolours every
+-- string coloured by token (after a variant or accent change).
 function T.RefreshText()
   for fs, role in pairs(styled) do T.ApplyRole(fs, role) end
+  for fs, token in pairs(colored) do fs:SetTextColor(T.RGB(token)) end
 end
 
--- Colors a font string: a named color, r, g, b (for other addons' skins), or the accent's text variant.
+-- Colors a font string: a named color (remembered, so T.RefreshText keeps it current), r, g, b
+-- (for other addons' skins; forgotten), or the accent's text variant.
 function T.Color(fs, r, g, b)
   if type(r) == "number" then
+    colored[fs] = nil
     fs:SetTextColor(r, g, b)
   else
+    colored[fs] = r or "accentText"
     fs:SetTextColor(T.RGB(r or "accentText"))
   end
   return fs

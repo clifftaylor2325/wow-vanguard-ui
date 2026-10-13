@@ -828,3 +828,28 @@ it("rounded corners: High contrast's 2 px ring rounds at twice the radius, and a
   addon.slash("theme reset");
   expect(addon.eval("return ns.Theme.Settings().corners"), "reset gives square corners").toBe("square");
 });
+
+// WCAG contrast of an { r, g, b } colour against another.
+const contrastOf = (a, b) => Math.round(((Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05)) * 10) / 10;
+
+it("a variant switch recolours text drawn before it: with the options window open, Frost leaves no light text on its white panels", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  addon.slash("variant frost");
+  // Every shown font string inside the options window: its text and colour.
+  const texts = addon.eval(`local out = {}
+    for _, w in ipairs(__wfgStub.frames) do
+      if type(w.__text) == "string" and #w.__text > 0 and w.__textColor then
+        local shown, inWin, f = true, false, w
+        while f do if f.__shown == false then shown = false end if f == Vanguard_Options then inWin = true end f = f.__parent end
+        if shown and inWin then out[#out + 1] = { w.__text, w.__textColor[1], w.__textColor[2], w.__textColor[3] } end
+      end
+    end return out`);
+  const panel = tok(addon, "panel");
+  const faint = texts.filter(([, r, g, b]) => contrastOf([r, g, b], panel) < 4.5).map(([t]) => t);
+  expect(texts.length > 40, "the window has text to check").toBe(true);
+  expect(faint.filter((t) => !/^(<name>|72%|5)$/.test(t)), "every label, value, header and dropdown reads on white (the preview's bar text sits on its bar)").toEqual([]);
+  addon.eval('__hand = UIParent:CreateFontString() ns.Theme.Color(__hand, 0.5, 0.5, 0.5)');
+  addon.slash("variant default");
+  expect([tok(addon, "text").slice(0, 3), addon.eval("return { __hand:GetTextColor() }").slice(0, 3)], "back to the default; text coloured by hand is left alone").toEqual([[232 / 255, 234 / 255, 238 / 255], [0.5, 0.5, 0.5]]);
+});
