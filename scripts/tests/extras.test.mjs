@@ -155,6 +155,12 @@ const FOREVER_TRAINER_ENV = `
   BuyTrainerService = function(i) __learned[#__learned + 1] = __services[i][1] if __shrink then table.remove(__services, i) end end
   ClassTrainerFrame = CreateFrame("Frame", "ClassTrainerFrame", UIParent)
 `;
+it("Train all stops at the player's money line instead of covering it", () => {
+  const addon = loggedIn(TRAINER_ENV);
+  addon.eval('__loadTrainer(true) ClassTrainerFrameMoneyFrame = CreateFrame("Frame", "ClassTrainerFrameMoneyFrame", ClassTrainerFrame)');
+  addon.fire("ADDON_LOADED", "Blizzard_TrainerUI");
+  expect(addon.eval('local b = ns.GetModule("Errands").trainButton return b.__points.LEFT.rel:GetName()'), "its left edge sits right of the money").toBe("ClassTrainerFrameMoneyFrame");
+});
 it("Train all in one click: no purchase twice, the budget counted before the game answers, a list that re-indexes", () => {
   const addon = loggedIn(FOREVER_TRAINER_ENV);
   addon.fire("TRAINER_SHOW");

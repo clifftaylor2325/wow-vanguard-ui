@@ -113,12 +113,19 @@ function ER.TrainAll()
   ER.UpdateTrainButton()
 end
 
+-- Puts Train all left of Train, and stretches it back only as far as the player's money line, which sits bottom left.
+function ER.PlaceTrainButton(b, train)
+  b:SetPoint("RIGHT", train, "LEFT", -4, 0)
+  local money = _G.ClassTrainerFrameMoneyFrame
+  if type(money) == "table" then b:SetPoint("LEFT", money, "RIGHT", 6, 0) end
+end
+
 -- Adds the Train all button to the game's trainer window, once that window exists.
 function ER.AddTrainButton()
   local frame = _G.ClassTrainerFrame
   if ER.trainButton or type(frame) ~= "table" then return end
   local b, train = ns.DialogButton(frame, "Train all", 170), _G.ClassTrainerTrainButton
-  if type(train) == "table" then b:SetPoint("RIGHT", train, "LEFT", -4, 0) else b:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 6) end
+  if type(train) == "table" then ER.PlaceTrainButton(b, train) else b:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 6) end
   b:SetScript("OnClick", ns.Guard("click train all", ER.TrainAll))
   ER.trainButton = b
   ER.UpdateTrainButton()
