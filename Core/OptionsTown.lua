@@ -133,4 +133,4 @@ local function townPageRows()
   return append(append(append(rows, legacyRows()), prepRows()), upgradeRows())
 end
 
-O.AddPage({ key = "town", title = "Town and gear", icon = "NavTown", order = 84, rows = townPageRows })
+O.AddPage({ key = "town", title = "Town and gear", icon = "NavTown", order = 85, rows = townPageRows })
