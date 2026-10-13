@@ -227,7 +227,7 @@ function traceback(L) {
   const msg = lua.lua_tojsstring(L, 1) ?? "<non-string error>";
   lauxlib.luaL_traceback(L, L, to_luastring(msg), 1);
   const [first, ...rest] = lua.lua_tojsstring(L, -1).split("\n");
-  const lines = [first, ...rest.filter((l) => !/\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-layout\.lua|wow-taint\.lua/.test(l))];
+  const lines = [first, ...rest.filter((l) => !/\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-layout\.lua|wow-taint\.lua|wow-inspect\.lua/.test(l))];
   lua.lua_pushstring(L, to_luastring(lines.join("\n")));
   return 1;
 }
@@ -390,15 +390,16 @@ function frameRef(ref) {
   return `_G[${luaString(name)}]${fields.map((f) => `.${f}`).join("")}`;
 }
 
-// Lua that builds a frame's snapshot (see inspect.lua for the fields).
-const INSPECT = fs.readFileSync(path.join(root, "scripts/lib/wow-inspect.lua"), "utf8");
+// The Lua file that builds a frame's snapshot (see wow-inspect.lua for the fields),
+// loaded through the chunk cache like the other stub files.
+const INSPECT = path.join(root, "scripts/lib/wow-inspect.lua");
 
 // A Lua list result as a JS array (an empty Lua table converts to {}).
 const list = (value) => (Array.isArray(value) ? value : []);
 
 // Frame inspectors: what a frame draws, as plain JS.
 function inspectors(addon) {
-  addon.eval(INSPECT);
+  runFile(addon.L, INSPECT, "@wow-inspect.lua", false, 0);
   return {
     // A frame's snapshot: { id, name, kind, shown, visible, rect, text, texture, color, alpha, value, children... }; null when missing.
     frame: (ref) => addon.eval(`local f = ${frameRef(ref)}\nreturn f and __wfgInspect(f)`),
