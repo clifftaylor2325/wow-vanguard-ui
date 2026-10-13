@@ -731,6 +731,21 @@ it("SLUG text (#239): off by default; /vg slug adds the SLUG flag to outlined wo
   expect([flags("__world"), addon.eval("return ns.Theme.Settings().slugText"), chatHas(addon, /SLUG text off/)]).toEqual(["OUTLINE", false, true]);
 });
 
+it("sized icons (#232): off by default; /vg icons makes T.Icon pick the baked size for a sized icon, and only for one", () => {
+  const addon = loggedIn("");
+  // The path T.Icon gives for a name and a size.
+  const icon = (args) => addon.eval(`return ns.Theme.Icon(${args})`);
+  expect([icon('"Quests", 20'), icon('"Quests"')], "off: the plain file").toEqual([expect.stringMatching(/Icons\\Quests$/), expect.stringMatching(/Icons\\Quests$/)]);
+  addon.slash("icons");
+  expect(chatHas(addon, /Sized icons on after a \/reload/)).toBe(true);
+  expect([icon('"Quests", 20'), icon('"Quests", 18'), icon('"Quests", 40'), icon('"Quests"')], "on: the size at or above, the largest past the top, the plain file with no size").toEqual([expect.stringMatching(/Quests20$/), expect.stringMatching(/Quests20$/), expect.stringMatching(/Quests32$/), expect.stringMatching(/Quests$/)]);
+  expect(icon('"LogoMark", 20'), "an icon with no sized copy stays plain").toMatch(/LogoMark$/);
+  addon.slash("icons maybe");
+  expect(chatHas(addon, /Usage: \/vg icons/), "a typo keeps the setting and shows the usage").toBe(true);
+  addon.slash("icons off");
+  expect([addon.eval("return ns.Theme.Settings().sizedIcons"), chatHas(addon, /Sized icons off/)]).toEqual([false, true]);
+});
+
 it("classic look (#218): a variant with a bronze border, gold-cream text and the window ornaments on without their setting", () => {
   const addon = loggedIn("", { firstRun: true });
   addon.eval('ns.GetModule("QuestLog").Toggle() __win = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })');

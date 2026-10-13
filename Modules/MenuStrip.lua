@@ -89,15 +89,15 @@ MS.BAR_ART = { MicroMenu = { "BorderArt", "BackgroundArt" }, BagsBar = { "Border
 -- (MainActionBar_InitializeGamepad / _UnInitializeMKB), leaving the bar empty: shown again.
 MS.KEEP_SHOWN = { "BagsBar", "MicroMenu" }
 
--- The game's menu buttons -> Vanguard's line icon for each (shown when switched on). A client without one skips it.
+-- The game's menu buttons -> the name of Vanguard's line icon for each (shown when switched on). A client without one skips it.
 MS.GLYPHS = {
-  CharacterMicroButton = T.Icon("Character"), PlayerSpellsMicroButton = T.Icon("Spellbook"),
-  SpellbookMicroButton = T.Icon("Spellbook"), TalentMicroButton = T.Icon("Talents"),
-  ProfessionMicroButton = T.Icon("Professions"), AchievementMicroButton = T.Icon("Achievements"),
-  QuestLogMicroButton = T.Icon("Quests"), GuildMicroButton = T.Icon("Social"), SocialsMicroButton = T.Icon("Social"),
-  LFDMicroButton = T.Icon("Group"), CollectionsMicroButton = T.Icon("Collections"), EJMicroButton = T.Icon("Journal"),
-  StoreMicroButton = T.Icon("Shop"), MainMenuMicroButton = T.Icon("MenuCog"), HelpMicroButton = T.Icon("Help"),
-  WorldMapMicroButton = T.Icon("Map"), HousingMicroButton = T.Icon("House"), LegacyMicroButton = T.Icon("Legacy"),
+  CharacterMicroButton = "Character", PlayerSpellsMicroButton = "Spellbook",
+  SpellbookMicroButton = "Spellbook", TalentMicroButton = "Talents",
+  ProfessionMicroButton = "Professions", AchievementMicroButton = "Achievements",
+  QuestLogMicroButton = "Quests", GuildMicroButton = "Social", SocialsMicroButton = "Social",
+  LFDMicroButton = "Group", CollectionsMicroButton = "Collections", EJMicroButton = "Journal",
+  StoreMicroButton = "Shop", MainMenuMicroButton = "MenuCog", HelpMicroButton = "Help",
+  WorldMapMicroButton = "Map", HousingMicroButton = "House", LegacyMicroButton = "Legacy",
 }
 -- A menu button's alert textures (new talents, mail...), kept when its art is faded.
 MS.ALERTS = { "Flash", "FlashBorder", "FlashContent" }
@@ -602,7 +602,7 @@ local function skinButtons()
   for _, name in ipairs(MS.BAGS) do if type(_G[name]) == "table" then MS.SkinBag(_G[name]) end end
   for name, icon in pairs(MS.GLYPHS) do
     local b = _G[name]
-    if type(b) == "table" and b.CreateTexture then MS.SkinButton(b, icon) end
+    if type(b) == "table" and b.CreateTexture then MS.SkinButton(b, T.Icon(icon, MS.GLYPH_PX)) end
   end
   MS.PaintBags()
   for _, e in ipairs(MS.BAG_EVENTS) do ns.On(e, MS.PaintBags) end
