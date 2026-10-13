@@ -142,6 +142,15 @@ function GW.PlaceControls(frame, close)
   end
 end
 
+-- Puts a wide button of a window's title row (a filter dropdown) level with its close button, its right edge
+-- where a maximize box's plate ends (T.CONTROL.step left of the close button's middle), so it keeps clear of the
+-- close button's plate.
+function GW.BesideClose(part, close)
+  if type(part) ~= "table" or type(close) ~= "table" or not part.SetPoint then return end
+  part:ClearAllPoints()
+  part:SetPoint("RIGHT", close, "CENTER", -T.PixelRound(close, T.CONTROL.step - T.CONTROL.tile / 2), 0)
+end
+
 -- A window's close button (when it has one) in the theme and in its corner (GW.PlaceControls).
 function GW.DressClose(frame, close)
   if type(close) ~= "table" or not close.CreateTexture then return end

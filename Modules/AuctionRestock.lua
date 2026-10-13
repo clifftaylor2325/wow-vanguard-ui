@@ -73,7 +73,7 @@ end
 function AH.Restock()
   if not AH.MakeRestock() then return end
   if AH.open then return AH.SearchList() end
-  ns.Chat("At the auction house, Search list on the Shopping tab shows what the cheapest of each come to.")
+  ns.Chat("At the auction house, Search list on the " .. AH.TAB_NAMES[1] .. " tab shows what the cheapest of each come to.")
 end
 
 -- /vg ah restock: the Restock list made (and searched at the auction house).
