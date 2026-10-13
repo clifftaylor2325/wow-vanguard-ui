@@ -18,6 +18,7 @@ local HELP = {
   "framebuffer [on|off] windows drawn through a frame buffer while they open and close (a test; off by default)",
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
   "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
+  "variant [default|contrast|vellum]  surfaces and text: Slate and brass, High contrast, Vellum and ink",
   "gradient [on|off]    windows a shade lighter toward the top (off by default)",
   "accent <rrggbb|name> set the accent color (brass, arcane, jade, orchid, copper); accent reset",
   "theme reset          every theme setting back to default",
@@ -47,6 +48,7 @@ local HELP = {
   "inventory [forget <name>|clear]   your characters remembered here and when their bags were read; forget drops one, clear forgets them all",
   "weights [set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role; change one, go back to the defaults, or share them",
   "prep [want <kind> <n>] the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards",
+  "legacy [probe|plan ...]   Legacy system: probe lists what the client has for it; plan [add <points> <name>|remove <name>|clear] keeps a list of perks for the tree's 16 points (planner off until switched on)",
   "talents [plan|spend|clear|export|import]   Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string",
   "ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|scan|prices clear]  shopping lists (pick or make one, add an item: a link, an ID or a name; rename, copy, delete, export or import the list in use; recent: the last 20 items searched); scan the auction house (while it's open); forget the prices",
   "way [zone] x y [title]   a waypoint on the map that the game's arrow points to (a zone by name, or #<map id>); way clear removes it",
@@ -188,6 +190,15 @@ local function ornamentsCommand(rest)
   s.ornaments = rest == "on" or (rest == "" and not s.ornaments)
   T.Refresh()
   chat(s.ornaments and "Window ornaments on." or "Window ornaments off.")
+end
+
+-- /vg variant [name]: a theme variant (#237), repainted at once.
+local function variantCommand(rest)
+  if rest == "" then rest = T.Settings().variant end
+  if rest ~= "default" and not T.VARIANTS[rest] then return chat("Usage: /vg variant default|contrast|vellum") end
+  T.Settings().variant = rest
+  T.Refresh()
+  chat("Theme variant: " .. (T.VARIANTS[rest] and T.VARIANTS[rest].label or "Slate and brass") .. ".")
 end
 
 -- /vg slug [on|off]: the SLUG font flag on world text, repainted at once (#239).
@@ -571,6 +582,7 @@ local COMMANDS = {
   nineslice = nineSliceCommand,
   gradient = gradientCommand,
   ornaments = ornamentsCommand,
+  variant = variantCommand,
   slug = slugCommand,
   framebuffer = frameBufferCommand,
   theme = themeCommand,
@@ -600,6 +612,7 @@ local COMMANDS = {
   weights = function(rest) ns.GetModule("Upgrades").Command(rest) end,
   prep = function(rest) ns.GetModule("InstancePrep").Command(rest) end,
   talents = function(rest) ns.GetModule("TalentPlanner").Command(rest) end,
+  legacy = function(rest) ns.GetModule("Legacy").Command(rest) end,
   watch = function(rest) ns.GetModule("ChatWatch").Command(rest) end,
   lfg = function() ns.GetModule("GroupBoard").Toggle() end,
   questdata = function(rest) ns.QuestGuide.Command(rest) end,
