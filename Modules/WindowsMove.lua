@@ -1,6 +1,9 @@
 -- Game windows, moving: the game's own windows (the character pane, the combined bag, the group finder,
 -- the guild window, the spellbook and talents, the Legacy window, collections, the game menu, the auction
--- house and a few more) can be dragged by their title bar, and keep the place they are dropped on.
+-- house and a few more) can be dragged by their title bar, and keep the place they are dropped on. Every
+-- one of them can also be dragged by an empty spot along its top edge (a press the window itself gets, so
+-- it never takes a click from a button), and the calendar, the inspect window and some others are dragged
+-- that way only.
 --
 -- The game places these windows itself every time it opens one: the panel manager
 -- (Blizzard_UIParentPanelManager: ShowUIPanel -> FramePositionDelegate -> UpdateUIPanelPositions, which
@@ -22,6 +25,7 @@ local ADDON, ns = ...
 local vgDragging = ns.FrameState("vgDragging")
 local vgMovable = ns.FrameState("vgMovable")
 local vgMoveHandle = ns.FrameState("vgMoveHandle")
+local vgPress = ns.FrameState("vgPress")
 
 local GW = ns.GetModule("Windows")
 
@@ -31,6 +35,15 @@ GW.MOVABLE = {
   "MailFrame", "LFGParentFrame", "CommunitiesFrame", "PlayerSpellsFrame", "SpellBookFrame", "LegacySystemFrame",
   "CollectionsJournal", "TransmogFrame", "AuctionHouseFrame", "ProfessionsFrame", "AchievementFrame",
 }
+-- The windows dragged only by an empty spot along their top edge: no drag area is laid over them, since
+-- the game draws buttons (the calendar's month arrows) where one would go.
+GW.MOVABLE_TOP = {
+  "CalendarFrame", "InspectFrame", "TradeFrame", "DressUpFrame", "ClassTrainerFrame", "GuildBankFrame", "MacroFrame",
+  "PetStableFrame", "RaidParentFrame", "OpenMailFrame", "GroupLootHistoryFrame", "ItemTextFrame", "AddonList",
+  "HelpFrame", "QuestLogPopupDetailFrame",
+}
+-- How far down from a window's top edge a press starts a drag (units).
+GW.MOVE_GRAB = 30
 -- The part a window's title bar is, by window, when it isn't its TitleContainer (parentKey).
 GW.MOVE_BAR = { GameMenuFrame = "Header" }
 -- The drag area (units): `trim` is left off the title bar's right end (the close and minimize buttons sit
@@ -79,9 +92,18 @@ local function place(name)
   ns.OutOfCombat(function() GW.PutBack(name, frame) end, "move " .. name)
 end
 
+-- Every window that can be moved: the ones with a drag area, then the ones dragged by their top edge.
+local function names()
+  local out = {}
+  for _, list in ipairs({ GW.MOVABLE, GW.MOVABLE_TOP }) do
+    for _, name in ipairs(list) do out[#out + 1] = name end
+  end
+  return out
+end
+
 -- Puts every moved window back (after the game has laid its windows out again).
 function GW.PlaceAll()
-  for _, name in ipairs(GW.MOVABLE) do place(name) end
+  for _, name in ipairs(names()) do place(name) end
 end
 
 -- Dragging ------------------------------------------------------------------------------------------
@@ -123,10 +145,8 @@ local function placeHandle(h, frame, bar)
   h:SetFrameLevel((bar or frame):GetFrameLevel() + 1)
 end
 
--- Makes a window movable, kept on the screen, with an invisible drag area over its title bar.
-local function makeMovable(frame, name)
-  frame:SetMovable(true)
-  frame:SetClampedToScreen(true)
+-- Lays an invisible drag area over a window's title bar.
+local function addHandle(frame, name)
   local h = CreateFrame("Frame", nil, frame)
   h.window, h.ignoreInLayout = frame, true
   placeHandle(h, frame, titleBar(frame, name))
@@ -137,18 +157,59 @@ local function makeMovable(frame, name)
   vgMoveHandle[frame] = h
 end
 
+-- Whether the mouse is over the top GW.MOVE_GRAB units of a window.
+local function overTop(frame)
+  local _, y = GetCursorPosition()
+  local top = frame:GetTop()
+  if not top then return false end
+  local below = top - y / frame:GetEffectiveScale()
+  return below >= 0 and below <= GW.MOVE_GRAB
+end
+
+-- A press on an empty spot along a window's top edge starts moving it, never in combat. The window only
+-- gets the press where none of the game's buttons or panels sits over the spot, so no click is taken.
+local function pressTop(frame, button)
+  if button ~= "LeftButton" or ns.InCombat() or vgDragging[frame] or not overTop(frame) then return end
+  vgDragging[frame], vgPress[frame] = true, { frame:GetLeft() or 0, frame:GetTop() }
+  frame:StartMoving()
+end
+
+-- The release of a press-move (or the window closing): it stops, the game's layout cache is kept out of
+-- it, and its place is saved unless it never left its spot (a click).
+local function releaseTop(frame)
+  local from = vgPress[frame]
+  if not from then return end
+  vgDragging[frame], vgPress[frame] = nil, nil
+  frame:StopMovingOrSizing()
+  frame:SetUserPlaced(false)
+  local left, top = frame:GetLeft(), frame:GetTop()
+  if left and top and (math.abs(left - from[1]) >= 1 or math.abs(top - from[2]) >= 1) then GW.SavePlace(frame:GetName(), frame) end
+end
+
+-- Makes a window movable and kept on the screen, dragged by its top edge, and by an invisible drag area over
+-- its title bar too when it is one of GW.MOVABLE.
+local function makeMovable(frame, name, withHandle)
+  frame:SetMovable(true)
+  frame:SetClampedToScreen(true)
+  if withHandle then addHandle(frame, name) end
+  frame:HookScript("OnMouseDown", ns.Guard("press " .. name, pressTop))
+  frame:HookScript("OnMouseUp", ns.Guard("release " .. name, releaseTop))
+  frame:HookScript("OnHide", ns.Guard("release " .. name, releaseTop))
+end
+
 -- Sets a window up once, when the client has it: made movable out of combat, and put back each time it shows.
-local function setUp(name)
+local function setUp(name, withHandle)
   local frame = _G[name]
   if type(frame) ~= "table" or type(frame.HookScript) ~= "function" or vgMovable[frame] then return end
   vgMovable[frame] = true
-  ns.OutOfCombat(function() makeMovable(frame, name) end, "move setup " .. name)
+  ns.OutOfCombat(function() makeMovable(frame, name, withHandle) end, "move setup " .. name)
   frame:HookScript("OnShow", function() place(name) end)
 end
 
 -- Sets up every window the client has now (called again as parts of the game load their windows).
 local function setUpAll()
-  for _, name in ipairs(GW.MOVABLE) do setUp(name) end
+  for _, name in ipairs(GW.MOVABLE) do setUp(name, true) end
+  for _, name in ipairs(GW.MOVABLE_TOP) do setUp(name, false) end
 end
 
 -- Entry point, from GW.Enable while "Drag game windows by their title bar" is on: the windows now and as
