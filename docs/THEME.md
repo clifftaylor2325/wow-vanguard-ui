@@ -214,6 +214,8 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `texelSnap` | off | `/vg texelsnap` | at once |
 | `sliceRings` | off | `/vg nineslice` | on reload |
 | `panelGradient` | off | `/vg gradient` | at once |
+| `slugText` | off | `/vg slug` | at once; adds the SLUG font flag to outlined world-text roles only (`T.FontFlags`, #239) |
+| `frameBuffer` | off | `/vg framebuffer` | next window open or close; `T.OpenWindow`/`T.CloseWindow` call `SetIsFrameBuffer` on the window only while it fades, and only where the client has it (#239) |
 | `barTexture` | `"vanguard"` | General → Bars → Bar texture | on reload; one material for every bar (#234): unit frames, raid tiles, cast bars, XP and reputation, the damage meter all fill with `T.BarTexture()`, and a test checks the whole HUD |
 | `smoothBars` | on | General → Bars → Smooth health and power bars | at once |
 | `hudShadow` | off | General → Bars → Soft shadows under frames | on reload |
