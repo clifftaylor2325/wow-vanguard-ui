@@ -9,6 +9,9 @@ local modules, order = {}, {}
 
 -- Registers a module. def.defaults = its settings; def.Enable(settings) builds
 -- it. Returns def so the module file can add functions to it.
+---@param name string
+---@param def { defaults: table?, Enable: fun(settings: table)?, Disable: fun(settings: table)? }
+---@return table def  the same table, with name set
 function ns.Module(name, def)
   def.name = name
   modules[name] = def
@@ -17,16 +20,21 @@ function ns.Module(name, def)
 end
 
 -- The module registered under name, or nil.
+---@param name string
+---@return table|nil
 function ns.GetModule(name)
   return modules[name]
 end
 
 -- Module names in load order.
+---@return string[]
 function ns.ModuleNames()
   return { unpack(order) }
 end
 
 -- Whether the profile has the module on (on unless turned off).
+---@param name string
+---@return boolean
 function ns.ModuleEnabled(name)
   local enabled = ns.Settings("modules")
   return enabled[name] ~= false
@@ -34,6 +42,8 @@ end
 
 -- Turns a module on or off for this profile. Takes effect on /reload, except
 -- that a module with a Disable(settings) gives back what it changed at once.
+---@param name string
+---@param on boolean
 function ns.SetModuleEnabled(name, on)
   ns.Settings("modules")[name] = on and true or false
   local def = modules[name]

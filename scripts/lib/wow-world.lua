@@ -15,16 +15,31 @@ stub.world = world
 
 -- Secrets --------------------------------------------------------------------------------
 -- The client hides some values in instanced combat: a "secret" errors on
--- arithmetic and comparison. Here it is a table, so the same mistakes fail.
+-- arithmetic, comparison, concatenation, length, a call and a field read or
+-- write. Here it is a table under a metatable that raises on each of those, so
+-- the same mistakes fail (a plain table would only fail some of them). What
+-- the real client's type() returns for a secret number is not confirmed
+-- (issue #284 records it); until then type(secret) is "table" here.
 
--- A secret value (hides `n`, which only the preview reads).
+-- What a secret refuses: every metamethod raises this.
+local function refuse()
+  error("attempt to use a secret value", 2)
+end
+
+local SECRET = {
+  __index = refuse, __newindex = refuse, __call = refuse,
+  __add = refuse, __sub = refuse, __mul = refuse, __div = refuse, __mod = refuse, __pow = refuse, __unm = refuse,
+  __concat = refuse, __len = refuse, __lt = refuse, __le = refuse,
+}
+
+-- A secret value (hides `n`, which only the harness reads, with rawget).
 function world.secret(n)
-  return { __secret = true, n = n }
+  return setmetatable({ __secret = true, n = n }, SECRET)
 end
 
 -- Whether a value is a secret.
 function issecretvalue(v)
-  return type(v) == "table" and v.__secret == true
+  return type(v) == "table" and rawget(v, "__secret") == true
 end
 
 world.aurasSecret = false
@@ -365,7 +380,7 @@ GetQuestDifficultyColor = GetCreatureDifficultyColor
 
 -- A number as the client abbreviates it (12.3K, 1.2M); secrets stay secret.
 function AbbreviateNumbers(v)
-  if issecretvalue(v) then return world.secret(v.n and AbbreviateNumbers(v.n)) end
+  if issecretvalue(v) then local n = rawget(v, "n") return world.secret(n and AbbreviateNumbers(n)) end
   if type(v) ~= "number" then return tostring(v) end
   if v >= 1e6 then return string.format("%.1fM", v / 1e6) end
   if v >= 1e3 then return string.format("%.1fK", v / 1e3) end
@@ -399,7 +414,7 @@ C_StringUtil = {
     local f = { rounding = rounding }
     -- A number rounded by the rule, as text; a secret stays secret.
     function f:Format(n)
-      if issecretvalue(n) then return world.secret(n.n and self:Format(n.n)) end
+      if issecretvalue(n) then local v = rawget(n, "n") return world.secret(v and self:Format(v)) end
       local r = rounding == Enum.NumericRuleFormatRounding.Up and math.ceil(n) or math.floor(n)
       return tostring(r)
     end

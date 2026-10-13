@@ -60,9 +60,10 @@ function fade() {
   return fill(image(8, 64), (x, y) => [1, 1, 1, Math.pow(y / 63, 1.4)]);
 }
 
-// Diagonal stripes for shields, tiled across a bar.
+// Diagonal stripes for shields, one 8 px tile repeated both ways (#257): the period divides the
+// tile, so the seams are exact and the stripes don't shimmer.
 function stripes() {
-  return fill(image(16, 16), (x, y) => [1, 1, 1, (x + y) % 16 < 5 ? 0.55 : 0.12]);
+  return fill(image(8, 8), (x, y) => [1, 1, 1, (x + y) % 8 < 3 ? 0.55 : 0.12]);
 }
 
 // The logo, on a 64-unit grid: two linked diamonds, the left one with a filled middle.
