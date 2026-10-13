@@ -1,5 +1,7 @@
 # Vanguard
 
+<p align="center"><img src="art/brand/vanguard-crest.svg" width="180" alt="Vanguard's crest: two swords crossed behind a brass shield that bears a V"></p>
+
 > **Formerly ForeverUI.** Renamed in 0.4.0 because another, unrelated addon called ForeverUI is published on CurseForge and Wago, and two addons with the same folder name overwrite each other. The slash commands are now `/vg` and `/vanguard`. Settings don't carry over by themselves (the saved-settings file is named after the addon): before updating, type `/fui export` in game and keep the string; after updating, `/vg import` it (old ForeverUI strings import fine). Then delete the old `Interface/AddOns/ForeverUI` folder.
 
 A from-scratch UI suite for WoW Forever (the 12.1 engine with vanilla content; the TOC declares Interface 16001 for Forever and 120007).
