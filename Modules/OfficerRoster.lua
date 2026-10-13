@@ -2,7 +2,7 @@
 -- class color, then the role (as set in the game's group tools), a leader or assistant mark,
 -- and "Offline" or "Dead" where it applies. It is a view only: nothing is sent, invited or
 -- changed. Part of the officer loot tools (Modules/OfficerLoot.lua); it opens with
--- /vg loot roster, or from the button under Bars, map, chat, and only while those are on.
+-- /vg loot roster, or from the button under Windows and tools, and only while those are on.
 
 local ADDON, ns = ...
 
