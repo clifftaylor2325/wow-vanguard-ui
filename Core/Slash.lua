@@ -14,6 +14,8 @@ local HELP = {
   "frames               list the movable frames",
   "grid [size|on|off]   the unlock-mode grid; snap on|off   snapping while dragging",
   "texelsnap [on|off]   still borders, fills and lines snap to the pixel grid (a test; off by default)",
+  "slug [on|off]        world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a test; off by default)",
+  "framebuffer [on|off] windows drawn through a frame buffer while they open and close (a test; off by default)",
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
   "variant [default|contrast|vellum]  surfaces and text: Slate and brass, High contrast, Vellum and ink",
   "gradient [on|off]    windows a shade lighter toward the top (off by default)",
@@ -25,6 +27,7 @@ local HELP = {
   "profile new|copy|delete <name>, profile reset   manage profiles",
   "export [part ...|pick]   copy the profile as a string, or only some parts of it: layout, situations, global or a module's name; pick opens a panel with a switch for each part",
   "import               paste a string from /vg export: a whole profile becomes a new profile, a partial one merges into yours (backed up first)",
+  "preset [name]        presets on offer (Vanguard's healer, damage and tank, and any an addon registers); a name asks to apply it, backed up first",
   "spec [profile|off]   use a profile whenever you're in this specialization",
   "copy                 the recent chat as plain text, ready to copy",
   "situation [record <name>|stop|clear [name]|list]   Situations: record a layout and settings for solo, party, raid, pvp, instance or resting",
@@ -33,12 +36,17 @@ local HELP = {
   "questdata [questID]  what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever",
   "lfg                  open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level",
   "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
+  "craft [add [n]|next|stock|cd|top|done|clear]   the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)",
+  "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>   search the inbox; presets for sending items to your alts (off until switched on)",
   "rolls [clear]        the group's /roll results this session, newest first; clear forgets them",
   "fights               your DPS, length and place in each fight this session, newest first",
+  "recap [say|party|raid|instance|guild]   the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, in your chat or sent to that channel",
   "vendors [clear]      how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them",
+  "ranks [swap]         spell ranks: bar buttons holding an older rank than you know; swap puts the newest rank there (out of combat). Off until Spell ranks is switched on",
+  "trainers [next|clear]   what the trainers you've visited teach: how many services are remembered, what the next levels bring and where, or forget them (Trainer memory off until switched on)",
   "inventory [forget <name>|clear]   your characters remembered here and when their bags were read; forget drops one, clear forgets them all",
   "weights [set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role; change one, go back to the defaults, or share them",
-  "prep [want <kind> <n>] the Instance prep card now: what you're short of; want sets how many food, bandages, potions, ammo or shards",
+  "prep [want <kind> <n>] the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards",
   "talents [plan|spend|clear|export|import]   Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string",
   "ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|scan|prices clear]  shopping lists (pick or make one, add an item: a link, an ID or a name; rename, copy, delete, export or import the list in use; recent: the last 20 items searched); scan the auction house (while it's open); forget the prices",
   "way [zone] x y [title]   a waypoint on the map that the game's arrow points to (a zone by name, or #<map id>); way clear removes it",
@@ -183,6 +191,21 @@ local function variantCommand(rest)
   chat("Theme variant: " .. (T.VARIANTS[rest] and T.VARIANTS[rest].label or "Slate and brass") .. ".")
 end
 
+-- /vg slug [on|off]: the SLUG font flag on world text, repainted at once (#239).
+local function slugCommand(rest)
+  local s = T.Settings()
+  s.slugText = rest == "on" or (rest == "" and not s.slugText)
+  T.RefreshText()
+  chat(s.slugText and "SLUG text on for world text." or "SLUG text off.")
+end
+
+-- /vg framebuffer [on|off]: windows go through a frame buffer while they fade (#239).
+local function frameBufferCommand(rest)
+  local s = T.Settings()
+  s.frameBuffer = rest == "on" or (rest == "" and not s.frameBuffer)
+  chat(s.frameBuffer and "Frame buffers on while windows open and close." or "Frame buffers off.")
+end
+
 -- /vg theme reset
 local function themeCommand(rest)
   if rest ~= "reset" then
@@ -313,6 +336,15 @@ local function importCommand()
 end
 
 ns.ImportDialog = importCommand
+ns.ImportDone = imported
+
+-- /vg preset [name]: the presets on offer (Core/Integration.lua), or ask to apply one.
+local function presetCommand(rest)
+  local preset = ns.FindPreset(rest)
+  if preset then return ns.AskPreset(preset) end
+  chat(rest == "" and "Presets (/vg preset <name> applies one):" or ("No preset called " .. rest .. ". Presets:"))
+  for _, p in ipairs(Vanguard.GetPresets()) do chat("  " .. p.name .. (p.info ~= "" and ("  -  " .. p.info) or "")) end
+end
 
 -- /vg binds: this spec's click-casting bindings, one per line.
 local function bindsCommand()
@@ -519,6 +551,8 @@ end
 local COMMANDS = {
   -- /vg help
   help = function() printLines(HELP) end,
+  -- /vg preset [name]
+  preset = presetCommand,
   -- /vg options (also /vg with nothing after it)
   options = function() ns.Options.Toggle() end,
   config = function() ns.Options.Toggle() end,
@@ -538,6 +572,8 @@ local COMMANDS = {
   nineslice = nineSliceCommand,
   gradient = gradientCommand,
   variant = variantCommand,
+  slug = slugCommand,
+  framebuffer = frameBufferCommand,
   theme = themeCommand,
   modules = modulesCommand,
   enable = setModule(true),
@@ -553,9 +589,14 @@ local COMMANDS = {
   copy = function() ns.GetModule("ChatExtras").ShowCopy() end,
   quests = function() local QL = ns.GetModule("QuestLog") if QL.frame then QL.Toggle() else ns.Chat("Vanguard's quest log is off (/vg > Quests).") end end,
   stock = stockCommand,
+  craft = function(rest) ns.GetModule("CraftQueue").Command(rest) end,
+  mail = function(rest) ns.GetModule("MailTools").Command(rest) end,
   rolls = function(rest) ns.GetModule("Rolls").Command(rest) end,
   fights = function() ns.GetModule("FightHistory").Command() end,
+  recap = function(rest) ns.GetModule("FightHistory").RecapCommand(rest) end,
   vendors = function(rest) ns.GetModule("VendorMemory").Command(rest) end,
+  ranks = function(rest) ns.GetModule("SpellRanks").RanksCommand(rest) end,
+  trainers = function(rest) ns.GetModule("SpellRanks").TrainersCommand(rest) end,
   inventory = function(rest) ns.GetModule("Inventory").Command(rest) end,
   weights = function(rest) ns.GetModule("Upgrades").Command(rest) end,
   prep = function(rest) ns.GetModule("InstancePrep").Command(rest) end,

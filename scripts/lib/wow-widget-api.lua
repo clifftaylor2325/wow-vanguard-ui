@@ -77,7 +77,7 @@ local FRAME = {
   "RegisterUnitEvent", "SetAttribute", "SetClampRectInsets",
   "SetClampedToScreen", "SetClipsChildren", "SetDontSavePosition",
   "SetFixedFrameLevel", "SetFixedFrameStrata", "SetFrameLevel",
-  "SetFrameStrata", "SetHitRectInsets", "SetHyperlinksEnabled", "SetID",
+  "SetFrameStrata", "SetHitRectInsets", "SetHyperlinksEnabled", "SetID", "SetIsFrameBuffer",
   "SetMovable", "SetPropagateKeyboardInput", "SetResizable",
   "SetResizeBounds", "SetToplevel", "SetUserPlaced", "StartMoving",
   "StartSizing", "StopMovingOrSizing", "UnregisterAllEvents",

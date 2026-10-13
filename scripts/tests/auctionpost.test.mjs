@@ -49,8 +49,8 @@ const posts = (addon) => {
   return Array.isArray(list) ? list : [];
 };
 
-// The sell card as the player sees it: [item on it, Post on, the count line].
-const card = (addon) => addon.eval(`local c = ${CARD} return { ${HELPER}.sell ~= nil, c.post:IsEnabled(), c.status:GetText() }`);
+// The sell card as the player sees it: [item on it, Post on, the count line, the guide's line].
+const card = (addon) => addon.eval(`local c = ${CARD} return { ${HELPER}.sell ~= nil, c.post:IsEnabled(), c.status:GetText(), c.guide:GetText() }`);
 
 // Bag item `slot` of bag 0 clicked, back on the Selling tab (the game's SetPostItem shows its own
 // sell page), and the price check answered with `event` once it is sent (searches go a second apart).
@@ -63,21 +63,22 @@ function bagClick(addon, slot, event, payload) {
 
 it("Post on a commodity, end to end: bag click, price check, each stack up through the throttle", () => {
   const addon = atSelling();
-  expect([card(addon), errors(addon)], "the Selling tab: nothing on the card, no error").toEqual([[false, false, ""], []]);
+  expect([card(addon), errors(addon)], "the Selling tab: nothing on the card, no error").toEqual([[false, false, "", "Drop an item on the slot, or click one in your bags."], []]);
   addon.world.postFromBag(0, 3);
   expect(addon.eval("local q = __wfgWorld.ah.queries[#__wfgWorld.ah.queries] return { q.fn, q.args[1].itemID }"), "the bag click: the item's price check is sent").toEqual(["SendSellSearchQuery", 2589]);
   addon.click(`${HELPER}.tabs[2]`);
+  expect(card(addon)[3], "the price check not answered yet").toBe("Checking what it sells for...");
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
   addon.click(`${CARD}.qtyMax`);
-  expect([card(addon), errors(addon)], "priced 1s under 2s: all 45, three stacks of 20, Post on").toEqual([[true, true, "posted 0 of 3"], []]);
+  expect([card(addon), errors(addon)], "priced 1s under 2s: all 45, three stacks of 20, Post on").toEqual([[true, true, "posted 0 of 3", "Click Post to list stack 1 of 3."], []]);
   addon.click(`${CARD}.post`);
-  expect([posts(addon), card(addon), errors(addon)], "the first stack from the click; the throttle drops and Post waits").toEqual([[["PostCommodity", true, "0:3", 1, 20, 100, "nil"]], [true, false, "posted 1 of 3 · waiting for the auction house"], []]);
+  expect([posts(addon), card(addon), errors(addon)], "the first stack from the click; the throttle drops and Post waits").toEqual([[["PostCommodity", true, "0:3", 1, 20, 100, "nil"]], [true, false, "posted 1 of 3", "Stack 1 sent: waiting for the auction house..."], []]);
   addon.world.finishPost(501);
-  expect([addon.eval("return __wfgWorld.bags[0][3] == nil"), card(addon), errors(addon)], "the house took it: the slot is empty, Post is on again").toEqual([true, [true, true, "posted 1 of 3"], []]);
+  expect([addon.eval("return __wfgWorld.bags[0][3] == nil"), card(addon), errors(addon)], "the house took it: the slot is empty, Post is on again").toEqual([true, [true, true, "posted 1 of 3", "Click Post to list stack 2 of 3."], []]);
   addon.click(`${CARD}.post`);
   addon.world.finishPost(502);
   addon.click(`${CARD}.post`);
-  expect([posts(addon).map((p) => [p[0], p[2], p[4]]), card(addon), errors(addon)], "each stack from the next slot; the last 5 empty the card").toEqual([[["PostCommodity", "0:3", 20], ["PostCommodity", "1:1", 20], ["PostCommodity", "1:2", 5]], [false, false, "posted 3 of 3"], []]);
+  expect([posts(addon).map((p) => [p[0], p[2], p[4]]), card(addon), errors(addon)], "each stack from the next slot; the last 5 empty the card").toEqual([[["PostCommodity", "0:3", 20], ["PostCommodity", "1:1", 20], ["PostCommodity", "1:2", 5]], [false, false, "posted 3 of 3", "Finished: posted 3 of 3. Drop the next item to sell more."], []]);
   addon.world.finishPost(503);
   expect([posts(addon).length, posts(addon).every((p) => p[1]), errors(addon)], "nothing more, every post from a click, no error").toEqual([3, true, []]);
 });
@@ -86,9 +87,9 @@ it("Post on an item, end to end: the bid and buyout in whole silver where the ga
   const addon = atSelling("__wfgWorld.ah.copper = false SetCVar('auctionHouseDurationDropdown', 2)");
   bagClick(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   addon.type(`${CARD}.bid`, "10s 50c");
-  expect([card(addon), errors(addon)], "one blade; the bid under the buyout").toEqual([[true, true, "posted 0 of 1"], []]);
+  expect([card(addon), errors(addon)], "one blade; the bid under the buyout").toEqual([[true, true, "posted 0 of 1", "Click Post to list stack 1 of 1."], []]);
   addon.click(`${CARD}.post`);
-  expect([posts(addon), card(addon)], "the blade for the length last used, bid 10s 50c up to 11s, buyout 49s").toEqual([[["PostItem", true, "0:2", 2, 1, 1100, 4900]], [false, false, "posted 1 of 1"]]);
+  expect([posts(addon), card(addon)], "the blade for the length last used, bid 10s 50c up to 11s, buyout 49s").toEqual([[["PostItem", true, "0:2", 2, 1, 1100, 4900]], [false, false, "posted 1 of 1", "Finished: posted 1 of 1. Drop the next item to sell more."]]);
   addon.world.finishPost(601);
   expect([addon.eval("return __wfgWorld.bags[0][2] == nil"), errors(addon)], "the blade went up; no error").toEqual([true, []]);
 });
@@ -96,19 +97,19 @@ it("Post on an item, end to end: the bid and buyout in whole silver where the ga
 it("Post off says why on the card, and a click the game is too busy for says so in chat", () => {
   const addon = atSelling("__wfgWorld.ah.commodities[2589] = {} __wfgWorld.items[2589].sellPrice = 150");
   bagClick(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
-  expect(card(addon), "nothing up and no 7-day low: no price").toEqual([true, false, "posted 0 of 1 · no price yet: wait for the price check, or type one"]);
+  expect(card(addon), "nothing up and no 7-day low: no price").toEqual([true, false, "posted 0 of 1", "No price found: type one in Price."]);
   addon.type(`${CARD}.price`, "1s");
-  expect(card(addon)[2], "1s a unit is under the vendor's 1s 50c").toBe("posted 0 of 1 · under the vendor price");
+  expect(card(addon)[3], "1s a unit is under the vendor's 1s 50c").toBe("Raise the price: it's under what a vendor pays.");
   addon.type(`${CARD}.price`, "2s");
   addon.eval("__wfgWorld.money = 10");
   addon.fire("BAG_UPDATE_DELAYED");
-  expect(card(addon)[2], "10c won't pay a 3s deposit").toBe("posted 0 of 1 · not enough money for the deposit");
+  expect(card(addon)[3], "10c won't pay a 3s deposit").toBe("You don't have the money for the deposit.");
   addon.eval("__wfgWorld.money = 123456 __wfgWorld.bags[0][3] = nil __wfgWorld.bags[1] = {}");
   addon.fire("BAG_UPDATE_DELAYED");
-  expect(card(addon), "no linen left in the bags").toEqual([true, false, "posted 0 of 1 · the item isn't in your bags"]);
+  expect(card(addon), "no linen left in the bags").toEqual([true, false, "posted 0 of 1", "It isn't in your bags now: put it on the card again."]);
   addon.eval("__wfgWorld.bags[0][3] = { itemID = 2589, count = 20 } __wfgWorld.ah.ready = false");
   addon.fire("AUCTION_HOUSE_THROTTLED_MESSAGE_SENT");
-  expect(card(addon), "a message sent: the game is busy").toEqual([true, false, "posted 0 of 1 · waiting for the auction house"]);
+  expect(card(addon), "a message sent: the game is busy").toEqual([true, false, "posted 0 of 1", "Waiting for the auction house to be ready..."]);
   addon.eval("__wfgWorld.ah.ready = true");
   addon.fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY");
   addon.eval("__wfgWorld.ah.ready = false");
@@ -116,8 +117,37 @@ it("Post off says why on the card, and a click the game is too busy for says so 
   expect([posts(addon), chatHas(addon, /Can't post yet: waiting for the auction house\./), card(addon)[1]], "busy since the paint: no post, chat says why, Post goes off").toEqual([[], true, false]);
   bagClick(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   addon.type(`${CARD}.bid`, "60s");
-  expect(card(addon)[2], "a bid over the 49s buyout").toBe("posted 0 of 1 · the bid must be under the buyout");
+  expect(card(addon)[3], "a bid over the 49s buyout").toBe("Lower the bid: it must be under the buyout.");
   addon.click(`${CARD}.stop`);
   addon.eval(`${HELPER}.Post()`);
-  expect([card(addon), posts(addon), errors(addon)], "nothing on the card: Post does nothing, and no error").toEqual([[false, false, "posted 0 of 1"], [], []]);
+  expect([card(addon), posts(addon), errors(addon)], "nothing on the card: Post does nothing, and no error").toEqual([[false, false, "posted 0 of 1", "Finished: posted 0 of 1. Drop the next item to sell more."], [], []]);
+});
+
+it("Post says in chat what it sends, and what the game answers within 3 seconds of the click", () => {
+  const addon = atSelling();
+  // What chat has said after "Post: " so far.
+  const said = () => Array.from(addon.chat()).filter((line) => /Post: /.test(line)).map((line) => line.replace(/^.*Post: /, ""));
+  bagClick(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.fire("AUCTION_HOUSE_POST_ERROR");
+  expect(said(), "an answer before any click says nothing").toEqual([]);
+  addon.type(`${CARD}.stack`, "5");
+  addon.click(`${CARD}.post`);
+  addon.fire("UI_ERROR_MESSAGE", 1, "TEST-ONLY Internal auction error");
+  addon.fire("AUCTION_HOUSE_SHOW_ERROR", 3);
+  addon.fire("ADDON_ACTION_BLOCKED", "TEST-ONLY OtherAddon", "TEST-ONLY Other()");
+  addon.fire("ADDON_ACTION_FORBIDDEN", "Vanguard", "C_AuctionHouse.PostCommodity()");
+  addon.eval(`__wfgStub.fire("UI_ERROR_MESSAGE", 1, __wfgWorld.secret("TEST-ONLY hidden"))`);
+  addon.fire("AUCTION_HOUSE_POST_ERROR");
+  expect(said(), "the stack sent, then each answer; another addon's blocked call is not ours; a secret text is ?").toEqual([
+    "sending stack 1 of 4 (5 at 1s 0c each, TEST-ONLY 12 Hours).",
+    "the game said \"TEST-ONLY Internal auction error\".",
+    "the auction house sent error 3.",
+    "the game blocked C_AuctionHouse.PostCommodity().",
+    "the game said \"?\".",
+    "the auction house refused it.",
+  ]);
+  expect(card(addon).slice(2), "the guide shows the game's last answer until the next click").toEqual(["posted 1 of 4", "The auction house refused it."]);
+  addon.eval("__wfgStub.now = __wfgStub.now + 4");
+  addon.fire("AUCTION_HOUSE_POST_WARNING");
+  expect([said().length, errors(addon)], "4 seconds on, an answer is no longer the click's; no error").toEqual([6, []]);
 });

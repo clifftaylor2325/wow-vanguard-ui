@@ -1014,14 +1014,19 @@ it("posting calls the right function from a click, never from a timer", () => {
   expect(addon.eval("return __wfgWorld.ah.postItem.slotIndex"), "the game's own SetPostItem still ran").toBe(2);
 });
 
-it("a true return waits for the game's confirmation", () => {
+it("a true return asks for a confirm, and the next click on Post (Confirm) confirms it", () => {
   const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.needsConfirm = true __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
   dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   addon.click(`${CARD}.post`);
-  expect([chatHas(addon, /The game wants this price confirmed/), card(addon)[1]], "says so and keeps the item").toEqual([true, "TEST-ONLY-BLADE"]);
-  addon.world.fireAuctionEvents({ itemID: 9999 }, 9999);
+  // Post's label and state, and the guide's line.
+  const asking = () => addon.eval(`local c = ${CARD} return { c.post.text:GetText(), c.post:IsEnabled(), c.guide:GetText() }`);
+  expect([chatHas(addon, /the game asks you to confirm this price/), card(addon)[1], asking()], "says so, keeps the item, and Post reads Confirm").toEqual([true, "TEST-ONLY-BLADE", ["Confirm", true, "The game asks you to confirm this price: click Confirm."]]);
+  addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   addon.advance(5);
-  expect(restrictedLog(addon).map((c) => c[0]), "posted once, never confirmed by the addon").toEqual(["PostItem"]);
+  expect(restrictedLog(addon).map((c) => c[0]), "posted once, nothing confirmed without a click").toEqual(["PostItem"]);
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).map((c) => c.slice(0, 7)), "the click confirms the same post").toEqual([["PostItem", true, "0:2", 1, 1, "nil", 4900], ["ConfirmPostItem", true, "0:2", 1, 1, "nil", 4900]]);
+  expect([card(addon)[1], form(addon)[7], asking()[0]], "the blade is listed: the card empties, Post again").toEqual([false, "posted 1 of 1", "Post"]);
 });
 
 it("the addon never writes into the game's auction window", () => {
@@ -1191,7 +1196,7 @@ it("the next stack is the same item: another variant or a locked slot is passed 
   expect(restrictedLog(addon).map((c) => c[2]), "the blade in bag 0, then the one in bag 1 slot 3").toEqual(["0:2", "1:3"]);
   addon.eval("__wfgWorld.bags[1][3] = nil");
   addon.fire("BAG_UPDATE_DELAYED");
-  expect([card(addon)[2], card(addon)[0][2], form(addon)[7]], "none left in the bags (the card follows the bags): no Post, no deposit, and the line says why").toEqual([false, "", "posted 2 of 4 · the item isn't in your bags"]);
+  expect([card(addon)[2], card(addon)[0][2], form(addon)[7], addon.eval(`return ${CARD}.guide:GetText()`)], "none left in the bags (the card follows the bags): no Post, no deposit, and the guide says why").toEqual([false, "", "posted 2 of 4", "It isn't in your bags now: put it on the card again."]);
 });
 
 // TEST-ONLY linen up now: someone's at 2s (2 hours left), yours at 2s 50c, someone's at 3s (20
