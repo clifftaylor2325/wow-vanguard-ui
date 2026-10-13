@@ -389,7 +389,7 @@ end
 -- The header: logo and title, search, profile, close.
 local function addHeader(f)
   f.header = bar(f, "TOP")
-  f.logo = T.Logo(f.header, 22)
+  f.logo = T.Logo(f.header, 28)
   f.logo:SetPoint("LEFT", 10, 0)
   addTitle(f)
   f.close = T.CloseButton(CreateFrame("Button", nil, f.header))
