@@ -297,6 +297,7 @@ local function prepRows()
     check("Checklist when you enter a dungeon or raid (only when something is low)", setting("InstancePrep", "onEnter")),
     check("Checklist on a ready check", setting("InstancePrep", "onReadyCheck")),
     check("Warn in chat when a supply runs low (once, out of combat)", setting("InstancePrep", "lowWarn")),
+    check("Dungeon card: level range, your dungeon quests and keys on the checklist", setting("InstancePrep", "dungeonCard")),
     { "slider", "Hide after", PREP_SECONDS, setting("InstancePrep", "hideAfter") },
     { "slider", "Durability warning under", PREP_PERCENT, setting("InstancePrep", "durability") },
     { "text", "Wanted amounts: /vg prep want <food|bandages|potions|ammo|shards> <n>; items from /vg stock are checked too." },

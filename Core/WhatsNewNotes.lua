@@ -11,6 +11,9 @@ local ADDON, ns = ...
 
 ns.WHATS_NEW = {
   { version = "0.6.0", groups = {
+    { module = "InstancePrep", label = "Instance prep", items = {
+      { text = "A dungeon card on the checklist shows the dungeon's level range, your own quests for it and the keys you carry, at the door and with /vg prep.", page = "more", row = "Dungeon card: level range, your dungeon quests and keys on the checklist", off = true },
+    } },
     { module = "Windows", label = "Game windows", items = {
       { text = "The spellbook gets the flat Vanguard panel, like the other game windows.", page = "more", row = "Character, merchant, quest, loot and other windows" },
     } },
