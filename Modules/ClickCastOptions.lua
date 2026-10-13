@@ -286,9 +286,11 @@ local function pickerDismissals()
   picker:SetScript("OnHide", function(self) self.catcher:Hide() state.pickKey = nil end)
 end
 
--- The picker's frame settings: above every window, kept on screen, takes the mouse.
+-- The picker's frame settings: above every window (the strata is fixed, or reparenting it
+-- under the Add key button would drop it below the catcher), kept on screen, takes the mouse.
 local function pickerSettings()
   picker:SetFrameStrata("FULLSCREEN_DIALOG")
+  picker:SetFixedFrameStrata(true)
   picker:SetClampedToScreen(true)
   picker:EnableMouse(true)
 end

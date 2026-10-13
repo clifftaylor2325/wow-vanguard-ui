@@ -155,6 +155,7 @@ it("the grid picks spells from the spellbook, with ranks, drops and clears", () 
   expect(addon.eval("return Vanguard_SpellPicker.catcher:IsShown()"), "and its click catcher").toBe(false);
   addon.click(cell(addon, "ctrl-BUTTON2"));
   expect(addon.eval("return Vanguard_SpellPicker.catcher:IsShown()"), "an open picker has a catcher behind it").toBe(true);
+  expect(addon.eval("return Vanguard_SpellPicker.__strata == Vanguard_SpellPicker.catcher.__strata"), "reparented under its anchor, the picker stays on the catcher's strata (above it), so its rows get the clicks").toBe(true);
   addon.eval("Vanguard_SpellPicker.catcher.__scripts.OnClick(Vanguard_SpellPicker.catcher)");
   expect(addon.frame("Vanguard_SpellPicker").visible, "clicking outside closes it").toBe(false);
   addon.click(cell(addon, "ctrl-BUTTON2"));
