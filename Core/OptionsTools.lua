@@ -64,7 +64,7 @@ local function gameToolRows()
   return append({
     { "header", "The game's tools" },
     check("Show the game's Cooldown Manager: its essential row between your frames", cooldownManagerSetting()), check("Cooldown Manager in the Vanguard look (reload)", setting("GameTools", "cooldowns", true)),
-    check("Cooldown gaps: a row of icons for trinkets, items you choose (/vg gaps add), pet abilities and totems (reload)", setting("CooldownGaps", "on", true)), check("Damage meter in the Vanguard look (reload)", setting("GameTools", "meter", true)),
+    check("Cooldown gaps: a row of icons for trinkets, items and spells you choose (/vg gaps add, /vg gaps spell add), pet abilities and totems (reload)", setting("CooldownGaps", "on", true)), check("Cooldown gaps row also draws the Cooldown Manager's essential and utility cooldowns (reload)", setting("CooldownGaps", "tracked", true)), check("Damage meter in the Vanguard look (reload)", setting("GameTools", "meter", true)),
     check("Place them to fit the layout; off leaves them to Edit Mode (reload)", setting("GameTools", "place", true)),
     check("Loss of control in the Vanguard look, above your character (reload)", setting("GameAlerts", "lossOfControl", true)),
     { "cycle", "Talking head (reload)", { { "move", "Vanguard look, top center" }, { "hide", "Hidden" }, { "game", "The game's" } }, setting("GameAlerts", "talkingHead", true) },
@@ -90,6 +90,21 @@ local function fightRows()
     check("Sparkline of your DPS in the last 20 fights, under the damage meter", liveSetting("FightHistory", "strip", function() if FH.enabled then FH.Paint() end end)),
     check("Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)", setting("FightHistory", "recap")),
     fightVisibility, fightWhen,
+  }
+end
+
+-- Vanguard's own damage and healing meter: its switches (applied at once) and its visibility.
+local function meterRows()
+  local MT = ns.GetModule("Meter")
+  local meterVisibility, meterWhen = O.VisibilityRows("Vanguard meter visibility", "Meter", "visibility", "showWhen")
+  -- Draws the panel again, building it first when it was just switched on (when the module is on).
+  local function paint() if MT.enabled then MT.Refresh() end end
+  return {
+    { "header", "Vanguard meter" },
+    check("Vanguard's own damage and healing meter: the top lines of the game's meter (/vg meter)", liveSetting("Meter", "on", paint)),
+    { "cycle", "Meter shows", { { "Dps", "Damage per second" }, { "Hps", "Healing per second" } }, liveSetting("Meter", "kind", paint) },
+    { "slider", "Lines in the meter", { min = 3, max = MT.MAXROWS, step = 1 }, liveSetting("Meter", "rows", paint) },
+    meterVisibility, meterWhen,
   }
 end
 
@@ -142,7 +157,7 @@ end
 -- The Windows and tools page: the game's windows and tools, boss mods, the fight panels, prompts and tooltips.
 local function toolsPageRows()
   local rows = append(append(windowRows(), gameToolRows()), bossDockRows())
-  return append(append(append(append(rows, fightRows()), rollRows()), promptRows()), tooltipRows())
+  return append(append(append(append(append(rows, fightRows()), meterRows()), rollRows()), promptRows()), tooltipRows())
 end
 
 O.AddPage({ key = "tools", title = "Windows and tools", icon = "NavTools", order = 83, rows = toolsPageRows })
