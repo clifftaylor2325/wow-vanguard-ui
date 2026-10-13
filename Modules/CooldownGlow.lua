@@ -51,8 +51,8 @@ function CG.FromCurve(id, unit, percent)
   local ok, duration = pcall(get, unit, id)
   if not (ok and type(duration) == "table" and duration.EvaluateRemainingPercent) then return nil end
   local done, value = pcall(duration.EvaluateRemainingPercent, duration, curve)
-  if done and (ns.IsSecret(value) or type(value) == "number") then return value end
-  return nil
+  local usable = done and (ns.IsSecret(value) or type(value) == "number")
+  return usable and value or nil
 end
 
 -- The glow's strength from plain numbers (1 or 0); nil when the aura's times are hidden or it has none.
