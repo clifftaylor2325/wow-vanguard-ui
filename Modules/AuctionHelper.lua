@@ -562,6 +562,8 @@ local function listen()
   -- The sell card again when the game goes busy (a message sent) or is ready for a post again, or a
   -- stack left the bags, so Post is on only while it can post.
   for _, e in ipairs(AH.SELL_EVENTS) do on(e, function() AH.PaintSell() end) end
+  -- What the game answers to a post, said in chat.
+  for e in pairs(AH.POST_ANSWERS) do on(e, AH.OnPostAnswer) end
   for _, each in ipairs({ AH.ListenShop, AH.ListenOwned, AH.ListenLedger, AH.ListenDeals, AH.ListenUpgrades }) do each(on) end
 end
 

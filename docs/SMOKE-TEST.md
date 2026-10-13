@@ -723,8 +723,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.9.2 Post from the Selling tab
 
 - Do: on Selling, click a stack of cloth (a commodity) in a bag, go back to Selling, set Stack to 5 and Quantity to 10, and click Post twice, the second time as soon as Post lights again; then drop a piece of gear on the sell slot, type a bid under its price and click Post.
-- Expect: each click puts one stack up (the game's "Auction created" line in chat), the count line says "posted 1 of 2 · waiting for the auction house" until the game is ready, then "posted 1 of 2" with Post lit; after the second the card empties and keeps "posted 2 of 2"; the gear goes up with its bid and price (both in whole silver if the game takes no copper). Post never stays lit without posting: when it is off the line says why. `/vg errors` stays empty.
-- If it fails, paste: a screenshot of the Selling tab, the chat lines, and `/vg errors`.
+- Expect: each click says "Post: sending stack 1 of 2 (5 at ... each, ...)" in chat and puts one stack up (the game's "Auction created" line in chat), the count line says "posted 1 of 2 · waiting for the auction house" until the game is ready, then "posted 1 of 2" with Post lit; after the second the card empties and keeps "posted 2 of 2"; the gear goes up with its bid and price (both in whole silver if the game takes no copper). Post never stays lit without posting: when it is off the line says why. `/vg errors` stays empty.
+- If it fails, paste: a screenshot of the Selling tab, every chat line starting "Post:" (none at all after a click means the click never reached Post), and `/vg errors`.
 
 ## 16. Realm and ruleset
 
