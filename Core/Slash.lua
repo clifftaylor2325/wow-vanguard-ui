@@ -17,6 +17,7 @@ local HELP = {
   "slug [on|off]        world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a test; off by default)",
   "framebuffer [on|off] windows drawn through a frame buffer while they open and close (a test; off by default)",
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
+  "variant [default|contrast|vellum]  surfaces and text: Slate and brass, High contrast, Vellum and ink",
   "gradient [on|off]    windows a shade lighter toward the top (off by default)",
   "accent <rrggbb|name> set the accent color (brass, arcane, jade, orchid, copper); accent reset",
   "theme reset          every theme setting back to default",
@@ -180,6 +181,15 @@ local function gradientCommand(rest)
   s.panelGradient = rest == "on" or (rest == "" and not s.panelGradient)
   T.Refresh()
   chat(s.panelGradient and "Panel gradient on: windows run a shade lighter toward the top." or "Panel gradient off.")
+end
+
+-- /vg variant [name]: a theme variant (#237), repainted at once.
+local function variantCommand(rest)
+  if rest == "" then rest = T.Settings().variant end
+  if rest ~= "default" and not T.VARIANTS[rest] then return chat("Usage: /vg variant default|contrast|vellum") end
+  T.Settings().variant = rest
+  T.Refresh()
+  chat("Theme variant: " .. (T.VARIANTS[rest] and T.VARIANTS[rest].label or "Slate and brass") .. ".")
 end
 
 -- /vg slug [on|off]: the SLUG font flag on world text, repainted at once (#239).
@@ -562,6 +572,7 @@ local COMMANDS = {
   texelsnap = texelSnapCommand,
   nineslice = nineSliceCommand,
   gradient = gradientCommand,
+  variant = variantCommand,
   slug = slugCommand,
   framebuffer = frameBufferCommand,
   theme = themeCommand,
