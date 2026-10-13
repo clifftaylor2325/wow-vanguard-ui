@@ -412,8 +412,11 @@ export function checkSource(file, src) {
 //     / ns.InCombat() before it. Code at a file's top level runs at load and counts as safe.
 //   unbounded-onupdate: an OnUpdate handler that neither waits on the elapsed time it adds up
 //     (or on GetTime()) nor is cleared anywhere in its file with SetScript("OnUpdate", nil).
+//   unguarded-script-handler: a SetScript or HookScript handler (OnEnter, OnShow, OnKeyDown...)
+//     that is not an ns.Guard(...) call, so its error reaches the game's popup but never
+//     /vg errors. OnClick on SetScript is the blocking rule above; OnUpdate has its own rule.
 
-export const REPORT_RULES = ["secure-outside-combat-guard", "unbounded-onupdate"];
+export const REPORT_RULES = ["secure-outside-combat-guard", "unbounded-onupdate", "unguarded-script-handler"];
 
 // Calls the client refuses on protected frames, or for bindings, while in combat.
 const SECURE_CALLS = new Set([
@@ -547,10 +550,33 @@ function unboundedOnUpdates(file, src) {
   return loose.map((c) => ({ rule: REPORT_RULES[1], line: line(tokens[c.at].start), message: ONUPDATE_MESSAGE }));
 }
 
+// The script handlers set in code tokens, as { at, script, handler }, except OnClick on
+// SetScript (the blocking rule) and OnUpdate (its own rule).
+function scriptHandlerCalls(tokens) {
+  return tokens.flatMap((t, i) => {
+    const method = t.text === "SetScript" || t.text === "HookScript";
+    const script = method && tokens[i + 1]?.text === "(" ? /^["'](On\w+)["']$/.exec(tokens[i + 2]?.text ?? "")?.[1] : null;
+    if (!script || script === "OnUpdate" || (script === "OnClick" && t.text === "SetScript")) return [];
+    return [{ at: i, script, handler: callArgs(tokens, i + 1)[1] ?? [] }];
+  });
+}
+
+// True when a handler argument clears the script (nil, or an expression ending in nil).
+const clearsScript = (handler) => handler.length === 0 || handler[handler.length - 1].text === "nil";
+
+// Script handlers that are not an ns.Guard(...) call in their file: [{ rule, line, message }].
+function unguardedScriptHandlers(file, src) {
+  if (!COLOR_SCOPE.test(file)) return [];
+  const tokens = codeTokens(src);
+  const line = lineIndex(src);
+  const loose = scriptHandlerCalls(tokens).filter((c) => !clearsScript(c.handler) && c.handler.slice(0, 4).map((t) => t.text).join("") !== "ns.Guard(");
+  return loose.map((c) => ({ rule: REPORT_RULES[2], line: line(tokens[c.at].start), message: `${c.script} handler is not an ns.Guard(where, fn) call, so its errors never reach /vg errors` }));
+}
+
 // Report-only findings in one file: [{ rule, line, message }]. They never fail on their own.
 export function reportSource(file, src) {
   if (!file.endsWith(".lua")) return [];
-  return unguardedSecureCalls(file, src).concat(unboundedOnUpdates(file, src));
+  return unguardedSecureCalls(file, src).concat(unboundedOnUpdates(file, src), unguardedScriptHandlers(file, src));
 }
 
 // Each report-only rule's count against its baseline (a missing baseline is 0):

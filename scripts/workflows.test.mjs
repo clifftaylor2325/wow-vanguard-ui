@@ -96,6 +96,44 @@ it("no run script holds an input expression", () => {
   for (const blocks of all) for (const b of blocks) expect(b).not.toContain("${{ inputs.");
 });
 
+// The lua-suite steps that only repeat verify.yml on a pull request (#292 F2).
+const CHECK_STEPS = [
+  "luacheck 1.2.0 and Lua 5.1",
+  "Code quality",
+  "The TOC against the files on disk",
+  "luacheck",
+  "Lua 5.1 syntax of every file the TOC loads",
+  "Release zip builds and holds every file it should",
+];
+
+it("lua-suite takes a boolean checks input that defaults to on", () => {
+  const input = workflow("lua-suite.yml").match(/^ {6}checks:\n((?: {8}.*\n)+)/m)?.[1] ?? "";
+  expect(input).toMatch(/^ {8}type: boolean$/m);
+  expect(input).toMatch(/^ {8}default: true$/m);
+});
+
+it("every check step is gated on the checks input, and the tests, bench and upload are not", () => {
+  const text = workflow("lua-suite.yml");
+  for (const name of CHECK_STEPS) {
+    const step = stepNamed(text, name);
+    expect(step, `lua-suite has a step named "${name}"`).not.toBe("");
+    expect(step, name).toMatch(/^ {8}if: inputs\.checks$/m);
+  }
+  expect(text).toContain("- run: npm run coverage\n");
+  expect(stepNamed(text, "Raid benchmark (harness measurement)")).not.toContain("if:");
+  expect(text.match(/^ {8}if: inputs\.checks$/gm)).toHaveLength(CHECK_STEPS.length);
+});
+
+it("full-suite runs the checks on every event but a pull request", () => {
+  expect(workflow("full-suite.yml")).toContain("checks: ${{ github.event_name != 'pull_request' }}");
+});
+
+it("release keeps the checks and skips the preview", () => {
+  const text = workflow("release.yml");
+  expect(text).toContain("preview: false");
+  expect(text).not.toMatch(/^\s+checks:/m);
+});
+
 it("lua-suite keeps read-only permissions", () => {
   expect(workflow("lua-suite.yml")).toMatch(/^permissions:\n {2}contents: read\n/m);
 });
@@ -245,7 +283,7 @@ it("full-suite keeps its schedule, hand start, inputs, report job and cancel set
   const text = workflow("full-suite.yml");
   expect(text).toContain('- cron: "23 10 * * 0"');
   expect(text).toMatch(/^ {2}workflow_dispatch:\n {4}inputs:\n {6}preview:/m);
-  expect(text).toContain("preview: ${{ github.event_name != 'workflow_dispatch' || inputs.preview }}");
+  expect(text).toContain("preview: ${{ github.event_name == 'schedule' || inputs.preview == true || contains(github.event.pull_request.labels.*.name, 'preview') }}");
   expect(text).toContain("if: always() && github.event_name != 'pull_request' && needs.suite.result != 'cancelled'");
   expect(text).toMatch(/^ {2}cancel-in-progress: true$/m);
 });
