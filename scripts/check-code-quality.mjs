@@ -4,7 +4,8 @@
 // not an ns.Guard(...) call (rules in scripts/lib/code-quality.mjs).
 //
 // Then prints the counts of the report-only rules (#263: secure calls outside
-// a combat guard, OnUpdate handlers neither throttled nor cleared). Those fail
+// a combat guard, OnUpdate handlers neither throttled nor cleared, script
+// handlers that are not ns.Guard calls). Those fail
 // the run only when a count rises above its baseline in
 // scripts/code-quality-baseline.json, a ratchet like the coverage floor: when
 // a count drops, lower the baseline in the same commit.
