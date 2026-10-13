@@ -663,6 +663,28 @@ it("state colors and Color assist (#235): states off the red-green axis; the swi
   expect(hex("bad"), "other colors stay as they are").toBe("e8663f");
 });
 
+// The visible textures under a frame that use a given art file.
+const artShown = (addon, frame, art) => addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do
+  if w.__kind == "Texture" and w.__parent == ${frame} and w:IsShown() and tostring(w.__texture):find("${art}") then n = n + 1 end end return n`);
+
+it("ornaments (#238): off by default; /vg ornaments puts a rule on the options window and brackets on the quest log and setup, in the accent's dim variant", () => {
+  const addon = loggedIn("", { firstRun: true });
+  addon.eval('ns.Options.Show("general") ns.GetModule("QuestLog").Toggle()');
+  // How many ornament pieces each window shows: the options rule diamond, the quest log and setup brackets.
+  const shown = () => [artShown(addon, "Vanguard_Options", "Diamond"), artShown(addon, "Vanguard_QuestLog", "OrnamentCorner"), artShown(addon, "Vanguard_Setup", "OrnamentCorner")];
+  expect(shown(), "off by default: nothing drawn").toEqual([0, 0, 0]);
+  addon.slash("ornaments");
+  expect([shown(), chatHas(addon, /Window ornaments on/)], "on at once: a diamond rule, four brackets each").toEqual([[1, 4, 4], true]);
+  const dim = tok(addon, "accentDim");
+  expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__parent == Vanguard_QuestLog and tostring(w.__texture):find("OrnamentCorner") then return w.__vertexColor end end`).slice(0, 3), "tinted in the accent's dim variant").toEqual(dim.slice(0, 3));
+  addon.eval('ns.Theme.Ornament(Vanguard_QuestLog, "corners")');
+  expect(artShown(addon, "Vanguard_QuestLog", "OrnamentCorner"), "asking again adds nothing").toBe(4);
+  addon.eval('ns.Theme.Settings().accent = { 0.2, 0.9, 0.4 } ns.Theme.Refresh()');
+  expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__parent == Vanguard_QuestLog and tostring(w.__texture):find("OrnamentCorner") then return w.__vertexColor end end`)[1], "follows the accent").not.toBeCloseTo(dim[0], 2);
+  addon.slash("ornaments off");
+  expect([shown(), chatHas(addon, /Window ornaments off/)]).toEqual([[0, 0, 0], true]);
+});
+
 // The border thickness of a painted frame, in screen pixels: its thickest thin BORDER-layer line (the sheen is one pixel).
 const edgeThickness = (addon, name) => addon.eval(`local f = ${name} local least
   for _, r in ipairs({ f:GetRegions() }) do
