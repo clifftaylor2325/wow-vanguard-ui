@@ -247,6 +247,7 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | Raid tiles out of range | alpha 40 % | instant | instant | Fade players out of range (Raid frames) |
 | Health and power bars | the client eases the value (`ExponentialEaseOut`) | the client's easing | the client's easing | Smooth health and power bars |
 | Action button proc glow | the accent glow ring shows while the game highlights the spell | static, no animation | static | - |
+| Cooldown Manager icon with less than the set share of its aura left (`/vg cdmglow`) | the accent glow ring shows | static, no animation | static | - |
 | Aura and cooldown sweeps | the dark sweep, no edge line and no end flash (bling) | the aura's duration | the aura's duration | - |
 | Micro menu buttons | the game's own alert flash (kept on the strip) | the game's | the game's | - (the game's) |
 | Stance and pet bars | the game's attack flash and auto-cast mark (kept) | the game's | the game's | - (the game's) |
