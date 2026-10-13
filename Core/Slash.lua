@@ -17,6 +17,8 @@ local HELP = {
   "slug [on|off]        world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a test; off by default)",
   "framebuffer [on|off] windows drawn through a frame buffer while they open and close (a test; off by default)",
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
+  "icons [on|off]       menu strip icons drawn at their on-screen size, after a /reload (off by default)",
+  "cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)",
   "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
   "variant [default|contrast|vellum|classic]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look",
   "gradient [on|off]    windows a shade lighter toward the top (off by default)",
@@ -64,7 +66,9 @@ local HELP = {
   "errors [clear]       the errors Vanguard caught this session, with stacks and counts (for a bug report); clear empties the list",
   "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
   "feedback [bug|feature]   a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)",
+  "gaps [add <item>|remove <item>|clear]   Cooldown gaps (switch it on under Windows and tools): choose items such as a Healthstone or potion to show beside trinkets, pet abilities and totems; no verb lists them",
   "perf [cpu|watch]     Vanguard's CPU and memory now; cpu turns the game's CPU profiling on or off (reload); watch prints them every minute",
+  "mem                  watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early",
 }
 
 -- Prints each line.
@@ -177,6 +181,16 @@ local function nineSliceCommand(rest)
   chat((s.sliceRings and "Nine-slice shadows on" or "Nine-slice shadows off") .. " after a /reload.")
 end
 
+-- /vg cdmglow [on|off|<percent>]: the Cooldown Manager refresh-window glow (#252), at once.
+local function cdmGlowCommand(rest)
+  local CG = ns.GetModule("CooldownGlow")
+  local percent = tonumber(rest)
+  if percent then CG.settings.percent = math.min(60, math.max(10, math.floor(percent))) end
+  CG.settings.glow = percent ~= nil or rest == "on" or (rest == "" and not CG.settings.glow)
+  CG.Apply()
+  chat(CG.settings.glow and ("Cooldown Manager glow on: under " .. CG.settings.percent .. " percent left.") or "Cooldown Manager glow off.")
+end
+
 -- /vg gradient [on|off]: floating windows' fills a shade lighter toward the top, at once (#259).
 local function gradientCommand(rest)
   local s = T.Settings()
@@ -191,6 +205,14 @@ local function ornamentsCommand(rest)
   s.ornaments = rest == "on" or (rest == "" and not s.ornaments)
   T.Refresh()
   chat(s.ornaments and "Window ornaments on." or "Window ornaments off.")
+end
+
+-- /vg icons [on|off]: line and menu icons baked at their on-screen size (#232), after a /reload.
+local function iconsCommand(rest)
+  local s = T.Settings()
+  if rest ~= "" and rest ~= "on" and rest ~= "off" then return chat("Usage: /vg icons [on|off]") end
+  s.sizedIcons = rest == "on" or (rest == "" and not s.sizedIcons)
+  chat(s.sizedIcons and "Sized icons on after a /reload." or "Sized icons off after a /reload.")
 end
 
 -- /vg variant [name]: a theme variant (#237), repainted at once.
@@ -581,8 +603,10 @@ local COMMANDS = {
   snap = snapCommand,
   texelsnap = texelSnapCommand,
   nineslice = nineSliceCommand,
+  cdmglow = cdmGlowCommand,
   gradient = gradientCommand,
   ornaments = ornamentsCommand,
+  icons = iconsCommand,
   variant = variantCommand,
   slug = slugCommand,
   framebuffer = frameBufferCommand,
@@ -616,6 +640,7 @@ local COMMANDS = {
   talents = function(rest) ns.GetModule("TalentPlanner").Command(rest) end,
   legacy = function(rest) ns.GetModule("Legacy").Command(rest) end,
   watch = function(rest) ns.GetModule("ChatWatch").Command(rest) end,
+  gaps = function(rest) ns.GetModule("CooldownGaps").Command(rest) end,
   lfg = function() ns.GetModule("GroupBoard").Toggle() end,
   questdata = function(rest) ns.QuestGuide.Command(rest) end,
   situation = function(rest) ns.GetModule("Situations").Command(rest) end,
@@ -630,6 +655,7 @@ local COMMANDS = {
   report = reportCommand,
   feedback = feedbackCommand,
   perf = function(rest) ns.Perf.Command(rest) end,
+  mem = function() ns.Perf.MemCommand() end,
 }
 
 -- /vg entry point: no arguments opens the options window. A command runs under

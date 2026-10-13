@@ -1,7 +1,7 @@
 -- Boss mod docks: two movable spots in the layout for boss mods' timer bars,
 -- "Boss timers" (their normal bars) and "Boss timers, soon" (the big bars a
 -- timer moves to as it runs out). They are empty frames: only their handles
--- show, in unlock mode. /vg dock (or the button under Bars, map, chat) lines
+-- show, in unlock mode. /vg dock (or the button under Windows and tools) lines
 -- Deadly Boss Mods' bars up with them through DBM's own settings call
 -- (DBT:SetOption, then DBT:Rearrange); BigWigs has no such call, so for it
 -- the command says where the spots are, to drag its anchors there. Nothing is

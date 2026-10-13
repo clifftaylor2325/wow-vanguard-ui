@@ -80,6 +80,12 @@ local function previewedSetting(key)
   return get, function(v) set(v); ns.RaidPreview.Refresh() end, initial
 end
 
+-- get/set for Stack big raids: the real frames and the preview follow at once.
+local function stackSetting()
+  local get, set, initial = setting("RaidFrames", "stackBig", true)
+  return get, function(v) set(v); ns.GetModule("RaidFrames").Fit(); ns.RaidPreview.Refresh() end, initial
+end
+
 -- Raid frames: party coverage, sorting, size.
 local function raidRows()
   return {
@@ -87,7 +93,7 @@ local function raidRows()
     check("Use them for your party too", setting("RaidFrames", "showInParty", true)), check("Include yourself", setting("RaidFrames", "showPlayer", true)),
     check("Sort by role (tanks, healers, damage)", previewedSetting("sortByRole")),
     { "cycle", "Groups as (reload)", { { "columns", "Columns" }, { "rows", "Rows (wide, for big raids)" } }, previewedSetting("layout") },
-    check("Hide the default raid frames", setting("RaidFrames", "hideBlizzard", true)),
+    check("Stack big raids at the left (more than 10 players)", stackSetting()), check("Hide the default raid frames", setting("RaidFrames", "hideBlizzard", true)),
     { "cycle", "Style", { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }, raidSetting("look") },
     { "cycle", "Width", ns.Widgets.Keep({ { 72, "72" }, { 90, "90" }, { 100, "100" }, { 120, "120" } }), previewedSetting("width") },
     { "cycle", "Height", { { 36, "36" }, { 40, "40" }, { 48, "48" }, { 56, "56" } }, previewedSetting("height") },

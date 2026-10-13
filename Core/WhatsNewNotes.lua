@@ -11,22 +11,28 @@ local ADDON, ns = ...
 
 ns.WHATS_NEW = {
   { version = "0.6.0", groups = {
+    { module = "CooldownGaps", label = "Cooldown gaps", items = {
+      { text = "A new row of icons for what the game's Cooldown Manager misses: on-use trinkets, items you choose with /vg gaps add, your pet's abilities and totems.", page = "tools", row = "Cooldown gaps", off = true },
+    } },
     { module = "SpellRanks", label = "Spell ranks", items = {
-      { text = "Chat can say when a bar button holds an older rank of a spell you know better; /vg ranks lists them and /vg ranks swap puts the newest rank there, out of combat.", page = "more", row = "Notice older spell ranks on bar buttons (/vg ranks)", off = true },
-      { text = "Trainers you visit are remembered: /vg trainers next lists what comes in the next levels and where to learn it, and a level-up says so too.", page = "more", row = "Remember what trainers teach (/vg trainers)", off = true },
+      { text = "Chat can say when a bar button holds an older rank of a spell you know better; /vg ranks lists them and /vg ranks swap puts the newest rank there, out of combat.", page = "town", row = "Notice older spell ranks on bar buttons (/vg ranks)", off = true },
+      { text = "Trainers you visit are remembered: /vg trainers next lists what comes in the next levels and where to learn it, and a level-up says so too.", page = "town", row = "Remember what trainers teach (/vg trainers)", off = true },
     } },
     { module = "InstancePrep", label = "Instance prep", items = {
-      { text = "A dungeon card on the checklist shows the dungeon's level range, your own quests for it and the keys you carry, at the door and with /vg prep.", page = "more", row = "Dungeon card: level range, your dungeon quests and keys on the checklist", off = true },
-      { text = "Buff checks add a flask, food buff, weapon oil and raid buff rows to the ready-check card. They start off.", page = "more", row = "Buff checks on the card: flask, food, oil or poison, raid buffs", off = true },
+      { text = "A dungeon card on the checklist shows the dungeon's level range, your own quests for it and the keys you carry, at the door and with /vg prep.", page = "town", row = "Dungeon card: level range, your dungeon quests and keys on the checklist", off = true },
     } },
     { module = "Windows", label = "Game windows", items = {
-      { text = "The spellbook gets the flat Vanguard panel, like the other game windows.", page = "more", row = "Character, merchant, quest, loot and other windows" },
+      { text = "The spellbook gets the flat Vanguard panel, like the other game windows.", page = "tools", row = "Character, merchant, quest, loot and other windows" },
+    } },
+    { module = "CooldownGlow", label = "Cooldown Manager glow", items = {
+      { text = "A Cooldown Manager buff icon can glow when its aura is in its last 30 % (you choose the share), for spells the game doesn't flag itself.", page = "tools", row = "Glow a Cooldown Manager buff in its last part, where the game's own flag is missing", off = true },
     } },
     { module = "RaidFrames", label = "Raid frames", items = {
       { text = "A raid tile width the choices don't list shows its value on the Width row.", page = "raid", row = "Width" },
+      { text = "A raid of 25 or 40 now starts at the left of your character, its groups stacked as rows, where healers keep it; a party or a raid of 10 stays over your player frame. Frames you already moved stay where they are, and Stack big raids at the left turns it off.", page = "raid", row = "Stack big raids at the left (more than 10 players)" },
     } },
     { module = "AuctionHelper", label = "Auction helper", items = {
-      { text = "The auction house tabs are now called Lists and Posting, and are sized to their names.", page = "more", row = "Lists and Posting tabs on the auction house" },
+      { text = "The auction house tabs are now called Lists and Posting, and are sized to their names.", page = "town", row = "Lists and Posting tabs on the auction house" },
       { text = "Posting shows a step guide (Item, Price, Post, Listed) with a line saying what to do next, and a price the game asks you to confirm is confirmed with a second click." },
       { text = "Clicking an item in your bags while Posting is open keeps you on Posting instead of switching to the game's Sell page." },
     } },
@@ -48,19 +54,19 @@ ns.WHATS_NEW = {
       { text = "Quest-start pins on the world map, from the game's own quest data. Shift-click a quest in the tracker to point the arrow at its next step.", page = "quests", row = "Quest-start pins on the world map" },
     } },
     { module = "CraftQueue", label = "Craft queue", items = {
-      { text = "A craft queue for your professions (/vg craft): queue the recipe on display, open the next one, raise Keep stocked to fit, see profession cooldowns across your characters and rank the recipes that pay best. Nothing is crafted or bought for you.", page = "more", row = "Craft queue, profession cooldowns and recipe ranking (/vg craft)", off = true },
+      { text = "A craft queue for your professions (/vg craft): queue the recipe on display, open the next one, raise Keep stocked to fit, see profession cooldowns across your characters and rank the recipes that pay best. Nothing is crafted or bought for you.", page = "town", row = "Craft queue, profession cooldowns and recipe ranking (/vg craft)", off = true },
     } },
     { module = "MailTools", label = "Mail tools", items = {
-      { text = "A panel beside the mail window searches and filters your inbox, and presets fill the Send Mail tab for your alts (/vg mail). You click Take and Send yourself.", page = "more", row = "Search the inbox and send-to-alt presets beside the mail window (/vg mail)", off = true },
+      { text = "A panel beside the mail window searches and filters your inbox, and presets fill the Send Mail tab for your alts (/vg mail). You click Take and Send yourself.", page = "town", row = "Search the inbox and send-to-alt presets beside the mail window (/vg mail)", off = true },
     } },
     { module = "GroupBoard", label = "Group board", items = {
-      { text = "A group board (/vg lfg) lists looking-for-more and looking-for-group posts from chat by dungeon, role and level. A click opens a whisper you send yourself.", page = "more", row = "Open the group board" },
+      { text = "A group board (/vg lfg) lists looking-for-more and looking-for-group posts from chat by dungeon, role and level. A click opens a whisper you send yourself.", page = "chat", row = "Open the group board" },
     } },
     { module = "OfficerLoot", label = "Officer loot tools", items = {
-      { text = "A soft-reserve list (/vg loot) flags a roll on a reserved item in the roll tracker, and a roster panel lists the group by role. Kept on your character and shared by hand into the chat box; nothing is synced or sent for you.", page = "more", row = "Turn on the soft-reserve list and the roster", off = true },
+      { text = "A soft-reserve list (/vg loot) flags a roll on a reserved item in the roll tracker, and a roster panel lists the group by role. Kept on your character and shared by hand into the chat box; nothing is synced or sent for you.", page = "tools", row = "Turn on the soft-reserve list and the roster", off = true },
     } },
     { module = "InstancePrep", label = "Instance prep", items = {
-      { text = "Buff checks add a flask, food buff, weapon oil and raid buff rows to the ready-check card. They start off.", page = "more", row = "Buff checks on the card: flask, food, oil or poison, raid buffs", off = true },
+      { text = "Buff checks add a flask, food buff, weapon oil and raid buff rows to the ready-check card. They start off.", page = "town", row = "Buff checks on the card: flask, food, oil or poison, raid buffs", off = true },
     } },
     { module = "GroupThreat", label = "Group threat", items = {
       { text = "A panel lists who in your group has the most threat on your target. It starts off, and hides itself while the game hides threat values.", page = "unitframes", row = "Group threat panel: who has the most threat on your target (reload)", off = true },
@@ -69,13 +75,13 @@ ns.WHATS_NEW = {
       { text = "When another addon does a job a Vanguard module also does, chat says so once and the Modules page lets you pick which one does it." },
     } },
     { module = "FightHistory", label = "Fight history", items = {
-      { text = "/vg recap shows the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, and sends them to a channel on request. A recap in your own chat after each fight is off until you switch it on.", page = "more", row = "Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)", off = true },
+      { text = "/vg recap shows the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, and sends them to a channel on request. A recap in your own chat after each fight is off until you switch it on.", page = "tools", row = "Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)", off = true },
     } },
     { module = "Errands", label = "Errands", items = {
-      { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "more", row = "Boat and zeppelin timer (reload)", off = true },
+      { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "town", row = "Boat and zeppelin timer (reload)", off = true },
     } },
     { module = "Legacy", label = "Legacy system", items = {
-      { text = "/vg legacy probe lists what the game has for the Legacy system, and a perk planner (off until you switch it on) keeps a list of perks within the tree's 16 points.", page = "more", row = "Legacy perk planner: a list of perks within the tree's 16 points (/vg legacy plan)", off = true },
+      { text = "/vg legacy probe lists what the game has for the Legacy system, and a perk planner (off until you switch it on) keeps a list of perks within the tree's 16 points.", page = "town", row = "Legacy perk planner: a list of perks within the tree's 16 points (/vg legacy plan)", off = true },
     } },
     { label = "Setup", items = {
       { text = "The setup wizard sits above the frame handles on its last step, and its title and step are centred.", page = "general", row = "Run setup" },
@@ -85,6 +91,9 @@ ns.WHATS_NEW = {
     } },
     { label = "Window ornaments", items = {
       { text = "A thin brass rule under the options window's header and corner brackets on setup and the quest log.", page = "general", row = "Window ornaments: a brass rule or corners on large windows", off = true },
+    } },
+    { label = "Sharper icons", items = {
+      { text = "/vg icons draws the menu strip icons at the size they show at (16, 20, 24 or 32 px) instead of scaling one image, for even strokes. It takes effect after a /reload.", off = true },
     } },
     { label = "Theme tests", items = {
       { text = "Two switches for side-by-side tests: /vg slug draws world text with the game's smooth-scaling font flag, and /vg framebuffer stops inner borders showing through a window as it fades.", off = true },

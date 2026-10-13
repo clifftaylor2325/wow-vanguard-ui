@@ -243,11 +243,11 @@ it("quality borders, search dimming and item tooltips still work inside sections
   expect(lines, "the water's tooltip: what the stack sells for, and how many you have").toEqual(["Sells for", "You have 5"]);
 });
 
-it("a switch under Bars, map, chat gives back the plain combined bag at once, and the sections again", () => {
+it("a switch under Bars and bags gives back the plain combined bag at once, and the sections again", () => {
   const addon = loggedIn(BAG_ENV + CLICK_LUA);
   addon.eval("__openBag()");
   addon.slash("");
-  addon.eval('__click("Bars, map, chat")');
+  addon.eval('__click("Bars and bags")');
   expect(addon.eval('return __click("Combined bag in sections") and VanguardDB.profiles.Default.Bags.sections'), "the switch is on the page").toBe(false);
   expect([headers(addon), spot(addon, "b0s1"), height(addon)], "switched off: the game's grid and height, no headers").toEqual([[], [343, 75], 186]);
   addon.eval("ContainerFrameCombinedBags:UpdateItems() ContainerFrameCombinedBags:Hide() __openBag()");
@@ -262,7 +262,7 @@ it("a client without the bag window's layout calls keeps the plain combined bag"
   const addon = loggedIn(UI_ENV + CLICK_LUA);
   addon.eval("ContainerFrameCombinedBags:Show()");
   addon.slash("");
-  addon.eval('__click("Bars, map, chat") __click("Combined bag in sections")');
+  addon.eval('__click("Bars and bags") __click("Combined bag in sections")');
   expect([addon.eval("return ns.GetModule('Bags').sectionFrame == nil"), headers(addon)], "no sections, and the switch does nothing").toEqual([true, []]);
   const old = loggedIn(BAG_ENV + "C_Item.GetItemInfoInstant = nil");
   old.eval("__openBag()");

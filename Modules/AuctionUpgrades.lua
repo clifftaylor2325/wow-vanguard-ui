@@ -39,7 +39,7 @@ AH.SLOT_NAMES = { INVTYPE_HEAD = "Head", INVTYPE_NECK = "Neck", INVTYPE_SHOULDER
   INVTYPE_FINGER = "Finger", INVTYPE_TRINKET = "Trinket", INVTYPE_CLOAK = "Back", INVTYPE_WEAPON = "One-Hand",
   INVTYPE_WEAPONMAINHAND = "Main Hand", INVTYPE_2HWEAPON = "Two-Hand", INVTYPE_WEAPONOFFHAND = "Off Hand", INVTYPE_SHIELD = "Off Hand",
   INVTYPE_HOLDABLE = "Held In Off-hand", INVTYPE_RANGED = "Ranged", INVTYPE_RANGEDRIGHT = "Ranged", INVTYPE_THROWN = "Thrown", INVTYPE_RELIC = "Relic" }
--- The Upgrades entry's switch (Bars, map, chat > Auction house): on, as Deals is.
+-- The Upgrades entry's switch (Town and gear > Auction house): on, as Deals is.
 AH.defaults.upgrades = true
 -- This visit's upgrades by link: { link, id, key, price, pct, empty, slot, score }; and every gear
 -- listing seen (link -> price per unit), to judge again when what you wear changes.
@@ -237,7 +237,7 @@ end
 -- The line shown while there are no upgrades: how they are found, or that Gear upgrades is off.
 local function upgradeStatus(items)
   if #items > 0 then return "" end
-  if not ns.GetModule("Upgrades").settings then return "Turn on Gear upgrades (Bars, map, chat) to judge gear." end
+  if not ns.GetModule("Upgrades").settings then return "Turn on Gear upgrades (Town and gear) to judge gear." end
   return "None yet: a scan or an item search finds armor and weapons that beat what you wear."
 end
 

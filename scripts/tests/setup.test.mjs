@@ -117,7 +117,7 @@ it("first-run setup: a profile of its own copies the shared one without a reload
     .toEqual(["Moves nothing: your frames stay where they are.", "Centered: healing  ·  your role"]);
   addon.eval('__click("Centered: healing")');
   setupClick(addon, "next");
-  expect(addon.eval("return { VanguardDB.profiles.name.positions.raid.point, VanguardDB.profiles.Default.positions.raid.y }"), "Healing moved the new profile's raid grid; Default keeps its own").toEqual(["BOTTOM", -300]);
+  expect(addon.eval("return { VanguardDB.profiles.name.positions.raid == nil, VanguardDB.profiles.Default.positions.raid.y }"), "Healing leaves the new profile's raid grid at its default; Default keeps its own").toEqual([true, -300]);
   expect(addon.eval("return ns.Settings('positions') == VanguardDB.profiles.name.positions"), "the running settings are the new profile's").toBe(true);
   setupClick(addon, "back");
   expect(setupState(addon).step, "Back stops at the layout step").toBe(2);

@@ -14,7 +14,7 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
   const before = addon.eval("return Vanguard_InfoStrip:GetHeight()");
   expect(block(addon, "dps").shown, "off until you turn it on").toBe(false);
   addon.slash("");
-  addon.eval('__click("Bars, map, chat")');
+  addon.eval('ns.Options.Show("map")');
   addon.eval(`__click("Your DPS in the last fight (from the game's damage meter)")`);
   expect([block(addon, "dps").text, addon.eval("return __asked"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "your line's figure, the current fight's DPS, on a seventh row").toEqual(["1.2K dps", [1, 1], 130]);
   setCombat(addon, true);
@@ -39,7 +39,7 @@ it("the info strip: your place in the last fight's DPS, in a group", () => {
   const addon = loggedIn(UNITS_ENV + DPS_ENV + CLICK_LUA);
   expect(block(addon, "rank").shown, "off until you turn it on").toBe(false);
   addon.slash("");
-  addon.eval('__click("Bars, map, chat")');
+  addon.eval('ns.Options.Show("map")');
   addon.eval(`__click("Your place in the last fight's DPS")`);
   expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "text2"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "second of two, on the seventh row").toEqual(["#2 of 2", true, 130]);
   addon.eval("__dps.combatSources = { __dps.combatSources[2], __dps.combatSources[1], { isLocalPlayer = false } }");
@@ -92,7 +92,7 @@ it("the info strip under the minimap", () => {
   addon.fire("BAG_UPDATE_DELAYED");
   expect(isTok(addon, block(addon, "bags").color, "bad"), "full bags are red").toBe(true);
   addon.slash("");
-  addon.eval('__click("Bars, map, chat")');
+  addon.eval('ns.Options.Show("map")');
   expect(addon.eval('return __click("Clock")') && block(addon, "clock").shown, "a block turns off at once").toBe(false);
   expect(addon.eval('return { ns.MoverPoint("infostrip") }'), "the strip is movable, under the minimap").toEqual(["TOPRIGHT", "TOPRIGHT", -12, -200]);
 });
@@ -140,7 +140,7 @@ it("the info strip: a warlock's soul shards, across the bags and the reagent bag
   addon.fire("BAG_UPDATE_DELAYED");
   expect(block(addon, "shards").text, "a hidden item doesn't count").toBe("shards 0");
   addon.slash("");
-  addon.eval('__click("Bars, map, chat")');
+  addon.eval('ns.Options.Show("map")');
   expect(addon.eval('return __click("Soul shards (warlocks)")') && block(addon, "shards").shown, "a switch turns it off at once").toBe(false);
   expect(block(loggedIn(UNITS_ENV + SHARDS + "C_Container.GetContainerItemInfo = nil"), "shards").shown, "a client that can't list bag items shows nothing").toBe(false);
   expect(block(loggedIn(UNITS_ENV), "shards").shown, "a mage carries no shards").toBe(false);
@@ -488,7 +488,7 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
   expect(isTok(addon, glyph("CharacterMicroButton").color, "disabled"), "and in the disabled tier while the button is disabled").toBeTruthy();
   addon.eval("CharacterMicroButton:Enable()");
   expect(isTok(addon, glyph("CharacterMicroButton").color, "text"), "back to text when it's enabled again").toBeTruthy();
-  addon.eval('ns.Options.Show("more")');
+  addon.eval('ns.Options.Show("bars")');
   expect(addon.eval('return __click("Vanguard icons on the menu buttons") and VanguardDB.profiles.Default.MenuStrip.glyphs'), "the switch is on the page").toBe(false);
   const plain = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV);
   expect(plain.eval("return { ns.FrameState('vgGlyph')[CharacterMicroButton] ~= nil, CharacterMicroButton.normal.__alpha, ns.FrameState('vgSlot')[CharacterMicroButton] ~= nil }"), "by default Vanguard's icon stands on the slot, the game's faded").toEqual([true, 0, true]);

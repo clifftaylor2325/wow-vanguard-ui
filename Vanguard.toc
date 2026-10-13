@@ -47,7 +47,11 @@ Core/Options.lua
 Core/OptionsFrames.lua
 Core/OptionsBars.lua
 Core/OptionsQuests.lua
-Core/OptionsMore.lua
+Core/OptionsBags.lua
+Core/OptionsMap.lua
+Core/OptionsChat.lua
+Core/OptionsTools.lua
+Core/OptionsTown.lua
 Core/OptionsWindow.lua
 Core/OptionsPreview.lua
 Core/ErrorBadge.lua
@@ -141,6 +145,8 @@ Modules/AuctionAlerts.lua
 Modules/AuctionAPI.lua
 Modules/AuctionLedger.lua
 Modules/GameTools.lua
+Modules/CooldownGaps.lua
+Modules/CooldownGlow.lua
 Modules/BossDocks.lua
 Modules/FightHistory.lua
 Modules/FightRecap.lua
