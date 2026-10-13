@@ -241,7 +241,7 @@ function OL.ShareRows()
   }
 end
 
--- The card on the Windows and tools page.
+-- The card on the Combat tools page.
 function OL.Rows()
   local get, set, default = ns.Options.LiveSetting("OfficerLoot", "on", function() OL.Apply() end)
   local rows = {

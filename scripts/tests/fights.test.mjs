@@ -97,7 +97,7 @@ it("the strip is off by default; switched on, the latest bar is in the accent an
   fight(addon, 100, 30);
   expect(addon.frame("Vanguard_FightHistory").visible, "off until you turn it on, though the fights are kept").toBe(false);
   addon.slash("");
-  addon.eval('__click("Windows and tools")');
+  addon.eval('ns.Options.Show("tools")');
   expect(addon.eval('return __click("Sparkline of your DPS in the last 20 fights")'), "the switch is on the strip's section").toBe(true);
   expect(addon.frame("Vanguard_FightHistory").visible, "on at once").toBe(true);
   const bars = barsOf(addon);

@@ -103,7 +103,7 @@ it("game alerts: a rare nearby is announced with a sound and a chat line, out of
   expect(rares(), "off until you switch it on").toEqual([]);
   addon.slash("");
   addon.eval('ns.Options.Show("tools")');
-  expect(addon.eval('return __click("A rare nearby")'), "the switch is under Windows and tools").toBe(true);
+  expect(addon.eval('return __click("A rare nearby")'), "the switch is under Combat tools").toBe(true);
   addon.fire("VIGNETTE_MINIMAP_UPDATED", "rare", true);
   addon.fire("VIGNETTE_MINIMAP_UPDATED", "rare", true);
   expect([rares().length, /Rare nearby: TEST-ONLY Rare$/.test(rares()[0]), addon.eval("return __wfgWorld.sounds[#__wfgWorld.sounds]")], "one line and the raid warning sound, once per rare").toEqual([1, true, "RAID_WARNING"]);

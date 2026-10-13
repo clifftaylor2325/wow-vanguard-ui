@@ -30,7 +30,7 @@ local GW = ns.Module("Windows", { defaults = {
   movable = true, moved = {},
 } })
 
--- The groups of game windows, each a switch under Windows and tools -> Game windows.
+-- The groups of game windows, each a switch under Game windows.
 GW.GROUPS = { "windows", "popups", "timers", "social", "town", "system", "map", "menus", "tabs", "pvp" }
 -- Every registered window: name -> { group = , skin = }, and the names in the order registered.
 GW.REGISTERED, GW.ORDER = {}, {}

@@ -56,7 +56,7 @@ function GW.AddButtons(name, buttonNames)             -- push buttons a window k
 ```
 
 - `GW.GROUPS = { "windows", "popups", "timers", "social", "town", "system", "map", "menus", "tabs", "pvp" }`; every
-  group is a boolean in `GW.defaults` (`Modules/Windows.lua:16`) and a row under Windows and tools → Game windows
+  group is a boolean in `GW.defaults` (`Modules/Windows.lua:16`) and a row under Game windows
   (`Core/Options.lua:418`, `windowRows`). The existing lists are re-expressed as `GW.Add("windows", …)` calls so there is
   one path.
 - `watch(name, skin)` (:238) gains the group check: a name registered under a group whose setting is false is never
