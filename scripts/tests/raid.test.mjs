@@ -331,7 +331,7 @@ it("raid preview: sample players in the raid tiles, laid out by the raid frame s
   const holder = addon.frame("Vanguard_RaidHolder").rect;
   expect([r(1).width, r(1).height, r(2).bottom - r(1).top, r(1).bottom, r(1).left + r(1).width / 2], "100 x 48 tiles in a column growing up from the holder, 4 apart, centered on it").toEqual([100, 48, 4, holder.bottom, holder.left + holder.width / 2]);
   addon.slash("preview 40");
-  expect([shownTiles(addon), addon.eval("return Vanguard_RaidPreview:GetScale()"), Math.round((r(6).left - r(1).right) * 1000) / 1000], "a raid of 40: drawn at 72%, groups side by side").toEqual([40, 0.72, 2.88]);
+  expect([shownTiles(addon), addon.eval("return Vanguard_RaidPreview:GetScale()"), Math.round((r(6).bottom - r(1).top) * 1000) / 1000], "a raid of 40: drawn at 72%, groups stacked as rows (a bigger raid does)").toEqual([40, 0.72, 2.88]);
   addon.eval('ns.Options.Show("raid") __click("Width") __click("Sort by role") __click("Style")');
   expect([Math.round(r(1).width / 0.72), addon.eval("return { Vanguard_RaidPreviewTile1.name:GetText(), Vanguard_RaidPreviewTile4.name:GetText(), Vanguard_RaidPreviewTile5.name:GetText() }"), addon.eval("return Vanguard_Options.reload:IsShown()")],
     "a new width and sorting by role show at once (tanks first, then healers); the real frames wait for a reload").toEqual([120, ["Aldren", "Zelda", "Brielle"], true]);
