@@ -52,6 +52,8 @@ Core/OptionsWindow.lua
 Core/OptionsPreview.lua
 Core/ErrorBadge.lua
 Core/OptionsProfiles.lua
+Core/PresetStrings.lua
+Core/Integration.lua
 Core/ProfileExport.lua
 Core/SettingsGuard.lua
 Core/Setup.lua
@@ -99,6 +101,7 @@ Modules/MenuStrip.lua
 Modules/Merchant.lua
 Modules/Errands.lua
 Modules/InstancePrep.lua
+Modules/DungeonCard.lua
 Modules/TalentPlanner.lua
 Modules/AutoAccept.lua
 Modules/QuestDialogParts.lua
@@ -137,6 +140,8 @@ Modules/GameTools.lua
 Modules/BossDocks.lua
 Modules/FightHistory.lua
 Modules/Rolls.lua
+Modules/CraftQueue.lua
+Modules/MailTools.lua
 Modules/OfficerLoot.lua
 Modules/OfficerRoster.lua
 Modules/GameAlerts.lua
@@ -147,6 +152,7 @@ Modules/Inventory.lua
 Modules/UpgradeWeights.lua
 Modules/Upgrades.lua
 Modules/VendorMemory.lua
+Modules/SpellRanks.lua
 Modules/Nameplates.lua
 Modules/Situations.lua
 Modules/SituationsBanner.lua
