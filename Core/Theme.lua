@@ -604,8 +604,8 @@ local function placeEdge(t, frame, side, points, out, r)
   t:ClearAllPoints()
   for _, point in ipairs(points) do
     local x, y = outward(point, out)
-    local ix, iy = outward(point, -r)
-    if side == "top" or side == "bottom" then x = x + ix else y = y + iy end
+    local inX, inY = outward(point, -r)
+    if side == "top" or side == "bottom" then x = x + inX else y = y + inY end
     t:SetPoint(point, frame, point, x, y)
   end
 end
