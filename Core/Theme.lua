@@ -1212,11 +1212,13 @@ function T.CloseButton(button)
 end
 
 -- Puts a close button T.CONTROL.inset in from a panel's top-right corner on both axes: the corner the
--- eye sees, so a panel drawn out past its frame (T.Padding) counts its padding. Returns the button.
-function T.PlaceClose(close, panel)
+-- eye sees, so a panel drawn out past its frame (T.Padding) counts its padding. drop (optional) is how far
+-- down the middle goes instead, for a window whose title sits higher than the others'. Returns the button.
+function T.PlaceClose(close, panel, drop)
   local inset = T.PixelRound(panel, T.CONTROL.inset - T.Padding(panel))
+  local down = drop and T.PixelRound(panel, drop - T.Padding(panel)) or inset
   close:ClearAllPoints()
-  close:SetPoint("CENTER", panel, "TOPRIGHT", -inset, -inset)
+  close:SetPoint("CENTER", panel, "TOPRIGHT", -inset, -down)
   return close
 end
 
