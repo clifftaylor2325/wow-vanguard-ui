@@ -1625,7 +1625,7 @@ local function playRise(frame, r, px)
   r.group:Stop() r.drop:SetOffset(0, -px) r.rise:SetOffset(0, px)
   r.alpha:SetFromAlpha(0) r.alpha:SetToAlpha(1)
   buffered(frame, true)
-  r.group:SetScript("OnFinished", function() buffered(frame, false) end)
+  r.group:SetScript("OnFinished", ns.Guard("window frame buffer", function() buffered(frame, false) end))
   r.group:Play()
 end
 
