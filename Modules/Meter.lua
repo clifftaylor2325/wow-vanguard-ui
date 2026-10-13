@@ -232,13 +232,13 @@ local function watchVisibility(f)
   MT.ApplyVisibility()
 end
 
--- The movable panel, left of the bags and menu bar so the tooltip corner above them stays clear. Built when
+-- The movable panel, left of the bags and menu bar (about 345 wide, 16 in from the edge) so the tooltip corner above them stays clear. Built when
 -- first needed, so an unused meter has no mover.
 function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_Meter", UIParent))
   MT.frame = f
   f:SetSize(MT.WIDTH, MT.HEAD)
-  ns.Mover(f, "meter", "Vanguard meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -340, 20 })
+  ns.Mover(f, "meter", "Vanguard meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -372, 20 })
   addTitle(f)
   addEmpty(f)
   f.rows = {}
