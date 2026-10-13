@@ -280,6 +280,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: half a second after the fight a chat line "Fight recap: Interrupts 1  ·  Dispels 0 ..." with only the parts the meter had; the same for `/vg recap`; `/vg recap party` sends that one line to party chat; during the fight `/vg recap` says the meter is hidden until the fight is over. [Needs in game: that those Enum.DamageMeterType keys exist, that a session of each has combatSources with isLocalPlayer and totalAmount, that Deaths lists one line per member who died, and that SendChatMessage to party works from a slash command.]
 - If it fails, paste: the `/run` line's output, the recap line and `/vg errors`.
 
+### 7.6 Vanguard meter (off until switched on: /vg > Bars, map, chat > Vanguard meter)
+
+- Do: type `/vg meter on` and fight a mob for a few seconds (in a group if you can); click the panel's title; type `/vg meter hps`, then `/vg meter dps`. Then type `/run for _, k in ipairs({"Dps","Hps"}) do print(k, Enum.DamageMeterType[k]) end` and paste what it prints.
+- Expect: a flat panel on the spot the game's meter takes (move it with `/vg unlock`; turn the game's meter off in its settings to see only this one), "Damage per second", with up to five bars in class colors, each with a number, a name and a figure, yours in the accent; the figures update during the fight and stay after it; the title switches to "Healing per second" and back. In an instance, if the game hides values, lines may be blank or "Nothing to show", never an error popup. [Needs in game: that the two Enum.DamageMeterType keys exist, that a session's combatSources lines carry name, classFilename, amountPerSecond and isLocalPlayer, that SetValue, SetMinMaxValues and SetText accept the hidden values in combat, and that AbbreviateNumbers does too. `/vg errors` must stay empty.]
+- If it fails, paste: the `/run` line's output, what the panel shows in combat and `/vg errors`.
+
 ## 8. Quests
 
 ### 8.1 Quest dialog

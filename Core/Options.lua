@@ -284,6 +284,7 @@ O.MODULE_INFO = {
   MailTools = { "Mail tools", "Search and filter the inbox beside the mail window, and presets that fill the Send Mail tab for your alts (off until switched on; /vg mail)." },
   Rolls = { "Roll tracker", "A small panel with the group's /roll results, highest first, and (where the client has the loot history) who rolled what on the items being rolled for." },
   FightHistory = { "Fight history", "Your DPS and place in each fight this session, as a strip of bars under the damage meter (off until switched on)." },
+  Meter = { "Vanguard meter", "A flat panel with the top lines of the game's damage meter, as damage or healing per second, in class colors (off until switched on)." },
   Windows = { "Game windows", "Character, merchant, quest, loot, mail, guild, map, options and other game windows, their tabs, menus, popups and the breath bar in the Vanguard look." },
   DataBars = { "XP and reputation", "Thin experience and reputation bars." },
   Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },

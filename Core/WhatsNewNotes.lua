@@ -61,6 +61,9 @@ ns.WHATS_NEW = {
     { module = "FightHistory", label = "Fight history", items = {
       { text = "/vg recap shows the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, and sends them to a channel on request. A recap in your own chat after each fight is off until you switch it on.", page = "more", row = "Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)", off = true },
     } },
+    { module = "Meter", label = "Vanguard meter", items = {
+      { text = "A damage and healing meter in the Vanguard look (/vg meter): the top lines of the game's own meter as class-colored bars, per second, in combat too. Off until you switch it on; the game's own meter stays until you turn it off in the game's settings.", page = "more", row = "Vanguard's own damage and healing meter: the top lines of the game's meter (/vg meter)", off = true },
+    } },
     { module = "Errands", label = "Errands", items = {
       { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "more", row = "Boat and zeppelin timer (reload)", off = true },
     } },

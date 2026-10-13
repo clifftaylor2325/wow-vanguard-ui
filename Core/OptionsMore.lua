@@ -174,6 +174,21 @@ local function fightRows()
   }
 end
 
+-- Vanguard's own damage and healing meter: its switches (applied at once) and its visibility.
+local function meterRows()
+  local MT = ns.GetModule("Meter")
+  local meterVisibility, meterWhen = visibilityRows("Vanguard meter visibility", "Meter", "visibility", "showWhen")
+  -- Draws the panel again, building it first when it was just switched on (when the module is on).
+  local function paint() if MT.enabled then MT.Refresh() end end
+  return {
+    { "header", "Vanguard meter" },
+    check("Vanguard's own damage and healing meter: the top lines of the game's meter (/vg meter)", liveSetting("Meter", "on", paint)),
+    { "cycle", "Meter shows", { { "Dps", "Damage per second" }, { "Hps", "Healing per second" } }, liveSetting("Meter", "kind", paint) },
+    { "slider", "Lines in the meter", { min = 3, max = MT.MAXROWS, step = 1 }, liveSetting("Meter", "rows", paint) },
+    meterVisibility, meterWhen,
+  }
+end
+
 -- The roll tracker: its switches (applied at once) and its visibility.
 local function rollRows()
   local R = ns.GetModule("Rolls")
@@ -221,7 +236,7 @@ local function stripRows()
     check("Soul shards (warlocks)", stripSetting("shards")), check("XP per hour this session", stripSetting("xprate")),
     check("Time to the next level", stripSetting("leveltime")), check("Gold per hour this session", stripSetting("goldrate")),
     check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")), check("Your place in the last fight's DPS, in a group", stripSetting("rank")),
-  }, append(ledgerRows(), append(fightRows(), append(rollRows(), append(craftRows(), mailRows())))))
+  }, append(ledgerRows(), append(fightRows(), append(meterRows(), append(rollRows(), append(craftRows(), mailRows()))))))
 end
 
 -- At a merchant, and the error line.
