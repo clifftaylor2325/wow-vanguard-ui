@@ -1,5 +1,5 @@
 -- Auction helper: two Vanguard tabs on the game's auction house window,
--- Shopping and Selling, after its own Buy, Sell and Auctions.
+-- Lists and Posting (AH.TAB_NAMES), after its own Buy, Sell and Auctions.
 --   * Shop: named shopping lists (items by ID or by name); "Search list" runs
 --     the list's searches one after another (one in flight, at most 60 a
 --     minute) and each row shows the item's cheapest price per unit and how
@@ -38,8 +38,8 @@
 -- window to its Buy tab. Nothing else of the game's is touched: the other
 -- hooks are post-hooks (SetDisplayMode and UpdateTitle, to show a page and
 -- name the title; SetPostItem, to read the item the game's sell frame was
--- given). Posting and cancelling run only inside a button's
--- click, and a post the game wants confirmed is left to the game. Every price and
+-- given and, when Posting was open, show Posting again). Posting and cancelling run only inside a button's
+-- click, and a post the game wants confirmed waits for a second click (Confirm). Every price and
 -- quantity goes through ns.PlainNumber before any arithmetic, and events are
 -- ignored in combat (the house closes then).
 
@@ -58,6 +58,9 @@ AH.WIDTH, AH.PAD, AH.INSET, AH.SCAN_H = 300, 8, 8, 80
 AH.PANE_W, AH.TOOLBAR_H = 240, 24
 -- A page's insets on the window: from its sides, under its title, above its money line.
 AH.PAGE_X, AH.PAGE_TOP, AH.PAGE_BOTTOM = 4, 30, 30
+-- The helper's two tabs, as the window's tab row and title name them: the Shopping page (your lists,
+-- Deals, Upgrades and the scan) and the Selling page (the Sell card, Up now and your auctions).
+AH.TAB_NAMES = { "Lists", "Posting" }
 -- Searches: seconds between two (at most 60 a minute), and how long one waits for its results.
 AH.SEND_GAP, AH.FALLBACK = 1, 2
 -- A result row's height (the shop's rows and your auctions'), and the icon of an item the client doesn't know.
@@ -246,7 +249,7 @@ local function buildScan(column, y)
   AH.scanCard = c
 end
 
--- The Shopping page (h tall, w wide): the Lists pane with the scan under it in a column on the
+-- The Lists page (h tall, w wide): the Lists pane with the scan under it in a column on the
 -- left, and the list shown (the Shop card) on the right.
 local function buildShopping(h, w)
   local f = page("Vanguard_AuctionShopping")
@@ -297,8 +300,10 @@ local function addTab(name, f)
   return tab
 end
 
--- The window's display mode changed: each page shows while the mode is its own.
+-- The window's display mode was set: each page shows while the mode is its own; the mode set
+-- before is kept (AH.lastMode), so a bag click can bring Posting back (AH.KeepSelling).
 local function onDisplayMode(_, mode)
+  AH.lastMode, AH.mode = AH.mode, mode
   for _, f in ipairs(AH.pages) do f:SetShown(mode == f.vgMode) end
 end
 
@@ -320,7 +325,7 @@ end
 -- in the Vanguard look when the Windows module dresses the window's.
 local function addTabs(shopping, selling)
   local w = AuctionHouseFrame
-  AH.tabs = { addTab("Shopping", shopping), addTab("Selling", selling) }
+  AH.tabs = { addTab(AH.TAB_NAMES[1], shopping), addTab(AH.TAB_NAMES[2], selling) }
   PanelTemplates_SetNumTabs(w, #w.Tabs)
   hooksecurefunc(w, "SetDisplayMode", ns.Guard("hook SetDisplayMode", onDisplayMode))
   hooksecurefunc(w, "UpdateTitle", ns.Guard("hook UpdateTitle", onTitle))
@@ -334,16 +339,23 @@ function AH.ShowInGame()
   if type(modes) == "table" and type(w) == "table" and type(w.SetDisplayMode) == "function" then w:SetDisplayMode(modes.Buy) end
 end
 
+-- A bag click the Sell card took while Posting was open: the game showed its own sell page for
+-- the item, so Posting shows again.
+function AH.KeepSelling()
+  local f = AH.pages and AH.pages[2]
+  if f and AH.lastMode == f.vgMode and AH.mode ~= f.vgMode then AuctionHouseFrame:SetDisplayMode(f.vgMode) end
+end
+
 -- No tab row on the window (another client's): said once in chat, and nothing is built.
 function AH.NoTabRow()
-  if not AH.saidNoTabs then ns.Chat("The auction house window has no tab row this client knows, so the Shopping and Selling tabs can't be added (/vg errors says if something failed).") end
+  if not AH.saidNoTabs then ns.Chat(string.format("The auction house window has no tab row this client knows, so the %s and %s tabs can't be added (/vg errors says if something failed).", AH.TAB_NAMES[1], AH.TAB_NAMES[2])) end
   AH.saidNoTabs = true
   return false
 end
 
--- The helper's tabs and pages, built the first time the window shows: Shopping (the Lists pane
--- with the scan, and the list shown) and Selling (the Sell card and your auctions), sized to the
--- window's content area; Selling has the listings up now and your auctions on its right. Without
+-- The helper's tabs and pages, built the first time the window shows: Lists (the Lists pane
+-- with the scan, and the list shown) and Posting (the Sell card and your auctions), sized to the
+-- window's content area; Posting has the listings up now and your auctions on its right. Without
 -- the tab row (another client's window) nothing is built.
 function AH.Build()
   if not hasTabs(AuctionHouseFrame) then return AH.NoTabRow() end
@@ -367,9 +379,11 @@ function AH.OnShow()
   AH.PaintOwned()
 end
 
--- The auction house closed: searches waiting and a scan in progress stop (the pages go with the window).
+-- The auction house closed: searches waiting and a scan in progress stop (the pages go with the
+-- window), and the modes it was in are forgotten.
 function AH.OnClosed()
   AH.open, AH.scan, AH.pending, AH.queue, AH.progress, AH.sell = false, nil, nil, {}, nil, nil
+  AH.mode, AH.lastMode = nil, nil
   AH.walker:Hide()
 end
 
@@ -562,6 +576,8 @@ local function listen()
   -- The sell card again when the game goes busy (a message sent) or is ready for a post again, or a
   -- stack left the bags, so Post is on only while it can post.
   for _, e in ipairs(AH.SELL_EVENTS) do on(e, function() AH.PaintSell() end) end
+  -- What the game answers to a post, said in chat.
+  for e in pairs(AH.POST_ANSWERS) do on(e, AH.OnPostAnswer) end
   for _, each in ipairs({ AH.ListenShop, AH.ListenOwned, AH.ListenLedger, AH.ListenDeals, AH.ListenUpgrades }) do each(on) end
 end
 

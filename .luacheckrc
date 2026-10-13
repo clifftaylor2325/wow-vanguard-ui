@@ -29,7 +29,7 @@ globals = {
 -- WoW API the addon reads. Add a name only when the addon starts using it.
 read_globals = {
   "UiMapPoint", "C_SuperTrack", "hash_SlashCmdList",
-  "C_Bank",
+  "C_Bank", "InputUtil",
   "GetInventoryItemLink", "C_PlayerInfo",
   "AbbreviateNumbers", "GetTime", "UnitCastingInfo", "UnitChannelInfo", "AuraUtil", "CreateUnitHealPredictionCalculator", "UnitGetDetailedHealPrediction", "UnitGetIncomingHeals", "UnitGetTotalAbsorbs", "UnitThreatSituation", "C_ActionBar", "C_AddOns", "C_CVar", "C_Reputation", "C_Spell", "C_UnitAuras", "C_Timer", "GetLocale", "GetCursorPosition", "Enum", "GetActionInfo", "SOUNDKIT", "PlaySound", "ClearCursor", "GetCursorInfo", "GetSpellInfo", "C_SpecializationInfo", "GetSpecialization", "ReloadUI", "GetXPExhaustion", "IsPlayerAtEffectiveMaxLevel", "IsXPUserDisabled", "UnitLevel", "UnitXP", "UnitXPMax", "C_Map", "FCF_OpenTemporaryWindow", "FCF_Tab_OnClick", "GetMinimapZoneText", "GetZonePVPInfo", "Minimap", "NUM_CHAT_WINDOWS", "SELECTED_CHAT_FRAME", "SecureHandlerExecute", "SecureHandlerUnwrapScript", "SecureHandlerWrapScript", "SetCVar", "UISpecialFrames", "hooksecurefunc", "ClearOverrideBindings", "GetBindingKey", "CreateFrame", "DEFAULT_CHAT_FRAME", "debugstack", "geterrorhandler", "CallErrorHandler",
   "GetAddOnMetadata", "GetBuildInfo", "GetNetStats", "UnitClassification", "C_SpellBook", "GetBindingAction", "GetNumSpecializations", "GetCreatureDifficultyColor", "GetComboPoints", "C_Secrets", "CreateColor", "AnchorUtil", "AuraContainerSortMethod", "C_CurveUtil", "C_StringUtil", "InCombatLockdown", "IsAltKeyDown", "IsControlKeyDown", "IsShiftKeyDown", "PowerBarColor", "RAID_CLASS_COLORS",
@@ -48,7 +48,7 @@ read_globals = {
   -- P2.8 Chat: the game's list of chat window art names.
   "CHAT_FRAME_TEXTURES",
   -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.
-  "IsInInstance", "SecureCmdOptionParse",
+  "IsInInstance", "SecureCmdOptionParse", "SendChatMessage",
   -- P3.4 Keybind mode: binding a key to a button's command and saving it in the binding set in use.
   "SetBinding", "SaveBindings", "GetCurrentBindingSet",
   -- P3.5 Shared media: the bundled libraries' loader (Libs/LibStub).
@@ -90,9 +90,10 @@ read_globals = {
   "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI",
   -- E5 Auction ledger: the inbox's auction mail (Blizzard_MailFrame/MailFrame.lua), and the game's
   -- "Auction expired" subject line.
+  "TakeInboxMoney", "TakeInboxItem", "MailFrame", "SendMailFrame", "SendMailNameEditBox",
   "GetInboxNumItems", "GetInboxHeaderInfo", "GetInboxInvoiceInfo", "AUCTION_EXPIRED_MAIL_SUBJECT",
   -- D2 Auction helper, crafting costs: the game's profession window (Blizzard_Professions).
   "ProfessionsFrame",
   -- Minimap: the game's world map toggle. Healing: the client's readable class names, for the buff list.
-  "ToggleWorldMap", "LOCALIZED_CLASS_NAMES_MALE",
+  "ToggleWorldMap", "ToggleCalendar", "LOCALIZED_CLASS_NAMES_MALE",
 }

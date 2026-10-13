@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import fengari from "fengari";
 import lobject from "fengari/src/lobject.js";
 import lstring from "fengari/src/lstring.js";
-import { luaString, luaValue } from "./lua-emit.mjs";
+import { LuaSource, luaString, luaValue } from "./lua-emit.mjs";
 import { lineHook } from "./lua-coverage.mjs";
 import { profileSampler } from "./lua-profile.mjs";
 
@@ -227,7 +227,7 @@ function traceback(L) {
   const msg = lua.lua_tojsstring(L, 1) ?? "<non-string error>";
   lauxlib.luaL_traceback(L, L, to_luastring(msg), 1);
   const [first, ...rest] = lua.lua_tojsstring(L, -1).split("\n");
-  const lines = [first, ...rest.filter((l) => !/\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-layout\.lua|wow-taint\.lua/.test(l))];
+  const lines = [first, ...rest.filter((l) => !/\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-layout\.lua|wow-taint\.lua|wow-inspect\.lua/.test(l))];
   lua.lua_pushstring(L, to_luastring(lines.join("\n")));
   return 1;
 }
@@ -360,15 +360,18 @@ function lifecycle(addon) {
 //   finishPost(auctionID)          the house took the post ah.throttle held (the throttle ready again)
 //   fireAuctionEvents(key, id)     every auction house event once
 //   openMailbox()                  the mailbox opens: MAIL_SHOW, then the inbox (world.mail) arrives
+//   openMailWindow()               the mail window shows with the mailbox; showSendMail() its Send Mail tab; closeMailWindow() fires MAIL_CLOSED
 //   openProfession(recipeID), selectRecipe(recipeID), closeProfession()   the profession window and its recipe form
 const WORLD_CALLS = ["unit", "setUnit", "removeUnit", "combat", "secretGeometry", "addAura", "removeAura", "setAction", "addQuest", "openNpc", "learn", "forgetAll",
-  "openAuctionHouse", "closeAuctionHouse", "postFromBag", "finishPost", "fireAuctionEvents", "openMailbox", "openProfession", "selectRecipe", "closeProfession"];
+  "openAuctionHouse", "closeAuctionHouse", "postFromBag", "finishPost", "fireAuctionEvents", "openMailbox", "openMailWindow", "showSendMail", "closeMailWindow", "openProfession", "selectRecipe", "closeProfession"];
 
 // The world: what the game API reports, from JS.
 function worldApi(addon) {
   const api = {
-    // A secret value, as the client hides numbers in instanced combat.
-    secret: (n) => ({ __secret: true, n }),
+    // A secret value, as the client hides numbers in instanced combat: made by
+    // wow-world.lua's world.secret when the call reaches Lua, so it carries the
+    // metatable that refuses arithmetic, comparison and field reads.
+    secret: (n) => new LuaSource(`__wfgWorld.secret(${luaValue(n)})`),
     // Any world field: get("money"), set("money", 5).
     get: (field) => addon.eval(`return __wfgWorld.${field}`),
     set: (field, value) => addon.eval(`__wfgWorld.${field} = ${luaValue(value)}`),
@@ -388,15 +391,16 @@ function frameRef(ref) {
   return `_G[${luaString(name)}]${fields.map((f) => `.${f}`).join("")}`;
 }
 
-// Lua that builds a frame's snapshot (see inspect.lua for the fields).
-const INSPECT = fs.readFileSync(path.join(root, "scripts/lib/wow-inspect.lua"), "utf8");
+// The Lua file that builds a frame's snapshot (see wow-inspect.lua for the fields),
+// loaded through the chunk cache like the other stub files.
+const INSPECT = path.join(root, "scripts/lib/wow-inspect.lua");
 
 // A Lua list result as a JS array (an empty Lua table converts to {}).
 const list = (value) => (Array.isArray(value) ? value : []);
 
 // Frame inspectors: what a frame draws, as plain JS.
 function inspectors(addon) {
-  addon.eval(INSPECT);
+  runFile(addon.L, INSPECT, "@wow-inspect.lua", false, 0);
   return {
     // A frame's snapshot: { id, name, kind, shown, visible, rect, text, texture, color, alpha, value, children... }; null when missing.
     frame: (ref) => addon.eval(`local f = ${frameRef(ref)}\nreturn f and __wfgInspect(f)`),

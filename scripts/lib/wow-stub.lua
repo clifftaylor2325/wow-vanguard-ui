@@ -95,70 +95,84 @@ stub.methods = methods
 -- Lowercase keys are addon fields and stay nil until the addon sets them.
 local API = __wfgWidgetApi
 
--- Whether the real client has this method on this widget.
-local function hasMethod(w, key)
-  local allowed = API.methods[w.__kind]
+-- Whether the real client has this method on a widget of this kind (with or without the backdrop mixin).
+local function hasMethod(kind, backdrop, key)
+  local allowed = API.methods[kind]
   if allowed and allowed[key] then
     return true
   end
-  return rawget(w, "__backdrop_mixin") == true and API.backdrop[key] == true
+  return backdrop and API.backdrop[key] == true
 end
 
--- What a key resolves to on a widget: the stub method, a no-op, or false for nil.
-local function resolve(w, key)
-  if type(key) ~= "string" or key:sub(1, 2) == "__" or not hasMethod(w, key) then
+-- What a key resolves to on a widget class: the stub method, a no-op, or false for nil.
+local function resolve(kind, backdrop, key)
+  if type(key) ~= "string" or key:sub(1, 2) == "__" or not hasMethod(kind, backdrop, key) then
     return false
   end
   return methods[key] or noop
 end
 
--- Resolved keys per widget kind (and per kind with the backdrop mixin), so
--- a method call looks a name up once per kind, not on every call.
-local resolved, resolvedBackdrop = {}, {}
--- The cache a widget's keys resolve through.
-local function cacheFor(w)
-  local store = rawget(w, "__backdrop_mixin") == true and resolvedBackdrop or resolved
-  local cache = store[w.__kind]
-  if not cache then
-    cache = {}
-    store[w.__kind] = cache
+-- One table of resolved methods per widget class (a kind, with or without the
+-- backdrop mixin). A widget indexes its class table directly, so a method
+-- call is not a Lua function call; a name the table does not hold yet is
+-- resolved by the table's own __index and kept.
+local classTables, classMisses, classMetas = {}, {}, {}
+-- The __index of a class table: resolves a name once, keeps a method, remembers a miss.
+local function lookup(kind, backdrop, misses)
+  -- The resolved method, or nil.
+  return function(self, key)
+    if misses[key] then return nil end
+    local found = resolve(kind, backdrop, key)
+    if found then rawset(self, key, found) else misses[key] = true end
+    return found or nil
   end
-  return cache
+end
+-- The method table of a class, made on first use.
+local function classTable(kind, backdrop)
+  local id = backdrop and kind .. "+backdrop" or kind
+  if classTables[id] then return classTables[id] end
+  local misses = {}
+  classTables[id], classMisses[id] = setmetatable({}, { __index = lookup(kind, backdrop, misses) }), misses
+  return classTables[id]
 end
 
--- Empties the caches: a method added later (the layout and world files add
--- theirs), or a test editing the widget API list (an older client).
+-- Empties the class tables: a method added later (the layout and world files
+-- add theirs), or a test editing the widget API list (an older client).
 local function forgetResolved()
-  resolved, resolvedBackdrop = {}, {}
+  for id, t in pairs(classTables) do
+    for key in pairs(t) do rawset(t, key, nil) end
+    for key in pairs(classMisses[id]) do classMisses[id][key] = nil end
+  end
 end
--- A new stub method: stored, and the caches start over.
+-- A new stub method: stored, and the class tables start over.
 local function addMethod(t, key, fn) rawset(t, key, fn) forgetResolved() end
 setmetatable(methods, { __newindex = addMethod })
 
 -- A set from the widget API list behind a proxy, so an edit to it reaches
--- the caches; reads see the set as it is.
+-- the class tables; reads see the set as it is.
 local function watched(store)
-  -- The write goes to the set, and the caches start over.
+  -- The write goes to the set, and the class tables start over.
   local function edit(_, key, v) store[key] = v forgetResolved() end
   return setmetatable({}, { __index = store, __newindex = edit })
 end
 for kind, store in pairs(API.methods) do API.methods[kind] = watched(store) end
 API.backdrop = watched(API.backdrop)
 
-local widgetMeta = {
-  -- Resolves a method name to the stub method, a no-op, or nil.
-  __index = function(w, key)
-    local cache = cacheFor(w)
-    local found = cache[key]
-    if found == nil then
-      found = resolve(w, key)
-      cache[key] = found
-    end
-    return found or nil
-  end,
-}
-
-stub.widgetMeta = widgetMeta
+-- Writes to a game widget's fields go through this (set by wow-taint.lua).
+stub.gameNewindex = nil
+-- The metatable for a widget as it is now: its class's methods, and the game's
+-- field guard when the game owns it. Called again when the backdrop mixin or the owner changes.
+function stub.metaFor(w)
+  local backdrop = rawget(w, "__backdrop_mixin") == true
+  local guard = rawget(w, "__byGame") and stub.gameNewindex or nil
+  local id = (backdrop and "b" or "-") .. (guard and "g" or "-") .. rawget(w, "__kind")
+  local meta = classMetas[id]
+  if not meta then
+    meta = { __index = classTable(rawget(w, "__kind"), backdrop), __newindex = guard }
+    classMetas[id] = meta
+  end
+  return meta
+end
 
 -- Each widget's regions and child frames, kept in creation order, so
 -- GetRegions and GetChildren need not scan every widget there is.
@@ -185,12 +199,28 @@ local function detach(parent, w)
   end
 end
 
--- The widgets in a set, in creation order.
+-- The last creation-order list made for each set, so an unchanged set is not sorted again.
+local orderedSets = setmetatable({}, { __mode = "k" })
+-- Whether the cached list holds exactly the widgets now in the set (n of them).
+local function sameMembers(set, list, n)
+  if not list or #list ~= n then return false end
+  for i = 1, n do
+    if not set[list[i]] then return false end
+  end
+  return true
+end
+-- The widgets in a set, in creation order. A caller may change the set while it
+-- walks the list: the list is replaced, never edited.
 local function inOrder(set)
-  local out = {}
-  for w in pairs(set) do out[#out + 1] = w end
-  table.sort(out, byId)
-  return out
+  local n = 0
+  for _ in pairs(set) do n = n + 1 end
+  local list = orderedSets[set]
+  if sameMembers(set, list, n) then return list end
+  list = {}
+  for w in pairs(set) do list[#list + 1] = w end
+  table.sort(list, byId)
+  orderedSets[set] = list
+  return list
 end
 
 -- The internal state of a fresh widget.
@@ -203,7 +233,8 @@ end
 
 -- Makes a widget, records it in stub.frames and names it globally if named.
 local function newWidget(kind, name, parent, template, layer)
-  local w = setmetatable(widgetState(kind, name, parent, template, layer), widgetMeta)
+  local w = widgetState(kind, name, parent, template, layer)
+  setmetatable(w, stub.metaFor(w))
   stub.frames[#stub.frames + 1] = w
   w.__id = #stub.frames
   attach(parent, w)
@@ -478,7 +509,18 @@ end
 
 -- Strata and scroll child.
 function methods:SetFrameStrata(s) self.__strata = s end
-function methods:SetScrollChild(child) self.__scrollChild = child end
+-- Records whether a frame is drawn into its own buffer.
+function methods:SetIsFrameBuffer(on) self.__frameBuffer = on end
+-- The scroll frame each scroll child belongs to (the layout asks for it often).
+stub.scrollOwners = setmetatable({}, { __mode = "k" })
+-- Sets a scroll frame's child and records the owner.
+function methods:SetScrollChild(child)
+  local old = self.__scrollChild
+  if old and stub.scrollOwners[old] == self then stub.scrollOwners[old] = nil end
+  self.__scrollChild = child
+  if child and not stub.scrollOwners[child] then stub.scrollOwners[child] = self end
+end
+-- Records whether a frame clips its children.
 function methods:SetClipsChildren(on) self.__clips = on == true end
 
 -- A rough rendered height: 14 px per wrapped line at ~6 px per character.
@@ -688,6 +730,7 @@ function CreateFrame(kind, name, parent, template)
   local backdrop = checkTemplates(template, kind)
   local w = newWidget(kind, name, parent, template)
   w.__backdrop_mixin = backdrop
+  setmetatable(w, stub.metaFor(w))
   return w
 end
 
