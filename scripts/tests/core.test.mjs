@@ -216,6 +216,14 @@ it("slash", () => {
   expect(chatHas(addon, /Unknown command/), "unknown commands say so").toBeTruthy();
 });
 
+it("an error inside a /vg command is caught and kept for /vg errors, not thrown at the player", () => {
+  const addon = loggedIn();
+  expectErrors("slash rolls: boom");
+  addon.eval('ns.GetModule("Rolls").Command = function() error("boom", 0) end');
+  addon.slash("rolls");
+  expect(addon.eval("return #ns.errors")).toBe(1);
+});
+
 it("/vg stock with the Errands module off says so instead of failing", () => {
   const addon = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { modules = { Errands = false } } }" });
   for (const command of ["stock", "stock item:90011 5", "stock clear"]) {
