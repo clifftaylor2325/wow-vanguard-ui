@@ -157,9 +157,10 @@ end
 
 -- One of the game's minimap buttons as a slot button like the menu bar's: MM.BUTTON square, the
 -- game's art and the compartment's count faded (again whenever the game places it), its click area filling the slot, the theme's icon on it.
-function MM.SlotButton(obj, icon)
+-- side (default MM.BUTTON) sets another size, for the info strip's calendar button.
+function MM.SlotButton(obj, icon, side)
   local b = clickable(obj)
-  obj:SetSize(MM.BUTTON, MM.BUTTON)
+  obj:SetSize(side or MM.BUTTON, side or MM.BUTTON)
   T.FadeRegions(obj)
   if b ~= obj then T.FadeRegions(b) b:ClearAllPoints() b:SetAllPoints(obj) end
   hideCount(obj)

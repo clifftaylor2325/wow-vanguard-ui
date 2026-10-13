@@ -1152,7 +1152,7 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
   addon.slash("");
   addon.eval('__click("Bars, map, chat")');
   addon.eval(`__click("Your DPS in the last fight (from the game's damage meter)")`);
-  expect([block(addon, "dps").text, addon.eval("return __asked"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "your line's figure, the current fight's DPS, on a fourth row").toEqual(["1.2K dps", [1, 1], 68]);
+  expect([block(addon, "dps").text, addon.eval("return __asked"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "your line's figure, the current fight's DPS, on a fifth row").toEqual(["1.2K dps", [1, 1], 84]);
   setCombat(addon, true);
   addon.eval("__dps.combatSources[2].amountPerSecond = 2500");
   addon.fire("DAMAGE_METER_RESET");
@@ -1178,7 +1178,7 @@ it("the info strip: your place in the last fight's DPS, in a group", () => {
   addon.slash("");
   addon.eval('__click("Bars, map, chat")');
   addon.eval(`__click("Your place in the last fight's DPS")`);
-  expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "text2"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "second of two, on the fourth row").toEqual(["#2 of 2", true, 68]);
+  expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "text2"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "second of two, on the fifth row").toEqual(["#2 of 2", true, 84]);
   addon.eval("__dps.combatSources = { __dps.combatSources[2], __dps.combatSources[1], { isLocalPlayer = false } }");
   addon.fire("PLAYER_REGEN_ENABLED");
   expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "gold")], "at the top of three, in gold").toEqual(["#1 of 3", true]);
@@ -1333,6 +1333,22 @@ it("the info strip under the minimap", () => {
   addon.eval('__click("Bars, map, chat")');
   expect(addon.eval('return __click("Clock")') && block(addon, "clock").shown, "a block turns off at once").toBe(false);
   expect(addon.eval('return { ns.MoverPoint("infostrip") }'), "the strip is movable, under the minimap").toEqual(["TOPRIGHT", "TOPRIGHT", -12, -200]);
+});
+
+it("the info strip: the day and date with a calendar button", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + 'date = function(f) return f == "%A, %d %B" and "Tuesday, 13 October" or "21:04" end __opened = 0 ToggleCalendar = function() __opened = __opened + 1 end');
+  const button = "Vanguard_InfoStripCalendar";
+  expect([block(addon, "date").text, addon.eval(`return ${button}:IsShown()`)], "the day and date, with the button beside them").toEqual(["Tuesday, 13 October", true]);
+  expect(addon.eval(`return { ${button}:GetWidth(), ns.FrameState("vgGlyph")[${button}].__texture:match("(%a+)$") }`), "the button is a 14-unit slot with the calendar icon").toEqual([14, "Calendar"]);
+  addon.eval(`${button}.__scripts.OnClick(${button}) ${button}.__scripts.OnEnter(${button}) ${button}.__scripts.OnLeave(${button})`);
+  expect(addon.eval("return __opened"), "a click opens the calendar").toBe(1);
+  addon.eval("ToggleCalendar = nil");
+  addon.eval(`${button}.__scripts.OnClick(${button})`);
+  expect(addon.eval("return #ns.errors"), "a client without it does nothing, without an error").toBe(0);
+  addon.eval('ns.Settings("InfoStrip").date = false ns.GetModule("InfoStrip").UpdateAll()');
+  expect([block(addon, "date").shown, addon.eval(`return ${button}:IsShown()`)], "turned off, the date and its button go").toEqual([false, false]);
+  addon.eval('ns.Settings("InfoStrip").date = true __wfgStub.advance(60)');
+  expect(block(addon, "date").shown, "and come back on the next minute's tick").toBe(true);
 });
 
 it("the info strip: ammo, and clients that can't answer", () => {
@@ -1744,9 +1760,9 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
   // Whether each leveling block shows.
   const rates = () => ["xprate", "leveltime", "goldrate"].map((k) => block(addon, k).shown);
-  // The strip's height (two rows, or three with the leveling row).
+  // The strip's height (three rows with the date, or four with the leveling row).
   const height = () => addon.eval("return Vanguard_InfoStrip:GetHeight()");
-  expect([rates(), height()], "nothing to say yet: two rows").toEqual([[false, false, false], 36]);
+  expect([rates(), height()], "nothing to say yet: three rows").toEqual([[false, false, false], 52]);
   addon.eval("__xp = 1900");
   addon.fire("PLAYER_XP_UPDATE", "player");
   later(addon, 10);
@@ -1754,7 +1770,7 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   expect(rates(), "the first minute's numbers jump about, so they wait").toEqual([false, false, false]);
   later(addon, 1790);
   addon.fire("PLAYER_XP_UPDATE", "player");
-  expect([block(addon, "xprate").text, block(addon, "leveltime").text, height()], "900 XP in half an hour; the strip grows a row").toEqual(["1.8K xp/h", "lvl 1h 44m", 52]);
+  expect([block(addon, "xprate").text, block(addon, "leveltime").text, height()], "900 XP in half an hour; the strip grows a row").toEqual(["1.8K xp/h", "lvl 1h 44m", 68]);
   addon.eval("__xp, __xpmax, __rested = 200, 6000, nil");
   addon.fire("PLAYER_XP_UPDATE", "player");
   expect([block(addon, "xprate").text, block(addon, "leveltime").text], "a level-up counts the old level's rest too").toEqual(["8.4K xp/h", "lvl 42m"]);
@@ -1770,7 +1786,7 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   expect(rates(), "no XP numbers at the level cap").toEqual([false, false, true]);
   addon.eval("__money = 123407");
   addon.fire("PLAYER_MONEY");
-  expect([rates(), height()], "no change in gold, no gold rate; back to two rows").toEqual([[false, false, false], 36]);
+  expect([rates(), height()], "no change in gold, no gold rate; back to three rows").toEqual([[false, false, false], 52]);
   addon.eval('__level = 20 __xp = { __secret = true }');
   addon.fire("PLAYER_XP_UPDATE", "player");
   expect(rates(), "hidden XP: the rate so far stays, the time to level hides").toEqual([true, false, false]);
