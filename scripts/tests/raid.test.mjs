@@ -331,7 +331,7 @@ it("raid preview: sample players in the raid tiles, laid out by the raid frame s
   const holder = addon.frame("Vanguard_RaidHolder").rect;
   expect([r(1).width, r(1).height, r(2).bottom - r(1).top, r(1).bottom, r(1).left + r(1).width / 2], "100 x 48 tiles in a column growing up from the holder, 4 apart, centered on it").toEqual([100, 48, 4, holder.bottom, holder.left + holder.width / 2]);
   addon.slash("preview 40");
-  expect([shownTiles(addon), addon.eval("return Vanguard_RaidPreview:GetScale()"), Math.round((r(6).left - r(1).right) * 1000) / 1000], "a raid of 40: drawn at 72%, groups side by side").toEqual([40, 0.72, 2.88]);
+  expect([shownTiles(addon), addon.eval("return Vanguard_RaidPreview:GetScale()"), Math.round((r(6).bottom - r(1).top) * 1000) / 1000], "a raid of 40: drawn at 72%, groups stacked as rows (a bigger raid does)").toEqual([40, 0.72, 2.88]);
   addon.eval('ns.Options.Show("raid") __click("Width") __click("Sort by role") __click("Style")');
   expect([Math.round(r(1).width / 0.72), addon.eval("return { Vanguard_RaidPreviewTile1.name:GetText(), Vanguard_RaidPreviewTile4.name:GetText(), Vanguard_RaidPreviewTile5.name:GetText() }"), addon.eval("return Vanguard_Options.reload:IsShown()")],
     "a new width and sorting by role show at once (tanks first, then healers); the real frames wait for a reload").toEqual([120, ["Aldren", "Zelda", "Brielle"], true]);
@@ -357,12 +357,14 @@ it("raid preview: a real group or combat ends it; it won't start in a group, in 
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sYou're in a group: your real party or raid frames are showing\.$/)], "and it won't start in one").toEqual([0, true]);
   addon.eval("__grouped = false");
   addon.slash("preview 25");
-  setCombat(addon, true);
   addon.fire("PLAYER_REGEN_DISABLED");
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off: combat started\.$/)], "combat ends it").toEqual([0, true]);
+  expect(addon.eval("return { ns.MoverPoint('raid') }"), "and the real grid isn't re-anchored at that edge, before the lockdown").toEqual(["BOTTOMLEFT", "BOTTOM", -620, 344]);
+  setCombat(addon, true);
   addon.slash("preview 10");
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sIn combat\. Try the preview again once combat ends\.$/)], "and it won't start in combat").toEqual([0, true]);
   setCombat(addon, false);
+  expect(addon.eval("return { ns.MoverPoint('raid') }"), "it is fitted when the fight ends").toEqual(["BOTTOM", "BOTTOM", -240, 344]);
   addon.slash("preview 10");
   addon.slash("preview");
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off\.$/)], "/vg preview again turns it off").toEqual([0, true]);

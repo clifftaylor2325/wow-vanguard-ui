@@ -104,16 +104,16 @@ end
 
 -- Where tile k (counting from 0) sits from the grid's bottom left: groups of five as
 -- columns (each growing up, side by side) or rows (each growing right, stacked upward).
-local function place(k, s)
+local function place(k, s, key)
   local step, group = k % 5, math.floor(k / 5)
-  if s.layout == "rows" then return step * (s.width + s.spacing), group * (s.height + s.spacing) end
+  if key == "rows" then return step * (s.width + s.spacing), group * (s.height + s.spacing) end
   return group * (s.width + s.spacing), step * (s.height + s.spacing)
 end
 
 -- The grid's width and height for n tiles.
 local function gridSize(n, s)
   local across, up = math.ceil(n / 5), math.min(n, 5)
-  if s.layout == "rows" then across, up = up, across end
+  if RF.LayoutFor(n) == "rows" then across, up = up, across end
   return across * (s.width + s.spacing) - s.spacing, up * (s.height + s.spacing) - s.spacing
 end
 
@@ -133,15 +133,17 @@ local function lay(k, s, z)
   local b, set = tile(k + 1), RF.settings
   b:SetSize(set.width, set.height)
   b:ClearAllPoints()
-  b:SetPoint("BOTTOMLEFT", RP.frame, "BOTTOMLEFT", place(k, set))
+  b:SetPoint("BOTTOMLEFT", RP.frame, "BOTTOMLEFT", place(k, set, RF.LayoutFor(RP.size)))
   RF.PlaceTexts(b, z)
   paint(b, s)
   b:Show()
 end
 
 -- The preview's frame, sized for n tiles, drawn as large as the real grid for n
--- players, and pinned to the raid frames' holder as their header is.
+-- players, and pinned to the raid frames' holder as their header is (the holder moves to the spot
+-- the real grid would take for n players, which RF.Fit puts back when the preview ends).
 local function fit(n)
+  RF.PlaceFor(n)
   local point = RF.HeaderPoint()
   RP.frame = RP.frame or CreateFrame("Frame", "Vanguard_RaidPreview", UIParent)
   RP.frame:SetScale(RF.Scale(n))
@@ -175,11 +177,13 @@ local function blocked()
   if inGroup() then return "You're in a group: your real party or raid frames are showing." end
 end
 
--- Turns the preview off, with a chat line ending in why (when given).
-function RP.Stop(why)
+-- Turns the preview off, with a chat line ending in why (when given). The real grid is fitted again
+-- at once, or, from the PLAYER_REGEN_DISABLED handler (before the lockdown starts), after the fight.
+function RP.Stop(why, atCombatStart)
   if RP.size == 0 then return end
   RP.size = 0
   RP.frame:Hide()
+  if atCombatStart then ns.AfterCombat(RF.Fit, "raidfit") else RF.Fit() end
   ns.Chat("Raid frames preview off" .. (why and (": " .. why) or "."))
 end
 
@@ -211,6 +215,6 @@ end
 -- A roster change: once you're in a real group, the preview ends.
 ns.On("GROUP_ROSTER_UPDATE", function() if RP.size > 0 and inGroup() then RP.Stop("you joined a group.") end end)
 -- Combat ends it at once.
-ns.On("PLAYER_REGEN_DISABLED", function() RP.Stop("combat started.") end)
+ns.On("PLAYER_REGEN_DISABLED", function() RP.Stop("combat started.", true) end)
 -- A new text size or UI scale: the preview is drawn again.
 T.OnChanged(RP.Refresh)
