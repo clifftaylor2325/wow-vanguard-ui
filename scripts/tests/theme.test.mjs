@@ -670,6 +670,7 @@ const artShown = (addon, frame, art) => addon.eval(`local n = 0 for _, w in ipai
 it("ornaments (#238): off by default; /vg ornaments puts a rule on the options window and brackets on the quest log and setup, in the accent's dim variant", () => {
   const addon = loggedIn("", { firstRun: true });
   addon.eval('ns.Options.Show("general") ns.GetModule("QuestLog").Toggle()');
+  // How many ornament pieces each window shows: the options rule diamond, the quest log and setup brackets.
   const shown = () => [artShown(addon, "Vanguard_Options", "Diamond"), artShown(addon, "Vanguard_QuestLog", "OrnamentCorner"), artShown(addon, "Vanguard_Setup", "OrnamentCorner")];
   expect(shown(), "off by default: nothing drawn").toEqual([0, 0, 0]);
   addon.slash("ornaments");
