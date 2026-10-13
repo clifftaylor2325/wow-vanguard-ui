@@ -360,9 +360,10 @@ function lifecycle(addon) {
 //   finishPost(auctionID)          the house took the post ah.throttle held (the throttle ready again)
 //   fireAuctionEvents(key, id)     every auction house event once
 //   openMailbox()                  the mailbox opens: MAIL_SHOW, then the inbox (world.mail) arrives
+//   openMailWindow()               the mail window shows with the mailbox; showSendMail() its Send Mail tab; closeMailWindow() fires MAIL_CLOSED
 //   openProfession(recipeID), selectRecipe(recipeID), closeProfession()   the profession window and its recipe form
 const WORLD_CALLS = ["unit", "setUnit", "removeUnit", "combat", "secretGeometry", "addAura", "removeAura", "setAction", "addQuest", "openNpc", "learn", "forgetAll",
-  "openAuctionHouse", "closeAuctionHouse", "postFromBag", "finishPost", "fireAuctionEvents", "openMailbox", "openProfession", "selectRecipe", "closeProfession"];
+  "openAuctionHouse", "closeAuctionHouse", "postFromBag", "finishPost", "fireAuctionEvents", "openMailbox", "openMailWindow", "showSendMail", "closeMailWindow", "openProfession", "selectRecipe", "closeProfession"];
 
 // The world: what the game API reports, from JS.
 function worldApi(addon) {

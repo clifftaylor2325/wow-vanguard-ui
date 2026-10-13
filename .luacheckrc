@@ -90,6 +90,7 @@ read_globals = {
   "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI",
   -- E5 Auction ledger: the inbox's auction mail (Blizzard_MailFrame/MailFrame.lua), and the game's
   -- "Auction expired" subject line.
+  "TakeInboxMoney", "TakeInboxItem", "MailFrame", "SendMailFrame", "SendMailNameEditBox",
   "GetInboxNumItems", "GetInboxHeaderInfo", "GetInboxInvoiceInfo", "AUCTION_EXPIRED_MAIL_SUBJECT",
   -- D2 Auction helper, crafting costs: the game's profession window (Blizzard_Professions).
   "ProfessionsFrame",
