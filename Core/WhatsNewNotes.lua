@@ -11,6 +11,9 @@ local ADDON, ns = ...
 
 ns.WHATS_NEW = {
   { version = "0.6.0", groups = {
+    { module = "CooldownGaps", label = "Cooldown gaps", items = {
+      { text = "A new row of icons for what the game's Cooldown Manager misses: on-use trinkets, items you choose with /vg gaps add, your pet's abilities and totems.", page = "more", row = "Cooldown gaps", off = true },
+    } },
     { module = "SpellRanks", label = "Spell ranks", items = {
       { text = "Chat can say when a bar button holds an older rank of a spell you know better; /vg ranks lists them and /vg ranks swap puts the newest rank there, out of combat.", page = "more", row = "Notice older spell ranks on bar buttons (/vg ranks)", off = true },
       { text = "Trainers you visit are remembered: /vg trainers next lists what comes in the next levels and where to learn it, and a level-up says so too.", page = "more", row = "Remember what trainers teach (/vg trainers)", off = true },
@@ -20,6 +23,9 @@ ns.WHATS_NEW = {
     } },
     { module = "Windows", label = "Game windows", items = {
       { text = "The spellbook gets the flat Vanguard panel, like the other game windows.", page = "more", row = "Character, merchant, quest, loot and other windows" },
+    } },
+    { module = "CooldownGlow", label = "Cooldown Manager glow", items = {
+      { text = "A Cooldown Manager buff icon can glow when its aura is in its last 30 % (you choose the share), for spells the game doesn't flag itself.", page = "more", row = "Glow a Cooldown Manager buff in its last part, where the game's own flag is missing", off = true },
     } },
     { module = "RaidFrames", label = "Raid frames", items = {
       { text = "A raid tile width the choices don't list shows its value on the Width row.", page = "raid", row = "Width" },
@@ -54,6 +60,9 @@ ns.WHATS_NEW = {
     } },
     { module = "GroupBoard", label = "Group board", items = {
       { text = "A group board (/vg lfg) lists looking-for-more and looking-for-group posts from chat by dungeon, role and level. A click opens a whisper you send yourself.", page = "more", row = "Open the group board" },
+    } },
+    { module = "OfficerLoot", label = "Officer loot tools", items = {
+      { text = "A soft-reserve list (/vg loot) flags a roll on a reserved item in the roll tracker, and a roster panel lists the group by role. Kept on your character and shared by hand into the chat box; nothing is synced or sent for you.", page = "more", row = "Turn on the soft-reserve list and the roster", off = true },
     } },
     { module = "InstancePrep", label = "Instance prep", items = {
       { text = "Buff checks add a flask, food buff, weapon oil and raid buff rows to the ready-check card. They start off.", page = "more", row = "Buff checks on the card: flask, food, oil or poison, raid buffs", off = true },

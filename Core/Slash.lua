@@ -18,6 +18,7 @@ local HELP = {
   "framebuffer [on|off] windows drawn through a frame buffer while they open and close (a test; off by default)",
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
   "icons [on|off]       menu strip icons drawn at their on-screen size, after a /reload (off by default)",
+  "cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)",
   "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
   "variant [default|contrast|vellum|classic]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look",
   "gradient [on|off]    windows a shade lighter toward the top (off by default)",
@@ -41,6 +42,7 @@ local HELP = {
   "craft [add [n]|next|stock|cd|top|done|clear]   the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)",
   "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>   search the inbox; presets for sending items to your alts (off until switched on)",
   "rolls [clear]        the group's /roll results this session, newest first; clear forgets them",
+  "loot [on|off|add|remove|list|clear|focus|roster]   officer loot tools (off until switched on): a soft-reserve list flagged in the roll tracker, and a group roster",
   "fights               your DPS, length and place in each fight this session, newest first",
   "recap [say|party|raid|instance|guild]   the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, in your chat or sent to that channel",
   "vendors [clear]      how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them",
@@ -64,6 +66,7 @@ local HELP = {
   "errors [clear]       the errors Vanguard caught this session, with stacks and counts (for a bug report); clear empties the list",
   "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
   "feedback [bug|feature]   a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)",
+  "gaps [add <item>|remove <item>|clear]   Cooldown gaps (switch it on under Bars, map, chat): choose items such as a Healthstone or potion to show beside trinkets, pet abilities and totems; no verb lists them",
   "perf [cpu|watch]     Vanguard's CPU and memory now; cpu turns the game's CPU profiling on or off (reload); watch prints them every minute",
 }
 
@@ -175,6 +178,16 @@ local function nineSliceCommand(rest)
   local s = T.Settings()
   s.sliceRings = rest == "on" or (rest == "" and not s.sliceRings)
   chat((s.sliceRings and "Nine-slice shadows on" or "Nine-slice shadows off") .. " after a /reload.")
+end
+
+-- /vg cdmglow [on|off|<percent>]: the Cooldown Manager refresh-window glow (#252), at once.
+local function cdmGlowCommand(rest)
+  local CG = ns.GetModule("CooldownGlow")
+  local percent = tonumber(rest)
+  if percent then CG.settings.percent = math.min(60, math.max(10, math.floor(percent))) end
+  CG.settings.glow = percent ~= nil or rest == "on" or (rest == "" and not CG.settings.glow)
+  CG.Apply()
+  chat(CG.settings.glow and ("Cooldown Manager glow on: under " .. CG.settings.percent .. " percent left.") or "Cooldown Manager glow off.")
 end
 
 -- /vg gradient [on|off]: floating windows' fills a shade lighter toward the top, at once (#259).
@@ -589,6 +602,7 @@ local COMMANDS = {
   snap = snapCommand,
   texelsnap = texelSnapCommand,
   nineslice = nineSliceCommand,
+  cdmglow = cdmGlowCommand,
   gradient = gradientCommand,
   ornaments = ornamentsCommand,
   icons = iconsCommand,
@@ -613,6 +627,7 @@ local COMMANDS = {
   craft = function(rest) ns.GetModule("CraftQueue").Command(rest) end,
   mail = function(rest) ns.GetModule("MailTools").Command(rest) end,
   rolls = function(rest) ns.GetModule("Rolls").Command(rest) end,
+  loot = function(rest) ns.GetModule("OfficerLoot").Command(rest) end,
   fights = function() ns.GetModule("FightHistory").Command() end,
   recap = function(rest) ns.GetModule("FightHistory").RecapCommand(rest) end,
   vendors = function(rest) ns.GetModule("VendorMemory").Command(rest) end,
@@ -624,6 +639,7 @@ local COMMANDS = {
   talents = function(rest) ns.GetModule("TalentPlanner").Command(rest) end,
   legacy = function(rest) ns.GetModule("Legacy").Command(rest) end,
   watch = function(rest) ns.GetModule("ChatWatch").Command(rest) end,
+  gaps = function(rest) ns.GetModule("CooldownGaps").Command(rest) end,
   lfg = function() ns.GetModule("GroupBoard").Toggle() end,
   questdata = function(rest) ns.QuestGuide.Command(rest) end,
   situation = function(rest) ns.GetModule("Situations").Command(rest) end,
