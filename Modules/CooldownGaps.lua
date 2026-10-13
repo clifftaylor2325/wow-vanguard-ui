@@ -3,7 +3,7 @@
 --   * on-use trinkets you wear, and the items you choose (a Healthstone, a potion:
 --     /vg gaps add <item>) while you carry them;
 --   * your pet's abilities (the pet bar);
---   * totems you have down, unless the class bars already show them.
+--   * totems you have down, unless the class bars already show them;
 --   * spells you choose (/vg gaps spell add <spell>), and with "Cooldown Manager's cooldowns"
 --     ticked, the spells the game's manager tracks in its essential and utility rows, each drawn
 --     here as an icon with its sweep (a Vanguard-drawn cooldown row; charges and buff rows stay
@@ -20,13 +20,13 @@ local A = ns.Auras
 
 local CG = ns.Module("CooldownGaps", { defaults = { on = false, items = "", spells = "", tracked = false } })
 
-CG.SIZE, CG.GAP, CG.MAX, CG.PET_SLOTS, CG.TOTEM_SLOTS = 24, 3, 12, 10, 4
+CG.SIZE, CG.GAP, CG.MAX, CG.PET_SLOTS, CG.TOTEM_SLOTS = 24, 3, 20, 10, 4
 -- The trinket slots (INVSLOT_TRINKET1, INVSLOT_TRINKET2).
 CG.TRINKETS = { 13, 14 }
 -- Events that change what the row shows.
 CG.EVENTS = { "BAG_UPDATE_COOLDOWN", "BAG_UPDATE_DELAYED", "SPELL_UPDATE_COOLDOWN", "PET_BAR_UPDATE", "PET_BAR_UPDATE_COOLDOWN", "PLAYER_TOTEM_UPDATE", "PLAYER_EQUIPMENT_CHANGED" }
 -- Events that change the spells the game's manager tracks.
-CG.REREAD = { "SPELLS_CHANGED", "PLAYER_SPECIALIZATION_CHANGED", "PLAYER_ENTERING_WORLD" }
+CG.REREAD = { "SPELLS_CHANGED", "PLAYER_SPECIALIZATION_CHANGED", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED" }
 -- The manager's rows drawn here, as Enum.CooldownViewerCategory keys.
 CG.CATEGORIES = { "Essential", "Utility" }
 -- The spells the game's manager tracks now, read when they change (not on every cooldown event).
@@ -92,17 +92,16 @@ end
 local function plainSpell(cd, id)
   local info = C_Spell and C_Spell.GetSpellCooldown and C_Spell.GetSpellCooldown(id)
   if type(info) ~= "table" or ns.IsSecret(info) then return false end
+  if not ns.IsSecret(info.isOnGCD) and info.isOnGCD == true then cd:Clear() return true end
   return plainSweep(cd, info.startTime, info.duration)
 end
 
--- A spell's sweep: the client's duration object where it has one. With no object and no readable
--- numbers the spell is taken to be ready (the call describes only a cooldown that is running).
+-- A spell's sweep: the client's duration object (global cooldown left out) where it has one, else
+-- its plain numbers; false (no icon) when the client gives neither.
 local function spellSweep(cd, id)
   local get = C_Spell and C_Spell.GetSpellCooldownDuration
   if type(get) ~= "function" or not ns.Client.Has("cooldownObject") then return plainSpell(cd, id) end
-  if objectSweep(cd, get(id)) or plainSpell(cd, id) then return true end
-  cd:Clear()
-  return true
+  return objectSweep(cd, get(id, true)) or plainSpell(cd, id)
 end
 
 -- The cooldown IDs of one of the manager's rows (a category), or none when the client refuses.
@@ -265,21 +264,23 @@ end
 
 -- Adds an item or a spell (kind "items" or "spells") to the chosen list (or says why not).
 function CG.Add(text, kind)
-  local k = CG.KINDS[kind or "items"]
-  local id, ids = k.read(text), CG.Chosen(CG.settings, kind or "items")
+  kind = kind or "items"
+  local k = CG.KINDS[kind]
+  local id, ids = k.read(text), CG.Chosen(CG.settings, kind)
   if not id then return ns.Chat(k.ask) end
   for _, have in ipairs(ids) do if have == id then return ns.Chat("Already showing " .. k.word .. " " .. id .. ".") end end
   ids[#ids + 1] = id
-  save(kind or "items", ids)
+  save(kind, ids)
   ns.Chat("Showing " .. k.word .. " " .. id .. k.after .. ".")
 end
 
 -- Takes an item or a spell off the chosen list.
 function CG.Remove(text, kind)
-  local k = CG.KINDS[kind or "items"]
-  local id, ids = k.read(text), CG.Chosen(CG.settings, kind or "items")
+  kind = kind or "items"
+  local k = CG.KINDS[kind]
+  local id, ids = k.read(text), CG.Chosen(CG.settings, kind)
   for i, have in ipairs(ids) do
-    if have == id then table.remove(ids, i) save(kind or "items", ids) return ns.Chat("No longer showing " .. k.word .. " " .. id .. ".") end
+    if have == id then table.remove(ids, i) save(kind, ids) return ns.Chat("No longer showing " .. k.word .. " " .. id .. ".") end
   end
   ns.Chat(k.word:gsub("^%l", string.upper) .. " " .. tostring(id or text) .. " is not on the list.")
 end
@@ -310,6 +311,11 @@ function CG.Command(rest)
   list()
 end
 
+-- A re-read event: only the player's own spec change counts (the event names the unit).
+function CG.Reread(_, unit)
+  if unit == nil or unit == "player" then CG.Rebuild() end
+end
+
 -- Reads the manager's spells again and repaints.
 function CG.Rebuild()
   CG.ReadTracked()
@@ -324,6 +330,6 @@ function CG.Enable(settings)
   CG.holder:SetSize(6 * (CG.SIZE + CG.GAP), CG.SIZE)
   ns.Mover(CG.holder, "cdm_gaps", "Cooldown gaps", { "BOTTOM", "BOTTOM", 0, 306 })
   for _, event in ipairs(CG.EVENTS) do ns.On(event, CG.Refresh) end
-  for _, event in ipairs(CG.REREAD) do ns.On(event, CG.Rebuild) end
+  for _, event in ipairs(CG.REREAD) do ns.On(event, CG.Reread) end
   CG.Rebuild()
 end
