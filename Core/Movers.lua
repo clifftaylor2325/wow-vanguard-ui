@@ -158,10 +158,21 @@ function ns.SetMoverDefault(key, default)
   ns.MoverLinks.Changed(key)
 end
 
--- Tells everything that follows a mover (the frames linked to it, the popover) that it changed.
+-- Functions told with a mover's key when it was placed again (a drag, a nudge, a reset): a module
+-- that pins something to its side of the screen follows with it.
+local placedListeners = {}
+
+-- Registers fn(key) to run after a mover was placed again.
+---@param fn fun(key: string)
+function ns.OnMoverPlaced(fn)
+  placedListeners[#placedListeners + 1] = fn
+end
+
+-- Tells everything that follows a mover (the frames linked to it, the popover, the OnMoverPlaced listeners) that it changed.
 function ns.MoverChanged(key)
   ns.MoverLinks.Changed(key)
   if ns.OnMoverMoved then ns.OnMoverMoved(key) end
+  for _, fn in ipairs(placedListeners) do fn(key) end
 end
 
 -- Saving ------------------------------------------------------------------------------
@@ -518,7 +529,7 @@ end
 local function resetOne(k)
   saved()[k] = nil
   ns.PlaceMover(k)
-  ns.MoverLinks.Changed(k)
+  ns.MoverChanged(k)
 end
 
 -- Forgets a saved position, scale, opacity and links (or all with "all") and puts frames back. Returns how many.
