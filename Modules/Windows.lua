@@ -130,15 +130,31 @@ local function atCorner(part, frame)
   return vgCorner[part]
 end
 
--- Windows whose title row sits higher than the usual one, by the parent's global name: how far down (units)
--- the middle of their window controls goes (the map's title is 14 down, the others' about 24).
-GW.CONTROL_DROP = { WorldMapFrame = 14 }
+-- Windows whose title row sits higher than the usual one, by global name (or the parent's): how far down (units)
+-- the middle of their window controls goes (the map's and the spellbook's are 13 or 14 down, the others' about 24).
+GW.CONTROL_DROP = { WorldMapFrame = 14, PlayerSpellsFrame = 13 }
+-- Windows whose title the game sets lower than the slate band above their content (the spellbook's sits across
+-- the line to its parchment): how far up (units) its title container goes, to the band's middle.
+GW.TITLE_RAISE = { PlayerSpellsFrame = 10 }
+-- The title containers already raised (a window is skinned again as the game redraws it).
+local vgRaised = ns.FrameState("vgRaised")
 
--- The window's control drop (GW.CONTROL_DROP), looked up by its parent's name (a border frame has none of its
--- own) or its own; nil for most.
+-- The window's control drop (GW.CONTROL_DROP), looked up by its own name or its parent's (a border frame has
+-- none of its own); nil for most.
 local function controlDrop(frame)
   local parent = frame:GetParent()
-  return GW.CONTROL_DROP[(parent and parent:GetName()) or frame:GetName() or ""]
+  return GW.CONTROL_DROP[frame:GetName() or ""] or GW.CONTROL_DROP[(parent and parent:GetName()) or ""]
+end
+
+-- A window's title container moved up GW.TITLE_RAISE (every anchor, once), so the title sits in the band.
+local function raiseTitle(frame, name)
+  local bar, up = frame.TitleContainer, GW.TITLE_RAISE[name or ""]
+  if not up or type(bar) ~= "table" or vgRaised[bar] or not bar.GetPoint then return end
+  vgRaised[bar] = true
+  local points = {}
+  for i = 1, bar:GetNumPoints() do points[i] = { bar:GetPoint(i) } end
+  bar:ClearAllPoints()
+  for _, p in ipairs(points) do bar:SetPoint(p[1], p[2], p[3], p[4], p[5] + up) end
 end
 
 -- Puts a window's corner close button where every window has it (T.PlaceClose: T.CONTROL.inset in
@@ -173,6 +189,7 @@ end
 local function dressParts(frame, name)
   GW.DressClose(frame, frame.CloseButton or (name and _G[name .. "CloseButton"]))
   GW.DressMaxMin(frame)
+  raiseTitle(frame, name)
   local title = (type(frame.TitleContainer) == "table" and frame.TitleContainer.TitleText) or frame.TitleText
   if type(title) == "table" and title.SetFont then T.Text(title, "heading", false) end
   for _, b in ipairs(buttons(frame, name)) do T.Button(b) end
