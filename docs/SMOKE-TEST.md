@@ -776,6 +776,26 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: nothing happens on a client without it (no error). With it, under the roll lines the panel shows the item, "rolling" until it is done, and each member's choice and roll, the winner in your accent color. [Needs in game: whether Forever has C_LootHistory with GetNumItems, GetItem and GetPlayerInfo and the LOOT_HISTORY_* events, and the order of the values GetItem and GetPlayerInfo return.]
 - If it fails, paste: the `/run` line's output and `/vg errors`.
 
+## 20. Officer loot tools
+
+### 20.1 Soft reserves next to the roll tracker
+
+- Do: in a group, type `/vg loot on`, then `/vg loot add <a group member> <an item name>` and `/vg loot list`. Shift-click an item into `/vg loot add <member> ` to add one by link. Have that member `/roll`; if the client has the loot history, roll for that item as a group. Type `/vg loot focus <item name>`, then `/vg loot focus`. Reload and type `/vg loot list`.
+- Expect: the list prints by item. The member's roll line in the roll tracker ends "[SR]" while the item is the one being rolled for (or the focus item); a loot item the history lists has a "Reserved:" line. The list is still there after the reload. [Needs in game: that a link shift-clicked into a slash command reaches the addon as the full link, and the loot history items' links, in a Forever client.]
+- If it fails, paste: the `/vg loot list` output, the roll tracker's lines and `/vg errors`.
+
+### 20.2 Sharing by hand
+
+- Do: under `/vg` → Bars, map, chat → Officer loot tools, click **Put the list in the chat box for the party**, read the line, press Enter; then the raid button; with a long list click again for the next part. Click **Print the reserve list to my chat**.
+- Expect: the chat box opens with `/p Soft reserves: ...` (or `/raid`) typed in and nothing is sent until you press Enter; the print shows to you alone. [Needs in game: that the client's ChatFrameUtil.OpenChat opens the chat box with text, and that a line this long is accepted. Without it the part prints to your chat instead.]
+- If it fails, paste: what the chat box showed and `/vg errors`.
+
+### 20.3 Roster
+
+- Do: type `/vg loot roster` in a party or raid, ask a member to go offline or die, change a role in the game's group tools, then `/vg unlock` and drag the panel.
+- Expect: a small panel lists the group, tanks then healers then damage, names in class colors, with "Lead" or "Asst", "Offline" or "Dead"; it redraws when those change, and keeps its place. [Needs in game: that UNIT_FLAGS or the other listed events fire for another member's death, and that roles and leader marks read plainly in a Forever client.]
+- If it fails, paste: a screenshot and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.
