@@ -269,12 +269,13 @@ end
 
 -- A page's settings gear (the browse page's OptionsButton) in the finder's control row: T.CONTROL.step left
 -- of the close button, level with it, as GW.PlaceControls lines up a window's controls (the game set it under
--- the close button's corner, where Vanguard's close button now sits).
+-- the close button's corner, where Vanguard's close button now sits), on a control's plate.
 local function placeGear(page)
   local gear, close = page.OptionsButton, _G.LFGParentFrameCloseButton
   if not isFrame(gear) or not isFrame(close) then return end
   gear:ClearAllPoints()
   gear:SetPoint("CENTER", close, "CENTER", -T.CONTROL.step, 0)
+  if gear.CreateTexture then T.ControlPlate(gear) end
 end
 
 -- A page's list note for when it is empty (GW.LFG_EMPTY), on the pages that have one.
@@ -436,11 +437,13 @@ local function skinCalendarStrip(frame)
 end
 
 -- The calendar window: every texture of its frame faded but the two it keeps (see GW.CALENDAR_KEEP), a panel with a
--- shadow, the close button, the month buttons as tiles, the filter and class buttons and the day grid as inset panels.
+-- shadow, the close button with the filter button clear of it, the month buttons as tiles, the filter and class
+-- buttons and the day grid as inset panels.
 function GW.SkinCalendar(frame)
   T.FadeRegions(frame, namedSet(GW.CALENDAR_KEEP))
   T.Panel(frame, { shadow = true })
   GW.DressClose(frame, _G.CalendarCloseButton)
+  GW.BesideClose(_G.CalendarFilterButton or frame.FilterButton, _G.CalendarCloseButton)
   for _, name in ipairs(GW.CALENDAR_MONTH_BUTTONS) do GW.SkinGlyphButton(_G[name]) end
   skinCalendarStrip(frame)
   for i = 1, GW.CALENDAR_DAYS do skinDay(_G["CalendarDayButton" .. i]) end
