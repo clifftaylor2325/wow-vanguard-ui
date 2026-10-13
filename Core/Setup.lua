@@ -26,8 +26,8 @@ local LATER = "Setup opens again at your next login. /vg setup opens it now; Ski
 
 -- Layout presets, in display order; Keep (the last) moves nothing and is picked when setup opens.
 S.LAYOUTS = {
-  { key = "damage", text = "Centered: damage and tanking", hint = "For damage dealers and tanks: your frames around your character, party and raid to the left of it, above your player frame." },
-  { key = "healing", text = "Centered: healing", hint = "Party and raid to the left of your character, click casting on." },
+  { key = "damage", text = "Centered: damage and tanking", hint = "For damage dealers and tanks: your frames around your character, party and raid just above your player frame." },
+  { key = "healing", text = "Centered: healing", hint = "Party and raid above your frames, a big raid stacked at the left of your character, click casting on." },
   { key = "classic", text = "Like the game's", hint = "Your frames at the top left as the game has them, party and raid down the left side." },
   { key = "keep", text = "Keep my current layout", hint = "Moves nothing: your frames stay where they are." },
 }
@@ -113,21 +113,13 @@ local function restoreDefaults()
   if ns.MoverPoint("raid") then ns.GetModule("RaidFrames").Fit() end
 end
 
--- Healing's raid frame spot: the raid frames' default spot, left of your character, above the
--- cluster around it (the focus cast bar's default spot is its top), so the grid never covers your frames.
-function S.HealingPoint()
-  local spot = ns.GetModule("RaidFrames").SPOT
-  return { spot[1], spot[2], spot[3], spot[4] }
-end
-
 -- What each layout changes.
 local APPLY = {
   -- Damage and tanking: Vanguard's defaults.
   damage = restoreDefaults,
-  -- Healing: party and raid at the left of your character, click casting on.
+  -- Healing: Vanguard's defaults (a big raid sits at the left of your character), click casting on.
   healing = function()
     restoreDefaults()
-    place("raid", S.HealingPoint())
     turnOn("RaidFrames")
     turnOn("ClickCast")
   end,

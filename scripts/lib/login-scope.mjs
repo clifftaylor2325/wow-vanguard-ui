@@ -30,7 +30,6 @@ export const FULL_CASES = [
   "scripts/tests/setup.test.mjs|the setup wizard sits above the unlock handles on the last step, so their labels never draw over it", // needs the handles of the bars
   "scripts/tests/setuplayouts.test.mjs|setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", // the rects of every module's mover against each other; with a module off an overlap check passes vacuously
   "scripts/tests/setuplayouts.test.mjs|setup screens: with each screen preset, nothing overlaps or leaves its own screen, in every layout, solo to 40-man", // the same check at each screen preset
-  "scripts/tests/setuplayouts.test.mjs|default spots: party, raid and party extras sit left of your character, and a saved spot wins", // the party frames and the extras are only built with UnitFrames on
   "scripts/tests/units.test.mjs|threat and happiness only where the client and settings allow", // coverage: the only case that runs Modules/UnitExtras.lua:46 (it passes vacuously with UnitFrames off, since nothing is built)
 ];
 

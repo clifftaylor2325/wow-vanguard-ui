@@ -10,8 +10,9 @@
 -- All 40 buttons are created up front, out of combat, so click casting and
 -- hover keys (Modules/ClickCast.lua) can be set on every one of them safely.
 --
--- The frames grow up and right from a movable holder (left of your character,
--- default). In bigger raids the whole grid is drawn smaller (compact), so 40
+-- The frames grow up from a movable holder (just above your player frame, default;
+-- a raid of more than 10 stacks its groups as rows at the left of your character,
+-- see RF.SPOT_BIG). In bigger raids the whole grid is drawn smaller (compact), so 40
 -- players fit beside the unit frames at any UI scale; each tile keeps its layout.
 
 local ADDON, ns = ...
@@ -19,15 +20,16 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local RF = ns.Module("RaidFrames", {
-  defaults = { width = 100, height = 48, spacing = 4, showInParty = true, showPlayer = true, sortByRole = false, hideBlizzard = true, look = "soft", showPower = true, compact = true, layout = "columns" },
+  defaults = { width = 100, height = 48, spacing = 4, showInParty = true, showPlayer = true, sortByRole = false, hideBlizzard = true, look = "soft", showPower = true, compact = true, layout = "columns", stackBig = true },
 })
 
 -- Group size -> how large the grid is drawn when compact: up to 10 full size, up to 25 at 80%, more at 72%.
 RF.COMPACT = { { 10, 1 }, { 25, 0.8 }, { 40, 0.72 } }
--- Where the grid starts by default: left of your character (the way healers keep it, so the boss and
--- your own frames stay in view), its left edge 620 units left of the screen's middle and its bottom 344 up,
--- clear of the frames around your character. The grid grows right and up; a full 40-man ends at the middle.
-RF.SPOT = { "BOTTOMLEFT", "BOTTOM", -620, 344 }
+-- Where the grid starts by default: a party or a raid of 10 right over your player frame; a bigger raid
+-- (with Stack big raids on) left of your character, as healers keep it, so the boss and your own frames stay in
+-- view, its left edge 620 units left of the screen's middle, 344 up and clear of the frames around your character.
+RF.SPOT = { "BOTTOM", "BOTTOM", -240, 344 }
+RF.SPOT_BIG = { "BOTTOMLEFT", "BOTTOM", -620, 344 }
 -- How large the grid is drawn now (RF.Fit sets it).
 RF.tileScale = 1
 
@@ -533,9 +535,25 @@ RF.GROW = {
   rows = { point = "LEFT", columnAnchorPoint = "BOTTOM", xOffset = 4, yOffset = 0 },
 }
 
--- Layout attributes: groups of five (or sorted by role), as columns or rows.
-local function layout(header, s)
-  local grow = RF.GROW[s.layout] or RF.GROW.columns
+-- Whether a group of n players is drawn as a big raid: more than 10, with Stack big raids on.
+local function big(n)
+  return n > 10 and RF.settings.stackBig == true
+end
+
+-- The groups' direction for n players: your Groups as choice, except that a big raid stacks its
+-- groups as rows (five across, one group above the next), which is shorter and clear of your frames.
+function RF.LayoutFor(n)
+  return (RF.settings.layout == "rows" or big(n)) and "rows" or "columns"
+end
+
+-- The grid's default spot for n players (a saved spot wins over it).
+function RF.SpotFor(n)
+  return big(n) and RF.SPOT_BIG or RF.SPOT
+end
+
+-- Layout attributes: groups of five (or sorted by role), as columns or rows (key).
+local function layout(header, s, key)
+  local grow = RF.GROW[key] or RF.GROW.columns
   header:SetAttribute("groupBy", s.sortByRole and "ASSIGNEDROLE" or "GROUP")
   header:SetAttribute("groupingOrder", s.sortByRole and "TANK,HEALER,DAMAGER,NONE" or "1,2,3,4,5,6,7,8")
   header:SetAttribute("maxColumns", 8)
@@ -575,7 +593,8 @@ local function createHeader(s)
   -- Called by RF.INIT (CallMethod) with the new button's name.
   header.initialConfigFunction = function(_, name) RF.Setup(_G[name]) end
   if ns.Client.ProbeSnippets() ~= false then header:SetAttribute("initialConfigFunction", RF.INIT) end
-  layout(header, s)
+  RF.layoutKey = RF.LayoutFor(0)
+  layout(header, s, RF.layoutKey)
   return header
 end
 
@@ -640,6 +659,7 @@ function RF.Fit()
   local n = type(GetNumGroupMembers) == "function" and ns.PlainNumber(GetNumGroupMembers()) or 0
   ns.OutOfCombat(function()
     RF.tileScale = RF.Scale(n or 0)
+    RF.Arrange(n or 0)
     RF.header:SetScale(RF.tileScale)
     RF.header:ClearAllPoints()
     RF.header:SetPoint(headerPoint(), RF.holder, headerPoint())
@@ -647,11 +667,36 @@ function RF.Fit()
   end, "raidfit")
 end
 
+-- Sizes the holder f for one group in a layout: a column of five tall, or a row of five wide.
+function RF.SizeHolder(f, s, key)
+  local five = 5 * (s.width + s.spacing) - s.spacing
+  if key == "rows" then f:SetSize(five, s.height) else f:SetSize(s.width, 5 * (s.height + s.spacing) - s.spacing) end
+end
+
+-- Moves the holder to the default spot for n players when that changed (a saved spot still wins).
+function RF.PlaceFor(n)
+  local spot = RF.SpotFor(n)
+  if spot ~= RF.spot then RF.spot = spot ns.SetMoverDefault("raid", spot) end
+end
+
+-- Sets the groups' direction and the holder's size for n players when the layout changed, then the
+-- default spot (out of combat: the header is secure).
+function RF.Arrange(n)
+  local key = RF.LayoutFor(n)
+  if key ~= RF.layoutKey then
+    RF.layoutKey = key
+    layout(RF.header, RF.settings, key)
+    RF.SizeHolder(RF.holder, RF.settings, key)
+  end
+  RF.PlaceFor(n)
+end
+
 -- The movable holder, where the grid starts: one group's size (a column of
 -- five tall, or a row of five wide).
 local function holder(s)
-  local f, five = CreateFrame("Frame", "Vanguard_RaidHolder", UIParent), 5 * (s.width + s.spacing) - s.spacing
-  if s.layout == "rows" then f:SetSize(five, s.height) else f:SetSize(s.width, 5 * (s.height + s.spacing) - s.spacing) end
+  local f = CreateFrame("Frame", "Vanguard_RaidHolder", UIParent)
+  RF.SizeHolder(f, s, RF.LayoutFor(0))
+  RF.spot = RF.SPOT
   ns.Mover(f, "raid", "Raid frames", RF.SPOT)
   return f
 end
