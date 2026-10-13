@@ -1,6 +1,6 @@
 -- Auction helper, the Upgrades list (Modules/AuctionHelper.lua holds the
 -- tabs, the search queue, the scan and the slash commands): an entry in the
--- Shopping tab's Lists pane, listing the armor and weapons a scan or an item
+-- Lists tab's pane, listing the armor and weapons a scan or an item
 -- search saw that beat what you wear, judged by Gear upgrades' stat weights
 -- for your class and role (Modules/Upgrades.lua, UP.Compare: rings and
 -- trinkets against the weaker you wear, a two-hander against both hands,

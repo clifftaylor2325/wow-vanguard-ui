@@ -69,7 +69,7 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | | `channel` | `4fc27a` | A channel. |
 | | `shielded` | `8b9099` | A cast you cannot interrupt. |
 | Healing | `heal` | `4fc27a` at 0.45 | Incoming heals over a health bar. |
-| | `shield` | `ffffff` at 0.35 | Absorb shields (over the Stripes texture). |
+| | `shield` | `ffffff` at 0.35 | Absorb shields (over the Stripes texture: one 8 px diagonal tile, repeated both ways so the seams are exact and the stripes don't shimmer, #257). |
 | Action buttons | `outOfRange` / `noPower` / `unusable` | `e64d4d` / `6680ff` / `666666` | Icon tints. |
 | XP and reputation | `xp` / `rested` | `940090` / `0063e0` at 0.5 | The XP bar and its rested overlay. |
 | | `repHostile` / `repUnfriendly` / `repNeutral` / `repFriendly` | `cc2121` / `bf4500` / `e6b300` / `00991a` | Reputation bar by standing. |
@@ -150,7 +150,7 @@ The theme has no spacing tokens: each layout keeps its sizes as constants in its
 | `T.Button(button)` | An `inset` panel, the template's art faded out, and an eased hover (#257): a `raisedHover` fill over the inset and a one-pixel `borderHi` line inside the top border, easing in over `T.HOVER_IN` (0.1 s) and out over `T.HOVER_OUT` (0.13 s), eased out (`OUT` smoothing), never on a disabled button, cleared at once when the button hides (`T.EaseHover`). Pressed (#257, `T.PRESS`, `T.PressButton`): a `shade` overlay at 30 % over the fill and its own label (`button.text`) one screen pixel lower, at once, while the mouse is held; a protected button darkens but keeps its label still. Disabled (#257, `T.DisabledLook`, run by the button's `OnDisable` and `OnEnable`): no hover or press and the label in `disabled`, its own colour back when enabled again. |
 | `T.FocusRing(frame, on)` | The keyboard focus ring (#257): a one-pixel `accentText` ring two screen pixels outside the frame, with a one-pixel `edge` (black) gap between, placed at the frame's pixel size, never animated. The options window puts it on the row Tab marks and takes it off on a new page or when it closes. |
 | `T.EditBox(box)` | An `inset` panel, the template's art faded out. |
-| `T.WindowControl(button, icon, opts)` | A window control (close, maximize, minimize): the template's art faded, the glyph (`T.CONTROL`: drawn on a 20-unit grid, its mark in the middle 9 to 11 units; maximize and minimize are diagonal arrows pointing out and in) in `text2`; under the mouse a 20 x 20 tile behind it (`bad` at 0.9 with `opts.tile = "close"`, else the `accent` at 0.35) and the glyph `white`. An unsized button takes the tile's size. |
+| `T.WindowControl(button, icon, opts)` | A window control (close, maximize, minimize): the template's art faded, the glyph (`T.CONTROL`: drawn on a 20-unit grid, its mark in the middle 9 to 11 units; maximize and minimize are diagonal arrows pointing out and in) in `text2` on a faint 20 x 20 `raised` tile at 0.9; under the mouse that tile turns (`bad` at 0.9 with `opts.tile = "close"`, else the `accent` at 0.35) and the glyph `white`. An unsized button takes the tile's size. |
 | `T.CloseButton(button)` | `T.WindowControl` with the plain cross (`CloseMark`) and the red tile. |
 | `T.PlaceClose(close, panel)` | Puts a close button where every window has it: its middle `T.CONTROL.inset` (24) in from the panel's top-right corner on both axes, counting the panel's padding; the game's windows go through `GW.DressClose` (Modules/Windows.lua), which also puts a maximize/minimize box `T.CONTROL.step` (28) left of it. |
 | `T.Glow(frame, size)` / `T.ShowGlow(glow, on, color)` | A soft ring around a frame (default 8 units; action buttons use 6), hidden until shown, in the accent unless a token is given. Action buttons glow for a spell the game highlights. `T.SizeGlow(glow, frame, pixels)` sizes a ring to whole screen pixels at the frame's scale (the nameplate target glow is 2 px). |
@@ -213,7 +213,10 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `pixelMultiple` | 1 | Setup → Pixel-perfect (sharpest) | with `pixelScale`, out of combat |
 | `texelSnap` | off | `/vg texelsnap` | at once |
 | `sliceRings` | off | `/vg nineslice` | on reload |
+| `variant` | `"default"` | General → Look → Theme variant, `/vg variant` | at once; `T.VARIANTS` token sets (#237): `contrast` (panel `0a0b0e` alpha 1, inset `050608`, raised `14161b`, divider `4a5260`, text `ffffff`, text2 `dfe3ea`, muted `b8bfca`, sheen alpha 0, saturated good/warn/bad/info, Color assist on, `ring` 2 px on accent-bordered frames, no gradient) and `vellum` (panel `1a1612`, inset `100d0a`, raised `241f19`, divider `3a3226`, text `efe6d2`, text2 `d2c6ad`, muted `9a8f78`); `T.RGB` and `T.PanelColor` read the variant first; `T.Refresh` repaints. Parchment is not built |
 | `panelGradient` | off | `/vg gradient` | at once |
+| `slugText` | off | `/vg slug` | at once; adds the SLUG font flag to outlined world-text roles only (`T.FontFlags`, #239) |
+| `frameBuffer` | off | `/vg framebuffer` | next window open or close; `T.OpenWindow`/`T.CloseWindow` call `SetIsFrameBuffer` on the window only while it fades, and only where the client has it (#239) |
 | `barTexture` | `"vanguard"` | General → Bars → Bar texture | on reload; one material for every bar (#234): unit frames, raid tiles, cast bars, XP and reputation, the damage meter all fill with `T.BarTexture()`, and a test checks the whole HUD |
 | `smoothBars` | on | General → Bars → Smooth health and power bars | at once |
 | `hudShadow` | off | General → Bars → Soft shadows under frames | on reload |

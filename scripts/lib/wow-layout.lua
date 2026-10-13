@@ -93,9 +93,7 @@ end
 
 -- The scroll frame this widget is the scroll child of, if any.
 local function scrollOwner(w)
-  for _, f in ipairs(stub.frames) do
-    if f.__scrollChild == w then return f end
-  end
+  return stub.scrollOwners[w]
 end
 
 -- The anchors to lay a widget out by, in a stable order; an unanchored
@@ -144,7 +142,7 @@ end
 -- A number as the client draws it: a secret's hidden number (the client fills a
 -- bar by a secret value it won't tell addons), anything else as it is.
 local function drawn(v)
-  if type(v) == "table" and v.__secret then return v.n end
+  if type(v) == "table" and rawget(v, "__secret") then return rawget(v, "n") end
   return v
 end
 

@@ -6,7 +6,13 @@ headless WoW client written for the tests: a Lua 5.1-faithful VM (fengari with
 and input. Each `scripts/tests/<area>.test.mjs` file is one area of the addon
 and runs in parallel with the others under Vitest, one worker per core
 (`VITEST_MAX_WORKERS=n` caps it); a worker compiles each Lua file once and
-loads every later addon from the compiled chunks.
+loads every later addon from the compiled chunks. The Lua project does not isolate
+its files (`isolate: false` in `vitest.config.mjs`), so a worker keeps those chunks
+and its warmed-up JIT from one file to the next. Do not mock a module or change
+`process.env` in a case: the next file in that worker would see it. Files run at
+one per worker, so the slowest file sets the wall time on a machine with many cores:
+split a file by area when it passes about 45 s (`npm run timing` shows the per-file
+times) and move its entry in `login-scope.json` with it.
 
 Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
 
@@ -126,7 +132,7 @@ change fires the events the client would.
 | `set("realm", name)` | The realm `GetRealmName` reports (default "Forever Test"); `GetNormalizedRealmName` gives it without spaces or hyphens. The player's side is `units.player.faction`. |
 | `openProfession(recipeID)` / `selectRecipe(recipeID)` / `closeProfession()` | The profession window: `ProfessionsFrame` (made on the first open, as Blizzard_Professions loads; ADDON_LOADED fires) shows on TRADE_SKILL_SHOW and its `CraftingPage.SchematicForm:Init({ recipeID })` is given the recipe; TRADE_SKILL_CLOSE fires and it hides. `C_TradeSkillUI.GetRecipeSchematic` answers from `world.recipes[recipeID]` (a CraftingRecipeSchematic: `name, outputItemID, quantityMin, quantityMax, reagentSlotSchematics = { { reagents = { { itemID } }, quantityRequired, reagentType } }`). |
 | `world.professions` | Your two primary professions, `{ name, skillLine, profession }` each (`profession` an `Enum.Profession`, Enchanting 9): `GetProfessions`, `GetProfessionInfo` and `C_TradeSkillUI.GetProfessionInfoBySkillLineID` answer from it. Empty by default. |
-| `secret(n)` | A secret value (as the client hides numbers in instanced combat): `set("units.player.hp", secret(100))`. |
+| `secret(n)` | A secret value (as the client hides numbers in instanced combat): `set("units.player.hp", secret(100))`. It raises on arithmetic, comparison, concatenation, length, a call and any field read or write; `issecretvalue` is the one way to look at it. |
 | `secretGeometry(mode)` | Secret positions and sizes, as the client hides them: `"derived"` (a bar's fill while its value is secret, a font string showing secret text, and anything anchored to those), `"strict"` (those, and every frame of the game's but UIParent), or off (`null`). Geometry getters then answer with secrets. |
 | `get(field)` / `set(field, value)` | Any world field by path: `set("money", 12345)`, `set("build.interface", 120007)`. |
 | `without(...names)` | Removes global APIs, as an older client would lack them. |

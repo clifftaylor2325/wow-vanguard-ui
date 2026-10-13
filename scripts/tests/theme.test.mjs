@@ -43,7 +43,7 @@ it("widgets", () => {
   expect(/Media\\Icons\\CloseMark$/.test(out.glyph || ""), "the close button draws the theme's cross").toBeTruthy();
 });
 
-it("window controls: sized when the caller gave no size, quiet until the mouse is over them, then white on a tile (red behind close)", () => {
+it("window controls: sized when the caller gave no size, on a faint tile at rest, then white on a colored tile under the mouse (red behind close)", () => {
   const addon = loggedIn();
   const out = addon.eval(`
     local function parts(b)
@@ -58,16 +58,17 @@ it("window controls: sized when the caller gave no size, quiet until the mouse i
     local m = CreateFrame("Button", nil, UIParent)
     m:SetSize(30, 30) ns.Theme.WindowControl(m, "Maximize")
     local tile, glyph, extra = parts(c)
-    local quiet = { c:GetWidth(), tile:IsShown(), glyph.__vertexColor, extra, tile:GetWidth(), (glyph.__texture or ""):match("(%a+)$") }
+    local quiet = { c:GetWidth(), tile:IsShown(), glyph.__vertexColor, extra, tile:GetWidth(), (glyph.__texture or ""):match("(%a+)$"), tile.__vertexColor }
     c.__scripts.OnEnter(c)
     local lit = { tile:IsShown(), tile.__vertexColor, glyph.__vertexColor }
     c.__scripts.OnHide(c)
     local mTile, mGlyph = parts(m)
     m.__scripts.OnEnter(m)
-    return { quiet = quiet, lit = lit, after = tile:IsShown(), m = { m:GetWidth(), mGlyph.__texture, mTile.__vertexColor } }`);
+    return { quiet = quiet, lit = lit, after = tile.__vertexColor, m = { m:GetWidth(), mGlyph.__texture, mTile.__vertexColor } }`);
   expect([out.quiet[0], out.quiet[1], isTok(addon, out.quiet[2], "text2"), out.quiet[3], out.quiet[4], out.quiet[5]],
-    "an unsized close button takes the 20-unit tile's size in whole, even screen pixels; quiet: no tile, a plain cross in text2 and nothing else").toEqual([px(addon, 20, true), false, true, 0, px(addon, 20, true), "CloseMark"]);
-  expect([out.lit[0], isTok(addon, out.lit[1], "bad"), isTok(addon, out.lit[2], "white"), out.after], "under the mouse: a red square tile, the cross white; hidden under the mouse (no OnLeave comes) it goes quiet again").toEqual([true, true, true, false]);
+    "an unsized close button takes the 20-unit tile's size in whole, even screen pixels; at rest: a faint raised tile under a plain cross in text2 and nothing else").toEqual([px(addon, 20, true), true, true, 0, px(addon, 20, true), "CloseMark"]);
+  expect(isTok(addon, out.quiet[6], "raised"), "the resting tile is the raised slate, the same behind every control").toBe(true);
+  expect([out.lit[0], isTok(addon, out.lit[1], "bad"), isTok(addon, out.lit[2], "white"), isTok(addon, out.after, "raised")], "under the mouse: a red square tile, the cross white; hidden under the mouse (no OnLeave comes) the tile goes back to the resting slate").toEqual([true, true, true, true]);
   expect([out.m[0], /Icons\\Maximize$/.test(out.m[1]), isTok(addon, out.m[2], "accent")], "a sized control keeps its size; a maximize control's glyph, on an accent tile").toEqual([30, true, true]);
 });
 
@@ -660,4 +661,50 @@ it("state colors and Color assist (#235): states off the red-green axis; the swi
   expect(addon.eval('return __click("Color assist")') !== false, "the switch is under General, Look").toBe(true);
   expect([addon.eval("return ns.Theme.Settings().colorAssist"), ["friendly", "neutral", "hostile"].map(hex), bar()], "on: friendly blue, neutral yellow, hostile vermilion, health bars too").toEqual([true, ["4a9be8", "e8d25a", "e0663a"], "e0663a"]);
   expect(hex("bad"), "other colors stay as they are").toBe("e8663f");
+});
+
+// The border thickness of a painted frame, in screen pixels: its thickest thin BORDER-layer line (the sheen is one pixel).
+const edgeThickness = (addon, name) => addon.eval(`local f = ${name} local least
+  for _, r in ipairs({ f:GetRegions() }) do
+    local w, h = r:GetWidth(), r:GetHeight()
+    local t = r.__layer == "BORDER" and (w > 0 and h > 0 and math.min(w, h) or math.max(w, h))
+    if t and t > 0 and t < 10 and (not least or t > least) then least = t end
+  end
+  return least and least / ns.Theme.Pixel(f)`);
+
+it("theme variants (#237): default unchanged; High contrast and Vellum and ink swap surface and text tokens, repaint at once and ride the profile", () => {
+  const addon = loggedIn('__win = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true }) __ring = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { accent = true })');
+  const base = { text: tok(addon, "text"), panel: tok(addon, "panel"), hostile: tok(addon, "hostile") };
+  expect([addon.eval("return ns.Theme.Variant()"), addon.eval("return ns.Theme.Settings().variant"), edgeThickness(addon, "__ring")], "off by default: no variant, a 1 px accent border").toEqual([null, "default", 1]);
+  addon.slash("variant contrast");
+  expect([tok(addon, "text").slice(0, 3), tok(addon, "panel"), tok(addon, "sheen")[3], chatHas(addon, /Theme variant: High contrast/)], "white text, an opaque panel, no sheen").toEqual([[1, 1, 1], [10 / 255, 11 / 255, 14 / 255, 1], 0, true]);
+  expect([tok(addon, "hostile"), edgeThickness(addon, "__ring")], "Color assist on with it, and a 2 px accent ring").toEqual([addon.eval("return { ns.Theme.RGB('hostile') }"), 2]);
+  expect(tok(addon, "hostile")[0], "the reaction colors are the assist set").not.toBeCloseTo(base.hostile[0], 3);
+  expect(fillOf(addon, "__win")[0].slice(0, 3), "a painted window follows at once").toEqual(tok(addon, "panel").slice(0, 3));
+  addon.slash("gradient on");
+  expect(fillOf(addon, "__win")[1], "no gradient, even with the setting on").toBe(false);
+  addon.slash("gradient off");
+  addon.slash("variant vellum");
+  expect([tok(addon, "text").slice(0, 3), tok(addon, "raised").slice(0, 3), tok(addon, "hostile")[0] === base.hostile[0], edgeThickness(addon, "__ring")], "warm text and raised, normal reactions, a 1 px border").toEqual([[239 / 255, 230 / 255, 210 / 255], [36 / 255, 31 / 255, 25 / 255], true, 1]);
+  expect(addon.eval("return VanguardDB.profiles.Default.theme.variant"), "kept in the profile").toBe("vellum");
+  addon.slash("variant nope");
+  expect([chatHas(addon, /Usage: \/vg variant/), addon.eval("return ns.Theme.Settings().variant")], "a bad name shows usage and changes nothing").toEqual([true, "vellum"]);
+  addon.slash("variant");
+  addon.slash("variant default");
+  expect([tok(addon, "text"), tok(addon, "panel"), chatHas(addon, /Theme variant: Slate and brass/)], "back to the default look").toEqual([base.text, base.panel, true]);
+  addon.slash("variant contrast");
+  addon.slash("theme reset");
+  expect(addon.eval("return ns.Theme.Variant()"), "Reset theme clears it").toBeNull();
+});
+
+it("SLUG text (#239): off by default; /vg slug adds the SLUG flag to outlined world text only, at once", () => {
+  const addon = loggedIn('__world = UIParent:CreateFontString() ns.Theme.Text(__world, "world") __plain = UIParent:CreateFontString() ns.Theme.Text(__plain, "label")');
+  // The font flags set on a test font string.
+  const flags = (name) => addon.eval(`return ${name}.__font[3]`);
+  expect([flags("__world"), flags("__plain")], "off by default").toEqual(["OUTLINE", ""]);
+  addon.slash("slug");
+  expect([flags("__world"), flags("__plain"), chatHas(addon, /SLUG text on/)], "world text gains SLUG, panel text does not").toEqual(["OUTLINE,SLUG", "", true]);
+  expect(addon.eval('return ns.Theme.FontFlags(nil, true), ns.Theme.FontFlags("", true)'), "with no flags it is just SLUG").toBe("SLUG");
+  addon.slash("slug off");
+  expect([flags("__world"), addon.eval("return ns.Theme.Settings().slugText"), chatHas(addon, /SLUG text off/)]).toEqual(["OUTLINE", false, true]);
 });

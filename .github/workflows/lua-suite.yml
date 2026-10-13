@@ -4,9 +4,12 @@ name: lua suite
 # tests) with line coverage of the addon's own Lua: a failing test fails
 # the run, and so does coverage below the floor in
 # scripts/lua-coverage-floor.json (only goes up; 100 is the goal). Then the
-# raid benchmark, the code-quality scan, the TOC check (scripts/check-toc.mjs),
-# luacheck, Lua 5.1 syntax and the release zip's contents; and, when asked,
-# the UI preview as a second job beside it.
+# raid benchmark and, with the checks input on, the code-quality scan, the
+# TOC check (scripts/check-toc.mjs), luacheck, Lua 5.1 syntax and the release
+# zip's contents; and, with the preview input on, the UI preview as a second
+# job beside it. A pull request's run keeps the checks off (full-suite.yml):
+# verify.yml already ran every one of them on the same commit, so here they
+# only repeat work; the weekly, hand-started and release runs keep them.
 #
 # This workflow has no triggers of its own: full-suite.yml calls it when a
 # pull request is opened ready for review or marked ready for review, on
@@ -24,6 +27,10 @@ name: lua suite
 on:
   workflow_call:
     inputs:
+      checks:
+        description: "Also run the quality scan, TOC check, luacheck, Lua 5.1 syntax and release zip steps (verify.yml runs them on every pull request)"
+        type: boolean
+        default: true
       preview:
         description: "Also render the UI preview (a few minutes more)"
         type: boolean
@@ -56,6 +63,7 @@ jobs:
       # only after its SHA-256 matches. The chain is the last thing in the
       # script, so a failed check fails the step before the install runs.
       - name: luacheck 1.2.0 and Lua 5.1
+        if: inputs.checks
         env:
           LUACHECK_SHA256: d68da17fca0697d9e2fb04201f3884abd259fa558b3a449bccaed47f1390defc
           LUACHECK_URL: https://github.com/lunarmodules/luacheck/releases/download/v1.2.0/luacheck
@@ -83,13 +91,19 @@ jobs:
       # are noisy); an error the addon catches under the raid load does.
       - name: Raid benchmark (harness measurement)
         run: npm run bench -- --summary "$GITHUB_STEP_SUMMARY"
-      - run: npm run quality
+      - name: Code quality
+        if: inputs.checks
+        run: npm run quality
       - name: The TOC against the files on disk
+        if: inputs.checks
         run: node scripts/check-toc.mjs
-      - run: |
+      - name: luacheck
+        if: inputs.checks
+        run: |
           luacheck --version
           luacheck --no-color .
       - name: Lua 5.1 syntax of every file the TOC loads
+        if: inputs.checks
         run: |
           status=0
           while IFS= read -r file; do
@@ -99,6 +113,7 @@ jobs:
           done < Vanguard.toc
           exit $status
       - name: Release zip builds and holds every file it should
+        if: inputs.checks
         run: |
           rm -rf dist
           node scripts/package.mjs

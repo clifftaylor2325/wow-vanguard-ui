@@ -4,7 +4,9 @@
 --   * keep stocked: a list of items and how many to carry (/vg stock); a
 --     merchant who sells them tops you up, a stack at a time, while you can pay;
 --   * flight timer: each flight's time is saved by route, and the next flight
---     on that route shows a bar counting down to landing.
+--     on that route shows a bar counting down to landing;
+--   * boat timer (off until switched on): the same for boats and zeppelins, in
+--     Modules/ErrandsBoats.lua.
 -- Every client call is looked up when used, so a missing one just switches
 -- that errand off. Buying and training stop in combat.
 
@@ -13,7 +15,8 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local ER = ns.Module("Errands", {
-  defaults = { trainAll = true, stock = true, flightTimer = true, stockList = {}, flights = {} },
+  defaults = { trainAll = true, stock = true, flightTimer = true, stockList = {}, flights = {},
+    boatTimer = false, boats = {}, boatLast = {} },
 })
 
 ER.TRAIN_STEPS, ER.BUY_EVERY = 30, 0.2
@@ -28,6 +31,9 @@ local function ask(name, ...)
   if type(fn) ~= "function" then return nil end
   return fn(...)
 end
+
+-- Exposed for Modules/ErrandsBoats.lua.
+ER.ask = ask
 
 -- Runs fn after a short wait (at once on a client without timers).
 local function later(seconds, fn)
@@ -343,4 +349,5 @@ function ER.Enable(settings)
   ns.On("MERCHANT_SHOW", onMerchant)
   ns.On("MERCHANT_CLOSED", function() ER.merchantOpen = false end)
   if settings.flightTimer then watchFlights() end
+  if settings.boatTimer then ER.WatchBoats() end
 end
