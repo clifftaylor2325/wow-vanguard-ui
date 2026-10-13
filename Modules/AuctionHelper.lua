@@ -1,5 +1,5 @@
 -- Auction helper: two Vanguard tabs on the game's auction house window,
--- Shopping and Selling, after its own Buy, Sell and Auctions.
+-- Lists and Posting (AH.TAB_NAMES), after its own Buy, Sell and Auctions.
 --   * Shop: named shopping lists (items by ID or by name); "Search list" runs
 --     the list's searches one after another (one in flight, at most 60 a
 --     minute) and each row shows the item's cheapest price per unit and how
@@ -38,7 +38,7 @@
 -- window to its Buy tab. Nothing else of the game's is touched: the other
 -- hooks are post-hooks (SetDisplayMode and UpdateTitle, to show a page and
 -- name the title; SetPostItem, to read the item the game's sell frame was
--- given). Posting and cancelling run only inside a button's
+-- given and, when Posting was open, show Posting again). Posting and cancelling run only inside a button's
 -- click, and a post the game wants confirmed waits for a second click (Confirm). Every price and
 -- quantity goes through ns.PlainNumber before any arithmetic, and events are
 -- ignored in combat (the house closes then).
@@ -58,6 +58,9 @@ AH.WIDTH, AH.PAD, AH.INSET, AH.SCAN_H = 300, 8, 8, 80
 AH.PANE_W, AH.TOOLBAR_H = 240, 24
 -- A page's insets on the window: from its sides, under its title, above its money line.
 AH.PAGE_X, AH.PAGE_TOP, AH.PAGE_BOTTOM = 4, 30, 30
+-- The helper's two tabs, as the window's tab row and title name them: the Shopping page (your lists,
+-- Deals, Upgrades and the scan) and the Selling page (the Sell card, Up now and your auctions).
+AH.TAB_NAMES = { "Lists", "Posting" }
 -- Searches: seconds between two (at most 60 a minute), and how long one waits for its results.
 AH.SEND_GAP, AH.FALLBACK = 1, 2
 -- A result row's height (the shop's rows and your auctions'), and the icon of an item the client doesn't know.
@@ -297,8 +300,10 @@ local function addTab(name, f)
   return tab
 end
 
--- The window's display mode changed: each page shows while the mode is its own.
-local function onDisplayMode(_, mode)
+-- The window's display mode changed: each page shows while the mode is its own; the mode it had
+-- before is kept (AH.lastMode), so a bag click can bring Selling back (AH.KeepSelling).
+local function onDisplayMode(w, mode)
+  if w.displayMode ~= AH.mode then AH.lastMode, AH.mode = AH.mode, w.displayMode end
   for _, f in ipairs(AH.pages) do f:SetShown(mode == f.vgMode) end
 end
 
@@ -320,7 +325,7 @@ end
 -- in the Vanguard look when the Windows module dresses the window's.
 local function addTabs(shopping, selling)
   local w = AuctionHouseFrame
-  AH.tabs = { addTab("Shopping", shopping), addTab("Selling", selling) }
+  AH.tabs = { addTab(AH.TAB_NAMES[1], shopping), addTab(AH.TAB_NAMES[2], selling) }
   PanelTemplates_SetNumTabs(w, #w.Tabs)
   hooksecurefunc(w, "SetDisplayMode", ns.Guard("hook SetDisplayMode", onDisplayMode))
   hooksecurefunc(w, "UpdateTitle", ns.Guard("hook UpdateTitle", onTitle))
@@ -334,9 +339,16 @@ function AH.ShowInGame()
   if type(modes) == "table" and type(w) == "table" and type(w.SetDisplayMode) == "function" then w:SetDisplayMode(modes.Buy) end
 end
 
+-- A bag click while Selling was open: the game showed its own sell page for the item, so Selling
+-- (whose card took the item) shows again.
+function AH.KeepSelling()
+  local f = AH.pages and AH.pages[2]
+  if f and AH.lastMode == f.vgMode and AH.mode ~= f.vgMode then AuctionHouseFrame:SetDisplayMode(f.vgMode) end
+end
+
 -- No tab row on the window (another client's): said once in chat, and nothing is built.
 function AH.NoTabRow()
-  if not AH.saidNoTabs then ns.Chat("The auction house window has no tab row this client knows, so the Shopping and Selling tabs can't be added (/vg errors says if something failed).") end
+  if not AH.saidNoTabs then ns.Chat(string.format("The auction house window has no tab row this client knows, so the %s and %s tabs can't be added (/vg errors says if something failed).", AH.TAB_NAMES[1], AH.TAB_NAMES[2])) end
   AH.saidNoTabs = true
   return false
 end
