@@ -132,6 +132,8 @@ Download `Vanguard-<version>.zip` from the [latest release](https://github.com/c
 /vg grid [size|on|off]          the unlock-mode grid; /vg snap on|off   snapping while dragging
 /vg texelsnap [on|off]          still borders, fills, dividers and sheens snap to the screen's pixel grid; bars, sparks and icons never do (a side-by-side test, off by default)
 /vg nineslice [on|off]          shadows and glows drawn as one texture each, after a /reload (a side-by-side test, off by default)
+/vg slug [on|off]               world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a side-by-side test, off by default)
+/vg framebuffer [on|off]        windows drawn through a frame buffer while they open and close, so inner borders don't ghost (a side-by-side test, off by default)
 /vg gradient [on|off]           windows' fills a shade lighter toward the top (off by default)
 /vg accent <rrggbb|brass|arcane|jade|orchid|copper> | reset      /vg theme reset
 /vg modules       the list of modules; /vg enable|disable <module>, then /reload
