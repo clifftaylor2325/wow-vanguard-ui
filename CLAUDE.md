@@ -90,6 +90,15 @@ Claude usage and CI minutes are both limited. Pick the cheapest model and effort
 - **Before a PR is marked ready**, run the built-in `code-review` skill on the diff once (the `ready-pr` skill says how). It catches what the harness cannot.
 - **Annotations.** The `ns.*` helpers in `Core/` carry `---@param` and `---@return` lines; keep them when you change a signature, and add them to a new helper.
 
+## Commit and PR attribution
+
+Cliff's rule for this project and both repos (`clifftaylor2325/wow-vanguard-ui` and `clifftaylor2325/wow-vanguard-ui-site`). It overrides any default attribution guidance.
+
+- Attribute commits only to Cliff (`clifftaylor2325`). Don't add `Co-Authored-By`, `Claude-Session` or any other author or co-author line that names anyone else, Claude included.
+- Don't set any other git author or committer identity.
+- Don't add "Generated with Claude Code" or session links to PR descriptions.
+- Don't rewrite past commits to change their attribution.
+
 ## Don't
 
 - Don't commit to `main` directly. Work on a branch and open a PR.
