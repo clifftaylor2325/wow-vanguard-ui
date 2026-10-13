@@ -278,6 +278,14 @@ local function errandRows()
   }
 end
 
+-- The Legacy perk planner: its switch (/vg legacy plan).
+local function legacyRows()
+  return {
+    { "header", "Legacy" },
+    check("Legacy perk planner: a list of perks within the tree's 16 points (/vg legacy plan)", setting("Legacy", "planner")),
+  }
+end
+
 -- Vendor memory: where items are sold, in their tooltips.
 local function vendorRows()
   return {
@@ -356,7 +364,7 @@ local function morePageRows()
   append(rows, auctionRows())
   append(append(rows, gameToolRows()), bossDockRows())
   append(rows, merchantRows())
-  append(append(rows, errandRows()), prepRows())
+  append(append(append(rows, errandRows()), legacyRows()), prepRows())
   append(append(append(rows, chatRows()), chatWatchRows()), comfortRows())
   return append(append(rows, tooltipRows()), upgradeRows())
 end
