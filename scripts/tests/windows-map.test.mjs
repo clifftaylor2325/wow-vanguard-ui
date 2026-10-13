@@ -505,6 +505,12 @@ const CALENDAR_ENV = WINDOWS_ENV + `
       b.GetNormalTexture = function(self) return self.icon end
       b.GetDisabledTexture = function(self) return self.off end
     end
+    local filter = CreateFrame("Button", "CalendarFilterButton", f) filter.art = filter:CreateTexture()
+    for _, name in ipairs({ "CalendarClassTotalsButton", "CalendarClassButton1", "CalendarClassButton11" }) do
+      local b = CreateFrame("Button", name, f)
+      b.art, b.icon = b:CreateTexture(), b:CreateTexture()
+      b.GetNormalTexture = function(self) return self.icon end
+    end
     for i = 1, 42 do
       local b = CreateFrame("Button", "CalendarDayButton" .. i, f)
       b.parchment, b.event = b:CreateTexture(), b:CreateTexture()
@@ -547,6 +553,8 @@ it("calendar: the window's art is faded but the weekday glow and last-day shadow
   expect(addon.eval("return CalendarCloseButton:GetRegions():GetAlpha()"), "the close button's art is gone").toBe(0);
   expect(addon.eval("local p, n = CalendarPrevMonthButton, CalendarNextMonthButton return { p.art:GetAlpha(), p.icon:GetAlpha(), p.off:GetAlpha(), n.art:GetAlpha(), n.icon:GetAlpha() }"), "the month buttons keep their icon and lose the template art").toEqual([0, 1, 1, 0, 1]);
   expect([fills(addon, "CalendarPrevMonthButton"), fills(addon, "CalendarNextMonthButton")], "and are flat tiles").toEqual([1, 1]);
+  expect(addon.eval("local t, c = CalendarClassTotalsButton, CalendarClassButton11 return { CalendarFilterButton.art:GetAlpha(), t.art:GetAlpha(), t.icon:GetAlpha(), c.art:GetAlpha(), c.icon:GetAlpha() }"), "the filter button and the class buttons lose the template art and keep the class icons").toEqual([0, 0, 1, 0, 1]);
+  expect([fills(addon, "CalendarFilterButton"), fills(addon, "CalendarClassTotalsButton"), fills(addon, "CalendarClassButton1")], "and are flat").toEqual([1, 1, 1]);
   expect(addon.eval("local gone, event = 0, 0 for i = 1, 42 do local b = _G['CalendarDayButton' .. i] if b.parchment:GetAlpha() == 0 then gone = gone + 1 end if b.event:GetAlpha() == 1 then event = event + 1 end end return { gone, event }"), "all 42 days lose the parchment and keep the event texture").toEqual([42, 42]);
   expect([fills(addon, "CalendarDayButton1"), fills(addon, "CalendarDayButton42")], "each day is an inset panel").toEqual([1, 1]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");

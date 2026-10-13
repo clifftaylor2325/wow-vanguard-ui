@@ -386,6 +386,8 @@ GW.CALENDAR_KEEP = { "CalendarWeekdaySelectedTexture", "CalendarLastDayDarkTextu
 GW.CALENDAR_DAYS = 42
 -- The month buttons, drawn as flat tiles round the icon they show.
 GW.CALENDAR_MONTH_BUTTONS = { "CalendarPrevMonthButton", "CalendarNextMonthButton" }
+-- The class-totals strip: the totals button and the most class buttons the game makes (CalendarClassButton1 to 11).
+GW.CALENDAR_CLASS_BUTTONS = 11
 -- Each dialog's close button (the game names them without "Frame", so the registry's lookup misses them).
 GW.CALENDAR_CLOSE = {
   CalendarViewHolidayFrame = "CalendarViewHolidayCloseButton", CalendarViewRaidFrame = "CalendarViewRaidCloseButton",
@@ -425,13 +427,22 @@ local function namedSet(names)
   return set
 end
 
+-- The filter dropdown as a flat button and the class-totals buttons (the totals, then one per class) as icon tiles;
+-- each is skipped when this client has no such button.
+local function skinCalendarStrip(frame)
+  skinFlatButton(_G.CalendarFilterButton or frame.FilterButton)
+  GW.SkinGlyphButton(_G.CalendarClassTotalsButton)
+  for i = 1, GW.CALENDAR_CLASS_BUTTONS do GW.SkinGlyphButton(_G["CalendarClassButton" .. i]) end
+end
+
 -- The calendar window: every texture of its frame faded but the two it keeps (see GW.CALENDAR_KEEP), a panel with a
--- shadow, the close button, the month buttons as tiles and the day grid as inset panels.
+-- shadow, the close button, the month buttons as tiles, the filter and class buttons and the day grid as inset panels.
 function GW.SkinCalendar(frame)
   T.FadeRegions(frame, namedSet(GW.CALENDAR_KEEP))
   T.Panel(frame, { shadow = true })
   GW.DressClose(frame, _G.CalendarCloseButton)
   for _, name in ipairs(GW.CALENDAR_MONTH_BUTTONS) do GW.SkinGlyphButton(_G[name]) end
+  skinCalendarStrip(frame)
   for i = 1, GW.CALENDAR_DAYS do skinDay(_G["CalendarDayButton" .. i]) end
 end
 
