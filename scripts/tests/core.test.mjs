@@ -286,6 +286,57 @@ it("/vg perf: CPU and memory with the change since the last report, the busiest 
   said(addon, "perf cpu");
   expect(addon.eval("return { GetCVar('scriptProfile'), __reload }"), "perf cpu again turns it off").toEqual(["0", "CPU profiling stops after a reload."]);
 });
+// TEST-ONLY memory counter: Vanguard's KB follow the list __mem, one reading each call of the game's Update.
+const MEM_ENV = `
+  __mem, __reads = { 1000 }, 0
+  UpdateAddOnMemoryUsage = function() __reads = __reads + 1 end
+  GetAddOnMemoryUsage = function(name) return name == "Vanguard" and __mem[math.min(__reads, #__mem)] or 0 end
+`;
+it("/vg mem: says why it can't measure (no counter, no timers, in combat)", () => {
+  const addon = loggedIn("GetAddOnMemoryUsage = nil");
+  expect(said(addon, "mem"), "no memory counter").toEqual(["Vanguard's memory can't be read on this client."]);
+  const noTimers = loggedIn(MEM_ENV + "C_Timer = nil");
+  expect(said(noTimers, "mem"), "no timers").toEqual(["This client has no timers to measure with."]);
+  const fight = loggedIn(MEM_ENV);
+  fight.eval("__wfgStub.inCombat = true");
+  expect(said(fight, "mem"), "in combat the game's counter is not read").toEqual(["Vanguard's memory can't be read in combat; try again out of combat."]);
+  expect([said(fight, "perf")[0], fight.eval("return __reads")], "/vg perf leaves the counter alone in combat too").toEqual(["CPU off (/vg perf cpu turns the game's profiling on)  ·  memory: not read in combat", 0]);
+});
+it("/vg mem: a minute of readings; a rising low point means kept memory, a wobble is garbage", () => {
+  const addon = loggedIn(MEM_ENV);
+  addon.eval("__mem = { 1000, 1300, 1100, 1500, 1020, 1600, 1040, 1700, 1030, 1800, 1010, 1900, 1050 }");
+  expect(said(addon, "mem"), "it starts and says how long").toEqual(["Measuring Vanguard's memory for 60 s (a reading every 5 s). Stand still out of combat; /vg mem again ends it early."]);
+  addon.clearChat();
+  addon.advance(60, 5);
+  expect(Array.from(addon.chat()).map((l) => l.replace(/^.*Vanguard:\S*\s/, "")), "after a minute: the readings, then the low point's verdict").toEqual([
+    "Vanguard's memory over 60 s: 0.98 MB to 1.03 MB (+50 KB, +0.8 KB/s), low 0.98, high 1.86 MB.",
+    "The low point held: the rise and fall is garbage the game collects, not memory kept.",
+  ]);
+  addon.advance(60, 5);
+  expect(Array.from(addon.chat()).length, "and nothing more").toBe(2);
+  addon.eval("__reads = 0 __mem = { 1000, 1000, 1100, 1100, 1300, 1300, 1500, 1500, 1700, 1700, 1900, 1900, 2100 }");
+  said(addon, "mem");
+  addon.clearChat();
+  addon.advance(60, 5);
+  expect(Array.from(addon.chat()).pop().replace(/^.*Vanguard:\S*\s/, ""), "a low point that keeps rising is memory kept").toMatch(/^The low point rose 500 KB: Vanguard is keeping memory/);
+});
+it("/vg mem: asked again it ends early; readings missed in combat leave too few to judge", () => {
+  const addon = loggedIn(MEM_ENV);
+  addon.eval("__mem = { 1000, 1000, 1200, 1200 }");
+  said(addon, "mem");
+  addon.advance(10, 5);
+  expect(said(addon, "mem")[0], "ended after two ticks: three readings").toBe("Vanguard's memory over 10 s: 0.98 MB to 1.17 MB (+200 KB, +20.0 KB/s), low 0.98, high 1.17 MB.");
+  said(addon, "mem");
+  addon.eval("__wfgStub.inCombat = true");
+  addon.advance(60, 5);
+  expect(Array.from(addon.chat()).pop().replace(/^.*Vanguard:\S*\s/, ""), "a fight skips every reading").toBe("Vanguard's memory: too few readings (the game's counter is not read in combat).");
+  addon.eval("__wfgStub.inCombat = false __reads = 0 __mem = { 1000, 1100, 1200 }");
+  said(addon, "mem");
+  addon.advance(10, 5);
+  addon.eval("__wfgStub.inCombat = true");
+  addon.advance(50, 5);
+  expect(Array.from(addon.chat()).pop().replace(/^.*Vanguard:\S*\s/, ""), "three readings are too few to split").toMatch(/^Too few readings to tell/);
+});
 // Every distinct command word that follows "/vg " in the text, in order of first use.
 const vgWords = (text) => [...new Set([...text.matchAll(/\/vg ([a-z]+)/g)].map((m) => m[1]))];
 // The owner's checklist, as text.

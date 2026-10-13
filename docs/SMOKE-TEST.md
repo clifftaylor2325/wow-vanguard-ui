@@ -70,6 +70,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: `No errors caught this session.` Anything else is the first bug report. [After P0.2: each entry shows a count and a stack.]
 - If it fails, paste: the whole `/vg errors` output.
 
+### 1.5 Memory over a minute
+
+- Do: stand still in a city out of combat, type `/vg mem`, and wait a minute without opening windows. Then repeat it once.
+- Expect: the first line says `Measuring Vanguard's memory for 60 s`; after a minute two lines: `Vanguard's memory over 60 s: A MB to B MB (+N KB, +R KB/s), low L, high H MB.` and a verdict (`The low point held: ...garbage the game collects` or `The low point rose N KB: Vanguard is keeping memory`). Growth of a few hundred KB that falls back is normal; a low point that rises on every run is not. In combat `/vg mem` says it can't read, and `/vg perf` says `memory: not read in combat`.
+- If it fails, paste: both result lines of each run, what you did during the minute, and `/vg errors`.
+
 ## 2. Options window and wizard
 
 ### 2.1 Every options page
@@ -250,8 +256,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 6.4 Preview the party and raid frames alone
 
-- Do: out of a group and out of combat, type `/vg preview party`, then `/vg preview 25` and `/vg preview 40`. Open `/vg` → Raid frames, change Width, Height, Style, Sort by role and Groups as, then pick Off under Preview. Turn it on again and attack a training dummy.
-- Expect: five sample tiles just above your player frame (one Dead, one Offline, a shield and a cross before the tanks' and healers' names), then 25 and 40 drawn smaller in groups side by side; each settings change shows on the preview at once. Off hides it, and combat hides it with a chat line. Your real frames don't change until a reload.
+- Do: on a profile whose frames you haven't moved (for example a new one from `/vg` → Profiles), out of a group and out of combat, type `/vg preview party`, then `/vg preview 25` and `/vg preview 40`. Open `/vg` → Raid frames, change Width, Height, Style, Sort by role and Groups as, then pick Off under Preview. Turn it on again and attack a training dummy.
+- Expect: five sample tiles in a column just above your player frame, centered on it (one Dead, one Offline, a shield and a cross before the tanks' and healers' names), then 10 the same, with two groups side by side; 25 and 40 drawn smaller, at the left of your character with their groups stacked as rows (five across, one group above the next), clear of your pet, focus and player frames; **Stack big raids at the left** off puts them back over your player frame in columns; each settings change shows on the preview at once. Off hides it, and combat hides it with a chat line. Your real frames don't change until a reload.
 - If it fails, paste: a screenshot, `/vg errors` and `/vg frame Vanguard_RaidPreview`.
 
 ### 6.5 Raid readiness on the ready-check card (batch 2)

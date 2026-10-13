@@ -42,12 +42,14 @@ CW.recent, CW.lines, CW.lineCount = {}, {}, 0
 -- A line as plain lower-case text: colour and link codes and brackets gone,
 -- so "wts devilsaur" finds "WTS [Devilsaur Leggings]" sent as an item link.
 local function plain(text)
-  local s = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", ""):gsub("[%[%]]", "")
-  return s:lower()
+  local s = text:find("|", 1, true) and text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", "") or text
+  return (s:gsub("[%[%]]", "")):lower()
 end
 
 -- The first watched phrase the line holds (case-insensitive, as plain text), or nil.
+-- With no phrases there is nothing to look for, so the line is not even made plain.
 function CW.Match(text)
+  if #CW.settings.phrases == 0 then return nil end
   local line = plain(text)
   for _, phrase in ipairs(CW.settings.phrases) do
     if line:find(phrase, 1, true) then return phrase end

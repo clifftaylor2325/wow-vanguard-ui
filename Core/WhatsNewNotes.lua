@@ -29,6 +29,7 @@ ns.WHATS_NEW = {
     } },
     { module = "RaidFrames", label = "Raid frames", items = {
       { text = "A raid tile width the choices don't list shows its value on the Width row.", page = "raid", row = "Width" },
+      { text = "A raid of 25 or 40 now starts at the left of your character, its groups stacked as rows, where healers keep it; a party or a raid of 10 stays over your player frame. Frames you already moved stay where they are, and Stack big raids at the left turns it off.", page = "raid", row = "Stack big raids at the left (more than 10 players)" },
     } },
     { module = "AuctionHelper", label = "Auction helper", items = {
       { text = "The auction house tabs are now called Lists and Posting, and are sized to their names.", page = "town", row = "Lists and Posting tabs on the auction house" },

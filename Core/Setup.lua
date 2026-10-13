@@ -27,7 +27,7 @@ local LATER = "Setup opens again at your next login. /vg setup opens it now; Ski
 -- Layout presets, in display order; Keep (the last) moves nothing and is picked when setup opens.
 S.LAYOUTS = {
   { key = "damage", text = "Centered: damage and tanking", hint = "For damage dealers and tanks: your frames around your character, party and raid just above your player frame." },
-  { key = "healing", text = "Centered: healing", hint = "Party and raid centered above your frames, click casting on." },
+  { key = "healing", text = "Centered: healing", hint = "Party and raid above your frames, a big raid stacked at the left of your character, click casting on." },
   { key = "classic", text = "Like the game's", hint = "Your frames at the top left as the game has them, party and raid down the left side." },
   { key = "keep", text = "Keep my current layout", hint = "Moves nothing: your frames stay where they are." },
 }
@@ -113,22 +113,13 @@ local function restoreDefaults()
   if ns.MoverPoint("raid") then ns.GetModule("RaidFrames").Fit() end
 end
 
--- Healing's raid frame spot: centered, four units above the focus cast
--- bar's default spot (the top of the cluster around your character), so the
--- grid grows upward from there and never covers your frames.
-function S.HealingPoint()
-  local cast = ns.GetModule("CastBars").LAYOUT.focus
-  return { "BOTTOM", "BOTTOM", 0, cast.point[4] + cast.h + 4 }
-end
-
 -- What each layout changes.
 local APPLY = {
   -- Damage and tanking: Vanguard's defaults.
   damage = restoreDefaults,
-  -- Healing: party and raid centered above your frames, click casting on.
+  -- Healing: Vanguard's defaults (a big raid sits at the left of your character), click casting on.
   healing = function()
     restoreDefaults()
-    place("raid", S.HealingPoint())
     turnOn("RaidFrames")
     turnOn("ClickCast")
   end,
