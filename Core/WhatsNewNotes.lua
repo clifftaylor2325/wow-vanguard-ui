@@ -56,6 +56,9 @@ ns.WHATS_NEW = {
     { module = "Coexist", label = "Other addons", items = {
       { text = "When another addon does a job a Vanguard module also does, chat says so once and the Modules page lets you pick which one does it." },
     } },
+    { module = "FightHistory", label = "Fight history", items = {
+      { text = "/vg recap shows the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, and sends them to a channel on request. A recap in your own chat after each fight is off until you switch it on.", page = "more", row = "Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)", off = true },
+    } },
     { module = "Errands", label = "Errands", items = {
       { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "more", row = "Boat and zeppelin timer (reload)", off = true },
     } },

@@ -140,6 +140,7 @@ Modules/AuctionLedger.lua
 Modules/GameTools.lua
 Modules/BossDocks.lua
 Modules/FightHistory.lua
+Modules/FightRecap.lua
 Modules/Rolls.lua
 Modules/CraftQueue.lua
 Modules/MailTools.lua
