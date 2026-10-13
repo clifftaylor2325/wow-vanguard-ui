@@ -18,6 +18,9 @@ const MOVE_ENV = `${WINDOWS_ENV}
     f.SetClampedToScreen = function(self, on) self.__testClamped = on end
     f.SetUserPlaced = function(self, on) self.__testUserPlaced = on end
   end
+  local cal = CreateFrame("Frame", "CalendarFrame", UIParent) cal:SetSize(540, 420) cal:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 100, -100) cal:Hide()
+  cal.SetMovable = function(self, on) self.__testMovable = on end
+  cal.SetUserPlaced = function(self, on) self.__testUserPlaced = on end
   __testBagScale = 1
   function UpdateUIPanelPositions() CharacterFrame:ClearAllPoints() CharacterFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 16, -116) end
   function UpdateContainerFrameAnchors()
@@ -136,4 +139,58 @@ it("#201 a client without the windows or the layout calls loads cleanly; windows
   addon.eval(`${W}.SavePlace("TEST-ONLY", CreateFrame("Frame")) ${W}.Moved()["TEST-ONLY-JUNK"] = { x = "TEST-ONLY" } ${W}.PutBack("TEST-ONLY-JUNK", GameMenuFrame)`);
   expect([saved(addon)["TEST-ONLY"], corner(addon, "GameMenuFrame")], "a frame with no place yet saves nothing; a broken saved place is ignored").toEqual([undefined, [860, 690]]);
   expect(errors(addon)).toBe("none");
+});
+
+// Presses the left button with the mouse at x, y (screen pixels), the window following the mouse to
+// toX, toY when it was set moving, then lets go. Returns whether it was moving in between.
+const pressDrag = (addon, name, [x, y], [toX, toY]) => addon.eval(`__wfgStub.world.mouse.x, __wfgStub.world.mouse.y = ${x}, ${y}
+  ${name}:GetScript("OnMouseDown")(${name}, "LeftButton")
+  local moving = ${name}.__moving == true
+  if moving and ${toX} then ${name}:ClearAllPoints() ${name}:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", ${toX}, ${toY}) end
+  ${name}:GetScript("OnMouseUp")(${name}, "LeftButton")
+  return moving`);
+
+it("a window with no title bar part (the calendar) is dragged by an empty spot along its top edge, never by a press lower down", () => {
+  const addon = loggedIn(MOVE_ENV);
+  addon.eval("CalendarFrame:Show()");
+  expect(addon.eval("return ns.FrameState('vgMoveHandle')[CalendarFrame] == nil"), "no drag area laid over it: it would cover the month arrows").toBe(true);
+  expect(addon.eval("return CalendarFrame.__testMovable"), "made movable").toBe(true);
+  expect(pressDrag(addon, "CalendarFrame", [300, 600], [50, 50]), "a press 380 units down does nothing").toBe(false);
+  expect(saved(addon).CalendarFrame, "and nothing is saved").toBeUndefined();
+  expect(pressDrag(addon, "CalendarFrame", [300, 970], [400, 500]), "a press along the top edge moves it").toBe(true);
+  expect([saved(addon).CalendarFrame, addon.eval("return { CalendarFrame.__moving, CalendarFrame.__testUserPlaced }")], "the drop saves its corner and keeps the game's layout cache out").toEqual([{ x: 400, y: 500 }, [false, false]]);
+  addon.eval("CalendarFrame:Hide() CalendarFrame:ClearAllPoints() CalendarFrame:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100) CalendarFrame:Show()");
+  expect(corner(addon, "CalendarFrame"), "opened again: put back").toEqual([400, 500]);
+  expect(errors(addon)).toBe("none");
+});
+
+it("a click on a window's top edge saves nothing, a right press does nothing, and the window closing mid-drag lets go", () => {
+  const addon = loggedIn(MOVE_ENV);
+  addon.eval("CalendarFrame:Show()");
+  expect(pressDrag(addon, "CalendarFrame", [300, 970], []), "a press and release in place").toBe(true);
+  expect(saved(addon).CalendarFrame, "is a click: no place saved").toBeUndefined();
+  addon.eval('__wfgStub.world.mouse.y = 970 CalendarFrame:GetScript("OnMouseDown")(CalendarFrame, "RightButton")');
+  expect(addon.eval("return CalendarFrame.__moving"), "a right press doesn't move it").toBeFalsy();
+  addon.eval('CalendarFrame:GetScript("OnMouseDown")(CalendarFrame, "LeftButton") CalendarFrame:Hide()');
+  expect(addon.eval("return CalendarFrame.__moving"), "hidden while held: it lets go").toBe(false);
+  addon.eval("CalendarFrame:Show()");
+  addon.eval("CalendarFrame:ClearAllPoints()");
+  expect(pressDrag(addon, "CalendarFrame", [300, 970], []), "a window with no place yet is not moved").toBe(false);
+  setCombat(addon, true);
+  addon.eval("CalendarFrame:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)");
+  expect(pressDrag(addon, "CalendarFrame", [300, 970], [10, 10]), "no drag in combat").toBe(false);
+  expect(errors(addon)).toBe("none");
+});
+
+it("the windows dragged by their top edge only are ones Vanguard skins, and the two lists share none", () => {
+  const addon = loggedIn(MOVE_ENV);
+  const lists = addon.eval(`local GW, bad, seen = ns.GetModule("Windows"), {}, {}
+    for _, list in ipairs({ GW.MOVABLE, GW.MOVABLE_TOP }) do
+      for _, name in ipairs(list) do
+        if seen[name] or (list == GW.MOVABLE_TOP and not GW.REGISTERED[name]) then bad[#bad + 1] = name end
+        seen[name] = true
+      end
+    end
+    return table.concat(bad, " ")`);
+  expect(lists, "windows that are not registered, or listed twice").toBe("");
 });

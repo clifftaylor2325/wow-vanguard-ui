@@ -478,6 +478,7 @@ end
 
 -- Strata and scroll child.
 function methods:SetFrameStrata(s) self.__strata = s end
+function methods:SetIsFrameBuffer(on) self.__frameBuffer = on end
 function methods:SetScrollChild(child) self.__scrollChild = child end
 function methods:SetClipsChildren(on) self.__clips = on == true end
 

@@ -43,7 +43,7 @@ it("widgets", () => {
   expect(/Media\\Icons\\CloseMark$/.test(out.glyph || ""), "the close button draws the theme's cross").toBeTruthy();
 });
 
-it("window controls: sized when the caller gave no size, quiet until the mouse is over them, then white on a tile (red behind close)", () => {
+it("window controls: sized when the caller gave no size, on a faint tile at rest, then white on a colored tile under the mouse (red behind close)", () => {
   const addon = loggedIn();
   const out = addon.eval(`
     local function parts(b)
@@ -58,16 +58,17 @@ it("window controls: sized when the caller gave no size, quiet until the mouse i
     local m = CreateFrame("Button", nil, UIParent)
     m:SetSize(30, 30) ns.Theme.WindowControl(m, "Maximize")
     local tile, glyph, extra = parts(c)
-    local quiet = { c:GetWidth(), tile:IsShown(), glyph.__vertexColor, extra, tile:GetWidth(), (glyph.__texture or ""):match("(%a+)$") }
+    local quiet = { c:GetWidth(), tile:IsShown(), glyph.__vertexColor, extra, tile:GetWidth(), (glyph.__texture or ""):match("(%a+)$"), tile.__vertexColor }
     c.__scripts.OnEnter(c)
     local lit = { tile:IsShown(), tile.__vertexColor, glyph.__vertexColor }
     c.__scripts.OnHide(c)
     local mTile, mGlyph = parts(m)
     m.__scripts.OnEnter(m)
-    return { quiet = quiet, lit = lit, after = tile:IsShown(), m = { m:GetWidth(), mGlyph.__texture, mTile.__vertexColor } }`);
+    return { quiet = quiet, lit = lit, after = tile.__vertexColor, m = { m:GetWidth(), mGlyph.__texture, mTile.__vertexColor } }`);
   expect([out.quiet[0], out.quiet[1], isTok(addon, out.quiet[2], "text2"), out.quiet[3], out.quiet[4], out.quiet[5]],
-    "an unsized close button takes the 20-unit tile's size in whole, even screen pixels; quiet: no tile, a plain cross in text2 and nothing else").toEqual([px(addon, 20, true), false, true, 0, px(addon, 20, true), "CloseMark"]);
-  expect([out.lit[0], isTok(addon, out.lit[1], "bad"), isTok(addon, out.lit[2], "white"), out.after], "under the mouse: a red square tile, the cross white; hidden under the mouse (no OnLeave comes) it goes quiet again").toEqual([true, true, true, false]);
+    "an unsized close button takes the 20-unit tile's size in whole, even screen pixels; at rest: a faint raised tile under a plain cross in text2 and nothing else").toEqual([px(addon, 20, true), true, true, 0, px(addon, 20, true), "CloseMark"]);
+  expect(isTok(addon, out.quiet[6], "raised"), "the resting tile is the raised slate, the same behind every control").toBe(true);
+  expect([out.lit[0], isTok(addon, out.lit[1], "bad"), isTok(addon, out.lit[2], "white"), isTok(addon, out.after, "raised")], "under the mouse: a red square tile, the cross white; hidden under the mouse (no OnLeave comes) the tile goes back to the resting slate").toEqual([true, true, true, true]);
   expect([out.m[0], /Icons\\Maximize$/.test(out.m[1]), isTok(addon, out.m[2], "accent")], "a sized control keeps its size; a maximize control's glyph, on an accent tile").toEqual([30, true, true]);
 });
 
@@ -694,4 +695,16 @@ it("theme variants (#237): default unchanged; High contrast and Vellum and ink s
   addon.slash("variant contrast");
   addon.slash("theme reset");
   expect(addon.eval("return ns.Theme.Variant()"), "Reset theme clears it").toBeNull();
+});
+
+it("SLUG text (#239): off by default; /vg slug adds the SLUG flag to outlined world text only, at once", () => {
+  const addon = loggedIn('__world = UIParent:CreateFontString() ns.Theme.Text(__world, "world") __plain = UIParent:CreateFontString() ns.Theme.Text(__plain, "label")');
+  // The font flags set on a test font string.
+  const flags = (name) => addon.eval(`return ${name}.__font[3]`);
+  expect([flags("__world"), flags("__plain")], "off by default").toEqual(["OUTLINE", ""]);
+  addon.slash("slug");
+  expect([flags("__world"), flags("__plain"), chatHas(addon, /SLUG text on/)], "world text gains SLUG, panel text does not").toEqual(["OUTLINE,SLUG", "", true]);
+  expect(addon.eval('return ns.Theme.FontFlags(nil, true), ns.Theme.FontFlags("", true)'), "with no flags it is just SLUG").toBe("SLUG");
+  addon.slash("slug off");
+  expect([flags("__world"), addon.eval("return ns.Theme.Settings().slugText"), chatHas(addon, /SLUG text off/)]).toEqual(["OUTLINE", false, true]);
 });
