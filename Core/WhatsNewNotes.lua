@@ -15,6 +15,9 @@ ns.WHATS_NEW = {
       { text = "Chat can say when a bar button holds an older rank of a spell you know better; /vg ranks lists them and /vg ranks swap puts the newest rank there, out of combat.", page = "more", row = "Notice older spell ranks on bar buttons (/vg ranks)", off = true },
       { text = "Trainers you visit are remembered: /vg trainers next lists what comes in the next levels and where to learn it, and a level-up says so too.", page = "more", row = "Remember what trainers teach (/vg trainers)", off = true },
     } },
+    { module = "InstancePrep", label = "Instance prep", items = {
+      { text = "A dungeon card on the checklist shows the dungeon's level range, your own quests for it and the keys you carry, at the door and with /vg prep.", page = "more", row = "Dungeon card: level range, your dungeon quests and keys on the checklist", off = true },
+    } },
     { module = "Windows", label = "Game windows", items = {
       { text = "The spellbook gets the flat Vanguard panel, like the other game windows.", page = "more", row = "Character, merchant, quest, loot and other windows" },
     } },
@@ -44,6 +47,9 @@ ns.WHATS_NEW = {
     { module = "CraftQueue", label = "Craft queue", items = {
       { text = "A craft queue for your professions (/vg craft): queue the recipe on display, open the next one, raise Keep stocked to fit, see profession cooldowns across your characters and rank the recipes that pay best. Nothing is crafted or bought for you.", page = "more", row = "Craft queue, profession cooldowns and recipe ranking (/vg craft)", off = true },
     } },
+    { module = "MailTools", label = "Mail tools", items = {
+      { text = "A panel beside the mail window searches and filters your inbox, and presets fill the Send Mail tab for your alts (/vg mail). You click Take and Send yourself.", page = "more", row = "Search the inbox and send-to-alt presets beside the mail window (/vg mail)", off = true },
+    } },
     { module = "GroupBoard", label = "Group board", items = {
       { text = "A group board (/vg lfg) lists looking-for-more and looking-for-group posts from chat by dungeon, role and level. A click opens a whisper you send yourself.", page = "more", row = "Open the group board" },
     } },
@@ -53,8 +59,14 @@ ns.WHATS_NEW = {
     { module = "FightHistory", label = "Fight history", items = {
       { text = "/vg recap shows the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, and sends them to a channel on request. A recap in your own chat after each fight is off until you switch it on.", page = "more", row = "Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)", off = true },
     } },
+    { module = "Errands", label = "Errands", items = {
+      { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "more", row = "Boat and zeppelin timer (reload)", off = true },
+    } },
     { label = "Setup", items = {
       { text = "The setup wizard sits above the frame handles on its last step, and its title and step are centred.", page = "general", row = "Run setup" },
+    } },
+    { label = "Theme tests", items = {
+      { text = "Two switches for side-by-side tests: /vg slug draws world text with the game's smooth-scaling font flag, and /vg framebuffer stops inner borders showing through a window as it fades.", off = true },
     } },
     { label = "Errors", items = {
       { text = "An error in a hook on a game function, a button click or a timer is kept in /vg errors and doesn't stop the others." },
