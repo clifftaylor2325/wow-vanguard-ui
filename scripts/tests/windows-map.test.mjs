@@ -105,6 +105,16 @@ it("world map: its close button sits level with the map's higher title, the usua
   expect(addon.eval("local p = WorldMapFrame.BorderFrame.CloseButton.__points.CENTER return { p.x, p.y }"), "24 in from the right, 14 down").toEqual([expect.closeTo(-24, 0), expect.closeTo(-14, 0)]);
 });
 
+it("spellbook: its title goes up into the slate band and its controls level with it, once, however often it is skinned", () => {
+  const addon = loggedIn(WINDOWS_ENV + `
+    local f = __window("PlayerSpellsFrame") local bar = f.TitleContainer
+    bar:SetPoint("TOPLEFT", f, "TOPLEFT", 58, -1) bar:SetPoint("TOPRIGHT", f, "TOPRIGHT", -24, -1)
+    f.CloseButton:CreateTexture() f.CloseButton:SetPoint("TOPRIGHT", f, "TOPRIGHT", 5, 5)`);
+  addon.eval(`local GW = ns.GetModule("Windows") GW.Skin(PlayerSpellsFrame) GW.Skin(PlayerSpellsFrame)`);
+  expect(addon.eval("local p = PlayerSpellsFrame.TitleContainer.__points return { p.TOPLEFT.y, p.TOPRIGHT.y, p.TOPLEFT.x }"), "both anchors up 10, once").toEqual([9, 9, 58]);
+  expect(addon.eval("return PlayerSpellsFrame.CloseButton.__points.CENTER.y"), "controls 13 down, less the panel's padding").toBeLessThan(0);
+});
+
 it("world map: minimising or maximising rebuilds the border, and the skin goes back on", () => {
   const addon = loggedIn(WORLD_MAP_ENV);
   addon.eval("WorldMapFrame:Show() WorldMapFrame:SynchronizeDisplayState()");
