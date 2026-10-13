@@ -424,6 +424,13 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   addon.eval("GetCurrentKeyBoardFocus = nil");
   press(addon, "DOWN");
   expect(keyRow(addon), "a new page starts without a keyboard row").toBe(false);
+  addon.eval("GetCurrentKeyBoardFocus = function() return Vanguard_Options.search end");
+  press(addon, "ESCAPE");
+  expect(addon.eval("return Vanguard_Options:IsShown()"), "Escape in a box leaves the window open (the box clears first)").toBe(true);
+  addon.eval("GetCurrentKeyBoardFocus = nil");
+  press(addon, "ESCAPE");
+  expect(addon.eval("return Vanguard_Options:IsShown()"), "Escape with no box typing closes the window").toBe(false);
+  addon.eval("ns.Options.Show('general')");
   addon.eval('ns.Options.current = "nowhere"');
   expect(press(addon, "TAB"), "a page with no rows (none built): Tab has nothing to mark").toEqual(["nowhere", false]);
   addon.eval("ns.Options.Show('general')");
