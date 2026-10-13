@@ -140,6 +140,7 @@ Modules/BossDocks.lua
 Modules/FightHistory.lua
 Modules/Rolls.lua
 Modules/CraftQueue.lua
+Modules/MailTools.lua
 Modules/GameAlerts.lua
 Modules/AfkScreen.lua
 Modules/DataBars.lua
