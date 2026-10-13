@@ -70,6 +70,8 @@ function Vanguard.OpenOptions(page, setting)
 end
 
 -- The preset a player asks for, or nil.
+---@param name any
+---@return table|nil
 function ns.FindPreset(name)
   return type(name) == "string" and (find(name)) or nil
 end
@@ -82,6 +84,7 @@ local function apply(preset)
 end
 
 -- Asks, then applies the preset.
+---@param preset table
 function ns.AskPreset(preset)
   ns.Ask("Apply preset " .. preset.name .. "? Your profile is backed up first.", "Apply", function() apply(preset) end, function() end)
 end
