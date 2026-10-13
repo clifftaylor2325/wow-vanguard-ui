@@ -42,7 +42,7 @@ Search strings are item names, as you would type them in the game's search box. 
 
 Nothing in the API posts, buys, bids or cancels: those stay with the player's clicks.
 
-# Presets and options links
+## Presets and options links
 
 Three more functions on the `Vanguard` table, next to `RegisterSkin`. They are version 1 of this surface (`Vanguard.apiVersion` is 1) and only grow: functions are added, never changed or removed. A call with a wrong kind of argument returns `false` and why; none raises an error, reads a game value or touches a protected frame, so they are safe to call at any time, in combat included.
 
