@@ -306,6 +306,7 @@ local function errandRows()
     check("Train all button at trainers", setting("Errands", "trainAll")),
     check("Keep items stocked from merchants (/vg stock)", setting("Errands", "stock")),
     check("Flight timer (reload)", setting("Errands", "flightTimer", true)),
+    check("Boat and zeppelin timer (reload)", setting("Errands", "boatTimer", true)),
   }
 end
 

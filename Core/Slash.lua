@@ -14,6 +14,8 @@ local HELP = {
   "frames               list the movable frames",
   "grid [size|on|off]   the unlock-mode grid; snap on|off   snapping while dragging",
   "texelsnap [on|off]   still borders, fills and lines snap to the pixel grid (a test; off by default)",
+  "slug [on|off]        world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a test; off by default)",
+  "framebuffer [on|off] windows drawn through a frame buffer while they open and close (a test; off by default)",
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
   "cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)",
   "gradient [on|off]    windows a shade lighter toward the top (off by default)",
@@ -187,6 +189,21 @@ local function gradientCommand(rest)
   s.panelGradient = rest == "on" or (rest == "" and not s.panelGradient)
   T.Refresh()
   chat(s.panelGradient and "Panel gradient on: windows run a shade lighter toward the top." or "Panel gradient off.")
+end
+
+-- /vg slug [on|off]: the SLUG font flag on world text, repainted at once (#239).
+local function slugCommand(rest)
+  local s = T.Settings()
+  s.slugText = rest == "on" or (rest == "" and not s.slugText)
+  T.RefreshText()
+  chat(s.slugText and "SLUG text on for world text." or "SLUG text off.")
+end
+
+-- /vg framebuffer [on|off]: windows go through a frame buffer while they fade (#239).
+local function frameBufferCommand(rest)
+  local s = T.Settings()
+  s.frameBuffer = rest == "on" or (rest == "" and not s.frameBuffer)
+  chat(s.frameBuffer and "Frame buffers on while windows open and close." or "Frame buffers off.")
 end
 
 -- /vg theme reset
@@ -555,6 +572,8 @@ local COMMANDS = {
   nineslice = nineSliceCommand,
   cdmglow = cdmGlowCommand,
   gradient = gradientCommand,
+  slug = slugCommand,
+  framebuffer = frameBufferCommand,
   theme = themeCommand,
   modules = modulesCommand,
   enable = setModule(true),

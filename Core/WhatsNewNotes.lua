@@ -59,8 +59,14 @@ ns.WHATS_NEW = {
     { module = "Coexist", label = "Other addons", items = {
       { text = "When another addon does a job a Vanguard module also does, chat says so once and the Modules page lets you pick which one does it." },
     } },
+    { module = "Errands", label = "Errands", items = {
+      { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "more", row = "Boat and zeppelin timer (reload)", off = true },
+    } },
     { label = "Setup", items = {
       { text = "The setup wizard sits above the frame handles on its last step, and its title and step are centred.", page = "general", row = "Run setup" },
+    } },
+    { label = "Theme tests", items = {
+      { text = "Two switches for side-by-side tests: /vg slug draws world text with the game's smooth-scaling font flag, and /vg framebuffer stops inner borders showing through a window as it fades.", off = true },
     } },
     { label = "Errors", items = {
       { text = "An error in a hook on a game function, a button click or a timer is kept in /vg errors and doesn't stop the others." },
