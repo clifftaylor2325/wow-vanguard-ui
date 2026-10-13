@@ -236,7 +236,7 @@ it("a hidden number skips its listing without an error", () => {
   expect(addon.eval("return { ns.AuctionPrices.House().prices[2589].min, #ns.errors }"), "only the plain listing counts").toEqual([150, 0]);
 });
 
-it("our Shopping and Selling tabs are sized to their names, so the labels aren't cut off", () => {
+it("our Lists and Posting tabs are sized to their names, so the labels aren't cut off", () => {
   const addon = atAuctionHouse();
   const sizes = addon.eval("local out = {} for i = 4, 5 do local t = AuctionHouseFrame.Tabs[i] out[#out + 1] = { t:GetWidth(), #t:GetText() * 6 } end return out");
   expect(sizes.every(([w, text]) => w >= 70 && w >= text + 20), "each tab at least 70 px wide, with 20 px to spare beside its name").toBe(true);
@@ -244,18 +244,18 @@ it("our Shopping and Selling tabs are sized to their names, so the labels aren't
 
 // The window's title text.
 const title = (addon) => addon.eval("return AuctionHouseFrame.TitleContainer.TitleText:GetText()");
-// Picks a tab on the window: 1-3 the game's, 4 Shopping, 5 Selling.
+// Picks a tab on the window: 1-3 the game's, 4 Lists, 5 Posting.
 const pickTab = (addon, i) => addon.click(`AuctionHouseFrame.Tabs[${i}]`);
 
 it("two tabs join the window after the game's three; each shows its page over the content area and names the title", () => {
   const addon = atAuctionHouse();
   const window = addon.frame("AuctionHouseFrame");
   const tabs = addon.eval("local out = {} for i, t in ipairs(AuctionHouseFrame.Tabs) do out[i] = t:GetText() end return out");
-  expect([tabs, addon.eval("return AuctionHouseFrame.numTabs")], "Shopping and Selling after Buy, Sell and Auctions").toEqual([["Buy", "Sell", "Auctions", "Shopping", "Selling"], 5]);
+  expect([tabs, addon.eval("return AuctionHouseFrame.numTabs")], "Lists and Posting after Buy, Sell and Auctions").toEqual([["Buy", "Sell", "Auctions", "Lists", "Posting"], 5]);
   expect([addon.frame("Vanguard_AuctionShopping").visible, addon.frame("Vanguard_AuctionSelling").visible, title(addon)], "both pages hidden on the game's Buy page").toEqual([false, false, "Browse Auctions"]);
   pickTab(addon, 4);
   const page = addon.frame("Vanguard_AuctionShopping");
-  expect([page.visible, page.rect.left, page.rect.top, page.rect.width, page.rect.height, title(addon), addon.eval("return AuctionHouseFrame.selectedTab")], "Shopping: its page over the content area (under the title, above the money line), the title named, the tab selected").toEqual([true, window.rect.left + 4, window.rect.top - 30, 792, 478, "Shopping", 4]);
+  expect([page.visible, page.rect.left, page.rect.top, page.rect.width, page.rect.height, title(addon), addon.eval("return AuctionHouseFrame.selectedTab")], "Lists: its page over the content area (under the title, above the money line), the title named, the tab selected").toEqual([true, window.rect.left + 4, window.rect.top - 30, 792, 478, "Lists", 4]);
   const rows = addon.eval(`local AH = ${HELPER} return { AH.SHOP_ROWS, AH.VIEW_ROWS, AH.PANE_ROWS, AH.LIST_ROWS, AH.OWNED_ROWS }`);
   expect(rows, "the rows fill the room their boxes leave: 20 list and view rows, 14 pane entries, 8 listings up now, 8 of your auctions").toEqual([20, 20, 14, 8, 8]);
   const fits = addon.eval(`local AH, out = ${HELPER}, {}
@@ -278,7 +278,7 @@ it("two tabs join the window after the game's three; each shows its page over th
   expect(addon.eval(`local c = ${HELPER}.sellCard return { c.post:GetBottom() - 40 >= c:GetBottom(), c.length:GetBottom() > c.post:GetTop(), c.price:GetBottom() > c.length:GetTop(), c.bid:GetBottom() > c.price:GetTop(), c.stack:GetLeft() == c.qty:GetLeft() }`), "the sell form fits its card with room for the two lines under Post, one field a row, rows apart").toEqual([true, true, true, true, true]);
   expect(addon.eval(`local c = ${HELPER}.ownedCard return { c.cancelNext:GetRight() < c.check:GetLeft(), c.check:GetRight() == c:GetRight(), c.table.rows[1]:GetTop() < c.cancelNext:GetBottom(), (select(2, c.summary:GetPoint(1))) == c.title }`), "Check undercuts and Cancel next undercut on the heading line, the line beside the heading, the rows under them").toEqual([true, true, true, true]);
   pickTab(addon, 5);
-  expect([addon.frame("Vanguard_AuctionShopping").visible, addon.frame("Vanguard_AuctionSelling").visible, title(addon)], "Selling").toEqual([false, true, "Selling"]);
+  expect([addon.frame("Vanguard_AuctionShopping").visible, addon.frame("Vanguard_AuctionSelling").visible, title(addon)], "Posting").toEqual([false, true, "Posting"]);
   pickTab(addon, 1);
   expect([addon.frame("Vanguard_AuctionSelling").visible, title(addon)], "back to the game's Buy: ours hide, the game's title").toEqual([false, "Browse Auctions"]);
   pickTab(addon, 5);

@@ -18,7 +18,9 @@ ns.WHATS_NEW = {
       { text = "A raid tile width the choices don't list shows its value on the Width row.", page = "raid", row = "Width" },
     } },
     { module = "AuctionHelper", label = "Auction helper", items = {
-      { text = "The Shopping and Selling tabs on the auction house are sized to their names.", page = "more", row = "Shopping and Selling tabs on the auction house" },
+      { text = "The auction house tabs are now called Lists and Posting, and are sized to their names.", page = "more", row = "Lists and Posting tabs on the auction house" },
+      { text = "Posting shows a step guide (Item, Price, Post, Listed) with a line saying what to do next, and a price the game asks you to confirm is confirmed with a second click." },
+      { text = "Clicking an item in your bags while Posting is open keeps you on Posting instead of switching to the game's Sell page." },
     } },
     { module = "MenuStrip", label = "Menu bar", items = {
       { text = "A menu bar button takes your click while the game's new indicator is showing above it." },
