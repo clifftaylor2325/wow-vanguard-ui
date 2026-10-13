@@ -15,6 +15,7 @@ local HELP = {
   "grid [size|on|off]   the unlock-mode grid; snap on|off   snapping while dragging",
   "texelsnap [on|off]   still borders, fills and lines snap to the pixel grid (a test; off by default)",
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
+  "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
   "gradient [on|off]    windows a shade lighter toward the top (off by default)",
   "accent <rrggbb|name> set the accent color (brass, arcane, jade, orchid, copper); accent reset",
   "theme reset          every theme setting back to default",
@@ -173,6 +174,14 @@ local function gradientCommand(rest)
   s.panelGradient = rest == "on" or (rest == "" and not s.panelGradient)
   T.Refresh()
   chat(s.panelGradient and "Panel gradient on: windows run a shade lighter toward the top." or "Panel gradient off.")
+end
+
+-- /vg ornaments [on|off]: window ornaments, repainted at once (#238).
+local function ornamentsCommand(rest)
+  local s = T.Settings()
+  s.ornaments = rest == "on" or (rest == "" and not s.ornaments)
+  T.Refresh()
+  chat(s.ornaments and "Window ornaments on." or "Window ornaments off.")
 end
 
 -- /vg theme reset
@@ -540,6 +549,7 @@ local COMMANDS = {
   texelsnap = texelSnapCommand,
   nineslice = nineSliceCommand,
   gradient = gradientCommand,
+  ornaments = ornamentsCommand,
   theme = themeCommand,
   modules = modulesCommand,
   enable = setModule(true),
