@@ -6,7 +6,13 @@ headless WoW client written for the tests: a Lua 5.1-faithful VM (fengari with
 and input. Each `scripts/tests/<area>.test.mjs` file is one area of the addon
 and runs in parallel with the others under Vitest, one worker per core
 (`VITEST_MAX_WORKERS=n` caps it); a worker compiles each Lua file once and
-loads every later addon from the compiled chunks.
+loads every later addon from the compiled chunks. The Lua project does not isolate
+its files (`isolate: false` in `vitest.config.mjs`), so a worker keeps those chunks
+and its warmed-up JIT from one file to the next. Do not mock a module or change
+`process.env` in a case: the next file in that worker would see it. Files run at
+one per worker, so the slowest file sets the wall time on a machine with many cores:
+split a file by area when it passes about 45 s (`npm run timing` shows the per-file
+times) and move its entry in `login-scope.json` with it.
 
 Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
 
