@@ -104,6 +104,7 @@ Modules/ErrandsBoats.lua
 Modules/InstancePrep.lua
 Modules/DungeonCard.lua
 Modules/TalentPlanner.lua
+Modules/Legacy.lua
 Modules/AutoAccept.lua
 Modules/QuestDialogParts.lua
 Modules/QuestDialog.lua
