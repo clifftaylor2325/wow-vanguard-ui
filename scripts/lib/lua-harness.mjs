@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import fengari from "fengari";
 import lobject from "fengari/src/lobject.js";
 import lstring from "fengari/src/lstring.js";
-import { luaString, luaValue } from "./lua-emit.mjs";
+import { LuaSource, luaString, luaValue } from "./lua-emit.mjs";
 import { lineHook } from "./lua-coverage.mjs";
 import { profileSampler } from "./lua-profile.mjs";
 
@@ -367,8 +367,10 @@ const WORLD_CALLS = ["unit", "setUnit", "removeUnit", "combat", "secretGeometry"
 // The world: what the game API reports, from JS.
 function worldApi(addon) {
   const api = {
-    // A secret value, as the client hides numbers in instanced combat.
-    secret: (n) => ({ __secret: true, n }),
+    // A secret value, as the client hides numbers in instanced combat: made by
+    // wow-world.lua's world.secret when the call reaches Lua, so it carries the
+    // metatable that refuses arithmetic, comparison and field reads.
+    secret: (n) => new LuaSource(`__wfgWorld.secret(${luaValue(n)})`),
     // Any world field: get("money"), set("money", 5).
     get: (field) => addon.eval(`return __wfgWorld.${field}`),
     set: (field, value) => addon.eval(`__wfgWorld.${field} = ${luaValue(value)}`),
