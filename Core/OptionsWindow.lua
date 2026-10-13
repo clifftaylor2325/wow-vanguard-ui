@@ -422,10 +422,10 @@ local function addFooter(f)
   f.notice:SetText("Some changes need a reload")
 end
 
--- One nav entry: icon and title; the active one gets an accent rail and wash.
-local function navItem(nav, y)
+-- One nav entry (h tall): icon and title; the active one gets an accent rail and wash.
+local function navItem(nav, y, h)
   local b = CreateFrame("Button", nil, nav)
-  b:SetSize(NAV_WIDTH - 2, 30)
+  b:SetSize(NAV_WIDTH - 2, h)
   b:SetPoint("TOPLEFT", 1, -y)
   b.wash, b.rail = W.Flat(b, "BACKGROUND", "accent"), W.Flat(b, "ARTWORK", "accent")
   b.wash:SetAllPoints()
@@ -471,15 +471,25 @@ local function navGroup(page)
   return order < 30 and 1 or order < 90 and 2 or 3
 end
 
+-- How tall one nav entry is: 30 px, or less when that many pages and dividers would run past the nav's foot.
+local function navStep(list)
+  local gaps = -1
+  for i, page in ipairs(list) do
+    if i == 1 or navGroup(page) ~= navGroup(list[i - 1]) then gaps = gaps + 1 end
+  end
+  return math.min(30, math.floor((HEIGHT - 2 * BAR - 12 - 7 * gaps) / #list))
+end
+
 -- One entry per page down the nav, with a divider where the group changes.
 local function addNavItems(f)
-  local y, group = 8, nil
-  for _, page in ipairs(navOrder()) do
+  local y, group, list = 8, nil, navOrder()
+  local step = navStep(list)
+  for _, page in ipairs(list) do
     if group and navGroup(page) ~= group then divider(f.navPanel, y + 3) y = y + 7 end
     group = navGroup(page)
-    f.nav[page.key] = navItem(f.navPanel, y)
+    f.nav[page.key] = navItem(f.navPanel, y, step)
     fillNavItem(f.nav[page.key], page)
-    y = y + 30
+    y = y + step
   end
 end
 

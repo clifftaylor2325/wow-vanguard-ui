@@ -31,6 +31,10 @@ it("OpenOptions opens a page and a row", () => {
   expect(addon.eval("return ns.Options.current"), "on that page").toBe("profiles");
   expect(addon.texts("Apply Healer").length, "the presets are on the Profiles page").toBe(1);
   expect(addon.eval('return Vanguard.OpenOptions("general", 3)'), "a non-string setting is ignored").toBe(true);
+  expect(addon.eval('return Vanguard.OpenOptions("chat", "Chat watch")'), "a page that came out of the old Bars, map, chat page opens").toBe(true);
+  expect(addon.eval("return ns.Options.current"), "on its own page").toBe("chat");
+  expect(addon.eval('return Vanguard.OpenOptions("more")'), "the old page key still opens something").toBe(true);
+  expect(addon.eval("return ns.Options.current"), "the first of the pages it was split into").toBe("bars");
 });
 
 it("a built-in preset applies after a question, and keeps local data", () => {

@@ -149,7 +149,7 @@ it("ranks the recipes whose prices are all known, by profit, per craft and per h
 
 it("the options have the switch and the pace", () => {
   const addon = crafter();
-  addon.eval('ns.Options.Show("more")');
-  expect(addon.find("^Craft queue, profession cooldowns and recipe ranking").text, "under Bars, map, chat").toMatch(/^Craft queue/);
+  addon.eval('ns.Options.Show("town")');
+  expect(addon.find("^Craft queue, profession cooldowns and recipe ranking").text, "under Town and gear").toMatch(/^Craft queue/);
   expect(addon.find("^Seconds a craft takes").text, "the pace").toMatch(/^Seconds a craft takes/);
 });
