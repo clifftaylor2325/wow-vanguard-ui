@@ -658,3 +658,13 @@ it("switches wrap a long caption left of the track and react to the mouse", () =
   expect(knob("OnMouseUp"), "letting go clears the press").toEqual([true, false]);
   expect(knob("OnLeave"), "leaving clears the hot mark").toEqual([false, false]);
 });
+
+it("options: the Theme variant and Corners choices list every variant in T.VARIANT_ORDER and both corner styles, so a new look can't be left off the page", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // Clicks a cycle row n times and returns the setting it set after each click.
+  const cycle = (caption, key, n) => Array.from({ length: n }, () => (addon.eval(`__click("${caption}") return ns.Theme.Settings().${key}`)));
+  const order = addon.eval("return ns.Theme.VARIANT_ORDER");
+  expect(cycle("Theme variant: surfaces and text", "variant", order.length), "one click per variant goes round every one, Frost included, back to the default").toEqual([...order.slice(1), order[0]]);
+  expect(cycle("Corners: square or rounded panels", "corners", 2), "corners cycle rounded then square").toEqual(["rounded", "square"]);
+});
