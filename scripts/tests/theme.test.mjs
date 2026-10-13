@@ -518,7 +518,8 @@ const lum = (c) => c.slice(0, 3).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.
 
 // WCAG contrast of a token's colour over the panel colour.
 const contrast = (addon, name) => {
-  return Math.round(((lum(tok(addon, name)) + 0.05) / (lum(tok(addon, "panel")) + 0.05)) * 10) / 10;
+  const [a, b] = [lum(tok(addon, name)) + 0.05, lum(tok(addon, "panel")) + 0.05];
+  return Math.round((Math.max(a, b) / Math.min(a, b)) * 10) / 10;
 };
 
 it("text tiers (#227): text, text2, muted, then disabled, each readable on a panel; a search box's hint is in the disabled tier", () => {
@@ -772,7 +773,58 @@ it("more variants: Midnight, Obsidian, Moss and Ash and ember swap surfaces and 
     addon.slash(`variant ${name}`);
     expect(["text", "text2", "muted"].map((n) => contrast(addon, n) >= 4.5), `${name}: text, text2 and muted clear 4.5:1`).toEqual([true, true, true]);
   }
-  expect(addon.eval("return #ns.Theme.VARIANT_ORDER"), "eight entries, default included").toBe(8);
+  expect(addon.eval("return #ns.Theme.VARIANT_ORDER"), "nine entries, default included").toBe(9);
   addon.slash("variant default");
   expect(tok(addon, "text"), "back to the default").toEqual(base.text);
+});
+
+// Whether a frame has a visible texture of a Media/Textures file, and how many.
+const artCount = (addon, name, art) => addon.eval(`local n = 0 for _, r in ipairs({ ${name}:GetRegions() }) do if tostring(r.__texture):find("${art}") and r:IsShown() then n = n + 1 end end return n`);
+
+it("Frost (light): white panels, dark blue text and border, a darker accent text shade, and every readout clears 4.5:1 on white", () => {
+  const addon = loggedIn();
+  const darkText = hexOf(addon, "accentText");
+  addon.slash("variant frost");
+  expect([tok(addon, "panel").slice(0, 3), chatHas(addon, /Theme variant: Frost/)], "white panels").toEqual([[244 / 255, 246 / 255, 250 / 255], true]);
+  expect(contrast(addon, "text") > 12 && contrast(addon, "edge") > 10, "ink text and border").toBe(true);
+  expect(["text", "text2", "muted", "disabled", "accentText", "good", "warn", "bad", "info", "gold", "hostile", "neutral", "friendly"].map((n) => [n, contrast(addon, n) >= 4.5]).filter(([, ok]) => !ok), "every text colour readable on the panel").toEqual([]);
+  expect(hexOf(addon, "accentText") < darkText, "the accent's text shade goes darker, not lighter").toBe(true);
+  addon.slash("accent arcane");
+  expect(contrast(addon, "accentText") >= 4.5, "a changed accent is recomputed for the light look").toBe(true);
+  addon.slash("variant default");
+  expect(contrast(addon, "text"), "back to the dark look").toBe(15);
+});
+
+it("rounded corners: off by default; /vg corners rounded gives panels and buttons arcs, pulls the fill and lines in, and square hides it all again", () => {
+  const addon = loggedIn('__win = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true }) __btn = ns.Theme.Button(CreateFrame("Button", nil, UIParent)) __bar = ns.Theme.Panel(CreateFrame("StatusBar", nil, UIParent)) __bare = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { noBorder = true })');
+  expect([addon.eval("return ns.Theme.Settings().corners"), artCount(addon, "__win", "CornerLine"), addon.eval("return __win.__children and #__win.__children or 0")], "square by default: no corner art made").toEqual(["square", 0, 0]);
+  addon.slash("corners rounded");
+  const r = addon.eval("return ns.Theme.CORNER_RADIUS * ns.Theme.Pixel(__win)");
+  expect([artCount(addon, "__win", "CornerLine"), artCount(addon, "__win", "CornerFill"), chatHas(addon, /Corners: rounded/)], "four arcs and four discs on a window").toEqual([4, 4, true]);
+  expect([artCount(addon, "__btn", "CornerLine"), artCount(addon, "__bar", "CornerLine"), artCount(addon, "__bare", "CornerLine"), artCount(addon, "__bare", "CornerFill")], "a button rounds; a status bar stays square; a borderless panel rounds only its fill").toEqual([4, 0, 0, 4]);
+  const corner = addon.eval(`for _, t in ipairs({ __win:GetRegions() }) do if tostring(t.__texture):find("CornerLine") and t.__points.TOPRIGHT then return { t:GetWidth(), t.__texCoord } end end`);
+  expect(corner, "an r square, flipped for its corner").toEqual([r, [1, 0, 0, 1]]);
+  const top = addon.eval(`for _, t in ipairs({ __win:GetRegions() }) do if t.__layer == "BORDER" and t.__points.TOPLEFT and t.__points.TOPRIGHT and t:GetHeight() == ns.Theme.Pixel(__win) then return { t.__points.TOPLEFT.x, t.__points.TOPRIGHT.x } end end`);
+  expect(top, "the top edge stops r short of each corner").toEqual([r, -r]);
+  expect(fillOf(addon, "__win")[0].slice(0, 3), "the fill keeps the panel colour").toEqual(tok(addon, "panel").slice(0, 3));
+  expect(addon.eval("local f = __win for _, t in ipairs({ f:GetRegions() }) do if t.__layer == 'BACKGROUND' and t.__texture == ns.Theme.WHITE and t.__points.BOTTOMRIGHT then return t.__points.TOPLEFT.x end end"), "the main fill is pulled in r").toBe(r);
+  addon.slash("gradient on");
+  expect(fillOf(addon, "__win")[1], "no gradient while rounded (the corner pieces can't follow it)").toBe(false);
+  addon.slash("gradient off");
+  addon.slash("corners oval");
+  expect([chatHas(addon, /Usage: \/vg corners/), addon.eval("return ns.Theme.Settings().corners")], "a bad name shows usage").toEqual([true, "rounded"]);
+  addon.slash("corners");
+  addon.slash("corners square");
+  expect([artCount(addon, "__win", "CornerLine"), artCount(addon, "__win", "CornerFill"), addon.eval("local f = __win for _, t in ipairs({ f:GetRegions() }) do if t.__layer == 'BACKGROUND' and t.__texture == ns.Theme.WHITE and t.__points.BOTTOMRIGHT then return t.__points.TOPLEFT.x end end")], "square again: the art hidden and the fill back to the corners").toEqual([0, 0, 0]);
+  expect(addon.eval("return VanguardDB.profiles.Default.theme.corners"), "kept in the profile").toBe("square");
+});
+
+it("rounded corners: High contrast's 2 px ring rounds at twice the radius, and a reset returns to square", () => {
+  const addon = loggedIn('__ring = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { accent = true })');
+  addon.slash("corners rounded");
+  addon.slash("variant contrast");
+  const px = addon.eval("return ns.Theme.Pixel(__ring)");
+  expect(addon.eval(`for _, t in ipairs({ __ring:GetRegions() }) do if tostring(t.__texture):find("CornerLine") then return t:GetWidth() end end`) / px, "8 px arcs").toBe(8);
+  addon.slash("theme reset");
+  expect(addon.eval("return ns.Theme.Settings().corners"), "reset gives square corners").toBe("square");
 });

@@ -53,6 +53,18 @@ function softBox(size, m, sigma, rgb, alpha, hollow) {
   });
 }
 
+// A rounded corner's quarter circle, drawn for a panel's top-left corner: the circle's centre sits
+// at the canvas's bottom-right, so the arc curves round the top left. `line` is the border's arc,
+// a stroke `w` wide along the outer edge; otherwise the filled quarter disc under the fill.
+function corner(size, w, line) {
+  return fill(image(size, size), (x, y) => {
+    const d = Math.hypot(size - (x + 0.5), size - (y + 0.5));
+    const outer = Math.max(0, Math.min(1, size - d + 0.5));
+    const inner = line ? Math.max(0, Math.min(1, size - w - d + 0.5)) : 0;
+    return [1, 1, 1, outer - inner];
+  });
+}
+
 // A white wash fading in from the top to the bottom: the dispel highlight
 // rises from a raid tile's bottom edge, clear of the name.
 function fade() {
@@ -82,6 +94,9 @@ export const TEXTURES = {
   Stripes: stripes,
   // A window-corner bracket (#238), top left, on a 16-unit grid: two one-unit lines meeting in a 45-degree chamfer.
   OrnamentCorner: () => draw(image(16, 16), 16, [box(0, 5, 1, 16), box(5, 0, 16, 1), line(0.5, 5, 5, 0.5, 1)]),
+  // Rounded corners (the corners setting): the border's arc, 8 of 32 wide (one pixel at T.CORNER_RADIUS 4 px), and the fill under it.
+  CornerLine: () => corner(32, 8, true),
+  CornerFill: () => corner(32, 8, false),
   Fade: fade,
   // The logo halves, white, for the addon to tint (accent left, text right).
   LogoLeft: () => draw(image(64, 64), 64, LOGO_LEFT),
