@@ -78,7 +78,9 @@ end
 local GLOW_PERCENT = { min = 10, max = 60, step = 5, format = function(v) return string.format("%d%%", v) end }
 
 -- Puts the Cooldown Manager glows right after a change of their switch or share.
-local function applyGlow() ns.GetModule("CooldownGlow").Apply() end
+local function applyGlow()
+  ns.GetModule("CooldownGlow").Apply()
+end
 
 -- The Cooldown Manager glow's switch and share (Modules/CooldownGlow.lua), applied at once.
 local function glowRows()
