@@ -248,7 +248,7 @@ it("the info strip's auction sales: this session's, off until switched on, from 
   expect(isTok(addon, addon.frame("ns.GetModule('InfoStrip').texts.ahgold").textColor, "gold"), "in gold").toBe(true);
   addon.eval(`ns.AuctionLedger.Note({ kind = "sold", id = 9999, qty = 1, amount = 125000, auction = 3, t = __now })
     ns.AuctionLedger.Note({ kind = "expired", id = 9999, qty = 1, auction = 4, t = __now })`);
-  expect([block()[1], addon.eval("return Vanguard_InfoStrip:GetHeight()")], "a new sale counts at once, on the fifth row; an expiry adds nothing").toEqual(["AH +12g 90s", 84]);
+  expect([block()[1], addon.eval("return Vanguard_InfoStrip:GetHeight()")], "a new sale counts at once, on the sixth row; an expiry adds nothing").toEqual(["AH +12g 90s", 112]);
   addon.eval("ns.AuctionLedger.Book().records = {} ns.GetModule('InfoStrip').Paint('ahgold')");
   expect(block()[0], "no sales: hidden").toBe(false);
 });
