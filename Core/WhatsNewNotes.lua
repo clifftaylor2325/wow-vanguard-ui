@@ -39,6 +39,9 @@ ns.WHATS_NEW = {
     { module = "GroupBoard", label = "Group board", items = {
       { text = "A group board (/vg lfg) lists looking-for-more and looking-for-group posts from chat by dungeon, role and level. A click opens a whisper you send yourself.", page = "more", row = "Open the group board" },
     } },
+    { module = "OfficerLoot", label = "Officer loot tools", items = {
+      { text = "A soft-reserve list (/vg loot) flags a roll on a reserved item in the roll tracker, and a roster panel lists the group by role. Kept on your character and shared by hand into the chat box; nothing is synced or sent for you.", page = "more", row = "Turn on the soft-reserve list and the roster", off = true },
+    } },
     { module = "Coexist", label = "Other addons", items = {
       { text = "When another addon does a job a Vanguard module also does, chat says so once and the Modules page lets you pick which one does it." },
     } },
