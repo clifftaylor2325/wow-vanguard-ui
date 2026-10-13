@@ -270,6 +270,7 @@ O.MODULE_INFO = {
   TalentPlanner = { "Talent planner", "Plan your talent points on the talents window before you have them: planned ranks on each talent, the next pick ringed, Spend planned buys them in order." },
   BossDocks = { "Boss mod docks", "Two spots you can move for boss mods' timer bars; /vg dock lines up Deadly Boss Mods' bars with them." },
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
+  CraftQueue = { "Craft queue", "A list of crafts to make, profession cooldowns across your characters and the recipes that pay best, from the auction prices (off until switched on; /vg craft)." },
   Rolls = { "Roll tracker", "A small panel with the group's /roll results, highest first, and (where the client has the loot history) who rolled what on the items being rolled for." },
   FightHistory = { "Fight history", "Your DPS and place in each fight this session, as a strip of bars under the damage meter (off until switched on)." },
   Windows = { "Game windows", "Character, merchant, quest, loot, mail, guild, map, options and other game windows, their tabs, menus, popups and the breath bar in the Vanguard look." },
