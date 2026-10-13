@@ -181,15 +181,27 @@ local function enum(kind, key)
   return t and t[key] or nil
 end
 
--- The current (or last) fight's damage per second session from the game's damage
--- meter, and the session type it was asked with; nil in combat and wherever the client keeps it hidden.
-local function dpsSession()
+-- The current (or last) fight's session of one kind of the game's damage meter (an Enum.DamageMeterType
+-- key such as "Dps"), and the session type it was asked with; nil in combat and wherever the client keeps it hidden.
+local function meterSession(what)
   local get = C_DamageMeter and C_DamageMeter.GetCombatSessionFromType
-  local kind, what = enum("DamageMeterSessionType", "Current"), enum("DamageMeterType", "Dps")
-  if type(get) ~= "function" or kind == nil or what == nil or ns.InCombat() then return nil end
-  local session = get(kind, what)
+  local kind, which = enum("DamageMeterSessionType", "Current"), enum("DamageMeterType", what)
+  if type(get) ~= "function" or kind == nil or which == nil or ns.InCombat() then return nil end
+  local session = get(kind, which)
   if type(session) ~= "table" or ns.IsSecret(session) then return nil end
   return session, kind
+end
+
+-- The damage per second session.
+local function dpsSession()
+  return meterSession("Dps")
+end
+
+-- One kind of meter's list of lines for the current (or last) fight, top first (the fight recap
+-- reads Interrupts, Dispels and so on); nil where the client has none.
+function IS.MeterSources(what)
+  local session = meterSession(what)
+  if session and type(session.combatSources) == "table" then return session.combatSources end
 end
 
 -- That session's list of lines, top first; nil where there's none.
