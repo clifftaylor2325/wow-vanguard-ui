@@ -58,10 +58,10 @@ it("elsewhere /vg prep lists the dungeon and raid quests in your log, with a mor
   const addon = character(ON, "__inside = false __kind = 'none'");
   addon.slash("prep");
   expect(text(addon).slice(0, 4), "tagged quests only, lowest level first, hidden ones skipped").toEqual(["Dungeon quests in your log", "[9] TEST-ONLY Forest Wolves", "[13] TEST-ONLY Taragaman", "[15] TEST-ONLY Fire Brand · done"]);
-  const many = character(ON, `__inside = false __kind = 'none' for i = 20, 29 do __wfgWorld.quests[#__wfgWorld.quests + 1] = { questID = 100 + i, title = "TEST-ONLY Q" .. i, level = i } __tags[100 + i] = 81 end`);
+  const many = character(ON, `__inside = false __kind = 'none' for i = 20, 29 do __wfgWorld.quests[#__wfgWorld.quests + 1] = { questID = 100 + i, title = "TEST-ONLY Q" .. i, level = i } __tags[100 + i] = 81 end __wfgWorld.quests[#__wfgWorld.quests + 1] = { questID = 5, title = "TEST-ONLY Aardvark", level = 13 } __tags[5] = 81`);
   many.slash("prep");
   const out = text(many);
-  expect([out.length, out[out.length - 2]], "six quests and the rest counted").toEqual([9, "and 7 more"]);
+  expect([out.length, out[out.length - 2]], "six quests and the rest counted").toEqual([9, "and 8 more"]);
 });
 
 it("the level range, size and difficulty drop what the client does not give", () => {
