@@ -80,20 +80,26 @@ local GLOW_PERCENT = { min = 10, max = 60, step = 5, format = function(v) return
 -- Puts the Cooldown Manager glows right after a change of their switch or share.
 local function applyGlow() ns.GetModule("CooldownGlow").Apply() end
 
--- The game's own tools: the Cooldown Manager and the damage meter (after a reload).
-local function gameToolRows()
+-- The Cooldown Manager glow's switch and share (Modules/CooldownGlow.lua), applied at once.
+local function glowRows()
   return {
-    { "header", "The game's tools" },
-    check("Show the game's Cooldown Manager: its essential row between your frames", cooldownManagerSetting()), check("Cooldown Manager in the Vanguard look (reload)", setting("GameTools", "cooldowns", true)),
     check("Glow a Cooldown Manager buff in its last part, where the game's own flag is missing", liveSetting("CooldownGlow", "glow", applyGlow)),
     { "slider", "Glow when this much is left", GLOW_PERCENT, liveSetting("CooldownGlow", "percent", applyGlow) },
+  }
+end
+
+-- The game's own tools: the Cooldown Manager and the damage meter (after a reload).
+local function gameToolRows()
+  return append({
+    { "header", "The game's tools" },
+    check("Show the game's Cooldown Manager: its essential row between your frames", cooldownManagerSetting()), check("Cooldown Manager in the Vanguard look (reload)", setting("GameTools", "cooldowns", true)),
     check("Damage meter in the Vanguard look (reload)", setting("GameTools", "meter", true)),
     check("Place them to fit the layout; off leaves them to Edit Mode (reload)", setting("GameTools", "place", true)),
     check("Loss of control in the Vanguard look, above your character (reload)", setting("GameAlerts", "lossOfControl", true)),
     { "cycle", "Talking head (reload)", { { "move", "Vanguard look, top center" }, { "hide", "Hidden" }, { "game", "The game's" } }, setting("GameAlerts", "talkingHead", true) },
     check("Hardcore death notices in the Vanguard look (reload)", setting("GameAlerts", "hardcore", true)),
     check("A rare nearby: a sound and a chat line, out of combat", setting("GameAlerts", "rares")),
-  }
+  }, glowRows())
 end
 
 -- The visibility rows (Core/Visibility.lua) of a module's frame, applied at once
