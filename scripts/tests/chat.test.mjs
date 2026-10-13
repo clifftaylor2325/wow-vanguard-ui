@@ -266,7 +266,7 @@ it("chat: the game's timestamps and class-colored names, from /vg", () => {
     time = function() return 1292426852 end`);
   expect(addon.eval("return ns.GetModule('ChatExtras').TimestampChoices()"), "off, then each format this client has, shown as the game shows it")
     .toEqual([["none", "Off"], ["%H:%M ", "TEST-ONLY %H:%M "], ["%I:%M %p ", "TEST-ONLY %I:%M %p "]]);
-  addon.eval('ns.Options.Show("more")');
+  addon.eval('ns.Options.Show("chat")');
   addon.eval('__click("Chat timestamps")');
   expect(addon.eval('return GetCVar("showTimestamps")'), "the row sets the game's own timestamp setting").toBe("%H:%M ");
   addon.eval('__click("Class-colored names")');
