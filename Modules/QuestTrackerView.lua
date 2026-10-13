@@ -74,7 +74,7 @@ end
 local function ownSpot()
   local spot = CreateFrame("Frame", "Vanguard_QuestTracker", UIParent)
   spot:SetSize(QT.W, QT.H)
-  ns.Mover(spot, "questtracker", "Quest tracker", { "TOPRIGHT", "TOPRIGHT", -12, -276 })
+  ns.Mover(spot, "questtracker", "Quest tracker", { "TOPRIGHT", "TOPRIGHT", -12, -336 })
   return spot
 end
 
