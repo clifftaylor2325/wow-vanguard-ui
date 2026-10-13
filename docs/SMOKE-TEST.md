@@ -70,6 +70,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: `No errors caught this session.` Anything else is the first bug report. [After P0.2: each entry shows a count and a stack.]
 - If it fails, paste: the whole `/vg errors` output.
 
+### 1.5 Memory over a minute
+
+- Do: stand still in a city out of combat, type `/vg mem`, and wait a minute without opening windows. Then repeat it once.
+- Expect: the first line says `Measuring Vanguard's memory for 60 s`; after a minute two lines: `Vanguard's memory over 60 s: A MB to B MB (+N KB, +R KB/s), low L, high H MB.` and a verdict (`The low point held: ...garbage the game collects` or `The low point rose N KB: Vanguard is keeping memory`). Growth of a few hundred KB that falls back is normal; a low point that rises on every run is not. In combat `/vg mem` says it can't read, and `/vg perf` says `memory: not read in combat`.
+- If it fails, paste: both result lines of each run, what you did during the minute, and `/vg errors`.
+
 ## 2. Options window and wizard
 
 ### 2.1 Every options page
