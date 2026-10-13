@@ -1400,27 +1400,12 @@ function T.FontObjects(map)
   applyFontObjects()
 end
 
--- Tints the logo's halves: accent on the left diamond, text color on the right.
-local function paintLogo(entry)
-  T.Tint(entry.parts.left, "accent")
-  T.Tint(entry.parts.right, "text")
-end
-
--- One half of the logo as a full-size texture on f, at an ARTWORK sublevel.
-local function logoHalf(f, half, sublevel)
-  local t = f:CreateTexture(nil, "ARTWORK", nil, sublevel)
-  t:SetTexture(T.Texture("Logo" .. half))
-  t:SetAllPoints()
-  return t
-end
-
--- The Vanguard mark (two linked diamonds) at size x size; follows the accent live.
+-- The Vanguard crest (Media/Textures/Icon, pre-colored: the accent and theme don't tint it) at size x size.
 function T.Logo(parent, size)
   local f = T.PixelSize(CreateFrame("Frame", nil, parent), size, size)
-  local parts = { right = logoHalf(f, "Right", 0), left = logoHalf(f, "Left", 1) }
-  local entry = { kind = "logo", opts = {}, parts = parts, paint = paintLogo }
-  painted[f] = entry
-  paintLogo(entry)
+  local t = f:CreateTexture(nil, "ARTWORK")
+  t:SetTexture(T.Texture("Icon"))
+  t:SetAllPoints()
   return f
 end
 

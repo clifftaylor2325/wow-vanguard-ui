@@ -175,12 +175,9 @@ it("bundled font and logo", () => {
   expect(korean.eval("return (ns.Theme.Font())") === "Fonts\\FRIZQT__.TTF", "Korean and Chinese clients keep the game's font (Fira has no Hangul or Han)").toBeTruthy();
   const logo = addon.eval(`local l = Vanguard_Options.logo
     local out = {}
-    for _, w in ipairs(__wfgStub.frames) do if w.__parent == l then out[#out + 1] = { tex = w.__texture, color = w.__vertexColor } end end
+    for _, w in ipairs(__wfgStub.frames) do if w.__parent == l then out[#out + 1] = w.__texture end end
     return out`);
-  expect(logo.length === 2 && logo.every((t) => /Media\\Textures\\Logo(Left|Right)$/.test(t.tex)), "the options title has the two-part logo").toBeTruthy();
-  addon.slash("accent fel");
-  const left = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__parent == Vanguard_Options.logo and w.__texture:find("Left") then return w.__vertexColor end end`);
-  expect(isTok(addon, left, "accent"), "the logo's left diamond follows the accent live").toBeTruthy();
+  expect(logo.length === 1 && /Media\\Textures\\Icon$/.test(logo[0]), "the options title shows the crest, the same pre-colored art as the addons-list icon").toBeTruthy();
 });
 
 it("text roles, sheen and shadows", () => {
