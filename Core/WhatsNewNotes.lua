@@ -64,6 +64,9 @@ ns.WHATS_NEW = {
     { module = "Errands", label = "Errands", items = {
       { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "more", row = "Boat and zeppelin timer (reload)", off = true },
     } },
+    { module = "Legacy", label = "Legacy system", items = {
+      { text = "/vg legacy probe lists what the game has for the Legacy system, and a perk planner (off until you switch it on) keeps a list of perks within the tree's 16 points.", page = "more", row = "Legacy perk planner: a list of perks within the tree's 16 points (/vg legacy plan)", off = true },
+    } },
     { label = "Setup", items = {
       { text = "The setup wizard sits above the frame handles on its last step, and its title and step are centred.", page = "general", row = "Run setup" },
     } },
