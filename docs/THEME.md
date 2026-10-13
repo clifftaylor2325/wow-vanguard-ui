@@ -189,6 +189,8 @@ For the game's own windows (`Modules/Windows*.lua`, docs/design/RESKIN.md), and 
 
 ## Icons
 
+`Media/Textures/Icon.tga`, the icon the game's addons list shows (`## IconTexture` in the TOC), is the one pre-coloured image: Vanguard's crest, two swords crossed behind a rimmed brass shield that bears a serif V, drawn at 64 x 64 px by `scripts/lib/media-brand.mjs` from the same 1024-unit drawing as the website's logo (`art/brand/vanguard-crest.svg`, the reference). The rivets, the fullers, the grips' wrap and the V's engraved line are left out at that size.
+
 `Media/Icons/*.tga` are white glyphs made at 32 x 32 px by `scripts/lib/media-sources.mjs`. Most are line glyphs drawn on a 16-unit grid and shown at 16 px (menu strip, close and arrow controls) or smaller (raid marks at about 10 px, which are filled shapes for that reason). The options nav's page icons (`Nav*`) and the minimap's two slot buttons (`Minimap*`) are filled silhouettes rasterized from game-icons.net SVGs (`SILHOUETTES`; CC BY 3.0, credited in `art/CREDITS.md` and `Media/Icons/CREDITS.txt`) with one unit of clear air around them, shown at 16 and 12 px. The stroke rules below are for the drawn line glyphs; the tinting rules apply to all. Every tinted image is white in every pixel, its clear ones included, with the shape only in alpha, so filtering never pulls a dark fringe into a tinted edge; icons and the stand-alone shapes (the diamond, the logo halves) keep at least one clear pixel inside their canvas edge (`scripts/media.test.mjs` checks both).
 
 - **One grid unit is one pixel at 16 px.** Strokes are 2 units (2 px) wide (`STROKE`).

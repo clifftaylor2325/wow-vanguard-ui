@@ -4,13 +4,12 @@
 // game-icons.net SVGs), and the faction crests under Media/Art come from their
 // SVGs too (scripts/lib/media-crests.mjs); scripts/build-media.mjs writes them.
 // Textures are white or grayscale so the addon tints them with theme colors;
-// Icon is the one pre-colored image (the addons list can't tint).
+// Icon is the one pre-colored image (the addons list can't tint): Vanguard's
+// crest, drawn in scripts/lib/media-brand.mjs.
 
 import { image, fill, draw, drawSdf, line, poly, box, ring, path, arc } from "./media-art.mjs";
 import { CRESTS, crest, glyph } from "./media-crests.mjs";
-
-const BRASS = [0xd9 / 255, 0xa4 / 255, 0x41 / 255];
-const LIGHT = [0xe8 / 255, 0xea / 255, 0xee / 255];
+import { crestIcon } from "./media-brand.mjs";
 
 // Textures --------------------------------------------------------------------------------
 
@@ -66,15 +65,9 @@ function stripes() {
   return fill(image(8, 8), (x, y) => [1, 1, 1, (x + y) % 8 < 3 ? 0.55 : 0.12]);
 }
 
-// The logo, on a 64-unit grid: two linked diamonds, the left one with a filled middle.
+// The in-game logo (T.Logo), on a 64-unit grid: two linked diamonds, the left one with a filled middle.
 const LOGO_LEFT = [path([[22, 17], [37, 32], [22, 47], [7, 32]], 5, true), poly([[32, 27], [37, 32], [32, 37], [27, 32]])];
 const LOGO_RIGHT = [path([[42, 17], [57, 32], [42, 47], [27, 32]], 5, true)];
-
-// The pre-colored logo for the addons list: brass left diamond over a light right one.
-function coloredIcon() {
-  const img = draw(image(64, 64), 64, LOGO_RIGHT, LIGHT);
-  return draw(img, 64, LOGO_LEFT, BRASS);
-}
 
 // Name (under Media/Textures) -> the image it holds.
 export const TEXTURES = {
@@ -93,7 +86,8 @@ export const TEXTURES = {
   // The logo halves, white, for the addon to tint (accent left, text right).
   LogoLeft: () => draw(image(64, 64), 64, LOGO_LEFT),
   LogoRight: () => draw(image(64, 64), 64, LOGO_RIGHT),
-  Icon: coloredIcon,
+  // The pre-colored addons-list icon: Vanguard's crest (scripts/lib/media-brand.mjs).
+  Icon: () => crestIcon(64),
 };
 
 // Icons -------------------------------------------------------------------------------------
