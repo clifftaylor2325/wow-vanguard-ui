@@ -437,6 +437,38 @@ local function refused(why)
   AH.PaintSell()
 end
 
+-- What the game answers to a post, as chat says it (AH.OnPostAnswer): by event, the text, which of
+-- the event's values goes in its %s, and whether the first value must name this addon.
+AH.POST_ANSWERS = {
+  AUCTION_HOUSE_POST_ERROR = { "the auction house refused it" },
+  AUCTION_HOUSE_POST_WARNING = { "the game wants it confirmed" },
+  AUCTION_HOUSE_SHOW_ERROR = { "the auction house sent error %s", 1 },
+  AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED = { "the game dropped it (too many messages at once)" },
+  UI_ERROR_MESSAGE = { "the game said \"%s\"", 2 },
+  ADDON_ACTION_BLOCKED = { "the game blocked %s", 2, true },
+  ADDON_ACTION_FORBIDDEN = { "the game blocked %s", 2, true },
+}
+-- Seconds after a click on Post that the game's answers above count as answers to it.
+AH.POST_ANSWER_TIME = 3
+
+-- An answer from the game (event e, its values ...) within AH.POST_ANSWER_TIME of a click on Post:
+-- chat says it ("Post: the game said ..."); a secret value shows as "?".
+function AH.OnPostAnswer(e, ...)
+  local a = AH.POST_ANSWERS[e]
+  if not (a and AH.postAt and GetTime() - AH.postAt <= AH.POST_ANSWER_TIME) then return end
+  if a[3] and (...) ~= ADDON then return end
+  local v = a[2] and select(a[2], ...)
+  if ns.IsSecret(v) then v = "?" end
+  ns.Chat("Post: " .. string.format(a[1], tostring(v)) .. ".")
+end
+
+-- Chat says what a click on Post sends, before the game sees it: the stack's place in the sale,
+-- how many, the unit price and the length.
+local function sending(s, n, price, d)
+  ns.Chat(string.format("Post: sending stack %d of %d (%d at %s each, %s).", s.passed + 1, AH.StackCount(s), n, AP.Money(price), AH.DurationName(d)))
+  AH.postAt = GetTime()
+end
+
 -- Post (the button's click, never a timer or an event): puts the next stack up, one restricted
 -- call per click. A true answer means the game wants the post confirmed: that is the game's to
 -- ask, so the card says so and keeps the stack.
@@ -445,6 +477,7 @@ function AH.Post()
   local why, price, loc = AH.PostCheck(s)
   if why then return refused(why) end
   local api, d, n = C_AuctionHouse, AH.Duration(s), stackSize(s)
+  sending(s, n, price, d)
   local confirm
   if s.commodity then confirm = api.PostCommodity(loc, d, n, price) else confirm = api.PostItem(loc, d, n, bidFor(s), price) end
   if confirm then return ns.Chat("The game wants this price confirmed: list it from the game's own Sell tab.") end
