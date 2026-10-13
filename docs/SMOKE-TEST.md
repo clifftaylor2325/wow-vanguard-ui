@@ -344,6 +344,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the bag window draws over the tracker (no quest text shows through it), and every item picks up and drops. Quest item buttons beside the tracker are also under the window.
 - If it fails, paste: a screenshot of `/fstack` while hovering a slot that won't drag, and `/vg errors`.
 
+### 9.6 Boat and zeppelin timer (off until switched on)
+
+- Do: under Bars, map, chat tick "Boat and zeppelin timer (reload)" and `/reload`. Board a boat or zeppelin and ride it to the other dock. Board the same one from the same dock again. Afterwards type `/run print(C_Map.GetPlayerMapPosition(C_Map.GetBestMapForUnit("player"), "player"))` once while standing on a boat and paste what it prints.
+- Expect: about three seconds after you board, a bar above the cluster says "Timing this ride"; stepping off hides it and saves the time under "where you boarded > where you got off". The second ride from that dock counts down from the saved time, with the place you landed last time. [Needs in game: that the client gives no map position for you on a boat or zeppelin (the code takes that as being aboard), that the sub-zone names at the docks differ from each other, and that the position comes back as soon as you step off.]
+- If it fails, paste: the `/run` line's output, the dock names, and `/vg errors`.
+
 ## 10. Click casting
 
 ### 10.1 Make a binding
