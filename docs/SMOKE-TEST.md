@@ -216,6 +216,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a button eases to a lighter fill with a thin light line along its top as the mouse comes over, and eases back as it leaves; a disabled button shows no hover and its label is grey. Held down, a button goes a shade darker and its label sits a pixel lower; it comes back when you let go. Tab puts a thin accent ring, with a dark gap, around the marked row and moves it to the next. The window rises a few pixels into place as it fades in and ends sharp, not blurred; it closes quickly. In combat it opens at once. With Reduce motion on, all of it is instant.
 - If it fails, paste: a short video or two screenshots, and `/vg errors`.
 
+### 5.3a Control rows: calendar Filters, pane arrow, finder gear
+
+- Do: open the calendar (click the info strip's calendar button), the character pane (C) and the group finder. Look at each window's top-right corner.
+- Expect: on the calendar the Filters button ends a small gap left of the close button's tile, level with it, not touching it. The character pane's arrow (beside its close button) and the group finder's gear sit on the same faint slate tile as the close button, their icons inside it.
+- If it fails, paste: a zoomed screenshot of the window's top-right corner and `/vg errors`.
+
 ### 5.4 Color assist and state glyphs
 
 - Do: target a hostile mob, then a neutral one, then a friendly NPC. Tick Color assist under `/vg` → General → Look and reload, then target the same three. On a hunter, look at the pet frame's top-right corner.
@@ -891,11 +897,19 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ## 26. Theme variants (#237)
 
-### 26.1 High contrast and Vellum and ink
+### 26.1 High contrast, Vellum and ink and Classic look
 
-- Do: open `/vg` → General → Look and set **Theme variant** to High contrast; open the options window, bags, the quest log, a unit frame and a tooltip; click into an input box. Then set it to Vellum and ink and look again. Then back to Slate and brass.
-- Expect: High contrast shows opaque near-black windows, white text, no light line under window tops, brighter green, orange and red states, blue/yellow/vermilion reactions, and a 2-pixel accent edge on inputs and accent-bordered frames. Vellum and ink shows warm dark windows with cream text and your accent unchanged. Everything repaints without a reload; text stays readable on every window; `/vg errors` stays empty. [Needs in game: that windows the game draws (not Vanguard's) look right; a saved panel colour is overridden while a variant is on.]
+- Do: open `/vg` → General → Look and set **Theme variant** to High contrast; open the options window, bags, the quest log, a unit frame and a tooltip; click into an input box. Then set it to Vellum and ink, then Classic look, and look again. Then back to Slate and brass.
+- Expect: High contrast shows opaque near-black windows, white text, no light line under window tops, brighter green, orange and red states, blue/yellow/vermilion reactions, and a 2-pixel accent edge on inputs and accent-bordered frames. Vellum and ink shows warm dark windows with cream text and your accent unchanged. Classic look shows dark leather windows with a bronze border, gold-cream text and the brass rule and corner brackets without `/vg ornaments`. Everything repaints without a reload; text stays readable on every window; `/vg errors` stays empty. [Needs in game: that windows the game draws (not Vanguard's) look right; a saved panel colour is overridden while a variant is on.]
 - If it fails, paste: a screenshot of the window that looks wrong with the variant name, and `/vg errors`.
+
+## 27. Window ornaments (#238)
+
+### 27.1 Rule and corner brackets
+
+- Do: type `/vg ornaments`, open `/vg`, the quest log (`L`) and `/vg setup`. Change the accent. Then `/vg ornaments` again.
+- Expect: the options window gets a thin dim-brass rule under its header with a small diamond in the middle; the quest log and the setup wizard get four chamfered corner brackets just inside their corners; all in the accent's darker shade, none on unit frames or other HUD frames; switching off removes them at once. Screenshots at 1080p and 1440p. [Needs in game: that the brackets sit cleanly on the 1 px border at both resolutions.]
+- If it fails, paste: screenshots and `/vg errors`.
 
 ## When you are done
 
