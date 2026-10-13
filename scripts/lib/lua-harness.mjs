@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import fengari from "fengari";
 import lobject from "fengari/src/lobject.js";
 import lstring from "fengari/src/lstring.js";
-import { luaString, luaValue } from "./lua-emit.mjs";
+import { LuaSource, luaString, luaValue } from "./lua-emit.mjs";
 import { lineHook } from "./lua-coverage.mjs";
 import { profileSampler } from "./lua-profile.mjs";
 
@@ -360,15 +360,18 @@ function lifecycle(addon) {
 //   finishPost(auctionID)          the house took the post ah.throttle held (the throttle ready again)
 //   fireAuctionEvents(key, id)     every auction house event once
 //   openMailbox()                  the mailbox opens: MAIL_SHOW, then the inbox (world.mail) arrives
+//   openMailWindow()               the mail window shows with the mailbox; showSendMail() its Send Mail tab; closeMailWindow() fires MAIL_CLOSED
 //   openProfession(recipeID), selectRecipe(recipeID), closeProfession()   the profession window and its recipe form
 const WORLD_CALLS = ["unit", "setUnit", "removeUnit", "combat", "secretGeometry", "addAura", "removeAura", "setAction", "addQuest", "openNpc", "learn", "forgetAll",
-  "openAuctionHouse", "closeAuctionHouse", "postFromBag", "finishPost", "fireAuctionEvents", "openMailbox", "openProfession", "selectRecipe", "closeProfession"];
+  "openAuctionHouse", "closeAuctionHouse", "postFromBag", "finishPost", "fireAuctionEvents", "openMailbox", "openMailWindow", "showSendMail", "closeMailWindow", "openProfession", "selectRecipe", "closeProfession"];
 
 // The world: what the game API reports, from JS.
 function worldApi(addon) {
   const api = {
-    // A secret value, as the client hides numbers in instanced combat.
-    secret: (n) => ({ __secret: true, n }),
+    // A secret value, as the client hides numbers in instanced combat: made by
+    // wow-world.lua's world.secret when the call reaches Lua, so it carries the
+    // metatable that refuses arithmetic, comparison and field reads.
+    secret: (n) => new LuaSource(`__wfgWorld.secret(${luaValue(n)})`),
     // Any world field: get("money"), set("money", 5).
     get: (field) => addon.eval(`return __wfgWorld.${field}`),
     set: (field, value) => addon.eval(`__wfgWorld.${field} = ${luaValue(value)}`),
