@@ -1701,6 +1701,40 @@ function world.openMailbox()
   stub.fire("MAIL_INBOX_UPDATE")
 end
 
+-- world.taken = what TakeInboxMoney and TakeInboxItem were asked for: { "money", mail } or { "item", mail, attachment }.
+world.taken = {}
+-- Takes a mail's money (only noted here).
+function TakeInboxMoney(i) table.insert(world.taken, { "money", i }) end
+-- Takes a mail's attachment (only noted here).
+function TakeInboxItem(i, n) table.insert(world.taken, { "item", i, n }) end
+
+-- The mail window (MailFrame, with the Send Mail tab's SendMailFrame and its name box), made on the
+-- first call; world.openMailWindow() shows it with the mailbox, world.showSendMail() the Send Mail tab,
+-- world.closeMailWindow() fires MAIL_CLOSED and hides it (Blizzard_MailFrame/MailFrame.lua).
+local function mailWindow()
+  if MailFrame then return end
+  local f = stub.newWidget("Frame", "MailFrame", UIParent)
+  f:SetSize(384, 512)
+  f:SetPoint("TOPLEFT", 16, -116)
+  local send = stub.newWidget("Frame", "SendMailFrame", f)
+  send:SetAllPoints()
+  send:Hide()
+  stub.newWidget("EditBox", "SendMailNameEditBox", send)
+end
+-- The mail window shows with the mailbox.
+function world.openMailWindow()
+  mailWindow()
+  MailFrame:Show()
+  world.openMailbox()
+end
+-- The Send Mail tab opens.
+function world.showSendMail() mailWindow() SendMailFrame:Show() end
+-- The mail window closes.
+function world.closeMailWindow()
+  stub.fire("MAIL_CLOSED")
+  if MailFrame then MailFrame:Hide() end
+end
+
 -- Professions -------------------------------------------------------------------------------------
 -- world.professions = { { name, skillLine, profession (an Enum.Profession), rank, maxRank }, ... }:
 -- your two primary professions, as GetProfessions gives them (prof1, prof2; first aid, fishing and
@@ -1896,6 +1930,6 @@ function world.reset()
   world.cursor, world.timers, world.book = nil, {}, {}
   world.ah = emptyAuctionHouse()
   world.professions, world.recipes, world.cooldowns, world.openedRecipe = {}, {}, {}, nil
-  world.mail = {}
+  world.mail, world.taken = {}, {}
   refreshWatches()
 end
