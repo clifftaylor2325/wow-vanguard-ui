@@ -93,6 +93,8 @@ ns.WHATS_NEW = {
     { label = "Theme", items = {
       { text = "Three new looks: High contrast (opaque panels, white text, a thicker accent ring), Vellum and ink (a warm dark with cream text) and Classic look (dark leather and bronze with gold-cream text). Slate and brass stays the default.", page = "general", row = "Theme variant: surfaces and text", off = true },
       { text = "Four more looks: Midnight (cold navy-black, ice-blue text), Obsidian (neutral charcoal, light grey text, a silver edge), Moss (dark forest green, pale sage text) and Ash and ember (smoky grey, a rust edge, warm grey text).", page = "general", row = "Theme variant: surfaces and text", off = true },
+      { text = "Frost, the first light look: white panels with dark blue text and border, and your accent deepened so it reads on white.", page = "general", row = "Theme variant: surfaces and text", off = true },
+      { text = "Rounded corners on every theme: General → Look → Corners (or /vg corners rounded) rounds the corners of windows, frames, tooltips and buttons by four pixels. Square stays the default.", page = "general", row = "Corners: square or rounded panels", off = true },
     } },
     { label = "Window ornaments", items = {
       { text = "A thin brass rule under the options window's header and corner brackets on setup and the quest log.", page = "general", row = "Window ornaments: a brass rule or corners on large windows", off = true },
