@@ -33,9 +33,9 @@ local LAYOUT = {
 }
 UF.LAYOUT = LAYOUT
 local PARTY_SIZE = 4
--- Party 1 at the top of a column that ends 344 up, just above your player frame and centered on it
--- (where the raid frames sit too).
-local PARTY = { w = 160, h = 32, gap = 10, label = "Party", point = { "BOTTOM", "BOTTOM", -240, 470 } }
+-- Party 1 at the top of a column that ends 344 up, at the left of your character, its left edge level
+-- with the raid frames'.
+local PARTY = { w = 160, h = 32, gap = 10, label = "Party", point = { "BOTTOMLEFT", "BOTTOM", -620, 470 } }
 -- Boss 1-5 in a column down from the empty top-left corner (clear of party and raid below).
 UF.BOSS = { count = 5, w = 150, h = 26, gap = 6, label = "Boss frames", point = { "TOPLEFT", "TOPLEFT", 20, -20 } }
 

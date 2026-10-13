@@ -23,6 +23,7 @@ ns.WHATS_NEW = {
     } },
     { module = "RaidFrames", label = "Raid frames", items = {
       { text = "A raid tile width the choices don't list shows its value on the Width row.", page = "raid", row = "Width" },
+      { text = "Party and raid frames now start to the left of your character, where healers keep them, instead of over it; frames you already moved stay where they are, and /vg reset raid puts them at the new spot." },
     } },
     { module = "AuctionHelper", label = "Auction helper", items = {
       { text = "The auction house tabs are now called Lists and Posting, and are sized to their names.", page = "more", row = "Lists and Posting tabs on the auction house" },

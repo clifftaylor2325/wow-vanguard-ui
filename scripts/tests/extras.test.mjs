@@ -51,7 +51,7 @@ it("party pets and targets: small tiles above the party, only in a party, when s
   const tiles = addon.eval(`local pet, target = Vanguard_partypet1, Vanguard_party4target
     return { #ns.GetModule("PartyExtras").tiles, pet:GetAttribute("unit"), pet.__watched, target:GetAttribute("unit"), target.__points.TOPLEFT.x, target.__points.TOPLEFT.y, Vanguard_PartyExtras.__drivers["state-visibility"] }`);
   expect(tiles, "a pet and a target tile per party member, each shown while its unit exists, the column only in a party").toEqual([8, "partypet1", true, "party4target", 94, -54, "[group:raid] hide; [group:party] show; hide"]);
-  expect(addon.eval("return { ns.MoverPoint('partyextras') }"), "movable, just above the party").toEqual(["BOTTOM", "BOTTOM", -240, 606]);
+  expect(addon.eval("return { ns.MoverPoint('partyextras') }"), "movable, just above the party").toEqual(["BOTTOMLEFT", "BOTTOM", -620, 606]);
   addon.eval("ns.GetModule('MainTanks').Paint(Vanguard_partypet1)");
   expect(addon.eval("return { Vanguard_partypet1.name:GetText(), Vanguard_partypet1.target == nil }"), "the pet's name on its tile, no target line").toEqual(["TEST-ONLY Wolf", true]);
   addon.slash("");
