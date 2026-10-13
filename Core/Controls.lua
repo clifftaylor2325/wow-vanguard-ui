@@ -408,18 +408,27 @@ local function addLock(r, locked)
   end
 end
 
+-- The default slider text: v rounded to the step's decimals (whole numbers for whole steps), so float noise never shows.
+local function roundedText(step)
+  local places = 0
+  while places < 4 and math.abs(step * 10 ^ places - math.floor(step * 10 ^ places + 0.5)) > 1e-6 do places = places + 1 end
+  return function(v) return string.format("%." .. places .. "f", v) end
+end
+
 -- A slider row for a number from min to max in steps; format(v) is its
 -- text. Clicking the caption steps up (wrapping to min); dragging along the
 -- track sets it. The wheel over it scrolls the page, as over any row.
 -- With opts.locked, it locks while that says why (see addLock).
 function W.Slider(parent, caption, opts, get, set, width)
   local r = row(parent, caption, width)
-  r.min, r.max, r.step, r.format = opts.min, opts.max, opts.step, opts.format or tostring
+  r.min, r.max, r.step, r.format = opts.min, opts.max, opts.step, opts.format or roundedText(opts.step)
   r.get, r.set, r.Refresh = get, set, refreshSlider
   addTrack(r)
   if opts.locked then addLock(r, opts.locked) end
   r.value = T.Text(r:CreateFontString(nil, "OVERLAY"), "number", "text2")
   r.value:SetPoint("RIGHT", -8, 0)
+  r.value:SetWidth(52)
+  r.value:SetJustifyH("RIGHT")
   r:SetScript("OnClick", ns.Guard("click slider", stepOrWrap))
   r:Refresh()
   return r

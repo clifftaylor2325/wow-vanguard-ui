@@ -619,3 +619,11 @@ it("options: the pages, their nav order and each page's row count stay as they w
     "nameplates", "quests", "more", "situations", "profiles", "feedback",
   ]);
 });
+
+it("slider values show rounded, never as float noise", () => {
+  const addon = loggedIn();
+  const text = (step, v) => addon.eval(`local s = ns.Widgets.Slider(UIParent, "t", { min = 0, max = 1200, step = ${step} }, function() return ${v} end, function() end) return s.value:GetText()`);
+  expect(text(2, 210.00007629395)).toBe("210");
+  expect(text(1, 35.999524536133)).toBe("36");
+  expect(text(0.05, 0.55)).toBe("0.55");
+});
