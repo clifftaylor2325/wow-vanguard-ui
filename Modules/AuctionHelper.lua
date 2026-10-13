@@ -39,7 +39,7 @@
 -- hooks are post-hooks (SetDisplayMode and UpdateTitle, to show a page and
 -- name the title; SetPostItem, to read the item the game's sell frame was
 -- given). Posting and cancelling run only inside a button's
--- click, and a post the game wants confirmed is left to the game. Every price and
+-- click, and a post the game wants confirmed waits for a second click (Confirm). Every price and
 -- quantity goes through ns.PlainNumber before any arithmetic, and events are
 -- ignored in combat (the house closes then).
 
