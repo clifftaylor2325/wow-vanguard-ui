@@ -207,7 +207,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 5.2 Pixel-perfect preset
 
 - Do: `/vg setup`, Next, pick **Pixel-perfect (sharpest)**, then finish. Screenshot the action bars, the player frame and the `/vg` window's close button, and zoom in. Then drag a frame's scale slider in unlock mode to 150% and screenshot it again.
-- Expect: the hint under the choices starts `Sharpest: every line on whole screen pixels.` Every border, button edge and gap between action buttons is a whole number of screen pixels, with no blurred or doubled line; the close button's cross sits centred. On a 4K screen each UI unit is two pixels. After the scale change, borders are still sharp.
+- Expect: the hint under the choices starts `Sharpest: every line on whole screen pixels.` Every border, button edge and gap between action buttons is a whole number of screen pixels, with no blurred or doubled line; the close button's cross sits centred on its faint slate tile (the tile turns red under the mouse; maximize and minimize turn accent). On a 4K screen each UI unit is two pixels. After the scale change, borders are still sharp.
 - If it fails, paste: the zoomed crops, your resolution, `/vg status` and `/vg errors`.
 
 ### 5.3 Hover, press, focus and window motion
