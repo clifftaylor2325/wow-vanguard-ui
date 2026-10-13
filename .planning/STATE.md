@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 4
-current_phase_name: Lean core
-status: planning
-stopped_at: Phase 03 complete, ready to plan Phase 4
-last_updated: "2026-10-12T02:43:29.744Z"
-last_activity: 2026-10-11
-last_activity_desc: Phase 03 complete, transitioned to Phase 4
+current_phase: 5
+current_phase_name: Auction Post fix
+status: in_progress
+stopped_at: Phases 4 and 6 to 10 merged on 2026-10-12; Phase 5 waits on the /vg errors text, Phase 11 is cuttable, Phase 12 is launch readiness
+last_updated: "2026-10-13T00:10:00.000Z"
+last_activity: 2026-10-12
+last_activity_desc: Phases 4, 6, 7, 8, 9 and 10 ticked in ROADMAP.md
 state_head: b77124c3da247c3022f0fc8b8910477ea8634a8f
 progress:
   total_phases: 12
-  completed_phases: 3
+  completed_phases: 9
   total_plans: 22
   completed_plans: 22
-  percent: 25
+  percent: 75
 ---
 
 # Project State
@@ -23,16 +23,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-09)
 
 **Core value:** On launch day, Vanguard loads without errors and everything it replaces works, verified by a full test suite that is green and fast enough to run on every PR.
-**Current focus:** Phase 03 — Fast suite and CI gate
+**Current focus:** Phase 5 (Auction Post fix, waiting on the in-game `/vg errors` text) and Phase 12 (launch readiness); Phase 11 is cuttable
 
 ## Current Position
 
-Phase: 4 — Lean core
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-11 — Phase 03 complete, transitioned to Phase 4
+Phase: 5 — Auction Post fix (open; root cause not yet named), then 12 — Launch readiness
+Plan: Phases 1 to 4 and 6 to 10 complete (see ROADMAP.md for the PR numbers)
+Status: Waiting on batch-1 in-game results (issue #284) for Phases 5 and 11
+Last activity: 2026-10-12 — Phases 4, 6, 7, 8, 9 and 10 merged and ticked
 
-Progress: [███░░░░░░░] 25%
+Progress: [████████░░] 75% (9 of 12 phases)
+
+ROADMAP.md is the source of truth for phase state; this file is refreshed when a phase is ticked (CLAUDE.md, Working method).
 
 ## Performance Metrics
 
@@ -110,6 +112,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-11T12:39:00.286Z
-Stopped at: Phase 03 complete, ready to plan Phase 4
+Last session: 2026-10-13
+Stopped at: engineering review (#292) pre-freeze items in progress
 Resume file: None

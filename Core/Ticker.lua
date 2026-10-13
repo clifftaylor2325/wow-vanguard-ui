@@ -75,6 +75,11 @@ end
 -- its first (visible) frame instead of a period later. Asking again for a
 -- running key changes its period, fn and frame and keeps its count;
 -- ns.Every(key, nil) stops it.
+---@param key string  a second call with the same key replaces the job
+---@param seconds number|nil  nil stops the job
+---@param fn fun(key: string)
+---@param frame Frame|nil  time counts only while this frame is visible
+---@param now boolean|nil  a new job runs on its first frame instead of a period later
 function ns.Every(key, seconds, fn, frame, now)
   if not seconds then return stop(key) end
   local job = jobs[key] or start(key, now and seconds or 0)

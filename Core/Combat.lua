@@ -9,6 +9,7 @@ local ADDON, ns = ...
 local queue, keyed = {}, {}
 
 -- True while the client forbids changes to protected frames.
+---@return boolean
 function ns.InCombat()
   return type(InCombatLockdown) == "function" and InCombatLockdown() == true
 end
@@ -27,6 +28,8 @@ end
 -- Runs fn now, or right after combat ends. Queued work runs in order, once; a
 -- call with a key replaces the work queued under that key, in its place (the
 -- latest wins, the first call's position stays). A key is held until combat ends.
+---@param fn function
+---@param key any|nil  later calls with the same key replace the queued fn
 function ns.OutOfCombat(fn, key)
   if ns.InCombat() then
     enqueue(fn, key)
@@ -38,6 +41,8 @@ end
 -- Runs fn once the fight that is starting or under way ends (PLAYER_REGEN_ENABLED),
 -- in the same queue as ns.OutOfCombat: for a PLAYER_REGEN_DISABLED handler, which
 -- runs before the client's lockdown starts, so ns.OutOfCombat there would run fn at once.
+---@param fn function
+---@param key any|nil
 function ns.AfterCombat(fn, key)
   enqueue(fn, key)
 end
@@ -59,11 +64,15 @@ resolveSecret()
 ns.On("ADDON_LOADED", resolveSecret)
 
 -- True for a value Midnight hides from addons.
+---@param value any
+---@return boolean
 function ns.IsSecret(value)
   return isSecret(value) == true
 end
 
 -- The value if it's a plain (non-secret) number; nil otherwise.
+---@param value any
+---@return number|nil
 function ns.PlainNumber(value)
   if ns.IsSecret(value) or type(value) ~= "number" then
     return nil
@@ -73,6 +82,7 @@ end
 
 -- True on the WoW Forever client (game type "camelot"): the 12.1 engine with
 -- vanilla content, reporting a 1.x interface number (16001).
+---@return boolean
 function ns.IsForever()
   local iface = type(GetBuildInfo) == "function" and select(4, GetBuildInfo())
   return type(iface) == "number" and iface >= 16000 and iface < 20000
@@ -80,6 +90,7 @@ end
 
 -- True while the client hides aura values from addons (instanced combat).
 -- An error or a hidden answer counts as hidden: unknown is never "readable".
+---@return boolean
 function ns.AurasSecret()
   local ask = C_Secrets and C_Secrets.ShouldAurasBeSecret
   if type(ask) ~= "function" then return false end
@@ -118,6 +129,8 @@ end
 -- Runs fn on the next frame, once however often it is asked for before then
 -- (a burst of events in one frame becomes one refresh): a call with a key
 -- already waiting replaces its work. Without the client's timer it runs now.
+---@param key string
+---@param fn function
 function ns.Soon(key, fn)
   if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return fn() end
   local waiting = soon[key] ~= nil

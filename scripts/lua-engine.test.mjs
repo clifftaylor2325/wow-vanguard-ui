@@ -127,6 +127,22 @@ it("auras, actions and secrets through the world", () => {
   expect(addon.eval('return { issecretvalue(UnitHealth("player")), pcall(function() return UnitHealth("player") + 1 end) }').slice(0, 2), "a secret errors on arithmetic, as in instanced combat").toEqual([true, false]);
 });
 
+// Every way of using a secret that the client refuses, as Lua: each must raise.
+const SECRET_USES = ["s + 1", "1 - s", "s * 2", "s / 2", "s % 2", "s ^ 2", "-s", "s .. x", "x .. s", "#s", "s < 1", "1 <= s", "s()", "s.x"];
+
+it("a secret raises on arithmetic, concatenation, length, ordering, a call and a field read or write; issecretvalue and rawget still see it", () => {
+  const addon = loggedIn();
+  addon.world.set("units.player.hp", addon.world.secret(100));
+  const tried = addon.eval(`local s, x = UnitHealth("player"), "x" local out = {}
+    ${SECRET_USES.map((use) => `out[#out + 1] = select(2, pcall(function() return ${use} end))`).join("\n")}
+    out[#out + 1] = select(2, pcall(function() s.y = 1 end))
+    return out`);
+  expect(tried).toHaveLength(SECRET_USES.length + 1);
+  for (const [i, message] of tried.entries()) expect(message, SECRET_USES[i] ?? "s.y = 1").toContain("attempt to use a secret value");
+  expect(addon.eval('local s = UnitHealth("player") return { issecretvalue(s), rawget(s, "n"), s == s, s == 100, type(s), pcall(function() return s + 1 end) }').slice(0, 6))
+    .toEqual([true, 100, true, false, "table", false]);
+});
+
 it("an aura change refreshes every aura container showing that unit, including one made after the last change", () => {
   const addon = createAddon();
   addon.eval(`__refreshed = {}
@@ -323,7 +339,7 @@ it("taint: secret geometry, derived: a secret fill, secret text and what anchors
   expect(secrets(), "off: nothing is secret").toEqual([false, false, false, false, false, false]);
   addon.world.secretGeometry("derived");
   expect(secrets(), "derived: the fill, the spark on it and the secret text; not the bar, the screen or the game's chat").toEqual([true, true, true, false, false, false]);
-  expect(() => addon.eval("return __spark:GetLeft() + 1"), "arithmetic on one fails, as in game").toThrow(/arithmetic/);
+  expect(() => addon.eval("return __spark:GetLeft() + 1"), "arithmetic on one fails, as in game").toThrow(/attempt to use a secret value/);
   addon.world.secretGeometry("strict");
   expect(secrets(), "strict: every frame of the game's too (test code made this bar, so it is one), never the screen").toEqual([true, true, true, true, false, true]);
   expect(addon.eval("local x, y = __bar:GetCenter() return { issecretvalue(x), issecretvalue(y), __scroll:GetVerticalScrollRange() }"),
