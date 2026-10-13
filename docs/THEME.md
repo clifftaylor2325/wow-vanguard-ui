@@ -122,7 +122,7 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 | `world` | 11 (8 - 14) | SemiBold | OUTLINE | Text drawn in the world: nameplate names. |
 | `barName` | 11 (8 - 14) | SemiBold | OUTLINE | Names over a bright bar (raid tiles). |
 | `barSmall` | 10 (7 - 13) | Medium | OUTLINE | Small text over a bar (raid tile status, the damage meter, the flight timer). |
-| `cooldown` | 14 (10 - 18) | SemiBold | OUTLINE | Cooldown numbers on action buttons and the Cooldown Manager. |
+| `cooldown` | 14 (10 - 18) | SemiBold | OUTLINE | Cooldown numbers on action buttons, the Cooldown Manager and the Cooldown gaps row (that row has no fades or sounds). |
 | `auraCount` | 10 (7 - 13) | SemiBold | OUTLINE | Stack counts on aura and item icons. |
 | `auraTimer` | 11 (8 - 14) | SemiBold | OUTLINE | The timer on larger aura icons. |
 | `auraTimerSmall` | 10 (7 - 13) | SemiBold | OUTLINE | The timer on smaller aura icons. |
@@ -252,6 +252,7 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | Raid tiles out of range | alpha 40 % | instant | instant | Fade players out of range (Raid frames) |
 | Health and power bars | the client eases the value (`ExponentialEaseOut`) | the client's easing | the client's easing | Smooth health and power bars |
 | Action button proc glow | the accent glow ring shows while the game highlights the spell | static, no animation | static | - |
+| Cooldown Manager icon with less than the set share of its aura left (`/vg cdmglow`) | the accent glow ring shows | static, no animation | static | - |
 | Aura and cooldown sweeps | the dark sweep, no edge line and no end flash (bling) | the aura's duration | the aura's duration | - |
 | Micro menu buttons | the game's own alert flash (kept on the strip) | the game's | the game's | - (the game's) |
 | Stance and pet bars | the game's attack flash and auto-cast mark (kept) | the game's | the game's | - (the game's) |
