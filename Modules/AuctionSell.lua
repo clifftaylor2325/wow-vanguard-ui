@@ -8,8 +8,8 @@
 -- the auction length (Duration). Post puts up one stack per click and loads
 -- the next ("posted 3 of 10"); Skip passes a stack, Stop ends the sale.
 --
--- Standing rules here: PostItem and PostCommodity run only inside Post's
--- click, one call per click; the only hook is a post-hook on the game's
+-- Standing rules here: PostItem and PostCommodity (and ConfirmPost*) run only
+-- inside Post's click, one call per click; the only hook is a post-hook on the game's
 -- SetPostItem that reads the item it was given, and nothing writes into the
 -- game's auction frames; price checks go through AH.Queue (one in flight, at
 -- most 60 a minute); every price and quantity goes through ns.PlainNumber
@@ -424,7 +424,7 @@ end
 -- A stack went up, or was skipped: on to the next; after the last, the card empties and its line
 -- keeps the count.
 function AH.NextStack(s, n)
-  s.passed, s.done = s.passed + 1, s.done + n
+  s.passed, s.done, s.pending = s.passed + 1, s.done + n, nil
   AH.sellStatus = string.format("posted %d of %d", s.posted, AH.StackCount(s))
   if s.done >= s.qty then AH.sell = nil end
   AH.PaintSell()
@@ -459,30 +459,58 @@ function AH.OnPostAnswer(e, ...)
   if a[3] and (...) ~= ADDON then return end
   local v = a[2] and select(a[2], ...)
   if ns.IsSecret(v) then v = "?" end
-  ns.Chat("Post: " .. string.format(a[1], tostring(v)) .. ".")
+  local text = string.format(a[1], tostring(v))
+  ns.Chat("Post: " .. text .. ".")
+  if AH.sell then AH.sell.answer = text AH.PaintSell() end
 end
 
 -- Chat says what a click on Post sends, before the game sees it: the stack's place in the sale,
--- how many, the unit price and the length.
+-- how many, the unit price and the length. The game's last answer is forgotten.
 local function sending(s, n, price, d)
   ns.Chat(string.format("Post: sending stack %d of %d (%d at %s each, %s).", s.passed + 1, AH.StackCount(s), n, AP.Money(price), AH.DurationName(d)))
-  AH.postAt = GetTime()
+  AH.postAt, s.answer = GetTime(), nil
+end
+
+-- The restricted call for the sale's next stack, without its "Post" or "ConfirmPost": Commodity
+-- (location, length, quantity, unit price) or Item (location, length, quantity, bid, buyout).
+local function postCall(s, loc, price)
+  local d, n = AH.Duration(s), stackSize(s)
+  if s.commodity then return "Commodity", { loc, d, n, price, n = 4 } end
+  return "Item", { loc, d, n, bidFor(s), price, n = 5 }
+end
+
+-- A stack went up: counted, and on to the next.
+local function posted(s, n)
+  s.posted = s.posted + 1
+  AH.NextStack(s, n)
+end
+
+-- The game wants the post confirmed: the card keeps it and asks, and Post becomes Confirm.
+local function askConfirm(s, kind, args)
+  s.pending = { kind = kind, args = args }
+  ns.Chat("Post: the game asks you to confirm this price; click Confirm to list it.")
+  AH.PaintSell()
+end
+
+-- Confirm (Post's click while the game asks): the post it held, confirmed, and on to the next.
+local function confirmPost(s)
+  local p = s.pending
+  C_AuctionHouse["ConfirmPost" .. p.kind](unpack(p.args, 1, p.args.n))
+  posted(s, p.args[3])
 end
 
 -- Post (the button's click, never a timer or an event): puts the next stack up, one restricted
--- call per click. A true answer means the game wants the post confirmed: that is the game's to
--- ask, so the card says so and keeps the stack.
+-- call per click. A true answer means the game wants the post confirmed: the card asks, and the
+-- next click (Confirm) confirms it.
 function AH.Post()
   local s = AH.sell
+  if s and s.pending then return confirmPost(s) end
   local why, price, loc = AH.PostCheck(s)
   if why then return refused(why) end
-  local api, d, n = C_AuctionHouse, AH.Duration(s), stackSize(s)
-  sending(s, n, price, d)
-  local confirm
-  if s.commodity then confirm = api.PostCommodity(loc, d, n, price) else confirm = api.PostItem(loc, d, n, bidFor(s), price) end
-  if confirm then return ns.Chat("The game wants this price confirmed: list it from the game's own Sell tab.") end
-  s.posted = s.posted + 1
-  AH.NextStack(s, n)
+  local kind, args = postCall(s, loc, price)
+  sending(s, args[3], price, args[2])
+  if C_AuctionHouse["Post" .. kind](unpack(args, 1, args.n)) then return askConfirm(s, kind, args) end
+  posted(s, args[3])
 end
 
 -- Skip: the next stack stays in the bags; on to the one after.
@@ -537,23 +565,62 @@ local function paintBoxes(c, s)
   c.bid:SetShown(s ~= nil and not s.commodity)
 end
 
--- The count line: "posted 3 of 10" (kept after the last stack or Stop), and while Post is off for
--- the sale, why ("posted 0 of 3 · waiting for the auction house").
-local function statusText(s, why)
+-- The count line: "posted 3 of 10" (kept after the last stack or Stop; the guide says the rest).
+local function statusText(s)
   if not s then return AH.sellStatus or "" end
-  local text = string.format("posted %d of %d", s.posted, AH.StackCount(s))
-  return AH.POST_REASONS[why] and (text .. " · " .. AH.POST_REASONS[why]) or text
+  return string.format("posted %d of %d", s.posted, AH.StackCount(s))
 end
 
--- The form for the sale s (or nil): its boxes, the toggle, the length, the count line (with why
--- Post is off), and Skip and Stop while there is a sale.
-local function paintForm(c, s, why)
+-- The form for the sale s (or nil): its boxes, the toggle, the length, the count line, and Skip
+-- and Stop while there is a sale.
+local function paintForm(c, s)
   paintBoxes(c, s)
   c.perStack.text:SetText(AH.perStack and "per stack" or "per unit")
   c.length:Refresh()
-  c.status:SetText(statusText(s, why))
+  c.status:SetText(statusText(s))
   enable(c.skip, s ~= nil)
   enable(c.stop, s ~= nil)
+end
+
+-- The posting guide under the Post line: its steps, and for each state of the sale (AH.GuideState)
+-- the step it is on, the line saying what to do or what is happening, and whether something is in
+-- the way (that line in the warn colour).
+AH.GUIDE_STEPS = { "Item", "Price", "Post", "Listed" }
+AH.GUIDE = {
+  empty = { 1, "Drop an item on the slot, or click one in your bags." },
+  done = { 4, "Finished: %s. Drop the next item to sell more." },
+  checking = { 2, "Checking what it sells for..." },
+  price = { 2, "No price found: type one in Price.", true },
+  bid = { 2, "Lower the bid: it must be under the buyout.", true },
+  vendor = { 2, "Raise the price: it's under what a vendor pays.", true },
+  bags = { 1, "It isn't in your bags now: put it on the card again.", true },
+  money = { 3, "You don't have the money for the deposit.", true },
+  busy = { 3, "Waiting for the auction house to be ready..." },
+  sent = { 3, "Stack %d sent: waiting for the auction house..." },
+  ready = { 3, "Click Post to list stack %d of %d." },
+  confirm = { 3, "The game asks you to confirm this price: click Confirm.", true },
+  answer = { 3, "%s.", true },
+}
+
+-- Where the sale s stands for the guide (why: AH.PostCheck's answer): an AH.GUIDE key and the
+-- values its line shows.
+function AH.GuideState(s, why)
+  if not s then return AH.sellStatus and "done" or "empty", AH.sellStatus end
+  if s.pending then return "confirm" end
+  if s.answer then return "answer", (s.answer:gsub("^%l", string.upper)) end
+  if why == "price" and not s.searched then return "checking" end
+  if why == "busy" and s.posted > 0 then return "sent", s.posted end
+  if AH.GUIDE[why] then return why end
+  return "ready", s.passed + 1, AH.StackCount(s)
+end
+
+-- The guide: the steps done, the one the sale is on (lit) and those to come, and its line.
+local function paintGuide(c, s, why)
+  local key, a, b = AH.GuideState(s, why)
+  local g = AH.GUIDE[key]
+  for i, step in ipairs(c.steps) do T.Color(step, i == g[1] and "accentText" or i < g[1] and "text" or "muted") end
+  c.guide:SetText(string.format(g[2], a, b))
+  T.Color(c.guide, g[3] and "warn" or "text")
 end
 
 -- The price line: in red, and saying so, while the price is under the item's vendor sell price.
@@ -598,16 +665,24 @@ local function paintItem(c, s)
   paintPriceLine(c, s)
 end
 
--- The sell card: the item, the form, its history line, and Post, which works only when the next
--- stack can go up (AH.PostCheck; the count line says why not); the Up now card beside it (the
--- listings, or Your history).
+-- Post: on when the next stack can go up (why nil), or as Confirm while the game asks to confirm one.
+local function paintPost(c, s, why)
+  local asking = s ~= nil and s.pending ~= nil
+  c.post.text:SetText(asking and "Confirm" or "Post")
+  enable(c.post, why == nil or asking)
+end
+
+-- The sell card: the item, the form, the posting guide (what to do next, or why Post is off), its
+-- history line, and Post, which works only when the next stack can go up (AH.PostCheck) or the game
+-- asks to confirm one (then it reads Confirm); the Up now card beside it (the listings, or Your history).
 function AH.PaintSell()
   local c, s = AH.sellCard, AH.sell
   if not c then return end
   local why = AH.PostCheck(s)
   paintItem(c, s)
-  paintForm(c, s, why)
-  enable(c.post, why == nil)
+  paintForm(c, s)
+  paintGuide(c, s, why)
+  paintPost(c, s, why)
   AH.PaintHistoryLine(c, s)
   AH.PaintUp(s)
   AH.PaintHistory(AH.upCard, s)
@@ -709,6 +784,19 @@ local function postRow(c)
   c.status, c.historyLine = smallLine(c, y - 6), smallLine(c, y - 30)
 end
 
+-- The posting guide under the history line: its numbered steps in a row, and the line under them.
+local function guideRow(c)
+  local y = AH.FORM_Y - 4 * AH.FORM_ROW - 86
+  c.steps = {}
+  for i, name in ipairs(AH.GUIDE_STEPS) do
+    c.steps[i] = smallLine(c, y)
+    c.steps[i]:SetPoint("TOPLEFT", (i - 1) * 64, y)
+    c.steps[i]:SetText(i .. "  " .. name)
+  end
+  c.guide = smallLine(c, y - 18)
+  c.guide:SetPoint("RIGHT")
+end
+
 -- Near the end of the listings on the Up now card, with more on the house: the next page is asked for.
 local function moreListings()
   if AH.sell then askMore(AH.sell) end
@@ -736,5 +824,6 @@ function AH.BuildSell(f, h)
   sellForm(c)
   lengthRow(c)
   postRow(c)
+  guideRow(c)
   hooksecurefunc(AuctionHouseFrame, "SetPostItem", ns.Guard("hook SetPostItem", function(_, loc) AH.TakeItem(loc) end))
 end
