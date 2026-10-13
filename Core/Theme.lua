@@ -122,7 +122,45 @@ local ALIASES = {
 -- that read T.PRESETS.fel keep working (pairs over T.PRESETS still lists only the five).
 setmetatable(T.PRESETS, { __index = function(_, name) return ALIASES[name] and T.PRESETS[ALIASES[name]] end })
 
+-- Theme variants (#237): token sets that swap surfaces and text, chosen with the variant setting
+-- ("default" is none). A variant's tokens win over the saved panel and inset colours; `assist` turns
+-- Color assist on, `ring` is the accent focus ring in screen pixels, `flat` drops gradients.
+T.VARIANT_ORDER = { "default", "contrast", "vellum", "classic" }
+T.VARIANTS = {
+  -- High Contrast: opaque near-black panels, white text, no sheen, full-saturation states.
+  contrast = {
+    label = "High contrast", assist = true, ring = 2, flat = true,
+    tokens = {
+      panel = "0a0b0e", inset = "050608", raised = "14161b", divider = "4a5260", sheen = { "ffffff", 0 },
+      text = "ffffff", text2 = "dfe3ea", muted = "b8bfca",
+      good = "00e060", warn = "ff9a1f", bad = "ff4040", info = "4da6ff",
+    },
+  },
+  -- Classic (#218): dark leather and bronze, gold-cream text, a bronze border, the window ornaments on.
+  -- Own colours only; nothing from the game's art.
+  classic = {
+    label = "Classic look", ornaments = true,
+    tokens = {
+      panel = { "1c1610", 0.96 }, inset = { "120d09", 0.96 }, raised = "2b2117", divider = "4a3a24", edge = "6b5230",
+      sheen = { "ffd27a", 0.08 }, text = "f2e2b6", text2 = "d4bf8c", muted = "9c8a62",
+    },
+  },
+  -- Vellum & Ink: a warm dark with cream text and brass.
+  vellum = {
+    label = "Vellum and ink",
+    tokens = {
+      panel = { "1a1612", 0.94 }, inset = { "100d0a", 0.95 }, raised = "241f19", divider = "3a3226",
+      text = "efe6d2", text2 = "d2c6ad", muted = "9a8f78",
+    },
+  },
+}
+for _, v in pairs(T.VARIANTS) do
+  for name, c in pairs(v.tokens) do v.tokens[name] = type(c) == "table" and fromHex(c[1], c[2]) or fromHex(c) end
+end
+
 local DEFAULTS = {
+  -- A theme variant (#237, #218): "default", "contrast", "vellum" or "classic".
+  variant = "default",
   accent = T.PRESETS.brass,
   panel = T.TOKENS.panel,
   inset = T.TOKENS.inset,
@@ -138,6 +176,8 @@ local DEFAULTS = {
   sliceRings = false,
   -- A subtle top-to-bottom lightness shift on floating windows' fills (#259); off by default.
   panelGradient = false,
+  -- A brass rule or corner brackets on a few large windows (#238); off by default.
+  ornaments = false,
   -- Experiments with 12.x client features (#239), each off until its in-game A/B check: world text
   -- (outlined roles) drawn with the SLUG font flag, and big windows drawn through a frame buffer
   -- while they open and close.
@@ -162,6 +202,8 @@ local painted = setmetatable({}, { __mode = "k" })
 local listeners = {}
 -- Every crest texture (weak), repainted when the theme changes.
 local crests = setmetatable({}, { __mode = "k" })
+-- Every window with an ornament (#238): frame -> its pieces (weak), repainted when the theme changes.
+local ornaments = setmetatable({}, { __mode = "k" })
 
 -- Theme settings in the active profile, with defaults.
 function T.Settings()
@@ -181,9 +223,15 @@ function T.Accent()
   return c[1], c[2], c[3]
 end
 
+-- The active theme variant (a T.VARIANTS entry), or nil for the default look.
+function T.Variant()
+  return T.VARIANTS[T.Settings().variant]
+end
+
 -- r, g, b, a of the panel (or, with inset, the darker inset) fill.
 function T.PanelColor(inset)
-  local c = T.Settings()[inset and "inset" or "panel"]
+  local v = T.Variant()
+  local c = v and v.tokens[inset and "inset" or "panel"] or T.Settings()[inset and "inset" or "panel"]
   return c[1], c[2], c[3], c[4]
 end
 
@@ -241,9 +289,10 @@ end
 -- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings,
 -- accentText and accentDim follow the accent, and the reactions follow Color assist).
 function T.RGB(name)
-  local key = SETTING_TOKENS[name]
-  local c = T.ACCENT_VARIANTS[name] and accentVariant(name) or key and T.Settings()[key]
-    or T.Settings().colorAssist and T.ASSIST[name] or T.TOKENS[name]
+  local key, v = SETTING_TOKENS[name], T.Variant()
+  local assist = T.Settings().colorAssist or v and v.assist
+  local c = v and v.tokens[name] or T.ACCENT_VARIANTS[name] and accentVariant(name) or key and T.Settings()[key]
+    or assist and T.ASSIST[name] or T.TOKENS[name]
   if not c then error("Vanguard: no color named " .. tostring(name), 2) end
   return c[1], c[2], c[3], c[4] or 1
 end
@@ -474,9 +523,10 @@ local function edges(frame, pad)
   return e
 end
 
--- Sizes the edges to one screen pixel for frame.
-local function sizeEdges(e, frame)
-  local px = T.Pixel(frame)
+-- Sizes the edges to one screen pixel for frame, or the variant's focus ring (#237) when thick.
+local function sizeEdges(e, frame, thick)
+  local v = T.Variant()
+  local px = T.Pixel(frame) * (thick and v and v.ring or 1)
   e.top:SetHeight(px); e.bottom:SetHeight(px)
   e.left:SetWidth(px); e.right:SetWidth(px)
 end
@@ -712,8 +762,7 @@ local function borderColor(entry)
   local own = entry.opts.border
   if own then return own[1], own[2], own[3], 1 end
   if entry.opts.accent then return T.Accent() end
-  local c = T.Settings().border
-  return c[1], c[2], c[3], c[4]
+  return T.RGB("edge")
 end
 
 -- The panel gradient (#259): the OKLCH lightness change at a large panel's bottom and top edge, so
@@ -730,7 +779,7 @@ end
 -- Runs a large panel's fill (a floating window's: opts.shadow, or opts.gradient) a shade lighter
 -- toward its top while the panelGradient setting is on (VERTICAL runs bottom to top).
 local function shadeBg(bg, opts, r, g, b, a)
-  if not (T.Settings().panelGradient and (opts.shadow or opts.gradient) and bg.SetGradient) then return end
+  if not (T.Settings().panelGradient and (opts.shadow or opts.gradient) and bg.SetGradient) or (T.Variant() or {}).flat then return end
   bg:SetGradient("VERTICAL", lighter(r, g, b, a, T.PANEL_GRADIENT[1]), lighter(r, g, b, a, T.PANEL_GRADIENT[2]))
 end
 
@@ -750,7 +799,7 @@ local function repaint(frame, entry)
   if p.bg then paintBg(p.bg, entry.opts) end
   if p.edges then
     colorEdges(p.edges, borderColor(entry))
-    sizeEdges(p.edges, frame)
+    sizeEdges(p.edges, frame, entry.opts.accent or entry.opts.border)
   end
   if p.sheen then placeSheen(p.sheen, frame, entry.opts.pad, nil, p.bevel and 2) end
   if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad) end
@@ -1116,6 +1165,23 @@ function T.WindowControl(button, icon, opts)
   return button
 end
 
+-- Paints a resting-tile-only control (T.ControlPlate): its tile in T.CONTROL_TILES.rest.
+local function paintRestTile(entry)
+  T.Tint(entry.parts.tile, T.CONTROL_TILES.rest[1], T.CONTROL_TILES.rest[2])
+end
+
+-- Puts a window control's resting tile behind a button of a window's control row that keeps its own icon (the
+-- character pane's arrow, the group finder's gear), so the row reads as one set of buttons. Safe to run again.
+function T.ControlPlate(button)
+  local entry = painted[button]
+  if not entry then
+    entry = { kind = "plate", opts = {}, parts = { tile = centered(button, "BACKGROUND", T.WHITE, T.CONTROL.tile) }, paint = paintRestTile }
+    painted[button] = entry
+  end
+  repaint(button, entry)
+  return button
+end
+
 -- A close button as a window control: a plain cross, white on a red tile under the mouse.
 function T.CloseButton(button)
   return T.WindowControl(button, "CloseMark", { tile = "close" })
@@ -1451,6 +1517,12 @@ function T.OnChanged(fn)
   listeners[#listeners + 1] = fn
 end
 
+-- Repaints the crests and the ornaments.
+local function repaintArt()
+  for t in pairs(crests) do T.PaintCrest(t) end
+  for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
+end
+
 -- Repaints every painted frame, re-fonts styled text and tells the listeners.
 function T.Refresh()
   for frame, entry in pairs(painted) do
@@ -1458,7 +1530,7 @@ function T.Refresh()
   end
   T.RefreshText()
   applyFontObjects()
-  for t in pairs(crests) do T.PaintCrest(t) end
+  repaintArt()
   reSnap()
   for _, fn in ipairs(listeners) do
     fn()
@@ -1499,6 +1571,57 @@ function T.Crest(parent, size, layer, alpha)
   crests[t] = true
   T.PaintCrest(t)
   return t
+end
+
+-- The tex coords that turn the top-left corner bracket into each corner (#238).
+local CORNER_FLIPS = { TOPLEFT = { 0, 1, 0, 1 }, TOPRIGHT = { 1, 0, 0, 1 }, BOTTOMLEFT = { 0, 1, 1, 0 }, BOTTOMRIGHT = { 1, 0, 1, 0 } }
+-- How far the brackets and the rule sit in from the window's edge (units), and the bracket's size.
+T.ORNAMENT_INSET, T.ORNAMENT_SIZE = 3, 14
+
+-- Four corner brackets just inside a frame's corners.
+local function cornerBrackets(frame)
+  local out = {}
+  for point, flip in pairs(CORNER_FLIPS) do
+    local t = frame:CreateTexture(nil, "OVERLAY")
+    t:SetTexture(T.Texture("OrnamentCorner"))
+    t:SetSize(T.ORNAMENT_SIZE, T.ORNAMENT_SIZE)
+    t:SetPoint(point, frame, point, outward(point, -T.ORNAMENT_INSET))
+    t:SetTexCoord(flip[1], flip[2], flip[3], flip[4])
+    out[#out + 1] = t
+  end
+  return out
+end
+
+-- A one-pixel rule along the bottom of an anchor (a header) with a diamond cut in its middle.
+local function headerRule(frame, anchor)
+  local left, right = solid(frame, "OVERLAY", 0, "divider"), solid(frame, "OVERLAY", 0, "divider")
+  local mid = frame:CreateTexture(nil, "OVERLAY")
+  mid:SetTexture(T.Texture("Diamond"))
+  mid:SetSize(7, 7)
+  mid:SetPoint("CENTER", anchor, "BOTTOM")
+  left:SetPoint("BOTTOMLEFT", anchor, "BOTTOMLEFT", 12, 0)
+  left:SetPoint("BOTTOMRIGHT", anchor, "BOTTOM", -8, 0)
+  right:SetPoint("BOTTOMLEFT", anchor, "BOTTOM", 8, 0)
+  right:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", -12, 0)
+  return { left, right, mid, rule = { left, right } }
+end
+
+-- Shows or hides a window's ornament with the ornaments setting and paints it in the accent's dim variant.
+function T.PaintOrnament(frame, o)
+  local on = T.Settings().ornaments == true or (T.Variant() or {}).ornaments == true
+  for _, t in ipairs(o) do
+    t:SetShown(on)
+    T.Tint(t, "accentDim")
+  end
+  for _, t in ipairs(o.rule or {}) do t:SetHeight(T.Pixel(frame)) end
+end
+
+-- Gives a large window an ornament (#238), once: kind "corners" (four brackets) or "rule" (a rule
+-- along the bottom of `anchor`, its header). One per window; never on combat frames. Off with the ornaments setting.
+function T.Ornament(frame, kind, anchor)
+  if ornaments[frame] then return end
+  ornaments[frame] = kind == "rule" and headerRule(frame, anchor or frame) or cornerBrackets(frame)
+  T.PaintOrnament(frame, ornaments[frame])
 end
 
 -- Sets the accent color (0-1 components) and repaints.

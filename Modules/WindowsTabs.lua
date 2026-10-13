@@ -323,12 +323,13 @@ end
 
 -- The button that shows and hides the pane's right half (CharacterFrame.RightPaneToggleButton: a plain Button, not
 -- protected, that the game never moves; it sat below the title row on the left pane's corner) put in the title row,
--- T.CONTROL.step left of the close button, as a window's maximize box is (GW.PlaceControls).
+-- T.CONTROL.step left of the close button, as a window's maximize box is (GW.PlaceControls), on a control's plate.
 local function placePaneToggle(frame)
   local toggle = type(frame) == "table" and frame.RightPaneToggleButton
   if type(toggle) ~= "table" or not toggle.SetPoint or type(frame.CloseButton) ~= "table" then return end
   toggle:ClearAllPoints()
   toggle:SetPoint("CENTER", frame.CloseButton, "CENTER", -T.CONTROL.step, 0)
+  if toggle.CreateTexture then T.ControlPlate(toggle) end
 end
 
 -- Dresses the inside of the character pane: its backdrops, right-pane toggle and lists' rows, the skill rank bar,

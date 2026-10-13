@@ -48,7 +48,7 @@ read_globals = {
   -- P2.8 Chat: the game's list of chat window art names.
   "CHAT_FRAME_TEXTURES",
   -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.
-  "IsInInstance", "SecureCmdOptionParse",
+  "IsInInstance", "SecureCmdOptionParse", "SendChatMessage",
   -- P3.4 Keybind mode: binding a key to a button's command and saving it in the binding set in use.
   "SetBinding", "SaveBindings", "GetCurrentBindingSet",
   -- P3.5 Shared media: the bundled libraries' loader (Libs/LibStub).
