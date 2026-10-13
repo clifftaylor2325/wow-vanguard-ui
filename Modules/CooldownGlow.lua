@@ -47,7 +47,8 @@ end
 function CG.FromCurve(id, unit, percent)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDuration
   local curve = type(get) == "function" and CG.Curve(percent)
-  local ok, duration = curve and pcall(get, unit, id)
+  if not curve then return nil end
+  local ok, duration = pcall(get, unit, id)
   if not (ok and type(duration) == "table" and duration.EvaluateRemainingPercent) then return nil end
   local done, value = pcall(duration.EvaluateRemainingPercent, duration, curve)
   if done and (ns.IsSecret(value) or type(value) == "number") then return value end
