@@ -396,8 +396,8 @@ local function addCalendar(frame)
   local b = CreateFrame("Button", "Vanguard_InfoStripCalendar", frame)
   b:SetPoint("RIGHT", frame, "TOPRIGHT", -IS.CALENDAR_GAP, -(IS.BLOCKS.date[1] - 0.5) * IS.ROW)
   b:SetScript("OnClick", ns.Guard("click info strip calendar", function() if type(ToggleCalendar) == "function" then ToggleCalendar() end end))
-  b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_LEFT") GameTooltip:SetText("Calendar", T.RGB("text")) GameTooltip:Show() end)
-  b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  b:SetScript("OnEnter", ns.Guard("info strip calendar tip", function(self) GameTooltip:SetOwner(self, "ANCHOR_LEFT") GameTooltip:SetText("Calendar", T.RGB("text")) GameTooltip:Show() end))
+  b:SetScript("OnLeave", ns.Guard("info strip calendar tip", function() GameTooltip:Hide() end))
   ns.GetModule("Minimap").SlotButton(b, IS.CALENDAR_ICON.slot, IS.CALENDAR)
   IS.calendar = b
 end
