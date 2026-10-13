@@ -684,3 +684,15 @@ it("ornaments (#238): off by default; /vg ornaments puts a rule on the options w
   addon.slash("ornaments off");
   expect([shown(), chatHas(addon, /Window ornaments off/)]).toEqual([[0, 0, 0], true]);
 });
+
+it("SLUG text (#239): off by default; /vg slug adds the SLUG flag to outlined world text only, at once", () => {
+  const addon = loggedIn('__world = UIParent:CreateFontString() ns.Theme.Text(__world, "world") __plain = UIParent:CreateFontString() ns.Theme.Text(__plain, "label")');
+  // The font flags set on a test font string.
+  const flags = (name) => addon.eval(`return ${name}.__font[3]`);
+  expect([flags("__world"), flags("__plain")], "off by default").toEqual(["OUTLINE", ""]);
+  addon.slash("slug");
+  expect([flags("__world"), flags("__plain"), chatHas(addon, /SLUG text on/)], "world text gains SLUG, panel text does not").toEqual(["OUTLINE,SLUG", "", true]);
+  expect(addon.eval('return ns.Theme.FontFlags(nil, true), ns.Theme.FontFlags("", true)'), "with no flags it is just SLUG").toBe("SLUG");
+  addon.slash("slug off");
+  expect([flags("__world"), addon.eval("return ns.Theme.Settings().slugText"), chatHas(addon, /SLUG text off/)]).toEqual(["OUTLINE", false, true]);
+});

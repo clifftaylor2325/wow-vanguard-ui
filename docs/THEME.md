@@ -215,6 +215,8 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `sliceRings` | off | `/vg nineslice` | on reload |
 | `panelGradient` | off | `/vg gradient` | at once |
 | `ornaments` | off | `/vg ornaments`, General → Look → Window ornaments | at once; `T.Ornament(frame, kind, anchor)` (#238) gives a window one ornament, once: `"rule"` (a one-pixel rule along the bottom of `anchor` with a `Diamond` cut in the middle; the options window's header) or `"corners"` (four `OrnamentCorner` brackets, a one-pixel L with a 45° chamfer, `T.ORNAMENT_SIZE` 14 units, `T.ORNAMENT_INSET` 3 in; setup and the quest log). Tinted `accentDim`, never on combat frames; the faction crest watermark is not built |
+| `slugText` | off | `/vg slug` | at once; adds the SLUG font flag to outlined world-text roles only (`T.FontFlags`, #239) |
+| `frameBuffer` | off | `/vg framebuffer` | next window open or close; `T.OpenWindow`/`T.CloseWindow` call `SetIsFrameBuffer` on the window only while it fades, and only where the client has it (#239) |
 | `barTexture` | `"vanguard"` | General → Bars → Bar texture | on reload; one material for every bar (#234): unit frames, raid tiles, cast bars, XP and reputation, the damage meter all fill with `T.BarTexture()`, and a test checks the whole HUD |
 | `smoothBars` | on | General → Bars → Smooth health and power bars | at once |
 | `hudShadow` | off | General → Bars → Soft shadows under frames | on reload |

@@ -1568,6 +1568,59 @@ it("flight timer: the first flight is timed, the next counts down", () => {
   expect(bare.eval("return Vanguard_FlightTimer == nil and ns.GetModule('Errands').settings ~= nil"), "a client without taxi calls loads cleanly").toBe(true);
 });
 
+// The boat bar: shown, its text and max.
+const boatBar = (addon) => addon.eval("local b = Vanguard_BoatTimer return { shown = b:IsShown(), text = b.text:GetText(), max = select(2, b:GetMinMaxValues()) }");
+
+// TEST-ONLY: no map position while __pos is false (on a boat); the sub-zone is __sub.
+const BOAT_ENV = "__pos, __sub = true, 'TEST-ONLY Dock' C_Map.GetPlayerMapPosition = function() if __pos then return { GetXY = function() return 0.5, 0.5 end } end end GetSubZoneText = function() return __sub end";
+const BOATS_ON = { savedVariables: "VanguardDB.profiles = { Default = { Errands = { boatTimer = true } } }" };
+
+// Runs the Lua, then lets seconds pass.
+const wait = (addon, lua, seconds) => addon.eval(`${lua} __wfgStub.advance(${seconds})`);
+
+it("boat timer: the first ride is timed, the next from that dock counts down", () => {
+  const addon = loggedIn(BOAT_ENV, BOATS_ON);
+  expect(boatBar(addon).shown, "no bar on land").toBe(false);
+  wait(addon, "", 2);
+  wait(addon, "__pos = false", 2);
+  expect(boatBar(addon).shown, "two checks are not yet a ride").toBe(false);
+  wait(addon, "", 1);
+  expect(boatBar(addon), "three are: an unknown route is timed").toMatchObject({ shown: true, text: "Timing this ride" });
+  wait(addon, "", 80);
+  wait(addon, "__pos = true __sub = 'TEST-ONLY Quay'", 1);
+  expect([boatBar(addon).shown, addon.eval('return VanguardDB.profiles.Default.Errands.boats["TEST-ONLY Dock > TEST-ONLY Quay"]')], "landing saves the time and hides the bar").toEqual([false, 83]);
+  wait(addon, "__sub = 'TEST-ONLY Dock'", 2);
+  wait(addon, "__pos = false", 3);
+  wait(addon, "", 30);
+  expect(boatBar(addon), "the same dock again counts down").toMatchObject({ shown: true, text: "TEST-ONLY Quay  0:51", max: 83 });
+  wait(addon, "__pos = true", 1);
+  wait(addon, "__pos = false", 4);
+  wait(addon, "__pos = true", 1);
+  expect(addon.eval("local n = 0 for _ in pairs(VanguardDB.profiles.Default.Errands.boats) do n = n + 1 end return n"), "a ride that lands where it began saves nothing").toBe(1);
+  wait(addon, "__pos = false", 25);
+  wait(addon, "__pos = true __sub = ''", 1);
+  expect(addon.eval('return VanguardDB.profiles.Default.Errands.boats["TEST-ONLY Dock > Elwynn Forest"]'), "a place with no sub-zone is named by its zone").toBe(25);
+  expect(addon.eval("return { ns.MoverPoint('boattimer') }"), "the bar is movable").toEqual(["BOTTOM", "BOTTOM", 0, 334]);
+});
+
+it("boat timer: off by default, and quiet where a ride can't be judged", () => {
+  const off = loggedIn(BOAT_ENV);
+  expect([off.eval("return Vanguard_BoatTimer == nil"), off.eval("return ns.GetModule('Errands').settings.boatTimer")], "off until switched on").toEqual([true, false]);
+  const on = loggedIn(BOAT_ENV, BOATS_ON);
+  // Runs the Lua, lets six seconds pass, and says whether the bar shows.
+  const quiet = (setup) => {
+    on.eval(`__pos = false ${setup} __wfgStub.advance(6)`);
+    return boatBar(on).shown;
+  };
+  expect(quiet("UnitOnTaxi = function() return true end"), "a flight is not a boat").toBe(false);
+  expect(quiet("UnitOnTaxi = function() return false end IsInInstance = function() return true end"), "an instance is not a boat").toBe(false);
+  expect(quiet("IsInInstance = function() return false end UnitIsDeadOrGhost = function() return true end"), "a ghost is not a boat").toBe(false);
+  expect(quiet("UnitIsDeadOrGhost = function() return false end C_Map.GetBestMapForUnit = function() return { __secret = true } end"), "a hidden map is not judged").toBe(false);
+  expect(quiet("C_Map.GetBestMapForUnit = function() return 37 end ns.InCombat = function() return true end"), "nothing is read in combat").toBe(false);
+  const bare = loggedIn("C_Map = nil", BOATS_ON);
+  expect(bare.eval("return Vanguard_BoatTimer == nil"), "a client without the map calls loads cleanly").toBe(true);
+});
+
 // TEST-ONLY model of the Forever game menu: pooled buttons numbered from 1 by InitButtons on every
 // show, then a layout that orders the shown children by layoutIndex (LayoutFrame.lua).
 const FOREVER_MENU_ENV = `

@@ -14,6 +14,8 @@ local HELP = {
   "frames               list the movable frames",
   "grid [size|on|off]   the unlock-mode grid; snap on|off   snapping while dragging",
   "texelsnap [on|off]   still borders, fills and lines snap to the pixel grid (a test; off by default)",
+  "slug [on|off]        world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a test; off by default)",
+  "framebuffer [on|off] windows drawn through a frame buffer while they open and close (a test; off by default)",
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
   "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
   "gradient [on|off]    windows a shade lighter toward the top (off by default)",
@@ -38,6 +40,7 @@ local HELP = {
   "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>   search the inbox; presets for sending items to your alts (off until switched on)",
   "rolls [clear]        the group's /roll results this session, newest first; clear forgets them",
   "fights               your DPS, length and place in each fight this session, newest first",
+  "recap [say|party|raid|instance|guild]   the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, in your chat or sent to that channel",
   "vendors [clear]      how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them",
   "ranks [swap]         spell ranks: bar buttons holding an older rank than you know; swap puts the newest rank there (out of combat). Off until Spell ranks is switched on",
   "trainers [next|clear]   what the trainers you've visited teach: how many services are remembered, what the next levels bring and where, or forget them (Trainer memory off until switched on)",
@@ -185,6 +188,21 @@ local function ornamentsCommand(rest)
   s.ornaments = rest == "on" or (rest == "" and not s.ornaments)
   T.Refresh()
   chat(s.ornaments and "Window ornaments on." or "Window ornaments off.")
+end
+
+-- /vg slug [on|off]: the SLUG font flag on world text, repainted at once (#239).
+local function slugCommand(rest)
+  local s = T.Settings()
+  s.slugText = rest == "on" or (rest == "" and not s.slugText)
+  T.RefreshText()
+  chat(s.slugText and "SLUG text on for world text." or "SLUG text off.")
+end
+
+-- /vg framebuffer [on|off]: windows go through a frame buffer while they fade (#239).
+local function frameBufferCommand(rest)
+  local s = T.Settings()
+  s.frameBuffer = rest == "on" or (rest == "" and not s.frameBuffer)
+  chat(s.frameBuffer and "Frame buffers on while windows open and close." or "Frame buffers off.")
 end
 
 -- /vg theme reset
@@ -553,6 +571,8 @@ local COMMANDS = {
   nineslice = nineSliceCommand,
   gradient = gradientCommand,
   ornaments = ornamentsCommand,
+  slug = slugCommand,
+  framebuffer = frameBufferCommand,
   theme = themeCommand,
   modules = modulesCommand,
   enable = setModule(true),
@@ -572,6 +592,7 @@ local COMMANDS = {
   mail = function(rest) ns.GetModule("MailTools").Command(rest) end,
   rolls = function(rest) ns.GetModule("Rolls").Command(rest) end,
   fights = function() ns.GetModule("FightHistory").Command() end,
+  recap = function(rest) ns.GetModule("FightHistory").RecapCommand(rest) end,
   vendors = function(rest) ns.GetModule("VendorMemory").Command(rest) end,
   ranks = function(rest) ns.GetModule("SpellRanks").RanksCommand(rest) end,
   trainers = function(rest) ns.GetModule("SpellRanks").TrainersCommand(rest) end,
