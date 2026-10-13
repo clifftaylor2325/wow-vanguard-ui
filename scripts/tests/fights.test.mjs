@@ -148,3 +148,71 @@ it("a client without timers reads the fight as combat ends", () => {
   addon.world.combat(false);
   expect(fights(addon)).toEqual([[30, 100, 1, 1]]);
 });
+
+// TEST-ONLY: the meter kinds the recap reads, a session for each kind, and a SendChatMessage that keeps what it is given.
+const RECAP_ENV = METER_ENV + `Enum.DamageMeterType = { Dps = 1, Interrupts = 5, Dispels = 6, DamageTaken = 7, Deaths = 9 }
+  __meters = {}
+  C_DamageMeter.GetCombatSessionFromType = function(kind, what) if what == 1 then return __wfgWorld.damageSession end return __meters[what] end
+  __sent = {}
+  SendChatMessage = function(text, channel) __sent[#__sent + 1] = { text, channel } end
+`;
+const RECAP_ON = { savedVariables: "VanguardDB.profiles = { Default = { FightHistory = { recap = true } } }" };
+
+// The meter kind `what` (a number) listing you with `amount` (a Lua expression) and `others` more lines.
+function setMeter(addon, what, amount, others = 0) {
+  addon.eval(`local src = { { isLocalPlayer = true, totalAmount = ${amount} } }
+    for i = 1, ${others} do src[#src + 1] = { isLocalPlayer = false, totalAmount = 1 } end
+    __meters[${what}] = { combatSources = src }`);
+}
+
+// What the module would send, and what SendChatMessage was given.
+const sent = (addon) => addon.eval("return __sent");
+
+it("the recap line names interrupts, dispels, damage taken and deaths, and /vg recap prints it", () => {
+  const addon = loggedIn(RECAP_ENV);
+  addon.slash("recap");
+  expect(chatHas(addon, /No recap to show/), "nothing to show before a fight").toBe(true);
+  setMeter(addon, 5, 3, 2);
+  setMeter(addon, 6, 1);
+  setMeter(addon, 7, 123456, 4);
+  setMeter(addon, 9, 0, 1);
+  addon.slash("recap");
+  expect(chatHas(addon, /Fight recap: Interrupts 3 {2}· {2}Dispels 1 {2}· {2}Damage taken 123\.5K {2}· {2}Deaths 2 \(you died\)$/), "all four, the big figure short, and that you died").toBe(true);
+  addon.eval("__meters[9] = { combatSources = { { isLocalPlayer = false } } }");
+  addon.slash("recap");
+  expect(chatHas(addon, /Deaths 1$/), "a death that was not yours").toBe(true);
+  addon.eval("__meters[5] = nil __meters[6] = { combatSources = { { isLocalPlayer = true, totalAmount = __wfgWorld.secret(1) } } } __meters[7] = nil __meters[9] = nil");
+  addon.slash("recap");
+  expect(chatHas(addon, /No recap to show/), "a hidden figure and absent meters leave nothing to say").toBe(true);
+});
+
+it("the chat recap comes after a recorded fight, only when it is switched on", () => {
+  const on = loggedIn(RECAP_ENV, RECAP_ON);
+  setMeter(on, 5, 2);
+  fight(on, 100, 30);
+  expect(chatHas(on, /Fight recap: Interrupts 2$/), "switched on: a line after the fight").toBe(true);
+  const off = loggedIn(RECAP_ENV);
+  setMeter(off, 5, 2);
+  fight(off, 100, 30);
+  expect(chatHas(off, /Fight recap/), "off by default").toBe(false);
+});
+
+it("/vg recap sends the line to a channel on your command, out of combat only", () => {
+  const addon = loggedIn(RECAP_ENV);
+  setMeter(addon, 5, 4);
+  addon.slash("recap party");
+  expect(sent(addon), "party gets the line").toEqual([["Interrupts 4", "PARTY"]]);
+  addon.slash("recap instance");
+  expect(sent(addon)[1], "instance chat has its own name").toEqual(["Interrupts 4", "INSTANCE_CHAT"]);
+  addon.slash("recap nowhere");
+  expect([sent(addon).length, chatHas(addon, /Send the recap to say, party, raid, instance or guild\./)], "an unknown channel sends nothing").toEqual([2, true]);
+  addon.world.combat(true);
+  addon.slash("recap guild");
+  expect([sent(addon).length, chatHas(addon, /Not in combat: the game's damage meter is hidden/)], "nothing is sent in combat").toEqual([2, true]);
+});
+
+it("a client without the extra meters recaps nothing and raises no error", () => {
+  const addon = loggedIn("C_DamageMeter = nil");
+  addon.slash("recap");
+  expect([chatHas(addon, /No recap to show/), addon.eval("return #ns.errors")]).toEqual([true, 0]);
+});

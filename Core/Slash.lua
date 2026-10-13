@@ -14,7 +14,11 @@ local HELP = {
   "frames               list the movable frames",
   "grid [size|on|off]   the unlock-mode grid; snap on|off   snapping while dragging",
   "texelsnap [on|off]   still borders, fills and lines snap to the pixel grid (a test; off by default)",
+  "slug [on|off]        world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a test; off by default)",
+  "framebuffer [on|off] windows drawn through a frame buffer while they open and close (a test; off by default)",
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
+  "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
+  "variant [default|contrast|vellum|classic]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look",
   "gradient [on|off]    windows a shade lighter toward the top (off by default)",
   "accent <rrggbb|name> set the accent color (brass, arcane, jade, orchid, copper); accent reset",
   "theme reset          every theme setting back to default",
@@ -37,12 +41,14 @@ local HELP = {
   "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>   search the inbox; presets for sending items to your alts (off until switched on)",
   "rolls [clear]        the group's /roll results this session, newest first; clear forgets them",
   "fights               your DPS, length and place in each fight this session, newest first",
+  "recap [say|party|raid|instance|guild]   the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, in your chat or sent to that channel",
   "vendors [clear]      how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them",
   "ranks [swap]         spell ranks: bar buttons holding an older rank than you know; swap puts the newest rank there (out of combat). Off until Spell ranks is switched on",
   "trainers [next|clear]   what the trainers you've visited teach: how many services are remembered, what the next levels bring and where, or forget them (Trainer memory off until switched on)",
   "inventory [forget <name>|clear]   your characters remembered here and when their bags were read; forget drops one, clear forgets them all",
   "weights [set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role; change one, go back to the defaults, or share them",
   "prep [want <kind> <n>] the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards",
+  "legacy [probe|plan ...]   Legacy system: probe lists what the client has for it; plan [add <points> <name>|remove <name>|clear] keeps a list of perks for the tree's 16 points (planner off until switched on)",
   "talents [plan|spend|clear|export|import]   Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string",
   "ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|scan|prices clear]  shopping lists (pick or make one, add an item: a link, an ID or a name; rename, copy, delete, export or import the list in use; recent: the last 20 items searched); scan the auction house (while it's open); forget the prices",
   "way [zone] x y [title]   a waypoint on the map that the game's arrow points to (a zone by name, or #<map id>); way clear removes it",
@@ -177,6 +183,38 @@ local function gradientCommand(rest)
   s.panelGradient = rest == "on" or (rest == "" and not s.panelGradient)
   T.Refresh()
   chat(s.panelGradient and "Panel gradient on: windows run a shade lighter toward the top." or "Panel gradient off.")
+end
+
+-- /vg ornaments [on|off]: window ornaments, repainted at once (#238).
+local function ornamentsCommand(rest)
+  local s = T.Settings()
+  s.ornaments = rest == "on" or (rest == "" and not s.ornaments)
+  T.Refresh()
+  chat(s.ornaments and "Window ornaments on." or "Window ornaments off.")
+end
+
+-- /vg variant [name]: a theme variant (#237), repainted at once.
+local function variantCommand(rest)
+  if rest == "" then rest = T.Settings().variant end
+  if rest ~= "default" and not T.VARIANTS[rest] then return chat("Usage: /vg variant default|contrast|vellum|classic") end
+  T.Settings().variant = rest
+  T.Refresh()
+  chat("Theme variant: " .. (T.VARIANTS[rest] and T.VARIANTS[rest].label or "Slate and brass") .. ".")
+end
+
+-- /vg slug [on|off]: the SLUG font flag on world text, repainted at once (#239).
+local function slugCommand(rest)
+  local s = T.Settings()
+  s.slugText = rest == "on" or (rest == "" and not s.slugText)
+  T.RefreshText()
+  chat(s.slugText and "SLUG text on for world text." or "SLUG text off.")
+end
+
+-- /vg framebuffer [on|off]: windows go through a frame buffer while they fade (#239).
+local function frameBufferCommand(rest)
+  local s = T.Settings()
+  s.frameBuffer = rest == "on" or (rest == "" and not s.frameBuffer)
+  chat(s.frameBuffer and "Frame buffers on while windows open and close." or "Frame buffers off.")
 end
 
 -- /vg theme reset
@@ -544,6 +582,10 @@ local COMMANDS = {
   texelsnap = texelSnapCommand,
   nineslice = nineSliceCommand,
   gradient = gradientCommand,
+  ornaments = ornamentsCommand,
+  variant = variantCommand,
+  slug = slugCommand,
+  framebuffer = frameBufferCommand,
   theme = themeCommand,
   modules = modulesCommand,
   enable = setModule(true),
@@ -563,6 +605,7 @@ local COMMANDS = {
   mail = function(rest) ns.GetModule("MailTools").Command(rest) end,
   rolls = function(rest) ns.GetModule("Rolls").Command(rest) end,
   fights = function() ns.GetModule("FightHistory").Command() end,
+  recap = function(rest) ns.GetModule("FightHistory").RecapCommand(rest) end,
   vendors = function(rest) ns.GetModule("VendorMemory").Command(rest) end,
   ranks = function(rest) ns.GetModule("SpellRanks").RanksCommand(rest) end,
   trainers = function(rest) ns.GetModule("SpellRanks").TrainersCommand(rest) end,
@@ -570,6 +613,7 @@ local COMMANDS = {
   weights = function(rest) ns.GetModule("Upgrades").Command(rest) end,
   prep = function(rest) ns.GetModule("InstancePrep").Command(rest) end,
   talents = function(rest) ns.GetModule("TalentPlanner").Command(rest) end,
+  legacy = function(rest) ns.GetModule("Legacy").Command(rest) end,
   watch = function(rest) ns.GetModule("ChatWatch").Command(rest) end,
   gaps = function(rest) ns.GetModule("CooldownGaps").Command(rest) end,
   lfg = function() ns.GetModule("GroupBoard").Toggle() end,

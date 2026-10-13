@@ -214,3 +214,88 @@ it("prep: a client without the bag, item or instance calls checks what it can", 
   noClient.slash("prep");
   expect(rows(noClient).length, "an empty slot is skipped").toBe(3);
 });
+
+// TEST-ONLY weapons worn (item class 2) and their timed enchants as the client lists them per weapon slot.
+const BUFF_ENV = `
+  __wfgWorld.items[2000] = { name = "TEST-ONLY Sword", classID = 2, subClassID = 7 }
+  __wfgWorld.items[2001] = { name = "TEST-ONLY Shield", classID = 4, subClassID = 6 }
+  __wfgWorld.worn[16] = "|cffffffff|Hitem:2000|h[TEST-ONLY Sword]|h|r"
+  __wfgWorld.worn[17] = "|cffffffff|Hitem:2000|h[TEST-ONLY Sword]|h|r"
+  __enchants = {}
+  C_Item.GetWeaponEnchantInfo = function(slot) return __enchants[slot] end
+`;
+
+// The Instance prep card with buff checks on, and the aura names added to the player.
+function buffed(extra = "") {
+  const addon = character("WARRIOR", 60, { extra: BUFF_ENV + extra });
+  addon.eval("ns.GetModule('InstancePrep').settings.buffs = true");
+  return addon;
+}
+// Gives the player a helpful aura by name.
+const buff = (addon, name) => addon.world.addAura("player", { name, duration: 3600, isHelpful: true });
+
+it("prep buffs: off until switched on", () => {
+  const addon = character("WARRIOR", 60, { extra: BUFF_ENV });
+  addon.slash("prep");
+  expect(addon.texts("Everything's packed.").length, "no buff rows by default").toBe(1);
+});
+
+it("prep buffs: a ready check lists the flask, food, enchants and raid buffs you lack", () => {
+  const addon = buffed();
+  addon.fire("READY_CHECK", "TEST-ONLY Leader", 30);
+  expect(rows(addon).map((r) => r[0]), "everything missing").toEqual(["Flask", "Food buff", "Fortitude", "Mark of the Wild", "Arcane Intellect", "Weapon oil or poison", "Off-hand oil or poison"]);
+  expect(rows(addon)[0][1], "said in red as missing").toBe("missing");
+  ["Flask of the Titans", "Well Fed", "Prayer of Fortitude", "Gift of the Wild", "Arcane Brilliance"].forEach((n) => buff(addon, n));
+  addon.eval("__enchants[0] = { { hasEnchant = true, timeLeft = 900000 } } __enchants[1] = { { hasEnchant = true, timeLeft = 900000 } }");
+  addon.advance(21);
+  addon.slash("prep");
+  expect(addon.texts("Everything's packed.").length, "all there: packed").toBe(1);
+});
+
+it("prep buffs: world buffs only when asked for, an off hand only when it holds a weapon", () => {
+  const addon = buffed("__wfgWorld.worn[17] = '|Hitem:2001|h' __enchants[0] = { { hasEnchant = true, timeLeft = 900000 } }");
+  ["Flask of Supreme Power", "Well Fed", "Power Word: Fortitude", "Mark of the Wild", "Arcane Intellect"].forEach((n) => buff(addon, n));
+  addon.slash("prep");
+  expect(addon.texts("Everything's packed.").length, "a shield needs no oil; no world buffs asked").toBe(1);
+  addon.eval("ns.GetModule('InstancePrep').settings.worldBuffs = true");
+  addon.advance(21);
+  addon.slash("prep");
+  expect(rows(addon), "none of the world buffs").toEqual([["World buffs", "missing"]]);
+  buff(addon, "Songflower Serenade");
+  addon.advance(21);
+  addon.slash("prep");
+  expect(addon.texts("Everything's packed.").length, "one is enough").toBe(1);
+});
+
+it("prep buffs: nothing is guessed when the client hides auras or can't list them", () => {
+  const addon = buffed();
+  // How many buff rows the card would get now.
+  const count = () => addon.eval("return #ns.GetModule('InstancePrep').BuffRows()");
+  addon.eval("__wfgWorld.aurasSecret = true");
+  expect(count(), "auras hidden: no rows").toBe(0);
+  addon.eval("__wfgWorld.aurasSecret = false");
+  setCombat(addon, true);
+  expect(count(), "in combat: no rows").toBe(0);
+  setCombat(addon, false);
+  addon.eval("C_Item.GetWeaponEnchantInfo = nil");
+  expect(count(), "the five aura rows, but no enchant rows without the call").toBe(5);
+  addon.eval("C_UnitAuras = nil");
+  expect(count(), "no aura call: no aura rows").toBe(0);
+  addon.eval("C_UnitAuras = { GetAuraDataBySpellName = function() end } Enum.WeaponSlot = nil C_Item.GetWeaponEnchantInfo = function() end");
+  expect(count(), "no weapon slots: no enchant rows").toBe(5);
+  addon.eval("Enum.WeaponSlot = { MainHand = 0, OffHand = 1 } GetInventoryItemLink = function() return __wfgWorld.secret() end");
+  expect(count(), "a hidden weapon link: no enchant rows").toBe(5);
+  addon.eval("GetInventoryItemLink = function() return nil end");
+  expect(count(), "nothing worn: no enchant rows").toBe(5);
+  addon.eval("GetInventoryItemLink = function() return '|Hitem:2000|h' end C_Item.GetItemInfoInstant = nil");
+  expect(count(), "no item info: no enchant rows").toBe(5);
+});
+
+it("prep buffs: the options page has the switches", () => {
+  const addon = character("WARRIOR", 60);
+  addon.eval('ns.Options.Show("more")');
+  addon.eval('__click("Buff checks on the card: flask, food, oil or poison, raid buffs")');
+  expect(addon.eval("return ns.Settings('InstancePrep').buffs"), "a switch sets the profile").toBe(true);
+  addon.eval('__click("World buffs among them")');
+  expect(addon.eval("return ns.Settings('InstancePrep').worldBuffs"), "and the other").toBe(true);
+});
