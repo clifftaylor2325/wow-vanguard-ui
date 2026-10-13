@@ -213,6 +213,7 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `pixelMultiple` | 1 | Setup → Pixel-perfect (sharpest) | with `pixelScale`, out of combat |
 | `texelSnap` | off | `/vg texelsnap` | at once |
 | `sliceRings` | off | `/vg nineslice` | on reload |
+| `variant` | `"default"` | General → Look → Theme variant, `/vg variant` | at once; `T.VARIANTS` token sets (#237): `contrast` (panel `0a0b0e` alpha 1, inset `050608`, raised `14161b`, divider `4a5260`, text `ffffff`, text2 `dfe3ea`, muted `b8bfca`, sheen alpha 0, saturated good/warn/bad/info, Color assist on, `ring` 2 px on accent-bordered frames, no gradient) and `vellum` (panel `1a1612`, inset `100d0a`, raised `241f19`, divider `3a3226`, text `efe6d2`, text2 `d2c6ad`, muted `9a8f78`); `T.RGB` and `T.PanelColor` read the variant first; `T.Refresh` repaints. Parchment is not built |
 | `panelGradient` | off | `/vg gradient` | at once |
 | `barTexture` | `"vanguard"` | General → Bars → Bar texture | on reload; one material for every bar (#234): unit frames, raid tiles, cast bars, XP and reputation, the damage meter all fill with `T.BarTexture()`, and a test checks the whole HUD |
 | `smoothBars` | on | General → Bars → Smooth health and power bars | at once |
