@@ -415,6 +415,14 @@ local function roundedText(step)
   return function(v) return string.format("%." .. places .. "f", v) end
 end
 
+-- The value text, right-aligned in a fixed slot so a long number can't run over the track.
+local function addValueText(r)
+  r.value = T.Text(r:CreateFontString(nil, "OVERLAY"), "number", "text2")
+  r.value:SetPoint("RIGHT", -8, 0)
+  r.value:SetWidth(52)
+  r.value:SetJustifyH("RIGHT")
+end
+
 -- A slider row for a number from min to max in steps; format(v) is its
 -- text. Clicking the caption steps up (wrapping to min); dragging along the
 -- track sets it. The wheel over it scrolls the page, as over any row.
@@ -425,10 +433,7 @@ function W.Slider(parent, caption, opts, get, set, width)
   r.get, r.set, r.Refresh = get, set, refreshSlider
   addTrack(r)
   if opts.locked then addLock(r, opts.locked) end
-  r.value = T.Text(r:CreateFontString(nil, "OVERLAY"), "number", "text2")
-  r.value:SetPoint("RIGHT", -8, 0)
-  r.value:SetWidth(52)
-  r.value:SetJustifyH("RIGHT")
+  addValueText(r)
   r:SetScript("OnClick", ns.Guard("click slider", stepOrWrap))
   r:Refresh()
   return r
