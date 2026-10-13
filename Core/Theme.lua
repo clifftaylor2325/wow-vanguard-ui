@@ -138,6 +138,11 @@ local DEFAULTS = {
   sliceRings = false,
   -- A subtle top-to-bottom lightness shift on floating windows' fills (#259); off by default.
   panelGradient = false,
+  -- Experiments with 12.x client features (#239), each off until its in-game A/B check: world text
+  -- (outlined roles) drawn with the SLUG font flag, and big windows drawn through a frame buffer
+  -- while they open and close.
+  slugText = false,
+  frameBuffer = false,
   textScale = 1,
   barTexture = "vanguard",
   -- Soft shadows under HUD frames (unit frames, bars, minimap); floating windows always have one.
@@ -1054,15 +1059,16 @@ end
 -- both axes (its tile with 14 of air to the panel's edge, in line with the window's title), the
 -- maximize/minimize box `step` left of it.
 T.CONTROL = { tile = 20, glyph = 20, inset = 24, step = 28 }
--- The tile's color and opacity by control: red behind close, a wash of the accent behind the others.
-T.CONTROL_TILES = { close = { "bad", 0.9 }, other = { "accent", 0.35 } }
+-- The tile's color and opacity by control while the mouse is over it: red behind close, a wash of the
+-- accent behind the others; at rest every control sits on the same faint raised-slate tile.
+T.CONTROL_TILES = { close = { "bad", 0.9 }, other = { "accent", 0.35 }, rest = { "raised", 0.9 } }
 
--- Paints a window control: its glyph in the secondary text color, or white over its tile while lit.
+-- Paints a window control: its glyph in the secondary text color on a faint tile, or white over its colored tile while lit.
 local function paintControl(entry)
   local p, tile = entry.parts, T.CONTROL_TILES[entry.opts.tile] or T.CONTROL_TILES.other
+  if not entry.lit then tile = T.CONTROL_TILES.rest end
   T.Tint(p.glyph, entry.lit and "white" or "text2")
   T.Tint(p.tile, tile[1], tile[2])
-  p.tile:SetShown(entry.lit == true)
 end
 
 -- A texture centered on a button: the path at the size (an even number of screen pixels,
@@ -1398,12 +1404,19 @@ function T.Text(fs, role, color)
   return fs
 end
 
+-- A font's flags with SLUG added (#239) when the slugText setting is on and the text is world text
+-- (an outlined role); otherwise as given.
+function T.FontFlags(flags, world)
+  if not (world and T.Settings().slugText) then return flags end
+  return (flags and flags ~= "" and flags .. "," or "") .. "SLUG"
+end
+
 -- Sets a role's font, size and shadow (or outline) on a font string; leaves its color alone.
 function T.ApplyRole(fs, role)
   local r = T.ROLES[role]
   local path, outline = T.Font(r[2])
   if T.HEADING_ROLES[role] then path = T.HeadingFont() or path end
-  fs:SetFont(path, sizes[fs] or roleSize(r), r[3] or outline)
+  fs:SetFont(path, sizes[fs] or roleSize(r), T.FontFlags(r[3] or outline, r[3]))
   fs:SetShadowOffset(r[3] and 0 or 1, r[3] and 0 or -1)
   fs:SetShadowColor(T.RGB("textShadow"))
 end
@@ -1602,23 +1615,35 @@ local function riser(frame)
   return r
 end
 
+-- Draws a window through its own frame buffer (#239) while it fades, when the frameBuffer setting
+-- is on and the client has SetIsFrameBuffer, so overlapping translucent borders don't ghost.
+local function buffered(frame, on)
+  if T.Settings().frameBuffer and frame.SetIsFrameBuffer then frame:SetIsFrameBuffer(on) end
+end
+
+-- Plays a window's open animation from px below its spot, buffered until it ends.
+local function playRise(frame, r, px)
+  r.group:Stop() r.drop:SetOffset(0, -px) r.rise:SetOffset(0, px)
+  r.alpha:SetFromAlpha(0) r.alpha:SetToAlpha(1)
+  buffered(frame, true)
+  r.group:SetScript("OnFinished", ns.Guard("window frame buffer", function() buffered(frame, false) end))
+  r.group:Play()
+end
+
 -- Opens a window (#257): shown, fading in as it rises T.WINDOW_RISE screen pixels into its own
 -- spot (so it ends on the pixel grid); at once in combat or with Reduce motion.
 function T.OpenWindow(frame)
   local r = not T.Settings().reduceMotion and not (fighting or ns.InCombat()) and riser(frame)
   T.StopFade(frame)
   frame:Show()
-  if not r then return end
-  local px = T.Pixel(frame) * T.WINDOW_RISE
-  r.group:Stop() r.drop:SetOffset(0, -px) r.rise:SetOffset(0, px)
-  r.alpha:SetFromAlpha(0) r.alpha:SetToAlpha(1)
-  r.group:Play()
+  if r then playRise(frame, r, T.Pixel(frame) * T.WINDOW_RISE) end
 end
 
 -- Closes a window (#257): fades it out over T.WINDOW_CLOSE, then hides it and runs done.
 function T.CloseWindow(frame, done)
   if riserOf[frame] then riserOf[frame].group:Stop() end
-  T.FadeOut(frame, T.WINDOW_CLOSE, done)
+  buffered(frame, true)
+  T.FadeOut(frame, T.WINDOW_CLOSE, function() buffered(frame, false) if done then done() end end)
 end
 
 -- How long a button's hover takes to ease in and out (#257), in seconds; capped in combat like any fade.

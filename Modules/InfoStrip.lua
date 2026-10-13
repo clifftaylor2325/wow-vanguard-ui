@@ -1,10 +1,11 @@
--- A strip of numbers under the minimap, up to four rows:
---   durability (orange at 25% or less, red at 10% or less) · free bag slots · fps and latency
---   gold · ammo (hunters, warriors, rogues) or soul shards (warlocks) · clock
---   leveling: XP per hour · time to level · gold per hour this session
---   your damage per second in the last fight, and your place in it in a group,
---   and what your auction sales came to this session (Modules/AuctionLedger.lua)
---   (each off until you turn it on)
+-- A strip of numbers under the minimap, two columns, up to seven rows:
+--   durability (orange at 25% or less, red at 10% or less) · free bag slots
+--   gold · clock
+--   fps and latency · ammo (hunters, warriors, rogues) or soul shards (warlocks)
+--   the day and date, with a calendar button
+--   leveling: XP per hour · time to level
+--   gold per hour this session · what your auction sales came to (Modules/AuctionLedger.lua, off until you turn it on)
+--   your damage per second in the last fight · your place in it in a group (each off until you turn it on)
 -- Each block reads the client when its event fires (fps, latency and the
 -- clock once a second on one shared timer), shows only where the client
 -- can answer, and sets its text only when it changed. Values the client
@@ -23,22 +24,23 @@ local IS = ns.Module("InfoStrip", {
   },
 })
 
-IS.WIDTH, IS.ROW = 182, 16
--- Where each block sits: row, and its point along the row.
+IS.WIDTH, IS.ROW = 182, 18
+-- Where each block sits: row, and its side of the row (two columns, so no two blocks run together).
 IS.BLOCKS = {
-  durability = { 1, "LEFT" }, bags = { 1, "CENTER" }, system = { 1, "RIGHT" },
-  gold = { 2, "LEFT" }, ammo = { 2, "CENTER" }, clock = { 2, "RIGHT" },
+  durability = { 1, "LEFT" }, bags = { 1, "RIGHT" },
+  gold = { 2, "LEFT" }, clock = { 2, "RIGHT" },
+  system = { 3, "LEFT" }, ammo = { 3, "RIGHT" },
   -- Soul shards share ammo's place: no class carries both.
-  shards = { 2, "CENTER" },
+  shards = { 3, "RIGHT" },
   -- The day and date, with the calendar button at the row's right end.
-  date = { 3, "LEFT" },
-  xprate = { 4, "LEFT" }, leveltime = { 4, "CENTER" }, goldrate = { 4, "RIGHT" },
-  dps = { 5, "LEFT" }, rank = { 5, "RIGHT" },
-  -- Auction sales sit between them (neither is on by default).
-  ahgold = { 5, "CENTER" },
+  date = { 4, "LEFT" },
+  xprate = { 5, "LEFT" }, leveltime = { 5, "RIGHT" },
+  -- Gold per hour shares its row with the auction sales (off by default).
+  goldrate = { 6, "LEFT" }, ahgold = { 6, "RIGHT" },
+  dps = { 7, "LEFT" }, rank = { 7, "RIGHT" },
 }
--- The calendar button beside the date: its side (UI units) and the gap to the strip's edge.
-IS.CALENDAR, IS.CALENDAR_GAP = 14, 4
+-- The calendar button beside the date: its side and icon size (UI units) and the gap to the strip's edge.
+IS.CALENDAR, IS.CALENDAR_GLYPH, IS.CALENDAR_GAP = 18, 14, 3
 IS.CALENDAR_ICON = { slot = "Calendar" }
 -- The session's rates wait this long (seconds) before showing: early numbers jump about.
 IS.SETTLE = 60
@@ -186,15 +188,27 @@ local function enum(kind, key)
   return t and t[key] or nil
 end
 
--- The current (or last) fight's damage per second session from the game's damage
--- meter, and the session type it was asked with; nil in combat and wherever the client keeps it hidden.
-local function dpsSession()
+-- The current (or last) fight's session of one kind of the game's damage meter (an Enum.DamageMeterType
+-- key such as "Dps"), and the session type it was asked with; nil in combat and wherever the client keeps it hidden.
+local function meterSession(what)
   local get = C_DamageMeter and C_DamageMeter.GetCombatSessionFromType
-  local kind, what = enum("DamageMeterSessionType", "Current"), enum("DamageMeterType", "Dps")
-  if type(get) ~= "function" or kind == nil or what == nil or ns.InCombat() then return nil end
-  local session = get(kind, what)
+  local kind, which = enum("DamageMeterSessionType", "Current"), enum("DamageMeterType", what)
+  if type(get) ~= "function" or kind == nil or which == nil or ns.InCombat() then return nil end
+  local session = get(kind, which)
   if type(session) ~= "table" or ns.IsSecret(session) then return nil end
   return session, kind
+end
+
+-- The damage per second session.
+local function dpsSession()
+  return meterSession("Dps")
+end
+
+-- One kind of meter's list of lines for the current (or last) fight, top first (the fight recap
+-- reads Interrupts, Dispels and so on); nil where the client has none.
+function IS.MeterSources(what)
+  local session = meterSession(what)
+  if session and type(session.combatSources) == "table" then return session.combatSources end
 end
 
 -- That session's list of lines, top first; nil where there's none.
@@ -248,7 +262,7 @@ IS.TEXT = {}
 -- Durability, colored as it wears down.
 function IS.TEXT.durability()
   local p = IS.Durability()
-  if p then return p .. "%", IS.DurabilityColor(p) end
+  if p then return p .. "% durability", IS.DurabilityColor(p) end
 end
 
 -- Free bag slots (red when full).
@@ -262,7 +276,7 @@ function IS.TEXT.system()
   local fps = ns.PlainNumber(ask("GetFramerate"))
   local _, _, home, world = ask("GetNetStats")
   local ms = ns.PlainNumber(world) or ns.PlainNumber(home)
-  if fps and ms then return string.format("%d fps  %d ms", math.floor(fps), ms), "text2" end
+  if fps and ms then return string.format("%d fps · %d ms", math.floor(fps), ms), "text2" end
 end
 
 -- Your gold.
@@ -381,12 +395,12 @@ end
 
 -- Building ----------------------------------------------------------------------------------
 
--- One block's text, at its place in its row.
+-- One block's text, at its side of its row (left blocks 6 in from the left edge, right ones 6 from the right).
 local function addText(frame, key)
   local row, point = IS.BLOCKS[key][1], IS.BLOCKS[key][2]
   local fs = T.Text(frame:CreateFontString(nil, "OVERLAY"), "small", "text")
-  local x = point == "LEFT" and 6 or point == "RIGHT" and -6 or 0
-  fs:SetPoint(point, frame, "TOP" .. (point == "CENTER" and "" or point), x, -(row - 0.5) * IS.ROW)
+  local x = point == "LEFT" and 6 or -6
+  fs:SetPoint(point, frame, "TOP" .. point, x, -(row - 0.5) * IS.ROW)
   return fs
 end
 
@@ -398,7 +412,7 @@ local function addCalendar(frame)
   b:SetScript("OnClick", ns.Guard("click info strip calendar", function() if type(ToggleCalendar) == "function" then ToggleCalendar() end end))
   b:SetScript("OnEnter", ns.Guard("info strip calendar tip", function(self) GameTooltip:SetOwner(self, "ANCHOR_LEFT") GameTooltip:SetText("Calendar", T.RGB("text")) GameTooltip:Show() end))
   b:SetScript("OnLeave", ns.Guard("info strip calendar tip", function() GameTooltip:Hide() end))
-  ns.GetModule("Minimap").SlotButton(b, IS.CALENDAR_ICON.slot, IS.CALENDAR)
+  ns.GetModule("Minimap").SlotButton(b, IS.CALENDAR_ICON.slot, IS.CALENDAR, IS.CALENDAR_GLYPH)
   IS.calendar = b
 end
 

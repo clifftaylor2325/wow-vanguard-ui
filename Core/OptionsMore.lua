@@ -169,6 +169,7 @@ local function fightRows()
   return {
     { "header", "Fight history" },
     check("Sparkline of your DPS in the last 20 fights, under the damage meter", liveSetting("FightHistory", "strip", function() if FH.enabled then FH.Paint() end end)),
+    check("Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)", setting("FightHistory", "recap")),
     fightVisibility, fightWhen,
   }
 end
@@ -196,6 +197,14 @@ local function craftRows()
   }
 end
 
+-- The mail tools: their one switch (off until switched on).
+local function mailRows()
+  return {
+    { "header", "Mail tools" },
+    check("Search the inbox and send-to-alt presets beside the mail window (/vg mail)", liveSetting("MailTools", "on", function() ns.GetModule("MailTools").Paint() end)),
+  }
+end
+
 -- The info strip's auction sales (the sales ledger, Modules/AuctionLedger.lua): off until switched on.
 local function ledgerRows()
   return { check("Your auction sales this session", stripSetting("ahgold")) }
@@ -212,7 +221,7 @@ local function stripRows()
     check("Soul shards (warlocks)", stripSetting("shards")), check("XP per hour this session", stripSetting("xprate")),
     check("Time to the next level", stripSetting("leveltime")), check("Gold per hour this session", stripSetting("goldrate")),
     check("Your DPS in the last fight (from the game's damage meter)", stripSetting("dps")), check("Your place in the last fight's DPS, in a group", stripSetting("rank")),
-  }, append(ledgerRows(), append(fightRows(), append(rollRows(), craftRows()))))
+  }, append(ledgerRows(), append(fightRows(), append(rollRows(), append(craftRows(), mailRows())))))
 end
 
 -- At a merchant, and the error line.
@@ -284,6 +293,7 @@ local function errandRows()
     check("Train all button at trainers", setting("Errands", "trainAll")),
     check("Keep items stocked from merchants (/vg stock)", setting("Errands", "stock")),
     check("Flight timer (reload)", setting("Errands", "flightTimer", true)),
+    check("Boat and zeppelin timer (reload)", setting("Errands", "boatTimer", true)),
   }
 end
 
@@ -323,6 +333,7 @@ local function prepRows()
     check("Checklist when you enter a dungeon or raid (only when something is low)", setting("InstancePrep", "onEnter")),
     check("Checklist on a ready check", setting("InstancePrep", "onReadyCheck")),
     check("Warn in chat when a supply runs low (once, out of combat)", setting("InstancePrep", "lowWarn")),
+    check("Dungeon card: level range, your dungeon quests and keys on the checklist", setting("InstancePrep", "dungeonCard")),
     { "slider", "Hide after", PREP_SECONDS, setting("InstancePrep", "hideAfter") },
     { "slider", "Durability warning under", PREP_PERCENT, setting("InstancePrep", "durability") },
     { "text", "Wanted amounts: /vg prep want <food|bandages|potions|ammo|shards> <n>; items from /vg stock are checked too." },
