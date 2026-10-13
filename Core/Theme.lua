@@ -41,8 +41,30 @@ local LATIN_HEADING_MISSING = { ruRU = true }
 
 -- A texture from Media/Textures (Bar, Shadow, Glow, Stripes, LogoLeft, ...).
 function T.Texture(name) return T.MEDIA .. "Textures\\" .. name end
--- An icon from Media/Icons (Close, Check, Down, Search, ...).
-function T.Icon(name) return T.MEDIA .. "Icons\\" .. name end
+-- The line and menu icons that are also baked at the pixel sizes in T.ICON_SIZES (#232): the same names
+-- and sizes scripts/lib/media-sources.mjs draws (a media test keeps them equal).
+T.ICON_SIZES = { 16, 20, 24, 32 }
+T.SIZED_ICONS = {
+  "Character", "Spellbook", "Talents", "Professions", "Achievements", "Quests", "Social", "Group",
+  "Collections", "Journal", "Shop", "MenuCog", "Help", "Map", "House", "Legacy",
+}
+local sizedSet = {}
+for _, name in ipairs(T.SIZED_ICONS) do sizedSet[name] = true end
+
+-- The smallest baked size at or above `px`, else the largest.
+function T.IconSize(px)
+  for _, size in ipairs(T.ICON_SIZES) do
+    if size >= px then return size end
+  end
+  return T.ICON_SIZES[#T.ICON_SIZES]
+end
+
+-- An icon from Media/Icons (Close, Check, Down, Search, ...). With the sizedIcons setting on, `size` (px)
+-- picks the copy baked at the nearest size at or above it, when the icon has one.
+function T.Icon(name, size)
+  local px = size and sizedSet[name] and T.Settings().sizedIcons and T.IconSize(size) or ""
+  return T.MEDIA .. "Icons\\" .. name .. px
+end
 
 -- r, g, b, a (0-1) from "rrggbb" and an optional alpha.
 local function fromHex(hex, alpha)
@@ -183,6 +205,8 @@ local DEFAULTS = {
   -- while they open and close.
   slugText = false,
   frameBuffer = false,
+  -- Line and menu icons drawn at the pixel size they show at (#232); off until its in-game check.
+  sizedIcons = false,
   textScale = 1,
   barTexture = "vanguard",
   -- Soft shadows under HUD frames (unit frames, bars, minimap); floating windows always have one.
