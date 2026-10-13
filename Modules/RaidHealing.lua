@@ -211,6 +211,7 @@ local function setup(b)
   b.heal = overlay(b, b.health, "heal", T.BarTexture())
   b.shield = overlay(b, b.heal, "shield", T.Texture("Stripes"))
   b.shield:GetStatusBarTexture():SetHorizTile(true)
+  b.shield:GetStatusBarTexture():SetVertTile(true)
   addThreat(b)
   addBuffMarker(b)
 end

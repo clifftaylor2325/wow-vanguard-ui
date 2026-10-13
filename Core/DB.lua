@@ -22,6 +22,8 @@ end
 ns.Fill = fill
 
 -- A deep copy of a plain table.
+---@param t table
+---@return table
 function ns.Copy(t)
   return fill({}, t)
 end
@@ -32,6 +34,8 @@ local DB_VERSION = 2
 local upgrades = {}
 
 -- Registers fn(VanguardDB) that brings the account file up to `version`; steps run once, in version order.
+---@param version integer
+---@param fn fun(db: table)
 function ns.UpgradeDB(version, fn)
   upgrades[version] = fn
 end
@@ -45,6 +49,9 @@ local function upgradeStep(v)
 end
 
 -- Brings a saved account file from version `from` up to `to`, one registered step at a time; stops at the first failing step. true when every step ran.
+---@param from integer
+---@param to integer
+---@return boolean ok
 function ns.MigrateDB(from, to)
   for v = from + 1, to do
     if not upgradeStep(v) then return false end
@@ -97,16 +104,19 @@ ns.On("ADDON_LOADED", function(_, name)
 end)
 
 -- True when this is the character's first login with Vanguard (it had no saved settings).
+---@return boolean
 function ns.NewCharacter()
   return newCharacter
 end
 
 -- The active profile's name.
+---@return string
 function ns.ProfileName()
   return VanguardCharDB and VanguardCharDB.profile or DEFAULT_PROFILE
 end
 
 -- The active profile table (empty before ADDON_LOADED).
+---@return table
 function ns.Profile()
   if type(VanguardDB) ~= "table" then
     return {}
@@ -127,6 +137,8 @@ local profileListeners = {}
 -- saved (or exported) it. It runs on the saved table before defaults are filled in, so it
 -- can tell a value the player had from one a new default would add. It runs again each
 -- session, so it must leave an upgraded table as it is.
+---@param key string  the settings table (a module name, or layout, situations, global)
+---@param fn fun(saved: table)
 function ns.Migrate(key, fn)
   migrations[key] = fn
 end
@@ -134,12 +146,16 @@ end
 -- Runs the upgrade registered for the settings table `key` (ns.Migrate) on t, once per
 -- table: ns.Settings on a saved table, and an import on each table a string carries,
 -- before it is saved (Core/ProfileStrings.lua). Returns t.
+---@param key string
+---@param t table
+---@return table t
 function ns.MigrateTable(key, t)
   if migrations[key] and not migrated[t] then migrations[key](t) migrated[t] = true end
   return t
 end
 
 -- Registers fn() to run whenever the active profile's settings are switched, copied, reset or imported.
+---@param fn fun()
 function ns.OnProfileChanged(fn)
   profileListeners[#profileListeners + 1] = fn
 end
@@ -155,6 +171,9 @@ ns.OnProfileChanged(function() cache = {} end)
 -- The settings table `key` in the active profile, upgraded (ns.Migrate) once per table, with
 -- defaults filled in. Remembered while the profile still holds that table (a write that replaces
 -- it is seen at once), so the colour lookups on every bar update don't refill it.
+---@param key string
+---@param defaults table|nil
+---@return table settings  the live table in the profile; writes land in SavedVariables
 function ns.Settings(key, defaults)
   local profile, hit = ns.Profile(), cache[key]
   if hit and profile[key] == hit.t and (defaults == nil or defaults == hit.defaults) then return hit.t end
@@ -169,6 +188,7 @@ end
 -- another character) is dropped, not made again empty. Returns true if the profile changed. Runs at
 -- ADDON_LOADED (the first load after the switch) and at login for a spec's profile, both before any
 -- module reads its settings.
+---@return boolean changed
 function ns.ApplyPendingProfile()
   local name = VanguardCharDB.pendingProfile
   VanguardCharDB.pendingProfile = nil
@@ -181,22 +201,26 @@ end
 -- Stages a switch to a profile (created empty if new). The running modules keep the active profile's
 -- tables until the reload, so VanguardCharDB.profile and the settings cache stay as they are (a drag
 -- or an accent change still lands in the profile on screen); ns.ApplyPendingProfile applies it.
+---@param name string
 function ns.UseProfile(name)
   VanguardDB.profiles[name] = VanguardDB.profiles[name] or {}
   VanguardCharDB.pendingProfile = name ~= VanguardCharDB.profile and name or nil
 end
 
 -- The profile staged for the next reload, or nil.
+---@return string|nil
 function ns.PendingProfileName()
   return VanguardCharDB and VanguardCharDB.pendingProfile or nil
 end
 
 -- The profile this character will use after the next reload: the staged one, else the active one.
+---@return string
 function ns.SelectedProfileName()
   return ns.PendingProfileName() or ns.ProfileName()
 end
 
 -- Profile names, sorted.
+---@return string[]
 function ns.ProfileNames()
   local names = {}
   for name in pairs(VanguardDB and VanguardDB.profiles or {}) do

@@ -10,6 +10,7 @@ local function chatPrefix()
 end
 
 -- Prints one line to the default chat frame, prefixed with the addon name.
+---@param msg string
 function ns.Chat(msg)
   if DEFAULT_CHAT_FRAME then
     DEFAULT_CHAT_FRAME:AddMessage(chatPrefix() .. msg)
@@ -27,6 +28,8 @@ end
 local frameStates = {}
 
 -- The side table for one kind of per-frame state (frame -> value), made on first use.
+---@param name string
+---@return table<table, any> state  weak-keyed, frame -> value
 function ns.FrameState(name)
   local t = frameStates[name]
   if not t then
@@ -55,6 +58,7 @@ local forwarding = false  -- while the game's handler has an error of ours
 local watchers = {}  -- told the count when the kept errors change (Core/ErrorBadge.lua)
 
 -- Runs fn(count) on the frame after the kept errors change: an error kept, the list cleared.
+---@param fn fun(count: integer)
 function ns.OnErrorsChanged(fn)
   watchers[#watchers + 1] = fn
 end
@@ -130,6 +134,8 @@ local function record(where, err, level)
 end
 
 -- Reports an error caught at `where` (a short name of the site), with the caller's stack.
+---@param where string  the site, as /vg errors shows it
+---@param err any
 function ns.Report(where, err)
   forward(record(where, err, 4))
 end
@@ -169,6 +175,10 @@ end
 
 -- Calls fn(...) with any error reported under `where` (see ns.Report) and
 -- returns what pcall would: true and fn's results, or false and the error.
+---@param where string
+---@param fn function
+---@param ... any  arguments for fn
+---@return boolean ok, ...  as pcall
 function ns.Try(where, fn, ...)
   local outer = current
   current = where
@@ -179,6 +189,9 @@ end
 -- `where` (ns.errors, /vg errors, the game's handler) instead of escaping.
 -- Returns nothing, as the game ignores what these callbacks return; a
 -- non-function (nil clears a script) comes back as it is.
+---@param where string
+---@param fn function|nil
+---@return function|nil wrapped  fn under ns.Try; a non-function as it was
 function ns.Guard(where, fn)
   if type(fn) ~= "function" then return fn end
   return function(...)
@@ -249,6 +262,8 @@ end
 
 -- Calls fn(event, ...) whenever the event fires. Registering the same
 -- function twice is a no-op; an event this client lacks is skipped (and noted).
+---@param event string
+---@param fn fun(event: string, ...)
 function ns.On(event, fn)
   local list = handlers[event]
   if not list then
@@ -259,6 +274,8 @@ function ns.On(event, fn)
 end
 
 -- Stops calling fn for the event; unregisters the event when nothing listens.
+---@param event string
+---@param fn function
 function ns.Off(event, fn)
   local list = handlers[event]
   if not list then
@@ -295,6 +312,10 @@ local function knownEvents(events)
 end
 
 -- Points a subscription (from ns.OnUnit) at other units, up to three; none stops it.
+---@param sub Frame  from ns.OnUnit
+---@param unit1 string|nil
+---@param unit2 string|nil
+---@param unit3 string|nil
 function ns.SetUnits(sub, unit1, unit2, unit3)
   sub:UnregisterAllEvents()
   -- A unit as a key; a number stands in for a missing one (no event names a number).
@@ -308,6 +329,12 @@ end
 -- Calls fn(event, unit, ...) when one of the events (a name or a list) fires
 -- for one of the units (up to three; none until ns.SetUnits gives some).
 -- Returns the subscription, for ns.SetUnits.
+---@param events string|string[]
+---@param fn fun(event: string, unit: string, ...)
+---@param unit1 string|nil
+---@param unit2 string|nil
+---@param unit3 string|nil
+---@return Frame sub  for ns.SetUnits
 function ns.OnUnit(events, fn, unit1, unit2, unit3)
   local sub = CreateFrame("Frame")
   sub.vgEvents, sub.vgHandler = knownEvents(events), fn

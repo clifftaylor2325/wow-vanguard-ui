@@ -77,6 +77,7 @@
       "client capability probe: what this client has, and /vg status says so",
       "the account file's version is read and upgraded"
     ],
+    "scripts/tests/craftqueue.test.mjs": [],
     "scripts/tests/data.test.mjs": [],
     "scripts/tests/docks.test.mjs": [],
     "scripts/tests/errorrail.test.mjs": [],
@@ -90,6 +91,7 @@
     ],
     "scripts/tests/healing.test.mjs": [],
     "scripts/tests/inventory.test.mjs": [],
+    "scripts/tests/mailtools.test.mjs": [],
     "scripts/tests/masque.test.mjs": [
       "with Masque loaded, action, pet and stance buttons and aura icons go to Masque groups, without Vanguard's skin",
       "without Masque (or without LibStub) nothing changes"

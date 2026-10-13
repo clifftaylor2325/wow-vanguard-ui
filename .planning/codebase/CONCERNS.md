@@ -4,19 +4,16 @@ last_mapped_at: 2026-10-09
 ---
 # Codebase Concerns
 
-**Analysis Date:** 2026-10-09
+**Analysis Date:** 2026-10-09, counts refreshed 2026-10-13. Figures rot: where a line names a count or a size, run the command beside it rather than trusting the number.
 
 ## Tech Debt
 
-**Test suite is red on main:**
-- Issue: Seven full-suite cases fail on main since the auction tabs merge. Three Lua-harness tests (raid tiles, plate glow, chat watch price) were failing as of 2026-10-07. Issue #169 and #143 track this.
-- Files: `scripts/tests/` (area tests), `scripts/lib/wow-widget-api.lua`, `scripts/lib/wow-*.lua`
-- Impact: `npm run coverage` exits before reporting while any test is red, so the 100% floor (`scripts/lua-coverage-floor.json`) cannot be confirmed. Regressions hide among known failures.
-- Fix approach: Compare each failure against the base branch first. Fix the stub's laid-out rule and the tab behaviour (#169), then re-run `npm run verify` and `npm run coverage`.
+**Test suite history (resolved):**
+- The suite was red on main until Phase 1 (2026-10-09, #169). Since then `npm run coverage` has reported 100% on every merge, and the weekly shuffled run opens a `ci-failure` issue when it goes red. Before chasing a red check, read `.planning/ROADMAP.md` and the open `ci-failure` issues.
 
 **Large modules concentrate behaviour:**
 - Issue: Several files are very large and mix UI construction, state and event handling.
-- Files: `Core/Theme.lua` (1298 lines), `Modules/AuctionShop.lua` (1043), `Core/Options.lua` (898), `Core/OptionsWindow.lua` (840), `Modules/ClickCastOptions.lua` (771), `Modules/MenuStrip.lua` (709), `Modules/TalentPlanner.lua` (707), `Modules/ActionBars.lua` (699), `Modules/AuctionSell.lua` (655), `Modules/RaidFrames.lua` (644)
+- Files: `wc -l Core/*.lua Modules/*.lua | sort -n | tail` lists them; on 2026-10-13 the largest were `Core/Theme.lua` (about 1,750 lines), `Modules/AuctionShop.lua` (about 1,050) and `Core/OptionsWindow.lua` (about 830). `Core/Options.lua` was split into `Core/Options*.lua` in Phase 4. No further splits before launch (the author's call, 2026-10-12).
 - Impact: The CLAUDE.md rule (every function at most 10 lines, with a comment above it) is enforced by `scripts/lib/code-quality.mjs`, but large files are harder to change safely and to test.
 - Fix approach: Split by responsibility when touching these files for other reasons. Keep each split inside an existing area prefix (`Auction*`, `ClickCast*`).
 

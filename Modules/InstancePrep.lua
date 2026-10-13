@@ -6,6 +6,9 @@
 -- Hide after seconds (ns.AutoHide), or at once from its close button. Its
 -- Buy list button turns what's short that you can buy (PR.BuyRows) into the
 -- Auction helper's Restock shopping list (Modules/AuctionRestock.lua).
+-- With Dungeon card on (off until switched on), the card also carries the
+-- dungeon's level range, your quests for it and the keys you carry
+-- (Modules/DungeonCard.lua), and shows at the door even with nothing short.
 -- Every count the client hides skips its row, never compared; nothing is
 -- checked in combat, and /vg prep in combat waits for the fight to end.
 -- Anywhere, a supply that runs low is said once in chat (Warn in chat; it
@@ -17,7 +20,7 @@ local T, W = ns.Theme, ns.Widgets
 
 local PR = ns.Module("InstancePrep", {
   defaults = {
-    onEnter = true, onReadyCheck = true, lowWarn = true, hideAfter = 20, durability = 50,
+    onEnter = true, onReadyCheck = true, lowWarn = true, dungeonCard = false, hideAfter = 20, durability = 50,
     buffs = false, worldBuffs = false,
     want = { food = 20, bandages = 10, potions = 3, ammo = 400, shards = 10 },
   },
@@ -219,15 +222,43 @@ local function canBuy(rows)
   return false
 end
 
+-- Line i of the dungeon card (Modules/DungeonCard.lua), under the rows.
+local function infoLine(i)
+  local fs = PR.card:CreateFontString(nil, "OVERLAY")
+  fs:SetWidth(PR.WIDTH - 2 * PR.PAD)
+  fs:SetJustifyH("LEFT")
+  fs:SetWordWrap(false)
+  PR.card.info[i] = fs
+  return fs
+end
+
+-- Shows one dungeon card line on its font string at row i under `top`, or hides the font string when there is none.
+local function paintLine(fs, line, i, top)
+  fs:SetShown(line ~= nil)
+  if not line then return end
+  T.Text(fs, line[2] == "head" and "heading" or "label", line[2] == "head" and "text" or "text2")
+  fs:SetText(line[1])
+  fs:SetPoint("TOPLEFT", PR.PAD, -(top + (i - 1) * PR.ROW))
+end
+
+-- Shows the dungeon card's lines under the first `top` of the card; returns the height they take (with padding).
+local function paintInfo(lines, top)
+  local card = PR.card
+  for i = #card.info + 1, #lines do infoLine(i) end
+  for i, fs in ipairs(card.info) do paintLine(fs, lines[i], i, top) end
+  return #lines > 0 and #lines * PR.ROW + PR.PAD or 0
+end
+
 -- Puts rows on the card ("Everything's packed." when there are none), with Buy list when one
--- can be bought, and sizes it to fit.
-function PR.Paint(rows)
+-- can be bought, and the dungeon card's lines under them, and sizes it to fit.
+function PR.Paint(rows, lines)
   local card = PR.card
   card.buy:SetShown(canBuy(rows))
   for i = #card.rows + 1, #rows do card.rows[i] = rowFrame(i) end
   for i, r in ipairs(card.rows) do paintRow(r, rows[i]) end
   card.packed:SetShown(#rows == 0)
-  card:SetHeight(PR.TOP + math.max(#rows, 1) * PR.ROW + PR.PAD)
+  local top = PR.TOP + math.max(#rows, 1) * PR.ROW + PR.PAD
+  card:SetHeight(top + paintInfo(lines or {}, top))
 end
 
 -- The card's title, in line with its close button (fades it out), and the packed line.
@@ -256,7 +287,7 @@ local function buildCard()
   local f = CreateFrame("Frame", "Vanguard_PrepCard", UIParent)
   T.Panel(f, { shadow = true })
   f:SetSize(PR.WIDTH, PR.TOP + PR.ROW + PR.PAD)
-  f.rows = {}
+  f.rows, f.info = {}, {}
   cardParts(f)
   buyButton(f)
   f:Hide()
@@ -272,8 +303,9 @@ end
 function PR.Show(force)
   local rows = PR.Rows()
   for _, r in ipairs(PR.BuffRows and PR.BuffRows() or {}) do rows[#rows + 1] = r end
-  if #rows == 0 and not force then return end
-  PR.Paint(rows)
+  local lines = PR.settings.dungeonCard and ns.DungeonCard.Lines() or {}
+  if #rows == 0 and #lines == 0 and not force then return end
+  PR.Paint(rows, lines)
   T.FadeIn(PR.card)
   ns.AutoHide(PR.card, PR.settings.hideAfter)
 end
