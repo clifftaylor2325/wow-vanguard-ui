@@ -218,3 +218,12 @@ it("the module off: /vg ranks still reads, nothing is watched", () => {
   addon.slash("trainers");
   expect([chatHas(addon, /hold an older spell rank/), chatHas(addon, /Bar 1 button 3/), chatHas(addon, /0 trainer service\(s\)/)], "no notice, but the commands answer").toEqual([false, true, true]);
 });
+
+it("upcoming services come lowest level first, then by name", () => {
+  const addon = mage();
+  addon.eval(`local SR = ns.GetModule("SpellRanks")
+    for i, l in ipairs({ 9, 6, 8, 7, 6 }) do SR.Remember("MAGE", { name = "TEST-ONLY " .. (10 - i), level = l }) end`);
+  expect(addon.eval(`local out = {} for i, s in ipairs(ns.GetModule("SpellRanks").Upcoming(5)) do out[i] = s.level .. s.name end return out`), "sorted").toEqual([
+    "6TEST-ONLY 5", "6TEST-ONLY 8", "7TEST-ONLY 6", "8TEST-ONLY 7", "9TEST-ONLY 9",
+  ]);
+});

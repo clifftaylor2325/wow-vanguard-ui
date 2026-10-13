@@ -173,13 +173,19 @@ function SR.Record()
   end
 end
 
+-- Sort order: lowest level first, then by name.
+local function byLevel(a, b)
+  if a.level ~= b.level then return a.level < b.level end
+  return a.name < b.name
+end
+
 -- The remembered services for levels above fromLevel up to fromLevel + SR.AHEAD, lowest level first.
 function SR.Upcoming(fromLevel)
   local c, out = SR.Store()[classToken() or ""], {}
   for _, s in pairs(c and c.list or {}) do
     if s.level > fromLevel and s.level <= fromLevel + SR.AHEAD then out[#out + 1] = s end
   end
-  table.sort(out, function(a, b) return a.level ~= b.level and a.level < b.level or a.name < b.name end)
+  table.sort(out, byLevel)
   return out
 end
 
