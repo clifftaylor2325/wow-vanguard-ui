@@ -889,21 +889,30 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: look at a nameplate and a floating combat number, then type `/vg slug` and look again at 1080p; type `/vg slug` to switch it back. Then type `/vg framebuffer`, open and close the options window and the bags several times, and compare with `/vg framebuffer` off. Note your frame rate.
 - Expect: with SLUG on, world text scales smoothly and stays readable (or the flag does nothing, which is fine); panel text never changes. With frame buffers on, inner borders and panels no longer ghost through a window mid-fade, and nothing else changes; the frame rate does not drop while a window is idle. `/vg errors` stays empty either way. [Needs in game: that the Forever 16001 client takes the SLUG flag in SetFont and has Frame:SetIsFrameBuffer; the radial progress and SVG texture calls of #239 are not wired up until their signatures are confirmed on the client: run `/run print(CreateFrame("StatusBar").SetRadialProgressBar, UIParent:CreateTexture().SetSVG, UIParent.CreateVectorGraphics)` and paste what it prints.]
 - If it fails, paste: screenshots with the setting on and off, the print above, and `/vg errors`.
-## 26. Cooldown Manager refresh glow
 
-### 26.1 The glow on a buff
+## 26. Theme variants (#237)
+
+### 26.1 High contrast, Vellum and ink and Classic look
+
+- Do: open `/vg` → General → Look and set **Theme variant** to High contrast; open the options window, bags, the quest log, a unit frame and a tooltip; click into an input box. Then set it to Vellum and ink, then Classic look, and look again. Then back to Slate and brass.
+- Expect: High contrast shows opaque near-black windows, white text, no light line under window tops, brighter green, orange and red states, blue/yellow/vermilion reactions, and a 2-pixel accent edge on inputs and accent-bordered frames. Vellum and ink shows warm dark windows with cream text and your accent unchanged. Classic look shows dark leather windows with a bronze border, gold-cream text and the brass rule and corner brackets without `/vg ornaments`. Everything repaints without a reload; text stays readable on every window; `/vg errors` stays empty. [Needs in game: that windows the game draws (not Vanguard's) look right; a saved panel colour is overridden while a variant is on.]
+- If it fails, paste: a screenshot of the window that looks wrong with the variant name, and `/vg errors`.
+
+## 27. Window ornaments (#238)
+
+### 27.1 Rule and corner brackets
+
+- Do: type `/vg ornaments`, open `/vg`, the quest log (`L`) and `/vg setup`. Change the accent. Then `/vg ornaments` again.
+- Expect: the options window gets a thin dim-brass rule under its header with a small diamond in the middle; the quest log and the setup wizard get four chamfered corner brackets just inside their corners; all in the accent's darker shade, none on unit frames or other HUD frames; switching off removes them at once. Screenshots at 1080p and 1440p. [Needs in game: that the brackets sit cleanly on the 1 px border at both resolutions.]
+- If it fails, paste: screenshots and `/vg errors`.
+
+## 28. Cooldown Manager refresh glow
+
+### 28.1 The glow on a buff
 
 - Do: turn on the game's Cooldown Manager and track a heal-over-time buff on yourself in its buff row. Type `/vg cdmglow on`, cast the buff on yourself, wait until under 30 percent is left, out of combat; then do the same in combat. Type `/vg cdmglow 50`, then `/vg cdmglow off`.
 - Expect: the buff's icon gets an accent glow ring once under the share is left, and loses it when the buff is renewed or ends. In combat the glow still follows the time left, or stays off with no error. `/vg cdmglow 50` says "under 50 percent left"; off puts the glows out. [Needs in game: whether the client hands the aura's duration object to a curve (C_CurveUtil.CreateCurve, EvaluateRemainingPercent) and whether SetAlpha takes the result in combat; the Cooldown Manager item fields auraInstanceID and auraDataUnit.]
 - If it fails, paste: `/vg errors`, and what `/run print(C_CurveUtil and C_CurveUtil.CreateCurve ~= nil)` prints.
-
-## 27. Theme variants (#237)
-
-### 27.1 High contrast and Vellum and ink
-
-- Do: open `/vg` → General → Look and set **Theme variant** to High contrast; open the options window, bags, the quest log, a unit frame and a tooltip; click into an input box. Then set it to Vellum and ink and look again. Then back to Slate and brass.
-- Expect: High contrast shows opaque near-black windows, white text, no light line under window tops, brighter green, orange and red states, blue/yellow/vermilion reactions, and a 2-pixel accent edge on inputs and accent-bordered frames. Vellum and ink shows warm dark windows with cream text and your accent unchanged. Everything repaints without a reload; text stays readable on every window; `/vg errors` stays empty. [Needs in game: that windows the game draws (not Vanguard's) look right; a saved panel colour is overridden while a variant is on.]
-- If it fails, paste: a screenshot of the window that looks wrong with the variant name, and `/vg errors`.
 
 ## When you are done
 
