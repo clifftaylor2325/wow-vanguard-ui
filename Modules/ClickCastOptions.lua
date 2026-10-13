@@ -286,11 +286,9 @@ local function pickerDismissals()
   picker:SetScript("OnHide", function(self) self.catcher:Hide() state.pickKey = nil end)
 end
 
--- The picker's frame settings: above every window (the strata is fixed, or reparenting it
--- under the Add key button would drop it below the catcher), kept on screen, takes the mouse.
+-- The picker's frame settings: above every window, kept on screen, takes the mouse.
 local function pickerSettings()
   picker:SetFrameStrata("FULLSCREEN_DIALOG")
-  picker:SetFixedFrameStrata(true)
   picker:SetClampedToScreen(true)
   picker:EnableMouse(true)
 end
@@ -314,14 +312,22 @@ local function showCatcher()
   picker.catcher:Show()
 end
 
--- Opens the picker beside an anchor frame, for a key. It becomes the anchor's child, so it
--- goes away with the anchor's page or window.
+-- Closes the picker when its anchor hides (the page or window closed). The picker stays a child
+-- of UIParent: reparenting it under the anchor let the game move it below the click catcher.
+local function followAnchor(anchor)
+  picker.anchor = anchor
+  if anchor.vgPickerHook then return end
+  anchor.vgPickerHook = true
+  anchor:HookScript("OnHide", ns.Guard("hide spell picker anchor", function() if picker.anchor == anchor then closePicker() end end))
+end
+
+-- Opens the picker beside an anchor frame, for a key.
 local function openPicker(anchor, key)
   pickerFrame()
   state.pickKey = key
   picker.offset = 0
   picker.search:SetText("")
-  picker:SetParent(anchor)
+  followAnchor(anchor)
   picker:ClearAllPoints()
   picker:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 6, 0)
   picker:Refresh()
