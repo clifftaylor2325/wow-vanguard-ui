@@ -856,6 +856,18 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   expect(questLog(addon).title, "the log's next update chooses the first quest showing").toBe("[3] TEST-ONLY Far");
 });
 
+it("quest log: hovering a reward card shows its item, leaving hides it", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  addon.eval("local c = Vanguard_QuestLog.cards[2] c.__scripts.OnEnter(c)");
+  expect(addon.eval("return { GameTooltip.__questLogItem, GameTooltip:IsShown(), GameTooltip:GetOwner() == Vanguard_QuestLog.cards[2] }"), "a reward: set from its slot and quest, by its card").toEqual(["reward 1 90051", true, true]);
+  addon.eval("local c = Vanguard_QuestLog.cards[1] c.__scripts.OnEnter(c) c.__scripts.OnLeave(c)");
+  expect(addon.eval("return { GameTooltip.__questLogItem, GameTooltip:IsShown() }"), "a choice; leaving hides the tooltip").toEqual(["choice 1 90051", false]);
+  addon.eval("GameTooltip.SetQuestLogItem = nil GameTooltip.__questLogItem = nil local c = Vanguard_QuestLog.cards[1] c.__scripts.OnEnter(c)");
+  expect(addon.eval("return GameTooltip.__questLogItem"), "a client without the call shows nothing").toBe(null);
+  addon.eval("local QP, g = ns.QuestParts, GameTooltip GameTooltip = nil QP.ItemTooltip(Vanguard_QuestLog.cards[1]) QP.ItemTooltip({}) Vanguard_QuestLog.cards[1].__scripts.OnLeave() GameTooltip = g");
+});
+
 // The quest log's two scroll areas: each child's height, how far it scrolls, and where it is.
 const logScrolls = (addon) => addon.eval(`local f = Vanguard_QuestLog
   return { list = { f.list:GetHeight(), f.listScroll:GetVerticalScrollRange(), f.listScroll:GetVerticalScroll() },
