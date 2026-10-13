@@ -30,7 +30,7 @@ AH.DEALS = "deals"
 AH.DEAL_COLUMNS = { { key = "price", title = "Unit price", width = 100, side = "RIGHT", role = "number", color = "gold" },
   { key = "off", title = "Under by", width = 70, side = "RIGHT", role = "small", color = "good" },
   { key = "basis", title = "Judged against", width = 200, side = "LEFT", role = "small", color = "text2" }, name = "Item" }
--- The Deals entry's switch (Bars, map, chat > Auction house): on, as the auction plan's Deals list
+-- The Deals entry's switch (Town and gear > Auction house): on, as the auction plan's Deals list
 -- is part of the tabs; it only reads prices the tabs' searches and scans already bring.
 AH.defaults.deals = true
 -- This visit's deals: itemID -> { id, key, price, ref, basis, vendor, off }.

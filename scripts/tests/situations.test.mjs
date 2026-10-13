@@ -119,7 +119,7 @@ it("situations: recording keeps only what the player changed, with the frames' a
   addon.eval("ns.SetMoverAlpha('infostrip', 0.66)");
   const dropped = savedSpot(addon);
   addon.slash("");
-  addon.eval('__click("Bars, map, chat") __click("Your DPS in the last fight")');
+  addon.eval('__click("Map") __click("Your DPS in the last fight")');
   addon.eval('__click("Nameplates") __click("Cast bar")');
   expect(dps(addon), "the strip's own option switched the block on").toBe(true);
   addon.slash("situation stop");
@@ -397,9 +397,10 @@ it("situations: while recording, a setting an override can't hold is dimmed and 
   addon.eval('__click("Nameplates")');
   expect(point("Cast bar"), "a nameplate setting outside the allowlist").toEqual([NOT_RECORDED, true]);
   expect(point("Threat colors while you have aggro"), "one an override holds: no note").toEqual([false, false]);
-  addon.eval('__click("Bars, map, chat")');
+  addon.eval('__click("Bars and bags")');
   expect(point("Experience bar"), "the XP bars' parts need a reload").toEqual([NOT_RECORDED, true]);
   expect(point("XP and reputation bars"), "their visibility is held").toEqual([false, false]);
+  addon.eval('__click("Map")');
   expect(point("Durability"), "so are the info strip's blocks").toEqual([false, false]);
   addon.eval('__click("Action bars")');
   expect(point("Show bar 1"), "an action bar setting").toEqual([NOT_RECORDED, true]);

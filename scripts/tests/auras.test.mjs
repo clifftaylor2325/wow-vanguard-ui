@@ -324,7 +324,7 @@ it("your buffs: the enchant switch, and clients without enchant info", () => {
   expectErrors(AURA_FALLBACK, "event WEAPON_ENCHANT_CHANGED: not on this client");
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + CLICK_LUA);
   addon.slash("");
-  addon.eval('__click("Bars, map, chat")');
+  addon.eval('ns.Options.Show("map")');
   expect(addon.eval('return __click("Weapon enchants in front")') && playerAuras(addon).cells[0].shown, "turning enchants off hides them at once").toBe(false);
   expect(playerAuras(addon).x, "and the buffs take the corner").toBe(0);
   expect(addon.eval('return __click("Icon size") and VanguardDB.profiles.Default.PlayerAuras.size'), "the icon size is on the page").toBe(36);

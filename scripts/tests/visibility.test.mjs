@@ -99,11 +99,11 @@ it("the state the client reports at registration comes from its own parser when 
 const strip = (addon) => addon.eval(`local f = Vanguard_InfoStrip
   return { state = f.__states.vgvis, shown = f:IsShown(), alpha = f:GetAlpha(), motion = f.__mouseMotion == true, click = f.__mouseClick }`);
 
-// TEST-ONLY: runs the setter of the row `label` on the "more" options page with a Lua value.
+// TEST-ONLY: runs the setter of the row `label` on whichever options page has it, with a Lua value.
 const setRow = (addon, label, lua) => addon.eval(`
-  for _, p in ipairs(ns.Options.PAGES) do if p.key == "more" then
+  for _, p in ipairs(ns.Options.PAGES) do
     for _, row in ipairs(p.rows()) do if row[2] == "${label}" then row[5](${lua}) return true end end
-  end end
+  end
   return false`);
 
 it("info strip: Always by default; in combat, on mouseover or hidden from its options, live", () => {
@@ -176,7 +176,7 @@ it("menu bar: Auto-hide shows it at login and under the mouse, and fades it 10 s
   expect(alpha(), "leaving again starts the 10 s over").toBe(1);
   addon.advance(4.1);
   expect(alpha(), "then it fades").toBe(0);
-  const modes = addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "more" then
+  const modes = addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "bars" then
     for _, row in ipairs(p.rows()) do if row[2] == "Bags and game menu" then local out = {} for i, m in ipairs(row[3]) do out[i] = m[2] end return out end end
   end end`);
   expect(modes, "the bar's own choices put Auto-hide after On mouseover").toEqual(["Always", "On mouseover", "Auto-hide after 10 s", "In combat", "Hidden", "When checked below"]);

@@ -4,7 +4,8 @@
 -- light up the reload notice. This file holds the shared helpers, the
 -- General, Modules, Profiles and Feedback pages, and the page list; the
 -- other pages' rows are in their own files (Core/OptionsFrames.lua,
--- OptionsBars.lua, OptionsQuests.lua, OptionsMore.lua), which add them
+-- OptionsBars.lua, OptionsQuests.lua, OptionsBags.lua, OptionsMap.lua,
+-- OptionsChat.lua, OptionsTools.lua, OptionsTown.lua), which add them
 -- with O.AddPage. A new setting goes in its area's file.
 
 local ADDON, ns = ...
@@ -113,7 +114,19 @@ local function append(a, b)
   return a
 end
 
+-- The visibility rows (Core/Visibility.lua) of a module's frame, applied at once
+-- (when the module runs); unset, the setting is Always. modes: its choices (V.MODES unless given).
+local function visibilityRows(caption, module, modeKey, whenKey, modes)
+  local mode, when = ns.Visibility.Rows(caption, function() return moduleSettings(module) end, modeKey, whenKey, function()
+    local m = ns.GetModule(module)
+    if m.enabled then m.ApplyVisibility() end
+  end, "always", modes)
+  O.Tag(mode[4], module, modeKey)
+  return mode, when
+end
+
 -- The helpers the area files build their rows with.
+O.VisibilityRows = visibilityRows
 O.ModuleSettings, O.Setting, O.LiveSetting, O.Check, O.Append = moduleSettings, setting, liveSetting, check, append
 
 -- get/set for a theme setting; changes apply on reload.
@@ -411,7 +424,11 @@ local PAGES = {
   { key = "raid" },
   { key = "actionbars" },
   { key = "quests" },
-  { key = "more" },
+  { key = "bars" },
+  { key = "map" },
+  { key = "chat" },
+  { key = "tools" },
+  { key = "town" },
   { key = "profiles", title = "Profiles", icon = "NavProfiles", order = 90, rows = profileRows },
   { key = "feedback", title = "Feedback", icon = "NavFeedback", order = 100, rows = feedbackRows },
 }
