@@ -301,6 +301,9 @@ it("raid frames: up to 10 sit over your player frame, a bigger raid stacks its g
   const moved = loggedIn(UNITS_ENV + RAID_ENV + "__members = 40 GetNumGroupMembers = function() return __members end", { savedVariables: 'VanguardDB = { profiles = { Default = { positions = { raid = { point = "BOTTOMRIGHT", relPoint = "BOTTOMRIGHT", x = -20, y = 344 } } } } }' });
   moved.fire("GROUP_ROSTER_UPDATE");
   expect(moved.eval("return { ns.MoverPoint('raid') }"), "frames you already moved keep their spot at every size").toEqual(["BOTTOMRIGHT", "BOTTOMRIGHT", -20, 344]);
+  expect(moved.eval("local p = Vanguard_Raid.__points return p.BOTTOMRIGHT ~= nil"), "the grid is pinned to the right of the holder at the saved spot").toBe(true);
+  moved.eval("ns.ResetMovers('raid')");
+  expect([moved.eval("return { ns.MoverPoint('raid') }"), moved.eval("local p = Vanguard_Raid.__points return p.BOTTOMLEFT ~= nil")], "a reset puts a raid of 40 at the left default, and the grid follows at once, without a roster change").toEqual([["BOTTOMLEFT", "BOTTOM", -620, 344], true]);
 });
 it("Centered layout: compact raid grid, one-time migrations, a strip with nothing to show", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + "__members = 5 GetNumGroupMembers = function() return __members end");
