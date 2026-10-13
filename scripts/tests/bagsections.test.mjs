@@ -334,9 +334,9 @@ it("with sections off the game's plain grid is as it was, and Sort fits beside t
 });
 
 // TEST-ONLY gamepad bag bar, as Blizzard_MainMenuBarBagButtons builds it on Forever (Camelot
-// MainMenuBarBagButtons.xml, Shared GamepadBagBarMixin:OnLoad): parented to the combined bag at its
-// top-right corner (5 px in, 19 px down, 215 x 50), its backpack button (37 x 37) on the bar's right,
-// left showing without a gamepad.
+// MainMenuBarBagButtons.xml, Shared GamepadBagBarMixin:OnLoad): parented to the combined bag, its backpack
+// button (37 x 37) left showing without a gamepad. In game it shows in the window's top-right corner over
+// the search row (Cliff's screenshot); the spot here (5 px in, 19 px down) stands in for that.
 const BACKPACK_ENV = `
   GamepadBagBar = CreateFrame("Frame", "GamepadBagBar", ContainerFrameCombinedBags) GamepadBagBar:SetSize(215, 50)
   GamepadBagBar:SetPoint("TOPRIGHT", ContainerFrameCombinedBags, "TOPRIGHT", -5, -19)
@@ -349,15 +349,27 @@ const BACKPACK_ENV = `
 const searchRow = (addon) => addon.eval(`local f, s, b = ContainerFrameCombinedBags, ns.GetModule("Bags").sort, GamepadBackpackButton
   return { BagItemSearchBox:GetLeft() - f:GetLeft(), s:GetLeft() - BagItemSearchBox:GetRight(), s:GetWidth(), b:GetLeft() - s:GetRight(), f:GetRight() - s:GetRight() }`);
 
-it("the game's backpack button in the bag's top-right corner sits beside Sort, not over it", () => {
+// TEST-ONLY gamepad interface switched on (InputUtil, as the client has it).
+const GAMEPAD_ENV = "InputUtil = { IsGamepadUIEnabled = function() return true end }";
+
+it("without a gamepad the game's backpack button in the bag's top-right corner is hidden, so nothing covers Sort", () => {
   const addon = loggedIn(BAG_ENV + BACKPACK_ENV);
   addon.eval("__openBag()");
-  expect(searchRow(addon), "search box 12 px in, Sort 6 px right of it at its full 52 px, the backpack button 6 px right of Sort").toEqual([PAD, 6, 52, 6, 48]);
-  const plain = loggedIn(BAG_ENV + BACKPACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Bags = { sections = false } } }" });
-  plain.eval("__openBag()");
-  expect(searchRow(plain), "the game's plain grid: the same row").toEqual([PAD, 6, 52, 6, 48]);
-  addon.eval("GamepadBackpackButton:Hide() ContainerFrameCombinedBags:Update()");
-  expect(searchRow(addon).slice(-1), "the button hidden (a gamepad bar laid out otherwise): Sort ends the padding in again").toEqual([PAD]);
-  addon.eval("GamepadBackpackButton:Show() GamepadBagBar:SetParent(UIParent) ContainerFrameCombinedBags:Update()");
-  expect(searchRow(addon).slice(-1), "a bar that isn't on the bag window: the padding").toEqual([PAD]);
+  expect([addon.eval("return GamepadBackpackButton:IsShown()"), searchRow(addon).slice(-1)[0]], "hidden at login; Sort ends 12 px inside the right edge").toEqual([false, PAD]);
+  addon.eval("GamepadBackpackButton:Show() ContainerFrameCombinedBags:Update()");
+  expect([addon.eval("return GamepadBackpackButton:IsShown()"), searchRow(addon).slice(-1)[0]], "the game showing it again: hidden again").toEqual([false, PAD]);
+  const other = loggedIn(BAG_ENV + BACKPACK_ENV.replace('"GamepadBagBar", ContainerFrameCombinedBags', '"GamepadBagBar", UIParent'));
+  other.eval("__openBag()");
+  expect(other.eval("return GamepadBackpackButton:IsShown()"), "a bar on another frame: hidden as well (no gamepad)").toBe(false);
+});
+
+it("with a gamepad the backpack button stays the game's, and Sort sits beside it where the game places it in the window", () => {
+  const addon = loggedIn(GAMEPAD_ENV + BAG_ENV + BACKPACK_ENV);
+  addon.eval("__openBag()");
+  expect([addon.eval("return GamepadBackpackButton:IsShown()"), searchRow(addon)], "shown; search box 12 px in, Sort 6 px right of it at its full 52 px, the button 6 px right of Sort").toEqual([true, [PAD, 6, 52, 6, 48]]);
+  addon.eval("GamepadBackpackButton:Hide() GamepadBackpackButton:Show() ContainerFrameCombinedBags:Update()");
+  expect(addon.eval("return GamepadBackpackButton:IsShown()"), "the game showing it: it stays").toBe(true);
+  const other = loggedIn(GAMEPAD_ENV + BAG_ENV + BACKPACK_ENV.replace('"GamepadBagBar", ContainerFrameCombinedBags', '"GamepadBagBar", UIParent'));
+  other.eval("__openBag()");
+  expect([other.eval("return GamepadBackpackButton:IsShown()"), searchRow(other).slice(-1)[0]], "a bar that isn't on the bag window: Sort the padding in").toEqual([true, PAD]);
 });
