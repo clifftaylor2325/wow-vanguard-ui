@@ -274,6 +274,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: each click targets the player whose bar or name you clicked (not a neighbour), and the name-only option doesn't stop the click. The plate under the mouse has a faint white wash that goes when the mouse leaves. A player's buffs show right of the bar, past the target diamond: their defensives, and on friends the buffs you cast. Mobs show none.
 - If it fails, paste: a screenshot with the mouse over the plate you clicked, the name of who got targeted, and `/vg errors`.
 
+### 7.5 Fight recap
+
+- Do: under Bars, map, chat tick "Recap in chat after each fight". Fight a mob for a few seconds (in a group, interrupt or dispel something if you can). Type `/vg recap`, then `/vg recap party` in a group. In the fight's first seconds type `/vg recap`. Then type `/run for _, k in ipairs({"Interrupts","Dispels","DamageTaken","Deaths","AvoidableDamageTaken"}) do print(k, Enum.DamageMeterType[k]) end` and paste what it prints.
+- Expect: half a second after the fight a chat line "Fight recap: Interrupts 1  ·  Dispels 0 ..." with only the parts the meter had; the same for `/vg recap`; `/vg recap party` sends that one line to party chat; during the fight `/vg recap` says the meter is hidden until the fight is over. [Needs in game: that those Enum.DamageMeterType keys exist, that a session of each has combatSources with isLocalPlayer and totalAmount, that Deaths lists one line per member who died, and that SendChatMessage to party works from a slash command.]
+- If it fails, paste: the `/run` line's output, the recap line and `/vg errors`.
+
 ## 8. Quests
 
 ### 8.1 Quest dialog
@@ -343,6 +349,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: with some quests watched, open your bags so the window covers the quest tracker on the right. Click and drag items from every part of the window, including the slots under where the tracker sits: onto an action bar, into another slot, and out onto the ground.
 - Expect: the bag window draws over the tracker (no quest text shows through it), and every item picks up and drops. Quest item buttons beside the tracker are also under the window.
 - If it fails, paste: a screenshot of `/fstack` while hovering a slot that won't drag, and `/vg errors`.
+
+### 9.6 Boat and zeppelin timer (off until switched on)
+
+- Do: under Bars, map, chat tick "Boat and zeppelin timer (reload)" and `/reload`. Board a boat or zeppelin and ride it to the other dock. Board the same one from the same dock again. Afterwards type `/run print(C_Map.GetPlayerMapPosition(C_Map.GetBestMapForUnit("player"), "player"))` once while standing on a boat and paste what it prints.
+- Expect: about three seconds after you board, a bar above the cluster says "Timing this ride"; stepping off hides it and saves the time under "where you boarded > where you got off". The second ride from that dock counts down from the saved time, with the place you landed last time. [Needs in game: that the client gives no map position for you on a boat or zeppelin (the code takes that as being aboard), that the sub-zone names at the docks differ from each other, and that the position comes back as soon as you step off.]
+- If it fails, paste: the `/run` line's output, the dock names, and `/vg errors`.
 
 ## 10. Click casting
 
@@ -852,9 +864,17 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: at the door the checklist shows even though nothing is short, with a heading "Dungeon name · levels A-B · 5-player Normal", "Your quests here" and your quests for this dungeon as "[level] Title" (done ones with "· done"), and "Keys: ..." when you carry a key. Outside, `/vg prep` shows "Dungeon quests in your log" (your dungeon and raid quests) and any keys. With the switch off none of these lines show. [Needs in game: that GetInstanceInfo gives the name, size and difficulty, that C_Map.GetMapLevels answers for a dungeon map, that C_QuestLog.GetQuestsOnMap lists your quests inside a dungeon, that C_QuestLog.GetQuestTagInfo tags dungeon quests with Enum.QuestTag Dungeon, Raid or Group, and that keys are item class 13.]
 - If it fails, paste: what the card shows, `/run print(C_Map.GetMapLevels(C_Map.GetBestMapForUnit("player")))` and `/vg errors`.
 
-## 25. Window ornaments (#238)
+## 25. Theme experiments (#239)
 
-### 25.1 Rule and corner brackets
+### 25.1 SLUG text and frame buffers
+
+- Do: look at a nameplate and a floating combat number, then type `/vg slug` and look again at 1080p; type `/vg slug` to switch it back. Then type `/vg framebuffer`, open and close the options window and the bags several times, and compare with `/vg framebuffer` off. Note your frame rate.
+- Expect: with SLUG on, world text scales smoothly and stays readable (or the flag does nothing, which is fine); panel text never changes. With frame buffers on, inner borders and panels no longer ghost through a window mid-fade, and nothing else changes; the frame rate does not drop while a window is idle. `/vg errors` stays empty either way. [Needs in game: that the Forever 16001 client takes the SLUG flag in SetFont and has Frame:SetIsFrameBuffer; the radial progress and SVG texture calls of #239 are not wired up until their signatures are confirmed on the client: run `/run print(CreateFrame("StatusBar").SetRadialProgressBar, UIParent:CreateTexture().SetSVG, UIParent.CreateVectorGraphics)` and paste what it prints.]
+- If it fails, paste: screenshots with the setting on and off, the print above, and `/vg errors`.
+
+## 26. Window ornaments (#238)
+
+### 26.1 Rule and corner brackets
 
 - Do: type `/vg ornaments`, open `/vg`, the quest log (`L`) and `/vg setup`. Change the accent. Then `/vg ornaments` again.
 - Expect: the options window gets a thin dim-brass rule under its header with a small diamond in the middle; the quest log and the setup wizard get four chamfered corner brackets just inside their corners; all in the accent's darker shade, none on unit frames or other HUD frames; switching off removes them at once. Screenshots at 1080p and 1440p. [Needs in game: that the brackets sit cleanly on the 1 px border at both resolutions.]

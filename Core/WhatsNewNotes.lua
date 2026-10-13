@@ -56,11 +56,20 @@ ns.WHATS_NEW = {
     { module = "Coexist", label = "Other addons", items = {
       { text = "When another addon does a job a Vanguard module also does, chat says so once and the Modules page lets you pick which one does it." },
     } },
+    { module = "FightHistory", label = "Fight history", items = {
+      { text = "/vg recap shows the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, and sends them to a channel on request. A recap in your own chat after each fight is off until you switch it on.", page = "more", row = "Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)", off = true },
+    } },
+    { module = "Errands", label = "Errands", items = {
+      { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "more", row = "Boat and zeppelin timer (reload)", off = true },
+    } },
     { label = "Setup", items = {
       { text = "The setup wizard sits above the frame handles on its last step, and its title and step are centred.", page = "general", row = "Run setup" },
     } },
     { label = "Window ornaments", items = {
       { text = "A thin brass rule under the options window's header and corner brackets on setup and the quest log.", page = "general", row = "Window ornaments: a brass rule or corners on large windows", off = true },
+    } },
+    { label = "Theme tests", items = {
+      { text = "Two switches for side-by-side tests: /vg slug draws world text with the game's smooth-scaling font flag, and /vg framebuffer stops inner borders showing through a window as it fades.", off = true },
     } },
     { label = "Errors", items = {
       { text = "An error in a hook on a game function, a button click or a timer is kept in /vg errors and doesn't stop the others." },
