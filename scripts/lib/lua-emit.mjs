@@ -31,8 +31,18 @@ function luaTableValue(value, indent) {
   return luaTableOf(entries, pad);
 }
 
+// A piece of Lua source to emit as it is, where a value is expected (a call
+// that makes what no literal can, such as the harness's secrets).
+export class LuaSource {
+  // `src` is the Lua expression.
+  constructor(src) {
+    this.src = src;
+  }
+}
+
 // Any JS value as a Lua literal; null, undefined, NaN and functions become nil.
 export function luaValue(value, indent = 0) {
+  if (value instanceof LuaSource) return value.src;
   if (typeof value === "string") return luaString(value);
   if (typeof value === "number") return Number.isFinite(value) ? String(value) : "nil";
   if (typeof value === "boolean") return value ? "true" : "false";
