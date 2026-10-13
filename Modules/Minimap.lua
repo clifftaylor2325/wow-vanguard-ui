@@ -137,13 +137,13 @@ local function slotStates(obj, b)
 end
 
 -- The slot tile (a level under the button, so the game's count text draws over it) and the icon on it, made once.
-local function addSlot(obj, icon)
+local function addSlot(obj, icon, glyph)
   vgSlot[obj] = T.Slot(CreateFrame("Frame", nil, obj))
   vgSlot[obj]:SetAllPoints(obj)
   vgSlot[obj]:SetFrameLevel(math.max(0, obj:GetFrameLevel() - 1))
   vgGlyph[obj] = T.Snap(vgSlot[obj]:CreateTexture(nil, "OVERLAY"))
   vgGlyph[obj]:SetTexture(T.Icon(icon))
-  vgGlyph[obj]:SetSize(MM.GLYPH, MM.GLYPH)
+  vgGlyph[obj]:SetSize(glyph or MM.GLYPH, glyph or MM.GLYPH)
   vgGlyph[obj]:SetPoint("CENTER")
   paintGlyph(obj)
   T.OnChanged(function() paintGlyph(obj) end)
@@ -157,15 +157,15 @@ end
 
 -- One of the game's minimap buttons as a slot button like the menu bar's: MM.BUTTON square, the
 -- game's art and the compartment's count faded (again whenever the game places it), its click area filling the slot, the theme's icon on it.
--- side (default MM.BUTTON) sets another size, for the info strip's calendar button.
-function MM.SlotButton(obj, icon, side)
+-- side (default MM.BUTTON) and glyph (default MM.GLYPH) set other sizes, for the info strip's calendar button.
+function MM.SlotButton(obj, icon, side, glyph)
   local b = clickable(obj)
   obj:SetSize(side or MM.BUTTON, side or MM.BUTTON)
   T.FadeRegions(obj)
   if b ~= obj then T.FadeRegions(b) b:ClearAllPoints() b:SetAllPoints(obj) end
   hideCount(obj)
   if vgSlot[obj] then return end
-  addSlot(obj, icon)
+  addSlot(obj, icon, glyph)
   slotStates(obj, b)
 end
 
