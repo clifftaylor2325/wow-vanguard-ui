@@ -17,6 +17,7 @@ local HELP = {
   "slug [on|off]        world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a test; off by default)",
   "framebuffer [on|off] windows drawn through a frame buffer while they open and close (a test; off by default)",
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
+  "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
   "variant [default|contrast|vellum]  surfaces and text: Slate and brass, High contrast, Vellum and ink",
   "gradient [on|off]    windows a shade lighter toward the top (off by default)",
   "accent <rrggbb|name> set the accent color (brass, arcane, jade, orchid, copper); accent reset",
@@ -181,6 +182,14 @@ local function gradientCommand(rest)
   s.panelGradient = rest == "on" or (rest == "" and not s.panelGradient)
   T.Refresh()
   chat(s.panelGradient and "Panel gradient on: windows run a shade lighter toward the top." or "Panel gradient off.")
+end
+
+-- /vg ornaments [on|off]: window ornaments, repainted at once (#238).
+local function ornamentsCommand(rest)
+  local s = T.Settings()
+  s.ornaments = rest == "on" or (rest == "" and not s.ornaments)
+  T.Refresh()
+  chat(s.ornaments and "Window ornaments on." or "Window ornaments off.")
 end
 
 -- /vg variant [name]: a theme variant (#237), repainted at once.
@@ -572,6 +581,7 @@ local COMMANDS = {
   texelsnap = texelSnapCommand,
   nineslice = nineSliceCommand,
   gradient = gradientCommand,
+  ornaments = ornamentsCommand,
   variant = variantCommand,
   slug = slugCommand,
   framebuffer = frameBufferCommand,
