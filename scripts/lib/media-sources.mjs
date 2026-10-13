@@ -202,7 +202,7 @@ export const SILHOUETTES = {
   NavMap: "lorc-compass", NavProfiles: "delapouite-id-card", NavFeedback: "delapouite-chat-bubble",
   NavClickCasting: "delapouite-mouse", NavHealing: "sbed-health-increase", NavTalents: "delapouite-upgrade",
   NavSituations: "delapouite-crossroad", NavNameplates: "delapouite-price-tag",
-  NavBars: "lorc-laurel-crown", NavChat: "lorc-raven", NavTools: "lorc-battle-axe", NavTown: "delapouite-castle",
+  NavBars: "lorc-laurel-crown", NavChat: "lorc-raven", NavTools: "lorc-battle-axe", NavWindows: "lorc-checked-shield", NavTown: "delapouite-castle",
   MinimapTracking: "delapouite-binoculars", MinimapAddons: "lorc-jigsaw-piece",
 };
 

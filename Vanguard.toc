@@ -50,6 +50,7 @@ Core/OptionsQuests.lua
 Core/OptionsBags.lua
 Core/OptionsMap.lua
 Core/OptionsChat.lua
+Core/OptionsGameWindows.lua
 Core/OptionsTools.lua
 Core/OptionsTown.lua
 Core/OptionsWindow.lua

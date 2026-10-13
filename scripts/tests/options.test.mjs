@@ -55,7 +55,7 @@ it("options window: nav, search, controls, footer", () => {
   const seg = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.segments and w.label:GetText() == "Numbers" then
       w.segments[2]:GetScript("OnClick")(w.segments[2]) return { value = VanguardDB.profiles.Default.DataBars.text, on = w.segments[2].fill:IsShown(), off = w.segments[1].fill:IsShown() } end end`);
   expect(seg.value === "always" && seg.on === true && seg.off === false, "clicking a segment picks it and lights it").toBeTruthy();
-  addon.eval('ns.Options.Show("tools")');
+  addon.eval('ns.Options.Show("windows")');
   const dd = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.label:GetText() == "Tooltip position" then
       w.dropdown:GetScript("OnClick")(w.dropdown)
       local m = Vanguard_Menu
@@ -535,10 +535,10 @@ it("options: the Healing page opens and saves its buff list with the raid heals 
   expect([addon.eval("return VanguardDB.profiles.Default.RaidHealing.buffs"), addon.eval("__editor:Refresh() return __editor.input:GetText()")], "Save keeps the typed list").toEqual(["TEST-ONLY Aura", "TEST-ONLY Aura"]);
 });
 
-it("options: a switch for each group of game windows, under Windows and tools", () => {
+it("options: a switch for each group of game windows, under Game windows", () => {
   const addon = loggedIn(UI_ENV + CLICK_LUA);
   addon.slash("");
-  addon.eval('ns.Options.Show("tools")');
+  addon.eval('ns.Options.Show("windows")');
   const groups = { social: "Mail, guild, channels, friends and guild-creation windows (reload)", town: "Stable, trainer, bags, loot and item dialogs (reload)",
     system: "Game options, Edit Mode, keybinding and help windows (reload)", map: "World map, group finder, calendar and Legacy windows (reload)",
     menus: "Right-click menus, dropdowns and more tooltips (reload)", tabs: "Tab buttons and the inside of the character pane (reload)", pvp: "Battleground windows (reload)" };
@@ -608,26 +608,26 @@ it("options: the pages, their nav order and each page's row count stay as they w
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
     "general|General|10|33", "modules|Modules|20|67", "unitframes|Unit frames|30|24", "raid|Raid frames|40|22",
-    "actionbars|Action bars|60|73", "quests|Quests|70|19", "bars|Bars and bags|80|17", "map|Map|81|29", "chat|Chat|82|31", "tools|Windows and tools|83|68", "town|Town and gear|84|47", "profiles|Profiles|90|22",
+    "actionbars|Action bars|60|73", "quests|Quests|70|19", "bars|Bars and bags|80|17", "map|Map|81|29", "chat|Chat|82|31", "windows|Game windows|83|30", "tools|Combat tools|84|38", "town|Town and gear|85|47", "profiles|Profiles|90|22",
     "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|12",
-    "situations|Situations|85|16", "clickcast|Click casting|46|11",
+    "situations|Situations|86|16", "clickcast|Click casting|46|11",
   ]);
   addon.eval('ns.Options.Show("general")');
   // The nav entries top to bottom, by each one's offset from the top of the nav.
   const nav = addon.eval("local list = {} for k, b in pairs(Vanguard_Options.nav) do local _, _, _, _, y = b:GetPoint() list[#list + 1] = { k, y } end table.sort(list, function(a, b) return a[2] > b[2] end) local out = {} for i, e in ipairs(list) do out[i] = e[1] end return out");
   expect(nav, "the nav lists the pages in the same order").toEqual([
     "general", "modules", "unitframes", "raid", "healing", "clickcast", "talents", "actionbars",
-    "nameplates", "quests", "bars", "map", "chat", "tools", "town", "situations", "profiles", "feedback",
+    "nameplates", "quests", "bars", "map", "chat", "windows", "tools", "town", "situations", "profiles", "feedback",
   ]);
 });
 
 it("options: every nav entry fits inside the nav, however many pages there are", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');
-  // The foot of the lowest nav entry and the shortest entry, in px (the nav is 480 px tall: the window's 560 less its header and footer).
+  // The foot of the lowest nav entry and the shortest entry, in px (the nav is 520 px tall: the window's 600 less its header and footer).
   const fit = addon.eval(`local foot, least = 0, 99 for _, b in pairs(Vanguard_Options.nav) do local _, _, _, _, y = b:GetPoint()
     foot, least = math.max(foot, -y + b:GetHeight()), math.min(least, b:GetHeight()) end return { foot, least }`);
-  expect(fit[0] <= 480 && fit[1] >= 24, "the last entry ends above the nav's foot and no entry is squeezed under 24 px").toBe(true);
+  expect(fit[0] <= 520 && fit[1] >= 24, "the last entry ends above the nav's foot and no entry is squeezed under 24 px").toBe(true);
 });
 
 it("slider values show rounded, never as float noise", () => {
