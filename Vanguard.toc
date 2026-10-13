@@ -99,6 +99,7 @@ Modules/MenuStrip.lua
 Modules/Merchant.lua
 Modules/Errands.lua
 Modules/InstancePrep.lua
+Modules/InstancePrepBuffs.lua
 Modules/TalentPlanner.lua
 Modules/AutoAccept.lua
 Modules/QuestDialogParts.lua

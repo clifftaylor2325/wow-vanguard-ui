@@ -290,17 +290,27 @@ end
 local PREP_SECONDS = { min = 5, max = 60, step = 5, format = function(v) return string.format("%d s", v) end }
 local PREP_PERCENT = { min = 10, max = 90, step = 5, format = function(v) return string.format("%d%%", v) end }
 
+-- Instance prep's buff checks (flask, food, oil or poison, raid buffs; world buffs) and the note on wanted amounts.
+local function prepBuffRows()
+  return {
+    check("Buff checks on the card: flask, food, oil or poison, raid buffs", setting("InstancePrep", "buffs")),
+    check("World buffs among them", setting("InstancePrep", "worldBuffs")),
+    { "text", "Wanted amounts: /vg prep want <food|bandages|potions|ammo|shards> <n>; items from /vg stock are checked too." },
+  }
+end
+
 -- Instance prep: when the checklist card shows, how long it stays, and the durability warning.
 local function prepRows()
-  return {
+  local rows = {
     { "header", "Instance prep" },
     check("Checklist when you enter a dungeon or raid (only when something is low)", setting("InstancePrep", "onEnter")),
     check("Checklist on a ready check", setting("InstancePrep", "onReadyCheck")),
     check("Warn in chat when a supply runs low (once, out of combat)", setting("InstancePrep", "lowWarn")),
     { "slider", "Hide after", PREP_SECONDS, setting("InstancePrep", "hideAfter") },
     { "slider", "Durability warning under", PREP_PERCENT, setting("InstancePrep", "durability") },
-    { "text", "Wanted amounts: /vg prep want <food|bandages|potions|ammo|shards> <n>; items from /vg stock are checked too." },
   }
+  for _, r in ipairs(prepBuffRows()) do rows[#rows + 1] = r end
+  return rows
 end
 
 -- Tooltips: where they sit and what they add.

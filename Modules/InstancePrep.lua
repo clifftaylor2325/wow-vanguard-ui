@@ -18,6 +18,7 @@ local T, W = ns.Theme, ns.Widgets
 local PR = ns.Module("InstancePrep", {
   defaults = {
     onEnter = true, onReadyCheck = true, lowWarn = true, hideAfter = 20, durability = 50,
+    buffs = false, worldBuffs = false,
     want = { food = 20, bandages = 10, potions = 3, ammo = 400, shards = 10 },
   },
 })
@@ -270,6 +271,7 @@ end
 -- packed."; otherwise (at the door) it stays away.
 function PR.Show(force)
   local rows = PR.Rows()
+  for _, r in ipairs(PR.BuffRows and PR.BuffRows() or {}) do rows[#rows + 1] = r end
   if #rows == 0 and not force then return end
   PR.Paint(rows)
   T.FadeIn(PR.card)

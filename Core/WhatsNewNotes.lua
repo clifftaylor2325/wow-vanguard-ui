@@ -39,6 +39,9 @@ ns.WHATS_NEW = {
     { module = "GroupBoard", label = "Group board", items = {
       { text = "A group board (/vg lfg) lists looking-for-more and looking-for-group posts from chat by dungeon, role and level. A click opens a whisper you send yourself.", page = "more", row = "Open the group board" },
     } },
+    { module = "InstancePrep", label = "Instance prep", items = {
+      { text = "Buff checks add a flask, food buff, weapon oil and raid buff rows to the ready-check card. They start off.", page = "more", row = "Buff checks on the card: flask, food, oil or poison, raid buffs", off = true },
+    } },
     { module = "Coexist", label = "Other addons", items = {
       { text = "When another addon does a job a Vanguard module also does, chat says so once and the Modules page lets you pick which one does it." },
     } },
