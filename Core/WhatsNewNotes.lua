@@ -17,6 +17,7 @@ ns.WHATS_NEW = {
     } },
     { module = "InstancePrep", label = "Instance prep", items = {
       { text = "A dungeon card on the checklist shows the dungeon's level range, your own quests for it and the keys you carry, at the door and with /vg prep.", page = "more", row = "Dungeon card: level range, your dungeon quests and keys on the checklist", off = true },
+      { text = "Buff checks add a flask, food buff, weapon oil and raid buff rows to the ready-check card. They start off.", page = "more", row = "Buff checks on the card: flask, food, oil or poison, raid buffs", off = true },
     } },
     { module = "Windows", label = "Game windows", items = {
       { text = "The spellbook gets the flat Vanguard panel, like the other game windows.", page = "more", row = "Character, merchant, quest, loot and other windows" },
@@ -55,8 +56,6 @@ ns.WHATS_NEW = {
     { module = "GroupBoard", label = "Group board", items = {
       { text = "A group board (/vg lfg) lists looking-for-more and looking-for-group posts from chat by dungeon, role and level. A click opens a whisper you send yourself.", page = "more", row = "Open the group board" },
     } },
-    { module = "InstancePrep", label = "Instance prep", items = {
-      { text = "Buff checks add a flask, food buff, weapon oil and raid buff rows to the ready-check card. They start off.", page = "more", row = "Buff checks on the card: flask, food, oil or poison, raid buffs", off = true },
     { module = "GroupThreat", label = "Group threat", items = {
       { text = "A panel lists who in your group has the most threat on your target. It starts off, and hides itself while the game hides threat values.", page = "unitframes", row = "Group threat panel: who has the most threat on your target (reload)", off = true },
     } },
