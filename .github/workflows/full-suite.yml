@@ -1,7 +1,8 @@
 name: full suite
 
-# Runs lua-suite.yml (every test with the coverage floor, the checks and
-# the UI preview): when a pull request is opened ready for review or marked
+# Runs lua-suite.yml (every test with the coverage floor; the checks and
+# the UI preview when the event asks for them, see `with` below): when a
+# pull request is opened ready for review or marked
 # ready for review (a draft never runs it), on every later push while the
 # pull request carries the "full-tests" label, weekly, and from the Actions
 # tab. A later push without the label stops a run still in progress for that
@@ -19,6 +20,13 @@ name: full suite
 # order and the seed goes to the job summary with the replay command, to
 # show up a case that depends on running after another. Pull-request and
 # hand-started runs keep the written order.
+#
+# What each run adds to the tests: the checks (quality scan, TOC, luacheck,
+# Lua 5.1 syntax, release zip) run on every event but a pull request, where
+# verify.yml already ran them on the same commit. The UI preview renders
+# weekly, on a hand-started run that asks for it, and on a pull request that
+# carries the "preview" label; other pull-request runs skip it (a UI change
+# is previewed on request, not on every ready pull request).
 on:
   schedule:
     # Sundays at 10:23 UTC (cron is UTC only); off the hour, since GitHub
@@ -67,7 +75,8 @@ jobs:
           contains(github.event.pull_request.labels.*.name, 'full-tests')))
     uses: ./.github/workflows/lua-suite.yml
     with:
-      preview: ${{ github.event_name != 'workflow_dispatch' || inputs.preview }}
+      checks: ${{ github.event_name != 'pull_request' }}
+      preview: ${{ github.event_name == 'schedule' || inputs.preview == true || contains(github.event.pull_request.labels.*.name, 'preview') }}
       shuffle: ${{ github.event_name == 'schedule' }}
 
   report:
