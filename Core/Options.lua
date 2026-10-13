@@ -143,7 +143,7 @@ local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", "the game's fo
 -- The faction look: by your character's faction, or off.
 local FACTION_LOOK = { { "auto", "By your faction" }, { "off", "Off" } }
 -- The theme variants (#237), in display order.
-local VARIANT_CHOICES = { { "default", "Slate and brass" }, { "contrast", "High contrast" }, { "vellum", "Vellum and ink" } }
+local VARIANT_CHOICES = { { "default", "Slate and brass" }, { "contrast", "High contrast" }, { "vellum", "Vellum and ink" }, { "classic", "Classic look" } }
 local BAR_TEXTURES = { { "vanguard", "Vanguard" }, { "soft", "Soft" }, { "flat", "Flat" } }
 -- A share as a percent.
 local function percent(v)

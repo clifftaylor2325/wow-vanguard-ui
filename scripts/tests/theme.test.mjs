@@ -730,3 +730,17 @@ it("SLUG text (#239): off by default; /vg slug adds the SLUG flag to outlined wo
   addon.slash("slug off");
   expect([flags("__world"), addon.eval("return ns.Theme.Settings().slugText"), chatHas(addon, /SLUG text off/)]).toEqual(["OUTLINE", false, true]);
 });
+
+it("classic look (#218): a variant with a bronze border, gold-cream text and the window ornaments on without their setting", () => {
+  const addon = loggedIn("", { firstRun: true });
+  addon.eval('ns.GetModule("QuestLog").Toggle() __win = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })');
+  // The colour of the test window's border.
+  const edge = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__parent == __win and w.__layer == "BORDER" and w.__vertexColor then return w.__vertexColor end end`);
+  const base = edge();
+  expect(artShown(addon, "Vanguard_QuestLog", "OrnamentCorner"), "off by default").toBe(0);
+  addon.slash("variant classic");
+  expect([tok(addon, "text").slice(0, 3), chatHas(addon, /Theme variant: Classic look/)], "gold-cream text").toEqual([[242 / 255, 226 / 255, 182 / 255], true]);
+  expect([edge()[2] < edge()[0], edge()[0] > base[0], artShown(addon, "Vanguard_QuestLog", "OrnamentCorner")], "a bronze border (warm, not black) and the brackets on").toEqual([true, true, 4]);
+  addon.slash("variant default");
+  expect([edge()[0], artShown(addon, "Vanguard_QuestLog", "OrnamentCorner")], "back to the black border, no brackets").toEqual([base[0], 0]);
+});
