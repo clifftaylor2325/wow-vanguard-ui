@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/agent-check.mjs",
+            "timeout": 30,
+            "statusMessage": "Checking the edited file against the CLAUDE.md rules"
+          }
+        ]
+      }
+    ]
+  }
+}

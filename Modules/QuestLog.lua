@@ -60,16 +60,19 @@ end
 
 -- Details ----------------------------------------------------------------------------------------
 
+-- A reward item for a card: its kind ("choice" or "reward"), slot and quest are what its tooltip is set from.
+local function rewardItem(kind, i, id, name, texture, count, quality)
+  return { kind = kind, index = i, questID = id, name = name, texture = texture, count = count, quality = quality }
+end
+
 -- The quest's reward items: choices, then what you always get.
 local function rewardItems(id)
   local out = {}
   for i = 1, ns.PlainNumber(call(GetNumQuestLogChoices, id)) or 0 do
-    local name, texture, count, quality = call(GetQuestLogChoiceInfo, i)
-    out[#out + 1] = { name = name, texture = texture, count = count, quality = quality }
+    out[#out + 1] = rewardItem("choice", i, id, call(GetQuestLogChoiceInfo, i))
   end
   for i = 1, ns.PlainNumber(call(GetNumQuestLogRewards, id)) or 0 do
-    local name, texture, count, quality = call(GetQuestLogRewardInfo, i, id)
-    out[#out + 1] = { name = name, texture = texture, count = count, quality = quality }
+    out[#out + 1] = rewardItem("reward", i, id, call(GetQuestLogRewardInfo, i, id))
   end
   return out
 end

@@ -14,6 +14,13 @@ ns.WHATS_NEW = {
     { module = "CooldownGaps", label = "Cooldown gaps", items = {
       { text = "A new row of icons for what the game's Cooldown Manager misses: on-use trinkets, items you choose with /vg gaps add, your pet's abilities and totems.", page = "more", row = "Cooldown gaps", off = true },
     } },
+    { module = "SpellRanks", label = "Spell ranks", items = {
+      { text = "Chat can say when a bar button holds an older rank of a spell you know better; /vg ranks lists them and /vg ranks swap puts the newest rank there, out of combat.", page = "more", row = "Notice older spell ranks on bar buttons (/vg ranks)", off = true },
+      { text = "Trainers you visit are remembered: /vg trainers next lists what comes in the next levels and where to learn it, and a level-up says so too.", page = "more", row = "Remember what trainers teach (/vg trainers)", off = true },
+    } },
+    { module = "InstancePrep", label = "Instance prep", items = {
+      { text = "A dungeon card on the checklist shows the dungeon's level range, your own quests for it and the keys you carry, at the door and with /vg prep.", page = "more", row = "Dungeon card: level range, your dungeon quests and keys on the checklist", off = true },
+    } },
     { module = "Windows", label = "Game windows", items = {
       { text = "The spellbook gets the flat Vanguard panel, like the other game windows.", page = "more", row = "Character, merchant, quest, loot and other windows" },
     } },
@@ -31,6 +38,7 @@ ns.WHATS_NEW = {
     } },
     { label = "Profiles", items = {
       { text = "If the game loses your saved settings, Vanguard says so and offers to restore them from a backup it keeps." },
+      { text = "Presets: Vanguard's Healer, Damage and Tank, and any an addon offers, apply from the Profiles page (or /vg preset) after a question and a backup. Addons can also open the options window on a page.", page = "profiles", row = "Apply Healer" },
       { text = "A profile can be exported in parts, such as layout only or one module, and imported without touching the rest.", page = "profiles", row = "Choose what to export" },
     } },
     { label = "Moving frames", items = {
@@ -38,6 +46,12 @@ ns.WHATS_NEW = {
     } },
     { module = "QuestGuide", label = "Quest guidance", items = {
       { text = "Quest-start pins on the world map, from the game's own quest data. Shift-click a quest in the tracker to point the arrow at its next step.", page = "quests", row = "Quest-start pins on the world map" },
+    } },
+    { module = "CraftQueue", label = "Craft queue", items = {
+      { text = "A craft queue for your professions (/vg craft): queue the recipe on display, open the next one, raise Keep stocked to fit, see profession cooldowns across your characters and rank the recipes that pay best. Nothing is crafted or bought for you.", page = "more", row = "Craft queue, profession cooldowns and recipe ranking (/vg craft)", off = true },
+    } },
+    { module = "MailTools", label = "Mail tools", items = {
+      { text = "A panel beside the mail window searches and filters your inbox, and presets fill the Send Mail tab for your alts (/vg mail). You click Take and Send yourself.", page = "more", row = "Search the inbox and send-to-alt presets beside the mail window (/vg mail)", off = true },
     } },
     { module = "GroupBoard", label = "Group board", items = {
       { text = "A group board (/vg lfg) lists looking-for-more and looking-for-group posts from chat by dungeon, role and level. A click opens a whisper you send yourself.", page = "more", row = "Open the group board" },

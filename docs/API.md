@@ -41,3 +41,25 @@ Search strings are item names, as you would type them in the game's search box. 
 | `AlterShoppingListItems(callerID, listName, terms)` | Replaces the entries of an existing list. Returns `false` when there is no list of that name. |
 
 Nothing in the API posts, buys, bids or cancels: those stay with the player's clicks.
+
+## Presets and options links
+
+Three more functions on the `Vanguard` table, next to `RegisterSkin`. They are version 1 of this surface (`Vanguard.apiVersion` is 1) and only grow: functions are added, never changed or removed. A call with a wrong kind of argument returns `false` and why; none raises an error, reads a game value or touches a protected frame, so they are safe to call at any time, in combat included.
+
+```lua
+-- ## OptionalDeps: Vanguard
+if Vanguard and Vanguard.RegisterPreset then
+  Vanguard.RegisterPreset("MyAddon tank", "VG1:parts:...", "Raid frames and nameplates for tanking.")
+end
+if Vanguard and Vanguard.OpenOptions then Vanguard.OpenOptions("profiles") end
+```
+
+| Function | Does |
+| --- | --- |
+| `Vanguard.RegisterPreset(name, string, info)` | Offers a profile string (from `/vg export`, partial or whole) on the Profiles page and to `/vg preset`. `name` is 1 to 32 characters; `string` begins `VG1:` and is at most 20000 characters; `info` (optional) is one line of at most 200 characters (`\|` is dropped). A name already offered is replaced, except Vanguard's own (Healer, Damage, Tank). At most 20 presets. Returns `true`, or `false` and why. The string is checked when the player applies it, not when you register it. |
+| `Vanguard.GetPresets()` | The presets on offer, a copy: `{ name, info, builtIn }` each, in order. |
+| `Vanguard.OpenOptions(page, setting)` | Opens the options window on `page` (`general`, `modules`, `unitframes`, `raid`, `actionbars`, `quests`, `more`, `profiles`, `feedback`, or a module's own page key), scrolled to the first row whose caption contains `setting` (optional text). Returns `true`, or `false` for a page that doesn't exist. |
+
+A preset never applies by itself. The player picks it on the Profiles page (or types `/vg preset <name>`), answers a question, and it is imported like `/vg import`: a backup of their profile first, a partial string merged key by key (their layout, theme and everything the string leaves out are kept), a whole profile saved as a new profile. It waits until combat ends. Vanguard's own Healer, Damage and Tank presets are partial strings for the raid frames and nameplates.
+
+Widget builders: the skin API's `S` table (see the README) already carries the theme builders (Panel, Button, EditBox, Tab, ScrollBar, Tooltip, Text, Color and the rest); `W.*` builders stay private for now.
