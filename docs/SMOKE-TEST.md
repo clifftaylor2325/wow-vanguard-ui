@@ -81,7 +81,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 2.1 Every options page
 
 - Do: type `/vg`, then click each page in the left list in turn: General, Modules, Unit frames, Raid frames, Healing, Click casting, Talents, Action bars, Nameplates, Quests, Bars and bags, Map, Chat, Windows and tools, Town and gear, Situations, Profiles and Feedback (18 pages in all). After each, type `/vg errors`.
-- Expect: each page draws its rows with no Lua error popup, and `/vg errors` stays empty. All 18 entries fit in the list without running off the bottom, each with its own icon (the five that replaced Bars, map, chat have a laurel crown, a compass, a raven, a castle and a shield), and a search for a setting that used to be on Bars, map, chat (say "Craft queue") lights the page that has it now.
+- Expect: each page draws its rows with no Lua error popup, and `/vg errors` stays empty. All 18 entries fit in the list without running off the bottom, each with its own icon (the five that replaced Bars, map, chat have a laurel crown, a compass, a raven, a battle axe and a castle), and every icon and label starts at the same spot down the list, and a search for a setting that used to be on Bars, map, chat (say "Craft queue") lights the page that has it now.
 - If it fails, paste: the page name, a screenshot of it, and `/vg errors`.
 
 ### 2.1a Situations: Stop recording only while recording
