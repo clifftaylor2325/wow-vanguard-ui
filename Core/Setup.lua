@@ -26,8 +26,8 @@ local LATER = "Setup opens again at your next login. /vg setup opens it now; Ski
 
 -- Layout presets, in display order; Keep (the last) moves nothing and is picked when setup opens.
 S.LAYOUTS = {
-  { key = "damage", text = "Centered: damage and tanking", hint = "For damage dealers and tanks: your frames around your character, raid frames without power bars, threat colours and longer debuff rows on nameplates." },
-  { key = "healing", text = "Centered: healing", hint = "Party and raid above your frames, a big raid stacked at the left of your character, raid frames sorted by role with power bars, short debuff rows on nameplates, click casting on." },
+  { key = "damage", text = "Centered: damage and tanking", hint = "For damage dealers and tanks: your frames around your character, compact raid frames without power bars or heal overlays, threat colours and longer debuff rows on nameplates." },
+  { key = "healing", text = "Centered: healing", hint = "Party and raid above your frames, a big raid stacked at the left of your character, raid frames sorted by role with power bars, raid debuffs, HoTs and incoming heals, short debuff rows on nameplates, click casting on." },
   { key = "classic", text = "Like the game's", hint = "Your frames at the top left as the game has them, party and raid down the left side." },
   { key = "keep", text = "Keep my current layout", hint = "Moves nothing: your frames stay where they are." },
 }
@@ -113,13 +113,8 @@ local function restoreDefaults()
   if ns.MoverPoint("raid") then ns.GetModule("RaidFrames").Fit() end
 end
 
--- The raid frame and nameplate settings each role layout sets, as the Healer and Damage presets do.
-local ROLE = {
-  damage = { RaidFrames = { showPower = false, sortByRole = false },
-    Nameplates = { debuffs = 6, buffs = 0, threat = true } },
-  healing = { RaidFrames = { showPower = true, sortByRole = true },
-    Nameplates = { debuffs = 2, buffs = 0, threat = false } },
-}
+-- The role preset each layout applies (Core/PresetStrings.lua).
+local ROLE = { damage = "Damage", healing = "Healer" }
 
 -- One module's saved settings, whether or not it is on.
 local function moduleSettings(name)
@@ -127,10 +122,10 @@ local function moduleSettings(name)
   return ns.Settings(name, m and m.defaults or {})
 end
 
--- Sets a role layout's raid frame and nameplate settings; the frames on screen repaint
--- now, and the rest (debuff rows) shows after the reload Done offers.
+-- Sets a role layout's raid frame, raid aura, raid healing and nameplate settings (its
+-- preset's); the frames on screen repaint now, the rest shows after the reload Done offers.
 local function applyRole(key)
-  for name, values in pairs(ROLE[key]) do
+  for name, values in pairs(ns.ROLE_SETTINGS[ROLE[key]]) do
     local saved = moduleSettings(name)
     for k, v in pairs(values) do saved[k] = v end
   end
@@ -142,13 +137,13 @@ end
 
 -- What each layout changes.
 local APPLY = {
-  -- Damage and tanking: Vanguard's defaults, raid frames with no power bars, threat colours.
+  -- Damage and tanking: Vanguard's defaults with the Damage preset's settings.
   damage = function()
     restoreDefaults()
     applyRole("damage")
   end,
   -- Healing: Vanguard's defaults (a big raid sits at the left of your character), click casting on,
-  -- raid frames by role with power bars, short debuff rows.
+  -- the Healer preset's settings.
   healing = function()
     restoreDefaults()
     applyRole("healing")
@@ -562,7 +557,7 @@ end
 local function reloadReason()
   if state.reload then return "Setup turned on a module that was off." end
   if state.retile then return "The new raid tile size shows after a reload." end
-  if state.role then return "The layout's raid frame and nameplate settings show after a reload." end
+  if state.role then return "The layout's raid frame, raid aura and nameplate settings show after a reload." end
   if state.complete and state.done then return "Setup is done." end
 end
 

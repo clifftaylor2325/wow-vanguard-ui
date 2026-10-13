@@ -23,6 +23,27 @@ it("RegisterPreset checks its arguments", () => {
   expect(addon.eval("return Vanguard.GetPresets()").length, "at most 20 presets").toBe(20);
 });
 
+it("the built-in presets are made from the role tables, so setup's layouts and the presets agree", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const same = addon.eval(`local out = {}
+    for _, p in ipairs(ns.BUILTIN_PRESETS) do
+      local scope, data = ns.Serialize.Decode(p.text)
+      local parts = table.concat(data.parts, ",")
+      ns.StripPayload(data)
+      local want = ns.ROLE_SETTINGS[p.name]
+      local ok = scope == "parts" and parts == "Nameplates,RaidAuras,RaidFrames,RaidHealing"
+      for part, values in pairs(want) do
+        for k, v in pairs(values) do if data[part][k] ~= v then ok = false end end
+        for k in pairs(data[part]) do if values[k] == nil then ok = false end end
+      end
+      for part in pairs(data) do if not want[part] then ok = false end end
+      out[#out + 1] = p.name .. ":" .. tostring(ok)
+    end
+    return out`);
+  expect(same, "each preset string decodes to its role's table, those four parts and nothing else").toEqual(["Healer:true", "Damage:true", "Tank:true"]);
+  expect(addon.eval("return ns.ROLE_SETTINGS.Healer.RaidFrames.compact == nil and ns.ROLE_SETTINGS.Damage.RaidFrames.compact == nil"), "no preset changes compact, so a 40-man still fits a small screen").toBe(true);
+});
+
 it("OpenOptions opens a page and a row", () => {
   const addon = loggedIn(CLICK_LUA);
   expect(addon.eval('return Vanguard.OpenOptions("nowhere")'), "an unknown page is refused").toBe(false);
