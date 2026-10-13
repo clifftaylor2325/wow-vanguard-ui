@@ -101,6 +101,7 @@ Modules/MenuStrip.lua
 Modules/Merchant.lua
 Modules/Errands.lua
 Modules/InstancePrep.lua
+Modules/DungeonCard.lua
 Modules/TalentPlanner.lua
 Modules/AutoAccept.lua
 Modules/QuestDialogParts.lua
