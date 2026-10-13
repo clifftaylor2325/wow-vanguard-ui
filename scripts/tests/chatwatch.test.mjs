@@ -63,6 +63,19 @@ it("chat watch: matching ignores case and links' codes; unticked channels are no
   expect(rings(addon), "whispers are off by default").toBe(3);
 });
 
+it("chat watch: with no phrase watched a line is not read, and a line without link codes skips the code strips", () => {
+  const addon = loggedIn(WATCH_ENV + CLICK_LUA);
+  // TEST-ONLY: counts the string functions a call makes, to show a busy channel makes no garbage when nothing is watched.
+  addon.eval(`__made = 0 for _, n in ipairs({ "gsub", "lower" }) do local f = string[n] string[n] = function(...) __made = __made + 1 return f(...) end end`);
+  // What ChatWatch.Match makes of a line.
+  const match = (text) => addon.eval(`return ns.GetModule("ChatWatch").Match(${JSON.stringify(text)})`);
+  expect([match("WTS |cff0070dd|Hitem:2589::::::::|h[Linen Cloth]|h|r"), addon.eval("return __made")], "no phrases: nothing found, no string made").toEqual([null, 0]);
+  addon.slash("watch add lfm");
+  addon.eval("__made = 0");
+  expect([match("[LFM] tank please"), addon.eval("return __made")], "plain text: the brackets and the case only").toEqual(["lfm", 2]);
+  addon.eval("__made = 0");
+  expect([match("|cff0070dd|Hitem:1::::::::|h[LFM]|h|r"), addon.eval("return __made") > 2], "a line with codes strips them first").toEqual(["lfm", true]);
+});
 it("chat watch: hidden chat (dungeons, raids, encounters) is skipped without an error", () => {
   const addon = watching();
   sayLua(addon, "__wfgWorld.secret()", '"Lightmend"');
