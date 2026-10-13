@@ -80,12 +80,12 @@ end
 -- The switch itself: an inset track, an accent fill when on, and a square knob.
 local function addSwitch(r)
   r.track = T.Panel(CreateFrame("Frame", nil, r), { inset = true, noSheen = true })
-  r.track:SetSize(30, 16)
+  r.track:SetSize(36, 18)
   r.track:SetPoint("RIGHT", -8, 0)
   r.fill = flat(r.track, "ARTWORK", "accent")
   r.fill:SetAllPoints()
   r.knob = flat(r.track, "OVERLAY", "muted")
-  r.knob:SetSize(12, 12)
+  r.knob:SetSize(14, 14)
 end
 
 -- A switch row: set(on) runs on click, then the row re-reads get().
