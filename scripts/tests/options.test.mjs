@@ -629,3 +629,12 @@ it("options: every nav entry fits inside the nav, however many pages there are",
     foot, least = math.max(foot, -y + b:GetHeight()), math.min(least, b:GetHeight()) end return { foot, least }`);
   expect(fit[0] <= 480 && fit[1] >= 24, "the last entry ends above the nav's foot and no entry is squeezed under 24 px").toBe(true);
 });
+
+it("slider values show rounded, never as float noise", () => {
+  const addon = loggedIn();
+  // The text a slider shows for v at the given step.
+  const text = (step, v) => addon.eval(`local s = ns.Widgets.Slider(UIParent, "t", { min = 0, max = 1200, step = ${step} }, function() return ${v} end, function() end) return s.value:GetText()`);
+  expect(text(2, 210.00007629395)).toBe("210");
+  expect(text(1, 35.999524536133)).toBe("36");
+  expect(text(0.05, 0.55)).toBe("0.55");
+});
