@@ -82,7 +82,10 @@ Claude usage and CI minutes are both limited. Pick the cheapest model and effort
 ## Agent tooling
 
 - **Edit-time check.** `.claude/settings.json` runs `scripts/agent-check.mjs` after every Edit or Write: the code-quality rules and luacheck (when installed) on that one file, fed back as hook output. Fix what it says before moving on; it is the same scanner CI runs. `node scripts/agent-check.mjs <file>` runs it by hand.
-- **Skills** in `.claude/skills/`: `add-module`, `add-harness-scenario`, `fix-visual-issue`, `ready-pr`. Use the one that matches the task; each is the worked example of the rules above.
+- **Skills** in `.claude/skills/`, one per recurring task; use the one that matches, each is the worked example of the rules above:
+  - Building: `add-module` (a new feature), `add-setting` (a switch or option on an existing module), `add-slash-command` (a `/vg` command), `add-media` (a texture or icon), `add-game-api` (a client API the harness lacks).
+  - Changing: `polish-module` (look or code of an existing module, a game window's skin), `fix-bug` (a behaviour bug), `fix-visual-issue` (a look bug).
+  - Testing and shipping: `add-harness-scenario` (a test), `ready-pr` (before any PR), `release` (a version), `triage-game-report` (what Cliff pastes from the game), `sweep-prs` (the weekly PR and CI sweep).
 - **Patterns.** `docs/PATTERNS.md` shows the canonical shape of a module, a guarded callback, frame state, a secret-safe read, combat-deferred work, events and timers, a migration and a scenario. Copy from there, not from the nearest file.
 - **Before a PR is marked ready**, run the built-in `code-review` skill on the diff once (the `ready-pr` skill says how). It catches what the harness cannot.
 - **Annotations.** The `ns.*` helpers in `Core/` carry `---@param` and `---@return` lines; keep them when you change a signature, and add them to a new helper.
