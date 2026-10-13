@@ -141,6 +141,7 @@ Modules/GameTools.lua
 Modules/CooldownGlow.lua
 Modules/BossDocks.lua
 Modules/FightHistory.lua
+Modules/FightRecap.lua
 Modules/Rolls.lua
 Modules/CraftQueue.lua
 Modules/MailTools.lua

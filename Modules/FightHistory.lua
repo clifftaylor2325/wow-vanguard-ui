@@ -5,13 +5,13 @@
 -- combat), through the info strip's reads; a figure the client hides is kept as
 -- an empty slot, so the count stays right. The strip is off until switched on,
 -- but fights are recorded anyway, so turning it on shows the history at once.
--- It forgets on logout.
+-- It forgets on logout. The recap after a fight is in Modules/FightRecap.lua.
 
 local ADDON, ns = ...
 
 local T, V, W = ns.Theme, ns.Visibility, ns.Widgets
 
-local FH = ns.Module("FightHistory", { defaults = { strip = false, visibility = "always", showWhen = {} } })
+local FH = ns.Module("FightHistory", { defaults = { strip = false, recap = false, visibility = "always", showWhen = {} } })
 
 -- Fights kept, the shortest one recorded (seconds), and the wait after combat for the meter to finish.
 FH.MAX, FH.MIN_SECONDS, FH.DELAY = 20, 2, 0.5
@@ -42,6 +42,7 @@ function FH.Record()
   table.insert(FH.fights, fight)
   if #FH.fights > FH.MAX then table.remove(FH.fights, 1) end
   FH.Paint()
+  FH.Announce()
 end
 
 -- Combat ended: one read FH.DELAY later, once the meter has finished the fight

@@ -274,6 +274,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: each click targets the player whose bar or name you clicked (not a neighbour), and the name-only option doesn't stop the click. The plate under the mouse has a faint white wash that goes when the mouse leaves. A player's buffs show right of the bar, past the target diamond: their defensives, and on friends the buffs you cast. Mobs show none.
 - If it fails, paste: a screenshot with the mouse over the plate you clicked, the name of who got targeted, and `/vg errors`.
 
+### 7.5 Fight recap
+
+- Do: under Bars, map, chat tick "Recap in chat after each fight". Fight a mob for a few seconds (in a group, interrupt or dispel something if you can). Type `/vg recap`, then `/vg recap party` in a group. In the fight's first seconds type `/vg recap`. Then type `/run for _, k in ipairs({"Interrupts","Dispels","DamageTaken","Deaths","AvoidableDamageTaken"}) do print(k, Enum.DamageMeterType[k]) end` and paste what it prints.
+- Expect: half a second after the fight a chat line "Fight recap: Interrupts 1  ·  Dispels 0 ..." with only the parts the meter had; the same for `/vg recap`; `/vg recap party` sends that one line to party chat; during the fight `/vg recap` says the meter is hidden until the fight is over. [Needs in game: that those Enum.DamageMeterType keys exist, that a session of each has combatSources with isLocalPlayer and totalAmount, that Deaths lists one line per member who died, and that SendChatMessage to party works from a slash command.]
+- If it fails, paste: the `/run` line's output, the recap line and `/vg errors`.
+
 ## 8. Quests
 
 ### 8.1 Quest dialog
