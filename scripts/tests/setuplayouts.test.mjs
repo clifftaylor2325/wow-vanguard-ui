@@ -294,7 +294,7 @@ it("Centered layout: compact raid grid, one-time migrations, a strip with nothin
   expect(old.eval("local p = VanguardDB.profiles.Default return { p.ActionBars.spacing, p.DataBars.width, p.DataBars.height }"), "a profile saved with the old sizes moves to the new ones").toEqual([2, 478, 6]);
   old.eval("local p = VanguardDB.profiles.Default p.ActionBars.spacing = 4 p.DataBars.width = 476 p.DataBars.height = 10");
   expect(old.eval("local s = ns.Settings('ActionBars', ns.GetModule('ActionBars').defaults) local d = ns.Settings('DataBars', ns.GetModule('DataBars').defaults) return { s.spacing, d.width, d.height }"), "but only once: picking those sizes again keeps them").toEqual([4, 476, 10]);
-  const strip = loggedIn(UNITS_ENV + STRIP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { durability = false, bags = false, system = false, gold = false, ammo = false, clock = false } } }" });
+  const strip = loggedIn(UNITS_ENV + STRIP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { durability = false, bags = false, system = false, gold = false, ammo = false, clock = false, date = false } } }" });
   expect(strip.eval("return Vanguard_InfoStrip:IsShown()"), "a strip with every block off isn't drawn as an empty box").toBe(false);
   const chatFree = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { place = false } } }" });
   expect(chatFree.eval("return ChatFrame1.__points.BOTTOMLEFT == nil"), "with Keep chat in its spot off, chat stays where the game puts it").toBe(true);

@@ -8,6 +8,7 @@ local ADDON, ns = ...
 local vgPadded = ns.FrameState("vgPadded")
 local vgSocialSide = ns.FrameState("vgSocialSide")
 local vgEmptyNote = ns.FrameState("vgEmptyNote")
+local vgInsetFill = ns.FrameState("vgInsetFill")
 
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
@@ -85,14 +86,29 @@ local function fadeFrameArt(frame)
   if type(frame.NineSlice) == "table" and frame.NineSlice.GetRegions then T.FadeRegions(frame.NineSlice) end
 end
 
--- One pane in the theme: its art faded and an inset panel behind it (on its InsetFrame when
--- it has one, else on the pane itself).
+-- The fill behind a pane's content, for a pane whose InsetFrame is drawn above that content (the game puts the
+-- guild window's insets at frame levels 100 and 200, over the rows, for their border): a frame of its own one
+-- level below the pane, so under the rows and the column headers, filling the inset's rectangle. The inset
+-- itself then keeps only its border.
+local function insetFill(pane, inset)
+  if not vgInsetFill[inset] then
+    vgInsetFill[inset] = CreateFrame("Frame", nil, pane)
+    vgInsetFill[inset]:SetAllPoints(inset)
+    vgInsetFill[inset]:SetFrameLevel(math.max(0, pane:GetFrameLevel() - 1))
+  end
+  T.Panel(vgInsetFill[inset], { inset = true, noSheen = true, noBorder = true })
+end
+
+-- One pane in the theme: its art faded and an inset panel behind it (the fill under its content and the border on
+-- its InsetFrame when it has one, else the whole panel on the pane itself).
 local function dressPane(pane)
   if type(pane) ~= "table" or not pane.GetRegions then return end
   fadeFrameArt(pane)
-  local inset = type(pane.InsetFrame) == "table" and pane.InsetFrame.GetRegions and pane.InsetFrame or pane
+  local inset = type(pane.InsetFrame) == "table" and pane.InsetFrame.GetRegions and pane.InsetFrame
+  if not inset then return T.Panel(pane, { inset = true, noSheen = true }) end
   fadeFrameArt(inset)
-  T.Panel(inset, { inset = true, noSheen = true })
+  insetFill(pane, inset)
+  T.Panel(inset, { inset = true, noBg = true })
 end
 
 -- Guild roster: the game lays out its columns from tables local to Blizzard_Communities (GUILD_COLUMN_INFO), so

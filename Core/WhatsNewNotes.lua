@@ -28,6 +28,7 @@ ns.WHATS_NEW = {
     } },
     { label = "Profiles", items = {
       { text = "If the game loses your saved settings, Vanguard says so and offers to restore them from a backup it keeps." },
+      { text = "Presets: Vanguard's Healer, Damage and Tank, and any an addon offers, apply from the Profiles page (or /vg preset) after a question and a backup. Addons can also open the options window on a page.", page = "profiles", row = "Apply Healer" },
       { text = "A profile can be exported in parts, such as layout only or one module, and imported without touching the rest.", page = "profiles", row = "Choose what to export" },
     } },
     { label = "Moving frames", items = {
@@ -35,6 +36,9 @@ ns.WHATS_NEW = {
     } },
     { module = "QuestGuide", label = "Quest guidance", items = {
       { text = "Quest-start pins on the world map, from the game's own quest data. Shift-click a quest in the tracker to point the arrow at its next step.", page = "quests", row = "Quest-start pins on the world map" },
+    } },
+    { module = "CraftQueue", label = "Craft queue", items = {
+      { text = "A craft queue for your professions (/vg craft): queue the recipe on display, open the next one, raise Keep stocked to fit, see profession cooldowns across your characters and rank the recipes that pay best. Nothing is crafted or bought for you.", page = "more", row = "Craft queue, profession cooldowns and recipe ranking (/vg craft)", off = true },
     } },
     { module = "GroupBoard", label = "Group board", items = {
       { text = "A group board (/vg lfg) lists looking-for-more and looking-for-group posts from chat by dungeon, role and level. A click opens a whisper you send yourself.", page = "more", row = "Open the group board" },

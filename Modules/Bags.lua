@@ -185,11 +185,39 @@ end
 -- The game's backpack button in the bag window's top-right corner, when it shows there: the client
 -- parents its GamepadBagBar (Blizzard_MainMenuBarBagButtons) to the window at the corner and, with no
 -- gamepad, leaves that bar's backpack button showing.
-local function backpackButton(frame)
+-- The gamepad bar's backpack button and its bar, where the client has them.
+local function gamepadBackpack()
   local bar = _G.GamepadBagBar
   local button = type(bar) == "table" and bar.BackpackButton
-  if type(button) ~= "table" or bar:GetParent() ~= frame then return nil end
+  if type(button) == "table" then return button, bar end
+end
+
+-- That button when it shows on the bag window.
+local function backpackButton(frame)
+  local button, bar = gamepadBackpack()
+  if not button or bar:GetParent() ~= frame then return nil end
   return bar:IsShown() and button:IsShown() and button or nil
+end
+
+-- Whether the game's gamepad interface is on (InputUtil, where the client has it).
+local function gamepadUI()
+  return type(InputUtil) == "table" and type(InputUtil.IsGamepadUIEnabled) == "function" and InputUtil.IsGamepadUIEnabled() == true
+end
+
+-- Hides the gamepad bar's backpack button while the gamepad interface is off.
+local function hideIdleBackpack(button)
+  if not gamepadUI() then button:Hide() end
+end
+
+-- The gamepad bar's backpack button, kept hidden without a gamepad (as its other bag buttons are): the client
+-- leaves it showing in the bag window's top-right corner, over the search row, where it covered Sort. The bag
+-- bar beside the menu has the same backpack. Hidden again whenever it shows (OnShow catches Show and SetShown
+-- alike); with a gamepad it is the game's.
+local function hideGamepadBackpack()
+  local button = gamepadBackpack()
+  if not button then return end
+  hideIdleBackpack(button)
+  button:HookScript("OnShow", ns.Guard("backpack button shown", hideIdleBackpack))
 end
 
 -- The room Sort leaves at the window's right edge: the padding, or the game's backpack button and the
@@ -227,6 +255,7 @@ function BG.AddSort(frame)
   placeSort(frame)
   BG.sort:SetScript("OnClick", ns.Guard("click sort bags", function() sort() end))
   hideGameSort()
+  hideGamepadBackpack()
   watchSearchRow(frame)
 end
 

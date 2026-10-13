@@ -88,6 +88,7 @@
       "a damaged account file: a profile that isn't a table, or a name that isn't a name, is dropped at load",
       "the account file's version is read and upgraded"
     ],
+    "scripts/tests/craftqueue.test.mjs": [],
     "scripts/tests/data.test.mjs": [],
     "scripts/tests/docks.test.mjs": [],
     "scripts/tests/errorrail.test.mjs": [],
