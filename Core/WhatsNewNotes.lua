@@ -12,7 +12,7 @@ local ADDON, ns = ...
 ns.WHATS_NEW = {
   { version = "0.6.0", groups = {
     { module = "CooldownGaps", label = "Cooldown gaps", items = {
-      { text = "A new row of icons for what the game's Cooldown Manager misses: on-use trinkets, items you choose with /vg gaps add, your pet's abilities and totems.", page = "tools", row = "Cooldown gaps", off = true },
+      { text = "A new row of icons for what the game's Cooldown Manager misses: on-use trinkets, items and spells you choose with /vg gaps add and /vg gaps spell add, your pet's abilities and totems; a switch also draws the Cooldown Manager's essential and utility cooldowns there in the Vanguard look.", page = "tools", row = "Cooldown gaps", off = true },
     } },
     { module = "SpellRanks", label = "Spell ranks", items = {
       { text = "Chat can say when a bar button holds an older rank of a spell you know better; /vg ranks lists them and /vg ranks swap puts the newest rank there, out of combat.", page = "town", row = "Notice older spell ranks on bar buttons (/vg ranks)", off = true },
@@ -76,6 +76,9 @@ ns.WHATS_NEW = {
     } },
     { module = "FightHistory", label = "Fight history", items = {
       { text = "/vg recap shows the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, and sends them to a channel on request. A recap in your own chat after each fight is off until you switch it on.", page = "tools", row = "Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)", off = true },
+    } },
+    { module = "Meter", label = "Vanguard meter", items = {
+      { text = "A damage and healing meter in the Vanguard look (/vg meter): the top lines of the game's own meter as class-colored bars, per second, in combat too. Off until you switch it on; the game's own meter stays until you turn it off in the game's settings.", page = "tools", row = "Vanguard's own damage and healing meter: the top lines of the game's meter (/vg meter)", off = true },
     } },
     { module = "Errands", label = "Errands", items = {
       { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "town", row = "Boat and zeppelin timer (reload)", off = true },
