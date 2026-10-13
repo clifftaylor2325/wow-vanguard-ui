@@ -607,7 +607,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
     "general|General|10|31", "modules|Modules|20|61", "unitframes|Unit frames|30|23", "raid|Raid frames|40|21",
-    "actionbars|Action bars|60|73", "quests|Quests|70|19", "more|Bars, map, chat|80|166", "profiles|Profiles|90|22",
+    "actionbars|Action bars|60|73", "quests|Quests|70|19", "more|Bars, map, chat|80|168", "profiles|Profiles|90|22",
     "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|70|12",
     "situations|Situations|85|16", "clickcast|Click casting|46|11",
   ]);

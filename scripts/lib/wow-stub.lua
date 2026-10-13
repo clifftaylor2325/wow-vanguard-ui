@@ -509,6 +509,8 @@ end
 
 -- Strata and scroll child.
 function methods:SetFrameStrata(s) self.__strata = s end
+-- Records whether a frame is drawn into its own buffer.
+function methods:SetIsFrameBuffer(on) self.__frameBuffer = on end
 -- The scroll frame each scroll child belongs to (the layout asks for it often).
 stub.scrollOwners = setmetatable({}, { __mode = "k" })
 -- Sets a scroll frame's child and records the owner.
