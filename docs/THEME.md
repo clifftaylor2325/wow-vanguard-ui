@@ -69,7 +69,7 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | | `channel` | `4fc27a` | A channel. |
 | | `shielded` | `8b9099` | A cast you cannot interrupt. |
 | Healing | `heal` | `4fc27a` at 0.45 | Incoming heals over a health bar. |
-| | `shield` | `ffffff` at 0.35 | Absorb shields (over the Stripes texture). |
+| | `shield` | `ffffff` at 0.35 | Absorb shields (over the Stripes texture: one 8 px diagonal tile, repeated both ways so the seams are exact and the stripes don't shimmer, #257). |
 | Action buttons | `outOfRange` / `noPower` / `unusable` | `e64d4d` / `6680ff` / `666666` | Icon tints. |
 | XP and reputation | `xp` / `rested` | `940090` / `0063e0` at 0.5 | The XP bar and its rested overlay. |
 | | `repHostile` / `repUnfriendly` / `repNeutral` / `repFriendly` | `cc2121` / `bf4500` / `e6b300` / `00991a` | Reputation bar by standing. |
