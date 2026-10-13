@@ -216,6 +216,8 @@ npm run preview   # preview/*.png: the default layout and the options window (ne
 
 **Windows tools:** `npm run verify` needs only Node. For `npm run lint`, put `luacheck.exe` from the [luacheck releases](https://github.com/lunarmodules/luacheck/releases) on your PATH. CI also runs a Lua 5.1 syntax check (`luac5.1 -p`); you don't need it locally.
 
+**Working with an agent:** `.claude/settings.json` runs `scripts/agent-check.mjs` after every file edit Claude Code makes, so a broken rule (a function over 10 lines, a missing comment, a colour outside the theme, an unguarded hook) is reported at edit time rather than at push. `.claude/skills/` holds a playbook per recurring task (adding a module, a setting, a `/vg` command, media or a client API to the harness; polishing a module; fixing a bug or a visual issue; writing a harness scenario; readying a PR; cutting a release; triaging what the game reports; the weekly PR sweep); `docs/PATTERNS.md` shows the canonical shape of each pattern the rules ask for.
+
 **Pre-push hook:** `npm install` points git at `.githooks/`, whose pre-push hook runs `npm run test:quick`, `npm run quality` and the TOC check, then luacheck and the Lua 5.1 syntax check when they are installed (it names what it skipped; on Windows it always skips the syntax check). CI stays the gate; `git push --no-verify` skips the hook once.
 
 **Release:** bump `## Version` in `Vanguard.toc` and merge, then run the `release` workflow from the Actions tab on `main` (it tags `v<version>`), or push a matching tag. It runs the whole suite with the coverage floor first, then publishes a GitHub release with the zip.
