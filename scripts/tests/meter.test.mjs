@@ -44,7 +44,7 @@ it("each line is a class-colored bar scaled to the top line, with a name and a s
     { name = 'Bo', classFilename = 'NOPE', amountPerSecond = 6150, isLocalPlayer = false } }`);
   addon.advance(1);
   const seen = rows(addon);
-  expect(seen.slice(0, 3), "two lines then an empty row").toEqual([[true, "Tess", "12.3K", 12300, 12300], [true, "Bo", "6.2K", 6150, 12300], [false, false, false, false, false]]);
+  expect(seen.slice(0, 3), "two lines then an empty row").toEqual([[true, "Tess", "12.3K", 12300, 12300], [true, "Bo", "6.15K", 6150, 12300], [false, false, false, false, false]]);
   const warrior = addon.eval("return Vanguard_Meter.rows[1].__barColor");
   expect(warrior.slice(0, 3).map((c) => Math.round(c * 100)), "a known class in its color").toEqual([78, 61, 43]);
   expect(isTok(addon, addon.eval("return Vanguard_Meter.rows[2].__barColor"), "accent"), "the accent for an unknown class").toBe(true);
@@ -57,6 +57,12 @@ it("the figures follow the fight, in combat too, and a fight with no damage stil
   setLines(addon, "{ { name = 'Tess', amountPerSecond = 0 } }");
   addon.advance(1);
   expect(rows(addon)[0].slice(3), "a zero top line scales to 1").toEqual([0, 1]);
+  expect(rows(addon)[0][2], "zero shows as 0").toBe("0");
+  setLines(addon, "{ { name = 'Tess', amountPerSecond = 2.5263157894737 }, { name = 'Bo', amountPerSecond = 1500000 } }");
+  addon.advance(1);
+  expect(rows(addon).slice(0, 2).map((r) => r[2]), "rounded to two decimals, no trailing zeros").toEqual(["2.53", "1.5M"]);
+  setLines(addon, "{ { name = 'Tess', amountPerSecond = 0 } }");
+  addon.advance(1);
   addon.world.combat(true);
   setLines(addon, "{ { name = 'Tess', amountPerSecond = 400 } }");
   addon.advance(1);
@@ -128,9 +134,9 @@ it("the lines setting limits the rows, and the switch and the options apply at o
   addon.eval('__click("Windows and tools")');
   expect(addon.eval('return __click("Vanguard\'s own damage and healing meter")'), "the switch is on the meter's section").toBe(true);
   expect(addon.frame("Vanguard_Meter").visible, "on at once").toBe(true);
-  expect(rows(addon).filter((r) => r[0]).length, "five lines by default").toBe(5);
+  expect(rows(addon).filter((r) => r[0]).length, "every line the fight has, up to eight by default").toBe(6);
   addon.eval("ns.GetModule('Meter').settings.rows = 3 ns.GetModule('Meter').Paint()");
-  expect([rows(addon).filter((r) => r[0]).length, addon.eval("return Vanguard_Meter:GetHeight()")], "three lines, a shorter panel").toEqual([3, 16 + 3 * 17 + 1]);
+  expect([rows(addon).filter((r) => r[0]).length, addon.eval("return Vanguard_Meter:GetHeight()")], "three lines, a shorter panel").toEqual([3, 18 + 3 * 19 + 1]);
 });
 
 it("a line that is hidden or not a table is skipped, and a switched-off meter reads nothing", () => {

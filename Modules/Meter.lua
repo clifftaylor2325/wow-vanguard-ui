@@ -10,15 +10,15 @@ local ADDON, ns = ...
 
 local T, V = ns.Theme, ns.Visibility
 
-local MT = ns.Module("Meter", { defaults = { on = false, kind = "Dps", rows = 5, visibility = "always", showWhen = {} } })
+local MT = ns.Module("Meter", { defaults = { on = false, kind = "Dps", rows = 8, visibility = "always", showWhen = {} } })
 
 -- The panel's width, a row's height and the title's, the gap between rows (UI units) and the
 -- seconds between reads.
-MT.WIDTH, MT.ROW, MT.HEAD, MT.GAP, MT.EVERY = 240, 16, 16, 1, 0.5
+MT.WIDTH, MT.ROW, MT.HEAD, MT.GAP, MT.EVERY = 300, 18, 18, 1, 0.5
 -- The kinds of meter shown: the Enum.DamageMeterType key and the title.
 MT.KINDS = { Dps = "Damage per second", Hps = "Healing per second" }
 -- The most rows the setting allows.
-MT.MAXROWS = 8
+MT.MAXROWS = 10
 
 -- Reading ------------------------------------------------------------------------------------
 
@@ -68,11 +68,24 @@ local function lineColor(src)
   return T.RGB("accent")
 end
 
--- A figure as short text ("12.3K"), hidden or not; "" where the client refuses.
+-- A number rounded to two decimals with the trailing zeros dropped ("2.53", "12.3", "400").
+local function trim(n)
+  return (string.format("%.2f", n):gsub("%.?0+$", ""))
+end
+
+-- A plain number as short text: "12.3K", "1.5M", or the number itself below a thousand.
+local function plainShort(n)
+  if n >= 1e6 then return trim(n / 1e6) .. "M" end
+  if n >= 1e3 then return trim(n / 1e3) .. "K" end
+  return trim(n)
+end
+
+-- A figure as short text ("12.3K"): a plain one formatted here, a hidden one by the game; "" where the client refuses.
 local function short(v)
-  local ok, text = pcall(AbbreviateNumbers, figure(v))
-  if not ok then return "" end
-  return text
+  local n = figure(v)
+  if not ns.IsSecret(n) then return plainShort(n) end
+  local ok, text = pcall(AbbreviateNumbers, n)
+  return ok and text or ""
 end
 
 -- True when a line is yours (a hidden answer counts as no).
@@ -182,7 +195,7 @@ local function addRow(f, i)
   row:SetPoint("TOPLEFT", f, "TOPLEFT", MT.GAP, -(MT.HEAD + (i - 1) * (MT.ROW + MT.GAP)))
   T.HudPanel(row, { inset = true })
   rowText(row, function(fs) fs:SetPoint("LEFT", row, "LEFT", 3, 0) fs:SetText(tostring(i)) end)
-  row.name = rowText(row, function(fs) fs:SetPoint("LEFT", row, "LEFT", 18, 0) fs:SetPoint("RIGHT", row, "RIGHT", -48, 0) fs:SetJustifyH("LEFT") end)
+  row.name = rowText(row, function(fs) fs:SetPoint("LEFT", row, "LEFT", 18, 0) fs:SetPoint("RIGHT", row, "RIGHT", -52, 0) fs:SetJustifyH("LEFT") end)
   row.value = rowText(row, function(fs) fs:SetPoint("RIGHT", row, "RIGHT", -3, 0) end)
   row:Hide()
   return row
@@ -219,13 +232,13 @@ local function watchVisibility(f)
   MT.ApplyVisibility()
 end
 
--- The movable panel, on the spot the game's meter takes (this one replaces it). Built when first needed, so an
--- unused meter has no mover.
+-- The movable panel, left of the bags and menu bar so the tooltip corner above them stays clear. Built when
+-- first needed, so an unused meter has no mover.
 function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_Meter", UIParent))
   MT.frame = f
   f:SetSize(MT.WIDTH, MT.HEAD)
-  ns.Mover(f, "meter", "Vanguard meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 118 })
+  ns.Mover(f, "meter", "Vanguard meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -340, 20 })
   addTitle(f)
   addEmpty(f)
   f.rows = {}
