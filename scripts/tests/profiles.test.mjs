@@ -27,7 +27,6 @@ it("profile strings", () => {
   const code = addon.eval(`local S = ns.Serialize local body = S.Base64("os.exit()") return "VG1:profile:" .. S.Checksum(body) .. ":" .. body`);
   expect(/can't be read/.test(decode(JSON.stringify(code)).err), "text that isn't settings (e.g. code) is refused, never run").toBeTruthy();
 });
-
 it("profile strings keep big whole numbers", () => {
   const r = loggedIn().eval(`local S = ns.Serialize
     local realFormat = string.format
@@ -44,7 +43,6 @@ it("profile strings keep big whole numbers", () => {
   expect(r.raw, "whole numbers are written as plain digits").toBe('{["big"]=1099511627776,["half"]=1099511627776.5,["neg"]=-1099511627776,["one"]=1}');
   expect([r.big, r.neg, r.half, r.one], "and read back exactly").toEqual([1099511627776, -1099511627776, 1099511627776.5, 1]);
 });
-
 it("export and import", () => {
   const src = loggedIn();
   src.slash("accent ff8000");
@@ -73,7 +71,6 @@ it("export and import", () => {
   dst.eval('Vanguard_TextEdit:SetText("garbage"); Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)');
   expect(chatHas(dst, /Import failed: not a Vanguard profile string/), "a bad paste says why").toBeTruthy();
 });
-
 it("profile management", () => {
   const addon = loggedIn();
   addon.slash("profile new Raid");
@@ -92,7 +89,6 @@ it("profile management", () => {
   addon.slash("profile bad/name");
   expect(chatHas(addon, /1-32 letters/), "profile names are checked").toBeTruthy();
 });
-
 it("spec profiles", () => {
   const env = "GetSpecialization = function() return __spec end __spec = 2";
   const addon = loggedIn(env);
@@ -110,7 +106,6 @@ it("spec profiles", () => {
   addon.slash("spec off");
   expect(addon.eval("return VanguardCharDB.specProfiles[2]") === null, "/vg spec off stops switching").toBeTruthy();
 });
-
 it("profile copy, empty export and a taken import name", () => {
   const addon = loggedIn();
   // TEST-ONLY profile name that was never created.
@@ -129,7 +124,6 @@ it("profile copy, empty export and a taken import name", () => {
   `);
   expect(/Imported 2/.test(imported) && addon.eval("return VanguardCharDB.pendingProfile") === "Imported 2", "a second whole-profile import takes the next free name").toBeTruthy();
 });
-
 it("a profile string with an unterminated quote", () => {
   const addon = loggedIn();
   const err = addon.eval(`
@@ -142,10 +136,8 @@ it("a profile string with an unterminated quote", () => {
   `);
   expect(/can't be read/.test(err), "an unterminated string inside a profile string is refused").toBeTruthy();
 });
-
 // TEST-ONLY saved variables: Raid has its own accent, Default does not; a switch to Raid was staged last session.
 const STAGED = 'VanguardDB = { version = 1, profiles = { Default = {}, Raid = { theme = { accent = { 0, 1, 0 } } } } }\nVanguardCharDB = { profile = "Default", pendingProfile = "Raid" }';
-
 it("a staged profile switch applies at the next load, and until then the running profile is the one edited", () => {
   const addon = loggedIn();
   addon.slash("profile new Raid");
@@ -167,13 +159,11 @@ it("a staged profile switch applies at the next load, and until then the running
     .toEqual(["Raid", true, "Raid", "Raid", 1]);
   expect(next.eval("return ns.Settings('theme') == VanguardDB.profiles.Raid.theme"), "the settings cache hands out the new profile's tables").toBe(true);
 });
-
 it("a staged profile that no longer exists is dropped when it would be applied", () => {
   const addon = createAddon({ savedVariables: 'VanguardDB = { version = 1, profiles = { Default = {} } }\nVanguardCharDB = { profile = "Default", pendingProfile = "Gone" }' });
   addon.login();
   expect(addon.eval("return { ns.ProfileName(), VanguardDB.profiles.Gone == nil, VanguardCharDB.pendingProfile == nil }"), "the character keeps its profile, and the deleted one isn't made again empty").toEqual(["Default", true, true]);
 });
-
 it("the spec change events stage the spec's profile, whatever they pass", () => {
   const env = "GetSpecialization = function() return __spec end __spec = 2";
   const addon = createAddon({ savedVariables: 'VanguardDB = { version = 1, profiles = { Default = {}, Healer = {} } }\nVanguardCharDB = { profile = "Default", specProfiles = { [2] = "Healer" } }' });
@@ -189,7 +179,6 @@ it("the spec change events stage the spec's profile, whatever they pass", () => 
   addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 2, 1);
   expect(addon.eval("return VanguardCharDB.pendingProfile"), "changing back to the running profile's spec takes the switch back").toBe(null);
 });
-
 it("a frame's scale and opacity travel with the profile: export, import and a staged switch", () => {
   const src = loggedIn(UI_ENV);
   src.eval('ns.SetMoverScale("minimap", 1.25) ns.SetMoverAlpha("minimap", 0.75)');
@@ -203,13 +192,11 @@ it("a frame's scale and opacity travel with the profile: export, import and a st
   next.login();
   expect(next.eval("local f = ns.MoverFrame('minimap') return { f:GetScale(), f:GetAlpha() }"), "the staged profile's scale and opacity apply at the next load").toEqual([1.5, 0.5]);
 });
-
 // Pastes a string into /vg import and clicks Import.
 const importText = (addon, text) => {
   addon.slash("import");
   addon.eval(`Vanguard_TextEdit:SetText(${JSON.stringify(text)}) Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
 };
-
 it("profile strings carry the UI scale and screen; importing one asks whether to use its UI scale", () => {
   const src = loggedIn("__wfgStub.setScreen(2560, 1440) UIParent:SetScale(0.7)");
   const text = src.eval("return ns.ExportProfile()");
@@ -230,7 +217,6 @@ it("profile strings carry the UI scale and screen; importing one asks whether to
   expect(dst.eval("return { Vanguard_Question:IsShown(), Vanguard_Reload:IsShown(), VanguardDB.profiles['Imported 2'].display == nil }"), "a string with no usable UI scale goes straight to the reload").toEqual([false, true, true]);
   expect(dst.eval("return ns.DisplayQuestion({ uiScale = 0.8 })"), "a block with no screen size leaves it out").toBe("This profile was made at UI scale 80% (yours: 100%). Use its UI scale?");
 });
-
 // TEST-ONLY Edit Mode: its manager lists the presets, then the account's layouts; the
 // layouts load when UpdateLayoutInfo first runs; C_EditMode switches and reloads them.
 const EDIT_MODE_ENV = `
@@ -242,7 +228,6 @@ const EDIT_MODE_ENV = `
   function EditModeManagerFrame:UpdateLayoutInfo() __loaded = true end
   C_EditMode = { SetActiveLayout = function(i) __active = i EditModeManagerFrame:UpdateLayoutInfo() end }
 `;
-
 // A character logging in with these saved variables and Edit Mode; Lua in before runs before login.
 function editModeLogin(saved, before = "") {
   const addon = createAddon({ savedVariables: `VanguardDB = { version = 1, setupDone = true, profiles = { Default = {}, Raid = { editMode = { layout = "TEST-ONLY Raid" } } } }\n${saved}` });
@@ -250,10 +235,8 @@ function editModeLogin(saved, before = "") {
   addon.login();
   return addon;
 }
-
 // The layout in use, the one the running profile remembers, and the profile this character last ran.
 const layouts = (addon) => addon.eval("return { ns.EditModeLayout() or 'none', ns.Profile().editMode and ns.Profile().editMode.layout or 'none', VanguardCharDB.editModeProfile or 'none' }");
-
 it("the Edit Mode layout goes with the profile: remembered, exported, and switched to when the profile loads", () => {
   const fresh = editModeLogin('VanguardCharDB = { profile = "Default" }');
   expect(layouts(fresh), "before Edit Mode has its layouts, nothing is read").toEqual(["none", "none", "none"]);
@@ -269,7 +252,6 @@ it("the Edit Mode layout goes with the profile: remembered, exported, and switch
   const shared = editModeLogin('VanguardCharDB = { profile = "Raid", editModeProfile = "Raid" }', "__loaded = true");
   expect(layouts(shared), "the profile it ran last time switches nothing (another character may share it); layouts loaded before login are read at login").toEqual(["Modern", "Modern", "Raid"]);
 });
-
 it("the Edit Mode layout: one this account lacks, combat, and a client without Edit Mode", () => {
   const missing = editModeLogin('VanguardCharDB = { profile = "Raid", editModeProfile = "Default" }', '__layouts[3] = nil');
   missing.eval("EditModeManagerFrame:UpdateLayoutInfo()");
@@ -288,7 +270,6 @@ it("the Edit Mode layout: one this account lacks, combat, and a client without E
   const unhooked = editModeLogin('VanguardCharDB = { profile = "Raid", editModeProfile = "Default" }', "hooksecurefunc = nil __loaded = true");
   expect(layouts(unhooked), "without hooks nothing is followed").toEqual(["Modern", "TEST-ONLY Raid", "Default"]);
 });
-
 it("strings and profiles from before the rename (ForeverUI 0.3.0)", () => {
   const addon = loggedIn();
   const old = addon.eval(`
@@ -303,7 +284,6 @@ it("strings and profiles from before the rename (ForeverUI 0.3.0)", () => {
   expect(renamed.eval("return ns.Theme.Settings().barTexture"), "the old bar style name reads as Vanguard's").toBe("vanguard");
   expect(renamed.eval("return ns.Theme.BarTexture() == ns.Theme.Texture('Bar')"), "and draws the bundled bar").toBe(true);
 });
-
 it("a profile deleted on another character falls back to Default, not back empty", () => {
   // TEST-ONLY saved files: this character last used Raid, which another character has since deleted.
   const gone = createAddon({ savedVariables: 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = { theme = { accent = { 0, 1, 0 } } } } }\nVanguardCharDB = { profile = "Raid" }' });
@@ -317,7 +297,6 @@ it("a profile deleted on another character falls back to Default, not back empty
   expect(staged.eval("return { VanguardCharDB.profile, VanguardCharDB.pendingProfile == nil }"), "the staged switch is dropped and the character keeps its profile").toEqual(["Tank", true]);
   expect(staged.eval("return VanguardDB.profiles.Healer"), "without making the deleted profile again").toBe(null);
 });
-
 it("Copy here while a switch waits copies into the profile used after the reload", () => {
   const addon = loggedIn();
   addon.slash("profile new Raid");
@@ -335,14 +314,12 @@ it("Copy here while a switch waits copies into the profile used after the reload
   expect(addon.eval('return ns.CopyProfile("Healer")'), "ns.CopyProfile returns the profile it copied into").toBe("Raid");
   expect(addon.eval("return { VanguardDB.profiles.Raid.theme.accent[3], VanguardDB.profiles.Default.theme.accent[1] }"), "Copy here does the same").toEqual([1, 1]);
 });
-
 // A string made in Lua: ns.Serialize.Encode(scope, <Lua table>); `fui` gives it ForeverUI's FUI1 prefix.
 const encoded = (addon, scope, lua, fui = false) => addon.eval(`local text = ns.Serialize.Encode("${scope}", ${lua}) return ${fui ? '(text:gsub("^VG1:", "FUI1:"))' : "text"}`);
 // ns.ImportProfile on a string: { m = what it says, notes, reload } or { why = why not }.
 const imports = (addon, text) => addon.eval(`local m, r = ns.ImportProfile(${JSON.stringify(text)})
   if not m then return { why = r } end
   return { m = m, notes = r.notes, reload = r.reload }`);
-
 it("profile strings carry their format and version, and an older string is upgraded before anything is saved", () => {
   const addon = loggedIn();
   expect(addon.eval("local _, d = ns.Serialize.Decode(ns.ExportProfile()) return { d.format, type(d.addonVersion) }"), "every string says its format and the version that made it").toEqual([2, "string"]);
@@ -361,7 +338,6 @@ it("profile strings carry their format and version, and an older string is upgra
   expect(imports(addon, encoded(addon, "talents", '{ class = "MAGE" }')).why, "another kind of Vanguard string is named").toBe("it's a talents string, not a profile string");
   expect(imports(addon, "garbage").why, "and the old reasons stand").toBe("not a Vanguard profile string");
 });
-
 it("a partial string merges into the profile: what it carries wins, what it doesn't keeps its local value", () => {
   const src = loggedIn();
   src.eval('ns.Profile().positions = { uf_player = { point = "TOP", relPoint = "TOP", x = 1, y = -2 } } ns.Theme.Settings().reduceMotion = true');
@@ -382,7 +358,6 @@ it("a partial string merges into the profile: what it carries wins, what it does
   expect(dst.eval("local o = ns.Settings('Situations').overrides return { o.raid.settings == nil, o.raid.positions.minimap.alpha, o.party.positions.minimap.scale }"), "a situation's override is replaced whole; the others stay").toEqual([true, 0.5, 2]);
   expect(imports(dst, encoded(dst, "parts", "{ format = 2 }")).m, "a string that names no parts still says where it went").toBe("Imported its settings into profile Default.");
 });
-
 it("export with Include parts: /vg export <part ...>, and the export panel's switches", () => {
   const addon = loggedIn();
   addon.eval('ns.Profile().positions = { uf_player = { point = "TOP", relPoint = "TOP", x = 1, y = -2 } }');
@@ -429,7 +404,6 @@ it("export with Include parts: /vg export <part ...>, and the export panel's swi
   click("Vanguard_ExportDialog.close");
   expect(panel().shown, "Close closes it").toBe(false);
 });
-
 it("every import backs up the profile in use first, into one rolling backup profile", () => {
   const addon = loggedIn();
   addon.eval("ns.Theme.Settings().reduceMotion = true");
@@ -448,7 +422,6 @@ it("every import backs up the profile in use first, into one rolling backup prof
   expect(backupOf(`TEST-ONLY ${"x".repeat(22)}`), "a long name is cut to fit 32 characters").toBe(`TEST-ONLY ${"x".repeat(15)} backup`);
   expect(backupOf(`TEST-ONLY ${"x".repeat(15)} backup`), "and the backup is never the profile in use").toBe(`TEST-ONLY ${"x".repeat(13)} backup 2`);
 });
-
 it("importing a string that matches a profile here uses that profile instead of making a copy", () => {
   const addon = loggedIn();
   const own = addon.eval("return ns.ExportProfile()");
@@ -461,7 +434,6 @@ it("importing a string that matches a profile here uses that profile instead of 
   expect(imports(addon, own), "a string matching another profile switches to it").toMatchObject({ m: "This string matches profile Raid; this character will use it after a reload.", reload: true });
   expect(addon.eval("return { VanguardCharDB.pendingProfile, VanguardDB.profiles.Imported == nil }")).toEqual(["Raid", true]);
 });
-
 it("an import names each font and bar texture this client doesn't have, and what it draws instead", () => {
   const addon = loggedIn('LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Shared", [[Interface\\AddOns\\TestOnly\\Font.ttf]])');
   // TEST-ONLY theme naming a font and a bar texture no addon shares here.
@@ -475,10 +447,8 @@ it("an import names each font and bar texture this client doesn't have, and what
   const found = (lua) => addon.eval(`return #ns.MissingMedia({ theme = ${lua} })`);
   expect([found('{ font = "TEST-ONLY Shared", barTexture = "soft" }'), found('{ font = "client" }'), found('{ font = "" }'), found('{ font = [[Fonts\\TEST-ONLY.ttf]] }'), addon.eval("return #ns.MissingMedia({})")], "a shared font, Vanguard's bars, the game's font and a font path are found").toEqual([0, 0, 0, 0, 0]);
 });
-
 // A TEST-ONLY profile big enough to take many frames at a small budget: its string.
 const BIG = `local t = {} for i = 1, 400 do t["TEST-ONLY key " .. i] = i end ns.Profile().TestOnlyBig = t return ns.ExportProfile()`;
-
 it("a large string is imported across frames, with its progress in the box's title", () => {
   const text = loggedIn().eval(BIG);
   const addon = loggedIn();
@@ -502,7 +472,6 @@ it("a large string is imported across frames, with its progress in the box's tit
   expect(seen.every((p, i) => i === 0 || p >= seen[i - 1]), `the percentage only goes up (${seen.join(" ")})`).toBe(true);
   expect(addon.eval("return { VanguardCharDB.pendingProfile, VanguardDB.profiles.Imported.TestOnlyBig['TEST-ONLY key 400'], Vanguard_TextDialog:IsShown() }"), "then it finishes like any import").toEqual(["Imported", 400, false]);
 });
-
 it("a large string that fails part way says why, and a failing step ends the import", () => {
   const text = loggedIn().eval(BIG);
   const addon = loggedIn();
@@ -525,7 +494,6 @@ it("a large string that fails part way says why, and a failing step ends the imp
   expect(sync[1], "without the client's timer every step runs at once").toBe("profile");
   expect(sync[0]).toBeGreaterThan(5);
 });
-
 // Settings-loss guard (Core/SettingsGuard.lua) -----------------------------------------------------
 
 // Logs out (the guard leaves its stamps and backup), then logs in again with `account` and `char` Lua
@@ -538,118 +506,3 @@ function relog(addon, { account, char, extra = CLICK_LUA } = {}) {
   next.login();
   return next;
 }
-
-// Answers the yes/no question: its yes button, or No.
-const answer = (addon, yes) => addon.eval(`local b = Vanguard_Question.${yes ? "yes" : "no"} b:GetScript("OnClick")(b, "LeftButton")`);
-// The question's text while it shows, else null.
-const question = (addon) => addon.eval("return Vanguard_Question and Vanguard_Question:IsShown() and Vanguard_Question.title:GetText() or nil");
-// Whether setup is showing.
-const setupShown = (addon) => addon.eval("return Vanguard_Setup ~= nil and Vanguard_Setup:IsShown()");
-
-it("settings-loss guard: logout leaves the same stamp in both files, the character's profile and a backup string", () => {
-  const addon = loggedIn(CLICK_LUA);
-  addon.fire("PLAYER_LOGOUT");
-  const sv = addon.savedVariables();
-  expect(typeof sv.char.guard.stamp, "a stamp in this character's file").toBe("number");
-  expect(sv.account.guard.stamp, "the same stamp in the account file").toBe(sv.char.guard.stamp);
-  expect(sv.account.guard.chars["Tester-ForeverTest"], "the account notes the profile each character uses").toEqual({ profile: "Default", stamp: sv.char.guard.stamp });
-  expect(sv.char.guard.profile, "the backup names its profile").toBe("Default");
-  expect(sv.char.guard.backup.startsWith("VG1:profile:"), "and holds it as a whole-profile string").toBe(true);
-  const unnamed = loggedIn("UnitName = function() return nil end");
-  unnamed.eval("ns.SettingsGuard.Save()");
-  expect(unnamed.eval("return { next(VanguardDB.guard.chars) == nil, type(VanguardCharDB.guard.backup) }"), "a character the client won't name gets no note, but keeps its backup").toEqual([true, "string"]);
-});
-
-it("settings-loss guard: a blank account file next to this character's stamp offers the backup, and Restore brings the profile back", () => {
-  const first = loggedIn(CLICK_LUA);
-  first.slash("accent arcane");
-  first.eval('ns.SetMoverPoint("infostrip", "TOPLEFT", "TOPLEFT", 40, -60)');
-  const lost = relog(first, { account: "nil" });
-  expect(chatHas(lost, /saved settings didn't load this session \(the account file came back blank\)\. This character kept a backup\.$/), "chat says so").toBe(true);
-  expect(question(lost), "a question offers the backup").toBe("Vanguard's saved settings didn't load. Restore profile Default from this character's backup?");
-  expect(setupShown(lost), "setup waits: it's not a first run").toBe(false);
-  lost.eval('ns.Options.Show("general")');
-  expect(lost.texts("Vanguard's saved settings didn't load this session.").length, "the General page starts with the notice").toBe(1);
-  expect(lost.eval('return __click("Restore the backup")'), "with Restore on it").toBe(true);
-  expect(lost.eval("return { VanguardDB.profiles.Default.positions.infostrip.x, VanguardDB.setupDone, VanguardCharDB.setupDone }"), "the profile is back, and setup has run").toEqual([40, true, true]);
-  expect(lost.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "the reload that applies it is offered").toBe("Restored profile Default from this character's backup. Reload the UI now to apply it?");
-  expect(lost.texts("Vanguard's saved settings didn't load this session.").length, "the notice goes").toBe(0);
-  const back = relog(lost);
-  expect(back.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1]"), "after the reload the accent is back").toBe(true);
-  expect([question(back), chatHas(back, /didn't load/)], "and nothing is offered again").toEqual([null, false]);
-});
-
-it("settings-loss guard: an account file older than this character's last session; Restore from the question", () => {
-  const first = loggedIn(CLICK_LUA);
-  first.slash("accent fel");
-  first.fire("PLAYER_LOGOUT");
-  const sv = first.savedVariables();
-  const old = { ...sv.account, guard: { stamp: sv.char.guard.stamp - 100, chars: {} }, profiles: { Default: {} } };
-  const lost = relog(first, { account: luaValue(old) });
-  expect(chatHas(lost, /the account file came back older than this character's last session/), "chat says the account file is older").toBe(true);
-  answer(lost, true);
-  expect(lost.eval("return VanguardDB.profiles.Default.theme.accent[1] == ns.Theme.PRESETS.fel[1]"), "Restore puts the newer profile back").toBe(true);
-  const same = relog(first, { account: luaValue({ ...old, guard: { stamp: sv.char.guard.stamp, chars: {} } }) });
-  expect(question(same), "an account file as new as the character's stamp is fine").toBe(null);
-});
-
-it("settings-loss guard: without a backup it offers to paste a string; Not now leaves the notice, and an unanswered loss keeps the stamps", () => {
-  const lost = relog(loggedIn(CLICK_LUA), { account: "nil", char: "{ guard = { stamp = 5 } }" });
-  expect(chatHas(lost, /Paste a profile string you exported to get them back\.$/), "chat says to paste a string").toBe(true);
-  expect(question(lost), "the question offers it").toBe("Vanguard's saved settings didn't load. Paste a profile string you exported?");
-  answer(lost, false);
-  expect(chatHas(lost, /The General and Profiles pages in \/vg can still restore them/), "Not now says where the restore still is").toBe(true);
-  lost.eval('ns.Options.Show("profiles")');
-  expect(lost.eval('return __click("Restore the backup")'), "no Restore without a backup").toBe(false);
-  expect(lost.eval('return __click("Paste a profile string")') && lost.eval("return Vanguard_TextDialog:IsShown()"), "Paste opens the import box").toBe(true);
-  lost.fire("PLAYER_LOGOUT");
-  expect(lost.eval("return { VanguardCharDB.guard.stamp, VanguardDB.guard == nil }"), "logout leaves the stamps as they were").toEqual([5, true]);
-  const fresh = relog(loggedIn(CLICK_LUA), { account: "nil", char: "{ guard = { stamp = 5 } }" });
-  fresh.eval('ns.Options.Show("profiles")');
-  expect(fresh.eval('return __click("Start fresh")') && setupShown(fresh), "Start fresh runs setup").toBe(true);
-  fresh.fire("PLAYER_LOGOUT");
-  expect(fresh.eval("return VanguardCharDB.guard.stamp ~= 5 and VanguardDB.guard.stamp == VanguardCharDB.guard.stamp"), "once answered, logout stamps both files again").toBe(true);
-});
-
-it("settings-loss guard: a pasted whole profile answers the loss at logout", () => {
-  const text = loggedIn().eval('ns.Profile().positions = { uf_player = { point = "TOP", x = 3, y = 4 } } return ns.ExportProfile()');
-  const lost = relog(loggedIn(CLICK_LUA), { account: "nil", char: "{ guard = { stamp = 5 } }" });
-  answer(lost, true);
-  lost.eval(`Vanguard_TextEdit:SetText(${JSON.stringify(text)}) Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
-  expect(lost.eval("return VanguardCharDB.pendingProfile"), "the string became a profile this character uses after the reload").toBe("Imported");
-  lost.fire("PLAYER_LOGOUT");
-  expect(lost.eval("return VanguardCharDB.guard.stamp ~= 5 and VanguardDB.guard.chars['Tester-ForeverTest'].profile"), "so logout stamps both files, noting the imported profile").toBe("Imported");
-});
-
-it("settings-loss guard: a backup that can't be read says so; a damaged guard and a name that isn't a profile name", () => {
-  const broken = relog(loggedIn(CLICK_LUA), { account: '{ guard = "TEST-ONLY" }', char: '{ guard = { stamp = 5, profile = "TEST-ONLY/bad", backup = "TEST-ONLY" } }' });
-  expect(question(broken), "a damaged account guard counts as blank; a bad name restores as Restored").toBe("Vanguard's saved settings didn't load. Restore profile Restored from this character's backup?");
-  answer(broken, true);
-  expect(chatHas(broken, /The backup can't be restored: not a Vanguard profile string\.$/), "a backup that can't be read says why").toBe(true);
-  broken.eval('VanguardDB.guard = { chars = "TEST-ONLY" } ns.SettingsGuard.lost = nil ns.SettingsGuard.Save()');
-  expect(broken.eval("return type(VanguardDB.guard.chars['Tester-ForeverTest'])"), "logout repairs a damaged list of characters").toBe("table");
-});
-
-it("settings-loss guard: this character's file came back blank, so it uses its profile again and setup stays shut", () => {
-  const first = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles.Alt = {}\n" });
-  first.slash("profile Alt");
-  const alt = relog(first);
-  const lost = relog(alt, { char: "nil" });
-  expect(lost.eval("return VanguardCharDB.pendingProfile"), "the profile the account file noted is staged").toBe("Alt");
-  expect(chatHas(lost, /it uses profile Alt again, after a reload\.$/), "chat says so").toBe(true);
-  expect(lost.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "and the reload is offered").toBe("This character used profile Alt. Reload the UI now to apply it?");
-  expect([setupShown(lost), lost.eval("return VanguardCharDB.setupDone")], "setup isn't owed again").toEqual([false, true]);
-  const def = relog(loggedIn(CLICK_LUA), { char: "nil" });
-  expect([chatHas(def, /it uses profile Default again\.$/), def.eval("return Vanguard_Reload == nil")], "on the profile it loaded with, no reload is needed").toEqual([true, true]);
-  const gone = relog(alt, { char: "nil", account: luaValue({ ...alt.savedVariables().account, profiles: { Default: {} } }) });
-  expect([gone.eval("return VanguardCharDB.pendingProfile"), chatHas(gone, /uses profile/), setupShown(gone)], "a profile deleted since is left alone").toEqual([null, false, false]);
-});
-
-it("settings-loss guard: a first run, and files saved before the guard, fire nothing", () => {
-  const first = loggedIn(CLICK_LUA, { firstRun: true });
-  expect([question(first), setupShown(first)], "a first run gets setup, not a restore").toEqual([null, true]);
-  const old = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB = { version = 2, setupDone = true, profiles = { Default = {} } }\nVanguardCharDB = { profile = 'Default' }\n" });
-  expect([question(old), chatHas(old, /didn't load/)], "files without stamps are trusted").toEqual([null, false]);
-  const newChar = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: "VanguardDB = { version = 2, setupDone = true, profiles = { Default = {} }, guard = { stamp = 5, chars = {} } }\n" });
-  expect([chatHas(newChar, /didn't load/), setupShown(newChar)], "a new character the account file doesn't know gets setup").toEqual([false, true]);
-});

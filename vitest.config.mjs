@@ -9,6 +9,10 @@ import { luaSummaryReporter } from "./scripts/lib/lua-summary-reporter.mjs";
 // and the client's own tests (scripts/lua-engine.test.mjs, a dozen loads).
 // npm test runs both; npm run coverage runs both with line coverage on,
 // which CI does after a merge (.github/workflows/full-suite.yml).
+// The lua project does not isolate its files (isolate: false): a worker keeps
+// its compiled Lua chunks and its warmed-up JIT from one file to the next, which
+// takes about half the time off a run of small files. Nothing there mocks a module or
+// changes the environment, and every case builds its own addons.
 // Vitest's own reporters stay; the extra one ends a run with the Lua
 // harness's per-area summary (scripts/lib/lua-summary-reporter.mjs). On GitHub
 // Actions, failures also become annotations on the run, and a JUnit file
@@ -54,7 +58,7 @@ export default defineConfig({
     testTimeout: process.env.CI ? 120_000 : 30_000,
     projects: [
       { extends: true, test: { name: "quick", include: ["scripts/*.test.mjs", "scripts/tests/smoke.test.mjs"], exclude: [...configDefaults.exclude, "scripts/lua-engine.test.mjs"] } },
-      { extends: true, test: { name: "lua", include: ["scripts/tests/*.test.mjs", "scripts/lua-engine.test.mjs"], exclude: [...configDefaults.exclude, "scripts/tests/smoke.test.mjs"] } },
+      { extends: true, test: { name: "lua", isolate: false, include: ["scripts/tests/*.test.mjs", "scripts/lua-engine.test.mjs"], exclude: [...configDefaults.exclude, "scripts/tests/smoke.test.mjs"] } },
     ],
   },
 });
