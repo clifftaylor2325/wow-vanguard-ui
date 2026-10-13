@@ -188,9 +188,10 @@ local function addCardTitle(card, title)
   return PAD + 18
 end
 
--- A row's height: its kind's, except a note, which takes the height of its wrapped text (with a little air).
+-- A row's height: its kind's, except a note or a switch with a long caption, which take the height of their wrapped text (with a little air).
 local function rowHeight(w, kind)
   if kind == "text" then return math.max(ROW_HEIGHT.text, w:GetStringHeight() + 6) end
+  if kind == "check" and w.label then return math.max(ROW_HEIGHT.check, w.label:GetStringHeight() + 12) end
   return ROW_HEIGHT[kind] or 28
 end
 
@@ -566,8 +567,10 @@ end
 
 -- A key while the window is open: the ones it uses stop here, every other one
 -- goes on to the game; none is used while a box (search, a value) has the typing.
+-- Escape closes the window itself (the keyboard it holds would otherwise swallow it); a box with the typing clears first.
 local function onKey(f, key)
   local typing = type(GetCurrentKeyBoardFocus) == "function" and GetCurrentKeyBoardFocus() ~= nil
+  if key == "ESCAPE" and not typing then f:Hide() return end
   local used = not typing and useKey(key)
   if not ns.InCombat() and ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(not used) end
 end

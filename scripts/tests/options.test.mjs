@@ -424,6 +424,13 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   addon.eval("GetCurrentKeyBoardFocus = nil");
   press(addon, "DOWN");
   expect(keyRow(addon), "a new page starts without a keyboard row").toBe(false);
+  addon.eval("GetCurrentKeyBoardFocus = function() return Vanguard_Options.search end");
+  press(addon, "ESCAPE");
+  expect(addon.eval("return Vanguard_Options:IsShown()"), "Escape in a box leaves the window open (the box clears first)").toBe(true);
+  addon.eval("GetCurrentKeyBoardFocus = nil");
+  press(addon, "ESCAPE");
+  expect(addon.eval("return Vanguard_Options:IsShown()"), "Escape with no box typing closes the window").toBe(false);
+  addon.eval("ns.Options.Show('general')");
   addon.eval('ns.Options.current = "nowhere"');
   expect(press(addon, "TAB"), "a page with no rows (none built): Tab has nothing to mark").toEqual(["nowhere", false]);
   addon.eval("ns.Options.Show('general')");
@@ -637,4 +644,17 @@ it("slider values show rounded, never as float noise", () => {
   expect(text(2, 210.00007629395)).toBe("210");
   expect(text(1, 35.999524536133)).toBe("36");
   expect(text(0.05, 0.55)).toBe("0.55");
+});
+
+it("switches wrap a long caption left of the track and react to the mouse", () => {
+  const addon = loggedIn();
+  addon.eval(`local on = false
+    __sw = ns.Widgets.Check(UIParent, "A caption", function() return on end, function(v) on = v end, 300)`);
+  expect(addon.eval("return __sw.label:GetWidth()"), "the caption stops short of the 36 px track").toBe(300 - 36 - 24);
+  // Runs one of the row's mouse scripts and returns whether it is hot and pressed.
+  const knob = (event) => addon.eval(`__sw.__scripts.${event}(__sw) return { __sw.hot == true, __sw.pressed == true }`);
+  expect(knob("OnEnter"), "the mouse over the row marks it hot").toEqual([true, false]);
+  expect(knob("OnMouseDown"), "pressing marks it pressed").toEqual([true, true]);
+  expect(knob("OnMouseUp"), "letting go clears the press").toEqual([true, false]);
+  expect(knob("OnLeave"), "leaving clears the hot mark").toEqual([false, false]);
 });
