@@ -28,6 +28,7 @@ ns.WHATS_NEW = {
     } },
     { label = "Profiles", items = {
       { text = "If the game loses your saved settings, Vanguard says so and offers to restore them from a backup it keeps." },
+      { text = "Presets: Vanguard's Healer, Damage and Tank, and any an addon offers, apply from the Profiles page (or /vg preset) after a question and a backup. Addons can also open the options window on a page.", page = "profiles", row = "Apply Healer" },
       { text = "A profile can be exported in parts, such as layout only or one module, and imported without touching the rest.", page = "profiles", row = "Choose what to export" },
     } },
     { label = "Moving frames", items = {
