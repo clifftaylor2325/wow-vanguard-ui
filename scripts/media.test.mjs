@@ -225,6 +225,7 @@ function clearPixelsWhite() {
 // (thin at 64 px, so most of their pixels are blends: any grey over half alpha counts).
 function iconIsCrest() {
   const img = MEDIA["Textures/Icon.tga"]();
+  // Whether a pixel's color is within a hair of want (0-255 RGB).
   const near = (r, g, b, want) => [r, g, b].every((v, c) => Math.abs(v - want[c] / 255) < 0.025);
   const brass = countPixels(img, (r, g, b, a) => a > 0.99 && near(r, g, b, [0xd9, 0xa4, 0x41]));
   const slate = countPixels(img, (r, g, b, a) => a > 0.99 && near(r, g, b, [0x0b, 0x0d, 0x11]));
