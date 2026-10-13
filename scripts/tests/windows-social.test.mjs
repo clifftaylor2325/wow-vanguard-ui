@@ -107,6 +107,24 @@ it("guild window: panes faded and panelled, portrait art faded, dropdown and max
   expect(addon.eval("return { __modes, CommunitiesFrame.CommunitiesList.Art.__alpha }"), "a page switch is skinned again").toEqual([1, 0]);
 });
 
+it("guild window: the fill goes under the rows and the inset above them keeps only its border", () => {
+  const addon = loggedIn(GUILD_ENV);
+  addon.eval(`for _, key in ipairs({ "CommunitiesList", "MemberList", "Chat" }) do
+    local pane = CommunitiesFrame[key] pane:SetFrameLevel(5) pane.InsetFrame:SetFrameLevel(100)
+    pane.Rows = CreateFrame("Frame", nil, pane) pane.Rows:SetFrameLevel(6)
+  end CommunitiesFrame:Show()`);
+  expect(addon.eval(`local out, T = {}, ns.Theme
+    for _, key in ipairs({ "CommunitiesList", "MemberList", "Chat" }) do
+      local pane = CommunitiesFrame[key]
+      local fill = ns.FrameState("vgInsetFill")[pane.InsetFrame]
+      local function textures(f) local n = 0 for _, r in ipairs({ f:GetRegions() }) do if r.__alpha ~= 0 then n = n + 1 end end return n end
+      out[#out + 1] = { fill ~= nil and fill:GetFrameLevel() < pane.Rows:GetFrameLevel(), fill:GetParent() == pane, textures(fill) == 1, textures(pane.InsetFrame) == 4 }
+    end
+    return out`), "the fill is below the rows (one texture), the inset has its four border lines and no fill").toEqual(Array(3).fill([true, true, true, true]));
+  addon.eval("CommunitiesFrame:Hide() CommunitiesFrame:Show() CommunitiesFrame:SetDisplayMode(2)");
+  expect(addon.eval("return { select('#', CommunitiesFrame.MemberList:GetChildren()) }"), "again makes no second fill").toEqual([3]);
+});
+
 it("guild window: a second show paints nothing more, the switch off leaves the game's, missing parts load cleanly", () => {
   const addon = loggedIn(GUILD_ENV);
   addon.eval("CommunitiesFrame:Show()");

@@ -1054,15 +1054,16 @@ end
 -- both axes (its tile with 14 of air to the panel's edge, in line with the window's title), the
 -- maximize/minimize box `step` left of it.
 T.CONTROL = { tile = 20, glyph = 20, inset = 24, step = 28 }
--- The tile's color and opacity by control: red behind close, a wash of the accent behind the others.
-T.CONTROL_TILES = { close = { "bad", 0.9 }, other = { "accent", 0.35 } }
+-- The tile's color and opacity by control while the mouse is over it: red behind close, a wash of the
+-- accent behind the others; at rest every control sits on the same faint raised-slate tile.
+T.CONTROL_TILES = { close = { "bad", 0.9 }, other = { "accent", 0.35 }, rest = { "raised", 0.9 } }
 
--- Paints a window control: its glyph in the secondary text color, or white over its tile while lit.
+-- Paints a window control: its glyph in the secondary text color on a faint tile, or white over its colored tile while lit.
 local function paintControl(entry)
   local p, tile = entry.parts, T.CONTROL_TILES[entry.opts.tile] or T.CONTROL_TILES.other
+  if not entry.lit then tile = T.CONTROL_TILES.rest end
   T.Tint(p.glyph, entry.lit and "white" or "text2")
   T.Tint(p.tile, tile[1], tile[2])
-  p.tile:SetShown(entry.lit == true)
 end
 
 -- A texture centered on a button: the path at the size (an even number of screen pixels,

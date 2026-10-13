@@ -39,7 +39,7 @@
 -- hooks are post-hooks (SetDisplayMode and UpdateTitle, to show a page and
 -- name the title; SetPostItem, to read the item the game's sell frame was
 -- given). Posting and cancelling run only inside a button's
--- click, and a post the game wants confirmed is left to the game. Every price and
+-- click, and a post the game wants confirmed waits for a second click (Confirm). Every price and
 -- quantity goes through ns.PlainNumber before any arithmetic, and events are
 -- ignored in combat (the house closes then).
 
@@ -562,6 +562,8 @@ local function listen()
   -- The sell card again when the game goes busy (a message sent) or is ready for a post again, or a
   -- stack left the bags, so Post is on only while it can post.
   for _, e in ipairs(AH.SELL_EVENTS) do on(e, function() AH.PaintSell() end) end
+  -- What the game answers to a post, said in chat.
+  for e in pairs(AH.POST_ANSWERS) do on(e, AH.OnPostAnswer) end
   for _, each in ipairs({ AH.ListenShop, AH.ListenOwned, AH.ListenLedger, AH.ListenDeals, AH.ListenUpgrades }) do each(on) end
 end
 
