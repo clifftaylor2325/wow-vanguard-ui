@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { loggedIn, px, WINDOWS_ENV } from "./helpers.mjs";
+import { isTok, loggedIn, px, WINDOWS_ENV } from "./helpers.mjs";
 
 // TEST-ONLY tab buttons shaped like the game's tab templates, and a reader for a tab's state:
 // art = the alpha of its Left texture (-1 while the game's own), line = whether its accent
@@ -392,6 +392,13 @@ it("character pane: the right-pane toggle (the gold arrow) sits in the title row
   const toggle = addon.eval(`local b = CharacterFrame.RightPaneToggleButton local p = b.__points.CENTER
     return { p.rel == CharacterFrame.CloseButton, p.x, p.y, b.__points.TOPRIGHT == nil }`);
   expect(toggle, "CENTER on the close button, one control step left, its old corner anchor cleared").toEqual([true, -28, 0, true]);
+  const tile = addon.eval(`local b = CharacterFrame.RightPaneToggleButton local tiles = {}
+    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "BACKGROUND" then tiles[#tiles + 1] = r end end
+    ns.Theme.ControlPlate(b) local again = 0
+    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "BACKGROUND" then again = again + 1 end end
+    return { #tiles, again, tiles[1]:GetWidth(), tiles[1]:IsShown(), tiles[1].__vertexColor }`);
+  expect([tile[0], tile[1], tile[2], tile[3], isTok(addon, tile[4], "raised"), tile[4][3]],
+    "on the window controls' resting tile (raised slate at 0.9, the tile's size) like the close button, made once").toEqual([1, 1, px(addon, 20, true), true, true, 0.9]);
   const off = loggedIn(HOSTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
   expect(off.eval("return CharacterFrame.RightPaneToggleButton.__points.CENTER == nil"), "tabs off: where the game put it").toBe(true);
   const bare = loggedIn(HOSTS_ENV + "CharacterFrame.CloseButton = nil");
