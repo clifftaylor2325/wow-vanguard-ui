@@ -216,6 +216,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a button eases to a lighter fill with a thin light line along its top as the mouse comes over, and eases back as it leaves; a disabled button shows no hover and its label is grey. Held down, a button goes a shade darker and its label sits a pixel lower; it comes back when you let go. Tab puts a thin accent ring, with a dark gap, around the marked row and moves it to the next. The window rises a few pixels into place as it fades in and ends sharp, not blurred; it closes quickly. In combat it opens at once. With Reduce motion on, all of it is instant.
 - If it fails, paste: a short video or two screenshots, and `/vg errors`.
 
+### 5.3a Control rows: calendar Filters, pane arrow, finder gear
+
+- Do: open the calendar (click the info strip's calendar button), the character pane (C) and the group finder. Look at each window's top-right corner.
+- Expect: on the calendar the Filters button ends a small gap left of the close button's tile, level with it, not touching it. The character pane's arrow (beside its close button) and the group finder's gear sit on the same faint slate tile as the close button, their icons inside it.
+- If it fails, paste: a zoomed screenshot of the window's top-right corner and `/vg errors`.
+
 ### 5.4 Color assist and state glyphs
 
 - Do: target a hostile mob, then a neutral one, then a friendly NPC. Tick Color assist under `/vg` → General → Look and reload, then target the same three. On a hunter, look at the pet frame's top-right corner.
