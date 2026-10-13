@@ -1111,6 +1111,23 @@ function T.WindowControl(button, icon, opts)
   return button
 end
 
+-- Paints a resting-tile-only control (T.ControlPlate): its tile in T.CONTROL_TILES.rest.
+local function paintRestTile(entry)
+  T.Tint(entry.parts.tile, T.CONTROL_TILES.rest[1], T.CONTROL_TILES.rest[2])
+end
+
+-- Puts a window control's resting tile behind a button of a window's control row that keeps its own icon (the
+-- character pane's arrow, the group finder's gear), so the row reads as one set of buttons. Safe to run again.
+function T.ControlPlate(button)
+  local entry = painted[button]
+  if not entry then
+    entry = { kind = "plate", opts = {}, parts = { tile = centered(button, "BACKGROUND", T.WHITE, T.CONTROL.tile) }, paint = paintRestTile }
+    painted[button] = entry
+  end
+  repaint(button, entry)
+  return button
+end
+
 -- A close button as a window control: a plain cross, white on a red tile under the mouse.
 function T.CloseButton(button)
   return T.WindowControl(button, "CloseMark", { tile = "close" })
