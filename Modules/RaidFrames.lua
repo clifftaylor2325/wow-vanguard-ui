@@ -10,7 +10,7 @@
 -- All 40 buttons are created up front, out of combat, so click casting and
 -- hover keys (Modules/ClickCast.lua) can be set on every one of them safely.
 --
--- The frames grow up from a movable holder (just above your player frame,
+-- The frames grow up and right from a movable holder (left of your character,
 -- default). In bigger raids the whole grid is drawn smaller (compact), so 40
 -- players fit beside the unit frames at any UI scale; each tile keeps its layout.
 
@@ -24,6 +24,10 @@ local RF = ns.Module("RaidFrames", {
 
 -- Group size -> how large the grid is drawn when compact: up to 10 full size, up to 25 at 80%, more at 72%.
 RF.COMPACT = { { 10, 1 }, { 25, 0.8 }, { 40, 0.72 } }
+-- Where the grid starts by default: left of your character (the way healers keep it, so the boss and
+-- your own frames stay in view), its left edge 620 units left of the screen's middle and its bottom 344 up,
+-- clear of the frames around your character. The grid grows right and up; a full 40-man ends at the middle.
+RF.SPOT = { "BOTTOMLEFT", "BOTTOM", -620, 344 }
 -- How large the grid is drawn now (RF.Fit sets it).
 RF.tileScale = 1
 
@@ -648,7 +652,7 @@ end
 local function holder(s)
   local f, five = CreateFrame("Frame", "Vanguard_RaidHolder", UIParent), 5 * (s.width + s.spacing) - s.spacing
   if s.layout == "rows" then f:SetSize(five, s.height) else f:SetSize(s.width, 5 * (s.height + s.spacing) - s.spacing) end
-  ns.Mover(f, "raid", "Raid frames", { "BOTTOM", "BOTTOM", -240, 344 })
+  ns.Mover(f, "raid", "Raid frames", RF.SPOT)
   return f
 end
 
