@@ -79,7 +79,7 @@ local function gameToolRows()
   return {
     { "header", "The game's tools" },
     check("Show the game's Cooldown Manager: its essential row between your frames", cooldownManagerSetting()), check("Cooldown Manager in the Vanguard look (reload)", setting("GameTools", "cooldowns", true)),
-    check("Damage meter in the Vanguard look (reload)", setting("GameTools", "meter", true)),
+    check("Cooldown gaps: a row of icons for trinkets, items you choose (/vg gaps add), pet abilities and totems (reload)", setting("CooldownGaps", "on", true)), check("Damage meter in the Vanguard look (reload)", setting("GameTools", "meter", true)),
     check("Place them to fit the layout; off leaves them to Edit Mode (reload)", setting("GameTools", "place", true)),
     check("Loss of control in the Vanguard look, above your character (reload)", setting("GameAlerts", "lossOfControl", true)),
     { "cycle", "Talking head (reload)", { { "move", "Vanguard look, top center" }, { "hide", "Hidden" }, { "game", "The game's" } }, setting("GameAlerts", "talkingHead", true) },
