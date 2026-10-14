@@ -986,8 +986,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 31.2 Stat weights wizard
 
-- Do: `/vg`, Town and gear, Gear upgrades, click Set up stat weights (or type `/vg weights wizard`). Scroll the list, drag a slider, click Defaults, drag one again, then Save. Open it again, drag a slider and click Cancel. Then `/vg weights`.
-- Expect: a dialog above everything with a line naming the kind and role, and a scrolling list with a slider for each of 21 stats (the ones your class and role value first); Defaults puts the sliders back. Save closes it and prints a line in chat; `/vg weights` shows the weight you moved. Cancel closes it and changes nothing.
+- Do: `/vg`, Town and gear, Gear upgrades, click Set up stat weights (or type `/vg weights wizard`). Scroll the list, drag a slider, type 4.25 in a box beside one and press Enter, click Defaults, drag one again, then Save. Open it again, drag a slider and click Cancel. Then `/vg weights`.
+- Expect: a dialog above everything with a line naming the kind and role, and a scrolling list with a slider and a number box for each of 21 stats (the ones your class and role value first); the box follows its slider, and a typed number sticks (past 3 the slider sits at its end); Defaults puts them back. Save closes it and prints a line in chat; `/vg weights` shows the weight you moved. Cancel closes it and changes nothing.
 - If it fails, paste: screenshots, your resolution and UI scale, and `/vg errors`.
 
 ## When you are done
