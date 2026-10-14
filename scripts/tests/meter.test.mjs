@@ -58,6 +58,9 @@ it("the figures follow the fight, in combat too, and a fight with no damage stil
   addon.advance(1);
   expect(rows(addon)[0].slice(3), "a zero top line scales to 1").toEqual([0, 1]);
   expect(rows(addon)[0][2], "zero shows as 0").toBe("0");
+  setLines(addon, "{ { name = 'Tess', amountPerSecond = 0.31 } }");
+  addon.advance(1);
+  expect(rows(addon)[0].slice(2), "a lone small figure still fills its bar").toEqual(["0.31", 0.31, 0.31]);
   setLines(addon, "{ { name = 'Tess', amountPerSecond = 2.5263157894737 }, { name = 'Bo', amountPerSecond = 1500000 } }");
   addon.advance(1);
   expect(rows(addon).slice(0, 2).map((r) => r[2]), "rounded to two decimals, no trailing zeros").toEqual(["2.53", "1.5M"]);
