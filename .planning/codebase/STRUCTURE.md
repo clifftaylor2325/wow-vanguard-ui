@@ -76,7 +76,7 @@ wow-vanguard-ui/
 
 **`docs/`:**
 - Purpose: Developer documentation.
-- Contains: `THEME.md` (every fade and sound), `API.md` (Skin API), `SMOKE-TEST.md` (in-game checklist), `design/` (`AUCTION-TABS.md`, `RESKIN.md`), `handoff/` (work plans: `VANGUARD-PLAN.md`, `WORKPLAN.md`, `AUCTION-PLAN.md`, `CLICKCAST-FINISH.md`, `RESKIN-PLAN.md`, `PROMPT.md`).
+- Contains: `THEME.md` (every fade and sound), `API.md` (Skin API), `SMOKE-TEST.md` (in-game checklist), `design/` (`AUCTION-TABS.md`, `RESKIN.md`), `handoff/` (work plans: `VANGUARD-PLAN.md`, `WORKPLAN.md`, `AUCTION-PLAN.md`, `RESKIN-PLAN.md`); `docs/README.md` indexes the docs by reader.
 - Note: `docs/handoff/` plans refer to the old repo name `wow-forever-ui`; grep for identifiers rather than trusting line numbers.
 
 **`.github/workflows/`:**

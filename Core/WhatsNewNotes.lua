@@ -107,6 +107,36 @@ ns.WHATS_NEW = {
     { label = "Theme tests", items = {
       { text = "Two switches for side-by-side tests: /vg slug draws world text with the game's smooth-scaling font flag, and /vg framebuffer stops inner borders showing through a window as it fades.", off = true },
     } },
+    { module = "QuestTracker", label = "Quest tracker and log", items = {
+      { text = "Click +N more on the quest tracker to show your watched quests (up to 10) and Show fewer to fold it back; Vanguard remembers the choice across a reload; the tracker starts below the info strip and sits under the game's windows. Each quest shows the XP it gives." },
+      { text = "In Vanguard's quest log, Track and Untrack redraw the button at once, Shift-click a quest to track it, and a reward card shows the item's tooltip when you hover it." },
+      { text = "On the world map, a quest zone header loses the game's yellow bar for a gold chevron." },
+    } },
+    { module = "Errands", label = "Trainer", items = {
+      { text = "A Train all button on the trainer's window learns everything you can afford in one click and says what it cost." },
+    } },
+    { module = "Upgrades", label = "Gear upgrades", items = {
+      { text = "A stat weights wizard (/vg weights wizard) has a slider and an exact-value box for every stat, so gear and auction upgrades are judged the way you value your stats.", page = "town", row = "Set up stat weights" },
+    } },
+    { module = "InstancePrep", label = "Wanted amounts", items = {
+      { text = "A short window (/vg prep setup) sets how many food, bandages, potions and ammo or shards to carry, with Use suggested for your level.", page = "town", row = "Set wanted amounts..." },
+    } },
+    { module = "Nameplates", label = "Nameplates", items = {
+      { text = "The Nameplates page has the game's Enemy and Friendly nameplate switches, and enemy plates are on by default. Vanguard dresses both alike; /vg plates says how many it drew and what the game's plate settings are." },
+    } },
+    { module = "ClickCast", label = "Click casting", items = {
+      { text = "The spell picker and the Add key picker open above their click catcher and take your clicks." },
+    } },
+    { module = "Windows", label = "Windows and menus", items = {
+      { text = "Drag a game window by an empty spot along its top edge, the calendar and 14 more included. Window buttons sit on a faint tile, and Escape closes the options window." },
+      { text = "The info strip lists the day, date and time in two columns, with a calendar button and a labelled durability line. The options window's switches are larger, and the long Bars, map, chat page is five pages." },
+    } },
+    { label = "Memory", items = {
+      { text = "The auction price history keeps 7 days per item instead of 30, a scan keeps the cheapest gear link per item, and old chat alerts are swept, so Vanguard holds less memory after a scan. /vg mem watches it." },
+    } },
+    { module = "Meter", label = "Meter fixes", items = {
+      { text = "The Vanguard meter starts clear of the bags and menu bar, shows figures to two decimals and fills its top bar when the figure is under 1." },
+    } },
     { label = "Errors", items = {
       { text = "An error in a hook on a game function, a button click or a timer is kept in /vg errors and doesn't stop the others." },
     } },
