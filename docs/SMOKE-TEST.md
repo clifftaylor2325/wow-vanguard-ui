@@ -344,7 +344,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 8.4 Quest tracker overflow
 
 - Do: watch more quests than fit under the info strip.
-- Expect: a `+N more` line at the bottom of the tracker.
+- Expect: a `+N more` line at the bottom of the tracker. Click it: the tracker grows to at most 10 quests, ending in `Show fewer` (with `· +N more` past ten). `/reload`: it is still expanded. Click `Show fewer` to fold it.
 - If it fails, paste: a screenshot.
 
 ### 8.5 Levelling helpers
