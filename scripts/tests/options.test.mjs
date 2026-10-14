@@ -665,7 +665,7 @@ it("options: the Theme variant and Corners choices list every variant in T.VARIA
   // Clicks a cycle row n times and returns the setting it set after each click.
   const cycle = (caption, key, n) => Array.from({ length: n }, () => (addon.eval(`__click("${caption}") return ns.Theme.Settings().${key}`)));
   const order = addon.eval("return ns.Theme.VARIANT_ORDER");
-  expect(cycle("Theme variant: surfaces and text", "variant", order.length), "one click per variant goes round every one, Frost included, back to the default").toEqual([...order.slice(1), order[0]]);
+  expect(cycle("Theme variant: surfaces and text", "variant", order.length), "one click per variant goes round every one, back to the default").toEqual([...order.slice(1), order[0]]);
   expect(cycle("Corners: square or rounded panels", "corners", 2), "corners cycle rounded then square").toEqual(["rounded", "square"]);
 });
 

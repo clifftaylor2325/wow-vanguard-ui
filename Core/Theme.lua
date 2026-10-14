@@ -149,7 +149,7 @@ setmetatable(T.PRESETS, { __index = function(_, name) return ALIASES[name] and T
 -- Theme variants (#237): token sets that swap surfaces and text, chosen with the variant setting
 -- ("default" is none). A variant's tokens win over the saved panel and inset colours; `assist` turns
 -- Color assist on, `ring` is the accent focus ring in screen pixels, `flat` drops gradients.
-T.VARIANT_ORDER = { "default", "contrast", "vellum", "classic", "midnight", "obsidian", "moss", "ember", "frost" }
+T.VARIANT_ORDER = { "default", "contrast", "vellum", "classic", "midnight", "obsidian", "moss", "ember" }
 T.VARIANTS = {
   -- High Contrast: opaque near-black panels, white text, no sheen, full-saturation states.
   contrast = {
@@ -209,27 +209,13 @@ T.VARIANTS = {
       text = "ebe4e2", text2 = "cfc5c2", muted = "a89c98",
     },
   },
-  -- Frost: the light look. Pale slate panels (not pure white), dark blue ink for text and the border, no sheen. `light`
-  -- turns the accent's text shade darker instead of lighter (T.ACCENT_VARIANTS_LIGHT), and the
-  -- state and gold colours are deepened so they read on white.
-  frost = {
-    label = "Frost (light)", light = true,
-    tokens = {
-      panel = { "e4e8f0", 0.96 }, inset = { "d4dae6", 0.97 }, raised = "eef1f7", raisedHover = "c9d2e1", borderHi = "b3bed0",
-      divider = "a3aec4", edge = "1b2a4a", sheen = { "ffffff", 0 }, hover = { "1b2a4a", 0.08 }, checked = { "1b2a4a", 0.25 },
-      gridline = { "1b2a4a", 0.12 }, darkBar = "bcc6d8", textShadow = { "000000", 0 },
-      text = "14223f", text2 = "2c3d63", muted = "4f5f85", disabled = "4e5c7e", gold = "6e5300",
-      good = "116a4c", warn = "7a5400", bad = "9c2f12", info = "1d58a8",
-      hostile = "95302a", neutral = "6b5a0f", friendly = "236a36",
-    },
-  },
 }
 for _, v in pairs(T.VARIANTS) do
   for name, c in pairs(v.tokens) do v.tokens[name] = type(c) == "table" and fromHex(c[1], c[2]) or fromHex(c) end
 end
 
 local DEFAULTS = {
-  -- A theme variant (#237, #218): "default", "contrast", "vellum", "classic", "midnight", "obsidian", "moss", "ember" or "frost".
+  -- A theme variant (#237, #218): "default", "contrast", "vellum", "classic", "midnight", "obsidian", "moss", "ember".
   variant = "default",
   -- Panel corners: "square" (one border language, as always) or "rounded" (T.CORNER_RADIUS arcs).
   corners = "square",
@@ -285,11 +271,13 @@ function T.Settings()
 end
 
 -- Profiles saved or exported before the rename (ForeverUI 0.3.0 and earlier)
--- call the bundled bar style "forever"; it is "vanguard" now.
-local function renamedBarStyle(saved)
+-- call the bundled bar style "forever"; it is "vanguard" now. A profile that saved a
+-- variant since removed (Frost, the light look, dropped in 0.6.0) goes back to the default.
+local function renamedTheme(saved)
   if saved.barTexture == "forever" then saved.barTexture = "vanguard" end
+  if saved.variant ~= nil and not T.VARIANTS[saved.variant] and saved.variant ~= "default" then saved.variant = nil end
 end
-ns.Migrate("theme", renamedBarStyle)
+ns.Migrate("theme", renamedTheme)
 
 -- r, g, b of the accent color.
 function T.Accent()
@@ -316,14 +304,6 @@ local SETTING_TOKENS = { accent = "accent", panel = "panel", inset = "inset", ed
 -- accentText is lighter, for accent-coloured text; accentDim is darker, for borders and
 -- ornament only, never text. Brass d9a441 gives e6b45b and 8a6a2f.
 T.ACCENT_VARIANTS = { accentText = { 0.047, 0.94 }, accentDim = { -0.207, 0.67 } }
--- The same on a light variant (`light`): accent text goes darker, so it reads on a white panel.
-T.ACCENT_VARIANTS_LIGHT = { accentText = { -0.24, 0.9 }, accentDim = { -0.207, 0.67 } }
-
--- The accent variant table for the active look: the light one on a light variant.
-local function accentVariants()
-  local v = T.Variant()
-  return v and v.light and T.ACCENT_VARIANTS_LIGHT or T.ACCENT_VARIANTS
-end
 
 -- An sRGB channel (0-1) in linear light, and back.
 local function linear(c) return c <= 0.04045 and c / 12.92 or ((c + 0.055) / 1.055) ^ 2.4 end
@@ -359,9 +339,8 @@ local variants = {}
 
 -- An accent variant's colour, made from the current accent (and cached until the accent changes).
 local function accentVariant(name)
-  local set = accentVariants()
-  local a, v, hit = T.Settings().accent, set[name], variants[name]
-  local key = string.format("%.6f %.6f %.6f %s", a[1], a[2], a[3], tostring(set == T.ACCENT_VARIANTS))
+  local a, v, hit = T.Settings().accent, T.ACCENT_VARIANTS[name], variants[name]
+  local key = string.format("%.6f %.6f %.6f", a[1], a[2], a[3])
   if hit and hit.key == key then return hit.c end
   local L, A, B = toOklab(a[1], a[2], a[3])
   local r, g, b = fromOklab(math.max(0, math.min(1, L + v[1])), A * v[2], B * v[2])
