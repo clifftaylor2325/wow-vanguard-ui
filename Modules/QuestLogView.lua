@@ -106,13 +106,19 @@ end
 
 -- The list ----------------------------------------------------------------------------------------
 
--- A list line for a zone header (folds its quests) or a quest (shows it).
+-- A quest line was clicked: show the quest; Shift-click also tracks or untracks it.
+local function pickQuest(id)
+  QL.Select(id)
+  if IsShiftKeyDown() and QL.details then QL.ToggleTrack(QL.details) end
+end
+
+-- A list line for a zone header (folds its quests) or a quest (shows it; Shift-click tracks it).
 local function lineSpec(e)
   if e.header then
     return { text = QP.Plain(e.title), icon = T.Icon(QL.collapsed[e.title] and "Right" or "Down"), color = "gold",
       select = function() QL.collapsed[e.title] = not QL.collapsed[e.title] QL.Refresh() end }
   end
-  return { id = e.id, text = QP.Titled(e.level, e.title, e.id), icon = e.ready and T.Icon("Check") or nil, color = { QP.LevelColor(e.level) }, select = function() QL.Select(e.id) end }
+  return { id = e.id, text = QP.Titled(e.level, e.title, e.id), icon = e.ready and T.Icon("Check") or nil, color = { QP.LevelColor(e.level) }, select = function() pickQuest(e.id) end }
 end
 
 -- One list line (quests indented under their zone; no numbers in the log).
