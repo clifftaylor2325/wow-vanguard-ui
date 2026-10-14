@@ -81,6 +81,8 @@ local TOKENS = {
   edge = "000000", sheen = { "ffffff", 0.06 }, divider = "2f343d", shade = { "000000", 0.5 },
   hover = { "ffffff", 0.08 }, darkBar = "2a3039", checked = { "ffffff", 0.25 }, gridline = { "ffffff", 0.12 },
   textShadow = { "000000", 0.9 },
+  -- No colour at all: the shadow under dark text on an accent fill (a shadow only blurs it).
+  clear = { "000000", 0 },
   -- The dark sweep over an aura icon as its time runs out.
   sweep = { "000000", 0.65 },
   -- The spark on the power bar (the five-second rule, energy ticks) and the swing timer.
@@ -207,18 +209,18 @@ T.VARIANTS = {
       text = "ebe4e2", text2 = "cfc5c2", muted = "a89c98",
     },
   },
-  -- Frost: the light look. White panels, dark blue ink for text and the border, no sheen. `light`
+  -- Frost: the light look. Pale slate panels (not pure white), dark blue ink for text and the border, no sheen. `light`
   -- turns the accent's text shade darker instead of lighter (T.ACCENT_VARIANTS_LIGHT), and the
   -- state and gold colours are deepened so they read on white.
   frost = {
     label = "Frost (light)", light = true,
     tokens = {
-      panel = { "f4f6fa", 0.96 }, inset = { "e6eaf2", 0.97 }, raised = "ffffff", raisedHover = "dde3ee", borderHi = "c8d0de",
-      divider = "b8c2d6", edge = "1b2a4a", sheen = { "ffffff", 0 }, hover = { "1b2a4a", 0.08 }, checked = { "1b2a4a", 0.25 },
-      gridline = { "1b2a4a", 0.12 }, darkBar = "c9d1e0", textShadow = { "000000", 0.15 },
-      text = "14223f", text2 = "2c3d63", muted = "4f5f85", disabled = "5c6a8c", gold = "7a5c00",
-      good = "157a58", warn = "8a5f00", bad = "b0391a", info = "1d58a8",
-      hostile = "a83a32", neutral = "7d6a14", friendly = "2a7a40",
+      panel = { "e4e8f0", 0.96 }, inset = { "d4dae6", 0.97 }, raised = "eef1f7", raisedHover = "c9d2e1", borderHi = "b3bed0",
+      divider = "a3aec4", edge = "1b2a4a", sheen = { "ffffff", 0 }, hover = { "1b2a4a", 0.08 }, checked = { "1b2a4a", 0.25 },
+      gridline = { "1b2a4a", 0.12 }, darkBar = "bcc6d8", textShadow = { "000000", 0 },
+      text = "14223f", text2 = "2c3d63", muted = "4f5f85", disabled = "4e5c7e", gold = "6e5300",
+      good = "116a4c", warn = "7a5400", bad = "9c2f12", info = "1d58a8",
+      hostile = "95302a", neutral = "6b5a0f", friendly = "236a36",
     },
   },
 }
@@ -1624,6 +1626,9 @@ T.ROLES = {
 local styled = setmetatable({}, { __mode = "k" })
 -- Styled strings drawn at a size of their own (T.TextSize): string -> size. Weak too.
 local sizes = setmetatable({}, { __mode = "k" })
+-- Every font string coloured by token name (T.Color): string -> token. Weak; T.RefreshText recolours
+-- them all, so a variant switch reaches text that was drawn before it (a light look needs dark text).
+local colored = setmetatable({}, { __mode = "k" })
 
 -- A size after the text scale setting.
 function T.ScaledSize(size)
@@ -1676,17 +1681,30 @@ function T.TextSize(fs, size)
   T.ApplyRole(fs, styled[fs])
 end
 
--- Re-fonts every string styled with a role (after a font or text size change).
-function T.RefreshText()
-  for fs, role in pairs(styled) do T.ApplyRole(fs, role) end
+-- The shadow under text coloured by token: none under the dark void text that sits on an accent fill
+-- (a shadow only blurs it), the theme's back under styled text otherwise; other addons' text keeps its own.
+local function shadowFor(fs, token)
+  if token == "void" then fs:SetShadowColor(T.RGB("clear"))
+  elseif styled[fs] then fs:SetShadowColor(T.RGB("textShadow")) end
 end
 
--- Colors a font string: a named color, r, g, b (for other addons' skins), or the accent's text variant.
+-- Re-fonts every string styled with a role (after a font or text size change) and recolours every
+-- string coloured by token (after a variant or accent change).
+function T.RefreshText()
+  for fs, role in pairs(styled) do T.ApplyRole(fs, role) end
+  for fs, token in pairs(colored) do fs:SetTextColor(T.RGB(token)) shadowFor(fs, token) end
+end
+
+-- Colors a font string by token (remembered, so T.RefreshText keeps it current; see shadowFor), by
+-- r, g, b (for other addons' skins; forgotten), or in the accent's text variant.
 function T.Color(fs, r, g, b)
   if type(r) == "number" then
+    colored[fs] = nil
     fs:SetTextColor(r, g, b)
   else
+    colored[fs] = r or "accentText"
     fs:SetTextColor(T.RGB(r or "accentText"))
+    shadowFor(fs, colored[fs])
   end
   return fs
 end

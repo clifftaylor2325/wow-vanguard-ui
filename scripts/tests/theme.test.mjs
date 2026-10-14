@@ -785,7 +785,7 @@ it("Frost (light): white panels, dark blue text and border, a darker accent text
   const addon = loggedIn();
   const darkText = hexOf(addon, "accentText");
   addon.slash("variant frost");
-  expect([tok(addon, "panel").slice(0, 3), chatHas(addon, /Theme variant: Frost/)], "white panels").toEqual([[244 / 255, 246 / 255, 250 / 255], true]);
+  expect([tok(addon, "panel").slice(0, 3), chatHas(addon, /Theme variant: Frost/)], "pale slate panels").toEqual([[228 / 255, 232 / 255, 240 / 255], true]);
   expect(contrast(addon, "text") > 12 && contrast(addon, "edge") > 10, "ink text and border").toBe(true);
   expect(["text", "text2", "muted", "disabled", "accentText", "good", "warn", "bad", "info", "gold", "hostile", "neutral", "friendly"].map((n) => [n, contrast(addon, n) >= 4.5]).filter(([, ok]) => !ok), "every text colour readable on the panel").toEqual([]);
   expect(hexOf(addon, "accentText") < darkText, "the accent's text shade goes darker, not lighter").toBe(true);
@@ -827,4 +827,29 @@ it("rounded corners: High contrast's 2 px ring rounds at twice the radius, and a
   expect(addon.eval(`for _, t in ipairs({ __ring:GetRegions() }) do if tostring(t.__texture):find("CornerLine") then return t:GetWidth() end end`) / px, "8 px arcs").toBe(8);
   addon.slash("theme reset");
   expect(addon.eval("return ns.Theme.Settings().corners"), "reset gives square corners").toBe("square");
+});
+
+// WCAG contrast of an { r, g, b } colour against another.
+const contrastOf = (a, b) => Math.round(((Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05)) * 10) / 10;
+
+it("a variant switch recolours text drawn before it: with the options window open, Frost leaves no light text on its white panels", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  addon.slash("variant frost");
+  // Every shown font string inside the options window: its text and colour.
+  const texts = addon.eval(`local out = {}
+    for _, w in ipairs(__wfgStub.frames) do
+      if type(w.__text) == "string" and #w.__text > 0 and w.__textColor then
+        local shown, inWin, f = true, false, w
+        while f do if f.__shown == false then shown = false end if f == Vanguard_Options then inWin = true end f = f.__parent end
+        if shown and inWin then out[#out + 1] = { w.__text, w.__textColor[1], w.__textColor[2], w.__textColor[3] } end
+      end
+    end return out`);
+  const panel = tok(addon, "panel");
+  const faint = texts.filter(([, r, g, b]) => contrastOf([r, g, b], panel) < 4.5).map(([t]) => t);
+  expect(texts.length > 40, "the window has text to check").toBe(true);
+  expect(faint.filter((t) => !/^(<name>|72%|5)$/.test(t)), "every label, value, header and dropdown reads on white (the preview's bar text sits on its bar)").toEqual([]);
+  addon.eval('__hand = UIParent:CreateFontString() ns.Theme.Color(__hand, 0.5, 0.5, 0.5)');
+  addon.slash("variant default");
+  expect([tok(addon, "text").slice(0, 3), addon.eval("return { __hand:GetTextColor() }").slice(0, 3)], "back to the default; text coloured by hand is left alone").toEqual([[232 / 255, 234 / 255, 238 / 255], [0.5, 0.5, 0.5]]);
 });
