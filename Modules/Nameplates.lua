@@ -528,6 +528,7 @@ local EVENTS = {
 function NP.Enable(settings)
   NP.settings = settings
   ns.OutOfCombat(NP.FillPool)
+  NP.EnemyPlatesOnce()
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
   T.OnChanged(function() each(repaintTarget) end)
 end
@@ -552,10 +553,30 @@ local function countPlates()
   return total, enemies
 end
 
+-- Sets one of the game's own plate settings (a CVar) to on or off, once out of combat;
+-- a client without SetCVar changes nothing.
+local function setGameSetting(name, on)
+  if type(SetCVar) ~= "function" then return end
+  ns.OutOfCombat(function() SetCVar(name, on and 1 or 0) end, "plates " .. name)
+end
+
 -- /vg plates enemies on|off: the game's own enemy plate setting, once out of combat.
 local function setEnemies(on)
-  ns.OutOfCombat(function() SetCVar("nameplateShowEnemies", on and 1 or 0) end, "plates enemies")
+  setGameSetting("nameplateShowEnemies", on)
   ns.Chat("Enemy nameplates " .. (on and "on" or "off") .. (ns.InCombat() and " after the fight." or "."))
+end
+
+-- Turns the game's enemy plates on once per character (#377: the game ships them off, so
+-- Vanguard had nothing to dress); after that the V key and the Nameplates page decide.
+function NP.EnemyPlatesOnce()
+  if type(VanguardCharDB) ~= "table" or VanguardCharDB.enemyPlatesSet then return end
+  VanguardCharDB.enemyPlatesSet = true
+  setGameSetting("nameplateShowEnemies", true)
+end
+
+-- get/set for a check row on one of the game's own plate settings (the V and Shift-V keys).
+function NP.GameSetting(name)
+  return function() return cvarState(name) == "on" end, function(v) setGameSetting(name, v) end
 end
 
 -- /vg plates: what the game's plate settings are and how many plates Vanguard drew (#377).
@@ -566,7 +587,7 @@ function NP.Command(rest)
   ns.Chat(("Plates: %d drawn, %d of them units you can attack. Game's Enemy nameplates %s, Friendly %s, Show all %s."):format(
     total, enemies, cvarState("nameplateShowEnemies"), cvarState("nameplateShowFriends"), cvarState("nameplateShowAll")))
   if cvarState("nameplateShowEnemies") == "off" then
-    ns.Chat("The game draws no enemy plates, so there is nothing to dress. Try /vg plates enemies on, or the V key.")
+    ns.Chat("The game draws no enemy plates, so there is nothing to dress. Turn on Enemy nameplates in /vg > Nameplates, or press V.")
   end
 end
 
@@ -585,7 +606,7 @@ end
 function NP.OptionRows()
   return {
     { "header", "Nameplates" },
-    { "text", "Turn the whole module off under Modules to keep the default plates." },
+    { "text", "Turn the whole module off under Modules to keep the default plates." }, { "check", "Enemy nameplates (the game's setting, the V key)", NP.GameSetting("nameplateShowEnemies") }, { "check", "Friendly nameplates (the game's setting, Shift-V)", NP.GameSetting("nameplateShowFriends") },
     { "check", "Levels, colored by how hard the unit is for you", setting("level") },
     { "check", "Threat colors while you have aggro", setting("threat") },
     { "check", "Accent border, glow and marker on your target", setting("targetBorder") }, { "check", "Cast bar", setting("castBar", true) },
