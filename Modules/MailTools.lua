@@ -15,8 +15,8 @@ local T, W = ns.Theme, ns.Widgets
 
 local MT = ns.Module("MailTools", { defaults = { on = false, presets = {} } })
 
--- The panel's width and padding, a row's height, rows, preset buttons, bags read, the game's attachment limit and mails scanned.
-MT.WIDTH, MT.PAD, MT.ROW, MT.ROWS, MT.BUTTONS, MT.BAGS, MT.ATTACH, MT.SCAN = 270, 8, 24, 8, 4, 4, 12, 60
+-- The panel's width and padding, a row's height, rows, preset buttons, bags read, the game's attachment limit, mails scanned and the gap to the window.
+MT.WIDTH, MT.PAD, MT.ROW, MT.ROWS, MT.BUTTONS, MT.BAGS, MT.ATTACH, MT.SCAN, MT.GAP = 270, 8, 24, 8, 4, 4, 12, 60, 8
 -- The filters in the order the button cycles them; the one in use and the words typed.
 MT.FILTERS, MT.filter, MT.query = { "All", "Money", "Items", "Sales" }, "All", ""
 
@@ -143,13 +143,38 @@ end
 
 -- Draws the panel: shown while the mailbox is open and the tools are on; the matches in its rows.
 function MT.Paint()
-  local f = MT.frame
   local open = MT.settings and MT.settings.on and type(MailFrame) == "table" and MailFrame:IsVisible()
-  if not f then if not open then return end f = MT.Build() end
+  local f = MT.frame or (open and MT.Build())
+  if not f then return end
   f:SetShown(open and true or false)
-  local found = open and MT.Find(MT.query) or {}
+  if not open then return end
+  MT.Place(f)
+  MT.PaintRows(f)
+  MT.PaintPresets()
+end
+
+-- The matching mails in the rows, the filter's name, and the line shown when no row is.
+function MT.PaintRows(f)
+  local found = MT.Find(MT.query)
   for i, row in ipairs(f.rows) do paintRow(row, found[i]) end
   f.filterButton.text:SetText(MT.filter)
+  MT.PaintEmpty(#found)
+end
+
+-- Sits the panel right of the mail window's own panel (which reaches past the window), on its layer.
+function MT.Place(f)
+  f:ClearAllPoints()
+  f:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", MT.GAP + (T.Padding(MailFrame) or 0), 0)
+  f:SetFrameStrata(MailFrame:GetFrameStrata())
+  f:SetFrameLevel(MailFrame:GetFrameLevel())
+end
+
+-- The line shown instead of rows: an empty inbox, no matches, or nothing (rows shown); and the preset hint.
+function MT.PaintEmpty(found)
+  local total = type(GetInboxNumItems) == "function" and ns.PlainNumber((GetInboxNumItems())) or 0
+  MT.frame.empty:SetShown(found == 0)
+  MT.frame.empty:SetText(total == 0 and "Your inbox is empty." or "No mail matches.")
+  MT.frame.hint:SetShown(#MT.settings.presets == 0)
 end
 
 -- A row's line of text, left of its Take button.
@@ -192,18 +217,22 @@ local function buildPresets(f)
   end
 end
 
--- The panel's heading.
+-- The panel's heading, the empty-list line and the hint shown while there are no presets.
 local function heading(f)
   f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading")
   f.title:SetPoint("TOPLEFT", MT.PAD, -MT.PAD)
   f.title:SetText("Find mail")
+  f.empty = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
+  f.empty:SetPoint("TOP", 0, -64 - MT.ROW)
+  f.hint = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
+  f.hint:SetPoint("BOTTOM", 0, MT.PAD + 6)
+  f.hint:SetText("No presets: /vg mail preset add <name> <character> [words]")
 end
 
 -- The panel, built when the mailbox first opens with the tools on: right of the mail window.
 function MT.Build()
-  local f = T.Panel(CreateFrame("Frame", "Vanguard_MailTools", UIParent), { shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_MailTools", UIParent), { shadow = true, alpha = 1 })
   f:SetSize(MT.WIDTH, 64 + MT.ROWS * MT.ROW + 40)
-  f:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", 8, 0)
   heading(f)
   f.rows = {}
   for i = 1, MT.ROWS do f.rows[i] = buildRow(f, i) end
