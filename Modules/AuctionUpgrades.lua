@@ -43,7 +43,7 @@ AH.SLOT_NAMES = { INVTYPE_HEAD = "Head", INVTYPE_NECK = "Neck", INVTYPE_SHOULDER
 AH.defaults.upgrades = true
 -- This visit's upgrades by link: { link, id, key, price, pct, empty, slot, score }; and every gear
 -- listing seen (link -> price per unit), to judge again when what you wear changes.
-AH.upgrades, AH.gearSeen = {}, {}
+AH.upgrades, AH.gearSeen, AH.gearKeys = {}, {}, {}
 
 -- Judging ------------------------------------------------------------------------------------
 
@@ -66,10 +66,31 @@ function AH.Upgrade(link, price)
     slot = slotName(loc), score = empty and UP.Score(link, (UP.Current())) or nil }
 end
 
+-- Which item a gear link is: its ID, enchant, gems and suffix, without the per-listing unique ID
+-- and level, so two listings of the same item and suffix share a key.
+function AH.GearKey(link)
+  local id, ench, g1, g2, g3, g4, suffix = link:match("item:(%d+):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*)")
+  return id and table.concat({ id, ench, g1, g2, g3, g4, suffix }, ":") or link
+end
+
+-- A gear listing claims its item's place: false when a listing of the same item at the same price
+-- or less is held; otherwise a dearer one is dropped and the link is held.
+local function claimGear(link, price)
+  local key = AH.GearKey(link)
+  local held = AH.gearKeys[key]
+  if held and held ~= link then
+    if AH.gearSeen[held] <= price then return false end
+    AH.gearSeen[held], AH.upgrades[held] = nil, nil
+  end
+  AH.gearKeys[key] = link
+  return true
+end
+
 -- A gear listing seen (a scan's, or an item search's) while the house is open and the entry on:
--- kept to judge again, judged now, and the list repainted on the next frame.
+-- kept to judge again, judged now, and the list repainted on the next frame. The same item
+-- seen twice keeps its cheapest listing.
 function AH.SeeGear(link, price)
-  if not (AH.open and AH.settings.upgrades) or type(link) ~= "string" then return end
+  if not (AH.open and AH.settings.upgrades) or type(link) ~= "string" or not claimGear(link, price) then return end
   AH.gearSeen[link] = price
   AH.upgrades[link] = AH.Upgrade(link, price)
   ns.Soon("auction upgrades", AH.PaintUpgrades)
@@ -200,7 +221,7 @@ function AH.ListenUpgrades(on)
   on("ITEM_SEARCH_RESULTS_UPDATED", AH.OnGearResults)
   on("ITEM_SEARCH_RESULTS_ADDED", AH.OnGearResults)
   on("PLAYER_EQUIPMENT_CHANGED", onGearChanged)
-  on("AUCTION_HOUSE_CLOSED", function() AH.upgrades, AH.gearSeen = {}, {} AH.StopJudging() end)
+  on("AUCTION_HOUSE_CLOSED", function() AH.upgrades, AH.gearSeen, AH.gearKeys = {}, {}, {} AH.StopJudging() end)
 end
 
 -- The entry ------------------------------------------------------------------------------------

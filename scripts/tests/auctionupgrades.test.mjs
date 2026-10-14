@@ -109,6 +109,17 @@ it("upgrades: an item search's results are judged too, bids only skipped, a list
   expect([card(addon)[1], addon.eval("return #ns.errors")], "a potion's results, and a key the client hides, are left alone").toEqual([1, 0]);
 });
 
+it("upgrades: the same item and suffix at another unique ID is one row at the cheapest price; another suffix stays its own", () => {
+  const addon = warrior();
+  addon.eval(`function __variant(unique, suffix) return "|cffffffff|Hitem:102:0:0:0:0:0:" .. suffix .. ":" .. unique .. ":60|h[TEST-ONLY Better Bracers]|h|r" end
+    __wfgWorld.ah.items[102] = { { buyoutAmount = 900, quantity = 1, itemLink = __variant(111, 5) }, { buyoutAmount = 700, quantity = 1, itemLink = __variant(222, 5) },
+      { buyoutAmount = 800, quantity = 1, itemLink = __variant(333, 5) }, { buyoutAmount = 950, quantity = 1, itemLink = __variant(444, 6) } }`);
+  addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 102 });
+  addon.update(0.01);
+  expect([card(addon)[1], row(addon, 1)[4], row(addon, 2)[4], row(addon, 3)[0]], "two suffixes, not four listings: the first at its cheapest, the second alone").toEqual([2, "7s 0c", "9s 50c", false]);
+  expect(addon.eval(`return ${HELPER}.GearKey("not a link")`), "text that is no item link is its own key").toBe("not a link");
+});
+
 it("upgrades: what you wear and the weights change the judgement; closing the house forgets the listings", () => {
   const addon = warrior();
   scan(addon, SCAN);
