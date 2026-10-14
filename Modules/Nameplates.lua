@@ -584,8 +584,8 @@ end
 function NP.Command(rest)
   if rest == "enemies on" or rest == "enemies off" then return setEnemies(rest == "enemies on") end
   local total, enemies = countPlates()
-  ns.Chat(("Plates: %d drawn, %d of them units you can attack. Game's Enemy nameplates %s, Friendly %s, Show all %s."):format(
-    total, enemies, cvarState("nameplateShowEnemies"), cvarState("nameplateShowFriends"), cvarState("nameplateShowAll")))
+  ns.Chat(("Plates: %d drawn, %d of them units you can attack. Game's Enemy nameplates %s, Friendly players %s, Friendly NPCs %s, Show all %s."):format(total, enemies,
+    cvarState("nameplateShowEnemies"), cvarState("nameplateShowFriendlyPlayers"), cvarState("nameplateShowFriendlyNPCs"), cvarState("nameplateShowAll")))
   if cvarState("nameplateShowEnemies") == "off" then
     ns.Chat("The game draws no enemy plates, so there is nothing to dress. Turn on Enemy nameplates in /vg > Nameplates, or press V.")
   end
@@ -606,7 +606,7 @@ end
 function NP.OptionRows()
   return {
     { "header", "Nameplates" },
-    { "text", "Turn the whole module off under Modules to keep the default plates." }, { "check", "Enemy nameplates (the game's setting, the V key)", NP.GameSetting("nameplateShowEnemies") }, { "check", "Friendly nameplates (the game's setting, Shift-V)", NP.GameSetting("nameplateShowFriends") },
+    { "text", "Turn the whole module off under Modules to keep the default plates." }, { "check", "Enemy nameplates (the game's setting, the V key)", NP.GameSetting("nameplateShowEnemies") }, { "check", "Friendly players' nameplates (the game's setting)", NP.GameSetting("nameplateShowFriendlyPlayers") }, { "check", "Friendly NPCs' nameplates (the game's setting)", NP.GameSetting("nameplateShowFriendlyNPCs") },
     { "check", "Levels, colored by how hard the unit is for you", setting("level") },
     { "check", "Threat colors while you have aggro", setting("threat") },
     { "check", "Accent border, glow and marker on your target", setting("targetBorder") }, { "check", "Cast bar", setting("castBar", true) },

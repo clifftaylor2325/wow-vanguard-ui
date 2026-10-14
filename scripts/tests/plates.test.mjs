@@ -113,10 +113,10 @@ it("each nameplate asks the client for its own unit's events, once", () => {
   expect(unitEvents(addon, "UNIT_FACTION").subs, "the client reuses a plate for another unit: it listens for that one").toBe("nameplate2 nameplate5");
 });
 it("/vg plates reports the game's plate settings and sets the enemy one, out of combat", () => {
-  const addon = loggedIn(UNITS_ENV + PLATE_ENV + "UnitCanAttack = function(_, unit) return unit == 'nameplate1' end SetCVar('nameplateShowFriends', 1)");
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + "UnitCanAttack = function(_, unit) return unit == 'nameplate1' end SetCVar('nameplateShowFriendlyPlayers', 1) SetCVar('nameplateShowFriendlyNPCs', 0)");
   addon.eval("SetCVar('nameplateShowEnemies', 0)");
   addon.slash("plates");
-  expect(addon.chat().join("\n"), "counts, the three settings and the hint").toMatch(/Plates: 2 drawn, 1 of them units you can attack\. .*Enemy nameplates off, Friendly on, Show all unknown\.[\s\S]*The game draws no enemy plates/);
+  expect(addon.chat().join("\n"), "counts, the four settings and the hint").toMatch(/Plates: 2 drawn, 1 of them units you can attack\. .*Enemy nameplates off, Friendly players on, Friendly NPCs off, Show all unknown\.[\s\S]*The game draws no enemy plates/);
   addon.slash("plates enemies on");
   expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "switched on").toBe("1");
   setCombat(addon, true);
@@ -126,12 +126,13 @@ it("/vg plates reports the game's plate settings and sets the enemy one, out of 
   expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "changed once the fight ends").toBe("0");
 });
 it("the Nameplates page switches the game's enemy and friendly plates, out of combat", () => {
-  const addon = loggedIn(UI_ENV + CLICK_LUA + "SetCVar('nameplateShowFriends', 1)");
+  const addon = loggedIn(UI_ENV + CLICK_LUA + "SetCVar('nameplateShowFriendlyPlayers', 1) SetCVar('nameplateShowFriendlyNPCs', 0)");
   addon.eval("SetCVar('nameplateShowEnemies', 0)");
   addon.eval('ns.Options.Show("nameplates")');
   addon.eval('__click("Enemy nameplates")');
-  addon.eval('__click("Friendly nameplates")');
-  expect(addon.eval("return { GetCVar('nameplateShowEnemies'), GetCVar('nameplateShowFriends') }"), "each row flips the game's own setting").toEqual(["1", "0"]);
+  addon.eval('__click("Friendly players\' nameplates")');
+  addon.eval('__click("Friendly NPCs\' nameplates")');
+  expect(addon.eval("return { GetCVar('nameplateShowEnemies'), GetCVar('nameplateShowFriendlyPlayers'), GetCVar('nameplateShowFriendlyNPCs') }"), "each row flips the game's own setting").toEqual(["1", "0", "1"]);
   setCombat(addon, true);
   addon.eval('__click("Enemy nameplates")');
   expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "not in a fight").toBe("1");
