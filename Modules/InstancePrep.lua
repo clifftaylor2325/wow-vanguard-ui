@@ -123,6 +123,8 @@ local function you()
   return not ns.IsSecret(class) and class or nil, ns.PlainNumber(UnitLevel("player")) or 0
 end
 
+PR.You = you
+
 -- The class rows: ammo for hunters, soul shards for warlocks, then the class's reagents at your level.
 function PR.ReagentRows()
   local rows, class, level = {}, you()
@@ -367,11 +369,12 @@ local function setWant(rest)
   ns.Chat(string.format("Instance prep wants %d %s.", tonumber(n), key))
 end
 
--- /vg prep [want <key> <n>]: the card now (after the fight, in one), or a wanted amount.
+-- /vg prep [want <key> <n>|setup]: the card now (after the fight, in one), a wanted amount, or the wanted-amounts window.
 function PR.Command(rest)
   rest = rest or ""
   if not PR.settings then return ns.Chat("Instance prep is off (/vg > Modules).") end
   if rest:match("^want") then return setWant(rest) end
+  if rest:match("^setup") then return PR.Wizard.Open() end
   ns.OutOfCombat(function() PR.Show(true) end, "prep")
 end
 
