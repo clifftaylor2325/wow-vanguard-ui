@@ -160,24 +160,30 @@ function AH.StackCount(s)
 end
 
 -- The bag slot's item when it is the sale's (the same item ID, level and suffix) and not locked
--- (an item locks while the house takes it): its location, else nil.
+-- (an item locks while the house takes it): its location, else nil and whether it was locked.
 local function holds(s, bag, slot)
   local info = bag and C_Container.GetContainerItemInfo(bag, slot)
-  if not (info and ns.PlainNumber(info.itemID) == s.id and not info.isLocked) then return nil end
+  if not (info and ns.PlainNumber(info.itemID) == s.id) then return nil end
   local loc = ItemLocation:CreateFromBagAndSlot(bag, slot)
   local key = C_AuctionHouse.GetItemKeyFromItem(loc)
-  if key and key.itemLevel == s.key.itemLevel and key.itemSuffix == s.key.itemSuffix then return loc end
+  if not (key and key.itemLevel == s.key.itemLevel and key.itemSuffix == s.key.itemSuffix) then return nil end
+  if info.isLocked then return nil, true end
+  return loc
 end
 
 -- Where the sale's item is now: its own slot while it's still there, else the first bag slot
--- that holds it (the next stack, once the one before went up); nil when none does.
+-- that holds it (the next stack, once the one before went up); nil when none does, then whether
+-- one was found locked (still with the house).
 function AH.SellLocation(s)
-  local found = holds(s, s.loc:GetBagAndSlot())
-  for bag = 0, 4 do
-    for slot = 1, found and 0 or ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do found = found or holds(s, bag, slot) end
+  local found, locked = holds(s, s.loc:GetBagAndSlot())
+  for bag = 0, AH.LAST_BAG do
+    for slot = 1, found and 0 or ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do
+      local loc, lk = holds(s, bag, slot)
+      found, locked = found or loc, locked or lk
+    end
   end
   s.loc = found or s.loc
-  return found
+  return found, locked
 end
 
 -- The deposit for the next stack for length d (rounded up to silver without copper prices), or nil.
@@ -414,8 +420,9 @@ end
 function AH.PostCheck(s)
   if not (s and s.qty > s.done) then return "sold" end
   local why, price = priceCheck(s)
-  local loc = not why and AH.SellLocation(s)
-  if why or not loc then return why or "bags" end
+  local loc, locked = nil, false
+  if not why then loc, locked = AH.SellLocation(s) end
+  if why or not loc then return why or (locked and "busy" or "bags") end
   if AH.settings.vendorFloor and AH.UnderVendor(s, price) then return "vendor" end
   if not canPay(s, loc) then return "money" end
   if not C_AuctionHouse.IsThrottledMessageSystemReady() then return "busy" end

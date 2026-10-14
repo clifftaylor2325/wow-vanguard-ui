@@ -309,7 +309,16 @@ it("the next stack is the same item: another variant or a locked slot is passed 
   expect(restrictedLog(addon).map((c) => c[2]), "the blade in bag 0, then the one in bag 1 slot 3").toEqual(["0:2", "1:3"]);
   addon.eval("__wfgWorld.bags[1][3] = nil");
   addon.fire("BAG_UPDATE_DELAYED");
-  expect([card(addon)[2], card(addon)[0][2], form(addon)[7], addon.eval(`return ${CARD}.guide:GetText()`)], "none left in the bags (the card follows the bags): no Post, no deposit, and the guide says why").toEqual([false, "", "posted 2 of 4", "It isn't in your bags now: put it on the card again."]);
+  // The card's Post state: whether Post is on, its deposit, the count line and the guide line.
+  const state = () => [card(addon)[2], card(addon)[0][2], form(addon)[7], addon.eval(`return ${CARD}.guide:GetText()`)];
+  expect(state(), "only a locked one left (still with the house): no Post, and the guide says to wait, not that the bags are empty").toEqual([false, "", "posted 2 of 4", "Stack 2 sent: waiting for the auction house..."]);
+  addon.eval("__wfgWorld.bags[1][2] = nil");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect(state(), "none left in the bags (the card follows the bags): no Post, no deposit, and the guide says why").toEqual([false, "", "posted 2 of 4", "It isn't in your bags now: put it on the card again."]);
+  addon.eval(`__wfgWorld.bags[5] = { [1] = { itemID = ${HELPER}.sell.id, count = 1 } } __wfgWorld.bagSizes[5] = 4`);
+  addon.fire("AUCTION_HOUSE_THROTTLED_SYSTEM_READY");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect(card(addon)[2], "the same item in the reagent bag (the game's combined bag) counts as in the bags").toBe(true);
 });
 // TEST-ONLY linen up now: someone's at 2s (2 hours left), yours at 2s 50c, someone's at 3s (20
 // minutes left), and one with a hidden price.

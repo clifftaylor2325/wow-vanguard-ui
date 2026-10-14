@@ -37,8 +37,8 @@ AH.STATUS = { [0] = "active", [1] = "sold" }
 -- Enum.AuctionHouseNotification's AuctionSold and AuctionExpired (AuctionHouseEnumsDocumentation.lua),
 -- as AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION gives them.
 AH.SOLD_NOTE, AH.EXPIRED_NOTE = 4, 5
--- The bags searched for an expired auction's item: the backpack (0) to the fourth bag.
-AH.LAST_BAG = 4
+-- The bags searched for an item (an expired auction's, a sale's): the backpack (0) to the reagent bag (5).
+AH.LAST_BAG = 5
 -- Check your auctions again after each post and cancel: off until switched on, since each
 -- check is a search per item (Town and gear > Auction house).
 AH.defaults.recheck = false
@@ -221,7 +221,7 @@ function AH.OnNotice(_, note, _, id)
   AH.PaintOwned()
 end
 
--- The first bag slot holding item id (the backpack to bag AH.LAST_BAG), as an ItemLocation, or nil.
+-- The first bag slot holding item id (the backpack to bag AH.LAST_BAG, the reagent bag), as an ItemLocation, or nil.
 function AH.FindInBags(id)
   for bag = 0, AH.LAST_BAG do
     for slot = 1, ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do
