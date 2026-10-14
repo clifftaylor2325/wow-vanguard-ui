@@ -107,7 +107,7 @@ it("group board: a click opens a whisper with the message filled in, never sends
 it("group board: the filter, the level switch, the note, more posts than rows, and old posts going", () => {
   const addon = board(60);
   addon.slash("lfg");
-  expect(status(addon), "empty").toEqual(["0 posts", "No posts yet. Looking-for-more and looking-for-group lines from chat show here."]);
+  expect(status(addon), "empty").toEqual(["0 posts", "No posts yet. No chat lines reached the board since login. More: /vg lfg probe."]);
   post(addon, "LFM SFK heals", "Low");
   addon.update(0);
   expect(status(addon), "a post below your level hides").toEqual(["0 posts", "No posts match. Show all posts, or turn off Only dungeons for my level."]);
@@ -149,4 +149,25 @@ it("group board: the tooltip, closing, the module off, and its options card", ()
   off.clearChat();
   off.slash("lfg");
   expect(chatHas(off, /The group board is off \(\/vg > Modules\)\./), "module off: says so").toBe(true);
+});
+
+it("group board: the empty board and /vg lfg probe say what chat was heard and why lines were skipped", () => {
+  const addon = board();
+  addon.eval("GetChannelList = function() return 1, 'General', false, 2, 'Trade', false end");
+  post(addon, "WTS Devilsaur Leggings", "Seller");
+  post(addon, "LFM SFK", "Said", "SAY");
+  post(addon, "LFM SFK", "Mage");
+  post(addon, "LFM SFK", "Tester");
+  addon.eval("GetChannelList = nil");
+  addon.slash("lfg");
+  expect(status(addon)).toEqual(["1 posts", ""]);
+  addon.eval("local f = Vanguard_GroupBoard f:Hide() ns.GetModule('GroupBoard').entries = {} ns.GetModule('GroupBoard').Refresh()");
+  expect(status(addon)[1]).toBe("No posts yet. 4 chat lines since login: 1 posts, 1 other, 0 hidden by the game, 1 from channels that are off, 1 yours. More: /vg lfg probe.");
+  addon.slash("lfg probe");
+  expect(chatHas(addon, /Group board: 4 chat lines since login/), "the summary").toBe(true);
+  expect(chatHas(addon, /You are in channels: unknown/), "no channel list on this client").toBe(true);
+  addon.eval("GetChannelList = function() return 1, 'General', false, 2, 'Trade', false end");
+  addon.slash("lfg probe");
+  expect(chatHas(addon, /1 General, 2 Trade/), "the channels").toBe(true);
+  expect(chatHas(addon, /Posts kept: 0/), "kept and shown").toBe(true);
 });
