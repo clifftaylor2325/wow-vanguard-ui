@@ -411,11 +411,11 @@ const QLOG_ENV = `
   C_QuestLog.GetNumQuestLogEntries = function() return #__log end
   C_QuestLog.GetInfo = function(i) local e = __log[i] local q = e and e.questID and __quests[e.questID]
     if q then return { questID = e.questID, title = q.title, level = q.level } end return e end
-  __watched, __group, __overrides, __owners = { [90051] = 0 }, false, {}, {}
+  __watches, __group, __overrides, __owners = { 90051 }, false, {}, {}
   C_QuestLog.SetSelectedQuest = function(id) __selected = id end
-  C_QuestLog.GetQuestWatchType = function(id) return __watched[id] end
-  C_QuestLog.AddQuestWatch = function(id) __added = id __watched[id] = 1 end
-  C_QuestLog.RemoveQuestWatch = function(id) __removed = id __watched[id] = nil end
+  C_QuestLog.GetQuestWatchType = function() return 0 end
+  C_QuestLog.AddQuestWatch = function(id) __added = id if not __full then __watches[#__watches + 1] = id end end
+  C_QuestLog.RemoveQuestWatch = function(id) __removed = id for i, w in ipairs(__watches) do if w == id then table.remove(__watches, i) end end end
   C_QuestLog.IsPushableQuest = function() return true end
   C_QuestLog.SetAbandonQuest = function() __abandoning = __selected end
   IsInGroup = function() return __group end
@@ -460,10 +460,14 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   logLine(addon, 3);
   logButton(addon, "track");
   expect(questLog(addon).track, "Track flips it to Untrack").toBe("Untrack");
-  addon.eval("__watched[90052] = nil");
+  addon.eval("__watches = { 90051 }");
   addon.fire("QUEST_WATCH_LIST_CHANGED");
   addon.eval("__wfgStub.advance(1)");
   expect(questLog(addon).track, "a watch change from elsewhere (the tracker's right-click) redraws the button").toBe("Track");
+  addon.eval("__full = true IsShiftKeyDown = function() return true end");
+  logLine(addon, 3);
+  expect([questLog(addon).track, addon.chat().filter((l) => /The game didn't track TEST-ONLY Letter \(1 quests tracked\)/.test(l)).length], "Shift-click a line tracks it; when the game refuses, the button stays Track and chat says so").toEqual(["Track", 1]);
+  addon.eval("__full = nil IsShiftKeyDown = function() return false end");
   expect([addon.eval("return { __removed, __added }"), questLog(addon).title], "Untrack the wolves; choose the letter and Track it").toEqual([[90051, 90052], "[12] TEST-ONLY Letter"]);
   expect(addon.eval("local l = Vanguard_QuestLog.lines return { l[3].mark:IsShown(), l[2].mark:IsShown(), l[1].mark:IsShown() }"), "the chosen quest's line is marked").toEqual([true, false, false]);
   addon.eval("__group = true");
