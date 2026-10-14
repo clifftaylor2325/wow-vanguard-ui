@@ -96,7 +96,8 @@ local function prepBuffRows()
     check("Dungeon card: level range, your dungeon quests and keys on the checklist", setting("InstancePrep", "dungeonCard")),
     check("Buff checks on the card: flask, food, oil or poison, raid buffs", setting("InstancePrep", "buffs")),
     check("World buffs among them", setting("InstancePrep", "worldBuffs")),
-    { "text", "Wanted amounts: /vg prep want <food|bandages|potions|ammo|shards> <n>; items from /vg stock are checked too." },
+    { "button", "Set wanted amounts...", function() ns.GetModule("InstancePrep").Wizard.Open() end, function() return ns.GetModule("InstancePrep").settings ~= nil end },
+    { "text", "Wanted amounts (food, bandages, potions, ammo, shards) are set in the window above or with /vg prep want <kind> <n>; items from /vg stock are checked too." },
   }
 end
 
