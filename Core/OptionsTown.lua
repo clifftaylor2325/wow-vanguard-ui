@@ -122,7 +122,8 @@ local function upgradeRows()
     { "cycle", "Weigh stats for", roles, liveSetting("Upgrades", "role", function() ns.GetModule("Upgrades").Changed() end) },
     check("Upgrade or downgrade on item tooltips", setting("Upgrades", "tooltip")),
     check("Arrow on upgrades in the combined bag", setting("Upgrades", "bags")), check("Arrow on quest rewards that are upgrades", setting("Upgrades", "quests")),
-    { "text", "/vg weights shows the stat weights in use; set <stat> <n>, reset, export and import change or share them." },
+    { "button", "Set up stat weights", function() O.Hide(); ns.GetModule("Upgrades").Wizard.Open() end },
+    { "text", "/vg weights shows the stat weights in use; wizard, set <stat> <n>, reset, export and import change or share them." },
   }
 end
 

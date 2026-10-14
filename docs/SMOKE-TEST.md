@@ -978,6 +978,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: with sized icons on, strokes look even and sharp (no soft or doubled lines) and the icons are not smaller or clipped; with it off they look as before. `/vg errors` stays empty. Screenshots on and off. [Needs in game: that the client loads the 20 and 24 px files (not powers of two) cleanly; that the menu strip's glyph is about 20 px as assumed; if it is another size, say so and the size list changes.]
 - If it fails, paste: screenshots, your resolution and UI scale, and `/vg errors`.
 
+### 31.2 Stat weights wizard
+
+- Do: `/vg`, Town and gear, Gear upgrades, click Set up stat weights (or type `/vg weights wizard`). Click Next, drag a slider, click Defaults, drag one again, click Next, then Save. Open it again and click Cancel on any page. Then `/vg weights`.
+- Expect: a dialog above everything with three pages (the role, a slider for each of seven key stats with a Defaults button, a review of every weight); Back and Next move between them, and the last one says Save. Save closes it and prints a line in chat; `/vg weights` shows the weight you moved. Cancel closes it and changes nothing.
+- If it fails, paste: screenshots, your resolution and UI scale, and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.

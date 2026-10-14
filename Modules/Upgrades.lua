@@ -38,9 +38,10 @@ UP.SLOTS = {
 
 -- Weights ---------------------------------------------------------------------------------
 
--- The role weights are picked for: the setting, else (auto) your group role, damage when you have none.
-function UP.Role()
-  if UP.settings.role ~= "auto" then return UP.settings.role end
+-- The role weights are picked for: the setting (or the one given), else (auto) your group role, damage when you have none.
+function UP.Role(pick)
+  pick = pick or UP.settings.role
+  if pick ~= "auto" then return pick end
   local assigned = type(UnitGroupRolesAssigned) == "function" and UnitGroupRolesAssigned("player")
   return UP.ROLES[assigned] or "damage"
 end
@@ -269,11 +270,12 @@ local function importDialog()
   end)
 end
 
--- /vg weights [set <stat> <n>|reset|export|import].
+-- /vg weights [wizard|set <stat> <n>|reset|export|import].
 function UP.Command(rest)
-  UP.Current()
   local word, a, b = (rest or ""):match("^%s*(%S*)%s*(%S*)%s*(%S*)")
   word = word:lower()
+  if word == "wizard" then return UP.Wizard.Open() end
+  UP.Current()
   if word == "set" then return setWeight(a, b) end
   if word == "reset" then return resetWeights() end
   if word == "export" then return ns.ShowText("Vanguard weights (" .. UP.kind .. ")  Ctrl+C to copy", ns.Serialize.Encode("weights", { kind = UP.kind, weights = UP.current })) end

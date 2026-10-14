@@ -89,6 +89,52 @@ it("upgrades: weights go out and come back as a string", () => {
   expect(chatHas(addon, /Import failed: not a Vanguard profile string\./), "a failed paste says why").toBe(true);
 });
 
+it("upgrades: the weights wizard walks through role, sliders and review, and saves only on Save", () => {
+  const addon = loggedIn(GEAR_ENV);
+  // Runs Lua in the client.
+  const lua = (code) => addon.eval(code);
+  // Clicks the button the Lua expression names.
+  const click = (expr) => lua(`local b = ${expr} b:GetScript("OnClick")(b)`);
+  // The strength weight in use.
+  const stat = () => lua("return (ns.GetModule('Upgrades').Current()).STR");
+  lua("ns.GetModule('Upgrades').Wizard.Open()");
+  expect(lua("return { Vanguard_WeightsWizard:IsShown(), Vanguard_WeightsWizard.caption:GetText() }"), "it opens on the role page").toEqual([true, "Step 1 of 3: Which role is this for?"]);
+  click("Vanguard_WeightsWizard.next");
+  expect(lua("local f = Vanguard_WeightsWizard local out = {} for _, r in ipairs(f.rows) do if r:IsShown() and r.label and r.min then out[#out + 1] = r.label:GetText() end end return out"), "the tune page: a slider per key stat, the biggest default first").toEqual(["Weapon damage per second", "Strength", "Hit rating", "Crit rating", "Expertise", "Agility", "Haste rating"]);
+  lua("local r = Vanguard_WeightsWizard.rows[4] r.set(2) r:Refresh()");
+  click("Vanguard_WeightsWizard.pages[2].defaults");
+  expect(lua("return Vanguard_WeightsWizard.rows[4].get()"), "Defaults put the draft back").toBe(1);
+  lua("Vanguard_WeightsWizard.rows[4].set(2)");
+  click("Vanguard_WeightsWizard.next");
+  expect(lua("return Vanguard_WeightsWizard.review:GetText()"), "the review lists the weights as they will be used").toMatch(/^Weights for a strength, role damage:\nWeapon damage per second 2\.5, Strength 2, Hit rating 0\.9/);
+  expect(stat(), "nothing is saved before Save").toBe(1);
+  click("Vanguard_WeightsWizard.cancel");
+  expect([lua("return Vanguard_WeightsWizard:IsShown()"), stat()], "Cancel changes nothing").toEqual([false, 1]);
+  lua("ns.GetModule('Upgrades').Wizard.Open()");
+  click("Vanguard_WeightsWizard.next");
+  lua("Vanguard_WeightsWizard.rows[4].set(2)");
+  click("Vanguard_WeightsWizard.next");
+  click("Vanguard_WeightsWizard.back");
+  click("Vanguard_WeightsWizard.next");
+  click("Vanguard_WeightsWizard.next");
+  expect([lua("return Vanguard_WeightsWizard:IsShown()"), stat(), chatHas(addon, /Gear upgrades now weigh stats as a strength \(role damage\)\./)], "Save keeps the change and closes").toEqual([false, 2, true]);
+  expect(lua("return ns.GetModule('Upgrades').settings.weights.strength"), "only what differs from the defaults is kept").toEqual({ STR: 2 });
+});
+
+it("upgrades: the wizard's role page picks a kind, and it names every stat", () => {
+  const addon = loggedIn(GEAR_ENV);
+  addon.slash("weights wizard");
+  const step = "local c = Vanguard_WeightsWizard.rows[1] c:GetScript('OnClick')(c)";
+  addon.eval(step + step);
+  expect(addon.eval("local f = Vanguard_WeightsWizard return f.pages[1].note:GetText()"), "a role makes a kind").toMatch(/That makes you a tank here/);
+  addon.eval("local f = Vanguard_WeightsWizard f.next:GetScript('OnClick')(f.next) f.next:GetScript('OnClick')(f.next) f.next:GetScript('OnClick')(f.next)");
+  expect(addon.eval("local missing = {} for short in pairs(ns.UpgradeWeights.STATS) do if not ns.GetModule('Upgrades').Wizard.LABELS[short] then missing[#missing + 1] = short end end return missing"), "every stat has a name").toEqual({});
+  expect(addon.eval("return ns.GetModule('Upgrades').settings.role"), "Save keeps the role picked").toBe("tank");
+  const off = loggedIn(GEAR_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Upgrades = false } } }" });
+  off.slash("weights wizard");
+  expect(chatHas(off, /Gear upgrades is switched off/), "with the module off it says so").toBe(true);
+});
+
 // TEST-ONLY combined bag holding better bracers (2) and worse ones (3), and a slot that isn't a bag button.
 const BAG_ENV = `
   local f = CreateFrame("Frame", "ContainerFrameCombinedBags", UIParent)
