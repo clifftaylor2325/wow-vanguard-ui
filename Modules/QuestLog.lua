@@ -99,9 +99,10 @@ end
 
 -- Actions ----------------------------------------------------------------------------------------
 
--- Starts or stops watching the chosen quest.
+-- Starts or stops watching the chosen quest, then redraws it so the button shows what the game now says.
 function QL.ToggleTrack(d)
   if d.watched then questLog("RemoveQuestWatch", d.id) else questLog("AddQuestWatch", d.id) end
+  QL.Select(d.id)
 end
 
 -- Shares the chosen quest with your group.
@@ -188,4 +189,5 @@ function QL.Enable(settings)
   end
   hookGameToggle()
   ns.On("QUEST_LOG_UPDATE", refreshSoon)
+  ns.On("QUEST_WATCH_LIST_CHANGED", refreshSoon)
 end

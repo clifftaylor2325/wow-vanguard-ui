@@ -414,7 +414,8 @@ const QLOG_ENV = `
   __watched, __group, __overrides, __owners = { [90051] = 0 }, false, {}, {}
   C_QuestLog.SetSelectedQuest = function(id) __selected = id end
   C_QuestLog.GetQuestWatchType = function(id) return __watched[id] end
-  C_QuestLog.AddQuestWatch = function(id) __added = id end
+  C_QuestLog.AddQuestWatch = function(id) __added = id __watched[id] = 1 end
+  C_QuestLog.RemoveQuestWatch = function(id) __removed = id __watched[id] = nil end
   C_QuestLog.IsPushableQuest = function() return true end
   C_QuestLog.SetAbandonQuest = function() __abandoning = __selected end
   IsInGroup = function() return __group end
@@ -455,8 +456,14 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   expect([q.title, q.text, q.objectives, q.cards, q.money, q.track, q.share], "the first quest, chosen: text, objectives, rewards; watched; nobody to share with").toEqual([
     "[8] TEST-ONLY Wolves", "TEST-ONLY About 90051", "Objectives\n- 3/8 TEST-ONLY Wolves slain\n+ 1/1 TEST-ONLY Pelt", ["TEST-ONLY Boots", "TEST-ONLY Bread"], "+12s 0c  ·  450 XP", "Untrack", false]);
   logButton(addon, "track");
+  expect(questLog(addon).track, "Untrack flips the button to Track at once").toBe("Track");
   logLine(addon, 3);
   logButton(addon, "track");
+  expect(questLog(addon).track, "Track flips it to Untrack").toBe("Untrack");
+  addon.eval("__watched[90052] = nil");
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.eval("__wfgStub.advance(1)");
+  expect(questLog(addon).track, "a watch change from elsewhere (the tracker's right-click) redraws the button").toBe("Track");
   expect([addon.eval("return { __removed, __added }"), questLog(addon).title], "Untrack the wolves; choose the letter and Track it").toEqual([[90051, 90052], "[12] TEST-ONLY Letter"]);
   expect(addon.eval("local l = Vanguard_QuestLog.lines return { l[3].mark:IsShown(), l[2].mark:IsShown(), l[1].mark:IsShown() }"), "the chosen quest's line is marked").toEqual([true, false, false]);
   addon.eval("__group = true");
