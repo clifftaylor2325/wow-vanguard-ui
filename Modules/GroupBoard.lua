@@ -150,7 +150,7 @@ function GB.OnChat(event, text, sender)
   st.events[event] = (st.events[event] or 0) + 1
   if why then st[why] = st[why] + 1 return end
   local e = GB.Parse(text)
-  if not e then st.plain = st.plain + 1 return end
+  if not e then st.plain, st.lastPlain = st.plain + 1, text:sub(1, 80) return end
   st.posts = st.posts + 1
   e.sender, e.time = sender, GetTime()
   GB.Add(e)
@@ -180,6 +180,7 @@ function GB.Probe()
   table.sort(on)
   ns.Chat("Group board: " .. GB.Summary())
   ns.Chat("Reading: " .. (#on > 0 and table.concat(on, ", ") or "no channel") .. ". You are in channels: " .. GB.Channels() .. ".")
+  ns.Chat("Last line that was not a post: " .. (GB.stats.lastPlain or "none yet"))
   ns.Chat("Posts kept: " .. #GB.entries .. ", shown: " .. #GB.Shown() .. " (filter " .. GB.filter .. ", only my level " .. tostring(GB.settings.mine) .. ").")
 end
 

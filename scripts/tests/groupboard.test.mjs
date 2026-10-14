@@ -171,3 +171,13 @@ it("group board: the empty board and /vg lfg probe say what chat was heard and w
   expect(chatHas(addon, /1 General, 2 Trade/), "the channels").toBe(true);
   expect(chatHas(addon, /Posts kept: 0/), "kept and shown").toBe(true);
 });
+
+it("group board: a Trade line naming a dungeon the list lacks still shows as 'Any dungeon' under the level filter", () => {
+  const addon = board();
+  post(addon, "LFG HoT - Can tank or DPS", "Bon Figgy-Ruleset");
+  post(addon, "LFW \u2014 your mats + tip", "Crafty-Ruleset");
+  addon.slash("lfg");
+  expect(rows(addon), "the LFG line is a post with no dungeon, the LFW line is not a post").toEqual([["LFG", "Any dungeon", "Tank, DPS", "Bon Figgy", "now"]]);
+  addon.slash("lfg probe");
+  expect(chatHas(addon, /Last line that was not a post: LFW/), "the probe quotes the last miss").toBe(true);
+});
