@@ -167,6 +167,7 @@ Modules/Tooltips.lua
 Modules/Inventory.lua
 Modules/UpgradeWeights.lua
 Modules/Upgrades.lua
+Modules/UpgradeWizard.lua
 Modules/VendorMemory.lua
 Modules/SpellRanks.lua
 Modules/Nameplates.lua
