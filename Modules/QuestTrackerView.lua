@@ -76,9 +76,9 @@ local function addBody(f)
 end
 
 -- The "+N more" line or "Show fewer" toggles between the quests that fit the spot and all of them
--- (the tracker then grows down, up to most of the screen's height).
+-- (the tracker then grows down, up to most of the screen's height); the choice is kept in the profile.
 function QT.ToggleExpanded()
-  QT.expanded = not QT.expanded
+  QT.settings.expanded = not QT.settings.expanded
   QT.Refresh()
 end
 
@@ -156,7 +156,7 @@ end
 
 -- How tall the quests may stack: the spot's body, or most of the screen when expanded.
 local function roomFor(f)
-  if QT.expanded then return (UIParent:GetHeight() or 768) * 0.7 end
+  if QT.settings.expanded then return (UIParent:GetHeight() or 768) * 0.7 end
   return f.body:GetHeight() - QT.LINE
 end
 
@@ -170,11 +170,14 @@ local function fitCount(quests, room)
   return n
 end
 
--- Lays the quests out from the top until the room is full; "+N more" for the rest.
+-- The most quests the tracker draws, even with all shown (a long list runs into the bars).
+QT.MAX_SHOWN = 10
+
+-- Lays the quests out from the top until the room is full or QT.MAX_SHOWN are drawn; "+N more" for the rest.
 local function layout(f, quests)
   local y, shown, room = 0, {}, roomFor(f)
   for _, q in ipairs(quests) do
-    if y + QT.BlockHeight(q) > room then break end
+    if y + QT.BlockHeight(q) > room or #shown >= QT.MAX_SHOWN then break end
     local b = f.blocks.Next()
     b:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -y)
     QT.PaintBlock(b, q)
@@ -184,13 +187,15 @@ local function layout(f, quests)
   return shown, y
 end
 
--- The line under the last block: "+N more" when some quests don't fit, "Show fewer" when expanded.
+-- The line under the last block: "+N more" when some quests don't fit; "Show fewer" when expanded
+-- (with "· +N more" when even the expanded list stops at QT.MAX_SHOWN).
 local function showMore(f, quests, shown, y)
   local hidden = #quests - #shown
-  local fewer = QT.expanded and #quests > fitCount(quests, f.body:GetHeight() - QT.LINE)
-  f.moreBtn:SetShown(hidden > 0 or fewer)
-  f.more:SetShown(hidden > 0 or fewer)
-  f.more:SetText(hidden > 0 and ("+" .. hidden .. " more") or "Show fewer")
+  local fewer = QT.settings.expanded and #quests > fitCount(quests, f.body:GetHeight() - QT.LINE)
+  local more = hidden > 0 and ("+" .. hidden .. " more") or nil
+  f.moreBtn:SetShown(more ~= nil or fewer)
+  f.more:SetShown(more ~= nil or fewer)
+  f.more:SetText(fewer and (more and ("Show fewer  ·  " .. more) or "Show fewer") or more or "")
   f.moreBtn:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -y)
 end
 
