@@ -65,11 +65,11 @@ local function refresh()
 end
 
 -- A slider's refresh that also names its stat.
-local function ownRefresh(refresh, i)
+local function ownRefresh(base, i)
   -- Names the slider for its stat, then refreshes it.
   return function(self)
     self.label:SetText(WZ.LABELS[state.stats[i]])
-    refresh(self)
+    base(self)
   end
 end
 
