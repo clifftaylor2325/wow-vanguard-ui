@@ -302,6 +302,14 @@ function AH.TakeCursor()
   AH.TakeItem(loc)
 end
 
+-- A click on the sell slot: a right click takes the item off the card (back to step 1, no count
+-- line kept); any other takes the item on the cursor.
+function AH.SlotClick(_, button)
+  if button ~= "RightButton" then return AH.TakeCursor() end
+  AH.sell, AH.sellStatus = nil, nil
+  AH.PaintSell()
+end
+
 -- Search results for item id (a search answered, or a further page of it; AH.OnSearchEvent): the
 -- search s in flight takes them when it is a price check or a page of the sell card's: the sell card
 -- its listings and the cheapest, your auctions' check the cheapest; the cheapest also feeds the price store.
@@ -724,7 +732,8 @@ local function sellSlot(c)
   c.slot:SetSize(36, 36)
   c.slot:SetPoint("TOPLEFT", 0, -20)
   c.slot:SetScript("OnReceiveDrag", AH.TakeCursor)
-  c.slot:SetScript("OnClick", ns.Guard("click sell slot", AH.TakeCursor))
+  c.slot:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  c.slot:SetScript("OnClick", ns.Guard("click sell slot", AH.SlotClick))
   c.icon = T.Crop(c.slot:CreateTexture(nil, "ARTWORK"))
   c.icon:SetPoint("TOPLEFT", 2, -2)
   c.icon:SetPoint("BOTTOMRIGHT", -2, 2)

@@ -320,6 +320,13 @@ it("the next stack is the same item: another variant or a locked slot is passed 
   addon.fire("BAG_UPDATE_DELAYED");
   expect(card(addon)[2], "the same item in the reagent bag (the game's combined bag) counts as in the bags").toBe(true);
 });
+it("a right click on the sell slot takes the item off the card, back to the first step", () => {
+  const addon = atAuctionHouse(BAGS);
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 10940 });
+  expect(addon.eval(`return ${HELPER}.sell ~= nil`), "an item on the card").toBe(true);
+  addon.click(`${CARD}.slot`, "RightButton");
+  expect([addon.eval(`return ${HELPER}.sell == nil and ${HELPER}.sellStatus == nil`), addon.eval(`return ${CARD}.guide:GetText()`)], "empty again, at step 1").toEqual([true, "Drop an item on the slot, or click one in your bags."]);
+});
 // TEST-ONLY linen up now: someone's at 2s (2 hours left), yours at 2s 50c, someone's at 3s (20
 // minutes left), and one with a hidden price.
 const LINEN_UP = `__wfgWorld.ah.commodities[2589] = { { unitPrice = 200, quantity = 10, timeLeftSeconds = 7200 },
