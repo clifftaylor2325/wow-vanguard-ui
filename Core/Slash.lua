@@ -20,7 +20,8 @@ local HELP = {
   "icons [on|off]       menu strip icons drawn at their on-screen size, after a /reload (off by default)",
   "cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)",
   "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
-  "variant [default|contrast|vellum|classic]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look",
+  "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember",
+  "corners [square|rounded]  panel corners: square (default) or rounded, on every theme",
   "gradient [on|off]    windows a shade lighter toward the top (off by default)",
   "accent <rrggbb|name> set the accent color (brass, arcane, jade, orchid, copper); accent reset",
   "theme reset          every theme setting back to default",
@@ -37,7 +38,8 @@ local HELP = {
   "watch [add|remove <phrase>|list|clear]   Chat watch: phrases that ring a sound and show a toast when said in chat",
   "quests               open or close Vanguard's quest log (the game's quest log key does too)",
   "questdata [questID]  what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever",
-  "lfg                  open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level",
+  "lfg [probe]          open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level; probe says what chat it has heard",
+  "plates [enemies on|off] how many nameplates Vanguard drew and the game's enemy plate setting; enemies on|off sets it (out of combat)",
   "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
   "craft [add [n]|next|stock|cd|top|done|clear]   the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)",
   "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>   search the inbox; presets for sending items to your alts (off until switched on)",
@@ -50,8 +52,8 @@ local HELP = {
   "ranks [swap]         spell ranks: bar buttons holding an older rank than you know; swap puts the newest rank there (out of combat). Off until Spell ranks is switched on",
   "trainers [next|clear]   what the trainers you've visited teach: how many services are remembered, what the next levels bring and where, or forget them (Trainer memory off until switched on)",
   "inventory [forget <name>|clear]   your characters remembered here and when their bags were read; forget drops one, clear forgets them all",
-  "weights [set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role; change one, go back to the defaults, or share them",
-  "prep [want <kind> <n>] the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards",
+  "weights [wizard|set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role; the wizard walks you through them, or change one, go back to the defaults, or share them",
+  "prep [want <kind> <n>|setup] the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards; setup opens the wanted-amounts window",
   "legacy [probe|plan ...]   Legacy system: probe lists what the client has for it; plan [add <points> <name>|remove <name>|clear] keeps a list of perks for the tree's 16 points (planner off until switched on)",
   "talents [plan|spend|clear|export|import]   Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string",
   "ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|scan|prices clear]  shopping lists (pick or make one, add an item: a link, an ID or a name; rename, copy, delete, export or import the list in use; recent: the last 20 items searched); scan the auction house (while it's open); forget the prices",
@@ -118,7 +120,7 @@ end
 -- /vg frame <name> [deep]
 local function frameCommand(rest)
   local name, deep = rest:match("^(%S+)%s*(%S*)$")
-  if not name then return chat("Usage: /vg frame <name> [deep]   (a global frame name; dots follow keys: MinimapCluster.Tracking)") end
+  if not name then return chat("Usage: /vg frame <name> [deep]   (a global frame name; dots follow keys: MinimapCluster.Tracking; #3 is the third child frame)") end
   printLines(ns.Inspect.Lines(name, deep:lower() == "deep"))
 end
 
@@ -219,10 +221,19 @@ end
 -- /vg variant [name]: a theme variant (#237), repainted at once.
 local function variantCommand(rest)
   if rest == "" then rest = T.Settings().variant end
-  if rest ~= "default" and not T.VARIANTS[rest] then return chat("Usage: /vg variant default|contrast|vellum|classic") end
+  if rest ~= "default" and not T.VARIANTS[rest] then return chat("Usage: /vg variant default|contrast|vellum|classic|midnight|obsidian|moss|ember") end
   T.Settings().variant = rest
   T.Refresh()
   chat("Theme variant: " .. (T.VARIANTS[rest] and T.VARIANTS[rest].label or "Slate and brass") .. ".")
+end
+
+-- /vg corners [square|rounded]: panel corners on every theme, repainted at once (no argument shows the current one).
+local function cornersCommand(rest)
+  if rest == "" then rest = T.Settings().corners end
+  if rest ~= "square" and rest ~= "rounded" then return chat("Usage: /vg corners square|rounded") end
+  T.Settings().corners = rest
+  T.Refresh()
+  chat("Corners: " .. rest .. ".")
 end
 
 -- /vg slug [on|off]: the SLUG font flag on world text, repainted at once (#239).
@@ -609,6 +620,7 @@ local COMMANDS = {
   ornaments = ornamentsCommand,
   icons = iconsCommand,
   variant = variantCommand,
+  corners = cornersCommand,
   slug = slugCommand,
   framebuffer = frameBufferCommand,
   theme = themeCommand,
@@ -625,6 +637,7 @@ local COMMANDS = {
   keybind = function() ns.GetModule("ActionBars").ToggleKeybindMode() end,
   copy = function() ns.GetModule("ChatExtras").ShowCopy() end,
   quests = function() local QL = ns.GetModule("QuestLog") if QL.frame then QL.Toggle() else ns.Chat("Vanguard's quest log is off (/vg > Quests).") end end,
+  plates = function(rest) ns.GetModule("Nameplates").Command(rest) end,
   stock = stockCommand,
   craft = function(rest) ns.GetModule("CraftQueue").Command(rest) end,
   mail = function(rest) ns.GetModule("MailTools").Command(rest) end,
@@ -643,7 +656,7 @@ local COMMANDS = {
   legacy = function(rest) ns.GetModule("Legacy").Command(rest) end,
   watch = function(rest) ns.GetModule("ChatWatch").Command(rest) end,
   gaps = function(rest) ns.GetModule("CooldownGaps").Command(rest) end,
-  lfg = function() ns.GetModule("GroupBoard").Toggle() end,
+  lfg = function(rest) ns.GetModule("GroupBoard").Command(rest) end,
   questdata = function(rest) ns.QuestGuide.Command(rest) end,
   situation = function(rest) ns.GetModule("Situations").Command(rest) end,
   ah = function(rest) ns.GetModule("AuctionHelper").Command(rest) end,

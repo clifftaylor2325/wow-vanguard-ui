@@ -2,7 +2,7 @@
 -- (AP.Summary) of every item at the auction house when you last scanned it
 -- (Auction helper's "Scan the auction house"), and the cheapest price each
 -- search since has seen (AP.RecordSeen, AP.RecordBrowse), kept per realm and
--- faction (each has its own auction house) with each day's values for 30
+-- faction (each has its own auction house) with each day's values for 7
 -- days, so item tooltips can say "AH: 12s 50c · market 14s 0c (today)" (and
 -- what a stack comes to) and the sell card can show the lowest price of the
 -- last 7 days. The auction house
@@ -21,8 +21,8 @@ local AP = {}
 ns.AuctionPrices = AP
 
 -- Items priced at most per house, and the share of them a prune keeps (6000 -> 5400); days of
--- values kept per item; days a price is kept; seconds in a day.
-AP.MAX_ITEMS, AP.KEEP, AP.DAYS, AP.MAX_AGE, AP.DAY = 6000, 0.9, 30, 30, 86400
+-- values kept per item (the 7 days every reader looks at); days a price is kept; seconds in a day.
+AP.MAX_ITEMS, AP.KEEP, AP.DAYS, AP.MAX_AGE, AP.DAY = 6000, 0.9, 7, 30, 86400
 -- The share of an item's units (per cent) its market value is taken over: the cheapest 15 %.
 AP.MARKET_PCT = 15
 

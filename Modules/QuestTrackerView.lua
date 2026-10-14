@@ -67,14 +67,26 @@ local function addBody(f)
   f.body:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -QT.HEADER)
   f.body:SetSize(QT.W, QT.H - QT.HEADER)
   f.blocks = QP.Pool(f.body, makeBlock)
-  f.more = T.Text(f.body:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  f.moreBtn = CreateFrame("Button", nil, f.body)
+  f.moreBtn:SetSize(QT.W, QT.LINE)
+  f.moreBtn:RegisterForClicks("AnyUp")
+  f.moreBtn:SetScript("OnClick", ns.Guard("expand quest tracker", function() QT.ToggleExpanded() end))
+  f.more = T.Text(f.moreBtn:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  f.more:SetPoint("TOPLEFT", f.moreBtn, "TOPLEFT", 0, 0)
+end
+
+-- The "+N more" line or "Show fewer" toggles between the quests that fit the spot and all of them
+-- (the tracker then grows down, up to most of the screen's height); the choice is kept in the profile.
+function QT.ToggleExpanded()
+  QT.settings.expanded = not QT.settings.expanded
+  QT.Refresh()
 end
 
 -- A spot of its own, when the menu strip hasn't made one.
 local function ownSpot()
   local spot = CreateFrame("Frame", "Vanguard_QuestTracker", UIParent)
   spot:SetSize(QT.W, QT.H)
-  ns.Mover(spot, "questtracker", "Quest tracker", { "TOPRIGHT", "TOPRIGHT", -12, -276 })
+  ns.Mover(spot, "questtracker", "Quest tracker", { "TOPRIGHT", "TOPRIGHT", -12, -336 })
   return spot
 end
 
@@ -142,11 +154,30 @@ function QT.PaintBlock(b, q)
   b:Show()
 end
 
--- Lays the quests out from the top until the spot is full; "+N more" for the rest.
-local function layout(f, quests)
-  local y, shown, room = 0, {}, f.body:GetHeight() - QT.LINE
+-- How tall the quests may stack: the spot's body, or most of the screen when expanded.
+local function roomFor(f)
+  if QT.settings.expanded then return (UIParent:GetHeight() or 768) * 0.7 end
+  return f.body:GetHeight() - QT.LINE
+end
+
+-- How many of the quests fit in a room.
+local function fitCount(quests, room)
+  local y, n = 0, 0
   for _, q in ipairs(quests) do
     if y + QT.BlockHeight(q) > room then break end
+    n, y = n + 1, y + QT.BlockHeight(q) + QT.GAP
+  end
+  return n
+end
+
+-- The most quests the tracker draws, even with all shown (a long list runs into the bars).
+QT.MAX_SHOWN = 10
+
+-- Lays the quests out from the top until the room is full or QT.MAX_SHOWN are drawn; "+N more" for the rest.
+local function layout(f, quests)
+  local y, shown, room = 0, {}, roomFor(f)
+  for _, q in ipairs(quests) do
+    if y + QT.BlockHeight(q) > room or #shown >= QT.MAX_SHOWN then break end
     local b = f.blocks.Next()
     b:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -y)
     QT.PaintBlock(b, q)
@@ -156,11 +187,16 @@ local function layout(f, quests)
   return shown, y
 end
 
--- The "+N more" line under the last block, when some quests don't fit.
-local function showMore(f, hidden, y)
-  f.more:SetShown(hidden > 0)
-  f.more:SetText("+" .. hidden .. " more")
-  f.more:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -y)
+-- The line under the last block: "+N more" when some quests don't fit; "Show fewer" when expanded
+-- (with "· +N more" when even the expanded list stops at QT.MAX_SHOWN).
+local function showMore(f, quests, shown, y)
+  local hidden = #quests - #shown
+  local fewer = QT.settings.expanded and #quests > fitCount(quests, f.body:GetHeight() - QT.LINE)
+  local more = hidden > 0 and ("+" .. hidden .. " more") or nil
+  f.moreBtn:SetShown(more ~= nil or fewer)
+  f.more:SetShown(more ~= nil or fewer)
+  f.more:SetText(fewer and (more and ("Show fewer  ·  " .. more) or "Show fewer") or more or "")
+  f.moreBtn:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -y)
 end
 
 -- Redraws the tracker from the quests you watch (also in combat, so counts keep
@@ -176,7 +212,7 @@ function QT.Refresh()
   f:SetShown(#quests > 0)
   local shown, y = layout(f, QT.collapsed and {} or quests)
   QT.shown = shown
-  showMore(f, QT.collapsed and 0 or #quests - #QT.shown, y)
+  showMore(f, QT.collapsed and {} or quests, shown, y)
   ns.OutOfCombat(QT.PlaceItems, "questitems")
 end
 

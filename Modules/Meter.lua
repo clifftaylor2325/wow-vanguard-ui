@@ -48,11 +48,11 @@ local function figure(v)
   return ns.PlainNumber(v) or 0
 end
 
--- The bars' full scale: the top line's figure (hidden or plain), at least 1.
+-- The bars' full scale: the top line's figure (hidden or plain), so the top bar is full; 1 when it is not above 0.
 local function scale(top)
   local v = figure(top and top.amountPerSecond)
   if ns.IsSecret(v) then return v end
-  return math.max(v, 1)
+  return v > 0 and v or 1
 end
 
 -- Calls a widget method that may be handed a hidden value; a refusal leaves the widget as it was.
@@ -232,13 +232,13 @@ local function watchVisibility(f)
   MT.ApplyVisibility()
 end
 
--- The movable panel, left of the bags and menu bar so the tooltip corner above them stays clear. Built when
+-- The movable panel, left of the bags and menu bar (about 345 wide, 16 in from the edge) so the tooltip corner above them stays clear. Built when
 -- first needed, so an unused meter has no mover.
 function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_Meter", UIParent))
   MT.frame = f
   f:SetSize(MT.WIDTH, MT.HEAD)
-  ns.Mover(f, "meter", "Vanguard meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -340, 20 })
+  ns.Mover(f, "meter", "Vanguard meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -372, 20 })
   addTitle(f)
   addEmpty(f)
   f.rows = {}

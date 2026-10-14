@@ -403,18 +403,26 @@ it("deals: a scan lists what's under 70 % of the 7-day market or under vendor pr
   expect([dealsCard(addon), dealRow(addon, 1)[0], actions(addon), addon.eval(`return ${HELPER}.shopCard.add:IsShown()`)], "none yet; no list buttons").toEqual([[true, 0, "Deals", "", "None yet: a scan or a search finds them."], false, ["New", "Import"], false]);
   scan(addon, `{ { itemID = 10940, count = 1, buyoutPrice = 500 }, { itemID = 10940, count = 30, buyoutPrice = 39000 },
     { itemID = 2589, count = 5, buyoutPrice = 50 }, { itemID = 159, count = 1, buyoutPrice = 100 } }`);
-  expect(addon.eval("return ns.GetModule('AuctionHelper').Market7(10940, __now)"), "the dust's 7-day market: 12s, 10s and today's 11s 40c (8 days ago left out)").toBe(1113);
+  expect(addon.eval("return ns.GetModule('AuctionHelper').Market7(10940, __now)"), "the dust's 7-day market: the middle of 12s, 10s and today's 11s 40c (8 days ago left out)").toBe(1140);
   expect([1, 2, 3].map((i) => dealRow(addon, i)), "linen under its 13c vendor price first, then dust 55 % under its market; water isn't a deal").toEqual([
-    [true, "Linen Cloth", "10c", "< vendor", "Vendor price 13c"], [true, "Strange Dust", "5s 0c", "-55 %", "7-day market 11s 13c"], [false, false, false, false, false]]);
+    [true, "Linen Cloth", "10c", "< vendor", "Vendor price 13c"], [true, "Strange Dust", "5s 0c", "-56 %", "7-day market 11s 40c"], [false, false, false, false, false]]);
   expect([dealsCard(addon), isTok(addon, addon.eval(`return ${TABLE}.rows[2].cells.off.__textColor`), "good")], "the count; how far under in good").toEqual([[true, 2, "Deals", "2 found", ""], true]);
   addon.hover(`${TABLE}.rows[2]`);
-  expect(tipLines(addon), "what the dust was judged against").toEqual(["Strange Dust", "7-day market: 11s 13c", "Click to show it in the auction house's list."]);
+  expect(tipLines(addon), "what the dust was judged against").toEqual(["Strange Dust", "7-day market: 11s 40c", "Click to show it in the auction house's list."]);
   addon.hover(`${TABLE}.rows[1]`);
-  expect(tipLines(addon), "the linen's market, and the vendor's price it is under").toEqual(["Linen Cloth", "7-day market: 10c", "Vendor price: 13c", "Click to show it in the auction house's list."]);
+  expect(tipLines(addon), "the linen's vendor price it is under (one day of market is no basis)").toEqual(["Linen Cloth", "Vendor price: 13c", "Click to show it in the auction house's list."]);
   addon.hover(null);
   expect(addon.eval("return GameTooltip:IsShown()"), "gone with the mouse").toBe(false);
   addon.click(`${TABLE}.rows[1]`);
   expect([sent(addon).at(-1), restrictedLog(addon), addon.eval("return AuctionHouseFrame.selectedTab"), addon.frame("Vanguard_AuctionShopping").visible], "a click shows it in the game's own list, on its Buy tab; nothing is bought").toEqual(["SearchForItemKeys:2589", [], 1, false]);
+});
+it("deals: one outlier day doesn't set the market, and a single day of market is no basis", () => {
+  const outlier = `, markets = { [${TODAY - 1}] = 1000, [${TODAY - 2}] = 1100, [${TODAY - 3}] = 1200, [${TODAY - 4}] = 33566 }`;
+  const addon = atAuctionHouse(DUSTS, { savedVariables: dustHistory(1000, outlier) });
+  scan(addon, "{ { itemID = 10940, count = 1, buyoutPrice = 900 } }");
+  expect(addon.eval("return ns.GetModule('AuctionHelper').Market7(10940, __now)"), "the median of five days (900 today), not the mean of 7,553").toBe(1100);
+  const alone = atAuctionHouse(DUSTS, { savedVariables: dustHistory(1000, `, markets = { [${TODAY - 1}] = 33566 }`) });
+  expect(alone.eval("return ns.GetModule('AuctionHelper').Market7(10940, __now)"), "one day of market: none, so the low before today stands in").toBe(null);
 });
 it("deals: each search judges its item again; a low before today stands in for a market; closing forgets them", () => {
   const addon = atAuctionHouse(BAGS + DUST_UP + CLICK_LUA, { savedVariables: dustHistory(150) });
@@ -422,9 +430,9 @@ it("deals: each search judges its item again; a low before today stands in for a
   pick(addon, `${HELPER}.DEALS`);
   dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
   addon.update(0.01);
-  expect(dealRow(addon, 1), "the sell search's 1s (your 95c left out) is a third under yesterday's 1s 50c").toEqual([true, "Strange Dust", "1s 0c", "-33 %", "Lowest of the 6 days before 1s 50c"]);
+  expect(dealRow(addon, 1), "the sell search's 1s (your 95c left out) is a third under yesterday's 1s 50c").toEqual([true, "Strange Dust", "1s 0c", "-33 %", "Prior 6-day low 1s 50c"]);
   addon.hover(`${TABLE}.rows[1]`);
-  expect(tipLines(addon)[1], "judged against").toBe("Lowest of the 6 days before: 1s 50c");
+  expect(tipLines(addon)[1], "judged against").toBe("Prior 6-day low: 1s 50c");
   addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 180, totalQuantity = 5 } }");
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
   addon.update(0.01);

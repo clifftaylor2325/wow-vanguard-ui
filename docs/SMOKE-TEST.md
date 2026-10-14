@@ -105,7 +105,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 2.3 The healing layout
 
 - Do: type `/vg setup`, pick Centered: healing, click Next once, then close the wizard. Open `/vg` and look at Click casting.
-- Expect: chat says `Profile <name> as it was before setup is saved as profile <name> backup.`, and `/vg` → Profiles lists that backup. The raid frames sit centred above the cast bar, growing upward; click casting is on. If Raid frames or Click casting were off before, closing the wizard offers a reload (`Setup turned on a module that was off.`).
+- Expect: chat says `Profile <name> as it was before setup is saved as profile <name> backup.`, and `/vg` → Profiles lists that backup. The raid frames sit centred above the cast bar, growing upward; click casting is on. Under Raid frames, Sort by role, Power bar, Show your HoTs and Incoming heals are ticked and Debuff icons is 3; under Nameplates, Threat colors is off and Your debuffs shown is 2. Picking Centered: damage and tanking instead unticks Sort by role, Power bar, Show your HoTs and Incoming heals, sets Debuff icons to 2, and turns threat colours on with 6 debuffs. Closing the wizard offers a reload (`Setup turned on a module that was off.` if Raid frames or Click casting were off before, else `The layout's raid frame, raid aura and nameplate settings show after a reload.`).
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ## 3. Unlock, dragging and Edit Mode
@@ -265,6 +265,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: `/vg` → Town and gear → Instance prep, switch on "Buff checks on the card" (and "World buffs among them"). Out of combat, without a flask, food buff, weapon oil or poison, or your class's raid buffs, type `/vg prep`. Then get each one and type `/vg prep` again; then start a ready check in a group, and finally type `/vg errors`.
 - Expect: the card lists Flask, Food buff, Fortitude, Mark of the Wild, Arcane Intellect, a weapon row and (with a weapon in the off hand) an off-hand row, each "missing" in red; each row goes when you have the buff. World buffs shows only while you have none. In an instance during combat no buff row appears; `/vg status` saying `aura values hidden right now` also means none. No Lua error.
 - If it fails, paste: a screenshot, `/vg errors`, and the names of the buffs you have (the names in the code are from the classic game and unchecked on Forever).
+### 6.5b Wanted amounts window
+
+- Do: `/vg` → Town and gear → Instance prep → **Set wanted amounts...** (or `/vg prep setup`), out of combat. On step 1 drag the food slider, click **Use suggested**, then Next through to Done. Try `/vg prep want potions 7` afterwards, and `/vg prep`.
+- Expect: step 1 has Food & drink, Bandages and Potions sliders; hunters and warlocks get a second step with Ammo or Soul shards; the last step lists your amounts and whether anything is short; Esc and the close button close it; the amounts take effect at once, and `/vg prep` shows rows against them. No Lua error.
+- If it fails, paste: a screenshot and `/vg errors`.
+
 ### 6.6 Group threat panel (batch 2)
 
 - Do: `/vg` → Unit frames, switch on "Group threat panel" and `/reload`. In a party with a tank, target a hostile mob out of combat, then pull it. In the open world, then a dungeon, then on a boss, watch the panel; at the same moment type `/run print(C_Secrets.ShouldUnitThreatValuesBeSecret())` and `/vg errors` (this is the threat test of issue #223).
@@ -297,13 +303,19 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: each click targets the player whose bar or name you clicked (not a neighbour), and the name-only option doesn't stop the click. The plate under the mouse has a faint white wash that goes when the mouse leaves. A player's buffs show right of the bar, past the target diamond: their defensives, and on friends the buffs you cast. Mobs show none.
 - If it fails, paste: a screenshot with the mouse over the plate you clicked, the name of who got targeted, and `/vg errors`.
 
-### 7.5 Fight recap
+### 7.5 Enemy nameplates (#377)
+
+- Do: log in on a character, stand near a hostile creature and look for its plate. Type `/vg plates`. Open `/vg` > Nameplates, untick Enemy nameplates, then tick it again; do the same with Friendly players' and Friendly NPCs' nameplates. Press V, `/reload`, and check that the plates stay as V left them.
+- Expect: hostile creatures in range have a Vanguard plate at the first login without pressing anything. `/vg plates` gives plates drawn, how many are attackable, and Enemy on. Each switch hides and shows that kind of plate, and the Enemy switch follows V. After the reload Vanguard does not turn enemy plates back on. [Needs in game: that nameplateShowEnemies, nameplateShowFriendlyPlayers and nameplateShowFriendlyNPCs are the Forever 16001 CVar names (nameplateShowFriends is not: GetCVar gives nil) and that the client keeps them after a reload.]
+- If it fails, paste: the `/vg plates` line, a screenshot, and `/vg errors`.
+
+### 7.6 Fight recap
 
 - Do: under Combat tools tick "Recap in chat after each fight". Fight a mob for a few seconds (in a group, interrupt or dispel something if you can). Type `/vg recap`, then `/vg recap party` in a group. In the fight's first seconds type `/vg recap`. Then type `/run for _, k in ipairs({"Interrupts","Dispels","DamageTaken","Deaths","AvoidableDamageTaken"}) do print(k, Enum.DamageMeterType[k]) end` and paste what it prints.
 - Expect: half a second after the fight a chat line "Fight recap: Interrupts 1  ·  Dispels 0 ..." with only the parts the meter had; the same for `/vg recap`; `/vg recap party` sends that one line to party chat; during the fight `/vg recap` says the meter is hidden until the fight is over. [Needs in game: that those Enum.DamageMeterType keys exist, that a session of each has combatSources with isLocalPlayer and totalAmount, that Deaths lists one line per member who died, and that SendChatMessage to party works from a slash command.]
 - If it fails, paste: the `/run` line's output, the recap line and `/vg errors`.
 
-### 7.6 Vanguard meter (off until switched on: /vg > Combat tools > Vanguard meter)
+### 7.7 Vanguard meter (off until switched on: /vg > Combat tools > Vanguard meter)
 
 - Do: type `/vg meter on` and fight a mob for a few seconds (in a group if you can); click the panel's title; type `/vg meter hps`, then `/vg meter dps`. Then type `/run for _, k in ipairs({"Dps","Hps"}) do print(k, Enum.DamageMeterType[k]) end` and paste what it prints.
 - Expect: a flat panel at the bottom right, just left of the bags and menu bar, clear of the tooltip when you hover a player (move it with `/vg unlock`; turn the game's meter off in its settings to see only this one), "Damage per second", with up to eight bars in class colors, each with a number, a name and a figure, yours in the accent; the figures update during the fight and stay after it; the title switches to "Healing per second" and back. In an instance, if the game hides values, lines may be blank or "Nothing to show", never an error popup. [Needs in game: that the two Enum.DamageMeterType keys exist, that a session's combatSources lines carry name, classFilename, amountPerSecond and isLocalPlayer, that SetValue, SetMinMaxValues and SetText accept the hidden values in combat, that AbbreviateNumbers does too, and that the panel is wide and tall enough to read. `/vg errors` must stay empty.]
@@ -326,13 +338,13 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 8.3 Quest log
 
 - Do: fill the quest log (as many quests as it lets you take; the limit on Forever is not confirmed), then press the quest log key and type `/vg quests`.
-- Expect: Vanguard's log with quests under their zones (click a zone to fold it), `[12] Title` lines in difficulty colours, and Track or Untrack, Share, Abandon and Map for the chosen quest. Hover a reward card (a quest with an item reward): the item's tooltip shows beside it and goes when you leave. [Needs in game: the tooltip must show for both choices and fixed rewards.] If it is off, `/vg quests` says `Vanguard's quest log is off (/vg > Quests).`
+- Expect: Vanguard's log with quests under their zones (click a zone to fold it), `[12] Title` lines in difficulty colours, and Track or Untrack, Share, Abandon and Map for the chosen quest. Click Track or Untrack, then Shift-click another quest: the button flips each time and the tracker follows; if the game refuses, chat says `The game didn't track ...` with the count tracked. Hover a reward card (a quest with an item reward): the item's tooltip shows beside it and goes when you leave. [Needs in game: the tooltip must show for both choices and fixed rewards.] If it is off, `/vg quests` says `Vanguard's quest log is off (/vg > Quests).`
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 8.4 Quest tracker overflow
 
 - Do: watch more quests than fit under the info strip.
-- Expect: a `+N more` line at the bottom of the tracker.
+- Expect: a `+N more` line at the bottom of the tracker. Click it: the tracker grows to at most 10 quests, ending in `Show fewer` (with `· +N more` past ten). `/reload`: it is still expanded. Click `Show fewer` to fold it.
 - If it fails, paste: a screenshot.
 
 ### 8.5 Levelling helpers
@@ -358,7 +370,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 9.3 Trainer: Train all
 
 - Do: at a class trainer with skills you can afford, click Train all. Try it again in combat if you can.
-- Expect: a button reading `Train all (N) · <money>` on the trainer window; clicking it prints `Trained N skill(s) for <money>.`; in combat it does nothing.
+- Expect: a button reading `Train all (N)` on the trainer window, clear of your money line; clicking it prints `Trained N skill(s) for <money>.`; in combat it does nothing.
 - If it fails, paste: a screenshot of the trainer window and `/vg errors`.
 
 ### 9.4 Lists and Posting tabs at the auction house
@@ -614,7 +626,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.5 World map, group finder, Legacy and calendar
 
 - Do: hover the zone name on the minimap's top band, click it, then click it again; press `M` for the world map, then use its minimise and maximise button, click a few zones, open the quest panel on its side and click a quest; hover the group finder eye by the minimap, then click it to open the group finder; open the Legacy window from its button on the menu bar; type `/calendar`, open a day with an event and the "Create event" dialog. Look at the info strip under the minimap, then click the small calendar button at the right end of its date row.
-- Expect: the minimap's zone tooltip names the zone, its subzone and whose territory it is, the first click opens the world map and the second closes it; each window has Vanguard's flat dark panel, close button and buttons and no game border; the map itself stays fully visible with no dark box over it (also after minimising and maximising), the coordinate line still shows along its bottom, the nav bar's crumbs follow you into each zone, the calendar's days are dark tiles with event icons still showing, its filter button and class buttons are flat tiles with the class icons still showing (a button this client lacks is simply absent), and the Legacy talent nodes and side tabs are untouched. The info strip reads in two columns with nothing running together (durability beside free bag slots, gold beside the clock, fps beside ammo); its fourth row reads the day and date (for example "Tuesday, 13 October") with a flat calendar button at its right end; the button's tooltip says Calendar, it lights in your accent under the mouse, and a click opens (and, clicked again, closes) the calendar.
+- Expect: the minimap's zone tooltip names the zone, its subzone and whose territory it is, the first click opens the world map and the second closes it; each window has Vanguard's flat dark panel, close button and buttons and no game border; the map itself stays fully visible with no dark box over it (also after minimising and maximising), the coordinate line still shows along its bottom, the nav bar's crumbs follow you into each zone, the calendar's days are dark tiles with event icons still showing, its filter button and class buttons are flat tiles with the class icons still showing (a button this client lacks is simply absent), and the Legacy talent nodes and side tabs are untouched. The info strip reads in two columns with nothing running together (durability beside free bag slots, gold on its own row, fps beside ammo); its fourth row reads the time and then the day and date beside it (for example "21:04  Tue 13 Oct"; the date moves to the left edge with the clock switched off) with a flat calendar button at its right end; the button's tooltip says Calendar, it lights in your accent under the mouse, and a click opens (and, clicked again, closes) the calendar.
 - If it fails, paste: a screenshot of the window, which of these steps broke, and `/vg errors`.
 
 ### 14.5.1 Group finder search page and Legacy challenges
@@ -908,11 +920,17 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - If it fails, paste: screenshots with the setting on and off, the print above, and `/vg errors`.
 ## 26. Theme variants (#237)
 
-### 26.1 High contrast, Vellum and ink and Classic look
+### 26.1 High contrast, Vellum and ink, Classic look and the four dark looks
 
-- Do: open `/vg` → General → Look and set **Theme variant** to High contrast; open the options window, bags, the quest log, a unit frame and a tooltip; click into an input box. Then set it to Vellum and ink, then Classic look, and look again. Then back to Slate and brass.
-- Expect: High contrast shows opaque near-black windows, white text, no light line under window tops, brighter green, orange and red states, blue/yellow/vermilion reactions, and a 2-pixel accent edge on inputs and accent-bordered frames. Vellum and ink shows warm dark windows with cream text and your accent unchanged. Classic look shows dark leather windows with a bronze border, gold-cream text and the brass rule and corner brackets without `/vg ornaments`. Everything repaints without a reload; text stays readable on every window; `/vg errors` stays empty. [Needs in game: that windows the game draws (not Vanguard's) look right; a saved panel colour is overridden while a variant is on.]
+- Do: open `/vg` → General → Look and set **Theme variant** to High contrast; open the options window, bags, the quest log, a unit frame and a tooltip; click into an input box. Then set it to Vellum and ink, then Classic look, then Midnight, Obsidian, Moss and Ash and ember, and look again each time. Then back to Slate and brass.
+- Expect: High contrast shows opaque near-black windows, white text, no light line under window tops, brighter green, orange and red states, blue/yellow/vermilion reactions, and a 2-pixel accent edge on inputs and accent-bordered frames. Vellum and ink shows warm dark windows with cream text and your accent unchanged. Classic look shows dark leather windows with a bronze border, gold-cream text and the brass rule and corner brackets without `/vg ornaments`. Midnight is navy-black with ice-blue text, Obsidian neutral charcoal with a grey border, Moss dark green with sage text, Ash and ember smoky grey with a rust border. On every look, the dark text on a selected (accent-filled) choice segment is crisp with no shadow behind it, and every segment is wide enough for its label. Everything repaints without a reload; text stays readable on every window; `/vg errors` stays empty. [Needs in game: that windows the game draws (not Vanguard's) look right; a saved panel colour is overridden while a variant is on.]
 - If it fails, paste: a screenshot of the window that looks wrong with the variant name, and `/vg errors`.
+
+### 26.2 Rounded corners
+
+- Do: open `/vg` → General → Look and set **Corners** to Rounded (or `/vg corners rounded`); open the options window, bags, the quest log, a unit frame, a tooltip and a few buttons; hover a button; try it on Slate and brass, High contrast and Midnight; then set it back to Square.
+- Expect: every window, frame, tooltip and button shows a four-pixel rounded corner whose arc is as thin as the border, with no square fill poking out past the arc and no gap where the arc meets the edge; the light line under a window's top stops short of the corners; status bars, action and bag slots and tabs stay square; High contrast's two-pixel accent ring rounds at twice the radius. Square puts every corner back without a reload; `/vg errors` stays empty. [Needs in game: how crisp the arc is at 1440p and 4K, with and without Pixel-perfect scale; whether a game window Vanguard skins shows its own square corners under the arc.]
+- If it fails, paste: a screenshot of the corner that looks wrong with the UI scale, and `/vg errors`.
 
 ## 27. Window ornaments (#238)
 
@@ -970,6 +988,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 - Do: look closely at the menu strip's icons at 1080p and 1440p. Type `/vg icons`, then `/reload`, and look again; at 1440p also try a UI scale of 0.8 and 1.0. Then `/vg icons` and `/reload` to switch back.
 - Expect: with sized icons on, strokes look even and sharp (no soft or doubled lines) and the icons are not smaller or clipped; with it off they look as before. `/vg errors` stays empty. Screenshots on and off. [Needs in game: that the client loads the 20 and 24 px files (not powers of two) cleanly; that the menu strip's glyph is about 20 px as assumed; if it is another size, say so and the size list changes.]
+- If it fails, paste: screenshots, your resolution and UI scale, and `/vg errors`.
+
+### 31.2 Stat weights wizard
+
+- Do: `/vg`, Town and gear, Gear upgrades, click Set up stat weights (or type `/vg weights wizard`). Scroll the list, drag a slider, type 4.25 in a box beside one and press Enter, click Defaults, drag one again, then Save. Open it again, drag a slider and click Cancel. Then `/vg weights`.
+- Expect: a dialog above everything with a line naming the kind and role, and a scrolling list with a slider and a number box for each of 21 stats (the ones your class and role value first); the box follows its slider, and a typed number sticks (past 3 the slider sits at its end); Defaults puts them back. Save closes it and prints a line in chat; `/vg weights` shows the weight you moved. Cancel closes it and changes nothing.
 - If it fails, paste: screenshots, your resolution and UI scale, and `/vg errors`.
 
 ## When you are done

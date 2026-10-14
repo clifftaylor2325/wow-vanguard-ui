@@ -167,13 +167,26 @@ local function fitsSegments(choices)
   return #choices <= 4 and chars <= 32
 end
 
--- A segment's width for its label.
-local function segmentWidth(text)
-  return math.max(44, #text * 7 + 16)
+-- A segment's width for its label as drawn (so it follows the font and the text size), 8 of air each side.
+local function segmentWidth(s)
+  return math.max(44, math.ceil(s.text:GetStringWidth()) + 16)
 end
 
--- Highlights the selected segment (accent fill, dark text).
+-- Sizes the segments to their labels and lays them right to left along the row's right edge.
+local function layoutSegments(r)
+  local x = -8
+  for i = #r.segments, 1, -1 do
+    local s = r.segments[i]
+    s:SetWidth(segmentWidth(s))
+    s:ClearAllPoints()
+    s:SetPoint("RIGHT", x, 0)
+    x = x - s:GetWidth() + 1
+  end
+end
+
+-- Highlights the selected segment (accent fill, dark text), with the segments sized to their labels.
 local function refreshSegments(r)
+  layoutSegments(r)
   local current = r.get()
   for _, s in ipairs(r.segments) do
     local on = s.value == current
@@ -186,7 +199,7 @@ end
 -- One segment button: its label, an accent fill when selected, set(value) on click.
 local function segment(r, choice, set)
   local s = T.Button(CreateFrame("Button", nil, r))
-  s:SetSize(segmentWidth(choice[2]), 20)
+  s:SetSize(44, 20)
   s.value = choice[1]
   s.fill = flat(s, "ARTWORK", "accent")
   s.fill:SetAllPoints()
@@ -197,16 +210,11 @@ local function segment(r, choice, set)
   return s
 end
 
--- Segments right to left along the row's right edge.
+-- One segment per choice, laid out along the row's right edge.
 local function addSegments(r, choices, set)
   r.segments = {}
-  local x = -8
-  for i = #choices, 1, -1 do
-    local s = segment(r, choices[i], set)
-    s:SetPoint("RIGHT", x, 0)
-    x = x - s:GetWidth() + 1
-    table.insert(r.segments, 1, s)
-  end
+  for i, choice in ipairs(choices) do r.segments[i] = segment(r, choice, set) end
+  layoutSegments(r)
 end
 
 -- A dropdown on the right of a choice row; its Refresh is the row's.

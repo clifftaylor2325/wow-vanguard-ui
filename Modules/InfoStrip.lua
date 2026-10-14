@@ -1,8 +1,8 @@
 -- A strip of numbers under the minimap, two columns, up to seven rows:
 --   durability (orange at 25% or less, red at 10% or less) · free bag slots
---   gold · clock
+--   gold
 --   fps and latency · ammo (hunters, warriors, rogues) or soul shards (warlocks)
---   the day and date, with a calendar button
+--   the time and the day and date ("21:04  Tue 13 Oct"), with a calendar button
 --   leveling: XP per hour · time to level
 --   gold per hour this session · what your auction sales came to (Modules/AuctionLedger.lua, off until you turn it on)
 --   your damage per second in the last fight · your place in it in a group (each off until you turn it on)
@@ -28,12 +28,12 @@ IS.WIDTH, IS.ROW = 182, 18
 -- Where each block sits: row, and its side of the row (two columns, so no two blocks run together).
 IS.BLOCKS = {
   durability = { 1, "LEFT" }, bags = { 1, "RIGHT" },
-  gold = { 2, "LEFT" }, clock = { 2, "RIGHT" },
+  gold = { 2, "LEFT" },
   system = { 3, "LEFT" }, ammo = { 3, "RIGHT" },
   -- Soul shards share ammo's place: no class carries both.
   shards = { 3, "RIGHT" },
-  -- The day and date, with the calendar button at the row's right end.
-  date = { 4, "LEFT" },
+  -- The time, then the day and date beside it (IS.PlaceDate), with the calendar button at the row's right end.
+  clock = { 4, "LEFT" }, date = { 4, "LEFT" },
   xprate = { 5, "LEFT" }, leveltime = { 5, "RIGHT" },
   -- Gold per hour shares its row with the auction sales (off by default).
   goldrate = { 6, "LEFT" }, ahgold = { 6, "RIGHT" },
@@ -41,6 +41,7 @@ IS.BLOCKS = {
 }
 -- The calendar button beside the date: its side and icon size (UI units) and the gap to the strip's edge.
 IS.CALENDAR, IS.CALENDAR_GLYPH, IS.CALENDAR_GAP = 18, 14, 3
+IS.DATE_GAP = 8
 IS.CALENDAR_ICON = { slot = "Calendar" }
 -- The session's rates wait this long (seconds) before showing: early numbers jump about.
 IS.SETTLE = 60
@@ -307,9 +308,9 @@ function IS.TEXT.clock()
   if t then return t, "text" end
 end
 
--- The day and date, "Tuesday, 13 October".
+-- The day and date, "Tue 13 Oct".
 function IS.TEXT.date()
-  local t = ask("date", "%A, %d %B")
+  local t = ask("date", "%a %d %b")
   if t then return t, "text" end
 end
 
@@ -370,6 +371,14 @@ local function fitRows()
   IS.frame:SetHeight(IS.ROW * math.max(rows, 2) + 4)
 end
 
+-- Sits the date right after the time, or at the row's left edge while the time is off.
+function IS.PlaceDate()
+  local date, clock = IS.texts.date, IS.texts.clock
+  date:ClearAllPoints()
+  if clock:IsShown() then date:SetPoint("LEFT", clock, "RIGHT", IS.DATE_GAP, 0)
+  else date:SetPoint("LEFT", IS.frame, "TOPLEFT", 6, -(IS.BLOCKS.date[1] - 0.5) * IS.ROW) end
+end
+
 -- Repaints one block: hidden when off or when the client can't answer; the strip fits what shows.
 function IS.Paint(key)
   local fs = IS.texts and IS.texts[key]
@@ -380,6 +389,7 @@ function IS.Paint(key)
   if key == "date" and IS.calendar then IS.calendar:SetShown(text ~= nil) end
   if text and text ~= fs.last then fs:SetText(text) fs.last = text end
   if color then T.Color(fs, color) end
+  if key == "clock" or key == "date" then IS.PlaceDate() end
   fitRows()
 end
 

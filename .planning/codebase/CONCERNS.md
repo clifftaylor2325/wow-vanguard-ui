@@ -18,7 +18,7 @@ last_mapped_at: 2026-10-09
 - Fix approach: Split by responsibility when touching these files for other reasons. Keep each split inside an existing area prefix (`Auction*`, `ClickCast*`).
 
 **Duplicate or stale work plans:**
-- Issue: `docs/handoff/` holds six work plans (`AUCTION-PLAN.md`, `CLICKCAST-FINISH.md`, `PROMPT.md`, `RESKIN-PLAN.md`, `VANGUARD-PLAN.md`, `WORKPLAN.md`). They refer to the old name `wow-forever-ui`, to commit `619d5c9`, and to line numbers that have drifted.
+- Issue: `docs/handoff/` holds four work plans (`AUCTION-PLAN.md`, `RESKIN-PLAN.md`, `VANGUARD-PLAN.md`, `WORKPLAN.md`; the finished click-casting and crest hand-offs and the prompt template were removed in 0.6.0 prep). They refer to the old name `wow-forever-ui`, to commit `619d5c9`, and to line numbers that have drifted.
 - Files: `docs/handoff/*.md`
 - Impact: Executors may act on stale line numbers or on the pre-rename identifiers.
 - Fix approach: Grep for the quoted identifier instead of trusting line numbers. Mark completed plan items and retire finished plans.

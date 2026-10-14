@@ -246,7 +246,9 @@ it("/vg frame: a frame's state, anchors and parents, and with deep its textures 
     expect.stringMatching(/^ProbeChild \(Frame\): shown no, visible no, .*, 0 x 0 no rect, .*, under ProbeFrame$/), "  no anchors",
     "  under ProbeFrame: shown yes, alpha 0.5, scale 2", "  under UIParent: shown yes, alpha 1, scale 1"]);
   expect(said(addon, "frame Nope"), "a name that leads nowhere says so").toEqual(["No frame called Nope (a global name; dots follow keys: MinimapCluster.Tracking)."]);
-  expect(said(addon, "frame"), "no name: the usage").toEqual(["Usage: /vg frame <name> [deep]   (a global frame name; dots follow keys: MinimapCluster.Tracking)"]);
+  expect(said(addon, "frame"), "no name: the usage").toEqual(["Usage: /vg frame <name> [deep]   (a global frame name; dots follow keys: MinimapCluster.Tracking; #3 is the third child frame)"]);
+  expect(said(addon, "frame ProbeFrame.#1")[0], "#n is the nth child frame, for one with no key").toMatch(/^ProbeChild \(Frame\)/);
+  expect(said(addon, "frame ProbeFrame.#9")[0], "a child that isn't there leads nowhere").toMatch(/^No frame called/);
 });
 // TEST-ONLY counters: Vanguard's CPU total (__cpu ms) and memory (2048 KB), each refreshed by its Update call (counted).
 const PERF_ENV = `

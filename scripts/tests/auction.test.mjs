@@ -140,17 +140,17 @@ it("the market value is quantity-weighted over at least one unit, rounded down",
   expect(summary("{ [10] = 1, [20] = 9 }"), "10 units: 15 % is 1.5, so the cheapest 2").toEqual([10, 10, 15]);
   expect(summary("{ [7] = 2, [5] = 1, [100] = 17 }"), "20 units: the cheapest 3, (5 + 7 + 7) / 3 rounded down").toEqual([5, 20, 6]);
 });
-it("history: 30 days of values are kept, older ones go at login, and older versions' prices still read", () => {
+it("history: 7 days of values are kept, older ones go at login, and older versions' prices still read", () => {
   const today = Math.floor(1790000000 / 86400);
-  // A by-day table with value v 29, 30 and 45 days back.
-  const byDay = (v) => `{ [${today - 29}] = ${v}, [${today - 30}] = ${v}, [${today - 45}] = ${v} }`;
+  // A by-day table with value v 6, 7 and 45 days back.
+  const byDay = (v) => `{ [${today - 6}] = ${v}, [${today - 7}] = ${v}, [${today - 45}] = ${v} }`;
   const saved = `VanguardDB.ah = { houses = { ["ForeverTest-Alliance"] = { count = 2, lastScan = 0, prices = {
     [2589] = { min = 90, t = 1790000000, days = ${byDay(90)}, qtys = ${byDay(4)}, markets = ${byDay(95)} },
     [2592] = { min = 70, t = 1790000000, days = { [${today}] = 70 } } } } } }`;
   const addon = atAuctionHouse("", { savedVariables: saved });
   const left = addon.eval(`local p = ns.AuctionPrices.House().prices[2589] local out = {}
     for _, m in ipairs({ p.days, p.qtys, p.markets }) do local n = 0 for _ in pairs(m) do n = n + 1 end out[#out + 1] = n end return out`);
-  expect(left, "each kind keeps only the day 29 days back").toEqual([1, 1, 1]);
+  expect(left, "each kind keeps only the day 6 days back").toEqual([1, 1, 1]);
   expect(addon.eval('return __showItem("item:2592")[1][1]'), "an older version's price: the low alone").toBe("AH: 70c (today)");
   addon.eval("ns.AuctionPrices.Record(2592, 60, __now, 3, 65)");
   expect(addon.eval("local p = ns.AuctionPrices.House().prices[2592] local d = math.floor(__now / 86400) return { p.days[d], p.qtys[d], p.markets[d] }"), "and it takes the new values").toEqual([60, 3, 65]);

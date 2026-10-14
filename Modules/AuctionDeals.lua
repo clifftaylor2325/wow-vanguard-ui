@@ -3,8 +3,8 @@
 -- Lists tab's pane, listing what a scan or a search found priced
 -- under an item's usual price. A listing is a deal when its price per unit
 -- is under the item's vendor sell price (buy it, sell it to a merchant), or
--- under 70 % of the item's market value over the last 7 days (the mean of
--- each day's market value from your scans), or, for an item no scan priced
+-- under 70 % of the item's market value over the last 7 days (the median of
+-- each day's market value from your scans, on at least two days), or, for an item no scan priced
 -- in that time, under its lowest price on the six days before today. Each
 -- row shows the item, its price per unit, how far under it is and what it was
 -- judged against, the best first; a click shows the item in the game's own
@@ -24,12 +24,14 @@ local AH = ns.GetModule("AuctionHelper")
 
 -- A listing under this share (per cent) of its item's 7-day market value is a deal.
 AH.DEAL_PCT = 70
+-- How many of the last 7 days a scan must have priced an item for its market value to judge by.
+AH.MARKET_DAYS = 2
 -- The Deals entry's pane key (no list name can have it), and its columns: the price per unit,
 -- how far under, and what the price was judged against.
 AH.DEALS = "deals"
-AH.DEAL_COLUMNS = { { key = "price", title = "Unit price", width = 100, side = "RIGHT", role = "number", color = "gold" },
-  { key = "off", title = "Under by", width = 70, side = "RIGHT", role = "small", color = "good" },
-  { key = "basis", title = "Judged against", width = 200, side = "LEFT", role = "small", color = "text2" }, name = "Item" }
+AH.DEAL_COLUMNS = { { key = "price", title = "Unit price", width = 90, side = "RIGHT", role = "number", color = "gold" },
+  { key = "off", title = "Under by", width = 56, side = "RIGHT", role = "small", color = "good" },
+  { key = "basis", title = "Judged against", width = 150, side = "LEFT", role = "small", color = "text2" }, name = "Item" }
 -- The Deals entry's switch (Town and gear > Auction house): on, as the auction plan's Deals list
 -- is part of the tabs; it only reads prices the tabs' searches and scans already bring.
 AH.defaults.deals = true
@@ -38,14 +40,17 @@ AH.deals = {}
 
 -- Judging --------------------------------------------------------------------------------------
 
--- The mean of an item's daily market values over the last 7 days (today and the six before),
--- rounded down; nil when no scan priced it in that time.
+-- The middle of an item's daily market values over the last 7 days (today and the six before),
+-- rounded down (the median, so one outlier day doesn't skew it); nil unless scans priced it on at
+-- least AH.MARKET_DAYS of those days.
 function AH.Market7(itemID, now)
-  local p, today, sum, n = AP.House().prices[itemID], AP.Day(now), 0, 0
+  local p, today, vals = AP.House().prices[itemID], AP.Day(now), {}
   for day, v in pairs(p and p.markets or {}) do
-    if day > today - 7 then sum, n = sum + v, n + 1 end
+    if day > today - 7 then vals[#vals + 1] = v end
   end
-  return n > 0 and math.floor(sum / n) or nil
+  if #vals < AH.MARKET_DAYS then return nil end
+  table.sort(vals)
+  return math.floor((vals[math.ceil(#vals / 2)] + vals[math.floor(#vals / 2) + 1]) / 2)
 end
 
 -- An item's lowest price on the six days before today (today's may be the very listing judged), or nil.
@@ -63,7 +68,7 @@ local function reference(itemID, now)
   local market = AH.Market7(itemID, now)
   if market then return market, AH.DEAL_PCT, "7-day market" end
   local low = AH.LowBefore(itemID, now)
-  if low then return low, 100, "Lowest of the 6 days before" end
+  if low then return low, 100, "Prior 6-day low" end
 end
 
 -- A listing of an item at a price per unit as a deal, or nil: under the vendor's price, or under

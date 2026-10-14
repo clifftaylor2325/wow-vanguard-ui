@@ -155,8 +155,12 @@ it("the grid picks spells from the spellbook, with ranks, drops and clears", () 
   expect(addon.eval("return Vanguard_SpellPicker.catcher:IsShown()"), "and its click catcher").toBe(false);
   addon.click(cell(addon, "ctrl-BUTTON2"));
   expect(addon.eval("return Vanguard_SpellPicker.catcher:IsShown()"), "an open picker has a catcher behind it").toBe(true);
+  expect(addon.eval("return Vanguard_SpellPicker:GetParent() == UIParent"), "the picker is not reparented under its anchor (the game could move it below the catcher)").toBe(true);
   addon.eval("Vanguard_SpellPicker.catcher.__scripts.OnClick(Vanguard_SpellPicker.catcher)");
   expect(addon.frame("Vanguard_SpellPicker").visible, "clicking outside closes it").toBe(false);
+  addon.click(cell(addon, "ctrl-BUTTON2"));
+  addon.eval(`local c = __wfgStub.frames[${cell(addon, "ctrl-BUTTON2")}] c:Hide() c:Show()`);
+  expect(addon.frame("Vanguard_SpellPicker").visible, "the picker goes when its anchor hides (page or window closed)").toBe(false);
   addon.click(cell(addon, "ctrl-BUTTON2"));
   addon.click(pickerRow(addon, "Flash Heal"));
   expect(bindings(addon)["ctrl-BUTTON2"], "picking a spell binds its highest rank by name").toBe("spell:Flash Heal:9472:nil");

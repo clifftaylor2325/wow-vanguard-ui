@@ -122,7 +122,7 @@ it("Train all at a trainer: learns what you can afford, one at a time", () => {
   addon.eval("__loadTrainer(true)");
   addon.fire("ADDON_LOADED", "Blizzard_TrainerUI");
   addon.fire("TRAINER_SHOW");
-  expect(trainButton(addon), "on the trainer's window, beside its own Train button, with the count and cost").toEqual({ text: "Train all (2) · 25s 0c", enabled: true, shown: true, by: "ClassTrainerTrainButton" });
+  expect(trainButton(addon), "on the trainer's window, beside its own Train button, with the count").toEqual({ text: "Train all (2)", enabled: true, shown: true, by: "ClassTrainerTrainButton" });
   addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
   expect(addon.eval("return __learned"), "learns what 22s pays for, then stops").toEqual(["TEST-ONLY Bolt"]);
   expect(chatHas(addon, /Trained 1 skill\(s\) for 5s 0c\./), "and says what it cost").toBe(true);
@@ -155,6 +155,13 @@ const FOREVER_TRAINER_ENV = `
   BuyTrainerService = function(i) __learned[#__learned + 1] = __services[i][1] if __shrink then table.remove(__services, i) end end
   ClassTrainerFrame = CreateFrame("Frame", "ClassTrainerFrame", UIParent)
 `;
+it("Train all is narrow enough to leave the player's money line clear", () => {
+  const addon = loggedIn(TRAINER_ENV);
+  addon.eval("__loadTrainer(true) ClassTrainerTrainButton:SetHeight(25)");
+  addon.fire("ADDON_LOADED", "Blizzard_TrainerUI");
+  expect(addon.eval('return ns.GetModule("Errands").trainButton:GetWidth()')).toBeLessThanOrEqual(100);
+  expect(addon.eval('return { ns.GetModule("Errands").trainButton:GetHeight(), ClassTrainerTrainButton:GetHeight() }'), "same height as Train").toEqual([25, 25]);
+});
 it("Train all in one click: no purchase twice, the budget counted before the game answers, a list that re-indexes", () => {
   const addon = loggedIn(FOREVER_TRAINER_ENV);
   addon.fire("TRAINER_SHOW");

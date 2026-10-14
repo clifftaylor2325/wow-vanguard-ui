@@ -449,6 +449,7 @@ end
 function methods:SetFont(path, size, flags) self.__font = { path, size, flags } end
 function methods:GetFont() local f = self.__font or {} return f[1], f[2], f[3] end
 function methods:SetShadowOffset(x, y) self.__shadowOffset = { x, y } end
+function methods:SetShadowColor(r, g, b, a) self.__shadowColor = { r, g, b, a } end
 
 -- The minimap mask texture (square or round).
 function methods:SetMaskTexture(t) self.__maskTexture = t end
@@ -500,15 +501,19 @@ function methods:RegisterUnitEvent(event, ...)
   self.__unitEvents[event] = { ... }
 end
 
--- Reparents a region (the preview and tests read __parent).
+-- Reparents a region (the preview and tests read __parent). Like the game, a frame without a
+-- fixed strata takes its new parent's strata.
 function methods:SetParent(parent)
   detach(self.__parent, self)
   self.__parent = parent
   attach(parent, self)
+  if parent and not self.__fixedStrata then self.__strata = parent.__strata or "MEDIUM" end
 end
 
 -- Strata and scroll child.
 function methods:SetFrameStrata(s) self.__strata = s end
+-- Keeps a frame's strata when it is reparented.
+function methods:SetFixedFrameStrata(on) self.__fixedStrata = on and true or nil end
 -- Records whether a frame is drawn into its own buffer.
 function methods:SetIsFrameBuffer(on) self.__frameBuffer = on end
 -- The scroll frame each scroll child belongs to (the layout asks for it often).

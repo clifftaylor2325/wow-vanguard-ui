@@ -131,16 +131,63 @@ local function own(sender)
   return sender == me or sender:match("^[^%-]+") == me
 end
 
--- A chat event (ns.On): a hidden (secret) or missing text or sender is skipped before
--- any string is read, and so are channels you don't read and your own lines.
-function GB.OnChat(event, text, sender)
+-- What the chat lines did since login: per event, and how many were read, skipped (and why) or became posts.
+GB.stats = { events = {}, off = 0, secret = 0, missing = 0, own = 0, plain = 0, posts = 0 }
+
+-- Why a line is skipped ("off", "secret", "missing", "own"), or nil when it is read: a hidden
+-- (secret) or missing text or sender is judged before any string is read.
+function GB.Why(event, text, sender)
   local key = GB.EVENTS[event]
-  if not (key and GB.settings.channels[key]) then return end
-  if ns.IsSecret(text) or ns.IsSecret(sender) or type(text) ~= "string" or type(sender) ~= "string" or own(sender) then return end
+  if not (key and GB.settings.channels[key]) then return "off" end
+  if ns.IsSecret(text) or ns.IsSecret(sender) then return "secret" end
+  if type(text) ~= "string" or type(sender) ~= "string" then return "missing" end
+  if own(sender) then return "own" end
+end
+
+-- A chat event (ns.On): skipped lines (channels you don't read, hidden or missing text, your own) are counted, not read.
+function GB.OnChat(event, text, sender)
+  local st, why = GB.stats, GB.Why(event, text, sender)
+  st.events[event] = (st.events[event] or 0) + 1
+  if why then st[why] = st[why] + 1 return end
   local e = GB.Parse(text)
-  if not e then return end
+  if not e then st.plain, st.lastPlain = st.plain + 1, text:sub(1, 80) return end
+  st.posts = st.posts + 1
   e.sender, e.time = sender, GetTime()
   GB.Add(e)
+end
+
+-- "Heard 12 chat lines since login: 9 not posts, 3 on posts" (what the board did with them), or why nothing was heard.
+function GB.Summary()
+  local st, heard = GB.stats, 0
+  for _, n in pairs(st.events) do heard = heard + n end
+  if heard == 0 then return "No chat lines reached the board since login." end
+  return string.format("%d chat lines since login: %d posts, %d other, %d hidden by the game, %d from channels that are off, %d yours.",
+    heard, st.posts, st.plain, st.secret + st.missing, st.off, st.own)
+end
+
+-- The numbered channels you are in, "1 General, 2 Trade", or "none" (the game's list; a client without it says so).
+function GB.Channels()
+  if type(GetChannelList) ~= "function" then return "unknown (this client has no channel list)" end
+  local out, list = {}, { GetChannelList() }
+  for i = 1, #list, 3 do out[#out + 1] = tostring(list[i]) .. " " .. tostring(list[i + 1]) end
+  return #out > 0 and table.concat(out, ", ") or "none"
+end
+
+-- /vg lfg probe: what the board has heard, the channels you are in and the switches, to say why the board is empty.
+function GB.Probe()
+  local on = {}
+  for key, v in pairs(GB.settings.channels) do if v then on[#on + 1] = key end end
+  table.sort(on)
+  ns.Chat("Group board: " .. GB.Summary())
+  ns.Chat("Reading: " .. (#on > 0 and table.concat(on, ", ") or "no channel") .. ". You are in channels: " .. GB.Channels() .. ".")
+  ns.Chat("Last line that was not a post: " .. (GB.stats.lastPlain or "none yet"))
+  ns.Chat("Posts kept: " .. #GB.entries .. ", shown: " .. #GB.Shown() .. " (filter " .. GB.filter .. ", only my level " .. tostring(GB.settings.mine) .. ").")
+end
+
+-- /vg lfg [probe]: the board, or its probe.
+function GB.Command(rest)
+  if (rest or ""):lower():match("^%s*probe") then return GB.Probe() end
+  GB.Toggle()
 end
 
 -- Whether a post fits your level: no dungeon named, or your level from two under its range to its top.

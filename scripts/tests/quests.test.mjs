@@ -388,10 +388,27 @@ it("quest tracker: nearest first, collapsing, too many quests, and switched off"
   addon.update(0);
   const t = tracker(addon);
   expect([t.count, t.more], "more than fit: the rest are counted").toEqual(["9", `+${9 - t.blocks.length} more`]);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.moreBtn b.__scripts.OnClick(b)");
+  const open = tracker(addon);
+  expect([open.blocks.length, open.more], "clicking the count shows them all, with a way back").toEqual([9, "Show fewer"]);
+  expect(addon.eval("return VanguardDB.profiles.Default.QuestTracker.expanded"), "and the profile keeps that choice past a reload").toBe(true);
+  addon.eval(`for i = 7, 9 do local id = 90070 + i __quests[id] = { index = 10 + i, title = "TEST-ONLY Many " .. i, level = 5, dist = i, objectives = {} } __watches[#__watches + 1] = id end`);
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  const capped = tracker(addon);
+  expect([capped.count, capped.blocks.length, capped.more], "all shown stops at ten quests, counting the rest").toEqual(["12", 10, "Show fewer  ·  +2 more"]);
+  addon.eval("for _ = 1, 3 do table.remove(__watches) end");
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.moreBtn b.__scripts.OnClick(b)");
+  expect(tracker(addon).more, "and clicking again folds them").toEqual(`+${9 - t.blocks.length} more`);
   addon.eval("__watches = {}");
   addon.fire("QUEST_WATCH_LIST_CHANGED");
   addon.update(0);
   expect(tracker(addon).shown, "nothing watched, nothing shown").toBe(false);
+  const kept = loggedIn(UNITS_ENV + TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { expanded = true } } }" });
+  kept.update(0);
+  expect(tracker(kept).blocks.length, "a profile that kept Show all logs in with every watched quest shown").toBe(3);
   const own = loggedIn(TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { MenuStrip = { tracker = false } } }" });
   expect(own.eval("return { Vanguard_QuestTrackerFrame:GetParent():GetName(), (ns.MoverPoint('questtracker')) }"), "with the menu strip's spot off, it makes its own").toEqual(["Vanguard_QuestTracker", "TOPRIGHT"]);
   const off = loggedIn(TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false } } }" });
@@ -406,10 +423,11 @@ const QLOG_ENV = `
   C_QuestLog.GetNumQuestLogEntries = function() return #__log end
   C_QuestLog.GetInfo = function(i) local e = __log[i] local q = e and e.questID and __quests[e.questID]
     if q then return { questID = e.questID, title = q.title, level = q.level } end return e end
-  __watched, __group, __overrides, __owners = { [90051] = 0 }, false, {}, {}
+  __watches, __group, __overrides, __owners = { 90051 }, false, {}, {}
   C_QuestLog.SetSelectedQuest = function(id) __selected = id end
-  C_QuestLog.GetQuestWatchType = function(id) return __watched[id] end
-  C_QuestLog.AddQuestWatch = function(id) __added = id end
+  C_QuestLog.GetQuestWatchType = function() return 0 end
+  C_QuestLog.AddQuestWatch = function(id) __added = id if not __full then __watches[#__watches + 1] = id end end
+  C_QuestLog.RemoveQuestWatch = function(id) __removed = id for i, w in ipairs(__watches) do if w == id then table.remove(__watches, i) end end end
   C_QuestLog.IsPushableQuest = function() return true end
   C_QuestLog.SetAbandonQuest = function() __abandoning = __selected end
   IsInGroup = function() return __group end
@@ -450,8 +468,18 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   expect([q.title, q.text, q.objectives, q.cards, q.money, q.track, q.share], "the first quest, chosen: text, objectives, rewards; watched; nobody to share with").toEqual([
     "[8] TEST-ONLY Wolves", "TEST-ONLY About 90051", "Objectives\n- 3/8 TEST-ONLY Wolves slain\n+ 1/1 TEST-ONLY Pelt", ["TEST-ONLY Boots", "TEST-ONLY Bread"], "+12s 0c  ·  450 XP", "Untrack", false]);
   logButton(addon, "track");
+  expect(questLog(addon).track, "Untrack flips the button to Track at once").toBe("Track");
   logLine(addon, 3);
   logButton(addon, "track");
+  expect(questLog(addon).track, "Track flips it to Untrack").toBe("Untrack");
+  addon.eval("__watches = { 90051 }");
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.eval("__wfgStub.advance(1)");
+  expect(questLog(addon).track, "a watch change from elsewhere (the tracker's right-click) redraws the button").toBe("Track");
+  addon.eval("__full = true IsShiftKeyDown = function() return true end");
+  logLine(addon, 3);
+  expect([questLog(addon).track, addon.chat().filter((l) => /The game didn't track TEST-ONLY Letter \(1 quests tracked\)/.test(l)).length], "Shift-click a line tracks it; when the game refuses, the button stays Track and chat says so").toEqual(["Track", 1]);
+  addon.eval("__full = nil IsShiftKeyDown = function() return false end");
   expect([addon.eval("return { __removed, __added }"), questLog(addon).title], "Untrack the wolves; choose the letter and Track it").toEqual([[90051, 90052], "[12] TEST-ONLY Letter"]);
   expect(addon.eval("local l = Vanguard_QuestLog.lines return { l[3].mark:IsShown(), l[2].mark:IsShown(), l[1].mark:IsShown() }"), "the chosen quest's line is marked").toEqual([true, false, false]);
   addon.eval("__group = true");

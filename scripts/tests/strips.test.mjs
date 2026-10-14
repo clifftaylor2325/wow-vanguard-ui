@@ -97,9 +97,14 @@ it("the info strip under the minimap", () => {
   expect(addon.eval('return { ns.MoverPoint("infostrip") }'), "the strip is movable, under the minimap").toEqual(["TOPRIGHT", "TOPRIGHT", -12, -200]);
 });
 it("the info strip: the day and date with a calendar button", () => {
-  const addon = loggedIn(UNITS_ENV + STRIP_ENV + 'date = function(f) return f == "%A, %d %B" and "Tuesday, 13 October" or "21:04" end __opened = 0 ToggleCalendar = function() __opened = __opened + 1 end');
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + 'date = function(f) return f == "%a %d %b" and "Tue 13 Oct" or "21:04" end __opened = 0 ToggleCalendar = function() __opened = __opened + 1 end');
   const button = "Vanguard_InfoStripCalendar";
-  expect([block(addon, "date").text, addon.eval(`return ${button}:IsShown()`)], "the day and date, with the button beside them").toEqual(["Tuesday, 13 October", true]);
+  const dateAnchor = 'local p = ns.GetModule("InfoStrip").texts.date.__points.LEFT return { p.rel == ns.GetModule("InfoStrip").texts.clock, p.relPoint, p.x }';
+  expect(addon.eval(dateAnchor), "the date sits right after the time").toEqual([true, "RIGHT", 8]);
+  addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").UpdateAll()');
+  expect(addon.eval(dateAnchor), "with the time off, the date takes the row's left edge").toEqual([false, "TOPLEFT", 6]);
+  addon.eval('ns.Settings("InfoStrip").clock = true ns.GetModule("InfoStrip").UpdateAll()');
+  expect([block(addon, "date").text, addon.eval(`return ${button}:IsShown()`)], "the day and date, with the button beside them").toEqual(["Tue 13 Oct", true]);
   expect(addon.eval(`return { ${button}:GetWidth(), ns.FrameState("vgGlyph")[${button}].__texture:match("(%a+)$") }`), "the button is an 18-unit slot with the calendar icon").toEqual([18, "Calendar"]);
   addon.eval(`${button}.__scripts.OnClick(${button}) ${button}.__scripts.OnEnter(${button}) ${button}.__scripts.OnLeave(${button})`);
   expect(addon.eval("return __opened"), "a click opens the calendar").toBe(1);
@@ -421,15 +426,15 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   addon.eval("BagsBar:SetSize(50, 20) ns.PausePins(false)");
   expect([...barSize(addon), addon.eval("return Vanguard_BagStrip == nil")], "one bag: the bar shrinks to hug its one slot, and there is no separate bag strip").toEqual([barW(1), BAR_H, true]);
   expect(addon.eval("local s = Vanguard_MenuStrip return { s:GetAlpha(), s.__mouseMotion == nil }"), "the bar is always shown by default (P2.18), nothing watching the mouse").toEqual([1, true]);
-  expect(addon.eval("return { Vanguard_QuestTracker:GetWidth(), Vanguard_QuestTracker:GetHeight(), next(ObjectiveTrackerFrame.__points) == nil }"), "Vanguard's tracker is on: its spot is made (260 by 234) and the game's tracker is not pinned").toEqual([260, 234, true]);
+  expect(addon.eval("return { Vanguard_QuestTracker:GetWidth(), Vanguard_QuestTracker:GetHeight(), next(ObjectiveTrackerFrame.__points) == nil }"), "Vanguard's tracker is on: its spot is made (260 by 174) and the game's tracker is not pinned").toEqual([260, 174, true]);
 });
 it("menu strip: the game's tracker is pinned into the spot only while Vanguard's own tracker is off", () => {
   // Where the game's tracker is anchored: whether on the spot, and its height.
   const pinned = (addon) => addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p ~= nil and p.rel == Vanguard_QuestTracker, ObjectiveTrackerFrame:GetHeight() }");
   const saved = (profile) => ({ savedVariables: `VanguardDB.profiles.Default = ${profile}` });
-  expect(pinned(loggedIn(UI_ENV + TIDY_ENV, saved("{ QuestTracker = { own = false } }"))), "Vanguard's tracker off: the game's sits under the info strip, no taller than its spot").toEqual([true, 234]);
+  expect(pinned(loggedIn(UI_ENV + TIDY_ENV, saved("{ QuestTracker = { own = false } }"))), "Vanguard's tracker off: the game's sits under the info strip, no taller than its spot").toEqual([true, 174]);
   expect(pinned(loggedIn(UI_ENV + TIDY_ENV, saved("{ QuestTracker = { own = true } }"))), "Vanguard's tracker on: one owner only, the game's is not pinned").toEqual([false, 0]);
-  expect(pinned(loggedIn(UI_ENV + TIDY_ENV, saved("{ modules = { QuestTracker = false } }"))), "the tracker module switched off altogether: the game's is pinned again").toEqual([true, 234]);
+  expect(pinned(loggedIn(UI_ENV + TIDY_ENV, saved("{ modules = { QuestTracker = false } }"))), "the tracker module switched off altogether: the game's is pinned again").toEqual([true, 174]);
 });
 it("the game's extras: a protected frame is hidden once, out of combat, with no Show hook", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + "ProtectedBar = CreateFrame('Frame', 'ProtectedBar', UIParent) ProtectedBar.IsProtected = function() return true, false end __wfgStub.inCombat = true");

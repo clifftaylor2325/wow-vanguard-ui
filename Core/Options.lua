@@ -156,7 +156,9 @@ local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", "the game's fo
 -- The faction look: by your character's faction, or off.
 local FACTION_LOOK = { { "auto", "By your faction" }, { "off", "Off" } }
 -- The theme variants (#237), in display order.
-local VARIANT_CHOICES = { { "default", "Slate and brass" }, { "contrast", "High contrast" }, { "vellum", "Vellum and ink" }, { "classic", "Classic look" } }
+local VARIANT_CHOICES = { { "default", "Slate and brass" }, { "contrast", "High contrast" }, { "vellum", "Vellum and ink" }, { "classic", "Classic look" }, { "midnight", "Midnight" }, { "obsidian", "Obsidian" }, { "moss", "Moss" }, { "ember", "Ash and ember" } }
+-- Panel corners: square (the default) or rounded.
+local CORNER_CHOICES = { { "square", "Square" }, { "rounded", "Rounded" } }
 local BAR_TEXTURES = { { "vanguard", "Vanguard" }, { "soft", "Soft" }, { "flat", "Flat" } }
 -- A share as a percent.
 local function percent(v)
@@ -169,13 +171,14 @@ local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step 
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
--- Look, the font, text size, faction, variant and ornament rows.
+-- Look, the font, text size, faction, variant, corners and ornament rows.
 local function lookTextRows()
   return {
     { "cycle", "Font", T.SharedChoices("font", FONT_CHOICES), liveThemeSetting("font") },
     { "slider", "Text size", TEXT_SIZES, liveThemeSetting("textScale") },
     { "cycle", "Faction look: crest and heading font", FACTION_LOOK, liveThemeSetting("faction") },
     { "cycle", "Theme variant: surfaces and text", VARIANT_CHOICES, liveThemeSetting("variant") },
+    { "cycle", "Corners: square or rounded panels", CORNER_CHOICES, liveThemeSetting("corners") },
     check("Window ornaments: a brass rule or corners on large windows", previewedSetting("ornaments")),
   }
 end

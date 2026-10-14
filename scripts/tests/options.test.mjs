@@ -614,9 +614,9 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|33", "modules|Modules|20|67", "unitframes|Unit frames|30|24", "raid|Raid frames|40|22",
-    "actionbars|Action bars|60|73", "quests|Quests|70|19", "bars|Bars and bags|80|17", "map|Map|81|29", "chat|Chat|82|31", "windows|Game windows|83|30", "tools|Combat tools|84|38", "town|Town and gear|85|47", "profiles|Profiles|90|22",
-    "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|12",
+    "general|General|10|34", "modules|Modules|20|67", "unitframes|Unit frames|30|24", "raid|Raid frames|40|22",
+    "actionbars|Action bars|60|73", "quests|Quests|70|19", "bars|Bars and bags|80|17", "map|Map|81|29", "chat|Chat|82|31", "windows|Game windows|83|30", "tools|Combat tools|84|38", "town|Town and gear|85|49", "profiles|Profiles|90|22",
+    "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|15",
     "situations|Situations|86|16", "clickcast|Click casting|46|11",
   ]);
   addon.eval('ns.Options.Show("general")');
@@ -657,4 +657,33 @@ it("switches wrap a long caption left of the track and react to the mouse", () =
   expect(knob("OnMouseDown"), "pressing marks it pressed").toEqual([true, true]);
   expect(knob("OnMouseUp"), "letting go clears the press").toEqual([true, false]);
   expect(knob("OnLeave"), "leaving clears the hot mark").toEqual([false, false]);
+});
+
+it("options: the Theme variant and Corners choices list every variant in T.VARIANT_ORDER and both corner styles, so a new look can't be left off the page", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // Clicks a cycle row n times and returns the setting it set after each click.
+  const cycle = (caption, key, n) => Array.from({ length: n }, () => (addon.eval(`__click("${caption}") return ns.Theme.Settings().${key}`)));
+  const order = addon.eval("return ns.Theme.VARIANT_ORDER");
+  expect(cycle("Theme variant: surfaces and text", "variant", order.length), "one click per variant goes round every one, back to the default").toEqual([...order.slice(1), order[0]]);
+  expect(cycle("Corners: square or rounded panels", "corners", 2), "corners cycle rounded then square").toEqual(["rounded", "square"]);
+});
+
+it("options: choice segments are as wide as their labels and follow the text size, and the selected one draws no shadow under its dark text", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // Each segment of the Corners row: its width, its label's width, its left edge and its text's shadow alpha.
+  const segments = () => addon.eval(`local r = ${rowNamed("Corners: square or rounded panels")} local out = {}
+    for i, s in ipairs(r.segments) do out[i] = { width = s:GetWidth(), label = s.text:GetStringWidth(), left = s:GetLeft(), shadow = s.text.__shadowColor[4] } end return out`);
+  const before = segments();
+  expect(before.map((s) => s.width >= s.label + 16), "8 px of air each side of every label").toEqual([true, true]);
+  expect(before[0].left + before[0].width <= before[1].left + 1, "the segments sit side by side, overlapping only the shared 1 px edge").toBe(true);
+  expect(before.map((s) => s.shadow), "Square (selected, dark text on the accent) has no shadow; Rounded keeps the theme's").toEqual([0, 0.9]);
+  // The harness measures text at one size, so a longer label stands in for a larger text size.
+  addon.eval(`local r = ${rowNamed("Corners: square or rounded panels")} r.segments[2].text:SetText("Rounded corners") ns.Theme.Refresh()`);
+  const after = segments();
+  expect(after.map((s, i) => s.width >= before[i].width && s.width >= s.label + 16), "a theme refresh re-measures: the segments grow with their labels").toEqual([true, true]);
+  expect(after[1].width > before[1].width && after[0].left + after[0].width <= after[1].left + 1, "and still don't overlap").toBe(true);
+  addon.eval('__click("Corners: square or rounded panels")');
+  expect(segments().map((s) => s.shadow), "Rounded selected: the shadow moves with the selection").toEqual([0.9, 0]);
 });

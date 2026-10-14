@@ -111,6 +111,7 @@ Modules/Errands.lua
 Modules/ErrandsBoats.lua
 Modules/InstancePrep.lua
 Modules/InstancePrepBuffs.lua
+Modules/InstancePrepWizard.lua
 Modules/DungeonCard.lua
 Modules/TalentPlanner.lua
 Modules/Legacy.lua
@@ -166,6 +167,7 @@ Modules/Tooltips.lua
 Modules/Inventory.lua
 Modules/UpgradeWeights.lua
 Modules/Upgrades.lua
+Modules/UpgradeWizard.lua
 Modules/VendorMemory.lua
 Modules/SpellRanks.lua
 Modules/Nameplates.lua

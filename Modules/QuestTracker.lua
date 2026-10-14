@@ -14,9 +14,9 @@
 
 local ADDON, ns = ...
 
-local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game", withQuestie = "questie", xp = true } })
+local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game", withQuestie = "questie", xp = true, expanded = false } })
 
-QT.W, QT.H, QT.SORT_EVERY = 260, 234, 1
+QT.W, QT.H, QT.SORT_EVERY = 260, 174, 1
 QT.EVENTS = { "QUEST_WATCH_LIST_CHANGED", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_REMOVED", "PLAYER_ENTERING_WORLD" }
 
 -- Whether Vanguard's tracker shows with these settings: it's on, and Questie (when it's

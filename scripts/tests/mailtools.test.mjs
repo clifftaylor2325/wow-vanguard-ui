@@ -131,6 +131,21 @@ it("attaches at most 12, and a preset button before the panel exists is quiet", 
   expect(early.eval(`return ${MT}.PaintPresets()`), "no panel yet").toBe(null);
 });
 
+it("a panel first built by the inbox update (the window shows after MAIL_SHOW) hides unset presets, says when there is nothing, and sits on the window's layer", () => {
+  const addon = mailer("__wfgWorld.mail = {}");
+  addon.eval("MailFrame = nil");
+  addon.world.openMailWindow();
+  expect(addon.eval("local n = 0 for _, b in ipairs(Vanguard_MailTools.presets) do if b:IsShown() then n = n + 1 end end return n"), "no stray Preset buttons").toBe(0);
+  expect(addon.eval("return { Vanguard_MailTools.empty:IsShown(), Vanguard_MailTools.empty:GetText(), Vanguard_MailTools.hint:IsShown() }"), "empty inbox and the hint").toEqual([true, "Your inbox is empty.", true]);
+  expect(addon.eval("return { Vanguard_MailTools:GetFrameStrata() == MailFrame:GetFrameStrata(), Vanguard_MailTools:GetFrameLevel() == MailFrame:GetFrameLevel() }"), "same layer").toEqual([true, true]);
+  addon.eval("__wfgWorld.mail = { { sender = 'Mum', subject = 'Hello', itemCount = 0 } }");
+  addon.type("Vanguard_MailTools.search", "zzz");
+  expect(addon.eval("return Vanguard_MailTools.empty:GetText()"), "mail but no match").toBe("No mail matches.");
+  addon.type("Vanguard_MailTools.search", "");
+  expect(addon.eval("return Vanguard_MailTools.empty:IsShown()"), "rows shown: no line").toBe(false);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("the options have the switch", () => {
   const addon = mailer();
   addon.eval('ns.Options.Show("town")');

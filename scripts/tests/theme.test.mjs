@@ -518,7 +518,8 @@ const lum = (c) => c.slice(0, 3).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.
 
 // WCAG contrast of a token's colour over the panel colour.
 const contrast = (addon, name) => {
-  return Math.round(((lum(tok(addon, name)) + 0.05) / (lum(tok(addon, "panel")) + 0.05)) * 10) / 10;
+  const [a, b] = [lum(tok(addon, name)) + 0.05, lum(tok(addon, "panel")) + 0.05];
+  return Math.round((Math.max(a, b) / Math.min(a, b)) * 10) / 10;
 };
 
 it("text tiers (#227): text, text2, muted, then disabled, each readable on a panel; a search box's hint is in the disabled tier", () => {
@@ -755,4 +756,97 @@ it("classic look (#218): a variant with a bronze border, gold-cream text and the
   expect([edge()[2] < edge()[0], edge()[0] > base[0], artShown(addon, "Vanguard_QuestLog", "OrnamentCorner")], "a bronze border (warm, not black) and the brackets on").toEqual([true, true, 4]);
   addon.slash("variant default");
   expect([edge()[0], artShown(addon, "Vanguard_QuestLog", "OrnamentCorner")], "back to the black border, no brackets").toEqual([base[0], 0]);
+});
+
+it("more variants: Midnight, Obsidian, Moss and Ash and ember swap surfaces and text, and every variant keeps its text tiers readable", () => {
+  const addon = loggedIn();
+  const base = { text: tok(addon, "text"), edge: tok(addon, "edge") };
+  addon.slash("variant midnight");
+  expect([tok(addon, "panel").slice(0, 3), chatHas(addon, /Theme variant: Midnight/)], "navy-black panels").toEqual([[13 / 255, 18 / 255, 32 / 255], true]);
+  addon.slash("variant obsidian");
+  expect([tok(addon, "panel")[0] === tok(addon, "panel")[2], tok(addon, "edge")[0] > base.edge[0]], "a neutral grey and a lighter edge").toEqual([true, true]);
+  addon.slash("variant moss");
+  expect(tok(addon, "panel")[1] > tok(addon, "panel")[0], "green leads").toBe(true);
+  addon.slash("variant ember");
+  expect([tok(addon, "divider")[0] > tok(addon, "divider")[2], chatHas(addon, /Theme variant: Ash and ember/)], "a rust divider").toEqual([true, true]);
+  for (const name of addon.eval("return ns.Theme.VARIANT_ORDER")) {
+    addon.slash(`variant ${name}`);
+    expect(["text", "text2", "muted"].map((n) => contrast(addon, n) >= 4.5), `${name}: text, text2 and muted clear 4.5:1`).toEqual([true, true, true]);
+  }
+  expect(addon.eval("return #ns.Theme.VARIANT_ORDER"), "eight entries, default included").toBe(8);
+  addon.slash("variant default");
+  expect(tok(addon, "text"), "back to the default").toEqual(base.text);
+});
+
+// Whether a frame has a visible texture of a Media/Textures file, and how many.
+const artCount = (addon, name, art) => addon.eval(`local n = 0 for _, r in ipairs({ ${name}:GetRegions() }) do if tostring(r.__texture):find("${art}") and r:IsShown() then n = n + 1 end end return n`);
+
+it("a removed variant (Frost): /vg variant frost is refused, and a profile that saved it comes back on the default look", () => {
+  const addon = loggedIn(undefined, { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { variant = "frost" } } } }' });
+  expect([addon.eval("return ns.Theme.Settings().variant"), addon.eval("return ns.Theme.VARIANTS.frost == nil"), tok(addon, "text").slice(0, 3)], "the saved frost is migrated away; the default text colour").toEqual(["default", true, [232 / 255, 234 / 255, 238 / 255]]);
+  addon.slash("variant frost");
+  expect([chatHas(addon, /Usage: \/vg variant default\|contrast\|vellum\|classic\|midnight\|obsidian\|moss\|ember$/), addon.eval("return ns.Theme.Settings().variant")], "refused, and the setting is left alone").toEqual([true, "default"]);
+  expect(addon.eval("return ns.Theme.VARIANT_ORDER")).toEqual(["default", "contrast", "vellum", "classic", "midnight", "obsidian", "moss", "ember"]);
+});
+
+it("rounded corners: off by default; /vg corners rounded gives panels and buttons arcs, pulls the fill and lines in, and square hides it all again", () => {
+  const addon = loggedIn('__win = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true }) __btn = ns.Theme.Button(CreateFrame("Button", nil, UIParent)) __bar = ns.Theme.Panel(CreateFrame("StatusBar", nil, UIParent)) __bare = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { noBorder = true })');
+  expect([addon.eval("return ns.Theme.Settings().corners"), artCount(addon, "__win", "CornerLine"), addon.eval("return __win.__children and #__win.__children or 0")], "square by default: no corner art made").toEqual(["square", 0, 0]);
+  addon.slash("corners rounded");
+  const r = addon.eval("return ns.Theme.CORNER_RADIUS * ns.Theme.Pixel(__win)");
+  expect([artCount(addon, "__win", "CornerLine"), artCount(addon, "__win", "CornerFill"), chatHas(addon, /Corners: rounded/)], "four arcs and four discs on a window").toEqual([4, 4, true]);
+  expect([artCount(addon, "__btn", "CornerLine"), artCount(addon, "__bar", "CornerLine"), artCount(addon, "__bare", "CornerLine"), artCount(addon, "__bare", "CornerFill")], "a button rounds; a status bar stays square; a borderless panel rounds only its fill").toEqual([4, 0, 0, 4]);
+  const corner = addon.eval(`for _, t in ipairs({ __win:GetRegions() }) do if tostring(t.__texture):find("CornerLine") and t.__points.TOPRIGHT then return { t:GetWidth(), t.__texCoord } end end`);
+  expect(corner, "an r square, flipped for its corner").toEqual([r, [1, 0, 0, 1]]);
+  const top = addon.eval(`for _, t in ipairs({ __win:GetRegions() }) do if t.__layer == "BORDER" and t.__points.TOPLEFT and t.__points.TOPRIGHT and t:GetHeight() == ns.Theme.Pixel(__win) then return { t.__points.TOPLEFT.x, t.__points.TOPRIGHT.x } end end`);
+  expect(top, "the top edge stops r short of each corner").toEqual([r, -r]);
+  expect(fillOf(addon, "__win")[0].slice(0, 3), "the fill keeps the panel colour").toEqual(tok(addon, "panel").slice(0, 3));
+  expect(addon.eval("local f = __win for _, t in ipairs({ f:GetRegions() }) do if t.__layer == 'BACKGROUND' and t.__texture == ns.Theme.WHITE and t.__points.BOTTOMRIGHT then return t.__points.TOPLEFT.x end end"), "the main fill is pulled in r").toBe(r);
+  addon.slash("gradient on");
+  expect(fillOf(addon, "__win")[1], "no gradient while rounded (the corner pieces can't follow it)").toBe(false);
+  addon.slash("gradient off");
+  addon.slash("corners oval");
+  expect([chatHas(addon, /Usage: \/vg corners/), addon.eval("return ns.Theme.Settings().corners")], "a bad name shows usage").toEqual([true, "rounded"]);
+  addon.slash("corners");
+  addon.slash("corners square");
+  expect([artCount(addon, "__win", "CornerLine"), artCount(addon, "__win", "CornerFill"), addon.eval("local f = __win for _, t in ipairs({ f:GetRegions() }) do if t.__layer == 'BACKGROUND' and t.__texture == ns.Theme.WHITE and t.__points.BOTTOMRIGHT then return t.__points.TOPLEFT.x end end")], "square again: the art hidden and the fill back to the corners").toEqual([0, 0, 0]);
+  expect(addon.eval("return VanguardDB.profiles.Default.theme.corners"), "kept in the profile").toBe("square");
+});
+
+it("rounded corners: High contrast's 2 px ring rounds at twice the radius, and a reset returns to square", () => {
+  const addon = loggedIn('__ring = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { accent = true })');
+  addon.slash("corners rounded");
+  addon.slash("variant contrast");
+  const px = addon.eval("return ns.Theme.Pixel(__ring)");
+  expect(addon.eval(`for _, t in ipairs({ __ring:GetRegions() }) do if tostring(t.__texture):find("CornerLine") then return t:GetWidth() end end`) / px, "8 px arcs").toBe(8);
+  addon.slash("theme reset");
+  expect(addon.eval("return ns.Theme.Settings().corners"), "reset gives square corners").toBe("square");
+});
+
+// WCAG contrast of an { r, g, b } colour against another.
+const contrastOf = (a, b) => Math.round(((Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05)) * 10) / 10;
+
+it("a variant switch recolours text drawn before it: with the options window open, Classic look leaves no text in the default look's grey", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  const before = [tok(addon, "text").slice(0, 3), tok(addon, "text2").slice(0, 3)];
+  addon.slash("variant classic");
+  // Every shown font string inside the options window: its text and colour.
+  const texts = addon.eval(`local out = {}
+    for _, w in ipairs(__wfgStub.frames) do
+      if type(w.__text) == "string" and #w.__text > 0 and w.__textColor then
+        local shown, inWin, f = true, false, w
+        while f do if f.__shown == false then shown = false end if f == Vanguard_Options then inWin = true end f = f.__parent end
+        if shown and inWin then out[#out + 1] = { w.__text, w.__textColor[1], w.__textColor[2], w.__textColor[3] } end
+      end
+    end return out`);
+  // Whether a colour is the given r, g, b (within a rounding step).
+  const same = (c, [r, g, b]) => Math.abs(c[0] - r) < 0.002 && Math.abs(c[1] - g) < 0.002 && Math.abs(c[2] - b) < 0.002;
+  const stale = texts.filter(([, r, g, b]) => before.some((c) => same(c, [r, g, b]))).map(([t]) => t);
+  expect(texts.length > 40, "the window has text to check").toBe(true);
+  expect(stale, "no label, value, header or dropdown keeps the default look's text colours").toEqual([]);
+  expect(texts.some(([, r, g, b]) => same(tok(addon, "text").slice(0, 3), [r, g, b])), "labels wear Classic's gold-cream").toBe(true);
+  addon.eval('__hand = UIParent:CreateFontString() ns.Theme.Color(__hand, 0.5, 0.5, 0.5)');
+  addon.slash("variant default");
+  expect([tok(addon, "text").slice(0, 3), addon.eval("return { __hand:GetTextColor() }").slice(0, 3)], "back to the default; text coloured by hand is left alone").toEqual([[232 / 255, 234 / 255, 238 / 255], [0.5, 0.5, 0.5]]);
 });

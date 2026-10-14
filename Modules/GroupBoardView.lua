@@ -69,6 +69,7 @@ local function addBody(f)
   f.rows = QP.Pool(f.body, makeRow)
   f.note = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
   f.note:SetPoint("TOPLEFT", f.body, "BOTTOMLEFT", 2, -6)
+  f.note:SetWidth(GB.W - 28)
   f.hint = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
   f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 14, 12)
   f.hint:SetText("Click a post to open a whisper with a message filled in. Nothing is sent until you press Enter.")
@@ -153,7 +154,7 @@ local function noteText(shown, total)
   if shown > GB.ROWS then return "+" .. (shown - GB.ROWS) .. " more" end
   if shown > 0 then return "" end
   if total > 0 then return "No posts match. Show all posts, or turn off Only dungeons for my level." end
-  return "No posts yet. Looking-for-more and looking-for-group lines from chat show here."
+  return "No posts yet. " .. GB.Summary() .. " More: /vg lfg probe."
 end
 
 -- The rows that fit, from the top.

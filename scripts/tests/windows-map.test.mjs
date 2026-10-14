@@ -216,6 +216,44 @@ it("quest panel in the map: with Vanguard's quest log off, the list, the details
   expect(questPanel(addon).painted, "showing them again paints nothing new").toBe(first.painted);
 });
 
+// TEST-ONLY zone headers in the quest list, shaped like the client's (from /vg frame on the live list): a button with
+// ButtonText, a full-width collapseExpand texture, a highlight copy and a CollapseButton; questLogIndex names its entry.
+const HEADERS_ENV = QUEST_MAP_ENV + `
+  local contents = CreateFrame("Frame", nil, QuestMapFrame.QuestsFrame.ScrollFrame)
+  QuestMapFrame.QuestsFrame.ScrollFrame.Contents = contents
+  function __header(index)
+    local h = CreateFrame("Button", nil, contents)
+    h.ButtonText = h:CreateFontString(nil, "ARTWORK") h.bar = h:CreateTexture(nil, "ARTWORK")
+    h.CollapseButton = CreateFrame("Button", nil, h) h.CollapseButton.art = h.CollapseButton:CreateTexture()
+    h.questLogIndex = index
+    return h
+  end
+  CreateFrame("Button", nil, contents):CreateTexture()
+  __header(1) __header(2) __header("none")
+  local getInfo = C_QuestLog.GetInfo
+  C_QuestLog.GetInfo = function(i) local info = getInfo(i) or {} info.isCollapsed = i == 2 return info end
+  function QuestLogQuests_Update() __header(3) end
+`;
+
+// Each TEST-ONLY header's bar and button art alpha, and the icon its chevron shows (nil without one).
+const headers = (addon) => addon.eval(`local out = {}
+  for _, h in ipairs({ QuestMapFrame.QuestsFrame.ScrollFrame.Contents:GetChildren() }) do
+    if h.ButtonText then local g = ns.FrameState("vgHeaderGlyph")[h]
+      out[#out + 1] = { h.bar:GetAlpha(), h.CollapseButton.art:GetAlpha(), g and g:GetTexture() or "none" } end
+  end
+  return out`);
+
+it("quest panel in the map: the zone headers lose the game's yellow bar for a chevron, open or folded, as the list redraws", () => {
+  const addon = loggedIn(HEADERS_ENV, { savedVariables: OWN_LOG_OFF });
+  addon.eval("QuestMapFrame:Show()");
+  const down = addon.eval('return ns.Theme.Icon("Down")'), right = addon.eval('return ns.Theme.Icon("Right")');
+  expect(headers(addon), "bar and button art faded; Down while open, Right while folded, Down when the entry is unknown").toEqual([[0, 0, down], [0, 0, right], [0, 0, down]]);
+  addon.eval("QuestLogQuests_Update()");
+  expect(headers(addon).length, "a header the game makes on a redraw is dressed too").toBe(4);
+  expect(headers(addon)[3], "the new one").toEqual([0, 0, down]);
+  expect(addon.eval("return { #ns.errors, ns.Theme.PaintedCount() > 0 }"), "and nothing failed").toEqual([0, true]);
+});
+
 it("quest panel in the map: left the game's while Vanguard's quest log is on, or the group is off", () => {
   const own = loggedIn(QUEST_MAP_ENV);
   own.eval("QuestMapFrame:Show() QuestLogPopupDetailFrame:Show()");

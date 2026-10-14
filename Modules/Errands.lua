@@ -66,6 +66,9 @@ local function serviceName(i)
   return type(name) == "string" and name or tostring(i)
 end
 
+-- Narrow enough to sit between the trainer's money line (bottom left) and its Train button.
+ER.TRAIN_WIDTH = 96
+
 -- The trainer's services you can learn now, as { index, cost, name }.
 function ER.Trainable()
   local out = {}
@@ -83,12 +86,11 @@ local function nextAffordable(run)
   end
 end
 
--- The button's label (how many, and their cost); it's off while nothing is affordable.
+-- The button's label (how many; its cost is told when it is clicked); it's off while nothing is affordable.
 function ER.UpdateTrainButton()
-  local b, list, total = ER.trainButton, ER.Trainable(), 0
+  local b, list = ER.trainButton, ER.Trainable()
   if not b then return end
-  for _, s in ipairs(list) do total = total + s.cost end
-  b.text:SetText(#list > 0 and string.format("Train all (%d) · %s", #list, money(total)) or "Train all")
+  b.text:SetText(#list > 0 and string.format("Train all (%d)", #list) or "Train all")
   if nextAffordable() then b:Enable() else b:Disable() end
   b:SetShown(ER.settings.trainAll)
 end
@@ -113,12 +115,18 @@ function ER.TrainAll()
   ER.UpdateTrainButton()
 end
 
+-- Puts the button left of the game's Train button, the same height so their edges line up.
+function ER.PlaceBesides(b, train)
+  b:SetPoint("RIGHT", train, "LEFT", -4, 0)
+  b:SetHeight(train:GetHeight())
+end
+
 -- Adds the Train all button to the game's trainer window, once that window exists.
 function ER.AddTrainButton()
   local frame = _G.ClassTrainerFrame
   if ER.trainButton or type(frame) ~= "table" then return end
-  local b, train = ns.DialogButton(frame, "Train all", 170), _G.ClassTrainerTrainButton
-  if type(train) == "table" then b:SetPoint("RIGHT", train, "LEFT", -4, 0) else b:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 6) end
+  local b, train = ns.DialogButton(frame, "Train all", ER.TRAIN_WIDTH), _G.ClassTrainerTrainButton
+  if type(train) == "table" then ER.PlaceBesides(b, train) else b:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 6) end
   b:SetScript("OnClick", ns.Guard("click train all", ER.TrainAll))
   ER.trainButton = b
   ER.UpdateTrainButton()

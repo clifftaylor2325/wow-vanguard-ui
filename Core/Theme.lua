@@ -81,6 +81,8 @@ local TOKENS = {
   edge = "000000", sheen = { "ffffff", 0.06 }, divider = "2f343d", shade = { "000000", 0.5 },
   hover = { "ffffff", 0.08 }, darkBar = "2a3039", checked = { "ffffff", 0.25 }, gridline = { "ffffff", 0.12 },
   textShadow = { "000000", 0.9 },
+  -- No colour at all: the shadow under dark text on an accent fill (a shadow only blurs it).
+  clear = { "000000", 0 },
   -- The dark sweep over an aura icon as its time runs out.
   sweep = { "000000", 0.65 },
   -- The spark on the power bar (the five-second rule, energy ticks) and the swing timer.
@@ -147,7 +149,7 @@ setmetatable(T.PRESETS, { __index = function(_, name) return ALIASES[name] and T
 -- Theme variants (#237): token sets that swap surfaces and text, chosen with the variant setting
 -- ("default" is none). A variant's tokens win over the saved panel and inset colours; `assist` turns
 -- Color assist on, `ring` is the accent focus ring in screen pixels, `flat` drops gradients.
-T.VARIANT_ORDER = { "default", "contrast", "vellum", "classic" }
+T.VARIANT_ORDER = { "default", "contrast", "vellum", "classic", "midnight", "obsidian", "moss", "ember" }
 T.VARIANTS = {
   -- High Contrast: opaque near-black panels, white text, no sheen, full-saturation states.
   contrast = {
@@ -175,14 +177,48 @@ T.VARIANTS = {
       text = "efe6d2", text2 = "d2c6ad", muted = "9a8f78",
     },
   },
+  -- Midnight: a cold navy-black with steel-blue dividers and ice-blue text.
+  midnight = {
+    label = "Midnight",
+    tokens = {
+      panel = { "0d1220", 0.94 }, inset = { "080c16", 0.95 }, raised = "151c2e", divider = "2a3550",
+      text = "e6eefc", text2 = "c3cfe6", muted = "9aa8c4",
+    },
+  },
+  -- Obsidian: neutral charcoal with no warm or cold tint, light grey text and a thin silver edge.
+  obsidian = {
+    label = "Obsidian",
+    tokens = {
+      panel = { "141414", 0.94 }, inset = { "0c0c0c", 0.95 }, raised = "1e1e1e", divider = "343434", edge = "5c5c5c",
+      text = "ececec", text2 = "cfcfcf", muted = "a8a8a8",
+    },
+  },
+  -- Moss: a dark forest green with mossy dividers and pale sage text.
+  moss = {
+    label = "Moss",
+    tokens = {
+      panel = { "101a14", 0.94 }, inset = { "0a110d", 0.95 }, raised = "18261d", divider = "2c4232",
+      text = "e4eee6", text2 = "c3d4c7", muted = "98ad9e",
+    },
+  },
+  -- Ash and ember: smoky grey with a dim rust edge and dividers, warm grey text.
+  ember = {
+    label = "Ash and ember",
+    tokens = {
+      panel = { "1a1718", 0.94 }, inset = { "110f10", 0.95 }, raised = "262223", divider = "4a2e2a", edge = "5a2c24",
+      text = "ebe4e2", text2 = "cfc5c2", muted = "a89c98",
+    },
+  },
 }
 for _, v in pairs(T.VARIANTS) do
   for name, c in pairs(v.tokens) do v.tokens[name] = type(c) == "table" and fromHex(c[1], c[2]) or fromHex(c) end
 end
 
 local DEFAULTS = {
-  -- A theme variant (#237, #218): "default", "contrast", "vellum" or "classic".
+  -- A theme variant (#237, #218): "default", "contrast", "vellum", "classic", "midnight", "obsidian", "moss", "ember".
   variant = "default",
+  -- Panel corners: "square" (one border language, as always) or "rounded" (T.CORNER_RADIUS arcs).
+  corners = "square",
   accent = T.PRESETS.brass,
   panel = T.TOKENS.panel,
   inset = T.TOKENS.inset,
@@ -235,11 +271,13 @@ function T.Settings()
 end
 
 -- Profiles saved or exported before the rename (ForeverUI 0.3.0 and earlier)
--- call the bundled bar style "forever"; it is "vanguard" now.
-local function renamedBarStyle(saved)
+-- call the bundled bar style "forever"; it is "vanguard" now. A profile that saved a
+-- variant since removed (Frost, the light look, dropped in 0.6.0) goes back to the default.
+local function renamedTheme(saved)
   if saved.barTexture == "forever" then saved.barTexture = "vanguard" end
+  if saved.variant ~= nil and not T.VARIANTS[saved.variant] and saved.variant ~= "default" then saved.variant = nil end
 end
-ns.Migrate("theme", renamedBarStyle)
+ns.Migrate("theme", renamedTheme)
 
 -- r, g, b of the accent color.
 function T.Accent()
@@ -536,14 +574,33 @@ local EDGE_POINTS = {
   left = { "TOPLEFT", "BOTTOMLEFT" }, right = { "TOPRIGHT", "BOTTOMRIGHT" },
 }
 
+-- Rounded corners (the corners setting, "rounded"): the radius in screen pixels. The corner art
+-- (Media/Textures/CornerLine and CornerFill) is a quarter circle on a 32-pixel canvas with an
+-- 8-pixel stroke, so drawn at this radius the arc is one pixel wide, like the edges.
+T.CORNER_RADIUS = 4
+
+-- Pins one edge texture between its two corner points, `out` units past frame, each end stopped
+-- `r` units short of the corner (0 runs it into the corner).
+local function placeEdge(t, frame, side, points, out, r)
+  t:ClearAllPoints()
+  for _, point in ipairs(points) do
+    local x, y = outward(point, out)
+    local inX, inY = outward(point, -r)
+    if side == "top" or side == "bottom" then x = x + inX else y = y + inY end
+    t:SetPoint(point, frame, point, x, y)
+  end
+end
+
+-- Pins the four edges `pad` units out past frame (rounded to whole pixels), `r` units short of the corners.
+local function placeEdges(e, frame, pad, r)
+  for side, points in pairs(EDGE_POINTS) do placeEdge(e[side], frame, side, points, T.PixelRound(frame, pad or 0), r or 0) end
+end
+
 -- Four edge textures around frame, `pad` units out past its edges (sized to one pixel when painted).
 local function edges(frame, pad)
   local layer, sub = edgeLayer(frame)
   local e = { top = solid(frame, layer, sub, "border"), bottom = solid(frame, layer, sub, "border"), left = solid(frame, layer, sub, "border"), right = solid(frame, layer, sub, "border") }
-  for side, points in pairs(EDGE_POINTS) do
-    pin(e[side], frame, points[1], pad)
-    pin(e[side], frame, points[2], pad)
-  end
+  placeEdges(e, frame, pad, 0)
   return e
 end
 
@@ -562,12 +619,13 @@ end
 
 -- Places the sheen just inside the top border (`pad` units out past the frame's top), one pixel tall:
 -- on the first row inside it, or the `row`th (a bevelled panel keeps row 1 for its bevel line).
--- (A button's hover line sits on row 1, in `token`.)
-local function placeSheen(t, frame, pad, token, row)
+-- (A button's hover line sits on row 1, in `token`.) `r` units are left clear at each end for rounded corners.
+local function placeSheen(t, frame, pad, token, row, r)
   local px, out = T.Pixel(frame), T.PixelRound(frame, pad or 0)
+  local inset = px + (r or 0)
   t:ClearAllPoints()
-  t:SetPoint("TOPLEFT", frame, "TOPLEFT", px - out, out - px * (row or 1))
-  t:SetPoint("TOPRIGHT", frame, "TOPRIGHT", out - px, out - px * (row or 1))
+  t:SetPoint("TOPLEFT", frame, "TOPLEFT", inset - out, out - px * (row or 1))
+  t:SetPoint("TOPRIGHT", frame, "TOPRIGHT", out - inset, out - px * (row or 1))
   t:SetHeight(px)
   T.Tint(t, token or "sheen")
 end
@@ -576,21 +634,22 @@ end
 -- top inner edge and the dark one along the bottom inner edge, each one pixel, just inside the border.
 T.BEVEL = { top = { "borderHi", 0.35 }, bottom = { "shade", 0.35 } }
 
--- Places one bevel line (side "TOP" or "BOTTOM") on the first row inside frame's border, `out` past it.
-local function placeBevelLine(t, frame, side, out)
+-- Places one bevel line (side "TOP" or "BOTTOM") on the first row inside frame's border, `out` past
+-- it, `r` units clear of each rounded corner.
+local function placeBevelLine(t, frame, side, out, r)
   local px, y = T.Pixel(frame), side == "TOP" and out - T.Pixel(frame) or T.Pixel(frame) - out
   t:ClearAllPoints()
-  t:SetPoint(side .. "LEFT", frame, side .. "LEFT", px - out, y)
-  t:SetPoint(side .. "RIGHT", frame, side .. "RIGHT", out - px, y)
+  t:SetPoint(side .. "LEFT", frame, side .. "LEFT", px + r - out, y)
+  t:SetPoint(side .. "RIGHT", frame, side .. "RIGHT", out - px - r, y)
   t:SetHeight(px)
   T.Tint(t, T.BEVEL[side:lower()][1], T.BEVEL[side:lower()][2])
 end
 
--- Places and tints a frame's bevel lines (`pad` units out past the frame).
-local function placeBevelLines(bevel, frame, pad)
+-- Places and tints a frame's bevel lines (`pad` units out past the frame, `r` clear of the corners).
+local function placeBevelLines(bevel, frame, pad, r)
   local out = T.PixelRound(frame, pad or 0)
-  placeBevelLine(bevel.top, frame, "TOP", out)
-  placeBevelLine(bevel.bottom, frame, "BOTTOM", out)
+  placeBevelLine(bevel.top, frame, "TOP", out, r or 0)
+  placeBevelLine(bevel.bottom, frame, "BOTTOM", out, r or 0)
 end
 
 -- How far a shadow reaches past its frame. It sits evenly around the frame:
@@ -807,26 +866,118 @@ local function shadeBg(bg, opts, r, g, b, a)
   bg:SetGradient("VERTICAL", lighter(r, g, b, a, T.PANEL_GRADIENT[1]), lighter(r, g, b, a, T.PANEL_GRADIENT[2]))
 end
 
+-- Tints a painted frame's fill textures: the background and, once rounded, its side strips and corners.
+local function tintFills(p, r, g, b, a)
+  p.bg:SetVertexColor(r, g, b, a)
+  for _, key in ipairs({ "roundSides", "roundFill" }) do
+    for _, t in pairs(p[key] or NO_PARTS) do t:SetVertexColor(r, g, b, a) end
+  end
+end
+
 -- Colors a painted background: panel, inset or raised color (or the opts.fill
--- token), at opts.alpha if given, shaded top to bottom where shadeBg says.
-local function paintBg(bg, opts)
+-- token), at opts.alpha if given, shaded top to bottom where shadeBg says (never while rounded:
+-- the corner pieces can't follow a gradient).
+local function paintBg(p, opts, rounded)
   local r, g, b, a = T.PanelColor(opts.inset)
   if opts.raised then r, g, b, a = T.RGB("raised") end
   if opts.fill then r, g, b, a = T.RGB(opts.fill) end
-  bg:SetVertexColor(r, g, b, opts.alpha or a)
-  shadeBg(bg, opts, r, g, b, opts.alpha or a)
+  tintFills(p, r, g, b, opts.alpha or a)
+  if not rounded then shadeBg(p.bg, opts, r, g, b, opts.alpha or a) end
+end
+
+-- Texcoords (left, right, top, bottom) flipping the corner art, drawn for the top left, to each corner.
+local CORNERS = { TOPLEFT = { 0, 1, 0, 1 }, TOPRIGHT = { 1, 0, 0, 1 }, BOTTOMLEFT = { 0, 1, 1, 0 }, BOTTOMRIGHT = { 1, 0, 1, 0 } }
+
+-- The four corner pieces of `art` on frame at a layer (and sublevel): point -> texture.
+local function cornerPieces(frame, art, layer, sublevel)
+  local set = {}
+  for point, tc in pairs(CORNERS) do
+    local t = frame:CreateTexture(nil, layer, nil, sublevel)
+    t:SetTexture(T.Texture(art))
+    t:SetTexCoord(unpack(tc))
+    set[point] = t
+  end
+  return set
+end
+
+-- Makes a frame's rounded-corner parts, once it is first painted rounded: the border arcs where
+-- it has edges, and the fill's quarter discs and left and right strips where it has a background.
+local function roundParts(frame, p)
+  local layer, sub = edgeLayer(frame)
+  p.roundLine = p.edges and cornerPieces(frame, "CornerLine", layer, sub) or nil
+  p.roundFill = p.bg and cornerPieces(frame, "CornerFill", "BACKGROUND") or nil
+  p.roundSides = p.bg and { solid(frame, "BACKGROUND", nil, "fill"), solid(frame, "BACKGROUND", nil, "fill") } or nil
+end
+
+-- Places a set of corner pieces, each an r square at its corner, `out` past frame.
+local function placeCorners(set, frame, out, r)
+  for point, t in pairs(set or NO_PARTS) do
+    t:ClearAllPoints()
+    t:SetPoint(point, frame, point, outward(point, out))
+    t:SetSize(r, r)
+  end
+end
+
+-- Places the background between the corners: pulled in r on the left and right, with an r-wide
+-- strip down each side between the top and bottom corners (r 0 is the plain full background).
+local function placeSides(p, frame, out, r)
+  p.bg:ClearAllPoints()
+  p.bg:SetPoint("TOPLEFT", frame, "TOPLEFT", r - out, out)
+  p.bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", out - r, -out)
+  for i, side in ipairs({ "LEFT", "RIGHT" }) do
+    local t, x = p.roundSides[i], side == "LEFT" and -out or out
+    t:ClearAllPoints()
+    t:SetPoint("TOP" .. side, frame, "TOP" .. side, x, out - r)
+    t:SetPoint("BOTTOM" .. side, frame, "BOTTOM" .. side, x, r - out)
+    t:SetWidth(math.max(r, 1))
+  end
+end
+
+-- Shows and places a frame's rounded parts for radius r (units), or hides them (r 0) and gives
+-- the background its corners back. Nothing is made for a frame that was never rounded.
+local function paintRound(frame, entry, r)
+  local p, out = entry.parts, T.PixelRound(frame, entry.opts.pad or 0)
+  if r == 0 and not p.round then return end
+  if not p.round then roundParts(frame, p) p.round = true end
+  for _, key in ipairs({ "roundLine", "roundFill", "roundSides" }) do
+    for _, t in pairs(p[key] or NO_PARTS) do t:SetShown(r > 0) end
+  end
+  if p.bg then placeSides(p, frame, out, r) end
+  placeCorners(p.roundLine, frame, out, r)
+  placeCorners(p.roundFill, frame, out, r)
+  if p.roundLine then colorEdges(p.roundLine, borderColor(entry)) end
+end
+
+-- The painted kinds whose corners the corners setting rounds: panels (windows, HUD frames, tooltips)
+-- and buttons. Slots and tabs stay square (an icon fills a slot; a tab meets its panel).
+local ROUNDED_KINDS = { panel = true, button = true }
+
+-- How far a painted frame's corners round, in its units: T.CORNER_RADIUS pixels with the corners
+-- setting on "rounded" (times the variant's ring on an accent-bordered frame), 0 for square corners,
+-- a status bar (its fill is square) or a kind that stays square.
+local function roundRadius(frame, entry)
+  if T.Settings().corners ~= "rounded" or not ROUNDED_KINDS[entry.kind] or edgeLayer(frame) == "OVERLAY" then return 0 end
+  local v = T.Variant()
+  return T.CORNER_RADIUS * T.Pixel(frame) * ((entry.opts.accent or entry.opts.border) and v and v.ring or 1)
+end
+
+-- Colours and sizes a painted frame's edges, re-pinned `r` short of the corners once it has been rounded.
+local function paintEdges(frame, entry, r)
+  local p = entry.parts
+  colorEdges(p.edges, borderColor(entry))
+  sizeEdges(p.edges, frame, entry.opts.accent or entry.opts.border)
+  if r > 0 or p.round then placeEdges(p.edges, frame, entry.opts.pad, r) end
 end
 
 -- Applies the current colors (and pixel size) to one painted frame.
 local function repaint(frame, entry)
-  local p = entry.parts
-  if p.bg then paintBg(p.bg, entry.opts) end
-  if p.edges then
-    colorEdges(p.edges, borderColor(entry))
-    sizeEdges(p.edges, frame, entry.opts.accent or entry.opts.border)
-  end
-  if p.sheen then placeSheen(p.sheen, frame, entry.opts.pad, nil, p.bevel and 2) end
-  if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad) end
+  local p, r = entry.parts, roundRadius(frame, entry)
+  entry.round = r
+  paintRound(frame, entry, r)
+  if p.bg then paintBg(p, entry.opts, r > 0) end
+  if p.edges then paintEdges(frame, entry, r) end
+  if p.sheen then placeSheen(p.sheen, frame, entry.opts.pad, nil, p.bevel and 2, r) end
+  if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad, r) end
   if entry.paint then entry.paint(entry, frame) end
 end
 
@@ -901,7 +1052,7 @@ end
 
 -- Places a button's hover line (one pixel inside its top border, in borderHi) when it is painted.
 local function paintHoverLine(entry, button)
-  placeSheen(entry.parts.hoverLine, button, entry.opts.pad, "borderHi")
+  placeSheen(entry.parts.hoverLine, button, entry.opts.pad, "borderHi", nil, entry.round)
 end
 
 -- Each themed button's hover parts (weak; kept off the button, which may be one of the game's).
@@ -1265,7 +1416,7 @@ end
 local function paintTab(entry, frame)
   local on, p = tabSelected(frame), entry.parts
   entry.opts.inset, entry.opts.raised = not on, on
-  paintBg(p.bg, entry.opts)
+  paintBg(p, entry.opts, entry.round > 0)
   p.line:SetShown(on)
   placeBar(p.line, frame, entry.opts.bar or "TOP")
   T.Tint(p.line, "accent")
@@ -1454,6 +1605,9 @@ T.ROLES = {
 local styled = setmetatable({}, { __mode = "k" })
 -- Styled strings drawn at a size of their own (T.TextSize): string -> size. Weak too.
 local sizes = setmetatable({}, { __mode = "k" })
+-- Every font string coloured by token name (T.Color): string -> token. Weak; T.RefreshText recolours
+-- them all, so a variant switch reaches text that was drawn before it (a light look needs dark text).
+local colored = setmetatable({}, { __mode = "k" })
 
 -- A size after the text scale setting.
 function T.ScaledSize(size)
@@ -1506,17 +1660,30 @@ function T.TextSize(fs, size)
   T.ApplyRole(fs, styled[fs])
 end
 
--- Re-fonts every string styled with a role (after a font or text size change).
-function T.RefreshText()
-  for fs, role in pairs(styled) do T.ApplyRole(fs, role) end
+-- The shadow under text coloured by token: none under the dark void text that sits on an accent fill
+-- (a shadow only blurs it), the theme's back under styled text otherwise; other addons' text keeps its own.
+local function shadowFor(fs, token)
+  if token == "void" then fs:SetShadowColor(T.RGB("clear"))
+  elseif styled[fs] then fs:SetShadowColor(T.RGB("textShadow")) end
 end
 
--- Colors a font string: a named color, r, g, b (for other addons' skins), or the accent's text variant.
+-- Re-fonts every string styled with a role (after a font or text size change) and recolours every
+-- string coloured by token (after a variant or accent change).
+function T.RefreshText()
+  for fs, role in pairs(styled) do T.ApplyRole(fs, role) end
+  for fs, token in pairs(colored) do fs:SetTextColor(T.RGB(token)) shadowFor(fs, token) end
+end
+
+-- Colors a font string by token (remembered, so T.RefreshText keeps it current; see shadowFor), by
+-- r, g, b (for other addons' skins; forgotten), or in the accent's text variant.
 function T.Color(fs, r, g, b)
   if type(r) == "number" then
+    colored[fs] = nil
     fs:SetTextColor(r, g, b)
   else
+    colored[fs] = r or "accentText"
     fs:SetTextColor(T.RGB(r or "accentText"))
+    shadowFor(fs, colored[fs])
   end
   return fs
 end

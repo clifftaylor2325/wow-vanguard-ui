@@ -255,3 +255,19 @@ it("chat watch: two-part names: your realm is left off the toast, a click whispe
   say(addon, "CHANNEL", "LFM DM", "Tester-OtherRealm");
   expect([rings(addon), toast(addon)[1]], "your name on another realm is someone else, shown with their realm").toEqual([2, "Tester-OtherRealm"]);
 });
+
+it("chat watch: alerts older than the repeat window are forgotten once 100 are held, so a busy channel never grows the list", () => {
+  const addon = watching();
+  // The alerts held: [entries in the list, the count kept].
+  const held = () => addon.eval("local n = 0 for _ in pairs(ns.GetModule('ChatWatch').recent) do n = n + 1 end return { n, ns.GetModule('ChatWatch').recentCount }");
+  for (let i = 1; i <= 99; i++) say(addon, "CHANNEL", "LFM run", `Sender${i}`);
+  expect(held(), "99 senders in a row: all held").toEqual([99, 99]);
+  addon.update(31);
+  say(addon, "CHANNEL", "LFM run", "Sender100");
+  say(addon, "CHANNEL", "LFM run", "Sender101");
+  expect(held(), "past 100 held, the 99 stale ones are swept; the two fresh ones stay").toEqual([2, 2]);
+  say(addon, "CHANNEL", "LFM run", "Sender101");
+  expect(held(), "a sender still inside the window rings once and is not counted twice").toEqual([2, 2]);
+  for (let i = 1; i <= 120; i++) say(addon, "CHANNEL", "LFM run", `Other${i}`);
+  expect(held()[0], "120 fresh senders inside one window: all held (nothing to sweep), not lost").toBe(122);
+});

@@ -1346,6 +1346,7 @@ C_DamageMeter = {
 -- .pending one whose item key info the client hasn't loaded yet, .equipment one the house calls equipment.
 
 Enum.ItemCommodityStatus = { Unknown = 0, Item = 1, Commodity = 2 }
+Enum.AuctionHouseError = { NotEnoughMoney = 0, ItemNotFound = 4, HasRestriction = 6, IsBusy = 7, DatabaseError = 10 }
 Enum.AuctionHouseSortOrder = { Price = 0, Name = 1, Level = 2, Bid = 3, Buyout = 4, TimeRemaining = 5 }
 Enum.AuctionStatus = { Active = 0, Sold = 1 }
 

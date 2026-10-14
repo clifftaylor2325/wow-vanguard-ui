@@ -85,6 +85,15 @@ local function moneyLine(id)
   return table.concat(parts, "  ·  ")
 end
 
+-- Whether you watch a quest: it is in the watch list the tracker draws from (the client's watch type
+-- can't be trusted to be nil for a quest you don't watch).
+function QL.IsWatched(id)
+  for _, watched in ipairs(ns.GetModule("QuestTracker").Watched()) do
+    if watched == id then return true end
+  end
+  return false
+end
+
 -- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable }.
 function QL.Details(id)
   local index = ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
@@ -93,15 +102,20 @@ function QL.Details(id)
   questLog("SetSelectedQuest", id)
   local text = call(GetQuestLogQuestText)
   return { id = id, title = info.title, level = info.level, text = text, objectives = ns.GetModule("QuestTracker").Objectives(id),
-    rewards = rewardItems(id), money = moneyLine(id), watched = questLog("GetQuestWatchType", id) ~= nil,
+    rewards = rewardItems(id), money = moneyLine(id), watched = QL.IsWatched(id),
     shareable = yes(questLog("IsPushableQuest", id)) and yes(call(IsInGroup)) }
 end
 
 -- Actions ----------------------------------------------------------------------------------------
 
--- Starts or stops watching the chosen quest.
+-- Starts or stops watching the chosen quest, then redraws it so the button shows what the game now says;
+-- says so in chat when the game didn't change it (at its watch limit, say).
 function QL.ToggleTrack(d)
   if d.watched then questLog("RemoveQuestWatch", d.id) else questLog("AddQuestWatch", d.id) end
+  if QL.IsWatched(d.id) == d.watched then
+    ns.Chat(("The game didn't %s %s (%d quests tracked)."):format(d.watched and "untrack" or "track", ns.QuestParts.Plain(d.title), #ns.GetModule("QuestTracker").Watched()))
+  end
+  QL.Select(d.id)
 end
 
 -- Shares the chosen quest with your group.
@@ -188,4 +202,5 @@ function QL.Enable(settings)
   end
   hookGameToggle()
   ns.On("QUEST_LOG_UPDATE", refreshSoon)
+  ns.On("QUEST_WATCH_LIST_CHANGED", refreshSoon)
 end
