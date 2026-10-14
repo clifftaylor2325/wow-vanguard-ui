@@ -112,3 +112,15 @@ it("each nameplate asks the client for its own unit's events, once", () => {
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate5");
   expect(unitEvents(addon, "UNIT_FACTION").subs, "the client reuses a plate for another unit: it listens for that one").toBe("nameplate2 nameplate5");
 });
+it("/vg plates reports the game's plate settings and sets the enemy one, out of combat", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + "UnitCanAttack = function(_, unit) return unit == 'nameplate1' end SetCVar('nameplateShowEnemies', 0) SetCVar('nameplateShowFriends', 1)");
+  addon.slash("plates");
+  expect(addon.chat().join("\n"), "counts, the three settings and the hint").toMatch(/Plates: 2 drawn, 1 of them units you can attack\. .*Enemy nameplates off, Friendly on, Show all unknown\.[\s\S]*The game draws no enemy plates/);
+  addon.slash("plates enemies on");
+  expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "switched on").toBe("1");
+  setCombat(addon, true);
+  addon.slash("plates enemies off");
+  expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "not changed in a fight").toBe("1");
+  setCombat(addon, false);
+  expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "changed once the fight ends").toBe("0");
+});

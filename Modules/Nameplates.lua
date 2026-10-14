@@ -532,6 +532,44 @@ function NP.Enable(settings)
   T.OnChanged(function() each(repaintTarget) end)
 end
 
+-- Slash -------------------------------------------------------------------------------------
+
+-- A game setting as "on", "off" or "unknown" (a client without it, or a hidden answer).
+local function cvarState(name)
+  local v = type(GetCVar) == "function" and GetCVar(name) or nil
+  if ns.IsSecret(v) or v == nil then return "unknown" end
+  return (v == "1" or v == 1) and "on" or "off"
+end
+
+-- How many plates we dressed, and how many of those are units you can attack.
+local function countPlates()
+  local total, enemies = 0, 0
+  for unit in pairs(NP.plates) do
+    total = total + 1
+    local can = UnitCanAttack("player", unit)
+    if not ns.IsSecret(can) and can == true then enemies = enemies + 1 end
+  end
+  return total, enemies
+end
+
+-- /vg plates enemies on|off: the game's own enemy plate setting, once out of combat.
+local function setEnemies(on)
+  ns.OutOfCombat(function() SetCVar("nameplateShowEnemies", on and 1 or 0) end, "plates enemies")
+  ns.Chat("Enemy nameplates " .. (on and "on" or "off") .. (ns.InCombat() and " after the fight." or "."))
+end
+
+-- /vg plates: what the game's plate settings are and how many plates Vanguard drew (#377).
+-- Vanguard dresses every plate the game makes, so no enemy plate means the game made none.
+function NP.Command(rest)
+  if rest == "enemies on" or rest == "enemies off" then return setEnemies(rest == "enemies on") end
+  local total, enemies = countPlates()
+  ns.Chat(("Plates: %d drawn, %d of them units you can attack. Game's Enemy nameplates %s, Friendly %s, Show all %s."):format(
+    total, enemies, cvarState("nameplateShowEnemies"), cvarState("nameplateShowFriends"), cvarState("nameplateShowAll")))
+  if cvarState("nameplateShowEnemies") == "off" then
+    ns.Chat("The game draws no enemy plates, so there is nothing to dress. Try /vg plates enemies on, or the V key.")
+  end
+end
+
 -- Options ------------------------------------------------------------------------------------
 
 -- get/set for one of this module's settings, and its default; reload says it applies after a reload.
