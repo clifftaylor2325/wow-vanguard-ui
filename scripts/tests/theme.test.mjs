@@ -785,7 +785,7 @@ it("Frost (light): white panels, dark blue text and border, a darker accent text
   const addon = loggedIn();
   const darkText = hexOf(addon, "accentText");
   addon.slash("variant frost");
-  expect([tok(addon, "panel").slice(0, 3), chatHas(addon, /Theme variant: Frost/)], "white panels").toEqual([[244 / 255, 246 / 255, 250 / 255], true]);
+  expect([tok(addon, "panel").slice(0, 3), chatHas(addon, /Theme variant: Frost/)], "pale slate panels").toEqual([[228 / 255, 232 / 255, 240 / 255], true]);
   expect(contrast(addon, "text") > 12 && contrast(addon, "edge") > 10, "ink text and border").toBe(true);
   expect(["text", "text2", "muted", "disabled", "accentText", "good", "warn", "bad", "info", "gold", "hostile", "neutral", "friendly"].map((n) => [n, contrast(addon, n) >= 4.5]).filter(([, ok]) => !ok), "every text colour readable on the panel").toEqual([]);
   expect(hexOf(addon, "accentText") < darkText, "the accent's text shade goes darker, not lighter").toBe(true);

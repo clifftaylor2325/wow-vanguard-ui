@@ -668,3 +668,22 @@ it("options: the Theme variant and Corners choices list every variant in T.VARIA
   expect(cycle("Theme variant: surfaces and text", "variant", order.length), "one click per variant goes round every one, Frost included, back to the default").toEqual([...order.slice(1), order[0]]);
   expect(cycle("Corners: square or rounded panels", "corners", 2), "corners cycle rounded then square").toEqual(["rounded", "square"]);
 });
+
+it("options: choice segments are as wide as their labels and follow the text size, and the selected one draws no shadow under its dark text", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // Each segment of the Corners row: its width, its label's width, its left edge and its text's shadow alpha.
+  const segments = () => addon.eval(`local r = ${rowNamed("Corners: square or rounded panels")} local out = {}
+    for i, s in ipairs(r.segments) do out[i] = { width = s:GetWidth(), label = s.text:GetStringWidth(), left = s:GetLeft(), shadow = s.text.__shadowColor[4] } end return out`);
+  const before = segments();
+  expect(before.map((s) => s.width >= s.label + 16), "8 px of air each side of every label").toEqual([true, true]);
+  expect(before[0].left + before[0].width <= before[1].left + 1, "the segments sit side by side, overlapping only the shared 1 px edge").toBe(true);
+  expect(before.map((s) => s.shadow), "Square (selected, dark text on the accent) has no shadow; Rounded keeps the theme's").toEqual([0, 0.9]);
+  // The harness measures text at one size, so a longer label stands in for a larger text size.
+  addon.eval(`local r = ${rowNamed("Corners: square or rounded panels")} r.segments[2].text:SetText("Rounded corners") ns.Theme.Refresh()`);
+  const after = segments();
+  expect(after.map((s, i) => s.width >= before[i].width && s.width >= s.label + 16), "a theme refresh re-measures: the segments grow with their labels").toEqual([true, true]);
+  expect(after[1].width > before[1].width && after[0].left + after[0].width <= after[1].left + 1, "and still don't overlap").toBe(true);
+  addon.eval('__click("Corners: square or rounded panels")');
+  expect(segments().map((s) => s.shadow), "Rounded selected: the shadow moves with the selection").toEqual([0.9, 0]);
+});
