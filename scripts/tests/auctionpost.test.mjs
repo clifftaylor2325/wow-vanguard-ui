@@ -132,6 +132,8 @@ it("Post says in chat what it sends, and what the game answers within 3 seconds 
   addon.click(`${CARD}.post`);
   addon.fire("UI_ERROR_MESSAGE", 1, "TEST-ONLY Internal auction error");
   addon.fire("AUCTION_HOUSE_SHOW_ERROR", 3);
+  addon.fire("AUCTION_HOUSE_SHOW_ERROR", 10);
+  addon.fire("AUCTION_HOUSE_SHOW_ERROR", 99);
   addon.fire("ADDON_ACTION_BLOCKED", "TEST-ONLY OtherAddon", "TEST-ONLY Other()");
   addon.fire("ADDON_ACTION_FORBIDDEN", "Vanguard", "C_AuctionHouse.PostCommodity()");
   addon.eval(`__wfgStub.fire("UI_ERROR_MESSAGE", 1, __wfgWorld.secret("TEST-ONLY hidden"))`);
@@ -140,6 +142,8 @@ it("Post says in chat what it sends, and what the game answers within 3 seconds 
     "sending stack 1 of 4 (5 at 1s 0c each, TEST-ONLY 12 Hours).",
     "the game said \"TEST-ONLY Internal auction error\".",
     "the auction house sent error 3.",
+    "the auction house sent error 10 (DatabaseError).",
+    "the auction house sent error 99.",
     "the game blocked C_AuctionHouse.PostCommodity().",
     "the game said \"?\".",
     "the auction house refused it.",
@@ -147,7 +151,7 @@ it("Post says in chat what it sends, and what the game answers within 3 seconds 
   expect(card(addon).slice(2), "the guide shows the game's last answer until the next click").toEqual(["posted 1 of 4", "The auction house refused it."]);
   addon.eval("__wfgStub.now = __wfgStub.now + 4");
   addon.fire("AUCTION_HOUSE_POST_WARNING");
-  expect([said().length, errors(addon)], "4 seconds on, an answer is no longer the click's; no error").toEqual([6, []]);
+  expect([said().length, errors(addon)], "4 seconds on, an answer is no longer the click's; no error").toEqual([8, []]);
 });
 
 it("a bag click while on Posting keeps the window on Posting; from the game's Buy or Sell it shows the game's sell page", () => {
