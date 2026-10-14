@@ -13,7 +13,7 @@ local UP = ns.GetModule("Upgrades")
 local WZ = {}
 UP.Wizard = WZ
 
-local WIDTH, HEIGHT, ROW_WIDTH = 460, 440, 400
+local WIDTH, HEIGHT, ROW_WIDTH, SLIDER_WIDTH, BOX_WIDTH = 460, 440, 400, 334, 60
 -- What the wizard calls each stat (the keys of ns.UpgradeWeights.STATS).
 WZ.LABELS = {
   STR = "Strength", AGI = "Agility", STA = "Stamina", INT = "Intellect", SPI = "Spirit", ARMOR = "Armor",
@@ -64,19 +64,37 @@ local function refresh()
   for _, r in ipairs(frame.rows) do r:Refresh() end
 end
 
--- A slider's refresh that also names its stat.
+-- A slider's refresh that also names its stat and shows the exact weight in its box (unless you're typing there).
 local function ownRefresh(base, i)
-  -- Names the slider for its stat, then refreshes it.
+  -- Names the slider for its stat, fills its box, then refreshes it.
   return function(self)
     self.label:SetText(WZ.LABELS[state.stats[i]])
+    if not self.box:HasFocus() then self.box:SetText(tostring(self.get())) end
     base(self)
   end
 end
 
--- The slider for the stat at place i in the list.
+-- Takes the number typed in a slider's box (any number, past the slider's ends too); anything else puts the weight back.
+local function typed(r)
+  local n = tonumber(r.box:GetText())
+  if n then r.set(n) end
+  r.box:ClearFocus()
+  r:Refresh()
+end
+
+-- A box beside the slider for an exact weight; Enter or leaving the box takes it.
+local function addBox(r, list)
+  r.box = W.Input(list, BOX_WIDTH)
+  r.box:SetPoint("LEFT", r, "RIGHT", ROW_WIDTH - SLIDER_WIDTH - BOX_WIDTH, 0)
+  r.box:SetScript("OnEnterPressed", ns.Guard("type weight", function() typed(r) end))
+  r.box:SetScript("OnEditFocusLost", ns.Guard("type weight", function() typed(r) end))
+end
+
+-- The slider for the stat at place i in the list, with its box.
 local function sliderRow(list, i)
-  local r = W.Slider(list, "", { min = 0, max = 3, step = 0.1 }, function() return state.draft[state.stats[i]] or 0 end, function(v) state.draft[state.stats[i]] = round(v) end, ROW_WIDTH)
+  local r = W.Slider(list, "", { min = 0, max = 3, step = 0.1 }, function() return state.draft[state.stats[i]] or 0 end, function(v) state.draft[state.stats[i]] = round(v) end, SLIDER_WIDTH)
   r:SetPoint("TOPLEFT", 0, -(i - 1) * W.ROW_HEIGHT)
+  addBox(r, list)
   r.Refresh = ownRefresh(r.Refresh, i)
   return r
 end
