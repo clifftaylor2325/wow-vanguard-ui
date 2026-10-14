@@ -215,7 +215,7 @@ T.VARIANTS = {
   frost = {
     label = "Frost (light)", light = true,
     tokens = {
-      panel = { "e4e8f0", 0.96 }, inset = { "d5dbe7", 0.97 }, raised = "eef1f7", raisedHover = "c9d2e1", borderHi = "b3bed0",
+      panel = { "e4e8f0", 0.96 }, inset = { "d4dae6", 0.97 }, raised = "eef1f7", raisedHover = "c9d2e1", borderHi = "b3bed0",
       divider = "a3aec4", edge = "1b2a4a", sheen = { "ffffff", 0 }, hover = { "1b2a4a", 0.08 }, checked = { "1b2a4a", 0.25 },
       gridline = { "1b2a4a", 0.12 }, darkBar = "bcc6d8", textShadow = { "000000", 0 },
       text = "14223f", text2 = "2c3d63", muted = "4f5f85", disabled = "4e5c7e", gold = "6e5300",
