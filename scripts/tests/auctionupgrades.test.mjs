@@ -162,6 +162,21 @@ it("upgrades: a big scan is judged a hundred listings a frame, and closing the h
   expect([card(addon)[1], row(addon, 1).slice(1, 5), row(addon, 20)[1]], "all 150 in, the cheapest first among equal gains, on the rows there are").toEqual([150, ["TEST-ONLY Bracers 1", "Wrist", "+10 %", "1s 1c"], "TEST-ONLY Bracers 20"]);
 });
 
+it("upgrades: a scan holds one link per item, the cheapest (the smaller link on a tie), whatever the unique IDs", () => {
+  const addon = warrior(`local function link(id, unique) return "|cffffffff|Hitem:" .. id .. ":0:0:0:0:0:0:" .. unique .. ":60|h[x]|h|r" end
+    __wfgWorld.ah.replicate = { { itemID = 102, count = 1, buyoutPrice = 300, link = link(102, 5) }, { itemID = 102, count = 1, buyoutPrice = 200, link = link(102, 9) },
+      { itemID = 102, count = 1, buyoutPrice = 200, link = link(102, 7) }, { itemID = 102, count = 1, buyoutPrice = 250, link = link(102, 1) },
+      { itemID = 111, count = 1, buyoutPrice = 400, link = link(111, 3) }, { itemID = 111, count = 1, buyoutPrice = 400, link = link(111, 3) },
+      { itemID = 111, count = 1, buyoutPrice = 450, link = link(111, 3) }, { itemID = 106, count = 1, buyoutPrice = 10, link = "no key" } }
+    __link = link`);
+  const held = addon.eval(`local s = { gear = {}, keys = {} }
+    for i = 0, 7 do ${HELPER}.ScanGear(s, i, __wfgWorld.ah.replicate[i + 1].itemID, __wfgWorld.ah.replicate[i + 1].buyoutPrice) end
+    local out, n = {}, 0
+    for l, price in pairs(s.gear) do n = n + 1 out[#out + 1] = price .. ":" .. l:match("item:%d+:%d+:%d+:%d+:%d+:%d+:%d+:(%d+)") end
+    table.sort(out) return { n, out }`);
+  expect(held, "two items, one link each: 102 at 200 (the unique ID 7 of the tie), 111 at 400").toEqual([2, ["200:7", "400:3"]]);
+});
+
 it("upgrades: the switch under Auction house, the Gear upgrades module off, and a client without listing links", () => {
   const addon = warrior(CLICK_LUA);
   addon.eval('ns.Options.Show("town") __click("Upgrades list")');

@@ -69,8 +69,7 @@ end
 -- Which item a gear link is: its ID, enchant, gems and suffix, without the per-listing unique ID
 -- and level, so two listings of the same item and suffix share a key.
 function AH.GearKey(link)
-  local id, ench, g1, g2, g3, g4, suffix = link:match("item:(%d+):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*)")
-  return id and table.concat({ id, ench, g1, g2, g3, g4, suffix }, ":") or link
+  return link:match("item:(%d+:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*)") or link
 end
 
 -- A gear listing claims its item's place: false when a listing of the same item at the same price
@@ -154,33 +153,45 @@ local function cheapest(seen, link, price)
   if type(link) == "string" and (not seen[link] or price < seen[link]) then seen[link] = price end
 end
 
+-- A gear link at a price per unit joins the scan's gear (s.gear, link -> price) unless the scan holds a
+-- listing of the same item (AH.GearKey, s.keys) at the same price or less; on a tie the smaller link
+-- stays, as judging them in link order would pick. A scan of thousands of listings of the same few
+-- hundred items so holds one link per item, not one per listing.
+local function cheapestOfItem(s, link, price)
+  local key = AH.GearKey(link)
+  local held = s.keys[key]
+  if held and (s.gear[held] < price or (s.gear[held] == price and held <= link)) then return end
+  if held then s.gear[held] = nil end
+  s.keys[key], s.gear[link] = link, price
+end
+
 -- A scan's listing i (AH.ScanRow) of armor or a weapon joins the scan's gear to judge (s.gear,
--- the cheapest per link), by its link (GetReplicateItemLink, read for gear alone) and unit price;
+-- the cheapest per item), by its link (GetReplicateItemLink, read for gear alone) and unit price;
 -- nothing on a client without the call.
 function AH.ScanGear(s, i, id, unit)
   if not AH.settings.upgrades or type(C_AuctionHouse.GetReplicateItemLink) ~= "function" or not isGear(id) then return end
-  cheapest(s.gear, C_AuctionHouse.GetReplicateItemLink(i), unit)
+  local link = C_AuctionHouse.GetReplicateItemLink(i)
+  if type(link) == "string" then cheapestOfItem(s, link, unit) end
 end
 
 -- One frame of judging: the next AH.JUDGE_ROWS of the scan's gear; the walker stops after the last.
 local function judgeStep()
   local j = AH.judging
   if not j then return AH.judge:Hide() end
-  local last = math.min(j.next + AH.JUDGE_ROWS - 1, #j.list)
-  for i = j.next, last do AH.SeeGear(j.list[i].link, j.list[i].price) end
+  local last = math.min(j.next + AH.JUDGE_ROWS - 1, #j.links)
+  for i = j.next, last do AH.SeeGear(j.links[i], j.gear[j.links[i]]) end
   j.next = last + 1
-  if j.next > #j.list then AH.StopJudging() end
+  if j.next > #j.links then AH.StopJudging() end
 end
 
 -- The gear a scan found (AH.FinishScan; link -> cheapest unit price), judged AH.JUDGE_ROWS
 -- listings a frame on its own walker (by link, so the order holds), so a big scan never stalls a frame.
 function AH.JudgeGear(gear)
-  local list, links = {}, {}
+  local links = {}
   for link in pairs(gear) do links[#links + 1] = link end
   table.sort(links)
-  for i, link in ipairs(links) do list[i] = { link = link, price = gear[link] } end
-  if #list == 0 then return end
-  AH.judging = { list = list, next = 1 }
+  if #links == 0 then return end
+  AH.judging = { links = links, gear = gear, next = 1 }
   AH.judge:Show()
 end
 
