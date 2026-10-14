@@ -54,7 +54,7 @@ Before you say a change is done: `npm run quality` and `npm run coverage` must b
 - `Core/`: the framework. Events, DB, Profiles, Options and OptionsWindow, Theme, Movers, Slash, Feedback, Setup, and so on.
 - `Modules/`: one file per feature. Files share a prefix when they belong to one area (`Auction*`, `Quest*`, `Raid*`, `Windows*`, `ClickCast*`).
 - `scripts/tests/<area>.test.mjs`: area tests that run the real Lua in a headless client (`scripts/lib/wow-*.lua`). Read `scripts/tests/README.md` before writing one.
-- `docs/`: `THEME.md`, `API.md` (the Skin API for other addons), `SMOKE-TEST.md` (in-game checklist), `design/`, `handoff/` (work plans).
+- `docs/`: `THEME.md`, `API.md` (the Skin API for other addons), `SMOKE-TEST.md` (in-game checklist), `CHANGELOG.md`, `GETTING-STARTED.md`, `COMMANDS.md`, `design/`, `handoff/` (work plans), `research/`. `docs/README.md` indexes them by reader.
 - `art/`: sources for Media/ art. Credits in `art/CREDITS.md`.
 
 ## Working method
