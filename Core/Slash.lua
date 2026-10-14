@@ -20,7 +20,7 @@ local HELP = {
   "icons [on|off]       menu strip icons drawn at their on-screen size, after a /reload (off by default)",
   "cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)",
   "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
-  "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember|frost]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember, Frost (light)",
+  "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember",
   "corners [square|rounded]  panel corners: square (default) or rounded, on every theme",
   "gradient [on|off]    windows a shade lighter toward the top (off by default)",
   "accent <rrggbb|name> set the accent color (brass, arcane, jade, orchid, copper); accent reset",
@@ -220,7 +220,7 @@ end
 -- /vg variant [name]: a theme variant (#237), repainted at once.
 local function variantCommand(rest)
   if rest == "" then rest = T.Settings().variant end
-  if rest ~= "default" and not T.VARIANTS[rest] then return chat("Usage: /vg variant default|contrast|vellum|classic|midnight|obsidian|moss|ember|frost") end
+  if rest ~= "default" and not T.VARIANTS[rest] then return chat("Usage: /vg variant default|contrast|vellum|classic|midnight|obsidian|moss|ember") end
   T.Settings().variant = rest
   T.Refresh()
   chat("Theme variant: " .. (T.VARIANTS[rest] and T.VARIANTS[rest].label or "Slate and brass") .. ".")

@@ -773,7 +773,7 @@ it("more variants: Midnight, Obsidian, Moss and Ash and ember swap surfaces and 
     addon.slash(`variant ${name}`);
     expect(["text", "text2", "muted"].map((n) => contrast(addon, n) >= 4.5), `${name}: text, text2 and muted clear 4.5:1`).toEqual([true, true, true]);
   }
-  expect(addon.eval("return #ns.Theme.VARIANT_ORDER"), "nine entries, default included").toBe(9);
+  expect(addon.eval("return #ns.Theme.VARIANT_ORDER"), "eight entries, default included").toBe(8);
   addon.slash("variant default");
   expect(tok(addon, "text"), "back to the default").toEqual(base.text);
 });
@@ -781,18 +781,12 @@ it("more variants: Midnight, Obsidian, Moss and Ash and ember swap surfaces and 
 // Whether a frame has a visible texture of a Media/Textures file, and how many.
 const artCount = (addon, name, art) => addon.eval(`local n = 0 for _, r in ipairs({ ${name}:GetRegions() }) do if tostring(r.__texture):find("${art}") and r:IsShown() then n = n + 1 end end return n`);
 
-it("Frost (light): white panels, dark blue text and border, a darker accent text shade, and every readout clears 4.5:1 on white", () => {
-  const addon = loggedIn();
-  const darkText = hexOf(addon, "accentText");
+it("a removed variant (Frost): /vg variant frost is refused, and a profile that saved it comes back on the default look", () => {
+  const addon = loggedIn(undefined, { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { variant = "frost" } } } }' });
+  expect([addon.eval("return ns.Theme.Settings().variant"), addon.eval("return ns.Theme.VARIANTS.frost == nil"), tok(addon, "text").slice(0, 3)], "the saved frost is migrated away; the default text colour").toEqual(["default", true, [232 / 255, 234 / 255, 238 / 255]]);
   addon.slash("variant frost");
-  expect([tok(addon, "panel").slice(0, 3), chatHas(addon, /Theme variant: Frost/)], "pale slate panels").toEqual([[228 / 255, 232 / 255, 240 / 255], true]);
-  expect(contrast(addon, "text") > 12 && contrast(addon, "edge") > 10, "ink text and border").toBe(true);
-  expect(["text", "text2", "muted", "disabled", "accentText", "good", "warn", "bad", "info", "gold", "hostile", "neutral", "friendly"].map((n) => [n, contrast(addon, n) >= 4.5]).filter(([, ok]) => !ok), "every text colour readable on the panel").toEqual([]);
-  expect(hexOf(addon, "accentText") < darkText, "the accent's text shade goes darker, not lighter").toBe(true);
-  addon.slash("accent arcane");
-  expect(contrast(addon, "accentText") >= 4.5, "a changed accent is recomputed for the light look").toBe(true);
-  addon.slash("variant default");
-  expect(contrast(addon, "text"), "back to the dark look").toBe(15);
+  expect([chatHas(addon, /Usage: \/vg variant default\|contrast\|vellum\|classic\|midnight\|obsidian\|moss\|ember$/), addon.eval("return ns.Theme.Settings().variant")], "refused, and the setting is left alone").toEqual([true, "default"]);
+  expect(addon.eval("return ns.Theme.VARIANT_ORDER")).toEqual(["default", "contrast", "vellum", "classic", "midnight", "obsidian", "moss", "ember"]);
 });
 
 it("rounded corners: off by default; /vg corners rounded gives panels and buttons arcs, pulls the fill and lines in, and square hides it all again", () => {
@@ -832,10 +826,11 @@ it("rounded corners: High contrast's 2 px ring rounds at twice the radius, and a
 // WCAG contrast of an { r, g, b } colour against another.
 const contrastOf = (a, b) => Math.round(((Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05)) * 10) / 10;
 
-it("a variant switch recolours text drawn before it: with the options window open, Frost leaves no light text on its white panels", () => {
+it("a variant switch recolours text drawn before it: with the options window open, Classic look leaves no text in the default look's grey", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');
-  addon.slash("variant frost");
+  const before = [tok(addon, "text").slice(0, 3), tok(addon, "text2").slice(0, 3)];
+  addon.slash("variant classic");
   // Every shown font string inside the options window: its text and colour.
   const texts = addon.eval(`local out = {}
     for _, w in ipairs(__wfgStub.frames) do
@@ -845,10 +840,12 @@ it("a variant switch recolours text drawn before it: with the options window ope
         if shown and inWin then out[#out + 1] = { w.__text, w.__textColor[1], w.__textColor[2], w.__textColor[3] } end
       end
     end return out`);
-  const panel = tok(addon, "panel");
-  const faint = texts.filter(([, r, g, b]) => contrastOf([r, g, b], panel) < 4.5).map(([t]) => t);
+  // Whether a colour is the given r, g, b (within a rounding step).
+  const same = (c, [r, g, b]) => Math.abs(c[0] - r) < 0.002 && Math.abs(c[1] - g) < 0.002 && Math.abs(c[2] - b) < 0.002;
+  const stale = texts.filter(([, r, g, b]) => before.some((c) => same(c, [r, g, b]))).map(([t]) => t);
   expect(texts.length > 40, "the window has text to check").toBe(true);
-  expect(faint.filter((t) => !/^(<name>|72%|5)$/.test(t)), "every label, value, header and dropdown reads on white (the preview's bar text sits on its bar)").toEqual([]);
+  expect(stale, "no label, value, header or dropdown keeps the default look's text colours").toEqual([]);
+  expect(texts.some(([, r, g, b]) => same(tok(addon, "text").slice(0, 3), [r, g, b])), "labels wear Classic's gold-cream").toBe(true);
   addon.eval('__hand = UIParent:CreateFontString() ns.Theme.Color(__hand, 0.5, 0.5, 0.5)');
   addon.slash("variant default");
   expect([tok(addon, "text").slice(0, 3), addon.eval("return { __hand:GetTextColor() }").slice(0, 3)], "back to the default; text coloured by hand is left alone").toEqual([[232 / 255, 234 / 255, 238 / 255], [0.5, 0.5, 0.5]]);
