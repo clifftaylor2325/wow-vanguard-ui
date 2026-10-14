@@ -10,6 +10,8 @@ local vgMapWatched = ns.FrameState("vgMapWatched")
 local vgQueueHooked = ns.FrameState("vgQueueHooked")
 local vgEmptyNote = ns.FrameState("vgEmptyNote")
 local vgEmptyWatched = ns.FrameState("vgEmptyWatched")
+local vgHeaderGlyph = ns.FrameState("vgHeaderGlyph")
+local vgHeadersWatched = ns.FrameState("vgHeadersWatched")
 
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
@@ -190,6 +192,54 @@ local function skinQuestDetails(details)
   skinDetailButtons(details)
 end
 
+-- A zone header row of the game's quest list: a button with its title (ButtonText) and a CollapseButton.
+local function isZoneHeader(row)
+  return type(row) == "table" and type(row.ButtonText) == "table" and type(row.CollapseButton) == "table"
+end
+
+-- Whether the zone under a header is folded, from the quest log entry the header stands for (false when unknown).
+local function headerCollapsed(header)
+  local index = header.questLogIndex
+  local info = type(index) == "number" and C_QuestLog and C_QuestLog.GetInfo and C_QuestLog.GetInfo(index)
+  return type(info) == "table" and info.isCollapsed == true
+end
+
+-- A header's chevron (made once, over its collapse button): Down while the zone is open, Right while folded.
+local function headerGlyph(header)
+  if not vgHeaderGlyph[header] then
+    vgHeaderGlyph[header] = T.Tint(T.Snap(header:CreateTexture(nil, "OVERLAY")), "gold")
+    T.PixelSize(vgHeaderGlyph[header], 12, 12, true)
+    vgHeaderGlyph[header]:SetPoint("CENTER", header.CollapseButton, "CENTER")
+  end
+  vgHeaderGlyph[header]:SetTexture(T.Icon(headerCollapsed(header) and "Right" or "Down"))
+end
+
+-- One zone header in the theme: the game's yellow bar (the collapseExpand atlas) and its button's art faded, the chevron.
+local function skinZoneHeader(header)
+  T.FadeRegions(header)
+  T.FadeRegions(header.CollapseButton)
+  headerGlyph(header)
+end
+
+-- Every zone header the quest list holds now (the game makes and reuses them as the list is drawn).
+function GW.SkinQuestHeaders(contents)
+  if type(contents) ~= "table" or not contents.GetChildren then return end
+  for _, row in ipairs({ contents:GetChildren() }) do
+    if isZoneHeader(row) then skinZoneHeader(row) end
+  end
+end
+
+-- Keeps the headers dressed: now, each time the list shows, and after each redraw of the quest list. Watched once.
+local function watchQuestHeaders(scroll)
+  local contents = type(scroll) == "table" and scroll.Contents
+  if type(contents) ~= "table" or vgHeadersWatched[contents] then return end
+  vgHeadersWatched[contents] = true
+  GW.SkinQuestHeaders(contents)
+  if scroll.HookScript then scroll:HookScript("OnShow", ns.Guard("quest headers", function() GW.SkinQuestHeaders(contents) end)) end
+  if type(QuestLogQuests_Update) ~= "function" then return end
+  hooksecurefunc("QuestLogQuests_Update", ns.Guard("hook QuestLogQuests_Update", function() GW.SkinQuestHeaders(contents) end))
+end
+
 -- The quest panel in the world map, when Vanguard's own quest log is off (the tabs and scroll bars are
 -- other streams'): the list and the details of one quest. Left alone while Vanguard's log is on.
 function GW.SkinQuestMap(panel)
@@ -197,6 +247,7 @@ function GW.SkinQuestMap(panel)
   local list = panel.QuestsFrame
   skinQuestList(list)
   skinQuestDetails(panel.DetailsFrame or (type(list) == "table" and list.DetailsFrame))
+  watchQuestHeaders(type(list) == "table" and list.ScrollFrame or QuestScrollFrame)
 end
 
 -- The quest details window (the game's pop-out of one quest): the window skin, when Vanguard's log is off.
