@@ -52,7 +52,7 @@ local HELP = {
   "trainers [next|clear]   what the trainers you've visited teach: how many services are remembered, what the next levels bring and where, or forget them (Trainer memory off until switched on)",
   "inventory [forget <name>|clear]   your characters remembered here and when their bags were read; forget drops one, clear forgets them all",
   "weights [wizard|set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role; the wizard walks you through them, or change one, go back to the defaults, or share them",
-  "prep [want <kind> <n>] the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards",
+  "prep [want <kind> <n>|setup] the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards; setup opens the wanted-amounts window",
   "legacy [probe|plan ...]   Legacy system: probe lists what the client has for it; plan [add <points> <name>|remove <name>|clear] keeps a list of perks for the tree's 16 points (planner off until switched on)",
   "talents [plan|spend|clear|export|import]   Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string",
   "ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|scan|prices clear]  shopping lists (pick or make one, add an item: a link, an ID or a name; rename, copy, delete, export or import the list in use; recent: the last 20 items searched); scan the auction house (while it's open); forget the prices",
