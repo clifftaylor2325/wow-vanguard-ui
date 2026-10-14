@@ -89,7 +89,7 @@ it("upgrades: weights go out and come back as a string", () => {
   expect(chatHas(addon, /Import failed: not a Vanguard profile string\./), "a failed paste says why").toBe(true);
 });
 
-it("upgrades: the weights wizard walks through role, sliders and review, and saves only on Save", () => {
+it("upgrades: the weights wizard has a slider for every stat, and saves only on Save", () => {
   const addon = loggedIn(GEAR_ENV);
   // Runs Lua in the client.
   const lua = (code) => addon.eval(code);
@@ -97,42 +97,42 @@ it("upgrades: the weights wizard walks through role, sliders and review, and sav
   const click = (expr) => lua(`local b = ${expr} b:GetScript("OnClick")(b)`);
   // The strength weight in use.
   const stat = () => lua("return (ns.GetModule('Upgrades').Current()).STR");
-  lua("ns.GetModule('Upgrades').Wizard.Open()");
-  expect(lua("return { Vanguard_WeightsWizard:IsShown(), Vanguard_WeightsWizard.caption:GetText() }"), "it opens on the role page").toEqual([true, "Step 1 of 3: Which role is this for?"]);
-  click("Vanguard_WeightsWizard.next");
-  expect(lua("local f = Vanguard_WeightsWizard local out = {} for _, r in ipairs(f.rows) do if r:IsShown() and r.label and r.min then out[#out + 1] = r.label:GetText() end end return out"), "the tune page: a slider per key stat, the biggest default first").toEqual(["Weapon damage per second", "Strength", "Hit rating", "Crit rating", "Expertise", "Agility", "Haste rating"]);
-  lua("local r = Vanguard_WeightsWizard.rows[4] r.set(2) r:Refresh()");
-  click("Vanguard_WeightsWizard.pages[2].defaults");
-  expect(lua("return Vanguard_WeightsWizard.rows[4].get()"), "Defaults put the draft back").toBe(1);
-  lua("Vanguard_WeightsWizard.rows[4].set(2)");
-  click("Vanguard_WeightsWizard.next");
-  expect(lua("return Vanguard_WeightsWizard.review:GetText()"), "the review lists the weights as they will be used").toMatch(/^Weights for a strength, role damage:\nWeapon damage per second 2\.5, Strength 2, Hit rating 0\.9/);
+  addon.slash("weights set hit 1.5");
+  addon.slash("weights wizard");
+  expect(lua("return { Vanguard_WeightsWizard:IsShown(), Vanguard_WeightsWizard.caption:GetText() }"), "it opens and says who the weights are for").toEqual([true, "Weights for strength (role damage). The Weigh stats for choice under Gear upgrades picks the role; 0 makes a stat worthless."]);
+  // Each slider as "label weight", in order.
+  const rows = () => lua("local out = {} for _, r in ipairs(Vanguard_WeightsWizard.rows) do out[#out + 1] = r.label:GetText() .. ' ' .. r.get() end return out");
+  const opened = rows();
+  expect(opened.length, "a slider for every stat").toBe(21);
+  expect(opened.slice(0, 4), "what the kind values first, starting from this profile's weights").toEqual(["Weapon damage per second 2.5", "Strength 1", "Hit rating 1.5", "Crit rating 0.8"]);
+  expect(opened.slice(-2), "then the stats it doesn't, by name").toEqual(["Spell power 0", "Spirit 0"]);
+  lua("Vanguard_WeightsWizard.rows[2].set(2) Vanguard_WeightsWizard.rows[21].set(0.5)");
   expect(stat(), "nothing is saved before Save").toBe(1);
   click("Vanguard_WeightsWizard.cancel");
   expect([lua("return Vanguard_WeightsWizard:IsShown()"), stat()], "Cancel changes nothing").toEqual([false, 1]);
-  lua("ns.GetModule('Upgrades').Wizard.Open()");
-  click("Vanguard_WeightsWizard.next");
-  lua("Vanguard_WeightsWizard.rows[4].set(2)");
-  click("Vanguard_WeightsWizard.next");
-  click("Vanguard_WeightsWizard.back");
-  click("Vanguard_WeightsWizard.next");
-  click("Vanguard_WeightsWizard.next");
-  expect([lua("return Vanguard_WeightsWizard:IsShown()"), stat(), chatHas(addon, /Gear upgrades now weigh stats as a strength \(role damage\)\./)], "Save keeps the change and closes").toEqual([false, 2, true]);
-  expect(lua("return ns.GetModule('Upgrades').settings.weights.strength"), "only what differs from the defaults is kept").toEqual({ STR: 2 });
+  addon.slash("weights wizard");
+  lua("Vanguard_WeightsWizard.rows[2].set(2)");
+  click("Vanguard_WeightsWizard.defaults");
+  expect(rows().slice(1, 3), "Defaults put the kind's defaults back").toEqual(["Strength 1", "Hit rating 0.9"]);
+  lua("Vanguard_WeightsWizard.rows[2].set(2) Vanguard_WeightsWizard.rows[21].set(0.5)");
+  click("Vanguard_WeightsWizard.save");
+  expect([lua("return Vanguard_WeightsWizard:IsShown()"), stat(), chatHas(addon, /Stat weights saved for strength \(role damage\)\./)], "Save keeps the change and closes").toEqual([false, 2, true]);
+  expect(lua("return ns.GetModule('Upgrades').settings.weights.strength"), "only what differs from the defaults is kept").toEqual({ STR: 2, SPI: 0.5 });
+  addon.slash("weights wizard");
+  click("Vanguard_WeightsWizard.defaults");
+  click("Vanguard_WeightsWizard.save");
+  expect(lua("return ns.GetModule('Upgrades').settings.weights.strength == nil"), "saving the defaults keeps nothing").toBe(true);
 });
 
-it("upgrades: the wizard's role page picks a kind, and it names every stat", () => {
+it("upgrades: the wizard names every stat, and says when Gear upgrades is off", () => {
   const addon = loggedIn(GEAR_ENV);
-  addon.slash("weights wizard");
-  const step = "local c = Vanguard_WeightsWizard.rows[1] c:GetScript('OnClick')(c)";
-  addon.eval(step + step);
-  expect(addon.eval("local f = Vanguard_WeightsWizard return f.pages[1].note:GetText()"), "a role makes a kind").toMatch(/That makes you a tank here/);
-  addon.eval("local f = Vanguard_WeightsWizard f.next:GetScript('OnClick')(f.next) f.next:GetScript('OnClick')(f.next) f.next:GetScript('OnClick')(f.next)");
   expect(addon.eval("local missing = {} for short in pairs(ns.UpgradeWeights.STATS) do if not ns.GetModule('Upgrades').Wizard.LABELS[short] then missing[#missing + 1] = short end end return missing"), "every stat has a name").toEqual({});
-  expect(addon.eval("return ns.GetModule('Upgrades').settings.role"), "Save keeps the role picked").toBe("tank");
   const off = loggedIn(GEAR_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Upgrades = false } } }" });
   off.slash("weights wizard");
   expect(chatHas(off, /Gear upgrades is switched off/), "with the module off it says so").toBe(true);
+  off.clearChat();
+  off.slash("weights");
+  expect(chatHas(off, /Gear upgrades is switched off/), "and so does /vg weights").toBe(true);
 });
 
 // TEST-ONLY combined bag holding better bracers (2) and worse ones (3), and a slot that isn't a bag button.

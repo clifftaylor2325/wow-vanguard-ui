@@ -38,10 +38,9 @@ UP.SLOTS = {
 
 -- Weights ---------------------------------------------------------------------------------
 
--- The role weights are picked for: the setting (or the one given), else (auto) your group role, damage when you have none.
-function UP.Role(pick)
-  pick = pick or UP.settings.role
-  if pick ~= "auto" then return pick end
+-- The role weights are picked for: the setting, else (auto) your group role, damage when you have none.
+function UP.Role()
+  if UP.settings.role ~= "auto" then return UP.settings.role end
   local assigned = type(UnitGroupRolesAssigned) == "function" and UnitGroupRolesAssigned("player")
   return UP.ROLES[assigned] or "damage"
 end
@@ -274,7 +273,7 @@ end
 function UP.Command(rest)
   local word, a, b = (rest or ""):match("^%s*(%S*)%s*(%S*)%s*(%S*)")
   word = word:lower()
-  if word == "wizard" then return UP.Wizard.Open() end
+  if word == "wizard" or not UP.settings then return UP.Wizard.Open() end
   UP.Current()
   if word == "set" then return setWeight(a, b) end
   if word == "reset" then return resetWeights() end
