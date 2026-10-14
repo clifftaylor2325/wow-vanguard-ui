@@ -443,7 +443,7 @@ end
 AH.POST_ANSWERS = {
   AUCTION_HOUSE_POST_ERROR = { "the auction house refused it" },
   AUCTION_HOUSE_POST_WARNING = { "the game wants it confirmed" },
-  AUCTION_HOUSE_SHOW_ERROR = { "the auction house sent error %s", 1 },
+  AUCTION_HOUSE_SHOW_ERROR = { "the auction house sent error %s", 1, nil, "ErrorName" },
   AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED = { "the game dropped it (too many messages at once)" },
   UI_ERROR_MESSAGE = { "the game said \"%s\"", 2 },
   ADDON_ACTION_BLOCKED = { "the game blocked %s", 2, true },
@@ -451,6 +451,15 @@ AH.POST_ANSWERS = {
 }
 -- Seconds after a click on Post that the game's answers above count as answers to it.
 AH.POST_ANSWER_TIME = 3
+
+-- An auction house error code as chat says it: the code and the client's own name for it
+-- (Enum.AuctionHouseError, e.g. 10 is DatabaseError), or the bare code when the client has none.
+function AH.ErrorName(code)
+  for name, value in pairs(Enum.AuctionHouseError or {}) do
+    if value == code then return string.format("%s (%s)", tostring(code), name) end
+  end
+  return tostring(code)
+end
 
 -- An answer from the game (event e, its values ...) within AH.POST_ANSWER_TIME of a click on Post:
 -- chat says it ("Post: the game said ..."); a secret value shows as "?".
@@ -460,7 +469,7 @@ function AH.OnPostAnswer(e, ...)
   if a[3] and (...) ~= ADDON then return end
   local v = a[2] and select(a[2], ...)
   if ns.IsSecret(v) then v = "?" end
-  local text = string.format(a[1], tostring(v))
+  local text = string.format(a[1], a[4] and not ns.IsSecret(v) and AH[a[4]](v) or tostring(v))
   ns.Chat("Post: " .. text .. ".")
   if AH.sell then AH.sell.answer = text AH.PaintSell() end
 end
