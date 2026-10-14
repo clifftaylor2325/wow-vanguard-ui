@@ -399,11 +399,11 @@ function AH.PaintScan()
 end
 
 -- A new scan: where the walk is, each item's listings and how many, the gear to judge for
--- upgrades (link -> cheapest unit price, Modules/AuctionUpgrades.lua), your listings left out (and your name, alone and as
+-- upgrades (link -> cheapest unit price, one link per item, and keys: item -> that link; Modules/AuctionUpgrades.lua), your listings left out (and your name, alone and as
 -- "Name-Realm", to know them by), and when it started.
 local function newScan()
   local me = UnitName("player")
-  return { next = 0, items = {}, listings = {}, gear = {}, mine = 0, me = me, meFull = string.format("%s-%s", tostring(me), AP.Realm()), started = AP.Now() }
+  return { next = 0, items = {}, listings = {}, gear = {}, keys = {}, mine = 0, me = me, meFull = string.format("%s-%s", tostring(me), AP.Realm()), started = AP.Now() }
 end
 
 -- Asks the house for every listing (ReplicateItems), at most once every AH.SCAN_GAP seconds (only a

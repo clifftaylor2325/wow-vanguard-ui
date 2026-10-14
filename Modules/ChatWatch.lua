@@ -25,7 +25,7 @@ local CW = ns.Module("ChatWatch", {
 CW.MAX_PHRASES, CW.MAX_LENGTH = 20, 40
 -- How long the toast stays (seconds); how long one sender's phrase stays quiet
 -- after it rang; the least gap between two sounds; how many line IDs are kept.
-CW.LINGER, CW.REPEAT, CW.SOUND_GAP, CW.MAX_LINES = 8, 30, 2, 200
+CW.LINGER, CW.REPEAT, CW.SOUND_GAP, CW.MAX_LINES, CW.MAX_RECENT = 8, 30, 2, 200, 100
 -- The toast's size.
 CW.WIDTH, CW.HEIGHT = 300, 44
 -- Chat events -> the channel switch that watches them (ChatInfoDocumentation.lua).
@@ -35,7 +35,7 @@ CW.EVENTS = {
   CHAT_MSG_WHISPER = "whisper",
 }
 -- This session's alerts: sender .. "\1" .. phrase -> when it rang; the line IDs seen, and how many.
-CW.recent, CW.lines, CW.lineCount = {}, {}, 0
+CW.recent, CW.recentCount, CW.lines, CW.lineCount = {}, 0, {}, 0
 
 -- Matching ------------------------------------------------------------------------------------
 
@@ -56,10 +56,21 @@ function CW.Match(text)
   end
 end
 
+-- Forgets the alerts older than CW.REPEAT seconds (they would ring again anyway), once CW.MAX_RECENT are held.
+local function sweepRecent(now)
+  if CW.recentCount < CW.MAX_RECENT then return end
+  CW.recentCount = 0
+  for key, at in pairs(CW.recent) do
+    if now - at >= CW.REPEAT then CW.recent[key] = nil else CW.recentCount = CW.recentCount + 1 end
+  end
+end
+
 -- True (and noted) unless this sender rang for this phrase in the last CW.REPEAT seconds.
 local function fresh(sender, phrase, now)
   local key = sender .. "\1" .. phrase
   if CW.recent[key] and now - CW.recent[key] < CW.REPEAT then return false end
+  sweepRecent(now)
+  if not CW.recent[key] then CW.recentCount = CW.recentCount + 1 end
   CW.recent[key] = now
   return true
 end
