@@ -32,7 +32,7 @@ Nothing here has been checked in the game by the people who wrote it down: see t
 ### Quests and map
 
 - Quest-start pins on the world map and Shift-click a quest to point the arrow at it.
-- Quest tracker: click +N more to show every watched quest; it starts below the info strip and sits under the game's windows.
+- Quest tracker: click +N more to show up to 10 watched quests, and the choice is remembered; it starts below the info strip and sits under the game's windows.
 - Quest log: Track and Untrack update at once, Shift-click tracks, reward cards show the item tooltip.
 - World map: quest zone headers use a gold chevron.
 
@@ -41,7 +41,7 @@ Nothing here has been checked in the game by the people who wrote it down: see t
 - Raid, party and party extras default to the left of your character; a raid of 25 or 40 stacks its groups as rows at the left, where healers keep it; a party or a raid of 10 stays over your player frame.
 - Raid frames pin to their spot's side after a reset, a drag or a nudge, and refit after combat.
 - Role presets (Healer, Damage, Tank) set the raid frame, raid aura and nameplate settings, and any addon can offer more (`/vg preset`).
-- Enemy nameplates: Vanguard dresses the game's enemy and friendly plates alike; `/vg plates` says what it drew and sets the game's enemy plate setting.
+- Nameplates: the Nameplates page has the game's Enemy and Friendly switches (enemy plates on by default); Vanguard dresses both alike, and `/vg plates` says what it drew.
 
 ### Look and themes
 
@@ -67,4 +67,5 @@ Nothing here has been checked in the game by the people who wrote it down: see t
 
 ### Memory
 
+- The auction price history keeps 7 days per item instead of 30, a scan keeps the cheapest gear link per item, and old chat alerts are swept.
 - No strings are built for every chat line, and `/vg mem` watches Vanguard's memory for a minute and says whether the low point rose.
