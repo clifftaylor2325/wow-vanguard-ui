@@ -460,9 +460,9 @@ export const SCENES = [
     GameTooltip:AddLine("TEST-ONLY Boar") GameTooltip:AddLine("Level 12 Beast") GameTooltip:AddLine("TEST-ONLY Zone", 0.6, 0.6, 0.6)
     GameTooltip.unit = "target" __tipHooks.GameTooltip_SetDefaultAnchor(GameTooltip, UIParent) GameTooltip:Show() __tipPost(GameTooltip)` },
   { name: "vanguard-options", caption: "Options window: General (/vg)", lua: 'ns.Options.Show("general")' },
-  { name: "vanguard-faction-alliance", caption: "The faction look on an Alliance character: Cinzel headings and the crossed swords beside the title (TEST-ONLY character)", lua: 'ns.Options.Show("general")', before: 'UnitFactionGroup = function() return "Alliance" end' },
+  { name: "vanguard-faction-alliance", caption: "The faction look on an Alliance character: Cinzel headings and the crossed swords beside the title (TEST-ONLY character)", lua: 'ns.Theme.Settings().faction = "auto" ns.Theme.Refresh() ns.Options.Show("general")', before: 'UnitFactionGroup = function() return "Alliance" end' },
   { name: "vanguard-faction-horde", caption: "The faction look on a Horde character while away: Metamorphous for the name and the crossed axes on the AFK card (TEST-ONLY character)",
-    lua: '__group({ "player", "party1", "party2" }) UnitIsAFK = function() return true end __wfgStub.fire("PLAYER_FLAGS_CHANGED", "player")',
+    lua: 'ns.Theme.Settings().faction = "auto" ns.Theme.Refresh() __group({ "player", "party1", "party2" }) UnitIsAFK = function() return true end __wfgStub.fire("PLAYER_FLAGS_CHANGED", "player")',
     before: 'UnitFactionGroup = function() return "Horde" end GetRealZoneText = function() return "TEST-ONLY Barrens" end date = function() return "21:04" end UnitXP = function() return 3400 end UnitXPMax = function() return 9800 end UnitLevel = function() return 18 end GetMaxPlayerLevel = function() return 60 end' },
   { name: "vanguard-bars-drag", caption: "Action bars while you drag a spell or item: the empty slots show so there is somewhere to drop it; otherwise they stay hidden (TEST-ONLY icons)", lua: '__wfgStub.fire("ACTIONBAR_SHOWGRID")' },
   { name: "vanguard-options-modules", caption: "Options window: Modules, each with what it does and what it needs", lua: 'ns.Options.Show("modules")' },

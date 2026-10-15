@@ -252,8 +252,8 @@ local DEFAULTS = {
   smoothBars = true,
   reduceMotion = false,
   sounds = true,
-  -- The faction look: "auto" (by your faction) or "off".
-  faction = "auto",
+  -- The faction look: "crest" (your faction's crest only), "auto" (the crest and the heading font) or "off".
+  faction = "crest",
 }
 
 -- Painted frames: frame -> { kind, opts, parts }. Weak, so hidden frames
@@ -1724,11 +1724,11 @@ function T.Faction()
   return faction ~= "none" and faction or nil
 end
 
--- The faction's heading font, or nil (look off, no faction, another font chosen, a client using
+-- The faction's heading font, or nil (look not "auto", no faction, another font chosen, a client using
 -- the game's font, or one whose script the heading fonts lack).
 function T.HeadingFont()
   local s, faction = T.Settings(), T.Faction()
-  if not faction or s.font ~= "" or useClientFont(s) or LATIN_HEADING_MISSING[locale()] then return nil end
+  if not faction or s.faction ~= "auto" or s.font ~= "" or useClientFont(s) or LATIN_HEADING_MISSING[locale()] then return nil end
   return T.FONTS[faction:lower()]
 end
 

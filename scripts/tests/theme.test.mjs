@@ -316,7 +316,9 @@ it("the faction look on a Russian client keeps Fira Sans for headings (the facti
   expect(look(addon), "Alliance on ruRU: Fira Sans SemiBold headings, the crest shown").toEqual(["FiraSansCondensed-SemiBold.ttf", true]);
   addon.eval('__faction = "Horde" ns.Theme.Refresh()');
   expect(look(addon)[0], "Horde on ruRU too").toBe("FiraSansCondensed-SemiBold.ttf");
-  expect(look(loggedIn(faction + 'GetLocale = function() return "deDE" end'))[0], "a German client gets Cinzel (it has the Latin accents)").toBe("Cinzel-SemiBold.ttf");
+  const german = loggedIn(faction + 'GetLocale = function() return "deDE" end');
+  german.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh()');
+  expect(look(german)[0], "a German client gets Cinzel (it has the Latin accents)").toBe("Cinzel-SemiBold.ttf");
 });
 
 // TEST-ONLY game tab buttons shaped like the game's three tab templates, and a reader
