@@ -71,8 +71,9 @@ it("/vg factionart: which of the game's own faction pictures the client has", ()
   const bare = loggedIn("C_Texture = nil UnitFactionGroup = nil");
   expect(bare.eval("return { ns.FactionArt.HasAtlas('MountJournalIcons-Horde'), ns.FactionArt.Faction() }"), "a client without these calls has none, and no faction").toEqual([false, "none"]);
 });
-it("the faction look: your faction's crest and heading font, and Off", () => {
+it("the faction look: the crest only by default, the crest and heading font, and Off", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + '__faction = "Alliance" UnitFactionGroup = function() return __faction end');
+  addon.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh()');
   // A new title and label string's font file, and a new crest's texture, color and shown state.
   const look = () => addon.eval(`local T = ns.Theme
     local title, label = T.Text(UIParent:CreateFontString(), "title"), T.Text(UIParent:CreateFontString(), "label")
@@ -88,12 +89,16 @@ it("the faction look: your faction's crest and heading font, and Off", () => {
   expect([horde[0], horde[3], isTok(addon, horde[4], "hordeCrest")], "Horde: Metamorphous and the crossed axes, in Horde red").toEqual(["Metamorphous-Regular.ttf", "lorc-crossed-axes", true]);
   addon.slash("");
   expect(addon.eval("return Vanguard_Options.crest:IsShown() and Vanguard_Options.crest.__points.LEFT.rel == Vanguard_Options.title"), "the crest beside the options window's title").toBe(true);
-  addon.eval('__click("Faction look: crest and heading font")');
+  addon.eval('__click("Faction look")');
   const off = look();
   expect([off[0], off[2], addon.eval("return Vanguard_Options.title.__font[1]:find('Fira') ~= nil")], "Off: the usual heading font, no crests, at once").toEqual(["FiraSansCondensed-SemiBold.ttf", false, true]);
-  addon.eval('__click("Faction look: crest and heading font") __faction = "Neutral" ns.Theme.Refresh()');
+  // Off, then Crest only, then Crest and heading font: the cycle's order.
+  addon.eval('__click("Faction look") __click("Faction look") __faction = "Neutral" ns.Theme.Refresh()');
   expect(look().slice(0, 3), "a neutral character keeps the usual look").toEqual(["FiraSansCondensed-SemiBold.ttf", "FiraSansCondensed-Medium.ttf", false]);
-  addon.eval('__faction = "Alliance" ns.Theme.Settings().font = "client" ns.Theme.Refresh()');
+  addon.eval('__faction = "Alliance" ns.Theme.Settings().faction = "crest" ns.Theme.Refresh()');
+  expect(look().slice(0, 3), "Crest only: the usual headings, the crest shown").toEqual(["FiraSansCondensed-SemiBold.ttf", "FiraSansCondensed-Medium.ttf", true]);
+  addon.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh()');
+  addon.eval('ns.Theme.Settings().font = "client" ns.Theme.Refresh()');
   expect(addon.eval("return { ns.Theme.HeadingFont() == nil, Vanguard_AfkScreen.crest:IsShown() }"), "with the game's font chosen, headings follow it (the crest stays)").toEqual([true, true]);
 });
 // TEST-ONLY trainer: two services you can learn (5s and 20s), one you can't yet, one learned; 22s on hand.
@@ -403,6 +408,7 @@ it("the AFK screen: clicks, keys and fights put it away; what the client can't s
 });
 it("the AFK screen's backdrop: your faction's passage under the card, in its heading font and crest color", () => {
   const addon = loggedIn(UNITS_ENV + AFK_ENV + CLICK_LUA + '__faction = "Alliance" UnitFactionGroup = function() return __faction end');
+  addon.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh()');
   // The passage's shown state, font file, opening words, attribution, color and wrap width.
   const passage = () => addon.eval(`local f = Vanguard_AfkScreen
     return { f.passage:IsShown(), f.passage.__font[1]:match("[^\\\\]+$"), f.passage:GetText():sub(1, 14), f.by:GetText(), f.passage.__textColor, f.passage:GetWidth() }`);
@@ -417,8 +423,8 @@ it("the AFK screen's backdrop: your faction's passage under the card, in its hea
   const horde = passage();
   expect([horde[0], horde[1], horde[2], horde[3], isTok(addon, horde[4], "hordeCrest")], "Horde: the Blood Oath, in Metamorphous and Horde red").toEqual([true, "Metamorphous-Regular.ttf", "Lok'tar ogar! ", "The Blood Oath of the Horde", true]);
   addon.slash("");
-  addon.eval('__click("Faction look: crest and heading font")');
+  addon.eval('__click("Faction look")');
   expect(addon.eval("local f = Vanguard_AfkScreen return { f.passage:IsShown(), f.by:IsShown() }"), "the faction look off: no passage").toEqual([false, false]);
-  addon.eval('__click("Faction look: crest and heading font") __faction = "Neutral" ns.Theme.Refresh()');
+  addon.eval('__click("Faction look") __click("Faction look") __faction = "Neutral" ns.Theme.Refresh()');
   expect(addon.eval("return Vanguard_AfkScreen.passage:IsShown()"), "a neutral character: none").toBe(false);
 });

@@ -434,7 +434,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 11.1 AFK card
 
 - Do: standing still out of combat, type `/afk`. Move. Type `/afk` again, then click or press a key.
-- Expect: the screen dims to a card with your name in your class colour, level and class, the zone, time away, the clock and an XP bar, and under the card your faction's passage (Varian's letter in Cinzel for Alliance, the Blood Oath in Metamorphous for Horde) in the crest colour; moving removes it; a click or key removes it until you are next away; it never shows in combat.
+- Expect: the screen dims to a card with your name in your class colour, level and class, the zone, time away, the clock and an XP bar, and under the card your faction's passage (Varian's letter for Alliance, the Blood Oath for Horde; in Cinzel or Metamorphous with the faction look on Crest and heading font, otherwise in Fira Sans) in the crest colour; moving removes it; a click or key removes it until you are next away; it never shows in combat.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ## 12. Game menu
