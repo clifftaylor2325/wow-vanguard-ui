@@ -332,13 +332,45 @@ local function placePaneToggle(frame)
   if toggle.CreateTexture then T.ControlPlate(toggle) end
 end
 
+-- Every gear slot the pane shows, by the name of its item button (Camelot PaperDollFrame.xml). The shirt, tabard and
+-- ammo are there too; a slot the client lacks is skipped.
+GW.EQUIP_SLOTS = {
+  "Head", "Neck", "Shoulder", "Back", "Chest", "Shirt", "Tabard", "Wrist", "Hands", "Waist", "Legs", "Feet",
+  "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged", "Ammo",
+}
+
+-- Each gear slot's item button in the theme, as the bags' are: the bronze frame the game draws (NormalTexture and
+-- IconBorder) faded, a flat panel behind the icon and the item's quality border (Modules/Bags.lua skinItem).
+local function skinSlots()
+  local bags = ns.GetModule("Bags")
+  for _, slot in ipairs(GW.EQUIP_SLOTS) do
+    if bags and bags.SkinItem then bags.SkinItem(_G["Character" .. slot .. "Slot"]) end
+  end
+end
+
+-- The model area's art: the strip above the model (its rock tile and edge) and the model scene's backdrop
+-- textures faded, with a flat inset panel behind the model. The model and its controls stay the game's.
+local function skinModelArea()
+  local paper = _G.PaperDollFrame
+  if type(paper) ~= "table" then return end
+  fadeHost(paper.TopBackgroundStripHost)
+  local scene = paper.CharacterModelScene
+  if type(scene) == "table" and scene.GetRegions then
+    T.FadeRegions(scene)
+    T.Panel(scene, { inset = true, noSheen = true })
+  end
+end
+
 -- Dresses the inside of the character pane: its backdrops, right-pane toggle and lists' rows, the skill rank bar,
--- the stat boxes, the honor tab and the equipment flyout. Safe to run again: lists and the flyout are watched once.
+-- the stat boxes, the gear slots, the model area, the honor tab and the equipment flyout. Safe to run again: lists
+-- and the flyout are watched once, and a slot is skinned once.
 function GW.DressCharacterPane()
   watchLists()
   flattenPane()
   placePaneToggle(_G.CharacterFrame)
   skinStatCategories()
+  skinSlots()
+  skinModelArea()
   local skills, honor = _G.SkillsFrame, _G.PVPRankFrame
   if type(skills) == "table" and type(skills.SkillDetailFrame) == "table" then GW.SkinBar(skills.SkillDetailFrame.RankBar) end
   if type(honor) == "table" then skinPvPRank(honor) end
