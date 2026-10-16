@@ -313,6 +313,30 @@ it("character pane stat boxes: the title plate faded and an inset panel, whether
   expect(addon.eval("return ns.errors[1] == nil")).toBe(true);
 });
 
+it("character pane gear slots: each item button's bronze frame faded and a flat panel behind it, the shirt, tabard and ammo too", () => {
+  const addon = loggedIn(PANE_ENV + `
+    function __slot(name) local b = CreateFrame("Button", "Character" .. name .. "Slot", CharacterFrame) b.NormalTexture, b.IconBorder = __art(b), __art(b, "BORDER") return b end
+    __slotHead, __slotShirt, __slotAmmo = __slot("Head"), __slot("Shirt"), __slot("Ammo")
+  `);
+  addon.eval("CharacterFrame:Show()");
+  expect(addon.eval("return { __a(__slotHead.NormalTexture), __a(__slotHead.IconBorder), __panel(__slotHead) }"), "a slot's frame faded, a flat panel behind its icon").toEqual([0, 0, true]);
+  expect(addon.eval("return { __a(__slotShirt.NormalTexture), __panel(__slotAmmo) }"), "the shirt and ammo slots too").toEqual([0, true]);
+  expect(addon.eval("return ns.errors[1] == nil"), "a slot the client lacks is skipped without an error").toBe(true);
+});
+
+it("character pane model area: the strip above the model and the model scene's backdrop faded, a flat panel behind the model", () => {
+  const addon = loggedIn(PANE_ENV + `
+    PaperDollFrame = CreateFrame("Frame", "PaperDollFrame", CharacterFrame)
+    PaperDollFrame.TopBackgroundStripHost = CreateFrame("Frame", nil, PaperDollFrame)
+    __strip = __art(PaperDollFrame.TopBackgroundStripHost)
+    PaperDollFrame.CharacterModelScene = CreateFrame("Frame", nil, PaperDollFrame) -- the harness has no ModelScene type; the skin only reads regions
+    __backdrop = __art(PaperDollFrame.CharacterModelScene)
+  `);
+  addon.eval("CharacterFrame:Show()");
+  expect(addon.eval("return { __a(__strip), __a(__backdrop), __panel(PaperDollFrame.CharacterModelScene) }"), "strip and backdrop faded, a panel behind the model").toEqual([0, 0, true]);
+  expect(addon.eval("return ns.errors[1] == nil"), "nothing reported").toBe(true);
+});
+
 it("character pane honor tab: the line and glow faded, the ring, badge and texts kept", () => {
   const addon = loggedIn(PANE_ENV + `
     PVPRankFrame = CreateFrame("Frame", "PVPRankFrame", CharacterFrame)
