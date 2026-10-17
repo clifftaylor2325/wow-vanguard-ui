@@ -1400,6 +1400,7 @@ end
 -- the button is disabled (its label too, and no hover border).
 local function paintCheck(button, c)
   local on, off = isChecked(button, c), type(button.IsEnabled) == "function" and not button:IsEnabled()
+  c.hover = c.hover and not off -- a disabled button gets no OnLeave, so its hover ends here
   c.mark:SetShown(on)
   T.Tint(c.mark, off and "disabled" or T.CHECK.markColor)
   c.fill:SetShown(on and T.CHECK.fill ~= nil)
@@ -1442,20 +1443,24 @@ local function hookShown(region, where, fn)
 end
 
 -- Follows the game's state: SetChecked (its own calls), a click (the client flips the state before
--- OnClick runs), enabling and disabling (pcall: a widget without those scripts can't have them hooked),
--- and for a plain frame the game's own mark (`source`) being shown or hidden.
-local function watchState(button, source)
+-- OnClick runs), enabling and disabling (pcall: a widget without those scripts can't have them hooked).
+local function watchState(button)
   local repaint = ns.Guard("check state", repaintCheck)
   for _, script in ipairs({ "OnClick", "OnEnable", "OnDisable" }) do pcall(button.HookScript, button, script, repaint) end
   if type(button.SetChecked) == "function" and type(hooksecurefunc) == "function" then
     hooksecurefunc(button, "SetChecked", ns.Guard("hook SetChecked", repaintCheck))
   end
-  if source then hookShown(source, "check mark", function() repaintCheck(button) end) end
+end
+
+-- Has a plain frame's box follow the mark the game shows while it is checked (`mark`), from now on.
+local function watchMark(button, c, mark)
+  c.source = mark
+  hookShown(mark, "check mark", function() repaintCheck(button) end)
 end
 
 -- Follows the mouse: the press look while held, the hover look while over it; a hide clears both.
-local function watchCheck(button, source)
-  watchState(button, source)
+local function watchCheck(button)
+  watchState(button)
   button:HookScript("OnMouseDown", ns.Guard("check press", function(b) T.PressButton(b, true) end))
   button:HookScript("OnMouseUp", ns.Guard("check press", function(b) T.PressButton(b, false) end))
   button:HookScript("OnHide", ns.Guard("check press", function(b) T.PressButton(b, false) hoverCheck(b, false) end))
@@ -1472,9 +1477,10 @@ function T.CheckBox(button, opts)
   local c = checkOf[button]
   if not c then
     c = checkParts(button)
-    c.source, checkOf[button] = opts and opts.mark, c
-    watchCheck(button, c.source)
+    checkOf[button] = c
+    watchCheck(button)
   end
+  if opts and opts.mark and not c.source then watchMark(button, c, opts.mark) end
   T.FadeRegions(button)
   c.paint(button, c)
   return button
@@ -1495,6 +1501,7 @@ end
 -- disabled tier while disabled (its label too).
 local function paintRadio(button, r)
   local on, off = isChecked(button, r), type(button.IsEnabled) == "function" and not button:IsEnabled()
+  r.hover = r.hover and not off -- a disabled button gets no OnLeave, so its hover ends here
   r.mark:SetShown(on)
   T.Tint(r.mark, off and "disabled" or T.RADIO.dotColor)
   T.Tint(r.ring, r.hover and not off and T.RADIO.hover or "edge")
@@ -1545,16 +1552,28 @@ local function isTexture(region)
   return type(region.GetObjectType) == "function" and region:GetObjectType() == "Texture"
 end
 
+-- Sizes a divider's line to one screen pixel thick at its scale now (again after a scale change).
+local function sizeDivider(d)
+  if d.vertical then d.line:SetWidth(T.Pixel(d.holder)) else d.line:SetHeight(T.Pixel(d.holder)) end
+end
+
+-- Sizes every divider's line again (T.OnScale, after a UI scale or screen change).
+local function sizeDividers()
+  for _, d in pairs(dividerOf) do sizeDivider(d) end
+end
+T.OnScale(sizeDividers)
+
 -- Makes a divider's line: on its own frame laid over the divider (so fading the game frame's art never
--- fades it), one screen pixel thick, along its length (down it when vertical) through its middle.
-local function dividerLine(region, vertical)
-  local holder = CreateFrame("Frame", nil, isTexture(region) and region:GetParent() or region)
+-- fades it), one screen pixel thick, along its top edge (its left edge when vertical), so it sits on
+-- whole pixels as the divider does, where a line through an even-height middle would straddle two.
+local function dividerLine(region, host, vertical)
+  local holder = CreateFrame("Frame", nil, host)
   holder:SetAllPoints(region)
-  local line = T.Tint(solid(holder, "ARTWORK", nil, "divider"), T.DIVIDER.color)
-  line:SetPoint(vertical and "TOP" or "LEFT")
-  line:SetPoint(vertical and "BOTTOM" or "RIGHT")
-  if vertical then line:SetWidth(T.Pixel(holder)) else line:SetHeight(T.Pixel(holder)) end
-  return { holder = holder, line = line }
+  local d = { holder = holder, line = solid(holder, "ARTWORK", nil, "divider"), vertical = vertical }
+  d.line:SetPoint("TOPLEFT")
+  d.line:SetPoint(vertical and "BOTTOMLEFT" or "TOPRIGHT")
+  sizeDivider(d)
+  return d
 end
 
 -- Shows a texture divider's line while the game shows the texture.
@@ -1565,14 +1584,16 @@ end
 
 -- One of the game's dividers (a texture, or a frame of divider art: Options_HorizontalDivider, the
 -- mail window's bar, the quest log's separator) as one pixel of `divider` along it, the game's art
--- faded. opts.vertical: the line runs down it. A texture's line follows the game showing and hiding
--- it. Safe to run again.
+-- faded. opts.vertical (read on the first call): the line runs down it. A texture's line follows the
+-- game showing and hiding it. Safe to run again.
 function T.Divider(region, opts)
+  local tex = isTexture(region)
   if not dividerOf[region] then
-    dividerOf[region] = dividerLine(region, opts and opts.vertical)
-    if isTexture(region) then hookShown(region, "divider shown", followDivider) end
+    dividerOf[region] = dividerLine(region, tex and region:GetParent() or region, opts and opts.vertical)
+    if tex then hookShown(region, "divider shown", followDivider) end
   end
-  if isTexture(region) then region:SetAlpha(0) else T.FadeRegions(region) end
+  if tex then region:SetAlpha(0) else T.FadeRegions(region) end
+  T.Tint(dividerOf[region].line, T.DIVIDER.color)
   followDivider(region)
   return region
 end
@@ -1593,6 +1614,7 @@ function T.ArrowParts(button) return arrowOf[button] end
 -- Paints an arrow's glyph: disabled, under the mouse, or at rest.
 local function paintArrow(button)
   local a, off = arrowOf[button], type(button.IsEnabled) == "function" and not button:IsEnabled()
+  a.hover = a.hover and not off -- a disabled button gets no OnLeave, so its hover ends here
   T.Tint(a.glyph, off and "disabled" or a.hover and T.ARROW.hover or T.ARROW.color)
 end
 
@@ -1603,24 +1625,25 @@ local function hoverArrow(button, over)
 end
 
 -- Makes an arrow button's glyph, on its own frame over the button (so fading the button's art never
--- fades it), and follows the mouse and the button's state.
-local function arrowParts(button)
+-- fades it), remembers whether it is flat, and follows the mouse (a hide ends the hover) and its state.
+local function arrowParts(button, flat)
   local holder = CreateFrame("Frame", nil, button)
   holder:SetAllPoints()
-  arrowOf[button] = { glyph = centered(holder, "OVERLAY", T.Icon("Down"), T.ARROW.glyph) }
+  arrowOf[button] = { glyph = centered(holder, "OVERLAY", T.Icon("Down"), T.ARROW.glyph), flat = flat }
   for _, script in ipairs({ "OnEnable", "OnDisable" }) do pcall(button.HookScript, button, script, ns.Guard("arrow state", paintArrow)) end
   button:HookScript("OnEnter", ns.Guard("arrow hover", function(b) hoverArrow(b, true) end))
   button:HookScript("OnLeave", ns.Guard("arrow hover", function(b) hoverArrow(b, false) end))
+  button:HookScript("OnHide", ns.Guard("arrow hover", function(b) hoverArrow(b, false) end))
 end
 
 -- One of the game's arrow buttons (paging, move up and down, steppers) in the theme: the theme's
 -- arrow glyph pointing `direction` ("up", "down", "left", "right"; default down) in text2, text under
--- the mouse, the disabled tier while disabled; a flat button panel under it, or with opts.flat just the
--- glyph, its art faded (for the small steppers beside a slider). Safe to run again.
+-- the mouse, the disabled tier while disabled; a flat button panel under it, or with opts.flat (read on
+-- the first call) just the glyph, its art faded (for the small steppers beside a slider). Safe to run again.
 function T.ArrowButton(button, direction, opts)
   local turn = ARROW_TURN[direction] or ARROW_TURN.down
-  if not arrowOf[button] then arrowParts(button) end
-  if opts and opts.flat then T.FadeRegions(button) else T.Button(button) end
+  if not arrowOf[button] then arrowParts(button, opts and opts.flat) end
+  if arrowOf[button].flat then T.FadeRegions(button) else T.Button(button) end
   arrowOf[button].glyph:SetTexture(T.Icon(turn[1]))
   arrowOf[button].glyph:SetTexCoord(turn[2], turn[3], turn[4], turn[5])
   paintArrow(button)

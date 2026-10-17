@@ -916,10 +916,10 @@ it("theme: a game check button becomes a 16 px inset box with the Check glyph in
 
 it("theme: a plain frame whose check mark the game shows and hides (QuestLogTrackCheckboxTemplate) gets the check box look, following that mark", () => {
   const addon = loggedIn(`local f = CreateFrame("Frame", "TEST_Track", UIParent) f:SetSize(16, 16) f.Bg = f:CreateTexture() f.CheckMark = f:CreateTexture() f.CheckMark:Hide()
-    ns.Theme.CheckBox(f, { mark = f.CheckMark })`);
+    ns.Theme.CheckBox(f) ns.Theme.CheckBox(f, { mark = f.CheckMark })`);
   // The frame's state: { its art's alpha, the game mark's alpha, Vanguard's mark shown }.
   const state = () => addon.eval("local c = ns.Theme.CheckParts(TEST_Track) return { TEST_Track.Bg.__alpha, TEST_Track.CheckMark.__alpha, c.mark:IsShown() }");
-  expect(state(), "the art and the game's mark faded; not tracked, no mark").toEqual([0, 0, false]);
+  expect(state(), "painted plain first, then given its mark: the art and the game's mark faded; not tracked, no mark").toEqual([0, 0, false]);
   addon.eval("TEST_Track.CheckMark:Show()");
   expect(state()[2], "the game shows its mark: the Check glyph shows").toBe(true);
   addon.eval("TEST_Track.CheckMark:SetShown(false)");
@@ -948,7 +948,9 @@ it("theme: a game radio button becomes a dark 16 px ring with an accentText dot 
   s = state();
   expect([s[5], isTok(addon, s[3], "disabled"), isTok(addon, s[7], "disabled"), isTok(addon, s[4], "edge")], "let go, then disabled under the mouse: the dot and label disabled, the ring back to edge").toEqual([false, true, true, true]);
   const n = state()[6];
-  addon.eval('TEST_Radio:Enable() TEST_Radio:GetScript("OnLeave")(TEST_Radio) ns.Theme.Radio(TEST_Radio)');
+  addon.eval("TEST_Radio:Enable()");
+  expect(isTok(addon, state()[4], "edge"), "enabled after the mouse left while it was disabled (no OnLeave): no stuck hover ring").toBe(true);
+  addon.eval("ns.Theme.Radio(TEST_Radio)");
   s = state();
   expect([s[6], isTok(addon, s[3], "accentText")], "painting again adds nothing; enabled, the dot's colour is back").toEqual([n, true]);
   addon.eval('ns.Theme.RADIO.dotColor = "accent" ns.Theme.Refresh()');
@@ -970,6 +972,11 @@ it("theme: a game divider becomes one pixel of divider along it, the game's art 
   expect(state("TEST_DivHost.Bar", "TEST_DivHost.Bar", "GetHeight")[3], "the game hides the texture: the line goes").toBe(false);
   addon.eval("TEST_DivHost.Bar:Show() ns.Theme.Divider(TEST_DivHost.Bar)");
   expect([state("TEST_DivHost.Bar", "TEST_DivHost.Bar", "GetHeight")[3], addon.eval("return select('#', TEST_DivHost:GetChildren())")], "shown again; painting again adds no frame").toEqual([true, 2]);
+  expect(addon.eval("local l = ns.Theme.DividerParts(TEST_DivHost.Bar).line return { l.__points.TOPLEFT ~= nil, l.__points.TOPRIGHT ~= nil }"), "the line runs along the divider's top edge, on whole pixels").toEqual([true, true]);
+  addon.eval("UIParent:SetScale(0.8)");
+  addon.fire("UI_SCALE_CHANGED");
+  addon.update(0.1);
+  expect(state("TEST_DivHost.Bar", "TEST_DivHost.Bar", "GetHeight")[1], "after a UI scale change the line is one screen pixel again").toBe(addon.eval("return ns.Theme.Pixel(UIParent)"));
   s = state("TEST_DivHost.Sep", "TEST_DivHost.Sep.Art", "GetWidth");
   expect([s[0], s[1], s[4]], "a frame of divider art: its art faded, a vertical line one pixel wide over it").toEqual([0, addon.eval("return ns.Theme.Pixel(UIParent)"), true]);
   addon.eval('ns.Theme.DIVIDER.color = "accent" ns.Theme.Refresh()');
@@ -996,7 +1003,13 @@ it("theme: a game arrow button shows the theme's arrow glyph turned its way, in 
   expect(isTok(addon, state("Up")[2], "text"), "under the mouse: text").toBe(true);
   addon.eval('TEST_ArrowUp:Disable()');
   expect(isTok(addon, state("Up")[2], "disabled"), "disabled: the disabled tier").toBe(true);
-  addon.eval('TEST_ArrowUp:Enable() TEST_ArrowUp:GetScript("OnLeave")(TEST_ArrowUp) ns.Theme.ARROW.color = "accent" ns.Theme.Refresh()');
+  addon.eval('TEST_ArrowUp:Enable()');
+  expect(isTok(addon, state("Up")[2], "text2"), "enabled after the mouse left while it was disabled (no OnLeave): text2, no stuck hover").toBe(true);
+  addon.eval('TEST_ArrowUp:GetScript("OnEnter")(TEST_ArrowUp) TEST_ArrowUp:GetScript("OnHide")(TEST_ArrowUp)');
+  expect(isTok(addon, state("Up")[2], "text2"), "hidden under the mouse: the hover ends").toBe(true);
+  addon.eval('ns.Theme.ArrowButton(TEST_ArrowFlat, "down")');
+  expect(state("Flat")[4], "flat is kept on a later call without it").toBe(false);
+  addon.eval('ns.Theme.ARROW.color = "accent" ns.Theme.Refresh()');
   expect(isTok(addon, state("Up")[2], "accent"), "enabled and left: T.ARROW's resting colour, reaching it on refresh").toBe(true);
   addon.eval('Vanguard.RegisterSkin("TEST-ONLY-arrow", function(S) __arrow = S.ArrowButton(CreateFrame("Button", nil, UIParent), "right") end)');
   expect(addon.eval("return ns.Theme.ArrowParts(__arrow) ~= nil"), "other addons get it as S.ArrowButton").toBe(true);
