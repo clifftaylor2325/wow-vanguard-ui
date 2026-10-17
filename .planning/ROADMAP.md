@@ -38,7 +38,7 @@ UI polish (priority 3):
 
 UI coherence (priority 3, polish and consistency; INSERTED 2026-10-17 from Cliff's UI/UX review, spec in `docs/design/UI-COHERENCE.md`; in flight alongside, not phases: PR #393 pill controls (merged 2026-10-17), the consistency fixes on `work/ui-consistency`, the frame-coverage batches on `work/reskin-coverage-1` to `-3`, the research doc PR #394 (merged 2026-10-17), and the design thread's game-frame primitives on `work/game-primitives`. Cliff answered every [DECIDE] on 2026-10-17, taking the recommendation each time):
 
-- [ ] **Phase 8.1: Theme tokens and capsule kit** (INSERTED) - Every variant keeps the surface order, and pills, discs and badges are one theme primitive and one media set
+- [x] **Phase 8.1: Theme tokens and capsule kit** (INSERTED) - Every variant keeps the surface order, and pills, discs and badges are one theme primitive and one media set
 - [x] **Phase 8.2: Check box primitive** (INSERTED) - No game check box art inside any window Vanguard owns
 - [ ] **Phase 8.3: One material per window** (INSERTED) - The inbox, the spellbook and talent pages and the character pane's stats are slate inside, and the material tiers are written down
 - [ ] **Phase 8.4: Control grid and button kinds** (INSERTED) - Every control on one grid, with secondary, primary and danger buttons

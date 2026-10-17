@@ -1027,6 +1027,40 @@ it("theme: a game arrow button shows the theme's arrow glyph turned its way, in 
   expect(addon.eval("return ns.Theme.ArrowParts(__arrow) ~= nil"), "other addons get it as S.ArrowButton").toBe(true);
 });
 
+// OKLCH lightness of an { r, g, b } colour (0-1 channels).
+const oklchL = ([r, g, b]) => {
+  const [lr, lg, lb] = [r, g, b].map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
+  const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
+  const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
+  return 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+};
+
+it("surfaces keep their order in every variant: inset < panel < raised < raisedHover < divider < borderHi in OKLCH lightness (8.1)", () => {
+  const addon = loggedIn();
+  const order = ["inset", "panel", "raised", "raisedHover", "divider", "borderHi"];
+  for (const name of addon.eval("return ns.Theme.VARIANT_ORDER")) {
+    addon.slash(`variant ${name}`);
+    const lightness = order.map((n) => oklchL(tok(addon, n)));
+    expect(lightness.every((v, i) => i === 0 || v > lightness[i - 1]), `${name}: ${lightness.map((v) => v.toFixed(3)).join(" < ")}`).toBe(true);
+  }
+});
+
+it("T.Capsule: a fill of the tier and a 1 px outline in three parts, round ends half the height wide, the middle between; the outline is optional (8.1)", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`
+    local f = CreateFrame("Frame", nil, UIParent)
+    f:SetSize(60, 14)
+    local c = ns.Theme.Capsule(f, 14, "raised")
+    local bare = ns.Theme.Capsule(CreateFrame("Frame", nil, UIParent), 12, "inset", { line = false, layer = "ARTWORK" })
+    return { #c.fill, #c.line, c.fill[1]:GetWidth(), c.fill[3]:GetWidth(), c.fill[1].__layer, c.line[2].__layer, bare.line == nil, bare.fill[2].__layer,
+      c.fill[2].__texture, c.line[2].__texture }`);
+  expect(out.slice(0, 7), "three parts each, ends 7 wide at a height of 14, fill under outline, no outline when asked").toEqual([3, 3, 7, 7, "BORDER", "OVERLAY", true]);
+  expect([out[7], /Pill$/.test(out[8]), /PillLine$/.test(out[9])], "layer option and the textures").toEqual(["ARTWORK", true, true]);
+  addon.slash("variant midnight");
+  expect(isTok(addon, addon.eval("return ({ ns.Theme.Capsule(CreateFrame('Frame'), 8, 'inset').fill[1]:GetVertexColor() })"), "inset"), "a capsule's fill follows the variant").toBe(true);
+});
+
 it("T.SetText: a role with the upper flag (section) shows capitals, any other role shows the text as given", () => {
   const addon = loggedIn();
   const out = addon.eval(`
