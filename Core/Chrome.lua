@@ -303,34 +303,21 @@ end
 
 -- Rows -----------------------------------------------------------------------------------------
 
--- Shows or hides a row's selected look: the accent rail and wash.
+-- Shows or hides a row's selected look (T.SelectRow, the one place it is drawn) and notes it on the row.
 local function setSelected(row, on)
   row.selected = on == true
-  row.rail:SetShown(row.selected)
-  row.wash:SetShown(row.selected)
+  T.SelectRow(row, row.selected)
 end
 
--- The selected look's parts, hidden: the wash over the row and the rail down its left edge, T.ROW.rail
--- screen pixels wide.
-local function addSelectedLook(row)
-  row.wash = T.Tint(W.Flat(row, "BACKGROUND", "accent"), "accent", T.ROW.wash)
-  row.wash:SetAllPoints()
-  row.rail = W.Flat(row, "ARTWORK", "accent")
-  row.rail:SetPoint("TOPLEFT")
-  row.rail:SetPoint("BOTTOMLEFT")
-  row.rail:SetWidth(T.ROW.rail * T.Pixel(row))
-  row.SetSelected = setSelected
-  setSelected(row, false)
-end
-
--- A list row: a Button `height` tall (T.ROW.height unless given) with the hover wash under the mouse.
--- row:SetSelected(on) shows the one selected look: an accent rail T.ROW.rail screen pixels wide along its
--- left edge (row.rail) and an accent wash at T.ROW.wash alpha (row.wash). opts.width sets its width.
+-- A list row: a Button `height` tall (T.ROW.height unless given), dressed by T.Row: the hover wash under
+-- the mouse, the press shade while held and, through row:SetSelected(on), the one selected look: an accent
+-- rail T.SELECT.rail screen pixels wide along its left edge (row.rail) over a lighter fill (row.wash).
+-- opts.width sets its width.
 function W.Row(parent, height, opts)
   local row = CreateFrame("Button", nil, parent)
   row:SetHeight(height or T.ROW.height)
   if opts and opts.width then row:SetWidth(opts.width) end
-  W.Flat(row, "HIGHLIGHT", "hover"):SetAllPoints()
-  addSelectedLook(row)
+  local parts = T.RowParts(T.Row(row))
+  row.rail, row.wash, row.selected, row.SetSelected = parts.rail, parts.fill, false, setSelected
   return row
 end
