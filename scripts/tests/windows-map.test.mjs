@@ -171,6 +171,47 @@ it("world map: switched off it stays the game's; a client missing parts or the m
   for (const addon of [bare, sparse]) expect(addon.eval("return #ns.errors"), "no errors without the parts").toBe(0);
 });
 
+
+// TEST-ONLY extras on the world map (Blizzard_WorldMap, NavigationBar.xml): the home crumb's label and dropdown arrow
+// (a button whose Art is the arrow), the floor dropdown the game makes without a key (it carries the template's mixin
+// method), the tracking filter and pin buttons, and a toggle whose buttons also have a pushed arrow.
+const MAP_PARTS_ENV = WORLD_MAP_ENV + `
+  local map, nav = WorldMapFrame, WorldMapFrame.NavBar
+  nav.home.text = nav.home:CreateFontString(nil, "OVERLAY") nav.home.text:SetFont("TEST-ONLY-GAME", 12, "")
+  local arrow = CreateFrame("Button", nil, nav.home) nav.home.MenuArrowButton = arrow
+  arrow.back, arrow.Art = arrow:CreateTexture(), arrow:CreateTexture()
+  arrow.GetNormalTexture = function(self) return self.Art end
+  CreateFrame("Frame", nil, map)
+  local floor = CreateFrame("Button", nil, map) floor.ShouldShowTrackingIconOnFloor = function() end
+  floor.Plate, floor.Arrow = floor:CreateTexture(), floor:CreateTexture()
+  map.WorldMapTrackingOptionsButton = CreateFrame("Button", nil, map) map.WorldMapTrackingOptionsButton.Icon = map.WorldMapTrackingOptionsButton:CreateTexture()
+  local pin = CreateFrame("Button", nil, map) map.WorldMapTrackingPinButton = pin
+  pin.Background, pin.Border, pin.Icon = pin:CreateTexture(), pin:CreateTexture(), pin:CreateTexture()
+  for _, key in ipairs({ "OpenButton", "CloseButton" }) do
+    local b = map.SidePanelToggle[key] b.pushed = b:CreateTexture() b.GetPushedTexture = function(self) return self.pushed end
+  end
+`;
+
+it("world map: the crumbs' labels are light and their dropdown arrows keep the arrow, the floor dropdown keeps its arrow, the tracking buttons sit on control tiles", () => {
+  const addon = loggedIn(MAP_PARTS_ENV);
+  addon.eval("WorldMapFrame:Show()");
+  expect(addon.eval("local h = WorldMapFrame.NavBar.home return { h.text.__textColor[1] == ns.Theme.RGB('text'), __looks(h.text, 'label', 'text') }"), "the crumb's label is the label role in the text colour, not the game's gold").toEqual([true, true]);
+  expect(addon.eval("local a = WorldMapFrame.NavBar.home.MenuArrowButton return { a.back:GetAlpha(), a.Art:GetAlpha(), ns.Theme.HoverParts(a) ~= nil }"), "the arrow button is a theme button, its Art kept").toEqual([0, 1, true]);
+  expect(addon.eval("local f for _, c in ipairs({ WorldMapFrame:GetChildren() }) do if c.ShouldShowTrackingIconOnFloor then f = c end end return { f.Plate:GetAlpha(), f.Arrow:GetAlpha(), ns.Theme.HoverParts(f) ~= nil }"), "the floor dropdown found by its mixin: plate faded, arrow kept, a theme button").toEqual([0, 1, true]);
+  expect(addon.eval("local o, p = WorldMapFrame.WorldMapTrackingOptionsButton, WorldMapFrame.WorldMapTrackingPinButton return { o.Icon:GetAlpha(), p.Icon:GetAlpha(), p.Background:GetAlpha(), p.Border:GetAlpha() }"), "the tracking icons are kept, the pin's disc and gold ring faded").toEqual([1, 1, 0, 0]);
+  expect(["WorldMapTrackingOptionsButton", "WorldMapTrackingPinButton"].map((k) => addon.eval(`local n = 0 for _, r in ipairs({ WorldMapFrame.${k}:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__alpha ~= 0 then n = n + 1 end end return n`)), "each on the window controls' resting tile").toEqual([1, 1]);
+  expect(addon.eval("local b = WorldMapFrame.SidePanelToggle.OpenButton return { b.shadow:GetAlpha(), b.icon:GetAlpha(), b.pushed:GetAlpha(), ns.Theme.HoverParts(b) ~= nil }"), "the quest toggle is a theme button keeping its normal and pushed arrows").toEqual([0, 1, 1, true]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("WorldMapFrame:SynchronizeDisplayState() WorldMapFrame.NavBar:Refresh()");
+  expect(addon.eval("return { #ns.errors, ns.Theme.PaintedCount() - " + painted + " }"), "the game's redraws add only the new crumb").toEqual([0, 1]);
+});
+
+it("world map: a client without the floor dropdown, the tracking buttons or the crumbs' arrows loads cleanly", () => {
+  const bare = loggedIn(WORLD_MAP_ENV + "WorldMapFrame.WorldMapTrackingPinButton = {} WorldMapFrame.NavBar.home.MenuArrowButton = {} WorldMapFrame.SidePanelToggle.OpenButton.GetPushedTexture = nil");
+  bare.eval("WorldMapFrame:Show()");
+  expect(bare.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 // Vanguard's own quest log switched off, so the game's quest panel is the one in use.
 const OWN_LOG_OFF = "VanguardDB.profiles = { Default = { QuestLog = { own = false } } }";
 
@@ -270,6 +311,70 @@ it("quest panel in the map: left the game's while Vanguard's quest log is on, or
   for (const addon of [sparse, partial]) expect(addon.eval("return #ns.errors"), "a client with fewer parts loads cleanly").toBe(0);
 });
 
+
+// TEST-ONLY extras on the quest panel (QuestMapFrame.xml): the list's search box (with its magnifier), settings gear and
+// the quest count frame with its figure; the Rewards heading; the rule between groups; quest title rows (a button with a
+// Checkbox frame whose CheckMark the game shows, tag, storyline and task pictures and the yellow hover glow); and the
+// pop-out's text area and Show Map button.
+const QUEST_TOOLS_ENV = HEADERS_ENV + `
+  local list, details = QuestMapFrame.QuestsFrame, QuestMapFrame.QuestsFrame.DetailsFrame
+  local scroll = list.ScrollFrame
+  scroll.SearchBox = CreateFrame("EditBox", nil, scroll) scroll.SearchBox.art, scroll.SearchBox.searchIcon = scroll.SearchBox:CreateTexture(), scroll.SearchBox:CreateTexture()
+  scroll.SettingsDropdown = CreateFrame("Button", nil, scroll) scroll.SettingsDropdown.Icon = scroll.SettingsDropdown:CreateTexture()
+  QuestLogCount = CreateFrame("Frame", "QuestLogCount", scroll) QuestLogCount.Left = QuestLogCount:CreateTexture()
+  QuestLogQuestCount = QuestLogCount:CreateFontString("QuestLogQuestCount", "ARTWORK") QuestLogQuestCount:SetFont("TEST-ONLY-GAME", 10, "")
+  details.RewardsFrameContainer.RewardsFrame.Label = details.RewardsFrameContainer.RewardsFrame:CreateFontString(nil, "OVERLAY")
+  details.RewardsFrameContainer.RewardsFrame.Label:SetFont("TEST-ONLY-GAME", 20, "")
+  local sep = CreateFrame("Frame", nil, scroll.Contents) scroll.Contents.Separator = sep sep.Divider = sep:CreateTexture()
+  function __titleRow()
+    local row = CreateFrame("Button", nil, scroll.Contents)
+    row.Checkbox = CreateFrame("Frame", nil, row) row.Checkbox:CreateTexture() row.Checkbox.CheckMark = row.Checkbox:CreateTexture() row.Checkbox.CheckMark:Hide()
+    row.TagTexture, row.StorylineTexture, row.TaskIcon = row:CreateTexture(), row:CreateTexture(), row:CreateTexture()
+    row.HighlightTexture = row:CreateTexture()
+    return row
+  end
+  __titleRow() __titleRow()
+  local pop = QuestLogPopupDetailFrame
+  pop.ScrollFrame = CreateFrame("ScrollFrame", nil, pop)
+  pop.ShowMapButton = CreateFrame("Button", nil, pop) pop.ShowMapButton.Texture, pop.ShowMapButton.back = pop.ShowMapButton:CreateTexture(), pop.ShowMapButton:CreateTexture()
+  pop.ShowMapButton.Text = pop.ShowMapButton:CreateFontString(nil, "OVERLAY") pop.ShowMapButton.Text:SetFont("TEST-ONLY-GAME", 12, "")
+`;
+
+it("quest panel in the map: the search box, settings gear, count box, Rewards heading, title rows and the group rule are in the theme", () => {
+  const addon = loggedIn(QUEST_TOOLS_ENV, { savedVariables: OWN_LOG_OFF });
+  addon.eval("QuestMapFrame:Show()");
+  const scroll = "QuestMapFrame.QuestsFrame.ScrollFrame";
+  expect(addon.eval(`local s = ${scroll}.SearchBox return { s.art:GetAlpha(), s.searchIcon:GetAlpha() }`), "the search box's border art is faded, its magnifier kept").toEqual([0, 1]);
+  expect([fills(addon, `${scroll}.SearchBox`), fills(addon, "QuestLogCount")], "the search box and the count box are theme edit boxes").toEqual([1, 1]);
+  expect(addon.eval(`local g = ${scroll}.SettingsDropdown return { g.Icon:GetAlpha(), ns.Theme.HoverParts(g) == nil }`), "the gear keeps its icon on a control tile (not a button)").toEqual([1, true]);
+  expect(addon.eval("return { QuestLogCount.Left:GetAlpha(), __looks(QuestLogQuestCount, 'small', 'text2') }"), "the count box's art faded, its figure small and light").toEqual([0, true]);
+  expect(addon.eval("return __looks(QuestMapFrame.QuestsFrame.DetailsFrame.RewardsFrameContainer.RewardsFrame.Label, 'heading', 'text')"), "the Rewards heading is the heading role in the text colour").toBe(true);
+  addon.eval("QuestLogQuests_Update()");
+  // Title row n's state: a theme row, its glow, tag, storyline and task alphas, its track box a theme check box, its mark's alpha.
+  const row = (n) => addon.eval(`local i = 0 for _, r in ipairs({ ${scroll}.Contents:GetChildren() }) do if r.Checkbox then i = i + 1 if i == ${n} then
+    local parts = ns.Theme.RowParts(r)
+    return { parts ~= nil, r.HighlightTexture:GetAlpha(), r.TagTexture:GetAlpha(), r.StorylineTexture:GetAlpha(), r.TaskIcon:GetAlpha(), ns.Theme.CheckParts(r.Checkbox) ~= nil, r.Checkbox.CheckMark:GetAlpha() } end end end`);
+  expect(row(1), "a title row is a theme row: its glow faded, its tag, storyline and task pictures kept; its track box a theme check box").toEqual([true, 0, 1, 1, 1, true, 0]);
+  expect(row(2), "every title row").toEqual(row(1));
+  addon.eval(`local c = ${scroll}.Contents for _, r in ipairs({ c:GetChildren() }) do if r.Checkbox then r.Checkbox.CheckMark:Show() end end`);
+  expect(addon.eval(`local n = 0 for _, r in ipairs({ ${scroll}.Contents:GetChildren() }) do if r.Checkbox and ns.Theme.CheckParts(r.Checkbox).mark:IsShown() then n = n + 1 end end return n`), "the box follows the mark the game shows").toBe(2);
+  expect(addon.eval(`local d = ${scroll}.Contents.Separator.Divider return { d:GetAlpha(), ns.Theme.DividerParts(d) ~= nil }`), "the rule between groups is faded under one pixel of divider").toEqual([0, true]);
+  addon.eval("QuestLogQuests_Update()");
+  expect(addon.eval("return { #ns.errors, ns.Theme.PaintedCount() > 0 }"), "and nothing failed").toEqual([0, true]);
+});
+
+it("quest panel in the map: the pop-out's text sits on an inset and its Show Map button keeps its glyph; sparse clients load cleanly", () => {
+  const addon = loggedIn(QUEST_TOOLS_ENV, { savedVariables: OWN_LOG_OFF });
+  addon.eval("QuestLogPopupDetailFrame:Show()");
+  expect(fills(addon, "QuestLogPopupDetailFrame.ScrollFrame"), "an inset panel behind the quest text").toBe(1);
+  expect(addon.eval("local b = QuestLogPopupDetailFrame.ShowMapButton return { b.back:GetAlpha(), b.Texture:GetAlpha(), __looks(b.Text, 'label', 'text') }"), "the Show Map button: its art faded, its map glyph kept, its label light").toEqual([0, 1, true]);
+  const bare = loggedIn(QUEST_MAP_ENV + `QuestLogPopupDetailFrame.ScrollFrame, QuestLogPopupDetailFrame.ShowMapButton = {}, {}
+    local contents = CreateFrame("Frame", nil, QuestMapFrame.QuestsFrame.ScrollFrame) QuestMapFrame.QuestsFrame.ScrollFrame.Contents = contents
+    local row = CreateFrame("Button", nil, contents) row.Checkbox, row.TagTexture = {}, {}`, { savedVariables: OWN_LOG_OFF });
+  bare.eval("QuestMapFrame:Show() QuestLogPopupDetailFrame:Show()");
+  expect(bare.eval("return #ns.errors"), "no search box, gear, count, label or a track box that is no frame: no errors").toBe(0);
+});
+
 // TEST-ONLY battlefield map, shaped like Blizzard_BattlefieldMap.xml: the tab (three tab textures and its label), the map
 // frame with its canvas and an ornate eight-piece BorderFrame holding a close button. Made when the game loads the part.
 const BATTLEFIELD_ENV = `
@@ -297,6 +402,7 @@ it("battlefield map: its border and tab in the theme once the game loads it, the
   expect(addon.eval("local c = BattlefieldMapFrame.BorderFrame.CloseButton return select('#', c:GetRegions()) > 1"), "the close button is the theme's").toBe(true);
   expect(addon.eval("local t = BattlefieldMapTab return { t.Left:GetAlpha(), t.Middle:GetAlpha(), t.Right:GetAlpha(), t.Text:GetAlpha() }"), "the tab's art is faded, its label kept").toEqual([0, 0, 0, 1]);
   expect([fills(addon, "BattlefieldMapTab"), alpha(addon, "BattlefieldMapFrame.ScrollContainer")], "the tab is a flat button (its hover clear at rest), the canvas the game's").toEqual([1, 1]);
+  expect(addon.eval("return { BattlefieldMapTab.Text.__textColor[1] == ns.Theme.RGB('text'), select(2, BattlefieldMapTab.Text:GetFont()) == ns.Theme.RoleSize('small') }"), "the tab's label is small and light, not the game's gold").toEqual([true, true]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("BattlefieldMapFrame:Hide() BattlefieldMapFrame:Show()");
   expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(painted);
@@ -526,9 +632,10 @@ it("queue status: the panel is a themed tooltip and the entries' rings are faded
   expect([addon.eval("return QueueStatusFrame.NineSlice:GetAlpha()"), fills(addon, "QueueStatusFrame")], "the game's border is faded and a panel painted").toEqual([0, 1]);
   // Queue entry n's spec ring, icon and separator alphas.
   const ring = (n) => addon.eval(`local e = QueueStatusFrame.statusEntriesPool.items[${n}] return { e.AssignedSpec.Border:GetAlpha(), e.AssignedSpec.Icon:GetAlpha(), e.EntrySeparator:GetAlpha() }`);
-  expect(ring(1), "the ring is faded, the icon and the line between entries kept").toEqual([0, 1, 1]);
+  expect(ring(1), "the ring is faded, the icon kept, the grey line between entries replaced by a divider").toEqual([0, 1, 0]);
+  expect(addon.eval("local e = QueueStatusFrame.statusEntriesPool.items[1] return ns.Theme.DividerParts(e.EntrySeparator) ~= nil"), "one pixel of divider along it").toBe(true);
   addon.eval("QueueStatusFrame:Update()");
-  expect(ring(2), "an entry the game makes on its next update is dressed too").toEqual([0, 1, 1]);
+  expect(ring(2), "an entry the game makes on its next update is dressed too").toEqual([0, 1, 0]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("QueueStatusFrame:Hide() QueueStatusFrame:Show() QueueStatusFrame:Update()");
   expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it and updating again paints nothing new").toBe(painted);

@@ -48,6 +48,19 @@ local function skinFlatButton(button)
   if isFrame(button) then T.Button(button) end
 end
 
+-- A button whose picture is a texture under `key` (an Icon, an Art, a Texture): a theme button that keeps it shown.
+local function keepArt(button, key)
+  if not isFrame(button) then return end
+  T.Button(button)
+  GW.ShowTexture(button[key])
+end
+
+-- A button whose picture is its normal and pushed textures (the quest panel's toggle): a theme button that keeps both.
+local function glyphButton(button)
+  GW.SkinGlyph(button)
+  GW.ShowTexture(type(button) == "table" and type(button.GetPushedTexture) == "function" and button:GetPushedTexture() or nil)
+end
+
 -- Empty lists (also used by Modules/WindowsTabs.lua) --------------------------------------------
 
 -- How far an empty list's note keeps from the list's sides (units).
@@ -99,11 +112,21 @@ local function overflowGlyph(button)
   vgGlyph[button]:SetText("...")
 end
 
+-- One nav bar button (home, the overflow, a crumb): flat, its label in the text colour, and its dropdown arrow (the
+-- MenuArrowButton, whose Art is the arrow) a theme button that keeps it.
+local function skinCrumb(button)
+  skinFlatButton(button)
+  if not isFrame(button) then return end
+  GW.SkinText(button.text, "label", "text")
+  GW.SkinGlyph(button.MenuArrowButton)
+  GW.ShowTexture(GW.Part(button, "MenuArrowButton.Art"))
+end
+
 -- The nav bar's buttons: home, overflow, and every crumb it holds now.
 local function skinNavButtons(nav)
   local overflow = nav.overflowButton or nav.overflow
-  for _, button in ipairs({ nav.homeButton or nav.home, overflow }) do skinFlatButton(button) end
-  for _, button in ipairs(nav.navList or {}) do skinFlatButton(button) end
+  for _, button in ipairs({ nav.homeButton or nav.home, overflow }) do skinCrumb(button) end
+  for _, button in ipairs(nav.navList or {}) do skinCrumb(button) end
   overflowGlyph(overflow)
 end
 
@@ -116,11 +139,11 @@ function GW.SkinNavBar(nav)
   skinNavButtons(nav)
 end
 
--- The map's quest log toggle (open and close buttons) as flat tiles keeping their arrows.
+-- The map's quest log toggle (open and close buttons) as theme buttons keeping their arrows.
 function GW.SkinSideToggle(toggle)
   if type(toggle) ~= "table" then return end
-  GW.SkinGlyphButton(toggle.OpenButton)
-  GW.SkinGlyphButton(toggle.CloseButton)
+  glyphButton(toggle.OpenButton)
+  glyphButton(toggle.CloseButton)
 end
 
 -- A map's border (world map, battlefield map): the window skin with only its edge and
@@ -142,13 +165,31 @@ local function watchMap(map)
   if type(nav) == "table" and type(nav.Refresh) == "function" then hooksecurefunc(nav, "Refresh", ns.Guard("hook Refresh", function() skinNavButtons(nav) end)) end
 end
 
--- The world map: its border, the fill behind the canvas, the overscroll art, nav bar and quest toggle.
+-- The map's floor dropdown: a child the game makes without a key (WorldMapFloorNavigationFrameTemplate), found by
+-- one of its mixin's methods.
+local function floorDropdown(map)
+  for _, child in ipairs({ map:GetChildren() }) do
+    if type(child.ShouldShowTrackingIconOnFloor) == "function" then return child end
+  end
+end
+
+-- The map's overlay buttons: the floor dropdown (its arrow kept), the tracking filter and the tracking pin (its disc
+-- and ring faded, its pin kept), the last two on a control tile each.
+local function skinMapButtons(map)
+  GW.SkinDropdown(floorDropdown(map))
+  GW.SkinPlate(map.WorldMapTrackingOptionsButton)
+  if type(map.WorldMapTrackingPinButton) == "table" then GW.FadeParts(map.WorldMapTrackingPinButton, { "Background", "Border" }) end
+  GW.SkinPlate(map.WorldMapTrackingPinButton)
+end
+
+-- The world map: its border, the fill behind the canvas, the overscroll art, nav bar, overlay buttons and quest toggle.
 -- The canvas (ScrollContainer) and the coordinate line Modules/Waypoints.lua adds stay as they are.
 function GW.SkinWorldMap(map)
   GW.SkinMapBorder(map.BorderFrame)
   T.Panel(map, { noBorder = true, noSheen = true })
   GW.FadeParts(map, { "OverscrollBG" })
   GW.SkinNavBar(map.NavBar)
+  skinMapButtons(map)
   GW.SkinSideToggle(map.SidePanelToggle)
   watchMap(map)
 end
@@ -169,12 +210,23 @@ local function ownQuestLog()
   return log ~= nil and log.frame ~= nil
 end
 
--- The quest list's panel: its ornate border, scroll background and edge faded, an inset panel.
+-- The quest list's tools: the search box (its magnifier kept), the settings gear on a control tile, and the quest count's
+-- box (QuestLogCount, a frame of search-box art) with its figure small and light.
+local function skinQuestTools(scroll)
+  if type(scroll) ~= "table" then return end
+  GW.SkinSearch(scroll.SearchBox)
+  GW.SkinPlate(scroll.SettingsDropdown)
+  if isFrame(_G.QuestLogCount) then T.EditBox(_G.QuestLogCount) end
+  GW.SkinText(_G.QuestLogQuestCount, "small", "text2")
+end
+
+-- The quest list's panel: its ornate border, scroll background and edge faded, an inset panel, its tools in the theme.
 local function skinQuestList(list)
   if not isFrame(list) then return end
   GW.FadeParts(list, { "BorderFrame" })
   if type(list.ScrollFrame) == "table" then GW.FadeParts(list.ScrollFrame, { "Background", "Edge" }) end
   T.Panel(list, { inset = true, noSheen = true })
+  skinQuestTools(list.ScrollFrame)
 end
 
 -- The details panel's buttons (abandon, share, track, back) flat.
@@ -183,13 +235,14 @@ local function skinDetailButtons(details)
   if type(details.BackFrame) == "table" then skinFlatButton(details.BackFrame.BackButton) end
 end
 
--- One quest's details: the art faded (the rewards' tile too), an inset panel, the buttons flat.
+-- One quest's details: the art faded (the rewards' tile too), an inset panel, the buttons flat, the Rewards heading light.
 local function skinQuestDetails(details)
   if not isFrame(details) then return end
   GW.FadeParts(details, GW.QUEST_DETAIL_ART)
   if type(details.RewardsFrameContainer) == "table" then GW.FadeParts(details.RewardsFrameContainer, { "RewardsFrame" }) end
   T.Panel(details, { inset = true, noSheen = true })
   skinDetailButtons(details)
+  GW.SkinText(GW.Part(details, "RewardsFrameContainer.RewardsFrame.Label"), "heading", "text")
 end
 
 -- A zone header row of the game's quest list: a button with its title (ButtonText) and a CollapseButton.
@@ -221,12 +274,36 @@ local function skinZoneHeader(header)
   headerGlyph(header)
 end
 
--- Every zone header the quest list holds now (the game makes and reuses them as the list is drawn).
+-- The pictures a quest title row keeps (its quest type tag, storyline mark and task icon): the rest of its art is faded.
+GW.TITLE_KEEP = { "TagTexture", "StorylineTexture", "TaskIcon" }
+
+-- Whether a row is a quest title row (a button with a track Checkbox and a TagTexture; a zone header has neither).
+local function isTitleRow(row)
+  return type(row) == "table" and type(row.Checkbox) == "table" and type(row.TagTexture) == "table"
+end
+
+-- One quest title row: a theme row (the game's yellow glow faded, the hover wash in its place) keeping its icons, and its
+-- track box (QuestLogTrackCheckboxTemplate, a frame whose CheckMark the game shows) a theme check box following that mark.
+local function skinTitleRow(row)
+  GW.DressRow(row, GW.TITLE_KEEP)
+  local box = row.Checkbox
+  if isFrame(box) then T.CheckBox(box, { mark = box.CheckMark }) end
+end
+
+-- The rule between quest groups (Contents.Separator.Divider, which the game shows as it lays the list out) as one pixel of `divider`.
+local function skinSeparator(contents)
+  local divider = GW.Part(contents, "Separator.Divider")
+  if divider then T.Divider(divider) end
+end
+
+-- Every zone header and quest title row the quest list holds now (the game makes and reuses them as the list is drawn),
+-- and the rule between groups.
 function GW.SkinQuestHeaders(contents)
   if type(contents) ~= "table" or not contents.GetChildren then return end
   for _, row in ipairs({ contents:GetChildren() }) do
-    if isZoneHeader(row) then skinZoneHeader(row) end
+    if isZoneHeader(row) then skinZoneHeader(row) elseif isTitleRow(row) then skinTitleRow(row) end
   end
+  skinSeparator(contents)
 end
 
 -- Keeps the headers dressed: now, each time the list shows, and after each redraw of the quest list. Watched once.
@@ -250,9 +327,18 @@ function GW.SkinQuestMap(panel)
   watchQuestHeaders(type(list) == "table" and list.ScrollFrame or QuestScrollFrame)
 end
 
--- The quest details window (the game's pop-out of one quest): the window skin, when Vanguard's log is off.
+-- The pop-out's text area on an inset, and its Show Map button keeping its map glyph with a light label.
+local function skinPopupParts(frame)
+  if isFrame(frame.ScrollFrame) then T.Panel(frame.ScrollFrame, { inset = true, noSheen = true }) end
+  keepArt(frame.ShowMapButton, "Texture")
+  GW.SkinText(GW.Part(frame, "ShowMapButton.Text"), "label", "text")
+end
+
+-- The quest details window (the game's pop-out of one quest): the window skin and its parts, when Vanguard's log is off.
 function GW.SkinQuestPopup(frame)
-  if not ownQuestLog() then GW.Skin(frame) end
+  if ownQuestLog() then return end
+  GW.Skin(frame)
+  skinPopupParts(frame)
 end
 
 GW.AddButtons("QuestLogPopupDetailFrame", { "QuestLogPopupDetailFrameAbandonButton", "QuestLogPopupDetailFrameShareButton", "QuestLogPopupDetailFrameTrackButton" })
@@ -262,10 +348,11 @@ GW.Add("map", "framed", { "QuestLogPopupDetailFrame" }, GW.SkinQuestPopup)
 -- Battlefield map -----------------------------------------------------------------------------
 
 -- The battlefield map (loads on demand): its ornate border as the map border (an edge and shadow
--- only, as the border sits over the map), and its tab, the strip that moves it, as a flat button.
+-- only, as the border sits over the map), and its tab, the strip that moves it, as a flat button with a light label.
 function GW.SkinBattlefieldMap(map)
   GW.SkinMapBorder(map.BorderFrame)
   skinFlatButton(_G.BattlefieldMapTab)
+  GW.SkinText(GW.Part(_G, "BattlefieldMapTab.Text"), "small", "text")
 end
 
 GW.Add("map", "onDemand", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" }, GW.SkinBattlefieldMap)
@@ -408,13 +495,17 @@ GW.Add("map", "onDemand", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.S
 
 -- Queue status ---------------------------------------------------------------------------------
 
--- The queue entries showing now (read-only on the game's pool): the gold ring round each assigned spec's icon faded.
+-- One queue entry: the gold ring round its assigned spec's icon faded, the grey line under it one pixel of `divider`.
+local function skinQueueEntry(entry)
+  if type(entry.AssignedSpec) == "table" then GW.FadeParts(entry.AssignedSpec, { "Border" }) end
+  if type(entry.EntrySeparator) == "table" then T.Divider(entry.EntrySeparator) end
+end
+
+-- The queue entries showing now (read-only on the game's pool), each dressed.
 local function skinQueueEntries(frame)
   local pool = frame.statusEntriesPool
   if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
-  for entry in pool:EnumerateActive() do
-    if type(entry.AssignedSpec) == "table" then GW.FadeParts(entry.AssignedSpec, { "Border" }) end
-  end
+  for entry in pool:EnumerateActive() do skinQueueEntry(entry) end
 end
 
 -- The queue status panel (the group finder eye's tooltip-like window): a themed tooltip, and again for the entries
