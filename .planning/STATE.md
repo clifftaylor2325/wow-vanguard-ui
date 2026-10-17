@@ -4,16 +4,16 @@ current_phase: 5
 current_phase_name: Auction Post fix
 status: in_progress
 stopped_at: Phases 4 and 6 to 10 merged on 2026-10-12; Phase 5 waits on the /vg errors text, Phase 11 is cuttable, Phase 12 is launch readiness
-last_updated: "2026-10-17T05:30:00.000Z"
+last_updated: "2026-10-17T11:15:00.000Z"
 last_activity: 2026-10-17
-last_activity_desc: UI coherence phases 8.1 to 8.11 inserted in ROADMAP.md (docs/design/UI-COHERENCE.md)
+last_activity_desc: Phase 8.2 (check box primitive) merged in PR #397; UI coherence phases 8.1 to 8.11 in ROADMAP.md (docs/design/UI-COHERENCE.md)
 state_head: b77124c3da247c3022f0fc8b8910477ea8634a8f
 progress:
   total_phases: 23
   completed_phases: 9
   total_plans: 22
   completed_plans: 22
-  percent: 39
+  percent: 43
 ---
 
 # Project State
@@ -32,7 +32,7 @@ Plan: Phases 1 to 4 and 6 to 10 complete (see ROADMAP.md for the PR numbers)
 Status: Waiting on batch-1 in-game results (issue #284) for Phases 5 and 11
 Last activity: 2026-10-12 — Phases 4, 6, 7, 8, 9 and 10 merged and ticked
 
-Progress: [████░░░░░░] 39% (9 of 23 phases)
+Progress: [████░░░░░░] 43% (10 of 23 phases)
 
 ROADMAP.md is the source of truth for phase state; this file is refreshed when a phase is ticked (CLAUDE.md, Working method).
 

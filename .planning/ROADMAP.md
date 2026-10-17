@@ -39,7 +39,7 @@ UI polish (priority 3):
 UI coherence (priority 3, polish and consistency; INSERTED 2026-10-17 from Cliff's UI/UX review, spec in `docs/design/UI-COHERENCE.md`; in flight alongside, not phases: PR #393 pill controls (merged 2026-10-17), the consistency fixes on `work/ui-consistency`, the frame-coverage batches on `work/reskin-coverage-1` to `-3`, the research doc PR #394):
 
 - [ ] **Phase 8.1: Theme tokens and capsule kit** (INSERTED) - Every variant keeps the surface order, and pills, discs and badges are one theme primitive and one media set
-- [ ] **Phase 8.2: Check box primitive** (INSERTED) - No game check box art inside any window Vanguard owns
+- [x] **Phase 8.2: Check box primitive** (INSERTED) - No game check box art inside any window Vanguard owns
 - [ ] **Phase 8.3: One material per window** (INSERTED) - The inbox, the spellbook and talent pages and the character pane's stats are slate inside, and the material tiers are written down
 - [ ] **Phase 8.4: Control grid and button kinds** (INSERTED) - Every control on one grid, with secondary, primary and danger buttons
 - [ ] **Phase 8.5: Selection grammar and row press** (INSERTED) - "Selected" is said three ways and no other, and rows press like buttons
@@ -223,7 +223,7 @@ Plans:
 
 **Goal**: The game's gold-rimmed check boxes no longer show inside any window Vanguard owns or skins.
 **Owner**: the UI/UX design research thread (`work/checkbox`)
-**Depends on**: nothing; it merges when ready (PR #397, opened 2026-10-17), before G0, because its `Core/Theme.lua` region is one the consistency PR does not touch; the consistency PR brings `main` in once before it opens. Gate G1: on `main` before the coverage thread's batch 2 skins any check box; the call sites in a window belong to whichever PR lands second.
+**Depends on**: nothing; it merged as PR #397 on 2026-10-17, before G0, because its `Core/Theme.lua` region is one the consistency PR does not touch; the consistency PR brings `main` in once before it opens. Gate G1: on `main` before the coverage thread's batch 2 skins any check box; the call sites in a window belong to whichever PR lands second.
 **Requirements**: UI-11
 **Success Criteria** (what must be TRUE):
   1. `T.CheckBox(button)` paints a 16 px `inset` box with a 1 px `edge` and a 12 px `Check` glyph, follows the game's checked state by post-hooking `SetChecked`, has the hover, press, disabled and focus states of the state matrix, and keeps the game's parts faded by alpha (never hidden, no field stored on the game's frame).
@@ -233,7 +233,7 @@ Plans:
 **Size**: S.
 **Waits on [DECIDE]**: 8 (the mark style; the box and hook land first, the mark is a one-line constant).
 **Needs in-game check**: a check box in the friends and chat config windows, checked, unchecked and disabled.
-**Plans**: TBD
+**Plans**: done in PR #397 (merged 2026-10-17): `T.CheckBox`, `S.CheckBox`, the THEME.md tiers and state matrix, the raid tab, addon list and chat settings call sites; the other windows' call sites ride the coverage thread's batch 2.
 **UI hint**: yes
 
 ### Phase 8.3: One material per window (INSERTED)
@@ -464,7 +464,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Control states and panel depth | TBD | Complete | 2026-10-12 |
 | 8. Every window styled | TBD | Complete | 2026-10-12 |
 | 8.1 Theme tokens and capsule kit | 0/TBD | Not started | - |
-| 8.2 Check box primitive | 0/TBD | Not started | - |
+| 8.2 Check box primitive | 1/1 | Complete | 2026-10-17 |
 | 8.3 One material per window | 0/TBD | Not started | - |
 | 8.4 Control grid and button kinds | 0/TBD | Not started | - |
 | 8.5 Selection grammar and row press | 0/TBD | Not started | - |
