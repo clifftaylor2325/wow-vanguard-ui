@@ -852,3 +852,22 @@ it("a variant switch recolours text drawn before it: with the options window ope
   addon.slash("variant default");
   expect([tok(addon, "text").slice(0, 3), addon.eval("return { __hand:GetTextColor() }").slice(0, 3)], "back to the default; text coloured by hand is left alone").toEqual([[232 / 255, 234 / 255, 238 / 255], [0.5, 0.5, 0.5]]);
 });
+
+it("theme: a selected row's mark is a two-pixel rail and a fill from T.SELECT, made once, hidden when it loses the selection, and the one-line flip reaches it on refresh (DESIGN-PRINCIPLES 2.12)", () => {
+  const addon = loggedIn();
+  addon.eval('TEST_Row = CreateFrame("Button", nil, UIParent) TEST_Row:SetSize(160, 28) ns.Theme.SelectRow(TEST_Row, false)');
+  expect(addon.eval("return ns.Theme.SelectParts(TEST_Row) == nil"), "nothing is made for a row that was never selected").toBe(true);
+  addon.eval("ns.Theme.SelectRow(TEST_Row, true)");
+  // The mark's parts: { rail shown, fill shown, rail width, rail colour, fill colour, rail layer, fill layer, how many regions the row has }.
+  const parts = () => addon.eval(`local s = ns.Theme.SelectParts(TEST_Row)
+    return { s.rail:IsShown(), s.fill:IsShown(), s.rail:GetWidth(), s.rail.__vertexColor, s.fill.__vertexColor, s.rail:GetDrawLayer(), s.fill:GetDrawLayer(), select("#", TEST_Row:GetRegions()) }`);
+  let p = parts();
+  expect([p[0], p[1], p[2], p[5], p[6], p[7]], "shown: the rail two screen pixels wide on ARTWORK, the fill at the back, two regions").toEqual([true, true, addon.eval("return 2 * ns.Theme.Pixel(TEST_Row)"), "ARTWORK", "BACKGROUND", 2]);
+  expect([isTok(addon, p[3], "accent"), isTok(addon, p[4], "accent"), p[4][3]], "both in the accent, the fill at 0.14 (the 0.6.0 look, T.SELECT)").toEqual([true, true, 0.14]);
+  addon.eval("ns.Theme.SelectRow(TEST_Row, true) ns.Theme.SelectRow(TEST_Row, false)");
+  p = parts();
+  expect([p[0], p[1], p[7]], "selected again then not: hidden, still two regions").toEqual([false, false, 2]);
+  addon.eval('ns.Theme.SelectRow(TEST_Row, true) ns.Theme.SELECT.fill = { "raisedHover", 1 } ns.Theme.SELECT.railColor = "accentText" ns.Theme.Refresh()');
+  p = parts();
+  expect([isTok(addon, p[4], "raisedHover"), p[4][3], isTok(addon, p[3], "accentText")], "the recommended look ([DECIDE] 6.4) is one line in T.SELECT, and T.Refresh repaints a marked row").toEqual([true, 1, true]);
+});

@@ -161,3 +161,23 @@ it("motion: a disabled button's label goes to the disabled tier with no hover, a
   addon.eval("ns.Theme.DisabledLook(TEST_Press, false)");
   expect(isTok(addon, label(), "text"), "enabling one that wasn't disabled changes nothing").toBe(true);
 });
+
+// A row of Vanguard's own with the press look, its label 4 units in; returns nothing.
+const PRESS_ROW = `local r = CreateFrame("Button", "TEST_Row", UIParent) r:SetSize(160, 28)
+  r.text = r:CreateFontString(nil, "OVERLAY") r.text:SetPoint("LEFT", r, "LEFT", 4, 0) ns.Theme.PressRow(r)`;
+
+it("motion: a pressed row darkens by a 20 % shade under its label, which stays put; once per row, cleared when it hides (DESIGN-PRINCIPLES 1.7)", () => {
+  const addon = loggedIn(PRESS_ROW);
+  const overlay = addon.eval("local o = ns.Theme.PressOverlay(TEST_Row) return { o.__vertexColor, o:GetDrawLayer(), o:IsShown() }");
+  expect([isTok(addon, overlay[0], "shade"), overlay[0][3], overlay[1], overlay[2]], "a shade overlay at 0.2 on ARTWORK (T.PRESS_ROW), hidden at rest").toEqual([true, 0.2, "ARTWORK", false]);
+  // The press overlay's shown state and the label's anchor y.
+  const state = () => addon.eval("return { ns.Theme.PressOverlay(TEST_Row):IsShown(), TEST_Row.text.__points.LEFT.y }");
+  addon.eval('TEST_Row:GetScript("OnMouseDown")(TEST_Row)');
+  expect(state(), "mouse down: shown, and the label still").toEqual([true, 0]);
+  addon.eval('TEST_Row:GetScript("OnMouseUp")(TEST_Row)');
+  expect(state(), "mouse up: hidden").toEqual([false, 0]);
+  addon.eval('TEST_Row:GetScript("OnMouseDown")(TEST_Row) TEST_Row:Hide()');
+  expect(state()[0], "hiding a held row clears it").toBe(false);
+  addon.eval('TEST_Row:Show() local n = select("#", TEST_Row:GetRegions()) ns.Theme.PressRow(TEST_Row) __again = select("#", TEST_Row:GetRegions()) == n');
+  expect(addon.eval("return __again"), "a second PressRow adds nothing").toBe(true);
+});

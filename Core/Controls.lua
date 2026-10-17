@@ -18,9 +18,9 @@ local SWITCH_WIDTH = 36
 
 -- Shared parts -------------------------------------------------------------------------------
 
--- A full-width row button with a hover wash and the caption on the left.
+-- A full-width row button with a hover wash, the press look of a row, and the caption on the left.
 local function row(parent, caption, width)
-  local r = CreateFrame("Button", nil, parent)
+  local r = T.PressRow(CreateFrame("Button", nil, parent))
   r:SetSize(width or 400, ROW_HEIGHT)
   r.hover = r:CreateTexture(nil, "HIGHLIGHT")
   r.hover:SetTexture(T.WHITE)
@@ -249,9 +249,9 @@ function W.CloseMenu()
   if menu then menu:Hide() end
 end
 
--- One item in the menu: its text, a check on the current choice.
+-- One item in the menu: its text, a check on the current choice, the hover and press looks of a row.
 local function menuItem(i)
-  local b = CreateFrame("Button", nil, menu)
+  local b = T.PressRow(CreateFrame("Button", nil, menu))
   b:SetHeight(22)
   b:SetPoint("TOPLEFT", 1, -1 - (i - 1) * 22)
   b:SetPoint("TOPRIGHT", -1, -1 - (i - 1) * 22)

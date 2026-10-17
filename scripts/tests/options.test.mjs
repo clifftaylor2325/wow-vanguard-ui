@@ -39,7 +39,7 @@ it("options window: nav, search, controls, footer", () => {
   const addon = loggedIn(CLICK_LUA + "GetAddOnMetadata = function(_, key) return key == 'Version' and 'TEST-ONLY-9.9' or nil end");
   addon.eval('ns.Options.Show("general")');
   const nav = addon.eval(`local out = {}
-    for k, b in pairs(Vanguard_Options.nav) do out[k] = { icon = b.icon.__texture, rail = b.rail:IsShown(), text = b.text:GetText() } end
+    for k, b in pairs(Vanguard_Options.nav) do local s = ns.Theme.SelectParts(b) out[k] = { icon = b.icon.__texture, rail = s ~= nil and s.rail:IsShown(), text = b.text:GetText() } end
     return out`);
   expect(/Icons\\NavGeneral$/.test(nav.general.icon) && /Icons\\NavHealing$/.test(nav.healing.icon), "every nav entry has its icon").toBeTruthy();
   expect(nav.general.rail === true && nav.raid.rail === false, "the current page gets the accent rail").toBeTruthy();

@@ -426,16 +426,12 @@ local function addFooter(f)
   f.notice:SetText("Some changes need a reload")
 end
 
--- One nav entry (h tall): icon and title; the active one gets an accent rail and wash.
+-- One nav entry (h tall): icon and title, with the hover and press looks of a row; the active one
+-- gets the theme's selection mark (T.SelectRow, in markNav).
 local function navItem(nav, y, h)
-  local b = CreateFrame("Button", nil, nav)
+  local b = T.PressRow(CreateFrame("Button", nil, nav))
   b:SetSize(NAV_WIDTH - 2, h)
   b:SetPoint("TOPLEFT", 1, -y)
-  b.wash, b.rail = W.Flat(b, "BACKGROUND", "accent"), W.Flat(b, "ARTWORK", "accent")
-  b.wash:SetAllPoints()
-  b.rail:SetPoint("TOPLEFT")
-  b.rail:SetPoint("BOTTOMLEFT")
-  b.rail:SetWidth(2)
   W.Flat(b, "HIGHLIGHT", "hover"):SetAllPoints()
   return b
 end
@@ -683,15 +679,13 @@ function O.Refresh()
   if window then window.profile:Refresh() window.reload:Refresh() O.MarkChanged() end
 end
 
--- Marks the current page's nav entry (accent rail, wash, text and icon) and dims pages the search misses.
+-- Marks the current page's nav entry (the selection mark, its text and icon) and dims pages the search misses.
 local function markNav(key)
   for k, b in pairs(window.nav) do
     local on, hit = k == key, not O.matches or O.matched[k]
-    b.rail:SetShown(on)
-    b.wash:SetShown(on)
-    b.wash:SetAlpha(0.14)
+    T.SelectRow(b, on)
     T.Color(b.text, on and "text" or "text2")
-    T.Tint(b.icon, on and "accent" or "text2")
+    T.Tint(b.icon, on and T.SELECT.icon or "text2")
     b:SetAlpha(hit and 1 or 0.35)
   end
 end

@@ -729,17 +729,15 @@ function AH.PickEntry(key)
   AH.PaintShop()
 end
 
--- A pane row: the entry's name and count, marked (accent edge and wash) when it's the one shown.
+-- A pane row: the entry's name and count, with the theme's selection mark when it's the one shown
+-- (the name keeps its colour: the mark says it).
 local function paintPaneRow(r, e)
   r:SetShown(e ~= nil)
   r.entry = e
   if not e then return end
-  local on = e.key == AH.ListKey()
   r.name:SetText(e.name)
   r.count:SetText(e.count > 0 and tostring(e.count) or "")
-  T.Color(r.name, on and "accentText" or "text")
-  r.mark:SetShown(on)
-  r.wash:SetShown(on)
+  T.SelectRow(r, e.key == AH.ListKey())
 end
 
 -- Which actions work now: on a list all six; on Recent new, import, copy, export and delete (as
@@ -776,11 +774,10 @@ local function scrollPane(p, delta)
   AH.PaintPane()
 end
 
--- Pane row i: a click shows its entry; its name on the left, its count on the right, and the mark.
+-- Pane row i: a click shows its entry; its name on the left, its count on the right.
 local function paneRow(p, i)
   local r = AH.Row(p, i, AH.PANE_ROWS_Y, function(self) if self.entry then AH.PickEntry(self.entry.key) end end)
-  AH.KeyMarks(r)
-  r.name = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
+  r.name = T.Text(r:CreateFontString(nil, "OVERLAY"), "label", "text")
   r.name:SetPoint("LEFT", 6, 0)
   r.name:SetPoint("RIGHT", -40, 0)
   r.name:SetJustifyH("LEFT")

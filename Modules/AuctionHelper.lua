@@ -120,9 +120,9 @@ function AH.RowParts(r)
   r.price, r.qty = rowText(r, "number", "gold", -2), rowText(r, "small", "text2", -78)
 end
 
--- Result row i of a card, AH.ROW_H tall from y, with a hover wash; it takes both mouse buttons.
+-- Result row i of a card, AH.ROW_H tall from y, with a hover wash and the press look of a row; it takes both mouse buttons.
 function AH.Row(c, i, y, onClick)
-  local r = CreateFrame("Button", nil, c)
+  local r = T.PressRow(CreateFrame("Button", nil, c))
   r:SetHeight(AH.ROW_H)
   r:SetPoint("TOPLEFT", 0, y - (i - 1) * AH.ROW_H)
   r:SetPoint("TOPRIGHT", 0, y - (i - 1) * AH.ROW_H)

@@ -1124,14 +1124,75 @@ end
 -- A themed button's press overlay, or nil for a button T.Button never painted.
 function T.PressOverlay(button) return pressOf[button] and pressOf[button].overlay end
 
--- Shows or hides a button's press look; only an enabled button shows it.
+-- Shows or hides a button's press look; only an enabled button shows it. A row (T.PressRow) keeps its label still.
 function T.PressButton(button, down)
   local s = pressOf[button]
   if not s then return end
   local on = down == true and (not button.IsEnabled or button:IsEnabled())
   if on == s.overlay:IsShown() then return end
   s.overlay:SetShown(on)
-  dropLabel(button, s, on)
+  if not s.row then dropLabel(button, s, on) end
+end
+
+-- How a pressed see-through row looks (a nav entry, a list or menu row, an options row): a shade
+-- overlay at T.PRESS_ROW[2] across it while the mouse is held, under its icon and label, at once.
+T.PRESS_ROW = { "shade", 0.2 }
+
+-- Gives a row (a Button of Vanguard's own) the press look: the overlay on ARTWORK, above a selection
+-- mark and below the row's icon and label, hooks on the mouse, and cleared when the row hides (a row
+-- hidden mid-press comes back at rest). Once per row; T.PressButton shows and hides it.
+function T.PressRow(button)
+  if pressOf[button] then return button end
+  local t = T.Tint(solid(button, "ARTWORK", 1, "fill"), T.PRESS_ROW[1], T.PRESS_ROW[2])
+  t:SetAllPoints()
+  t:Hide()
+  pressOf[button] = { overlay = t, row = true }
+  button:HookScript("OnMouseDown", ns.Guard("row press", function(b) T.PressButton(b, true) end))
+  button:HookScript("OnMouseUp", ns.Guard("row press", function(b) T.PressButton(b, false) end))
+  button:HookScript("OnHide", ns.Guard("row press", function(b) T.PressButton(b, false) end))
+  return button
+end
+
+-- How a selected row is marked (a nav entry, a list entry: the "navigate" case of the one selection
+-- grammar, docs/design/DESIGN-PRINCIPLES.md 1.7 and 2.12): a rail `rail` screen pixels wide along the
+-- row's left edge in `railColor`, a fill { token, alpha } across the row, and `icon`, the colour a row
+-- gives its icon while selected. The 0.6.0 look; [DECIDE] 6.4 there asks whether it becomes the
+-- recommended one, fill = { "raisedHover", 1 } with icon = "text": one line here.
+T.SELECT = { rail = 2, railColor = "accent", fill = { "accent", 0.14 }, icon = "accent" }
+-- Each row's selection mark (weak): { rail = texture, fill = texture }.
+local selectOf = setmetatable({}, { __mode = "k" })
+
+-- A row's selection mark parts, { rail, fill }, or nil before it was ever selected.
+function T.SelectParts(row) return selectOf[row] end
+
+-- Makes a row's selection mark, hidden: the fill at the back of the row, the rail on ARTWORK above it.
+local function selectParts(row)
+  local s = { rail = solid(row, "ARTWORK", nil, "fill"), fill = solid(row, "BACKGROUND", nil, "fill") }
+  s.rail:SetPoint("TOPLEFT")
+  s.rail:SetPoint("BOTTOMLEFT")
+  s.fill:SetAllPoints()
+  s.rail:Hide()
+  s.fill:Hide()
+  selectOf[row] = s
+  return s
+end
+
+-- Colours and sizes a row's selection mark from T.SELECT (the rail in whole screen pixels).
+local function paintSelect(row, s)
+  s.rail:SetWidth(T.SELECT.rail * T.Pixel(row))
+  T.Tint(s.rail, T.SELECT.railColor)
+  T.Tint(s.fill, T.SELECT.fill[1], T.SELECT.fill[2])
+end
+
+-- Shows (or hides) a row's selection mark (T.SELECT), made on first use and painted each time (and
+-- again by T.Refresh); a row never selected gets nothing.
+function T.SelectRow(row, on)
+  local s = selectOf[row]
+  if not s and not on then return end
+  s = s or selectParts(row)
+  paintSelect(row, s)
+  s.rail:SetShown(on == true)
+  s.fill:SetShown(on == true)
 end
 
 -- Each disabled themed button's label colour from before (weak), given back when it's enabled.
@@ -1695,10 +1756,11 @@ function T.OnChanged(fn)
   listeners[#listeners + 1] = fn
 end
 
--- Repaints the crests and the ornaments.
+-- Repaints the crests, the ornaments and the rows' selection marks.
 local function repaintArt()
   for t in pairs(crests) do T.PaintCrest(t) end
   for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
+  for row, s in pairs(selectOf) do paintSelect(row, s) end
 end
 
 -- Repaints every painted frame, re-fonts styled text and tells the listeners.

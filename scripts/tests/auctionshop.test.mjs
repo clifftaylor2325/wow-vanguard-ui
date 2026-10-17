@@ -156,7 +156,7 @@ it("shopping lists: the pane picks or makes one, + Add adds, and the caps hold",
   addon.click("Vanguard_TextDialog.primary");
   expect([choices(addon), heading(addon), actions(addon)], "made and picked, empty").toEqual([["Shopping", "TEST-ONLY B", "Deals", "Upgrades"], ["TEST-ONLY B", "+ Add takes an item link, an item ID or a name."], ["New", "Rename", "Copy", "Delete", "Import", "Export"]]);
   // Pane row i: [name, count, marked as the one shown].
-  const paneRow = (i) => addon.eval(`local r = ${HELPER}.pane.rows[${i}] return { r.name:GetText(), r.count:GetText(), r.mark:IsShown() }`);
+  const paneRow = (i) => addon.eval(`local r, s = ${HELPER}.pane.rows[${i}] s = ns.Theme.SelectParts(r) return { r.name:GetText(), r.count:GetText(), s ~= nil and s.rail:IsShown() }`);
   expect([paneRow(1), paneRow(2)], "each list with its count; the one shown marked").toEqual([["Shopping", "1", false], ["TEST-ONLY B", "", true]]);
   addon.click(`${HELPER}.pane.rows[1]`);
   expect([shopRow(addon, 1)[1], paneRow(1)[2], heading(addon)], "picked back by a click on its row").toEqual(["Strange Dust", true, ["Shopping", ""]]);
