@@ -9,7 +9,6 @@ local ADDON, ns = ...
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgBack = ns.FrameState("vgBack")
 local vgChecked = ns.FrameState("vgChecked")
-local vgExtraButtons = ns.FrameState("vgExtraButtons")
 local vgQuickButtons = ns.FrameState("vgQuickButtons")
 local vgTabWatched = ns.FrameState("vgTabWatched")
 
@@ -38,9 +37,14 @@ local function fadeAll(p)
   if p.SetAlpha then p:SetAlpha(0) end
 end
 
--- A section heading inside a window (not its title) in the heading role, light text.
-local function heading(p)
-  if p.SetFont then T.Text(p, "heading", "text") end
+-- A field label inside a window (the text beside a control, which the game draws in gold) in the label role, light text.
+local function label(p)
+  GW.SkinText(p, "label", "text")
+end
+
+-- A hint or placeholder (a mark beside a box, a "nothing here" line) in the label role, secondary text.
+local function hint(p)
+  GW.SkinText(p, "label", "text2")
 end
 
 -- A game tab's selected state: the tab's raised look follows the game's SelectableButton calls.
@@ -72,9 +76,33 @@ local function close(p, frame)
   GW.DressClose(frame, p)
 end
 
--- A divider line (the game's texture or frame of divider art) as one pixel of `divider`.
+-- The frame's regions and child frames, as a set.
+local function members(frame)
+  local set = {}
+  for _, r in ipairs({ frame:GetRegions() }) do set[r] = true end
+  for _, c in ipairs({ frame:GetChildren() }) do set[c] = true end
+  return set
+end
+
+-- Runs fn(frame) on a layout frame (the game's ResizeLayoutFrame sizes itself from every child region and frame) and
+-- marks the pieces fn added to it ignoreInLayout, so Layout() leaves them out.
+local function inLayout(frame, fn)
+  local before = members(frame)
+  fn(frame)
+  for piece in pairs(members(frame)) do
+    if not before[piece] then piece.ignoreInLayout = true end
+  end
+end
+
+-- An inset panel behind a part of a layout frame (a scrolling well), its pieces kept out of the layout.
+local function layoutInset(p)
+  inLayout(p, inset)
+end
+
+-- A divider line as one pixel of `divider`; the line is drawn on the frame the divider texture is on, which may be a
+-- layout frame, so what it adds stays out of that layout.
 local function divider(p)
-  T.Divider(p)
+  if type(p.GetParent) == "function" and type(p:GetParent()) == "table" then inLayout(p:GetParent(), function() T.Divider(p) end) else T.Divider(p) end
 end
 
 -- The divider textures among a frame's regions (the game draws them with no key: an atlas whose name ends in
@@ -83,7 +111,7 @@ local function dividersIn(frame)
   if type(frame) ~= "table" or not frame.GetRegions then return end
   for _, region in ipairs({ frame:GetRegions() }) do
     local atlas = region.GetAtlas and region:GetAtlas()
-    if type(atlas) == "string" and atlas:find("Divider$") then T.Divider(region) end
+    if type(atlas) == "string" and atlas:find("Divider$") then divider(region) end
   end
 end
 
@@ -91,8 +119,8 @@ end
 -- step is given the part and the window).
 local STEPS = {
   { "art", fadeAll }, { "fade", fadeRegions }, { "close", close }, { "buttons", T.Button },
-  { "edits", T.EditBox }, { "searches", GW.SkinSearch }, { "tabs", skinTab }, { "insets", inset },
-  { "titles", GW.SkinTitle }, { "headings", heading }, { "sections", GW.SkinSection },
+  { "edits", T.EditBox }, { "searches", GW.SkinSearch }, { "tabs", skinTab }, { "insets", inset }, { "layoutInsets", layoutInset },
+  { "titles", GW.SkinTitle }, { "labels", label }, { "hints", hint }, { "sections", GW.SkinSection },
   { "bars", T.ScrollBar }, { "dropdowns", GW.SkinDropdown }, { "checks", GW.SkinCheck }, { "radios", GW.SkinRadio },
   { "sliders", T.Slider }, { "dividers", divider }, { "plates", GW.SkinPlate }, { "keep", restore },
 }
@@ -107,24 +135,11 @@ local function dress(frame, spec)
   end
 end
 
--- The frame's regions and child frames, as a set.
-local function members(frame)
-  local set = {}
-  for _, r in ipairs({ frame:GetRegions() }) do set[r] = true end
-  for _, c in ipairs({ frame:GetChildren() }) do set[c] = true end
-  return set
-end
-
 -- Paints the flat panel with a shadow. On one of the game's layout frames (spec.layout: Edit
 -- Mode's windows resize themselves from every child region, and the shadow reaches past the
--- edge) the pieces the panel adds are marked ignoreInLayout, so Layout() leaves them out.
+-- edge) the pieces the panel adds stay out of the layout.
 local function paint(frame, spec)
-  local before = spec.layout and members(frame)
-  T.Panel(frame, { shadow = true })
-  if not before then return end
-  for piece in pairs(members(frame)) do
-    if not before[piece] then piece.ignoreInLayout = true end
-  end
+  if spec.layout then inLayout(frame, function(f) T.Panel(f, { shadow = true }) end) else T.Panel(frame, { shadow = true }) end
 end
 
 -- Builds a skin from a spec: the frame's own textures faded, a flat panel with a shadow
@@ -373,17 +388,35 @@ GW.Add("system", "framed", { "NamePlatesTutorial" }, GW.SkinNamePlatesTutorial)
 
 -- Edit Mode windows ---------------------------------------------------------------------------
 
--- Edit Mode's main window (a ResizeLayoutFrame): Border faded, the title and layout label in the
--- theme font, the close and the Save and Revert buttons themed. Vanguard's note under it
--- (Core/Movers.lua) is its own child frame and is left as it is.
-GW.SkinEditMode = skinner({
-  layout = true, art = { "Border" }, titles = { "Title" }, headings = { "LayoutLabel" }, close = { "CloseButton" },
-  buttons = { "SaveChangesButton", "RevertAllChangesButton" },
-})
+-- The account settings' section titles (the Frames, Combat and Misc groups), under the options container's scroll child.
+local EDIT_SECTIONS = "AccountSettings.SettingsContainer.ScrollChild.AdvancedOptionsContainer."
 
--- The other Edit Mode dialogs: Border faded, the title in the theme font, their name box and buttons themed.
+-- Edit Mode's main window (a ResizeLayoutFrame): Border faded, the title in the theme font, the layout label light,
+-- the layout dropdown, the close and the Save and Revert buttons themed, the grid spacing slider, the options well
+-- (its ring faded, an inset panel kept out of the layout, its scroll bar), the section titles as section heads and
+-- the line over the expander. Vanguard's note under it (Core/Movers.lua) is its own child frame and is left as it is.
+local editMode = skinner({
+  layout = true, art = { "Border", "AccountSettings.SettingsContainer.BorderArt" }, titles = { "Title" }, labels = { "LayoutLabel" },
+  close = { "CloseButton" }, buttons = { "SaveChangesButton", "RevertAllChangesButton" }, dropdowns = { "LayoutDropdown" },
+  sliders = { "GridSpacingSlider.Slider" }, layoutInsets = { "AccountSettings.SettingsContainer" },
+  bars = { "AccountSettings.SettingsContainer.ScrollBar" }, dividers = { "AccountSettings.Expander.Divider" },
+  sections = { EDIT_SECTIONS .. "FramesTitle.Title", EDIT_SECTIONS .. "CombatTitle.Title", EDIT_SECTIONS .. "MiscTitle.Title" },
+})
+-- How many frames deep inside Edit Mode's window its check buttons are looked for (the account settings' rows keep
+-- theirs seven down).
+GW.EDIT_CHECK_DEPTH = 7
+-- Skins Edit Mode's window (see editMode), then every check button in it: the grid and snap switches and the
+-- account settings' rows.
+function GW.SkinEditMode(frame)
+  editMode(frame)
+  GW.DressChecks(frame, GW.EDIT_CHECK_DEPTH)
+end
+
+-- The other Edit Mode dialogs: Border faded, the title in the theme font, their field labels light, their name box,
+-- character-specific check box and buttons themed, and the import box (its ring faded, an inset panel, its scroll bar).
 GW.SkinEditDialog = skinner({
-  art = { "Border" }, titles = { "Title" }, edits = { "LayoutNameEditBox" },
+  art = { "Border" }, titles = { "Title" }, labels = { "EditBoxLabel", "NameEditBoxLabel" }, edits = { "LayoutNameEditBox" },
+  checks = { "CharacterSpecificLayoutCheckButton.Button" }, fade = { "ImportBox" }, insets = { "ImportBox" }, bars = { "ImportBox.ScrollBar" },
   buttons = { "AcceptButton", "CancelButton", "SaveAndProceedButton", "ProceedButton" },
 })
 
@@ -396,15 +429,33 @@ local function dressExtraButtons(dialog)
   end
 end
 
--- A system's settings dialog (also a ResizeLayoutFrame): Border faded, title and close button.
-local editSettings = skinner({ layout = true, art = { "Border" }, titles = { "Title" }, close = { "CloseButton" } })
--- The dialog's skin, and its buttons, again whenever the game rebuilds the extra ones (UpdateExtraButtons).
+-- One setting of a system's settings dialog (pooled: a check box, a dropdown or a slider with steppers, each under
+-- its key) in the theme; a part the setting lacks is skipped.
+local function dressSetting(setting)
+  GW.SkinCheck(setting.Button)
+  GW.SkinDropdown(setting.Dropdown)
+  if type(setting.Slider) == "table" then T.Slider(setting.Slider) end
+end
+
+-- The settings the dialog shows now in the theme (the game takes them from pools, so this runs after each UpdateSettings).
+local function dressSettings(dialog)
+  local box = dialog.Settings
+  if type(box) ~= "table" or not box.GetChildren then return end
+  for _, setting in ipairs({ box:GetChildren() }) do dressSetting(setting) end
+end
+
+-- A system's settings dialog (also a ResizeLayoutFrame): Border faded, title and close button, the line between
+-- Revert and the extra buttons.
+local editSettings = skinner({
+  layout = true, art = { "Border" }, titles = { "Title" }, close = { "CloseButton" }, dividers = { "Buttons.Divider" },
+})
+-- The dialog's skin, its settings and its buttons, again whenever the game rebuilds them (UpdateSettings, UpdateExtraButtons).
 function GW.SkinEditSettings(dialog)
   editSettings(dialog)
+  dressSettings(dialog)
   dressExtraButtons(dialog)
-  if vgExtraButtons[dialog] or type(dialog.UpdateExtraButtons) ~= "function" or type(hooksecurefunc) ~= "function" then return end
-  vgExtraButtons[dialog] = true
-  hooksecurefunc(dialog, "UpdateExtraButtons", ns.Guard("hook UpdateExtraButtons", dressExtraButtons))
+  GW.HookAfter(dialog, "UpdateSettings", dressSettings)
+  GW.HookAfter(dialog, "UpdateExtraButtons", dressExtraButtons)
 end
 
 GW.Add("system", "framed", { "EditModeManagerFrame" }, GW.SkinEditMode)
@@ -416,23 +467,71 @@ GW.Add("system", "framed", {
 -- Keybinding, Cooldown Manager settings, click bindings ----------------------------------------
 
 -- The quick keybind banner: its dialog border and header plate faded (its white texts kept), a panel
--- behind it, its three push buttons and the header title themed. The banner is a protected frame, so
--- only textures and font strings are touched, and not in combat (it waits until combat ends).
+-- behind it, its three push buttons, its character-specific check box and the header title themed. The banner
+-- is a protected frame, so only textures and font strings are touched, and not in combat (it waits until combat ends).
 local quickKeybind = skinner({
   art = { "BG" }, fade = { "Header" }, titles = { "Header.Text" }, buttons = { "DefaultsButton", "CancelButton", "OkayButton" },
+  checks = { "UseCharacterBindingsButton" },
 })
 -- Skins the banner now, or right after combat.
 function GW.SkinQuickKeybind(frame)
   ns.OutOfCombat(function() quickKeybind(frame) end, "WindowsSystem.QuickKeybind")
 end
 
--- The Cooldown Manager's settings window: the window skin and its search box (its side tabs are the tabs stream's).
-GW.SkinCooldownSettings = withWindowSkin({ edits = { "SearchBox" } })
--- The click-casting window (the game's own binding list): the window skin, its three buttons, the list's backdrop.
-GW.SkinClickBinding = withWindowSkin({
-  buttons = { "SaveButton", "AddBindingButton", "ResetButton" },
-  fade = { "ScrollBoxBackground.NineSlice" }, insets = { "ScrollBoxBackground" },
+-- The Cooldown Manager's settings window: the window skin, its search box (magnifier kept), scroll bar, layout
+-- dropdown, gear dropdown on a control tile and Revert button (its side tabs are the tabs stream's).
+local cooldownSettings = withWindowSkin({
+  searches = { "SearchBox" }, bars = { "CooldownScroll.ScrollBar" }, dropdowns = { "LayoutDropdown" },
+  plates = { "SettingsDropdown" }, buttons = { "UndoButton" },
 })
+
+-- The header bar of each category the window shows (the game pools the category frames and fills them again in
+-- RefreshLayout) as a theme button.
+local function cooldownHeaders(window)
+  local content = part(window, "CooldownScroll.Content")
+  if not content then return end
+  for _, category in ipairs({ content:GetChildren() }) do GW.SkinButton(category.Header) end
+end
+
+-- Skins the Cooldown Manager's settings window, and its category headers now and after each RefreshLayout.
+function GW.SkinCooldownSettings(window)
+  cooldownSettings(window)
+  cooldownHeaders(window)
+  GW.HookAfter(window, "RefreshLayout", cooldownHeaders)
+end
+
+-- What a click binding row keeps of the art the theme fades: its spell icon and the marks that say it is new or
+-- being bound, which are state.
+GW.BINDING_KEEP = { "Icon", "IconHighlight", "NewOutline", "EmptySlotIconHighlight" }
+
+-- A row of the click bindings (the game pools them): a theme row (its plate and gold hover glow faded for the
+-- washes), its delete button on a control tile with its red cross kept.
+local function bindingRow(row)
+  GW.DressRow(row, GW.BINDING_KEEP)
+  GW.SkinPlate(row.DeleteButton)
+end
+
+-- The tutorial card over the list (a small window of its own): the window skin, its picture kept.
+local function bindingTutorial(window)
+  local card = window.TutorialFrame
+  if type(card) ~= "table" or not card.GetRegions then return end
+  GW.Skin(card)
+  GW.ShowTexture(card.Tutorial)
+end
+
+-- The click-casting window (the game's own binding list): the window skin, its three buttons, the list's backdrop,
+-- the scroll bar, the mouseover cast box, key dropdown and its label.
+local clickBinding = withWindowSkin({
+  buttons = { "SaveButton", "AddBindingButton", "ResetButton" }, fade = { "ScrollBoxBackground.NineSlice" },
+  insets = { "ScrollBoxBackground" }, bars = { "ScrollBar" }, checks = { "EnableMouseoverCastCheckbox" },
+  dropdowns = { "MouseoverCastKeyDropdown" }, labels = { "MouseoverCastKeyDropdown.Label" },
+})
+-- Skins the click binding window (see clickBinding), its rows as the game takes them, and the tutorial card.
+function GW.SkinClickBinding(window)
+  clickBinding(window)
+  GW.WatchRows(window.ScrollBox, bindingRow)
+  bindingTutorial(window)
+end
 
 GW.Add("system", "framed", { "QuickKeybindFrame" }, GW.SkinQuickKeybind)
 GW.Add("system", "framed", { "CooldownViewerSettings" }, GW.SkinCooldownSettings)
@@ -441,12 +540,48 @@ GW.Add("system", "onDemand", "Blizzard_ClickBindingUI", { "ClickBindingFrame" },
 
 -- Help, report, splash, colour picker, death recap, combat log bar ---------------------------
 
+-- The report window's field labels, as parts of it (the reason's label, the details and screenshot texts).
+GW.REPORT_LABELS = {
+  "ReportingMajorCategoryDropdown.Label", "MinorReportDescription", "ScreenshotReportingFrame.ScreenshotDescription",
+  "ScreenshotReportingFrame.ScreenshotEmptyText",
+}
+
 -- The report window (a ResizeLayoutFrame, so its panel stays out of the layout): the inset plates
--- and watermark faded, Border faded, the title and close button, the Report and screenshot buttons.
-GW.SkinReport = skinner({
-  layout = true, art = { "Border" }, titles = { "TitleText" }, close = { "CloseButton" },
+-- and watermark faded, Border faded, the title and close button, the reason dropdown, the labels light, the
+-- comment box (its ring faded, an inset panel, its scroll bar), the Report and screenshot buttons.
+local reportFrame = skinner({
+  layout = true, art = { "Border" }, titles = { "TitleText" }, close = { "CloseButton" }, dropdowns = { "ReportingMajorCategoryDropdown" },
+  labels = GW.REPORT_LABELS, fade = { "Comment" }, insets = { "Comment" }, bars = { "Comment.ScrollBar" },
   buttons = { "ReportButton", "ScreenshotReportingFrame.TakeScreenshotButton" },
 })
+
+-- One minor-category button of the report window (a pooled check button that is a row of the list): a theme row, its
+-- selected look following the game's SetChecked (the choice is many-of-many).
+local function minorButton(button)
+  GW.DressRow(button)
+  T.SelectRow(button, button:GetChecked() == true)
+  GW.HookAfter(button, "SetChecked", function(b, on) T.SelectRow(b, on == true) end)
+end
+
+-- The minor-category buttons the window shows now, in the theme (the game pools them, and runs AnchorMinorCategory for each).
+local function minorButtons(frame)
+  local pool = frame.MinorCategoryButtonPool
+  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
+  for button in pool:EnumerateActive() do minorButton(button) end
+end
+
+-- Skins the report window (see reportFrame), and its minor-category buttons now and as the game anchors them.
+function GW.SkinReport(frame)
+  reportFrame(frame)
+  minorButtons(frame)
+  GW.HookAfter(frame, "AnchorMinorCategory", minorButtons)
+end
+
+-- The help window: the window skin and the ring round its browser (a well faded for an inset; the page is content).
+function GW.SkinHelp(frame)
+  GW.Skin(frame)
+  GW.InsetPanel(part(frame, "Browser.BrowserInset"))
+end
 
 -- The help ticket status: the frame's art faded except the ticket icon, a panel, and its button's backdrop faded.
 function GW.SkinTicketStatus(frame)
@@ -455,6 +590,7 @@ function GW.SkinTicketStatus(frame)
   T.Panel(frame, { shadow = true })
   local button = _G.TicketStatusFrameButton
   if type(button) == "table" and type(button.NineSlice) == "table" then fadeRegions(button.NineSlice) end
+  GW.SkinText(_G.TicketStatusTitleText, "small", "text")
 end
 
 -- The report-cheating dialog: the window skin, its comment box an inset panel, and its title (a named string).
@@ -480,17 +616,39 @@ function GW.SkinSplash(frame)
 end
 
 -- The colour picker: Border and header plate faded, a panel, the title, Cancel/Okay and the hex box
--- themed. The wheel, value and alpha bars and the swatches are untouched.
+-- themed, the # beside the box a quiet hint. The wheel, value and alpha bars and the swatches are untouched.
 GW.SkinColorPicker = skinner({
-  art = { "Border" }, fade = { "Header" }, titles = { "Header.Text" },
+  art = { "Border" }, fade = { "Header" }, titles = { "Header.Text" }, hints = { "Content.HexBox.Hash" },
   buttons = { "Footer.CancelButton", "Footer.OkayButton" }, edits = { "Content.HexBox" },
 })
--- The opacity slider window: Border faded, a panel (the slider is the game's).
-GW.SkinOpacity = skinner({ art = { "Border" } })
+
+-- The opacity slider's "+" and "-" (unnamed font strings among its regions) in the secondary text color.
+local function opacityMarks(slider)
+  for _, region in ipairs({ slider:GetRegions() }) do
+    if region.SetTextColor and region ~= _G.OpacityFrameSliderText then T.Color(region, "text2") end
+  end
+end
+
+-- The opacity slider window: Border faded, a panel, its (global) slider in the theme, its OPACITY label light and the
+-- two marks quiet.
+local opacityFrame = skinner({ art = { "Border" } })
+-- Skins the opacity window (see opacityFrame), then its slider and texts.
+function GW.SkinOpacity(frame)
+  opacityFrame(frame)
+  local slider = _G.OpacityFrameSlider
+  if type(slider) ~= "table" then return end
+  T.Slider(slider)
+  opacityMarks(slider)
+  GW.SkinText(_G.OpacityFrameSliderText, "label", "text")
+end
 
 -- The death recap window: its border pieces, background and divider faded (the rows keep the game's
--- look), a panel, the title, the X close button and the Close push button.
-GW.SkinDeathRecap = skinner({ titles = { "Title" }, close = { "CloseXButton" }, buttons = { "CloseButton" } })
+-- look), a panel, the title, the X close button and the Close push button, the list on an inset with its scroll
+-- bar, the divider line under the title and the "unavailable" message quiet.
+GW.SkinDeathRecap = skinner({
+  titles = { "Title" }, close = { "CloseXButton" }, buttons = { "CloseButton" }, insets = { "ScrollBox" },
+  bars = { "ScrollBar" }, dividers = { "Divider" }, hints = { "Unavailable" },
+})
 
 -- Themes the combat log bar's filter buttons (the game makes them as it needs them).
 local function dressQuickButtons()
@@ -501,11 +659,22 @@ local function dressQuickButtons()
   end
 end
 
--- The combat log's filter bar: its black strip faded, an inset panel, its filter buttons themed now
+-- The combat log bar's own parts: the additional filters button (a down arrow) as a theme arrow button, and the
+-- progress bar it shows while filtering in the theme's bar texture and the accent.
+local function dressLogParts()
+  GW.SkinArrow(_G.CombatLogQuickButtonFrame_CustomAdditionalFilterButton, "down")
+  local bar = _G.CombatLogQuickButtonFrame_CustomProgressBar
+  if type(bar) ~= "table" or not bar.SetStatusBarTexture then return end
+  T.StyleBar(bar)
+  T.BarColor(bar, "accent")
+end
+
+-- The combat log's filter bar: its black strip faded, an inset panel, its own parts, its filter buttons themed now
 -- and whenever the game shows or refreshes the bar or picks a filter (that is when it makes buttons).
 function GW.SkinCombatLogBar(frame)
   T.FadeRegions(frame)
   T.Panel(frame, { inset = true })
+  dressLogParts()
   dressQuickButtons()
   if vgQuickButtons[frame] or type(hooksecurefunc) ~= "function" then return end
   vgQuickButtons[frame] = true
@@ -513,7 +682,7 @@ function GW.SkinCombatLogBar(frame)
   if type(_G.Blizzard_CombatLog_QuickButton_OnClick) == "function" then hooksecurefunc("Blizzard_CombatLog_QuickButton_OnClick", ns.Guard("hook Blizzard_CombatLog_QuickButton_OnClick", dressQuickButtons)) end
 end
 
-GW.Add("system", "framed", { "HelpFrame" })
+GW.Add("system", "framed", { "HelpFrame" }, GW.SkinHelp)
 GW.Add("system", "framed", { "TicketStatusFrame" }, GW.SkinTicketStatus)
 GW.Add("system", "framed", { "ReportFrame" }, GW.SkinReport)
 GW.Add("system", "framed", { "ReportCheatingDialog" }, GW.SkinReportCheating)
