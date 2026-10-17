@@ -211,6 +211,7 @@ if Vanguard and Vanguard.RegisterSkin then
     S.CheckBox(MyFrame.Option)       -- a CheckButton as a 16 px box with a check mark
     S.Radio(MyFrame.Choice)          -- a radio CheckButton as a 16 px ring with a dot
     S.ArrowButton(MyFrame.Next, "right")
+    S.Slider(MyFrame.Volume)         -- a Slider (or MinimalSliderWithSteppers) as a pill track, quiet fill and round knob
     S.Divider(MyFrame.Rule)          -- a divider texture as one pixel of the divider colour
     S.Text(MyFrame.Title, "title")  -- text roles: title, heading, name, cell, label, number, small, tiny, world
     S.Color(MyFrame.Hint, "text2")  -- theme colors by name: text, text2, muted, accent, accentText, good, bad...
