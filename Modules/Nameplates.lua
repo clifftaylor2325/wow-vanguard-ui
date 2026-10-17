@@ -376,7 +376,7 @@ local function resourceBar(frame, keys)
 end
 
 -- The game's personal resource display in the plate look: each bar this client has. Safe to
--- run again; run on every show, as the game redraws the bars as your power changes.
+-- run again and cheap, so it runs on every show in case a client resets a bar's art between fights.
 function NP.SkinPersonalResources(frame)
   for _, keys in ipairs(NP.PRD_BARS) do
     local bar = resourceBar(frame, keys)

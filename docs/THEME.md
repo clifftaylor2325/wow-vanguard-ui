@@ -119,7 +119,7 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 | `small` | 10 (7 - 13) | Medium | - | Secondary lines: bar text, the info strip, hints, keybinds. At a pixel-perfect scale a point is a screen pixel, so no role but `badge` goes under 10 (#258). |
 | `tiny` | 10 (7 - 13) | Medium | - | The floor for raid tile text that shrinks with the tile. |
 | `badge` | 9 (6 - 12) | Medium | - | The only role under 10: a count or mark on a tiny badge (the error badge, the backpack's free-slot count). |
-| `world` | 11 (8 - 14) | SemiBold | OUTLINE | Text drawn in the world: nameplate names. |
+| `world` | 11 (8 - 14) | SemiBold | OUTLINE | Text drawn in the world: nameplate names, the floating pin's distance text. |
 | `barName` | 11 (8 - 14) | SemiBold | OUTLINE | Names over a bright bar (raid tiles). |
 | `barSmall` | 10 (7 - 13) | Medium | OUTLINE | Small text over a bar (raid tile status, the damage meter, the flight timer). |
 | `cooldown` | 14 (10 - 18) | SemiBold | OUTLINE | Cooldown numbers on action buttons, the Cooldown Manager and the Cooldown gaps row (that row has no fades or sounds). |
