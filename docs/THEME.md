@@ -200,7 +200,7 @@ Depth is said by the fill, the one-pixel `edge` border, the sheen, the bevel on 
 | Focus (keyboard) | `T.FocusRing`: a one-pixel `accentText` ring two pixels out, over a one-pixel `edge` gap | the same | none |
 | Locked (a slider that cannot change) | fill and caption `muted`; the tooltip says why | none | `muted` |
 
-The controls with a moving part (the switch's knob, the slider's thumb) keep this vocabulary on their own geometry. Two exceptions stand until Cliff decides: a window control's hover tile is the `accent` at 0.35 (`T.CONTROL_TILES.other`, [DECIDE] 6.12 in `docs/design/DESIGN-PRINCIPLES.md`), and a slot's accent edge brightens under the mouse (`T.SLOT_STATES`), which stays: on an action button the accent edge is the slot's border.
+The controls with a moving part (the switch's knob, the slider's thumb) keep this vocabulary on their own geometry. Two exceptions stand: a window control's hover tile is the `accent` at 0.35 (`T.CONTROL_TILES.other`) until Phase 8.5 makes it the `raisedHover` tile Cliff chose on 2026-10-17 ([DECIDE] 6.12 in `docs/design/DESIGN-PRINCIPLES.md`), and a slot's accent edge brightens under the mouse (`T.SLOT_STATES`), which stays: on an action button the accent edge is the slot's border.
 
 ## Game frame primitives
 

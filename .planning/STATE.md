@@ -4,9 +4,9 @@ current_phase: 5
 current_phase_name: Auction Post fix
 status: in_progress
 stopped_at: Phases 4 and 6 to 10 merged on 2026-10-12; Phase 5 waits on the /vg errors text, Phase 11 is cuttable, Phase 12 is launch readiness
-last_updated: "2026-10-17T11:15:00.000Z"
+last_updated: "2026-10-17T15:00:00.000Z"
 last_activity: 2026-10-17
-last_activity_desc: Phase 8.2 (check box primitive) merged in PR #397; UI coherence phases 8.1 to 8.11 in ROADMAP.md (docs/design/UI-COHERENCE.md)
+last_activity_desc: Cliff answered the UI coherence [DECIDE] list (the recommendation on every item); Phase 8.2 merged in PR #397; phases 8.1 to 8.11 in ROADMAP.md (docs/design/UI-COHERENCE.md)
 state_head: b77124c3da247c3022f0fc8b8910477ea8634a8f
 progress:
   total_phases: 23

@@ -30,9 +30,9 @@ DESIGN-PRINCIPLES.md §2 holds the element-by-element geometry. This section is 
 | Case | Look | Where |
 |---|---|---|
 | Choose one of few | `accent` fill, `void` text or knob | segments, the switch when on, a radio dot, the primary button |
-| Navigate | a 2 px `accent` rail on the row's left plus a `raisedHover` fill; text and icon unchanged in `text`; never an accent wash | options nav, AH lists, quest log and quest dialog lines, group board, any list row ([DECIDE] 4) |
-| Current tab | the attached tab: it takes its page's fill and has no border on the side that touches the page; unselected tabs are `inset` with `text2` labels, pulled 1 px off the page; no accent anywhere on a tab | `T.Tab` on all three game tab templates and Vanguard's own tabs ([DECIDE] 3) |
-| Many of many | the mark carries the accent, the box stays `inset` | check boxes ([DECIDE] 8) |
+| Navigate | a 2 px `accent` rail on the row's left plus a `raisedHover` fill; text and icon unchanged in `text`; never an accent wash | options nav, AH lists, quest log and quest dialog lines, group board, any list row ([DECIDE] 4a) |
+| Current tab | the attached tab: it takes its page's fill and has no border on the side that touches the page; unselected tabs are `inset` with `text2` labels, pulled 1 px off the page; no accent anywhere on a tab | `T.Tab` on all three game tab templates and Vanguard's own tabs ([DECIDE] 3a) |
+| Many of many | the mark carries the accent, the box stays `inset` | check boxes ([DECIDE] 8a) |
 | Current item in a menu | `accentText` plus the `Check` glyph at right 8 (a menu has no fill to carry it) | dropdown menus |
 
 ### 2.2 One yellow
@@ -61,7 +61,7 @@ A window holds cards, a card holds controls, a control holds no surface; never a
 | Table header row | 20, `small` `text2`, sentence case |
 | Control column | 200 wide, right inset 8 (`W.COLUMN`); slider track 132, gap 8, value slot 60 (`W.VALUE_SLOT`) |
 | Switch | 36x18 pill with a 14 px knob and a 2 px inset, as merged in PR #393 and approved in game on 2026-10-17; centred in the 20 px slot; no size change between states |
-| Slider | 8 px capsule track with a 1 px outline and a 12 px solid `white` thumb with a shade and a dark 1 px outline, as PR #395 draws them, centred in the 20 px slot; the fill colour is [DECIDE] 5 |
+| Slider | 8 px capsule track with a 1 px outline and a 12 px solid `white` thumb with a shade and a dark 1 px outline, as PR #395 draws them, centred in the 20 px slot; a `borderHi` fill ([DECIDE] 5a) |
 | Check box | 16, 1 px `edge`, 12 px `Check` glyph |
 | Badge | a capsule 14 high and at least 14 wide, `accent` fill, `void` text in `badge`, at most three characters (`99+`) |
 | Radii | 0 (square, the default), 4 (`T.CORNER_RADIUS`, the rounded toggle; edit boxes, check boxes and segment groups join `ROUNDED_KINDS`), full (pills, discs, thumbs, badges: a shape, so not part of the toggle) |
@@ -80,14 +80,14 @@ Every layout holds at Text size 130 % with a long caption: captions wrap left of
 | Disabled | no hover or press, text and icons `disabled` at full alpha (never fade a whole bordered control) | the same | `disabled` |
 | Focus | `T.FocusRing`; an edit box instead turns its border `accentText` while it has focus | the same | |
 
-The controls with a moving part keep this vocabulary on their own geometry: the switch's knob brightens on hover and drops 1 px on press while the track never changes (today's `accentDim` press fill goes); the slider thumb gets a 20 px `hover` wash disc on hover, 12 % while dragging. The window controls' hover tile becomes `raisedHover` so only close keeps a coloured tile ([DECIDE] 12). States are layers over an unchanged base, so they stack; only press moves anything, and only by one pixel. Escape closes every Vanguard window, dialog and menu; a click outside closes a menu.
+The controls with a moving part keep this vocabulary on their own geometry: the switch's knob brightens on hover and drops 1 px on press while the track never changes (today's `accentDim` press fill goes); the slider thumb gets a 20 px `hover` wash disc on hover, 12 % while dragging. The window controls' hover tile becomes `raisedHover` so only close keeps a coloured tile ([DECIDE] 12a). States are layers over an unchanged base, so they stack; only press moves anything, and only by one pixel. Escape closes every Vanguard window, dialog and menu; a click outside closes a menu.
 
 ### 2.6 One type pairing per place
 
 | Place | Role | Colour |
 |---|---|---|
 | Window title | `title` (15 SemiBold) | `text` |
-| Section header | `small`, upper-cased by a role flag, not by `:upper()` on the string | `muted` ([DECIDE] 6) |
+| Section header | `small`, upper-cased by a role flag, not by `:upper()` on the string | `muted` ([DECIDE] 6a) |
 | Column header | `small`, sentence case; the sorted column adds a 10 px arrow in `accentText`, its title stays | `text2` |
 | Caption | `label` | `text` |
 | Value | `number` | `text2` unless it carries meaning |
@@ -99,22 +99,26 @@ Captions are names (`Corners`, `Window ornaments`); the explanation and "(reload
 
 ### 2.7 Motion and alignment
 
-Hover 0.1 s in and 0.13 s out, a window opens in 0.13 s with the 4 px rise and closes in 0.1 s, 0.15 s is the cap in combat, and Reduce motion makes all of it instant. Menus and tooltips never animate. Dialogs open with `T.OpenWindow` like every other window. A knob or thumb may ease 0.1 s out of combat ([DECIDE] 7). Footer buttons: the primary rightmost at the window's padding (`T.SPACE.pad`, 16), the secondary 8 to its left, an escape or destructive action (Skip, Abandon, Goodbye) alone at the far left ([DECIDE] 10). Seven windows today put the footer at 12 (`Core/Dialog.lua:62-64` and its siblings) and the setup wizard at 16; the plan takes 16, the window padding THEME.md already prescribes, and moves the seven in the spacing sweep (Phase 8.9).
+Hover 0.1 s in and 0.13 s out, a window opens in 0.13 s with the 4 px rise and closes in 0.1 s, 0.15 s is the cap in combat, and Reduce motion makes all of it instant. Menus and tooltips never animate. Dialogs open with `T.OpenWindow` like every other window. A knob or thumb eases 0.1 s out of combat ([DECIDE] 7a). Footer buttons: the primary rightmost at the window's padding (`T.SPACE.pad`, 16), the secondary 8 to its left, an escape or destructive action (Skip, Abandon, Goodbye) alone at the far left ([DECIDE] 10a). Seven windows today put the footer at 12 (`Core/Dialog.lua:62-64` and its siblings) and the setup wizard at 16; the plan takes 16, the window padding THEME.md already prescribes, and moves the seven in the spacing sweep (Phase 8.9).
 
 ## 3. New names the phases add
 
 | Name | Kind | File | Value | Who |
 |---|---|---|---|---|
 | `T.CONTROL_H`, `T.BUTTON_H`, `T.ROW`, `T.SPACE`, `T.ALPHA`, `T.SCROLL`, `T.CREST`, `T.ROLES.zone` | constants | `Core/Theme.lua` | 20; 26; `{ height = 28, rail = 2, wash = 0.12 }`; `{ tight = 4, gap = 8, col = 12, pad = 16, section = 24 }`; `{ opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92 }`; `{ thumb = 4, rest = 0.5, lit = 1 }`; the crest sizes; a 13 px bold zone role that never takes the display font | consistency PR (on its branch) |
-| `ns.WindowTitle(frame, text, opts)`, `W.Row` with `SetSelected`, `W.SectionHeader(parent, text, opts)` | helpers | `Core/Chrome.lua` (new) and `Core/Widgets.lua` | every window title (`opts.align` keeps each window's alignment until [DECIDE] 1); the one place a selected row is drawn (rail plus wash today; [DECIDE] 4 flips it there); one header style with `collapsible` for the quest log and tracker | consistency PR |
+| `ns.WindowTitle(frame, text, opts)`, `W.Row` with `SetSelected`, `W.SectionHeader(parent, text, opts)` | helpers | `Core/Chrome.lua` (new) and `Core/Widgets.lua` | every window title (`opts.align` keeps each window's alignment, so game windows stay centred: [DECIDE] 1a); the one place a selected row is drawn (rail plus wash today; Phase 8.5 changes it there to the rail plus a lighter fill, [DECIDE] 4a); one header style with `collapsible` for the quest log and tracker | consistency PR |
 | `T.Capsule(frame, height, tier)` | primitive | `Core/Theme.lua` | #393's local `pillParts` and `placePill` moved into the theme and generalised (any height, any tier, a 1 px edge) | 8.1 |
 | capsule media | media | `scripts/lib/media-sources.mjs` | #393's `Pill`, `PillLine`, `Knob`, `KnobShade` re-checked so the baked outline lands on one screen pixel at 18, 14 and 12 px, re-baked where it does not; `Disc20Soft` for the slider thumb's hover wash; an `Up` glyph for the sort arrow; white RGB under alpha; a `media.test.mjs` case | 8.1 |
 | `T.CheckBox(button)` | primitive, exported by `Core/Skin.lua` | `Core/Theme.lua` | a 16 box with the `Check` glyph that follows `SetChecked` by post-hook; the game's parts faded, never hidden | 8.2 |
+| `T.Divider(texture)`, `T.ArrowButton(button, direction)`, `T.Radio(button)` and a static check look | primitives, exported by `Core/Skin.lua` | `Core/Theme.lua` (the game-frame primitives block) | one pixel of `divider` over the game's faded divider art; a `T.Button` with the `Down` glyph turned to its direction; a choose-one radio (`accent` fill, `void` knob) and a check look for a frame with no `SetChecked`, both following the game's state | D (`work/game-primitives`), now |
+| `T.Slider(slider)` | primitive | `Core/Theme.lua` | the game's sliders (`MinimalSliderWithSteppersTemplate`, the old `UI-SliderBar` slider) drawn like Vanguard's own (§2.4: the capsule track, the solid round thumb, the `borderHi` fill), steppers by `T.ArrowButton`; built on `T.Capsule`, so there is one slider look | D (`work/game-primitives`), after 8.1 |
+| `T.ScrollBar`'s branch for `UIPanelScrollFrameTemplate` | primitive branch | `Core/Theme.lua` | the old scroll bar on B's one thumb (`T.SCROLL`), its up and down buttons treated as B treats the arrows of the bars it restyles | D (`work/game-primitives`), after G0 |
 | `W.COLUMN`, `W.VALUE_SLOT` | constants | `Core/Controls.lua` | 200 and 60, replacing the literals 180, 140, 52 and −66 | 8.4 |
 | `opts.primary`, `opts.danger` on `T.Button` | options | `Core/Theme.lua` | accent fill and `void` label with no bevel showing through; `bad` label | 8.4 |
 | `opts.open` on `T.Panel` | option | `Core/Theme.lua` | `"TOP"`, `"BOTTOM"`, `"LEFT"` or `"RIGHT"`: that edge draws no line and no sheen | 8.5 |
 | `T.PressRow` | helper | `Core/Theme.lua` | the row press overlay (`shade` 20 %), beside `T.PressButton` | 8.5 |
 | `T.SelectRow(frame, on)` and `T.SELECT` | primitive | `Core/Theme.lua` | the one selected look for a row (the rail and the fill of §2.1, sizes in `T.SELECT`); `W.Row:SetSelected` is its one caller, so the options nav and the AH list pane reach it through `W.Row` | 8.5 |
+| `T.Row(frame, opts)`, `T.RowState(frame, state)` | primitive | `Core/Theme.lua` | the game-frame counterpart of `W.Row` that the coverage thread's batch-2 plan asks for: a see-through list row with the `hover` wash, the 20 % press shade and the selected rail plus lighter fill ([DECIDE] 4a, not the 14 % accent wash that plan and THEME.md's matrix describe today) | 8.5 |
 | `upper` flag in `T.ROLES` | role flag | `Core/Theme.lua` | `T.Text` upper-cases the string for roles that set it | 8.6 |
 | `T.KNOB_EASE` | constant | `Core/Theme.lua` | 0.1 s, with a row in THEME.md's fades table | 8.10 |
 | contrast surfaces | token edit | `Core/Theme.lua` (`T.VARIANTS.contrast`) | `divider` below `borderHi` in OKLCH lightness (about `3a414c`), and `raisedHover` and `borderHi` per variant | 8.1 |
@@ -129,21 +133,21 @@ Four threads are already building; the plan covers what they do not and the orde
 
 | Stream | What it owns | Where |
 |---|---|---|
-| A. Controls restyle | pill switches, pill sliders with a round thumb, the short font list, no accent line on tabs | merged in PR #393 on 2026-10-17; Cliff saw the switches in game ("the toggles look perfect"); the slider thumbs read washed out, so PR #395 puts the fill under the thumb, makes the thumb solid with a dark outline and lets the tracks follow the theme; waits on his second look at the sliders |
+| A. Controls restyle | pill switches, pill sliders with a round thumb, the short font list, no accent line on tabs | merged in PR #393 on 2026-10-17; Cliff saw the switches in game ("the toggles look perfect"); the slider thumbs read washed out, so PR #395 (merged on 2026-10-17) puts the fill under the thumb, makes the thumb solid with a dark outline and lets the tracks follow the theme; its in-game check is §8 item 4 |
 | B. Consistency fixes (the audit's F1 to F17) | the constants and helpers in §3's first two rows; one scroll thumb for the options window and `T.ScrollBar`, the four dialogs' game scroll bars replaced; one section header (the quest log zone headers leave gold here, and the tracker's heading takes the same style); `T.Tint` that follows the accent; opacity tiers; the crest rule; primary buttons in the Core dialogs; the options preview placeholder; segment label size; fills that round with their panel; a display role so Faction look reaches only titles; hint and note tiers; dismiss verbs and captions; Vanguard's own quest icons | thread "Vanguard UI consistency audit", `work/ui-consistency`, one PR; it owns the shared `Core/` helper files until that PR merges |
-| C. Frame coverage | batch 1 (`work/reskin-coverage-1`, draft PR #398): the always-visible gaps (chat side buttons, chat bubbles in a new `Modules/ChatBubbles.lua`, Battle.net and time toasts, loot and merchant rows with a reusable `GW.SkinMoney`, the durability frame, timed-quest countdowns and tracked recipes in the tracker, the waypoint pin, personal resource display, combat text fonts) and the dead names; batch 2 (`work/reskin-coverage-2`, Phase 8.3 inside it): the inbox rows and parchment, the spellbook and talent page art and the character pane's stats art painted to the material tiers (§2.3), the inner parts of professions, auction house, trade, bank, friends, inspect, guild bank, the statistics page, the meter breakdown window, nested tooltips, collections, plus the gold heads in §2.2; batch 3: guild control, the stable's parts, raid warning fonts, small dialogs | thread "Game interface coverage audit", one PR per batch; skins and modules only, no `Core/` files, existing helpers, shared lists appended to |
-| D. Design deliverables | the research doc (PR #394, merged 2026-10-17); `T.CheckBox` (PR #397, merged 2026-10-17); the material tier table and the state matrix written into `docs/THEME.md` (in the check-box PR); the one selection grammar and the row press, landing inside `W.Row` once B's PR is up (`work/select-press`); the written state matrix | thread "UI/UX design research"; owns Phases 8.5 and 8.7, with 8.2 done (8.3 moved to C's batch 2 on 2026-10-17, so one thread edits the `Modules/Windows*.lua` files) |
+| C. Frame coverage | batch 1 (merged in PR #398 on 2026-10-17): the always-visible gaps (chat side buttons, chat bubbles in a new `Modules/ChatBubbles.lua`, Battle.net and time toasts, loot and merchant rows with a reusable `GW.SkinMoney`, the durability frame, timed-quest countdowns and tracked recipes in the tracker, the waypoint pin, personal resource display, combat text fonts) and the dead names; batch 2 (`work/reskin-coverage-2`, Phase 8.3 inside it): the inbox rows and parchment, the spellbook and talent page art and the character pane's stats art painted to the material tiers (§2.3), the inner parts of professions, trade, bank, friends, inspect, guild bank, the statistics page, the meter breakdown window, nested tooltips, collections, plus the gold heads in §2.2; batch 3: the auction house's own panels (seen only with the Auction Helper's panel off), guild control, the stable's parts, raid warning fonts, small dialogs, and the setup wizard's offer to turn off the game's tutorials ([DECIDE] 14a, after §8's level-1 check) | thread "Game interface coverage audit", one PR per batch; skins and modules only, no `Core/` files but batch 3's setup step in `Core/Setup.lua`, existing helpers, shared lists appended to |
+| D. Design deliverables | the research doc (PR #394, merged 2026-10-17); `T.CheckBox` (PR #397, merged 2026-10-17); the material tier table and the state matrix written into `docs/THEME.md` (in the check-box PR); the game-frame primitives the coverage thread's batch-2 plan asks for (`work/game-primitives`, §3: `T.Divider`, `T.Radio` with the static check and `T.ArrowButton` now, `T.Slider` after 8.1, the old scroll frame branch of `T.ScrollBar` after G0); the one selection grammar and the row press, with `T.Row` and `T.RowState`, landing inside `W.Row` once B's PR is up (`work/select-press`); the written state matrix | thread "UI/UX design research"; owns Phases 8.5 and 8.7, with 8.2 done (8.3 moved to C's batch 2 on 2026-10-17, so one thread edits the `Modules/Windows*.lua` files) |
 
 Three rules the streams have agreed and the plan keeps: whoever is already in a file keeps it and the other waits for that PR and rebases; A merged first (PR #393, 2026-10-17) and B brings `main` in once before it merges; C's batch 2 starts once the material tier table (§2.3) is on `main` in any of its copies (this doc, `docs/design/DESIGN-PRINCIPLES.md` §1.6 or `docs/THEME.md`) and reads the tiers from it rather than inventing them; C owns Phase 8.3 inside that batch, so no second PR paints its windows.
 
 ### 4.2 Merge order and gates
 
-- **G0: B on `main`** (A merged in PR #393 on 2026-10-17). Every phase below edits `Core/Theme.lua` or `Core/Controls.lua`, which B is changing now. Nothing merges before it is on `main`, with one exception, already taken: Phase 8.2 (PR #397) merged on 2026-10-17, because its `Core/Theme.lua` region (the game-frame primitives block and `T.PressButton`'s row flag) is one B does not touch; B brings `main` in once before opening its draft. Only the work under "safe before G0" starts earlier.
+- **G0: B on `main`** (A merged in PR #393 on 2026-10-17). Every phase below edits `Core/Theme.lua` or `Core/Controls.lua`, which B is changing now. Nothing merges before it is on `main`, with one exception, already taken: Phase 8.2 (PR #397) merged on 2026-10-17, because its `Core/Theme.lua` region (the game-frame primitives block and `T.PressButton`'s row flag) is one B does not touch; B brings `main` in once before opening its draft. Phase 8.1 moves PR #395's slider parts (the fill, thumb and tracks, merged on 2026-10-17) into `T.Capsule`. Only the work under "safe before G0" starts earlier.
 - **G1: `T.CheckBox` (Phase 8.2) on `main` before C's batch 2 skins any check box.** Open since PR #397 merged on 2026-10-17 (it also did the raid tab, the addon list and the chat settings); batch 2 adds the call sites in the windows it did not reach.
 - **G2: Phase 8.1 before Phase 8.4** (`T.Capsule`, `Disc20Soft`, the contrast tokens).
 - **G3: Phase 8.4 before Phases 8.7, 8.8, 8.9 and 8.10** (the control grid and button kinds).
-- **G4: Cliff's answers.** No phase builds a [DECIDE] item before he answers it (CLAUDE.md). A phase builds the rest, keeps the open item as a one-line constant or an untouched code path, and adds the item in its own commit when the answer comes; an item still open at the freeze waits for the first release after launch.
-- **Structural freeze 2026-10-28** (no new files, feature cut-off): B, C's batches 1 and 2 and Phases 8.1 to 8.8 merged (A is). B's new `Core/Chrome.lua` and C's new `Modules/ChatBubbles.lua` are the only new files and must be on `main` by then. Phases 8.9 and 8.10 are cut if they are not merged.
+- **G4: Cliff's answers.** Given on 2026-10-17: the recommended answer, (a), on every item (§6), so no phase waits on a question. A new question still goes to him before it is built (CLAUDE.md).
+- **Structural freeze 2026-10-28** (no new files, feature cut-off): B, C's batches 1 and 2 and Phases 8.1 to 8.8 merged (A is). B's new `Core/Chrome.lua` and C's new `Modules/ChatBubbles.lua` are the only new files and must be on `main` by then. Phases 8.9 and 8.10 are cut if they are not merged. C's batch-3 setup step for the game's tutorials ([DECIDE] 14a) is a feature: it merges by then or waits for the first release after launch.
 - **Code freeze 2026-11-01:** Phase 8.11's checklist is on `main`; after this, only fixes from the in-game list.
 - **Beta risk:** the Forever beta may close around 2026-10-21 (unverified). Anything merged after Cliff's last beta session is first seen in game on launch day, so A (merged), B and C's batch 1 (the pills, the titles, the chat buttons, the loot and merchant rows) are what to get in front of him first; the rest ships with its checks on the Phase 8.11 list and the patch release rehearsed for 2026-11-02 fixes what the launch-day look shows.
 - **Safe before G0:** `T.CheckBox` (8.2, merged); the material pass in C's batch 2 (8.3); the state matrix and type pairings written into `docs/THEME.md`; C's batch 1.
@@ -158,7 +162,9 @@ Parallel phases edit different functions of the same file. A phase edits only th
 | `Core/Controls.lua` | `pillParts` and `placePill` out | | switch, slider, segment and dropdown sizes, the value formatter, `W.Primary` | | | press, menu close, menu thumb, search clear | |
 | `Core/Chrome.lua`, `Core/Widgets.lua` | | | `W.Button` default width | `W.Row:SetSelected` | | edit box focus | |
 | `Core/Dialog.lua` | | | button height only | | | | the rest |
-| `Modules/Windows*.lua` (C's files) | | `T.CheckBox` call sites, by the later PR | | | nothing (C carries the gold heads) | | |
+| `Modules/Windows*.lua` (C's files) | | `T.CheckBox` call sites, by the later PR | | `T.Row` call sites (the batch-2 plan's R2.37), by the later PR | the section role on the quest heads' section headings ([DECIDE] 6a), by the later of 8.6 and C's batch 3; C takes the other gold heads to `text` | | |
+
+Outside the phases: D's `work/game-primitives` adds new functions to the game-frame primitives block of `Core/Theme.lua` and to `Core/Skin.lua`, and touches `T.ScrollBar` only after G0, because B is changing it; the call sites in C's files (the batch-2 plan's R2.36 and R2.38 to R2.40) go in whichever C batch is open when each primitive merges. In `Core/Setup.lua`, 8.7 owns the focus ring and C's batch 3 the tutorials step.
 
 ### 4.4 Rules every phase follows
 
@@ -168,40 +174,40 @@ One branch named `work/<phase>` from fresh `origin/main`, one draft PR marked re
 
 Details (goal, success criteria, files, checks) are in `.planning/ROADMAP.md`. "New" means a thread started when the phase's gate opens; model and effort follow CLAUDE.md's table (Sonnet medium unless noted).
 
-| Phase | Owner | Branch | Goal | Size | Starts after | [DECIDE] |
+| Phase | Owner | Branch | Goal | Size | Starts after | Decided 2026-10-17 |
 |---|---|---|---|---|---|---|
 | 8.1 Theme tokens and capsule kit | new | `work/ui-tokens` | Every variant keeps the surface order; pills, discs and badges are one theme primitive and one media set | M | G0 | none |
-| 8.2 Check box primitive | D | `work/checkbox` | No game check box art inside any window Vanguard owns | S | done: PR #397 merged 2026-10-17, G1 open | 8 |
+| 8.2 Check box primitive | D | `work/checkbox` | No game check box art inside any window Vanguard owns | S | done: PR #397 merged 2026-10-17, G1 open | 8a, the merged default |
 | 8.3 One material per window | C (inside batch 2) | `work/reskin-coverage-2` | The inbox, the spellbook and talent pages and the character pane's stats are slate inside, painted to the tier table D wrote down | M | C's batch 1 merged | none |
-| 8.4 Control grid and button kinds | new | `work/ui-control-grid` | Every control on the 20/26/200 grid, with secondary, primary and danger buttons | M | 8.1 | 5 |
-| 8.5 Selection grammar and row press | D | `work/select-press` | "Selected" said three ways and no other; rows press like buttons | M, Sonnet high | G0 (B's `W.Row`) | 3, 4, 12 |
-| 8.6 One yellow, type pairings and empty states | new | `work/ui-type` | Gold only for content; one role and colour per place; an empty list says what fills it | S | G0, and C's batch 2 for the check | 1, 6 |
+| 8.4 Control grid and button kinds | new | `work/ui-control-grid` | Every control on the 20/26/200 grid, with secondary, primary and danger buttons | M | 8.1 | 5a |
+| 8.5 Selection grammar and row press | D | `work/select-press` | "Selected" said three ways and no other; rows press like buttons | M | G0 (B's `W.Row`) | 3a, 4a, 12a |
+| 8.6 One yellow, type pairings and empty states | new | `work/ui-type` | Gold only for content; one role and colour per place; an empty list says what fills it | S | G0, and C's batch 2 for the check | 1a, 6a |
 | 8.7 States, keyboard and menus | D | `work/ui-states` | One state matrix in code; menus close like menus | M | 8.4 | none |
-| 8.8 Dialogs and button order | new | `work/ui-dialogs` | One primary per dialog, destructive never brass, Escape and Enter | S | 8.4 | 10, 11 |
+| 8.8 Dialogs and button order | new | `work/ui-dialogs` | One primary per dialog, destructive never brass, Escape and Enter | S | 8.4 | 10a, 11a |
 | 8.9 Spacing sweep (cuttable) | new | `work/ui-spacing` | Every window's padding and footer on `T.SPACE` | M | 8.4 and B | none |
-| 8.10 Knob and thumb ease (cuttable) | new | `work/ui-knob-ease` | Knobs glide 0.1 s out of combat | S | 8.4 and Cliff's second look at the sliders (PR #395) | 7 |
-| 8.11 UI batch checklist and probes | new, Haiku low | `work/ui-batch-check` | One in-game list for every look above, with the probes that gate the open decisions | S | 8.1 to 8.10 merged or cut | none |
+| 8.10 Knob and thumb ease (cuttable) | new | `work/ui-knob-ease` | Knobs glide 0.1 s out of combat | S | 8.4 | 7a: a go |
+| 8.11 UI batch checklist and probes | new, Haiku low | `work/ui-batch-check` | One in-game list for every look above, with §8's probes first | S | 8.1 to 8.10 merged or cut | none |
 
-Not planned, on purpose: a light theme (decided), window ornaments on by default, animated tab indicators or sliding selection pills (they jitter on the pixel grid and under the combat cap), hover recolouring of text, zebra rows, icons in empty states, and anything §7 keeps Blizzard's. A class-colour accent waits for [DECIDE] 9.
+Not planned, on purpose: a light theme (decided), window ornaments on by default, animated tab indicators or sliding selection pills (they jitter on the pixel grid and under the combat cap), hover recolouring of text, zebra rows, icons in empty states, and anything §7 keeps Blizzard's. A class-colour accent is left out for launch ([DECIDE] 9a).
 
 ## 6. [DECIDE] list for Cliff
 
-Answer in one message as numbers and letters (for example `1a 2a 3a`). The recommended answer is (a) on every open line; items 2 and 13 were settled by Cliff's in-game look on 2026-10-17 and need no answer. Items 1 and 4 are drawn in one place by the consistency PR (`ns.WindowTitle`'s `align` option and `W.Row:SetSelected`), so each answer is a one-line change there.
+Decided on 2026-10-17: Cliff took the recommended answer, (a), on every open item ("i agree with all recommendations", project chat, 13:02 and 14:39 UTC); items 2 and 13 were settled by his in-game look at the pills the same day. The questions stay below as the record; §5 says which phase builds each answer.
 
-1. **Window titles on skinned game windows.** (a) Keep the game's centred placement, recoloured to `text` in the `title` role; no layout risk. (b) Left-align them like Vanguard's own windows; a layout change on every game window.
+1. **Window titles on skinned game windows.** (a) Keep the game's centred placement, recoloured to `text` in the `title` role; no layout risk. (b) Left-align them like Vanguard's own windows; a layout change on every game window. **Decided: (a).**
 2. **Slider track ends.** Settled, no answer needed: the track merged in PR #393 is a pill with rounded ends, and Cliff saw it in game on 2026-10-17 without objection; his second look (PR #395) is about the thumb and the outline, not the shape.
-3. **Active tab.** (a) The attached tab: it takes its page's colour and has no border where it meets the page; no accent on any tab. (b) A 2 px accent line that replaces the tab's top border.
-4. **List and nav selection.** (a) An accent rail plus a lighter fill, text and icon unchanged. (b) Keep today's accent wash and brass icon.
-5. **Slider fill.** (a) A quiet grey fill (`borderHi`) under the solid thumb, so a page of sliders is not a row of brass bars. (b) The accent fill, as merged in PR #393.
-6. **Section headers outside the options window.** (a) Small grey capitals everywhere, like the options cards. (b) Keep bold sentence-case headers in the quest log and auction house.
-7. **Knob and thumb glide (0.1 s).** (a) Build it, instant in combat and with Reduce motion, and check it in the next batch. (b) Leave knobs instant.
-8. **Check box mark.** (a) A dark box with a brass check. (b) A brass-filled box with a dark check.
-9. **A "class colour" accent preset.** (a) Leave it out for launch: class colours mark content, and a class-coloured accent would collide with the selection colour. (b) Add it.
-10. **Quest log and quest dialog buttons.** (a) Abandon (and Goodbye) alone at the far left, the other buttons at the right. (b) Keep them in one row.
-11. **Enter in dialogs.** (a) Enter presses the primary, except when the primary is destructive. (b) Enter does nothing, as today.
-12. **Hover on the window controls.** (a) Maximize and minimize hover to a grey tile; only close turns colour. (b) Keep the brass hover tile.
+3. **Active tab.** (a) The attached tab: it takes its page's colour and has no border where it meets the page; no accent on any tab. (b) A 2 px accent line that replaces the tab's top border. **Decided: (a).**
+4. **List and nav selection.** (a) An accent rail plus a lighter fill, text and icon unchanged. (b) Keep today's accent wash and brass icon. **Decided: (a).**
+5. **Slider fill.** (a) A quiet grey fill (`borderHi`) under the solid thumb, so a page of sliders is not a row of brass bars. (b) The accent fill, as merged in PR #393. **Decided: (a).**
+6. **Section headers outside the options window.** (a) Small grey capitals everywhere, like the options cards. (b) Keep bold sentence-case headers in the quest log and auction house. **Decided: (a).**
+7. **Knob and thumb glide (0.1 s).** (a) Build it, instant in combat and with Reduce motion, and check it in the next batch. (b) Leave knobs instant. **Decided: (a)**: Phase 8.10 is a go.
+8. **Check box mark.** (a) A dark box with a brass check. (b) A brass-filled box with a dark check. **Decided: (a)**, which is `T.CHECK`'s merged default.
+9. **A "class colour" accent preset.** (a) Leave it out for launch: class colours mark content, and a class-coloured accent would collide with the selection colour. (b) Add it. **Decided: (a)**: no class-colour preset at launch.
+10. **Quest log and quest dialog buttons.** (a) Abandon (and Goodbye) alone at the far left, the other buttons at the right. (b) Keep them in one row. **Decided: (a).**
+11. **Enter in dialogs.** (a) Enter presses the primary, except when the primary is destructive. (b) Enter does nothing, as today. **Decided: (a).**
+12. **Hover on the window controls.** (a) Maximize and minimize hover to a grey tile; only close turns colour. (b) Keep the brass hover tile. **Decided: (a).**
 13. **Sizes of the switch and slider merged in PR #393.** Settled, no answer needed: Cliff saw the switches in game on 2026-10-17 ("the toggles look perfect"), so the 36x18 switch with its 14 px knob and the 8 px track with its 12 px thumb stay as built; the control grid (§2.4) centres them in the 20 px slot.
-14. **The game's tutorials.** Forever runs the modern tutorial system, and its pointers aim at frames Vanguard hides (the action bar, bags, minimap, tracker), so a new character may be pointed at nothing. (a) After an in-game check on a level 1, offer "Turn off the game's tutorials" (the `showTutorials` setting) in the setup wizard for a new character, off by default. (b) Re-anchor the game's help tips to Vanguard's frames. (c) Leave them as they are.
+14. **The game's tutorials.** Forever runs the modern tutorial system, and its pointers aim at frames Vanguard hides (the action bar, bags, minimap, tracker), so a new character may be pointed at nothing. (a) After an in-game check on a level 1, offer "Turn off the game's tutorials" (the `showTutorials` setting) in the setup wizard for a new character, off by default. (b) Re-anchor the game's help tips to Vanguard's frames. (c) Leave them as they are. **Decided: (a)**: C's batch 3 builds the setup step after §8's level-1 check.
 
 ## 7. What stays Blizzard's, on purpose
 
@@ -222,10 +228,10 @@ The end state after C's three batches and Phases 8.1 to 8.11: every frame a play
 
 Every phase PR carries its own needs-in-game-check list; Phase 8.11 gathers them into one `docs/SMOKE-TEST.md` section and one issue in crash-risk order. These are the checks whose answer changes the plan, so they go first in Cliff's next session:
 
-1. A level 1 character: where the game's tutorial pointers land with Vanguard's bars, bags and minimap ([DECIDE] 14).
+1. A level 1 character: where the game's tutorial pointers land with Vanguard's bars, bags and minimap ([DECIDE] 14a: gates C's batch-3 setup step).
 2. A timed quest with Vanguard's tracker on: whether any countdown shows (C's batch 1 adds one; confirms the gap and the fix).
 3. `/way` and a supertracked quest: the pin shows, and after batch 1 it is Vanguard's.
-4. Flip a switch and drag a slider (after PR #395) in each theme, at 1080p and at a larger UI scale: whether the pill ends and knobs read crisp (decides whether 8.1 re-bakes the media and whether 8.10 is worth building).
+4. Flip a switch and drag a slider in each theme, at 1080p and at a larger UI scale: whether the pill ends and knobs read crisp (decides whether 8.1 re-bakes the media).
 5. The raised tab without its line (#393): whether it reads clearly against the window in the options window, merchant, character pane and guild window (decides how urgent 8.5's attached tab is).
 6. The rounded corners toggle on a 20 to 26 px button: whether the arcs show at all (if not, `ROUNDED_KINDS` drops `button` in a follow-up and the rounded inner fills cost nothing more).
 7. A controller plugged in: what the gamepad bar does beside Vanguard's bars.
@@ -235,4 +241,4 @@ Every phase PR carries its own needs-in-game-check list; Phase 8.11 gathers them
 
 ## 9. After launch
 
-Carried over on purpose, each as its own issue when the time comes: the class-colour accent if [DECIDE] 9 says yes; re-anchoring the game's help tips if [DECIDE] 14 says (b); the spacing sweep and knob ease if they are cut at the freeze; `sizedIcons` on by default once the in-game check for #232 passes; the native pixel rounding (`SetRoundLayoutToNearestPixel`) when Forever reaches the 12.1.5 engine; the gamepad HUD once a controller check exists; and the website's walkthrough shots, retaken from the launch build.
+Carried over on purpose, each as its own issue when the time comes: the class-colour accent preset if players ask for it (left out for launch, [DECIDE] 9a); the spacing sweep and knob ease if they are cut at the freeze; `sizedIcons` on by default once the in-game check for #232 passes; the native pixel rounding (`SetRoundLayoutToNearestPixel`) when Forever reaches the 12.1.5 engine; the gamepad HUD once a controller check exists; and the website's walkthrough shots, retaken from the launch build.

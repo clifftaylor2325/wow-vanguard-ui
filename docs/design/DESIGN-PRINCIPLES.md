@@ -423,6 +423,8 @@ Not recommended, and why: a light theme (decided); window ornaments on by defaul
 
 ## 6. Open questions for Cliff [DECIDE]
 
+**Decided 2026-10-17.** Cliff took the recommended answer on every question below, as `docs/design/UI-COHERENCE.md` §6 words them (that list puts "leave it out" first for question 9). Two details changed after this was written: the slider thumb is PR #395's solid white thumb with a dark outline, so question 5's `borderHi` fill sits under it with no accent ring, and his look at the pills settled question 2 and the control sizes (the 8 px pill track stays).
+
 1. **[DECIDE] Window titles on skinned game windows:** (a) keep the game's centred placement but colour them `text` in the `title` role (recommended: no layout risk; the setup wizard centres its title too, so centred is not foreign to Vanguard), or (b) left-align them like the options window, the quest log and the dialogs (a layout change on every game window; the game re-anchors `TitleContainer` on some).
 2. **[DECIDE] Slider track ends at 4 px tall:** (a) baked 2 px rounded ends (a 4-tall end cap; recommended, since the ask was a rounded track, and the cost is one more media piece), or (b) square ends (one pixel of difference at 1080p, crisper, but not what was asked).
 3. **[DECIDE] Active tab:** (a) the attached tab, no colour (recommended), or (b) the 2 px accent line *on* the tab's top edge replacing the border. Both satisfy "nothing above the tab".
