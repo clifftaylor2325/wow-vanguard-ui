@@ -50,7 +50,7 @@ const SPELLS_ENV = `${READERS_ENV}
   -- made again as the game turns a page (SetCurrentPage).
   local function mkEntry(parent) local e = CreateFrame("Frame", nil, parent) e.Backplate, e.Name, e.SubName = __art(e), __text(e, "Cure Disease"), __text(e, "Rank 1") return e end
   local head = CreateFrame("Frame", nil, book.PagedSpellsFrame) head.Plate, head.Rule, head.Text = __art(head), __art(head), __text(head, "Holy")
-  local entry = mkEntry(book.PagedSpellsFrame) entry.Button = CreateFrame("Button", nil, entry)
+  local entry = mkEntry(book.PagedSpellsFrame) entry.Button = CreateFrame("Button", nil, entry) entry.Button.Icon, entry.Button.Border = __art(entry.Button), __art(entry.Button)
   function book.PagedSpellsFrame:SetCurrentPage() book.late = mkEntry(book.PagedSpellsFrame) end
   local t = CreateFrame("Frame", nil, f) f.TalentsFrame = t
   for _, key in ipairs({ "Background", "ClassBackground", "BackgroundBorder", "DividerHorizontalLeft", "OverlayBackgroundMid" }) do t[key] = __art(t) end
@@ -67,7 +67,7 @@ const SPELLS_ENV = `${READERS_ENV}
     local backdrop = 0
     for _, key in ipairs({ "Background", "ClassBackground", "BackgroundBorder", "DividerHorizontalLeft", "OverlayBackgroundMid" }) do if t[key].__alpha == 0 then backdrop = backdrop + 1 end end
     local paged, paging = book.PagedSpellsFrame, book.PagedSpellsFrame.PagingControls
-    local pages = { head = __faded(head) and __lit(head.Text, "heading", "text"), entry = entry.Backplate.__alpha == 0 and __lit(entry.Name, "label", "text") and __lit(entry.SubName, "small", "muted"),
+    local pages = { head = __faded(head) and __lit(head.Text, "heading", "text"), entry = entry.Backplate.__alpha == 0 and entry.Button.Border.__alpha == 0 and entry.Button.Icon.__alpha ~= 0 and entry.Button.Icon.__texCoord ~= nil and ns.Theme.PaintedCount() > 0 and __lit(entry.Name, "label", "text") and __lit(entry.SubName, "small", "muted"),
       late = book.late == nil or (book.late.Backplate.__alpha == 0 and __lit(book.late.Name, "label", "text")) }
     return { pages = pages, parchment = __faded(book), paged = __faded(paged) and paged.NineSlice.__alpha == 0 and __sunk(paged), search = __box(book.SearchBox),
       settings = __button(book.SettingsDropdown) and book.SettingsDropdown.Icon.__alpha == 1, arrows = __arrow(paging.PrevPageButton) and __arrow(paging.NextPageButton),
