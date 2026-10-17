@@ -223,7 +223,7 @@ Plans:
 
 **Goal**: The game's gold-rimmed check boxes no longer show inside any window Vanguard owns or skins.
 **Owner**: the UI/UX design research thread (`work/checkbox`)
-**Depends on**: nothing to start; G0 to merge (rebase onto the consistency PR). Gate G1: on `main` before the coverage thread's batch 2 skins any check box; the call sites in a window belong to whichever PR lands second.
+**Depends on**: nothing; it merges when ready (PR #397, opened 2026-10-17), before G0, because its `Core/Theme.lua` region is one the consistency PR does not touch; the consistency PR brings `main` in once before it opens. Gate G1: on `main` before the coverage thread's batch 2 skins any check box; the call sites in a window belong to whichever PR lands second.
 **Requirements**: UI-11
 **Success Criteria** (what must be TRUE):
   1. `T.CheckBox(button)` paints a 16 px `inset` box with a 1 px `edge` and a 12 px `Check` glyph, follows the game's checked state by post-hooking `SetChecked`, has the hover, press, disabled and focus states of the state matrix, and keeps the game's parts faded by alpha (never hidden, no field stored on the game's frame).
@@ -451,7 +451,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12. Phases 9-11 are cut first if time runs short; Phase 12 runs regardless. The inserted UI coherence phases (8.1 to 8.11) follow the gates in `docs/design/UI-COHERENCE.md` §4.2 rather than the numeric order: 8.2 may start now and merges after G0 (the consistency PR on `main`; PR #393 merged 2026-10-17); 8.3 rides the coverage thread's batch 2 after its batch 1 merges; 8.1, 8.5 and 8.6 start at G0; 8.4 after 8.1; 8.7, 8.8, 8.9 and 8.10 after 8.4; 8.11 last. Phases 8.1 to 8.8 merge before the 2026-10-28 freeze; 8.9 and 8.10 are cut first.
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12. Phases 9-11 are cut first if time runs short; Phase 12 runs regardless. The inserted UI coherence phases (8.1 to 8.11) follow the gates in `docs/design/UI-COHERENCE.md` §4.2 rather than the numeric order: 8.2 merges when ready (PR #397), before G0 (the consistency PR on `main`; PR #393 merged 2026-10-17); 8.3 rides the coverage thread's batch 2 after its batch 1 merges; 8.1, 8.5 and 8.6 start at G0; 8.4 after 8.1; 8.7, 8.8, 8.9 and 8.10 after 8.4; 8.11 last. Phases 8.1 to 8.8 merge before the 2026-10-28 freeze; 8.9 and 8.10 are cut first.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
