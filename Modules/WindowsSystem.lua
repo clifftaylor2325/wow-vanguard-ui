@@ -72,11 +72,29 @@ local function close(p, frame)
   GW.DressClose(frame, p)
 end
 
+-- A divider line (the game's texture or frame of divider art) as one pixel of `divider`.
+local function divider(p)
+  T.Divider(p)
+end
+
+-- The divider textures among a frame's regions (the game draws them with no key: an atlas whose name ends in
+-- Divider), each as one pixel of `divider`; a frame without regions is skipped.
+local function dividersIn(frame)
+  if type(frame) ~= "table" or not frame.GetRegions then return end
+  for _, region in ipairs({ frame:GetRegions() }) do
+    local atlas = region.GetAtlas and region:GetAtlas()
+    if type(atlas) == "string" and atlas:find("Divider$") then T.Divider(region) end
+  end
+end
+
 -- What a skin spec can list, in order: the parts (parentKey paths) each step is applied to (each
 -- step is given the part and the window).
 local STEPS = {
   { "art", fadeAll }, { "fade", fadeRegions }, { "close", close }, { "buttons", T.Button },
-  { "edits", T.EditBox }, { "tabs", skinTab }, { "insets", inset }, { "titles", GW.SkinTitle }, { "headings", heading }, { "keep", restore },
+  { "edits", T.EditBox }, { "searches", GW.SkinSearch }, { "tabs", skinTab }, { "insets", inset },
+  { "titles", GW.SkinTitle }, { "headings", heading }, { "sections", GW.SkinSection },
+  { "bars", T.ScrollBar }, { "dropdowns", GW.SkinDropdown }, { "checks", GW.SkinCheck }, { "radios", GW.SkinRadio },
+  { "sliders", T.Slider }, { "dividers", divider }, { "plates", GW.SkinPlate }, { "keep", restore },
 }
 
 -- Applies each listed step of a spec to the parts of the frame that exist.
@@ -125,12 +143,73 @@ end
 -- flat backdrop), two MinimalTabTemplate tabs, the category list, the settings list and canvas.
 GW.SETTINGS_SPEC = {
   art = { "Bg" }, fade = { "NineSlice" }, close = { "ClosePanelButton" },
-  buttons = { "ApplyButton", "CloseButton" }, edits = { "SearchBox" }, tabs = { "GameTab", "AddOnsTab" },
+  buttons = { "ApplyButton", "CloseButton", "Container.SettingsList.Header.DefaultsButton" },
+  searches = { "SearchBox" }, tabs = { "GameTab", "AddOnsTab" },
   insets = { "CategoryList", "Container.SettingsList" }, titles = { "NineSlice.Text" },
+  bars = { "CategoryList.ScrollBar", "Container.SettingsList.ScrollBar" },
 }
+local skinSettings = skinner(GW.SETTINGS_SPEC)
+
+-- What a settings row can hold, by key path, and how each part is dressed (a row holds one or two): its check
+-- box, its slider with steppers, its dropdown, its push button (an expandable section's bar is one too).
+local SETTING_PARTS = {
+  { "Checkbox", GW.SkinCheck }, { "SliderWithSteppers", T.Slider }, { "Control.Dropdown", GW.SkinDropdown }, { "Button", GW.SkinButton },
+}
+
+-- One row of the settings page (pooled: the game makes a row's controls once, then reuses the row) in the theme.
+local function settingRow(row)
+  for _, spec in ipairs(SETTING_PARTS) do
+    local control = part(row, spec[1])
+    if control then spec[2](control) end
+  end
+end
+
+-- Whether a nav entry's plate is the game's selected one (it shows the active atlas).
+local function navLit(plate)
+  return type(plate.GetAtlas) == "function" and plate:GetAtlas() == "Options_List_Active" and plate:IsShown() == true
+end
+
+-- A nav entry's selected look, following the game's own state change (UpdateStateInternal(selected), which runs
+-- for a click, for the mouse and for a new row alike).
+local function navSelected(row, selected)
+  T.SelectRow(row, selected == true)
+end
+
+-- One nav entry of the category list: the game's selected and hover plates faded for the theme's row washes, the
+-- selected look following the game.
+local function navEntry(row)
+  GW.DressRow(row)
+  T.SelectRow(row, navLit(row.Texture))
+  GW.HookAfter(row, "UpdateStateInternal", navSelected)
+end
+
+-- A group header of the category list (its plate faded, its label a section head; the game sets the label again
+-- each time it takes the row).
+local function navHeader(row)
+  GW.FadeArt(row)
+  GW.SkinSection(row.Label)
+  GW.HookAfter(row, "Init", function(r) GW.SkinSection(r.Label) end)
+end
+
+-- One row of the category list: an entry has the selected and hover plate (Texture), a group header does not.
+local function categoryRow(row)
+  if type(row.Texture) == "table" then navEntry(row) else navHeader(row) end
+end
+
+-- The settings window's lists: the nav's rows and the page's rows dressed as the game takes them, and the line
+-- under the page title.
+local function watchSettings(frame)
+  GW.WatchRows(part(frame, "CategoryList.ScrollBox"), categoryRow)
+  GW.WatchRows(part(frame, "Container.SettingsList.ScrollBox"), settingRow)
+  dividersIn(part(frame, "Container.SettingsList.Header"))
+end
+
 -- Skins the game's options window. (Blizzard_Settings_Shared has no named settings font objects on
 -- Forever, so no fonts are set; the pages in Container/SettingsCanvas stay the game's.)
-GW.SkinSettings = skinner(GW.SETTINGS_SPEC)
+function GW.SkinSettings(frame)
+  skinSettings(frame)
+  watchSettings(frame)
+end
 
 GW.Add("system", "framed", { "SettingsPanel" }, GW.SkinSettings)
 
@@ -152,33 +231,35 @@ local vgCheckMakers = {}
 -- window's global name.
 GW.CHECK_MAKERS = {
   AddonList = { "AddonList_Update", "AddonList_InitButton" },
-  ChatConfigFrame = { "ChatConfig_CreateCheckboxes", "ChatConfig_CreateTieredCheckboxes" },
+  ChatConfigFrame = { "ChatConfig_CreateCheckboxes", "ChatConfig_CreateTieredCheckboxes", "ChatConfig_CreateColorSwatches" },
 }
 
--- Dresses check buttons after each of the game's functions in names runs: those inside the frame the function
--- was handed (a row, a box group) when it takes one, else the whole window (a global frame name). Hooked once
--- per function (a post-hook; the game's function is kept), while the system group is on.
-local function watchCheckMakers(window, names)
+-- Dresses what a function that makes a window's parts just made, in the frame the function was handed (a row, a box
+-- group) when it takes one, else the whole window (a global frame name), by apply(target); hooked once per
+-- function (a post-hook; the game's function is kept), while the system group is on.
+local function watchCheckMakers(window, names, apply)
   for _, name in ipairs(names) do
     if not vgCheckMakers[name] and type(hooksecurefunc) == "function" and type(_G[name]) == "function" then
       vgCheckMakers[name] = true
       hooksecurefunc(name, ns.Guard("hook " .. name, function(frame)
         local target = type(frame) == "table" and frame.GetChildren and frame or _G[window]
-        if GW.settings and GW.settings.system and type(target) == "table" then GW.DressChecks(target) end
+        if GW.settings and GW.settings.system and type(target) == "table" then apply(target) end
       end))
     end
   end
 end
 
--- The addon list: its push buttons and search box, and each row's check button (the rows' other parts keep the game's look).
+-- The addon list: its push buttons and search box, its character dropdown, scroll bar and performance block (a
+-- section head and its line), and each row's check button (the rows' other parts keep the game's look).
 local skinAddonList = withWindowSkin({
-  buttons = { "CancelButton", "OkayButton", "EnableAllButton", "DisableAllButton" }, edits = { "SearchBox" },
+  buttons = { "CancelButton", "OkayButton", "EnableAllButton", "DisableAllButton" }, searches = { "SearchBox" },
+  bars = { "ScrollBar" }, dropdowns = { "Dropdown" }, sections = { "Performance.Header" }, dividers = { "Performance.Divider" },
 })
 -- Skins the addon list (see skinAddonList), then its rows' check buttons, now and as the game makes rows.
 function GW.SkinAddonList(frame)
   skinAddonList(frame)
   GW.DressChecks(frame, GW.CHECK_DEPTH)
-  watchCheckMakers("AddonList", GW.CHECK_MAKERS.AddonList)
+  watchCheckMakers("AddonList", GW.CHECK_MAKERS.AddonList, GW.DressChecks)
 end
 -- The nameplates tutorial: the window skin, but its four picture cards are the content, so they stay.
 GW.SkinNamePlatesTutorial = withWindowSkin({ keep = { "StyleOptions", "Aggro", "BuffsDebuffs", "EnemyVsFriendly" } })
@@ -190,28 +271,100 @@ local function isChatBox(child)
   return type(child.NineSlice) == "table" or name:find("Backdrop$") ~= nil or name:find("Background$") ~= nil
 end
 
--- One box of the chat settings in the theme: its border art faded, an inset panel behind it.
+-- Runs fn on each chat settings box under frame, up to depth levels down (the pages, then the boxes on them); a
+-- box's insides are not searched.
+local function eachChatBox(frame, depth, fn)
+  for _, child in ipairs({ frame:GetChildren() }) do
+    if isChatBox(child) then fn(child) elseif depth > 1 then eachChatBox(child, depth - 1, fn) end
+  end
+end
+
+-- The rings the game draws round the rows inside a box (a check box's NineSlice border), faded: a row on the box's
+-- inset has no fill of its own.
+local function fadeRings(frame, depth)
+  for _, child in ipairs({ frame:GetChildren() }) do
+    GW.FadeParts(child, { "NineSlice" })
+    if depth > 1 then fadeRings(child, depth - 1) end
+  end
+end
+
+-- A chat settings box's heading and its color column's heading as section heads (the game sets their text each time
+-- it draws the box, so this runs again then).
+local function chatBoxHeads(box)
+  GW.SkinSection(box.header)
+  if box.GetName and box:GetName() then GW.SkinSection(_G[box:GetName() .. "ColorHeader"]) end
+end
+
+-- One box of the chat settings in the theme: its border art faded, an inset panel behind it, its heads, and the
+-- rings round its rows faded.
 local function skinChatBox(box)
   if type(box.NineSlice) == "table" then fadeRegions(box.NineSlice) end
   fadeRegions(box)
   inset(box)
+  chatBoxHeads(box)
+  fadeRings(box, 2)
 end
 
--- The chat settings window: the window skin, its header plate faded with the title kept, each box
--- directly under it (the category list and the settings area) an inset panel, and its check buttons, now
--- and as the game makes boxes.
+-- What the game has just drawn into a chat settings box (or the window): its rings faded, its heads, its check
+-- buttons.
+local function chatInside(target)
+  fadeRings(target, 2)
+  chatBoxHeads(target)
+  GW.DressChecks(target)
+end
+
+-- The chat settings' radio buttons (the combat colors' by source or by target choice), by global name: they are
+-- dressed before GW.DressChecks walks the window, which would paint them as square boxes.
+GW.CHAT_RADIOS = { "CombatConfigColorsColorizeEntireLineBySource", "CombatConfigColorsColorizeEntireLineByTarget" }
+-- The scroll bars the chat settings' pages keep, as global paths.
+GW.CHAT_BARS = { "ChatConfigCombatSettingsFilters.ScrollBar", "ChatConfigTextToSpeechSettings.ScrollBar", "ChatConfigTextToSpeechMessageSettingsScroll.ScrollBar" }
+
+-- The chat settings' parts the game names globally: the radios, the pages' scroll bars, the filter's name box and
+-- the arrows that move a filter up and down.
+local function chatNamed()
+  for _, name in ipairs(GW.CHAT_RADIOS) do GW.SkinRadio(_G[name]) end
+  for _, path in ipairs(GW.CHAT_BARS) do
+    local bar = GW.Part(_G, path)
+    if bar then T.ScrollBar(bar) end
+  end
+  GW.SkinEditBox(_G.CombatConfigSettingsNameEditBox)
+  GW.SkinArrow(_G.ChatConfigMoveFilterUpButton, "up")
+  GW.SkinArrow(_G.ChatConfigMoveFilterDownButton, "down")
+end
+
+-- The window tabs along the top of the chat settings in the theme (the game pools them), the one for the chat
+-- window being set up selected.
+local function chatTabs(manager, selected)
+  local pool = manager.tabPool
+  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
+  for tab in pool:EnumerateActive() do tabSelected(tab, selected == tab:GetID()) end
+end
+
+-- The chat window tabs, now and each time the game picks one (it also runs when the game rebuilds them).
+local function watchChatTabs(frame)
+  local manager = frame.ChatTabManager
+  if type(manager) ~= "table" then return end
+  chatTabs(manager, _G.CURRENT_CHAT_FRAME_ID)
+  GW.HookAfter(manager, "UpdateSelection", chatTabs)
+end
+
+-- The chat settings window: the window skin, its header plate faded with the title kept, each box (the category
+-- list and settings area, and the boxes on its pages) an inset panel with section heads, and its radios, scroll
+-- bars, filter controls, tabs and check buttons, now and as the game makes boxes.
 function GW.SkinChatConfig(frame)
   GW.Skin(frame)
   dress(frame, { fade = { "Header" }, titles = { "Header.Text" } })
-  for _, child in ipairs({ frame:GetChildren() }) do
-    if isChatBox(child) then skinChatBox(child) end
-  end
+  chatNamed()
+  eachChatBox(frame, 2, skinChatBox)
+  watchChatTabs(frame)
   GW.DressChecks(frame, GW.CHECK_DEPTH)
-  watchCheckMakers("ChatConfigFrame", GW.CHECK_MAKERS.ChatConfigFrame)
+  watchCheckMakers("ChatConfigFrame", GW.CHECK_MAKERS.ChatConfigFrame, chatInside)
 end
 GW.AddButtons("ChatConfigFrame", {
   "ChatConfigFrameDefaultButton", "ChatConfigFrameCancelButton", "ChatConfigFrameOkayButton",
-  "CombatLogDefaultButton", "TextToSpeechDefaultButton",
+  "CombatLogDefaultButton", "TextToSpeechDefaultButton", "ChatConfigCombatSettingsFiltersDeleteButton",
+  "ChatConfigCombatSettingsFiltersAddFilterButton", "ChatConfigCombatSettingsFiltersCopyFilterButton",
+  "CombatConfigSettingsSaveButton", "ChatConfigFrameRedockButton",
 })
 
 GW.Add("system", "framed", { "AddonList" }, GW.SkinAddonList)

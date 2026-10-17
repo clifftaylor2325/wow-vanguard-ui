@@ -21,7 +21,40 @@ const SYSTEM_ENV = TITLE_LUA + `
     end
     return false
   end
+  -- A font string with a font (the game's have one from their template), and text when given.
+  function __label(parent, text, name)
+    local fs = parent:CreateFontString(name, "ARTWORK") fs:SetFont("Fonts/FRIZQT__.TTF", 12, "")
+    if text then fs:SetText(text) end
+    return fs
+  end
   function __errors(word) for _, e in ipairs(ns.errors) do if e.text:find(word) then return e.text end end return "none" end
+  -- A scroll bar shaped like the game's MinimalScrollBar (the thumb in the track), and whether the skin faded its thumb art.
+  function __bar(parent)
+    local bar = CreateFrame("Frame", nil, parent)
+    bar.Track = CreateFrame("Frame", nil, bar) bar.Track.Thumb = CreateFrame("Button", nil, bar.Track)
+    bar.Track.Thumb.Middle = bar.Track.Thumb:CreateTexture()
+    return bar
+  end
+  function __barred(bar) return bar.Track.Thumb.Middle.__alpha == 0 end
+  -- A scroll box that keeps its rows; Take adds one, as the game's pool does, and tells the callbacks.
+  ScrollUtil = { AddAcquiredFrameCallback = function(box, cb, owner) table.insert(box.callbacks, function(row) cb(owner, row) end) end }
+  function __box(parent)
+    local box = CreateFrame("Frame", nil, parent) box.rows, box.callbacks = {}, {}
+    function box:ForEachFrame(fn) for _, r in ipairs(self.rows) do fn(r) end end
+    function box:Take(row) table.insert(self.rows, row) for _, cb in ipairs(self.callbacks) do cb(row) end return row end
+    return box
+  end
+  -- A slider with its thumb, and a MinimalSliderWithSteppers-shaped frame holding one with two steppers.
+  function __slider(parent)
+    local s = CreateFrame("Slider", nil, parent) s:SetSize(120, 16) s:SetThumbTexture("TEST-ONLY-THUMB") s.Art = s:CreateTexture()
+    return s
+  end
+  function __stepped(parent)
+    local m = CreateFrame("Frame", nil, parent) m.Slider = __slider(m)
+    m.Back, m.Forward = CreateFrame("Button", nil, m), CreateFrame("Button", nil, m)
+    return m
+  end
+  function __stepper(m) return ns.Theme.SliderParts(m.Slider) ~= nil and ns.Theme.ArrowParts(m.Back) ~= nil and ns.Theme.ArrowParts(m.Forward) ~= nil end
 `;
 
 // TEST-ONLY: a ButtonFrameTemplate-shaped system window (art, NineSlice, close button, title) with push buttons by parentKey.
@@ -515,4 +548,168 @@ it("chat settings: the check buttons inside its boxes are themed check boxes, th
   addon.eval("ChatConfig_CreateCheckboxes(ChatConfigChatSettingsLeft)");
   expect(addon.eval("return { ns.Theme.CheckParts(TestOnlyChatCheckBox2.Check) ~= nil, ns.Theme.CheckParts(TestOnlyChatCheckBox2.Sub) ~= nil }"), "a box made as a category draws: dressed after ChatConfig_CreateCheckboxes, from the frame it was handed, its sub box too").toEqual([true, true]);
   expect(addon.eval("return __errors('Windows')"), "no errors").toBe("none");
+});
+
+// TEST-ONLY: the options window's lists: both scroll bars, the defaults button and the unkeyed divider in the page header, and the two scroll boxes.
+const SETTINGS_LISTS_ENV = SETTINGS_ENV + `
+  local f, list = SettingsPanel, SettingsPanel.Container.SettingsList
+  f.CategoryList.ScrollBar, list.ScrollBar = __bar(f.CategoryList), __bar(list)
+  f.CategoryList.ScrollBox, list.ScrollBox = __box(f.CategoryList), __box(list)
+  list.Header = CreateFrame("Frame", nil, list) list.Header.Title = __label(list.Header)
+  __sub(list.Header, "DefaultsButton", "Button")
+  list.Header.Rule = list.Header:CreateTexture(nil, "ARTWORK") list.Header.Rule:SetAtlas("Options_HorizontalDivider")
+  list.Header.Other = list.Header:CreateTexture(nil, "ARTWORK") list.Header.Other:SetAtlas("Options_Plate")
+  list.Header.Label = __label(list.Header)
+  -- A nav entry (Button with Texture, Label, and the game's state function), and a group header (Background, Label, Init).
+  function __navEntry(on)
+    local row = CreateFrame("Button", nil, f.CategoryList) row.Texture = row:CreateTexture(nil, "BACKGROUND") row.Label = __label(row)
+    function row:UpdateStateInternal(selected) self.Texture:SetAtlas(selected and "Options_List_Active" or "Options_List_Hover") self.Texture:SetShown(selected) end
+    if on then row:UpdateStateInternal(true) end
+    return row
+  end
+  function __navHeader()
+    local row = CreateFrame("Frame", nil, f.CategoryList) row.Background = row:CreateTexture(nil, "ARTWORK") row.Label = __label(row)
+    function row:Init(text) self.Label:SetText(text) end
+    return row
+  end
+  -- A settings row holding a check box, a slider with steppers, a dropdown (in Control) and a push button, as the game's controls do.
+  function __settingRow()
+    local row = CreateFrame("Frame", nil, list)
+    row.Checkbox = CreateFrame("CheckButton", nil, row) row.Checkbox.Art = row.Checkbox:CreateTexture()
+    row.SliderWithSteppers = __stepped(row)
+    row.Control = CreateFrame("Frame", nil, row) row.Control.Dropdown = CreateFrame("Button", nil, row.Control)
+    row.Control.Dropdown.Arrow = row.Control.Dropdown:CreateTexture() row.Control.Dropdown.Arrow:SetAlpha(0)
+    row.Button = CreateFrame("Button", nil, row) row.Button.Art = row.Button:CreateTexture()
+    return row
+  end
+`;
+
+it("game options: scroll bars, defaults button, header divider, and the nav and settings rows as the game takes them", () => {
+  const addon = loggedIn(SETTINGS_LISTS_ENV);
+  addon.eval("SettingsPanel.CategoryList.ScrollBox:Take(__navEntry(true)) SettingsPanel.CategoryList.ScrollBox:Take(__navHeader()) SettingsPanel.Container.SettingsList.ScrollBox:Take(__settingRow())");
+  addon.eval("SettingsPanel:Show()");
+  expect(addon.eval(`local f = SettingsPanel local list = f.Container.SettingsList
+    return { __barred(f.CategoryList.ScrollBar), __barred(list.ScrollBar), __panelled(list.Header.DefaultsButton),
+      ns.Theme.DividerParts(list.Header.Rule) ~= nil, ns.Theme.DividerParts(list.Header.Other) == nil, list.Header.Rule.__alpha }`),
+    "both scroll bars themed, Defaults a theme button, the header's divider texture one pixel of divider (another texture and a font string left alone)").toEqual([true, true, true, true, true, 0]);
+  expect(addon.eval(`local list, row = SettingsPanel.Container.SettingsList, SettingsPanel.Container.SettingsList.ScrollBox.rows[1]
+    return { ns.Theme.CheckParts(row.Checkbox) ~= nil, __stepper(row.SliderWithSteppers), __panelled(row.Control.Dropdown), row.Control.Dropdown.Arrow.__alpha, __panelled(row.Button) }`),
+    "a row that was already there: its check box, slider with steppers, dropdown (arrow shown) and button themed").toEqual([true, true, true, 1, true]);
+  addon.eval("SettingsPanel.Container.SettingsList.ScrollBox:Take(__settingRow())");
+  expect(addon.eval(`local row = SettingsPanel.Container.SettingsList.ScrollBox.rows[2]
+    return { ns.Theme.CheckParts(row.Checkbox) ~= nil, __stepper(row.SliderWithSteppers), __panelled(row.Control.Dropdown), __panelled(row.Button) }`),
+    "and a row the game takes later").toEqual([true, true, true, true]);
+  addon.eval("SettingsPanel.Container.SettingsList.ScrollBox:Take(CreateFrame('Frame', nil, SettingsPanel))");
+  expect(addon.eval("return __errors('Windows')"), "a row with none of the controls is fine").toBe("none");
+});
+
+it("game options: the nav entries get the row washes and follow the game's selection, the group headers become section heads", () => {
+  const addon = loggedIn(SETTINGS_LISTS_ENV);
+  addon.eval("local box = SettingsPanel.CategoryList.ScrollBox box:Take(__navEntry(true)) box:Take(__navEntry(false)) box:Take(__navHeader())");
+  addon.eval("SettingsPanel:Show()");
+  // A nav entry's state: dressed, the plate faded, the selected rail shown.
+  const entry = (i) => addon.eval(`local row = SettingsPanel.CategoryList.ScrollBox.rows[${i}] local p = ns.Theme.RowParts(row)
+    return { p ~= nil, row.Texture.__alpha, p.rail:IsShown() }`);
+  expect(entry(1), "a selected entry the window met already selected: row washes, the game's plate faded, the rail on").toEqual([true, 0, true]);
+  expect(entry(2), "an unselected entry: no rail").toEqual([true, 0, false]);
+  addon.eval("local rows = SettingsPanel.CategoryList.ScrollBox.rows rows[2]:UpdateStateInternal(true) rows[1]:UpdateStateInternal(false)");
+  expect([entry(1)[2], entry(2)[2]], "the rail follows the game's state call").toEqual([false, true]);
+  addon.eval("local box = SettingsPanel.CategoryList.ScrollBox box:Take(__navEntry(false)):UpdateStateInternal(true)");
+  expect(entry(4)[2], "an entry taken later follows too").toBe(true);
+  expect(addon.eval(`local head = SettingsPanel.CategoryList.ScrollBox.rows[3]
+    head.Label:SetText("Game") head:Init("Addons")
+    return { head.Background.__alpha, ns.Theme.RoleSize("section") == select(2, head.Label:GetFont()), head.Label:GetText() }`),
+    "a group header: plate faded, label the section role; the text is capitals again after the game sets it").toEqual([0, true, "ADDONS"]);
+  expect(addon.eval("return __errors('Windows')"), "no errors").toBe("none");
+});
+
+// TEST-ONLY: the addon list's own parts: scroll bar, character dropdown, force-load check, and the performance block with its header and divider.
+const ADDON_PARTS_ENV = BUTTON_FRAME_ENV + `
+  local f = __buttonFrame("AddonList", { "CancelButton" })
+  f.ScrollBar = __bar(f) f.Dropdown = CreateFrame("Button", nil, f) f.Dropdown.Arrow = f.Dropdown:CreateTexture() f.Dropdown.Arrow:SetAlpha(0)
+  f.ForceLoad = CreateFrame("CheckButton", nil, f) f.ForceLoad.Art = f.ForceLoad:CreateTexture()
+  f.Performance = CreateFrame("Frame", nil, f) f.Performance.Header = __label(f.Performance, "Performance")
+  f.Performance.Divider = f.Performance:CreateTexture(nil, "ARTWORK")
+`;
+
+it("addon list: scroll bar, character dropdown, force-load box, and the performance block's section head and divider", () => {
+  const addon = loggedIn(ADDON_PARTS_ENV);
+  addon.eval("AddonList:Show()");
+  expect(addon.eval(`local f = AddonList
+    return { __barred(f.ScrollBar), __panelled(f.Dropdown), f.Dropdown.Arrow.__alpha, ns.Theme.CheckParts(f.ForceLoad) ~= nil,
+      ns.Theme.RoleSize("section") == select(2, f.Performance.Header:GetFont()), f.Performance.Header:GetText(),
+      ns.Theme.DividerParts(f.Performance.Divider) ~= nil, f.Performance.Divider.__alpha }`),
+    "scroll bar and dropdown (arrow kept) themed, the force-load box a check box, the header small capitals, the divider one pixel of divider").toEqual([true, true, 1, true, true, "PERFORMANCE", true, 0]);
+  sameOnReshow(addon, "AddonList");
+  const off = loggedIn(ADDON_PARTS_ENV, SWITCH_OFF);
+  off.eval("AddonList:Show()");
+  expect(off.eval("return { __barred(AddonList.ScrollBar), ns.Theme.DividerParts(AddonList.Performance.Divider) == nil }"), "switched off: the game's").toEqual([false, true]);
+});
+
+// TEST-ONLY: the chat settings with two pages: a box with a heading, a color heading, a ring-wearing row holding a check button, a
+// radio further down and a plain frame; the combat page's filter box with a scroll bar, a name box and the two arrows; the tab manager.
+const CHAT_BOXES_ENV = CHAT_ENV + `
+  local page = CreateFrame("Frame", "ChatConfigChatSettings", f)
+  local box = __sub(page, "Left") CreateFrame("Frame", "ChatConfigChatSettingsLeft", page) box = ChatConfigChatSettingsLeft __art(box)
+  box.NineSlice = CreateFrame("Frame", nil, box) box.NineSlice.__piece = __art(box.NineSlice)
+  box.header = __label(box, "Chat")
+  ChatConfigChatSettingsLeftColorHeader = __label(box, "Color", "ChatConfigChatSettingsLeftColorHeader")
+  local ring = __sub(box, "Row") __sub(ring, "NineSlice") ring.Check = CreateFrame("CheckButton", nil, ring) ring.Check.Art = ring.Check:CreateTexture()
+  local deep = CreateFrame("Frame", nil, ring)
+  CombatConfigColorsColorizeEntireLineBySource = CreateFrame("CheckButton", "CombatConfigColorsColorizeEntireLineBySource", deep)
+  CombatConfigColorsColorizeEntireLineBySource.Art = CombatConfigColorsColorizeEntireLineBySource:CreateTexture()
+  CombatConfigColorsColorizeEntireLineByTarget = CreateFrame("CheckButton", "CombatConfigColorsColorizeEntireLineByTarget", deep)
+  CreateFrame("Frame", nil, page).__art = nil
+  local filters = CreateFrame("Frame", "ChatConfigCombatSettingsFilters", CreateFrame("Frame", nil, f)) __art(filters)
+  filters.NineSlice = CreateFrame("Frame", nil, filters) __art(filters.NineSlice)
+  filters.ScrollBar = __bar(filters)
+  CombatConfigSettingsNameEditBox = CreateFrame("EditBox", "CombatConfigSettingsNameEditBox", filters)
+  for _, n in ipairs({ "ChatConfigMoveFilterUpButton", "ChatConfigMoveFilterDownButton", "ChatConfigCombatSettingsFiltersDeleteButton", "CombatConfigSettingsSaveButton" }) do
+    _G[n] = CreateFrame("Button", n, filters) _G[n].Art = _G[n]:CreateTexture()
+  end
+  ChatConfigTextToSpeechSettings = CreateFrame("Frame", "ChatConfigTextToSpeechSettings", f) ChatConfigTextToSpeechSettings.ScrollBar = __bar(ChatConfigTextToSpeechSettings)
+`;
+
+it("chat settings: the boxes two levels down, their heads and rings, the radios, scroll bars, filter controls and the extra buttons", () => {
+  const addon = loggedIn(CHAT_BOXES_ENV);
+  addon.eval("ChatConfigFrame:Show()");
+  expect(addon.eval(`local box = ChatConfigChatSettingsLeft
+    return { __panelled(box), __faded(box), box.NineSlice.__piece.__alpha, box.Row.NineSlice.__piece.__alpha, __panelled(box.Row),
+      ns.Theme.RoleSize("section") == select(2, box.header:GetFont()), box.header:GetText(), ChatConfigChatSettingsLeftColorHeader:GetText() }`),
+    "a box on a page: inset panel, its art and ring faded, the row's ring faded and the row itself not a panel, heads small capitals").toEqual([true, 0, 0, 0, false, true, "CHAT", "COLOR"]);
+  expect(addon.eval(`local source, target, check = CombatConfigColorsColorizeEntireLineBySource, CombatConfigColorsColorizeEntireLineByTarget, ChatConfigChatSettingsLeft.Row.Check
+    return { ns.Theme.CheckParts(source).ring ~= nil, ns.Theme.CheckParts(check).ring == nil, ns.Theme.CheckParts(check).box ~= nil }`),
+    "the by-source radio is a radio (dressed before the check walk reached it), a plain check button a check box").toEqual([true, true, true]);
+  expect(addon.eval(`return { __barred(ChatConfigCombatSettingsFilters.ScrollBar), __barred(ChatConfigTextToSpeechSettings.ScrollBar), __panelled(CombatConfigSettingsNameEditBox),
+    __panelled(ChatConfigCombatSettingsFiltersDeleteButton), __panelled(CombatConfigSettingsSaveButton),
+    ns.Theme.ArrowParts(ChatConfigMoveFilterUpButton).glyph.__texCoord[3], ns.Theme.ArrowParts(ChatConfigMoveFilterDownButton).glyph.__texCoord[3] }`),
+    "the filter list's and the text-to-speech page's scroll bars, the name box, Delete and Save themed, the move arrows pointing up and down").toEqual([true, true, true, true, true, 1, 0]);
+  expect(addon.eval("return __errors('Windows')"), "no errors").toBe("none");
+});
+
+// TEST-ONLY: the chat settings' tab manager with a pool of two tabs (ChatConfigTabTemplate-shaped: Left/Middle/Right art), and the game's UpdateSelection.
+const CHAT_TABS_ENV = CHAT_ENV + `
+  CURRENT_CHAT_FRAME_ID = 2
+  local m = CreateFrame("Frame", nil, f) f.ChatTabManager = m
+  local tabs = {}
+  for i = 1, 2 do local t = CreateFrame("Button", nil, m) t:SetID(i) t.Left, t.Middle, t.Right = t:CreateTexture(), t:CreateTexture(), t:CreateTexture() tabs[i] = t end
+  m.tabPool = { EnumerateActive = function() local i = 0 return function() i = i + 1 return tabs[i] end end }
+  function m:UpdateSelection(selected) self.picked = selected end
+`;
+
+it("chat settings: the window tabs are theme tabs, the current chat window's raised, following the game's selection", () => {
+  const addon = loggedIn(CHAT_TABS_ENV);
+  addon.eval("ChatConfigFrame:Show()");
+  // Whether tab i is raised: its fill (the last BACKGROUND texture T.Tab tints) is the theme's raised colour.
+  const raised = (i) => addon.eval(`local bg
+    local tab = ({ ChatConfigFrame.ChatTabManager:GetChildren() })[${i}]
+    for _, r in ipairs({ tab:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
+    local c = bg.__vertexColor local r, g, b = ns.Theme.RGB("raised") return c[1] == r and c[2] == g and c[3] == b`);
+  expect([addon.eval("return ({ ChatConfigFrame.ChatTabManager:GetChildren() })[1].Left.__alpha"), raised(1), raised(2)],
+    "tabs themed (art faded); the current chat window's is raised").toEqual([0, false, true]);
+  addon.eval("ChatConfigFrame.ChatTabManager:UpdateSelection(1)");
+  expect([raised(1), raised(2), addon.eval("return ChatConfigFrame.ChatTabManager.picked")], "and the raised tab moves when the game picks another (its own function still runs)").toEqual([true, false, 1]);
+  const bare = loggedIn(CHAT_ENV + "f.ChatTabManager = CreateFrame('Frame', nil, f)");
+  bare.eval("ChatConfigFrame:Show()");
+  expect(bare.eval("return __errors('Windows')"), "a manager without its pool or selection function").toBe("none");
 });
