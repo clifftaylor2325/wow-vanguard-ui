@@ -111,6 +111,23 @@ it("T.Tint remembers its token: a new accent or variant re-tints every tinted re
   expect([colorOf("__t"), colorOf("__hand"), addon.eval("return __bare.c[1] == ns.Theme.PRESETS.brass[1]")], "forgotten: neither follows the accent any more; a region that can't say its colour is forgotten at the first refresh").toEqual([[0, 1, 0, 1], [1, 0, 0, 1], true]);
 });
 
+it("T.Refresh never compares a hidden vertex colour: a region the client colours from hidden data (a debuff badge's dispel colour) is forgotten, not re-tinted or raised on", () => {
+  // The client's hidden number keeps the type "number" (the harness's is a table), so the case marks one plain number hidden
+  // through issecretvalue, which ns.IsSecret asks: it is the badge's red channel, a hair off the accent's, close enough that
+  // a compare would call it unchanged and re-tint it.
+  const addon = loggedIn(`local asked = issecretvalue issecretvalue = function(v) return v == __hidden or asked(v) end
+    -- A region that reports the colour it was given, and one that reports it a hair off (the badge).
+    local function region(drift) return { SetVertexColor = function(self, ...) self.c = { ... } end,
+      GetVertexColor = function(self) return self.c[1] + drift, self.c[2], self.c[3], self.c[4] end } end
+    __plain, __badge, __veiled = region(0), region(0.001), region(0)
+    ns.Theme.Tint(__plain, "accent") ns.Theme.Tint(__badge, "accent") ns.Theme.Tint(__veiled, "accent")
+    __hidden = __badge.c[1] + 0.001
+    __veiled.GetVertexColor = function() return __wfgWorld.secret(0.5), 0, 0, 1 end`);
+  expect(addon.eval("return { ns.IsSecret(__hidden), ns.IsSecret(__badge.c[1]) }"), "only that number reads as hidden").toEqual([true, false]);
+  addon.slash("accent arcane");
+  expect(addon.eval("return { __plain.c[1] == ns.Theme.PRESETS.arcane[1], __badge.c[1] == ns.Theme.PRESETS.brass[1], __veiled.c[1] == ns.Theme.PRESETS.brass[1] }"), "the plain region follows the accent; the hidden ones are forgotten and keep theirs, with no error").toEqual([true, true, true]);
+});
+
 it("the layout constants: T.SPACE, T.ALPHA, T.CREST, T.ROW, T.SCROLL and the control heights, with the two display roles unchanged", () => {
   const addon = loggedIn();
   expect(addon.eval("return { ns.Theme.SPACE, ns.Theme.ALPHA, ns.Theme.CREST, ns.Theme.ROW, ns.Theme.SCROLL, { ns.Theme.CONTROL_H, ns.Theme.BUTTON_H }, ns.Theme.HEADING_ROLES }")).toEqual([

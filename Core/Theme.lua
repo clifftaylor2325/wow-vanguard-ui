@@ -390,10 +390,12 @@ function T.Tint(region, name, alpha)
 end
 
 -- Whether a region's vertex colour is still the one T.Tint last set on it, within a 255th on each channel
--- (a client that can't say gives no colour, and the region is forgotten).
+-- (a client that can't say gives no colour, or a hidden one such as the dispel engine's on a debuff badge,
+-- and the region is forgotten: a hidden value is never compared).
 local function stillTinted(region, m)
   if not region.GetVertexColor then return false end
   local r, g, b, a = region:GetVertexColor()
+  if ns.IsSecret(r) or ns.IsSecret(g) or ns.IsSecret(b) or ns.IsSecret(a) then return false end
   return type(r) == "number" and math.abs(r - m.r) < 0.004 and math.abs(g - m.g) < 0.004
     and math.abs(b - m.b) < 0.004 and math.abs((a or 1) - m.a) < 0.004
 end
