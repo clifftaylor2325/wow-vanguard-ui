@@ -594,7 +594,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.4.1 Game options
 
 - Do: press Escape, click Options. Look at the window, click through Game and AddOns, type in the search box, change a setting, click Apply, then Close.
-- Expect: a flat slate panel with the theme's close button; the Game and AddOns tabs with an accent line under the one you are on; the category list and the settings list on darker panels; flat Apply and Close buttons and search box. Every settings page still draws and works, and the title is still readable.
+- Expect: a flat slate panel with the theme's close button; the Game and AddOns tabs with the one you are on raised (lighter than the other); the category list and the settings list on darker panels; flat Apply and Close buttons and search box. Every settings page still draws and works, and the title is still readable.
 - If it fails, paste: a screenshot of the window and `/vg errors`.
 
 ### 14.4.2 Edit Mode
@@ -676,13 +676,13 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.8.1 Character pane side tabs
 
 - Do: press C, then click each side tab in turn (Character, Reputation, Skills, Honor, Currency, Statistics).
-- Expect: each tab is a flat dark tile with its icon still showing (none blank), a thin accent line on the selected tab only that moves with every click, and a faint wash under the mouse. [Needs in game: the tab art is faded by T.Tab, including its icon mask; if an icon is missing, paste a screenshot.]
+- Expect: each tab is a flat dark tile with its icon still showing (none blank), the selected tab raised (lighter) and the others sunk, that moves with every click, and a faint wash under the mouse. [Needs in game: the tab art is faded by T.Tab, including its icon mask; if an icon is missing, paste a screenshot.]
 - If it fails, paste: a screenshot of the pane with the tabs, the tab that is wrong and `/vg errors`.
 
 ### 14.8.2 Tabs on the other windows
 
 - Do: open the friends window (O) and click each tab; at a mailbox click Inbox and Send Mail; at a merchant click Merchant and Buyback; inspect another player and click each tab; open the spellbook (P) and click its tabs and its category tabs; open the guild window and click its side tabs; open the group finder and the Legacy window and click their tabs.
-- Expect: every tab is a flat dark tile with its text, the accent line is on the selected tab only and follows every click, tabs that the game shows later (a new profession, talents after learning them) look the same, and every tab still switches its page.
+- Expect: every tab is a flat dark tile with its text, the selected tab is the only raised one and follows every click, tabs that the game shows later (a new profession, talents after learning them) look the same, and every tab still switches its page.
 - If it fails, paste: which window and tab, a screenshot and `/vg errors`.
 
 ### 14.8.3 Inside the character pane

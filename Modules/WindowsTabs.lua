@@ -105,7 +105,7 @@ local function checkedNow(tab)
 end
 
 -- The game checks a side tab as the window loads, before T.Tab hooks SetChecked: says the state once
--- more, so the accent line starts on the right tab.
+-- more, so the selected tab is raised from the start.
 local function seedChecked(tab)
   if vgSeeded[tab] or type(tab.SetChecked) ~= "function" then return end
   vgSeeded[tab] = true
@@ -117,17 +117,6 @@ end
 local function fadeSideArt(tab)
   if tab.Background or tab.Left or type(tab.Icon) ~= "table" then return end
   T.FadeRegions(tab, { [tab.Icon] = true, [tab.IconOverlay or tab.Icon] = true })
-end
-
--- The edge of a tab away from its window, where its accent bar goes: the far side of a tab beside the
--- window, else the bottom of one below the window's middle and the top of one above it (TOP when unplaced).
-function GW.OuterEdge(tab, window)
-  local x, y = tab:GetCenter()
-  local left, right, bottom, top = window:GetLeft(), window:GetRight(), window:GetBottom(), window:GetTop()
-  if not (x and y and left and right and bottom and top) then return "TOP" end
-  if x > right then return "RIGHT" end
-  if x < left then return "LEFT" end
-  return y < (bottom + top) / 2 and "BOTTOM" or "TOP"
 end
 
 -- One axis of a tab's offset from its window: when the tab's `near` side (LEFT, TOP...) is set on the window's
@@ -151,10 +140,10 @@ function GW.ClearPadding(tab, window)
 end
 
 -- One tab button of a window in the theme, whichever template it came from: out past the window's padding,
--- its accent bar on its outer edge, and a side tab's icon greyed while another is selected.
+-- and a side tab's icon greyed while another is selected.
 local function dressTab(button, window, side)
   GW.ClearPadding(button, window)
-  T.Tab(button, { bar = GW.OuterEdge(button, window), dimIcon = side == true })
+  T.Tab(button, { dimIcon = side == true })
   seedChecked(button)
   fadeSideArt(button)
 end

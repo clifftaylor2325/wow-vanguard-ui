@@ -402,14 +402,14 @@ local function watchSide(frame, skin)
 end
 
 -- The side tabs the window takes from its pool (anchored again on every RefreshTabs): each in the theme
--- with its icon and count kept, out past the window's padding, the accent bar on its outer (right) edge,
+-- with its icon and count kept, out past the window's padding, raised while it is selected and its icon
 -- greyed while another is selected. Left to the game when the tabs group is off.
 local function dressSocialTabs(frame)
   if not (GW.settings and GW.settings.tabs) or type(frame.EnumerateTabs) ~= "function" then return end
   for tab in frame:EnumerateTabs() do
     vgPadded[tab] = nil
     if type(GW.ClearPadding) == "function" then GW.ClearPadding(tab, frame) end
-    T.Tab(tab, { bar = "RIGHT", dimIcon = true })
+    T.Tab(tab, { dimIcon = true })
   end
 end
 

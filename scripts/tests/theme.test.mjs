@@ -332,8 +332,9 @@ it("the faction look on a Russian client keeps Fira Sans for headings (the facti
   expect(look(german)[0], "a German client gets Cinzel (it has the Latin accents)").toBe("Cinzel-SemiBold.ttf");
 });
 
-// TEST-ONLY game tab buttons shaped like the game's three tab templates, and a reader
-// for a tab's accent line (the only OVERLAY texture T.Tab adds) and its art's alpha.
+// TEST-ONLY game tab buttons shaped like the game's three tab templates, and readers for a
+// tab's art alpha and its fill: the selected tab is raised (the theme's raised colour), the
+// others inset. The fill is the last BACKGROUND texture T.Tab tints.
 const TABS_LUA = `
   function __tab(keys, kind)
     local b = CreateFrame(kind or "Button", nil, UIParent)
@@ -341,51 +342,56 @@ const TABS_LUA = `
     b.Icon = b:CreateTexture(nil, "ARTWORK")
     return b
   end
-  function __line(b)
-    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "OVERLAY" then return r end end
+  function __tabBg(b)
+    local bg
+    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
+    return bg
+  end
+  function __raised(b)
+    local c = __tabBg(b).__vertexColor
+    local r, g, bl = ns.Theme.RGB("raised")
+    return c[1] == r and c[2] == g and c[3] == bl
   end
 `;
 
-it("game tabs: art faded, icon kept, a panel, and an accent line that follows the game's selection", () => {
+it("game tabs: art faded, icon kept, a panel, and the selected tab raised while the game has it selected", () => {
   const addon = loggedIn(TABS_LUA);
   const panelTab = addon.eval(`
     local tab = __tab({ "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive" })
     ns.Theme.Tab(tab) ns.Theme.Tab(tab) __panelTab = tab
-    local line = __line(tab)
-    local before = line:IsShown()
-    tab:Disable() local selected = line:IsShown()
-    tab:Enable() local after = line:IsShown()
+    local before = __raised(tab)
+    tab:Disable() local selected = __raised(tab)
+    tab:Enable() local after = __raised(tab)
     return { tab.Left.__alpha, tab.RightActive.__alpha, tab.Icon.__alpha == nil, before, selected, after }`);
-  expect(panelTab, "a panel tab: art faded, icon left, the line shows only while the game has it disabled (selected)").toEqual([0, 0, true, false, true, false]);
+  expect(panelTab, "a panel tab: art faded, icon left, raised only while the game has it disabled (selected)").toEqual([0, 0, true, false, true, false]);
   const sideTab = addon.eval(`
     local tab = __tab({ "Background", "SelectedTexture", "HighlightTexture" })
     function tab:SetChecked(on) self.SelectedTexture:SetShown(on) end
     ns.Theme.Tab(tab)
-    tab:SetChecked(true) local on = __line(tab):IsShown()
+    tab:SetChecked(true) local on = __raised(tab)
     tab:SetChecked(false)
-    return { tab.Background.__alpha, tab.SelectedTexture.__alpha, on, __line(tab):IsShown() }`);
+    return { tab.Background.__alpha, tab.SelectedTexture.__alpha, on, __raised(tab) }`);
   expect(sideTab, "a side tab follows SetChecked").toEqual([0, 0, true, false]);
   const systemTab = addon.eval(`
     local tab = __tab({ "Left", "Middle", "Right" })
     function tab:SetTabSelected(on) self.isSelected = on end
     ns.Theme.Tab(tab)
-    tab:SetTabSelected(true) local on = __line(tab):IsShown()
+    tab:SetTabSelected(true) local on = __raised(tab)
     tab:Disable()
     tab:SetTabSelected(false)
-    return { on, __line(tab):IsShown() }`);
+    return { on, __raised(tab) }`);
   expect(systemTab, "a tab-system tab follows SetTabSelected, not its enabled state").toEqual([true, false]);
   const frameTab = addon.eval(`
     local tab = __tab({ "Background", "SelectedTexture" }, "Frame")
     function tab:HookScript(name, fn) if name == "OnEnable" or name == "OnDisable" then error("Frame doesn't have a " .. name .. " script") end end
     function tab:SetChecked(on) end
     ns.Theme.Tab(tab) tab:SetChecked(true)
-    return __line(tab):IsShown()`);
+    return __raised(tab)`);
   expect(frameTab, "a side tab that is a Frame (no OnEnable script) still follows SetChecked").toBe(true);
   expect(addon.eval("return #ns.errors"), "and nothing is reported").toBe(0);
-  const bare = addon.eval("local b = CreateFrame('Button', nil, UIParent) ns.Theme.Tab(b) return __line(b) ~= nil");
+  const bare = addon.eval("local b = CreateFrame('Button', nil, UIParent) ns.Theme.Tab(b) return __tabBg(b) ~= nil");
   expect(bare, "a button with none of the parts is panelled, nothing errors").toBe(true);
-  addon.eval("__panelTab:Disable() ns.Theme.SetAccent(0.1, 0.2, 0.3)");
-  expect(addon.eval("return __line(__panelTab).__vertexColor[3]"), "the line follows the accent").toBeCloseTo(0.3);
+  expect(addon.eval("__panelTab:Disable() return __raised(__panelTab)"), "a tab the game has disabled is raised, with the theme's raised colour").toBe(true);
 });
 
 it("tooltip-like frames: a panel with a shadow and the game's NineSlice faded, once", () => {
