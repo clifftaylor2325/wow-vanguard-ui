@@ -14,8 +14,8 @@ local T = ns.Theme
 
 local GT = ns.Module("GroupThreat", { defaults = { show = false } })
 
--- The panel's width, row height, padding, and most rows.
-GT.WIDTH, GT.ROW, GT.PAD, GT.MAX = 150, 16, 6, 5
+-- The panel's width, a line's height, its padding (a HUD card's, T.SPACE.gap), and most rows.
+GT.WIDTH, GT.ROW, GT.PAD, GT.MAX = 150, 16, T.SPACE.gap, 5
 -- The events that move threat or change who is compared.
 GT.EVENTS = { "UNIT_THREAT_LIST_UPDATE", "UNIT_THREAT_SITUATION_UPDATE", "PLAYER_TARGET_CHANGED", "GROUP_ROSTER_UPDATE" }
 

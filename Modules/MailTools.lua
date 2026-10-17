@@ -15,8 +15,12 @@ local T, W = ns.Theme, ns.Widgets
 
 local MT = ns.Module("MailTools", { defaults = { on = false, presets = {} } })
 
--- The panel's width and padding, a row's height, rows, preset buttons, bags read, the game's attachment limit, mails scanned and the gap to the window.
-MT.WIDTH, MT.PAD, MT.ROW, MT.ROWS, MT.BUTTONS, MT.BAGS, MT.ATTACH, MT.SCAN, MT.GAP = 270, 8, 24, 8, 4, 4, 12, 60, 8
+-- The panel's width and padding (a HUD card's, T.SPACE.gap), a row's height (T.ROW.height), rows, preset buttons,
+-- bags read, the game's attachment limit, mails scanned and the gap to the window (T.SPACE.gap).
+MT.WIDTH, MT.PAD, MT.ROW, MT.ROWS, MT.BUTTONS, MT.BAGS, MT.ATTACH, MT.SCAN, MT.GAP = 270, T.SPACE.gap, T.ROW.height, 8, 4, 4, 12, 60, T.SPACE.gap
+-- Where the search line (the box, with the filter button on its middle) and the first row start, down from the top:
+-- under the heading; the room along the bottom for the preset buttons; and a preset button's width.
+local SEARCH_TOP, ROWS_TOP, FOOT, PRESET_W = 30, 64, T.SPACE.gap + T.BUTTON_H + T.SPACE.gap, 60
 -- The filters in the order the button cycles them; the one in use and the words typed.
 MT.FILTERS, MT.filter, MT.query = { "All", "Money", "Items", "Sales" }, "All", ""
 
@@ -181,16 +185,15 @@ end
 local function rowText(r)
   r.text = T.Text(r:CreateFontString(nil, "OVERLAY"), "label", "text")
   r.text:SetPoint("LEFT", 0, 0)
-  r.text:SetPoint("RIGHT", r.take, "LEFT", -4, 0)
+  r.text:SetPoint("RIGHT", r.take, "LEFT", -T.SPACE.tight, 0)
   r.text:SetWordWrap(false)
 end
 
--- Row i: its line and the Take button.
+-- Row i (W.Row: the line under the mouse is washed): its line and the Take button.
 local function buildRow(f, i)
-  local r = CreateFrame("Frame", nil, f)
-  r:SetHeight(MT.ROW)
-  r:SetPoint("TOPLEFT", MT.PAD, -64 - (i - 1) * MT.ROW)
-  r:SetPoint("TOPRIGHT", -MT.PAD, -64 - (i - 1) * MT.ROW)
+  local r = W.Row(f, MT.ROW)
+  r:SetPoint("TOPLEFT", MT.PAD, -ROWS_TOP - (i - 1) * MT.ROW)
+  r:SetPoint("TOPRIGHT", -MT.PAD, -ROWS_TOP - (i - 1) * MT.ROW)
   r.take = W.Button(r, "Take", function() if r.mail then MT.Take(r.mail) end end, 48)
   r.take:SetPoint("RIGHT", 0, 0)
   rowText(r)
@@ -200,10 +203,10 @@ end
 -- The search box and the filter button under the heading.
 local function buildSearch(f)
   f.search = W.Input(f, 150)
-  f.search:SetPoint("TOPLEFT", MT.PAD, -30)
+  f.search:SetPoint("TOPLEFT", MT.PAD, -SEARCH_TOP)
   f.search:SetScript("OnTextChanged", ns.Guard("mail search", function(self) MT.query = self:GetText() or "" MT.Paint() end))
   f.filterButton = W.Button(f, MT.filter, function() MT.CycleFilter() end, 90)
-  f.filterButton:SetPoint("LEFT", f.search, "RIGHT", 6, 0)
+  f.filterButton:SetPoint("LEFT", f.search, "RIGHT", T.SPACE.gap, 0)
 end
 
 -- The preset buttons along the bottom (the first few presets), each sending its preset.
@@ -211,28 +214,28 @@ local function buildPresets(f)
   f.presets = {}
   for i = 1, MT.BUTTONS do
     local b
-    b = W.Button(f, "Preset", function() if b.preset then MT.Send(b.preset) end end, 60)
-    b:SetPoint("BOTTOMLEFT", MT.PAD + (i - 1) * 64, MT.PAD)
+    b = W.Button(f, "Preset", function() if b.preset then MT.Send(b.preset) end end, PRESET_W)
+    b:SetPoint("BOTTOMLEFT", MT.PAD + (i - 1) * (PRESET_W + T.SPACE.tight), MT.PAD)
     f.presets[i] = b
   end
 end
 
--- The panel's heading, the empty-list line and the hint shown while there are no presets.
+-- The panel's heading (ns.WindowTitle: a card's; the panel follows the mail window, so it has no close button),
+-- the empty-state line (label text2) and the hint shown while there are no presets (a note: small muted).
 local function heading(f)
-  f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading")
-  f.title:SetPoint("TOPLEFT", MT.PAD, -MT.PAD)
-  f.title:SetText("Find mail")
+  ns.WindowTitle(f, "Find mail", { kind = "card" })
   f.empty = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  f.empty:SetPoint("TOP", 0, -64 - MT.ROW)
-  f.hint = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  f.hint:SetPoint("BOTTOM", 0, MT.PAD + 6)
+  f.empty:SetPoint("TOP", 0, -ROWS_TOP - MT.ROW)
+  f.hint = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
+  f.hint:SetWidth(MT.WIDTH - 2 * MT.PAD)
+  f.hint:SetPoint("BOTTOM", 0, MT.PAD)
   f.hint:SetText("No presets: /vg mail preset add <name> <character> [words]")
 end
 
 -- The panel, built when the mailbox first opens with the tools on: right of the mail window.
 function MT.Build()
-  local f = T.Panel(CreateFrame("Frame", "Vanguard_MailTools", UIParent), { shadow = true, alpha = 1 })
-  f:SetSize(MT.WIDTH, 64 + MT.ROWS * MT.ROW + 40)
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_MailTools", UIParent), { shadow = true, alpha = T.ALPHA.opaque })
+  f:SetSize(MT.WIDTH, ROWS_TOP + MT.ROWS * MT.ROW + FOOT)
   heading(f)
   f.rows = {}
   for i = 1, MT.ROWS do f.rows[i] = buildRow(f, i) end

@@ -784,3 +784,16 @@ it("bag and menu bar: each bag's slot shows how full it is, the backpack how man
   const bare = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + "C_Container = nil");
   expect(bare.eval("return { ns.GetModule('MenuStrip').free:GetText(), ns.FrameState('vgFill')[MainMenuBarBackpackButton]:IsShown() }"), "a client that can't count bag slots shows no count and no fill").toEqual(["", false]);
 });
+
+it("the minimap's zone name is the zone role: a bold 13 in Fira Sans that the faction look's display font does not reach", () => {
+  const addon = loggedIn(UI_ENV + 'UnitFactionGroup = function() return "Alliance" end GetLocale = function() return "enUS" end');
+  addon.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh() __heading = ns.Theme.Text(UIParent:CreateFontString(), "heading")');
+  // A font string's file name and size.
+  const font = (ref) => {
+    const f = addon.frame(ref).font;
+    return [f.path.match(/[^\\]+$/)[0], f.size];
+  };
+  expect(font("__heading"), "the faction look is on: a heading takes Cinzel").toEqual(["Cinzel-SemiBold.ttf", 13]);
+  expect(font("ns.GetModule('Minimap').zone"), "the zone name keeps Fira Sans SemiBold at the zone role's 13").toEqual(["FiraSansCondensed-SemiBold.ttf", addon.eval("return ns.Theme.RoleSize('zone')")]);
+  expect(isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneContested"), "and the PvP colour is still its colour").toBe(true);
+});
