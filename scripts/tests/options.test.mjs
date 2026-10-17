@@ -657,6 +657,41 @@ it("switches wrap a long caption left of the track and react to the mouse", () =
   expect(knob("OnMouseDown"), "pressing marks it pressed").toEqual([true, true]);
   expect(knob("OnMouseUp"), "letting go clears the press").toEqual([true, false]);
   expect(knob("OnLeave"), "leaving clears the hot mark").toEqual([false, false]);
+  const parts = addon.eval(`local s = __sw
+    local function p(t) local layer, sub = t:GetDrawLayer() return { layer, sub, (t.__texture or ""):match("[^\\\\]+$"), t:GetParent() == s.track } end
+    return { p(s.trackArt[1]), p(s.fill), p(s.outline[1]), p(s.knob), p(s.shade) }`);
+  expect(parts, "the pill, its fill and its outline on the track in layer order; the knob and its shade above the outline, in that order")
+    .toEqual([["BORDER", 0, "Pill", true], ["ARTWORK", 0, "Pill", true], ["OVERLAY", 0, "PillLine", true], ["OVERLAY", 1, "Knob", true], ["OVERLAY", 2, "KnobShade", true]]);
+  // Where the knob and its shade sit (the one anchor each has), and whether the fill shows.
+  const place = () => addon.eval("local k, s = __sw.knob.__points, __sw.shade.__points local kp, sp = next(k), next(s) return { kp, k[kp].x, sp, s[sp].x, __sw.fill:IsShown() }");
+  expect(place(), "off: the knob and its shade at the track's left, no fill").toEqual(["LEFT", 2, "LEFT", 2, false]);
+  addon.eval("__sw.__scripts.OnClick(__sw)");
+  expect(place(), "on: both at the right, the fill shown").toEqual(["RIGHT", -2, "RIGHT", -2, true]);
+});
+
+it("sliders: the pill track, the fill on the same frame under the thumb, the thumb's shade and outline, and tracks that follow a theme change", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval(`ns.Options.Show("general")
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.track and w.min and w.label and w.label.__text == "Text size" then __sl = w end
+      if w.knob and w.get and w:IsVisible() then __swRow = w end
+    end
+    function __part(t) local layer, sub = t:GetDrawLayer() return { layer, sub, (t.__texture or ""):match("[^\\\\]+$"), t:GetParent() == __sl.track } end
+    function __r3(x) return math.floor(x * 1000 + 0.5) / 1000 end`);
+  const parts = addon.eval("return { __part(__sl.trackArt[2]), __part(__sl.fillParts[2]), __part(__sl.outline[2]), __part(__sl.thumb), __part(__sl.thumbShade), __part(__sl.thumbLine) }");
+  expect(parts, "pill, fill and outline on the track frame in layer order; the thumb, its shade and its outline above the track's outline in that order, so the fill never covers the thumb")
+    .toEqual([["BORDER", 0, "Pill", true], ["ARTWORK", 0, "Pill", true], ["OVERLAY", 0, "SliderLine", true], ["OVERLAY", 1, "Knob", true], ["OVERLAY", 2, "KnobShade", true], ["OVERLAY", 3, "KnobLine", true]]);
+  expect(addon.eval("local p = __sl.fillParts return { p[1].__texCoord, p[2].__texCoord, p[3].__texCoord }"), "a pill's three parts cut the capsule at its round ends").toEqual([[0, 0.25, 0, 1], [0.25, 0.75, 0, 1], [0.75, 1, 0, 1]]);
+  // The fill at a value: shown, the width of its two round ends, its right end's left edge, and the thumb's and its outline's centre.
+  const fill = (v) => addon.eval(`__sl.set(${v}) __sl:Refresh() local p = __sl.fillParts
+    return { p[1]:IsShown(), __r3(p[1]:GetWidth()), __r3(p[3]:GetWidth()), __r3(p[3].__points.TOPLEFT.x), __r3(__sl.thumb.__points.CENTER.x), __r3(__sl.thumbLine.__points.CENTER.x) }`);
+  expect(fill("__sl.max"), "at the top: the fill spans the track, its right end 4 in from the end, the thumb and its outline centred on the end").toEqual([true, 4, 4, 136, 140, 140]);
+  expect(fill("__sl.min + (4 / 140) * (__sl.max - __sl.min)"), "a fill 4 wide: both ends narrow to 2, so neither crosses the other").toEqual([true, 2, 2, 2, 4, 4]);
+  expect(fill("__sl.min"), "at the bottom: the fill hides under the thumb at the left end").toEqual([false, 0.5, 0.5, -0.5, 0, 0]);
+  // Whether a texture is tinted the token's colour as the theme has it now.
+  const tinted = (t, token) => addon.eval(`local c = ${t}.__vertexColor local r, g, b = ns.Theme.RGB("${token}") return c[1] == r and c[2] == g and c[3] == b`);
+  addon.eval('ns.Theme.Settings().variant = "midnight" ns.Theme.Refresh()');
+  expect([tinted("__sl.trackArt[1]", "inset"), tinted("__sl.outline[1]", "borderHi"), tinted("__swRow.trackArt[1]", "inset"), tinted("__swRow.outline[1]", "borderHi")], "a theme variant change retints the slider's and the switch's track and outline with the page").toEqual([true, true, true, true]);
 });
 
 it("options: the Theme variant and Corners choices list every variant in T.VARIANT_ORDER and both corner styles, so a new look can't be left off the page", () => {
