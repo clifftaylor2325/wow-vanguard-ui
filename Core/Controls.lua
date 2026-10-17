@@ -115,13 +115,11 @@ end
 
 -- The switch track's art: the pill in the inset color, the accent fill inside its outline (shown when on) and the outline.
 local function addSwitchArt(r)
-  r.trackArt = { art(r.track, "BORDER", "Pill", "inset") }
-  r.trackArt[1]:SetAllPoints()
+  local capsule = T.Capsule(r.track, SWITCH_HEIGHT, "inset")
+  r.trackArt, r.outline = capsule.fill, capsule.line
   r.fill = art(r.track, "ARTWORK", "Pill", "accent")
   r.fill:SetPoint("TOPLEFT", 1, -1)
   r.fill:SetPoint("BOTTOMRIGHT", -1, 1)
-  r.outline = { art(r.track, "OVERLAY", "PillLine", "borderHi") }
-  r.outline[1]:SetAllPoints()
 end
 
 -- The switch itself: a pill track in the inset color with its outline, an accent fill when on, and a round knob with its shade.
@@ -441,34 +439,10 @@ local function wireDrag(r)
   r.track:SetScript("OnMouseUp", function() r.track:SetScript("OnUpdate", nil) end)
 end
 
--- A pill of Media/Textures/<name> on frame, in three parts: a round left end, a flat middle and a round right end, so it
--- stretches to any width. Returns the parts.
-local function pillParts(frame, layer, name, color)
-  local parts = {}
-  for i, cut in ipairs({ { 0, 0.25 }, { 0.25, 0.75 }, { 0.75, 1 } }) do
-    parts[i] = art(frame, layer, name, color)
-    parts[i]:SetTexCoord(cut[1], cut[2], 0, 1)
-  end
-  return parts
-end
-
--- Lays a pill's parts across frame: each round end half the frame's height wide, the middle between them.
-local function placePill(parts, frame)
-  local cap = SLIDER_HEIGHT / 2
-  parts[1]:SetPoint("TOPLEFT", frame)
-  parts[1]:SetPoint("BOTTOMLEFT", frame)
-  parts[1]:SetWidth(cap)
-  parts[2]:SetPoint("TOPLEFT", frame, "TOPLEFT", cap, 0)
-  parts[2]:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -cap, 0)
-  parts[3]:SetPoint("TOPRIGHT", frame)
-  parts[3]:SetPoint("BOTTOMRIGHT", frame)
-  parts[3]:SetWidth(cap)
-end
-
 -- The fill (T.SLIDER.fill): a pill on the track itself (its ARTWORK, under the thumb and the outline) from the track's
 -- left end, its left end fixed, its middle between the ends; placeFill runs its right end to the thumb.
 local function addFill(r)
-  r.fillParts = pillParts(r.track, "ARTWORK", "Pill", T.SLIDER.fill)
+  r.fillParts = T.CapsuleArt(r.track, "ARTWORK", "Pill", T.SLIDER.fill)
   local p = r.fillParts
   p[1]:SetPoint("TOPLEFT")
   p[1]:SetPoint("BOTTOMLEFT")
@@ -492,11 +466,9 @@ local function addTrack(r)
   r.track = CreateFrame("Button", nil, r)
   r.track:SetSize(140, SLIDER_HEIGHT)
   r.track:SetPoint("RIGHT", -66, 0)
-  r.trackArt = pillParts(r.track, "BORDER", "Pill", T.SLIDER.track)
-  placePill(r.trackArt, r.track)
+  local capsule = T.Capsule(r.track, SLIDER_HEIGHT, T.SLIDER.track, { line = T.SLIDER.line, edge = "SliderLine" })
+  r.trackArt, r.outline = capsule.fill, capsule.line
   addFill(r)
-  r.outline = pillParts(r.track, "OVERLAY", "SliderLine", T.SLIDER.line)
-  placePill(r.outline, r.track)
   addThumb(r)
   wireDrag(r)
 end

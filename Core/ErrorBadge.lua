@@ -8,6 +8,7 @@ local ADDON, ns = ...
 
 local T = ns.Theme
 
+local BADGE_H, BADGE_PAD = 14, 8
 local EB = {}
 ns.ErrorBadge = EB
 
@@ -16,16 +17,15 @@ local function errorsText(n)
   return n == 1 and "1 error" or (n .. " errors")
 end
 
--- The count just left of the addons button, level with it (a small square in the bad color): beside the
+-- The count just left of the addons button, level with it (a capsule in the accent, the count in void): beside the
 -- button's icon, not over it, and inside the minimap's band when the button sits there.
 local function buttonBadge(button)
   local b = CreateFrame("Frame", "Vanguard_ErrorBadge", button)
-  b:SetSize(14, 14)
+  b:SetSize(BADGE_H, BADGE_H)
   b:SetPoint("RIGHT", button, "LEFT", -3, 0)
   b:SetFrameLevel(button:GetFrameLevel() + 5)
-  b.fill = ns.Widgets.Flat(b, "ARTWORK", "bad")
-  b.fill:SetAllPoints()
-  b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "badge", "white")
+  b.fill = T.Capsule(b, BADGE_H, "accent", { line = false, layer = "ARTWORK" }).fill
+  b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "badge", "void")
   b.text:SetPoint("CENTER")
   return b
 end
@@ -34,13 +34,14 @@ end
 local function show(badge, n, text)
   if not badge then return end
   badge.text:SetText(text)
+  if badge.fill then badge:SetWidth(math.max(BADGE_H, badge.text:GetStringWidth() + BADGE_PAD)) end
   badge:SetShown(n > 0)
 end
 
 -- Shows the count on both badges (none at zero).
 function EB.Update()
   local n = #ns.errors
-  show(EB.button, n, tostring(n))
+  show(EB.button, n, n > 99 and "99+" or tostring(n))
   show(EB.footer, n, errorsText(n) .. " caught this session: click to list them")
 end
 

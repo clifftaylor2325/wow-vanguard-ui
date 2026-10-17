@@ -512,7 +512,7 @@ it("a shop row opens every listing of its item in place of the rows; columns sor
   addon.click(`${VIEW}.table.heads[2]`);
   expect(view(addon)[3].map((r) => r[1]), "by quantity").toEqual(["1", "3", "5", "7", "12", "20", "60", "200"]);
   addon.click(`${VIEW}.table.heads[2]`);
-  expect([view(addon)[3].map((r) => r[1]), addon.eval(`return ${VIEW}.table.arrow:GetRotation()`)], "again: most first, the arrow turned").toEqual([["200", "60", "20", "12", "7", "5", "3", "1"], 0]);
+  expect([view(addon)[3].map((r) => r[1]), /Icons\\Down$/.test(addon.eval(`return ${VIEW}.table.arrow:GetTexture()`))], "again: most first, the arrow turned to Down").toEqual([["200", "60", "20", "12", "7", "5", "3", "1"], true]);
   addon.click(`${VIEW}.table.heads[3]`);
   expect(view(addon)[3].map((r) => r[2]), "by time left (none first)").toEqual(["", "1 min", "10 min", "50 min", "2 h", "2 h", "11 h", "27 h"]);
   addon.wheel(`${VIEW}.table.rows[1]`, -5);
