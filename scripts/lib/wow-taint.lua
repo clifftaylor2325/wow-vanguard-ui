@@ -165,7 +165,7 @@ for _, name in ipairs({ "CreateTexture", "CreateFontString" }) do
 end
 
 -- Regions the stub makes on first use belong to their frame's owner.
-local LAZY = { SetStatusBarTexture = "__barTexture", GetCountdownFontString = "__countdown", SetCheckedTexture = "__checkedTexture" }
+local LAZY = { SetStatusBarTexture = "__barTexture", GetCountdownFontString = "__countdown", SetCheckedTexture = "__checkedTexture", SetThumbTexture = "__thumbTexture" }
 
 -- After the method, the region it made is the game's when its frame is.
 local function lazyRegion(field)
