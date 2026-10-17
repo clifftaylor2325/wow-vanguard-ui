@@ -314,6 +314,7 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | Options window (`/vg`) opens | fade in, rising 4 px into place | 0.13 s | at once | Reduce motion |
 | Options window closes | fade out | 0.1 s | 0.1 s | Reduce motion |
 | A button (`T.Button`) under the mouse | hover eases in / out | 0.1 s / 0.13 s | 0.1 s / 0.13 s | Reduce motion (at once) |
+| A switch's knob, or a slider's thumb and fill, move to a new value (`T.Glide`, `T.KNOB_EASE`) | glide, eased out | 0.1 s | at once | Reduce motion (at once); a slider thumb under the cursor always follows at once |
 | A button (`T.Button`) pressed, or a row's keyboard focus ring | darker fill, label down 1 px / ring on | at once | at once | - |
 | Options page change | stops a fade in progress; the page appears at once | - | - | - |
 | Unlock mode: a frame's popover (right-click a handle) opens / closes | fade in / out | 0.12 s | closes in 0.12 s (a fight ends unlock mode) | Reduce motion |

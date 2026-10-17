@@ -82,18 +82,23 @@ local function tintTrack(r, track, line)
   for _, part in ipairs(r.outline) do T.Tint(part, line) end
 end
 
--- Shows the switch: on (accent fill, bright knob right) or off (dark track, dim knob left); the knob is bright under
--- the mouse and drops a pixel (T.PRESS.drop) while pressed; the track never changes colour for a press.
+-- Puts the knob and its shade x units in from the track's left end, a pixel lower (T.PRESS.drop) while pressed.
+local function placeKnob(r, x)
+  local drop = r.pressed and -T.PRESS.drop * T.Pixel(r.track) or 0
+  for _, part in ipairs({ r.knob, r.shade }) do
+    part:ClearAllPoints()
+    part:SetPoint("LEFT", r.track, "LEFT", x, drop)
+  end
+end
+
+-- Shows the switch: on (accent fill, bright knob right) or off (dark track, dim knob left); the knob glides between
+-- them (T.Glide), is bright under the mouse and drops a pixel while pressed; the track never changes colour for a press.
 local function refreshSwitch(r)
   local on = r.get() == true
   tintTrack(r, "inset", "borderHi")
   r.fill:SetShown(on)
   T.Tint(r.fill, "accent")
-  local drop = r.pressed and -T.PRESS.drop * T.Pixel(r.track) or 0
-  for _, part in ipairs({ r.knob, r.shade }) do
-    part:ClearAllPoints()
-    part:SetPoint(on and "RIGHT" or "LEFT", r.track, on and "RIGHT" or "LEFT", on and -2 or 2, drop)
-  end
+  T.Glide(r, on and SWITCH_WIDTH - KNOB_SIZE - 2 or 2, function(x) placeKnob(r, x) end)
   T.Tint(r.knob, (on or r.hot) and "white" or "muted")
 end
 
@@ -484,8 +489,7 @@ local function refreshSlider(r)
   for _, part in ipairs(r.fillParts) do T.Tint(part, T.SLIDER.fill) end
   T.Tint(r.thumb, locked and T.SLIDER.thumbOff or T.SLIDER.thumbColor)
   T.Color(r.label, locked and "muted" or "text")
-  placeFill(r, r.track:GetWidth() * share)
-  placeThumb(r, r.track:GetWidth() * share)
+  T.Glide(r, r.track:GetWidth() * share, function(x) placeFill(r, x) placeThumb(r, x) end, r.dragging)
   r.value:SetText(r.format(v))
 end
 
@@ -513,8 +517,8 @@ end
 
 -- Dragging along the track: follow the cursor from mouse down to mouse up.
 local function wireDrag(r)
-  r.track:SetScript("OnMouseDown", function() r.track:SetScript("OnUpdate", function() dragTo(r) end) end)
-  r.track:SetScript("OnMouseUp", function() r.track:SetScript("OnUpdate", nil) end)
+  r.track:SetScript("OnMouseDown", function() r.dragging = true r.track:SetScript("OnUpdate", function() dragTo(r) end) end)
+  r.track:SetScript("OnMouseUp", function() r.dragging = false r.track:SetScript("OnUpdate", nil) end)
 end
 
 -- The fill (T.SLIDER.fill): a pill on the track itself (its ARTWORK, under the thumb and the outline) from the track's
