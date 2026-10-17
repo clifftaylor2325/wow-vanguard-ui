@@ -345,6 +345,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: watch more quests than fit under the info strip.
 - Expect: a `+N more` line at the bottom of the tracker. Click it: the tracker grows to at most 10 quests, ending in `Show fewer` (with `· +N more` past ten). `/reload`: it is still expanded. Click `Show fewer` to fold it.
+- Also expect (Legacy challenges): with a challenge tracked in the game (its Legacy window), a `Legacy challenges` heading sits under the quests with the challenge beneath it, its criteria as `- 2/3 …` lines and `Complete` once done. Right-click the challenge: it leaves the tracker. With none tracked, no heading. A heading never shows alone: when no challenge fits under it, it is left out and the `+N more` line counts the challenges. [Needs in game: how a Forever client tracks a challenge, and that its criteria text reads as above.]
 - If it fails, paste: a screenshot.
 
 ### 8.5 Levelling helpers

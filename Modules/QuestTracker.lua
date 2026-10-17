@@ -17,7 +17,8 @@ local ADDON, ns = ...
 local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game", withQuestie = "questie", xp = true, expanded = false } })
 
 QT.W, QT.H, QT.SORT_EVERY = 260, 174, 1
-QT.EVENTS = { "QUEST_WATCH_LIST_CHANGED", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_REMOVED", "PLAYER_ENTERING_WORLD" }
+QT.EVENTS = { "QUEST_WATCH_LIST_CHANGED", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_REMOVED", "PLAYER_ENTERING_WORLD",
+  "CONTENT_TRACKING_UPDATE", "TRACKED_ACHIEVEMENT_UPDATE", "TRACKED_ACHIEVEMENT_LIST_CHANGED", "ACHIEVEMENT_EARNED" }
 
 -- Whether Vanguard's tracker shows with these settings: it's on, and Questie (when it's
 -- loaded) isn't set to show its own tracker instead.
@@ -97,6 +98,59 @@ function QT.Quests()
   return out
 end
 
+-- Calls a global achievement function by name, if this client has it (all its results).
+local function achievementCall(name, ...)
+  local fn = _G[name]
+  if type(fn) == "function" then return fn(...) end
+end
+
+-- The achievement type of the content tracker (Enum.ContentTrackingType.Achievement), or nil without it.
+local function achievementType()
+  local types = Enum and Enum.ContentTrackingType
+  return types and types.Achievement
+end
+
+-- A tracked achievement's criteria as { text, done }, in the game's order.
+local function achievementCriteria(id)
+  local out = {}
+  for i = 1, ns.PlainNumber(achievementCall("GetAchievementNumCriteria", id)) or 0 do
+    local text, _, done = achievementCall("GetAchievementCriteriaInfo", id, i)
+    out[#out + 1] = { text = ns.QuestParts.Plain(text or ""), done = yes(done) }
+  end
+  return out
+end
+
+-- One tracked achievement (a Legacy challenge on Forever): { id, title, ready, objectives, achievement = true },
+-- or nil when the client doesn't have it.
+function QT.Achievement(id)
+  local _, name, _, completed = achievementCall("GetAchievementInfo", id)
+  if type(name) ~= "string" then return nil end
+  return { id = id, title = name, ready = yes(completed), objectives = achievementCriteria(id), achievement = true }
+end
+
+-- The achievements you track, in the game's order.
+function QT.Achievements()
+  local out, kind = {}, achievementType()
+  if not (kind and C_ContentTracking and C_ContentTracking.GetTrackedIDs) then return out end
+  for _, id in ipairs(C_ContentTracking.GetTrackedIDs(kind) or {}) do
+    local a = QT.Achievement(id)
+    if a then out[#out + 1] = a end
+  end
+  return out
+end
+
+-- The rows the tracker draws: the watched quests, then the tracked achievements under their own heading (none
+-- when you track none, so the tracker looks as it did).
+function QT.Rows(quests)
+  local achievements = QT.Achievements()
+  if #achievements == 0 then return quests end
+  local rows = {}
+  for _, q in ipairs(quests) do rows[#rows + 1] = q end
+  rows[#rows + 1] = { section = "Legacy challenges" }
+  for _, a in ipairs(achievements) do rows[#rows + 1] = a end
+  return rows
+end
+
 -- Actions --------------------------------------------------------------------------------------
 
 -- A title was clicked: left opens the quest (Vanguard's quest log, else the game's map), Shift-left points
@@ -108,6 +162,14 @@ function QT.OnTitle(id, button)
   local log = ns.GetModule("QuestLog")
   if log and log.Open and log.frame then return log.Open(id) end
   if type(QuestMapFrame_OpenToQuestDetails) == "function" then QuestMapFrame_OpenToQuestDetails(id) end
+end
+
+-- A tracked achievement's title was clicked: right stops tracking it (the game's own tracker does the same).
+function QT.OnAchievement(id, button)
+  local kind, stop = achievementType(), Enum and Enum.ContentTrackingStopType
+  if button == "RightButton" and kind and C_ContentTracking and C_ContentTracking.StopTracking then
+    C_ContentTracking.StopTracking(kind, id, stop and stop.Manual)
+  end
 end
 
 -- Updates ---------------------------------------------------------------------------------------

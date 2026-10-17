@@ -276,6 +276,60 @@ it("quest tracker: watched quests with levels, objectives and items", () => {
   noLog.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton')");
   expect(noLog.eval("return __opened"), "with Vanguard's quest log off, the game's map opens it").toBe(90051);
 });
+// TEST-ONLY Legacy challenges: tracked achievements (C_ContentTracking's achievement type) and their criteria.
+const ACH_ENV = `
+  Enum.ContentTrackingType = { Achievement = 2 }
+  Enum.ContentTrackingStopType = { Manual = 2 }
+  __achievements = {
+    [7001] = { name = "TEST-ONLY Legacy Pathfinder", completed = false,
+      criteria = { { text = "2/3 TEST-ONLY Roads", done = false }, { text = "1/1 TEST-ONLY Bridges", done = true } } },
+    [7002] = { name = "TEST-ONLY Legacy Done", completed = true, criteria = {} },
+  }
+  __tracked = { 7001, 7002 }
+  C_ContentTracking = {
+    GetTrackedIDs = function(kind) if kind == 2 then return __tracked end return {} end,
+    StopTracking = function(kind, id, stop) __stopped = { kind, id, stop } end,
+  }
+  GetAchievementInfo = function(id) local a = __achievements[id] if a then return id, a.name, 10, a.completed end end
+  GetAchievementNumCriteria = function(id) return __achievements[id] and #__achievements[id].criteria or 0 end
+  GetAchievementCriteriaInfo = function(id, i) local c = __achievements[id].criteria[i] return c.text, 0, c.done end
+`;
+// One watched quest, which leaves room under it for the challenges.
+const ONE_QUEST = "__watches = { 90052 }";
+it("quest tracker: tracked Legacy challenges under their own heading", () => {
+  const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST);
+  expect(blockTitles(addon), "the quest, then the heading, then each tracked challenge").toEqual(["[12] TEST-ONLY Letter", "Legacy challenges", "TEST-ONLY Legacy Pathfinder", "TEST-ONLY Legacy Done"]);
+  expect(tracker(addon).blocks.slice(1), "the criteria as objectives, and a finished challenge reads Complete").toEqual([
+    ["Legacy challenges", {}], ["TEST-ONLY Legacy Pathfinder", ["- 2/3 TEST-ONLY Roads", "- 1/1 TEST-ONLY Bridges"]], ["TEST-ONLY Legacy Done", ["Complete"]]]);
+  const colors = addon.eval("local b = Vanguard_QuestTrackerFrame.blocks return { b[2].title.__textColor, b[3].title.__textColor, b[4].lines[1].__textColor }");
+  expect([isTok(addon, colors[0], "gold"), isTok(addon, colors[1], "text"), isTok(addon, colors[2], "good")], "the heading in gold, a challenge's title in the text color").toEqual([true, true, true]);
+  expect(tracker(addon).count, "the count still counts quests only").toBe("1");
+});
+it("quest tracker: right-click stops tracking a challenge; the heading and left-click do nothing", () => {
+  const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks b[2].__scripts.OnClick(b[2], 'RightButton') b[3].__scripts.OnClick(b[3], 'LeftButton')");
+  expect(addon.eval("return { __stopped == nil, __opened == nil }"), "the heading ignores clicks; a left-click on a challenge doesn't open a quest").toEqual([true, true]);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks b[3].__scripts.OnClick(b[3], 'RightButton')");
+  expect(addon.eval("return __stopped"), "right-click stops it, as manual tracking, through the game's own call").toEqual([2, 7001, 2]);
+});
+it("quest tracker: a heading never shows without a challenge under it, and follows the game's list", () => {
+  const addon = loggedIn(TRACK_ENV + ACH_ENV);
+  expect([blockTitles(addon), tracker(addon).more], "three quests fill the room: the challenges wait behind +2 more, and no heading shows alone").toEqual([["[8] TEST-ONLY Wolves", "[12] TEST-ONLY Letter", "[3] TEST-ONLY Far"], "+2 more"]);
+  addon.eval(ONE_QUEST + "\n__tracked = { 7002 }");
+  addon.fire("CONTENT_TRACKING_UPDATE");
+  addon.update(0);
+  expect(blockTitles(addon).slice(1), "one quest, then one tracked challenge under the heading").toEqual(["Legacy challenges", "TEST-ONLY Legacy Done"]);
+  addon.eval("__tracked = {}");
+  addon.fire("TRACKED_ACHIEVEMENT_LIST_CHANGED");
+  addon.update(0);
+  expect(blockTitles(addon), "none tracked: the heading goes").toEqual(["[12] TEST-ONLY Letter"]);
+});
+it("quest tracker: without the challenge API, nothing is drawn for them", () => {
+  const bare = loggedIn(TRACK_ENV + ONE_QUEST);
+  expect(blockTitles(bare), "a client without the content tracker shows no heading").toEqual(["[12] TEST-ONLY Letter"]);
+  const noInfo = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST + "\nGetAchievementInfo = nil");
+  expect(blockTitles(noInfo), "without the achievement API, nothing is drawn for them").toEqual(["[12] TEST-ONLY Letter"]);
+});
 // TEST-ONLY quest item extras: the game's cooldown and range answers by log index (__cd, __range), and the tooltip call.
 const ITEM_ENV = `
   __cd, __range = {}, {}
