@@ -1,5 +1,5 @@
 -- Minimap: square, in a themed frame you can move in unlock mode, with the
--- zone name in the heading font on a see-through band along its top edge
+-- zone name in the zone text role on a see-through band along its top edge
 -- (colored by PvP status; hover it for the zone's territory, click it for the
 -- world map), the coordinates on a band along its bottom between the tracking
 -- and addon slot buttons, accent rules inside both bands, and mouse-wheel zoom. The round
