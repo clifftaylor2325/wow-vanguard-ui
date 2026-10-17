@@ -57,21 +57,52 @@ const WARNING_ENV = `
   RaidWarningFrame:RegisterEvent("HARDCORE_DEATHS") RaidWarningFrame:RegisterEvent("CHAT_MSG_RAID_WARNING")
   RaidWarningFrame:SetScript("OnEvent", function(self, event, text) self:AddMessage(text) end)
 `;
-it("game alerts: Hardcore death notices take the theme font and red; a reused line gets the game's font back", () => {
+it("game alerts: raid warnings take the theme font at the game's size; Hardcore death notices the title font and red, a reused line back to the warning font", () => {
   const addon = loggedIn(WARNING_ENV);
-  // The message line: its font face, color, the game font object it was given, and the death mark.
-  const line = () => addon.eval("local l = RaidWarningFrame.line return { font = l.__font and l.__font[1], color = l.__textColor, template = l.__template or false, death = ns.FrameState('vgDeath')[l] or false }");
+  // The message line: its font face and size, color, and the death mark.
+  const line = () => addon.eval("local l = RaidWarningFrame.line return { font = l.__font and l.__font[1], size = l.__font and l.__font[2], color = l.__textColor, death = ns.FrameState('vgDeath')[l] or false }");
+  const face = addon.eval("return (ns.Theme.Font(true))");
+  addon.fire("CHAT_MSG_RAID_WARNING", "TEST-ONLY Pull in 5");
+  const warn = line();
+  expect([warn.font, warn.size, warn.color, warn.death], "a raid warning: the theme font (bold) at the game's 20, the game's color kept").toEqual([face, 20, [1, 0.2, 0.2, 1], false]);
   addon.fire("HARDCORE_DEATHS", "TEST-ONLY Bob has fallen.");
   const death = line();
-  expect([death.font, isTok(addon, death.color, "bad"), death.death], "a death notice: the theme's title font, the theme's red").toEqual([addon.eval('local f = UIParent:CreateFontString() ns.Theme.ApplyRole(f, "title") return f.__font[1]'), true, true]);
-  addon.fire("CHAT_MSG_RAID_WARNING", "TEST-ONLY Pull in 5");
-  expect([line().template, line().death], "the next raid warning on that line: the game's font again").toEqual(["GameFontNormalHuge", false]);
+  expect([death.font, death.size, isTok(addon, death.color, "bad"), death.death], "a death notice: the theme's title font, the theme's red").toEqual([addon.eval('local f = UIParent:CreateFontString() ns.Theme.ApplyRole(f, "title") return f.__font[1]'), addon.eval('return ns.Theme.RoleSize("title")'), true, true]);
   addon.fire("CHAT_MSG_RAID_WARNING", "TEST-ONLY Again");
-  expect(line().template, "a line that was never a death notice is left as it is").toBe("GameFontNormalHuge");
+  expect([line().size, line().death], "the next raid warning on that line: the warning font again, no longer a death notice").toEqual([20, false]);
+  addon.eval("ns.Theme.Settings().textScale = 1.5");
+  addon.fire("CHAT_MSG_RAID_WARNING", "TEST-ONLY Bigger");
+  expect(line().size, "Text size applies to the game's size").toBe(30);
   const off = loggedIn(WARNING_ENV, { savedVariables: "VanguardDB.profiles = { Default = { GameAlerts = { hardcore = false } } }" });
   off.fire("HARDCORE_DEATHS", "TEST-ONLY Bob has fallen.");
-  expect(off.eval("return RaidWarningFrame.line.__font == nil"), "switched off: the game's own look").toBe(true);
+  expect(off.eval("local l = RaidWarningFrame.line return { l.__font[2], ns.FrameState('vgDeath')[l] or false }"), "deaths switched off: the warning font, not the death look").toEqual([20, false]);
   expect(loggedIn("RaidWarningFrame = CreateFrame('Frame', 'RaidWarningFrame', UIParent)").eval("return ns.GetModule('GameAlerts').settings.hardcore"), "a frame without the game's message list is left alone").toBe(true);
+  const empty = loggedIn(WARNING_ENV + "function RaidWarningFrame:GetSortedMessages() return {} end");
+  empty.fire("CHAT_MSG_RAID_WARNING", "TEST-ONLY Nobody");
+  expect(empty.eval("return #ns.errors"), "a frame with no lines yet").toBe(0);
+});
+// TEST-ONLY status texts: the screenshot line and the frame rate readout, as Blizzard_ActionStatus and Blizzard_FramerateFrame build them.
+const STATUS_ENV = `
+  ActionStatus = CreateFrame("Frame", "ActionStatus", UIParent)
+  ActionStatus.Text = ActionStatus:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge") ActionStatus.Text:SetTextColor(1, 0.82, 0)
+  FramerateFrame = CreateFrame("Frame", "FramerateFrame", UIParent)
+  FramerateFrame.Label = FramerateFrame:CreateFontString(nil, "ARTWORK", "SystemFont_Shadow_Med1")
+  FramerateFrame.FramerateText = FramerateFrame:CreateFontString(nil, "ARTWORK", "SystemFont_Shadow_Med1")
+`;
+it("game alerts: the screenshot status line and the frame rate readout take the theme font at the game's size, kept after a font or Text size change", () => {
+  const addon = loggedIn(STATUS_ENV);
+  // The three texts' font faces and sizes, and the status line's colour.
+  const look = () => addon.eval("return { ActionStatus.Text.__font, FramerateFrame.Label.__font, FramerateFrame.FramerateText.__font, ActionStatus.Text.__textColor }");
+  const bold = addon.eval("return (ns.Theme.Font(true))"), regular = addon.eval("return (ns.Theme.Font(false))");
+  const first = look();
+  expect([first[0][0], first[0][1], first[1][0], first[1][1], first[2][1]], "the status line bold at 16, the readout regular at 12").toEqual([bold, 16, regular, 12, 12]);
+  expect(first[3], "the game's gold on the status line is left alone").toEqual([1, 0.82, 0, 1]);
+  addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
+  const scaled = look();
+  expect([scaled[0][1], scaled[1][1], scaled[2][1]], "a Text size change reaches them").toEqual([24, 18, 18]);
+  const partial = loggedIn("ActionStatus = CreateFrame('Frame', 'ActionStatus', UIParent) FramerateFrame = {} ActionStatus.Text = {}");
+  expect(partial.eval("return #ns.errors"), "frames without their texts, or texts that are not font strings: left alone, no error").toBe(0);
+  expect(loggedIn("").eval("return #ns.errors"), "a client without them loads cleanly").toBe(0);
 });
 // TEST-ONLY minimap marks: a rare, a treasure, a dead rare, a rare with a hidden name, a rare elite.
 const VIGNETTE_ENV = `

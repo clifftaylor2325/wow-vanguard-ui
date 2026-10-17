@@ -763,6 +763,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the text over your character (damage taken, heals, energy gains) is in Vanguard's font at the game's own sizes and colours, with a critical hit (the number that grows and shrinks) as sharp as the rest, and the damage numbers over the mob are in Vanguard's font too. After the reload with the game's font chosen, both are the game's own. [Needs in game: that the engine reads `DAMAGE_TEXT_FONT` after Vanguard's ADDON_LOADED, so the numbers over the mob change (if they stay the game's, the path must be set when the file loads instead), and that `enableFloatingCombatText` is the switch's CVar on Forever.]
 - If it fails, paste: a screenshot of each kind of number and `/vg errors`.
 
+### 14.7.9 Raid warning, screenshot and frame rate text
+
+- Do: in a group, have a leader or assistant send a raid warning (`/rw Pull in 5`), or type it yourself as the leader; press Print Screen; press Ctrl+R to show the frame rate and press it again to hide it. On a Hardcore realm, wait for a death notice if one comes.
+- Expect: the raid warning line at the top center is in Vanguard's font (bold), the same size and colour as before and still growing and fading as the game does it; the line that says a screenshot was taken in the middle of the screen is in Vanguard's font and still gold; the frame rate readout in the bottom-right corner (FPS and the number) is in Vanguard's font at the game's size. A Hardcore death notice is red in the title font. Changing the font or Text size under /vg changes all three at once.
+- If it fails, paste: a screenshot and `/vg errors`.
+
 ### 14.8.1 Character pane side tabs
 
 - Do: press C, then click each side tab in turn (Character, Reputation, Skills, Honor, Currency, Statistics).

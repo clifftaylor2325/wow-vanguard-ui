@@ -3,8 +3,10 @@
 --     icon and text in the theme, centered a little above your character;
 --   * the talking head (an NPC speaking during a quest): a flat panel at the
 --     top center, or hidden if you'd rather not see it;
---   * Hardcore death notices (the game shows them in its raid warning frame)
---     in the theme font and its red;
+--   * the raid warning frame's lines in the theme font at the game's size, and
+--     Hardcore death notices (the game shows them in that frame) in the theme
+--     title font and its red; the centre-screen status line (screenshots) and
+--     the frame rate readout in the theme font too (font only, at the game's size);
 --   * a rare nearby (off until switched on): a sound and one chat line when a
 --     rare's mark comes onto the minimap, out of combat, once per rare.
 -- Both stay the game's own frames: Vanguard restyles them and gives each a
@@ -84,7 +86,32 @@ local function talkingHead(choice)
   ns.OutOfCombat(function() place("TalkingHeadFrame") end)
 end
 
--- Hardcore death notices ----------------------------------------------------------------------
+-- Fonts and Hardcore death notices ----------------------------------------------------------
+
+-- The game's size for a raid warning line (GameFontNormalHuge); the game scales it from there as the line comes and goes.
+GA.WARNING_SIZE = 20
+-- The status texts the game draws in a font of its own: frame name -> font string key -> { the game's size, bold }.
+-- The screenshot line (ActionStatus, GameFontNormalLarge) and the frame rate readout (FramerateFrame, SystemFont_Shadow_Med1).
+GA.STATUS_TEXTS = { ActionStatus = { Text = { 16, true } }, FramerateFrame = { Label = { 12 }, FramerateText = { 12 } } }
+
+-- Puts the theme font on a font string at the game's size (before Text size) and weight; its colour stays as the game has it.
+-- Anything that is not a font string is left alone.
+function GA.SetFont(fs, size, bold)
+  if type(fs) ~= "table" or type(fs.SetFont) ~= "function" then return end
+  local path, outline = T.Font(bold)
+  fs:SetFont(path, T.ScaledSize(size), outline)
+end
+
+-- The screenshot status line and the frame rate readout in the theme font, now and after every theme change (a font or
+-- Text size change); a frame the client lacks is skipped.
+function GA.ThemeStatusText()
+  for name, parts in pairs(GA.STATUS_TEXTS) do
+    for key, spec in pairs(parts) do
+      GA.SetFont(type(_G[name]) == "table" and _G[name][key], spec[1], spec[2])
+    end
+  end
+  if not GA.watchingTheme then GA.watchingTheme = true T.OnChanged(GA.ThemeStatusText) end
+end
 
 -- The raid warning frame's newest message (the game numbers them as they come).
 local function newestWarning(frame)
@@ -95,12 +122,13 @@ local function newestWarning(frame)
   return newest
 end
 
--- A message was added: a line the game reuses after a death notice gets its own font back.
+-- A message was added: its line (the game reuses them, so also one that showed a death notice before) takes the theme
+-- font at the game's size and is no longer a death notice.
 function GA.OnWarning(frame)
   local fs = newestWarning(frame)
-  if not (fs and vgDeath[fs]) then return end
+  if not fs then return end
   vgDeath[fs] = nil
-  fs:SetFontObject(_G.GameFontNormalHuge)
+  GA.SetFont(fs, GA.WARNING_SIZE, true)
 end
 
 -- The game showed a Hardcore death notice: it takes the theme's title font and its red (the
@@ -113,12 +141,13 @@ function GA.OnWarningEvent(frame, event)
   T.Color(fs, "bad")
 end
 
--- Restyles the game's Hardcore death notices (HARDCORE_DEATHS, shown by its raid warning frame).
-local function watchDeaths()
+-- Restyles the game's raid warning lines (every message), and with deaths set its Hardcore death notices
+-- (HARDCORE_DEATHS, shown by the same frame). Post-hooks only: the game's own AddMessage and OnEvent still run.
+local function watchWarnings(deaths)
   local f = _G.RaidWarningFrame
   if type(f) ~= "table" or type(f.GetSortedMessages) ~= "function" or type(hooksecurefunc) ~= "function" then return end
   hooksecurefunc(f, "AddMessage", ns.Guard("hook AddMessage", GA.OnWarning))
-  f:HookScript("OnEvent", GA.OnWarningEvent)
+  if deaths then f:HookScript("OnEvent", GA.OnWarningEvent) end
 end
 
 -- Rares nearby -----------------------------------------------------------------------------------
@@ -149,7 +178,8 @@ end
 function GA.Enable(settings)
   GA.settings = settings
   if type(C_VignetteInfo) == "table" then ns.On("VIGNETTE_MINIMAP_UPDATED", GA.OnVignette) end
-  if settings.hardcore then watchDeaths() end
+  watchWarnings(settings.hardcore)
+  GA.ThemeStatusText()
   local loc = _G.LossOfControlFrame
   if settings.lossOfControl and type(loc) == "table" then
     GA.SkinLossOfControl(loc)
