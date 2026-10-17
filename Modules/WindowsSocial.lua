@@ -955,8 +955,50 @@ local function dressBattleNetBar(bar)
   iconButton(box.BattleNetMenuButton)
 end
 
--- One content pane: its dividers faded, its search bar and filter button themed, its push buttons flat.
--- (Its scroll bar is the tabs stream's; the raid tab's role buttons and group cards keep the game's art.)
+-- The parts of a list card that stay: the role or class icon on the recruit and quick join cards.
+GW.CARD_KEEP = { "Icon" }
+
+-- A square icon button on a card (invite to group, summon): the game's square plate faded, the control tile behind its icon.
+local function dressCardAction(button)
+  if type(button) ~= "table" or not button.CreateTexture then return end
+  T.FadeRegions(button, GW.KeepKeys(button, { "ActionIcon" }))
+  T.ControlPlate(button)
+end
+
+-- The gold names on a quick join card (its Members and Queues arrays) in the text colour.
+local function dressCardNames(card)
+  for _, list in ipairs({ type(card.Members) == "table" and card.Members or {}, type(card.Queues) == "table" and card.Queues or {} }) do
+    for _, fs in ipairs(list) do paintText(fs, "text") end
+  end
+end
+
+-- One list card (friends, recent allies, quick join, requests, recruits; each has a Background plate): a see-through theme
+-- row with the plate faded and its icon kept, its selected look following the game's own SetSelected, its icon buttons on
+-- control tiles, its Accept button flat, its quick join names light. Anything without a plate (a spacer) is left alone.
+local function dressCard(card)
+  if type(card) ~= "table" or not card.CreateTexture or type(card.Background) ~= "table" then return end
+  GW.DressRow(card, GW.CARD_KEEP)
+  afterWith(card, "SetSelected", function(self, on) T.SelectRow(self, on == true) end)
+  dressCardAction(card.PartyButton)
+  dressCardAction(card.RAFSummonButton)
+  GW.SkinButton(card.AcceptButton)
+  dressCardNames(card)
+end
+
+-- The reward card above the recruit list: its backdrop faded (the watermark kept) under a panel, its claim button flat, its gold counts light.
+GW.REWARD_TEXTS = { "MonthCount.Text", "NextRewardName.Text" }
+
+-- The recruit tab's reward card (RewardClaiming).
+local function dressRewardClaiming(card)
+  if not isFrame(card) then return end
+  T.FadeRegions(card, GW.KeepKeys(card, { "Watermark" }))
+  T.Panel(card, { noSheen = true })
+  GW.SkinButton(card.ClaimOrViewRewardButton)
+  for _, path in ipairs(GW.REWARD_TEXTS) do paintText(GW.Part(card, path), "text") end
+end
+
+-- One content pane: its dividers faded, its search bar and filter button themed, its push buttons flat, its list in an
+-- inset with its cards as theme rows. (Its scroll bar is the tabs stream's.)
 local function dressSocialPane(pane)
   if type(pane) ~= "table" or not pane.GetRegions then return end
   GW.FadeParts(pane, GW.SOCIAL_PANE_ART)
@@ -966,13 +1008,81 @@ local function dressSocialPane(pane)
     dressKeys(bar, { "SearchFilterDropdown" }, "CreateTexture", GW.SkinDropdown)
   end
   dressKeys(pane, GW.SOCIAL_PANE_BUTTONS, "CreateTexture", T.Button)
+  GW.InsetPanel(pane.ScrollBox)
+  GW.WatchRows(pane.ScrollBox, dressCard)
 end
 
--- The ignore list (a ButtonFrameTemplate beside the window): the window skin, its two buttons flat.
+-- One raid group card (the raid tab's, made on each update): its atlas plate faded under an inset panel.
+local function dressSocialRaidGroup(group)
+  if not isFrame(group) then return end
+  T.FadeRegions(group)
+  T.Panel(group, { inset = true, noSheen = true })
+end
+
+-- One raid member card (a secure unit button): a flat button, the game's drag look kept to show while it is dragged.
+local function dressSocialRaidPlayer(player)
+  GW.SkinButton(player)
+  GW.ShowTexture(player.DragBackground)
+end
+
+-- Every member card the raid tab has now, in each group's own (secure) pool.
+local function dressSocialRaidPlayers(raid)
+  for _, group in ipairs(raid.groups) do
+    local pool = type(group) == "table" and group.playerPool
+    if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
+      for player in pool:EnumerateActive() do dressSocialRaidPlayer(player) end
+    end
+  end
+end
+
+-- The raid tab's groups (made again by every UpdateContents): the group cards now, the member buttons out of combat.
+local function dressSocialRaidGroups(raid)
+  if type(raid.groups) ~= "table" then return end
+  for _, group in ipairs(raid.groups) do dressSocialRaidGroup(group) end
+  ns.OutOfCombat(function() dressSocialRaidPlayers(raid) end, "vgSocialRaidPlayers")
+end
+
+-- The social raid tab's own parts: the All assist box (its icon kept) with its label, the not-in-raid description, and its
+-- group cards, dressed again after each of the game's UpdateContents.
+local function dressSocialRaid(raid)
+  if not isFrame(raid) then return end
+  GW.SkinCheck(raid.AllAssistCheckButton)
+  GW.ShowTexture(GW.Part(raid, "AllAssistCheckButton.Icon"))
+  paintText(GW.Part(raid, "AllAssistCheckButton.AllText"), "text")
+  paintText(raid.RaidDescription, "text")
+  dressSocialRaidGroups(raid)
+  after(raid, "UpdateContents", dressSocialRaidGroups)
+end
+
+-- A row of a side window's list: its name (the ignore list's Name, the saved instances' name) in the text colour.
+local function dressNamedRow(row)
+  if type(row) ~= "table" then return end
+  paintText(row.Name, "text")
+  paintText(row.name, "text")
+end
+
+-- The ignore list (a ButtonFrameTemplate beside the window): the window skin, its two buttons flat, its names light.
 local function skinIgnoreList(frame)
   GW.Skin(frame)
   dressKeys(frame, GW.SOCIAL_DIALOG_BUTTONS, "CreateTexture", T.Button)
+  GW.WatchRows(frame.ScrollBox, dressNamedRow)
 end
+
+-- The Battle.net unavailable notice: its heading (gold in the game) as a title.
+local function dressNotice(frame)
+  GW.SkinTitle(GW.Part(frame, "Header.HeaderText"))
+end
+
+-- The saved-instance list beside the raid tab: its list in an inset, the names light.
+local function dressSocialRaidInfo(frame)
+  GW.InsetPanel(frame.ScrollBox)
+  GW.WatchRows(frame.ScrollBox, dressNamedRow)
+end
+
+-- The skin of each side window (parentKeys): the dialog skin and the parts only that window has.
+local sideSkins = {
+  BattleNetUnavailableNoticeFrame = dialogWith(dressNotice), BattleNetBroadcastFrame = GW.SkinSocialDialog, RaidInfoFrame = dialogWith(dressSocialRaidInfo),
+}
 
 -- A side window: skinned now, and again on each of its own shows (it opens while the window is
 -- already open, and the game lays it out then); the hook goes on once.
@@ -1002,7 +1112,9 @@ function GW.SkinSocial(frame)
   GW.Skin(frame)
   dressBattleNetBar(frame.BattleNetBar)
   for _, key in ipairs(GW.SOCIAL_PANES) do dressSocialPane(frame[key]) end
-  for _, key in ipairs(GW.SOCIAL_SIDE) do watchSide(frame[key], GW.SkinSocialDialog) end
+  dressSocialRaid(frame.RaidFrame)
+  dressRewardClaiming(GW.Part(frame, "RecruitAFriendFrame.RewardClaiming"))
+  for _, key in ipairs(GW.SOCIAL_SIDE) do watchSide(frame[key], sideSkins[key]) end
   for _, key in ipairs(GW.SOCIAL_SIDE_FRAMED) do watchSide(frame[key], skinIgnoreList) end
   dressSocialTabs(frame)
   after(frame, "RefreshTabs", dressSocialTabs)

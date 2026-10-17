@@ -1434,3 +1434,105 @@ it("channels and rename windows: with the group off they stay the game's; window
   expect([windowErrors(odd), odd.eval("return #ns.errors"), windowErrors(rows), rows.eval("return #ns.errors"), windowErrors(bare), bare.eval("return #ns.errors")], "parts that are not frames, missing or rows that are not frames")
     .toEqual(["none", 0, "none", 0, "none", 0]);
 });
+
+// The social window's lists, cards and side windows, R2.29 parts ----------------------------------------------
+
+// The social window with every list pane (a ScrollBox of cards and spacers; a card has a plate, a hover texture, icon buttons, an Accept
+// button and a SetSelected the game calls), the quick join card's gold names, the recruit tab's reward card, the raid tab's check box,
+// description and group cards (made again by UpdateContents, member buttons in each group's pool), and the side windows' headings and lists.
+const SOCIAL_CARDS_ENV = SOCIAL_ENV + INSIDES_LUA + PART_HELPERS_LUA + `
+  ScrollUtil = { AddAcquiredFrameCallback = function(box, cb, owner) table.insert(box.callbacks, function(row) cb(owner, row) end) end }
+  function __acquire(box, row) table.insert(box.rows, row) for _, cb in ipairs(box.callbacks) do cb(row) end return row end
+  local function listbox(p) local b = p.ScrollBox b.rows, b.callbacks = {}, {} b.Art = __art(b) function b:ForEachFrame(fn) for _, r in ipairs(self.rows) do fn(r) end end end
+  pane("QuickJoinFrame") pane("FriendRequestsList") pane("RecruitAFriendFrame")
+  for _, k in ipairs({ "FriendsList", "RecentAlliesList", "QuickJoinFrame", "FriendRequestsList", "RecruitAFriendFrame" }) do listbox(f[k]) end
+  function __card(parent)
+    local c = CreateFrame("Button", nil, parent) c.Background, c.HighlightTexture, c.Icon = __art(c), __art(c), __art(c)
+    for _, k in ipairs({ "PartyButton", "RAFSummonButton" }) do c[k] = CreateFrame("Button", nil, c) c[k].NormalTexture, c[k].ActionIcon = __art(c[k]), __art(c[k]) end
+    __btn(c, "Accept", "AcceptButton")
+    c.Members, c.Queues = { __gold(c, nil, "member") }, { __gold(c, nil, "queue") }
+    function c:SetSelected(on) end
+    return c
+  end
+  __k1 = __card(f.FriendsList.ScrollBox) table.insert(f.FriendsList.ScrollBox.rows, __k1) __spacer = CreateFrame("Frame", nil, f.FriendsList.ScrollBox) table.insert(f.FriendsList.ScrollBox.rows, __spacer)
+  local rc = CreateFrame("Frame", nil, f.RecruitAFriendFrame) f.RecruitAFriendFrame.RewardClaiming = rc rc.Background, rc.Watermark = __art(rc), __art(rc)
+  rc.MonthCount, rc.NextRewardName = CreateFrame("Frame", nil, rc), CreateFrame("Frame", nil, rc) __gold(rc.MonthCount, "Text") __gold(rc.NextRewardName, "Text") __btn(rc, "Claim", "ClaimOrViewRewardButton")
+  local raid = f.RaidFrame
+  raid.AllAssistCheckButton = __check(raid) raid.AllAssistCheckButton.Icon = __art(raid.AllAssistCheckButton) raid.AllAssistCheckButton.AllText = __gold(raid.AllAssistCheckButton, nil, "All")
+  raid.RaidDescription = __gold(raid, nil, "TEST-ONLY description")
+  function __group(parent) local g = CreateFrame("Frame", nil, parent) __art(g) g.playerPool = __pool({}) return g end
+  function __player(parent) local p = CreateFrame("Button", nil, parent, "SecureUnitButtonTemplate") p.Background, p.DragBackground = __art(p), __art(p) p.DragBackground:Hide() return p end
+  raid.groups = { __group(raid) } raid.groups[1].players = { __player(raid.groups[1]) }
+  raid.groups[1].playerPool = __pool(raid.groups[1].players)
+  function raid:UpdateContents() end
+  local notice = CreateFrame("Frame", nil, f) f.BattleNetUnavailableNoticeFrame = notice notice:Hide() notice.Header = CreateFrame("Frame", nil, notice) __gold(notice.Header, "HeaderText")
+  local info = CreateFrame("Frame", nil, f) f.RaidInfoFrame = info info:Hide() info.ScrollBox = CreateFrame("Frame", nil, info) info.ScrollBox.Art = __art(info.ScrollBox)
+  info.ScrollBox.callbacks, info.ScrollBox.rows = {}, { CreateFrame("Button", nil, info.ScrollBox) } info.ScrollBox.rows[1].name = __gold(info.ScrollBox.rows[1], nil, "instance") table.insert(info.ScrollBox.rows, false)
+  function info.ScrollBox:ForEachFrame(fn) for _, r in ipairs(self.rows) do fn(r) end end
+  local ignore = f.IgnoreListFrame ignore.ScrollBox = CreateFrame("Frame", nil, ignore) ignore.ScrollBox.callbacks, ignore.ScrollBox.rows = {}, { CreateFrame("Button", nil, ignore.ScrollBox) }
+  ignore.ScrollBox.rows[1].Name = __gold(ignore.ScrollBox.rows[1], nil, "ignored")
+  function ignore.ScrollBox:ForEachFrame(fn) for _, r in ipairs(self.rows) do fn(r) end end
+`;
+
+it("social window cards: each list sits in an inset, its cards are theme rows with their icons kept, icon buttons on tiles, the selected look following the game", () => {
+  const addon = loggedIn(SOCIAL_CARDS_ENV);
+  addon.eval("SocialUIFrame:Show()");
+  addon.eval("local f = SocialUIFrame __k2 = __acquire(f.RecentAlliesList.ScrollBox, __card(f.RecentAlliesList.ScrollBox)) __k3 = __acquire(f.QuickJoinFrame.ScrollBox, __card(f.QuickJoinFrame.ScrollBox)) __k4 = __acquire(f.FriendRequestsList.ScrollBox, __card(f.FriendRequestsList.ScrollBox)) __k5 = __acquire(f.RecruitAFriendFrame.ScrollBox, __card(f.RecruitAFriendFrame.ScrollBox))");
+  expect(addon.eval(`local f = SocialUIFrame return { __sunk(f.FriendsList.ScrollBox), __sunk(f.RecentAlliesList.ScrollBox), __sunk(f.QuickJoinFrame.ScrollBox), __sunk(f.FriendRequestsList.ScrollBox), __sunk(f.RecruitAFriendFrame.ScrollBox), f.FriendsList.ScrollBox.Art:GetAlpha() }`),
+  "five lists on sunk boxes without the game's art").toEqual([true, true, true, true, true, 0]);
+  // Reads what a list card looks like.
+  const card = (c) => addon.eval(`local c = ${c} return { ns.Theme.RowParts(c) ~= nil, c.Background:GetAlpha(), c.HighlightTexture:GetAlpha(), c.Icon:GetAlpha(), c.PartyButton.NormalTexture:GetAlpha(), c.PartyButton.ActionIcon:GetAlpha(),
+    c.RAFSummonButton.NormalTexture:GetAlpha(), c.AcceptButton.Art:GetAlpha(), __lit(c.Members[1]), __lit(c.Queues[1]), ns.Theme.RowParts(c) and ns.Theme.RowParts(c).rail:IsShown() }`);
+  for (const c of ["__k1", "__k2", "__k3", "__k4", "__k5"]) {
+    expect(card(c), `${c}: a theme row, plate and hover texture faded, the icon and the action icon kept, the square plates faded, Accept flat, the names light`).toEqual([true, 0, 0, 1, 0, 1, 0, 0, true, true, false]);
+  }
+  expect(addon.eval("return ns.Theme.RowParts(__spacer) == nil"), "a spacer without a plate is left alone").toBe(true);
+  addon.eval("__k1:SetSelected(true) __k3:SetSelected(true)");
+  expect([card("__k1")[10], card("__k3")[10], card("__k2")[10]], "the game selecting a card lights it").toEqual([true, true, false]);
+  addon.eval("__k1:SetSelected(false)");
+  expect(card("__k1")[10], "and deselecting clears it").toBe(false);
+  expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
+});
+
+it("social window: the reward card, the raid tab's check box, description and groups (the member buttons out of combat), the side windows' headings and lists", () => {
+  const addon = loggedIn(SOCIAL_CARDS_ENV);
+  addon.eval("SocialUIFrame:Show()");
+  expect(addon.eval(`local rc = SocialUIFrame.RecruitAFriendFrame.RewardClaiming
+    return { rc.Background:GetAlpha(), rc.Watermark:GetAlpha(), __lit(rc.MonthCount.Text), __lit(rc.NextRewardName.Text), rc.ClaimOrViewRewardButton.Art:GetAlpha() }`), "the reward card: backdrop faded, watermark kept, counts light, claim flat")
+    .toEqual([0, 1, true, true, 0]);
+  // Reads what the raid tab's groups look like.
+  const raid = () => addon.eval(`local raid = SocialUIFrame.RaidFrame local g = raid.groups[1] local p = g.players[1]
+    return { __faded(g), __sunk(g), p.Background:GetAlpha(), p.DragBackground:GetAlpha(), p.DragBackground:IsShown() }`);
+  expect(addon.eval(`local raid = SocialUIFrame.RaidFrame local c = raid.AllAssistCheckButton
+    return { ns.Theme.CheckParts(c) ~= nil, c.Icon:GetAlpha(), __lit(c.AllText), __lit(raid.RaidDescription) }`), "the All assist box a theme check box, its icon kept, its label and the description light").toEqual([true, 1, true, true]);
+  expect(raid(), "the group card faded under an inset, the member button flat, its drag look kept (and still hidden)").toEqual([true, true, 0, 1, false]);
+  addon.eval("SocialUIFrame.RaidFrame.groups = { __group(SocialUIFrame.RaidFrame) } SocialUIFrame.RaidFrame.groups[1].players = { __player(SocialUIFrame.RaidFrame.groups[1]) } SocialUIFrame.RaidFrame.groups[1].playerPool = __pool(SocialUIFrame.RaidFrame.groups[1].players)");
+  setCombat(addon, true);
+  addon.eval("SocialUIFrame.RaidFrame:UpdateContents()");
+  expect(raid(), "the game making the groups again in combat: the group card dressed at once, the member button waiting").toEqual([true, true, 1, 1, false]);
+  setCombat(addon, false);
+  expect(raid(), "after the fight the member button is flat too").toEqual([true, true, 0, 1, false]);
+  addon.eval("SocialUIFrame.BattleNetUnavailableNoticeFrame:Show() SocialUIFrame.RaidInfoFrame:Show()");
+  expect(addon.eval(`local f = SocialUIFrame local row = f.RaidInfoFrame.ScrollBox.rows[1]
+    return { __titled(f.BattleNetUnavailableNoticeFrame.Header.HeaderText), __sunk(f.RaidInfoFrame.ScrollBox), f.RaidInfoFrame.ScrollBox.Art:GetAlpha(), __lit(row.name), __lit(f.IgnoreListFrame.ScrollBox.rows[1].Name) }`),
+  "the notice's heading a title, the saved-instance list inset with light names, the ignore list's names light").toEqual([true, true, 0, true, true]);
+  expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
+});
+
+it("social window lists: with the group off they stay the game's; lists and side windows with parts missing or odd load cleanly", () => {
+  const off = loggedIn(SOCIAL_CARDS_ENV, OFF);
+  off.eval("SocialUIFrame:Show()");
+  expect(off.eval("return { ns.Theme.RowParts(__k1) == nil, __k1.Background:GetAlpha(), __lit(SocialUIFrame.RaidFrame.RaidDescription), ns.Theme.CheckParts(SocialUIFrame.RaidFrame.AllAssistCheckButton) == nil }"), "left the game's").toEqual([true, 1, false, true]);
+  const odd = loggedIn(SOCIAL_CARDS_ENV + `
+    local f = SocialUIFrame f.RecruitAFriendFrame.RewardClaiming, f.FriendRequestsList.ScrollBox, f.QuickJoinFrame.ScrollBox = {}, {}, nil
+    f.RaidFrame.groups, f.BattleNetUnavailableNoticeFrame.Header, f.RaidInfoFrame.ScrollBox = false, nil, {}
+    __k1.Members, __k1.Queues, __k1.PartyButton, __k1.AcceptButton, __k1.SetSelected = false, {}, {}, false, nil
+    f.IgnoreListFrame.ScrollBox.rows[1] = false table.insert(f.FriendsList.ScrollBox.rows, false)`);
+  odd.eval("SocialUIFrame:Show()");
+  const groups = loggedIn(SOCIAL_CARDS_ENV + `SocialUIFrame.RaidFrame.groups = { false, __group(SocialUIFrame.RaidFrame) } SocialUIFrame.RaidFrame.groups[2].playerPool = {} SocialUIFrame.RaidFrame.RaidDescription = nil`);
+  groups.eval("SocialUIFrame:Show()");
+  const bare = loggedIn(SOCIAL_CARDS_ENV + `SocialUIFrame.RaidFrame = {} SocialUIFrame.RecruitAFriendFrame = nil`);
+  bare.eval("SocialUIFrame:Show()");
+  expect([windowErrors(odd), odd.eval("return #ns.errors"), windowErrors(groups), groups.eval("return #ns.errors"), windowErrors(bare), bare.eval("return #ns.errors")], "parts missing or not frames")
+    .toEqual(["none", 0, "none", 0, "none", 0]);
+});
