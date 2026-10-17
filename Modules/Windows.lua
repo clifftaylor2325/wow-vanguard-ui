@@ -18,6 +18,7 @@ local ADDON, ns = ...
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgCorner = ns.FrameState("vgCorner")
 local vgDurability = ns.FrameState("vgDurability")
+local vgHooked = ns.FrameState("vgHooked")
 local vgLootRows = ns.FrameState("vgLootRows")
 local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
 local vgMoneyBox = ns.FrameState("vgMoneyBox")
@@ -952,6 +953,127 @@ GW.INSIDES.PlayerSpellsFrame = function(frame)
   if type(talents) ~= "table" or not talents.GetRegions then return end
   skinTalentBackdrop(talents)
   skinTalentControls(talents)
+end
+
+-- The professions window and the recipe form ---------------------------------------------------------
+
+-- Runs fn(frame, ...) after the frame's game method `name` each time it runs (the call's own arguments follow the
+-- frame), once per frame and method; a frame without the method is skipped. A post-hook: the game's function is kept.
+function GW.HookAfter(frame, name, fn)
+  if type(frame) ~= "table" or type(frame[name]) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  vgHooked[frame] = vgHooked[frame] or {}
+  if vgHooked[frame][name] then return end
+  vgHooked[frame][name] = true
+  hooksecurefunc(frame, name, ns.Guard("hook " .. name, fn))
+end
+
+-- A frame faded as a whole by its alpha (a nine-slice frame whose pieces the game lays out); skipped when it is no frame.
+function GW.FadeFrame(part)
+  if type(part) == "table" and part.SetAlpha then part:SetAlpha(0) end
+end
+
+-- The recipe form's two check boxes by key (track the recipe, use the best reagents), and the crafting page's
+-- profession gear slots (a tool and up to two accessories for each profession, cooking and fishing).
+GW.FORM_CHECKS = { "TrackRecipeCheckbox", "AllocateBestQualityCheckbox" }
+GW.PROF_SLOTS = {
+  "Prof0ToolSlot", "Prof0Gear0Slot", "Prof0Gear1Slot", "Prof1ToolSlot", "Prof1Gear0Slot", "Prof1Gear1Slot",
+  "CookingToolSlot", "CookingGear0Slot", "FishingToolSlot", "FishingGear0Slot", "FishingGear1Slot",
+}
+-- The crafting page's push buttons by key (view guild crafters, and the Create and Create All buttons it makes itself).
+GW.PROF_BUTTONS = { "ViewGuildCraftersButton", "CreateButton", "CreateAllButton" }
+
+-- One of the form's check boxes as a theme check box, its label in small text; a part that is no check button is skipped.
+local function skinFormCheck(box)
+  if type(box) ~= "table" or not box.CreateTexture or not box.GetChecked then return end
+  T.CheckBox(box)
+  GW.SkinText(box.Text, "small", "text")
+end
+
+-- One reagent slot (an item button and its name) in the bags' item look, its name in small text (its colour is the
+-- game's: it says whether the reagent is missing).
+local function skinReagentSlot(slot)
+  if type(slot) ~= "table" then return end
+  GW.SkinItem(slot.Button)
+  GW.SkinText(slot.Name, "small", false)
+end
+
+-- Every reagent slot the form holds (form.reagentSlots: a list of slots for each section of the recipe).
+local function skinReagentSlots(form)
+  if type(form.reagentSlots) ~= "table" then return end
+  for _, slots in pairs(form.reagentSlots) do
+    for _, slot in ipairs(type(slots) == "table" and slots or {}) do skinReagentSlot(slot) end
+  end
+end
+
+-- The form's gold notes (what the recipe makes, why it is locked, the first-craft bonus) in the text colour.
+local function skinFormNotes(form)
+  GW.SkinText(form.OutputSubText, "label", "text")
+  GW.SkinText(GW.Part(form, "RecipeSourceButton.Text"), "label", "text")
+  GW.SkinText(GW.Part(form, "FirstCraftBonus.Text"), "label", "text")
+end
+
+-- The recipe form (ProfessionsRecipeSchematicFormTemplate), shared by the crafting page and the inspect window: its
+-- parchment and bronze frame faded for an inset, its check boxes, level dropdown and notes in the theme, and each
+-- reagent slot the game fills in when it shows a recipe (a hook on Init) in the item look. The crafted item's
+-- round icon stays the game's.
+function GW.SkinSchematicForm(form)
+  if type(form) ~= "table" or not form.GetRegions then return end
+  GW.InsetPanel(form)
+  GW.EachKey(form, GW.FORM_CHECKS, skinFormCheck)
+  GW.SkinDropdown(form.RecipeLevelDropdown)
+  skinFormNotes(form)
+  skinReagentSlots(form)
+  GW.HookAfter(form, "Init", function() skinReagentSlots(form) end)
+end
+
+-- A recipe row (ProfessionsRecipeListRecipeTemplate) as a selectable theme row: the game's selected and hover
+-- overlays faded, the selected look following the game's SetSelected. Category and divider rows, which have no
+-- SetSelected, stay as the game draws them.
+local function skinRecipeRow(row)
+  if type(row) ~= "table" or type(row.SetSelected) ~= "function" or not row.CreateTexture then return end
+  T.Row(row, { fade = true })
+  local overlay = row.SelectedOverlay
+  T.SelectRow(row, type(overlay) == "table" and overlay.IsShown and overlay:IsShown() or false)
+  GW.HookAfter(row, "SetSelected", function(_, selected) T.SelectRow(row, selected and true or false) end)
+end
+
+-- The recipe list: its dark tile and bronze frame faded for an inset, the filter, search box and rows in the theme.
+local function skinRecipeList(list)
+  if type(list) ~= "table" or not list.GetRegions then return end
+  GW.InsetPanel(list)
+  GW.FadeFrame(list.BackgroundNineSlice)
+  GW.SkinDropdown(list.FilterDropdown)
+  GW.SkinSearch(list.SearchBox)
+  GW.SkinText(list.NoResultsText, "label", "text")
+  GW.WatchRows(list.ScrollBox, skinRecipeRow)
+end
+
+-- The crafting page's controls: the skill bar, the quantity box, the push buttons, the link dropdown (a picture),
+-- the eleven gear slots and the divider between them and the rest.
+local function skinCraftingControls(page)
+  GW.SkinBar(page.RankBar)
+  GW.SkinEditBox(page.CreateMultipleInputBox)
+  GW.SkinSearch(page.MinimizedSearchBox)
+  GW.EachKey(page, GW.PROF_BUTTONS, GW.SkinButton)
+  GW.SkinIconDropdown(page.LinkButton)
+  GW.EachKey(page, GW.PROF_SLOTS, GW.SkinItem)
+  GW.FadeArt(page.GearSlotDivider)
+end
+
+-- The professions window's crafting page: the page's own texture faded, the recipe list, the recipe form and the
+-- controls. The book page, the guild list, the output log and the side tabs are left as they are.
+GW.INSIDES.ProfessionsFrame = function(frame)
+  local page = frame.CraftingPage
+  if type(page) ~= "table" or not page.GetRegions then return end
+  T.FadeRegions(page)
+  skinRecipeList(page.RecipeList)
+  GW.SkinSchematicForm(page.SchematicForm)
+  skinCraftingControls(page)
+end
+
+-- The window that shows a recipe another player linked: the form alone.
+GW.INSIDES.InspectRecipeFrame = function(frame)
+  GW.SkinSchematicForm(frame.SchematicForm)
 end
 
 -- Readable text ------------------------------------------------------------------------------

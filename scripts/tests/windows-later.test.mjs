@@ -17,6 +17,19 @@ const READERS_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
   function __lit(fs, role, token) return __looks(fs, role, token) end
   function __mkbutton(parent, art) local b = CreateFrame("Button", nil, parent) if art then b[art] = __art(b) end return b end
   function __mkbox(parent) local b = CreateFrame("EditBox", nil, parent) __art(b) b.searchIcon = __art(b) return b end
+  function __mkcheck(parent)
+    local b = CreateFrame("CheckButton", nil, parent) __art(b) b.Text = __text(b, "label")
+    return b
+  end
+  -- A ScrollBox as the game keeps it: its rows, ForEachFrame, and the acquire callbacks ScrollUtil registers.
+  ScrollUtil = { AddAcquiredFrameCallback = function(box, cb, owner) table.insert(box.callbacks, function(row) cb(owner, row) end) end }
+  function __list(parent)
+    local box = CreateFrame("Frame", nil, parent)
+    box.rows, box.callbacks = {}, {}
+    function box:ForEachFrame(fn) for _, row in ipairs(self.rows) do fn(row) end end
+    function box:Acquire(row) table.insert(self.rows, row) for _, cb in ipairs(self.callbacks) do cb(row) end return row end
+    return box
+  end
   function __mkpaging(parent)
     local p = CreateFrame("Frame", nil, parent)
     p.PrevPageButton, p.NextPageButton, p.PageText = __mkbutton(p, "Normal"), __mkbutton(p, "Normal"), __text(p, "1 / 3")
@@ -92,4 +105,137 @@ it("R2.14 the spellbook and the talents: the windows group off leaves them the g
   noTalents.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
   noTalents.eval("PlayerSpellsFrame:Show()");
   expect(noTalents.eval("return #ns.errors"), "a window without a book or a talent tree is skinned without an error").toBe(0);
+});
+
+// TEST-ONLY professions (Camelot Blizzard_ProfessionsFrame.xml, Blizzard_ProfessionsCrafting.xml, the recipe list and
+// the recipe schematic form templates): the crafting page with its list (rows are acquired later), form, rank bar,
+// quantity box, buttons, link dropdown and eleven gear slots; __form is the shared form, __slot a reagent slot.
+const PROF_ENV = `${READERS_ENV}
+  function __slot(form)
+    local slot = CreateFrame("Frame", nil, form) slot.Button = __itemButton(nil, slot) slot.Name = __text(slot, "Iron Bar")
+    return slot
+  end
+  function __form(parent)
+    local form = __well(nil, parent) form.MinimalBackground = __art(form)
+    form.TrackRecipeCheckbox, form.AllocateBestQualityCheckbox = __mkcheck(form), __mkcheck(form)
+    form.RecipeLevelDropdown, form.OutputSubText = __mkbutton(form, "Arrow"), __text(form, "Makes")
+    form.RecipeSourceButton = CreateFrame("Button", nil, form) form.RecipeSourceButton.Text = __text(form.RecipeSourceButton, "Locked")
+    form.FirstCraftBonus = CreateFrame("Frame", nil, form) form.FirstCraftBonus.Text = __text(form.FirstCraftBonus, "First")
+    form.reagentSlots = { [1] = { __slot(form) } }
+    function form:Init() table.insert(self.reagentSlots[1], __slot(self)) end
+    return form
+  end
+  -- A recipe row as the game acquires it (SetSelected shows the selected overlay), or a category row (none).
+  function __recipeRow(box, category)
+    local row = CreateFrame("Button", nil, box) row.Label = __text(row, "Mining")
+    if not category then
+      row.SelectedOverlay, row.HighlightOverlay = __art(row), __art(row) row.SelectedOverlay:Hide()
+      function row:SetSelected(selected) self.SelectedOverlay:SetShown(selected) self.HighlightOverlay:SetShown(not selected) end
+    end
+    return box:Acquire(row)
+  end
+  local f = __window("ProfessionsFrame")
+  local page = CreateFrame("Frame", nil, f) f.CraftingPage = page __art(page)
+  local list = __well(nil, page) page.RecipeList = list
+  list.BackgroundNineSlice = CreateFrame("Frame", nil, list) list.BackgroundNineSlice:CreateTexture(nil, "BORDER")
+  list.FilterDropdown, list.SearchBox, list.NoResultsText, list.ScrollBox = __mkbutton(list, "Arrow"), __mkbox(list), __text(list, "None"), __list(list)
+  __recipe, __category = __recipeRow(list.ScrollBox), __recipeRow(list.ScrollBox, true)
+  page.SchematicForm = __form(page)
+  page.RankBar = CreateFrame("Frame", nil, page) page.RankBar.Fill, page.RankBar.Border = __art(page.RankBar), __art(page.RankBar)
+  page.CreateMultipleInputBox, page.MinimizedSearchBox, page.LinkButton = __mkbox(page), __mkbox(page), __mkbutton(page, "Icon")
+  for _, key in ipairs(ns.GetModule("Windows").PROF_BUTTONS) do page[key] = __mkbutton(page) end
+  for _, key in ipairs(ns.GetModule("Windows").PROF_SLOTS) do page[key] = __itemButton(nil, page) end
+  page.GearSlotDivider = CreateFrame("Frame", nil, page) __art(page.GearSlotDivider)
+  -- TEST-ONLY reader of the recipe form (see formState): its parts as the skin leaves them.
+  function __formState(form)
+    local slots = 0
+    for _, slot in ipairs(form.reagentSlots[1]) do
+      if slot.Button.icon.__texCoord ~= nil and __themed(slot.Name) then slots = slots + 1 end
+    end
+    return { inset = __faded(form) and form.NineSlice.__alpha == 0 and __sunk(form), slots = slots, level = __button(form.RecipeLevelDropdown),
+      checks = ns.Theme.CheckParts(form.TrackRecipeCheckbox) ~= nil and ns.Theme.CheckParts(form.AllocateBestQualityCheckbox) ~= nil,
+      label = __lit(form.TrackRecipeCheckbox.Text, "small", "text"), sub = __lit(form.OutputSubText, "label", "text"),
+      source = __lit(form.RecipeSourceButton.Text, "label", "text"), bonus = __lit(form.FirstCraftBonus.Text, "label", "text") }
+  end
+  -- TEST-ONLY reader of the crafting page (see profState).
+  function __profState()
+    local gear = 0
+    for _, key in ipairs(ns.GetModule("Windows").PROF_SLOTS) do if page[key].icon.__texCoord ~= nil then gear = gear + 1 end end
+    local list = page.RecipeList
+    return { page = __faded(page), list = __faded(list) and list.NineSlice.__alpha == 0 and list.BackgroundNineSlice:GetAlpha() == 0 and __sunk(list),
+      filter = __button(list.FilterDropdown) and list.FilterDropdown.Arrow.__alpha == 1, search = __box(list.SearchBox), none = __lit(list.NoResultsText, "label", "text"),
+      rank = __faded(page.RankBar, page.RankBar.Fill) and page.RankBar.Fill.__alpha ~= 0 and __sunk(page.RankBar), box = __faded(page.CreateMultipleInputBox),
+      small = __box(page.MinimizedSearchBox), buttons = __button(page.ViewGuildCraftersButton) and __button(page.CreateButton) and __button(page.CreateAllButton),
+      link = __button(page.LinkButton) and page.LinkButton.Icon.__alpha == 1, gear = gear, divider = __faded(page.GearSlotDivider),
+      recipe = ns.Theme.RowParts(__recipe) ~= nil and __faded(__recipe), category = ns.Theme.RowParts(__category) == nil,
+      form = __formState(page.SchematicForm), painted = ns.Theme.PaintedCount(), errors = #ns.errors }
+  end
+`;
+// The crafting page's parts as the skin leaves them (see __profState).
+const profState = (addon) => addon.eval("return __profState()");
+it("R2.15 the professions window: list, form, rank bar, controls and gear slots in the theme", () => {
+  const addon = loggedIn(PROF_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_Professions");
+  addon.eval("ProfessionsFrame:Show()");
+  const first = profState(addon);
+  expect(first, "the page's texture faded; the list a sunk well with its filter, search box and notice; the rank bar a track around its fill").toMatchObject({
+    page: true, list: true, filter: true, search: true, none: true, rank: true, errors: 0,
+  });
+  expect(first, "the quantity box, the minimized search box, three buttons, the link picture, eleven gear slots and the divider").toMatchObject({
+    box: true, small: true, buttons: true, link: true, gear: 11, divider: true,
+  });
+  expect(first, "a recipe row a theme row with its overlays faded; a category row left as the game draws it").toMatchObject({ recipe: true, category: true });
+  expect(first.form, "the form: a sunk well, two check boxes with small labels, the level dropdown, three notes, the slot it held").toMatchObject({
+    inset: true, checks: true, label: true, level: true, sub: true, source: true, bonus: true, slots: 1,
+  });
+  expect(windowState(addon, "ProfessionsFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
+  addon.eval("ProfessionsFrame:Hide() ProfessionsFrame:Show()");
+  expect(profState(addon).painted, "a second show paints nothing new").toBe(first.painted);
+});
+it("R2.15 the professions window: reagent slots the form fills in when it shows a recipe, and the selected recipe", () => {
+  const addon = loggedIn(PROF_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_Professions");
+  addon.eval("ProfessionsFrame:Show() local form = ProfessionsFrame.CraftingPage.SchematicForm form:Init() form:Init()");
+  expect(addon.eval("return __formState(ProfessionsFrame.CraftingPage.SchematicForm).slots"), "three slots, each in the item look with its name in small text").toBe(3);
+  addon.eval("ProfessionsFrame:Hide() ProfessionsFrame:Show() ProfessionsFrame.CraftingPage.SchematicForm:Init()");
+  expect(addon.eval("return __formState(ProfessionsFrame.CraftingPage.SchematicForm).slots"), "the form is hooked once, a slot made later is skinned").toBe(4);
+  // The first recipe row's selected fill and rail, as shown.
+  const lit = () => addon.eval("return { ns.Theme.RowParts(__recipe).fill:IsShown(), ns.Theme.RowParts(__recipe).rail:IsShown() }");
+  expect(lit(), "a row that is not selected shows no selected look").toEqual([false, false]);
+  addon.eval("__recipe:SetSelected(true)");
+  expect(lit(), "the game selects it: the one selected look").toEqual([true, true]);
+  addon.eval("__recipe:SetSelected(nil)");
+  expect(lit(), "the game deselects it (nil too)").toEqual([false, false]);
+  expect(addon.eval(`local row = __recipeRow(ProfessionsFrame.CraftingPage.RecipeList.ScrollBox) row.SelectedOverlay:Show() local late = __recipeRow(ProfessionsFrame.CraftingPage.RecipeList.ScrollBox)
+    late.SelectedOverlay:Show() ns.GetModule("Windows").SkinSchematicForm(nil) return { ns.Theme.RowParts(late) ~= nil, ns.Theme.RowParts(late).fill:IsShown() }`), "a row acquired later is a theme row, selected when the game had it selected").toEqual([true, false]);
+});
+it("R2.15 the inspect recipe window: the same form skin", () => {
+  const addon = loggedIn(`${PROF_ENV}
+    local inspect = __window("InspectRecipeFrame") inspect.SchematicForm = __form(inspect)`);
+  addon.fire("ADDON_LOADED", "Blizzard_Professions");
+  addon.eval("InspectRecipeFrame:Show() InspectRecipeFrame.SchematicForm:Init()");
+  expect(addon.eval("return __formState(InspectRecipeFrame.SchematicForm)"), "the form a sunk well, its check boxes, notes, dropdown and both reagent slots themed").toMatchObject({
+    inset: true, checks: true, label: true, level: true, sub: true, source: true, bonus: true, slots: 2,
+  });
+  expect(windowState(addon, "InspectRecipeFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
+});
+it("R2.15 the professions window: the windows group off leaves them the game's; a bare or odd window loads cleanly", () => {
+  const off = loggedIn(PROF_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  off.fire("ADDON_LOADED", "Blizzard_Professions");
+  off.eval("ProfessionsFrame:Show()");
+  expect(profState(off), "nothing faded or painted").toMatchObject({ page: false, list: false, recipe: false });
+  const bare = loggedIn(`${WINDOWS_ENV}__window("ProfessionsFrame") __window("InspectRecipeFrame")`);
+  bare.fire("ADDON_LOADED", "Blizzard_Professions");
+  bare.eval("ProfessionsFrame:Show() InspectRecipeFrame:Show()");
+  expect([windowState(bare, "ProfessionsFrame").panel, windowState(bare, "InspectRecipeFrame").panel, bare.eval("return #ns.errors")], "bare windows are skinned, no part missing is an error").toEqual([true, true, 0]);
+  const odd = loggedIn(`${PROF_ENV} local page = ProfessionsFrame.CraftingPage page.RecipeList.ScrollBox = {} page.RankBar = 1 page.LinkButton = {}
+    page.SchematicForm.reagentSlots = { [1] = { 1, {} }, [2] = 1 } page.SchematicForm.Init = nil page.SchematicForm.TrackRecipeCheckbox = {}
+    __recipe.CreateTexture = nil InspectRecipeFrame = nil ProfessionsFrame.CraftingPage = 1`);
+  odd.fire("ADDON_LOADED", "Blizzard_Professions");
+  odd.eval("ProfessionsFrame:Show()");
+  expect(odd.eval("return #ns.errors"), "odd parts are skipped").toBe(0);
+  const noForm = loggedIn(`${PROF_ENV} local page = ProfessionsFrame.CraftingPage page.SchematicForm = {} page.RecipeList = {} page.SchematicForm.reagentSlots = 1`);
+  noForm.fire("ADDON_LOADED", "Blizzard_Professions");
+  noForm.eval("ProfessionsFrame:Show()");
+  expect(noForm.eval("return #ns.errors"), "a form or list that is no frame is skipped").toBe(0);
 });

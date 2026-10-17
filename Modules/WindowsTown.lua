@@ -418,7 +418,7 @@ GW.Add("town", "onDemand", "Blizzard_MacroUI", { "MacroPopupFrame" }, GW.SkinIco
 GW.Add("town", "onDemand", "Blizzard_GuildBankUI", { "GuildBankPopupFrame" }, GW.SkinIconPicker)
 GW.Add("town", "framed", { "GearManagerPopupFrame" }, GW.SkinIconPicker)
 GW.Add("town", "onDemand", "Blizzard_TimeManager", { "StopwatchFrame" }, GW.SkinStopwatch)
-GW.Add("town", "onDemand", "Blizzard_Professions", { "InspectRecipeFrame" })
+GW.Add("town", "onDemand", "Blizzard_Professions", { "InspectRecipeFrame" }, GW.SkinFramed)
 
 -- Small dialogs -------------------------------------------------------------------------------------
 
