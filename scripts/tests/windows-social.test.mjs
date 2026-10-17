@@ -1080,3 +1080,241 @@ it("social toasts: the switch off leaves them the game's; a toast missing its pa
   bare.eval("BNToastFrame:Show()");
   expect([windowErrors(bare), bare.eval("return #ns.errors"), bare.eval(`${PAINTED} return painted(BNToastFrame)`)], "a toast with no lines, icon, X or tooltip: a panel, no errors").toEqual(["none", 0, true]);
 });
+
+// Guild dialogs and friends dialogs, R2.27 parts ----------------------------------------------------------
+
+// Small builders for the dialogs' parts: a gold label, a flat button, a dropdown, a check box, a pool the game enumerates, a ScrollBox.
+const PART_HELPERS_LUA = `
+  function __lit(fs) local c, t = fs.__textColor, { ns.Theme.RGB("text") } return c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3] end
+  function __gold(parent, key, text) local fs = __text(parent, text or key) fs:SetTextColor(1, 0.82, 0) if key then parent[key] = fs end return fs end
+  function __btn(parent, text, key) local b = CreateFrame("Button", nil, parent) b.Art = __art(b) if text then b:SetText(text) end if key then parent[key] = b end return b end
+  function __drop(parent, key) local d = CreateFrame("Button", nil, parent) d.Arrow, d.Art = __art(d), __art(d) parent[key] = d return d end
+  function __check(parent, key) local c = CreateFrame("CheckButton", nil, parent) c.Box, c.Text = __art(c), __text(c, "label") if key then parent[key] = c end return c end
+  function __pool(items) return { EnumerateActive = function() local i = 0 return function() i = i + 1 return items[i] end end } end
+  function __box() local b = { rows = {}, callbacks = {} } function b:ForEachFrame(fn) for _, r in ipairs(self.rows) do fn(r) end end return b end
+`;
+
+// The dialogs' own parts on top of the ones above: the guild log's box, title and X button, the text edit's box and X button, the news
+// filters' seven checks, the invite's tabard and named buttons, the settings dialog's text areas, checks, dropdowns and labels, the
+// avatar picker's selection frame, the invite manager's list (marble, headers, striped rows), the channel popup's labels, the friends
+// list's box, the invitee's name and the add-friend window's titles.
+const DIALOG_PARTS_ENV = FRIENDS_ENV + INSIDES_LUA + PART_HELPERS_LUA + `
+  ScrollUtil = { AddAcquiredFrameCallback = function(box, cb, owner) table.insert(box.callbacks, function(row) cb(owner, row) end) end }
+  function __acquire(box, row) table.insert(box.rows, row) for _, cb in ipairs(box.callbacks) do cb(row) end return row end
+  local log = CommunitiesGuildLogFrame
+  log.Container = __well(nil, log) CommunitiesGuildLogFrameTitle = __gold(log, nil, "Guild Log") CreateFrame("Button", nil, log)
+  local edit = CommunitiesGuildTextEditFrame
+  CommunitiesGuildTextEditFrameAcceptButton:SetText("Accept")
+  edit.Container = __well(nil, edit) edit.Container.ScrollFrame = CreateFrame("Frame", nil, edit.Container)
+  edit.Container.ScrollFrame.EditBox = CreateFrame("EditBox", nil, edit.Container.ScrollFrame) edit.Container.ScrollFrame.EditBox.Art = __art(edit.Container.ScrollFrame.EditBox)
+  CreateFrame("Button", nil, edit)
+  local filters = CommunitiesGuildNewsFiltersFrame filters.GuildNewsFilterButtons = {}
+  for i = 1, 7 do filters.GuildNewsFilterButtons[i] = __check(filters) end
+  table.insert(filters.GuildNewsFilterButtons, {})
+  GuildInviteFrameTabardBackground, GuildInviteFrameTabardEmblem, GuildInviteFrameTabardBorder = __art(GuildInviteFrame), __art(GuildInviteFrame), __art(GuildInviteFrame)
+  for _, n in ipairs({ "GuildInviteFrameJoinButton", "GuildInviteFrameDeclineButton" }) do _G[n] = __btn(GuildInviteFrame, n) end
+  GuildInviteFrameGuildName = __gold(GuildInviteFrame, nil, "TEST-ONLY guild")
+  local set = CommunitiesSettingsDialog
+  for _, k in ipairs({ "MessageOfTheDay", "Description", "MinIlvlOnly" }) do
+    set[k] = CreateFrame("Frame", nil, set) __art(set[k]) set[k].EditBox = CreateFrame("EditBox", nil, set[k]) set[k].EditBox.Art = __art(set[k].EditBox)
+  end
+  for _, p in ipairs({ { "CrossFactionToggle", "CheckButton" }, { "ShouldListClub", "Button" }, { "AutoAcceptApplications", "Button" }, { "MaxLevelOnly", "Button" }, { "MinIlvlOnly", "Button" } }) do
+    set[p[1]] = set[p[1]] or CreateFrame("Frame", nil, set) __check(set[p[1]], p[2])
+  end
+  for _, k in ipairs({ "ClubFocusDropdown", "LookingForDropdown", "LanguageDropdown" }) do __drop(set, k) end
+  for _, k in ipairs({ "NameLabel", "ShortNameLabel", "DescriptionLabel", "MessageOfTheDayLabel" }) do __gold(set, k) end
+  set.IconPreview = __art(set)
+  local pick = CommunitiesAvatarPickerDialog pick.Selector = __well(nil, pick) __btn(pick.Selector, "Okay", "OkayButton") __btn(pick.Selector, "Cancel", "CancelButton")
+  local tm = CommunitiesTicketManagerDialog
+  tm.Icon, tm.Separator = __art(tm), __art(tm)
+  __drop(tm, "ExpiresDropdown") __drop(tm, "UsesDropdown") tm.MaximizeButton = CreateFrame("Button", nil, tm) tm.MaximizeButton.Icon = __art(tm.MaximizeButton)
+  for _, k in ipairs({ "LinkInstructions", "ExpandLabel", "ExpiresDropdownLabel", "UsesDropdownLabel" }) do __gold(tm, k) end
+  local mgr = CreateFrame("Frame", nil, tm) tm.InviteManager = mgr __art(mgr)
+  mgr.ArtOverlay, mgr.ScrollBox, mgr.ScrollBar = __well(nil, mgr), __box(), CreateFrame("Frame", nil, mgr)
+  mgr.ScrollBox.Background, mgr.ScrollBar.Background = __art(mgr), __art(mgr.ScrollBar)
+  mgr.ColumnDisplay = CreateFrame("Frame", nil, mgr) __art(mgr.ColumnDisplay) mgr.ColumnDisplay.columnHeaders = __pool({ __btn(mgr.ColumnDisplay) })
+  function __ticket()
+    local r = CreateFrame("Button", nil, mgr) r.Stripe = __art(r) __btn(r, "Copy", "CopyLinkButton") __btn(r, nil, "RevokeButton") r.RevokeButton.Icon = __art(r.RevokeButton)
+    return r
+  end
+  __t1 = __ticket() table.insert(mgr.ScrollBox.rows, __t1)
+  local pop = CreateChannelPopup
+  pop.Header.Text = __gold(pop.Header, nil, "New channel") pop.Name.Label, pop.Password.Label = __gold(pop.Name, nil, "Channel name"), __gold(pop.Password, nil, "Password")
+  __check(pop, "UseVoiceChat")
+  FriendsFriendsFrame.ScrollFrameBorder.Art = FriendsFriendsFrame.ScrollFrameBorder.Art or __art(FriendsFriendsFrame.ScrollFrameBorder)
+  BattleNetInviteFrame.InviteeName = __gold(BattleNetInviteFrame, nil, "TEST-ONLY invitee")
+  local af = AddFriendFrame
+  af.InfoFrame, af.EntryFrame = CreateFrame("Frame", nil, af), CreateFrame("Frame", nil, af)
+  __btn(af.InfoFrame, "Okay", "OkayButton")
+  af.InfoFrame.InfoContainer, af.EntryFrame.TitleContainer, af.EntryFrame.OptionsContainer = CreateFrame("Frame", nil, af.InfoFrame), CreateFrame("Frame", nil, af.EntryFrame), CreateFrame("Frame", nil, af.EntryFrame)
+  __gold(af.EntryFrame.TitleContainer, "Title")
+  for _, c in ipairs({ af.InfoFrame.InfoContainer, af.EntryFrame.OptionsContainer }) do
+    for _, side in ipairs({ "LeftTextContainer", "RightTextContainer" }) do c[side] = CreateFrame("Frame", nil, c) __gold(c[side], "Title") end
+  end
+`;
+
+it("social dialogs: the guild log's and text edit's boxes, titles and X buttons, the news filter checks, the invite's tabard and buttons", () => {
+  const addon = loggedIn(DIALOG_PARTS_ENV);
+  for (const name of DIALOGS) addon.eval(`${name}:Show()`);
+  expect(addon.eval(`local log, edit = CommunitiesGuildLogFrame, CommunitiesGuildTextEditFrame
+    local function glyph(b) for _, r in ipairs({ b:GetRegions() }) do if r.__texture and tostring(r.__texture):find("Close") then return true end end return false end
+    local kids, tkids = { log:GetChildren() }, { edit:GetChildren() }
+    return { __sunk(log.Container), __titled(CommunitiesGuildLogFrameTitle), glyph(kids[#kids]), glyph(CommunitiesGuildLogFrameCloseButton),
+      __sunk(edit.Container), edit.Container.ScrollFrame.EditBox.Art:GetAlpha() == 0, glyph(tkids[#tkids]), glyph(CommunitiesGuildTextEditFrameAcceptButton) }`),
+  "log and text edit: boxes sunk, the log's title a title, the X the close glyph, the text buttons not").toEqual([true, true, true, false, true, true, true, false]);
+  expect(addon.eval(`local n = 0 for _, c in ipairs(CommunitiesGuildNewsFiltersFrame.GuildNewsFilterButtons) do if type(c.GetChecked) == "function" and ns.Theme.CheckParts(c) then n = n + 1 end end
+    return { n, #CommunitiesGuildNewsFiltersFrame.GuildNewsFilterButtons }`), "seven news filter checks (the odd entry left alone)").toEqual([7, 8]);
+  expect(addon.eval(`return { GuildInviteFrameTabardBackground:GetAlpha(), GuildInviteFrameTabardEmblem:GetAlpha(), GuildInviteFrameTabardBorder:GetAlpha(),
+      GuildInviteFrameJoinButton.Art:GetAlpha(), GuildInviteFrameDeclineButton.Art:GetAlpha(), __lit(GuildInviteFrameGuildName) }`),
+  "the inviting guild's tabard kept, its border faded, Join and Decline flat, the guild name light").toEqual([1, 1, 0, 0, 0, true]);
+});
+
+it("social dialogs: the settings dialog's text areas, checks, dropdowns and labels, the avatar picker and the invite manager", () => {
+  const addon = loggedIn(DIALOG_PARTS_ENV);
+  for (const name of DIALOGS) addon.eval(`${name}:Show()`);
+  expect(addon.eval(`local s = CommunitiesSettingsDialog
+    local n = 0 for _, p in ipairs({ { "CrossFactionToggle", "CheckButton" }, { "ShouldListClub", "Button" }, { "AutoAcceptApplications", "Button" }, { "MaxLevelOnly", "Button" }, { "MinIlvlOnly", "Button" } }) do
+      if ns.Theme.CheckParts(s[p[1]][p[2]]) then n = n + 1 end end
+    return { __faded(s.MessageOfTheDay), s.MessageOfTheDay.EditBox.Art:GetAlpha(), __faded(s.Description), s.Description.EditBox.Art:GetAlpha(), s.MinIlvlOnly.EditBox.Art:GetAlpha(), n,
+      s.ClubFocusDropdown.Art:GetAlpha(), s.ClubFocusDropdown.Arrow:GetAlpha(), s.LanguageDropdown.Arrow:GetAlpha(), __lit(s.NameLabel), __lit(s.ShortNameLabel), __lit(s.DescriptionLabel),
+      __lit(s.MessageOfTheDayLabel), s.IconPreview:GetAlpha() }`),
+  "two text areas and the item level box in the theme, five check boxes, three dropdowns that keep their arrows, four light labels, the avatar kept")
+    .toEqual([true, 0, true, 0, 0, 5, 0, 1, 1, true, true, true, true, 1]);
+  expect(addon.eval(`local p = CommunitiesAvatarPickerDialog return { __faded(p.Selector), p.Selector.OkayButton.Art:GetAlpha(), p.Selector.CancelButton.Art:GetAlpha() }`),
+  "the selection frame faded, its two buttons flat").toEqual([true, 0, 0]);
+  expect(addon.eval(`local t = CommunitiesTicketManagerDialog local m = t.InviteManager
+    return { t.Icon:GetAlpha(), ns.Theme.DividerParts(t.Separator) ~= nil, t.ExpiresDropdown.Arrow:GetAlpha(), t.UsesDropdown.Art:GetAlpha(), t.MaximizeButton.Icon:GetAlpha(), __lit(t.LinkInstructions),
+      __lit(t.ExpandLabel), __lit(t.ExpiresDropdownLabel), __lit(t.UsesDropdownLabel), __faded(m.ArtOverlay), m.ScrollBox.Background:GetAlpha(), m.ScrollBar.Background:GetAlpha(),
+      __faded(m.ColumnDisplay), __sunk(m), ns.Theme.RowParts(__t1) ~= nil, __t1.Stripe:GetAlpha(), __t1.CopyLinkButton.Art:GetAlpha(), __t1.RevokeButton.Art:GetAlpha(), __t1.RevokeButton.Icon:GetAlpha() }`),
+  "the invite manager: avatar kept, separator a line, dropdowns, labels light, marble and corners faded, an inset, headers flat, a row without its stripe, the revoke cross kept")
+    .toEqual([1, true, 1, 0, 1, true, true, true, true, true, 0, 0, true, true, true, 0, 0, 0, 1]);
+  addon.eval("__t2 = __acquire(CommunitiesTicketManagerDialog.InviteManager.ScrollBox, __ticket())");
+  expect(addon.eval("return { ns.Theme.RowParts(__t2) ~= nil, __t2.Stripe:GetAlpha(), __t2.RevokeButton.Icon:GetAlpha() }"), "a row the game makes later is dressed too").toEqual([true, 0, 1]);
+});
+
+it("friends dialogs: the channel popup's title and labels, the friends list's box, the invitee's name and the add-friend window's titles", () => {
+  const addon = loggedIn(DIALOG_PARTS_ENV);
+  for (const name of ["CreateChannelPopup", "FriendsFriendsFrame", "BattleNetInviteFrame", "AddFriendFrame"]) addon.eval(`${name}:Show()`);
+  expect(addon.eval(`local p = CreateChannelPopup return { __titled(p.Header.Text), __lit(p.Name.Label), __lit(p.Password.Label), ns.Theme.CheckParts(p.UseVoiceChat) ~= nil,
+      __sunk(FriendsFriendsFrame.ScrollFrameBorder), __lit(BattleNetInviteFrame.InviteeName) }`),
+  "the popup's header title and two labels, its voice check box, the friends list's box sunk, the invitee's name light").toEqual([true, true, true, true, true, true]);
+  expect(addon.eval(`local f = AddFriendFrame local e, i = f.EntryFrame, f.InfoFrame
+    return { f.InfoFrame.OkayButton.Art:GetAlpha(), __headed(e.TitleContainer.Title), __headed(i.InfoContainer.LeftTextContainer.Title), __headed(i.InfoContainer.RightTextContainer.Title),
+      __headed(e.OptionsContainer.LeftTextContainer.Title), __headed(e.OptionsContainer.RightTextContainer.Title) }`),
+  "Okay flat, the five titles heading text").toEqual([0, true, true, true, true, true]);
+  expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
+});
+
+it("social dialogs: with the group off they stay the game's; dialogs with odd or missing parts load cleanly", () => {
+  const off = loggedIn(DIALOG_PARTS_ENV, OFF);
+  for (const name of DIALOGS) off.eval(`${name}:Show()`);
+  expect(off.eval(`return { ns.Theme.CheckParts(CommunitiesSettingsDialog.ShouldListClub.Button) == nil, CommunitiesGuildLogFrame.Container.NineSlice:GetAlpha(), ns.Theme.RowParts(__t1) == nil }`), "left the game's").toEqual([true, 1, true]);
+  const odd = loggedIn(DIALOG_PARTS_ENV + `
+    CommunitiesGuildLogFrame.Container, CommunitiesGuildTextEditFrame.Container, CommunitiesGuildNewsFiltersFrame.GuildNewsFilterButtons = {}, {}, nil
+    CommunitiesSettingsDialog.MessageOfTheDay, CommunitiesSettingsDialog.MinIlvlOnly, CommunitiesSettingsDialog.IconPreview = {}, {}, nil
+    CommunitiesAvatarPickerDialog.Selector, CommunitiesTicketManagerDialog.InviteManager, CommunitiesTicketManagerDialog.Separator = {}, {}, {}
+    GuildInviteFrameJoinButton, GuildInviteFrameTabardBackground = nil, nil CreateChannelPopup.Header, AddFriendFrame.InfoFrame = nil, nil`);
+  for (const name of [...DIALOGS, "CreateChannelPopup", "AddFriendFrame"]) odd.eval(`${name}:Show()`);
+  const rowless = loggedIn(DIALOG_PARTS_ENV + `CommunitiesTicketManagerDialog.InviteManager.ScrollBox.rows[1] = false CommunitiesTicketManagerDialog.InviteManager.ColumnDisplay = {}`);
+  rowless.eval("CommunitiesTicketManagerDialog:Show()");
+  expect([windowErrors(odd), odd.eval("return #ns.errors"), windowErrors(rowless), rowless.eval("return #ns.errors")], "parts that are missing or not frames").toEqual(["none", 0, "none", 0]);
+});
+
+// The guild window's own dialogs, R2.27 parts -------------------------------------------------------------
+
+// The dialogs, pages and overlays that are parts of the guild window: the member detail pop-up (dark border, gold labels, buttons, rank
+// dropdown, two note boxes), the channel edit dialog (name box, type check, description text area), the notification settings dialog
+// (selection frame, dropdown, a scroll child with a check, two buttons and a divider, a pool of stream rows with two radios each), the
+// invitation and ticket pages, the four reported-name overlays and the alert button.
+const COMMUNITY_DIALOGS_ENV = PAGES_PARTS_ENV + PART_HELPERS_LUA + `
+  local function sub(key) local d = CreateFrame("Frame", nil, f) __art(d) d.Bg = __art(d) f[key] = d return d end
+  local md = sub("GuildMemberDetailFrame") md.Border = __well(nil, md) md.CloseButton = CreateFrame("Button", nil, md)
+  for _, k in ipairs({ "Name", "ZoneLabel", "RankLabel", "OnlineLabel", "NoteLabel", "OfficerNoteLabel" }) do __gold(md, k) end
+  __btn(md, "Remove", "RemoveButton") __btn(md, "Invite", "GroupInviteButton") __drop(md, "RankDropdown")
+  md.NoteBackground, md.OfficerNoteBackground = __well(nil, md), __well(nil, md)
+  local es = sub("EditStreamDialog") es.BG = __well(nil, es) es.NameEdit = CreateFrame("EditBox", nil, es) es.NameEdit.Art = __art(es.NameEdit)
+  __gold(es, "NameLabel") __gold(es, "DescriptionLabel") __check(es, "TypeCheckbox")
+  es.Description = CreateFrame("Frame", nil, es) __art(es.Description) es.Description.EditBox = CreateFrame("EditBox", nil, es.Description) es.Description.EditBox.Art = __art(es.Description.EditBox)
+  for _, k in ipairs({ "Accept", "Cancel", "Delete" }) do __btn(es, k, k) end
+  local nd = sub("NotificationSettingsDialog") nd.BG = __art(nd) nd.Selector = __well(nil, nd) nd.CloseButton = nil
+  __btn(nd.Selector, "Okay", "OkayButton") __btn(nd.Selector, "Cancel", "CancelButton") __drop(nd, "CommunitiesListDropdown")
+  nd.ScrollFrame = CreateFrame("Frame", nil, nd) nd.ScrollFrame.Child = CreateFrame("Frame", nil, nd.ScrollFrame)
+  local child = nd.ScrollFrame.Child __check(child, "QuickJoinButton") __btn(child, "None", "NoneButton") __btn(child, "All", "AllButton") child.Separator = __art(child)
+  function __stream()
+    local e = CreateFrame("Button", nil, child) e.StreamName, e.Separator = __gold(e, nil, "TEST-ONLY stream"), __art(e)
+    for _, k in ipairs({ "HideNotificationsButton", "ShowNotificationsButton" }) do e[k] = CreateFrame("CheckButton", nil, e) e[k].Art = __art(e[k]) end
+    return e
+  end
+  nd.active = { __stream() } nd.buttonPool = __pool(nd.active)
+  function nd:Refresh() end
+  for _, k in ipairs({ "InvitationFrame", "TicketFrame" }) do
+    local p = CreateFrame("Frame", nil, f) f[k] = p p.Backdrop, p.Icon, p.IconRing, p.InsetFrame = __art(p), __art(p), __art(p), __well(nil, p)
+    __btn(p, "Accept", "AcceptButton") __btn(p, "Decline", "DeclineButton") p.Name = __text(p, "TEST-ONLY community")
+    for _, t in ipairs({ "InvitationText", "Type", "MemberCount", "Leader" }) do __gold(p, t) end
+  end
+  for _, k in ipairs({ "GuildNameChangeFrame", "CommunityNameChangeFrame", "GuildPostingChangeFrame", "CommunityPostingChangeFrame" }) do
+    local o = CreateFrame("Frame", nil, f) f[k] = o __art(o) __art(o) o.CloseButton = CreateFrame("Button", nil, o) __btn(o, "Go", "Button") __gold(o, "RenameText")
+    o.EditBox = CreateFrame("EditBox", nil, o) o.EditBox.Art = __art(o.EditBox) o.Error = __text(o, "TEST-ONLY warning") o.Error:SetTextColor(1, 0, 0)
+  end
+  local alert = CreateFrame("Button", nil, f) f.GuildNameAlertFrame = alert
+  for _, k in ipairs({ "BG", "GlowTopLeft", "GlowTop", "ShadowRight", "ShadowBottomLeft" }) do alert[k] = __art(alert) end
+  alert.Icon = __art(alert)
+`;
+
+it("guild window dialogs: the member detail, channel edit and notification dialogs in the theme, the stream rows' radios and dividers", () => {
+  const addon = loggedIn(COMMUNITY_DIALOGS_ENV);
+  addon.eval("CommunitiesFrame:Show()");
+  expect(addon.eval(`local d = CommunitiesFrame.GuildMemberDetailFrame
+    return { d.Bg:GetAlpha(), __faded(d.Border), ns.Theme.PaintedCount and true, __lit(d.Name), __lit(d.ZoneLabel), __lit(d.RankLabel), __lit(d.OnlineLabel), __lit(d.NoteLabel), __lit(d.OfficerNoteLabel),
+      d.RemoveButton.Art:GetAlpha(), d.GroupInviteButton.Art:GetAlpha(), d.RankDropdown.Art:GetAlpha(), d.RankDropdown.Arrow:GetAlpha(), __sunk(d.NoteBackground), __sunk(d.OfficerNoteBackground) }`),
+  "the member pop-up: border faded, labels and name light, buttons flat, the rank dropdown keeps its arrow, both note boxes sunk")
+    .toEqual([0, true, true, true, true, true, true, true, true, 0, 0, 0, 1, true, true]);
+  expect(addon.eval(`local e = CommunitiesFrame.EditStreamDialog
+    return { __faded(e.BG), e.NameEdit.Art:GetAlpha(), __lit(e.NameLabel), __lit(e.DescriptionLabel), ns.Theme.CheckParts(e.TypeCheckbox) ~= nil, __faded(e.Description),
+      e.Description.EditBox.Art:GetAlpha(), e.Accept.Art:GetAlpha(), e.Cancel.Art:GetAlpha(), e.Delete.Art:GetAlpha() }`),
+  "the channel edit dialog: boxes, check, text area and buttons themed, labels light").toEqual([true, 0, true, true, true, true, 0, 0, 0, 0]);
+  // Reads what a notification stream row looks like.
+  const stream = (e) => addon.eval(`local e = ${e} return { __lit(e.StreamName), ns.Theme.DividerParts(e.Separator) ~= nil, ns.Theme.CheckParts(e.HideNotificationsButton).ring ~= nil, ns.Theme.CheckParts(e.ShowNotificationsButton).ring ~= nil }`);
+  expect(stream("CommunitiesFrame.NotificationSettingsDialog.active[1]"), "a stream row there from the start: name light, divider a line, two theme radios").toEqual([true, true, true, true]);
+  addon.eval("local nd = CommunitiesFrame.NotificationSettingsDialog table.insert(nd.active, __stream()) nd:Refresh()");
+  expect(stream("CommunitiesFrame.NotificationSettingsDialog.active[2]"), "a row the game adds in a refresh").toEqual([true, true, true, true]);
+  expect(addon.eval(`local n = CommunitiesFrame.NotificationSettingsDialog local c = n.ScrollFrame.Child
+    return { n.BG:GetAlpha(), __faded(n.Selector), n.Selector.OkayButton.Art:GetAlpha(), n.Selector.CancelButton.Art:GetAlpha(), n.CommunitiesListDropdown.Arrow:GetAlpha(),
+      ns.Theme.CheckParts(c.QuickJoinButton) ~= nil, c.NoneButton.Art:GetAlpha(), c.AllButton.Art:GetAlpha(), ns.Theme.DividerParts(c.Separator) ~= nil }`),
+  "the notification dialog: black plate and selection frame faded, its buttons, dropdown, check and divider themed").toEqual([0, true, 0, 0, 1, true, 0, 0, true]);
+});
+
+it("guild window dialogs: the invitation and ticket pages, the reported-name overlays and their alert in the theme", () => {
+  const addon = loggedIn(COMMUNITY_DIALOGS_ENV);
+  addon.eval("CommunitiesFrame:Show()");
+  for (const key of ["InvitationFrame", "TicketFrame"]) {
+    expect(addon.eval(`local p = CommunitiesFrame.${key}
+      return { p.Backdrop:GetAlpha(), p.Icon:GetAlpha(), p.IconRing:GetAlpha(), __sunk(p.InsetFrame), p.AcceptButton.Art:GetAlpha(), p.DeclineButton.Art:GetAlpha(), __lit(p.InvitationText), __lit(p.Type),
+        __lit(p.MemberCount), __lit(p.Leader), __lit(p.Name) }`), `${key}: backdrop and ring faded, the avatar kept, an inset, buttons flat, the gold lines light, the name left`)
+      .toEqual([0, 1, 0, true, 0, 0, true, true, true, true, false]);
+  }
+  for (const key of ["GuildNameChangeFrame", "CommunityNameChangeFrame", "GuildPostingChangeFrame", "CommunityPostingChangeFrame"]) {
+    expect(addon.eval(`local o = CommunitiesFrame.${key}
+      local panel = false for _, r in ipairs({ o:GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then panel = true end end
+      return { __faded(o), panel, o.Button.Art:GetAlpha(), o.EditBox.Art:GetAlpha(), __lit(o.RenameText), o.Error.__textColor[2] }`), `${key}: art faded, a panel, button and box themed, the instruction light, the red warning kept`)
+      .toEqual([true, true, 0, 0, true, 0]);
+  }
+  expect(addon.eval(`local a = CommunitiesFrame.GuildNameAlertFrame return { a.BG:GetAlpha(), a.GlowTopLeft:GetAlpha(), a.GlowTop:GetAlpha(), a.ShadowRight:GetAlpha(), a.ShadowBottomLeft:GetAlpha(), a.Icon:GetAlpha() }`),
+  "the alert: the glow box faded, its icon kept").toEqual([0, 0, 0, 0, 0, 1]);
+  expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
+});
+
+it("guild window dialogs: with the group off they stay the game's; a window with them missing or odd loads cleanly", () => {
+  const off = loggedIn(COMMUNITY_DIALOGS_ENV, OFF);
+  off.eval("CommunitiesFrame:Show()");
+  expect(off.eval(`local f = CommunitiesFrame return { f.GuildMemberDetailFrame.Bg:GetAlpha(), ns.Theme.CheckParts(f.EditStreamDialog.TypeCheckbox) == nil, f.GuildNameAlertFrame.BG:GetAlpha(), f.InvitationFrame.Backdrop:GetAlpha() }`),
+  "left the game's").toEqual([1, true, 1, 1]);
+  const odd = loggedIn(COMMUNITY_DIALOGS_ENV + `
+    local f = CommunitiesFrame f.GuildMemberDetailFrame, f.EditStreamDialog, f.InvitationFrame, f.GuildNameAlertFrame, f.GuildPostingChangeFrame = {}, false, {}, {}, nil
+    f.NotificationSettingsDialog.buttonPool, f.NotificationSettingsDialog.ScrollFrame.Child, f.NotificationSettingsDialog.Refresh = {}, nil, nil
+    f.TicketFrame.InsetFrame, f.GuildNameChangeFrame.RenameText = nil, nil`);
+  odd.eval("CommunitiesFrame:Show()");
+  const bare = loggedIn(PAGES_PARTS_ENV + `CommunitiesFrame.NotificationSettingsDialog = CreateFrame("Frame", nil, CommunitiesFrame)`);
+  bare.eval("CommunitiesFrame:Show()");
+  expect([windowErrors(odd), odd.eval("return #ns.errors"), windowErrors(bare), bare.eval("return #ns.errors")], "parts that are not frames or are missing").toEqual(["none", 0, "none", 0]);
+});

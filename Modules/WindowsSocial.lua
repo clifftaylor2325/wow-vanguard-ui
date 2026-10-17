@@ -485,6 +485,7 @@ function GW.SkinGuildWindow(frame)
   for _, key in ipairs(GW.GUILD_PANES) do dressPane(frame[key]) end
   dressGuildControls(frame)
   dressGuildPages(frame)
+  GW.SkinCommunitiesDialogs(frame)
   after(frame, "SetDisplayMode", GW.SkinGuildWindow)
 end
 
@@ -493,7 +494,7 @@ GW.Add("social", "framed", { "CommunitiesFrame" }, GW.SkinGuildWindow)
 -- Dialogs -----------------------------------------------------------------------------------------
 
 -- The art the social dialogs draw behind them (translucent frames, dark dialog borders, headers, list borders).
-GW.SOCIAL_DIALOG_ART = { "NineSlice", "Bg", "BG", "Border", "Background", "Header", "ScrollFrameBorder" }
+GW.SOCIAL_DIALOG_ART = { "NineSlice", "Bg", "BG", "Border", "Background", "Header", "ScrollFrameBorder", "Selector" }
 -- Their push buttons by parentKey, and by the name suffix the game gives them ($parentAcceptButton).
 GW.SOCIAL_DIALOG_BUTTONS = {
   "Accept", "Cancel", "Delete", "Close", "Copy", "LinkToChat", "GenerateLinkButton", "ChangeAvatarButton", "ContextButton",
@@ -518,11 +519,12 @@ local function dressClose(frame, button)
   if text ~= "" then T.Button(button) else GW.DressClose(frame, button) end
 end
 
--- Themes each part of frame named in keys that is a widget with the method `need` (T.Button, or T.EditBox for boxes).
+-- Themes each part of frame named in keys that is a frame with the method `need` (T.Button, or T.EditBox for boxes; a
+-- font string such as the member pop-up's Name has SetText too, but no regions).
 local function dressKeys(frame, keys, need, skin)
   for _, key in ipairs(keys) do
     local part = frame[key]
-    if type(part) == "table" and part[need] and part ~= frame.CloseButton then skin(part) end
+    if type(part) == "table" and part[need] and part.GetRegions and part ~= frame.CloseButton then skin(part) end
   end
 end
 
@@ -547,10 +549,251 @@ function GW.SkinSocialDialog(frame)
   dressDialogParts(frame, frame.GetName and frame:GetName())
 end
 
-GW.Add("social", "framed", {
-  "CommunitiesGuildLogFrame", "CommunitiesGuildNewsFiltersFrame", "CommunitiesGuildTextEditFrame", "GuildInviteFrame",
-  "CommunitiesSettingsDialog", "CommunitiesAvatarPickerDialog", "CommunitiesTicketManagerDialog",
-}, GW.SkinSocialDialog)
+-- The parts of the social dialogs only some of them have ---------------------------------------------
+
+-- Whether a part is a frame (it has regions); the harness's copy of a window and a real client may differ.
+local function isFrame(part)
+  return type(part) == "table" and type(part.GetRegions) == "function"
+end
+
+-- The font strings of frame under keys in a theme text colour (a gold field label is "text", never gold).
+local function paintKeys(frame, keys, token)
+  if type(frame) ~= "table" then return end
+  for _, key in ipairs(keys) do paintText(frame[key], token) end
+end
+
+-- A rule the game draws as a texture (a separator under a heading) as the theme's one-pixel line.
+local function dressRule(line)
+  if type(line) == "table" and line.SetAlpha then T.Divider(line) end
+end
+
+-- A multi-line text area (InputScrollFrameTemplate): its border art faded, its edit box a theme edit box.
+local function dressScrollEdit(scroll)
+  if not isFrame(scroll) then return end
+  T.FadeRegions(scroll)
+  GW.SkinEditBox(scroll.EditBox)
+end
+
+-- The OK and Cancel buttons of a SelectionFrameTemplate frame (a dialog's Selector; its art is faded with the dialog's).
+local function dressSelector(dialog)
+  GW.EachKey(dialog.Selector, { "OkayButton", "CancelButton" }, GW.SkinButton)
+end
+
+-- The X button of a dialog that names it like its text Close button ($parentCloseButton twice, so the name finds
+-- only one): the child with a GetText (a button) and no label.
+local function findCross(frame)
+  for _, child in ipairs({ frame:GetChildren() }) do
+    if type(child) == "table" and type(child.GetText) == "function" and (child:GetText() or "") == "" then return child end
+  end
+end
+
+-- A skin for one social dialog: the dialog skin, then the parts only that dialog has.
+local function dialogWith(extra)
+  return function(frame)
+    GW.SkinSocialDialog(frame)
+    extra(frame)
+  end
+end
+
+-- The guild log: its box an inset, its title (named, no key) a title, its X button (found among its children) the close cross.
+local function dressGuildLog(frame)
+  GW.InsetPanel(frame.Container)
+  GW.SkinTitle(_G.CommunitiesGuildLogFrameTitle)
+  GW.DressClose(frame, findCross(frame))
+end
+
+-- The guild text edit dialog: its box an inset, its multi-line edit box a theme edit box, its X button the close cross.
+local function dressTextEdit(frame)
+  GW.InsetPanel(frame.Container)
+  GW.SkinEditBox(GW.Part(frame, "Container.ScrollFrame.EditBox"))
+  GW.DressClose(frame, findCross(frame))
+end
+
+-- The news filters dialog: its seven check boxes (frame.GuildNewsFilterButtons) as theme check boxes.
+local function dressNewsFilters(frame)
+  local checks = type(frame.GuildNewsFilterButtons) == "table" and frame.GuildNewsFilterButtons or {}
+  for _, check in ipairs(checks) do GW.SkinCheck(check) end
+end
+
+-- The guild invite dialog's tabard (the inviting guild's, content) and its two named buttons and guild name.
+GW.INVITE_TABARD = { "GuildInviteFrameTabardBackground", "GuildInviteFrameTabardEmblem" }
+GW.INVITE_BUTTONS = { "GuildInviteFrameJoinButton", "GuildInviteFrameDeclineButton" }
+
+-- The guild invite dialog: the tabard shown again (the dialog skin fades every texture), Join and Decline themed, the guild's name light.
+local function dressGuildInvite()
+  for _, name in ipairs(GW.INVITE_TABARD) do GW.ShowTexture(_G[name]) end
+  for _, name in ipairs(GW.INVITE_BUTTONS) do GW.SkinButton(_G[name]) end
+  paintText(_G.GuildInviteFrameGuildName, "text")
+end
+
+-- The community settings dialog's check boxes (paths from the dialog), dropdowns and field labels.
+GW.SETTINGS_CHECKS = {
+  "CrossFactionToggle.CheckButton", "ShouldListClub.Button", "AutoAcceptApplications.Button", "MaxLevelOnly.Button", "MinIlvlOnly.Button",
+}
+GW.SETTINGS_DROPDOWNS = { "ClubFocusDropdown", "LookingForDropdown", "LanguageDropdown" }
+GW.SETTINGS_LABELS = { "NameLabel", "ShortNameLabel", "DescriptionLabel", "MessageOfTheDayLabel" }
+
+-- The community settings dialog: two text areas and the item level box, five check boxes, three dropdowns, the labels
+-- light and the community's avatar (content) shown again.
+local function dressSettings(frame)
+  dressScrollEdit(frame.MessageOfTheDay)
+  dressScrollEdit(frame.Description)
+  GW.SkinEditBox(GW.Part(frame, "MinIlvlOnly.EditBox"))
+  for _, path in ipairs(GW.SETTINGS_CHECKS) do GW.SkinCheck(GW.Part(frame, path)) end
+  GW.EachKey(frame, GW.SETTINGS_DROPDOWNS, GW.SkinDropdown)
+  paintKeys(frame, GW.SETTINGS_LABELS, "text")
+  GW.ShowTexture(frame.IconPreview)
+end
+
+-- The invite links' labels, gold in the game.
+GW.TICKET_LABELS = { "LinkInstructions", "ExpandLabel", "ExpiresDropdownLabel", "UsesDropdownLabel" }
+
+-- One row of the invite links list: a hoverable row without its stripe, its two buttons themed (the revoke cross kept).
+local function dressTicketRow(row)
+  if type(row) ~= "table" then return end
+  GW.DressRow(row)
+  GW.SkinButton(row.CopyLinkButton)
+  GW.SkinButton(row.RevokeButton)
+  GW.ShowTexture(GW.Part(row, "RevokeButton.Icon"))
+end
+
+-- The invite links list: the marble and the bronze corners faded, an inset panel, the column headers flat, its rows dressed.
+local function dressInviteManager(list)
+  if not isFrame(list) then return end
+  GW.FadeParts(list, { "ArtOverlay" })
+  GW.FadeParts(list.ScrollBox, { "Background" })
+  GW.FadeParts(list.ScrollBar, { "Background" })
+  T.Panel(list, { inset = true, noSheen = true })
+  if isFrame(list.ColumnDisplay) then T.FadeRegions(list.ColumnDisplay) dressHeaders(list.ColumnDisplay) end
+  GW.WatchRows(list.ScrollBox, dressTicketRow)
+end
+
+-- The invite manager dialog: the community's avatar shown again, two dropdowns, the expand tile, the labels light, the
+-- separator a line, the links list.
+local function dressTicketManager(frame)
+  GW.ShowTexture(frame.Icon)
+  GW.EachKey(frame, { "ExpiresDropdown", "UsesDropdown" }, GW.SkinDropdown)
+  GW.SkinPlate(frame.MaximizeButton)
+  paintKeys(frame, GW.TICKET_LABELS, "text")
+  dressRule(frame.Separator)
+  dressInviteManager(frame.InviteManager)
+end
+
+-- The notification list's stream rows come from the game's own pool and are filled on each Refresh: one row's name light,
+-- its divider a line, its two radios (hide and show) theme radios.
+local function dressStreamEntry(entry)
+  paintText(entry.StreamName, "text")
+  dressRule(entry.Separator)
+  GW.EachKey(entry, { "HideNotificationsButton", "ShowNotificationsButton" }, GW.SkinRadio)
+end
+
+-- Every stream row the dialog has now.
+local function dressStreams(dialog)
+  local pool = dialog.buttonPool
+  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
+  for entry in pool:EnumerateActive() do dressStreamEntry(entry) end
+end
+
+-- The notification dialog's scroll child: the quick join check box, the None and All buttons, the settings divider.
+local function dressNotificationChild(child)
+  if type(child) ~= "table" then return end
+  GW.SkinCheck(child.QuickJoinButton)
+  GW.EachKey(child, { "NoneButton", "AllButton" }, GW.SkinButton)
+  dressRule(child.Separator)
+end
+
+-- The notification settings dialog (inside the guild window): the dialog skin (the selection frame's nine-slice
+-- faded with it), its community dropdown and buttons, the rows now and after each refresh.
+local function dressNotifications(dialog)
+  if not isFrame(dialog) then return end
+  GW.SkinSocialDialog(dialog)
+  GW.SkinDropdown(dialog.CommunitiesListDropdown)
+  dressSelector(dialog)
+  dressNotificationChild(GW.Part(dialog, "ScrollFrame.Child"))
+  dressStreams(dialog)
+  after(dialog, "Refresh", dressStreams)
+end
+
+-- The channel edit dialog (inside the guild window): the dialog skin, its type check box, its description text area, its labels light.
+local function dressEditStream(dialog)
+  if not isFrame(dialog) then return end
+  GW.SkinSocialDialog(dialog)
+  paintKeys(dialog, { "NameLabel", "DescriptionLabel" }, "text")
+  GW.SkinCheck(dialog.TypeCheckbox)
+  dressScrollEdit(dialog.Description)
+end
+
+-- The member detail pop-up (inside the guild window): the dialog skin, its labels light, its buttons and rank dropdown
+-- themed, its two note boxes insets.
+local function dressMemberDetail(dialog)
+  if not isFrame(dialog) then return end
+  GW.SkinSocialDialog(dialog)
+  paintKeys(dialog, GW.MEMBER_DETAIL_TEXT, "text")
+  GW.EachKey(dialog, { "RemoveButton", "GroupInviteButton" }, GW.SkinButton)
+  GW.SkinDropdown(dialog.RankDropdown)
+  GW.EachKey(dialog, { "NoteBackground", "OfficerNoteBackground" }, GW.InsetPanel)
+end
+
+-- The member detail pop-up's gold name and field labels.
+GW.MEMBER_DETAIL_TEXT = { "Name", "ZoneLabel", "RankLabel", "OnlineLabel", "NoteLabel", "OfficerNoteLabel" }
+-- The community invitation and ticket pages' gold lines.
+GW.INVITATION_TEXT = { "InvitationText", "Type", "MemberCount", "Leader" }
+-- The reported-name overlays over the guild window (parentKeys).
+GW.NAME_CHANGE_FRAMES = { "GuildNameChangeFrame", "CommunityNameChangeFrame", "GuildPostingChangeFrame", "CommunityPostingChangeFrame" }
+-- The art of the glow box the name-change alert is made from.
+GW.GLOW_BOX_ART = {
+  "BG", "GlowTopLeft", "GlowTopRight", "GlowBottomLeft", "GlowBottomRight", "GlowTop", "GlowBottom", "GlowLeft", "GlowRight",
+  "ShadowTopLeft", "ShadowTopRight", "ShadowBottomLeft", "ShadowBottomRight", "ShadowTop", "ShadowBottom", "ShadowLeft", "ShadowRight",
+}
+
+-- The invitation and ticket pages (the guild window's content area): the wide backdrop faded (the community's avatar
+-- kept), the inset an inset panel, Accept and Decline themed, the gold lines light.
+local function dressInvitation(page)
+  if not isFrame(page) then return end
+  T.FadeRegions(page, GW.KeepKeys(page, { "Icon" }))
+  GW.InsetPanel(page.InsetFrame)
+  GW.EachKey(page, { "AcceptButton", "DeclineButton" }, GW.SkinButton)
+  paintKeys(page, GW.INVITATION_TEXT, "text")
+end
+
+-- A reported-name overlay: a flat opaque panel over the page below (its yellow border and black plate faded), its close
+-- cross, button and edit box themed, its instruction light.
+local function dressNameChange(overlay)
+  if not isFrame(overlay) then return end
+  T.FadeRegions(overlay)
+  T.Panel(overlay, { shadow = true, alpha = 1 })
+  GW.DressClose(overlay, overlay.CloseButton)
+  GW.SkinButton(overlay.Button)
+  GW.SkinEditBox(overlay.EditBox)
+  paintText(overlay.RenameText, "text")
+end
+
+-- The alert button that tells of a reported name: the glow box's art faded, a panel in its place.
+local function dressNameAlert(alert)
+  if not isFrame(alert) then return end
+  GW.FadeParts(alert, GW.GLOW_BOX_ART)
+  T.Panel(alert, { shadow = true, alpha = 1 })
+end
+
+-- The guild window's own dialogs and overlays: the member detail, channel edit and notification dialogs, the invitation
+-- and ticket pages, the reported-name overlays and their alert.
+function GW.SkinCommunitiesDialogs(frame)
+  dressMemberDetail(frame.GuildMemberDetailFrame)
+  dressEditStream(frame.EditStreamDialog)
+  dressNotifications(frame.NotificationSettingsDialog)
+  dressInvitation(frame.InvitationFrame)
+  dressInvitation(frame.TicketFrame)
+  GW.EachKey(frame, GW.NAME_CHANGE_FRAMES, dressNameChange)
+  dressNameAlert(frame.GuildNameAlertFrame)
+end
+
+GW.Add("social", "framed", { "CommunitiesGuildLogFrame" }, dialogWith(dressGuildLog))
+GW.Add("social", "framed", { "CommunitiesGuildTextEditFrame" }, dialogWith(dressTextEdit))
+GW.Add("social", "framed", { "CommunitiesGuildNewsFiltersFrame" }, dialogWith(dressNewsFilters))
+GW.Add("social", "framed", { "GuildInviteFrame" }, dialogWith(dressGuildInvite))
+GW.Add("social", "framed", { "CommunitiesSettingsDialog" }, dialogWith(dressSettings))
+GW.Add("social", "framed", { "CommunitiesAvatarPickerDialog" }, dialogWith(dressSelector))
+GW.Add("social", "framed", { "CommunitiesTicketManagerDialog" }, dialogWith(dressTicketManager))
 -- The rename window is a ButtonFrameTemplate: the window skin does it all.
 GW.Add("social", "framed", { "GuildRenameFrame" })
 
@@ -560,9 +803,17 @@ GW.Add("social", "framed", { "GuildRenameFrame" })
 GW.ADD_FRIEND_BOXES = { "AddFriendNameEditBox" }
 GW.ADD_FRIEND_BUTTONS = { "AddFriendEntryFrameAcceptButton", "AddFriendEntryFrameCancelButton" }
 
--- The add-friend window: the dialog skin, its edit boxes as T.EditBox and its buttons themed.
+-- The add-friend window's five titles (paths from the window), gold in the game: two on the info page, three on the entry page.
+GW.ADD_FRIEND_TITLES = {
+  "InfoFrame.InfoContainer.LeftTextContainer.Title", "InfoFrame.InfoContainer.RightTextContainer.Title", "EntryFrame.TitleContainer.Title",
+  "EntryFrame.OptionsContainer.LeftTextContainer.Title", "EntryFrame.OptionsContainer.RightTextContainer.Title",
+}
+
+-- The add-friend window: the dialog skin, its info page's Okay button and five titles, its edit boxes as T.EditBox and its buttons themed.
 function GW.SkinAddFriend(frame)
   GW.SkinSocialDialog(frame)
+  GW.SkinButton(GW.Part(frame, "InfoFrame.OkayButton"))
+  for _, path in ipairs(GW.ADD_FRIEND_TITLES) do GW.SkinTitle(GW.Part(frame, path)) end
   for _, name in ipairs(GW.ADD_FRIEND_BOXES) do
     if type(_G[name]) == "table" and _G[name].SetText then T.EditBox(_G[name]) end
   end
@@ -573,7 +824,28 @@ end
 
 -- The channels window is a ButtonFrameTemplate; the dialogs are dialog frames.
 GW.Add("social", "framed", { "ChannelFrame" })
-GW.Add("social", "framed", { "CreateChannelPopup", "FriendsFriendsFrame", "BattleNetInviteFrame" }, GW.SkinSocialDialog)
+
+-- The create channel dialog: its title (on the header when the client has one), its two field labels light, its voice check box.
+local function dressCreateChannel(popup)
+  GW.SkinTitle(GW.Part(popup, "Header.Text"))
+  paintText(GW.Part(popup, "Name.Label"), "text")
+  paintText(GW.Part(popup, "Password.Label"), "text")
+  GW.SkinCheck(popup.UseVoiceChat)
+end
+
+-- The friends of friends dialog: the box round its list an inset.
+local function dressFriendsFriends(frame)
+  GW.InsetPanel(frame.ScrollFrameBorder)
+end
+
+-- The Battle.net invite dialog: the invitee's name light.
+local function dressInvitee(frame)
+  paintText(frame.InviteeName, "text")
+end
+
+GW.Add("social", "framed", { "CreateChannelPopup" }, dialogWith(dressCreateChannel))
+GW.Add("social", "framed", { "FriendsFriendsFrame" }, dialogWith(dressFriendsFriends))
+GW.Add("social", "framed", { "BattleNetInviteFrame" }, dialogWith(dressInvitee))
 GW.Add("social", "framed", { "AddFriendFrame" }, GW.SkinAddFriend)
 
 -- The social window -----------------------------------------------------------------------------
