@@ -55,7 +55,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 1.2b What's new after an update
 
 - Do: on an account that has finished setup, install a build whose `## Version` has notes in `Core/WhatsNewNotes.lua` over an older one, and log in. Click the first line with a setting. Then `/reload`, and type `/vg whatsnew`.
-- Expect: after login the window `What's new in Vanguard <version>` shows once, its lines under module headings; a line for something off by default ends in `(off by default)`. The click closes it and opens `/vg` on that line's page with its row marked. After the reload it doesn't come back by itself; `/vg whatsnew` opens it again (so does **What's new** under General → Layout).
+- Expect: after login the window `What's new in Vanguard <version>` shows once, with its title centred, `Click a line to open its setting.` in small grey type under it and a close button at the top right, and its lines under module headings in small grey capitals; a line for something off by default ends in `(off by default)`. The click closes it and opens `/vg` on that line's page with its row marked. After the reload it doesn't come back by itself; `/vg whatsnew` opens it again (so does **What's new** under General → Layout).
 - If it fails, paste: the version from `/vg status`, a screenshot of the window, and `/vg errors`.
 
 ### 1.3 Status
@@ -159,7 +159,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 4.1 Switch profile
 
 - Do: type `/vg profile Smoke`, click Reload in the dialog, then after the reload type `/vg profile`.
-- Expect: a dialog saying `This character now uses profile Smoke. Reload the UI now to apply it?` with Reload and Later; Reload reloads the UI; afterwards `Profile: Smoke   (all: Default, Smoke)`. [After P0.7: the Reload button is a secure macro button. If the click does nothing, type `/reload` yourself and say that the button was dead.]
+- Expect: a dialog saying `This character now uses profile Smoke. Reload the UI now to apply it?` with Reload (in the accent) and Later; the close button and Escape mean Later; Reload reloads the UI; afterwards `Profile: Smoke   (all: Default, Smoke)`. [After P0.7: the Reload button is a secure macro button. If the click does nothing, type `/reload` yourself and say that the button was dead.]
 - If it fails, paste: whether the button reloaded, and `/vg errors`.
 
 ### 4.2 Import garbage
@@ -171,7 +171,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 4.3 Export
 
 - Do: type `/vg export`.
-- Expect: a text box titled `Vanguard export (profile Smoke)  Ctrl+C to copy` holding one long string.
+- Expect: a text box titled `Vanguard export (profile Smoke)  Ctrl+C to copy` holding one long string, with a close button at its top right, a thin scroll thumb in its right margin when the string is long, and a plain Close button at the bottom (an import box has Import in the accent and Cancel instead).
 - If it fails, paste: a screenshot.
 
 ### 4.4 Export only the layout
@@ -270,7 +270,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 6.5b Wanted amounts window
 
 - Do: `/vg` → Town and gear → Instance prep → **Set wanted amounts...** (or `/vg prep setup`), out of combat. On step 1 drag the food slider, click **Use suggested**, then Next through to Done. Try `/vg prep want potions 7` afterwards, and `/vg prep`.
-- Expect: step 1 has Food & drink, Bandages and Potions sliders; hunters and warlocks get a second step with Ammo or Soul shards; the last step lists your amounts and whether anything is short; Esc and the close button close it; the amounts take effect at once, and `/vg prep` shows rows against them. No Lua error.
+- Expect: step 1 has Food & drink, Bandages and Potions sliders; hunters and warlocks get a second step with Ammo or Soul shards; the last step lists your amounts and whether anything is short; Esc, the close button and Done close it; the step caption is small grey type under the title; the amounts take effect at once, and `/vg prep` shows rows against them. No Lua error.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 6.6 Group threat panel (batch 2)
@@ -328,25 +328,25 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 8.1 Quest dialog
 
 - Do: under `/vg > Quests` tick Accept quests and Turn in finished quests (they are off by default). Talk to a quest giver who offers three or more quests. Press a number key, Space and Escape in turn. Then talk to a quest giver again without Shift (a quest is accepted for you), and once more holding Shift.
-- Expect: Vanguard's dialog at the bottom centre with numbered lines in difficulty colours; the number picks a line, Space presses the main button (Accept, Continue or Complete), Escape says goodbye; without Shift the ticked automation runs; with Shift held, no automation runs and the dialog stays open for you.
+- Expect: Vanguard's dialog at the bottom centre, the NPC's name at the top in the window-title type (there is no close button: Goodbye and Escape end the talk), with numbered lines in difficulty colours, each led by a gold `!` (a quest you can take), a gold `?` (ready to turn in) or a grey `?` (in progress); the number picks a line, Space presses the main button (Accept, Continue or Complete), Escape says goodbye; without Shift the ticked automation runs; with Shift held, no automation runs and the dialog stays open for you.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 8.2 Long quest text
 
 - Do: open a quest with a very long description.
-- Expect: the text fits or scrolls inside the panel, with no overflow outside it.
+- Expect: the text fits or scrolls inside the panel, with no overflow outside it; when it scrolls, a thin grey thumb shows in the panel's right margin and soft edges fade the text at the top and bottom.
 - If it fails, paste: a screenshot and the quest name.
 
 ### 8.3 Quest log
 
 - Do: fill the quest log (as many quests as it lets you take; the limit on Forever is not confirmed), then press the quest log key and type `/vg quests`.
-- Expect: Vanguard's log with quests under their zones (click a zone to fold it), `[12] Title` lines in difficulty colours, and Track or Untrack, Share, Abandon and Map for the chosen quest. Click Track or Untrack, then Shift-click another quest: the button flips each time and the tracker follows; if the game refuses, chat says `The game didn't track ...` with the count tracked. Hover a reward card (a quest with an item reward): the item's tooltip shows beside it and goes when you leave. [Needs in game: the tooltip must show for both choices and fixed rewards.] If it is off, `/vg quests` says `Vanguard's quest log is off (/vg > Quests).`
+- Expect: Vanguard's log, titled `Quest log` with your quest count (`12 quests`) beside the title, with quests under their zones (each zone a small grey capitals header with a chevron, down while open and right while folded: click it to fold the zone), `[12] Title` lines in difficulty colours, the chosen quest marked by an accent bar along its left edge and a faint wash, a thin scroll thumb beside a list or quest text longer than its column, and Track or Untrack, Share, Abandon and Map for the chosen quest. Click Track or Untrack, then Shift-click another quest: the button flips each time and the tracker follows; if the game refuses, chat says `The game didn't track ...` with the count tracked. Hover a reward card (a quest with an item reward): the item's tooltip shows beside it and goes when you leave. [Needs in game: the tooltip must show for both choices and fixed rewards.] If it is off, `/vg quests` says `Vanguard's quest log is off (/vg > Quests).`
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 8.4 Quest tracker overflow
 
-- Do: watch more quests than fit under the info strip.
-- Expect: a `+N more` line at the bottom of the tracker. Click it: the tracker grows to at most 10 quests, ending in `Show fewer` (with `· +N more` past ten). `/reload`: it is still expanded. Click `Show fewer` to fold it.
+- Do: watch more quests than fit under the info strip, then click the QUESTS header at the top of the tracker, and again.
+- Expect: the tracker's header reads `QUESTS` in small grey capitals with the number of quests you watch after it and a chevron before it; clicking it folds the tracker down to that header (the brass line stays under it) and clicking again opens it. A `+N more` line at the bottom of the tracker. Click it: the tracker grows to at most 10 quests, ending in `Show fewer` (with `· +N more` past ten). `/reload`: it is still expanded. Click `Show fewer` to fold it.
 - Also expect (Legacy challenges): with a challenge tracked in the game (its Legacy window), a `Legacy challenges` heading sits under the quests with the challenge beneath it, its criteria as `- 2/3 …` lines and `Complete` once done. Right-click the challenge: it leaves the tracker. With none tracked, no heading. A heading never shows alone: when no challenge fits under it, it is left out and the `+N more` line counts the challenges. [Needs in game: how a Forever client tracks a challenge, and that its criteria text reads as above.]
 - If it fails, paste: a screenshot.
 
@@ -411,7 +411,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 10.1a Hover keys card on a fresh character
 
 - Do: on a character with no hover keys, type `/vg` and open Click casting. Scroll just far enough to see the "KEYS WHILE HOVERING A FRAME" card's title.
-- Expect: right under the title, an **Add key** button with "No hover keys yet. Add one, press the key, pick the spell." beside it (wrapped inside the card). If `/vg status` says `secure snippets: no`, the line "This client can't compile the secure code hover keys need; mouse bindings still work." sits there instead. Keys you add list under that line.
+- Expect: right under the title, an **Add key** button with "No hover keys yet. Add one, press the key, pick the spell." beside it in grey body-size text (wrapped inside the card); the card's title is a small grey capitals header. If `/vg status` says `secure snippets: no`, the line "This client can't compile the secure code hover keys need; mouse bindings still work." sits there instead. Keys you add list under that line.
 - If it fails, paste: a screenshot of the card, `/vg status` and `/vg errors`.
 
 ### 10.2 Use it
@@ -535,7 +535,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.2.9 Social window (Forever's friends list)
 
 - Do: open the friends list (O); click each side tab (friends, recent allies, quick join, requests, raid); type in the search box and open Filter; open the Battle.net menu (the button right of your battletag) and choose Ignore list and Edit broadcast.
-- Expect: the window is a flat panel with the theme's close button and title; the Battle.net bar's blue band is gone (the status dropdown and menu button are flat, the menu button keeps its icon); the side tabs are flat with their icons, the selected one marked on its outer edge, the others greyed; the search box is a dark input box with its magnifier, Filter and Add New Friend are themed buttons, the list scrolls; the ignore list and broadcast windows beside it are flat panels with themed buttons.
+- Expect: the window is a flat panel with the theme's close button and title; the Battle.net bar's blue band is gone (the status dropdown and menu button are flat, the menu button keeps its icon); the side tabs are flat with their icons, the selected one raised, the others greyed; the search box is a dark input box with its magnifier, Filter and Add New Friend are themed buttons, the list scrolls; the ignore list and broadcast windows beside it are flat panels with themed buttons.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.3.1 Stable (a hunter)
@@ -694,8 +694,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 14.8.4 Scroll bars
 
-- Do: on the Reputation tab drag the scroll bar's thumb, click its arrows and mouse over the thumb; then scroll the friends list and the quest or mail list if they have bars.
-- Expect: a flat track, a raised thumb that takes the accent edge under the mouse, flat arrows with the theme's arrow, and the list scrolls as before. [Windows whose scroll bars are not the game's newer ones keep their own.]
+- Do: on the Reputation tab drag the scroll bar's thumb, try to click where its arrows were and mouse over the thumb; then scroll the friends list and the quest or mail list if they have bars.
+- Expect: no track and no arrows: one thin grey line (4 units wide) runs down the middle of the thumb, half bright at rest and full bright while the mouse is over the thumb or you drag it; where an arrow was there is nothing to click, and the list scrolls as before. [Windows whose scroll bars are not the game's newer ones keep their own. Needs in game: that the line sits in the middle of the thumb and that the faded arrows take no clicks.]
 - If it fails, paste: a screenshot of the bar and `/vg errors`.
 
 ### 14.8.5 Switch
@@ -823,7 +823,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 18.2 Group board
 
 - Do: in a capital city, type `/vg lfg` and leave it open for a few minutes while people post in Trade and LookingForGroup. Hover a row, then click one. Do not press Enter unless you want to send it. Then click the filter button twice and switch **Only dungeons for my level** off and on. Finally post `LFM SFK need heals` yourself in a channel.
-- Expect: rows appear as people post, newest first, each with LFM or LFG, a dungeon and its range (or "Any dungeon"), the roles named, the sender's name without its realm or ruleset part and the age; the tooltip shows the whole line and the full name. The click opens the chat box with `/w <full name> Hi! ...` filled in and sends nothing. Your own post does not appear. The whisper reaches the player when you send it (a two-part name that fails is a finding). Inside a dungeon nothing new appears and `/vg errors` stays empty.
+- Expect: the board has a title with its count, a close button at the top right, and Escape closes it; rows appear as people post, newest first, each with a faint wash under the mouse and LFM or LFG, a dungeon and its range (or "Any dungeon"), the roles named, the sender's name without its realm or ruleset part and the age; the tooltip shows the whole line and the full name. The click opens the chat box with `/w <full name> Hi! ...` filled in and sends nothing. Your own post does not appear. The whisper reaches the player when you send it (a two-part name that fails is a finding). Inside a dungeon nothing new appears and `/vg errors` stays empty.
 - If it fails, paste: a screenshot of the board and the chat box, the line that was misread, and `/vg errors`.
 
 ### 18.3 Quest guidance
@@ -899,7 +899,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 23.1 Search and Take (off until switched on: /vg > Town and gear > Mail tools)
 
 - Do: switch the mail tools on, open a mailbox with a few mails. Type part of a sender or subject in the panel's search box, click the filter button through its four values, click Take on a mail with money and on one with an item. Type `/vg mail <words>`.
-- Expect: a panel right of the mail window lists the matching mails (sender: subject, with money and item count); the filter button reads All, Money, Items, Sales; Take takes the money and the first item, one per click; the panel goes when the window closes; chat lists the same matches. With the switch off, `/vg mail` says so. [Needs in game: that TakeInboxMoney and TakeInboxItem(mail, 1) work from a click, that GetInboxInvoiceInfo marks sales, and the panel's place beside the window.]
+- Expect: a panel right of the mail window, headed `Find mail` (no X: it follows the mail window), lists the matching mails (sender: subject, with money and item count); the filter button reads All, Money, Items, Sales; Take takes the money and the first item, one per click; the panel goes when the window closes; chat lists the same matches. With the switch off, `/vg mail` says so. [Needs in game: that TakeInboxMoney and TakeInboxItem(mail, 1) work from a click, that GetInboxInvoiceInfo marks sales, and the panel's place beside the window.]
 - If it fails, paste: `/vg errors` and a screenshot of the mailbox.
 
 ### 23.2 Send-to-alt presets
@@ -998,8 +998,102 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 31.2 Stat weights wizard
 
 - Do: `/vg`, Town and gear, Gear upgrades, click Set up stat weights (or type `/vg weights wizard`). Scroll the list, drag a slider, type 4.25 in a box beside one and press Enter, click Defaults, drag one again, then Save. Open it again, drag a slider and click Cancel. Then `/vg weights`.
-- Expect: a dialog above everything with a line naming the kind and role, and a scrolling list with a slider and a number box for each of 21 stats (the ones your class and role value first); the box follows its slider, and a typed number sticks (past 3 the slider sits at its end); Defaults puts them back. Save closes it and prints a line in chat; `/vg weights` shows the weight you moved. Cancel closes it and changes nothing.
+- Expect: a dialog above everything with a close button at its top right, a line in small grey type naming the kind and role, and a scrolling list with a thin thumb in the dialog's right margin, a slider and a number box (a small gap right of the slider) for each of 21 stats (the ones your class and role value first); the box follows its slider, and a typed number sticks (past 3 the slider sits at its end); Defaults puts them back. Save closes it and prints a line in chat; `/vg weights` shows the weight you moved. Cancel closes it and changes nothing.
 - If it fails, paste: screenshots, your resolution and UI scale, and `/vg errors`.
+
+## 32. One look across windows
+
+These steps check what the UI consistency pass changed (docs/THEME.md, Window chrome). Like the rest of this file, each Expect is what the code intends; nobody has seen it in the game.
+
+### 32.1 Window titles, the X and Escape
+
+- Do: open each of these and look along its top edge: `/vg` (the options window), `/vg setup`, `/vg whatsnew`, `/vg quests`, `/vg lfg`, `/vg export pick`, `/vg weights wizard`, `/vg prep setup` and `/vg feedback`; then `/vg unlock` and right-click a frame's handle. For each, click the X, open it again and press Escape.
+- Expect: every title is the same bold type in the normal text colour (not gold, not the accent). It sits at the top left in the options window (right of the Vanguard shield, with your faction crest just right of it while Faction look is on), the quest log, the group board and the dialogs; it is centred in setup and What's new, with a small grey line under it (`Step 1 of 4 · Layout`, `Click a line to open its setting.`). The quest log shows its quest count in small grey type beside the title (`12 quests`). The unlock popover's title is a smaller line, `<frame>  ·  <where it is anchored>`, that ends short of its X. Each of these windows has the same X in its top-right corner; the X closes it, and so does Escape. [Needs in game: that every title sits on its X's line at 1080p and 1440p, and that Escape closes the popover while frames are unlocked.]
+- If it fails, paste: a screenshot of each window's top edge and `/vg errors`.
+
+### 32.2 Card titles
+
+- Do: at the auction house open the Posting tab and the Lists tab; type `/vg prep` (the Instance prep card) and `/vg meter on`; at a mailbox with the mail tools on, look at the panel beside the mail window; with a profession window open and the Auction helper on, look at the panel to its right.
+- Expect: each card's title is one line of the same smaller bold type in the normal text colour, 8 units in and 8 down from the card's top-left corner: `Sell`, `Up now`, `Your auctions`, `Lists`, `Shopping` and `Scan` on the auction cards, `Instance prep`, `Find mail` (no X: the panel follows the mail window) and `Crafting cost`. Instance prep has an X in its top-right corner with its Buy list button level with it, just left of it. The meter's heading (`Damage per second` or `Healing per second`) is such a title too, and a click anywhere along it still switches the meter.
+- If it fails, paste: a screenshot of the card and `/vg errors`.
+
+### 32.3 A long dialog title stays clear of the X
+
+- Do: type `/vg report` (a text box titled `Vanguard report: Ctrl+C, then paste at vanguardui.com/feedback`), close it, then type `/vg profile Smoke` (a reload dialog) and `/vg export` (a short title).
+- Expect: no title runs under the X. If the report box's title needs a second line it takes one (two at most), hung from the top so the first line stays level with the X and the second sits under it, never above the X or against the panel's top edge, and the text area starts below it; the reload dialog's sentence wraps the same way, short of the X, and the dialog grows tall enough for it with its buttons under it. The `Vanguard export (profile Smoke)  Ctrl+C to copy` title is one line and leaves the text area where it was.
+- If it fails, paste: a screenshot of each dialog and `/vg errors`.
+
+### 32.4 Question dialogs: the X and Escape answer No
+
+- Do: open `/vg` → Profiles and click **Reset profile**; when the question shows, press Escape. Do it again and click the X. Do it a third time and click No. Then, on a character that has never finished setup, click through `/vg setup` to Done and, when it asks `Keep a copy of these settings outside the game?`, click the X.
+- Expect: the question reads `Reset this profile? Every setting in profile <name> goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile <name> backup.` with Reset and No, both plain (neither in the accent). Escape, the X and No close it the same way: nothing is reset and chat says nothing about a reset. After the setup question's X, the reload offer (`Setup is done. Reload the UI now to apply it?`) comes up as it does after No. On a reload dialog, the X and Escape close it like Later, without reloading. [Needs in game: that Escape closes a dialog opened over the options window.]
+- If it fails, paste: which of Escape, the X or No did something different, and `/vg errors`.
+
+### 32.5 The accent button in the Core dialogs
+
+- Do: type `/vg import` (an empty import box), `/vg export` (the string box), `/vg export pick`, `/vg profile Smoke`, `/vg feedback` and `/vg weights wizard`, and open the question from 32.4.
+- Expect: the one button that does what the dialog is for is filled in the accent with dark text at the bottom right: Import, Export, Reload, Make report, Save. The buttons beside them are plain slate: Cancel (next to Import, Export, Save and Make report), Later, Defaults and, in a question, both the confirming button (Reset) and No. The string box from `/vg export` has only a plain Close. Buttons are 26 tall and 120 wide, except All and None in the export-pick dialog, which are 60 wide. [Needs in game: how the accent button reads at 1080p and 1440p.]
+- If it fails, paste: a screenshot of the dialog and `/vg errors`.
+
+### 32.6 The scroll thumb
+
+- Do: type `/vg export` on a profile with many modules, scroll it with the wheel, then drag the thumb; paste a short string into `/vg import`, then a long one. Open `/vg export pick` and `/vg weights wizard`, and in `/vg feedback bug` type enough lines into one answer to overflow it. Open `/vg quests` with many quests, and talk to a quest giver whose text is long.
+- Expect: where a text or list is taller than its box, one thin grey line (4 units wide, half bright) shows in the dialog's right margin, 12 units right of the text; it goes full bright under the mouse and while you drag it, and moves as you scroll or type. The text fades softly at the top once scrolled and at the bottom while there is more; the wheel moves it 40 units a step. There are no arrows and no game scroll bar. Where everything fits (a short import box, an export list with few modules) there is no thumb. The quest log's list and its details scroll the same way, and so does the quest dialog's body. In the feedback form each text area has its own thumb, shown only when that answer overflows.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
+### 32.7 Section headers
+
+- Do: open `/vg` → General; open the bags with items of several kinds (combined bag on); open `/vg whatsnew`, `/vg quests` and `/vg` → Click casting, and click a grid cell to open the spell picker.
+- Expect: the same small grey capitals line heads each: the options cards (`LOOK`, and so on); the bag's sections (`QUEST ITEMS`, `EQUIPMENT`, `CONSUMABLES`, `TRADE GOODS`, `OTHER`, `JUNK`, `EMPTY`), no longer in the accent; What's new's module groups; the click-cast grid's columns (`PLAIN`, `SHIFT`, `CTRL`, `ALT`), centred over each column; and the picker's groups (`HEALS`, `PROTECT & CLEANSE`, `BUFFS`, `OTHER`). The quest log's zone names are such headers too, each with a chevron before it (down while open, right while folded); clicking one folds or opens its quests. The quest tracker's header reads `QUESTS` with the number of quests you watch after it and a chevron; clicking it folds the tracker to that header (a brass line stays under it) and clicking again opens it. A bag header takes no clicks.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
+### 32.8 The chosen row
+
+- Do: open `/vg` and click three pages in the list on the left; open `/vg quests` and click two quests; at the auction house click a list in the Lists pane, click a row of it and press Down with the mouse over the listings. Then type `/vg accent jade`.
+- Expect: the chosen row in each (the page in the options list, the quest in the log, the list in the pane, the listing under Up and Down) has a thin bar in the accent along its left edge and a faint accent wash behind it, the same in all of them; a row under the mouse gets only a faint grey wash. After `/vg accent jade` the bar and the wash are jade at once, without a reload. The options list holds all 19 pages, each 25 tall. [Needs in game: that the 2-pixel bar stays crisp at 1080p and 1440p.]
+- If it fails, paste: a screenshot of the row and `/vg errors`.
+
+### 32.9 The options preview
+
+- Do: open `/vg` → General and look at the sample at the top; change the accent and the Bar texture.
+- Expect: the sample unit frame shows your character's own name (`You` if the game hides it) where `<name>` used to be, with `72%` on its right; the sample action button shows Vanguard's crest, a shield with crossed swords, instead of the game's question mark, with `1` and `5` in its corners. The bars and the button's glow follow the accent and the texture as you change them.
+- If it fails, paste: a screenshot of the sample and `/vg errors`.
+
+### 32.10 General captions
+
+- Do: open `/vg` → General and read the captions under Look.
+- Expect: `Color assist (reload)`, `Font`, `Text size`, `Faction look`, `Theme variant`, `Corners`, `Window ornaments` and `Pixel-perfect scale`, each a noun with nothing after it. Two small grey notes sit under their rows: `Friendly blue, neutral yellow, hostile vermilion.` under Color assist and `A brass rule or corners on large windows.` under Window ornaments. In `/vg whatsnew`, a line about Corners or Theme variant still opens General on its row.
+- If it fails, paste: a screenshot of the Look card and `/vg errors`.
+
+### 32.11 Quest line marks
+
+- Do: talk to a quest giver who offers a quest, then to one who has a quest of yours in progress and one that is ready to turn in; open `/vg quests` with a quest ready to turn in.
+- Expect: in the dialog each quest line has Vanguard's own thin mark before its number: a gold `!` for a quest you can take, a gold `?` for one ready to turn in, a grey `?` for one in progress. They are not the game's round gossip icons; a gossip line keeps whatever icon the game gives it. In the log a quest ready to turn in shows the check mark. On the world map the quest-start pins show the same `!`.
+- If it fails, paste: a screenshot of the dialog and `/vg errors`.
+
+### 32.12 Faction look and the fonts
+
+- Do: on an Alliance or Horde character set `/vg` → General → Look → Faction look to Crest and heading font. Look at the minimap's zone name along its top edge, at the options window's title and a card title, and at a quest giver's name in the quest dialog. Then set it back to Crest only.
+- Expect: with Crest and heading font, window titles, card titles and the quest dialog's NPC name are in the faction's font (Cinzel for Alliance, Metamorphous for Horde), while the minimap's zone name stays bold Fira Sans Condensed at the same size as a card title. With Crest only every one of them is Fira Sans Condensed. A neutral character and a Russian client see Fira Sans throughout.
+- If it fails, paste: a screenshot of the minimap's top edge and of the window title, and your faction.
+
+### 32.13 Rounded corners on an accent button and a segment
+
+- Do: type `/vg corners rounded`. Open `/vg` → Profiles and look at **Create**; type `/vg unlock`, right-click a handle and look at the popover's **Done**; in General look at the Corners row (the chosen segment); hover a plain button and hold the mouse down on it. Then `/vg corners square`.
+- Expect: the accent fill of Create and of Done, and the accent fill of the chosen segment (Rounded), end in the same four-pixel arcs as their borders, with no square corner of accent outside the arc; the lighter hover fill and the darker pressed fill of a plain button do the same. Square puts the corners back at once. [Needs in game: whether the arcs read on a 20 to 26 unit button at 1080p and 1440p.]
+- If it fails, paste: a zoomed screenshot of the button's corner with the UI scale, and `/vg errors`.
+
+### 32.14 Auction filters dialog
+
+- Do: at the auction house open the Lists tab, right-click a row of a list and choose **Filters...**; press Escape; open it again and click the X; open it once more, set a level range and click Save.
+- Expect: a dialog over the auction house titled `Filters: <item>` on one line that ends short of the X, with the X at its top right, Save in the accent and Cancel plain at the bottom right. Its fields (exact name only, a level range, a quality, a max price and the alert switch) sit in rows 28 apart. Escape, the X and Cancel close it without saving; Save saves and closes. [Needs in game: that it opens over the auction house window.]
+- If it fails, paste: a screenshot of the dialog and `/vg errors`.
+
+### 32.15 Feedback form
+
+- Do: type `/vg feedback bug`, leave the summary empty and click Make report.
+- Expect: the form is titled `Send feedback` with an X at its top right, and Escape closes it. Under the bug fields a small grey note, `Your /vg report (version, client and the errors caught this session) goes in the block with your answers.`, wraps inside the form. Make report with an empty summary puts `The short summary is required.` in the warning colour just above the Make report and Cancel buttons, not over them.
+- If it fails, paste: a screenshot of the form and `/vg errors`.
 
 ## When you are done
 
