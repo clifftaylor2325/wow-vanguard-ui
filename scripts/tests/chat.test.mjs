@@ -536,7 +536,16 @@ it("game windows in the Vanguard look: framed windows, popups, breath bar, and w
   addon.eval("MerchantFrame:Hide() MerchantFrame:Show()");
   expect(windowState(addon, "MerchantFrame"), "showing it again keeps the panel and paints nothing new").toMatchObject({ panel: true, painted: first.painted });
   expect(windowState(addon, "StaticPopup1"), "popups too").toMatchObject({ art: 0, panel: true });
-  expect(addon.eval("return MirrorTimer1.StatusBar:GetStatusBarTexture() ~= nil"), "the breath bar uses the theme's bar texture").toBe(true);
+  // Whether every breath bar in the container has the theme's bar texture (not the game's) and its frame art faded.
+  const timers = () => addon.eval(`local ok = true
+    for _, t in ipairs({ MirrorTimerContainer:GetChildren() }) do ok = ok and t.StatusBar:GetStatusBarTexture() ~= nil and t.StatusBar:GetStatusBarTexture().__texture ~= "TEST-ONLY-ART" and t.Border.__alpha == 0 end
+    return ok`);
+  expect(timers(), "the breath bars (the container's unnamed timers) take the theme's bar texture, their art faded").toBe(true);
+  addon.eval("MirrorTimerContainer:SetupTimer(2)");
+  expect(timers(), "the game sets a timer up with its own bar texture: Vanguard puts the theme's back").toBe(true);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("MirrorTimerContainer:Hide() MirrorTimerContainer:Show() MirrorTimerContainer:SetupTimer(1)");
+  expect([timers(), addon.eval("return ns.Theme.PaintedCount()")], "the container showing again (a timer starting) keeps the look and paints nothing new").toEqual([true, painted]);
   addon.eval('__window("PlayerSpellsFrame")');
   addon.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
   expect(windowState(addon, "PlayerSpellsFrame"), "the spellbook is skinned when it loads").toMatchObject({ art: 0, panel: true });
@@ -570,11 +579,11 @@ it("game windows: switched off they stay the game's, and missing windows are fin
   const off = loggedIn(WINDOWS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false, popups = false, timers = false } } }" });
   off.eval("MerchantFrame:Show() StaticPopup1:Show()");
   expect([windowState(off, "MerchantFrame").art, windowState(off, "StaticPopup1").art].every((a) => a !== 0), "nothing is faded").toBe(true);
+  expect(off.eval("local t = MirrorTimerContainer:GetChildren() return t.StatusBar:GetStatusBarTexture() == nil and t.Border.__alpha ~= 0"), "the breath bars keep the game's bar and art").toBe(true);
   const bare = loggedIn("");
   expect(bare.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'"), "a client without these windows loads cleanly").toBe("none");
-  const plain = loggedIn(`local f = CreateFrame("Frame", "LootFrame", UIParent) f.ButtonContainer = { Buttons = { CreateFrame("Button", nil, f) } }
-    t = CreateFrame("Frame", "MirrorTimer2", UIParent) CreateFrame("StatusBar", "MirrorTimer2StatusBar", t)`);
-  expect(plain.eval("return { select('#', LootFrame.ButtonContainer.Buttons[1]:GetRegions()) > 0, MirrorTimer2StatusBar:GetStatusBarTexture() ~= nil }"), "a window with a button container, and a bar found by name").toEqual([true, true]);
+  const plain = loggedIn(`local f = CreateFrame("Frame", "LootFrame", UIParent) f.ButtonContainer = { Buttons = { CreateFrame("Button", nil, f) } }`);
+  expect(plain.eval("return select('#', LootFrame.ButtonContainer.Buttons[1]:GetRegions()) > 0"), "a window with a button container").toBe(true);
 });
 // TEST-ONLY loot window (ScrollingFlatPanelTemplate): the window, and its list as the game's ScrollBox hands out
 // rows (LootFrameItemElementTemplate: an item card with its slot, name and rarity tag).
@@ -657,7 +666,7 @@ it("game windows registry: a window added under a group is skinned, its group's 
   expect([windowState(off, "TestOnlySocialFrame").art !== 0, off.eval("return ns.FrameState('vgWindow')[TestOnlySocialFrame] == nil")], "with its group off: not hooked, its art left").toEqual([true, true]);
   expect(windowState(off, "MerchantFrame").panel, "other groups still are").toBe(true);
   expect(on.eval("return ns.GetModule('Windows').ON_DEMAND.Blizzard_EncounterJournal == nil"), "the encounter journal (never on Forever) is not listed").toBe(true);
-  expect(on.eval("local GW = ns.GetModule('Windows') return { GW.REGISTERED.PlayerSpellsFrame.group, GW.REGISTERED.StaticPopup1.group, GW.REGISTERED.MirrorTimer1.group }"), "the first groups").toEqual(["windows", "popups", "timers"]);
+  expect(on.eval("local GW = ns.GetModule('Windows') return { GW.REGISTERED.PlayerSpellsFrame.group, GW.REGISTERED.StaticPopup1.group, GW.REGISTERED.MirrorTimerContainer.group }"), "the first groups").toEqual(["windows", "popups", "timers"]);
 });
 it("game windows registry: parts and named art faded, missing ones skipped", () => {
   const addon = loggedIn(`TestOnlyNamedArt = UIParent:CreateTexture()`);
