@@ -19,7 +19,7 @@ local TOP = T.CONTROL.inset + 36 + T.SPACE.col
 -- The list's width: the window less its margins and the room right of it for its scroll thumb.
 local LIST_W = WIDTH - 2 * PAD - T.SPACE.col
 -- The gap after a line, and after a group.
-local LINE_GAP, GROUP_GAP = 6, T.SPACE.col
+local LINE_GAP, GROUP_GAP = T.SPACE.gap, T.SPACE.col
 
 local frame
 -- The strings drawn in the accent (the links), repainted each time the window opens.

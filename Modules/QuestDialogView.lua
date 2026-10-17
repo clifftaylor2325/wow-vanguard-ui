@@ -12,7 +12,7 @@ local QP = ns.QuestParts
 local QD = ns.GetModule("QuestDialog")
 
 -- The body's gaps: around its content (a nudge), above the objectives, above the numbered lines.
-local BODY_PAD, OBJECTIVES_GAP, LINES_GAP = 2, T.SPACE.gap, 10
+local BODY_PAD, OBJECTIVES_GAP, LINES_GAP = 2, T.SPACE.gap, T.SPACE.col
 -- The portrait's size, the quest mark's size on the square when there is no portrait, and how far the NPC's
 -- name sits down from the portrait's top (a nudge that lines its capitals up with the portrait's edge).
 local PORTRAIT, PLACEHOLDER, NAME_DROP = 40, 24, 2

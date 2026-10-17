@@ -13,7 +13,7 @@ local QL = ns.GetModule("QuestLog")
 QL.W, QL.H, QL.LIST_W, QL.PER_ROW = 640, 440, 230, 2
 
 -- The gaps on the details side: under the title, under the text, above the reward cards, around the money line.
-local TITLE_GAP, TEXT_GAP, REWARDS_GAP, MONEY_GAP = T.SPACE.gap, 10, T.SPACE.col, 6
+local TITLE_GAP, TEXT_GAP, REWARDS_GAP, MONEY_GAP = T.SPACE.gap, T.SPACE.col, T.SPACE.col, T.SPACE.gap
 
 -- Layout --------------------------------------------------------------------------------------------
 

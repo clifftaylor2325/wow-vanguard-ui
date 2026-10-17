@@ -15,7 +15,7 @@ local T = ns.Theme
 
 local RT = ns.Module("RaidTools", { defaults = {} })
 
-RT.ICON, RT.GAP, RT.PAD = 18, 2, 4
+RT.ICON, RT.GAP, RT.PAD = 18, 2, T.SPACE.tight
 -- The raid icon that matches each world marker's color (blue square, green
 -- triangle, purple diamond, red cross, yellow star, orange circle, silver moon, white skull).
 RT.MARKER_ICONS = { 6, 4, 3, 7, 1, 2, 5, 8 }
