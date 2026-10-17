@@ -258,13 +258,18 @@ end
 
 -- The Preferred Play Settings page's Apply buttons (parentKeys); the game disables them for anyone but the guild master.
 GW.GUILD_APPLY_BUTTONS = { "LocaleApplyButton", "DatacenterApplyButton" }
--- The page's Apply buttons flat; the flat button follows the game enabling or disabling them (T.Button's disabled look).
+-- Its two dropdowns, which keep their arrows, and its two field labels.
+GW.GUILD_PLAY_DROPDOWNS = { "LocaleDropdown", "DatacenterDropdown" }
+GW.GUILD_PLAY_LABELS = { "LocaleLabel", "DatacenterLabel" }
+
+-- The page's Apply buttons flat (the flat button follows the game enabling or disabling them: T.Button's disabled look), its
+-- title in the heading role, its field labels in the text color and its dropdowns flat.
 local function dressPlaySettings(page)
   if type(page) ~= "table" then return end
-  for _, key in ipairs(GW.GUILD_APPLY_BUTTONS) do
-    local button = page[key]
-    if type(button) == "table" and button.CreateTexture then T.Button(button) end
-  end
+  GW.EachKey(page, GW.GUILD_APPLY_BUTTONS, GW.SkinButton)
+  GW.EachKey(page, GW.GUILD_PLAY_DROPDOWNS, GW.SkinDropdown)
+  GW.SkinText(page.Title, "heading", "text")
+  for _, key in ipairs(GW.GUILD_PLAY_LABELS) do paintText(page[key], "text") end
 end
 
 -- What a roster row keeps of its art: the class icon and the voice chat mark. A profession header bar keeps its fold icons and
@@ -317,13 +322,128 @@ local function dressCommunitiesList(list)
   GW.WatchRows(list.ScrollBox, dressCommunityRow)
 end
 
+-- Guild perks and rewards ----------------------------------------------------------------------
+
+-- What a perk row and a reward row keep of their art: the icon, and on a reward the lock and the grey shade over a locked one.
+GW.GUILD_PERK_KEEP = { "Icon" }
+GW.GUILD_REWARD_KEEP = { "Icon", "Lock", "DisabledBG" }
+-- A perk row's two borders (frames of art the game shows by whether the perk is earned).
+GW.GUILD_PERK_BORDERS = { "NormalBorder", "DisabledBorder" }
+
+-- A perk row as the game acquires it: its plates and borders faded under the row primitive, its icon kept.
+local function dressPerkRow(row)
+  if type(row) ~= "table" then return end
+  GW.DressRow(row, GW.GUILD_PERK_KEEP)
+  GW.FadeParts(row, GW.GUILD_PERK_BORDERS)
+end
+
+-- A reward row as the game acquires it: its plate faded under the row primitive, its icon, lock and shade kept, its price in the
+-- number font (the reward's name stays gold: a reward is content).
+local function dressRewardRow(row)
+  if type(row) ~= "table" then return end
+  GW.DressRow(row, GW.GUILD_REWARD_KEEP)
+  GW.SkinMoney(row.Money)
+end
+
+-- A benefits list (Perks or Rewards): its own art faded, its heading in the heading role, its rows as the game acquires them.
+local function dressBenefitList(list, skinRow)
+  if type(list) ~= "table" or not list.GetRegions then return end
+  T.FadeRegions(list)
+  GW.SkinText(list.TitleText, "heading", "text")
+  GW.WatchRows(list.ScrollBox, skinRow)
+end
+
+-- The guild reputation line: its label in the text color, its bar's bronze art faded (the progress fill kept) under an inset.
+local function dressFactionBar(faction)
+  if type(faction) ~= "table" then return end
+  paintText(faction.Label, "text")
+  local bar = faction.Bar
+  if type(bar) ~= "table" or not bar.GetRegions then return end
+  T.FadeRegions(bar, GW.KeepKeys(bar, { "Progress", "Label" }))
+  T.Panel(bar, { inset = true, noSheen = true })
+end
+
+-- The guild benefits page: the perks and rewards lists and the reputation bar.
+local function dressBenefits(page)
+  if type(page) ~= "table" then return end
+  dressBenefitList(page.Perks, dressPerkRow)
+  dressBenefitList(page.Rewards, dressRewardRow)
+  dressFactionBar(page.FactionFrame)
+end
+
+-- Guild info and news ---------------------------------------------------------------------------
+
+-- The game's strings for the Guild Info page's three headers and the News page's header, which the game draws unnamed.
+GW.GUILD_INFO_HEADERS = { "GUILD_FRAME_CHALLENGES", "GUILD_MOTD_LABEL", "GUILD_INFORMATION" }
+GW.GUILD_NEWS_HEADERS = { "GUILD_NEWS" }
+
+-- The font strings among a frame's regions that show one of the game's strings named in names (headers the game draws without
+-- a key), as section heads; except is a title that shows the same words.
+local function sectionRegions(frame, names, except)
+  local texts = {}
+  for _, name in ipairs(names) do
+    if type(_G[name]) == "string" then texts[_G[name]] = true end
+  end
+  for _, region in ipairs({ frame:GetRegions() }) do
+    if region ~= except and region.GetText and texts[region:GetText()] then GW.SkinSection(region) end
+  end
+end
+
+-- The Guild Info page: its own backdrop, headers and divider bars faded, its title in the heading role, its three headers as
+-- section heads, the challenges' counts and the two Edit links in the text color.
+local function dressGuildInfo(info)
+  if type(info) ~= "table" or not info.GetRegions then return end
+  T.FadeRegions(info)
+  GW.SkinText(info.TitleText, "heading", "text")
+  sectionRegions(info, GW.GUILD_INFO_HEADERS, info.TitleText)
+  for _, challenge in ipairs(type(info.Challenges) == "table" and info.Challenges or {}) do paintText(challenge.count, "text") end
+  paintLink(info.EditMOTDButton, "text")
+  paintLink(info.EditDetailsButton, "text")
+end
+
+-- The boss-kill pop-out on the News page: the stone frame faded under a floating panel, its text box an inset, the boss's name in
+-- the text color.
+local function dressBossModel(model)
+  if type(model) ~= "table" or not model.GetRegions then return end
+  T.FadeRegions(model)
+  T.Panel(model, { shadow = true })
+  GW.InsetPanel(model.TextFrame)
+  paintText(model.BossName, "text")
+end
+
+-- A news row as the game acquires it: its date plate faded under the row primitive, its news icon kept.
+local function dressNewsRow(row)
+  GW.DressRow(row, { "icon" })
+end
+
+-- The Guild News page: its own backdrop and header plate faded, its title in the heading role, its header a section head, the
+-- Set filters link in the text color, the boss pop-out and the rows.
+local function dressGuildNews(news)
+  if type(news) ~= "table" or not news.GetRegions then return end
+  T.FadeRegions(news)
+  GW.SkinText(news.TitleText, "heading", "text")
+  sectionRegions(news, GW.GUILD_NEWS_HEADERS, news.TitleText)
+  paintLink(news.SetFiltersButton, "text")
+  dressBossModel(news.BossModel)
+  GW.WatchRows(news.ScrollBox, dressNewsRow)
+end
+
+-- The Guild Info page's parts and note, and the Guild News page's parts.
+local function dressGuildDetails(details)
+  if type(details) ~= "table" then return end
+  dressGuildInfo(details.Info)
+  noteGuildInfo(details.Info)
+  dressGuildNews(details.News)
+end
+
 -- The guild window's pages beyond their panels: the lists and the roster's parts and hooks, the Guild Information box's note
 -- (now and after each game fill), the Preferred Play Settings buttons.
 local function dressGuildPages(frame)
   hookRoster(frame.MemberList)
   dressMemberList(frame.MemberList)
   dressCommunitiesList(frame.CommunitiesList)
-  if type(frame.GuildDetailsFrame) == "table" then noteGuildInfo(frame.GuildDetailsFrame.Info) end
+  dressBenefits(frame.GuildBenefitsFrame)
+  dressGuildDetails(frame.GuildDetailsFrame)
   afterWith(_G, "CommunitiesGuildInfoFrame_UpdateText", noteGuildInfo)
   dressPlaySettings(frame.GuildPreferredPlaySettingsFrame)
 end

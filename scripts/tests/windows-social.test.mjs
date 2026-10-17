@@ -446,6 +446,108 @@ it("guild window: with the group off the lists, roster and controls stay the gam
   expect([windowErrors(odd), odd.eval("return #ns.errors")], "parts that are not frames, a header pool without EnumerateActive, rows that are not frames").toEqual(["none", 0]);
 });
 
+// The guild pages' R2.26 parts on top of the window: the benefits page (Perks and Rewards lists with a title, art and a ScrollBox of rows,
+// the reputation bar), the Guild Info page (title, three headers, challenge counts, two Edit links), the News page (title, header, Set
+// filters link, a boss pop-out, rows) and the Preferred Play Settings page (title, labels, two dropdowns).
+const PAGES_PARTS_ENV = COMMUNITIES_ENV + `
+  GUILD_FRAME_CHALLENGES, GUILD_MOTD_LABEL, GUILD_INFORMATION, GUILD_NEWS = "Challenges", "Message of the Day", "Guild Information", "Guild News"
+  local function box() local b = { rows = {}, callbacks = {} } function b:ForEachFrame(fn) for _, r in ipairs(self.rows) do fn(r) end end return b end
+  local bf = f.GuildBenefitsFrame
+  for _, k in ipairs({ "Perks", "Rewards" }) do
+    local l = CreateFrame("Frame", nil, bf) __art(l) l.TitleText, l.ScrollBox, bf[k] = __text(l, k), box(), l
+  end
+  function __perk()
+    local r = CreateFrame("Button", nil, bf.Perks) r.Left, r.Icon = __art(r), __art(r)
+    for _, k in ipairs({ "NormalBorder", "DisabledBorder" }) do r[k] = CreateFrame("Frame", nil, r) __art(r[k]) end
+    return r
+  end
+  function __reward()
+    local r = CreateFrame("Button", nil, bf.Rewards) r.Plate, r.Icon, r.Lock, r.DisabledBG = __art(r), __art(r), __art(r), __art(r)
+    r.Money = __moneyLine(nil, r) r.Name = __text(r, "TEST-ONLY reward") r.Name:SetTextColor(1, 0.8, 0)
+    return r
+  end
+  __p1, __r1 = __perk(), __reward() table.insert(bf.Perks.ScrollBox.rows, __p1) table.insert(bf.Rewards.ScrollBox.rows, __r1)
+  local faction = CreateFrame("Frame", nil, bf) bf.FactionFrame = faction faction.Label = __text(faction, "Guild Reputation:")
+  faction.Bar = CreateFrame("Frame", nil, faction) faction.Bar.Left, faction.Bar.Shadow, faction.Bar.Progress, faction.Bar.Label = __art(faction.Bar), __art(faction.Bar), __art(faction.Bar), __text(faction.Bar, "Honored")
+  local d = f.GuildDetailsFrame
+  __art(info)
+  info.TitleText, info.Header1Label, info.Header2Label = __text(info, "Guild Information"), __text(info, "Challenges"), __text(info, "Message of the Day")
+  __text(info, "Guild Information")
+  info.Challenges = { { count = __text(info, "1") }, { count = __text(info, "2") } }
+  for _, k in ipairs({ "EditMOTDButton", "EditDetailsButton" }) do info[k] = CreateFrame("Button", nil, info) info[k]:SetFontString(__text(info[k], "Edit")) end
+  local news = CreateFrame("Frame", nil, d) d.News = news
+  news.Header, news.TitleText, news.ScrollBox = __art(news), __text(news, "Guild News"), box()
+  __text(news, "Guild News")
+  news.SetFiltersButton = CreateFrame("Button", nil, news) news.SetFiltersButton:SetFontString(__text(news.SetFiltersButton, "Set filters"))
+  local model = CreateFrame("Frame", nil, news) news.BossModel = model __art(model) model.BossName = __text(model, "TEST-ONLY boss")
+  model.TextFrame = CreateFrame("Frame", nil, model) __art(model.TextFrame)
+  function __news() local r = CreateFrame("Button", nil, news) r.header, r.icon = __art(r), __art(r) return r end
+  local page = f.GuildPreferredPlaySettingsFrame
+  page.Title, page.LocaleLabel, page.DatacenterLabel = __text(page, "Preferred play"), __text(page, "Locale"), __text(page, "Datacenter")
+  for _, k in ipairs({ "LocaleDropdown", "DatacenterDropdown" }) do page[k] = CreateFrame("Button", nil, page) page[k].Arrow, page[k].Art = __art(page[k]), __art(page[k]) end
+`;
+
+it("guild benefits: lists, rows and the reputation bar in the theme, the rewards' coins in the number font", () => {
+  const addon = loggedIn(PAGES_PARTS_ENV);
+  addon.eval("CommunitiesFrame:Show()");
+  addon.eval("local b = CommunitiesFrame.GuildBenefitsFrame __p2, __r2 = __acquire(b.Perks.ScrollBox, __perk()), __acquire(b.Rewards.ScrollBox, __reward())");
+  expect(addon.eval(`local b = CommunitiesFrame.GuildBenefitsFrame
+    return { __faded(b.Perks), __faded(b.Rewards), __headed(b.Perks.TitleText), __headed(b.Rewards.TitleText) }`), "both lists' own art faded, their titles heading text").toEqual([true, true, true, true]);
+  // Reads what a perk row looks like.
+  const perk = (r) => addon.eval(`local r = ${r} return { ns.Theme.RowParts(r) ~= nil, r.Left:GetAlpha(), r.Icon:GetAlpha(), __faded(r.NormalBorder), __faded(r.DisabledBorder) }`);
+  expect([perk("__p1"), perk("__p2")], "a perk row (before and after the page opened): plates and borders faded, the icon kept").toEqual([[true, 0, 1, true, true], [true, 0, 1, true, true]]);
+  // Reads what a reward row looks like.
+  const reward = (r) => addon.eval(`local r = ${r} return { ns.Theme.RowParts(r) ~= nil, r.Plate:GetAlpha(), r.Icon:GetAlpha(), r.Lock:GetAlpha(), r.DisabledBG:GetAlpha(), __themed(r.Money.GoldButton.Text), r.Name.__textColor[2] }`);
+  expect([reward("__r1"), reward("__r2")], "a reward row: plate faded, icon, lock and shade kept, coins themed, the gold name kept (content)").toEqual([[true, 0, 1, 1, 1, true, 0.8], [true, 0, 1, 1, 1, true, 0.8]]);
+  expect(addon.eval(`local f = CommunitiesFrame.GuildBenefitsFrame.FactionFrame local bar = f.Bar
+    return { f.Label.__textColor[1] == ns.Theme.RGB("text"), bar.Left:GetAlpha(), bar.Shadow:GetAlpha(), bar.Progress:GetAlpha(), __sunk(bar) }`), "the reputation bar: bronze art faded, the progress kept, an inset behind").toEqual([true, 0, 0, 1, true]);
+});
+
+it("guild info and news: titles, section heads, counts and links in the theme, the news rows and the boss pop-out dressed", () => {
+  const addon = loggedIn(PAGES_PARTS_ENV);
+  addon.eval("CommunitiesFrame:Show() __n1 = __acquire(CommunitiesFrame.GuildDetailsFrame.News.ScrollBox, __news())");
+  addon.eval(`__regions = function(f, text) local out = {} for _, r in ipairs({ f:GetRegions() }) do if r.GetText and r:GetText() == text then out[#out + 1] = r end end return out end`);
+  expect(addon.eval(`local info = CommunitiesFrame.GuildDetailsFrame.Info
+    return { __faded(info), __headed(info.TitleText), info.TitleText:GetText(), __looks(info.Header1Label, "section", "text2"), info.Header1Label:GetText(), __looks(info.Header2Label, "section", "text2"),
+      info.Header2Label:GetText(), info.Challenges[1].count.__textColor[1] == ns.Theme.RGB("text"), info.EditMOTDButton:GetFontString().__textColor[1] == ns.Theme.RGB("text"),
+      info.EditDetailsButton:GetFontString().__textColor[1] == ns.Theme.RGB("text") }`),
+  "the Info page: art faded, the title heading text (words unchanged), the headers small capitals, counts and links light").toEqual([true, true, "Guild Information", true, "CHALLENGES", true, "MESSAGE OF THE DAY", true, true, true]);
+  expect(addon.eval(`local out = {} for _, r in ipairs({ CommunitiesFrame.GuildDetailsFrame.Info:GetRegions() }) do if r.GetText and r:GetText() == "GUILD INFORMATION" then out[#out + 1] = __looks(r, "section", "text2") end end return out`),
+    "the header the game draws unnamed is a section head too").toEqual([true]);
+  expect(addon.eval(`local n = CommunitiesFrame.GuildDetailsFrame.News local m = n.BossModel
+    local caps = {} for _, r in ipairs({ n:GetRegions() }) do if r.GetText and r:GetText() == "GUILD NEWS" then caps[#caps + 1] = __looks(r, "section", "text2") end end
+    return { __faded(n), __headed(n.TitleText), n.TitleText:GetText(), caps[1], #caps, n.SetFiltersButton:GetFontString().__textColor[1] == ns.Theme.RGB("text"),
+      __faded(m), __faded(m.TextFrame), __sunk(m.TextFrame), m.BossName.__textColor[1] == ns.Theme.RGB("text"), ns.Theme.RowParts(__n1) ~= nil, __n1.header:GetAlpha(), __n1.icon:GetAlpha() }`),
+  "the News page: art faded, title heading text, its header a section head, the link light, the boss pop-out panelled with a sunk text box, rows keeping their icon")
+    .toEqual([true, true, "Guild News", true, 1, true, true, true, true, true, true, 0, 1]);
+  expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
+});
+
+it("preferred play settings: the title, labels and dropdowns in the theme beside the Apply buttons", () => {
+  const addon = loggedIn(PAGES_PARTS_ENV);
+  addon.eval("CommunitiesFrame:Show()");
+  expect(addon.eval(`local p = CommunitiesFrame.GuildPreferredPlaySettingsFrame
+    return { __headed(p.Title), p.LocaleLabel.__textColor[1] == ns.Theme.RGB("text"), p.DatacenterLabel.__textColor[1] == ns.Theme.RGB("text"),
+      p.LocaleDropdown.Art:GetAlpha(), p.LocaleDropdown.Arrow:GetAlpha(), p.DatacenterDropdown.Art:GetAlpha(), ns.Theme.HoverParts(p.DatacenterDropdown) ~= nil, p.LocaleApplyButton.Art:GetAlpha() }`),
+  "title heading text, labels light, dropdowns flat with their arrows, Apply buttons still flat").toEqual([true, true, true, 0, 1, 0, true, 0]);
+});
+
+it("guild pages: with the group off they stay the game's; a window with the new parts missing or odd loads cleanly", () => {
+  const off = loggedIn(PAGES_PARTS_ENV, OFF);
+  off.eval("CommunitiesFrame:Show()");
+  expect(off.eval(`local i = CommunitiesFrame.GuildDetailsFrame.Info return { __faded(i), i.Header1Label:GetText(), __faded(CommunitiesFrame.GuildBenefitsFrame.Perks) }`), "left the game's").toEqual([false, "Challenges", false]);
+  const odd = loggedIn(PAGES_PARTS_ENV + `
+    CommunitiesFrame.GuildBenefitsFrame.Perks.ScrollBox = {} CommunitiesFrame.GuildBenefitsFrame.Rewards = {} CommunitiesFrame.GuildBenefitsFrame.FactionFrame.Bar = {}
+    CommunitiesFrame.GuildDetailsFrame.Info.Challenges = {} CommunitiesFrame.GuildDetailsFrame.News.BossModel = {} CommunitiesFrame.GuildDetailsFrame.News.TitleText = nil
+    CommunitiesFrame.GuildDetailsFrame.Info.EditMOTDButton = {} GUILD_INFORMATION = nil`);
+  odd.eval("CommunitiesFrame:Show()");
+  const bare = loggedIn(PAGES_PARTS_ENV + "CommunitiesFrame.GuildBenefitsFrame.FactionFrame = {} CommunitiesFrame.GuildDetailsFrame.News = {} CommunitiesFrame.GuildDetailsFrame.Info = {} CommunitiesFrame.GuildPreferredPlaySettingsFrame.Title = nil");
+  bare.eval("CommunitiesFrame:Show()");
+  const rowless = loggedIn(PAGES_PARTS_ENV + "local b = CommunitiesFrame.GuildBenefitsFrame table.insert(b.Perks.ScrollBox.rows, false) table.insert(b.Rewards.ScrollBox.rows, false)");
+  rowless.eval("CommunitiesFrame:Show()");
+  expect([windowErrors(odd), odd.eval("return #ns.errors"), windowErrors(bare), bare.eval("return #ns.errors"), windowErrors(rowless)], "parts that are not frames, strings the client lacks, rows that are not frames").toEqual(["none", 0, "none", 0, "none"]);
+});
+
 // Guild dialogs --------------------------------------------------------------------------------------
 
 // Builds the guild dialogs as the game has them: translucent frames (a NineSlice, Bg), a log with a text "Close"
