@@ -1845,6 +1845,50 @@ function FCF_Tab_OnClick() end
 function FCF_RestorePositionAndDimensions() end
 function FCF_SetChatWindowFontSize(_, frame, size) frame:SetFont(STANDARD_TEXT_FONT, size, "") end
 
+-- Chat bubbles (Modules/ChatBubbles.lua): C_ChatBubbles.GetAllChatBubbles lists world.bubbles, each a bubble
+-- frame with one child panel holding nine art textures and the text's font string (as
+-- Blizzard_ChatBubble/ChatBubbleTemplates.xml builds them). A forbidden bubble is listed too, with IsForbidden
+-- true, so an addon's own check is exercised. world.instance is whether the player is in an instance.
+world.bubbles, world.instance = {}, false
+-- Whether the player is in an instance (a party instance when world.instance is true), and its kind.
+function IsInInstance() if world.instance == true then return true, "party" end return false, "none" end
+C_ChatBubbles = {
+  -- Every bubble there is, in order.
+  GetAllChatBubbles = function() local out = {} for i, bubble in ipairs(world.bubbles) do out[i] = bubble end return out end,
+}
+
+-- A bubble's panel: its nine art textures and its text, keyed String as the game's template keys it (unkeyed
+-- leaves the text a bare region, as a client whose template lacks the key would).
+local function bubblePanel(bubble, text, unkeyed)
+  local panel = stub.newWidget("Frame", nil, bubble)
+  panel:SetAllPoints()
+  for _ = 1, 9 do panel:CreateTexture(nil, "BACKGROUND"):SetTexture("TEST-ONLY-ART") end
+  local fs = panel:CreateFontString(nil, "ARTWORK")
+  fs:SetFont(STANDARD_TEXT_FONT, 13, "")
+  fs:SetText(text)
+  if not unkeyed then panel.String = fs end
+  return panel
+end
+
+-- The IsForbidden of a bubble addons may not touch (an instance's).
+local function alwaysForbidden() return true end
+
+-- A chat bubble appears over a speaker's head saying `text`, and CHAT_MSG_SAY fires (the message the engine
+-- raised it for). opts.forbidden makes it a bubble addons may not touch (an instance's); opts.empty one with no
+-- panel yet; opts.unkeyed one whose text has no String key; opts.event the chat event the line came in on
+-- (CHAT_MSG_SAY unless given). Returns the bubble's index in world.bubbles.
+function world.addChatBubble(text, opts)
+  opts = opts or {}
+  local bubble = stub.newWidget("Frame", nil, UIParent)
+  bubble:SetSize(120, 40)
+  bubble:SetPoint("CENTER")
+  if not opts.empty then bubblePanel(bubble, text, opts.unkeyed) end
+  if opts.forbidden then bubble.IsForbidden = alwaysForbidden end
+  world.bubbles[#world.bubbles + 1] = bubble
+  stub.fire(opts.event or "CHAT_MSG_SAY", text, "TEST-ONLY Speaker")
+  return #world.bubbles
+end
+
 -- The game's chat windows: NUM_CHAT_WINDOWS frames with tabs and edit boxes.
 local function chatFrames()
   local new = stub.newWidget
@@ -1940,5 +1984,6 @@ function world.reset()
   world.ah = emptyAuctionHouse()
   world.professions, world.recipes, world.cooldowns, world.openedRecipe = {}, {}, {}, nil
   world.mail, world.taken = {}, {}
+  world.bubbles, world.instance = {}, false
   refreshWatches()
 end
