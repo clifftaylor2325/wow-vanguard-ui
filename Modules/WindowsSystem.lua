@@ -144,10 +144,53 @@ local function withWindowSkin(spec)
   end
 end
 
--- The addon list: its push buttons and search box (the rows keep the game's look).
-GW.SkinAddonList = withWindowSkin({
+-- How many frames deep inside a window its check buttons are looked for: the addon list's rows keep theirs
+-- four down (ScrollBox, ScrollTarget, the row, Enabled), the chat settings' boxes five.
+GW.CHECK_DEPTH = 5
+
+-- Every check button inside frame, up to depth frames down, as a themed check box (T.CheckBox); safe to run
+-- again, as these windows make their rows and boxes as they draw.
+function GW.DressChecks(frame, depth)
+  if type(frame) ~= "table" or not frame.GetChildren then return end
+  for _, child in ipairs({ frame:GetChildren() }) do
+    if child.GetObjectType and child:GetObjectType() == "CheckButton" then T.CheckBox(child)
+    elseif depth > 1 then GW.DressChecks(child, depth - 1) end
+  end
+end
+
+-- The game's functions already hooked to dress a window's check buttons, by name.
+local vgCheckMakers = {}
+
+-- The game's functions that make a window's check buttons as it draws (the addon list's rows, the chat
+-- settings' boxes), by the window's global name.
+GW.CHECK_MAKERS = {
+  AddonList = { "AddonList_Update" },
+  ChatConfigFrame = { "ChatConfig_CreateCheckboxes", "ChatConfig_CreateTieredCheckboxes" },
+}
+
+-- Dresses the check buttons of window (a global frame name) after each of the game's functions in names runs,
+-- hooked once per function (a post-hook; the game's function is kept), while the system group is on.
+local function watchCheckMakers(window, names)
+  for _, name in ipairs(names) do
+    if not vgCheckMakers[name] and type(hooksecurefunc) == "function" and type(_G[name]) == "function" then
+      vgCheckMakers[name] = true
+      hooksecurefunc(name, ns.Guard("hook " .. name, function()
+        if GW.settings and GW.settings.system and type(_G[window]) == "table" then GW.DressChecks(_G[window], GW.CHECK_DEPTH) end
+      end))
+    end
+  end
+end
+
+-- The addon list: its push buttons and search box, and each row's check button (the rows' other parts keep the game's look).
+local skinAddonList = withWindowSkin({
   buttons = { "CancelButton", "OkayButton", "EnableAllButton", "DisableAllButton" }, edits = { "SearchBox" },
 })
+-- Skins the addon list (see skinAddonList), then its rows' check buttons, now and as the game makes rows.
+function GW.SkinAddonList(frame)
+  skinAddonList(frame)
+  GW.DressChecks(frame, GW.CHECK_DEPTH)
+  watchCheckMakers("AddonList", GW.CHECK_MAKERS.AddonList)
+end
 -- The nameplates tutorial: the window skin, but its four picture cards are the content, so they stay.
 GW.SkinNamePlatesTutorial = withWindowSkin({ keep = { "StyleOptions", "Aggro", "BuffsDebuffs", "EnemyVsFriendly" } })
 
@@ -165,14 +208,17 @@ local function skinChatBox(box)
   inset(box)
 end
 
--- The chat settings window: the window skin, its header plate faded with the title kept, and
--- each box directly under it (the category list and the settings area) an inset panel.
+-- The chat settings window: the window skin, its header plate faded with the title kept, each box
+-- directly under it (the category list and the settings area) an inset panel, and its check buttons, now
+-- and as the game makes boxes.
 function GW.SkinChatConfig(frame)
   GW.Skin(frame)
   dress(frame, { fade = { "Header" }, titles = { "Header.Text" } })
   for _, child in ipairs({ frame:GetChildren() }) do
     if isChatBox(child) then skinChatBox(child) end
   end
+  GW.DressChecks(frame, GW.CHECK_DEPTH)
+  watchCheckMakers("ChatConfigFrame", GW.CHECK_MAKERS.ChatConfigFrame)
 end
 GW.AddButtons("ChatConfigFrame", {
   "ChatConfigFrameDefaultButton", "ChatConfigFrameCancelButton", "ChatConfigFrameOkayButton",

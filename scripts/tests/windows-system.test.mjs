@@ -476,3 +476,40 @@ it("combat log bar: a panel, its filter buttons themed as the game makes them", 
   bare.eval("CombatLogQuickButtonFrame_Custom:Show()");
   expect(bare.eval("return __errors('Windows')"), "a bar without buttons or the click function").toBe("none");
 });
+
+// TEST-ONLY: the addon list with a scroll box of rows (each with an Enabled check button) that the game's AddonList_Update makes as it draws.
+const ADDON_ROWS_ENV = BUTTON_FRAME_ENV + `__buttonFrame("AddonList", { "CancelButton", "OkayButton" })
+  local box = CreateFrame("Frame", nil, AddonList) AddonList.ScrollBox = box box.ScrollTarget = CreateFrame("Frame", nil, box)
+  __rows = 0
+  function AddonList_Update() __rows = __rows + 1 local r = CreateFrame("Button", "TestOnlyAddonRow" .. __rows, box.ScrollTarget) r.Enabled = CreateFrame("CheckButton", nil, r) r.Enabled.Art = r.Enabled:CreateTexture() r.Enabled:SetChecked(__rows == 1) end
+  AddonList_Update()`;
+
+it("addon list: each row's check button is a themed check box, the rows the game makes while drawing too; never with the group off", () => {
+  const addon = loggedIn(ADDON_ROWS_ENV);
+  addon.eval("AddonList:Show()");
+  // Row i's check button: { art faded, themed, mark shown }.
+  const row = (a, i) => a.eval(`local b = TestOnlyAddonRow${i}.Enabled local c = ns.Theme.CheckParts(b) return { b.Art.__alpha, c ~= nil, c ~= nil and c.mark:IsShown() }`);
+  expect(row(addon, 1), "the row made before the window showed: dressed on show, checked").toEqual([0, true, true]);
+  addon.eval("AddonList_Update()");
+  expect(row(addon, 2), "a row made as the list draws: dressed after AddonList_Update, unchecked").toEqual([0, true, false]);
+  sameOnReshow(addon, "AddonList");
+  const off = loggedIn(ADDON_ROWS_ENV, SWITCH_OFF);
+  off.eval("AddonList:Show() AddonList_Update()");
+  expect([frameState(off, "AddonList").panel, off.eval("return ns.Theme.CheckParts(TestOnlyAddonRow1.Enabled) == nil and ns.Theme.CheckParts(TestOnlyAddonRow2.Enabled) == nil")], "switched off: the game's window and rows").toEqual([false, true]);
+});
+
+// TEST-ONLY: the chat settings with a section whose boxes (a frame holding a Check button, four frames down) the game's ChatConfig_CreateCheckboxes makes.
+const CHAT_CHECKS_ENV = CHAT_ENV + `
+  local section = CreateFrame("Frame", "ChatConfigChatSettings", f) local left = CreateFrame("Frame", "ChatConfigChatSettingsLeft", section)
+  __boxes = 0
+  function ChatConfig_CreateCheckboxes() __boxes = __boxes + 1 local cb = CreateFrame("Frame", "TestOnlyChatCheckBox" .. __boxes, left) cb.Check = CreateFrame("CheckButton", nil, cb) cb.Check.Art = cb.Check:CreateTexture() end
+  ChatConfig_CreateCheckboxes()`;
+
+it("chat settings: the check buttons inside its boxes are themed check boxes, those made as a category draws too", () => {
+  const addon = loggedIn(CHAT_CHECKS_ENV);
+  addon.eval("ChatConfigFrame:Show()");
+  expect(addon.eval("local b = TestOnlyChatCheckBox1.Check return { b.Art.__alpha, ns.Theme.CheckParts(b) ~= nil }"), "the box made before the window showed").toEqual([0, true]);
+  addon.eval("ChatConfig_CreateCheckboxes()");
+  expect(addon.eval("return ns.Theme.CheckParts(TestOnlyChatCheckBox2.Check) ~= nil"), "a box made as a category draws: dressed after ChatConfig_CreateCheckboxes").toBe(true);
+  expect(addon.eval("return __errors('Windows')"), "no errors").toBe("none");
+});

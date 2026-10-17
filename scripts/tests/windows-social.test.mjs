@@ -527,6 +527,7 @@ const RAID_PARTS = `
   end
   for _, n in ipairs({ "RaidFrameRaidInfoButton", "RaidFrameConvertToRaidButton" }) do local b = CreateFrame("Button", n, RaidFrame) b.Art = b:CreateTexture() end
   RaidFrameAllAssistCheckButtonText = RaidFrame:CreateFontString("RaidFrameAllAssistCheckButtonText", "ARTWORK")
+  local c = CreateFrame("CheckButton", "RaidFrameAllAssistCheckButton", RaidFrame) c.Art = c:CreateTexture() c:SetChecked(true)
 `;
 // RaidFrame exists at login (Blizzard_RaidFrame); the groups and buttons come with Blizzard_RaidUI.
 const RAID_ENV = WINDOWS_ENV + `local rf = CreateFrame("Frame", "RaidFrame", UIParent) rf:Hide() ` + RAID_PARTS;
@@ -539,6 +540,7 @@ it("raid tab: group boxes faded and panelled, member buttons flat with the game'
     return { #g, g[1] and g[8], RaidGroupButton1.Art.__alpha, RaidGroupButton40.Art.__alpha, themed(RaidGroupButton40), themed(RaidFrameRaidInfoButton), RaidFrameRaidInfoButton.Art.__alpha,
       RaidFrameConvertToRaidButton.Art.__alpha, RaidGroupButton1Name.__textColor[2] }`), "the whole tab dressed").toEqual([8, true, 0, 0, true, true, 0, 0, 0.8]);
   expect(addon.eval(`local c = RaidFrameAllAssistCheckButtonText.__textColor return c[1] == ns.Theme.RGB("text")`), "the checkbox label in the text color").toBe(true);
+  expect(addon.eval("local c = ns.Theme.CheckParts(RaidFrameAllAssistCheckButton) return { RaidFrameAllAssistCheckButton.Art.__alpha, c ~= nil and c.mark:IsShown() }"), "the All assist check button is a themed box, its art faded, its mark shown").toEqual([0, true]);
 });
 
 it("raid tab: skinned when Blizzard_RaidUI loads after the tab, never in combat, a second show paints nothing more, the switch off leaves it the game's", () => {

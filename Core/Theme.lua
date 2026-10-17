@@ -1124,14 +1124,15 @@ end
 -- A themed button's press overlay, or nil for a button T.Button never painted.
 function T.PressOverlay(button) return pressOf[button] and pressOf[button].overlay end
 
--- Shows or hides a button's press look; only an enabled button shows it.
+-- Shows or hides a button's press look; only an enabled button shows it. A `row` shade (a row's, a check
+-- box's) leaves the label where it is; a push button's drops it a pixel.
 function T.PressButton(button, down)
   local s = pressOf[button]
   if not s then return end
   local on = down == true and (not button.IsEnabled or button:IsEnabled())
   if on == s.overlay:IsShown() then return end
   s.overlay:SetShown(on)
-  dropLabel(button, s, on)
+  if not s.row then dropLabel(button, s, on) end
 end
 
 -- Each disabled themed button's label colour from before (weak), given back when it's enabled.
@@ -1374,6 +1375,79 @@ function T.PlaceClose(close, panel, drop)
 end
 
 -- Game frame primitives (docs/design/RESKIN.md 3.3) -----------------------------------------
+
+-- A check box's look (docs/design/DESIGN-PRINCIPLES.md 2.6): the box's size (units; an even count of
+-- screen pixels, so its centre lands on the button's), its mark (the Check glyph) size and colour, the
+-- box's border colour while the mouse is over it, and the fill the box shows while checked (none: the
+-- box stays `inset` and only the mark carries the accent, so many-of-many stays light). [DECIDE] 6.8
+-- there asks whether it becomes an `accent`-filled box with a `void` mark: fill = "accent", markColor = "void".
+T.CHECK = { size = 16, mark = 12, markColor = "accentText", hover = "borderHi", fill = nil }
+-- Each themed check button's parts (weak): { box = the inset panel, fill = its checked fill, mark = the glyph }.
+local checkOf = setmetatable({}, { __mode = "k" })
+
+-- A check button's themed parts, { box, fill, mark }, or nil for one T.CheckBox never painted.
+function T.CheckParts(button) return checkOf[button] end
+
+-- Paints a check button for its state: the mark (and the fill, when T.CHECK names one) shown while it
+-- is checked, in their colours, or the disabled tier while the button is disabled (its label too).
+local function paintCheck(button, c)
+  local on = type(button.GetChecked) == "function" and button:GetChecked() == true
+  local off = type(button.IsEnabled) == "function" and not button:IsEnabled()
+  c.mark:SetShown(on)
+  T.Tint(c.mark, off and "disabled" or T.CHECK.markColor)
+  c.fill:SetShown(on and T.CHECK.fill ~= nil)
+  T.Tint(c.fill, off and "disabled" or T.CHECK.fill or "inset")
+  T.DisabledLook(button, off)
+end
+
+-- Makes a check button's parts, centred on it: the box (an inset panel, T.CHECK.size), the fill it
+-- shows checked under the box's border, the press overlay (T.PressButton, as a row's) and the mark.
+local function checkParts(button)
+  local box = T.Panel(CreateFrame("Frame", nil, button), { inset = true, noSheen = true })
+  T.PixelSize(box, T.CHECK.size, T.CHECK.size, true)
+  box:SetPoint("CENTER")
+  local fill, press = solid(box, "BACKGROUND", 1, "fill"), T.Tint(solid(box, "ARTWORK", 1, "fill"), T.PRESS[1], T.PRESS[2])
+  fill:SetAllPoints()
+  press:SetAllPoints()
+  press:Hide()
+  pressOf[button] = { overlay = press, row = true } -- row: the shade only, the label stays put
+  checkOf[button] = { box = box, fill = fill, mark = centered(box, "OVERLAY", T.Icon("Check"), T.CHECK.mark) }
+  return checkOf[button]
+end
+
+-- Repaints a check button after the game changes its state.
+local function repaintCheck(button)
+  local c = checkOf[button]
+  if c then paintCheck(button, c) end
+end
+
+-- Follows the game: SetChecked (its own calls), a click (the client flips the state before OnClick
+-- runs), enabling and disabling; the mouse for the press look and the hover border; a hide clears the press.
+local function watchCheck(button)
+  local repaint = ns.Guard("check state", repaintCheck)
+  for _, script in ipairs({ "OnClick", "OnEnable", "OnDisable" }) do button:HookScript(script, repaint) end
+  if type(hooksecurefunc) == "function" then hooksecurefunc(button, "SetChecked", ns.Guard("hook SetChecked", repaintCheck)) end
+  button:HookScript("OnMouseDown", ns.Guard("check press", function(b) T.PressButton(b, true) end))
+  button:HookScript("OnMouseUp", ns.Guard("check press", function(b) T.PressButton(b, false) end))
+  button:HookScript("OnHide", ns.Guard("check press", function(b) T.PressButton(b, false) end))
+  button:HookScript("OnEnter", ns.Guard("check hover", function(b) T.SetBorder(checkOf[b].box, { T.RGB(T.CHECK.hover) }) end))
+  button:HookScript("OnLeave", ns.Guard("check hover", function(b) T.SetBorder(checkOf[b].box, nil) end))
+end
+
+-- One of the game's check buttons (UICheckButtonTemplate and kin) in the theme (DESIGN-PRINCIPLES
+-- 2.6): its art faded (its label kept), a T.CHECK.size inset box centred on it with the Check glyph in
+-- accentText while checked, a borderHi border under the mouse, a shade while pressed, the disabled tier
+-- while disabled. Follows the game's SetChecked and clicks. Safe to run again.
+function T.CheckBox(button)
+  local c = checkOf[button]
+  if not c then
+    c = checkParts(button)
+    watchCheck(button)
+  end
+  T.FadeRegions(button)
+  paintCheck(button, c)
+  return button
+end
 
 -- The art the game's three tab templates draw (PanelTabButtonTemplate,
 -- TabSystemButtonTemplate, LargeSideTabButtonTemplate), faded by T.Tab.
@@ -1682,10 +1756,11 @@ function T.OnChanged(fn)
   listeners[#listeners + 1] = fn
 end
 
--- Repaints the crests and the ornaments.
+-- Repaints the crests, the ornaments and the check boxes' marks.
 local function repaintArt()
   for t in pairs(crests) do T.PaintCrest(t) end
   for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
+  for button, c in pairs(checkOf) do paintCheck(button, c) end
 end
 
 -- Repaints every painted frame, re-fonts styled text and tells the listeners.
