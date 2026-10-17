@@ -346,9 +346,11 @@ local function addCatcher()
   menu.catcher:Hide()
 end
 
--- Lets Escape close the menu through the game's list of special frames (where the client has it).
+-- Lets Escape close the menu through the game's list of special frames (where the client has it), and a fight
+-- close it, so its click catcher is never up over the action bars.
 local function closeOnEscape()
   if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_Menu") end
+  ns.On("PLAYER_REGEN_DISABLED", W.CloseMenu)
 end
 
 -- The menu showed or hid: its catcher follows (just under it), and the dropdown that opened it keeps its hover
@@ -361,10 +363,14 @@ local function wireMenuState()
   end))
 end
 
--- The menu's item list and its scroll thumb (T.SCROLL): a text2 line at the rest alpha, placed by fillMenu.
+-- The menu's item list and its scroll thumb (T.SCROLL): a text2 line at the rest alpha, placed by fillMenu, on a
+-- frame over the items so a hovered row never covers it.
 local function addMenuThumb()
   menu.items = {}
-  menu.thumb = T.Tint(menu:CreateTexture(nil, "OVERLAY"), "text2")
+  menu.thumbHost = CreateFrame("Frame", nil, menu)
+  menu.thumbHost:SetAllPoints(menu)
+  menu.thumbHost:SetFrameLevel(menu:GetFrameLevel() + MENU_ROWS + 2)
+  menu.thumb = T.Tint(menu.thumbHost:CreateTexture(nil, "OVERLAY"), "text2")
   menu.thumb:SetTexture(T.WHITE)
   menu.thumb:SetWidth(T.SCROLL.thumb)
   menu.thumb:SetAlpha(T.SCROLL.rest)

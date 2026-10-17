@@ -641,6 +641,7 @@ end
 local function showStep(n)
   local key, last = state.order[n], #state.order
   state.step = n
+  ns.FocusClear(frame)
   for k, page in pairs(frame.pages) do page:SetShown(k == key) end
   frame.caption:SetText(string.format("Step %d of %d · %s", n, last, NAMES[key]))
   frame.back:SetShown(n > state.floor)

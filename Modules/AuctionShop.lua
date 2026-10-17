@@ -204,7 +204,7 @@ end
 local function askClearRecent()
   local recent = AH.Recent()
   local question = string.format("Clear the %d recent searches?", #recent)
-  ns.Ask(question, "Clear", function() AP.Store().recent = {} AH.PaintShop() end, function() end)
+  ns.Ask(question, "Clear", function() AP.Store().recent = {} AH.PaintShop() end, function() end, "danger")
 end
 
 -- Asks before deleting the list in use (Delete or No); on Recent, before clearing it.
@@ -213,7 +213,7 @@ function AH.AskDelete()
   local name = listInUse()
   if not name then return ns.Chat(AH.NO_LIST) end
   local question = string.format("Delete the shopping list %s (%d items)?", name, #AP.Store().lists[name])
-  ns.Ask(question, "Delete", function() AH.DeleteList(name) end, function() end)
+  ns.Ask(question, "Delete", function() AH.DeleteList(name) end, function() end, "danger")
 end
 
 -- A name no list has yet: "<name> copy", then "<name> copy 2" and on.

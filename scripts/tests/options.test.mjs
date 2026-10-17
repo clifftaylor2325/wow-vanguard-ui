@@ -142,7 +142,7 @@ it("options: Delete, Copy here, Reset profile and Start over say what they lose;
     .toBe("Reset this profile? Every setting in profile Default goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile Default backup.");
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(addon.eval("return { VanguardDB.profiles.Default.Chat.background, VanguardDB.profiles['Default backup'] == nil }"), "No changes nothing").toEqual([false, true]);
-  addon.eval('__click("Reset profile") Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  addon.eval('__click("Reset profile") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect(addon.eval("return { VanguardDB.profiles.Default.Chat == nil, VanguardDB.profiles['Default backup'].Chat.background, Vanguard_Options.reload:IsShown() }"), "Reset backs the profile up, then resets it for the reload").toEqual([true, false, true]);
   expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
 });
@@ -784,7 +784,10 @@ it("dialogs: Import and Reload are the primary buttons, Yes and No stay plain; t
   addon.eval('ns.AskText("Paste it again", function() end)');
   expect(button("Vanguard_TextDialog.close")[1], "asking again puts Cancel back").toBe("Cancel");
   addon.eval('ns.Ask("Sure?", "Yes", function() end, function() end)');
-  expect([button("Vanguard_Question.yes"), button("Vanguard_Question.no")], "Yes and No are plain buttons in the text colour (a confirm never takes the accent)").toEqual([[false, "Yes", tok(addon, "text")], [false, "No", tok(addon, "text")]]);
+  const yes = button("Vanguard_Question.yes");
+  expect([yes[0], yes[1], isTok(addon, yes[2], "void"), button("Vanguard_Question.no")], "Yes is the question's one primary (the accent); No stays plain").toEqual([true, "Yes", true, [false, "No", tok(addon, "text")]]);
+  addon.eval('ns.Ask("Delete it?", "Delete", function() end, function() end, "danger")');
+  expect([addon.eval("return { Vanguard_Question.yes:IsShown(), Vanguard_Question.sure:IsShown() }"), button("Vanguard_Question.sure")], "a destructive question swaps in a danger button, never brass").toEqual([[false, true], [false, "Delete", tok(addon, "bad")]]);
   addon.eval('ns.OfferReload("Changed.")');
   const reload = button("Vanguard_Reload.accept");
   expect([reload[0], reload[1], isTok(addon, reload[2], "void"), button("Vanguard_Reload.cancel")], "Reload is the accent button; Later stays plain").toEqual([true, "Reload", true, [false, "Later", tok(addon, "text")]]);
@@ -1046,16 +1049,14 @@ it("Left and Right step a focused slider by its step", () => {
 const spyOn = (addon, open, name) => addon.eval(`${open} local f = ${name} f:Hide() f.SetPropagateKeyboardInput = function(self, v) self.__passed = v end f.EnableKeyboard = function(self, on) self.__kb = on end`);
 const ring = (addon, ref) => addon.eval(`local f = ns.Theme.FocusParts(${ref}) return f ~= nil and f.ring.top:IsShown()`);
 
-it("a dialog's buttons take Tab focus: Tab and Shift-Tab move a ring, Enter presses the focused one, a key with no focus goes on", () => {
+it("the question's buttons take Tab focus: Tab and Shift-Tab move a ring, Space presses the focused one, Enter with no focus still presses the primary Yes", () => {
   const addon = loggedIn("UISpecialFrames = {}");
-  spyOn(addon, 'ns.Ask("x", "Yes", function() end)', "Vanguard_Question");
-  addon.eval(`__yes = 0 __no = 0 ns.Ask("Sure?", "Yes", function() __yes = __yes + 1 end, function() __no = __no + 1 end)`);
-  expect(addon.eval("return Vanguard_Question.__kb"), "the open dialog holds the keyboard").toBe(true);
-  addon.key("Vanguard_Question", "ENTER");
-  expect(addon.eval("return Vanguard_Question.__passed"), "a key it does not use goes on to the game").toBe(true);
-  expect([addon.eval("return __yes"), addon.eval("return Vanguard_Question:IsShown()")], "Enter with no focus is not used here").toEqual([0, true]);
+  addon.eval(`__yes = 0 __no = 0 __passed = {} ns.Ask("Sure?", "Yes", function() __yes = __yes + 1 end, function() __no = __no + 1 end)
+    Vanguard_Question.SetPropagateKeyboardInput = function(self, v) __passed[#__passed + 1] = v end`);
+  addon.key("Vanguard_Question", "W");
+  expect(addon.eval("return __passed[#__passed]"), "a key nobody uses goes on to the game").toBe(true);
   addon.key("Vanguard_Question", "TAB");
-  expect([ring(addon, "Vanguard_Question.no"), ring(addon, "Vanguard_Question.yes"), addon.eval("return Vanguard_Question.__passed")], "Tab lands on the first button and stops there").toEqual([true, false, false]);
+  expect([ring(addon, "Vanguard_Question.no"), ring(addon, "Vanguard_Question.yes"), addon.eval("return __passed[#__passed]")], "Tab lands on the first button and stops there").toEqual([true, false, false]);
   addon.key("Vanguard_Question", "TAB");
   expect([ring(addon, "Vanguard_Question.no"), ring(addon, "Vanguard_Question.yes")], "and steps to the next").toEqual([false, true]);
   addon.keys({ shift: true });
@@ -1064,27 +1065,53 @@ it("a dialog's buttons take Tab focus: Tab and Shift-Tab move a ring, Enter pres
   expect(ring(addon, "Vanguard_Question.no"), "Shift-Tab steps back").toBe(true);
   addon.key("Vanguard_Question", "SPACE");
   expect([addon.eval("return __no"), addon.eval("return Vanguard_Question:IsShown()")], "Space presses the focused No").toEqual([1, false]);
-  expect(addon.eval("return Vanguard_Question.__kb"), "closed, the dialog lets go of the keyboard").toBe(false);
   addon.eval(`ns.Ask("Again?", "Yes", function() __yes = __yes + 1 end)`);
   expect(ring(addon, "Vanguard_Question.no"), "reopened, no ring is left over").toBe(false);
-  addon.key("Vanguard_Question", "TAB");
+  addon.key("Vanguard_Question", "ENTER");
+  expect(addon.eval("return __yes"), "Enter with no focus presses the primary Yes").toBe(1);
+  addon.eval(`ns.Ask("Third?", "Yes", function() __yes = __yes + 1 end, function() __no = __no + 1 end)`);
   addon.key("Vanguard_Question", "TAB");
   addon.key("Vanguard_Question", "ENTER");
-  expect(addon.eval("return __yes"), "Enter presses the focused Yes").toBe(1);
+  expect([addon.eval("return __yes"), addon.eval("return __no")], "Enter on a focused button presses that one, here No").toEqual([1, 2]);
 });
 
-it("a dialog gives up the keyboard in a fight and takes it back after", () => {
+it("a Tab-focus window gives up the keyboard in a fight, takes it back after, and waits for the end of one it opens in", () => {
   const addon = loggedIn("UISpecialFrames = {}");
-  spyOn(addon, 'ns.Ask("x", "Yes", function() end)', "Vanguard_Question");
-  addon.eval(`ns.Ask("Sure?", "Yes", function() end)`);
+  spyOn(addon, 'ns.OfferReload("x")', "Vanguard_Reload");
+  addon.eval(`ns.OfferReload("A change.")`);
+  expect(addon.eval("return Vanguard_Reload.__kb"), "the open dialog holds the keyboard").toBe(true);
   addon.world.combat(true);
-  expect(addon.eval("return Vanguard_Question.__kb"), "in combat it holds no keyboard").toBe(false);
+  expect(addon.eval("return Vanguard_Reload.__kb"), "in combat it holds no keyboard").toBe(false);
   setCombat(addon, false);
-  expect(addon.eval("return Vanguard_Question.__kb"), "after the fight it has it again").toBe(true);
-  addon.eval("Vanguard_Question:Hide()");
+  expect(addon.eval("return Vanguard_Reload.__kb"), "after the fight it has it again").toBe(true);
+  addon.eval("Vanguard_Reload:Hide()");
   addon.world.combat(true);
   setCombat(addon, false);
-  expect(addon.eval("return Vanguard_Question.__kb"), "a fight that ends while it is closed leaves it off").toBe(false);
+  expect(addon.eval("return Vanguard_Reload.__kb"), "a fight that ends while it is closed leaves it off").toBe(false);
+  addon.world.combat(true);
+  addon.eval(`ns.OfferReload("In a fight.")`);
+  expect(addon.eval("return Vanguard_Reload.__kb"), "shown in combat it holds nothing yet").toBe(false);
+  setCombat(addon, false);
+  expect(addon.eval("return Vanguard_Reload.__kb"), "and takes the keyboard when the fight ends").toBe(true);
+});
+
+it("Tab focus skips keys in combat and a button that was disabled after it took the ring", () => {
+  const addon = loggedIn("UISpecialFrames = {}");
+  addon.eval(`ns.OfferReload("A change.")`);
+  addon.key("Vanguard_Reload", "TAB");
+  addon.eval("__n = 0 Vanguard_Reload.cancel:SetScript('OnClick', function() __n = __n + 1 end) Vanguard_Reload.cancel:Disable()");
+  addon.key("Vanguard_Reload", "SPACE");
+  expect(addon.eval("return __n"), "a disabled button is not pressed").toBe(0);
+  addon.eval("Vanguard_Reload.cancel:Enable()");
+  addon.world.combat(true);
+  addon.key("Vanguard_Reload", "SPACE");
+  expect(addon.eval("return __n"), "and in combat no key is used").toBe(0);
+  addon.world.combat(false);
+  addon.key("Vanguard_Reload", "SPACE");
+  expect(addon.eval("return __n"), "enabled and out of combat it is pressed").toBe(1);
+  addon.eval("Vanguard_Reload.cancel:SetScript('OnClick', nil)");
+  addon.key("Vanguard_Reload", "SPACE");
+  expect(addon.eval("return Vanguard_Reload:IsShown()"), "a button with no click is simply not used").toBe(true);
 });
 
 it("the text and reload dialogs take Tab focus too, and a hidden button is skipped", () => {

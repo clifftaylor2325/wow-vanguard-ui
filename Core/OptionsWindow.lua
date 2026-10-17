@@ -508,6 +508,7 @@ local function onKey(f, key)
   local typing = type(GetCurrentKeyBoardFocus) == "function" and GetCurrentKeyBoardFocus() ~= nil
   if key == "ESCAPE" and not typing then
     if ns.Widgets.MenuOpen() then ns.Widgets.CloseMenu() else f:Hide() end
+    if not ns.InCombat() and ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(false) end
     return
   end
   local used = not typing and useKey(key)

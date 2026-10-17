@@ -160,7 +160,7 @@ it("setup again: Keep and Keep change nothing; Run setup in the options; Start o
   expect(addon.eval('return __click("Start over")'), "Profiles has Start over").toBe(true);
   expect(addon.eval("return Vanguard_Question.title:GetText()"), "it asks first, saying what is lost and where the copy goes")
     .toBe("Start over? Every setting in profile Default goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile Default backup.");
-  addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  addon.eval('Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect(addon.eval("return { VanguardCharDB.setupDone, VanguardDB.profiles.Default.positions == nil, VanguardDB.profiles['Default backup'].positions.raid.y }"), "it backs the profile up, resets it and owes setup").toEqual([false, true, -300]);
   expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
   const after = loggedIn("", { firstRun: true, savedVariables: "VanguardDB = { version = 2, setupDone = true, profiles = { Default = {} } }\nVanguardCharDB = { setupDone = false }" });

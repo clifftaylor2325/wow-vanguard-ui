@@ -38,6 +38,7 @@ local S = {
   Radio = T.Radio,
   Divider = T.Divider,
   ArrowButton = T.ArrowButton,
+  Slider = T.Slider,
   Tooltip = T.Tooltip,
   ScrollBar = T.ScrollBar,
   FontObjects = T.FontObjects,

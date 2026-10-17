@@ -1864,6 +1864,136 @@ function T.ArrowButton(button, direction, opts)
   return button
 end
 
+-- A game slider uses T.SLIDER (above), the pill slider's look, on the game's geometry: the fill runs from the
+-- low end to the thumb in quiet `borderHi` (Cliff's 5a), so a page of sliders is not a row of brass bars.
+-- (The game slider's helpers sit in a block of their own: the file is near Lua's limit of 200 locals.)
+do
+-- Each orientation: the corners at the start and end of the track, which side it runs between, the
+-- setters for a part's length and thickness, and which way the fill's far corner sits from the thumb.
+local SLIDER_AXES = {
+  HORIZONTAL = { s1 = "TOPLEFT", s2 = "BOTTOMLEFT", e1 = "TOPRIGHT", e2 = "BOTTOMRIGHT", a = "LEFT", b = "RIGHT", len = "SetWidth", thick = "SetHeight", dx = 0, dy = -1 },
+  VERTICAL = { s1 = "TOPLEFT", s2 = "TOPRIGHT", e1 = "BOTTOMLEFT", e2 = "BOTTOMRIGHT", a = "TOP", b = "BOTTOM", len = "SetHeight", thick = "SetWidth", dx = 1, dy = 0, turned = true },
+}
+-- Each themed slider -> its parts { bar, track, fill, line, knob, shade }. Weak.
+local sliderOf = setmetatable({}, { __mode = "k" })
+
+-- A themed game slider's parts, or nil for one T.Slider never painted.
+function T.SliderParts(slider) return sliderOf[slider] end
+
+-- One cut of Media/Textures/<name> on frame; on a vertical track turned a quarter, so it runs down.
+local function pillCut(frame, layer, name, cut, axis)
+  local t = frame:CreateTexture(nil, layer)
+  t:SetTexture(T.Texture(name))
+  if axis.turned then t:SetTexCoord(cut[1], 0, cut[2], 0, cut[1], 1, cut[2], 1) else t:SetTexCoord(cut[1], cut[2], 0, 1) end
+  return t
+end
+
+-- The bar the slider's art is on: its own frame, T.SLIDER.height thick, across the slider's middle,
+-- as long as the slider (the game's own size, untouched).
+local function sliderBar(slider, axis)
+  local bar = CreateFrame("Frame", nil, slider)
+  bar:SetPoint(axis.a)
+  bar:SetPoint(axis.b)
+  bar[axis.thick](bar, T.PixelRound(bar, T.SLIDER.height, true))
+  return bar
+end
+
+-- A pill of Media/Textures/<name> along the bar, on a layer: the round ends half the bar's thickness long.
+local function sliderPill(bar, axis, layer, name)
+  local parts, cap = {}, T.PixelRound(bar, T.SLIDER.height / 2)
+  for i, cut in ipairs(CAPSULE_CUTS) do parts[i] = pillCut(bar, layer, name, cut, axis) end
+  for i, corners in pairs({ [1] = { axis.s1, axis.s2 }, [3] = { axis.e1, axis.e2 } }) do
+    parts[i]:SetPoint(corners[1], bar)
+    parts[i]:SetPoint(corners[2], bar)
+    parts[i][axis.len](parts[i], cap)
+  end
+  parts[2]:SetPoint(axis.s1, parts[1], axis.e1)
+  parts[2]:SetPoint(axis.e2, parts[3], axis.s2)
+  return parts
+end
+
+-- The fill: the pill's round start at the bar's start, and its middle from there to the game's thumb
+-- (anchored to it, so the client moves the fill's end as it moves the thumb; the knob covers the end).
+local function sliderFill(bar, axis, thumb)
+  local cap, mid = pillCut(bar, "ARTWORK", "Pill", CAPSULE_CUTS[1], axis), pillCut(bar, "ARTWORK", "Pill", CAPSULE_CUTS[2], axis)
+  local half = T.PixelRound(bar, T.SLIDER.height / 2)
+  cap:SetPoint(axis.s1)
+  cap:SetPoint(axis.s2)
+  cap[axis.len](cap, half)
+  mid:SetPoint(axis.s1, cap, axis.e1)
+  mid:SetPoint(axis.e2, thumb, "CENTER", axis.dx * half, axis.dy * half)
+  return { cap, mid }
+end
+
+-- The knob, its shade and its dark outline (PR #395's thumb), T.SLIDER.thumb across, stacked in that order
+-- above the track's outline and centred on the game's (faded) thumb, so they move with it.
+local function sliderKnob(bar, thumb)
+  local knob, shade, line = bar:CreateTexture(nil, "OVERLAY", nil, 1), bar:CreateTexture(nil, "OVERLAY", nil, 2), bar:CreateTexture(nil, "OVERLAY", nil, 3)
+  for t, name in pairs({ [knob] = "Knob", [shade] = "KnobShade", [line] = "KnobLine" }) do
+    t:SetTexture(T.Texture(name))
+    T.PixelSize(t, T.SLIDER.thumb, T.SLIDER.thumb, true)
+    t:SetPoint("CENTER", thumb)
+  end
+  return knob, shade, line
+end
+
+-- Paints a slider: the track, outline and fill in their colours, the knob in the disabled tier while
+-- the slider is disabled.
+local function paintSlider(slider, s)
+  local off = type(slider.IsEnabled) == "function" and not slider:IsEnabled()
+  for part, color in pairs({ track = T.SLIDER.track, line = T.SLIDER.line, fill = T.SLIDER.fill }) do
+    for _, t in ipairs(s[part]) do T.Tint(t, color) end
+  end
+  T.Tint(s.knob, off and T.SLIDER.thumbOff or T.SLIDER.thumbColor)
+  T.Tint(s.shade, T.SLIDER.shade)
+  T.Tint(s.knobLine, "edge")
+end
+
+-- Makes a slider's parts along its orientation: the bar with the track, the fill, the outline over
+-- both and the knob; repaints them when the slider is enabled or disabled.
+local function sliderParts(slider, thumb)
+  local axis = SLIDER_AXES[type(slider.GetOrientation) == "function" and slider:GetOrientation()] or SLIDER_AXES.HORIZONTAL
+  local bar = sliderBar(slider, axis)
+  local s = { bar = bar, track = sliderPill(bar, axis, "BORDER", "Pill"), fill = sliderFill(bar, axis, thumb) }
+  s.line = sliderPill(bar, axis, "OVERLAY", "SliderLine")
+  s.knob, s.shade, s.knobLine = sliderKnob(bar, thumb)
+  local repaint = ns.Guard("slider state", function(f) paintSlider(f, sliderOf[f]) end)
+  for _, script in ipairs({ "OnEnable", "OnDisable" }) do pcall(slider.HookScript, slider, script, repaint) end
+  return s
+end
+
+-- A slider's thumb texture (the client's, or the template's Thumb key), or nil.
+local function thumbOf(slider)
+  local thumb = type(slider.GetThumbTexture) == "function" and slider:GetThumbTexture() or slider.Thumb
+  return type(thumb) == "table" and thumb or nil
+end
+
+-- A MinimalSliderWithSteppers frame in the theme: its slider (T.Slider) and its Back and Forward
+-- steppers as flat left and right arrows (T.ArrowButton). Safe to run again.
+local function skinSteppers(frame)
+  T.Slider(frame.Slider)
+  if type(frame.Back) == "table" then T.ArrowButton(frame.Back, "left", { flat = true }) end
+  if type(frame.Forward) == "table" then T.ArrowButton(frame.Forward, "right", { flat = true }) end
+  return frame
+end
+
+-- One of the game's sliders in the theme, the pill slider's look on the game's own geometry (never
+-- resized): its art faded (the thumb too, which the client keeps moving), an inset pill track with a
+-- borderHi outline, a quiet fill from the low end to the thumb and a round white knob on the thumb; a
+-- vertical slider (OpacityFrameSlider) runs down. A MinimalSliderWithSteppers frame (`.Slider`,
+-- `.Back`, `.Forward`) gets its slider so and its steppers as flat arrows. A frame with no thumb is
+-- left alone. Safe to run again.
+function T.Slider(slider)
+  if type(slider.Slider) == "table" then return skinSteppers(slider) end
+  local thumb = thumbOf(slider)
+  if not thumb then return slider end
+  sliderOf[slider] = sliderOf[slider] or sliderParts(slider, thumb)
+  T.FadeRegions(slider)
+  paintSlider(slider, sliderOf[slider])
+  return slider
+end
+end
+
 -- The art the game's three tab templates draw (PanelTabButtonTemplate,
 -- TabSystemButtonTemplate, LargeSideTabButtonTemplate), faded by T.Tab.
 T.TAB_ART = {
@@ -2605,10 +2735,11 @@ function T.EaseHover(button, on, now)
   easeTo(h[2], to, now)
 end
 
--- Holds a button's hover look on (a dropdown while its menu is open, even with the mouse gone) or lets it go.
+-- Holds a button's hover look on (a dropdown while its menu is open, even with the mouse gone) or lets it go
+-- (easing out unless the mouse is still over it).
 function T.HoldHover(button, on)
   heldHover[button] = on and true or nil
-  T.EaseHover(button, on == true)
+  T.EaseHover(button, on == true or (button.IsMouseOver ~= nil and button:IsMouseOver() == true))
 end
 
 -- Stops a fade in progress and leaves the frame fully visible.
