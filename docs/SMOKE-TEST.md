@@ -689,6 +689,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: with chat bubbles on in the game's options (Options → Interface → Social → Chat Bubbles), say something in /say out in the world, then have a party member or an NPC speak near you; then enter a dungeon and say something there.
 - Expect: in the world, each speech bubble is a flat, slightly see-through slate panel with a soft shadow instead of the game's rounded white bubble, its text in Vanguard's font, light on the dark panel; the bubble appears and goes as before; inside the dungeon the bubbles keep the game's own look (the engine does not let addons touch them there) and `/vg errors` stays empty.
 - If it fails, paste: a screenshot of a bubble and `/vg errors`.
+
 ### 14.8.1 Character pane side tabs
 
 - Do: press C, then click each side tab in turn (Character, Reputation, Skills, Honor, Currency, Statistics).

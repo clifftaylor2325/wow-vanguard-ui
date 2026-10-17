@@ -7,14 +7,16 @@ const THEME_FONT = "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed
 const OFF = { savedVariables: "VanguardDB.profiles = { Default = { modules = { ChatBubbles = false } } }" };
 
 // What bubble i looks like: the alphas its nine art textures are at (as a set), whether a panel is drawn on
-// it, its text's font path and size and its colour.
+// it, whether its text is the panel's String, and the text's font path and size and its colour (the text is
+// found among the panel's regions, so a bubble without the String key reads the same way).
 const bubbleLook = (addon, i) => addon.eval(`local panel = __wfgWorld.bubbles[${i}]:GetChildren()
-  local art, painted = {}, false
+  local art, painted, fs = {}, false, nil
   for _, r in ipairs({ panel:GetRegions() }) do
     if r.__texture == "TEST-ONLY-ART" then art[tostring(r:GetAlpha())] = true
+    elseif r:GetObjectType() == "FontString" then fs = r
     elseif r:GetObjectType() == "Texture" and r:GetAlpha() ~= 0 then painted = true end
   end
-  return { art = art, panel = painted, font = (panel.String:GetFont()), size = select(2, panel.String:GetFont()), color = panel.String.__textColor }`);
+  return { art = art, panel = painted, keyed = panel.String == fs, font = (fs:GetFont()), size = select(2, fs:GetFont()), color = fs.__textColor }`);
 // The theme's painted-part count.
 const paintedCount = (addon) => addon.eval("return ns.Theme.PaintedCount()");
 
@@ -35,6 +37,10 @@ it("chat bubbles: a bubble's art fades and a flat panel sits behind its text in 
   addon.fire("CHAT_MSG_SAY", "TEST-ONLY nothing new", "TEST-ONLY Speaker");
   addon.update(0.1);
   expect(paintedCount(addon), "a message with no new bubble paints nothing").toBe(one + 2 * (one - before));
+  addon.world.addChatBubble("TEST-ONLY unkeyed", { unkeyed: true });
+  addon.update(0.1);
+  const u = bubbleLook(addon, 4);
+  expect([u.keyed, u.panel, u.font], "a bubble whose text is not keyed String: the font string is found among the panel's regions and dressed the same").toEqual([false, true, THEME_FONT]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 

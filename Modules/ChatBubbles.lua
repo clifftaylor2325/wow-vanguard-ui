@@ -27,10 +27,13 @@ local function allowed()
   return not ns.IsSecret(inside) and inside ~= true
 end
 
--- The bubble's text: the one font string among its panel's regions.
+-- The bubble's text: the panel's String (the key the game's template gives it), else the one font string
+-- among its regions.
 local function bubbleText(panel)
+  local fs = panel.String
+  if type(fs) == "table" and type(fs.SetFont) == "function" then return fs end
   for _, region in ipairs({ panel:GetRegions() }) do
-    if region.GetObjectType and region:GetObjectType() == "FontString" then return region end
+    if type(region.GetObjectType) == "function" and region:GetObjectType() == "FontString" then return region end
   end
 end
 

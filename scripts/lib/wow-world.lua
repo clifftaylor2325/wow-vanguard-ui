@@ -1857,14 +1857,16 @@ C_ChatBubbles = {
   GetAllChatBubbles = function() local out = {} for i, bubble in ipairs(world.bubbles) do out[i] = bubble end return out end,
 }
 
--- A bubble's panel: its nine art textures and its text.
-local function bubblePanel(bubble, text)
+-- A bubble's panel: its nine art textures and its text, keyed String as the game's template keys it (unkeyed
+-- leaves the text a bare region, as a client whose template lacks the key would).
+local function bubblePanel(bubble, text, unkeyed)
   local panel = stub.newWidget("Frame", nil, bubble)
   panel:SetAllPoints()
   for _ = 1, 9 do panel:CreateTexture(nil, "BACKGROUND"):SetTexture("TEST-ONLY-ART") end
-  panel.String = panel:CreateFontString(nil, "ARTWORK")
-  panel.String:SetFont(STANDARD_TEXT_FONT, 13, "")
-  panel.String:SetText(text)
+  local fs = panel:CreateFontString(nil, "ARTWORK")
+  fs:SetFont(STANDARD_TEXT_FONT, 13, "")
+  fs:SetText(text)
+  if not unkeyed then panel.String = fs end
   return panel
 end
 
@@ -1873,13 +1875,13 @@ local function alwaysForbidden() return true end
 
 -- A chat bubble appears over a speaker's head saying `text`, and CHAT_MSG_SAY fires (the message the engine
 -- raised it for). opts.forbidden makes it a bubble addons may not touch (an instance's); opts.empty one with no
--- panel yet. Returns the bubble's index in world.bubbles.
+-- panel yet; opts.unkeyed one whose text has no String key. Returns the bubble's index in world.bubbles.
 function world.addChatBubble(text, opts)
   opts = opts or {}
   local bubble = stub.newWidget("Frame", nil, UIParent)
   bubble:SetSize(120, 40)
   bubble:SetPoint("CENTER")
-  if not opts.empty then bubblePanel(bubble, text) end
+  if not opts.empty then bubblePanel(bubble, text, opts.unkeyed) end
   if opts.forbidden then bubble.IsForbidden = alwaysForbidden end
   world.bubbles[#world.bubbles + 1] = bubble
   stub.fire("CHAT_MSG_SAY", text, "TEST-ONLY Speaker")
