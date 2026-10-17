@@ -668,7 +668,39 @@ it("switches wrap a long caption left of the track and react to the mouse", () =
   const place = () => addon.eval("local k, s = __sw.knob.__points, __sw.shade.__points local kp, sp = next(k), next(s) return { kp, k[kp].x, sp, s[sp].x, __sw.fill:IsShown() }");
   expect(place(), "off: the knob and its shade at the track's left, no fill").toEqual(["LEFT", 2, "LEFT", 2, false]);
   addon.eval("__sw.__scripts.OnClick(__sw)");
-  expect(place(), "on: both at the right, the fill shown").toEqual(["RIGHT", -2, "RIGHT", -2, true]);
+  expect(place(), "on: the glide has only begun, both still at the left, the fill shown").toEqual(["LEFT", 2, "LEFT", 2, true]);
+  addon.advance(0.2, 0.05);
+  expect(place(), "on, once the glide is done: both at the right end (36 - 14 - 2 in)").toEqual(["LEFT", 20, "LEFT", 20, true]);
+});
+
+it("the switch knob and the slider thumb glide for 0.1 s, and move at once with Reduce motion, in combat and while dragging", () => {
+  const addon = loggedIn();
+  addon.eval(`local on, v = false, 0
+    __sw = ns.Widgets.Check(UIParent, "A", function() return on end, function(x) on = x end, 300)
+    __sl = ns.Widgets.Slider(UIParent, "S", { min = 0, max = 10, step = 1 }, function() return v end, function(x) v = x end)
+    __sl.track:SetWidth(100)
+    __sl:Refresh()`);
+  // Where the switch knob and the slider thumb are now.
+  const knobX = () => addon.eval("return __sw.knob.__points.LEFT.x");
+  // The thumb's centre along the track.
+  const thumbX = () => addon.eval("return __sl.thumb.__points.CENTER.x");
+  addon.eval("__sw.__scripts.OnClick(__sw)");
+  addon.advance(0.05, 0.05);
+  const mid = knobX();
+  expect(mid > 2 && mid < 20, "half way through the glide the knob is between its spots").toBe(true);
+  addon.advance(0.2, 0.05);
+  expect(knobX(), "and it lands on the on spot").toBe(20);
+  addon.eval("ns.Theme.Settings().reduceMotion = true __sw.__scripts.OnClick(__sw)");
+  expect(knobX(), "Reduce motion: the knob is back at once").toBe(2);
+  addon.eval("ns.Theme.Settings().reduceMotion = false ns.InCombat = function() return true end __sw.__scripts.OnClick(__sw)");
+  expect(knobX(), "in combat: at once").toBe(20);
+  addon.eval("ns.InCombat = function() return false end __sl.set(10) __sl:Refresh()");
+  addon.advance(0.05, 0.05);
+  expect(thumbX() > 0 && thumbX() < 100, "a stepped slider thumb glides").toBe(true);
+  addon.advance(0.2, 0.05);
+  expect(thumbX(), "and lands on its value").toBe(100);
+  addon.eval("__sl.dragging = true __sl.set(0) __sl:Refresh()");
+  expect(thumbX(), "while dragging the thumb follows the cursor at once").toBe(0);
 });
 
 it("sliders: the pill track, the fill on the same frame under the thumb, the thumb's shade and outline, and tracks that follow a theme change", () => {
