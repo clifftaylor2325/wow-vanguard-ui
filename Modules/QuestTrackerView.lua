@@ -1,41 +1,39 @@
 -- The quest tracker's look (Modules/QuestTracker.lua gathers the quests): a
--- "Quests" header with the count, a brass line and a collapse arrow; a block
+-- "Quests" section header (W.SectionHeader) with the count and a fold chevron,
+-- and a brass line under it (the tracker has no panel to carry a divider); a block
 -- per quest; "+3 more" when they don't all fit; and the quest items as the
 -- game's secure item buttons beside their quests (placed out of combat), each with
 -- its cooldown, a red tint out of range and the game's tooltip.
 
 local ADDON, ns = ...
 
-local T = ns.Theme
+local T, W = ns.Theme, ns.Widgets
 local QP = ns.QuestParts
 local QT = ns.GetModule("QuestTracker")
 
+-- The tracker's measures (units): the header band, a block's title line and each line under it, the gap
+-- between blocks, a quest item's button, how many item buttons there are, and how often (seconds) their
+-- range is checked.
 QT.HEADER, QT.TITLE, QT.LINE, QT.GAP, QT.ITEM, QT.MAX_ITEMS, QT.RANGE_EVERY = 22, 16, 14, 6, 22, 8, 0.25
 QT.items, QT.shown = {}, {}
 
 -- Building -------------------------------------------------------------------------------------
 
--- The collapse arrow: down while open, right while collapsed.
-local function addToggle(f)
-  f.toggle = CreateFrame("Button", nil, f)
-  f.toggle:SetSize(14, 14)
-  f.toggle:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -2)
-  f.toggle.icon = T.Tint(f.toggle:CreateTexture(nil, "OVERLAY"), "text2")
-  f.toggle.icon:SetAllPoints()
-  f.toggle:SetScript("OnClick", ns.Guard("click quest tracker collapse", function() QT.collapsed = not QT.collapsed QT.Refresh() end))
+-- Folds the tracker away to its header (or opens it again): what the header's chevron does.
+function QT.Fold(collapsed)
+  QT.collapsed = collapsed
+  QT.Refresh()
 end
 
--- "Quests", the count beside the arrow, and a brass line under them.
+-- "QUESTS", the quest count after it and a fold chevron (a W.SectionHeader), and a brass line under them.
 local function addHeader(f)
-  f.header = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading", "text")
+  f.header = W.SectionHeader(f, "Quests", { collapsible = true, count = "", width = QT.W, onToggle = QT.Fold })
   f.header:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
-  f.header:SetText("Quests")
-  f.count = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  f.count:SetPoint("TOPRIGHT", f, "TOPRIGHT", -20, -3)
-  f.rule = T.Snap(f:CreateTexture(nil, "ARTWORK"), "divider")
+  f.count = f.header.count
+  f.rule = T.Tint(T.Snap(f:CreateTexture(nil, "ARTWORK"), "divider"), "accent")
   f.rule:SetHeight(T.Pixel(f))
-  f.rule:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -QT.HEADER + 4)
-  f.rule:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -QT.HEADER + 4)
+  f.rule:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -QT.HEADER + T.SPACE.tight)
+  f.rule:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -QT.HEADER + T.SPACE.tight)
 end
 
 -- One objective line in a block.
@@ -107,11 +105,8 @@ function QT.Build(spot)
   f:SetFrameStrata(QT.STRATA)
   f:SetAllPoints()
   addHeader(f)
-  addToggle(f)
   addBody(f)
   QT.frame = f
-  T.OnChanged(function() T.Tint(f.rule, "accent") end)
-  T.Tint(f.rule, "accent")
 end
 
 -- Blocks ---------------------------------------------------------------------------------------
@@ -145,7 +140,7 @@ local function paintLines(b, q)
   b.lines.Reset()
   for i, spec in ipairs(QT.LineSpecs(q)) do
     local fs = b.lines.Next()
-    fs:SetPoint("TOPLEFT", b, "TOPLEFT", 8, -QT.TITLE - (i - 1) * QT.LINE)
+    fs:SetPoint("TOPLEFT", b, "TOPLEFT", T.SPACE.gap, -QT.TITLE - (i - 1) * QT.LINE)
     fs:SetText(spec[1])
     T.Color(fs, spec[2])
     fs:Show()
@@ -254,7 +249,7 @@ function QT.Refresh()
   local f, quests = QT.frame, QT.Quests()
   local all = QT.Rows(quests)
   f.count:SetText(#quests > 0 and tostring(#quests) or "")
-  f.toggle.icon:SetTexture(T.Icon(QT.collapsed and "Right" or "Down"))
+  f.header:SetCollapsed(QT.collapsed)
   f.blocks.Reset()
   f.body:SetShown(not QT.collapsed)
   f:SetShown(#all > 0)
@@ -348,7 +343,7 @@ local function placeItem(b, shown)
   b:SetAttribute("item", shown.quest.item.link)
   b.icon:SetTexture(shown.quest.item.texture)
   b:ClearAllPoints()
-  b:SetPoint("TOPRIGHT", shown.block, "TOPLEFT", -4, 0)
+  b:SetPoint("TOPRIGHT", shown.block, "TOPLEFT", -T.SPACE.tight, 0)
   b:Show()
   QT.UpdateCooldown(b)
   QT.UpdateRange(b)
