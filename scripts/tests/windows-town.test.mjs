@@ -556,6 +556,7 @@ const DIALOGS_ENV = `${TOWN_READERS}
   content.AmountSelector.TransferAmountLabel = __text(content.AmountSelector, "Amount")
   content.AmountSelector.InputBox = CreateFrame("EditBox", nil, content.AmountSelector) __art(content.AmountSelector.InputBox)
   content.AmountSelector.MaxQuantityButton = CreateFrame("Button", nil, content.AmountSelector)
+  content.TransactionDivider = __art(content)
   content.SourceBalancePreview.Label, content.PlayerBalancePreview.Label = __text(content.SourceBalancePreview, "Bob after"), __text(content.PlayerBalancePreview, "You after")
 `;
 
@@ -574,6 +575,7 @@ it("S2.7 small dialogs: ghost button, message dialog, addon dialog and currency 
   expect(windowState(addon, "CurrencyTransferMenu"), "the transfer window skin").toMatchObject({ art: 0, panel: true });
   expect(addon.eval(`local c = CurrencyTransferMenu.Content return { select('#', c.SourceSelector.Dropdown:GetRegions()) > 1, c.SourceSelector.Dropdown.Arrow:GetAlpha(), __faded(c.AmountSelector.InputBox), select('#', c.AmountSelector.MaxQuantityButton:GetRegions()) > 0 }`), "the source dropdown flat with its arrow, the amount box an edit box, the Max button themed").toEqual([true, 1, true, true]);
   expect(addon.eval(`local c = CurrencyTransferMenu.Content return { __lit(c.SourceSelector.SourceLabel, "label", "text"), __lit(c.AmountSelector.TransferAmountLabel, "label", "text"), __lit(c.SourceBalancePreview.Label, "label", "text"), __lit(c.PlayerBalancePreview.Label, "label", "text"), __themed(c.SourceSelector.PlayerName) }`), "the form's four labels in the text colour; the character name left to the game").toEqual([true, true, true, true, false]);
+  expect(addon.eval("local d = CurrencyTransferMenu.Content.TransactionDivider return { d:GetAlpha(), ns.Theme.DividerParts(d) ~= nil }"), "the rule above the transaction faded under one pixel of divider").toEqual([0, true]);
   const painted = message.painted;
   addon.eval("BasicMessageDialog:Hide() BasicMessageDialog:Show() AddonDialog:Hide() AddonDialog:Show() GhostFrame:Hide() GhostFrame:Show()");
   expect(windowState(addon, "BasicMessageDialog").painted, "showing them again paints nothing more").toBe(painted);

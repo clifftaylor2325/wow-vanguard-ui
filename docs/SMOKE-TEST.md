@@ -628,7 +628,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.3.12 Currency transfer
 
 - Do: with a warband currency you can move between characters, open the currency tab, click a currency's transfer action, open the source dropdown, type an amount and press Max.
-- Expect: the transfer window is a flat panel; the source dropdown is a flat button with its arrow; the amount box is a dark edit box; Max, Confirm and Cancel are Vanguard buttons; the four captions (source, amount, and the two balance lines) are light, not gold; the transfer works as before.
+- Expect: the transfer window is a flat panel; the source dropdown is a flat button with its arrow; the amount box is a dark edit box; Max, Confirm and Cancel are Vanguard buttons; a thin one-pixel line (no game ornament) runs above the transaction; the four captions (source, amount, and the two balance lines) are light, not gold; the transfer works as before.
 - If it fails, paste: a screenshot of the window and `/vg errors`.
 
 ### 14.4.1 Game options
@@ -772,7 +772,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.8.3 Inside the character pane
 
 - Do: on the Reputation tab look at the list and click a header; on Skills look at a skill and click it; on Currency click a header; on the Character tab scroll the stats; hover a gear slot's flyout arrow (the equipment flyout) and look at the Honor tab.
-- Expect: reputation and skill bars sit in a flat dark box with the game's colored fill unchanged, headers are flat buttons that keep their plus/minus icon and still open and close, the stat category titles sit in flat boxes, the flyout is a flat panel with item borders in quality colors, the honor tab's ring and badge show (only its decoration is dimmed), and each gear slot still shows its durability percent.
+- Expect: the reputation, skills and currency lists have a thin one-pixel line above and below them (no game ornament); reputation and skill bars sit in a flat dark box with the game's colored fill unchanged, headers are flat buttons that keep their plus/minus icon and still open and close, the stat category titles sit in flat boxes, the flyout is a flat panel with item borders in quality colors, the honor tab's ring and badge show (only its decoration is dimmed), and each gear slot still shows its durability percent.
 - Also expect: on the Character tab, each gear slot (shirt, tabard and ammo too) is a flat square around its icon with no bronze frame, its border in the item's quality color when it has one; the model stands on a flat panel under a plain strip with the level and race text, and the model still turns when you drag it. [VERIFY IN GAME]
 - If it fails, paste: a screenshot of the tab that is wrong and `/vg errors`.
 

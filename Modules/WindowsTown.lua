@@ -670,8 +670,11 @@ end
 -- The currency transfer form's labels (source, amount and the two balance previews), gold in the game.
 local TRANSFER_LABELS = { "SourceSelector.SourceLabel", "AmountSelector.TransferAmountLabel", "SourceBalancePreview.Label", "PlayerBalancePreview.Label" }
 
--- The form: Confirm and Cancel, the source dropdown (its arrow kept), the amount box and its Max button, and the labels.
+-- The form: Confirm and Cancel, the source dropdown (its arrow kept), the amount box and its Max button, the labels, and the
+-- rule above the transaction as one pixel of divider.
 local function styleTransferForm(content)
+  local rule = content.TransactionDivider
+  if type(rule) == "table" and rule.SetAlpha then T.Divider(rule) end
   keyButtons(content, { "ConfirmButton", "CancelButton" })
   GW.SkinDropdown(GW.Part(content, "SourceSelector.Dropdown"))
   GW.SkinEditBox(GW.Part(content, "AmountSelector.InputBox"))

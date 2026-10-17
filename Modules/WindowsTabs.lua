@@ -502,16 +502,23 @@ local function fadeHost(host)
   for _, child in ipairs({ host:GetChildren() }) do T.FadeRegions(child) end
 end
 
--- The rules over and under a pane list (the ScrollBox's two unnamed child frames, each holding a ScrollLine), faded.
--- A plain Frame only: the rows the box holds are buttons and keep their art.
-local function fadeLines(box)
-  if not box.GetChildren then return end
-  for _, child in ipairs({ box:GetChildren() }) do
-    if child.GetObjectType and child:GetObjectType() == "Frame" then T.FadeRegions(child) end
+-- A pane list's rule frame (a plain Frame holding one ScrollLine texture): each texture as one pixel of divider.
+local function dividerLines(frame)
+  for _, region in ipairs({ frame:GetRegions() }) do
+    if region.GetObjectType and region:GetObjectType() == "Texture" then T.Divider(region) end
   end
 end
 
--- Each pane list in a flat inset panel, its rules faded.
+-- The rules over and under a pane list (the ScrollBox's two unnamed child frames, each holding a ScrollLine), as one
+-- pixel of divider each. A plain Frame only: the rows the box holds are buttons and keep their art.
+local function fadeLines(box)
+  if not box.GetChildren then return end
+  for _, child in ipairs({ box:GetChildren() }) do
+    if child.GetObjectType and child:GetObjectType() == "Frame" and child.GetRegions then dividerLines(child) end
+  end
+end
+
+-- Each pane list in a flat inset panel, its rules as one pixel of divider.
 local function flattenLists()
   for _, name in ipairs(GW.PANE_LISTS) do
     local box = boxOf(name)

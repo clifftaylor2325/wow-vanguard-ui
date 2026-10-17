@@ -842,14 +842,15 @@ it("side panes: the reputation and currency panes' check boxes, standing bar, pu
   expect(bare.eval("return #ns.errors"), "a part that is not a check button or a button is skipped").toBe(0);
 });
 
-it("pane lists: the rules over and under each list are faded, a header's name goes to the text colour", () => {
+it("pane lists: the rules over and under each list are one pixel of divider, a header's name goes to the text colour", () => {
   const addon = loggedIn(PANE_ENV + `
     function __ruled(f) local line = CreateFrame("Frame", nil, f.ScrollBox) line.rule = __art(line, "OVERLAY") f.rule = line.rule end
     __ruled(ReputationFrame) __ruled(SkillsFrame) __ruled(TokenFrame)
     __text = function(fs) local c, t = fs.__textColor, { ns.Theme.RGB("text") } return c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3] end
     __repHeader.Name = __repHeader:CreateFontString() __repHeader.Name:SetTextColor(1, 0.82, 0)
   `);
-  expect(addon.eval("return { __a(ReputationFrame.rule), __a(SkillsFrame.rule), __a(TokenFrame.rule) }"), "the rule lines of all three lists").toEqual([0, 0, 0]);
+  expect(addon.eval("return { __a(ReputationFrame.rule), __a(SkillsFrame.rule), __a(TokenFrame.rule) }"), "the rule lines of all three lists faded").toEqual([0, 0, 0]);
+  expect(addon.eval("return { ns.Theme.DividerParts(ReputationFrame.rule) ~= nil, ns.Theme.DividerParts(SkillsFrame.rule) ~= nil, ns.Theme.DividerParts(TokenFrame.rule) ~= nil, ns.Theme.DividerParts(__repHeader.banner) == nil }"), "each drawn as one pixel of divider; a row's art is not").toEqual([true, true, true, true]);
   expect(addon.eval("return { __a(__repHeader.banner), __a(__repHeader.StateIcon) }"), "a header row's own art is not taken for a rule line").toEqual([0, 1]);
   const later = addon.eval(`local h = __header(ReputationFrame.ScrollBox) h.Name = h:CreateFontString() h.Name:SetTextColor(1, 0.82, 0) ReputationFrame.ScrollBox:Acquire(h) return { __text(__repHeader.Name), __text(h.Name) }`);
   expect(later, "the header's name in the text colour, a header acquired later too").toEqual([true, true]);
