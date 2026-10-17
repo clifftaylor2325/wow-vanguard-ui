@@ -34,6 +34,17 @@ local function after(frame, name, fn)
   afterWith(frame, name, function() fn(frame) end)
 end
 
+-- A font string, when it is one, in a theme text color.
+local function paintText(fs, token)
+  if type(fs) == "table" and fs.SetTextColor then T.Color(fs, token) end
+end
+
+-- Every font string among a frame's own regions in a theme text color (the +, - and count beside an invoice's money).
+local function paintRegions(frame, token)
+  if type(frame) ~= "table" or not frame.GetRegions then return end
+  for _, region in ipairs({ frame:GetRegions() }) do paintText(region, token) end
+end
+
 -- Open mail -------------------------------------------------------------------------------------
 
 -- The letter's parchment: the stationery behind the body text.
@@ -61,11 +72,40 @@ function GW.SkinMailItems()
   end
 end
 
--- The letter window: the window skin, the parchment and body text, the item buttons; each
+-- The auction invoice's labels (the game names them; dark brown for its parchment) and its four money lines.
+GW.MAIL_INVOICE_TEXTS = {
+  "OpenMailInvoiceItemLabel", "OpenMailInvoicePurchaser", "OpenMailInvoiceSalePrice", "OpenMailInvoiceDeposit", "OpenMailInvoiceHouseCut",
+  "OpenMailInvoiceAmountReceived", "OpenMailInvoiceNotYetSent", "OpenMailInvoiceMoneyDelay",
+}
+GW.MAIL_INVOICE_MONEY = { "OpenMailTransactionAmountMoneyFrame", "OpenMailDepositMoneyFrame", "OpenMailHouseCutMoneyFrame", "OpenMailSalePriceMoneyFrame" }
+
+-- The invoice in the theme: its labels and the strings beside its money lines (the + and - the game draws unnamed) in the text
+-- colour, the four money lines in the number font, the sum line one pixel of divider.
+local function dressInvoice()
+  GW.PaintNamed(GW.MAIL_INVOICE_TEXTS, "text")
+  for _, name in ipairs(GW.MAIL_INVOICE_MONEY) do
+    GW.SkinMoney(_G[name])
+    paintRegions(_G[name], "text")
+  end
+  local line = _G.OpenMailArithmeticLine
+  if type(line) == "table" and line.SetAlpha then T.Divider(line) end
+end
+
+-- The letter's page as a sunk area (its stationery faded with the rest of its art), the subject and the sender's name in
+-- the text colour.
+local function dressLetter(frame)
+  GW.InsetPanel(frame.ScrollFrame)
+  paintText(_G.OpenMailSubject, "text")
+  paintText(GW.Part(_G, "OpenMailSender.Name"), "text")
+end
+
+-- The letter window: the window skin, the page, the parchment and body text, the invoice, the item buttons; each
 -- again after the game redraws the letter (OpenMailFrame:Update).
 function GW.SkinOpenMail(frame)
   GW.Skin(frame)
+  dressLetter(frame)
   GW.LightMailText()
+  dressInvoice()
   GW.SkinMailItems()
   after(frame, "Update", GW.SkinOpenMail)
 end
@@ -148,11 +188,6 @@ local function widenRankCell(row)
   if type(list) ~= "table" or not rankColumn(list.columnInfo) then return end
   if type(row.Rank) == "table" and row.Rank.SetWidth then row.Rank:SetWidth(GW.GUILD_RANK_CELL) end
   if row.guildColumnIndex ~= nil and type(row.Note) == "table" and row.Note.SetWidth then row.Note:SetWidth(GW.GUILD_NOTE_BESIDE) end
-end
-
--- A font string, when it is one, in a theme text color.
-local function paintText(fs, token)
-  if type(fs) == "table" and fs.SetTextColor then T.Color(fs, token) end
 end
 
 -- After the game colors a row for its member's presence: an offline member's texts in the theme's secondary
@@ -422,12 +457,16 @@ GW.Add("social", "framed", { "SocialUIFrame" }, GW.SkinSocial)
 
 -- Guild creation --------------------------------------------------------------------------------
 
--- The registrar's and the petition's body texts (the game colors them dark for its parchment) and headings.
+-- The registrar's and the petition's body texts (the game colors them dark for its parchment, or gold as chrome), the tabard
+-- vendor's name and the registrar's cost label, and the headings.
 GW.CREATION_BODY = {
-  "GuildRegistrarText", "GuildRegistrarPurchaseText", "PetitionFrameCharterName", "PetitionFrameMasterName", "PetitionFrameInstructions",
+  "GuildRegistrarText", "GuildRegistrarPurchaseText", "GuildRegistrarCostLabel", "TabardFrameNameText",
+  "PetitionFrameCharterName", "PetitionFrameMasterName", "PetitionFrameInstructions",
 }
 for i = 1, 9 do GW.CREATION_BODY[#GW.CREATION_BODY + 1] = "PetitionFrameMemberName" .. i end
 GW.CREATION_HEADS = { "PetitionFrameCharterTitle", "PetitionFrameMasterTitle", "PetitionFrameMemberTitle" }
+-- The registrar's "Available services" heading (QuestTitleFont, black for its parchment).
+GW.CREATION_TITLE = "AvailableServicesText"
 -- The game functions that set those texts; the look goes on again after each.
 GW.CREATION_REDRAWS = { "GuildRegistrar_OnShow", "GuildRegistrar_ShowPurchaseFrame", "PetitionFrame_Update" }
 
@@ -435,15 +474,57 @@ GW.CREATION_REDRAWS = { "GuildRegistrar_OnShow", "GuildRegistrar_ShowPurchaseFra
 function GW.LightCreationText()
   GW.PaintNamed(GW.CREATION_BODY, "text")
   GW.PaintNamed(GW.CREATION_HEADS, "text")
+  GW.TextNamed({ GW.CREATION_TITLE }, "heading", "text")
 end
 
--- A guild creation window: the window skin, its texts light, its name box themed; the texts again
--- after each game call that sets them. The tabard's model and colour pickers are left as the game's.
+-- The registrar's two options (QuestTitleButtonTemplate: a quest icon and a title; the source has a third, commented out) as
+-- see-through theme rows keeping their icon, their titles in the text colour (the game draws them black for its parchment).
+local function dressRegistrarOption(button)
+  if type(button) ~= "table" or not button.CreateTexture then return end
+  T.Row(button, { fade = true })
+  GW.ShowTexture(button.Icon)
+  paintText(button.GetFontString and button:GetFontString(), "text")
+end
+
+-- The registrar's options and the charter's price in the number font.
+local function dressRegistrar()
+  for i = 1, 3 do dressRegistrarOption(_G["GuildRegistrarButton" .. i]) end
+  GW.SkinMoney(_G.GuildRegistrarMoneyFrame)
+end
+
+-- One of the tabard's five pickers (TabardFrameCustomization1-5: a label plate between two page arrows): the plate faded
+-- under an inset (its caption kept), the arrows as theme arrows.
+local function dressTabardPicker(i)
+  local name = "TabardFrameCustomization" .. i
+  local picker = _G[name]
+  if type(picker) ~= "table" or not picker.GetRegions then return end
+  T.FadeRegions(picker)
+  T.Panel(picker, { inset = true, noSheen = true })
+  GW.SkinArrow(_G[name .. "LeftButton"], "left")
+  GW.SkinArrow(_G[name .. "RightButton"], "right")
+end
+
+-- The tabard window's pickers, its cost box (a tooltip backdrop) and money strip (a marble inset and a gold edge) as insets,
+-- and its two price lines in the number font. The model and its rotate buttons stay the game's.
+local function dressTabard()
+  GW.FadeNamed({ "TabardFrameCustomizationBorder" })
+  for i = 1, 5 do dressTabardPicker(i) end
+  GW.InsetPanel(_G.TabardFrameCostFrame)
+  GW.InsetPanel(_G.TabardFrameMoneyInset)
+  GW.FadeArt(_G.TabardFrameMoneyBg)
+  GW.SkinMoney(_G.TabardFrameCostMoneyFrame)
+  GW.SkinMoney(_G.TabardFrameMoneyFrame)
+end
+
+-- A guild creation window: the window skin, its texts light, its name box themed, the registrar's options and the tabard's
+-- pickers; the texts again after each game call that sets them.
 function GW.SkinGuildCreation(frame)
   GW.Skin(frame)
   GW.LightCreationText()
   for _, name in ipairs(GW.CREATION_REDRAWS) do after(_G, name, GW.LightCreationText) end
   if type(_G.GuildRegistrarFrameEditBox) == "table" and _G.GuildRegistrarFrameEditBox.SetText then T.EditBox(_G.GuildRegistrarFrameEditBox) end
+  dressRegistrar()
+  dressTabard()
 end
 
 GW.Add("social", "framed", { "GuildRegistrarFrame", "PetitionFrame", "TabardFrame" }, GW.SkinGuildCreation)

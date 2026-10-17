@@ -496,7 +496,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.2.1 Open a letter
 
 - Do: at a mailbox, open a letter that has text and, if you can, one with an attachment or money (an auction invoice works).
-- Expect: the letter window is a flat panel with no parchment behind the text; the text and any headings are light (not gold); Reply, Delete, Cancel and Report Spam are flat buttons; the attachment and money buttons have a thin border in the item's quality color; open a second letter and the text is still light.
+- Expect: the letter window is a flat panel with no parchment behind the text; the text and any headings are light (not gold); Reply, Delete, Cancel and Report Spam are flat buttons; the page behind the text is a flat sunk box; the subject and sender are light, not gold; the attachment and money buttons have a thin border in the item's quality color; open a second letter and the text is still light. Open an auction invoice (a sold or won item): its labels (Item sold, Purchased by, Sale price, Deposit, Auction house cut, Amount received) are light on the dark page, the + and - beside the deposit and the cut are visible, the prices are in the Vanguard font with their coins, and the sum line is one thin line.
 - If it fails, paste: a screenshot of the open letter and `/vg errors`.
 
 ### 14.2.2 Guild window and its pages
@@ -526,7 +526,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.2.6 Guild registrar and petition
 
 - Do: visit a guild registrar and read the greeting, click to buy a charter; open a charter you hold or are asked to sign, and open the tabard designer from the tabard vendor.
-- Expect: the registrar, petition and tabard windows are flat panels with no parchment; the registrar text, charter names, signatures and headings are light (not gold); the tabard model and its colour choices look as the game draws them.
+- Expect: the registrar, petition and tabard windows are flat panels with no parchment; the registrar text, "Available services", the cost label, charter names, signatures and headings and the tabard vendor's name are light (not gold or black); the registrar's options (Purchase a guild charter, Register) are readable rows that wash lighter under the mouse and keep their little quest icon; the charter's price is in the Vanguard font; on the tabard window the five pickers (emblem, colours, border, background) are flat sunk boxes with a small arrow each side that still page through the choices, the cost box and the money strip at the bottom are flat sunk boxes with the price in the Vanguard font, and the tabard model and its rotate buttons look as the game draws them.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.2.7 Role check popup

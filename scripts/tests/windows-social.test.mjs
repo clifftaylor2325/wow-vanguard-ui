@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { WINDOWS_ENV, isTok, loggedIn, setCombat, windowState } from "./helpers.mjs";
+import { INSIDES_LUA, WINDOWS_ENV, isTok, loggedIn, setCombat, windowState } from "./helpers.mjs";
 
 // The social group's switch turned off in the saved variables.
 const OFF = { savedVariables: "VanguardDB.profiles = { Default = { Windows = { social = false } } }" };
@@ -30,6 +30,21 @@ const MAIL_ENV = WINDOWS_ENV + `
   end
   __updates = 0
   function OpenMailFrame:Update() __updates = __updates + 1 OpenStationeryBackgroundLeft:SetAlpha(1) OpenMailBodyText.__colors = {} end
+`;
+
+// The letter's page, subject, sender and auction invoice as MailFrame.xml builds them: a scroll frame whose stationery is its own
+// art, gold subject and sender, brown invoice labels, four money lines (the deposit's and the house cut's with an unnamed + and -,
+// the sale price's with a Count), and the sum line (a texture the game re-anchors on every update).
+const INVOICE_ENV = MAIL_ENV + INSIDES_LUA + `
+  OpenMailFrame.ScrollFrame = CreateFrame("ScrollFrame", "OpenMailScrollFrame", OpenMailFrame) __art(OpenMailFrame.ScrollFrame)
+  OpenMailSubject, OpenMailSender = __text(OpenMailFrame, "TEST-ONLY subject"), CreateFrame("Frame", "OpenMailSender", OpenMailFrame)
+  OpenMailSender.Name = __text(OpenMailSender, "TEST-ONLY sender")
+  local invoice = CreateFrame("Frame", "OpenMailInvoiceFrame", OpenMailFrame)
+  for _, n in ipairs(ns.GetModule("Windows").MAIL_INVOICE_TEXTS) do _G[n] = __text(invoice, "TEST-ONLY") _G[n]:SetTextColor(0.18, 0.12, 0.06) end
+  OpenMailArithmeticLine = __art(invoice, "OpenMailArithmeticLine")
+  for _, n in ipairs(ns.GetModule("Windows").MAIL_INVOICE_MONEY) do _G[n] = __moneyLine(n, invoice) end
+  OpenMailDepositMoneyFrame.Sign = __text(OpenMailDepositMoneyFrame, "+")
+  OpenMailSalePriceMoneyFrame.Count = __text(OpenMailSalePriceMoneyFrame, "1")
 `;
 
 it("open mail: the letter window in the theme, its stationery faded, body text light, buttons and items dressed", () => {
@@ -66,6 +81,32 @@ it("open mail: a client without the body text, the stationery, the items or the 
   const odd = loggedIn(WINDOWS_ENV + `__window("OpenMailFrame") OpenMailBodyText = {} OpenMailLetterButton = {}`);
   odd.eval("OpenMailFrame:Show()");
   expect([windowErrors(addon), windowErrors(odd), addon.eval("return #ns.errors")], "no errors").toEqual(["none", "none", 0]);
+});
+
+// Whether a colour (r, g, b of a font string's text colour) is the theme's text token.
+const isText = (addon, expr) => isTok(addon, addon.eval(`return ${expr}.__textColor`), "text");
+
+it("open mail: the letter's page is a sunk area, the subject, sender and invoice in the text colour, the sum line one pixel of divider, again after a redraw", () => {
+  const addon = loggedIn(INVOICE_ENV);
+  addon.eval("OpenMailFrame:Show()");
+  expect(addon.eval("return { __sunk(OpenMailFrame.ScrollFrame), __faded(OpenMailFrame.ScrollFrame) }"), "the page sunk, its art faded").toEqual([true, true]);
+  expect([isText(addon, "OpenMailSubject"), isText(addon, "OpenMailSender.Name"), isText(addon, "OpenMailInvoicePurchaser"), isText(addon, "OpenMailInvoiceMoneyDelay")],
+    "gold and brown strings go to the text colour").toEqual([true, true, true, true]);
+  expect(addon.eval(`return { __themed(OpenMailDepositMoneyFrame.GoldButton.Text), __themed(OpenMailTransactionAmountMoneyFrame.CopperButton.Text),
+    __themed(OpenMailSalePriceMoneyFrame.SilverButton.Text), __themed(OpenMailHouseCutMoneyFrame.GoldButton.Text) }`), "the four money lines in the number font").toEqual([true, true, true, true]);
+  expect([isText(addon, "OpenMailDepositMoneyFrame.Sign"), isText(addon, "OpenMailSalePriceMoneyFrame.Count")], "the + and the count beside the money").toEqual([true, true]);
+  expect(addon.eval("return { OpenMailArithmeticLine:GetAlpha(), ns.Theme.DividerParts(OpenMailArithmeticLine) ~= nil }"), "the sum line faded under a divider").toEqual([0, true]);
+  addon.eval("OpenMailInvoiceDeposit:SetTextColor(0.18, 0.12, 0.06) OpenMailFrame:Update()");
+  expect([isText(addon, "OpenMailInvoiceDeposit"), windowErrors(addon), addon.eval("return #ns.errors")], "light again after the game redraws the letter").toEqual([true, "none", 0]);
+});
+
+it("open mail: a letter window missing its page, invoice or sum line loads cleanly, and the switch off leaves the invoice the game's", () => {
+  const odd = loggedIn(MAIL_ENV + INSIDES_LUA + `OpenMailFrame.ScrollFrame = {} OpenMailSubject = {} OpenMailSender = {} OpenMailDepositMoneyFrame = {} OpenMailArithmeticLine = {}`);
+  odd.eval("OpenMailFrame:Show()");
+  expect([windowErrors(odd), odd.eval("return #ns.errors")]).toEqual(["none", 0]);
+  const off = loggedIn(INVOICE_ENV, OFF);
+  off.eval("OpenMailFrame:Show()");
+  expect([isText(off, "OpenMailInvoiceDeposit"), off.eval("return ns.Theme.DividerParts(OpenMailArithmeticLine) == nil and OpenMailFrame.ScrollFrame.__alpha ~= 0")], "with the group off").toEqual([false, true]);
 });
 
 // Guild window -------------------------------------------------------------------------------------
@@ -428,6 +469,27 @@ const CREATION_ENV = WINDOWS_ENV + `
   function PetitionFrame_Update() __redraws = __redraws + 1 __dark() end
 `;
 
+// The registrar's options and price, the tabard's pickers, cost box and money strip as the game builds them (QuestTitleButtonTemplate:
+// a quest icon, a highlight strip, a title the game draws black; TabardFrameCustomizeTemplate: a label plate, its caption and two page
+// arrows; the cost box a tooltip backdrop; the money strip a marble inset and a gold edge).
+const CREATION_PARTS_ENV = CREATION_ENV + INSIDES_LUA + `
+  AvailableServicesText, GuildRegistrarCostLabel, TabardFrameNameText = __text(GuildRegistrarFrame, "TEST-ONLY services"), __text(GuildRegistrarFrame, "Costs"), __text(TabardFrame, "TEST-ONLY vendor")
+  for i = 1, 2 do
+    local b = CreateFrame("Button", "GuildRegistrarButton" .. i, GuildRegistrarFrame)
+    b.Icon, b.glow = __art(b), __art(b)
+    b:SetFontString(__text(b, "TEST-ONLY option")) b:GetFontString():SetTextColor(0, 0, 0)
+    b.GetHighlightTexture = function() return b.glow end
+  end
+  GuildRegistrarMoneyFrame, TabardFrameCostMoneyFrame, TabardFrameMoneyFrame = __moneyLine("GuildRegistrarMoneyFrame", GuildRegistrarFrame), __moneyLine("TabardFrameCostMoneyFrame", TabardFrame), __moneyLine("TabardFrameMoneyFrame", TabardFrame)
+  TabardFrameCustomizationBorder = __art(TabardFrame, "TabardFrameCustomizationBorder")
+  for i = 1, 5 do
+    local p = CreateFrame("Frame", "TabardFrameCustomization" .. i, TabardFrame) __art(p) p.caption = __text(p, "TEST-ONLY caption")
+    for _, side in ipairs({ "Left", "Right" }) do local b = CreateFrame("Button", p:GetName() .. side .. "Button", p) b.Art = b:CreateTexture() end
+  end
+  TabardFrameCostFrame, TabardFrameMoneyInset = __well("TabardFrameCostFrame", TabardFrame), __well("TabardFrameMoneyInset", TabardFrame)
+  TabardFrameMoneyBg = CreateFrame("Frame", "TabardFrameMoneyBg", TabardFrame) __art(TabardFrameMoneyBg)
+`;
+
 // The creation windows' names.
 const CREATION = ["GuildRegistrarFrame", "PetitionFrame", "TabardFrame"];
 
@@ -467,6 +529,43 @@ it("guild creation: a second show paints nothing more, the switch off leaves the
   const bare = loggedIn(WINDOWS_ENV + `__window("PetitionFrame") __window("TabardFrame") GuildRegistrarFrameEditBox = {}`);
   bare.eval("PetitionFrame:Show() TabardFrame:Show()");
   expect([windowErrors(bare), bare.eval("return #ns.errors")], "no texts, no game functions, no buttons").toEqual(["none", 0]);
+});
+
+it("guild registrar and tabard: headings and labels light, the options rows keeping their icon, pickers and cost boxes sunk, prices in the number font", () => {
+  const addon = loggedIn(CREATION_PARTS_ENV);
+  for (const name of CREATION) addon.eval(`${name}:Show()`);
+  expect([isText(addon, "AvailableServicesText"), isText(addon, "GuildRegistrarCostLabel"), isText(addon, "TabardFrameNameText"), addon.eval("return __headed(AvailableServicesText)")],
+    "the services heading, the cost label and the vendor's name in the text colour").toEqual([true, true, true, true]);
+  expect(addon.eval(`local b = GuildRegistrarButton1
+    return { ns.Theme.RowParts(b) ~= nil, b.Icon.__alpha, b.glow.__alpha, ns.Theme.RowParts(GuildRegistrarButton2) ~= nil }`), "the options are theme rows, the quest icon kept, the hover strip faded").toEqual([true, 1, 0, true]);
+  expect(isText(addon, "GuildRegistrarButton2:GetFontString()"), "the title in the text colour").toBe(true);
+  addon.hover("GuildRegistrarButton1");
+  expect(addon.eval("return ns.Theme.RowParts(GuildRegistrarButton1).hover:IsShown()"), "the hover wash under the mouse").toBe(true);
+  addon.hover(null);
+  expect(addon.eval(`local out = {}
+    for i = 1, 5 do local p = _G["TabardFrameCustomization" .. i]
+      out[i] = { __sunk(p), p.caption:GetAlpha(), ns.Theme.ArrowParts(_G[p:GetName() .. "LeftButton"]) ~= nil, ns.Theme.ArrowParts(_G[p:GetName() .. "RightButton"]) ~= nil } end
+    return out`), "five pickers: an inset, the caption kept, two theme arrows each").toEqual(Array(5).fill([true, 1, true, true]));
+  expect(addon.eval(`return { TabardFrameCustomizationBorder.__alpha, __sunk(TabardFrameCostFrame), __sunk(TabardFrameMoneyInset), __faded(TabardFrameMoneyBg), __faded(TabardFrameCostFrame) }`),
+    "the border art faded, the cost box and money inset sunk, the gold edge faded").toEqual([0, true, true, true, true]);
+  expect(addon.eval(`return { __themed(GuildRegistrarMoneyFrame.GoldButton.Text), __themed(TabardFrameCostMoneyFrame.GoldButton.Text), __themed(TabardFrameMoneyFrame.CopperButton.Text) }`), "the prices in the number font").toEqual([true, true, true]);
+  addon.eval("GuildRegistrar_OnShow() TabardFrameNameText:SetTextColor(1, 0.8, 0)");
+  expect([isText(addon, "AvailableServicesText"), windowErrors(addon), addon.eval("return #ns.errors")], "again after the game redraws").toEqual([true, "none", 0]);
+});
+
+it("guild registrar and tabard: a second show paints nothing more, the switch off leaves them the game's, missing parts load cleanly", () => {
+  const addon = loggedIn(CREATION_PARTS_ENV);
+  for (const name of CREATION) addon.eval(`${name}:Show()`);
+  const painted = windowState(addon, "TabardFrame").painted;
+  for (const name of CREATION) addon.eval(`${name}:Hide() ${name}:Show()`);
+  expect(windowState(addon, "TabardFrame").painted, "painting again piles up nothing").toBe(painted);
+  const off = loggedIn(CREATION_PARTS_ENV, OFF);
+  for (const name of CREATION) off.eval(`${name}:Show()`);
+  expect(off.eval("return { ns.Theme.RowParts(GuildRegistrarButton1) == nil, __faded(TabardFrameCustomization1), TabardFrameCustomizationBorder:GetAlpha(), GuildRegistrarButton1.glow:GetAlpha() }"), "left the game's").toEqual([true, false, 1, 1]);
+  const odd = loggedIn(CREATION_ENV + `GuildRegistrarButton1 = {} TabardFrameCustomization1 = {} TabardFrameCustomization2 = CreateFrame("Frame", "TabardFrameCustomization2", TabardFrame)
+    TabardFrameCostFrame = {} TabardFrameCustomizationBorder = {} TabardFrameMoneyBg = {}`);
+  odd.eval("GuildRegistrarFrame:Show() TabardFrame:Show()");
+  expect([windowErrors(odd), odd.eval("return #ns.errors")], "a client with the pickers and strips missing").toEqual(["none", 0]);
 });
 
 // Role poll and invite popups -----------------------------------------------------------------------------
