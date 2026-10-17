@@ -147,3 +147,43 @@ it("enemy plates are turned on once per character, then left to the player", () 
   expect(addon.eval("VanguardCharDB = nil ns.GetModule('Nameplates').EnemyPlatesOnce() return GetCVar('nameplateShowEnemies')"), "no saved settings yet: nothing changes").toBe("0");
   expect(loggedIn("SetCVar = nil").eval("return VanguardCharDB.enemyPlatesSet"), "a client without SetCVar: no error, marked done").toBe(true);
 });
+// TEST-ONLY the game's personal resource display (Blizzard_PersonalResourceDisplay.xml): the health, power and
+// alternate power bars, each with a backdrop texture, a heal prediction texture and the three value texts.
+const PRD_ENV = `
+  PersonalResourceDisplayFrame = CreateFrame("Frame", "PersonalResourceDisplayFrame", UIParent)
+  PersonalResourceDisplayFrame:SetSize(200, 75) PersonalResourceDisplayFrame:SetPoint("BOTTOM", UIParent, "CENTER", 0, -120) PersonalResourceDisplayFrame:Hide()
+  local function bar(parent, key)
+    local b = CreateFrame("StatusBar", nil, parent)
+    b:SetSize(200, 12) b:SetPoint("TOP") b:SetStatusBarTexture("TEST-ONLY-BAR") b:SetStatusBarColor(0, 0, 1)
+    b.bg = b:CreateTexture(nil, "BACKGROUND") b.bg:SetTexture("TEST-ONLY-BG")
+    b.myHealPrediction = b:CreateTexture(nil, "BORDER") b.myHealPrediction:SetTexture("TEST-ONLY-HEAL")
+    for _, k in ipairs({ "TextString", "LeftText", "RightText" }) do b[k] = b:CreateFontString(nil, "OVERLAY") b[k]:SetFont("TEST-ONLY-FRIZQT", 10, "") end
+    parent[key] = b
+  end
+  PersonalResourceDisplayFrame.HealthBarsContainer = CreateFrame("Frame", nil, PersonalResourceDisplayFrame)
+  bar(PersonalResourceDisplayFrame.HealthBarsContainer, "healthBar") bar(PersonalResourceDisplayFrame, "PowerBar") bar(PersonalResourceDisplayFrame, "AlternatePowerBar")
+`;
+// One of the display's bars: its backdrop's and heal prediction's alpha, its fill texture and colour, whether
+// Vanguard painted a panel on it, and its value text's font (true when the theme's bold face) and flags.
+const resourceBar = (addon, path) => addon.eval(`local b = PersonalResourceDisplayFrame.${path}
+  local panel = 0 for _, r in ipairs({ b:GetRegions() }) do if r.__kind == "Texture" and r ~= b.bg and r ~= b.myHealPrediction and r ~= b:GetStatusBarTexture() and r:GetAlpha() ~= 0 then panel = panel + 1 end end
+  local path, _, flags = b.TextString:GetFont()
+  return { bg = b.bg:GetAlpha(), heal = b.myHealPrediction:GetAlpha(), fill = b:GetStatusBarTexture().__texture, color = b.__barColor, panel = panel > 0, font = path == ns.Theme.Font(true), flags = flags }`);
+it("the game's personal resource display takes the plate look, and keeps its colours, values and place", () => {
+  const addon = loggedIn(PRD_ENV);
+  addon.eval("PersonalResourceDisplayFrame:Show()");
+  const health = resourceBar(addon, "HealthBarsContainer.healthBar");
+  expect(health, "the health bar: backdrop faded, the heal prediction kept, the theme's fill on a panel, the plate font").toMatchObject({ bg: 0, heal: 1, fill: addon.eval("return ns.Theme.BarTexture()"), color: [0, 0, 1, 1], panel: true, font: true, flags: "OUTLINE" });
+  expect([resourceBar(addon, "PowerBar").bg, resourceBar(addon, "AlternatePowerBar").fill === health.fill], "the power and alternate power bars too").toEqual([0, true]);
+  expect(addon.frame("PersonalResourceDisplayFrame").rect, "the display is neither moved nor resized").toMatchObject({ width: 200, height: 75 });
+  expect(addon.eval("return PersonalResourceDisplayFrame.__points.BOTTOM.relPoint"), "it keeps the game's anchor").toBe("CENTER");
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("PersonalResourceDisplayFrame.PowerBar.bg:SetAlpha(1) PersonalResourceDisplayFrame:Hide() PersonalResourceDisplayFrame:Show()");
+  expect([resourceBar(addon, "PowerBar").bg, addon.eval("return ns.Theme.PaintedCount()")], "shown again: the art faded again, nothing painted twice").toEqual([0, painted]);
+  const off = loggedIn(PRD_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Nameplates = false } } }" });
+  off.eval("PersonalResourceDisplayFrame:Show()");
+  expect(resourceBar(off, "PowerBar"), "with the module off the game's bars are left alone").toMatchObject({ bg: 1, fill: "TEST-ONLY-BAR", panel: false, font: false, flags: "" });
+  const bare = loggedIn('PersonalResourceDisplayFrame = CreateFrame("Frame", "PersonalResourceDisplayFrame", UIParent)');
+  bare.eval("PersonalResourceDisplayFrame:Show()");
+  expect(bare.eval("return #ns.errors"), "a display without those bars: nothing to dress, no error").toBe(0);
+});

@@ -323,6 +323,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a flat panel at the bottom right, just left of the bags and menu bar, clear of the tooltip when you hover a player (move it with `/vg unlock`; turn the game's meter off in its settings to see only this one), "Damage per second", with up to eight bars in class colors, each with a number, a name and a figure, yours in the accent; the figures update during the fight and stay after it; the title switches to "Healing per second" and back. In an instance, if the game hides values, lines may be blank or "Nothing to show", never an error popup. [Needs in game: that the two Enum.DamageMeterType keys exist, that a session's combatSources lines carry name, classFilename, amountPerSecond and isLocalPlayer, that SetValue, SetMinMaxValues and SetText accept the hidden values in combat, that AbbreviateNumbers does too, and that the panel is wide and tall enough to read. `/vg errors` must stay empty.]
 - If it fails, paste: the `/run` line's output, what the panel shows in combat and `/vg errors`.
 
+### 7.8 Personal resource display
+
+- Do: turn on the game's personal resource display (Options → Combat → Personal Resource Display, or `/console nameplateShowSelf 1`), stand still and look under your character; take a hit and spend some mana, rage or energy. Then turn the Nameplates module off under `/vg` → Modules, reload and look again.
+- Expect: the health and power bars under your character are flat bars in the theme's bar texture on thin slate panels, with no grey rounded backdrop behind them; their colours (class or green health, the power's colour) and values are the game's, they fill and empty as the game's did, any numbers on them are in the plates' outlined font, and they sit where Edit Mode puts them. With the module off they are the game's own again. [Needs in game: that `PersonalResourceDisplayFrame` is the display on Forever (its addon is gated to mainline, which Forever matches) and that the client makes no nameplate for "player" there; if it does, Vanguard draws its own plate on it as on any other.]
+- If it fails, paste: a screenshot under your character and `/vg errors`.
+
 ## 8. Quests
 
 ### 8.1 Quest dialog
@@ -713,6 +719,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: with chat bubbles on in the game's options (Options → Interface → Social → Chat Bubbles), say something in /say out in the world, then have a party or raid member or an NPC speak near you; then enter a dungeon and say something there.
 - Expect: in the world, each speech bubble is a flat, slightly see-through slate panel with a soft shadow instead of the game's rounded white bubble, its text in Vanguard's font, light on the dark panel; the bubble appears and goes as before; inside the dungeon the bubbles keep the game's own look (the engine does not let addons touch them there) and `/vg errors` stays empty.
 - If it fails, paste: a screenshot of a bubble and `/vg errors`.
+
+### 14.7.8 Combat text and floating damage numbers
+
+- Do: turn on the game's scrolling combat text (Options → Combat → Show Combat Text, or `/console enableFloatingCombatText 1`), fight a mob and take a hit, watching the text over your character and the damage numbers over the mob. Then set Font under `/vg` → General to the game's font, reload and fight again.
+- Expect: the text over your character (damage taken, heals, energy gains) is in Vanguard's font at the game's own sizes and colours, with a critical hit (the number that grows and shrinks) as sharp as the rest, and the damage numbers over the mob are in Vanguard's font too. After the reload with the game's font chosen, both are the game's own. [Needs in game: that the engine reads `DAMAGE_TEXT_FONT` after Vanguard's ADDON_LOADED, so the numbers over the mob change (if they stay the game's, the path must be set when the file loads instead), and that `enableFloatingCombatText` is the switch's CVar on Forever.]
+- If it fails, paste: a screenshot of each kind of number and `/vg errors`.
 
 ### 14.8.1 Character pane side tabs
 

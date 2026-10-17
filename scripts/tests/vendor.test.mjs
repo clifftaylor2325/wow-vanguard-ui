@@ -151,3 +151,30 @@ it("the error line and the zone text in the theme font, kept after a Text size c
   const some = loggedIn('ZoneTextFont = CreateFrame("Frame"):CreateFontString()');
   expect([some.eval("return select(2, ZoneTextFont:GetFont())"), some.eval("return #ns.errors")], "a client with only some of them gets those, and loads cleanly").toEqual([32, 0]);
 });
+
+// TEST-ONLY the scrolling combat text's font object (GameFontStyles.xml), as a font string the stub can read back,
+// and the engine's floating damage font path.
+const COMBAT_TEXT_ENV = 'CombatTextFont = CreateFrame("Frame"):CreateFontString() CombatTextFont:SetFont("TEST-ONLY-FRIZQT", 64, "") DAMAGE_TEXT_FONT = "TEST-ONLY-DAMAGE"';
+// The combat text font object's path (true when the theme's bold face) and size.
+const combatFont = (addon) => addon.eval("local path, size = CombatTextFont:GetFont() return { path == ns.Theme.Font(true), size }");
+
+it("the scrolling combat text and the floating damage numbers in the theme font, while the module is on", () => {
+  const addon = loggedIn(COMBAT_TEXT_ENV);
+  expect(addon.eval("return DAMAGE_TEXT_FONT == ns.Theme.Font(true)"), "the engine's damage font path is the theme's bold face, set at Vanguard's own load").toBe(true);
+  expect(combatFont(addon), "the combat text's part of the game isn't loaded yet: its font object is the game's").toEqual([false, 64]);
+  addon.fire("ADDON_LOADED", "Blizzard_TEST-ONLY-Other");
+  expect(combatFont(addon)[0], "another part loading changes nothing").toBe(false);
+  addon.fire("ADDON_LOADED", "Blizzard_CombatText");
+  expect(combatFont(addon), "the part loaded: the theme's bold face at the game's own size, so the heights the game scales each line to stay sharp").toEqual([true, 64]);
+  addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
+  expect(combatFont(addon)[1], "re-applied at the new Text size").toBe(96);
+  const already = loggedIn(COMBAT_TEXT_ENV + ' C_AddOns.IsAddOnLoaded = function(name) return name == "Vanguard" or name == "Blizzard_CombatText" end');
+  expect(combatFont(already), "already loaded at login: themed at once").toEqual([true, 64]);
+  const off = loggedIn(COMBAT_TEXT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Merchant = false } } }" });
+  off.fire("ADDON_LOADED", "Blizzard_CombatText");
+  expect([off.eval("return DAMAGE_TEXT_FONT"), combatFont(off)], "with the module off both are the game's").toEqual(["TEST-ONLY-DAMAGE", [false, 64]]);
+  const client = loggedIn(COMBAT_TEXT_ENV, { savedVariables: 'VanguardDB.profiles = { Default = { theme = { font = "client" } } }' });
+  expect(client.eval("return DAMAGE_TEXT_FONT"), "the game's font chosen: the game's damage font stays").toBe("TEST-ONLY-DAMAGE");
+  const none = loggedIn("DAMAGE_TEXT_FONT = nil C_AddOns.IsAddOnLoaded = nil");
+  expect([none.eval("return DAMAGE_TEXT_FONT == nil"), none.eval("return #ns.errors")], "a client without the path or the loaded check: left alone, no error").toEqual([true, 0]);
+});

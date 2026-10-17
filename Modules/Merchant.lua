@@ -6,7 +6,9 @@
 --     shows (ability not ready, not enough rage or energy, no target...).
 --     Errors you can act on (out of range, not enough mana, bags full) stay,
 --     and still go through the client's own error line.
---   * the error line, and the zone names shown as you enter a place, in the theme font.
+--   * the error line, and the zone names shown as you enter a place, in the theme font;
+--     so are the game's scrolling combat text (when you turn it on) and the floating
+--     damage numbers over your target.
 
 local ADDON, ns = ...
 
@@ -123,10 +125,49 @@ function MC.ThemeFonts()
   end
 end
 
+-- The scrolling combat text's font object (Blizzard_CombatText, a part of the game that loads
+-- when its setting is on), at the game's own size like the HUD text above: the game sets each
+-- line's height itself (25, up to 60 for a critical hit) by scaling what the face drew, so a
+-- smaller face would draw critical hits soft. The face and weight are what change.
+MC.COMBAT_FONTS = { CombatTextFont = { 64, true } }
+
+-- True when a part of the game is loaded (a client without the call, or a hidden answer, counts as no).
+local function partLoaded(name)
+  local fn = C_AddOns and C_AddOns.IsAddOnLoaded
+  local on = type(fn) == "function" and fn(name)
+  return not ns.IsSecret(on) and on == true
+end
+
+-- The scrolling combat text in the theme font: when its part of the game has just loaded
+-- (justLoaded, from ADDON_LOADED) or, at Enable, if the client says it is loaded already.
+-- The game draws the lines in the font object's colour.
+function MC.ThemeCombatText(justLoaded)
+  if justLoaded or partLoaded("Blizzard_CombatText") then T.FontObjects(MC.COMBAT_FONTS) end
+end
+
+-- The engine's floating damage numbers (over your target) in the theme font: the path the engine
+-- reads, DAMAGE_TEXT_FONT, is set at Vanguard's own load, before the engine reads it, unless the
+-- theme font is the game's own (Font set to the game's, or a Korean or Chinese client), which
+-- keeps the game's damage font. A client without the path is left alone.
+function MC.ThemeDamageFont()
+  local path = T.Font(true)
+  if type(DAMAGE_TEXT_FONT) ~= "string" or path == STANDARD_TEXT_FONT then return end
+  DAMAGE_TEXT_FONT = path
+end
+
+-- A part of the game loaded: Vanguard's own (its settings are back: the damage font, while the
+-- module is on) or the scrolling combat text's (its font object, once the module is enabled).
+local function onLoaded(_, name)
+  if name == ADDON and ns.ModuleEnabled("Merchant") then MC.ThemeDamageFont() end
+  if name == "Blizzard_CombatText" and MC.settings then MC.ThemeCombatText(true) end
+end
+ns.On("ADDON_LOADED", onLoaded)
+
 -- Module entry point (Core/Modules.lua).
 function MC.Enable(settings)
   MC.settings = settings
   ns.On("MERCHANT_SHOW", onMerchant)
   if settings.errors then filterErrors() end
   MC.ThemeFonts()
+  MC.ThemeCombatText()
 end

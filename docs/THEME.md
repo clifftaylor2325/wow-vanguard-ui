@@ -128,7 +128,7 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 | `auraTimerSmall` | 10 (7 - 13) | SemiBold | OUTLINE | The timer on smaller aura icons. |
 | `chat` | 12 (8 - 16) | Medium | - | Chat windows ("Medium"). |
 
-Sizes that are not roles, all inside the code-quality rule because they are scaled with `T.ScaledSize` and set on the game's font objects: chat's Small/Medium/Large (10/12/14, `Modules/Chat.lua`), the tooltip fonts (header 14 SemiBold, body 12, small 11, `Modules/Tooltips.lua`) and the game's quest tracker fonts (header 13 SemiBold, lines 12, `Modules/MenuStrip.lua`).
+Sizes that are not roles, all inside the code-quality rule because they are scaled with `T.ScaledSize` and set on the game's font objects: chat's Small/Medium/Large (10/12/14, `Modules/Chat.lua`), the tooltip fonts (header 14 SemiBold, body 12, small 11, `Modules/Tooltips.lua`), the game's quest tracker fonts (header 13 SemiBold, lines 12, `Modules/MenuStrip.lua`) and the game's HUD text objects at their own sizes (the error line 16, the zone name 32, the subzone 26, the PvP line 22 and the scrolling combat text 64, all SemiBold, `Modules/Merchant.lua`).
 
 The `outline` setting (default `""`) adds an outline to every role that has none; it has no control in the options window.
 
