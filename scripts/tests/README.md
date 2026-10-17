@@ -123,6 +123,8 @@ change fires the events the client would.
 | `addAura(unit, aura)` / `removeAura(unit, name)` | Auras (`name, duration, applications, isHarmful, dispelName, sourceUnit, icon, spellId`); containers refresh and UNIT_AURA fires. |
 | `setAction(slot, fields)` | An action slot: `{ id: 133 }` is Fireball (world spells: 133, 1459, 116, 2136, 118), plus `cooldown: { start, duration }`, `usable`, `count`, `charges`, ... |
 | `addQuest(quest)` | A quest in the log (`questID, title, level, watched, objectives: [{ text, finished, type }]`). |
+| `world.setQuestTimer(questID, seconds)` (Lua, through `addon.eval`) | A quest's timer: `seconds` left on the clock (a `secret(n)` for one the client hides), `nil` to clear it; QUEST_LOG_UPDATE fires, as the log does. `C_QuestLog.GetQuestTimers` answers from `world.questTimers` with the remaining seconds as `{ questID, questTimer }` each, counting down with `advance`. |
+| `world.trackRecipe(recipeID, tracked)` (Lua, through `addon.eval`) | Tracks a recipe (`tracked` true or nil) or untracks it (false) and fires TRACKED_RECIPE_UPDATE(recipeID, tracked). `C_TradeSkillUI.GetRecipesTracked(isRecraft)` answers from `world.trackedRecipes` (recrafts are none); `C_TradeSkillUI.SetRecipeTracked` goes through it. |
 | `learn(id, fields)` / `forgetAll()` | A spell in the spellbook (`name, icon, rank, helpful, passive, offSpec`; `C_SpellBook` reads them, SPELLS_CHANGED fires), or an empty spellbook. |
 | `openNpc(data)` | A gossip or quest giver window. |
 | `openAuctionHouse()` / `closeAuctionHouse()` | The auction house: `AuctionHouseFrame` (made on the first open, as the game loads it) shows and AUCTION_HOUSE_SHOW fires; AUCTION_HOUSE_CLOSED fires and it hides. `C_AuctionHouse` answers from `world.ah` (browse and search results, the replicate list, your auctions; see `scripts/lib/wow-world.lua`); queries are only recorded in `ah.queries`, so a test fires the result event itself (`fireAuctionEvents(key, id)` fires every one), and every restricted call (PostItem, PostCommodity, ConfirmPost*, CancelAuction, PlaceBid, StartCommoditiesPurchase) lands in `ah.restricted` with `clicked` (made inside a click) and `path` (the stack that made it). |
@@ -136,9 +138,13 @@ change fires the events the client would.
 | `secretGeometry(mode)` | Secret positions and sizes, as the client hides them: `"derived"` (a bar's fill while its value is secret, a font string showing secret text, and anything anchored to those), `"strict"` (those, and every frame of the game's but UIParent), or off (`null`). Geometry getters then answer with secrets. |
 | `get(field)` / `set(field, value)` | Any world field by path: `set("money", 12345)`, `set("build.interface", 120007)`. |
 | `without(...names)` | Removes global APIs, as an older client would lack them. |
+| `addChatBubble(text, opts)` | A chat bubble over a speaker's head saying `text`: a frame in `world.bubbles` with one child panel holding nine `TEST-ONLY-ART` textures and the text (`panel.String`), listed by `C_ChatBubbles.GetAllChatBubbles`; CHAT_MSG_SAY fires. `opts.forbidden` makes its `IsForbidden` true (an instance's bubble), `opts.empty` leaves it without a panel, `opts.unkeyed` leaves its text without the `String` key, `opts.event` is the chat event that fires instead of CHAT_MSG_SAY (`"CHAT_MSG_RAID"`). Returns its index. |
+| `set("instance", true)` | The player is in an instance: `IsInInstance()` answers `true, "party"` (default `false, "none"`). |
 
 The world's tables are open: `addon.eval("__wfgWorld.units.player.level = 10")`
-is fine when no call covers a case.
+is fine when no call covers a case. The client's font paths are plain globals,
+`STANDARD_TEXT_FONT` and `DAMAGE_TEXT_FONT` (both `Fonts\FRIZQT__.TTF`, the enUS
+values); a test that must tell them apart sets one in `env`.
 
 ### Input
 
@@ -228,7 +234,9 @@ error: the test fails unless `expectErrors` names it.
 `WINDOWS_ENV` (in `helpers.mjs`) defines TEST-ONLY `__window(name)`, a frame shaped like the game's
 ButtonFrameTemplate (an art texture marked `TEST-ONLY-ART`, `NineSlice`, `Inset`, `PortraitContainer`,
 `CloseButton`, `TitleContainer.TitleText`, `<name>Button1-2`), and makes `MerchantFrame`, `StaticPopup1` and
-`MirrorTimer1`. `windowState(addon, name)` reads one back: `{ art, nine, portrait, insetNine, panel, title, painted }`
+`MirrorTimerContainer` (the breath bars' container: three unnamed timers with a `StatusBar`, and a `SetupTimer(i)`
+that gives the i-th the game's bar texture back). `windowState(addon, name)` reads one back: `{ art, nine, portrait,
+insetNine, panel, title, painted }`
 (`art` is the marked texture's alpha; `panel` is whether Vanguard painted anything). The `windows-<area>.test.mjs`
 files build on them; see docs/handoff/RESKIN-PLAN.md section 0.
 

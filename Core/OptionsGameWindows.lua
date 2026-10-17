@@ -13,7 +13,7 @@ local WINDOW_GROUPS = {
   { "timers", "Breath and fatigue bars (reload)" },
   { "durability", "Durability on the character pane's gear (reload)" },
   { "social", "Mail, guild, channels, friends and guild-creation windows (reload)" },
-  { "town", "Stable, trainer, bags, loot and item dialogs (reload)" },
+  { "town", "Stable, trainer, merchant, bags, loot and item dialogs (reload)" },
   { "system", "Game options, Edit Mode, keybinding and help windows (reload)" },
   { "map", "World map, group finder, calendar and Legacy windows (reload)" },
   { "menus", "Right-click menus, dropdowns and more tooltips (reload)" },

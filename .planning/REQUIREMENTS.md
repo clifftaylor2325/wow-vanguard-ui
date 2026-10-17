@@ -38,6 +38,17 @@ Requirements for the launch on 2026-11-04. Each maps to a roadmap phase.
 - [ ] **UI-05**: Every window Vanguard touches is styled, including the PvP windows (RESKIN S8.1–S8.5)
 - [ ] **UI-06**: Open visual issues #187–#204 are resolved, checked in game
 
+### UI Coherence (added 2026-10-17 from the UI/UX review; spec in `docs/design/UI-COHERENCE.md`)
+
+- [ ] **UI-07**: "Selected" is shown three ways only: an accent fill for choose-one-of-few, a rail for navigation and lists, an attached tab for the current page
+- [ ] **UI-08**: The game's gold marks content only; each place (window title, section header, column header, caption, value, hint) has one text role and colour listed in `docs/THEME.md`; an empty list or panel says what will fill it
+- [ ] **UI-09**: Every theme variant keeps its surfaces in lightness order, and every control sits on one grid (rows 28, inline controls 20, standalone buttons 26, a 200-wide control column) with secondary, primary and danger button kinds
+- [ ] **UI-10**: Every control follows one state matrix (hover, press, disabled, focus), and menus close on Escape and on a click outside
+- [ ] **UI-11**: No game check box art shows inside a window Vanguard owns, and inside every framed window each inner surface is one of the theme's material tiers
+- [ ] **UI-12**: Every dialog has one primary action, a destructive action is never the accent button, and dialogs open like windows and close on Escape
+- [ ] **UI-13**: Every Vanguard window's padding, insets and footer come from `T.SPACE` (cuttable)
+- [ ] **UI-14**: Knobs and thumbs glide 0.1 s out of combat and jump in combat or with Reduce motion (cuttable)
+
 ### Levelling and Group Features (cut first if time runs short)
 
 - [ ] **FEAT-01**: Each quest's XP shows on its tracker row, and XP waiting in the quest log shows on the XP bar tooltip
@@ -100,6 +111,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UI-04 | Phase 6 | Pending |
 | UI-05 | Phase 8 | Pending |
 | UI-06 | Phase 8 | Pending |
+| UI-07 | Phase 8.5 | Pending |
+| UI-08 | Phase 8.6 | Pending |
+| UI-09 | Phase 8.1, 8.4 | Pending |
+| UI-10 | Phase 8.7 | Pending |
+| UI-11 | Phase 8.2, 8.3 | Pending |
+| UI-12 | Phase 8.8 | Pending |
+| UI-13 | Phase 8.9 | Pending |
+| UI-14 | Phase 8.10 | Pending |
 | FEAT-01 | Phase 9 | Pending |
 | FEAT-02 | Phase 9 | Pending |
 | FEAT-03 | Phase 9 | Pending |
@@ -108,10 +127,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FEAT-06 | Phase 11 | Pending |
 
 **Coverage:**
-- v1 requirements: 25 total (the earlier count of 26 was off by one; the list holds 25 IDs)
-- Mapped to phases: 25
+- v1 requirements: 33 total (25 at roadmap creation, plus UI-07 to UI-14 on 2026-10-17; UI-13 and UI-14 are cuttable)
+- Mapped to phases: 33
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-10-09*
-*Last updated: 2026-10-09 after roadmap creation*
+*Last updated: 2026-10-17 after the UI coherence phases (8.1 to 8.11) were inserted*

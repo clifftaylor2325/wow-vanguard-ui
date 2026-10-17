@@ -507,8 +507,11 @@ local function dressRaidButtons()
   end
 end
 
--- The raid roster tab: its group boxes, member buttons, push buttons and labels. (The tab sits inside the
--- friends window, which is panelled already; the checkbox keeps the game's art.)
+-- The tab's "All assist" check button, as a themed check box.
+GW.RAID_CHECK = "RaidFrameAllAssistCheckButton"
+
+-- The raid roster tab: its group boxes, member buttons, push buttons, labels and check box, in that order,
+-- so a disabled box greys its label last. (The tab sits inside the friends window, which is panelled already.)
 function GW.SkinRaidTab()
   for i = 1, GW.RAID_GROUPS do dressRaidGroup(i) end
   ns.OutOfCombat(dressRaidButtons, "vgSocialRaidButtons")
@@ -516,6 +519,7 @@ function GW.SkinRaidTab()
     if type(_G[name]) == "table" and _G[name].CreateTexture then T.Button(_G[name]) end
   end
   GW.PaintNamed(GW.RAID_LABELS, "text")
+  if type(_G[GW.RAID_CHECK]) == "table" and _G[GW.RAID_CHECK].GetChecked then T.CheckBox(_G[GW.RAID_CHECK]) end
 end
 
 -- The group boxes and buttons are made when Blizzard_RaidUI loads, after the tab itself is skinned.
@@ -526,3 +530,59 @@ ns.On("ADDON_LOADED", onRaidUILoaded)
 
 GW.Add("social", "onDemand", "Blizzard_RaidUI", { "RaidFrame" }, GW.SkinRaidTab)
 GW.Add("social", "framed", { "RaidParentFrame" })
+
+-- Toasts ----------------------------------------------------------------------------------------
+
+-- The toasts' lines (parentKeys) with their text role and colour. Top and middle lines keep the game's
+-- colour (a friend's name in Battle.net blue); the bottom line's grey is hard to read on the dark panel,
+-- so it goes to the theme's secondary text on each show (the game greys it again before every toast,
+-- by SetTextColor or, for a friend coming online, by a colour code inside the text itself).
+-- Text is the time-played alert's one line.
+GW.TOAST_LINES = { TopLine = { "label", false }, MiddleLine = { "small", false }, BottomLine = { "small", "text2" }, DoubleLine = { "label", false }, Text = { "label", false } }
+
+-- A line's text with the game's inline colour codes stripped, so the role colour can show: SetTextColor
+-- cannot override a colour the game wrote into the text. Text the client hides is left alone.
+local function uncolourText(fs)
+  local text = fs:GetText()
+  if ns.IsSecret(text) or type(text) ~= "string" or not text:find("|c", 1, true) then return end
+  fs:SetText((text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")))
+end
+
+-- A toast's texts in their roles, those this toast has; a line given a role colour loses the game's inline colour first.
+local function dressToastLines(frame)
+  for key, role in pairs(GW.TOAST_LINES) do
+    local fs = frame[key]
+    if type(fs) == "table" and type(fs.SetFont) == "function" then
+      if role[2] then uncolourText(fs) end
+      T.Text(fs, role[1], role[2])
+    end
+  end
+end
+
+-- The toast's hover tooltip (the Battle.net toast has one): a themed tooltip panel with light text.
+local function dressToastTooltip(tip)
+  if type(tip) ~= "table" or not tip.GetRegions then return end
+  fadeFrameArt(tip)
+  T.Tooltip(tip)
+  if type(tip.Text) == "table" and type(tip.Text.SetFont) == "function" then T.Text(tip.Text, "small") end
+end
+
+-- A social toast (a Battle.net friend or invite toast, the time-played alert): its backdrop and glow
+-- faded (the glow's own flare animation still plays over the panel), a tooltip-style panel, the
+-- Battle.net icon kept, its lines in theme roles and its X as the theme's close glyph where the game
+-- put it (the toast is too small for the window corner inset). The game reuses one frame per kind of
+-- toast and sets its lines in ShowToast before each one, so this runs on each show and after each
+-- ShowToast (a toast that arrives while one is up is shown again without an OnShow), and the lines
+-- are dressed again every time.
+function GW.SkinToast(frame)
+  if type(frame) ~= "table" or not frame.GetRegions then return end
+  after(frame, "ShowToast", GW.SkinToast)
+  local icon = frame.IconTexture
+  T.FadeRegions(frame, { [type(icon) == "table" and icon or false] = true })
+  T.Tooltip(frame)
+  dressToastLines(frame)
+  if type(frame.CloseButton) == "table" and frame.CloseButton.CreateTexture then T.CloseButton(frame.CloseButton) end
+  dressToastTooltip(frame.TooltipFrame)
+end
+
+GW.Add("social", "popups", { "BNToastFrame", "TimeAlertFrame" }, GW.SkinToast)

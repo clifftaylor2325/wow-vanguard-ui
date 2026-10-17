@@ -285,6 +285,7 @@ O.MODULE_INFO = {
   Merchant = { "Merchant helpers", "Repair, sell gray items, and a quieter error line." },
   ChatExtras = { "Chat extras", "Clickable web links in chat, and a Copy button for the recent chat." },
   ChatWatch = { "Chat watch", "A sound and a toast when a phrase you watch for is said in chat; click to whisper." },
+  ChatBubbles = { "Chat bubbles", "Speech bubbles in the world on a flat panel, in the theme font (the game's own inside instances)." },
   MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map." },
   AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels, loot faster (each off until you switch it on)." },
   QuestDialog = { "Quest dialog", "Talking to quest givers in Vanguard's own dialog: numbered lines, reward cards, keys 1-9 and Space." },
