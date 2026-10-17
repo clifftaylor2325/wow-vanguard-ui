@@ -528,10 +528,36 @@ function GW.SkinMasterLooter(frame)
   hooksecurefunc("MasterLooterFrame_UpdatePlayers", ns.Guard("hook MasterLooterFrame_UpdatePlayers", dressMasterPlayers))
 end
 
--- The group loot history window: the window skin, and its close button (named ClosePanelButton there).
+-- A roll card's result lines: the winner (its name keeps the class colour the game wraps it in), the leader while
+-- rolls are open and the all-passed line.
+local LOOT_ROW_TEXTS = { "WinningRollInfo.WinningRoll", "PendingRollInfo.CurrentWinnerText", "AllPassedInfo.AllPassedText" }
+
+-- One row of the roll list as the game acquires it: a roll card (its plate faded, its item in the bags' item look, its
+-- result lines in the small text colour; the item's name keeps its quality colour) or the Passed heading (heading text).
+local function dressLootRow(row)
+  if type(row) ~= "table" or not row.GetRegions then return end
+  if type(row.Item) ~= "table" then return regionFonts(row, "heading", "text") end
+  fadeWhole(row, { "BackgroundArtFrame" })
+  GW.SkinItem(row.Item)
+  for _, path in ipairs(LOOT_ROW_TEXTS) do GW.SkinText(GW.Part(row, path), "small", "text") end
+end
+
+-- The roll countdown under the encounter picker: its track and frame art faded under a flat inset, the fill kept.
+local function styleLootTimer(timer)
+  if type(timer) ~= "table" or not timer.GetRegions then return end
+  T.FadeRegions(timer, GW.KeepKeys(timer, { "Fill" }))
+  T.Panel(timer, { inset = true, noSheen = true })
+end
+
+-- The group loot history window: the window skin, its close button (named ClosePanelButton there), the encounter
+-- picker, the roll countdown, the empty-list message and the roll cards (the scroll bar is dressed with the window).
 function GW.SkinLootHistory(frame)
   GW.Skin(frame)
   GW.DressClose(frame, frame.ClosePanelButton)
+  GW.SkinDropdown(frame.EncounterDropdown)
+  styleLootTimer(frame.Timer)
+  GW.SkinText(frame.NoInfoString, "label", "text")
+  GW.WatchRows(frame.ScrollBox, dressLootRow)
 end
 
 GW.Add("town", "framed", { "MasterLooterFrame" }, GW.SkinMasterLooter)
@@ -543,21 +569,55 @@ GW.Add("town", "framed", { "GroupLootHistoryFrame" }, GW.SkinLootHistory)
 local MACRO_BUTTONS = { "MacroEditButton", "MacroCancelButton", "MacroSaveButton", "MacroDeleteButton", "MacroNewButton", "MacroExitButton" }
 GW.AddButtons("MacroFrame", MACRO_BUTTONS)
 
--- The icon picker's header: the selected icon's area gets an inset panel, the name box and the Okay and
--- Cancel buttons are themed; the box's own border art (a nine-slice) is faded.
+-- Each selector tile (a macro's or an icon's) already dressed.
+local vgTiles = ns.FrameState("vgSelectorTiles")
+
+-- One tile of a selector (SelectorButtonTemplate: the macro grid, the selected macro, the icon pickers) as a quiet slot:
+-- its slot plate and hover strip faded, its icon and the game's selected mark kept, an accent edge under the mouse. Once per tile.
+local function dressSelectorTile(button)
+  if type(button) ~= "table" or not button.GetRegions or not button.HookScript or vgTiles[button] then return end
+  vgTiles[button] = true
+  T.FadeRegions(button, GW.KeepKeys(button, { "Icon", "SelectedTexture" }))
+  T.Slot(button, { quiet = true })
+  slotStates(button)
+end
+
+-- The icon picker's header: the selected icon's area gets an inset panel and its tile and heading, the name box, the
+-- icon type dropdown and the Okay and Cancel buttons are themed; the box's own border art (a nine-slice) is faded.
 local function styleIconPickerBox(box)
   if type(box) ~= "table" then return end
   fadeWhole(box, { "NineSlice" })
   insetPanel(box.SelectedIconArea)
+  dressSelectorTile(GW.Part(box, "SelectedIconArea.SelectedIconButton"))
+  GW.SkinText(GW.Part(box, "SelectedIconArea.SelectedIconText.SelectedIconHeader"), "small", "text")
   if type(box.IconSelectorEditBox) == "table" and box.IconSelectorEditBox.SetText then T.EditBox(box.IconSelectorEditBox) end
+  GW.SkinDropdown(box.IconTypeDropdown)
   keyButtons(box, { "OkayButton", "CancelButton" })
 end
 
 -- A popup made from IconSelectorPopupFrameTemplate (the macro, guild bank and equipment set popups): the
--- window skin (its BG faded, a flat panel with a shadow) and the header parts in the theme.
+-- window skin (its BG faded, a flat panel with a shadow), the header parts and each icon tile of the grid in the theme.
 function GW.SkinIconPicker(frame)
   GW.Skin(frame)
   styleIconPickerBox(frame.BorderBox)
+  GW.WatchRows(GW.Part(frame, "IconSelector.ScrollBox"), dressSelectorTile)
+end
+
+-- The macro window's text field: the backdrop of the box faded under a flat inset, the box's text in the theme font.
+local function styleMacroText()
+  GW.InsetPanel(_G.MacroFrameTextBackground)
+  GW.SkinText(_G.MacroFrameText, "chat", false)
+end
+
+-- The macro window: the window skin, its two headings in the text colour, the selected macro's tile and the grid's
+-- tiles (as the game fills the grid), and the text field (the two scroll bars are dressed with the window).
+function GW.SkinMacro(frame)
+  GW.Skin(frame)
+  GW.TextRegions(frame, { "CREATE_MACROS" }, "heading", "text")
+  GW.TextNamed({ "MacroFrameSelectedMacroName" }, "heading", "text")
+  dressSelectorTile(frame.SelectedMacroButton)
+  GW.WatchRows(GW.Part(frame, "MacroSelector.ScrollBox"), dressSelectorTile)
+  styleMacroText()
 end
 
 -- The stopwatch: its two background plates and the title tab's art faded under a flat panel, the close,
@@ -572,7 +632,7 @@ function GW.SkinStopwatch(frame)
   GW.TextNamed({ "StopwatchTitle" }, "small", "text")
 end
 
-GW.Add("town", "onDemand", "Blizzard_MacroUI", { "MacroFrame" })
+GW.Add("town", "onDemand", "Blizzard_MacroUI", { "MacroFrame" }, GW.SkinMacro)
 GW.Add("town", "onDemand", "Blizzard_MacroUI", { "MacroPopupFrame" }, GW.SkinIconPicker)
 GW.Add("town", "onDemand", "Blizzard_GuildBankUI", { "GuildBankPopupFrame" }, GW.SkinIconPicker)
 GW.Add("town", "framed", { "GearManagerPopupFrame" }, GW.SkinIconPicker)
@@ -607,10 +667,22 @@ function GW.SkinAddonDialog()
   namedButtons(ADDON_DIALOG_BUTTONS)
 end
 
--- The currency transfer window: the window skin and its Confirm and Cancel buttons.
+-- The currency transfer form's labels (source, amount and the two balance previews), gold in the game.
+local TRANSFER_LABELS = { "SourceSelector.SourceLabel", "AmountSelector.TransferAmountLabel", "SourceBalancePreview.Label", "PlayerBalancePreview.Label" }
+
+-- The form: Confirm and Cancel, the source dropdown (its arrow kept), the amount box and its Max button, and the labels.
+local function styleTransferForm(content)
+  keyButtons(content, { "ConfirmButton", "CancelButton" })
+  GW.SkinDropdown(GW.Part(content, "SourceSelector.Dropdown"))
+  GW.SkinEditBox(GW.Part(content, "AmountSelector.InputBox"))
+  GW.SkinButton(GW.Part(content, "AmountSelector.MaxQuantityButton"))
+  for _, path in ipairs(TRANSFER_LABELS) do GW.SkinText(GW.Part(content, path), "label", "text") end
+end
+
+-- The currency transfer window: the window skin and its form.
 function GW.SkinCurrencyTransfer(frame)
   GW.Skin(frame)
-  if type(frame.Content) == "table" then keyButtons(frame.Content, { "ConfirmButton", "CancelButton" }) end
+  if type(frame.Content) == "table" then styleTransferForm(frame.Content) end
 end
 
 GW.Add("town", "framed", { "GhostFrame" }, GW.SkinGhost)

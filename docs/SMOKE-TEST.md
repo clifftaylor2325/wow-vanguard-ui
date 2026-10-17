@@ -586,14 +586,14 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.3.6 Master loot (in a group)
 
 - Do: in a group set to master looter, kill something and right-click an item to assign it (the player list), then close it.
-- Expect: the candidate list is a flat panel with flat player buttons in class colors; selecting a name assigns the item; the loot history window (the group loot history button, if your client has it) is flat with a working close button.
-- If it fails, paste: a screenshot and `/vg errors`.
+- Expect: the candidate list is a flat panel with flat player buttons in class colors; selecting a name assigns the item; the loot history window (the group loot history button, if your client has it) is flat with a working close button, the encounter picker a flat button with its arrow, the countdown under it a flat bar on a dark track with its fill showing, a thin scroll bar, and each roll card without its parchment plate: the item is a square with a thin border in its quality colour, the item's name keeps its quality colour, the winner or current leader line is in the light text colour (the winner's name in the class colour), and the "Passed" heading is in the light text colour, not gold; the "no loot" message is light too; hover and click on a card still show the tooltip.
+- If it fails, paste: a screenshot of the history window with several rolls (blur names), and `/vg errors`.
 
 ### 14.3.7 Macros and icon pickers
 
 - Do: type `/macro`, click Change Name/Icon; open the equipment manager and make a new set (its icon picker); open the guild bank's tab icon picker if you have one.
-- Expect: the macro window and each icon picker are flat panels; the name box is a dark input box; the icon grid, the selected icon and Okay and Cancel work.
-- If it fails, paste: a screenshot of the picker and `/vg errors`.
+- Expect: the macro window and each icon picker are flat panels; the name box is a dark input box; the macro window's "Create macros" heading and the selected macro's name are light, not gold; the selected macro and every macro in the grid are flat tiles without the old slot art (each keeps its picture, and a thin accent edge shows under the mouse, the game's own selected mark still shows on the one you picked); the macro text sits on a dark flat box in the Vanguard font; both scroll bars are thin lines; in a picker the "Current icon" heading is light, the selected icon and every icon in the grid are the same flat tiles, the icon type dropdown is a flat button with its arrow; picking icons, Okay and Cancel work.
+- If it fails, paste: a screenshot of the macro window and a picker (hover one tile), and `/vg errors`.
 
 ### 14.3.8 Stopwatch
 
@@ -618,6 +618,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: with damaged gear, open a merchant who repairs and sells more than ten items (a general goods vendor); turn the page with the arrows and the mouse wheel; open the Buyback tab after selling something; hover and click the repair, repair-all and sell-junk buttons; open the filter dropdown.
 - Expect: no dark-red plates behind the item names and no round slot art: each item is a square slot with a thin border in its quality colour, its name and price in the Vanguard font (a price you can't pay still red, the icon still greyed), the buyback slot and the Buyback tab's rows the same; the repair buttons and the sell-junk button are flat tiles that keep their icons (greyed when there is nothing to repair or sell), the page arrows keep their arrows with Prev and Next in the Vanguard font and the light text colour (not gold), the page count too; the gold bar at the bottom right is a dark box with your money in the Vanguard font beside its coins; every button still does what it did, and the second page looks like the first.
 - If it fails, paste: a screenshot of the merchant window and `/vg errors`.
+
+### 14.3.12 Currency transfer
+
+- Do: with a warband currency you can move between characters, open the currency tab, click a currency's transfer action, open the source dropdown, type an amount and press Max.
+- Expect: the transfer window is a flat panel; the source dropdown is a flat button with its arrow; the amount box is a dark edit box; Max, Confirm and Cancel are Vanguard buttons; the four captions (source, amount, and the two balance lines) are light, not gold; the transfer works as before.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
 
 ### 14.4.1 Game options
 

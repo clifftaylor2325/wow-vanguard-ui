@@ -36,6 +36,34 @@ const TOWN_READERS = `${WINDOWS_ENV}${INSIDES_LUA}
   end
 `;
 
+// TEST-ONLY scroll lists as the game builds them: ScrollUtil (the acquire callbacks), a ScrollBox holding rows (__box), a scroll
+// bar shaped like MinimalScrollBar whose track holds a piece of game art (__scrollBar) and a selector tile
+// (SelectorButtonTemplate: slot plate, hover strip, selected mark, icon as the normal texture).
+const SCROLL_ENV = `
+  ScrollUtil = { AddAcquiredFrameCallback = function(box, cb, owner) table.insert(box.callbacks, function(row) cb(owner, row) end) end }
+  function __box(rows)
+    local box = { rows = rows or {}, callbacks = {} }
+    function box:ForEachFrame(fn) for _, row in ipairs(self.rows) do fn(row) end end
+    return box
+  end
+  function __scrollBar(parent)
+    local b = CreateFrame("Frame", nil, parent) b.Track = CreateFrame("Frame", nil, b) b.Thumb = CreateFrame("Button", nil, b.Track)
+    __art(b.Track) return b
+  end
+  function __tile(parent)
+    local b = CreateFrame("CheckButton", nil, parent or UIParent)
+    b.plate, b.glow, b.SelectedTexture, b.Icon = __art(b), __art(b), b:CreateTexture(), b:CreateTexture()
+    b.GetNormalTexture = function() return b.Icon end
+    b.GetHighlightTexture = function() return b.glow end
+    return b
+  end
+  -- Whether a tile is a quiet slot with its plate and hover strip faded and its icon and selected mark kept.
+  function __tiled(b)
+    return ns.FrameState("vgSelectorTiles")[b] == true and b.plate:GetAlpha() == 0 and b.glow:GetAlpha() == 0 and b.Icon:GetAlpha() == 1
+      and b.SelectedTexture:GetAlpha() == 1 and __quiet(b) == 4
+  end
+`;
+
 // TEST-ONLY pet stable (Blizzard_StableUI, Camelot): the window with the parts the skin dresses.
 const STABLE_ENV = `${TOWN_READERS}
   local f = __window("PetStableFrame")
@@ -348,7 +376,7 @@ it("S2.4 separate bag windows: the Bags module or the town group off leaves them
 
 // TEST-ONLY master looter window and group loot history. MasterLooterFrame_UpdatePlayers makes the player
 // buttons as the game does: named player<column * 10 + row>, with gaps when a column has fewer than ten rows.
-const LOOT_ENV = `${WINDOWS_ENV}
+const LOOT_ENV = `${TOWN_READERS}${SCROLL_ENV}
   local m = __window("MasterLooterFrame")
   m.Item = CreateFrame("Frame", nil, m)
   for _, key in ipairs({ "NameBorderLeft", "NameBorderRight", "NameBorderMid", "IconBorder" }) do m.Item[key] = m.Item:CreateTexture() end
@@ -356,6 +384,21 @@ const LOOT_ENV = `${WINDOWS_ENV}
   m.player1 = CreateFrame("Button", nil, m)
   function MasterLooterFrame_UpdatePlayers() m.player11 = m.player11 or CreateFrame("Button", nil, m) end
   local h = __window("GroupLootHistoryFrame") h.ClosePanelButton = CreateFrame("Button", nil, h)
+  h.EncounterDropdown = CreateFrame("Button", nil, h) h.EncounterDropdown.Arrow = __art(h.EncounterDropdown)
+  h.Timer = CreateFrame("Frame", nil, h) h.Timer.Background, h.Timer.Fill, h.Timer.Border = __art(h.Timer), __art(h.Timer), __art(h.Timer)
+  h.NoInfoString = __text(h, "No loot yet") h.ScrollBar = __scrollBar(h)
+  -- A roll card as LootHistoryElementTemplate builds it (plate frame, item, three result lines, item name), or the Passed heading.
+  function __lootRow(header)
+    local row = CreateFrame("Frame", nil, UIParent)
+    if header then __text(row, "Passed") return row end
+    row.BackgroundArtFrame = CreateFrame("Frame", nil, row) __art(row.BackgroundArtFrame)
+    row.Item = __itemButton(nil, row) row.ItemName = __text(row, "Sword")
+    for info, key in pairs({ WinningRollInfo = "WinningRoll", PendingRollInfo = "CurrentWinnerText", AllPassedInfo = "AllPassedText" }) do
+      row[info] = CreateFrame("Frame", nil, row) row[info][key] = __text(row[info], "text")
+    end
+    return row
+  end
+  h.ScrollBox = __box({ __lootRow(), __lootRow(true) })
 `;
 
 it("S2.5 loot dialogs: master looter and loot history skinned, player buttons themed as the game lists them", () => {
@@ -375,6 +418,22 @@ it("S2.5 loot dialogs: master looter and loot history skinned, player buttons th
   expect(windowState(addon, m).painted, "showing and listing again paints nothing more").toBe(painted);
 });
 
+it("R2.23 the loot history: encounter picker, countdown, empty message and roll cards in the theme; rows follow the list", () => {
+  const addon = loggedIn(LOOT_ENV);
+  addon.eval("GroupLootHistoryFrame:Show()");
+  const h = "GroupLootHistoryFrame";
+  expect(addon.eval(`local f = ${h} return { select('#', f.EncounterDropdown:GetRegions()) > 1, f.EncounterDropdown.Arrow:GetAlpha(), __lit(f.NoInfoString, "label", "text"), f.ScrollBar.Track:GetRegions():GetAlpha() }`), "the picker a flat button with its arrow kept, the message in the text colour, the scroll bar's track faded").toEqual([true, 1, true, 0]);
+  expect(addon.eval(`local t = ${h}.Timer return { t.Background:GetAlpha(), t.Border:GetAlpha(), t.Fill:GetAlpha(), __sunk(t) }`), "the countdown: track and frame art faded, the fill kept, a flat inset behind").toEqual([0, 0, 1, true]);
+  const card = `local r = ${h}.ScrollBox.rows[1] return { r.BackgroundArtFrame:GetAlpha(), ns.FrameState("vgSkinned")[r.Item] == true, __lit(r.WinningRollInfo.WinningRoll, "small", "text"), __lit(r.PendingRollInfo.CurrentWinnerText, "small", "text"), __lit(r.AllPassedInfo.AllPassedText, "small", "text"), __themed(r.ItemName) }`;
+  expect(addon.eval(card), "a card there already: its plate faded, its item in the bags' item look, its result lines in the text colour, its item name left to the game").toEqual([0, true, true, true, true, false]);
+  expect(addon.eval(`return __lit(${h}.ScrollBox.rows[2]:GetRegions(), "heading", "text")`), "the Passed heading in the heading text and the text colour").toBe(true);
+  addon.eval(`local box = ${h}.ScrollBox box.new = __lootRow() box.callbacks[1](box.new) box.callbacks[1](nil) box.callbacks[1]({})`);
+  expect(addon.eval(`local r = ${h}.ScrollBox.new return { r.BackgroundArtFrame:GetAlpha(), ns.FrameState("vgSkinned")[r.Item] == true }`), "a card the list acquires later").toEqual([0, true]);
+  const painted = windowState(addon, h).painted;
+  addon.eval(`${h}:Hide() ${h}:Show()`);
+  expect([windowState(addon, h).painted, addon.eval(`return #${h}.ScrollBox.callbacks`)], "a second show paints nothing more and watches the list once").toEqual([painted, 1]);
+});
+
 it("S2.5 loot dialogs: group off leaves them the game's; a window without its parts or the game's list call loads cleanly", () => {
   const off = loggedIn(LOOT_ENV, { savedVariables: OFF });
   off.eval("MasterLooterFrame:Show() GroupLootHistoryFrame:Show()");
@@ -382,15 +441,23 @@ it("S2.5 loot dialogs: group off leaves them the game's; a window without its pa
   const bare = loggedIn('CreateFrame("Frame", "MasterLooterFrame", UIParent):Hide() CreateFrame("Frame", "GroupLootHistoryFrame", UIParent):Hide()');
   bare.eval("MasterLooterFrame:Show() GroupLootHistoryFrame:Show()");
   expect([bare.eval("return ns.FrameState('vgWindow')[MasterLooterFrame]"), windowErrors(bare)], "bare windows: skinned, no list hook, no error").toEqual([true, "none"]);
+  const odd = loggedIn(LOOT_ENV + "GroupLootHistoryFrame.Timer = {} GroupLootHistoryFrame.ScrollBox = __box({ {} })");
+  odd.eval("GroupLootHistoryFrame:Show()");
+  expect(windowErrors(odd), "a countdown that is no frame and a row that is no frame: skipped").toBe("none");
 });
 
 // TEST-ONLY icon picker popup (IconSelectorPopupFrameTemplate): the frame with its header box and parts.
-const PICKER_ENV = `${WINDOWS_ENV}${ARROWS_ENV}
+const PICKER_ENV = `${TOWN_READERS}${SCROLL_ENV}${ARROWS_ENV}
   function __picker(name)
     local f = __window(name) f.BG = f:CreateTexture()
     local box = CreateFrame("Frame", nil, f) f.BorderBox = box
     box.NineSlice = CreateFrame("Frame", nil, box) box.NineSlice:CreateTexture()
     box.SelectedIconArea = CreateFrame("Frame", nil, box)
+    box.SelectedIconArea.SelectedIconButton = __tile(box.SelectedIconArea)
+    box.SelectedIconArea.SelectedIconText = CreateFrame("Frame", nil, box.SelectedIconArea)
+    box.SelectedIconArea.SelectedIconText.SelectedIconHeader = __text(box.SelectedIconArea.SelectedIconText, "Current icon")
+    box.IconTypeDropdown = CreateFrame("Button", nil, box) box.IconTypeDropdown.Arrow = __art(box.IconTypeDropdown)
+    f.IconSelector = CreateFrame("Frame", nil, f) f.IconSelector.ScrollBox = __box({ __tile(f.IconSelector) }) f.IconSelector.ScrollBar = __scrollBar(f.IconSelector)
     box.IconSelectorEditBox = CreateFrame("EditBox", nil, box) box.IconSelectorEditBox:CreateTexture()
     box.OkayButton, box.CancelButton = CreateFrame("Button", nil, box), CreateFrame("Button", nil, box)
     return f
@@ -399,7 +466,16 @@ const PICKER_ENV = `${WINDOWS_ENV}${ARROWS_ENV}
 
 // TEST-ONLY macro window and stopwatch.
 const MACRO_ENV = `${PICKER_ENV}
-  __window("MacroFrame") __picker("MacroPopupFrame") __picker("GuildBankPopupFrame") __picker("GearManagerPopupFrame")
+  local mf = __window("MacroFrame")
+  CREATE_MACROS = "Create macros"
+  mf.heading, mf.other = __text(mf, CREATE_MACROS), __text(mf, "Enter Macro Name:")
+  mf:CreateFontString("MacroFrameSelectedMacroName", "ARTWORK"):SetFont("TEST-ONLY-GAME", 14, "")
+  mf.SelectedMacroButton = __tile(mf)
+  mf.MacroSelector = CreateFrame("Frame", nil, mf) mf.MacroSelector.ScrollBox = __box({ __tile(mf.MacroSelector) }) mf.MacroSelector.ScrollBar = __scrollBar(mf.MacroSelector)
+  local back = __well("MacroFrameTextBackground", mf)
+  local scrolling = CreateFrame("ScrollFrame", "MacroFrameScrollFrame", mf) scrolling.ScrollBar = __scrollBar(scrolling)
+  CreateFrame("EditBox", "MacroFrameText", scrolling):SetFont("TEST-ONLY-GAME", 12, "")
+  __picker("MacroPopupFrame") __picker("GuildBankPopupFrame") __picker("GearManagerPopupFrame")
   for _, n in ipairs({ "MacroEditButton", "MacroCancelButton", "MacroSaveButton", "MacroDeleteButton", "MacroNewButton", "MacroExitButton" }) do CreateFrame("Button", n, MacroFrame) end
   local w = __window("StopwatchFrame")
   local tab = CreateFrame("Frame", "StopwatchTabFrame", w) tab.art = tab:CreateTexture() tab:CreateFontString("StopwatchTitle", "BACKGROUND")
@@ -414,8 +490,13 @@ it("S2.6 macro, icon pickers, stopwatch, recipe inspection: skinned when their p
   const shown = ["MacroFrame", "MacroPopupFrame", "GuildBankPopupFrame", "GearManagerPopupFrame", "StopwatchFrame", "InspectRecipeFrame"].map((n) => windowState(addon, n));
   expect(shown.map((s) => [s.art, s.panel]), "each is faded and has a panel").toEqual(Array(6).fill([0, true]));
   expect(dressed(addon, "MacroEditButton", "MacroExitButton"), "the macro window's loose buttons themed").toEqual([true, true]);
+  expect(addon.eval(`return { __lit(MacroFrame.heading, "heading", "text"), __themed(MacroFrame.other), __lit(MacroFrameSelectedMacroName, "heading", "text") }`), "the Create macros heading and the selected macro's name in the heading text and the text colour; the other captions left alone").toEqual([true, false, true]);
+  expect(addon.eval(`return { __tiled(MacroFrame.SelectedMacroButton), __tiled(MacroFrame.MacroSelector.ScrollBox.rows[1]) }`), "the selected macro and the grid's tile: quiet slots, icon and selected mark kept").toEqual([true, true]);
+  expect(addon.eval(`local f = MacroFrame return { __faded(MacroFrameTextBackground), MacroFrameTextBackground.NineSlice:GetAlpha(), __sunk(MacroFrameTextBackground), MacroFrameText:GetFont() ~= "TEST-ONLY-GAME" }`), "the text field: backdrop faded under a flat inset, the text in the theme font").toEqual([true, 0, true, true]);
+  expect(addon.eval(`return { MacroFrame.MacroSelector.ScrollBar.Track:GetRegions():GetAlpha(), MacroFrameScrollFrame.ScrollBar.Track:GetRegions():GetAlpha() }`), "both scroll bars dressed with the window").toEqual([0, 0]);
   for (const n of ["MacroPopupFrame", "GuildBankPopupFrame", "GearManagerPopupFrame"]) {
     expect(addon.eval(`local b = ${n}.BorderBox return { ${n}.BG:GetAlpha(), b.NineSlice:GetAlpha(), select('#', b.SelectedIconArea:GetRegions()) > 0, select('#', b.IconSelectorEditBox:GetRegions()) > 1, select('#', b.OkayButton:GetRegions()) > 0, select('#', b.CancelButton:GetRegions()) > 0 }`), `${n}: BG and border faded, icon area inset, name box and buttons themed`).toEqual([0, 0, true, true, true, true]);
+    expect(addon.eval(`local b, f = ${n}.BorderBox, ${n} return { __tiled(b.SelectedIconArea.SelectedIconButton), __lit(b.SelectedIconArea.SelectedIconText.SelectedIconHeader, "small", "text"), select('#', b.IconTypeDropdown:GetRegions()) > 1, b.IconTypeDropdown.Arrow:GetAlpha(), __tiled(f.IconSelector.ScrollBox.rows[1]), f.IconSelector.ScrollBar.Track:GetRegions():GetAlpha() }`), `${n}: the selected icon a quiet slot, its heading in the text colour, the type dropdown flat with its arrow, the grid's tiles quiet slots, the scroll bar dressed`).toEqual([true, true, true, 1, true, 0]);
   }
   expect(alphas(addon, "StopwatchTabFrame.art", "StopwatchPlayPauseButton.up", "StopwatchResetButton.off"), "the title tab's art faded, the play and reset pictures kept").toEqual([0, 1, 1]);
   expect(dressed(addon, "StopwatchCloseButton", "StopwatchPlayPauseButton", "StopwatchResetButton"), "its three buttons themed").toEqual([true, true, true]);
@@ -423,6 +504,23 @@ it("S2.6 macro, icon pickers, stopwatch, recipe inspection: skinned when their p
   const painted = windowState(addon, "StopwatchFrame").painted;
   addon.eval("for _, n in ipairs({ 'MacroFrame', 'MacroPopupFrame', 'StopwatchFrame' }) do _G[n]:Hide() _G[n]:Show() end");
   expect(windowState(addon, "StopwatchFrame").painted, "showing them again paints nothing more").toBe(painted);
+});
+
+it("R2.23 the macro window: a tile's accent edge follows the mouse; tiles the grid hands out later are dressed", () => {
+  const addon = loggedIn(MACRO_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_MacroUI");
+  addon.eval("MacroFrame:Show()");
+  const tile = "MacroFrame.SelectedMacroButton";
+  expect(addon.eval(`return __quiet(${tile})`), "at rest the edge is hidden").toBe(4);
+  addon.hover(tile);
+  expect(addon.eval(`return __quiet(${tile})`), "under the mouse it shows").toBe(0);
+  addon.hover(null);
+  addon.eval(`__wfgStub.runScript(${tile}, "OnMouseDown")`);
+  expect(addon.eval(`return __quiet(${tile})`), "held, it shows").toBe(0);
+  addon.eval(`__wfgStub.runScript(${tile}, "OnMouseUp")`);
+  expect(addon.eval(`return __quiet(${tile})`), "let go away from it, hidden again").toBe(4);
+  addon.eval(`local box = MacroFrame.MacroSelector.ScrollBox box.new = __tile(UIParent) box.callbacks[1](box.new) box.callbacks[1](box.new) box.callbacks[1](nil)`);
+  expect(addon.eval("return __tiled(MacroFrame.MacroSelector.ScrollBox.new)"), "a tile acquired later (and again): dressed once").toBe(true);
 });
 
 it("S2.6 macro, icon pickers, stopwatch, recipe inspection: group off leaves them the game's; bare windows load cleanly", () => {
@@ -433,7 +531,7 @@ it("S2.6 macro, icon pickers, stopwatch, recipe inspection: group off leaves the
   const bare = loggedIn('for _, n in ipairs({ "MacroPopupFrame", "GuildBankPopupFrame", "GearManagerPopupFrame", "StopwatchFrame" }) do CreateFrame("Frame", n, UIParent):Hide() end');
   for (const part of ["Blizzard_MacroUI", "Blizzard_GuildBankUI", "Blizzard_TimeManager"]) bare.fire("ADDON_LOADED", part);
   bare.eval("MacroPopupFrame:Show() StopwatchFrame:Show() GearManagerPopupFrame:Show()");
-  const plain = loggedIn(`${PICKER_ENV} __picker("MacroPopupFrame").BorderBox.IconSelectorEditBox = {}`);
+  const plain = loggedIn(`${PICKER_ENV} __picker("MacroPopupFrame").BorderBox.IconSelectorEditBox = {} MacroPopupFrame.BorderBox.SelectedIconArea.SelectedIconButton = {}`);
   plain.fire("ADDON_LOADED", "Blizzard_MacroUI");
   plain.eval("MacroPopupFrame:Show()");
   expect([bare, plain].map(windowErrors), "windows without their parts, or a box that isn't one: no error").toEqual(["none", "none"]);
@@ -451,6 +549,14 @@ const DIALOGS_ENV = `${TOWN_READERS}
   CreateFrame("Button", "AddonDialogButton1", box) CreateFrame("Button", "AddonDialogButton2", box)
   local c = __window("CurrencyTransferMenu") c.Content = CreateFrame("Frame", nil, c)
   c.Content.ConfirmButton, c.Content.CancelButton = CreateFrame("Button", nil, c.Content), CreateFrame("Button", nil, c.Content)
+  local content = c.Content
+  for _, key in ipairs({ "SourceSelector", "AmountSelector", "SourceBalancePreview", "PlayerBalancePreview" }) do content[key] = CreateFrame("Frame", nil, content) end
+  content.SourceSelector.SourceLabel, content.SourceSelector.PlayerName = __text(content.SourceSelector, "Source"), __text(content.SourceSelector, "Bob")
+  content.SourceSelector.Dropdown = CreateFrame("Button", nil, content.SourceSelector) content.SourceSelector.Dropdown.Arrow = __art(content.SourceSelector.Dropdown)
+  content.AmountSelector.TransferAmountLabel = __text(content.AmountSelector, "Amount")
+  content.AmountSelector.InputBox = CreateFrame("EditBox", nil, content.AmountSelector) __art(content.AmountSelector.InputBox)
+  content.AmountSelector.MaxQuantityButton = CreateFrame("Button", nil, content.AmountSelector)
+  content.SourceBalancePreview.Label, content.PlayerBalancePreview.Label = __text(content.SourceBalancePreview, "Bob after"), __text(content.PlayerBalancePreview, "You after")
 `;
 
 it("S2.7 small dialogs: ghost button, message dialog, addon dialog and currency transfer take the theme", () => {
@@ -466,6 +572,8 @@ it("S2.7 small dialogs: ghost button, message dialog, addon dialog and currency 
   expect(addon.eval("local n = 0 for _, r in ipairs({ AddonDialogBackground:GetRegions() }) do if r.__alpha ~= 0 then n = n + 1 end end return { n > 0, ns.FrameState('vgWindow')[AddonDialog], select('#', AddonDialog:GetRegions()) }"), "its panel sits on the dialog, not on the full-screen catcher").toEqual([true, true, 0]);
   expect(dressed(addon, "AddonDialogButton1", "AddonDialogButton2", "CurrencyTransferMenu.Content.ConfirmButton", "CurrencyTransferMenu.Content.CancelButton"), "the addon dialog's and the transfer window's buttons themed").toEqual([true, true, true, true]);
   expect(windowState(addon, "CurrencyTransferMenu"), "the transfer window skin").toMatchObject({ art: 0, panel: true });
+  expect(addon.eval(`local c = CurrencyTransferMenu.Content return { select('#', c.SourceSelector.Dropdown:GetRegions()) > 1, c.SourceSelector.Dropdown.Arrow:GetAlpha(), __faded(c.AmountSelector.InputBox), select('#', c.AmountSelector.MaxQuantityButton:GetRegions()) > 0 }`), "the source dropdown flat with its arrow, the amount box an edit box, the Max button themed").toEqual([true, 1, true, true]);
+  expect(addon.eval(`local c = CurrencyTransferMenu.Content return { __lit(c.SourceSelector.SourceLabel, "label", "text"), __lit(c.AmountSelector.TransferAmountLabel, "label", "text"), __lit(c.SourceBalancePreview.Label, "label", "text"), __lit(c.PlayerBalancePreview.Label, "label", "text"), __themed(c.SourceSelector.PlayerName) }`), "the form's four labels in the text colour; the character name left to the game").toEqual([true, true, true, true, false]);
   const painted = message.painted;
   addon.eval("BasicMessageDialog:Hide() BasicMessageDialog:Show() AddonDialog:Hide() AddonDialog:Show() GhostFrame:Hide() GhostFrame:Show()");
   expect(windowState(addon, "BasicMessageDialog").painted, "showing them again paints nothing more").toBe(painted);
