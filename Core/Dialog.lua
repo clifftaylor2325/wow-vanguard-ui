@@ -137,6 +137,15 @@ local function boxText(f, text)
   f.view:ScrollTo(0)
 end
 
+-- The text dialog's buttons: the primary at the bottom right and, left of it, the one that closes the box.
+local function addTextButtons(f)
+  f.primary = ns.Widgets.Primary(f, "Import")
+  f.primary:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
+  f.close = button(f, "Close")
+  f.close:SetPoint("RIGHT", f.primary, "LEFT", -T.SPACE.gap, 0)
+  f.close:SetScript("OnClick", ns.Guard("click close text box", function() f:Hide() end))
+end
+
 -- Builds the text dialog once: title, text area, the primary (accent) button and the one that
 -- dismisses it, which reads Cancel beside the primary and Close when the box only shows text.
 local function textBox()
@@ -144,11 +153,8 @@ local function textBox()
   box = dialog("Vanguard_TextDialog", TEXT_W, TEXT_H)
   addEditBox(box)
   limitTitle(box)
-  box.primary = ns.Widgets.Primary(box, "Import")
-  box.primary:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
-  box.close = button(box, "Close")
-  box.close:SetPoint("RIGHT", box.primary, "LEFT", -T.SPACE.gap, 0)
-  box.close:SetScript("OnClick", ns.Guard("click close text box", function() box:Hide() end))
+  addTextButtons(box)
+  ns.TabFocus(box, function() return { box.primary, box.close } end)
   return box
 end
 
@@ -215,8 +221,9 @@ end
 local function askKey(f, key)
   if ns.InCombat() or not ns.Client.Has("keyPropagate") then return end
   local confirm = f.confirm
-  local enter = (key == "ENTER" or key == "NUMPADENTER") and confirm.kind ~= "danger" and confirm:IsEnabled()
-  f:SetPropagateKeyboardInput(not enter)
+  local used = ns.FocusKey(f, key)
+  local enter = not used and (key == "ENTER" or key == "NUMPADENTER") and confirm.kind ~= "danger" and confirm:IsEnabled()
+  f:SetPropagateKeyboardInput(not (used or enter))
   if enter then confirm:GetScript("OnClick")(confirm) end
 end
 
@@ -229,6 +236,15 @@ local function listenForEnter(f)
   end, f)
 end
 
+-- The question's buttons: the primary Yes and the danger Yes (one shows) at the bottom right, No left of them.
+local function addQuestionButtons(f)
+  f.yes, f.sure = button(f, "Yes", nil, "primary"), button(f, "Yes", nil, "danger")
+  f.yes:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
+  f.sure:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
+  f.no = button(f, "No")
+  f.no:SetPoint("RIGHT", f.yes, "LEFT", -T.SPACE.gap, 0)
+end
+
 -- Builds the question dialog once: the question, a Yes (the primary: the accent; or a danger button for a
 -- destructive question, which Enter never presses) and a No.
 local function questionDialog()
@@ -236,12 +252,9 @@ local function questionDialog()
   question = dialog("Vanguard_Question", ASK_W, 1)
   hangTitle(question)
   question:HookScript("OnHide", ns.Guard("decline question", function() declined(question) end))
-  question.yes, question.sure = button(question, "Yes", nil, "primary"), button(question, "Yes", nil, "danger")
-  question.yes:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
-  question.sure:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
-  question.no = button(question, "No")
-  question.no:SetPoint("RIGHT", question.yes, "LEFT", -T.SPACE.gap, 0)
+  addQuestionButtons(question)
   listenForEnter(question)
+  ns.TabFocus(question, function() return { question.no, question.yes, question.sure } end, true)
   return question
 end
 
@@ -350,6 +363,7 @@ local function reloadDialog()
   reload.cancel = button(reload, "Later")
   reload.cancel:SetPoint("RIGHT", reload.accept, "LEFT", -T.SPACE.gap, 0)
   reload.cancel:SetScript("OnClick", ns.Guard("click reload later", function() reload:Hide() end))
+  ns.TabFocus(reload, function() return { reload.cancel, reload.accept } end)
   return reload
 end
 

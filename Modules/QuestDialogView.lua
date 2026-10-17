@@ -82,6 +82,15 @@ local function addEscape(f)
   f.escape:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
 end
 
+-- The primary button at the bottom right, the secondary left of it, and Goodbye or Abandon far left.
+local function addButtons(f)
+  f.primary = ns.DialogButton(f, "", nil, "primary")
+  f.primary:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
+  f.secondary = ns.DialogButton(f, "")
+  f.secondary:SetPoint("RIGHT", f.primary, "LEFT", -T.SPACE.gap, 0)
+  addEscape(f)
+end
+
 -- The reward cards under the text (their left edge on the text's), the money
 -- and XP line, and the buttons along the bottom.
 local function addFooter(f)
@@ -91,11 +100,7 @@ local function addFooter(f)
   f.lines, f.cards = QP.Pool(f.child, QP.Line), QP.Pool(f.rewards, QP.Card)
   f.money = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "gold")
   f.money:SetPoint("LEFT", f, "BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad + T.BUTTON_H / 2)
-  f.primary = ns.DialogButton(f, "", nil, "primary")
-  f.primary:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
-  f.secondary = ns.DialogButton(f, "")
-  f.secondary:SetPoint("RIGHT", f.primary, "LEFT", -T.SPACE.gap, 0)
-  addEscape(f)
+  addButtons(f)
 end
 
 -- The dialog's default spot: centered, a little above the focus cast bar's

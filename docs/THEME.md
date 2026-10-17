@@ -237,6 +237,8 @@ Depth is said by the fill, the one-pixel `edge` border, the sheen, the bevel on 
 | Focus (keyboard) | `T.FocusRing`: a one-pixel `accentText` ring two pixels out, over a one-pixel `edge` gap | the same | none |
 | Locked (a slider that cannot change) | the thumb in `disabled` (`T.SLIDER.thumbOff`), the fill unchanged, the caption `muted`; the tooltip says why | none | `muted` |
 
+Where each state is built: `T.Button`/`T.EaseHover` (hover and, through `T.HoldHover`, a dropdown's hover held while its menu is open), `T.PressButton` and `T.PressRow` (press), `T.DisabledLook` (disabled), `T.FocusRing` (focus; `ns.TabFocus` in `Core/Chrome.lua` moves it along a dialog's or the setup wizard's buttons with Tab and Shift-Tab, Enter or Space presses the focused one, and the window gives the keyboard up in combat), and `T.EditBox` (an edit box's own border goes `accentText` while it has the typing: the box is its own ring). A switch's press drops its knob one pixel and changes no colour. The dropdown menu closes on Escape, on a click outside it (a catcher frame under the menu) or on a pick, and shows the 4 px scroll thumb (`T.SCROLL`) beyond 16 rows. No fade or sound is added by this.
+
 The controls with a moving part (the switch's knob, the slider's thumb) keep this vocabulary on their own geometry. One exception stands: a slot's accent edge brightens under the mouse (`T.SLOT_STATES`), which stays: on an action button the accent edge is the slot's border.
 
 ## Game frame primitives

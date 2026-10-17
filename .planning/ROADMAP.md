@@ -44,7 +44,7 @@ UI coherence (priority 3, polish and consistency; INSERTED 2026-10-17 from Cliff
 - [ ] **Phase 8.4: Control grid and button kinds** (INSERTED) - Every control on one grid, with secondary, primary and danger buttons
 - [ ] **Phase 8.5: Selection grammar and row press** (INSERTED) - "Selected" is said three ways and no other, and rows press like buttons
 - [ ] **Phase 8.6: One yellow, type pairings and empty states** (INSERTED) - Gold marks content only, each place has one text role and colour, and an empty list says what fills it
-- [ ] **Phase 8.7: States, keyboard and menus** (INSERTED) - One state matrix in code, and menus close like menus
+- [x] **Phase 8.7: States, keyboard and menus** (INSERTED) - One state matrix in code, and menus close like menus
 - [ ] **Phase 8.8: Dialogs and button order** (INSERTED) - One primary per dialog, destructive actions never brass, Escape and Enter work
 - [ ] **Phase 8.9: Spacing sweep** (INSERTED, cuttable) - Every window's padding and footer sit on `T.SPACE`
 - [ ] **Phase 8.10: Knob and thumb ease** (INSERTED, cuttable) - Knobs glide 0.1 s out of combat
@@ -469,7 +469,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8.4 Control grid and button kinds | 0/TBD | Not started | - |
 | 8.5 Selection grammar and row press | 0/TBD | Not started | - |
 | 8.6 One yellow, type pairings and empty states | 0/TBD | Not started | - |
-| 8.7 States, keyboard and menus | 0/TBD | Not started | - |
+| 8.7 States, keyboard and menus | 1/1 | Complete | 2026-10-17 |
 | 8.8 Dialogs and button order | 0/TBD | Not started | - |
 | 8.9 Spacing sweep | 0/TBD | Not started | - |
 | 8.10 Knob and thumb ease | 0/TBD | Not started | - |

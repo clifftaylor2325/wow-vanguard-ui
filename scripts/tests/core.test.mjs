@@ -493,7 +493,9 @@ it("the question dialog: its text is the title, wrapped short of the X, the dial
 it("the question dialog: Enter presses a Yes that is not a danger button, out of combat only; other keys go on", () => {
   const addon = loggedIn();
   const name = "Vanguard_Question";
+  // Asks the question (kind: "danger" or undefined) and keeps the answers.
   const ask = (kind) => addon.eval(`__answers = {} __passed = {} ns.Ask("Sure?", "Go", function() __answers[#__answers + 1] = "yes" end, function() end, ${kind}) `);
+  // Presses a key on the question.
   const press = (k) => addon.eval(`${name}.__scripts.OnKeyDown(${name}, "${k}") return {}`);
   ask(undefined);
   addon.eval(`${name}.SetPropagateKeyboardInput = function(self, v) __passed[#__passed + 1] = v end`);

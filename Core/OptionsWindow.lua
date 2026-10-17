@@ -495,6 +495,7 @@ local function useKey(key)
   if key == "UP" or key == "DOWN" then stepPage(key == "UP" and -1 or 1) return true end
   if key == "TAB" then stepRow(IsShiftKeyDown and IsShiftKeyDown() and -1 or 1) return true end
   local w = window.focusRow
+  if (key == "LEFT" or key == "RIGHT") and w and w.Step then w:Step(key == "RIGHT" and 1 or -1) return true end
   if not ((key == "ENTER" or key == "SPACE") and w) then return false end
   w:GetScript("OnClick")(w, "LeftButton")
   return true
@@ -505,7 +506,11 @@ end
 -- Escape closes the window itself (the keyboard it holds would otherwise swallow it); a box with the typing clears first.
 local function onKey(f, key)
   local typing = type(GetCurrentKeyBoardFocus) == "function" and GetCurrentKeyBoardFocus() ~= nil
-  if key == "ESCAPE" and not typing then f:Hide() return end
+  if key == "ESCAPE" and not typing then
+    if ns.Widgets.MenuOpen() then ns.Widgets.CloseMenu() else f:Hide() end
+    if not ns.InCombat() and ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(false) end
+    return
+  end
   local used = not typing and useKey(key)
   if not ns.InCombat() and ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(not used) end
 end
