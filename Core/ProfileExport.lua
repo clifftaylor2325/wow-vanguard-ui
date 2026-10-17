@@ -77,11 +77,11 @@ local function addList(f)
   scroll:SetScrollChild(f.list)
 end
 
--- The buttons along the foot: All and None on the left, Close and Export on the right.
+-- The buttons along the foot: All and None on the left, Cancel and the Export primary on the right.
 local function addButtons(f)
   f.export = W.Primary(f, "Export", export, 100)
   f.export:SetPoint("BOTTOMRIGHT", -12, 12)
-  f.close = W.Button(f, "Close", function() f:Hide() end, 100)
+  f.close = W.Button(f, "Cancel", function() f:Hide() end, 100)
   f.close:SetPoint("RIGHT", f.export, "LEFT", -8, 0)
   f.all = W.Button(f, "All", function() setAll(true) end, 60)
   f.all:SetPoint("BOTTOMLEFT", 12, 12)

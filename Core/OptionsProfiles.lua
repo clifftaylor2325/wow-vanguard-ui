@@ -46,11 +46,12 @@ local function addEditButtons(r, name)
 end
 
 -- Use, Copy here and Delete, right to left. None on the profile that will be in use after the reload;
--- the one running until then (when a switch is staged) only gets Use, to take the switch back.
+-- the one running until then (when a switch is staged) only gets Use, to take the switch back. Use is
+-- a plain button: the page's one accent button is Create.
 local function addProfileButtons(r, name)
   if name == ns.SelectedProfileName() then return end
   if name ~= ns.ProfileName() then addEditButtons(r, name) end
-  r.use = W.Primary(r, "Use", function() ns.UseProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL)
+  r.use = W.Button(r, "Use", function() ns.UseProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL)
   if r.copy then r.use:SetPoint("RIGHT", r.copy, "LEFT", -6, 0) else r.use:SetPoint("RIGHT", -8, 0) end
 end
 

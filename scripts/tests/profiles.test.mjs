@@ -401,8 +401,9 @@ it("export with Include parts: /vg export <part ...>, and the export panel's swi
   expect(addon.eval("return Vanguard_TextDialog.title:GetText()"), "everything on is the whole profile").toBe("Vanguard export (profile Default)  Ctrl+C to copy");
   expect(addon.eval("return Vanguard_TextEdit:GetText():sub(1, 12)")).toBe("VG1:profile:");
   addon.eval("ns.ExportDialog()");
+  expect(addon.eval("local f = Vanguard_ExportDialog return { f.close.text:GetText(), f.export.fill ~= nil, f.close.fill == nil }"), "the dismiss button reads Cancel, beside the Export primary (the panel's one accent button)").toEqual(["Cancel", true, true]);
   click("Vanguard_ExportDialog.close");
-  expect(panel().shown, "Close closes it").toBe(false);
+  expect(panel().shown, "Cancel closes it").toBe(false);
 });
 it("every import backs up the profile in use first, into one rolling backup profile", () => {
   const addon = loggedIn();

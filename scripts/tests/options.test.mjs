@@ -1,7 +1,7 @@
 // options: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, button, calls, chatHas, isTok, key, loggedIn, marks, px, setCombat, tooltip } from "./helpers.mjs";
+import { CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, button, calls, chatHas, isTok, key, loggedIn, marks, px, setCombat, tok, tooltip } from "./helpers.mjs";
 
 it("options window", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
@@ -53,7 +53,7 @@ it("options window: nav, search, controls, footer", () => {
   expect(addon.eval("return Vanguard_Options.nav.general:GetAlpha()") === 1, "clearing the search brings every page back").toBeTruthy();
   addon.eval('ns.Options.Show("bars")');
   const seg = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.segments and w.label:GetText() == "Numbers" then
-      w.segments[2]:GetScript("OnClick")(w.segments[2]) return { value = VanguardDB.profiles.Default.DataBars.text, on = w.segments[2].fill:IsShown(), off = w.segments[1].fill:IsShown() } end end`);
+      w.segments[2]:GetScript("OnClick")(w.segments[2]) return { value = VanguardDB.profiles.Default.DataBars.text, on = w.segments[2].fill.shown, off = w.segments[1].fill.shown } end end`);
   expect(seg.value === "always" && seg.on === true && seg.off === false, "clicking a segment picks it and lights it").toBeTruthy();
   addon.eval('ns.Options.Show("windows")');
   const dd = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.label:GetText() == "Tooltip position" then
@@ -272,7 +272,7 @@ it("options: a frame's scale and opacity from the Layout card; a long menu scrol
   const menu = addon.eval("local n = 0 for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() then n = n + 1 end end return { n, Vanguard_Menu:GetWidth(), Vanguard_Menu:GetHeight(), ns.Widgets ~= nil }");
   const count = addon.eval('local c = __d.choices if type(c) == "function" then c = c() end return #c');
   expect(count, "every frame is a choice").toBeGreaterThan(16);
-  expect(menu.slice(0, 3), "a long list shows 16 rows at a time, one column wide").toEqual([16, 180, 16 * 22 + 2]);
+  expect(menu.slice(0, 3), "a long list shows 16 rows at a time, one column wide, each row an inline control tall").toEqual([16, 180, 16 * addon.eval("return ns.Theme.CONTROL_H") + 2]);
   addon.eval('for _ = 1, 60 do for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() and b.text:GetText() == "Minimap" then b:GetScript("OnClick")(b) return end end Vanguard_Menu:GetScript("OnMouseWheel")(Vanguard_Menu, -1) end');
   expect(addon.eval(`return ${sliderRow("Its scale")}.get()`), "picking another frame re-reads the sliders").toBe(1);
   addon.eval(`local r = ${sliderRow("Its opacity")} r.set(0.5) r:Refresh()`);
@@ -482,8 +482,8 @@ it("options: the General page's sample unit frame and button follow the accent, 
     return { u.health:GetStatusBarTexture():GetTexture(), u.power:GetStatusBarTexture():GetTexture(), font, size, b.glow[1].__vertexColor, b.glow[1]:IsShown(),
       u.name:GetText(), u.value:GetText(), b.hotkey:GetText(), b.count:GetText() } end end`);
   const first = sample();
-  expect([first[0], first[1], first[3], first.slice(5)], "a unit frame with the Vanguard bars, the name at 12, and a button with its key, count and glow")
-    .toEqual(["Interface\\AddOns\\Vanguard\\Media\\Textures\\Bar", "Interface\\AddOns\\Vanguard\\Media\\Textures\\Bar", 12, [true, "<name>", "72%", "1", "5"]]);
+  expect([first[0], first[1], first[3], first.slice(5)], "a unit frame with the Vanguard bars, the player's own name at 12, and a button with its key, count and glow")
+    .toEqual(["Interface\\AddOns\\Vanguard\\Media\\Textures\\Bar", "Interface\\AddOns\\Vanguard\\Media\\Textures\\Bar", 12, [true, "Tester", "72%", "1", "5"]]);
   expect(isTok(addon, first[4], "accent"), "the glow is in the accent").toBe(true);
   addon.eval("ns.Theme.SetAccent(ns.Theme.PRESETS.jade[1], ns.Theme.PRESETS.jade[2], ns.Theme.PRESETS.jade[3])");
   expect(sample()[4].slice(0, 3), "a new accent shows at once").toEqual(addon.eval("return ns.Theme.PRESETS.jade").slice(0, 3));
@@ -686,4 +686,93 @@ it("options: choice segments are as wide as their labels and follow the text siz
   expect(after[1].width > before[1].width && after[0].left + after[0].width <= after[1].left + 1, "and still don't overlap").toBe(true);
   addon.eval('__click("Corners: square or rounded panels")');
   expect(segments().map((s) => s.shadow), "Rounded selected: the shadow moves with the selection").toEqual([0.9, 0]);
+});
+
+// A control's height and width, and (when it has a label or text) its font size and text colour.
+const CONTROL_LUA = `function __size(w, fs) local size = false if fs then size = select(2, fs:GetFont()) end return { w:GetHeight(), w:GetWidth(), size, fs and fs.__textColor or false } end`;
+
+it("controls: inline controls are T.CONTROL_H tall and buttons T.BUTTON_H, 120 wide by default; segment labels use the label role", () => {
+  const addon = loggedIn(CONTROL_LUA);
+  const [controlH, buttonH] = addon.eval("return { ns.Theme.CONTROL_H, ns.Theme.BUTTON_H }");
+  expect([controlH, buttonH], "the two heights of the scale").toEqual([20, 26]);
+  const sizes = addon.eval(`local W = ns.Widgets local get = function() return "a" end
+    local out = { input = __size(W.Input(UIParent)), search = __size(W.Search(UIParent, 200, "Find", function() end)), dropdown = __size(W.Dropdown(UIParent, { { "a", "A" } }, get, print)) }
+    out.button, out.primary, out.dialog = __size(W.Button(UIParent, "Go", print)), __size(W.Primary(UIParent, "Go", print)), __size(ns.DialogButton(UIParent, "Go"))
+    out.wide = __size(W.Button(UIParent, "Go", print, 60))
+    local r = W.Choice(UIParent, "Pick", { { "a", "A" }, { "b", "B" } }, get, print)
+    out.segment = __size(r.segments[1], r.segments[1].text)
+    r.dropdown = W.Dropdown(r, { { "a", "A" } }, get, print) r.dropdown:GetScript("OnClick")(r.dropdown)
+    out.menuItem = __size(Vanguard_Menu.items[1])
+    return out`);
+  expect([sizes.input[0], sizes.search[0], sizes.dropdown[0], sizes.segment[0], sizes.menuItem[0]], "an input, a search box, a dropdown, a segment and a menu item are inline controls").toEqual([controlH, controlH, controlH, controlH, controlH]);
+  expect([sizes.button, sizes.primary, sizes.dialog].map((s) => s.slice(0, 2)), "W.Button, W.Primary and ns.DialogButton are standalone buttons, 120 wide unless told otherwise").toEqual([[buttonH, 120], [buttonH, 120], [buttonH, 120]]);
+  expect(sizes.wide.slice(0, 2), "a width given wins").toEqual([buttonH, 60]);
+  expect([sizes.input[1], sizes.search[1], sizes.dropdown[1]], "the inline controls keep their own default widths").toEqual([220, 200, 180]);
+  expect(sizes.segment[2], "a segment's label is the label role (12), like every other button's").toBe(12);
+});
+
+it("controls: a primary's accent fill and a selected segment's follow rounded corners, in seven parts; only the chosen segment shows one", () => {
+  const addon = loggedIn();
+  // How many of a fill's textures there are and how many show.
+  const parts = (lua) => addon.eval(`local fill = ${lua} local shown = 0 for _, t in ipairs(fill.textures) do if t:IsShown() then shown = shown + 1 end end return { #fill.textures, shown }`);
+  addon.eval(`__p = ns.Widgets.Primary(UIParent, "Go", print) __p:SetSize(120, ns.Theme.BUTTON_H)
+    __value = "a" __r = ns.Widgets.Choice(UIParent, "Pick", { { "a", "A" }, { "b", "B" } }, function() return __value end, function(v) __value = v end)`);
+  expect([parts("__p.fill"), parts("__r.segments[1].fill"), parts("__r.segments[2].fill")], "square: one texture each, shown on the primary and the chosen segment only").toEqual([[1, 1], [1, 1], [1, 0]]);
+  expect(isTok(addon, addon.eval("return __p.fill.bg.__vertexColor"), "accent") && isTok(addon, addon.eval("return __p.text.__textColor"), "void"), "the primary's fill is the accent, its label dark").toBe(true);
+  addon.eval('ns.Theme.Settings().corners = "rounded" ns.Theme.Refresh()');
+  const r = addon.eval("return ns.Theme.CORNER_RADIUS * ns.Theme.Pixel(__p)");
+  expect([parts("__p.fill"), parts("__r.segments[1].fill"), parts("__r.segments[2].fill")], "rounded: a centre, two strips and four discs, all shown on the primary and the chosen segment, none on the other").toEqual([[7, 7], [7, 7], [7, 0]]);
+  expect(addon.eval("local p = __p.fill.bg.__points return { p.TOPLEFT.x + 0, p.BOTTOMRIGHT.x + 0, __p.fill.roundFill.TOPLEFT:GetWidth() }"), "the primary's centre is pulled in r on each side, with an r disc in each corner").toEqual([r, -r, r]);
+  expect(addon.eval("local out = {} for i, t in ipairs(__r.segments[1].fill.textures) do out[i] = t.__vertexColor end return out").every((c) => isTok(addon, c, "accent")), "every part of the chosen segment's fill is the accent").toBe(true);
+  addon.eval('__r.segments[2]:GetScript("OnClick")(__r.segments[2])');
+  expect([parts("__r.segments[1].fill"), parts("__r.segments[2].fill"), addon.eval("return __value")], "picking the other segment moves the whole fill").toEqual([[7, 0], [7, 7], "b"]);
+  addon.slash("accent arcane");
+  expect(addon.eval("return { __p.fill.bg.__vertexColor, __r.segments[2].fill.roundFill.TOPLEFT.__vertexColor }").every((c) => isTok(addon, c, "accent")), "a new accent reaches the primary and the segment").toBe(true);
+  addon.eval('ns.Theme.TintFill(__p.fill, "bad") __p:Refresh()');
+  expect(addon.eval("local out = {} for i, t in ipairs(__p.fill.textures) do out[i] = t.__vertexColor end return out").every((c) => isTok(addon, c, "accent")), "a primary's Refresh puts every part back in the accent").toBe(true);
+});
+
+it("dialogs: Import and Reload are the primary buttons, Yes and No stay plain; the text box's dismiss reads Cancel beside Import and Close on its own", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // A dialog button: whether it has a primary fill, its label and its label's colour.
+  const button = (lua) => addon.eval(`local b = ${lua} return { b.fill ~= nil, b.text:GetText(), b.text.__textColor }`);
+  addon.eval('ns.AskText("Paste it", function() end)');
+  const [importBtn, cancel] = [button("Vanguard_TextDialog.primary"), button("Vanguard_TextDialog.close")];
+  expect([importBtn[0], importBtn[1], isTok(addon, importBtn[2], "void"), cancel], "Import is the accent button with a dark label; the other reads Cancel and stays plain").toEqual([true, "Import", true, [false, "Cancel", tok(addon, "text")]]);
+  expect(addon.eval("return { Vanguard_TextDialog.primary:GetHeight(), Vanguard_TextDialog.close:GetHeight(), Vanguard_TextDialog.close:GetWidth() }"), "both standalone buttons, 120 wide").toEqual([26, 26, 120]);
+  addon.eval('ns.ShowText("A string", "VG1:...")');
+  expect([addon.eval("return Vanguard_TextDialog.primary:IsShown()"), button("Vanguard_TextDialog.close")[1]], "showing text alone: no primary, and the one button reads Close").toEqual([false, "Close"]);
+  addon.eval('ns.AskText("Paste it again", function() end)');
+  expect(button("Vanguard_TextDialog.close")[1], "asking again puts Cancel back").toBe("Cancel");
+  addon.eval('ns.Ask("Sure?", "Yes", function() end, function() end)');
+  expect([button("Vanguard_Question.yes"), button("Vanguard_Question.no")], "Yes and No are plain buttons in the text colour (a confirm never takes the accent)").toEqual([[false, "Yes", tok(addon, "text")], [false, "No", tok(addon, "text")]]);
+  addon.eval('ns.OfferReload("Changed.")');
+  const reload = button("Vanguard_Reload.accept");
+  expect([reload[0], reload[1], isTok(addon, reload[2], "void"), button("Vanguard_Reload.cancel")], "Reload is the accent button; Later stays plain").toEqual([true, "Reload", true, [false, "Later", tok(addon, "text")]]);
+  expect(addon.eval("local b = Vanguard_Reload.accept local o = b.reloadOverlay return { o ~= nil, o:GetAttribute('macrotext'), o:IsShown(), o.__points.TOPLEFT and o.__points.TOPLEFT.rel == b }"), "the reload overlay still covers the primary Reload button").toEqual([true, "/reload", true, true]);
+  addon.eval("Vanguard_Reload.cancel:GetScript('OnClick')(Vanguard_Reload.cancel)");
+  expect(addon.eval("return { Vanguard_Reload:IsShown(), Vanguard_Reload.accept.reloadOverlay:IsShown() }"), "Later hides the dialog and the overlay with it").toEqual([false, false]);
+});
+
+it("profiles: Use is a plain button, so Create is the page's one accent button", () => {
+  const addon = loggedIn(CLICK_LUA + 'VanguardDB.profiles["TEST-ONLY Healer"] = {}');
+  addon.eval('ns.Options.Show("profiles")');
+  const buttons = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.use and w:IsVisible() then out.use = { w.use.fill ~= nil, w.use.text:GetText(), w.use.text.__textColor, w.use:GetHeight(), w.use:GetWidth() } end
+    if w.create and w:IsVisible() then out.create = { w.create.fill ~= nil, w.create.text:GetText(), w.create:GetHeight(), w.create:GetWidth() } end end return out`);
+  expect(buttons.use, "Use: no accent fill, the text colour, a standalone button at the row's small width").toEqual([false, "Use", tok(addon, "text"), 26, 84]);
+  expect(buttons.create, "Create: the accent fill, the same size").toEqual([true, "Create", 26, 84]);
+});
+
+it("options: the sample unit frame shows the player's own name, or You when the client hides it, and the sample button Vanguard's crest", () => {
+  const addon = loggedIn();
+  addon.eval('ns.Options.Show("general")');
+  // The sample row refreshed: the name shown and the button's icon.
+  const sample = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.unit and w.button and w:IsVisible() then
+    w:Refresh() return { w.unit.name:GetText(), w.button.icon:GetTexture(), w.button.icon.__texCoord == nil } end end`);
+  expect(sample(), "the player's name, and the crest uncropped").toEqual(["Tester", "Interface\\AddOns\\Vanguard\\Media\\Textures\\Icon", true]);
+  addon.eval("__wfgWorld.units.player.name = __wfgWorld.secret(1)");
+  expect(sample()[0], "a hidden name falls back to You").toBe("You");
+  addon.eval("__wfgWorld.units.player.name = nil");
+  expect(sample()[0], "so does no name").toBe("You");
 });
