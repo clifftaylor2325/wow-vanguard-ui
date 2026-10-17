@@ -533,9 +533,19 @@ function GW.SkinClickBinding(window)
   bindingTutorial(window)
 end
 
+-- The Cooldown Manager's two alert dialogs (the sound alert and the group buff visual alert, one base template): the
+-- dark border faded, title and close button, the cooldown's name light, the group labels over the dropdowns as
+-- section heads, the dropdowns and the Add button themed. The spell icon stays the game's.
+GW.SkinCooldownAlert = skinner({
+  art = { "BG" }, titles = { "Title" }, close = { "CloseButton" }, labels = { "Name" }, buttons = { "AddButton" },
+  sections = { "PrimaryLabel", "EventLabel", "PayloadLabel" }, keep = { "Icon" },
+  dropdowns = { "TypeDropdown", "EventDropdown", "PayloadDropdown", "VisualDropdown" },
+})
+
 GW.Add("system", "framed", { "QuickKeybindFrame" }, GW.SkinQuickKeybind)
 GW.Add("system", "framed", { "CooldownViewerSettings" }, GW.SkinCooldownSettings)
 GW.Add("system", "framed", { "CooldownViewerLayoutDialog", "CooldownViewerImportLayoutDialog" }, GW.SkinEditDialog)
+GW.Add("system", "framed", { "CooldownViewerSettingsEditAlert", "GroupBuffFilterEditVisualAlert" }, GW.SkinCooldownAlert)
 GW.Add("system", "onDemand", "Blizzard_ClickBindingUI", { "ClickBindingFrame" }, GW.SkinClickBinding)
 
 -- Help, report, splash, colour picker, death recap, combat log bar ---------------------------

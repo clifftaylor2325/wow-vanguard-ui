@@ -412,6 +412,44 @@ it("Cooldown Manager settings and its layout dialogs: the window skin, search bo
   expect(bare.eval("return __errors('Windows')"), "a client without the Cooldown Manager").toBe("none");
 });
 
+// TEST-ONLY: the Cooldown Manager's two alert dialogs, built on one base template (dark border, title, close, Add button, labels, dropdowns).
+const ALERT_ENV = BUTTON_FRAME_ENV + `
+  function __alert(name, dropdowns)
+    local f = __frame(name) __sub(f, "BG") __sub(f, "CloseButton", "Button") __sub(f, "AddButton", "Button")
+    f.Icon = f:CreateTexture() f.Icon:SetAlpha(1)
+    f.Title, f.Name = __label(f, "Alert"), __label(f, "Fireball")
+    for _, key in ipairs({ "PrimaryLabel", "EventLabel", "PayloadLabel" }) do f[key] = __label(f, "Sound") end
+    for _, key in ipairs(dropdowns) do
+      f[key] = CreateFrame("Button", nil, f) f[key].Arrow = f[key]:CreateTexture() f[key].Arrow:SetAlpha(0)
+    end
+    return f
+  end
+  __alert("CooldownViewerSettingsEditAlert", { "TypeDropdown", "EventDropdown", "PayloadDropdown" })
+  __alert("GroupBuffFilterEditVisualAlert", { "VisualDropdown" })
+`;
+
+it("Cooldown Manager alert dialogs: border faded, title, close, name, group labels as section heads, dropdowns and Add button", () => {
+  const addon = loggedIn(ALERT_ENV);
+  addon.eval("CooldownViewerSettingsEditAlert:Show() GroupBuffFilterEditVisualAlert:Show()");
+  for (const [name, drops] of [["CooldownViewerSettingsEditAlert", ["TypeDropdown", "EventDropdown", "PayloadDropdown"]], ["GroupBuffFilterEditVisualAlert", ["VisualDropdown"]]]) {
+    expect(addon.eval(`local f = ${name}
+      return { __faded(f), f.BG:GetAlpha(), __panelled(f), __titled(f.Title), __looks(f.Name, "label", "text"), f.CloseButton.__piece.__alpha, __panelled(f.AddButton),
+        ns.Theme.RoleSize("section") == select(2, f.PrimaryLabel:GetFont()), f.PrimaryLabel:GetText(), f.Icon.__alpha }`),
+      `${name}: art faded, panel, title, name light, close and Add themed, the group label a section head in capitals, the icon kept`).toEqual([0, 0, true, true, true, 0, true, true, "SOUND", 1]);
+    expect(addon.eval(`local n = 0 for _, key in ipairs({ ${drops.map((d) => `"${d}"`).join(", ")} }) do if __panelled(${name}[key]) then n = n + 1 end end return n`), `${name}: dropdowns themed`).toBe(drops.length);
+  }
+  expect(addon.eval("return { ns.Theme.RoleSize('section') == select(2, CooldownViewerSettingsEditAlert.EventLabel:GetFont()), ns.Theme.RoleSize('section') == select(2, CooldownViewerSettingsEditAlert.PayloadLabel:GetFont()) }"), "the other two labels").toEqual([true, true]);
+  const first = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("CooldownViewerSettingsEditAlert:Hide() CooldownViewerSettingsEditAlert:Show()");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(first);
+  const off = loggedIn(ALERT_ENV, SWITCH_OFF);
+  off.eval("CooldownViewerSettingsEditAlert:Show()");
+  expect(off.eval("return __titled(CooldownViewerSettingsEditAlert.Title)"), "switched off").toBe(false);
+  const bare = loggedIn(ALERT_ENV + 'CreateFrame("Frame", "CooldownViewerSettingsEditAlert", UIParent)');
+  bare.eval("CooldownViewerSettingsEditAlert:Show()");
+  expect(bare.eval("return __errors('Windows')"), "a dialog without its parts").toBe("none");
+});
+
 it("click bindings: skinned when their addon loads, with the three buttons and the list backdrop", () => {
   const addon = loggedIn(COOLDOWN_ENV);
   addon.eval("__clickBinding()");
