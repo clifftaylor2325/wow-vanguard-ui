@@ -1,7 +1,7 @@
 // theme: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, button, chatHas, isTok, loggedIn, px, setCombat, tok } from "./helpers.mjs";
+import { CLICK_LUA, borderOf, button, chatHas, isTok, loggedIn, px, setCombat, tok } from "./helpers.mjs";
 
 it("theme", () => {
   const addon = loggedIn();
@@ -868,4 +868,45 @@ it("a variant switch recolours text drawn before it: with the options window ope
   addon.eval('__hand = UIParent:CreateFontString() ns.Theme.Color(__hand, 0.5, 0.5, 0.5)');
   addon.slash("variant default");
   expect([tok(addon, "text").slice(0, 3), addon.eval("return { __hand:GetTextColor() }").slice(0, 3)], "back to the default; text coloured by hand is left alone").toEqual([[232 / 255, 234 / 255, 238 / 255], [0.5, 0.5, 0.5]]);
+});
+
+// One of the game's check buttons: template art, a label, checked; returns nothing.
+const CHECK_BUTTON = `local b = CreateFrame("CheckButton", "TEST_Check", UIParent) b:SetSize(24, 24)
+  b.Art = b:CreateTexture() b:SetCheckedTexture(b:CreateTexture()) b:SetFontString(b:CreateFontString()) b.text = b:GetFontString() b.text:SetPoint("LEFT", b, "RIGHT", 2, 0) b:SetChecked(true) ns.Theme.CheckBox(b)`;
+
+it("theme: a game check button becomes a 16 px inset box with the Check glyph in accentText while checked, following the game's state and the mouse (DESIGN-PRINCIPLES 2.6)", () => {
+  const addon = loggedIn(CHECK_BUTTON);
+  // The check button's state: { art faded, box width, mark shown, mark colour, mark size, press shown, fill shown, box regions, label colour }.
+  const state = () => addon.eval(`local c = ns.Theme.CheckParts(TEST_Check)
+    return { TEST_Check.Art.__alpha, c.box:GetWidth(), c.mark:IsShown(), c.mark.__vertexColor, c.mark:GetWidth(), ns.Theme.PressOverlay(TEST_Check):IsShown(), c.fill:IsShown(), select("#", c.box:GetRegions()), TEST_Check:GetFontString().__textColor }`);
+  let s = state();
+  expect([s[0], s[1], s[2], isTok(addon, s[3], "accentText"), s[5], s[6]], "art faded; the box 16 px; the mark shown in accentText; no press, no fill").toEqual([0, addon.eval("return ns.Theme.PixelRound(UIParent, 16, true)"), true, true, false, false]);
+  expect([s[4], addon.eval("return ns.Theme.CheckParts(TEST_Check).mark.__texture")], "the Check glyph at 12 px").toEqual([addon.eval("return ns.Theme.PixelRound(UIParent, 12, true)"), addon.eval('return ns.Theme.Icon("Check")')]);
+  addon.eval("TEST_Check:SetChecked(false)");
+  expect(state()[2], "SetChecked(false): the mark goes").toBe(false);
+  addon.eval('TEST_Check:SetChecked(true) TEST_Check:GetScript("OnClick")(TEST_Check)');
+  expect(state()[2], "a click (the client flips the state first): the mark is back").toBe(true);
+  addon.eval('TEST_Check:GetScript("OnEnter")(TEST_Check)');
+  expect(isTok(addon, borderOf(addon, "ns.Theme.CheckParts(TEST_Check).box"), "borderHi"), "under the mouse the box's border is borderHi").toBe(true);
+  addon.eval('TEST_Check:GetScript("OnLeave")(TEST_Check)');
+  expect(isTok(addon, borderOf(addon, "ns.Theme.CheckParts(TEST_Check).box"), "edge"), "and back to edge").toBe(true);
+  addon.eval('TEST_Check:GetScript("OnMouseDown")(TEST_Check)');
+  expect([state()[5], addon.eval("return select(5, TEST_Check.text:GetPoint(1))"), addon.eval("return { ns.Theme.PressOverlay(TEST_Check):GetDrawLayer() }")], "held: the shade shows above the fill and under the border, the label stays put").toEqual([true, 0, ["BACKGROUND", 2]]);
+  addon.eval('TEST_Check:GetScript("OnMouseUp")(TEST_Check)');
+  expect(state()[5], "let go: it hides").toBe(false);
+  addon.eval('TEST_Check:GetScript("OnEnter")(TEST_Check) TEST_Check:Disable()');
+  s = state();
+  expect([isTok(addon, s[3], "disabled"), isTok(addon, s[8], "disabled"), isTok(addon, borderOf(addon, "ns.Theme.CheckParts(TEST_Check).box"), "edge")], "disabled under the mouse: the mark and the label in the disabled tier, the hover border let go").toEqual([true, true, true]);
+  addon.eval("TEST_Check:Enable()");
+  expect(isTok(addon, state()[3], "accentText"), "enabled: the mark's colour back").toBe(true);
+  addon.eval('TEST_Check:GetScript("OnEnter")(TEST_Check) TEST_Check:GetScript("OnHide")(TEST_Check)');
+  expect(isTok(addon, borderOf(addon, "ns.Theme.CheckParts(TEST_Check).box"), "edge"), "hidden under the mouse: the hover border let go").toBe(true);
+  const n = state()[7];
+  addon.eval("ns.Theme.CheckBox(TEST_Check)");
+  expect(state()[7], "painting again adds nothing").toBe(n);
+  addon.eval('ns.Theme.CHECK.fill = "accent" ns.Theme.CHECK.markColor = "void" ns.Theme.Refresh()');
+  s = state();
+  expect([s[6], isTok(addon, addon.eval("return ns.Theme.CheckParts(TEST_Check).fill.__vertexColor"), "accent"), isTok(addon, s[3], "void")], "the filled look ([DECIDE] 6.8) is two values in T.CHECK, reaching a painted box on refresh").toEqual([true, true, true]);
+  addon.eval('Vanguard.RegisterSkin("TEST-ONLY-check", function(S) __skinned = S.CheckBox(CreateFrame("CheckButton", nil, UIParent)) __plain = S.CheckBox(CreateFrame("Frame", nil, UIParent)) end)');
+  expect(addon.eval("return { ns.Theme.CheckParts(__skinned) ~= nil, ns.Theme.CheckParts(__plain) ~= nil }"), "other addons get it as S.CheckBox, on a plain frame without click scripts too").toEqual([true, true]);
 });

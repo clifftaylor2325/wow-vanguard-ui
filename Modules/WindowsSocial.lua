@@ -507,8 +507,11 @@ local function dressRaidButtons()
   end
 end
 
--- The raid roster tab: its group boxes, member buttons, push buttons and labels. (The tab sits inside the
--- friends window, which is panelled already; the checkbox keeps the game's art.)
+-- The tab's "All assist" check button, as a themed check box.
+GW.RAID_CHECK = "RaidFrameAllAssistCheckButton"
+
+-- The raid roster tab: its group boxes, member buttons, push buttons, labels and check box, in that order,
+-- so a disabled box greys its label last. (The tab sits inside the friends window, which is panelled already.)
 function GW.SkinRaidTab()
   for i = 1, GW.RAID_GROUPS do dressRaidGroup(i) end
   ns.OutOfCombat(dressRaidButtons, "vgSocialRaidButtons")
@@ -516,6 +519,7 @@ function GW.SkinRaidTab()
     if type(_G[name]) == "table" and _G[name].CreateTexture then T.Button(_G[name]) end
   end
   GW.PaintNamed(GW.RAID_LABELS, "text")
+  if type(_G[GW.RAID_CHECK]) == "table" and _G[GW.RAID_CHECK].GetChecked then T.CheckBox(_G[GW.RAID_CHECK]) end
 end
 
 -- The group boxes and buttons are made when Blizzard_RaidUI loads, after the tab itself is skinned.
