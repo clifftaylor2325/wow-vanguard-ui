@@ -98,4 +98,6 @@ read_globals = {
   "ProfessionsFrame",
   -- Minimap: the game's world map toggle. Healing: the client's readable class names, for the buff list.
   "ToggleWorldMap", "ToggleCalendar", "LOCALIZED_CLASS_NAMES_MALE",
+  -- R1.4 Waypoints: the game's floating waypoint pin (Blizzard_QuestNavigation).
+  "SuperTrackedFrame",
 }

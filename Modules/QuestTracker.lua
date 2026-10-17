@@ -2,8 +2,11 @@
 -- (Modules/MenuStrip.lua makes the spot): each quest you watch as a block,
 --   * "[12] Title" in its difficulty color ("Ready to turn in" when done),
 --   * its objectives, gray until each is done, then green,
+--   * "Time left 4:32" while the quest is timed (the game's own timer frame is hidden with its tracker),
 --   * its usable quest item as a button beside it (the game's own item use, with
 --     its cooldown, a red tint out of range and the game's item tooltip).
+-- Legacy challenges you track sit under a "Legacy challenges" heading, and recipes you track in a
+-- profession window under "Recipes", each with its reagents ("2/4 Linen Cloth", green once you have them).
 -- Left-click a title to open the quest; right-click to stop watching it.
 -- Quests are in the game's order, or nearest first. The game's objective
 -- tracker is hidden in place while this one shows (it's an Edit Mode frame).
@@ -16,9 +19,11 @@ local ADDON, ns = ...
 
 local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game", withQuestie = "questie", xp = true, expanded = false } })
 
-QT.W, QT.H, QT.SORT_EVERY = 260, 174, 1
+QT.W, QT.H, QT.SORT_EVERY, QT.TICK_EVERY = 260, 174, 1, 1
 QT.EVENTS = { "QUEST_WATCH_LIST_CHANGED", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_REMOVED", "PLAYER_ENTERING_WORLD",
   "CONTENT_TRACKING_UPDATE", "TRACKED_ACHIEVEMENT_UPDATE", "TRACKED_ACHIEVEMENT_LIST_CHANGED", "ACHIEVEMENT_EARNED" }
+-- Enum.CraftingReagentType.Basic (ProfessionConstantsDocumentation.lua), for a client without the Enum.
+QT.BASIC_REAGENT = 1
 
 -- Whether Vanguard's tracker shows with these settings: it's on, and Questie (when it's
 -- loaded) isn't set to show its own tracker instead.
@@ -35,9 +40,26 @@ local function questLog(name, ...)
   if type(fn) == "function" then return fn(...) end
 end
 
+-- Calls a C_TradeSkillUI function by name, if this client has it.
+local function tradeSkill(name, ...)
+  local fn = type(C_TradeSkillUI) == "table" and C_TradeSkillUI[name]
+  if type(fn) == "function" then return fn(...) end
+end
+
+-- Calls a C_Item function by name, if this client has it.
+local function item(name, ...)
+  local fn = type(C_Item) == "table" and C_Item[name]
+  if type(fn) == "function" then return fn(...) end
+end
+
 -- A plain true from the client (hidden values count as false).
 local function yes(v)
   return not ns.IsSecret(v) and v == true
+end
+
+-- A table the client gives plainly (a hidden one counts as none).
+local function plainTable(v)
+  return not ns.IsSecret(v) and type(v) == "table" and v or nil
 end
 
 -- Data -----------------------------------------------------------------------------------------
@@ -88,10 +110,37 @@ local function distance(q)
   return ns.PlainNumber((questLog("GetDistanceSqToQuest", q.id))) or math.huge
 end
 
--- Every watched quest, in the chosen order.
-function QT.Quests()
+-- Seconds left on each timed quest, by quest id, from C_QuestLog.GetQuestTimers (the call the game's own
+-- timer frame reads; QuestLogDocumentation.lua's QuestTimerInfo). A timer the client hides is left out.
+function QT.Timers()
   local out = {}
-  for _, id in ipairs(QT.Watched()) do out[#out + 1] = QT.Quest(id) end
+  for _, info in ipairs(plainTable(questLog("GetQuestTimers")) or {}) do
+    local id, left = plainTable(info) and ns.PlainNumber(info.questID), plainTable(info) and ns.PlainNumber(info.questTimer)
+    if id and left then out[id] = left end
+  end
+  return out
+end
+
+-- A countdown as minutes and seconds ("4:32"; an hour and more as "61:05").
+function QT.Clock(seconds)
+  local s = math.max(0, math.floor(seconds))
+  return string.format("%d:%02d", math.floor(s / 60), s % 60)
+end
+
+-- Keeps a countdown moving: a once-a-second redraw while a watched quest's timer runs (and the tracker
+-- shows), stopped when none is left. A timed quest nobody watches draws no countdown, so it ticks nothing.
+local function tickTimers(timed)
+  ns.Every("quest timers", timed and QT.TICK_EVERY or nil, QT.Refresh, QT.frame)
+end
+
+-- Every watched quest, in the chosen order, each timed one with its seconds left.
+function QT.Quests()
+  local out, timers, timed = {}, QT.Timers(), false
+  for _, id in ipairs(QT.Watched()) do
+    local q = QT.Quest(id)
+    if q then q.timer = timers[id] timed = timed or q.timer ~= nil out[#out + 1] = q end
+  end
+  tickTimers(timed)
   if QT.settings.order == "nearest" then
     table.sort(out, function(a, b) return distance(a) < distance(b) end)
   end
@@ -139,15 +188,65 @@ function QT.Achievements()
   return out
 end
 
--- The rows the tracker draws: the watched quests, then the tracked achievements under their own heading (none
--- when you track none, so the tracker looks as it did).
+-- Recipes --------------------------------------------------------------------------------------
+
+-- A reagent line for a recipe's slot: "2/4 Linen Cloth" (your bags and bank against what the recipe needs)
+-- and whether you have enough; nil for an optional slot, a hidden value, or an item the client hasn't
+-- named yet (its data is asked for, and the line comes with it).
+local function reagentLine(slot)
+  local basic = (Enum and Enum.CraftingReagentType or {}).Basic or QT.BASIC_REAGENT
+  local r, need = plainTable(slot.reagents) and plainTable(slot.reagents[1]), ns.PlainNumber(slot.quantityRequired)
+  local id = r and ns.PlainNumber(r.itemID)
+  if ns.PlainNumber(slot.reagentType) ~= basic or not (id and need) then return nil end
+  local name = item("GetItemInfo", id)
+  if ns.IsSecret(name) or type(name) ~= "string" then item("RequestLoadItemDataByID", id) QT.waitingItems = true return nil end
+  local have = ns.PlainNumber(item("GetItemCount", id, true)) or 0
+  return { text = have .. "/" .. need .. " " .. name, done = have >= need }
+end
+
+-- A tracked recipe's reagents as { text, done } lines, in the recipe's order.
+local function recipeReagents(schematic)
+  local out = {}
+  for _, slot in ipairs(plainTable(schematic.reagentSlotSchematics) or {}) do
+    local line = plainTable(slot) and reagentLine(slot)
+    if line then out[#out + 1] = line end
+  end
+  return out
+end
+
+-- One tracked recipe: { id, title, objectives, recipe = true }, or nil when the client has no schematic for it.
+function QT.Recipe(id)
+  local s = id and plainTable(tradeSkill("GetRecipeSchematic", id, false))
+  if not s or ns.IsSecret(s.name) or type(s.name) ~= "string" then return nil end
+  return { id = id, title = s.name, objectives = recipeReagents(s), recipe = true }
+end
+
+-- The recipes you track in a profession window, in the game's order (none on a client without the
+-- tracking API; C_TradeSkillUI.GetRecipesTracked, TradeSkillUIDocumentation.lua).
+function QT.Recipes()
+  local out = {}
+  QT.waitingItems = false
+  for _, id in ipairs(plainTable(tradeSkill("GetRecipesTracked", false)) or {}) do
+    local r = QT.Recipe(ns.PlainNumber(id))
+    if r then out[#out + 1] = r end
+  end
+  return out
+end
+
+-- Adds a heading and the rows under it (nothing when there are none, so the tracker looks as it did).
+local function addSection(rows, name, list)
+  if #list == 0 then return end
+  rows[#rows + 1] = { section = name }
+  for _, r in ipairs(list) do rows[#rows + 1] = r end
+end
+
+-- The rows the tracker draws: the watched quests, then the tracked Legacy challenges and the tracked
+-- recipes, each under its own heading.
 function QT.Rows(quests)
-  local achievements = QT.Achievements()
-  if #achievements == 0 then return quests end
   local rows = {}
   for _, q in ipairs(quests) do rows[#rows + 1] = q end
-  rows[#rows + 1] = { section = "Legacy challenges" }
-  for _, a in ipairs(achievements) do rows[#rows + 1] = a end
+  addSection(rows, "Legacy challenges", QT.Achievements())
+  addSection(rows, "Recipes", QT.Recipes())
   return rows
 end
 
@@ -172,6 +271,13 @@ function QT.OnAchievement(id, button)
   end
 end
 
+-- A tracked recipe's title was clicked: left opens it in the profession window, right stops tracking it (the
+-- game's own calls; its tracker's menu offers the same).
+function QT.OnRecipe(id, button)
+  if button == "RightButton" then return tradeSkill("SetRecipeTracked", id, false, false) end
+  tradeSkill("OpenRecipe", id)
+end
+
 -- Updates ---------------------------------------------------------------------------------------
 
 -- Applies the order setting: the once-a-second sort (while the tracker shows)
@@ -188,6 +294,20 @@ local function refreshSoon()
   if QT.frame then ns.Soon("questtracker", QT.Refresh) end
 end
 
+-- An item's data arrived: a redraw when a tracked recipe's reagent was waiting for its name.
+local function itemArrived()
+  if QT.waitingItems then refreshSoon() end
+end
+
+-- Follows the events the game's own recipe tracker does (Blizzard_ProfessionsRecipeTracker.lua: a recipe
+-- tracked or untracked, the bags settling), and an item's name arriving, on a client that tracks recipes.
+local function followRecipes()
+  if not plainTable(tradeSkill("GetRecipesTracked", false)) then return end
+  ns.On("TRACKED_RECIPE_UPDATE", refreshSoon)
+  ns.On("BAG_UPDATE_DELAYED", refreshSoon)
+  ns.On("GET_ITEM_INFO_RECEIVED", itemArrived)
+end
+
 -- Builds the tracker (in its spot), hides the game's, and follows the quest log.
 local function build()
   QT.Build(ns.MoverFrame("questtracker"))
@@ -201,5 +321,6 @@ function QT.Enable(settings)
   if not QT.Shows(settings) then return end
   ns.OutOfCombat(build)
   for _, event in ipairs(QT.EVENTS) do ns.On(event, refreshSoon) end
+  followRecipes()
   ns.On("BAG_UPDATE_COOLDOWN", QT.UpdateCooldowns)
 end

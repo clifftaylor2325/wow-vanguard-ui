@@ -1205,6 +1205,34 @@ function GetQuestLogRewardInfo(i) local _, q = questIndex(world.selectedQuest) l
 function GetQuestLogRewardMoney() local _, q = questIndex(world.selectedQuest) return q and q.money or 0 end
 function GetQuestLogRewardXP(id) local _, q = questIndex(id or world.selectedQuest) return q and q.xp or 0 end
 
+-- world.questTimers: the timed quests, { questID, endsAt } each (world.setQuestTimer); endsAt a secret for
+-- a timer the client hides.
+world.questTimers = {}
+
+-- Seconds left on one timed quest: as the clock stands, or the secret as it is.
+local function timerLeft(t)
+  if issecretvalue(t.endsAt) then return t.endsAt end
+  return math.max(0, t.endsAt - stub.now)
+end
+
+-- The timed quests' remaining seconds, as the game's timer frame reads them (Blizzard_QuestTimer.lua;
+-- QuestLogDocumentation.lua's QuestTimerInfo: questID, questTimer).
+function C_QuestLog.GetQuestTimers()
+  local out = {}
+  for _, t in ipairs(world.questTimers) do out[#out + 1] = { questID = t.questID, questTimer = timerLeft(t) } end
+  return out
+end
+
+-- Starts a quest's timer (seconds left; a secret for one the client hides) or clears it (nil), then
+-- fires QUEST_LOG_UPDATE as the log does.
+function world.setQuestTimer(questID, seconds)
+  local kept = {}
+  for _, t in ipairs(world.questTimers) do if t.questID ~= questID then kept[#kept + 1] = t end end
+  if seconds ~= nil then kept[#kept + 1] = { questID = questID, endsAt = issecretvalue(seconds) and seconds or stub.now + seconds } end
+  world.questTimers = kept
+  stub.fire("QUEST_LOG_UPDATE")
+end
+
 -- Adds a quest to the log and fires QUEST_LOG_UPDATE / QUEST_ACCEPTED.
 function world.addQuest(q)
   q.objectives = q.objectives or {}
@@ -1801,6 +1829,27 @@ function C_TradeSkillUI.GetRecipeCooldown(recipeID) return world.cooldowns[recip
 -- Opens a recipe in the profession window (only noted here).
 function C_TradeSkillUI.OpenRecipe(recipeID) world.openedRecipe = recipeID return true end
 
+-- world.trackedRecipes: the recipe IDs you track in the profession window, in order (world.trackRecipe).
+world.trackedRecipes = {}
+-- The tracked recipes (Blizzard_ProfessionsRecipeTracker.lua reads both lists; recrafts are none here).
+function C_TradeSkillUI.GetRecipesTracked(isRecraft)
+  local out = {}
+  if isRecraft then return out end
+  for i, id in ipairs(world.trackedRecipes) do out[i] = id end
+  return out
+end
+-- Tracks (tracked true or nil) or untracks (false) a recipe, firing TRACKED_RECIPE_UPDATE(recipeID, tracked)
+-- as the client does (TradeSkillUIDocumentation.lua).
+function world.trackRecipe(recipeID, tracked)
+  local kept, on = {}, tracked ~= false
+  for _, id in ipairs(world.trackedRecipes) do if id ~= recipeID then kept[#kept + 1] = id end end
+  if on then kept[#kept + 1] = recipeID end
+  world.trackedRecipes = kept
+  stub.fire("TRACKED_RECIPE_UPDATE", recipeID, on)
+end
+-- The game's own call to track or untrack a recipe (the tracker's right-click goes through it).
+function C_TradeSkillUI.SetRecipeTracked(recipeID, tracked) world.trackRecipe(recipeID, tracked) end
+
 -- The window, made the first time a profession opens, with its crafting page's recipe form.
 local function professionsFrame()
   if ProfessionsFrame then return ProfessionsFrame end
@@ -1983,6 +2032,7 @@ function world.reset()
   world.cursor, world.timers, world.book = nil, {}, {}
   world.ah = emptyAuctionHouse()
   world.professions, world.recipes, world.cooldowns, world.openedRecipe = {}, {}, {}, nil
+  world.questTimers, world.trackedRecipes = {}, {}
   world.mail, world.taken = {}, {}
   world.bubbles, world.instance = {}, false
   refreshWatches()
