@@ -330,6 +330,84 @@ it("quest tracker: without the challenge API, nothing is drawn for them", () => 
   const noInfo = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST + "\nGetAchievementInfo = nil");
   expect(blockTitles(noInfo), "without the achievement API, nothing is drawn for them").toEqual(["[12] TEST-ONLY Letter"]);
 });
+// A timed quest in the world's own log (TEST-ONLY): "Hurry", watched, with `seconds` left on its clock.
+const timedQuest = (addon, seconds) => {
+  addon.world.addQuest({ questID: 90090, title: "TEST-ONLY Hurry", level: 10, watched: true, objectives: [{ text: "0/1 TEST-ONLY Parcel delivered", finished: false }] });
+  addon.eval(`__wfgWorld.setQuestTimer(90090, ${seconds})`);
+  addon.update(0);
+};
+// Whether the tracker's once-a-second countdown redraw is a job on the shared ticker.
+const timerTicking = (addon) => addon.eval("return ns.ticker.vgJobs['quest timers'] ~= nil");
+it("quest tracker: a timed quest shows its countdown under its title, ticking once a second until the timer is gone", () => {
+  const addon = loggedIn();
+  timedQuest(addon, 272);
+  expect(tracker(addon).blocks[0], "Time left as m:ss above the objectives").toEqual(["[10] TEST-ONLY Hurry", ["Time left 4:32", "- 0/1 TEST-ONLY Parcel delivered"]]);
+  expect([isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].lines[1].__textColor"), "text2"), timerTicking(addon)], "in the objective color; the redraw ticks").toEqual([true, true]);
+  addon.advance(2);
+  expect(tracker(addon).blocks[0][1][0], "two seconds later").toBe("Time left 4:30");
+  addon.eval("__wfgWorld.setQuestTimer(90090, 3725)");
+  addon.update(0);
+  expect(tracker(addon).blocks[0][1][0], "an hour and more stays minutes and seconds").toBe("Time left 62:05");
+  addon.eval("__wfgWorld.setQuestTimer(90090, nil)");
+  addon.update(0);
+  expect([tracker(addon).blocks[0][1], timerTicking(addon)], "the timer gone: the line and the ticking go").toEqual([["- 0/1 TEST-ONLY Parcel delivered"], false]);
+});
+it("quest tracker: a timer the client hides shows nothing, a client without timers shows nothing, and neither errors", () => {
+  const addon = loggedIn();
+  timedQuest(addon, "__wfgWorld.secret(90)");
+  expect([tracker(addon).blocks[0][1], timerTicking(addon)], "a secret timer: no line, no ticking").toEqual([["- 0/1 TEST-ONLY Parcel delivered"], false]);
+  const bare = loggedIn("C_QuestLog.GetQuestTimers = nil");
+  timedQuest(bare, 272);
+  expect([tracker(bare).blocks[0][1], timerTicking(bare)], "no timer API: the quest as usual").toEqual([["- 0/1 TEST-ONLY Parcel delivered"], false]);
+});
+// TEST-ONLY tracked recipes in the world: a bandage from two Linen Cloth (the world names it) and a thread the
+// client hasn't named yet, with a finishing reagent, a slot without reagents and a hidden slot to skip; a
+// recipe without a name and one whose name is hidden; one Linen Cloth in the bags.
+const RECIPE_ENV = `
+  __wfgWorld.recipes[90100] = { recipeID = 90100, name = "TEST-ONLY Linen Bandage", outputItemID = 90101, quantityMin = 1, quantityMax = 1,
+    reagentSlotSchematics = { { reagents = { { itemID = 2589 } }, quantityRequired = 2, reagentType = 1 }, { reagents = { { itemID = 90102 } }, quantityRequired = 1, reagentType = 1 },
+      { reagents = { { itemID = 159 } }, quantityRequired = 1, reagentType = 2 }, { quantityRequired = 1, reagentType = 1 }, __wfgWorld.secret(1) } }
+  __wfgWorld.recipes[90103] = { recipeID = 90103 }
+  __wfgWorld.recipes[90104] = { recipeID = 90104, name = __wfgWorld.secret("hidden") }
+  __wfgWorld.bags[1][1] = { itemID = 2589, count = 1 }
+`;
+it("quest tracker: recipes you track sit under a Recipes heading with their reagents, follow the bags, and go when untracked", () => {
+  const addon = loggedIn(RECIPE_ENV);
+  addon.world.addQuest({ questID: 90052, title: "TEST-ONLY Letter", level: 12, watched: true });
+  addon.eval("__wfgWorld.trackRecipe(90100) __wfgWorld.trackRecipe(90103) __wfgWorld.trackRecipe(90104) __wfgWorld.trackedRecipes[#__wfgWorld.trackedRecipes + 1] = __wfgWorld.secret(7)");
+  addon.update(0);
+  expect(tracker(addon).blocks, "the quest, the heading, then the named recipe with the reagent the client names").toEqual([
+    ["[12] TEST-ONLY Letter", {}], ["Recipes", {}], ["TEST-ONLY Linen Bandage", ["- 1/2 Linen Cloth"]]]);
+  const colors = addon.eval("local b = Vanguard_QuestTrackerFrame.blocks return { b[2].title.__textColor, b[3].title.__textColor, b[3].lines[1].__textColor }");
+  expect([isTok(addon, colors[0], "gold"), isTok(addon, colors[1], "text"), isTok(addon, colors[2], "text2")], "the heading in gold, the recipe's name in the text color, a short reagent in gray").toEqual([true, true, true]);
+  addon.eval("__wfgWorld.items[90102] = { name = 'TEST-ONLY Thread', icon = 'TEST-ONLY-ICON', quality = 1 } __wfgWorld.bags[1][2] = { itemID = 2589, count = 1 }");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 90102);
+  addon.update(0);
+  expect(tracker(addon).blocks[2][1], "the thread's name arrives: its line joins; the bags are read again").toEqual(["- 2/2 Linen Cloth", "- 0/1 TEST-ONLY Thread"]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[3].lines[1].__textColor"), "good"), "a reagent you have enough of is green").toBe(true);
+  addon.eval("__wfgWorld.bags[1][3] = { itemID = 90102, count = 1 }");
+  addon.fire("BAG_UPDATE_DELAYED");
+  addon.update(0);
+  expect(tracker(addon).blocks[2][1], "a bag change redraws the counts").toEqual(["- 2/2 Linen Cloth", "- 1/1 TEST-ONLY Thread"]);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks b[2].__scripts.OnClick(b[2], 'LeftButton') b[3].__scripts.OnClick(b[3], 'LeftButton')");
+  expect(addon.eval("return __wfgWorld.openedRecipe"), "the heading ignores clicks; left-click opens the recipe through the game's call").toBe(90100);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks b[3].__scripts.OnClick(b[3], 'RightButton')");
+  addon.update(0);
+  expect(blockTitles(addon), "right-click stops tracking it, through the game's call, and the heading goes with the last recipe").toEqual(["[12] TEST-ONLY Letter"]);
+  const bare = loggedIn(RECIPE_ENV + "\nC_TradeSkillUI.GetRecipesTracked = nil");
+  bare.world.addQuest({ questID: 90052, title: "TEST-ONLY Letter", level: 12, watched: true });
+  bare.eval("__wfgWorld.trackedRecipes = { 90100 }");
+  bare.fire("TRACKED_RECIPE_UPDATE", 90100, true);
+  bare.update(0);
+  expect(blockTitles(bare), "a client without recipe tracking: no heading, no error").toEqual(["[12] TEST-ONLY Letter"]);
+});
+it("quest tracker: switched off, a timed quest and a tracked recipe draw nothing", () => {
+  const off = loggedIn(RECIPE_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false } } }" });
+  timedQuest(off, 272);
+  off.eval("__wfgWorld.trackRecipe(90100)");
+  off.update(0);
+  expect([off.eval("return Vanguard_QuestTrackerFrame == nil"), timerTicking(off)], "no tracker, no ticking").toEqual([true, false]);
+});
 // TEST-ONLY quest item extras: the game's cooldown and range answers by log index (__cd, __range), and the tooltip call.
 const ITEM_ENV = `
   __cd, __range = {}, {}
