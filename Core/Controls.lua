@@ -13,6 +13,18 @@ local T, W = ns.Theme, ns.Widgets
 
 local ROW_HEIGHT = 28
 W.ROW_HEIGHT = ROW_HEIGHT
+-- The control column of a row (a dropdown's width, a slider's track, gap and value together) and the slot a slider's value takes
+-- inside it; the column sits 8 in from the row's right edge.
+W.COLUMN, W.VALUE_SLOT = 200, 60
+local COLUMN_INSET = 8
+-- A slider's track: the column less the value slot and a gap.
+local TRACK_WIDTH = W.COLUMN - W.VALUE_SLOT - COLUMN_INSET
+
+-- Limits a caption to the room left of the control column (it wraps there), left-aligned.
+local function fitCaption(r, width)
+  r.label:SetWidth((width or 400) - W.COLUMN - 2 * COLUMN_INSET)
+  r.label:SetJustifyH("LEFT")
+end
 -- The switch track's size (a pill, twice as wide as it is tall) and its round knob's diameter; a caption stops short of the track.
 local SWITCH_WIDTH, SWITCH_HEIGHT, KNOB_SIZE = 36, 18, 14
 -- The slider track's height (a pill) and its round thumb's diameter.
@@ -42,18 +54,12 @@ local function flat(parent, layer, color)
 end
 W.Flat = flat
 
--- Keeps a primary button's fill in the current accent.
-local function refreshPrimary(b)
-  T.TintFill(b.fill, "accent")
-end
-
--- A primary push button: an accent fill (T.FillParts, so it follows rounded corners) and a dark label,
+-- A primary push button (the kind of T.Button with an accent fill and a dark SemiBold label),
 -- T.BUTTON_H tall and 120 wide unless told otherwise. For the one action a view is about.
 function W.Primary(parent, text, onClick, width)
-  local b = ns.DialogButton(parent, text, width)
-  b.fill = T.FillParts(b, "BORDER", -1, "accent")
-  T.Color(b.text, "void")
-  b.Refresh = refreshPrimary
+  local b = ns.DialogButton(parent, text, width, "primary")
+  -- Puts the fill back in the current accent (the options window refreshes its widgets after a change).
+  b.Refresh = function(self) T.TintFill(self.fill, "accent") end
   b:SetScript("OnClick", ns.Guard(W.ClickLabel(text), onClick))
   return b
 end
@@ -240,8 +246,8 @@ end
 
 -- A dropdown on the right of a choice row; its Refresh is the row's.
 local function addDropdown(r, choices, get, set)
-  r.dropdown = W.Dropdown(r, choices, get, function(v) set(v); r:Refresh() end, 180)
-  r.dropdown:SetPoint("RIGHT", -8, 0)
+  r.dropdown = W.Dropdown(r, choices, get, function(v) set(v); r:Refresh() end, W.COLUMN)
+  r.dropdown:SetPoint("RIGHT", -COLUMN_INSET, 0)
   -- The row shows its value through the dropdown.
   r.Refresh = function(self) self.dropdown:Refresh() end
 end
@@ -251,7 +257,7 @@ function W.Choice(parent, caption, choices, get, set, width)
   local r = row(parent, caption, width)
   choices = withValue(choices, get())
   r.caption, r.choices, r.get = caption, choices, get
-  if fitsSegments(choices) then addSegments(r, choices, set) else addDropdown(r, choices, get, set) end
+  if fitsSegments(choices) then addSegments(r, choices, set) else addDropdown(r, choices, get, set) fitCaption(r, width) end
   r.Refresh = r.Refresh or refreshSegments
   r:SetScript("OnClick", ns.Guard("click choice", function(self) set(W.NextChoice(self.choices, self.get())[1]); self:Refresh() end))
   r:Refresh()
@@ -368,7 +374,7 @@ end
 -- is a list of { value, text } or a function returning one.
 function W.Dropdown(parent, choices, get, set, width)
   local d = T.Button(CreateFrame("Button", nil, parent))
-  d:SetSize(width or 180, T.CONTROL_H)
+  d:SetSize(width or W.COLUMN, T.CONTROL_H)
   d.choices, d.get, d.set, d.Refresh = choices, get, set, refreshDropdown
   addDropdownText(d)
   d:SetScript("OnClick", ns.Guard("click dropdown", function(self) if menu and menu:IsShown() and menu.owner == self then W.CloseMenu() else openMenu(self) end end))
@@ -464,8 +470,8 @@ end
 -- go on it, and dragging sets the value.
 local function addTrack(r)
   r.track = CreateFrame("Button", nil, r)
-  r.track:SetSize(140, SLIDER_HEIGHT)
-  r.track:SetPoint("RIGHT", -66, 0)
+  r.track:SetSize(TRACK_WIDTH, SLIDER_HEIGHT)
+  r.track:SetPoint("RIGHT", -(COLUMN_INSET + W.VALUE_SLOT + COLUMN_INSET), 0)
   local capsule = T.Capsule(r.track, SLIDER_HEIGHT, T.SLIDER.track, { line = T.SLIDER.line, edge = "SliderLine" })
   r.trackArt, r.outline = capsule.fill, capsule.line
   addFill(r)
@@ -516,8 +522,8 @@ end
 -- The value text, right-aligned in a fixed slot so a long number can't run over the track.
 local function addValueText(r)
   r.value = T.Text(r:CreateFontString(nil, "OVERLAY"), "number", "text2")
-  r.value:SetPoint("RIGHT", -8, 0)
-  r.value:SetWidth(52)
+  r.value:SetPoint("RIGHT", -COLUMN_INSET, 0)
+  r.value:SetWidth(W.VALUE_SLOT)
   r.value:SetJustifyH("RIGHT")
 end
 
@@ -529,6 +535,7 @@ function W.Slider(parent, caption, opts, get, set, width)
   local r = row(parent, caption, width)
   r.min, r.max, r.step, r.format = opts.min, opts.max, opts.step, opts.format or roundedText(opts.step)
   r.get, r.set, r.Refresh = get, set, refreshSlider
+  fitCaption(r, width)
   addTrack(r)
   if opts.locked then addLock(r, opts.locked) end
   addValueText(r)

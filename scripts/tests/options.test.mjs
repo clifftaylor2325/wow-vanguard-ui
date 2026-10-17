@@ -272,7 +272,7 @@ it("options: a frame's scale and opacity from the Layout card; a long menu scrol
   const menu = addon.eval("local n = 0 for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() then n = n + 1 end end return { n, Vanguard_Menu:GetWidth(), Vanguard_Menu:GetHeight(), ns.Widgets ~= nil }");
   const count = addon.eval('local c = __d.choices if type(c) == "function" then c = c() end return #c');
   expect(count, "every frame is a choice").toBeGreaterThan(16);
-  expect(menu.slice(0, 3), "a long list shows 16 rows at a time, one column wide, each row an inline control tall").toEqual([16, 180, 16 * addon.eval("return ns.Theme.CONTROL_H") + 2]);
+  expect(menu.slice(0, 3), "a long list shows 16 rows at a time, one column wide, each row an inline control tall").toEqual([16, 200, 16 * addon.eval("return ns.Theme.CONTROL_H") + 2]);
   addon.eval('for _ = 1, 60 do for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() and b.text:GetText() == "Minimap" then b:GetScript("OnClick")(b) return end end Vanguard_Menu:GetScript("OnMouseWheel")(Vanguard_Menu, -1) end');
   expect(addon.eval(`return ${sliderRow("Its scale")}.get()`), "picking another frame re-reads the sliders").toBe(1);
   addon.eval(`local r = ${sliderRow("Its opacity")} r.set(0.5) r:Refresh()`);
@@ -686,8 +686,8 @@ it("sliders: the pill track, the fill on the same frame under the thumb, the thu
   // The fill at a value: shown, the width of its two round ends, its right end's left edge, and the thumb's and its outline's centre.
   const fill = (v) => addon.eval(`__sl.set(${v}) __sl:Refresh() local p = __sl.fillParts
     return { p[1]:IsShown(), __r3(p[1]:GetWidth()), __r3(p[3]:GetWidth()), __r3(p[3].__points.TOPLEFT.x), __r3(__sl.thumb.__points.CENTER.x), __r3(__sl.thumbLine.__points.CENTER.x) }`);
-  expect(fill("__sl.max"), "at the top: the fill spans the track, its right end 4 in from the end, the thumb and its outline centred on the end").toEqual([true, 4, 4, 136, 140, 140]);
-  expect(fill("__sl.min + (4 / 140) * (__sl.max - __sl.min)"), "a fill 4 wide: both ends narrow to 2, so neither crosses the other").toEqual([true, 2, 2, 2, 4, 4]);
+  expect(fill("__sl.max"), "at the top: the fill spans the track, its right end 4 in from the end, the thumb and its outline centred on the end").toEqual([true, 4, 4, 128, 132, 132]);
+  expect(fill("__sl.min + (4 / 132) * (__sl.max - __sl.min)"), "a fill 4 wide: both ends narrow to 2, so neither crosses the other").toEqual([true, 2, 2, 2, 4, 4]);
   expect(fill("__sl.min"), "at the bottom: the fill hides under the thumb at the left end").toEqual([false, 0.5, 0.5, -0.5, 0, 0]);
   // Whether a texture is tinted the token's colour as the theme has it now.
   const tinted = (t, token) => addon.eval(`local c = ${t}.__vertexColor local r, g, b = ns.Theme.RGB("${token}") return c[1] == r and c[2] == g and c[3] == b`);
@@ -745,7 +745,7 @@ it("controls: inline controls are T.CONTROL_H tall and buttons T.BUTTON_H, 120 w
   expect([sizes.input[0], sizes.search[0], sizes.dropdown[0], sizes.segment[0], sizes.menuItem[0]], "an input, a search box, a dropdown, a segment and a menu item are inline controls").toEqual([controlH, controlH, controlH, controlH, controlH]);
   expect([sizes.button, sizes.primary, sizes.dialog].map((s) => s.slice(0, 2)), "W.Button, W.Primary and ns.DialogButton are standalone buttons, 120 wide unless told otherwise").toEqual([[buttonH, 120], [buttonH, 120], [buttonH, 120]]);
   expect(sizes.wide.slice(0, 2), "a width given wins").toEqual([buttonH, 60]);
-  expect([sizes.input[1], sizes.search[1], sizes.dropdown[1]], "the inline controls keep their own default widths").toEqual([220, 200, 180]);
+  expect([sizes.input[1], sizes.search[1], sizes.dropdown[1]], "the inline controls keep their own default widths").toEqual([220, 200, 200]);
   expect(sizes.segment[2], "a segment's label is the label role (12), like every other button's").toBe(12);
 });
 
@@ -797,9 +797,9 @@ it("profiles: Use is a plain button, so Create is the page's one accent button",
   addon.eval('ns.Options.Show("profiles")');
   const buttons = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
     if w.use and w:IsVisible() then out.use = { w.use.fill ~= nil, w.use.text:GetText(), w.use.text.__textColor, w.use:GetHeight(), w.use:GetWidth() } end
-    if w.create and w:IsVisible() then out.create = { w.create.fill ~= nil, w.create.text:GetText(), w.create:GetHeight(), w.create:GetWidth() } end end return out`);
+    if w.create and w:IsVisible() then out.create = { w.create.text.__textColor, w.create.text:GetText(), w.create:GetHeight(), w.create:GetWidth() } end end return out`);
   expect(buttons.use, "Use: no accent fill, the text colour, a standalone button at the row's small width").toEqual([false, "Use", tok(addon, "text"), 26, 84]);
-  expect(buttons.create, "Create: the accent fill, the same size").toEqual([true, "Create", 26, 84]);
+  expect(buttons.create, "Create: the primary kind (a dark label on the accent fill), the same size").toEqual([tok(addon, "void"), "Create", 26, 84]);
 });
 
 it("options: the sample unit frame shows the player's own name, or You when the client hides it, and the sample button Vanguard's crest", () => {
@@ -912,4 +912,18 @@ it("options: the General page's buttons are T.BUTTON_H tall in a 32 high row, an
   addon.eval('ns.Options.Show("modules")');
   const desc = addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.desc and w.label.__text == "Unit frames" and w:IsVisible() then return { select(2, w.desc:GetFont()), w.desc.__textColor } end end');
   expect([desc[0], isTok(addon, desc[1], "muted")], "a module's line on what it does is small and muted").toEqual([addon.eval("return ns.Theme.RoleSize('small')"), true]);
+});
+
+it("buttons: kinds share one shape (primary accent fill without bevel or sheen, hovering to accentText; danger a secondary with a bad label), and the control column is 200 wide", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local W = ns.Widgets
+    local plain, primary, danger = W.Button(UIParent, "Go", print), W.Primary(UIParent, "Go", print), W.Danger(UIParent, "Go", print)
+    local e = ns.Theme.HoverParts(primary)
+    local r = W.Slider(UIParent, "Size", { min = 0, max = 10, step = 1 }, function() return 5 end, print, 400)
+    return { plain.text.__textColor, primary.text.__textColor, danger.text.__textColor, e.fill.token, ns.Theme.HoverParts(plain).fill.token,
+      W.COLUMN, W.VALUE_SLOT, r.track:GetWidth(), r.value:GetWidth(), r.label:GetWidth(), primary.Refresh ~= nil }`);
+  expect(out.slice(0, 3), "the labels: text, void, bad").toEqual([tok(addon, "text"), tok(addon, "void"), tok(addon, "bad")]);
+  expect(out.slice(3, 5), "a primary hovers to accentText, a secondary to raisedHover").toEqual(["accentText", "raisedHover"]);
+  expect(out.slice(5, 9), "the column, the value slot, the track (column less slot and gap) and the value text").toEqual([200, 60, 132, 60]);
+  expect(out[9], "a caption stops short of the column").toBe(400 - 200 - 16);
 });
