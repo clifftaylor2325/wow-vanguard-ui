@@ -705,11 +705,8 @@ const LEGACY_ENV = WINDOWS_ENV + `
 // its ring) and the game's RefreshTreeButtons; the points badge and the trait panel's buttons and search box; the challenge list's
 // filter, search box, no-challenges line and category rows (flag set by SetSelected, a chevron button); challenge cards (plates,
 // a Track box, IsSelected and RefreshStateArt) and the shared objectives frame with its pooled criteria; the points bar; the reward
-// bar and track, which holds no cards until Init. __borders notes the last border colour the theme was given for each frame.
+// bar and track, which holds no cards until Init.
 const LEGACY_PARTS_ENV = LEGACY_ENV + SCROLL_HELPERS + INSIDES_LUA + `
-  __borders = {}
-  local setBorder = ns.Theme.SetBorder
-  ns.Theme.SetBorder = function(f, rgb) __borders[f] = rgb or false return setBorder(f, rgb) end
   function __bar(parent) local b = CreateFrame("StatusBar", nil, parent) b.Frame = b:CreateTexture() b:SetStatusBarTexture("TEST-ONLY-ART") return b end
   function __search(parent) local s = CreateFrame("EditBox", nil, parent) s.art, s.searchIcon = s:CreateTexture(), s:CreateTexture() return s end
   function __treeCard(picker)
@@ -818,17 +815,17 @@ const legacyParts = () => {
   return addon;
 };
 
-it("legacy system tree page: the cards are raised tiles keeping their icons and rings, the picked tree wears the accent border, the badge and controls are in the theme", () => {
+it("legacy system tree page: the cards are raised tiles keeping their icons and rings, the picked tree shows the selected look, the badge and controls are in the theme", () => {
   const addon = legacyParts();
-  // Tree card n: the alphas of its plate, glow, icon, highlight, pushed picture and ring, and whether its border is the accent.
+  // Tree card n: the alphas of its plate, glow, icon, highlight, pushed picture and ring, and whether its selected rail shows.
   const card = (n) => addon.eval(`local c = LegacySystemFrame.TreePage.LegacyTreeSelectionPanel.cards[${n}]
     return { c.Background:GetAlpha(), c.SelectedGlow:GetAlpha(), c.NormalTexture:GetAlpha(), c.HighlightTexture:GetAlpha(), c.PushedTexture:GetAlpha(), c.Ring:GetAlpha(),
-      __borders[c] and __borders[c][1] == (ns.Theme.Accent()) or false }`);
-  expect(card(1), "a card: the plate and glow faded, the icon, highlight, pushed picture and ring kept; not picked, no accent").toEqual([0, 0, 1, 1, 1, 1, false]);
-  expect(card(2), "the picked tree's card wears the accent").toEqual([0, 0, 1, 1, 1, 1, true]);
+      ns.Theme.RowParts(c).rail:IsShown() }`);
+  expect(card(1), "a card: the plate and glow faded, the icon, highlight, pushed picture and ring kept; not picked, no rail").toEqual([0, 0, 1, 1, 1, 1, false]);
+  expect(card(2), "the picked tree's card shows the selected rail").toEqual([0, 0, 1, 1, 1, 1, true]);
   expect([fills(addon, "LegacySystemFrame.TreePage.LegacyTreeSelectionPanel.cards[1]"), fills(addon, "LegacySystemFrame.TreePage.LegacyTreeSelectionPanel.cards[2]")], "each a tile").toEqual([1, 1]);
   addon.eval("local p = LegacySystemFrame.TreePage.LegacyTreeSelectionPanel p.cards[1]:SetChecked(true) p.cards[2]:SetChecked(false) p.cards[1]:RefreshSelectionVisuals() p.cards[2]:RefreshSelectionVisuals()");
-  expect([card(1)[6], card(2)[6]], "the accent follows the game's selection").toEqual([true, false]);
+  expect([card(1)[6], card(2)[6]], "the selected look follows the game's selection").toEqual([true, false]);
   addon.eval("LegacySystemFrame.TreePage.LegacyTreeSelectionPanel:RefreshTreeButtons()");
   expect([card(3), addon.eval("return #LegacySystemFrame.TreePage.LegacyTreeSelectionPanel.cards")], "a card the game makes when it rebuilds the picker is dressed at once").toEqual([[0, 0, 1, 1, 1, 1, false], 3]);
   expect(addon.eval("local s = LegacySystemFrame.TreePage.LegacyTreePointSummary return { s.Border:GetAlpha() }"), "the points badge's plate is faded").toEqual([0]);
@@ -855,16 +852,16 @@ it("legacy system challenges page: the filter, search box and category rows are 
   addon.eval(`${list}.ScrollBox.items[2]:SetSelected(true) ${list}.ScrollBox.items[1]:SetSelected(false)`);
   expect([row(1)[6], row(2)[6]], "the selected look follows the game's SetSelected").toEqual([false, true]);
   const cards = "LegacySystemFrame.ChallengesPage.DetailPane.ScrollBox";
-  // Challenge card n: its plates, ribbon, plus sign, whether it is a panel, its Track box a theme check box, and whether its border is the accent.
+  // Challenge card n: its plates, ribbon, plus sign, whether it is a panel, its Track box a theme check box, and whether its selected rail shows.
   const challenge = (n) => addon.eval(`local c = ${cards}.items[${n}]
     return { c.Background:GetAlpha(), c.BackgroundTop:GetAlpha(), c.BackgroundMiddle:GetAlpha(), c.BackgroundBottom:GetAlpha(), c.SelectedOverlay:GetAlpha(), c.TitleBar:GetAlpha(), c.PlusMinus:GetAlpha(),
-      ns.Theme.CheckParts(c.Tracked) ~= nil, __borders[c] and __borders[c][1] == (ns.Theme.Accent()) or false }`);
+      ns.Theme.CheckParts(c.Tracked) ~= nil, ns.Theme.RowParts(c).rail:IsShown() }`);
   addon.eval(`__acquire(${cards}, __challenge(false)) __acquire(${cards}, __challenge(true))`);
-  expect(challenge(1), "a challenge card: plates, tiles, glow and ribbon faded, the plus sign kept, a theme Track box, no accent").toEqual([0, 0, 0, 0, 0, 0, 1, true, false]);
-  expect(challenge(2), "the open one wears the accent border").toEqual([0, 0, 0, 0, 0, 0, 1, true, true]);
-  expect([fills(addon, `${cards}.items[1]`), fills(addon, `${cards}.items[2]`)], "each a panel").toEqual([1, 1]);
+  expect(challenge(1), "a challenge card: plates, tiles, glow and ribbon faded, the plus sign kept, a theme Track box, no rail").toEqual([0, 0, 0, 0, 0, 0, 1, true, false]);
+  expect(challenge(2), "the open one shows the selected rail").toEqual([0, 0, 0, 0, 0, 0, 1, true, true]);
+  expect([fills(addon, `${cards}.items[1]`), fills(addon, `${cards}.items[2]`)], "each a panel; the open one also has the selected fill showing").toEqual([1, 2]);
   addon.eval(`${cards}.items[1].selected = true ${cards}.items[2].selected = false ${cards}.items[1]:RefreshStateArt() ${cards}.items[2]:RefreshStateArt()`);
-  expect([challenge(1)[8], challenge(2)[8]], "the accent follows the game's RefreshStateArt").toEqual([true, false]);
+  expect([challenge(1)[8], challenge(2)[8]], "the selected look follows the game's RefreshStateArt").toEqual([true, false]);
   // The shared objectives frame's active rows: [background, track plate, has a bar, bar art faded, bar texture kept, bar is a track] for each, in creation order.
   const criteria = () => addon.eval(`local out = {} for r in LegacyChallengeObjectives.criteriaPool:EnumerateActive() do
     local b = r.ProgressBar out[#out + 1] = { r.Background:GetAlpha(), r.ProgressBarBackground:GetAlpha(), b ~= nil, b and b.Frame:GetAlpha() or 0, b and b:GetStatusBarTexture():GetAlpha() or 1, b and __sunk(b) or true } end

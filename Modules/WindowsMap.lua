@@ -622,17 +622,18 @@ end
 -- The art of a tree card the theme keeps: the icon (its normal, highlight and pushed textures) and the ring round it.
 GW.LEGACY_CARD_KEEP = { "NormalTexture", "HighlightTexture", "PushedTexture", "Ring" }
 
--- A tree card's border: the accent while it is the picked tree (the game's checked state), the theme's otherwise.
+-- A tree card's selected look (the rail and fill of a selected row) while it is the picked tree (the game's checked state).
 local function markTreeCard(card)
-  if type(card.GetChecked) == "function" then T.SetBorder(card, card:GetChecked() and { T.Accent() } or nil) end
+  if type(card.GetChecked) == "function" then T.SelectRow(card, card:GetChecked() and true or false) end
 end
 
 -- One tree card (a ringed icon button on a plate): the plate and glow faded, the icon and ring kept, on a raised tile
--- that wears the accent border while its tree is the picked one (the game refreshes that in RefreshSelectionVisuals).
+-- that shows the selected look while its tree is the picked one (the game refreshes that in RefreshSelectionVisuals).
 local function skinTreeCard(card)
   if not isFrame(card) then return end
   T.FadeRegions(card, GW.KeepKeys(card, GW.LEGACY_CARD_KEEP))
   T.Panel(card, { raised = true, noSheen = true })
+  T.Row(card)
   markTreeCard(card)
   GW.HookAfter(card, "RefreshSelectionVisuals", markTreeCard)
 end
@@ -706,17 +707,18 @@ end
 -- The art of a challenge card that is replaced by the card's own panel: its plates, tiles, selection glow and ribbon.
 GW.CHALLENGE_ART = { "Background", "BackgroundTop", "BackgroundMiddle", "BackgroundBottom", "SelectedOverlay", "TitleBar" }
 
--- A challenge card's border: the accent while the game has it selected (opened), the theme's otherwise.
+-- A challenge card's selected look (the rail and fill of a selected row) while the game has it selected (opened).
 local function markChallenge(card)
-  T.SetBorder(card, type(card.IsSelected) == "function" and card:IsSelected() == true and { T.Accent() } or nil)
+  T.SelectRow(card, type(card.IsSelected) == "function" and card:IsSelected() == true)
 end
 
--- One challenge card: its plates faded, a card in the theme with the accent border while selected (the game refreshes
+-- One challenge card: its plates faded, a card in the theme with the selected look while selected (the game refreshes
 -- that in RefreshStateArt), and its Track box a theme check box. The icon, points badge and texts are the game's.
 local function skinChallenge(card)
   if not isFrame(card) then return end
   GW.FadeParts(card, GW.CHALLENGE_ART)
   T.Panel(card)
+  T.Row(card)
   GW.SkinCheck(card.Tracked)
   markChallenge(card)
   GW.HookAfter(card, "RefreshStateArt", markChallenge)
