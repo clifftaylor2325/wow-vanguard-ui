@@ -23,7 +23,7 @@ The look in one line: flat dark slate panels, one-screen-pixel borders, one acce
 | `accentText`, `accentDim` | `e6b45b`, `8a6a2f` (from brass) | `accent` | Made from the accent in OKLCH (`T.ACCENT_VARIANTS`: lightness +0.047 and chroma x0.94 for text, -0.207 and x0.67 for dim), so every preset and custom hex gets them, worked out once per accent. `accentText` is for accent-coloured text: selected choices, captions, tabs, headers, badges, links, the `Vanguard:` chat prefix, and `T.Color` with no colour. `accentDim` is for accent borders and ornament only, never text. The `accent` itself stays for bars, borders, glows and selected fills. |
 | `panel` | `13161c` at 0.94 | `panel` | The fill of every panel (`T.Panel`, `T.HudPanel`). Softened raid bars mix their class colour into it. |
 | `inset` | `0c0e13` at 0.95 | `inset` | The darker fill of buttons, edit boxes and inset panels (`opts.inset`). |
-| `edge` | `000000` | `border` | Every one-pixel border unless a frame sets its own (`T.SetBorder`) or asks for the accent (`opts.accent`). |
+| `edge` | `000000` | `border` | Every one-pixel border unless a frame sets its own (`T.SetBorder`) or asks for the accent (`opts.accent`); the outline of a slider's thumb (`KnobLine`). |
 
 `panel`, `inset` and `border` have no control in the options window: they are kept in the profile (and its export string) and go back to these defaults with `/vg theme reset`. A profile keeps the values it saved, so a profile made before the surfaces were re-stepped (#229) keeps `12151b` and `07080b` until `/vg theme reset`.
 
@@ -36,10 +36,10 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | Surfaces | `void` | `0b0d11` | Near-black for text and marks drawn on an accent fill: a selected segment or condition, the setup wizard's check. |
 | | `raised` | `1b1f26` | The lighter fill of raised panels (`opts.raised`): dropdown menus, popovers, the spell picker, keybind mode. |
 | | `raisedHover` | `262a32` | An opaque control under the mouse, in place of the `hover` wash. |
-| | `borderHi` | `43484f` | A lighter line: the inner bevel and the base of a focus ring. |
+| | `borderHi` | `43484f` | A lighter line: the inner bevel, the base of a focus ring and the outline of a switch or slider track (`PillLine`, `SliderLine`). |
 | | `sheen` | `ffffff` at 0.06 | The one-pixel light line inside a panel's top border. |
 | | `divider` | `2f343d` | Lines between sections (the options window). |
-| | `shade` | `000000` at 0.5 | Dimming behind or under things: the options nav, unit frame bar backgrounds, the cast bar's latency zone, the AFK screen. |
+| | `shade` | `000000` at 0.5 | Dimming behind or under things: the options nav, unit frame bar backgrounds, the cast bar's latency zone, the AFK screen, the shade under a switch knob or slider thumb (`KnobShade`). |
 | | `hover` | `ffffff` at 0.08 | The faint white wash under the mouse on rows, tabs, raid tiles and menu icons (see-through things; buttons ease to `raisedHover`). |
 | | `darkBar` | `2a3039` | The health bar of the raid style "Dark, class-coloured names". |
 | | `checked` | `ffffff` at 0.25 | An action button that is checked (an active stance or aura). |
@@ -100,7 +100,7 @@ The state colours (`good`, `warn`, `bad`) are kept apart from every preset, so a
 | --- | --- |
 | `""` (default) | Fira Sans Condensed, bundled: Medium for regular roles, SemiBold for bold ones (`T.FONTS.regular`, `T.FONTS.bold`). Latin, Greek and Cyrillic, tabular digits. |
 | `"client"` | The game's font (`STANDARD_TEXT_FONT`). Korean and Chinese clients always use it, whatever the setting. |
-| any other name | A font shared through LibSharedMedia (the Font picker lists them after the two built-ins). If the addon that shared it is gone, Fira Sans Condensed comes back. A font path from older settings still works. |
+| any other name | A font shared through LibSharedMedia. The Font picker lists only Vanguard's two fonts, plus this one while it is the font in use (from a profile or an older setting); other shared fonts are not offered. If the addon that shared it is gone, Fira Sans Condensed comes back. A font path from older settings still works. |
 
 Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and "Vanguard Fira Sans SemiBold" (western and Russian clients). The faction look swaps the font of the `title` and `heading` roles only: Cinzel SemiBold for Alliance, Metamorphous for Horde, and only while the faction look is `"auto"` (Crest and heading font; the default `"crest"` keeps the usual fonts), the Font setting is Fira Sans and the client uses it (not on Russian clients: Cinzel and Metamorphous have no Cyrillic). The font and text size apply at once (every role-styled string is re-fonted).
 
@@ -287,6 +287,6 @@ The work plan (P4.1) described the theme from an earlier review. The code is wha
 - **Text sizes.** The plan says "title 14 … tiny 9". The code has `title` 15, `heading` 13, `name`, `label` and `number` 12, `cell` 11, `small` and `tiny` 10, `badge` 9 (the only role under 10, #258), plus the outlined roles (`world`, `barName`, `barSmall`, `cooldown`, `auraCount`, `auraTimer`, `auraTimerSmall`) and `chat`.
 - **Spacing grid.** The plan speaks of a 4/8 px grid. The code has no spacing tokens and uses mostly even offsets (2 to 16); the 4 px steps above are the rule for new work, not a description of every existing layout.
 - **Bar textures.** The plan names "bar textures" generally. The code has three built-ins (Vanguard, Soft, Flat) and, since P3.5, every bar texture shared through LibSharedMedia; it also shares its own bars and fonts under the "Vanguard ..." names.
-- **Fonts.** Besides Fira Sans Condensed and the game's font, the Font picker lists LibSharedMedia fonts (P3.5), and the faction look adds Cinzel and Metamorphous for titles and headings.
+- **Fonts.** Besides Fira Sans Condensed and the game's font, a font another addon shares through LibSharedMedia still works when a profile names it (the Font picker shows it only while it is in use; P3.5 listed every shared font), and the faction look adds Cinzel and Metamorphous for titles and headings.
 - **Accents.** The plan's five presets were brass, arcane, fel, void and ember; the code now has brass, arcane, jade, orchid and copper (#231) and also accepts any hex colour and the older names fel, void, ember, bronze, blue, green, purple and red.
 - **Default sizes** of unit frames, raid tiles, action buttons, the menu strip and windows are not theme tokens; they live in each module and the setup wizard's screen presets (`Core/Setup.lua`), and are described in the README.
