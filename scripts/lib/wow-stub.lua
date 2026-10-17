@@ -496,6 +496,18 @@ function methods:SetValue(v, ease) self.__value, self.__ease = v, ease end
 function methods:GetValue() return self.__value or 0 end
 function methods:SetStatusBarColor(r, g, b, a) self.__barColor = { r, g, b, a or 1 } end
 
+-- Sliders: the orientation (HORIZONTAL unless set).
+function methods:SetOrientation(o) self.__orientation = o end
+function methods:GetOrientation() return self.__orientation or "HORIZONTAL" end
+
+-- Sliders: the thumb texture, made on first set.
+function methods:SetThumbTexture(t)
+  self.__thumbTexture = self.__thumbTexture or newWidget("Texture", nil, self, nil, "ARTWORK")
+  self.__thumbTexture:SetTexture(t)
+end
+-- The thumb texture, if set.
+function methods:GetThumbTexture() return self.__thumbTexture end
+
 -- Registers a unit event: delivered only when its first argument is one of the units.
 function methods:RegisterUnitEvent(event, ...)
   self:RegisterEvent(event)
