@@ -2029,6 +2029,8 @@ T.ROLES = {
   chat = { 12 },
   -- The minimap's zone text: a bold 13 that never takes the faction look's display font (not in T.HEADING_ROLES).
   zone = { 13, true },
+  -- A section header: small, and upper-cased by T.SetText (the fourth field) instead of by :upper() on the string.
+  section = { 10, false, nil, true },
 }
 
 -- Every font string styled with a role: string -> role name. Weak, so text
@@ -2064,6 +2066,12 @@ function T.Text(fs, role, color)
   T.ApplyRole(fs, role)
   if color ~= false then T.Color(fs, color or "text") end
   return fs
+end
+
+-- Sets a styled font string's text, in capitals when its role says so (T.ROLES.section).
+function T.SetText(fs, text)
+  local r = T.ROLES[styled[fs]]
+  fs:SetText(r and r[4] and text:upper() or text)
 end
 
 -- A font's flags with SLUG added (#239) when the slugText setting is on and the text is world text

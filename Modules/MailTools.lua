@@ -221,10 +221,10 @@ local function buildPresets(f)
 end
 
 -- The panel's heading (ns.WindowTitle: a card's; the panel follows the mail window, so it has no close button),
--- the empty-state line (label text2) and the hint shown while there are no presets (a note: small muted).
+-- the empty-state line (label muted) and the hint shown while there are no presets (a note: small muted).
 local function heading(f)
   ns.WindowTitle(f, "Find mail", { kind = "card" })
-  f.empty = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
+  f.empty = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "muted")
   f.empty:SetPoint("TOP", 0, -ROWS_TOP - MT.ROW)
   f.hint = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
   f.hint:SetWidth(MT.WIDTH - 2 * MT.PAD)

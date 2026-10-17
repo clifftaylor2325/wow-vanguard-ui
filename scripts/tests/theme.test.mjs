@@ -1014,3 +1014,14 @@ it("theme: a game arrow button shows the theme's arrow glyph turned its way, in 
   addon.eval('Vanguard.RegisterSkin("TEST-ONLY-arrow", function(S) __arrow = S.ArrowButton(CreateFrame("Button", nil, UIParent), "right") end)');
   expect(addon.eval("return ns.Theme.ArrowParts(__arrow) ~= nil"), "other addons get it as S.ArrowButton").toBe(true);
 });
+
+it("T.SetText: a role with the upper flag (section) shows capitals, any other role shows the text as given", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`
+    local T = ns.Theme
+    local head = T.Text(UIParent:CreateFontString(nil, "OVERLAY"), "section", "muted")
+    local plain = T.Text(UIParent:CreateFontString(nil, "OVERLAY"), "small", "muted")
+    T.SetText(head, "Quest items") T.SetText(plain, "Quest items")
+    return { head.__text, plain.__text, T.RoleSize("section") == T.RoleSize("small") }`);
+  expect(out, "capitals only for the section role, which is the small size").toEqual(["QUEST ITEMS", "Quest items", true]);
+});
