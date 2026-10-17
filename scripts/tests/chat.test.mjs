@@ -1,7 +1,7 @@
 // chat: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, chatHas, isTok, later, loggedIn, setCombat, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, setCombat, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -698,4 +698,76 @@ it("R2.4 shared skin helpers: a glyph keeps its picture, a dropdown its arrow, a
       ns.Theme.PaintedCount() > 0, #ns.errors }`);
   expect(out, "pictures shown again after the theme faded the game's art; odd input skipped without an error").toEqual([1, 1, 1, 1, true, 0]);
   expect(addon.eval('return { type(ns.GetModule("Windows").DressChecks), ns.GetModule("Windows").CHECK_DEPTH }'), "the check-box helpers live with the shared ones").toEqual(["function", 5]);
+});
+// TEST-ONLY trade window (TradeFrame.xml): the frame and its buttons, six wells, seven item rows a side (each with a
+// slot plate, a name plate and an item button; the seventh is the enchant row with an icon of its own), your money
+// input line, the other player's money plate and figure, and the two column headings.
+const TRADE_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
+  local f = __window("TradeFrame")
+  for _, name in ipairs({ "TradeFrameTradeButton", "TradeFrameCancelButton" }) do CreateFrame("Button", name, f) end
+  TradeFrameTradeButton.WarningIcon = __art(TradeFrameTradeButton)
+  for _, name in ipairs(ns.GetModule("Windows").TRADE_INSETS) do __well(name, f) end
+  for _, side in ipairs({ "TradePlayerItem", "TradeRecipientItem" }) do
+    for i = 1, 7 do
+      local row = CreateFrame("Frame", side .. i, f) row.SlotTexture = __art(row) row.Icon = __art(row)
+      _G[side .. i .. "NameFrame"] = __art(row)
+      __itemButton(side .. i .. "ItemButton", row)
+    end
+  end
+  __moneyInput("TradePlayerInputMoneyFrame", f)
+  TradeRecipientMoneyBg = __art(f)
+  __moneyLine("TradeRecipientMoneyFrame", f)
+  TradeFrameRecipientNameText, TradeFramePlayerNameText = f:CreateFontString(nil, "OVERLAY"), f:CreateFontString(nil, "OVERLAY")
+  -- TEST-ONLY reader of the trade window's inside (see tradeState).
+  function __tradeState()
+    local wells, rows, skinned, icons = 0, 0, 0, 0
+    for _, name in ipairs(ns.GetModule("Windows").TRADE_INSETS) do
+      local w = _G[name]
+      local faded = true for _, r in ipairs({ w:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" and r.__alpha ~= 0 then faded = false end end
+      if faded and w.NineSlice.__alpha == 0 and __sunk(w) then wells = wells + 1 end
+    end
+    for _, side in ipairs({ "TradePlayerItem", "TradeRecipientItem" }) do
+      for i = 1, 7 do
+        local row = _G[side .. i]
+        if row.SlotTexture.__alpha == 0 and _G[side .. i .. "NameFrame"].__alpha == 0 then rows = rows + 1 end
+        if ns.FrameState("vgSkinned")[_G[side .. i .. "ItemButton"]] then skinned = skinned + 1 end
+        if row.Icon.__alpha == 0 then icons = icons + 1 end
+      end
+    end
+    local boxes, coins = 0, 0
+    for _, key in ipairs({ "gold", "silver", "copper" }) do
+      local box = TradePlayerInputMoneyFrame[key]
+      if select(1, box:GetRegions()).__alpha == 0 then boxes = boxes + 1 end
+      if box.texture.__alpha == 1 then coins = coins + 1 end
+    end
+    return { wells = wells, rows = rows, skinned = skinned, icons = icons, boxes = boxes, coins = coins, bg = TradeRecipientMoneyBg.__alpha,
+      figure = TradeRecipientMoneyFrame.GoldButton.Text:GetFont() ~= nil, heads = __looks(TradeFramePlayerNameText, "label", "text") and __looks(TradeFrameRecipientNameText, "label", "text"),
+      warning = TradeFrameTradeButton.WarningIcon.__alpha, painted = ns.Theme.PaintedCount() }
+  end
+`;
+// The trade window's inside: how many of the six wells are faded and sunk, how many rows have their plates faded
+// and their item button skinned, whether the enchant icon stays, the money boxes and their coins, the recipient
+// plate, the headings, and the Trade button's warning icon.
+const tradeState = (addon) => addon.eval("return __tradeState()");
+it("R2.8 the trade window: wells sunk, the fourteen rows' plates faded with item buttons in the bags' look, money boxes, headings and the warning icon", () => {
+  const addon = loggedIn(TRADE_ENV);
+  addon.eval("TradeFrame:Show()");
+  const first = tradeState(addon);
+  expect(first, "six wells, all rows done, no enchant icon faded, coins and the warning icon shown, plate faded, texts themed").toMatchObject({ wells: 6, rows: 14, skinned: 14, icons: 0, boxes: 3, coins: 3, bg: 0, figure: true, heads: true, warning: 1 });
+  expect(windowState(addon, "TradeFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
+  addon.eval("TradeFrame:Hide() TradeFrame:Show()");
+  expect(tradeState(addon).painted, "a second show paints nothing new").toBe(first.painted);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("R2.8 the trade window: the windows group off leaves it the game's; a trade window without its parts loads cleanly", () => {
+  const off = loggedIn(TRADE_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  off.eval("TradeFrame:Show()");
+  expect(tradeState(off), "nothing faded, painted or themed").toMatchObject({ wells: 0, rows: 0, skinned: 0, boxes: 0, heads: false });
+  expect(off.eval("return TradeRecipientMoneyBg.__alpha ~= 0"), "the other player's money plate stays").toBe(true);
+  const bare = loggedIn(`${WINDOWS_ENV}__window("TradeFrame")`);
+  bare.eval("TradeFrame:Show()");
+  expect([windowState(bare, "TradeFrame").panel, bare.eval("return #ns.errors")], "a bare window is skinned, no part missing is an error").toEqual([true, 0]);
+  const odd = loggedIn(`${TRADE_ENV} TradeRecipientItem3 = {} TradeFrameTradeButton.WarningIcon = nil TradeRecipientMoneyFrame = {} TradePlayerInputMoneyFrame.gold = {} TradePlayerInputMoneyFrame.silver = nil`);
+  odd.eval("TradeFrame:Show()");
+  expect(odd.eval("return #ns.errors"), "odd parts (a row that is no frame, no warning icon, a bare money line) are skipped").toBe(0);
 });

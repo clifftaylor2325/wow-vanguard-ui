@@ -20,6 +20,7 @@ local vgCorner = ns.FrameState("vgCorner")
 local vgDurability = ns.FrameState("vgDurability")
 local vgLootRows = ns.FrameState("vgLootRows")
 local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
+local vgMoneyBox = ns.FrameState("vgMoneyBox")
 local vgRowsWatched = ns.FrameState("vgRowsWatched")
 local vgTimerHook = ns.FrameState("vgTimerHook")
 local vgWindow = ns.FrameState("vgWindow")
@@ -69,8 +70,8 @@ GW.ITEM_TEXT_TAGS = { P = "text", H1 = "text", H2 = "text", H3 = "text" }
 -- on the dark panel): body text and headings go light.
 GW.QUEST_BODY = { "QuestInfoDescriptionText", "QuestInfoObjectivesText", "QuestInfoRewardText", "QuestProgressText", "GreetingText" }
 GW.QUEST_HEADS = { "QuestInfoTitleHeader", "QuestInfoDescriptionHeader", "QuestInfoObjectivesHeader", "QuestProgressTitleText", "CurrentQuestsText", "AvailableQuestsText" }
--- Push buttons a window keeps outside its button row (the mail's Open All).
-GW.EXTRA_BUTTONS = { MailFrame = { "OpenAllMail" } }
+-- Push buttons a window keeps outside its button row (the mail's Open All; the trade's Trade and Cancel).
+GW.EXTRA_BUTTONS = { MailFrame = { "OpenAllMail" }, TradeFrame = { "TradeFrameTradeButton", "TradeFrameCancelButton" } }
 -- The character pane's gear slots (Character<slot>Slot; each button's ID is its inventory slot).
 GW.SLOTS = { "Head", "Neck", "Shoulder", "Back", "Chest", "Wrist", "Hands", "Waist", "Legs", "Feet",
   "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged" }
@@ -81,6 +82,9 @@ GW.ART = { "NineSlice", "Bg", "TopTileStreaks", "PortraitContainer", "Border", "
 -- Art that is a window's content, not its frame, by window: faded with the rest, then shown again.
 -- The flight map draws its map on a texture of its own (SetTaxiMap: the TaxiMap texture, InsetBg on newer builds).
 GW.CONTENT_ART = { TaxiFrame = { "TaxiMap", "InsetBg" } }
+-- What each window adds inside its frame, by name: function(frame), run by GW.SkinFramed after the window skin
+-- (the sections below fill it, each beside the window's other code).
+GW.INSIDES = {}
 -- How far a window's panel reaches out past the window (units): the game's thick border art sat in
 -- that room; it is the contents' margin to the panel's edge on every side (art that fills the window
 -- edge to edge, like the spellbook's pages, included), and keeps the close button 12 in from the window.
@@ -362,6 +366,62 @@ function GW.WatchRows(box, skin)
   end
 end
 
+-- Shared helpers for a window's inside ---------------------------------------------------------
+
+-- Runs fn(part) on each global named in names that this client has (a frame, texture or font string).
+local function eachNamed(names, fn)
+  for _, name in ipairs(names) do
+    local part = _G[name]
+    if type(part) == "table" then fn(part) end
+  end
+end
+
+-- A frame that is only art in the game (an InsetFrameTemplate well, a model scene): its art and nine-slice faded
+-- and a flat inset panel in their place (T.Panel paints once); anything that is not a frame is skipped.
+function GW.InsetPanel(part)
+  if type(part) ~= "table" or not part.GetRegions or not part.CreateTexture then return end
+  T.FadeRegions(part)
+  if type(part.NineSlice) == "table" and part.NineSlice.SetAlpha then part.NineSlice:SetAlpha(0) end
+  T.Panel(part, { inset = true, noSheen = true })
+end
+
+-- An item button (a trade row's, a mail attachment's) in the bags' item look: a thin border in the item's
+-- quality colour; a button the client lacks is skipped.
+function GW.SkinItem(button)
+  local bags = ns.GetModule("Bags")
+  if bags and bags.SkinItem then bags.SkinItem(button) end
+end
+
+-- Colours and fonts each font string named in names that this client has: the role's font and a theme colour.
+function GW.TextNamed(names, role, token)
+  eachNamed(names, function(fs) if fs.SetFont then T.Text(fs, role, token) end end)
+end
+
+-- The three denominations of a money input line (MoneyInputFrameTemplate: edit boxes under these keys).
+GW.MONEY_INPUTS = { "gold", "silver", "copper" }
+
+-- One money input box as a theme edit box, once, with its coin picture shown again (the theme fades the box's
+-- art, which the coin is part of; the game dims the coin itself for a long figure).
+local function skinMoneyBox(box)
+  if type(box) ~= "table" or not box.SetText or vgMoneyBox[box] then return end
+  vgMoneyBox[box] = true
+  T.EditBox(box)
+  GW.ShowTexture(box.texture)
+end
+
+-- A money input line (the trade window's offer, the mail's send money): its three boxes as theme edit boxes.
+function GW.SkinMoneyInput(line)
+  if type(line) ~= "table" then return end
+  for _, key in ipairs(GW.MONEY_INPUTS) do skinMoneyBox(line[key]) end
+end
+
+-- Skins one window and then its inside (GW.INSIDES, by the window's name), for the windows the sections below dress.
+function GW.SkinFramed(frame)
+  GW.Skin(frame)
+  local inside = GW.INSIDES[frame:GetName() or ""]
+  if inside then inside(frame) end
+end
+
 -- The game menu -------------------------------------------------------------------------------
 
 -- One game menu button in the theme, once: the menu takes its buttons from a
@@ -436,6 +496,44 @@ end
 function GW.SkinLoot(frame)
   GW.Skin(frame)
   watchLootRows(frame.ScrollBox)
+end
+
+-- The trade window ----------------------------------------------------------------------------
+
+-- The six wells behind its item columns and money lines (InsetFrameTemplate frames that all carry the key LeftInset).
+GW.TRADE_INSETS = {
+  "TradeRecipientItemsInset", "TradeRecipientEnchantInset", "TradePlayerItemsInset", "TradePlayerEnchantInset",
+  "TradePlayerInputMoneyInset", "TradeRecipientMoneyInset",
+}
+-- The two column headings (the other player's name and yours), gold in the game.
+GW.TRADE_HEADS = { "TradeFrameRecipientNameText", "TradeFramePlayerNameText" }
+
+-- One trade row, "TradePlayerItem3" or "TradeRecipientItem3": its slot and name plates faded (the enchant row's
+-- icon stays) and its item button in the bags' item look.
+local function skinTradeRow(name)
+  local row = _G[name]
+  if type(row) ~= "table" then return end
+  GW.FadeParts(row, { "SlotTexture" })
+  GW.FadeNamed({ name .. "NameFrame" })
+  GW.SkinItem(_G[name .. "ItemButton"])
+end
+
+-- The money lines: your offer's three boxes as edit boxes, the other player's gold-edged plate faded and their
+-- amount in the theme font, and the Trade button's warning icon shown again (the theme fades the button's art).
+local function skinTradeMoney()
+  GW.SkinMoneyInput(_G.TradePlayerInputMoneyFrame)
+  GW.FadeNamed({ "TradeRecipientMoneyBg" })
+  GW.SkinMoney(_G.TradeRecipientMoneyFrame)
+  local trade = _G.TradeFrameTradeButton
+  GW.ShowTexture(type(trade) == "table" and trade.WarningIcon or nil)
+end
+
+-- The trade window's inside: the wells as inset panels, the fourteen item rows, the money lines and the headings.
+GW.INSIDES.TradeFrame = function()
+  eachNamed(GW.TRADE_INSETS, GW.InsetPanel)
+  for i = 1, 7 do skinTradeRow("TradePlayerItem" .. i) skinTradeRow("TradeRecipientItem" .. i) end
+  skinTradeMoney()
+  GW.TextNamed(GW.TRADE_HEADS, "label", "text")
 end
 
 -- Readable text ------------------------------------------------------------------------------
@@ -616,11 +714,11 @@ end
 
 -- The windows this file skins itself: framed windows, popups, the breath bars' container and the
 -- windows that load later. Other groups register from Modules/Windows<Area>.lua.
-GW.Add("windows", "framed", GW.FRAMED)
+GW.Add("windows", "framed", GW.FRAMED, GW.SkinFramed)
 GW.Add("windows", "framed", { "LootFrame" }, GW.SkinLoot)
-GW.Add("popups", "popups", GW.POPUPS)
+GW.Add("popups", "popups", GW.POPUPS, GW.SkinFramed)
 GW.Add("timers", "framed", GW.TIMERS, GW.SkinTimerContainer)
-for addon, names in pairs(GW.LATER) do GW.Add("windows", "onDemand", addon, names) end
+for addon, names in pairs(GW.LATER) do GW.Add("windows", "onDemand", addon, names, GW.SkinFramed) end
 
 -- Module entry point (Core/Modules.lua): every registered window whose group is on is
 -- watched (those loaded now and later), plus the game menu, readable text, durability

@@ -671,6 +671,44 @@ export const WINDOWS_ENV = TITLE_LUA + `
   end
 `;
 
+// TEST-ONLY builders for what a game window holds inside its frame (the R2.8-R2.13 windows): __art(f, name) a
+// game art texture; __well(name) a framed well (InsetFrameTemplate: art and a NineSlice); __sunk(f) whether f
+// carries the inset panel's fill; __itemButton / __moneyInput / __moneyLine the game's item button, money
+// input line (gold, silver and copper boxes with their coin) and money display (a figure beside each coin).
+export const INSIDES_LUA = `
+  function __art(f, name) local t = f:CreateTexture(name) t:SetTexture("TEST-ONLY-ART") return t end
+  function __well(name, parent)
+    local f = CreateFrame("Frame", name, parent or UIParent) __art(f) f.NineSlice = CreateFrame("Frame", nil, f) f.NineSlice:CreateTexture(nil, "BORDER")
+    return f
+  end
+  function __sunk(f)
+    local c = { ns.Theme.PanelColor(true) }
+    for _, r in ipairs({ f:GetRegions() }) do
+      local v = r.__vertexColor
+      if v and v[1] == c[1] and v[2] == c[2] and v[3] == c[3] then return true end
+    end
+    return false
+  end
+  function __itemButton(name, parent)
+    local b = CreateFrame("Button", name, parent) b.icon, b.IconBorder = b:CreateTexture(), b:CreateTexture()
+    return b
+  end
+  function __moneyInput(name, parent)
+    local f = CreateFrame("Frame", name, parent)
+    for _, key in ipairs({ "gold", "silver", "copper" }) do
+      f[key] = CreateFrame("EditBox", nil, f) __art(f[key]) f[key].texture = __art(f[key])
+    end
+    return f
+  end
+  function __moneyLine(name, parent)
+    local f = CreateFrame("Frame", name, parent)
+    for _, key in ipairs({ "GoldButton", "SilverButton", "CopperButton" }) do
+      f[key] = CreateFrame("Button", nil, f) f[key].Text = f[key]:CreateFontString(nil, "OVERLAY")
+    end
+    return f
+  end
+`;
+
 // A window's state: its own art faded, its Inset painted as an inset panel, its parts dressed, how many frames are painted.
 export const windowState = (addon, name) => addon.eval(`local f = ${name}
   local art for _, r in ipairs({ f:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end

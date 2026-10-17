@@ -842,6 +842,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the list or content area of each is a darker flat panel with the thin edge, set into the window's panel; no bronze frame or dark tile of the game's around it.
 - If it fails, paste: a screenshot of the window and `/vg errors`.
 
+### 14.14.1 Trade window
+
+- Do: start a trade with another player (or a friend's alt). Put an item in a slot on each side, type a gold amount in your offer, and look at the Trade button when the other player has something in a slot.
+- Expect: the item columns and the two money lines sit on darker flat panels; each item slot is a square with a thin border in the item's quality colour and no gold or bronze slot plate or name plate (an enchant slot keeps its icon); your gold, silver and copper boxes are flat dark boxes that keep their coin pictures; the other player's money has no gold-edged plate; the two names over the columns are light text, not gold; the Trade button keeps its warning icon when the game shows it. Trade and Cancel still work. [Needs in game: all of it.]
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
 ## 15. Talent planner
 
 ### 15.1 Bar and plan mode
