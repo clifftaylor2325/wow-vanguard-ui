@@ -47,6 +47,12 @@ local function objectiveLine(block)
   return fs
 end
 
+-- A title click: a Legacy challenge untracks on right-click, a quest opens its details.
+local function onTitleClick(self, button)
+  if self.achievement then return QT.OnAchievement(self.id, button) end
+  if self.id then QT.OnTitle(self.id, button) end
+end
+
 -- A quest's block: its title (clickable) and its objective lines.
 local function makeBlock(parent)
   local b = CreateFrame("Button", nil, parent)
@@ -57,7 +63,7 @@ local function makeBlock(parent)
   b.title:SetWidth(QT.W)
   b.title:SetJustifyH("LEFT")
   b.lines = QP.Pool(b, objectiveLine)
-  b:SetScript("OnClick", ns.Guard("click quest tracker title", function(self, button) QT.OnTitle(self.id, button) end))
+  b:SetScript("OnClick", ns.Guard("click quest tracker title", onTitleClick))
   return b
 end
 
@@ -110,9 +116,9 @@ end
 
 -- Blocks ---------------------------------------------------------------------------------------
 
--- The lines for a quest's state: "Ready to turn in", or its objectives (gray, then green when done).
+-- The lines for a quest's state: "Ready to turn in" (an achievement: "Complete"), or its objectives (gray, then green when done).
 function QT.StateLines(q)
-  if q.ready then return { { "Ready to turn in", "good" } } end
+  if q.ready then return { { q.achievement and "Complete" or "Ready to turn in", "good" } } end
   local out = {}
   for _, o in ipairs(q.objectives) do out[#out + 1] = { "- " .. o.text, o.done and "good" or "text2" } end
   return out
@@ -120,15 +126,17 @@ end
 
 -- A quest's lines under its title: the arrow's next step when it follows this quest (Quest
 -- guidance), then { text, color } for each objective, or "Ready to turn in", then its XP.
+-- An achievement has no guide step or XP: its criteria only.
 function QT.LineSpecs(q)
-  local out = { ns.QuestGuide.StepLine(q.id) }
+  local out = q.achievement and {} or { ns.QuestGuide.StepLine(q.id) }
   for _, line in ipairs(QT.StateLines(q)) do out[#out + 1] = line end
   if (q.xp or 0) > 0 then out[#out + 1] = { q.xp .. " XP", "text2" } end
   return out
 end
 
--- A block's height for a quest.
+-- A block's height for a quest (a section heading is one title line).
 function QT.BlockHeight(q)
+  if q.section then return QT.TITLE end
   return QT.TITLE + #QT.LineSpecs(q) * QT.LINE
 end
 
@@ -144,12 +152,30 @@ local function paintLines(b, q)
   end
 end
 
--- Fills a block: the title in the quest's difficulty color, then its lines.
-function QT.PaintBlock(b, q)
-  b.id = q.id
+-- Fills a section heading: its name in gold, with no lines under it.
+local function paintSection(b, q)
+  b.title:SetText(q.section)
+  T.Color(b.title, "gold")
+  b.lines.Reset()
+end
+
+-- A quest's title in its difficulty color; a challenge's in the text color, by its name.
+local function paintTitle(b, q)
+  if q.achievement then
+    b.title:SetText(q.title)
+    return T.Color(b.title, "text")
+  end
   b.title:SetText(QP.Titled(q.level, q.title, q.id))
   T.Color(b.title, QP.LevelColor(q.level))
-  paintLines(b, q)
+end
+
+-- Fills a block: its title, then its lines (a section heading is its name alone).
+function QT.PaintBlock(b, q)
+  b.id, b.achievement = q.id, q.achievement
+  if q.section then paintSection(b, q) else
+    paintTitle(b, q)
+    paintLines(b, q)
+  end
   b:SetHeight(QT.BlockHeight(q))
   b:Show()
 end
@@ -173,11 +199,18 @@ end
 -- The most quests the tracker draws, even with all shown (a long list runs into the bars).
 QT.MAX_SHOWN = 10
 
--- Lays the quests out from the top until the room is full or QT.MAX_SHOWN are drawn; "+N more" for the rest.
+-- Whether row i fits under y after the shown ones. A heading also needs the row under it, so it never shows alone.
+local function fitsAt(quests, i, shown, y, room)
+  local q, need, slots = quests[i], 0, 1
+  if q.section and quests[i + 1] then need, slots = QT.GAP + QT.BlockHeight(quests[i + 1]), 2 end
+  return y + QT.BlockHeight(q) + need <= room and #shown + slots <= QT.MAX_SHOWN
+end
+
+-- Lays the rows out from the top until the room is full or QT.MAX_SHOWN are drawn; "+N more" for the rest.
 local function layout(f, quests)
   local y, shown, room = 0, {}, roomFor(f)
-  for _, q in ipairs(quests) do
-    if y + QT.BlockHeight(q) > room or #shown >= QT.MAX_SHOWN then break end
+  for i, q in ipairs(quests) do
+    if not fitsAt(quests, i, shown, y, room) then break end
     local b = f.blocks.Next()
     b:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -y)
     QT.PaintBlock(b, q)
@@ -187,10 +220,17 @@ local function layout(f, quests)
   return shown, y
 end
 
+-- How many quests and challenges from index `from` on (a heading is not one).
+local function countRows(rows, from)
+  local n = 0
+  for i = from, #rows do if not rows[i].section then n = n + 1 end end
+  return n
+end
+
 -- The line under the last block: "+N more" when some quests don't fit; "Show fewer" when expanded
 -- (with "· +N more" when even the expanded list stops at QT.MAX_SHOWN).
 local function showMore(f, quests, shown, y)
-  local hidden = #quests - #shown
+  local hidden = countRows(quests, #shown + 1)
   local fewer = QT.settings.expanded and #quests > fitCount(quests, f.body:GetHeight() - QT.LINE)
   local more = hidden > 0 and ("+" .. hidden .. " more") or nil
   f.moreBtn:SetShown(more ~= nil or fewer)
@@ -199,20 +239,26 @@ local function showMore(f, quests, shown, y)
   f.moreBtn:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -y)
 end
 
--- Redraws the tracker from the quests you watch (also in combat, so counts keep
+-- Lays out the rows (none while collapsed): the blocks, then the "+N more" line.
+local function drawRows(f, rows)
+  local shown, y = layout(f, rows)
+  QT.shown = shown
+  showMore(f, rows, shown, y)
+end
+
+-- Redraws the tracker from the quests you watch and the achievements you track (also in combat, so counts keep
 -- up with a fight), then places the quest items: those are secure buttons that
 -- can't be moved in combat, so they keep their places until combat ends and one
 -- keyed placement runs then, however many redraws asked for it.
 function QT.Refresh()
   local f, quests = QT.frame, QT.Quests()
+  local all = QT.Rows(quests)
   f.count:SetText(#quests > 0 and tostring(#quests) or "")
   f.toggle.icon:SetTexture(T.Icon(QT.collapsed and "Right" or "Down"))
   f.blocks.Reset()
   f.body:SetShown(not QT.collapsed)
-  f:SetShown(#quests > 0)
-  local shown, y = layout(f, QT.collapsed and {} or quests)
-  QT.shown = shown
-  showMore(f, QT.collapsed and {} or quests, shown, y)
+  f:SetShown(#all > 0)
+  drawRows(f, QT.collapsed and {} or all)
   ns.OutOfCombat(QT.PlaceItems, "questitems")
 end
 
