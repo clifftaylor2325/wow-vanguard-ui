@@ -1471,8 +1471,12 @@ GW.Add("social", "onDemand", "Blizzard_GuildControlUI", { "GuildControlUI" }, GW
 -- colour (a friend's name in Battle.net blue); the bottom line's grey (and the single-line variant's) is hard to read on
 -- the dark panel, so it goes to the theme's secondary text on each show (the game greys it again before every toast,
 -- by SetTextColor or, for a friend coming online, by a colour code inside the text itself).
--- Text is the time-played alert's one line.
-GW.TOAST_LINES = { TopLine = { "label", false }, MiddleLine = { "small", false }, BottomLine = { "small", "text2" }, DoubleLine = { "label", "text2" }, Text = { "label", false } }
+-- Text is the time-played alert's one line, and the voice chat prompts' (Text2 is the second line of a voice channel
+-- notification, which keeps the game's colour codes: they colour the channel's name).
+GW.TOAST_LINES = {
+  TopLine = { "label", false }, MiddleLine = { "small", false }, BottomLine = { "small", "text2" }, DoubleLine = { "label", "text2" },
+  Text = { "label", false }, Text2 = { "small", false },
+}
 
 -- A line's text with the game's inline colour codes stripped, so the role colour can show: SetTextColor
 -- cannot override a colour the game wrote into the text. Text the client hides is left alone.
@@ -1511,7 +1515,7 @@ end
 function GW.SkinToast(frame)
   if type(frame) ~= "table" or not frame.GetRegions then return end
   after(frame, "ShowToast", GW.SkinToast)
-  local icon = frame.IconTexture
+  local icon = frame.IconTexture or frame.Icon
   T.FadeRegions(frame, { [type(icon) == "table" and icon or false] = true })
   T.Tooltip(frame)
   dressToastLines(frame)
@@ -1520,3 +1524,12 @@ function GW.SkinToast(frame)
 end
 
 GW.Add("social", "popups", { "BNToastFrame", "TimeAlertFrame" }, GW.SkinToast)
+
+-- The voice chat prompts (the offer to join a party's or raid's voice channel, the note that it is on) are the same
+-- kind of toast, with their icon under Icon: the toast skin, and the offer's Join button themed.
+function GW.SkinVoicePrompt(frame)
+  GW.SkinToast(frame)
+  if type(frame) == "table" then GW.SkinButton(frame.AcceptButton) end
+end
+
+GW.Add("social", "popups", { "VoiceChatPromptActivateChannel", "VoiceChatChannelActivatedNotification" }, GW.SkinVoicePrompt)

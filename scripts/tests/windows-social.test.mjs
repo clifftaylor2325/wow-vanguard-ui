@@ -1113,6 +1113,36 @@ it("social toasts: the switch off leaves them the game's; a toast missing its pa
   expect([windowErrors(bare), bare.eval("return #ns.errors"), bare.eval(`${PAINTED} return painted(BNToastFrame)`)], "a toast with no lines, icon, X or tooltip: a panel, no errors").toEqual(["none", 0, true]);
 });
 
+// TEST-ONLY voice chat prompts: toasts with their icon under Icon, one or two lines, and the offer's Join button.
+const VOICE_ENV = TOAST_ENV + `
+  local offer = __toast("VoiceChatPromptActivateChannel")
+  offer.Icon = offer:CreateTexture(nil, "BORDER") offer.Icon:SetTexture("TEST-ONLY-ICON")
+  offer.Text = offer:CreateFontString(nil, "BORDER") offer.Text:SetFont("TEST-ONLY-FONT", 12, "")
+  offer.AcceptButton = CreateFrame("Button", nil, offer)
+  local note = __toast("VoiceChatChannelActivatedNotification")
+  note.Icon = note:CreateTexture(nil, "BORDER") note.Icon:SetTexture("TEST-ONLY-ICON")
+  note.Text = note:CreateFontString(nil, "BORDER") note.Text:SetFont("TEST-ONLY-FONT", 12, "")
+  note.Text2 = note:CreateFontString(nil, "BORDER") note.Text2:SetFont("TEST-ONLY-FONT", 12, "") note.Text2:SetText("|cff40bf40Party|r voice is on")
+`;
+
+it("voice chat prompts: flat tooltip panels, the icon kept, lines in theme roles with the game's colour codes, the Join button themed", () => {
+  const addon = loggedIn(VOICE_ENV);
+  addon.eval("VoiceChatPromptActivateChannel:Show() VoiceChatChannelActivatedNotification:Show()");
+  expect(addon.eval(`local o, n = VoiceChatPromptActivateChannel, VoiceChatChannelActivatedNotification
+    local function art(f) local a = {} for _, r in ipairs({ f:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then a[#a + 1] = r:GetAlpha() end end return a end
+    return { art(o), art(n), o.Icon:GetAlpha(), n.Icon:GetAlpha(), select(2, o.Text:GetFont()) == ns.Theme.RoleSize("label"), select(2, n.Text2:GetFont()) == ns.Theme.RoleSize("small"),
+      n.Text2:GetText(), select("#", o.AcceptButton:GetRegions()) > 0, o.CloseButton.__points.TOPRIGHT ~= nil }`),
+    "both toasts' art faded, their icons kept, the offer's line at label size, the note's second line at small size with its colour code, the Join button themed, the X where it was")
+    .toEqual([[0, 0, 0, 0], [0, 0, 0, 0], 1, 1, true, true, "|cff40bf40Party|r voice is on", true, true]);
+  expect(addon.eval(`local c = ns.Theme.PaintedCount() VoiceChatPromptActivateChannel:Hide() VoiceChatPromptActivateChannel:Show() return ns.Theme.PaintedCount() == c`), "showing again paints nothing new").toBe(true);
+  const off = loggedIn(VOICE_ENV, OFF);
+  off.eval("VoiceChatPromptActivateChannel:Show()");
+  expect(off.eval("return { VoiceChatPromptActivateChannel.Icon:GetAlpha(), ns.FrameState('vgWindow')[VoiceChatPromptActivateChannel] == nil }"), "switched off: not watched").toEqual([1, true]);
+  const bare = loggedIn(WINDOWS_ENV + 'CreateFrame("Frame", "VoiceChatPromptActivateChannel", UIParent):Hide()');
+  bare.eval("VoiceChatPromptActivateChannel:Show()");
+  expect([windowErrors(bare), bare.eval("return #ns.errors")], "a prompt with no icon, lines or Join button: no errors").toEqual(["none", 0]);
+});
+
 // Guild dialogs and friends dialogs, R2.27 parts ----------------------------------------------------------
 
 // Small builders for the dialogs' parts: a gold label, a flat button, a dropdown, a check box, a pool the game enumerates, a ScrollBox.

@@ -565,6 +565,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the window is a flat dark panel with a Vanguard close button and a title in the same size and light text as the other windows, with one thin line under the header (no rock texture, no carved bar) and the page dropdown a flat button with its arrow. The rank rows have a dark name box, a light "Rank n:" caption, flat up and down arrows that grey out when a rank cannot move, and a flat delete button with its cross; New rank is a flat button; a new rank's row is dressed the moment it appears. The permission boxes are Vanguard check boxes (a greyed Authenticator box with its label grey), the gold-per-day box is a dark edit box, the officer list is light text and the Bank heading small grey capitals. The bank tab list sits in a dark inset with each tab's name light, its two check boxes, its withdraw box and, on the tab you can still buy, the price in the Vanguard font and a flat Purchase button. Every change still saves as before.
 - If it fails, paste: a screenshot of the page that looks wrong, and `/vg errors`.
 
+### 14.2.13 Voice chat prompts
+
+- Do: with voice chat enabled in the game's options, join a party (or a raid) so the game offers to join its voice channel; then click Join.
+- Expect: the offer is the same flat slate panel as a Battle.net toast, its icon and text kept (the text light), its Join button a Vanguard button and its X the theme's cross; after you join, the short note that voice is on has the same panel, its second line keeping the game's colour on the channel's name; nothing else about voice chat changes.
+- If it fails, paste: a screenshot of the prompt and `/vg errors`. If you never get a prompt (voice chat off), mark this step skipped.
+
 ### 14.3.1 Stable (a hunter)
 
 - Do: with a hunter, talk to a stable master.
