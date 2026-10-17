@@ -376,3 +376,81 @@ it("S2.7 small dialogs: group off leaves them the game's; a client without the d
   bare.eval("AddonDialog:Show() CurrencyTransferMenu:Show()");
   expect([bare.eval("return ns.FrameState('vgWindow')[CurrencyTransferMenu]"), windowErrors(bare)], "an addon dialog without its box, a transfer window without content: skinned, no error").toEqual([true, "none"]);
 });
+
+// TEST-ONLY merchant window inside (Blizzard_UIPanels_Game MerchantFrame.xml, on WINDOWS_ENV's MerchantFrame): twelve
+// rows and the buyback slot (a slot plate, a named name plate, the name, an item button, a money line, a token price),
+// the repair and sell-junk tiles, the page arrows with their captions, the page count, the money line, its plates and
+// insets, the filter button, and the game's call that fills a page.
+const MERCHANT_ENV = `${WINDOWS_ENV}${ARROWS_ENV}
+  function __money(name, parent)
+    local m = CreateFrame("Frame", name, parent)
+    for _, key in ipairs({ "GoldButton", "SilverButton", "CopperButton" }) do
+      local b = CreateFrame("Button", name .. key, m) b.Text = b:CreateFontString(name .. key .. "Text", "ARTWORK") b.coin = b:CreateTexture() m[key] = b
+    end
+    return m
+  end
+  function __merchantRow(name)
+    local row = CreateFrame("Frame", name, MerchantFrame)
+    row.SlotTexture = row:CreateTexture(name .. "SlotTexture", "BACKGROUND") row:CreateTexture(name .. "NameFrame", "BACKGROUND")
+    row.Name = row:CreateFontString(name .. "Name", "BACKGROUND")
+    row.ItemButton = CreateFrame("Button", name .. "ItemButton", row) row.ItemButton.icon = row.ItemButton:CreateTexture() row.ItemButton.IconBorder = row.ItemButton:CreateTexture()
+    __money(name .. "MoneyFrame", row)
+    local alt = CreateFrame("Frame", name .. "AltCurrencyFrame", row)
+    for i = 1, 3 do CreateFrame("Button", name .. "AltCurrencyFrameItem" .. i, alt).Text = alt:CreateFontString(nil, "ARTWORK") end
+    return row
+  end
+  for i = 1, 12 do __merchantRow("MerchantItem" .. i) end
+  __merchantRow("MerchantBuyBackItem")
+  for _, n in ipairs({ "MerchantRepairItemButton", "MerchantRepairAllButton", "MerchantGuildBankRepairButton", "MerchantSellAllJunkButton" }) do
+    local b = CreateFrame("Button", n, MerchantFrame) b:CreateTexture(nil, "BACKGROUND"):SetTexture("TEST-ONLY-ART") b.Icon = b:CreateTexture(nil, "BORDER")
+  end
+  for _, n in ipairs({ "MerchantPrevPageButton", "MerchantNextPageButton" }) do __arrow(MerchantFrame, n):CreateFontString(nil, "BACKGROUND") end
+  MerchantFrame:CreateFontString("MerchantPageText", "BORDER")
+  __money("MerchantMoneyFrame", MerchantFrame)
+  for _, n in ipairs({ "MerchantMoneyBg", "MerchantExtraCurrencyBg" }) do CreateFrame("Frame", n, MerchantFrame):CreateTexture() end
+  for _, n in ipairs({ "MerchantMoneyInset", "MerchantExtraCurrencyInset" }) do CreateFrame("Frame", n, MerchantFrame).NineSlice = CreateFrame("Frame", nil, MerchantFrame) end
+  MerchantFrame.FilterDropdown = CreateFrame("Button", nil, MerchantFrame)
+  function MerchantFrame_UpdateMerchantInfo() end
+`;
+
+// One merchant row's look, by name: its plates' alphas, its item button in the bags' item look, its name and
+// price figures in the theme font.
+const merchantRow = (addon, name) => addon.eval(`local row, money = ${name}, ${name}MoneyFrame
+  return { row.SlotTexture:GetAlpha(), ${name}NameFrame:GetAlpha(), ns.FrameState("vgSkinned")[row.ItemButton] == true, row.Name:GetFont() ~= nil,
+    money.GoldButton.Text:GetFont() ~= nil, money.CopperButton.Text:GetFont() ~= nil, money.GoldButton.coin:GetAlpha(), ${name}AltCurrencyFrameItem1.Text:GetFont() ~= nil }`);
+
+// The alpha of a tile's TEST-ONLY-ART plate (its own texture, faded by the theme button), or -1 without one.
+const plateAlpha = (addon, name) => addon.eval(`for _, r in ipairs({ ${name}:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then return r:GetAlpha() end end return -1`);
+
+it("R1.3 the merchant: rows, buyback slot, repair tiles, page arrows and money lines take the theme, and keep it as pages turn", () => {
+  const addon = loggedIn(MERCHANT_ENV);
+  addon.eval("MerchantFrame:Show()");
+  expect(windowState(addon, "MerchantFrame"), "the window skin (the windows group's)").toMatchObject({ art: 0, panel: true });
+  const row = [0, 0, true, true, true, true, 1, true];
+  expect([merchantRow(addon, "MerchantItem1"), merchantRow(addon, "MerchantItem12"), merchantRow(addon, "MerchantBuyBackItem")], "first and last rows and the buyback slot: plates faded, slot in the bags' look, name and prices in the theme font, coin kept").toEqual([row, row, row]);
+  expect(addon.eval("return { ns.Theme.HoverParts(MerchantRepairAllButton) ~= nil, ns.Theme.HoverParts(MerchantSellAllJunkButton) ~= nil, MerchantRepairAllButton.Icon:GetAlpha(), MerchantGuildBankRepairButton.Icon:GetAlpha(), ns.Theme.HoverParts(MerchantFrame.FilterDropdown) ~= nil }"), "the tiles and the filter button are theme buttons, the tiles keep their icon").toEqual([true, true, 1, 1, true]);
+  expect([plateAlpha(addon, "MerchantRepairItemButton"), plateAlpha(addon, "MerchantSellAllJunkButton")], "the tiles' slot plates faded").toEqual([0, 0]);
+  expect(alphas(addon, "MerchantPrevPageButton.up", "MerchantNextPageButton.off", "MerchantMoneyBg", "MerchantExtraCurrencyBg", "MerchantMoneyInset.NineSlice"), "the page arrows kept; the money plates and the insets' art faded").toEqual([1, 1, 0, 0, 0]);
+  expect(addon.eval("local fs for _, r in ipairs({ MerchantPrevPageButton:GetRegions() }) do if r:GetObjectType() == 'FontString' then fs = r end end return { fs:GetFont() ~= nil, MerchantPageText:GetFont() ~= nil, MerchantMoneyFrame.SilverButton.Text:GetFont() ~= nil }"), "the arrow's caption, the page count and the money line in the theme font").toEqual([true, true, true]);
+  expect(dressed(addon, "MerchantPrevPageButton", "MerchantMoneyInset", "MerchantExtraCurrencyInset"), "the arrows are theme buttons; dark panels under the money and token lines").toEqual([true, true, true]);
+  addon.eval("MerchantItem3.SlotTexture:SetAlpha(1) MerchantFrame_UpdateMerchantInfo()");
+  expect(alphas(addon, "MerchantItem3.SlotTexture"), "a page turn runs the pass again").toEqual([0]);
+  const painted = windowState(addon, "MerchantFrame").painted;
+  addon.eval("MerchantFrame:Hide() MerchantFrame:Show() MerchantFrame_UpdateMerchantInfo()");
+  expect(windowState(addon, "MerchantFrame").painted, "showing and paging again paints nothing more").toBe(painted);
+});
+
+it("R1.3 the merchant: the town group off leaves its inside the game's (the window stays the windows group's); a merchant without the sell-junk button, the guild repair button or the page call loads cleanly", () => {
+  const off = loggedIn(MERCHANT_ENV, { savedVariables: OFF });
+  off.eval("MerchantFrame:Show() MerchantFrame_UpdateMerchantInfo()");
+  expect([windowState(off, "MerchantFrame").panel, merchantRow(off, "MerchantItem1"), plateAlpha(off, "MerchantRepairAllButton"), off.eval("return ns.FrameState('vgMerchant')[MerchantFrame] == nil")], "window skinned; rows and tiles untouched; not hooked").toEqual([true, [1, 1, false, false, false, false, 1, false], 1, true]);
+  const lean = loggedIn(`${MERCHANT_ENV} MerchantSellAllJunkButton = nil MerchantGuildBankRepairButton = nil MerchantFrame_UpdateMerchantInfo = nil`);
+  lean.eval("MerchantFrame:Show()");
+  expect([merchantRow(lean, "MerchantItem1")[0], plateAlpha(lean, "MerchantRepairAllButton"), windowErrors(lean)], "without those parts: the rest is done, no error").toEqual([0, 0, "none"]);
+  const bare = loggedIn(WINDOWS_ENV);
+  bare.eval("MerchantFrame:Show()");
+  expect([bare.eval("return ns.FrameState('vgMerchant')[MerchantFrame]"), windowErrors(bare)], "a merchant window with none of its parts: watched, no error").toEqual([true, "none"]);
+  const noWindows = loggedIn(MERCHANT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Windows = false } } }" });
+  noWindows.eval("MerchantFrame:Show()");
+  expect([merchantRow(noWindows, "MerchantItem1")[0], windowErrors(noWindows)], "the Windows module off: nothing, no error").toEqual([1, "none"]);
+});

@@ -119,7 +119,7 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 | `small` | 10 (7 - 13) | Medium | - | Secondary lines: bar text, the info strip, hints, keybinds. At a pixel-perfect scale a point is a screen pixel, so no role but `badge` goes under 10 (#258). |
 | `tiny` | 10 (7 - 13) | Medium | - | The floor for raid tile text that shrinks with the tile. |
 | `badge` | 9 (6 - 12) | Medium | - | The only role under 10: a count or mark on a tiny badge (the error badge, the backpack's free-slot count). |
-| `world` | 11 (8 - 14) | SemiBold | OUTLINE | Text drawn in the world: nameplate names. |
+| `world` | 11 (8 - 14) | SemiBold | OUTLINE | Text drawn in the world: nameplate names, the floating pin's distance text. |
 | `barName` | 11 (8 - 14) | SemiBold | OUTLINE | Names over a bright bar (raid tiles). |
 | `barSmall` | 10 (7 - 13) | Medium | OUTLINE | Small text over a bar (raid tile status, the damage meter, the flight timer). |
 | `cooldown` | 14 (10 - 18) | SemiBold | OUTLINE | Cooldown numbers on action buttons, the Cooldown Manager and the Cooldown gaps row (that row has no fades or sounds). |
@@ -128,7 +128,7 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 | `auraTimerSmall` | 10 (7 - 13) | SemiBold | OUTLINE | The timer on smaller aura icons. |
 | `chat` | 12 (8 - 16) | Medium | - | Chat windows ("Medium"). |
 
-Sizes that are not roles, all inside the code-quality rule because they are scaled with `T.ScaledSize` and set on the game's font objects: chat's Small/Medium/Large (10/12/14, `Modules/Chat.lua`), the tooltip fonts (header 14 SemiBold, body 12, small 11, `Modules/Tooltips.lua`) and the game's quest tracker fonts (header 13 SemiBold, lines 12, `Modules/MenuStrip.lua`).
+Sizes that are not roles, all inside the code-quality rule because they are scaled with `T.ScaledSize` and set on the game's font objects: chat's Small/Medium/Large (10/12/14, `Modules/Chat.lua`), the tooltip fonts (header 14 SemiBold, body 12, small 11, `Modules/Tooltips.lua`), the game's quest tracker fonts (header 13 SemiBold, lines 12, `Modules/MenuStrip.lua`) and the game's HUD text objects at their own sizes (the error line 16, the zone name 32, the subzone 26, the PvP line 22 and the scrolling combat text 64, all SemiBold, `Modules/Merchant.lua`).
 
 The `outline` setting (default `""`) adds an outline to every role that has none; it has no control in the options window.
 
@@ -287,6 +287,9 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | Aura and cooldown sweeps | the dark sweep, no edge line and no end flash (bling) | the aura's duration | the aura's duration | - |
 | Micro menu buttons | the game's own alert flash (kept on the strip) | the game's | the game's | - (the game's) |
 | Stance and pet bars | the game's attack flash and auto-cast mark (kept) | the game's | the game's | - (the game's) |
+| Chat side buttons (voice channel, scroll to bottom, Quick Join) | the game's own alert flash and toast animations (kept over the tile; the round art under them is at alpha 0, and Quick Join's queue art, which its toast animation would raise back to full alpha, is hidden) | the game's | the game's | - (the game's) |
+| Battle.net and time-played toasts | the game's slide-in, glow flare and fade-out (kept; the backdrop under them is at alpha 0) | the game's | the game's | - (the game's) |
+| Chat bubbles (Modules/ChatBubbles.lua) | the engine's own appearance and fade of a bubble (kept; the bubble art under the panel is at alpha 0, the panel itself has no animation) | the engine's | the engine's | - (the engine's) |
 
 Sparks (cast bars, power ticks, the swing timer) move with what they show; they are not fades and Reduce motion leaves them.
 

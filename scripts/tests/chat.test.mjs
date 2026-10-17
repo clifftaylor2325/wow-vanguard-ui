@@ -81,6 +81,75 @@ it("chat art is hidden so the game's mouseover fade cannot bring it back", () =>
   expect(addon.eval("return ChatFrame1Background:GetAlpha()"), "the game's fade skips hidden art, so it stays at 0").toBe(0);
   expect(addon.eval("ChatFrame2Background = nil return ns.GetModule('Chat').SkinAll()"), "a window whose art is missing is skipped").toBe(null);
 });
+// TEST-ONLY chat side buttons as the game builds them: round art on each (background, artwork and
+// highlight), a state icon on the voice and text-to-speech buttons, counts on Quick Join, and the
+// hidden alert flash on the scroll-to-bottom and voice channel buttons.
+const CHAT_BUTTONS_ENV = `
+  function __roundButton(name, parent)
+    local b = CreateFrame("Button", name, parent)
+    for _, layer in ipairs({ "BACKGROUND", "ARTWORK", "HIGHLIGHT" }) do
+      local t = b:CreateTexture(nil, layer) t:SetTexture("TEST-ONLY-ART") b["__" .. layer] = t
+    end
+    return b
+  end
+  function __iconButton(name, parent)
+    local b = __roundButton(name, parent)
+    b.Icon = b:CreateTexture(nil, "OVERLAY") b.Icon:SetTexture("TEST-ONLY-ICON")
+    return b
+  end
+  ChatFrame1.buttonFrame = CreateFrame("Frame", "ChatFrame1ButtonFrame", ChatFrame1)
+  ChatFrame1.buttonFrame.minimizeButton = __roundButton("ChatFrame1ButtonFrameMinimizeButton", ChatFrame1.buttonFrame)
+  ChatFrame1.ScrollToBottomButton = __roundButton(nil, ChatFrame1)
+  ChatFrame1.ScrollToBottomButton.Flash = ChatFrame1.ScrollToBottomButton:CreateTexture(nil, "OVERLAY")
+  ChatFrame1.ScrollToBottomButton.Flash:Hide()
+  __roundButton("ChatFrameMenuButton", ChatFrame1ButtonFrame)
+  local channel = __iconButton("ChatFrameChannelButton", UIParent)
+  channel.Flash = channel:CreateTexture(nil, "OVERLAY") channel.Flash:Hide()
+  __iconButton("ChatFrameToggleVoiceDeafenButton", UIParent)
+  __iconButton("ChatFrameToggleVoiceMuteButton", UIParent)
+  TextToSpeechButtonFrame = CreateFrame("Frame", "TextToSpeechButtonFrame", UIParent)
+  TextToSpeechButtonFrame.Button = __iconButton("TextToSpeechButton", TextToSpeechButtonFrame)
+  local quick = __roundButton("QuickJoinToastButton", UIParent)
+  quick.FriendCount = quick:CreateFontString(nil, "ARTWORK") quick.FriendCount:SetFont("TEST-ONLY-FONT", 10, "") quick.FriendCount:SetText("3")
+  quick.QueueCount = quick:CreateFontString(nil, "ARTWORK")
+  quick.QueueButton = quick:CreateTexture(nil, "ARTWORK") quick.QueueButton:SetTexture("TEST-ONLY-ART") quick.QueueButton:SetAlpha(0)
+  -- What a side button looks like: its round art's alphas, whether a tile shows on it, the theme glyph it carries, its own icon's alpha.
+  function __buttonLook(b, white)
+    local tile, glyph = false, false
+    for _, r in ipairs({ b:GetRegions() }) do
+      if r.__texture == white and r:GetAlpha() ~= 0 then tile = true end
+      if r.__layer == "OVERLAY" and type(r.__texture) == "string" then glyph = r.__texture:match("Icons\\\\(%w+)$") or glyph end
+    end
+    return { b.__BACKGROUND:GetAlpha(), b.__ARTWORK:GetAlpha(), b.__HIGHLIGHT:GetAlpha(), tile, glyph, b.Icon and b.Icon:GetAlpha() or false }
+  end
+`;
+it("chat side buttons sit on themed tiles: a glyph on the menu, minimize, scroll and Quick Join buttons; the voice buttons keep their own icon", () => {
+  const addon = loggedIn(UI_ENV + CHAT_BUTTONS_ENV);
+  // What the player sees on a side button: art alphas, tile, glyph, own icon alpha.
+  const look = (b) => addon.eval(`return __buttonLook(${b}, ns.Theme.WHITE)`);
+  expect(look("ChatFrameMenuButton"), "the chat menu: round art faded, a tile with the chat glyph").toEqual([0, 0, 0, true, "NavChat", false]);
+  expect(look("ChatFrame1ButtonFrameMinimizeButton"), "the window's minimize box").toEqual([0, 0, 0, true, "Minimize", false]);
+  expect(look("ChatFrame1.ScrollToBottomButton"), "the scroll-to-bottom arrow").toEqual([0, 0, 0, true, "Down", false]);
+  expect(look("QuickJoinToastButton"), "Quick Join: the social glyph").toEqual([0, 0, 0, true, "Social", false]);
+  expect(addon.eval("local c = QuickJoinToastButton.FriendCount return { c.__layer, c.__sublevel, select(2, c:GetFont()), c:GetText() }"), "its counts above the glyph, in the badge role, text untouched").toEqual(["OVERLAY", 7, 9, "3"]);
+  addon.eval("QuickJoinToastButton.QueueButton:SetAlpha(1)");
+  expect(addon.eval("local q = QuickJoinToastButton.QueueButton return { q:IsShown(), q:IsVisible() }"), "its queue art, which the game's toast animation raises to full alpha and leaves there while a toast is up, is hidden rather than faded, so raised it still shows nothing").toEqual([false, false]);
+  for (const name of ["ChatFrameChannelButton", "ChatFrameToggleVoiceDeafenButton", "ChatFrameToggleVoiceMuteButton", "TextToSpeechButton"]) {
+    expect(look(name), `${name}: round art faded, a resting tile behind its own icon`).toEqual([0, 0, 0, true, false, 1]);
+  }
+  expect(addon.eval("return { ChatFrameChannelButton.Flash:GetAlpha(), ChatFrame1.ScrollToBottomButton.Flash:GetAlpha() }"), "the game's alert flashes are faded, never hidden or shown (their animation drives the alpha)").toEqual([0, 0]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("FCF_OpenTemporaryWindow('TEST-ONLY')");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "a new window re-skins the buttons without piling up").toBe(painted);
+});
+it("chat side buttons: module off leaves the game's art; a client without text to speech, Quick Join or a scroll arrow is fine", () => {
+  const off = loggedIn(UI_ENV + CHAT_BUTTONS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Chat = false } } }" });
+  expect(off.eval("return __buttonLook(ChatFrameMenuButton, ns.Theme.WHITE)"), "the chat menu keeps its round art, no tile, no glyph").toEqual([1, 1, 1, false, false, false]);
+  expect(off.eval("return __buttonLook(ChatFrameChannelButton, ns.Theme.WHITE)"), "so does the voice channel button").toEqual([1, 1, 1, false, false, 1]);
+  expect(off.eval("return QuickJoinToastButton.QueueButton:IsShown()"), "Quick Join's queue art is left shown for the game's animation").toBe(true);
+  const bare = loggedIn(UI_ENV + CHAT_BUTTONS_ENV + "TextToSpeechButtonFrame = nil TextToSpeechButton = nil QuickJoinToastButton = nil ChatFrame1.ScrollToBottomButton = nil");
+  expect(bare.eval("return __buttonLook(ChatFrameMenuButton, ns.Theme.WHITE)[5]"), "the buttons this client has are still skinned").toBe("NavChat");
+});
 it("chat is a mover: placed once, sized once, kept where the player put it", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV);
   // Chat's anchor point, offsets and size.
@@ -467,7 +536,16 @@ it("game windows in the Vanguard look: framed windows, popups, breath bar, and w
   addon.eval("MerchantFrame:Hide() MerchantFrame:Show()");
   expect(windowState(addon, "MerchantFrame"), "showing it again keeps the panel and paints nothing new").toMatchObject({ panel: true, painted: first.painted });
   expect(windowState(addon, "StaticPopup1"), "popups too").toMatchObject({ art: 0, panel: true });
-  expect(addon.eval("return MirrorTimer1.StatusBar:GetStatusBarTexture() ~= nil"), "the breath bar uses the theme's bar texture").toBe(true);
+  // Whether every breath bar in the container has the theme's bar texture (not the game's) and its frame art faded.
+  const timers = () => addon.eval(`local ok = true
+    for _, t in ipairs({ MirrorTimerContainer:GetChildren() }) do ok = ok and t.StatusBar:GetStatusBarTexture() ~= nil and t.StatusBar:GetStatusBarTexture().__texture ~= "TEST-ONLY-ART" and t.Border.__alpha == 0 end
+    return ok`);
+  expect(timers(), "the breath bars (the container's unnamed timers) take the theme's bar texture, their art faded").toBe(true);
+  addon.eval("MirrorTimerContainer:SetupTimer(2)");
+  expect(timers(), "the game sets a timer up with its own bar texture: Vanguard puts the theme's back").toBe(true);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("MirrorTimerContainer:Hide() MirrorTimerContainer:Show() MirrorTimerContainer:SetupTimer(1)");
+  expect([timers(), addon.eval("return ns.Theme.PaintedCount()")], "the container showing again (a timer starting) keeps the look and paints nothing new").toEqual([true, painted]);
   addon.eval('__window("PlayerSpellsFrame")');
   addon.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
   expect(windowState(addon, "PlayerSpellsFrame"), "the spellbook is skinned when it loads").toMatchObject({ art: 0, panel: true });
@@ -501,11 +579,70 @@ it("game windows: switched off they stay the game's, and missing windows are fin
   const off = loggedIn(WINDOWS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false, popups = false, timers = false } } }" });
   off.eval("MerchantFrame:Show() StaticPopup1:Show()");
   expect([windowState(off, "MerchantFrame").art, windowState(off, "StaticPopup1").art].every((a) => a !== 0), "nothing is faded").toBe(true);
+  expect(off.eval("local t = MirrorTimerContainer:GetChildren() return t.StatusBar:GetStatusBarTexture() == nil and t.Border.__alpha ~= 0"), "the breath bars keep the game's bar and art").toBe(true);
   const bare = loggedIn("");
   expect(bare.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'"), "a client without these windows loads cleanly").toBe("none");
-  const plain = loggedIn(`local f = CreateFrame("Frame", "LootFrame", UIParent) f.ButtonContainer = { Buttons = { CreateFrame("Button", nil, f) } }
-    t = CreateFrame("Frame", "MirrorTimer2", UIParent) CreateFrame("StatusBar", "MirrorTimer2StatusBar", t)`);
-  expect(plain.eval("return { select('#', LootFrame.ButtonContainer.Buttons[1]:GetRegions()) > 0, MirrorTimer2StatusBar:GetStatusBarTexture() ~= nil }"), "a window with a button container, and a bar found by name").toEqual([true, true]);
+  const plain = loggedIn(`local f = CreateFrame("Frame", "LootFrame", UIParent) f.ButtonContainer = { Buttons = { CreateFrame("Button", nil, f) } }`);
+  expect(plain.eval("return select('#', LootFrame.ButtonContainer.Buttons[1]:GetRegions()) > 0"), "a window with a button container").toBe(true);
+});
+// TEST-ONLY loot window (ScrollingFlatPanelTemplate): the window, and its list as the game's ScrollBox hands out
+// rows (LootFrameItemElementTemplate: an item card with its slot, name and rarity tag).
+const LOOT_ROWS_ENV = `${WINDOWS_ENV}
+  ScrollBoxListMixin = { Event = { OnAcquiredFrame = "OnAcquiredFrame" } }
+  local f = __window("LootFrame")
+  local box = { rows = {}, callbacks = {} }
+  function box:RegisterCallback(event, fn, owner) self.callbacks[event] = { fn, owner } end
+  function box:ForEachFrame(fn) for _, row in ipairs(self.rows) do fn(row) end end
+  f.ScrollBox = box
+  -- A row as the game acquires it: the card art, the item slot (icon, quality border, count), the texts.
+  function __lootRow()
+    local row = CreateFrame("Frame", nil, UIParent)
+    for _, key in ipairs({ "NameFrame", "BorderFrame", "QualityStripe", "HighlightNameFrame", "IconQuestTexture" }) do row[key] = row:CreateTexture() end
+    row.Text, row.QualityText = row:CreateFontString(nil, "ARTWORK"), row:CreateFontString(nil, "ARTWORK")
+    row.Item = CreateFrame("Button", nil, row) row.Item.icon = row.Item:CreateTexture() row.Item.IconBorder = row.Item:CreateTexture()
+    return row
+  end
+  table.insert(box.rows, __lootRow())
+`;
+// A loot row's look: its card art and hover stroke alphas, its slot in the bags' item look, its texts' fonts.
+const lootRow = (addon, lua) => addon.eval(`local row = ${lua}
+  return { row.NameFrame:GetAlpha(), row.BorderFrame:GetAlpha(), row.QualityStripe:GetAlpha(), row.HighlightNameFrame:GetAlpha(), row.IconQuestTexture:GetAlpha(),
+    ns.FrameState("vgSkinned")[row.Item] == true, row.Text:GetFont() ~= nil, row.QualityText:GetFont() ~= nil }`);
+it("R1.2 the loot window: its rows lose the game's card art and take the bags' item look, on show and as the list acquires them", () => {
+  const addon = loggedIn(LOOT_ROWS_ENV);
+  addon.eval("LootFrame:Show()");
+  const first = windowState(addon, "LootFrame");
+  expect(first, "the window skin").toMatchObject({ art: 0, nine: 0, panel: true, title: true });
+  expect(lootRow(addon, "LootFrame.ScrollBox.rows[1]"), "the row that was there: card, stroke and rarity ribbon faded, the hover stroke and quest mark kept, the slot done, the texts in the theme font").toEqual([0, 0, 0, 1, 1, true, true, true]);
+  addon.eval("local box = LootFrame.ScrollBox local cb = box.callbacks.OnAcquiredFrame box.later = __lootRow() cb[1](cb[2], box.later) cb[1](cb[2], nil)");
+  expect(lootRow(addon, "LootFrame.ScrollBox.later"), "a row acquired later, the same; a missing row is skipped").toEqual([0, 0, 0, 1, 1, true, true, true]);
+  const painted = windowState(addon, "LootFrame").painted;
+  addon.eval("LootFrame:Hide() LootFrame:Show() local cb = LootFrame.ScrollBox.callbacks.OnAcquiredFrame cb[1](cb[2], LootFrame.ScrollBox.later)");
+  expect([windowState(addon, "LootFrame").painted, addon.eval("local n = 0 for _ in pairs(LootFrame.ScrollBox.callbacks) do n = n + 1 end return n")], "a second show, and a row acquired again, paint nothing more; the list is watched once").toEqual([painted, 1]);
+});
+it("R1.2 the loot window: a row the skin cannot handle is reported, not raised into the game's list, and the rows after it are still done", () => {
+  expectErrors(/^acquire loot row: eval:\d+: TEST-ONLY broken row$/);
+  const addon = loggedIn(LOOT_ROWS_ENV);
+  addon.eval("LootFrame:Show()");
+  addon.eval(`local box = LootFrame.ScrollBox local cb = box.callbacks.OnAcquiredFrame
+    local broken = __lootRow() broken.Text = { SetFont = function() error("TEST-ONLY broken row") end }
+    box.after = __lootRow() cb[1](cb[2], broken) cb[1](cb[2], box.after)`);
+  expect(lootRow(addon, "LootFrame.ScrollBox.after"), "the list went on: the next row is skinned").toEqual([0, 0, 0, 1, 1, true, true, true]);
+});
+it("R1.2 the loot window: the windows group off leaves its rows the game's; a loot window without a list, or a client without the list mixin, loads cleanly", () => {
+  const off = loggedIn(LOOT_ROWS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  off.eval("LootFrame:Show()");
+  expect([windowState(off, "LootFrame").art !== 0, lootRow(off, "LootFrame.ScrollBox.rows[1]"), off.eval("return LootFrame.ScrollBox.callbacks.OnAcquiredFrame == nil")], "not hooked, the row's art left").toEqual([true, [1, 1, 1, 1, 1, false, false, false], true]);
+  // Any error Vanguard reported from the windows modules, or "none".
+  const errors = (addon) => addon.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'");
+  const noList = loggedIn(`${WINDOWS_ENV} __window("LootFrame")`);
+  noList.eval("LootFrame:Show()");
+  const noMixin = loggedIn(LOOT_ROWS_ENV + " ScrollBoxListMixin = nil");
+  noMixin.eval("LootFrame:Show()");
+  const noEvent = loggedIn(LOOT_ROWS_ENV + " ScrollBoxListMixin.Event = nil");
+  noEvent.eval("LootFrame:Show()");
+  expect([noList, noMixin, noEvent].map(errors), "none of them reports an error").toEqual(["none", "none", "none"]);
+  expect([windowState(noList, "LootFrame").panel, noMixin.eval("return LootFrame.ScrollBox.callbacks.OnAcquiredFrame == nil")], "the window is still skinned; no list events without the game's mixin").toEqual([true, true]);
 });
 it("game windows registry: a window added under a group is skinned, its group's switch keeps it the game's", () => {
   const reg = `__window("TestOnlySocialFrame") __window("TestOnlyLaterFrame")
@@ -529,7 +666,7 @@ it("game windows registry: a window added under a group is skinned, its group's 
   expect([windowState(off, "TestOnlySocialFrame").art !== 0, off.eval("return ns.FrameState('vgWindow')[TestOnlySocialFrame] == nil")], "with its group off: not hooked, its art left").toEqual([true, true]);
   expect(windowState(off, "MerchantFrame").panel, "other groups still are").toBe(true);
   expect(on.eval("return ns.GetModule('Windows').ON_DEMAND.Blizzard_EncounterJournal == nil"), "the encounter journal (never on Forever) is not listed").toBe(true);
-  expect(on.eval("local GW = ns.GetModule('Windows') return { GW.REGISTERED.PlayerSpellsFrame.group, GW.REGISTERED.StaticPopup1.group, GW.REGISTERED.MirrorTimer1.group }"), "the first groups").toEqual(["windows", "popups", "timers"]);
+  expect(on.eval("local GW = ns.GetModule('Windows') return { GW.REGISTERED.PlayerSpellsFrame.group, GW.REGISTERED.StaticPopup1.group, GW.REGISTERED.MirrorTimerContainer.group }"), "the first groups").toEqual(["windows", "popups", "timers"]);
 });
 it("game windows registry: parts and named art faded, missing ones skipped", () => {
   const addon = loggedIn(`TestOnlyNamedArt = UIParent:CreateTexture()`);

@@ -32,7 +32,7 @@ local GW = ns.GetModule("Windows")
 -- The windows that can be dragged, by global name; one the client lacks (or hasn't loaded yet) is skipped.
 GW.MOVABLE = {
   "CharacterFrame", "ContainerFrameCombinedBags", "GameMenuFrame", "FriendsFrame", "SocialUIFrame", "MerchantFrame",
-  "MailFrame", "LFGParentFrame", "CommunitiesFrame", "PlayerSpellsFrame", "SpellBookFrame", "LegacySystemFrame",
+  "MailFrame", "LFGParentFrame", "CommunitiesFrame", "PlayerSpellsFrame", "LegacySystemFrame",
   "CollectionsJournal", "TransmogFrame", "AuctionHouseFrame", "ProfessionsFrame", "AchievementFrame",
 }
 -- The windows dragged only by an empty spot along their top edge: no drag area is laid over them, since

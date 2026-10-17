@@ -74,12 +74,11 @@ function GA.SkinTalkingHead(f)
   if type(main.Text) == "table" then T.Text(main.Text, "label", false) end
 end
 
--- The talking head, as chosen: moved and restyled, hidden, or left to the game.
--- Done once, as soon as the frame exists (it can come with a part of the game that loads later).
+-- The talking head, as chosen: moved and restyled, hidden, or left to the game. Done once at login:
+-- on the 12.x engine the frame is part of the base UI (Blizzard_FrameXML), there from the start.
 local function talkingHead(choice)
   local f = _G.TalkingHeadFrame
-  if type(f) ~= "table" or choice == "game" or GA.headDone then return end
-  GA.headDone = true
+  if type(f) ~= "table" or choice == "game" then return end
   if choice == "hide" then return ns.GetModule("DataBars").Suppress("TalkingHeadFrame") end
   GA.SkinTalkingHead(f)
   ns.OutOfCombat(function() place("TalkingHeadFrame") end)
@@ -146,15 +145,9 @@ function GA.OnVignette(_, guid, onMinimap)
   ns.Chat("Rare nearby: " .. name)
 end
 
--- The talking head's part of the game loaded: it can be restyled now.
-function GA.OnLoaded(_, addon)
-  if addon == "Blizzard_TalkingHeadUI" then talkingHead(GA.settings.talkingHead) end
-end
-
 -- Module entry point (Core/Modules.lua).
 function GA.Enable(settings)
   GA.settings = settings
-  ns.On("ADDON_LOADED", GA.OnLoaded)
   if type(C_VignetteInfo) == "table" then ns.On("VIGNETTE_MINIMAP_UPDATED", GA.OnVignette) end
   if settings.hardcore then watchDeaths() end
   local loc = _G.LossOfControlFrame
