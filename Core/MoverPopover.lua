@@ -185,7 +185,7 @@ end
 -- applies as you go, so it ends in Done, which closes it as its X does).
 local function addButtons()
   popover.done = W.Primary(popover, "Done", function() ns.CloseMoverPopover() end)
-  popover.done:SetPoint("BOTTOMRIGHT", -T.SPACE.col, T.SPACE.col)
+  popover.done:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
   popover.reset = W.Button(popover, "Reset", function() ns.ResetMovers(popover.key) answer(true) end)
   popover.reset:SetPoint("RIGHT", popover.done, "LEFT", -T.SPACE.gap, 0)
 end

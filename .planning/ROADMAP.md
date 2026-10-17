@@ -46,7 +46,7 @@ UI coherence (priority 3, polish and consistency; INSERTED 2026-10-17 from Cliff
 - [ ] **Phase 8.6: One yellow, type pairings and empty states** (INSERTED) - Gold marks content only, each place has one text role and colour, and an empty list says what fills it
 - [x] **Phase 8.7: States, keyboard and menus** (INSERTED) - One state matrix in code, and menus close like menus
 - [ ] **Phase 8.8: Dialogs and button order** (INSERTED) - One primary per dialog, destructive actions never brass, Escape and Enter work
-- [ ] **Phase 8.9: Spacing sweep** (INSERTED, cuttable) - Every window's padding and footer sit on `T.SPACE`
+- [x] **Phase 8.9: Spacing sweep** (INSERTED, cuttable) - Every window's padding and footer sit on `T.SPACE`
 - [ ] **Phase 8.10: Knob and thumb ease** (INSERTED, cuttable) - Knobs glide 0.1 s out of combat
 - [ ] **Phase 8.11: UI batch checklist and probes** (INSERTED) - One in-game list for every look the UI coherence work changed, with the probes that gate the open decisions
 

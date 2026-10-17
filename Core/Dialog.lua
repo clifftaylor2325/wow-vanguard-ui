@@ -24,7 +24,7 @@ local TEXT_W, TEXT_H, ASK_W = 520, 320, 400
 -- How wide a dialog button is unless told otherwise (a label of a dozen letters fits).
 local BUTTON_W = 120
 -- The text's inset from an edit box's border (W.Input's).
-local TEXT_INSET = 6
+local TEXT_INSET = T.SPACE.gap
 
 -- The label of each button kind: { text role, colour token }. Secondary is the plain button; primary
 -- is a SemiBold `void` label on the accent fill; danger is a secondary with a `bad` label.

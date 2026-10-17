@@ -157,7 +157,7 @@ The rest of the scale:
 - **One scroll thumb** (`T.SCROLL`): `thumb` (4) units wide, in `text2` at `rest` (0.5) alpha and at `lit` (1) while the mouse is over it or it is dragged, with no arrows; `ns.ScrollView` (the options pages, What's new, the quest log and quest dialog, the dialogs' lists and text areas) and `T.ScrollBar` (the game's own bars) both draw it so.
 - **Widths and dialogs.** A button is 120 wide unless its row needs another. Every dialog shares `ns.DIALOG` (`Core/Dialog.lua`): `head` (40, the title line's `T.CONTROL.inset` and a `T.SPACE.pad`) is where its contents start, `foot` (50, a `T.SPACE.pad`, a `T.BUTTON_H` button and a `T.SPACE.gap`) the room along its bottom; its buttons sit at (-`T.SPACE.pad`, `T.SPACE.pad`) from the bottom-right corner with `T.SPACE.gap` between them.
 - Borders and sheens are measured in screen pixels, not UI units (below), so they never count toward the grid.
-- A number that is none of these stays a local constant with a comment saying what it is (the options window's `WIDTH, HEIGHT, NAV_WIDTH = 780, 600, 176`, say). Layouts that have not been restyled keep their own paddings and gaps (`RaidTools.lua` `RT.PAD, RT.GAP = 4, 2`); a restyle moves them to `T.SPACE`.
+- A number that is none of these stays a local constant with a comment saying what it is (the options window's `WIDTH, HEIGHT, NAV_WIDTH = 780, 600, 176`, say). The code-quality scan fails a padding, gap, margin or inset constant set to a written number off the scale (0, 1, 2, 4, 8, 12, 16, 24); HUD placement (`Core/Layout.lua`, bag slots, the minimap zone text, nameplate hit boxes) is exempt.
 
 ## Panels, borders, sheen, shadow, glow
 
