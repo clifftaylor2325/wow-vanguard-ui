@@ -456,8 +456,16 @@ local function dressSidePanes()
   for _, path in ipairs(GW.SIDE_PANES) do dressSidePane(walk(_G, path)) end
 end
 
+-- The flyout's page arrows (NavigationFrame.PrevButton and NextButton: pictures on a button) as flat buttons that keep
+-- their pictures, until Core has an arrow button.
+local function skinFlyoutNav(nav)
+  if type(nav) ~= "table" then return end
+  GW.SkinGlyph(nav.PrevButton)
+  GW.SkinGlyph(nav.NextButton)
+end
+
 -- The equipment flyout (the items you can swap into a slot): its art faded, flat panels behind the
--- item grid and the page bar, and its item buttons skinned as the bags' are.
+-- item grid and the page bar, its page arrows flat, and its item buttons skinned as the bags' are.
 local function skinFlyout()
   local flyout, bags = _G.EquipmentFlyoutFrame, ns.GetModule("Bags")
   if type(flyout) ~= "table" then return end
@@ -465,6 +473,7 @@ local function skinFlyout()
     local part = flyout[key]
     if type(part) == "table" then T.FadeRegions(part) T.Panel(part, { shadow = true }) end
   end
+  skinFlyoutNav(flyout.NavigationFrame)
   for _, button in ipairs(flyout.buttons or {}) do
     if bags and bags.SkinItem then bags.SkinItem(button) end
   end
@@ -542,13 +551,34 @@ GW.EQUIP_SLOTS = {
   "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged", "Ammo",
 }
 
--- Each gear slot's item button in the theme, as the bags' are: the bronze frame the game draws (NormalTexture and
--- IconBorder) faded, a flat panel behind the icon and the item's quality border (Modules/Bags.lua skinItem).
+-- A gear slot's other frame (BorderFrame, the Camelot pane's bronze slot frame, a child that holds its own texture) faded.
+local function fadeSlotFrame(button)
+  local frame = type(button) == "table" and button.BorderFrame
+  if type(frame) == "table" and frame.GetRegions then T.FadeRegions(frame) end
+end
+
+-- The ammo slot's small bronze plate (an unnamed background texture on the button) faded; its icon, count, pressed and
+-- highlight pictures and the ignored-slot mark stay.
+local function fadeAmmoPlate(slot)
+  if type(slot) ~= "table" or not slot.GetRegions then return end
+  local keep = keepKeys(slot, { "icon", "Icon", "IconBorder", "ignoreTexture" })
+  keep[_G.CharacterAmmoSlotIconTexture or slot] = true
+  keep[slot.GetPushedTexture and slot:GetPushedTexture() or slot] = true
+  keep[slot.GetHighlightTexture and slot:GetHighlightTexture() or slot] = true
+  T.FadeRegions(slot, keep)
+end
+
+-- Each gear slot's item button in the theme, as the bags' are: the bronze frame the game draws (NormalTexture,
+-- IconBorder and the BorderFrame child) faded, a flat panel behind the icon and the item's quality border
+-- (Modules/Bags.lua skinItem), and the ammo slot's plate faded.
 local function skinSlots()
   local bags = ns.GetModule("Bags")
   for _, slot in ipairs(GW.EQUIP_SLOTS) do
-    if bags and bags.SkinItem then bags.SkinItem(_G["Character" .. slot .. "Slot"]) end
+    local button = _G["Character" .. slot .. "Slot"]
+    if bags and bags.SkinItem then bags.SkinItem(button) end
+    fadeSlotFrame(button)
   end
+  fadeAmmoPlate(_G.CharacterAmmoSlot)
 end
 
 -- The model area's art: the strip above the model (its rock tile and edge) and the model scene's backdrop
@@ -564,6 +594,92 @@ local function skinModelArea()
   end
 end
 
+-- What stays on a gear set row (GearSetButtonTemplate): the set's icon, the equipped tick, the spec icon and the card
+-- art the game shows for hover and selection.
+GW.SET_ROW_KEEP = { "icon", "Check", "SpecIcon", "HighlightBar", "SelectedBar" }
+
+-- A pane's edge and rule faded for a flat inset panel behind its list.
+local function insetPane(pane)
+  if type(pane) ~= "table" or not pane.GetRegions then return end
+  T.FadeRegions(pane)
+  T.Panel(pane, { inset = true, noSheen = true })
+end
+
+-- A title row (PlayerTitleButtonTemplate): its zebra stripe faded and its text (the game's gold) in the text colour.
+local function skinTitleRow(row)
+  if type(row) ~= "table" then return end
+  GW.FadeParts(row, { "Stripe" })
+  colorText(row.text, "text")
+end
+
+-- Whether items of the gear set row are missing (the game paints the name red then, which says so).
+local function setLost(row)
+  local sets = _G.C_EquipmentSet
+  if type(sets) ~= "table" or type(sets.GetEquipmentSetInfo) ~= "function" or not row.setID then return false end
+  return (select(8, sets.GetEquipmentSetInfo(row.setID)) or 0) > 0
+end
+
+-- A gear set row (GearSetButtonTemplate): its card plate and the rings round the icons faded, no fill of its own (the
+-- game's hover and selected card stay), its name in the text colour unless the game marked it red.
+local function skinSetRow(row)
+  if type(row) ~= "table" or not row.GetRegions then return end
+  T.FadeRegions(row, keepKeys(row, GW.SET_ROW_KEEP))
+  if not setLost(row) then colorText(row.text, "text") end
+end
+
+-- The textures of a button drawn on its ARTWORK layer (a glyph beside its label).
+local function artworkOf(button)
+  local found = {}
+  for _, region in ipairs({ button:GetRegions() }) do
+    if region.GetObjectType and region:GetObjectType() == "Texture" and region.GetDrawLayer and region:GetDrawLayer() == "ARTWORK" then found[#found + 1] = region end
+  end
+  return found
+end
+
+-- The New set button (PaperDollTertiaryButtonTemplate: a state plate and a plus glyph) as a theme button that keeps
+-- its plus and its green label.
+local function newSetButton(button)
+  if type(button) ~= "table" or not button.GetRegions then return end
+  local glyphs = artworkOf(button)
+  T.Button(button)
+  for _, glyph in ipairs(glyphs) do glyph:SetAlpha(1) end
+end
+
+-- One of the equipment manager's panes dressed: a flat inset panel and its rows watched.
+local function dressGearPane(pane, skin)
+  if type(pane) ~= "table" then return end
+  insetPane(pane)
+  GW.WatchRows(pane.ScrollBox, skin)
+end
+
+-- The titles list and equipment sets list in the theme: their panels and rows, and the set buttons.
+local function skinGearPanes()
+  local paper = _G.PaperDollFrame
+  if type(paper) ~= "table" then return end
+  dressGearPane(paper.TitleManagerPane, skinTitleRow)
+  dressGearPane(paper.EquipmentManagerPane, skinSetRow)
+  local sets = paper.EquipmentManagerPane
+  if type(sets) ~= "table" then return end
+  paneButton(sets.EquipSet)
+  paneButton(sets.SaveSet)
+  newSetButton(sets.NewSet)
+end
+
+-- The pet's experience bar and the level lines over the model (the game's gold) in the theme.
+local function skinLevels()
+  GW.SkinBar(_G.PetPaperDollFrameExpBar)
+  for _, name in ipairs({ "CharacterLevelText", "PetCharacterLevelText" }) do
+    local line = _G[name]
+    if type(line) == "table" and line.SetFont then T.Text(line, "heading", "text") end
+  end
+end
+
+-- The paper doll's own parts: the level lines and pet bar, the titles list and the equipment sets list.
+local function skinPaperDoll()
+  skinLevels()
+  skinGearPanes()
+end
+
 -- The skill rank bar and the honor tab.
 local function skinSkillsAndHonor()
   local skills, honor = _G.SkillsFrame, _G.PVPRankFrame
@@ -572,8 +688,9 @@ local function skinSkillsAndHonor()
 end
 
 -- Dresses the inside of the character pane: its backdrops, right-pane toggle, lists' rows and side panes, the stat
--- boxes, the gear slots, the model area, the skill rank bar, the honor tab and the equipment flyout. Safe to run
--- again: lists, side panes and the flyout are watched once, and a slot is skinned once.
+-- boxes, the gear slots, the model area, the paper doll's level lines, pet bar, titles and sets lists, the skill rank
+-- bar, the honor tab and the equipment flyout. Safe to run again: lists, side panes and the flyout are watched once,
+-- and a slot is skinned once.
 function GW.DressCharacterPane()
   watchLists()
   flattenPane()
@@ -581,6 +698,7 @@ function GW.DressCharacterPane()
   skinStatCategories()
   skinSlots()
   skinModelArea()
+  skinPaperDoll()
   skinSkillsAndHonor()
   dressSidePanes()
   watchFlyout()
@@ -630,13 +748,46 @@ local function dressWardrobeTabs(wardrobe)
   end
 end
 
--- Dresses the inside of the collections window: the appearances tab's backdrops, tabs and the grid's empty note.
--- Safe to run again.
+-- The appearances page's search box and its filter and class dropdowns.
+local function dressWardrobeControls(wardrobe)
+  GW.SkinSearch(wardrobe.SearchBox)
+  GW.SkinDropdown(wardrobe.FilterButton)
+  GW.SkinDropdown(wardrobe.ClassDropdown)
+end
+
+-- The item grid's weapon dropdown and its page arrows (pictures on buttons), kept as pictures on flat buttons.
+local function dressItemsControls(items)
+  if type(items) ~= "table" then return end
+  GW.SkinDropdown(items.WeaponDropdown)
+  if type(items.PagingFrame) ~= "table" then return end
+  GW.SkinGlyph(items.PagingFrame.PrevPageButton)
+  GW.SkinGlyph(items.PagingFrame.NextPageButton)
+end
+
+-- A sets list row (WardrobeSetsScrollFrameButtonTemplate): its plate faded and no fill of its own (the game's hover and
+-- selected art stay, and the name keeps its collected, in-progress or none colour, which says how far the set is).
+local function skinSetsRow(row)
+  if type(row) == "table" then GW.FadeParts(row, { "Background" }) end
+end
+
+-- The sets tab's variant dropdown, the plate behind the set's icons and the fade over its model, and its list's rows.
+local function dressSetsControls(sets)
+  if type(sets) ~= "table" then return end
+  GW.SkinDropdown(sets.DetailsFrame and sets.DetailsFrame.VariantSetsDropdown)
+  if type(sets.DetailsFrame) == "table" then GW.FadeParts(sets.DetailsFrame, { "IconRowBackground", "ModelFadeTexture" }) end
+  if type(sets.ListContainer) == "table" then GW.WatchRows(sets.ListContainer.ScrollBox, skinSetsRow) end
+end
+
+-- Dresses the inside of the collections window: the appearances tab's backdrops, tabs, search box, dropdowns, page
+-- arrows and sets list, and the grid's empty note. Safe to run again.
 function GW.DressCollections()
   local wardrobe = _G.WardrobeCollectionFrame
   if type(wardrobe) ~= "table" then return end
   for _, path in ipairs(GW.WARDROBE_BACKDROPS) do skinBackdrop(walk(wardrobe, path)) end
   dressWardrobeTabs(wardrobe)
+  dressWardrobeControls(wardrobe)
+  dressItemsControls(wardrobe.ItemsCollectionFrame)
+  dressSetsControls(wardrobe.SetsCollectionFrame)
   watchAppearances(wardrobe.ItemsCollectionFrame)
 end
 

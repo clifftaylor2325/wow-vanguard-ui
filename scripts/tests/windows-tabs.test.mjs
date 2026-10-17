@@ -366,6 +366,8 @@ it("equipment flyout: panels behind its grid and page bar, its buttons skinned l
     EquipmentFlyoutFrame.buttonFrame, EquipmentFlyoutFrame.NavigationFrame = CreateFrame("Frame", nil, EquipmentFlyoutFrame), CreateFrame("Frame", nil, EquipmentFlyoutFrame)
     __art(EquipmentFlyoutFrame.buttonFrame) __art(EquipmentFlyoutFrame.NavigationFrame)
     EquipmentFlyoutFrame.buttons = { CreateFrame("Button", nil, EquipmentFlyoutFrame.buttonFrame) }
+    EquipmentFlyoutFrame.NavigationFrame.PrevButton = CreateFrame("Button", nil, EquipmentFlyoutFrame.NavigationFrame)
+    EquipmentFlyoutFrame.NavigationFrame.NextButton = CreateFrame("Button", nil, EquipmentFlyoutFrame.NavigationFrame)
     EquipmentFlyoutFrame:Hide()
     EquipmentFlyout_UpdateItems = function() end
   `);
@@ -374,6 +376,7 @@ it("equipment flyout: panels behind its grid and page bar, its buttons skinned l
   const flyout = () => addon.eval(`local f = EquipmentFlyoutFrame
     return { __panel(f.buttonFrame), __panel(f.NavigationFrame), ns.FrameState('vgSkinned')[f.buttons[1]] == true, #f.buttons }`);
   expect(flyout(), "its grid and page bar panelled, its first button skinned").toEqual([true, true, true, 1]);
+  expect(addon.eval("local n = EquipmentFlyoutFrame.NavigationFrame return { __panel(n.PrevButton), __panel(n.NextButton) }"), "its page arrows flat buttons").toEqual([true, true]);
   addon.eval(`table.insert(EquipmentFlyoutFrame.buttons, CreateFrame("Button", nil, EquipmentFlyoutFrame.buttonFrame))`);
   expect(addon.eval("return ns.FrameState('vgSkinned')[EquipmentFlyoutFrame.buttons[2]]"), "a button the game adds waits for the next fill").toBe(null);
   addon.eval("EquipmentFlyout_UpdateItems()");
@@ -903,4 +906,134 @@ it("GW.WatchRows: rows now and later, once per box, a failing skin reported and 
   expect(addon.eval("return { #__seen, #ns.errors }"), "rows acquired later, one failing is reported once and the next still done").toEqual([3, 1]);
   const noUtil = loggedIn(PANE_ENV + `ScrollUtil = nil local b = __box(UIParent) ns.GetModule("Windows").WatchRows(b, function() end)`);
   expect(noUtil.eval("return #ns.errors"), "a client without ScrollUtil").toBe(0);
+});
+
+// TEST-ONLY paper doll: the titles list and the equipment sets list (a pane each, with a ScrollBox of rows), the set
+// buttons, and a reader for a gear set's missing-items count.
+const PAPER_ENV = SIDE_PANE_ENV + `
+  PaperDollFrame = CreateFrame("Frame", "PaperDollFrame", CharacterFrame)
+  function __pane(key)
+    local p = CreateFrame("Frame", nil, PaperDollFrame)
+    p.Border, p.Line, p.ScrollBox = __art(p, "BORDER"), __art(p, "BORDER"), __box(p)
+    PaperDollFrame[key] = p
+    return p
+  end
+  __titles, __sets = __pane("TitleManagerPane"), __pane("EquipmentManagerPane")
+  function __titleRow()
+    local r = CreateFrame("Button", nil, __titles.ScrollBox)
+    r.Stripe, r.Check, r.SelectedBar = __art(r), __art(r, "BORDER"), __art(r, "OVERLAY")
+    r.text = r:CreateFontString() r.text:SetTextColor(NORMAL_FONT_COLOR:GetRGB())
+    return __titles.ScrollBox:Acquire(r)
+  end
+  function __setRow(id)
+    local r = CreateFrame("Button", nil, __sets.ScrollBox)
+    r.setID, r.plate, r.ring, r.SpecRing = id, __art(r), __art(r, "ARTWORK"), __art(r, "OVERLAY")
+    r.icon, r.Check, r.SpecIcon, r.HighlightBar, r.SelectedBar = __art(r, "ARTWORK"), __art(r, "BORDER"), __art(r, "OVERLAY"), __art(r), __art(r)
+    r.text = r:CreateFontString() r.text:SetTextColor(NORMAL_FONT_COLOR:GetRGB())
+    return __sets.ScrollBox:Acquire(r)
+  end
+  for _, key in ipairs({ "EquipSet", "SaveSet", "NewSet" }) do
+    local b = CreateFrame("Button", nil, __sets) b.StateTexture, b.plus = __art(b), __art(b, "ARTWORK") b.label = b:CreateFontString()
+    __sets[key] = b
+  end
+  C_EquipmentSet = { GetEquipmentSetInfo = function(id) return "Set", 1, id, false, 0, 0, 0, id == 2 and 3 or 0 end }
+`;
+
+it("paper doll lists: the titles and sets panes are flat insets, a title row loses its stripe, a set row its card plate and rings", () => {
+  const addon = loggedIn(PAPER_ENV + `__titleRow() __setRow(1) __setRow(2)`);
+  addon.eval("CharacterFrame:Show()");
+  expect(addon.eval("return { __a(__titles.Border), __panel(__titles), __a(__sets.Border), __a(__sets.Line), __panel(__sets) }"), "both panes: edge and rule faded, an inset panel").toEqual([0, true, 0, 0, true]);
+  // A title row's stripe alpha, its tick and selected bar alphas (-1: the game's), and whether its text is in the text colour.
+  const title = (i) => addon.eval(`local r = __titles.ScrollBox.rows[${i}] return { __a(r.Stripe), __a(r.Check), __a(r.SelectedBar), __text(r.text) }`);
+  expect(title(1), "stripe faded, tick and selected bar the game's, text in the text colour").toEqual([0, -1, -1, true]);
+  addon.eval("__titleRow()");
+  expect(title(2), "a title row acquired later too").toEqual([0, -1, -1, true]);
+  // A set row's plate and rings, then what stays (icon, tick, spec icon, hover and selected card), then its name's colour.
+  const set = (i) => addon.eval(`local r = __sets.ScrollBox.rows[${i}] return { __a(r.plate), __a(r.ring), __a(r.SpecRing), __a(r.icon), __a(r.Check), __a(r.SpecIcon), __a(r.HighlightBar), __a(r.SelectedBar), __text(r.text), __panel(r) }`);
+  expect(set(1), "plate and rings faded, no panel of its own, the rest the game's, name in the text colour").toEqual([0, 0, 0, -1, -1, -1, -1, -1, true, false]);
+  expect(addon.eval("return __gold(__sets.ScrollBox.rows[2].text)"), "a set with items missing keeps the game's name colour").toBe(true);
+  addon.eval("__setRow(1)");
+  expect(set(3)[0], "a set row acquired later too").toBe(0);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("paper doll lists: the set buttons are theme buttons, the New set button keeps its plus", () => {
+  const addon = loggedIn(PAPER_ENV);
+  addon.eval("CharacterFrame:Show()");
+  expect(addon.eval("return { __a(__sets.EquipSet.StateTexture), __panel(__sets.EquipSet), __a(__sets.SaveSet.StateTexture), __panel(__sets.SaveSet) }"), "Equip and Save flat").toEqual([0, true, 0, true]);
+  expect(addon.eval("return { __a(__sets.NewSet.StateTexture), __a(__sets.NewSet.plus), __panel(__sets.NewSet) }"), "New set: plate faded, plus kept, flat").toEqual([0, 1, true]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("CharacterFrame:Hide() CharacterFrame:Show()");
+  expect(addon.eval("return { ns.Theme.PaintedCount(), #ns.errors }"), "a second show paints nothing more").toEqual([painted, 0]);
+});
+
+it("paper doll lists: a client without the equipment set API, or panes without parts, loads cleanly", () => {
+  const bare = loggedIn(PAPER_ENV + `C_EquipmentSet = nil __setRow(2) __sets.NewSet = {} __sets.EquipSet = nil __titles.ScrollBox = nil`);
+  expect(bare.eval("CharacterFrame:Show() return { __text(__sets.ScrollBox.rows[1].text), #ns.errors }"), "no API: the name goes to the text colour").toEqual([true, 0]);
+  const hollow = loggedIn(PAPER_ENV + `PaperDollFrame.TitleManagerPane = {} PaperDollFrame.EquipmentManagerPane = {}`);
+  expect(hollow.eval("CharacterFrame:Show() return #ns.errors"), "panes that are not frames").toBe(0);
+});
+
+it("paper doll: each slot's BorderFrame and the ammo plate are faded, the pet bar and level lines are in the theme", () => {
+  const addon = loggedIn(PANE_ENV + `
+    PaperDollFrame = CreateFrame("Frame", "PaperDollFrame", CharacterFrame)
+    function __slot(name) local b = CreateFrame("Button", "Character" .. name .. "Slot", CharacterFrame) b.BorderFrame = CreateFrame("Frame", nil, b) return b end
+    __head = __slot("Head") __headFrame = __art(__head.BorderFrame)
+    __ammo = __slot("Ammo") __ammo.BorderFrame = nil
+    __plate, __icon, __ignore = __art(__ammo), __ammo:CreateTexture(nil, "BORDER"), __art(__ammo, "OVERLAY")
+    CharacterAmmoSlotIconTexture, __ammo.ignoreTexture = __icon, __ignore
+    PetPaperDollFrameExpBar = CreateFrame("Frame", "PetPaperDollFrameExpBar", PaperDollFrame)
+    PetPaperDollFrameExpBar.backdrop, PetPaperDollFrameExpBar.Fill = __art(PetPaperDollFrameExpBar), __art(PetPaperDollFrameExpBar, "BORDER")
+    CharacterLevelText, PetCharacterLevelText = PaperDollFrame:CreateFontString(), PaperDollFrame:CreateFontString()
+  `);
+  addon.eval("CharacterFrame:Show()");
+  expect(addon.eval("return __a(__headFrame)"), "a slot's bronze frame child faded").toBe(0);
+  expect(addon.eval("return { __a(__plate), __a(__icon), __a(__ignore) }"), "the ammo plate faded, its icon and ignored mark kept").toEqual([0, -1, -1]);
+  expect(addon.eval("local b = PetPaperDollFrameExpBar return { __a(b.backdrop), __a(b.Fill), __panel(b) }"), "the pet bar: backdrop faded, fill kept, panelled").toEqual([0, -1, true]);
+  expect(addon.eval("return { __headed(CharacterLevelText), __headed(PetCharacterLevelText), #ns.errors }"), "the level lines in the heading role and the text colour").toEqual([true, true, 0]);
+});
+
+// TEST-ONLY appearances page parts: search box, dropdowns, page arrows and the sets tab's list and details.
+const WARDROBE_ENV = COLLECTIONS_ENV + `
+  function __text(fs) local c, t = fs.__textColor, { ns.Theme.RGB("text") } return c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3] end
+  function __dropdown(parent) local d = CreateFrame("Button", nil, parent) d.Arrow = __art(d, "ARTWORK") d.Arrow:SetAlpha(0) return d end
+  function __wardrobe()
+    __collections()
+    local w = WardrobeCollectionFrame
+    w.SearchBox = CreateFrame("EditBox", nil, w) w.SearchBox.Left, w.SearchBox.searchIcon = __art(w.SearchBox), __art(w.SearchBox, "ARTWORK")
+    w.SearchBox.searchIcon:SetAlpha(0)
+    w.FilterButton, w.ClassDropdown = __dropdown(w), __dropdown(w)
+    local items, sets = w.ItemsCollectionFrame, w.SetsCollectionFrame
+    items.WeaponDropdown, items.PagingFrame = __dropdown(items), CreateFrame("Frame", nil, items)
+    items.PagingFrame.PrevPageButton, items.PagingFrame.NextPageButton = CreateFrame("Button", nil, items.PagingFrame), CreateFrame("Button", nil, items.PagingFrame)
+    sets.DetailsFrame = CreateFrame("Frame", nil, sets)
+    sets.DetailsFrame.IconRowBackground, sets.DetailsFrame.ModelFadeTexture = __art(sets.DetailsFrame), __art(sets.DetailsFrame)
+    sets.DetailsFrame.VariantSetsDropdown = __dropdown(sets.DetailsFrame)
+    sets.ListContainer = CreateFrame("Frame", nil, sets) sets.ListContainer.ScrollBox = __box(sets.ListContainer)
+    __setsRow = CreateFrame("Button", nil, sets.ListContainer.ScrollBox)
+    __setsRow.Background, __setsRow.HighlightTexture, __setsRow.Name = __art(__setsRow), __art(__setsRow), __setsRow:CreateFontString()
+    __setsRow.Name:SetTextColor(0.5, 0.5, 0.5)
+    sets.ListContainer.ScrollBox:Acquire(__setsRow)
+  end
+`;
+
+it("appearances: the search box, dropdowns, page arrows and the sets tab's rows and details are in the theme", () => {
+  const addon = loggedIn(WARDROBE_ENV);
+  addon.eval("__wardrobe()");
+  addon.fire("ADDON_LOADED", "Blizzard_Collections");
+  addon.eval("CollectionsJournal:Show()");
+  expect(addon.eval("local b = WardrobeCollectionFrame.SearchBox return { __a(b.Left), b.searchIcon:GetAlpha(), __panel(b) }"), "the search box: art faded, its magnifier shown, flat").toEqual([0, 1, true]);
+  // A dropdown's arrow alpha (shown again) and whether it is a flat button.
+  const drop = (path) => addon.eval(`local d = ${path} return { d.Arrow:GetAlpha(), __panel(d) }`);
+  const w = "WardrobeCollectionFrame";
+  expect([drop(`${w}.FilterButton`), drop(`${w}.ClassDropdown`), drop(`${w}.ItemsCollectionFrame.WeaponDropdown`), drop(`${w}.SetsCollectionFrame.DetailsFrame.VariantSetsDropdown`)], "the filter, class, weapon and variant dropdowns keep their arrows")
+    .toEqual([[1, true], [1, true], [1, true], [1, true]]);
+  expect(addon.eval(`local p = ${w}.ItemsCollectionFrame.PagingFrame return { __panel(p.PrevPageButton), __panel(p.NextPageButton) }`), "the page arrows flat buttons").toEqual([true, true]);
+  expect(addon.eval(`local d = ${w}.SetsCollectionFrame.DetailsFrame return { __a(d.IconRowBackground), __a(d.ModelFadeTexture) }`), "the icon row plate and the model fade gone").toEqual([0, 0]);
+  expect(addon.eval("return { __a(__setsRow.Background), __a(__setsRow.HighlightTexture), __panel(__setsRow), __text(__setsRow.Name) }"), "a sets row: plate faded, hover the game's, no fill, name colour the game's").toEqual([0, -1, false, false]);
+  addon.eval("local row = CreateFrame('Button', nil, __setsRow:GetParent()) row.Background = __art(row) __laterRow = WardrobeCollectionFrame.SetsCollectionFrame.ListContainer.ScrollBox:Acquire(row)");
+  expect(addon.eval("return { __a(__laterRow.Background), #ns.errors }"), "a row acquired later too").toEqual([0, 0]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("CollectionsJournal:Hide() CollectionsJournal:Show()");
+  expect(addon.eval("return { ns.Theme.PaintedCount(), #ns.errors }"), "showing it again paints nothing new").toEqual([painted, 0]);
 });
