@@ -112,6 +112,7 @@ const CHAT_BUTTONS_ENV = `
   local quick = __roundButton("QuickJoinToastButton", UIParent)
   quick.FriendCount = quick:CreateFontString(nil, "ARTWORK") quick.FriendCount:SetFont("TEST-ONLY-FONT", 10, "") quick.FriendCount:SetText("3")
   quick.QueueCount = quick:CreateFontString(nil, "ARTWORK")
+  quick.QueueButton = quick:CreateTexture(nil, "ARTWORK") quick.QueueButton:SetTexture("TEST-ONLY-ART") quick.QueueButton:SetAlpha(0)
   -- What a side button looks like: its round art's alphas, whether a tile shows on it, the theme glyph it carries, its own icon's alpha.
   function __buttonLook(b, white)
     local tile, glyph = false, false
@@ -131,6 +132,8 @@ it("chat side buttons sit on themed tiles: a glyph on the menu, minimize, scroll
   expect(look("ChatFrame1.ScrollToBottomButton"), "the scroll-to-bottom arrow").toEqual([0, 0, 0, true, "Down", false]);
   expect(look("QuickJoinToastButton"), "Quick Join: the social glyph").toEqual([0, 0, 0, true, "Social", false]);
   expect(addon.eval("local c = QuickJoinToastButton.FriendCount return { c.__layer, c.__sublevel, select(2, c:GetFont()), c:GetText() }"), "its counts above the glyph, in the badge role, text untouched").toEqual(["OVERLAY", 7, 9, "3"]);
+  addon.eval("QuickJoinToastButton.QueueButton:SetAlpha(1)");
+  expect(addon.eval("local q = QuickJoinToastButton.QueueButton return { q:IsShown(), q:IsVisible() }"), "its queue art, which the game's toast animation raises to full alpha and leaves there while a toast is up, is hidden rather than faded, so raised it still shows nothing").toEqual([false, false]);
   for (const name of ["ChatFrameChannelButton", "ChatFrameToggleVoiceDeafenButton", "ChatFrameToggleVoiceMuteButton", "TextToSpeechButton"]) {
     expect(look(name), `${name}: round art faded, a resting tile behind its own icon`).toEqual([0, 0, 0, true, false, 1]);
   }
@@ -143,6 +146,7 @@ it("chat side buttons: module off leaves the game's art; a client without text t
   const off = loggedIn(UI_ENV + CHAT_BUTTONS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Chat = false } } }" });
   expect(off.eval("return __buttonLook(ChatFrameMenuButton, ns.Theme.WHITE)"), "the chat menu keeps its round art, no tile, no glyph").toEqual([1, 1, 1, false, false, false]);
   expect(off.eval("return __buttonLook(ChatFrameChannelButton, ns.Theme.WHITE)"), "so does the voice channel button").toEqual([1, 1, 1, false, false, 1]);
+  expect(off.eval("return QuickJoinToastButton.QueueButton:IsShown()"), "Quick Join's queue art is left shown for the game's animation").toBe(true);
   const bare = loggedIn(UI_ENV + CHAT_BUTTONS_ENV + "TextToSpeechButtonFrame = nil TextToSpeechButton = nil QuickJoinToastButton = nil ChatFrame1.ScrollToBottomButton = nil");
   expect(bare.eval("return __buttonLook(ChatFrameMenuButton, ns.Theme.WHITE)[5]"), "the buttons this client has are still skinned").toBe("NavChat");
 });

@@ -129,10 +129,19 @@ local function raiseCounts(button)
   end
 end
 
+-- Quick Join's queue art (QueueButton): the game's toast animation raises it to full alpha and
+-- leaves it there while a toast is up, so a fade would not hold; it is hidden instead (the game
+-- never shows it itself, only swaps its atlas). The alert flash beside it is faded like the others.
+local function hideQueueArt(button)
+  local art = button.QueueButton
+  if type(art) == "table" and type(art.Hide) == "function" then art:Hide() end
+end
+
 -- A side button as a window control: round art faded, a theme glyph on the tile.
 local function glyphButton(button, icon)
   if not isButton(button) then return end
   T.WindowControl(button, icon)
+  hideQueueArt(button)
   raiseCounts(button)
 end
 
