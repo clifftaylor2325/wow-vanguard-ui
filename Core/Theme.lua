@@ -1893,12 +1893,15 @@ end
 -- art T.ScrollBar fades, and the pieces each part can hold.
 T.SCROLL_ART = { "Background", "Backplate", "Overlay", "Track" }
 local SCROLL_PIECES = { "Begin", "Middle", "End", "Texture" }
--- The arrow buttons, faded away: the one scroll thumb (T.SCROLL) has no arrows.
+-- The arrow buttons, faded away: the one scroll thumb (T.SCROLL) has no arrows. The old scroll bar's
+-- (UIPanelScrollFrameTemplate) are its up and down buttons.
 local SCROLL_ARROWS = { "Back", "Forward" }
+local OLD_SCROLL_ARROWS = { "ScrollUpButton", "ScrollDownButton" }
 -- What a game thumb's hooks note about the mouse: over it (OnEnter, OnLeave) and holding it (OnMouseDown, OnMouseUp).
 local THUMB_HOOKS = { OnEnter = { "over", true }, OnLeave = { "over", false }, OnMouseDown = { "held", true }, OnMouseUp = { "held", false } }
--- Per-frame state kept off the game's frames: a game thumb -> { bar, over, held }, the T.SCROLL line Vanguard
--- drew down it and where the mouse is. (vgArrow, above, marks an arrow button faded once.)
+-- Per-frame state kept off the game's frames: a game thumb (an old scroll bar's slider, whose thumb is a
+-- texture) -> { bar, over, held }, the T.SCROLL line Vanguard drew down it and where the mouse is.
+-- (vgArrow, above, marks an arrow button faded once.)
 local vgThumb = ns.FrameState("vgThumb")
 
 -- Fades one part of a scroll bar: a frame's own textures (but those in keep), or a texture, and its pieces.
@@ -1921,24 +1924,27 @@ local function watchThumb(thumb)
   end
 end
 
--- The one scroll line (T.SCROLL) down the middle of a game thumb: text2, T.SCROLL.thumb wide, at the rest alpha.
-local function thumbLine(thumb)
-  local bar = T.Tint(T.Snap(thumb:CreateTexture(nil, "OVERLAY"), "fill"), "text2")
+-- The one scroll line (T.SCROLL) down the middle of a game thumb, drawn on host (the thumb, or an old
+-- scroll bar's slider) along the thumb: text2, T.SCROLL.thumb wide, at the rest alpha.
+local function thumbLine(host, thumb)
+  local bar = T.Tint(T.Snap(host:CreateTexture(nil, "OVERLAY"), "fill"), "text2")
   bar:SetTexture(T.WHITE)
   bar:SetWidth(T.SCROLL.thumb)
-  bar:SetPoint("TOP")
-  bar:SetPoint("BOTTOM")
+  bar:SetPoint("TOP", thumb)
+  bar:SetPoint("BOTTOM", thumb)
   bar:SetAlpha(T.SCROLL.rest)
   return bar
 end
 
--- The line Vanguard drew on a game thumb, made (and the thumb's mouse watched) the first time.
-local function thumbBar(thumb)
-  if not vgThumb[thumb] then
-    vgThumb[thumb] = { bar = thumbLine(thumb) }
-    watchThumb(thumb)
+-- The line Vanguard drew for a game thumb, on host (the thumb itself unless given), made (and the host's
+-- mouse watched) the first time.
+local function thumbBar(thumb, host)
+  host = host or thumb
+  if not vgThumb[host] then
+    vgThumb[host] = { bar = thumbLine(host, thumb) }
+    watchThumb(host)
   end
-  return vgThumb[thumb].bar
+  return vgThumb[host].bar
 end
 
 -- A scroll arrow faded away, once: alpha 0, and no longer taking the mouse.
@@ -1949,13 +1955,33 @@ local function fadeArrow(button)
   button:EnableMouse(false)
 end
 
+-- One of an old scroll bar's up and down buttons, by key or, on a named bar, by its global name.
+local function oldArrow(bar, key)
+  local name = type(bar.GetName) == "function" and bar:GetName()
+  return bar[key] or (name and _G[name .. key])
+end
+
+-- The game's old scroll bar (UIPanelScrollFrameTemplate's slider, whose thumb is a texture) in the
+-- theme: its art faded, the thumb texture too, the one scroll line drawn on the slider along the thumb
+-- (lit while the mouse is over the bar or drags it), the up and down buttons faded away.
+local function oldScrollBar(bar)
+  local thumb = type(bar.GetThumbTexture) == "function" and bar:GetThumbTexture() or bar.ThumbTexture
+  if type(thumb) ~= "table" then return bar end
+  T.FadeRegions(bar, { [thumbBar(thumb, bar)] = true })
+  for _, key in ipairs(OLD_SCROLL_ARROWS) do
+    local button = oldArrow(bar, key)
+    if type(button) == "table" then fadeArrow(button) end
+  end
+  return bar
+end
+
 -- One of the game's scroll bars in the theme: its track and art faded, the thumb's art too with the one
 -- scroll line (T.SCROLL) down its middle, lit while the mouse is over the thumb or drags it, and the
--- Back and Forward arrows faded away. A bar without a thumb (not one of the game's) is left alone. Safe
--- to run again.
+-- Back and Forward arrows faded away. The old scroll bar (UIPanelScrollFrameTemplate) gets the same look.
+-- A bar without a thumb (not one of the game's) is left alone. Safe to run again.
 function T.ScrollBar(bar)
   local thumb = bar.Thumb or (type(bar.Track) == "table" and bar.Track.Thumb)
-  if type(thumb) ~= "table" then return bar end
+  if type(thumb) ~= "table" then return oldScrollBar(bar) end
   for _, key in ipairs(T.SCROLL_ART) do fadePart(bar[key]) end
   fadePart(thumb, { [thumbBar(thumb)] = true })
   for _, key in ipairs(SCROLL_ARROWS) do if type(bar[key]) == "table" then fadeArrow(bar[key]) end end
