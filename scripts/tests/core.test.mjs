@@ -490,6 +490,31 @@ it("the question dialog: its text is the title, wrapped short of the X, the dial
   expect(addon.eval("return __answers"), "the next question is answered by its own No").toEqual(["no", "no"]);
 });
 
+it("the question dialog: Enter presses a Yes that is not a danger button, out of combat only; other keys go on", () => {
+  const addon = loggedIn();
+  const name = "Vanguard_Question";
+  // Asks the question (kind: "danger" or undefined) and keeps the answers.
+  const ask = (kind) => addon.eval(`__answers = {} __passed = {} ns.Ask("Sure?", "Go", function() __answers[#__answers + 1] = "yes" end, function() end, ${kind}) `);
+  // Presses a key on the question.
+  const press = (k) => addon.eval(`${name}.__scripts.OnKeyDown(${name}, "${k}") return {}`);
+  ask(undefined);
+  addon.eval(`${name}.SetPropagateKeyboardInput = function(self, v) __passed[#__passed + 1] = v end`);
+  expect(addon.eval(`return ${name}:GetScript("OnKeyDown") ~= nil`), "the dialog reads keys").toBe(true);
+  press("A");
+  expect([addon.eval("return #__answers"), addon.eval("return __passed")], "another key is passed on").toEqual([0, [true]]);
+  press("ENTER");
+  expect([addon.eval("return __answers"), addon.frame(name).visible, addon.eval("return __passed[2]")], "Enter presses the primary Yes and is not passed on").toEqual([["yes"], false, false]);
+  ask('"danger"');
+  press("NUMPADENTER");
+  expect([addon.eval("return #__answers"), addon.frame(name).visible], "Enter never presses a danger button").toEqual([0, true]);
+  ask(undefined);
+  setCombat(addon, true);
+  press("ENTER");
+  expect([addon.eval("return #__answers"), addon.eval("return #__passed")], "in combat no key is caught and propagation is not touched").toEqual([0, 0]);
+  setCombat(addon, false);
+  addon.click(`${name}.no`);
+});
+
 it("the reload dialog: the reason is the title and the dialog grows to fit it; the X is Later and the covering overlay goes with it", () => {
   const addon = loggedIn();
   const name = "Vanguard_Reload";

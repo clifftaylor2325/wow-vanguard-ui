@@ -616,12 +616,22 @@ local function addPages(f)
   end
 end
 
+-- What Tab reaches in the wizard: the showing page's choices, then Skip, Back and Next.
+local function focusList()
+  local out = {}
+  local page = frame.pages[state.order[state.step]]
+  for _, b in ipairs(page and page.choices or {}) do out[#out + 1] = b end
+  for _, b in ipairs({ frame.skip, frame.back, frame.next }) do out[#out + 1] = b end
+  return out
+end
+
 -- Builds the wizard once: the window (whose title line closes it on Escape), its controls and pages.
 local function build()
   local f = window()
   controls(f)
   addPages(f)
   f:SetScript("OnHide", finished)
+  ns.TabFocus(f, focusList)
   return f
 end
 
@@ -631,6 +641,7 @@ end
 local function showStep(n)
   local key, last = state.order[n], #state.order
   state.step = n
+  ns.FocusClear(frame)
   for k, page in pairs(frame.pages) do page:SetShown(k == key) end
   frame.caption:SetText(string.format("Step %d of %d · %s", n, last, NAMES[key]))
   frame.back:SetShown(n > state.floor)

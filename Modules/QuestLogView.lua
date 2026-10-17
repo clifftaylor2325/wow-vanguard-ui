@@ -75,9 +75,9 @@ QL.BUTTONS = { { "track", "Track", QL.ToggleTrack }, { "share", "Share", QL.Shar
 QL.BUTTON_GAP = T.SPACE.gap
 QL.BUTTON_W = (DETAIL_W - (#QL.BUTTONS - 1) * QL.BUTTON_GAP) / #QL.BUTTONS
 
--- One details button: it runs its action on the chosen quest.
+-- One details button: it runs its action on the chosen quest. Abandon is the danger kind.
 local function addButton(f, spec, x)
-  local b = ns.DialogButton(f, spec[2], QL.BUTTON_W)
+  local b = ns.DialogButton(f, spec[2], QL.BUTTON_W, spec[1] == "abandon" and "danger" or nil)
   b:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", DETAIL_X + x, T.SPACE.pad)
   b:SetScript("OnClick", ns.Guard("click quest log button", function() if QL.details then spec[3](QL.details) end end))
   f.buttons[spec[1]] = b
@@ -105,9 +105,18 @@ function QL.Build()
   QL.Finish(f)
 end
 
--- The details buttons; the window starts hidden.
+-- Where the details buttons that are not Abandon start (units from the column's left): they end at its right edge.
+local RIGHT_X = DETAIL_W - (#QL.BUTTONS - 1) * QL.BUTTON_W - (#QL.BUTTONS - 2) * QL.BUTTON_GAP
+
+-- The details buttons: Abandon alone at the far left of the details column, the others in a row ending at its
+-- right edge (the footer rule of docs/THEME.md); the window starts hidden.
 function QL.Finish(f)
-  for i, spec in ipairs(QL.BUTTONS) do addButton(f, spec, (i - 1) * (QL.BUTTON_W + QL.BUTTON_GAP)) end
+  local i = 0
+  for _, spec in ipairs(QL.BUTTONS) do
+    local far = spec[1] == "abandon"
+    addButton(f, spec, far and 0 or RIGHT_X + i * (QL.BUTTON_W + QL.BUTTON_GAP))
+    if not far then i = i + 1 end
+  end
   f:Hide()
 end
 

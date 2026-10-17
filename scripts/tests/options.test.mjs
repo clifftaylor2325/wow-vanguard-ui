@@ -1,7 +1,8 @@
 // options: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
+import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
-import { CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, button, calls, chatHas, isTok, key, loggedIn, marks, px, setCombat, tok, tooltip } from "./helpers.mjs";
+import { CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, isTok, key, loggedIn, marks, px, setCombat, tok, tooltip } from "./helpers.mjs";
 
 it("options window", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
@@ -141,7 +142,7 @@ it("options: Delete, Copy here, Reset profile and Start over say what they lose;
     .toBe("Reset this profile? Every setting in profile Default goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile Default backup.");
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(addon.eval("return { VanguardDB.profiles.Default.Chat.background, VanguardDB.profiles['Default backup'] == nil }"), "No changes nothing").toEqual([false, true]);
-  addon.eval('__click("Reset profile") Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  addon.eval('__click("Reset profile") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect(addon.eval("return { VanguardDB.profiles.Default.Chat == nil, VanguardDB.profiles['Default backup'].Chat.background, Vanguard_Options.reload:IsShown() }"), "Reset backs the profile up, then resets it for the reload").toEqual([true, false, true]);
   expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
 });
@@ -272,7 +273,7 @@ it("options: a frame's scale and opacity from the Layout card; a long menu scrol
   const menu = addon.eval("local n = 0 for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() then n = n + 1 end end return { n, Vanguard_Menu:GetWidth(), Vanguard_Menu:GetHeight(), ns.Widgets ~= nil }");
   const count = addon.eval('local c = __d.choices if type(c) == "function" then c = c() end return #c');
   expect(count, "every frame is a choice").toBeGreaterThan(16);
-  expect(menu.slice(0, 3), "a long list shows 16 rows at a time, one column wide, each row an inline control tall").toEqual([16, 180, 16 * addon.eval("return ns.Theme.CONTROL_H") + 2]);
+  expect(menu.slice(0, 3), "a long list shows 16 rows at a time, one column wide, each row an inline control tall").toEqual([16, 200, 16 * addon.eval("return ns.Theme.CONTROL_H") + 2]);
   addon.eval('for _ = 1, 60 do for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() and b.text:GetText() == "Minimap" then b:GetScript("OnClick")(b) return end end Vanguard_Menu:GetScript("OnMouseWheel")(Vanguard_Menu, -1) end');
   expect(addon.eval(`return ${sliderRow("Its scale")}.get()`), "picking another frame re-reads the sliders").toBe(1);
   addon.eval(`local r = ${sliderRow("Its opacity")} r.set(0.5) r:Refresh()`);
@@ -686,8 +687,8 @@ it("sliders: the pill track, the fill on the same frame under the thumb, the thu
   // The fill at a value: shown, the width of its two round ends, its right end's left edge, and the thumb's and its outline's centre.
   const fill = (v) => addon.eval(`__sl.set(${v}) __sl:Refresh() local p = __sl.fillParts
     return { p[1]:IsShown(), __r3(p[1]:GetWidth()), __r3(p[3]:GetWidth()), __r3(p[3].__points.TOPLEFT.x), __r3(__sl.thumb.__points.CENTER.x), __r3(__sl.thumbLine.__points.CENTER.x) }`);
-  expect(fill("__sl.max"), "at the top: the fill spans the track, its right end 4 in from the end, the thumb and its outline centred on the end").toEqual([true, 4, 4, 136, 140, 140]);
-  expect(fill("__sl.min + (4 / 140) * (__sl.max - __sl.min)"), "a fill 4 wide: both ends narrow to 2, so neither crosses the other").toEqual([true, 2, 2, 2, 4, 4]);
+  expect(fill("__sl.max"), "at the top: the fill spans the track, its right end 4 in from the end, the thumb and its outline centred on the end").toEqual([true, 4, 4, 128, 132, 132]);
+  expect(fill("__sl.min + (4 / 132) * (__sl.max - __sl.min)"), "a fill 4 wide: both ends narrow to 2, so neither crosses the other").toEqual([true, 2, 2, 2, 4, 4]);
   expect(fill("__sl.min"), "at the bottom: the fill hides under the thumb at the left end").toEqual([false, 0.5, 0.5, -0.5, 0, 0]);
   // Whether a texture is tinted the token's colour as the theme has it now.
   const tinted = (t, token) => addon.eval(`local c = ${t}.__vertexColor local r, g, b = ns.Theme.RGB("${token}") return c[1] == r and c[2] == g and c[3] == b`);
@@ -745,7 +746,7 @@ it("controls: inline controls are T.CONTROL_H tall and buttons T.BUTTON_H, 120 w
   expect([sizes.input[0], sizes.search[0], sizes.dropdown[0], sizes.segment[0], sizes.menuItem[0]], "an input, a search box, a dropdown, a segment and a menu item are inline controls").toEqual([controlH, controlH, controlH, controlH, controlH]);
   expect([sizes.button, sizes.primary, sizes.dialog].map((s) => s.slice(0, 2)), "W.Button, W.Primary and ns.DialogButton are standalone buttons, 120 wide unless told otherwise").toEqual([[buttonH, 120], [buttonH, 120], [buttonH, 120]]);
   expect(sizes.wide.slice(0, 2), "a width given wins").toEqual([buttonH, 60]);
-  expect([sizes.input[1], sizes.search[1], sizes.dropdown[1]], "the inline controls keep their own default widths").toEqual([220, 200, 180]);
+  expect([sizes.input[1], sizes.search[1], sizes.dropdown[1]], "the inline controls keep their own default widths").toEqual([220, 200, 200]);
   expect(sizes.segment[2], "a segment's label is the label role (12), like every other button's").toBe(12);
 });
 
@@ -783,7 +784,10 @@ it("dialogs: Import and Reload are the primary buttons, Yes and No stay plain; t
   addon.eval('ns.AskText("Paste it again", function() end)');
   expect(button("Vanguard_TextDialog.close")[1], "asking again puts Cancel back").toBe("Cancel");
   addon.eval('ns.Ask("Sure?", "Yes", function() end, function() end)');
-  expect([button("Vanguard_Question.yes"), button("Vanguard_Question.no")], "Yes and No are plain buttons in the text colour (a confirm never takes the accent)").toEqual([[false, "Yes", tok(addon, "text")], [false, "No", tok(addon, "text")]]);
+  const yes = button("Vanguard_Question.yes");
+  expect([yes[0], yes[1], isTok(addon, yes[2], "void"), button("Vanguard_Question.no")], "Yes is the question's one primary (the accent); No stays plain").toEqual([true, "Yes", true, [false, "No", tok(addon, "text")]]);
+  addon.eval('ns.Ask("Delete it?", "Delete", function() end, function() end, "danger")');
+  expect([addon.eval("return { Vanguard_Question.yes:IsShown(), Vanguard_Question.sure:IsShown() }"), button("Vanguard_Question.sure")], "a destructive question swaps in a danger button, never brass").toEqual([[false, true], [false, "Delete", tok(addon, "bad")]]);
   addon.eval('ns.OfferReload("Changed.")');
   const reload = button("Vanguard_Reload.accept");
   expect([reload[0], reload[1], isTok(addon, reload[2], "void"), button("Vanguard_Reload.cancel")], "Reload is the accent button; Later stays plain").toEqual([true, "Reload", true, [false, "Later", tok(addon, "text")]]);
@@ -797,9 +801,9 @@ it("profiles: Use is a plain button, so Create is the page's one accent button",
   addon.eval('ns.Options.Show("profiles")');
   const buttons = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
     if w.use and w:IsVisible() then out.use = { w.use.fill ~= nil, w.use.text:GetText(), w.use.text.__textColor, w.use:GetHeight(), w.use:GetWidth() } end
-    if w.create and w:IsVisible() then out.create = { w.create.fill ~= nil, w.create.text:GetText(), w.create:GetHeight(), w.create:GetWidth() } end end return out`);
+    if w.create and w:IsVisible() then out.create = { w.create.text.__textColor, w.create.text:GetText(), w.create:GetHeight(), w.create:GetWidth() } end end return out`);
   expect(buttons.use, "Use: no accent fill, the text colour, a standalone button at the row's small width").toEqual([false, "Use", tok(addon, "text"), 26, 84]);
-  expect(buttons.create, "Create: the accent fill, the same size").toEqual([true, "Create", 26, 84]);
+  expect(buttons.create, "Create: the primary kind (a dark label on the accent fill), the same size").toEqual([tok(addon, "void"), "Create", 26, 84]);
 });
 
 it("options: the sample unit frame shows the player's own name, or You when the client hides it, and the sample button Vanguard's crest", () => {
@@ -912,4 +916,210 @@ it("options: the General page's buttons are T.BUTTON_H tall in a 32 high row, an
   addon.eval('ns.Options.Show("modules")');
   const desc = addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.desc and w.label.__text == "Unit frames" and w:IsVisible() then return { select(2, w.desc:GetFont()), w.desc.__textColor } end end');
   expect([desc[0], isTok(addon, desc[1], "muted")], "a module's line on what it does is small and muted").toEqual([addon.eval("return ns.Theme.RoleSize('small')"), true]);
+});
+
+it("buttons: kinds share one shape (primary accent fill without bevel or sheen, hovering to accentText; danger a secondary with a bad label), and the control column is 200 wide", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local W = ns.Widgets
+    local plain, primary, danger = W.Button(UIParent, "Go", print), W.Primary(UIParent, "Go", print), W.Danger(UIParent, "Go", print)
+    local e = ns.Theme.HoverParts(primary)
+    local r = W.Slider(UIParent, "Size", { min = 0, max = 10, step = 1 }, function() return 5 end, print, 400)
+    return { plain.text.__textColor, primary.text.__textColor, danger.text.__textColor, e.fill.token, ns.Theme.HoverParts(plain).fill.token,
+      W.COLUMN, W.VALUE_SLOT, r.track:GetWidth(), r.value:GetWidth(), r.label:GetWidth(), primary.Refresh ~= nil }`);
+  expect(out.slice(0, 3), "the labels: text, void, bad").toEqual([tok(addon, "text"), tok(addon, "void"), tok(addon, "bad")]);
+  expect(out.slice(3, 5), "a primary hovers to accentText, a secondary to raisedHover").toEqual(["accentText", "raisedHover"]);
+  expect(out.slice(5, 9), "the column, the value slot, the track (column less slot and gap) and the value text").toEqual([200, 60, 132, 60]);
+  expect(out[9], "a caption stops short of the column").toBe(400 - 200 - 16);
+});
+
+// 8.7 states, keyboard and menus -------------------------------------------------------------------
+
+it("a pressed switch drops its knob one pixel and never recolours its track; no control fades its whole alpha to look disabled", () => {
+  const addon = loggedIn();
+  addon.eval(`__on = false
+    __sw = ns.Widgets.Check(UIParent, "A caption", function() return __on end, function(v) __on = v end, 300)`);
+  // The knob's and its shade's y offset, and the fill's colour.
+  const look = () => addon.eval("local s = __sw local p = s.knob.__points local k = next(p) return { p[k].y, s.shade.__points[next(s.shade.__points)].y, s.fill.__vertexColor }");
+  const rest = look();
+  expect([rest[0], rest[1]], "at rest the knob and its shade sit on the track's middle").toEqual([0, 0]);
+  addon.eval("__sw.__scripts.OnMouseDown(__sw)");
+  const held = look();
+  expect([held[0], held[1]], "pressed, both drop one screen pixel").toEqual([-px(addon, 1), -px(addon, 1)]);
+  expect(held[2], "and the fill's colour is the same as at rest").toEqual(rest[2]);
+  addon.eval("__sw.__scripts.OnMouseUp(__sw)");
+  expect(look()[0], "letting go puts the knob back").toBe(0);
+  const src = ["Controls", "Widgets", "Dialog", "Chrome"].map((f) => readFileSync(`Core/${f}.lua`, "utf8")).join("\n");
+  expect(src.match(/SetAlpha\([^)]*(disabled|enabled)/gi), "no constructor fades its alpha for a disabled look").toBeNull();
+});
+
+it("an edit box turns its border accentText while it has the typing and back to edge after", () => {
+  const addon = loggedIn();
+  addon.eval(`__box = ns.Widgets.Input(UIParent, 200)`);
+  // The edit box's border colour.
+  const border = () => borderOf(addon, "__box");
+  expect(isTok(addon, border(), "edge"), "resting: the edge border").toBe(true);
+  addon.eval(`__box.__scripts.OnEditFocusGained(__box)`);
+  expect(isTok(addon, border(), "accentText"), "focused: accentText").toBe(true);
+  addon.eval(`__box.__scripts.OnEditFocusLost(__box)`);
+  expect(isTok(addon, border(), "edge"), "let go: edge again").toBe(true);
+});
+
+it("the search box shows a clear glyph only while it has text; clicking it empties the box and runs onChange", () => {
+  const addon = loggedIn();
+  addon.eval(`__seen = {} __s = ns.Widgets.Search(UIParent, 200, "Find", function(t) __seen[#__seen + 1] = t end)`);
+  expect(addon.eval("return __s.clear:IsShown()"), "empty: no glyph").toBe(false);
+  addon.eval(`__s:SetText("abc") __s.__scripts.OnTextChanged(__s)`);
+  expect(addon.eval("return { __s.clear:IsShown(), __s.hint:IsShown() }"), "with text: the glyph shows and the hint is gone").toEqual([true, false]);
+  addon.eval("__s.clear.__scripts.OnEnter(__s.clear)");
+  expect(isTok(addon, addon.eval("return __s.clear.glyph.__vertexColor"), "text"), "the glyph lights under the mouse").toBe(true);
+  addon.eval("__s.clear.__scripts.OnLeave(__s.clear)");
+  expect(isTok(addon, addon.eval("return __s.clear.glyph.__vertexColor"), "text2"), "and rests in text2").toBe(true);
+  addon.eval(`__s.clear.__scripts.OnClick(__s.clear) __s.__scripts.OnTextChanged(__s)`);
+  expect(addon.eval("return { __s:GetText(), __s.clear:IsShown(), __seen[#__seen] }"), "a click empties it and tells onChange").toEqual(["", false, ""]);
+});
+
+// Opens a dropdown of n choices (value 1 current) and returns nothing; the menu is Vanguard_Menu.
+const openDropdown = (addon, n) => addon.eval(`local list = {} for i = 1, ${n} do list[i] = { i, "Choice " .. i } end
+  __dd = ns.Widgets.Dropdown(UIParent, list, function() return 1 end, function(v) __picked = v end, 160)
+  __dd:SetPoint("CENTER")
+  __dd.__scripts.OnClick(__dd)`);
+
+it("a dropdown keeps its hover fill while its menu is open, and lets go when the menu closes", () => {
+  const addon = loggedIn();
+  openDropdown(addon, 4);
+  // How lit the first dropdown's hover line is.
+  const lit = () => addon.eval("return ns.Theme.HoverParts(__dd)[2]:GetAlpha()");
+  addon.eval("__dd.__scripts.OnLeave(__dd)");
+  expect(lit(), "the mouse is gone but the menu is open: the line stays lit").toBe(1);
+  addon.eval("ns.Widgets.CloseMenu()");
+  expect(lit(), "the menu closed: the hover look eases out").toBe(0);
+  openDropdown(addon, 4);
+  addon.eval(`__two = ns.Widgets.Dropdown(UIParent, { { 1, "A" } }, function() return 1 end, function() end, 160) __two.__scripts.OnClick(__two)`);
+  expect([lit(), addon.eval("return ns.Theme.HoverParts(__two)[2]:GetAlpha()")], "opening another dropdown passes the hold on").toEqual([0, 1]);
+});
+
+it("a menu of more than 16 rows shows the 4 px thumb at the rest alpha and moves it as the list scrolls; a short one has none", () => {
+  const addon = loggedIn();
+  openDropdown(addon, 4);
+  expect(addon.eval("return Vanguard_Menu.thumb:IsShown()"), "four rows: no thumb").toBe(false);
+  addon.eval("ns.Widgets.CloseMenu()");
+  openDropdown(addon, 40);
+  // The menu thumb: shown, width, alpha, height and its y offset.
+  const thumb = () => addon.eval("local t = Vanguard_Menu.thumb return { t:IsShown(), t:GetWidth(), t:GetAlpha(), t:GetHeight(), select(5, t:GetPoint()) }");
+  const top = thumb();
+  expect(top.slice(0, 3), "forty rows: the thumb shows, 4 wide, at the rest alpha").toEqual([true, addon.eval("return ns.Theme.SCROLL.thumb"), addon.eval("return ns.Theme.SCROLL.rest")]);
+  addon.eval("Vanguard_Menu.__scripts.OnMouseWheel(Vanguard_Menu, -1)");
+  expect(thumb()[4], "scrolled a row, the thumb sits lower").toBeLessThan(top[4]);
+});
+
+it("Escape and a click outside close a dropdown menu", () => {
+  const addon = loggedIn("UISpecialFrames = {}");
+  openDropdown(addon, 4);
+  expect(addon.eval("local n = 0 for _, name in ipairs(UISpecialFrames) do if name == 'Vanguard_Menu' then n = n + 1 end end return n"), "Escape is wired through the special frames, once").toBe(1);
+  expect(addon.eval("return Vanguard_Menu.catcher:IsShown()"), "an open menu has its catcher under it").toBe(true);
+  expect(addon.eval("return Vanguard_Menu.catcher:GetFrameLevel() < Vanguard_Menu:GetFrameLevel()"), "just under the menu").toBe(true);
+  addon.eval("Vanguard_Menu.catcher.__scripts.OnMouseDown(Vanguard_Menu.catcher, 'LeftButton')");
+  expect(addon.eval("return { Vanguard_Menu:IsShown(), Vanguard_Menu.catcher:IsShown() }"), "a click anywhere else closes the menu and puts the catcher away").toEqual([false, false]);
+  openDropdown(addon, 4);
+  addon.eval('ns.Options.Show("general")');
+  addon.key("Vanguard_Options", "ESCAPE");
+  expect(addon.eval("return { Vanguard_Menu:IsShown(), Vanguard_Options:IsShown() }"), "Escape in the options window closes the menu first and leaves the window").toEqual([false, true]);
+  addon.key("Vanguard_Options", "ESCAPE");
+  expect(addon.eval("return Vanguard_Options:IsShown()"), "a second Escape closes the window").toBe(false);
+});
+
+it("Left and Right step a focused slider by its step", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.min and w.label and w.label.__text == "Text size" and w:IsVisible() then __sl = w end end`);
+  const before = addon.eval("return __sl.get()");
+  addon.eval("Vanguard_Options.focusRow = __sl");
+  addon.key("Vanguard_Options", "RIGHT");
+  const up = addon.eval("return __sl.get()");
+  addon.key("Vanguard_Options", "LEFT");
+  expect([up > before, addon.eval("return __sl.get()")], "Right steps up, Left steps back").toEqual([true, before]);
+  addon.eval("Vanguard_Options.focusRow = nil");
+  addon.key("Vanguard_Options", "RIGHT");
+  expect(addon.eval("return __sl.get()"), "with no row focused the keys do nothing").toBe(before);
+});
+
+// Tab focus over a dialog's buttons: the ring moves, Enter and Space press the focused one, the keyboard follows
+// the window and lets go in a fight.
+// Builds a dialog by opening it once, hides it and makes it report its keyboard (__kb) and key passing (__passed), as the options test does.
+const spyOn = (addon, open, name) => addon.eval(`${open} local f = ${name} f:Hide() f.SetPropagateKeyboardInput = function(self, v) self.__passed = v end f.EnableKeyboard = function(self, on) self.__kb = on end`);
+const ring = (addon, ref) => addon.eval(`local f = ns.Theme.FocusParts(${ref}) return f ~= nil and f.ring.top:IsShown()`);
+
+it("the question's buttons take Tab focus: Tab and Shift-Tab move a ring, Space presses the focused one, Enter with no focus still presses the primary Yes", () => {
+  const addon = loggedIn("UISpecialFrames = {}");
+  addon.eval(`__yes = 0 __no = 0 __passed = {} ns.Ask("Sure?", "Yes", function() __yes = __yes + 1 end, function() __no = __no + 1 end)
+    Vanguard_Question.SetPropagateKeyboardInput = function(self, v) __passed[#__passed + 1] = v end`);
+  addon.key("Vanguard_Question", "W");
+  expect(addon.eval("return __passed[#__passed]"), "a key nobody uses goes on to the game").toBe(true);
+  addon.key("Vanguard_Question", "TAB");
+  expect([ring(addon, "Vanguard_Question.no"), ring(addon, "Vanguard_Question.yes"), addon.eval("return __passed[#__passed]")], "Tab lands on the first button and stops there").toEqual([true, false, false]);
+  addon.key("Vanguard_Question", "TAB");
+  expect([ring(addon, "Vanguard_Question.no"), ring(addon, "Vanguard_Question.yes")], "and steps to the next").toEqual([false, true]);
+  addon.keys({ shift: true });
+  addon.key("Vanguard_Question", "TAB");
+  addon.keys({ shift: false });
+  expect(ring(addon, "Vanguard_Question.no"), "Shift-Tab steps back").toBe(true);
+  addon.key("Vanguard_Question", "SPACE");
+  expect([addon.eval("return __no"), addon.eval("return Vanguard_Question:IsShown()")], "Space presses the focused No").toEqual([1, false]);
+  addon.eval(`ns.Ask("Again?", "Yes", function() __yes = __yes + 1 end)`);
+  expect(ring(addon, "Vanguard_Question.no"), "reopened, no ring is left over").toBe(false);
+  addon.key("Vanguard_Question", "ENTER");
+  expect(addon.eval("return __yes"), "Enter with no focus presses the primary Yes").toBe(1);
+  addon.eval(`ns.Ask("Third?", "Yes", function() __yes = __yes + 1 end, function() __no = __no + 1 end)`);
+  addon.key("Vanguard_Question", "TAB");
+  addon.key("Vanguard_Question", "ENTER");
+  expect([addon.eval("return __yes"), addon.eval("return __no")], "Enter on a focused button presses that one, here No").toEqual([1, 2]);
+});
+
+it("a Tab-focus window gives up the keyboard in a fight, takes it back after, and waits for the end of one it opens in", () => {
+  const addon = loggedIn("UISpecialFrames = {}");
+  spyOn(addon, 'ns.OfferReload("x")', "Vanguard_Reload");
+  addon.eval(`ns.OfferReload("A change.")`);
+  expect(addon.eval("return Vanguard_Reload.__kb"), "the open dialog holds the keyboard").toBe(true);
+  addon.world.combat(true);
+  expect(addon.eval("return Vanguard_Reload.__kb"), "in combat it holds no keyboard").toBe(false);
+  setCombat(addon, false);
+  expect(addon.eval("return Vanguard_Reload.__kb"), "after the fight it has it again").toBe(true);
+  addon.eval("Vanguard_Reload:Hide()");
+  addon.world.combat(true);
+  setCombat(addon, false);
+  expect(addon.eval("return Vanguard_Reload.__kb"), "a fight that ends while it is closed leaves it off").toBe(false);
+  addon.world.combat(true);
+  addon.eval(`ns.OfferReload("In a fight.")`);
+  expect(addon.eval("return Vanguard_Reload.__kb"), "shown in combat it holds nothing yet").toBe(false);
+  setCombat(addon, false);
+  expect(addon.eval("return Vanguard_Reload.__kb"), "and takes the keyboard when the fight ends").toBe(true);
+});
+
+it("Tab focus skips keys in combat and a button that was disabled after it took the ring", () => {
+  const addon = loggedIn("UISpecialFrames = {}");
+  addon.eval(`ns.OfferReload("A change.")`);
+  addon.key("Vanguard_Reload", "TAB");
+  addon.eval("__n = 0 Vanguard_Reload.cancel:SetScript('OnClick', function() __n = __n + 1 end) Vanguard_Reload.cancel:Disable()");
+  addon.key("Vanguard_Reload", "SPACE");
+  expect(addon.eval("return __n"), "a disabled button is not pressed").toBe(0);
+  addon.eval("Vanguard_Reload.cancel:Enable()");
+  addon.world.combat(true);
+  addon.key("Vanguard_Reload", "SPACE");
+  expect(addon.eval("return __n"), "and in combat no key is used").toBe(0);
+  addon.world.combat(false);
+  addon.key("Vanguard_Reload", "SPACE");
+  expect(addon.eval("return __n"), "enabled and out of combat it is pressed").toBe(1);
+  addon.eval("Vanguard_Reload.cancel:SetScript('OnClick', nil)");
+  addon.key("Vanguard_Reload", "SPACE");
+  expect(addon.eval("return Vanguard_Reload:IsShown()"), "a button with no click is simply not used").toBe(true);
+});
+
+it("the text and reload dialogs take Tab focus too, and a hidden button is skipped", () => {
+  const addon = loggedIn("UISpecialFrames = {}");
+  addon.eval(`ns.ShowText("Copy", "text")`);
+  addon.key("Vanguard_TextDialog", "TAB");
+  expect([ring(addon, "Vanguard_TextDialog.primary"), ring(addon, "Vanguard_TextDialog.close")], "the hidden primary is skipped: Close takes the first Tab").toEqual([false, true]);
+  addon.eval(`ns.OfferReload("A change.")`);
+  addon.key("Vanguard_Reload", "TAB");
+  expect(ring(addon, "Vanguard_Reload.cancel"), "the reload dialog starts at Later").toBe(true);
 });

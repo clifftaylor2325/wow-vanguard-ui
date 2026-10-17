@@ -21,8 +21,7 @@ end
 -- A destructive push button: its label in the danger color, and warn (what it loses) in a tooltip
 -- under the mouse. The first click asks "Sure?" in its place, the second runs onClick.
 function W.Danger(parent, text, onClick, width, warn)
-  local b = ns.DialogButton(parent, text, width or 120)
-  T.Color(b.text, "bad")
+  local b = ns.DialogButton(parent, text, width or 120, "danger")
   b.warn = warn
   b:HookScript("OnEnter", ns.Guard("hover danger button", warnTip))
   b:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)

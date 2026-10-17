@@ -1071,3 +1071,36 @@ it("T.SetText: a role with the upper flag (section) shows capitals, any other ro
     return { head.__text, plain.__text, T.RoleSize("section") == T.RoleSize("small") }`);
   expect(out, "capitals only for the section role, which is the small size").toEqual(["QUEST ITEMS", "Quest items", true]);
 });
+
+it("T.Slider: a game slider gets the pill look on its own geometry, a fill to the thumb, a knob on the thumb, a grey knob while disabled; vertical runs down; steppers become arrows", () => {
+  const addon = loggedIn(`
+    local function make(name, orientation)
+      local s = CreateFrame("Slider", name, UIParent)
+      s:SetSize(120, 16) s:SetOrientation(orientation) s:SetThumbTexture("Interface/Buttons/UI-SliderBar-Button-Horizontal")
+      s.Art = s:CreateTexture()
+      return s
+    end
+    make("TEST_SlH", "HORIZONTAL") make("TEST_SlV", "VERTICAL")
+    local m = CreateFrame("Frame", "TEST_SlMin", UIParent)
+    m.Slider, m.Back, m.Forward = make("TEST_SlMinS", "HORIZONTAL"), CreateFrame("Button", nil, m), CreateFrame("Button", nil, m)
+    ns.Theme.Slider(TEST_SlH) ns.Theme.Slider(TEST_SlH) ns.Theme.Slider(TEST_SlV) ns.Theme.Slider(m)`);
+  const out = addon.eval(`
+    local h, v = ns.Theme.SliderParts(TEST_SlH), ns.Theme.SliderParts(TEST_SlV)
+    local bare = CreateFrame("Slider", nil, UIParent)
+    return { #h.track, #h.fill, #h.line, h.bar:GetHeight(), v.bar:GetWidth(), TEST_SlH.Art.__alpha, TEST_SlH:GetThumbTexture().__alpha,
+      ns.Theme.SliderParts(TEST_SlMinS) ~= nil, ns.Theme.ArrowParts(TEST_SlMin.Back) ~= nil, ns.Theme.ArrowParts(TEST_SlMin.Forward) ~= nil,
+      ns.Theme.Slider(bare) == bare and ns.Theme.SliderParts(bare) == nil, ns.Theme.SliderParts(TEST_SlH) == h }`);
+  out[3] = Math.abs(out[3] - 8) < 1;
+  out[4] = Math.abs(out[4] - 8) < 1;
+  expect(out, "three slices a layer, the track about 8 thick (the width on a vertical one), the game's art and thumb faded, minimal frames dressed, a thumbless slider left alone, repeat calls keep the parts")
+    .toEqual([3, 2, 3, true, true, 0, 0, true, true, true, true, true]);
+  // The horizontal slider's knob colour.
+  const knob = () => addon.eval("return ns.Theme.SliderParts(TEST_SlH).knob.__vertexColor");
+  expect(isTok(addon, knob(), "white"), "the knob is white").toBe(true);
+  addon.eval("TEST_SlH:Disable()");
+  expect(isTok(addon, knob(), "disabled"), "disabled: the knob takes thumbOff").toBe(true);
+  addon.eval("TEST_SlH:Enable()");
+  expect(isTok(addon, knob(), "white"), "and white again when enabled").toBe(true);
+  addon.eval('Vanguard.RegisterSkin("TEST-ONLY-slider", function(S) __sl = S.Slider(CreateFrame("Slider", nil, UIParent)) end)');
+  expect(addon.eval("return __sl ~= nil"), "other addons get it as S.Slider").toBe(true);
+});
