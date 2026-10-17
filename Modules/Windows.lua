@@ -189,13 +189,18 @@ function GW.DressClose(frame, close)
   if close.GetPoint then GW.PlaceControls(frame, close) end
 end
 
+-- A window's or dialog's title text (a font string; skipped when it is not one) in the title role and the
+-- light text colour. The game centres it; only its font and colour change, never its anchors or justification.
+function GW.SkinTitle(fs)
+  if type(fs) == "table" and fs.SetFont then T.Text(fs, "title", "text") end
+end
+
 -- The close, maximize and minimize buttons, title and push buttons in the theme.
 local function dressParts(frame, name)
   GW.DressClose(frame, frame.CloseButton or (name and _G[name .. "CloseButton"]))
   GW.DressMaxMin(frame)
   raiseTitle(frame, name)
-  local title = (type(frame.TitleContainer) == "table" and frame.TitleContainer.TitleText) or frame.TitleText
-  if type(title) == "table" and title.SetFont then T.Text(title, "heading", false) end
+  GW.SkinTitle((type(frame.TitleContainer) == "table" and frame.TitleContainer.TitleText) or frame.TitleText)
   for _, b in ipairs(buttons(frame, name)) do T.Button(b) end
   for _, extra in ipairs(GW.EXTRA_BUTTONS[name] or {}) do
     if type(_G[extra]) == "table" then T.Button(_G[extra]) end
@@ -290,14 +295,14 @@ function GW.SkinMenuButton(button)
   T.Button(button)
 end
 
--- The menu's header: the plate behind the title hidden, the title in the theme font, inside the panel.
+-- The menu's header: the plate behind the title hidden, the title in the title role, inside the panel.
 local function dressMenuHeader(menu)
   local header = menu.Header
   if type(header) ~= "table" then return end
   for _, key in ipairs(GW.MENU_PLATE) do
     if type(header[key]) == "table" then header[key]:Hide() end
   end
-  if type(header.Text) == "table" then T.Text(header.Text, "heading", false) end
+  GW.SkinTitle(header.Text)
   header:SetPoint("TOP", menu, "TOP", 0, -8)
 end
 

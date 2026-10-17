@@ -280,7 +280,7 @@ end
 
 -- The parts a social dialog may have, each only if it has it: title, close control, push buttons, edit boxes.
 local function dressDialogParts(frame, name)
-  if type(frame.Title) == "table" and frame.Title.SetFont then T.Text(frame.Title, "heading", false) end
+  GW.SkinTitle(frame.Title)
   dressClose(frame, frame.CloseButton or (name and _G[name .. "CloseButton"]))
   dressKeys(frame, GW.SOCIAL_DIALOG_BUTTONS, "CreateTexture", T.Button)
   dressKeys(frame, GW.SOCIAL_DIALOG_BOXES, "SetText", T.EditBox)

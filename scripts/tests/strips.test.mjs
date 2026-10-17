@@ -309,8 +309,8 @@ it("game menu: buttons made after the skin ran are skinned once, Vanguard's matc
   expect(addon.eval("return __spy"), "the next open makes two new buttons: only those are skinned").toBe(5);
   addon.eval("GameMenuFrame:Hide() GameMenuFrame.buttonPool.__active = {} GameMenuFrame:Show()");
   expect(addon.eval("local n = 0 for b in GameMenuFrame.buttonPool:EnumerateActive() do if ns.FrameState('vgMenuSkinned')[b] then n = n + 1 end end return n"), "every active button carries the skin").toBe(2);
-  const head = addon.eval("local h = GameMenuFrame.Header local p = h.__points.TOP return { h.LeftBG:IsShown(), h.RightBG:IsShown(), h.CenterBG:IsShown(), h.Text.__font ~= nil, p.rel == GameMenuFrame, p.y }");
-  expect(head, "the header plate is hidden, its title in the theme font, inside the panel").toEqual([false, false, false, true, true, -8]);
+  const head = addon.eval("local h = GameMenuFrame.Header local p = h.__points.TOP return { h.LeftBG:IsShown(), h.RightBG:IsShown(), h.CenterBG:IsShown(), select(2, h.Text:GetFont()) == ns.Theme.RoleSize('title'), h.Text.__textColor[1] == (ns.Theme.RGB('text')), p.rel == GameMenuFrame, p.y }");
+  expect(head, "the header plate is hidden, its title in the title role and the text colour, inside the panel").toEqual([false, false, false, true, true, true, -8]);
   const off = loggedIn(FOREVER_MENU_ENV + MENU_POOL_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
   off.eval("GameMenuFrame:Show()");
   expect([borderOf(off, "ns.gameMenuButton") == null, off.eval("return GameMenuFrame.Header.LeftBG:IsShown()")], "with the windows switched off the menu stays the game's").toEqual([true, true]);

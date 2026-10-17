@@ -2,11 +2,11 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { loggedIn, setCombat } from "./helpers.mjs";
+import { TITLE_LUA, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY builders for the game's system windows: a frame with a piece of template art, parts
 // added by parentKey, and readers for what the skin did (art alpha, a painted panel, themed text).
-const SYSTEM_ENV = `
+const SYSTEM_ENV = TITLE_LUA + `
   function __art(f) local t = f:CreateTexture(nil, "BACKGROUND") t:SetTexture("TEST-ONLY-ART") return t end
   function __frame(name) local f = CreateFrame("Frame", name, UIParent) __art(f) f:Hide() return f end
   function __sub(parent, key, kind)
@@ -51,7 +51,7 @@ const SETTINGS_ENV = SYSTEM_ENV + `
 // The options window's state: its art, its parts dressed, how many frames are painted.
 const settings = (addon) => addon.eval(`local f = SettingsPanel
   return { art = __faded(f), nine = __faded(f.NineSlice), bg = f.Bg.__alpha, panel = __panelled(f),
-    titleFont = f.NineSlice.Text:GetFont() ~= nil, apply = __panelled(f.ApplyButton), close = __panelled(f.CloseButton),
+    titleFont = __titled(f.NineSlice.Text), apply = __panelled(f.ApplyButton), close = __panelled(f.CloseButton),
     x = f.ClosePanelButton.__piece.__alpha, search = __panelled(f.SearchBox), tab = __panelled(f.GameTab),
     list = __panelled(f.CategoryList), settings = __panelled(f.Container.SettingsList), canvas = __panelled(f.Container.SettingsCanvas),
     painted = ns.Theme.PaintedCount() }`);
@@ -99,7 +99,7 @@ it("game options: switched off it stays the game's, and a client missing parts l
 // A button frame's state: its art, panel, close button, title font and the named parts' panels.
 const frameState = (addon, name, parts = []) => addon.eval(`local f = ${name}
   local out = { art = __faded(f), nine = f.NineSlice.__alpha, panel = __panelled(f), x = f.CloseButton.__piece.__alpha,
-    title = f.TitleContainer.TitleText:GetFont() ~= nil, painted = ns.Theme.PaintedCount(), parts = {} }
+    title = __titled(f.TitleContainer.TitleText), painted = ns.Theme.PaintedCount(), parts = {} }
   for _, k in ipairs({ ${parts.map((k) => `"${k}"`).join(", ")} }) do out.parts[k] = __panelled(f[k]) end
   return out`);
 
@@ -162,7 +162,7 @@ it("chat settings: the outer window, its header plate, the boxes under it and th
   expect(frameState(addon, "ChatConfigFrame", ["CategoryBox", "Plain"]), "window skinned; the box with a NineSlice is an inset panel, a plain child is not").toMatchObject({
     art: 0, panel: true, x: 0, title: true, parts: { CategoryBox: true, Plain: false },
   });
-  expect(addon.eval(`return { __faded(ChatConfigFrame.Header), ChatConfigFrame.Header.Text:GetFont() ~= nil, __faded(ChatConfigFrame.CategoryBox.NineSlice),
+  expect(addon.eval(`return { __faded(ChatConfigFrame.Header), __titled(ChatConfigFrame.Header.Text), __faded(ChatConfigFrame.CategoryBox.NineSlice),
     __faded(TestOnlyChatBackdrop), __panelled(TestOnlyChatBackdrop), __panelled(ChatConfigFrameOkayButton), __panelled(TextToSpeechDefaultButton) }`),
     "header art faded and its title in the theme font; the box art faded; a child named ...Backdrop treated as a box; named buttons themed").toEqual([0, true, 0, 0, true, true, true]);
   sameOnReshow(addon, "ChatConfigFrame");
@@ -193,7 +193,7 @@ const EDIT_ENV = SYSTEM_ENV + `
 
 // A part's state in the Edit Mode windows: art faded, panelled, title in the theme font.
 const editState = (addon, name) => addon.eval(`local f = ${name}
-  return { art = __faded(f), border = f.Border.__alpha, panel = __panelled(f), title = f.Title:GetFont() ~= nil, painted = ns.Theme.PaintedCount() }`);
+  return { art = __faded(f), border = f.Border.__alpha, panel = __panelled(f), title = __titled(f.Title), painted = ns.Theme.PaintedCount() }`);
 
 it("Edit Mode window: skinned, its panel kept out of the game's layout, and Vanguard's note still shows", () => {
   const addon = loggedIn(EDIT_ENV);
@@ -201,7 +201,7 @@ it("Edit Mode window: skinned, its panel kept out of the game's layout, and Vang
   const first = editState(addon, "EditModeManagerFrame");
   expect(first, "Border and art faded, a panel, title in the theme font").toMatchObject({ art: 0, border: 0, panel: true, title: true });
   expect(addon.eval(`local m = EditModeManagerFrame
-    return { m.LayoutLabel:GetFont() ~= nil, __panelled(m.SaveChangesButton), __panelled(m.RevertAllChangesButton), m.CloseButton.__piece.__alpha }`),
+    return { __headed(m.LayoutLabel), __panelled(m.SaveChangesButton), __panelled(m.RevertAllChangesButton), m.CloseButton.__piece.__alpha }`),
     "the layout label, Save and Revert buttons and close button themed").toEqual([true, true, true, 0]);
   expect(addon.eval(`local m, marked, own = EditModeManagerFrame, 0, 0
     for _, piece in ipairs({ m.Border, m.SaveChangesButton, m.CloseButton }) do if piece.ignoreInLayout then own = own + 1 end end
@@ -264,7 +264,7 @@ it("quick keybind banner: a panel behind it, plate faded, buttons themed, and no
   addon.eval("QuickKeybindFrame:Show()");
   // The quick keybind banner's skin state: art, header, panel, buttons, texts and the paint count.
   const read = () => addon.eval(`local f = QuickKeybindFrame
-    return { art = __faded(f), bg = f.BG.__alpha, header = __faded(f.Header), panel = __panelled(f), title = f.Header.Text:GetFont() ~= nil,
+    return { art = __faded(f), bg = f.BG.__alpha, header = __faded(f.Header), panel = __panelled(f), title = __titled(f.Header.Text),
       buttons = __panelled(f.DefaultsButton) and __panelled(f.CancelButton) and __panelled(f.OkayButton), text = f.InstructionText:GetFont() == nil, painted = ns.Theme.PaintedCount() }`);
   const first = read();
   expect(first, "BG and header plate faded, a panel, title and buttons themed, the white instruction text untouched").toMatchObject({
@@ -353,7 +353,7 @@ it("help window, report window and ticket status in the theme, the ticket icon k
   addon.eval("HelpFrame:Show() ReportFrame:Show() TicketStatusFrame:Show()");
   expect(frameState(addon, "HelpFrame"), "help: the window skin").toMatchObject({ art: 0, nine: 0, panel: true, x: 0, title: true });
   expect(addon.eval(`local r = ReportFrame
-    return { __faded(r), r.Border.__alpha, __panelled(r), r.TitleText:GetFont() ~= nil, r.CloseButton.__piece.__alpha, __panelled(r.ReportButton), __panelled(r.ScreenshotReportingFrame.TakeScreenshotButton) }`),
+    return { __faded(r), r.Border.__alpha, __panelled(r), __titled(r.TitleText), r.CloseButton.__piece.__alpha, __panelled(r.ReportButton), __panelled(r.ScreenshotReportingFrame.TakeScreenshotButton) }`),
     "report: art and Border faded, panel, title, close, Report and screenshot buttons").toEqual([0, 0, true, true, 0, true, true]);
   expect(addon.eval(`local marked = 0 for _, r in ipairs({ ReportFrame:GetRegions() }) do if r.ignoreInLayout then marked = marked + 1 end end
     return { marked > 0, ReportFrame.Border.ignoreInLayout == nil }`), "the report window's panel pieces stay out of its layout").toEqual([true, true]);
@@ -388,13 +388,13 @@ it("report-cheating dialog, splash window, colour picker and opacity window", ()
   const addon = loggedIn(DIALOGS_ENV);
   addon.eval("ReportCheatingDialog:Show() SplashFrame:Show() ColorPickerFrame:Show() OpacityFrame:Show()");
   expect(addon.eval(`local d = ReportCheatingDialog
-    return { __faded(d), d.Border.__alpha, __panelled(d), ReportCheatingDialogTitle:GetFont() ~= nil, __panelled(d.reportButton), __panelled(ReportCheatingDialogCancelButton), __panelled(d.CommentFrame) }`),
+    return { __faded(d), d.Border.__alpha, __panelled(d), __titled(ReportCheatingDialogTitle), __panelled(d.reportButton), __panelled(ReportCheatingDialogCancelButton), __panelled(d.CommentFrame) }`),
     "report cheating: art and Border faded, panel, named title themed, report and Cancel buttons, comment box an inset panel").toEqual([0, 0, true, true, true, true, true]);
   expect(addon.eval(`local s = SplashFrame
     return { s.LeftTexture.__alpha ~= 0, __faded(s) ~= 0, ns.FrameState('vgBack')[s] ~= nil and __panelled(ns.FrameState('vgBack')[s]), __panelled(s.BottomCloseButton), s.TopCloseButton.__piece.__alpha }`),
     "splash: its art is kept (nothing faded), the panel is on a frame behind it, the buttons themed").toEqual([true, true, true, true, 0]);
   expect(addon.eval(`local c = ColorPickerFrame
-    return { __faded(c), c.Border.__alpha, __faded(c.Header), c.Header.Text:GetFont() ~= nil, __panelled(c), __panelled(c.Footer.CancelButton), __panelled(c.Footer.OkayButton), __panelled(c.Content.HexBox) }`),
+    return { __faded(c), c.Border.__alpha, __faded(c.Header), __titled(c.Header.Text), __panelled(c), __panelled(c.Footer.CancelButton), __panelled(c.Footer.OkayButton), __panelled(c.Content.HexBox) }`),
     "colour picker: art, Border and header plate faded, a panel, title, buttons and hex box themed").toEqual([0, 0, 0, true, true, true, true, true]);
   expect(addon.eval(`local c = ColorPickerFrame.Content return { c.ColorPicker.__piece.__alpha ~= 0, c.Swatch.__piece.__alpha ~= 0 }`), "the wheel and swatch are untouched").toEqual([true, true]);
   expect(addon.eval("return { OpacityFrame.Border.__alpha, __panelled(OpacityFrame) }"), "opacity window: Border faded, a panel").toEqual([0, true]);
@@ -437,7 +437,7 @@ it("death recap: skinned when its addon loads, the rows left as the game draws t
   addon.fire("ADDON_LOADED", "Blizzard_DeathRecap");
   addon.eval("DeathRecapFrame:Show()");
   expect(addon.eval(`local f = DeathRecapFrame
-    return { __faded(f), __panelled(f), f.Title:GetFont() ~= nil, f.CloseXButton.__piece.__alpha, __panelled(f.CloseButton), f.ScrollBox.__row.__alpha ~= 0 }`),
+    return { __faded(f), __panelled(f), __titled(f.Title), f.CloseXButton.__piece.__alpha, __panelled(f.CloseButton), f.ScrollBox.__row.__alpha ~= 0 }`),
     "art faded, panel, title, the X close and the Close button themed, the list's rows untouched").toEqual([0, true, true, 0, true, true]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("DeathRecapFrame:Hide() DeathRecapFrame:Show()");

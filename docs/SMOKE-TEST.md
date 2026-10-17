@@ -811,6 +811,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: each bar at the top center is a flat bar in the theme's bar texture on a slate panel that hugs it, with no gold frame and no dark band behind its label; it runs down as the game's does and goes when you surface (or turn back). The second time it shows, it looks the same.
 - If it fails, paste: a screenshot while the bar shows and `/vg errors`.
 
+### 14.12 Window titles
+
+- Do: open the character pane (C), the game menu (Escape), the world map (M), the group finder, the calendar, the game's Options and a small dialog (the report-cheating one, or a guild dialog).
+- Expect: every window's and dialog's title is the same size and light text colour (not gold), still where the game centres it; the game menu's title sits inside its panel.
+- If it fails, paste: a screenshot of the window whose title differs and `/vg errors`.
+
 ## 15. Talent planner
 
 ### 15.1 Bar and plan mode

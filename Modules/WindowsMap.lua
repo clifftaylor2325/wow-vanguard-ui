@@ -297,10 +297,9 @@ function GW.FadeWindowArt(frame)
   if type(frame.Inset) == "table" and type(frame.Inset.NineSlice) == "table" then frame.Inset.NineSlice:SetAlpha(0) end
 end
 
--- A page's title text in the heading font.
+-- A page's title text in the title role.
 local function dressTitle(page)
-  local title = type(page.TitleContainer) == "table" and page.TitleContainer.TitleText
-  if type(title) == "table" and title.SetFont then T.Text(title, "heading", false) end
+  GW.SkinTitle(type(page.TitleContainer) == "table" and page.TitleContainer.TitleText)
 end
 
 -- A page's push buttons and its edit box (the listing's group description), in the theme.
@@ -507,11 +506,11 @@ function GW.SkinCalendar(frame)
   for i = 1, GW.CALENDAR_DAYS do skinDay(_G["CalendarDayButton" .. i]) end
 end
 
--- A calendar dialog's header: its plate faded and its title in the heading font.
+-- A calendar dialog's header: its plate faded and its title in the title role.
 local function dressHeader(header)
   if not isFrame(header) then return end
   GW.FadeParts(header, GW.MENU_PLATE)
-  if type(header.Text) == "table" then T.Text(header.Text, "heading", false) end
+  GW.SkinTitle(header.Text)
 end
 
 -- The window skin with the dialog's pictures (see GW.CALENDAR_PICTURES) left as the game has them.

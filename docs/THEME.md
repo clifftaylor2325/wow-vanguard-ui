@@ -110,8 +110,8 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 
 | Role | Size (70 % - 130 %) | Weight | Outline | Used for |
 | --- | --- | --- | --- | --- |
-| `title` | 15 (11 - 20) | SemiBold | - | Window titles: options, setup, quest log, AFK card, alerts. |
-| `heading` | 13 (9 - 17) | SemiBold | - | Section headings, dialog titles, the quest dialog and tracker headers. |
+| `title` | 15 (11 - 20) | SemiBold | - | Window titles: options, setup, quest log, AFK card, alerts, and the title of every game window and dialog Vanguard skins (in `text`; the game keeps centring it). |
+| `heading` | 13 (9 - 17) | SemiBold | - | Section headings (inside a window, not its title), the quest dialog and tracker headers. |
 | `name` | 12 (8 - 16) | SemiBold | - | Unit frame names and levels, the options window's preview bar, click-cast tiles. |
 | `cell` | 11 (8 - 14) | SemiBold | - | Bag section headers. |
 | `label` | 12 (8 - 16) | Medium | - | Body text, control labels, options nav items. |

@@ -38,9 +38,9 @@ local function fadeAll(p)
   if p.SetAlpha then p:SetAlpha(0) end
 end
 
--- A heading font string in the theme font, gold.
+-- A section heading inside a window (not its title) in the heading role, light text.
 local function heading(p)
-  if p.SetFont then T.Text(p, "heading", "gold") end
+  if p.SetFont then T.Text(p, "heading", "text") end
 end
 
 -- A game tab's selected state: the tab's raised look follows the game's SelectableButton calls.
@@ -76,7 +76,7 @@ end
 -- step is given the part and the window).
 local STEPS = {
   { "art", fadeAll }, { "fade", fadeRegions }, { "close", close }, { "buttons", T.Button },
-  { "edits", T.EditBox }, { "tabs", skinTab }, { "insets", inset }, { "titles", heading }, { "keep", restore },
+  { "edits", T.EditBox }, { "tabs", skinTab }, { "insets", inset }, { "titles", GW.SkinTitle }, { "headings", heading }, { "keep", restore },
 }
 
 -- Applies each listed step of a spec to the parts of the frame that exist.
@@ -239,7 +239,7 @@ GW.Add("system", "framed", { "NamePlatesTutorial" }, GW.SkinNamePlatesTutorial)
 -- theme font, the close and the Save and Revert buttons themed. Vanguard's note under it
 -- (Core/Movers.lua) is its own child frame and is left as it is.
 GW.SkinEditMode = skinner({
-  layout = true, art = { "Border" }, titles = { "Title", "LayoutLabel" }, close = { "CloseButton" },
+  layout = true, art = { "Border" }, titles = { "Title" }, headings = { "LayoutLabel" }, close = { "CloseButton" },
   buttons = { "SaveChangesButton", "RevertAllChangesButton" },
 })
 
@@ -321,11 +321,11 @@ end
 
 -- The report-cheating dialog: the window skin, its comment box an inset panel, and its title (a named string).
 local reportCheating = withWindowSkin({ buttons = { "reportButton" }, fade = { "CommentFrame" }, insets = { "CommentFrame" } })
--- Skins the dialog, and its title in the theme font.
+-- Skins the dialog, and its title in the title role.
 function GW.SkinReportCheating(frame)
   reportCheating(frame)
   local title = _G.ReportCheatingDialogTitle
-  if type(title) == "table" then heading(title) end
+  GW.SkinTitle(title)
 end
 GW.AddButtons("ReportCheatingDialog", { "ReportCheatingDialogCancelButton" })
 

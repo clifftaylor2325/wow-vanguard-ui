@@ -318,7 +318,7 @@ it("guild dialogs: every dialog's art faded and a panel painted, its buttons, bo
     addon.eval(`${name}:Show()`);
     expect(addon.eval(`local f = ${name}
       local panel = false for _, r in ipairs({ f:GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 and r ~= f.Bg then panel = true end end
-      return { f.Bg.__alpha, f.NineSlice.Edge.__alpha, panel, f.Title:GetFont() ~= nil }`), `${name} dressed`).toEqual([0, 0, true, true]);
+      return { f.Bg.__alpha, f.NineSlice.Edge.__alpha, panel, __titled(f.Title) }`), `${name} dressed`).toEqual([0, 0, true, true]);
   }
   expect(addon.eval(`local s = CommunitiesSettingsDialog
     local function themed(x) for _, r in ipairs({ x:GetRegions() }) do if r.__alpha ~= 0 then return true end end return false end
@@ -659,7 +659,7 @@ it("social window: the window and its Battle.net bar, panes, side windows and ta
   expect(addon.eval(`local f = SocialUIFrame local _, _, _, x = f.tabs[1]:GetPoint(1) return { __refreshes, x == ns.Theme.Padding(f) - ns.Theme.Pixel(f), f.tabs[1].Background.__alpha }`), "made again: padded and skinned again").toEqual([2, true, 0]);
   addon.eval("SocialUIFrame.BattleNetBroadcastFrame:Show() SocialUIFrame.IgnoreListFrame:Show()");
   expect(addon.eval(`local cast, ignore = SocialUIFrame.BattleNetBroadcastFrame, SocialUIFrame.IgnoreListFrame ${PAINTED}
-    return { cast.Border.Edge.__alpha, painted(cast), painted(cast.EditBox), cast.EditBox.LeftBorder.__alpha, painted(cast.UpdateButton), painted(cast.CancelButton), cast.Title:GetFont() ~= nil,
+    return { cast.Border.Edge.__alpha, painted(cast), painted(cast.EditBox), cast.EditBox.LeftBorder.__alpha, painted(cast.UpdateButton), painted(cast.CancelButton), __titled(cast.Title),
       ignore.NineSlice.__alpha, painted(ignore), painted(ignore.BlockButton) }`),
   "the side windows: the broadcast dialog's border faded, a panel, its box, buttons and title themed; the ignore list a window with its button flat").toEqual([0, true, true, 0, true, true, true, 0, true, true]);
   expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);

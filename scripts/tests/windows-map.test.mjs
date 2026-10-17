@@ -384,7 +384,7 @@ it("group finder: the who list page (the search view) loses the brass border and
     for _, r in ipairs({ w:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then a = r:GetAlpha() end end
     return { a, w.NineSlice:GetAlpha(), w.PortraitContainer:GetAlpha(), w.BackgroundArt:GetAlpha(), w.headerBackground:GetAlpha(), w.insideFrame:GetAlpha(), w.BarTop:GetAlpha(), w.BarMiddle:GetAlpha() }`);
   expect(art(), "the template art, the brass border, the round badge and the page's own art are faded").toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
-  expect([fills(addon, "LFGWhoListFrame.ScrollBox"), addon.eval("return LFGWhoListFrame.TitleContainer.TitleText:GetFont() ~= nil")], "with no Inset, its list gets the inset panel; the title is in the theme font").toEqual([1, true]);
+  expect([fills(addon, "LFGWhoListFrame.ScrollBox"), addon.eval("return __titled(LFGWhoListFrame.TitleContainer.TitleText)")], "with no Inset, its list gets the inset panel; the title is in the theme font").toEqual([1, true]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("LFGWhoListFrame:Hide() LFGWhoListFrame:Show()");
   expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(painted);
@@ -639,7 +639,7 @@ it("calendar: the seven dialogs are skinned, with their headers, buttons and tex
   for (const name of names) addon.eval(`${name}:Show()`);
   for (const name of names) {
     expect(windowState(addon, name), `${name}: art faded, a panel painted`).toMatchObject({ art: 0, nine: 0, portrait: 0, panel: true, title: true });
-    expect(addon.eval(`local d = ${name} return { d.Border:GetAlpha(), (d.Border:GetRegions()):GetAlpha(), d.Header.LeftBG:GetAlpha(), d.Header.RightBG:GetAlpha(), d.Header.CenterBG:GetAlpha(), d.Header.Text:GetFont() ~= nil }`), `${name}: the border and the header plate are faded, the title in the theme font`).toEqual([0, 0, 0, 0, 0, true]);
+    expect(addon.eval(`local d = ${name} return { d.Border:GetAlpha(), (d.Border:GetRegions()):GetAlpha(), d.Header.LeftBG:GetAlpha(), d.Header.RightBG:GetAlpha(), d.Header.CenterBG:GetAlpha(), __titled(d.Header.Text) }`), `${name}: the border and the header plate are faded, the title in the theme font`).toEqual([0, 0, 0, 0, 0, true]);
   }
   expect([calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "the holiday's art and the create dialog's icon are left as the game has them").toEqual([0.4, 1]);
   expect(["CalendarViewHolidayCloseButton", "CalendarViewEventCloseButton", "CalendarCreateEventCloseButton", "CalendarMassInviteCloseButton"].map(n => closeSeal(addon, n)), "the close buttons are the theme's close seal").toEqual([true, true, true, true]);

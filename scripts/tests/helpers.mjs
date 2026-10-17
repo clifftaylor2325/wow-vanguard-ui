@@ -628,11 +628,23 @@ export const unitEvents = (addon, event) => addon.eval(`local subs, plain = {}, 
   table.sort(subs)
   return { subs = table.concat(subs, " "), plain = plain }`);
 
+// TEST-ONLY Lua readers of a window's text: __titled(fs) is true when the font string is in the title role
+// (its size) and the light text colour; __headed(fs) the same for the heading role.
+export const TITLE_LUA = `
+  function __looks(fs, role, token)
+    local _, size = fs:GetFont()
+    local c, t = fs.__textColor, { ns.Theme.RGB(token) }
+    return size == ns.Theme.RoleSize(role) and c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3]
+  end
+  function __titled(fs) return __looks(fs, "title", "text") end
+  function __headed(fs) return __looks(fs, "heading", "text") end
+`;
+
 // TEST-ONLY game windows: a framed window built like the game's ButtonFrameTemplate (art textures,
 // NineSlice, inset, portrait, close button, title, push buttons), a popup, and the breath bars' container
 // (MirrorTimerContainer: three unnamed MirrorTimerTemplate-shaped timers, each with a StatusBar, its frame art
 // and a label; SetupTimer(i) shows the i-th and gives its bar the game's texture back, as the game's does).
-export const WINDOWS_ENV = `
+export const WINDOWS_ENV = TITLE_LUA + `
   function __window(name, kind)
     local f = CreateFrame("Frame", name, UIParent)
     f:CreateTexture(nil, "BACKGROUND"):SetTexture("TEST-ONLY-ART")
@@ -664,4 +676,4 @@ export const windowState = (addon, name) => addon.eval(`local f = ${name}
   local art for _, r in ipairs({ f:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
   local panel = 0 for _, r in ipairs({ f:GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then panel = panel + 1 end end
   return { art = art, nine = f.NineSlice.__alpha, portrait = f.PortraitContainer.__alpha, insetNine = f.Inset.NineSlice.__alpha,
-    panel = panel > 0, title = f.TitleContainer.TitleText:GetFont() ~= nil, painted = ns.Theme.PaintedCount() }`);
+    panel = panel > 0, title = __titled(f.TitleContainer.TitleText), painted = ns.Theme.PaintedCount() }`);
