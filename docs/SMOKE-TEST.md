@@ -898,6 +898,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the floating marker in the world is Vanguard's teardrop pin in your accent colour, the distance under it (`12 yds`) in the theme's outlined font, and it still fades as you look away from it and when you reach the spot; a supertracked quest shows the same pin. A party member's portrait and the ghost's tombstone are the game's own, untinted. With the switch off, the game's own pin art and gold text come back. [Needs in game: the pin's size against the game's, its look after `/way` and on a supertracked quest, and that the game's `SuperTrackedFrame` is present on Forever.]
 - If it fails, paste: a screenshot of the pin, which step broke, and `/vg errors`.
 
+### 18.5 Levelling guide probe (LG-0)
+
+- Do: with at least one quest in your log, stand in a town and type `/vg guide probe`. Type it again in combat, and once inside a dungeon if you can. Turn in one quest, then type it again.
+- Expect: a line per read: `present, <number or flag>`, `present, hidden` for a value the client hides, `present, not called (no quest)` with an empty log, or `missing`; a table reads `table of N` and a map position `position plain`. After the turn-in the `QUEST_TURNED_IN` line says `first arguments number, number` (or names the type it is); `QUEST_ACCEPTED` the same after you accept one. Nothing else on screen changes.
+- If it fails, paste: the whole `/vg guide probe` output from each place, which lines say `hidden` or `missing`, and `/vg errors`.
+
 ## 19. Roll tracker
 
 ### 19.1 /roll results
