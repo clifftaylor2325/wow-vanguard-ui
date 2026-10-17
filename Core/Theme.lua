@@ -31,7 +31,10 @@ T.FONTS = {
 }
 -- The faction look's crest (Media/Art) and its color, by faction.
 T.CRESTS = { Alliance = { "lorc-crossed-swords", "allianceCrest" }, Horde = { "lorc-crossed-axes", "hordeCrest" } }
--- Text roles that take the faction's heading font.
+-- Where a crest goes and how big (units): beside a window title (title), on the AFK card (card), and as a
+-- watermark on the two reading windows (the quest dialog and quest log) at the wash alpha.
+T.CREST = { title = 20, card = 44, watermark = 96, wash = 0.1 }
+-- Text roles that take the faction's heading font: the two display roles, used only for window and card titles.
 T.HEADING_ROLES = { title = true, heading = true }
 -- Clients whose script the bundled font doesn't cover use the game's font.
 local CLIENT_FONT_LOCALES = { koKR = true, zhCN = true, zhTW = true }
@@ -370,11 +373,37 @@ function T.Paint(text, name)
   return "|c" .. T.Hex(name) .. text .. "|r"
 end
 
--- Colors a region with a named color (vertex color), at an optional alpha.
+-- Every region T.Tint coloured (weak): region -> { token, alpha, r, g, b, a } as last set, so T.Refresh
+-- re-tints it after an accent or variant change, and forgets one recoloured by hand since (refreshTints).
+local tinted = setmetatable({}, { __mode = "k" })
+
+-- Colors a region with a named color (vertex color), at an optional alpha; remembered, so the
+-- colour follows the accent and the variant (a region recoloured by hand since is left alone).
 function T.Tint(region, name, alpha)
   local r, g, b, a = T.RGB(name)
-  region:SetVertexColor(r, g, b, alpha or a)
+  a = alpha or a
+  region:SetVertexColor(r, g, b, a)
+  local m = tinted[region] or {}
+  m.token, m.alpha, m.r, m.g, m.b, m.a = name, alpha, r, g, b, a
+  tinted[region] = m
   return region
+end
+
+-- Whether a region's vertex colour is still the one T.Tint last set on it, within a 255th on each channel
+-- (a client that can't say gives no colour, and the region is forgotten).
+local function stillTinted(region, m)
+  if not region.GetVertexColor then return false end
+  local r, g, b, a = region:GetVertexColor()
+  return type(r) == "number" and math.abs(r - m.r) < 0.004 and math.abs(g - m.g) < 0.004
+    and math.abs(b - m.b) < 0.004 and math.abs((a or 1) - m.a) < 0.004
+end
+
+-- Re-tints every remembered region whose colour is still what T.Tint set (after an accent or variant
+-- change); one recoloured by hand since (a class colour, say) is forgotten instead.
+local function refreshTints()
+  for region, m in pairs(tinted) do
+    if stillTinted(region, m) then T.Tint(region, m.token, m.alpha) else tinted[region] = nil end
+  end
 end
 
 -- Colors a status bar's fill with a named color.
@@ -815,6 +844,7 @@ local function ownParts(frame)
     if type(part) == "table" and part.GetObjectType then ownScratch[part] = true
     elseif type(part) == "table" then for _, p in pairs(part) do ownScratch[p] = true end end
   end
+  for _, fill in ipairs(entry and entry.fills or NO_PARTS) do for _, t in ipairs(fill.textures) do ownScratch[t] = true end end
   return ownScratch
 end
 
@@ -969,6 +999,86 @@ local function paintEdges(frame, entry, r)
   if r > 0 or p.round then placeEdges(p.edges, frame, entry.opts.pad, r) end
 end
 
+-- Fills (T.FillParts) ------------------------------------------------------------------------
+
+-- Makes a fill's rounded parts the first time its frame is rounded: two side strips and four quarter
+-- discs on the fill's layer, at the centre's alpha, added to fill.textures.
+local function roundFillParts(frame, fill)
+  fill.roundSides = { solid(frame, fill.layer, fill.sublevel, "fill"), solid(frame, fill.layer, fill.sublevel, "fill") }
+  fill.roundFill = cornerPieces(frame, "CornerFill", fill.layer, fill.sublevel)
+  for _, t in pairs(fill.roundSides) do fill.textures[#fill.textures + 1] = t end
+  for _, t in pairs(fill.roundFill) do fill.textures[#fill.textures + 1] = t end
+  for i = 2, #fill.textures do fill.textures[i]:SetAlpha(fill.bg:GetAlpha()) end
+end
+
+-- Places a fill's parts `pad` units out past frame for radius r (units): the centre alone while the frame
+-- has never been rounded, else the centre pulled in r with the strips and discs around it (as placeSides
+-- and placeCorners place the painted background).
+local function placeFill(frame, fill, pad, r)
+  local out = T.PixelRound(frame, pad or 0)
+  if r > 0 and not fill.roundSides then roundFillParts(frame, fill) end
+  if not fill.roundSides then
+    fill.bg:ClearAllPoints()
+    pin(fill.bg, frame, "TOPLEFT", pad) pin(fill.bg, frame, "BOTTOMRIGHT", pad)
+    return
+  end
+  placeSides(fill, frame, out, r)
+  placeCorners(fill.roundFill, frame, out, r)
+end
+
+-- Shows a fill's parts as its state says: the centre while the fill is shown, the strips and discs only
+-- while the frame is rounded too.
+local function showFillParts(fill)
+  fill.bg:SetShown(fill.shown)
+  for _, t in ipairs(fill.textures) do
+    if t ~= fill.bg then t:SetShown(fill.shown and fill.round > 0) end
+  end
+end
+
+-- Colours a fill's textures in a token's colour, at an alpha (the token's unless given); remembered for repaints.
+function T.TintFill(fill, token, alpha)
+  local r, g, b, a = T.RGB(token)
+  fill.token, fill.alpha = token, alpha
+  tintFills(fill, r, g, b, alpha or a)
+  return fill
+end
+
+-- Shows or hides a fill, every part at once.
+function T.ShowFill(fill, on)
+  fill.shown = on == true
+  showFillParts(fill)
+end
+
+-- Sets every texture of a fill to one alpha.
+function T.FillAlpha(fill, a)
+  for _, t in ipairs(fill.textures) do t:SetAlpha(a) end
+end
+
+-- Places, shows and tints one of a painted frame's fills, `pad` units out, for radius r.
+local function repaintFill(frame, fill, pad, r)
+  fill.round = r
+  placeFill(frame, fill, pad, r)
+  showFillParts(fill)
+  T.TintFill(fill, fill.token, fill.alpha)
+end
+
+-- A solid fill over a painted frame (T.Panel, T.Button) on a layer (and sublevel) in a token's colour, at an
+-- alpha: one texture while the frame's corners are square; once rounded, a centre, two side strips and four
+-- quarter discs that follow its arcs (like the painted background), re-placed on every repaint. fill.textures
+-- lists its parts; T.TintFill, T.ShowFill and T.FillAlpha change it as one. (A frame never painted gets the
+-- plain texture, which nothing re-places.)
+function T.FillParts(frame, layer, sublevel, token, alpha)
+  local entry = painted[frame]
+  local fill = { bg = solid(frame, layer, sublevel, "fill"), layer = layer, sublevel = sublevel, token = token, alpha = alpha, shown = true }
+  fill.textures = { fill.bg }
+  if entry then
+    entry.fills = entry.fills or {}
+    entry.fills[#entry.fills + 1] = fill
+  end
+  repaintFill(frame, fill, entry and entry.opts.pad, entry and entry.round or 0)
+  return fill
+end
+
 -- Applies the current colors (and pixel size) to one painted frame.
 local function repaint(frame, entry)
   local p, r = entry.parts, roundRadius(frame, entry)
@@ -978,6 +1088,7 @@ local function repaint(frame, entry)
   if p.edges then paintEdges(frame, entry, r) end
   if p.sheen then placeSheen(p.sheen, frame, entry.opts.pad, nil, p.bevel and 2, r) end
   if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad, r) end
+  for _, fill in ipairs(entry.fills or NO_PARTS) do repaintFill(frame, fill, entry.opts.pad, r) end
   if entry.paint then entry.paint(entry, frame) end
 end
 
@@ -1058,17 +1169,19 @@ end
 -- Each themed button's hover parts (weak; kept off the button, which may be one of the game's).
 local hoverOf = setmetatable({}, { __mode = "k" })
 
--- A button's hover parts, { fill, line }, or nil for a button T.Button never painted.
+-- A button's hover parts, { the fill's centre texture, line, fill = its T.FillParts fill }, or nil for a
+-- button T.Button never painted.
 function T.HoverParts(button) return hoverOf[button] end
 
--- A button's hover look (#257): a raisedHover fill over its inset fill and a one-pixel borderHi
--- line along its top, both clear until the mouse comes over it (T.EaseHover eases them).
+-- A button's hover look (#257): a raisedHover fill (T.FillParts, so it follows rounded corners) over its
+-- inset fill and a one-pixel borderHi line along its top, both clear until the mouse comes over it
+-- (T.EaseHover eases them).
 local function hoverParts(button, entry)
-  local fill = T.Tint(solid(button, "BACKGROUND", 1, "fill"), "raisedHover")
-  fill:SetAllPoints()
-  entry.parts.hover, entry.parts.hoverLine, entry.paint = fill, solid(button, "BORDER", 2, "border"), paintHoverLine
-  hoverOf[button] = { fill, entry.parts.hoverLine }
-  for _, t in ipairs(hoverOf[button]) do t:SetAlpha(0) end
+  local fill = T.FillParts(button, "BACKGROUND", 1, "raisedHover")
+  T.FillAlpha(fill, 0)
+  entry.parts.hoverLine, entry.paint = solid(button, "BORDER", 2, "border"), paintHoverLine
+  entry.parts.hoverLine:SetAlpha(0)
+  hoverOf[button] = { fill.bg, entry.parts.hoverLine, fill = fill }
   button:HookScript("OnEnter", ns.Guard("button hover", function(b) T.EaseHover(b, true) end))
   button:HookScript("OnLeave", ns.Guard("button hover", function(b) T.EaseHover(b, false) end))
   button:HookScript("OnHide", ns.Guard("button hover", function(b) T.EaseHover(b, false, true) T.PressButton(b, false) end))
@@ -1104,7 +1217,8 @@ end
 -- How a pressed button looks (#257): a shade overlay at T.PRESS[2] over its fill (one step darker)
 -- and its own label (button.text) T.PRESS.drop screen pixels lower, at once, while the mouse is held.
 T.PRESS = { "shade", 0.3, drop = 1 }
--- Each themed button's press state (weak): { overlay = texture, ys = its label's anchor ys before the press }.
+-- Each themed button's press state (weak): { overlay = the fill's centre texture, fill = its T.FillParts
+-- fill, ys = its label's anchor ys before the press }.
 local pressOf = setmetatable({}, { __mode = "k" })
 
 -- Moves a button's own label (button.text) T.PRESS.drop pixels down (down) or back to where it was,
@@ -1130,7 +1244,7 @@ function T.PressButton(button, down)
   if not s then return end
   local on = down == true and (not button.IsEnabled or button:IsEnabled())
   if on == s.overlay:IsShown() then return end
-  s.overlay:SetShown(on)
+  T.ShowFill(s.fill, on)
   dropLabel(button, s, on)
 end
 
@@ -1149,13 +1263,13 @@ function T.DisabledLook(button, disabled)
   if c then T.Color(fs, c[1], c[2], c[3]) end
 end
 
--- A button's press and disabled looks (#257): the hidden overlay, and hooks on the mouse and on
--- its state (pcall: a widget without OnEnable/OnDisable can't have them hooked).
+-- A button's press and disabled looks (#257): the hidden overlay (T.FillParts, so it follows rounded
+-- corners), and hooks on the mouse and on its state (pcall: a widget without OnEnable/OnDisable can't
+-- have them hooked).
 local function stateParts(button)
-  local t = T.Tint(solid(button, "BACKGROUND", 2, "fill"), T.PRESS[1], T.PRESS[2])
-  t:SetAllPoints()
-  t:Hide()
-  pressOf[button] = { overlay = t }
+  local fill = T.FillParts(button, "BACKGROUND", 2, T.PRESS[1], T.PRESS[2])
+  T.ShowFill(fill, false)
+  pressOf[button] = { overlay = fill.bg, fill = fill }
   button:HookScript("OnMouseDown", ns.Guard("button press", function(b) T.PressButton(b, true) end))
   button:HookScript("OnMouseUp", ns.Guard("button press", function(b) T.PressButton(b, false) end))
   pcall(button.HookScript, button, "OnDisable", ns.Guard("button state", function(b) T.DisabledLook(b, true) end))
@@ -1283,6 +1397,24 @@ end
 -- both axes (its tile with 14 of air to the panel's edge, in line with the window's title), the
 -- maximize/minimize box `step` left of it.
 T.CONTROL = { tile = 20, glyph = 20, inset = 24, step = 28 }
+-- How tall controls are (units): an inline control (a dropdown, an input, a segment group, a switch's
+-- track) and a standalone button; a list or options row is T.ROW.height.
+T.CONTROL_H, T.BUTTON_H = 20, 26
+-- The spacing scale (units), the only spacing numbers for new and restyled layouts: pad is the inset of a
+-- floating window's or dialog's contents; col the gutter between columns and a card's inset inside a
+-- window; gap a HUD card's inset and the gap between controls; tight the gap between cells; section the
+-- gap between one section and the next.
+T.SPACE = { tight = 4, gap = 8, col = 12, pad = 16, section = 24 }
+-- Panel opacity by tier: opaque for the options window, the quest log and a skinned game window; dialog
+-- for a dialog, setup, What's new and anything with an edit box; overlay for tooltips and cards (the panel
+-- token's own alpha); alert for an alert.
+T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92 }
+-- A list row (W.Row): how tall (units); when selected, its accent rail's width in screen pixels and the
+-- alpha of its accent wash (the one place the selected look is drawn).
+T.ROW = { height = 28, rail = 2, wash = 0.12 }
+-- The one scroll thumb (the options window, ns.ScrollView and T.ScrollBar): how wide (units), in text2 at
+-- the rest alpha, and at the lit alpha while the mouse is over it or it is dragged; no arrows.
+T.SCROLL = { thumb = 4, rest = 0.5, lit = 1 }
 -- The tile's color and opacity by control while the mouse is over it: red behind close, a wash of the
 -- accent behind the others; at rest every control sits on the same faint raised-slate tile.
 T.CONTROL_TILES = { close = { "bad", 0.9 }, other = { "accent", 0.35 }, rest = { "raised", 0.9 } }
@@ -1598,6 +1730,8 @@ T.ROLES = {
   cooldown = { 14, true, "OUTLINE" }, auraCount = { 10, true, "OUTLINE" }, auraTimer = { 11, true, "OUTLINE" }, auraTimerSmall = { 10, true, "OUTLINE" },
   -- Chat windows (Modules/Chat.lua picks the size; this is Medium).
   chat = { 12 },
+  -- The minimap's zone text: a bold 13 that never takes the faction look's display font (not in T.HEADING_ROLES).
+  zone = { 13, true },
 }
 
 -- Every font string styled with a role: string -> role name. Weak, so text
@@ -1701,18 +1835,15 @@ local function repaintArt()
   for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
 end
 
--- Repaints every painted frame, re-fonts styled text and tells the listeners.
+-- Repaints every painted frame, re-fonts styled text, re-tints remembered regions and tells the listeners.
 function T.Refresh()
-  for frame, entry in pairs(painted) do
-    repaint(frame, entry)
-  end
+  for frame, entry in pairs(painted) do repaint(frame, entry) end
   T.RefreshText()
+  refreshTints()
   applyFontObjects()
   repaintArt()
   reSnap()
-  for _, fn in ipairs(listeners) do
-    fn()
-  end
+  for _, fn in ipairs(listeners) do fn() end
 end
 
 -- The faction look ---------------------------------------------------------------------
@@ -1950,15 +2081,22 @@ end
 -- How long a button's hover takes to ease in and out (#257), in seconds; capped in combat like any fade.
 T.HOVER_IN, T.HOVER_OUT = 0.1, 0.13
 
--- Eases a button's hover look in (on, while it is enabled) or out, from where it is now;
--- at once with Reduce motion, or when `now` (the button was hidden).
+-- Eases one hover texture's alpha to `to` from where it is now; at once with Reduce motion, or when `now`.
+local function easeTo(t, to, now)
+  local f = not now and activeFader(t)
+  if f then return playFade(f, t:GetAlpha(), to, T.FadeTime(to == 1 and T.HOVER_IN or T.HOVER_OUT), function() t:SetAlpha(to) end) end
+  T.StopFade(t)
+  t:SetAlpha(to)
+end
+
+-- Eases a button's hover look (every texture of its fill, and its line) in (on, while it is enabled) or
+-- out, from where it is now; at once with Reduce motion, or when `now` (the button was hidden).
 function T.EaseHover(button, on, now)
+  local h = hoverOf[button]
+  if not h then return end
   local to = on and (not button.IsEnabled or button:IsEnabled()) and 1 or 0
-  for _, t in ipairs(hoverOf[button] or {}) do
-    local f = not now and activeFader(t)
-    if f then playFade(f, t:GetAlpha(), to, T.FadeTime(to == 1 and T.HOVER_IN or T.HOVER_OUT), function() t:SetAlpha(to) end) end
-    if not f then T.StopFade(t) t:SetAlpha(to) end
-  end
+  for _, t in ipairs(h.fill.textures) do easeTo(t, to, now) end
+  easeTo(h[2], to, now)
 end
 
 -- Stops a fade in progress and leaves the frame fully visible.

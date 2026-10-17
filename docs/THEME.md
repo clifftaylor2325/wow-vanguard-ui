@@ -7,13 +7,15 @@ The look in one line: flat dark slate panels, one-screen-pixel borders, one acce
 ## Rules
 
 - **Colours and font sizes live only in `Core/Theme.lua`.** Modules ask for a colour by token name (`T.RGB`, `T.Color`, `T.Tint`, `T.BarColor`, `T.Paint`, `T.Hex`) and for text by role (`T.Text(fs, role)`). `scripts/lib/code-quality.mjs` fails the build on a colour setter called with numbers, a 0-1 colour table, a written-out `|cff......` escape, or a `:SetFont(path, <number>)` outside the theme.
-- **Every painted frame follows live changes.** `T.Panel`, `T.Button`, `T.EditBox`, `T.CloseButton` and `T.Crest` remember what they painted; `T.Refresh()` (run by `/vg accent`, the accent swatches, a font or text-size change, a UI scale change) repaints them and re-fonts every string styled with a role. Anything coloured by hand registers with `T.OnChanged(fn)`.
+- **Every painted frame follows live changes.** `T.Panel`, `T.Button`, `T.EditBox`, `T.CloseButton` and `T.Crest` remember what they painted; `T.Refresh()` (run by `/vg accent`, the accent swatches, a font or text-size change, a UI scale change) repaints them, re-fonts every string styled with a role, recolours every string coloured by token and re-tints every region tinted by token. Anything coloured by hand registers with `T.OnChanged(fn)`.
 - **Primitives are idempotent.** Calling one again on the same frame repaints it; it never adds a second border.
 - **Other addons get the same tools** through the Skin API (`Vanguard.RegisterSkin`, `Core/Skin.lua`): `S.Panel`, `S.Button`, `S.EditBox`, `S.CloseButton`, `S.WindowControl`, `S.FadeRegions`, `S.SetFont`, `S.Text`, `S.Color`, `S.RGB`, `S.Tint`, `S.BarColor`, `S.Pixel`, `S.Accent`, `S.PanelColor`, `S.Font`, `S.OnChanged`.
 
 ## Colour tokens
 
 `T.RGB(name)` returns r, g, b, a (0-1). Four tokens come from the theme settings, so a profile can change them; the rest are fixed. A name that is not a token is an error, not a silent white.
+
+`T.Tint(region, token, alpha)` colours a texture (vertex colour) by token and remembers the token, the alpha and the colour it set, in a weak table. `T.Refresh` re-tints every remembered region whose vertex colour is still the one `T.Tint` set (within a 255th on each channel), so icons, arrows, rails and washes follow an accent or variant switch the way `T.Color`'s text does; a region recoloured by hand since (a class colour, say) is forgotten and left alone. A region that cannot give its colour back is forgotten at the first refresh too.
 
 ### From the settings
 
@@ -102,7 +104,7 @@ The state colours (`good`, `warn`, `bad`) are kept apart from every preset, so a
 | `"client"` | The game's font (`STANDARD_TEXT_FONT`). Korean and Chinese clients always use it, whatever the setting. |
 | any other name | A font shared through LibSharedMedia (the Font picker lists them after the two built-ins). If the addon that shared it is gone, Fira Sans Condensed comes back. A font path from older settings still works. |
 
-Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and "Vanguard Fira Sans SemiBold" (western and Russian clients). The faction look swaps the font of the `title` and `heading` roles only: Cinzel SemiBold for Alliance, Metamorphous for Horde, and only while the faction look is `"auto"` (Crest and heading font; the default `"crest"` keeps the usual fonts), the Font setting is Fira Sans and the client uses it (not on Russian clients: Cinzel and Metamorphous have no Cyrillic). The font and text size apply at once (every role-styled string is re-fonted).
+Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and "Vanguard Fira Sans SemiBold" (western and Russian clients). The faction look swaps the font of the `title` and `heading` roles only (`T.HEADING_ROLES`, the two display roles, used only for window and card titles): Cinzel SemiBold for Alliance, Metamorphous for Horde, and only while the faction look is `"auto"` (Crest and heading font; the default `"crest"` keeps the usual fonts), the Font setting is Fira Sans and the client uses it (not on Russian clients: Cinzel and Metamorphous have no Cyrillic). Every other role, `zone` among them, keeps Fira Sans whatever the look. The font and text size apply at once (every role-styled string is re-fonted).
 
 ### Text roles
 
@@ -110,8 +112,9 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 
 | Role | Size (70 % - 130 %) | Weight | Outline | Used for |
 | --- | --- | --- | --- | --- |
-| `title` | 15 (11 - 20) | SemiBold | - | Window titles: options, setup, quest log, AFK card, alerts. |
-| `heading` | 13 (9 - 17) | SemiBold | - | Section headings, dialog titles, the quest dialog and tracker headers. |
+| `title` | 15 (11 - 20) | SemiBold | - | Window titles: options, setup, quest log, AFK card, alerts. A display role: takes the faction look's font. |
+| `heading` | 13 (9 - 17) | SemiBold | - | Card titles, dialog titles, the quest dialog and tracker headers. A display role: takes the faction look's font. Only `title` and `heading` do, and only for window and card titles. |
+| `zone` | 13 (9 - 17) | SemiBold | - | The minimap's zone text: as big and bold as a heading, but never in the display font. |
 | `name` | 12 (8 - 16) | SemiBold | - | Unit frame names and levels, the options window's preview bar, click-cast tiles. |
 | `cell` | 11 (8 - 14) | SemiBold | - | Bag section headers. |
 | `label` | 12 (8 - 16) | Medium | - | Body text, control labels, options nav items. |
@@ -134,12 +137,24 @@ The `outline` setting (default `""`) adds an outline to every role that has none
 
 ## Spacing
 
-The theme has no spacing tokens: each layout keeps its sizes as constants in its own file (`OptionsWindow.lua` `WIDTH, HEIGHT, NAV_WIDTH, BAR = 780, 560, 176, 40` and 28 px rows; `Setup.lua` `PAD = 16`; `RaidTools.lua` `PAD, GAP = 4, 2`). The offsets in use are almost all even: 8 is the most common, then 2, 4 and 12, with some 6, 3, 10 and 14 in older code. For new and restyled layouts:
+`T.SPACE` holds the only spacing numbers for new and restyled layouts, in UI units, on a 4-unit scale:
 
-- **4 px steps** for padding and gaps between unrelated things: 4 (tight), 8 (default), 12, 16 (window padding).
+| Token | Units | Where |
+| --- | --- | --- |
+| `T.SPACE.section` | 24 | The gap between one section and the next. |
+| `T.SPACE.pad` | 16 | The inset of a floating window's or dialog's contents from its panel edge. |
+| `T.SPACE.col` | 12 | The gutter between columns, and a card's or panel's inset inside a window (the options cards). |
+| `T.SPACE.gap` | 8 | A HUD card's inset (the meter, instance prep, mail tools, crafting, group threat, rolls, the officer roster) and the gap between controls. |
+| `T.SPACE.tight` | 4 | The gap between cells. |
+
+The rest of the scale:
+
 - **2 px** only for the gap between repeated cells of one control (raid tiles, minimap buttons, swing timer rows).
-- **Rows** are 28 px in the options window (check, cycle, slider), 30 for the swatch row, 32 for buttons, 20 for a text line.
+- **Heights** are named too: `T.ROW.height` (28) for a list row and the options window's check, cycle and slider rows; `T.CONTROL_H` (20) for an inline control (a dropdown, an input, a segment group, a switch's track, a menu item); `T.BUTTON_H` (26) for a standalone button; a text line is 20.
+- **Window chrome** sits on `T.CONTROL`: a window title at (`T.SPACE.pad`, -`T.CONTROL.inset`) from the panel's top-left corner, on the close button's line; a card title at (`T.SPACE.gap`, -`T.SPACE.gap`).
+- **One scroll thumb** (`T.SCROLL`): `thumb` (4) units wide, in `text2` at `rest` (0.5) alpha and at `lit` (1) while the mouse is over it or it is dragged, with no arrows; the options window, `ns.ScrollView` and `T.ScrollBar` all draw it so.
 - Borders and sheens are measured in screen pixels, not UI units (below), so they never count toward the grid.
+- Older layouts keep their own constants (`OptionsWindow.lua` `WIDTH, HEIGHT, NAV_WIDTH, BAR = 780, 560, 176, 40`; `RaidTools.lua` `PAD, GAP = 4, 2`) until they are restyled; a restyle moves them to `T.SPACE`.
 
 ## Panels, borders, sheen, shadow, glow
 
@@ -147,7 +162,11 @@ The theme has no spacing tokens: each layout keeps its sizes as constants in its
 | --- | --- |
 | `T.Panel(frame, opts)` | A `panel` fill (`inset` with `opts.inset`, `raised` with `opts.raised`, alpha `opts.alpha`), a one-screen-pixel border in `edge` (or the accent with `opts.accent`, or `T.SetBorder`'s colour), a one-pixel `sheen` line just inside the top border, and with `opts.shadow` a soft shadow. A raised panel (or `opts.bevel`; `T.Button` always) also gets an inner bevel (#234, `T.BEVEL`): a one-pixel `borderHi` line at 35 % on the first row inside the top border and a `shade` line at 35 % on the first row inside the bottom, and its sheen moves down to the second row so the two never merge; `opts.noBevel` leaves it out (slots have their own). `opts.pad` draws it all that many units out past the frame (game windows use 6, room their thick border art used to take; `T.Padding(frame)` reads it back). `noBg`, `noBorder`, `noSheen` leave a part out. With `panelGradient` on (`/vg gradient`, off by default, #259) a floating window's fill (`opts.shadow`, or `opts.gradient`) runs from `T.PANEL_GRADIENT[1]` (-0.012) to `[2]` (+0.012) OKLCH lightness bottom to top (`SetGradient` VERTICAL, alpha kept), about 2.4 % in all, under 7 of 255 levels; smaller panels stay flat. |
 | `T.HudPanel(frame, opts)` | `T.Panel` for the HUD (unit frames, bars, the minimap): never a sheen, and a shadow only when "Soft shadows under frames" (`hudShadow`, off by default, applies on reload) is on, so the screen stays calm. |
-| `T.Button(button)` | An `inset` panel, the template's art faded out, and an eased hover (#257): a `raisedHover` fill over the inset and a one-pixel `borderHi` line inside the top border, easing in over `T.HOVER_IN` (0.1 s) and out over `T.HOVER_OUT` (0.13 s), eased out (`OUT` smoothing), never on a disabled button, cleared at once when the button hides (`T.EaseHover`). Pressed (#257, `T.PRESS`, `T.PressButton`): a `shade` overlay at 30 % over the fill and its own label (`button.text`) one screen pixel lower, at once, while the mouse is held; a protected button darkens but keeps its label still. Disabled (#257, `T.DisabledLook`, run by the button's `OnDisable` and `OnEnable`): no hover or press and the label in `disabled`, its own colour back when enabled again. |
+| `T.Button(button)` | An `inset` panel, the template's art faded out, and an eased hover (#257): a `raisedHover` fill (a `T.FillParts` fill, so it follows rounded corners) over the inset and a one-pixel `borderHi` line inside the top border, easing in over `T.HOVER_IN` (0.1 s) and out over `T.HOVER_OUT` (0.13 s), eased out (`OUT` smoothing), every texture of the fill at once, never on a disabled button, cleared at once when the button hides (`T.EaseHover`). Pressed (#257, `T.PRESS`, `T.PressButton`): a `shade` fill at 30 % over the fill (a `T.FillParts` fill too) and its own label (`button.text`) one screen pixel lower, at once, while the mouse is held; a protected button darkens but keeps its label still. Disabled (#257, `T.DisabledLook`, run by the button's `OnDisable` and `OnEnable`): no hover or press and the label in `disabled`, its own colour back when enabled again. `T.HoverParts(button)` gives `{ the hover fill's centre, the line, fill = the fill }` and `T.PressOverlay(button)` the press fill's centre, for tests. |
+| `T.FillParts(frame, layer, sublevel, token, alpha)` | A solid fill over a painted frame (`T.Panel`, `T.Button`) in a token's colour at an alpha, drawn on the layer and sublevel given: one plain texture while the frame's corners are square; once the frame is rounded, a centre pulled in by the radius, two side strips and four `CornerFill` quarter discs that follow its arcs, like the painted background, re-placed and re-tinted on every repaint (and reaching out with `opts.pad`). `fill.textures` lists the parts (one, or seven once rounded). `T.TintFill(fill, token, alpha)` recolours every part (remembered for repaints), `T.ShowFill(fill, on)` shows or hides them as one, `T.FillAlpha(fill, a)` sets one alpha on all. The theme's own hover fill and press overlay are fills of this kind, as are `W.Primary`'s accent fill and a selected segment's. A frame never painted gets the plain texture, which nothing re-places. |
+| `T.ALPHA` | Panel opacity by tier: `opaque` (1) for the options window, the quest log and a skinned game window; `dialog` (0.98) for a dialog, setup, What's new and anything with an edit box; `overlay` (0.94, the `panel` token's own alpha) for tooltips and cards; `alert` (0.92) for an alert. |
+| `T.CREST` | Where a crest goes and how big (units): `title` (20) beside a window title, `card` (44) on the AFK card, `watermark` (96) at `wash` (0.1) alpha on the two reading windows (the quest dialog and the quest log). |
+| `T.ROW` | A list row (`W.Row`): `height` (28) units tall; selected, its mark is an `accent` rail `rail` (2) screen pixels wide along its left edge and an `accent` wash at `wash` (0.12) alpha. `W.Row` is the one place the selected look is drawn, so changing it is a change there alone. |
 | `T.FocusRing(frame, on)` | The keyboard focus ring (#257): a one-pixel `accentText` ring two screen pixels outside the frame, with a one-pixel `edge` (black) gap between, placed at the frame's pixel size, never animated. The options window puts it on the row Tab marks and takes it off on a new page or when it closes. |
 | `T.EditBox(box)` | An `inset` panel, the template's art faded out. |
 | `T.WindowControl(button, icon, opts)` | A window control (close, maximize, minimize): the template's art faded, the glyph (`T.CONTROL`: drawn on a 20-unit grid, its mark in the middle 9 to 11 units; maximize and minimize are diagonal arrows pointing out and in) in `text2` on a faint 20 x 20 `raised` tile at 0.9; under the mouse that tile turns (`bad` at 0.9 with `opts.tile = "close"`, else the `accent` at 0.35) and the glyph `white`. An unsized button takes the tile's size. |
@@ -285,7 +304,7 @@ The game's own sounds (error messages, the micro menu, windows Vanguard restyles
 The work plan (P4.1) described the theme from an earlier review. The code is what ships, so this page follows it:
 
 - **Text sizes.** The plan says "title 14 … tiny 9". The code has `title` 15, `heading` 13, `name`, `label` and `number` 12, `cell` 11, `small` and `tiny` 10, `badge` 9 (the only role under 10, #258), plus the outlined roles (`world`, `barName`, `barSmall`, `cooldown`, `auraCount`, `auraTimer`, `auraTimerSmall`) and `chat`.
-- **Spacing grid.** The plan speaks of a 4/8 px grid. The code has no spacing tokens and uses mostly even offsets (2 to 16); the 4 px steps above are the rule for new work, not a description of every existing layout.
+- **Spacing grid.** The plan speaks of a 4/8 px grid. The code has `T.SPACE` (4, 8, 12, 16, 24) for new and restyled layouts; older layouts still use mostly even offsets (2 to 16) of their own until they are restyled.
 - **Bar textures.** The plan names "bar textures" generally. The code has three built-ins (Vanguard, Soft, Flat) and, since P3.5, every bar texture shared through LibSharedMedia; it also shares its own bars and fonts under the "Vanguard ..." names.
 - **Fonts.** Besides Fira Sans Condensed and the game's font, the Font picker lists LibSharedMedia fonts (P3.5), and the faction look adds Cinzel and Metamorphous for titles and headings.
 - **Accents.** The plan's five presets were brass, arcane, fel, void and ember; the code now has brass, arcane, jade, orchid and copper (#231) and also accepts any hex colour and the older names fel, void, ember, bronze, blue, green, purple and red.
