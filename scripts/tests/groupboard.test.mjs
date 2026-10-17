@@ -188,11 +188,9 @@ it("group board: a Trade line naming a dungeon the list lacks still shows as 'An
 const tokens = (addon) => addon.eval(`local T = ns.Theme
   return { T.SPACE.pad, T.SPACE.gap, T.ROW.height, T.BUTTON_H, T.ALPHA.dialog, T.CONTROL.inset, T.RoleSize("title"), T.RoleSize("small") }`);
 
-// A W.Row's look, from a Lua expression for it: its height, its hover wash (the vertex colour of the highlight-layer
-// texture), and whether the selected look is there and hidden.
+// A W.Row's look, from a Lua expression for it: its height, its hover wash (the vertex colour of its T.Row hover layer), and whether the selected look is there and hidden.
 const rowLook = (addon, row) => addon.eval(`local r = ${row}
-  local hover
-  for _, t in ipairs({ r:GetRegions() }) do if t.__layer == "HIGHLIGHT" then hover = t.__vertexColor end end
+  local hover = ns.Theme.RowParts(r).hover.__vertexColor
   return { r:GetHeight(), hover, r.rail ~= nil and r.wash ~= nil, r.rail:IsShown() or r.wash:IsShown() }`);
 
 it("group board: a window title with its count and X, a dialog's opacity, T.SPACE.pad in from every edge, Escape closes it", () => {

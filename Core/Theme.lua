@@ -1218,7 +1218,7 @@ end
 
 -- How a pressed button looks (#257): a shade overlay at T.PRESS[2] over its fill (one step darker)
 -- and its own label (button.text) T.PRESS.drop screen pixels lower, at once, while the mouse is held.
-T.PRESS = { "shade", 0.3, drop = 1 }
+T.PRESS = { "shade", 0.3, drop = 1, row = 0.2 }
 -- Each themed button's press state (weak): { overlay = the fill's centre texture, fill = its T.FillParts
 -- fill, ys = its label's anchor ys before the press }.
 local pressOf = setmetatable({}, { __mode = "k" })
@@ -1412,21 +1412,24 @@ T.SPACE = { tight = 4, gap = 8, col = 12, pad = 16, section = 24 }
 -- for a dialog, setup, What's new and anything with an edit box; overlay for tooltips and cards (the panel
 -- token's own alpha); alert for an alert.
 T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92 }
--- A list row (W.Row): how tall (units); when selected, its accent rail's width in screen pixels and the
--- alpha of its accent wash (the one place the selected look is drawn).
-T.ROW = { height = 28, rail = 2, wash = 0.12 }
+-- A list row (W.Row, T.Row): how tall (units).
+T.ROW = { height = 28 }
+-- The one selected look (docs/THEME.md, "Materials and states"): an accent rail down a row's left edge,
+-- `rail` screen pixels wide, over a `fill` (a lighter fill, not an accent wash) that sits under the text.
+T.SELECT = { rail = 2, fill = "raisedHover" }
 -- The one scroll thumb (the options window, ns.ScrollView and T.ScrollBar): how wide (units), in text2 at
 -- the rest alpha, and at the lit alpha while the mouse is over it or it is dragged; no arrows.
 T.SCROLL = { thumb = 4, rest = 0.5, lit = 1 }
--- The tile's color and opacity by control while the mouse is over it: red behind close, a wash of the
--- accent behind the others; at rest every control sits on the same faint raised-slate tile.
-T.CONTROL_TILES = { close = { "bad", 0.9 }, other = { "accent", 0.35 }, rest = { "raised", 0.9 } }
+-- The tile's color and opacity by control while the mouse is over it: red behind close, the grey raisedHover
+-- tile behind the others (only close is coloured); at rest every control sits on the same faint raised-slate tile.
+T.CONTROL_TILES = { close = { "bad", 0.9 }, other = { "raisedHover", 1 }, rest = { "raised", 0.9 } }
 
--- Paints a window control: its glyph in the secondary text color on a faint tile, or white over its colored tile while lit.
+-- Paints a window control: its glyph in the secondary text color on a faint tile, or while lit white over
+-- close's red tile and in the text color over the others' grey one.
 local function paintControl(entry)
   local p, tile = entry.parts, T.CONTROL_TILES[entry.opts.tile] or T.CONTROL_TILES.other
   if not entry.lit then tile = T.CONTROL_TILES.rest end
-  T.Tint(p.glyph, entry.lit and "white" or "text2")
+  T.Tint(p.glyph, entry.lit and (entry.opts.tile == "close" and "white" or "text") or "text2")
   T.Tint(p.tile, tile[1], tile[2])
 end
 
@@ -1887,6 +1890,99 @@ end
 function T.Tooltip(frame)
   if type(frame.NineSlice) == "table" and frame.NineSlice.SetAlpha then frame.NineSlice:SetAlpha(0) end
   return T.Panel(frame, { alpha = 0.94, shadow = true })
+end
+
+-- Rows -----------------------------------------------------------------------------------------
+
+-- Every row T.Row dressed (weak): row -> { hover, press, fill, rail (its textures), over, down, selected,
+-- disabled (what it is showing) }.
+local rowOf = setmetatable({}, { __mode = "k" })
+-- The state names T.RowState takes, and the flag each sets.
+local ROW_FLAGS = { hover = "over", pressed = "down", selected = "selected", disabled = "disabled" }
+
+-- One of a row's full-size layers, hidden: a token's colour at an alpha, on a sublevel of the row's artwork.
+local function rowLayer(row, sublevel, token, alpha)
+  local layer = T.Tint(solid(row, "ARTWORK", sublevel, "fill"), token, alpha)
+  layer:SetAllPoints()
+  layer:Hide()
+  return layer
+end
+
+-- The selected look's rail: accent, T.SELECT.rail screen pixels wide down the row's left edge, hidden.
+local function rowRail(row)
+  local rail = T.Tint(solid(row, "ARTWORK", 3, "fill"), "accent")
+  rail:SetPoint("TOPLEFT")
+  rail:SetPoint("BOTTOMLEFT")
+  rail:SetWidth(T.SELECT.rail * T.Pixel(row))
+  rail:Hide()
+  return rail
+end
+
+-- A row's layers, bottom to top: the selected fill, the hover wash, the press shade and the rail.
+local function rowParts(row)
+  local fill = rowLayer(row, -1, T.SELECT.fill)
+  local hover, press = rowLayer(row, 1, "hover"), rowLayer(row, 2, T.PRESS[1], T.PRESS.row)
+  return { fill = fill, hover = hover, press = press, rail = rowRail(row) }
+end
+
+-- Shows the layers a row's flags call for: no hover or press while it is disabled; hover and selected stack.
+local function paintRow(row)
+  local s = rowOf[row]
+  local live = not s.disabled
+  s.hover:SetShown(live and s.over == true)
+  s.press:SetShown(live and s.down == true)
+  s.fill:SetShown(s.selected == true)
+  s.rail:SetShown(s.selected == true)
+end
+
+-- Puts a row in a state: "hover", "pressed", "selected" or "disabled" turn that layer on (off with on = false)
+-- and leave the others as they are; "normal" clears all four. A disabled row shows no hover or press and its
+-- label takes the disabled tier (T.DisabledLook). A frame T.Row never dressed is left alone.
+function T.RowState(row, state, on)
+  local s = rowOf[row]
+  local flag = ROW_FLAGS[state]
+  if not s or not (flag or state == "normal") then return row end
+  local was = s.disabled
+  if flag then s[flag] = on ~= false else s.over, s.down, s.selected, s.disabled = false, false, false, false end
+  paintRow(row)
+  if (s.disabled or false) ~= (was or false) then T.DisabledLook(row, s.disabled) end
+  return row
+end
+
+-- Shows or hides a row's press shade (T.PRESS.row, the row counterpart of T.PressButton).
+function T.PressRow(row, down) return T.RowState(row, "pressed", down) end
+
+-- Shows or hides a row's selected look (the rail and fill of T.SELECT): the one place it is drawn.
+function T.SelectRow(row, on) return T.RowState(row, "selected", on) end
+
+-- A row's textures (rail, fill, hover, press), or nil for a frame T.Row never dressed.
+function T.RowParts(row) return rowOf[row] end
+
+-- Follows the mouse and the game's enabling: hover while over, the press shade while held, both cleared by
+-- a hide; OnEnable and OnDisable (pcall: a frame without them can't have them hooked).
+local function watchRow(row)
+  -- Hooks one script to put the row in a state.
+  local function note(script, state, on) row:HookScript(script, ns.Guard("row " .. script, function(r) T.RowState(r, state, on) end)) end
+  note("OnEnter", "hover", true) note("OnLeave", "hover", false)
+  note("OnMouseDown", "pressed", true) note("OnMouseUp", "pressed", false)
+  note("OnHide", "hover", false) note("OnHide", "pressed", false)
+  for script, off in pairs({ OnEnable = false, OnDisable = true }) do
+    pcall(row.HookScript, row, script, ns.Guard("row state", function(r) T.RowState(r, "disabled", off) end))
+  end
+end
+
+-- A list row in the theme: see-through, with the `hover` wash under the mouse, the press shade (T.PRESS.row)
+-- while held and the one selected look (T.SELECT) through T.RowState; hover never recolours the text. With
+-- opts.fade the game's own art on the row is faded by alpha first (the row's layout and scripts stay the
+-- game's). Hooks only, never the row's own scripts. Safe to run again.
+function T.Row(row, opts)
+  local s = rowOf[row]
+  if opts and opts.fade then T.FadeRegions(row, s and { [s.fill] = true, [s.hover] = true, [s.press] = true, [s.rail] = true }) end
+  if s then return row end
+  rowOf[row] = rowParts(row)
+  rowOf[row].disabled = row.IsEnabled ~= nil and not row:IsEnabled()
+  watchRow(row)
+  return row
 end
 
 -- The parts of the game's scroll bars (MinimalScrollBar, WowTrimScrollBar) whose
