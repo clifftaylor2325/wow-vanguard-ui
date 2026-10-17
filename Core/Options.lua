@@ -366,7 +366,7 @@ local function confirmReset(what, yes, after)
     ns.Chat(string.format("Profile %s as it was is saved as profile %s.", name, ns.BackupProfile()))
     ns.ResetProfile()
     after()
-  end, function() end)
+  end, function() end, "danger")
 end
 
 -- Reset profile: after asking, the profile back to defaults (backed up first), applied on reload.
