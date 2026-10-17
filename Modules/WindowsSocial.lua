@@ -567,9 +567,12 @@ end
 -- faded (the glow's own flare animation still plays over the panel), a tooltip-style panel, the
 -- Battle.net icon kept, its lines in theme roles and its X as the theme's close glyph where the game
 -- put it (the toast is too small for the window corner inset). The game reuses one frame per kind of
--- toast and this runs on each show, so the lines are dressed again every time.
+-- toast and sets its lines in ShowToast before each one, so this runs on each show and after each
+-- ShowToast (a toast that arrives while one is up is shown again without an OnShow), and the lines
+-- are dressed again every time.
 function GW.SkinToast(frame)
   if type(frame) ~= "table" or not frame.GetRegions then return end
+  after(frame, "ShowToast", GW.SkinToast)
   local icon = frame.IconTexture
   T.FadeRegions(frame, { [type(icon) == "table" and icon or false] = true })
   T.Tooltip(frame)

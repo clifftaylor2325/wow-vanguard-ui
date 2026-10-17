@@ -538,7 +538,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 14.2.10 Battle.net and time-played toasts
 
-- Do: have a Battle.net friend log in or out (or send you an invite) so the toast slides in at the bottom-left; hover it; then stay logged in long enough for the time-played alert, or `/played` where it is shown as a toast.
+- Do: have a Battle.net friend log in or out (or send you an invite) so the toast slides in at the bottom-left, and if you can, a second friend right after, while the first toast is still up; hover it; then stay logged in long enough for the time-played alert, or `/played` where it is shown as a toast.
 - Expect: the toast is a flat, slightly see-through slate panel with a soft shadow instead of the game's framed box; the friend's name keeps its Battle.net blue, the grey detail line under it is in the theme's lighter secondary text, the Battle.net icon on the left is still there and the game's glow still flares as the toast arrives; the X in its top-right corner is the theme's cross on a red tile under the mouse and closes the toast; hovering the toast shows its tooltip as a flat panel; the time-played toast is the same panel with its one line of text.
 - If it fails, paste: a screenshot of the toast and `/vg errors`.
 
