@@ -4,16 +4,16 @@ current_phase: 5
 current_phase_name: Auction Post fix
 status: in_progress
 stopped_at: Phases 4 and 6 to 10 merged on 2026-10-12; Phase 5 waits on the /vg errors text, Phase 11 is cuttable, Phase 12 is launch readiness
-last_updated: "2026-10-13T00:10:00.000Z"
-last_activity: 2026-10-12
-last_activity_desc: Phases 4, 6, 7, 8, 9 and 10 ticked in ROADMAP.md
+last_updated: "2026-10-17T05:30:00.000Z"
+last_activity: 2026-10-17
+last_activity_desc: UI coherence phases 8.1 to 8.11 inserted in ROADMAP.md (docs/design/UI-COHERENCE.md)
 state_head: b77124c3da247c3022f0fc8b8910477ea8634a8f
 progress:
-  total_phases: 12
+  total_phases: 23
   completed_phases: 9
   total_plans: 22
   completed_plans: 22
-  percent: 75
+  percent: 39
 ---
 
 # Project State
@@ -23,7 +23,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-09)
 
 **Core value:** On launch day, Vanguard loads without errors and everything it replaces works, verified by a full test suite that is green and fast enough to run on every PR.
-**Current focus:** Phase 5 (Auction Post fix, waiting on the in-game `/vg errors` text) and Phase 12 (launch readiness); Phase 11 is cuttable
+**Current focus:** the UI coherence phases 8.1 to 8.11 (spec in `docs/design/UI-COHERENCE.md`; 8.1 to 8.8 before the 2026-10-28 freeze), Phase 5 (Auction Post fix, waiting on the in-game `/vg errors` text) and Phase 12 (launch readiness); Phases 8.9, 8.10 and 11 are cuttable
 
 ## Current Position
 
@@ -32,7 +32,7 @@ Plan: Phases 1 to 4 and 6 to 10 complete (see ROADMAP.md for the PR numbers)
 Status: Waiting on batch-1 in-game results (issue #284) for Phases 5 and 11
 Last activity: 2026-10-12 — Phases 4, 6, 7, 8, 9 and 10 merged and ticked
 
-Progress: [████████░░] 75% (9 of 12 phases)
+Progress: [████░░░░░░] 39% (9 of 23 phases)
 
 ROADMAP.md is the source of truth for phase state; this file is refreshed when a phase is ticked (CLAUDE.md, Working method).
 
