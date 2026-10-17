@@ -11,14 +11,18 @@ local T, W = ns.Theme, ns.Widgets
 local WN = {}
 ns.WhatsNew = WN
 
--- The window's size, its inner margin, where the list starts, and the gaps after a line and a group.
-local WIDTH, HEIGHT, PAD, TOP = 440, 380, 16, 60
-local LINE_GAP, GROUP_GAP = 6, 12
--- The most a mouse wheel notch scrolls the list.
-local WHEEL_STEP = 40
+-- The window's size and its inner margin (a dialog's: T.SPACE.pad).
+local WIDTH, HEIGHT, PAD = 440, 392, T.SPACE.pad
+-- Where the list starts: the title line (T.CONTROL.inset), the title and its hint under it (about 36 units),
+-- and a column gap.
+local TOP = T.CONTROL.inset + 36 + T.SPACE.col
+-- The list's width: the window less its margins and the room right of it for its scroll thumb.
+local LIST_W = WIDTH - 2 * PAD - T.SPACE.col
+-- The gap after a line, and after a group.
+local LINE_GAP, GROUP_GAP = 6, T.SPACE.col
 
 local frame
--- The strings drawn in the accent (headings and links), repainted each time the window opens.
+-- The strings drawn in the accent (the links), repainted each time the window opens.
 local accented = {}
 
 -- Versions ----------------------------------------------------------------------------------
@@ -72,67 +76,30 @@ local function text(parent, role, color, value)
   return fs
 end
 
--- The title, centred across the window, and the hint under it.
+-- The title, centred across the window, with the hint under it, the close button and Escape (ns.WindowTitle);
+-- fill() puts the version in the title.
 local function addTitle(f)
-  f.title = text(f, "title", "text", "")
-  f.title:SetPoint("TOP", f, "TOP", 0, -14)
-  f.title:SetJustifyH("CENTER")
-  f.hint = text(f, "small", "text2", "Click a line to open its setting.")
-  f.hint:SetPoint("TOP", f.title, "BOTTOM", 0, -4)
-  f.hint:SetJustifyH("CENTER")
+  local parts = ns.WindowTitle(f, "What's new", { align = "center", count = "Click a line to open its setting.",
+    onClose = function(frame) frame:Hide() end, escape = true })
+  f.hint = parts.count
 end
 
--- The close button (top right); Escape closes the window too.
-local function addClose(f)
-  f.close = T.PlaceClose(T.CloseButton(CreateFrame("Button", nil, f)), f)
-  f.close:SetScript("OnClick", ns.Guard("click close what's new", function() f:Hide() end))
-  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_WhatsNew") end
-end
-
--- How far the list can scroll.
-local function maxScroll(view)
-  return math.max(0, view.child:GetHeight() - view:GetHeight())
-end
-
--- Scrolls the list to y (kept within it); the soft bottom edge shows while more is below.
-local function scrollTo(view, y)
-  view:SetVerticalScroll(math.max(0, math.min(maxScroll(view), y)))
-  view.more:SetShown(view:GetVerticalScroll() < maxScroll(view) - 1)
-end
-
--- A soft edge in the window's color along the bottom of the list, on a layer above its lines.
-local function fadeEdge(view)
-  local holder = CreateFrame("Frame", nil, view)
-  holder:SetAllPoints(view)
-  holder:SetFrameLevel(view:GetFrameLevel() + 10)
-  local t = T.Snap(holder:CreateTexture(nil, "OVERLAY"))
-  t:SetTexture(T.Texture("Fade"))
-  T.Tint(t, "panel")
-  t:SetPoint("BOTTOMLEFT")
-  t:SetPoint("BOTTOMRIGHT")
-  t:SetHeight(24)
-  return t
-end
-
--- The list: a scroll view under the hint; the wheel scrolls it.
+-- The list: the shared scroll view (ns.ScrollView: the T.SCROLL thumb, soft edges, the wheel) under the hint,
+-- with room right of it for its thumb.
 local function addView(f)
-  f.view = CreateFrame("ScrollFrame", nil, f)
+  f.view = ns.ScrollView(f, { width = LIST_W })
   f.view:SetPoint("TOPLEFT", PAD, -TOP)
-  f.view:SetPoint("BOTTOMRIGHT", -PAD, PAD)
-  f.view:EnableMouseWheel(true)
-  f.view:SetScript("OnMouseWheel", function(view, delta) scrollTo(view, (view:GetVerticalScroll() or 0) - delta * WHEEL_STEP) end)
-  f.view.more = fadeEdge(f.view)
+  f.view:SetPoint("BOTTOMRIGHT", -(PAD + T.SPACE.col), PAD)
 end
 
--- The window, built on first use: a floating panel above other windows.
+-- The window, built on first use: a floating panel above other windows, at the dialog alpha.
 local function build()
-  frame = T.Panel(CreateFrame("Frame", "Vanguard_WhatsNew", UIParent), { alpha = 0.98, shadow = true })
+  frame = T.Panel(CreateFrame("Frame", "Vanguard_WhatsNew", UIParent), { alpha = T.ALPHA.dialog, shadow = true })
   frame:SetSize(WIDTH, HEIGHT)
   frame:SetPoint("CENTER")
   frame:SetFrameStrata("DIALOG")
   frame:EnableMouse(true)
   addTitle(frame)
-  addClose(frame)
   addView(frame)
 end
 
@@ -150,32 +117,30 @@ local function itemText(item)
   return item.off and (item.text .. "  " .. T.Paint("(off by default)", "warn")) or item.text
 end
 
--- Makes a line a link: a wash under the mouse, and a click opens its setting.
+-- Makes a line a link: a click opens its setting (the row already has its wash under the mouse).
 local function linkify(line, item)
-  line.hover = W.Flat(line, "HIGHLIGHT", "hover")
-  line.hover:SetAllPoints()
   accented[#accented + 1] = line.text
   line:SetScript("OnClick", ns.Guard("click what's new line", function() openSetting(item) end))
 end
 
--- One item as a line at y, wrapped to the list's width: in the accent and clickable when it has a page.
+-- One item as a line at y, wrapped to the list's width: a list row (W.Row) in the accent when it has a page to
+-- open, plain text otherwise.
 local function addItem(child, item, y)
-  local line = CreateFrame(item.page and "Button" or "Frame", nil, child)
+  local line = item.page and W.Row(child) or CreateFrame("Frame", nil, child)
   line.text = text(line, "label", item.page and "accent" or "text", itemText(item))
-  line.text:SetPoint("TOPLEFT", 8, 0)
-  line.text:SetWidth(WIDTH - 2 * PAD - 16)
-  line:SetSize(WIDTH - 2 * PAD, line.text:GetStringHeight())
+  line.text:SetPoint("TOPLEFT", T.SPACE.gap, 0)
+  line.text:SetWidth(LIST_W - 2 * T.SPACE.gap)
+  line:SetSize(LIST_W, line.text:GetStringHeight())
   line:SetPoint("TOPLEFT", 0, -y)
   if item.page then linkify(line, item) end
   return line
 end
 
--- One group at y: its label as a heading in the accent, then its items. Returns the y below it.
+-- One group at y: its label as a section header, then its items. Returns the y below it.
 local function addGroup(child, group, y)
-  local heading = text(child, "heading", "accent", group.label)
+  local heading = W.SectionHeader(child, group.label, { width = LIST_W })
   heading:SetPoint("TOPLEFT", 0, -y)
-  accented[#accented + 1] = heading
-  y = y + heading:GetStringHeight() + LINE_GAP
+  y = y + heading:GetHeight() + LINE_GAP
   for _, item in ipairs(group.items) do
     child.lines[#child.lines + 1] = addItem(child, item, y)
     y = y + child.lines[#child.lines]:GetHeight() + LINE_GAP
@@ -187,7 +152,7 @@ end
 local function newChild(view)
   if view.child then view.child:Hide() end
   view.child = CreateFrame("Frame", nil, view)
-  view.child:SetWidth(WIDTH - 2 * PAD)
+  view.child:SetWidth(LIST_W)
   view.child.lines, accented = {}, {}
   view:SetScrollChild(view.child)
   return view.child
@@ -197,10 +162,10 @@ end
 local function fill(entry)
   local child, y = newChild(frame.view), 0
   for _, group in ipairs(entry.groups) do y = addGroup(child, group, y) end
-  child:SetHeight(math.max(1, y - GROUP_GAP - LINE_GAP))
+  frame.view:Fit(y - GROUP_GAP - LINE_GAP)
   frame.lines, frame.version = child.lines, entry.version
   frame.title:SetText("What's new in Vanguard " .. entry.version)
-  scrollTo(frame.view, 0)
+  frame.view:ScrollTo(0)
 end
 
 -- Showing ------------------------------------------------------------------------------------
@@ -213,6 +178,7 @@ function WN.Show(entry)
   for _, fs in ipairs(accented) do T.Color(fs, "accent") end
   if entry.version == ns.AddonVersion() then VanguardDB.whatsNewSeen = entry.version end
   T.FadeIn(frame)
+  frame.view:ScrollTo(frame.view:GetVerticalScroll() or 0)
 end
 
 -- /vg whatsnew and the General page: the newest notes up to this version, or a line saying there are none.

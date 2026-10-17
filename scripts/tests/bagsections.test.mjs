@@ -148,7 +148,7 @@ const headerGaps = (addon) => addon.eval(`local f, out = ContainerFrameCombinedB
     end
     return { above, under }
   end
-  for _, fs in pairs(ns.GetModule("Bags").headers) do if fs:IsShown() then out[fs:GetText()] = gaps(fs, false, 1e9) end end
+  for _, fs in pairs(ns.GetModule("Bags").headers) do if fs:IsShown() then out[fs.text:GetText()] = gaps(fs, false, 1e9) end end
   return out`);
 
 // Where a slot sits: [px from the bag window's left, px down from its top].
@@ -158,8 +158,8 @@ const spot = (addon, slot) => addon.eval(`local f, b = ContainerFrameCombinedBag
 // The bag window's height.
 const height = (addon) => addon.eval("return ContainerFrameCombinedBags:GetHeight()");
 
-// The section headers, in order.
-const LABELS = ["Quest items", "Equipment", "Consumables", "Trade goods", "Other", "Junk", "Empty"];
+// The section headers, in order, as they read: small muted capitals (W.SectionHeader).
+const LABELS = ["QUEST ITEMS", "EQUIPMENT", "CONSUMABLES", "TRADE GOODS", "OTHER", "JUNK", "EMPTY"];
 // The section headers showing, in order.
 const headers = (addon) => LABELS.filter((label) => addon.texts(label).length === 1);
 
@@ -179,14 +179,22 @@ it("the combined bag in sections: each kind of item under its header, packed sid
   expect(first, "quest items, equipment, consumables and trade goods side by side on the first row, under their headers").toEqual([[12, 93], [103, 93], [194, 93], [285, 93]]);
   const second = ["b0s1", "b0s7", "b0s5", "b0s8", "b1s1", "b1s4"].map((s) => spot(addon, s));
   expect(second, "Other (the Hearthstone, the item not loaded yet), Junk and the empty slots on the next").toEqual([[12, 160], [54, 160], [103, 160], [194, 160], [236, 160], [362, 160]]);
-  const quest = addon.texts("Quest items")[0];
   const frame = addon.frame("ContainerFrameCombinedBags").rect;
-  expect([quest.rect.left - frame.left, frame.top - quest.rect.top, quest.rect.width], "a header sits over its slots, as wide as its section").toEqual([12, 75, 79]);
-  expect(isTok(addon, quest.textColor, "accentText"), "headers are in the accent's text colour").toBe(true);
+  const band = addon.eval(`local h = ns.GetModule("Bags").headers.quest return { h:GetLeft(), h:GetTop(), h:GetWidth(), h:GetHeight() }`);
+  expect([band[0] - frame.left, frame.top - band[1], band[2], band[3]], "a header band sits over its slots, as wide as its section, W.SectionHeader's 18 tall").toEqual([12, 75, 79, 18]);
   expect(addon.eval("local f = ContainerFrameCombinedBags return { f:GetWidth(), f:GetHeight() }"), "the window grows by the headers and rows the sections add, and by the padding (the game's 430 x 186)").toEqual([439, 233]);
   expect(addon.eval("for _, b in ipairs(ContainerFrameCombinedBags.Items) do if not b:IsShown() then return false end end return true"), "no slot is hidden").toBe(true);
+});
+
+it("section headers are W.SectionHeader's small muted capitals, not accent text, and take no clicks", () => {
+  const addon = loggedIn(BAG_ENV);
+  addon.eval("__openBag()");
+  const quest = addon.texts("QUEST ITEMS")[0];
+  expect([quest.font.size, isTok(addon, quest.textColor, "muted")], "the small role, in the muted colour").toEqual([addon.eval("return ns.Theme.RoleSize('small')"), true]);
+  expect(isTok(addon, quest.textColor, "accentText"), "no longer in the accent").toBe(false);
+  expect(addon.eval(`local h = ns.GetModule("Bags").headers.quest return { h:IsMouseEnabled() and "mouse" or "no mouse", h.text:GetText(), h.chevron == nil }`), "no mouse, upper case, not collapsible").toEqual(["no mouse", "QUEST ITEMS", true]);
   addon.slash("accent ff8000");
-  expect(isTok(addon, addon.texts("Quest items")[0].textColor, "accentText"), "a new accent repaints the headers").toBe(true);
+  expect(isTok(addon, addon.texts("QUEST ITEMS")[0].textColor, "muted"), "a new accent leaves them muted").toBe(true);
 });
 
 it("bag sections follow what you carry; the same items move nothing", () => {
@@ -287,6 +295,7 @@ it("the bag's slots, headers, search row and money line sit the padding inside t
   const small = loggedIn(BAG_ENV);
   small.eval("__openBag()");
   expect(insets(small), "a small bag: slots and money line 12 px in, Sort 12 px in from the right, the search row under the title").toEqual(inside);
+  expect(small.eval("return { ns.GetModule('Bags').PAD, ns.GetModule('Bags').sort:GetHeight(), ns.Theme.SPACE.col, ns.Theme.CONTROL_H }"), "the padding is T.SPACE.col; Sort is an inline control tall (T.CONTROL_H)").toEqual([PAD, 20, PAD, 20]);
   for (const [sizes, counts] of [OWNER_BAG, FULL_BAG]) {
     const addon = openFilled(sizes, counts);
     expect([insets(addon), slotsRight(addon), addon.eval("return ContainerFrameCombinedBags:GetWidth()")], `${sizes.join("+")} slots: a full row of the game's 10 columns ends 12 px in; the window is the game's 415 px grid and the padding`).toEqual([inside, PAD, 439]);
@@ -296,10 +305,10 @@ it("the bag's slots, headers, search row and money line sit the padding inside t
   expect(wide.eval("return BagItemSearchBox:GetWidth()"), "the search box starts the padding in and narrows so Sort fits beside it").toBe(523 - PAD - 52 - 6 - PAD);
 });
 
-it("a clear gap above each section header, a small one under it; sections side by side keep theirs", () => {
+it("a clear gap above each section header, its band reaching down to its slots; sections side by side keep theirs", () => {
   const addon = openFilled(...OWNER_BAG);
-  expect(headerGaps(addon), "12 px from the slots above to a header, 4 px from a header to its own slots").toEqual({
-    "Quest items": [false, 4], Equipment: [12, 4], Consumables: [12, 4], "Trade goods": [12, 4], Other: [12, 4], Junk: [12, 4], Empty: [12, 4],
+  expect(headerGaps(addon), "12 px from the slots above to a header band; the band reaches down to its own slots, holding the air under its text").toEqual({
+    "QUEST ITEMS": [false, 0], EQUIPMENT: [12, 0], CONSUMABLES: [12, 0], "TRADE GOODS": [12, 0], OTHER: [12, 0], JUNK: [12, 0], EMPTY: [12, 0],
   });
   const side = addon.eval(`local h = ns.GetModule("Bags").headers return { h.junk:GetLeft() - h.other:GetRight(), h.junk:GetTop() - h.other:GetTop() }`);
   expect(side, "Junk 12 px right of Other, on the same line").toEqual([12, 0]);

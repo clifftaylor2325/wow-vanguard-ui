@@ -19,8 +19,9 @@ local ADDON, ns = ...
 local T, W = ns.Theme, ns.Widgets
 local AH = ns.GetModule("AuctionHelper")
 
--- The header line's height, the most columns a table has beside the name, and the room between two columns.
-AH.TABLE_HEAD, AH.TABLE_CELLS, AH.TABLE_GAP = 16, 4, 12
+-- The header line's height, the most columns a table has beside the name, and the room between two
+-- columns (the theme's gutter between columns, T.SPACE.col).
+AH.TABLE_HEAD, AH.TABLE_CELLS, AH.TABLE_GAP = 16, 4, T.SPACE.col
 
 -- How many rows fit in h units with the header (one at least).
 function AH.TableRows(h)
@@ -67,7 +68,7 @@ local function placeCells(t, r)
     local col = t.columns[i]
     if col then placeCell(r, i, col, t.xs[i]) else r.cells[i]:Hide() r.cells[i]:SetText("") end
   end
-  r.name:SetPoint("RIGHT", r, "RIGHT", -(t.nameEnd + 4), 0)
+  r.name:SetPoint("RIGHT", r, "RIGHT", -(t.nameEnd + T.SPACE.tight), 0)
 end
 
 -- The sort arrow beside a heading: up for low first, down for high first.
@@ -137,16 +138,6 @@ local function leaveRow(r)
   if t.onLeave then t.onLeave(r) end
 end
 
--- The keyboard's mark on a row: an accent edge on its left and a wash across it.
-local function keyMarks(r)
-  r.wash, r.mark = W.Flat(r, "BACKGROUND", "hover"), W.Flat(r, "ARTWORK", "accent")
-  r.wash:SetAllPoints()
-  r.mark:SetPoint("TOPLEFT")
-  r.mark:SetPoint("BOTTOMLEFT")
-  r.mark:SetWidth(2)
-end
-AH.KeyMarks = keyMarks
-
 -- A row's flag: a small square before the icon, in the table's flag color (hidden until painted).
 local function flagMark(r, color)
   r.flag = W.Flat(r, "ARTWORK", color)
@@ -159,7 +150,7 @@ end
 -- A row's name after its icon, kept to the left on one line (its right edge set with the columns).
 local function rowName(r)
   r.name = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
-  r.name:SetPoint("LEFT", r.icon, "RIGHT", 4, 0)
+  r.name:SetPoint("LEFT", r.icon, "RIGHT", T.SPACE.tight, 0)
   r.name:SetJustifyH("LEFT")
   r.name:SetWordWrap(false)
 end
@@ -173,7 +164,6 @@ local function rowParts(t, r)
   rowName(r)
   r.cells = {}
   for i = 1, AH.TABLE_CELLS do r.cells[i] = T.Text(r:CreateFontString(nil, "OVERLAY"), "small") end
-  if t.keys then keyMarks(r) end
   if t.flag then flagMark(r, t.flag) end
 end
 
@@ -190,7 +180,8 @@ end
 -- Painting -------------------------------------------------------------------------------------
 
 -- The rows from the scroll offset: each one's item (the owner's paintRow fills it), the keyboard's
--- mark on the marked one; the rows past the last item hidden.
+-- mark (the row's selected look) on the marked one when the table takes the keyboard; the rows past
+-- the last item hidden.
 local function paint(t)
   for i, r in ipairs(t.rows) do
     local index = t.offset + i
@@ -198,7 +189,7 @@ local function paint(t)
     r.item, r.index = item, index
     r:SetShown(item ~= nil)
     if item then t.paintRow(r, item, index) end
-    if r.mark then r.mark:SetShown(item ~= nil and index == t.mark) r.wash:SetShown(item ~= nil and index == t.mark) end
+    r:SetSelected(t.keys == true and item ~= nil and index == t.mark)
   end
 end
 
@@ -220,8 +211,15 @@ local function scroll(t, delta)
   if t.onNear then t.onNear() end
 end
 
--- The status line, shown while there is something to say (over the rows' place).
-local function setStatus(t, text)
+-- The status line, shown while there is something to say (over the rows' place): a status ("searching...",
+-- "none up") in small text2, or with `empty` an empty-state line (what the table is for, how to fill it)
+-- in label muted. The text role changes only when the kind does.
+local function setStatus(t, text, empty)
+  empty = empty == true
+  if t.statusEmpty ~= empty then
+    t.statusEmpty = empty
+    T.Text(t.status, empty and "label" or "small", empty and "muted" or "text2")
+  end
   t.status:SetText(text or "")
 end
 
@@ -267,15 +265,23 @@ end
 local METHODS = { SetColumns = setColumns, SetItems = setItems, Paint = paint, SetSort = setSort,
   SetStatus = setStatus, MarkRow = markRow, NearEnd = nearEnd }
 
+-- The status line under the header, edge to edge so a long line wraps: small text2 (a status) until
+-- setStatus gives it an empty-state line.
+local function statusLine(t)
+  t.status, t.statusEmpty = T.Text(t:CreateFontString(nil, "OVERLAY"), "small", "text2"), false
+  t.status:SetPoint("TOPLEFT", T.SPACE.tight, -AH.TABLE_HEAD - T.SPACE.tight)
+  t.status:SetPoint("TOPRIGHT", -T.SPACE.tight, -AH.TABLE_HEAD - T.SPACE.tight)
+  t.status:SetJustifyH("LEFT")
+end
+
 -- The table's parts: the headings, the sort arrow, the status line and n rows.
 local function parts(t, n)
   t.heads, t.rows, t.items, t.offset, t.mark = {}, {}, {}, 0, 1
   for i = 1, AH.TABLE_CELLS do t.heads[i] = head(t) end
   t.nameHead = T.Text(t:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  t.nameHead:SetPoint("TOPLEFT", 4, -2)
+  t.nameHead:SetPoint("TOPLEFT", T.SPACE.tight, -2)
   t.arrow = W.IconTexture(t, "Down", 10, "accent")
-  t.status = T.Text(t:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  t.status:SetPoint("TOPLEFT", 4, -AH.TABLE_HEAD - 4)
+  statusLine(t)
   for i = 1, n do t.rows[i] = row(t, i) end
 end
 

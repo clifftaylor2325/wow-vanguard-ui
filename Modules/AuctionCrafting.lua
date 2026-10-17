@@ -28,9 +28,10 @@ AH.Crafting = CR
 -- The panel shows unless switched off (Town and gear: Auction house).
 AH.defaults.crafting = true
 
--- The panel's width, padding, row height (reagents) and line height (totals); its gap from the
--- window, wide enough to clear the window's side tabs; where the reagent rows start.
-CR.WIDTH, CR.PAD, CR.ROW, CR.LINE, CR.GAP, CR.TOP = 240, 8, 20, 18, 52, -30
+-- The panel's width, padding (a card's inset, T.SPACE.gap), row height (reagents: the shop's rows, AH.ROW_H)
+-- and line height (totals); its gap from the window, wide enough to clear the window's side tabs; where
+-- the reagent rows start (under the heading).
+CR.WIDTH, CR.PAD, CR.ROW, CR.LINE, CR.GAP, CR.TOP = 240, T.SPACE.gap, AH.ROW_H, 18, 52, -30
 -- Reagent rows at most (vanilla recipes have up to six reagents).
 CR.ROWS = 8
 -- Enum.CraftingReagentType.Basic (ProfessionConstantsDocumentation.lua), for a client without the Enum.
@@ -111,14 +112,14 @@ end
 
 -- The total lines under the reagent rows (n of them shown), and the panel's height to fit.
 local function paintTotals(f, data, n)
-  local y = CR.TOP - n * CR.ROW - 4
+  local y = CR.TOP - n * CR.ROW - T.SPACE.tight
   for i, l in ipairs(f.lines) do
     local text, color = totalText(data, l.key)
     l.label:SetPoint("TOPLEFT", CR.PAD, y - (i - 1) * CR.LINE)
     l.value:SetText(text)
     T.Color(l.value, color)
   end
-  f:SetHeight(-y + #f.lines * CR.LINE + 8 + 24 + CR.PAD)
+  f:SetHeight(-y + #f.lines * CR.LINE + T.SPACE.gap + T.BUTTON_H + CR.PAD)
 end
 
 -- Paints the panel for the recipe on display, and shows it while the recipe form shows and the
@@ -191,19 +192,19 @@ local function addControls(f)
   f.add = W.Button(f, "Add reagents", function() CR.AddReagents() end, 120)
   f.add:SetPoint("BOTTOMRIGHT", -CR.PAD, CR.PAD)
   f.crafts = W.Input(f, 44)
-  f.crafts:SetPoint("RIGHT", f.add, "LEFT", -8, 0)
+  f.crafts:SetPoint("RIGHT", f.add, "LEFT", -T.SPACE.gap, 0)
   f.crafts:SetText("1")
   f.craftsLabel = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  f.craftsLabel:SetPoint("RIGHT", f.crafts, "LEFT", -6, 0)
+  f.craftsLabel:SetPoint("RIGHT", f.crafts, "LEFT", -T.SPACE.tight, 0)
   f.craftsLabel:SetText("Crafts")
 end
 
--- The panel's heading (the recipe's name, on one line); the panel stays on the screen.
+-- The panel's heading: a card's title (ns.WindowTitle kind "card") holding the recipe's name, on one line
+-- across the panel; the panel stays on the screen.
 local function heading(f)
   f:SetClampedToScreen(true)
-  f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading")
-  f.title:SetPoint("TOPLEFT", CR.PAD, -CR.PAD)
-  f.title:SetPoint("RIGHT", -CR.PAD, 0)
+  ns.WindowTitle(f, "Crafting cost", { kind = "card" })
+  f.title:SetWidth(CR.WIDTH - 2 * CR.PAD)
   f.title:SetWordWrap(false)
 end
 

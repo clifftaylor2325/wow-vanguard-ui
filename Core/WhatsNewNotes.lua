@@ -94,12 +94,12 @@ ns.WHATS_NEW = {
       { text = "Setup's Healing and Damage and tanking layouts now set the raid frame, raid aura and nameplate settings of the Healer and Damage presets, so the two look different; the presets carry raid auras and raid healing too.", page = "general", row = "Run setup" },
     } },
     { label = "Theme", items = {
-      { text = "Three new looks: High contrast (opaque panels, white text, a thicker accent ring), Vellum and ink (a warm dark with cream text) and Classic look (dark leather and bronze with gold-cream text). Slate and brass stays the default.", page = "general", row = "Theme variant: surfaces and text", off = true },
-      { text = "Four more looks: Midnight (cold navy-black, ice-blue text), Obsidian (neutral charcoal, light grey text, a silver edge), Moss (dark forest green, pale sage text) and Ash and ember (smoky grey, a rust edge, warm grey text).", page = "general", row = "Theme variant: surfaces and text", off = true },
-      { text = "Rounded corners on every theme: General → Look → Corners (or /vg corners rounded) rounds the corners of windows, frames, tooltips and buttons by four pixels. Square stays the default.", page = "general", row = "Corners: square or rounded panels", off = true },
+      { text = "Three new looks: High contrast (opaque panels, white text, a thicker accent ring), Vellum and ink (a warm dark with cream text) and Classic look (dark leather and bronze with gold-cream text). Slate and brass stays the default.", page = "general", row = "Theme variant", off = true },
+      { text = "Four more looks: Midnight (cold navy-black, ice-blue text), Obsidian (neutral charcoal, light grey text, a silver edge), Moss (dark forest green, pale sage text) and Ash and ember (smoky grey, a rust edge, warm grey text).", page = "general", row = "Theme variant", off = true },
+      { text = "Rounded corners on every theme: General → Look → Corners (or /vg corners rounded) rounds the corners of windows, frames, tooltips and buttons by four pixels. Square stays the default.", page = "general", row = "Corners", off = true },
     } },
     { label = "Window ornaments", items = {
-      { text = "A thin brass rule under the options window's header and corner brackets on setup and the quest log.", page = "general", row = "Window ornaments: a brass rule or corners on large windows", off = true },
+      { text = "A thin brass rule under the options window's header and corner brackets on setup and the quest log.", page = "general", row = "Window ornaments", off = true },
     } },
     { label = "Sharper icons", items = {
       { text = "/vg icons draws the menu strip icons at the size they show at (16, 20, 24 or 32 px) instead of scaling one image, for even strokes. It takes effect after a /reload.", off = true },

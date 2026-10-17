@@ -65,15 +65,15 @@ local function sampleTexts(f)
   f.value:SetPoint("RIGHT", -4, 0)
 end
 
--- The sample action button: an icon, its key and count, and an accent glow (a spell that procced).
+-- The sample action button: Vanguard's crest as its icon, a key and count, and an accent glow (a spell that procced).
 local function sampleButton(r)
   local b = T.Button(CreateFrame("Button", nil, r))
   b:SetSize(36, 36)
   b:SetPoint("LEFT", r.unit, "RIGHT", 16, 0)
-  b.icon = T.Crop(b:CreateTexture(nil, "ARTWORK"))
+  b.icon = b:CreateTexture(nil, "ARTWORK")
   b.icon:SetPoint("TOPLEFT", 1, -1)
   b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
-  b.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+  b.icon:SetTexture(T.Texture("Icon"))
   b.hotkey, b.count = T.Text(b:CreateFontString(nil, "OVERLAY"), "small", "text2"), T.Text(b:CreateFontString(nil, "OVERLAY"), "small", "white")
   b.glow = T.Glow(b, 6)
   return b
@@ -92,13 +92,20 @@ local function previewRow(parent, width)
   return r
 end
 
+-- The sample unit's name: the player's own, or "You" when the client hides it or gives none.
+local function playerName()
+  local name = UnitName("player")
+  if ns.IsSecret(name) or type(name) ~= "string" then return "You" end
+  return name
+end
+
 -- Fills the sample from the theme as it is now: the bar texture, the bars' colors, the texts and the glow.
 local function refreshPreview(r)
   local u, b = r.unit, r.button
   for _, bar in ipairs({ u.health, u.power }) do T.StyleBar(bar) end
   T.BarColor(u.health, "friendly")
   T.BarColor(u.power, "mana")
-  u.name:SetText("<name>")
+  u.name:SetText(playerName())
   u.value:SetText("72%")
   b.hotkey:SetText("1")
   b.count:SetText("5")

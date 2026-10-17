@@ -171,24 +171,27 @@ local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step 
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
--- Look, the font, text size, faction, variant, corners and ornament rows.
+-- Look, the font, text size, faction, variant, corners and ornament rows. A caption is a noun; what it needs
+-- saying beyond that is a note row under it.
 local function lookTextRows()
   return {
     { "cycle", "Font", T.FontChoices(FONT_CHOICES), liveThemeSetting("font") },
     { "slider", "Text size", TEXT_SIZES, liveThemeSetting("textScale") },
     { "cycle", "Faction look", FACTION_LOOK, liveThemeSetting("faction") },
-    { "cycle", "Theme variant: surfaces and text", VARIANT_CHOICES, liveThemeSetting("variant") },
-    { "cycle", "Corners: square or rounded panels", CORNER_CHOICES, liveThemeSetting("corners") },
-    check("Window ornaments: a brass rule or corners on large windows", previewedSetting("ornaments")),
+    { "cycle", "Theme variant", VARIANT_CHOICES, liveThemeSetting("variant") },
+    { "cycle", "Corners", CORNER_CHOICES, liveThemeSetting("corners") },
+    check("Window ornaments", previewedSetting("ornaments")),
+    { "text", "A brass rule or corners on large windows.", "note" },
   }
 end
 
 -- General, part one: accent, color assist, font, text size, variant, ornaments, scale and theme reset.
 local function lookRows()
   local rows = { { "header", "Look" }, { "preview" }, { "swatches" },
-    check("Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", themeSetting("colorAssist")) }
+    check("Color assist (reload)", themeSetting("colorAssist")),
+    { "text", "Friendly blue, neutral yellow, hostile vermilion.", "note" } }
   for _, row in ipairs(lookTextRows()) do rows[#rows + 1] = row end
-  rows[#rows + 1] = check("Pixel-perfect scale (crisp 1-pixel lines)", function() return T.Settings().pixelScale end,
+  rows[#rows + 1] = check("Pixel-perfect scale", function() return T.Settings().pixelScale end,
     function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end)
   rows[#rows + 1] = { "button", "Reset theme", function() T.Reset() end }
   return rows

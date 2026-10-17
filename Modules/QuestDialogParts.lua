@@ -1,21 +1,24 @@
 -- Parts shared by Vanguard's quest windows (the quest dialog, and the quest
--- log): numbered lines for quests and gossip, and reward cards with the
--- item's icon, count and name in a border of its quality color.
+-- log): numbered lines for quests and gossip (W.Row lines, with Vanguard's quest
+-- marks), reward cards with the item's icon, count and name in a border of its
+-- quality color, and the faint crest behind a reading window's corner.
 
 local ADDON, ns = ...
 
-local T = ns.Theme
+local T, W = ns.Theme, ns.Widgets
 
 local QP = {}
 ns.QuestParts = QP
 
-QP.LINE_H, QP.CARD_W, QP.CARD_H, QP.GAP = 20, 172, 36, 4
--- The game's quest marks: a quest you can take, one you can turn in, one still in progress.
-QP.ICONS = {
-  available = "Interface\\GossipFrame\\AvailableQuestIcon",
-  ready = "Interface\\GossipFrame\\ActiveQuestIcon",
-  active = "Interface\\GossipFrame\\IncompleteQuestIcon",
-}
+-- A line is a list row tall; a reward card is CARD_W by CARD_H (a quality border, the icon, a two-line name);
+-- GAP is the gap between cards (and between a card's icon and its edge).
+QP.LINE_H, QP.CARD_W, QP.CARD_H, QP.GAP = T.ROW.height, 172, 36, T.SPACE.tight
+-- Vanguard's quest marks, not the game's gossip icons: a "!" for a quest you can take, a "?" for one you can
+-- turn in and the same "?" for one still in progress (QP.PaintLine tints them: gold, gold, muted).
+QP.ICONS = { available = T.Icon("QuestBang"), ready = T.Icon("QuestQuery"), active = T.Icon("QuestQuery") }
+-- How big a line's icon is, and how far the watermark crest sits down from the window's top (it sits
+-- T.SPACE.col in from the right).
+local ICON_SIZE, WATERMARK_DROP = 16, 6
 
 -- Text ---------------------------------------------------------------------------------------
 
@@ -53,34 +56,37 @@ function QP.Square(t, size)
   return t
 end
 
--- A clickable line: an icon, then its text; a faint wash under the mouse.
+-- A clickable line: a W.Row (a faint wash under the mouse, the rail and wash of a chosen line) holding an
+-- icon, then its text.
 function QP.Line(parent)
-  local b = CreateFrame("Button", nil, parent)
-  b:SetHeight(QP.LINE_H)
-  b.icon = QP.Square(b:CreateTexture(nil, "ARTWORK"), 16)
-  b.icon:SetPoint("LEFT", b, "LEFT", 2, 0)
+  local b = W.Row(parent, QP.LINE_H)
+  b.icon = QP.Square(b:CreateTexture(nil, "ARTWORK"), ICON_SIZE)
+  b.icon:SetPoint("LEFT", b, "LEFT", T.SPACE.gap, 0)
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label", "text")
-  b.text:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
+  b.text:SetPoint("LEFT", b.icon, "RIGHT", T.SPACE.gap, 0)
   b.text:SetJustifyH("LEFT")
-  b.hover = T.Tint(b:CreateTexture(nil, "HIGHLIGHT"), "hover")
-  b.hover:SetAllPoints()
   return b
 end
 
--- Marks a line as the chosen one with a faint accent wash (made the first time), or clears it.
+-- Marks a line as the chosen one (the row's accent rail and wash), or clears it.
 function QP.Mark(b, on)
-  if not b.mark then
-    b.mark = T.Tint(b:CreateTexture(nil, "BACKGROUND"), "accent", 0.22)
-    b.mark:SetAllPoints()
-  end
-  b.mark:SetShown(on)
+  b:SetSelected(on)
 end
 
--- Fills a line from { text, icon, color = { r, g, b } or token, select }; number n before the text.
+-- The tint of a line's icon: a quest mark by its state (QP.ICONS), gold for a quest to take and one to turn in
+-- and muted for one in progress (the same "?", told apart by its line's gold); white for any other icon.
+local function iconTint(spec)
+  if not spec.quest then return "white" end
+  if spec.icon == QP.ICONS.available then return "gold" end
+  return spec.color == "gold" and "gold" or "muted"
+end
+
+-- Fills a line from { text, icon, color = { r, g, b } or token, select, quest }; number n before the text.
 function QP.PaintLine(b, n, spec)
   b.text:SetText(n .. ".  " .. spec.text)
   if type(spec.color) == "table" then T.Color(b.text, spec.color[1], spec.color[2], spec.color[3]) else T.Color(b.text, spec.color or "text") end
   b.icon:SetTexture(spec.icon)
+  T.Tint(b.icon, iconTint(spec))
   b.icon:SetShown(spec.icon ~= nil)
   b.spec = spec
   b:Show()
@@ -98,7 +104,7 @@ function QP.Card(parent)
   c.count:SetPoint("BOTTOMRIGHT", c.icon, "BOTTOMRIGHT", -1, 1)
   c.name = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text")
   c.name:SetPoint("LEFT", c.icon, "RIGHT", 6, 0)
-  c.name:SetPoint("RIGHT", c, "RIGHT", -4, 0)
+  c.name:SetPoint("RIGHT", c, "RIGHT", -T.SPACE.tight, 0)
   return QP.WireTooltip(c)
 end
 
@@ -148,10 +154,12 @@ function QP.PaintCard(c, item)
   c:Show()
 end
 
--- Scrolls a scroll frame by one wheel step, within its range (a hidden range counts as none).
-function QP.Wheel(scroll, delta)
-  local range = ns.PlainNumber(scroll:GetVerticalScrollRange()) or 0
-  scroll:SetVerticalScroll(math.max(0, math.min(range, (scroll:GetVerticalScroll() or 0) - delta * 24)))
+-- Your faction's crest, faint (T.CREST.watermark at T.CREST.wash), behind a reading window's top-right corner:
+-- the quest dialog's and the quest log's. Hidden while the faction look is off.
+function QP.Watermark(f)
+  f.crest = T.Crest(f, T.CREST.watermark, "BORDER", T.CREST.wash)
+  f.crest:SetPoint("TOPRIGHT", f, "TOPRIGHT", -T.SPACE.col, -WATERMARK_DROP)
+  return f.crest
 end
 
 -- A pool of widgets made on demand by make(parent), shown in order, the rest hidden.

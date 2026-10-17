@@ -7,9 +7,13 @@
 
 local ADDON, ns = ...
 
-local W = ns.Widgets
+local T, W = ns.Theme, ns.Widgets
 
-local WIDTH, HEIGHT, ROW_WIDTH = 420, 440, 360
+local WIDTH, HEIGHT = 420, 440
+-- The width of a switch row, which is the list's: the panel less its insets and the thumb's gutter.
+local ROW_WIDTH = WIDTH - 2 * T.SPACE.pad - T.SPACE.col
+-- The width of the All and None buttons (the foot's two small ones; Cancel and Export take the standard 120).
+local SMALL_BUTTON = 60
 local TITLE = "Export: what to include"
 local panel
 
@@ -22,7 +26,7 @@ end
 local function partRow(i)
   if panel.rows[i] then return panel.rows[i] end
   local r = W.Check(panel.list, "", function() return panel.on[panel.parts[i]] end, function(on) panel.on[panel.parts[i]] = on end, ROW_WIDTH)
-  r:SetPoint("TOPLEFT", 0, -(i - 1) * W.ROW_HEIGHT)
+  r:SetPoint("TOPLEFT", 0, -(i - 1) * T.ROW.height)
   panel.rows[i] = r
   return r
 end
@@ -38,7 +42,7 @@ local function fill()
     r:Refresh()
   end
   for i = #panel.parts + 1, #panel.rows do panel.rows[i]:Hide() end
-  panel.list:SetHeight(math.max(1, #panel.parts) * W.ROW_HEIGHT)
+  panel.view:Fit(#panel.parts * T.ROW.height)
 end
 
 -- Turns every switch on or off.
@@ -67,35 +71,34 @@ local function export()
   ns.ShowText("Vanguard export (" .. (whole and "profile " .. ns.ProfileName() or table.concat(parts, ", ")) .. ")  Ctrl+C to copy", text)
 end
 
--- The scrolling list the switches sit in.
+-- The scrolling list the switches sit in: a dialog scroll view under the note, over the buttons, with the
+-- thumb in the right pad; its content (panel.list) is as wide as a switch row.
 local function addList(f)
-  local scroll = CreateFrame("ScrollFrame", "Vanguard_ExportScroll", f, "UIPanelScrollFrameTemplate")
-  scroll:SetPoint("TOPLEFT", 12, -66)
-  scroll:SetPoint("BOTTOMRIGHT", -30, 44)
-  f.list = CreateFrame("Frame", nil, scroll)
-  f.list:SetSize(ROW_WIDTH, 1)
-  scroll:SetScrollChild(f.list)
+  f.view = ns.ScrollView(f, { width = ROW_WIDTH })
+  f.view:SetPoint("TOPLEFT", f.note, "BOTTOMLEFT", 0, -T.SPACE.gap)
+  f.view:SetPoint("BOTTOMRIGHT", -(T.SPACE.pad + T.SPACE.col), ns.DIALOG.foot)
+  f.list = f.view.child
 end
 
--- The buttons along the foot: All and None on the left, Close and Export on the right.
+-- The buttons along the foot: All and None on the left, Cancel and the Export primary on the right.
 local function addButtons(f)
-  f.export = W.Primary(f, "Export", export, 100)
-  f.export:SetPoint("BOTTOMRIGHT", -12, 12)
-  f.close = W.Button(f, "Close", function() f:Hide() end, 100)
-  f.close:SetPoint("RIGHT", f.export, "LEFT", -8, 0)
-  f.all = W.Button(f, "All", function() setAll(true) end, 60)
-  f.all:SetPoint("BOTTOMLEFT", 12, 12)
-  f.none = W.Button(f, "None", function() setAll(false) end, 60)
-  f.none:SetPoint("LEFT", f.all, "RIGHT", 8, 0)
+  f.export = W.Primary(f, "Export", export)
+  f.export:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
+  f.cancel = W.Button(f, "Cancel", function() f:Hide() end)
+  f.cancel:SetPoint("RIGHT", f.export, "LEFT", -T.SPACE.gap, 0)
+  f.all = W.Button(f, "All", function() setAll(true) end, SMALL_BUTTON)
+  f.all:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
+  f.none = W.Button(f, "None", function() setAll(false) end, SMALL_BUTTON)
+  f.none:SetPoint("LEFT", f.all, "RIGHT", T.SPACE.gap, 0)
 end
 
 -- Builds the panel once: its title, a line on what a partial string does, the list and the buttons.
 local function build()
   panel = ns.Dialog("Vanguard_ExportDialog", WIDTH, HEIGHT)
   panel.rows = {}
-  panel.note = W.Text(panel, "Everything on exports the whole profile. With some parts off, importing the string changes only those parts of the profile it goes into.")
-  panel.note:SetPoint("TOPLEFT", 12, -32)
-  panel.note:SetWidth(WIDTH - 24)
+  panel.note = T.Text(W.Text(panel, "Everything on exports the whole profile. With some parts off, importing the string changes only those parts of the profile it goes into."), "small", "muted")
+  panel.note:SetPoint("TOPLEFT", T.SPACE.pad, -ns.DIALOG.head)
+  panel.note:SetWidth(WIDTH - 2 * T.SPACE.pad)
   addList(panel)
   addButtons(panel)
 end

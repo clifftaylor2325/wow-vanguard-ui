@@ -65,13 +65,14 @@ function QG.OnPin(pin)
   if ns.GetModule("Waypoints").Set(pin.mapID, pin.start.x, pin.start.y) then ns.Chat("Arrow: " .. (pin.start.name ~= "" and pin.start.name or "quest start") .. ".") end
 end
 
--- A pin on the map's canvas: the game's quest-start "!" on a small inset square.
+-- A pin on the map's canvas: Vanguard's gold quest-start "!" (the quest dialog's mark) on a small inset square.
 local function makePin(canvas)
   local p = T.Panel(CreateFrame("Button", nil, canvas), { inset = true, noSheen = true })
   p:SetSize(QG.PIN, QG.PIN)
   p.icon = QP.Square(p:CreateTexture(nil, "ARTWORK"), QG.PIN - 2)
   p.icon:SetPoint("CENTER")
   p.icon:SetTexture(QP.ICONS.available)
+  T.Tint(p.icon, "gold")
   p:SetScript("OnEnter", QG.PinTooltip)
   p:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
   p:SetScript("OnClick", ns.Guard("click quest start pin", QG.OnPin))

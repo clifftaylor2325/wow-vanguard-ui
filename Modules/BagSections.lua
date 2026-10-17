@@ -1,7 +1,7 @@
 -- Bag sections (part of the Bags module): the combined bag's own item buttons
 -- laid out in sections: quest items, equipment,
 -- consumables, trade goods, the rest, junk and the empty slots, each under a
--- header in the theme, packed side by side where they fit, with the window's
+-- section header (W.SectionHeader: small muted capitals), packed side by side where they fit, with the window's
 -- padding (Bags.PAD) around them and the money line. The buttons stay
 -- the game's, so using, dragging, search dimming, quality borders and item
 -- tooltips work as before; only where they sit changes. Item buttons are
@@ -13,18 +13,17 @@ local ADDON, ns = ...
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgSections = ns.FrameState("vgSections")
 
-local T = ns.Theme
+local T, W = ns.Theme, ns.Widgets
 local BG = ns.GetModule("Bags")
 
 -- The space between the game's slots (ITEM_SPACING_X and _Y in
 -- Blizzard_UIPanels_Game Mainline/ContainerFrame.lua, which Forever loads). The
 -- grid's columns and width are the window's own (GetColumns, CalculateWidth).
 local GAP = 5
--- On the theme's 4 px grid: the space under a header's text, above its slots;
--- between sections side by side; above a header, under the section before it
--- (more than under the header, so a header reads with its own slots); and a
--- section's narrowest width in columns (room for its header).
-local HEAD_GAP, SIDE_GAP, SHELF_GAP, MIN_COLS = 4, 12, 12, 2
+-- Between sections side by side (the theme's gutter between columns, T.SPACE.col); above a header, under
+-- the section before it (the same, more than the header's own band holds under its text, so a header reads
+-- with its own slots); and a section's narrowest width in columns (room for its header).
+local SIDE_GAP, SHELF_GAP, MIN_COLS = T.SPACE.col, T.SPACE.col, 2
 -- The game's grid sits this far above the money line (its GetInitialItemAnchor).
 local ABOVE_MONEY = 4
 
@@ -45,7 +44,7 @@ local CLASS_SECTION = {
 -- Items the client hasn't sent the info of yet (itemID -> true): they sit
 -- under Other and move when it arrives.
 BG.pending = {}
--- Section headers by section key: font strings on the bag window, made as needed.
+-- Section headers by section key: W.SectionHeader bands on the bag window, made as needed.
 BG.headers = {}
 
 -- Whether the slot holds a quest item (or one that starts a quest).
@@ -155,34 +154,37 @@ local function placeSlots(frame, s, g)
   end
 end
 
--- A section's header (made once per section) with its label, in the accent.
+-- A section's header (made once per section) with its label: small muted capitals, as every section header
+-- is. It takes no clicks, so the bag window keeps them as it did with plain text there.
 local function headerOf(frame, s)
-  local fs = BG.headers[s.key] or T.Text(frame:CreateFontString(nil, "OVERLAY"), "cell", "accentText")
-  BG.headers[s.key] = fs
-  fs:SetText(s.label)
-  return fs
+  local header = BG.headers[s.key]
+  if not header then
+    header = W.SectionHeader(frame, s.label)
+    header:EnableMouse(false)
+    BG.headers[s.key] = header
+  end
+  header:SetText(s.label)
+  return header
 end
 
--- A header line's height: the tallest header's text as drawn (at least its
--- font size, should the client not have measured it yet), and the space under it.
+-- A header line's height: the tallest header band, which holds the space under its text.
 local function headHeight(frame, list)
-  local h = T.RoleSize("cell")
-  for _, s in ipairs(list) do h = math.max(h, headerOf(frame, s):GetStringHeight()) end
-  return math.ceil(h) + HEAD_GAP
+  local h = 0
+  for _, s in ipairs(list) do h = math.max(h, headerOf(frame, s):GetHeight()) end
+  return math.ceil(h)
 end
 
 -- A section's header over its slots, as wide as its section.
 local function placeHeader(frame, s, g)
-  local fs = BG.headers[s.key]
-  fs:SetWidth(s.w)
-  fs:SetJustifyH("LEFT")
-  put(fs, frame, g, s.x, s.y)
-  fs:Show()
+  local header = BG.headers[s.key]
+  header:SetWidth(s.w)
+  put(header, frame, g, s.x, s.y)
+  header:Show()
 end
 
 -- Hides every section header (the plain grid, or sections empty now).
 function BG.HideHeaders()
-  for _, fs in pairs(BG.headers) do fs:Hide() end
+  for _, header in pairs(BG.headers) do header:Hide() end
 end
 
 -- The bag's bottom row: the currency tracker when the game shows one under
@@ -284,11 +286,6 @@ function BG.SectionsChanged()
   if BG.sectionFrame then BG.QueueSections() end
 end
 
--- Headers take a new accent at once.
-local function paintHeaders()
-  for _, fs in pairs(BG.headers) do T.Color(fs, "accentText") end
-end
-
 -- Whether the client has the item calls the sections classify with.
 local function itemAPI()
   return type(C_Container) == "table" and type(C_Container.GetContainerItemInfo) == "function"
@@ -320,5 +317,4 @@ function BG.WatchSections(frame)
   hooksecurefunc(frame, "UpdateItems", ns.Guard("hook UpdateItems", BG.QueueSections))
   hooksecurefunc(frame, "UpdateCurrencyFrames", ns.Guard("hook UpdateCurrencyFrames", BG.PadMoney))
   ns.On("ITEM_DATA_LOAD_RESULT", itemLoaded)
-  T.OnChanged(paintHeaders)
 end

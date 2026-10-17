@@ -20,9 +20,17 @@ local PAGE = "clickcast"
 local MOUSE = { "Left", "Right", "Middle", "Button 4", "Button 5" }
 local MODS = { { "", "Plain" }, { "shift-", "Shift" }, { "ctrl-", "Ctrl" }, { "alt-", "Alt" } }
 local MORE_MODS = { { "ctrl-shift-", "Ctrl + Shift" }, { "alt-shift-", "Alt + Shift" }, { "alt-ctrl-", "Alt + Ctrl" } }
-local CELL_H, LABEL_W, MAX_KEYS, PICKER_ROWS, ROW_H, ICON_SIZE = 40, 92, 8, 12, 24, 24
--- The hover-key list's top line (Add key and the line beside it): its height above the rows.
-local KEYS_TOP = 32
+local CELL_H, LABEL_W, MAX_KEYS, PICKER_ROWS, ICON_SIZE = 40, 92, 8, 12, 24
+-- How far down its cell a grid row's label sits, to be about centred in it (units).
+local LABEL_DROP = 12
+-- The picker's and the hover-key list's rows are list rows.
+local ROW_H = T.ROW.height
+-- The hover-key list's top line (Add key, a standalone button, with a tight gap over and under it): its height
+-- above the rows; and the whole list's height (its rows and a gap under them).
+local KEYS_TOP = T.BUTTON_H + 2 * T.SPACE.tight
+local KEYS_HEIGHT = KEYS_TOP + MAX_KEYS * ROW_H + T.SPACE.gap
+-- The spell picker's width, and where its rows start: the search box (T.CONTROL_H) with a gap over and under it.
+local PICKER_W, PICKER_TOP = 280, T.CONTROL_H + 2 * T.SPACE.gap
 local PLAIN_ACTIONS = { { "target", "Target" }, { "menu", "Unit menu" }, { "focus", "Focus" }, { "assist", "Assist" } }
 
 -- Page state: whether the extra modifier columns show, and the key the picker is for.
@@ -61,7 +69,7 @@ end
 -- An icon frame with a letter for actions that have no icon; :Set(binding) fills it.
 local function bindingIcon(parent, size)
   local f = iconFrame(parent, size)
-  f.letter = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading", "accentText")
+  f.letter = T.Text(f:CreateFontString(nil, "OVERLAY"), "name", "accentText")
   f.letter:SetPoint("CENTER")
   f.Set = setIcon
   return f
@@ -195,42 +203,50 @@ local function toggleRanks(item)
   picker:Refresh()
 end
 
--- A picker row's parts: an icon, text and a rank chevron.
+-- A picker row's parts: an icon, text, the section header a group's name shows in, and a rank chevron.
 local function rowParts(b)
-  b.icon = iconFrame(b, ROW_H - 4)
+  b.icon = iconFrame(b, ROW_H - T.SPACE.tight)
   b.icon:SetPoint("LEFT", 2, 0)
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label")
+  b.section = W.SectionHeader(b, "")
+  b.section:SetPoint("LEFT", 2, 0)
+  b.section:SetPoint("RIGHT", -2, 0)
   b.chevron = W.Button(b, "", nil, 56)
   b.chevron:SetPoint("RIGHT", -2, 0)
 end
 
--- One picker row's frame, at slot i.
+-- One picker row's frame, at slot i: a list row (W.Row) across the picker.
 local function pickerRow(i)
-  local b = CreateFrame("Button", nil, picker)
-  b:SetHeight(ROW_H)
-  b:SetPoint("TOPLEFT", 6, -(34 + (i - 1) * ROW_H))
-  b:SetPoint("TOPRIGHT", -6, -(34 + (i - 1) * ROW_H))
-  wash(b)
+  local top = -(PICKER_TOP + (i - 1) * ROW_H)
+  local b = W.Row(picker, ROW_H)
+  b:SetPoint("TOPLEFT", T.SPACE.gap, top)
+  b:SetPoint("TOPRIGHT", -T.SPACE.gap, top)
   rowParts(b)
   return b
 end
 
--- A row's text: a header in capitals, "Rank n" for a rank, else the action or spell name.
+-- A row's text: nothing for a header (its section header shows the name), "Rank n" for a rank, else the action or spell name.
 local function rowText(item)
-  if item.header then return item.header:upper() end
+  if item.header then return "" end
   if item.rank then return "Rank " .. item.rank.rank end
   return item.text or item.spell.name
 end
 
--- Lays a row out as a header (muted, no icon), a spell, a rank line or an action.
+-- Puts a row's text where its kind has it: a rank line indented under its spell, the rest after the icon.
+local function placeRowText(b, item)
+  b.text:ClearAllPoints()
+  b.text:SetPoint("LEFT", item.rank and ROW_H + 20 or ROW_H + 6, 0)
+  b.text:SetText(rowText(item))
+end
+
+-- Lays a row out as a group's section header (no icon), a spell, a rank line or an action.
 local function fillRow(b, item)
   b.item = item
+  b.section:SetShown(item.header ~= nil)
+  b.section:SetText(item.header or "")
   b.icon:SetShown(item.spell ~= nil and not item.rank)
   b.icon.icon:SetTexture(item.spell and item.spell.icon or nil)
-  b.text:ClearAllPoints()
-  b.text:SetPoint("LEFT", item.header and 2 or item.rank and ROW_H + 20 or ROW_H + 6, 0)
-  b.text:SetText(rowText(item))
-  T.Color(b.text, item.header and "muted" or "text")
+  placeRowText(b, item)
   b.chevron:SetShown(item.spell ~= nil and not item.rank and #item.spell.ranks > 1)
   b.chevron.text:SetText(item.spell and picker.open[item.spell.name] and "Ranks ^" or "Ranks v")
 end
@@ -263,10 +279,10 @@ end
 
 -- The picker's search box and the "more" line under the rows.
 local function pickerParts()
-  picker.search = W.Search(picker, 268, "Search your spells", function() picker.offset = 0 picker:Refresh() end)
-  picker.search:SetPoint("TOPLEFT", 6, -6)
+  picker.search = W.Search(picker, PICKER_W - 2 * T.SPACE.gap, "Search your spells", function() picker.offset = 0 picker:Refresh() end)
+  picker.search:SetPoint("TOPLEFT", T.SPACE.gap, -T.SPACE.gap)
   picker.more = T.Text(picker:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  picker.more:SetPoint("BOTTOMLEFT", 8, 5)
+  picker.more:SetPoint("BOTTOMLEFT", T.SPACE.gap, T.SPACE.tight)
   picker:EnableMouseWheel(true)
   picker:SetScript("OnMouseWheel", function(self, delta) self.offset = self.offset - delta * 3 self:Refresh() end)
 end
@@ -297,7 +313,7 @@ end
 local function pickerFrame()
   if picker then return picker end
   picker = T.Panel(CreateFrame("Frame", "Vanguard_SpellPicker", UIParent), { raised = true, shadow = true })
-  picker:SetSize(280, 34 + PICKER_ROWS * ROW_H + 22)
+  picker:SetSize(PICKER_W, PICKER_TOP + PICKER_ROWS * ROW_H + T.SPACE.section)
   pickerSettings()
   pickerDismissals()
   picker.open, picker.offset, picker.rows, picker.Refresh = {}, 0, {}, refreshPicker
@@ -329,7 +345,7 @@ local function openPicker(anchor, key)
   picker.search:SetText("")
   followAnchor(anchor)
   picker:ClearAllPoints()
-  picker:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 6, 0)
+  picker:SetPoint("TOPLEFT", anchor, "TOPRIGHT", T.SPACE.gap, 0)
   picker:Refresh()
   picker:Show()
   showCatcher()
@@ -377,7 +393,7 @@ local function cellTexts(c)
   c.name = T.Text(c:CreateFontString(nil, "OVERLAY"), "small")
   c.name:SetPoint("LEFT", c.iconFrame, "RIGHT", 5, 0)
   c.name:SetPoint("RIGHT", -2, 0)
-  c.empty = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "muted")
+  c.empty = T.Text(c:CreateFontString(nil, "OVERLAY"), "label", "disabled")
   c.empty:SetPoint("CENTER")
   c.empty:SetText("-")
 end
@@ -395,14 +411,13 @@ local function cell(grid, key, width)
   return c
 end
 
--- The column headers (modifier names) across the top of the grid.
+-- The column headers (modifier names) across the top of the grid: section headers, each centred over its column.
 local function gridHeaders(grid, cols, cellW)
   for i, col in ipairs(cols) do
-    local h = T.Text(grid:CreateFontString(nil, "OVERLAY"), "small", "muted")
-    h:SetPoint("TOPLEFT", LABEL_W + (i - 1) * cellW, -2)
-    h:SetWidth(cellW)
-    h:SetJustifyH("CENTER")
-    h:SetText(col[2]:upper())
+    local h = W.SectionHeader(grid, col[2], { width = cellW })
+    h:SetPoint("TOPLEFT", LABEL_W + (i - 1) * cellW, 0)
+    h.text:ClearAllPoints()
+    h.text:SetPoint("CENTER")
   end
 end
 
@@ -410,7 +425,7 @@ end
 local function gridRow(grid, row, cols, cellW)
   local y = -(18 + (row - 1) * CELL_H)
   local l = T.Text(grid:CreateFontString(nil, "OVERLAY"), "label")
-  l:SetPoint("TOPLEFT", 8, y - 12)
+  l:SetPoint("TOPLEFT", T.SPACE.gap, y - LABEL_DROP)
   l:SetText(MOUSE[row] .. " click")
   for i, col in ipairs(cols) do
     local c = cell(grid, col[1] .. "BUTTON" .. row, cellW)
@@ -451,7 +466,7 @@ end
 -- A hover-key row's texts: the key, the binding beside its icon, the collision note.
 local function keyRowTexts(row)
   row.keyText = T.Text(row:CreateFontString(nil, "OVERLAY"), "label")
-  row.keyText:SetPoint("LEFT", 4, 0)
+  row.keyText:SetPoint("LEFT", T.SPACE.tight, 0)
   row.iconFrame = bindingIcon(row, 20)
   row.iconFrame:SetPoint("LEFT", 150, 0)
   row.text = T.Text(row:CreateFontString(nil, "OVERLAY"), "label")
@@ -460,12 +475,11 @@ local function keyRowTexts(row)
   row.note:SetPoint("RIGHT", -90, 0)
 end
 
--- One hover-key row (under the Add key line): the key, the spell's icon and name, the collision note, Remove.
+-- One hover-key row (under the Add key line): a list row (W.Row) with the key, the spell's icon and name, the
+-- collision note, Remove.
 local function keyRow(list, i)
-  local row = CreateFrame("Button", nil, list)
-  row:SetSize(list:GetWidth() - 8, 26)
-  row:SetPoint("TOPLEFT", 4, -(KEYS_TOP + (i - 1) * 26))
-  wash(row)
+  local row = W.Row(list, ROW_H, { width = list:GetWidth() - 2 * T.SPACE.tight })
+  row:SetPoint("TOPLEFT", T.SPACE.tight, -(KEYS_TOP + (i - 1) * ROW_H))
   keyRowTexts(row)
   row.remove = W.Button(row, "Remove", function() CC.Remove(row.key) changed() end, 80)
   row.remove:SetPoint("RIGHT")
@@ -487,14 +501,22 @@ local function fillKeyRow(row, b)
   row.note:SetText(hit and ("also " .. hit) or "")
 end
 
--- The line under the rows: the first-time hint, or how many more there are.
+-- The count beside the Add key button: how many more keys there are than rows, or nothing.
 local function keysNote(count)
-  if count == 0 then return "No hover keys yet. Add one, press the key, pick the spell." end
   local extra = count - MAX_KEYS
   return extra > 0 and ("+" .. extra .. " more (/vg binds)") or ""
 end
 
--- Re-reads the hover-key rows and the line under them.
+-- The top line's texts: the empty-state line while there are no keys (and keys can be made), the count after it.
+local function refreshHead(list, count)
+  local on = CC.SnippetsOn()
+  list.empty:SetShown(count == 0 and on)
+  list.more:SetText(keysNote(count))
+  list.add:SetShown(on)
+  list.off:SetShown(not on)
+end
+
+-- Re-reads the hover-key rows and the line over them.
 local function refreshKeys(list)
   local bindings = hoverBindings()
   for i = 1, MAX_KEYS do
@@ -502,40 +524,47 @@ local function refreshKeys(list)
     row:SetShown(b ~= nil)
     if b then fillKeyRow(row, b) end
   end
-  list.more:SetText(keysNote(#bindings))
-  list.add:SetShown(CC.SnippetsOn())
-  list.off:SetShown(not CC.SnippetsOn())
+  refreshHead(list, #bindings)
 end
 
 -- A captured key: a mouse click belongs in the grid; a key opens the picker.
 local function keyCaptured(list, key)
   if CC.MouseParts(key) then
+    list.empty:Hide()
     list.more:SetText("That's a mouse button: it lives in the grid above.")
     return
   end
   openPicker(list.add, key)
 end
 
+-- A line of text beside the Add key button (wrapping inside the card), in a role and the text2 colour.
+local function headLine(list, role)
+  local fs = T.Text(list:CreateFontString(nil, "OVERLAY"), role, "text2")
+  fs:SetPoint("LEFT", list.add, "RIGHT", T.SPACE.gap, 0)
+  fs:SetPoint("RIGHT", list, "RIGHT", -T.SPACE.gap, 0)
+  fs:SetJustifyH("LEFT")
+  return fs
+end
+
 -- The list's top line, right under the card's title (so it shows before any row, and before the
--- page is scrolled): the Add key capture with the hint or count beside it (wrapping inside the card),
--- or the no-snippets note in their place.
+-- page is scrolled): the Add key capture with, beside it, the empty-state line (label text2) while there are no
+-- keys, or the count (small text2); or the no-snippets note (small muted) in their place.
 local function keysHead(list)
   list.add = W.KeyCapture(list, "Add key", function(key) keyCaptured(list, key) end)
-  list.add:SetPoint("TOPLEFT", 4, -4)
-  list.more = T.Text(list:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  list.more:SetPoint("LEFT", list.add, "RIGHT", 10, 0)
-  list.more:SetPoint("RIGHT", list, "RIGHT", -8, 0)
-  list.more:SetJustifyH("LEFT")
+  list.add:SetPoint("TOPLEFT", T.SPACE.tight, -T.SPACE.tight)
+  list.empty = headLine(list, "label")
+  list.empty:SetText("No hover keys yet. Add one, press the key, pick the spell.")
+  list.more = headLine(list, "small")
   list.off = T.Text(list:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  list.off:SetPoint("TOPLEFT", 8, -8)
-  list.off:SetPoint("RIGHT", list, "RIGHT", -8, 0)
+  list.off:SetPoint("TOPLEFT", T.SPACE.gap, -T.SPACE.gap)
+  list.off:SetPoint("RIGHT", list, "RIGHT", -T.SPACE.gap, 0)
   list.off:SetText("This client can't compile the secure code hover keys need; mouse bindings still work.")
 end
 
 -- The hover-key list row kind: the Add key capture and its line on top, then the rows.
 local function keysBuilder(parent, _, width)
   local list = CreateFrame("Frame", nil, parent)
-  list:SetSize(width, MAX_KEYS * 26 + 40)
+  list:SetSize(width, KEYS_HEIGHT)
   list.rows, list.Refresh = {}, refreshKeys
   for i = 1, MAX_KEYS do list.rows[i] = keyRow(list, i) end
   keysHead(list)
@@ -611,9 +640,9 @@ local function testBuilder(parent, _, width)
   local r = CreateFrame("Frame", nil, parent)
   r:SetSize(width, 60)
   r.tile = sampleTile(r)
-  r.tile:SetPoint("LEFT", 8, 0)
+  r.tile:SetPoint("LEFT", T.SPACE.gap, 0)
   r.tile.result = T.Text(r:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  r.tile.result:SetPoint("LEFT", r.tile, "RIGHT", 12, 0)
+  r.tile.result:SetPoint("LEFT", r.tile, "RIGHT", T.SPACE.col, 0)
   r.tile.result:SetText("Hover the tile, then press a key or click: it says what would happen. Nothing is cast.")
   wireTile(r.tile)
   r.Refresh = refreshTile
@@ -640,12 +669,12 @@ local function layoutBuilder(parent, _, width)
   local r = CreateFrame("Frame", nil, parent)
   r:SetSize(width, 32)
   r.layout = W.Button(r, CS.ClassName() .. " healing layout", applyLayout, 200)
-  r.layout:SetPoint("LEFT", 8, 0)
+  r.layout:SetPoint("LEFT", T.SPACE.gap, 0)
   r.layout:SetShown(CS.HasLayout())
-  r.clear = W.Button(r, "Clear all", function() CC.Clear() changed() end, 100)
-  r.clear:SetPoint("LEFT", r.layout, "RIGHT", 8, 0)
+  r.clear = W.Button(r, "Clear all", function() CC.Clear() changed() end)
+  r.clear:SetPoint("LEFT", r.layout, "RIGHT", T.SPACE.gap, 0)
   r.more = W.Button(r, state.more and "Fewer modifiers" or "More modifiers", toggleMore, 140)
-  r.more:SetPoint("RIGHT", -8, 0)
+  r.more:SetPoint("RIGHT", -T.SPACE.gap, 0)
   return r
 end
 
@@ -680,7 +709,7 @@ end
 -- The copy-to-spec dropdown, beside the Import button.
 local function copyDropdown(r)
   r.copy = W.Dropdown(r, otherSpecs, function() return nil end, copyToSpec, 160)
-  r.copy:SetPoint("LEFT", r.import, "RIGHT", 8, 0)
+  r.copy:SetPoint("LEFT", r.import, "RIGHT", T.SPACE.gap, 0)
   r.copy.Refresh = refreshCopy
 end
 
@@ -688,10 +717,10 @@ end
 local function shareBuilder(parent, _, width)
   local r = CreateFrame("Frame", nil, parent)
   r:SetSize(width, 32)
-  r.export = W.Button(r, "Export", function() ns.ShowText("Click-casting bindings", CC.Export()) end, 100)
-  r.export:SetPoint("LEFT", 8, 0)
-  r.import = W.Button(r, "Import", function() ns.AskText("Paste a click-casting string", importText) end, 100)
-  r.import:SetPoint("LEFT", r.export, "RIGHT", 8, 0)
+  r.export = W.Button(r, "Export", function() ns.ShowText("Click-casting bindings", CC.Export()) end)
+  r.export:SetPoint("LEFT", T.SPACE.gap, 0)
+  r.import = W.Button(r, "Import", function() ns.AskText("Paste a click-casting string", importText) end)
+  r.import:SetPoint("LEFT", r.export, "RIGHT", T.SPACE.gap, 0)
   copyDropdown(r)
   -- The row re-reads through its dropdown (the buttons never change).
   r.Refresh = function(self) self.copy:Refresh() end
@@ -721,7 +750,7 @@ end
 
 O.AddRowKind("bindlayout", layoutBuilder, 36)
 O.AddRowKind("bindgrid", gridBuilder, 18 + #MOUSE * CELL_H + 8)
-O.AddRowKind("bindkeys", keysBuilder, MAX_KEYS * 26 + 44)
+O.AddRowKind("bindkeys", keysBuilder, KEYS_HEIGHT + T.SPACE.tight)
 O.AddRowKind("bindtest", testBuilder, 64)
 O.AddRowKind("bindshare", shareBuilder, 36)
 
@@ -763,7 +792,7 @@ local WITH_GAME = {}
 for _, row in ipairs(ROWS) do WITH_GAME[#WITH_GAME + 1] = row end
 for _, row in ipairs({
   { "header", "The game's click bindings" },
-  { "text", "The game has click casting of its own (its Click Casting window). Switched on, it works on the raid and unit frames and Vanguard's bindings and hover keys above rest." },
+  { "text", "The game has click casting of its own (its Click Casting window). Switched on, it works on the raid and unit frames and Vanguard's bindings and hover keys above rest.", "note" },
   { "check", "Use the game's click bindings instead", useGameOn, setUseGame, false },
   { "button", "Open the game's click bindings", openGameBindings },
 }) do WITH_GAME[#WITH_GAME + 1] = row end

@@ -142,3 +142,14 @@ it("the panel follows its visibility setting", () => {
   roll(addon, "Thrall", 9);
   expect(panel(addon)[0], "a 'hidden' panel stays hidden").toBe(false);
 });
+
+it("the roll tracker: T.SPACE.gap in from the panel's edge on every side (a HUD card's padding), and as tall as its padding and lines", () => {
+  const addon = loggedIn(ROLL_ENV);
+  roll(addon, "Thrall", 42);
+  roll(addon, "Jaina", 87);
+  const gap = addon.eval("return ns.Theme.SPACE.gap");
+  const [panelRect, name] = ["", ".rows[1].left"].map((part) => addon.frame(`Vanguard_Rolls${part}`).rect);
+  const figure = addon.eval("local p = Vanguard_Rolls.rows[1].right.__points.TOPRIGHT return { p.x, p.rel == Vanguard_Rolls }");
+  expect([name.left - panelRect.left, panelRect.top - name.top, figure[0], figure[1]], "the first line a gap in from the left and top, its figure a gap in from the right").toEqual([gap, gap, -gap, true]);
+  expect(panel(addon)[1] - 3 * addon.eval("return ns.GetModule('Rolls').LINE"), "three lines (the heading and two rolls) and two gaps").toBe(2 * gap);
+});

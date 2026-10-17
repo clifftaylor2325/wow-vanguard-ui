@@ -628,15 +628,15 @@ export const unitEvents = (addon, event) => addon.eval(`local subs, plain = {}, 
   table.sort(subs)
   return { subs = table.concat(subs, " "), plain = plain }`);
 
-// TEST-ONLY Lua readers of a window's text: __titled(fs) is true when the font string is in the title role
-// (its size) and the light text colour; __headed(fs) the same for the heading role.
+// TEST-ONLY Lua readers of a window's text: __titled(fs) is true when the font string is a game window's title:
+// the heading role (its size) and the light text colour (GW.SkinTitle); __headed(fs) the same for the heading role.
 export const TITLE_LUA = `
   function __looks(fs, role, token)
     local _, size = fs:GetFont()
     local c, t = fs.__textColor, { ns.Theme.RGB(token) }
     return size == ns.Theme.RoleSize(role) and c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3]
   end
-  function __titled(fs) return __looks(fs, "title", "text") end
+  function __titled(fs) return __looks(fs, "heading", "text") end
   function __headed(fs) return __looks(fs, "heading", "text") end
 `;
 

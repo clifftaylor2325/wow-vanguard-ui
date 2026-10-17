@@ -2,7 +2,7 @@
 // in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, chatHas, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
 
 const CS = "ns.ClickCastSpells";
 const CC = 'ns.GetModule("ClickCast")';
@@ -365,13 +365,69 @@ it("the hover keys card shows Add key and its hint right under its title, inside
   const list = addon.frames("w.rows ~= nil and w.add ~= nil")[0].rect;
   const add = addon.frame(widget(addon, 'w.caption == "Add key" and w.onKey ~= nil'));
   const hint = addon.texts("No hover keys yet. Add one, press the key, pick the spell.")[0];
-  expect([add.visible, title.bottom - add.rect.top, add.rect.bottom >= view.bottom], "Add key sits 8 px under the card's title, in the page before any scrolling").toEqual([true, 8, true]);
+  expect([add.visible, title.bottom - add.rect.top, add.rect.bottom >= view.bottom], "Add key sits a tight gap (4) under the card's 18-high header band, whose 14-high title is centred in it: 6 under the title, in the page before any scrolling").toEqual([true, 6, true]);
   expect([hint.visible, hint.rect.bottom >= view.bottom, hint.rect.right <= list.right], "the hint beside it, inside the page and the card").toEqual([true, true, true]);
+  // A mouse button pressed for the new key says it lives in the grid, in the hint's spot: the hint goes, not printed over.
+  const addId = widget(addon, 'w.caption == "Add key" and w.onKey ~= nil');
+  addon.click(addId);
+  addon.eval(`local a = __wfgStub.frames[${addId}] a:GetScript("OnMouseDown")(a, "RightButton")`);
+  expect([addon.texts("No hover keys yet. Add one, press the key, pick the spell.").length, addon.texts("That's a mouse button: it lives in the grid above.").length], "with no keys yet, the empty line makes room for the mouse-button line").toEqual([0, 1]);
   addon.eval(`${CC}.Add("SHIFT-Q", "target") ns.Options.Refresh()`);
   const row = addon.texts("Shift + Q")[0].rect;
   expect(row.top <= add.rect.bottom, "a hover key's row comes under the Add key line").toBe(true);
   addon.eval("ns.Client = ns.Client or {} ns.Client.ProbeSnippets = function() return false end ns.Options.Refresh()");
   const off = addon.texts("This client can't compile the secure code hover keys need; mouse bindings still work.")[0];
-  expect([off.visible, title.bottom - off.rect.top, off.rect.right <= list.right], "without snippets the note takes the top line, inside the card").toEqual([true, 12, true]);
+  expect([off.visible, title.bottom - off.rect.top, off.rect.right <= list.right], "without snippets the note takes the top line, a gap (8) under the header band and 10 under its title, inside the card").toEqual([true, 10, true]);
+  addon.eval("ns.Client.ProbeSnippets = nil");
+});
+
+// A visible font string's size and colour by its exact text, as { size, color }.
+const fontOf = (addon, text) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__kind == "FontString" and w:IsVisible() and w.__text == ${JSON.stringify(text)} then
+  return { (select(2, w:GetFont())), w.__textColor } end end`);
+
+it("the grid's column headers are section headers centred over their cells, and an action with no icon shows its letter in the name role", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.eval('__click("Priest healing layout")');
+  const [small, name] = addon.eval("return { ns.Theme.RoleSize('small'), ns.Theme.RoleSize('name') }");
+  const head = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.text and w.__kind == "Button" and w:IsVisible() and w.text.__text == "PLAIN" then
+    return { w:GetHeight(), w:GetWidth(), w.text.__points.CENTER ~= nil, w.text.__points.LEFT == nil, (select(2, w.text:GetFont())), w.text.__textColor, (w:GetCenter()) } end end`);
+  const plain = addon.eval(`local c = __wfgStub.frames[${cell(addon, "BUTTON1")}] return { c:GetWidth(), (c:GetCenter()) }`);
+  expect(head.slice(0, 5), "a section header 18 tall, one column wide, its text centred in small").toEqual([18, plain[0] + 4, true, true, small]);
+  expect([isTok(addon, head[5], "muted"), Math.abs(head[6] - plain[1]) < 1], "muted, and centred over its column's cells").toEqual([true, true]);
+  const letter = addon.eval(`local l = __wfgStub.frames[${cell(addon, "BUTTON1")}].iconFrame.letter return { l:GetText(), (select(2, l:GetFont())), l.__textColor }`);
+  expect([letter[0], letter[1], isTok(addon, letter[2], "accentText")], "the left click's Target shows a T in the name role, in the accent's text colour").toEqual(["T", name, true]);
+});
+
+it("the picker's rows are list rows (T.ROW.height) and a group's name shows in a section header on its row", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.click(cell(addon, "ctrl-BUTTON2"));
+  const [height, small] = addon.eval("return { ns.Theme.ROW.height, ns.Theme.RoleSize('small') }");
+  const row = addon.eval(`local r = __wfgStub.frames[${pickerRow(addon, "Flash Heal")}] return { r.__kind, r:GetHeight(), r.SetSelected ~= nil, r.wash ~= nil, r.section:IsShown() }`);
+  expect(row, "a spell's row is a Button of the list row's height with the selected look, and no section header").toEqual(["Button", height, true, true, false]);
+  const header = widget(addon, "w.item ~= nil and w.chevron ~= nil and w:IsShown() and w.item.header ~= nil");
+  const section = addon.eval(`local r = __wfgStub.frames[${header}] return { r.section:IsShown(), r.section:GetHeight(), r.section.text:GetText(), (select(2, r.section.text:GetFont())), r.section.text.__textColor, r.text:GetText() }`);
+  expect([section.slice(0, 5).filter((_, i) => i !== 4), isTok(addon, section[4], "muted"), section[5]], "a group's row holds an 18 high section header in small muted capitals and no text of its own").toEqual([[true, 18, "HEALS", small], true, ""]);
+});
+
+it("the hover keys card: its key rows are list rows; the empty line is label text2, the count small text2, the off note small muted; an empty cell's mark is label disabled", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  const [height, label, small] = addon.eval("return { ns.Theme.ROW.height, ns.Theme.RoleSize('label'), ns.Theme.RoleSize('small') }");
+  const empty = fontOf(addon, "No hover keys yet. Add one, press the key, pick the spell.");
+  expect([empty[0], isTok(addon, empty[1], "text2")], "the empty-state line: label, text2").toEqual([label, true]);
+  const mark = addon.eval(`local c = __wfgStub.frames[${cell(addon, "BUTTON1")}] return { (select(2, c.empty:GetFont())), c.empty.__textColor }`);
+  expect([mark[0], isTok(addon, mark[1], "disabled")], "an empty cell's dash: label, disabled").toEqual([label, true]);
+  addon.eval(`${CC}.Add("SHIFT-Q", "target") ns.Options.Refresh()`);
+  const row = addon.eval(`local r = __wfgStub.frames[${widget(addon, 'w.key == "SHIFT-Q" and w.remove ~= nil and w.keyText ~= nil')}] return { r.__kind, r:GetHeight(), r.SetSelected ~= nil, r.wash ~= nil }`);
+  expect(row, "a key row is a Button of the list row's height with the selected look").toEqual(["Button", height, true, true]);
+  for (let i = 1; i <= 10; i++) addon.eval(`${CC}.Add("F${i}", "target")`);
+  addon.eval("ns.Options.Refresh()");
+  const count = fontOf(addon, "+3 more (/vg binds)");
+  expect([count[0], isTok(addon, count[1], "text2")], "the count: small, text2").toEqual([small, true]);
+  addon.eval("ns.Client = ns.Client or {} ns.Client.ProbeSnippets = function() return false end ns.Options.Refresh()");
+  const off = fontOf(addon, "This client can't compile the secure code hover keys need; mouse bindings still work.");
+  expect([off[0], isTok(addon, off[1], "muted")], "the no-snippets note: small, muted").toEqual([small, true]);
   addon.eval("ns.Client.ProbeSnippets = nil");
 });

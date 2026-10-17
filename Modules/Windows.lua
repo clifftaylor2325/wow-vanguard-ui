@@ -208,10 +208,10 @@ function GW.DressClose(frame, close)
   if close.GetPoint then GW.PlaceControls(frame, close) end
 end
 
--- A window's or dialog's title text (a font string; skipped when it is not one) in the title role and the
+-- A window's or dialog's title text (a font string; skipped when it is not one) in the heading role (the role a game window's own title takes, docs/THEME.md) and the
 -- light text colour. The game centres it; only its font and colour change, never its anchors or justification.
 function GW.SkinTitle(fs)
-  if type(fs) == "table" and fs.SetFont then T.Text(fs, "title", "text") end
+  if type(fs) == "table" and fs.SetFont then T.Text(fs, "heading", "text") end
 end
 
 -- The close, maximize and minimize buttons, title and push buttons in the theme.
@@ -803,7 +803,7 @@ GW.INSIDES.TimeManagerFrame = function(frame)
   GW.SkinEditBox(_G.TimeManagerAlarmMessageEditBox)
   GW.TextNamed(GW.TIME_LABELS, "small", "text")
   GW.PaintNamed({ "TimeManagerAlarmEnabledButtonText" }, "text")
-  GW.TextRegions(frame, { "TIMEMANAGER_TITLE" }, "title", "text")
+  GW.TextRegions(frame, { "TIMEMANAGER_TITLE" }, "heading", "text")
 end
 
 -- Books and letters ---------------------------------------------------------------------------

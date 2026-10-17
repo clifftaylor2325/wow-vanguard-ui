@@ -1,7 +1,8 @@
 // prepwizard: the wanted-amounts window of Instance prep (Modules/InstancePrepWizard.lua), in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { loggedIn, setCombat } from "./helpers.mjs";
+import { isTok, loggedIn, px, setCombat } from "./helpers.mjs";
+import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, titleOf, titleSize } from "./dialogs.mjs";
 
 // An empty Lua table comes back as an object: treat it as an empty list.
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -29,6 +30,16 @@ it("prepwizard: a warrior has two steps, supplies then review, and Use suggested
   const addon = open("WARRIOR", 25);
   expect(addon.frame("Vanguard_PrepWizard").visible, "/vg prep setup opens it").toBe(true);
   expect(shownSliders(addon), "step 1: the three supplies").toEqual(["bandages", "food", "potions"]);
+  const wizard = "Vanguard_PrepWizard";
+  expect(titleOf(addon, wizard), "a window title: the title role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
+  expect(closeOf(addon, wizard), "with the X where every window has it (the one ns.Dialog makes)").toEqual([px(addon, 24), px(addon, 24), true]);
+  expect([addon.eval(`return ${wizard}.close == ${wizard}.chrome.close`), addon.frames(`w.__kind == "Button" and w:GetParent() == ${wizard} and w.__points.CENTER ~= nil and w.__points.CENTER.relPoint == "TOPRIGHT"`).length], "and no second one of its own").toEqual([true, 1]);
+  expect([escapes(addon, wizard), alphaOf(addon, wizard), addon.eval("local n = 0 for _, name in ipairs(UISpecialFrames) do if name == 'Vanguard_PrepWizard' then n = n + 1 end end return n")], "Escape closes it, once on the list; the dialog alpha").toEqual([true, 0.98, 1]);
+  const caption = addon.frame(`${wizard}.caption`);
+  expect([caption.text, caption.font.size, isTok(addon, caption.textColor, "muted"), insets(addon, `${wizard}.caption`, wizard).slice(0, 2)], "the step caption is a note: small muted, T.SPACE.pad in, under the head").toEqual(["Step 1 of 2", addon.eval("return ns.Theme.RoleSize('small')"), true, [16, 40]]);
+  const food = insets(addon, `${wizard}.sliders.food`, wizard), bandages = insets(addon, `${wizard}.sliders.bandages`, wizard);
+  expect([food[0], food[1], bandages[1] - food[1], addon.eval(`return { ${wizard}.sliders.food:GetWidth(), ${wizard}.sliders.food:GetHeight() }`)], "the sliders start at T.SPACE.pad, under the caption, stacked one list row (28) apart, the window's width less two pads").toEqual([16, 56, 28, [368, 28]]);
+  expect([buttonOf(addon, `${wizard}.suggest`), buttonOf(addon, `${wizard}.next`), insets(addon, `${wizard}.next`, wizard).slice(2)], "Use suggested is plain and Next the one accent button, both standalone and 120 wide, a pad from the corner").toEqual([[false, "Use suggested", 26, 120], [true, "Next", 26, 120], [16, 16]]);
   click(addon, "suggest");
   expect([want(addon, "food"), want(addon, "bandages"), want(addon, "potions")], "level 25 suggestions").toEqual([20, 10, 3]);
   click(addon, "next");
@@ -36,9 +47,17 @@ it("prepwizard: a warrior has two steps, supplies then review, and Use suggested
   expect(addon.eval(`return ${WZ}.frame.review:GetText():find("Food & drink: 20") ~= nil`), "it lists the amounts").toBe(true);
   click(addon, "back");
   expect(step(addon), "Back returns to step 1").toBe(1);
+  expect(addon.eval(`return ${WZ}.frame.review:GetTop() - ${WZ}.frame:GetTop()`), "the review text starts where the sliders did").toBe(-56);
   click(addon, "next");
+  expect([addon.eval(`return ${WZ}.frame.next.text:GetText()`), buttonOf(addon, `${WZ}.frame.next`)[0]], "the last step ends in Done, still the accent button").toEqual(["Done", true]);
   click(addon, "next");
   expect(addon.frame("Vanguard_PrepWizard").visible, "Done closes it").toBe(false);
+  addon.slash("prep setup");
+  addon.click("Vanguard_PrepWizard.chrome.close");
+  expect(addon.frame("Vanguard_PrepWizard").visible, "so does the X").toBe(false);
+  addon.slash("prep setup");
+  pressEscape(addon);
+  expect(addon.frame("Vanguard_PrepWizard").visible, "and Escape").toBe(false);
 });
 
 it("prepwizard: hunters and warlocks get a class step with their own amount", () => {

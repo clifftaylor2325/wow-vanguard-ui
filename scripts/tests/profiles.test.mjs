@@ -3,7 +3,8 @@
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { luaValue } from "../lib/lua-emit.mjs";
-import { CLICK_LUA, RETAIL, UI_ENV, chatHas, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, RETAIL, UI_ENV, chatHas, expectErrors, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
+import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
 
 it("profile strings", () => {
   const addon = loggedIn();
@@ -382,6 +383,15 @@ it("export with Include parts: /vg export <part ...>, and the export panel's swi
   const opened = panel();
   expect([opened.title, opened.shown, opened.rows.length], "/vg export pick opens the panel with a switch per part").toEqual(["Export: what to include", true, parts.length]);
   expect(opened.rows.slice(0, 3), "named for the player, every one on").toEqual([["Layout (positions and movers)", true], ["Situations overrides", true], ["Global settings (theme, modules list, skins)", true]]);
+  const dialog = "Vanguard_ExportDialog";
+  expect(titleOf(addon, dialog), "a window title: the title role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
+  expect(closeOf(addon, dialog), "with the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
+  expect([escapes(addon, dialog), alphaOf(addon, dialog)], "Escape closes it; the dialog alpha").toEqual([true, 0.98]);
+  const note = addon.frame(`${dialog}.note`);
+  expect([note.font.size, isTok(addon, note.textColor, "muted"), insets(addon, `${dialog}.note`, dialog).slice(0, 2)], "the note is small muted, T.SPACE.pad in, under the head (40)").toEqual([addon.eval("return ns.Theme.RoleSize('small')"), true, [16, 40]]);
+  expect(insets(addon, `${dialog}.view`, dialog).slice(0, 3), "the list is T.SPACE.pad in on the left and a thumb's gutter (12) more on the right, under the note (a gap of 8)").toEqual([16, 40 + addon.eval(`return ${dialog}.note:GetHeight()`) + 8, 28]);
+  expect(addon.eval(`return { ${dialog}.rows[1]:GetWidth(), ${dialog}.rows[1]:GetHeight(), ${dialog}.rows[2]:GetTop() - ${dialog}.rows[1]:GetTop(), ${dialog}.view.child:GetHeight() }`), "a switch row as wide as the list, a list row (28) tall, the list as tall as its rows").toEqual([376, 28, -28, 28 * parts.length]);
+  expect(thumbOf(addon, `${dialog}.view`, dialog), "more parts than fit: the thumb shows, in the right pad").toEqual([true, true, 16]);
   // Clicks the button the Lua expression names.
   const click = (lua) => addon.eval(`local b = ${lua} b:GetScript("OnClick")(b)`);
   click("Vanguard_ExportDialog.none");
@@ -401,8 +411,19 @@ it("export with Include parts: /vg export <part ...>, and the export panel's swi
   expect(addon.eval("return Vanguard_TextDialog.title:GetText()"), "everything on is the whole profile").toBe("Vanguard export (profile Default)  Ctrl+C to copy");
   expect(addon.eval("return Vanguard_TextEdit:GetText():sub(1, 12)")).toBe("VG1:profile:");
   addon.eval("ns.ExportDialog()");
-  click("Vanguard_ExportDialog.close");
-  expect(panel().shown, "Close closes it").toBe(false);
+  expect([buttonOf(addon, `${dialog}.cancel`), buttonOf(addon, `${dialog}.export`)], "the dismiss button reads Cancel, beside the Export primary (the panel's one accent button); both standalone buttons, 120 wide").toEqual([[false, "Cancel", 26, 120], [true, "Export", 26, 120]]);
+  expect(addon.eval(`return { ${dialog}.all:GetWidth(), ${dialog}.none:GetWidth(), ${dialog}.all:GetHeight(), ${dialog}.chrome.close ~= ${dialog}.cancel }`), "All and None are the small pair; the X is not the Cancel button").toEqual([60, 60, 26, true]);
+  expect(insets(addon, `${dialog}.export`, dialog).slice(2), "Export a pad from the corner").toEqual([16, 16]);
+  click("Vanguard_ExportDialog.cancel");
+  expect(panel().shown, "Cancel closes it").toBe(false);
+  addon.eval("ns.ExportDialog()");
+  addon.click(`${dialog}.chrome.close`);
+  expect(panel().shown, "so does the X").toBe(false);
+  addon.eval("ns.ExportDialog()");
+  pressEscape(addon);
+  expect(panel().shown, "and Escape").toBe(false);
+  addon.eval("local all = ns.ProfileParts ns.ProfileParts = function() return { 'layout', 'global' } end ns.ExportDialog() ns.ProfileParts = all");
+  expect([panel().rows.length, thumbOf(addon, `${dialog}.view`, dialog)[0]], "two parts fit the list: no thumb").toEqual([2, false]);
 });
 it("every import backs up the profile in use first, into one rolling backup profile", () => {
   const addon = loggedIn();

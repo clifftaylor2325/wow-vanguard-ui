@@ -1,7 +1,8 @@
 // upgrades: gear compared with what you wear (Modules/Upgrades.lua) in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn } from "./helpers.mjs";
+import { chatHas, isTok, loggedIn, px } from "./helpers.mjs";
+import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
 
 // TEST-ONLY gear for a warrior with no group role (strength weights: STR 1, DPS 2.5; SPI is worth
 // nothing). Worn: bracers 1 (STR 10), rings 5 (STR 4) and 6 (STR 8), main hand 8 (3 DPS), off hand 9
@@ -106,6 +107,25 @@ it("upgrades: the weights wizard has a slider for every stat, and saves only on 
   expect(opened.length, "a slider for every stat").toBe(21);
   expect(opened.slice(0, 4), "what the kind values first, starting from this profile's weights").toEqual(["Weapon damage per second 2.5", "Strength 1", "Hit rating 1.5", "Crit rating 0.8"]);
   expect(opened.slice(-2), "then the stats it doesn't, by name").toEqual(["Spell power 0", "Spirit 0"]);
+  const wizard = "Vanguard_WeightsWizard";
+  expect(titleOf(addon, wizard), "a window title: the title role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
+  expect(closeOf(addon, wizard), "with the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
+  expect([escapes(addon, wizard), alphaOf(addon, wizard)], "Escape closes it; the dialog alpha").toEqual([true, 0.98]);
+  const caption = addon.frame(`${wizard}.caption`);
+  expect([caption.font.size, isTok(addon, caption.textColor, "muted"), insets(addon, `${wizard}.caption`, wizard).slice(0, 2)], "the caption is a note: small muted, T.SPACE.pad in, under the head").toEqual([addon.eval("return ns.Theme.RoleSize('small')"), true, [16, 40]]);
+  expect(insets(addon, `${wizard}.view`, wizard), "the list is T.SPACE.pad in, a gap (8) under the caption, a thumb's gutter (12) more on the right, over the foot (50)").toEqual([16, 40 + lua(`return ${wizard}.caption:GetHeight()`) + 8, 28, 50]);
+  expect(lua(`local r = ${wizard}.rows[1] return { r:GetWidth(), r:GetHeight(), r.box:GetWidth(), r.box:GetHeight(), r.box:GetLeft() - r:GetRight(), ${wizard}.view:GetRight() - r.box:GetRight() }`), "a stat's slider (348) and its box (60 by 20, a gap of 8 on) fill the list's width (416)").toEqual([348, 28, 60, 20, 8, 0]);
+  expect(thumbOf(addon, `${wizard}.view`, wizard), "21 stats are more than fit: the thumb shows, in the right pad").toEqual([true, true, 16]);
+  lua(`${wizard}.view:Fit(100)`);
+  expect(thumbOf(addon, `${wizard}.view`, wizard)[0], "a list that fits has no thumb").toBe(false);
+  expect([buttonOf(addon, `${wizard}.save`), buttonOf(addon, `${wizard}.cancel`), buttonOf(addon, `${wizard}.defaults`)], "Save is the one accent button; Cancel and Defaults are plain; all standalone, 120 wide").toEqual([[true, "Save", 26, 120], [false, "Cancel", 26, 120], [false, "Defaults", 26, 120]]);
+  expect(insets(addon, `${wizard}.save`, wizard).slice(2), "Save a pad from the corner").toEqual([16, 16]);
+  addon.click(`${wizard}.chrome.close`);
+  expect(lua(`return ${wizard}:IsShown()`), "the X closes it").toBe(false);
+  addon.slash("weights wizard");
+  pressEscape(addon);
+  expect([lua(`return ${wizard}:IsShown()`), stat()], "so does Escape, and nothing is saved").toEqual([false, 1]);
+  addon.slash("weights wizard");
   lua("Vanguard_WeightsWizard.rows[2].set(2) Vanguard_WeightsWizard.rows[21].set(0.5)");
   expect(stat(), "nothing is saved before Save").toBe(1);
   click("Vanguard_WeightsWizard.cancel");
