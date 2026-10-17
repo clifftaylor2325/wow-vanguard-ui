@@ -96,7 +96,7 @@ it("guild window: panes faded and panelled, portrait art faded, dropdown and max
   expect(windowState(addon, "CommunitiesFrame")).toMatchObject({ art: 0, nine: 0, panel: true, title: true });
   expect(addon.eval(`local f = CommunitiesFrame
     return { f.PortraitOverlay.Emblem.__alpha, f.CommunitiesList.Art.__alpha, f.CommunitiesList.InsetFrame.Bg.__alpha, f.MemberList.InsetFrame.NineSlice.Edge.__alpha,
-      f.Chat.InsetFrame.Bg.__alpha, f.GuildBenefitsFrame.Art.__alpha, f.GuildDetailsFrame.Art.__alpha, f.StreamDropdown.Arrow.__alpha }`), "the game's art faded").toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+      f.Chat.InsetFrame.Bg.__alpha, f.GuildBenefitsFrame.Art.__alpha, f.GuildDetailsFrame.Art.__alpha, f.StreamDropdown.Arrow.__alpha }`), "the game's art faded, the dropdown's arrow kept").toEqual([0, 0, 0, 0, 0, 0, 0, 1]);
   expect(addon.eval(`local f = CommunitiesFrame
     local function painted(x) for _, r in ipairs({ x:GetRegions() }) do if r.__alpha ~= 0 then return true end end return false end
     return { painted(f.CommunitiesList.InsetFrame), painted(f.MemberList.InsetFrame), painted(f.GuildBenefitsFrame), painted(f.StreamDropdown),
@@ -606,7 +606,7 @@ const SOCIAL_ENV = WINDOWS_ENV + `
     p.FilterBar = CreateFrame("Frame", nil, p)
     p.FilterBar.SearchBar = CreateFrame("EditBox", nil, p.FilterBar)
     p.FilterBar.SearchBar.Background = p.FilterBar.SearchBar:CreateTexture() p.FilterBar.SearchBar.searchIcon = p.FilterBar.SearchBar:CreateTexture()
-    p.FilterBar.SearchFilterDropdown = CreateFrame("Button", nil, p.FilterBar)
+    p.FilterBar.SearchFilterDropdown = CreateFrame("Button", nil, p.FilterBar) p.FilterBar.SearchFilterDropdown.Arrow = p.FilterBar.SearchFilterDropdown:CreateTexture()
     p.ActionButton = CreateFrame("Button", nil, p)
     p.ScrollBox = CreateFrame("Frame", nil, p)
     return p
@@ -646,12 +646,12 @@ it("social window: the window and its Battle.net bar, panes, side windows and ta
   addon.eval("SocialUIFrame:Show()");
   expect(windowState(addon, "SocialUIFrame")).toMatchObject({ art: 0, nine: 0, portrait: 0, panel: true, title: true });
   expect(addon.eval(`local f, box = SocialUIFrame, SocialUIFrame.BattleNetBar.ControlsContainer ${PAINTED}
-    return { f.BattleNetBar.Background.__alpha, box.BattleNetBackground.__alpha, painted(box.OnlineStatusDropdown), painted(box.BattleNetMenuButton), box.BattleNetMenuButton.Icon.__alpha }`),
-  "the Battle.net bar: plate and band faded, dropdown and menu button flat, the menu icon kept").toEqual([0, 0, true, true, 1]);
+    return { f.BattleNetBar.Background.__alpha, box.BattleNetBackground.__alpha, painted(box.OnlineStatusDropdown), painted(box.BattleNetMenuButton), box.BattleNetMenuButton.Icon.__alpha, box.OnlineStatusDropdown.Arrow.__alpha }`),
+  "the Battle.net bar: plate and band faded, dropdown and menu button flat, the menu icon and the dropdown's arrow kept").toEqual([0, 0, true, true, 1, 1]);
   expect(addon.eval(`local p = SocialUIFrame.FriendsList ${PAINTED}
     return { p.TopDivider.__alpha, p.BottomDivider.__alpha, painted(p.FilterBar.SearchBar), p.FilterBar.SearchBar.Background.__alpha, p.FilterBar.SearchBar.searchIcon.__alpha,
-      painted(p.FilterBar.SearchFilterDropdown), painted(p.ActionButton), painted(SocialUIFrame.RecentAlliesList.ActionButton), painted(SocialUIFrame.RaidFrame.RaidInfoButton), painted(SocialUIFrame.RaidFrame.ConvertToRaidButton) }`),
-  "a pane: dividers faded, the search box themed with its magnifier, the filter and action buttons flat, the raid tab's buttons too").toEqual([0, 0, true, 0, 1, true, true, true, true, true]);
+      painted(p.FilterBar.SearchFilterDropdown), painted(p.ActionButton), painted(SocialUIFrame.RecentAlliesList.ActionButton), painted(SocialUIFrame.RaidFrame.RaidInfoButton), painted(SocialUIFrame.RaidFrame.ConvertToRaidButton), p.FilterBar.SearchFilterDropdown.Arrow.__alpha }`),
+  "a pane: dividers faded, the search box themed with its magnifier, the filter (arrow kept) and action buttons flat, the raid tab's buttons too").toEqual([0, 0, true, 0, 1, true, true, true, true, true, 1]);
   expect(addon.eval(`local f = SocialUIFrame ${PAINTED}
     local function tab(i) local t = f.tabs[i] return { t.Background.__alpha, t.Icon.__alpha == ns.Theme.TAB_DIM, painted(t) } end
     local _, rel, _, x = f.tabs[1]:GetPoint(1)

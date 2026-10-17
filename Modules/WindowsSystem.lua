@@ -144,21 +144,6 @@ local function withWindowSkin(spec)
   end
 end
 
--- How many frames deep inside a window its check buttons are looked for: the addon list's rows keep theirs
--- four down (ScrollBox, ScrollTarget, the row, Enabled), the chat settings' boxes five.
-GW.CHECK_DEPTH = 5
-
--- Every check button inside frame, up to depth frames down (GW.CHECK_DEPTH unless given), as a themed check
--- box (T.CheckBox); safe to run again, as these windows make their rows and boxes as they draw.
-function GW.DressChecks(frame, depth)
-  depth = depth or GW.CHECK_DEPTH
-  if type(frame) ~= "table" or not frame.GetChildren then return end
-  for _, child in ipairs({ frame:GetChildren() }) do
-    if child.GetObjectType and child:GetObjectType() == "CheckButton" then T.CheckBox(child)
-    elseif depth > 1 then GW.DressChecks(child, depth - 1) end
-  end
-end
-
 -- The game's functions already hooked to dress a window's check buttons, by name.
 local vgCheckMakers = {}
 

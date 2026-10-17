@@ -31,19 +31,6 @@ local function namedButtons(names)
   end
 end
 
--- Gives a texture back its alpha (a button's glyph, which T.Button faded with the rest of its art).
-local function showTexture(texture)
-  if type(texture) == "table" and texture.SetAlpha then texture:SetAlpha(1) end
-end
-
--- A button whose picture is its normal and disabled texture (the money arrows, play and reset): a theme button that keeps its picture.
-local function glyphButton(button)
-  if type(button) ~= "table" or not button.GetRegions then return end
-  T.Button(button)
-  showTexture(button.GetNormalTexture and button:GetNormalTexture())
-  showTexture(button.GetDisabledTexture and button:GetDisabledTexture())
-end
-
 -- Puts the theme font (colour left as the game set it) on each font string of a frame named in keys.
 local function keyFonts(frame, keys, role)
   for _, key in ipairs(keys) do
@@ -187,7 +174,7 @@ local function styleModelControls(scene)
     local button = box[key]
     if type(button) == "table" and button.GetRegions then
       T.Button(button)
-      showTexture(button.Icon)
+      GW.ShowTexture(button.Icon)
     end
   end
 end
@@ -208,8 +195,8 @@ function GW.SkinStackSplit(frame)
   GW.Skin(frame)
   fadeWhole(frame, SPLIT_ART)
   keyButtons(frame, { "OkayButton", "CancelButton" })
-  glyphButton(frame.LeftButton)
-  glyphButton(frame.RightButton)
+  GW.SkinGlyph(frame.LeftButton)
+  GW.SkinGlyph(frame.RightButton)
   keyFonts(frame, { "StackSplitText", "StackItemCountText" }, "number")
 end
 
@@ -220,8 +207,8 @@ function GW.SkinCoinPickup(frame)
   for _, name in ipairs(COIN_ICONS) do keep[_G[name] or false] = true end
   T.FadeRegions(frame, keep)
   namedButtons(COIN_BUTTONS)
-  glyphButton(_G.CoinPickupLeftButton)
-  glyphButton(_G.CoinPickupRightButton)
+  GW.SkinGlyph(_G.CoinPickupLeftButton)
+  GW.SkinGlyph(_G.CoinPickupRightButton)
   namedFonts({ "CoinPickupText" }, "number")
 end
 
@@ -303,7 +290,7 @@ local function skinMerchantTiles()
     local button = _G[name]
     if type(button) == "table" and button.GetRegions then
       T.Button(button)
-      showTexture(button.Icon)
+      GW.ShowTexture(button.Icon)
     end
   end
 end
@@ -311,7 +298,7 @@ end
 -- A page arrow as a theme button that keeps its arrow, its caption in the theme font.
 local function skinPageArrow(button)
   if type(button) ~= "table" or not button.GetRegions then return end
-  glyphButton(button)
+  GW.SkinGlyph(button)
   regionFonts(button, "label")
 end
 
@@ -420,8 +407,8 @@ function GW.SkinStopwatch(frame)
   GW.Skin(frame)
   if type(_G.StopwatchTabFrame) == "table" then T.FadeRegions(_G.StopwatchTabFrame) end
   GW.DressClose(frame, _G.StopwatchCloseButton)
-  glyphButton(_G.StopwatchPlayPauseButton)
-  glyphButton(_G.StopwatchResetButton)
+  GW.SkinGlyph(_G.StopwatchPlayPauseButton)
+  GW.SkinGlyph(_G.StopwatchResetButton)
   namedFonts({ "StopwatchTitle" }, "small")
 end
 

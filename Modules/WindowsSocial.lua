@@ -235,7 +235,7 @@ function GW.SkinGuildWindow(frame)
   GW.Skin(frame)
   GW.FadeParts(frame, { "PortraitOverlay" })
   for _, key in ipairs(GW.GUILD_PANES) do dressPane(frame[key]) end
-  if type(frame.StreamDropdown) == "table" and frame.StreamDropdown.CreateTexture then T.Button(frame.StreamDropdown) end
+  GW.SkinDropdown(frame.StreamDropdown)
   dressGuildPages(frame)
   after(frame, "SetDisplayMode", GW.SkinGuildWindow)
 end
@@ -353,13 +353,6 @@ local function iconButton(button)
   if type(button.Icon) == "table" and button.Icon.SetAlpha then button.Icon:SetAlpha(1) end
 end
 
--- A search box (SearchBoxNineSliceTemplate) as T.EditBox, its magnifier shown again.
-local function searchBox(box)
-  if type(box) ~= "table" or not box.SetText then return end
-  T.EditBox(box)
-  if type(box.searchIcon) == "table" and box.searchIcon.SetAlpha then box.searchIcon:SetAlpha(1) end
-end
-
 -- The Battle.net bar: its plate and the band behind the status dropdown and battletag faded, the status
 -- dropdown flat (its presence dot is in its text), the menu button flat with its icon.
 local function dressBattleNetBar(bar)
@@ -368,7 +361,7 @@ local function dressBattleNetBar(bar)
   local box = bar.ControlsContainer
   if type(box) ~= "table" or not box.GetRegions then return end
   T.FadeRegions(box)
-  dressKeys(box, { "OnlineStatusDropdown" }, "CreateTexture", T.Button)
+  dressKeys(box, { "OnlineStatusDropdown" }, "CreateTexture", GW.SkinDropdown)
   iconButton(box.BattleNetMenuButton)
 end
 
@@ -379,8 +372,8 @@ local function dressSocialPane(pane)
   GW.FadeParts(pane, GW.SOCIAL_PANE_ART)
   local bar = pane.FilterBar
   if type(bar) == "table" then
-    searchBox(bar.SearchBar)
-    dressKeys(bar, { "SearchFilterDropdown" }, "CreateTexture", T.Button)
+    GW.SkinSearch(bar.SearchBar)
+    dressKeys(bar, { "SearchFilterDropdown" }, "CreateTexture", GW.SkinDropdown)
   end
   dressKeys(pane, GW.SOCIAL_PANE_BUTTONS, "CreateTexture", T.Button)
 end

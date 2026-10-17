@@ -293,6 +293,52 @@ function GW.SkinTimerContainer(box)
   hooksecurefunc(box, "SetupTimer", ns.Guard("hook SetupTimer", function() skinContainerTimers(box) end))
 end
 
+-- Shared skin helpers ----------------------------------------------------------------------------
+
+-- Gives a texture back its alpha (a button's picture or a search box's magnifier, which the theme's button and
+-- edit box fade with the rest of the game's art); anything that is not a texture is skipped.
+function GW.ShowTexture(texture)
+  if type(texture) == "table" and texture.SetAlpha then texture:SetAlpha(1) end
+end
+
+-- A button whose picture is its normal and disabled texture (the money arrows, play and reset): a theme button
+-- that keeps its picture.
+function GW.SkinGlyph(button)
+  if type(button) ~= "table" or not button.GetRegions then return end
+  T.Button(button)
+  GW.ShowTexture(button.GetNormalTexture and button:GetNormalTexture())
+  GW.ShowTexture(button.GetDisabledTexture and button:GetDisabledTexture())
+end
+
+-- A dropdown button (the game's DropdownButton) as a theme button that keeps its arrow.
+function GW.SkinDropdown(dropdown)
+  if type(dropdown) ~= "table" or not dropdown.CreateTexture then return end
+  T.Button(dropdown)
+  GW.ShowTexture(dropdown.Arrow)
+end
+
+-- A search box (SearchBoxNineSliceTemplate) as T.EditBox, its magnifier shown again.
+function GW.SkinSearch(box)
+  if type(box) ~= "table" or not box.SetText then return end
+  T.EditBox(box)
+  GW.ShowTexture(box.searchIcon)
+end
+
+-- How many frames deep inside a window its check buttons are looked for: the addon list's rows keep theirs
+-- four down (ScrollBox, ScrollTarget, the row, Enabled), the chat settings' boxes five.
+GW.CHECK_DEPTH = 5
+
+-- Every check button inside frame, up to depth frames down (GW.CHECK_DEPTH unless given), as a themed check
+-- box (T.CheckBox); safe to run again, as these windows make their rows and boxes as they draw.
+function GW.DressChecks(frame, depth)
+  depth = depth or GW.CHECK_DEPTH
+  if type(frame) ~= "table" or not frame.GetChildren then return end
+  for _, child in ipairs({ frame:GetChildren() }) do
+    if child.GetObjectType and child:GetObjectType() == "CheckButton" then T.CheckBox(child)
+    elseif depth > 1 then GW.DressChecks(child, depth - 1) end
+  end
+end
+
 -- The game menu -------------------------------------------------------------------------------
 
 -- One game menu button in the theme, once: the menu takes its buttons from a

@@ -683,3 +683,19 @@ it("game windows registry: parts and named art faded, missing ones skipped", () 
     return { f.Tex.__alpha, inner.__alpha, TestOnlyNamedArt.__alpha }`);
   expect(out).toEqual([0, 0, 0]);
 });
+it("R2.4 shared skin helpers: a glyph keeps its picture, a dropdown its arrow, a search box its magnifier; anything else is skipped", () => {
+  const addon = loggedIn(`TestOnlyLocal = true`);
+  const out = addon.eval(`
+    local GW = ns.GetModule("Windows")
+    local function art(f) local t = f:CreateTexture() t:SetTexture("TEST-ONLY-ART") return t end
+    local glyph = CreateFrame("Button", nil, UIParent) glyph.up, glyph.off = art(glyph), art(glyph)
+    glyph.GetNormalTexture, glyph.GetDisabledTexture = function() return glyph.up end, function() return glyph.off end
+    local drop = CreateFrame("Button", nil, UIParent) drop.Arrow = art(drop)
+    local search = CreateFrame("EditBox", nil, UIParent) search.searchIcon = art(search)
+    GW.SkinGlyph(glyph) GW.SkinDropdown(drop) GW.SkinSearch(search)
+    GW.SkinGlyph(nil) GW.SkinGlyph({}) GW.SkinDropdown("x") GW.SkinDropdown({}) GW.SkinSearch(false) GW.SkinSearch({}) GW.ShowTexture(nil) GW.ShowTexture({})
+    return { glyph:GetNormalTexture():GetAlpha(), glyph:GetDisabledTexture():GetAlpha(), drop.Arrow:GetAlpha(), search.searchIcon:GetAlpha(),
+      ns.Theme.PaintedCount() > 0, #ns.errors }`);
+  expect(out, "pictures shown again after the theme faded the game's art; odd input skipped without an error").toEqual([1, 1, 1, 1, true, 0]);
+  expect(addon.eval('return { type(ns.GetModule("Windows").DressChecks), ns.GetModule("Windows").CHECK_DEPTH }'), "the check-box helpers live with the shared ones").toEqual(["function", 5]);
+});
