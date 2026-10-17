@@ -884,3 +884,53 @@ it("R2.9 the mail window: a picture that arrives later is kept; the windows grou
   noBars.eval("MailFrame:Show()");
   expect(noBars.eval("return #ns.errors"), "no send page is no error").toBe(0);
 });
+// TEST-ONLY quest and gossip windows (QuestFrame.xml, GossipFrame.xml): the four quest pages with their parchment,
+// the six push buttons, six required-item tiles (an icon, a name plate and a name) with the required money line,
+// and the gossip window's greeting panel with its parchment and Goodbye button.
+const QUEST_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
+  local q = __window("QuestFrame")
+  for _, name in ipairs(ns.GetModule("Windows").QUEST_PANELS) do __art(CreateFrame("Frame", name, q)) __art(_G[name]) end
+  for _, name in ipairs(ns.GetModule("Windows").EXTRA_BUTTONS.QuestFrame) do CreateFrame("Button", name, q) end
+  for i = 1, 6 do
+    local item = __itemButton("QuestProgressItem" .. i, QuestFrameProgressPanel) item.NameFrame = __art(item) item.Icon = item.icon
+    _G["QuestProgressItem" .. i .. "Name"] = __text(item)
+  end
+  __moneyLine("QuestProgressRequiredMoneyFrame", QuestFrameProgressPanel)
+  local g = __window("GossipFrame")
+  g.GreetingPanel = CreateFrame("Frame", nil, g) __art(g.GreetingPanel) g.GreetingPanel.GoodbyeButton = CreateFrame("Button", nil, g.GreetingPanel)
+  -- TEST-ONLY reader of the quest and gossip windows' inside (see questState).
+  function __questState()
+    local panels, items, buttons = 0, 0, 0
+    for _, name in ipairs(ns.GetModule("Windows").QUEST_PANELS) do if __faded(_G[name]) then panels = panels + 1 end end
+    for i = 1, 6 do
+      local item = _G["QuestProgressItem" .. i]
+      if item.NameFrame.__alpha == 0 and ns.FrameState("vgSkinned")[item] and __themed(_G["QuestProgressItem" .. i .. "Name"]) then items = items + 1 end
+    end
+    for _, name in ipairs(ns.GetModule("Windows").EXTRA_BUTTONS.QuestFrame) do if select("#", _G[name]:GetRegions()) > 0 then buttons = buttons + 1 end end
+    return { panels = panels, items = items, buttons = buttons, money = __themed(QuestProgressRequiredMoneyFrame.GoldButton.Text),
+      greeting = __faded(GossipFrame.GreetingPanel), goodbye = select("#", GossipFrame.GreetingPanel.GoodbyeButton:GetRegions()) > 0, painted = ns.Theme.PaintedCount() }
+  end
+`;
+// The quest and gossip windows' inside as __questState reads it.
+const questState = (addon) => addon.eval("return __questState()");
+it("R2.10 the quest and gossip windows (quest dialog off): the four pages' parchment faded, required items and money, buttons, the Goodbye button", () => {
+  const addon = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestDialog = { dialog = false } } }" });
+  addon.eval("QuestFrame:Show() GossipFrame:Show()");
+  const first = questState(addon);
+  expect(first, "all pages faded, six required items in the item look, money in the theme font, the push buttons and Goodbye themed").toMatchObject({ panels: 4, items: 6, buttons: 6, money: true, greeting: true, goodbye: true });
+  expect([windowState(addon, "QuestFrame").panel, windowState(addon, "GossipFrame").panel], "both windows skinned").toEqual([true, true]);
+  addon.eval("QuestFrame:Hide() QuestFrame:Show() GossipFrame:Hide() GossipFrame:Show()");
+  expect([questState(addon).painted, addon.eval("return #ns.errors")], "a second show paints nothing new and raises no error").toEqual([first.painted, 0]);
+});
+it("R2.10 the quest and gossip windows: Vanguard's quest dialog on leaves them the game's; bare or odd windows load cleanly", () => {
+  const on = loggedIn(QUEST_ENV);
+  on.eval("QuestFrame:Show() GossipFrame:Show()");
+  expect(questState(on), "with the dialog on the game's windows are not touched").toMatchObject({ panels: 0, items: 0, buttons: 0, greeting: false, goodbye: false });
+  const dialogOff = "VanguardDB.profiles = { Default = { QuestDialog = { dialog = false } } }";
+  const bare = loggedIn(`${WINDOWS_ENV}__window("QuestFrame") __window("GossipFrame")`, { savedVariables: dialogOff });
+  bare.eval("QuestFrame:Show() GossipFrame:Show()");
+  expect([windowState(bare, "QuestFrame").panel, bare.eval("return #ns.errors")], "windows without their pages are skinned without an error").toEqual([true, 0]);
+  const odd = loggedIn(`${QUEST_ENV} QuestFrameRewardPanel = {} QuestProgressItem2 = {} GossipFrame.GreetingPanel.GoodbyeButton = {} QuestProgressRequiredMoneyFrame = nil`, { savedVariables: dialogOff });
+  odd.eval("QuestFrame:Show() GossipFrame:Show()");
+  expect(odd.eval("return #ns.errors"), "odd parts are skipped").toBe(0);
+});

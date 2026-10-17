@@ -854,6 +854,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the inbox has no parchment and the rows have no brown plates; each row's item is a square with a thin border in the item's quality colour (read mail's border greyed); the sender and subject are in the theme font with the game's colours; the Previous and Next arrows are flat tiles with the theme's arrow and a light caption. On the Send Mail tab the letter sits on a darker flat panel and your text is light, not dark brown; To and Subject are flat dark boxes with light labels; the amount boxes are flat with their coins; the two choices are round radios that fill with the accent when picked; the money well at the bottom left is a flat panel; the two bronze bars are thin lines; the attachment slots are squares that show the item's picture. Cancel and Send are themed buttons. [Needs in game: all of it, most of all that the letter text is readable.]
 - If it fails, paste: a screenshot of each tab and `/vg errors`.
 
+### 14.14.3 Quest and gossip windows
+
+- Do: switch off the quest dialog (`/vg` → Quests → the quest dialog switch). Talk to a quest giver with a quest to accept, then one with a quest to turn in that needs an item and some money, and to someone who has only gossip lines (an innkeeper). Look at each page.
+- Expect: no brown parchment behind the text on any page; the text sits on the window's darker flat panel and stays readable (light text, light headings); on the turn-in page each required item is a square with a thin quality-coloured border and no gold name plate, the required money is in the theme font; Accept, Decline, Complete Quest, Continue, Cancel and Goodbye are themed buttons; the gossip window's list sits on the flat panel and its Goodbye button is a themed button. With the dialog switched on, the game's own windows are not used.
+- If it fails, paste: a screenshot of the page and `/vg errors`.
+
 ## 15. Talent planner
 
 ### 15.1 Bar and plan mode

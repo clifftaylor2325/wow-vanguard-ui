@@ -74,6 +74,10 @@ GW.QUEST_HEADS = { "QuestInfoTitleHeader", "QuestInfoDescriptionHeader", "QuestI
 GW.EXTRA_BUTTONS = {
   MailFrame = { "OpenAllMail", "SendMailCancelButton", "SendMailMailButton" },
   TradeFrame = { "TradeFrameTradeButton", "TradeFrameCancelButton" },
+  QuestFrame = {
+    "QuestFrameAcceptButton", "QuestFrameDeclineButton", "QuestFrameCompleteQuestButton", "QuestFrameGoodbyeButton",
+    "QuestFrameCompleteButton", "QuestFrameGreetingGoodbyeButton",
+  },
 }
 -- The character pane's gear slots (Character<slot>Slot; each button's ID is its inventory slot).
 GW.SLOTS = { "Head", "Neck", "Shoulder", "Back", "Chest", "Wrist", "Hands", "Waist", "Legs", "Feet",
@@ -391,6 +395,7 @@ end
 -- An item button (a trade row's, a mail attachment's) in the bags' item look: a thin border in the item's
 -- quality colour; a button the client lacks is skipped.
 function GW.SkinItem(button)
+  if type(button) ~= "table" or not button.CreateTexture then return end
   local bags = ns.GetModule("Bags")
   if bags and bags.SkinItem then bags.SkinItem(button) end
 end
@@ -414,6 +419,17 @@ function GW.TextRegions(frame, names, role, token)
   for _, region in ipairs({ frame:GetRegions() }) do
     if region.SetFont and region.GetText and texts[region:GetText()] then T.Text(region, role, token) end
   end
+end
+
+-- A push button the window skin does not reach (a button under a key, not Button1-4) as a theme button; anything
+-- that is not a frame is skipped.
+function GW.SkinButton(button)
+  if type(button) == "table" and button.CreateTexture then T.Button(button) end
+end
+
+-- A frame's own art faded (a parchment panel, left on the window's inset); anything that is not a frame is skipped.
+function GW.FadeArt(part)
+  if type(part) == "table" and part.GetRegions then T.FadeRegions(part) end
 end
 
 -- A radio button (UIRadioButtonTemplate) as a theme radio; anything that is not a frame is skipped.
@@ -654,6 +670,36 @@ GW.INSIDES.MailFrame = function()
   skinLetter()
   skinSendMoney()
   for i = 1, 16 do GW.SkinPictureSlot(_G["SendMailAttachment" .. i]) end
+end
+
+-- The quest and gossip windows ----------------------------------------------------------------
+
+-- The four pages of the quest window (QuestFramePanelTemplate: a parchment and its material art on each).
+GW.QUEST_PANELS = { "QuestFrameRewardPanel", "QuestFrameProgressPanel", "QuestFrameDetailPanel", "QuestFrameGreetingPanel" }
+
+-- One required-item tile of the turn-in page (QuestProgressItem1-6, LargeItemButtonTemplate): its name plate
+-- faded, the item look on the button, the name in the theme font with the colour the game gives it.
+local function skinQuestItem(i)
+  local item = _G["QuestProgressItem" .. i]
+  if type(item) ~= "table" then return end
+  GW.FadeParts(item, { "NameFrame" })
+  GW.SkinItem(item)
+  GW.TextNamed({ "QuestProgressItem" .. i .. "Name" }, "label", false)
+end
+
+-- The quest window's inside: the parchment of its four pages faded (the window's inset stays behind the text),
+-- the six required items and the required money line. Its six push buttons are in GW.EXTRA_BUTTONS.
+GW.INSIDES.QuestFrame = function()
+  eachNamed(GW.QUEST_PANELS, GW.FadeArt)
+  for i = 1, 6 do skinQuestItem(i) end
+  GW.SkinMoney(_G.QuestProgressRequiredMoneyFrame)
+end
+
+-- The gossip window's inside: the greeting panel's parchment faded and its Goodbye button a theme button.
+GW.INSIDES.GossipFrame = function(frame)
+  local panel = frame.GreetingPanel
+  GW.FadeArt(panel)
+  GW.SkinButton(type(panel) == "table" and panel.GoodbyeButton or nil)
 end
 
 -- Readable text ------------------------------------------------------------------------------
