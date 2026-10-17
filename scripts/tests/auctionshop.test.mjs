@@ -171,11 +171,11 @@ it("shopping lists: the pane picks or makes one, + Add adds, and the caps hold",
   expect([chatHas(addon, /at most 20 shopping lists/), chatHas(addon, /holds at most 50 items/)], "says why").toEqual([true, true]);
   expect(addon.eval(`return ${HELPER}.NewList("   ")`), "no name, no list").toBe(false);
 });
-it("the list picked in the pane wears the one selected look (W.Row's rail and wash, in the accent), with its name in the plain text colour", () => {
+it("the list picked in the pane wears the one selected look (W.Row's accent rail over its raisedHover fill), with its name in the plain text colour", () => {
   const addon = atAuctionHouse();
   makeList(addon, "TEST-ONLY A", '{ "x" }');
   makeList(addon, "TEST-ONLY B", '{ "y" }');
-  const [wash, rail] = addon.eval("return { ns.Theme.ROW.wash, ns.Theme.ROW.height }");
+  const [wash, rail] = addon.eval("return { 1, ns.Theme.ROW.height }");
   // Pane row i: [a list row, selected, rail shown, wash shown, name in the text colour].
   const look = (i) => {
     const row = `${HELPER}.pane.rows[${i}]`;
@@ -184,7 +184,7 @@ it("the list picked in the pane wears the one selected look (W.Row's rail and wa
   };
   expect([look(1), look(2)], "the list shown is selected; the other is a plain row").toEqual([[true, false, false, false, true], [true, true, true, true, true]]);
   const [railColor, washColor] = ["rail", "wash"].map((part) => addon.frame(`${HELPER}.pane.rows[2].${part}`).vertexColor);
-  expect([isTok(addon, railColor, "accent"), isTok(addon, washColor, "accent"), washColor[3]], "the rail and the wash in the accent, the wash at T.ROW.wash").toEqual([true, true, wash]);
+  expect([isTok(addon, railColor, "accent"), isTok(addon, washColor, "raisedHover"), washColor[3]], "the rail in the accent, the fill in raisedHover, opaque").toEqual([true, true, wash]);
   expect(addon.eval(`return ${HELPER}.pane.rows[2]:GetHeight()`), "the rows keep the auction helper's height, not the options window's").toBe(addon.eval(`return ${HELPER}.ROW_H`));
   addon.click(`${HELPER}.pane.rows[1]`);
   expect([look(1).slice(1, 4), look(2).slice(1, 4)], "a click moves it").toEqual([[true, true, true], [false, false, false]]);

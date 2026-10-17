@@ -228,27 +228,70 @@ it("a collapsible section header: a 12 px chevron in text2 left of the text that
     return h.collapsed`), "collapsible without onToggle still folds on a click").toBe(true);
 });
 
-it("a list row: T.ROW.height tall with the hover wash, and the one selected look (rail and wash) that follows the accent", () => {
+it("a list row: T.ROW.height tall, and the one selected look (the accent rail over the raisedHover fill) that follows the accent", () => {
   const addon = loggedIn(PANEL_LUA);
   addon.eval(`local f = __panel("TestOnlyRows")
     __row = ns.Widgets.Row(f, nil, { width = 300 })
     __row:SetPoint("TOPLEFT", 16, -40)
     __short = ns.Widgets.Row(f, 20)`);
-  const rows = addon.eval(`local r = __row
-    local hover
-    for _, t in ipairs({ r:GetRegions() }) do if t.__layer == "HIGHLIGHT" then hover = t.__vertexColor end end
-    return { r:GetHeight(), r:GetWidth(), __short:GetHeight(), __short:GetWidth(), r.selected, r.rail:IsShown(), r.wash:IsShown(), hover }`);
-  expect(rows.slice(0, 7), "28 tall (or the height given), opts.width wide, not selected: no rail, no wash").toEqual([28, 300, 20, 0, false, false, false]);
-  expect(isTok(addon, rows[7], "hover"), "the hover wash on the highlight layer").toBe(true);
+  const rows = addon.eval("return { __row:GetHeight(), __row:GetWidth(), __short:GetHeight(), __short:GetWidth(), __row.selected, __row.rail:IsShown(), __row.wash:IsShown() }");
+  expect(rows, "28 tall (or the height given), opts.width wide, not selected: no rail, no fill").toEqual([28, 300, 20, 0, false, false, false]);
   addon.eval("__row:SetSelected(true)");
   const selected = addon.eval(`local r = __row
     return { r.selected, r.rail:IsShown(), r.wash:IsShown(), r.rail:GetWidth() / ns.Theme.Pixel(r), r.rail:GetLeft() - r:GetLeft(), r.rail:GetHeight() - r:GetHeight(), r.wash.__vertexColor[4] }`);
-  expect(selected, "selected: a rail T.ROW.rail screen pixels wide down the left edge, the wash at T.ROW.wash alpha").toEqual([true, true, true, 2, 0, 0, 0.12]);
-  expect([isTok(addon, addon.frame("__row.rail").vertexColor, "accent"), isTok(addon, addon.frame("__row.wash").vertexColor, "accent")], "both in the accent").toEqual([true, true]);
+  expect(selected, "selected: a rail T.SELECT.rail screen pixels wide down the left edge, the fill opaque").toEqual([true, true, true, 2, 0, 0, 1]);
+  expect([isTok(addon, addon.frame("__row.rail").vertexColor, "accent"), isTok(addon, addon.frame("__row.wash").vertexColor, "raisedHover")], "the rail in the accent, the fill in raisedHover").toEqual([true, true]);
   addon.slash("accent ff8000");
-  expect([isTok(addon, addon.frame("__row.rail").vertexColor, "accent"), isTok(addon, addon.frame("__row.wash").vertexColor, "accent"), addon.frame("__row.wash").vertexColor[3]], "a new accent re-tints them (T.Tint remembers)").toEqual([true, true, 0.12]);
+  expect(isTok(addon, addon.frame("__row.rail").vertexColor, "accent"), "a new accent re-tints the rail (T.Tint remembers)").toBe(true);
   addon.eval("__row:SetSelected(false)");
   expect(addon.eval("return { __row.selected, __row.rail:IsShown(), __row.wash:IsShown() }"), "unselected again").toEqual([false, false, false]);
+});
+
+// A row's layers as shown: [hover, press, fill, rail].
+const ROW_LAYERS = (name) => `local p = ns.Theme.RowParts(${name}) return { p.hover:IsShown(), p.press:IsShown(), p.fill:IsShown(), p.rail:IsShown() }`;
+
+it("T.Row and T.RowState: hover, press, selected and disabled are layers that stack; a disabled row shows no hover or press; normal clears all", () => {
+  const addon = loggedIn(PANEL_LUA);
+  addon.eval(`local f = __panel("TestOnlyRowStates")
+    __r = CreateFrame("Button", nil, f)
+    __r.text = __r:CreateFontString()
+    ns.Theme.Row(__r) ns.Theme.Row(__r)`);
+  // The row's layers after putting it in a state (or as they are).
+  const layers = (state) => (state ? addon.eval(`ns.Theme.RowState(__r, ${state}) ${ROW_LAYERS("__r")}`) : addon.eval(ROW_LAYERS("__r")));
+  expect(layers(), "at rest nothing shows").toEqual([false, false, false, false]);
+  addon.eval("local r = __r r.__scripts.OnEnter(r)");
+  expect(layers(), "the mouse over it: the hover wash").toEqual([true, false, false, false]);
+  addon.eval("local r = __r r.__scripts.OnMouseDown(r, 'LeftButton')");
+  expect(layers(), "held: the press shade over the hover").toEqual([true, true, false, false]);
+  addon.eval("local r = __r r.__scripts.OnMouseUp(r, 'LeftButton')");
+  expect(layers('"selected"'), "selected stacks with hover: the fill and the rail").toEqual([true, false, true, true]);
+  expect(addon.eval("local p = ns.Theme.RowParts(__r) return { p.press.__vertexColor[4] }"), "the press shade is T.PRESS.row").toEqual([addon.eval("return ns.Theme.PRESS.row")]);
+  expect(layers('"disabled"'), "disabled: no hover (the selected look stays)").toEqual([false, false, true, true]);
+  expect(isTok(addon, addon.eval("return __r.text.__textColor"), "disabled"), "its label takes the disabled tier").toBe(true);
+  addon.eval("local r = __r r.__scripts.OnEnter(r) r.__scripts.OnMouseDown(r)");
+  expect(addon.eval(ROW_LAYERS("__r")), "a disabled row ignores the mouse").toEqual([false, false, true, true]);
+  expect(layers('"normal"'), "normal clears every layer").toEqual([false, false, false, false]);
+  addon.eval("ns.Theme.RowState(__r, 'hover', true) ns.Theme.PressRow(__r, true) ns.Theme.SelectRow(__r, true)");
+  expect(addon.eval(ROW_LAYERS("__r")), "the helpers set their layer").toEqual([true, true, true, true]);
+  addon.eval("local r = __r r.__scripts.OnHide(r)");
+  expect(addon.eval(ROW_LAYERS("__r")), "a hide lets go of hover and press, not selection").toEqual([false, false, true, true]);
+  addon.eval("ns.Theme.RowState(__r, 'bogus') ns.Theme.RowState(CreateFrame('Frame'), 'hover') ns.Theme.SelectRow(CreateFrame('Frame'), true)");
+  expect(addon.eval(ROW_LAYERS("__r")), "an unknown state or a frame T.Row never dressed is left alone").toEqual([false, false, true, true]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("T.Row on a game row: its art faded by alpha (opts.fade), its own layers kept; the game's enable and disable scripts drive the disabled look", () => {
+  const addon = loggedIn(PANEL_LUA);
+  addon.eval(`local f = __panel("TestOnlyGameRow")
+    __g = CreateFrame("Button", nil, f)
+    __g.art = __g:CreateTexture()
+    __g:Disable()
+    ns.Theme.Row(__g, { fade = true }) ns.Theme.Row(__g, { fade = true })`);
+  expect(addon.eval("local p = ns.Theme.RowParts(__g) return { __g.art.__alpha, p.fill:GetAlpha(), p.rail:GetAlpha(), p.hover:GetAlpha() }"), "the game's texture faded, ours not").toEqual([0, 1, 1, 1]);
+  addon.eval("local g = __g g:Enable() g.__scripts.OnEnable(g) g.__scripts.OnEnter(g)");
+  expect(addon.eval(ROW_LAYERS("__g")), "a row that starts disabled shows no hover; enabled, it does").toEqual([true, false, false, false]);
+  addon.eval("local g = __g g.__scripts.OnDisable(g) ns.Theme.Row(CreateFrame('Frame'))");
+  expect(addon.eval(ROW_LAYERS("__g")), "disabled again").toEqual([false, false, false, false]);
 });
 
 // TEST-ONLY scroll bar shaped like the game's MinimalScrollBar: a Track holding the Thumb, arrow buttons with art.
@@ -295,5 +338,27 @@ it("T.ScrollBar: the game's thumb carries the one T.SCROLL line, lit while the m
     return { held, off, __line:GetAlpha() }`);
   expect(drag, "lit while held, even with the mouse off the thumb; the rest alpha when let go").toEqual([1, 1, 0.5]);
   expect(addon.eval("local f = CreateFrame('Frame', nil, UIParent) f.Back = CreateFrame('Button', nil, f) ns.Theme.ScrollBar(f) return { f.Back:GetAlpha(), ns.FrameState('vgArrow')[f.Back] == nil }"), "a frame without a thumb is left alone").toEqual([1, true]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("T.ScrollBar on the old scroll frame's bar (a slider with a ThumbTexture): the grip faded, the one T.SCROLL line down it, lit while the mouse is over the bar or drags it; the up and down buttons fade", () => {
+  const addon = loggedIn(PANEL_LUA);
+  addon.eval(`local bar = CreateFrame("Frame", nil, UIParent)
+    bar:SetSize(16, 300) bar:SetPoint("CENTER")
+    bar.art = bar:CreateTexture()
+    bar.ThumbTexture = bar:CreateTexture()
+    bar.ThumbTexture:SetSize(16, 24) bar.ThumbTexture:SetPoint("TOP")
+    bar.ScrollUpButton, bar.ScrollDownButton = CreateFrame("Button", nil, bar), CreateFrame("Button", nil, bar)
+    __old = bar
+    ns.Theme.ScrollBar(bar) ns.Theme.ScrollBar(bar)
+    __oldLine = ns.FrameState('vgThumb')[bar].bar`);
+  const line = addon.frame("__oldLine");
+  const scale = addon.eval("return __old:GetEffectiveScale()");
+  expect([line.rect.width / scale, line.rect.height / scale, line.alpha, isTok(addon, line.vertexColor, "text2")], "T.SCROLL.thumb wide, the grip's height, at the rest alpha, text2").toEqual([4, 24, 0.5, true]);
+  expect(addon.eval("local b = __old return { b.art.__alpha, b.ThumbTexture.__alpha, __oldLine.__alpha, b.ScrollUpButton:GetAlpha(), b.ScrollDownButton:GetAlpha(), b.ScrollUpButton.__mouse }"), "the bar's art and the grip faded, our line not, the buttons gone").toEqual([0, 0, 0.5, 0, 0, false]);
+  addon.hover("__old");
+  expect(addon.frame("__oldLine").alpha, "lit under the mouse").toBe(1);
+  addon.hover(null);
+  expect(addon.eval("local b = __old b.__scripts.OnMouseDown(b, 'LeftButton') local held = __oldLine:GetAlpha() b.__scripts.OnMouseUp(b, 'LeftButton') return { held, __oldLine:GetAlpha() }"), "lit while dragged, the rest alpha after").toEqual([1, 0.5]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
