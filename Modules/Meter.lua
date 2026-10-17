@@ -17,6 +17,8 @@ local MT = ns.Module("Meter", { defaults = { on = false, kind = "Dps", rows = 8,
 MT.WIDTH, MT.ROW, MT.HEAD, MT.GAP, MT.EVERY = 300, 18, T.SPACE.gap + T.CONTROL_H, 1, 0.5
 -- The kinds of meter shown: the Enum.DamageMeterType key and the title.
 MT.KINDS = { Dps = "Damage per second", Hps = "Healing per second" }
+-- The empty-state line by kind: what would fill the panel.
+MT.EMPTY = { Dps = "No damage yet this fight", Hps = "No healing yet this fight" }
 -- The most rows the setting allows.
 MT.MAXROWS = 10
 
@@ -127,6 +129,7 @@ function MT.Paint()
   if not f:IsShown() then return end
   local list = MT.Sources()
   f.title:SetText(MT.KINDS[MT.settings.kind] or MT.KINDS.Dps)
+  f.empty:SetText(MT.EMPTY[MT.settings.kind] or MT.EMPTY.Dps)
   f.empty:SetShown(list == nil or list[1] == nil)
   for i = 1, #f.rows do paintRow(i, list) end
 end
@@ -212,11 +215,11 @@ local function addTitle(f)
   f.title = ns.WindowTitle(title, MT.KINDS[MT.settings.kind] or MT.KINDS.Dps, { kind = "card" }).title
 end
 
--- The note shown while the meter has nothing to list: an empty-state line (label text2).
+-- The note shown while the meter has nothing to list: an empty-state line (label muted) that says what fills it.
 local function addEmpty(f)
-  f.empty = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
+  f.empty = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "muted")
   f.empty:SetPoint("CENTER", f, "CENTER", 0, -MT.HEAD / 2)
-  f.empty:SetText("Nothing to show")
+  f.empty:SetText(MT.EMPTY.Dps)
 end
 
 -- Applies the panel's visibility setting: now, or when combat ends.

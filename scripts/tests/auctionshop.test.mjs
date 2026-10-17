@@ -190,27 +190,27 @@ it("the list picked in the pane wears the one selected look (W.Row's rail and wa
   expect([look(1).slice(1, 4), look(2).slice(1, 4)], "a click moves it").toEqual([[true, true, true], [false, false, false]]);
   expect(rail, "T.ROW.height is the options window's 28").toBe(28);
 });
-// A table's status line: [its text, its font size, in the text2 colour].
+// A table's status line: [its text, its font size, as the colour token].
 const statusOf = (addon, table) => {
   const s = addon.frame(`${table}.status`);
-  return [s.text, s.font.size, isTok(addon, s.textColor, "text2")];
+  return [s.text, s.font.size, ["text2", "muted"].find((k) => isTok(addon, s.textColor, k))];
 };
-it("a table's status line is small text2 while it reports (searching, none up), and label text2 when it is an empty-state line", () => {
+it("a table's status line is small text2 while it reports (searching, none up), and label muted when it is an empty-state line", () => {
   const addon = atAuctionHouse(DUSTS + DUST_LISTINGS);
   addon.click("AuctionHouseFrame.Tabs[4]");
   const [label, small] = addon.eval("return { ns.Theme.RoleSize('label'), ns.Theme.RoleSize('small') }");
-  expect(statusOf(addon, TABLE), "no lists: how to start, an empty-state line").toEqual(["No lists yet: New makes one, Import pastes one.", label, true]);
+  expect(statusOf(addon, TABLE), "no lists: how to start, an empty-state line").toEqual(["No lists yet: New makes one, Import pastes one.", label, "muted"]);
   const edges = addon.eval(`local t = ${TABLE} return { t.status:GetLeft() - t:GetLeft(), t:GetRight() - t.status:GetRight() }`);
   expect(edges, "the line runs from the table's left to its right edge, T.SPACE.tight in, so a long one wraps").toEqual(Array(2).fill(addon.eval("return ns.Theme.SPACE.tight")));
   pick(addon, `${HELPER}.DEALS`);
-  expect(statusOf(addon, TABLE), "the Deals entry's empty line is one too").toEqual(["None yet: a scan or a search finds them.", label, true]);
+  expect(statusOf(addon, TABLE), "the Deals entry's empty line is one too").toEqual(["None yet: a scan or a search finds them.", label, "muted"]);
   dustFound(addon);
   expect(statusOf(addon, TABLE)[0], "a list with a row: nothing to say").toBe("");
   addon.click(`${TABLE}.rows[1]`);
-  expect(statusOf(addon, `${VIEW}.table`), "the view's search running: a status").toEqual(["searching...", small, true]);
+  expect(statusOf(addon, `${VIEW}.table`), "the view's search running: a status").toEqual(["searching...", small, "text2"]);
   addon.eval("__wfgWorld.ah.commodities[10940] = {}");
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
-  expect(statusOf(addon, `${VIEW}.table`), "and its answer: none up, a status").toEqual(["none up", small, true]);
+  expect(statusOf(addon, `${VIEW}.table`), "and its answer: none up, a status").toEqual(["none up", small, "text2"]);
 });
 it("Search list needs entries; closing the auction house drops the searches waiting", () => {
   const addon = atAuctionHouse();
