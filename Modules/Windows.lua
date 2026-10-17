@@ -983,10 +983,55 @@ GW.TALENT_FX = {
 GW.TALENT_BUTTONS = { "ApplyButton", "InspectCopyButton" }
 GW.TALENT_ICONS = { "ResetButton", "UndoButton" }
 
+-- The spellbook's page methods that fill the pages with entries and section heads (PagedContentFrame and the book's
+-- own); each is looked for on both, and one the client lacks is skipped.
+GW.BOOK_REFILLS = { "SetDataProvider", "SetCurrentPage", "UpdateFrames", "UpdateDisplay" }
+
+-- One spell entry of the book (a name, a rank line and an icon button on a smudged plate): the plate faded, the
+-- name and rank in the theme's text roles (the game colours them for parchment, dark brown on the dark panel).
+local function dressBookEntry(entry)
+  GW.FadeParts(entry, { "Backplate" })
+  GW.SkinText(entry.Name, "label", "text")
+  GW.SkinText(entry.SubName, "small", "muted")
+end
+
+-- One section head of the book (a name over a rule, on a smudged plate): the plate and rule faded, the name a heading.
+local function dressBookHead(head)
+  GW.FadeArt(head)
+  GW.SkinText(head.Text, "heading", "text")
+end
+
+-- Every entry and section head under part, up to depth frames down; an entry has a Name, a head a Text and no Name.
+local function dressBookPages(part, depth)
+  if type(part) ~= "table" or not part.GetChildren then return end
+  for _, child in ipairs({ part:GetChildren() }) do
+    if type(child.Name) == "table" then dressBookEntry(child)
+    elseif type(child.Text) == "table" and child.Text.SetFont then dressBookHead(child) end
+    if depth > 1 then dressBookPages(child, depth - 1) end
+  end
+end
+
+-- The book's pages dressed now and after each refill (the game makes and recolours the entries as it fills a page,
+-- so this runs after it), once per method and frame.
+local function watchBookPages(book)
+  local paged = book.PagedSpellsFrame
+  if type(paged) ~= "table" or not paged.HookScript then return end
+  -- Dresses the entries and heads the pages hold now.
+  local function dress() dressBookPages(paged, 4) end
+  paged:HookScript("OnShow", ns.Guard("book pages", dress))
+  for _, name in ipairs(GW.BOOK_REFILLS) do
+    GW.HookAfter(paged, name, dress)
+    GW.HookAfter(book, name, dress)
+  end
+  dress()
+end
+
 -- The spellbook: its parchment (top bar, pages, bookmark, corner) faded, the page area an inset, the search box,
--- the settings dropdown (a picture) and the page arrows with their count in the theme.
+-- the settings dropdown (a picture), the page arrows with their count and the entries and section heads on the
+-- pages in the theme.
 local function skinSpellBook(book)
   if type(book) ~= "table" or not book.GetRegions then return end
+  watchBookPages(book)
   T.FadeRegions(book)
   GW.InsetPanel(book.PagedSpellsFrame)
   GW.SkinSearch(book.SearchBox)

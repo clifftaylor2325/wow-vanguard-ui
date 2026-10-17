@@ -46,6 +46,12 @@ const SPELLS_ENV = `${READERS_ENV}
   for _, key in ipairs({ "TopBar", "BookBGLeft", "BookBGRight", "Bookmark" }) do book[key] = __art(book) end
   book.PagedSpellsFrame = __well(nil, book) book.PagedSpellsFrame.PagingControls = __mkpaging(book.PagedSpellsFrame)
   book.SearchBox, book.SettingsDropdown = __mkbox(book), __mkbutton(book, "Icon")
+  -- TEST-ONLY page contents: a section head (a plate and rule, a name) and spell entries (a smudged plate, a name and a rank line),
+  -- made again as the game turns a page (SetCurrentPage).
+  local function mkEntry(parent) local e = CreateFrame("Frame", nil, parent) e.Backplate, e.Name, e.SubName = __art(e), __text(e, "Cure Disease"), __text(e, "Rank 1") return e end
+  local head = CreateFrame("Frame", nil, book.PagedSpellsFrame) head.Plate, head.Rule, head.Text = __art(head), __art(head), __text(head, "Holy")
+  local entry = mkEntry(book.PagedSpellsFrame) entry.Button = CreateFrame("Button", nil, entry)
+  function book.PagedSpellsFrame:SetCurrentPage() book.late = mkEntry(book.PagedSpellsFrame) end
   local t = CreateFrame("Frame", nil, f) f.TalentsFrame = t
   for _, key in ipairs({ "Background", "ClassBackground", "BackgroundBorder", "DividerHorizontalLeft", "OverlayBackgroundMid" }) do t[key] = __art(t) end
   for _, key in ipairs(ns.GetModule("Windows").TALENT_FX) do t[key] = __art(t) end
@@ -61,7 +67,9 @@ const SPELLS_ENV = `${READERS_ENV}
     local backdrop = 0
     for _, key in ipairs({ "Background", "ClassBackground", "BackgroundBorder", "DividerHorizontalLeft", "OverlayBackgroundMid" }) do if t[key].__alpha == 0 then backdrop = backdrop + 1 end end
     local paged, paging = book.PagedSpellsFrame, book.PagedSpellsFrame.PagingControls
-    return { parchment = __faded(book), paged = __faded(paged) and paged.NineSlice.__alpha == 0 and __sunk(paged), search = __box(book.SearchBox),
+    local pages = { head = __faded(head) and __lit(head.Text, "heading", "text"), entry = entry.Backplate.__alpha == 0 and __lit(entry.Name, "label", "text") and __lit(entry.SubName, "small", "muted"),
+      late = book.late == nil or (book.late.Backplate.__alpha == 0 and __lit(book.late.Name, "label", "text")) }
+    return { pages = pages, parchment = __faded(book), paged = __faded(paged) and paged.NineSlice.__alpha == 0 and __sunk(paged), search = __box(book.SearchBox),
       settings = __button(book.SettingsDropdown) and book.SettingsDropdown.Icon.__alpha == 1, arrows = __arrow(paging.PrevPageButton) and __arrow(paging.NextPageButton),
       count = __lit(paging.PageText, "small", "text2"), fx = fx, backdrop = backdrop, tree = __sunk(t),
       buttons = __button(t.ApplyButton) and __button(t.InspectCopyButton) and __button(t.ActiveSpec.ActivateButton),
@@ -80,6 +88,10 @@ it("R2.14 the spellbook and the talents: parchment faded to an inset, controls a
   expect(first, "book art faded, pages an inset, search box with its magnifier, settings picture kept, arrows and count themed").toMatchObject({
     parchment: true, paged: true, search: true, settings: true, arrows: true, count: true, errors: 0,
   });
+  expect(first.pages, "the section head's plate and rule are faded and its name a light heading; an entry's plate is faded and its name and rank light").toEqual({ head: true, entry: true, late: true });
+  addon.eval("PlayerSpellsFrame.SpellBookFrame.PagedSpellsFrame:SetCurrentPage()");
+  expect([spellsState(addon).pages.late, addon.eval("return PlayerSpellsFrame.SpellBookFrame.late ~= nil")], "an entry the game makes when a page turns is dressed as soon as it has")
+    .toEqual([true, true]);
   expect(first, "the tree's backdrop faded and sunk with its effects kept, five controls, the search box, two dropdowns with arrows, the currency plate faded").toMatchObject({
     fx: 10, backdrop: 5, tree: true, buttons: true, icons: true, talentSearch: true, dropdowns: true, currency: 0,
   });
