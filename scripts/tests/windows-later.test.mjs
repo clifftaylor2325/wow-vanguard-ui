@@ -778,6 +778,8 @@ it("R3.5 the auction house panels: result lines are theme rows lit with the game
   expect(rowLit(addon, "__early"), "hides it").toEqual([false, false]);
   addon.eval("__early.SelectedHighlight:SetShown(true)");
   expect(rowLit(addon, "__early"), "or sets it shown").toEqual([true, true]);
+  addon.eval("__early.SelectedHighlight:SetAlpha(1)");
+  expect(addon.eval("return __early.SelectedHighlight:GetAlpha()"), "the game sets the highlight's alpha after showing it: faded again").toBe(0);
   addon.eval(`__late = __ahLine(AuctionHouseFrame.ItemBuyFrame.ItemList.ScrollBox) __late.SelectedHighlight:Show() __sum = __ahLine(AuctionHouseFrame.AuctionsFrame.SummaryList.ScrollBox, true)`);
   expect(rowLit(addon, "__late"), "a line acquired later is dressed, and follows its highlight").toEqual([true, true]);
   expect(addon.eval("return { __faded(__sum, __sum.Icon), __sum.Icon:GetAlpha(), __ahLit(__sum.Text), ns.Theme.RowParts(__sum) ~= nil }"), "a summary line keeps its icon and has its name in the text colour").toEqual([true, 1, true, true]);

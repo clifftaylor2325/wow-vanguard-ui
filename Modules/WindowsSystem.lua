@@ -549,13 +549,20 @@ GW.MOVE_BUTTONS = {
   "MovePadForward", "MovePadBackward", "MovePadStrafeLeft", "MovePadStrafeRight", "MovePadRotateLeft", "MovePadRotateRight", "MovePadJump",
 }
 
+-- The pad toggles whose clicks are followed, by button.
+local vgMoveClicks = ns.FrameState("vgMoveClicks")
+
 -- One pad button as a theme row with its arrow or jump picture kept; a toggle (a check button) shows the one selected look
--- while the game has it checked, following the game's SetChecked, in place of the game's glow.
+-- while the game has it checked, in place of the game's glow: after a click (the client flips the check itself, and the
+-- pad only reads it) and after the game's own SetChecked (it unchecks the opposite direction).
 local function moveButton(button)
   GW.DressRow(button, { "icon" })
   if type(button) ~= "table" or type(button.GetChecked) ~= "function" then return end
   T.SelectRow(button, button:GetChecked() == true)
   GW.HookAfter(button, "SetChecked", function(b, on) T.SelectRow(b, on == true) end)
+  if vgMoveClicks[button] then return end
+  vgMoveClicks[button] = true
+  button:HookScript("OnClick", ns.Guard("move pad click", function(b) T.SelectRow(b, b:GetChecked() == true) end))
 end
 
 -- The movement pad: the tooltip-style backdrop faded under a HUD panel, the seven buttons and the settings gear on a

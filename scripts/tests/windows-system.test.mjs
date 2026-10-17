@@ -489,9 +489,18 @@ it("movement pad: a HUD panel, the buttons as rows with their pictures, the togg
   expect(lit(), "the game checks Forward: its selected look comes on").toEqual([true, false]);
   addon.eval("MovePadForward:SetChecked(false)");
   expect(lit(), "and goes when the game unchecks it").toEqual([false, false]);
+  addon.eval("MovePadStrafeLeft.__checked = true");
+  addon.click("MovePadStrafeLeft");
+  expect(lit(), "a click the client checks itself (no SetChecked): Strafe Left lights").toEqual([false, true]);
+  addon.eval("MovePadStrafeLeft.__checked = false");
+  addon.click("MovePadStrafeLeft");
+  expect(lit(), "and a second click unlights it").toEqual([false, false]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("MovePadFrame:Hide() MovePadFrame:Show()");
   expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(painted);
+  addon.eval("MovePadStrafeLeft.__checked = true");
+  addon.click("MovePadStrafeLeft");
+  expect(lit(), "after a re-skin a click still lights it (the click hook goes on once)").toEqual([false, true]);
   const off = loggedIn(PAD_ENV, SWITCH_OFF);
   off.fire("ADDON_LOADED", "Blizzard_MovePad");
   off.eval("MovePadFrame:Show()");

@@ -1510,13 +1510,15 @@ GW.AH_FORM_BUTTONS = { "PostButton", "BuyButton" }
 GW.AH_DIALOG_BUTTONS = { "BuyNowButton", "CancelButton", "OkayButton" }
 
 -- A row's lit look following the highlight the game shows on its selected line (SelectedHighlight): now, and each time
--- the game shows or hides it (a list sets it as it lays its lines out).
+-- the game shows or hides it (a list sets it as it lays its lines out). The game also sets the highlight's alpha after
+-- showing it (its list's highlight callback), so the faded highlight is faded again whenever that alpha is not 0.
 local function followSelected(row)
   local mark = row.SelectedHighlight
   GW.FollowMark(row, mark)
   for _, name in ipairs({ "SetShown", "Show", "Hide" }) do
     GW.HookAfter(mark, name, function() GW.FollowMark(row, mark) end)
   end
+  GW.HookAfter(mark, "SetAlpha", function(m, alpha) if alpha ~= 0 then m:SetAlpha(0) end end)
 end
 
 -- One result line (AuctionHouseItemListLineTemplate) or summary line as a selectable theme row: the stripe and the
