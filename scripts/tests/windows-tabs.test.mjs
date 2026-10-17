@@ -625,3 +625,103 @@ it("flight map: its map art stays when the window's art is faded", () => {
   addon.eval("TaxiFrame:Show() TaxiFrame:Hide() TaxiFrame:Show()");
   expect(addon.eval("return { TaxiMap:GetAlpha(), TaxiFrame.InsetBg:GetAlpha(), TaxiFrame.NineSlice.__alpha }"), "the map (either texture the client draws it on) shows, the frame art is faded").toEqual([1, 1, 0]);
 });
+
+// TEST-ONLY side tabs of windows the game builds with its own holders, shaped like the Camelot ones: a window's side tabs
+// by key (ProfessionsFrame, CooldownViewerSettings, the inspect window's ModeTabs), the collections window's TabContainer
+// (two anchors on the window, a Tabs array) and the paper doll's PaperDollSidebarTabs (CheckButtons with an Icon and an
+// unkeyed plate). __padOf says whether a tab's first anchor sits on the panel's padded edge, one pixel in.
+const HOLDERS_ENV = PANE_ENV + `
+  function __padOf(tab, point) return math.abs(tab.__points[point or "TOPLEFT"].x - (ns.GetModule("Windows").PAD - ns.Theme.Pixel(tab))) < 1e-9 end
+  function __sized(w) w:SetSize(400, 300) w:SetPoint("CENTER") return w end
+`;
+
+it("side tabs: the professions window's, the cooldown settings' and the inspect guild tab are side tabs, out past the padding", () => {
+  const addon = loggedIn(HOLDERS_ENV + `
+    local profs = __sized(__window("TestOnlyProfs"))
+    local first = __side(profs, "ProfessionsOverviewTab") first:SetSize(40, 40) first:SetPoint("TOPLEFT", profs, "TOPRIGHT", 0, -60)
+    local next = __side(profs, "Professions1Tab") next:SetSize(40, 40) next:SetPoint("TOPLEFT", first, "BOTTOMLEFT", 0, -2)
+    __side(profs, "Professions7Tab")
+    local cd = __window("TestOnlyCooldown") __side(cd, "SpellsTab") __side(cd, "AurasTab") __side(cd, "GroupBuffsTab")
+    ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyProfs", "TestOnlyCooldown" })
+    __window("InspectFrame") InspectFrame.ModeTabs = CreateFrame("Frame", nil, InspectFrame) InspectFrame.ModeTabs.Tabs = {}
+    table.insert(InspectFrame.ModeTabs.Tabs, __side(InspectFrame.ModeTabs, "GuildTab"))
+  `);
+  const state = addon.eval(`return { __sideState(TestOnlyProfs.ProfessionsOverviewTab), __sideState(TestOnlyProfs.Professions1Tab), __sideState(TestOnlyProfs.Professions7Tab),
+    __sideState(TestOnlyCooldown.SpellsTab), __sideState(TestOnlyCooldown.GroupBuffsTab), __sideState(InspectFrame.ModeTabs.GuildTab) }`);
+  expect(state.map((s) => s.art), "each tab's plate faded").toEqual([0, 0, 0, 0, 0, 0]);
+  expect(state.map((s) => s.dim), "and its icon greyed while it is not the selected tab: they are side tabs").toEqual([true, true, true, true, true, true]);
+  expect(addon.eval("return { __padOf(TestOnlyProfs.ProfessionsOverviewTab), TestOnlyProfs.Professions1Tab.__points.TOPLEFT.rel == TestOnlyProfs.ProfessionsOverviewTab }"), "the first tab moved out to the panel's edge, the next still hangs from it").toEqual([true, true]);
+  expect(addon.eval("return #ns.errors"), "nothing reported").toBe(0);
+});
+
+it("side tabs: the collections window's TabContainer tabs are side tabs, the container moves out past the padding by both anchors", () => {
+  const addon = loggedIn(HOLDERS_ENV + `
+    __sized(__window("CollectionsJournal"))
+    local box = CreateFrame("Frame", nil, CollectionsJournal) CollectionsJournal.TabContainer = box box.Tabs = {}
+    box:SetPoint("TOPLEFT", CollectionsJournal, "TOPRIGHT") box:SetPoint("BOTTOMLEFT", CollectionsJournal, "BOTTOMRIGHT")
+    for _, key in ipairs({ "MountsTab", "PetsTab", "WardrobeTab" }) do table.insert(box.Tabs, __side(box, key)) end
+    box.MountsTab:SetChecked(true)
+  `);
+  addon.fire("ADDON_LOADED", "Blizzard_Collections");
+  const tabs = addon.eval("local b = CollectionsJournal.TabContainer return { __sideState(b.MountsTab), __sideState(b.PetsTab), __sideState(b.WardrobeTab) }");
+  expect(tabs.map((s) => s.art), "the five tabs' game art is faded").toEqual([0, 0, 0]);
+  expect(tabs.map((s) => [s.raised, s.dim]), "the checked tab is raised, the others' icons greyed").toEqual([[true, false], [false, true], [false, true]]);
+  expect(addon.eval("local p = CollectionsJournal.TabContainer.__points return { p.TOPLEFT.x == p.BOTTOMLEFT.x, __padOf(CollectionsJournal.TabContainer), p.BOTTOMLEFT.rel == CollectionsJournal }"), "both anchors of the container moved the same distance, still on the window").toEqual([true, true, true]);
+  addon.eval("CollectionsJournal:Show() CollectionsJournal:Hide() CollectionsJournal:Show()");
+  expect(addon.eval("return { __padOf(CollectionsJournal.TabContainer), #ns.errors }"), "moved once").toEqual([true, 0]);
+});
+
+it("side tabs: the paper doll's sidebar tabs are dressed on the character window only, the plate faded and the icon kept", () => {
+  const addon = loggedIn(HOLDERS_ENV + `
+    local holder = CreateFrame("Frame", "PaperDollSidebarTabs", CharacterFrame) holder.Tabs = {}
+    for i = 1, 3 do
+      local t = CreateFrame("CheckButton", "PaperDollSidebarTab" .. i, holder)
+      t.Icon = t:CreateTexture(nil, "BACKGROUND") __art(t, "BORDER") t:SetChecked(i == 1)
+      holder.Tabs[i] = t
+    end
+  `);
+  const tabs = addon.eval(`local t = PaperDollSidebarTabs.Tabs local out = {}
+    for i = 1, 3 do local plate for _, r in ipairs({ t[i]:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then plate = r.__alpha end end
+      out[i] = { plate, __sideState(t[i]) } end
+    return out`);
+  expect(tabs.map((t) => t[0]), "the unkeyed plate behind each icon is faded").toEqual([0, 0, 0]);
+  expect(tabs.map((t) => [t[1].icon, t[1].raised, t[1].dim]), "the icon stays, the checked tab is raised and the others' icons are greyed").toEqual([[true, true, false], [true, false, true], [true, false, true]]);
+  expect(addon.eval(`return { ns.GetModule("Windows").TabButtons(CharacterFrame).seen[PaperDollSidebarTab1] == true, ns.GetModule("Windows").TabButtons(MerchantFrame).seen[PaperDollSidebarTab1] == true }`), "the character window lists them, no other window does").toEqual([true, false]);
+});
+
+it("appearances: the Items and Sets tabs (top tabs on the page) are in the theme, the one the game disables raised", () => {
+  const addon = loggedIn(COLLECTIONS_ENV);
+  addon.eval(`__collections() local w = WardrobeCollectionFrame w.ItemsTab, w.SetsTab = __tab(w), __tab(w) w.SetsTab:Disable()`);
+  addon.fire("ADDON_LOADED", "Blizzard_Collections");
+  expect(addon.eval("local w = WardrobeCollectionFrame return { __tabState(w.ItemsTab), __tabState(w.SetsTab) }").map((s) => [s.art, s.raised]), "art faded; the disabled (selected) tab raised").toEqual([[0, false], [0, true]]);
+  addon.eval("WardrobeCollectionFrame.SetsTab:Enable() WardrobeCollectionFrame.ItemsTab:Disable()");
+  expect(addon.eval("local w = WardrobeCollectionFrame return { __tabState(w.ItemsTab).raised, __tabState(w.SetsTab).raised }"), "the raised tab follows the game's selection").toEqual([true, false]);
+  const odd = loggedIn(COLLECTIONS_ENV);
+  odd.eval(`__collections() WardrobeCollectionFrame.ItemsTab = true`);
+  odd.fire("ADDON_LOADED", "Blizzard_Collections");
+  expect(odd.eval("return #ns.errors"), "a page whose tab is not a frame is left alone").toBe(0);
+});
+
+it("guild bank side tabs: the plate faded, the icon button a tab with its icon and search dimmer kept, out past the padding", () => {
+  const addon = loggedIn(HOLDERS_ENV + `
+    local bank = __sized(__window("GuildBankFrame"))
+    for i = 1, 3 do
+      local tab = CreateFrame("Frame", "GuildBankTab" .. i, bank) tab:SetSize(42, 50)
+      tab:SetPoint("TOPLEFT", i == 1 and bank or _G["GuildBankTab" .. (i - 1)], i == 1 and "TOPRIGHT" or "BOTTOMLEFT", i == 1 and -1 or 0, i == 1 and -17 or 0)
+      __art(tab)
+      local b = CreateFrame("CheckButton", nil, tab) tab.Button = b
+      b.IconTexture, b.NormalTexture, b.SearchOverlay = __art(b, "BORDER"), __art(b, "ARTWORK"), __art(b, "ARTWORK")
+      b:SetChecked(i == 2)
+    end
+    GuildBankTab3.Button = nil
+    ns.GetModule("Windows").Add("windows", "framed", { "GuildBankFrame" })
+  `);
+  const out = addon.eval(`local b = GuildBankTab2.Button
+    return { __a((GuildBankTab1:GetRegions())), __a(b.NormalTexture), __a(b.IconTexture), __a(b.SearchOverlay), __raised(b), __raised(GuildBankTab1.Button),
+      math.abs(GuildBankTab1.__points.TOPLEFT.x - (ns.GetModule("Windows").PAD - ns.Theme.Pixel(GuildBankTab1))) < 1e-9, __a((GuildBankTab3:GetRegions())) }`);
+  expect(out.slice(0, 4), "the plate and the button's bronze frame faded; its icon and the search dimmer are the game's").toEqual([0, 0, -1, -1]);
+  expect(out.slice(4, 6), "the selected tab's button is raised, the other's not").toEqual([true, false]);
+  expect(out[6], "the first tab sits at the panel's edge").toBe(true);
+  expect(out[7], "a tab without its button still has its plate faded").toBe(0);
+  expect(addon.eval("return #ns.errors"), "nothing reported").toBe(0);
+});

@@ -760,7 +760,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.8.6 The small square tabs on the Character tab
 
 - Do: press C on a character that knows one title or none, and look at the small square tabs at the top of the stats half (stats, equipment manager, titles). Then do the same on a character with two or more titles and click the third tab.
-- Expect: with one title or none, the third tab (Titles) is dimmed and grey and does nothing. The game itself disables it, and Vanguard leaves these tabs as the game draws them. With two or more titles it shows its icon and opens the title list.
+- Expect: with one title or none, the third tab (Titles) is dimmed and grey and does nothing. The game itself disables it. The tabs are flat dark tiles with their icons, the selected one raised and the others' icons greyed, with no bronze plate behind them. With two or more titles it shows its icon and opens the title list. [Needs in game: that the unkeyed plate behind each icon is faded and the checked texture's glow with it.]
 - If it fails, paste: a screenshot of the tabs, how many titles the character knows, and `/vg errors`.
 
 ### 14.8.7 Character pane backdrops, currency and the arrow
@@ -774,6 +774,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: open the collections window (Shift+P) on the Appearances tab. Click a slot where you have nothing collected (a tabard on a new character, say), then a slot that has appearances, then open the Sets tab.
 - Expect: no leather backdrop. The item grid, and the sets tab's list and preview, sit on flat dark inset panels with the models still showing. The empty slot says "No appearances to show for this slot." in grey; the line is gone on a slot that has appearances.
 - If it fails, paste: a screenshot of the empty slot, one of the Sets tab, and `/vg errors`.
+
+### 14.8.9 Side tabs on the professions, collections, guild bank and inspect windows
+
+- Do: open the professions window and click its tabs, then the collections window (Shift+P) and click each of its tabs, then the guild bank and click its tabs (as a guild member with tabs), then inspect a player and click Character, PvP and Guild, then open the cooldown settings window and click its three tabs, then open the Appearances page and click Items and Sets.
+- Expect: each side tab is a flat dark tile with its icon still showing, the selected one raised (lighter) and the others' icons greyed, a faint wash under the mouse, and it sits against the window's panel edge with no gap and no overlap; the guild bank's tabs keep their item icon (and the search's dark film while you search) and lose their bronze plate; Items and Sets are flat tabs with the one you are on raised. Every tab still switches its page. [Needs in game: the names the collections tabs have on Forever; whether the guild bank tabs line up with the panel's edge.]
+- If it fails, paste: which window and tab, a screenshot and `/vg errors`.
 
 ### 14.9.1 Battleground queue dialogs
 

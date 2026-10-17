@@ -29,12 +29,21 @@ GW.TAB_SYSTEMS = {
 GW.TAB_WINDOWS = { "CharacterFrame", "CommunitiesFrame", "LegacySystemFrame", "InspectFrame", "LFGParentFrame" }
 -- Where those windows keep their side tabs, as parentKeys on the window (the Camelot character pane
 -- keeps its own in a ModeTabs frame, which has a Tabs array too). LargeSideTabButtonTemplate and
--- RightSideTabTemplate (the guild window's) tabs.
+-- RightSideTabTemplate (the guild window's) tabs; the professions window's (an overview tab and one for each
+-- profession), the cooldown settings' three and the inspect window's guild tab.
 GW.SIDE_TABS = {
   "CharacterTab", "ReputationTab", "SkillsTab", "PvPTab", "CurrencyTab", "StatisticsTab",
   "ChatTab", "RosterTab", "GuildBenefitsTab", "GuildInfoTab", "GuildPreferredPlaySettingsTab",
   "LegacyTreeTab", "LegacyChallengeTab", "LegacyRewardTrackTab", "ListingTab", "BrowsingTab", "WhoListingTab",
+  "ProfessionsOverviewTab", "Professions1Tab", "Professions2Tab", "Professions3Tab", "Professions4Tab",
+  "Professions5Tab", "Professions6Tab", "Professions7Tab", "SpellsTab", "AurasTab", "GroupBuffsTab", "GuildTab",
 }
+-- The frames a window keeps side tabs in besides itself, by parentKey: the character and inspect windows' ModeTabs and
+-- the collections window's TabContainer. Every tab in their Tabs array is a side tab; the container is also moved out
+-- past the window's padding as one (its tabs hang from it).
+GW.TAB_HOLDERS = { "ModeTabs", "TabContainer" }
+-- How many guild bank side tabs there are (GuildBankTab1 ... 8: a frame with a plate, and a .Button holding the icon).
+GW.BANK_TABS = 8
 -- How many frames deep inside a registered window its scroll bars are looked for (a bar is a ScrollBar
 -- key on a frame; the lists and panes of the windows keep theirs within a few levels).
 GW.SCROLL_DEPTH = 4
@@ -51,6 +60,15 @@ local function walk(frame, path)
   return type(part) == "table" and part or nil
 end
 
+-- A table of the parts of frame named in keys that it has, as a keep list for T.FadeRegions.
+local function keepKeys(frame, keys)
+  local keep = {}
+  for _, key in ipairs(keys) do
+    if type(frame[key]) == "table" then keep[frame[key]] = true end
+  end
+  return keep
+end
+
 -- Adds a tab button to the list, once (anything that takes a script hook is one); side marks a side tab.
 local function add(list, button, side)
   if type(button) ~= "table" or not button.HookScript or list.seen[button] then return end
@@ -59,17 +77,25 @@ local function add(list, button, side)
   list.side[button] = side
 end
 
--- Adds the buttons of a window's parentArray of tabs (Tabs: PanelTabButtonTemplate's).
-local function addArray(list, tabs)
+-- Adds the buttons of a window's parentArray of tabs (Tabs: PanelTabButtonTemplate's), as side tabs when side is set.
+local function addArray(list, tabs, side)
   if type(tabs) ~= "table" then return end
-  for _, button in ipairs(tabs) do add(list, button) end
+  for _, button in ipairs(tabs) do add(list, button, side) end
 end
 
--- Adds the side tabs a window (or its ModeTabs frame) holds, by key and in its Tabs array.
-local function addSide(list, holder)
+-- Adds the side tabs a window (or a frame that holds its side tabs) has, by key and in its Tabs array (which is
+-- all side tabs when sideArray is set: the window's own Tabs array is its bottom tabs).
+local function addSide(list, holder, sideArray)
   if type(holder) ~= "table" then return end
   for _, key in ipairs(GW.SIDE_TABS) do add(list, holder[key], true) end
-  addArray(list, holder.Tabs)
+  addArray(list, holder.Tabs, sideArray)
+end
+
+-- Adds the side tabs the window's tab holders keep (GW.TAB_HOLDERS) and, on the character pane, the paper doll's
+-- sidebar (the global PaperDollSidebarTabs frame, whose Tabs array holds its four tabs).
+local function addHolders(list, frame)
+  for _, key in ipairs(GW.TAB_HOLDERS) do addSide(list, frame[key], true) end
+  if frame == _G.CharacterFrame then addSide(list, _G.PaperDollSidebarTabs, true) end
 end
 
 -- Adds the buttons a tab system holds, by its accessor (TabSystemMixin:GetTabButton(tabID), nil past the last).
@@ -92,7 +118,7 @@ end
 function GW.TabButtons(frame)
   local list = { seen = {}, side = {} }
   addSide(list, frame)
-  addSide(list, frame.ModeTabs)
+  addHolders(list, frame)
   addNamed(list, frame.GetName and frame:GetName())
   for _, path in ipairs(GW.TAB_SYSTEMS) do addSystem(list, walk(frame, path)) end
   return list
@@ -126,17 +152,24 @@ local function outside(point, relPoint, near, far, out, offset)
   return offset
 end
 
--- Moves a tab set against an outer edge of its window out to its panel's padded edge (one pixel in,
--- so their borders meet), once: the panel reaches past the window, and would cover the tab's near end.
-function GW.ClearPadding(tab, window)
-  local pad = T.Padding(window) - T.Pixel(window)
-  if vgPadded[tab] or pad <= 0 or tab:GetNumPoints() ~= 1 then return end
-  vgPadded[tab] = true
-  local point, rel, relPoint, x, y = tab:GetPoint(1)
+-- One anchor of a tab (as GetPoint gives it) moved out when it is set against an outer edge of its window, as the
+-- arguments SetPoint takes; nothing when the anchor is not on the window.
+local function movedOut(window, pad, point, rel, relPoint, x, y)
   if rel ~= window or type(point) ~= "string" or type(relPoint) ~= "string" then return end
   x = outside(point, relPoint, "RIGHT", "LEFT", -pad, outside(point, relPoint, "LEFT", "RIGHT", pad, x))
   y = outside(point, relPoint, "BOTTOM", "TOP", pad, outside(point, relPoint, "TOP", "BOTTOM", -pad, y))
-  tab:SetPoint(point, rel, relPoint, x, y)
+  return point, rel, relPoint, x, y
+end
+
+-- Moves a tab (or a holder of tabs, which has two anchors) set against an outer edge of its window out to its
+-- panel's padded edge (one pixel in, so their borders meet), once: the panel reaches past the window, and would
+-- cover the tab's near end.
+function GW.ClearPadding(tab, window)
+  local pad, count, moved = T.Padding(window) - T.Pixel(window), tab:GetNumPoints(), {}
+  if vgPadded[tab] or pad <= 0 or count < 1 or count > 2 then return end
+  vgPadded[tab] = true
+  for i = 1, count do moved[i] = { movedOut(window, pad, tab:GetPoint(i)) } end
+  for _, anchor in ipairs(moved) do if anchor[1] then tab:SetPoint(unpack(anchor)) end end
 end
 
 -- One tab button of a window in the theme, whichever template it came from: out past the window's padding,
@@ -148,12 +181,41 @@ local function dressTab(button, window, side)
   fadeSideArt(button)
 end
 
+-- One guild bank side tab (a frame with a bronze plate and a .Button, the check button that holds the icon): out
+-- past the window's padding, the plate faded, the button a tab in the theme with its icon and the search dimmer kept.
+local function dressBankTab(tab, window)
+  GW.ClearPadding(tab, window)
+  T.FadeRegions(tab)
+  local button = tab.Button
+  if type(button) ~= "table" or not button.HookScript then return end
+  T.Tab(button)
+  T.FadeRegions(button, keepKeys(button, { "IconTexture", "SearchOverlay" }))
+  seedChecked(button)
+end
+
+-- The guild bank window's side tabs, GuildBankTab1 ... 8 (made with the window, shown as the guild has tabs).
+local function dressBankTabs(frame)
+  if frame ~= _G.GuildBankFrame then return end
+  for i = 1, GW.BANK_TABS do
+    local tab = _G["GuildBankTab" .. i]
+    if type(tab) == "table" and tab.GetRegions then ns.Try("bank tab", dressBankTab, tab, frame) end
+  end
+end
+
+-- Moves each of the window's tab holders (GW.TAB_HOLDERS) out past the padding, as its tabs are.
+local function clearHolders(frame)
+  for _, key in ipairs(GW.TAB_HOLDERS) do
+    local holder = frame[key]
+    if type(holder) == "table" and holder.GetPoint then ns.Try("tab holder", GW.ClearPadding, holder, frame) end
+  end
+end
+
 -- Puts every tab button the window has now in the theme; a button that fails leaves the others alone.
--- The character pane's ModeTabs holder moves out past the padding like a tab.
 function GW.DressTabs(frame)
   local list = GW.TabButtons(frame)
-  if type(frame.ModeTabs) == "table" and frame.ModeTabs.GetPoint then ns.Try("tab holder", GW.ClearPadding, frame.ModeTabs, frame) end
+  clearHolders(frame)
   for _, button in ipairs(list) do ns.Try("tab button", dressTab, button, frame, list.side[button]) end
+  dressBankTabs(frame)
   GW.FadeParts(frame, { "TabIndicators" })
 end
 
@@ -175,15 +237,6 @@ GW.STAT_BOXES = { "CharacterStatsPaneScrollBox", "CharacterStatsPanePetScrollBox
 GW.ROW_BARS = { "ReputationBar", "SkillsBar" }
 -- Where rows are watched: scroll box -> true (a box is watched once), and the owner of our callbacks on the game's boxes.
 local watched, rowOwner = setmetatable({}, { __mode = "k" }), {}
-
--- A table of the parts of frame named in keys that it has, as a keep list for T.FadeRegions.
-local function keepKeys(frame, keys)
-  local keep = {}
-  for _, key in ipairs(keys) do
-    if type(frame[key]) == "table" then keep[frame[key]] = true end
-  end
-  return keep
-end
 
 -- A reputation or skill bar in the theme. The game's (ColoredProgressBarTemplate) is a frame with a
 -- Fill texture it sizes and colours itself: its backdrop is faded and an inset panel put behind the
@@ -401,12 +454,22 @@ local function watchAppearances(items)
   if type(items.UpdateItems) == "function" then hooksecurefunc(items, "UpdateItems", ns.Guard("hook UpdateItems", noteAppearances)) end
 end
 
--- Dresses the inside of the collections window: the appearances tab's backdrops and the grid's empty note.
+-- The appearances page's Items and Sets tabs (PanelTopTabButtonTemplate, keys on the page: the game selects one by
+-- disabling it, which T.Tab follows).
+local function dressWardrobeTabs(wardrobe)
+  for _, key in ipairs({ "ItemsTab", "SetsTab" }) do
+    local tab = wardrobe[key]
+    if type(tab) == "table" and tab.HookScript then T.Tab(tab) end
+  end
+end
+
+-- Dresses the inside of the collections window: the appearances tab's backdrops, tabs and the grid's empty note.
 -- Safe to run again.
 function GW.DressCollections()
   local wardrobe = _G.WardrobeCollectionFrame
   if type(wardrobe) ~= "table" then return end
   for _, path in ipairs(GW.WARDROBE_BACKDROPS) do skinBackdrop(walk(wardrobe, path)) end
+  dressWardrobeTabs(wardrobe)
   watchAppearances(wardrobe.ItemsCollectionFrame)
 end
 
