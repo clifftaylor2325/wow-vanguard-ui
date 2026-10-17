@@ -36,7 +36,7 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | Surfaces | `void` | `0b0d11` | Near-black for text and marks drawn on an accent fill: a selected segment or condition, the setup wizard's check. |
 | | `raised` | `1b1f26` | The lighter fill of raised panels (`opts.raised`): dropdown menus, popovers, the spell picker, keybind mode. |
 | | `raisedHover` | `262a32` | An opaque control under the mouse, in place of the `hover` wash. |
-| | `borderHi` | `43484f` | A lighter line: the inner bevel, the base of a focus ring and the outline of a switch or slider track (`PillLine`, `SliderLine`). |
+| | `borderHi` | `43484f` | A lighter line: the inner bevel, the base of a focus ring and the outline of a switch or slider track (`PillLine`, `SliderLine`) and a slider's fill under its thumb (`T.SLIDER`). |
 | | `sheen` | `ffffff` at 0.06 | The one-pixel light line inside a panel's top border. |
 | | `divider` | `2f343d` | Lines between sections (the options window). |
 | | `shade` | `000000` at 0.5 | Dimming behind or under things: the options nav, unit frame bar backgrounds, the cast bar's latency zone, the AFK screen, the shade under a switch knob or slider thumb (`KnobShade`). |
@@ -50,7 +50,7 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | Text | `text` | `e8eaee` | Body text (the default colour of `T.Text`). |
 | | `text2` | `c8cdd6` | Secondary text, hints, the close glyph, assistant marks. |
 | | `muted` | `a6adb9` | Least important text: card titles, descriptions, notes. |
-| | `disabled` | `7c8390` | Disabled and placeholder text only (a search box's hint, a button you can't press yet, a disabled menu icon). |
+| | `disabled` | `7c8390` | Disabled and placeholder text only (a search box's hint, a button you can't press yet, a disabled menu icon), and a locked slider's thumb. |
 | | `white` | `ffffff` | Text and sparks over bars and icons (timers, counts, the cast spark). |
 | | `gold` | `ffd100` | The game's gold: quest titles and "!" marks, money, elite units, the leader's crown, the zone name's default. |
 | State | `good` | `3fbf9a` | Success, ready, full durability. Off the red-green axis with `warn` and `bad` (#235, after Okabe-Ito); where a state stands alone as a mark it has a glyph too (`T.STATE_GLYPHS`: `Check`, `Warn`, `Close`), as on the pet's mood. |
@@ -198,7 +198,7 @@ Depth is said by the fill, the one-pixel `edge` border, the sheen, the bevel on 
 | Selected or on | an `accent` fill with `void` text or knob for choose-one-of-few (segments, the switch, a radio); a check box, many-of-many, only its mark in `accentText` (`T.CHECK`) | a 2-pixel `accent` rail on the left and an `accent` wash at 14 % for navigate (the nav, a list's current entry); a tab is the raised one (`T.Tab`) | `accentText` only where no fill can carry it (a dropdown menu's current item) |
 | Disabled | no hover, no press, the fill unchanged, text and glyphs in `disabled` at full alpha (`T.DisabledLook`); never an alpha fade over a bordered control, which blurs its border | the same | `disabled` |
 | Focus (keyboard) | `T.FocusRing`: a one-pixel `accentText` ring two pixels out, over a one-pixel `edge` gap | the same | none |
-| Locked (a slider that cannot change) | fill and caption `muted`; the tooltip says why | none | `muted` |
+| Locked (a slider that cannot change) | the thumb in `disabled` (`T.SLIDER.thumbOff`), the fill unchanged, the caption `muted`; the tooltip says why | none | `muted` |
 
 The controls with a moving part (the switch's knob, the slider's thumb) keep this vocabulary on their own geometry. Two exceptions stand: a window control's hover tile is the `accent` at 0.35 (`T.CONTROL_TILES.other`) until Phase 8.5 makes it the `raisedHover` tile Cliff chose on 2026-10-17 ([DECIDE] 6.12 in `docs/design/DESIGN-PRINCIPLES.md`), and a slot's accent edge brightens under the mouse (`T.SLOT_STATES`), which stays: on an action button the accent edge is the slot's border.
 

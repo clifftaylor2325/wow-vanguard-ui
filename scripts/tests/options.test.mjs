@@ -690,6 +690,8 @@ it("sliders: the pill track, the fill on the same frame under the thumb, the thu
   expect(fill("__sl.min"), "at the bottom: the fill hides under the thumb at the left end").toEqual([false, 0.5, 0.5, -0.5, 0, 0]);
   // Whether a texture is tinted the token's colour as the theme has it now.
   const tinted = (t, token) => addon.eval(`local c = ${t}.__vertexColor local r, g, b = ns.Theme.RGB("${token}") return c[1] == r and c[2] == g and c[3] == b`);
+  expect([tinted("__sl.fillParts[1]", "borderHi"), tinted("__sl.fillParts[2]", "borderHi"), tinted("__sl.fillParts[3]", "borderHi"), tinted("__sl.thumb", "white")],
+    "the fill is the quiet grey under a white thumb, not the accent (Cliff's pick 5a)").toEqual([true, true, true, true]);
   addon.eval('ns.Theme.Settings().variant = "midnight" ns.Theme.Refresh()');
   expect([tinted("__sl.trackArt[1]", "inset"), tinted("__sl.outline[1]", "borderHi"), tinted("__swRow.trackArt[1]", "inset"), tinted("__swRow.outline[1]", "borderHi")], "a theme variant change retints the slider's and the switch's track and outline with the page").toEqual([true, true, true, true]);
 });

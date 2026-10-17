@@ -16,7 +16,7 @@ W.ROW_HEIGHT = ROW_HEIGHT
 -- The switch track's size (a pill, twice as wide as it is tall) and its round knob's diameter; a caption stops short of the track.
 local SWITCH_WIDTH, SWITCH_HEIGHT, KNOB_SIZE = 36, 18, 14
 -- The slider track's height (a pill) and its round thumb's diameter.
-local SLIDER_HEIGHT, SLIDER_THUMB = 8, 12
+local SLIDER_HEIGHT, SLIDER_THUMB = T.SLIDER.height, T.SLIDER.thumb
 
 -- Shared parts -------------------------------------------------------------------------------
 
@@ -71,17 +71,17 @@ W.IconTexture = icon
 
 -- Switch --------------------------------------------------------------------------------------
 
--- Tints a track's pill and outline again: a theme variant recolours the tokens, and the options window
--- refreshes every row after a theme change, so the tracks follow it like the panels around them.
-local function tintTrack(r)
-  for _, part in ipairs(r.trackArt) do T.Tint(part, "inset") end
-  for _, part in ipairs(r.outline) do T.Tint(part, "borderHi") end
+-- Tints a track's pill and outline again in the track and line tokens: a theme variant recolours the tokens, and
+-- the options window refreshes every row after a theme change, so the tracks follow it like the panels around them.
+local function tintTrack(r, track, line)
+  for _, part in ipairs(r.trackArt) do T.Tint(part, track) end
+  for _, part in ipairs(r.outline) do T.Tint(part, line) end
 end
 
 -- Shows the switch: on (accent fill, bright knob right) or off (dark track, dim knob left); the knob is bright under the mouse, the fill darker while pressed.
 local function refreshSwitch(r)
   local on = r.get() == true
-  tintTrack(r)
+  tintTrack(r, "inset", "borderHi")
   r.fill:SetShown(on)
   T.Tint(r.fill, r.pressed and "accentDim" or "accent")
   for _, part in ipairs({ r.knob, r.shade }) do
@@ -398,13 +398,14 @@ local function placeThumb(r, x)
   end
 end
 
--- Places the fill and thumb for the current value, and shows it as text; a
--- locked slider's fill and caption are muted.
+-- Places the fill and thumb for the current value, and shows it as text; a locked slider's
+-- thumb dims (T.SLIDER.thumbOff) and its caption is muted.
 local function refreshSlider(r)
   local v, locked = r.get(), r.locked and r.locked()
   local share = math.max(0, math.min(1, (v - r.min) / (r.max - r.min)))
-  tintTrack(r)
-  for _, part in ipairs(r.fillParts) do T.Tint(part, locked and "muted" or "accent") end
+  tintTrack(r, T.SLIDER.track, T.SLIDER.line)
+  for _, part in ipairs(r.fillParts) do T.Tint(part, T.SLIDER.fill) end
+  T.Tint(r.thumb, locked and T.SLIDER.thumbOff or T.SLIDER.thumbColor)
   T.Color(r.label, locked and "muted" or "text")
   placeFill(r, r.track:GetWidth() * share)
   placeThumb(r, r.track:GetWidth() * share)
@@ -463,10 +464,10 @@ local function placePill(parts, frame)
   parts[3]:SetWidth(cap)
 end
 
--- The accent fill: a pill on the track itself (its ARTWORK, under the thumb and the outline) from the track's
+-- The fill (T.SLIDER.fill): a pill on the track itself (its ARTWORK, under the thumb and the outline) from the track's
 -- left end, its left end fixed, its middle between the ends; placeFill runs its right end to the thumb.
 local function addFill(r)
-  r.fillParts = pillParts(r.track, "ARTWORK", "Pill", "accent")
+  r.fillParts = pillParts(r.track, "ARTWORK", "Pill", T.SLIDER.fill)
   local p = r.fillParts
   p[1]:SetPoint("TOPLEFT")
   p[1]:SetPoint("BOTTOMLEFT")
@@ -478,8 +479,8 @@ end
 -- The round thumb, its shade and its dark outline (refreshSlider places them), stacked in that order above the
 -- track's outline, so the thumb reads as a solid disc with a defined edge over the fill.
 local function addThumb(r)
-  r.thumb = art(r.track, "OVERLAY", "Knob", "white", 1)
-  r.thumbShade = art(r.track, "OVERLAY", "KnobShade", "shade", 2)
+  r.thumb = art(r.track, "OVERLAY", "Knob", T.SLIDER.thumbColor, 1)
+  r.thumbShade = art(r.track, "OVERLAY", "KnobShade", T.SLIDER.shade, 2)
   r.thumbLine = art(r.track, "OVERLAY", "KnobLine", "edge", 3)
   for _, part in ipairs({ r.thumb, r.thumbShade, r.thumbLine }) do part:SetSize(SLIDER_THUMB, SLIDER_THUMB) end
 end
@@ -490,10 +491,10 @@ local function addTrack(r)
   r.track = CreateFrame("Button", nil, r)
   r.track:SetSize(140, SLIDER_HEIGHT)
   r.track:SetPoint("RIGHT", -66, 0)
-  r.trackArt = pillParts(r.track, "BORDER", "Pill", "inset")
+  r.trackArt = pillParts(r.track, "BORDER", "Pill", T.SLIDER.track)
   placePill(r.trackArt, r.track)
   addFill(r)
-  r.outline = pillParts(r.track, "OVERLAY", "SliderLine", "borderHi")
+  r.outline = pillParts(r.track, "OVERLAY", "SliderLine", T.SLIDER.line)
   placePill(r.outline, r.track)
   addThumb(r)
   wireDrag(r)
