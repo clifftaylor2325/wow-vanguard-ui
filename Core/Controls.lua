@@ -13,8 +13,8 @@ local T, W = ns.Theme, ns.Widgets
 
 local ROW_HEIGHT = 28
 W.ROW_HEIGHT = ROW_HEIGHT
--- The switch track's width; a caption stops short of it.
-local SWITCH_WIDTH = 36
+-- The switch track's size (a pill, twice as wide as it is tall) and its round knob's diameter; a caption stops short of the track.
+local SWITCH_WIDTH, SWITCH_HEIGHT, KNOB_SIZE = 36, 18, 14
 
 -- Shared parts -------------------------------------------------------------------------------
 
@@ -74,8 +74,10 @@ local function refreshSwitch(r)
   local on = r.get() == true
   r.fill:SetShown(on)
   T.Tint(r.fill, r.pressed and "accentDim" or "accent")
-  r.knob:ClearAllPoints()
-  r.knob:SetPoint(on and "RIGHT" or "LEFT", r.track, on and "RIGHT" or "LEFT", on and -2 or 2, 0)
+  for _, part in ipairs({ r.knob, r.shade }) do
+    part:ClearAllPoints()
+    part:SetPoint(on and "RIGHT" or "LEFT", r.track, on and "RIGHT" or "LEFT", on and -2 or 2, 0)
+  end
   T.Tint(r.knob, (on or r.hot) and "white" or "muted")
 end
 
@@ -86,28 +88,32 @@ local function trackMouse(r)
   end
 end
 
--- The knob's bevel: a light line along its top and a dark one along its bottom, each one pixel.
-local function addKnobBevel(r)
-  local top, bottom = flat(r.track, "OVERLAY", "sheen"), flat(r.track, "OVERLAY", "shade")
-  top:SetHeight(1)
-  bottom:SetHeight(1)
-  top:SetPoint("TOPLEFT", r.knob, "TOPLEFT")
-  top:SetPoint("TOPRIGHT", r.knob, "TOPRIGHT")
-  bottom:SetPoint("BOTTOMLEFT", r.knob, "BOTTOMLEFT")
-  bottom:SetPoint("BOTTOMRIGHT", r.knob, "BOTTOMRIGHT")
+-- A texture of Media/Textures in one theme color (the art is white or grayscale, so the color tints it).
+local function art(parent, layer, name, color)
+  local t = parent:CreateTexture(nil, layer)
+  t:SetTexture(T.Texture(name))
+  return T.Tint(t, color)
 end
 
--- The switch itself: a recessed track with an inner border, an accent fill when on, and a beveled square knob.
+-- The switch's round knob, and the shade under its lit edge (refreshSwitch places both).
+local function addKnob(r)
+  r.knob = art(r.track, "OVERLAY", "Knob", "muted")
+  r.knob:SetSize(KNOB_SIZE, KNOB_SIZE)
+  r.shade = art(r.track, "OVERLAY", "KnobShade", "shade")
+  r.shade:SetSize(KNOB_SIZE, KNOB_SIZE)
+end
+
+-- The switch itself: a pill track in the inset color with its outline, an accent fill when on, and a round knob with its shade.
 local function addSwitch(r)
-  r.track = T.Panel(CreateFrame("Frame", nil, r), { inset = true, noSheen = true })
-  r.track:SetSize(SWITCH_WIDTH, 18)
+  r.track = CreateFrame("Frame", nil, r)
+  r.track:SetSize(SWITCH_WIDTH, SWITCH_HEIGHT)
   r.track:SetPoint("RIGHT", -8, 0)
-  r.fill = flat(r.track, "ARTWORK", "accent")
+  art(r.track, "BORDER", "Pill", "inset"):SetAllPoints()
+  r.fill = art(r.track, "ARTWORK", "Pill", "accent")
   r.fill:SetPoint("TOPLEFT", 1, -1)
   r.fill:SetPoint("BOTTOMRIGHT", -1, 1)
-  r.knob = flat(r.track, "OVERLAY", "muted")
-  r.knob:SetSize(14, 14)
-  addKnobBevel(r)
+  art(r.track, "OVERLAY", "PillLine", "borderHi"):SetAllPoints()
+  addKnob(r)
 end
 
 -- A switch row: set(on) runs on click, then the row re-reads get(). A long caption wraps left of the switch.
