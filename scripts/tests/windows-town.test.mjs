@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { WINDOWS_ENV, loggedIn, setCombat, windowState } from "./helpers.mjs";
+import { INSIDES_LUA, WINDOWS_ENV, loggedIn, setCombat, windowState } from "./helpers.mjs";
 
 const OFF = "VanguardDB.profiles = { Default = { Windows = { town = false } } }";
 
@@ -21,43 +21,123 @@ it("the town group loads cleanly on a client without its windows", () => {
   expect(windowErrors(addon)).toBe("none");
 });
 
-// TEST-ONLY pet stable (Blizzard_StableUI, Camelot): the window with the parts the skin dresses.
-const STABLE_ENV = `${WINDOWS_ENV}
-  local f = __window("PetStableFrame")
-  for _, key in ipairs({ "Background", "Border", "PetShadow" }) do f[key] = f:CreateTexture() end
-  local scene = CreateFrame("Frame", nil, f) f.modelScene = scene
-  scene.Background, scene.PetShadow = scene:CreateTexture(), scene:CreateTexture()
-  scene.PetModelSceneShadow, scene.Inset = CreateFrame("Frame", nil, scene), CreateFrame("Frame", nil, scene)
-  local bar = CreateFrame("Frame", nil, f) f.expBar = bar
-  bar.StatusBar = CreateFrame("StatusBar", nil, bar) bar.StatusBar.Background = bar.StatusBar:CreateTexture()
-  bar.overlay = CreateFrame("Frame", nil, bar) bar.overlay.art = bar.overlay:CreateTexture() bar.overlay.xpText = bar.overlay:CreateFontString(nil, "OVERLAY")
-  f.purchaseButton = CreateFrame("Button", nil, f)
-  f.loyaltyLevel = CreateFrame("Frame", nil, f) f.loyaltyLevel.levelText = f.loyaltyLevel:CreateFontString(nil, "ARTWORK")
-  for _, name in ipairs({ "PetStableLevelText", "PetStableLoyaltyText", "PetStableSlotText", "PetStableCostLabel" }) do f:CreateFontString(name, "ARTWORK") end
-  local slot = CreateFrame("CheckButton", "PetStableCurrentPet", f) slot.Text = slot:CreateFontString(nil, "BACKGROUND")
+// TEST-ONLY readers of a window's parts (the ones the later windows share): __button(b) whether the theme painted a flat
+// button on b, __lit(fs, role, token) whether a font string takes the role and the colour, __quiet(b) how many of a slot's
+// accent edges are hidden (4 at rest, none while the mouse is over it or holds it).
+const TOWN_READERS = `${WINDOWS_ENV}${INSIDES_LUA}
+  function __button(b) return ns.Theme.HoverParts(b) ~= nil end
+  function __lit(fs, role, token) return __looks(fs, role, token) end
+  function __quiet(b)
+    local n = 0
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.__parent == b and w.__kind == "Texture" and w.__layer == "BORDER" and w.__vertexColor and w.__vertexColor[4] == 0 then n = n + 1 end
+    end
+    return n
+  end
 `;
 
-it("S2.1 the pet stable: art faded, pet scene and experience bar dressed, purchase button and texts in the theme", () => {
+// TEST-ONLY pet stable (Blizzard_StableUI, Camelot): the window with the parts the skin dresses.
+const STABLE_ENV = `${TOWN_READERS}
+  local f = __window("PetStableFrame")
+  f.Background, f.insideFrameBottom = __art(f), __art(f)
+  local scene = CreateFrame("Frame", nil, f) f.modelScene = scene
+  scene.Background, scene.PetShadow = __art(scene), __art(scene)
+  scene.PetModelSceneShadow, scene.Inset = CreateFrame("Frame", nil, scene), CreateFrame("Frame", nil, scene)
+  scene.ControlFrame = CreateFrame("Frame", nil, scene)
+  for _, key in ipairs({ "zoomInButton", "resetButton" }) do
+    local b = CreateFrame("Button", nil, scene.ControlFrame) b.Icon = __art(b) scene.ControlFrame[key] = b
+  end
+  local bar = CreateFrame("Frame", nil, f) f.expBar = bar
+  bar.Fill, bar.Text = __art(bar), __text(bar, "250 / 400") __art(bar)
+  f.purchaseButton = CreateFrame("Button", nil, f)
+  for _, name in ipairs({ "PetStableLevelText", "PetStableLoyaltyText", "PetStableSlotText", "PetStableCostLabel" }) do
+    f:CreateFontString(name, "ARTWORK"):SetFont("TEST-ONLY-GAME", 12, "")
+  end
+  for _, name in ipairs({ "PetStableCurrentPet", "PetStableStabledPet1", "PetStableStabledPet2" }) do
+    local slot = CreateFrame("CheckButton", name, f)
+    slot.rim, slot.lockIcon, slot.genericPetIcon, slot.currentGlow, slot.checked = __art(slot), __art(slot), __art(slot), __art(slot), __art(slot)
+    slot.icon = __art(slot, name .. "IconTexture") slot.Text = __text(slot, "Pets")
+    slot.GetCheckedTexture = function() return slot.checked end
+  end
+  for _, key in ipairs({ "TopDividerFrame", "BottomDividerFrame" }) do
+    f[key] = CreateFrame("Frame", nil, f) f[key].horzDivider = __art(f[key])
+  end
+  PetStableMoneyFrame = __moneyLine("PetStableMoneyFrame", f)
+  PetStableMoneyFrame.Border = CreateFrame("Frame", nil, PetStableMoneyFrame) __art(PetStableMoneyFrame.Border)
+  PetStableCostMoneyFrame = __moneyLine("PetStableCostMoneyFrame", f)
+  -- TEST-ONLY reader of the pet stable (see stableState).
+  function __stableState()
+  local f, scene, bar = PetStableFrame, PetStableFrame.modelScene, PetStableFrame.expBar
+  local slot = PetStableCurrentPet
+  local controls = scene.ControlFrame
+  local dividers = 0
+  for _, key in ipairs({ "TopDividerFrame", "BottomDividerFrame" }) do
+    if f[key].horzDivider:GetAlpha() == 0 and ns.Theme.DividerParts(f[key].horzDivider) ~= nil then dividers = dividers + 1 end
+  end
+  return {
+    scene = __faded(scene, scene.PetShadow) and scene.Background:GetAlpha() == 0 and scene.Inset:GetAlpha() == 0 and scene.PetModelSceneShadow:GetAlpha() == 0 and __sunk(scene),
+    shadow = scene.PetShadow:GetAlpha(), controls = __button(controls.zoomInButton) and __button(controls.resetButton) and controls.zoomInButton.Icon:GetAlpha() == 1,
+    bar = bar.Fill:GetAlpha() == 1 and __sunk(bar) and __faded(bar, bar.Fill) and __themed(bar.Text),
+    texts = __lit(PetStableLevelText, "label", "text") and __lit(PetStableSlotText, "label", "text") and __lit(PetStableCostLabel, "label", "text")
+      and __themed(PetStableLoyaltyText) and PetStableLoyaltyText.__textColor == nil,
+    captions = __lit(PetStableCurrentPet.Text, "small", "text") and __lit(PetStableStabledPet1.Text, "small", "text"),
+    slotArt = slot.rim:GetAlpha() == 0 and slot.lockIcon:GetAlpha() == 1 and slot.genericPetIcon:GetAlpha() == 1 and slot.currentGlow:GetAlpha() == 1
+      and slot.icon:GetAlpha() == 1 and slot.checked:GetAlpha() == 1,
+    slots = select('#', PetStableStabledPet2:GetRegions()) > 6 and __quiet(PetStableStabledPet2) == 4,
+    dividers = dividers, purchase = __button(f.purchaseButton),
+    money = __faded(PetStableMoneyFrame.Border) and __sunk(PetStableMoneyFrame.Border) and __themed(PetStableMoneyFrame.GoldButton.Text) and __themed(PetStableCostMoneyFrame.CopperButton.Text),
+    painted = ns.Theme.PaintedCount(), errors = #ns.errors }
+  end
+`;
+
+// The stable's parts as the skin leaves them (see __stableState in STABLE_ENV).
+const stableState = (addon) => addon.eval("return __stableState()");
+
+it("R2.21 the pet stable: scene, experience bar, three slot tiles, rules, money lines and texts in the theme", () => {
   const addon = loggedIn(STABLE_ENV);
   addon.eval("PetStableFrame:Show()");
-  const first = windowState(addon, "PetStableFrame");
-  expect(first, "the window skin").toMatchObject({ art: 0, nine: 0, panel: true, title: true });
-  const f = "PetStableFrame";
-  expect(alphas(addon, `${f}.Background`, `${f}.Border`, `${f}.modelScene.Background`, `${f}.modelScene.PetShadow`, `${f}.modelScene.PetModelSceneShadow`, `${f}.modelScene.Inset`, `${f}.expBar.StatusBar.Background`), "its own art and the scene's faded").toEqual([0, 0, 0, 0, 0, 0, 0]);
-  expect(addon.eval(`return { ${f}.expBar.overlay.art:GetAlpha(), ${f}.expBar.overlay.xpText:GetAlpha(), ${f}.expBar.StatusBar:GetStatusBarTexture() ~= nil }`), "the bar's frame art faded, its text kept, the theme's bar texture").toEqual([0, 1, true]);
-  expect(dressed(addon, `${f}.modelScene`, `${f}.expBar`, `${f}.purchaseButton`), "the scene and bar get panels, the purchase button is a theme button").toEqual([true, true, true]);
-  expect(addon.eval(`return { ${f}.loyaltyLevel.levelText:GetFont() ~= nil, PetStableLevelText:GetFont() ~= nil, PetStableCurrentPet.Text:GetFont() ~= nil }`), "texts in the theme font").toEqual([true, true, true]);
+  const first = stableState(addon);
+  expect(windowState(addon, "PetStableFrame"), "the window skin").toMatchObject({ art: 0, nine: 0, panel: true, title: true });
+  expect(first, "the scene faded to an inset with its pet shadow kept; the model's buttons themed with their icons").toMatchObject({ scene: true, shadow: 1, controls: true });
+  expect(first, "the experience bar's track faded, its fill kept, an inset behind it, its text in the theme font").toMatchObject({ bar: true });
+  expect(first, "the gold texts in the text colour, the white loyalty line only in the theme font, the slot captions small").toMatchObject({ texts: true, captions: true });
+  expect(first, "the slots lose their rims and keep icon, lock, generic picture, glow and checked mark; the purchase button is a theme button").toMatchObject({ slotArt: true, slots: true, purchase: true });
+  expect(first, "both rules are one pixel of divider; the money lines: the coin box an inset, the figures in the theme font").toMatchObject({ dividers: 2, money: true, errors: 0 });
+  expect(addon.eval("return PetStableFrame.insideFrameBottom.__alpha"), "the sunk strip's art faded").toBe(0);
+  expect(addon.eval("local foot = ns.FrameState('vgStableFoot')[PetStableFrame] return { foot ~= nil, foot:GetFrameLevel() == PetStableFrame:GetFrameLevel(), foot.__points.TOPLEFT.rel == PetStableFrame.insideFrameBottom, foot.__points.BOTTOMRIGHT.rel == PetStableFrame.insideFrameBottom }"), "an inset panel laid corner to corner where it was, level with the window").toEqual([true, true, true, true]);
   addon.eval("PetStableFrame:Hide() PetStableFrame:Show()");
-  expect(windowState(addon, "PetStableFrame").painted, "a second show paints nothing more").toBe(first.painted);
+  expect(stableState(addon).painted, "a second show paints nothing more").toBe(first.painted);
 });
 
-it("S2.1 the pet stable: its group switched off leaves it the game's; a client with a bare window loads cleanly", () => {
+it("R2.21 the pet stable: a slot's accent edge follows the mouse", () => {
+  const addon = loggedIn(STABLE_ENV);
+  addon.eval("PetStableFrame:Show()");
+  // How many of the current pet slot's accent edges are hidden now.
+  const quiet = () => addon.eval("return __quiet(PetStableCurrentPet)");
+  expect(quiet(), "at rest the edge is hidden").toBe(4);
+  addon.hover("PetStableCurrentPet");
+  expect(quiet(), "under the mouse it shows").toBe(0);
+  addon.hover(null);
+  addon.eval("__wfgStub.runScript(PetStableCurrentPet, 'OnMouseDown')");
+  expect(quiet(), "held, it shows (darker)").toBe(0);
+  addon.eval("__wfgStub.runScript(PetStableCurrentPet, 'OnMouseUp')");
+  expect(quiet(), "let go away from the slot, it is hidden again").toBe(4);
+  addon.eval("PetStableFrame:Hide() PetStableFrame:Show() PetStableFrame:Hide() PetStableFrame:Show()");
+  addon.hover("PetStableCurrentPet");
+  addon.hover(null);
+  expect(quiet(), "showing the window again hooked nothing twice").toBe(4);
+});
+
+it("R2.21 the pet stable: its group switched off leaves it the game's; windows and slots without their parts load cleanly", () => {
   const off = loggedIn(STABLE_ENV, { savedVariables: OFF });
   off.eval("PetStableFrame:Show()");
   expect([windowState(off, "PetStableFrame").art !== 0, off.eval("return ns.FrameState('vgWindow')[PetStableFrame] == nil")], "not hooked, art left").toEqual([true, true]);
   const bare = loggedIn('CreateFrame("Frame", "PetStableFrame", UIParent):Hide()');
   bare.eval("PetStableFrame:Show()");
   expect([bare.eval("return ns.FrameState('vgWindow')[PetStableFrame]"), windowErrors(bare)], "a window without the parts is skinned, no error").toEqual([true, "none"]);
+  const odd = loggedIn(`${STABLE_ENV} PetStableCurrentPet.GetCheckedTexture = nil PetStableStabledPet1 = {} PetStableFrame.insideFrameBottom = {} PetStableFrame.TopDividerFrame.horzDivider = nil PetStableMoneyFrame.Border = nil`);
+  odd.eval("PetStableFrame:Show()");
+  expect([odd.eval("return ns.FrameState('vgPetSlots')[PetStableCurrentPet]"), odd.eval("return ns.FrameState('vgPetSlots')[PetStableStabledPet1]"), windowErrors(odd)], "a slot without a checked texture is dressed, one that is no frame is skipped; a strip that is no texture, a divider and a coin box that are missing are skipped").toEqual([true, null, "none"]);
 });
 
 // TEST-ONLY trainer (Blizzard_TrainerUI, loads on demand): the window, its list as the game's ScrollBox hands out rows.

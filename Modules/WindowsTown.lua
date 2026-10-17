@@ -55,51 +55,122 @@ local function fadeWhole(frame, keys)
   end
 end
 
--- Stable --------------------------------------------------------------------------------------------
+-- The model's control buttons (zoom, rotate, reset): their icon is the part that stays.
+local MODEL_CONTROLS = { "zoomInButton", "zoomOutButton", "rotateLeftButton", "rotateRightButton", "resetButton" }
 
--- The art of the pet stable window and of its pet scene (which also has an inset frame of art): faded whole.
-local STABLE_ART = { "Background", "Border", "PetShadow", "PetModelSceneShadow" }
--- The stable's texts the game draws in gold or white: their font goes to the theme's.
-local STABLE_TEXTS = { "PetStableLevelText", "PetStableLoyaltyText", "PetStableSlotText", "PetStableCostLabel" }
--- The pet slots (the current pet and two stabled ones), whose captions take the theme font.
-local STABLE_SLOTS = { "PetStableCurrentPet", "PetStableStabledPet1", "PetStableStabledPet2" }
-
--- The pet's experience bar: the theme's bar texture on its fill, the game's frame art faded
--- (its text kept), a dark panel behind it.
-local function styleExpBar(bar)
-  if type(bar) ~= "table" then return end
-  local fill = type(bar.StatusBar) == "table" and bar.StatusBar or bar
-  if type(fill.SetStatusBarTexture) == "function" then T.StyleBar(fill) end
-  if type(bar.overlay) == "table" then T.FadeRegions(bar.overlay) end
-  fadeWhole(fill, { "Background" })
-  T.Panel(bar, { inset = true, noSheen = true })
+-- The model scene's zoom, rotate and reset buttons as theme buttons that keep their icons.
+local function styleModelControls(scene)
+  local box = type(scene) == "table" and scene.ControlFrame
+  if type(box) ~= "table" then return end
+  for _, key in ipairs(MODEL_CONTROLS) do
+    local button = box[key]
+    if type(button) == "table" and button.GetRegions then
+      T.Button(button)
+      GW.ShowTexture(button.Icon)
+    end
+  end
 end
 
--- The pet scene: its art faded and an inset panel behind the model.
+-- Stable --------------------------------------------------------------------------------------------
+
+-- The art of the pet scene (its background, its inset frame and its shadow overlay): faded whole. The pet's drop
+-- shadow under the model (PetShadow) stays: it is part of how the model stands.
+local STABLE_ART = { "Background", "Inset", "PetModelSceneShadow" }
+-- The stable's texts the game draws in gold: the pet's level line, the slot caption and the Costs label.
+local STABLE_GOLD = { "PetStableLevelText", "PetStableSlotText", "PetStableCostLabel" }
+-- The loyalty line under the pet's level, white in the game.
+local STABLE_WHITE = { "PetStableLoyaltyText" }
+-- The pet slots (the current pet and two stabled ones).
+local STABLE_SLOTS = { "PetStableCurrentPet", "PetStableStabledPet1", "PetStableStabledPet2" }
+-- The two rules across the window (above and below the pet model), each a texture on a frame of its own.
+local STABLE_DIVIDERS = { "TopDividerFrame", "BottomDividerFrame" }
+-- The slot art that stays on a pet slot: the lock, the generic pet picture and the current pet's glow.
+local SLOT_KEEP = { "lockIcon", "genericPetIcon", "currentGlow" }
+
+-- The pet slots already dressed and the footer panels already made, by frame.
+local vgPetSlots = ns.FrameState("vgPetSlots")
+local vgStableFoot = ns.FrameState("vgStableFoot")
+
+-- The pet scene: its art faded and an inset panel behind the model, its zoom and rotate buttons themed.
 local function styleStableScene(scene)
   if type(scene) ~= "table" then return end
   fadeWhole(scene, STABLE_ART)
-  fadeWhole(scene, { "Inset" })
   T.Panel(scene, { inset = true, noSheen = true })
+  styleModelControls(scene)
 end
 
--- The captions over the pet slots, and the loyalty level number, in the theme font.
-local function styleStableCaptions(frame)
-  namedFonts(STABLE_TEXTS, "label")
-  for _, name in ipairs(STABLE_SLOTS) do
-    if type(_G[name]) == "table" then keyFonts(_G[name], { "Text" }, "small") end
-  end
-  if type(frame.loyaltyLevel) == "table" then keyFonts(frame.loyaltyLevel, { "levelText" }, "small") end
+-- The captions over the pet slots (the game's gold) and the stable's other texts, in the theme font and the text colour.
+local function styleStableCaptions()
+  GW.TextNamed(STABLE_GOLD, "label", "text")
+  GW.TextNamed(STABLE_WHITE, "label", false)
+  for _, name in ipairs(STABLE_SLOTS) do GW.SkinText(GW.Part(_G, name .. ".Text"), "small", "text") end
 end
 
--- The pet stable (hunters): the window skin, its pet scene, experience bar, purchase button and texts.
+-- What a pet slot keeps when its art is faded: its icon, the lock, generic pet and glow, and the checked mark that
+-- says which pet the model shows.
+local function slotKeep(button)
+  local keep = GW.KeepKeys(button, SLOT_KEEP)
+  local icon, checked = _G[(button:GetName() or "") .. "IconTexture"], type(button.GetCheckedTexture) == "function" and button:GetCheckedTexture()
+  if type(icon) == "table" then keep[icon] = true end
+  if type(checked) == "table" then keep[checked] = true end
+  return keep
+end
+
+-- A pet slot's accent edge follows the mouse: brighter while it is over the slot, darker while it is held.
+local function slotStates(button)
+  button:HookScript("OnEnter", ns.Guard("hook OnEnter", function(self) T.SlotState(self, "hover") end))
+  button:HookScript("OnLeave", ns.Guard("hook OnLeave", function(self) T.SlotState(self, nil) end))
+  button:HookScript("OnMouseDown", ns.Guard("hook OnMouseDown", function(self) T.SlotState(self, "pressed") end))
+  button:HookScript("OnMouseUp", ns.Guard("hook OnMouseUp", function(self) T.SlotState(self, self:IsMouseOver() and "hover" or nil) end))
+end
+
+-- One pet slot as a quiet slot tile (its rims faded, its icon, lock and glow kept), once.
+local function dressPetSlot(button)
+  if type(button) ~= "table" or not button.GetRegions or not button.HookScript or vgPetSlots[button] then return end
+  vgPetSlots[button] = true
+  T.FadeRegions(button, slotKeep(button))
+  T.Slot(button, { quiet = true })
+  slotStates(button)
+end
+
+-- The window's foot (the slots, the purchase button, the money): the art strip the game sank it with replaced by an
+-- inset panel on a frame of its own at the window's level, so everything the window holds draws over it.
+local function styleStableFoot(frame)
+  local strip = frame.insideFrameBottom
+  if type(strip) ~= "table" or not strip.GetPoint or vgStableFoot[frame] then return end
+  local foot = CreateFrame("Frame", nil, frame)
+  vgStableFoot[frame] = foot
+  foot:SetFrameLevel(frame:GetFrameLevel())
+  foot:SetPoint("TOPLEFT", strip, "TOPLEFT")
+  foot:SetPoint("BOTTOMRIGHT", strip, "BOTTOMRIGHT")
+  T.Panel(foot, { inset = true, noSheen = true })
+end
+
+-- One of the stable's rules (a divider texture on a frame of its own) as one pixel of divider; a rule the client lacks is skipped.
+local function stableRule(box)
+  local rule = type(box) == "table" and box.horzDivider
+  if type(rule) == "table" and rule.SetAlpha then T.Divider(rule) end
+end
+
+-- The pet's level, slots, rules and money lines: the three slots as tiles, the two rules as one pixel of divider, the
+-- money lines (the player's in a coin box, the slot's cost beside the Costs label) in the theme font.
+local function styleStableParts(frame)
+  for _, name in ipairs(STABLE_SLOTS) do dressPetSlot(_G[name]) end
+  GW.EachKey(frame, STABLE_DIVIDERS, stableRule)
+  GW.SkinCoinBox(_G.PetStableMoneyFrame)
+  GW.SkinMoney(_G.PetStableCostMoneyFrame)
+  styleStableFoot(frame)
+end
+
+-- The pet stable (hunters): the window skin, its pet scene, experience bar, purchase button, slots and texts.
 function GW.SkinStable(frame)
   GW.Skin(frame)
-  fadeWhole(frame, STABLE_ART)
   styleStableScene(frame.modelScene)
-  styleExpBar(frame.expBar)
+  GW.SkinBar(frame.expBar)
+  GW.SkinText(GW.Part(frame, "expBar.Text"), "number", false)
   keyButtons(frame, { "purchaseButton" })
-  styleStableCaptions(frame)
+  styleStableCaptions()
+  styleStableParts(frame)
 end
 
 GW.Add("town", "framed", { "PetStableFrame" }, GW.SkinStable)
@@ -158,26 +229,11 @@ GW.Add("town", "onDemand", "Blizzard_TrainerUI", { "ClassTrainerFrame" }, GW.Ski
 -- The side dress-up window's art: parts by key, and the textures the game names.
 local DRESSUP_ART = { "BGTopLeft", "BGBottomLeft" }
 local DRESSUP_NAMED = { "SideDressUpFrameTop", "SideDressUpFrameBackgroundTop", "SideDressUpFrameBackgroundBot" }
--- The model's control buttons (zoom, rotate, reset): their icon is the part that stays.
-local MODEL_CONTROLS = { "zoomInButton", "zoomOutButton", "rotateLeftButton", "rotateRightButton", "resetButton" }
 -- The stack split window's art (the money plates, and its glow).
 local SPLIT_ART = { "SingleItemSplitBackground", "MultiItemSplitBackground", "FrameGlow" }
 -- The coin pickup window's coin icons (kept) and its buttons.
 local COIN_ICONS = { "CoinPickupGoldIcon", "CoinPickupSilverIcon", "CoinPickupCopperIcon" }
 local COIN_BUTTONS = { "CoinPickupOkayButton", "CoinPickupCancelButton" }
-
--- The model scene's zoom, rotate and reset buttons as theme buttons that keep their icons.
-local function styleModelControls(scene)
-  local box = type(scene) == "table" and scene.ControlFrame
-  if type(box) ~= "table" then return end
-  for _, key in ipairs(MODEL_CONTROLS) do
-    local button = box[key]
-    if type(button) == "table" and button.GetRegions then
-      T.Button(button)
-      GW.ShowTexture(button.Icon)
-    end
-  end
-end
 
 -- The side dress-up window (beside the auction house and merchant): the window skin, the game's
 -- plates faded, the Reset and model buttons in the theme.

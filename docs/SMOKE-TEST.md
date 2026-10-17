@@ -556,7 +556,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.3.1 Stable (a hunter)
 
 - Do: with a hunter, talk to a stable master.
-- Expect: the stable window is a flat dark panel; the pet model sits on a dark box without the game's frame; the pet experience bar is a flat bar; the Purchase button and the pet slot captions are in the Vanguard font; clicking a stabled pet and Purchase still work.
+- Expect: the stable window is a flat dark panel; the pet model sits on a dark box without the game's frame and the pet's shadow still shows under it; the strip along the bottom (slots, Purchase, money) is a darker box; the three pet slots are flat tiles with no wooden rims, each keeps the pet's icon (a locked slot its lock), the current pet's glow and the mark on the pet shown, and a thin accent edge lights up on a slot while the mouse is over it; the zoom, rotate and reset buttons over the model are flat with their pictures; the two rules across the window are single thin lines, not the carved ones; the pet experience bar is a flat bar on a dark track with its numbers in the Vanguard font; the pet's level line, the slot captions and the Costs label are in the light text colour, not gold; your money at the bottom sits in a dark box with its coins, and the slot's price beside Costs is in the Vanguard font; the Purchase button is a Vanguard button; clicking a stabled pet and Purchase still work.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.3.2 Trainer

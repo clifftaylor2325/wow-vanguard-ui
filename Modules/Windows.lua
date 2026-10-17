@@ -287,6 +287,15 @@ function GW.SkinMoney(frame)
   end
 end
 
+-- A money line that sits in a gold coin box (ContainerMoneyFrameTemplate's Border: the stable's and the bags' foot):
+-- the figures in the theme font and the box's art faded for a flat inset behind them; a frame without the box
+-- gets the figures only.
+function GW.SkinCoinBox(money)
+  if type(money) ~= "table" then return end
+  GW.SkinMoney(money)
+  GW.InsetPanel(money.Border)
+end
+
 -- A breath or fatigue bar (MirrorTimerTemplate): the window skin hugging the bar (no room around it), its
 -- StatusBar in the theme's bar texture and its caption in the small bar text.
 function GW.SkinTimer(frame)
