@@ -338,7 +338,7 @@ const timedQuest = (addon, seconds) => {
 };
 // Whether the tracker's once-a-second countdown redraw is a job on the shared ticker.
 const timerTicking = (addon) => addon.eval("return ns.ticker.vgJobs['quest timers'] ~= nil");
-it("quest tracker: a timed quest shows its countdown under its title, ticking once a second until the timer is gone", () => {
+it("quest tracker: a timed quest shows its countdown under its title, ticking once a second until the timer is gone, and only while watched", () => {
   const addon = loggedIn();
   timedQuest(addon, 272);
   expect(tracker(addon).blocks[0], "Time left as m:ss above the objectives").toEqual(["[10] TEST-ONLY Hurry", ["Time left 4:32", "- 0/1 TEST-ONLY Parcel delivered"]]);
@@ -351,6 +351,10 @@ it("quest tracker: a timed quest shows its countdown under its title, ticking on
   addon.eval("__wfgWorld.setQuestTimer(90090, nil)");
   addon.update(0);
   expect([tracker(addon).blocks[0][1], timerTicking(addon)], "the timer gone: the line and the ticking go").toEqual([["- 0/1 TEST-ONLY Parcel delivered"], false]);
+  addon.world.addQuest({ questID: 90091, title: "TEST-ONLY Dawdle", level: 10, watched: false, objectives: [{ text: "0/1 TEST-ONLY Note read", finished: false }] });
+  addon.eval("__wfgWorld.setQuestTimer(90091, 500)");
+  addon.update(0);
+  expect([blockTitles(addon), timerTicking(addon)], "a timed quest you don't watch: not drawn, and nothing ticks for it").toEqual([["[10] TEST-ONLY Hurry"], false]);
 });
 it("quest tracker: a timer the client hides shows nothing, a client without timers shows nothing, and neither errors", () => {
   const addon = loggedIn();
