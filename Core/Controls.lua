@@ -15,6 +15,8 @@ local ROW_HEIGHT = 28
 W.ROW_HEIGHT = ROW_HEIGHT
 -- The switch track's size (a pill, twice as wide as it is tall) and its round knob's diameter; a caption stops short of the track.
 local SWITCH_WIDTH, SWITCH_HEIGHT, KNOB_SIZE = 36, 18, 14
+-- The slider track's height (a pill) and its round thumb's diameter.
+local SLIDER_HEIGHT, SLIDER_THUMB = 8, 12
 
 -- Shared parts -------------------------------------------------------------------------------
 
@@ -365,11 +367,13 @@ end
 local function refreshSlider(r)
   local v, locked = r.get(), r.locked and r.locked()
   local share = math.max(0, math.min(1, (v - r.min) / (r.max - r.min)))
-  T.Tint(r.fill, locked and "muted" or "accent")
+  for _, part in ipairs(r.fillParts) do T.Tint(part, locked and "muted" or "accent") end
   T.Color(r.label, locked and "muted" or "text")
   r.fill:SetWidth(math.max(1, r.track:GetWidth() * share))
-  r.thumb:ClearAllPoints()
-  r.thumb:SetPoint("CENTER", r.track, "LEFT", r.track:GetWidth() * share, 0)
+  for _, part in ipairs({ r.thumb, r.thumbShade }) do
+    part:ClearAllPoints()
+    part:SetPoint("CENTER", r.track, "LEFT", r.track:GetWidth() * share, 0)
+  end
   r.value:SetText(r.format(v))
 end
 
@@ -401,16 +405,56 @@ local function wireDrag(r)
   r.track:SetScript("OnMouseUp", function() r.track:SetScript("OnUpdate", nil) end)
 end
 
--- The track, fill and thumb.
-local function addTrack(r)
-  r.track = T.Panel(CreateFrame("Button", nil, r), { inset = true, noSheen = true })
-  r.track:SetSize(140, 6)
-  r.track:SetPoint("RIGHT", -66, 0)
-  r.fill = flat(r.track, "ARTWORK", "accent")
+-- A pill of Media/Textures/<name> on frame, in three parts: a round left end, a flat middle and a round right end, so it
+-- stretches to any width. Returns the parts.
+local function pillParts(frame, layer, name, color)
+  local parts = {}
+  for i, cut in ipairs({ { 0, 0.25 }, { 0.25, 0.75 }, { 0.75, 1 } }) do
+    parts[i] = art(frame, layer, name, color)
+    parts[i]:SetTexCoord(cut[1], cut[2], 0, 1)
+  end
+  return parts
+end
+
+-- Lays a pill's parts across frame: each round end half the frame's height wide, the middle between them.
+local function placePill(parts, frame)
+  local cap = SLIDER_HEIGHT / 2
+  parts[1]:SetPoint("TOPLEFT", frame)
+  parts[1]:SetPoint("BOTTOMLEFT", frame)
+  parts[1]:SetWidth(cap)
+  parts[2]:SetPoint("TOPLEFT", frame, "TOPLEFT", cap, 0)
+  parts[2]:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -cap, 0)
+  parts[3]:SetPoint("TOPRIGHT", frame)
+  parts[3]:SetPoint("BOTTOMRIGHT", frame)
+  parts[3]:SetWidth(cap)
+end
+
+-- The accent fill, from the track's left end to the thumb (refreshSlider sets its width).
+local function addFill(r)
+  r.fill = CreateFrame("Frame", nil, r.track)
   r.fill:SetPoint("TOPLEFT")
   r.fill:SetPoint("BOTTOMLEFT")
-  r.thumb = flat(r.track, "OVERLAY", "white")
-  r.thumb:SetSize(6, 14)
+  r.fillParts = pillParts(r.fill, "ARTWORK", "Pill", "accent")
+  placePill(r.fillParts, r.fill)
+end
+
+-- The round thumb and its shade (refreshSlider places them).
+local function addThumb(r)
+  r.thumb = art(r.track, "OVERLAY", "Knob", "white")
+  r.thumb:SetSize(SLIDER_THUMB, SLIDER_THUMB)
+  r.thumbShade = art(r.track, "OVERLAY", "KnobShade", "shade")
+  r.thumbShade:SetSize(SLIDER_THUMB, SLIDER_THUMB)
+end
+
+-- The track: an inset pill with its outline. The fill and thumb go on it, and dragging sets the value.
+local function addTrack(r)
+  r.track = CreateFrame("Button", nil, r)
+  r.track:SetSize(140, SLIDER_HEIGHT)
+  r.track:SetPoint("RIGHT", -66, 0)
+  placePill(pillParts(r.track, "BORDER", "Pill", "inset"), r.track)
+  placePill(pillParts(r.track, "OVERLAY", "PillLine", "borderHi"), r.track)
+  addFill(r)
+  addThumb(r)
   wireDrag(r)
 end
 
