@@ -259,10 +259,9 @@ it("shared media: the bundled LibSharedMedia-3.0 carries Vanguard's font and bar
     .toEqual([8020003, 8, FIRA + "Medium.ttf", FIRA + "SemiBold.ttf", "Interface\\AddOns\\Vanguard\\Media\\Textures\\Bar", "Interface\\AddOns\\Vanguard\\Media\\Textures\\BarSoft", "Interface\\Buttons\\WHITE8X8"]);
   addon.eval('ns.Options.Show("general") __dropdown("Font")');
   const fonts = addon.eval("return __menuTexts()");
-  expect([fonts.slice(0, 2), fonts.includes("TEST-ONLY Font"), fonts.includes("Friz Quadrata TT"), fonts.some((f) => /^Vanguard/.test(f))], "the Font picker: the built-ins first, then every shared font but Vanguard's own")
-    .toEqual([["Fira Sans Condensed", "the game's font"], true, true, false]);
-  addon.eval('__pick("TEST-ONLY Font")');
-  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (Vanguard_Options.title:GetFont()), Vanguard_Options.reload:IsShown() }"), "picking a shared font uses it for all text at once, no reload")
+  expect(fonts, "the Font picker: Vanguard's own two fonts only (other addons' fonts are not listed)").toEqual(["Fira Sans Condensed", "the game's font"]);
+  addon.eval('ns.Theme.Settings().font = "TEST-ONLY Font" ns.Theme.Refresh()');
+  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (Vanguard_Options.title:GetFont()), Vanguard_Options.reload:IsShown() }"), "a font another addon shares, once in use, is used for all text at once, no reload")
     .toEqual(["Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", false]);
   addon.eval('__dropdown("Bar texture")');
   const bars = addon.eval("return __menuTexts()");
@@ -291,20 +290,32 @@ it("shared media: a name no longer shared, or no LibSharedMedia at all, falls ba
 
 it("a long dropdown shows 16 choices at once, scrolls with the wheel and opens at the current choice", () => {
   const addon = loggedIn(CLICK_LUA + DROPDOWN_LUA + `local lsm = LibStub("LibSharedMedia-3.0")
-    for i = 1, 40 do lsm:Register("font", string.format("TEST-ONLY Font %02d", i), [[Interface\\AddOns\\TestOnly\\Font.ttf]]) end`);
-  addon.eval('ns.Options.Show("general") __dropdown("Font")');
-  const total = addon.eval('return #ns.Theme.SharedChoices("font", { {}, {} })');
+    for i = 1, 40 do lsm:Register("statusbar", string.format("TEST-ONLY Bar %02d", i), [[Interface\\AddOns\\TestOnly\\Bar.tga]]) end`);
+  addon.eval('ns.Options.Show("general") __dropdown("Bar texture")');
+  const total = addon.eval('return #ns.Theme.SharedChoices("statusbar", { {}, {}, {} })');
   // The first choice the menu shows.
   const first = () => addon.eval("return __menuTexts()[1]");
-  expect([addon.eval("return #__menuTexts()"), addon.eval("return Vanguard_Menu:GetHeight()"), first()], "16 of the choices, from the top").toEqual([16, 16 * 22 + 2, "Fira Sans Condensed"]);
+  expect([addon.eval("return #__menuTexts()"), addon.eval("return Vanguard_Menu:GetHeight()"), first()], "16 of the choices, from the top").toEqual([16, 16 * 22 + 2, "Vanguard"]);
   addon.wheel("Vanguard_Menu", -3);
-  expect(first(), "the wheel scrolls down a choice per step").toBe("2002 Bold");
+  expect(first(), "the wheel scrolls down a choice per step").toBe(addon.eval(`return ns.Theme.SharedChoices("statusbar", { {}, {}, {} })[4][2]`));
   addon.wheel("Vanguard_Menu", -100);
-  expect([first(), addon.eval("return __menuTexts()[16]")], "and stops at the end of the list").toEqual([addon.eval(`return ns.Theme.SharedChoices("font", { {}, {} })[${total - 15}][2]`), "TEST-ONLY Font 40"]);
+  expect([first(), addon.eval("return __menuTexts()[16]")], "and stops at the end of the list").toEqual([addon.eval(`return ns.Theme.SharedChoices("statusbar", { {}, {}, {} })[${total - 15}][2]`), "TEST-ONLY Bar 40"]);
   addon.wheel("Vanguard_Menu", 100);
-  expect(first(), "and at the top").toBe("Fira Sans Condensed");
-  addon.eval('ns.Theme.Settings().font = "TEST-ONLY Font 10" ns.Widgets.CloseMenu() __dropdown("Font")');
-  expect(addon.eval("local t = __menuTexts() return { t[16], Vanguard_Menu.items[16].check:IsShown() }"), "a menu opens scrolled to show the current choice, checked").toEqual(["TEST-ONLY Font 10", true]);
+  expect(first(), "and at the top").toBe("Vanguard");
+  addon.eval('ns.Theme.Settings().barTexture = "TEST-ONLY Bar 10" ns.Widgets.CloseMenu() __dropdown("Bar texture")');
+  expect(addon.eval("local t = __menuTexts() return { t[16], Vanguard_Menu.items[16].check:IsShown() }"), "a menu opens scrolled to show the current choice, checked").toEqual(["TEST-ONLY Bar 10", true]);
+});
+
+it("the font picker lists Vanguard's two fonts and the one in use, not every font another addon shares", () => {
+  const addon = loggedIn(CLICK_LUA + DROPDOWN_LUA + `local lsm = LibStub("LibSharedMedia-3.0")
+    lsm:Register("font", "TEST-ONLY Shared", [[Interface\\AddOns\\TestOnly\\Font.ttf]])`);
+  addon.eval('ns.Options.Show("general") __dropdown("Font")');
+  expect(addon.eval("return __menuTexts()"), "Vanguard's two fonts only").toEqual(["Fira Sans Condensed", "the game's font"]);
+  // A profile that uses the shared font loads before the window is built, so its list starts with it.
+  const used = loggedIn(CLICK_LUA + DROPDOWN_LUA + `LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Shared", [[Interface\\AddOns\\TestOnly\\Font.ttf]])
+    ns.Theme.Settings().font = "TEST-ONLY Shared"`);
+  used.eval('ns.Options.Show("general") __dropdown("Font")');
+  expect(used.eval("return __menuTexts()"), "a font from another addon that is in use is listed after them").toEqual(["Fira Sans Condensed", "the game's font", "TEST-ONLY Shared"]);
 });
 
 it("the faction look on a Russian client keeps Fira Sans for headings (the faction fonts have no Cyrillic); the crest stays", () => {

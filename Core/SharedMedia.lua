@@ -37,6 +37,15 @@ function T.SharedChoices(kind, builtIns)
   return list
 end
 
+-- The Font picker's choices: Vanguard's own (builtIns), and the font the theme uses when another addon still shares it,
+-- so a profile that picked that font still shows it. The fonts other addons share are not listed.
+function T.FontChoices(builtIns)
+  local list, current = {}, T.Settings().font
+  for _, c in ipairs(builtIns) do list[#list + 1] = c end
+  if current and not T.SHARED_MEDIA.font[current] and T.SharedPath("font", current) then list[#list + 1] = { current, current } end
+  return list
+end
+
 -- Shares Vanguard's font (it has Latin, Greek and Cyrillic, so western and
 -- Russian clients) and its three bar textures.
 local function share(lsm)

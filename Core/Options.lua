@@ -151,7 +151,7 @@ local function liveThemeSetting(key)
   end
 end
 
--- The built-in fonts and bar textures; the pickers add what LibSharedMedia shares.
+-- The built-in fonts and bar textures; the bar picker adds what LibSharedMedia shares (the font picker only the one in use).
 local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", "the game's font" } }
 -- The faction look: your faction's crest only (the default), the crest and heading font, or off.
 local FACTION_LOOK = { { "crest", "Crest only" }, { "auto", "Crest and heading font" }, { "off", "Off" } }
@@ -174,7 +174,7 @@ local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) ret
 -- Look, the font, text size, faction, variant, corners and ornament rows.
 local function lookTextRows()
   return {
-    { "cycle", "Font", T.SharedChoices("font", FONT_CHOICES), liveThemeSetting("font") },
+    { "cycle", "Font", T.FontChoices(FONT_CHOICES), liveThemeSetting("font") },
     { "slider", "Text size", TEXT_SIZES, liveThemeSetting("textScale") },
     { "cycle", "Faction look", FACTION_LOOK, liveThemeSetting("faction") },
     { "cycle", "Theme variant: surfaces and text", VARIANT_CHOICES, liveThemeSetting("variant") },
