@@ -456,12 +456,11 @@ local function dressSidePanes()
   for _, path in ipairs(GW.SIDE_PANES) do dressSidePane(walk(_G, path)) end
 end
 
--- The flyout's page arrows (NavigationFrame.PrevButton and NextButton: pictures on a button) as flat buttons that keep
--- their pictures, until Core has an arrow button.
+-- The flyout's page arrows (NavigationFrame.PrevButton and NextButton: pictures on a button) as theme arrow buttons.
 local function skinFlyoutNav(nav)
   if type(nav) ~= "table" then return end
-  GW.SkinGlyph(nav.PrevButton)
-  GW.SkinGlyph(nav.NextButton)
+  GW.SkinArrow(nav.PrevButton, "left")
+  GW.SkinArrow(nav.NextButton, "right")
 end
 
 -- The equipment flyout (the items you can swap into a slot): its art faded, flat panels behind the

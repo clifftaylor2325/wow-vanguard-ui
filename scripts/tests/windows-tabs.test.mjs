@@ -376,7 +376,7 @@ it("equipment flyout: panels behind its grid and page bar, its buttons skinned l
   const flyout = () => addon.eval(`local f = EquipmentFlyoutFrame
     return { __panel(f.buttonFrame), __panel(f.NavigationFrame), ns.FrameState('vgSkinned')[f.buttons[1]] == true, #f.buttons }`);
   expect(flyout(), "its grid and page bar panelled, its first button skinned").toEqual([true, true, true, 1]);
-  expect(addon.eval("local n = EquipmentFlyoutFrame.NavigationFrame return { __panel(n.PrevButton), __panel(n.NextButton) }"), "its page arrows flat buttons").toEqual([true, true]);
+  expect(addon.eval("local n = EquipmentFlyoutFrame.NavigationFrame return { ns.Theme.ArrowParts(n.PrevButton) ~= nil, ns.Theme.ArrowParts(n.NextButton) ~= nil }"), "its page arrows theme arrow buttons").toEqual([true, true]);
   addon.eval(`table.insert(EquipmentFlyoutFrame.buttons, CreateFrame("Button", nil, EquipmentFlyoutFrame.buttonFrame))`);
   expect(addon.eval("return ns.FrameState('vgSkinned')[EquipmentFlyoutFrame.buttons[2]]"), "a button the game adds waits for the next fill").toBe(null);
   addon.eval("EquipmentFlyout_UpdateItems()");
