@@ -476,6 +476,28 @@ function GW.SkinRadio(button)
   if type(button) == "table" and button.CreateTexture then T.Radio(button) end
 end
 
+-- A check button (the game's check box art, its label kept) as a theme check box; anything that is not one is skipped.
+function GW.SkinCheck(button)
+  if type(button) == "table" and button.CreateTexture and button.GetChecked then T.CheckBox(button) end
+end
+
+-- A list row in the theme (T.Row: the hover wash, the press shade and the selected look) with the game's art on it faded, except
+-- the parts under keys (an icon, a banner) and the row's own layers; anything that is not a frame is skipped. Safe to run again.
+function GW.DressRow(row, keys)
+  if type(row) ~= "table" or not row.CreateTexture then return end
+  T.Row(row)
+  local keep = GW.KeepKeys(row, keys or {})
+  for _, part in pairs(T.RowParts(row) or {}) do
+    if type(part) == "table" then keep[part] = true end
+  end
+  T.FadeRegions(row, keep)
+end
+
+-- The row's selected look following a mark the game shows on the selected row (a Selection texture): lit while the mark is shown.
+function GW.FollowMark(row, mark)
+  T.SelectRow(row, type(mark) == "table" and type(mark.IsShown) == "function" and mark:IsShown() == true)
+end
+
 -- An edit box (the game's input border and all) as a theme edit box; anything that is not one is skipped.
 function GW.SkinEditBox(box)
   if type(box) == "table" and box.SetText and box.GetRegions then T.EditBox(box) end

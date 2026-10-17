@@ -207,6 +207,19 @@ local function hookRow(row, mixin)
   afterWith(row, "RefreshExpandedColumns", widenRankCell)
 end
 
+-- The roster's column headers (ColumnDisplay's pool of buttons) as theme buttons, the game's tab plates faded.
+local function dressHeaders(display)
+  local pool = display.columnHeaders
+  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
+  for header in pool:EnumerateActive() do GW.SkinButton(header) end
+end
+
+-- After the roster lays out its column headers: the Rank header wider, every header a theme button.
+local function layoutHeaders(display, columns)
+  widenRankHeader(display, columns)
+  dressHeaders(display)
+end
+
 -- The roster's hooks, on once: on the game's row mixin (CommunitiesMemberListEntryMixin), so every row made
 -- later has them, on any row made already, and on the roster's column headers. Post-hooks only: nothing of the
 -- game's is replaced, so the roster is not tainted.
@@ -216,7 +229,7 @@ local function hookRoster(list)
   afterWith(mixin, "UpdatePresence", lightOffline)
   afterWith(mixin, "RefreshExpandedColumns", widenRankCell)
   if type(list.ScrollBox) == "table" and list.ScrollBox.ForEachFrame then list.ScrollBox:ForEachFrame(function(row) hookRow(row, mixin) end) end
-  if type(list.ColumnDisplay) == "table" then afterWith(list.ColumnDisplay, "LayoutColumns", widenRankHeader) end
+  if type(list.ColumnDisplay) == "table" then afterWith(list.ColumnDisplay, "LayoutColumns", layoutHeaders) end
 end
 
 -- The note the Guild Info page shows in its Guild Information box while the guild has none.
@@ -254,23 +267,103 @@ local function dressPlaySettings(page)
   end
 end
 
--- The guild window's pages beyond their panels: the roster's hooks, the Guild Information box's note (now and
--- after each game fill), the Preferred Play Settings buttons.
+-- What a roster row keeps of its art: the class icon and the voice chat mark. A profession header bar keeps its fold icons and
+-- its profession's icon.
+GW.GUILD_ROW_KEEP = { "Class", "VoiceChatStatusIcon" }
+GW.GUILD_HEADER_KEEP = { "ExpandedIcon", "CollapsedIcon", "Icon" }
+
+-- A link button's label (the "all recipes" link, pale gold in the game) in a theme text color.
+local function paintLink(button, token)
+  paintText(type(button) == "table" and type(button.GetFontString) == "function" and button:GetFontString(), token)
+end
+
+-- One roster row as the game acquires it: its stripe and hover strip faded under the row primitive, its class icon kept; a
+-- profession header (a collapsible bar over its members) a row of its own with its fold and profession icons kept, its name and
+-- its "all recipes" link in the text color.
+local function dressMemberRow(row)
+  GW.DressRow(row, GW.GUILD_ROW_KEEP)
+  local header = row.ProfessionHeader
+  GW.DressRow(header, GW.GUILD_HEADER_KEEP)
+  if type(header) == "table" then paintText(header.Name, "text") paintLink(header.AllRecipes, "text") end
+end
+
+-- The roster's parts: its Show Offline box, member count, column strip and headers, and its rows as the game acquires them.
+local function dressMemberList(list)
+  if type(list) ~= "table" then return end
+  GW.SkinCheck(list.ShowOfflineButton)
+  paintText(GW.Part(list, "ShowOfflineButton.Text"), "text")
+  paintText(list.MemberCount, "text")
+  if type(list.ColumnDisplay) == "table" then GW.FadeParts(list.ColumnDisplay, { "Background", "TopTileStreaks" }) dressHeaders(list.ColumnDisplay) end
+  GW.WatchRows(list.ScrollBox, dressMemberRow)
+end
+
+-- What a communities list row keeps of its art: the community's avatar, a guild's banner (plate and emblem), the favourite star,
+-- the unread dot and the invitation mail.
+GW.COMMUNITY_ROW_KEEP = { "Icon", "GuildTabardBackground", "GuildTabardEmblem", "FavoriteIcon", "UnreadNotificationIcon", "InvitationIcon" }
+
+-- One communities list row as the game acquires it: its plates and gold ring faded under the row primitive, its icons kept, its
+-- selected look following the game's Selection plate (shown by Init, which the game runs again on every update).
+local function dressCommunityRow(row)
+  if type(row) ~= "table" then return end
+  GW.DressRow(row, GW.COMMUNITY_ROW_KEEP)
+  GW.FollowMark(row, row.Selection)
+  GW.HookAfter(row, "Init", function() GW.FollowMark(row, row.Selection) end)
+end
+
+-- The communities list: its corner filigree faded and its rows dressed as the game acquires them.
+local function dressCommunitiesList(list)
+  if type(list) ~= "table" then return end
+  if type(list.FilligreeOverlay) == "table" then GW.FadeParts(list, { "FilligreeOverlay" }) end
+  GW.WatchRows(list.ScrollBox, dressCommunityRow)
+end
+
+-- The guild window's pages beyond their panels: the lists and the roster's parts and hooks, the Guild Information box's note
+-- (now and after each game fill), the Preferred Play Settings buttons.
 local function dressGuildPages(frame)
   hookRoster(frame.MemberList)
+  dressMemberList(frame.MemberList)
+  dressCommunitiesList(frame.CommunitiesList)
   if type(frame.GuildDetailsFrame) == "table" then noteGuildInfo(frame.GuildDetailsFrame.Info) end
   afterWith(_G, "CommunitiesGuildInfoFrame_UpdateText", noteGuildInfo)
   dressPlaySettings(frame.GuildPreferredPlaySettingsFrame)
 end
 
+-- The parts of the window's portrait overlay that stay: the community's avatar and the guild's tabard (content).
+GW.GUILD_PORTRAIT_KEEP = { "Portrait", "TabardBackground", "TabardEmblem" }
+
+-- The window's portrait overlay with its avatar or tabard kept and the tabard's gold border faded.
+local function dressPortrait(frame)
+  local overlay = frame.PortraitOverlay
+  if type(overlay) ~= "table" or not overlay.GetRegions then return end
+  T.FadeRegions(overlay, GW.KeepKeys(overlay, GW.GUILD_PORTRAIT_KEEP))
+end
+
+-- The window's dropdowns (the stream's and the member lists', which keep their arrows), its bottom row of buttons and the
+-- control frame's three.
+GW.GUILD_DROPDOWNS = { "StreamDropdown", "GuildMemberListDropdown", "CommunityMemberListDropdown", "CommunitiesListDropdown", "AddToChatButton" }
+GW.GUILD_BUTTONS = { "InviteButton", "GuildLogButton" }
+GW.GUILD_CONTROLS = { "CommunitiesSettingsButton", "GuildControlButton", "GuildRecruitmentButton" }
+
+-- The window's dropdowns, the chat box, the jump button over the chat and the bottom row of buttons; the calendar button
+-- keeps its icon on a tile.
+local function dressGuildControls(frame)
+  GW.EachKey(frame, GW.GUILD_DROPDOWNS, GW.SkinDropdown)
+  paintText(GW.Part(frame, "AddToChatButton.Label"), "text")
+  GW.SkinEditBox(frame.ChatEditBox)
+  GW.SkinButton(_G.JumpToUnreadButton)
+  GW.EachKey(frame, GW.GUILD_BUTTONS, GW.SkinButton)
+  GW.EachKey(frame.CommunitiesControlFrame, GW.GUILD_CONTROLS, GW.SkinButton)
+  GW.SkinPlate(frame.CommunitiesCalendarButton)
+end
+
 -- The guild window: the window skin (its maximize and minimize buttons with it), the portrait art faded, each pane
--- and the stream dropdown dressed, its pages' parts; again whenever the game switches pages (SetDisplayMode). The
--- side tabs are the tabs stream's.
+-- dressed, its dropdowns, buttons and pages' parts; again whenever the game switches pages (SetDisplayMode). The side
+-- tabs are the tabs stream's.
 function GW.SkinGuildWindow(frame)
   GW.Skin(frame)
-  GW.FadeParts(frame, { "PortraitOverlay" })
+  dressPortrait(frame)
   for _, key in ipairs(GW.GUILD_PANES) do dressPane(frame[key]) end
-  GW.SkinDropdown(frame.StreamDropdown)
+  dressGuildControls(frame)
   dressGuildPages(frame)
   after(frame, "SetDisplayMode", GW.SkinGuildWindow)
 end

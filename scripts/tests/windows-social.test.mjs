@@ -324,6 +324,128 @@ it("guild pages: with the group off the roster, info box and settings page stay 
   expect(rowColors(off, "__early")).toEqual([0.5, 0.5, 0.5, 0.5, 0.5, 0.5]);
 });
 
+// The window's R2.25 parts on top of the pages: the portrait's avatar and tabard, the communities list (filigree over it, rows with a
+// Selection plate that the game's Init shows for the selected club), the roster (Show Offline box, count, column strip, rows with a class
+// icon, voice mark and a profession header bar), the chat box, the dropdowns and the bottom row of buttons. ScrollUtil acquires rows.
+const COMMUNITIES_ENV = PAGES_ENV + INSIDES_LUA + `
+  list.ScrollBox.callbacks = {}
+  ScrollUtil = { AddAcquiredFrameCallback = function(box, cb, owner) table.insert(box.callbacks, function(row) cb(owner, row) end) end }
+  function __acquire(box, row) table.insert(box.rows, row) for _, cb in ipairs(box.callbacks) do cb(row) end return row end
+  local overlay = f.PortraitOverlay
+  for _, k in ipairs({ "Portrait", "TabardBackground", "TabardEmblem", "TabardBorder" }) do overlay[k] = __art(overlay) end
+  local cl = f.CommunitiesList
+  cl.FilligreeOverlay = CreateFrame("Frame", nil, cl) __art(cl.FilligreeOverlay)
+  cl.ScrollBox = { rows = {}, callbacks = {} }
+  function cl.ScrollBox:ForEachFrame(fn) for _, row in ipairs(self.rows) do fn(row) end end
+  __selected = 1
+  function __clubRow(id)
+    local row = CreateFrame("Button", nil, cl)
+    for _, k in ipairs({ "Background", "IconRing", "GuildTabardBorder", "Selection", "Icon", "GuildTabardBackground", "GuildTabardEmblem", "FavoriteIcon", "UnreadNotificationIcon", "InvitationIcon" }) do row[k] = __art(row) end
+    row.Selection:Hide()
+    function row:Init(club) self.Selection:SetShown(club == __selected) end
+    row:Init(id)
+    return row
+  end
+  list.ShowOfflineButton = CreateFrame("CheckButton", nil, list) list.ShowOfflineButton.Box = __art(list.ShowOfflineButton) list.ShowOfflineButton.Text = __text(list.ShowOfflineButton, "Show Offline")
+  list.MemberCount = __text(list, "3/10")
+  list.ColumnDisplay.Background, list.ColumnDisplay.TopTileStreaks = __art(list.ColumnDisplay), __art(list.ColumnDisplay)
+  function __memberExtras(row)
+    for _, k in ipairs({ "Class", "VoiceChatStatusIcon", "Stripe" }) do row[k] = __art(row) end
+    local h = CreateFrame("Button", nil, row) row.ProfessionHeader = h
+    for _, k in ipairs({ "Left", "Right", "Middle", "ExpandedIcon", "CollapsedIcon", "Icon" }) do h[k] = __art(h) end
+    h.Name = __text(h, "TEST-ONLY profession")
+    h.AllRecipes = CreateFrame("Button", nil, h) h.AllRecipes:SetFontString(__text(h.AllRecipes, "All recipes")) h.AllRecipes:GetFontString():SetTextColor(0.97, 0.94, 0.58)
+    return row
+  end
+  local baseRow = __row
+  function __row(presence) return __memberExtras(baseRow(presence)) end
+  __memberExtras(__early)
+  f.ChatEditBox = CreateFrame("EditBox", nil, f) f.ChatEditBox.Art = __art(f.ChatEditBox)
+  JumpToUnreadButton = CreateFrame("Button", "JumpToUnreadButton", f.Chat) JumpToUnreadButton.Art = __art(JumpToUnreadButton)
+  for _, k in ipairs({ "GuildMemberListDropdown", "CommunityMemberListDropdown", "CommunitiesListDropdown", "AddToChatButton" }) do
+    local d = CreateFrame("Button", nil, f) d.Arrow, d.Art = __art(d), __art(d) f[k] = d
+  end
+  f.AddToChatButton.Label = __text(f.AddToChatButton, "Add to chat")
+  for _, k in ipairs({ "InviteButton", "GuildLogButton" }) do f[k] = CreateFrame("Button", nil, f) f[k].Art = __art(f[k]) end
+  f.CommunitiesControlFrame = CreateFrame("Frame", nil, f)
+  for _, k in ipairs({ "CommunitiesSettingsButton", "GuildControlButton", "GuildRecruitmentButton" }) do
+    local b = CreateFrame("Button", nil, f.CommunitiesControlFrame) b.Art = __art(b) f.CommunitiesControlFrame[k] = b
+  end
+  f.CommunitiesCalendarButton = CreateFrame("Button", nil, f) f.CommunitiesCalendarButton.Icon = __art(f.CommunitiesCalendarButton)
+`;
+
+// Lua: whether a frame carries something Vanguard painted (a region that is not the game's art and not faded).
+const PAINTED_ANY = `local function painted(x) for _, r in ipairs({ x:GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r:GetAlpha() ~= 0 then return true end end return false end`;
+
+it("guild window: the portrait keeps the avatar and tabard, loses the gold border; the list's filigree is faded", () => {
+  const addon = loggedIn(COMMUNITIES_ENV);
+  addon.eval("CommunitiesFrame:Show()");
+  expect(addon.eval(`local o = CommunitiesFrame.PortraitOverlay return { o.Portrait:GetAlpha(), o.TabardBackground:GetAlpha(), o.TabardEmblem:GetAlpha(), o.TabardBorder:GetAlpha(), o.Emblem:GetAlpha() }`),
+    "avatar and tabard kept (content), the border and any other art faded").toEqual([1, 1, 1, 0, 0]);
+  expect(addon.eval("return __faded(CommunitiesFrame.CommunitiesList.FilligreeOverlay)"), "the corner filigree over the list").toBe(true);
+});
+
+it("guild window: the communities list rows are theme rows, art faded but their icons, the selected look following the game's plate", () => {
+  const addon = loggedIn(COMMUNITIES_ENV);
+  addon.eval("__a, __b = __acquire(CommunitiesFrame.CommunitiesList.ScrollBox, __clubRow(1)), __clubRow(2) CommunitiesFrame:Show()");
+  addon.eval("__acquire(CommunitiesFrame.CommunitiesList.ScrollBox, __b)");
+  // A communities list row's state: is a theme row, then the alphas of its plates, icons and marks, and whether its rail shows.
+  const look = (row) => addon.eval(`local r = ${row} return { ns.Theme.RowParts(r) ~= nil, r.Background:GetAlpha(), r.IconRing:GetAlpha(), r.GuildTabardBorder:GetAlpha(), r.Selection:GetAlpha(),
+    r.Icon:GetAlpha(), r.GuildTabardBackground:GetAlpha(), r.GuildTabardEmblem:GetAlpha(), r.FavoriteIcon:GetAlpha(), r.UnreadNotificationIcon:GetAlpha(), r.InvitationIcon:GetAlpha(), ns.Theme.RowParts(r).rail:IsShown() }`);
+  expect(look("__a"), "a row present at login, the first club selected").toEqual([true, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, true]);
+  expect(look("__b"), "a row acquired later, not selected").toEqual([true, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, false]);
+  addon.eval("__selected = 2 __a:Init(1) __b:Init(2)");
+  expect(addon.eval("return { ns.Theme.RowParts(__a).rail:IsShown(), ns.Theme.RowParts(__b).rail:IsShown() }"), "the rail follows the game's selection on the next Init").toEqual([false, true]);
+  addon.hover("__a");
+  expect(addon.eval("return ns.Theme.RowParts(__a).hover:IsShown()"), "the hover wash").toBe(true);
+  addon.hover(null);
+  addon.eval("CommunitiesFrame:SetDisplayMode(2)");
+  expect(addon.eval("return { ns.Theme.RowParts(__b).rail:IsShown(), #CommunitiesFrame.CommunitiesList.ScrollBox.callbacks }"), "a page switch dresses nothing twice").toEqual([true, 1]);
+});
+
+it("guild roster: the Show Offline box, count, column strip and headers, rows and profession headers in the theme", () => {
+  const addon = loggedIn(COMMUNITIES_ENV);
+  addon.eval("CommunitiesFrame:Show() CommunitiesFrame.MemberList.ColumnDisplay:LayoutColumns(__GUILD_COLUMNS) __late = __acquire(CommunitiesFrame.MemberList.ScrollBox, __row(1))");
+  expect(addon.eval(`local l = CommunitiesFrame.MemberList local c = ns.Theme.CheckParts(l.ShowOfflineButton) return { c ~= nil, l.ShowOfflineButton.Box:GetAlpha() }`), "the box a theme check box").toEqual([true, 0]);
+  expect([isText(addon, "CommunitiesFrame.MemberList.ShowOfflineButton.Text"), isText(addon, "CommunitiesFrame.MemberList.MemberCount")], "its label and the member count in the text colour").toEqual([true, true]);
+  expect(addon.eval(`local d = CommunitiesFrame.MemberList.ColumnDisplay local n, ok = 0, true
+    for h in pairs(d.columnHeaders.active) do n = n + 1 if ns.Theme.HoverParts(h) == nil then ok = false end end
+    return { d.Background:GetAlpha(), d.TopTileStreaks:GetAlpha(), n, ok }`), "the strip faded, the six headers theme buttons").toEqual([0, 0, 6, true]);
+  // A roster row's state: row primitive, class icon, voice mark, stripe, the header bar's primitive, plates, icons and text colours.
+  const row = (r) => addon.eval(`local r = ${r} local h = r.ProfessionHeader
+    return { ns.Theme.RowParts(r) ~= nil, r.Class:GetAlpha(), r.VoiceChatStatusIcon:GetAlpha(), r.Stripe:GetAlpha(), ns.Theme.RowParts(h) ~= nil, h.Left:GetAlpha(), h.Middle:GetAlpha(), h.ExpandedIcon:GetAlpha(), h.Icon:GetAlpha(),
+      h.Name.__textColor[1] == ns.Theme.RGB("text"), h.AllRecipes:GetFontString().__textColor[1] == ns.Theme.RGB("text") }`);
+  expect(row("__early"), "a row present before login: the class icon and voice mark kept, the stripe and plates faded").toEqual([true, 1, 1, 0, true, 0, 0, 1, 1, true, true]);
+  expect(row("__late"), "a row acquired later").toEqual([true, 1, 1, 0, true, 0, 0, 1, 1, true, true]);
+  expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
+});
+
+it("guild window: the chat box, jump button, dropdowns and bottom row of buttons in the theme, the calendar button keeping its icon", () => {
+  const addon = loggedIn(COMMUNITIES_ENV);
+  addon.eval("CommunitiesFrame:Show()");
+  expect(addon.eval(`local f = CommunitiesFrame ${PAINTED_ANY}
+    local out = { f.ChatEditBox.Art:GetAlpha(), painted(f.ChatEditBox), JumpToUnreadButton.Art:GetAlpha(), painted(JumpToUnreadButton) }
+    for _, k in ipairs({ "GuildMemberListDropdown", "CommunityMemberListDropdown", "CommunitiesListDropdown", "AddToChatButton" }) do out[#out + 1] = { f[k].Art:GetAlpha(), f[k].Arrow:GetAlpha(), painted(f[k]) } end
+    return out`), "the chat box themed, the jump button and four dropdowns flat with their arrows kept").toEqual([0, true, 0, true, [0, 1, true], [0, 1, true], [0, 1, true], [0, 1, true]]);
+  expect(addon.eval(`local f = CommunitiesFrame ${PAINTED_ANY}
+    return { f.InviteButton.Art:GetAlpha(), painted(f.InviteButton), f.GuildLogButton.Art:GetAlpha(), painted(f.GuildLogButton), f.CommunitiesControlFrame.CommunitiesSettingsButton.Art:GetAlpha(),
+      painted(f.CommunitiesControlFrame.GuildControlButton), painted(f.CommunitiesControlFrame.GuildRecruitmentButton), f.CommunitiesCalendarButton.Icon:GetAlpha(), painted(f.CommunitiesCalendarButton) }`),
+  "the bottom row flat, the calendar icon kept on a tile").toEqual([0, true, 0, true, 0, true, true, 1, true]);
+  expect([isText(addon, "CommunitiesFrame.AddToChatButton.Label"), windowErrors(addon), addon.eval("return #ns.errors")], "the Add to chat label in the text colour").toEqual([true, "none", 0]);
+});
+
+it("guild window: with the group off the lists, roster and controls stay the game's; a window missing the new parts loads cleanly", () => {
+  const off = loggedIn(COMMUNITIES_ENV, OFF);
+  off.eval("__acquire(CommunitiesFrame.CommunitiesList.ScrollBox, __clubRow(1)) CommunitiesFrame:Show() CommunitiesFrame.MemberList.ColumnDisplay:LayoutColumns(__GUILD_COLUMNS)");
+  expect(off.eval(`local o = CommunitiesFrame.PortraitOverlay return { o.TabardBorder:GetAlpha(), CommunitiesFrame.ChatEditBox.Art:GetAlpha(), ns.Theme.CheckParts(CommunitiesFrame.MemberList.ShowOfflineButton) == nil,
+    ns.Theme.RowParts(CommunitiesFrame.CommunitiesList.ScrollBox.rows[1]) == nil }`), "left the game's").toEqual([1, 1, true, true]);
+  const odd = loggedIn(PAGES_ENV + `CommunitiesFrame.CommunitiesList.FilligreeOverlay = {} CommunitiesFrame.CommunitiesList.ScrollBox = {} CommunitiesFrame.MemberList.ShowOfflineButton = {}
+    CommunitiesFrame.MemberList.ColumnDisplay.columnHeaders = {} CommunitiesFrame.PortraitOverlay = {} CommunitiesFrame.CommunitiesControlFrame = {} CommunitiesFrame.AddToChatButton = {}
+    CommunitiesFrame.CommunitiesList.ScrollBox = { ForEachFrame = function(self, fn) fn({}) fn(false) end } __early.ProfessionHeader = {}`);
+  odd.eval("CommunitiesFrame:Show() CommunitiesFrame.MemberList.ColumnDisplay:LayoutColumns(__GUILD_COLUMNS)");
+  expect([windowErrors(odd), odd.eval("return #ns.errors")], "parts that are not frames, a header pool without EnumerateActive, rows that are not frames").toEqual(["none", 0]);
+});
+
 // Guild dialogs --------------------------------------------------------------------------------------
 
 // Builds the guild dialogs as the game has them: translucent frames (a NineSlice, Bg), a log with a text "Close"
