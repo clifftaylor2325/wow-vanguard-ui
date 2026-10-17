@@ -1124,8 +1124,8 @@ end
 -- A themed button's press overlay, or nil for a button T.Button never painted.
 function T.PressOverlay(button) return pressOf[button] and pressOf[button].overlay end
 
--- Shows or hides a button's press look; only an enabled button shows it. A `row` shade (a row's, a check
--- box's) leaves the label where it is; a push button's drops it a pixel.
+-- Shows or hides a button's press look; only an enabled button shows it. A shade marked `row` (a check
+-- box's today) leaves the label where it is; a push button's drops it a pixel.
 function T.PressButton(button, down)
   local s = pressOf[button]
   if not s then return end
@@ -1389,7 +1389,8 @@ local checkOf = setmetatable({}, { __mode = "k" })
 function T.CheckParts(button) return checkOf[button] end
 
 -- Paints a check button for its state: the mark (and the fill, when T.CHECK names one) shown while it
--- is checked, in their colours, or the disabled tier while the button is disabled (its label too).
+-- is checked, in their colours, or the disabled tier while the button is disabled (its label too, and
+-- the hover border let go, as a disabled button gets no OnLeave).
 local function paintCheck(button, c)
   local on = type(button.GetChecked) == "function" and button:GetChecked() == true
   local off = type(button.IsEnabled) == "function" and not button:IsEnabled()
@@ -1397,16 +1398,18 @@ local function paintCheck(button, c)
   T.Tint(c.mark, off and "disabled" or T.CHECK.markColor)
   c.fill:SetShown(on and T.CHECK.fill ~= nil)
   T.Tint(c.fill, off and "disabled" or T.CHECK.fill or "inset")
+  if off then T.SetBorder(c.box, nil) end
   T.DisabledLook(button, off)
 end
 
 -- Makes a check button's parts, centred on it: the box (an inset panel, T.CHECK.size), the fill it
--- shows checked under the box's border, the press overlay (T.PressButton, as a row's) and the mark.
+-- shows checked, the press overlay above the fill and under the border (T.PressButton, as a button's;
+-- `row`: the label stays put) and the mark.
 local function checkParts(button)
   local box = T.Panel(CreateFrame("Frame", nil, button), { inset = true, noSheen = true })
   T.PixelSize(box, T.CHECK.size, T.CHECK.size, true)
   box:SetPoint("CENTER")
-  local fill, press = solid(box, "BACKGROUND", 1, "fill"), T.Tint(solid(box, "ARTWORK", 1, "fill"), T.PRESS[1], T.PRESS[2])
+  local fill, press = solid(box, "BACKGROUND", 1, "fill"), T.Tint(solid(box, "BACKGROUND", 2, "fill"), T.PRESS[1], T.PRESS[2])
   fill:SetAllPoints()
   press:SetAllPoints()
   press:Hide()
@@ -1422,14 +1425,15 @@ local function repaintCheck(button)
 end
 
 -- Follows the game: SetChecked (its own calls), a click (the client flips the state before OnClick
--- runs), enabling and disabling; the mouse for the press look and the hover border; a hide clears the press.
+-- runs), enabling and disabling (pcall: a widget without those scripts can't have them hooked); the
+-- mouse for the press look and the hover border; a hide clears both.
 local function watchCheck(button)
   local repaint = ns.Guard("check state", repaintCheck)
-  for _, script in ipairs({ "OnClick", "OnEnable", "OnDisable" }) do button:HookScript(script, repaint) end
+  for _, script in ipairs({ "OnClick", "OnEnable", "OnDisable" }) do pcall(button.HookScript, button, script, repaint) end
   if type(hooksecurefunc) == "function" then hooksecurefunc(button, "SetChecked", ns.Guard("hook SetChecked", repaintCheck)) end
   button:HookScript("OnMouseDown", ns.Guard("check press", function(b) T.PressButton(b, true) end))
   button:HookScript("OnMouseUp", ns.Guard("check press", function(b) T.PressButton(b, false) end))
-  button:HookScript("OnHide", ns.Guard("check press", function(b) T.PressButton(b, false) end))
+  button:HookScript("OnHide", ns.Guard("check press", function(b) T.PressButton(b, false) T.SetBorder(checkOf[b].box, nil) end))
   button:HookScript("OnEnter", ns.Guard("check hover", function(b) T.SetBorder(checkOf[b].box, { T.RGB(T.CHECK.hover) }) end))
   button:HookScript("OnLeave", ns.Guard("check hover", function(b) T.SetBorder(checkOf[b].box, nil) end))
 end

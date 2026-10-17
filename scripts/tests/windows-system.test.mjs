@@ -111,7 +111,7 @@ const sameOnReshow = (addon, name) => {
 };
 const SWITCH_OFF = { savedVariables: "VanguardDB.profiles = { Default = { Windows = { system = false } } }" };
 
-it("addon list: the window skin plus its push buttons and search box, the rows untouched", () => {
+it("addon list: the window skin plus its push buttons and search box, nothing else of the rows", () => {
   const env = BUTTON_FRAME_ENV + '__buttonFrame("AddonList", { "CancelButton", "OkayButton", "EnableAllButton", "DisableAllButton", "SearchBox" })';
   const addon = loggedIn(env);
   addon.eval("AddonList:Show()");
@@ -481,7 +481,8 @@ it("combat log bar: a panel, its filter buttons themed as the game makes them", 
 const ADDON_ROWS_ENV = BUTTON_FRAME_ENV + `__buttonFrame("AddonList", { "CancelButton", "OkayButton" })
   local box = CreateFrame("Frame", nil, AddonList) AddonList.ScrollBox = box box.ScrollTarget = CreateFrame("Frame", nil, box)
   __rows = 0
-  function AddonList_Update() __rows = __rows + 1 local r = CreateFrame("Button", "TestOnlyAddonRow" .. __rows, box.ScrollTarget) r.Enabled = CreateFrame("CheckButton", nil, r) r.Enabled.Art = r.Enabled:CreateTexture() r.Enabled:SetChecked(__rows == 1) end
+  function AddonList_InitButton(r) r.Enabled = CreateFrame("CheckButton", nil, r) r.Enabled.Art = r.Enabled:CreateTexture() r.Enabled:SetChecked(__rows == 1) end
+  function AddonList_Update() __rows = __rows + 1 AddonList_InitButton(CreateFrame("Button", "TestOnlyAddonRow" .. __rows, box.ScrollTarget)) end
   AddonList_Update()`;
 
 it("addon list: each row's check button is a themed check box, the rows the game makes while drawing too; never with the group off", () => {
@@ -492,24 +493,26 @@ it("addon list: each row's check button is a themed check box, the rows the game
   expect(row(addon, 1), "the row made before the window showed: dressed on show, checked").toEqual([0, true, true]);
   addon.eval("AddonList_Update()");
   expect(row(addon, 2), "a row made as the list draws: dressed after AddonList_Update, unchecked").toEqual([0, true, false]);
+  addon.eval('__rows = 9 AddonList_InitButton(CreateFrame("Button", "TestOnlyAddonRow9", AddonList.ScrollBox.ScrollTarget))');
+  expect(row(addon, 9), "a row the scroll box takes into view: dressed after AddonList_InitButton alone").toEqual([0, true, false]);
   sameOnReshow(addon, "AddonList");
   const off = loggedIn(ADDON_ROWS_ENV, SWITCH_OFF);
   off.eval("AddonList:Show() AddonList_Update()");
   expect([frameState(off, "AddonList").panel, off.eval("return ns.Theme.CheckParts(TestOnlyAddonRow1.Enabled) == nil and ns.Theme.CheckParts(TestOnlyAddonRow2.Enabled) == nil")], "switched off: the game's window and rows").toEqual([false, true]);
 });
 
-// TEST-ONLY: the chat settings with a section whose boxes (a frame holding a Check button, four frames down) the game's ChatConfig_CreateCheckboxes makes.
+// TEST-ONLY: the chat settings with a section whose boxes (a frame holding a Check button, four frames down, and a sub check button beside it) the game's ChatConfig_CreateCheckboxes makes under the frame it is handed.
 const CHAT_CHECKS_ENV = CHAT_ENV + `
   local section = CreateFrame("Frame", "ChatConfigChatSettings", f) local left = CreateFrame("Frame", "ChatConfigChatSettingsLeft", section)
   __boxes = 0
-  function ChatConfig_CreateCheckboxes() __boxes = __boxes + 1 local cb = CreateFrame("Frame", "TestOnlyChatCheckBox" .. __boxes, left) cb.Check = CreateFrame("CheckButton", nil, cb) cb.Check.Art = cb.Check:CreateTexture() end
+  function ChatConfig_CreateCheckboxes(frame) __boxes = __boxes + 1 local cb = CreateFrame("Frame", "TestOnlyChatCheckBox" .. __boxes, frame or left) cb.Check = CreateFrame("CheckButton", nil, cb) cb.Check.Art = cb.Check:CreateTexture() cb.Sub = CreateFrame("CheckButton", nil, cb) end
   ChatConfig_CreateCheckboxes()`;
 
 it("chat settings: the check buttons inside its boxes are themed check boxes, those made as a category draws too", () => {
   const addon = loggedIn(CHAT_CHECKS_ENV);
   addon.eval("ChatConfigFrame:Show()");
   expect(addon.eval("local b = TestOnlyChatCheckBox1.Check return { b.Art.__alpha, ns.Theme.CheckParts(b) ~= nil }"), "the box made before the window showed").toEqual([0, true]);
-  addon.eval("ChatConfig_CreateCheckboxes()");
-  expect(addon.eval("return ns.Theme.CheckParts(TestOnlyChatCheckBox2.Check) ~= nil"), "a box made as a category draws: dressed after ChatConfig_CreateCheckboxes").toBe(true);
+  addon.eval("ChatConfig_CreateCheckboxes(ChatConfigChatSettingsLeft)");
+  expect(addon.eval("return { ns.Theme.CheckParts(TestOnlyChatCheckBox2.Check) ~= nil, ns.Theme.CheckParts(TestOnlyChatCheckBox2.Sub) ~= nil }"), "a box made as a category draws: dressed after ChatConfig_CreateCheckboxes, from the frame it was handed, its sub box too").toEqual([true, true]);
   expect(addon.eval("return __errors('Windows')"), "no errors").toBe("none");
 });

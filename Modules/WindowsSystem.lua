@@ -148,9 +148,10 @@ end
 -- four down (ScrollBox, ScrollTarget, the row, Enabled), the chat settings' boxes five.
 GW.CHECK_DEPTH = 5
 
--- Every check button inside frame, up to depth frames down, as a themed check box (T.CheckBox); safe to run
--- again, as these windows make their rows and boxes as they draw.
+-- Every check button inside frame, up to depth frames down (GW.CHECK_DEPTH unless given), as a themed check
+-- box (T.CheckBox); safe to run again, as these windows make their rows and boxes as they draw.
 function GW.DressChecks(frame, depth)
+  depth = depth or GW.CHECK_DEPTH
   if type(frame) ~= "table" or not frame.GetChildren then return end
   for _, child in ipairs({ frame:GetChildren() }) do
     if child.GetObjectType and child:GetObjectType() == "CheckButton" then T.CheckBox(child)
@@ -161,21 +162,24 @@ end
 -- The game's functions already hooked to dress a window's check buttons, by name.
 local vgCheckMakers = {}
 
--- The game's functions that make a window's check buttons as it draws (the addon list's rows, the chat
--- settings' boxes), by the window's global name.
+-- The game's functions that make a window's check buttons as it draws (the addon list's update and the
+-- initialiser its scroll box runs on each row it takes into view, the chat settings' box makers), by the
+-- window's global name.
 GW.CHECK_MAKERS = {
-  AddonList = { "AddonList_Update" },
+  AddonList = { "AddonList_Update", "AddonList_InitButton" },
   ChatConfigFrame = { "ChatConfig_CreateCheckboxes", "ChatConfig_CreateTieredCheckboxes" },
 }
 
--- Dresses the check buttons of window (a global frame name) after each of the game's functions in names runs,
--- hooked once per function (a post-hook; the game's function is kept), while the system group is on.
+-- Dresses check buttons after each of the game's functions in names runs: those inside the frame the function
+-- was handed (a row, a box group) when it takes one, else the whole window (a global frame name). Hooked once
+-- per function (a post-hook; the game's function is kept), while the system group is on.
 local function watchCheckMakers(window, names)
   for _, name in ipairs(names) do
     if not vgCheckMakers[name] and type(hooksecurefunc) == "function" and type(_G[name]) == "function" then
       vgCheckMakers[name] = true
-      hooksecurefunc(name, ns.Guard("hook " .. name, function()
-        if GW.settings and GW.settings.system and type(_G[window]) == "table" then GW.DressChecks(_G[window], GW.CHECK_DEPTH) end
+      hooksecurefunc(name, ns.Guard("hook " .. name, function(frame)
+        local target = type(frame) == "table" and frame.GetChildren and frame or _G[window]
+        if GW.settings and GW.settings.system and type(target) == "table" then GW.DressChecks(target) end
       end))
     end
   end

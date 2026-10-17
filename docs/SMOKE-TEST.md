@@ -529,7 +529,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.2.8 Raid tab
 
 - Do: in a party, open the raid tab (the friends window's Raid tab), then convert to a raid and look again.
-- Expect: the eight group boxes are flat panels, the member buttons are flat and keep each name's class colour, Raid Info and Convert to Raid are themed buttons; nothing changes while you are in combat and it catches up after.
+- Expect: the eight group boxes are flat panels, the member buttons are flat and keep each name's class colour, Raid Info and Convert to Raid are themed buttons, the All assist box is Vanguard's check box (grey, with its label, when you are not the leader or an assistant); nothing changes while you are in combat and it catches up after.
 - If it fails, paste: a screenshot of the tab and `/vg errors`.
 
 ### 14.2.9 Social window (Forever's friends list)
@@ -606,7 +606,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.4.3 Addon list and chat settings
 
 - Do: press Escape, click AddOns (or open the AddOns tab from the game menu), type in its search box, then close it. Right-click a chat tab and choose Settings, click through two categories, then Okay.
-- Expect: both windows on flat panels with themed buttons and search box; the addon rows keep the game's look; in the chat settings the category list and the settings area sit on darker boxes, and every check box and color swatch still works.
+- Expect: both windows on flat panels with themed buttons and search box; each addon row's box and the Load out of date box are Vanguard's 16 px check boxes with a check mark (rows that scroll into view too; Enable All and Disable All move the marks; a greyed row's box and label are grey, not faded); in the chat settings the category list and the settings area sit on darker boxes, every check box is Vanguard's (those in a category you open later too; a tab or category entry must not have turned into a box) and still works, and the color swatches stay.
 - If it fails, paste: a screenshot of each window and `/vg errors`.
 
 ### 14.4.4 Keybinding, Cooldown Manager settings and click bindings
