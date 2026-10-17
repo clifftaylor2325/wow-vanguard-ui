@@ -717,8 +717,13 @@ it("sliders: the pill track, the fill on the same frame under the thumb, the thu
     .toEqual([["BORDER", 0, "Pill", true], ["ARTWORK", 0, "Pill", true], ["OVERLAY", 0, "SliderLine", true], ["OVERLAY", 1, "Knob", true], ["OVERLAY", 2, "KnobShade", true], ["OVERLAY", 3, "KnobLine", true]]);
   expect(addon.eval("local p = __sl.fillParts return { p[1].__texCoord, p[2].__texCoord, p[3].__texCoord }"), "a pill's three parts cut the capsule at its round ends").toEqual([[0, 0.25, 0, 1], [0.25, 0.75, 0, 1], [0.75, 1, 0, 1]]);
   // The fill at a value: shown, the width of its two round ends, its right end's left edge, and the thumb's and its outline's centre.
-  const fill = (v) => addon.eval(`__sl.set(${v}) __sl:Refresh() local p = __sl.fillParts
+  // The thumb glides for 0.1 s (8.10), so the clock runs past the glide before the read.
+  const fill = (v) => {
+    addon.eval(`__sl.set(${v}) __sl:Refresh()`);
+    addon.advance(0.2, 0.05);
+    return addon.eval(`local p = __sl.fillParts
     return { p[1]:IsShown(), __r3(p[1]:GetWidth()), __r3(p[3]:GetWidth()), __r3(p[3].__points.TOPLEFT.x), __r3(__sl.thumb.__points.CENTER.x), __r3(__sl.thumbLine.__points.CENTER.x) }`);
+  };
   expect(fill("__sl.max"), "at the top: the fill spans the track, its right end 4 in from the end, the thumb and its outline centred on the end").toEqual([true, 4, 4, 128, 132, 132]);
   expect(fill("__sl.min + (4 / 132) * (__sl.max - __sl.min)"), "a fill 4 wide: both ends narrow to 2, so neither crosses the other").toEqual([true, 2, 2, 2, 4, 4]);
   expect(fill("__sl.min"), "at the bottom: the fill hides under the thumb at the left end").toEqual([false, 0.5, 0.5, -0.5, 0, 0]);

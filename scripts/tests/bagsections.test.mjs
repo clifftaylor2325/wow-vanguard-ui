@@ -382,3 +382,16 @@ it("with a gamepad the backpack button stays the game's, and Sort sits beside it
   other.eval("__openBag()");
   expect([other.eval("return GamepadBackpackButton:IsShown()"), searchRow(other).slice(-1)[0]], "a bar that isn't on the bag window: Sort the padding in").toEqual([true, PAD]);
 });
+
+it("the combined bag's money line takes the theme font and its gold coin box becomes a flat inset, each time the bag is shown", () => {
+  const addon = loggedIn(BAG_ENV);
+  addon.eval("__openBag()");
+  addon.eval(`local m = ContainerFrameCombinedBags.MoneyFrame
+    for _, key in ipairs({ "GoldButton", "SilverButton", "CopperButton" }) do
+      m[key] = CreateFrame("Button", nil, m) m[key].Text = m[key]:CreateFontString(nil, "ARTWORK") m[key].Text:SetFont("TEST-ONLY-GAME", 12, "")
+    end
+    m.Border = CreateFrame("Frame", nil, m) m.Border:CreateTexture():SetTexture("TEST-ONLY-ART")
+    ContainerFrameCombinedBags:Hide() ContainerFrameCombinedBags:Show()`);
+  expect(addon.eval(`local m = ContainerFrameCombinedBags.MoneyFrame
+    return { m.GoldButton.Text:GetFont() ~= "TEST-ONLY-GAME", m.CopperButton.Text:GetFont() ~= "TEST-ONLY-GAME", m.Border:GetRegions():GetAlpha(), select("#", m.Border:GetRegions()) > 1 }`), "figures in the theme font; the coin box's art faded and a panel of the theme's put in its place").toEqual([true, true, 0, true]);
+});

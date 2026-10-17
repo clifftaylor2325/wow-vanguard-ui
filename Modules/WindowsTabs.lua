@@ -29,12 +29,21 @@ GW.TAB_SYSTEMS = {
 GW.TAB_WINDOWS = { "CharacterFrame", "CommunitiesFrame", "LegacySystemFrame", "InspectFrame", "LFGParentFrame" }
 -- Where those windows keep their side tabs, as parentKeys on the window (the Camelot character pane
 -- keeps its own in a ModeTabs frame, which has a Tabs array too). LargeSideTabButtonTemplate and
--- RightSideTabTemplate (the guild window's) tabs.
+-- RightSideTabTemplate (the guild window's) tabs; the professions window's (an overview tab and one for each
+-- profession), the cooldown settings' three and the inspect window's guild tab.
 GW.SIDE_TABS = {
   "CharacterTab", "ReputationTab", "SkillsTab", "PvPTab", "CurrencyTab", "StatisticsTab",
   "ChatTab", "RosterTab", "GuildBenefitsTab", "GuildInfoTab", "GuildPreferredPlaySettingsTab",
   "LegacyTreeTab", "LegacyChallengeTab", "LegacyRewardTrackTab", "ListingTab", "BrowsingTab", "WhoListingTab",
+  "ProfessionsOverviewTab", "Professions1Tab", "Professions2Tab", "Professions3Tab", "Professions4Tab",
+  "Professions5Tab", "Professions6Tab", "Professions7Tab", "SpellsTab", "AurasTab", "GroupBuffsTab", "GuildTab",
 }
+-- The frames a window keeps side tabs in besides itself, by parentKey: the character and inspect windows' ModeTabs and
+-- the collections window's TabContainer. Every tab in their Tabs array is a side tab; the container is also moved out
+-- past the window's padding as one (its tabs hang from it).
+GW.TAB_HOLDERS = { "ModeTabs", "TabContainer" }
+-- How many guild bank side tabs there are (GuildBankTab1 ... 8: a frame with a plate, and a .Button holding the icon).
+GW.BANK_TABS = 8
 -- How many frames deep inside a registered window its scroll bars are looked for (a bar is a ScrollBar
 -- key on a frame; the lists and panes of the windows keep theirs within a few levels).
 GW.SCROLL_DEPTH = 4
@@ -51,6 +60,15 @@ local function walk(frame, path)
   return type(part) == "table" and part or nil
 end
 
+-- A table of the parts of frame named in keys that it has, as a keep list for T.FadeRegions.
+local function keepKeys(frame, keys)
+  local keep = {}
+  for _, key in ipairs(keys) do
+    if type(frame[key]) == "table" then keep[frame[key]] = true end
+  end
+  return keep
+end
+
 -- Adds a tab button to the list, once (anything that takes a script hook is one); side marks a side tab.
 local function add(list, button, side)
   if type(button) ~= "table" or not button.HookScript or list.seen[button] then return end
@@ -59,17 +77,25 @@ local function add(list, button, side)
   list.side[button] = side
 end
 
--- Adds the buttons of a window's parentArray of tabs (Tabs: PanelTabButtonTemplate's).
-local function addArray(list, tabs)
+-- Adds the buttons of a window's parentArray of tabs (Tabs: PanelTabButtonTemplate's), as side tabs when side is set.
+local function addArray(list, tabs, side)
   if type(tabs) ~= "table" then return end
-  for _, button in ipairs(tabs) do add(list, button) end
+  for _, button in ipairs(tabs) do add(list, button, side) end
 end
 
--- Adds the side tabs a window (or its ModeTabs frame) holds, by key and in its Tabs array.
-local function addSide(list, holder)
+-- Adds the side tabs a window (or a frame that holds its side tabs) has, by key and in its Tabs array (which is
+-- all side tabs when sideArray is set: the window's own Tabs array is its bottom tabs).
+local function addSide(list, holder, sideArray)
   if type(holder) ~= "table" then return end
   for _, key in ipairs(GW.SIDE_TABS) do add(list, holder[key], true) end
-  addArray(list, holder.Tabs)
+  addArray(list, holder.Tabs, sideArray)
+end
+
+-- Adds the side tabs the window's tab holders keep (GW.TAB_HOLDERS) and, on the character pane, the paper doll's
+-- sidebar (the global PaperDollSidebarTabs frame, whose Tabs array holds its four tabs).
+local function addHolders(list, frame)
+  for _, key in ipairs(GW.TAB_HOLDERS) do addSide(list, frame[key], true) end
+  if frame == _G.CharacterFrame then addSide(list, _G.PaperDollSidebarTabs, true) end
 end
 
 -- Adds the buttons a tab system holds, by its accessor (TabSystemMixin:GetTabButton(tabID), nil past the last).
@@ -92,7 +118,7 @@ end
 function GW.TabButtons(frame)
   local list = { seen = {}, side = {} }
   addSide(list, frame)
-  addSide(list, frame.ModeTabs)
+  addHolders(list, frame)
   addNamed(list, frame.GetName and frame:GetName())
   for _, path in ipairs(GW.TAB_SYSTEMS) do addSystem(list, walk(frame, path)) end
   return list
@@ -126,17 +152,24 @@ local function outside(point, relPoint, near, far, out, offset)
   return offset
 end
 
--- Moves a tab set against an outer edge of its window out to its panel's padded edge (one pixel in,
--- so their borders meet), once: the panel reaches past the window, and would cover the tab's near end.
-function GW.ClearPadding(tab, window)
-  local pad = T.Padding(window) - T.Pixel(window)
-  if vgPadded[tab] or pad <= 0 or tab:GetNumPoints() ~= 1 then return end
-  vgPadded[tab] = true
-  local point, rel, relPoint, x, y = tab:GetPoint(1)
+-- One anchor of a tab (as GetPoint gives it) moved out when it is set against an outer edge of its window, as the
+-- arguments SetPoint takes; nothing when the anchor is not on the window.
+local function movedOut(window, pad, point, rel, relPoint, x, y)
   if rel ~= window or type(point) ~= "string" or type(relPoint) ~= "string" then return end
   x = outside(point, relPoint, "RIGHT", "LEFT", -pad, outside(point, relPoint, "LEFT", "RIGHT", pad, x))
   y = outside(point, relPoint, "BOTTOM", "TOP", pad, outside(point, relPoint, "TOP", "BOTTOM", -pad, y))
-  tab:SetPoint(point, rel, relPoint, x, y)
+  return point, rel, relPoint, x, y
+end
+
+-- Moves a tab (or a holder of tabs, which has two anchors) set against an outer edge of its window out to its
+-- panel's padded edge (one pixel in, so their borders meet), once: the panel reaches past the window, and would
+-- cover the tab's near end.
+function GW.ClearPadding(tab, window)
+  local pad, count, moved = T.Padding(window) - T.Pixel(window), tab:GetNumPoints(), {}
+  if vgPadded[tab] or pad <= 0 or count < 1 or count > 2 then return end
+  vgPadded[tab] = true
+  for i = 1, count do moved[i] = { movedOut(window, pad, tab:GetPoint(i)) } end
+  for _, anchor in ipairs(moved) do if anchor[1] then tab:SetPoint(unpack(anchor)) end end
 end
 
 -- One tab button of a window in the theme, whichever template it came from: out past the window's padding,
@@ -148,12 +181,41 @@ local function dressTab(button, window, side)
   fadeSideArt(button)
 end
 
+-- One guild bank side tab (a frame with a bronze plate and a .Button, the check button that holds the icon): out
+-- past the window's padding, the plate faded, the button a tab in the theme with its icon and the search dimmer kept.
+local function dressBankTab(tab, window)
+  GW.ClearPadding(tab, window)
+  T.FadeRegions(tab)
+  local button = tab.Button
+  if type(button) ~= "table" or not button.HookScript then return end
+  T.Tab(button)
+  T.FadeRegions(button, keepKeys(button, { "IconTexture", "SearchOverlay" }))
+  seedChecked(button)
+end
+
+-- The guild bank window's side tabs, GuildBankTab1 ... 8 (made with the window, shown as the guild has tabs).
+local function dressBankTabs(frame)
+  if frame ~= _G.GuildBankFrame then return end
+  for i = 1, GW.BANK_TABS do
+    local tab = _G["GuildBankTab" .. i]
+    if type(tab) == "table" and tab.GetRegions then ns.Try("bank tab", dressBankTab, tab, frame) end
+  end
+end
+
+-- Moves each of the window's tab holders (GW.TAB_HOLDERS) out past the padding, as its tabs are.
+local function clearHolders(frame)
+  for _, key in ipairs(GW.TAB_HOLDERS) do
+    local holder = frame[key]
+    if type(holder) == "table" and holder.GetPoint then ns.Try("tab holder", GW.ClearPadding, holder, frame) end
+  end
+end
+
 -- Puts every tab button the window has now in the theme; a button that fails leaves the others alone.
--- The character pane's ModeTabs holder moves out past the padding like a tab.
 function GW.DressTabs(frame)
   local list = GW.TabButtons(frame)
-  if type(frame.ModeTabs) == "table" and frame.ModeTabs.GetPoint then ns.Try("tab holder", GW.ClearPadding, frame.ModeTabs, frame) end
+  clearHolders(frame)
   for _, button in ipairs(list) do ns.Try("tab button", dressTab, button, frame, list.side[button]) end
+  dressBankTabs(frame)
   GW.FadeParts(frame, { "TabIndicators" })
 end
 
@@ -173,17 +235,8 @@ GW.PANE_LISTS = { "ReputationFrame", "SkillsFrame", "TokenFrame" }
 GW.STAT_BOXES = { "CharacterStatsPaneScrollBox", "CharacterStatsPanePetScrollBox" }
 -- The parts of a list entry's Content that are a ColoredProgressBar (a reputation bar, a skill bar).
 GW.ROW_BARS = { "ReputationBar", "SkillsBar" }
--- Where rows are watched: scroll box -> true (a box is watched once), and the owner of our callbacks on the game's boxes.
-local watched, rowOwner = setmetatable({}, { __mode = "k" }), {}
-
--- A table of the parts of frame named in keys that it has, as a keep list for T.FadeRegions.
-local function keepKeys(frame, keys)
-  local keep = {}
-  for _, key in ipairs(keys) do
-    if type(frame[key]) == "table" then keep[frame[key]] = true end
-  end
-  return keep
-end
+-- What is watched once: a frame the dressers hook or dress for good (side panes, the flyout, the appearances grid).
+local watched = setmetatable({}, { __mode = "k" })
 
 -- A reputation or skill bar in the theme. The game's (ColoredProgressBarTemplate) is a frame with a
 -- Fill texture it sizes and colours itself: its backdrop is faded and an inset panel put behind the
@@ -198,10 +251,17 @@ function GW.SkinBar(bar)
   end
 end
 
--- A list's header row (a banner texture, a name and the plus/minus StateIcon) as a flat button, its icon kept.
+-- A font string coloured by token (text) when it is one; anything else is skipped.
+local function colorText(fs, token)
+  if type(fs) == "table" and fs.SetTextColor then T.Color(fs, token) end
+end
+
+-- A list's header row (a banner texture, a name and the plus/minus StateIcon) as a flat button, its icon kept and
+-- its name (the game's gold) in the text colour.
 local function skinHeader(row)
   T.Button(row)
   row.StateIcon:SetAlpha(1)
+  colorText(row.Name, "text")
 end
 
 -- One row of a pane list: a header as a flat button, an entry's progress bar in the theme.
@@ -212,23 +272,26 @@ local function skinRow(row)
   for _, key in ipairs(GW.ROW_BARS) do GW.SkinBar(row.Content[key]) end
 end
 
--- A stat category's box: its title plate faded, a flat inset panel behind its title.
-local function skinCategory(frame)
-  if type(frame) ~= "table" or type(frame.Title) ~= "table" or type(frame.Background) ~= "table" then return end
+-- A stat box's plate (its Background) faded and a flat inset panel behind its title or number.
+local function flatBox(frame)
+  if type(frame) ~= "table" or type(frame.Background) ~= "table" then return end
   frame.Background:SetAlpha(0)
   T.Panel(frame, { inset = true, noSheen = true })
 end
 
--- Dresses a ScrollBox's rows now and as the game acquires them (a pooled row comes back dressed). The game's
--- own iterateExisting argument calls back with other arguments than the event does, so it is not used.
-local function watchRows(box, skin)
-  if type(box) ~= "table" or watched[box] or type(box.ForEachFrame) ~= "function" then return end
-  watched[box] = true
-  box:ForEachFrame(function(row) skin(row) end)
-  local util = _G.ScrollUtil
-  if type(util) == "table" and type(util.AddAcquiredFrameCallback) == "function" then
-    util.AddAcquiredFrameCallback(box, function(_, row) skin(row) end, rowOwner)
-  end
+-- A stat category's box (it has a Title): its title plate faded, a flat inset panel behind its title.
+local function skinCategory(frame)
+  if type(frame) == "table" and type(frame.Title) == "table" then flatBox(frame) end
+end
+
+-- A row of a stat box: a category header as a flat box, a stat line (a Label and a zebra Background) with its stripe
+-- faded, so the box's inset shows through, and its name (the game's gold) in the text colour.
+local function skinStatRow(row)
+  if type(row) ~= "table" then return end
+  skinCategory(row)
+  if type(row.Title) == "table" or type(row.Label) ~= "table" then return end
+  GW.FadeParts(row, { "Background" })
+  colorText(row.Label, "text")
 end
 
 -- The ScrollBox of the frame of that name, if the client has one.
@@ -239,20 +302,43 @@ end
 
 -- Watches the rows of every pane list and stat box this client has.
 local function watchLists()
-  for _, name in ipairs(GW.PANE_LISTS) do watchRows(boxOf(name), skinRow) end
-  for _, name in ipairs(GW.STAT_BOXES) do watchRows(boxOf(name), skinCategory) end
+  for _, name in ipairs(GW.PANE_LISTS) do GW.WatchRows(boxOf(name), skinRow) end
+  for _, name in ipairs(GW.STAT_BOXES) do GW.WatchRows(boxOf(name), skinStatRow) end
 end
 
--- The stat categories the pane keeps as plain frames (the item level, attributes and enhancements boxes).
+-- The stat categories the pane keeps as plain frames (the item level, attributes and enhancements boxes), and the
+-- item level's plate.
 local function skinStatCategories()
   local pane = _G.CharacterStatsPane
   if type(pane) ~= "table" or not pane.GetChildren then return end
   for _, child in ipairs({ pane:GetChildren() }) do skinCategory(child) end
+  flatBox(pane.ItemLevelFrame)
+end
+
+-- The stat boxes themselves (player and pet): the bronze inside-frame edge, the class crest behind the list and the
+-- rule under it faded, a flat inset panel in their place.
+local function flattenStatBoxes()
+  for _, name in ipairs(GW.STAT_BOXES) do
+    local box = _G[name]
+    if type(box) == "table" and box.GetRegions then
+      T.FadeRegions(box)
+      T.Panel(box, { inset = true, noSheen = true })
+    end
+  end
+end
+
+-- The honor tab's gold texts (the season timer, the season's name, the progress line) in the text colour.
+local function colorHonorTexts(frame)
+  local info = type(frame.MainInfoFrame) == "table" and frame.MainInfoFrame or {}
+  colorText(frame.SeasonTimerField, "text")
+  colorText(info.CurrentSeasonField, "text")
+  colorText(info.CurrentRankProgressField, "text")
 end
 
 -- The honor tab's decorative art faded: the line under the rank and the glow behind its ring. The ring,
 -- its badge and the rank texts are the content and stay the game's.
 local function skinPvPRank(frame)
+  colorHonorTexts(frame)
   local info = frame.MainInfoFrame
   if type(info) ~= "table" then return end
   T.FadeRegions(info)
@@ -260,8 +346,125 @@ local function skinPvPRank(frame)
   if type(ring) == "table" and ring.GetRegions then T.FadeRegions(ring, keepKeys(ring, { "Background", "Bar", "FactionBadge" })) end
 end
 
+-- The side panes (CharacterFrameSidePaneTemplate: the entry you picked, in words, beside the list), each as the path
+-- of parentKeys from a global to the pane: reputation, skills, currency and the honor tab.
+GW.SIDE_PANES = {
+  { "ReputationFrame", "ReputationDetailFrame" }, { "SkillsFrame", "SkillDetailFrame" },
+  { "TokenFrame", "DetailFrame" }, { "PVPRankFrame", "DetailFrame" },
+}
+-- The methods a side pane adds rows with, and which argument is the label's colour (0: it takes none). The game
+-- paints a label gold unless it is given another colour; gold goes to the text colour, a given colour is content.
+GW.SIDE_ROWS = { AddRow = 3, AddWrappedRow = 2, AddIconRow = 3, AddCategory = 0 }
+-- The check boxes and push buttons the reputation and currency panes hold, by key (AtWarCheckbox is dressed apart:
+-- its label is red on purpose).
+GW.PANE_CHECKS = { "MakeInactiveCheckbox", "WatchFactionCheckbox", "InactiveCheckbox", "BackpackCheckbox" }
+GW.PANE_BUTTONS = { "ViewRenownButton", "CurrencyTransferToggleButton" }
+-- The slot tile of each side pane icon row (the row's side table, not a field on the game's frame).
+local vgSideSlot = ns.FrameState("vgSideSlot")
+
+-- The rows a side pane shows now: the shown children of its Content.
+local function paneRows(pane)
+  local rows, content = {}, pane.Content
+  if type(content) ~= "table" or not content.GetChildren then return rows end
+  for _, row in ipairs({ content:GetChildren() }) do
+    if row.IsShown and row:IsShown() then rows[#rows + 1] = row end
+  end
+  return rows
+end
+
+-- The row the game added last: the shown one numbered last (layoutIndex, set by AcquireRow).
+local function lastRow(pane)
+  for _, row in ipairs(paneRows(pane)) do
+    if row.layoutIndex == pane.layoutIndex then return row end
+  end
+end
+
+-- A slot tile behind a side pane row's icon, once (the row's bronze plate is faded): a quiet T.Slot on a frame the
+-- size of the icon, a level under the row so the icon the row draws stays on top.
+local function iconSlot(row)
+  local icon = row.Icon
+  if vgSideSlot[row] or type(row.IconSlot) ~= "table" or type(icon) ~= "table" or not row.GetFrameLevel then return end
+  local slot = CreateFrame("Frame", nil, row)
+  slot:SetFrameLevel(math.max(row:GetFrameLevel() - 1, 0))
+  slot:SetAllPoints(icon)
+  T.Slot(slot, { quiet = true })
+  vgSideSlot[row] = slot
+end
+
+-- A side pane row's art: its plate (a category's Background, an icon row's IconSlot) faded, the icon on a slot tile.
+local function dressRowArt(row)
+  GW.FadeParts(row, { "Background", "IconSlot" })
+  iconSlot(row)
+end
+
+-- Hooks one row-adding method of a side pane: the row it added is dressed, and its label goes to the text colour
+-- when the game left it gold (no colour given, or the game's own gold).
+local function hookRows(pane, method, at)
+  if type(pane[method]) ~= "function" then return end
+  hooksecurefunc(pane, method, ns.Guard("hook " .. method, function(_, ...)
+    local row, color = lastRow(pane), at > 0 and (select(at, ...)) or nil
+    if not row then return end
+    dressRowArt(row)
+    if color == nil or color == _G.NORMAL_FONT_COLOR then colorText(row.Label, "text") end
+  end))
+end
+
+-- A side pane's heading (the game's gold, set again by SetPaneTitleColor) in the heading role and the text colour.
+local function dressPaneTitle(pane)
+  local title = pane.Title
+  if type(title) ~= "table" or not title.SetFont then return end
+  T.Text(title, "heading", "text")
+  if type(pane.SetPaneTitleColor) ~= "function" then return end
+  hooksecurefunc(pane, "SetPaneTitleColor", ns.Guard("hook SetPaneTitleColor", function() T.Color(title, "text") end))
+end
+
+-- A side pane's check box (T.CheckBox), its label (the game's gold) in the text colour unless keepLabel is set.
+local function paneCheck(box, keepLabel)
+  if type(box) ~= "table" or not box.GetChecked or not box.HookScript then return end
+  T.CheckBox(box)
+  if not keepLabel then colorText(box.Label, "text") end
+end
+
+-- A side pane's push button as a theme button.
+local function paneButton(button)
+  if type(button) == "table" and button.CreateTexture then T.Button(button) end
+end
+
+-- The parts the reputation and currency panes hold besides the common ones: check boxes (At war keeps its red
+-- label), the standing bar and the push buttons.
+local function paneParts(pane)
+  paneCheck(pane.AtWarCheckbox, true)
+  for _, key in ipairs(GW.PANE_CHECKS) do paneCheck(pane[key]) end
+  for _, key in ipairs(GW.PANE_BUTTONS) do paneButton(pane[key]) end
+  GW.SkinBar(pane.StandingBar)
+end
+
+-- One side pane in the theme, once: its heading, its rule faded, its rows as the game adds them (those it has now
+-- too) and its own parts. The description's scroll bar is reached with the window's (GW.SCROLL_KEYS).
+local function dressSidePane(pane)
+  if type(pane) ~= "table" or watched[pane] then return end
+  watched[pane] = true
+  GW.FadeParts(pane, { "Divider" })
+  dressPaneTitle(pane)
+  for _, row in ipairs(paneRows(pane)) do dressRowArt(row) end
+  for method, at in pairs(GW.SIDE_ROWS) do hookRows(pane, method, at) end
+  paneParts(pane)
+end
+
+-- The side panes this client has (the currency one once its part of the game has loaded).
+local function dressSidePanes()
+  for _, path in ipairs(GW.SIDE_PANES) do dressSidePane(walk(_G, path)) end
+end
+
+-- The flyout's page arrows (NavigationFrame.PrevButton and NextButton: pictures on a button) as theme arrow buttons.
+local function skinFlyoutNav(nav)
+  if type(nav) ~= "table" then return end
+  GW.SkinArrow(nav.PrevButton, "left")
+  GW.SkinArrow(nav.NextButton, "right")
+end
+
 -- The equipment flyout (the items you can swap into a slot): its art faded, flat panels behind the
--- item grid and the page bar, and its item buttons skinned as the bags' are.
+-- item grid and the page bar, its page arrows flat, and its item buttons skinned as the bags' are.
 local function skinFlyout()
   local flyout, bags = _G.EquipmentFlyoutFrame, ns.GetModule("Bags")
   if type(flyout) ~= "table" then return end
@@ -269,6 +472,7 @@ local function skinFlyout()
     local part = flyout[key]
     if type(part) == "table" then T.FadeRegions(part) T.Panel(part, { shadow = true }) end
   end
+  skinFlyoutNav(flyout.NavigationFrame)
   for _, button in ipairs(flyout.buttons or {}) do
     if bags and bags.SkinItem then bags.SkinItem(button) end
   end
@@ -297,16 +501,41 @@ local function fadeHost(host)
   for _, child in ipairs({ host:GetChildren() }) do T.FadeRegions(child) end
 end
 
+-- A pane list's rule frame (a plain Frame holding one ScrollLine texture): each texture as one pixel of divider.
+local function dividerLines(frame)
+  for _, region in ipairs({ frame:GetRegions() }) do
+    if region.GetObjectType and region:GetObjectType() == "Texture" then T.Divider(region) end
+  end
+end
+
+-- The rules over and under a pane list (the ScrollBox's two unnamed child frames, each holding a ScrollLine), as one
+-- pixel of divider each. A plain Frame only: the rows the box holds are buttons and keep their art.
+local function fadeLines(box)
+  if not box.GetChildren then return end
+  for _, child in ipairs({ box:GetChildren() }) do
+    if child.GetObjectType and child:GetObjectType() == "Frame" and child.GetRegions then dividerLines(child) end
+  end
+end
+
+-- Each pane list in a flat inset panel, its rules as one pixel of divider.
+local function flattenLists()
+  for _, name in ipairs(GW.PANE_LISTS) do
+    local box = boxOf(name)
+    if type(box) == "table" and box.GetRegions then
+      T.Panel(box, { inset = true, noSheen = true })
+      fadeLines(box)
+    end
+  end
+end
+
 -- The pane's flat look: its hosts' art faded, each list in a flat inset panel, and the currency list's empty note.
 local function flattenPane()
   local frame = _G.CharacterFrame
   if type(frame) == "table" then
     for _, key in ipairs(GW.PANE_HOSTS) do fadeHost(frame[key]) end
   end
-  for _, name in ipairs(GW.PANE_LISTS) do
-    local box = boxOf(name)
-    if type(box) == "table" and box.GetRegions then T.Panel(box, { inset = true, noSheen = true }) end
-  end
+  flattenLists()
+  flattenStatBoxes()
   if boxOf("TokenFrame") then GW.WatchEmpty(boxOf("TokenFrame"), GW.CURRENCY_EMPTY) end
 end
 
@@ -328,13 +557,34 @@ GW.EQUIP_SLOTS = {
   "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged", "Ammo",
 }
 
--- Each gear slot's item button in the theme, as the bags' are: the bronze frame the game draws (NormalTexture and
--- IconBorder) faded, a flat panel behind the icon and the item's quality border (Modules/Bags.lua skinItem).
+-- A gear slot's other frame (BorderFrame, the Camelot pane's bronze slot frame, a child that holds its own texture) faded.
+local function fadeSlotFrame(button)
+  local frame = type(button) == "table" and button.BorderFrame
+  if type(frame) == "table" and frame.GetRegions then T.FadeRegions(frame) end
+end
+
+-- The ammo slot's small bronze plate (an unnamed background texture on the button) faded; its icon, count, pressed and
+-- highlight pictures and the ignored-slot mark stay.
+local function fadeAmmoPlate(slot)
+  if type(slot) ~= "table" or not slot.GetRegions then return end
+  local keep = keepKeys(slot, { "icon", "Icon", "IconBorder", "ignoreTexture" })
+  keep[_G.CharacterAmmoSlotIconTexture or slot] = true
+  keep[slot.GetPushedTexture and slot:GetPushedTexture() or slot] = true
+  keep[slot.GetHighlightTexture and slot:GetHighlightTexture() or slot] = true
+  T.FadeRegions(slot, keep)
+end
+
+-- Each gear slot's item button in the theme, as the bags' are: the bronze frame the game draws (NormalTexture,
+-- IconBorder and the BorderFrame child) faded, a flat panel behind the icon and the item's quality border
+-- (Modules/Bags.lua skinItem), and the ammo slot's plate faded.
 local function skinSlots()
   local bags = ns.GetModule("Bags")
   for _, slot in ipairs(GW.EQUIP_SLOTS) do
-    if bags and bags.SkinItem then bags.SkinItem(_G["Character" .. slot .. "Slot"]) end
+    local button = _G["Character" .. slot .. "Slot"]
+    if bags and bags.SkinItem then bags.SkinItem(button) end
+    fadeSlotFrame(button)
   end
+  fadeAmmoPlate(_G.CharacterAmmoSlot)
 end
 
 -- The model area's art: the strip above the model (its rock tile and edge) and the model scene's backdrop
@@ -350,9 +600,125 @@ local function skinModelArea()
   end
 end
 
--- Dresses the inside of the character pane: its backdrops, right-pane toggle and lists' rows, the skill rank bar,
--- the stat boxes, the gear slots, the model area, the honor tab and the equipment flyout. Safe to run again: lists
--- and the flyout are watched once, and a slot is skinned once.
+-- What stays on a gear set row (GearSetButtonTemplate): the set's icon, the equipped tick and the spec icon. The card's
+-- hover and selected art (HighlightBar, SelectedBar) is faded: the row shows the one hover and selected look.
+GW.SET_ROW_KEEP = { "icon", "Check", "SpecIcon" }
+
+-- A pane's edge and rule faded for a flat inset panel behind its list.
+local function insetPane(pane)
+  if type(pane) ~= "table" or not pane.GetRegions then return end
+  T.FadeRegions(pane)
+  T.Panel(pane, { inset = true, noSheen = true })
+end
+
+-- The game's selection globals already hooked (see watchSelection).
+local selectHooked = {}
+
+-- Has a row's selected look follow the game's global that marks a row selected or not (called with the row and a flag at
+-- every init and click; a row not dressed is left alone). Hooked once, when the game has the function.
+local function watchSelection(name)
+  if selectHooked[name] or type(_G[name]) ~= "function" then return end
+  selectHooked[name] = true
+  hooksecurefunc(name, ns.Guard("hook " .. name, function(row, on) T.SelectRow(row, on == true) end))
+end
+
+-- A title row (PlayerTitleButtonTemplate): a theme row (its zebra stripe, hover and selected bars faded, the tick kept)
+-- showing the selected look the game's SelectedBar stands for, its text (the game's gold) in the text colour.
+local function skinTitleRow(row)
+  if type(row) ~= "table" then return end
+  GW.DressRow(row, { "Check" })
+  GW.FollowMark(row, row.SelectedBar)
+  colorText(row.text, "text")
+end
+
+-- Whether items of the gear set row are missing (the game paints the name red then, which says so).
+local function setLost(row)
+  local sets = _G.C_EquipmentSet
+  if type(sets) ~= "table" or type(sets.GetEquipmentSetInfo) ~= "function" or not row.setID then return false end
+  return (select(8, sets.GetEquipmentSetInfo(row.setID)) or 0) > 0
+end
+
+-- A gear set row (GearSetButtonTemplate): a theme row (its card plate, rings and hover and selected cards faded, the icon,
+-- tick and spec icon kept) showing the selected look the game's SelectedBar stands for, its name in the text colour
+-- unless the game marked it red.
+local function skinSetRow(row)
+  if type(row) ~= "table" or not row.GetRegions then return end
+  GW.DressRow(row, GW.SET_ROW_KEEP)
+  GW.FollowMark(row, row.SelectedBar)
+  if not setLost(row) then colorText(row.text, "text") end
+end
+
+-- The textures of a button drawn on its ARTWORK layer (a glyph beside its label).
+local function artworkOf(button)
+  local found = {}
+  for _, region in ipairs({ button:GetRegions() }) do
+    if region.GetObjectType and region:GetObjectType() == "Texture" and region.GetDrawLayer and region:GetDrawLayer() == "ARTWORK" then found[#found + 1] = region end
+  end
+  return found
+end
+
+-- The New set button (PaperDollTertiaryButtonTemplate: a state plate and a plus glyph) as a theme button that keeps
+-- its plus and its green label.
+local function newSetButton(button)
+  if type(button) ~= "table" or not button.GetRegions then return end
+  local glyphs = artworkOf(button)
+  T.Button(button)
+  for _, glyph in ipairs(glyphs) do glyph:SetAlpha(1) end
+end
+
+-- One of the equipment manager's panes dressed: a flat inset panel and its rows watched.
+local function dressGearPane(pane, skin)
+  if type(pane) ~= "table" then return end
+  insetPane(pane)
+  GW.WatchRows(pane.ScrollBox, skin)
+end
+
+-- The two lists' selected looks following the game's marking of a title or a set (hooked once).
+local function watchGearSelection()
+  watchSelection("PaperDollTitlesPane_SetButtonSelected")
+  watchSelection("PaperDollEquipmentManagerPane_SetButtonSelected")
+end
+
+-- The titles list and equipment sets list in the theme: their panels and rows, and the set buttons.
+local function skinGearPanes()
+  local paper = _G.PaperDollFrame
+  if type(paper) ~= "table" then return end
+  watchGearSelection()
+  dressGearPane(paper.TitleManagerPane, skinTitleRow)
+  dressGearPane(paper.EquipmentManagerPane, skinSetRow)
+  local sets = paper.EquipmentManagerPane
+  if type(sets) ~= "table" then return end
+  paneButton(sets.EquipSet)
+  paneButton(sets.SaveSet)
+  newSetButton(sets.NewSet)
+end
+
+-- The pet's experience bar and the level lines over the model (the game's gold) in the theme.
+local function skinLevels()
+  GW.SkinBar(_G.PetPaperDollFrameExpBar)
+  for _, name in ipairs({ "CharacterLevelText", "PetCharacterLevelText" }) do
+    local line = _G[name]
+    if type(line) == "table" and line.SetFont then T.Text(line, "heading", "text") end
+  end
+end
+
+-- The paper doll's own parts: the level lines and pet bar, the titles list and the equipment sets list.
+local function skinPaperDoll()
+  skinLevels()
+  skinGearPanes()
+end
+
+-- The skill rank bar and the honor tab.
+local function skinSkillsAndHonor()
+  local skills, honor = _G.SkillsFrame, _G.PVPRankFrame
+  if type(skills) == "table" and type(skills.SkillDetailFrame) == "table" then GW.SkinBar(skills.SkillDetailFrame.RankBar) end
+  if type(honor) == "table" then skinPvPRank(honor) end
+end
+
+-- Dresses the inside of the character pane: its backdrops, right-pane toggle, lists' rows and side panes, the stat
+-- boxes, the gear slots, the model area, the paper doll's level lines, pet bar, titles and sets lists, the skill rank
+-- bar, the honor tab and the equipment flyout. Safe to run again: lists, side panes and the flyout are watched once,
+-- and a slot is skinned once.
 function GW.DressCharacterPane()
   watchLists()
   flattenPane()
@@ -360,9 +726,9 @@ function GW.DressCharacterPane()
   skinStatCategories()
   skinSlots()
   skinModelArea()
-  local skills, honor = _G.SkillsFrame, _G.PVPRankFrame
-  if type(skills) == "table" and type(skills.SkillDetailFrame) == "table" then GW.SkinBar(skills.SkillDetailFrame.RankBar) end
-  if type(honor) == "table" then skinPvPRank(honor) end
+  skinPaperDoll()
+  skinSkillsAndHonor()
+  dressSidePanes()
   watchFlyout()
 end
 
@@ -401,12 +767,62 @@ local function watchAppearances(items)
   if type(items.UpdateItems) == "function" then hooksecurefunc(items, "UpdateItems", ns.Guard("hook UpdateItems", noteAppearances)) end
 end
 
--- Dresses the inside of the collections window: the appearances tab's backdrops and the grid's empty note.
--- Safe to run again.
+-- The appearances page's Items and Sets tabs (PanelTopTabButtonTemplate, keys on the page: the game selects one by
+-- disabling it, which T.Tab follows).
+local function dressWardrobeTabs(wardrobe)
+  for _, key in ipairs({ "ItemsTab", "SetsTab" }) do
+    local tab = wardrobe[key]
+    if type(tab) == "table" and tab.HookScript then T.Tab(tab) end
+  end
+end
+
+-- The appearances page's search box and its filter and class dropdowns.
+local function dressWardrobeControls(wardrobe)
+  GW.SkinSearch(wardrobe.SearchBox)
+  GW.SkinDropdown(wardrobe.FilterButton)
+  GW.SkinDropdown(wardrobe.ClassDropdown)
+end
+
+-- The item grid's weapon dropdown and its page arrows and count.
+local function dressItemsControls(items)
+  if type(items) ~= "table" then return end
+  GW.SkinDropdown(items.WeaponDropdown)
+  GW.SkinPaging(items.PagingFrame)
+end
+
+-- What stays on a sets list row (WardrobeSetsScrollFrameButtonTemplate): the progress line and the new-set glow.
+GW.SETS_ROW_KEEP = { "ProgressBar", "New" }
+
+-- A sets list row (WardrobeSetsScrollFrameButtonTemplate): a theme row (its plate, hover and selected art faded) showing
+-- the selected look the game's SelectedTexture stands for and following its SetSelected; the name keeps its collected,
+-- in-progress or none colour, which says how far the set is.
+local function skinSetsRow(row)
+  if type(row) ~= "table" then return end
+  GW.DressRow(row, GW.SETS_ROW_KEEP)
+  GW.FollowMark(row, row.SelectedTexture)
+  GW.HookAfter(row, "SetSelected", function(r, on) T.SelectRow(r, on == true) end)
+end
+
+-- The sets tab's variant dropdown, the plate behind the set's icons and the fade over its model, and its list's rows.
+local function dressSetsControls(sets)
+  if type(sets) ~= "table" then return end
+  GW.SkinDropdown(sets.DetailsFrame and sets.DetailsFrame.VariantSetsDropdown)
+  if type(sets.DetailsFrame) == "table" then GW.FadeParts(sets.DetailsFrame, { "IconRowBackground", "ModelFadeTexture" }) end
+  if type(sets.ListContainer) == "table" then GW.WatchRows(sets.ListContainer.ScrollBox, skinSetsRow) end
+end
+
+-- Dresses the inside of the collections window: the mount, pet, toy and heirloom journals (GW.DressJournals), and the
+-- appearances tab's backdrops, tabs, search box, dropdowns, page arrows and sets list, and the grid's empty note. Safe
+-- to run again.
 function GW.DressCollections()
+  GW.DressJournals()
   local wardrobe = _G.WardrobeCollectionFrame
   if type(wardrobe) ~= "table" then return end
   for _, path in ipairs(GW.WARDROBE_BACKDROPS) do skinBackdrop(walk(wardrobe, path)) end
+  dressWardrobeTabs(wardrobe)
+  dressWardrobeControls(wardrobe)
+  dressItemsControls(wardrobe.ItemsCollectionFrame)
+  dressSetsControls(wardrobe.SetsCollectionFrame)
   watchAppearances(wardrobe.ItemsCollectionFrame)
 end
 
@@ -439,13 +855,13 @@ local function dressBar(bar)
 end
 
 -- Puts the scroll bars of a frame and of the frames inside it (depth levels down) in the theme: its
--- ScrollBar key, and the bar paired with its ScrollBox. A bar that is not one of the game's 12.x
+-- ScrollBar keys (GW.SCROLL_KEYS), and the bar paired with its ScrollBox. A bar that is not one of the game's 12.x
 -- scroll bars (an old scroll frame's slider) is left alone by T.ScrollBar itself. A frame the game
 -- keeps from addons is skipped, and so is the inside of one that holds such a frame (the game refuses
 -- to list its children then).
 function GW.DressBars(frame, depth)
   if frame.IsForbidden and frame:IsForbidden() then return end
-  dressBar(frame.ScrollBar)
+  for _, key in ipairs(GW.SCROLL_KEYS) do dressBar(frame[key]) end
   dressBar(pairedBar(frame))
   if depth <= 0 or not frame.GetChildren then return end
   local ok, children = pcall(function() return { frame:GetChildren() } end)

@@ -1020,8 +1020,10 @@ const PARCHMENT_ENV = `
 `;
 it("game windows: quest and gossip text stays readable on the dark panel", () => {
   const addon = loggedIn(PARCHMENT_ENV);
-  addon.eval("QuestInfo_Display() QuestFrame_SetTitleTextColor(QuestInfoTitleHeader)");
-  expect(isTok(addon, addon.eval("return QuestInfoDescriptionText.__textColor"), "text") && isTok(addon, addon.eval("return QuestInfoTitleHeader.__textColor"), "gold"), "quest text goes light and headings gold after the game colors them").toBe(true);
+  addon.eval("QuestInfo_Display()");
+  expect([isTok(addon, addon.eval("return QuestInfoDescriptionText.__textColor"), "text"), isTok(addon, addon.eval("return QuestInfoTitleHeader.__textColor"), "text")], "quest text and the headings (the quest's name too) go light after the game colors them").toEqual([true, true]);
+  addon.eval("QuestInfoTitleHeader:SetTextColor(0.2, 0.1, 0) QuestFrame_SetTitleTextColor(QuestInfoTitleHeader)");
+  expect(isTok(addon, addon.eval("return QuestInfoTitleHeader.__textColor"), "text"), "and when the game recolors a heading on its own").toBe(true);
   addon.eval("local fs = UIParent:CreateFontString() QuestFrame_SetTextColor(fs) __fs = fs");
   expect(isTok(addon, addon.eval("return __fs.__textColor"), "text"), "any text the game colors for parchment is lightened").toBe(true);
   addon.eval("GossipFrame.GreetingPanel.ScrollBox:Update()");

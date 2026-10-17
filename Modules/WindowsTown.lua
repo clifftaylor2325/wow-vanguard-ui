@@ -31,19 +31,6 @@ local function namedButtons(names)
   end
 end
 
--- Gives a texture back its alpha (a button's glyph, which T.Button faded with the rest of its art).
-local function showTexture(texture)
-  if type(texture) == "table" and texture.SetAlpha then texture:SetAlpha(1) end
-end
-
--- A button whose picture is its normal and disabled texture (the money arrows, play and reset): a theme button that keeps its picture.
-local function glyphButton(button)
-  if type(button) ~= "table" or not button.GetRegions then return end
-  T.Button(button)
-  showTexture(button.GetNormalTexture and button:GetNormalTexture())
-  showTexture(button.GetDisabledTexture and button:GetDisabledTexture())
-end
-
 -- Puts the theme font (colour left as the game set it) on each font string of a frame named in keys.
 local function keyFonts(frame, keys, role)
   for _, key in ipairs(keys) do
@@ -68,51 +55,122 @@ local function fadeWhole(frame, keys)
   end
 end
 
--- Stable --------------------------------------------------------------------------------------------
+-- The model's control buttons (zoom, rotate, reset): their icon is the part that stays.
+local MODEL_CONTROLS = { "zoomInButton", "zoomOutButton", "rotateLeftButton", "rotateRightButton", "resetButton" }
 
--- The art of the pet stable window and of its pet scene (which also has an inset frame of art): faded whole.
-local STABLE_ART = { "Background", "Border", "PetShadow", "PetModelSceneShadow" }
--- The stable's texts the game draws in gold or white: their font goes to the theme's.
-local STABLE_TEXTS = { "PetStableLevelText", "PetStableLoyaltyText", "PetStableSlotText", "PetStableCostLabel" }
--- The pet slots (the current pet and two stabled ones), whose captions take the theme font.
-local STABLE_SLOTS = { "PetStableCurrentPet", "PetStableStabledPet1", "PetStableStabledPet2" }
-
--- The pet's experience bar: the theme's bar texture on its fill, the game's frame art faded
--- (its text kept), a dark panel behind it.
-local function styleExpBar(bar)
-  if type(bar) ~= "table" then return end
-  local fill = type(bar.StatusBar) == "table" and bar.StatusBar or bar
-  if type(fill.SetStatusBarTexture) == "function" then T.StyleBar(fill) end
-  if type(bar.overlay) == "table" then T.FadeRegions(bar.overlay) end
-  fadeWhole(fill, { "Background" })
-  T.Panel(bar, { inset = true, noSheen = true })
+-- The model scene's zoom, rotate and reset buttons as theme buttons that keep their icons.
+local function styleModelControls(scene)
+  local box = type(scene) == "table" and scene.ControlFrame
+  if type(box) ~= "table" then return end
+  for _, key in ipairs(MODEL_CONTROLS) do
+    local button = box[key]
+    if type(button) == "table" and button.GetRegions then
+      T.Button(button)
+      GW.ShowTexture(button.Icon)
+    end
+  end
 end
 
--- The pet scene: its art faded and an inset panel behind the model.
+-- Stable --------------------------------------------------------------------------------------------
+
+-- The art of the pet scene (its background, its inset frame and its shadow overlay): faded whole. The pet's drop
+-- shadow under the model (PetShadow) stays: it is part of how the model stands.
+local STABLE_ART = { "Background", "Inset", "PetModelSceneShadow" }
+-- The stable's texts the game draws in gold: the pet's level line, the slot caption and the Costs label.
+local STABLE_GOLD = { "PetStableLevelText", "PetStableSlotText", "PetStableCostLabel" }
+-- The loyalty line under the pet's level, white in the game.
+local STABLE_WHITE = { "PetStableLoyaltyText" }
+-- The pet slots (the current pet and two stabled ones).
+local STABLE_SLOTS = { "PetStableCurrentPet", "PetStableStabledPet1", "PetStableStabledPet2" }
+-- The two rules across the window (above and below the pet model), each a texture on a frame of its own.
+local STABLE_DIVIDERS = { "TopDividerFrame", "BottomDividerFrame" }
+-- The slot art that stays on a pet slot: the lock, the generic pet picture and the current pet's glow.
+local SLOT_KEEP = { "lockIcon", "genericPetIcon", "currentGlow" }
+
+-- The pet slots already dressed and the footer panels already made, by frame.
+local vgPetSlots = ns.FrameState("vgPetSlots")
+local vgStableFoot = ns.FrameState("vgStableFoot")
+
+-- The pet scene: its art faded and an inset panel behind the model, its zoom and rotate buttons themed.
 local function styleStableScene(scene)
   if type(scene) ~= "table" then return end
   fadeWhole(scene, STABLE_ART)
-  fadeWhole(scene, { "Inset" })
   T.Panel(scene, { inset = true, noSheen = true })
+  styleModelControls(scene)
 end
 
--- The captions over the pet slots, and the loyalty level number, in the theme font.
-local function styleStableCaptions(frame)
-  namedFonts(STABLE_TEXTS, "label")
-  for _, name in ipairs(STABLE_SLOTS) do
-    if type(_G[name]) == "table" then keyFonts(_G[name], { "Text" }, "small") end
-  end
-  if type(frame.loyaltyLevel) == "table" then keyFonts(frame.loyaltyLevel, { "levelText" }, "small") end
+-- The captions over the pet slots (the game's gold) and the stable's other texts, in the theme font and the text colour.
+local function styleStableCaptions()
+  GW.TextNamed(STABLE_GOLD, "label", "text")
+  GW.TextNamed(STABLE_WHITE, "label", false)
+  for _, name in ipairs(STABLE_SLOTS) do GW.SkinText(GW.Part(_G, name .. ".Text"), "small", "text") end
 end
 
--- The pet stable (hunters): the window skin, its pet scene, experience bar, purchase button and texts.
+-- What a pet slot keeps when its art is faded: its icon, the lock, generic pet and glow, and the checked mark that
+-- says which pet the model shows.
+local function slotKeep(button)
+  local keep = GW.KeepKeys(button, SLOT_KEEP)
+  local icon, checked = _G[(button:GetName() or "") .. "IconTexture"], type(button.GetCheckedTexture) == "function" and button:GetCheckedTexture()
+  if type(icon) == "table" then keep[icon] = true end
+  if type(checked) == "table" then keep[checked] = true end
+  return keep
+end
+
+-- A pet slot's accent edge follows the mouse: brighter while it is over the slot, darker while it is held.
+local function slotStates(button)
+  button:HookScript("OnEnter", ns.Guard("hook OnEnter", function(self) T.SlotState(self, "hover") end))
+  button:HookScript("OnLeave", ns.Guard("hook OnLeave", function(self) T.SlotState(self, nil) end))
+  button:HookScript("OnMouseDown", ns.Guard("hook OnMouseDown", function(self) T.SlotState(self, "pressed") end))
+  button:HookScript("OnMouseUp", ns.Guard("hook OnMouseUp", function(self) T.SlotState(self, self:IsMouseOver() and "hover" or nil) end))
+end
+
+-- One pet slot as a quiet slot tile (its rims faded, its icon, lock and glow kept), once.
+local function dressPetSlot(button)
+  if type(button) ~= "table" or not button.GetRegions or not button.HookScript or vgPetSlots[button] then return end
+  vgPetSlots[button] = true
+  T.FadeRegions(button, slotKeep(button))
+  T.Slot(button, { quiet = true })
+  slotStates(button)
+end
+
+-- The window's foot (the slots, the purchase button, the money): the art strip the game sank it with replaced by an
+-- inset panel on a frame of its own at the window's level, so everything the window holds draws over it.
+local function styleStableFoot(frame)
+  local strip = frame.insideFrameBottom
+  if type(strip) ~= "table" or not strip.GetPoint or vgStableFoot[frame] then return end
+  local foot = CreateFrame("Frame", nil, frame)
+  vgStableFoot[frame] = foot
+  foot:SetFrameLevel(frame:GetFrameLevel())
+  foot:SetPoint("TOPLEFT", strip, "TOPLEFT")
+  foot:SetPoint("BOTTOMRIGHT", strip, "BOTTOMRIGHT")
+  T.Panel(foot, { inset = true, noSheen = true })
+end
+
+-- One of the stable's rules (a divider texture on a frame of its own) as one pixel of divider; a rule the client lacks is skipped.
+local function stableRule(box)
+  local rule = type(box) == "table" and box.horzDivider
+  if type(rule) == "table" and rule.SetAlpha then T.Divider(rule) end
+end
+
+-- The pet's level, slots, rules and money lines: the three slots as tiles, the two rules as one pixel of divider, the
+-- money lines (the player's in a coin box, the slot's cost beside the Costs label) in the theme font.
+local function styleStableParts(frame)
+  for _, name in ipairs(STABLE_SLOTS) do dressPetSlot(_G[name]) end
+  GW.EachKey(frame, STABLE_DIVIDERS, stableRule)
+  GW.SkinCoinBox(_G.PetStableMoneyFrame)
+  GW.SkinMoney(_G.PetStableCostMoneyFrame)
+  styleStableFoot(frame)
+end
+
+-- The pet stable (hunters): the window skin, its pet scene, experience bar, purchase button, slots and texts.
 function GW.SkinStable(frame)
   GW.Skin(frame)
-  fadeWhole(frame, STABLE_ART)
   styleStableScene(frame.modelScene)
-  styleExpBar(frame.expBar)
+  GW.SkinBar(frame.expBar)
+  GW.SkinText(GW.Part(frame, "expBar.Text"), "number", false)
   keyButtons(frame, { "purchaseButton" })
-  styleStableCaptions(frame)
+  styleStableCaptions()
+  styleStableParts(frame)
 end
 
 GW.Add("town", "framed", { "PetStableFrame" }, GW.SkinStable)
@@ -123,25 +181,75 @@ GW.Add("town", "framed", { "PetStableFrame" }, GW.SkinStable)
 local TRAINER_ROW_TEXTS = { "name", "subText", "nameSubText" }
 -- The three pieces of a category header row's plate (faded; its label and fold icon stay).
 local TRAINER_PLATE = { "LeftPiece", "RightPiece", "CenterPiece" }
+-- What a skill row keeps of its art: the skill's icon, the lock on it and the grey shade over a skill you cannot learn.
+local TRAINER_KEEP = { "icon", "lock", "disabledBG" }
 
--- One row of the trainer list as the game acquires it (callback of the list: owner, row, data): the row's
--- plate faded, the skill's selected mark, disabled shade, lock and icon kept, its texts in the theme font.
-local function skinTrainerRow(_, row)
-  if type(row) ~= "table" then return end
-  fadeWhole(row, TRAINER_PLATE)
-  local plate = type(row.GetNormalTexture) == "function" and row:GetNormalTexture()
-  if type(plate) == "table" then plate:SetAlpha(0) end
-  keyFonts(row, TRAINER_ROW_TEXTS, "small")
+-- The category rows already hooked (the game's hover swaps their label's font object), and the trainer's own
+-- row initialisers already hooked, by function name.
+local vgCategoryRows = ns.FrameState("vgCategoryRows")
+local trainerHooked = {}
+
+-- What a skill row's art fade leaves: its icon, lock and shade, and the layers the row primitive drew.
+local function skillKeep(row)
+  local keep = GW.KeepKeys(row, TRAINER_KEEP)
+  for _, part in pairs(T.RowParts(row) or {}) do
+    if type(part) == "table" then keep[part] = true end
+  end
+  return keep
 end
 
--- The list's rows now and each row it acquires later (the game reuses its rows, one callback is enough).
-local function watchTrainerRows(box)
-  local mixin = _G.ScrollBoxListMixin
-  if type(box) ~= "table" or box.vgTrainerRows or type(box.RegisterCallback) ~= "function" then return end
-  if type(mixin) ~= "table" or type(mixin.Event) ~= "table" then return end
-  box.vgTrainerRows = true
-  box:RegisterCallback(mixin.Event.OnAcquiredFrame, skinTrainerRow, GW)
-  if type(box.ForEachFrame) == "function" then box:ForEachFrame(function(row) skinTrainerRow(nil, row) end) end
+-- The row's selected look follows the game's own selection: its selected strip (faded here) is shown while it is the
+-- chosen skill, and the game shows or hides it each time it fills the row.
+local function followSelection(row)
+  local mark = row.selectedTex
+  T.SelectRow(row, type(mark) == "table" and mark.IsShown ~= nil and mark:IsShown() == true)
+end
+
+-- A skill row's plate and hover strip faded (the game's normal and highlight textures, which a button keeps apart).
+local function fadePlates(row)
+  for _, getter in ipairs({ "GetNormalTexture", "GetHighlightTexture" }) do
+    local plate = type(row[getter]) == "function" and row[getter](row)
+    if type(plate) == "table" then plate:SetAlpha(0) end
+  end
+end
+
+-- A skill row as a selectable theme row: its art faded (icon, lock and unavailable shade kept), its price and texts in the
+-- theme, its selected look following the game's.
+local function dressSkillRow(row)
+  T.Row(row)
+  T.FadeRegions(row, skillKeep(row))
+  fadePlates(row)
+  GW.SkinMoney(row.money)
+  keyFonts(row, TRAINER_ROW_TEXTS, "small")
+  followSelection(row)
+end
+
+-- A category header's label as a section head, again after the game's hover puts its gold font object back.
+local function sectionLabel(row)
+  GW.SkinSection(row.Label)
+end
+
+-- A category header row (a list of skills' group): its plate faded, its label a section head that stays one on hover.
+local function dressCategoryRow(row)
+  fadeWhole(row, TRAINER_PLATE)
+  sectionLabel(row)
+  if vgCategoryRows[row] or type(row.HookScript) ~= "function" then return end
+  vgCategoryRows[row] = true
+  for _, script in ipairs({ "OnEnter", "OnLeave" }) do row:HookScript(script, ns.Guard("hook " .. script, function() sectionLabel(row) end)) end
+end
+
+-- One row of the trainer list: a category header or a skill. Safe to run again, as the game fills a row each time.
+local function dressTrainerRow(row)
+  if type(row) ~= "table" then return end
+  if type(row.Label) == "table" then dressCategoryRow(row) else dressSkillRow(row) end
+end
+
+-- Runs fn(row) after one of the trainer's row initialisers (globals of the game's: it fills a row's text, price, selected
+-- strip and label after the list has acquired it), once per function; a client without it is skipped.
+local function afterTrainerInit(name, fn)
+  if trainerHooked[name] or type(_G[name]) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  trainerHooked[name] = true
+  hooksecurefunc(name, ns.Guard("hook " .. name, fn))
 end
 
 -- A frame that is only art in the game (an inset): its art faded and a dark panel in its place.
@@ -152,15 +260,38 @@ local function insetPanel(part)
   T.Panel(part, { inset = true, noSheen = true })
 end
 
--- The class trainer: the window skin, its backdrop and money plate faded, the lower inset a dark panel,
--- the filter button and its rows in the theme (Vanguard's Train all, beside Train, is already themed).
+-- The profession rank bar at the top left: a flat inset track with the theme's bar texture in the accent, its numbers in
+-- the theme font.
+local function styleTrainerBar(bar)
+  if type(bar) ~= "table" or not bar.SetStatusBarTexture then return end
+  GW.SkinProgress(bar)
+  T.BarColor(bar, "accent")
+  GW.SkinText(bar.rankText, "small", false)
+end
+
+-- The window's foot and top: the player's money in the theme font (the pet trainer's training points in its place), the
+-- rank bar, the filter button and the scroll bar.
+local function styleTrainerParts(frame)
+  GW.SkinMoney(frame.money)
+  GW.SkinText(GW.Part(frame, "trainingPoints.text"), "small", "text")
+  styleTrainerBar(_G.ClassTrainerStatusBar)
+  keyButtons(frame, { "FilterDropdown" })
+  if type(frame.ScrollBar) == "table" then T.ScrollBar(frame.ScrollBar) end
+end
+
+-- The class trainer: the window skin, its backdrop and money plate faded, the lower inset a dark panel, the filter
+-- button, scroll bar, rank bar and money line in the theme, and its rows: the list's, the profession step above it,
+-- and each one again as the game fills it (Vanguard's Train all, beside Train, is already themed).
 function GW.SkinTrainer(frame)
   GW.Skin(frame)
   GW.FadeParts(frame, { "BG" })
   GW.FadeNamed({ "ClassTrainerFrameMoneyBg" })
   insetPanel(frame.bottomInset)
-  keyButtons(frame, { "FilterDropdown" })
-  watchTrainerRows(frame.ScrollBox)
+  styleTrainerParts(frame)
+  GW.WatchRows(frame.ScrollBox, dressTrainerRow)
+  dressTrainerRow(frame.skillStepButton)
+  afterTrainerInit("ClassTrainerFrame_InitServiceButton", dressTrainerRow)
+  afterTrainerInit("ClassTrainerFrame_InitCategoryButton", dressTrainerRow)
 end
 
 GW.AddButtons("ClassTrainerFrame", { "ClassTrainerTrainButton" })
@@ -171,58 +302,67 @@ GW.Add("town", "onDemand", "Blizzard_TrainerUI", { "ClassTrainerFrame" }, GW.Ski
 -- The side dress-up window's art: parts by key, and the textures the game names.
 local DRESSUP_ART = { "BGTopLeft", "BGBottomLeft" }
 local DRESSUP_NAMED = { "SideDressUpFrameTop", "SideDressUpFrameBackgroundTop", "SideDressUpFrameBackgroundBot" }
--- The model's control buttons (zoom, rotate, reset): their icon is the part that stays.
-local MODEL_CONTROLS = { "zoomInButton", "zoomOutButton", "rotateLeftButton", "rotateRightButton", "resetButton" }
 -- The stack split window's art (the money plates, and its glow).
 local SPLIT_ART = { "SingleItemSplitBackground", "MultiItemSplitBackground", "FrameGlow" }
 -- The coin pickup window's coin icons (kept) and its buttons.
 local COIN_ICONS = { "CoinPickupGoldIcon", "CoinPickupSilverIcon", "CoinPickupCopperIcon" }
 local COIN_BUTTONS = { "CoinPickupOkayButton", "CoinPickupCancelButton" }
 
--- The model scene's zoom, rotate and reset buttons as theme buttons that keep their icons.
-local function styleModelControls(scene)
-  local box = type(scene) == "table" and scene.ControlFrame
-  if type(box) ~= "table" then return end
-  for _, key in ipairs(MODEL_CONTROLS) do
-    local button = box[key]
-    if type(button) == "table" and button.GetRegions then
-      T.Button(button)
-      showTexture(button.Icon)
-    end
-  end
-end
-
 -- The side dress-up window (beside the auction house and merchant): the window skin, the game's
--- plates faded, the Reset and model buttons in the theme.
+-- plates faded, the model on an inset, the Reset and model buttons in the theme.
 function GW.SkinSideDressUp(frame)
   GW.Skin(frame)
   GW.FadeParts(frame, DRESSUP_ART)
   GW.FadeNamed(DRESSUP_NAMED)
   keyButtons(frame, { "ResetButton" })
+  GW.InsetPanel(frame.ModelScene)
   styleModelControls(frame.ModelScene)
 end
 
+-- Each amount field made for a window (a border-only inset between the arrows; the amount is a font string
+-- on the window, so a filled field would draw over it).
+local vgAmountFields = ns.FrameState("vgAmountFields")
+
+-- The field the typed amount sits in, between a window's two arrows: a thin inset border, made once.
+local function amountField(frame, left, right)
+  if type(left) ~= "table" or type(right) ~= "table" or not frame.CreateTexture then return end
+  if vgAmountFields[frame] then return end
+  local field = CreateFrame("Frame", nil, frame)
+  field:SetPoint("LEFT", left, "RIGHT", 0, 0)
+  field:SetPoint("RIGHT", right, "LEFT", 0, 0)
+  field:SetHeight(24)
+  T.Panel(field, { inset = true, noBg = true, noSheen = true })
+  vgAmountFields[frame] = field
+end
+
 -- The stack split window: the window skin, its money plates and glow faded, the arrows keep their
--- arrow, Okay and Cancel in the theme, the amount in the theme font.
+-- arrow, Okay and Cancel in the theme, the amount in the theme font with a field round it, and the stack
+-- count line in the text colour.
 function GW.SkinStackSplit(frame)
   GW.Skin(frame)
   fadeWhole(frame, SPLIT_ART)
   keyButtons(frame, { "OkayButton", "CancelButton" })
-  glyphButton(frame.LeftButton)
-  glyphButton(frame.RightButton)
-  keyFonts(frame, { "StackSplitText", "StackItemCountText" }, "number")
+  GW.SkinGlyph(frame.LeftButton)
+  GW.SkinGlyph(frame.RightButton)
+  amountField(frame, frame.LeftButton, frame.RightButton)
+  keyFonts(frame, { "StackSplitText" }, "number")
+  if type(frame.StackItemCountText) == "table" and frame.StackItemCountText.SetFont then
+    T.Text(frame.StackItemCountText, "number", "text")
+  end
 end
 
--- The coins window the money frame opens: a panel, its plate faded (the coin icons stay), the buttons themed.
+-- The coins window the money frame opens: a panel, its plate faded (the coin icons stay), the buttons themed,
+-- the typed figure and its label in the theme font with a field round the figure.
 function GW.SkinCoinPickup(frame)
   T.Panel(frame, { shadow = true })
   local keep = {}
   for _, name in ipairs(COIN_ICONS) do keep[_G[name] or false] = true end
   T.FadeRegions(frame, keep)
   namedButtons(COIN_BUTTONS)
-  glyphButton(_G.CoinPickupLeftButton)
-  glyphButton(_G.CoinPickupRightButton)
-  namedFonts({ "CoinPickupText" }, "number")
+  GW.SkinGlyph(_G.CoinPickupLeftButton)
+  GW.SkinGlyph(_G.CoinPickupRightButton)
+  amountField(frame, _G.CoinPickupLeftButton, _G.CoinPickupRightButton)
+  namedFonts({ "CoinPickupText", "CoinPickupLabel" }, "number")
 end
 
 GW.Add("town", "popups", { "SideDressUpFrame" }, GW.SkinSideDressUp)
@@ -269,11 +409,17 @@ local MERCHANT_INSETS = { "MerchantMoneyInset", "MerchantExtraCurrencyInset" }
 -- How many denominations a token price can show (SmallAlternateCurrencyFrameTemplate's Item1-3).
 local ALT_CURRENCIES = 3
 
--- The font strings a frame draws itself (a page arrow's caption) in the theme font, their colour kept.
-local function regionFonts(frame, role)
+-- The font strings a frame draws itself (a page arrow's caption) in the theme font, in the colour token given.
+local function regionFonts(frame, role, color)
   for _, region in ipairs({ frame:GetRegions() }) do
-    if region.GetObjectType and region:GetObjectType() == "FontString" then T.Text(region, role, false) end
+    if region.GetObjectType and region:GetObjectType() == "FontString" then T.Text(region, role, color) end
   end
+end
+
+-- A global font string in a role and a colour token (one this client lacks is skipped).
+local function namedText(name, role, color)
+  local fs = _G[name]
+  if type(fs) == "table" and fs.SetFont then T.Text(fs, role, color) end
 end
 
 -- A row's token price (named frame .. Item1-3): each denomination's figure in the theme font, its icon kept.
@@ -303,7 +449,7 @@ local function skinMerchantTiles()
     local button = _G[name]
     if type(button) == "table" and button.GetRegions then
       T.Button(button)
-      showTexture(button.Icon)
+      GW.ShowTexture(button.Icon)
     end
   end
 end
@@ -311,15 +457,15 @@ end
 -- A page arrow as a theme button that keeps its arrow, its caption in the theme font.
 local function skinPageArrow(button)
   if type(button) ~= "table" or not button.GetRegions then return end
-  glyphButton(button)
-  regionFonts(button, "label")
+  GW.SkinGlyph(button)
+  regionFonts(button, "label", "text")
 end
 
 -- The window's foot: the page arrows and page count, the money line in the theme font, the gold-edged plates
 -- faded and the insets under them dark panels.
 local function skinMerchantFooter()
   for _, name in ipairs(MERCHANT_ARROWS) do skinPageArrow(_G[name]) end
-  namedFonts({ "MerchantPageText" }, "label")
+  namedText("MerchantPageText", "label", "text")
   GW.SkinMoney(_G.MerchantMoneyFrame)
   GW.FadeNamed(MERCHANT_PLATES)
   for _, name in ipairs(MERCHANT_INSETS) do insetPanel(_G[name]) end
@@ -382,10 +528,36 @@ function GW.SkinMasterLooter(frame)
   hooksecurefunc("MasterLooterFrame_UpdatePlayers", ns.Guard("hook MasterLooterFrame_UpdatePlayers", dressMasterPlayers))
 end
 
--- The group loot history window: the window skin, and its close button (named ClosePanelButton there).
+-- A roll card's result lines: the winner (its name keeps the class colour the game wraps it in), the leader while
+-- rolls are open and the all-passed line.
+local LOOT_ROW_TEXTS = { "WinningRollInfo.WinningRoll", "PendingRollInfo.CurrentWinnerText", "AllPassedInfo.AllPassedText" }
+
+-- One row of the roll list as the game acquires it: a roll card (its plate faded, its item in the bags' item look, its
+-- result lines in the small text colour; the item's name keeps its quality colour) or the Passed heading (heading text).
+local function dressLootRow(row)
+  if type(row) ~= "table" or not row.GetRegions then return end
+  if type(row.Item) ~= "table" then return regionFonts(row, "heading", "text") end
+  fadeWhole(row, { "BackgroundArtFrame" })
+  GW.SkinItem(row.Item)
+  for _, path in ipairs(LOOT_ROW_TEXTS) do GW.SkinText(GW.Part(row, path), "small", "text") end
+end
+
+-- The roll countdown under the encounter picker: its track and frame art faded under a flat inset, the fill kept.
+local function styleLootTimer(timer)
+  if type(timer) ~= "table" or not timer.GetRegions then return end
+  T.FadeRegions(timer, GW.KeepKeys(timer, { "Fill" }))
+  T.Panel(timer, { inset = true, noSheen = true })
+end
+
+-- The group loot history window: the window skin, its close button (named ClosePanelButton there), the encounter
+-- picker, the roll countdown, the empty-list message and the roll cards (the scroll bar is dressed with the window).
 function GW.SkinLootHistory(frame)
   GW.Skin(frame)
   GW.DressClose(frame, frame.ClosePanelButton)
+  GW.SkinDropdown(frame.EncounterDropdown)
+  styleLootTimer(frame.Timer)
+  GW.SkinText(frame.NoInfoString, "label", "text")
+  GW.WatchRows(frame.ScrollBox, dressLootRow)
 end
 
 GW.Add("town", "framed", { "MasterLooterFrame" }, GW.SkinMasterLooter)
@@ -397,52 +569,86 @@ GW.Add("town", "framed", { "GroupLootHistoryFrame" }, GW.SkinLootHistory)
 local MACRO_BUTTONS = { "MacroEditButton", "MacroCancelButton", "MacroSaveButton", "MacroDeleteButton", "MacroNewButton", "MacroExitButton" }
 GW.AddButtons("MacroFrame", MACRO_BUTTONS)
 
--- The icon picker's header: the selected icon's area gets an inset panel, the name box and the Okay and
--- Cancel buttons are themed; the box's own border art (a nine-slice) is faded.
+-- Each selector tile (a macro's or an icon's) already dressed.
+local vgTiles = ns.FrameState("vgSelectorTiles")
+
+-- One tile of a selector (SelectorButtonTemplate: the macro grid, the selected macro, the icon pickers) as a quiet slot:
+-- its slot plate and hover strip faded, its icon and the game's selected mark kept, an accent edge under the mouse. Once per tile.
+local function dressSelectorTile(button)
+  if type(button) ~= "table" or not button.GetRegions or not button.HookScript or vgTiles[button] then return end
+  vgTiles[button] = true
+  T.FadeRegions(button, GW.KeepKeys(button, { "Icon", "SelectedTexture" }))
+  T.Slot(button, { quiet = true })
+  slotStates(button)
+end
+
+-- The icon picker's header: the selected icon's area gets an inset panel and its tile and heading, the name box, the
+-- icon type dropdown and the Okay and Cancel buttons are themed; the box's own border art (a nine-slice) is faded.
 local function styleIconPickerBox(box)
   if type(box) ~= "table" then return end
   fadeWhole(box, { "NineSlice" })
   insetPanel(box.SelectedIconArea)
+  dressSelectorTile(GW.Part(box, "SelectedIconArea.SelectedIconButton"))
+  GW.SkinText(GW.Part(box, "SelectedIconArea.SelectedIconText.SelectedIconHeader"), "small", "text")
   if type(box.IconSelectorEditBox) == "table" and box.IconSelectorEditBox.SetText then T.EditBox(box.IconSelectorEditBox) end
+  GW.SkinDropdown(box.IconTypeDropdown)
   keyButtons(box, { "OkayButton", "CancelButton" })
 end
 
 -- A popup made from IconSelectorPopupFrameTemplate (the macro, guild bank and equipment set popups): the
--- window skin (its BG faded, a flat panel with a shadow) and the header parts in the theme.
+-- window skin (its BG faded, a flat panel with a shadow), the header parts and each icon tile of the grid in the theme.
 function GW.SkinIconPicker(frame)
   GW.Skin(frame)
   styleIconPickerBox(frame.BorderBox)
+  GW.WatchRows(GW.Part(frame, "IconSelector.ScrollBox"), dressSelectorTile)
+end
+
+-- The macro window's text field: the backdrop of the box faded under a flat inset, the box's text in the theme font.
+local function styleMacroText()
+  GW.InsetPanel(_G.MacroFrameTextBackground)
+  GW.SkinText(_G.MacroFrameText, "chat", false)
+end
+
+-- The macro window: the window skin, its two headings in the text colour, the selected macro's tile and the grid's
+-- tiles (as the game fills the grid), and the text field (the two scroll bars are dressed with the window).
+function GW.SkinMacro(frame)
+  GW.Skin(frame)
+  GW.TextRegions(frame, { "CREATE_MACROS" }, "heading", "text")
+  GW.TextNamed({ "MacroFrameSelectedMacroName" }, "heading", "text")
+  dressSelectorTile(frame.SelectedMacroButton)
+  GW.WatchRows(GW.Part(frame, "MacroSelector.ScrollBox"), dressSelectorTile)
+  styleMacroText()
 end
 
 -- The stopwatch: its two background plates and the title tab's art faded under a flat panel, the close,
--- play and reset buttons in the theme (play and reset keep their pictures), the title in the theme font.
+-- play and reset buttons in the theme (play and reset keep their pictures), the title in the theme font and the
+-- text colour.
 function GW.SkinStopwatch(frame)
   GW.Skin(frame)
   if type(_G.StopwatchTabFrame) == "table" then T.FadeRegions(_G.StopwatchTabFrame) end
   GW.DressClose(frame, _G.StopwatchCloseButton)
-  glyphButton(_G.StopwatchPlayPauseButton)
-  glyphButton(_G.StopwatchResetButton)
-  namedFonts({ "StopwatchTitle" }, "small")
+  GW.SkinGlyph(_G.StopwatchPlayPauseButton)
+  GW.SkinGlyph(_G.StopwatchResetButton)
+  GW.TextNamed({ "StopwatchTitle" }, "small", "text")
 end
 
-GW.Add("town", "onDemand", "Blizzard_MacroUI", { "MacroFrame" })
+GW.Add("town", "onDemand", "Blizzard_MacroUI", { "MacroFrame" }, GW.SkinMacro)
 GW.Add("town", "onDemand", "Blizzard_MacroUI", { "MacroPopupFrame" }, GW.SkinIconPicker)
 GW.Add("town", "onDemand", "Blizzard_GuildBankUI", { "GuildBankPopupFrame" }, GW.SkinIconPicker)
 GW.Add("town", "framed", { "GearManagerPopupFrame" }, GW.SkinIconPicker)
 GW.Add("town", "onDemand", "Blizzard_TimeManager", { "StopwatchFrame" }, GW.SkinStopwatch)
-GW.Add("town", "onDemand", "Blizzard_Professions", { "InspectRecipeFrame" })
+GW.Add("town", "onDemand", "Blizzard_Professions", { "InspectRecipeFrame" }, GW.SkinFramed)
 
 -- Small dialogs -------------------------------------------------------------------------------------
 
 -- The Release Spirit / return to graveyard button's text, and the buttons the message and addon dialogs keep outside Button1-4.
-local GHOST_TEXT = { "GhostFrameContentsFrameText" }
 local ADDON_DIALOG_BUTTONS = { "AddonDialogButton1", "AddonDialogButton2" }
 GW.AddButtons("BasicMessageDialog", { "BasicMessageDialogButton" })
 
 -- The ghost button as a theme button with its text in the theme font (textures and font strings only).
 local function dressGhost(frame)
   T.Button(frame)
-  namedFonts(GHOST_TEXT, "label")
+  namedText("GhostFrameContentsFrameText", "label", "text")
 end
 
 -- The button a dead player gets to return to the graveyard: dressed out of combat (it is shown from the game's
@@ -457,13 +663,29 @@ function GW.SkinAddonDialog()
   local box = _G.AddonDialogBackground
   if type(box) ~= "table" then return end
   GW.Skin(box)
+  namedText("AddonDialogText", "label", "text")
   namedButtons(ADDON_DIALOG_BUTTONS)
 end
 
--- The currency transfer window: the window skin and its Confirm and Cancel buttons.
+-- The currency transfer form's labels (source, amount and the two balance previews), gold in the game.
+local TRANSFER_LABELS = { "SourceSelector.SourceLabel", "AmountSelector.TransferAmountLabel", "SourceBalancePreview.Label", "PlayerBalancePreview.Label" }
+
+-- The form: Confirm and Cancel, the source dropdown (its arrow kept), the amount box and its Max button, the labels, and the
+-- rule above the transaction as one pixel of divider.
+local function styleTransferForm(content)
+  local rule = content.TransactionDivider
+  if type(rule) == "table" and rule.SetAlpha then T.Divider(rule) end
+  keyButtons(content, { "ConfirmButton", "CancelButton" })
+  GW.SkinDropdown(GW.Part(content, "SourceSelector.Dropdown"))
+  GW.SkinEditBox(GW.Part(content, "AmountSelector.InputBox"))
+  GW.SkinButton(GW.Part(content, "AmountSelector.MaxQuantityButton"))
+  for _, path in ipairs(TRANSFER_LABELS) do GW.SkinText(GW.Part(content, path), "label", "text") end
+end
+
+-- The currency transfer window: the window skin and its form.
 function GW.SkinCurrencyTransfer(frame)
   GW.Skin(frame)
-  if type(frame.Content) == "table" then keyButtons(frame.Content, { "ConfirmButton", "CancelButton" }) end
+  if type(frame.Content) == "table" then styleTransferForm(frame.Content) end
 end
 
 GW.Add("town", "framed", { "GhostFrame" }, GW.SkinGhost)

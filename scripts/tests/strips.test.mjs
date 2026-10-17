@@ -296,7 +296,7 @@ const MENU_POOL_ENV = `
   header.Text = header:CreateFontString()
   GameMenuFrame.Header = header
 `;
-it("game menu: buttons made after the skin ran are skinned once, Vanguard's matches, the header plate is gone", () => {
+it("game menu: buttons made after the skin ran are skinned once, Vanguard's matches, the header plate is faded", () => {
   const addon = loggedIn(FOREVER_MENU_ENV + MENU_POOL_ENV);
   addon.eval("__spy = 0 local real = ns.Theme.Button ns.Theme.Button = function(...) __spy = __spy + 1 return real(...) end");
   addon.eval("GameMenuFrame:Show()");
@@ -309,11 +309,12 @@ it("game menu: buttons made after the skin ran are skinned once, Vanguard's matc
   expect(addon.eval("return __spy"), "the next open makes two new buttons: only those are skinned").toBe(5);
   addon.eval("GameMenuFrame:Hide() GameMenuFrame.buttonPool.__active = {} GameMenuFrame:Show()");
   expect(addon.eval("local n = 0 for b in GameMenuFrame.buttonPool:EnumerateActive() do if ns.FrameState('vgMenuSkinned')[b] then n = n + 1 end end return n"), "every active button carries the skin").toBe(2);
-  const head = addon.eval("local h = GameMenuFrame.Header local p = h.__points.TOP return { h.LeftBG:IsShown(), h.RightBG:IsShown(), h.CenterBG:IsShown(), h.Text.__font ~= nil, p.rel == GameMenuFrame, p.y }");
-  expect(head, "the header plate is hidden, its title in the theme font, inside the panel").toEqual([false, false, false, true, true, -8]);
+  const head = addon.eval("local h = GameMenuFrame.Header local p = h.__points.TOP return { h.LeftBG.__alpha, h.RightBG.__alpha, h.CenterBG.__alpha, select(2, h.Text:GetFont()) == ns.Theme.RoleSize('heading'), h.Text.__textColor[1] == (ns.Theme.RGB('text')), p.rel == GameMenuFrame, p.y }");
+  expect(head, "the header plate is faded, its title in the heading role (a game window's title) and the text colour, inside the panel").toEqual([0, 0, 0, true, true, true, -8]);
+  expect(addon.eval("local h = GameMenuFrame.Header return h.LeftBG:IsShown() and h.RightBG:IsShown() and h.CenterBG:IsShown()"), "the plate is faded, not hidden: it stays shown as the game left it").toBe(true);
   const off = loggedIn(FOREVER_MENU_ENV + MENU_POOL_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
   off.eval("GameMenuFrame:Show()");
-  expect([borderOf(off, "ns.gameMenuButton") == null, off.eval("return GameMenuFrame.Header.LeftBG:IsShown()")], "with the windows switched off the menu stays the game's").toEqual([true, true]);
+  expect([borderOf(off, "ns.gameMenuButton") == null, off.eval("return GameMenuFrame.Header.LeftBG:IsShown() and GameMenuFrame.Header.LeftBG.__alpha ~= 0")], "with the windows switched off the menu stays the game's").toEqual([true, true]);
 });
 it("game menu button: falls back, or goes without what the menu lacks", () => {
   expectErrors(/^GameMenu: wow-world\.lua:\d+: CreateFrame: unknown template NoSuchTemplate$/);

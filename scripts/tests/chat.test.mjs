@@ -1,7 +1,7 @@
 // chat: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, chatHas, isTok, later, loggedIn, setCombat, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, setCombat, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -437,8 +437,8 @@ it("more game windows: friends, books and letters, and windows that load later",
   addon.eval("FriendsFrame:Show()");
   expect(borderOf(addon, "FriendsFrame") !== undefined, "friends in the Vanguard look").toBe(true);
   addon.eval('ItemTextFrame:Show() ItemTextFrame.__scripts.OnEvent(ItemTextFrame, "ITEM_TEXT_READY")');
-  const page = addon.eval("return { ItemTextPageText.__colors.P, ItemTextPageText.__colors.H1, ItemTextMaterialTopLeft.__alpha }");
-  expect([isTok(addon, page[0], "text"), isTok(addon, page[1], "gold"), page[2]], "a book's page in light text, gold headings, its parchment faded").toEqual([true, true, 0]);
+  const page = addon.eval("local c = ItemTextPageText.__colors return { c.P, c.H1, c.H2, c.H3, ItemTextMaterialTopLeft.__alpha }");
+  expect([isTok(addon, page[0], "text"), isTok(addon, page[1], "text"), isTok(addon, page[2], "text"), isTok(addon, page[3], "text"), page[4]], "a book's page in light text, its headings too (not gold), its parchment faded").toEqual([true, true, true, true, 0]);
   addon.eval('AuctionHouseFrame = CreateFrame("Frame", "AuctionHouseFrame", UIParent)');
   addon.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
   expect(borderOf(addon, "AuctionHouseFrame") !== undefined, "the auction house, when it loads").toBe(true);
@@ -532,10 +532,12 @@ it("game windows in the Vanguard look: framed windows, popups, breath bar, and w
   const addon = loggedIn(WINDOWS_ENV);
   addon.eval("MerchantFrame:Show()");
   const first = windowState(addon, "MerchantFrame");
-  expect(first, "the game's art is faded, a panel is painted, the title takes the theme font").toMatchObject({ art: 0, nine: 0, portrait: 0, insetNine: 0, panel: true, title: true });
+  expect(first, "the game's art is faded, a panel is painted, its Inset is an inset panel, the title takes the title role").toMatchObject({ art: 0, nine: 0, portrait: 0, insetNine: 0, inset: true, panel: true, title: true });
   addon.eval("MerchantFrame:Hide() MerchantFrame:Show()");
   expect(windowState(addon, "MerchantFrame"), "showing it again keeps the panel and paints nothing new").toMatchObject({ panel: true, painted: first.painted });
-  expect(windowState(addon, "StaticPopup1"), "popups too").toMatchObject({ art: 0, panel: true });
+  expect(windowState(addon, "StaticPopup1"), "popups too").toMatchObject({ art: 0, inset: true, panel: true });
+  addon.eval('__window("TestOnlyNoInset").Inset = nil __window("TestOnlyBareInset").Inset = {} ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyNoInset", "TestOnlyBareInset" })');
+  expect(addon.eval("TestOnlyNoInset:Show() TestOnlyBareInset:Show() return { ns.Theme.PaintedCount() > 0, #ns.errors }"), "a window without an Inset, or with one that is no frame, is skinned all the same").toEqual([true, 0]);
   // Whether every breath bar in the container has the theme's bar texture (not the game's) and its frame art faded.
   const timers = () => addon.eval(`local ok = true
     for _, t in ipairs({ MirrorTimerContainer:GetChildren() }) do ok = ok and t.StatusBar:GetStatusBarTexture() ~= nil and t.StatusBar:GetStatusBarTexture().__texture ~= "TEST-ONLY-ART" and t.Border.__alpha == 0 end
@@ -579,6 +581,7 @@ it("game windows: switched off they stay the game's, and missing windows are fin
   const off = loggedIn(WINDOWS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false, popups = false, timers = false } } }" });
   off.eval("MerchantFrame:Show() StaticPopup1:Show()");
   expect([windowState(off, "MerchantFrame").art, windowState(off, "StaticPopup1").art].every((a) => a !== 0), "nothing is faded").toBe(true);
+  expect([windowState(off, "MerchantFrame").inset, windowState(off, "StaticPopup1").inset], "and no Inset is painted").toEqual([false, false]);
   expect(off.eval("local t = MirrorTimerContainer:GetChildren() return t.StatusBar:GetStatusBarTexture() == nil and t.Border.__alpha ~= 0"), "the breath bars keep the game's bar and art").toBe(true);
   const bare = loggedIn("");
   expect(bare.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'"), "a client without these windows loads cleanly").toBe("none");
@@ -679,4 +682,443 @@ it("game windows registry: parts and named art faded, missing ones skipped", () 
     GW.FadeNamed({ "TestOnlyNamedArt", "TestOnlyNoSuchArt" })
     return { f.Tex.__alpha, inner.__alpha, TestOnlyNamedArt.__alpha }`);
   expect(out).toEqual([0, 0, 0]);
+});
+it("R2.4 shared skin helpers: a glyph keeps its picture, a dropdown its arrow, a search box its magnifier; anything else is skipped", () => {
+  const addon = loggedIn(`TestOnlyLocal = true`);
+  const out = addon.eval(`
+    local GW = ns.GetModule("Windows")
+    local function art(f) local t = f:CreateTexture() t:SetTexture("TEST-ONLY-ART") return t end
+    local glyph = CreateFrame("Button", nil, UIParent) glyph.up, glyph.off = art(glyph), art(glyph)
+    glyph.GetNormalTexture, glyph.GetDisabledTexture = function() return glyph.up end, function() return glyph.off end
+    local drop = CreateFrame("Button", nil, UIParent) drop.Arrow = art(drop)
+    local search = CreateFrame("EditBox", nil, UIParent) search.searchIcon = art(search)
+    GW.SkinGlyph(glyph) GW.SkinDropdown(drop) GW.SkinSearch(search)
+    GW.SkinGlyph(nil) GW.SkinGlyph({}) GW.SkinDropdown("x") GW.SkinDropdown({}) GW.SkinSearch(false) GW.SkinSearch({}) GW.ShowTexture(nil) GW.ShowTexture({})
+    return { glyph:GetNormalTexture():GetAlpha(), glyph:GetDisabledTexture():GetAlpha(), drop.Arrow:GetAlpha(), search.searchIcon:GetAlpha(),
+      ns.Theme.PaintedCount() > 0, #ns.errors }`);
+  expect(out, "pictures shown again after the theme faded the game's art; odd input skipped without an error").toEqual([1, 1, 1, 1, true, 0]);
+  expect(addon.eval('return { type(ns.GetModule("Windows").DressChecks), ns.GetModule("Windows").CHECK_DEPTH }'), "the check-box helpers live with the shared ones").toEqual(["function", 5]);
+});
+// TEST-ONLY trade window (TradeFrame.xml): the frame and its buttons, six wells, seven item rows a side (each with a
+// slot plate, a name plate and an item button; the seventh is the enchant row with an icon of its own), your money
+// input line, the other player's money plate and figure, and the two column headings.
+const TRADE_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
+  local f = __window("TradeFrame")
+  for _, name in ipairs({ "TradeFrameTradeButton", "TradeFrameCancelButton" }) do CreateFrame("Button", name, f) end
+  TradeFrameTradeButton.WarningIcon = __art(TradeFrameTradeButton)
+  for _, name in ipairs(ns.GetModule("Windows").TRADE_INSETS) do __well(name, f) end
+  for _, side in ipairs({ "TradePlayerItem", "TradeRecipientItem" }) do
+    for i = 1, 7 do
+      local row = CreateFrame("Frame", side .. i, f) row.SlotTexture = __art(row) row.Icon = __art(row)
+      _G[side .. i .. "NameFrame"] = __art(row)
+      __itemButton(side .. i .. "ItemButton", row)
+    end
+  end
+  __moneyInput("TradePlayerInputMoneyFrame", f)
+  TradeRecipientMoneyBg = __art(f)
+  __moneyLine("TradeRecipientMoneyFrame", f)
+  TradeFrameRecipientNameText, TradeFramePlayerNameText = f:CreateFontString(nil, "OVERLAY"), f:CreateFontString(nil, "OVERLAY")
+  -- TEST-ONLY reader of the trade window's inside (see tradeState).
+  function __tradeState()
+    local wells, rows, skinned, icons = 0, 0, 0, 0
+    for _, name in ipairs(ns.GetModule("Windows").TRADE_INSETS) do
+      local w = _G[name]
+      local faded = true for _, r in ipairs({ w:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" and r.__alpha ~= 0 then faded = false end end
+      if faded and w.NineSlice.__alpha == 0 and __sunk(w) then wells = wells + 1 end
+    end
+    for _, side in ipairs({ "TradePlayerItem", "TradeRecipientItem" }) do
+      for i = 1, 7 do
+        local row = _G[side .. i]
+        if row.SlotTexture.__alpha == 0 and _G[side .. i .. "NameFrame"].__alpha == 0 then rows = rows + 1 end
+        if ns.FrameState("vgSkinned")[_G[side .. i .. "ItemButton"]] then skinned = skinned + 1 end
+        if row.Icon.__alpha == 0 then icons = icons + 1 end
+      end
+    end
+    local boxes, coins = 0, 0
+    for _, key in ipairs({ "gold", "silver", "copper" }) do
+      local box = TradePlayerInputMoneyFrame[key]
+      if select(1, box:GetRegions()).__alpha == 0 then boxes = boxes + 1 end
+      if box.texture.__alpha == 1 then coins = coins + 1 end
+    end
+    return { wells = wells, rows = rows, skinned = skinned, icons = icons, boxes = boxes, coins = coins, bg = TradeRecipientMoneyBg.__alpha,
+      figure = __themed(TradeRecipientMoneyFrame.GoldButton.Text), heads = __looks(TradeFramePlayerNameText, "label", "text") and __looks(TradeFrameRecipientNameText, "label", "text"),
+      warning = TradeFrameTradeButton.WarningIcon.__alpha, painted = ns.Theme.PaintedCount() }
+  end
+`;
+// The trade window's inside: how many of the six wells are faded and sunk, how many rows have their plates faded
+// and their item button skinned, whether the enchant icon stays, the money boxes and their coins, the recipient
+// plate, the headings, and the Trade button's warning icon.
+const tradeState = (addon) => addon.eval("return __tradeState()");
+it("R2.8 the trade window: wells sunk, the fourteen rows' plates faded with item buttons in the bags' look, money boxes, headings and the warning icon", () => {
+  const addon = loggedIn(TRADE_ENV);
+  addon.eval("TradeFrame:Show()");
+  const first = tradeState(addon);
+  expect(first, "six wells, all rows done, no enchant icon faded, coins and the warning icon shown, plate faded, texts themed").toMatchObject({ wells: 6, rows: 14, skinned: 14, icons: 0, boxes: 3, coins: 3, bg: 0, figure: true, heads: true, warning: 1 });
+  expect(windowState(addon, "TradeFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
+  addon.eval("TradeFrame:Hide() TradeFrame:Show()");
+  expect(tradeState(addon).painted, "a second show paints nothing new").toBe(first.painted);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("R2.8 the trade window: the windows group off leaves it the game's; a trade window without its parts loads cleanly", () => {
+  const off = loggedIn(TRADE_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  off.eval("TradeFrame:Show()");
+  expect(tradeState(off), "nothing faded, painted or themed").toMatchObject({ wells: 0, rows: 0, skinned: 0, boxes: 0, heads: false });
+  expect(off.eval("return TradeRecipientMoneyBg.__alpha ~= 0"), "the other player's money plate stays").toBe(true);
+  const bare = loggedIn(`${WINDOWS_ENV}__window("TradeFrame")`);
+  bare.eval("TradeFrame:Show()");
+  expect([windowState(bare, "TradeFrame").panel, bare.eval("return #ns.errors")], "a bare window is skinned, no part missing is an error").toEqual([true, 0]);
+  const odd = loggedIn(`${TRADE_ENV} TradeRecipientItem3 = {} TradeFrameTradeButton.WarningIcon = nil TradeRecipientMoneyFrame = {} TradePlayerInputMoneyFrame.gold = {} TradePlayerInputMoneyFrame.silver = nil`);
+  odd.eval("TradeFrame:Show()");
+  expect(odd.eval("return #ns.errors"), "odd parts (a row that is no frame, no warning icon, a bare money line) are skipped").toBe(0);
+});
+// TEST-ONLY mail window (MailFrame.xml): the frame and its buttons; the inbox (parchment, page count, seven rows
+// each with plates, an item button and its slot plate, texts coloured as the game does for unread mail, the two
+// page arrows with captions); the send page (four bar textures sharing one picture and a coin that does not, the
+// letter's scroll frame with stationery and a dark body, the To and Subject boxes with a label and their typed
+// text, the money input, radios, well, plate and lines, sixteen attachment slots of which three hold a picture).
+const MAIL_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
+  PREV, NEXT, MAIL_TO_LABEL, MAIL_SUBJECT_LABEL = "TEST-ONLY Prev", "TEST-ONLY Next", "TEST-ONLY To:", "TEST-ONLY Subject:"
+  local f = __window("MailFrame")
+  for _, name in ipairs({ "OpenAllMail", "SendMailCancelButton", "SendMailMailButton" }) do CreateFrame("Button", name, f) end
+  local inbox = CreateFrame("Frame", "InboxFrame", f)
+  InboxFrameBg, InboxCurrentPage = __art(inbox), __text(inbox)
+  for _, key in ipairs({ "PrevPageButton", "NextPageButton" }) do
+    inbox[key] = CreateFrame("Button", nil, inbox) __art(inbox[key])
+    __text(inbox[key], key == "PrevPageButton" and PREV or NEXT)
+  end
+  for i = 1, 7 do
+    local row = CreateFrame("Frame", "MailItem" .. i, inbox) __art(row) __art(row)
+    row.Button = __itemButton("MailItem" .. i .. "Button", row)
+    _G["MailItem" .. i .. "ButtonSlot"] = __art(row.Button)
+    for _, part in ipairs({ "Sender", "Subject" }) do
+      _G["MailItem" .. i .. part] = __text(row) _G["MailItem" .. i .. part]:SetTextColor(1, 0.82, 0)
+    end
+  end
+  local send = CreateFrame("Frame", "SendMailFrame", f)
+  SendMailErrorCoin = send:CreateTexture("SendMailErrorCoin") SendMailErrorCoin:SetTexture("TEST-ONLY-COIN")
+  SendMailHorizontalBarLeft, SendMailHorizontalBarLeft2 = __art(send, "SendMailHorizontalBarLeft"), __art(send, "SendMailHorizontalBarLeft2")
+  send.rightHalves = { __art(send), __art(send) }
+  SendMailScrollFrame = __well("SendMailScrollFrame", send)
+  SendStationeryBackgroundLeft = __art(SendMailScrollFrame)
+  SendMailBodyEditBox = CreateFrame("EditBox", "SendMailBodyEditBox", send) SendMailBodyEditBox:SetTextColor(0.2, 0.1, 0.05)
+  for _, key in ipairs({ "Name", "Subject" }) do
+    local box = CreateFrame("EditBox", "SendMail" .. key .. "EditBox", send) __art(box)
+    __text(box, key == "Name" and MAIL_TO_LABEL or MAIL_SUBJECT_LABEL)
+    box.typed = __text(box, "typed")
+  end
+  __moneyInput("SendMailMoney", send)
+  for _, name in ipairs({ "SendMailSendMoneyButton", "SendMailCODButton" }) do __art(CreateFrame("CheckButton", name, send)) end
+  __well("SendMailMoneyInset", send)
+  CreateFrame("Frame", "SendMailMoneyBg", send)
+  SendMailMoneyText = __text(send)
+  __moneyLine("SendMailMoneyFrame", send) __moneyLine("SendMailCostMoneyFrame", send)
+  for i = 1, 16 do
+    local b = __itemButton("SendMailAttachment" .. i, send) __art(b)
+    if i <= 3 then b.picture = b:CreateTexture() b.GetNormalTexture = function() return b.picture end end
+  end
+  -- TEST-ONLY reader of the mail window's inside (see mailState).
+  function __mailState()
+    local out, rows, items, slots, texts = {}, 0, 0, 0, 0
+    for i = 1, 7 do
+      local row = _G["MailItem" .. i]
+      if __faded(row) then rows = rows + 1 end
+      if ns.FrameState("vgSkinned")[row.Button] then items = items + 1 end
+      if _G["MailItem" .. i .. "ButtonSlot"].__alpha == 0 then slots = slots + 1 end
+      local s, j = _G["MailItem" .. i .. "Sender"], _G["MailItem" .. i .. "Subject"]
+      if __themed(s) and __themed(j) and s.__textColor[2] == 0.82 and j.__textColor[2] == 0.82 then texts = texts + 1 end
+    end
+    local pagers = 0
+    for _, key in ipairs({ "PrevPageButton", "NextPageButton" }) do
+      local b = InboxFrame[key]
+      if ns.Theme.ArrowParts(b) and __faded(b) and __themed(select(2, b:GetRegions())) then pagers = pagers + 1 end
+    end
+    local bars = 0
+    for _, r in ipairs({ SendMailFrame:GetRegions() }) do if ns.Theme.DividerParts(r) then bars = bars + 1 end end
+    local attached, pictures = 0, 0
+    for i = 1, 16 do
+      local b = _G["SendMailAttachment" .. i]
+      if ns.FrameState("vgSkinned")[b] and __faded(b) then attached = attached + 1 end
+      if b.picture and b.picture.__alpha == 1 then pictures = pictures + 1 end
+    end
+    local boxes = 0
+    for _, name in ipairs({ "SendMailNameEditBox", "SendMailSubjectEditBox" }) do
+      local box = _G[name]
+      if __faded(box) and __themed(select(2, box:GetRegions())) and not __themed(box.typed) then boxes = boxes + 1 end
+    end
+    return { parchment = InboxFrameBg.__alpha == 0, rows = rows, items = items, slots = slots, texts = texts, pagers = pagers, page = __themed(InboxCurrentPage),
+      bars = bars, coin = SendMailErrorCoin.__alpha ~= 0, attached = attached, pictures = pictures, boxes = boxes,
+      letter = __faded(SendMailScrollFrame) and __sunk(SendMailScrollFrame) and SendStationeryBackgroundLeft.__alpha == 0, body = SendMailBodyEditBox.__textColor[1] > 0.5,
+      radios = ns.Theme.PaintedCount() > 0 and __faded(SendMailCODButton) and __faded(SendMailSendMoneyButton), plate = SendMailMoneyBg.__alpha,
+      well = __faded(SendMailMoneyInset) and __sunk(SendMailMoneyInset), label = __themed(SendMailMoneyText), lines = __themed(SendMailMoneyFrame.GoldButton.Text) and __themed(SendMailCostMoneyFrame.CopperButton.Text),
+      coins = (SendMailMoney.gold.texture.__alpha == 1 and 1 or 0) + (SendMailMoney.silver.texture.__alpha == 1 and 1 or 0) + (SendMailMoney.copper.texture.__alpha == 1 and 1 or 0), painted = ns.Theme.PaintedCount() }
+  end
+`;
+// The mail window's inside as __mailState reads it.
+const mailState = (addon) => addon.eval("return __mailState()");
+it("R2.9 the mail window: inbox rows and arrows, the send page's letter, boxes, money, bars and attachments in the theme", () => {
+  const addon = loggedIn(MAIL_ENV);
+  addon.eval("MailFrame:Show()");
+  const first = mailState(addon);
+  expect(first, "the inbox page and its seven rows, themed once the window shows").toMatchObject({ parchment: true, rows: 7, items: 7, slots: 7, texts: 7, pagers: 2, page: true });
+  expect(first, "the send page: four bars as dividers (the coin is no bar), the letter on an inset with a light body, boxes, radios, the money well and lines").toMatchObject({ bars: 4, coin: true, letter: true, body: true, boxes: 2, radios: true, plate: 0, well: true, label: true, lines: true, coins: 3 });
+  expect(first, "sixteen attachment slots in the item look, their pictures kept").toMatchObject({ attached: 16, pictures: 3 });
+  expect(windowState(addon, "MailFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
+  addon.eval("MailFrame:Hide() MailFrame:Show()");
+  expect(mailState(addon).painted, "a second show paints nothing new").toBe(first.painted);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("R2.9 the mail window: a picture that arrives later is kept; the windows group off leaves it the game's; a bare or odd mail window loads cleanly", () => {
+  const addon = loggedIn(MAIL_ENV);
+  addon.eval("MailFrame:Show() local b = SendMailAttachment5 b.picture = b:CreateTexture() b.GetNormalTexture = function() return b.picture end MailFrame:Hide() MailFrame:Show()");
+  expect(addon.eval("return SendMailAttachment5.picture.__alpha"), "an item dropped on a slot after the first show keeps its picture on the next").toBe(1);
+  const off = loggedIn(MAIL_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  off.eval("MailFrame:Show()");
+  expect(mailState(off), "nothing faded or painted").toMatchObject({ parchment: false, rows: 0, items: 0, bars: 0, attached: 0, boxes: 0, pagers: 0, letter: false });
+  const bare = loggedIn(`${WINDOWS_ENV}__window("MailFrame")`);
+  bare.eval("MailFrame:Show()");
+  expect([windowState(bare, "MailFrame").panel, bare.eval("return #ns.errors")], "a bare window is skinned without an error").toEqual([true, 0]);
+  const odd = loggedIn(`${MAIL_ENV} MailItem3 = {} InboxFrame.PrevPageButton = {} SendMailHorizontalBarLeft = {} SendMailAttachment2 = {} SendMailNameEditBox = {} SendMailSendMoneyButton = {} SendMailScrollFrame = {}`);
+  odd.eval("MailFrame:Show()");
+  expect(odd.eval("return #ns.errors"), "odd parts (rows, arrows, bars, slots, boxes, radios that are no frames) are skipped").toBe(0);
+  const noBars = loggedIn(`${MAIL_ENV} SendMailFrame = nil`);
+  noBars.eval("MailFrame:Show()");
+  expect(noBars.eval("return #ns.errors"), "no send page is no error").toBe(0);
+});
+// TEST-ONLY quest and gossip windows (QuestFrame.xml, GossipFrame.xml): the four quest pages with their parchment,
+// the six push buttons, six required-item tiles (an icon, a name plate and a name) with the required money line,
+// and the gossip window's greeting panel with its parchment and Goodbye button.
+const QUEST_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
+  local q = __window("QuestFrame")
+  for _, name in ipairs(ns.GetModule("Windows").QUEST_PANELS) do __art(CreateFrame("Frame", name, q)) __art(_G[name]) end
+  for _, name in ipairs(ns.GetModule("Windows").EXTRA_BUTTONS.QuestFrame) do CreateFrame("Button", name, q) end
+  for i = 1, 6 do
+    local item = __itemButton("QuestProgressItem" .. i, QuestFrameProgressPanel) item.NameFrame = __art(item) item.Icon = item.icon
+    _G["QuestProgressItem" .. i .. "Name"] = __text(item)
+  end
+  __moneyLine("QuestProgressRequiredMoneyFrame", QuestFrameProgressPanel)
+  local g = __window("GossipFrame")
+  g.GreetingPanel = CreateFrame("Frame", nil, g) __art(g.GreetingPanel) g.GreetingPanel.GoodbyeButton = CreateFrame("Button", nil, g.GreetingPanel)
+  -- TEST-ONLY reader of the quest and gossip windows' inside (see questState).
+  function __questState()
+    local panels, items, buttons = 0, 0, 0
+    for _, name in ipairs(ns.GetModule("Windows").QUEST_PANELS) do if __faded(_G[name]) then panels = panels + 1 end end
+    for i = 1, 6 do
+      local item = _G["QuestProgressItem" .. i]
+      if item.NameFrame.__alpha == 0 and ns.FrameState("vgSkinned")[item] and __themed(_G["QuestProgressItem" .. i .. "Name"]) then items = items + 1 end
+    end
+    for _, name in ipairs(ns.GetModule("Windows").EXTRA_BUTTONS.QuestFrame) do if select("#", _G[name]:GetRegions()) > 0 then buttons = buttons + 1 end end
+    return { panels = panels, items = items, buttons = buttons, money = __themed(QuestProgressRequiredMoneyFrame.GoldButton.Text),
+      greeting = __faded(GossipFrame.GreetingPanel), goodbye = select("#", GossipFrame.GreetingPanel.GoodbyeButton:GetRegions()) > 0, painted = ns.Theme.PaintedCount() }
+  end
+`;
+// The quest and gossip windows' inside as __questState reads it.
+const questState = (addon) => addon.eval("return __questState()");
+it("R2.10 the quest and gossip windows (quest dialog off): the four pages' parchment faded, required items and money, buttons, the Goodbye button", () => {
+  const addon = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestDialog = { dialog = false } } }" });
+  addon.eval("QuestFrame:Show() GossipFrame:Show()");
+  const first = questState(addon);
+  expect(first, "all pages faded, six required items in the item look, money in the theme font, the push buttons and Goodbye themed").toMatchObject({ panels: 4, items: 6, buttons: 6, money: true, greeting: true, goodbye: true });
+  expect([windowState(addon, "QuestFrame").panel, windowState(addon, "GossipFrame").panel], "both windows skinned").toEqual([true, true]);
+  addon.eval("QuestFrame:Hide() QuestFrame:Show() GossipFrame:Hide() GossipFrame:Show()");
+  expect([questState(addon).painted, addon.eval("return #ns.errors")], "a second show paints nothing new and raises no error").toEqual([first.painted, 0]);
+});
+it("R2.10 the quest and gossip windows: Vanguard's quest dialog on leaves them the game's; bare or odd windows load cleanly", () => {
+  const on = loggedIn(QUEST_ENV);
+  on.eval("QuestFrame:Show() GossipFrame:Show()");
+  expect(questState(on), "with the dialog on the game's windows are not touched").toMatchObject({ panels: 0, items: 0, buttons: 0, greeting: false, goodbye: false });
+  const dialogOff = "VanguardDB.profiles = { Default = { QuestDialog = { dialog = false } } }";
+  const bare = loggedIn(`${WINDOWS_ENV}__window("QuestFrame") __window("GossipFrame")`, { savedVariables: dialogOff });
+  bare.eval("QuestFrame:Show() GossipFrame:Show()");
+  expect([windowState(bare, "QuestFrame").panel, bare.eval("return #ns.errors")], "windows without their pages are skinned without an error").toEqual([true, 0]);
+  const odd = loggedIn(`${QUEST_ENV} QuestFrameRewardPanel = {} QuestProgressItem2 = {} GossipFrame.GreetingPanel.GoodbyeButton = {} QuestProgressRequiredMoneyFrame = nil`, { savedVariables: dialogOff });
+  odd.eval("QuestFrame:Show() GossipFrame:Show()");
+  expect(odd.eval("return #ns.errors"), "odd parts are skipped").toBe(0);
+});
+// TEST-ONLY popup and ready check (GameDialog.xml, ReadyCheck.xml): StaticPopup1 with its dark tile (BG), its warning
+// icon and progress fill (content), and every optional control; the ready check holder with its listener (tile,
+// nine-slice, portrait, title, prompt, Yes and No).
+const POPUP_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
+  local p = StaticPopup1
+  p.BG = CreateFrame("Frame", nil, p) p.BG.Top, p.BG.Bottom = __art(p.BG), __art(p.BG)
+  p.AlertIcon, p.ProgressBarFill = __art(p), __art(p)
+  p.EditBox = CreateFrame("EditBox", nil, p) __art(p.EditBox) p.EditBox.NineSlice = CreateFrame("Frame", nil, p.EditBox)
+  p.MoneyInputFrame, p.MoneyFrame = __moneyInput(nil, p), __moneyLine(nil, p)
+  p.Dropdown = CreateFrame("Button", nil, p) p.Dropdown.Arrow = __art(p.Dropdown)
+  p.ExtraButton = CreateFrame("Button", nil, p)
+  p.ItemFrame = CreateFrame("Frame", nil, p) p.ItemFrame.NameFrame = __art(p.ItemFrame) p.ItemFrame.Item = __itemButton(nil, p.ItemFrame)
+  local r = CreateFrame("Frame", "ReadyCheckFrame", UIParent) r:Hide()
+  local l = CreateFrame("Frame", "ReadyCheckListenerFrame", r)
+  l.Bg, l.NineSlice = __art(l), CreateFrame("Frame", nil, l)
+  l.NineSlice:CreateTexture():SetTexture("TEST-ONLY-ART")
+  l.TitleContainer = CreateFrame("Frame", nil, l) l.TitleContainer.TitleText = __text(l.TitleContainer)
+  l.PortraitContainer = CreateFrame("Frame", nil, l) l.PortraitContainer.Portrait = __art(l.PortraitContainer)
+  l.YesButton, l.NoButton = CreateFrame("Button", nil, l), CreateFrame("Button", nil, l)
+  ReadyCheckFrameText = __text(l)
+`;
+it("R2.11 popups: the dark tile faded, the warning icon and progress fill kept, every optional control in the theme", () => {
+  const addon = loggedIn(POPUP_ENV);
+  addon.eval("StaticPopup1:Show()");
+  // The popup's parts as the skin leaves them.
+  const read = () => addon.eval(`local p = StaticPopup1
+    return { tile = __faded(p.BG), icon = p.AlertIcon.__alpha, fill = p.ProgressBarFill.__alpha, box = __faded(p.EditBox) and p.EditBox.NineSlice.__alpha == 0,
+      money = __themed(p.MoneyFrame.GoldButton.Text) and p.MoneyInputFrame.gold.texture.__alpha == 1, arrow = p.Dropdown.Arrow.__alpha,
+      extra = select("#", p.ExtraButton:GetRegions()) > 0, item = p.ItemFrame.NameFrame.__alpha == 0 and ns.FrameState("vgSkinned")[p.ItemFrame.Item] == true,
+      painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
+  const first = read();
+  expect(first, "tile faded, content kept, text box and money in the theme, the dropdown keeps its arrow, the extra button themed, the item in the item look").toMatchObject({ tile: true, icon: 1, fill: 1, box: true, money: true, arrow: 1, extra: true, item: true, errors: 0 });
+  addon.eval("StaticPopup1:Hide() StaticPopup1:Show()");
+  expect(read().painted, "a second show paints nothing new").toBe(first.painted);
+  const bare = loggedIn(`${WINDOWS_ENV}${INSIDES_LUA} StaticPopup1.EditBox = {} StaticPopup1.ItemFrame = {} StaticPopup1.Dropdown = {} StaticPopup1.BG = 1`);
+  bare.eval("StaticPopup1:Show()");
+  expect([windowState(bare, "StaticPopup1").panel, bare.eval("return #ns.errors")], "a bare popup, or odd controls, are skinned without an error").toEqual([true, 0]);
+});
+it("R2.11 the ready check: the listener's tile and border faded, the portrait kept, title, prompt and buttons in the theme", () => {
+  const addon = loggedIn(POPUP_ENV);
+  addon.eval("ReadyCheckFrame:Show()");
+  // The ready check listener's parts as the skin leaves them.
+  const read = () => addon.eval(`local l = ReadyCheckListenerFrame
+    return { bg = l.Bg.__alpha, nine = l.NineSlice.__alpha, ninePiece = __faded(l.NineSlice), portrait = l.PortraitContainer.Portrait.__alpha, title = __titled(l.TitleContainer.TitleText),
+      prompt = __themed(ReadyCheckFrameText), yes = select("#", l.YesButton:GetRegions()) > 0, no = select("#", l.NoButton:GetRegions()) > 0,
+      panel = ns.Theme.PaintedCount(), errors = #ns.errors }`);
+  const first = read();
+  expect(first, "the listener's art faded, the portrait kept").toMatchObject({ bg: 0, nine: 0, ninePiece: true, title: true, prompt: true, yes: true, no: true, errors: 0 });
+  expect(first.portrait, "the portrait of who called the check is content").not.toBe(0);
+  addon.eval("ReadyCheckFrame:Hide() ReadyCheckFrame:Show()");
+  expect(read().panel, "a second show paints nothing new").toBe(first.panel);
+  const bare = loggedIn(`${WINDOWS_ENV} CreateFrame("Frame", "ReadyCheckFrame", UIParent):Hide()`);
+  bare.eval("ReadyCheckFrame:Show()");
+  const noTitle = loggedIn(`${POPUP_ENV} ReadyCheckListenerFrame.TitleContainer = nil ReadyCheckListenerFrame.NineSlice = nil`);
+  noTitle.eval("ReadyCheckFrame:Show()");
+  expect([bare, noTitle].map((a) => a.eval("return #ns.errors")), "a holder without its listener, or a listener without title or border, is no error").toEqual([0, 0]);
+});
+it("R2.11 the loot window's close button, the breath bars' caption and the guild bank's portrait", () => {
+  const env = `${LOOT_ROWS_ENV}${INSIDES_LUA} LootFrame.ClosePanelButton = CreateFrame("Button", nil, LootFrame)
+    __window("GuildBankFrame").Portrait = __art(GuildBankFrame) __art(GuildBankFrame)`;
+  const addon = loggedIn(env);
+  const off = loggedIn(env, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  expect([off, addon].map((a) => a.eval("return select('#', LootFrame.ClosePanelButton:GetRegions()) > 0")), "the loot window's ClosePanelButton is a theme close button (the game's, with the group off, is not)").toEqual([false, true]);
+  addon.fire("ADDON_LOADED", "Blizzard_GuildBankUI");
+  addon.eval("GuildBankFrame:Show()");
+  expect(addon.eval("local out = {} for _, r in ipairs({ GuildBankFrame:GetRegions() }) do if r.__texture == 'TEST-ONLY-ART' then out[#out + 1] = r.__alpha end end return { GuildBankFrame.Portrait.__alpha, out[3] }"), "the guild bank's portrait is shown again, its other art faded").toEqual([1, 0]);
+  expect(addon.eval(`local ok = true for _, t in ipairs({ MirrorTimerContainer:GetChildren() }) do
+    local _, size = t.Text:GetFont() ok = ok and size == ns.Theme.RoleSize("barSmall") end return ok`), "each breath bar's caption takes the small bar text").toBe(true);
+});
+// TEST-ONLY group loot roll window, dressing room and book window (GroupLootFrame.xml, DressUpFrames.xml,
+// ItemTextFrame.xml): the roll window's four buttons, countdown bar with its background, item icon with its quality
+// ring; the dressing room's model with backdrops, buttons, dropdown and side panels; the book's page area,
+// arrows with captions, reading bar and page count.
+const INNER_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
+  PREV, NEXT = "TEST-ONLY Prev", "TEST-ONLY Next"
+  local roll = __window("GroupLootFrame1")
+  roll.LootButtonContainer = CreateFrame("Frame", nil, roll)
+  for _, key in ipairs(ns.GetModule("Windows").LOOT_ROLLS) do roll.LootButtonContainer[key] = CreateFrame("Button", nil, roll.LootButtonContainer) end
+  roll.Timer = CreateFrame("StatusBar", nil, roll) roll.Timer.Background = __art(roll.Timer) roll.Timer:SetStatusBarTexture("TEST-ONLY-ART")
+  roll.IconFrame = __itemButton(nil, roll) roll.IconFrame.Border = __art(roll.IconFrame)
+  local dress = __window("DressUpFrame")
+  dress.ModelScene = __well(nil, dress)
+  for _, name in ipairs({ "DressUpFrameCancelButton", "DressUpFrameResetButton" }) do CreateFrame("Button", name, dress) end
+  dress.CustomSetDropdown = CreateFrame("Button", nil, dress) dress.CustomSetDropdown.Arrow = __art(dress.CustomSetDropdown)
+  dress.CustomSetDropdown.SaveButton = CreateFrame("Button", nil, dress.CustomSetDropdown)
+  dress.LinkButton, dress.ToggleCustomSetDetailsButton = CreateFrame("Button", nil, dress), CreateFrame("Button", nil, dress)
+  dress.SetSelectionPanel, dress.CustomSetDetailsPanel = __well(nil, dress), __well(nil, dress)
+  __window("ItemTextFrame")
+  ItemTextScrollFrame, ItemTextCurrentPage = __well("ItemTextScrollFrame", ItemTextFrame), __text(ItemTextFrame)
+  for _, name in ipairs({ "ItemTextPrevPageButton", "ItemTextNextPageButton" }) do local b = CreateFrame("Button", name, ItemTextFrame) __art(b) __text(b, name == "ItemTextPrevPageButton" and PREV or NEXT) end
+  ItemTextStatusBar = CreateFrame("StatusBar", "ItemTextStatusBar", ItemTextFrame) __art(ItemTextStatusBar) ItemTextStatusBar:SetStatusBarTexture("TEST-ONLY-ART")
+  -- Whether a bar is a flat track: its game art faded, the theme's bar texture on a visible fill, an inset panel behind.
+  function __track(bar)
+    local fill = bar:GetStatusBarTexture()
+    return __faded(bar) and fill.__texture ~= "TEST-ONLY-ART" and fill.__alpha ~= 0 and __sunk(bar)
+  end
+  -- Whether a button has a theme control tile (it gained a texture).
+  function __tiled(b) return select("#", b:GetRegions()) > 0 end
+`;
+it("R2.12 group loot rolls: the four buttons on tiles, the countdown a flat track, the item icon in the item look", () => {
+  const addon = loggedIn(INNER_ENV);
+  addon.eval("GroupLootFrame1:Show()");
+  // The roll window's parts as the skin leaves them.
+  const read = () => addon.eval(`local f = GroupLootFrame1 local keys = ns.GetModule("Windows").LOOT_ROLLS local tiles = 0
+    for _, key in ipairs(keys) do if __tiled(f.LootButtonContainer[key]) then tiles = tiles + 1 end end
+    return { tiles = tiles, track = __track(f.Timer), ring = f.IconFrame.Border.__alpha, item = ns.FrameState("vgSkinned")[f.IconFrame] == true, painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
+  const first = read();
+  expect(first, "four tiles, a flat countdown, the ring faded and the icon in the item look").toMatchObject({ tiles: 4, track: true, ring: 0, item: true, errors: 0 });
+  addon.eval("GroupLootFrame1:Hide() GroupLootFrame1:Show()");
+  expect(read().painted, "a second show paints nothing new").toBe(first.painted);
+  const odd = loggedIn(`${INNER_ENV} GroupLootFrame1.LootButtonContainer = nil GroupLootFrame1.Timer = {} GroupLootFrame1.IconFrame = 1`);
+  odd.eval("GroupLootFrame1:Show()");
+  expect(odd.eval("return #ns.errors"), "a roll window without its buttons, bar or icon is no error").toBe(0);
+});
+it("R2.12 the dressing room: the model an inset, the outfit controls and side panels in the theme", () => {
+  const addon = loggedIn(INNER_ENV);
+  addon.eval("DressUpFrame:Show()");
+  // The dressing room's parts as the skin leaves them.
+  const read = () => addon.eval(`local f = DressUpFrame
+    return { model = __faded(f.ModelScene) and __sunk(f.ModelScene), panels = __sunk(f.SetSelectionPanel) and __faded(f.SetSelectionPanel) and __sunk(f.CustomSetDetailsPanel),
+      buttons = __tiled(DressUpFrameCancelButton) and __tiled(DressUpFrameResetButton) and __tiled(f.LinkButton) and __tiled(f.CustomSetDropdown.SaveButton), dropdown = f.CustomSetDropdown.Arrow.__alpha,
+      toggle = __tiled(f.ToggleCustomSetDetailsButton), painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
+  const first = read();
+  expect(first, "model and panels sunk, buttons themed, the dropdown keeps its arrow, the toggle on a control tile").toMatchObject({ model: true, panels: true, buttons: true, dropdown: 1, toggle: true, errors: 0 });
+  addon.eval("DressUpFrame:Hide() DressUpFrame:Show()");
+  expect(read().painted, "a second show paints nothing new").toBe(first.painted);
+  const odd = loggedIn(`${INNER_ENV} DressUpFrame.ModelScene = nil DressUpFrame.CustomSetDropdown = {} DressUpFrame.LinkButton = 1 DressUpFrame.SetSelectionPanel = {}`);
+  odd.eval("DressUpFrame:Show()");
+  expect(odd.eval("return #ns.errors"), "a dressing room without the outfit controls is no error").toBe(0);
+});
+it("R2.12 books and letters: the page area an inset, flat page arrows, a flat reading bar, the page count in small text", () => {
+  const addon = loggedIn(INNER_ENV);
+  addon.eval("ItemTextFrame:Show()");
+  // The book window's parts as the skin leaves them.
+  const read = () => addon.eval(`return { page = __sunk(ItemTextScrollFrame), arrows = ns.Theme.ArrowParts(ItemTextPrevPageButton) ~= nil and ns.Theme.ArrowParts(ItemTextNextPageButton) ~= nil,
+    captions = __themed(select(2, ItemTextPrevPageButton:GetRegions())) and __themed(select(2, ItemTextNextPageButton:GetRegions())), bar = __track(ItemTextStatusBar), count = __themed(ItemTextCurrentPage),
+    painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
+  const first = read();
+  expect(first, "all themed").toMatchObject({ page: true, arrows: true, captions: true, bar: true, count: true, errors: 0 });
+  addon.eval("ItemTextFrame:Hide() ItemTextFrame:Show()");
+  expect(read().painted, "a second show paints nothing new").toBe(first.painted);
+  const bare = loggedIn(`${WINDOWS_ENV} __window("ItemTextFrame")`);
+  bare.eval("ItemTextFrame:Show()");
+  expect([windowState(bare, "ItemTextFrame").panel, bare.eval("return #ns.errors")], "a book window without its parts is skinned without an error").toEqual([true, 0]);
+});
+// TEST-ONLY time manager (Blizzard_TimeManager.xml): the window with its globe, title line, three check boxes on it,
+// the stopwatch frame with its nested check (a clock icon), the alarm's three dropdowns, message box and labels.
+const TIME_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
+  TIMEMANAGER_TITLE = "TEST-ONLY Time"
+  local f = __window("TimeManagerFrame")
+  TimeManagerGlobe = __art(f) f.title = __text(f, TIMEMANAGER_TITLE)
+  for _, name in ipairs({ "TimeManagerAlarmEnabledButton", "TimeManagerMilitaryTimeCheck", "TimeManagerLocalTimeCheck" }) do
+    __art(CreateFrame("CheckButton", name, f)) _G[name .. "Text"] = __text(_G[name])
+  end
+  local sw = CreateFrame("Frame", "TimeManagerStopwatchFrame", f)
+  TimeManagerStopwatchFrameText = __text(sw) __art(CreateFrame("CheckButton", "TimeManagerStopwatchCheck", sw))
+  f.AlarmTimeFrame = CreateFrame("Frame", nil, f)
+  for _, key in ipairs(ns.GetModule("Windows").TIME_DROPDOWNS) do
+    f.AlarmTimeFrame[key] = CreateFrame("Button", nil, f.AlarmTimeFrame) f.AlarmTimeFrame[key].Arrow = __art(f.AlarmTimeFrame[key])
+  end
+  TimeManagerAlarmTimeLabel, TimeManagerAlarmMessageLabel = __text(f), __text(f)
+  TimeManagerAlarmMessageEditBox = CreateFrame("EditBox", "TimeManagerAlarmMessageEditBox", f) __art(TimeManagerAlarmMessageEditBox)
+  TimeManagerAlarmEnabledButtonText:SetTextColor(1, 0.82, 0)
+`;
+it("R2.13 the time manager: check boxes, dropdowns, the alarm message box, labels, the title line; the globe stays", () => {
+  const addon = loggedIn(TIME_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_TimeManager");
+  addon.eval("TimeManagerFrame:Show()");
+  // The window's parts as the skin leaves them.
+  const read = () => addon.eval(`local f = TimeManagerFrame local boxes, drops = 0, 0
+    for _, name in ipairs({ "TimeManagerAlarmEnabledButton", "TimeManagerMilitaryTimeCheck", "TimeManagerLocalTimeCheck" }) do if __faded(_G[name]) then boxes = boxes + 1 end end
+    for _, key in ipairs(ns.GetModule("Windows").TIME_DROPDOWNS) do if __faded(f.AlarmTimeFrame[key], f.AlarmTimeFrame[key].Arrow) and f.AlarmTimeFrame[key].Arrow.__alpha == 1 then drops = drops + 1 end end
+    return { globe = TimeManagerGlobe.__alpha, boxes = boxes, drops = drops, stopwatch = not __faded(TimeManagerStopwatchCheck) and select("#", TimeManagerStopwatchCheck:GetRegions()) > 1,
+      message = __faded(TimeManagerAlarmMessageEditBox), labels = __themed(TimeManagerAlarmTimeLabel) and __themed(TimeManagerAlarmMessageLabel) and __themed(TimeManagerStopwatchFrameText),
+      enabledColour = TimeManagerAlarmEnabledButtonText.__textColor[2] ~= 0.82, title = __titled(f.title), painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
+  const first = read();
+  expect(first, "the globe is content and stays; three check boxes, three dropdowns with their arrows, the message box, the labels and the title in the theme; the stopwatch check keeps its icon on a tile").toMatchObject({ globe: 1, boxes: 3, drops: 3, stopwatch: true, message: true, labels: true, enabledColour: true, title: true, errors: 0 });
+  addon.eval("TimeManagerFrame:Hide() TimeManagerFrame:Show()");
+  expect(read().painted, "a second show paints nothing new").toBe(first.painted);
+  const bare = loggedIn(`${WINDOWS_ENV} __window("TimeManagerFrame")`);
+  bare.fire("ADDON_LOADED", "Blizzard_TimeManager");
+  bare.eval("TimeManagerFrame:Show()");
+  expect([windowState(bare, "TimeManagerFrame").panel, bare.eval("return #ns.errors")], "a bare time manager is skinned without an error").toEqual([true, 0]);
+  const odd = loggedIn(`${TIME_ENV} TimeManagerFrame.AlarmTimeFrame = 1 TimeManagerStopwatchCheck = 1 TimeManagerAlarmMessageEditBox = {}`);
+  odd.fire("ADDON_LOADED", "Blizzard_TimeManager");
+  odd.eval("TimeManagerFrame:Show()");
+  expect(odd.eval("return #ns.errors"), "odd parts are skipped").toBe(0);
 });

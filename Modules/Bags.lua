@@ -131,9 +131,11 @@ end
 
 -- Skins the window and its item buttons, on every show: the game windows' skin (its art and portrait
 -- faded again in case the game restored them, a padded panel, the theme's close button set evenly in
--- its corner, the title font); slots already skinned are skipped.
+-- its corner, the title font); slots already skinned are skipped. The money line in its coin box
+-- (the combined bag's, and the backpack window's) goes in the theme font on a flat inset.
 function BG.SkinWindow(frame)
   ns.GetModule("Windows").Skin(frame)
+  ns.GetModule("Windows").SkinCoinBox(frame.MoneyFrame)
   skinItems(frame)
   skinSearch("BagItemSearchBox")
 end

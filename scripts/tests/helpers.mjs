@@ -628,11 +628,23 @@ export const unitEvents = (addon, event) => addon.eval(`local subs, plain = {}, 
   table.sort(subs)
   return { subs = table.concat(subs, " "), plain = plain }`);
 
+// TEST-ONLY Lua readers of a window's text: __titled(fs) is true when the font string is a game window's title:
+// the heading role (its size) and the light text colour (GW.SkinTitle); __headed(fs) the same for the heading role.
+export const TITLE_LUA = `
+  function __looks(fs, role, token)
+    local _, size = fs:GetFont()
+    local c, t = fs.__textColor, { ns.Theme.RGB(token) }
+    return size == ns.Theme.RoleSize(role) and c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3]
+  end
+  function __titled(fs) return __looks(fs, "heading", "text") end
+  function __headed(fs) return __looks(fs, "heading", "text") end
+`;
+
 // TEST-ONLY game windows: a framed window built like the game's ButtonFrameTemplate (art textures,
 // NineSlice, inset, portrait, close button, title, push buttons), a popup, and the breath bars' container
 // (MirrorTimerContainer: three unnamed MirrorTimerTemplate-shaped timers, each with a StatusBar, its frame art
 // and a label; SetupTimer(i) shows the i-th and gives its bar the game's texture back, as the game's does).
-export const WINDOWS_ENV = `
+export const WINDOWS_ENV = TITLE_LUA + `
   function __window(name, kind)
     local f = CreateFrame("Frame", name, UIParent)
     f:CreateTexture(nil, "BACKGROUND"):SetTexture("TEST-ONLY-ART")
@@ -659,9 +671,65 @@ export const WINDOWS_ENV = `
   end
 `;
 
-// A window's state: its own art faded, its parts dressed, how many frames are painted.
+// TEST-ONLY builders for what a game window holds inside its frame (the R2.8-R2.13 windows): __art(f, name) a
+// game art texture; __well(name) a framed well (InsetFrameTemplate: art and a NineSlice); __sunk(f) whether f
+// carries the inset panel's fill; __text(parent, text) a font string in a game font and __themed(fs) whether the theme has restyled it; __faded(f, keep) whether every game art texture on f is faded (keep: one that
+// may stay); __itemButton / __moneyInput / __moneyLine the game's item button, money
+// input line (gold, silver and copper boxes with their coin) and money display (a figure beside each coin).
+export const INSIDES_LUA = `
+  function __art(f, name) local t = f:CreateTexture(name) t:SetTexture("TEST-ONLY-ART") return t end
+  function __well(name, parent)
+    local f = CreateFrame("Frame", name, parent or UIParent) __art(f) f.NineSlice = CreateFrame("Frame", nil, f) f.NineSlice:CreateTexture(nil, "BORDER")
+    return f
+  end
+  function __sunk(f)
+    local c = { ns.Theme.PanelColor(true) }
+    for _, r in ipairs({ f:GetRegions() }) do
+      local v = r.__vertexColor
+      if v and v[1] == c[1] and v[2] == c[2] and v[3] == c[3] then return true end
+    end
+    return false
+  end
+  function __text(parent, text)
+    local fs = parent:CreateFontString(nil, "OVERLAY") fs:SetFont("TEST-ONLY-GAME", 12, "")
+    if text then fs:SetText(text) end
+    return fs
+  end
+  function __themed(fs) return fs:GetFont() ~= "TEST-ONLY-GAME" end
+  function __faded(f, keep)
+    for _, r in ipairs({ f:GetRegions() }) do
+      if r.__texture == "TEST-ONLY-ART" and r ~= keep and r.__alpha ~= 0 then return false end
+    end
+    return true
+  end
+  function __itemButton(name, parent)
+    local b = CreateFrame("Button", name, parent) b.icon, b.IconBorder = b:CreateTexture(), b:CreateTexture()
+    return b
+  end
+  function __moneyInput(name, parent)
+    local f = CreateFrame("Frame", name, parent)
+    for _, key in ipairs({ "gold", "silver", "copper" }) do
+      f[key] = CreateFrame("EditBox", nil, f) __art(f[key]) f[key].texture = __art(f[key])
+    end
+    return f
+  end
+  function __moneyLine(name, parent)
+    local f = CreateFrame("Frame", name, parent)
+    for _, key in ipairs({ "GoldButton", "SilverButton", "CopperButton" }) do
+      f[key] = CreateFrame("Button", nil, f) f[key].Text = __text(f[key])
+    end
+    return f
+  end
+`;
+
+// A window's state: its own art faded, its Inset painted as an inset panel, its parts dressed, how many frames are painted.
 export const windowState = (addon, name) => addon.eval(`local f = ${name}
   local art for _, r in ipairs({ f:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
   local panel = 0 for _, r in ipairs({ f:GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then panel = panel + 1 end end
+  local c, inset = { ns.Theme.PanelColor(true) }, false
+  for _, r in ipairs({ f.Inset:GetRegions() }) do
+    local v = r.__vertexColor
+    if v and v[1] == c[1] and v[2] == c[2] and v[3] == c[3] then inset = true end
+  end
   return { art = art, nine = f.NineSlice.__alpha, portrait = f.PortraitContainer.__alpha, insetNine = f.Inset.NineSlice.__alpha,
-    panel = panel > 0, title = f.TitleContainer.TitleText:GetFont() ~= nil, painted = ns.Theme.PaintedCount() }`);
+    inset = inset, panel = panel > 0, title = __titled(f.TitleContainer.TitleText), painted = ns.Theme.PaintedCount() }`);

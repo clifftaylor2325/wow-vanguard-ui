@@ -109,3 +109,67 @@ it("old dropdown lists: both backdrops faded, a tooltip panel behind, the button
   const off = loggedIn(DROPDOWN_ENV, MENUS_OFF);
   expect(dropdownState(off, "DropDownList1"), "with the menus group off: the game's").toMatchObject({ backdrop: 1, menu: 1, panel: false });
 });
+
+it("R2.35 12.x menus: a long menu's scroll bar is in the theme on each open, nothing written on the menu by Vanguard", () => {
+  const addon = loggedIn(MENU_ENV);
+  addon.eval(`local bar = CreateFrame("Frame", nil, __menu) bar.Track = CreateFrame("Frame", nil, bar) bar.Thumb = CreateFrame("Button", nil, bar.Track)
+    bar.Track:CreateTexture():SetTexture("TEST-ONLY-ART") __menu.ScrollBar = bar __keys = __menuKeys()`);
+  addon.eval("__openMenu()");
+  expect(addon.eval("return { __menu.ScrollBar.Track:GetRegions():GetAlpha(), __menuKeys() == __keys }"), "the track's art faded; the menu's keys as the game left them").toEqual([0, true]);
+  addon.eval("__menu.ScrollBar = {} __openMenu()");
+  expect(addon.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'"), "a scroll bar that is no frame is left alone").toBe("none");
+  const off = loggedIn(MENU_ENV, MENUS_OFF);
+  off.eval(`local bar = CreateFrame("Frame", nil, __menu) bar.Track = CreateFrame("Frame", nil, bar) bar.Thumb = CreateFrame("Button", nil, bar.Track)
+    bar.Track:CreateTexture():SetTexture("TEST-ONLY-ART") __menu.ScrollBar = bar __openMenu()`);
+  expect(off.eval("return __menu.ScrollBar.Track:GetRegions():GetAlpha()"), "with the menus group off the bar stays the game's").toBe(1);
+});
+
+// TEST-ONLY UIDropDownMenu_AddButton as the game's does for what Vanguard reads: it counts the list's buttons, makes the
+// button on first use (its NormalText, and the Check and UnCheck textures, desaturated or not as the game sets them) and
+// leaves the row's highlight alone.
+const ROWS_ENV = `${DROPDOWN_ENV}
+  function UIDropDownMenu_AddButton(info, level)
+    level = level or 1
+    local list = _G["DropDownList" .. level]
+    if not list then return end
+    list.numButtons = (list.numButtons or 0) + 1
+    local name = "DropDownList" .. level .. "Button" .. list.numButtons
+    local button = _G[name] or CreateFrame("Button", name, list)
+    if not _G[name .. "NormalText"] then
+      button:CreateFontString(name .. "NormalText"):SetTextColor(1, 0.82, 0)
+      button:CreateTexture(name .. "Check") button:CreateTexture(name .. "UnCheck") button:CreateTexture(name .. "Highlight")
+    end
+    _G[name .. "Check"]:SetDesaturated(false) _G[name .. "UnCheck"]:SetDesaturated(false)
+  end
+`;
+
+// A glyph's colour as the token it was tinted with, or "none" when it was never tinted: the RGB of accentText, text2, white.
+const glyphColor = (addon, name) => addon.eval(`local v, out = _G["${name}"].__vertexColor, "none"
+  if v then for _, token in ipairs({ "accentText", "text2", "white" }) do
+    local t = { ns.Theme.RGB(token) } if v[1] == t[1] and v[2] == t[2] and v[3] == t[3] then out = token end
+  end end
+  return out`);
+
+it("R2.35 old dropdown rows: a heading in the text colour, the tick in the accent, the empty box quiet; highlights left to the game", () => {
+  const addon = loggedIn(ROWS_ENV);
+  addon.eval("UIDropDownMenu_AddButton({ isTitle = true, notCheckable = true, text = 'Heading' })");
+  const text = addon.eval("local c, t = DropDownList1Button1NormalText.__textColor, { ns.Theme.RGB('text') } return c[1] == t[1] and c[2] == t[2] and c[3] == t[3]");
+  expect([text, glyphColor(addon, "DropDownList1Button1Check")], "a heading row: text colour, no glyphs touched").toEqual([true, "none"]);
+  addon.eval("UIDropDownMenu_AddButton({ checked = true }) UIDropDownMenu_AddButton({ checked = false }, 2)");
+  expect([glyphColor(addon, "DropDownList1Button2Check"), glyphColor(addon, "DropDownList1Button2UnCheck"), addon.eval("return DropDownList1Button2Check.__desaturated")], "a checkable row: the tick accent, the box quiet, both greyed so the colour reads").toEqual(["accentText", "text2", true]);
+  expect([glyphColor(addon, "DropDownList2Button1Check"), addon.eval("return DropDownList2Button1NormalText.__textColor[1]")], "a row on the second level; its text is the game's").toEqual(["accentText", 1]);
+  addon.eval("UIDropDownMenu_AddButton({ customCheckIconAtlas = 'icon' })");
+  expect([glyphColor(addon, "DropDownList1Button3Check"), addon.eval("return DropDownList1Button3Check.__desaturated")], "a row with an icon of its own shows it in its own colours").toEqual(["white", false]);
+  expect(addon.eval("return { DropDownList1Button2Highlight.__vertexColor == nil, DropDownList1Button2Highlight.__alpha == nil }"), "the row highlight is the game's").toEqual([true, true]);
+  expect(addon.eval("UIDropDownMenu_AddButton({ notCheckable = true }, 'x') UIDropDownMenu_AddButton(nil) return #ns.errors"), "a level with no list and no info: nothing errors").toBe(0);
+});
+
+it("R2.35 old dropdown rows: the menus group off, or a client without the call, leaves them the game's", () => {
+  const off = loggedIn(ROWS_ENV, MENUS_OFF);
+  off.eval("UIDropDownMenu_AddButton({ isTitle = true }) UIDropDownMenu_AddButton({ checked = true })");
+  expect([glyphColor(off, "DropDownList1Button2Check"), off.eval("return DropDownList1Button1NormalText.__textColor[1]")], "group off: untouched").toEqual(["none", 1]);
+  for (const env of ["UIDropDownMenu_AddButton = nil", "hooksecurefunc = nil"]) {
+    const bare = loggedIn(`${ROWS_ENV} ${env}`);
+    expect(bare.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'"), `${env}: nothing errors`).toBe("none");
+  }
+});

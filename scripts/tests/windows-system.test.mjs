@@ -2,11 +2,11 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { loggedIn, setCombat } from "./helpers.mjs";
+import { TITLE_LUA, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY builders for the game's system windows: a frame with a piece of template art, parts
 // added by parentKey, and readers for what the skin did (art alpha, a painted panel, themed text).
-const SYSTEM_ENV = `
+const SYSTEM_ENV = TITLE_LUA + `
   function __art(f) local t = f:CreateTexture(nil, "BACKGROUND") t:SetTexture("TEST-ONLY-ART") return t end
   function __frame(name) local f = CreateFrame("Frame", name, UIParent) __art(f) f:Hide() return f end
   function __sub(parent, key, kind)
@@ -21,7 +21,40 @@ const SYSTEM_ENV = `
     end
     return false
   end
+  -- A font string with a font (the game's have one from their template), and text when given.
+  function __label(parent, text, name)
+    local fs = parent:CreateFontString(name, "ARTWORK") fs:SetFont("Fonts/FRIZQT__.TTF", 12, "")
+    if text then fs:SetText(text) end
+    return fs
+  end
   function __errors(word) for _, e in ipairs(ns.errors) do if e.text:find(word) then return e.text end end return "none" end
+  -- A scroll bar shaped like the game's MinimalScrollBar (the thumb in the track), and whether the skin faded its thumb art.
+  function __bar(parent)
+    local bar = CreateFrame("Frame", nil, parent)
+    bar.Track = CreateFrame("Frame", nil, bar) bar.Track.Thumb = CreateFrame("Button", nil, bar.Track)
+    bar.Track.Thumb.Middle = bar.Track.Thumb:CreateTexture()
+    return bar
+  end
+  function __barred(bar) return bar.Track.Thumb.Middle.__alpha == 0 end
+  -- A scroll box that keeps its rows; Take adds one, as the game's pool does, and tells the callbacks.
+  ScrollUtil = { AddAcquiredFrameCallback = function(box, cb, owner) table.insert(box.callbacks, function(row) cb(owner, row) end) end }
+  function __box(parent)
+    local box = CreateFrame("Frame", nil, parent) box.rows, box.callbacks = {}, {}
+    function box:ForEachFrame(fn) for _, r in ipairs(self.rows) do fn(r) end end
+    function box:Take(row) table.insert(self.rows, row) for _, cb in ipairs(self.callbacks) do cb(row) end return row end
+    return box
+  end
+  -- A slider with its thumb, and a MinimalSliderWithSteppers-shaped frame holding one with two steppers.
+  function __slider(parent)
+    local s = CreateFrame("Slider", nil, parent) s:SetSize(120, 16) s:SetThumbTexture("TEST-ONLY-THUMB") s.Art = s:CreateTexture()
+    return s
+  end
+  function __stepped(parent)
+    local m = CreateFrame("Frame", nil, parent) m.Slider = __slider(m)
+    m.Back, m.Forward = CreateFrame("Button", nil, m), CreateFrame("Button", nil, m)
+    return m
+  end
+  function __stepper(m) return ns.Theme.SliderParts(m.Slider) ~= nil and ns.Theme.ArrowParts(m.Back) ~= nil and ns.Theme.ArrowParts(m.Forward) ~= nil end
 `;
 
 // TEST-ONLY: a ButtonFrameTemplate-shaped system window (art, NineSlice, close button, title) with push buttons by parentKey.
@@ -51,7 +84,7 @@ const SETTINGS_ENV = SYSTEM_ENV + `
 // The options window's state: its art, its parts dressed, how many frames are painted.
 const settings = (addon) => addon.eval(`local f = SettingsPanel
   return { art = __faded(f), nine = __faded(f.NineSlice), bg = f.Bg.__alpha, panel = __panelled(f),
-    titleFont = f.NineSlice.Text:GetFont() ~= nil, apply = __panelled(f.ApplyButton), close = __panelled(f.CloseButton),
+    titleFont = __titled(f.NineSlice.Text), apply = __panelled(f.ApplyButton), close = __panelled(f.CloseButton),
     x = f.ClosePanelButton.__piece.__alpha, search = __panelled(f.SearchBox), tab = __panelled(f.GameTab),
     list = __panelled(f.CategoryList), settings = __panelled(f.Container.SettingsList), canvas = __panelled(f.Container.SettingsCanvas),
     painted = ns.Theme.PaintedCount() }`);
@@ -70,6 +103,13 @@ it("game options: the window in the theme, its art faded, buttons, search box, t
     art: 0, nine: 0, bg: 0, panel: true, titleFont: true, apply: true, close: true, x: 0, search: true, tab: true, list: true, settings: true,
   });
   expect(first.canvas, "the settings canvas is left to its pages").toBe(false);
+  // The Apply button carries the secondary kind's inset fill (the window frame is not read as the button's kind).
+  expect(addon.eval(`local c = { ns.Theme.PanelColor(true) }
+    for _, r in ipairs({ SettingsPanel.ApplyButton:GetRegions() }) do
+      local v = r.__vertexColor
+      if v and v[1] == c[1] and v[2] == c[2] and v[3] == c[3] then return true end
+    end
+    return false`), "the window's buttons are the one game button look: the secondary inset").toBe(true);
   addon.eval("SettingsPanel:Hide() SettingsPanel:Show()");
   expect(settings(addon).painted, "showing it again paints nothing new").toBe(first.painted);
 });
@@ -99,7 +139,7 @@ it("game options: switched off it stays the game's, and a client missing parts l
 // A button frame's state: its art, panel, close button, title font and the named parts' panels.
 const frameState = (addon, name, parts = []) => addon.eval(`local f = ${name}
   local out = { art = __faded(f), nine = f.NineSlice.__alpha, panel = __panelled(f), x = f.CloseButton.__piece.__alpha,
-    title = f.TitleContainer.TitleText:GetFont() ~= nil, painted = ns.Theme.PaintedCount(), parts = {} }
+    title = __titled(f.TitleContainer.TitleText), painted = ns.Theme.PaintedCount(), parts = {} }
   for _, k in ipairs({ ${parts.map((k) => `"${k}"`).join(", ")} }) do out.parts[k] = __panelled(f[k]) end
   return out`);
 
@@ -162,7 +202,7 @@ it("chat settings: the outer window, its header plate, the boxes under it and th
   expect(frameState(addon, "ChatConfigFrame", ["CategoryBox", "Plain"]), "window skinned; the box with a NineSlice is an inset panel, a plain child is not").toMatchObject({
     art: 0, panel: true, x: 0, title: true, parts: { CategoryBox: true, Plain: false },
   });
-  expect(addon.eval(`return { __faded(ChatConfigFrame.Header), ChatConfigFrame.Header.Text:GetFont() ~= nil, __faded(ChatConfigFrame.CategoryBox.NineSlice),
+  expect(addon.eval(`return { __faded(ChatConfigFrame.Header), __titled(ChatConfigFrame.Header.Text), __faded(ChatConfigFrame.CategoryBox.NineSlice),
     __faded(TestOnlyChatBackdrop), __panelled(TestOnlyChatBackdrop), __panelled(ChatConfigFrameOkayButton), __panelled(TextToSpeechDefaultButton) }`),
     "header art faded and its title in the theme font; the box art faded; a child named ...Backdrop treated as a box; named buttons themed").toEqual([0, true, 0, 0, true, true, true]);
   sameOnReshow(addon, "ChatConfigFrame");
@@ -188,12 +228,38 @@ const EDIT_ENV = SYSTEM_ENV + `
     local d = __frame(name) __sub(d, "Border") __text(d, "Title")
     for _, k in ipairs({ "AcceptButton", "CancelButton", "SaveAndProceedButton", "ProceedButton" }) do __sub(d, k, "Button") end
     __sub(d, "LayoutNameEditBox", "EditBox")
+    if name == "EditModeImportLayoutDialog" then
+      d.EditBoxLabel, d.NameEditBoxLabel = __label(d, "Paste"), __label(d, "Name")
+      __sub(__sub(d, "CharacterSpecificLayoutCheckButton"), "Button", "CheckButton")
+      __sub(d, "ImportBox", "ScrollFrame") d.ImportBox.ScrollBar = __bar(d.ImportBox)
+    end
+  end
+  -- The manager's own parts (all optional in the bare cases below): the layout dropdown, the three switches, the grid slider, the options well and the expander.
+  manager.LayoutDropdown = CreateFrame("Button", nil, manager) manager.LayoutDropdown.Arrow = manager.LayoutDropdown:CreateTexture() manager.LayoutDropdown.Arrow:SetAlpha(0)
+  for _, k in ipairs({ "ShowGridCheckButton", "EnableSnapCheckButton", "EnableAdvancedOptionsCheckButton" }) do __sub(__sub(manager, k), "Button", "CheckButton") end
+  manager.GridSpacingSlider = CreateFrame("Frame", nil, manager) manager.GridSpacingSlider.Slider = __stepped(manager.GridSpacingSlider)
+  local account = CreateFrame("Frame", nil, manager) manager.AccountSettings = account
+  local well = __sub(account, "SettingsContainer", "ScrollFrame") __sub(well, "BorderArt") well.ScrollBar = __bar(well)
+  local advanced = CreateFrame("Frame", nil, CreateFrame("Frame", nil, well)) well.ScrollChild = advanced:GetParent() advanced:GetParent().AdvancedOptionsContainer = advanced
+  for _, k in ipairs({ "FramesTitle", "CombatTitle", "MiscTitle" }) do advanced[k] = CreateFrame("Frame", nil, advanced) advanced[k].Title = __label(advanced[k], k) end
+  local rows = CreateFrame("Frame", nil, advanced) local row = CreateFrame("Frame", nil, rows) row.Button = CreateFrame("CheckButton", nil, row) row.Button.Art = row.Button:CreateTexture()
+  account.Expander = CreateFrame("Frame", nil, account) account.Expander.Divider = account.Expander:CreateTexture(nil, "ARTWORK")
+  dialog.Settings = CreateFrame("Frame", nil, dialog)
+  dialog.Buttons.Divider = dialog.Buttons:CreateTexture(nil, "ARTWORK")
+  -- UpdateSettings: the game takes a check box, a dropdown and a slider from its pools each time.
+  function dialog:UpdateSettings()
+    self.updates = (self.updates or 0) + 1
+    local check = CreateFrame("Frame", nil, self.Settings) check.Button = CreateFrame("CheckButton", nil, check) check.Button.Art = check.Button:CreateTexture()
+    local drop = CreateFrame("Frame", nil, self.Settings) drop.Dropdown = CreateFrame("Button", nil, drop) drop.Dropdown.Arrow = drop.Dropdown:CreateTexture() drop.Dropdown.Arrow:SetAlpha(0)
+    local slide = CreateFrame("Frame", nil, self.Settings) slide.Slider = __stepped(slide)
+    CreateFrame("Frame", nil, self.Settings)
+    self.made = { check, drop, slide }
   end
 `;
 
 // A part's state in the Edit Mode windows: art faded, panelled, title in the theme font.
 const editState = (addon, name) => addon.eval(`local f = ${name}
-  return { art = __faded(f), border = f.Border.__alpha, panel = __panelled(f), title = f.Title:GetFont() ~= nil, painted = ns.Theme.PaintedCount() }`);
+  return { art = __faded(f), border = f.Border.__alpha, panel = __panelled(f), title = __titled(f.Title), painted = ns.Theme.PaintedCount() }`);
 
 it("Edit Mode window: skinned, its panel kept out of the game's layout, and Vanguard's note still shows", () => {
   const addon = loggedIn(EDIT_ENV);
@@ -201,7 +267,7 @@ it("Edit Mode window: skinned, its panel kept out of the game's layout, and Vang
   const first = editState(addon, "EditModeManagerFrame");
   expect(first, "Border and art faded, a panel, title in the theme font").toMatchObject({ art: 0, border: 0, panel: true, title: true });
   expect(addon.eval(`local m = EditModeManagerFrame
-    return { m.LayoutLabel:GetFont() ~= nil, __panelled(m.SaveChangesButton), __panelled(m.RevertAllChangesButton), m.CloseButton.__piece.__alpha }`),
+    return { __looks(m.LayoutLabel, "label", "text"), __panelled(m.SaveChangesButton), __panelled(m.RevertAllChangesButton), m.CloseButton.__piece.__alpha }`),
     "the layout label, Save and Revert buttons and close button themed").toEqual([true, true, true, 0]);
   expect(addon.eval(`local m, marked, own = EditModeManagerFrame, 0, 0
     for _, piece in ipairs({ m.Border, m.SaveChangesButton, m.CloseButton }) do if piece.ignoreInLayout then own = own + 1 end end
@@ -257,6 +323,7 @@ const KEYBIND_ENV = SYSTEM_ENV + `
   local f = CreateFrame("Button", "QuickKeybindFrame", UIParent) __art(f) f:Hide()
   __sub(f, "BG") __sub(f, "Header") __text(f.Header, "Text") __text(f, "InstructionText")
   for _, k in ipairs({ "DefaultsButton", "CancelButton", "OkayButton" }) do __sub(f, k, "Button") end
+  __sub(f, "UseCharacterBindingsButton", "CheckButton")
 `;
 
 it("quick keybind banner: a panel behind it, plate faded, buttons themed, and nothing touched in combat", () => {
@@ -264,20 +331,21 @@ it("quick keybind banner: a panel behind it, plate faded, buttons themed, and no
   addon.eval("QuickKeybindFrame:Show()");
   // The quick keybind banner's skin state: art, header, panel, buttons, texts and the paint count.
   const read = () => addon.eval(`local f = QuickKeybindFrame
-    return { art = __faded(f), bg = f.BG.__alpha, header = __faded(f.Header), panel = __panelled(f), title = f.Header.Text:GetFont() ~= nil,
-      buttons = __panelled(f.DefaultsButton) and __panelled(f.CancelButton) and __panelled(f.OkayButton), text = f.InstructionText:GetFont() == nil, painted = ns.Theme.PaintedCount() }`);
+    return { art = __faded(f), bg = f.BG.__alpha, header = __faded(f.Header), panel = __panelled(f), title = __titled(f.Header.Text),
+      buttons = __panelled(f.DefaultsButton) and __panelled(f.CancelButton) and __panelled(f.OkayButton), text = f.InstructionText:GetFont() == nil,
+      check = ns.Theme.CheckParts(f.UseCharacterBindingsButton) ~= nil, painted = ns.Theme.PaintedCount() }`);
   const first = read();
   expect(first, "BG and header plate faded, a panel, title and buttons themed, the white instruction text untouched").toMatchObject({
-    art: 0, bg: 0, header: 0, panel: true, title: true, buttons: true, text: true,
+    art: 0, bg: 0, header: 0, panel: true, title: true, buttons: true, text: true, check: true,
   });
   addon.eval("QuickKeybindFrame:Hide() QuickKeybindFrame:Show()");
   expect(read().painted, "a second show paints nothing new").toBe(first.painted);
-  const late = loggedIn(SYSTEM_ENV + 'local b = CreateFrame("Button", "TestOnlyBanner", UIParent) __art(b)');
+  const late = loggedIn(SYSTEM_ENV + 'local b = CreateFrame("Button", "TestOnlyBanner", UIParent) __art(b) __sub(b, "UseCharacterBindingsButton", "CheckButton")');
   setCombat(late, true);
   late.eval('ns.GetModule("Windows").SkinQuickKeybind(TestOnlyBanner)');
-  expect(late.eval("return __panelled(TestOnlyBanner)"), "in combat the banner is left alone").toBe(false);
+  expect(late.eval("return { __panelled(TestOnlyBanner), ns.Theme.CheckParts(TestOnlyBanner.UseCharacterBindingsButton) == nil }"), "in combat the banner and its check box are left alone").toEqual([false, true]);
   setCombat(late, false);
-  expect(late.eval("return __panelled(TestOnlyBanner)"), "and skinned right after combat").toBe(true);
+  expect(late.eval("return { __panelled(TestOnlyBanner), ns.Theme.CheckParts(TestOnlyBanner.UseCharacterBindingsButton) ~= nil }"), "and skinned right after combat").toEqual([true, true]);
   const off = loggedIn(KEYBIND_ENV, SWITCH_OFF);
   off.eval("QuickKeybindFrame:Show()");
   expect(off.eval("return __panelled(QuickKeybindFrame)"), "switched off").toBe(false);
@@ -288,14 +356,36 @@ it("quick keybind banner: a panel behind it, plate faded, buttons themed, and no
 
 // TEST-ONLY: the Cooldown Manager's settings window and its two layout dialogs, and the click-casting window (built when its addon loads).
 const COOLDOWN_ENV = BUTTON_FRAME_ENV + `
-  __buttonFrame("CooldownViewerSettings", { "SearchBox" })
+  local cd = __buttonFrame("CooldownViewerSettings", { "SearchBox", "UndoButton" })
+  cd.CooldownScroll = __sub(cd, "CooldownScroll", "ScrollFrame") cd.CooldownScroll.ScrollBar = __bar(cd.CooldownScroll)
+  cd.LayoutDropdown = CreateFrame("Button", nil, cd) cd.LayoutDropdown.Arrow = cd.LayoutDropdown:CreateTexture() cd.LayoutDropdown.Arrow:SetAlpha(0)
+  cd.SettingsDropdown = CreateFrame("Button", nil, cd) cd.SettingsDropdown.Art = cd.SettingsDropdown:CreateTexture() cd.SettingsDropdown.Icon = cd.SettingsDropdown:CreateTexture()
+  cd.CooldownScroll.Content = CreateFrame("Frame", nil, cd.CooldownScroll)
+  function cd:RefreshLayout()
+    self.refreshes = (self.refreshes or 0) + 1
+    local category = CreateFrame("Frame", nil, self.CooldownScroll.Content) category.Header = CreateFrame("Button", nil, category) category.Header.Art = category.Header:CreateTexture()
+    CreateFrame("Frame", nil, self.CooldownScroll.Content)
+  end
+  cd:RefreshLayout()
   for _, name in ipairs({ "CooldownViewerLayoutDialog", "CooldownViewerImportLayoutDialog" }) do
     local d = __frame(name) __sub(d, "Border") __text(d, "Title") __sub(d, "AcceptButton", "Button") __sub(d, "CancelButton", "Button")
   end
   function __clickBinding()
     local f = __buttonFrame("ClickBindingFrame", { "SaveButton", "AddBindingButton", "ResetButton" })
     __sub(f, "ScrollBoxBackground") __sub(f.ScrollBoxBackground, "NineSlice")
+    f.ScrollBar = __bar(f) f.ScrollBox = __box(f)
+    __sub(f, "EnableMouseoverCastCheckbox", "CheckButton")
+    f.MouseoverCastKeyDropdown = CreateFrame("Button", nil, f) f.MouseoverCastKeyDropdown.Arrow = f.MouseoverCastKeyDropdown:CreateTexture() f.MouseoverCastKeyDropdown.Arrow:SetAlpha(0)
+    f.MouseoverCastKeyDropdown.Label = __label(f.MouseoverCastKeyDropdown, "Key")
+    local card = __sub(f, "TutorialFrame") __sub(card, "NineSlice") __sub(card, "CloseButton", "Button") __text(card, "TitleText") card.Tutorial = card:CreateTexture(nil, "BACKGROUND")
     return f
+  end
+  -- A binding row: a button with its plate, icon, gold hover glow, a mark that says it is new, and the delete button.
+  function __bindingRow()
+    local row = CreateFrame("Button", nil, ClickBindingFrame)
+    row.Background, row.Icon, row.FrameHighlight, row.NewOutline = row:CreateTexture(), row:CreateTexture(), row:CreateTexture(), row:CreateTexture()
+    row.DeleteButton = CreateFrame("Button", nil, row) row.DeleteButton.Icon = row.DeleteButton:CreateTexture() row.DeleteButton.Art = row.DeleteButton:CreateTexture()
+    return row
   end
 `;
 
@@ -308,6 +398,13 @@ it("Cooldown Manager settings and its layout dialogs: the window skin, search bo
     expect(addon.eval(`return __panelled(${name}.AcceptButton)`), `${name}: buttons themed`).toBe(true);
   }
   sameOnReshow(addon, "CooldownViewerSettings");
+  expect(addon.eval(`local cd = CooldownViewerSettings
+    return { __barred(cd.CooldownScroll.ScrollBar), __panelled(cd.LayoutDropdown), cd.LayoutDropdown.Arrow.__alpha, __panelled(cd.SettingsDropdown), cd.SettingsDropdown.Icon.__alpha ~= 0,
+      __panelled(cd.UndoButton), __panelled(({ cd.CooldownScroll.Content:GetChildren() })[1].Header) }`),
+    "scroll bar, layout dropdown (arrow kept), the gear dropdown on a control tile with its icon, Revert, and the category header that was there").toEqual([true, true, 1, true, true, true, true]);
+  addon.eval("CooldownViewerSettings:RefreshLayout()");
+  expect(addon.eval("return { CooldownViewerSettings.refreshes, __panelled(({ CooldownViewerSettings.CooldownScroll.Content:GetChildren() })[3].Header) }"),
+    "a category the game makes in RefreshLayout gets its header themed, the game's function still run").toEqual([2, true]);
   const off = loggedIn(COOLDOWN_ENV, SWITCH_OFF);
   off.eval("CooldownViewerSettings:Show() CooldownViewerLayoutDialog:Show()");
   expect([frameState(off, "CooldownViewerSettings").panel, editState(off, "CooldownViewerLayoutDialog").panel], "switched off").toEqual([false, false]);
@@ -325,6 +422,14 @@ it("click bindings: skinned when their addon loads, with the three buttons and t
     art: 0, panel: true, x: 0, parts: { SaveButton: true, AddBindingButton: true, ResetButton: true, ScrollBoxBackground: true },
   });
   expect(addon.eval("return ClickBindingFrame.ScrollBoxBackground.NineSlice.__piece.__alpha"), "the backdrop's border art faded").toBe(0);
+  expect(addon.eval(`local f = ClickBindingFrame local card = f.TutorialFrame
+    return { __barred(f.ScrollBar), ns.Theme.CheckParts(f.EnableMouseoverCastCheckbox) ~= nil, __panelled(f.MouseoverCastKeyDropdown), f.MouseoverCastKeyDropdown.Arrow.__alpha,
+      __looks(f.MouseoverCastKeyDropdown.Label, "label", "text"), __panelled(card), __faded(card), card.Tutorial.__alpha, card.NineSlice.__alpha, card.CloseButton.__piece.__alpha }`),
+    "scroll bar, the mouseover check box, key dropdown (arrow kept) and its light label; the tutorial card a panel with its art faded and its picture kept").toEqual([true, true, true, 1, true, true, 0, 1, 0, 0]);
+  addon.eval("local box = ClickBindingFrame.ScrollBox box:Take(__bindingRow())");
+  expect(addon.eval(`local row = ClickBindingFrame.ScrollBox.rows[1]
+    return { ns.Theme.RowParts(row) ~= nil, row.Background.__alpha, row.FrameHighlight.__alpha, row.Icon.__alpha ~= 0, row.NewOutline.__alpha ~= 0, #({ row.DeleteButton:GetRegions() }), row.DeleteButton.Icon.__alpha ~= 0 }`),
+    "a binding row the game takes: a theme row, its plate and gold glow faded, its icon and new mark kept, the delete button with a control tile added to its icon and art").toEqual([true, 0, 0, true, true, 3, true]);
   sameOnReshow(addon, "ClickBindingFrame");
   const off = loggedIn(COOLDOWN_ENV, SWITCH_OFF);
   off.eval("__clickBinding()");
@@ -340,12 +445,26 @@ it("click bindings: skinned when their addon loads, with the three buttons and t
 // TEST-ONLY: the help window, the report window (a layout frame with an inset plate and a screenshot box), and the help
 // ticket status (with its icon, and a button with a backdrop).
 const HELP_ENV = BUTTON_FRAME_ENV + `
-  __buttonFrame("HelpFrame")
+  local help = __buttonFrame("HelpFrame") __sub(help, "Browser") __sub(help.Browser, "BrowserInset") __sub(help.Browser.BrowserInset, "NineSlice")
   local report = __frame("ReportFrame") __sub(report, "Border") __text(report, "TitleText") __sub(report, "CloseButton", "Button")
   __sub(report, "ReportButton", "Button") __sub(report, "ScreenshotReportingFrame") __sub(report.ScreenshotReportingFrame, "TakeScreenshotButton", "Button")
   local ticket = __frame("TicketStatusFrame")
   TicketStatusFrameIcon = ticket:CreateTexture(nil, "ARTWORK")
   TicketStatusFrameButton = CreateFrame("Button", "TicketStatusFrameButton", ticket) __sub(TicketStatusFrameButton, "NineSlice")
+  TicketStatusTitleText = __label(ticket, "Ticket", "TicketStatusTitleText")
+  -- The report window's other parts: the reason dropdown with its label, the details and screenshot texts, the comment box, and the pool of minor-category buttons the game anchors.
+  report.ReportingMajorCategoryDropdown = CreateFrame("Button", nil, report) report.ReportingMajorCategoryDropdown.Arrow = report.ReportingMajorCategoryDropdown:CreateTexture() report.ReportingMajorCategoryDropdown.Arrow:SetAlpha(0)
+  report.ReportingMajorCategoryDropdown.Label = __label(report.ReportingMajorCategoryDropdown, "Reason")
+  report.MinorReportDescription = __label(report, "Details")
+  report.ScreenshotReportingFrame.ScreenshotDescription, report.ScreenshotReportingFrame.ScreenshotEmptyText = __label(report.ScreenshotReportingFrame, "Shot"), __label(report.ScreenshotReportingFrame, "Empty")
+  __sub(report, "Comment", "ScrollFrame") report.Comment.ScrollBar = __bar(report.Comment)
+  local live = {}
+  report.MinorCategoryButtonPool = { EnumerateActive = function() local i = 0 return function() i = i + 1 return live[i] end end }
+  function report:AnchorMinorCategory()
+    local b = CreateFrame("CheckButton", nil, self) b.Normal, b.Checked = b:CreateTexture(), b:CreateTexture() b.Text = __label(b, "Minor")
+    live[#live + 1] = b self.anchored = (self.anchored or 0) + 1
+  end
+  report:AnchorMinorCategory()
 `;
 
 it("help window, report window and ticket status in the theme, the ticket icon kept", () => {
@@ -353,12 +472,29 @@ it("help window, report window and ticket status in the theme, the ticket icon k
   addon.eval("HelpFrame:Show() ReportFrame:Show() TicketStatusFrame:Show()");
   expect(frameState(addon, "HelpFrame"), "help: the window skin").toMatchObject({ art: 0, nine: 0, panel: true, x: 0, title: true });
   expect(addon.eval(`local r = ReportFrame
-    return { __faded(r), r.Border.__alpha, __panelled(r), r.TitleText:GetFont() ~= nil, r.CloseButton.__piece.__alpha, __panelled(r.ReportButton), __panelled(r.ScreenshotReportingFrame.TakeScreenshotButton) }`),
+    return { __faded(r), r.Border.__alpha, __panelled(r), __titled(r.TitleText), r.CloseButton.__piece.__alpha, __panelled(r.ReportButton), __panelled(r.ScreenshotReportingFrame.TakeScreenshotButton) }`),
     "report: art and Border faded, panel, title, close, Report and screenshot buttons").toEqual([0, 0, true, true, 0, true, true]);
   expect(addon.eval(`local marked = 0 for _, r in ipairs({ ReportFrame:GetRegions() }) do if r.ignoreInLayout then marked = marked + 1 end end
     return { marked > 0, ReportFrame.Border.ignoreInLayout == nil }`), "the report window's panel pieces stay out of its layout").toEqual([true, true]);
-  expect(addon.eval(`return { __faded(TicketStatusFrame), TicketStatusFrameIcon.__alpha ~= 0, __panelled(TicketStatusFrame), TicketStatusFrameButton.NineSlice.__piece.__alpha }`),
-    "ticket status: art faded, the ticket icon kept, a panel, its button's backdrop faded").toEqual([0, true, true, 0]);
+  expect(addon.eval(`return { __faded(TicketStatusFrame), TicketStatusFrameIcon.__alpha ~= 0, __panelled(TicketStatusFrame), TicketStatusFrameButton.NineSlice.__piece.__alpha, __looks(TicketStatusTitleText, "small", "text") }`),
+    "ticket status: art faded, the ticket icon kept, a panel, its button's backdrop faded, its title light").toEqual([0, true, true, 0, true]);
+  expect(addon.eval(`local well = HelpFrame.Browser.BrowserInset
+    return { __panelled(well), well.NineSlice.__alpha, __faded(well) }`), "help: the ring round the browser a faded well under an inset panel").toEqual([true, 0, 0]);
+  expect(addon.eval(`local r = ReportFrame
+    return { __panelled(r.ReportingMajorCategoryDropdown), r.ReportingMajorCategoryDropdown.Arrow.__alpha, __looks(r.ReportingMajorCategoryDropdown.Label, "label", "text"), __looks(r.MinorReportDescription, "label", "text"),
+      __looks(r.ScreenshotReportingFrame.ScreenshotDescription, "label", "text"), __looks(r.ScreenshotReportingFrame.ScreenshotEmptyText, "label", "text"),
+      __panelled(r.Comment), __faded(r.Comment), __barred(r.Comment.ScrollBar) }`),
+    "report: the reason dropdown (arrow kept), the four labels light, the comment box faded under an inset panel with its scroll bar themed").toEqual([true, 1, true, true, true, true, true, 0, true]);
+  // The state of the report window's minor-category button i: dressed as a row, its plate faded, the rail shown.
+  const minor = (i) => addon.eval(`local b = ({ ReportFrame:GetChildren() })[1] local live = {}
+    for _, c in ipairs({ ReportFrame:GetChildren() }) do if c.Normal then live[#live + 1] = c end end
+    b = live[${i}] local p = ns.Theme.RowParts(b)
+    return { p ~= nil, b.Normal.__alpha, p.rail:IsShown() }`);
+  expect(minor(1), "a minor-category button that was there: a theme row, its art faded, not selected").toEqual([true, 0, false]);
+  addon.eval("local b = ({ ReportFrame:GetChildren() })[1] for _, c in ipairs({ ReportFrame:GetChildren() }) do if c.Normal then c:SetChecked(true) end end");
+  expect(minor(1)[2], "ticking it lights the rail").toBe(true);
+  addon.eval("ReportFrame:AnchorMinorCategory()");
+  expect([minor(2), addon.eval("return ReportFrame.anchored")], "one the game anchors later is dressed too, the game's function still run").toEqual([[true, 0, false], 2]);
   const painted = frameState(addon, "HelpFrame").painted;
   addon.eval("HelpFrame:Hide() HelpFrame:Show() ReportFrame:Hide() ReportFrame:Show() TicketStatusFrame:Hide() TicketStatusFrame:Show()");
   expect(frameState(addon, "HelpFrame").painted, "showing them again paints nothing new").toBe(painted);
@@ -381,23 +517,36 @@ const DIALOGS_ENV = BUTTON_FRAME_ENV + `
   local picker = __frame("ColorPickerFrame") __sub(picker, "Border") __sub(picker, "Header") __text(picker.Header, "Text")
   __sub(picker, "Footer") __sub(picker.Footer, "CancelButton", "Button") __sub(picker.Footer, "OkayButton", "Button")
   __sub(picker, "Content") __sub(picker.Content, "HexBox", "EditBox") __sub(picker.Content, "ColorPicker") __sub(picker.Content, "Swatch")
+  picker.Content.HexBox.Hash = __label(picker.Content.HexBox, "#")
   local opacity = __frame("OpacityFrame") __sub(opacity, "Border")
+  -- The opacity window's global slider: a vertical slider with its thumb, a named OPACITY label and two unnamed marks.
+  OpacityFrameSlider = __slider(opacity) OpacityFrameSlider:SetOrientation("VERTICAL")
+  OpacityFrameSliderText = __label(OpacityFrameSlider, "Opacity", "OpacityFrameSliderText")
+  OpacityFrameSlider.Plus, OpacityFrameSlider.Minus = __label(OpacityFrameSlider, "+"), __label(OpacityFrameSlider, "-")
 `;
 
 it("report-cheating dialog, splash window, colour picker and opacity window", () => {
   const addon = loggedIn(DIALOGS_ENV);
   addon.eval("ReportCheatingDialog:Show() SplashFrame:Show() ColorPickerFrame:Show() OpacityFrame:Show()");
   expect(addon.eval(`local d = ReportCheatingDialog
-    return { __faded(d), d.Border.__alpha, __panelled(d), ReportCheatingDialogTitle:GetFont() ~= nil, __panelled(d.reportButton), __panelled(ReportCheatingDialogCancelButton), __panelled(d.CommentFrame) }`),
+    return { __faded(d), d.Border.__alpha, __panelled(d), __titled(ReportCheatingDialogTitle), __panelled(d.reportButton), __panelled(ReportCheatingDialogCancelButton), __panelled(d.CommentFrame) }`),
     "report cheating: art and Border faded, panel, named title themed, report and Cancel buttons, comment box an inset panel").toEqual([0, 0, true, true, true, true, true]);
   expect(addon.eval(`local s = SplashFrame
     return { s.LeftTexture.__alpha ~= 0, __faded(s) ~= 0, ns.FrameState('vgBack')[s] ~= nil and __panelled(ns.FrameState('vgBack')[s]), __panelled(s.BottomCloseButton), s.TopCloseButton.__piece.__alpha }`),
     "splash: its art is kept (nothing faded), the panel is on a frame behind it, the buttons themed").toEqual([true, true, true, true, 0]);
   expect(addon.eval(`local c = ColorPickerFrame
-    return { __faded(c), c.Border.__alpha, __faded(c.Header), c.Header.Text:GetFont() ~= nil, __panelled(c), __panelled(c.Footer.CancelButton), __panelled(c.Footer.OkayButton), __panelled(c.Content.HexBox) }`),
+    return { __faded(c), c.Border.__alpha, __faded(c.Header), __titled(c.Header.Text), __panelled(c), __panelled(c.Footer.CancelButton), __panelled(c.Footer.OkayButton), __panelled(c.Content.HexBox) }`),
     "colour picker: art, Border and header plate faded, a panel, title, buttons and hex box themed").toEqual([0, 0, 0, true, true, true, true, true]);
   expect(addon.eval(`local c = ColorPickerFrame.Content return { c.ColorPicker.__piece.__alpha ~= 0, c.Swatch.__piece.__alpha ~= 0 }`), "the wheel and swatch are untouched").toEqual([true, true]);
   expect(addon.eval("return { OpacityFrame.Border.__alpha, __panelled(OpacityFrame) }"), "opacity window: Border faded, a panel").toEqual([0, true]);
+  expect(addon.eval(`local s = OpacityFrameSlider
+    return { ns.Theme.SliderParts(s) ~= nil, s.Art.__alpha, __looks(OpacityFrameSliderText, "label", "text") }`),
+    "the opacity slider in the theme (its art faded), the OPACITY label light").toEqual([true, 0, true]);
+  expect(addon.eval(`local p, m = OpacityFrameSlider.Plus.__textColor, OpacityFrameSlider.Minus.__textColor
+    local r, g, b = ns.Theme.RGB("text2") return { p[1] == r and p[2] == g and p[3] == b, m[1] == r and m[2] == g and m[3] == b, OpacityFrameSliderText.__textColor[1] ~= r }`),
+    "the + and - marks quiet (text2), the named label not").toEqual([true, true, true]);
+  expect(addon.eval(`local h = ColorPickerFrame.Content.HexBox.Hash local r, g, b = ns.Theme.RGB("text2") local c = h.__textColor
+    return { ns.Theme.RoleSize("label") == select(2, h:GetFont()), c[1] == r and c[2] == g and c[3] == b }`), "the # beside the hex box a quiet hint").toEqual([true, true]);
 });
 
 // The report-cheating, splash and picker windows with their switch off, and with parts missing.
@@ -420,12 +569,15 @@ it("report-cheating dialog, splash window and colour picker: switched off, and a
 const RECAP_ENV = SYSTEM_ENV + `
   function __recap()
     local f = __frame("DeathRecapFrame") __sub(f, "CloseXButton", "Button") __sub(f, "CloseButton", "Button") __text(f, "Title")
-    f.ScrollBox = CreateFrame("Frame", nil, f) f.ScrollBox.__row = __art(f.ScrollBox)
+    f.ScrollBox = CreateFrame("Frame", nil, f) f.ScrollBox.__row = __art(f.ScrollBox) f.ScrollBar = __bar(f)
+    f.Divider = f:CreateTexture(nil, "ARTWORK") f.Unavailable = __label(f, "Recap unavailable")
   end
   function __logBar()
     local f = __frame("CombatLogQuickButtonFrame_Custom")
     function __quickButton(i) local b = CreateFrame("Button", "CombatLogQuickButtonFrameButton" .. i, f) __art(b) return b end
     function Blizzard_CombatLog_QuickButton_OnClick(id) __quickButton(4) end
+    local filter = CreateFrame("Button", "CombatLogQuickButtonFrame_CustomAdditionalFilterButton", f) filter.Art = filter:CreateTexture()
+    local bar = CreateFrame("StatusBar", "CombatLogQuickButtonFrame_CustomProgressBar", f) bar:SetStatusBarTexture("TEST-ONLY-ART")
     return f
   end
 `;
@@ -437,8 +589,12 @@ it("death recap: skinned when its addon loads, the rows left as the game draws t
   addon.fire("ADDON_LOADED", "Blizzard_DeathRecap");
   addon.eval("DeathRecapFrame:Show()");
   expect(addon.eval(`local f = DeathRecapFrame
-    return { __faded(f), __panelled(f), f.Title:GetFont() ~= nil, f.CloseXButton.__piece.__alpha, __panelled(f.CloseButton), f.ScrollBox.__row.__alpha ~= 0 }`),
+    return { __faded(f), __panelled(f), __titled(f.Title), f.CloseXButton.__piece.__alpha, __panelled(f.CloseButton), f.ScrollBox.__row.__alpha ~= 0 }`),
     "art faded, panel, title, the X close and the Close button themed, the list's rows untouched").toEqual([0, true, true, 0, true, true]);
+  expect(addon.eval(`local f = DeathRecapFrame
+    local c, r, g, b = f.Unavailable.__textColor, ns.Theme.RGB("text2")
+    return { __panelled(f.ScrollBox), __barred(f.ScrollBar), ns.Theme.DividerParts(f.Divider) ~= nil, f.Divider.__alpha, c[1] == r and c[2] == g and c[3] == b }`),
+    "the list on an inset panel, its scroll bar themed, the line under the title one pixel of divider, the unavailable message quiet").toEqual([true, true, true, 0, true]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("DeathRecapFrame:Hide() DeathRecapFrame:Show()");
   expect(addon.eval("return ns.Theme.PaintedCount()"), "a second show paints nothing new").toBe(painted);
@@ -460,6 +616,9 @@ it("combat log bar: a panel, its filter buttons themed as the game makes them", 
   const bar = "CombatLogQuickButtonFrame_Custom";
   expect(addon.eval(`return { __faded(${bar}), __panelled(${bar}), __panelled(CombatLogQuickButtonFrameButton1), __panelled(CombatLogQuickButtonFrameButton2) }`),
     "strip faded, an inset panel, the buttons that exist themed").toEqual([0, true, true, true]);
+  expect(addon.eval(`local bar = CombatLogQuickButtonFrame_CustomProgressBar local r, g, b = ns.Theme.RGB("accent") local c = bar.__barColor
+    return { ns.Theme.ArrowParts(CombatLogQuickButtonFrame_CustomAdditionalFilterButton) ~= nil, bar:GetStatusBarTexture().__texture ~= "TEST-ONLY-ART", c ~= nil and c[1] == r and c[2] == g and c[3] == b }`),
+    "the additional filters button a theme arrow button, the progress bar in the bar texture and the accent").toEqual([true, true, true]);
   addon.eval(`__quickButton(3) ${bar}:Hide() ${bar}:Show()`);
   expect(addon.eval("return __panelled(CombatLogQuickButtonFrameButton3)"), "a button made later is themed when the bar shows").toBe(true);
   addon.eval(`Blizzard_CombatLog_QuickButton_OnClick(1)`);
@@ -515,4 +674,219 @@ it("chat settings: the check buttons inside its boxes are themed check boxes, th
   addon.eval("ChatConfig_CreateCheckboxes(ChatConfigChatSettingsLeft)");
   expect(addon.eval("return { ns.Theme.CheckParts(TestOnlyChatCheckBox2.Check) ~= nil, ns.Theme.CheckParts(TestOnlyChatCheckBox2.Sub) ~= nil }"), "a box made as a category draws: dressed after ChatConfig_CreateCheckboxes, from the frame it was handed, its sub box too").toEqual([true, true]);
   expect(addon.eval("return __errors('Windows')"), "no errors").toBe("none");
+});
+
+// TEST-ONLY: the options window's lists: both scroll bars, the defaults button and the unkeyed divider in the page header, and the two scroll boxes.
+const SETTINGS_LISTS_ENV = SETTINGS_ENV + `
+  local f, list = SettingsPanel, SettingsPanel.Container.SettingsList
+  f.CategoryList.ScrollBar, list.ScrollBar = __bar(f.CategoryList), __bar(list)
+  f.CategoryList.ScrollBox, list.ScrollBox = __box(f.CategoryList), __box(list)
+  list.Header = CreateFrame("Frame", nil, list) list.Header.Title = __label(list.Header)
+  __sub(list.Header, "DefaultsButton", "Button")
+  list.Header.Rule = list.Header:CreateTexture(nil, "ARTWORK") list.Header.Rule:SetAtlas("Options_HorizontalDivider")
+  list.Header.Other = list.Header:CreateTexture(nil, "ARTWORK") list.Header.Other:SetAtlas("Options_Plate")
+  list.Header.Label = __label(list.Header)
+  -- A nav entry (Button with Texture, Label, and the game's state function), and a group header (Background, Label, Init).
+  function __navEntry(on)
+    local row = CreateFrame("Button", nil, f.CategoryList) row.Texture = row:CreateTexture(nil, "BACKGROUND") row.Label = __label(row)
+    function row:UpdateStateInternal(selected) self.Texture:SetAtlas(selected and "Options_List_Active" or "Options_List_Hover") self.Texture:SetShown(selected) end
+    if on then row:UpdateStateInternal(true) end
+    return row
+  end
+  function __navHeader()
+    local row = CreateFrame("Frame", nil, f.CategoryList) row.Background = row:CreateTexture(nil, "ARTWORK") row.Label = __label(row)
+    function row:Init(text) self.Label:SetText(text) end
+    return row
+  end
+  -- A settings row holding a check box, a slider with steppers, a dropdown (in Control) and a push button, as the game's controls do.
+  function __settingRow()
+    local row = CreateFrame("Frame", nil, list)
+    row.Checkbox = CreateFrame("CheckButton", nil, row) row.Checkbox.Art = row.Checkbox:CreateTexture()
+    row.SliderWithSteppers = __stepped(row)
+    row.Control = CreateFrame("Frame", nil, row) row.Control.Dropdown = CreateFrame("Button", nil, row.Control)
+    row.Control.Dropdown.Arrow = row.Control.Dropdown:CreateTexture() row.Control.Dropdown.Arrow:SetAlpha(0)
+    row.Button = CreateFrame("Button", nil, row) row.Button.Art = row.Button:CreateTexture()
+    return row
+  end
+`;
+
+it("game options: scroll bars, defaults button, header divider, and the nav and settings rows as the game takes them", () => {
+  const addon = loggedIn(SETTINGS_LISTS_ENV);
+  addon.eval("SettingsPanel.CategoryList.ScrollBox:Take(__navEntry(true)) SettingsPanel.CategoryList.ScrollBox:Take(__navHeader()) SettingsPanel.Container.SettingsList.ScrollBox:Take(__settingRow())");
+  addon.eval("SettingsPanel:Show()");
+  expect(addon.eval(`local f = SettingsPanel local list = f.Container.SettingsList
+    return { __barred(f.CategoryList.ScrollBar), __barred(list.ScrollBar), __panelled(list.Header.DefaultsButton),
+      ns.Theme.DividerParts(list.Header.Rule) ~= nil, ns.Theme.DividerParts(list.Header.Other) == nil, list.Header.Rule.__alpha }`),
+    "both scroll bars themed, Defaults a theme button, the header's divider texture one pixel of divider (another texture and a font string left alone)").toEqual([true, true, true, true, true, 0]);
+  expect(addon.eval(`local list, row = SettingsPanel.Container.SettingsList, SettingsPanel.Container.SettingsList.ScrollBox.rows[1]
+    return { ns.Theme.CheckParts(row.Checkbox) ~= nil, __stepper(row.SliderWithSteppers), __panelled(row.Control.Dropdown), row.Control.Dropdown.Arrow.__alpha, __panelled(row.Button) }`),
+    "a row that was already there: its check box, slider with steppers, dropdown (arrow shown) and button themed").toEqual([true, true, true, 1, true]);
+  addon.eval("SettingsPanel.Container.SettingsList.ScrollBox:Take(__settingRow())");
+  expect(addon.eval(`local row = SettingsPanel.Container.SettingsList.ScrollBox.rows[2]
+    return { ns.Theme.CheckParts(row.Checkbox) ~= nil, __stepper(row.SliderWithSteppers), __panelled(row.Control.Dropdown), __panelled(row.Button) }`),
+    "and a row the game takes later").toEqual([true, true, true, true]);
+  addon.eval("SettingsPanel.Container.SettingsList.ScrollBox:Take(CreateFrame('Frame', nil, SettingsPanel))");
+  expect(addon.eval("return __errors('Windows')"), "a row with none of the controls is fine").toBe("none");
+});
+
+it("game options: the nav entries get the row washes and follow the game's selection, the group headers become section heads", () => {
+  const addon = loggedIn(SETTINGS_LISTS_ENV);
+  addon.eval("local box = SettingsPanel.CategoryList.ScrollBox box:Take(__navEntry(true)) box:Take(__navEntry(false)) box:Take(__navHeader())");
+  addon.eval("SettingsPanel:Show()");
+  // A nav entry's state: dressed, the plate faded, the selected rail shown.
+  const entry = (i) => addon.eval(`local row = SettingsPanel.CategoryList.ScrollBox.rows[${i}] local p = ns.Theme.RowParts(row)
+    return { p ~= nil, row.Texture.__alpha, p.rail:IsShown() }`);
+  expect(entry(1), "a selected entry the window met already selected: row washes, the game's plate faded, the rail on").toEqual([true, 0, true]);
+  expect(entry(2), "an unselected entry: no rail").toEqual([true, 0, false]);
+  addon.eval("local rows = SettingsPanel.CategoryList.ScrollBox.rows rows[2]:UpdateStateInternal(true) rows[1]:UpdateStateInternal(false)");
+  expect([entry(1)[2], entry(2)[2]], "the rail follows the game's state call").toEqual([false, true]);
+  addon.eval("local box = SettingsPanel.CategoryList.ScrollBox box:Take(__navEntry(false)):UpdateStateInternal(true)");
+  expect(entry(4)[2], "an entry taken later follows too").toBe(true);
+  expect(addon.eval(`local head = SettingsPanel.CategoryList.ScrollBox.rows[3]
+    head.Label:SetText("Game") head:Init("Addons")
+    return { head.Background.__alpha, ns.Theme.RoleSize("section") == select(2, head.Label:GetFont()), head.Label:GetText() }`),
+    "a group header: plate faded, label the section role; the text is capitals again after the game sets it").toEqual([0, true, "ADDONS"]);
+  expect(addon.eval("return __errors('Windows')"), "no errors").toBe("none");
+});
+
+// TEST-ONLY: the addon list's own parts: scroll bar, character dropdown, force-load check, and the performance block with its header and divider.
+const ADDON_PARTS_ENV = BUTTON_FRAME_ENV + `
+  local f = __buttonFrame("AddonList", { "CancelButton" })
+  f.ScrollBar = __bar(f) f.Dropdown = CreateFrame("Button", nil, f) f.Dropdown.Arrow = f.Dropdown:CreateTexture() f.Dropdown.Arrow:SetAlpha(0)
+  f.ForceLoad = CreateFrame("CheckButton", nil, f) f.ForceLoad.Art = f.ForceLoad:CreateTexture()
+  f.Performance = CreateFrame("Frame", nil, f) f.Performance.Header = __label(f.Performance, "Performance")
+  f.Performance.Divider = f.Performance:CreateTexture(nil, "ARTWORK")
+`;
+
+it("addon list: scroll bar, character dropdown, force-load box, and the performance block's section head and divider", () => {
+  const addon = loggedIn(ADDON_PARTS_ENV);
+  addon.eval("AddonList:Show()");
+  expect(addon.eval(`local f = AddonList
+    return { __barred(f.ScrollBar), __panelled(f.Dropdown), f.Dropdown.Arrow.__alpha, ns.Theme.CheckParts(f.ForceLoad) ~= nil,
+      ns.Theme.RoleSize("section") == select(2, f.Performance.Header:GetFont()), f.Performance.Header:GetText(),
+      ns.Theme.DividerParts(f.Performance.Divider) ~= nil, f.Performance.Divider.__alpha }`),
+    "scroll bar and dropdown (arrow kept) themed, the force-load box a check box, the header small capitals, the divider one pixel of divider").toEqual([true, true, 1, true, true, "PERFORMANCE", true, 0]);
+  sameOnReshow(addon, "AddonList");
+  const off = loggedIn(ADDON_PARTS_ENV, SWITCH_OFF);
+  off.eval("AddonList:Show()");
+  expect(off.eval("return { __barred(AddonList.ScrollBar), ns.Theme.DividerParts(AddonList.Performance.Divider) == nil }"), "switched off: the game's").toEqual([false, true]);
+});
+
+// TEST-ONLY: the chat settings with two pages: a box with a heading, a color heading, a ring-wearing row holding a check button, a
+// radio further down and a plain frame; the combat page's filter box with a scroll bar, a name box and the two arrows; the tab manager.
+const CHAT_BOXES_ENV = CHAT_ENV + `
+  local page = CreateFrame("Frame", "ChatConfigChatSettings", f)
+  local box = __sub(page, "Left") CreateFrame("Frame", "ChatConfigChatSettingsLeft", page) box = ChatConfigChatSettingsLeft __art(box)
+  box.NineSlice = CreateFrame("Frame", nil, box) box.NineSlice.__piece = __art(box.NineSlice)
+  box.header = __label(box, "Chat")
+  ChatConfigChatSettingsLeftColorHeader = __label(box, "Color", "ChatConfigChatSettingsLeftColorHeader")
+  local ring = __sub(box, "Row") __sub(ring, "NineSlice") ring.Check = CreateFrame("CheckButton", nil, ring) ring.Check.Art = ring.Check:CreateTexture()
+  local deep = CreateFrame("Frame", nil, ring)
+  CombatConfigColorsColorizeEntireLineBySource = CreateFrame("CheckButton", "CombatConfigColorsColorizeEntireLineBySource", deep)
+  CombatConfigColorsColorizeEntireLineBySource.Art = CombatConfigColorsColorizeEntireLineBySource:CreateTexture()
+  CombatConfigColorsColorizeEntireLineByTarget = CreateFrame("CheckButton", "CombatConfigColorsColorizeEntireLineByTarget", deep)
+  CreateFrame("Frame", nil, page).__art = nil
+  local filters = CreateFrame("Frame", "ChatConfigCombatSettingsFilters", CreateFrame("Frame", nil, f)) __art(filters)
+  filters.NineSlice = CreateFrame("Frame", nil, filters) __art(filters.NineSlice)
+  filters.ScrollBar = __bar(filters)
+  CombatConfigSettingsNameEditBox = CreateFrame("EditBox", "CombatConfigSettingsNameEditBox", filters)
+  for _, n in ipairs({ "ChatConfigMoveFilterUpButton", "ChatConfigMoveFilterDownButton", "ChatConfigCombatSettingsFiltersDeleteButton", "CombatConfigSettingsSaveButton" }) do
+    _G[n] = CreateFrame("Button", n, filters) _G[n].Art = _G[n]:CreateTexture()
+  end
+  ChatConfigTextToSpeechSettings = CreateFrame("Frame", "ChatConfigTextToSpeechSettings", f) ChatConfigTextToSpeechSettings.ScrollBar = __bar(ChatConfigTextToSpeechSettings)
+`;
+
+it("chat settings: the boxes two levels down, their heads and rings, the radios, scroll bars, filter controls and the extra buttons", () => {
+  const addon = loggedIn(CHAT_BOXES_ENV);
+  addon.eval("ChatConfigFrame:Show()");
+  expect(addon.eval(`local box = ChatConfigChatSettingsLeft
+    return { __panelled(box), __faded(box), box.NineSlice.__piece.__alpha, box.Row.NineSlice.__piece.__alpha, __panelled(box.Row),
+      ns.Theme.RoleSize("section") == select(2, box.header:GetFont()), box.header:GetText(), ChatConfigChatSettingsLeftColorHeader:GetText() }`),
+    "a box on a page: inset panel, its art and ring faded, the row's ring faded and the row itself not a panel, heads small capitals").toEqual([true, 0, 0, 0, false, true, "CHAT", "COLOR"]);
+  expect(addon.eval(`local source, target, check = CombatConfigColorsColorizeEntireLineBySource, CombatConfigColorsColorizeEntireLineByTarget, ChatConfigChatSettingsLeft.Row.Check
+    return { ns.Theme.CheckParts(source).ring ~= nil, ns.Theme.CheckParts(check).ring == nil, ns.Theme.CheckParts(check).box ~= nil }`),
+    "the by-source radio is a radio (dressed before the check walk reached it), a plain check button a check box").toEqual([true, true, true]);
+  expect(addon.eval(`return { __barred(ChatConfigCombatSettingsFilters.ScrollBar), __barred(ChatConfigTextToSpeechSettings.ScrollBar), __panelled(CombatConfigSettingsNameEditBox),
+    __panelled(ChatConfigCombatSettingsFiltersDeleteButton), __panelled(CombatConfigSettingsSaveButton),
+    ns.Theme.ArrowParts(ChatConfigMoveFilterUpButton).glyph.__texCoord[3], ns.Theme.ArrowParts(ChatConfigMoveFilterDownButton).glyph.__texCoord[3] }`),
+    "the filter list's and the text-to-speech page's scroll bars, the name box, Delete and Save themed, the move arrows pointing up and down").toEqual([true, true, true, true, true, 1, 0]);
+  expect(addon.eval("return __errors('Windows')"), "no errors").toBe("none");
+});
+
+// TEST-ONLY: the chat settings' tab manager with a pool of two tabs (ChatConfigTabTemplate-shaped: Left/Middle/Right art), and the game's UpdateSelection.
+const CHAT_TABS_ENV = CHAT_ENV + `
+  CURRENT_CHAT_FRAME_ID = 2
+  local m = CreateFrame("Frame", nil, f) f.ChatTabManager = m
+  local tabs = {}
+  for i = 1, 2 do local t = CreateFrame("Button", nil, m) t:SetID(i) t.Left, t.Middle, t.Right = t:CreateTexture(), t:CreateTexture(), t:CreateTexture() tabs[i] = t end
+  m.tabPool = { EnumerateActive = function() local i = 0 return function() i = i + 1 return tabs[i] end end }
+  function m:UpdateSelection(selected) self.picked = selected end
+`;
+
+it("chat settings: the window tabs are theme tabs, the current chat window's raised, following the game's selection", () => {
+  const addon = loggedIn(CHAT_TABS_ENV);
+  addon.eval("ChatConfigFrame:Show()");
+  // Whether tab i is raised: its fill (the last BACKGROUND texture T.Tab tints) is the theme's raised colour.
+  const raised = (i) => addon.eval(`local bg
+    local tab = ({ ChatConfigFrame.ChatTabManager:GetChildren() })[${i}]
+    for _, r in ipairs({ tab:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
+    local c = bg.__vertexColor local r, g, b = ns.Theme.RGB("raised") return c[1] == r and c[2] == g and c[3] == b`);
+  expect([addon.eval("return ({ ChatConfigFrame.ChatTabManager:GetChildren() })[1].Left.__alpha"), raised(1), raised(2)],
+    "tabs themed (art faded); the current chat window's is raised").toEqual([0, false, true]);
+  addon.eval("ChatConfigFrame.ChatTabManager:UpdateSelection(1)");
+  expect([raised(1), raised(2), addon.eval("return ChatConfigFrame.ChatTabManager.picked")], "and the raised tab moves when the game picks another (its own function still runs)").toEqual([true, false, 1]);
+  const bare = loggedIn(CHAT_ENV + "f.ChatTabManager = CreateFrame('Frame', nil, f)");
+  bare.eval("ChatConfigFrame:Show()");
+  expect(bare.eval("return __errors('Windows')"), "a manager without its pool or selection function").toBe("none");
+});
+
+it("Edit Mode window: layout dropdown, the grid slider, the switches and the account settings' check boxes, the options well, its scroll bar, section heads and the expander line", () => {
+  const addon = loggedIn(EDIT_ENV);
+  addon.eval("EditModeManagerFrame:Show()");
+  expect(addon.eval(`local m = EditModeManagerFrame
+    return { __panelled(m.LayoutDropdown), m.LayoutDropdown.Arrow.__alpha, __stepper(m.GridSpacingSlider.Slider),
+      ns.Theme.CheckParts(m.ShowGridCheckButton.Button) ~= nil, ns.Theme.CheckParts(m.EnableSnapCheckButton.Button) ~= nil, ns.Theme.CheckParts(m.EnableAdvancedOptionsCheckButton.Button) ~= nil }`),
+    "the dropdown (arrow kept), the slider with its steppers, and the three switches").toEqual([true, 1, true, true, true, true]);
+  expect(addon.eval(`local well = EditModeManagerFrame.AccountSettings.SettingsContainer
+    local rows = ({ well.ScrollChild.AdvancedOptionsContainer:GetChildren() })[4]
+    local row = ({ rows:GetChildren() })[1]
+    local marked = 0 for _, r in ipairs({ well:GetRegions() }) do if r.ignoreInLayout then marked = marked + 1 end end
+    return { ns.Theme.CheckParts(row.Button) ~= nil, __panelled(well), well.BorderArt.__alpha, __barred(well.ScrollBar), marked > 0, well.BorderArt.ignoreInLayout == nil }`),
+    "an account settings row's check box, the options well an inset panel (its pieces out of the layout, the game's own parts not) with its ring faded, its scroll bar themed").toEqual([true, true, 0, true, true, true]);
+  expect(addon.eval(`local adv = EditModeManagerFrame.AccountSettings.SettingsContainer.ScrollChild.AdvancedOptionsContainer
+    local fs = adv.CombatTitle.Title
+    local x = EditModeManagerFrame.AccountSettings.Expander
+    local held = 0 for _, c in ipairs({ x:GetChildren() }) do if c.ignoreInLayout then held = held + 1 end end
+    return { ns.Theme.RoleSize("section") == select(2, fs:GetFont()), fs:GetText(), ns.Theme.DividerParts(x.Divider) ~= nil, x.Divider.__alpha, held }`),
+    "a section title a small capitals head; the expander's divider one pixel of divider, its line kept out of the expander's layout").toEqual([true, "COMBATTITLE", true, 0, 1]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("EditModeManagerFrame:Hide() EditModeManagerFrame:Show()");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(painted);
+});
+
+it("Edit Mode system settings: the check boxes, dropdowns and sliders the game takes after each UpdateSettings, and the Revert divider", () => {
+  const addon = loggedIn(EDIT_ENV);
+  const d = "EditModeSystemSettingsDialog";
+  addon.eval(`${d}:Show()`);
+  expect(addon.eval(`return ns.Theme.DividerParts(${d}.Buttons.Divider) ~= nil`), "the line between Revert and the extra buttons is a divider").toBe(true);
+  addon.eval(`${d}:UpdateSettings()`);
+  // The settings made by the last UpdateSettings: { check box, dropdown, dropdown arrow, slider with steppers, the plain frame untouched }.
+  const made = () => addon.eval(`local c, dd, sl = table.unpack(${d}.made)
+    return { ns.Theme.CheckParts(c.Button) ~= nil, __panelled(dd.Dropdown), dd.Dropdown.Arrow.__alpha, __stepper(sl.Slider) }`);
+  expect(made(), "each setting is dressed as the game takes it").toEqual([true, true, 1, true]);
+  addon.eval(`${d}:Hide() ${d}:Show() ${d}:UpdateSettings()`);
+  expect([made(), addon.eval(`return ${d}.updates`)], "and again after the next one, the hook made once and the game's function still run").toEqual([[true, true, 1, true], 2]);
+  expect(addon.eval("return __errors('Windows')"), "no errors").toBe("none");
+});
+
+it("Edit Mode import dialog: the character-specific check, the field labels, the import box on an inset with its scroll bar", () => {
+  const addon = loggedIn(EDIT_ENV);
+  const d = "EditModeImportLayoutDialog";
+  addon.eval(`${d}:Show()`);
+  expect(addon.eval(`local d = ${d}
+    return { ns.Theme.CheckParts(d.CharacterSpecificLayoutCheckButton.Button) ~= nil, __looks(d.EditBoxLabel, "label", "text"), __looks(d.NameEditBoxLabel, "label", "text"),
+      __faded(d.ImportBox), __panelled(d.ImportBox), __barred(d.ImportBox.ScrollBar) }`),
+    "the check box, both labels light, the box's art faded under an inset panel, its scroll bar themed").toEqual([true, true, true, 0, true, true]);
+  addon.eval(`EditModeLayoutDialog:Show()`);
+  expect(addon.eval("return __errors('Windows')"), "a dialog without those parts is fine").toBe("none");
 });
