@@ -1845,6 +1845,47 @@ function FCF_Tab_OnClick() end
 function FCF_RestorePositionAndDimensions() end
 function FCF_SetChatWindowFontSize(_, frame, size) frame:SetFont(STANDARD_TEXT_FONT, size, "") end
 
+-- Chat bubbles (Modules/ChatBubbles.lua): C_ChatBubbles.GetAllChatBubbles lists world.bubbles, each a bubble
+-- frame with one child panel holding nine art textures and the text's font string (as
+-- Blizzard_ChatBubble/ChatBubbleTemplates.xml builds them). A forbidden bubble is listed too, with IsForbidden
+-- true, so an addon's own check is exercised. world.instance is whether the player is in an instance.
+world.bubbles, world.instance = {}, false
+-- Whether the player is in an instance (a party instance when world.instance is true), and its kind.
+function IsInInstance() if world.instance == true then return true, "party" end return false, "none" end
+C_ChatBubbles = {
+  -- Every bubble there is, in order.
+  GetAllChatBubbles = function() local out = {} for i, bubble in ipairs(world.bubbles) do out[i] = bubble end return out end,
+}
+
+-- A bubble's panel: its nine art textures and its text.
+local function bubblePanel(bubble, text)
+  local panel = stub.newWidget("Frame", nil, bubble)
+  panel:SetAllPoints()
+  for _ = 1, 9 do panel:CreateTexture(nil, "BACKGROUND"):SetTexture("TEST-ONLY-ART") end
+  panel.String = panel:CreateFontString(nil, "ARTWORK")
+  panel.String:SetFont(STANDARD_TEXT_FONT, 13, "")
+  panel.String:SetText(text)
+  return panel
+end
+
+-- The IsForbidden of a bubble addons may not touch (an instance's).
+local function alwaysForbidden() return true end
+
+-- A chat bubble appears over a speaker's head saying `text`, and CHAT_MSG_SAY fires (the message the engine
+-- raised it for). opts.forbidden makes it a bubble addons may not touch (an instance's); opts.empty one with no
+-- panel yet. Returns the bubble's index in world.bubbles.
+function world.addChatBubble(text, opts)
+  opts = opts or {}
+  local bubble = stub.newWidget("Frame", nil, UIParent)
+  bubble:SetSize(120, 40)
+  bubble:SetPoint("CENTER")
+  if not opts.empty then bubblePanel(bubble, text) end
+  if opts.forbidden then bubble.IsForbidden = alwaysForbidden end
+  world.bubbles[#world.bubbles + 1] = bubble
+  stub.fire("CHAT_MSG_SAY", text, "TEST-ONLY Speaker")
+  return #world.bubbles
+end
+
 -- The game's chat windows: NUM_CHAT_WINDOWS frames with tabs and edit boxes.
 local function chatFrames()
   local new = stub.newWidget
@@ -1940,5 +1981,6 @@ function world.reset()
   world.ah = emptyAuctionHouse()
   world.professions, world.recipes, world.cooldowns, world.openedRecipe = {}, {}, {}, nil
   world.mail, world.taken = {}, {}
+  world.bubbles, world.instance = {}, false
   refreshWatches()
 end

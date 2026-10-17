@@ -683,6 +683,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: look at the buttons beside the main chat window (the chat menu at the bottom of its column, the minimize box at the top, the voice channel, deafen and mute buttons, and text to speech and Quick Join if this client shows them); scroll the chat up a few lines; hover each button; click the chat menu, then the minimize box.
 - Expect: every one of those buttons sits on a small flat slate tile instead of the game's round art; the chat menu, minimize box and Quick Join show a quiet glyph that turns white on an accent tile under the mouse; the voice and text-to-speech buttons keep their own icon on the tile; scrolled up, a down-arrow glyph on a tile appears at the window's bottom-right and a click on it returns to the newest line; the chat menu still opens and the minimize box still collapses the window.
 - If it fails, paste: a screenshot of the chat column and `/vg errors`.
+
+### 14.7.7 Chat bubbles
+
+- Do: with chat bubbles on in the game's options (Options → Interface → Social → Chat Bubbles), say something in /say out in the world, then have a party member or an NPC speak near you; then enter a dungeon and say something there.
+- Expect: in the world, each speech bubble is a flat, slightly see-through slate panel with a soft shadow instead of the game's rounded white bubble, its text in Vanguard's font, light on the dark panel; the bubble appears and goes as before; inside the dungeon the bubbles keep the game's own look (the engine does not let addons touch them there) and `/vg errors` stays empty.
+- If it fails, paste: a screenshot of a bubble and `/vg errors`.
 ### 14.8.1 Character pane side tabs
 
 - Do: press C, then click each side tab in turn (Character, Reputation, Skills, Honor, Currency, Statistics).
