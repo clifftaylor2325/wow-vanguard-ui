@@ -1623,45 +1623,72 @@ end
 -- art T.ScrollBar fades, and the pieces each part can hold.
 T.SCROLL_ART = { "Background", "Backplate", "Overlay", "Track" }
 local SCROLL_PIECES = { "Begin", "Middle", "End", "Texture" }
--- The arrow buttons, and whether each points up (Back) or down (Forward).
-local SCROLL_ARROWS = { Back = true, Forward = false }
+-- The arrow buttons, faded away: the one scroll thumb (T.SCROLL) has no arrows.
+local SCROLL_ARROWS = { "Back", "Forward" }
+-- What a game thumb's hooks note about the mouse: over it (OnEnter, OnLeave) and holding it (OnMouseDown, OnMouseUp).
+local THUMB_HOOKS = { OnEnter = { "over", true }, OnLeave = { "over", false }, OnMouseDown = { "held", true }, OnMouseUp = { "held", false } }
+-- Per-frame state kept off the game's frames: a game thumb -> { bar, over, held }, the T.SCROLL line Vanguard
+-- drew down it and where the mouse is. (vgArrow, above, marks an arrow button faded once.)
+local vgThumb = ns.FrameState("vgThumb")
 
--- Fades one part of a scroll bar: a frame's own textures, or a texture, and its pieces.
-local function fadePart(part)
+-- Fades one part of a scroll bar: a frame's own textures (but those in keep), or a texture, and its pieces.
+local function fadePart(part, keep)
   if type(part) ~= "table" then return end
-  if part.GetRegions then T.FadeRegions(part) elseif part.SetAlpha then part:SetAlpha(0) end
+  if part.GetRegions then T.FadeRegions(part, keep) elseif part.SetAlpha then part:SetAlpha(0) end
   fadeKeys(part, SCROLL_PIECES)
 end
 
--- The thumb's edge in the accent while the mouse is over it.
-local function hoverAccent(f)
-  f:HookScript("OnEnter", function() T.SetBorder(f, { T.Accent() }) end)
-  f:HookScript("OnLeave", function() T.SetBorder(f, nil) end)
+-- A game thumb's line at the lit alpha while the mouse is over the thumb or holds it, the rest alpha otherwise.
+local function lightThumb(thumb)
+  local s = vgThumb[thumb]
+  s.bar:SetAlpha((s.over or s.held) and T.SCROLL.lit or T.SCROLL.rest)
 end
 
--- A scroll arrow in the theme, once: a flat button with the theme's Down icon,
--- turned upside down for the Back (up) arrow.
-local function arrowGlyph(button, up)
+-- Follows the mouse on a game thumb through hooks (never its own scripts), relighting its line on each change.
+local function watchThumb(thumb)
+  for script, note in pairs(THUMB_HOOKS) do
+    thumb:HookScript(script, ns.Guard("scroll thumb " .. script, function() vgThumb[thumb][note[1]] = note[2]; lightThumb(thumb) end))
+  end
+end
+
+-- The one scroll line (T.SCROLL) down the middle of a game thumb: text2, T.SCROLL.thumb wide, at the rest alpha.
+local function thumbLine(thumb)
+  local bar = T.Tint(T.Snap(thumb:CreateTexture(nil, "OVERLAY"), "fill"), "text2")
+  bar:SetTexture(T.WHITE)
+  bar:SetWidth(T.SCROLL.thumb)
+  bar:SetPoint("TOP")
+  bar:SetPoint("BOTTOM")
+  bar:SetAlpha(T.SCROLL.rest)
+  return bar
+end
+
+-- The line Vanguard drew on a game thumb, made (and the thumb's mouse watched) the first time.
+local function thumbBar(thumb)
+  if not vgThumb[thumb] then
+    vgThumb[thumb] = { bar = thumbLine(thumb) }
+    watchThumb(thumb)
+  end
+  return vgThumb[thumb].bar
+end
+
+-- A scroll arrow faded away, once: alpha 0, and no longer taking the mouse.
+local function fadeArrow(button)
   if vgArrow[button] then return end
-  T.Button(button)
-  vgArrow[button] = T.Tint(T.Snap(button:CreateTexture(nil, "OVERLAY")), "text2")
-  vgArrow[button]:SetTexture(T.Icon("Down"))
-  T.PixelSize(vgArrow[button], 10, 10, true)
-  vgArrow[button]:SetPoint("CENTER")
-  if up then vgArrow[button]:SetTexCoord(0, 1, 1, 0) end
+  vgArrow[button] = true
+  button:SetAlpha(0)
+  button:EnableMouse(false)
 end
 
--- One of the game's scroll bars in the theme: its track and art faded, the thumb a
--- raised panel (accent edge under the mouse), the arrows flat with the theme's arrow.
--- A bar without a thumb (not one of the game's) is left alone. Safe to run again.
+-- One of the game's scroll bars in the theme: its track and art faded, the thumb's art too with the one
+-- scroll line (T.SCROLL) down its middle, lit while the mouse is over the thumb or drags it, and the
+-- Back and Forward arrows faded away. A bar without a thumb (not one of the game's) is left alone. Safe
+-- to run again.
 function T.ScrollBar(bar)
   local thumb = bar.Thumb or (type(bar.Track) == "table" and bar.Track.Thumb)
   if type(thumb) ~= "table" then return bar end
   for _, key in ipairs(T.SCROLL_ART) do fadePart(bar[key]) end
-  fadePart(thumb)
-  if not painted[thumb] then hoverAccent(thumb) end
-  T.Panel(thumb, { raised = true, noSheen = true })
-  for key, up in pairs(SCROLL_ARROWS) do if type(bar[key]) == "table" then arrowGlyph(bar[key], up) end end
+  fadePart(thumb, { [thumbBar(thumb)] = true })
+  for _, key in ipairs(SCROLL_ARROWS) do if type(bar[key]) == "table" then fadeArrow(bar[key]) end end
   return bar
 end
 
