@@ -102,18 +102,18 @@ const wheelBody = (addon, delta) => addon.eval(`local s = Vanguard_QuestDialog.s
 it("quest dialog: a long greeting or quest text scrolls, a short one does not", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.fire("GOSSIP_SHOW");
-  expect(bodyScroll(addon), "a short greeting (14 px) and three numbered lines (84 px, 28 each) fit the body: nothing to scroll").toEqual([112, 0, 0]);
-  expect(panelHeights(addon), "the panel is sized to them: the 64 px header, the 112 px body and the 50 px footer").toEqual([226, 112]);
+  expect(bodyScroll(addon), "a short greeting (14 px), three numbered lines (84 px, 28 each) and the 12 px line gap fit the body: nothing to scroll").toEqual([114, 0, 0]);
+  expect(panelHeights(addon), "the panel is sized to them: the 64 px header, the 114 px body and the 50 px footer").toEqual([228, 114]);
   wheelBody(addon, -1);
   expect(bodyScroll(addon)[2], "the wheel stays at the top when there is no range").toBe(0);
   addon.eval('__greeting = "TEST-ONLY " .. string.rep("word ", 400)');
   addon.fire("GOSSIP_SHOW");
   expect(panelHeights(addon), "2010 characters wrap to 24 lines (336 px): the panel stops at its greatest height (360), the body's view at 246 (what the 64 px header and 50 px footer leave)").toEqual([360, 246]);
-  expect(bodyScroll(addon), "the child holds the text and the three lines (434 px), and the wheel can reach the 188 px past the view").toEqual([434, 188, 0]);
+  expect(bodyScroll(addon), "the child holds the text and the three lines (436 px), and the wheel can reach the 190 px past the view").toEqual([436, 190, 0]);
   wheelBody(addon, -1);
   expect(bodyScroll(addon)[2], "the wheel scrolls down a step of 40").toBe(40);
   wheelBody(addon, -50);
-  expect(bodyScroll(addon)[2], "and stops at the end of the content").toBe(188);
+  expect(bodyScroll(addon)[2], "and stops at the end of the content").toBe(190);
   wheelBody(addon, 100);
   expect(bodyScroll(addon)[2], "and at the top going back").toBe(0);
   wheelBody(addon, -1);
@@ -750,7 +750,7 @@ it("quest log: a long list and long quest text scroll, a short one does not", ()
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval("ns.GetModule('QuestLog').Open()");
   expect(addon.eval("local c = ns.GetModule('QuestLog').frame.close return { c:GetWidth(), c:GetHeight(), c:IsVisible() }"), "the close button has a size (it was 0 by 0, so it never showed): 20, an even count of whole screen pixels").toEqual([px(addon, 20, true), px(addon, 20, true), true]);
-  expect(logScrolls(addon), "three quests under two zones (two 18 px headers, three 28 px rows, an 8 px gap) and a short text fit the 384 px and 350 px views: nothing to scroll").toEqual({ list: [128, 0, 0], detail: [166, 0, 0] });
+  expect(logScrolls(addon), "three quests under two zones (two 18 px headers, three 28 px rows, an 8 px gap) and a short text fit the 384 px and 350 px views: nothing to scroll").toEqual({ list: [128, 0, 0], detail: [172, 0, 0] });
   expect(logThumbs(addon), "so no thumb and no soft edge show on either side").toEqual({ list: [false, false, false], detail: [false, false, false] });
   addon.eval(`for i = 1, 20 do local id = 91000 + i
     __log[#__log + 1] = { questID = id }
@@ -758,7 +758,7 @@ it("quest log: a long list and long quest text scroll, a short one does not", ()
     GetQuestLogQuestText = function() return "TEST-ONLY " .. string.rep("word ", 300) end`);
   addon.fire("QUEST_LOG_UPDATE");
   addon.update(0);
-  expect(logScrolls(addon), "23 rows of 28 px and two zone headers make the list 688 px; the wolves' 1510 characters, objectives, a row of rewards and the money line make the details 530 px").toEqual({ list: [688, 304, 0], detail: [530, 180, 0] });
+  expect(logScrolls(addon), "23 rows of 28 px and two zone headers make the list 688 px; the wolves' 1510 characters, objectives, a row of rewards and the money line make the details 536 px").toEqual({ list: [688, 304, 0], detail: [536, 186, 0] });
   expect(logThumbs(addon), "both sides show the scroll thumb, and the list's bottom edge fades (there is more below)").toEqual({ list: [true, false, true], detail: [true, false, true] });
   expect(addon.eval("local f = Vanguard_QuestLog return { f.listScroll.thumb:GetRight() - f.listScroll:GetRight(), f.listScroll.thumb:GetHeight(), f.detailScroll.thumb:GetRight() - f.detailScroll:GetRight() }"), "T.SPACE.col right of each view, as tall as its share of the content (384 of 688, 350 of 530)").toEqual([12, 384 * 384 / 688, 12]);
   wheelLog(addon, "listScroll", -1);
@@ -772,11 +772,11 @@ it("quest log: a long list and long quest text scroll, a short one does not", ()
   wheelLog(addon, "detailScroll", -3);
   addon.fire("QUEST_LOG_UPDATE");
   addon.update(0);
-  expect(logScrolls(addon).detail, "the details scroll too (three steps of 40), and the same quest redrawn keeps its place").toEqual([530, 180, 120]);
+  expect(logScrolls(addon).detail, "the details scroll too (three steps of 40), and the same quest redrawn keeps its place").toEqual([536, 186, 120]);
   logLine(addon, 2);
-  expect(logScrolls(addon).detail, "another quest starts at the top, with its own height (no objectives or rewards)").toEqual([448, 98, 0]);
+  expect(logScrolls(addon).detail, "another quest starts at the top, with its own height (no objectives or rewards)").toEqual([454, 104, 0]);
   wheelLog(addon, "detailScroll", -100);
-  expect(logScrolls(addon).detail[2], "the wheel stops at the end of the details").toBe(98);
+  expect(logScrolls(addon).detail[2], "the wheel stops at the end of the details").toBe(104);
 });
 it("quest log: the title line is the one window chrome (role, colour, offsets, count, X, Escape), the panel is opaque", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
