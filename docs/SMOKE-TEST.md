@@ -671,6 +671,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: have another player cast a defensive spell on you (a paladin's Blessing of Protection or Blessing of Sacrifice, say).
 - Expect: it shows in Vanguard's buff row only; the game's external defensives frame (an extra icon near the buffs) never shows.
 - If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.7.6 Chat side buttons
+
+- Do: look at the buttons beside the main chat window (the chat menu at the bottom of its column, the minimize box at the top, the voice channel, deafen and mute buttons, and text to speech and Quick Join if this client shows them); scroll the chat up a few lines; hover each button; click the chat menu, then the minimize box.
+- Expect: every one of those buttons sits on a small flat slate tile instead of the game's round art; the chat menu, minimize box and Quick Join show a quiet glyph that turns white on an accent tile under the mouse; the voice and text-to-speech buttons keep their own icon on the tile; scrolled up, a down-arrow glyph on a tile appears at the window's bottom-right and a click on it returns to the newest line; the chat menu still opens and the minimize box still collapses the window.
+- If it fails, paste: a screenshot of the chat column and `/vg errors`.
 ### 14.8.1 Character pane side tabs
 
 - Do: press C, then click each side tab in turn (Character, Reputation, Skills, Honor, Currency, Statistics).

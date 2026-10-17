@@ -3,8 +3,10 @@
 -- the accent on the selected one, and the edit box becomes a themed input.
 -- Chat text is Small, Medium or Large, scaled by the Text size setting (so
 -- one slider shrinks everything), or the size the game's own chat menu set.
--- Messages are never touched: in Midnight some chat text is hidden from
--- addons, so this module only skins.
+-- The side buttons (chat menu, voice, text to speech, Quick Join, each
+-- window's minimize box and scroll-to-bottom arrow) lose their round art and
+-- sit on the theme's control tiles. Messages are never touched: in Midnight
+-- some chat text is hidden from addons, so this module only skins.
 
 local ADDON, ns = ...
 
@@ -90,7 +92,65 @@ local function skinEditBox(box)
   T.Text(box, "label")
 end
 
--- Skins chat window i (and its tab and edit box) if this client has it.
+-- The chat frame's shared side buttons drawn as window controls with a theme
+-- glyph: the chat menu and Quick Join (when this client has it). Each window's
+-- minimize box and scroll-to-bottom arrow are found by name in skinIndex.
+CH.GLYPH_BUTTONS = { ChatFrameMenuButton = "NavChat", QuickJoinToastButton = "Social" }
+
+-- The side buttons that keep their own state icon (voice channel, deafen,
+-- mute, text to speech), each on the theme's resting tile.
+CH.ICON_BUTTONS = { "ChatFrameChannelButton", "ChatFrameToggleVoiceDeafenButton", "ChatFrameToggleVoiceMuteButton", "TextToSpeechButton" }
+
+-- Quick Join's friend and queue counts, drawn over its glyph in the badge role.
+CH.BUTTON_COUNTS = { "FriendCount", "QueueCount" }
+
+-- Whether this is a button frame that can carry a tile (a frame with regions of its own).
+local function isButton(button)
+  return type(button) == "table" and type(button.CreateTexture) == "function" and type(button.GetRegions) == "function"
+end
+
+-- A side button that keeps its own state icon: round art faded, the icon on
+-- the resting tile. The game's alert flash is faded too; its animation drives
+-- the flash's alpha while it plays, so the flash still shows.
+local function iconButton(button)
+  if not isButton(button) then return end
+  T.FadeRegions(button, { [button.Icon or false] = true })
+  T.ControlPlate(button)
+end
+
+-- Quick Join's counts over its glyph: badge text (the game's colour), drawn above the glyph.
+local function raiseCounts(button)
+  for _, key in ipairs(CH.BUTTON_COUNTS) do
+    local count = button[key]
+    if type(count) == "table" and type(count.SetDrawLayer) == "function" then
+      T.Text(count, "badge", false)
+      count:SetDrawLayer("OVERLAY", 7)
+    end
+  end
+end
+
+-- A side button as a window control: round art faded, a theme glyph on the tile.
+local function glyphButton(button, icon)
+  if not isButton(button) then return end
+  T.WindowControl(button, icon)
+  raiseCounts(button)
+end
+
+-- A window's own side buttons: the minimize box on its button column and the
+-- scroll-to-bottom arrow (the game shows that one only when scrolled up).
+local function skinWindowButtons(frame, name)
+  local column = frame.buttonFrame or _G[name .. "ButtonFrame"]
+  if type(column) == "table" then glyphButton(column.minimizeButton or _G[name .. "ButtonFrameMinimizeButton"], "Minimize") end
+  glyphButton(frame.ScrollToBottomButton, "Down")
+end
+
+-- The chat frame's shared side buttons on this client: glyph controls and icon buttons.
+function CH.SkinButtons()
+  for name, icon in pairs(CH.GLYPH_BUTTONS) do glyphButton(_G[name], icon) end
+  for _, name in ipairs(CH.ICON_BUTTONS) do iconButton(_G[name]) end
+end
+
+-- Skins chat window i (and its tab, edit box and side buttons) if this client has it.
 local function skinIndex(i, settings)
   local frame = _G["ChatFrame" .. i]
   if not frame then
@@ -100,6 +160,7 @@ local function skinIndex(i, settings)
   local tab, box = _G["ChatFrame" .. i .. "Tab"], _G["ChatFrame" .. i .. "EditBox"]
   if tab then skinTab(tab) end
   if box then skinEditBox(box) end
+  skinWindowButtons(frame, "ChatFrame" .. i)
 end
 
 -- Re-colors the tabs so the selected window's tab carries the accent.
@@ -111,11 +172,12 @@ function CH.UpdateTabs()
   end
 end
 
--- Skins every chat window this client has.
+-- Skins every chat window this client has, and the chat frame's side buttons.
 function CH.SkinAll()
   for i = 1, windowCount() do
     skinIndex(i, CH.settings)
   end
+  CH.SkinButtons()
   CH.UpdateTabs()
 end
 

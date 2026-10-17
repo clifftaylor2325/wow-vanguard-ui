@@ -260,6 +260,7 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | Aura and cooldown sweeps | the dark sweep, no edge line and no end flash (bling) | the aura's duration | the aura's duration | - |
 | Micro menu buttons | the game's own alert flash (kept on the strip) | the game's | the game's | - (the game's) |
 | Stance and pet bars | the game's attack flash and auto-cast mark (kept) | the game's | the game's | - (the game's) |
+| Chat side buttons (voice channel, scroll to bottom, Quick Join) | the game's own alert flash and toast animations (kept over the tile; the round art under them is at alpha 0) | the game's | the game's | - (the game's) |
 
 Sparks (cast bars, power ticks, the swing timer) move with what they show; they are not fades and Reduce motion leaves them.
 
