@@ -1850,6 +1850,8 @@ end
 
 -- A game slider uses T.SLIDER (above), the pill slider's look, on the game's geometry: the fill runs from the
 -- low end to the thumb in quiet `borderHi` (Cliff's 5a), so a page of sliders is not a row of brass bars.
+-- (The game slider's helpers sit in a block of their own: the file is near Lua's limit of 200 locals.)
+do
 -- Each orientation: the corners at the start and end of the track, which side it runs between, the
 -- setters for a part's length and thickness, and which way the fill's far corner sits from the thumb.
 local SLIDER_AXES = {
@@ -1973,6 +1975,7 @@ function T.Slider(slider)
   T.FadeRegions(slider)
   paintSlider(slider, sliderOf[slider])
   return slider
+end
 end
 
 -- The art the game's three tab templates draw (PanelTabButtonTemplate,
