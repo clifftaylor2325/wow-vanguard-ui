@@ -129,22 +129,21 @@ end
 
 -- Keeps a countdown moving: a once-a-second redraw while a watched quest's timer runs (and the tracker
 -- shows), stopped when none is left. A timed quest nobody watches draws no countdown, so it ticks nothing.
-local function tickTimers(timed)
+function QT.TickTimers(timed)
   ns.Every("quest timers", timed and QT.TICK_EVERY or nil, QT.Refresh, QT.frame)
 end
 
--- Every watched quest, in the chosen order, each timed one with its seconds left.
+-- Every watched quest, in the chosen order, each timed one with its seconds left; and whether any is timed.
 function QT.Quests()
   local out, timers, timed = {}, QT.Timers(), false
   for _, id in ipairs(QT.Watched()) do
     local q = QT.Quest(id)
     if q then q.timer = timers[id] timed = timed or q.timer ~= nil out[#out + 1] = q end
   end
-  tickTimers(timed)
   if QT.settings.order == "nearest" then
     table.sort(out, function(a, b) return distance(a) < distance(b) end)
   end
-  return out
+  return out, timed
 end
 
 -- Calls a global achievement function by name, if this client has it (all its results).

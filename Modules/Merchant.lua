@@ -146,9 +146,10 @@ function MC.ThemeCombatText(justLoaded)
 end
 
 -- The engine's floating damage numbers (over your target) in the theme font: the path the engine
--- reads, DAMAGE_TEXT_FONT, is set at Vanguard's own load, before the engine reads it, unless the
--- theme font is the game's own (Font set to the game's, or a Korean or Chinese client), which
--- keeps the game's damage font. A client without the path is left alone.
+-- reads, DAMAGE_TEXT_FONT, is set at Vanguard's own load, before the engine reads it, and again when
+-- the module enables (after the login profile switch), unless the theme font is the game's own (Font
+-- set to the game's, or a Korean or Chinese client), which keeps the game's damage font. A client
+-- without the path is left alone.
 function MC.ThemeDamageFont()
   local path = T.Font(true)
   if type(DAMAGE_TEXT_FONT) ~= "string" or path == STANDARD_TEXT_FONT then return end
@@ -170,4 +171,5 @@ function MC.Enable(settings)
   if settings.errors then filterErrors() end
   MC.ThemeFonts()
   MC.ThemeCombatText()
+  MC.ThemeDamageFont()
 end

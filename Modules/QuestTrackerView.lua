@@ -254,8 +254,9 @@ end
 -- can't be moved in combat, so they keep their places until combat ends and one
 -- keyed placement runs then, however many redraws asked for it.
 function QT.Refresh()
-  local f, quests = QT.frame, QT.Quests()
+  local f, quests, timed = QT.frame, QT.Quests()
   local all = QT.Rows(quests)
+  QT.TickTimers(timed)
   f.count:SetText(#quests > 0 and tostring(#quests) or "")
   f.toggle.icon:SetTexture(T.Icon(QT.collapsed and "Right" or "Down"))
   f.blocks.Reset()
