@@ -692,3 +692,26 @@ GW.Add("town", "framed", { "GhostFrame" }, GW.SkinGhost)
 GW.Add("town", "popups", { "BasicMessageDialog" })
 GW.Add("town", "popups", { "AddonDialog" }, GW.SkinAddonDialog)
 GW.Add("town", "framed", { "CurrencyTransferMenu" }, GW.SkinCurrencyTransfer)
+
+-- Auction house multisell progress ------------------------------------------------------------------
+
+-- The bar the game fills as a multi-stack sale posts, in the theme: a flat track (GW.SkinProgress), the item's icon
+-- kept and cropped, the "Creating 3/10" text in the label font.
+local function styleMultisellBar(bar)
+  GW.SkinProgress(bar)
+  if type(bar) ~= "table" then return end
+  GW.ShowTexture(bar.Icon)
+  if type(bar.Icon) == "table" and bar.Icon.SetTexCoord then T.Crop(bar.Icon) end
+  GW.SkinText(bar.Text, "label", "text")
+end
+
+-- The multisell progress frame (it fades itself out when the sale is done): its parchment and end caps faded, a flat
+-- panel behind it, the bar, and the cancel cross on a control tile with its own picture kept.
+function GW.SkinMultisell(frame)
+  T.FadeRegions(frame)
+  T.Panel(frame, { shadow = true })
+  styleMultisellBar(frame.ProgressBar)
+  GW.SkinPlate(frame.CancelButton)
+end
+
+GW.Add("town", "onDemand", "Blizzard_AuctionHouseUI", { "AuctionHouseMultisellProgressFrame" }, GW.SkinMultisell)

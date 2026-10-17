@@ -637,6 +637,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the transfer window is a flat panel; the source dropdown is a flat button with its arrow; the amount box is a dark edit box; Max, Confirm and Cancel are Vanguard buttons; a thin one-pixel line (no game ornament) runs above the transaction; the four captions (source, amount, and the two balance lines) are light, not gold; the transfer works as before.
 - If it fails, paste: a screenshot of the window and `/vg errors`.
 
+### 14.3.13 Auction house multi-stack sale progress
+
+- Do: at the auction house, post a sale of several stacks at once (a quantity of more than one stack on the Sell tab), and watch the bar that appears at the bottom of the screen; click its cross on a second sale to cancel.
+- Expect: the bar is on a flat panel with no brass end caps or parchment; its track is flat with the theme's bar fill, the item's icon beside it is square-cropped, the "Creating 1/5" text is light, and the cancel cross sits on a grey tile with its picture; it fades out when the sale finishes, and cancelling still stops the sale.
+- If it fails, paste: a screenshot of the bar and `/vg errors`.
+
 ### 14.4.1 Game options
 
 - Do: press Escape, click Options. Look at the window, click through Game and AddOns, type in the search box, change a setting, click Apply, then Close.

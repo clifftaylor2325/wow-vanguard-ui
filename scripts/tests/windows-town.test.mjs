@@ -675,3 +675,38 @@ it("R1.3 the merchant: the town group off leaves its inside the game's (the wind
   noWindows.eval("MerchantFrame:Show()");
   expect([merchantRow(noWindows, "MerchantItem1")[0], windowErrors(noWindows)], "the Windows module off: nothing, no error").toEqual([1, "none"]);
 });
+
+// TEST-ONLY: the auction house's multisell progress frame (parchment, end caps, a casting-bar-shaped progress bar with an icon and text, a cancel button).
+const MULTISELL_ENV = `${TOWN_READERS}
+  local f = __window("AuctionHouseMultisellProgressFrame")
+  f.Left, f.Right = f:CreateTexture(), f:CreateTexture()
+  local bar = CreateFrame("StatusBar", nil, f) bar:SetStatusBarTexture("TEST-ONLY-ART") bar.Background = bar:CreateTexture() bar.Border = bar:CreateTexture()
+  bar.Icon = bar:CreateTexture() bar.Text = __text(bar, "Creating 0/5") f.ProgressBar = bar
+  f.CancelButton = CreateFrame("Button", nil, f) f.CancelButton:SetNormalTexture("TEST-ONLY-ART")
+`;
+
+it("R3.4b the auction house multisell progress: flat panel and track, icon and cancel cross kept, text in the label font", () => {
+  const addon = loggedIn(MULTISELL_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  addon.eval("AuctionHouseMultisellProgressFrame:Show()");
+  expect(addon.eval(`local f = AuctionHouseMultisellProgressFrame local bar = f.ProgressBar
+    return { __faded(f), f.Left:GetAlpha(), __faded(bar), bar.Icon:GetAlpha(), __lit(bar.Text, "label", "text"), bar.__barTexture ~= nil, select("#", f.CancelButton:GetRegions()) > 0 }`),
+    "frame and end caps faded, the bar a flat track, the icon shown, the text lit, the cancel cross on a tile").toEqual([true, 0, true, 1, true, true, true]);
+  const painted = windowState(addon, "AuctionHouseMultisellProgressFrame").painted;
+  addon.eval("AuctionHouseMultisellProgressFrame:Hide() AuctionHouseMultisellProgressFrame:Show()");
+  expect(windowState(addon, "AuctionHouseMultisellProgressFrame").painted, "showing it again paints nothing more").toBe(painted);
+});
+
+it("R3.4b the auction house multisell progress: group off leaves it the game's; a frame without its parts loads cleanly", () => {
+  const off = loggedIn(MULTISELL_ENV, { savedVariables: OFF });
+  off.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  off.eval("AuctionHouseMultisellProgressFrame:Show()");
+  expect(windowState(off, "AuctionHouseMultisellProgressFrame").art !== 0, "art left").toBe(true);
+  const bare = loggedIn('CreateFrame("Frame", "AuctionHouseMultisellProgressFrame", UIParent):Hide()');
+  bare.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  bare.eval("AuctionHouseMultisellProgressFrame:Show()");
+  const plain = loggedIn(`${MULTISELL_ENV} AuctionHouseMultisellProgressFrame.ProgressBar.Icon = {}`);
+  plain.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  plain.eval("AuctionHouseMultisellProgressFrame:Show()");
+  expect([windowErrors(bare), windowErrors(plain)], "a frame with no bar, a bar whose icon is not a texture: no error").toEqual(["none", "none"]);
+});
