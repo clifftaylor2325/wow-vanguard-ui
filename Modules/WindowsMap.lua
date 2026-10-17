@@ -459,6 +459,13 @@ GW.CALENDAR_EDITS = {
 }
 -- The pictures a dialog keeps: the holiday's art (key Texture of its frame) and the icon on the create dialog.
 GW.CALENDAR_PICTURES = { "CalendarCreateEventIcon" }
+-- The event dialogs' tooltip-style boxes (the description, the invite list), which the window skin leaves as the game
+-- draws them, and their ornamental dividers.
+GW.CALENDAR_BOXES = {
+  CalendarViewEventFrame = { "CalendarViewEventDescriptionContainer", "CalendarViewEventInviteList" },
+  CalendarCreateEventFrame = { "CalendarCreateEventDescriptionContainer", "CalendarCreateEventInviteList" },
+}
+GW.CALENDAR_DIVIDERS = { CalendarViewEventFrame = "CalendarViewEventDivider", CalendarCreateEventFrame = "CalendarCreateEventDivider" }
 for name, list in pairs(GW.CALENDAR_BUTTONS) do GW.AddButtons(name, list) end
 
 -- One day of the grid: the parchment on its normal texture faded (the event icons, the date, the highlight and
@@ -516,7 +523,16 @@ local function skinKeepingPictures(frame)
   for part, alpha in pairs(kept) do part:SetAlpha(alpha) end
 end
 
--- One of the calendar's dialogs: the window skin, the header, the close button and the text boxes it has.
+-- A tooltip-style box in a dialog (a description or an invite list): its game backdrop faded, an inset panel in the theme.
+local function dressBox(box)
+  if not isFrame(box) then return end
+  T.FadeRegions(box)
+  if type(box.NineSlice) == "table" then box.NineSlice:SetAlpha(0) end
+  T.Panel(box, { inset = true, noSheen = true })
+end
+
+-- One of the calendar's dialogs: the window skin, the header, the close button, the text boxes it has, and its boxes
+-- and divider (see GW.CALENDAR_BOXES, GW.CALENDAR_DIVIDERS).
 function GW.SkinCalendarDialog(frame)
   local name = frame:GetName()
   skinKeepingPictures(frame)
@@ -525,6 +541,9 @@ function GW.SkinCalendarDialog(frame)
   for _, edit in ipairs(GW.CALENDAR_EDITS[name] or {}) do
     if isFrame(_G[edit]) then T.EditBox(_G[edit]) end
   end
+  for _, box in ipairs(GW.CALENDAR_BOXES[name] or {}) do dressBox(_G[box]) end
+  local divider = _G[GW.CALENDAR_DIVIDERS[name] or ""]
+  if type(divider) == "table" and divider.SetAlpha then divider:SetAlpha(0) end
 end
 
 GW.Add("map", "onDemand", "Blizzard_Calendar", { "CalendarFrame" }, GW.SkinCalendar)
