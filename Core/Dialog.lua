@@ -26,14 +26,21 @@ local BUTTON_W = 120
 -- The text's inset from an edit box's border (W.Input's).
 local TEXT_INSET = 6
 
--- A themed button on a dialog: T.BUTTON_H tall, 120 wide unless told otherwise.
-local function button(parent, label, width)
-  local b = T.Button(CreateFrame("Button", nil, parent))
+-- The label of each button kind: { text role, colour token }. Secondary is the plain button; primary
+-- is a SemiBold `void` label on the accent fill; danger is a secondary with a `bad` label.
+local KIND_LABELS = { secondary = { "label", "text" }, primary = { "name", "void" }, danger = { "label", "bad" } }
+
+-- A themed button on a dialog: T.BUTTON_H tall, 120 wide unless told otherwise, of a kind ("secondary"
+-- unless given, "primary" or "danger").
+local function button(parent, label, width, kind)
+  local look = KIND_LABELS[kind or "secondary"]
+  local b = T.Button(CreateFrame("Button", nil, parent), kind == "primary" and "primary" or nil)
   b:SetSize(width or BUTTON_W, T.BUTTON_H)
-  b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label")
+  if kind == "primary" then b.fill = T.FillParts(b, "BACKGROUND", 1, "accent") end
+  b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), look[1])
   b.text:SetPoint("CENTER")
   b.text:SetText(label)
-  T.Color(b.text, "text")
+  T.Color(b.text, look[2])
   return b
 end
 ns.DialogButton = button

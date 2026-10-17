@@ -1166,7 +1166,7 @@ end
 
 -- Places a button's hover line (one pixel inside its top border, in borderHi) when it is painted.
 local function paintHoverLine(entry, button)
-  placeSheen(entry.parts.hoverLine, button, entry.opts.pad, "borderHi", nil, entry.round)
+  placeSheen(entry.parts.hoverLine, button, entry.opts.pad, entry.opts.hoverTo or "borderHi", nil, entry.round)
 end
 
 -- Each themed button's hover parts (weak; kept off the button, which may be one of the game's).
@@ -1180,7 +1180,7 @@ function T.HoverParts(button) return hoverOf[button] end
 -- inset fill and a one-pixel borderHi line along its top, both clear until the mouse comes over it
 -- (T.EaseHover eases them).
 local function hoverParts(button, entry)
-  local fill = T.FillParts(button, "BACKGROUND", 1, "raisedHover")
+  local fill = T.FillParts(button, "BACKGROUND", entry.opts.hoverTo and 2 or 1, entry.opts.hoverTo or "raisedHover")
   T.FillAlpha(fill, 0)
   entry.parts.hoverLine, entry.paint = solid(button, "BORDER", 2, "border"), paintHoverLine
   entry.parts.hoverLine:SetAlpha(0)
@@ -1280,11 +1280,19 @@ local function stateParts(button)
   pcall(button.HookScript, button, "OnEnable", ns.Guard("button state", function(b) T.DisabledLook(b, false) end))
 end
 
--- A flat button: inset panel with a bevel, template art faded, an eased hover (raisedHover and a
--- borderHi top line), a press look and a disabled look.
-function T.Button(button)
+-- The panel options of each button kind: the secondary is an inset panel with a bevel; the primary
+-- has no bevel or sheen (ns.DialogButton lays its accent fill under the hover), and hovers to accentText.
+local BUTTON_KINDS = {
+  secondary = { inset = true, bevel = true },
+  primary = { inset = true, noBevel = true, noSheen = true, hoverTo = "accentText" },
+}
+
+-- A flat button of a kind ("secondary" unless given, or "primary"; read on the first call only): inset
+-- panel with a bevel, template art faded, an eased hover (raisedHover and a borderHi top line), a press
+-- look and a disabled look.
+function T.Button(button, kind)
   local fresh = not painted[button]
-  local entry = base(button, "button", { inset = true, bevel = true })
+  local entry = base(button, "button", BUTTON_KINDS[kind or "secondary"])
   if fresh then
     T.FadeRegions(button, { [entry.parts.bg] = true })
     hoverParts(button, entry)
