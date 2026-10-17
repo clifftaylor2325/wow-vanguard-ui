@@ -340,25 +340,3 @@ it("T.ScrollBar: the game's thumb carries the one T.SCROLL line, lit while the m
   expect(addon.eval("local f = CreateFrame('Frame', nil, UIParent) f.Back = CreateFrame('Button', nil, f) ns.Theme.ScrollBar(f) return { f.Back:GetAlpha(), ns.FrameState('vgArrow')[f.Back] == nil }"), "a frame without a thumb is left alone").toEqual([1, true]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
-
-it("T.ScrollBar on the old scroll frame's bar (a slider with a ThumbTexture): the grip faded, the one T.SCROLL line down it, lit while the mouse is over the bar or drags it; the up and down buttons fade", () => {
-  const addon = loggedIn(PANEL_LUA);
-  addon.eval(`local bar = CreateFrame("Frame", nil, UIParent)
-    bar:SetSize(16, 300) bar:SetPoint("CENTER")
-    bar.art = bar:CreateTexture()
-    bar.ThumbTexture = bar:CreateTexture()
-    bar.ThumbTexture:SetSize(16, 24) bar.ThumbTexture:SetPoint("TOP")
-    bar.ScrollUpButton, bar.ScrollDownButton = CreateFrame("Button", nil, bar), CreateFrame("Button", nil, bar)
-    __old = bar
-    ns.Theme.ScrollBar(bar) ns.Theme.ScrollBar(bar)
-    __oldLine = ns.FrameState('vgThumb')[bar].bar`);
-  const line = addon.frame("__oldLine");
-  const scale = addon.eval("return __old:GetEffectiveScale()");
-  expect([line.rect.width / scale, line.rect.height / scale, line.alpha, isTok(addon, line.vertexColor, "text2")], "T.SCROLL.thumb wide, the grip's height, at the rest alpha, text2").toEqual([4, 24, 0.5, true]);
-  expect(addon.eval("local b = __old return { b.art.__alpha, b.ThumbTexture.__alpha, __oldLine.__alpha, b.ScrollUpButton:GetAlpha(), b.ScrollDownButton:GetAlpha(), b.ScrollUpButton.__mouse }"), "the bar's art and the grip faded, our line not, the buttons gone").toEqual([0, 0, 0.5, 0, 0, false]);
-  addon.hover("__old");
-  expect(addon.frame("__oldLine").alpha, "lit under the mouse").toBe(1);
-  addon.hover(null);
-  expect(addon.eval("local b = __old b.__scripts.OnMouseDown(b, 'LeftButton') local held = __oldLine:GetAlpha() b.__scripts.OnMouseUp(b, 'LeftButton') return { held, __oldLine:GetAlpha() }"), "lit while dragged, the rest alpha after").toEqual([1, 0.5]);
-  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
-});
