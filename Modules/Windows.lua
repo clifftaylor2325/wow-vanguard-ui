@@ -236,6 +236,21 @@ function GW.FadeNamed(names)
   end
 end
 
+-- A money line's three denominations (MoneyFrameTemplate and SmallMoneyFrameTemplate, Blizzard_MoneyFrame:
+-- a button each, its figure in Text beside its coin).
+GW.MONEY_PARTS = { "GoldButton", "SilverButton", "CopperButton" }
+
+-- A money line (the merchant's and its rows' prices; for mail, trade and the bank too) in the theme font:
+-- each denomination's figure in the number role, its colour left as the game sets it (red when you can't
+-- pay), its coin kept. A frame the client lacks, or one without the parts, is skipped.
+function GW.SkinMoney(frame)
+  if type(frame) ~= "table" then return end
+  for _, key in ipairs(GW.MONEY_PARTS) do
+    local fs = type(frame[key]) == "table" and frame[key].Text
+    if type(fs) == "table" and fs.SetFont then T.Text(fs, "number", false) end
+  end
+end
+
 -- A breath or fatigue bar: the window skin hugging the bar (no room around it), and its bar in the theme's bar texture.
 function GW.SkinTimer(frame)
   GW.Skin(frame, 0)
