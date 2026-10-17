@@ -1516,6 +1516,12 @@ end
 -- box stays `inset` and only the mark carries the accent, so many-of-many stays light). [DECIDE] 6.8
 -- there asks whether it becomes an `accent`-filled box with a `void` mark: fill = "accent", markColor = "void".
 T.CHECK = { size = 16, mark = 12, markColor = "accentText", hover = "borderHi", fill = nil }
+-- A slider's look, read by the options window's pill slider (and by the game's own sliders once they are skinned): the track's height and its
+-- colour with its outline, the fill under the thumb (`borderHi`, a quiet grey, so a page of sliders is not a row
+-- of brass bars: [DECIDE] 5a, Cliff 2026-10-17), the thumb's size and colour, the thumb's colour while the slider
+-- is locked or disabled, and the shade under the thumb's lit edge.
+T.SLIDER = { height = 8, thumb = 12, track = "inset", line = "borderHi", fill = "borderHi", thumbColor = "white",
+  thumbOff = "disabled", shade = "shade" }
 -- Each themed check button's parts (weak): { box = the inset panel, fill = its checked fill, mark = the glyph }.
 local checkOf = setmetatable({}, { __mode = "k" })
 
