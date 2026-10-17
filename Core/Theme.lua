@@ -1631,7 +1631,7 @@ end
 -- thickness, the thumb's size, and the colours of the track, its outline, the fill (from the low end to
 -- the thumb: quiet `borderHi`, Cliff's 5a in docs/design/UI-COHERENCE.md, so a page of sliders is not
 -- a row of brass bars), the thumb and its shade.
-T.SLIDER = { height = 8, thumb = 12, track = "inset", line = "borderHi", fill = "borderHi", thumbColor = "white", shade = "shade" }
+T.SLIDER = { height = 8, thumb = 12, track = "inset", line = "borderHi", fill = "borderHi", thumbColor = "white", shade = "shade", knobLine = "edge" }
 -- The Pill art's three cuts: the round start, the middle that stretches, the round end.
 local PILL_CUTS = { { 0, 0.25 }, { 0.25, 0.75 }, { 0.75, 1 } }
 -- Each orientation: the corners at the start and end of the track, which side it runs between, the
@@ -1691,15 +1691,16 @@ local function sliderFill(bar, axis, thumb)
   return { cap, mid }
 end
 
--- The knob and its shade, T.SLIDER.thumb across, centred on the game's (faded) thumb, so they move with it.
+-- The knob, its shade and its dark outline (PR #395's thumb), T.SLIDER.thumb across, stacked in that order
+-- above the track's outline and centred on the game's (faded) thumb, so they move with it.
 local function sliderKnob(bar, thumb)
-  local knob, shade = bar:CreateTexture(nil, "OVERLAY", nil, 1), bar:CreateTexture(nil, "OVERLAY", nil, 2)
-  for t, name in pairs({ [knob] = "Knob", [shade] = "KnobShade" }) do
+  local knob, shade, line = bar:CreateTexture(nil, "OVERLAY", nil, 1), bar:CreateTexture(nil, "OVERLAY", nil, 2), bar:CreateTexture(nil, "OVERLAY", nil, 3)
+  for t, name in pairs({ [knob] = "Knob", [shade] = "KnobShade", [line] = "KnobLine" }) do
     t:SetTexture(T.Texture(name))
     T.PixelSize(t, T.SLIDER.thumb, T.SLIDER.thumb, true)
     t:SetPoint("CENTER", thumb)
   end
-  return knob, shade
+  return knob, shade, line
 end
 
 -- Paints a slider: the track, outline and fill in their colours, the knob in the disabled tier while
@@ -1711,6 +1712,7 @@ local function paintSlider(slider, s)
   end
   T.Tint(s.knob, off and "disabled" or T.SLIDER.thumbColor)
   T.Tint(s.shade, T.SLIDER.shade)
+  T.Tint(s.knobLine, T.SLIDER.knobLine)
 end
 
 -- Makes a slider's parts along its orientation: the bar with the track, the fill, the outline over
@@ -1719,8 +1721,8 @@ local function sliderParts(slider, thumb)
   local axis = SLIDER_AXES[type(slider.GetOrientation) == "function" and slider:GetOrientation()] or SLIDER_AXES.HORIZONTAL
   local bar = sliderBar(slider, axis)
   local s = { bar = bar, track = sliderPill(bar, axis, "BORDER", "Pill"), fill = sliderFill(bar, axis, thumb) }
-  s.line = sliderPill(bar, axis, "OVERLAY", "PillLine")
-  s.knob, s.shade = sliderKnob(bar, thumb)
+  s.line = sliderPill(bar, axis, "OVERLAY", "SliderLine")
+  s.knob, s.shade, s.knobLine = sliderKnob(bar, thumb)
   local repaint = ns.Guard("slider state", function(f) paintSlider(f, sliderOf[f]) end)
   for _, script in ipairs({ "OnEnable", "OnDisable" }) do pcall(slider.HookScript, slider, script, repaint) end
   return s
