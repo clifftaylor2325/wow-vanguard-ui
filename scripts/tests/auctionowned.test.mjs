@@ -157,18 +157,18 @@ it("your auctions: refused cancels, scrolling, unknown names, hidden costs, and 
 // Two more dust auctions of yours: 2 at 1s 30c a unit (undercut by the 1s 20c up) and 2 at 1s 10c (not).
 const MORE_DUST = `table.insert(__wfgWorld.ah.owned, { auctionID = 506, itemKey = { itemID = 10940 }, status = 0, quantity = 2, buyoutAmount = 130 })
   table.insert(__wfgWorld.ah.owned, { auctionID = 507, itemKey = { itemID = 10940 }, status = 0, quantity = 2, buyoutAmount = 110 })`;
-// Your auctions' status line: [its text, its font size, in the text2 colour].
+// Your auctions' status line: [its text, its font size, as the colour token].
 const ownedTier = (addon) => {
   const t = addon.frame(`${OWNED_CARD}.table.status`);
-  return [t.text, t.font.size, isTok(addon, t.textColor, "text2")];
+  return [t.text, t.font.size, ["text2", "muted"].find((k) => isTok(addon, t.textColor, k))];
 };
-it("your auctions' line, while there are none to list, is an empty-state line (label text2), before a check and after", () => {
+it("your auctions' line, while there are none to list, is an empty-state line (label muted), before a check and after", () => {
   const addon = atAuctionHouse(BAGS);
   const label = addon.eval("return ns.Theme.RoleSize('label')");
-  expect(ownedTier(addon), "before a check: what Check undercuts does").toEqual(["Check undercuts lists your auctions and marks the ones someone asks less for.", label, true]);
+  expect(ownedTier(addon), "before a check: what Check undercuts does").toEqual(["Check undercuts lists your auctions and marks the ones someone asks less for.", label, "muted"]);
   addon.click(`${OWNED_CARD}.check`);
   addon.fire("OWNED_AUCTIONS_UPDATED");
-  expect(ownedTier(addon), "checked, none up: said").toEqual(["No auctions of yours are up.", label, true]);
+  expect(ownedTier(addon), "checked, none up: said").toEqual(["No auctions of yours are up.", label, "muted"]);
   addon.eval(`__wfgWorld.ah.owned = { { auctionID = 501, itemKey = { itemID = 10940 }, status = 0, quantity = 5, buyoutAmount = 150 } }`);
   addon.fire("OWNED_AUCTIONS_UPDATED");
   expect(ownedTier(addon)[0], "an auction listed: nothing to say").toBe("");

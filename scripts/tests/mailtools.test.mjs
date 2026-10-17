@@ -187,12 +187,12 @@ it("the panel: a card heading with no X, opaque, T.SPACE.gap in from its edges, 
   expect(inset("rows[8]")[3], "the last row clears a gap, a button and a gap above the bottom").toBe(gap + buttonH + gap);
 });
 
-it("the panel's two plain lines: the empty-state line is label text2, the preset hint a small muted note that stays inside the panel", () => {
+it("the panel's two plain lines: the empty-state line is label muted, the preset hint a small muted note that stays inside the panel", () => {
   const addon = mailer("__wfgWorld.mail = {}");
   addon.world.openMailWindow();
   const [gap, , , , , , smallSize, labelSize] = tokens(addon);
   const [empty, hint] = ["empty", "hint"].map((part) => addon.frame(`Vanguard_MailTools.${part}`));
-  expect([empty.visible, empty.text, empty.font.size, isTok(addon, empty.textColor, "text2")], "the empty-state tier").toEqual([true, "Your inbox is empty.", labelSize, true]);
+  expect([empty.visible, empty.text, empty.font.size, isTok(addon, empty.textColor, "muted")], "the empty-state tier").toEqual([true, "Your inbox is empty.", labelSize, true]);
   expect([hint.visible, hint.font.size, isTok(addon, hint.textColor, "muted")], "the note tier").toEqual([true, smallSize, true]);
   const inside = insets(addon, "Vanguard_MailTools.hint", "Vanguard_MailTools");
   expect([inside[0] >= gap, inside[2] >= gap, inside[3]], "T.SPACE.gap clear of the sides (it wraps rather than run past them) and of the bottom").toEqual([true, true, gap]);

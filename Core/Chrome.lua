@@ -257,7 +257,7 @@ end
 
 -- Sets a header's text, in capitals.
 local function setHeaderText(header, text)
-  header.text:SetText(text:upper())
+  T.SetText(header.text, text)
 end
 
 -- The chevron left of a collapsible header's text; a click flips it and tells onToggle(collapsed).
@@ -280,7 +280,7 @@ end
 
 -- A header's text: small muted capitals along its left edge (the options cards' style).
 local function addHeaderText(header, text)
-  header.text = T.Text(header:CreateFontString(nil, "OVERLAY"), "small", "muted")
+  header.text = T.Text(header:CreateFontString(nil, "OVERLAY"), "section", "muted")
   header.text:SetPoint("LEFT")
   header.SetText = setHeaderText
   header:SetText(text)

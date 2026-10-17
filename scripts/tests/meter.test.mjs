@@ -23,7 +23,7 @@ const rows = (addon) => addon.eval(`local out = {}
   for i, row in ipairs(Vanguard_Meter.rows) do out[i] = { row:IsShown(), row.name.__text or false, row.value.__text or false, row.__value or false, row.__max or false } end
   return out`);
 
-// The title's text and the "Nothing to show" note's visibility.
+// The title's text and the "No damage yet this fight" note's visibility.
 const heads = (addon) => addon.eval("return { Vanguard_Meter.title.__text, Vanguard_Meter.empty:IsShown() }");
 
 it("the meter is off by default and /vg meter on shows it", () => {
@@ -92,7 +92,7 @@ it("a widget that refuses a hidden value leaves the row as it was, with no error
   expect([rows(addon)[0][0], addon.eval("return #ns.errors")], "the row is drawn, the refusals are not errors").toEqual([true, 0]);
 });
 
-it("a client without the meter, the kind or a readable list shows 'Nothing to show' and no error", () => {
+it("a client without the meter, the kind or a readable list shows the empty-state line and no error", () => {
   const addon = loggedIn(METER_ENV, METER_ON);
   addon.advance(1);
   expect(heads(addon), "no lines in the world's session").toEqual(["Damage per second", true]);
@@ -128,6 +128,7 @@ it("the title and /vg meter hps switch to healing and back; the lines come from 
   expect([heads(addon)[0], rows(addon)[0][1]], "/vg meter dps goes back").toEqual(["Damage per second", "Dmg"]);
   addon.slash("meter hps");
   expect(heads(addon)[0], "/vg meter hps").toBe("Healing per second");
+  expect(addon.eval("return Vanguard_Meter.empty.__text"), "the empty-state line follows the kind").toBe("No healing yet this fight");
 });
 
 it("the lines setting limits the rows, and the switch and the options apply at once", () => {
@@ -171,5 +172,5 @@ it("the title is a card's heading on the click-to-switch button, the room above 
   const button = addon.eval(`local b = Vanguard_Meter.title:GetParent() return { b:GetObjectType(), b:GetHeight(), b:GetWidth(), b.__scripts.OnClick ~= nil }`);
   expect(button, "the string rides a full-width button head tall that takes the click").toEqual(["Button", head, 300, true]);
   expect([title.rect.bottom >= bar.rect.top, panel.rect.top - bar.rect.top], "the heading ends above the first bar, which starts a head down").toEqual([true, head]);
-  expect([empty.visible, empty.text, empty.font.size, isTok(addon, empty.textColor, "text2")], "the empty-state line: label text2").toEqual([true, "Nothing to show", labelSize, true]);
+  expect([empty.visible, empty.text, empty.font.size, isTok(addon, empty.textColor, "muted")], "the empty-state line: label muted").toEqual([true, "No damage yet this fight", labelSize, true]);
 });
