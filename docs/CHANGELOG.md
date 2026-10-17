@@ -49,6 +49,7 @@ Nothing here has been checked in the game by the people who wrote it down: see t
 - Buttons, switches and sliders have hover, press, disabled and keyboard focus looks; panels have depth; accent colours jade, orchid and copper join brass and arcane; a Color assist switch makes states readable without red versus green.
 - Window ornaments *(off)*, a gradient *(off)*, sharper menu icons *(off)*, and two side-by-side tests *(off)*: `/vg slug` and `/vg framebuffer`.
 - Vanguard's crest is the addon's icon and the options window's header.
+- Disabled and hint text is a little brighter, so it stays readable on every look, even over a bright world.
 
 ### Windows and options
 

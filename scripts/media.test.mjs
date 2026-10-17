@@ -96,14 +96,13 @@ function scanFindsMedia() {
   expect(namedMedia().length, "found no Media paths in the addon (the scan is broken)").toBeGreaterThan(0);
 }
 
-// Media images the addon builds a name for at run time, so the scan can't see them: the logo's
-// halves (T.Texture("Logo" .. half)), the shadow and glow rings (ring(frame, { texture = ... })), the
+// Media images the addon builds a name for at run time, so the scan can't see them: the shadow and glow rings (ring(frame, { texture = ... })), the
 // rounded-corner arcs and discs (cornerPieces(frame, "CornerLine" or "CornerFill")) and
 // the window controls' glyphs (Modules/Windows.lua maxMinButton), the dispel badge letters
 // (Core/Auras.lua A.DISPEL_GLYPHS) and the warn state's glyph (Core/Theme.lua T.STATE_GLYPHS).
 // The sized copies of the line and menu icons (#232), named by T.Icon(name, size) in the Lua.
 const SIZED_NAMES = SIZED_ICONS.flatMap((n) => ICON_SIZES.map((s) => `Media/Icons/${n}${s}.tga`));
-const BUILT_NAMES = ["Media/Textures/LogoRight.tga", "Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
+const BUILT_NAMES = ["Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
   ...["Magic", "Curse", "Disease", "Poison"].map((t) => `Media/Icons/Dispel${t}.tga`), "Media/Icons/Warn.tga"];
 
 // The images in Media/ (not the fonts and license texts), as repo paths.
@@ -241,10 +240,10 @@ function edgePixels(img) {
   return n;
 }
 
-// Icons and the stand-alone shapes (diamond, logo halves) keep a clear pixel inside their canvas
+// Icons and the stand-alone shapes (diamond, classification diamond, crest) keep a clear pixel inside their canvas
 // edge, so clamped sampling never smears an edge (#228). Tiled and stretched textures are exempt.
 function shapesPadded() {
-  const shapes = Object.keys(MEDIA).filter((f) => f.startsWith("Icons/") || /^Textures\/(Diamond|LogoLeft|LogoRight|Icon)\.tga$/.test(f));
+  const shapes = Object.keys(MEDIA).filter((f) => f.startsWith("Icons/") || /^Textures\/(Diamond|LogoLeft|Icon)\.tga$/.test(f));
   expect(shapes.map((f) => [f, edgePixels(MEDIA[f]())]).filter(([, n]) => n > 0)).toEqual([]);
 }
 

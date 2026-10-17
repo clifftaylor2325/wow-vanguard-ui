@@ -50,7 +50,7 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | Text | `text` | `e8eaee` | Body text (the default colour of `T.Text`). |
 | | `text2` | `c8cdd6` | Secondary text, hints, the close glyph, assistant marks. |
 | | `muted` | `a6adb9` | Least important text: card titles, descriptions, notes. |
-| | `disabled` | `7c8390` | Disabled and placeholder text only (a search box's hint, a button you can't press yet, a disabled menu icon). |
+| | `disabled` | `878e9b` | Disabled and placeholder text only (a search box's hint, a button you can't press yet, a disabled menu icon). At least 4.5:1 on `panel`, `raised` and `inset` in every variant, even with the translucent fills over a bright world (was `7c8390`, about 4:1). |
 | | `white` | `ffffff` | Text and sparks over bars and icons (timers, counts, the cast spark). |
 | | `gold` | `ffd100` | The game's gold: quest titles and "!" marks, money, elite units, the leader's crown, the zone name's default. |
 | State | `good` | `3fbf9a` | Success, ready, full durability. Off the red-green axis with `warn` and `bad` (#235, after Okabe-Ito); where a state stands alone as a mark it has a glyph too (`T.STATE_GLYPHS`: `Check`, `Warn`, `Close`), as on the pet's mood. |
@@ -134,10 +134,10 @@ The `outline` setting (default `""`) adds an outline to every role that has none
 
 ## Spacing
 
-The theme has no spacing tokens: each layout keeps its sizes as constants in its own file (`OptionsWindow.lua` `WIDTH, HEIGHT, NAV_WIDTH, BAR = 780, 560, 176, 40` and 28 px rows; `Setup.lua` `PAD = 16`; `RaidTools.lua` `PAD, GAP = 4, 2`). The offsets in use are almost all even: 8 is the most common, then 2, 4 and 12, with some 6, 3, 10 and 14 in older code. For new and restyled layouts:
+The theme has no spacing tokens: each layout keeps its sizes as constants in its own file (`OptionsWindow.lua` `WIDTH, HEIGHT, NAV_WIDTH, BAR = 780, 600, 176, 40` and 28 px rows; `Setup.lua` `PAD = 16`; `RaidTools.lua` `PAD, GAP = 4, 2`). The offsets in use are almost all even: 8 is the most common, then 2, 4 and 12, with some 6, 3, 10 and 14 in older code. For new and restyled layouts:
 
 - **4 px steps** for padding and gaps between unrelated things: 4 (tight), 8 (default), 12, 16 (window padding).
-- **2 px** only for the gap between repeated cells of one control (raid tiles, minimap buttons, swing timer rows).
+- **2 px** only for the gap between repeated cells of one control (minimap buttons, swing timer rows, the raid tools buttons, action buttons). Raid tiles are the exception: they sit 4 apart by default (`RF.defaults.spacing`), and the player can change it.
 - **Rows** are 28 px in the options window (check, cycle, slider), 30 for the swatch row, 32 for buttons, 20 for a text line.
 - Borders and sheens are measured in screen pixels, not UI units (below), so they never count toward the grid.
 
@@ -191,7 +191,7 @@ For the game's own windows (`Modules/Windows*.lua`, docs/design/RESKIN.md), and 
 
 `Media/Textures/Icon.tga`, the icon the game's addons list shows (`## IconTexture` in the TOC), is the one pre-coloured image: Vanguard's crest, two swords crossed behind a rimmed brass shield that bears a serif V, drawn at 64 x 64 px by `scripts/lib/media-brand.mjs` from the same 1024-unit drawing as the website's logo (`art/brand/vanguard-crest.svg`, the reference). The rivets, the fullers, the grips' wrap and the V's engraved line are left out at that size.
 
-`Media/Icons/*.tga` are white glyphs made at 32 x 32 px by `scripts/lib/media-sources.mjs`. Most are line glyphs drawn on a 16-unit grid and shown at 16 px (menu strip, close and arrow controls) or smaller (raid marks at about 10 px, which are filled shapes for that reason). The options nav's page icons (`Nav*`) and the minimap's two slot buttons (`Minimap*`) are filled silhouettes rasterized from game-icons.net SVGs (`SILHOUETTES`; CC BY 3.0, credited in `art/CREDITS.md` and `Media/Icons/CREDITS.txt`) with one unit of clear air around them, shown at 16 and 12 px. The stroke rules below are for the drawn line glyphs; the tinting rules apply to all. Every tinted image is white in every pixel, its clear ones included, with the shape only in alpha, so filtering never pulls a dark fringe into a tinted edge; icons and the stand-alone shapes (the diamond, the logo halves) keep at least one clear pixel inside their canvas edge (`scripts/media.test.mjs` checks both).
+`Media/Icons/*.tga` are white glyphs made at 32 x 32 px by `scripts/lib/media-sources.mjs`. Most are line glyphs drawn on a 16-unit grid and shown at 16 px (menu strip, close and arrow controls) or smaller (raid marks at about 10 px, which are filled shapes for that reason). The options nav's page icons (`Nav*`) and the minimap's two slot buttons (`Minimap*`) are filled silhouettes rasterized from game-icons.net SVGs (`SILHOUETTES`; CC BY 3.0, credited in `art/CREDITS.md` and `Media/Icons/CREDITS.txt`) with one unit of clear air around them, shown at 16 and 12 px. The stroke rules below are for the drawn line glyphs; the tinting rules apply to all. Every tinted image is white in every pixel, its clear ones included, with the shape only in alpha, so filtering never pulls a dark fringe into a tinted edge; icons and the stand-alone shapes (the diamond, the unit frames' classification diamond `LogoLeft`, the crest) keep at least one clear pixel inside their canvas edge (`scripts/media.test.mjs` checks both).
 
 - **One grid unit is one pixel at 16 px.** Strokes are 2 units (2 px) wide (`STROKE`).
 - **Straight strokes sit on whole units** (`crisp`, `rect`: square-ended boxes), so each covers exactly two rows or columns of pixels at 16 px instead of smearing across three. `scripts/media.test.mjs` checks that the icons made only of straight strokes have no half-covered pixel at 16 px.
