@@ -36,6 +36,19 @@ UI polish (priority 3):
 - [x] **Phase 7: Control states and panel depth** - Controls react to hover, press, disabled and focus, and panels have depth (completed 2026-10-12)
 - [x] **Phase 8: Every window styled** - The PvP windows are reskinned and visual issues #187-#204 are closed (completed 2026-10-12)
 
+UI coherence (priority 2, polish and consistency; INSERTED 2026-10-17 from Cliff's UI/UX review, spec in `docs/design/UI-COHERENCE.md`):
+
+- [ ] **Phase 8.1: Theme tokens and capsule kit** (INSERTED) - Every variant keeps the surface order, and pills are one theme primitive
+- [ ] **Phase 8.2: Check box and one scroll bar** (INSERTED) - No game check box or scroll bar art inside a Vanguard look
+- [ ] **Phase 8.3: Control grid and button kinds** (INSERTED) - Every control on one grid, with primary and danger buttons
+- [ ] **Phase 8.4: Selection grammar** (INSERTED) - "Selected" is said three ways and no other
+- [ ] **Phase 8.5: One yellow and type pairings** (INSERTED) - Gold marks content only, and each place has one text role and colour
+- [ ] **Phase 8.6: States, keyboard and menus** (INSERTED) - One state matrix, and menus close like menus
+- [ ] **Phase 8.7: Dialogs and button order** (INSERTED) - One primary per dialog, destructive actions never brass, Escape and Enter work
+- [ ] **Phase 8.8: Empty states** (INSERTED) - An empty list says what will fill it
+- [ ] **Phase 8.9: Knob and thumb ease** (INSERTED, cuttable) - Knobs glide 0.1 s out of combat
+- [ ] **Phase 8.10: UI batch checklist** (INSERTED) - One in-game list for every look Phases 8.1 to 8.9 changed
+
 Levelling and group features (priority 4, cut first):
 
 - [x] **Phase 9: Levelling helpers** - Quest XP, kills to level and low-supply warnings (completed 2026-10-12)
@@ -187,6 +200,176 @@ Plans:
 **UI hint**: yes
 **Notes**: Confirm the PvP frame names on Forever in game before planning (research flag). Group the visual bugs by file.
 
+### Phase 8.1: Theme tokens and capsule kit (INSERTED)
+
+**Goal**: Every theme variant keeps its surfaces in order, and the pill shape PR #393 introduced is one theme primitive any control can use.
+**Owner**: a new thread
+**Depends on**: G0 (PR #393 and the consistency-audit PR merged)
+**Requirements**: UI-09
+**Success Criteria** (what must be TRUE):
+  1. A `theme.test.mjs` case checks, for every variant, that `inset` < `panel` < `raised` < `raisedHover` < `divider` < `borderHi` in OKLCH lightness; the contrast variant passes it (its `divider` moves below `borderHi`, and `raisedHover` and `borderHi` become per-variant tokens).
+  2. `T.Capsule(frame, height, tier)` in `Core/Theme.lua` paints a pill of any height and tier with its 1 px edge; the switch and slider from #393 use it, and the local `pillParts`/`placePill` in `Core/Controls.lua` are gone.
+  3. The pill and knob media land their outline on one screen pixel at 20, 16 and 14 px (a `media.test.mjs` case), and `node scripts/build-media.mjs --check` passes.
+  4. The error badge is a capsule (14 high, `accent` fill, `void` text, `99+` cap), and the AH sort arrow uses a new `Up` glyph instead of a rotated `Down`.
+**Files**: `Core/Theme.lua` (`T.VARIANTS`, constants block, new `T.Capsule`), `Core/Controls.lua` (pill helpers out), `Core/ErrorBadge.lua`, `Modules/AuctionTable.lua` (arrow only), `scripts/lib/media-sources.mjs`, `docs/THEME.md`, `scripts/tests/theme.test.mjs`, `scripts/media.test.mjs`.
+**Size**: M. **Model**: Sonnet, medium.
+**Waits on [DECIDE]**: none.
+**Needs in-game check**: the contrast variant's dividers and hover fills; the error badge; pills crisp at 1080p, 1440p and `pixelMultiple` 2.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 8.2: Check box and one scroll bar (INSERTED)
+
+**Goal**: The game's gold-rimmed check boxes and its scroll bar art no longer show inside any Vanguard or skinned window, and every scroll bar has one look.
+**Owner**: the UI/UX design research thread (stream D)
+**Depends on**: G0 for the merge. Safe to start before G0: `T.CheckBox` on its own branch with its tests, rebased once G0 holds. Gate G1: merges before the coverage thread's batch 2 skins any check box or old scroll frame.
+**Requirements**: UI-11
+**Success Criteria** (what must be TRUE):
+  1. `T.CheckBox(button)` paints a 16 px `inset` box with a 1 px `edge` and a 12 px `Check` glyph, follows the game's checked state by post-hooking `SetChecked`, has hover, press, disabled and focus states from the state matrix, and keeps the game's parts faded by alpha (never hidden, no fields on the game's frame).
+  2. `T.CheckBox` is exported through `Core/Skin.lua` and documented in `docs/API.md`, and the check boxes the skinned windows leave in game art today (the friends, raid, chat config and settings windows; `Modules/WindowsSocial.lua` says so) use it.
+  3. Every scroll bar in a skinned game window and every `UIPanelScrollFrameTemplate` bar left after the consistency-audit PR draws the `T.SCROLL` thumb that PR gives the options window and `T.ScrollBar` (4 px, `text2` at 0.5, 1.0 on hover or drag, no arrows; the game's arrow buttons faded and still working); a test opens each and finds no game scroll art.
+**Files**: `Core/Theme.lua` (`T.ScrollBar`, new `T.CheckBox`), `Core/Skin.lua`, `docs/API.md`, the check box call sites in `Modules/Windows*.lua` (lines only; the coverage thread owns the rest of those files), `scripts/tests/theme.test.mjs`, `scripts/tests/windows-*.test.mjs`, `scripts/tests/skins.test.mjs`.
+**Size**: M. **Model**: Sonnet, medium.
+**Waits on [DECIDE]**: 8 (check box mark).
+**Needs in-game check**: a check box in the friends and chat config windows (checked, unchecked, disabled); scroll bars in a skinned window and the export dialog.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 8.3: Control grid and button kinds (INSERTED)
+
+**Goal**: Every Vanguard control sits on one grid (rows 28, inline controls 20, standalone buttons 26, a 200-wide control column), and buttons come in secondary, primary and danger kinds.
+**Owner**: a new thread
+**Depends on**: Phase 8.1
+**Requirements**: UI-09
+**Success Criteria** (what must be TRUE):
+  1. Switch, dropdown, segment group, edit box and slider thumb area are `T.CONTROL_H` high; standalone buttons are `T.BUTTON_H`; the control column is `W.COLUMN` (200) with the slider value in `W.VALUE_SLOT` (60); a test fails on the literals 180, 140, 52 and −66 coming back.
+  2. The switch and slider take the sizes [DECIDE] 13 picks, the slider's ends and fill follow [DECIDE] 2 and 5, and the slider thumb shows a 20 px `hover` wash disc on hover (12 % while dragging).
+  3. `T.Button` takes `primary` (accent fill with no bevel line through it, `void` SemiBold label, hover eases to `accentText`) and `danger` (`bad` label, never a red fill); `W.Primary` is built on it.
+  4. A segment group is one `inset` panel with 1 px `divider` lines between segments and `label`-sized text, the selected segment in `accent` with `void` text.
+  5. Slider values print a space before `%`, and every options page holds at Text size 130 % with no overlap (a preview or harness width check).
+**Files**: `Core/Theme.lua` (`T.Button`), `Core/Controls.lua`, `Core/Widgets.lua`, `Core/Dialog.lua` (button height only), `Core/OptionsProfiles.lua` (danger on Delete), `scripts/lib/media-sources.mjs` (`Disc20Soft`), `README.md` and `docs/THEME.md` where they state sizes, `scripts/tests/options.test.mjs`, `scripts/tests/theme.test.mjs`.
+**Size**: M. **Model**: Sonnet, medium.
+**Waits on [DECIDE]**: 2, 5, 13.
+**Needs in-game check**: an options page with every control kind at 100 % and 130 % text; the primary button's top edge (no light line through the brass).
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 8.4: Selection grammar (INSERTED)
+
+**Goal**: "Selected" is said in three ways only: an accent fill for choose-one-of-few, a rail for navigation, an attached tab for the current page.
+**Owner**: the UI/UX design research thread (stream D)
+**Depends on**: Phase 8.1 and the consistency-audit PR (`W.Row`)
+**Requirements**: UI-07
+**Success Criteria** (what must be TRUE):
+  1. `T.Panel` takes `open` (TOP, BOTTOM, LEFT or RIGHT: that edge draws no line and no sheen), and the selected tab on all three game templates (`PanelTabButtonTemplate`, `TabSystemButtonTemplate`, `LargeSideTabButtonTemplate`) and Vanguard's own tabs is drawn per [DECIDE] 3, with no accent anywhere on a tab.
+  2. The options nav, the AH lists, the quest log and quest dialog lines and the group board mark their current row the one way [DECIDE] 4 picks, drawn by `W.Row:SetSelected`; no row is marked by text colour alone or by an accent wash.
+  3. Maximize and minimize hover per [DECIDE] 12; close keeps its `bad` tile.
+  4. A test opens each tab template and each list and checks the selected state's parts.
+**Files**: `Core/Theme.lua` (`T.Panel`, `paintTab`, `T.CONTROL_TILES`), `Core/OptionsWindow.lua` (`markNav`), `Core/Widgets.lua` (`W.Row`), `Modules/AuctionTable.lua`, `Modules/AuctionHelper.lua`, `Modules/QuestDialogParts.lua`, `Modules/GroupBoardView.lua`, `scripts/tests/windows-tabs.test.mjs`, `scripts/tests/options.test.mjs`, the auction and quest tests.
+**Size**: M. **Model**: Sonnet, high (three tab templates across many windows; the selection must follow the game's state everywhere).
+**Waits on [DECIDE]**: 3, 4, 12. The owner builds nothing behind an unanswered question: the menu's current-item check and the segment fill (no question) can land first; tabs, list rows and the window-control tile wait for Cliff's answers.
+**Needs in-game check**: tabs in the character pane (side tabs), spellbook, AH, mail and friends; the options nav at each theme variant.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 8.5: One yellow and type pairings (INSERTED)
+
+**Goal**: The game's gold marks content only, and every place (window title, section header, column header, caption, value, hint) has one text role and colour, written down and checked.
+**Owner**: a new thread
+**Depends on**: G0
+**Requirements**: UI-08
+**Success Criteria** (what must be TRUE):
+  1. The chrome uses of `gold` listed in `docs/design/UI-COHERENCE.md` §2.2 move to `text`/`title` or `accentText`; money, quest titles, elite, the crown and AH prices keep it; a test or the quality scan fails on a new `gold` in a title, header or tag table.
+  2. `T.ROLES` gains an `upper` flag and section headers use it instead of `:upper()` on the string; section headers outside options follow [DECIDE] 6.
+  3. Column headers stay `text2` when sorted (the arrow alone marks the sort); bag section headers are `small` `text2`, off the accent.
+  4. `docs/THEME.md` has a "Type pairings" table matching §2.6, and skinned game window titles follow [DECIDE] 1.
+**Files**: `Core/Theme.lua` (`T.ROLES`), `Modules/Windows.lua`, `Modules/WindowsSocial.lua`, `Modules/WindowsSystem.lua`, `Modules/WindowsMap.lua` (the listed lines only), `Modules/QuestLogView.lua`, `Modules/BagSections.lua`, `Modules/AuctionTable.lua` (header colour only), `docs/THEME.md`, the matching tests.
+**Size**: S. **Model**: Sonnet, medium.
+**Waits on [DECIDE]**: 1, 6.
+**Needs in-game check**: a book or letter (H1 to H3), the guild creation heads, the quest log zone headers, the bag section headers, one skinned window title per area.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 8.6: States, keyboard and menus (INSERTED)
+
+**Goal**: Every control follows one state matrix (hover, press, disabled, focus), and menus open and close the way players expect.
+**Owner**: the UI/UX design research thread (stream D)
+**Depends on**: Phase 8.3 for everything in `Core/Controls.lua` (switch press, menus, search clear). Safe to start at G0: the setup wizard's focus ring and the edit-box focus border. Safe to start now: the state matrix written into `docs/THEME.md`.
+**Requirements**: UI-10
+**Success Criteria** (what must be TRUE):
+  1. The switch's press drops its knob 1 px and never recolours the track; no control fades its whole alpha to look disabled (a test scans the constructors).
+  2. `T.FocusRing` shows on the setup wizard's rows; edit boxes turn their border `accentText` while focused; the search box shows a clear glyph while it has text.
+  3. A dropdown keeps its `raisedHover` fill while its menu is open; a menu with more than 16 rows shows a 4 px thumb; Escape and a click outside close the menu; menu items are 24 high with the check at right 8 in `accentText`.
+**Files**: `Core/Controls.lua`, `Core/Widgets.lua`, `Core/Setup.lua`, `Core/Theme.lua` (callers of `T.FocusRing` and `T.EaseHover` only), `scripts/tests/options.test.mjs`, `scripts/tests/setup.test.mjs`.
+**Size**: M. **Model**: Sonnet, medium.
+**Waits on [DECIDE]**: none.
+**Needs in-game check**: Tab through the setup wizard; open the Font menu and press Escape; click outside an open menu; type in the options search and clear it.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 8.7: Dialogs and button order (INSERTED)
+
+**Goal**: Every dialog has one primary action, a destructive action is never brass, dialogs open like windows, and Escape and Enter do what they say.
+**Owner**: a new thread
+**Depends on**: Phase 8.3 (button kinds)
+**Requirements**: UI-12
+**Success Criteria** (what must be TRUE):
+  1. `ns.Dialog` question and text dialogs are 360 and 520 wide with 16 padding, open with `T.OpenWindow` and close on Escape (No or Later); the reload prompt's Reload is the primary.
+  2. Destructive confirms (Delete profile, Abandon) use the danger kind; Enter presses the primary per [DECIDE] 11 and never a destructive one.
+  3. The quest log's Abandon and the quest dialog's Goodbye sit per [DECIDE] 10; dialog buttons show `T.FocusRing` when Tab moves to them.
+**Files**: `Core/Dialog.lua`, `Core/ProfileExport.lua`, `Core/OptionsProfiles.lua`, `Modules/QuestLogView.lua`, `Modules/QuestDialogView.lua`, `scripts/tests/` (where `ns.Ask` and the quest windows are tested).
+**Size**: S. **Model**: Sonnet, medium.
+**Waits on [DECIDE]**: 10, 11.
+**Needs in-game check**: the reload prompt (its secure overlay must still reload; `ReloadUI` is blocked from addon code on Forever); delete a profile; abandon a quest.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 8.8: Empty states (INSERTED)
+
+**Goal**: An empty list or panel says, in one `muted` line, what will fill it.
+**Owner**: a new thread
+**Depends on**: the consistency-audit PR (its hint and note tiers)
+**Requirements**: UI-13
+**Success Criteria** (what must be TRUE):
+  1. The meter says "No damage yet this fight" instead of "Nothing to show"; the AH table says no auctions were found and to scan first, with the scan button as the primary; the quest tracker says "Nothing tracked. Track a quest from the log." when empty (or stays hidden, if its README sentence says so: the README wins).
+  2. Each line has a test and its README sentence where the README describes the panel.
+**Files**: `Modules/Meter.lua`, `Modules/AuctionTable.lua`, `Modules/QuestTrackerView.lua`, `README.md`, the matching tests.
+**Size**: S. **Model**: Sonnet, low.
+**Waits on [DECIDE]**: none.
+**Needs in-game check**: the meter before a fight; the AH before a scan.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 8.9: Knob and thumb ease (INSERTED, cuttable)
+
+**Goal**: A switch's knob and a slider's thumb glide 0.1 s to their new place out of combat, and jump in combat or with Reduce motion on.
+**Owner**: a new thread
+**Depends on**: Phase 8.3, and Cliff's first look at the pill controls in game
+**Requirements**: UI-14
+**Success Criteria** (what must be TRUE):
+  1. The knob moves with a `Translation` animation on its own (never protected) frame, ends snapped to the pixel grid, and is instant in combat and with Reduce motion; harness tests cover all three.
+  2. `T.KNOB_EASE` has a row in `docs/THEME.md`'s fades table.
+**Files**: `Core/Controls.lua`, `Core/Theme.lua` (the constant), `docs/THEME.md`, `scripts/tests/options.test.mjs`.
+**Size**: S. **Model**: Sonnet, medium.
+**Waits on [DECIDE]**: 7.
+**Needs in-game check**: flip a switch in and out of combat, with Reduce motion on and off.
+**Plans**: TBD
+**UI hint**: yes
+**Notes**: Cut first if the 2026-10-28 freeze is near.
+
+### Phase 8.10: UI batch checklist (INSERTED)
+
+**Goal**: Cliff has one in-game list, in crash-risk order, for every look Phases 8.1 to 8.9 and the in-flight streams changed.
+**Owner**: a new thread
+**Depends on**: Phases 8.1 to 8.9 merged or cut
+**Requirements**: none (it closes the check loop for UI-07 to UI-14)
+**Success Criteria** (what must be TRUE):
+  1. `docs/SMOKE-TEST.md` has a UI coherence section built from every merged PR's needs-in-game-check list, and one GitHub issue carries the same list as checkboxes, the way #284 does for batch 1.
+**Files**: `docs/SMOKE-TEST.md`.
+**Size**: S. **Model**: Haiku, low.
+**Plans**: TBD
+**UI hint**: no
+
 ### Phase 9: Levelling helpers
 
 **Goal**: While levelling, the player sees what each quest is worth, how far away the next level is, and when supplies run low.
@@ -246,7 +429,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12. Phases 9-11 are cut first if time runs short; Phase 12 runs regardless.
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12. Phases 9-11 are cut first if time runs short; Phase 12 runs regardless. The inserted UI coherence phases follow their own gates (G0 to G4 in `docs/design/UI-COHERENCE.md` section 4.2), not the numeric order: 8.1, 8.2 and 8.5 run side by side once G0 holds, 8.3 and 8.4 after 8.1, 8.6, 8.7 and 8.9 after 8.3; 8.1 to 8.8 merge before the 2026-10-28 freeze, and 8.9 is cut first.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -258,6 +441,16 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Theme scale and motion | TBD | Complete | 2026-10-12 |
 | 7. Control states and panel depth | TBD | Complete | 2026-10-12 |
 | 8. Every window styled | TBD | Complete | 2026-10-12 |
+| 8.1 Theme tokens and capsule kit | 0/1 | Not started | - |
+| 8.2 Check box and one scroll bar | 0/1 | Not started | - |
+| 8.3 Control grid and button kinds | 0/1 | Not started | - |
+| 8.4 Selection grammar | 0/1 | Not started | - |
+| 8.5 One yellow and type pairings | 0/1 | Not started | - |
+| 8.6 States, keyboard and menus | 0/1 | Not started | - |
+| 8.7 Dialogs and button order | 0/1 | Not started | - |
+| 8.8 Empty states | 0/1 | Not started | - |
+| 8.9 Knob and thumb ease | 0/1 | Not started | - |
+| 8.10 UI batch checklist | 0/1 | Not started | - |
 | 9. Levelling helpers | TBD | Complete | 2026-10-12 |
 | 10. Roll tracking | TBD | Complete | 2026-10-12 |
 | 11. Party quest progress | 0/TBD | Not started | - |
