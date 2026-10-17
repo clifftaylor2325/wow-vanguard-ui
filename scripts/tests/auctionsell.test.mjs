@@ -323,21 +323,21 @@ const upStatus = (addon) => addon.eval(`return ${UP}.table.status:GetText()`);
 // Listing row i on the Up now card: [shown, price, how many, time left, your flag shown].
 const listingRow = (addon, i) => addon.eval(`local r = ${UP}.table.rows[${i}]
   return { r:IsShown(), r.cells.price:GetText() or false, r.cells.qty:GetText() or false, r.cells.time:GetText() or false, r.flag:IsShown() }`);
-// The Up now table's status line: [its text, its font size, in the text2 colour].
+// The Up now table's status line: [its text, its font size, as the colour token].
 const upTier = (addon) => {
   const t = addon.frame(`${UP}.table.status`);
-  return [t.text, t.font.size, isTok(addon, t.textColor, "text2")];
+  return [t.text, t.font.size, ["text2", "muted"].find((k) => isTok(addon, t.textColor, k))];
 };
-it("the Up now card's line is an empty-state line (label text2) without a sale, a status (small text2) while it searches or finds none", () => {
+it("the Up now card's line is an empty-state line (label muted) without a sale, a status (small text2) while it searches or finds none", () => {
   const addon = atAuctionHouse(BAGS + LINEN_BAGS + LINEN_UP);
   const [label, small] = addon.eval("return { ns.Theme.RoleSize('label'), ns.Theme.RoleSize('small') }");
-  expect(upTier(addon), "nothing on the card: what to do").toEqual(["Put an item on the Sell card to see what's up now.", label, true]);
+  expect(upTier(addon), "nothing on the card: what to do").toEqual(["Put an item on the Sell card to see what's up now.", label, "muted"]);
   addon.eval(`__wfgWorld.cursor = { type = "item", id = 0, bag = 0, slot = 3 }`);
   addon.click(`${CARD}.slot`);
-  expect(upTier(addon), "its price check sent: a status").toEqual(["searching...", small, true]);
+  expect(upTier(addon), "its price check sent: a status").toEqual(["searching...", small, "text2"]);
   addon.eval("__wfgWorld.ah.commodities[2589] = {}");
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
-  expect(upTier(addon), "nothing up: a status").toEqual(["none up", small, true]);
+  expect(upTier(addon), "nothing up: a status").toEqual(["none up", small, "text2"]);
 });
 it("the Up now card lists what's up for the item on the sell card: price each, how many, time left, yours flagged; a click takes a price", () => {
   const addon = atAuctionHouse(BAGS + LINEN_BAGS + LINEN_UP);

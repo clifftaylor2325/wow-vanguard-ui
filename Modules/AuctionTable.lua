@@ -213,12 +213,12 @@ end
 
 -- The status line, shown while there is something to say (over the rows' place): a status ("searching...",
 -- "none up") in small text2, or with `empty` an empty-state line (what the table is for, how to fill it)
--- in label text2. The text role changes only when the kind does.
+-- in label muted. The text role changes only when the kind does.
 local function setStatus(t, text, empty)
   empty = empty == true
   if t.statusEmpty ~= empty then
     t.statusEmpty = empty
-    T.Text(t.status, empty and "label" or "small", "text2")
+    T.Text(t.status, empty and "label" or "small", empty and "muted" or "text2")
   end
   t.status:SetText(text or "")
 end
