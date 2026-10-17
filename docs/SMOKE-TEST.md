@@ -591,6 +591,19 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: die and look at the return-to-graveyard button; open the addon list (`/addons` or the game menu) and change an addon that is out of date, if one is; trigger a message box (for example `/run BasicMessageDialog.Text:SetText("test") BasicMessageDialog:Show()`).
 - Expect: the graveyard button is a flat button with its icon and text (nothing changes while you are in combat); the addon confirmation and the message box are flat panels with flat buttons, not full-screen dimmers of a different shade.
 - If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.3.10 Loot window rows
+
+- Do: with auto-loot off, kill something that drops several items (one of them a stack, one green if you can) and open the loot window; hover a row, take one item, then loot something else.
+- Expect: the loot window is a flat panel and its rows have no item card behind them: each row is a square slot with a thin border in the item's quality colour (none for white items), the stack count on it, the item's name and its rarity word in the Vanguard font in the game's quality colours; the row still lights up under the mouse and a quest item keeps its mark; clicking a row still loots it; the next corpse's rows look the same.
+- If it fails, paste: a screenshot of the open loot window and `/vg errors`.
+
+### 14.3.11 Merchant rows, buttons and money
+
+- Do: with damaged gear, open a merchant who repairs and sells more than ten items (a general goods vendor); turn the page with the arrows and the mouse wheel; open the Buyback tab after selling something; hover and click the repair, repair-all and sell-junk buttons; open the filter dropdown.
+- Expect: no dark-red plates behind the item names and no round slot art: each item is a square slot with a thin border in its quality colour, its name and price in the Vanguard font (a price you can't pay still red, the icon still greyed), the buyback slot and the Buyback tab's rows the same; the repair buttons and the sell-junk button are flat tiles that keep their icons (greyed when there is nothing to repair or sell), the page arrows keep their arrows with Prev and Next in the Vanguard font, the page count too; the gold bar at the bottom right is a dark box with your money in the Vanguard font beside its coins; every button still does what it did, and the second page looks like the first.
+- If it fails, paste: a screenshot of the merchant window and `/vg errors`.
+
 ### 14.4.1 Game options
 
 - Do: press Escape, click Options. Look at the window, click through Game and AddOns, type in the search box, change a setting, click Apply, then Close.
@@ -638,6 +651,13 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: open the group finder and go to its search page (the who list, with the player search box); look at it before searching, search for a name nobody has, then for a name that is online; go to the browse page and look at its top right corner. Then open the Legacy window's Challenges page and look at the right-hand pane before picking a category, after picking one, and on a category with no challenges.
 - Expect: the search page has the flat panel like the listing and browse pages, with no brass border, and its list sits on a flat inset panel. While the list is empty, a grey line in its middle says the game's "No groups found" line (the game's own words, so it says groups on a player search). The line also shows before the first search, and it goes away when the list has names. The settings gear sits in the title row just left of the close button, not on it. The Legacy challenge pane says "Select a category to view its challenges." until you pick one. On a category with nothing in it, it says the game's line, or "No challenges to show here.". No world or game art shows through any Legacy page.
 - If it fails, paste: a screenshot of the page that is wrong, the step that broke, and `/vg errors`.
+
+### 14.5.2 The game's durability figure stays away
+
+- Do: with damaged gear, under `/vg` → Map untick the info strip's Durability block and `/reload`; then switch the whole Info strip module off and `/reload` again (switch both back after).
+- Expect: with the block off, the strip has no durability line and the game's armoured-man figure still does not appear beside the minimap (the character pane's gear slots still show each item's percent); with the module off, the game's armoured man is back in its own spot.
+- If it fails, paste: a screenshot of the minimap's corner and `/vg errors`.
+
 ### 14.6 Menus and tooltips
 
 - Do: (1) in a party, right-click a party member's frame and use Whisper, then right-click it again for Set Focus (once out of combat, once in combat), then right-click yourself for Leave Party; (2) click the minimap's tracking button; (3) right-click a chat tab; (4) at the auction house, open a dropdown (the category or sort filter); (5) open the guild window's Preferred Play Settings and its language dropdown, if your guild window has it (the game's last old-style dropdown); (6) type `/w ` and the first letters of a friend's name in chat; (7) click an item link in chat and hold Shift over the tooltip that opens, to compare it with what you wear.

@@ -75,7 +75,7 @@ function GW.AddButtons(name, buttonNames)             -- push buttons a window k
 | File | Group | What goes in it |
 |---|---|---|
 | `Modules/WindowsSocial.lua` | `social` | mail reading, guild (Communities), channels, friends sub-dialogs, guild creation (registrar, petition, tabard), role poll |
-| `Modules/WindowsTown.lua` | `town` | stable, trainer, side dress-up, stack split, coin pickup, separate bag windows, master looter, loot history, macro, stopwatch, small dialogs |
+| `Modules/WindowsTown.lua` | `town` | stable, trainer, the merchant's inside (rows, buyback slot, repair tiles, page arrows, money lines), side dress-up, stack split, coin pickup, separate bag windows, master looter, loot history, macro, stopwatch, small dialogs |
 | `Modules/WindowsSystem.lua` | `system` | game options, addon list, chat config, Edit Mode windows, quick keybind, Cooldown Manager settings, help/ticket/report, splash, color picker, click bindings, death recap |
 | `Modules/WindowsMap.lua` | `map` | world map, battlefield map, calendar, vanilla group finder, Legacy system, queue status |
 | `Modules/WindowsMenus.lua` + `Modules/Tooltips.lua` | `menus` | the 12.x context-menu system, `DropDownList1-3`, the tooltips not yet in `TT.NAMES`, auto-complete box |

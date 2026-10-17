@@ -546,7 +546,7 @@ it("options: a switch for each group of game windows, under Game windows", () =>
   const addon = loggedIn(UI_ENV + CLICK_LUA);
   addon.slash("");
   addon.eval('ns.Options.Show("windows")');
-  const groups = { social: "Mail, guild, channels, friends and guild-creation windows (reload)", town: "Stable, trainer, bags, loot and item dialogs (reload)",
+  const groups = { social: "Mail, guild, channels, friends and guild-creation windows (reload)", town: "Stable, trainer, merchant, bags, loot and item dialogs (reload)",
     system: "Game options, Edit Mode, keybinding and help windows (reload)", map: "World map, group finder, calendar and Legacy windows (reload)",
     menus: "Right-click menus, dropdowns and more tooltips (reload)", tabs: "Tab buttons and the inside of the character pane (reload)", pvp: "Battleground windows (reload)" };
   for (const [key, label] of Object.entries(groups)) {
