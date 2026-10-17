@@ -36,6 +36,7 @@ local function button(parent, label, width, kind)
   local look = KIND_LABELS[kind or "secondary"]
   local b = T.Button(CreateFrame("Button", nil, parent), kind == "primary" and "primary" or nil)
   b:SetSize(width or BUTTON_W, T.BUTTON_H)
+  b.kind = kind or "secondary"
   if kind == "primary" then b.fill = T.FillParts(b, "BACKGROUND", 1, "accent") end
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), look[1])
   b.text:SetPoint("CENTER")
@@ -208,28 +209,59 @@ local function declined(f)
   if onNo then onNo() end
 end
 
--- Builds the question dialog once: the question, a Yes (plain: a confirm never takes the accent) and a No.
+-- What a key does on the question: Enter presses its confirm button unless that is a danger button (a delete is
+-- never one key away); any other key goes on to the game. Only out of combat: the call that lets a key through is
+-- barred in combat, so no key is caught there (the keys it was left passing on keep passing).
+local function askKey(f, key)
+  if ns.InCombat() or not ns.Client.Has("keyPropagate") then return end
+  local confirm = f.confirm
+  local enter = (key == "ENTER" or key == "NUMPADENTER") and confirm.kind ~= "danger" and confirm:IsEnabled()
+  f:SetPropagateKeyboardInput(not enter)
+  if enter then confirm:GetScript("OnClick")(confirm) end
+end
+
+-- Lets the question read keys, passing them all on until askKey takes one (out of combat; in a fight it waits).
+local function listenForEnter(f)
+  f:SetScript("OnKeyDown", ns.Guard("question key", askKey))
+  ns.OutOfCombat(function()
+    f:EnableKeyboard(true)
+    if ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(true) end
+  end, f)
+end
+
+-- Builds the question dialog once: the question, a Yes (the primary: the accent; or a danger button for a
+-- destructive question, which Enter never presses) and a No.
 local function questionDialog()
   if question then return question end
   question = dialog("Vanguard_Question", ASK_W, 1)
   hangTitle(question)
   question:HookScript("OnHide", ns.Guard("decline question", function() declined(question) end))
-  question.yes = button(question, "Yes")
+  question.yes, question.sure = button(question, "Yes", nil, "primary"), button(question, "Yes", nil, "danger")
   question.yes:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
+  question.sure:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
   question.no = button(question, "No")
   question.no:SetPoint("RIGHT", question.yes, "LEFT", -T.SPACE.gap, 0)
+  listenForEnter(question)
   return question
 end
 
+-- Chooses which Yes the question shows: the danger one for kind "danger", else the primary.
+local function pickConfirm(f, kind)
+  f.confirm = kind == "danger" and f.sure or f.yes
+  f.yes:SetShown(f.confirm == f.yes)
+  f.sure:SetShown(f.confirm == f.sure)
+end
+
 -- Asks a yes/no question: the yes button (labelled yes) runs onYes, No runs onNo; either closes it. Closing it
--- any other way (the X, Escape) answers No.
-function ns.Ask(text, yes, onYes, onNo)
+-- any other way (the X, Escape) answers No. kind is "danger" for a question about something lost for good.
+function ns.Ask(text, yes, onYes, onNo, kind)
   local f = questionDialog()
   f.title:SetText(text)
   fitTitle(f)
-  f.yes.text:SetText(yes)
+  pickConfirm(f, kind)
+  f.confirm.text:SetText(yes)
   f.waiting = onNo
-  f.yes:SetScript("OnClick", ns.Guard("click question yes", function() f.waiting = nil f:Hide() onYes() end))
+  f.confirm:SetScript("OnClick", ns.Guard("click question yes", function() f.waiting = nil f:Hide() onYes() end))
   f.no:SetScript("OnClick", ns.Guard("click question no", function() f:Hide() end))
   f:Show()
 end

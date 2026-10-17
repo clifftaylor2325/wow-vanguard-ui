@@ -2,8 +2,8 @@
 -- a header with the NPC's portrait, name and the quest title; a scrolling
 -- body (ns.ScrollView) with the text, objectives and numbered lines; a row of
 -- reward cards; the money and XP line, and the buttons. No close button:
--- Goodbye closes it. Keys: 1-9 pick, Space presses the main button, Escape
--- says goodbye.
+-- Goodbye (alone at the far left) closes it. Keys: 1-9 pick, Space and Enter
+-- press the main button, Escape says goodbye.
 
 local ADDON, ns = ...
 
@@ -76,6 +76,12 @@ local function addBody(f)
   f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
 end
 
+-- Goodbye, alone at the far left of the buttons' row (a page without one hides it).
+local function addEscape(f)
+  f.escape = ns.DialogButton(f, "")
+  f.escape:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
+end
+
 -- The reward cards under the text (their left edge on the text's), the money
 -- and XP line, and the buttons along the bottom.
 local function addFooter(f)
@@ -89,6 +95,7 @@ local function addFooter(f)
   f.primary:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
   f.secondary = ns.DialogButton(f, "")
   f.secondary:SetPoint("RIGHT", f.primary, "LEFT", -T.SPACE.gap, 0)
+  addEscape(f)
 end
 
 -- The dialog's default spot: centered, a little above the focus cast bar's
@@ -119,6 +126,7 @@ function QD.Wire(f)
   f:SetScript("OnKeyDown", QD.OnKey)
   f.primary:SetScript("OnClick", ns.Guard("click quest dialog primary", QD.Press))
   f.secondary:SetScript("OnClick", ns.Guard("click quest dialog secondary", function() QD.page.secondary[2]() end))
+  f.escape:SetScript("OnClick", ns.Guard("click quest dialog escape", function() QD.page.escape[2]() end))
   if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_QuestDialog") end
 end
 
@@ -231,6 +239,7 @@ function QD.Render(p)
   f.money:SetText(p.money or "")
   renderButton(f.primary, p.primary)
   renderButton(f.secondary, p.secondary)
+  renderButton(f.escape, p.escape)
 end
 
 -- Choosing -------------------------------------------------------------------------------------
@@ -264,22 +273,22 @@ function QD.SelectLine(n)
   return true
 end
 
--- Presses the main button, if it's enabled (Complete once a reward is picked).
+-- Presses the main button, if it's enabled (Complete once a reward is picked); on a page with only Goodbye, that.
 function QD.Press()
-  local spec = QD.page and QD.page.primary
+  local spec = QD.page and (QD.page.primary or QD.page.escape)
   local ready = spec and (spec[3] ~= false or (QD.page.pick and QD.choice ~= nil))
   if ready then spec[2]() end
 end
 
--- What a key does here: 1-9 pick a line (or a reward) that exists, Space
--- presses the main button. True when the key was used.
+-- What a key does here: 1-9 pick a line (or a reward) that exists, Space presses the main button, and so does
+-- Enter, but only out of combat (a key caught in combat could not be handed on again). True when the key was used.
 local function useKey(key)
   local n = tonumber(key)
   if n and n >= 1 and n <= 9 then
     if QD.page.pick then return QD.Pick(n) end
     return QD.SelectLine(n)
   end
-  if key == "SPACE" then QD.Press() return true end
+  if key == "SPACE" or ((key == "ENTER" or key == "NUMPADENTER") and not ns.InCombat()) then QD.Press() return true end
   return false
 end
 

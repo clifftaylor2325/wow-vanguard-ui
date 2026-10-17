@@ -389,7 +389,7 @@ it("list management from the pane's buttons: rename, duplicate, export, and dele
   addon.click("Vanguard_Question.no");
   expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Herbs copy 2'] ~= nil"), "No keeps it").toBe(true);
   act(addon, "Delete");
-  addon.click("Vanguard_Question.yes");
+  addon.click("Vanguard_Question.confirm");
   expect([choices(addon).slice(0, 2), addon.eval("return VanguardDB.ah.list"), chatHas(addon, /Deleted the shopping list TEST-ONLY Herbs copy 2\./)], "gone; the first list left is in use").toEqual([["TEST-ONLY Herbs", "TEST-ONLY Herbs copy"], "TEST-ONLY Herbs", true]);
   addon.eval(`${HELPER}.DeleteList("TEST-ONLY Herbs copy") ${HELPER}.DeleteList("TEST-ONLY Nothing")`);
   expect(addon.eval("return VanguardDB.ah.list"), "deleting another list leaves the one in use").toBe("TEST-ONLY Herbs");
@@ -430,7 +430,7 @@ it("/vg ah rename, duplicate, delete, export and import act on the list in use",
   answerText(addon, "Soul Dust");
   expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Herbs copy']"), "imported into it").toEqual(["Strange Dust", "Soul Dust"]);
   addon.slash("ah delete");
-  addon.click("Vanguard_Question.yes");
+  addon.click("Vanguard_Question.confirm");
   expect(addon.eval("return { VanguardDB.ah.list, VanguardDB.ah.lists['TEST-ONLY Herbs copy'] == nil }"), "deleted after asking").toEqual(["TEST-ONLY Herbs", true]);
   addon.slash("ah");
   expect(chatHas(addon, /rename <name>, duplicate, delete, export, import, /), "the help names them").toBe(true);
@@ -460,7 +460,7 @@ it("Recent: the last 20 terms searched, newest first, kept for the account", () 
   pick(addon, `${HELPER}.RECENT`);
   act(addon, "Clear");
   expect(question(addon), "clearing asks first").toEqual([true, "Clear the 20 recent searches?"]);
-  addon.click("Vanguard_Question.yes");
+  addon.click("Vanguard_Question.confirm");
   expect([addon.eval("return #VanguardDB.ah.recent"), choices(addon).includes("Recent")], "cleared; still in use, so still listed").toEqual([0, true]);
   pick(addon, '"Shopping"');
   expect([choices(addon).includes("Recent"), heading(addon)[1]], "empty and not in use: not listed").toEqual([false, ""]);

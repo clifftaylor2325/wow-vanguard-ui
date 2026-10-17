@@ -14,12 +14,23 @@ const dialog = (addon) => addon.eval(`local f = Vanguard_QuestDialog
   return { shown = f:IsShown(), npc = f.npc:GetText(), title = f.title:GetText(), text = f.text:GetText(),
     objectives = f.objectives:IsShown() and f.objectives:GetText() or false, lines = lines, cards = cards, money = f.money:GetText(),
     primary = f.primary:IsShown() and f.primary.text:GetText() or false, enabled = f.primary:IsEnabled(),
-    secondary = f.secondary:IsShown() and f.secondary.text:GetText() or false }`);
+    secondary = f.secondary:IsShown() and f.secondary.text:GetText() or false,
+    escape = f.escape:IsShown() and f.escape.text:GetText() or false }`);
+it("quest dialog: Enter presses the main button (or Goodbye alone) out of combat, and is not caught in combat", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("GOSSIP_SHOW");
+  setCombat(addon, true);
+  key(addon, "ENTER");
+  expect([calls(addon), addon.eval("return Vanguard_QuestDialog:IsShown()")], "in combat Enter does nothing").toEqual([[], true]);
+  setCombat(addon, false);
+  key(addon, "NUMPADENTER");
+  expect([calls(addon), addon.eval("return Vanguard_QuestDialog:IsShown()")], "out of combat, on a page with only Goodbye, Enter says goodbye").toEqual([["closeGossip nil", "closeQuest nil"], false]);
+});
 it("quest dialog: gossip lines, quest details, rewards and keys", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.fire("GOSSIP_SHOW");
   const g = dialog(addon);
-  expect([g.shown, g.npc, g.text, g.primary, addon.eval("return Vanguard_QuestDialog.portrait.__portrait")], "the NPC's portrait, name and greeting").toEqual([true, "TEST-ONLY Farmer", "TEST-ONLY Well met, <name>.", "Goodbye", "npc"]);
+  expect([g.shown, g.npc, g.text, g.primary, g.escape, addon.eval("return Vanguard_QuestDialog.portrait.__portrait")], "the NPC's portrait, name and greeting; Goodbye is the escape button, not a primary").toEqual([true, "TEST-ONLY Farmer", "TEST-ONLY Well met, <name>.", false, "Goodbye", "npc"]);
   expect(g.lines, "quests to take, to turn in, then the options, numbered").toEqual(["1.  [8] TEST-ONLY Wolves", "2.  [12] TEST-ONLY Letter", "3.  TEST-ONLY Tell me more"]);
   expect(isTok(addon, addon.eval("return Vanguard_QuestDialog.lines[2].text.__textColor"), "gold"), "a quest ready to turn in is gold").toBe(true);
   key(addon, "2"); key(addon, "7"); key(addon, "W");
@@ -207,7 +218,7 @@ it("quest dialog: hiding the whole UI keeps the conversation open; closing it en
   addon.eval("UIParent:Show()");
   expect([calls(addon), addon.eval("return Vanguard_QuestDialog:IsShown()")], "the game ending the talk meanwhile hides it for good, without closing again").toEqual([[], false]);
   addon.fire("GOSSIP_SHOW");
-  addon.eval("Vanguard_QuestDialog.primary.__scripts.OnClick(Vanguard_QuestDialog.primary)");
+  addon.eval("Vanguard_QuestDialog.escape.__scripts.OnClick(Vanguard_QuestDialog.escape)");
   expect([calls(addon), addon.eval("return Vanguard_QuestDialog:IsShown()")], "Goodbye closes the dialog and ends the talk").toEqual([["closeGossip nil", "closeQuest nil"], false]);
   addon.fire("GOSSIP_SHOW");
   addon.eval("Vanguard_QuestDialog:Hide()");
@@ -803,7 +814,7 @@ it("quest log: the faction crest is a watermark behind the top-right corner, as 
     for _, key in ipairs({ "track", "share", "abandon", "map" }) do local b = f.buttons[key] out[#out + 1] = { b:GetWidth(), b:GetHeight(), b:GetLeft() - f.detailScroll:GetLeft(), b:GetBottom() - f:GetBottom() } end
     return out`);
   expect(buttons.map((b) => b[1]), "every button is T.BUTTON_H tall").toEqual([buttonH, buttonH, buttonH, buttonH]);
-  expect(buttons.map((b) => [b[0], b[2]]), "four buttons 81 wide, T.SPACE.gap apart, from the details column's left edge").toEqual([0, 1, 2, 3].map((i) => [81, i * (81 + gap)]));
+  expect(buttons.map((b) => [b[0], b[2]]), "four buttons 81 wide: Abandon alone at the details column's left edge, Track, Share and Map in a row ending at its right").toEqual([[81, 4 * 81 + 3 * gap - 3 * 81 - 2 * gap], [81, 4 * 81 + 3 * gap - 2 * 81 - gap], [81, 0], [81, 4 * 81 + 3 * gap - 81]]);
   expect(buttons.map((b) => b[3]), "a pad up from the window's foot").toEqual([pad, pad, pad, pad]);
   expect(addon.eval("local f = Vanguard_QuestLog return f.buttons.map:GetRight() - f.detailScroll:GetRight()"), "the last one ends where the details column does").toBe(0);
 });
