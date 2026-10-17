@@ -164,3 +164,14 @@ it("the roster handles a solo player, a party and a hidden name", () => {
   expect(roster(addon)[1].map((x) => x[0]), "a hidden name is left out").toEqual(["Roster 1", "Tester"]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+
+it("the roster: T.SPACE.gap in from the panel's edge on every side (a HUD card's padding), and as tall as its padding and lines", () => {
+  const addon = loggedIn("", ON);
+  addon.world.setUnit("party1", { name: "Pal", class: "MAGE", className: "Mage", isPlayer: true });
+  say(addon, "loot roster");
+  const gap = addon.eval("return ns.Theme.SPACE.gap");
+  const [panel, name] = ["", ".rows[1].left"].map((part) => addon.frame(`Vanguard_OfficerRoster${part}`).rect);
+  const note = addon.eval("local p = Vanguard_OfficerRoster.rows[1].right.__points.TOPRIGHT return { p.x, p.rel == Vanguard_OfficerRoster }");
+  expect([name.left - panel.left, panel.top - name.top, note[0], note[1]], "the heading a gap in from the left and top, its note a gap in from the right").toEqual([gap, gap, -gap, true]);
+  expect(addon.eval("return Vanguard_OfficerRoster:GetHeight() - 3 * ns.GetModule('OfficerLoot').RLINE"), "three lines (the heading, you and Pal) and two gaps").toBe(2 * gap);
+});

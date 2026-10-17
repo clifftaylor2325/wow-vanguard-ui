@@ -321,6 +321,8 @@ function methods:GetAtlas() return self.__atlas end
 function methods:SetColorTexture(r, g, b, a) self.__color = { r, g, b, a or 1 } end
 -- A texture's colour; one colour for every corner replaces a gradient, as in the client.
 function methods:SetVertexColor(r, g, b, a) self.__vertexColor = { r, g, b, a or 1 } self.__gradient = nil end
+-- The vertex colour last set (white until one is), as the client gives it back.
+function methods:GetVertexColor() local c = self.__vertexColor or { 1, 1, 1, 1 } return c[1], c[2], c[3], c[4] end
 -- Records a texture's gradient: { orientation, min colour, max colour } (each { r, g, b, a }).
 function methods:SetGradient(o, lo, hi) self.__gradient = { o, { lo:GetRGBA() }, { hi:GetRGBA() } } end
 function methods:SetAlpha(a) self.__alpha = a end

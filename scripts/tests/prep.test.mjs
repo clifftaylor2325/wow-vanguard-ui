@@ -4,6 +4,7 @@
 
 import { expect, it } from "vitest";
 import { CLICK_LUA, isTok, loggedIn, setCombat } from "./helpers.mjs";
+import { alphaOf, closeOf, insets } from "./dialogs.mjs";
 
 // TEST-ONLY instance, ammo and items: an apple (food), a bandage, a potion and
 // an ankh, with their item class and subclass as the client reports them.
@@ -93,6 +94,16 @@ it("prep: class reagents follow your level", () => {
   const druid = character("DRUID", 60);
   druid.slash("prep");
   expect(rows(druid).map((r) => r[0]), "a level 60 druid checks the top rank's reagents only").toEqual(["Ironwood Seed", "Wild Thornroot"]);
+  // Its card's chrome: a card's heading and X at the corner, Buy list beside the X, the rows T.SPACE.gap in.
+  const card = "ns.GetModule('InstancePrep').card";
+  const [gap, tight, buttonH, headingSize] = druid.eval('local T = ns.Theme return { T.SPACE.gap, T.SPACE.tight, T.BUTTON_H, T.RoleSize("heading") }');
+  const [panel, title, close, buy] = ["", ".title", ".close", ".buy"].map((part) => druid.frame(card + part));
+  expect([title.text, title.font.size, isTok(druid, title.textColor, "text"), title.rect.left - panel.rect.left, panel.rect.top - title.rect.top],
+    "the heading role in text, T.SPACE.gap in and down from the card's corner").toEqual(["Instance prep", headingSize, true, gap, gap]);
+  expect(closeOf(druid, card, "close"), "the X T.SPACE.gap in from the top-right corner").toEqual([gap, gap, true]);
+  expect([buy.visible, buy.rect.height, buy.rect.top, close.rect.left - buy.rect.right], "Buy list (T.BUTTON_H tall) beside the X, level with its top").toEqual([true, buttonH, close.rect.top, expect.closeTo(tight, 5)]);
+  expect(insets(druid, `${card}.rows[1]`, card).filter((_, i) => i !== 1 && i !== 3), "the rows T.SPACE.gap in from the sides").toEqual([gap, gap]);
+  expect(alphaOf(druid, card), "the card keeps the panel token's own alpha, T.ALPHA.overlay").toBe(druid.eval("return ns.Theme.ALPHA.overlay"));
 });
 
 it("prep: food and drink, bandages and potions are counted by their item subclass", () => {

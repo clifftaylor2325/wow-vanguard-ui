@@ -3,7 +3,8 @@
 // TEST-ONLY mail window of the headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn } from "./helpers.mjs";
+import { chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { alphaOf, insets } from "./dialogs.mjs";
 
 // TEST-ONLY: three mails (a sale with money, a letter with an item, a plain letter), and bag items.
 const ENV = `
@@ -153,4 +154,48 @@ it("the options have the switch", () => {
   addon.eval("ns.Settings('MailTools').on = false");
   addon.eval(`${MT}.Paint()`);
   expect(addon.eval("return Vanguard_MailTools == nil"), "off before any mailbox: no panel").toBe(true);
+});
+
+// The theme numbers the panel is laid out with: gap, row height, button height, control height, the opaque alpha,
+// and the heading, small and label role sizes.
+const tokens = (addon) => addon.eval(`local T = ns.Theme
+  return { T.SPACE.gap, T.ROW.height, T.BUTTON_H, T.CONTROL_H, T.ALPHA.opaque, T.RoleSize("heading"), T.RoleSize("small"), T.RoleSize("label") }`);
+
+// A W.Row's look, from a Lua expression for it: its height, its hover wash (the vertex colour of the highlight-layer
+// texture), and whether the selected look is there and hidden.
+const rowLook = (addon, row) => addon.eval(`local r = ${row}
+  local hover
+  for _, t in ipairs({ r:GetRegions() }) do if t.__layer == "HIGHLIGHT" then hover = t.__vertexColor end end
+  return { r:GetHeight(), hover, r.rail ~= nil and r.wash ~= nil, r.rail:IsShown() or r.wash:IsShown() }`);
+
+it("the panel: a card heading with no X, opaque, T.SPACE.gap in from its edges, W.Rows T.ROW.height tall, controls at their heights", () => {
+  const addon = mailer();
+  addon.slash("mail preset add Smith Bobalt iron");
+  addon.world.openMailWindow();
+  const [gap, rowH, buttonH, controlH, opaque, headingSize] = tokens(addon);
+  const [title, panel] = ["title", ""].map((part) => addon.frame(`Vanguard_MailTools${part && "."}${part}`));
+  expect([title.text, title.font.size, isTok(addon, title.textColor, "text"), title.rect.left - panel.rect.left, panel.rect.top - title.rect.top],
+    "the heading role in text, T.SPACE.gap in and down from the card's corner").toEqual(["Find mail", headingSize, true, gap, gap]);
+  expect(addon.eval("return Vanguard_MailTools.close == nil"), "no X: the panel follows the mail window").toBe(true);
+  expect(alphaOf(addon, "Vanguard_MailTools"), "T.ALPHA.opaque").toBe(opaque);
+  const look = rowLook(addon, "Vanguard_MailTools.rows[1]");
+  expect([look[0], isTok(addon, look[1], "hover"), look[2], look[3]], "a row is a W.Row: T.ROW.height, the hover wash, the selected look made and hidden").toEqual([rowH, true, true, false]);
+  // How far a part of the panel sits inside it, as [left, top, right, bottom].
+  const inset = (part) => insets(addon, `Vanguard_MailTools.${part}`, "Vanguard_MailTools");
+  expect([inset("rows[8]")[0], inset("rows[8]")[2], inset("search")[0], inset("presets[1]")[0], inset("presets[1]")[3]],
+    "rows, the search box and the preset buttons all T.SPACE.gap in from the sides, the buttons from the bottom").toEqual([gap, gap, gap, gap, gap]);
+  const heights = ["rows[1].take", "filterButton", "presets[1]", "search"].map((part) => addon.frame(`Vanguard_MailTools.${part}`).rect.height);
+  expect(heights, "Take, the filter and the preset buttons T.BUTTON_H; the search box T.CONTROL_H").toEqual([buttonH, buttonH, buttonH, controlH]);
+  expect(inset("rows[8]")[3], "the last row clears a gap, a button and a gap above the bottom").toBe(gap + buttonH + gap);
+});
+
+it("the panel's two plain lines: the empty-state line is label text2, the preset hint a small muted note that stays inside the panel", () => {
+  const addon = mailer("__wfgWorld.mail = {}");
+  addon.world.openMailWindow();
+  const [gap, , , , , , smallSize, labelSize] = tokens(addon);
+  const [empty, hint] = ["empty", "hint"].map((part) => addon.frame(`Vanguard_MailTools.${part}`));
+  expect([empty.visible, empty.text, empty.font.size, isTok(addon, empty.textColor, "text2")], "the empty-state tier").toEqual([true, "Your inbox is empty.", labelSize, true]);
+  expect([hint.visible, hint.font.size, isTok(addon, hint.textColor, "muted")], "the note tier").toEqual([true, smallSize, true]);
+  const inside = insets(addon, "Vanguard_MailTools.hint", "Vanguard_MailTools");
+  expect([inside[0] >= gap, inside[2] >= gap, inside[3]], "T.SPACE.gap clear of the sides (it wraps rather than run past them) and of the bottom").toEqual([true, true, gap]);
 });

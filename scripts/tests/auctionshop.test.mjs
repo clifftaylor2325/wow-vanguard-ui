@@ -2,7 +2,8 @@
 // (Modules/AuctionPrices.lua), at the TEST-ONLY auction house of the headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn, setCombat } from "./helpers.mjs";
+import { chatHas, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
+import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, titleOf } from "./dialogs.mjs";
 
 // TEST-ONLY: a wall clock (a test moves __now), the tooltip data API the Tooltips module
 // hooks, and a way to show an item's tooltip (the client's own price shown, so only the added
@@ -156,7 +157,7 @@ it("shopping lists: the pane picks or makes one, + Add adds, and the caps hold",
   addon.click("Vanguard_TextDialog.primary");
   expect([choices(addon), heading(addon), actions(addon)], "made and picked, empty").toEqual([["Shopping", "TEST-ONLY B", "Deals", "Upgrades"], ["TEST-ONLY B", "+ Add takes an item link, an item ID or a name."], ["New", "Rename", "Copy", "Delete", "Import", "Export"]]);
   // Pane row i: [name, count, marked as the one shown].
-  const paneRow = (i) => addon.eval(`local r = ${HELPER}.pane.rows[${i}] return { r.name:GetText(), r.count:GetText(), r.mark:IsShown() }`);
+  const paneRow = (i) => addon.eval(`local r = ${HELPER}.pane.rows[${i}] return { r.name:GetText(), r.count:GetText(), r.rail:IsShown() }`);
   expect([paneRow(1), paneRow(2)], "each list with its count; the one shown marked").toEqual([["Shopping", "1", false], ["TEST-ONLY B", "", true]]);
   addon.click(`${HELPER}.pane.rows[1]`);
   expect([shopRow(addon, 1)[1], paneRow(1)[2], heading(addon)], "picked back by a click on its row").toEqual(["Strange Dust", true, ["Shopping", ""]]);
@@ -169,6 +170,47 @@ it("shopping lists: the pane picks or makes one, + Add adds, and the caps hold",
   expect(paneRow(1)[0], "and back").toBe("Shopping");
   expect([chatHas(addon, /at most 20 shopping lists/), chatHas(addon, /holds at most 50 items/)], "says why").toEqual([true, true]);
   expect(addon.eval(`return ${HELPER}.NewList("   ")`), "no name, no list").toBe(false);
+});
+it("the list picked in the pane wears the one selected look (W.Row's rail and wash, in the accent), with its name in the plain text colour", () => {
+  const addon = atAuctionHouse();
+  makeList(addon, "TEST-ONLY A", '{ "x" }');
+  makeList(addon, "TEST-ONLY B", '{ "y" }');
+  const [wash, rail] = addon.eval("return { ns.Theme.ROW.wash, ns.Theme.ROW.height }");
+  // Pane row i: [a list row, selected, rail shown, wash shown, name in the text colour].
+  const look = (i) => {
+    const row = `${HELPER}.pane.rows[${i}]`;
+    const [row_, selected, railShown, washShown] = addon.eval(`local r = ${row} return { r.SetSelected ~= nil, r.selected, r.rail:IsShown(), r.wash:IsShown() }`);
+    return [row_, selected, railShown, washShown, isTok(addon, addon.eval(`return ${row}.name.__textColor`), "text")];
+  };
+  expect([look(1), look(2)], "the list shown is selected; the other is a plain row").toEqual([[true, false, false, false, true], [true, true, true, true, true]]);
+  const [railColor, washColor] = ["rail", "wash"].map((part) => addon.frame(`${HELPER}.pane.rows[2].${part}`).vertexColor);
+  expect([isTok(addon, railColor, "accent"), isTok(addon, washColor, "accent"), washColor[3]], "the rail and the wash in the accent, the wash at T.ROW.wash").toEqual([true, true, wash]);
+  expect(addon.eval(`return ${HELPER}.pane.rows[2]:GetHeight()`), "the rows keep the auction helper's height, not the options window's").toBe(addon.eval(`return ${HELPER}.ROW_H`));
+  addon.click(`${HELPER}.pane.rows[1]`);
+  expect([look(1).slice(1, 4), look(2).slice(1, 4)], "a click moves it").toEqual([[true, true, true], [false, false, false]]);
+  expect(rail, "T.ROW.height is the options window's 28").toBe(28);
+});
+// A table's status line: [its text, its font size, in the text2 colour].
+const statusOf = (addon, table) => {
+  const s = addon.frame(`${table}.status`);
+  return [s.text, s.font.size, isTok(addon, s.textColor, "text2")];
+};
+it("a table's status line is small text2 while it reports (searching, none up), and label text2 when it is an empty-state line", () => {
+  const addon = atAuctionHouse(DUSTS + DUST_LISTINGS);
+  addon.click("AuctionHouseFrame.Tabs[4]");
+  const [label, small] = addon.eval("return { ns.Theme.RoleSize('label'), ns.Theme.RoleSize('small') }");
+  expect(statusOf(addon, TABLE), "no lists: how to start, an empty-state line").toEqual(["No lists yet: New makes one, Import pastes one.", label, true]);
+  const edges = addon.eval(`local t = ${TABLE} return { t.status:GetLeft() - t:GetLeft(), t:GetRight() - t.status:GetRight() }`);
+  expect(edges, "the line runs from the table's left to its right edge, T.SPACE.tight in, so a long one wraps").toEqual(Array(2).fill(addon.eval("return ns.Theme.SPACE.tight")));
+  pick(addon, `${HELPER}.DEALS`);
+  expect(statusOf(addon, TABLE), "the Deals entry's empty line is one too").toEqual(["None yet: a scan or a search finds them.", label, true]);
+  dustFound(addon);
+  expect(statusOf(addon, TABLE)[0], "a list with a row: nothing to say").toBe("");
+  addon.click(`${TABLE}.rows[1]`);
+  expect(statusOf(addon, `${VIEW}.table`), "the view's search running: a status").toEqual(["searching...", small, true]);
+  addon.eval("__wfgWorld.ah.commodities[10940] = {}");
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  expect(statusOf(addon, `${VIEW}.table`), "and its answer: none up, a status").toEqual(["none up", small, true]);
 });
 it("Search list needs entries; closing the auction house drops the searches waiting", () => {
   const addon = atAuctionHouse();
@@ -247,6 +289,32 @@ it("search filters: exact name, levels and quality go in the browse query; a max
   addon.advance(1);
   addon.click(`${HELPER}.shopCard.search`);
   expect(lastBrowse(addon), "no filters, no levels").toEqual(["Strange Dust", {}, false, false]);
+});
+it("the filter dialog is a dialog: the window title and its X, Escape, the dialog alpha, rows on the dialog layout, Save the one accent button", () => {
+  const addon = atAuctionHouse(DUSTS + " __wfgWorld.items[10941].name = 'TEST-ONLY Strange Dust Pouch of the Very Long Name Indeed'");
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "10941" }');
+  openFilters(addon, 1);
+  const D = "Vanguard_AuctionFilters";
+  const T = addon.eval("local T = ns.Theme return { T.RoleSize('title'), T.SPACE.pad, T.SPACE.gap, T.CONTROL.inset, T.ALPHA.dialog, T.ROW.height, T.BUTTON_H, T.CONTROL_H, ns.DIALOG.head, ns.DIALOG.foot }");
+  const [titleSize, pad, gap, inset, alpha, row, buttonH, controlH, head, foot] = T;
+  expect(titleOf(addon, D), "the title role in the text colour, the pad in from the left, level with the X").toEqual({ size: titleSize, text: true, left: pad, mid: -inset });
+  expect(closeOf(addon, D), "an X at the window's corner").toEqual([px(addon, inset), px(addon, inset), true]);
+  expect([alphaOf(addon, D), escapes(addon, D)], "the dialog alpha; Escape closes it").toEqual([alpha, true]);
+  addon.click(`${D}.chrome.close`);
+  expect([addon.frame(D).visible, addon.eval("return VanguardDB.ah.lists['TEST-ONLY Mats'][1]")], "the X closes it and saves nothing").toEqual([false, "Strange Dust"]);
+  openFilters(addon, 1);
+  pressEscape(addon);
+  expect(addon.frame(D).visible, "Escape closes it").toBe(false);
+  // A widget's inset from the dialog's [left, top, right, bottom].
+  const at = (name) => insets(addon, `${D}.${name}`, D);
+  expect([at("exact").slice(0, 2), at("quality").slice(0, 2), at("alert").slice(0, 2)], "the switch, the choice and the alert row on the dialog's rows, the pad in").toEqual([[pad, head], [pad, head + 2 * row], [pad, head + 4 * row]]);
+  expect([at("price")[2], at("maxLevel")[2], at("price")[1], at("minLevel")[1]], "the boxes end level with the rows' switch and menu, centred in their rows").toEqual([pad + gap, pad + gap, head + 3 * row + (row - controlH) / 2, head + row + (row - controlH) / 2]);
+  expect([at("save").slice(2), at("cancel")[3], addon.eval(`return ${D}:GetHeight()`)], "Save the pad from the corner, Cancel level with it; the height is the head, five rows and the foot").toEqual([[pad, pad], pad, head + 5 * row + foot]);
+  expect(addon.eval(`local d = ${D} return { d.save:GetHeight(), d.cancel:GetHeight(), d.price:GetHeight(), d.minLevel:GetHeight(), d.exact:GetHeight(), d.quality:GetHeight(), d.alert:GetHeight(), d.alert:GetWidth() == d.exact:GetWidth(), d.alert:GetBottom() > d.save:GetTop() }`),
+    "buttons T.BUTTON_H, boxes T.CONTROL_H, rows T.ROW.height, the alert row as wide as the others, above the buttons").toEqual([buttonH, buttonH, controlH, controlH, row, row, row, true, true]);
+  expect([buttonOf(addon, `${D}.save`).slice(0, 2), buttonOf(addon, `${D}.cancel`).slice(0, 2)], "Save is the one accent button").toEqual([[true, "Save"], [false, "Cancel"]]);
+  openFilters(addon, 2);
+  expect(addon.eval(`local d = ${D} return d.title:GetRight() < d.chrome.close:GetLeft()`), "a long item name stays short of the X").toBe(true);
 });
 it("a name matches only itself or a name containing it, never an unrelated result", () => {
   const addon = atAuctionHouse(DUSTS + ` __wfgWorld.items[2589] = { name = "Linen Cloth", quality = 1 } __wfgWorld.items[4306] = { name = "TEST-ONLY Silk Bolt", pending = true }`);
@@ -411,7 +479,7 @@ it("/vg ah recent shows Recent", () => {
 });
 // The results view: shown, the item's name, the status line, and its rows shown as [price, quantity, time left, marked].
 const view = (addon) => addon.eval(`local f = ${VIEW} local rows = {}
-  for i, r in ipairs(f.table.rows) do if r:IsShown() then rows[i] = { r.cells.price:GetText(), r.cells.qty:GetText(), r.cells.time:GetText(), r.mark:IsShown() } end end
+  for i, r in ipairs(f.table.rows) do if r:IsShown() then rows[i] = { r.cells.price:GetText(), r.cells.qty:GetText(), r.cells.time:GetText(), r.rail:IsShown() } end end
   return { f:IsShown(), f.name:GetText() or false, f.table.status:GetText() or false, rows }`);
 // Eight TEST-ONLY dust listings (unit price, quantity, seconds left) and one with a hidden price.
 const DUST_LISTINGS = `__wfgWorld.ah.commodities[10940] = {
@@ -520,6 +588,7 @@ it("keys: Up and Down mark a listing, Enter opens it, only while the mouse is ov
   expect(kb()[0], "the mouse over a listing: the view takes the keys").toBe(true);
   press("DOWN");
   expect([view(addon)[3][1][3], kb()[1]], "Down marks the next; the key stops here").toEqual([true, false]);
+  expect(addon.eval(`local t = ${VIEW}.table return { t.rows[1].selected, t.rows[2].selected, t.rows[2].wash:IsShown(), ${TABLE}.rows[1].selected }`), "the marked listing wears the selected look (its rail and wash); the list's rows, with no keyboard, never do").toEqual([false, true, true, false]);
   press("UP");
   press("UP");
   expect(view(addon)[3][0][3], "Up, not past the first").toBe(true);

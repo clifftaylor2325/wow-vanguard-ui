@@ -12,9 +12,9 @@ local T, V = ns.Theme, ns.Visibility
 
 local MT = ns.Module("Meter", { defaults = { on = false, kind = "Dps", rows = 8, visibility = "always", showWhen = {} } })
 
--- The panel's width, a row's height and the title's, the gap between rows (UI units) and the
--- seconds between reads.
-MT.WIDTH, MT.ROW, MT.HEAD, MT.GAP, MT.EVERY = 300, 18, 18, 1, 0.5
+-- The panel's width, a row's height (a bar, not a list row) and the title's (a card's heading line: T.SPACE.gap
+-- down and a control's height), the gap between rows (UI units) and the seconds between reads.
+MT.WIDTH, MT.ROW, MT.HEAD, MT.GAP, MT.EVERY = 300, 18, T.SPACE.gap + T.CONTROL_H, 1, 0.5
 -- The kinds of meter shown: the Enum.DamageMeterType key and the title.
 MT.KINDS = { Dps = "Damage per second", Hps = "Healing per second" }
 -- The most rows the setting allows.
@@ -201,20 +201,20 @@ local function addRow(f, i)
   return row
 end
 
--- The title: a button across the panel's top that switches damage and healing.
+-- The title: a button across the panel's top that switches damage and healing. Its text is a card's heading
+-- (ns.WindowTitle on the button), so a click anywhere along the top switches.
 local function addTitle(f)
   local title = CreateFrame("Button", nil, f)
   title:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
   title:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, 0)
   title:SetHeight(MT.HEAD)
   title:SetScript("OnClick", ns.Guard("click meter title", MT.ToggleKind))
-  f.title = T.Text(title:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  f.title:SetPoint("LEFT", title, "LEFT", 4, 0)
+  f.title = ns.WindowTitle(title, MT.KINDS[MT.settings.kind] or MT.KINDS.Dps, { kind = "card" }).title
 end
 
--- The note shown while the meter has nothing to list.
+-- The note shown while the meter has nothing to list: an empty-state line (label text2).
 local function addEmpty(f)
-  f.empty = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  f.empty = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
   f.empty:SetPoint("CENTER", f, "CENTER", 0, -MT.HEAD / 2)
   f.empty:SetText("Nothing to show")
 end

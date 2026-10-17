@@ -131,9 +131,15 @@ end
 
 -- The form ------------------------------------------------------------------------------------
 
-local WIDTH, HEIGHT, PAD = 560, 470, 12
--- The height of a caption above its box, and the gap under a box.
-local CAPTION, GAP = 16, 8
+local WIDTH, HEIGHT = 560, 490
+-- The width of the fields: the form less its insets. A text area is a gutter narrower, for its thumb.
+local FIELD_W = WIDTH - 2 * T.SPACE.pad
+local AREA_W = FIELD_W - T.SPACE.col
+-- The height of a caption above its box; the tallest group of fields (a bug's three text areas, their captions
+-- and the note under them); the width of the "Part of Vanguard" dropdown; a text's inset from its box's border.
+local CAPTION, GROUP_H, PICK_W, TEXT_INSET = 16, 290, 300, 6
+-- How tall a text area is: four lines for the main answers, two for the optional one.
+local TALL, SHORT = 70, 46
 -- The form, built on first use. What's typed stays until the block is made or a reload.
 local form
 
@@ -146,26 +152,25 @@ local function caption(parent, text, y)
   return fs
 end
 
--- A multi-line edit box of at most `most` letters, the width of the form less a scroll bar, that closes the form on Escape.
+-- A multi-line edit box of at most `most` letters, the width of a text area, that closes the form on Escape.
 local function editBox(parent, name, most)
   local edit = CreateFrame("EditBox", name, parent)
   edit:SetMultiLine(true)
   edit:SetAutoFocus(false)
   edit:SetMaxLetters(most)
-  edit:SetWidth(WIDTH - 2 * PAD - 26)
-  edit:SetTextInsets(6, 6, 4, 4)
+  edit:SetWidth(AREA_W)
+  edit:SetTextInsets(TEXT_INSET, TEXT_INSET, T.SPACE.tight, T.SPACE.tight)
   T.Text(edit, "label")
   edit:SetScript("OnEscapePressed", function() form:Hide() end)
   return edit
 end
 
--- A multi-line text box (height high, at most `most` letters) that scrolls when the text is longer.
+-- A multi-line text box (height high, at most `most` letters): a dialog text view (the one scroll thumb, the
+-- cursor followed) that scrolls when the text is longer.
 local function textArea(parent, name, height, most)
-  local scroll = T.EditBox(CreateFrame("ScrollFrame", name .. "Scroll", parent, "UIPanelScrollFrameTemplate"))
-  scroll:SetHeight(height)
-  scroll.edit = editBox(scroll, name, most)
-  scroll:SetScrollChild(scroll.edit)
-  return scroll
+  local area = ns.TextView(parent, editBox(parent, name, most))
+  area:SetHeight(height)
+  return area
 end
 
 -- A captioned text box in a group at y; the group keeps the box as group[field]. Returns the y under it.
@@ -173,28 +178,29 @@ local function addText(group, field, text, height, y)
   caption(group, text, y)
   local area = textArea(group, "Vanguard_Feedback_" .. field, height, LIMITS[field][2])
   area:SetPoint("TOPLEFT", 0, -(y + CAPTION))
-  area:SetPoint("RIGHT", 0, 0)
+  area:SetPoint("TOPRIGHT", -T.SPACE.col, -(y + CAPTION))
   group[field] = area.edit
-  return y + CAPTION + height + GAP
+  return y + CAPTION + height + T.SPACE.gap
 end
 
 -- A group of fields for one kind, anchored under the summary.
 local function group(f)
   local g = CreateFrame("Frame", nil, f)
-  g:SetPoint("TOPLEFT", PAD, -118)
-  g:SetPoint("RIGHT", -PAD, 0)
-  g:SetHeight(280)
+  g:SetPoint("TOPLEFT", f.summary, "BOTTOMLEFT", 0, -T.SPACE.gap)
+  g:SetPoint("TOPRIGHT", f.summary, "BOTTOMRIGHT", 0, -T.SPACE.gap)
+  g:SetHeight(GROUP_H)
   return g
 end
 
 -- The bug fields: what you did, expected and got; the report goes in by itself.
 local function bugGroup(f)
   local g = group(f)
-  local y = addText(g, "did", "What did you do?", 70, 0)
-  y = addText(g, "expected", "What did you expect? (optional)", 46, y)
-  y = addText(g, "happened", "What happened instead?", 70, y)
+  local y = addText(g, "did", "What did you do?", TALL, 0)
+  y = addText(g, "expected", "What did you expect? (optional)", SHORT, y)
+  y = addText(g, "happened", "What happened instead?", TALL, y)
   g.note = T.Text(g:CreateFontString(nil, "OVERLAY"), "small", "muted")
   g.note:SetPoint("TOPLEFT", 0, -y)
+  g.note:SetWidth(FIELD_W)
   g.note:SetText("Your /vg report (version, client and the errors caught this session) goes in the block with your answers.")
   return g
 end
@@ -202,12 +208,12 @@ end
 -- The feature fields: what you want, which part of Vanguard, and why.
 local function featureGroup(f)
   local g = group(f)
-  local y = addText(g, "want", "What do you want?", 70, 0)
+  local y = addText(g, "want", "What do you want?", TALL, 0)
   caption(g, "Part of Vanguard", y)
-  g.area = W.Dropdown(g, FB.Areas, function() return f.area end, function(v) f.area = v end, 300)
+  g.area = W.Dropdown(g, FB.Areas, function() return f.area end, function(v) f.area = v end, PICK_W)
   g.area:SetPoint("TOPLEFT", 0, -(y + CAPTION))
-  y = y + CAPTION + 22 + GAP
-  addText(g, "why", "Why would it help you?", 70, y)
+  y = y + CAPTION + T.CONTROL_H + T.SPACE.gap
+  addText(g, "why", "Why would it help you?", TALL, y)
   return g
 end
 
@@ -251,44 +257,37 @@ end
 
 -- The summary line under the kind row: its caption and a one-line box of at most 100 letters.
 local function addSummary(f)
-  caption(f, "Short summary (8 to 100 characters)", 70):SetPoint("TOPLEFT", PAD, -70)
-  f.summary = W.Input(f, WIDTH - 2 * PAD)
+  local top = ns.DIALOG.head + T.ROW.height + T.SPACE.gap
+  caption(f, "Short summary (8 to 100 characters)", 0):SetPoint("TOPLEFT", T.SPACE.pad, -top)
+  f.summary = W.Input(f, FIELD_W)
   f.summary:SetMaxLetters(LIMITS.title[2])
-  f.summary:SetPoint("TOPLEFT", PAD, -86)
+  f.summary:SetPoint("TOPLEFT", T.SPACE.pad, -(top + CAPTION))
   f.summary:SetScript("OnEscapePressed", function() f:Hide() end)
 end
 
 -- The bottom of the form: Make report, Cancel, and the problem line above them.
 local function addButtons(f)
-  f.make = W.Primary(f, "Make report", FB.Make, 130)
-  f.make:SetPoint("BOTTOMRIGHT", -PAD, PAD)
+  f.make = W.Primary(f, "Make report", FB.Make)
+  f.make:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
   f.cancel = ns.DialogButton(f, "Cancel")
-  f.cancel:SetPoint("RIGHT", f.make, "LEFT", -8, 0)
+  f.cancel:SetPoint("RIGHT", f.make, "LEFT", -T.SPACE.gap, 0)
   f.cancel:SetScript("OnClick", ns.Guard("click cancel feedback", function() f:Hide() end))
   f.problem = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "warn")
   f.problem:SetJustifyH("LEFT")
-  f.problem:SetPoint("BOTTOMLEFT", PAD, PAD + 30)
-  f.problem:SetPoint("RIGHT", -PAD, 0)
+  f.problem:SetPoint("BOTTOMLEFT", T.SPACE.pad, ns.DIALOG.foot)
+  f.problem:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, ns.DIALOG.foot)
 end
 
--- The dialog frame: a centered themed panel a layer above the options window it opens from, hidden, with its heading.
+-- The dialog frame: a centered themed panel (ns.Dialog: its title, X and Escape), a layer above the options
+-- window it opens from, hidden.
 local function frame()
-  local f = T.Panel(CreateFrame("Frame", "Vanguard_Feedback", UIParent), { alpha = 0.98, shadow = true })
-  f:SetSize(WIDTH, HEIGHT)
-  f:SetPoint("CENTER")
-  f:SetFrameStrata("FULLSCREEN_DIALOG")
-  f:EnableMouse(true)
-  f:Hide()
-  f.heading = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading")
-  f.heading:SetPoint("TOPLEFT", PAD, -10)
-  f.heading:SetText("Send feedback")
-  return f
+  return ns.Dialog("Vanguard_Feedback", WIDTH, HEIGHT, "Send feedback")
 end
 
 -- The kind row at the top: Report a bug or Request a feature; picking one shows its fields.
 local function addKindRow(f)
-  f.kindRow = W.Choice(f, "What would you like to send?", KINDS, function() return f.kind end, function(v) f.kind = v; showKind() end, WIDTH - 2 * PAD)
-  f.kindRow:SetPoint("TOPLEFT", PAD, -34)
+  f.kindRow = W.Choice(f, "What would you like to send?", KINDS, function() return f.kind end, function(v) f.kind = v; showKind() end, FIELD_W)
+  f.kindRow:SetPoint("TOPLEFT", T.SPACE.pad, -ns.DIALOG.head)
 end
 
 -- Builds the form once: the kind row, the summary, a group per kind, and the buttons.

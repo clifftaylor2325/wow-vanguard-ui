@@ -43,6 +43,7 @@ Core/Movers.lua
 Core/MoverLinks.lua
 Core/Widgets.lua
 Core/Controls.lua
+Core/Chrome.lua
 Core/MoverPopover.lua
 Core/UnlockBar.lua
 Core/Options.lua

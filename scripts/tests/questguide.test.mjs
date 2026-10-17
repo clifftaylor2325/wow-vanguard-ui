@@ -142,6 +142,8 @@ it("quest guidance: quest-start pins on the world map, unless the game shows its
   addon.eval("WorldMapFrame:Show()");
   addon.update(0);
   expect([pins(addon), addon.eval("return __requested")], "starts from quest lines and quest spots, once each; hidden ones left out").toEqual([[[90071, 500, -175], [90074, 200, -560]], [10]]);
+  expect(addon.eval("local i = ns.QuestGuide.pins[1].icon local r, g, b = i:GetVertexColor() return { i:GetTexture(), r, g, b }"), "Vanguard's \"!\" in the theme's gold")
+    .toEqual(addon.eval('local r, g, b = ns.Theme.RGB("gold") return { ns.QuestParts.ICONS.available, r, g, b }'));
   addon.eval("local p = ns.QuestGuide.pins[1] p.__scripts.OnEnter(p)");
   expect(addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out"), "the tooltip").toEqual(["TEST-ONLY Bandits", addon.eval('return ns.Theme.Paint("Quest starts here. Click: point the arrow here", "text2")')]);
   addon.eval("local p = ns.QuestGuide.pins[2] p.__scripts.OnEnter(p) p.__scripts.OnLeave(p) p.__scripts.OnClick(p, 'LeftButton')");

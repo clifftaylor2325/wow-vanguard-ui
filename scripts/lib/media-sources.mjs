@@ -200,6 +200,11 @@ const ICON_SHAPES = {
   DispelCurse: [...path(arc(8.5, 8, 5.5, 5.5, 45, 315, 14), LETTER)],
   DispelDisease: [...path([[3.5, 2.5], [3.5, 13.5]], LETTER), ...path([[3.5, 2.5], ...arc(7.5, 8, 5.5, 5.5, 90, -90, 12), [3.5, 13.5]], LETTER)],
   DispelPoison: [...path([[4, 13.5], [4, 2.5]], LETTER), ...path([[4, 2.5], ...arc(8.5, 5.5, 4, 3, 90, -90, 10), [4, 8.5]], LETTER)],
+  // The quest marks for the quest dialog and quest log lines (F17), in place of the game's gossip
+  // icons: an exclamation mark (a stem from the top, two units of air, a 2 x 2 dot) and a question
+  // mark (a round hook that curls under on the left, a short stem, the same dot), tops and dots level.
+  QuestBang: [crisp([[8, 2], [8, 9]]), box(7, 12, 9, 14)],
+  QuestQuery: [path(arc(8, 5, 3.5, 3, 200, -90, 14), STROKE), crisp([[8, 8], [8, 9]]), box(7, 12, 9, 14)],
   // The floating waypoint pin (Modules/Waypoints.lua, on the game's SuperTrackedFrame): a teardrop outline, its
   // round head on (8, 6) meeting the tip at (8, 14), with a filled dot in the head; shown at the game's pin size.
   Pin: [path([[8, 14], ...arc(8, 6, 4, 4, -30, 210, 24)], STROKE, true), box(6.75, 4.75, 9.25, 7.25, 1.25)],

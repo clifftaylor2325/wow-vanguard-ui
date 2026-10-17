@@ -44,19 +44,17 @@ W.Flat = flat
 
 -- Keeps a primary button's fill in the current accent.
 local function refreshPrimary(b)
-  T.Tint(b.fill, "accent")
+  T.TintFill(b.fill, "accent")
 end
 
--- A primary push button: accent fill, dark label. For the one action a view is about.
+-- A primary push button: an accent fill (T.FillParts, so it follows rounded corners) and a dark label,
+-- T.BUTTON_H tall and 120 wide unless told otherwise. For the one action a view is about.
 function W.Primary(parent, text, onClick, width)
-  local b = ns.DialogButton(parent, text, width or 120)
-  b.fill = b:CreateTexture(nil, "BORDER", nil, -1)
-  b.fill:SetTexture(T.WHITE)
-  b.fill:SetAllPoints()
+  local b = ns.DialogButton(parent, text, width)
+  b.fill = T.FillParts(b, "BORDER", -1, "accent")
   T.Color(b.text, "void")
   b.Refresh = refreshPrimary
   b:SetScript("OnClick", ns.Guard(W.ClickLabel(text), onClick))
-  b:Refresh()
   return b
 end
 
@@ -215,20 +213,20 @@ local function refreshSegments(r)
   local current = r.get()
   for _, s in ipairs(r.segments) do
     local on = s.value == current
-    s.fill:SetShown(on)
-    T.Tint(s.fill, "accent")
+    T.ShowFill(s.fill, on)
+    T.TintFill(s.fill, "accent")
     T.Color(s.text, on and "void" or "text2")
   end
 end
 
--- One segment button: its label, an accent fill when selected, set(value) on click.
+-- One segment button, T.CONTROL_H tall: its label, an accent fill when selected (T.FillParts, so it
+-- follows rounded corners), set(value) on click.
 local function segment(r, choice, set)
   local s = T.Button(CreateFrame("Button", nil, r))
-  s:SetSize(44, 20)
+  s:SetSize(44, T.CONTROL_H)
   s.value = choice[1]
-  s.fill = flat(s, "ARTWORK", "accent")
-  s.fill:SetAllPoints()
-  s.text = T.Text(s:CreateFontString(nil, "OVERLAY"), "small")
+  s.fill = T.FillParts(s, "ARTWORK", nil, "accent")
+  s.text = T.Text(s:CreateFontString(nil, "OVERLAY"), "label")
   s.text:SetPoint("CENTER")
   s.text:SetText(choice[2])
   s:SetScript("OnClick", ns.Guard("click segment", function() set(choice[1]); r:Refresh() end))
@@ -268,6 +266,8 @@ local menu
 -- The most items a dropdown menu shows at once; the mouse wheel scrolls a
 -- longer list (every bar texture other addons share, say).
 local MENU_ROWS = 16
+-- How tall a menu item is: an inline control's height.
+local MENU_ROW = T.CONTROL_H
 
 -- Hides the open dropdown menu.
 function W.CloseMenu()
@@ -277,9 +277,9 @@ end
 -- One item in the menu: its text, a check on the current choice.
 local function menuItem(i)
   local b = CreateFrame("Button", nil, menu)
-  b:SetHeight(22)
-  b:SetPoint("TOPLEFT", 1, -1 - (i - 1) * 22)
-  b:SetPoint("TOPRIGHT", -1, -1 - (i - 1) * 22)
+  b:SetHeight(MENU_ROW)
+  b:SetPoint("TOPLEFT", 1, -1 - (i - 1) * MENU_ROW)
+  b:SetPoint("TOPRIGHT", -1, -1 - (i - 1) * MENU_ROW)
   flat(b, "HIGHLIGHT", "hover"):SetAllPoints()
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label")
   b.text:SetPoint("LEFT", 8, 0)
@@ -304,7 +304,7 @@ local function fillMenu()
   local d, shown = menu.owner, math.min(#menu.choices, MENU_ROWS)
   for i = 1, shown do fillItem(i, menu.choices[menu.offset + i], d.get(), d.set) end
   for i = shown + 1, #menu.items do menu.items[i]:Hide() end
-  menu:SetSize(d:GetWidth(), shown * 22 + 2)
+  menu:SetSize(d:GetWidth(), shown * MENU_ROW + 2)
 end
 
 -- Scrolls a long menu one item per wheel step, within its list.
@@ -345,6 +345,7 @@ local function openMenu(d)
   menu:ClearAllPoints()
   menu:SetPoint("TOPLEFT", d, "BOTTOMLEFT", 0, -2)
   menu:Show()
+  menu:Raise() -- over a dialog in the same strata (ns.Dialog's), whichever was made first
 end
 
 -- Shows the current choice's text.
@@ -365,11 +366,11 @@ local function addDropdownText(d)
   d.text:SetWordWrap(false)
 end
 
--- A dropdown: shows the current choice; click to pick from a menu. choices
+-- A dropdown, T.CONTROL_H tall: shows the current choice; click to pick from a menu. choices
 -- is a list of { value, text } or a function returning one.
 function W.Dropdown(parent, choices, get, set, width)
   local d = T.Button(CreateFrame("Button", nil, parent))
-  d:SetSize(width or 180, 22)
+  d:SetSize(width or 180, T.CONTROL_H)
   d.choices, d.get, d.set, d.Refresh = choices, get, set, refreshDropdown
   addDropdownText(d)
   d:SetScript("OnClick", ns.Guard("click dropdown", function(self) if menu and menu:IsShown() and menu.owner == self then W.CloseMenu() else openMenu(self) end end))

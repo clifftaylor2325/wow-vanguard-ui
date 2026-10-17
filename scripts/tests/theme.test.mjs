@@ -295,7 +295,7 @@ it("a long dropdown shows 16 choices at once, scrolls with the wheel and opens a
   const total = addon.eval('return #ns.Theme.SharedChoices("statusbar", { {}, {}, {} })');
   // The first choice the menu shows.
   const first = () => addon.eval("return __menuTexts()[1]");
-  expect([addon.eval("return #__menuTexts()"), addon.eval("return Vanguard_Menu:GetHeight()"), first()], "16 of the choices, from the top").toEqual([16, 16 * 22 + 2, "Vanguard"]);
+  expect([addon.eval("return #__menuTexts()"), addon.eval("return Vanguard_Menu:GetHeight()"), first()], "16 of the choices, from the top, each an inline control tall").toEqual([16, 16 * addon.eval("return ns.Theme.CONTROL_H") + 2, "Vanguard"]);
   addon.wheel("Vanguard_Menu", -3);
   expect(first(), "the wheel scrolls down a choice per step").toBe(addon.eval(`return ns.Theme.SharedChoices("statusbar", { {}, {}, {} })[4][2]`));
   addon.wheel("Vanguard_Menu", -100);
@@ -426,19 +426,19 @@ const SCROLL_LUA = `
   end
 `;
 
-it("the game's scroll bars: track art faded, a raised thumb with an accent edge under the mouse, flat arrows", () => {
+it("the game's scroll bars: track art faded, the one T.SCROLL line on the thumb (lit under the mouse), the arrows faded away", () => {
   const addon = loggedIn(SCROLL_LUA);
   const minimal = addon.eval(`
     local bar = __bar() ns.Theme.ScrollBar(bar) ns.Theme.ScrollBar(bar)
     local thumb = bar.Track.Thumb
+    local line = ns.FrameState('vgThumb')[thumb].bar
+    local rest = line:GetAlpha()
     thumb.__scripts.OnEnter(thumb)
-    local accent = { ns.Theme.Accent() }
-    local edged
-    for _, r in ipairs({ thumb:GetRegions() }) do if r.__vertexColor and r.__vertexColor[1] == accent[1] and r.__vertexColor[3] == accent[3] then edged = true end end
+    local lit = line:GetAlpha()
     thumb.__scripts.OnLeave(thumb)
-    return { bar.Track.Begin.__alpha, thumb.Middle.__alpha, bar.Back.Texture.__alpha, edged == true,
-      ns.FrameState('vgArrow')[bar.Back].__texCoord[3], ns.FrameState('vgArrow')[bar.Forward].__texCoord == nil }`);
-  expect(minimal, "faded, accent under the mouse, the up arrow is the Down icon turned over").toEqual([0, 0, 0, true, 1, true]);
+    return { bar.Track.Begin.__alpha, thumb.Middle.__alpha, bar.Back:GetAlpha(), bar.Back.__mouse, line:GetWidth(), rest, lit, line:GetAlpha(),
+      ns.FrameState('vgArrow')[bar.Back] ~= nil, ns.FrameState('vgArrow')[bar.Forward] ~= nil }`);
+  expect(minimal, "faded; the line T.SCROLL.thumb wide at the rest alpha, lit under the mouse; the arrows at alpha 0 without the mouse, marked once").toEqual([0, 0, 0, false, 4, 0.5, 1, 0.5, true, true]);
   const trim = addon.eval("local bar = __bar(true) ns.Theme.ScrollBar(bar) return { bar.Background.__alpha, bar.Track.Thumb.Middle.__alpha }");
   expect(trim, "the trim bar's background goes too").toEqual([0, 0]);
   expect(addon.eval("local f = CreateFrame('Frame', nil, UIParent) f.Back = CreateFrame('Button', nil, f) ns.Theme.ScrollBar(f) return ns.FrameState('vgArrow')[f.Back] == nil"), "a frame without a thumb is left alone").toBe(true);

@@ -1,5 +1,5 @@
 -- Minimap: square, in a themed frame you can move in unlock mode, with the
--- zone name in the heading font on a see-through band along its top edge
+-- zone name in the zone text role on a see-through band along its top edge
 -- (colored by PvP status; hover it for the zone's territory, click it for the
 -- world map), the coordinates on a band along its bottom between the tracking
 -- and addon slot buttons, accent rules inside both bands, and mouse-wheel zoom. The round
@@ -365,13 +365,13 @@ local function addBands(overlay, settings)
   T.OnChanged(paintChrome)
 end
 
--- The zone name centered on the top band in the heading font (the faction
--- look's, as on window titles), kept to the room between the
+-- The zone name centered on the top band in the zone role (a bold 13 that keeps
+-- Fira Sans when the faction look sets the display font on window titles), kept to the room between the
 -- corner buttons (a long name is cut short rather than run under them), and
 -- the coordinates centered on the bottom band (inside the map, so a map in a
 -- screen corner never pushes them off screen).
 local function addTexts(overlay, size)
-  MM.zone = T.Text(overlay:CreateFontString(nil, "OVERLAY"), "heading", false)
+  MM.zone = T.Text(overlay:CreateFontString(nil, "OVERLAY"), "zone", false)
   MM.zone:SetPoint("CENTER", MM.top, "CENTER")
   MM.zone:SetWidth(size - 2 * MM.ZONE_INSET)
   MM.zone:SetWordWrap(false)

@@ -9,10 +9,26 @@ local ADDON, ns = ...
 
 local T, W, O = ns.Theme, ns.Widgets, ns.Options
 
-local WIDTH, HEIGHT, NAV_WIDTH, BAR = 780, 600, 176, 40
-local CARD_WIDTH, PAD = WIDTH - NAV_WIDTH - 40, 10
--- Height of each row kind (Core/OptionsPreview.lua and modules add theirs with O.AddRowKind).
-local ROW_HEIGHT = { check = 28, cycle = 28, slider = 28, button = 32, text = 20, module = 54 }
+local WIDTH, HEIGHT, NAV_WIDTH = 780, 600, 176
+-- The header bar is centred on the title line (T.CONTROL.inset down, where every window's title and close button sit);
+-- the footer bar holds a standalone button (T.BUTTON_H) with air above and below.
+local HEAD, FOOT = 2 * T.CONTROL.inset, T.BUTTON_H + 14
+-- The logo beside the title, a nav icon, and the dot that marks a page or a row with a changed setting (units);
+-- and how far the nav dims a page the search misses.
+local LOGO, NAV_ICON, DOT, DIM = 28, 16, 4, 0.35
+-- Right of a page: its scroll thumb sits T.SPACE.col out from the view (ns.ScrollView) and T.SPACE.col in from the window's edge.
+local VIEW_RIGHT = 2 * T.SPACE.col
+-- A card's width (the page is T.SPACE.col in from the nav), its inset (T.SPACE.col: a card inside a window) and its
+-- inside width (what a card title or a note spans, the inset kept on both sides).
+local CARD_WIDTH, PAD = WIDTH - NAV_WIDTH - T.SPACE.col - VIEW_RIGHT, T.SPACE.col
+local INNER = CARD_WIDTH - 2 * PAD
+-- The air above and below a wrapped caption or note; a text line's height; how far above a found row a jump scrolls
+-- (the card's title and a little air).
+local AIR, LINE, JUMP_ABOVE = 6, 20, 40
+-- Height of each row kind (Core/OptionsPreview.lua and modules add theirs with O.AddRowKind): a check, cycle or
+-- slider row is a list row (T.ROW.height); a button row has a standalone button (T.BUTTON_H) with 3 units of air
+-- each side; a module row two lines.
+local ROW_HEIGHT = { check = T.ROW.height, cycle = T.ROW.height, slider = T.ROW.height, button = T.BUTTON_H + 6, text = LINE, module = 54 }
 -- Row kinds laid out edge to edge in a card (the rest are indented).
 local FULL_WIDTH = { check = true, cycle = true, slider = true, swatches = true, module = true }
 -- Where a row kind keeps its setter; the setting's default, if the row has one, comes right after it.
@@ -33,9 +49,9 @@ local function moduleRow(parent, row, width)
   local r = W.Check(parent, row[2], row[3], row[4], width)
   r:SetHeight(ROW_HEIGHT.module)
   r.label:ClearAllPoints()
-  r.label:SetPoint("TOPLEFT", 8, -6)
+  r.label:SetPoint("TOPLEFT", T.SPACE.gap, -AIR)
   r.desc = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  r.desc:SetPoint("TOPLEFT", r.label, "BOTTOMLEFT", 0, -3)
+  r.desc:SetPoint("TOPLEFT", r.label, "BOTTOMLEFT", 0, -T.SPACE.tight)
   r.desc:SetJustifyH("LEFT")
   r.desc:SetWidth(width - 62)
   r.desc:SetText(row[6])
@@ -51,19 +67,31 @@ local function followEnabled(b, enabled)
   b:Refresh()
 end
 
+-- The width of a button row's button (units).
+local BUTTON_WIDTH = 220
+
 -- A button row: { "button", label, onClick, enabled }; enabled (optional) disables it while it says false.
 local function buttonRow(c, r)
-  local b = W.Button(c, r[2], r[3], 220)
+  local b = W.Button(c, r[2], r[3], BUTTON_WIDTH)
   if r[4] then followEnabled(b, r[4]) end
   return b
+end
+
+-- A text row { "text", words, tier }: a line in label text2 (a status line), or with tier "note" a note in
+-- small muted under the row it explains; it wraps to the card's inside width, as far from the right edge as it
+-- starts from the left (its row grows to fit; see rowHeight).
+local function textRow(c, r)
+  local fs = W.Text(c, r[2])
+  if r[3] == "note" then T.Text(fs, "small", "muted") end
+  fs:SetWidth(INNER)
+  return fs
 end
 
 -- Row kind -> builder(parent, row, width) returning the widget.
 local BUILDERS = {
   -- One builder per row kind; each returns the widget it made.
   -- Header rows are card titles (groupRows), not widgets.
-  -- A note wraps to the card's width (its row grows to fit; see rowHeight).
-  text = function(c, r, w) local fs = W.Text(c, r[2]) fs:SetWidth(w - PAD - 4) return fs end,
+  text = textRow,
   check = function(c, r, w) return W.Check(c, r[2], r[3], r[4], w) end,
   button = buttonRow,
   cycle = function(c, r, w) return W.Choice(c, r[2], r[3], r[4], r[5], w) end,
@@ -93,7 +121,7 @@ local function resetDot(w, set, initial)
   d:SetSize(8, 16)
   d:SetPoint("LEFT", 0, 0)
   d.mark = W.Flat(d, "OVERLAY", "accent")
-  d.mark:SetSize(4, 4)
+  d.mark:SetSize(DOT, DOT)
   d.mark:SetPoint("CENTER")
   d:SetScript("OnClick", ns.Guard("click reset setting", function() set(initial); T.Sound("off"); w:Refresh() end))
   d:SetScript("OnEnter", dotTooltip)
@@ -180,19 +208,19 @@ local function groupRows(rows)
   return cards
 end
 
--- The card's title in small muted capitals; returns where rows start.
+-- The card's title: a section header (W.SectionHeader, small muted capitals) along its top; returns where rows start.
 local function addCardTitle(card, title)
-  card.title = T.Text(card:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  card.title:SetPoint("TOPLEFT", PAD + 2, -PAD)
-  card.title:SetText(title:upper())
-  return PAD + 18
+  card.header = W.SectionHeader(card, title, { width = INNER })
+  card.header:SetPoint("TOPLEFT", PAD, -PAD)
+  card.title = card.header.text
+  return PAD + card.header:GetHeight()
 end
 
 -- A row's height: its kind's, except a note or a switch with a long caption, which take the height of their wrapped text (with a little air).
 local function rowHeight(w, kind)
-  if kind == "text" then return math.max(ROW_HEIGHT.text, w:GetStringHeight() + 6) end
-  if kind == "check" and w.label then return math.max(ROW_HEIGHT.check, w.label:GetStringHeight() + 12) end
-  return ROW_HEIGHT[kind] or 28
+  if kind == "text" then return math.max(ROW_HEIGHT.text, w:GetStringHeight() + AIR) end
+  if kind == "check" and w.label then return math.max(ROW_HEIGHT.check, w.label:GetStringHeight() + 2 * AIR) end
+  return ROW_HEIGHT[kind] or T.ROW.height
 end
 
 -- Builds a card's rows top to bottom from y; returns the y below them. Each
@@ -200,10 +228,10 @@ end
 local function placeRows(card, rows, y, cardY)
   for _, row in ipairs(rows) do
     local full = FULL_WIDTH[row[1]]
-    local w = BUILDERS[row[1]](card, row, CARD_WIDTH - 8)
+    local w = BUILDERS[row[1]](card, row, CARD_WIDTH - 2 * T.SPACE.tight)
     w.card, w.caption, w.pageY = card, row[2], cardY + y
     dressRow(w, row)
-    w:SetPoint("TOPLEFT", card, "TOPLEFT", full and 4 or PAD + 2, -y)
+    w:SetPoint("TOPLEFT", card, "TOPLEFT", full and T.SPACE.tight or PAD, -y)
     widgets[#widgets + 1] = w
     y = y + rowHeight(w, row[1])
   end
@@ -217,112 +245,20 @@ local function buildCard(child, spec, y)
   card:SetWidth(CARD_WIDTH)
   card.child = child
   local top = spec.title and addCardTitle(card, spec.title) or PAD
-  local height = placeRows(card, spec.rows, top, y) + PAD - 2
+  local height = placeRows(card, spec.rows, top, y) + T.SPACE.gap
   card:SetHeight(height)
   return height
 end
 
--- Scrolling ----------------------------------------------------------------------------------
-
--- Sizes and places the scroll thumb for a page (hidden when it all fits), and notes the page for a drag.
-local function updateThumb(view)
-  local vh, ch = view:GetHeight(), view.child:GetHeight()
-  window.thumb:SetShown(vh > 0 and ch > vh + 1)
-  window.grip:SetShown(window.thumb:IsShown())
-  window.thumbView = view
-  if not window.thumb:IsShown() then return end
-  local h = math.max(24, vh * vh / ch)
-  window.thumb:SetHeight(h)
-  window.thumb:ClearAllPoints()
-  window.thumb:SetPoint("TOPRIGHT", view, "TOPRIGHT", 12, -(view:GetVerticalScroll() or 0) / (ch - vh) * (vh - h))
-end
-
--- How far a page can scroll.
-local function maxScroll(view)
-  return math.max(0, view.child:GetHeight() - view:GetHeight())
-end
-
--- The soft edges: the top one once scrolled down, the bottom one while there's more below.
-local function updateEdges(view)
-  local scroll, max = view:GetVerticalScroll() or 0, maxScroll(view)
-  view.fadeTop:SetShown(scroll > 1)
-  view.fadeBottom:SetShown(scroll < max - 1)
-end
-
--- Scrolls a page to y (kept within its content), with its thumb and edges.
-local function scrollTo(view, y)
-  view:SetVerticalScroll(math.max(0, math.min(maxScroll(view), y)))
-  updateThumb(view)
-  updateEdges(view)
-end
-
--- Where a thumb drag started: the cursor's height (window units) and the page's scroll then.
-local drag
-
--- The cursor's height in the window's units.
-local function cursorY()
-  local _, y = GetCursorPosition()
-  return y / window:GetEffectiveScale()
-end
-
--- While the thumb is dragged: scrolls its page as far as the cursor moved, scaled from the
--- thumb's travel to the page's.
-local function onDrag()
-  local view = window.thumbView
-  local travel = view and view:GetHeight() - window.thumb:GetHeight() or 0
-  if not drag or travel <= 0 then return end
-  scrollTo(view, drag.scroll + (drag.y - cursorY()) / travel * maxScroll(view))
-end
-
--- Starts a thumb drag with the left button: the page follows the cursor until the button is let go.
-local function startDrag(_, button)
-  if button ~= "LeftButton" or not window.thumbView then return end
-  drag = { y = cursorY(), scroll = window.thumbView:GetVerticalScroll() or 0 }
-  window.grip:SetScript("OnUpdate", onDrag)
-end
-
--- Ends a thumb drag.
-local function stopDrag()
-  drag = nil
-  window.grip:SetScript("OnUpdate", nil)
-end
-
--- Scrolls a page 40 units per wheel notch.
-local function onWheel(view, delta)
-  scrollTo(view, (view:GetVerticalScroll() or 0) - delta * 40)
-end
-
--- A soft edge in the window's color over one end of a page (rows fade into it).
-local function fadeEdge(holder, side)
-  local t = T.Snap(holder:CreateTexture(nil, "OVERLAY"))
-  t:SetTexture(T.Texture("Fade"))
-  T.Tint(t, "panel")
-  if side == "TOP" then t:SetTexCoord(0, 1, 1, 0) end
-  t:SetPoint(side .. "LEFT")
-  t:SetPoint(side .. "RIGHT")
-  t:SetHeight(24)
-  return t
-end
-
--- The two edges, on a layer above the page's rows; the wheel scrolls the page.
-local function addEdges(view)
-  view:EnableMouseWheel(true)
-  view:SetScript("OnMouseWheel", onWheel)
-  local holder = CreateFrame("Frame", nil, view)
-  holder:SetAllPoints(view)
-  holder:SetFrameLevel(view:GetFrameLevel() + 10)
-  view.fadeTop, view.fadeBottom = fadeEdge(holder, "TOP"), fadeEdge(holder, "BOTTOM")
-end
-
 -- Pages --------------------------------------------------------------------------------------
 
--- Stacks a page's cards down its scroll child and sizes the child to fit.
-local function placeCards(child, rows)
+-- Stacks a page's cards down its view's content and sizes the content to fit.
+local function placeCards(view, rows)
   local y = 0
   quiet = true
-  for _, spec in ipairs(groupRows(rows)) do y = y + buildCard(child, spec, y) + PAD end
+  for _, spec in ipairs(groupRows(rows)) do y = y + buildCard(view.child, spec, y) + PAD end
   quiet = false
-  child:SetHeight(math.max(1, y - PAD))
+  view:Fit(y - PAD)
 end
 
 -- A page's rows, read once per opening of the window (for its nav dot, the
@@ -332,30 +268,29 @@ local function rowsOf(page)
   return rowCache[page.key]
 end
 
--- A page: a scroll view right of the nav holding its cards.
+-- A page: the shared scroll view (ns.ScrollView: the T.SCROLL thumb, soft edges, the wheel) right of the nav, holding its cards.
 local function buildPage(page)
-  local view = CreateFrame("ScrollFrame", nil, window)
-  view:SetPoint("TOPLEFT", NAV_WIDTH + 14, -(BAR + 12))
-  view:SetPoint("BOTTOMRIGHT", -26, BAR + 12)
-  view.child = CreateFrame("Frame", nil, view)
-  view.child:SetWidth(CARD_WIDTH)
+  local view = ns.ScrollView(window, { width = CARD_WIDTH })
+  view:SetPoint("TOPLEFT", NAV_WIDTH + T.SPACE.col, -(HEAD + T.SPACE.col))
+  view:SetPoint("BOTTOMRIGHT", -VIEW_RIGHT, FOOT + T.SPACE.col)
   view.child.pageKey = page.key
-  view:SetScrollChild(view.child)
-  placeCards(view.child, rowsOf(page))
-  addEdges(view)
+  placeCards(view, rowsOf(page))
   return view
 end
 
 -- Header, nav and footer ---------------------------------------------------------------------
 
--- A full-width raised bar along the top or bottom edge.
-local function bar(f, edge)
+-- A full-width raised bar, `height` tall, along the top or bottom edge.
+local function bar(f, edge, height)
   local b = T.Panel(CreateFrame("Frame", nil, f), { raised = true })
-  b:SetHeight(BAR)
+  b:SetHeight(height)
   b:SetPoint(edge .. "LEFT")
   b:SetPoint(edge .. "RIGHT")
   return b
 end
+
+-- The width of the header's profile picker (units).
+local PROFILE_WIDTH = 150
 
 -- Every profile as a dropdown choice.
 local function profileChoices()
@@ -366,7 +301,7 @@ end
 
 -- The profile picker: picking one switches on reload.
 local function profileDropdown(parent)
-  return W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) ns.UseProfile(v); O.NeedReload(); O.RebuildPage("profiles") end, 150)
+  return W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) ns.UseProfile(v); O.NeedReload(); O.RebuildPage("profiles") end, PROFILE_WIDTH)
 end
 
 -- Enter in the search box: opens the first page that matches and jumps to the row.
@@ -377,32 +312,35 @@ local function searchEnter(self)
   O.JumpTo(self:GetText())
 end
 
--- The title, with your faction's crest just right of it while the faction look is on.
+-- The title, in the window tier's role and the text colour, with your faction's crest (T.CREST.title) just right
+-- of it while the faction look is on.
 local function addTitle(f)
-  f.title = T.Text(f.header:CreateFontString(nil, "OVERLAY"), "title")
-  f.title:SetPoint("LEFT", f.logo, "RIGHT", 6, 0)
+  f.title = T.Text(f.header:CreateFontString(nil, "OVERLAY"), "title", "text")
+  f.title:SetPoint("LEFT", f.logo, "RIGHT", T.SPACE.gap, 0)
   f.title:SetText("Vanguard")
-  f.crest = T.Crest(f.header, 20, "OVERLAY")
-  f.crest:SetPoint("LEFT", f.title, "RIGHT", 8, 0)
+  f.crest = T.Crest(f.header, T.CREST.title, "OVERLAY")
+  f.crest:SetPoint("LEFT", f.title, "RIGHT", T.SPACE.gap, 0)
 end
 
--- The header: logo and title, search, profile, close.
+-- The header: logo and title, search, profile, and the close button where every window has it (T.PlaceClose).
 local function addHeader(f)
-  f.header = bar(f, "TOP")
-  f.logo = T.Logo(f.header, 28)
-  f.logo:SetPoint("LEFT", 10, 0)
+  f.header = bar(f, "TOP", HEAD)
+  f.logo = T.Logo(f.header, LOGO)
+  f.logo:SetPoint("LEFT", T.SPACE.pad, 0)
   addTitle(f)
-  f.close = T.CloseButton(CreateFrame("Button", nil, f.header))
-  f.close:SetPoint("CENTER", f.header, "RIGHT", -T.CONTROL.inset, 0)
+  f.close = T.PlaceClose(T.CloseButton(CreateFrame("Button", nil, f.header)), f)
   f.close:SetScript("OnClick", ns.Guard("click close options", function() O.Hide() end))
 end
+
+-- The width of the header's search box (units).
+local SEARCH_WIDTH = 190
 
 -- Search and profile, right of the title.
 local function addHeaderControls(f)
   f.profile = profileDropdown(f.header)
-  f.profile:SetPoint("RIGHT", f.close, "LEFT", -10, 0)
-  f.search = W.Search(f.header, 190, "Search settings", function(text) O.Search(text) end)
-  f.search:SetPoint("RIGHT", f.profile, "LEFT", -8, 0)
+  f.profile:SetPoint("RIGHT", f.close, "LEFT", -T.SPACE.gap, 0)
+  f.search = W.Search(f.header, SEARCH_WIDTH, "Search settings", function(text) O.Search(text) end)
+  f.search:SetPoint("RIGHT", f.profile, "LEFT", -T.SPACE.gap, 0)
   f.search:SetScript("OnEnterPressed", searchEnter)
   T.Ornament(f, "rule", f.header)
 end
@@ -415,42 +353,35 @@ end
 
 -- The footer: version on the left; a reload notice and button on the right when needed.
 local function addFooter(f)
-  f.footer = bar(f, "BOTTOM")
+  f.footer = bar(f, "BOTTOM", FOOT)
   f.version = T.Text(f.footer:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  f.version:SetPoint("LEFT", 12, 0)
+  f.version:SetPoint("LEFT", T.SPACE.pad, 0)
   f.version:SetText(version() and ("Vanguard " .. version() .. "  ·  /vg") or "Vanguard  ·  /vg")
-  f.reload = ns.ReloadButton(W.Primary(f.footer, "Reload now", nil, 110))
-  f.reload:SetPoint("RIGHT", -10, 0)
+  f.reload = ns.ReloadButton(W.Primary(f.footer, "Reload now"))
+  f.reload:SetPoint("RIGHT", -T.SPACE.pad, 0)
   f.notice = T.Text(f.footer:CreateFontString(nil, "OVERLAY"), "label", "warn")
-  f.notice:SetPoint("RIGHT", f.reload, "LEFT", -12, 0)
+  f.notice:SetPoint("RIGHT", f.reload, "LEFT", -T.SPACE.col, 0)
   f.notice:SetText("Some changes need a reload")
 end
 
--- One nav entry (h tall): icon and title; the active one gets an accent rail and wash.
+-- One nav entry (h tall): a list row (W.Row), one pixel in from the nav's edge; the current page wears its selected look.
 local function navItem(nav, y, h)
-  local b = CreateFrame("Button", nil, nav)
-  b:SetSize(NAV_WIDTH - 2, h)
+  local b = W.Row(nav, h, { width = NAV_WIDTH - 2 })
   b:SetPoint("TOPLEFT", 1, -y)
-  b.wash, b.rail = W.Flat(b, "BACKGROUND", "accent"), W.Flat(b, "ARTWORK", "accent")
-  b.wash:SetAllPoints()
-  b.rail:SetPoint("TOPLEFT")
-  b.rail:SetPoint("BOTTOMLEFT")
-  b.rail:SetWidth(2)
-  W.Flat(b, "HIGHLIGHT", "hover"):SetAllPoints()
   return b
 end
 
 -- Fills a nav entry with the page's icon and title; clicking opens the page.
 local function fillNavItem(b, page)
-  b.icon = W.IconTexture(b, page.icon or "NavGeneral", 16, "text2")
-  b.icon:SetPoint("LEFT", 14, 0)
+  b.icon = W.IconTexture(b, page.icon or "NavGeneral", NAV_ICON, "text2")
+  b.icon:SetPoint("LEFT", T.SPACE.pad, 0)
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  b.text:SetPoint("LEFT", b.icon, "RIGHT", 9, 0)
+  b.text:SetPoint("LEFT", b.icon, "RIGHT", T.SPACE.gap, 0)
   b.text:SetText(page.title)
   b:SetScript("OnClick", ns.Guard("click options page", function() O.Show(page.key) end))
   b.changed = W.Flat(b, "OVERLAY", "accent")
-  b.changed:SetSize(4, 4)
-  b.changed:SetPoint("RIGHT", -12, 0)
+  b.changed:SetSize(DOT, DOT)
+  b.changed:SetPoint("RIGHT", -T.SPACE.col, 0)
 end
 
 -- Pages in nav order.
@@ -465,8 +396,8 @@ end
 local function divider(nav, y)
   local d = W.Flat(nav, "ARTWORK", "divider")
   d:SetHeight(1)
-  d:SetPoint("TOPLEFT", 12, -y)
-  d:SetPoint("TOPRIGHT", -12, -y)
+  d:SetPoint("TOPLEFT", T.SPACE.col, -y)
+  d:SetPoint("TOPRIGHT", -T.SPACE.col, -y)
 end
 
 -- A page's nav group: 1 (under order 30), 2 (under 90), 3 (the rest).
@@ -475,21 +406,25 @@ local function navGroup(page)
   return order < 30 and 1 or order < 90 and 2 or 3
 end
 
--- How tall one nav entry is: 30 px, or less when that many pages and dividers would run past the nav's foot.
+-- The nav's air above its first entry and below its last, and what a divider between groups takes (the
+-- divider, with 3 units of air above it and 3 below).
+local NAV_TOP, NAV_FOOT, GROUP_GAP = T.SPACE.gap, T.SPACE.tight, 7
+
+-- How tall one nav entry is: a list row (T.ROW.height), or less when that many pages and dividers would run past the nav's foot.
 local function navStep(list)
   local gaps = -1
   for i, page in ipairs(list) do
     if i == 1 or navGroup(page) ~= navGroup(list[i - 1]) then gaps = gaps + 1 end
   end
-  return math.min(30, math.floor((HEIGHT - 2 * BAR - 12 - 7 * gaps) / #list))
+  return math.min(T.ROW.height, math.floor((HEIGHT - HEAD - FOOT - NAV_TOP - NAV_FOOT - GROUP_GAP * gaps) / #list))
 end
 
 -- One entry per page down the nav, with a divider where the group changes.
 local function addNavItems(f)
-  local y, group, list = 8, nil, navOrder()
+  local y, group, list = NAV_TOP, nil, navOrder()
   local step = navStep(list)
   for _, page in ipairs(list) do
-    if group and navGroup(page) ~= group then divider(f.navPanel, y + 3) y = y + 7 end
+    if group and navGroup(page) ~= group then divider(f.navPanel, y + 3) y = y + GROUP_GAP end
     group = navGroup(page)
     f.nav[page.key] = navItem(f.navPanel, y, step)
     fillNavItem(f.nav[page.key], page)
@@ -500,8 +435,8 @@ end
 -- The nav: a shaded strip down the left under the header.
 local function addNav(f)
   f.nav, f.navPanel = {}, CreateFrame("Frame", nil, f)
-  f.navPanel:SetPoint("TOPLEFT", 0, -BAR)
-  f.navPanel:SetPoint("BOTTOMLEFT", 0, BAR)
+  f.navPanel:SetPoint("TOPLEFT", 0, -HEAD)
+  f.navPanel:SetPoint("BOTTOMLEFT", 0, FOOT)
   f.navPanel:SetWidth(NAV_WIDTH)
   W.Flat(f.navPanel, "BACKGROUND", "shade"):SetAllPoints()
   addNavItems(f)
@@ -531,8 +466,8 @@ end
 -- Scrolls the current page just enough to show a row.
 local function scrollToRow(view, w)
   local top, h = view:GetVerticalScroll() or 0, view:GetHeight()
-  if w.pageY < top then scrollTo(view, w.pageY - 8) end
-  if w.pageY + w:GetHeight() > top + h then scrollTo(view, w.pageY + w:GetHeight() - h + 8) end
+  if w.pageY < top then view:ScrollTo(w.pageY - T.SPACE.gap) end
+  if w.pageY + w:GetHeight() > top + h then view:ScrollTo(w.pageY + w:GetHeight() - h + T.SPACE.gap) end
 end
 
 -- Moves the keyboard's row to w (or to none), its focus ring with it.
@@ -615,37 +550,10 @@ function O.PlaceWindow()
   ns.GetModule("Windows").PutBack(PLACE_KEY, window)
 end
 
--- How wide the thumb's grip is (units): wider than the thin bar, so it is easy to catch.
-local GRIP_W = 12
-
--- The thumb's grip: an invisible frame over the bar that takes the mouse; the bar brightens under it,
--- and dragging it scrolls the page.
-local function addGrip(f)
-  f.grip = CreateFrame("Frame", nil, f)
-  f.grip:SetPoint("TOP", f.thumb, "TOP")
-  f.grip:SetPoint("BOTTOM", f.thumb, "BOTTOM")
-  f.grip:SetWidth(GRIP_W)
-  f.grip:SetFrameLevel(f:GetFrameLevel() + 20)
-  f.grip:EnableMouse(true)
-  f.grip:SetScript("OnEnter", function() f.thumb:SetAlpha(1) end)
-  f.grip:SetScript("OnLeave", function() if not drag then f.thumb:SetAlpha(0.5) end end)
-  f.grip:SetScript("OnMouseDown", startDrag)
-  f.grip:SetScript("OnMouseUp", function() stopDrag() f.thumb:SetAlpha(f.grip:IsMouseOver() and 1 or 0.5) end)
-end
-
--- The scroll thumb: a thin bar right of the pages, with its grip.
-local function addThumb(f)
-  f.thumb = W.Flat(f, "OVERLAY", "text2")
-  f.thumb:SetWidth(3)
-  f.thumb:SetAlpha(0.5)
-  f.thumb:Hide()
-  addGrip(f)
-  f.grip:Hide()
-end
-
--- The window frame: opaque (no world shows through, under short pages either), above other windows, closes with Escape (O.PlaceWindow places it).
+-- The window frame: opaque (T.ALPHA.opaque: no world shows through, under short pages either), above other windows,
+-- closes with Escape (O.PlaceWindow places it).
 local function windowFrame()
-  local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = 1, shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = T.ALPHA.opaque, shadow = true })
   T.PixelSize(f, WIDTH, HEIGHT, true)
   f:SetFrameStrata("DIALOG")
   f:EnableMouse(true)
@@ -653,7 +561,7 @@ local function windowFrame()
   return f
 end
 
--- The window, built on first use: header, footer, nav and scroll thumb.
+-- The window, built on first use: header, footer and nav (each page brings its own scroll view).
 local function build()
   window = windowFrame()
   addHeader(window)
@@ -661,7 +569,6 @@ local function build()
   addFooter(window)
   ns.ErrorBadge.Footer(window)
   addNav(window)
-  addThumb(window)
   makeMovable(window)
   O.PlaceWindow()
   wireKeys(window)
@@ -683,16 +590,14 @@ function O.Refresh()
   if window then window.profile:Refresh() window.reload:Refresh() O.MarkChanged() end
 end
 
--- Marks the current page's nav entry (accent rail, wash, text and icon) and dims pages the search misses.
+-- Marks the current page's nav entry (the row's selected look, and its text and icon) and dims pages the search misses.
 local function markNav(key)
   for k, b in pairs(window.nav) do
     local on, hit = k == key, not O.matches or O.matched[k]
-    b.rail:SetShown(on)
-    b.wash:SetShown(on)
-    b.wash:SetAlpha(0.14)
+    b:SetSelected(on)
     T.Color(b.text, on and "text" or "text2")
     T.Tint(b.icon, on and "accent" or "text2")
-    b:SetAlpha(hit and 1 or 0.35)
+    b:SetAlpha(hit and 1 or DIM)
   end
 end
 
@@ -709,7 +614,7 @@ end
 local function appear(previous)
   if not previous then T.Sound("open") elseif previous ~= O.current then T.Sound("page") end
   if previous then T.StopFade(window) else T.OpenWindow(window) end
-  if pages[O.current] then scrollTo(pages[O.current], pages[O.current]:GetVerticalScroll() or 0) end
+  if pages[O.current] then pages[O.current]:ScrollTo(pages[O.current]:GetVerticalScroll() or 0) end
 end
 
 -- The window takes the keyboard (out of combat); a new page starts without a keyboard row.
@@ -792,10 +697,11 @@ local function firstRow(view, text)
 end
 
 -- Marks a row (found by search, or the keyboard's) with an accent wash (the last one marked loses its mark).
+-- A text row is a font string, which can't hold a texture: its card holds the wash, laid over the text.
 function O.MarkRow(w)
   if window.found then window.found:Hide() end
-  w.found = w.found or W.Flat(w, "BACKGROUND", "accent")
-  w.found:SetAllPoints()
+  w.found = w.found or (w.CreateTexture and W.Flat(w, "BACKGROUND", "accent") or W.Flat(w.card, "BORDER", "accent"))
+  w.found:SetAllPoints(w)
   w.found:SetAlpha(0.18)
   w.found:Show()
   window.found = w.found
@@ -806,7 +712,7 @@ function O.JumpTo(text)
   local view = pages[O.current]
   local w = view and firstRow(view, (text or ""):lower())
   if not w then return end
-  scrollTo(view, w.pageY - 40)
+  view:ScrollTo(w.pageY - JUMP_ABOVE)
   O.MarkRow(w)
 end
 
