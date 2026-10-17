@@ -262,11 +262,17 @@ it("a frame's own size under General → Layout: set for a frame Vanguard sizes,
   addon.eval(`ns.SetMoverMatch("xpbar", "width", "box") local r = ${sliderRow("Its width")} r:Refresh() r:GetScript("OnEnter")(r)`);
   const why = "Matched to the width of TEST-ONLY box. To unmatch, right-click its handle in unlock mode (/vg unlock) and set Match width to None.";
   expect([tipLines(addon), addon.eval("return GameTooltip:IsShown()")], "matched, the slider locks; hovering it says to what, and how to unmatch").toEqual([[why], true]);
+  // The slider's look: whether its thumb, fill and caption are in the given tokens' colours.
+  const look = (thumb, caption) => addon.eval(`local r = ${sliderRow("Its width")}
+    local function same(c, k) local x = { ns.Theme.RGB(k) } return c[1] == x[1] and c[2] == x[2] and c[3] == x[3] end
+    return { same(r.thumb.__vertexColor, "${thumb}"), same(r.fillParts[2].__vertexColor, "borderHi"), same(r.label.__textColor, "${caption}") }`);
+  expect(look("disabled", "muted"), "locked, its thumb dims to the disabled grey, the fill stays the quiet grey and the caption is muted").toEqual([true, true, true]);
   addon.eval(`local r = ${sliderRow("Its width")} r:GetScript("OnClick")(r) r.track:GetScript("OnLeave")(r.track)`);
   expect([sizes(addon)[2], addon.eval("return GameTooltip:IsShown()")], "a click doesn't change it; leaving hides the tooltip").toEqual([200, false]);
   expect(addon.eval("return { ns.SetMoverSize('xpbar', 'width', 300) }"), "nor does setting it").toEqual([false, why]);
   addon.eval(`ns.SetMoverMatch("xpbar", "width") local r = ${sliderRow("Its width")} r:Refresh() GameTooltip:Hide() r:GetScript("OnEnter")(r)`);
   expect(addon.eval("return GameTooltip:IsShown()"), "unmatched, hovering shows nothing").toBe(false);
+  expect(look("white", "text"), "unlocked again, the thumb is white and the caption plain text").toEqual([true, true, true]);
   addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Frame to size" then w.dropdown.set("box") end end');
   addon.eval(`local r = ${sliderRow("Its height")} r:Refresh() r:GetScript("OnEnter")(r)`);
   expect(tipLines(addon), "a frame that sizes itself: locked, and it says so").toEqual(["TEST-ONLY box sets its own height."]);
