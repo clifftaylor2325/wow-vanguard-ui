@@ -62,7 +62,7 @@ end
 
 -- A click on a pin: a map waypoint on it, which the arrow points at.
 function QG.OnPin(pin)
-  if ns.GetModule("Waypoints").Set(pin.mapID, pin.start.x, pin.start.y) then ns.Chat("Arrow: " .. (pin.start.name ~= "" and pin.start.name or "quest start") .. ".") end
+  if ns.GetModule("Waypoints").Set(pin.mapID, pin.start.x, pin.start.y, "questguide") then ns.Chat("Arrow: " .. (pin.start.name ~= "" and pin.start.name or "quest start") .. ".") end
 end
 
 -- A pin on the map's canvas: Vanguard's gold quest-start "!" (the quest dialog's mark) on a small inset square.

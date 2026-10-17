@@ -93,7 +93,7 @@ end
 -- Puts a map waypoint on the quest's next step (the arrow points at it, as /way's does); false when there is none.
 local function waypointArrow(questID)
   local mapID, x, y = QG.Target(questID)
-  return mapID ~= nil and ns.GetModule("Waypoints").Set(mapID, x, y)
+  return mapID ~= nil and ns.GetModule("Waypoints").Set(mapID, x, y, "questguide")
 end
 
 -- The quest's title for chat, or "that quest".

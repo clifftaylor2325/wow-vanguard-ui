@@ -102,10 +102,20 @@ local function mapName(mapID)
 end
 
 -- Puts the waypoint on mapID at x, y (0 to 1) and points the game's arrow at it; false when that map can't hold one.
-function WP.Set(mapID, x, y)
+-- owner (optional) names who set it ('player', 'questguide'); it is kept in WP.owner for this session only.
+function WP.Set(mapID, x, y, owner)
   if not (C_Map.CanSetUserWaypointOnMap and C_Map.CanSetUserWaypointOnMap(mapID)) then return false end
   C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(mapID, x, y))
+  WP.owner = owner
   if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+  return true
+end
+
+-- Clears the waypoint only when owner set it (WP.Set's owner); true when it did. After a reload nobody owns it.
+function WP.Clear(owner)
+  if owner == nil or WP.owner ~= owner then return false end
+  C_Map.ClearUserWaypoint()
+  WP.owner = nil
   return true
 end
 
@@ -118,10 +128,10 @@ end
 function WP.Command(rest)
   rest = rest or ""
   if not canWaypoint() then return ns.Chat("This client has no map waypoints.") end
-  if rest:lower():match("^%s*clear%s*$") then C_Map.ClearUserWaypoint() return ns.Chat("Waypoint cleared.") end
+  if rest:lower():match("^%s*clear%s*$") then C_Map.ClearUserWaypoint() WP.owner = nil return ns.Chat("Waypoint cleared.") end
   local mapID, x, y, title = WP.Parse(rest)
   if not mapID then return ns.Chat("Can't set that waypoint: " .. x .. ".") end
-  if not WP.Set(mapID, x, y) then return ns.Chat("Can't put a waypoint on " .. mapName(mapID) .. ".") end
+  if not WP.Set(mapID, x, y, "player") then return ns.Chat("Can't put a waypoint on " .. mapName(mapID) .. ".") end
   local named = title ~= "" and (" (" .. title .. ")") or ""
   ns.Chat(string.format("Waypoint: %s %.1f, %.1f%s.", mapName(mapID), x * 100, y * 100, named))
 end

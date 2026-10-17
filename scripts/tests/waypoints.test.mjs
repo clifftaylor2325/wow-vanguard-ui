@@ -174,3 +174,22 @@ it("waypoints: the pin is the game's own with its switch off or the module off, 
   way(none, "45 61");
   expect(none.eval("return SuperTrackedFrame == nil"), "no frame at all: nothing made, no error").toBe(true);
 });
+
+it("waypoints: the owner tag lets WP.Clear remove only the point its owner set", () => {
+  const addon = loggedIn(MAP_ENV);
+  // The waypoints set by Lua code run against the Waypoints module (WP).
+  const run = (code) => addon.eval(`__set = {} local WP = ns.GetModule("Waypoints") ${code} return __set`);
+  // Who owns the waypoint now.
+  const owner = () => addon.eval(`return ns.GetModule("Waypoints").owner`);
+  run(`WP.Set(10, 0.5, 0.5, "guide")`);
+  expect([owner(), run(`WP.Clear("guide")`), owner()], "its own point is cleared").toEqual(["guide", ["clear"], null]);
+  run(`WP.Set(10, 0.5, 0.5, "player")`);
+  expect([run(`WP.Clear("guide")`), owner()], "another owner's point stays").toEqual([{}, "player"]);
+  expect(run(`WP.Clear()`), "no owner clears nothing").toEqual({});
+  run(`WP.Set(10, 0.5, 0.5)`);
+  expect([owner(), run(`WP.Clear("guide")`)], "an untagged point is nobody's").toEqual([null, {}]);
+  way(addon, "45.2 61.8");
+  expect(owner(), "/way tags 'player'").toBe("player");
+  way(addon, "clear");
+  expect(owner(), "/way clear always clears and forgets the owner").toBe(null);
+});
