@@ -4,7 +4,8 @@ import { expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { createAddon, root } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FOREVER_ENV, HEALING_ENV, RAID_ENV, UNITS_ENV, chatHas, expectErrors, healing, loggedIn, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, HEALING_ENV, RAID_ENV, UNITS_ENV, chatHas, expectErrors, healing, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
+import { alphaOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
 
 it("saved variables", () => {
   expect(createAddon().eval("return next(ns.Profile()) == nil"), "before ADDON_LOADED the profile is empty").toBe(true);
@@ -402,4 +403,104 @@ it("a retail client is not WoW Forever and keeps its aura state readable", () =>
   expect(addon.eval("return ns.IsForever()") === false && addon.eval("return ns.AurasSecret()") === false, "120007 is retail; no C_Secrets means readable").toBeTruthy();
   addon.slash("status");
   expect(chatHas(addon, /Client Retail/), "/vg status says Retail").toBeTruthy();
+});
+
+it("the text dialog: a window title with its X and Escape at the dialog alpha, its text in a scroll view whose thumb shows only when the text overflows", () => {
+  const addon = loggedIn();
+  addon.eval("ns.AskText('Paste it', function() end) __selected = 0 Vanguard_TextEdit.HighlightText = function() __selected = __selected + 1 end");
+  const name = "Vanguard_TextDialog";
+  expect(titleOf(addon, name), "the title role in the text colour, hung T.SPACE.pad in and down (its middle half a line, 7 here, below that: on the close button's line)").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -23 });
+  expect(closeOf(addon, name), "the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
+  expect([escapes(addon, name), alphaOf(addon, name), addon.frame(name).strata], "Escape closes it, at the dialog alpha, above the options window").toEqual([true, 0.98, "FULLSCREEN_DIALOG"]);
+  expect(insets(addon, `${name}.view`, name), "the text area T.SPACE.pad in, under the head (40), its thumb's gutter (12) on the right, over the foot (50)").toEqual([16, 40, 28, 50]);
+  expect(thumbOf(addon, `${name}.view`, name), "a short text fits: no thumb").toEqual([false, false, false]);
+  expect(["fadeTop", "fadeBottom"].map((edge) => isTok(addon, addon.eval(`return ${name}.view.${edge}.__vertexColor`), "inset")), "the soft edges are the inset the box sits in, not the panel's colour").toEqual([true, true]);
+  addon.eval("Vanguard_TextEdit:SetHeight(900) Vanguard_TextEdit:GetScript('OnSizeChanged')(Vanguard_TextEdit)");
+  expect(thumbOf(addon, `${name}.view`, name), "the box grows past the view: the thumb shows, in the right pad").toEqual([true, true, 16]);
+  addon.eval("Vanguard_TextEdit:GetScript('OnCursorChanged')(Vanguard_TextEdit, 0, -800, 1, 14)");
+  expect(addon.eval(`return ${name}.view:GetVerticalScroll()`), "the view follows the cursor down to the line").toBe(584);
+  addon.eval("Vanguard_TextEdit:SetHeight(100) Vanguard_TextEdit:GetScript('OnSizeChanged')(Vanguard_TextEdit)");
+  expect([thumbOf(addon, `${name}.view`, name)[0], addon.eval(`return ${name}.view:GetVerticalScroll()`)], "the text shrinks to fit: the thumb goes and the view is back at the top").toEqual([false, 0]);
+  addon.eval(`Vanguard_TextEdit:SetHeight(900) ${name}.view:GetScript('OnSizeChanged')(${name}.view)`);
+  expect(thumbOf(addon, `${name}.view`, name)[0], "and the view's own resize (its first layout) finds the overflow too").toBe(true);
+  addon.eval('ns.ShowText("A string", "VG1:...")');
+  expect([addon.eval("return __selected"), addon.eval(`return ${name}.view:GetVerticalScroll()`)], "showing text selects it for Ctrl+C, from its start").toEqual([1, 0]);
+  addon.click(`${name}.chrome.close`);
+  expect(addon.frame(name).visible, "the X closes it").toBe(false);
+  addon.eval('ns.AskText("Paste it", function() end)');
+  pressEscape(addon);
+  expect(addon.frame(name).visible, "so does Escape").toBe(false);
+});
+
+it("the text dialog's title wraps short of the X, two lines at most, and a second line pushes the text area down", () => {
+  const addon = loggedIn("__wfgStub.methods.SetMaxLines = function(self, n) self.__maxLines = n end");
+  const name = "Vanguard_TextDialog";
+  addon.eval('ns.ShowText("Vanguard export (profile Default)  Ctrl+C to copy", "VG1:...")');
+  expect(addon.eval(`return { ${name}.title:GetWidth(), ${name}.title:GetStringHeight() }`), "T.SPACE.pad in, the X's room (42) out; a short title is one line").toEqual([462, 14]);
+  expect(insets(addon, `${name}.view`, name)[1], "the text area stays at the head").toBe(40);
+  // The title's top and bottom, down from the dialog's top.
+  const spans = () => addon.eval(`return { ${name}.title:GetTop() - ${name}:GetTop(), ${name}.title:GetBottom() - ${name}:GetTop() }`);
+  expect(spans(), "a one-line title hangs from T.SPACE.pad down").toEqual([-16, -30]);
+  addon.eval(`ns.ShowText(("A long title that says what to do with the box. "):rep(3), "VG1:...")`);
+  expect(addon.eval(`return ${name}.title.__maxLines`), "two lines at most").toBe(2);
+  expect(spans(), "a second line grows down, not up: the top stays put (never above the X's tile top, 14 down)").toEqual([-16, -44]);
+  expect(insets(addon, `${name}.view`, name)[1], "a title of two lines keeps the area a gap (8) under its bottom: 16 + 28 + 8").toBe(52);
+  addon.eval("ns.TextProgress('Importing… 40%')");
+  expect([spans(), insets(addon, `${name}.view`, name)[1]], "a short title brings it back to the head").toEqual([[-16, -30], 40]);
+});
+
+it("ns.Dialog keeps every dialog's title short of the X itself: the dialog's width less a pad and the X's room, whatever the caller does", () => {
+  const addon = loggedIn();
+  // A dialog's title width, and the gap between the title's right edge and the X's left edge (the X sits on a whole pixel).
+  const room = (w) => addon.eval(`local f = ns.Dialog("Vanguard_TestOnly${w}", ${w}, 100, "A title") f:Show()
+    return { f.title:GetWidth(), math.floor(f.chrome.close:GetLeft() - f.title:GetRight() + 0.5) }`);
+  expect(room(300), "300 less the pad (16) and the X's room (42); a gap (8) clear of the X").toEqual([242, 8]);
+  expect(room(480), "and the same at another width").toEqual([422, 8]);
+  expect(addon.eval('return ns.Dialog("Vanguard_TestOnlyBare", 300, 100).title:GetWidth()'), "a dialog with no title yet has the width too").toBe(242);
+});
+
+it("the question dialog: its text is the title, wrapped short of the X, the dialog grows to fit, and the X and Escape answer No", () => {
+  const addon = loggedIn();
+  const name = "Vanguard_Question";
+  addon.eval("__answers = {} function __ask(text) ns.Ask(text, 'Yes', function() __answers[#__answers + 1] = 'yes' end, function() __answers[#__answers + 1] = 'no' end) end __ask('Sure?')");
+  expect(titleOf(addon, name), "the title role in the text colour, T.SPACE.pad in").toMatchObject({ size: titleSize(addon), text: true, left: 16 });
+  expect(addon.eval(`return { ${name}.title:GetWidth(), ${name}:GetWidth(), ${name}:GetHeight() }`), "wrapped at the X's room (400 less 16 and 42); a pad, one line, a section gap, the buttons, a pad").toEqual([342, 400, 96]);
+  expect(closeOf(addon, name), "the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
+  expect([escapes(addon, name), alphaOf(addon, name), insets(addon, `${name}.yes`, name).slice(2)], "Escape closes it, at the dialog alpha, the buttons a pad from the corner").toEqual([true, 0.98, [16, 16]]);
+  addon.eval(`__ask(("A long question that goes on and on. "):rep(5))`);
+  const grown = addon.eval(`local f = ${name} return { f:GetHeight(), 16 + f.title:GetStringHeight() + 24 + 26 + 16, f.title:GetStringHeight() }`);
+  expect(grown[0], "a pad, the wrapped title, a section gap, the buttons and a pad").toBe(grown[1]);
+  expect(grown[2], "four lines of title").toBe(56);
+  addon.click(`${name}.chrome.close`);
+  expect([addon.frame(name).visible, addon.eval("return __answers")], "the X closes it and answers No").toEqual([false, ["no"]]);
+  addon.eval("__ask('Again?')");
+  pressEscape(addon);
+  expect([addon.frame(name).visible, addon.eval("return __answers")], "Escape answers No too, once").toEqual([false, ["no", "no"]]);
+  addon.eval("__answers = {} __ask('Again?')");
+  addon.eval(`${name}:GetScript("OnHide")(${name})`);
+  expect([addon.frame(name).visible, addon.eval("return #__answers")], "a hide that leaves it shown (the UI put away from above) answers nothing").toEqual([true, 0]);
+  addon.click(`${name}.no`);
+  expect(addon.eval("return __answers"), "the No button answers No once (hiding it is not a second answer)").toEqual(["no"]);
+  addon.eval("__answers = {} __ask('Again?')");
+  addon.click(`${name}.yes`);
+  expect([addon.frame(name).visible, addon.eval("return __answers")], "Yes answers Yes and never No").toEqual([false, ["yes"]]);
+  addon.eval("__answers = {} ns.Ask('Next?', 'Yes', function() end, function() __answers[#__answers + 1] = 'no' __ask('Then this?') end) Vanguard_Question.no:GetScript('OnClick')(Vanguard_Question.no)");
+  expect([addon.frame(name).visible, addon.eval("return __answers"), addon.eval(`return ${name}.title:GetText()`)], "a No that asks the next question leaves that one open, and answers it on its own").toEqual([true, ["no"], "Then this?"]);
+  pressEscape(addon);
+  expect(addon.eval("return __answers"), "the next question is answered by its own No").toEqual(["no", "no"]);
+});
+
+it("the reload dialog: the reason is the title and the dialog grows to fit it; the X is Later and the covering overlay goes with it", () => {
+  const addon = loggedIn();
+  const name = "Vanguard_Reload";
+  addon.eval("ns.OfferReload('Changed.')");
+  expect(titleOf(addon, name), "the title role in the text colour, T.SPACE.pad in").toMatchObject({ size: titleSize(addon), text: true, left: 16 });
+  expect(addon.eval(`return { ${name}.title:GetText(), ${name}:GetHeight() }`), "the reason and the question, one line").toEqual(["Changed. Reload the UI now to apply it?", 96]);
+  expect(closeOf(addon, name), "the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
+  expect([escapes(addon, name), alphaOf(addon, name), insets(addon, `${name}.accept`, name).slice(2)], "Escape closes it, at the dialog alpha, the Reload button a pad from the corner").toEqual([true, 0.98, [16, 16]]);
+  addon.eval(`ns.OfferReload(("Copied the whole profile into another one. "):rep(4))`);
+  expect(addon.eval(`return ${name}:GetHeight() == 16 + ${name}.title:GetStringHeight() + 24 + 26 + 16 and ${name}:GetHeight() > 96`), "a long reason makes it taller").toBe(true);
+  expect(addon.eval(`return ${name}.accept.reloadOverlay:IsShown()`), "the overlay covers Reload while it shows").toBe(true);
+  addon.click(`${name}.chrome.close`);
+  expect([addon.frame(name).visible, addon.eval(`return ${name}.accept.reloadOverlay:IsShown()`)], "the X hides it and the overlay with it").toEqual([false, false]);
 });

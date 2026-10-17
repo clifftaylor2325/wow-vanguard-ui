@@ -10,10 +10,26 @@ local T = ns.Theme
 
 local box, reload, question
 
--- A themed button on a dialog.
+-- Where a dialog's contents start (units down): the title line (the close button's line) and a pad under it.
+local HEAD = T.CONTROL.inset + T.SPACE.pad
+-- The room a dialog's foot takes (units up): a pad, its buttons, and a gap over them.
+local FOOT = T.SPACE.pad + T.BUTTON_H + T.SPACE.gap
+-- The layout every dialog shares, for the windows built on ns.Dialog: head and foot as above.
+---@type { head: number, foot: number }
+ns.DIALOG = { head = HEAD, foot = FOOT }
+-- The room a dialog's title leaves for the close button (units): its middle T.CONTROL.inset in, half its tile, a gap.
+local CLOSE_ROOM = T.CONTROL.inset + T.CONTROL.tile / 2 + T.SPACE.gap
+-- The text dialog's size, and the question and reload dialogs' width (their height fits their text).
+local TEXT_W, TEXT_H, ASK_W = 520, 320, 400
+-- How wide a dialog button is unless told otherwise (a label of a dozen letters fits).
+local BUTTON_W = 120
+-- The text's inset from an edit box's border (W.Input's).
+local TEXT_INSET = 6
+
+-- A themed button on a dialog: T.BUTTON_H tall, 120 wide unless told otherwise.
 local function button(parent, label, width)
   local b = T.Button(CreateFrame("Button", nil, parent))
-  b:SetSize(width or 100, 24)
+  b:SetSize(width or BUTTON_W, T.BUTTON_H)
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label")
   b.text:SetPoint("CENTER")
   b.text:SetText(label)
@@ -22,69 +38,145 @@ local function button(parent, label, width)
 end
 ns.DialogButton = button
 
--- A centered, movable, themed dialog frame with a title, a layer above the options window (which
--- is on the dialog strata itself, its cards high in it, so a dialog there opened under them).
-local function dialog(name, w, h)
-  local f = T.Panel(CreateFrame("Frame", name, UIParent), { alpha = 0.98, shadow = true })
+-- Hides a dialog: what its close button does.
+local function hide(frame)
+  frame:Hide()
+end
+
+-- A centered, themed dialog frame at the dialog alpha, with the one window chrome (ns.WindowTitle: its title, set
+-- by the caller unless given and kept short of the close X that hides it, and Escape), a layer above the options window (which is
+-- on the dialog strata itself, its cards high in it, so a dialog there opened under them). The X is
+-- frame.chrome.close; a dialog with a button of its own named close (the text dialog's) keeps that name for it.
+---@param name string  the frame's global name (Escape needs it)
+---@param w number
+---@param h number
+---@param title string|nil
+---@return table frame  with title, chrome ({ title, close }) and the panel
+local function dialog(name, w, h, title)
+  local f = T.Panel(CreateFrame("Frame", name, UIParent), { alpha = T.ALPHA.dialog, shadow = true })
   f:SetSize(w, h)
   f:SetPoint("CENTER")
   f:SetFrameStrata("FULLSCREEN_DIALOG")
   f:EnableMouse(true)
-  f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading")
-  f.title:SetPoint("TOPLEFT", 12, -10)
+  f.chrome = ns.WindowTitle(f, title or name, { onClose = hide, escape = true })
+  f.title:SetWidth(w - T.SPACE.pad - CLOSE_ROOM)
+  if not title then f.title:SetText("") end
   f:Hide()
   return f
 end
 ns.Dialog = dialog
 
--- Text box ------------------------------------------------------------------------
-
--- The scrolling multi-line edit box inside the text dialog. It needs a font before
--- any text: the game's SetText on an edit box without one is an error ("Font not set").
-local function addEditBox(f)
-  local scroll = CreateFrame("ScrollFrame", "Vanguard_TextScroll", f, "UIPanelScrollFrameTemplate")
-  scroll:SetPoint("TOPLEFT", 12, -34)
-  scroll:SetPoint("BOTTOMRIGHT", -30, 44)
-  f.edit = T.Text(T.EditBox(CreateFrame("EditBox", "Vanguard_TextEdit", scroll)), "label")
-  f.edit:SetMultiLine(true)
-  f.edit:SetAutoFocus(false)
-  f.edit:SetWidth(460)
-  f.edit:SetScript("OnEscapePressed", function() f:Hide() end)
-  scroll:SetScrollChild(f.edit)
+-- A scroll view for a dialog (ns.ScrollView): it also re-reads its thumb and edges when its own size changes, as
+-- it does when the client lays it out the first time its dialog shows (a view sized by its anchors has no height
+-- before that, so a thumb worked out while the dialog was hidden would be missing).
+---@param parent table
+---@param opts table|nil  child, width
+---@return table view  the ns.ScrollView
+function ns.DialogView(parent, opts)
+  local view = ns.ScrollView(parent, opts)
+  view:HookScript("OnSizeChanged", ns.Guard("size dialog view", function() view:ScrollTo(view:GetVerticalScroll() or 0) end))
+  return view
 end
 
--- Builds the text dialog once: title, text area, primary and close buttons.
+-- A scroll view around a multi-line edit box, painted as one input: it follows the cursor, and re-reads the box's
+-- height (the client grows it with the text) as the cursor moves or the box is resized, so the thumb shows
+-- while the text overflows.
+---@param parent table
+---@param edit table  a multi-line EditBox
+---@return table view  the ns.ScrollView, with view.edit
+local function textView(parent, edit)
+  local view = T.EditBox(ns.DialogView(parent, { child = edit }))
+  T.Tint(view.fadeTop, "inset")
+  T.Tint(view.fadeBottom, "inset")
+  view:FollowCursor(edit)
+  for _, script in ipairs({ "OnCursorChanged", "OnSizeChanged" }) do
+    edit:HookScript(script, ns.Guard("size text view", function() view:ScrollTo(view:GetVerticalScroll() or 0) end))
+  end
+  view.edit = edit
+  return view
+end
+ns.TextView = textView
+
+-- Text box ------------------------------------------------------------------------
+
+-- The scrolling multi-line edit box inside the text dialog, under the title line and over the buttons. It needs
+-- a font before any text: the game's SetText on an edit box without one is an error ("Font not set").
+local function addEditBox(f)
+  f.edit = T.Text(CreateFrame("EditBox", "Vanguard_TextEdit", f), "label")
+  f.edit:SetMultiLine(true)
+  f.edit:SetAutoFocus(false)
+  f.edit:SetWidth(TEXT_W - 2 * T.SPACE.pad - T.SPACE.col)
+  f.edit:SetTextInsets(TEXT_INSET, TEXT_INSET, T.SPACE.tight, T.SPACE.tight)
+  f.edit:SetScript("OnEscapePressed", function() f:Hide() end)
+  f.view = textView(f, f.edit)
+  f.view:SetPoint("TOPLEFT", T.SPACE.pad, -HEAD)
+  f.view:SetPoint("BOTTOMRIGHT", -(T.SPACE.pad + T.SPACE.col), FOOT)
+end
+
+-- Hangs a dialog's title from the top-left corner (T.SPACE.pad in and down, so its first line sits on the close
+-- button's line and a second one goes down, not up under the panel's edge); the dialog sets its width.
+local function hangTitle(f)
+  f.title:ClearAllPoints()
+  f.title:SetPoint("TOPLEFT", T.SPACE.pad, -T.SPACE.pad)
+end
+
+-- The text dialog's title: two lines at most (its words are the sentence that says what to do with the box,
+-- "Ctrl+C to copy"), hung from the top.
+local function limitTitle(f)
+  hangTitle(f)
+  f.title:SetMaxLines(2)
+end
+
+-- Sets the text dialog's title: the text area keeps a gap under it, so a title of two lines pushes the area
+-- down by the second (one line leaves it at the head).
+local function titleText(f, text)
+  f.title:SetText(text)
+  local below = T.SPACE.pad + f.title:GetStringHeight() + T.SPACE.gap
+  f.view:SetPoint("TOPLEFT", T.SPACE.pad, -math.max(HEAD, below))
+end
+
+-- Puts text in the text dialog's box and shows its start (the thumb follows the new height as the client grows it).
+local function boxText(f, text)
+  f.edit:SetText(text)
+  f.view:ScrollTo(0)
+end
+
+-- Builds the text dialog once: title, text area, the primary (accent) button and the one that
+-- dismisses it, which reads Cancel beside the primary and Close when the box only shows text.
 local function textBox()
   if box then return box end
-  box = dialog("Vanguard_TextDialog", 520, 320)
+  box = dialog("Vanguard_TextDialog", TEXT_W, TEXT_H)
   addEditBox(box)
-  box.primary = button(box, "Import")
-  box.primary:SetPoint("BOTTOMRIGHT", -12, 12)
+  limitTitle(box)
+  box.primary = ns.Widgets.Primary(box, "Import")
+  box.primary:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
   box.close = button(box, "Close")
-  box.close:SetPoint("RIGHT", box.primary, "LEFT", -8, 0)
+  box.close:SetPoint("RIGHT", box.primary, "LEFT", -T.SPACE.gap, 0)
   box.close:SetScript("OnClick", ns.Guard("click close text box", function() box:Hide() end))
   return box
 end
 
--- Shows text selected for copying (Ctrl+C).
+-- Shows text selected for copying (Ctrl+C); Close is the only button.
 function ns.ShowText(title, text)
   local f = textBox()
-  f.title:SetText(title)
-  f.edit:SetText(text)
+  titleText(f, title)
+  boxText(f, text)
   f.primary:Hide()
+  f.close.text:SetText("Close")
   f:Show()
   f.edit:SetFocus()
   f.edit:HighlightText()
 end
 
 -- An empty box to type or paste into; onImport(text) runs when the primary button
--- (Import, or the label given) is clicked.
+-- (Import, or the label given) is clicked, and Cancel sits beside it.
 function ns.AskText(title, onImport, label)
   local f = textBox()
   f.ownTitle = title
-  f.title:SetText(title)
-  f.edit:SetText("")
+  titleText(f, title)
+  boxText(f, "")
   f.primary.text:SetText(label or "Import")
+  f.close.text:SetText("Cancel")
   f.primary:Show()
   f.primary:SetScript("OnClick", ns.Guard("click text box primary", function() onImport(f.edit:GetText()) end))
   f:Show()
@@ -95,7 +187,7 @@ end
 -- button hidden meanwhile; nil puts the title ns.AskText gave and the button back.
 function ns.TextProgress(title)
   local f = textBox()
-  f.title:SetText(title or f.ownTitle)
+  titleText(f, title or f.ownTitle)
   f.primary:SetShown(title == nil)
 end
 
@@ -106,25 +198,44 @@ end
 
 -- Question ----------------------------------------------------------------------------
 
--- Builds the question dialog once: the question, a primary Yes and a No.
+-- Sizes a dialog whose title is its text to fit: a pad, the wrapped title, a section gap, its buttons, a pad.
+local function fitTitle(f)
+  f:SetHeight(T.SPACE.pad + f.title:GetStringHeight() + T.SPACE.section + T.BUTTON_H + T.SPACE.pad)
+end
+
+-- The question was hidden without Yes: by No, its X or Escape. That is a No (what waits on the answer, such as
+-- the reload offered after it, goes on), run once. A hide that comes down from a parent (the whole UI put away
+-- with Alt-Z) leaves the frame shown, and is no answer: the question is there when the UI comes back.
+local function declined(f)
+  if f:IsShown() then return end
+  local onNo = f.waiting
+  f.waiting = nil
+  if onNo then onNo() end
+end
+
+-- Builds the question dialog once: the question, a Yes (plain: a confirm never takes the accent) and a No.
 local function questionDialog()
   if question then return question end
-  question = dialog("Vanguard_Question", 360, 110)
-  question.title:SetWidth(336)
+  question = dialog("Vanguard_Question", ASK_W, 1)
+  hangTitle(question)
+  question:HookScript("OnHide", ns.Guard("decline question", function() declined(question) end))
   question.yes = button(question, "Yes")
-  question.yes:SetPoint("BOTTOMRIGHT", -12, 12)
+  question.yes:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
   question.no = button(question, "No")
-  question.no:SetPoint("RIGHT", question.yes, "LEFT", -8, 0)
+  question.no:SetPoint("RIGHT", question.yes, "LEFT", -T.SPACE.gap, 0)
   return question
 end
 
--- Asks a yes/no question: the yes button (labelled yes) runs onYes, No runs onNo; either closes it.
+-- Asks a yes/no question: the yes button (labelled yes) runs onYes, No runs onNo; either closes it. Closing it
+-- any other way (the X, Escape) answers No.
 function ns.Ask(text, yes, onYes, onNo)
   local f = questionDialog()
   f.title:SetText(text)
+  fitTitle(f)
   f.yes.text:SetText(yes)
-  f.yes:SetScript("OnClick", ns.Guard("click question yes", function() f:Hide() onYes() end))
-  f.no:SetScript("OnClick", ns.Guard("click question no", function() f:Hide() onNo() end))
+  f.waiting = onNo
+  f.yes:SetScript("OnClick", ns.Guard("click question yes", function() f.waiting = nil f:Hide() onYes() end))
+  f.no:SetScript("OnClick", ns.Guard("click question no", function() f:Hide() end))
   f:Show()
 end
 
@@ -202,22 +313,23 @@ function ns.ReloadButton(btn)
 end
 ns.On("PLAYER_REGEN_DISABLED", putAway)
 
--- Builds the reload dialog once: the reason, a Reload button and Later.
+-- Builds the reload dialog once: the reason, a primary (accent) Reload button and Later.
 local function reloadDialog()
   if reload then return reload end
-  reload = dialog("Vanguard_Reload", 360, 110)
-  reload.title:SetWidth(336)
-  reload.accept = ns.ReloadButton(button(reload, "Reload"))
-  reload.accept:SetPoint("BOTTOMRIGHT", -12, 12)
+  reload = dialog("Vanguard_Reload", ASK_W, 1)
+  hangTitle(reload)
+  reload.accept = ns.ReloadButton(ns.Widgets.Primary(reload, "Reload"))
+  reload.accept:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
   reload.cancel = button(reload, "Later")
-  reload.cancel:SetPoint("RIGHT", reload.accept, "LEFT", -8, 0)
+  reload.cancel:SetPoint("RIGHT", reload.accept, "LEFT", -T.SPACE.gap, 0)
   reload.cancel:SetScript("OnClick", ns.Guard("click reload later", function() reload:Hide() end))
   return reload
 end
 
--- Offers a reload, for changes that apply after one.
+-- Offers a reload, for changes that apply after one; the dialog grows to fit its reason.
 function ns.OfferReload(why)
   local f = reloadDialog()
   f.title:SetText(why .. " Reload the UI now to apply it?")
+  fitTitle(f)
   f:Show()
 end

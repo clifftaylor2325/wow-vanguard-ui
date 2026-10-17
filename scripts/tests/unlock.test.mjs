@@ -1,7 +1,8 @@
 // unlock: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { UI_ENV, UP, chatHas, gridLines, key, loggedIn } from "./helpers.mjs";
+import { UI_ENV, UP, chatHas, gridLines, isTok, key, loggedIn, px } from "./helpers.mjs";
+import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, titleOf } from "./dialogs.mjs";
 
 it("unlock mode", () => {
   const addon = loggedIn(`
@@ -64,6 +65,18 @@ it("unlock popover: anchor, offsets, reset", () => {
   addon.slash("unlock");
   addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "minimap" then __h = w end end __h:GetScript("OnMouseDown")(__h, "RightButton")');
   expect(addon.eval("return Vanguard_MoverPopover:IsShown()") === true, "right-clicking a handle opens its popover").toBeTruthy();
+  const pop = "Vanguard_MoverPopover";
+  expect(titleOf(addon, pop), "a card's title: the heading role in the text colour, T.SPACE.gap in and down from its corner").toEqual({ size: addon.eval("return ns.Theme.RoleSize('heading')"), text: true, left: 8, mid: -15 });
+  expect(closeOf(addon, pop, "close"), "with the X T.SPACE.gap in from the top-right corner").toEqual([8, 8, true]);
+  expect([escapes(addon, pop), alphaOf(addon, pop), addon.eval(`return ${pop}.title:GetWidth()`)], "Escape closes it; the dialog alpha (it has edit boxes); the title is kept short of the X").toEqual([true, 0.98, 236]);
+  const column = ["target", "anchor", "x", "y", "scale", "alpha", "matchWidth", "matchHeight"].map((field) => addon.eval(`local w = ${pop}.${field} return { w:GetWidth(), w:GetHeight(), ${pop}:GetRight() - w:GetRight() }`));
+  expect(column, "the right column has one edge: dropdowns and number boxes alike 150 wide, an inline control (20) tall, T.SPACE.col in").toEqual(Array(8).fill([150, 20, 12]));
+  // A widget's screen rect, and where its middle is up the screen.
+  const rect = (ref) => addon.frame(ref).rect;
+  const middle = (r) => r.bottom + r.height / 2;
+  expect([middle(rect(`${pop}.x`)) - middle(addon.texts("X offset")[0].rect), middle(rect(`${pop}.matchHeight`)) - middle(addon.texts("Match height")[0].rect)], "each caption is level with its control").toEqual([0, 0]);
+  expect([buttonOf(addon, `${pop}.done`), buttonOf(addon, `${pop}.reset`), insets(addon, `${pop}.done`, pop).slice(2)], "Done is the one accent button, Reset plain; standalone, 120 wide, T.SPACE.col from the corner")
+    .toEqual([[true, "Done", 26, 120], [false, "Reset", 26, 120], [12, 12]]);
   addon.eval('local p = Vanguard_MoverPopover p.x:SetText("123") p.x:GetScript("OnEnterPressed")(p.x)');
   expect(addon.eval('return select(3, ns.MoverPoint("minimap"))') === 123, "typing an X offset saves it").toBeTruthy();
   addon.eval('local d = Vanguard_MoverPopover.anchor d:GetScript("OnClick")(d) Vanguard_Menu.items[5]:GetScript("OnClick")(Vanguard_Menu.items[5])');
@@ -74,6 +87,21 @@ it("unlock popover: anchor, offsets, reset", () => {
   expect(addon.eval("return Vanguard_MoverPopover.x:GetText()") === "5", "arrow-key nudges update the popover").toBeTruthy();
   addon.eval("Vanguard_MoverPopover.reset:GetScript('OnClick')(Vanguard_MoverPopover.reset)");
   expect(addon.eval('return select(1, ns.MoverPoint("minimap"))') !== "CENTER", "Reset puts the frame back where it started").toBeTruthy();
+  addon.eval(`local d = ${pop}.target d:GetScript("OnClick")(d)`);
+  expect(addon.eval("return Vanguard_Menu:IsShown()"), "a dropdown is open").toBe(true);
+  pressEscape(addon);
+  expect([addon.eval(`return ${pop}:IsShown()`), addon.eval("return Vanguard_Menu:IsShown()")], "Escape closes the popover and the menu open from it").toEqual([false, false]);
+  // Right-clicks the minimap's handle, which opens its popover.
+  const rightClick = () => addon.eval('__h:GetScript("OnMouseDown")(__h, "RightButton")');
+  rightClick();
+  addon.click(`${pop}.close`);
+  addon.advance(1);
+  expect(addon.eval(`return ${pop}:IsShown()`), "the X closes it").toBe(false);
+  rightClick();
+  addon.click(`${pop}.done`);
+  addon.advance(1);
+  expect(addon.eval(`return ${pop}:IsShown()`), "as Done does").toBe(false);
+  rightClick();
   addon.slash("lock");
   expect(addon.eval("return Vanguard_MoverPopover:IsShown()") === false, "locking closes the popover").toBeTruthy();
 });

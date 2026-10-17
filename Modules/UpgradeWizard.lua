@@ -7,13 +7,17 @@
 
 local ADDON, ns = ...
 
-local W, UW = ns.Widgets, ns.UpgradeWeights
+local T, W, UW = ns.Theme, ns.Widgets, ns.UpgradeWeights
 local UP = ns.GetModule("Upgrades")
 
 local WZ = {}
 UP.Wizard = WZ
 
-local WIDTH, HEIGHT, ROW_WIDTH, SLIDER_WIDTH, BOX_WIDTH = 460, 440, 400, 334, 60
+local WIDTH, HEIGHT, BOX_WIDTH = 460, 440, 60
+-- A stat's row is the list's width: the dialog less its insets and the thumb's gutter. Its slider takes what its
+-- exact-value box (BOX_WIDTH, a gap away) leaves.
+local ROW_WIDTH = WIDTH - 2 * T.SPACE.pad - T.SPACE.col
+local SLIDER_WIDTH = ROW_WIDTH - BOX_WIDTH - T.SPACE.gap
 -- What the wizard calls each stat (the keys of ns.UpgradeWeights.STATS).
 WZ.LABELS = {
   STR = "Strength", AGI = "Agility", STA = "Stamina", INT = "Intellect", SPI = "Spirit", ARMOR = "Armor",
@@ -85,7 +89,7 @@ end
 -- A box beside the slider for an exact weight; Enter or leaving the box takes it.
 local function addBox(r, list)
   r.box = W.Input(list, BOX_WIDTH)
-  r.box:SetPoint("LEFT", r, "RIGHT", ROW_WIDTH - SLIDER_WIDTH - BOX_WIDTH, 0)
+  r.box:SetPoint("LEFT", r, "RIGHT", T.SPACE.gap, 0)
   r.box:SetScript("OnEnterPressed", ns.Guard("type weight", function() typed(r) end))
   r.box:SetScript("OnEditFocusLost", ns.Guard("type weight", function() typed(r) end))
 end
@@ -93,31 +97,32 @@ end
 -- The slider for the stat at place i in the list, with its box.
 local function sliderRow(list, i)
   local r = W.Slider(list, "", { min = 0, max = 3, step = 0.1 }, function() return state.draft[state.stats[i]] or 0 end, function(v) state.draft[state.stats[i]] = round(v) end, SLIDER_WIDTH)
-  r:SetPoint("TOPLEFT", 0, -(i - 1) * W.ROW_HEIGHT)
+  r:SetPoint("TOPLEFT", 0, -(i - 1) * T.ROW.height)
   addBox(r, list)
   r.Refresh = ownRefresh(r.Refresh, i)
   return r
 end
 
--- The scrolling list with a slider per stat.
+-- The scrolling list with a slider per stat: a dialog scroll view under the caption, over the buttons, with the
+-- thumb in the right pad.
 local function addList()
-  local scroll = CreateFrame("ScrollFrame", "Vanguard_WeightsScroll", frame, "UIPanelScrollFrameTemplate")
-  scroll:SetPoint("TOPLEFT", 12, -70)
-  scroll:SetPoint("BOTTOMRIGHT", -30, 44)
-  frame.list = CreateFrame("Frame", nil, scroll)
-  frame.list:SetSize(ROW_WIDTH, W.ROW_HEIGHT * #WZ.Order("caster"))
-  scroll:SetScrollChild(frame.list)
-  for i = 1, #WZ.Order("caster") do frame.rows[i] = sliderRow(frame.list, i) end
+  local stats = #WZ.Order("caster")
+  frame.view = ns.DialogView(frame, { width = ROW_WIDTH })
+  frame.view:SetPoint("TOPLEFT", frame.caption, "BOTTOMLEFT", 0, -T.SPACE.gap)
+  frame.view:SetPoint("BOTTOMRIGHT", -(T.SPACE.pad + T.SPACE.col), ns.DIALOG.foot)
+  frame.view:Fit(T.ROW.height * stats)
+  frame.list = frame.view.child
+  for i = 1, stats do frame.rows[i] = sliderRow(frame.list, i) end
 end
 
 -- The buttons along the foot: Defaults on the left, Cancel and Save on the right.
 local function addButtons()
-  frame.save = W.Primary(frame, "Save", function() WZ.Save(); frame:Hide() end, 100)
-  frame.save:SetPoint("BOTTOMRIGHT", -12, 12)
-  frame.cancel = W.Button(frame, "Cancel", function() frame:Hide() end, 100)
-  frame.cancel:SetPoint("RIGHT", frame.save, "LEFT", -8, 0)
-  frame.defaults = W.Button(frame, "Defaults", function() load(true); refresh() end, 100)
-  frame.defaults:SetPoint("BOTTOMLEFT", 12, 12)
+  frame.save = W.Primary(frame, "Save", function() WZ.Save(); frame:Hide() end)
+  frame.save:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
+  frame.cancel = W.Button(frame, "Cancel", function() frame:Hide() end)
+  frame.cancel:SetPoint("RIGHT", frame.save, "LEFT", -T.SPACE.gap, 0)
+  frame.defaults = W.Button(frame, "Defaults", function() load(true); refresh() end)
+  frame.defaults:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
 end
 
 -- Builds the dialog once: title, the line saying who it's for, the sliders and the buttons.
@@ -125,9 +130,9 @@ local function build()
   frame = ns.Dialog("Vanguard_WeightsWizard", WIDTH, HEIGHT)
   frame.title:SetText("Stat weights")
   frame.rows = {}
-  frame.caption = W.Text(frame, "")
-  frame.caption:SetPoint("TOPLEFT", 12, -34)
-  frame.caption:SetWidth(WIDTH - 24)
+  frame.caption = T.Text(W.Text(frame, ""), "small", "muted")
+  frame.caption:SetPoint("TOPLEFT", T.SPACE.pad, -ns.DIALOG.head)
+  frame.caption:SetWidth(WIDTH - 2 * T.SPACE.pad)
   addList()
   addButtons()
 end
