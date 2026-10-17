@@ -210,7 +210,6 @@ if Vanguard and Vanguard.RegisterSkin then
     S.CloseButton(MyFrame.Close)
     S.CheckBox(MyFrame.Option)       -- a CheckButton as a 16 px box with a check mark
     S.Radio(MyFrame.Choice)          -- a radio CheckButton as a 16 px ring with a dot
-    S.Slider(MyFrame.Volume)         -- a Slider as a pill track with a round knob, its size kept
     S.ArrowButton(MyFrame.Next, "right")
     S.Divider(MyFrame.Rule)          -- a divider texture as one pixel of the divider colour
     S.Text(MyFrame.Title, "title")  -- text roles: title, heading, name, cell, label, number, small, tiny, world

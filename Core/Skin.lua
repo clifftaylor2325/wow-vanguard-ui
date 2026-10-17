@@ -37,7 +37,6 @@ local S = {
   CheckBox = T.CheckBox,
   Radio = T.Radio,
   Divider = T.Divider,
-  Slider = T.Slider,
   ArrowButton = T.ArrowButton,
   Tooltip = T.Tooltip,
   ScrollBar = T.ScrollBar,

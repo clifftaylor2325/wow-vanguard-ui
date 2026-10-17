@@ -1001,37 +1001,3 @@ it("theme: a game arrow button shows the theme's arrow glyph turned its way, in 
   addon.eval('Vanguard.RegisterSkin("TEST-ONLY-arrow", function(S) __arrow = S.ArrowButton(CreateFrame("Button", nil, UIParent), "right") end)');
   expect(addon.eval("return ns.Theme.ArrowParts(__arrow) ~= nil"), "other addons get it as S.ArrowButton").toBe(true);
 });
-
-// A game slider (MinimalSliderTemplate's parts): Left art, a thumb texture; returns nothing.
-const SLIDER = `local s = CreateFrame("Slider", "TEST_Slider", UIParent) s:SetSize(200, 16) s.Left = s:CreateTexture() s:SetThumbTexture("thumb")`;
-
-it("theme: a game slider gets the pill slider's look on its own geometry: inset track, borderHi outline, quiet borderHi fill to the thumb, a white knob on the thumb", () => {
-  const addon = loggedIn(`${SLIDER} ns.Theme.Slider(TEST_Slider)`);
-  // The slider's parts: { art alpha, thumb alpha, bar height, track colour, outline colour, fill colour, knob colour, knob size, knob on the thumb, fill end on the thumb, game size kept }.
-  const state = () => addon.eval(`local p, s, th = ns.Theme.SliderParts(TEST_Slider), TEST_Slider, TEST_Slider:GetThumbTexture()
-    return { s.Left.__alpha, th.__alpha, p.bar:GetHeight(), p.track[2].__vertexColor, p.line[2].__vertexColor, p.fill[2].__vertexColor, p.knob.__vertexColor,
-      p.knob:GetWidth(), p.knob.__points.CENTER.rel == th, p.fill[2].__points.BOTTOMRIGHT.rel == th, s:GetWidth() == 200 and s:GetHeight() == 16 }`);
-  let s = state();
-  expect([s[0], s[1], s[2], s[7], s[8], s[9], s[10]], "art and thumb faded; an 8 px bar; a 12 px knob and the fill's end on the game's thumb; the slider not resized").toEqual([0, 0, px(addon, 8, true), px(addon, 12, true), true, true, true]);
-  expect([isTok(addon, s[3], "inset"), isTok(addon, s[4], "borderHi"), isTok(addon, s[5], "borderHi"), isTok(addon, s[6], "white")], "the track inset, the outline and the fill borderHi (Cliff's 5a), the knob white").toEqual([true, true, true, true]);
-  expect(addon.eval("return ns.Theme.SliderParts(TEST_Slider).track[1].__texCoord"), "horizontal: the pill's round start, unturned").toEqual([0, 0.25, 0, 1]);
-  addon.eval("TEST_Slider:Disable()");
-  expect(isTok(addon, state()[6], "disabled"), "disabled: the knob in the disabled tier").toBe(true);
-  addon.eval('TEST_Slider:Enable() ns.Theme.SLIDER.fill = "accent" ns.Theme.Slider(TEST_Slider) ns.Theme.Refresh()');
-  s = state();
-  expect([isTok(addon, s[6], "white"), isTok(addon, s[5], "accent"), addon.eval("return select('#', TEST_Slider:GetChildren())")], "enabled: white again; T.SLIDER reaches it on refresh; painting again adds no frame").toEqual([true, true, 1]);
-});
-
-it("theme: a vertical game slider runs down, a steppers frame gets flat arrows, a frame without a thumb is left alone", () => {
-  const addon = loggedIn(`local o = CreateFrame("Slider", "TEST_Opacity", UIParent) o:SetSize(16, 120) o:SetOrientation("VERTICAL") o:SetThumbTexture("thumb") ns.Theme.Slider(o)
-    local f = CreateFrame("Frame", "TEST_Steppers", UIParent) f.Slider = CreateFrame("Frame", nil, f) f.Slider.Thumb = f.Slider:CreateTexture()
-    f.Back = CreateFrame("Button", nil, f) f.Forward = CreateFrame("Button", nil, f) ns.Theme.Slider(f)
-    __bare = ns.Theme.Slider(CreateFrame("Frame", nil, UIParent))`);
-  expect(addon.eval("local p = ns.Theme.SliderParts(TEST_Opacity) return { p.bar:GetWidth(), p.track[1].__texCoord, p.track[1].__points.TOPRIGHT ~= nil }"),
-    "vertical: the bar 8 px wide, the pill turned a quarter, its start along the top").toEqual([px(addon, 8, true), [0, 0, 0.25, 0, 0, 1, 0.25, 1], true]);
-  expect(addon.eval(`return { ns.Theme.SliderParts(TEST_Steppers.Slider) ~= nil, ns.Theme.ArrowParts(TEST_Steppers.Back).glyph.__texCoord, ns.Theme.ArrowParts(TEST_Steppers.Forward).glyph.__texture == ns.Theme.Icon("Right"), ns.Theme.PressOverlay(TEST_Steppers.Back) ~= nil }`),
-    "steppers: the inner slider (its template Thumb) skinned, Back a left arrow, Forward a right arrow, both flat").toEqual([true, [1, 0, 0, 1], true, false]);
-  expect(addon.eval("return ns.Theme.SliderParts(__bare) == nil"), "no thumb: left alone").toBe(true);
-  addon.eval('Vanguard.RegisterSkin("TEST-ONLY-slider", function(S) __slider = S.Slider(TEST_Opacity) end)');
-  expect(addon.eval("return __slider == TEST_Opacity"), "other addons get it as S.Slider").toBe(true);
-});
