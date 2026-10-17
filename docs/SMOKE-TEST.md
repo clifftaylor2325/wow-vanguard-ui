@@ -1342,6 +1342,242 @@ These steps check what the UI consistency pass changed (docs/THEME.md, Window ch
 - Expect: the form is titled `Send feedback` with an X at its top right, and Escape closes it. Under the bug fields a small grey note, `Your /vg report (version, client and the errors caught this session) goes in the block with your answers.`, wraps inside the form. Make report with an empty summary puts `The short summary is required.` in the warning colour just above the Make report and Cancel buttons, not over them.
 - If it fails, paste: a screenshot of the form and `/vg errors`.
 
+## 33. In-game checklist: the UI coherence pass
+
+This is one session's worth of checks for everything merged from #395 to #415 (the UI coherence plan, phases 8.1 to 8.10, and the reskin coverage batches 1 to 3). **Nothing here has been seen in the game.** Each Expect is what the code intends. Section 32 already covers the Vanguard windows' titles, Escape, scroll thumbs, section headers, quest marks, the faction look and the feedback form, so those steps are not repeated here.
+
+The order is the order to play in: looks you can check quickly first, then the game's own windows Vanguard now skins, then the controls that take keys, and last the steps that need a fight. Steps tagged **[Combat]** need a fight (a dummy or a mob you can start one with) and go at the end.
+
+### 33.1 Sliders: grey fill, white thumb, a locked slider
+
+- Do: `/vg`, General, then drag a size slider. Under Layout, lock a frame's width to match another's, and look at its size slider.
+- Expect: the filled part is a quiet grey bar up to a solid white thumb with a dark outline. The empty track has a one-pixel outline at 1x and at a larger UI scale. The locked slider has a grey thumb and a muted caption.
+- If it fails, paste: a screenshot of the sliders and `/vg errors`.
+
+### 33.2 Switches: knob glide and tracks after a Theme change
+
+- Do: `/vg`, toggle a switch. Turn Reduce motion on and toggle it again. Then change the Theme and look at the switch and slider tracks.
+- Expect: the knob glides in about a tenth of a second, and jumps when Reduce motion is on. After a Theme change, the switch and slider tracks take the new colours with the panels.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.3 Check boxes: AddOns list, chat settings, raid All assist
+
+- Do: open the game menu, Options, AddOns, and scroll the list; press Enable All and Disable All. Open the chat window's settings, the Combat and Text-to-speech categories, and Message Types. If you lead or assist a raid, toggle All assist on the Raid tab of the social window.
+- Expect: each check is a 16 px dark box with the check glyph in the accent when it is on. Hover shows a border, a held press shows a shade, and a disabled box shows its mark and label in the disabled colour with no border stuck. Enable All and Disable All update the marks. The All assist label is grey when you are neither leader nor assistant.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.4 Radios, dividers, arrow buttons, the quest track box
+
+- Do: open the mail window's send page and choose Send Money, then COD. In the chat settings, move a line up and down. Look at a divider row on the options window. Open the quest log and tick a quest's track box.
+- Expect: the radio is a round dark ring with a brass dot, centred, and choosing one clears the other. Dividers are one pixel. The arrow buttons point the right way and grey out when disabled. The track box shows a check when the quest is tracked.
+- If it fails, paste: a screenshot of each and `/vg errors`.
+
+### 33.5 Scroll bars: the game's old-style bar
+
+- Do: `/vg lfg`, or the game's Group Finder, and open a listing with a comment box. Drag its scroll bar. Then drag a scroll bar on a game settings page.
+- Expect: the old bar's thumb has one thin line that follows the thumb and brightens while you drag it. Its up and down arrows are gone, and the faded arrows take no clicks.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.6 Selected rows in the game's lists
+
+- Do: click rows in the Titles list, the Equipment Manager, the collections Sets list, the group finder's Browse list and a community list in the social window. Click a trainer skill and watch the list.
+- Expect: the picked row has a 2 px accent rail on its left edge over a lighter fill. The rail moves with each pick, and recycled rows carry no stale rail. The game's own selection is what the rail follows.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.7 Chat side buttons and Quick Join
+
+- Do: hover the chat window's side buttons. Scroll up, then click the scroll-to-bottom glyph. Open the chat menu and minimize the chat. When Quick Join's toast appears, look at it.
+- Expect: the side buttons are tiles with their glyphs, and the scroll-to-bottom glyph shows. The chat menu and minimize still work. Quick Join's queue art is hidden.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.8 Chat bubbles
+
+- Do: in the open world, say something near another character or a mob. Then enter an instance and say something there.
+- Expect: in the world, bubbles are flat slate panels with their text on them. Inside an instance the game's own bubbles show, and `/vg errors` is empty.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.9 Toasts: Battle.net, time played, voice prompts
+
+- Do: wait for a friend to come online, or use `/played` for the time-played toast. If voice is on, look at a voice chat prompt. Skip the voice part if voice is unavailable.
+- Expect: the Battle.net online line sits in secondary text after the toast's own animation. The time-played toast is themed. Voice prompts take the toast look, with a themed Join button.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.10 Fonts: raid warning, screenshot line, frame rate, floating damage
+
+- Do: take a screenshot and look at the line it prints. Turn on the frame rate readout in the video settings. Turn on floating combat text and hit a target dummy. If you can, see a raid warning in a raid.
+- Expect: the raid warning, the screenshot line and the frame rate text use the theme font at the game's size, and the raid warning follows a Theme change. Floating damage numbers use the theme font at the game's size. If the numbers over a mob keep the game's font, that is the open check (the font is set when the addon loads).
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.11 Breath and fatigue bars
+
+- Do: swim underwater until the breath bar shows.
+- Expect: the bar sits in the timers group with its caption in the theme. This path has never been seen in game, so the first look decides it.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.12 Durability figure with the info strip
+
+- Do: turn the info strip on, then look at the durability figure on the character sheet or the bottom of the screen. Turn the strip off and look again.
+- Expect: the game's durability figure is hidden while the info strip is on, and returns when it is off.
+- If it fails, paste: a screenshot of the strip and `/vg errors`.
+
+### 33.13 Personal resource display
+
+- Do: with Edit Mode's personal resource display shown, look at it for your class's power bars (a Rogue's combo points or a Mage's mana, for example).
+- Expect: flat bars on slate panels where Edit Mode puts them, with no visible seam between the health and power panels.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.14 Quest tracker: countdown and recipes
+
+- Do: track a timed quest and a profession recipe, and watch the tracker.
+- Expect: the timed quest shows a `Time left` countdown that ticks. Tracked recipes appear under a Recipes section with their reagent lines, and a reagent the client has not cached joins a moment later. Untimed quests show no countdown. Whether Forever reports quest timers and recipe tracking is the open check.
+- If it fails, paste: a screenshot of the tracker and `/vg errors`.
+
+### 33.15 Waypoints and the floating pin
+
+- Do: `/way` to a spot on the map. If you can, track a party member with no nearest token.
+- Expect: the pin is a teardrop in the accent colour with the distance text. If it looks stretched, paste a screenshot, since the icon is 32 by 32 and drawn at the atlas size. The party member's pin is the game's gold atlas, tinted.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.16 Loot window, merchant rows, buyback, money
+
+- Do: loot a corpse with several items and scroll the list. Open a merchant and buy an item, buy one back, use the repair tiles and the page arrows.
+- Expect: loot rows show the item look on every row as the list scrolls. Merchant rows, buyback, the repair tiles, the page arrows and the coin lines all look right after paging and after a buy.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.17 Auction house: multi-stack sale and its own pages
+
+- Do: on the Sell tab, start a multi-stack sale and watch its progress bar. Then look at the Buy search, the Sell page, the Auctions and Bids sub-tabs, and a purchase confirmation. Do this once with Vanguard's Auction Helper page on and once off.
+- Expect: the progress bar is flat, with its icon and cancel cross kept. The Buy search bar is flat, with the star and sort arrows kept. The picked category and result line use the selected look with no gold row art. Category names stay light after the mouse leaves (the least sure of these). The Sell coin boxes, duration dropdown, buyout check and grey Create Auction heading look right, and the confirmation is flat with three buttons. With the helper on, its Lists and Posting tabs are unchanged.
+- If it fails, paste: a screenshot of each page and `/vg errors`.
+
+### 33.18 Game windows: titles and insets
+
+- Do: open the trade window, the mail window, the spellbook, the talents, the professions window, the collections journal and, if it opens on Forever, the achievements window.
+- Expect: each window's title is centred where the game puts it, in the heading role and light text. Every window's inset is a sunk panel with no seams.
+- If it fails, paste: a screenshot of each window and `/vg errors`.
+
+### 33.19 Trade, mail, quests, gossip, popups, roll, time manager
+
+- Do: trade with another player. Open the mail inbox and send page. Accept a quest and open gossip. Open a ready check or another popup. Roll on loot if you can. Open the time manager and its stopwatch. In the stack split, type an amount and click coins.
+- Expect: the trade, mail and quest panels look flat with light text and no gold border. The stack split and coin pickup amount sit in a thin-bordered box between visible arrows, and still take input. Roll windows, popups and the time manager are themed.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.20 Spellbook, talents, professions, inspect, flight map, guild bank
+
+- Do: open the spellbook and read a page. Open the talents, the professions window and a linked recipe. Inspect another player. Open the flight map. Open the guild bank.
+- Expect: each is themed with flat panels and light text. The spellbook text is readable (watch for a font colour that is too dark). The professions list follows the game's selection. The inspect window and the flight map have themed borders.
+- If it fails, paste: a screenshot of each and `/vg errors`.
+
+### 33.21 Town: stable, class trainer, small windows
+
+- Do: visit a pet stable, then a class trainer's skills list and its categories. Open the macro window and an icon picker. Open the loot history and the master loot candidates. Open the currency transfer window.
+- Expect: the stable has a flat panel with its pet model on a dark box. The trainer's skill rows have no plate, their icons are kept, and the selected skill's rail follows clicks (if the list does not redraw, it follows only when a row is acquired). The macro window and icon pickers are flat with a dark name box. The currency transfer has one thin line above the transaction.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.22 Menus, role check, ready popup, match results
+
+- Do: open a dropdown from a unit frame or the game menu header. If you can, trigger a role check in a group, a ready check, a battleground enter dialog, and look at match results after a match.
+- Expect: menus and dropdowns are flat panels with a soft shadow and no gold border. The role check, ready popup, enter-battle dialog and match results are flat, with rows and team colours unchanged.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.23 Social: guild window, guild control, open letter
+
+- Do: open the guild window and look at the roster, Guild Info, News, the benefits page and the Preferred Play dropdowns. Open the community list. Open the guild control window (ranks, permissions, bank tabs, Discord) if you have the rights, and switch its tabs. Open the guild log, the settings, the news filters and the invite manager. Open an open letter from the mail or an auction invoice.
+- Expect: roster rows, the community list's selection rail and the benefits page are themed. The guild control window keeps its skin when you switch tabs. The open letter and auction invoice have light text in a sunk box.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.24 Social: channels, friends, registrar, charter, raid tab, cards
+
+- Do: open the channels window and its open channel, then rename a channel and create one. Open add friend and the Battle.net invite. Open the guild registrar, charter and tabard pickers. Open a role poll and the dungeon invite check boxes. Open the raid tab, including Raid Info. Select a social card, and look at the recruit reward card and Accept. Rename the guild.
+- Expect: the open channel is lit and its rail follows clicks after the game redraws. The create-channel title and labels are light. The registrar, charter and tabard pickers are themed. The raid tab's class buttons are raised panels. The single-line invite toast text is readable. The guild rename window is themed.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.25 Map: world map, quest panel, group finder, Legacy
+
+- Do: open the world map and use its floor dropdown, tracking filter and pin tile. Open the quest panel and the queue status. Browse the group finder's listing and search pages. Open the Legacy window, pick a tree card and open a challenge, and look at its calendar and dialogs.
+- Expect: the map's dropdown and filters are themed, and the quest row's track tick follows the game's check. Browse and who rows keep the rail after a click. The picked tree card and open challenge use the selected look (rail and fill), and the rail moves with the pick. The objective and points bars show their fill, and the calendar's month arrows and class buttons show the pushed glyph.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.26 Character pane: lists, flyout arrows, sets
+
+- Do: open the character pane's reputation, skills and currency lists. Hover an equipment slot to open its flyout and use its page arrows. Open the Titles list and the Equipment Manager.
+- Expect: the list rules are one-pixel dividers above and below. The flyout's page arrows point the right way and still page. Picked rows use the selected look, and the gear tick, icons, spec icon and lost-set red all stay.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.27 Options, Edit Mode, chat settings in the game
+
+- Do: open the game's options window and a few pages, including the nav and the Performance head. Open Edit Mode, change the layout and size, use the grid slider and the layout dropdown, and open the system settings dialog and the import/save dialog. Open the addon list's bar and dropdowns.
+- Expect: section headings are small grey capitals. The setting rows' checks, sliders and dropdowns are themed and work. Edit Mode keeps its layout with the new checks and panel. The system settings dialog resizes and stays themed across systems.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.28 Cooldown Manager, keybinding, click binding, help, report, colour picker
+
+- Do: open the Cooldown Manager settings and refresh its layout. Use its search, a bar and its dropdowns, then Undo. Open the keybinding window and the click binding window (hover, delete, marks, the tutorial card). Open the help window and the report window (its minor-category rows and comment box). Open the colour picker and use its Hash field and opacity slider.
+- Expect: the Cooldown Manager's headers stay grey after a layout refresh, and its dropdowns and Undo are themed. The keybinding and click binding windows are flat. The help window has its inset. The report's minor-category rows follow the select state. The colour picker's Hash field and opacity slider are themed.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.29 Combat log, death recap, Cooldown alerts, movement pad, Lua error window
+
+- Do: open the combat log and use its filter arrow and progress bar. Open the death recap (or wait for a death). Trigger a Cooldown Manager sound alert and a group buff visual alert. Click the movement pad's arrows. Run `/run error("test")` to open the Lua error window, then page and scroll it, and close it.
+- Expect: the death recap box, its divider and its Unavailable line are themed. The combat log's filter arrow and progress bar are themed. The alert dialogs are themed. A clicked movement direction lights and unlights, and dragging and locking still work. The Lua error window pages, scrolls and closes.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.30 Vanguard buttons and far-left actions
+
+- Do: in `/vg`, press Create, Save and Reload now, and hover and press one. Look at Delete and Copy here on a profile. Abandon a quest from the quest log and say Goodbye in a quest dialog. Open a question such as Delete profile or Clear recent. Change the Text size to 130% and look at a dropdown's caption.
+- Expect: primary buttons hover to a lighter accent and press a shade darker. Delete and Copy keep a plain look with a red label. Abandon and Goodbye sit alone at the far left. A question's Yes is the primary, and a destructive question shows a danger button. A long caption wraps left of its column.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.31 Keys: Tab focus, Enter, sliders, menus, search
+
+- Do: run `/vg setup`, then Tab through the wizard to Skip setup, Back and Next, and press Enter on Next. Open a question such as Delete profile, press Tab and Space. Open the Font menu and press Escape, then open it again and click outside it. In `/vg`, Tab to a slider and press Left and Right. In the options search, type `vermilion` and press Enter, and clear the box with its glyph. Type in an edit box.
+- Expect: the focus ring moves through the choices, Skip, Back and Next. Space presses a focused button, and Enter on Next advances. On a danger question Enter does nothing unless a button has focus. Escape closes the Font menu and leaves the options window open, and a click outside closes it. Left and Right step a focused slider. The search jumps to the Color assist note without an error, and its clear glyph empties the box. An edit box border turns accent while you type. A menu with more than 16 rows (Bar texture with shared textures) shows a thumb.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.32 Spacing in the Vanguard windows
+
+- Do: compare What's new, the quest log's text and rewards, the quest dialog, an export dialog with text, the options nav groups, the unlock popover's footer, the minimap button drawer and the raid tools bar. Look for even edges.
+- Expect: the gaps sit on the same scale everywhere. The unlock popover's Done and Reset sit 4 px further in than before. Nothing else shifts.
+- If it fails, paste: a screenshot of the window that looks wrong.
+
+### 33.33 Group board, Mail tools, dropdowns over dialogs
+
+- Do: open the group board and read its note and hint. Open Mail tools' card. Look at group threat, rolls and the officer roster with a 12-letter name. Open the feedback form's Part of Vanguard dropdown, and the auction filters' Quality dropdown.
+- Expect: the group board's note and hint do not overlap, and the hint fits one line. Mail tools' rows, Take button and preset hint fit the 270-wide card. A long name next to its figure still reads. Both dropdowns open over their dialog, not behind it.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.34 [Combat] Menus and the keyboard focus
+
+- Do: open a dropdown menu, then start a fight. Separately, open the setup wizard or a question dialog, Tab to a button, start a fight, end it, and press Tab again.
+- Expect: the menu closes when the fight starts, and the first click after it is not swallowed. The window gives up the keyboard in combat and takes it back after the fight.
+- If it fails, paste: `/vg errors`, and the combat log if it shows an error.
+
+### 33.35 [Combat] Enter and movement with a question open
+
+- Do: open a question dialog, then start a fight with it open. Press Enter, then hold the movement keys.
+- Expect: Enter does nothing in combat, and the movement keys still work with the question open.
+- If it fails, paste: `/vg errors`.
+
+### 33.36 [Combat] Switch knobs and slider thumbs
+
+- Do: in combat, toggle a switch. Drag a slider in combat, then drag one out of combat.
+- Expect: in combat the knob moves at once with no glide, and dragging has no lag.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.37 [Combat] Edit Mode, quick keybinding, Raid tab
+
+- Do: open Edit Mode and the quick keybind window out of combat, then close them. Open the Raid tab in a group, start a fight with it open, end the fight, and use the member buttons. If the game lets you open Edit Mode in a fight, do that too.
+- Expect: no taint error. The layouts and checks look as in 33.27 and 33.28. The member buttons work after the fight.
+- If it fails, paste: `/vg errors` and the exact error line.
+
+### 33.38 [Combat] Accent change with a hidden dispel debuff badge
+
+- Do: with a debuff badge coloured from a hidden dispel type on screen, change the accent colour.
+- Expect: no error in `/vg errors`. This is the probe that issue #284 still needs.
+- If it fails, paste: `/vg errors`.
+
+Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.
