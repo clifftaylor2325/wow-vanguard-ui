@@ -1388,17 +1388,23 @@ local checkOf = setmetatable({}, { __mode = "k" })
 -- A check button's themed parts, { box, fill, mark }, or nil for one T.CheckBox never painted.
 function T.CheckParts(button) return checkOf[button] end
 
+-- Whether a check button (or radio) is checked: the game's mark shown, for a plain frame whose mark the
+-- game shows and hides (T.CheckBox's `mark`), else its checked state.
+local function isChecked(button, c)
+  if c.source then return c.source:IsShown() == true end
+  return type(button.GetChecked) == "function" and button:GetChecked() == true
+end
+
 -- Paints a check button for its state: the mark (and the fill, when T.CHECK names one) shown while it
--- is checked, in their colours, or the disabled tier while the button is disabled (its label too, and
--- the hover border let go, as a disabled button gets no OnLeave).
+-- is checked, in their colours, the hover border while the mouse is over it, or the disabled tier while
+-- the button is disabled (its label too, and no hover border).
 local function paintCheck(button, c)
-  local on = type(button.GetChecked) == "function" and button:GetChecked() == true
-  local off = type(button.IsEnabled) == "function" and not button:IsEnabled()
+  local on, off = isChecked(button, c), type(button.IsEnabled) == "function" and not button:IsEnabled()
   c.mark:SetShown(on)
   T.Tint(c.mark, off and "disabled" or T.CHECK.markColor)
   c.fill:SetShown(on and T.CHECK.fill ~= nil)
   T.Tint(c.fill, off and "disabled" or T.CHECK.fill or "inset")
-  if off then T.SetBorder(c.box, nil) end
+  T.SetBorder(c.box, c.hover and not off and { T.RGB(T.CHECK.hover) } or nil)
   T.DisabledLook(button, off)
 end
 
@@ -1414,43 +1420,341 @@ local function checkParts(button)
   press:SetAllPoints()
   press:Hide()
   pressOf[button] = { overlay = press, row = true } -- row: the shade only, the label stays put
-  checkOf[button] = { box = box, fill = fill, mark = centered(box, "OVERLAY", T.Icon("Check"), T.CHECK.mark) }
-  return checkOf[button]
+  return { box = box, fill = fill, mark = centered(box, "OVERLAY", T.Icon("Check"), T.CHECK.mark), paint = paintCheck }
 end
 
--- Repaints a check button after the game changes its state.
+-- Repaints a check button or radio after the game changes its state.
 local function repaintCheck(button)
   local c = checkOf[button]
-  if c then paintCheck(button, c) end
+  if c then c.paint(button, c) end
 end
 
--- Follows the game: SetChecked (its own calls), a click (the client flips the state before OnClick
--- runs), enabling and disabling (pcall: a widget without those scripts can't have them hooked); the
--- mouse for the press look and the hover border; a hide clears both.
-local function watchCheck(button)
+-- Notes whether the mouse is over a check button or radio, then repaints it.
+local function hoverCheck(button, over)
+  checkOf[button].hover = over
+  repaintCheck(button)
+end
+
+-- Runs fn (guarded as `where`) after each of a region's show calls (Show, Hide, SetShown), as the game makes them.
+local function hookShown(region, where, fn)
+  if type(hooksecurefunc) ~= "function" then return end
+  for _, method in ipairs({ "Show", "Hide", "SetShown" }) do hooksecurefunc(region, method, ns.Guard(where, fn)) end
+end
+
+-- Follows the game's state: SetChecked (its own calls), a click (the client flips the state before
+-- OnClick runs), enabling and disabling (pcall: a widget without those scripts can't have them hooked),
+-- and for a plain frame the game's own mark (`source`) being shown or hidden.
+local function watchState(button, source)
   local repaint = ns.Guard("check state", repaintCheck)
   for _, script in ipairs({ "OnClick", "OnEnable", "OnDisable" }) do pcall(button.HookScript, button, script, repaint) end
-  if type(hooksecurefunc) == "function" then hooksecurefunc(button, "SetChecked", ns.Guard("hook SetChecked", repaintCheck)) end
+  if type(button.SetChecked) == "function" and type(hooksecurefunc) == "function" then
+    hooksecurefunc(button, "SetChecked", ns.Guard("hook SetChecked", repaintCheck))
+  end
+  if source then hookShown(source, "check mark", function() repaintCheck(button) end) end
+end
+
+-- Follows the mouse: the press look while held, the hover look while over it; a hide clears both.
+local function watchCheck(button, source)
+  watchState(button, source)
   button:HookScript("OnMouseDown", ns.Guard("check press", function(b) T.PressButton(b, true) end))
   button:HookScript("OnMouseUp", ns.Guard("check press", function(b) T.PressButton(b, false) end))
-  button:HookScript("OnHide", ns.Guard("check press", function(b) T.PressButton(b, false) T.SetBorder(checkOf[b].box, nil) end))
-  button:HookScript("OnEnter", ns.Guard("check hover", function(b) T.SetBorder(checkOf[b].box, { T.RGB(T.CHECK.hover) }) end))
-  button:HookScript("OnLeave", ns.Guard("check hover", function(b) T.SetBorder(checkOf[b].box, nil) end))
+  button:HookScript("OnHide", ns.Guard("check press", function(b) T.PressButton(b, false) hoverCheck(b, false) end))
+  button:HookScript("OnEnter", ns.Guard("check hover", function(b) hoverCheck(b, true) end))
+  button:HookScript("OnLeave", ns.Guard("check hover", function(b) hoverCheck(b, false) end))
 end
 
 -- One of the game's check buttons (UICheckButtonTemplate and kin) in the theme (DESIGN-PRINCIPLES
 -- 2.6): its art faded (its label kept), a T.CHECK.size inset box centred on it with the Check glyph in
 -- accentText while checked, a borderHi border under the mouse, a shade while pressed, the disabled tier
--- while disabled. Follows the game's SetChecked and clicks. Safe to run again.
-function T.CheckBox(button)
+-- while disabled. Follows the game's SetChecked and clicks. opts.mark: the texture a plain frame shows
+-- while checked (QuestLogTrackCheckboxTemplate's CheckMark), which the box then follows. Safe to run again.
+function T.CheckBox(button, opts)
   local c = checkOf[button]
   if not c then
     c = checkParts(button)
+    c.source, checkOf[button] = opts and opts.mark, c
+    watchCheck(button, c.source)
+  end
+  T.FadeRegions(button)
+  c.paint(button, c)
+  return button
+end
+
+-- A radio button's look (choose one of several, DESIGN-PRINCIPLES 2.6): the ring's size (an even
+-- count of screen pixels), how thick its edge is, the dot's size and colour, the ring's colour under
+-- the mouse. The dot is accentText like the check box's mark, so a dark ring with a brass dot pairs
+-- with the dark box with a brass check.
+T.RADIO = { size = 16, ring = 1, dot = 6, dotColor = "accentText", hover = "borderHi" }
+
+-- A disc of Media/Textures/Knob centred on frame, size units across (even pixels), on a layer, in a colour.
+local function disc(frame, layer, size, color)
+  return T.Tint(centered(frame, layer, T.Texture("Knob"), size), color)
+end
+
+-- Paints a radio for its state: the dot while checked, the ring borderHi under the mouse, the
+-- disabled tier while disabled (its label too).
+local function paintRadio(button, r)
+  local on, off = isChecked(button, r), type(button.IsEnabled) == "function" and not button:IsEnabled()
+  r.mark:SetShown(on)
+  T.Tint(r.mark, off and "disabled" or T.RADIO.dotColor)
+  T.Tint(r.ring, r.hover and not off and T.RADIO.hover or "edge")
+  T.Tint(r.well, "inset")
+  T.DisabledLook(button, off)
+end
+
+-- Makes a radio's parts on a frame centred on it: the ring (an `edge` disc), the well inside it (an
+-- `inset` disc one edge narrower each side), the press shade over the well and the dot.
+local function radioParts(button)
+  local holder = T.PixelSize(CreateFrame("Frame", nil, button), T.RADIO.size, T.RADIO.size, true)
+  holder:SetPoint("CENTER")
+  local inner = T.RADIO.size - 2 * T.RADIO.ring
+  local press = T.Tint(centered(holder, "ARTWORK", T.Texture("Knob"), inner), T.PRESS[1], T.PRESS[2])
+  press:Hide()
+  pressOf[button] = { overlay = press, row = true }
+  local r = { holder = holder, ring = disc(holder, "BACKGROUND", T.RADIO.size, "edge"), well = disc(holder, "BORDER", inner, "inset") }
+  r.mark, r.paint = disc(holder, "OVERLAY", T.RADIO.dot, T.RADIO.dotColor), paintRadio
+  return r
+end
+
+-- One of the game's radio buttons (UIRadioButtonTemplate) in the theme: its art faded (its label
+-- kept), a T.RADIO.size dark ring centred on it with an accentText dot while checked, a borderHi ring
+-- under the mouse, a shade while pressed, the disabled tier while disabled. Follows the game's
+-- SetChecked and clicks like T.CheckBox. Safe to run again.
+function T.Radio(button)
+  local r = checkOf[button]
+  if not r then
+    r = radioParts(button)
+    checkOf[button] = r
     watchCheck(button)
   end
   T.FadeRegions(button)
-  paintCheck(button, c)
+  r.paint(button, r)
   return button
+end
+
+-- A divider's look: one screen pixel of this colour, over the game's faded divider art.
+T.DIVIDER = { color = "divider" }
+-- Each themed divider (a texture or a frame) -> { holder = the frame its line is on, line }. Weak.
+local dividerOf = setmetatable({}, { __mode = "k" })
+
+-- A themed divider's parts, { holder, line }, or nil for one T.Divider never painted.
+function T.DividerParts(region) return dividerOf[region] end
+
+-- Whether a region is a texture (else a frame).
+local function isTexture(region)
+  return type(region.GetObjectType) == "function" and region:GetObjectType() == "Texture"
+end
+
+-- Makes a divider's line: on its own frame laid over the divider (so fading the game frame's art never
+-- fades it), one screen pixel thick, along its length (down it when vertical) through its middle.
+local function dividerLine(region, vertical)
+  local holder = CreateFrame("Frame", nil, isTexture(region) and region:GetParent() or region)
+  holder:SetAllPoints(region)
+  local line = T.Tint(solid(holder, "ARTWORK", nil, "divider"), T.DIVIDER.color)
+  line:SetPoint(vertical and "TOP" or "LEFT")
+  line:SetPoint(vertical and "BOTTOM" or "RIGHT")
+  if vertical then line:SetWidth(T.Pixel(holder)) else line:SetHeight(T.Pixel(holder)) end
+  return { holder = holder, line = line }
+end
+
+-- Shows a texture divider's line while the game shows the texture.
+local function followDivider(region)
+  local d = dividerOf[region]
+  if d then d.holder:SetShown(region:IsShown()) end
+end
+
+-- One of the game's dividers (a texture, or a frame of divider art: Options_HorizontalDivider, the
+-- mail window's bar, the quest log's separator) as one pixel of `divider` along it, the game's art
+-- faded. opts.vertical: the line runs down it. A texture's line follows the game showing and hiding
+-- it. Safe to run again.
+function T.Divider(region, opts)
+  if not dividerOf[region] then
+    dividerOf[region] = dividerLine(region, opts and opts.vertical)
+    if isTexture(region) then hookShown(region, "divider shown", followDivider) end
+  end
+  if isTexture(region) then region:SetAlpha(0) else T.FadeRegions(region) end
+  followDivider(region)
+  return region
+end
+
+-- An arrow button's look: the glyph's size and colour at rest and under the mouse.
+T.ARROW = { glyph = 10, color = "text2", hover = "text" }
+-- Each direction: the theme icon it turns, and the texture coordinates that turn it.
+local ARROW_TURN = {
+  down = { "Down", 0, 1, 0, 1 }, up = { "Down", 0, 1, 1, 0 },
+  right = { "Right", 0, 1, 0, 1 }, left = { "Right", 1, 0, 0, 1 },
+}
+-- Each themed arrow button -> { glyph, hover }. Weak.
+local arrowOf = setmetatable({}, { __mode = "k" })
+
+-- A themed arrow button's parts, { glyph, hover }, or nil for one T.ArrowButton never painted.
+function T.ArrowParts(button) return arrowOf[button] end
+
+-- Paints an arrow's glyph: disabled, under the mouse, or at rest.
+local function paintArrow(button)
+  local a, off = arrowOf[button], type(button.IsEnabled) == "function" and not button:IsEnabled()
+  T.Tint(a.glyph, off and "disabled" or a.hover and T.ARROW.hover or T.ARROW.color)
+end
+
+-- Notes whether the mouse is over an arrow button, then repaints it.
+local function hoverArrow(button, over)
+  arrowOf[button].hover = over
+  paintArrow(button)
+end
+
+-- Makes an arrow button's glyph, on its own frame over the button (so fading the button's art never
+-- fades it), and follows the mouse and the button's state.
+local function arrowParts(button)
+  local holder = CreateFrame("Frame", nil, button)
+  holder:SetAllPoints()
+  arrowOf[button] = { glyph = centered(holder, "OVERLAY", T.Icon("Down"), T.ARROW.glyph) }
+  for _, script in ipairs({ "OnEnable", "OnDisable" }) do pcall(button.HookScript, button, script, ns.Guard("arrow state", paintArrow)) end
+  button:HookScript("OnEnter", ns.Guard("arrow hover", function(b) hoverArrow(b, true) end))
+  button:HookScript("OnLeave", ns.Guard("arrow hover", function(b) hoverArrow(b, false) end))
+end
+
+-- One of the game's arrow buttons (paging, move up and down, steppers) in the theme: the theme's
+-- arrow glyph pointing `direction` ("up", "down", "left", "right"; default down) in text2, text under
+-- the mouse, the disabled tier while disabled; a flat button panel under it, or with opts.flat just the
+-- glyph, its art faded (for the small steppers beside a slider). Safe to run again.
+function T.ArrowButton(button, direction, opts)
+  local turn = ARROW_TURN[direction] or ARROW_TURN.down
+  if not arrowOf[button] then arrowParts(button) end
+  if opts and opts.flat then T.FadeRegions(button) else T.Button(button) end
+  arrowOf[button].glyph:SetTexture(T.Icon(turn[1]))
+  arrowOf[button].glyph:SetTexCoord(turn[2], turn[3], turn[4], turn[5])
+  paintArrow(button)
+  return button
+end
+
+-- A game slider's look, the pill slider's (Core/Controls.lua) on the game's geometry: the track's
+-- thickness, the thumb's size, and the colours of the track, its outline, the fill (from the low end to
+-- the thumb: quiet `borderHi`, Cliff's 5a in docs/design/UI-COHERENCE.md, so a page of sliders is not
+-- a row of brass bars), the thumb and its shade.
+T.SLIDER = { height = 8, thumb = 12, track = "inset", line = "borderHi", fill = "borderHi", thumbColor = "white", shade = "shade" }
+-- The Pill art's three cuts: the round start, the middle that stretches, the round end.
+local PILL_CUTS = { { 0, 0.25 }, { 0.25, 0.75 }, { 0.75, 1 } }
+-- Each orientation: the corners at the start and end of the track, which side it runs between, the
+-- setters for a part's length and thickness, and which way the fill's far corner sits from the thumb.
+local SLIDER_AXES = {
+  HORIZONTAL = { s1 = "TOPLEFT", s2 = "BOTTOMLEFT", e1 = "TOPRIGHT", e2 = "BOTTOMRIGHT", a = "LEFT", b = "RIGHT", len = "SetWidth", thick = "SetHeight", dx = 0, dy = -1 },
+  VERTICAL = { s1 = "TOPLEFT", s2 = "TOPRIGHT", e1 = "BOTTOMLEFT", e2 = "BOTTOMRIGHT", a = "TOP", b = "BOTTOM", len = "SetHeight", thick = "SetWidth", dx = 1, dy = 0, turned = true },
+}
+-- Each themed slider -> its parts { bar, track, fill, line, knob, shade }. Weak.
+local sliderOf = setmetatable({}, { __mode = "k" })
+
+-- A themed game slider's parts, or nil for one T.Slider never painted.
+function T.SliderParts(slider) return sliderOf[slider] end
+
+-- One cut of Media/Textures/<name> on frame; on a vertical track turned a quarter, so it runs down.
+local function pillCut(frame, layer, name, cut, axis)
+  local t = frame:CreateTexture(nil, layer)
+  t:SetTexture(T.Texture(name))
+  if axis.turned then t:SetTexCoord(cut[1], 0, cut[2], 0, cut[1], 1, cut[2], 1) else t:SetTexCoord(cut[1], cut[2], 0, 1) end
+  return t
+end
+
+-- The bar the slider's art is on: its own frame, T.SLIDER.height thick, across the slider's middle,
+-- as long as the slider (the game's own size, untouched).
+local function sliderBar(slider, axis)
+  local bar = CreateFrame("Frame", nil, slider)
+  bar:SetPoint(axis.a)
+  bar:SetPoint(axis.b)
+  bar[axis.thick](bar, T.PixelRound(bar, T.SLIDER.height, true))
+  return bar
+end
+
+-- A pill of Media/Textures/<name> along the bar, on a layer: the round ends half the bar's thickness long.
+local function sliderPill(bar, axis, layer, name)
+  local parts, cap = {}, T.PixelRound(bar, T.SLIDER.height / 2)
+  for i, cut in ipairs(PILL_CUTS) do parts[i] = pillCut(bar, layer, name, cut, axis) end
+  for i, corners in pairs({ [1] = { axis.s1, axis.s2 }, [3] = { axis.e1, axis.e2 } }) do
+    parts[i]:SetPoint(corners[1], bar)
+    parts[i]:SetPoint(corners[2], bar)
+    parts[i][axis.len](parts[i], cap)
+  end
+  parts[2]:SetPoint(axis.s1, parts[1], axis.e1)
+  parts[2]:SetPoint(axis.e2, parts[3], axis.s2)
+  return parts
+end
+
+-- The fill: the pill's round start at the bar's start, and its middle from there to the game's thumb
+-- (anchored to it, so the client moves the fill's end as it moves the thumb; the knob covers the end).
+local function sliderFill(bar, axis, thumb)
+  local cap, mid = pillCut(bar, "ARTWORK", "Pill", PILL_CUTS[1], axis), pillCut(bar, "ARTWORK", "Pill", PILL_CUTS[2], axis)
+  local half = T.PixelRound(bar, T.SLIDER.height / 2)
+  cap:SetPoint(axis.s1)
+  cap:SetPoint(axis.s2)
+  cap[axis.len](cap, half)
+  mid:SetPoint(axis.s1, cap, axis.e1)
+  mid:SetPoint(axis.e2, thumb, "CENTER", axis.dx * half, axis.dy * half)
+  return { cap, mid }
+end
+
+-- The knob and its shade, T.SLIDER.thumb across, centred on the game's (faded) thumb, so they move with it.
+local function sliderKnob(bar, thumb)
+  local knob, shade = bar:CreateTexture(nil, "OVERLAY", nil, 1), bar:CreateTexture(nil, "OVERLAY", nil, 2)
+  for t, name in pairs({ [knob] = "Knob", [shade] = "KnobShade" }) do
+    t:SetTexture(T.Texture(name))
+    T.PixelSize(t, T.SLIDER.thumb, T.SLIDER.thumb, true)
+    t:SetPoint("CENTER", thumb)
+  end
+  return knob, shade
+end
+
+-- Paints a slider: the track, outline and fill in their colours, the knob in the disabled tier while
+-- the slider is disabled.
+local function paintSlider(slider, s)
+  local off = type(slider.IsEnabled) == "function" and not slider:IsEnabled()
+  for part, color in pairs({ track = T.SLIDER.track, line = T.SLIDER.line, fill = T.SLIDER.fill }) do
+    for _, t in ipairs(s[part]) do T.Tint(t, color) end
+  end
+  T.Tint(s.knob, off and "disabled" or T.SLIDER.thumbColor)
+  T.Tint(s.shade, T.SLIDER.shade)
+end
+
+-- Makes a slider's parts along its orientation: the bar with the track, the fill, the outline over
+-- both and the knob; repaints them when the slider is enabled or disabled.
+local function sliderParts(slider, thumb)
+  local axis = SLIDER_AXES[type(slider.GetOrientation) == "function" and slider:GetOrientation()] or SLIDER_AXES.HORIZONTAL
+  local bar = sliderBar(slider, axis)
+  local s = { bar = bar, track = sliderPill(bar, axis, "BORDER", "Pill"), fill = sliderFill(bar, axis, thumb) }
+  s.line = sliderPill(bar, axis, "OVERLAY", "PillLine")
+  s.knob, s.shade = sliderKnob(bar, thumb)
+  local repaint = ns.Guard("slider state", function(f) paintSlider(f, sliderOf[f]) end)
+  for _, script in ipairs({ "OnEnable", "OnDisable" }) do pcall(slider.HookScript, slider, script, repaint) end
+  return s
+end
+
+-- A slider's thumb texture (the client's, or the template's Thumb key), or nil.
+local function thumbOf(slider)
+  local thumb = type(slider.GetThumbTexture) == "function" and slider:GetThumbTexture() or slider.Thumb
+  return type(thumb) == "table" and thumb or nil
+end
+
+-- A MinimalSliderWithSteppers frame in the theme: its slider (T.Slider) and its Back and Forward
+-- steppers as flat left and right arrows (T.ArrowButton). Safe to run again.
+local function skinSteppers(frame)
+  T.Slider(frame.Slider)
+  if type(frame.Back) == "table" then T.ArrowButton(frame.Back, "left", { flat = true }) end
+  if type(frame.Forward) == "table" then T.ArrowButton(frame.Forward, "right", { flat = true }) end
+  return frame
+end
+
+-- One of the game's sliders in the theme, the pill slider's look on the game's own geometry (never
+-- resized): its art faded (the thumb too, which the client keeps moving), an inset pill track with a
+-- borderHi outline, a quiet fill from the low end to the thumb and a round white knob on the thumb; a
+-- vertical slider (OpacityFrameSlider) runs down. A MinimalSliderWithSteppers frame (`.Slider`,
+-- `.Back`, `.Forward`) gets its slider so and its steppers as flat arrows. A frame with no thumb is
+-- left alone. Safe to run again.
+function T.Slider(slider)
+  if type(slider.Slider) == "table" then return skinSteppers(slider) end
+  local thumb = thumbOf(slider)
+  if not thumb then return slider end
+  sliderOf[slider] = sliderOf[slider] or sliderParts(slider, thumb)
+  T.FadeRegions(slider)
+  paintSlider(slider, sliderOf[slider])
+  return slider
 end
 
 -- The art the game's three tab templates draw (PanelTabButtonTemplate,
@@ -1760,11 +2064,15 @@ function T.OnChanged(fn)
   listeners[#listeners + 1] = fn
 end
 
--- Repaints the crests, the ornaments and the check boxes' marks.
+-- Repaints the crests, the ornaments and the game frame primitives (check boxes, radios, sliders,
+-- arrows, dividers).
 local function repaintArt()
   for t in pairs(crests) do T.PaintCrest(t) end
   for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
-  for button, c in pairs(checkOf) do paintCheck(button, c) end
+  for button, c in pairs(checkOf) do c.paint(button, c) end
+  for slider, s in pairs(sliderOf) do paintSlider(slider, s) end
+  for button in pairs(arrowOf) do paintArrow(button) end
+  for _, d in pairs(dividerOf) do T.Tint(d.line, T.DIVIDER.color) end
 end
 
 -- Repaints every painted frame, re-fonts styled text and tells the listeners.

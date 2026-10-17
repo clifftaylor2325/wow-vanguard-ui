@@ -116,6 +116,15 @@ local STATUS_BAR = {
   "SetRotatesTexture", "SetStatusBarColor", "SetStatusBarTexture", "SetValue",
 }
 
+-- SimpleSliderAPI (Blizzard_APIDocumentationGenerated/SimpleSliderAPIDocumentation.lua).
+local SLIDER = {
+  "Disable", "Enable", "GetMinMaxValues", "GetObeyStepOnDrag", "GetOrientation",
+  "GetStepsPerPage", "GetThumbTexture", "GetValue", "GetValueStep",
+  "IsDraggingThumb", "IsEnabled", "SetEnabled", "SetMinMaxValues",
+  "SetObeyStepOnDrag", "SetOrientation", "SetStepsPerPage", "SetThumbTexture",
+  "SetValue", "SetValueStep",
+}
+
 local CHECK_BUTTON = {
   "GetChecked", "GetCheckedTexture", "GetDisabledCheckedTexture",
   "SetChecked", "SetCheckedTexture", "SetDisabledCheckedTexture",
@@ -178,6 +187,7 @@ return {
     Button = set(REGION, FRAME, BUTTON),
     ScrollFrame = set(REGION, FRAME, SCROLL_FRAME),
     StatusBar = set(REGION, FRAME, STATUS_BAR),
+    Slider = set(REGION, FRAME, SLIDER),
     CheckButton = set(REGION, FRAME, BUTTON, CHECK_BUTTON),
     Minimap = set(REGION, FRAME, MINIMAP),
     ScrollingMessageFrame = set(REGION, FRAME, FONT, SCROLLING_MESSAGE_FRAME),
@@ -192,6 +202,7 @@ return {
     Frame = set(FRAME_SCRIPTS),
     Button = set(FRAME_SCRIPTS, { "OnClick", "OnDoubleClick", "PostClick", "PreClick" }),
     StatusBar = set(FRAME_SCRIPTS, { "OnMinMaxChanged", "OnValueChanged" }),
+    Slider = set(FRAME_SCRIPTS, { "OnMinMaxChanged", "OnValueChanged" }),
     Minimap = set(FRAME_SCRIPTS),
     ScrollingMessageFrame = set(FRAME_SCRIPTS, { "OnHyperlinkClick", "OnHyperlinkEnter", "OnHyperlinkLeave", "OnMessageScrollChanged" }),
     CheckButton = set(FRAME_SCRIPTS, { "OnClick", "OnDoubleClick", "PostClick", "PreClick" }),

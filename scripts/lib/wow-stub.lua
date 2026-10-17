@@ -487,6 +487,18 @@ end
 -- The fill texture, if set.
 function methods:GetStatusBarTexture() return self.__barTexture end
 
+-- Sliders: the thumb texture, made on first SetThumbTexture and returned after, as the status bar's fill is.
+function methods:SetThumbTexture(t)
+  self.__thumb = self.__thumb or newWidget("Texture", nil, self, nil, "ARTWORK")
+  self.__thumb:SetTexture(t)
+end
+-- The thumb texture, if set.
+function methods:GetThumbTexture() return self.__thumb end
+-- Sliders: the orientation, HORIZONTAL until set (the client's default).
+function methods:SetOrientation(o) self.__orientation = o end
+-- The orientation set, else HORIZONTAL.
+function methods:GetOrientation() return self.__orientation or "HORIZONTAL" end
+
 -- Status bars: range, value and color, recorded as given (secrets included).
 function methods:SetMinMaxValues(lo, hi) self.__min, self.__max = lo, hi end
 function methods:GetMinMaxValues() return self.__min or 0, self.__max or 0 end
