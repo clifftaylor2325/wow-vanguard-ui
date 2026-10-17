@@ -595,6 +595,12 @@ const CALENDAR_ENV = WINDOWS_ENV + `
     for _, name in ipairs({ "CalendarCreateEventTitleEdit", "CalendarMassInviteMinLevelEdit" }) do
       local e = CreateFrame("EditBox", name, CalendarCreateEventFrame) e:CreateTexture()
     end
+    for _, box in ipairs({ { "CalendarViewEventDescriptionContainer", CalendarViewEventFrame }, { "CalendarViewEventInviteList", CalendarViewEventFrame },
+      { "CalendarCreateEventDescriptionContainer", CalendarCreateEventFrame }, { "CalendarCreateEventInviteList", CalendarCreateEventFrame } }) do
+      local f = CreateFrame("Frame", box[1], box[2]) f.NineSlice = CreateFrame("Frame", nil, f) f.NineSlice:CreateTexture()
+    end
+    _G.CalendarViewEventDivider = CalendarViewEventFrame:CreateTexture()
+    _G.CalendarCreateEventDivider = CalendarCreateEventFrame:CreateTexture()
   end
 `;
 
@@ -639,6 +645,9 @@ it("calendar: the seven dialogs are skinned, with their headers, buttons and tex
   expect(["CalendarViewHolidayCloseButton", "CalendarViewEventCloseButton", "CalendarCreateEventCloseButton", "CalendarMassInviteCloseButton"].map(n => closeSeal(addon, n)), "the close buttons are the theme's close seal").toEqual([true, true, true, true]);
   expect(["CalendarViewEventAcceptButton", "CalendarCreateEventCreateButton", "CalendarEventPickerCloseButton", "CalendarTexturePickerAcceptButton"].map(n => fills(addon, n)), "the push buttons are flat buttons (one fill; the hover clear at rest)").toEqual([1, 1, 1, 1]);
   expect(["CalendarCreateEventTitleEdit", "CalendarMassInviteMinLevelEdit"].map(n => calAlpha(addon, `(_G.${n}:GetRegions())`)), "the text boxes' template art is faded").toEqual([0, 0]);
+  const boxes = ["CalendarViewEventDescriptionContainer", "CalendarViewEventInviteList", "CalendarCreateEventDescriptionContainer", "CalendarCreateEventInviteList"];
+  expect(boxes.map(n => [fills(addon, n), calAlpha(addon, `${n}.NineSlice`)]), "the event dialogs' description and invite boxes are inset panels, their backdrop art faded").toEqual(boxes.map(() => [1, 0]));
+  expect(["CalendarViewEventDivider", "CalendarCreateEventDivider"].map(n => calAlpha(addon, `_G.${n}`)), "and their dividers are faded").toEqual([0, 0]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("CalendarCreateEventFrame:Hide() CalendarCreateEventFrame:Show() CalendarViewHolidayFrame:Hide() CalendarViewHolidayFrame:Show()");
   expect([addon.eval("return ns.Theme.PaintedCount()"), calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "a second show paints nothing new and keeps the pictures").toEqual([painted, 0.4, 1]);
@@ -649,7 +658,7 @@ it("calendar: switched off it stays the game's; a client missing the window, its
   off.eval("__calendar() __calendarDialogs()");
   off.fire("ADDON_LOADED", "Blizzard_Calendar");
   off.eval("CalendarFrame:Show() CalendarViewEventFrame:Show()");
-  expect([calAlpha(off, "_G.CalendarFrameTopLeftTexture"), off.eval("return CalendarDayButton1.parchment:GetAlpha()"), off.eval("return CalendarViewEventFrame.Border:GetAlpha()"), off.eval("return ns.FrameState('vgWindow')[CalendarFrame] == nil")], "not hooked, art left").toEqual([1, 1, 1, true]);
+  expect([calAlpha(off, "_G.CalendarFrameTopLeftTexture"), off.eval("return CalendarDayButton1.parchment:GetAlpha()"), off.eval("return CalendarViewEventFrame.Border:GetAlpha()"), off.eval("return ns.FrameState('vgWindow')[CalendarFrame] == nil"), calAlpha(off, "_G.CalendarViewEventDivider")], "not hooked, art left").toEqual([1, 1, 1, true, 1]);
   const bare = loggedIn(WINDOWS_ENV + `
     CreateFrame("Frame", "CalendarFrame", UIParent):Hide() CalendarPrevMonthButton = {} CalendarDayButton1 = CreateFrame("Button", "CalendarDayButton1", CalendarFrame)
     local d = CreateFrame("Frame", "CalendarViewRaidFrame", UIParent) d.Header = {} d:Hide()
