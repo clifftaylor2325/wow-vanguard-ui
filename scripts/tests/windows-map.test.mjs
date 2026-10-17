@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { WINDOWS_ENV, isTok, loggedIn, windowState } from "./helpers.mjs";
+import { INSIDES_LUA, WINDOWS_ENV, isTok, loggedIn, windowState } from "./helpers.mjs";
 
 // The switch off: the map group's windows stay the game's.
 const MAP_OFF = { savedVariables: "VanguardDB.profiles = { Default = { Windows = { map = false } } }" };
@@ -536,12 +536,10 @@ it("group finder: switched off it stays the game's; a client missing parts of it
 });
 
 
-// TEST-ONLY parts inside the group finder's pages (Blizzard_LFGVanilla_Listing.xml, _Browse.xml, WhoList.xml) on top of FINDER_ENV:
-// the listing's role buttons (a plate, a role icon as the normal texture, a dimming cover, a check box), the group's role icon
-// and dropdown, the newcomer check box, the category pickers the game makes one at a time, the activity view's dropdowns, label,
-// level box and rows with a check box, the divider; the browse page's dropdowns, refresh button and rows (a plate, a selected and
-// a hover glow, a leader mark, a delist button); the who page's search box, search button, filter, total line and rows.
-const FINDER_PARTS_ENV = FINDER_ENV + `
+// TEST-ONLY helpers for windows with scrolling lists and dropdowns: a ScrollBox model (rows it holds, callbacks ScrollUtil hands the
+// rows the game acquires later; __acquire adds a row as the game would), a check button, a dropdown (a plate, an arrow, an
+// optional label) and an icon button (a plate and a picture).
+const SCROLL_HELPERS = `
   ScrollUtil = { AddAcquiredFrameCallback = function(box, cb, owner) table.insert(box.callbacks, function(row) cb(owner, row) end) end }
   function __acquire(box, row) table.insert(box.items, row) for _, cb in ipairs(box.callbacks) do cb(row) end return row end
   function __box(parent)
@@ -550,6 +548,20 @@ const FINDER_PARTS_ENV = FINDER_ENV + `
     return b
   end
   function __check(parent) local c = CreateFrame("CheckButton", nil, parent) c:CreateTexture() return c end
+  function __dropdown(parent, withText)
+    local d = CreateFrame("Button", nil, parent) d.Plate, d.Arrow = d:CreateTexture(), d:CreateTexture()
+    if withText then d.Text = d:CreateFontString(nil, "OVERLAY") d.Text:SetFont("TEST-ONLY-GAME", 12, "") end
+    return d
+  end
+  function __iconButton(parent) local b = CreateFrame("Button", nil, parent) b.Plate, b.Icon = b:CreateTexture(), b:CreateTexture() return b end
+`;
+
+// TEST-ONLY parts inside the group finder's pages (Blizzard_LFGVanilla_Listing.xml, _Browse.xml, WhoList.xml) on top of FINDER_ENV:
+// the listing's role buttons (a plate, a role icon as the normal texture, a dimming cover, a check box), the group's role icon
+// and dropdown, the newcomer check box, the category pickers the game makes one at a time, the activity view's dropdowns, label,
+// level box and rows with a check box, the divider; the browse page's dropdowns, refresh button and rows (a plate, a selected and
+// a hover glow, a leader mark, a delist button); the who page's search box, search button, filter, total line and rows.
+const FINDER_PARTS_ENV = FINDER_ENV + SCROLL_HELPERS + `
   function __activityRow() local r = CreateFrame("Frame", nil, LFGListingFrame.ActivityView.ScrollBox) r.CheckButton = __check(r) return r end
   function __role(parent, withCheck)
     local b = CreateFrame("Button", nil, parent)
@@ -558,12 +570,6 @@ const FINDER_PARTS_ENV = FINDER_ENV + `
     if withCheck then b.CheckButton = __check(b) end
     return b
   end
-  function __dropdown(parent, withText)
-    local d = CreateFrame("Button", nil, parent) d.Plate, d.Arrow = d:CreateTexture(), d:CreateTexture()
-    if withText then d.Text = d:CreateFontString(nil, "OVERLAY") d.Text:SetFont("TEST-ONLY-GAME", 12, "") end
-    return d
-  end
-  function __iconButton(parent) local b = CreateFrame("Button", nil, parent) b.Plate, b.Icon = b:CreateTexture(), b:CreateTexture() return b end
   function __browseRow(selected)
     local r = CreateFrame("Button", nil, LFGBrowseFrame.ScrollBox)
     r.ResultBG, r.Selected, r.Highlight, r.PartyIcon = r:CreateTexture(), r:CreateTexture(), r:CreateTexture(), r:CreateTexture()
@@ -694,6 +700,81 @@ const LEGACY_ENV = WINDOWS_ENV + `
   end
 `;
 
+// TEST-ONLY parts inside the Legacy window's pages (Blizzard_LegacyTree.xml, _LegacyChallenges.xml, _LegacyChallengeCategoryList.xml,
+// _LegacySystemTemplates.xml, _LegacyRewardTrack.xml) on top of LEGACY_ENV: the tree picker's cards (a plate, a glow, a masked icon with
+// its ring) and the game's RefreshTreeButtons; the points badge and the trait panel's buttons and search box; the challenge list's
+// filter, search box, no-challenges line and category rows (flag set by SetSelected, a chevron button); challenge cards (plates,
+// a Track box, IsSelected and RefreshStateArt) and the shared objectives frame with its pooled criteria; the points bar; the reward
+// bar and track, which holds no cards until Init. __borders notes the last border colour the theme was given for each frame.
+const LEGACY_PARTS_ENV = LEGACY_ENV + SCROLL_HELPERS + INSIDES_LUA + `
+  __borders = {}
+  local setBorder = ns.Theme.SetBorder
+  ns.Theme.SetBorder = function(f, rgb) __borders[f] = rgb or false return setBorder(f, rgb) end
+  function __bar(parent) local b = CreateFrame("StatusBar", nil, parent) b.Frame = b:CreateTexture() b:SetStatusBarTexture("TEST-ONLY-ART") return b end
+  function __search(parent) local s = CreateFrame("EditBox", nil, parent) s.art, s.searchIcon = s:CreateTexture(), s:CreateTexture() return s end
+  function __treeCard(picker)
+    local c = CreateFrame("CheckButton", nil, picker.TreeSelections)
+    for _, key in ipairs({ "Background", "SelectedGlow", "NormalTexture", "HighlightTexture", "PushedTexture", "Ring" }) do c[key] = c:CreateTexture() end
+    function c:RefreshSelectionVisuals() end
+    return c
+  end
+  function __categoryRow(selected)
+    local r = CreateFrame("Button", nil, LegacySystemFrame.ChallengesPage.CategoryList)
+    r.NormalTexture, r.HighlightTexture, r.NotificationIcon = r:CreateTexture(), r:CreateTexture(), r:CreateTexture()
+    r.CollapseButton = CreateFrame("Button", nil, r) r.CollapseButton.Icon, r.CollapseButton.Glow = r.CollapseButton:CreateTexture(), r.CollapseButton:CreateTexture()
+    r.selected = selected
+    function r:SetSelected(on) self.selected = on end
+    return r
+  end
+  function __challenge(selected)
+    local c = CreateFrame("Button", nil, LegacySystemFrame.ChallengesPage.DetailPane)
+    for _, key in ipairs({ "Background", "BackgroundTop", "BackgroundMiddle", "BackgroundBottom", "SelectedOverlay", "TitleBar", "PlusMinus" }) do c[key] = c:CreateTexture() end
+    c.Tracked, c.selected = __check(c), selected
+    function c:IsSelected() return self.selected end
+    function c:RefreshStateArt() end
+    return c
+  end
+  function __criteria(parent, counted)
+    local r = CreateFrame("Frame", nil, parent) r.Background, r.ProgressBarBackground = r:CreateTexture(), r:CreateTexture()
+    if counted then r.ProgressBar = __bar(r) end
+    return r
+  end
+  function __rewardCard(track)
+    local c = CreateFrame("Frame", nil, track)
+    for _, key in ipairs({ "RewardCardBG", "LevelSquare", "IconBorder", "Icon", "EarnedCheckmark" }) do c[key] = c:CreateTexture() end
+    return c
+  end
+  function __legacyParts()
+    local tree, chal, reward = LegacySystemFrame.TreePage, LegacySystemFrame.ChallengesPage, LegacySystemFrame.RewardTrackPage
+    local picker = CreateFrame("Frame", nil, tree) tree.LegacyTreeSelectionPanel = picker
+    picker.TreeSelections = CreateFrame("Frame", nil, picker)
+    picker.cards = { __treeCard(picker), __treeCard(picker) }
+    picker.cards[2]:SetChecked(true)
+    function picker:RefreshTreeButtons() self.cards[#self.cards + 1] = __treeCard(self) end
+    tree.LegacyTreePointSummary = CreateFrame("Frame", nil, tree) tree.LegacyTreePointSummary.Border = tree.LegacyTreePointSummary:CreateTexture()
+    local trait = tree.LegacyTreeTraitPanel
+    trait.ApplyButton = CreateFrame("Button", nil, trait) trait.ApplyButton.art = trait.ApplyButton:CreateTexture()
+    trait.ResetButton, trait.UndoButton, trait.SearchBox = __iconButton(trait), __iconButton(trait), __search(trait)
+    local list = chal.CategoryList
+    list.FilterDropdown, list.SearchBox, list.ScrollBox = __dropdown(list, true), __search(list), __box(list)
+    list.NoResultsText = list:CreateFontString(nil, "OVERLAY") list.NoResultsText:SetFont("TEST-ONLY-GAME", 12, "")
+    local cards = chal.DetailPane.ScrollBox
+    cards.items, cards.callbacks = {}, {}
+    function cards:ForEachFrame(fn) for _, r in ipairs(self.items) do fn(r) end end
+    chal.LegacyChallengePointSummary = CreateFrame("Frame", nil, chal) chal.LegacyChallengePointSummary.ProgressBarBackground = chal.LegacyChallengePointSummary:CreateTexture()
+    chal.LegacyChallengePointSummary.PointsBar = __bar(chal.LegacyChallengePointSummary)
+    LegacyChallengeObjectives = CreateFrame("Frame", nil, UIParent)
+    local pool = { active = {} } LegacyChallengeObjectives.criteriaPool = pool
+    function pool:EnumerateActive() return pairs(self.active) end
+    pool.active[__criteria(LegacyChallengeObjectives, true)] = true
+    function LegacyChallengeObjectives:Display() pool.active[__criteria(self, false)] = true pool.active[__criteria(self, true)] = true end
+    reward.ProgressBarBackground, reward.LegacyRewardProgressBar = reward:CreateTexture(), __bar(reward)
+    local track = CreateFrame("Frame", nil, reward) reward.LegacyRewardProgressFrame = track
+    function track:GetElements() return self.Elements end
+    function track:Init() self.Elements = { __rewardCard(self), __rewardCard(self) } end
+  end
+`;
+
 it("legacy system: the window in the theme, its page backgrounds faded and its panes panelled, tabs and tree nodes untouched", () => {
   // The tabs group (Modules/WindowsTabs.lua) dresses the Legacy tabs and indicators; off here, so this case sees only the map group's skin.
   const addon = loggedIn(LEGACY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
@@ -704,6 +785,7 @@ it("legacy system: the window in the theme, its page backgrounds faded and its p
   const first = windowState(addon, "LegacySystemFrame");
   expect(first, "the window's art is faded, a panel painted, the title in the theme font").toMatchObject({ art: 0, nine: 0, portrait: 0, insetNine: 0, panel: true, title: true });
   expect(addon.eval("local f = LegacySystemFrame return { f.TreePage.Background:GetAlpha(), f.ChallengesPage.Background:GetAlpha(), f.RewardTrackPage.Background:GetAlpha(), (f.TreePage.VerticalDivider:GetRegions()):GetAlpha(), (f.ChallengesPage.VerticalDivider:GetRegions()):GetAlpha() }"), "the three page backgrounds and both dividers are faded").toEqual([0, 0, 0, 0, 0]);
+  expect(addon.eval("local f = LegacySystemFrame return { ns.Theme.DividerParts(f.TreePage.VerticalDivider) ~= nil, ns.Theme.DividerParts(f.ChallengesPage.VerticalDivider) ~= nil }"), "and each is one pixel of divider in their place").toEqual([true, true]);
   expect([fills(addon, "LegacySystemFrame.ChallengesPage.CategoryList"), fills(addon, "LegacySystemFrame.ChallengesPage.DetailPane")], "the challenge panes are inset panels").toEqual([1, 1]);
   expect(addon.eval("local f = LegacySystemFrame return { (f.LegacyTreeTab:GetRegions()):GetAlpha(), (f.TabIndicators:GetRegions()):GetAlpha(), (f.TreePage.Node:GetRegions()):GetAlpha(), tostring(ns.FrameState('vgWindow')[f.TreePage.Node]) }"), "the tabs, their indicators and the tree's node buttons are left to the game").toEqual([1, 1, 1, "nil"]);
   expect(fills(addon, "LegacySystemFrame.TreePage.LegacyTreeTraitPanel"), "the tree's panel is not covered, so it does not hide the close button's corner").toBe(0);
@@ -725,6 +807,87 @@ it("legacy system: the challenge detail pane prompts for a category while nothin
   expect(note(), "a category whose challenges are all filtered out: Vanguard's line when the game has none").toEqual(["No challenges to show here.", true]);
   addon.eval("LEGACY_NO_CHALLENGES = 'TEST-ONLY No challenges' LegacySystemFrame.ChallengesPage.DetailPane:SelectCategory({ id = 2 }, 0)");
   expect(note(), "else the game's own no-challenges line").toEqual(["TEST-ONLY No challenges", true]);
+});
+
+// A Legacy window with the parts of LEGACY_PARTS_ENV, skinned and shown (the Legacy tabs group is off, as in the first case).
+const legacyParts = () => {
+  const addon = loggedIn(LEGACY_PARTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
+  addon.eval("__legacy() __legacyParts()");
+  addon.fire("ADDON_LOADED", "Blizzard_LegacySystem");
+  addon.eval("LegacySystemFrame:Show()");
+  return addon;
+};
+
+it("legacy system tree page: the cards are raised tiles keeping their icons and rings, the picked tree wears the accent border, the badge and controls are in the theme", () => {
+  const addon = legacyParts();
+  // Tree card n: the alphas of its plate, glow, icon, highlight, pushed picture and ring, and whether its border is the accent.
+  const card = (n) => addon.eval(`local c = LegacySystemFrame.TreePage.LegacyTreeSelectionPanel.cards[${n}]
+    return { c.Background:GetAlpha(), c.SelectedGlow:GetAlpha(), c.NormalTexture:GetAlpha(), c.HighlightTexture:GetAlpha(), c.PushedTexture:GetAlpha(), c.Ring:GetAlpha(),
+      __borders[c] and __borders[c][1] == (ns.Theme.Accent()) or false }`);
+  expect(card(1), "a card: the plate and glow faded, the icon, highlight, pushed picture and ring kept; not picked, no accent").toEqual([0, 0, 1, 1, 1, 1, false]);
+  expect(card(2), "the picked tree's card wears the accent").toEqual([0, 0, 1, 1, 1, 1, true]);
+  expect([fills(addon, "LegacySystemFrame.TreePage.LegacyTreeSelectionPanel.cards[1]"), fills(addon, "LegacySystemFrame.TreePage.LegacyTreeSelectionPanel.cards[2]")], "each a tile").toEqual([1, 1]);
+  addon.eval("local p = LegacySystemFrame.TreePage.LegacyTreeSelectionPanel p.cards[1]:SetChecked(true) p.cards[2]:SetChecked(false) p.cards[1]:RefreshSelectionVisuals() p.cards[2]:RefreshSelectionVisuals()");
+  expect([card(1)[6], card(2)[6]], "the accent follows the game's selection").toEqual([true, false]);
+  addon.eval("LegacySystemFrame.TreePage.LegacyTreeSelectionPanel:RefreshTreeButtons()");
+  expect([card(3), addon.eval("return #LegacySystemFrame.TreePage.LegacyTreeSelectionPanel.cards")], "a card the game makes when it rebuilds the picker is dressed at once").toEqual([[0, 0, 1, 1, 1, 1, false], 3]);
+  expect(addon.eval("local s = LegacySystemFrame.TreePage.LegacyTreePointSummary return { s.Border:GetAlpha() }"), "the points badge's plate is faded").toEqual([0]);
+  expect(fills(addon, "LegacySystemFrame.TreePage.LegacyTreePointSummary"), "and the badge is an inset panel").toBe(1);
+  expect(addon.eval("local t = LegacySystemFrame.TreePage.LegacyTreeTraitPanel return { t.ApplyButton.art:GetAlpha(), t.ResetButton.Plate:GetAlpha(), t.ResetButton.Icon:GetAlpha(), t.UndoButton.Plate:GetAlpha(), t.UndoButton.Icon:GetAlpha(), t.SearchBox.art:GetAlpha(), t.SearchBox.searchIcon:GetAlpha() }"),
+    "Apply, Reset and Undo lose their plates (the pictures stay), the search box loses its art and keeps its magnifier").toEqual([0, 0, 1, 0, 1, 0, 1]);
+  expect(["ApplyButton", "ResetButton", "UndoButton"].map(k => fills(addon, `LegacySystemFrame.TreePage.LegacyTreeTraitPanel.${k}`)), "the three are flat buttons").toEqual([1, 1, 1]);
+  expect(fills(addon, "LegacySystemFrame.TreePage.LegacyTreeTraitPanel"), "the trait panel itself stays uncovered").toBe(0);
+  expect(addon.eval("return #ns.errors"), "and nothing failed").toBe(0);
+});
+
+it("legacy system challenges page: the filter, search box and category rows are in the theme, the cards are panels with a theme Track box, the objectives and bars are theme tracks", () => {
+  const addon = legacyParts();
+  const list = "LegacySystemFrame.ChallengesPage.CategoryList";
+  expect(addon.eval(`local l = ${list} return { l.FilterDropdown.Plate:GetAlpha(), l.FilterDropdown.Arrow:GetAlpha(), __looks(l.FilterDropdown.Text, 'label', 'text'), l.SearchBox.art:GetAlpha(), l.SearchBox.searchIcon:GetAlpha(), __looks(l.NoResultsText, 'label', 'text2') }`),
+    "the filter's plate faded, its arrow kept and its label light; the search box's art faded, its magnifier kept; the no-challenges line grey").toEqual([0, 1, true, 0, 1, true]);
+  // The list's row n: a theme row, the alphas of its bars, dot, chevron and the chevron button's other art, and whether its rail shows.
+  const row = (n) => addon.eval(`local r = ${list}.ScrollBox.items[${n}] local c = r.CollapseButton
+    return { ns.Theme.RowParts(r) ~= nil, r.NormalTexture:GetAlpha(), r.HighlightTexture:GetAlpha(), r.NotificationIcon:GetAlpha(), c.Icon:GetAlpha(), c.Glow:GetAlpha(), ns.Theme.RowParts(r).rail:IsShown() }`);
+  addon.eval(`__acquire(${list}.ScrollBox, __categoryRow(true)) __acquire(${list}.ScrollBox, __categoryRow(false))`);
+  expect(row(1), "a category row: a theme row, the bars faded, the unseen dot and the chevron kept, lit while selected").toEqual([true, 0, 0, 1, 1, 0, true]);
+  expect(row(2), "another, not selected").toEqual([true, 0, 0, 1, 1, 0, false]);
+  expect(addon.eval(`return ${list}.ScrollBox.items[1].CollapseButton.Icon.__vertexColor ~= nil`), "the chevron is tinted in the text colour").toBe(true);
+  addon.eval(`${list}.ScrollBox.items[2]:SetSelected(true) ${list}.ScrollBox.items[1]:SetSelected(false)`);
+  expect([row(1)[6], row(2)[6]], "the selected look follows the game's SetSelected").toEqual([false, true]);
+  const cards = "LegacySystemFrame.ChallengesPage.DetailPane.ScrollBox";
+  // Challenge card n: its plates, ribbon, plus sign, whether it is a panel, its Track box a theme check box, and whether its border is the accent.
+  const challenge = (n) => addon.eval(`local c = ${cards}.items[${n}]
+    return { c.Background:GetAlpha(), c.BackgroundTop:GetAlpha(), c.BackgroundMiddle:GetAlpha(), c.BackgroundBottom:GetAlpha(), c.SelectedOverlay:GetAlpha(), c.TitleBar:GetAlpha(), c.PlusMinus:GetAlpha(),
+      ns.Theme.CheckParts(c.Tracked) ~= nil, __borders[c] and __borders[c][1] == (ns.Theme.Accent()) or false }`);
+  addon.eval(`__acquire(${cards}, __challenge(false)) __acquire(${cards}, __challenge(true))`);
+  expect(challenge(1), "a challenge card: plates, tiles, glow and ribbon faded, the plus sign kept, a theme Track box, no accent").toEqual([0, 0, 0, 0, 0, 0, 1, true, false]);
+  expect(challenge(2), "the open one wears the accent border").toEqual([0, 0, 0, 0, 0, 0, 1, true, true]);
+  expect([fills(addon, `${cards}.items[1]`), fills(addon, `${cards}.items[2]`)], "each a panel").toEqual([1, 1]);
+  addon.eval(`${cards}.items[1].selected = true ${cards}.items[2].selected = false ${cards}.items[1]:RefreshStateArt() ${cards}.items[2]:RefreshStateArt()`);
+  expect([challenge(1)[8], challenge(2)[8]], "the accent follows the game's RefreshStateArt").toEqual([true, false]);
+  // The shared objectives frame's active rows: [background, track plate, has a bar, bar art faded, bar texture kept, bar is a track] for each, in creation order.
+  const criteria = () => addon.eval(`local out = {} for r in LegacyChallengeObjectives.criteriaPool:EnumerateActive() do
+    local b = r.ProgressBar out[#out + 1] = { r.Background:GetAlpha(), r.ProgressBarBackground:GetAlpha(), b ~= nil, b and b.Frame:GetAlpha() or 0, b and b:GetStatusBarTexture():GetAlpha() or 1, b and __sunk(b) or true } end
+    return out`);
+  expect(criteria(), "the objective rows open at skin time: bar art faded, the counted one a sunk track keeping its fill").toEqual([[0, 0, true, 0, 1, true]]);
+  addon.eval("LegacyChallengeObjectives:Display(1)");
+  expect(criteria().length, "the game fills the frame again").toBe(3);
+  expect(criteria().every(r => r[0] === 0 && r[1] === 0 && r[3] === 0 && r[4] === 1 && r[5] === true), "each new row is dressed as the game adds it").toBe(true);
+  expect(addon.eval("local s = LegacySystemFrame.ChallengesPage.LegacyChallengePointSummary return { s.ProgressBarBackground:GetAlpha(), s.PointsBar.Frame:GetAlpha(), s.PointsBar:GetStatusBarTexture():GetAlpha(), __sunk(s.PointsBar) }"), "the points bar: its track art faded, its fill kept, a sunk track").toEqual([0, 0, 1, true]);
+  expect(addon.eval("return #ns.errors"), "and nothing failed").toBe(0);
+});
+
+it("legacy system reward page: the progress bar is a theme track and the cards the track makes are raised tiles keeping their icons", () => {
+  const addon = legacyParts();
+  const page = "LegacySystemFrame.RewardTrackPage";
+  expect(addon.eval(`local p = ${page} return { p.ProgressBarBackground:GetAlpha(), p.LegacyRewardProgressBar.Frame:GetAlpha(), p.LegacyRewardProgressBar:GetStatusBarTexture():GetAlpha(), __sunk(p.LegacyRewardProgressBar) }`), "the bar's track art faded, its fill kept, a sunk track").toEqual([0, 0, 1, true]);
+  expect(addon.eval(`return ${page}.LegacyRewardProgressFrame.Elements == nil`), "the track holds no cards until the game sets it up").toBe(true);
+  addon.eval(`${page}.LegacyRewardProgressFrame:Init()`);
+  // Reward card n: the alphas of its plate, diamond, icon ring, icon and earned tick, and whether it is a tile.
+  const card = (n) => addon.eval(`local c = ${page}.LegacyRewardProgressFrame.Elements[${n}] return { c.RewardCardBG:GetAlpha(), c.LevelSquare:GetAlpha(), c.IconBorder:GetAlpha(), c.Icon:GetAlpha(), c.EarnedCheckmark:GetAlpha() }`);
+  expect([card(1), card(2)], "each card the track made: plate, diamond and ring faded, the icon and tick kept").toEqual([[0, 0, 0, 1, 1], [0, 0, 0, 1, 1]]);
+  expect([fills(addon, `${page}.LegacyRewardProgressFrame.Elements[1]`), fills(addon, `${page}.LegacyRewardProgressFrame.Elements[2]`)], "each a raised tile").toEqual([1, 1]);
+  expect(addon.eval("return #ns.errors"), "and nothing failed").toBe(0);
 });
 
 it("legacy system: switched off it stays the game's; a client missing its pages loads cleanly", () => {
@@ -791,7 +954,7 @@ it("queue status: switched off it stays the game's; a client without a pool, ent
 // (and the two it keeps: the selected weekday's glow and the last day's shadow), the close and month buttons, 42 day buttons (a parchment
 // normal texture, an event texture and a date frame each), and the seven dialogs (a Border, a Header plate, their close
 // and push buttons, the holiday's art, the create dialog's icon and its text boxes). Made when the game loads the part.
-const CALENDAR_ENV = WINDOWS_ENV + `
+const CALENDAR_ENV = WINDOWS_ENV + SCROLL_HELPERS + `
   function __calendar()
     local f = CreateFrame("Frame", "CalendarFrame", UIParent)
     f:Hide()
@@ -802,11 +965,15 @@ const CALENDAR_ENV = WINDOWS_ENV + `
     close:SetPoint("TOPRIGHT", f, "TOPRIGHT", 1, -17)
     for _, name in ipairs({ "CalendarPrevMonthButton", "CalendarNextMonthButton" }) do
       local b = CreateFrame("Button", name, f)
-      b.art, b.icon, b.off = b:CreateTexture(), b:CreateTexture(), b:CreateTexture()
+      b.art, b.icon, b.off, b.push = b:CreateTexture(), b:CreateTexture(), b:CreateTexture(), b:CreateTexture()
       b.GetNormalTexture = function(self) return self.icon end
       b.GetDisabledTexture = function(self) return self.off end
+      b.GetPushedTexture = function(self) return self.push end
     end
+    for i = 1, 7 do _G["CalendarWeekday" .. i .. "Name"] = f:CreateFontString(nil, "OVERLAY") _G["CalendarWeekday" .. i .. "Name"]:SetFont("TEST-ONLY-GAME", 12, "") end
+    _G.CalendarYearName = f:CreateFontString(nil, "OVERLAY") _G.CalendarYearName:SetFont("TEST-ONLY-GAME", 10, "")
     local filter = CreateFrame("Button", "CalendarFilterButton", f) filter.art = filter:CreateTexture()
+    filter.Text = filter:CreateFontString(nil, "OVERLAY") filter.Text:SetFont("TEST-ONLY-GAME", 12, "")
     filter:SetSize(106, 22) filter:SetPoint("TOPRIGHT", f, "TOPRIGHT", -27, -20)
     for _, name in ipairs({ "CalendarClassTotalsButton", "CalendarClassButton1", "CalendarClassButton11" }) do
       local b = CreateFrame("Button", name, f)
@@ -843,6 +1010,36 @@ const CALENDAR_ENV = WINDOWS_ENV + `
     _G.CalendarViewEventDivider = CalendarViewEventFrame:CreateTexture()
     _G.CalendarCreateEventDivider = CalendarCreateEventFrame:CreateTexture()
   end
+  function __gold(parent, name) local fs = parent:CreateFontString(name, "OVERLAY") fs:SetFont("TEST-ONLY-GAME", 12, "") return fs end
+  function __sortButton(list, name, withText)
+    local b = CreateFrame("Button", name, list)
+    if withText then b.fs = __gold(b) b.GetFontString = function(self) return self.fs end end
+    return b
+  end
+  function __inviteRow(list)
+    local r = CreateFrame("Button", nil, list.ScrollBox)
+    r.ModIcon, r.PartyIcon, r.Bar = r:CreateTexture(), r:CreateTexture(), r:CreateTexture()
+    return r
+  end
+  function __pickerRow(box)
+    local r = CreateFrame("Button", nil, box)
+    r.Icon, r.Bar, r.Title = r:CreateTexture(), r:CreateTexture(), __gold(r)
+    return r
+  end
+  function __calendarParts()
+    for _, name in ipairs({ "CalendarViewHolidayFrame", "CalendarViewRaidFrame" }) do _G[name].ScrollingFont = CreateFrame("Frame", nil, _G[name]) end
+    for _, name in ipairs({ "CalendarViewEventTitle", "CalendarViewEventCommunityName", "CalendarViewEventTypeName", "CalendarViewEventCreatorName" }) do __gold(CalendarViewEventFrame, name) end
+    for _, name in ipairs({ "CalendarCreateEventCommunityName", "CalendarCreateEventTextureName", "CalendarCreateEventCreatorName" }) do __gold(CalendarCreateEventFrame, name) end
+    for _, name in ipairs({ "CalendarMassInviteLevelText", "CalendarMassInviteFrameLevelDivider", "CalendarMassInviteRankText" }) do __gold(CalendarMassInviteFrame, name) end
+    for _, key in ipairs({ "EventTypeDropdown", "HourDropdown", "MinuteDropdown", "AMPMDropdown", "DifficultyOptionDropdown", "CommunityDropdown" }) do CalendarCreateEventFrame[key] = __dropdown(CalendarCreateEventFrame) end
+    for _, key in ipairs({ "CommunityDropdown", "RankDropdown" }) do CalendarMassInviteFrame[key] = __dropdown(CalendarMassInviteFrame) end
+    _G.CalendarCreateEventAutoApproveCheck, _G.CalendarCreateEventLockEventCheck = __check(CalendarCreateEventFrame), __check(CalendarCreateEventFrame)
+    for _, name in ipairs({ "CalendarViewEventInviteList", "CalendarCreateEventInviteList" }) do
+      local list = _G[name] list.ScrollBox = __box(list)
+      __sortButton(list, name .. "NameSortButton", true) __sortButton(list, name .. "ClassSortButton", true) __sortButton(list, name .. "StatusSortButton", false)
+    end
+    CalendarEventPickerFrame.ScrollBox, CalendarTexturePickerFrame.ScrollBox = __box(CalendarEventPickerFrame), __box(CalendarTexturePickerFrame)
+  end
 `;
 
 // A calendar part's alpha (by Lua expression), or "nil" for a part this client lacks.
@@ -861,8 +1058,10 @@ it("calendar: the window's art is faded but the weekday glow and last-day shadow
   expect(addon.eval("return CalendarCloseButton:GetRegions():GetAlpha()"), "the close button's art is gone").toBe(0);
   expect(addon.eval("local p, rel, rp, x, y = CalendarFilterButton:GetPoint(1) return { CalendarFilterButton:GetNumPoints(), p, rel == CalendarCloseButton, rp, x, y }"),
     "the filter button sits level with the close button, its right edge where a maximize box's plate would end (clear of the close plate)").toEqual([1, "RIGHT", true, "CENTER", -addon.eval("return ns.Theme.PixelRound(CalendarCloseButton, 18)"), 0]);
-  expect(addon.eval("local p, n = CalendarPrevMonthButton, CalendarNextMonthButton return { p.art:GetAlpha(), p.icon:GetAlpha(), p.off:GetAlpha(), n.art:GetAlpha(), n.icon:GetAlpha() }"), "the month buttons keep their icon and lose the template art").toEqual([0, 1, 1, 0, 1]);
-  expect([fills(addon, "CalendarPrevMonthButton"), fills(addon, "CalendarNextMonthButton")], "and are flat tiles").toEqual([1, 1]);
+  expect(addon.eval("local p, n = CalendarPrevMonthButton, CalendarNextMonthButton return { p.art:GetAlpha(), p.icon:GetAlpha(), p.off:GetAlpha(), p.push:GetAlpha(), n.art:GetAlpha(), n.icon:GetAlpha() }"), "the month buttons keep their normal, disabled and pushed arrows and lose the template art").toEqual([0, 1, 1, 1, 0, 1]);
+  expect([fills(addon, "CalendarPrevMonthButton"), fills(addon, "CalendarNextMonthButton")], "and are theme buttons").toEqual([1, 1]);
+  expect(addon.eval("local out = {} for i = 1, 7 do out[i] = __looks(_G['CalendarWeekday' .. i .. 'Name'], 'label', 'text') end return { out, __looks(CalendarYearName, 'small', 'text2'), __looks(CalendarFilterButton.Text, 'label', 'text') }"),
+    "the weekday headings and the filter's label are light label text, the year small and grey").toEqual([[true, true, true, true, true, true, true], true, true]);
   expect(addon.eval("local t, c = CalendarClassTotalsButton, CalendarClassButton11 return { CalendarFilterButton.art:GetAlpha(), t.art:GetAlpha(), t.icon:GetAlpha(), c.art:GetAlpha(), c.icon:GetAlpha() }"), "the filter button and the class buttons lose the template art and keep the class icons").toEqual([0, 0, 1, 0, 1]);
   expect([fills(addon, "CalendarFilterButton"), fills(addon, "CalendarClassTotalsButton"), fills(addon, "CalendarClassButton1")], "and are flat").toEqual([1, 1, 1]);
   expect(addon.eval("local gone, event = 0, 0 for i = 1, 42 do local b = _G['CalendarDayButton' .. i] if b.parchment:GetAlpha() == 0 then gone = gone + 1 end if b.event:GetAlpha() == 1 then event = event + 1 end end return { gone, event }"), "all 42 days lose the parchment and keep the event texture").toEqual([42, 42]);
@@ -888,10 +1087,49 @@ it("calendar: the seven dialogs are skinned, with their headers, buttons and tex
   expect(["CalendarCreateEventTitleEdit", "CalendarMassInviteMinLevelEdit"].map(n => calAlpha(addon, `(_G.${n}:GetRegions())`)), "the text boxes' template art is faded").toEqual([0, 0]);
   const boxes = ["CalendarViewEventDescriptionContainer", "CalendarViewEventInviteList", "CalendarCreateEventDescriptionContainer", "CalendarCreateEventInviteList"];
   expect(boxes.map(n => [fills(addon, n), calAlpha(addon, `${n}.NineSlice`)]), "the event dialogs' description and invite boxes are inset panels, their backdrop art faded").toEqual(boxes.map(() => [1, 0]));
-  expect(["CalendarViewEventDivider", "CalendarCreateEventDivider"].map(n => calAlpha(addon, `_G.${n}`)), "and their dividers are faded").toEqual([0, 0]);
+  expect(["CalendarViewEventDivider", "CalendarCreateEventDivider"].map(n => [calAlpha(addon, `_G.${n}`), addon.eval(`return ns.Theme.DividerParts(_G.${n}) ~= nil`)]), "and their dividers are one pixel of divider in place of the faded art").toEqual([[0, true], [0, true]]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("CalendarCreateEventFrame:Hide() CalendarCreateEventFrame:Show() CalendarViewHolidayFrame:Hide() CalendarViewHolidayFrame:Show()");
   expect([addon.eval("return ns.Theme.PaintedCount()"), calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "a second show paints nothing new and keeps the pictures").toEqual([painted, 0.4, 1]);
+});
+
+it("calendar dialogs: the holiday and raid text areas are inset panels, the event dialogs' texts, dropdowns, check boxes and invite lists are in the theme, the pickers' rows follow the game's highlight", () => {
+  const addon = loggedIn(CALENDAR_ENV);
+  addon.eval("__calendar() __calendarDialogs() __calendarParts()");
+  // Rows the lists hold when the dialog is first skinned, and the pickers' too.
+  addon.eval("__acquire(CalendarViewEventInviteList.ScrollBox, __inviteRow(CalendarViewEventInviteList)) __acquire(CalendarEventPickerFrame.ScrollBox, __pickerRow(CalendarEventPickerFrame.ScrollBox))");
+  addon.fire("ADDON_LOADED", "Blizzard_Calendar");
+  const names = ["CalendarViewHolidayFrame", "CalendarViewRaidFrame", "CalendarViewEventFrame", "CalendarCreateEventFrame", "CalendarMassInviteFrame", "CalendarEventPickerFrame", "CalendarTexturePickerFrame"];
+  for (const name of names) addon.eval(`${name}:Show()`);
+  expect(["CalendarViewHolidayFrame", "CalendarViewRaidFrame"].map(n => fills(addon, `${n}.ScrollingFont`)), "the holiday and raid text areas are inset panels").toEqual([1, 1]);
+  expect(addon.eval("return { __looks(CalendarViewEventTitle, 'name', 'text'), __looks(CalendarViewEventCommunityName, 'small', 'text2'), __looks(CalendarViewEventTypeName, 'small', 'text2'), __looks(CalendarViewEventCreatorName, 'small', 'text2') }"),
+    "the event's name is a name in the text colour, the community, type and creator lines small and grey").toEqual([true, true, true, true]);
+  expect(addon.eval("return { __looks(CalendarCreateEventCommunityName, 'small', 'text2'), __looks(CalendarCreateEventTextureName, 'small', 'text2'), __looks(CalendarCreateEventCreatorName, 'small', 'text2') }"), "the create dialog's labels beside the icon are small and grey").toEqual([true, true, true]);
+  expect(addon.eval("return { __looks(CalendarMassInviteLevelText, 'small', 'text'), __looks(CalendarMassInviteFrameLevelDivider, 'small', 'text'), __looks(CalendarMassInviteRankText, 'small', 'text') }"), "the mass invite labels are small and light").toEqual([true, true, true]);
+  expect(addon.eval(`local out = {} for _, key in ipairs({ "EventTypeDropdown", "HourDropdown", "MinuteDropdown", "AMPMDropdown", "DifficultyOptionDropdown", "CommunityDropdown" }) do
+    local d = CalendarCreateEventFrame[key] out[#out + 1] = d.Plate:GetAlpha() * 10 + d.Arrow:GetAlpha() end
+    for _, key in ipairs({ "CommunityDropdown", "RankDropdown" }) do local d = CalendarMassInviteFrame[key] out[#out + 1] = d.Plate:GetAlpha() * 10 + d.Arrow:GetAlpha() end return out`),
+    "the six create dropdowns and the two mass invite ones lose their plates and keep their arrows").toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
+  expect(addon.eval("return { ns.Theme.CheckParts(CalendarCreateEventAutoApproveCheck) ~= nil, ns.Theme.CheckParts(CalendarCreateEventLockEventCheck) ~= nil }"), "the auto approve and lock boxes are theme check boxes").toEqual([true, true]);
+  // The two lists' sort buttons: the label of each that has one, in small grey cell text.
+  expect(addon.eval("local out = {} for _, n in ipairs({ 'CalendarViewEventInviteList', 'CalendarCreateEventInviteList' }) do out[#out + 1] = __looks(_G[n .. 'NameSortButton'].fs, 'cell', 'text2') out[#out + 1] = __looks(_G[n .. 'ClassSortButton'].fs, 'cell', 'text2') end return out"),
+    "the column headings are cell text, grey (the status button without a label is skipped)").toEqual([true, true, true, true]);
+  // An invite row (by list name and position): a theme row, its bar faded, its marks kept, and whether its rail shows.
+  const invite = (list, n) => addon.eval(`local r = ${list}.ScrollBox.items[${n}] return { ns.Theme.RowParts(r) ~= nil, r.Bar:GetAlpha(), r.ModIcon:GetAlpha(), r.PartyIcon:GetAlpha(), ns.Theme.RowParts(r).rail:IsShown() }`);
+  addon.eval("__acquire(CalendarViewEventInviteList.ScrollBox, __inviteRow(CalendarViewEventInviteList)) __acquire(CalendarCreateEventInviteList.ScrollBox, __inviteRow(CalendarCreateEventInviteList))");
+  expect([invite("CalendarViewEventInviteList", 1), invite("CalendarViewEventInviteList", 2), invite("CalendarCreateEventInviteList", 1)], "invite rows, the one the list held and those it was given: theme rows, bar faded, marks kept, not picked").toEqual(Array(3).fill([true, 0, 1, 1, false]));
+  addon.eval("CalendarViewEventInviteList.ScrollBox.items[2]:LockHighlight()");
+  expect([invite("CalendarViewEventInviteList", 1)[4], invite("CalendarViewEventInviteList", 2)[4]], "the picked invite is lit while the game holds its highlight").toEqual([false, true]);
+  addon.eval("CalendarViewEventInviteList.ScrollBox.items[2]:UnlockHighlight()");
+  expect(invite("CalendarViewEventInviteList", 2)[4], "and not once the game lets it go").toBe(false);
+  expect(["CalendarEventPickerFrame", "CalendarTexturePickerFrame"].map(n => fills(addon, `${n}.ScrollBox`)), "each picker's list sits on an inset panel").toEqual([1, 1]);
+  addon.eval("__acquire(CalendarTexturePickerFrame.ScrollBox, __pickerRow(CalendarTexturePickerFrame.ScrollBox))");
+  // A picker row (by dialog and position): a theme row, its bar faded, its picture kept, its title light, and whether its rail shows.
+  const pick = (dialog, n) => addon.eval(`local r = ${dialog}.ScrollBox.items[${n}] return { ns.Theme.RowParts(r) ~= nil, r.Bar:GetAlpha(), r.Icon:GetAlpha(), __looks(r.Title, 'label', 'text'), ns.Theme.RowParts(r).rail:IsShown() }`);
+  expect([pick("CalendarEventPickerFrame", 1), pick("CalendarTexturePickerFrame", 1)], "picker rows, one the list held and one it was given").toEqual(Array(2).fill([true, 0, 1, true, false]));
+  addon.eval("CalendarTexturePickerFrame.ScrollBox.items[1]:LockHighlight()");
+  expect(pick("CalendarTexturePickerFrame", 1)[4], "the picked picture is lit while the game holds its highlight").toBe(true);
+  expect(addon.eval("return #ns.errors"), "and nothing failed").toBe(0);
 });
 
 it("calendar: switched off it stays the game's; a client missing the window, its buttons or its dialogs' parts loads cleanly", () => {

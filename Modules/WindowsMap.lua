@@ -36,13 +36,6 @@ local function glyphTextures(button)
   return keep
 end
 
--- A small icon button as a flat tile: its template art faded, the icon it draws kept.
-function GW.SkinGlyphButton(button)
-  if not isFrame(button) then return end
-  T.FadeRegions(button, glyphTextures(button))
-  T.Panel(button, { inset = true, noSheen = true })
-end
-
 -- A button's template art faded, its label kept, as a flat button (the nav bar's crumbs).
 local function skinFlatButton(button)
   if isFrame(button) then T.Button(button) end
@@ -598,8 +591,8 @@ GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGBrowseSearc
 
 -- The Legacy window's pages, by key.
 GW.LEGACY_PAGES = { "TreePage", "ChallengesPage", "RewardTrackPage" }
--- The art each page draws: its background, and the divider between its list and content.
-GW.LEGACY_PAGE_ART = { "Background", "VerticalDivider" }
+-- The art each page draws and loses: its background (the divider between its list and content is T.Divider's).
+GW.LEGACY_PAGE_ART = { "Background" }
 -- The challenge page's two panes, which get an inset panel.
 GW.LEGACY_PANES = { "CategoryList", "DetailPane" }
 -- What the challenge list (the detail pane) says while it is empty: a prompt until a category is picked (the game
@@ -614,24 +607,183 @@ local function challengeNote(pane)
   end
 end
 
--- One page's background art faded, and an inset panel under each of its panes, the challenge list with its
--- empty note. The talent tree's node buttons, the cards and every other part of the page are the game's.
+-- One page's background art faded, the divider between its list and content one pixel of `divider`, an inset panel
+-- under each of its panes and the challenge list's empty note. The talent tree's node buttons are the game's.
 local function skinLegacyPage(page)
   if not isFrame(page) then return end
   GW.FadeParts(page, GW.LEGACY_PAGE_ART)
+  if isFrame(page.VerticalDivider) then T.Divider(page.VerticalDivider, { vertical = true }) end
   for _, key in ipairs(GW.LEGACY_PANES) do
     if isFrame(page[key]) then T.Panel(page[key], { inset = true, noSheen = true }) end
   end
   if isFrame(page.DetailPane) then GW.WatchEmpty(page.DetailPane.ScrollBox, challengeNote(page.DetailPane)) end
 end
 
+-- The art of a tree card the theme keeps: the icon (its normal, highlight and pushed textures) and the ring round it.
+GW.LEGACY_CARD_KEEP = { "NormalTexture", "HighlightTexture", "PushedTexture", "Ring" }
+
+-- A tree card's border: the accent while it is the picked tree (the game's checked state), the theme's otherwise.
+local function markTreeCard(card)
+  if type(card.GetChecked) == "function" then T.SetBorder(card, card:GetChecked() and { T.Accent() } or nil) end
+end
+
+-- One tree card (a ringed icon button on a plate): the plate and glow faded, the icon and ring kept, on a raised tile
+-- that wears the accent border while its tree is the picked one (the game refreshes that in RefreshSelectionVisuals).
+local function skinTreeCard(card)
+  if not isFrame(card) then return end
+  T.FadeRegions(card, GW.KeepKeys(card, GW.LEGACY_CARD_KEEP))
+  T.Panel(card, { raised = true, noSheen = true })
+  markTreeCard(card)
+  GW.HookAfter(card, "RefreshSelectionVisuals", markTreeCard)
+end
+
+-- Every tree card the picker holds now (the game keeps them in a pool under TreeSelections).
+local function skinTreeCards(panel)
+  if not isFrame(panel.TreeSelections) then return end
+  for _, card in ipairs({ panel.TreeSelections:GetChildren() }) do skinTreeCard(card) end
+end
+
+-- The tree picker: its cards now, and again each time the game rebuilds them (RefreshTreeButtons).
+local function skinTreePicker(panel)
+  if not isFrame(panel) then return end
+  skinTreeCards(panel)
+  GW.HookAfter(panel, "RefreshTreeButtons", skinTreeCards)
+end
+
+-- The trait panel's controls: Apply a theme button, Reset and Undo icon buttons keeping their pictures, the search
+-- box with its magnifier. The panel itself is the game's: it spans the page and would cover the close button's corner.
+local function skinTraitPanel(panel)
+  if not isFrame(panel) then return end
+  skinFlatButton(panel.ApplyButton)
+  keepArt(panel.ResetButton, "Icon")
+  keepArt(panel.UndoButton, "Icon")
+  GW.SkinSearch(panel.SearchBox)
+end
+
+-- The tree page: the picker's cards, the points badge as an inset (its plate faded) and the trait panel's controls.
+local function skinTreePage(page)
+  if not isFrame(page) then return end
+  skinTreePicker(page.LegacyTreeSelectionPanel)
+  skinTraitPanel(page.LegacyTreeTraitPanel)
+  local summary = page.LegacyTreePointSummary
+  if not isFrame(summary) then return end
+  GW.FadeParts(summary, { "Border" })
+  T.Panel(summary, { inset = true, noSheen = true })
+end
+
+-- A category row's selected look, following the flag the game keeps on it (SetSelected).
+local function followCategory(row)
+  T.SelectRow(row, row.selected == true)
+end
+
+-- A category row's plus or minus in the text colour, the game's art on its button faded.
+local function skinCollapse(button)
+  if not isFrame(button) then return end
+  T.FadeRegions(button, GW.KeepKeys(button, { "Icon" }))
+  if type(button.Icon) == "table" then T.Tint(button.Icon, "text") end
+end
+
+-- One category row of the challenge list: a theme row (the game's bars faded, the unseen-challenges dot kept) lit while
+-- the game has the category selected, its plus or minus in the text colour.
+local function skinCategory(row)
+  GW.DressRow(row, { "NotificationIcon" })
+  skinCollapse(row.CollapseButton)
+  followCategory(row)
+  GW.HookAfter(row, "SetSelected", followCategory)
+end
+
+-- The challenge list's top: the filter dropdown (its label light), the search box and the no-challenges line, and
+-- every row the box holds or is given.
+local function skinCategoryList(list)
+  if not isFrame(list) then return end
+  GW.SkinDropdown(list.FilterDropdown)
+  GW.SkinText(GW.Part(list, "FilterDropdown.Text"), "label", "text")
+  GW.SkinSearch(list.SearchBox)
+  GW.SkinText(list.NoResultsText, "label", "text2")
+  GW.WatchRows(list.ScrollBox, skinCategory)
+end
+
+-- The art of a challenge card that is replaced by the card's own panel: its plates, tiles, selection glow and ribbon.
+GW.CHALLENGE_ART = { "Background", "BackgroundTop", "BackgroundMiddle", "BackgroundBottom", "SelectedOverlay", "TitleBar" }
+
+-- A challenge card's border: the accent while the game has it selected (opened), the theme's otherwise.
+local function markChallenge(card)
+  T.SetBorder(card, type(card.IsSelected) == "function" and card:IsSelected() == true and { T.Accent() } or nil)
+end
+
+-- One challenge card: its plates faded, a card in the theme with the accent border while selected (the game refreshes
+-- that in RefreshStateArt), and its Track box a theme check box. The icon, points badge and texts are the game's.
+local function skinChallenge(card)
+  if not isFrame(card) then return end
+  GW.FadeParts(card, GW.CHALLENGE_ART)
+  T.Panel(card)
+  GW.SkinCheck(card.Tracked)
+  markChallenge(card)
+  GW.HookAfter(card, "RefreshStateArt", markChallenge)
+end
+
+-- One objective of an open challenge: its bar art faded and, for a counted one, the progress bar a theme track.
+local function skinCriteria(row)
+  GW.FadeParts(row, { "Background", "ProgressBarBackground" })
+  GW.SkinProgress(row.ProgressBar)
+end
+
+-- The objectives the game shows under an open challenge (one frame it moves between cards, its rows pooled): each active row.
+local function skinObjectives(objectives)
+  local pool = objectives.criteriaPool
+  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
+  for row in pool:EnumerateActive() do skinCriteria(row) end
+end
+
+-- The challenges page: the category list, the cards, and the points bar (its track art faded, a theme bar).
+local function skinChallengesPage(page)
+  if not isFrame(page) then return end
+  skinCategoryList(page.CategoryList)
+  if isFrame(page.DetailPane) then GW.WatchRows(page.DetailPane.ScrollBox, skinChallenge) end
+  local summary = page.LegacyChallengePointSummary
+  if not isFrame(summary) then return end
+  GW.FadeParts(summary, { "ProgressBarBackground" })
+  GW.SkinProgress(summary.PointsBar)
+end
+
+-- One reward card: the plate, level diamond and icon ring faded, the reward's icon and the earned tick kept, on a raised tile.
+local function skinRewardCard(card)
+  if not isFrame(card) then return end
+  T.FadeRegions(card, GW.KeepKeys(card, { "Icon", "EarnedCheckmark" }))
+  T.Panel(card, { raised = true, noSheen = true })
+end
+
+-- The reward cards the track holds now (the game fills it in Init, from a pool).
+local function skinRewardCards(track)
+  local cards = type(track.GetElements) == "function" and track:GetElements()
+  for _, card in ipairs(type(cards) == "table" and cards or {}) do skinRewardCard(card) end
+end
+
+-- The reward page: its progress bar a theme bar on an inset track, and the cards, again each time the track is set up.
+local function skinRewardPage(page)
+  if not isFrame(page) then return end
+  GW.FadeParts(page, { "ProgressBarBackground" })
+  GW.SkinProgress(page.LegacyRewardProgressBar)
+  local track = page.LegacyRewardProgressFrame
+  if not isFrame(track) then return end
+  skinRewardCards(track)
+  GW.HookAfter(track, "Init", skinRewardCards)
+end
+
 -- The Legacy system window (Forever's own: the Adventure, Professions and Progression trees, challenges
--- and a reward track): the window skin, and its three pages. The side tabs and their indicators are
--- another stream's. Decided (design 6.1, option c): this skins the window only; Vanguard's tracker
--- does not list Legacy challenges and the game's tracker is not brought back for them.
+-- and a reward track): the window skin, and its three pages with their cards, rows, bars and controls. The side
+-- tabs and their indicators are another stream's. Decided (design 6.1, option c): this skins the window only;
+-- Vanguard's tracker does not list Legacy challenges and the game's tracker is not brought back for them.
 function GW.SkinLegacy(frame)
   GW.Skin(frame)
   for _, key in ipairs(GW.LEGACY_PAGES) do skinLegacyPage(frame[key]) end
+  skinTreePage(frame.TreePage)
+  skinChallengesPage(frame.ChallengesPage)
+  skinRewardPage(frame.RewardTrackPage)
+  local objectives = _G.LegacyChallengeObjectives
+  if type(objectives) ~= "table" then return end
+  skinObjectives(objectives)
+  GW.HookAfter(objectives, "Display", skinObjectives)
 end
 
 GW.Add("map", "onDemand", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)
@@ -669,7 +821,7 @@ GW.Add("map", "framed", { "QueueStatusFrame" }, GW.SkinQueueStatus)
 GW.CALENDAR_KEEP = { "CalendarWeekdaySelectedTexture", "CalendarLastDayDarkTexture" }
 -- The day grid's size (the game makes CalendarDayButton1 to 42).
 GW.CALENDAR_DAYS = 42
--- The month buttons, drawn as flat tiles round the icon they show.
+-- The month buttons, theme buttons round the arrow they show.
 GW.CALENDAR_MONTH_BUTTONS = { "CalendarPrevMonthButton", "CalendarNextMonthButton" }
 -- The class-totals strip: the totals button and the most class buttons the game makes (CalendarClassButton1 to 11).
 GW.CALENDAR_CLASS_BUTTONS = 11
@@ -699,6 +851,26 @@ GW.CALENDAR_BOXES = {
   CalendarCreateEventFrame = { "CalendarCreateEventDescriptionContainer", "CalendarCreateEventInviteList" },
 }
 GW.CALENDAR_DIVIDERS = { CalendarViewEventFrame = "CalendarViewEventDivider", CalendarCreateEventFrame = "CalendarCreateEventDivider" }
+-- The dialogs' dropdowns (parentKeys, the game's arrows kept) and check boxes.
+GW.CALENDAR_DROPDOWNS = {
+  CalendarCreateEventFrame = { "EventTypeDropdown", "HourDropdown", "MinuteDropdown", "AMPMDropdown", "DifficultyOptionDropdown", "CommunityDropdown" },
+  CalendarMassInviteFrame = { "CommunityDropdown", "RankDropdown" },
+}
+GW.CALENDAR_CHECKS = { CalendarCreateEventFrame = { "CalendarCreateEventAutoApproveCheck", "CalendarCreateEventLockEventCheck" } }
+-- The dialogs' gold text, each group as { role, colour, names }: the event's name, then the small lines under it and the labels.
+GW.CALENDAR_TEXTS = {
+  CalendarViewEventFrame = { { "name", "text", { "CalendarViewEventTitle" } },
+    { "small", "text2", { "CalendarViewEventCommunityName", "CalendarViewEventTypeName", "CalendarViewEventCreatorName" } } },
+  CalendarCreateEventFrame = { { "small", "text2", { "CalendarCreateEventCommunityName", "CalendarCreateEventTextureName", "CalendarCreateEventCreatorName" } } },
+  CalendarMassInviteFrame = { { "small", "text", { "CalendarMassInviteLevelText", "CalendarMassInviteFrameLevelDivider", "CalendarMassInviteRankText" } } },
+}
+-- The invite list of each event dialog (it holds a ScrollBox and three sort buttons named "<list>NameSortButton" and so on).
+GW.CALENDAR_LISTS = { CalendarViewEventFrame = "CalendarViewEventInviteList", CalendarCreateEventFrame = "CalendarCreateEventInviteList" }
+GW.CALENDAR_SORTS = { "NameSortButton", "ClassSortButton", "StatusSortButton" }
+-- What an invite row keeps of its own art: the moderator and group marks.
+GW.CALENDAR_ROW_KEEP = { "ModIcon", "PartyIcon" }
+-- The two dialogs that pick from a list (an event, an event picture).
+GW.CALENDAR_PICKERS = { CalendarEventPickerFrame = true, CalendarTexturePickerFrame = true }
 for name, list in pairs(GW.CALENDAR_BUTTONS) do GW.AddButtons(name, list) end
 
 -- One day of the grid: the parchment on its normal texture faded (the event icons, the date, the highlight and
@@ -719,24 +891,33 @@ local function namedSet(names)
   return set
 end
 
--- The filter dropdown as a flat button and the class-totals buttons (the totals, then one per class) as icon tiles;
--- each is skipped when this client has no such button.
+-- The filter dropdown as a flat button with its label light, and the class-totals buttons (the totals, then one per
+-- class) as theme buttons keeping their class icons; each is skipped when this client has no such button.
 local function skinCalendarStrip(frame)
-  skinFlatButton(_G.CalendarFilterButton or frame.FilterButton)
-  GW.SkinGlyphButton(_G.CalendarClassTotalsButton)
-  for i = 1, GW.CALENDAR_CLASS_BUTTONS do GW.SkinGlyphButton(_G["CalendarClassButton" .. i]) end
+  local filter = _G.CalendarFilterButton or frame.FilterButton
+  skinFlatButton(filter)
+  if type(filter) == "table" then GW.SkinText(filter.Text, "label", "text") end
+  glyphButton(_G.CalendarClassTotalsButton)
+  for i = 1, GW.CALENDAR_CLASS_BUTTONS do glyphButton(_G["CalendarClassButton" .. i]) end
+end
+
+-- The weekday headings (CalendarWeekday1Name to 7) in light label text and the year in small grey text.
+local function skinCalendarTexts()
+  for i = 1, 7 do GW.SkinText(_G["CalendarWeekday" .. i .. "Name"], "label", "text") end
+  GW.SkinText(_G.CalendarYearName, "small", "text2")
 end
 
 -- The calendar window: every texture of its frame faded but the two it keeps (see GW.CALENDAR_KEEP), a panel with a
--- shadow, the close button with the filter button clear of it, the month buttons as tiles, the filter and class
--- buttons and the day grid as inset panels.
+-- shadow, the close button with the filter button clear of it, the month buttons as theme buttons keeping their arrows,
+-- the filter and class buttons, the weekday and year texts, and the day grid as inset panels.
 function GW.SkinCalendar(frame)
   T.FadeRegions(frame, namedSet(GW.CALENDAR_KEEP))
   T.Panel(frame, { shadow = true })
   GW.DressClose(frame, _G.CalendarCloseButton)
   GW.BesideClose(_G.CalendarFilterButton or frame.FilterButton, _G.CalendarCloseButton)
-  for _, name in ipairs(GW.CALENDAR_MONTH_BUTTONS) do GW.SkinGlyphButton(_G[name]) end
+  for _, name in ipairs(GW.CALENDAR_MONTH_BUTTONS) do glyphButton(_G[name]) end
   skinCalendarStrip(frame)
+  skinCalendarTexts()
   for i = 1, GW.CALENDAR_DAYS do skinDay(_G["CalendarDayButton" .. i]) end
 end
 
@@ -764,19 +945,81 @@ local function dressBox(box)
   T.Panel(box, { inset = true, noSheen = true })
 end
 
--- One of the calendar's dialogs: the window skin, the header, the close button, the text boxes it has, and its boxes
--- and divider (see GW.CALENDAR_BOXES, GW.CALENDAR_DIVIDERS).
-function GW.SkinCalendarDialog(frame)
-  local name = frame:GetName()
-  skinKeepingPictures(frame)
-  dressHeader(frame.Header)
-  GW.DressClose(frame, _G[GW.CALENDAR_CLOSE[name] or ""])
+-- A dialog's text boxes it has, its tooltip-style boxes and its divider as one pixel of `divider`
+-- (see GW.CALENDAR_EDITS, GW.CALENDAR_BOXES, GW.CALENDAR_DIVIDERS).
+local function skinDialogBoxes(name)
   for _, edit in ipairs(GW.CALENDAR_EDITS[name] or {}) do
     if isFrame(_G[edit]) then T.EditBox(_G[edit]) end
   end
   for _, box in ipairs(GW.CALENDAR_BOXES[name] or {}) do dressBox(_G[box]) end
   local divider = _G[GW.CALENDAR_DIVIDERS[name] or ""]
-  if type(divider) == "table" and divider.SetAlpha then divider:SetAlpha(0) end
+  if type(divider) == "table" and divider.SetAlpha then T.Divider(divider) end
+end
+
+-- A dialog's gold texts (see GW.CALENDAR_TEXTS) in their roles and colours.
+local function skinDialogTexts(name)
+  for _, group in ipairs(GW.CALENDAR_TEXTS[name] or {}) do
+    for _, fs in ipairs(group[3]) do GW.SkinText(_G[fs], group[1], group[2]) end
+  end
+end
+
+-- A row lit while the game holds its highlight (it locks the picked invite, event or picture), as its selected look.
+local function followLock(row)
+  GW.HookAfter(row, "LockHighlight", function(r) T.SelectRow(r, true) end)
+  GW.HookAfter(row, "UnlockHighlight", function(r) T.SelectRow(r, false) end)
+end
+
+-- One invite row: a theme row (the game's highlight bar faded, the moderator and group marks kept) lit while picked.
+local function skinInviteRow(row)
+  GW.DressRow(row, GW.CALENDAR_ROW_KEEP)
+  followLock(row)
+end
+
+-- A column heading of an invite list (a sort button) in small grey text, its direction arrow the game's.
+local function skinSortButton(button)
+  if type(button) == "table" and type(button.GetFontString) == "function" then GW.SkinText(button:GetFontString(), "cell", "text2") end
+end
+
+-- An invite list (by name): its column headings and every row it holds or is given.
+local function skinInviteList(name)
+  for _, suffix in ipairs(GW.CALENDAR_SORTS) do skinSortButton(_G[name .. suffix]) end
+  if isFrame(_G[name]) then GW.WatchRows(_G[name].ScrollBox, skinInviteRow) end
+end
+
+-- One row of a picker dialog: a theme row keeping its picture, its title light, lit while picked.
+local function skinPickerRow(row)
+  GW.DressRow(row, { "Icon" })
+  GW.SkinText(row.Title, "label", "text")
+  followLock(row)
+end
+
+-- A picker dialog's list: an inset panel under its rows, which are themed as the game makes them.
+local function skinPicker(frame)
+  if not isFrame(frame.ScrollBox) then return end
+  T.Panel(frame.ScrollBox, { inset = true, noSheen = true })
+  GW.WatchRows(frame.ScrollBox, skinPickerRow)
+end
+
+-- A dialog's dropdowns (arrows kept), check boxes and texts, its invite list or picker list, and a text area
+-- (the holiday and raid dialogs' ScrollingFont) as an inset panel.
+local function skinDialogControls(frame, name)
+  for _, key in ipairs(GW.CALENDAR_DROPDOWNS[name] or {}) do GW.SkinDropdown(frame[key]) end
+  for _, check in ipairs(GW.CALENDAR_CHECKS[name] or {}) do GW.SkinCheck(_G[check]) end
+  skinDialogTexts(name)
+  skinInviteList(GW.CALENDAR_LISTS[name] or "")
+  if GW.CALENDAR_PICKERS[name] then skinPicker(frame) end
+  if isFrame(frame.ScrollingFont) then T.Panel(frame.ScrollingFont, { inset = true, noSheen = true }) end
+end
+
+-- One of the calendar's dialogs: the window skin keeping its pictures, the header, the close button, and its text
+-- boxes, boxes, divider, dropdowns, check boxes, texts and lists.
+function GW.SkinCalendarDialog(frame)
+  local name = frame:GetName()
+  skinKeepingPictures(frame)
+  dressHeader(frame.Header)
+  GW.DressClose(frame, _G[GW.CALENDAR_CLOSE[name] or ""])
+  skinDialogBoxes(name)
+  skinDialogControls(frame, name)
 end
 
 GW.Add("map", "onDemand", "Blizzard_Calendar", { "CalendarFrame" }, GW.SkinCalendar)
