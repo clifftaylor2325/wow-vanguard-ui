@@ -3,7 +3,7 @@
 import { expect, it } from "vitest";
 import { loggedIn } from "./helpers.mjs";
 
-it("the spellbook is one of the framed windows, so it gets the flat Vanguard panel", () => {
+it("the spellbook (PlayerSpellsFrame on the 12.x engine) is a framed window, skinned when its part of the game loads", () => {
   const addon = loggedIn();
-  expect(addon.eval("return ns.GetModule('Windows').REGISTERED.SpellBookFrame ~= nil"), "registered with the other framed windows").toBe(true);
+  expect(addon.eval("local GW = ns.GetModule('Windows') return { GW.REGISTERED.PlayerSpellsFrame.group, GW.ON_DEMAND.Blizzard_PlayerSpells[1] }"), "registered under the windows group, with Blizzard_PlayerSpells").toEqual(["windows", "PlayerSpellsFrame"]);
 });

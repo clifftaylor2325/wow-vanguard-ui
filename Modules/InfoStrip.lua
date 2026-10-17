@@ -473,12 +473,17 @@ IS.EVENTS = {
   PLAYER_MONEY = "gold", UNIT_INVENTORY_CHANGED = "ammo",
 }
 
--- The game's frames a block replaces, hidden while that block is on: the
--- durability figure, and the minimap clock and calendar button (/calendar still opens it).
-IS.REPLACES = { durability = { "DurabilityFrame" }, clock = { "TimeManagerClockButton", "GameTimeFrame" } }
+-- The game's frames the strip stands in for whenever the module is on, whatever its blocks say: the
+-- armoured-man durability figure (the strip's durability block and the character pane's gear labels
+-- carry the warning; a player who wants the game's own figure turns the module off).
+IS.HIDES = { "DurabilityFrame" }
+-- The game's frames a block replaces, hidden while that block is on: the minimap clock and calendar
+-- button (/calendar still opens it).
+IS.REPLACES = { clock = { "TimeManagerClockButton", "GameTimeFrame" } }
 
--- Hides the game's frames that switched-on blocks replace.
+-- Hides the game's frames the strip stands in for, and those that switched-on blocks replace.
 local function hideReplaced(settings)
+  for _, name in ipairs(IS.HIDES) do ns.GetModule("UnitFrames").HideBlizzard(name) end
   for key, names in pairs(IS.REPLACES) do
     if settings[key] then
       for _, name in ipairs(names) do ns.GetModule("UnitFrames").HideBlizzard(name) end

@@ -1,8 +1,8 @@
 -- The game's own windows in the Vanguard look: character, merchant, mail,
--- quest, gossip, trade, loot and roll windows, friends, the dressing room,
+-- quest, gossip, trade, loot (its rows too) and roll windows, friends, the dressing room,
 -- the flight map, books and letters, the game menu, the ready check, popups,
 -- the windows that load later (spellbook, auction house, professions,
--- inspect, guild bank, collections, achievements, dungeon journal) and the
+-- inspect, guild bank, collections, achievements) and the
 -- breath and fatigue bars. Each window keeps its own layout and buttons: its art is faded out
 -- (alpha only) and a flat panel, the close button, title font and push
 -- buttons are themed. It's done every time a window shows, so parts the game
@@ -18,7 +18,9 @@ local ADDON, ns = ...
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgCorner = ns.FrameState("vgCorner")
 local vgDurability = ns.FrameState("vgDurability")
+local vgLootRows = ns.FrameState("vgLootRows")
 local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
+local vgTimerHook = ns.FrameState("vgTimerHook")
 local vgWindow = ns.FrameState("vgWindow")
 
 local T = ns.Theme
@@ -35,14 +37,16 @@ GW.GROUPS = { "windows", "popups", "timers", "social", "town", "system", "map", 
 -- Every registered window: name -> { group = , skin = }, and the names in the order registered.
 GW.REGISTERED, GW.ORDER = {}, {}
 
--- Framed windows (most use the game's ButtonFrameTemplate or PortraitFrameTemplate).
+-- Framed windows (most use the game's ButtonFrameTemplate or PortraitFrameTemplate). The loot window
+-- is registered on its own below, with its rows (GW.SkinLoot).
 GW.FRAMED = {
   "CharacterFrame", "MerchantFrame", "MailFrame", "QuestFrame", "GossipFrame", "TradeFrame",
-  "LootFrame", "GameMenuFrame", "ReadyCheckFrame", "FriendsFrame", "DressUpFrame", "TaxiFrame", "ItemTextFrame",
-  "SpellBookFrame", "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4",
+  "GameMenuFrame", "ReadyCheckFrame", "FriendsFrame", "DressUpFrame", "TaxiFrame", "ItemTextFrame",
+  "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4",
 }
 GW.POPUPS = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }
-GW.TIMERS = { "MirrorTimer1", "MirrorTimer2", "MirrorTimer3" }
+-- The breath and fatigue bars' holder (the bars are its unnamed children), skinned by GW.SkinTimerContainer.
+GW.TIMERS = { "MirrorTimerContainer" }
 -- The windows Vanguard's quest dialog stands in for: the game never shows them while it is on, so they are not skinned.
 GW.QUEST_WINDOWS = { QuestFrame = true, GossipFrame = true }
 -- Windows that load with their own part of the game: addon name -> window names
@@ -234,29 +238,45 @@ function GW.FadeNamed(names)
   end
 end
 
--- A breath or fatigue bar: the window skin hugging the bar (no room around it), and its bar in the theme's bar texture.
+-- A money line's three denominations (MoneyFrameTemplate and SmallMoneyFrameTemplate, Blizzard_MoneyFrame:
+-- a button each, its figure in Text beside its coin).
+GW.MONEY_PARTS = { "GoldButton", "SilverButton", "CopperButton" }
+
+-- A money line (the merchant's and its rows' prices; for mail, trade and the bank too) in the theme font:
+-- each denomination's figure in the number role, its colour left as the game sets it (red when you can't
+-- pay), its coin kept. A frame the client lacks, or one without the parts, is skipped.
+function GW.SkinMoney(frame)
+  if type(frame) ~= "table" then return end
+  for _, key in ipairs(GW.MONEY_PARTS) do
+    local fs = type(frame[key]) == "table" and frame[key].Text
+    if type(fs) == "table" and fs.SetFont then T.Text(fs, "number", false) end
+  end
+end
+
+-- A breath or fatigue bar (MirrorTimerTemplate): the window skin hugging the bar (no room around it), and its
+-- StatusBar in the theme's bar texture.
 function GW.SkinTimer(frame)
   GW.Skin(frame, 0)
-  local bar = frame.StatusBar or _G[(frame:GetName() or "") .. "StatusBar"]
+  local bar = frame.StatusBar
   if type(bar) == "table" and bar.SetStatusBarTexture then T.StyleBar(bar) end
 end
 
--- Newer clients (WoW Forever) keep the breath and fatigue bars in one container
--- instead of MirrorTimer1-3: skins every timer frame it holds.
-local function skinContainerTimers()
-  for _, child in ipairs({ _G.MirrorTimerContainer:GetChildren() }) do
+-- The breath and fatigue bars are the container's unnamed children on the 12.x engine
+-- (there are no MirrorTimer1-3 globals): skins every timer frame it holds.
+local function skinContainerTimers(box)
+  for _, child in ipairs({ box:GetChildren() }) do
     if type(child) == "table" and type(child.StatusBar) == "table" then GW.SkinTimer(child) end
   end
 end
 
--- Watches MirrorTimerContainer, where the client has it: its timers now, and
--- again each time it sets one up (it makes them as they're needed).
-local function watchContainer()
-  local box = _G.MirrorTimerContainer
-  if type(box) ~= "table" or not box.GetChildren or vgWindow[box] then return end
-  vgWindow[box] = true
-  skinContainerTimers()
-  if type(box.SetupTimer) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(box, "SetupTimer", ns.Guard("hook SetupTimer", skinContainerTimers)) end
+-- The breath bars' container (MirrorTimerContainer, the timers group): its timers now and each time it
+-- shows, and again after the game sets one up (it gives the bar its own texture back then), hooked once.
+function GW.SkinTimerContainer(box)
+  if type(box.GetChildren) ~= "function" then return end
+  skinContainerTimers(box)
+  if vgTimerHook[box] or type(box.SetupTimer) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  vgTimerHook[box] = true
+  hooksecurefunc(box, "SetupTimer", ns.Guard("hook SetupTimer", function() skinContainerTimers(box) end))
 end
 
 -- The game menu -------------------------------------------------------------------------------
@@ -297,6 +317,42 @@ local function watchGameMenu()
   if type(menu) ~= "table" or type(hooksecurefunc) ~= "function" or type(menu.InitButtons) ~= "function" then return end
   hooksecurefunc(menu, "InitButtons", ns.Guard("hook InitButtons", GW.SkinMenu))
   GW.SkinMenu(menu)
+end
+
+-- The loot window -----------------------------------------------------------------------------
+
+-- A loot row's card art (LootFrameElementTemplate: the card's fill and stroke, and the rarity ribbon in its
+-- top-right corner), faded. The hover and pressed strokes, the quest mark and the icon stay.
+GW.LOOT_ROW_ART = { "NameFrame", "BorderFrame", "QualityStripe" }
+
+-- One row of the loot list as the game acquires it (callback of the list: owner, row, data): its card art
+-- faded, its item slot in the bags' item look (a thin border in the item's quality colour), the item's
+-- name and rarity in the theme font with the colours the game gives them.
+local function skinLootRow(_, row)
+  if type(row) ~= "table" then return end
+  GW.FadeParts(row, GW.LOOT_ROW_ART)
+  local bags = ns.GetModule("Bags")
+  if bags and bags.SkinItem then bags.SkinItem(row.Item) end
+  if type(row.Text) == "table" and row.Text.SetFont then T.Text(row.Text, "label", false) end
+  if type(row.QualityText) == "table" and row.QualityText.SetFont then T.Text(row.QualityText, "tiny", false) end
+end
+
+-- The list's rows now and each row it acquires later (the game reuses its rows, one callback is enough);
+-- the list is watched once. The callback is guarded: the game's list fires it inside its acquire lock, so a
+-- failure in it must be reported, not raised, or the list stays locked.
+local function watchLootRows(box)
+  local mixin = _G.ScrollBoxListMixin
+  if type(box) ~= "table" or vgLootRows[box] or type(box.RegisterCallback) ~= "function" then return end
+  if type(mixin) ~= "table" or type(mixin.Event) ~= "table" then return end
+  vgLootRows[box] = true
+  box:RegisterCallback(mixin.Event.OnAcquiredFrame, ns.Guard("acquire loot row", skinLootRow), GW)
+  if type(box.ForEachFrame) == "function" then box:ForEachFrame(function(row) skinLootRow(nil, row) end) end
+end
+
+-- The loot window: the window skin, and its rows as the list hands them out.
+function GW.SkinLoot(frame)
+  GW.Skin(frame)
+  watchLootRows(frame.ScrollBox)
 end
 
 -- Readable text ------------------------------------------------------------------------------
@@ -475,22 +531,22 @@ local function watchDurability()
   for _, e in ipairs({ "UPDATE_INVENTORY_DURABILITY", "UNIT_INVENTORY_CHANGED" }) do ns.On(e, GW.PaintAllDurability) end
 end
 
--- The windows this file skins itself: framed windows, popups, breath bars, and the
+-- The windows this file skins itself: framed windows, popups, the breath bars' container and the
 -- windows that load later. Other groups register from Modules/Windows<Area>.lua.
 GW.Add("windows", "framed", GW.FRAMED)
+GW.Add("windows", "framed", { "LootFrame" }, GW.SkinLoot)
 GW.Add("popups", "popups", GW.POPUPS)
-GW.Add("timers", "framed", GW.TIMERS, GW.SkinTimer)
+GW.Add("timers", "framed", GW.TIMERS, GW.SkinTimerContainer)
 for addon, names in pairs(GW.LATER) do GW.Add("windows", "onDemand", addon, names) end
 
 -- Module entry point (Core/Modules.lua): every registered window whose group is on is
--- watched (those loaded now and later), plus the game menu, readable text, durability,
--- the breath bars' container and dragging windows by their title bar.
+-- watched (those loaded now and later), plus the game menu, readable text, durability
+-- and dragging windows by their title bar.
 function GW.Enable(settings)
   GW.settings = settings
   ns.On("ADDON_LOADED", onLoaded)
   watchAll(GW.ORDER)
   if settings.windows then watchGameMenu() keepTextReadable() end
   if settings.durability then watchDurability() end
-  if settings.timers then watchContainer() end
   if settings.movable then GW.WatchMoves() end
 end

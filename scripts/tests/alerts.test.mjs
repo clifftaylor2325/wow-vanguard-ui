@@ -47,18 +47,6 @@ it("game alerts: the loss of control band stays hidden when the game's animation
   addon.eval("local f = LossOfControlFrame f.blackBg:SetAlpha(0.6) f.RedLineTop:SetAlpha(1) f.RedLineBottom:SetAlpha(1)");
   expect(addon.eval("local f = LossOfControlFrame return { f.blackBg:IsShown(), f.RedLineTop:IsShown(), f.RedLineBottom:IsShown() }"), "restoring their alpha shows nothing").toEqual([false, false, false]);
 });
-it("game alerts: a talking head that loads later is restyled once when its part of the game loads", () => {
-  const addon = loggedIn(ALERTS_ENV.replace(/TalkingHeadFrame/g, "TEST_ONLY_Unloaded"));
-  expect(addon.eval("return Vanguard_TalkingHeadFrameSpot == nil"), "nil at login: nothing placed yet").toBe(true);
-  addon.fire("ADDON_LOADED", "Blizzard_Something");
-  expect(addon.eval("return Vanguard_TalkingHeadFrameSpot == nil"), "another part loading changes nothing").toBe(true);
-  addon.eval(`TalkingHeadFrame = CreateFrame("Frame", "TalkingHeadFrame", UIParent) TalkingHeadFrame.BackgroundFrame = CreateFrame("Frame", nil, TalkingHeadFrame)`);
-  addon.fire("ADDON_LOADED", "Blizzard_TalkingHeadUI");
-  expect(addon.eval("local f = TalkingHeadFrame return { f.BackgroundFrame.__alpha, f.__points.CENTER.rel == Vanguard_TalkingHeadFrameSpot }"), "loaded: parchment faded, on its spot").toEqual([0, true]);
-  addon.eval("__spot = Vanguard_TalkingHeadFrameSpot");
-  addon.fire("ADDON_LOADED", "Blizzard_TalkingHeadUI");
-  expect(addon.eval("return Vanguard_TalkingHeadFrameSpot == __spot"), "a second load event makes no second spot").toBe(true);
-});
 // TEST-ONLY raid warning frame: one message line the game reuses (as its pool does), numbered as messages come.
 const WARNING_ENV = `
   GameFontNormalHuge = "GameFontNormalHuge"

@@ -28,6 +28,7 @@ const EXCEPTIONS = {
   UIWidgetTopCenterContainerFrame: { hooked: true, why: "a HUD widget box: its panel is on a backdrop child, shown only while it has widgets" },
   UIWidgetBelowMinimapContainerFrame: { hooked: true, why: "a HUD widget box: its panel is on a backdrop child, shown only while it has widgets" },
   TimerTracker: { hooked: true, why: "a full-screen holder: each countdown bar it makes gets the panel" },
+  MirrorTimerContainer: { hooked: true, why: "the breath and fatigue bars' holder: each timer it holds gets the panel" },
   PvPObjectiveBannerFrame: { hooked: true, why: "a banner whose art is its animation: only its fonts change" },
   PVPRankFrame: { hooked: true, why: "a tab inside the character pane (which has the panel): its details pane is dressed" },
 };

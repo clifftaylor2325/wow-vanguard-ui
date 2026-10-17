@@ -629,7 +629,9 @@ export const unitEvents = (addon, event) => addon.eval(`local subs, plain = {}, 
   return { subs = table.concat(subs, " "), plain = plain }`);
 
 // TEST-ONLY game windows: a framed window built like the game's ButtonFrameTemplate (art textures,
-// NineSlice, inset, portrait, close button, title, push buttons), a popup and a breath bar.
+// NineSlice, inset, portrait, close button, title, push buttons), a popup, and the breath bars' container
+// (MirrorTimerContainer: three unnamed MirrorTimerTemplate-shaped timers, each with a StatusBar, its frame art
+// and a label; SetupTimer(i) shows the i-th and gives its bar the game's texture back, as the game's does).
 export const WINDOWS_ENV = `
   function __window(name, kind)
     local f = CreateFrame("Frame", name, UIParent)
@@ -644,7 +646,17 @@ export const WINDOWS_ENV = `
     return f
   end
   __window("MerchantFrame") __window("StaticPopup1")
-  local t = __window("MirrorTimer1") t.StatusBar = CreateFrame("StatusBar", nil, t)
+  MirrorTimerContainer = CreateFrame("Frame", "MirrorTimerContainer", UIParent)
+  for _ = 1, 3 do
+    local t = CreateFrame("Frame", nil, MirrorTimerContainer)
+    t.StatusBar = CreateFrame("StatusBar", nil, t)
+    t.Border = t:CreateTexture(nil, "OVERLAY") t.Border:SetTexture("TEST-ONLY-ART")
+    t.Text = t:CreateFontString(nil, "OVERLAY")
+    t:Hide()
+  end
+  function MirrorTimerContainer:SetupTimer(i)
+    local t = select(i, self:GetChildren()) t.StatusBar:SetStatusBarTexture("TEST-ONLY-ART") t:Show()
+  end
 `;
 
 // A window's state: its own art faded, its parts dressed, how many frames are painted.

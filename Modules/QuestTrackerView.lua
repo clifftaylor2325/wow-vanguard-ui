@@ -45,9 +45,10 @@ local function objectiveLine(block)
   return fs
 end
 
--- A title click: a Legacy challenge untracks on right-click, a quest opens its details.
+-- A title click: a Legacy challenge untracks on right-click, a recipe opens (or untracks), a quest opens its details.
 local function onTitleClick(self, button)
   if self.achievement then return QT.OnAchievement(self.id, button) end
+  if self.recipe then return QT.OnRecipe(self.id, button) end
   if self.id then QT.OnTitle(self.id, button) end
 end
 
@@ -120,10 +121,12 @@ function QT.StateLines(q)
 end
 
 -- A quest's lines under its title: the arrow's next step when it follows this quest (Quest
--- guidance), then { text, color } for each objective, or "Ready to turn in", then its XP.
--- An achievement has no guide step or XP: its criteria only.
+-- guidance), its countdown while it is timed ("Time left 4:32"), then { text, color } for each
+-- objective, or "Ready to turn in", then its XP. An achievement or a recipe has no guide step
+-- or XP: its criteria or reagents only.
 function QT.LineSpecs(q)
-  local out = q.achievement and {} or { ns.QuestGuide.StepLine(q.id) }
+  local out = (q.achievement or q.recipe) and {} or { ns.QuestGuide.StepLine(q.id) }
+  if q.timer then out[#out + 1] = { "Time left " .. QT.Clock(q.timer), "text2" } end
   for _, line in ipairs(QT.StateLines(q)) do out[#out + 1] = line end
   if (q.xp or 0) > 0 then out[#out + 1] = { q.xp .. " XP", "text2" } end
   return out
@@ -154,9 +157,9 @@ local function paintSection(b, q)
   b.lines.Reset()
 end
 
--- A quest's title in its difficulty color; a challenge's in the text color, by its name.
+-- A quest's title in its difficulty color; a challenge's or a recipe's in the text color, by its name.
 local function paintTitle(b, q)
-  if q.achievement then
+  if q.achievement or q.recipe then
     b.title:SetText(q.title)
     return T.Color(b.title, "text")
   end
@@ -166,7 +169,7 @@ end
 
 -- Fills a block: its title, then its lines (a section heading is its name alone).
 function QT.PaintBlock(b, q)
-  b.id, b.achievement = q.id, q.achievement
+  b.id, b.achievement, b.recipe = q.id, q.achievement, q.recipe
   if q.section then paintSection(b, q) else
     paintTitle(b, q)
     paintLines(b, q)
@@ -241,13 +244,14 @@ local function drawRows(f, rows)
   showMore(f, rows, shown, y)
 end
 
--- Redraws the tracker from the quests you watch and the achievements you track (also in combat, so counts keep
--- up with a fight), then places the quest items: those are secure buttons that
+-- Redraws the tracker from the quests you watch and the challenges and recipes you track (also in combat, so
+-- counts keep up with a fight), then places the quest items: those are secure buttons that
 -- can't be moved in combat, so they keep their places until combat ends and one
 -- keyed placement runs then, however many redraws asked for it.
 function QT.Refresh()
-  local f, quests = QT.frame, QT.Quests()
+  local f, quests, timed = QT.frame, QT.Quests()
   local all = QT.Rows(quests)
+  QT.TickTimers(timed)
   f.count:SetText(#quests > 0 and tostring(#quests) or "")
   f.header:SetCollapsed(QT.collapsed)
   f.blocks.Reset()

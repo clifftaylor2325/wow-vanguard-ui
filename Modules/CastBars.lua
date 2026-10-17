@@ -30,7 +30,8 @@ local LAYOUT = {
 }
 -- The default sizes and points, for layouts placed around them (Core/Setup.lua).
 CB.LAYOUT = LAYOUT
-local BLIZZARD = { "PlayerCastingBarFrame", "CastingBarFrame", "PetCastingBarFrame" }
+-- The game's own cast bars (their 12.x names), put away for good while the hideBlizzard setting is on (the default).
+local BLIZZARD = { "PlayerCastingBarFrame", "PetCastingBarFrame" }
 -- The art on the game's overlay cast bar (OverlayPlayerCastingBarFrame, CastingBarFrame.xml),
 -- faded by alpha; its finish flash is hidden instead (the game animates the flash's alpha).
 CB.OVERLAY_ART = { "Border", "Background", "TextBorder", "DropShadow" }

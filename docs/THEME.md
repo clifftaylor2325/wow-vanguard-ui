@@ -9,7 +9,7 @@ The look in one line: flat dark slate panels, one-screen-pixel borders, one acce
 - **Colours and font sizes live only in `Core/Theme.lua`.** Modules ask for a colour by token name (`T.RGB`, `T.Color`, `T.Tint`, `T.BarColor`, `T.Paint`, `T.Hex`) and for text by role (`T.Text(fs, role)`). `scripts/lib/code-quality.mjs` fails the build on a colour setter called with numbers, a 0-1 colour table, a written-out `|cff......` escape, or a `:SetFont(path, <number>)` outside the theme.
 - **Every painted frame follows live changes.** `T.Panel`, `T.Button`, `T.EditBox`, `T.CloseButton` and `T.Crest` remember what they painted; `T.Refresh()` (run by `/vg accent`, the accent swatches, a font or text-size change, a UI scale change) repaints them, re-fonts every string styled with a role, recolours every string coloured by token and re-tints every region tinted by token. Anything coloured by hand registers with `T.OnChanged(fn)`.
 - **Primitives are idempotent.** Calling one again on the same frame repaints it; it never adds a second border.
-- **Other addons get the same tools** through the Skin API (`Vanguard.RegisterSkin`, `Core/Skin.lua`): `S.Panel`, `S.Button`, `S.EditBox`, `S.CloseButton`, `S.WindowControl`, `S.FadeRegions`, `S.SetFont`, `S.Text`, `S.Color`, `S.RGB`, `S.Tint`, `S.BarColor`, `S.Pixel`, `S.Accent`, `S.PanelColor`, `S.Font`, `S.OnChanged`.
+- **Other addons get the same tools** through the Skin API (`Vanguard.RegisterSkin`, `Core/Skin.lua`): `S.Panel`, `S.Button`, `S.EditBox`, `S.CloseButton`, `S.WindowControl`, `S.FadeRegions`, `S.SetFont`, `S.Text`, `S.Color`, `S.RGB`, `S.Tint`, `S.BarColor`, `S.Pixel`, `S.Accent`, `S.PanelColor`, `S.Font`, `S.OnChanged`, and the game frame primitives below (`S.Tab`, `S.CheckBox`, `S.Tooltip`, `S.ScrollBar`, `S.FontObjects`).
 
 ## Colour tokens
 
@@ -122,7 +122,7 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 | `small` | 10 (7 - 13) | Medium | - | Secondary lines: notes and hints (in `muted`), counts and status lines (in `text2`), section headers (`muted` capitals), bar text, the info strip, keybinds. At a pixel-perfect scale a point is a screen pixel, so no role but `badge` goes under 10 (#258). |
 | `tiny` | 10 (7 - 13) | Medium | - | The floor for raid tile text that shrinks with the tile. |
 | `badge` | 9 (6 - 12) | Medium | - | The only role under 10: a count or mark on a tiny badge (the error badge, the backpack's free-slot count). |
-| `world` | 11 (8 - 14) | SemiBold | OUTLINE | Text drawn in the world: nameplate names. |
+| `world` | 11 (8 - 14) | SemiBold | OUTLINE | Text drawn in the world: nameplate names, the floating pin's distance text. |
 | `barName` | 11 (8 - 14) | SemiBold | OUTLINE | Names over a bright bar (raid tiles). |
 | `barSmall` | 10 (7 - 13) | Medium | OUTLINE | Small text over a bar (raid tile status, the damage meter, the flight timer). |
 | `cooldown` | 14 (10 - 18) | SemiBold | OUTLINE | Cooldown numbers on action buttons, the Cooldown Manager and the Cooldown gaps row (that row has no fades or sounds). |
@@ -131,7 +131,7 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 | `auraTimerSmall` | 10 (7 - 13) | SemiBold | OUTLINE | The timer on smaller aura icons. |
 | `chat` | 12 (8 - 16) | Medium | - | Chat windows ("Medium"). |
 
-Sizes that are not roles, all inside the code-quality rule because they are scaled with `T.ScaledSize` and set on the game's font objects: chat's Small/Medium/Large (10/12/14, `Modules/Chat.lua`), the tooltip fonts (header 14 SemiBold, body 12, small 11, `Modules/Tooltips.lua`) and the game's quest tracker fonts (header 13 SemiBold, lines 12, `Modules/MenuStrip.lua`).
+Sizes that are not roles, all inside the code-quality rule because they are scaled with `T.ScaledSize` and set on the game's font objects: chat's Small/Medium/Large (10/12/14, `Modules/Chat.lua`), the tooltip fonts (header 14 SemiBold, body 12, small 11, `Modules/Tooltips.lua`), the game's quest tracker fonts (header 13 SemiBold, lines 12, `Modules/MenuStrip.lua`) and the game's HUD text objects at their own sizes (the error line 16, the zone name 32, the subzone 26, the PvP line 22 and the scrolling combat text 64, all SemiBold, `Modules/Merchant.lua`).
 
 The `outline` setting (default `""`) adds an outline to every role that has none; it has no control in the options window.
 
@@ -211,13 +211,40 @@ Secondary text tiers that go with the chrome: a note or hint is `small` `muted`;
 
 Vanguard shares its three bars through LibSharedMedia as "Vanguard", "Vanguard Soft" and "Vanguard Flat". The bar texture applies on reload. `T.StyleBar(bar)` gives a bar the texture; `T.SetBarValue(bar, value)` lets the client ease the change ("Smooth health and power bars", on by default, where the client has `StatusBarInterpolation`); `T.Spark(bar, width)` adds the soft additive spark (cast bars 8 wide in `white` at 0.8, power ticks 6 wide in `spark`). Shields are drawn with `Media/Textures/Stripes` in `shield`; the raid tile dispel wash with `Media/Textures/Fade`.
 
+## Materials and states
+
+**One material per window.** Inside a panel every inner surface is one of three tiers, by what it does, and art stays only where it is the content (a portrait, an icon, a talent tree's spell icons, the map, a letter's attachments). A skinned window shows no parchment, painted backdrop, bronze frame, wooden plate or gold rim inside it: what the game drew is faded by alpha (`T.FadeRegions`, `GW.FadeParts`) and a tier is painted behind the part.
+
+| Tier | Token | Used for | Primitive |
+| --- | --- | --- | --- |
+| Inset (sunk) | `inset` | lists and scroll boxes, stat panes, text areas, edit boxes, the tracks of switches and sliders, the box of a check box, an unselected tab | `T.Panel(f, { inset = true })` (`noSheen = true` under a list), `T.EditBox` |
+| Panel (the window) | `panel` | the window itself, dialogs, cards, menus and tooltips (at 0.94, `T.Tooltip`), a selected window tab | `T.Panel(f, { shadow = true })` for anything floating, `T.Panel(f)` for a card inside a window |
+| Raised (lifted) | `raised` | buttons and dropdowns, a scroll bar's thumb, slot tiles, a selected tab on a card, a window control's resting tile | `T.Button`, `T.Panel(f, { raised = true })`, `T.Slot` |
+
+Depth is said by the fill, the one-pixel `edge` border, the sheen, the bevel on raised things and one soft shadow under floating things; never by a second border, a glow or a bigger shadow. Rows inside a list have no fill of their own: they sit on the inset and show their state by a wash. A divider between groups is one pixel of `divider`.
+
+**One state matrix.** Every control shows its states the same way, as layers over an unchanged base, so hover and selected stack, and nothing but a press moves anything (one pixel).
+
+| State | Opaque control (`T.Button`, a dropdown, a check box, a segment group) | See-through row (an options row, a list row, a nav entry, a menu item, a tab) | Text |
+| --- | --- | --- | --- |
+| Rest | `inset` fill, `edge` border, bevel | nothing | its role's colour |
+| Hover | eases to a `raisedHover` fill with a `borderHi` top line (`T.EaseHover`, 0.1 s in, 0.13 s out); a check box's border goes `borderHi` | a `hover` wash (white at 8 %) on the HIGHLIGHT layer, at once | unchanged: hover never recolours text |
+| Pressed | `shade` at 30 % over the fill and the label one pixel down (`T.PRESS`, `T.PressButton`) | `shade` at 20 % over the row, the label still | unchanged |
+| Selected or on | an `accent` fill with `void` text or knob for choose-one-of-few (segments, the switch, a radio); a check box, many-of-many, only its mark in `accentText` (`T.CHECK`) | a 2-pixel `accent` rail on the left and an `accent` wash at 14 % for navigate (the nav, a list's current entry); a tab is the raised one (`T.Tab`) | `accentText` only where no fill can carry it (a dropdown menu's current item) |
+| Disabled | no hover, no press, the fill unchanged, text and glyphs in `disabled` at full alpha (`T.DisabledLook`); never an alpha fade over a bordered control, which blurs its border | the same | `disabled` |
+| Focus (keyboard) | `T.FocusRing`: a one-pixel `accentText` ring two pixels out, over a one-pixel `edge` gap | the same | none |
+| Locked (a slider that cannot change) | fill and caption `muted`; the tooltip says why | none | `muted` |
+
+The controls with a moving part (the switch's knob, the slider's thumb) keep this vocabulary on their own geometry. Two exceptions stand until Cliff decides: a window control's hover tile is the `accent` at 0.35 (`T.CONTROL_TILES.other`, [DECIDE] 6.12 in `docs/design/DESIGN-PRINCIPLES.md`), and a slot's accent edge brightens under the mouse (`T.SLOT_STATES`), which stays: on an action button the accent edge is the slot's border.
+
 ## Game frame primitives
 
-For the game's own windows (`Modules/Windows*.lua`, docs/design/RESKIN.md), and through the skin API (`S.Tab`, `S.Tooltip`, `S.ScrollBar`, `S.FontObjects`) for other addons. Each is safe to call again and fades the game's art by alpha only, so the game's layout and show/hide code keep working.
+For the game's own windows (`Modules/Windows*.lua`, docs/design/RESKIN.md), and through the skin API (`S.Tab`, `S.CheckBox`, `S.Tooltip`, `S.ScrollBar`, `S.FontObjects`) for other addons. Each is safe to call again and fades the game's art by alpha only, so the game's layout and show/hide code keep working.
 
 | Primitive | What it does |
 | --- | --- |
 | `T.Tab(button)` | A tab of any of the game's three tab templates (`PanelTabButtonTemplate`, `TabSystemButtonTemplate`, `LargeSideTabButtonTemplate`): the parts in `T.TAB_ART` faded (the icon and text kept), an `inset` panel without sheen and the `hover` wash; the selected tab is `raised` (no accent bar: the raised fill is the only mark, so the tab row stays flat), and with `opts.dimIcon` the other tabs' icons are greyed and faded (`T.TAB_DIM`). It follows the game's selection: `SetTabSelected` (tab systems), `SetChecked` (side tabs), else disabled (the game selects a panel tab by disabling it). |
+| `T.CheckBox(button)` | One of the game's check buttons (`UICheckButtonTemplate` and kin): its art faded (its label kept), a `T.CHECK.size` (16, an even count of pixels) `inset` box centred on it with the `Check` glyph at 12 px in `accentText` while checked, a `borderHi` border under the mouse (let go when it is disabled or hidden), `shade` at 30 % while held, the mark and label in `disabled` while disabled. Follows the game's `SetChecked`, clicks, `Enable` and `Disable`; repainted by `T.Refresh`. The raid tab's All assist box, the addon list's rows and the chat settings' boxes use it (`GW.DressChecks` walks a window for its check buttons, after the game makes them). The filled look ([DECIDE] 6.8 in `docs/design/DESIGN-PRINCIPLES.md`) is `T.CHECK.fill = "accent"` with `markColor = "void"`. |
 | `T.Tooltip(frame)` | A tooltip-like frame (tooltips, menus, small panels): the panel at alpha 0.94 with a soft shadow, the game's `NineSlice` faded. |
 | `T.ScrollBar(bar)` | The game's `MinimalScrollBar` and `WowTrimScrollBar`: the parts in `T.SCROLL_ART` and the thumb's art faded, and the one scroll thumb (`T.SCROLL`) drawn down the thumb's middle: Vanguard's own `text2` texture `thumb` (4) units wide at the `rest` (0.5) alpha, `lit` (1) while the mouse is over the thumb or drags it (hooked, never the thumb's own scripts; kept in the `vgThumb` side table, never a field on the game's frame). The Back and Forward arrows fade to alpha 0 and stop taking the mouse. A bar without a thumb is left alone. |
 | `T.FontObjects(map)` | The theme font, at `T.ScaledSize(size)`, on the game's font objects in `{ Name = { size, bold } }`, re-applied by `T.Refresh` (font and Text size changes). Used for the tooltip and quest tracker fonts. |
@@ -295,6 +322,9 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | Aura and cooldown sweeps | the dark sweep, no edge line and no end flash (bling) | the aura's duration | the aura's duration | - |
 | Micro menu buttons | the game's own alert flash (kept on the strip) | the game's | the game's | - (the game's) |
 | Stance and pet bars | the game's attack flash and auto-cast mark (kept) | the game's | the game's | - (the game's) |
+| Chat side buttons (voice channel, scroll to bottom, Quick Join) | the game's own alert flash and toast animations (kept over the tile; the round art under them is at alpha 0, and Quick Join's queue art, which its toast animation would raise back to full alpha, is hidden) | the game's | the game's | - (the game's) |
+| Battle.net and time-played toasts | the game's slide-in, glow flare and fade-out (kept; the backdrop under them is at alpha 0) | the game's | the game's | - (the game's) |
+| Chat bubbles (Modules/ChatBubbles.lua) | the engine's own appearance and fade of a bubble (kept; the bubble art under the panel is at alpha 0, the panel itself has no animation) | the engine's | the engine's | - (the engine's) |
 
 Sparks (cast bars, power ticks, the swing timer) move with what they show; they are not fades and Reduce motion leaves them.
 

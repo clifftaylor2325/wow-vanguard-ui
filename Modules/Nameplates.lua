@@ -4,7 +4,10 @@
 -- a cast bar under it, an accent border and glow on your target, a faint wash on
 -- the plate under the mouse, a player's buffs right of the bar (defensives and
 -- important ones, and yours on friends), and a gold "!" by the name of units
--- your quests need (when the client says so plainly).
+-- your quests need (when the client says so plainly). The game's personal
+-- resource display (its health and power bars under your character, with its
+-- nameplateShowSelf setting on) takes the same look: the theme's bar texture on
+-- flat panels, texts in the plate font; its colours, values and place stay the game's.
 --
 -- Vanguard draws its own frame on each nameplate the client gives it and
 -- hides the default one; the client still places, sizes and stacks the
@@ -335,6 +338,60 @@ local function hideDefault(plate)
   end
 end
 
+-- Personal resource display ----------------------------------------------------------------
+
+-- The bars of the game's personal resource display (PersonalResourceDisplayFrame, the health
+-- and power bars under your character with the game's nameplateShowSelf setting on): the keys
+-- from the display to each bar.
+NP.PRD_BARS = { { "HealthBarsContainer", "healthBar" }, { "PowerBar" }, { "AlternatePowerBar" } }
+-- The value texts on each of those bars (the game's TextStatusBar template).
+NP.PRD_TEXTS = { "TextString", "LeftText", "RightText" }
+
+-- A bar's content textures, kept as its art fades: the fill, and the heal, absorb and cost
+-- predictions the game draws over it (everything but its background layer, which is the art).
+local function barContent(bar)
+  local keep = {}
+  for _, region in ipairs({ bar:GetRegions() }) do
+    if region.GetDrawLayer and region:GetDrawLayer() ~= "BACKGROUND" then keep[region] = true end
+  end
+  return keep
+end
+
+-- One of the display's bars in the plate look: its backdrop art faded, the theme's bar texture
+-- on a flat inset panel, its value texts in the plate font. The game keeps its colour, values and size.
+local function dressResourceBar(bar)
+  T.FadeRegions(bar, barContent(bar))
+  T.HudPanel(T.StyleBar(bar), { inset = true })
+  for _, key in ipairs(NP.PRD_TEXTS) do
+    if type(bar[key]) == "table" and bar[key].SetFont then T.Text(bar[key], "world", false) end
+  end
+end
+
+-- One of the display's bars by its keys, or nil where this client's display lacks it.
+local function resourceBar(frame, keys)
+  local bar = frame[keys[1]]
+  if keys[2] and type(bar) == "table" then bar = bar[keys[2]] end
+  if type(bar) == "table" and bar.SetStatusBarTexture then return bar end
+  return nil
+end
+
+-- The game's personal resource display in the plate look: each bar this client has. Safe to
+-- run again and cheap, so it runs on every show in case a client resets a bar's art between fights.
+function NP.SkinPersonalResources(frame)
+  for _, keys in ipairs(NP.PRD_BARS) do
+    local bar = resourceBar(frame, keys)
+    if bar then dressResourceBar(bar) end
+  end
+end
+
+-- Dresses the game's personal resource display (where this client has it) now and on every show.
+local function watchPersonalResources()
+  local frame = _G.PersonalResourceDisplayFrame
+  if type(frame) ~= "table" or not frame.HookScript then return end
+  NP.SkinPersonalResources(frame)
+  frame:HookScript("OnShow", ns.Guard("show personal resources", NP.SkinPersonalResources))
+end
+
 -- Updating ---------------------------------------------------------------------------------
 
 -- The level left of the name, where it's switched on.
@@ -524,11 +581,13 @@ local EVENTS = {
   QUEST_LOG_UPDATE = function() each(NP.PaintQuest) end,
 }
 
--- Module entry point (Core/Modules.lua): builds the plate frames ahead, out of combat.
+-- Module entry point (Core/Modules.lua): builds the plate frames ahead, out of combat, and
+-- dresses the game's personal resource display.
 function NP.Enable(settings)
   NP.settings = settings
   ns.OutOfCombat(NP.FillPool)
   NP.EnemyPlatesOnce()
+  watchPersonalResources()
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
   T.OnChanged(function() each(repaintTarget) end)
 end

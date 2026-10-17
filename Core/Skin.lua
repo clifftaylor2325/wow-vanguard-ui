@@ -34,6 +34,7 @@ local S = {
   Font = T.Font,
   OnChanged = T.OnChanged,
   Tab = T.Tab,
+  CheckBox = T.CheckBox,
   Tooltip = T.Tooltip,
   ScrollBar = T.ScrollBar,
   FontObjects = T.FontObjects,

@@ -23,6 +23,8 @@ globals = {
   "GetMinimapShape",
   -- Addon compartment click handler named in the TOC (Core/Options.lua)
   "Vanguard_OnAddonCompartmentClick",
+  -- The engine's floating damage font path, set to the theme font at load (Modules/Merchant.lua)
+  "DAMAGE_TEXT_FONT",
   SlashCmdList = { other_fields = true },
 }
 
@@ -49,6 +51,8 @@ read_globals = {
   "CHAT_FRAME_TEXTURES",
   -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.
   "IsInInstance", "SecureCmdOptionParse", "SendChatMessage",
+  -- R1.6 Chat bubbles (Modules/ChatBubbles.lua): the engine's list of the bubbles it is showing.
+  "C_ChatBubbles",
   -- P3.4 Keybind mode: binding a key to a button's command and saving it in the binding set in use.
   "SetBinding", "SaveBindings", "GetCurrentBindingSet",
   -- P3.5 Shared media: the bundled libraries' loader (Libs/LibStub).
@@ -96,4 +100,6 @@ read_globals = {
   "ProfessionsFrame",
   -- Minimap: the game's world map toggle. Healing: the client's readable class names, for the buff list.
   "ToggleWorldMap", "ToggleCalendar", "LOCALIZED_CLASS_NAMES_MALE",
+  -- R1.4 Waypoints: the game's floating waypoint pin (Blizzard_QuestNavigation).
+  "SuperTrackedFrame",
 }

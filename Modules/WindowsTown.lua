@@ -1,11 +1,12 @@
--- Game windows, town group: Stable, trainer, side dress-up, stack split, coin pickup, separate bags, loot dialogs, icon pickers, stopwatch, in the
--- Vanguard look. Filled by stream S2 of docs/handoff/RESKIN-PLAN.md; registers with
--- GW.Add (Modules/Windows.lua) at file scope, so the windows are watched at login.
+-- Game windows, town group: Stable, trainer, side dress-up, stack split, coin pickup, separate bags, loot dialogs, icon pickers, stopwatch,
+-- and the inside of the merchant window (its rows, buttons and money lines), in the Vanguard look. Filled by stream S2 of
+-- docs/handoff/RESKIN-PLAN.md; registers with GW.Add (Modules/Windows.lua) at file scope, so the windows are watched at login.
 
 local ADDON, ns = ...
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgBagItems = ns.FrameState("vgBagItems")
+local vgMerchant = ns.FrameState("vgMerchant")
 local vgPlayers = ns.FrameState("vgPlayers")
 
 local T = ns.Theme
@@ -248,6 +249,108 @@ function GW.SkinBagWindow(frame)
 end
 
 GW.Add("town", "framed", { "ContainerFrame1", "ContainerFrame2", "ContainerFrame3", "ContainerFrame4", "ContainerFrame5", "ContainerFrame6", "ContainerFrame7" }, GW.SkinBagWindow)
+
+-- Merchant ------------------------------------------------------------------------------------------
+
+-- The merchant window's frame and tabs are the windows and tabs groups' (Modules/Windows.lua, Modules/WindowsTabs.lua);
+-- this group dresses what it holds, and leaves every button's own script alone (buying, selling and repairing are the
+-- game's clicks; constraint S).
+
+-- How many rows a page of the merchant window has (MerchantItem1-12, MerchantItemTemplate: a slot plate, a name plate,
+-- the name, an item button, a price and a token price); the buyback slot under them has the same parts.
+GW.MERCHANT_ITEMS = 12
+-- The repair, repair-all, guild repair and sell-junk buttons: square tiles with an icon (their slot plate faded).
+local MERCHANT_TILES = { "MerchantRepairItemButton", "MerchantRepairAllButton", "MerchantGuildBankRepairButton", "MerchantSellAllJunkButton" }
+-- The page arrows (their arrow is their normal and disabled texture; a PREV or NEXT caption beside it).
+local MERCHANT_ARROWS = { "MerchantPrevPageButton", "MerchantNextPageButton" }
+-- The gold-edged plates behind the money line and the token line, and the insets under them.
+local MERCHANT_PLATES = { "MerchantMoneyBg", "MerchantExtraCurrencyBg" }
+local MERCHANT_INSETS = { "MerchantMoneyInset", "MerchantExtraCurrencyInset" }
+-- How many denominations a token price can show (SmallAlternateCurrencyFrameTemplate's Item1-3).
+local ALT_CURRENCIES = 3
+
+-- The font strings a frame draws itself (a page arrow's caption) in the theme font, their colour kept.
+local function regionFonts(frame, role)
+  for _, region in ipairs({ frame:GetRegions() }) do
+    if region.GetObjectType and region:GetObjectType() == "FontString" then T.Text(region, role, false) end
+  end
+end
+
+-- A row's token price (named frame .. Item1-3): each denomination's figure in the theme font, its icon kept.
+local function skinAltCurrency(name)
+  for i = 1, ALT_CURRENCIES do
+    local button = _G[name .. "Item" .. i]
+    if type(button) == "table" then keyFonts(button, { "Text" }, "number") end
+  end
+end
+
+-- One merchant row, or the buyback slot, by name: its slot and name plates faded, its item button in the bags' item
+-- look (a thin border in the item's quality colour), its name in the theme font, its price and token price too.
+local function skinMerchantRow(name)
+  local row, bags = _G[name], ns.GetModule("Bags")
+  if type(row) ~= "table" then return end
+  fadeWhole(row, { "SlotTexture" })
+  GW.FadeNamed({ name .. "NameFrame" })
+  keyFonts(row, { "Name" }, "small")
+  if bags and bags.SkinItem then bags.SkinItem(row.ItemButton) end
+  GW.SkinMoney(_G[name .. "MoneyFrame"])
+  skinAltCurrency(name .. "AltCurrencyFrame")
+end
+
+-- The repair, guild repair and sell-junk tiles as theme buttons that keep their icon (one this client lacks is skipped).
+local function skinMerchantTiles()
+  for _, name in ipairs(MERCHANT_TILES) do
+    local button = _G[name]
+    if type(button) == "table" and button.GetRegions then
+      T.Button(button)
+      showTexture(button.Icon)
+    end
+  end
+end
+
+-- A page arrow as a theme button that keeps its arrow, its caption in the theme font.
+local function skinPageArrow(button)
+  if type(button) ~= "table" or not button.GetRegions then return end
+  glyphButton(button)
+  regionFonts(button, "label")
+end
+
+-- The window's foot: the page arrows and page count, the money line in the theme font, the gold-edged plates
+-- faded and the insets under them dark panels.
+local function skinMerchantFooter()
+  for _, name in ipairs(MERCHANT_ARROWS) do skinPageArrow(_G[name]) end
+  namedFonts({ "MerchantPageText" }, "label")
+  GW.SkinMoney(_G.MerchantMoneyFrame)
+  GW.FadeNamed(MERCHANT_PLATES)
+  for _, name in ipairs(MERCHANT_INSETS) do insetPanel(_G[name]) end
+end
+
+-- The inside of the merchant window: every row of the page, the buyback slot, the tiles, the filter button and the
+-- foot. Safe to run again (it runs on every show and each time the game fills a page).
+function GW.SkinMerchant()
+  local frame = _G.MerchantFrame
+  if type(frame) ~= "table" then return end
+  for i = 1, GW.MERCHANT_ITEMS do skinMerchantRow("MerchantItem" .. i) end
+  skinMerchantRow("MerchantBuyBackItem")
+  skinMerchantTiles()
+  keyButtons(frame, { "FilterDropdown" })
+  skinMerchantFooter()
+end
+
+-- At login, after the Windows module enabled, with the town group on: the merchant window's inside now, on every
+-- show, and after the game fills a page of rows (MerchantFrame_UpdateMerchantInfo, Blizzard_UIPanels_Game
+-- MerchantFrame.lua, which MerchantFrame_Update calls for the merchant tab), so paging keeps the look. Once.
+local function watchMerchant()
+  local frame = _G.MerchantFrame
+  if not (GW.settings and GW.settings.town) or type(frame) ~= "table" or not frame.HookScript or vgMerchant[frame] then return end
+  vgMerchant[frame] = true
+  GW.SkinMerchant()
+  frame:HookScript("OnShow", ns.Guard("show merchant", GW.SkinMerchant))
+  if type(hooksecurefunc) ~= "function" or type(_G.MerchantFrame_UpdateMerchantInfo) ~= "function" then return end
+  hooksecurefunc("MerchantFrame_UpdateMerchantInfo", ns.Guard("hook MerchantFrame_UpdateMerchantInfo", GW.SkinMerchant))
+end
+
+ns.On("PLAYER_LOGIN", watchMerchant)
 
 -- Loot dialogs --------------------------------------------------------------------------------------
 
