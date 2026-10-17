@@ -301,6 +301,29 @@ function GW.SkinCoinBox(money)
   GW.InsetPanel(money.Border)
 end
 
+-- A money display's three denominations (MoneyDisplayFrameTemplate, Blizzard_MoneyFrame: a frame each, its figure in
+-- Text beside its icon; no GoldButton keys, so GW.SkinMoney skips it).
+GW.MONEY_DISPLAYS = { "GoldDisplay", "SilverDisplay", "CopperDisplay" }
+
+-- One denomination's figure in the number role, its colour left as the game sets it; a part that is not a frame is skipped.
+local function skinDenomination(display)
+  local fs = type(display) == "table" and display.Text
+  if type(fs) == "table" and fs.SetFont then T.Text(fs, "number", false) end
+end
+
+-- A money display (the auction house's: the window's money line, the sell form's deposit, the buy dialog's price) in the
+-- theme font: each figure in the number role, its icon kept, its colour the game's (grey while disabled). The game puts
+-- its own font back whenever it sets one (SetFontObject, SetFontAndIconDisabled), so those are followed. A frame
+-- without the parts is skipped.
+function GW.SkinMoneyDisplay(frame)
+  if type(frame) ~= "table" then return end
+  -- Puts the theme font on each figure.
+  local function skin() GW.EachKey(frame, GW.MONEY_DISPLAYS, skinDenomination) end
+  skin()
+  GW.HookAfter(frame, "SetFontObject", skin)
+  GW.HookAfter(frame, "SetFontAndIconDisabled", skin)
+end
+
 -- A breath or fatigue bar (MirrorTimerTemplate): the window skin hugging the bar (no room around it), its
 -- StatusBar in the theme's bar texture and its caption in the small bar text.
 function GW.SkinTimer(frame)
@@ -539,6 +562,12 @@ function GW.EachKey(frame, keys, fn)
   for _, key in ipairs(keys) do fn(frame[key]) end
 end
 
+-- Runs fn on the part reached from frame by each dotted path (GW.Part); fn skips what is not a frame.
+function GW.EachPart(frame, paths, fn)
+  if type(frame) ~= "table" then return end
+  for _, path in ipairs(paths) do fn(GW.Part(frame, path)) end
+end
+
 -- The parts of frame under those keys as a set, for T.FadeRegions' keep argument (art the game animates or the
 -- window shows as content).
 function GW.KeepKeys(frame, keys)
@@ -576,22 +605,25 @@ function GW.SkinIconDropdown(dropdown)
   GW.ShowTexture(dropdown.Icon)
 end
 
--- The three denominations of a money input line (MoneyInputFrameTemplate: edit boxes under these keys).
+-- The three denominations of a money input line (MoneyInputFrameTemplate: edit boxes under these keys, each with its
+-- coin picture under `texture`), and of a large one (LargeMoneyInputFrameTemplate, the auction house's sell form).
 GW.MONEY_INPUTS = { "gold", "silver", "copper" }
+GW.LARGE_MONEY_INPUTS = { "GoldBox", "SilverBox", "CopperBox" }
 
--- One money input box as a theme edit box, once, with its coin picture shown again (the theme fades the box's
--- art, which the coin is part of; the game dims the coin itself for a long figure).
-local function skinMoneyBox(box)
+-- One money input box as a theme edit box, once, with its coin picture (the part under key `coin`) shown again (the
+-- theme fades the box's art, which the coin is part of; the game dims the coin itself for a long figure).
+local function skinMoneyBox(box, coin)
   if type(box) ~= "table" or not box.SetText or vgMoneyBox[box] then return end
   vgMoneyBox[box] = true
   T.EditBox(box)
-  GW.ShowTexture(box.texture)
+  GW.ShowTexture(box[coin])
 end
 
--- A money input line (the trade window's offer, the mail's send money): its three boxes as theme edit boxes.
-function GW.SkinMoneyInput(line)
+-- A money input line (the trade window's offer, the mail's send money): its three boxes as theme edit boxes. A large
+-- line gives its keys (GW.LARGE_MONEY_INPUTS) and the key of its coin ("Icon").
+function GW.SkinMoneyInput(line, keys, coin)
   if type(line) ~= "table" then return end
-  for _, key in ipairs(GW.MONEY_INPUTS) do skinMoneyBox(line[key]) end
+  for _, key in ipairs(keys or GW.MONEY_INPUTS) do skinMoneyBox(line[key], coin or "texture") end
 end
 
 -- Skins one window and then its inside (GW.INSIDES, by the window's name), for the windows the sections below dress.
@@ -1447,6 +1479,202 @@ local function keepTextReadable()
     if type(f) == "table" and f.HookScript then f:HookScript("OnShow", function() GW.LightQuestText() GW.LightGossip() end) end
   end
   if type(_G.ItemTextFrame) == "table" and _G.ItemTextFrame.HookScript then _G.ItemTextFrame:HookScript("OnEvent", GW.LightItemText) end
+end
+
+-- The auction house's own panels --------------------------------------------------------------
+-- The game's Buy, Sell and Auctions pages (Blizzard_AuctionHouseUI). Vanguard's Auction Helper page sits over the
+-- window on its own two tabs, but these pages show on the game's tabs whether or not it is on, so they are dressed
+-- either way. The wow token page is left as the game draws it.
+
+-- Per-frame state kept off the game's frames: the category rows whose leave hook is in.
+local vgAuctionRow = ns.FrameState("vgAuctionRow")
+
+-- Parts of the window by dotted path: the result lists (each with sort buttons, lines and a refresh frame), the sell
+-- and buy forms (laid out as labelled rows), the item headers, the push buttons, the bid boxes and the Auctions and
+-- Bids sub tabs.
+GW.AH_LISTS = {
+  "BrowseResultsFrame.ItemList", "ItemSellList", "CommoditiesSellList", "CommoditiesBuyFrame.ItemList", "ItemBuyFrame.ItemList",
+  "AuctionsFrame.AllAuctionsList", "AuctionsFrame.BidsList", "AuctionsFrame.ItemList", "AuctionsFrame.CommoditiesList",
+}
+GW.AH_FORMS = { "ItemSellFrame", "CommoditiesSellFrame", "CommoditiesBuyFrame.BuyDisplay" }
+GW.AH_DISPLAYS = { "ItemBuyFrame.ItemDisplay", "AuctionsFrame.ItemDisplay" }
+GW.AH_BUTTONS = {
+  "ItemBuyFrame.BackButton", "ItemBuyFrame.BuyoutFrame.BuyoutButton", "ItemBuyFrame.BidFrame.BidButton", "CommoditiesBuyFrame.BackButton",
+  "AuctionsFrame.CancelAuctionButton", "AuctionsFrame.BuyoutFrame.BuyoutButton", "AuctionsFrame.BidFrame.BidButton",
+}
+GW.AH_BID_BOXES = { "ItemBuyFrame.BidFrame.BidAmount", "AuctionsFrame.BidFrame.BidAmount" }
+GW.AH_TABS = { "AuctionsFrame.AuctionsTab", "AuctionsFrame.BidsTab" }
+-- A form's labelled rows (AuctionHouseSellFrameAlignedControlTemplate) and push buttons, by key; the buy dialog's buttons.
+GW.AH_ROWS = { "QuantityInput", "PriceInput", "SecondaryPriceInput", "Duration", "Deposit", "TotalPrice", "UnitPrice" }
+GW.AH_FORM_BUTTONS = { "PostButton", "BuyButton" }
+GW.AH_DIALOG_BUTTONS = { "BuyNowButton", "CancelButton", "OkayButton" }
+
+-- A row's lit look following the highlight the game shows on its selected line (SelectedHighlight): now, and each time
+-- the game shows or hides it (a list sets it as it lays its lines out). The game also sets the highlight's alpha after
+-- showing it (its list's highlight callback), so the faded highlight is faded again whenever that alpha is not 0.
+local function followSelected(row)
+  local mark = row.SelectedHighlight
+  GW.FollowMark(row, mark)
+  for _, name in ipairs({ "SetShown", "Show", "Hide" }) do
+    GW.HookAfter(mark, name, function() GW.FollowMark(row, mark) end)
+  end
+  GW.HookAfter(mark, "SetAlpha", function(m, alpha) if alpha ~= 0 then m:SetAlpha(0) end end)
+end
+
+-- One result line (AuctionHouseItemListLineTemplate) or summary line as a selectable theme row: the stripe and the
+-- game's hover and selected art faded, the summary's icon kept, its name in the text colour.
+local function skinListLine(row)
+  if type(row) ~= "table" then return end
+  GW.DressRow(row, { "Icon" })
+  GW.SkinText(row.Text, "label", "text")
+  followSelected(row)
+end
+
+-- The sort buttons of a list's header row (the table builder makes them as the list lays out): theme buttons that keep
+-- their sort arrow.
+local function skinHeaders(list)
+  local row = list.HeaderContainer
+  if type(row) ~= "table" or not row.GetChildren then return end
+  for _, header in ipairs({ row:GetChildren() }) do GW.SkinDropdown(header) end
+end
+
+-- A result list (AuctionHouseItemListTemplate): its dark tile and bronze frame faded for an inset, its empty-state,
+-- searching and count texts in the theme, the refresh button on its tile, its lines as theme rows and its header
+-- buttons, again whenever the game lays the columns out.
+local function skinItemList(list)
+  if type(list) ~= "table" or not list.GetRegions then return end
+  GW.InsetPanel(list)
+  GW.SkinText(list.ResultsText, "label", "text")
+  GW.SkinText(GW.Part(list, "LoadingSpinner.SearchingText"), "heading", "text")
+  GW.SkinText(GW.Part(list, "RefreshFrame.TotalQuantity"), "small", "text2")
+  GW.SkinIconDropdown(GW.Part(list, "RefreshFrame.RefreshButton"))
+  GW.WatchRows(list.ScrollBox, skinListLine)
+  skinHeaders(list)
+  GW.HookAfter(list, "UpdateTableBuilderLayout", skinHeaders)
+end
+
+-- The summary list's lines (Auctions and Bids): the same rows, over a dark tile.
+local function skinSummaryList(list)
+  if type(list) ~= "table" or not list.GetRegions then return end
+  GW.InsetPanel(list)
+  GW.WatchRows(list.ScrollBox, skinListLine)
+end
+
+-- A category row's text in the text colour (the game paints a category gold, and puts it back when the mouse leaves).
+local function lightCategory(button)
+  if type(button.Text) == "table" and button.Text.SetTextColor then T.Color(button.Text, "text") end
+end
+
+-- One category row (AuctionCategoryButtonTemplate) as a selectable theme row: its art faded, the lit look following
+-- the game's SelectedTexture, its text light now and when the mouse leaves. The game sets a row up again as the
+-- selection changes (AuctionHouseFilterButton_SetUp), which puts its art and text back.
+local function skinCategoryButton(button)
+  if type(button) ~= "table" or type(button.HookScript) ~= "function" then return end
+  GW.DressRow(button)
+  GW.FollowMark(button, button.SelectedTexture)
+  lightCategory(button)
+  if vgAuctionRow[button] then return end
+  vgAuctionRow[button] = true
+  button:HookScript("OnLeave", ns.Guard("category leave", lightCategory))
+end
+
+-- Whether the category set-up hook is in (it is a global, hooked once).
+local categoriesHooked = false
+
+-- The category list (AuctionHouseCategoriesListTemplate): the dark tile an inset, its rows as the list acquires them
+-- and as the game sets each up.
+local function skinCategories(list)
+  if type(list) ~= "table" or not list.GetRegions then return end
+  GW.InsetPanel(list)
+  GW.WatchRows(list.ScrollBox, skinCategoryButton)
+  if categoriesHooked or type(_G.AuctionHouseFilterButton_SetUp) ~= "function" then return end
+  categoriesHooked = true
+  hooksecurefunc("AuctionHouseFilterButton_SetUp", ns.Guard("hook filter set-up", skinCategoryButton))
+end
+
+-- The search bar (AuctionHouseSearchBarTemplate): the search box with its magnifier, the Search button, the filter
+-- dropdown (its red clear cross is a button of its own, left alone) and the favourites button, a square button that
+-- keeps its star.
+local function skinSearchBar(bar)
+  if type(bar) ~= "table" then return end
+  GW.SkinSearch(bar.SearchBox)
+  GW.SkinButton(bar.SearchButton)
+  GW.SkinDropdown(bar.FilterButton)
+  GW.SkinIconDropdown(bar.FavoritesSearchButton)
+end
+
+-- The money line at the window's foot: the well behind it an inset, the gold-edged plate faded, the line in the theme font.
+local function skinMoneyBar(frame)
+  GW.InsetPanel(frame.MoneyFrameInset)
+  GW.FadeArt(frame.MoneyFrameBorder)
+  GW.SkinMoneyDisplay(GW.Part(frame, "MoneyFrameBorder.MoneyFrame"))
+end
+
+-- One labelled row of a form: its label in the text colour (gold in the game) and whichever control it holds: a number
+-- box with its Max button, a large money input, the duration dropdown or a money display.
+local function skinFormRow(row)
+  if type(row) ~= "table" then return end
+  GW.SkinText(row.Label, "label", "text")
+  GW.SkinText(row.LabelTitle, "label", "text")
+  GW.SkinEditBox(row.InputBox)
+  GW.SkinButton(row.MaxButton)
+  GW.SkinMoneyInput(row.MoneyInputFrame, GW.LARGE_MONEY_INPUTS, "Icon")
+  GW.SkinDropdown(row.Dropdown)
+  GW.SkinMoneyDisplay(row.MoneyDisplayFrame)
+end
+
+-- A sell form or the commodities buy display (a tile with a header plate, an item display, labelled rows and a push
+-- button): the tile an inset, the plate faded and its label a section head, the rows, the button, the buyout check
+-- box with its label, and the item display on an inset.
+local function skinAuctionForm(form)
+  if type(form) ~= "table" or not form.GetRegions then return end
+  GW.InsetPanel(form)
+  GW.SkinSection(form.CreateAuctionLabel)
+  GW.EachKey(form, GW.AH_ROWS, skinFormRow)
+  GW.EachKey(form, GW.AH_FORM_BUTTONS, GW.SkinButton)
+  GW.SkinCheck(form.BuyoutModeCheckButton)
+  GW.SkinText(GW.Part(form, "BuyoutModeCheckButton.Text"), "label", "text")
+  GW.InsetPanel(form.ItemDisplay)
+end
+
+-- An Auctions or Bids sub tab (AuctionHouseAuctionsFrameTabTemplate) as a theme tab; anything that is not a frame is skipped.
+local function skinSubTab(tab)
+  if type(tab) == "table" and tab.CreateTexture then T.Tab(tab) end
+end
+
+-- The confirm-purchase dialog: its dark border faded, a flat panel with a shadow, its three buttons and price line.
+local function skinBuyDialog(dialog)
+  if type(dialog) ~= "table" or not dialog.GetRegions then return end
+  GW.FadeFrame(dialog.Border)
+  T.Panel(dialog, { shadow = true, alpha = T.ALPHA.dialog })
+  GW.EachKey(dialog, GW.AH_DIALOG_BUTTONS, GW.SkinButton)
+  GW.SkinMoneyDisplay(dialog.PriceFrame)
+end
+
+-- The window's browsing side: the money line, the search bar, the categories, every list and the summary list.
+local function skinAuctionBrowse(frame)
+  skinMoneyBar(frame)
+  skinSearchBar(frame.SearchBar)
+  skinCategories(frame.CategoriesList)
+  GW.EachPart(frame, GW.AH_LISTS, skinItemList)
+  skinSummaryList(GW.Part(frame, "AuctionsFrame.SummaryList"))
+end
+
+-- The window's forms and buttons: the sell and buy forms, the item headers, the push buttons, the bid boxes, the sub
+-- tabs and the buy dialog.
+local function skinAuctionForms(frame)
+  GW.EachPart(frame, GW.AH_FORMS, skinAuctionForm)
+  GW.EachPart(frame, GW.AH_DISPLAYS, GW.InsetPanel)
+  GW.EachPart(frame, GW.AH_BUTTONS, GW.SkinButton)
+  GW.EachPart(frame, GW.AH_BID_BOXES, GW.SkinMoneyInput)
+  GW.EachPart(frame, GW.AH_TABS, skinSubTab)
+  skinBuyDialog(frame.BuyDialog)
+end
+
+-- The auction house window's insides (its main tabs are dressed with the tab row, GW.DressTabsOf).
+GW.INSIDES.AuctionHouseFrame = function(frame)
+  skinAuctionBrowse(frame)
+  skinAuctionForms(frame)
 end
 
 -- Hooking -------------------------------------------------------------------------------------

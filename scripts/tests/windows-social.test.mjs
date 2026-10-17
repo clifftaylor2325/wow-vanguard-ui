@@ -1113,6 +1113,36 @@ it("social toasts: the switch off leaves them the game's; a toast missing its pa
   expect([windowErrors(bare), bare.eval("return #ns.errors"), bare.eval(`${PAINTED} return painted(BNToastFrame)`)], "a toast with no lines, icon, X or tooltip: a panel, no errors").toEqual(["none", 0, true]);
 });
 
+// TEST-ONLY voice chat prompts: toasts with their icon under Icon, one or two lines, and the offer's Join button.
+const VOICE_ENV = TOAST_ENV + `
+  local offer = __toast("VoiceChatPromptActivateChannel")
+  offer.Icon = offer:CreateTexture(nil, "BORDER") offer.Icon:SetTexture("TEST-ONLY-ICON")
+  offer.Text = offer:CreateFontString(nil, "BORDER") offer.Text:SetFont("TEST-ONLY-FONT", 12, "")
+  offer.AcceptButton = CreateFrame("Button", nil, offer)
+  local note = __toast("VoiceChatChannelActivatedNotification")
+  note.Icon = note:CreateTexture(nil, "BORDER") note.Icon:SetTexture("TEST-ONLY-ICON")
+  note.Text = note:CreateFontString(nil, "BORDER") note.Text:SetFont("TEST-ONLY-FONT", 12, "")
+  note.Text2 = note:CreateFontString(nil, "BORDER") note.Text2:SetFont("TEST-ONLY-FONT", 12, "") note.Text2:SetText("|cff40bf40Party|r voice is on")
+`;
+
+it("voice chat prompts: flat tooltip panels, the icon kept, lines in theme roles with the game's colour codes, the Join button themed", () => {
+  const addon = loggedIn(VOICE_ENV);
+  addon.eval("VoiceChatPromptActivateChannel:Show() VoiceChatChannelActivatedNotification:Show()");
+  expect(addon.eval(`local o, n = VoiceChatPromptActivateChannel, VoiceChatChannelActivatedNotification
+    local function art(f) local a = {} for _, r in ipairs({ f:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then a[#a + 1] = r:GetAlpha() end end return a end
+    return { art(o), art(n), o.Icon:GetAlpha(), n.Icon:GetAlpha(), select(2, o.Text:GetFont()) == ns.Theme.RoleSize("label"), select(2, n.Text2:GetFont()) == ns.Theme.RoleSize("small"),
+      n.Text2:GetText(), select("#", o.AcceptButton:GetRegions()) > 0, o.CloseButton.__points.TOPRIGHT ~= nil }`),
+    "both toasts' art faded, their icons kept, the offer's line at label size, the note's second line at small size with its colour code, the Join button themed, the X where it was")
+    .toEqual([[0, 0, 0, 0], [0, 0, 0, 0], 1, 1, true, true, "|cff40bf40Party|r voice is on", true, true]);
+  expect(addon.eval(`local c = ns.Theme.PaintedCount() VoiceChatPromptActivateChannel:Hide() VoiceChatPromptActivateChannel:Show() return ns.Theme.PaintedCount() == c`), "showing again paints nothing new").toBe(true);
+  const off = loggedIn(VOICE_ENV, OFF);
+  off.eval("VoiceChatPromptActivateChannel:Show()");
+  expect(off.eval("return { VoiceChatPromptActivateChannel.Icon:GetAlpha(), ns.FrameState('vgWindow')[VoiceChatPromptActivateChannel] == nil }"), "switched off: not watched").toEqual([1, true]);
+  const bare = loggedIn(WINDOWS_ENV + 'CreateFrame("Frame", "VoiceChatPromptActivateChannel", UIParent):Hide()');
+  bare.eval("VoiceChatPromptActivateChannel:Show()");
+  expect([windowErrors(bare), bare.eval("return #ns.errors")], "a prompt with no icon, lines or Join button: no errors").toEqual(["none", 0]);
+});
+
 // Guild dialogs and friends dialogs, R2.27 parts ----------------------------------------------------------
 
 // Small builders for the dialogs' parts: a gold label, a flat button, a dropdown, a check box, a pool the game enumerates, a ScrollBox.
@@ -1535,4 +1565,159 @@ it("social window lists: with the group off they stay the game's; lists and side
   bare.eval("SocialUIFrame:Show()");
   expect([windowErrors(odd), odd.eval("return #ns.errors"), windowErrors(groups), groups.eval("return #ns.errors"), windowErrors(bare), bare.eval("return #ns.errors")], "parts missing or not frames")
     .toEqual(["none", 0, "none", 0, "none", 0]);
+});
+
+// Guild control window (R3.1) -----------------------------------------------------------------------------
+
+// GuildControlUI as Blizzard_GuildControlUI builds it: a dialog frame (rock header, a bar under it, a close button, a title the game
+// names, the page dropdown) and its four pages. The rank rows, bank tabs and Discord prompts are made by the game's page updates (global
+// functions, which the window stores as its rankUpdate), here as small stand-ins that make a row the first time.
+const CONTROL_PARTS = `
+  GUILDCONTROL_SELECTRANK, GOLD_PER_DAY, COSTS_LABEL, DISCORD_SELECT_SERVER, DISCORD_SELECT_CHANNEL = "Select rank:", "Gold per day", "Costs:", "Server:", "Channel:"
+  GUILD_BANK = "Guild Bank"
+  function __fs(f) for _, r in ipairs({ f:GetRegions() }) do if r.GetText then return r end end end
+  local f = CreateFrame("Frame", "GuildControlUI", UIParent) f:Hide() __art(f)
+  f.NineSlice = CreateFrame("Frame", nil, f) f.NineSlice:CreateTexture(nil, "BORDER")
+  f.CloseButton = CreateFrame("Button", "GuildControlUICloseButton", f)
+  GuildControlUITitle = __gold(f, nil, "Guild Control")
+  GuildControlUIHbar = CreateFrame("Frame", "GuildControlUIHbar", f) __art(GuildControlUIHbar)
+  __drop(f, "dropdown")
+  local function page(key, name) local p = CreateFrame("Frame", name, f) p:Hide() f[key] = p return p end
+  local order = page("orderFrame", "GuildControlUIRankOrderFrame") __btn(order, "New rank", "newButton") __btn(order, "Duplicate", "dupButton")
+  function __rankRow(i)
+    local r = CreateFrame("Frame", "GuildControlUIRankOrderFrameRank" .. i, order)
+    r.nameBox = CreateFrame("EditBox", nil, r) r.nameBox.Art = __art(r.nameBox)
+    r.rankLabel = __gold(r, "rankLabel", "Rank " .. i .. ":")
+    for _, k in ipairs({ "upButton", "downButton", "deleteButton" }) do __btn(r, nil, k) r[k].icon = __art(r[k]) end
+    return r
+  end
+  __rankRow(1)
+  __ranks = 2
+  function GuildControlUI_RankOrder_Update(self) for i = 2, __ranks do if not _G["GuildControlUIRankOrderFrameRank" .. i] then __rankRow(i) end end end
+  local perm = page("rankPermFrame", "GuildControlUIRankSettingsFrame")
+  __drop(perm, "dropdown") __gold(perm.dropdown, nil, GUILDCONTROL_SELECTRANK)
+  for i = 1, 3 do __check(perm) end
+  perm.goldBox = CreateFrame("EditBox", nil, perm) perm.goldBox.Art = __art(perm.goldBox) __gold(perm.goldBox, nil, GOLD_PER_DAY)
+  __gold(perm, "OfficerPermissions", "Access channels|nRemove from voice")
+  GuildControlUIRankSettingsFrameBankLabel = __gold(perm, nil, "Guild Bank")
+  function GuildControlUI_RankPermissions_Update(self) if not perm.extra then perm.extra = __check(perm) end end
+  local bank = page("bankTabFrame", "GuildControlUIRankBankFrame")
+  __drop(bank, "dropdown") __gold(bank.dropdown, nil, GUILDCONTROL_SELECTRANK)
+  bank.inset = __well(nil, bank)
+  function __bankTab(i)
+    local t = CreateFrame("Frame", "GuildControlBankTab" .. i, bank.inset)
+    t.owned, t.buy = CreateFrame("Frame", nil, t), CreateFrame("Frame", nil, t)
+    __gold(t.owned, "tabName", "Tab " .. i) __check(t.owned, "viewCB") __check(t.owned, "depositCB")
+    t.owned.editBox = CreateFrame("EditBox", nil, t.owned) t.owned.editBox.Art = __art(t.owned.editBox)
+    __gold(t.buy, nil, COSTS_LABEL) t.buy.money = __moneyLine(nil, t.buy) __btn(t.buy, "Purchase", "button")
+    return t
+  end
+  __bankTab(1)
+  function GuildControlUI_BankTabPermissions_Update(self) if not GuildControlBankTab2 then __bankTab(2) end end
+  local discord = page("discordFrame", "GuildControlUIRankDiscordFrame")
+  __drop(discord, "serverDropdown") __gold(discord.serverDropdown, nil, DISCORD_SELECT_SERVER)
+  __drop(discord, "channelDropdown") __gold(discord.channelDropdown, nil, DISCORD_SELECT_CHANNEL)
+  __btn(discord, "Link", "channelButton")
+  function GuildControlUI_Discord_Update(self)
+    if DiscordLinkFrame then return end
+    local l, u = CreateFrame("Frame", "DiscordLinkFrame", discord), CreateFrame("Frame", "DiscordUnlinkFrame", discord)
+    __gold(l, "linkedTitle", "Linked") __gold(l, "linkedServer", "Server") __gold(l, "linkedChannel", "Channel")
+    l.SeparateStream = CreateFrame("Frame", nil, l) __check(l.SeparateStream, "Button") __btn(l, "Unlink", "button")
+    __gold(u, "unlinkedTitle", "Sign in") __btn(u, "Sign in", "button")
+  end
+  f:RegisterEvent("GUILD_RANKS_UPDATE")
+  f.rankUpdate = GuildControlUI_RankOrder_Update
+  f:SetScript("OnEvent", function(self) self.rankUpdate(self.orderFrame) end)
+`;
+const CONTROL_ENV = WINDOWS_ENV + INSIDES_LUA + PART_HELPERS_LUA + CONTROL_PARTS;
+
+// Whether every game art texture on these frames is faded (alpha 0), by Lua expression list.
+const faded = (addon, ...names) => addon.eval(`local out = {} for _, f in ipairs({ ${names.join(", ")} }) do out[#out + 1] = __faded(f) end return out`);
+
+it("guild control: the window, its title, the bar under the header, the page dropdown and the rank rows in the theme", () => {
+  const addon = loggedIn(CONTROL_ENV);
+  addon.eval("GuildControlUI:Show()");
+  expect(addon.eval(`local w = GuildControlUI
+    return { __faded(w), w.NineSlice:GetAlpha(), __headed(GuildControlUITitle), ns.Theme.DividerParts(GuildControlUIHbar) ~= nil, __faded(GuildControlUIHbar), __faded(w.dropdown, w.dropdown.Arrow), w.dropdown.Arrow:GetAlpha() }`),
+  "art faded, a title in the heading role, the bar a one-pixel line, the dropdown a flat button with its arrow").toEqual([true, 0, true, true, true, true, 1]);
+  addon.eval("GuildControlUIRankOrderFrame:Show()");
+  expect(addon.eval(`local r = GuildControlUIRankOrderFrameRank1
+    return { __sunk(r.nameBox), __faded(r.nameBox), __lit(r.rankLabel), __themed(r.rankLabel), ns.Theme.ArrowParts(r.upButton) ~= nil, ns.Theme.ArrowParts(r.downButton) ~= nil,
+      ns.Theme.ArrowParts(r.deleteButton) == nil, __faded(r.deleteButton, r.deleteButton.icon), r.deleteButton.icon:GetAlpha(), __faded(GuildControlUIRankOrderFrame.newButton), __faded(GuildControlUIRankOrderFrame.dupButton) }`),
+  "a rank row: its name an edit box, the caption light, the move buttons theme arrows, the delete button a flat button keeping its cross, New and Duplicate flat")
+    .toEqual([true, true, true, true, true, true, true, true, 1, true, true]);
+  expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
+});
+
+it("guild control: the permission, bank tab and Discord pages in the theme, and what the game makes later dressed too", () => {
+  const addon = loggedIn(CONTROL_ENV);
+  addon.eval("GuildControlUI:Show()");
+  expect(addon.eval(`local p = GuildControlUIRankSettingsFrame
+    local boxes = 0 for _, c in ipairs({ p:GetChildren() }) do if ns.Theme.CheckParts(c) then boxes = boxes + 1 end end
+    return { __faded(p.dropdown, p.dropdown.Arrow), __lit(__fs(p.dropdown)), boxes, __sunk(p.goldBox), __lit(__fs(p.goldBox)), __lit(p.OfficerPermissions),
+      __looks(GuildControlUIRankSettingsFrameBankLabel, "section", "text2"), GuildControlUIRankSettingsFrameBankLabel:GetText() }`),
+  "the permissions page: the rank dropdown flat with its caption light, the three check boxes, the gold box an edit box with its caption light, the officer list light, Bank a section head")
+    .toEqual([true, true, 3, true, true, true, true, "GUILD BANK"]);
+  addon.eval("GuildControlUI_RankPermissions_Update(GuildControlUIRankSettingsFrame)");
+  expect(addon.eval("return ns.Theme.CheckParts(GuildControlUIRankSettingsFrame.extra) ~= nil"), "a check box the game makes later is a theme check box").toBe(true);
+  expect(addon.eval(`local t = GuildControlBankTab1
+    return { __faded(GuildControlUIRankBankFrame.dropdown, GuildControlUIRankBankFrame.dropdown.Arrow), __sunk(GuildControlUIRankBankFrame.inset), __lit(t.owned.tabName), __themed(t.owned.tabName),
+      ns.Theme.CheckParts(t.owned.viewCB) ~= nil, ns.Theme.CheckParts(t.owned.depositCB) ~= nil, __sunk(t.owned.editBox), __lit(__fs(t.buy)), __faded(t.buy.button), __themed(t.buy.money.GoldButton.Text) }`),
+  "the bank tab page: dropdown flat, the list in an inset, a tab's name light, its two check boxes and withdraw box, the price and Purchase button")
+    .toEqual([true, true, true, true, true, true, true, true, true, true]);
+  addon.eval("GuildControlUI_BankTabPermissions_Update(GuildControlUIRankBankFrame)");
+  expect(addon.eval("local t = GuildControlBankTab2 return { ns.Theme.CheckParts(t.owned.viewCB) ~= nil, __faded(t.buy.button) }"), "a tab made later").toEqual([true, true]);
+  addon.eval("GuildControlUI_Discord_Update(GuildControlUIRankDiscordFrame)");
+  expect(addon.eval(`local d, l, u = GuildControlUIRankDiscordFrame, DiscordLinkFrame, DiscordUnlinkFrame
+    return { __faded(d.serverDropdown, d.serverDropdown.Arrow), __lit(__fs(d.channelDropdown)), __faded(d.channelButton), __headed(l.linkedTitle), __lit(l.linkedServer), __lit(l.linkedChannel),
+      ns.Theme.CheckParts(l.SeparateStream.Button) ~= nil, __faded(l.button), __lit(u.unlinkedTitle), __faded(u.button) }`),
+  "the Discord page: its dropdowns and link button, and the two statuses the game makes on first use").toEqual([true, true, true, true, true, true, true, true, true, true]);
+  expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
+});
+
+it("guild control: a rank added or removed (the game's event, its page update stored before the hooks) dresses the new row; the hooks go on once", () => {
+  const addon = loggedIn(CONTROL_ENV);
+  addon.eval("GuildControlUI:Show()");
+  addon.eval("__ranks = 3 GuildControlUI:Hide() GuildControlUI:Show()");
+  expect(addon.eval("return GuildControlUIRankOrderFrameRank3 == nil"), "no event yet, no row").toBe(true);
+  addon.fire("GUILD_RANKS_UPDATE");
+  expect(addon.eval("local r = GuildControlUIRankOrderFrameRank3 return { r ~= nil, ns.Theme.ArrowParts(r.upButton) ~= nil, __sunk(r.nameBox) }"), "the event made rank 3 through the stored update, and it is dressed").toEqual([true, true, true]);
+  addon.eval("GuildControlUI_RankOrder_Update(GuildControlUIRankOrderFrame) GuildControlUI_RankOrder_Update(GuildControlUIRankOrderFrame)");
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("GuildControlUI:Hide() GuildControlUI:Show() GuildControlUI_RankOrder_Update(GuildControlUIRankOrderFrame)");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "painting again piles up nothing").toBe(painted);
+  expect(addon.eval("local n = 0 for _, c in ipairs({ GuildControlUI:GetChildren() }) do n = n + 1 end return n"), "no extra frames").toBeGreaterThan(0);
+  expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
+});
+
+it("guild control: skinned when Blizzard_GuildControlUI loads, a second show paints nothing more, the switch off leaves it the game's", () => {
+  const addon = loggedIn(INSIDES_LUA + PART_HELPERS_LUA);
+  addon.eval(CONTROL_PARTS);
+  addon.fire("ADDON_LOADED", "Blizzard_GuildControlUI");
+  expect(addon.eval("return { __faded(GuildControlUI), __faded(GuildControlUIRankOrderFrame.newButton), ns.FrameState('vgWindow')[GuildControlUI] }"), "dressed when its part of the game loads").toEqual([true, true, true]);
+  addon.eval("GuildControlUI:Show()");
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("GuildControlUI:Hide() GuildControlUI:Show()");
+  addon.fire("ADDON_LOADED", "Blizzard_GuildControlUI");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "painting again piles up nothing").toBe(painted);
+  const off = loggedIn(CONTROL_ENV, OFF);
+  off.eval("GuildControlUI:Show()");
+  off.fire("ADDON_LOADED", "Blizzard_GuildControlUI");
+  expect(off.eval(`return { ns.FrameState('vgWindow')[GuildControlUI] == nil, __faded(GuildControlUI), __faded(GuildControlUIRankOrderFrame.newButton), ns.Theme.DividerParts(GuildControlUIHbar) == nil }`), "with the group off: left the game's")
+    .toEqual([true, false, false, true]);
+});
+
+it("guild control: a window with its pages, rows or parts missing or odd loads cleanly", () => {
+  const bare = loggedIn(WINDOWS_ENV + `local f = CreateFrame("Frame", "GuildControlUI", UIParent) f:Hide()`);
+  bare.eval("GuildControlUI:Show()");
+  const odd = loggedIn(CONTROL_ENV + `
+    local f = GuildControlUI GuildControlUIHbar, GuildControlUITitle, f.dropdown = {}, {}, {}
+    f.orderFrame, f.rankPermFrame, f.bankTabFrame, f.discordFrame = {}, false, {}, {}
+    GuildControlUIRankOrderFrameRank1 = {} GuildControlBankTab1 = { owned = {}, buy = false } DiscordLinkFrame, DiscordUnlinkFrame = {}, {}`);
+  odd.eval("GuildControlUI:Show()");
+  const tabs = loggedIn(CONTROL_ENV + `GuildControlBankTab1.owned, GuildControlBankTab1.buy = false, {}`);
+  tabs.eval("GuildControlUI:Show()");
+  const noHooks = loggedIn(CONTROL_ENV + `GuildControlUI_RankOrder_Update, GuildControlUI_Discord_Update = nil, nil`);
+  noHooks.eval("GuildControlUI:Show()");
+  expect([bare, odd, tabs, noHooks].map((a) => [windowErrors(a), a.eval("return #ns.errors")]), "parts missing or not frames").toEqual([["none", 0], ["none", 0], ["none", 0], ["none", 0]]);
 });

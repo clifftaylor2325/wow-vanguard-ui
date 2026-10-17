@@ -606,3 +606,244 @@ it("R2.19 the achievements window: the windows group off leaves it the game's; a
   oddRows.eval("AchievementFrame:Show()");
   expect([odd, oddRows].map((a) => a.eval("return #ns.errors")), "odd parts are skipped").toEqual([0, 0]);
 });
+
+// TEST-ONLY auction house panels (Shared/Blizzard_AuctionHouseFrame.xml, SearchBar, SellFrame, ItemBuyFrame, CommoditiesBuyFrame,
+// BuyDialog; Mainline/Blizzard_AuctionHouseCategoriesList.xml, ItemList.xml, AuctionsFrame.xml): __ah(window) gives a window its
+// money bar, search bar, categories, nine result lists, three forms, buy and bid frames, sub tabs and buy dialog.
+const AH_ENV = `${READERS_ENV}
+  AuctionHouseFilterButton_SetUp = function(button, info)
+    button.Text:SetTextColor(1, 0.82, 0) button.NormalTexture:SetAlpha(1) button.SelectedTexture:SetShown(info.selected)
+  end
+  function __ahMoney(parent)
+    local f = CreateFrame("Frame", nil, parent)
+    for _, key in ipairs({ "GoldDisplay", "SilverDisplay", "CopperDisplay" }) do
+      local d = CreateFrame("Frame", nil, f) d.Icon, d.Text = __art(d), __text(d, "12") f[key] = d
+    end
+    function f:SetFontObject() for _, key in ipairs({ "GoldDisplay", "SilverDisplay", "CopperDisplay" }) do self[key].Text:SetFont("TEST-ONLY-GAME", 13, "") end end
+    f.SetFontAndIconDisabled = f.SetFontObject
+    return f
+  end
+  function __ahLargeInput(parent)
+    local f = CreateFrame("Frame", nil, parent)
+    for _, key in ipairs({ "GoldBox", "SilverBox", "CopperBox" }) do f[key] = CreateFrame("EditBox", nil, f) __art(f[key]) f[key].Icon = __art(f[key]) end
+    return f
+  end
+  function __ahList(parent)
+    local list = __well(nil, parent)
+    list.ResultsText, list.HeaderContainer = __text(list, "No results"), CreateFrame("Frame", nil, list)
+    list.LoadingSpinner = CreateFrame("Frame", nil, list) list.LoadingSpinner.SearchingText = __text(list.LoadingSpinner, "Searching")
+    list.RefreshFrame = CreateFrame("Frame", nil, list) list.RefreshFrame.TotalQuantity = __text(list.RefreshFrame, "12 items")
+    list.RefreshFrame.RefreshButton = __mkbutton(list.RefreshFrame, "Icon")
+    list.ScrollBox = __list(list)
+    function list:UpdateTableBuilderLayout() __mkbutton(self.HeaderContainer, "Arrow") end
+    return list
+  end
+  function __ahLine(box, summary)
+    local row = CreateFrame("Button", nil, box)
+    row.NormalTexture, row.HighlightTexture, row.SelectedHighlight = __art(row), __art(row), __art(row)
+    row.SelectedHighlight:Hide()
+    if summary then row.Text, row.Icon = __text(row, "All auctions"), __art(row) end
+    return box:Acquire(row)
+  end
+  function __ahCategory(box)
+    local b = CreateFrame("Button", nil, box)
+    b.NormalTexture, b.HighlightTexture, b.SelectedTexture, b.Lines, b.Text = __art(b), __art(b), __art(b), __art(b), __text(b, "Weapons")
+    b.SelectedTexture:Hide()
+    return box:Acquire(b)
+  end
+  function __ahForm(parent)
+    local form = __well(nil, parent) form.CreateAuctionLabel, form.CreateAuctionTabLeft, form.ItemDisplay = __text(form, "Create Auction"), __art(form), __well(nil, form)
+    local function row(key, fill) local r = CreateFrame("Frame", nil, form) r.Label = __text(r, key) fill(r) form[key] = r end
+    row("QuantityInput", function(r) r.InputBox = CreateFrame("EditBox", nil, r) __art(r.InputBox) r.MaxButton = __mkbutton(r) end)
+    row("PriceInput", function(r) r.MoneyInputFrame = __ahLargeInput(r) end)
+    row("SecondaryPriceInput", function(r) r.LabelTitle, r.MoneyInputFrame = __text(r, "Bid"), __ahLargeInput(r) end)
+    row("Duration", function(r) r.Dropdown = __mkbutton(r, "Arrow") end)
+    for _, key in ipairs({ "Deposit", "TotalPrice", "UnitPrice" }) do row(key, function(r) r.MoneyDisplayFrame = __ahMoney(r) end) end
+    form.PostButton, form.BuyButton, form.BuyoutModeCheckButton = __mkbutton(form), __mkbutton(form), __mkcheck(form)
+    return form
+  end
+  function __ahBid(parent) local b = CreateFrame("Frame", nil, parent) b.BidAmount, b.BidButton = __moneyInput(nil, b), __mkbutton(b) return b end
+  function __ahBuyout(parent) local b = CreateFrame("Frame", nil, parent) b.BuyoutButton = __mkbutton(b) return b end
+  function __ah(f)
+    f.MoneyFrameInset, f.MoneyFrameBorder = __well(nil, f), CreateFrame("Frame", nil, f) __art(f.MoneyFrameBorder)
+    f.MoneyFrameBorder.MoneyFrame = __ahMoney(f.MoneyFrameBorder)
+    local bar = CreateFrame("Frame", nil, f) f.SearchBar = bar
+    bar.SearchBox, bar.SearchButton, bar.FilterButton, bar.FavoritesSearchButton = __mkbox(bar), __mkbutton(bar), __mkbutton(bar, "Arrow"), __mkbutton(bar, "Icon")
+    f.CategoriesList = __well(nil, f) f.CategoriesList.ScrollBox = __list(f.CategoriesList)
+    f.BrowseResultsFrame = CreateFrame("Frame", nil, f) f.BrowseResultsFrame.ItemList = __ahList(f.BrowseResultsFrame)
+    f.ItemSellList, f.CommoditiesSellList, f.ItemSellFrame, f.CommoditiesSellFrame = __ahList(f), __ahList(f), __ahForm(f), __ahForm(f)
+    local cb = CreateFrame("Frame", nil, f) f.CommoditiesBuyFrame = cb
+    cb.BackButton, cb.BuyDisplay, cb.ItemList = __mkbutton(cb), __ahForm(cb), __ahList(cb)
+    local ib = CreateFrame("Frame", nil, f) f.ItemBuyFrame = ib
+    ib.BackButton, ib.ItemDisplay, ib.ItemList, ib.BuyoutFrame, ib.BidFrame = __mkbutton(ib), __well(nil, ib), __ahList(ib), __ahBuyout(ib), __ahBid(ib)
+    local af = CreateFrame("Frame", nil, f) f.AuctionsFrame = af
+    af.AuctionsTab, af.BidsTab, af.CancelAuctionButton = __mkbutton(af, "Left"), __mkbutton(af, "Left"), __mkbutton(af)
+    af.BuyoutFrame, af.BidFrame, af.ItemDisplay = __ahBuyout(af), __ahBid(af), __well(nil, af)
+    af.SummaryList = __well(nil, af) af.SummaryList.ScrollBox = __list(af.SummaryList)
+    af.AllAuctionsList, af.BidsList, af.ItemList, af.CommoditiesList = __ahList(af), __ahList(af), __ahList(af), __ahList(af)
+    local d = CreateFrame("Frame", nil, f) f.BuyDialog = d
+    d.Border, d.PriceFrame = CreateFrame("Frame", nil, d), __ahMoney(d) __art(d.Border)
+    d.BuyNowButton, d.CancelButton, d.OkayButton = __mkbutton(d), __mkbutton(d), __mkbutton(d)
+  end
+  -- TEST-ONLY readers: __ahTile(frame) a list or well as a sunk inset with its art faded; __ahThemed(money) whether a money display's figures are in the theme font.
+  function __ahTile(f) return __faded(f) and f.NineSlice.__alpha == 0 and __sunk(f) end
+  function __ahThemed(m) return __themed(m.GoldDisplay.Text) and __themed(m.SilverDisplay.Text) and __themed(m.CopperDisplay.Text) and m.GoldDisplay.Icon:GetAlpha() == 1 end
+  function __ahLit(fs) return fs.__textColor ~= nil and fs.__textColor[1] == (ns.Theme.RGB("text")) end
+  function __ahForms(f)
+    local out = {}
+    for _, form in ipairs({ f.ItemSellFrame, f.CommoditiesSellFrame, f.CommoditiesBuyFrame.BuyDisplay }) do
+      local boxes = true
+      for _, key in ipairs({ "GoldBox", "SilverBox", "CopperBox" }) do
+        for _, row in ipairs({ form.PriceInput.MoneyInputFrame, form.SecondaryPriceInput.MoneyInputFrame }) do
+          local box = row[key] boxes = boxes and __faded(box, box.Icon) and box.Icon:GetAlpha() == 1
+        end
+      end
+      out[#out + 1] = { tile = __ahTile(form), item = __ahTile(form.ItemDisplay), head = form.CreateAuctionLabel:GetText() == "CREATE AUCTION" and form.CreateAuctionTabLeft.__alpha == 0,
+        labels = __ahLit(form.QuantityInput.Label) and __ahLit(form.SecondaryPriceInput.LabelTitle) and __ahLit(form.Duration.Label),
+        quantity = __faded(form.QuantityInput.InputBox) and __button(form.QuantityInput.MaxButton), boxes = boxes,
+        duration = __button(form.Duration.Dropdown) and form.Duration.Dropdown.Arrow.__alpha == 1,
+        money = __ahThemed(form.Deposit.MoneyDisplayFrame) and __ahThemed(form.TotalPrice.MoneyDisplayFrame) and __ahThemed(form.UnitPrice.MoneyDisplayFrame),
+        buttons = __button(form.PostButton) and __button(form.BuyButton), check = ns.Theme.CheckParts(form.BuyoutModeCheckButton) ~= nil and __ahLit(form.BuyoutModeCheckButton.Text) }
+    end
+    return out
+  end
+  function __ahLists(f)
+    local lists, n = { f.BrowseResultsFrame.ItemList, f.ItemSellList, f.CommoditiesSellList, f.CommoditiesBuyFrame.ItemList, f.ItemBuyFrame.ItemList,
+      f.AuctionsFrame.AllAuctionsList, f.AuctionsFrame.BidsList, f.AuctionsFrame.ItemList, f.AuctionsFrame.CommoditiesList }, 0
+    for _, list in ipairs(lists) do
+      if __ahTile(list) and __ahLit(list.ResultsText) and __ahLit(list.LoadingSpinner.SearchingText) and __themed(list.RefreshFrame.TotalQuantity)
+        and __button(list.RefreshFrame.RefreshButton) and list.RefreshFrame.RefreshButton.Icon.__alpha == 1 then n = n + 1 end
+    end
+    return { lists = n, total = #lists }
+  end
+  -- The window's other parts, as the skin leaves them.
+  function __ahParts(f)
+    local bar, ib, af, d = f.SearchBar, f.ItemBuyFrame, f.AuctionsFrame, f.BuyDialog
+    local function boxed(b) return __faded(b, b.texture) and b.texture.__alpha == 1 end
+    return {
+      money = __ahTile(f.MoneyFrameInset) and __faded(f.MoneyFrameBorder) and __ahThemed(f.MoneyFrameBorder.MoneyFrame),
+      search = __box(bar.SearchBox) and __button(bar.SearchButton) and __button(bar.FilterButton) and bar.FilterButton.Arrow.__alpha == 1
+        and __button(bar.FavoritesSearchButton) and bar.FavoritesSearchButton.Icon.__alpha == 1,
+      categories = __ahTile(f.CategoriesList),
+      buttons = __button(ib.BackButton) and __button(ib.BuyoutFrame.BuyoutButton) and __button(ib.BidFrame.BidButton) and __button(f.CommoditiesBuyFrame.BackButton)
+        and __button(af.CancelAuctionButton) and __button(af.BuyoutFrame.BuyoutButton) and __button(af.BidFrame.BidButton),
+      bids = boxed(ib.BidFrame.BidAmount.gold) and boxed(af.BidFrame.BidAmount.copper),
+      headers = __ahTile(ib.ItemDisplay) and __ahTile(af.ItemDisplay) and __ahTile(af.SummaryList),
+      tabs = __faded(af.AuctionsTab) and __faded(af.BidsTab) and select("#", af.AuctionsTab:GetRegions()) > 1,
+      dialog = d.Border:GetAlpha() == 0 and select("#", d:GetRegions()) > 0 and __button(d.BuyNowButton) and __button(d.CancelButton) and __button(d.OkayButton) and __ahThemed(d.PriceFrame),
+      painted = ns.Theme.PaintedCount(), errors = #ns.errors,
+    }
+  end
+`;
+const AH_WINDOW = `${AH_ENV} __ah(__window("AuctionHouseFrame"))`;
+const OFF_WINDOWS = "VanguardDB.profiles = { Default = { Windows = { windows = false } } }";
+it("R3.5 the auction house panels: money bar, search bar, categories, lists, forms, buy frames, tabs and the dialog in the theme", () => {
+  const addon = loggedIn(AH_WINDOW);
+  addon.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  addon.eval("AuctionHouseFrame:Show()");
+  const parts = addon.eval("return __ahParts(AuctionHouseFrame)");
+  expect(parts, "the money well and plate, the search bar with its magnifier, arrow and star kept, the category tile, the push buttons, bid boxes, item headers, sub tabs and buy dialog").toMatchObject({
+    money: true, search: true, categories: true, buttons: true, bids: true, headers: true, tabs: true, dialog: true, errors: 0,
+  });
+  expect(addon.eval("return __ahLists(AuctionHouseFrame)"), "all nine result lists: an inset, light texts, the refresh tile with its picture").toEqual({ lists: 9, total: 9 });
+  const form = { tile: true, item: true, head: true, labels: true, quantity: true, boxes: true, duration: true, money: true, buttons: true, check: true };
+  expect(addon.eval("return __ahForms(AuctionHouseFrame)"), "the item and commodity sell forms and the commodity buy display: tiles, section head, labelled rows, large money boxes with their coins, buttons, check box").toEqual([form, form, form]);
+  expect(windowState(addon, "AuctionHouseFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
+  addon.eval("AuctionHouseFrame:Hide() AuctionHouseFrame:Show()");
+  expect(addon.eval("return __ahParts(AuctionHouseFrame)").painted, "a second show paints nothing new").toBe(parts.painted);
+});
+it("R3.5 the auction house panels: the money lines take the theme font back after the game sets its own", () => {
+  const addon = loggedIn(AH_WINDOW);
+  addon.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  addon.eval("AuctionHouseFrame:Show()");
+  // Whether the window's money line and the dialog's price line are in the theme font.
+  const themed = () => addon.eval("return { __ahThemed(AuctionHouseFrame.MoneyFrameBorder.MoneyFrame), __ahThemed(AuctionHouseFrame.BuyDialog.PriceFrame) }");
+  addon.eval("AuctionHouseFrame.MoneyFrameBorder.MoneyFrame:SetFontObject() AuctionHouseFrame.BuyDialog.PriceFrame:SetFontAndIconDisabled(true)");
+  expect(themed(), "the game's font object and its disabled look both followed").toEqual([true, true]);
+  addon.eval("AuctionHouseFrame:Hide() AuctionHouseFrame:Show() AuctionHouseFrame.MoneyFrameBorder.MoneyFrame:SetFontObject()");
+  expect(themed(), "showing again hooks nothing twice").toEqual([true, true]);
+});
+// The lit look of a row (the selected fill and rail), or null when T.Row never dressed it.
+const rowLit = (addon, row) => addon.eval(`local p = ns.Theme.RowParts(${row}) return p and { p.fill:IsShown(), p.rail:IsShown() } or false`);
+it("R3.5 the auction house panels: result lines are theme rows lit with the game's selected highlight, header buttons follow the columns", () => {
+  const addon = loggedIn(AH_WINDOW + `
+    __early = __ahLine(AuctionHouseFrame.BrowseResultsFrame.ItemList.ScrollBox)`);
+  addon.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  addon.eval("AuctionHouseFrame:Show()");
+  expect(addon.eval("return { __faded(__early), __early.NormalTexture.__alpha, __early.HighlightTexture.__alpha }"), "a line that was there: stripe, hover and selected art faded").toEqual([true, 0, 0]);
+  expect(rowLit(addon, "__early"), "not selected").toEqual([false, false]);
+  addon.eval("__early.SelectedHighlight:Show()");
+  expect(rowLit(addon, "__early"), "the game shows its highlight: the one selected look").toEqual([true, true]);
+  addon.eval("__early.SelectedHighlight:Hide()");
+  expect(rowLit(addon, "__early"), "hides it").toEqual([false, false]);
+  addon.eval("__early.SelectedHighlight:SetShown(true)");
+  expect(rowLit(addon, "__early"), "or sets it shown").toEqual([true, true]);
+  addon.eval("__early.SelectedHighlight:SetAlpha(1)");
+  expect(addon.eval("return __early.SelectedHighlight:GetAlpha()"), "the game sets the highlight's alpha after showing it: faded again").toBe(0);
+  addon.eval(`__late = __ahLine(AuctionHouseFrame.ItemBuyFrame.ItemList.ScrollBox) __late.SelectedHighlight:Show() __sum = __ahLine(AuctionHouseFrame.AuctionsFrame.SummaryList.ScrollBox, true)`);
+  expect(rowLit(addon, "__late"), "a line acquired later is dressed, and follows its highlight").toEqual([true, true]);
+  expect(addon.eval("return { __faded(__sum, __sum.Icon), __sum.Icon:GetAlpha(), __ahLit(__sum.Text), ns.Theme.RowParts(__sum) ~= nil }"), "a summary line keeps its icon and has its name in the text colour").toEqual([true, 1, true, true]);
+  const list = "AuctionHouseFrame.BrowseResultsFrame.ItemList";
+  expect(addon.eval(`return select("#", ${list}.HeaderContainer:GetChildren())`), "no header buttons before the game lays the columns out").toBe(0);
+  addon.eval(`${list}:UpdateTableBuilderLayout() ${list}:UpdateTableBuilderLayout()`);
+  expect(addon.eval(`local h = ${list}.HeaderContainer:GetChildren() return { __button(h), h.Arrow.__alpha }`), "the header button is a theme button that keeps its sort arrow").toEqual([true, 1]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("R3.5 the auction house panels: category rows are theme rows, lit with the game's selection and put right after each set-up", () => {
+  const addon = loggedIn(AH_WINDOW + `
+    __cat = __ahCategory(AuctionHouseFrame.CategoriesList.ScrollBox)`);
+  addon.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  addon.eval("AuctionHouseFrame:Show()");
+  expect([rowLit(addon, "__cat"), addon.eval("return { __cat.NormalTexture.__alpha, __ahLit(__cat.Text) }")], "a row that was there: dressed, not selected, art faded, text light").toEqual([[false, false], [0, true]]);
+  addon.eval("AuctionHouseFilterButton_SetUp(__cat, { selected = true })");
+  expect([rowLit(addon, "__cat"), addon.eval("return { __cat.NormalTexture.__alpha, __ahLit(__cat.Text) }")], "the game sets it up again, selected and gold: the look follows, art and text put right").toEqual([[true, true], [0, true]]);
+  addon.eval("__cat.NormalTexture:SetAlpha(1) AuctionHouseFilterButton_SetUp(__cat, { selected = false })");
+  expect([rowLit(addon, "__cat"), addon.eval("return __cat.NormalTexture.__alpha")], "and deselected").toEqual([[false, false], 0]);
+  addon.eval("__fresh = CreateFrame('Button', nil, AuctionHouseFrame.CategoriesList.ScrollBox) __fresh.NormalTexture, __fresh.SelectedTexture, __fresh.Text = __art(__fresh), __art(__fresh), __text(__fresh, 'Armor') __fresh.SelectedTexture:Hide() AuctionHouseFilterButton_SetUp(__fresh, { selected = true })");
+  expect(rowLit(addon, "__fresh"), "a row first met in a set-up is dressed there").toEqual([true, true]);
+  addon.eval("__cat.Text:SetTextColor(1, 0.82, 0) __wfgStub.hover(__cat) __cat.Text:SetTextColor(1, 0.82, 0) __wfgStub.hover(nil)");
+  expect(addon.eval("return __ahLit(__cat.Text)"), "the gold the game puts back when the mouse leaves is made light again").toBe(true);
+  addon.eval("AuctionHouseFrame:Hide() AuctionHouseFrame:Show() __cat.Text:SetTextColor(1, 0.82, 0) __wfgStub.hover(__cat) __wfgStub.hover(nil)");
+  expect(addon.eval("return { __ahLit(__cat.Text), #ns.errors }"), "showing again hooks nothing twice").toEqual([true, 0]);
+});
+it("R3.5 the auction house panels: with Vanguard's own page on or off the game's panels are dressed and the page is the same", () => {
+  const dress = "__ah(AuctionHouseFrame) AuctionHouseFrame:Hide() AuctionHouseFrame:Show()";
+  const on = loggedIn(AH_ENV);
+  on.world.openAuctionHouse();
+  on.update(0);
+  on.eval(dress);
+  const off = loggedIn(AH_ENV, { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
+  off.world.openAuctionHouse();
+  off.update(0);
+  off.eval(dress);
+  // The window's parts and lists as dressed, the number of tabs and of errors.
+  const state = (a) => a.eval("local p = __ahParts(AuctionHouseFrame) return { p.money, p.search, p.categories, p.buttons, p.dialog, __ahLists(AuctionHouseFrame).lists, #AuctionHouseFrame.Tabs, p.errors }");
+  expect(state(on), "the page on: its two tabs built, and the game's panels dressed").toEqual([true, true, true, true, true, 9, 5, 0]);
+  expect(state(off), "the page off: the game's three tabs, the same panels dressed").toEqual([true, true, true, true, true, 9, 3, 0]);
+  expect([on.frame("Vanguard_AuctionShopping") !== null, off.frame("Vanguard_AuctionShopping")], "the page exists only while it is on").toEqual([true, null]);
+});
+it("R3.5 the auction house panels: the windows group off leaves them the game's; a bare or odd window loads cleanly", () => {
+  const off = loggedIn(AH_WINDOW, { savedVariables: OFF_WINDOWS });
+  off.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  off.eval("AuctionHouseFrame:Show()");
+  expect(off.eval("return __ahParts(AuctionHouseFrame)"), "nothing faded or painted").toMatchObject({ money: false, search: false, categories: false, buttons: false, dialog: false });
+  const bare = loggedIn(`${WINDOWS_ENV}__window("AuctionHouseFrame")`);
+  bare.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  bare.eval("AuctionHouseFrame:Show()");
+  expect([windowState(bare, "AuctionHouseFrame").panel, bare.eval("return #ns.errors")], "a bare window is skinned, no part missing is an error").toEqual([true, 0]);
+  const odd = loggedIn(`${AH_WINDOW}
+    local f = AuctionHouseFrame f.MoneyFrameBorder.MoneyFrame = 1 f.SearchBar = 1 f.CategoriesList = {} f.BuyDialog = 1 f.ItemSellFrame = 1 f.CommoditiesSellFrame = { GetRegions = 1 }
+    f.CommoditiesBuyFrame.BuyDisplay = { GetRegions = function() end, QuantityInput = 1 } f.ItemBuyFrame.ItemList = {} f.BrowseResultsFrame.ItemList = 1
+    f.ItemSellList.HeaderContainer = 1 f.ItemSellList.ScrollBox = {} f.AuctionsFrame.SummaryList = 1 f.AuctionsFrame.AuctionsTab = 1 f.AuctionsFrame.BidFrame = 1
+    f.CommoditiesSellList.LoadingSpinner = 1 f.CommoditiesSellList.RefreshFrame = {}`);
+  odd.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  odd.eval("AuctionHouseFrame:Show()");
+  const oddParts = loggedIn(`${AH_WINDOW}
+    local f = AuctionHouseFrame f.MoneyFrameBorder.MoneyFrame.GoldDisplay = 1 f.MoneyFrameBorder.MoneyFrame.SilverDisplay = { Text = 1 } f.BuyDialog.PriceFrame = nil
+    f.AuctionsFrame.SummaryList = __well(nil, f) f.AuctionsFrame.SummaryList.ScrollBox = __list(f.AuctionsFrame.SummaryList) f.AuctionsFrame.SummaryList.ScrollBox:Acquire(1)
+    f.CategoriesList.ScrollBox:Acquire(1) f.CategoriesList.ScrollBox:Acquire({ HookScript = true })
+    f.ItemSellFrame.QuantityInput.InputBox = 1 f.ItemSellFrame.QuantityInput.MaxButton = 1 f.ItemSellFrame.PriceInput = 1`);
+  oddParts.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  oddParts.eval("AuctionHouseFrame:Show()");
+  expect([odd, oddParts].map((a) => a.eval("return #ns.errors")), "odd parts are skipped").toEqual([0, 0]);
+});

@@ -533,9 +533,77 @@ function GW.SkinClickBinding(window)
   bindingTutorial(window)
 end
 
+-- The Cooldown Manager's two alert dialogs (the sound alert and the group buff visual alert, one base template): the
+-- dark border faded, title and close button, the cooldown's name light, the group labels over the dropdowns as
+-- section heads, the dropdowns and the Add button themed. The spell icon stays the game's.
+GW.SkinCooldownAlert = skinner({
+  art = { "BG" }, titles = { "Title" }, close = { "CloseButton" }, labels = { "Name" }, buttons = { "AddButton" },
+  sections = { "PrimaryLabel", "EventLabel", "PayloadLabel" }, keep = { "Icon" },
+  dropdowns = { "TypeDropdown", "EventDropdown", "PayloadDropdown", "VisualDropdown" },
+})
+
+-- The movement pad (Blizzard_MovePad, off until ticked in the game's options) --------------------
+
+-- The pad's seven buttons by name: the six movement toggles (check buttons) and the jump button.
+GW.MOVE_BUTTONS = {
+  "MovePadForward", "MovePadBackward", "MovePadStrafeLeft", "MovePadStrafeRight", "MovePadRotateLeft", "MovePadRotateRight", "MovePadJump",
+}
+
+-- The pad toggles whose clicks are followed, by button.
+local vgMoveClicks = ns.FrameState("vgMoveClicks")
+
+-- One pad button as a theme row with its arrow or jump picture kept; a toggle (a check button) shows the one selected look
+-- while the game has it checked, in place of the game's glow: after a click (the client flips the check itself, and the
+-- pad only reads it) and after the game's own SetChecked (it unchecks the opposite direction).
+local function moveButton(button)
+  GW.DressRow(button, { "icon" })
+  if type(button) ~= "table" or type(button.GetChecked) ~= "function" then return end
+  T.SelectRow(button, button:GetChecked() == true)
+  GW.HookAfter(button, "SetChecked", function(b, on) T.SelectRow(b, on == true) end)
+  if vgMoveClicks[button] then return end
+  vgMoveClicks[button] = true
+  button:HookScript("OnClick", ns.Guard("move pad click", function(b) T.SelectRow(b, b:GetChecked() == true) end))
+end
+
+-- The movement pad: the tooltip-style backdrop faded under a HUD panel, the seven buttons and the settings gear on a
+-- control tile. Its dragging, locking and the keys it holds down stay the game's.
+function GW.SkinMovePad(frame)
+  T.FadeRegions(frame)
+  GW.FadeFrame(frame.NineSlice)
+  T.HudPanel(frame, { alpha = 0.9 })
+  GW.SkinPlate(frame.SettingsDropdown)
+  for _, name in ipairs(GW.MOVE_BUTTONS) do moveButton(_G[name]) end
+end
+
+-- The Lua error window ----------------------------------------------------------------------
+
+-- The error window's close cross (the dialog template's own button, named after the window; its bottom Close is a push
+-- button under CloseButton) in the theme and its corner.
+local function errorsClose(frame)
+  local name = frame.GetName and frame:GetName()
+  GW.DressClose(frame, name and _G[name .. "Close"])
+end
+
+-- The error window's parts: title and index in the theme, the text well's scroll bar, the Reload and Close buttons.
+local scriptErrors = skinner({
+  titles = { "Title" }, labels = { "IndexLabel" }, buttons = { "Reload", "CloseButton" }, bars = { "ScrollFrame.ScrollBar" },
+})
+-- The error window: the dialog template's border and title strip faded under a panel, its parts (see scriptErrors), the
+-- cross, and the previous and next arrows. The error text keeps the game's colour codes; the window stays the game's own
+-- dialog, in the same place.
+function GW.SkinScriptErrors(frame)
+  scriptErrors(frame)
+  errorsClose(frame)
+  GW.SkinArrow(frame.PreviousError, "left")
+  GW.SkinArrow(frame.NextError, "right")
+end
+
 GW.Add("system", "framed", { "QuickKeybindFrame" }, GW.SkinQuickKeybind)
 GW.Add("system", "framed", { "CooldownViewerSettings" }, GW.SkinCooldownSettings)
 GW.Add("system", "framed", { "CooldownViewerLayoutDialog", "CooldownViewerImportLayoutDialog" }, GW.SkinEditDialog)
+GW.Add("system", "framed", { "CooldownViewerSettingsEditAlert", "GroupBuffFilterEditVisualAlert" }, GW.SkinCooldownAlert)
+GW.Add("system", "onDemand", "Blizzard_MovePad", { "MovePadFrame" }, GW.SkinMovePad)
+GW.Add("system", "framed", { "ScriptErrorsFrame" }, GW.SkinScriptErrors)
 GW.Add("system", "onDemand", "Blizzard_ClickBindingUI", { "ClickBindingFrame" }, GW.SkinClickBinding)
 
 -- Help, report, splash, colour picker, death recap, combat log bar ---------------------------

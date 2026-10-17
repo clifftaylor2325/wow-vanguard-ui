@@ -75,8 +75,8 @@ it("unlock popover: anchor, offsets, reset", () => {
   const rect = (ref) => addon.frame(ref).rect;
   const middle = (r) => r.bottom + r.height / 2;
   expect([middle(rect(`${pop}.x`)) - middle(addon.texts("X offset")[0].rect), middle(rect(`${pop}.matchHeight`)) - middle(addon.texts("Match height")[0].rect)], "each caption is level with its control").toEqual([0, 0]);
-  expect([buttonOf(addon, `${pop}.done`), buttonOf(addon, `${pop}.reset`), insets(addon, `${pop}.done`, pop).slice(2)], "Done is the one accent button, Reset plain; standalone, 120 wide, T.SPACE.col from the corner")
-    .toEqual([[true, "Done", 26, 120], [false, "Reset", 26, 120], [12, 12]]);
+  expect([buttonOf(addon, `${pop}.done`), buttonOf(addon, `${pop}.reset`), insets(addon, `${pop}.done`, pop).slice(2)], "Done is the one accent button, Reset plain; standalone, 120 wide, T.SPACE.pad from the corner like the other dialogs")
+    .toEqual([[true, "Done", 26, 120], [false, "Reset", 26, 120], [16, 16]]);
   addon.eval('local p = Vanguard_MoverPopover p.x:SetText("123") p.x:GetScript("OnEnterPressed")(p.x)');
   expect(addon.eval('return select(3, ns.MoverPoint("minimap"))') === 123, "typing an X offset saves it").toBeTruthy();
   addon.eval('local d = Vanguard_MoverPopover.anchor d:GetScript("OnClick")(d) Vanguard_Menu.items[5]:GetScript("OnClick")(Vanguard_Menu.items[5])');

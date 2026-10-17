@@ -9,6 +9,7 @@ local vgPadded = ns.FrameState("vgPadded")
 local vgSocialSide = ns.FrameState("vgSocialSide")
 local vgEmptyNote = ns.FrameState("vgEmptyNote")
 local vgInsetFill = ns.FrameState("vgInsetFill")
+local vgControlWatched = ns.FrameState("vgControlWatched")
 
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
@@ -1320,14 +1321,162 @@ ns.On("ADDON_LOADED", onRaidUILoaded)
 GW.Add("social", "onDemand", "Blizzard_RaidUI", { "RaidFrame" }, GW.SkinRaidTab)
 GW.Add("social", "framed", { "RaidParentFrame" })
 
+-- Guild control window ----------------------------------------------------------------------------
+
+-- How many rank rows and bank tabs the game makes at most (MAX_GUILDRANKS, MAX_GUILDBANK_TABS); it makes each as it needs it.
+GW.CONTROL_RANKS, GW.CONTROL_TABS = 10, 8
+-- The game's page updates (global functions): each makes rows, tabs or prompts the first time its page needs them.
+GW.CONTROL_UPDATES = {
+  "GuildControlUI_RankOrder_Update", "GuildControlUI_RankPermissions_Update",
+  "GuildControlUI_BankTabPermissions_Update", "GuildControlUI_Discord_Update",
+}
+-- The gold captions the game draws unnamed beside its dropdowns, and the gold-per-day caption of the withdraw box.
+GW.CONTROL_CAPTIONS = { "GUILDCONTROL_SELECTRANK", "DISCORD_SELECT_SERVER", "DISCORD_SELECT_CHANNEL" }
+GW.CONTROL_GOLD_PER_DAY = { "GOLD_PER_DAY" }
+-- The game's name for the Bank heading over the bank permission boxes, and for the Costs caption of a tab on offer.
+GW.CONTROL_BANK_HEADING = "GuildControlUIRankSettingsFrameBankLabel"
+GW.CONTROL_COSTS = { "COSTS_LABEL" }
+
+-- A dropdown (a flat button that keeps its arrow) with its caption, which the game draws gold beside it, in the text colour.
+local function dressControlDropdown(dropdown)
+  if type(dropdown) ~= "table" then return end
+  GW.SkinDropdown(dropdown)
+  GW.TextRegions(dropdown, GW.CONTROL_CAPTIONS, "label", "text")
+end
+
+-- One rank row (RankChangeTemplate): its name a theme edit box, its "Rank n:" caption in the text colour, its move buttons theme
+-- arrows (up and down) and its delete button a theme button that keeps its cross.
+local function dressRankRow(row)
+  if type(row) ~= "table" then return end
+  GW.SkinEditBox(row.nameBox)
+  GW.SkinText(row.rankLabel, "label", "text")
+  GW.SkinArrow(row.upButton, "up")
+  GW.SkinArrow(row.downButton, "down")
+  GW.SkinButton(row.deleteButton)
+  GW.ShowTexture(GW.Part(row, "deleteButton.icon"))
+end
+
+-- The rank order page: every rank row the game has made so far, and the New rank and (hidden) Duplicate buttons.
+local function dressRankOrder(page)
+  for i = 1, GW.CONTROL_RANKS do dressRankRow(_G["GuildControlUIRankOrderFrameRank" .. i]) end
+  GW.EachKey(page, { "newButton", "dupButton" }, GW.SkinButton)
+end
+
+-- The rank permissions page: its rank dropdown, every permission check box, the gold-per-day box with its caption, the list of what
+-- an officer may do in the text colour and the Bank heading as a section head. The tinted plates behind the groups are the game's
+-- own flat colour, not art, and stay.
+local function dressRankPermissions(page)
+  if not isFrame(page) then return end
+  dressControlDropdown(page.dropdown)
+  GW.DressChecks(page, 1)
+  GW.SkinEditBox(page.goldBox)
+  GW.TextRegions(page.goldBox, GW.CONTROL_GOLD_PER_DAY, "small", "text")
+  GW.SkinText(page.OfficerPermissions, "label", "text")
+  GW.SkinSection(_G[GW.CONTROL_BANK_HEADING])
+end
+
+-- The part of a bank tab the player owns: its name in the small text colour, its view and deposit check boxes, its withdraw box.
+local function dressOwnedTab(owned)
+  if type(owned) ~= "table" then return end
+  GW.SkinText(owned.tabName, "small", "text")
+  GW.SkinCheck(owned.viewCB)
+  GW.SkinCheck(owned.depositCB)
+  GW.SkinEditBox(owned.editBox)
+end
+
+-- The part of a bank tab on offer: its Costs caption in the text colour, the price in the number font, the Purchase button.
+local function dressBuyTab(buy)
+  if type(buy) ~= "table" then return end
+  GW.TextRegions(buy, GW.CONTROL_COSTS, "label", "text")
+  GW.SkinMoney(buy.money)
+  GW.SkinButton(buy.button)
+end
+
+-- The bank tab permissions page: its rank dropdown, the inset behind the list (its scroll bar is the tabs stream's) and every tab
+-- row the game has made so far (BankTabPermissionTemplate).
+local function dressBankTabs(page)
+  if not isFrame(page) then return end
+  dressControlDropdown(page.dropdown)
+  GW.InsetPanel(page.inset)
+  for i = 1, GW.CONTROL_TABS do
+    local tab = _G["GuildControlBankTab" .. i]
+    if type(tab) == "table" then dressOwnedTab(tab.owned) dressBuyTab(tab.buy) end
+  end
+end
+
+-- The Discord status shown when the guild is linked (made the first time it is needed): its title, server, channel, the
+-- separate-stream box and the Unlink button.
+local function dressDiscordLinked(linked)
+  if type(linked) ~= "table" then return end
+  GW.SkinText(linked.linkedTitle, "heading", "text")
+  GW.EachKey(linked, { "linkedServer", "linkedChannel" }, function(fs) GW.SkinText(fs, "small", "text") end)
+  GW.SkinCheck(GW.Part(linked, "SeparateStream.Button"))
+  GW.SkinButton(linked.button)
+end
+
+-- The Discord status shown when the user has not signed in (made the first time it is needed): its prompt and button.
+local function dressDiscordUnlinked(unlinked)
+  if type(unlinked) ~= "table" then return end
+  GW.SkinText(unlinked.unlinkedTitle, "label", "text")
+  GW.SkinButton(unlinked.button)
+end
+
+-- The Discord page: its server and channel dropdowns, its link button, and the two link statuses.
+local function dressDiscord(page)
+  if isFrame(page) then
+    dressControlDropdown(page.serverDropdown)
+    dressControlDropdown(page.channelDropdown)
+    GW.SkinButton(page.channelButton)
+  end
+  dressDiscordLinked(_G.DiscordLinkFrame)
+  dressDiscordUnlinked(_G.DiscordUnlinkFrame)
+end
+
+-- The guild control window's four pages, with what the game has made on each so far.
+local function dressControlPages(frame)
+  dressRankOrder(frame.orderFrame)
+  dressRankPermissions(frame.rankPermFrame)
+  dressBankTabs(frame.bankTabFrame)
+  dressDiscord(frame.discordFrame)
+end
+
+-- Keeps the pages dressed: the game makes rank rows, bank tabs and the Discord prompts inside its page updates (global functions,
+-- stored by the window as the page changes) and redraws them on its events, so the pages are dressed again after each of those. Post-hooks
+-- only, once per window.
+local function watchControl(frame)
+  if vgControlWatched[frame] then return end
+  vgControlWatched[frame] = true
+  -- Dresses the pages again.
+  local function redress() dressControlPages(frame) end
+  for _, name in ipairs(GW.CONTROL_UPDATES) do afterWith(_G, name, redress) end
+  frame:HookScript("OnEvent", ns.Guard("guild control event", redress))
+end
+
+-- The guild control window (officers' ranks and permissions, load on demand): the window skin, its title, the divider under the
+-- header, the page dropdown, the four pages, and the watch that dresses what the game makes later.
+function GW.SkinGuildControl(frame)
+  GW.Skin(frame)
+  GW.SkinTitle(_G.GuildControlUITitle)
+  dressRule(_G.GuildControlUIHbar)
+  GW.SkinDropdown(frame.dropdown)
+  dressControlPages(frame)
+  watchControl(frame)
+end
+
+GW.Add("social", "onDemand", "Blizzard_GuildControlUI", { "GuildControlUI" }, GW.SkinGuildControl)
+
 -- Toasts ----------------------------------------------------------------------------------------
 
 -- The toasts' lines (parentKeys) with their text role and colour. Top and middle lines keep the game's
 -- colour (a friend's name in Battle.net blue); the bottom line's grey (and the single-line variant's) is hard to read on
 -- the dark panel, so it goes to the theme's secondary text on each show (the game greys it again before every toast,
 -- by SetTextColor or, for a friend coming online, by a colour code inside the text itself).
--- Text is the time-played alert's one line.
-GW.TOAST_LINES = { TopLine = { "label", false }, MiddleLine = { "small", false }, BottomLine = { "small", "text2" }, DoubleLine = { "label", "text2" }, Text = { "label", false } }
+-- Text is the time-played alert's one line, and the voice chat prompts' (Text2 is the second line of a voice channel
+-- notification, which keeps the game's colour codes: they colour the channel's name).
+GW.TOAST_LINES = {
+  TopLine = { "label", false }, MiddleLine = { "small", false }, BottomLine = { "small", "text2" }, DoubleLine = { "label", "text2" },
+  Text = { "label", false }, Text2 = { "small", false },
+}
 
 -- A line's text with the game's inline colour codes stripped, so the role colour can show: SetTextColor
 -- cannot override a colour the game wrote into the text. Text the client hides is left alone.
@@ -1366,7 +1515,7 @@ end
 function GW.SkinToast(frame)
   if type(frame) ~= "table" or not frame.GetRegions then return end
   after(frame, "ShowToast", GW.SkinToast)
-  local icon = frame.IconTexture
+  local icon = frame.IconTexture or frame.Icon
   T.FadeRegions(frame, { [type(icon) == "table" and icon or false] = true })
   T.Tooltip(frame)
   dressToastLines(frame)
@@ -1375,3 +1524,12 @@ function GW.SkinToast(frame)
 end
 
 GW.Add("social", "popups", { "BNToastFrame", "TimeAlertFrame" }, GW.SkinToast)
+
+-- The voice chat prompts (the offer to join a party's or raid's voice channel, the note that it is on) are the same
+-- kind of toast, with their icon under Icon: the toast skin, and the offer's Join button themed.
+function GW.SkinVoicePrompt(frame)
+  GW.SkinToast(frame)
+  if type(frame) == "table" then GW.SkinButton(frame.AcceptButton) end
+end
+
+GW.Add("social", "popups", { "VoiceChatPromptActivateChannel", "VoiceChatChannelActivatedNotification" }, GW.SkinVoicePrompt)

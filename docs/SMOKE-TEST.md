@@ -559,6 +559,18 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the rename window is a flat panel; its two options (rename, refund) are plain rows that wash lighter under the mouse and keep their little icon; the descriptions and the cost label are light text (not black); the new-name box is a dark input box; the cost and your money are in the Vanguard number font; the button at the bottom is a themed button and still works.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 14.2.12 Guild control window
+
+- Do: as a guild master (an officer sees only the Discord page), open the guild control window (the Guild Control button in the guild window, or `/script GuildControlUI_Show()`). On Guild Ranks add a rank, rename it, move it up and down and delete it; on Rank Permissions pick a rank in the dropdown and tick a few boxes and the gold-per-day box; on Bank Tab Permissions tick View and Deposit on a tab and type a withdrawal number; if the Discord page is offered, open it. Close it.
+- Expect: the window is a flat dark panel with a Vanguard close button and a title in the same size and light text as the other windows, with one thin line under the header (no rock texture, no carved bar) and the page dropdown a flat button with its arrow. The rank rows have a dark name box, a light "Rank n:" caption, flat up and down arrows that grey out when a rank cannot move, and a flat delete button with its cross; New rank is a flat button; a new rank's row is dressed the moment it appears. The permission boxes are Vanguard check boxes (a greyed Authenticator box with its label grey), the gold-per-day box is a dark edit box, the officer list is light text and the Bank heading small grey capitals. The bank tab list sits in a dark inset with each tab's name light, its two check boxes, its withdraw box and, on the tab you can still buy, the price in the Vanguard font and a flat Purchase button. Every change still saves as before.
+- If it fails, paste: a screenshot of the page that looks wrong, and `/vg errors`.
+
+### 14.2.13 Voice chat prompts
+
+- Do: with voice chat enabled in the game's options, join a party (or a raid) so the game offers to join its voice channel; then click Join.
+- Expect: the offer is the same flat slate panel as a Battle.net toast, its icon and text kept (the text light), its Join button a Vanguard button and its X the theme's cross; after you join, the short note that voice is on has the same panel, its second line keeping the game's colour on the channel's name; nothing else about voice chat changes.
+- If it fails, paste: a screenshot of the prompt and `/vg errors`. If you never get a prompt (voice chat off), mark this step skipped.
+
 ### 14.3.1 Stable (a hunter)
 
 - Do: with a hunter, talk to a stable master.
@@ -631,6 +643,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the transfer window is a flat panel; the source dropdown is a flat button with its arrow; the amount box is a dark edit box; Max, Confirm and Cancel are Vanguard buttons; a thin one-pixel line (no game ornament) runs above the transaction; the four captions (source, amount, and the two balance lines) are light, not gold; the transfer works as before.
 - If it fails, paste: a screenshot of the window and `/vg errors`.
 
+### 14.3.13 Auction house multi-stack sale progress
+
+- Do: at the auction house, post a sale of several stacks at once (a quantity of more than one stack on the Sell tab), and watch the bar that appears at the bottom of the screen; click its cross on a second sale to cancel.
+- Expect: the bar is on a flat panel with no brass end caps or parchment; its track is flat with the theme's bar fill, the item's icon beside it is square-cropped, the "Creating 1/5" text is light, and the cancel cross sits on a grey tile with its picture; it fades out when the sale finishes, and cancelling still stops the sale.
+- If it fails, paste: a screenshot of the bar and `/vg errors`.
+
 ### 14.4.1 Game options
 
 - Do: press Escape, click Options. Look at the window, click through Game and AddOns, type in the search box, change a setting, click Apply, then Close.
@@ -651,8 +669,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 14.4.4 Keybinding, Cooldown Manager settings and click bindings
 
-- Do: press Escape, click Options, Keybindings, then Quick Keybind Mode; press Escape to leave it. Open the Cooldown Manager settings from the game's Options (Gameplay Enhancements). Open the click-casting page in Vanguard's options and click its button that opens the game's click binding window (or open it from the spellbook).
-- Expect: the quick keybind banner on a flat panel with its three buttons themed and its character-specific box a Vanguard check box (the text stays white); the Cooldown Manager settings window and the click binding window on flat panels with themed buttons, search box (magnifier kept) and list background; in the Cooldown Manager window the scroll bar, the layout dropdown, the gear button on a grey tile, the Revert changes button and each category's header bar are the theme's; in the click binding window the scroll bar, the mouseover cast check box and key dropdown (its label light) are the theme's, each binding row has no brass plate and lights a little under the mouse with the red delete cross on a grey tile, and the tutorial card on first open is a flat panel with its picture; the keybind mode still binds keys, and nothing reports a blocked action (open the banner both out of and just after combat).
+- Do: press Escape, click Options, Keybindings, then Quick Keybind Mode; press Escape to leave it. Open the Cooldown Manager settings from the game's Options (Gameplay Enhancements). In that window add or edit an alert on a cooldown (a sound alert) and on a group buff (a visual alert) to open the two alert dialogs. Open the click-casting page in Vanguard's options and click its button that opens the game's click binding window (or open it from the spellbook).
+- Expect: the quick keybind banner on a flat panel with its three buttons themed and its character-specific box a Vanguard check box (the text stays white); the Cooldown Manager settings window and the click binding window on flat panels with themed buttons, search box (magnifier kept) and list background; in the Cooldown Manager window the scroll bar, the layout dropdown, the gear button on a grey tile, the Revert changes button and each category's header bar are the theme's; the two alert dialogs have a flat panel, no dark border, a theme close button, title and Add button, the cooldown's name in light text, small grey capital heads over their dropdowns (themed) and the spell icon as drawn; in the click binding window the scroll bar, the mouseover cast check box and key dropdown (its label light) are the theme's, each binding row has no brass plate and lights a little under the mouse with the red delete cross on a grey tile, and the tutorial card on first open is a flat panel with its picture; the keybind mode still binds keys, and nothing reports a blocked action (open the banner both out of and just after combat).
 - If it fails, paste: a screenshot of the window and `/vg errors`.
 
 ### 14.4.5 Help, report and colour picker
@@ -666,6 +684,19 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: on a test character, die to a mob and click the Death Recap button on the release popup. Then open the Combat tab of your chat and click two of its filter buttons.
 - Expect: the death recap on a flat panel with a themed Close button and title, the damage rows on a darker inset with the theme's scroll bar (as the game draws them), a thin line under the title; the combat log's filter bar on a darker strip with flat filter buttons and a flat arrow button on the right, still switching filters and opening the filter menu when clicked (the green progress bar that shows while a filter applies is the accent color).
 - If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.4.7 Movement pad
+
+- Do: in the game's Options, Controls, tick "Enable Movement Pad"; click its forward arrow, then click it again; hold the pad's jump button; click the small gear on the pad; drag the pad by its edge (unlock it from the gear if it is locked).
+- Expect: the pad is a dark panel with no tooltip border; its seven buttons are flat with their arrows and jump picture showing, lighting under the mouse; a direction the game has on (forward after the first click) shows the accent selected look until you click it off, instead of the game's glow; the gear is on a grey tile; moving, jumping and locking work as before.
+- If it fails, paste: a screenshot of the pad and `/vg errors`. If you cannot enable the pad in this client, mark this step skipped.
+
+### 14.4.8 Lua error window
+
+- Do: turn on "Display Lua Errors" in the game's Options (Gameplay, Game Options), then cause an error (for example `/run error("test")`) and click the arrows, Reload and Close buttons.
+- Expect: the error window is a flat panel with a theme title, a theme close cross, flat Reload and Close buttons, flat previous and next arrows with the "1 / 2" count in light text and a themed scroll bar; the error text itself keeps the game's colours; the window stays in the middle of the screen and still pages, scrolls and closes.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
 ### 14.5 World map, group finder, Legacy and calendar
 
 - Do: hover the zone name on the minimap's top band, click it, then click it again; press `M` for the world map, then use its minimise and maximise button, click a few zones, open the quest panel on its side and click a quest; hover the group finder eye by the minimap, then click it to open the group finder; open the Legacy window from its button on the menu bar; type `/calendar`, open a day with an event and the "Create event" dialog. Look at the info strip under the minimap, then click the small calendar button at the right end of its date row.
@@ -756,6 +787,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: turn on the game's scrolling combat text (Options → Combat → Show Combat Text, or `/console enableFloatingCombatText 1`), fight a mob and take a hit, watching the text over your character and the damage numbers over the mob. Then set Font under `/vg` → General to the game's font, reload and fight again.
 - Expect: the text over your character (damage taken, heals, energy gains) is in Vanguard's font at the game's own sizes and colours, with a critical hit (the number that grows and shrinks) as sharp as the rest, and the damage numbers over the mob are in Vanguard's font too. After the reload with the game's font chosen, both are the game's own. [Needs in game: that the engine reads `DAMAGE_TEXT_FONT` after Vanguard's ADDON_LOADED, so the numbers over the mob change (if they stay the game's, the path must be set when the file loads instead), and that `enableFloatingCombatText` is the switch's CVar on Forever.]
 - If it fails, paste: a screenshot of each kind of number and `/vg errors`.
+
+### 14.7.9 Raid warning, screenshot and frame rate text
+
+- Do: in a group, have a leader or assistant send a raid warning (`/rw Pull in 5`), or type it yourself as the leader; press Print Screen; press Ctrl+R to show the frame rate and press it again to hide it. On a Hardcore realm, wait for a death notice if one comes.
+- Expect: the raid warning line at the top center is in Vanguard's font (bold), the same size and colour as before and still growing and fading as the game does it; the line that says a screenshot was taken in the middle of the screen is in Vanguard's font and still gold; the frame rate readout in the bottom-right corner (FPS and the number) is in Vanguard's font at the game's size. A Hardcore death notice is red in the title font. Changing the font or Text size in the options window changes all three at once.
+- If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.8.1 Character pane side tabs
 
@@ -943,6 +980,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: open the achievements window (Y). [Needs in game: Forever may open the Legacy window instead; if so, this step only checks that nothing broke, and the window below never shows.] If it opens: click through the categories, the Guild and Statistics tabs, open an achievement card and tick Track, use the search box (a preview list drops down), press Enter for the full results, and compare with a player if you can.
 - Expect: no bronze header plate, wooden frame or parchment: the category list, the achievements, the statistics, the summary and the comparison each sit on a flat dark panel with no gold border; an achievement card has no parchment or border (its icon, shield and the +/- mark stay) and its description is light even when completed (if completed descriptions or criteria text are black, paste a screenshot); the category you pick shows the selected look; Track is a flat check box; Back, the filter and the search box are flat; the search preview is a small dark panel; the summary's two headings are small grey capitals over flat bars; the full results are a framed panel with a themed title and a close button.
 - If it fails, paste: a screenshot of the tab that looks wrong, and `/vg errors`.
+
+### 14.14.13 Auction house, the game's own pages
+
+- Do: open the auction house with Vanguard's Auction Helper page on, and again after turning it off (Auction helper, "Lists and Posting tabs on the auction house") and reloading. On the game's Buy tab, search for something (type in the box, click Search, open the filter dropdown, click the favourites star), pick a category and a sub-category, click a result and click Back; on Sell, drop an item in and look at the form (quantity, price, duration, the buyout check box); on Auctions, click the Auctions and Bids sub tabs and pick a line; start a purchase so the confirm dialog shows.
+- Expect: no bronze frames or dark tiles: the money line at the foot, the categories, the result lists, the sell form and the item headers sit on flat dark panels; the search box, Search, filter, favourites, column header, Post, Buy, Bid, Buyout, Back, Cancel and Max buttons are flat (the sort arrow, the star and the red clear cross keep their pictures); the price and bid boxes are dark edit boxes with their gold, silver and copper coins; the duration is a flat dropdown; the buyout check box is Vanguard's; the Auctions and Bids tabs are flat tabs, the one you are on raised; a category or result line you pick shows the accent rail and light fill (the same look as every other list) and a hover gives a light wash; no gold category names (they are light, and stay light after the mouse leaves); "Create Auction" is a small grey capital; the money figures are in the theme font; the confirm dialog is a flat panel with a shadow and three flat buttons. With the Helper page on, its Lists and Posting tabs look and work as before.
+- If it fails, paste: a screenshot of the page that looks wrong, which tab it was on, and `/vg errors`.
 
 ## 15. Talent planner
 
