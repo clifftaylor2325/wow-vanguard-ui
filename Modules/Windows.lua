@@ -89,10 +89,11 @@ GW.MENU_PLATE = { "LeftBG", "RightBG", "CenterBG" }
 GW.ART = { "NineSlice", "Bg", "TopTileStreaks", "PortraitContainer", "Border", "Inset" }
 -- Art that is a window's content, not its frame, by window: faded with the rest, then shown again.
 -- The flight map draws its map on a texture of its own (SetTaxiMap: the TaxiMap texture, InsetBg on newer builds).
--- A popup's warning icon and its progress bar's fill are content; the guild bank's portrait is too.
+-- A popup's warning icon and its progress bar's fill are content; so are the guild bank's portrait and the time
+-- manager's globe (the clock's ticker is drawn on it).
 local POPUP_CONTENT = { "AlertIcon", "ProgressBarFill" }
 GW.CONTENT_ART = {
-  TaxiFrame = { "TaxiMap", "InsetBg" }, GuildBankFrame = { "Portrait" },
+  TaxiFrame = { "TaxiMap", "InsetBg" }, GuildBankFrame = { "Portrait" }, TimeManagerFrame = { "TimeManagerGlobe" },
   StaticPopup1 = POPUP_CONTENT, StaticPopup2 = POPUP_CONTENT, StaticPopup3 = POPUP_CONTENT, StaticPopup4 = POPUP_CONTENT,
 }
 -- What each window adds inside its frame, by name: function(frame), run by GW.SkinFramed after the window skin
@@ -776,6 +777,33 @@ end
 GW.INSIDES.DressUpFrame = function(frame)
   GW.InsetPanel(frame.ModelScene)
   dressControls(frame)
+end
+
+-- The time manager -----------------------------------------------------------------------------
+
+-- The three captions over the time manager's controls (alarm time, alarm message, show the stopwatch).
+GW.TIME_LABELS = { "TimeManagerAlarmTimeLabel", "TimeManagerAlarmMessageLabel", "TimeManagerStopwatchFrameText" }
+-- The alarm time's three dropdowns, under the AlarmTimeFrame.
+GW.TIME_DROPDOWNS = { "HourDropdown", "MinuteDropdown", "AMPMDropdown" }
+
+-- The alarm time's hour, minute and AM/PM dropdowns as theme dropdowns that keep their arrows.
+local function timeDropdowns(frame)
+  local box = frame.AlarmTimeFrame
+  if type(box) ~= "table" then return end
+  for _, key in ipairs(GW.TIME_DROPDOWNS) do GW.SkinDropdown(box[key]) end
+end
+
+-- The time manager's inside: its three check boxes (only the ones directly on the window: the stopwatch's sits a
+-- frame down and keeps its clock icon on a control tile), the alarm dropdowns and message box, the captions and
+-- the window's own title line (an unnamed string, gold in the game).
+GW.INSIDES.TimeManagerFrame = function(frame)
+  GW.DressChecks(frame, 1)
+  GW.SkinPlate(_G.TimeManagerStopwatchCheck)
+  timeDropdowns(frame)
+  GW.SkinEditBox(_G.TimeManagerAlarmMessageEditBox)
+  GW.TextNamed(GW.TIME_LABELS, "small", "text")
+  GW.PaintNamed({ "TimeManagerAlarmEnabledButtonText" }, "text")
+  GW.TextRegions(frame, { "TIMEMANAGER_TITLE" }, "title", "text")
 end
 
 -- Books and letters ---------------------------------------------------------------------------

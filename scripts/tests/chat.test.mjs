@@ -1079,3 +1079,46 @@ it("R2.12 books and letters: the page area an inset, flat page arrows, a flat re
   bare.eval("ItemTextFrame:Show()");
   expect([windowState(bare, "ItemTextFrame").panel, bare.eval("return #ns.errors")], "a book window without its parts is skinned without an error").toEqual([true, 0]);
 });
+// TEST-ONLY time manager (Blizzard_TimeManager.xml): the window with its globe, title line, three check boxes on it,
+// the stopwatch frame with its nested check (a clock icon), the alarm's three dropdowns, message box and labels.
+const TIME_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
+  TIMEMANAGER_TITLE = "TEST-ONLY Time"
+  local f = __window("TimeManagerFrame")
+  TimeManagerGlobe = __art(f) f.title = __text(f, TIMEMANAGER_TITLE)
+  for _, name in ipairs({ "TimeManagerAlarmEnabledButton", "TimeManagerMilitaryTimeCheck", "TimeManagerLocalTimeCheck" }) do
+    __art(CreateFrame("CheckButton", name, f)) _G[name .. "Text"] = __text(_G[name])
+  end
+  local sw = CreateFrame("Frame", "TimeManagerStopwatchFrame", f)
+  TimeManagerStopwatchFrameText = __text(sw) __art(CreateFrame("CheckButton", "TimeManagerStopwatchCheck", sw))
+  f.AlarmTimeFrame = CreateFrame("Frame", nil, f)
+  for _, key in ipairs(ns.GetModule("Windows").TIME_DROPDOWNS) do
+    f.AlarmTimeFrame[key] = CreateFrame("Button", nil, f.AlarmTimeFrame) f.AlarmTimeFrame[key].Arrow = __art(f.AlarmTimeFrame[key])
+  end
+  TimeManagerAlarmTimeLabel, TimeManagerAlarmMessageLabel = __text(f), __text(f)
+  TimeManagerAlarmMessageEditBox = CreateFrame("EditBox", "TimeManagerAlarmMessageEditBox", f) __art(TimeManagerAlarmMessageEditBox)
+  TimeManagerAlarmEnabledButtonText:SetTextColor(1, 0.82, 0)
+`;
+it("R2.13 the time manager: check boxes, dropdowns, the alarm message box, labels, the title line; the globe stays", () => {
+  const addon = loggedIn(TIME_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_TimeManager");
+  addon.eval("TimeManagerFrame:Show()");
+  // The window's parts as the skin leaves them.
+  const read = () => addon.eval(`local f = TimeManagerFrame local boxes, drops = 0, 0
+    for _, name in ipairs({ "TimeManagerAlarmEnabledButton", "TimeManagerMilitaryTimeCheck", "TimeManagerLocalTimeCheck" }) do if __faded(_G[name]) then boxes = boxes + 1 end end
+    for _, key in ipairs(ns.GetModule("Windows").TIME_DROPDOWNS) do if __faded(f.AlarmTimeFrame[key], f.AlarmTimeFrame[key].Arrow) and f.AlarmTimeFrame[key].Arrow.__alpha == 1 then drops = drops + 1 end end
+    return { globe = TimeManagerGlobe.__alpha, boxes = boxes, drops = drops, stopwatch = not __faded(TimeManagerStopwatchCheck) and select("#", TimeManagerStopwatchCheck:GetRegions()) > 1,
+      message = __faded(TimeManagerAlarmMessageEditBox), labels = __themed(TimeManagerAlarmTimeLabel) and __themed(TimeManagerAlarmMessageLabel) and __themed(TimeManagerStopwatchFrameText),
+      enabledColour = TimeManagerAlarmEnabledButtonText.__textColor[2] ~= 0.82, title = __titled(f.title), painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
+  const first = read();
+  expect(first, "the globe is content and stays; three check boxes, three dropdowns with their arrows, the message box, the labels and the title in the theme; the stopwatch check keeps its icon on a tile").toMatchObject({ globe: 1, boxes: 3, drops: 3, stopwatch: true, message: true, labels: true, enabledColour: true, title: true, errors: 0 });
+  addon.eval("TimeManagerFrame:Hide() TimeManagerFrame:Show()");
+  expect(read().painted, "a second show paints nothing new").toBe(first.painted);
+  const bare = loggedIn(`${WINDOWS_ENV} __window("TimeManagerFrame")`);
+  bare.fire("ADDON_LOADED", "Blizzard_TimeManager");
+  bare.eval("TimeManagerFrame:Show()");
+  expect([windowState(bare, "TimeManagerFrame").panel, bare.eval("return #ns.errors")], "a bare time manager is skinned without an error").toEqual([true, 0]);
+  const odd = loggedIn(`${TIME_ENV} TimeManagerFrame.AlarmTimeFrame = 1 TimeManagerStopwatchCheck = 1 TimeManagerAlarmMessageEditBox = {}`);
+  odd.fire("ADDON_LOADED", "Blizzard_TimeManager");
+  odd.eval("TimeManagerFrame:Show()");
+  expect(odd.eval("return #ns.errors"), "odd parts are skipped").toBe(0);
+});

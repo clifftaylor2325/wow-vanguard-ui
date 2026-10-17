@@ -402,14 +402,15 @@ function GW.SkinIconPicker(frame)
 end
 
 -- The stopwatch: its two background plates and the title tab's art faded under a flat panel, the close,
--- play and reset buttons in the theme (play and reset keep their pictures), the title in the theme font.
+-- play and reset buttons in the theme (play and reset keep their pictures), the title in the theme font and the
+-- text colour.
 function GW.SkinStopwatch(frame)
   GW.Skin(frame)
   if type(_G.StopwatchTabFrame) == "table" then T.FadeRegions(_G.StopwatchTabFrame) end
   GW.DressClose(frame, _G.StopwatchCloseButton)
   GW.SkinGlyph(_G.StopwatchPlayPauseButton)
   GW.SkinGlyph(_G.StopwatchResetButton)
-  namedFonts({ "StopwatchTitle" }, "small")
+  GW.TextNamed({ "StopwatchTitle" }, "small", "text")
 end
 
 GW.Add("town", "onDemand", "Blizzard_MacroUI", { "MacroFrame" })

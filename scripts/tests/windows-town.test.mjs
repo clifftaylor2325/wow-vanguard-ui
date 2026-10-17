@@ -308,7 +308,7 @@ it("S2.6 macro, icon pickers, stopwatch, recipe inspection: skinned when their p
   }
   expect(alphas(addon, "StopwatchTabFrame.art", "StopwatchPlayPauseButton.up", "StopwatchResetButton.off"), "the title tab's art faded, the play and reset pictures kept").toEqual([0, 1, 1]);
   expect(dressed(addon, "StopwatchCloseButton", "StopwatchPlayPauseButton", "StopwatchResetButton"), "its three buttons themed").toEqual([true, true, true]);
-  expect(addon.eval("return StopwatchTitle:GetFont() ~= nil"), "the title in the theme font").toBe(true);
+  expect(addon.eval("return StopwatchTitle:GetFont() ~= nil and StopwatchTitle.__textColor[1] == (ns.Theme.RGB('text'))"), "the title in the theme font and the text colour").toBe(true);
   const painted = windowState(addon, "StopwatchFrame").painted;
   addon.eval("for _, n in ipairs({ 'MacroFrame', 'MacroPopupFrame', 'StopwatchFrame' }) do _G[n]:Hide() _G[n]:Show() end");
   expect(windowState(addon, "StopwatchFrame").painted, "showing them again paints nothing more").toBe(painted);
